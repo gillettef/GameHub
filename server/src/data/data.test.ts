@@ -134,12 +134,18 @@ describe('전술 카드 (p.20, p.28)', () => {
 });
 
 describe('상대 팀 카드 (p.21, p.28)', () => {
-  it('16팀 × 4부', () => {
+  it('16팀 × 4장, 부 덱마다 8팀 × 2장 = 16장', () => {
     const teams = new Set(OPPONENT_CARDS.map((o) => o.teamId));
     expect(teams.size).toBe(16);
     for (const teamId of teams) {
-      const tiers = OPPONENT_CARDS.filter((o) => o.teamId === teamId).map((o) => o.tier).sort();
-      expect(tiers).toEqual(['1', '2/1', '3', '3/2']);
+      const tiers = OPPONENT_CARDS.filter((o) => o.teamId === teamId).map((o) => o.tier);
+      expect(tiers).toHaveLength(4);
+      expect(new Set(tiers).size).toBe(2);
+    }
+    for (const tier of ['3', '3/2', '2/1', '1'] as const) {
+      const deck = OPPONENT_CARDS.filter((o) => o.tier === tier);
+      expect(deck).toHaveLength(16);
+      expect(new Set(deck.map((o) => o.teamId)).size).toBe(8);
     }
   });
   it('구획 배치가 포메이션·수용 인원과 일치', () => {

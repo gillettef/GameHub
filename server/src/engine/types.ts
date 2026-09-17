@@ -183,6 +183,13 @@ export interface ObjectiveCard {
 export type DivisionTier = '3' | '3/2' | '2/1' | '1';
 export type Division = 3 | 2 | 1;
 
+// 부별 사용 덱 (p.28): 쉬운 덱 3장이 위, 어려운 덱 3장이 아래 (p.8)
+export const DIVISION_TIERS: Record<Division, { easy: DivisionTier; hard: DivisionTier }> = {
+  3: { easy: '3', hard: '3/2' },
+  2: { easy: '3/2', hard: '2/1' },
+  1: { easy: '2/1', hard: '1' },
+};
+
 export interface OpponentSlot {
   role: Role;
   skill: number;

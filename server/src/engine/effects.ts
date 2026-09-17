@@ -1,0 +1,139 @@
+import { activeSide } from './cards';
+import { GameError, emptyTokens, getPlayer } from './state';
+import type { GameState, PlayerId, PlayerInstance, PlayerState } from './state';
+import { TRACK_MAX, TRACK_MIN } from './types';
+import type { Effect, Track } from './types';
+import { assignUniform } from './uniforms';
+
+// p.7: 5를 넘기면 이동 대신 자원 획득, 1 아래로 내려가면 자원 손실 (placeholder: 트랙과 같은 자원 1개/칸)
+export function moveTrack(player: PlayerState, track: Track, delta: number): void {
+  const target = player.tracks[track] + delta;
+  if (target > TRACK_MAX) {
+    player.resources[track] += target - TRACK_MAX;
+    player.tracks[track] = TRACK_MAX;
+  } else if (target < TRACK_MIN) {
+    player.resources[track] = Math.max(0, player.resources[track] - (TRACK_MIN - target));
+    player.tracks[track] = TRACK_MIN;
+  } else {
+    player.tracks[track] = target;
+  }
+}
+
+export function addToRoster(player: PlayerState, cardId: string): PlayerInstance {
+  const instance: PlayerInstance = {
+    instanceId: `${player.id}-pl${player.nextInstance++}`,
+    cardId,
+    trained: false,
+    tokens: emptyTokens(),
+    placed: {},
+    exhausted: false,
+    careerVP: 0,
+  };
+  player.roster.push(instance);
+  assignUniform(player.uniforms, instance.instanceId, activeSide(instance));
+  return instance;
+}
+
+export function trainPlayer(player: PlayerState, instance: PlayerInstance): void {
+  if (instance.trained) throw new GameError('already trained');
+  instance.trained = true;
+  assignUniform(player.uniforms, instance.instanceId, activeSide(instance));
+}
+
+function findInstance(player: PlayerState, instanceId: string): PlayerInstance {
+  const inst = player.roster.find((p) => p.instanceId === instanceId);
+  if (!inst) throw new GameError(`unknown roster player: ${instanceId}`);
+  return inst;
+}
+
+function candidatesFor(player: PlayerState, effect: Effect): string[] | null {
+  switch (effect.type) {
+    case 'trainPlayer':
+      return player.roster.filter((p) => !p.trained).map((p) => p.instanceId);
+    case 'placeStamina':
+    case 'addPlayerToken':
+      return player.roster.map((p) => p.instanceId);
+    case 'removePlayerToken':
+      return player.roster.filter((p) => p.tokens[effect.token] > 0).map((p) => p.instanceId);
+    default:
+      return null;
+  }
+}
+
+function applyTargeted(player: PlayerState, effect: Effect, instance: PlayerInstance): void {
+  switch (effect.type) {
+    case 'trainPlayer':
+      trainPlayer(player, instance);
+      return;
+    case 'placeStamina':
+      instance.placed.stamina = (instance.placed.stamina ?? 0) + effect.count;
+      return;
+    case 'addPlayerToken':
+      instance.tokens[effect.token] += effect.count;
+      return;
+    case 'removePlayerToken':
+      instance.tokens[effect.token] = Math.max(0, instance.tokens[effect.token] - effect.count);
+      return;
+    default:
+      throw new GameError(`effect ${effect.type} takes no target`);
+  }
+}
+
+// 대상 선택이 필요한 효과: 후보 0 → 무시, 1 → 자동 적용, 2+ → pending
+export function applyEffects(state: GameState, pid: PlayerId, effects: readonly Effect[], source: string): void {
+  const player = getPlayer(state, pid);
+  for (const effect of effects) {
+    const candidates = candidatesFor(player, effect);
+    if (candidates) {
+      const times = effect.type === 'trainPlayer' ? effect.count : 1;
+      for (let i = 0; i < times; i++) {
+        const cands = candidatesFor(player, effect) ?? [];
+        if (cands.length === 0) break;
+        if (cands.length === 1) {
+          applyTargeted(player, effect, findInstance(player, cands[0]!));
+        } else {
+          player.pending.push({ id: `${source}#${player.pending.length}#${i}`, effect, source, candidates: cands });
+        }
+      }
+      continue;
+    }
+    switch (effect.type) {
+      case 'gainResource':
+        player.resources[effect.resource] = Math.max(0, player.resources[effect.resource] + effect.amount);
+        break;
+      case 'moveTrack':
+        moveTrack(player, effect.track, effect.delta);
+        break;
+      case 'gainVP':
+        player.vp = Math.max(0, player.vp + effect.amount);
+        break;
+      case 'drawTactic':
+        for (let i = 0; i < effect.count; i++) {
+          const card = state.decks.tactics.shift();
+          if (card) player.tacticCards.push(card);
+        }
+        break;
+      case 'recruitProspectFree': {
+        const card = state.decks.prospects.shift();
+        if (card) addToRoster(player, card);
+        break;
+      }
+      case 'scoreGoal':
+        state.log.push(`[${pid}] ${source}: 경기 외 득점 효과는 무시됨`);
+        break;
+      case 'text':
+        state.log.push(`[${pid}] ${source}: (수동 처리) ${effect.text}`);
+        break;
+    }
+  }
+}
+
+export function resolvePending(state: GameState, pid: PlayerId, pendingId: string, instanceId: string): void {
+  const player = getPlayer(state, pid);
+  const idx = player.pending.findIndex((p) => p.id === pendingId);
+  if (idx < 0) throw new GameError(`unknown pending effect: ${pendingId}`);
+  const pending = player.pending[idx]!;
+  if (!pending.candidates.includes(instanceId)) throw new GameError('invalid target');
+  applyTargeted(player, pending.effect, findInstance(player, instanceId));
+  player.pending.splice(idx, 1);
+}

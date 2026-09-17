@@ -1,0 +1,59 @@
+import {
+  BOARD_CARDS,
+  BOARD_DATA,
+  EXECUTIVE_CARDS,
+  OBJECTIVE_CARDS,
+  OPPONENT_CARDS,
+  PLAYER_CARDS,
+  SPONSOR_CARDS,
+  STAFF_CARDS,
+  TACTIC_CARDS,
+} from '../data';
+import type {
+  BoardCard,
+  ExecutiveCard,
+  ObjectiveCard,
+  OpponentTeamCard,
+  PlayerCard,
+  PlayerSide,
+  SponsorCard,
+  StaffCard,
+  TacticCard,
+} from './types';
+import type { PlayerInstance } from './state';
+
+function index<T extends { id: string }>(list: readonly T[]): Map<string, T> {
+  return new Map(list.map((c) => [c.id, c]));
+}
+
+const players = index(PLAYER_CARDS);
+const staff = index(STAFF_CARDS);
+const sponsors = index(SPONSOR_CARDS);
+const board = index(BOARD_CARDS);
+const executives = index(EXECUTIVE_CARDS);
+const tactics = index(TACTIC_CARDS);
+const objectives = index(OBJECTIVE_CARDS);
+const opponents = index(OPPONENT_CARDS);
+
+function get<T>(map: Map<string, T>, id: string, kind: string): T {
+  const card = map.get(id);
+  if (!card) throw new Error(`unknown ${kind} card: ${id}`);
+  return card;
+}
+
+export const cards = {
+  player: (id: string): PlayerCard => get(players, id, 'player'),
+  staff: (id: string): StaffCard => get(staff, id, 'staff'),
+  sponsor: (id: string): SponsorCard => get(sponsors, id, 'sponsor'),
+  board: (id: string): BoardCard => get(board, id, 'board'),
+  executive: (id: string): ExecutiveCard => get(executives, id, 'executive'),
+  tactic: (id: string): TacticCard => get(tactics, id, 'tactic'),
+  objective: (id: string): ObjectiveCard => get(objectives, id, 'objective'),
+  opponent: (id: string): OpponentTeamCard => get(opponents, id, 'opponent'),
+  boardData: BOARD_DATA,
+};
+
+export function activeSide(instance: PlayerInstance): PlayerSide {
+  const card = cards.player(instance.cardId);
+  return instance.trained ? card.trained : card.untrained;
+}
