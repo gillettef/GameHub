@@ -1,7 +1,8 @@
 import { cards } from './cards';
 import { applyEffects } from './effects';
 import type { Rng } from './rng';
-import { GameError, getPlayer } from './state';
+import { COLOR_LABEL } from './labels';
+import { GameError, addLog, getPlayer } from './state';
 import type { GameState, PlayerId, PlayerState } from './state';
 import { RESOURCES } from './types';
 import type { DieColor } from './types';
@@ -47,7 +48,7 @@ function rollUntilDecisive(state: GameState, player: PlayerState, rng: Rng): num
   for (;;) {
     const face = rng.die(6);
     if (winningColor(tallyVotes(player, face))) return face;
-    state.log.push(`[${player.id}] 이사회 투표 동수 → 무료 재굴림`);
+    addLog(state, '이사회 투표 동수 → 무료 재굴림', { actor: player.id });
   }
 }
 
@@ -78,7 +79,7 @@ export function acceptBoardRoll(state: GameState, pid: PlayerId): GameState {
   const player = getPlayer(next, pid);
   const color = winningColor(tallyVotes(player, m.roll))!;
   const card = cards.board(m.card);
-  next.log.push(`[${pid}] 이사회 "${card.name}": ${color} 결정`);
+  addLog(next, `이사회 "${card.name}" → ${COLOR_LABEL[color]} 결정: ${card.decisions[color].text}`, { actor: pid });
   applyEffects(next, pid, card.decisions[color].effects, `이사회:${card.name}`);
   next.decks.discards.board.push(m.card);
   m.decided = true;

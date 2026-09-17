@@ -1,30 +1,33 @@
 import { useEffect, useMemo, useState } from 'react';
 import { activeSide, cards } from '@server/engine/cards';
 import { standsCount } from '@server/engine/friday';
+import { autoPlace, previewField, validatePlacements } from '@server/engine/lineup';
 import { SECTOR_PAIRS, sectorCounts } from '@server/engine/match';
 import type { UniformToken } from '@server/engine/state';
 import { RESOURCES, SECTORS } from '@server/engine/types';
 import type { Resources, Sector } from '@server/engine/types';
-import { autoPlace, previewField, validatePlacements } from '@server/engine/lineup';
 import { OpponentCardView, PlayerCardView, TacticCardView } from '../components/Cards';
-import { RESOURCE_ICON, SECTOR_LABEL, describeCost } from '../labels';
+import { CostChips, Icon, ResourceChip } from '../components/Icons';
+import { SECTOR_LABEL, matchDieLabel } from '../labels';
 import { useGame } from '../store';
 
-const MATCH_DIE_LABEL: Record<number, string> = {
-  1: '팬덤 트랙 +1',
-  2: '출전 선수 1명 훈련',
-  3: '출전 선수 1명 일시 역량 +1',
-  4: '출전 선수 1명 일시 약점 +1',
-  5: '부상 (12면체 → 등번호)',
-  6: '심각한 부상 (부상 토큰 2개)',
-};
-
-function TokenChip({ token, name }: { token: UniformToken; name?: string }) {
+function TokenChipView({ token, name }: { token: UniformToken; name?: string }) {
   return (
-    <span className={`chip ${token.face}`} title={name}>
+    <span className={`utoken ${token.face}`} title={name}>
+      <Icon name={token.face} size={11} />
       {token.number ?? '∅'}
-      {token.face === 'attack' ? '⚽' : '🛡'}
-      {name && <span className="chip-name">{name}</span>}
+      {name && <span className="utoken-name">{name}</span>}
+    </span>
+  );
+}
+
+function Waiting({ done }: { done: Record<string, boolean> }) {
+  const { view } = useGame();
+  return (
+    <span className="waiting">
+      {view.seats.map((id) => (
+        <span key={id} className={`tag${done[id] ? ' done' : ''}`}>{view.players[id]!.name}{done[id] ? ' ✓' : ''}</span>
+      ))}
     </span>
   );
 }
@@ -53,6 +56,7 @@ export function FridayPrepareScreen() {
 
   if (view.phase.kind !== 'friday.prepare') return null;
   const submitted = view.phase.submitted[view.me];
+  const submittedMap = view.phase.submitted;
 
   const usedNumbers = new Set(played.map((id) => activeSide(me.roster.find((r) => r.instanceId === id)!).number).filter((n) => n !== undefined));
   const togglePlayer = (instanceId: string) => setPlayed((p) => (p.includes(instanceId) ? p.filter((x) => x !== instanceId) : [...p, instanceId]));
@@ -76,99 +80,109 @@ export function FridayPrepareScreen() {
     });
 
   return (
-    <section className="panel">
-      <h2>금요일 · 경기 준비</h2>
-      <div className="row small wrap">
-        {view.seats.map((id) => (
-          <span key={id} className={view.phase.kind === 'friday.prepare' && view.phase.submitted[id] ? 'badge' : 'muted'}>
-            {view.players[id]!.name}: {view.phase.kind === 'friday.prepare' && view.phase.submitted[id] ? '제출 완료' : '준비 중'}
-          </span>
-        ))}
+    <section className="panel phase-panel mine">
+      <div className="panel-head">
+        <h2>경기 준비</h2>
+        <Waiting done={submittedMap} />
       </div>
       {submitted ? (
-        <p className="muted">라인업을 제출했습니다. 다른 참가자를 기다리는 중…</p>
+        <p className="muted">라인업을 제출했습니다. 다른 참가자를 기다리는 중</p>
       ) : (
-        <>
-          <h4>1. 상대 팀 스카우트 보고서</h4>
-          {me.nextOpponent && <div className="cards"><OpponentCardView cardId={me.nextOpponent} /></div>}
-
-          <h4>2. 전술 카드와 포메이션</h4>
-          <div className="cards compact">
-            {view.self.tacticCards.map((id) => (
-              <TacticCardView key={id} cardId={id} selected={id === tacticCardId} onClick={() => { setTacticCardId(id); setFormationIndex(0); }} />
-            ))}
+        <div className="stack">
+          <div className="step">
+            <h3>상대</h3>
+            {me.nextOpponent && <div className="cards"><OpponentCardView cardId={me.nextOpponent} /></div>}
           </div>
-          {tacticCardId && cards.tactic(tacticCardId).formations.length > 1 && (
-            <div className="row">
-              {cards.tactic(tacticCardId).formations.map((f, i) => (
-                <button key={i} className={`small${i === formationIndex ? ' active' : ''}`} onClick={() => setFormationIndex(i)}>
-                  {f.defenders}-{f.midfielders}-{f.forwards}
-                </button>
+
+          <div className="step">
+            <h3>전술</h3>
+            <div className="cards">
+              {view.self.tacticCards.map((id) => (
+                <TacticCardView key={id} cardId={id} compact selected={id === tacticCardId} onClick={() => { setTacticCardId(id); setFormationIndex(0); }} />
               ))}
             </div>
-          )}
-
-          <h4>3. 출전 선수 <span className="muted">(선수마다 💪1 · 부상/출장정지·같은 등번호 불가)</span></h4>
-          <div className="cards">
-            {me.roster.map((r) => {
-              const side = activeSide(r);
-              const blocked = r.tokens.injury > 0 || r.tokens.suspension > 0 || (side.number !== undefined && usedNumbers.has(side.number) && !played.includes(r.instanceId));
-              return (
-                <PlayerCardView
-                  key={r.instanceId}
-                  cardId={r.cardId}
-                  instance={r}
-                  selected={played.includes(r.instanceId)}
-                  onClick={blocked ? undefined : () => togglePlayer(r.instanceId)}
-                  footer={
-                    played.includes(r.instanceId) && side.effect && !side.effect.mandatory ? (
-                      <label className="row small">
-                        <input type="checkbox" checked={!!activations[r.instanceId]} onChange={(e) => setActivations((a) => ({ ...a, [r.instanceId]: e.target.checked }))} />
-                        효과 활성화 ({describeCost(side.effect.cost)})
-                      </label>
-                    ) : undefined
-                  }
-                />
-              );
-            })}
-          </div>
-
-          <h4>4. 유니폼 토큰 배치 <span className="muted">({formation.defenders}-{formation.midfielders}-{formation.forwards})</span></h4>
-          <button className="small" onClick={() => setPlacements(autoPlace(field, me.roster, played, formation))}>자동 배치</button>
-          <div className="pitch">
-            {SECTORS.map((s) => (
-              <div key={s} className={`sector ${s}`}>
-                <div className="sector-title">{SECTOR_LABEL[s]} <span className="muted">{field.filter((t) => placements[t.id] === s).length}/{need[s]}</span></div>
-                {field.filter((t) => placements[t.id] === s).map((t) => (
-                  <TokenChip key={t.id} token={t} name={played.includes(t.cardInstanceId ?? '') ? nameOf(t.cardInstanceId) : undefined} />
+            {tacticCardId && cards.tactic(tacticCardId).formations.length > 1 && (
+              <div className="row">
+                {cards.tactic(tacticCardId).formations.map((f, i) => (
+                  <button key={i} className={i === formationIndex ? 'active' : ''} onClick={() => setFormationIndex(i)}>
+                    {f.defenders}-{f.midfielders}-{f.forwards}
+                  </button>
                 ))}
               </div>
-            ))}
+            )}
           </div>
-          <div className="token-list">
-            {field.map((t) => (
-              <label key={t.id} className="row small">
-                <TokenChip token={t} name={played.includes(t.cardInstanceId ?? '') ? nameOf(t.cardInstanceId) : undefined} />
-                <select value={placements[t.id] ?? ''} onChange={(e) => setPlacements((p) => ({ ...p, [t.id]: e.target.value as Sector }))}>
-                  <option value="">—</option>
-                  {SECTORS.map((s) => (
-                    <option key={s} value={s}>{SECTOR_LABEL[s]}</option>
+
+          <div className="step">
+            <h3>출전 선수 <span className="muted">선수마다 <Icon name="stamina" size={12} />1 · 부상·출장정지·같은 등번호는 불가</span></h3>
+            <div className="cards">
+              {me.roster.map((r) => {
+                const side = activeSide(r);
+                const blocked = r.tokens.injury > 0 || r.tokens.suspension > 0 || (side.number !== undefined && usedNumbers.has(side.number) && !played.includes(r.instanceId));
+                return (
+                  <PlayerCardView
+                    key={r.instanceId}
+                    cardId={r.cardId}
+                    instance={r}
+                    selected={played.includes(r.instanceId)}
+                    onClick={blocked ? undefined : () => togglePlayer(r.instanceId)}
+                    footer={
+                      played.includes(r.instanceId) && side.effect && !side.effect.mandatory ? (
+                        <label className="row small" onClick={(e) => e.stopPropagation()}>
+                          <input type="checkbox" checked={!!activations[r.instanceId]} onChange={(e) => setActivations((a) => ({ ...a, [r.instanceId]: e.target.checked }))} />
+                          효과 활성화 <CostChips cost={side.effect.cost} />
+                        </label>
+                      ) : undefined
+                    }
+                  />
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="step">
+            <h3>
+              배치 <span className="formation">{formation.defenders}-{formation.midfielders}-{formation.forwards}</span>
+              <button className="ghost small" onClick={() => setPlacements(autoPlace(field, me.roster, played, formation))}>자동 배치</button>
+            </h3>
+            <div className="pitch">
+              {SECTORS.map((s) => (
+                <div key={s} className={`sector ${s}${field.filter((t) => placements[t.id] === s).length === need[s] ? ' ok' : ''}`}>
+                  <div className="sector-title">{SECTOR_LABEL[s]} <span>{field.filter((t) => placements[t.id] === s).length}/{need[s]}</span></div>
+                  {field.filter((t) => placements[t.id] === s).map((t) => (
+                    <TokenChipView key={t.id} token={t} name={played.includes(t.cardInstanceId ?? '') ? nameOf(t.cardInstanceId) : undefined} />
                   ))}
-                </select>
-              </label>
-            ))}
+                </div>
+              ))}
+            </div>
+            <div className="token-list">
+              {field.map((t) => (
+                <label key={t.id} className="row small">
+                  <TokenChipView token={t} name={played.includes(t.cardInstanceId ?? '') ? nameOf(t.cardInstanceId) : undefined} />
+                  <select value={placements[t.id] ?? ''} onChange={(e) => setPlacements((p) => ({ ...p, [t.id]: e.target.value as Sector }))}>
+                    <option value="">—</option>
+                    {SECTORS.map((s) => (
+                      <option key={s} value={s}>{SECTOR_LABEL[s]}</option>
+                    ))}
+                  </select>
+                </label>
+              ))}
+            </div>
+            {issues.length > 0 && <p className="error small">{issues.join(' · ')}</p>}
           </div>
-          {issues.length > 0 && <p className="error small">{issues.join(' · ')}</p>}
 
-          <h4>5. 관중석 팬덤 <span className="muted">(관중석 {standsCount(me)}개 · 경기 후 배치한 만큼 💰)</span></h4>
-          <input type="number" min={0} max={Math.min(standsCount(me), me.resources.fandom)} value={stands} onChange={(e) => setStands(Number(e.target.value))} />
+          <div className="step">
+            <h3>관중석 <span className="muted">{standsCount(me)}석 · 놓은 <Icon name="fandom" size={12} />만큼 경기 후 <Icon name="money" size={12} /></span></h3>
+            <input type="number" min={0} max={Math.min(standsCount(me), me.resources.fandom)} value={stands} onChange={(e) => setStands(Number(e.target.value))} />
+          </div>
 
-          <p className="small">
-            비용: {RESOURCES.filter((r) => (cost[r] ?? 0) > 0).map((r) => `${RESOURCE_ICON[r]}${cost[r]}`).join(' ') || '없음'}
-            {!affordable && <span className="error"> — 자원 부족</span>}
-          </p>
-          <button disabled={!canSubmit} onClick={submit}>라인업 제출</button>
-        </>
+          <div className="submit-row">
+            <span className="chips">
+              비용 {RESOURCES.filter((r) => (cost[r] ?? 0) > 0).map((r) => <ResourceChip key={r} resource={r} amount={cost[r]!} />)}
+              {!affordable && <span className="error">자원 부족</span>}
+            </span>
+            <button className="primary" disabled={!canSubmit} onClick={submit}>라인업 제출</button>
+          </div>
+        </div>
       )}
     </section>
   );
@@ -178,52 +192,70 @@ export function FridayAftermathScreen() {
   const { view, me, act } = useGame();
   if (view.phase.kind !== 'friday.aftermath') return null;
   const m = view.phase.matches[view.me]!;
+  const matches = view.phase.matches;
   const opponent = cards.opponent(m.opponentCardId);
   const outcomeLabel = { win: '승리', draw: '무승부', loss: '패배' }[m.report.outcome];
   return (
-    <section className="panel">
-      <h2>금요일 · 경기 결과</h2>
-      <div className="row small wrap">
-        {view.seats.map((id) => {
-          const x = view.phase.kind === 'friday.aftermath' ? view.phase.matches[id]! : null;
-          return x ? (
-            <span key={id} className={x.decided ? 'badge' : 'muted'}>
-              {view.players[id]!.name}: {x.report.myGoals}:{x.report.theirGoals} vs {cards.opponent(x.opponentCardId).teamName} {x.decided ? '· 처리 완료' : ''}
-            </span>
-          ) : null;
-        })}
+    <section className="panel phase-panel mine">
+      <div className="panel-head">
+        <h2>경기 결과</h2>
+        <span className="waiting">
+          {view.seats.map((id) => {
+            const x = matches[id]!;
+            return (
+              <span key={id} className={`tag${x.decided ? ' done' : ''}`}>
+                {view.players[id]!.name} {x.report.myGoals}:{x.report.theirGoals}
+              </span>
+            );
+          })}
+        </span>
       </div>
       <div className="two-col">
-        <div>
-          <h3>{me.name} {m.report.myGoals} : {m.report.theirGoals} {opponent.teamName} — <span className={`outcome ${m.report.outcome}`}>{outcomeLabel}</span></h3>
+        <div className="stack">
+          <div className="scoreline">
+            <span className="team">{me.name}</span>
+            <span className={`score ${m.report.outcome}`}>{m.report.myGoals} : {m.report.theirGoals}</span>
+            <span className="team">{opponent.teamName}</span>
+            <span className={`outcome ${m.report.outcome}`}>{outcomeLabel}</span>
+          </div>
           <table className="report">
             <tbody>
               {m.report.sectors.map((s, i) => (
                 <tr key={i}>
-                  <td>{SECTOR_LABEL[SECTOR_PAIRS[i]![0]]} ↔ 상대 {SECTOR_LABEL[SECTOR_PAIRS[i]![1]]}</td>
-                  <td>{s.myGoals} : {s.theirGoals}</td>
+                  <td>{SECTOR_LABEL[SECTOR_PAIRS[i]![0]]}</td>
+                  <td className="num">{s.myGoals} : {s.theirGoals}</td>
+                  <td className="muted">{SECTOR_LABEL[SECTOR_PAIRS[i]![1]]}</td>
                 </tr>
               ))}
             </tbody>
           </table>
-          <p className="muted small">승리 +3칸 / 무승부 양 팀 +1칸 / 패배 상대 +3칸. 관중석 팬덤은 돈으로 바뀌었습니다.</p>
+          <p className="muted small">승리 +3칸, 무승부 양 팀 +1칸, 패배 상대 +3칸. 관중석의 팬덤은 돈이 됐습니다.</p>
         </div>
         <OpponentCardView cardId={m.opponentCardId} revealed />
       </div>
-      <h4>경기 영향 주사위</h4>
-      {m.decided ? (
-        <p className="muted">처리 완료. 다른 참가자를 기다리는 중…</p>
-      ) : m.roll === null ? (
-        <button onClick={() => act({ type: 'rollMatchDie' })}>🎲 주사위 굴리기</button>
-      ) : (
-        <div>
-          <p>주사위 <b>{m.roll}</b> → {MATCH_DIE_LABEL[m.roll]}</p>
+      <div className="step">
+        <h3>경기 영향 주사위 <span className="muted">{outcomeLabel} 열</span></h3>
+        <table className="die-table">
+          <tbody>
+            {[6, 5, 4, 3, 2, 1].map((face) => (
+              <tr key={face} className={m.roll === face ? 'hit' : ''}>
+                <td className="face">{face}</td>
+                <td>{matchDieLabel(m.report.outcome, face)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {m.decided ? (
+          <p className="muted">처리 완료. 다른 참가자를 기다리는 중</p>
+        ) : m.roll === null ? (
+          <p className="hint"><Icon name="die" size={14} /> 오른쪽 위 주사위를 굴리세요.</p>
+        ) : (
           <div className="row">
-            <button onClick={() => act({ type: 'acceptMatchRoll' })}>적용</button>
-            <button disabled={me.resources.fandom < 1} onClick={() => act({ type: 'rerollMatchDie' })}>📣 팬덤 1개로 재굴림</button>
+            <button className="primary" onClick={() => act({ type: 'acceptMatchRoll' })}>적용: {matchDieLabel(m.report.outcome, m.roll)}</button>
+            <span className="muted small">팬덤 1개로 다시 굴릴 수 있습니다</span>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </section>
   );
 }

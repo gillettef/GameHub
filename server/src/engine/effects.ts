@@ -1,18 +1,19 @@
-import { activeSide } from './cards';
-import { GameError, emptyTokens, getPlayer } from './state';
+import { activeSide, cards } from './cards';
+import { GameError, addLog, emptyTokens, getPlayer } from './state';
 import type { GameState, PlayerId, PlayerInstance, PlayerState } from './state';
 import { TRACK_MAX, TRACK_MIN } from './types';
 import type { Effect, Track } from './types';
 import { assignUniform } from './uniforms';
 
-// p.7: 5를 넘기면 이동 대신 자원 획득, 1 아래로 내려가면 자원 손실 (placeholder: 트랙과 같은 자원 1개/칸)
+// p.7: 5를 넘기면 이동 대신 보드에 표시된 자원 획득, 1 아래로 내려가면 표시된 자원 손실 (트랙마다 다른 자원)
 export function moveTrack(player: PlayerState, track: Track, delta: number): void {
   const target = player.tracks[track] + delta;
+  const overflow = cards.boardData.trackOverflow[track];
   if (target > TRACK_MAX) {
-    player.resources[track] += target - TRACK_MAX;
+    player.resources[overflow.above] += target - TRACK_MAX;
     player.tracks[track] = TRACK_MAX;
   } else if (target < TRACK_MIN) {
-    player.resources[track] = Math.max(0, player.resources[track] - (TRACK_MIN - target));
+    player.resources[overflow.below] = Math.max(0, player.resources[overflow.below] - (TRACK_MIN - target));
     player.tracks[track] = TRACK_MIN;
   } else {
     player.tracks[track] = target;
@@ -120,10 +121,10 @@ export function applyEffects(state: GameState, pid: PlayerId, effects: readonly 
         break;
       }
       case 'scoreGoal':
-        state.log.push(`[${pid}] ${source}: 경기 외 득점 효과는 무시됨`);
+        addLog(state, `${source}: 경기 외 득점 효과는 무시됨`, { actor: pid });
         break;
       case 'text':
-        state.log.push(`[${pid}] ${source}: (수동 처리) ${effect.text}`);
+        addLog(state, `${source}: (수동 처리) ${effect.text}`, { actor: pid });
         break;
     }
   }

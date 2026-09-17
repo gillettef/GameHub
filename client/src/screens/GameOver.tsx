@@ -1,4 +1,5 @@
-import { useGame } from '../store';
+import { seatColor } from '../components/Shell';
+import { useView } from '../store';
 
 const ROWS = [
   ['league', '리그 순위'],
@@ -10,20 +11,22 @@ const ROWS = [
 ] as const;
 
 export function GameOverScreen() {
-  const { view, leave } = useGame();
+  const { view, leave } = useView();
   if (view.phase.kind !== 'gameOver') return null;
   const { scores, winners } = view.phase;
   const order = [...view.seats].sort((a, b) => scores[b]!.total - scores[a]!.total);
   return (
-    <section className="panel">
-      <h2>게임 종료</h2>
-      <p className="winner">🏆 {winners.map((id) => view.players[id]!.name).join(', ')} 승리!</p>
+    <section className="panel phase-panel mine">
+      <div className="panel-head"><h2>시즌 종료</h2></div>
+      <p className="winner">{winners.map((id) => view.players[id]!.name).join(', ')} 우승</p>
       <table className="scores">
         <thead>
           <tr>
-            <th>항목</th>
+            <th />
             {order.map((id) => (
-              <th key={id} className={winners.includes(id) ? 'winner-col' : ''}>{view.players[id]!.name}</th>
+              <th key={id} className={winners.includes(id) ? 'winner-col' : ''} style={{ '--seat': seatColor(view, id) } as React.CSSProperties}>
+                <span className="seat-dot" />{view.players[id]!.name}
+              </th>
             ))}
           </tr>
         </thead>
@@ -44,7 +47,7 @@ export function GameOverScreen() {
           </tr>
         </tbody>
       </table>
-      <button onClick={leave}>로비로</button>
+      <button className="primary" onClick={leave}>로비로</button>
     </section>
   );
 }

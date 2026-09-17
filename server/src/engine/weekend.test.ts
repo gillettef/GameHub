@@ -41,7 +41,7 @@ describe('주말 (p.25)', () => {
     const p = s.players['a']!;
     const due = upkeepDue(p);
     expect(due).toBe(
-      cards.boardData.upkeep.players[p.roster.length]! + cards.boardData.upkeep.staff[p.staff.length]! + cards.boardData.upkeep.infrastructure[4 + p.infrastructure.length]!,
+      cards.boardData.upkeep.players[p.roster.length]! + cards.boardData.upkeep.staff[p.staff.length]! + cards.boardData.upkeep.stadium[4 + p.infrastructure.length]!,
     );
     runWeekend(s, seededRng());
     const a = s.players['a']!;

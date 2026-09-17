@@ -65,7 +65,6 @@ export class BotDriver {
       } catch (e) {
         if (!(e instanceof RoomError)) throw e;
         mem.failed.add(action.type === 'cardAction' && action.paid ? 'paidCardAction' : action.type);
-        room.game.log.push(`[${bot.name}] 거부: ${e.message} (${action.type})`);
       }
     }
     return false;

@@ -134,31 +134,32 @@ describe('경기 결과 확인 (p.24)', () => {
     expect(s.week).toBe(2);
   });
 
-  it('주사위 결과별 효과: 1 팬덤 트랙, 2 훈련, 3 역량, 4 약점, 5/6 부상', () => {
+  it('주사위 결과는 승/무/패 표를 따른다 (승리 6 팬덤, 5 훈련, 4 역량, 3 약점, 2 부상, 1 심각한 부상)', () => {
     const base = submitAll(friday());
-    const withRoll = (roll: number) => {
+    const withRoll = (roll: number, outcome: 'win' | 'draw' | 'loss' = 'win') => {
       const s = structuredClone(base);
       if (s.phase.kind !== 'friday.aftermath') throw new Error();
       s.phase.matches['a']!.roll = roll;
+      s.phase.matches['a']!.report.outcome = outcome;
       return s;
     };
     const p = (s: GameState) => s.players['a']!;
 
-    expect(p(acceptMatchRoll(withRoll(1), 'a', seededRng())).tracks.fandom).toBe(p(base).tracks.fandom + 1);
+    expect(p(acceptMatchRoll(withRoll(6), 'a', seededRng())).tracks.fandom).toBe(p(base).tracks.fandom + 1);
 
-    const trained = acceptMatchRoll(withRoll(2), 'a', seededRng());
+    const trained = acceptMatchRoll(withRoll(5), 'a', seededRng());
     expect(p(trained).pending.length + p(trained).roster.filter((r) => r.trained).length).toBeGreaterThan(p(base).roster.filter((r) => r.trained).length);
 
-    const strength = acceptMatchRoll(withRoll(3), 'a', seededRng());
+    const strength = acceptMatchRoll(withRoll(4), 'a', seededRng());
     expect(p(strength).pending.some((x) => x.effect.type === 'addPlayerToken' && x.effect.token === 'strengthTemp')).toBe(true);
-    const weakness = acceptMatchRoll(withRoll(4), 'a', seededRng());
+    const weakness = acceptMatchRoll(withRoll(3), 'a', seededRng());
     expect(p(weakness).pending.some((x) => x.effect.type === 'addPlayerToken' && x.effect.token === 'weaknessTemp')).toBe(true);
 
-    for (const roll of [5, 6]) {
-      const s = acceptMatchRoll(withRoll(roll), 'a', seededRng(11));
-      const injured = p(s).roster.reduce((n, r) => n + r.tokens.injury, 0);
-      expect(s.log.some((l) => l.includes('부상 주사위'))).toBe(true);
-      if (injured > 0) expect(injured).toBe(roll === 5 ? 1 : 2);
+    for (const [roll, outcome, times] of [[2, 'win', 1], [1, 'win', 1], [1, 'draw', 2], [1, 'loss', 2]] as const) {
+      const s = acceptMatchRoll(withRoll(roll, outcome), 'a', seededRng(11));
+      expect(s.log.filter((l) => l.text.includes('부상 주사위'))).toHaveLength(times);
     }
+    // 패배 6은 승리 4와 같은 일시 역량
+    expect(p(acceptMatchRoll(withRoll(6, 'loss'), 'a', seededRng())).pending.some((x) => x.effect.type === 'addPlayerToken' && x.effect.token === 'strengthTemp')).toBe(true);
   });
 });
