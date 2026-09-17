@@ -14,7 +14,10 @@ export interface RoomPlayer {
   name: string;
   token: string;
   connected: boolean;
+  isBot: boolean;
 }
+
+const BOT_NAMES = ['봇-알파', '봇-브라보', '봇-찰리', '봇-델타'];
 
 export interface Room {
   code: string;
@@ -53,7 +56,7 @@ export function roomView(room: Room): RoomView {
     code: room.code,
     status: room.status,
     division: room.division,
-    players: room.players.map((p) => ({ id: p.id, name: p.name, connected: p.connected, isHost: p.id === room.hostId })),
+    players: room.players.map((p) => ({ id: p.id, name: p.name, connected: p.connected, isHost: p.id === room.hostId, isBot: p.isBot })),
   };
 }
 
@@ -93,6 +96,29 @@ export class RoomManager {
     room.players.push(player);
     room.updatedAt = Date.now();
     return { room, player };
+  }
+
+  // 대기실에서 호스트가 AI 참가자를 추가/제거한다
+  addBot(code: string, playerId: string): Room {
+    const room = this.get(code);
+    this.requireHost(room, playerId);
+    if (room.status !== 'lobby') throw new RoomError('game already started');
+    if (room.players.length >= MAX_PLAYERS) throw new RoomError('room is full');
+    const name = BOT_NAMES.find((n) => !room.players.some((p) => p.name === n)) ?? `봇-${room.players.length + 1}`;
+    room.players.push({ ...this.newPlayer(name), isBot: true });
+    room.updatedAt = Date.now();
+    return room;
+  }
+
+  removeBot(code: string, playerId: string, botId: string): Room {
+    const room = this.get(code);
+    this.requireHost(room, playerId);
+    if (room.status !== 'lobby') throw new RoomError('game already started');
+    const idx = room.players.findIndex((p) => p.id === botId && p.isBot);
+    if (idx < 0) throw new RoomError('no such bot');
+    room.players.splice(idx, 1);
+    room.updatedAt = Date.now();
+    return room;
   }
 
   rejoin(code: string, playerId: string, token: string): { room: Room; player: RoomPlayer } {
@@ -167,6 +193,6 @@ export class RoomManager {
   }
 
   private newPlayer(name: string): RoomPlayer {
-    return { id: randomUUID().slice(0, 8), name: cleanName(name), token: randomUUID(), connected: true };
+    return { id: randomUUID().slice(0, 8), name: cleanName(name), token: randomUUID(), connected: true, isBot: false };
   }
 }

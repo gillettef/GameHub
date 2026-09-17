@@ -2,8 +2,10 @@ import { createServer } from 'node:http';
 import type { Server } from 'node:http';
 import { WebSocketServer } from 'ws';
 import * as data from './data';
+import type { BotDriver } from './bot/driver';
 import { RoomManager } from './rooms';
 import { attachWebSocket } from './ws';
+import type { WsOptions } from './ws';
 
 const CARD_CATALOG = JSON.stringify({
   players: data.PLAYER_CARDS,
@@ -17,7 +19,7 @@ const CARD_CATALOG = JSON.stringify({
   boardData: data.BOARD_DATA,
 });
 
-export function createApp(rooms = new RoomManager()): { server: Server; rooms: RoomManager } {
+export function createApp(rooms = new RoomManager(), options: WsOptions = {}): { server: Server; rooms: RoomManager; bots: BotDriver } {
   const server = createServer((req, res) => {
     if (req.url === '/health') {
       res.writeHead(200, { 'content-type': 'application/json' });
@@ -33,6 +35,6 @@ export function createApp(rooms = new RoomManager()): { server: Server; rooms: R
     res.end();
   });
   const wss = new WebSocketServer({ server, path: '/ws' });
-  attachWebSocket(wss, rooms);
-  return { server, rooms };
+  const bots = attachWebSocket(wss, rooms, options);
+  return { server, rooms, bots };
 }

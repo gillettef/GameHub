@@ -231,11 +231,15 @@ MVP에서 **단순화 가능**한 부분: 선수/직원/임원/스폰서/이사�
 
 ### 봇과 관전 (혼자 테스트하기)
 
-- `server/src/bot/` — `policy.ts`(GameView만 보고 판단하는 휴리스틱), `bot.ts`(실제 ws 클라이언트, 서버가
-  거부한 액션 종류는 그 차례 동안 재시도하지 않음), `run.ts`(CLI: `npm run bots -w server -- --code X --count 3`
-  또는 `--create --count 4 --start`). `bots.test.ts`가 봇 4명으로 한 판을 ws 경유로 끝까지 돌린다.
-- 봇은 사람과 같은 뷰·프로토콜만 쓰므로 봇 판이 끝까지 돌면 서버·뷰·정책이 함께 검증된 것이다. 봇 로그에
-  같은 액션의 `거부:`가 반복되면 정책 버그(엔진 아님).
+- **기본 방식은 대기실의 "🤖 AI 추가" 버튼** — 호스트가 봇을 추가/제거(`addBot`/`removeBot`, 대기실에서만,
+  정원 4명). 봇은 `server/src/bot/driver.ts`가 서버 안에서 움직인다: 사람 액션(또는 시작) 직후 `poke` →
+  봇 한 액션씩 `BOT_DELAY_MS`(기본 300ms) 간격으로 더 할 일이 없을 때까지 진행하고 매번 브로드캐스트.
+  `RoomPlayer.isBot`, `RoomPlayerView.isBot`으로 구분.
+- `policy.ts` — GameView만 보고 판단하는 휴리스틱(사람과 같은 정보). 서버가 거부한 액션 종류는 그 차례 동안
+  재시도하지 않아 교착이 없다. `driver.test.ts`(사람 1 + 봇 3), `bots.test.ts`(외부 ws 봇 4)가 한 판을 완주.
+- `bot.ts`/`run.ts` — 외부 ws 클라이언트 봇과 CLI(`npm run bots -w server -- create 4 start`). 헤드리스 봇 판이나
+  스택 스모크 테스트용. PowerShell의 `npm` 래퍼는 `--플래그`를 벗겨내므로 CLI는 위치 인자도 받는다.
+- 봇 로그에 같은 액션의 `거부:`가 반복되면 정책 버그(엔진 아님).
 - **관전**: `spectate{code}` → `spectating{code}` + 빈 참가자 id(`''`)의 뷰. 클라이언트 로비의 "관전" 버튼,
   `screens/Spectator.tsx`(모든 참가자 보드·단계 상태 읽기 전용). 관전자는 액션 불가.
 - 라인업 도우미(`engine/lineup.ts`: `eligiblePlayers`/`previewField`/`autoPlace`/`validatePlacements`/`buildLineup`)는
