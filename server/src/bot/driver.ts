@@ -12,6 +12,14 @@ interface BotMemory {
   failed: Set<string>;
 }
 
+// 차례가 바뀔 때마다 거부 기록을 비우기 위한 키 (주차·단계·요일·현재 참가자)
+export function turnKeyOf(view: GameView): string {
+  const phase = view.phase;
+  const current = 'current' in phase ? phase.current : '';
+  const day = phase.kind === 'weekday' ? phase.day : '';
+  return `${view.week}:${phase.kind}:${day}:${current}`;
+}
+
 // 방 안의 서버 측 봇을 움직인다. 사람 액션이 들어올 때마다 poke() 해 주면
 // 봇들이 한 번에 한 액션씩(관전 가능하도록 delayMs 간격) 더 할 일이 없을 때까지 진행한다
 export class BotDriver {
@@ -77,7 +85,7 @@ export class BotDriver {
       mem = { rng: createRng(room.seed + room.players.findIndex((p) => p.id === botId) + 1), turnKey: '', failed: new Set() };
       this.memory.set(key, mem);
     }
-    const turnKey = `${view.week}:${view.phase.kind}:${view.phase.kind === 'weekday' ? `${view.phase.day}:${view.phase.current}` : ''}`;
+    const turnKey = turnKeyOf(view);
     if (turnKey !== mem.turnKey) {
       mem.turnKey = turnKey;
       mem.failed.clear();

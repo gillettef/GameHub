@@ -6,10 +6,10 @@ import type { ScoreBreakdown } from './scoring';
 export type PhaseView =
   | { kind: 'setup.draft'; round: 1 | 2 | 3; hand: string[]; handSizes: Record<PlayerId, number>; picked: Record<PlayerId, boolean> }
   | { kind: 'setup.objective'; options: string[]; chosen: Record<PlayerId, boolean> }
-  | { kind: 'monday.board'; meetings: Record<PlayerId, BoardMeeting> }
+  | { kind: 'monday.board'; current: PlayerId; meetings: Record<PlayerId, BoardMeeting> }
   | { kind: 'weekday'; day: Weekday; current: PlayerId; basicDone: boolean; paidDone: boolean }
-  | { kind: 'friday.prepare'; submitted: Record<PlayerId, boolean>; mine: LineupSubmission | null }
-  | { kind: 'friday.aftermath'; matches: Record<PlayerId, MatchAftermath> }
+  | { kind: 'friday.prepare'; current: PlayerId; submitted: Record<PlayerId, boolean>; mine: LineupSubmission | null }
+  | { kind: 'friday.aftermath'; current: PlayerId; matches: Record<PlayerId, MatchAftermath> }
   | { kind: 'gameOver'; scores: Record<PlayerId, ScoreBreakdown>; winners: PlayerId[] };
 
 export type PlayerPublicView = Omit<PlayerState, 'objective' | 'tacticCards' | 'opponentDeck' | 'nextInstance'> & {
@@ -73,7 +73,7 @@ function phaseView(state: GameState, me: PlayerId): PhaseView {
     case 'setup.objective':
       return { kind: 'setup.objective', options: phase.options[me] ?? [], chosen: mapValues(phase.chosen, (c) => c !== null) };
     case 'friday.prepare':
-      return { kind: 'friday.prepare', submitted: mapValues(phase.submitted, (s) => s !== null), mine: phase.submitted[me] ?? null };
+      return { kind: 'friday.prepare', current: phase.current, submitted: mapValues(phase.submitted, (s) => s !== null), mine: phase.submitted[me] ?? null };
     default:
       return phase;
   }

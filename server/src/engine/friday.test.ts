@@ -163,3 +163,33 @@ describe('경기 결과 확인 (p.24)', () => {
     expect(p(acceptMatchRoll(withRoll(6, 'loss'), 'a', seededRng())).pending.some((x) => x.effect.type === 'addPlayerToken' && x.effect.token === 'strengthTemp')).toBe(true);
   });
 });
+
+// 온라인 구현의 확정 사항: 라인업 제출과 경기 영향 주사위도 선 참가자부터 한 명씩 진행한다
+describe('금요일 차례 (턴제)', () => {
+  it('라인업은 현재 차례의 참가자만 제출할 수 있다', () => {
+    let s = friday();
+    if (s.phase.kind !== 'friday.prepare') throw new Error();
+    expect(s.phase.current).toBe('a');
+    expect(() => submitLineup(s, 'b', autoLineup(s.players['b']!), seededRng())).toThrow('not your turn');
+    s = submitLineup(s, 'a', autoLineup(s.players['a']!), seededRng());
+    if (s.phase.kind !== 'friday.prepare') throw new Error();
+    expect(s.phase.current).toBe('b');
+  });
+
+  it('경기 영향 주사위도 차례를 따르고, 마지막 참가자가 적용하면 주말로 넘어간다', () => {
+    let s = submitAll(friday());
+    if (s.phase.kind !== 'friday.aftermath') throw new Error();
+    expect(s.phase.current).toBe('a');
+    expect(() => rollMatchDie(s, 'd', seededRng())).toThrow('not your turn');
+    for (const id of ['a', 'b', 'c', 'd']) {
+      if (s.phase.kind !== 'friday.aftermath') throw new Error();
+      expect(s.phase.current).toBe(id);
+      s = acceptMatchRoll(rollMatchDie(s, id, seededRng(2)), id, seededRng(3));
+    }
+    expect(s.phase.kind).toBe('monday.board');
+    if (s.phase.kind !== 'monday.board') throw new Error();
+    // 주말에 선 참가자가 b 로 바뀌었으므로 다음 이사회는 b 부터
+    expect(s.firstPlayer).toBe('b');
+    expect(s.phase.current).toBe('b');
+  });
+});

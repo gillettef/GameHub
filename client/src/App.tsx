@@ -41,6 +41,11 @@ export function GameLayout({ phasePanel, subtitle }: { phasePanel: ReactNode; su
   useEffect(() => {
     if (!view.seats.includes(selected)) setSelected(session?.playerId ?? view.seats[0]!);
   }, [view.seats, selected, session?.playerId]);
+  // 턴제 단계에서 차례가 바뀌면 그 참가자의 보드를 보여준다 (원하면 사이드바에서 다른 참가자를 골라 볼 수 있다)
+  const current = 'current' in view.phase ? view.phase.current : null;
+  useEffect(() => {
+    if (current) setSelected(current);
+  }, [current]);
   const p = view.players[selected] ?? view.players[view.seats[0]!]!;
   const isMe = session?.playerId === p.id;
   return (

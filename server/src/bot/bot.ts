@@ -4,6 +4,7 @@ import { createRng } from '../engine/rng';
 import type { Rng } from '../engine/rng';
 import type { GameView } from '../engine/view';
 import type { ClientMessage, RoomView, ServerMessage } from '../protocol';
+import { turnKeyOf } from './driver';
 import { decide } from './policy';
 
 export interface BotOptions {
@@ -124,7 +125,7 @@ export class Bot {
     this.timer = null;
     if (!this.view || this.inflight) return;
     // 차례/단계가 바뀌면 거부 기록을 비운다
-    const turnKey = `${this.view.week}:${this.view.phase.kind}:${this.view.phase.kind === 'weekday' ? `${this.view.phase.day}:${this.view.phase.current}` : ''}`;
+    const turnKey = turnKeyOf(this.view);
     if (turnKey !== this.failedTurnKey) {
       this.failed.clear();
       this.failedTurnKey = turnKey;

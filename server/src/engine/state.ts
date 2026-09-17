@@ -120,10 +120,12 @@ export interface MatchAftermath {
 export type Phase =
   | { kind: 'setup.draft'; round: 1 | 2 | 3; hands: Record<PlayerId, string[]>; picked: Record<PlayerId, string | null> }
   | { kind: 'setup.objective'; options: Record<PlayerId, string[]>; chosen: Record<PlayerId, string | null> }
-  | { kind: 'monday.board'; meetings: Record<PlayerId, BoardMeeting> }
+  // 준비(임원 드래프트·목표 선택)만 전원 동시. 월요일 이사회부터는 모든 단계를 선 참가자부터 시계방향으로
+  // 한 명씩(current) 진행한다 (규칙서는 월요일·금요일을 동시 진행으로 두지만, 온라인에서는 서로의 진행을 지켜볼 수 있도록 턴제로 바꿨다)
+  | { kind: 'monday.board'; current: PlayerId; meetings: Record<PlayerId, BoardMeeting> }
   | { kind: 'weekday'; day: Weekday; current: PlayerId; basicDone: boolean; paidDone: boolean }
-  | { kind: 'friday.prepare'; submitted: Record<PlayerId, LineupSubmission | null> }
-  | { kind: 'friday.aftermath'; matches: Record<PlayerId, MatchAftermath> }
+  | { kind: 'friday.prepare'; current: PlayerId; submitted: Record<PlayerId, LineupSubmission | null> }
+  | { kind: 'friday.aftermath'; current: PlayerId; matches: Record<PlayerId, MatchAftermath> }
   | { kind: 'gameOver'; scores: Record<PlayerId, ScoreBreakdown>; winners: PlayerId[] };
 
 export type LogDay = 'setup' | 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'weekend';
@@ -176,6 +178,20 @@ export function leftOf(state: GameState, pid: PlayerId): PlayerId {
   const i = state.seats.indexOf(pid);
   if (i < 0) throw new GameError(`unknown player: ${pid}`);
   return state.seats[(i + 1) % state.seats.length]!;
+}
+
+// 선 참가자부터 시계방향으로 아직 마치지 않은 첫 참가자. 전원 마쳤으면 null
+export function nextInTurn(state: GameState, done: (pid: PlayerId) => boolean): PlayerId | null {
+  const start = state.seats.indexOf(state.firstPlayer);
+  for (let i = 0; i < state.seats.length; i++) {
+    const pid = state.seats[(start + i) % state.seats.length]!;
+    if (!done(pid)) return pid;
+  }
+  return null;
+}
+
+export function requireTurn(phase: { current: PlayerId }, pid: PlayerId): void {
+  if (phase.current !== pid) throw new GameError('not your turn');
 }
 
 export function getPlayer(state: GameState, pid: PlayerId): PlayerState {
