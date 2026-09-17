@@ -4,6 +4,7 @@ import { WebSocketServer } from 'ws';
 import * as data from './data';
 import type { BotDriver } from './bot/driver';
 import { RoomManager } from './rooms';
+import { createStaticHandler } from './static';
 import { attachWebSocket } from './ws';
 import type { WsOptions } from './ws';
 
@@ -19,7 +20,13 @@ const CARD_CATALOG = JSON.stringify({
   boardData: data.BOARD_DATA,
 });
 
-export function createApp(rooms = new RoomManager(), options: WsOptions = {}): { server: Server; rooms: RoomManager; bots: BotDriver } {
+export interface AppOptions extends WsOptions {
+  /** 빌드된 클라이언트 디렉터리. 주면 index.html 과 assets 를 서빙하고 나머지 경로는 SPA 로 돌린다. */
+  staticDir?: string;
+}
+
+export function createApp(rooms = new RoomManager(), options: AppOptions = {}): { server: Server; rooms: RoomManager; bots: BotDriver } {
+  const serveStatic = createStaticHandler(options.staticDir);
   const server = createServer((req, res) => {
     if (req.url === '/health') {
       res.writeHead(200, { 'content-type': 'application/json' });
@@ -31,6 +38,7 @@ export function createApp(rooms = new RoomManager(), options: WsOptions = {}): {
       res.end(CARD_CATALOG);
       return;
     }
+    if (serveStatic?.(req, res)) return;
     res.writeHead(404);
     res.end();
   });

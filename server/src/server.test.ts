@@ -1,7 +1,11 @@
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import type { AddressInfo } from 'node:net';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import WebSocket from 'ws';
 import { createApp } from './app';
+import { RoomManager } from './rooms';
 import type { ClientMessage, ServerMessage } from './protocol';
 
 // 메시지를 큐에 쌓아두고 조건에 맞는 것을 기다리는 테스트용 클라이언트
@@ -111,5 +115,48 @@ describe('WebSocket 서버', () => {
     const cards = (await (await fetch(`${base}/api/cards`)).json()) as { players: unknown[]; opponents: unknown[] };
     expect(cards.players).toHaveLength(62);
     expect(cards.opponents).toHaveLength(64);
+  });
+});
+
+describe('정적 클라이언트 서빙 (배포 모드)', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'eleven-static-'));
+  mkdirSync(join(dir, 'assets'));
+  writeFileSync(join(dir, 'index.html'), '<!doctype html><title>Eleven</title>');
+  writeFileSync(join(dir, 'assets', 'app.js'), 'console.log(1)');
+  const { server } = createApp(new RoomManager(), { staticDir: dir });
+  let base = '';
+
+  beforeAll(async () => {
+    await new Promise<void>((resolve) => server.listen(0, resolve));
+    base = `http://localhost:${(server.address() as AddressInfo).port}`;
+  });
+  afterAll(() => {
+    server.close();
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('index.html 과 assets 를 내려주고, API 경로는 그대로 동작한다', async () => {
+    const index = await fetch(`${base}/`);
+    expect(index.headers.get('content-type')).toContain('text/html');
+    expect(await index.text()).toContain('Eleven');
+    const js = await fetch(`${base}/assets/app.js`);
+    expect(js.headers.get('content-type')).toContain('javascript');
+    expect(js.headers.get('cache-control')).toContain('immutable');
+    expect(await js.text()).toBe('console.log(1)');
+    expect(await (await fetch(`${base}/health`)).json()).toEqual({ ok: true });
+  });
+
+  it('파일이 아닌 경로는 SPA 진입점으로, 없는 파일과 경로 탈출은 404', async () => {
+    expect(await (await fetch(`${base}/room/ABCDE`)).text()).toContain('Eleven');
+    expect((await fetch(`${base}/missing.png`)).status).toBe(404);
+    expect((await fetch(`${base}/assets/..%2F..%2Fpackage.json`)).status).toBe(404);
+  });
+
+  it('정적 디렉터리가 없으면 404 (개발 모드)', async () => {
+    const { server: bare } = createApp(new RoomManager(), { staticDir: join(dir, 'nope') });
+    await new Promise<void>((resolve) => bare.listen(0, resolve));
+    const res = await fetch(`http://localhost:${(bare.address() as AddressInfo).port}/`);
+    expect(res.status).toBe(404);
+    bare.close();
   });
 });
