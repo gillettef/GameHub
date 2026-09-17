@@ -90,8 +90,11 @@ function playFullGame(seed: number): GameState {
   return s;
 }
 
+// 한 판에 수백 번의 structuredClone 이 들어가 느린 환경에서는 수 초가 걸린다
+const SIM_TIMEOUT_MS = 60000;
+
 describe('한 판 전체 시뮬레이션', () => {
-  it.each([1, 2, 3, 4, 5])('시드 %i: 6주를 끝까지 진행하고 승자를 낸다', (seed) => {
+  it.each([1, 2, 3, 4, 5])('시드 %i: 6주를 끝까지 진행하고 승자를 낸다', { timeout: SIM_TIMEOUT_MS }, (seed) => {
     const s = playFullGame(seed);
     expect(s.week).toBe(6);
     if (s.phase.kind !== 'gameOver') throw new Error();
