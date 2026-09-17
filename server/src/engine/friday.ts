@@ -16,7 +16,7 @@ const LEAGUE_DRAW = 1;
 // placeholder: 상대 팀 주사위 눈 (p.2 그림: 0/1/3)
 const OPPONENT_DIE = [0, 0, 1, 1, 3, 3] as const;
 
-export function standsCount(player: PlayerState): number {
+export function standsCount(player: Pick<PlayerState, 'infrastructure'>): number {
   return PRINTED_STANDS + player.infrastructure.filter((i) => i === 'stand3' || i === 'stand4').length;
 }
 
@@ -31,7 +31,7 @@ function instanceOf(player: PlayerState, instanceId: string): PlayerInstance {
 }
 
 // 벤치에 있는 출전 선수 토큰을 카드 없는 필드 토큰(가장 큰 번호)과 교환 (p.20 3)
-export function swapBenchTokens(player: PlayerState, played: string[]): void {
+export function swapBenchTokens(player: Pick<PlayerState, 'uniforms'>, played: string[]): void {
   for (const instanceId of played) {
     const token = player.uniforms.find((u) => u.cardInstanceId === instanceId);
     if (!token || token.location === 'field') continue;

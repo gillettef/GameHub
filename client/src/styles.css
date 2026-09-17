@@ -97,6 +97,31 @@ label { display: flex; flex-direction: column; gap: 4px; }
 .league li.mine { color: var(--accent); font-weight: 700; }
 .league li.inactive { color: var(--muted); text-decoration: line-through; }
 
+button.active { outline: 2px solid var(--accent-2); }
+.pitch { display: grid; grid-template-columns: 1fr 2fr 1fr; grid-template-rows: repeat(3, auto); gap: 6px; background: #14532d; border: 2px solid #86efac; border-radius: var(--radius); padding: 8px; margin: 8px 0; }
+.sector { background: rgba(255, 255, 255, 0.08); border-radius: 6px; padding: 6px; min-height: 54px; display: flex; flex-wrap: wrap; gap: 4px; align-content: flex-start; }
+.sector.LW { grid-column: 1; grid-row: 1 / span 3; }
+.sector.RW { grid-column: 3; grid-row: 1 / span 3; }
+.sector.CF { grid-column: 2; grid-row: 1; }
+.sector.CM { grid-column: 2; grid-row: 2; }
+.sector.CB { grid-column: 2; grid-row: 3; }
+.sector-title { width: 100%; font-size: 11px; color: #bbf7d0; }
+.chip { display: inline-flex; align-items: center; gap: 3px; background: var(--panel-2); border: 1px solid var(--border); border-radius: 999px; padding: 2px 8px; font-size: 12px; font-weight: 700; }
+.chip.attack { border-color: #fb923c; }
+.chip.defense { border-color: #60a5fa; }
+.chip-name { font-weight: 400; color: var(--muted); }
+.token-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 4px; }
+.report td { padding: 2px 8px; }
+.outcome.win { color: var(--accent); }
+.outcome.draw { color: var(--yellow); }
+.outcome.loss { color: var(--danger); }
+.scores { border-collapse: collapse; margin: 8px 0; }
+.scores th, .scores td { border: 1px solid var(--border); padding: 4px 10px; text-align: right; }
+.scores th:first-child, .scores td:first-child { text-align: left; }
+.scores .total { font-weight: 700; }
+.scores .winner-col { color: var(--accent); }
+.winner { font-size: 18px; font-weight: 700; }
+
 .modal-backdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.6); display: flex; align-items: center; justify-content: center; z-index: 10; padding: 16px; }
 .modal { background: var(--panel); border-radius: 12px; padding: 16px; max-width: 900px; max-height: 90vh; overflow: auto; width: 100%; }
 .toast { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); background: var(--danger); color: #fff; padding: 10px 16px; border-radius: var(--radius); z-index: 20; }

@@ -89,6 +89,9 @@ notes/    규칙서 원본 및 텍스트 레퍼런스
   카드 종류별 렌더링, `components/Shell.tsx` — 헤더·참가자 요약·내 구단·이적 시장·리그·기록·대상 선택 모달.
   `labels.ts` — 한국어 라벨과 효과 DSL 설명 문자열.
 - `App.tsx`의 `PhaseScreen`이 `view.phase.kind`로 화면을 고른다. 새 단계 화면은 여기에 case 추가.
+- `lineup.ts` — 경기 준비 화면의 헬퍼(벤치 교환 미리보기 `previewField`, 자동 배치 `autoPlace`, 검증
+  `validatePlacements`). `lineup.test.ts`(client vitest, `@server` alias 사용)가 자동 배치 결과를 실제
+  `submitLineup`에 넣어 서버가 받아들이는지 확인한다. 클라이언트 테스트도 `npm run check`에 포함된다.
 
 ### 멀티플레이 설계 시 주의
 
@@ -132,9 +135,9 @@ MVP에서 **단순화 가능**한 부분: 선수/직원/임원/스폰서/이사�
 전술 카드는 **포메이션만** 사용하고 효과는 2단계.
 
 **현재 상태**: 위 1~6번 엔진 로직은 `server/src/engine/`에 구현·테스트 완료
-(`game.test.ts`가 4인 6주 한 판을 자동 진행). 서버 계층(방·WebSocket·개별 뷰)도 완료. 클라이언트는
-로비/방 대기실/드래프트/목표/월요일 이사회/화수목 행동 화면까지 구현. 남은 MVP: 금요일 경기 준비(포메이션·토큰
-배치)·결과·주사위 화면, 최종 점수 화면, 그리고 브라우저 실사용 검증.
+(`game.test.ts`가 4인 6주 한 판을 자동 진행). 서버 계층(방·WebSocket·개별 뷰)과 클라이언트 전 단계 화면
+(로비 → 드래프트/목표 → 이사회 → 화수목 → 경기 준비/결과 → 최종 점수)까지 구현. 남은 MVP: **브라우저 실사용
+검증과 UI 다듬기**, 배포.
 
 ### 서버 프로토콜 (`server/src/protocol.ts`)
 

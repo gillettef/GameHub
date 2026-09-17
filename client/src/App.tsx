@@ -1,5 +1,6 @@
 import { Header, LeaguePanel, LogPanel, MyBoard, PendingModal, PlayerSummary } from './components/Shell';
-import { phaseLabel } from './labels';
+import { FridayAftermathScreen, FridayPrepareScreen } from './screens/Friday';
+import { GameOverScreen } from './screens/GameOver';
 import { Lobby, RoomLobby } from './screens/Lobby';
 import { MondayScreen } from './screens/Monday';
 import { DraftScreen, ObjectiveScreen } from './screens/Setup';
@@ -17,13 +18,12 @@ function PhaseScreen() {
       return <MondayScreen />;
     case 'weekday':
       return <WeekdayScreen />;
-    default:
-      return (
-        <section className="panel">
-          <h2>{phaseLabel(view.phase.kind)}</h2>
-          <p className="muted">이 단계의 화면은 아직 준비 중입니다.</p>
-        </section>
-      );
+    case 'friday.prepare':
+      return <FridayPrepareScreen />;
+    case 'friday.aftermath':
+      return <FridayAftermathScreen />;
+    case 'gameOver':
+      return <GameOverScreen />;
   }
 }
 
