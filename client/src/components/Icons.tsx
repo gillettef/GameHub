@@ -55,7 +55,7 @@ const PATHS: Record<IconName, React.ReactNode> = {
   ),
 };
 
-export function Icon({ name, size = 16, className }: { name: IconName; size?: number; className?: string }) {
+export function Icon({ name, size = 18, className }: { name: IconName; size?: number; className?: string }) {
   return (
     <svg className={`icon ${className ?? ''}`} width={size} height={size} viewBox="0 0 16 16" aria-hidden="true">
       {PATHS[name]}
