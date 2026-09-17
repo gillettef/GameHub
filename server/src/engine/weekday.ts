@@ -98,7 +98,7 @@ export function hireStaff(state: GameState, pid: PlayerId, marketIndex: number, 
   return next;
 }
 
-export function billboardLimit(player: PlayerState): number {
+export function billboardLimit(player: Pick<PlayerState, 'infrastructure'>): number {
   return BILLBOARD_BASE_LIMIT + (player.infrastructure.includes('billboard3') ? 1 : 0);
 }
 
