@@ -1,0 +1,101 @@
+import { describe, expect, it } from 'vitest';
+import { PLAYER_CARDS } from '../data';
+import { addToRoster, applyEffects, moveTrack, resolvePending } from './effects';
+import { createRng } from './rng';
+import { createGame } from './setup';
+import type { GameState } from './state';
+import { GameError } from './state';
+
+function game(): GameState {
+  return createGame({ id: 'g', division: 3, players: [{ id: 'a', name: 'A' }, { id: 'b', name: 'B' }] }, createRng(1));
+}
+
+describe('moveTrack (p.7)', () => {
+  it('1~5 안에서 이동, 5 초과분은 자원으로, 1 미만은 자원 손실', () => {
+    const s = game();
+    const p = s.players['a']!;
+    moveTrack(p, 'money', 2);
+    expect(p.tracks.money).toBe(4);
+    moveTrack(p, 'money', 3);
+    expect(p.tracks.money).toBe(5);
+    expect(p.resources.money).toBe(2);
+    moveTrack(p, 'fandom', -3);
+    expect(p.tracks.fandom).toBe(1);
+    expect(p.resources.fandom).toBe(0);
+  });
+});
+
+describe('applyEffects', () => {
+  it('자원/승점/전술 카드/무료 유망주', () => {
+    const s = game();
+    const p = s.players['a']!;
+    const tacticsBefore = s.decks.tactics.length;
+    applyEffects(s, 'a', [
+      { type: 'gainResource', resource: 'money', amount: 3 },
+      { type: 'gainResource', resource: 'money', amount: -5 },
+      { type: 'gainVP', amount: 2 },
+      { type: 'drawTactic', count: 1 },
+      { type: 'recruitProspectFree' },
+    ], 'test');
+    expect(p.resources.money).toBe(0);
+    expect(p.vp).toBe(2);
+    expect(p.tacticCards).toHaveLength(2);
+    expect(s.decks.tactics).toHaveLength(tacticsBefore - 1);
+    expect(p.roster).toHaveLength(3);
+  });
+
+  it('대상이 여럿이면 pending, resolvePending 으로 적용', () => {
+    const s = game();
+    const p = s.players['a']!;
+    applyEffects(s, 'a', [{ type: 'trainPlayer', count: 1 }], 'coach');
+    expect(p.pending).toHaveLength(1);
+    const pending = p.pending[0]!;
+    expect(pending.candidates).toHaveLength(2);
+    expect(() => resolvePending(s, 'a', pending.id, 'nope')).toThrow(GameError);
+    resolvePending(s, 'a', pending.id, pending.candidates[0]!);
+    expect(p.pending).toHaveLength(0);
+    expect(p.roster.find((r) => r.instanceId === pending.candidates[0])!.trained).toBe(true);
+  });
+
+  it('대상이 하나면 자동 적용, 없으면 무시', () => {
+    const s = game();
+    const p = s.players['a']!;
+    p.roster[0]!.trained = true;
+    applyEffects(s, 'a', [{ type: 'trainPlayer', count: 1 }], 'coach');
+    expect(p.pending).toHaveLength(0);
+    expect(p.roster.every((r) => r.trained)).toBe(true);
+    applyEffects(s, 'a', [{ type: 'removePlayerToken', token: 'injury', count: 1 }], 'doc');
+    expect(p.pending).toHaveLength(0);
+  });
+
+  it('유망주 훈련 시 번호 토큰으로 갈아탄다 (p.16)', () => {
+    const s = game();
+    const p = s.players['a']!;
+    const prospect = p.roster.find((r) => PLAYER_CARDS.find((c) => c.id === r.cardId)!.kind === 'prospect')!;
+    const number = PLAYER_CARDS.find((c) => c.id === prospect.cardId)!.trained.number!;
+    applyEffects(s, 'a', [{ type: 'addPlayerToken', token: 'strengthPerm', count: 1 }], 't');
+    resolvePending(s, 'a', p.pending[0]!.id, prospect.instanceId);
+    expect(prospect.tokens.strengthPerm).toBe(1);
+    p.roster.filter((r) => r !== prospect).forEach((r) => (r.trained = true));
+    applyEffects(s, 'a', [{ type: 'trainPlayer', count: 1 }], 'coach');
+    expect(prospect.trained).toBe(true);
+    const token = p.uniforms.find((u) => u.cardInstanceId === prospect.instanceId)!;
+    if (number <= 11) expect(token.number).toBe(number);
+  });
+
+  it('text 효과는 로그에만 남긴다', () => {
+    const s = game();
+    applyEffects(s, 'a', [{ type: 'text', text: '수동' }], 'x');
+    expect(s.log.at(-1)).toContain('수동');
+  });
+
+  it('addToRoster 는 유니폼을 배정한다', () => {
+    const s = game();
+    const p = s.players['a']!;
+    const inst = addToRoster(p, s.decks.starters[0]!);
+    const card = PLAYER_CARDS.find((c) => c.id === inst.cardId)!;
+    const token = p.uniforms.find((u) => u.cardInstanceId === inst.instanceId);
+    if (card.untrained.goalkeeper) expect(token).toBeUndefined();
+    else expect(token?.face).toBe(card.untrained.role);
+  });
+});
