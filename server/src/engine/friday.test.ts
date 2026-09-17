@@ -1,0 +1,188 @@
+import { describe, expect, it } from 'vitest';
+import { activeSide, cards } from './cards';
+import { acceptMatchRoll, rerollMatchDie, rollMatchDie, standsCount, startFriday, submitLineup } from './friday';
+import { sectorCounts } from './match';
+import { GameError } from './state';
+import type { GameState, LineupSubmission, PlayerState } from './state';
+import { SECTORS } from './types';
+import type { Sector } from './types';
+import { gameAtMonday, seededRng } from './test-utils';
+
+function friday(): GameState {
+  const s = gameAtMonday();
+  startFriday(s);
+  for (const id of s.seats) {
+    s.players[id]!.resources = { money: 5, fandom: 3, ops: 2, stamina: 6 };
+    s.players[id]!.pending = [];
+  }
+  return s;
+}
+
+// 첫 포메이션으로 유효한 배치를 자동 생성: 출전 선수 토큰은 허용 구획에, 나머지는 남는 자리에
+function autoLineup(player: PlayerState, players = player.roster.map((r) => r.instanceId)): LineupSubmission {
+  const tacticCardId = player.tacticCards[0]!;
+  const need = sectorCounts(cards.tactic(tacticCardId).formations[0]!);
+  const placements: Record<string, Sector> = {};
+  const field = player.uniforms.filter((u) => u.location === 'field');
+  const carded = field.filter((u) => u.cardInstanceId && players.includes(u.cardInstanceId));
+  for (const token of carded) {
+    const zones = activeSide(player.roster.find((r) => r.instanceId === token.cardInstanceId)!).zones;
+    const sector = zones.find((z) => need[z] > 0);
+    if (!sector) throw new Error(`no room for ${token.cardInstanceId}`);
+    placements[token.id] = sector;
+    need[sector]--;
+  }
+  for (const token of field.filter((u) => !(u.id in placements))) {
+    const sector = SECTORS.find((z) => need[z] > 0)!;
+    placements[token.id] = sector;
+    need[sector]--;
+  }
+  return { tacticCardId, formationIndex: 0, players, placements };
+}
+
+function submitAll(s: GameState, seed = 1): GameState {
+  for (const id of s.seats) s = submitLineup(s, id, autoLineup(s.players[id]!), seededRng(seed));
+  return s;
+}
+
+describe('경기 준비 제출 (p.20)', () => {
+  it('출전 선수마다 체력 1, 관중석 팬덤 지불, 전원 제출 시 판정', () => {
+    let s = friday();
+    const sub = { ...autoLineup(s.players['a']!), fandomInStands: 2 };
+    s = submitLineup(s, 'a', sub, seededRng());
+    expect(s.players['a']!.resources.stamina).toBe(6 - 2);
+    expect(s.players['a']!.resources.fandom).toBe(1);
+    expect(() => submitLineup(s, 'a', sub, seededRng())).toThrow(GameError);
+    expect(s.phase.kind).toBe('friday.prepare');
+    for (const id of ['b', 'c', 'd']) s = submitLineup(s, id, autoLineup(s.players[id]!), seededRng());
+    expect(s.phase.kind).toBe('friday.aftermath');
+    expect(s.players['a']!.resources.money).toBe(5 + 2);
+    expect(s.players['a']!.opponentDeck).toHaveLength(5);
+  });
+
+  it('관중석 수 = 인쇄 2 + 3번/4번 관중석', () => {
+    const s = friday();
+    const p = s.players['a']!;
+    expect(standsCount(p)).toBe(2);
+    p.infrastructure.push('stand3', 'shop');
+    expect(standsCount(p)).toBe(3);
+    expect(() => submitLineup(s, 'a', { ...autoLineup(p), fandomInStands: 4 }, seededRng())).toThrow(GameError);
+  });
+
+  it('부상·출장정지 선수, 같은 등번호, 손에 없는 전술 카드, 포메이션 불일치 거부', () => {
+    const s = friday();
+    const p = s.players['a']!;
+    const base = autoLineup(p);
+    p.roster[0]!.tokens.injury = 1;
+    expect(() => submitLineup(s, 'a', base, seededRng())).toThrow(GameError);
+    p.roster[0]!.tokens.injury = 0;
+
+    expect(() => submitLineup(s, 'a', { ...base, tacticCardId: 'tc-99' }, seededRng())).toThrow(GameError);
+    expect(() => submitLineup(s, 'a', { ...base, formationIndex: 5 }, seededRng())).toThrow(GameError);
+
+    const wrong = { ...base, placements: { ...base.placements } };
+    const [first, second] = Object.keys(wrong.placements);
+    wrong.placements[first!] = wrong.placements[second!]!;
+    wrong.placements[second!] = 'RW';
+    expect(() => submitLineup(s, 'a', wrong, seededRng())).toThrow(GameError);
+  });
+
+  it('체력이 부족하면 거부', () => {
+    const s = friday();
+    s.players['a']!.resources.stamina = 1;
+    expect(() => submitLineup(s, 'a', autoLineup(s.players['a']!), seededRng())).toThrow(GameError);
+  });
+
+  it('제출 시 부상/출장정지 토큰을 카드마다 1개씩 제거 (p.20 4)', () => {
+    const s = friday();
+    const p = s.players['a']!;
+    p.roster[1]!.tokens.suspension = 2;
+    p.staff[0]!.suspension = 1;
+    const next = submitLineup(s, 'a', autoLineup(p, [p.roster[0]!.instanceId]), seededRng());
+    expect(next.players['a']!.roster[1]!.tokens.suspension).toBe(1);
+    expect(next.players['a']!.staff[0]!.suspension).toBe(0);
+  });
+});
+
+describe('경기 결과 확인 (p.24)', () => {
+  it('리그 성적표: 승 +3, 무 +1(양 팀), 패 0(상대 +3)', () => {
+    const s = submitAll(friday());
+    if (s.phase.kind !== 'friday.aftermath') throw new Error();
+    for (const id of s.seats) {
+      const m = s.phase.matches[id]!;
+      const expected = { win: 3, draw: 1, loss: 0 }[m.report.outcome];
+      expect(s.league.players[id]).toBe(expected);
+      const opp = s.league.opponents.find((o) => o.teamId === cards.opponent(m.opponentCardId).teamId)!;
+      expect(opp.position).toBeGreaterThanOrEqual({ win: 0, draw: 1, loss: 3 }[m.report.outcome]);
+    }
+  });
+
+  it('상대하지 않은 팀은 주사위로 이동, 같은 팀을 2명이 상대하면 비활성', () => {
+    let s = friday();
+    const shared = s.players['a']!.opponentDeck[0]!;
+    s.players['b']!.opponentDeck[0] = shared;
+    s = submitAll(s);
+    const team = cards.opponent(shared).teamId;
+    expect(s.league.opponents.find((o) => o.teamId === team)!.active).toBe(false);
+    const facedTeams = new Set(s.seats.map((id) => cards.opponent((s.phase as { matches: Record<string, { opponentCardId: string }> }).matches[id]!.opponentCardId).teamId));
+    const unfaced = s.league.opponents.filter((o) => !facedTeams.has(o.teamId));
+    expect(unfaced.length).toBeGreaterThan(0);
+    expect(unfaced.every((o) => o.active)).toBe(true);
+  });
+
+  it('유망주 출전 경력 칸에 승점 (p.16)', () => {
+    let s = friday();
+    const p = s.players['a']!;
+    const prospect = p.roster.find((r) => cards.player(r.cardId).kind === 'prospect')!;
+    prospect.trained = true;
+    const card = cards.player(prospect.cardId);
+    s = submitAll(s);
+    const after = s.players['a']!.roster.find((r) => r.instanceId === prospect.instanceId)!;
+    if ((card.trained.career?.appearances ?? 0) > 0) expect(after.careerVP).toBeGreaterThanOrEqual(1);
+    expect(after.careerUsed.appearances).toBe(Math.min(1, card.trained.career?.appearances ?? 0));
+  });
+
+  it('경기 영향 주사위: 굴림 → (팬덤 재굴림) → 수락, 전원 수락 시 주말', () => {
+    let s = submitAll(friday());
+    expect(() => acceptMatchRoll(s, 'a', seededRng())).toThrow(GameError);
+    s = rollMatchDie(s, 'a', seededRng(5));
+    expect(() => rollMatchDie(s, 'a', seededRng())).toThrow(GameError);
+    s.players['a']!.resources.fandom = 1;
+    s = rerollMatchDie(s, 'a', seededRng(6));
+    expect(s.players['a']!.resources.fandom).toBe(0);
+    expect(() => rerollMatchDie(s, 'a', seededRng())).toThrow(GameError);
+    for (const id of s.seats) {
+      if (id !== 'a') s = rollMatchDie(s, id, seededRng(id.charCodeAt(0)));
+      s = acceptMatchRoll(s, id, seededRng(3));
+    }
+    expect(s.phase.kind).toBe('weekend');
+  });
+
+  it('주사위 결과별 효과: 1 팬덤 트랙, 2 훈련, 3 역량, 4 약점, 5/6 부상', () => {
+    const base = submitAll(friday());
+    const withRoll = (roll: number) => {
+      const s = structuredClone(base);
+      if (s.phase.kind !== 'friday.aftermath') throw new Error();
+      s.phase.matches['a']!.roll = roll;
+      return s;
+    };
+    const p = (s: GameState) => s.players['a']!;
+
+    expect(p(acceptMatchRoll(withRoll(1), 'a', seededRng())).tracks.fandom).toBe(p(base).tracks.fandom + 1);
+
+    const trained = acceptMatchRoll(withRoll(2), 'a', seededRng());
+    expect(p(trained).pending.length + p(trained).roster.filter((r) => r.trained).length).toBeGreaterThan(p(base).roster.filter((r) => r.trained).length);
+
+    const strength = acceptMatchRoll(withRoll(3), 'a', seededRng());
+    expect(p(strength).pending.some((x) => x.effect.type === 'addPlayerToken' && x.effect.token === 'strengthTemp')).toBe(true);
+    const weakness = acceptMatchRoll(withRoll(4), 'a', seededRng());
+    expect(p(weakness).pending.some((x) => x.effect.type === 'addPlayerToken' && x.effect.token === 'weaknessTemp')).toBe(true);
+
+    for (const roll of [5, 6]) {
+      const s = acceptMatchRoll(withRoll(roll), 'a', seededRng(11));
+      const injured = p(s).roster.reduce((n, r) => n + r.tokens.injury, 0);
+      expect(s.log.some((l) => l.includes('부상 주사위'))).toBe(true);
+      if (injured > 0) expect(injured).toBe(roll === 5 ? 1 : 2);
+    }
+  });
+});

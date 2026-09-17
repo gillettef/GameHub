@@ -1,4 +1,5 @@
-import type { Division, Effect, InfrastructureType, PlayerTokens, Resources, Role, TrackPositions } from './types';
+import type { MatchReport } from './match';
+import type { Division, Effect, InfrastructureType, PlayerTokens, Resources, Role, Sector, TrackPositions } from './types';
 
 export type PlayerId = string;
 
@@ -21,6 +22,7 @@ export interface PlayerInstance {
   placed: Partial<Resources>; // 경기 전 올려놓은 자원
   exhausted: boolean;
   careerVP: number; // 유망주 경력 칸에 놓인 승점 토큰 (p.16)
+  careerUsed: { appearances: number; goals: number };
 }
 
 export interface StaffInstance {
@@ -96,12 +98,32 @@ export interface BoardMeeting {
 export type Weekday = 'tue' | 'wed' | 'thu';
 export const WEEKDAYS: readonly Weekday[] = ['tue', 'wed', 'thu'];
 
+// 경기 준비 제출 (p.20)
+export interface LineupSubmission {
+  tacticCardId: string;
+  formationIndex: number;
+  players: string[]; // 출전 선수 instanceId (골키퍼 포함)
+  placements: Record<string, Sector>; // 필드 유니폼 토큰 id → 구획
+  activations?: Record<string, Partial<Resources>>; // 선수 카드에 올려놓을 추가 자원
+  fandomInStands?: number;
+}
+
+export interface MatchAftermath {
+  opponentCardId: string;
+  played: string[];
+  report: MatchReport;
+  roll: number | null;
+  decided: boolean;
+}
+
 export type Phase =
   | { kind: 'setup.draft'; round: 1 | 2 | 3; hands: Record<PlayerId, string[]>; picked: Record<PlayerId, string | null> }
   | { kind: 'setup.objective'; options: Record<PlayerId, string[]>; chosen: Record<PlayerId, string | null> }
   | { kind: 'monday.board'; meetings: Record<PlayerId, BoardMeeting> }
   | { kind: 'weekday'; day: Weekday; current: PlayerId; basicDone: boolean; paidDone: boolean }
-  | { kind: 'friday.prepare' };
+  | { kind: 'friday.prepare'; submitted: Record<PlayerId, LineupSubmission | null> }
+  | { kind: 'friday.aftermath'; matches: Record<PlayerId, MatchAftermath> }
+  | { kind: 'weekend' };
 
 export interface GameState {
   id: string;
