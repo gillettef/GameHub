@@ -9,11 +9,13 @@ import type { Session } from './ws';
 interface Store {
   connected: boolean;
   session: Session | null;
+  spectating: string | null; // 관전 중인 방 코드
   room: RoomView | null;
   view: GameView | null;
   error: string | null;
   send: (msg: ClientMessage) => void;
   act: (action: GameAction) => void;
+  spectate: (code: string) => void;
   leave: () => void;
 }
 
@@ -23,17 +25,21 @@ const ERROR_MS = 4000;
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [connected, setConnected] = useState(false);
   const [session, setSession] = useState<Session | null>(() => loadSession());
+  const [spectating, setSpectating] = useState<string | null>(null);
   const [room, setRoom] = useState<RoomView | null>(null);
   const [view, setView] = useState<GameView | null>(null);
   const [error, setError] = useState<string | null>(null);
   const sessionRef = useRef(session);
   sessionRef.current = session;
+  const spectatingRef = useRef(spectating);
+  spectatingRef.current = spectating;
   const connRef = useRef<Connection | null>(null);
 
   useEffect(() => {
     const conn = new Connection(wsUrl(), (c) => {
       const s = sessionRef.current;
       if (s) c.send({ type: 'rejoin', code: s.code, playerId: s.playerId, token: s.token });
+      else if (spectatingRef.current) c.send({ type: 'spectate', code: spectatingRef.current });
     });
     connRef.current = conn;
     const offStatus = conn.onStatus(setConnected);
@@ -43,8 +49,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           const next = { code: msg.code, playerId: msg.playerId, token: msg.token };
           saveSession(next);
           setSession(next);
+          setSpectating(null);
           break;
         }
+        case 'spectating':
+          setSpectating(msg.code);
+          break;
         case 'room':
           setRoom(msg.room);
           break;
@@ -55,6 +65,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           if (msg.message === 'room not found' || msg.message === 'invalid rejoin credentials') {
             saveSession(null);
             setSession(null);
+            setSpectating(null);
           }
           setError(msg.message);
           break;
@@ -78,16 +89,21 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     if (!connRef.current?.send(msg)) setError('서버에 연결되어 있지 않습니다');
   }, []);
   const act = useCallback((action: GameAction) => send({ type: 'action', action }), [send]);
+  const spectate = useCallback((code: string) => send({ type: 'spectate', code }), [send]);
   const leave = useCallback(() => {
     saveSession(null);
     setSession(null);
+    setSpectating(null);
     setRoom(null);
     setView(null);
     connRef.current?.close();
     connRef.current?.connect();
   }, []);
 
-  const value = useMemo<Store>(() => ({ connected, session, room, view, error, send, act, leave }), [connected, session, room, view, error, send, act, leave]);
+  const value = useMemo<Store>(
+    () => ({ connected, session, spectating, room, view, error, send, act, spectate, leave }),
+    [connected, session, spectating, room, view, error, send, act, spectate, leave],
+  );
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
 }
 
@@ -97,11 +113,19 @@ export function useStore(): Store {
   return s;
 }
 
-// 게임 화면에서만 쓰는 축약형: view 와 내 상태
+// 게임 화면에서만 쓰는 축약형: view 와 내 상태. 관전자는 me 가 없다
 export function useGame() {
   const store = useStore();
   const view = store.view;
   if (!view) throw new Error('game view missing');
-  const me = view.players[view.me]!;
+  const me = view.players[view.me];
+  if (!me) throw new Error('not a player');
   return { ...store, view, me };
+}
+
+export function useView() {
+  const store = useStore();
+  const view = store.view;
+  if (!view) throw new Error('game view missing');
+  return { ...store, view };
 }

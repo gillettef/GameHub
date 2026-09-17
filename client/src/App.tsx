@@ -4,6 +4,7 @@ import { GameOverScreen } from './screens/GameOver';
 import { Lobby, RoomLobby } from './screens/Lobby';
 import { MondayScreen } from './screens/Monday';
 import { DraftScreen, ObjectiveScreen } from './screens/Setup';
+import { SpectatorScreen } from './screens/Spectator';
 import { WeekdayScreen } from './screens/Weekday';
 import { StoreProvider, useGame, useStore } from './store';
 
@@ -54,9 +55,10 @@ function Game() {
 }
 
 function Router() {
-  const { room, view, session } = useStore();
-  if (!room || !session) return <Lobby />;
+  const { room, view, session, spectating } = useStore();
+  if (!room || (!session && !spectating)) return <Lobby />;
   if (room.status === 'lobby' || !view) return <RoomLobby />;
+  if (spectating && !session) return <SpectatorScreen />;
   return <Game />;
 }
 
