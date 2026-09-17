@@ -80,8 +80,13 @@ export function ResourceChip({ resource, amount, signedValue = false }: { resour
   return <Chip icon={resource} value={signedValue ? signed(amount) : amount} title={`${RESOURCE_LABEL[resource]} ${amount}`} />;
 }
 
+// 트랙 이동 칩: 자원 칩과 구분되게 "트랙" 글자와 화살표
 export function TrackChip({ track, delta }: { track: Track; delta: number }) {
-  return <Chip icon={track} value={<>{delta > 0 ? '▲' : '▼'}{Math.abs(delta)}</>} tone={`${track} track`} title={`${RESOURCE_LABEL[track]} 트랙 ${signed(delta)}`} />;
+  return (
+    <Chip icon={track} value={<>{delta > 0 ? '▲' : '▼'}{Math.abs(delta)}</>} tone={`${track} track`} title={`${RESOURCE_LABEL[track]} 트랙 ${signed(delta)}`}>
+      <span className="chip-note">트랙</span>
+    </Chip>
+  );
 }
 
 const TOKEN_ICON: Record<PlayerToken, IconName> = {
