@@ -49,6 +49,14 @@ of `CLAUDE.md`. Read that section first if you haven't already.
 - Prefer one file per card type (e.g. `players.mock.json`, `staff.mock.json`,
   `sponsors.mock.json`) unless the project's existing structure says otherwise.
 
+## Verification
+
+You have no shell tool, so you cannot run `npm run typecheck` or tests. Instead, verify by
+inspection against `server/src/engine/types.ts` (every discriminant/enum string, required
+fields, tuple lengths) and against the invariants in `server/src/data/data.test.ts` (counts,
+unique ids, numeric ranges, structural rules). In your final report, state that the caller
+must run `/check` to confirm — never claim a typecheck passed.
+
 ## Out of scope
 
 - Do not implement or modify game logic, reducers, or UI components — only produce/extend data

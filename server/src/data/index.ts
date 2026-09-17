@@ -1,0 +1,9 @@
+export { BOARD_DATA } from './board.mock';
+export { BOARD_CARDS } from './board-cards.mock';
+export { EXECUTIVE_CARDS } from './executives.mock';
+export { OBJECTIVE_CARDS } from './objectives.mock';
+export { OPPONENT_CARDS } from './opponents.mock';
+export { PLAYER_CARDS } from './players.mock';
+export { SPONSOR_CARDS } from './sponsors.mock';
+export { STAFF_CARDS } from './staff.mock';
+export { TACTIC_CARDS } from './tactics.mock';
