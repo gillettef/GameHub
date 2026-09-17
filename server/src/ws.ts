@@ -1,4 +1,5 @@
 import type { WebSocket, WebSocketServer } from 'ws';
+import { BotDriver } from './bot/driver';
 import { viewFor } from './engine/view';
 import type { ClientMessage, ServerMessage } from './protocol';
 import { RoomError, RoomManager, roomView } from './rooms';
@@ -14,7 +15,11 @@ interface Session {
 const MAX_MESSAGE_BYTES = 64 * 1024;
 const SPECTATOR_ID = '';
 
-export function attachWebSocket(wss: WebSocketServer, rooms: RoomManager): void {
+export interface WsOptions {
+  botDelayMs?: number;
+}
+
+export function attachWebSocket(wss: WebSocketServer, rooms: RoomManager, options: WsOptions = {}): BotDriver {
   const sessions = new Map<WebSocket, Session>();
 
   const send = (socket: WebSocket, msg: ServerMessage) => {
@@ -30,6 +35,8 @@ export function attachWebSocket(wss: WebSocketServer, rooms: RoomManager): void 
       if (room.game) send(session.socket, { type: 'state', view: viewFor(room.game, session.playerId ?? SPECTATOR_ID) });
     }
   };
+
+  const bots = new BotDriver(rooms, broadcast, options.botDelayMs);
 
   const detach = (session: Session) => {
     session.roomCode = undefined;
@@ -89,13 +96,26 @@ export function attachWebSocket(wss: WebSocketServer, rooms: RoomManager): void 
       case 'setDivision':
         broadcast(rooms.setDivision(session.roomCode, session.playerId, msg.division));
         return;
-      case 'startGame':
-        broadcast(rooms.start(session.roomCode, session.playerId));
+      case 'addBot':
+        broadcast(rooms.addBot(session.roomCode, session.playerId));
         return;
-      case 'action':
+      case 'removeBot':
+        if (typeof msg.playerId !== 'string') throw new RoomError('playerId required');
+        broadcast(rooms.removeBot(session.roomCode, session.playerId, msg.playerId));
+        return;
+      case 'startGame': {
+        const room = rooms.start(session.roomCode, session.playerId);
+        broadcast(room);
+        bots.poke(room);
+        return;
+      }
+      case 'action': {
         if (!msg.action || typeof msg.action !== 'object' || typeof msg.action.type !== 'string') throw new RoomError('invalid action');
-        broadcast(rooms.act(session.roomCode, session.playerId, msg.action));
+        const room = rooms.act(session.roomCode, session.playerId, msg.action);
+        broadcast(room);
+        bots.poke(room);
         return;
+      }
       default:
         throw new RoomError(`unknown message type: ${(msg as { type: string }).type}`);
     }
@@ -136,4 +156,6 @@ export function attachWebSocket(wss: WebSocketServer, rooms: RoomManager): void 
       }
     });
   });
+
+  return bots;
 }

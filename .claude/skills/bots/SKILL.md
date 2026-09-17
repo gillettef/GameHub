@@ -1,24 +1,27 @@
 ---
 name: bots
-description: Launch AI bot players into an Eleven room so a game can be played or watched without other humans — join an existing room by code (human + bots) or create an all-bot room and start it. Use when the user wants to test a 4-player game alone, watch bots play, or smoke-test the full stack end to end.
+description: Explain or set up AI bot players for Eleven — the normal way is the 🤖 "AI 추가" button in the room lobby (server-side bots, no extra process); the CLI in server/src/bot/run.ts is only for headless all-bot rooms or stack smoke tests. Use when the user wants to test a 4-player game alone, watch bots play, or run a headless bot game.
 arguments: [code, count]
 ---
 
-Bots are real WebSocket clients (`server/src/bot/`) that see only their own `GameView`, so a
-bot game exercises the server, protocol, views and policy exactly like humans would.
-The dev servers must be running first (`/dev`).
+## Normal use (no commands needed)
+The host creates a room in the browser and presses **🤖 AI 추가** in the room lobby up to 4
+players, then **게임 시작**. Bots run inside the server (`server/src/bot/driver.ts`): after every
+human action the driver lets each bot act one step at a time (delay `BOT_DELAY_MS`, default 300 ms)
+until no bot has anything to do. Bots see only their own `GameView`, same as humans. Tell the
+user this first; only fall back to the CLI below if they explicitly want a headless/all-bot run.
 
-Run with the PowerShell tool from the repo root:
+## Headless all-bot room (CLI)
+Dev servers must be running (`/dev`). From the repo root with the PowerShell tool:
 
-- Join an existing room (the human created it in the browser and will press 시작):
-  `powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\bots.ps1 -Code $code -Count $count`
-  (`$count` defaults to 3 → human + 3 bots.)
-- All-bot room, started immediately (watch it via 관전 in the browser with the printed code):
-  `powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\bots.ps1 -Create -Count 4 -Start`
-- Slow down/speed up with `-Delay <ms>` (default 400; 0 for a fast headless run).
+`powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\bots.ps1 -Create -Count 4 -Start`
 
-The script starts the bot process hidden, records its PID in `.dev/bots-<code>.pid`, and logs
-to `.dev/bots-<code>.log`. After it prints, read the log tail and report the room code and
-whether the bots joined. `/dev-stop` also kills bot processes. If a bot logs repeated
-`거부:` lines for the same action, that is a policy bug in `server/src/bot/policy.ts`, not a
-server bug — fix the policy rather than the engine.
+This starts a hidden process of `npm run bots -w server -- create 4 start` (positional args —
+PowerShell's `npm` wrapper strips `--flags`, so prefer positionals or `npm.cmd`), records its PID in
+`.dev/bots-create.pid`, logs to `.dev/bots-create.log` (read with `-Encoding utf8`). The log prints
+the room code; the user can watch it via 관전 in the browser. `-Delay <ms>` controls speed.
+`/dev-stop` also kills bot processes. `-Code <code> -Count <n>` joins an existing *not yet started*
+room with external ws bots if ever needed.
+
+If bots log repeated `거부:` for the same action, that is a policy bug in
+`server/src/bot/policy.ts`, not an engine bug — fix the policy.

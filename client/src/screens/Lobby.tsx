@@ -25,7 +25,7 @@ export function Lobby() {
         <button disabled={!ready || code.length !== 5} onClick={() => send({ type: 'joinRoom', code, name })}>입장</button>
         <button className="link" disabled={!connected || code.length !== 5} onClick={() => spectate(code)}>관전</button>
       </div>
-      <p className="muted small">혼자 테스트하려면 방을 만든 뒤 터미널에서 <code>npm run bots -w server -- --code 방코드 --count 3</code> 으로 봇을 투입하세요.</p>
+      <p className="muted small">혼자 해보려면 방을 만든 뒤 대기실에서 <b>AI 추가</b>로 봇을 넣고 시작하세요.</p>
       {!connected && <p className="muted small">서버에 연결하는 중…</p>}
       {error && <p className="error">{error}</p>}
     </main>
@@ -33,20 +33,30 @@ export function Lobby() {
 }
 
 export function RoomLobby() {
-  const { room, session, spectating, send, leave } = useStore();
+  const { room, session, spectating, send, leave, error } = useStore();
   if (!room) return null;
   const isHost = !!session && (room.players.find((p) => p.id === session.playerId)?.isHost ?? false);
+  const full = room.players.length >= 4;
   return (
     <main className="lobby">
       <h1>방 코드: <span className="code">{room.code}</span></h1>
       <p className="muted">이 코드를 친구에게 알려주세요. 1~4명이 플레이할 수 있습니다.{spectating && ' (관전 중)'}</p>
       <ul className="players">
         {room.players.map((p) => (
-          <li key={p.id}>
-            {p.name} {p.isHost && <span className="badge">호스트</span>} {!p.connected && <span className="muted small">(연결 끊김)</span>}
+          <li key={p.id} className="row">
+            <span>
+              {p.isBot && '🤖 '}{p.name} {p.isHost && <span className="badge">호스트</span>} {!p.isBot && !p.connected && <span className="muted small">(연결 끊김)</span>}
+            </span>
+            {isHost && p.isBot && <button className="link small" onClick={() => send({ type: 'removeBot', playerId: p.id })}>제거</button>}
           </li>
         ))}
       </ul>
+      {isHost && (
+        <div className="row">
+          <button className="small" disabled={full} onClick={() => send({ type: 'addBot' })}>🤖 AI 추가</button>
+          <span className="muted small">{full ? '정원(4명)이 찼습니다' : `${4 - room.players.length}자리 남음`}</span>
+        </div>
+      )}
       <label>
         상대할 부
         <select value={room.division} disabled={!isHost} onChange={(e) => send({ type: 'setDivision', division: Number(e.target.value) as 1 | 2 | 3 })}>
@@ -59,6 +69,7 @@ export function RoomLobby() {
         {isHost ? <button onClick={() => send({ type: 'startGame' })}>게임 시작</button> : <span className="muted">호스트가 시작하기를 기다리는 중…</span>}
         <button className="link" onClick={leave}>나가기</button>
       </div>
+      {error && <p className="error">{error}</p>}
     </main>
   );
 }

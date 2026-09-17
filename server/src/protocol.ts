@@ -9,6 +9,7 @@ export interface RoomPlayerView {
   name: string;
   connected: boolean;
   isHost: boolean;
+  isBot: boolean;
 }
 
 export interface RoomView {
@@ -24,6 +25,8 @@ export type ClientMessage =
   | { type: 'rejoin'; code: string; playerId: string; token: string }
   | { type: 'spectate'; code: string }
   | { type: 'setDivision'; division: Division }
+  | { type: 'addBot' }
+  | { type: 'removeBot'; playerId: string }
   | { type: 'startGame' }
   | { type: 'action'; action: GameAction };
 
