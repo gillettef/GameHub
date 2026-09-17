@@ -1,5 +1,6 @@
 import { cards, effectiveSkill } from './cards';
 import { addToRoster, applyEffects } from './effects';
+import { startFriday } from './friday';
 import { takeFromMarket } from './market';
 import type { Rng } from './rng';
 import { GameError, WEEKDAYS, getPlayer, leftOf } from './state';
@@ -226,9 +227,8 @@ export function endTurn(state: GameState, pid: PlayerId): GameState {
   }
   const dayIdx = WEEKDAYS.indexOf(turn.day);
   const nextDay = WEEKDAYS[dayIdx + 1];
-  next.phase = nextDay
-    ? { kind: 'weekday', day: nextDay, current: next.firstPlayer, basicDone: false, paidDone: false }
-    : { kind: 'friday.prepare' };
+  if (nextDay) next.phase = { kind: 'weekday', day: nextDay, current: next.firstPlayer, basicDone: false, paidDone: false };
+  else startFriday(next);
   return next;
 }
 

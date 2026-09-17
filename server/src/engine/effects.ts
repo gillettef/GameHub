@@ -28,6 +28,7 @@ export function addToRoster(player: PlayerState, cardId: string): PlayerInstance
     placed: {},
     exhausted: false,
     careerVP: 0,
+    careerUsed: { appearances: 0, goals: 0 },
   };
   player.roster.push(instance);
   assignUniform(player.uniforms, instance.instanceId, activeSide(instance));
