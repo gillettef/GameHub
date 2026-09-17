@@ -1,12 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { activeSide, cards } from './cards';
+import { cards } from './cards';
 import { acceptMatchRoll, rerollMatchDie, rollMatchDie, standsCount, startFriday, submitLineup } from './friday';
-import { sectorCounts } from './match';
 import { GameError } from './state';
-import type { GameState, LineupSubmission, PlayerState } from './state';
-import { SECTORS } from './types';
-import type { Sector } from './types';
-import { gameAtMonday, seededRng } from './test-utils';
+import type { GameState } from './state';
+import { autoLineup, gameAtMonday, seededRng } from './test-utils';
 
 function friday(): GameState {
   const s = gameAtMonday();
@@ -16,28 +13,6 @@ function friday(): GameState {
     s.players[id]!.pending = [];
   }
   return s;
-}
-
-// 첫 포메이션으로 유효한 배치를 자동 생성: 출전 선수 토큰은 허용 구획에, 나머지는 남는 자리에
-function autoLineup(player: PlayerState, players = player.roster.map((r) => r.instanceId)): LineupSubmission {
-  const tacticCardId = player.tacticCards[0]!;
-  const need = sectorCounts(cards.tactic(tacticCardId).formations[0]!);
-  const placements: Record<string, Sector> = {};
-  const field = player.uniforms.filter((u) => u.location === 'field');
-  const carded = field.filter((u) => u.cardInstanceId && players.includes(u.cardInstanceId));
-  for (const token of carded) {
-    const zones = activeSide(player.roster.find((r) => r.instanceId === token.cardInstanceId)!).zones;
-    const sector = zones.find((z) => need[z] > 0);
-    if (!sector) throw new Error(`no room for ${token.cardInstanceId}`);
-    placements[token.id] = sector;
-    need[sector]--;
-  }
-  for (const token of field.filter((u) => !(u.id in placements))) {
-    const sector = SECTORS.find((z) => need[z] > 0)!;
-    placements[token.id] = sector;
-    need[sector]--;
-  }
-  return { tacticCardId, formationIndex: 0, players, placements };
 }
 
 function submitAll(s: GameState, seed = 1): GameState {
@@ -155,7 +130,8 @@ describe('경기 결과 확인 (p.24)', () => {
       if (id !== 'a') s = rollMatchDie(s, id, seededRng(id.charCodeAt(0)));
       s = acceptMatchRoll(s, id, seededRng(3));
     }
-    expect(s.phase.kind).toBe('weekend');
+    expect(s.phase.kind).toBe('monday.board');
+    expect(s.week).toBe(2);
   });
 
   it('주사위 결과별 효과: 1 팬덤 트랙, 2 훈련, 3 역량, 4 약점, 5/6 부상', () => {
