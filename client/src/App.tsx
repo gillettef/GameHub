@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import type { PlayerId } from '@server/engine/state';
 import { PlayerBoard } from './components/Boards';
 import { DiceTray } from './components/DiceTray';
+import { LegendButton } from './components/Legend';
 import { ActionLog, Header, LeaguePanel, MarketPanel, PendingModal, Sidebar } from './components/Shell';
 import { FridayAftermathScreen, FridayPrepareScreen } from './screens/Friday';
 import { GameOverScreen } from './screens/GameOver';
@@ -50,7 +51,10 @@ export function GameLayout({ phasePanel, subtitle }: { phasePanel: ReactNode; su
         <main className="main">
           <div className="main-top">
             <div className="main-top-phase">{phasePanel}</div>
-            <DiceTray />
+            <div className="main-side">
+              <DiceTray />
+              <LegendButton />
+            </div>
           </div>
           <PlayerBoard p={p} privateInfo={isMe ? view.self : undefined} />
           <MarketPanel />
