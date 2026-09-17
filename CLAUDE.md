@@ -78,6 +78,18 @@ notes/    규칙서 원본 및 텍스트 레퍼런스
 게임 엔진(규칙 로직)은 `server/` 안에서 UI·네트워크와 분리된 순수 TypeScript 모듈로 두어
 단위 테스트와 시뮬레이션이 가능하게 한다.
 
+### 클라이언트 구조 (`client/src`)
+
+- 클라이언트는 서버 엔진·타입을 **`@server/*` alias(`../server/src/*`)로 직접 import**해서 쓴다
+  (Vite alias + tsconfig paths). 카드 데이터·`cards` 조회·`sectorCounts` 같은 순수 로직을 중복 없이 재사용하기
+  위함. 단, `rooms.ts`/`ws.ts`/`app.ts` 등 Node 전용 모듈은 절대 import하지 않는다(엔진과 `protocol.ts`만).
+- `ws.ts` — 재연결(백오프)과 `localStorage` 세션(`eleven.session`)으로 자동 rejoin. `store.tsx` — 서버 메시지를
+  React 상태(`room`, `view`, `error`)로 반영하는 컨텍스트, `useGame()`이 `view`와 `me`를 제공.
+- `screens/` — 단계별 화면(Lobby/RoomLobby, Setup(드래프트·목표), Monday, Weekday, …). `components/Cards.tsx` —
+  카드 종류별 렌더링, `components/Shell.tsx` — 헤더·참가자 요약·내 구단·이적 시장·리그·기록·대상 선택 모달.
+  `labels.ts` — 한국어 라벨과 효과 DSL 설명 문자열.
+- `App.tsx`의 `PhaseScreen`이 `view.phase.kind`로 화면을 고른다. 새 단계 화면은 여기에 case 추가.
+
 ### 멀티플레이 설계 시 주의
 
 - **동시 단계와 순차 단계가 섞여 있다.** 월요일(조달·이사회)과 금요일(경기)은 전원이 동시에 진행하고,
@@ -120,7 +132,9 @@ MVP에서 **단순화 가능**한 부분: 선수/직원/임원/스폰서/이사�
 전술 카드는 **포메이션만** 사용하고 효과는 2단계.
 
 **현재 상태**: 위 1~6번 엔진 로직은 `server/src/engine/`에 구현·테스트 완료
-(`game.test.ts`가 4인 6주 한 판을 자동 진행). 서버 계층(방·WebSocket·개별 뷰)도 완료. 남은 MVP 작업은 클라이언트 UI.
+(`game.test.ts`가 4인 6주 한 판을 자동 진행). 서버 계층(방·WebSocket·개별 뷰)도 완료. 클라이언트는
+로비/방 대기실/드래프트/목표/월요일 이사회/화수목 행동 화면까지 구현. 남은 MVP: 금요일 경기 준비(포메이션·토큰
+배치)·결과·주사위 화면, 최종 점수 화면, 그리고 브라우저 실사용 검증.
 
 ### 서버 프로토콜 (`server/src/protocol.ts`)
 
