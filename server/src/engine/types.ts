@@ -242,16 +242,20 @@ export interface OfficeStep {
 // 조달 트랙: procurement[track][position-1] = 월요일에 얻는 자원 수
 export type ProcurementTable = Record<Track, [number, number, number, number, number]>;
 
-// 유지비 트랙 3종 (p.9): 보유 수 → 주말 지불 돈. 인덱스 = 보유 수
+// 유지비 트랙 3종 (p.7, p.9): 보유 수 → 주말 지불 돈. 인덱스 = 보유 수 (스타디움은 인쇄 4 + 건설)
 export interface UpkeepTables {
   players: number[];
+  stadium: number[];
   staff: number[];
-  infrastructure: number[];
 }
+
+// 능력치 트랙 1 미만/5 초과 시 잃고 얻는 자원 (구단 보드 인쇄, p.7)
+export type TrackOverflow = Record<Track, { below: Resource; above: Resource }>;
 
 export interface BoardData {
   office: OfficeStep[];
   procurement: ProcurementTable;
   upkeep: UpkeepTables;
+  trackOverflow: TrackOverflow;
   infrastructure: InfrastructureDef[];
 }

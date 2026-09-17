@@ -67,6 +67,6 @@ describe('이사회 (p.13)', () => {
     expect(s.phase.day).toBe('tue');
     expect(s.phase.current).toBe(s.firstPlayer);
     expect(s.decks.discards.board).toHaveLength(4);
-    expect(s.log.some((l) => l.includes('이사회'))).toBe(true);
+    expect(s.log.some((l) => l.text.includes('이사회') && l.day === 'mon' && l.week === 1)).toBe(true);
   });
 });

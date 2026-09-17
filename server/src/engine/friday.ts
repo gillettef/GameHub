@@ -2,8 +2,9 @@ import { activeSide, cards, effectiveSkill } from './cards';
 import { applyEffects, moveTrack, trainPlayer } from './effects';
 import { resolveMatch, sectorCounts } from './match';
 import type { MatchReport, Slot, TeamSide } from './match';
+import { matchDieResult } from './matchDie';
 import type { Rng } from './rng';
-import { GameError, getPlayer } from './state';
+import { GameError, addLog, getPlayer } from './state';
 import type { GameState, LineupSubmission, MatchAftermath, PlayerId, PlayerInstance, PlayerState } from './state';
 import { RESOURCES, SECTORS } from './types';
 import { runWeekend } from './weekend';
@@ -201,7 +202,7 @@ function resolveAllMatches(state: GameState, rng: Rng): void {
       theirGoals: goals.theirs,
       outcome: goals.mine > goals.theirs ? 'win' : goals.mine < goals.theirs ? 'loss' : 'draw',
     };
-    state.log.push(`[${pid}] ${opponent.teamName} ${report.myGoals}:${report.theirGoals} (${report.outcome})`);
+    addLog(state, `경기 결과 ${report.myGoals}:${report.theirGoals} vs ${opponent.teamName} (${{ win: '승리', draw: '무승부', loss: '패배' }[report.outcome]})`, { actor: pid });
 
     moveLeague(state, pid, opponent.teamId, report.outcome);
     faced.set(opponent.teamId, (faced.get(opponent.teamId) ?? 0) + 1);
@@ -283,7 +284,7 @@ function injure(state: GameState, player: PlayerState, played: PlayerInstance[],
     const n = activeSide(p).number;
     return n !== undefined && (face === 12 ? n >= 12 : n === face);
   });
-  state.log.push(`[${player.id}] 부상 주사위 ${face}: ${hit.length ? hit.map((h) => cards.player(h.cardId).name).join(', ') : '해당 없음'}`);
+  addLog(state, `부상 주사위 ${face}: ${hit.length ? hit.map((h) => cards.player(h.cardId).name).join(', ') : '해당 없음'}`, { actor: player.id });
   chooseAmong(player, hit, { type: 'addPlayerToken', token: 'injury', count }, '부상', (inst) => (inst.tokens.injury += count));
 }
 
@@ -294,23 +295,32 @@ export function acceptMatchRoll(state: GameState, pid: PlayerId, rng: Rng): Game
   const player = getPlayer(next, pid);
   const played = m.played.map((id) => instanceOf(player, id));
 
-  switch (m.roll) {
-    case 1:
+  // 결과는 경기 승/무/패에 따라 다르다 (경기 보드 표)
+  switch (matchDieResult(m.report.outcome, m.roll)) {
+    case 'fandomUp':
       moveTrack(player, 'fandom', 1);
       break;
-    case 2:
+    case 'train':
       chooseAmong(player, played.filter((p) => !p.trained), { type: 'trainPlayer', count: 1 }, '경기 영향:훈련', (inst) => trainPlayer(player, inst));
       break;
-    case 3:
+    case 'strength':
       chooseAmong(player, played, { type: 'addPlayerToken', token: 'strengthTemp', count: 1 }, '경기 영향:역량', (inst) => inst.tokens.strengthTemp++);
       break;
-    case 4:
+    case 'weakness':
       chooseAmong(player, played, { type: 'addPlayerToken', token: 'weaknessTemp', count: 1 }, '경기 영향:약점', (inst) => inst.tokens.weaknessTemp++);
       break;
-    case 5:
+    case 'injury':
       injure(next, player, played, 1, rng);
       break;
-    case 6:
+    case 'severeInjury':
+      injure(next, player, played, 2, rng);
+      break;
+    case 'doubleInjury':
+      injure(next, player, played, 1, rng);
+      injure(next, player, played, 1, rng);
+      break;
+    case 'doubleSevereInjury':
+      injure(next, player, played, 2, rng);
       injure(next, player, played, 2, rng);
       break;
   }

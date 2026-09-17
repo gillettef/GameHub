@@ -126,6 +126,17 @@ export type Phase =
   | { kind: 'friday.aftermath'; matches: Record<PlayerId, MatchAftermath> }
   | { kind: 'gameOver'; scores: Record<PlayerId, ScoreBreakdown>; winners: PlayerId[] };
 
+export type LogDay = 'setup' | 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'weekend';
+
+// 공개 행동 기록. 주차·요일·행위자로 구분해 클라이언트가 묶어 보여준다
+export interface LogEntry {
+  id: number;
+  week: number;
+  day: LogDay;
+  actor?: PlayerId;
+  text: string;
+}
+
 export interface GameState {
   id: string;
   division: Division;
@@ -137,7 +148,28 @@ export interface GameState {
   market: Market;
   decks: Decks;
   league: { players: Record<PlayerId, number>; opponents: LeagueOpponent[] };
-  log: string[];
+  log: LogEntry[];
+}
+
+export function currentDay(state: GameState): LogDay {
+  switch (state.phase.kind) {
+    case 'setup.draft':
+    case 'setup.objective':
+      return 'setup';
+    case 'monday.board':
+      return 'mon';
+    case 'weekday':
+      return state.phase.day;
+    case 'friday.prepare':
+    case 'friday.aftermath':
+      return 'fri';
+    case 'gameOver':
+      return 'weekend';
+  }
+}
+
+export function addLog(state: GameState, text: string, opts: { actor?: PlayerId; day?: LogDay } = {}): void {
+  state.log.push({ id: state.log.length + 1, week: state.week, day: opts.day ?? currentDay(state), actor: opts.actor, text });
 }
 
 export function leftOf(state: GameState, pid: PlayerId): PlayerId {

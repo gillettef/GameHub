@@ -11,17 +11,18 @@ function game(): GameState {
 }
 
 describe('moveTrack (p.7)', () => {
-  it('1~5 안에서 이동, 5 초과분은 자원으로, 1 미만은 자원 손실', () => {
+  it('1~5 안에서 이동, 5 초과분은 보드에 표시된 자원으로, 1 미만은 표시된 자원 손실', () => {
     const s = game();
     const p = s.players['a']!;
     moveTrack(p, 'money', 2);
     expect(p.tracks.money).toBe(4);
     moveTrack(p, 'money', 3);
     expect(p.tracks.money).toBe(5);
-    expect(p.resources.money).toBe(2);
+    expect(p.resources.ops).toBe(2); // 돈 트랙 초과 → 운영
+    p.resources.money = 1;
     moveTrack(p, 'fandom', -3);
     expect(p.tracks.fandom).toBe(1);
-    expect(p.resources.fandom).toBe(0);
+    expect(p.resources.money).toBe(0); // 팬덤 트랙 부족 → 돈 손실 (0 미만 불가)
   });
 });
 
@@ -86,7 +87,8 @@ describe('applyEffects', () => {
   it('text 효과는 로그에만 남긴다', () => {
     const s = game();
     applyEffects(s, 'a', [{ type: 'text', text: '수동' }], 'x');
-    expect(s.log.at(-1)).toContain('수동');
+    expect(s.log.at(-1)?.text).toContain('수동');
+    expect(s.log.at(-1)?.actor).toBe('a');
   });
 
   it('addToRoster 는 유니폼을 배정한다', () => {

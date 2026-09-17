@@ -1,85 +1,59 @@
 import { cards } from '@server/engine/cards';
-import { LeaguePanel, LogPanel, PlayerBoard, PlayerSummary } from '../components/Shell';
 import { DAY_LABEL, phaseLabel } from '../labels';
 import { useView } from '../store';
 import { GameOverScreen } from './GameOver';
 
-function PhaseStatus() {
+// 관전자용 단계 상태 패널 (읽기 전용)
+export function PhaseStatus() {
   const { view } = useView();
   const phase = view.phase;
   const name = (id: string) => view.players[id]?.name ?? id;
   const waiting = (done: Record<string, boolean>) => view.seats.filter((id) => !done[id]).map(name).join(', ');
+  let body: React.ReactNode;
   switch (phase.kind) {
     case 'setup.draft':
-      return <p>임원 드래프트 {phase.round}/3 · 대기: {waiting(phase.picked) || '없음'}</p>;
+      body = <p>{phase.round}/3 라운드 · 고르는 중: {waiting(phase.picked) || '없음'}</p>;
+      break;
     case 'setup.objective':
-      return <p>목표 카드 선택 · 대기: {waiting(phase.chosen) || '없음'}</p>;
+      body = <p>고르는 중: {waiting(phase.chosen) || '없음'}</p>;
+      break;
     case 'monday.board':
-      return (
-        <ul className="small">
+      body = (
+        <ul className="status-list">
           {view.seats.map((id) => {
             const m = phase.meetings[id]!;
-            return <li key={id}>{name(id)}: {cards.board(m.card).name} — {m.decided ? '결정 완료' : m.roll === null ? '주사위 대기' : `주사위 ${m.roll}`}</li>;
+            return <li key={id}><b>{name(id)}</b> {cards.board(m.card).name} — {m.decided ? '결정 완료' : m.roll === null ? '주사위 대기' : `주사위 ${m.roll}`}</li>;
           })}
         </ul>
       );
+      break;
     case 'weekday':
-      return <p>{DAY_LABEL[phase.day]} · <b>{name(phase.current)}</b>의 차례 {phase.basicDone && '(기본 행동 완료)'}</p>;
+      body = <p>{DAY_LABEL[phase.day]} · <b>{name(phase.current)}</b>의 차례{phase.basicDone && ' (기본 행동 완료)'}</p>;
+      break;
     case 'friday.prepare':
-      return <p>경기 준비 · 대기: {waiting(phase.submitted) || '없음'}</p>;
+      body = <p>라인업 준비 중: {waiting(phase.submitted) || '없음'}</p>;
+      break;
     case 'friday.aftermath':
-      return (
-        <ul className="small">
+      body = (
+        <ul className="status-list">
           {view.seats.map((id) => {
             const m = phase.matches[id]!;
             return (
               <li key={id}>
-                {name(id)} {m.report.myGoals}:{m.report.theirGoals} {cards.opponent(m.opponentCardId).teamName} ({{ win: '승', draw: '무', loss: '패' }[m.report.outcome]}) — {m.decided ? '완료' : m.roll === null ? '주사위 대기' : `주사위 ${m.roll}`}
+                <b>{name(id)}</b> {m.report.myGoals}:{m.report.theirGoals} {cards.opponent(m.opponentCardId).teamName} ({{ win: '승', draw: '무', loss: '패' }[m.report.outcome]}) — {m.decided ? '완료' : m.roll === null ? '주사위 대기' : `주사위 ${m.roll}`}
               </li>
             );
           })}
         </ul>
       );
+      break;
     case 'gameOver':
-      return null;
+      return <GameOverScreen />;
   }
-}
-
-export function SpectatorScreen() {
-  const { view, room, connected, leave } = useView();
   return (
-    <div className="game">
-      <header className="topbar">
-        <div>
-          <b>ELEVEN</b> · 관전 · 방 {room?.code} · {view.week}주차 · {phaseLabel(view.phase.kind)}
-        </div>
-        <div>
-          <span className={`dot ${connected ? 'on' : 'off'}`} /> {connected ? '연결됨' : '재연결 중…'}
-          <button className="link" onClick={leave}>나가기</button>
-        </div>
-      </header>
-      <div className="columns">
-        <aside className="col left">
-          {view.seats.map((id) => (
-            <PlayerSummary key={id} p={view.players[id]!} isMe={false} />
-          ))}
-          <LeaguePanel />
-        </aside>
-        <main className="col center">
-          <section className="panel">
-            <h2>{phaseLabel(view.phase.kind)}</h2>
-            <PhaseStatus />
-          </section>
-          {view.phase.kind === 'gameOver' ? (
-            <GameOverScreen />
-          ) : (
-            view.seats.map((id) => <PlayerBoard key={id} p={view.players[id]!} title={view.players[id]!.name} />)
-          )}
-        </main>
-        <aside className="col right">
-          <LogPanel />
-        </aside>
-      </div>
-    </div>
+    <section className="panel phase-panel">
+      <div className="panel-head"><h2>{phaseLabel(phase.kind)}</h2></div>
+      {body}
+    </section>
   );
 }

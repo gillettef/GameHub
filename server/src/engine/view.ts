@@ -1,4 +1,4 @@
-import type { BoardMeeting, GameState, LineupSubmission, MatchAftermath, PlayerId, PlayerState, Weekday } from './state';
+import type { BoardMeeting, GameState, LineupSubmission, LogEntry, MatchAftermath, PlayerId, PlayerState, Weekday } from './state';
 import type { ScoreBreakdown } from './scoring';
 
 // 참가자에게 보내는 뷰. 비공개 정보(다른 참가자의 드래프트 손패·목표 카드·전술 손패·라인업, 덱 내용)는 제거한다
@@ -37,7 +37,7 @@ export interface GameView {
   market: GameState['market'];
   deckCounts: Record<'starters' | 'prospects' | 'veterans' | 'staff' | 'sponsors' | 'board' | 'tactics' | 'objectives', number>;
   league: GameState['league'];
-  log: string[];
+  log: LogEntry[];
 }
 
 const LOG_TAIL = 100;
