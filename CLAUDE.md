@@ -62,8 +62,8 @@
   (한 판은 보통 한 번의 서버 세션 동안만 진행된다고 가정).
 - **세션/방 모델**: 로그인/계정 시스템 없음. 방 코드(room code) 발급 → 참가자는 코드 + 닉네임으로
   입장. (Jackbox/코드네임 스타일)
-- **배포**: 외부에서 접속 가능하도록 배포한다 (지인들이 각자 집에서 접속). 구체적 호스팅 대상은
-  추후 결정하되, 정적 프론트 + 단일 Node 프로세스(WebSocket 서버) 형태로 단순하게 유지한다.
+- **배포**: 외부에서 접속 가능하도록 배포한다 (지인들이 각자 집에서 접속). **단일 Node 프로세스**가
+  빌드된 프론트(`client/dist`)와 WebSocket(`/ws`)을 한 origin 으로 서빙한다 — 아래 "배포" 절 참고.
 
 ### 프로젝트 구조
 
@@ -71,6 +71,8 @@
 server/   Node.js + TypeScript 게임 서버 (WebSocket). dev 포트 3001. `npm run dev`
 client/   React + Vite 프론트엔드.               dev 포트 5173. `npm run dev`
 scripts/  dev.ps1 / dev-stop.ps1 — 개발 서버 시작/종료 (/dev, /dev-stop 스킬이 호출)
+          tunnel.ps1 — 배포 모드 서버 + Cloudflare 빠른 터널로 공개 URL 발급 (/tunnel 스킬이 호출)
+Dockerfile, render.yaml — 호스팅 배포 설정 (아래 "배포" 절)
 notes/    규칙서 원본 및 텍스트 레퍼런스
 .dev/     개발 서버 PID·로그 (gitignore)
 ```
@@ -109,6 +111,21 @@ notes/    규칙서 원본 및 텍스트 레퍼런스
 - `lineup.ts` — 경기 준비 화면의 헬퍼(벤치 교환 미리보기 `previewField`, 자동 배치 `autoPlace`, 검증
   `validatePlacements`). `lineup.test.ts`(client vitest, `@server` alias 사용)가 자동 배치 결과를 실제
   `submitLineup`에 넣어 서버가 받아들이는지 확인한다. 클라이언트 테스트도 `npm run check`에 포함된다.
+
+### 배포 (다른 네트워크의 친구와 플레이)
+
+- **원리**: `npm run build` → `client/dist`(Vite) + `server/dist/index.js`(esbuild 번들, `ws` 는 external).
+  `npm start`(= `node server/dist/index.js`)가 `PORT`(기본 3001)·`HOST`(기본 0.0.0.0)로 뜨며 `client/dist` 가
+  있으면 정적 파일과 SPA 폴백(`server/src/static.ts`)까지 서빙한다. 클라이언트는 `location.host` 의 `/ws` 로
+  붙으므로 어떤 도메인에 올려도 설정 변경이 없다. `STATIC_DIR` 로 다른 위치 지정 가능. 개발 중(`/dev`)에는
+  dist 가 없어도 되고 Vite 프록시가 그대로 동작한다.
+- **방법 A — 내 PC에서 바로 (`/tunnel`)**: `scripts/tunnel.ps1` 이 빌드 → 배포 모드 서버(3001) → `cloudflared tunnel
+  --url`(빠른 터널, 계정 불필요, 첫 실행 시 `.dev/cloudflared.exe` 다운로드) 순으로 띄우고
+  `https://….trycloudflare.com` 주소를 출력한다(`.dev/tunnel-url.txt`에도 저장). 주소는 매번 바뀌고 PC·터널이
+  켜져 있는 동안만 유효. `/dev` 와 포트 3001을 공유하므로 먼저 `/dev-stop`. 종료도 `/dev-stop`(`.dev/tunnel-pids.json`).
+- **방법 B — 호스팅 (상시 주소)**: `render.yaml`(Render Blueprint, Node 22, 무료 플랜: 15분 미접속 시 슬립 →
+  진행 중 판 유실)과 `Dockerfile`(멀티스테이지, Fly.io/Railway 등 컨테이너 호스팅용). 둘 다 헬스체크는 `/health`.
+  게임 상태는 메모리에만 있으므로 인스턴스는 항상 1개여야 한다(스케일아웃 금지).
 
 ### 멀티플레이 설계 시 주의
 
@@ -153,8 +170,8 @@ MVP에서 **단순화 가능**한 부분: 선수/직원/임원/스폰서/이사�
 
 **현재 상태**: 위 1~6번 엔진 로직은 `server/src/engine/`에 구현·테스트 완료
 (`game.test.ts`가 4인 6주 한 판을 자동 진행). 서버 계층(방·WebSocket·개별 뷰)과 클라이언트 전 단계 화면
-(로비 → 드래프트/목표 → 이사회 → 화수목 → 경기 준비/결과 → 최종 점수)까지 구현. 남은 MVP: **브라우저 실사용
-검증과 UI 다듬기**, 배포.
+(로비 → 드래프트/목표 → 이사회 → 화수목 → 경기 준비/결과 → 최종 점수)까지 구현. 배포 경로(터널·호스팅 설정)도 마련됨. 남은 MVP: **브라우저 실사용
+검증과 UI 다듬기**.
 
 ### 서버 프로토콜 (`server/src/protocol.ts`)
 
@@ -244,8 +261,10 @@ MVP에서 **단순화 가능**한 부분: 선수/직원/임원/스폰서/이사�
   (mock-card-designer로 포크).
 - `.claude/skills/dev/` — `/dev`: `scripts/dev.ps1`로 server/client 개발 서버를 백그라운드 실행하고
   PID를 `.dev/pids.json`에 기록. 개발 서버는 반드시 이 스킬로 띄운다(Bash 백그라운드 실행 금지).
-- `.claude/skills/dev-stop/` — `/dev-stop`: `scripts/dev-stop.ps1`로 기록된 프로세스 트리를 종료.
-  자기가 띄우지 않은 프로세스는 건드리지 않는다.
+- `.claude/skills/dev-stop/` — `/dev-stop`: `scripts/dev-stop.ps1`로 기록된 프로세스 트리(dev 서버·봇·터널)를 종료.
+  자기가 띄우지 않은 프로세스는 건드리지 않는다(pid 재사용 대비로 node/npm/cloudflared 가 아니면 건너뜀).
+- `.claude/skills/tunnel/` — `/tunnel`: `scripts/tunnel.ps1`로 배포 모드 서버 + Cloudflare 빠른 터널을 띄워
+  다른 네트워크의 친구가 접속할 공개 URL을 발급한다. 위 "배포" 절 참고.
 - `.claude/skills/check/` — `/check`: `npm run check` (양쪽 typecheck → eslint → server vitest).
   변경을 마치고 완료 보고하기 전에 반드시 통과시킨다. 규칙 억제나 테스트 스킵으로 통과시키지 않는다.
 - `.claude/skills/bots/` — `/bots <code> [count]`: `scripts/bots.ps1`로 봇 프로세스를 띄워 방에 투입하거나
@@ -273,6 +292,8 @@ MVP에서 **단순화 가능**한 부분: 선수/직원/임원/스폰서/이사�
 npm install            # 루트에서 한 번 (npm workspaces)
 npm run check          # typecheck + lint + test
 npm run test -w server # 서버 엔진 테스트만
+npm run build          # client/dist + server/dist (배포용)
+npm start              # 배포 모드로 실행 (PORT, HOST, STATIC_DIR 환경변수)
 ```
 엔진 테스트는 `server/src/engine/**/*.test.ts`(vitest). 규칙서 페이지를 테스트 이름/주석에 남겨
 어느 규칙을 검증하는지 추적 가능하게 한다 (예: `scoring.test.ts` — p.26 리그 순위 승점).
