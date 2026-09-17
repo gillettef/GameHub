@@ -5,9 +5,9 @@ import { SECTOR_PAIRS, sectorCounts } from '@server/engine/match';
 import type { UniformToken } from '@server/engine/state';
 import { RESOURCES, SECTORS } from '@server/engine/types';
 import type { Resources, Sector } from '@server/engine/types';
+import { autoPlace, previewField, validatePlacements } from '@server/engine/lineup';
 import { OpponentCardView, PlayerCardView, TacticCardView } from '../components/Cards';
 import { RESOURCE_ICON, SECTOR_LABEL, describeCost } from '../labels';
-import { autoPlace, previewField, validatePlacements } from '../lineup';
 import { useGame } from '../store';
 
 const MATCH_DIE_LABEL: Record<number, string> = {

@@ -7,10 +7,12 @@ import type { Room } from './rooms';
 interface Session {
   socket: WebSocket;
   roomCode?: string;
-  playerId?: string;
+  playerId?: string; // 관전자는 없음
+  spectator?: boolean;
 }
 
 const MAX_MESSAGE_BYTES = 64 * 1024;
+const SPECTATOR_ID = '';
 
 export function attachWebSocket(wss: WebSocketServer, rooms: RoomManager): void {
   const sessions = new Map<WebSocket, Session>();
@@ -22,21 +24,28 @@ export function attachWebSocket(wss: WebSocketServer, rooms: RoomManager): void 
   const broadcast = (room: Room) => {
     const view = roomView(room);
     for (const session of sessions.values()) {
-      if (session.roomCode !== room.code || !session.playerId) continue;
+      if (session.roomCode !== room.code) continue;
+      if (!session.playerId && !session.spectator) continue;
       send(session.socket, { type: 'room', room: view });
-      if (room.game) send(session.socket, { type: 'state', view: viewFor(room.game, session.playerId) });
+      if (room.game) send(session.socket, { type: 'state', view: viewFor(room.game, session.playerId ?? SPECTATOR_ID) });
     }
+  };
+
+  const detach = (session: Session) => {
+    session.roomCode = undefined;
+    session.playerId = undefined;
+    session.spectator = undefined;
   };
 
   const bind = (session: Session, room: Room, playerId: string, token: string) => {
     // 같은 참가자의 이전 연결은 끊는다
     for (const other of sessions.values()) {
       if (other !== session && other.roomCode === room.code && other.playerId === playerId) {
-        other.roomCode = undefined;
-        other.playerId = undefined;
+        detach(other);
         other.socket.close();
       }
     }
+    detach(session);
     session.roomCode = room.code;
     session.playerId = playerId;
     send(session.socket, { type: 'joined', code: room.code, playerId, token });
@@ -62,9 +71,20 @@ export function attachWebSocket(wss: WebSocketServer, rooms: RoomManager): void 
         bind(session, room, player.id, player.token);
         return;
       }
+      case 'spectate': {
+        if (typeof msg.code !== 'string') throw new RoomError('code required');
+        const room = rooms.get(msg.code);
+        detach(session);
+        session.roomCode = room.code;
+        session.spectator = true;
+        send(session.socket, { type: 'spectating', code: room.code });
+        send(session.socket, { type: 'room', room: roomView(room) });
+        if (room.game) send(session.socket, { type: 'state', view: viewFor(room.game, SPECTATOR_ID) });
+        return;
+      }
     }
 
-    if (!session.roomCode || !session.playerId) throw new RoomError('join a room first');
+    if (!session.roomCode || !session.playerId) throw new RoomError(session.spectator ? 'spectators cannot act' : 'join a room first');
     switch (msg.type) {
       case 'setDivision':
         broadcast(rooms.setDivision(session.roomCode, session.playerId, msg.division));

@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/index.ts",
+    "bots": "tsx src/bot/run.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },

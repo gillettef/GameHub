@@ -226,6 +226,20 @@ MVP에서 **단순화 가능**한 부분: 선수/직원/임원/스폰서/이사�
   자기가 띄우지 않은 프로세스는 건드리지 않는다.
 - `.claude/skills/check/` — `/check`: `npm run check` (양쪽 typecheck → eslint → server vitest).
   변경을 마치고 완료 보고하기 전에 반드시 통과시킨다. 규칙 억제나 테스트 스킵으로 통과시키지 않는다.
+- `.claude/skills/bots/` — `/bots <code> [count]`: `scripts/bots.ps1`로 봇 프로세스를 띄워 방에 투입하거나
+  (`-Create -Start`) 봇만의 판을 만들어 시작. PID는 `.dev/bots-*.pid`, `/dev-stop`이 함께 종료.
+
+### 봇과 관전 (혼자 테스트하기)
+
+- `server/src/bot/` — `policy.ts`(GameView만 보고 판단하는 휴리스틱), `bot.ts`(실제 ws 클라이언트, 서버가
+  거부한 액션 종류는 그 차례 동안 재시도하지 않음), `run.ts`(CLI: `npm run bots -w server -- --code X --count 3`
+  또는 `--create --count 4 --start`). `bots.test.ts`가 봇 4명으로 한 판을 ws 경유로 끝까지 돌린다.
+- 봇은 사람과 같은 뷰·프로토콜만 쓰므로 봇 판이 끝까지 돌면 서버·뷰·정책이 함께 검증된 것이다. 봇 로그에
+  같은 액션의 `거부:`가 반복되면 정책 버그(엔진 아님).
+- **관전**: `spectate{code}` → `spectating{code}` + 빈 참가자 id(`''`)의 뷰. 클라이언트 로비의 "관전" 버튼,
+  `screens/Spectator.tsx`(모든 참가자 보드·단계 상태 읽기 전용). 관전자는 액션 불가.
+- 라인업 도우미(`engine/lineup.ts`: `eligiblePlayers`/`previewField`/`autoPlace`/`validatePlacements`/`buildLineup`)는
+  UI·봇·테스트가 공유한다. 배치 못 한 출전 선수는 미배치로 남기고 `buildLineup`이 그 선수를 빼며 재시도.
 
 ### 개발 명령
 
