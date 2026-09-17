@@ -105,13 +105,13 @@ export function decide(view: GameView, rng: Rng, failed: Set<string>): GameActio
       return phase.chosen[view.me] || phase.options.length === 0 ? null : { type: 'chooseObjective', cardId: phase.options[0]! };
     case 'monday.board': {
       const m = phase.meetings[view.me];
-      if (!m || m.decided) return null;
+      if (phase.current !== view.me || !m || m.decided) return null;
       return m.roll === null ? { type: 'rollBoardDie' } : { type: 'acceptBoardRoll' };
     }
     case 'weekday':
       return phase.current === view.me ? weekdayAction(view, me, rng, failed) : null;
     case 'friday.prepare': {
-      if (phase.submitted[view.me]) return null;
+      if (phase.current !== view.me || phase.submitted[view.me]) return null;
       const tacticCardId = view.self.tacticCards[0];
       if (!tacticCardId) return null;
       const formation = cards.tactic(tacticCardId).formations[0]!;
@@ -123,7 +123,7 @@ export function decide(view: GameView, rng: Rng, failed: Set<string>): GameActio
     }
     case 'friday.aftermath': {
       const m = phase.matches[view.me];
-      if (!m || m.decided) return null;
+      if (phase.current !== view.me || !m || m.decided) return null;
       return m.roll === null ? { type: 'rollMatchDie' } : { type: 'acceptMatchRoll' };
     }
     case 'gameOver':

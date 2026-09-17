@@ -60,7 +60,7 @@ function playFullGame(seed: number): GameState {
     s = settlePending(s);
     switch (s.phase.kind) {
       case 'monday.board': {
-        const pid = s.seats.find((id) => (s.phase as { meetings: Record<string, { decided: boolean }> }).meetings[id]!.decided === false)!;
+        const pid = s.phase.current;
         s = acceptBoardRoll(rollBoardDie(s, pid, rng), pid);
         break;
       }
@@ -72,13 +72,13 @@ function playFullGame(seed: number): GameState {
         break;
       }
       case 'friday.prepare': {
-        const pid = s.seats.find((id) => (s.phase as { submitted: Record<string, unknown> }).submitted[id] === null)!;
+        const pid = s.phase.current;
         const player = s.players[pid]!;
         s = submitLineup(s, pid, autoLineup(player, eligiblePlayers(player, player.resources.stamina)), rng);
         break;
       }
       case 'friday.aftermath': {
-        const pid = s.seats.find((id) => (s.phase as { matches: Record<string, { decided: boolean }> }).matches[id]!.decided === false)!;
+        const pid = s.phase.current;
         s = acceptMatchRoll(rollMatchDie(s, pid, rng), pid, rng);
         break;
       }

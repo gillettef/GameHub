@@ -83,7 +83,7 @@ export function ResourceChip({ resource, amount, signedValue = false }: { resour
 // 트랙 이동 칩: 자원 칩과 구분되게 "트랙" 글자와 화살표
 export function TrackChip({ track, delta }: { track: Track; delta: number }) {
   return (
-    <Chip icon={track} value={<>{delta > 0 ? '▲' : '▼'}{Math.abs(delta)}</>} tone={`${track} track`} title={`${RESOURCE_LABEL[track]} 트랙 ${signed(delta)}`}>
+    <Chip icon={track} value={<>{delta > 0 ? '▲' : '▼'}{Math.abs(delta)}</>} tone={`${track} delta`} title={`${RESOURCE_LABEL[track]} 트랙 ${signed(delta)}`}>
       <span className="chip-note">트랙</span>
     </Chip>
   );

@@ -43,21 +43,32 @@ export function DiceTray() {
 
   const me = view && session ? view.players[session.playerId] : undefined;
   const phase = view?.phase;
+  // 차례인 참가자(actor)의 주사위를 모두가 본다 (관전자 포함). 버튼은 내 차례일 때만
   let mode: 'board' | 'match' | null = null;
   let roll: number | null = null;
   let decided = false;
-  if (me && phase?.kind === 'monday.board') {
+  let actorId: string | null = null;
+  if (phase?.kind === 'monday.board') {
     mode = 'board';
-    roll = phase.meetings[me.id]?.roll ?? null;
-    decided = phase.meetings[me.id]?.decided ?? false;
-  } else if (me && phase?.kind === 'friday.aftermath') {
+    actorId = phase.current;
+    roll = phase.meetings[actorId]?.roll ?? null;
+    decided = phase.meetings[actorId]?.decided ?? false;
+  } else if (phase?.kind === 'friday.aftermath') {
     mode = 'match';
-    roll = phase.matches[me.id]?.roll ?? null;
-    decided = phase.matches[me.id]?.decided ?? false;
+    actorId = phase.current;
+    roll = phase.matches[actorId]?.roll ?? null;
+    decided = phase.matches[actorId]?.decided ?? false;
   }
+  const actor = view && actorId ? view.players[actorId] : undefined;
+  const mine = !!me && me.id === actorId;
+  const rollKey = `${actorId}:${roll}`;
+  const lastRollKey = useRef(rollKey);
 
-  // 서버의 눈이 오면: 아직 구르는 중이면 최소 시간이 지난 뒤 멈추고, 아니면 바로 표시
+  // 서버의 눈이 오면: 아직 구르는 중이면 최소 시간이 지난 뒤 멈추고, 아니면 바로 표시.
+  // 다른 참가자의 새 눈이 도착하면 짧게 굴러가는 모습을 보여준 뒤 멈춘다
   useEffect(() => {
+    const changed = lastRollKey.current !== rollKey;
+    lastRollKey.current = rollKey;
     if (roll === null) return;
     if (spinning) {
       pendingFace.current = roll;
@@ -68,12 +79,18 @@ export function DiceTray() {
       }, remaining);
       return () => clearTimeout(t);
     }
+    if (changed && !mine) {
+      spinStarted.current = Date.now();
+      pendingFace.current = roll;
+      setSpinning(true);
+      return;
+    }
     setFace(roll);
-  }, [roll, spinning]);
+  }, [roll, rollKey, spinning, mine]);
 
-  if (!me || !mode) return null;
-  const canRoll = !decided && roll === null;
-  const canReroll = !decided && roll !== null && me.resources.fandom >= 1;
+  if (!mode || !actor) return null;
+  const canRoll = mine && !decided && roll === null;
+  const canReroll = mine && !decided && roll !== null && actor.resources.fandom >= 1;
   const start = (reroll: boolean) => {
     spinStarted.current = Date.now();
     pendingFace.current = null;
@@ -81,11 +98,11 @@ export function DiceTray() {
     if (mode === 'board') act({ type: reroll ? 'rerollBoardDie' : 'rollBoardDie' });
     else act({ type: reroll ? 'rerollMatchDie' : 'rollMatchDie' });
   };
-  const accept = () => act({ type: mode === 'board' ? 'acceptBoardRoll' : 'acceptMatchRoll' });
 
   return (
     <div className="dice-tray" aria-live="polite">
       <div className="dice-title">{mode === 'board' ? '이사회 주사위' : '경기 영향 주사위'}</div>
+      <div className="dice-actor">{mine ? '내 차례' : `${actor.name}의 차례`}</div>
       <div className="die-stage">
         <div className={`die3d${spinning ? ' spinning' : ''}`} style={spinning ? undefined : { transform: FACE_TRANSFORM[face] }}>
           <Face n={1} className="front" />
@@ -99,6 +116,8 @@ export function DiceTray() {
       <div className="dice-actions">
         {decided ? (
           <span className="muted small">처리 완료</span>
+        ) : !mine ? (
+          <span className="muted small">{roll === null ? '굴리기를 기다리는 중' : `눈 ${roll}`}</span>
         ) : (
           <>
             <button className="primary" disabled={spinning || !canRoll} onClick={() => start(false)}>
@@ -107,7 +126,6 @@ export function DiceTray() {
             <button disabled={spinning || !canReroll} onClick={() => start(true)} title="팬덤 1개를 내고 다시 굴립니다">
               <Icon name="fandom" />1 다시
             </button>
-            <button disabled={spinning || roll === null} onClick={accept}>적용</button>
           </>
         )}
       </div>

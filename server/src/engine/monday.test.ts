@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { cards } from './cards';
-import { acceptBoardRoll, rerollBoardDie, rollBoardDie, tallyVotes, winningColor } from './monday';
+import { acceptBoardRoll, boardDecision, hasDecisiveFace, rerollBoardDie, rollBoardDie, tallyVotes, winningColor } from './monday';
 import { GameError } from './state';
 import { RESOURCES } from './types';
-import { gameAtMonday, seededRng } from './test-utils';
+import { FOUR_PLAYERS, gameAtMonday, seededRng } from './test-utils';
 
 describe('월요일 조달 (p.12)', () => {
   it('트랙 위치에 따라 자원을 얻고 이사회 카드를 1장씩 받는다', () => {
@@ -68,5 +68,55 @@ describe('이사회 (p.13)', () => {
     expect(s.phase.current).toBe(s.firstPlayer);
     expect(s.decks.discards.board).toHaveLength(4);
     expect(s.log.some((l) => l.text.includes('이사회') && l.day === 'mon' && l.week === 1)).toBe(true);
+  });
+});
+
+// 온라인 구현의 확정 사항: 이사회는 선 참가자부터 시계방향으로 한 명씩 진행한다 (규칙서 p.13 은 동시 진행)
+describe('이사회 차례 (턴제)', () => {
+  it('선 참가자만 굴릴 수 있고, 결정하면 왼쪽 참가자로 넘어간다', () => {
+    let s = gameAtMonday();
+    if (s.phase.kind !== 'monday.board') throw new Error();
+    expect(s.phase.current).toBe(s.firstPlayer);
+    expect(() => rollBoardDie(s, 'b', seededRng())).toThrow('not your turn');
+    s = acceptBoardRoll(rollBoardDie(s, 'a', seededRng()), 'a');
+    if (s.phase.kind !== 'monday.board') throw new Error();
+    expect(s.phase.current).toBe('b');
+    expect(() => rollBoardDie(s, 'c', seededRng())).toThrow('not your turn');
+  });
+
+  it('선 참가자가 b 이면 b → c → d → a 순서로 진행한다', () => {
+    let s = gameAtMonday({ ...FOUR_PLAYERS, firstPlayer: 'b' });
+    if (s.phase.kind !== 'monday.board') throw new Error();
+    const order: string[] = [];
+    while (s.phase.kind === 'monday.board') {
+      order.push(s.phase.current);
+      const pid = s.phase.current;
+      s = acceptBoardRoll(rollBoardDie(s, pid, seededRng(order.length)), pid);
+    }
+    expect(order).toEqual(['b', 'c', 'd', 'a']);
+    expect(s.phase.kind).toBe('weekday');
+  });
+});
+
+// 임원 3명의 표가 6면 모두 1-1-1 동수인 조합이 있다 — 재굴림으로 결정이 나지 않으므로 첫 임원의 표를 따른다
+describe('모든 눈이 동수인 임원 조합', () => {
+  const allTie = (s: ReturnType<typeof gameAtMonday>) => {
+    // ex-03 [Y,Y,Y,B,B,R], ex-06 [B,B,B,R,R,Y], ex-11 [R,R,R,Y,Y,B] → 모든 눈이 1-1-1
+    s.players['a']!.executives = ['ex-03', 'ex-06', 'ex-11'].map((cardId) => ({ cardId, exhausted: false }));
+    return s;
+  };
+
+  it('굴림이 멈추지 않고 끝나며, 결정은 첫 임원의 표를 따른다', () => {
+    const s = allTie(gameAtMonday());
+    expect(hasDecisiveFace(s.players['a']!)).toBe(false);
+    const rolled = rollBoardDie(s, 'a', seededRng(7));
+    if (rolled.phase.kind !== 'monday.board') throw new Error();
+    const face = rolled.phase.meetings['a']!.roll!;
+    expect(face).toBeGreaterThanOrEqual(1);
+    expect(boardDecision(s.players['a']!, face)).toBe(cards.executive('ex-03').votes[face - 1]);
+    expect(rolled.log.some((l) => l.text.includes('모든 눈에서 동수'))).toBe(true);
+    const accepted = acceptBoardRoll(rolled, 'a');
+    if (accepted.phase.kind !== 'monday.board') throw new Error();
+    expect(accepted.phase.meetings['a']!.decided).toBe(true);
   });
 });

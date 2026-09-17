@@ -6,8 +6,10 @@ import { SECTOR_PAIRS, sectorCounts } from '@server/engine/match';
 import type { UniformToken } from '@server/engine/state';
 import { RESOURCES, SECTORS } from '@server/engine/types';
 import type { Resources, Sector } from '@server/engine/types';
+import { useCommit } from '../commit';
 import { OpponentCardView, PlayerCardView, TacticCardView } from '../components/Cards';
 import { CostChips, Icon, ResourceChip } from '../components/Icons';
+import { TurnBanner } from '../components/Turn';
 import { SECTOR_LABEL, matchDieLabel } from '../labels';
 import { useGame } from '../store';
 
@@ -21,19 +23,9 @@ function TokenChipView({ token, name }: { token: UniformToken; name?: string }) 
   );
 }
 
-function Waiting({ done }: { done: Record<string, boolean> }) {
-  const { view } = useGame();
-  return (
-    <span className="waiting">
-      {view.seats.map((id) => (
-        <span key={id} className={`tag${done[id] ? ' done' : ''}`}>{view.players[id]!.name}{done[id] ? ' ✓' : ''}</span>
-      ))}
-    </span>
-  );
-}
-
 export function FridayPrepareScreen() {
-  const { view, me, act } = useGame();
+  const { view, me } = useGame();
+  const { committing, commit } = useCommit();
   const [tacticCardId, setTacticCardId] = useState(view.self.tacticCards[0] ?? '');
   const [formationIndex, setFormationIndex] = useState(0);
   const [played, setPlayed] = useState<string[]>([]);
@@ -71,21 +63,35 @@ export function FridayPrepareScreen() {
     for (const r of RESOURCES) cost[r] = (cost[r] ?? 0) + (effect.cost[r] ?? 0);
   }
   const affordable = RESOURCES.every((r) => (cost[r] ?? 0) <= me.resources[r]);
-  const canSubmit = !submitted && issues.length === 0 && affordable && tacticCardId;
+  const current = view.phase.current;
+  const myTurn = current === view.me;
+  const canSubmit = myTurn && !submitted && issues.length === 0 && affordable && tacticCardId && !committing;
 
   const submit = () =>
-    act({
+    commit('lineup', {
       type: 'submitLineup',
       submission: { tacticCardId, formationIndex, players: played, placements, fandomInStands: stands, activations: activationMap },
     });
 
   return (
-    <section className="panel phase-panel mine">
+    <section className={`panel phase-panel${myTurn ? ' mine' : ''}`}>
       <div className="panel-head">
         <h2>경기 준비</h2>
-        <Waiting done={submittedMap} />
+        <TurnBanner current={current} done={submittedMap} />
       </div>
-      {submitted ? (
+      {!myTurn ? (
+        <div className="stack">
+          <p className="muted">
+            <b>{view.players[current]!.name}</b>이(가) 라인업을 짜는 중입니다. {submitted ? '내 라인업은 제출했습니다.' : '내 차례가 오면 아래에서 라인업을 짭니다.'}
+          </p>
+          {view.players[current]!.nextOpponent && (
+            <div className="step">
+              <h3>{view.players[current]!.name}의 상대</h3>
+              <div className="cards"><OpponentCardView cardId={view.players[current]!.nextOpponent!} /></div>
+            </div>
+          )}
+        </div>
+      ) : submitted ? (
         <p className="muted">라인업을 제출했습니다. 다른 참가자를 기다리는 중</p>
       ) : (
         <div className="stack">
@@ -180,7 +186,7 @@ export function FridayPrepareScreen() {
               비용 {RESOURCES.filter((r) => (cost[r] ?? 0) > 0).map((r) => <ResourceChip key={r} resource={r} amount={cost[r]!} />)}
               {!affordable && <span className="error">자원 부족</span>}
             </span>
-            <button className="primary" disabled={!canSubmit} onClick={submit}>라인업 제출</button>
+            <button className={`primary${committing ? ' committing' : ''}`} disabled={!canSubmit} onClick={submit}>{committing ? '제출 중…' : '라인업 제출'}</button>
           </div>
         </div>
       )}
@@ -188,32 +194,38 @@ export function FridayPrepareScreen() {
   );
 }
 
+// 경기 결과도 선 참가자부터 한 명씩: 차례인 참가자의 경기 보고서와 주사위를 모두가 본다
 export function FridayAftermathScreen() {
-  const { view, me, act } = useGame();
+  const { view } = useGame();
+  const { chosen, committing, commit } = useCommit();
   if (view.phase.kind !== 'friday.aftermath') return null;
-  const m = view.phase.matches[view.me]!;
-  const matches = view.phase.matches;
+  const { current, matches } = view.phase;
+  const actor = view.players[current]!;
+  const mine = current === view.me;
+  const m = matches[current]!;
   const opponent = cards.opponent(m.opponentCardId);
   const outcomeLabel = { win: '승리', draw: '무승부', loss: '패배' }[m.report.outcome];
+  const done = Object.fromEntries(view.seats.map((id) => [id, matches[id]!.decided]));
   return (
-    <section className="panel phase-panel mine">
+    <section className={`panel phase-panel${mine ? ' mine' : ''}`}>
       <div className="panel-head">
         <h2>경기 결과</h2>
-        <span className="waiting">
-          {view.seats.map((id) => {
-            const x = matches[id]!;
-            return (
-              <span key={id} className={`tag${x.decided ? ' done' : ''}`}>
-                {view.players[id]!.name} {x.report.myGoals}:{x.report.theirGoals}
-              </span>
-            );
-          })}
-        </span>
+        <TurnBanner current={current} done={done} />
       </div>
+      <p className="scores-row">
+        {view.seats.map((id) => {
+          const x = matches[id]!;
+          return (
+            <span key={id} className={`tag${id === current ? ' now' : ''}${x.decided ? ' done' : ''}`}>
+              {view.players[id]!.name} {x.report.myGoals}:{x.report.theirGoals} {{ win: '승', draw: '무', loss: '패' }[x.report.outcome]}
+            </span>
+          );
+        })}
+      </p>
       <div className="two-col">
         <div className="stack">
           <div className="scoreline">
-            <span className="team">{me.name}</span>
+            <span className="team">{actor.name}</span>
             <span className={`score ${m.report.outcome}`}>{m.report.myGoals} : {m.report.theirGoals}</span>
             <span className="team">{opponent.teamName}</span>
             <span className={`outcome ${m.report.outcome}`}>{outcomeLabel}</span>
@@ -238,22 +250,26 @@ export function FridayAftermathScreen() {
         <table className="die-table">
           <tbody>
             {[6, 5, 4, 3, 2, 1].map((face) => (
-              <tr key={face} className={m.roll === face ? 'hit' : ''}>
+              <tr key={face} className={`${m.roll === face ? 'hit' : ''}${chosen === 'roll' && m.roll === face ? ' chosen' : ''}`}>
                 <td className="face">{face}</td>
                 <td>{matchDieLabel(m.report.outcome, face)}</td>
               </tr>
             ))}
           </tbody>
         </table>
-        {m.decided ? (
-          <p className="muted">처리 완료. 다른 참가자를 기다리는 중</p>
-        ) : m.roll === null ? (
-          <p className="hint"><Icon name="die" size={14} /> 오른쪽 위 주사위를 굴리세요.</p>
-        ) : (
+        {m.roll === null ? (
+          <p className="hint">
+            <Icon name="die" size={14} /> {mine ? '오른쪽 위 주사위를 굴리세요.' : `${actor.name}이(가) 주사위를 굴리기를 기다리는 중`}
+          </p>
+        ) : mine ? (
           <div className="row">
-            <button className="primary" onClick={() => act({ type: 'acceptMatchRoll' })}>적용: {matchDieLabel(m.report.outcome, m.roll)}</button>
+            <button className={`primary${committing ? ' committing' : ''}`} disabled={committing} onClick={() => commit('roll', { type: 'acceptMatchRoll' })}>
+              {committing ? '적용 중…' : `적용: ${matchDieLabel(m.report.outcome, m.roll)}`}
+            </button>
             <span className="muted small">팬덤 1개로 다시 굴릴 수 있습니다</span>
           </div>
+        ) : (
+          <p className="muted small">{actor.name}이(가) 결과를 적용하거나 팬덤으로 다시 굴릴 수 있습니다.</p>
         )}
       </div>
     </section>

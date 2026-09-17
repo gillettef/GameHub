@@ -44,13 +44,13 @@ function playerStatus(view: ReturnType<typeof useView>['view'], pid: PlayerId): 
     case 'setup.objective':
       return phase.chosen[pid] ? 'done' : 'acting';
     case 'monday.board':
-      return phase.meetings[pid]?.decided ? 'done' : 'acting';
+      return phase.meetings[pid]?.decided ? 'done' : phase.current === pid ? 'acting' : 'waiting';
     case 'weekday':
       return phase.current === pid ? 'acting' : 'waiting';
     case 'friday.prepare':
-      return phase.submitted[pid] ? 'done' : 'acting';
+      return phase.submitted[pid] ? 'done' : phase.current === pid ? 'acting' : 'waiting';
     case 'friday.aftermath':
-      return phase.matches[pid]?.decided ? 'done' : 'acting';
+      return phase.matches[pid]?.decided ? 'done' : phase.current === pid ? 'acting' : 'waiting';
     default:
       return null;
   }

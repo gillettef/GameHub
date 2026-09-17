@@ -4,7 +4,7 @@ import { resolveMatch, sectorCounts } from './match';
 import type { MatchReport, Slot, TeamSide } from './match';
 import { matchDieResult } from './matchDie';
 import type { Rng } from './rng';
-import { GameError, addLog, getPlayer } from './state';
+import { GameError, addLog, getPlayer, nextInTurn, requireTurn } from './state';
 import type { GameState, LineupSubmission, MatchAftermath, PlayerId, PlayerInstance, PlayerState } from './state';
 import { RESOURCES, SECTORS } from './types';
 import { runWeekend } from './weekend';
@@ -22,7 +22,7 @@ export function standsCount(player: Pick<PlayerState, 'infrastructure'>): number
 }
 
 export function startFriday(state: GameState): void {
-  state.phase = { kind: 'friday.prepare', submitted: Object.fromEntries(state.seats.map((id) => [id, null])) };
+  state.phase = { kind: 'friday.prepare', current: state.firstPlayer, submitted: Object.fromEntries(state.seats.map((id) => [id, null])) };
 }
 
 function instanceOf(player: PlayerState, instanceId: string): PlayerInstance {
@@ -97,6 +97,7 @@ export function submitLineup(state: GameState, pid: PlayerId, sub: LineupSubmiss
   if (next.phase.kind !== 'friday.prepare') throw new GameError('not in match preparation');
   if (next.phase.submitted[pid] === undefined) throw new GameError(`unknown player: ${pid}`);
   if (next.phase.submitted[pid]) throw new GameError('already submitted');
+  requireTurn(next.phase, pid);
   const player = getPlayer(next, pid);
   const { players } = validateLineup(player, sub);
 
@@ -118,7 +119,10 @@ export function submitLineup(state: GameState, pid: PlayerId, sub: LineupSubmiss
   for (const s of player.staff) if (s.suspension > 0) s.suspension--;
 
   next.phase.submitted[pid] = sub;
-  if (Object.values(next.phase.submitted).every((s) => s !== null)) resolveAllMatches(next, rng);
+  const submitted = next.phase.submitted;
+  const following = nextInTurn(next, (id) => submitted[id] !== null);
+  if (following) next.phase.current = following;
+  else resolveAllMatches(next, rng);
   return next;
 }
 
@@ -239,7 +243,7 @@ function resolveAllMatches(state: GameState, rng: Rng): void {
       else opp.position = Math.min(LEAGUE_MAX, opp.position + OPPONENT_DIE[rng.int(6)]!);
     }
   }
-  state.phase = { kind: 'friday.aftermath', matches };
+  state.phase = { kind: 'friday.aftermath', current: state.firstPlayer, matches };
 }
 
 function aftermathOf(state: GameState, pid: PlayerId): MatchAftermath {
@@ -247,6 +251,7 @@ function aftermathOf(state: GameState, pid: PlayerId): MatchAftermath {
   const m = state.phase.matches[pid];
   if (!m) throw new GameError(`unknown player: ${pid}`);
   if (m.decided) throw new GameError('already decided');
+  requireTurn(state.phase, pid);
   return m;
 }
 
@@ -325,8 +330,11 @@ export function acceptMatchRoll(state: GameState, pid: PlayerId, rng: Rng): Game
       break;
   }
   m.decided = true;
-  if (next.phase.kind === 'friday.aftermath' && Object.values(next.phase.matches).every((x) => x.decided)) {
-    runWeekend(next, rng);
+  if (next.phase.kind === 'friday.aftermath') {
+    const matches = next.phase.matches;
+    const following = nextInTurn(next, (id) => matches[id]!.decided);
+    if (following) next.phase.current = following;
+    else runWeekend(next, rng);
   }
   return next;
 }

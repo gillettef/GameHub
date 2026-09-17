@@ -20,6 +20,7 @@ export function PhaseStatus() {
     case 'monday.board':
       body = (
         <ul className="status-list">
+          <li>차례: <b>{name(phase.current)}</b></li>
           {view.seats.map((id) => {
             const m = phase.meetings[id]!;
             return <li key={id}><b>{name(id)}</b> {cards.board(m.card).name} — {m.decided ? '결정 완료' : m.roll === null ? '주사위 대기' : `주사위 ${m.roll}`}</li>;
@@ -31,11 +32,12 @@ export function PhaseStatus() {
       body = <p>{DAY_LABEL[phase.day]} · <b>{name(phase.current)}</b>의 차례{phase.basicDone && ' (기본 행동 완료)'}</p>;
       break;
     case 'friday.prepare':
-      body = <p>라인업 준비 중: {waiting(phase.submitted) || '없음'}</p>;
+      body = <p>차례: <b>{name(phase.current)}</b> · 라인업 준비 중: {waiting(phase.submitted) || '없음'}</p>;
       break;
     case 'friday.aftermath':
       body = (
         <ul className="status-list">
+          <li>차례: <b>{name(phase.current)}</b></li>
           {view.seats.map((id) => {
             const m = phase.matches[id]!;
             return (
