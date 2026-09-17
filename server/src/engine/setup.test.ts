@@ -183,7 +183,7 @@ describe('목표 카드 선택 (p.9 a)', () => {
       if (s.phase.kind !== 'setup.objective') throw new Error();
       s = chooseObjective(s, id, s.phase.options[id]![1]!);
     }
-    expect(s.phase.kind).toBe('monday.procurement');
+    expect(s.phase.kind).toBe('monday.board');
     expect(s.week).toBe(1);
     for (const id of s.seats) expect(s.players[id]!.objective).toBeDefined();
   });

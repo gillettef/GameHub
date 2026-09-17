@@ -87,10 +87,21 @@ export interface Decks {
   discards: { players: string[]; staff: string[]; sponsors: string[]; board: string[] };
 }
 
+export interface BoardMeeting {
+  card: string;
+  roll: number | null;
+  decided: boolean;
+}
+
+export type Weekday = 'tue' | 'wed' | 'thu';
+export const WEEKDAYS: readonly Weekday[] = ['tue', 'wed', 'thu'];
+
 export type Phase =
   | { kind: 'setup.draft'; round: 1 | 2 | 3; hands: Record<PlayerId, string[]>; picked: Record<PlayerId, string | null> }
   | { kind: 'setup.objective'; options: Record<PlayerId, string[]>; chosen: Record<PlayerId, string | null> }
-  | { kind: 'monday.procurement' };
+  | { kind: 'monday.board'; meetings: Record<PlayerId, BoardMeeting> }
+  | { kind: 'weekday'; day: Weekday; current: PlayerId; basicDone: boolean; paidDone: boolean }
+  | { kind: 'friday.prepare' };
 
 export interface GameState {
   id: string;
