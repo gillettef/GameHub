@@ -23,7 +23,7 @@ const SECTIONS: { title: string; rows: Row[] }[] = [
     title: '변화 표시',
     rows: [
       { sample: <Chip icon="money" value="+2" />, name: '자원 획득/손실', desc: '+는 공급처에서 받고, −는 잃습니다.' },
-      { sample: <TrackChip track="stamina" delta={1} />, name: '능력치 트랙 이동', desc: '점선 칩은 자원이 아니라 구단 보드의 트랙 마커를 옮깁니다. 5를 넘으면 대신 보드에 표시된 자원을, 1 아래면 자원을 잃습니다.' },
+      { sample: <TrackChip track="stamina" delta={1} />, name: '능력치 트랙 이동', desc: '"트랙" 표시가 있는 칩은 자원이 아니라 구단 보드의 트랙 마커를 옮깁니다. 5를 넘으면 대신 보드에 표시된 자원을, 1 아래면 자원을 잃습니다.' },
       { sample: <Chip icon="train">훈련</Chip>, name: '훈련', desc: '선수 카드를 훈련 면으로 뒤집습니다. 보통 역량이 오르고 효과가 강해집니다.' },
       { sample: <Chip icon="tactic">전술</Chip>, name: '전술 카드', desc: '전술 카드를 1장 받습니다. 경기마다 포메이션으로 1장을 씁니다.' },
       { sample: <Chip icon="prospect">유망주 무료</Chip>, name: '유망주 무료 영입', desc: '유망주 더미 맨 위 카드를 비용 없이 받습니다.' },
@@ -56,8 +56,8 @@ const SECTIONS: { title: string; rows: Row[] }[] = [
   {
     title: '직원 · 임원',
     rows: [
-      { sample: <span className="sc-foot legend-inline"><span className="laurel">0</span><span className="laurel">2</span><span className="laurel">4</span><span className="laurel">6</span></span>, name: '세트 점수', desc: '같은 세트 직원을 1·2·3·4장 가졌을 때 게임 끝에 받는 승점. 마지막 값이 상한입니다.' },
-      { sample: <span className="ec-dice legend-inline static"><span className="die yellow">1</span><span className="die blue">2</span><span className="die red">3</span></span>, name: '임원 투표', desc: '이사회에서 주사위 눈에 해당하는 색으로 투표합니다. 노랑 = 돈·스타디움·스폰서, 파랑 = 선수·전술·체력, 빨강 = 팬덤·직원·운영.' },
+      { sample: <span className="staff-foot legend-inline"><span className="laurel">0</span><span className="laurel">2</span><span className="laurel">4</span><span className="laurel">6</span></span>, name: '세트 점수', desc: '같은 세트 직원을 1·2·3·4장 가졌을 때 게임 끝에 받는 승점. 마지막 값이 상한입니다.' },
+      { sample: <span className="exec-dice legend-inline"><span className="die yellow">1</span><span className="die blue">2</span><span className="die red">3</span></span>, name: '임원 투표', desc: '이사회에서 주사위 눈에 해당하는 색으로 투표합니다. 노랑 = 돈·스타디움·스폰서, 파랑 = 선수·전술·체력, 빨강 = 팬덤·직원·운영.' },
       { sample: <Chip icon="die">굴림</Chip>, name: '주사위', desc: '이사회(6면)와 경기 영향(6면), 부상 대상(12면)에 씁니다. 팬덤 1개로 다시 굴릴 수 있습니다.' },
     ],
   },

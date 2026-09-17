@@ -1,10 +1,12 @@
 import { activeSide, cards, effectiveSkill } from '@server/engine/cards';
 import type { PlayerInstance } from '@server/engine/state';
-import type { DieColor, PlayerToken, Sector } from '@server/engine/types';
+import type { DieColor, Formation, PlayerToken, Sector } from '@server/engine/types';
 import { COLOR_LABEL, KIND_LABEL, SECTOR_LABEL, SET_LABEL, TIMING_LABEL, describeCost as describeCostText, describeEffects } from '../labels';
 import { Chip, CostChips, EffectChips, Icon, TokenChip, TrackChip } from './Icons';
 
-// 모든 카드는 같은 규격(208×316)과 골격을 쓴다: 왼쪽 열(pc-left) + 오른쪽(pc-main: 상단 영역 → 이름 띠 → 태그 띠 → 본문 → 바닥)
+// 모든 카드는 같은 크기지만 종류마다 실루엣이 다르다:
+// 선수·직원 = 왼쪽 열 + 초상, 임원 = 남색 머리띠 + 오른쪽 주사위 열, 스폰서 = 브랜드 명판,
+// 이사회 = 세 색 결정 띠, 전술 = 잔디 위 포메이션, 목표 = 큰 별, 상대 팀 = 스카우트 보고서
 
 interface CardProps {
   selected?: boolean;
@@ -30,27 +32,20 @@ function Card({ className, selected, onClick, footer, children }: CardProps & { 
 
 const SECTORS_ORDER = ['LW', 'CB', 'CM', 'CF', 'RW'] as const;
 
-// 초상화 대신: 이름 첫 글자 메달
 function Portrait({ name, tone }: { name: string; tone?: string }) {
   return <span className={`portrait ${tone ?? ''}`}>{name.trim().charAt(0)}</span>;
 }
 
-// 카드 왼쪽 위의 비용 배지 (룰북: 초록 탭 + 동전 + −N)
 function CostBadge({ cost }: { cost: number }) {
   return (
     <span className="cost-badge" title={`비용 ${cost}`}>
-      <Icon name="money" size={13} />
+      <Icon name="money" size={14} />
       <span>−{cost}</span>
     </span>
   );
 }
 
-// 왼쪽 열의 카드 종류 표시 (한 글자)
-function TypeMark({ label, title }: { label: string; title: string }) {
-  return <span className="type-mark" title={title}>{label}</span>;
-}
-
-// 배치 가능 지역 미니 경기장 (룰북 선수 카드 3번 기호): 세로 3라인 × 가로 3열
+// 배치 가능 지역 미니 경기장 (룰북 선수 카드 3번 기호)
 export function MiniPitch({ zones }: { zones: Sector[] }) {
   const cell = (s: Sector | null, key: string) => <span key={key} className={`mp-cell${s && zones.includes(s) ? ' on' : ''}`} />;
   return (
@@ -83,7 +78,7 @@ export function PlayerCardView({ cardId, instance, ...props }: { cardId: string;
     <Card className={`player ${side.role}${instance?.exhausted ? ' exhausted' : ''}`} {...props}>
       <div className="pc-left">
         <CostBadge cost={side.cost} />
-        <span className={`role-badge ${side.role}`} title={side.role === 'attack' ? '공격' : '수비'}><Icon name={side.role} size={15} /></span>
+        <span className={`role-badge ${side.role}`} title={side.role === 'attack' ? '공격' : '수비'}><Icon name={side.role} size={16} /></span>
         <MiniPitch zones={side.zones} />
       </div>
       <div className="pc-main">
@@ -92,7 +87,7 @@ export function PlayerCardView({ cardId, instance, ...props }: { cardId: string;
           <span className="skill-flame" title={`역량 ${skill}`}>{skill}</span>
           {instance && skill !== side.skill && <span className="skill-base">{side.skill}</span>}
           {side.number !== undefined ? <span className="number-circle">{side.number}</span> : side.goalkeeper ? <span className="number-circle gk">GK</span> : <span className="number-circle none">?</span>}
-          {side.goalkeeper && <span className="corner-bottom-right small-note" title={`선방 ${side.goalkeeper.saves}`}>선방 {side.goalkeeper.saves}</span>}
+          {side.goalkeeper && <span className="corner-bottom-right note" title={`선방 ${side.goalkeeper.saves}`}>선방 {side.goalkeeper.saves}</span>}
         </div>
         <div className="name-band">
           <span className="clamp1">{card.name}</span>
@@ -129,127 +124,142 @@ export function PlayerCardView({ cardId, instance, ...props }: { cardId: string;
   );
 }
 
-// 직원 카드 (룰북 p.17)
+// 직원 카드 (룰북 p.17): 이름·직업이 맨 위 띠, 세트 색 왼쪽 열, 금색 월계관 바닥
 export function StaffCardView({ cardId, exhausted, suspension, ...props }: { cardId: string; exhausted?: boolean; suspension?: number } & CardProps) {
   const card = cards.staff(cardId);
   return (
     <Card className={`staff set-${card.set}${exhausted ? ' exhausted' : ''}`} {...props}>
-      <div className="pc-left">
-        <CostBadge cost={card.cost} />
-        <TypeMark label={SET_LABEL[card.set].charAt(0)} title={`${SET_LABEL[card.set]} 세트`} />
-        {card.action && (
-          <span className="side-cost" title={`행동 비용: ${describeCostText(card.action.cost)}`}>
-            <CostChips cost={card.action.cost} />
-          </span>
-        )}
+      <div className="staff-head">
+        <span className="name clamp1">{card.name}</span>
+        <span className="job">{card.job}{card.minPlayers === 3 && ' · 3인+'}</span>
       </div>
-      <div className="pc-main">
-        <div className="pc-top">
-          <Portrait name={card.name} tone={`set-${card.set}`} />
-          {card.minPlayers === 3 && <span className="corner-tag" title="3~4인 게임에서만">3+</span>}
-          {suspension ? <span className="corner-bottom-right"><TokenChip token="suspension" count={suspension} /></span> : null}
+      <div className="staff-body">
+        <div className="pc-left">
+          <CostBadge cost={card.cost} />
+          <span className="set-mark" title={`${SET_LABEL[card.set]} 세트`}>{SET_LABEL[card.set]}</span>
+          {card.action && (
+            <span className="side-cost" title={`행동 비용: ${describeCostText(card.action.cost)}`}>
+              <CostChips cost={card.action.cost} />
+            </span>
+          )}
         </div>
-        <div className="name-band"><span className="clamp1">{card.name}</span></div>
-        <div className="tag-band clamp1">{card.job}</div>
-        <div className="rb-box">
-          {card.bonus && <EffectRow label="보너스" text={describeEffects(card.bonus)} effects={card.bonus} />}
-          {card.action && <EffectRow label="행동" text={card.action.text} effects={card.action.effects} />}
-          {card.trait && <EffectRow label="특성" text={card.trait}><span className="trait-text clamp2">{card.trait}</span></EffectRow>}
+        <div className="pc-main">
+          <div className="pc-top short">
+            <Portrait name={card.name} tone={`set-${card.set}`} />
+            {suspension ? <span className="corner-bottom-right"><TokenChip token="suspension" count={suspension} /></span> : null}
+          </div>
+          <div className="rb-box">
+            {card.bonus && <EffectRow label="보너스" text={describeEffects(card.bonus)} effects={card.bonus} />}
+            {card.action && <EffectRow label="행동" text={card.action.text} effects={card.action.effects} />}
+            {card.trait && <EffectRow label="특성" text={card.trait}><span className="trait-text clamp2">{card.trait}</span></EffectRow>}
+          </div>
         </div>
-        <div className="pc-foot gold" title={`${SET_LABEL[card.set]} 세트 1~4장 보유 시 승점 ${card.setPoints.join('·')}`}>
-          {card.setPoints.map((n, i) => (
-            <span key={i} className="laurel">{n}</span>
-          ))}
-        </div>
+      </div>
+      <div className="staff-foot" title={`${SET_LABEL[card.set]} 세트 1~4장 보유 시 승점 ${card.setPoints.join('·')}`}>
+        {card.setPoints.map((n, i) => (
+          <span key={i} className="laurel">{n}</span>
+        ))}
       </div>
     </Card>
   );
 }
 
-// 임원 카드 (룰북 p.7): 왼쪽 열에 1~6 투표 주사위
+// 임원 카드 (룰북 p.7): 남색 머리띠, 초상 + 오른쪽 주사위 세로열, 설명, 능력 상자
 export function ExecutiveCardView({ cardId, exhausted, ...props }: { cardId: string; exhausted?: boolean } & CardProps) {
   const card = cards.executive(cardId);
   const adjust = Object.entries(card.trackAdjust) as [keyof typeof card.trackAdjust, number][];
   return (
     <Card className={`executive${exhausted ? ' exhausted' : ''}`} {...props}>
-      <div className="pc-left">
-        <div className="ec-dice" title="주사위 눈별 투표 색">
-          {card.votes.map((c, i) => (
-            <span key={i} className={`die ${c}`} title={`${i + 1}: ${COLOR_LABEL[c]}`}>{i + 1}</span>
-          ))}
-        </div>
+      <div className="exec-head">
+        <span className="name clamp1">{card.name}</span>
+        <span className="job">임원</span>
       </div>
-      <div className="pc-main">
-        <div className="pc-top">
+      <div className="exec-body">
+        <div className="exec-portrait">
           <Portrait name={card.name} tone="exec" />
           {adjust.length > 0 && (
-            <div className="corner-bottom-right chips">
+            <div className="chips exec-adjust">
               {adjust.map(([t, d]) => (
                 <TrackChip key={t} track={t} delta={d} />
               ))}
             </div>
           )}
         </div>
-        <div className="name-band"><span className="clamp1">{card.name}</span><span className="band-sub">임원</span></div>
-        <div className="tag-band clamp1" title={card.description}>{card.description}</div>
-        <div className="rb-box">
-          {card.bonus && <EffectRow label="보너스" text={describeEffects(card.bonus)} effects={card.bonus} />}
-          {card.action && <EffectRow label="행동" text={card.action.text} cost={card.action.cost} effects={card.action.effects} />}
-          {card.trait && <EffectRow label="특성" text={card.trait}><span className="trait-text clamp3">{card.trait}</span></EffectRow>}
+        <div className="exec-dice" title="주사위 눈별 투표 색">
+          {card.votes.map((c, i) => (
+            <span key={i} className={`die ${c}`} title={`${i + 1}: ${COLOR_LABEL[c]}`}>{i + 1}</span>
+          ))}
         </div>
+      </div>
+      <div className="exec-desc clamp2" title={card.description}>{card.description}</div>
+      <div className="rb-box">
+        {card.bonus && <EffectRow label="보너스" text={describeEffects(card.bonus)} effects={card.bonus} />}
+        {card.action && <EffectRow label="행동" text={card.action.text} cost={card.action.cost} effects={card.action.effects} />}
+        {card.trait && <EffectRow label="특성" text={card.trait}><span className="trait-text clamp3">{card.trait}</span></EffectRow>}
       </div>
     </Card>
   );
 }
 
+// 스폰서 카드: 브랜드 명판 + 계약 유형 3줄 + 보너스
 export function SponsorCardView({ cardId, ...props }: { cardId: string } & CardProps) {
   const card = cards.sponsor(cardId);
   return (
     <Card className="sponsor" {...props}>
-      <div className="pc-left">
-        <TypeMark label="S" title="스폰서" />
-        <Icon name="money" size={16} className="side-icon" />
+      <div className="brand-plate">
+        <span className="brand-name clamp2">{card.name}</span>
+        <span className="brand-tag">스폰서</span>
       </div>
-      <div className="pc-main">
-        <div className="name-band"><span className="clamp1">{card.name}</span><span className="band-sub">스폰서</span></div>
-        <div className="tag-band clamp2" title={card.description}>{card.description}</div>
-        <div className="rb-box">
-          <EffectRow label="키트" text="즉시 효과를 얻고 카드를 버립니다" effects={card.kit} />
-          <EffectRow label="광고판" text="광고판 칸에 두고 카드 효과 또는 추가 보너스 중 하나" effects={card.billboard} />
-          <EffectRow label="명명권" text="스타디움에 두고 효과와 추가 보너스를 모두" effects={card.naming} />
-          <EffectRow label="보너스" text="광고판(택1)·명명권(추가) 보너스" effects={card.extraBonus} />
-        </div>
+      <div className="sponsor-desc clamp2" title={card.description}>{card.description}</div>
+      <div className="contract-rows">
+        <div className="contract-row" title="즉시 효과를 얻고 카드를 버립니다"><span className="contract-label">키트</span><EffectChips effects={card.kit} /></div>
+        <div className="contract-row" title="광고판 칸에 두고 카드 효과 또는 추가 보너스 중 하나"><span className="contract-label">광고판</span><EffectChips effects={card.billboard} /></div>
+        <div className="contract-row" title="스타디움에 두고 효과와 추가 보너스를 모두"><span className="contract-label">명명권</span><EffectChips effects={card.naming} /></div>
+      </div>
+      <div className="sponsor-bonus" title="광고판(택1)·명명권(추가) 보너스"><span className="contract-label bonus">보너스</span><EffectChips effects={card.extraBonus} /></div>
+    </Card>
+  );
+}
+
+// 이사회 카드: 보라 머리띠 + 사건 설명 + 노랑/파랑/빨강 결정 띠
+export function BoardCardView({ cardId, highlight, ...props }: { cardId: string; highlight?: DieColor | null } & CardProps) {
+  const card = cards.board(cardId);
+  return (
+    <Card className="board" {...props}>
+      <div className="board-head">
+        <span className="board-kicker">이사회</span>
+        <span className="name clamp1">{card.name}</span>
+      </div>
+      <div className="board-desc clamp3" title={card.description}>{card.description}</div>
+      <div className="decisions">
+        {(['yellow', 'blue', 'red'] as const).map((c) => (
+          <div key={c} className={`decision ${c}${highlight === c ? ' chosen' : ''}${highlight && highlight !== c ? ' dim' : ''}`} title={card.decisions[c].text}>
+            <span className="decision-color">{COLOR_LABEL[c]}</span>
+            <span className="decision-text clamp2">{card.decisions[c].text}</span>
+            <EffectChips effects={card.decisions[c].effects} />
+          </div>
+        ))}
       </div>
     </Card>
   );
 }
 
-export function BoardCardView({ cardId, highlight, ...props }: { cardId: string; highlight?: DieColor | null } & CardProps) {
-  const card = cards.board(cardId);
+// 전술 카드: 잔디 위 포메이션 점
+function FormationDots({ f }: { f: Formation }) {
+  const row = (n: number, key: string) => (
+    <div key={key} className="fd-row">
+      {Array.from({ length: n }, (_, i) => (
+        <span key={i} className="fd-dot" />
+      ))}
+    </div>
+  );
   return (
-    <Card className="board" {...props}>
-      <div className="pc-left">
-        <TypeMark label="이" title="이사회" />
-        <span className="ec-dice static">
-          {(['yellow', 'blue', 'red'] as const).map((c) => (
-            <span key={c} className={`die ${c}${highlight === c ? ' win' : ''}`} />
-          ))}
-        </span>
-      </div>
-      <div className="pc-main">
-        <div className="name-band"><span className="clamp1">{card.name}</span><span className="band-sub">이사회</span></div>
-        <div className="tag-band clamp2" title={card.description}>{card.description}</div>
-        <div className="rb-box decisions">
-          {(['yellow', 'blue', 'red'] as const).map((c) => (
-            <div key={c} className={`decision ${c}${highlight === c ? ' chosen' : ''}`} title={card.decisions[c].text}>
-              <span className={`die ${c}`} />
-              <span className="decision-text clamp2">{card.decisions[c].text}</span>
-              <EffectChips effects={card.decisions[c].effects} />
-            </div>
-          ))}
-        </div>
-      </div>
-    </Card>
+    <div className="formation-dots" title={`${f.defenders}-${f.midfielders}-${f.forwards}`}>
+      {row(f.forwards, 'f')}
+      {row(f.midfielders, 'm')}
+      {row(f.defenders, 'd')}
+      <div className="fd-row"><span className="fd-dot gk" /></div>
+    </div>
   );
 }
 
@@ -257,79 +267,75 @@ export function TacticCardView({ cardId, ...props }: { cardId: string } & CardPr
   const card = cards.tactic(cardId);
   return (
     <Card className="tactic" {...props}>
-      <div className="pc-left">
-        <TypeMark label="전" title="전술" />
-        <Icon name="tactic" size={16} className="side-icon" />
+      <div className="tactic-head">
+        <span className="name clamp1">{card.name}</span>
+        {card.basic && <span className="job">기본 전술</span>}
       </div>
-      <div className="pc-main">
-        <div className="pc-top formations-top">
-          {card.formations.map((f, i) => (
-            <span key={i} className="formation big">{f.defenders}-{f.midfielders}-{f.forwards}</span>
-          ))}
-        </div>
-        <div className="name-band"><span className="clamp1">{card.name}</span>{card.basic && <span className="band-sub">기본</span>}</div>
-        <div className="tag-band clamp1">{card.basic ? '포메이션 2개 중 선택' : '포메이션 1개 + 효과'}</div>
-        <div className="rb-box">
-          {card.effect ? <div className="effect-text clamp4">{card.effect.text}</div> : <div className="effect-text muted">효과 없음</div>}
-        </div>
+      <div className={`tactic-pitch${card.formations.length > 1 ? ' two' : ''}`}>
+        {card.formations.map((f, i) => (
+          <div key={i} className="tactic-formation">
+            <FormationDots f={f} />
+            <span className="formation">{f.defenders}-{f.midfielders}-{f.forwards}</span>
+          </div>
+        ))}
+      </div>
+      <div className="rb-box">
+        {card.effect ? <div className="effect-text clamp4">{card.effect.text}</div> : <div className="effect-text muted">포메이션 2개 중 하나를 골라 씁니다</div>}
       </div>
     </Card>
   );
 }
 
+// 목표 카드: 큰 별 + 목표/완벽 2단
 export function ObjectiveCardView({ cardId, ...props }: { cardId: string } & CardProps) {
   const card = cards.objective(cardId);
   return (
     <Card className="objective" {...props}>
-      <div className="pc-left">
-        <TypeMark label="목" title="목표" />
-        <Icon name="vp" size={16} className="side-icon" />
+      <div className="objective-head">
+        <span className="objective-star"><Icon name="vp" size={28} /></span>
+        <span className="name clamp2">{card.name}</span>
       </div>
-      <div className="pc-main">
-        <div className="name-band"><span className="clamp1">{card.name}</span><Chip icon="vp" value="+2 / +4" /></div>
-        <div className="tag-band clamp2" title={card.description}>{card.description}</div>
-        <div className="rb-box">
-          <EffectRow label="목표" text={card.goal}><span className="trait-text clamp3">{card.goal}</span></EffectRow>
-          <EffectRow label="완벽" text={card.perfect}><span className="trait-text clamp3">{card.perfect}</span></EffectRow>
-        </div>
+      <div className="objective-desc clamp2" title={card.description}>{card.description}</div>
+      <div className="objective-tier">
+        <span className="tier-label">목표 <Chip icon="vp" value="+2" /></span>
+        <span className="tier-text clamp3" title={card.goal}>{card.goal}</span>
+      </div>
+      <div className="objective-tier perfect">
+        <span className="tier-label">완벽 <Chip icon="vp" value="+2" /></span>
+        <span className="tier-text clamp3" title={card.perfect}>{card.perfect}</span>
       </div>
     </Card>
   );
 }
 
+// 상대 팀 카드: 빨간 스카우트 보고서 머리띠 + 엠블럼 + 포메이션, 공개되면 구획별 선수
 export function OpponentCardView({ cardId, revealed, ...props }: { cardId: string; revealed?: boolean } & CardProps) {
   const card = cards.opponent(cardId);
   return (
     <Card className="opponent" {...props}>
-      <div className="pc-left">
-        <TypeMark label={card.tier} title={`${card.tier}부`} />
-        <Icon name="goal" size={16} className="side-icon" />
+      <div className="scout-head">스카우트 보고서</div>
+      <div className="opp-identity">
+        <span className="emblem">{card.teamName.charAt(0)}</span>
+        <span className="opp-name clamp2">{card.teamName}</span>
+        <span className="formation big">{card.formation.defenders}-{card.formation.midfielders}-{card.formation.forwards}</span>
       </div>
-      <div className="pc-main">
-        <div className="pc-top formations-top">
-          <span className="formation big">{card.formation.defenders}-{card.formation.midfielders}-{card.formation.forwards}</span>
-        </div>
-        <div className="name-band"><span className="clamp1">{card.teamName}</span><span className="band-sub">스카우트</span></div>
-        <div className="tag-band clamp2" title={card.scoutReport}>{card.scoutReport}</div>
-        <div className="rb-box">
-          {revealed ? (
-            <div className="opp-sectors">
-              <div className="opp-row"><span className="timing">GK</span><span className="opp-slot defense">{card.goalkeeper.skill}<small>선방 {card.goalkeeper.saves}</small></span></div>
-              {SECTORS_ORDER.map((s) => (
-                <div key={s} className="opp-row">
-                  <span className="timing">{s}</span>
-                  {card.sectors[s].length === 0 && <span className="muted">—</span>}
-                  {card.sectors[s].map((slot, i) => (
-                    <span key={i} className={`opp-slot ${slot.role}`}><Icon name={slot.role} size={11} />{slot.skill}</span>
-                  ))}
-                </div>
+      {revealed ? (
+        <div className="opp-sectors">
+          <div className="opp-row"><span className="opp-label">GK</span><span className="opp-slot defense">{card.goalkeeper.skill}<small>선방 {card.goalkeeper.saves}</small></span></div>
+          {SECTORS_ORDER.map((s) => (
+            <div key={s} className="opp-row">
+              <span className="opp-label">{s}</span>
+              {card.sectors[s].length === 0 && <span className="muted">—</span>}
+              {card.sectors[s].map((slot, i) => (
+                <span key={i} className={`opp-slot ${slot.role}`}><Icon name={slot.role} size={12} />{slot.skill}</span>
               ))}
             </div>
-          ) : (
-            <div className="effect-text muted">경기 진행 때 구획별 선수가 공개됩니다</div>
-          )}
+          ))}
         </div>
-      </div>
+      ) : (
+        <div className="scout-text clamp4" title={card.scoutReport}>{card.scoutReport}</div>
+      )}
+      <div className="opp-foot">{card.tier}부</div>
     </Card>
   );
 }
