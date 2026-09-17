@@ -49,12 +49,19 @@ export class Bot {
       socket.on('open', () => {
         this.send(code ? { type: 'joinRoom', code, name: this.name } : { type: 'createRoom', name: this.name, seed });
       });
+      let joined = false;
       socket.on('message', (raw) => {
         const msg = JSON.parse(raw.toString()) as ServerMessage;
         if (msg.type === 'joined') {
+          joined = true;
           this.playerId = msg.playerId;
           this.code = msg.code;
           resolve();
+        } else if (msg.type === 'error' && !joined) {
+          // 입장 실패(방 없음, 이미 시작됨, 정원 초과 등)는 곧바로 실패로 끝낸다
+          socket.close();
+          reject(new Error(`${this.name}: ${msg.message}`));
+          return;
         }
         this.handle(msg);
       });
