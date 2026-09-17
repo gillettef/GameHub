@@ -120,7 +120,19 @@ MVP에서 **단순화 가능**한 부분: 선수/직원/임원/스폰서/이사�
 전술 카드는 **포메이션만** 사용하고 효과는 2단계.
 
 **현재 상태**: 위 1~6번 엔진 로직은 `server/src/engine/`에 구현·테스트 완료
-(`game.test.ts`가 4인 6주 한 판을 자동 진행). 남은 MVP 작업은 서버(방/WebSocket/개별 뷰)와 클라이언트 UI.
+(`game.test.ts`가 4인 6주 한 판을 자동 진행). 서버 계층(방·WebSocket·개별 뷰)도 완료. 남은 MVP 작업은 클라이언트 UI.
+
+### 서버 프로토콜 (`server/src/protocol.ts`)
+
+- WebSocket `/ws`, JSON 메시지. 클라이언트→서버: `createRoom{name}`, `joinRoom{code,name}`,
+  `rejoin{code,playerId,token}`, `setDivision{division}`(호스트), `startGame`(호스트), `action{action: GameAction}`.
+- 서버→클라이언트: `joined{code,playerId,token}`(토큰은 재접속용, 클라이언트가 localStorage에 보관),
+  `room{room}`(로비 정보), `state{view}`(참가자별 `GameView`), `error{message}`.
+- `GameAction`은 `server/src/engine/actions.ts`의 union — 엔진 함수 하나에 액션 하나. 서버는 액션을
+  `applyAction`에 넘기고 결과를 방 전원에게 각자의 `viewFor(state, pid)`로 브로드캐스트한다.
+- `GameView`(`engine/view.ts`)는 다른 참가자의 드래프트 손패·목표 카드·전술 손패·라인업·덱 내용을 제거한다.
+  카드 정의(mock 데이터 전체)는 `GET /api/cards`로 받는다.
+- 방은 `RoomManager`(인메모리) — 코드 5자, 최대 4명, 호스트 = 생성자, 6시간 미활동 시 정리.
 
 ### 이후 확장 (2단계 이후)
 - 전술 카드 효과, 목표 카드 달성 판정(+2/+4 승점), 경기 전/중/후 조건부 카드 효과 전반
