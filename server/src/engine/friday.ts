@@ -6,6 +6,7 @@ import type { Rng } from './rng';
 import { GameError, getPlayer } from './state';
 import type { GameState, LineupSubmission, MatchAftermath, PlayerId, PlayerInstance, PlayerState } from './state';
 import { RESOURCES, SECTORS } from './types';
+import { runWeekend } from './weekend';
 import type { Cost, Effect, MatchTiming, OpponentTeamCard, PlayerEffect, Resources, Sector } from './types';
 
 const PRINTED_STANDS = 2; // p.6 1번/2번 관중석
@@ -315,7 +316,7 @@ export function acceptMatchRoll(state: GameState, pid: PlayerId, rng: Rng): Game
   }
   m.decided = true;
   if (next.phase.kind === 'friday.aftermath' && Object.values(next.phase.matches).every((x) => x.decided)) {
-    next.phase = { kind: 'weekend' };
+    runWeekend(next, rng);
   }
   return next;
 }

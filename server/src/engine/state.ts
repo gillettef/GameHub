@@ -1,4 +1,5 @@
 import type { MatchReport } from './match';
+import type { ScoreBreakdown } from './scoring';
 import type { Division, Effect, InfrastructureType, PlayerTokens, Resources, Role, Sector, TrackPositions } from './types';
 
 export type PlayerId = string;
@@ -123,7 +124,7 @@ export type Phase =
   | { kind: 'weekday'; day: Weekday; current: PlayerId; basicDone: boolean; paidDone: boolean }
   | { kind: 'friday.prepare'; submitted: Record<PlayerId, LineupSubmission | null> }
   | { kind: 'friday.aftermath'; matches: Record<PlayerId, MatchAftermath> }
-  | { kind: 'weekend' };
+  | { kind: 'gameOver'; scores: Record<PlayerId, ScoreBreakdown>; winners: PlayerId[] };
 
 export interface GameState {
   id: string;
