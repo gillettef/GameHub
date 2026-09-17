@@ -57,3 +57,9 @@ export function activeSide(instance: PlayerInstance): PlayerSide {
   const card = cards.player(instance.cardId);
   return instance.trained ? card.trained : card.untrained;
 }
+
+// 역량 + 역량 토큰 − 약점 토큰, 0 미만 불가 (p.15, p.28)
+export function effectiveSkill(instance: PlayerInstance): number {
+  const t = instance.tokens;
+  return Math.max(0, activeSide(instance).skill + t.strengthTemp + t.strengthPerm - t.weaknessTemp - t.weaknessPerm);
+}

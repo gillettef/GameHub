@@ -1,6 +1,7 @@
 import { EXECUTIVE_CARDS, OBJECTIVE_CARDS, OPPONENT_CARDS, PLAYER_CARDS, SPONSOR_CARDS, STAFF_CARDS, TACTIC_CARDS, BOARD_CARDS } from '../data';
 import { cards } from './cards';
 import { addToRoster, applyEffects, moveTrack } from './effects';
+import { startMonday } from './monday';
 import { GameError, getPlayer, leftOf } from './state';
 import type { GameState, PlayerId, PlayerState } from './state';
 import type { Rng } from './rng';
@@ -196,8 +197,6 @@ export function chooseObjective(state: GameState, pid: PlayerId, cardId: string)
   phase.chosen[pid] = cardId;
   getPlayer(next, pid).objective = cardId;
 
-  if (Object.values(phase.chosen).every((c) => c !== null)) {
-    next.phase = { kind: 'monday.procurement' };
-  }
+  if (Object.values(phase.chosen).every((c) => c !== null)) startMonday(next);
   return next;
 }
