@@ -142,13 +142,19 @@ label.row { flex-direction: row; align-items: center; }
 .pseat-main { display: flex; flex-direction: column; gap: 3px; padding: 6px 8px 6px 0; min-width: 0; }
 .seat-name { font-weight: 600; display: flex; gap: 4px; align-items: center; flex-wrap: wrap; }
 .seat-res { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
-.seat-res .res { display: inline-flex; align-items: center; gap: 2px; font-size: 13px; font-weight: 600; }
-.seat-res .res small { color: var(--muted); font-weight: 400; margin-left: 1px; }
-.seat-res .res.sub { font-size: var(--fs-sub); color: var(--muted); font-weight: 500; }
-.seat-res .money { color: var(--c-money); }
-.seat-res .fandom { color: var(--c-fandom); }
-.seat-res .ops { color: var(--c-ops); }
-.seat-res .stamina { color: var(--c-stamina); }
+.seat-res .res { display: inline-flex; align-items: center; gap: 3px; font-size: 14px; font-weight: 600; line-height: 20px; }
+.seat-res .res.sub { color: var(--muted); font-weight: 500; }
+/* 자원 알약: [보유 | 트랙] 두 칸. 보유 = 자원 색을 채운 칸(자원 칩과 같음), 트랙 = 흰 바탕 + 색 테두리 + 계단 그림(트랙 칩과 같음).
+   아이콘·숫자는 14px(사용자 요청) */
+.res-pill { --rc: var(--ink-2); display: inline-flex; align-items: stretch; border: 1px solid var(--rc); border-radius: 6px; overflow: hidden; font-size: 14px; font-weight: 700; line-height: 20px; color: var(--rc); white-space: nowrap; }
+.res-pill > span { display: inline-flex; align-items: center; gap: 3px; padding: 0 5px; }
+.res-pill .held { background: var(--rc); color: #fff; }
+.res-pill .track { background: #fff; }
+.res-pill .track .track-glyph { opacity: 0.85; }
+.res-pill.money { --rc: var(--c-money); }
+.res-pill.fandom { --rc: var(--c-fandom); }
+.res-pill.ops { --rc: var(--c-ops); }
+.res-pill.stamina { --rc: var(--c-stamina); }
 .seat-status { width: 8px; height: 8px; border-radius: 50%; margin-left: 2px; flex: none; }
 .seat-status.acting { background: var(--gold); box-shadow: 0 0 0 3px #fbf1d6; }
 .seat-status.done { background: var(--pitch); }

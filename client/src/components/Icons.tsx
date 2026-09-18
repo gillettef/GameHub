@@ -92,9 +92,9 @@ export function ResourceChip({ resource, amount, signedValue = false, cost = fal
 
 // 트랙 마커 그림: 올라가는 계단 세 칸 + 마커. 자원 칩(채운 바탕 = 자원을 바로 받음)과 달리
 // 트랙 칩은 흰 바탕 + 색 테두리 + 이 그림 + "트랙" 꼬리표로 "구단 보드의 마커를 옮긴다"는 뜻을 드러낸다
-function TrackGlyph({ up }: { up: boolean }) {
+export function TrackGlyph({ up, size = 16 }: { up: boolean; size?: number }) {
   return (
-    <svg className="icon track-glyph" width={16} height={16} viewBox="0 0 16 16" aria-hidden="true">
+    <svg className="icon track-glyph" width={size} height={size} viewBox="0 0 16 16" aria-hidden="true">
       <path d="M1.5 13.5h4v-3h4v-3h4v-3" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" strokeLinecap="round" />
       {up ? <path d="M9.2 4.6 12 1.8l2.8 2.8" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" /> : <circle cx="3.5" cy="11" r="1.9" fill="currentColor" />}
     </svg>
