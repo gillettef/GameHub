@@ -2,6 +2,7 @@
 import type { StaffCard } from '../engine/types';
 
 export const STAFF_CARDS: StaffCard[] = [
+  // 첫 번째 트레이너 4장 (p.4 3): 준비 때 각자 1장. 모두 "선수 훈련"이지만 방식이 다르다 (사용자 요청, 2026-09)
   {
     id: 'st-01',
     name: '마우로 티시노',
@@ -11,9 +12,11 @@ export const STAFF_CARDS: StaffCard[] = [
     set: 'coaching',
     setPoints: [0, 2, 4, 6],
     action: { cost: {}, effects: [{ type: 'trainPlayer', count: 1 }], text: '선수 1명을 훈련시킵니다.' },
+    trait: { text: '기반 시설을 건설할 때 1[돈]을 덜 냅니다.', effect: { kind: 'infraDiscount', amount: 1 } },
     placeholder: true,
   },
   {
+    // 혹독한 훈련: 강해지지만 다친다 — 훈련한 선수에 영구 역량 +1 과 부상 +1
     id: 'st-02',
     name: '엘레나 코바치',
     job: '첫 번째 트레이너',
@@ -21,10 +24,15 @@ export const STAFF_CARDS: StaffCard[] = [
     minPlayers: 2,
     set: 'coaching',
     setPoints: [0, 2, 4, 6],
-    action: { cost: {}, effects: [{ type: 'trainPlayer', count: 1 }], text: '선수 1명을 훈련시킵니다.' },
+    action: {
+      cost: {},
+      effects: [{ type: 'trainPlayer', count: 1, withTokens: { strengthPerm: 1, injury: 1 } }],
+      text: '선수 1명을 훈련시키고, 그 선수에 영구 역량 토큰 1개와 [부상] 토큰 1개를 놓습니다.',
+    },
     placeholder: true,
   },
   {
+    // 컨디셔닝: 체력을 들여 훈련한 선수가 이번 경기에 힘을 낸다
     id: 'st-03',
     name: '박승호',
     job: '첫 번째 트레이너',
@@ -32,10 +40,15 @@ export const STAFF_CARDS: StaffCard[] = [
     minPlayers: 2,
     set: 'coaching',
     setPoints: [0, 2, 4, 6],
-    action: { cost: {}, effects: [{ type: 'trainPlayer', count: 1 }], text: '선수 1명을 훈련시킵니다.' },
+    action: {
+      cost: { stamina: 1 },
+      effects: [{ type: 'trainPlayer', count: 1, withTokens: { strengthTemp: 1 } }],
+      text: '1[체력]을 지불하고 선수 1명을 훈련시킨 뒤, 그 선수에 일시적 역량 토큰 1개를 놓습니다.',
+    },
     placeholder: true,
   },
   {
+    // 합숙 훈련: 운영을 들이면 두 명을 한꺼번에 훈련
     id: 'st-04',
     name: '토마스 린드',
     job: '첫 번째 트레이너',
@@ -43,7 +56,7 @@ export const STAFF_CARDS: StaffCard[] = [
     minPlayers: 2,
     set: 'coaching',
     setPoints: [0, 2, 4, 6],
-    action: { cost: {}, effects: [{ type: 'trainPlayer', count: 1 }], text: '선수 1명을 훈련시킵니다.' },
+    action: { cost: { ops: 1 }, effects: [{ type: 'trainPlayer', count: 2 }], text: '1[운영]을 지불하고 선수 2명을 훈련시킵니다.' },
     placeholder: true,
   },
   {

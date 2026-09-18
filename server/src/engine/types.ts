@@ -52,18 +52,25 @@ export type MatchCondition =
 export type Passive = 'extraStand' | 'fandomOnWin'; // 상시 효과: 관중석 +1 / 승리마다 팬덤 +1
 export type DayRestriction = 'noBasic' | 'cardActionOnly'; // 이사회 효과의 요일 제한 (점검용 토큰)
 
+// target: 'self' = 이 효과를 가진 선수 카드 자신이 대상 ("이 선수를 훈련합니다", "이 선수에 부상 토큰"). 선수 카드 효과에서만 뜻이 있고,
+// 효과의 출처 카드(EffectContext.inst)가 없으면 무시된다
+export type SelfTarget = { target?: 'self' };
+
 export type Effect =
   | { type: 'gainResource'; resource: Resource; amount: number } // 음수 = 잃음
   | { type: 'moveTrack'; track: Track; delta: number }
   | { type: 'gainVP'; amount: number }
-  | { type: 'trainPlayer'; count: number }
+  // withTokens: 훈련한 그 선수에게 함께 놓는 토큰 ("혹독한 훈련: 훈련 + 영구 역량 1 + 부상 1" 류의 첫 번째 트레이너)
+  | ({ type: 'trainPlayer'; count: number; withTokens?: Partial<Record<PlayerToken, number>> } & SelfTarget)
   | { type: 'drawTactic'; count: number }
   | { type: 'recruitProspectFree' }
   | { type: 'placeStamina'; count: number } // 선수 카드 1장에 체력 올려놓기
   // spread: count개를 한 카드에 몰지 않고 1개씩 대상을 골라 나눠 놓거나 제거한다 ("카드에 있는 [약점]을 3개까지 버립니다" 류)
   // only: 'playedAttack' = 이번 경기에 출전 중인 [공격] 선수만 대상
-  | { type: 'addPlayerToken'; token: PlayerToken; count: number; spread?: true; only?: 'playedAttack' }
-  | { type: 'removePlayerToken'; token: PlayerToken; count: number; spread?: true }
+  | ({ type: 'addPlayerToken'; token: PlayerToken; count: number; spread?: true; only?: 'playedAttack' } & SelfTarget)
+  | ({ type: 'removePlayerToken'; token: PlayerToken; count: number; spread?: true } & SelfTarget)
+  // 주사위(d6)를 굴려 눈이 atMost 이하면 effects, 아니면 otherwise 를 적용한다 (베테랑의 "주사위 굴림으로 강제 훈련·부상" 류). 결과는 기록에 남긴다
+  | { type: 'rollDie'; atMost: number; effects: Effect[]; otherwise?: Effect[] }
   | { type: 'scoreGoal'; team: 'self' | 'opponent'; amount: number } // 경기 중/후
   | { type: 'peekOpponent' } // 상대 팀 카드 더미 맨 위 카드의 앞면을 확인 (그 카드로 경기할 때까지 유지)
   // ---- 경기 효과 (경기 준비·진행 중에만 뜻이 있고, 밖에서는 기록만 남긴다) ----

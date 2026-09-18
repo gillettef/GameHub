@@ -5,7 +5,7 @@ import { GameError, addLog, emptyTokens, getPlayer } from './state';
 import type { GameState, MatchMods, PendingTarget, PlayerId, PlayerInstance, PlayerState } from './state';
 import { traitSum } from './traits';
 import { TRACK_MAX, TRACK_MIN } from './types';
-import type { Effect, MarketRow, MatchCondition, Sector, Track } from './types';
+import type { Effect, MarketRow, MatchCondition, PlayerToken, Sector, Track } from './types';
 import { assignUniform, releaseUniform } from './uniforms';
 
 // p.7: 5를 넘기면 이동 대신 보드에 표시된 자원 획득, 1 아래로 내려가면 표시된 자원 손실 (트랙마다 다른 자원)
@@ -94,13 +94,17 @@ export interface EffectContext {
 // 대상 선택이 필요한 효과의 후보. null 이면 대상이 필요 없는 효과
 function candidatesFor(state: GameState, player: PlayerState, effect: Effect, ctx: EffectContext): { target: PendingTarget; candidates: string[]; row?: MarketRow } | null {
   const players = (ids: string[]) => ({ target: 'player' as const, candidates: ids });
+  // target: 'self' — 효과를 가진 선수 카드 자신만 후보 (출처 카드가 없거나 조건에 안 맞으면 후보 0 = 무시)
+  const self = (eligible: (p: PlayerInstance) => boolean) => players(ctx.inst && player.roster.includes(ctx.inst) && eligible(ctx.inst) ? [ctx.inst.instanceId] : []);
   switch (effect.type) {
     case 'trainPlayer':
+      if (effect.target === 'self') return self((p) => !p.trained);
       return players(player.roster.filter((p) => !p.trained).map((p) => p.instanceId));
     case 'placeStamina':
     case 'releasePlayer':
       return players(player.roster.map((p) => p.instanceId));
     case 'addPlayerToken': {
+      if (effect.target === 'self') return self(() => true);
       if (effect.only === 'playedAttack') {
         const played = new Set(ctx.played ?? []);
         return players(player.roster.filter((p) => played.has(p.instanceId) && activeSide(p).role === 'attack').map((p) => p.instanceId));
@@ -108,6 +112,7 @@ function candidatesFor(state: GameState, player: PlayerState, effect: Effect, ct
       return players(player.roster.map((p) => p.instanceId));
     }
     case 'removePlayerToken':
+      if (effect.target === 'self') return self((p) => p.tokens[effect.token] > 0);
       return players(player.roster.filter((p) => p.tokens[effect.token] > 0).map((p) => p.instanceId));
     case 'addStaffSuspension':
       return { target: 'staff', candidates: player.staff.map((_, i) => String(i)) };
@@ -122,9 +127,12 @@ function candidatesFor(state: GameState, player: PlayerState, effect: Effect, ct
 
 function applyTargeted(state: GameState, player: PlayerState, effect: Effect, choice: string, rng: Rng): void {
   switch (effect.type) {
-    case 'trainPlayer':
-      trainPlayer(player, findInstance(player, choice));
+    case 'trainPlayer': {
+      const inst = findInstance(player, choice);
+      trainPlayer(player, inst);
+      for (const [token, n] of Object.entries(effect.withTokens ?? {}) as [PlayerToken, number][]) inst.tokens[token] += n;
       return;
+    }
     case 'placeStamina': {
       const inst = findInstance(player, choice);
       inst.placed.stamina = (inst.placed.stamina ?? 0) + effect.count;
@@ -302,6 +310,13 @@ export function applyEffects(state: GameState, pid: PlayerId, effects: readonly 
       case 'upkeepDiscount':
         player.upkeepDiscount += effect.amount;
         break;
+      case 'rollDie': {
+        const face = (rng ?? noRng()).die(6);
+        const hit = face <= effect.atMost;
+        addLog(state, `${source}: 주사위 ${face} (${effect.atMost} 이하면 적용) → ${hit ? '적용' : effect.otherwise?.length ? '대신 다른 효과' : '적용 안 함'}`, { actor: pid });
+        applyEffects(state, pid, hit ? effect.effects : (effect.otherwise ?? []), source, ctx, rng);
+        break;
+      }
       case 'peekOpponent':
         if (player.opponentDeck.length === 0) {
           addLog(state, `${source}: 확인할 상대 팀 카드가 없음`, { actor: pid });

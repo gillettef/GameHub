@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { cards } from '@server/engine/cards';
+import { cards, instanceName } from '@server/engine/cards';
 import type { LogEntry, PlayerId } from '@server/engine/state';
 import { RESOURCES } from '@server/engine/types';
 import { hireCost, marketMinIndex, prospectCost } from '@server/engine/traits';
@@ -267,7 +267,8 @@ export function PendingModal() {
       return row === 'players' || row === 'veterans' ? cards.player(id).name : row === 'staff' ? cards.staff(id).name : cards.sponsor(id).name;
     }
     if (target === 'token') return `토큰 ${me.uniforms.find((u) => u.id === c)?.number ?? '∅'}`;
-    return cards.player(me.roster.find((r) => r.instanceId === c)?.cardId ?? '').name;
+    const inst = me.roster.find((r) => r.instanceId === c);
+    return inst ? instanceName(inst) : ''; // 훈련 전 유망주는 '유망주'
   };
   const pickedName = picked ? nameOf(picked) : null;
   const e = pending.effect;

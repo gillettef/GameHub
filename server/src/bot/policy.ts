@@ -40,6 +40,8 @@ function weekdayAction(view: GameView, me: PlayerPublicView, rng: Rng, failed: S
       const idx = usableStaffAction(me);
       if (idx >= 0 && me.roster.some((r) => !r.trained)) options.push({ type: 'cardAction', source: { kind: 'staff', index: idx } });
     }
+    // 점검용 토큰(이사회 효과)으로 오늘 카드 행동만 할 수 있으면 다른 기본 행동은 시도하지 않는다
+    if (view.phase.restriction === 'cardActionOnly') return options[0] ?? { type: 'pass' };
     if (can('hireStaff') && me.staff.length < STAFF_TARGET) {
       for (let i = 4; i >= 2; i--) {
         const id = view.market.staff[i];

@@ -22,7 +22,9 @@ export function turnKeyOf(view: GameView): string {
 }
 
 // 액션 뒤에 쉬는 시간(delayMs 의 배수). 사람이 지켜보며 봇의 선택과 결과(효과 토스트·주사위 애니메이션)를
-// 읽을 수 있도록, 굴린 뒤에는 주사위가 멈추고 결과가 보일 때까지, 행동 뒤에는 토스트가 떠 있는 동안 기다린다
+// 읽을 수 있도록, 굴린 뒤에는 주사위가 멈추고 결과가 보일 때까지, 행동 뒤에는 토스트가 떠 있는 동안 기다린다.
+// 토스트는 1초(client feed.tsx TOAST_MS)이므로 토스트가 생기는 액션의 배수는 ≥1.5(기본 800ms 기준 1.2초)로 두어
+// 알림이 닫힌 뒤에 다음 행동이 온다 (사용자 요청, 2026-09). 준비 단계 선택·이사회 주사위는 토스트가 없다
 const PAUSE_FACTOR: Record<GameAction['type'], number> = {
   draftPick: 1,
   chooseObjective: 1,
@@ -48,6 +50,8 @@ const PAUSE_FACTOR: Record<GameAction['type'], number> = {
   acceptMatchRoll: 3,
   undoTurn: 1,
 };
+
+const MAX_ATTEMPTS = 12; // 한 step 에서 거부 뒤 다시 판단하는 최대 횟수 (액션 종류 수보다 크면 충분)
 
 // 방 안의 서버 측 봇을 움직인다. 사람 액션이 들어올 때마다 poke() 해 주면
 // 봇들이 한 번에 한 액션씩(관전 가능하도록 delayMs 를 기준으로 액션마다 다른 간격) 더 할 일이 없을 때까지 진행한다
@@ -94,15 +98,18 @@ export class BotDriver {
     for (const bot of room.players.filter((p) => p.isBot)) {
       const view = viewFor(room.game, bot.id);
       const mem = this.memoryFor(room, bot.id, view);
-      const action = decide(view, mem.rng, mem.failed);
-      if (!action) continue;
-      try {
-        const next = this.rooms.act(code, bot.id, action);
-        this.onChange(next);
-        return action;
-      } catch (e) {
-        if (!(e instanceof RoomError)) throw e;
-        mem.failed.add(action.type === 'cardAction' && action.paid ? 'paidCardAction' : action.type);
+      // 서버가 거부하면 그 액션 종류를 기억하고 곧바로 다시 판단한다 — 거부 한 번에 멈추면 사람이 다시 건드릴 때까지 봇이 서 버린다
+      for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+        const action = decide(view, mem.rng, mem.failed);
+        if (!action) break;
+        try {
+          const next = this.rooms.act(code, bot.id, action);
+          this.onChange(next);
+          return action;
+        } catch (e) {
+          if (!(e instanceof RoomError)) throw e;
+          mem.failed.add(action.type === 'cardAction' && action.paid ? 'paidCardAction' : action.type);
+        }
       }
     }
     return null;

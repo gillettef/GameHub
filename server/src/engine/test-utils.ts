@@ -44,7 +44,14 @@ export function gameAtMonday(config: GameConfig = FOUR_PLAYERS, seed = 42): Game
 // 대기 중인 대상 선택을 전부 첫 후보로 처리하고, 경기 준비 중이면 차례를 넘긴다 (경기 전 효과의 대상 선택 뒤에 필요)
 export function settlePending(s: GameState, rng: Rng = seededRng()): GameState {
   for (const id of s.seats) {
-    for (const p of [...s.players[id]!.pending]) resolvePending(s, id, p.id, p.candidates[0]!, rng);
+    // 하나를 고르면 남은 대기 효과가 자동 적용·소거될 수 있으므로(훈련 2명 등) 복사본이 아니라 매번 맨 앞을 본다
+    const pending = s.players[id]!.pending;
+    let guard = 0;
+    while (pending.length > 0) {
+      if (++guard > 50) throw new Error('pending did not settle');
+      const p = pending[0]!;
+      resolvePending(s, id, p.id, p.candidates[0]!, rng);
+    }
     advanceFriday(s, id, rng);
   }
   return s;
