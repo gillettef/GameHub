@@ -108,10 +108,10 @@ describe('게임 종료 승점 (p.26)', () => {
     expect(score.leagueRank).toBe(1);
     expect(score.league).toBe(15);
     expect(score.tokens).toBe(10);
-    expect(score.infrastructure).toBe(3);
+    expect(score.infrastructure).toBe(2); // p.26 예시: 관중석 2개 = 2승점
     expect(score.office).toBe(5);
     expect(score.suspensions).toBe(-1);
-    expect(score.total).toBe(15 + 10 + score.staffSets + 3 + 5 - 1);
+    expect(score.total).toBe(15 + 10 + score.staffSets + 2 + 5 - 1);
   });
 
   it('동점이면 리그 순위, 그래도 같으면 공동 승리', () => {

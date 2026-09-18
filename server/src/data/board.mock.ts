@@ -34,14 +34,14 @@ export const BOARD_DATA: BoardData = {
     ops: { below: 'fandom', above: 'stamina' },
     stamina: { below: 'ops', above: 'fandom' },
   },
-  // p.19 종류/보너스. vp는 placeholder (p.26 예시: 관중석 2개 = 2승점)
+  // p.19 기반 시설 토큰 (원본 보드 수치, 사용자 확인 2026-09): 건설 즉시 능력치 트랙 +1, 게임 종료 시 승점
   infrastructure: [
-    { type: 'lights', name: '스타디움 조명', vp: 1, bonus: [{ type: 'gainResource', resource: 'fandom', amount: 1 }], unique: false, placeholder: true },
-    { type: 'shop', name: '상점', vp: 1, bonus: [{ type: 'gainResource', resource: 'money', amount: 1 }], unique: false, placeholder: true },
-    { type: 'execOffice', name: '임원실', vp: 1, bonus: [{ type: 'gainResource', resource: 'ops', amount: 1 }], unique: false, placeholder: true },
-    { type: 'trainingGround', name: '훈련장', vp: 1, bonus: [{ type: 'gainResource', resource: 'stamina', amount: 1 }], unique: false, placeholder: true },
-    { type: 'stand3', name: '3번 관중석', vp: 1, bonus: [], unique: true, placeholder: true },
-    { type: 'stand4', name: '4번 관중석', vp: 2, bonus: [], unique: true, requires: 'stand3', placeholder: true }, // 3번 관중석 다음에만 (번호 순서)
-    { type: 'billboard3', name: '3번 광고판', vp: 1, bonus: [], unique: true, placeholder: true },
+    { type: 'lights', name: '스타디움 조명', vp: 2, bonus: [{ type: 'moveTrack', track: 'fandom', delta: 1 }], unique: false },
+    { type: 'shop', name: '상점', vp: 0, bonus: [{ type: 'moveTrack', track: 'money', delta: 1 }], unique: false },
+    { type: 'execOffice', name: '임원실', vp: 2, bonus: [{ type: 'moveTrack', track: 'ops', delta: 1 }], unique: false },
+    { type: 'trainingGround', name: '훈련장', vp: 2, bonus: [{ type: 'moveTrack', track: 'stamina', delta: 1 }], unique: false },
+    { type: 'stand3', name: '3번 관중석', vp: 1, bonus: [], unique: true },
+    { type: 'stand4', name: '4번 관중석', vp: 1, bonus: [], unique: true, requires: 'stand3' }, // 3번 관중석 다음에만 (번호 순서)
+    { type: 'billboard3', name: '3번 광고판', vp: 1, bonus: [], unique: true },
   ],
 };
