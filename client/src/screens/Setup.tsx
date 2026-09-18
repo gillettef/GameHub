@@ -3,6 +3,13 @@ import { useCommit } from '../commit';
 import { ExecutiveCardView, ObjectiveCardView } from '../components/Cards';
 import { useGame } from '../store';
 
+// 아직 고르지 않은 참가자 이름. 전원이 골라야(봇 포함) 다음 카드·다음 단계로 넘어간다
+function WaitingFor({ done }: { done: Record<string, boolean> }) {
+  const { view } = useGame();
+  const names = view.seats.filter((id) => !done[id]).map((id) => view.players[id]!.name);
+  return <p className="muted waiting-for">다른 참가자를 기다리는 중… {names.length > 0 && <span>({names.join(', ')})</span>}</p>;
+}
+
 function Waiting({ done }: { done: Record<string, boolean> }) {
   const { view } = useGame();
   return (
@@ -33,7 +40,7 @@ export function DraftScreen() {
           <ExecutiveCardView key={cardId} cardId={cardId} chosen={chosen === cardId} onClick={mine ? undefined : () => select(cardId, { type: 'draftPick', cardId }, <>임원 영입: <b>{cards.executive(cardId).name}</b></>)} />
         ))}
       </div>
-      {mine && <p className="muted">다른 참가자를 기다리는 중</p>}
+      {mine && <WaitingFor done={picked} />}
     </section>
   );
 }
@@ -56,7 +63,7 @@ export function ObjectiveScreen() {
           <ObjectiveCardView key={cardId} cardId={cardId} chosen={chosen === cardId} onClick={mine ? undefined : () => select(cardId, { type: 'chooseObjective', cardId }, <>목표 카드: <b>{cards.objective(cardId).name}</b></>)} />
         ))}
       </div>
-      {mine && <p className="muted">다른 참가자를 기다리는 중</p>}
+      {mine && <WaitingFor done={chosenMap} />}
     </section>
   );
 }
