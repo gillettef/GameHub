@@ -140,8 +140,9 @@ describe('스폰서 계약 (p.18)', () => {
 });
 
 describe('스타디움/사무실 건설 (p.19)', () => {
-  it('기반 시설 3돈, 고유 시설 중복 불가, 최대 7개', () => {
+  it('기반 시설 3돈, 고유 시설 중복 불가, 관중석은 번호 순서, 최대 7개', () => {
     let s = tuesday();
+    expect(() => buildInfrastructure(s, 'a', 'stand4')).toThrow(GameError); // 3번 관중석부터
     s = buildInfrastructure(s, 'a', 'stand3');
     expect(s.players['a']!.resources.money).toBe(17);
     expect(s.players['a']!.infrastructure).toEqual(['stand3']);

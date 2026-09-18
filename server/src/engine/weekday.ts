@@ -150,6 +150,7 @@ export function buildInfrastructure(state: GameState, pid: PlayerId, type: Infra
   if (!def) throw new GameError(`unknown infrastructure: ${type}`);
   if (player.infrastructure.length >= INFRASTRUCTURE_MAX) throw new GameError('stadium full');
   if (def.unique && player.infrastructure.includes(type)) throw new GameError(`${type} already built`);
+  if (def.requires && !player.infrastructure.includes(def.requires)) throw new GameError(`${type} requires ${def.requires}`);
   pay(player, { money: INFRASTRUCTURE_COST });
   player.infrastructure.push(type);
   applyEffects(next, pid, def.bonus, def.name);

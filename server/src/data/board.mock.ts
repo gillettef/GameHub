@@ -41,7 +41,7 @@ export const BOARD_DATA: BoardData = {
     { type: 'execOffice', name: '임원실', vp: 1, bonus: [{ type: 'gainResource', resource: 'ops', amount: 1 }], unique: false, placeholder: true },
     { type: 'trainingGround', name: '훈련장', vp: 1, bonus: [{ type: 'gainResource', resource: 'stamina', amount: 1 }], unique: false, placeholder: true },
     { type: 'stand3', name: '3번 관중석', vp: 1, bonus: [], unique: true, placeholder: true },
-    { type: 'stand4', name: '4번 관중석', vp: 2, bonus: [], unique: true, placeholder: true },
+    { type: 'stand4', name: '4번 관중석', vp: 2, bonus: [], unique: true, requires: 'stand3', placeholder: true }, // 3번 관중석 다음에만 (번호 순서)
     { type: 'billboard3', name: '3번 광고판', vp: 1, bonus: [], unique: true, placeholder: true },
   ],
 };
