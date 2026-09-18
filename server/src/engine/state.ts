@@ -68,6 +68,7 @@ export interface PlayerState {
   restrictions: { week: number; day: Weekday; mode: DayRestriction }[]; // 이사회 효과의 요일 제한(점검용 토큰). 그 주가 끝나면 버린다
   passives: { passive: Passive; source: string }[]; // 상시 효과 (스폰서 추가 보너스 등). source = 카드 이름
   upkeepDiscount: number; // 다음 주말 유지비 할인
+  tacticRedrawn: boolean; // 이번 경기일에 특성으로 전술 카드를 새로 뽑았는가 (경기일마다 1회)
   vp: number; // 개인 공급처의 승점 토큰
   pending: PendingEffect[];
   nextInstance: number;

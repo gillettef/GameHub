@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { boardDecision } from '@server/engine/monday';
+import { hasTrait } from '@server/engine/traits';
 import type { MatchReport } from '@server/engine/match';
 import { Icon } from './Icons';
 import { COLOR_LABEL, matchDieLabel } from '../labels';
@@ -134,7 +135,8 @@ export function DiceTray() {
 
   if (!mode || !actor) return null;
   const canRoll = mine && !decided && roll === null;
-  const canReroll = mine && !decided && roll !== null && actor.resources.fandom >= 1;
+  const freeReroll = hasTrait(actor, mode === 'board' ? 'freeBoardReroll' : 'freeMatchReroll'); // 특성: 팬덤 없이 재굴림
+  const canReroll = mine && !decided && roll !== null && (freeReroll || actor.resources.fandom >= 1);
   // 눈이 나온 뒤 적용 버튼 라벨: 이사회는 결정 색(엔진과 같은 집계), 경기는 영향 표의 결과
   const acceptLabel = roll === null ? '' : mode === 'board' ? `${COLOR_LABEL[boardDecision(actor, roll)]} 결정 적용` : `적용: ${outcome ? matchDieLabel(outcome, roll) : ''}`;
   const accept = () => act(mode === 'board' ? { type: 'acceptBoardRoll' } : { type: 'acceptMatchRoll' });
@@ -176,8 +178,8 @@ export function DiceTray() {
                 {spinning ? '구르는 중' : acceptLabel}
               </button>
             )}
-            <button disabled={spinning || !canReroll} onClick={() => start(true)} title="팬덤 1개를 내고 다시 굴립니다">
-              <Icon name="fandom" />1 다시
+            <button disabled={spinning || !canReroll} onClick={() => start(true)} title={freeReroll ? '특성: 팬덤 없이 다시 굴립니다' : '팬덤 1개를 내고 다시 굴립니다'}>
+              {freeReroll ? '무료 다시' : <><Icon name="fandom" />1 다시</>}
             </button>
           </>
         )}

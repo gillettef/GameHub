@@ -59,6 +59,7 @@ function createPlayerState(id: PlayerId, name: string): PlayerState {
     restrictions: [],
     passives: [],
     upkeepDiscount: 0,
+    tacticRedrawn: false,
     vp: 0,
     pending: [],
     nextInstance: 1,

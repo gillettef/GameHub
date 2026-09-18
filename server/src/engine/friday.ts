@@ -7,6 +7,7 @@ import { matchDieResult } from './matchDie';
 import type { Rng } from './rng';
 import { GameError, addLog, emptyMods, getPlayer, nextInTurn, requireTurn } from './state';
 import type { GameState, LineupSubmission, MatchAftermath, MatchMods, PlayerId, PlayerInstance, PlayerState } from './state';
+import { hasTrait, lineupStaminaCost, traitCount, traitSum } from './traits';
 import { RESOURCES, SECTORS } from './types';
 import { runWeekend } from './weekend';
 import type { Cost, Effect, MatchTiming, OpponentTeamCard, PlayerEffect, Resources, Sector } from './types';
@@ -24,6 +25,7 @@ export function standsCount(player: Pick<PlayerState, 'infrastructure' | 'passiv
 }
 
 export function startFriday(state: GameState): void {
+  for (const id of state.seats) getPlayer(state, id).tacticRedrawn = false;
   state.phase = {
     kind: 'friday.prepare',
     current: state.firstPlayer,
@@ -114,7 +116,7 @@ export function submitLineup(state: GameState, pid: PlayerId, sub: LineupSubmiss
   const player = getPlayer(next, pid);
   const { players } = validateLineup(player, sub);
 
-  const cost: Partial<Resources> = { stamina: players.length, fandom: sub.fandomInStands ?? 0 };
+  const cost: Partial<Resources> = { stamina: lineupStaminaCost(player, players.length), fandom: sub.fandomInStands ?? 0 };
   for (const placed of Object.values(sub.activations ?? {})) {
     for (const r of RESOURCES) cost[r] = (cost[r] ?? 0) + (placed[r] ?? 0);
   }
@@ -223,7 +225,7 @@ function buildSide(player: PlayerState, sub: LineupSubmission, played: PlayerIns
   }
   const gk = played.find((p) => activeSide(p).goalkeeper);
   const base = gk ? { skill: effectiveSkill(gk), saves: activeSide(gk).goalkeeper!.saves } : { skill: 1, saves: 1 };
-  return { sectors, goalkeeper: { ...base, saves: base.saves + mods.extraSaves } };
+  return { sectors, goalkeeper: { ...base, saves: base.saves + mods.extraSaves + traitCount(player, 'extraSaves') } };
 }
 
 // 상대 카드는 상하 반전(p.20)이지만 SECTOR_PAIRS 가 내 LW↔상대 RW 로 짝짓기 때문에 카드 구획을 그대로 쓴다
@@ -294,6 +296,7 @@ function resolveAllMatches(state: GameState, rng: Rng): void {
 
     // p.24 4: 관중석 팬덤 → 돈, 출전 선수의 자원·일시적 토큰 제거
     player.resources.money += sub.fandomInStands ?? 0;
+    if ((sub.fandomInStands ?? 0) > 0) player.resources.money += traitSum(player, 'standsBonusMoney'); // 특성: 관중 수입 +N
     const scorerTokens = new Set(report.scorers);
     for (const inst of played) {
       inst.placed = {};
@@ -350,9 +353,32 @@ export function rerollMatchDie(state: GameState, pid: PlayerId, rng: Rng): GameS
   const m = aftermathOf(next, pid);
   if (m.roll === null) throw new GameError('roll first');
   const player = getPlayer(next, pid);
-  if (player.resources.fandom < 1) throw new GameError('not enough fandom');
-  player.resources.fandom--;
+  if (hasTrait(player, 'freeMatchReroll')) {
+    addLog(next, '특성: 팬덤 없이 경기 영향 주사위를 다시 굴림', { actor: pid });
+  } else {
+    if (player.resources.fandom < 1) throw new GameError('not enough fandom');
+    player.resources.fandom--;
+  }
   m.roll = rng.die(6);
+  return next;
+}
+
+// 특성(전술 분석): 경기 준비 중 스카우트 보고서를 본 뒤 전술 카드 1장을 더미 맨 아래로 보내고 새로 1장 뽑는다 (경기일마다 1회)
+export function redrawTactic(state: GameState, pid: PlayerId, cardId: string): GameState {
+  const next = structuredClone(state);
+  if (next.phase.kind !== 'friday.prepare') throw new GameError('not in match preparation');
+  requireTurn(next.phase, pid);
+  if (next.phase.submitted[pid]) throw new GameError('already submitted');
+  const player = getPlayer(next, pid);
+  if (!hasTrait(player, 'redrawTactic')) throw new GameError('no such trait');
+  if (player.tacticRedrawn) throw new GameError('already redrawn this match day');
+  const idx = player.tacticCards.indexOf(cardId);
+  if (idx < 0) throw new GameError('tactic card not in hand');
+  const fresh = next.decks.tactics.shift();
+  if (!fresh) throw new GameError('tactic deck empty');
+  player.tacticCards.splice(idx, 1, fresh);
+  next.decks.tactics.push(cardId);
+  player.tacticRedrawn = true;
   return next;
 }
 

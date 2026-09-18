@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { activeSide, cards } from '@server/engine/cards';
 import { standsCount } from '@server/engine/friday';
+import { hasTrait, lineupStaminaCost } from '@server/engine/traits';
 import { autoPlace, previewField, validatePlacements } from '@server/engine/lineup';
 import { SECTOR_PAIRS, sectorCounts } from '@server/engine/match';
 import type { UniformToken } from '@server/engine/state';
@@ -45,6 +46,13 @@ export function FridayPrepareScreen() {
   useEffect(() => {
     setPlacements(autoPlace(field, me.roster, played, formation));
   }, [layoutKey]);
+  // 특성으로 전술 카드를 새로 뽑으면 손패가 바뀌므로 골라 둔 카드가 없어지면 첫 카드로
+  useEffect(() => {
+    if (tacticCardId && !view.self.tacticCards.includes(tacticCardId)) {
+      setTacticCardId(view.self.tacticCards[0] ?? '');
+      setFormationIndex(0);
+    }
+  }, [view.self.tacticCards, tacticCardId]);
 
   if (view.phase.kind !== 'friday.prepare') return null;
   const submitted = view.phase.submitted[view.me];
@@ -53,7 +61,7 @@ export function FridayPrepareScreen() {
   const usedNumbers = new Set(played.map((id) => activeSide(me.roster.find((r) => r.instanceId === id)!).number).filter((n) => n !== undefined));
   const togglePlayer = (instanceId: string) => setPlayed((p) => (p.includes(instanceId) ? p.filter((x) => x !== instanceId) : [...p, instanceId]));
 
-  const cost: Partial<Resources> = { stamina: played.length, fandom: stands };
+  const cost: Partial<Resources> = { stamina: lineupStaminaCost(me, played.length), fandom: stands };
   const activationMap: Record<string, Partial<Resources>> = {};
   for (const id of played) {
     if (!activations[id]) continue;
@@ -108,6 +116,13 @@ export function FridayPrepareScreen() {
                 <TacticCardView key={id} cardId={id} compact selected={id === tacticCardId} onClick={() => { setTacticCardId(id); setFormationIndex(0); }} />
               ))}
             </div>
+            {hasTrait(me, 'redrawTactic') && tacticCardId && (
+              <div className="row">
+                <button className="ghost small" disabled={me.tacticRedrawn} onClick={() => act({ type: 'redrawTactic', cardId: tacticCardId })} title="특성: 스카우트 보고서를 본 뒤 전술 카드 1장을 버리고 새로 뽑습니다 (경기일마다 1회)">
+                  {me.tacticRedrawn ? '이번 경기일에 이미 새로 뽑음' : '특성: 고른 카드를 버리고 새로 뽑기'}
+                </button>
+              </div>
+            )}
             {tacticCardId && cards.tactic(tacticCardId).formations.length > 1 && (
               <div className="row">
                 {cards.tactic(tacticCardId).formations.map((f, i) => (

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { cards } from '@server/engine/cards';
 import type { SponsorContract } from '@server/engine/types';
 import type { PlayerPublicView } from '@server/engine/view';
@@ -33,7 +34,7 @@ export function SponsorContractModal({ cardId, me, onClose, onSign }: { cardId: 
     </button>
   );
 
-  return (
+  return createPortal(
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal sponsor-modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-label="스폰서 계약">
         <div className="panel-head">
@@ -111,6 +112,7 @@ export function SponsorContractModal({ cardId, me, onClose, onSign }: { cardId: 
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

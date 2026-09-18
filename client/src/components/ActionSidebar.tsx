@@ -1,5 +1,5 @@
 import { cards } from '@server/engine/cards';
-import { INFRASTRUCTURE_COST } from '@server/engine/types';
+import { infraCost, prospectCost } from '@server/engine/traits';
 import type { InfrastructureType } from '@server/engine/types';
 import type { PlayerPublicView } from '@server/engine/view';
 import { useCommit } from '../commit';
@@ -61,9 +61,9 @@ function WeekdayActions({ me }: { me: PlayerPublicView }) {
         <button className="action-item" disabled={!basic} onClick={() => showMarket('players')} title="이적 시장 · 선수 탭에서 오른쪽 3장 중 한 장을 고릅니다">
           <span>선수 영입…</span>
         </button>
-        <button className={cls('prospect')} disabled={!basic} onClick={() => select('prospect', { type: 'recruitProspect' }, <>유망주 영입 <CostChips cost={{ money: 2 }} /></>)}>
+        <button className={cls('prospect')} disabled={!basic} onClick={() => select('prospect', { type: 'recruitProspect' }, <>유망주 영입 <CostChips cost={{ money: prospectCost(me, 2) }} /></>)}>
           <span><Icon name="prospect" size={14} />유망주 영입</span>
-          <CostChips cost={{ money: 2 }} />
+          <CostChips cost={{ money: prospectCost(me, 2) }} />
         </button>
         <button className="action-item" disabled={!basic} onClick={() => showMarket('staff')} title="이적 시장 · 직원 탭에서 오른쪽 3장 중 한 장을 고릅니다">
           <span>직원 고용…</span>
@@ -89,13 +89,13 @@ function WeekdayActions({ me }: { me: PlayerPublicView }) {
           <button
             key={i.type}
             className={cls(`infra:${i.type}`)}
-            disabled={!basic || (i.unique && me.infrastructure.includes(i.type)) || (!!i.requires && !me.infrastructure.includes(i.requires)) || me.infrastructure.length >= 7 || me.resources.money < INFRASTRUCTURE_COST}
-            onClick={() => select(`infra:${i.type}`, { type: 'buildInfrastructure', infrastructure: i.type as InfrastructureType }, <>건설: <b>{INFRA_LABEL[i.type]}</b> <CostChips cost={{ money: INFRASTRUCTURE_COST }} /> → 승점 {i.vp}</>)}
-            title={`${INFRA_LABEL[i.type]} · 돈 ${INFRASTRUCTURE_COST} · 승점 ${i.vp}${i.bonus.length ? ' · 보너스 있음' : ''}${i.unique && me.infrastructure.includes(i.type) ? ' (이미 건설)' : ''}${i.requires && !me.infrastructure.includes(i.requires) ? ` (${INFRA_LABEL[i.requires]} 먼저)` : ''}`}
+            disabled={!basic || (i.unique && me.infrastructure.includes(i.type)) || (!!i.requires && !me.infrastructure.includes(i.requires)) || me.infrastructure.length >= 7 || me.resources.money < infraCost(me)}
+            onClick={() => select(`infra:${i.type}`, { type: 'buildInfrastructure', infrastructure: i.type as InfrastructureType }, <>건설: <b>{INFRA_LABEL[i.type]}</b> <CostChips cost={{ money: infraCost(me) }} /> → 승점 {i.vp}</>)}
+            title={`${INFRA_LABEL[i.type]} · 돈 ${infraCost(me)} · 승점 ${i.vp}${i.bonus.length ? ' · 보너스 있음' : ''}${i.unique && me.infrastructure.includes(i.type) ? ' (이미 건설)' : ''}${i.requires && !me.infrastructure.includes(i.requires) ? ` (${INFRA_LABEL[i.requires]} 먼저)` : ''}`}
           >
             <span>{INFRA_LABEL[i.type]}</span>
             <span className="chips">
-              <CostChips cost={{ money: INFRASTRUCTURE_COST }} />
+              <CostChips cost={{ money: infraCost(me) }} />
               <span className="chip vp"><Icon name="vp" size={12} />{i.vp}</span>
             </span>
           </button>

@@ -4,6 +4,7 @@ import type { Rng } from './rng';
 import { COLOR_LABEL } from './labels';
 import { GameError, addLog, getPlayer, nextInTurn, requireTurn } from './state';
 import type { GameState, PlayerId, PlayerState } from './state';
+import { hasTrait } from './traits';
 import { RESOURCES } from './types';
 import type { DieColor } from './types';
 import { startWeekday } from './weekday';
@@ -83,8 +84,12 @@ export function rerollBoardDie(state: GameState, pid: PlayerId, rng: Rng): GameS
   const m = meetingOf(next, pid);
   if (m.roll === null) throw new GameError('roll first');
   const player = getPlayer(next, pid);
-  if (player.resources.fandom < 1) throw new GameError('not enough fandom');
-  player.resources.fandom--;
+  if (hasTrait(player, 'freeBoardReroll')) {
+    addLog(next, '특성: 팬덤 없이 이사회 주사위를 다시 굴림', { actor: pid });
+  } else {
+    if (player.resources.fandom < 1) throw new GameError('not enough fandom');
+    player.resources.fandom--;
+  }
   m.roll = rollUntilDecisive(next, player, rng);
   return next;
 }
