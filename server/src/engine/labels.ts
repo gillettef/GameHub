@@ -65,7 +65,7 @@ export function describeEffect(e: Effect): string {
     case 'flipUnmatchedToken':
       return `카드 없는 유니폼 토큰 ${e.count}개 뒤집기`;
     case 'discardMarketCard':
-      return `이적 시장 ${{ players: '선수', staff: '직원', sponsors: '스폰서' }[e.row]} 카드 1장 버리고 보충`;
+      return `이적 시장 ${{ players: '주전 선수', veterans: '베테랑', staff: '직원', sponsors: '스폰서' }[e.row]} 카드 1장 버리고 보충`;
     case 'addStaffSuspension':
       return `직원 카드 1장에 출장정지 +${e.count}`;
     case 'releasePlayer':

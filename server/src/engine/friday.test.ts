@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { applyAction } from './actions';
-import { cards } from './cards';
+import { activeSide, cards } from './cards';
 import { addToRoster } from './effects';
 import { acceptMatchRoll, playTacticEffect, rerollMatchDie, rollMatchDie, standsCount, startFriday, submitLineup } from './friday';
 import { GameError } from './state';
@@ -27,7 +27,7 @@ describe('경기 준비 제출 (p.20)', () => {
     let s = friday();
     const sub = { ...autoLineup(s.players['a']!), fandomInStands: 2 };
     s = submitLineup(s, 'a', sub, seededRng());
-    expect(s.players['a']!.resources.stamina).toBe(6 - 2);
+    expect(s.players['a']!.resources.stamina).toBe(6 - sub.players.length); // 출전 선수마다 체력 1
     expect(s.players['a']!.resources.fandom).toBe(1);
     expect(() => submitLineup(s, 'a', sub, seededRng())).toThrow(GameError);
     expect(s.phase.kind).toBe('friday.prepare');
@@ -174,12 +174,21 @@ describe('경기 진행: 전술 효과 카드 (p.21 8, p.28)', () => {
     const fandom = a.resources.fandom;
     const money = a.resources.money;
     const stands = s.phase.kind === 'friday.match' ? (s.phase.submitted['a']!.fandomInStands ?? 0) : 0;
+    // 출전 선수 카드의 강제 경기 후 자원 증감(베테랑 페널티 등)은 카드 데이터에 따라 달라지므로 기대값에 반영한다
+    const played = s.phase.kind === 'friday.match' ? s.phase.submitted['a']!.players : [];
+    const mandatory = (resource: 'fandom' | 'money') =>
+      a.roster
+        .filter((r) => played.includes(r.instanceId))
+        .map((r) => activeSide(r).effect)
+        .filter((e) => e && e.timing === 'afterMatch' && e.mandatory)
+        .flatMap((e) => e!.effects)
+        .reduce((n, e) => (e.type === 'gainResource' && e.resource === resource ? n + e.amount : n), 0);
     const done = skipTacticEffects(playTacticEffect(s, 'a', 'tc-10', rng), rng);
     const r = done.phase.kind === 'friday.aftermath' ? done.phase.matches['a']!.report : null;
     expect(r).not.toBeNull();
     const pa = done.players['a']!;
-    expect(pa.resources.fandom).toBe(fandom + 1 + (r!.outcome === 'win' ? 1 : 0));
-    expect(pa.resources.money).toBe(money + stands + (r!.theirGoals === 0 ? 1 : 0));
+    expect(pa.resources.fandom).toBe(Math.max(0, fandom + 1 + (r!.outcome === 'win' ? 1 : 0) + mandatory('fandom')));
+    expect(pa.resources.money).toBe(Math.max(0, money + stands + (r!.theirGoals === 0 ? 1 : 0) + mandatory('money')));
   });
 });
 

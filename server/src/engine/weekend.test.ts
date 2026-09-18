@@ -17,6 +17,7 @@ describe('주말 (p.25)', () => {
     s.players['a']!.staff[0]!.exhausted = true;
     s.players['a']!.roster[0]!.exhausted = true;
     const marketBefore = [...s.market.players];
+    const veteransBefore = [...s.market.veterans];
     const prospectTop = s.decks.prospects[0];
     runWeekend(s, seededRng());
     expect(s.players['a']!.staff[0]!.exhausted).toBe(false);
@@ -30,7 +31,9 @@ describe('주말 (p.25)', () => {
       expect(r.stamina).toBe(1 + proc.stamina[t.stamina - 1]!);
     }
     expect(s.market.players.slice(1)).toEqual(marketBefore.slice(0, 4));
-    expect(s.decks.discards.players).toContain(prospectTop);
+    expect(s.market.veterans.slice(1)).toEqual(veteransBefore.slice(0, 4)); // 베테랑 행도 같은 순환
+    expect(s.decks.discards.veterans).toContain(veteransBefore[4]);
+    expect(s.decks.discards.prospects).toContain(prospectTop); // 유망주는 다시 섞이지 않는 별도 더미로
     expect(s.firstPlayer).toBe('b');
     expect(s.week).toBe(2);
     expect(s.phase.kind).toBe('monday.board');

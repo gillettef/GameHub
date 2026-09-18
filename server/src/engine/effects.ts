@@ -5,7 +5,7 @@ import { GameError, addLog, emptyTokens, getPlayer } from './state';
 import type { GameState, MatchMods, PendingTarget, PlayerId, PlayerInstance, PlayerState } from './state';
 import { traitSum } from './traits';
 import { TRACK_MAX, TRACK_MIN } from './types';
-import type { Effect, MatchCondition, Sector, Track } from './types';
+import type { Effect, MarketRow, MatchCondition, Sector, Track } from './types';
 import { assignUniform, releaseUniform } from './uniforms';
 
 // p.7: 5를 넘기면 이동 대신 보드에 표시된 자원 획득, 1 아래로 내려가면 표시된 자원 손실 (트랙마다 다른 자원)
@@ -56,8 +56,15 @@ export function releaseFromRoster(state: GameState, player: PlayerState, inst: P
   player.vp += inst.careerVP;
   player.roster.splice(idx, 1);
   releaseUniform(player.uniforms, inst.instanceId);
-  state.decks.discards.players.push(inst.cardId);
+  discardPlayerCard(state, inst.cardId);
   return money;
+}
+
+// 선수 카드는 종류별 버린 더미로 (주전·베테랑은 더미가 비면 다시 섞이고, 유망주는 섞이지 않는다)
+export function discardPlayerCard(state: GameState, cardId: string): void {
+  const kind = cards.player(cardId).kind;
+  const pile = kind === 'veteran' ? state.decks.discards.veterans : kind === 'prospect' ? state.decks.discards.prospects : state.decks.discards.players;
+  pile.push(cardId);
 }
 
 function findInstance(player: PlayerState, instanceId: string): PlayerInstance {
@@ -85,7 +92,7 @@ export interface EffectContext {
 }
 
 // 대상 선택이 필요한 효과의 후보. null 이면 대상이 필요 없는 효과
-function candidatesFor(state: GameState, player: PlayerState, effect: Effect, ctx: EffectContext): { target: PendingTarget; candidates: string[]; row?: 'players' | 'staff' | 'sponsors' } | null {
+function candidatesFor(state: GameState, player: PlayerState, effect: Effect, ctx: EffectContext): { target: PendingTarget; candidates: string[]; row?: MarketRow } | null {
   const players = (ids: string[]) => ({ target: 'player' as const, candidates: ids });
   switch (effect.type) {
     case 'trainPlayer':
@@ -159,8 +166,8 @@ function applyTargeted(state: GameState, player: PlayerState, effect: Effect, ch
   }
 }
 
-export function marketCardName(row: 'players' | 'staff' | 'sponsors', cardId: string): string {
-  return row === 'players' ? cards.player(cardId).name : row === 'staff' ? cards.staff(cardId).name : cards.sponsor(cardId).name;
+export function marketCardName(row: MarketRow, cardId: string): string {
+  return row === 'players' || row === 'veterans' ? cards.player(cardId).name : row === 'staff' ? cards.staff(cardId).name : cards.sponsor(cardId).name;
 }
 
 // 대상을 여러 번 고르는 효과(훈련 N명, spread 토큰 N개, 토큰 뒤집기 N개)는 1개씩 N번으로 나눈다

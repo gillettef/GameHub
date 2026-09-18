@@ -1,9 +1,10 @@
 import type { Rng } from './rng';
 import { GameError } from './state';
-import type { GameState, Market } from './state';
+import type { GameState } from './state';
+import type { MarketRow } from './types';
 
-export type MarketRow = keyof Market;
-const MARKET_ROW = 5;
+export type { MarketRow };
+export const MARKET_ROW = 5;
 // 맨 왼쪽 2장은 카드 효과로만 구매 가능 (p.15)
 export const MARKET_BUYABLE_FROM = 2;
 
@@ -20,6 +21,8 @@ function deckFor(state: GameState, row: MarketRow): { deck: string[]; discard: s
   switch (row) {
     case 'players':
       return { deck: state.decks.starters, discard: state.decks.discards.players };
+    case 'veterans':
+      return { deck: state.decks.veterans, discard: state.decks.discards.veterans };
     case 'staff':
       return { deck: state.decks.staff, discard: state.decks.discards.staff };
     case 'sponsors':

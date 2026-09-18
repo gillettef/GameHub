@@ -1,6 +1,6 @@
 import type { MatchReport } from './match';
 import type { ScoreBreakdown } from './scoring';
-import type { DayRestriction, Division, Effect, InfrastructureType, Passive, PlayerTokens, Resources, Role, Sector, TrackPositions } from './types';
+import type { DayRestriction, Division, Effect, InfrastructureType, MarketRow, Passive, PlayerTokens, Resources, Role, Sector, TrackPositions } from './types';
 
 export type PlayerId = string;
 
@@ -46,7 +46,7 @@ export interface PendingEffect {
   source: string;
   target: PendingTarget;
   candidates: string[];
-  row?: 'players' | 'staff' | 'sponsors'; // target === 'market' 일 때 어느 행
+  row?: MarketRow; // target === 'market' 일 때 어느 행
 }
 
 export interface PlayerState {
@@ -69,6 +69,7 @@ export interface PlayerState {
   passives: { passive: Passive; source: string }[]; // 상시 효과 (스폰서 추가 보너스 등). source = 카드 이름
   upkeepDiscount: number; // 다음 주말 유지비 할인
   tacticRedrawn: boolean; // 이번 경기일에 특성으로 전술 카드를 새로 뽑았는가 (경기일마다 1회)
+  freeRerollUsed: { board: boolean; match: boolean }; // 특성(팬덤 없이 재굴림)을 이번 주에 썼는가 — 주당 1회, 주말에 초기화 (사용자 결정, 2026-09)
   vp: number; // 개인 공급처의 승점 토큰
   pending: PendingEffect[];
   nextInstance: number;
@@ -81,8 +82,10 @@ export interface LeagueOpponent {
 }
 
 // 이적 시장 각 행 5장. index 4 = 맨 오른쪽. 구매 가능 = index 2~4 (p.15)
+// players = 주전 선수 행, veterans = 베테랑 행(원작에 없는 행, 사용자 결정 2026-09). 유망주는 행 없이 decks.prospects[0] 을 영입한다
 export interface Market {
   players: string[];
+  veterans: string[];
   staff: string[];
   sponsors: string[];
 }
@@ -96,7 +99,8 @@ export interface Decks {
   board: string[];
   tactics: string[];
   objectives: string[];
-  discards: { players: string[]; staff: string[]; sponsors: string[]; board: string[] };
+  // 버린 더미. players = 주전, veterans = 베테랑 (각자 더미가 비면 섞어 새 더미로). prospects 는 다시 섞지 않는다
+  discards: { players: string[]; veterans: string[]; prospects: string[]; staff: string[]; sponsors: string[]; board: string[] };
 }
 
 export interface BoardMeeting {
@@ -164,11 +168,13 @@ export interface LogEntry {
   text: string;
 }
 
-// 주중 차례 시작 시점의 상태. 그 차례의 첫 행동 직전에 찍어 두고, 참가자가 "처음으로 되돌리기"를 하면 복원한다
+// 주중 차례 시작 시점의 상태. 그 차례의 첫 행동 직전에 찍어 두고, 참가자가 "처음으로 되돌리기"를 하면 복원한다.
+// locked: 이번 차례에 비공개 카드가 공개됐다(시장 보충·유망주 영입·전술 카드 뽑기 등) — 본 정보를 무를 수 없으므로 그 차례는 되돌리기 불가
 export interface TurnSnapshot {
   pid: PlayerId;
   week: number;
   day: Weekday;
+  locked: boolean;
   state: Omit<GameState, 'turnSnapshot'>;
 }
 
@@ -205,10 +211,15 @@ export function currentDay(state: GameState): LogDay {
   }
 }
 
-// 주중 내 차례의 스냅샷이 현재 차례(참가자·주차·요일)의 것인가 = "처음으로 되돌리기" 가능
-export function canUndoTurn(state: GameState, pid: PlayerId): boolean {
+// 주중 내 차례의 스냅샷이 현재 차례(참가자·주차·요일)의 것인가
+export function hasTurnSnapshot(state: GameState, pid: PlayerId): boolean {
   const snap = state.turnSnapshot;
   return state.phase.kind === 'weekday' && state.phase.current === pid && !!snap && snap.pid === pid && snap.week === state.week && snap.day === state.phase.day;
+}
+
+// "처음으로 되돌리기" 가능 = 이번 차례의 스냅샷이 있고 그 사이 카드가 공개되지 않았다
+export function canUndoTurn(state: GameState, pid: PlayerId): boolean {
+  return hasTurnSnapshot(state, pid) && !state.turnSnapshot!.locked;
 }
 
 export function addLog(state: GameState, text: string, opts: { actor?: PlayerId; day?: LogDay } = {}): void {

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { cards } from '@server/engine/cards';
 import type { LogEntry, PlayerId } from '@server/engine/state';
 import { RESOURCES } from '@server/engine/types';
-import { hireCost, marketMinIndex } from '@server/engine/traits';
+import { hireCost, marketMinIndex, prospectCost } from '@server/engine/traits';
 import { useCommit } from '../commit';
 import { DAY_LABEL, RESOURCE_LABEL, SEAT_COLORS, TOKEN_LABEL, phaseLabel } from '../labels';
 import { NotifyToggles } from '../notify';
@@ -111,7 +111,8 @@ export function PlayerStrip() {
   );
 }
 
-// 이적 시장: 선수/직원/스폰서 탭. 내 주중 차례면 오른쪽 3장을 눌러 고르고, 아래 확정 막대에서 확정한다. 스폰서는 계약 유형 모달을 거친다
+// 이적 시장: 주전/베테랑/유망주/직원/스폰서 탭. 내 주중 차례면 오른쪽 3장을 눌러 고르고, 아래 확정 막대에서 확정한다. 스폰서는 계약 유형 모달을 거친다.
+// 유망주는 행이 없고 더미 맨 위 카드의 미훈련 면(공격/수비·비용 1)만 보인다 — 훈련 면은 영입해야 공개
 export function MarketBody() {
   const { view, session, act } = useView();
   const { chosen, select } = useCommit();
@@ -119,15 +120,21 @@ export function MarketBody() {
   const [sponsorPick, setSponsorPick] = useState<number | null>(null);
   const me = session ? view.players[session.playerId] : undefined;
   const canBuy = !!me && view.phase.kind === 'weekday' && view.phase.current === me.id && !view.phase.basicDone;
-  const render: Record<MarketTab, (id: string, i: number) => React.ReactNode> = {
-    players: (id, i) => (
-      <PlayerCardView
-        key={id}
-        cardId={id}
-        chosen={chosen === `market:${id}`}
-        onClick={canBuy && me && i >= marketMinIndex(me, 'players') ? () => select(`market:${id}`, { type: 'recruitPlayer', marketIndex: i }, <>선수 영입: <b>{cards.player(id).name}</b> <CostChips cost={{ money: cards.player(id).untrained.cost }} /></>) : undefined}
-      />
-    ),
+  const playerRow = (row: 'players' | 'veterans') => (id: string, i: number) => (
+    <PlayerCardView
+      key={id}
+      cardId={id}
+      chosen={chosen === `market:${id}`}
+      onClick={
+        canBuy && me && i >= marketMinIndex(me, 'players')
+          ? () => select(`market:${id}`, { type: 'recruitPlayer', marketIndex: i, row }, <>{row === 'veterans' ? '베테랑' : '주전 선수'} 영입: <b>{cards.player(id).name}</b> <CostChips cost={{ money: cards.player(id).untrained.cost }} /></>)
+          : undefined
+      }
+    />
+  );
+  const render: Record<Exclude<MarketTab, 'prospects'>, (id: string, i: number) => React.ReactNode> = {
+    players: playerRow('players'),
+    veterans: playerRow('veterans'),
     staff: (id, i) => (
       <StaffCardView
         key={id}
@@ -139,19 +146,42 @@ export function MarketBody() {
     sponsors: (id, i) => <SponsorCardView key={id} cardId={id} onClick={canBuy && me && i >= marketMinIndex(me, 'sponsors') ? () => setSponsorPick(i) : undefined} />,
   };
   const sponsorCardId = sponsorPick !== null ? view.market.sponsors[sponsorPick] : undefined;
+  const prospect = view.nextProspect;
+  const prospectPrice = me && prospect ? prospectCost(me, cards.player(prospect).untrained.cost) : 0;
   return (
     <>
       <Tabs<MarketTab>
         tabs={[
-          { key: 'players', label: '선수', badge: `유망주 더미 ${view.deckCounts.prospects}` },
+          { key: 'players', label: '주전', badge: view.deckCounts.starters },
+          { key: 'veterans', label: '베테랑', badge: view.deckCounts.veterans },
+          { key: 'prospects', label: '유망주', badge: `더미 ${view.deckCounts.prospects}` },
           { key: 'staff', label: '직원', badge: view.deckCounts.staff },
           { key: 'sponsors', label: '스폰서', badge: view.deckCounts.sponsors },
         ]}
         value={marketTab}
         onChange={setMarketTab}
       />
-      <p className="muted small market-hint">오른쪽 3장만 구매 가능 · 왼쪽 2장은 다음 주에 오른쪽으로 밀립니다{canBuy ? ' · 카드를 눌러 고르고 아래에서 확정' : ''}</p>
-      <div className="cards market-row">{view.market[marketTab].map((id, i) => render[marketTab](id, i))}</div>
+      {marketTab === 'prospects' ? (
+        <>
+          <p className="muted small market-hint">유망주 더미 맨 위 카드 · 미훈련 면(공격/수비·비용)만 보이고 훈련 면은 영입 후에 공개됩니다{canBuy && prospect ? ' · 카드를 눌러 고르고 아래에서 확정' : ''}</p>
+          <div className="cards prospect-deck">
+            {prospect ? (
+              <PlayerCardView
+                cardId={prospect}
+                chosen={chosen === 'prospect'}
+                onClick={canBuy && me ? () => select('prospect', { type: 'recruitProspect' }, <>유망주 영입 ({cards.player(prospect).untrained.role === 'attack' ? '공격' : '수비'}) <CostChips cost={{ money: prospectPrice }} /></>) : undefined}
+              />
+            ) : (
+              <span className="muted small">유망주 더미가 비었습니다</span>
+            )}
+          </div>
+        </>
+      ) : (
+        <>
+          <p className="muted small market-hint">오른쪽 3장만 구매 가능 · 왼쪽 2장은 다음 주에 오른쪽으로 밀립니다{canBuy ? ' · 카드를 눌러 고르고 아래에서 확정' : ''}</p>
+          <div className="cards market-row">{view.market[marketTab].map((id, i) => render[marketTab](id, i))}</div>
+        </>
+      )}
       {sponsorPick !== null && sponsorCardId && me && (
         <SponsorContractModal
           cardId={sponsorCardId}
@@ -234,7 +264,7 @@ export function PendingModal() {
     if (target === 'staff') return cards.staff(me.staff[Number(c)]?.cardId ?? '').name;
     if (target === 'market') {
       const id = view.market[row][Number(c)] ?? '';
-      return row === 'players' ? cards.player(id).name : row === 'staff' ? cards.staff(id).name : cards.sponsor(id).name;
+      return row === 'players' || row === 'veterans' ? cards.player(id).name : row === 'staff' ? cards.staff(id).name : cards.sponsor(id).name;
     }
     if (target === 'token') return `토큰 ${me.uniforms.find((u) => u.id === c)?.number ?? '∅'}`;
     return cards.player(me.roster.find((r) => r.instanceId === c)?.cardId ?? '').name;
@@ -268,7 +298,7 @@ export function PendingModal() {
     if (target === 'market') {
       const id = view.market[row][Number(c)];
       if (!id) return null;
-      if (row === 'players') return <PlayerCardView key={c} cardId={id} chosen={picked === c} onClick={() => toggle(c)} />;
+      if (row === 'players' || row === 'veterans') return <PlayerCardView key={c} cardId={id} chosen={picked === c} onClick={() => toggle(c)} />;
       if (row === 'staff') return <StaffCardView key={c} cardId={id} chosen={picked === c} onClick={() => toggle(c)} />;
       return <SponsorCardView key={c} cardId={id} chosen={picked === c} onClick={() => toggle(c)} />;
     }

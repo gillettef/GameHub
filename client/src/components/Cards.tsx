@@ -75,8 +75,9 @@ export function PlayerCardView({ cardId, instance, ...props }: { cardId: string;
   const side = instance ? activeSide(instance) : card.untrained;
   const skill = instance ? effectiveSkill(instance) : side.skill;
   const tokens = instance ? (Object.entries(instance.tokens) as [PlayerToken, number][]).filter(([, n]) => n > 0) : [];
+  const name = card.name; // 유망주도 본명을 항상 표시 (사용자 요청)
   return (
-    <Card className={`player ${side.role}${instance?.exhausted ? ' exhausted' : ''}`} {...props}>
+    <Card className={`player ${side.role} kind-${card.kind}${instance?.exhausted ? ' exhausted' : ''}`} {...props}>
       <div className="pc-left">
         <CostBadge cost={side.cost} />
         <span className={`role-badge ${side.role}`} title={side.role === 'attack' ? '공격' : '수비'}><Icon name={side.role} size={16} /></span>
@@ -84,14 +85,14 @@ export function PlayerCardView({ cardId, instance, ...props }: { cardId: string;
       </div>
       <div className="pc-main">
         <div className="pc-top">
-          <Portrait name={card.name} tone={side.role} />
+          <Portrait name={name} tone={side.role} />
           <span className="skill-flame" title={`역량 ${skill}`}>{skill}</span>
           {instance && skill !== side.skill && <span className="skill-base">{side.skill}</span>}
           {side.number !== undefined ? <span className="number-circle">{side.number}</span> : side.goalkeeper ? <span className="number-circle gk">GK</span> : <span className="number-circle none">?</span>}
           {side.goalkeeper && <span className="corner-bottom-right note" title={`선방 ${side.goalkeeper.saves}`}>선방 {side.goalkeeper.saves}</span>}
         </div>
         <div className="name-band">
-          <span className="clamp1">{card.name}</span>
+          <span className="clamp1">{name}</span>
           {instance?.trained && <span className="trained-star" title="훈련됨">★</span>}
         </div>
         <div className="tag-band clamp1">{KIND_LABEL[card.kind]}{card.tags.length > 0 && ` · ${card.tags.join(' · ')}`}</div>

@@ -139,7 +139,7 @@ export const EXECUTIVE_CARDS: ExecutiveCard[] = [
     description: '이사회 회의록을 가장 꼼꼼히 읽는 사람. 결정의 흐름을 바꾸는 법을 안다.',
     votes: ['yellow', 'blue', 'red', 'yellow', 'blue', 'red'],
     trackAdjust: { fandom: 1 },
-    trait: { text: '이사회 주사위를 재굴림할 때 [팬덤]을 내지 않습니다.', effect: { kind: 'freeBoardReroll' } },
+    trait: { text: '주 1회, 이사회 주사위를 재굴림할 때 [팬덤]을 내지 않습니다.', effect: { kind: 'freeBoardReroll' } },
     placeholder: true,
   },
   {

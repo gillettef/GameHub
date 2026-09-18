@@ -41,6 +41,7 @@ export interface GameView {
   players: Record<PlayerId, PlayerPublicView>;
   self: PlayerPrivateView;
   market: GameState['market'];
+  nextProspect: string | null; // 유망주 더미 맨 위 카드 (미훈련 면은 공개 — 공격/수비·비용을 보고 영입한다). 클라이언트는 훈련 면을 그리지 않는다
   deckCounts: Record<'starters' | 'prospects' | 'veterans' | 'staff' | 'sponsors' | 'board' | 'tactics' | 'objectives', number>;
   league: GameState['league'];
   log: LogEntry[];
@@ -105,6 +106,7 @@ export function viewFor(state: GameState, me: PlayerId): GameView {
     players: mapValues(state.players, publicPlayer),
     self: { objective: self?.objective, tacticCards: self?.tacticCards ?? [] },
     market: state.market,
+    nextProspect: d.prospects[0] ?? null,
     deckCounts: {
       starters: d.starters.length,
       prospects: d.prospects.length,

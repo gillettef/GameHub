@@ -1,13 +1,21 @@
 import { describe, expect, it } from 'vitest';
 import { applyAction } from './actions';
-import { redrawTactic, startFriday } from './friday';
+import { cards } from './cards';
+import { redrawTactic, rerollMatchDie, rollMatchDie, startFriday, submitLineup } from './friday';
 import { rerollBoardDie, rollBoardDie } from './monday';
 import { GameError } from './state';
 import type { GameState } from './state';
-import { gameAtMonday, seededRng } from './test-utils';
+import { autoLineup, gameAtMonday, seededRng, settlePending, skipTacticEffects } from './test-utils';
 import { hireCost, infraCost, lineupStaminaCost, marketMinIndex, prospectCost, traitsOf } from './traits';
 import { buildInfrastructure, hireStaff, recruitPlayer, recruitProspect, signSponsor, startWeekday } from './weekday';
-import { upkeepDue } from './weekend';
+import { runWeekend, upkeepDue } from './weekend';
+
+// 어느 단계에서든 주말 처리를 한 번 돌린 복사본 (주당 1회 제한의 초기화 확인용)
+function weekendFrom(s: GameState): GameState {
+  const copy = structuredClone(s);
+  runWeekend(copy, seededRng(7));
+  return copy;
+}
 
 // 임원·직원 특성(p.28: 출장정지 카드의 특성은 무효)
 function withExec(s: GameState, pid: string, cardId: string): void {
@@ -27,7 +35,7 @@ function tuesday(): GameState {
 }
 
 describe('특성 (임원·직원 지속 효과)', () => {
-  it('신유나(ex-13): 이사회 주사위 재굴림에 팬덤을 내지 않는다', () => {
+  it('신유나(ex-13): 이사회 주사위 재굴림에 팬덤을 내지 않는다 — 주당 1회, 그 뒤로는 팬덤을 낸다', () => {
     const rng = seededRng(2);
     const s = gameAtMonday();
     const pid = s.firstPlayer;
@@ -39,31 +47,68 @@ describe('특성 (임원·직원 지속 효과)', () => {
     withExec(rolled, pid, 'ex-13');
     const free = rerollBoardDie(rolled, pid, rng);
     expect(free.players[pid]!.resources.fandom).toBe(1);
+    expect(free.players[pid]!.freeRerollUsed.board).toBe(true);
     expect(free.log[free.log.length - 1]!.text).toContain('팬덤 없이');
     // 팬덤이 0이어도 된다
     rolled.players[pid]!.resources.fandom = 0;
     expect(() => rerollBoardDie(rolled, pid, rng)).not.toThrow();
+    // 이번 주 무료 재굴림을 썼으면 두 번째부터는 팬덤 1개 (사용자 결정, 2026-09)
+    const second = rerollBoardDie(free, pid, rng);
+    expect(second.players[pid]!.resources.fandom).toBe(0);
+    free.players[pid]!.resources.fandom = 0;
+    expect(() => rerollBoardDie(free, pid, rng)).toThrow(GameError);
+    // 주말이 지나면 다시 무료
+    const p = free.players[pid]!;
+    p.freeRerollUsed = { board: true, match: true };
+    const weekend = weekendFrom(free);
+    expect(weekend.players[pid]!.freeRerollUsed).toEqual({ board: false, match: false });
+  });
+
+  it('st-11: 경기 영향 주사위 무료 재굴림도 주당 1회', () => {
+    const rng = seededRng(3);
+    let s = gameAtMonday();
+    startFriday(s);
+    for (const id of s.seats) {
+      s.players[id]!.resources = { money: 5, fandom: 2, ops: 2, stamina: 6 };
+      s.players[id]!.pending = [];
+      s = settlePending(submitLineup(s, id, autoLineup(s.players[id]!), rng), rng);
+    }
+    s = skipTacticEffects(s, rng);
+    const pid = s.firstPlayer;
+    withStaff(s, pid, 'st-11');
+    const fandom = s.players[pid]!.resources.fandom;
+    s = rollMatchDie(s, pid, rng);
+    s = rerollMatchDie(s, pid, rng);
+    expect(s.players[pid]!.resources.fandom).toBe(fandom); // 무료
+    expect(s.players[pid]!.freeRerollUsed.match).toBe(true);
+    s = rerollMatchDie(s, pid, rng);
+    expect(s.players[pid]!.resources.fandom).toBe(fandom - 1); // 두 번째는 팬덤
   });
 
   it('비용 할인: 건설(ex-03)·고용(ex-11)·유망주(st-19), 출장정지 직원의 특성은 무효', () => {
     const s = tuesday();
+    // 드래프트로 이미 같은 특성의 임원을 들고 있을 수 있으므로 기준값 대비 1씩 줄어드는지 본다
+    const base = { infra: infraCost(s.players['a']!), hire: hireCost(s.players['a']!, 3), prospect: prospectCost(s.players['a']!, 2) };
     withExec(s, 'a', 'ex-03');
     withExec(s, 'a', 'ex-11');
     withStaff(s, 'a', 'st-19');
-    expect(infraCost(s.players['a']!)).toBe(2);
-    expect(hireCost(s.players['a']!, 3)).toBe(2);
-    expect(prospectCost(s.players['a']!, 2)).toBe(1);
+    expect(infraCost(s.players['a']!)).toBe(Math.max(0, base.infra - 1));
+    expect(hireCost(s.players['a']!, 3)).toBe(Math.max(0, base.hire - 1));
+    expect(prospectCost(s.players['a']!, 2)).toBe(Math.max(0, base.prospect - 1));
     const built = buildInfrastructure(s, 'a', 'shop');
-    expect(built.players['a']!.resources.money).toBe(8);
-    // 같은 시장·같은 카드를 특성 없이 고용한 경우보다 1돈 덜 든다 (카드 보너스는 양쪽 동일)
+    expect(built.players['a']!.resources.money).toBe(10 - infraCost(s.players['a']!));
+    // 같은 시장·같은 카드를 추가 특성 없이 고용한 경우보다 할인 차이만큼 덜 든다 (비용은 0 아래로 내려가지 않고, 카드 보너스는 양쪽 동일)
+    const plainState = tuesday();
+    const cardCost = cards.staff(s.market.staff[4]!).cost;
     const hired = hireStaff(s, 'a', 4, seededRng());
-    const plain = hireStaff(tuesday(), 'a', 4, seededRng());
-    expect(hired.players['a']!.resources.money).toBe(plain.players['a']!.resources.money + 1);
+    const plain = hireStaff(plainState, 'a', 4, seededRng());
+    expect(hired.players['a']!.resources.money).toBe(plain.players['a']!.resources.money + hireCost(plainState.players['a']!, cardCost) - hireCost(s.players['a']!, cardCost));
     const prospect = recruitProspect(s, 'a');
-    expect(prospect.players['a']!.resources.money).toBe(10 - 1);
+    // 유망주 비용 1 − 할인 1 = 0
+    expect(prospect.players['a']!.resources.money).toBe(10 - prospectCost(s.players['a']!, cards.player(s.decks.prospects[0]!).untrained.cost));
 
     s.players['a']!.staff.find((x) => x.cardId === 'st-19')!.suspension = 1;
-    expect(prospectCost(s.players['a']!, 2)).toBe(2);
+    expect(prospectCost(s.players['a']!, 2)).toBe(base.prospect);
     expect(traitsOf(s.players['a']!).some((t) => t.kind === 'prospectDiscount')).toBe(false);
   });
 

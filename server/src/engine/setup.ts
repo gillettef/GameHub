@@ -60,6 +60,7 @@ function createPlayerState(id: PlayerId, name: string): PlayerState {
     passives: [],
     upkeepDiscount: 0,
     tacticRedrawn: false,
+    freeRerollUsed: { board: false, match: false },
     vp: 0,
     pending: [],
     nextInstance: 1,
@@ -104,7 +105,7 @@ export function createGame(config: GameConfig, rng: Rng): GameState {
     seats,
     firstPlayer,
     players: {},
-    market: { players: draw(starters, MARKET_ROW), staff: draw(staff, MARKET_ROW), sponsors: draw(sponsors, MARKET_ROW) },
+    market: { players: draw(starters, MARKET_ROW), veterans: [], staff: draw(staff, MARKET_ROW), sponsors: draw(sponsors, MARKET_ROW) },
     decks: {
       starters,
       prospects,
@@ -114,7 +115,7 @@ export function createGame(config: GameConfig, rng: Rng): GameState {
       board,
       tactics: [],
       objectives,
-      discards: { players: [], staff: [], sponsors: [], board: [] },
+      discards: { players: [], veterans: [], prospects: [], staff: [], sponsors: [], board: [] },
     },
     league: { players: {}, opponents: leagueTeams.map((teamId) => ({ teamId, position: 0, active: true })) },
     log: [],
@@ -136,6 +137,8 @@ export function createGame(config: GameConfig, rng: Rng): GameState {
 
   // p.9 b: 남은 전술 카드(기본 포함)를 섞어 더미로
   state.decks.tactics = rng.shuffle([...basicTactics, ...TACTIC_CARDS.filter((c) => !c.basic).map((c) => c.id)]);
+  // 베테랑 행(원작에 없음, 사용자 결정): 각자 1장씩 받은 뒤 남은 더미에서 5장을 연다
+  state.market.veterans = draw(veterans, MARKET_ROW);
   return state;
 }
 

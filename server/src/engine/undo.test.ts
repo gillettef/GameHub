@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { applyAction } from './actions';
 import { GameError, canUndoTurn } from './state';
+import { viewFor } from './view';
 import type { GameState } from './state';
 import { gameAtMonday, seededRng } from './test-utils';
 import { startWeekday } from './weekday';
@@ -30,9 +31,9 @@ describe('undoTurn', () => {
     expect(canUndoTurn(s0, 'a')).toBe(false);
     expect(() => applyAction(s0, 'a', { type: 'undoTurn' }, rng)).toThrow(GameError);
 
-    const s1 = applyAction(s0, 'a', { type: 'recruitProspect' }, rng);
+    const s1 = applyAction(s0, 'a', { type: 'buildInfrastructure', infrastructure: 'shop' }, rng);
     expect(canUndoTurn(s1, 'a')).toBe(true);
-    expect(s1.players.a!.roster.length).toBe(s0.players.a!.roster.length + 1);
+    expect(s1.players.a!.infrastructure).toEqual(['shop']);
     const s2 = applyAction(s1, 'a', { type: 'cardAction', source: { kind: 'staff', index: 0 }, paid: true }, rng);
 
     const back = applyAction(s2, 'a', { type: 'undoTurn' }, rng);
@@ -57,5 +58,41 @@ describe('undoTurn', () => {
     // b 가 행동하면 b 의 차례 스냅샷이 새로 찍힌다
     s = applyAction(s, 'b', { type: 'pass' }, rng);
     expect(canUndoTurn(s, 'b')).toBe(true);
+  });
+
+  // 사용자 결정(2026-09): 카드가 공개되는 행동(시장 보충·유망주 영입·전술 카드 뽑기 등) 뒤에는 되돌릴 수 없다 — 본 정보를 무를 수 없으므로
+  it('카드를 공개한 차례는 되돌릴 수 없고, 그 뒤 행동을 더 해도 계속 잠긴다', () => {
+    const rng = seededRng(5);
+    const s0 = tuesday();
+    // 유망주 영입: 더미 다음 카드가 공개된다
+    const prospect = applyAction(s0, 'a', { type: 'recruitProspect' }, rng);
+    expect(canUndoTurn(prospect, 'a')).toBe(false);
+    const v = viewFor(prospect, 'a');
+    expect(v.phase.kind === 'weekday' && v.phase.canUndo).toBe(false);
+    expect(() => applyAction(prospect, 'a', { type: 'undoTurn' }, rng)).toThrow(/revealed/);
+    // 잠긴 뒤 유급 행동을 해도 스냅샷이 새로 찍히지 않는다 (잠금 유지)
+    const more = applyAction(prospect, 'a', { type: 'cardAction', source: { kind: 'staff', index: 0 }, paid: true }, rng);
+    expect(canUndoTurn(more, 'a')).toBe(false);
+    expect(() => applyAction(more, 'a', { type: 'undoTurn' }, rng)).toThrow(GameError);
+
+    // 시장 구매(주전·베테랑·직원·스폰서)는 왼쪽에 새 카드가 보충되므로 마찬가지
+    for (const action of [
+      { type: 'recruitPlayer', marketIndex: 4 },
+      { type: 'recruitPlayer', marketIndex: 4, row: 'veterans' },
+      { type: 'hireStaff', marketIndex: 4 },
+      { type: 'signSponsor', marketIndex: 4, contract: 'kit' },
+    ] as const) {
+      const s = applyAction(s0, 'a', action, rng);
+      expect(canUndoTurn(s, 'a'), action.type).toBe(false);
+    }
+    // 공개가 없는 행동(건설·사무실·방출·패스)은 그대로 되돌릴 수 있다
+    for (const action of [{ type: 'buildOffice' }, { type: 'pass' }, { type: 'releasePlayer', instanceId: s0.players.a!.roster[0]!.instanceId }] as const) {
+      const s = applyAction(s0, 'a', action, rng);
+      expect(canUndoTurn(s, 'a'), action.type).toBe(true);
+    }
+    // 차례가 끝나면 잠금도 함께 사라지고 다음 참가자는 정상
+    const ended = applyAction(more, 'a', { type: 'endTurn' }, rng);
+    const b = applyAction(ended, 'b', { type: 'pass' }, rng);
+    expect(canUndoTurn(b, 'b')).toBe(true);
   });
 });

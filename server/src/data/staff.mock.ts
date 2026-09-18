@@ -147,7 +147,7 @@ export const STAFF_CARDS: StaffCard[] = [
       effects: [{ type: 'placeStamina', count: 1 }],
       text: '선수 1명에 1[체력]을 올려놓습니다.',
     },
-    trait: { text: '경기 영향 주사위를 재굴림할 때 [팬덤]을 내지 않습니다.', effect: { kind: 'freeMatchReroll' } },
+    trait: { text: '주 1회, 경기 영향 주사위를 재굴림할 때 [팬덤]을 내지 않습니다.', effect: { kind: 'freeMatchReroll' } },
     placeholder: true,
   },
   {

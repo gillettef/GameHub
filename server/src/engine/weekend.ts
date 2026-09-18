@@ -59,13 +59,16 @@ export function runWeekend(state: GameState, rng: Rng): void {
     player.resources.ops = Math.min(1, player.resources.ops);
     // p.25 5: 이번 주의 점검용 토큰(요일 제한)은 버린다. 다음 주 것은 남긴다
     player.restrictions = player.restrictions.filter((r) => r.week > state.week);
+    // 특성(팬덤 없이 재굴림)은 주당 1회 — 새 주에 다시 쓸 수 있다
+    player.freeRerollUsed = { board: false, match: false };
   }
 
   cycleMarket(state, 'players', rng);
+  cycleMarket(state, 'veterans', rng);
   cycleMarket(state, 'staff', rng);
   cycleMarket(state, 'sponsors', rng);
   const prospect = state.decks.prospects.shift();
-  if (prospect) state.decks.discards.players.push(prospect);
+  if (prospect) state.decks.discards.prospects.push(prospect);
 
   state.firstPlayer = leftOf(state, state.firstPlayer);
   addLog(state, `${state.week}주차 종료. 다음 선 참가자: ${getPlayer(state, state.firstPlayer).name}`, { day: 'weekend' });

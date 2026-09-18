@@ -3,6 +3,7 @@ import { cards, effectiveSkill } from './cards';
 import { GameError } from './state';
 import type { GameState } from './state';
 import { gameAtMonday, seededRng } from './test-utils';
+import { hireCost } from './traits';
 import {
   buildInfrastructure,
   buildOffice,
@@ -71,11 +72,28 @@ describe('선수 영입/방출 (p.15~16)', () => {
     expect(() => recruitPlayer(tuesday(0), 'a', 4, seededRng())).toThrow(GameError);
   });
 
-  it('유망주는 더미 맨 위에서', () => {
+  it('베테랑 행(원작에 없는 행)도 맨 오른쪽 3장 중 영입하고 베테랑 더미에서 보충한다', () => {
+    const s0 = tuesday();
+    const cardId = s0.market.veterans[3]!;
+    expect(cards.player(cardId).kind).toBe('veteran');
+    const s = recruitPlayer(s0, 'a', 3, seededRng(), 'veterans');
+    const p = s.players['a']!;
+    expect(p.resources.money).toBe(20 - cards.player(cardId).untrained.cost);
+    expect(p.roster.at(-1)!.cardId).toBe(cardId);
+    expect(s.market.veterans).toHaveLength(5);
+    expect(s.market.veterans).not.toContain(cardId);
+    expect(s.market.veterans.slice(1, 3)).toEqual(s0.market.veterans.slice(0, 2)); // 오른쪽으로 밀고 왼쪽 보충
+    expect(s.decks.veterans).toHaveLength(s0.decks.veterans.length - 1);
+    expect(s.market.players).toEqual(s0.market.players); // 주전 행은 그대로
+    expect(() => recruitPlayer(s0, 'a', 1, seededRng(), 'veterans')).toThrow(GameError);
+  });
+
+  it('유망주는 더미 맨 위에서 (미훈련 면 비용 1)', () => {
     const s0 = tuesday();
     const top = s0.decks.prospects[0]!;
     const s = recruitProspect(s0, 'a');
     expect(s.players['a']!.roster.at(-1)!.cardId).toBe(top);
+    expect(s.players['a']!.resources.money).toBe(20 - 1);
     expect(s.decks.prospects[0]).not.toBe(top);
   });
 
@@ -91,7 +109,9 @@ describe('선수 영입/방출 (p.15~16)', () => {
     expect(p.vp).toBe(1);
     expect(p.roster.some((r) => r.instanceId === inst.instanceId)).toBe(false);
     expect(p.uniforms.some((u) => u.cardInstanceId === inst.instanceId)).toBe(false);
-    expect(s.decks.discards.players).toContain(inst.cardId);
+    // 종류별 버린 더미로 (주전/베테랑/유망주)
+    const kind = cards.player(inst.cardId).kind;
+    expect(s.decks.discards[kind === 'veteran' ? 'veterans' : kind === 'prospect' ? 'prospects' : 'players']).toContain(inst.cardId);
 
     inst.tokens.injury = 1;
     const injured = releasePlayer(s0, 'a', inst.instanceId);
@@ -107,7 +127,9 @@ describe('직원 고용 (p.17)', () => {
     const s = hireStaff(s0, 'a', 2, seededRng());
     const p = s.players['a']!;
     expect(p.staff.map((x) => x.cardId)).toContain(cardId);
-    expect(p.resources.money).toBeLessThanOrEqual(20 - card.cost);
+    // 즉시 보너스에 돈이 있으면 그만큼 더 남는다 (시장 카드는 시드에 따라 달라진다)
+    const bonusMoney = (card.bonus ?? []).reduce((n, e) => (e.type === 'gainResource' && e.resource === 'money' ? n + e.amount : n), 0);
+    expect(p.resources.money).toBeLessThanOrEqual(20 - hireCost(s0.players['a']!, card.cost) + bonusMoney); // 임원 특성 할인 반영
     expect(s.market.staff).not.toContain(cardId);
   });
 });

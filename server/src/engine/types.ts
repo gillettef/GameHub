@@ -73,7 +73,7 @@ export type Effect =
   | { type: 'sectorSkill'; sector: Sector; delta: number } // 이번 경기 내 그 구획 선수 전원 역량 ±N
   | { type: 'flipUnmatchedToken'; count: number } // 카드 없는 필드 유니폼 토큰 N개를 뒤집는다 (대상 선택, 영구)
   // ---- 그 밖의 대상 선택·상태 효과 ----
-  | { type: 'discardMarketCard'; row: 'players' | 'staff' | 'sponsors' } // 이적 시장 카드 1장을 골라 버리고 보충
+  | { type: 'discardMarketCard'; row: MarketRow } // 이적 시장 카드 1장을 골라 버리고 보충
   | { type: 'addStaffSuspension'; count: number } // 직원 카드 1장을 골라 출장정지 N개
   | { type: 'releasePlayer' } // 선수 카드 1장을 골라 방출 행동으로 처리
   | { type: 'restrictDay'; day: 'tue' | 'wed' | 'thu'; week: 'this' | 'next'; mode: DayRestriction }
@@ -85,6 +85,12 @@ export type Effect =
 export type Cost = Partial<Resources>;
 
 export type MatchTiming = 'beforeMatch' | 'duringMatch' | 'afterMatch';
+
+// ---------- 이적 시장 행 ----------
+// 규칙서(p.4)는 선수 행이 주전 5장 하나뿐이지만, 이 구현은 베테랑도 별도 행(5장, 오른쪽 3장 구매 가능)으로 노출한다
+// (사용자 결정, 2026-09). 유망주는 행이 없고 더미 맨 위 카드(미훈련 면 공개)를 영입한다
+export type MarketRow = 'players' | 'veterans' | 'staff' | 'sponsors';
+export type PlayerMarketRow = 'players' | 'veterans';
 
 // ---------- 선수 카드 (p.15~16, p.22) ----------
 
@@ -113,7 +119,7 @@ export interface PlayerSide {
 export interface PlayerCard {
   id: string;
   kind: PlayerKind;
-  name: string;
+  name: string; // 유망주도 본명 (미훈련 면에도 표시 — 사용자 요청, 2026-09)
   tags: string[];
   untrained: PlayerSide;
   trained: PlayerSide;
@@ -177,7 +183,7 @@ export type Trait =
   | { kind: 'fandomOnSponsor'; amount: number } // 스폰서 계약 시 팬덤 +N
   | { kind: 'keepStamina'; count: number } // 주말에 체력을 N개까지 남김
   | { kind: 'extraSaves'; count: number } // 골키퍼 선방 +N (항상)
-  | { kind: 'marketReach'; row: 'players' | 'sponsors' } // 그 행은 맨 왼쪽 2장도 고를 수 있음
+  | { kind: 'marketReach'; row: 'players' | 'sponsors' } // 그 행은 맨 왼쪽 2장도 고를 수 있음 ('players' 는 주전·베테랑 행 둘 다)
   | { kind: 'releaseBonus'; amount: number } // 방출 시 돈 +N
   | { kind: 'redrawTactic' } // 경기 준비 중 전술 카드 1장을 버리고 새로 뽑기 (경기일마다 1회)
   | { kind: 'upkeepDiscount'; amount: number } // 주말 유지비 −N (보유하는 동안)
