@@ -14,7 +14,8 @@ export const TOKEN_LABEL: Record<PlayerToken, string> = {
 };
 export const COLOR_LABEL: Record<DieColor, string> = { yellow: '노랑', blue: '파랑', red: '빨강' };
 export const SET_LABEL: Record<StaffSet, string> = { medical: '의료', coaching: '코칭', scouting: '스카우트', operations: '운영', commercial: '상업' };
-export const CONTRACT_LABEL: Record<SponsorContract, string> = { kit: '스폰서 키트', billboard: '광고판', naming: '스타디움 명명권' };
+// p.18 본문 표기(장내 방송·광고판·유니폼). 참조표(p.31)의 스폰서키트·스타디움 명명권과 같은 것
+export const CONTRACT_LABEL: Record<SponsorContract, string> = { kit: '장내 방송', billboard: '광고판', naming: '유니폼' };
 export const INFRA_LABEL: Record<InfrastructureType, string> = {
   lights: '스타디움 조명',
   shop: '상점',

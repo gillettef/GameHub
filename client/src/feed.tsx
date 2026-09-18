@@ -88,7 +88,7 @@ export function diffPlayer(a: PlayerPublicView, b: PlayerPublicView, leagueA: nu
   if (suspAfter !== suspBefore) out.push({ kind: 'text', icon: 'suspension', text: `직원 ${TOKEN_LABEL.suspension} ${suspAfter - suspBefore > 0 ? '+' : ''}${suspAfter - suspBefore}`, tone: 'suspension' });
 
   for (const id of b.sponsors.billboards) if (!a.sponsors.billboards.includes(id)) out.push({ kind: 'text', text: `광고판 ${cards.sponsor(id).name}` });
-  if (b.sponsors.naming && b.sponsors.naming !== a.sponsors.naming) out.push({ kind: 'text', text: `명명권 ${cards.sponsor(b.sponsors.naming).name}` });
+  if (b.sponsors.naming && b.sponsors.naming !== a.sponsors.naming) out.push({ kind: 'text', text: `유니폼 ${cards.sponsor(b.sponsors.naming).name}` });
   if (b.infrastructure.length > a.infrastructure.length) {
     const added = [...b.infrastructure];
     for (const t of a.infrastructure) {

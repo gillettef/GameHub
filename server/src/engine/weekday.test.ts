@@ -113,7 +113,7 @@ describe('직원 고용 (p.17)', () => {
 });
 
 describe('스폰서 계약 (p.18)', () => {
-  it('키트는 즉시 버림, 광고판은 최대 2(+1), 명명권은 1', () => {
+  it('장내 방송(키트)은 즉시 버림, 광고판은 최대 2(+1), 유니폼(명명권)은 1', () => {
     let s = tuesday();
     const kit = s.market.sponsors[4]!;
     s = signSponsor(s, 'a', 4, 'kit', seededRng());
