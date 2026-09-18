@@ -322,8 +322,10 @@ MVP에서 **단순화 가능**한 부분: 선수/직원/임원/스폰서/이사�
 
 - **기본 방식은 대기실의 "🤖 AI 추가" 버튼** — 호스트가 봇을 추가/제거(`addBot`/`removeBot`, 대기실에서만,
   정원 4명). 봇은 `server/src/bot/driver.ts`가 서버 안에서 움직인다: 사람 액션(또는 시작) 직후 `poke` →
-  봇 한 액션씩 `BOT_DELAY_MS`(기본 300ms) 간격으로 더 할 일이 없을 때까지 진행하고 매번 브로드캐스트.
-  `RoomPlayer.isBot`, `RoomPlayerView.isBot`으로 구분.
+  봇 한 액션씩 더 할 일이 없을 때까지 진행하고 매번 브로드캐스트. 간격은 `BOT_DELAY_MS`(기본 800ms) × 액션별
+  배수(`PAUSE_FACTOR`: 주사위 굴림 4배 = 애니메이션이 멈추고 결과가 보일 때까지, 주중 행동·결정 적용·라인업 3배 =
+  효과 토스트를 읽을 시간, 차례 끝내기 1.5배, 드래프트 1배) — 사람이 봇의 선택과 결과를 지켜볼 수 있게(사용자 요청).
+  `runUntilIdle`(테스트·헤드리스)은 지연 없이 돈다. `RoomPlayer.isBot`, `RoomPlayerView.isBot`으로 구분.
 - `policy.ts` — GameView만 보고 판단하는 휴리스틱(사람과 같은 정보). 서버가 거부한 액션 종류는 그 차례 동안
   재시도하지 않아 교착이 없다. `driver.test.ts`(사람 1 + 봇 3), `bots.test.ts`(외부 ws 봇 4)가 한 판을 완주.
 - `bot.ts`/`run.ts` — 외부 ws 클라이언트 봇과 CLI(`npm run bots -w server -- create 4 start`). 헤드리스 봇 판이나
