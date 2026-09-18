@@ -1,5 +1,5 @@
 import { cards } from '@server/engine/cards';
-import { infraCost, prospectCost } from '@server/engine/traits';
+import { infraCost } from '@server/engine/traits';
 import type { InfrastructureType } from '@server/engine/types';
 import type { PlayerPublicView } from '@server/engine/view';
 import { useCommit } from '../commit';
@@ -26,10 +26,7 @@ function WeekdayActions({ me }: { me: PlayerPublicView }) {
   const basic = myTurn && !basicDone && restriction !== 'cardActionOnly';
   const cls = (key: string) => `action-item${chosen === key ? ' chosen' : ''}`;
   const officeStep = cards.boardData.office[me.office];
-  // 유망주 더미 맨 위 카드: 미훈련 면(공격/수비·비용)은 공개, 훈련 면은 영입해야 본다
   const prospect = view.nextProspect;
-  const prospectRole = prospect ? cards.player(prospect).untrained.role : null;
-  const prospectPrice = prospect ? prospectCost(me, cards.player(prospect).untrained.cost) : 0;
   const toggleRelease = () => {
     const next = !releasing;
     setReleasing(next);
@@ -68,21 +65,8 @@ function WeekdayActions({ me }: { me: PlayerPublicView }) {
         <button className="action-item" disabled={!basic} onClick={() => showMarket('veterans')} title="이적 시장 · 베테랑 탭에서 오른쪽 3장 중 한 장을 고릅니다">
           <span>베테랑 영입…</span>
         </button>
-        <button
-          className={cls('prospect')}
-          disabled={!basic || !prospect || me.resources.money < prospectPrice}
-          onClick={() => prospect && select('prospect', { type: 'recruitProspect' }, <>유망주 영입 ({prospectRole === 'attack' ? '공격' : '수비'}) <CostChips cost={{ money: prospectPrice }} /></>)}
-          title={prospect ? `유망주 더미 맨 위 카드 (${prospectRole === 'attack' ? '공격' : '수비'}) · 훈련 면은 영입 후 공개 · 유망주 탭에서 카드를 볼 수 있습니다` : '유망주 더미가 비었습니다'}
-        >
-          <span>
-            <Icon name="prospect" size={14} />유망주 영입
-            {prospect && prospectRole && (
-              <span className={`role-badge inline ${prospectRole}`} title={prospectRole === 'attack' ? '다음 유망주: 공격' : '다음 유망주: 수비'}>
-                <Icon name={prospectRole} size={12} />
-              </span>
-            )}
-          </span>
-          {prospect ? <CostChips cost={{ money: prospectPrice }} /> : <span className="muted small">더미 없음</span>}
+        <button className="action-item" disabled={!basic || !prospect} onClick={() => showMarket('prospects')} title={prospect ? '이적 시장 · 유망주 탭에서 더미 맨 위 카드를 누릅니다 (미훈련 면만 보이고 훈련 면은 영입 후 공개)' : '유망주 더미가 비었습니다'}>
+          <span>유망주 영입…</span>
         </button>
         <button className="action-item" disabled={!basic} onClick={() => showMarket('staff')} title="이적 시장 · 직원 탭에서 오른쪽 3장 중 한 장을 고릅니다">
           <span>직원 고용…</span>

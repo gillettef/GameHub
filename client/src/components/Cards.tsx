@@ -1,4 +1,4 @@
-import { activeSide, cards, effectiveSkill } from '@server/engine/cards';
+import { activeSide, cards, effectiveSkill, playerName } from '@server/engine/cards';
 import type { PlayerInstance } from '@server/engine/state';
 import type { DieColor, Formation, PlayerToken, Sector } from '@server/engine/types';
 import { COLOR_LABEL, KIND_LABEL, SECTOR_LABEL, SET_LABEL, TIMING_LABEL, describeCost as describeCostText, describeEffects } from '../labels';
@@ -75,7 +75,7 @@ export function PlayerCardView({ cardId, instance, ...props }: { cardId: string;
   const side = instance ? activeSide(instance) : card.untrained;
   const skill = instance ? effectiveSkill(instance) : side.skill;
   const tokens = instance ? (Object.entries(instance.tokens) as [PlayerToken, number][]).filter(([, n]) => n > 0) : [];
-  const name = card.name; // 유망주도 본명을 항상 표시 (사용자 요청)
+  const name = playerName(cardId, instance?.trained); // 유망주는 훈련 전엔 모두 '유망주', 훈련하면 본명 (사용자 결정)
   return (
     <Card className={`player ${side.role} kind-${card.kind}${instance?.exhausted ? ' exhausted' : ''}`} {...props}>
       <div className="pc-left">

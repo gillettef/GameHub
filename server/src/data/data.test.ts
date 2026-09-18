@@ -78,7 +78,7 @@ describe('선수 카드 (p.15~16, p.22)', () => {
       expect(p.untrained.effect).toBeUndefined();
       expect(p.untrained.role).toBe(p.trained.role);
       expect(p.untrained.zones).toEqual(p.untrained.role === 'attack' ? ['CM', 'CF'] : ['CB', 'CM']);
-      expect(p.name).not.toBe('유망주'); // 본명을 미훈련 면에도 표시 (사용자 요청)
+      expect(p.name).not.toBe('유망주'); // 데이터는 본명, 화면은 훈련 전 '유망주' (playerName)
       expect(p.trained.number).toBeDefined();
       expect(p.trained.cost).toBe(1);
       expect(p.trained.skill >= 3 || p.trained.effect !== undefined).toBe(true); // 역량 중상 또는 상급 능력

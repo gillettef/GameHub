@@ -1,4 +1,4 @@
-import { cards } from './cards';
+import { cards, instanceName } from './cards';
 import { resolvePending } from './effects';
 import { marketCardName } from './effects';
 import { acceptMatchRoll, advanceFriday, playTacticEffect, redrawTactic, rerollMatchDie, rollMatchDie, submitLineup } from './friday';
@@ -110,7 +110,7 @@ function describe(before: GameState, after: GameState, pid: PlayerId, action: Ga
   const player = getPlayer(before, pid);
   const playerName = (instanceId: string) => {
     const inst = player.roster.find((r) => r.instanceId === instanceId);
-    return inst ? cards.player(inst.cardId).name : instanceId;
+    return inst ? instanceName(inst) : instanceId;
   };
   switch (action.type) {
     case 'draftPick':

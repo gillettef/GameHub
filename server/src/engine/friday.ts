@@ -1,4 +1,4 @@
-import { activeSide, cards, effectiveSkill } from './cards';
+import { activeSide, cards, effectiveSkill, instanceName } from './cards';
 import { applyEffects, moveTrack, trainPlayer } from './effects';
 import type { EffectContext, MatchContext } from './effects';
 import { resolveMatch, sectorCounts } from './match';
@@ -398,7 +398,7 @@ function injure(state: GameState, player: PlayerState, played: PlayerInstance[],
     const n = activeSide(p).number;
     return n !== undefined && (face === 12 ? n >= 12 : n === face);
   });
-  addLog(state, `부상 주사위 ${face}: ${hit.length ? hit.map((h) => cards.player(h.cardId).name).join(', ') : '해당 없음'}`, { actor: player.id });
+  addLog(state, `부상 주사위 ${face}: ${hit.length ? hit.map((h) => instanceName(h)).join(', ') : '해당 없음'}`, { actor: player.id });
   chooseAmong(player, hit, { type: 'addPlayerToken', token: 'injury', count }, '부상', (inst) => (inst.tokens.injury += count));
 }
 
