@@ -688,6 +688,7 @@ button.ghost.light:hover:not(:disabled) { border-color: #fff; color: #fff; }
 .turn-alert { position: fixed; top: 32%; left: 50%; transform: translate(-50%, -50%); z-index: 12; pointer-events: none; display: flex; flex-direction: column; align-items: center; gap: 2px; background: var(--pitch); color: #fff; padding: 16px 34px; border-radius: 16px; box-shadow: 0 16px 40px rgba(22, 92, 58, 0.4); animation: turn-alert 3.2s ease-out both; }
 .turn-alert-title { font-size: 26px; font-weight: 700; letter-spacing: 0.02em; }
 .turn-alert-text { font-size: 14px; color: #d7f0e0; }
+.waiting-for { font-size: 15px; padding: 10px 12px; background: var(--surface-2); border-radius: var(--radius); }
 @keyframes turn-alert { 0% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); } 8% { opacity: 1; transform: translate(-50%, -50%) scale(1.03); } 12% { transform: translate(-50%, -50%) scale(1); } 80% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -60%); } }
 .notify-toggles { display: inline-flex; gap: 4px; margin-right: 8px; }
 .notify-toggles .toggle { padding: 3px 8px; font-size: var(--fs-sub); color: var(--muted); border-color: var(--line); gap: 4px; }

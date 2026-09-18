@@ -195,6 +195,7 @@ export function EffectToasts() {
     const before = prev.current;
     prev.current = view;
     if (!before || before === view || before.id !== view.id) return; // 첫 뷰·같은 뷰·다른 판은 기준만 잡는다
+    if (view.phase.kind.startsWith('setup')) return; // 준비 단계(드래프트·목표)는 화면의 대기 표시로 충분 (사용자 요청)
     const toast = buildToast(nextId.current, before, view);
     if (!toast) return;
     nextId.current += 1;

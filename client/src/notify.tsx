@@ -126,6 +126,7 @@ export function NotifyProvider({ children }: { children: ReactNode }) {
     const was = wasNeeded.current;
     wasNeeded.current = needs;
     if (was === null || was === needs || !needs || !task) return;
+    if (view?.phase.kind.startsWith('setup')) return; // 준비 단계는 패널 자체가 안내라 가운데 배너·소리를 띄우지 않는다
     setAlert({ id: nextId.current++, text: task });
     if (prefsRef.current.sound) beep();
     if (prefsRef.current.desktop) desktopNotify(task);
