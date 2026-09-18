@@ -97,7 +97,7 @@ export function FridayPrepareScreen() {
         <div className="stack">
           <div className="step">
             <h3>상대</h3>
-            {me.nextOpponent && <div className="cards"><OpponentCardView cardId={me.nextOpponent} /></div>}
+            {me.nextOpponent && <div className="cards"><OpponentCardView cardId={me.nextOpponent} revealed={me.scouted} /></div>}
           </div>
 
           <div className="step">

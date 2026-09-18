@@ -52,6 +52,7 @@ export type Effect =
   | { type: 'addPlayerToken'; token: PlayerToken; count: number; spread?: true }
   | { type: 'removePlayerToken'; token: PlayerToken; count: number; spread?: true }
   | { type: 'scoreGoal'; team: 'self' | 'opponent'; amount: number } // 경기 중/후
+  | { type: 'peekOpponent' } // 상대 팀 카드 더미 맨 위 카드의 앞면을 확인 (그 카드로 경기할 때까지 유지)
   | { type: 'text'; text: string };
 
 export type Cost = Partial<Resources>;

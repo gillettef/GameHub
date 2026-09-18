@@ -22,7 +22,8 @@ function affordable(me: PlayerPublicView, cost: Partial<Record<Resource, number>
 function usableStaffAction(me: PlayerPublicView, extraOps = 0): number {
   return me.staff.findIndex((s) => {
     const action = cards.staff(s.cardId).action;
-    return action && !s.exhausted && s.suspension === 0 && affordable(me, action.cost, extraOps);
+    const useful = action?.effects.some((e) => e.type !== 'peekOpponent' && e.type !== 'text');
+    return action && useful && !s.exhausted && s.suspension === 0 && affordable(me, action.cost, extraOps);
   });
 }
 

@@ -122,6 +122,19 @@ describe('applyEffects', () => {
     if (number <= 11) expect(token.number).toBe(number);
   });
 
+  it('peekOpponent 는 본인만 다음 상대 카드 앞면을 보게 표시하고, 그 카드로 경기하면 풀린다', () => {
+    const s = game();
+    const p = s.players['a']!;
+    expect(p.scouted).toBe(false);
+    applyEffects(s, 'a', [{ type: 'peekOpponent' }], '분석가');
+    expect(p.scouted).toBe(true);
+    expect(s.log[s.log.length - 1]!.text).toContain('확인');
+    p.opponentDeck = [];
+    p.scouted = false;
+    applyEffects(s, 'a', [{ type: 'peekOpponent' }], '분석가');
+    expect(p.scouted).toBe(false);
+  });
+
   it('text 효과는 로그에만 남긴다', () => {
     const s = game();
     applyEffects(s, 'a', [{ type: 'text', text: '수동' }], 'x');

@@ -134,6 +134,14 @@ export function applyEffects(state: GameState, pid: PlayerId, effects: readonly 
       case 'scoreGoal':
         addLog(state, `${source}: 경기 외 득점 효과는 무시됨`, { actor: pid });
         break;
+      case 'peekOpponent':
+        if (player.opponentDeck.length === 0) {
+          addLog(state, `${source}: 확인할 상대 팀 카드가 없음`, { actor: pid });
+        } else {
+          player.scouted = true; // 뷰가 본인에게만 앞면을 보여준다
+          addLog(state, `${source}: 상대 팀 카드 더미 맨 위 카드를 확인함`, { actor: pid });
+        }
+        break;
       case 'text':
         addLog(state, `${source}: (수동 처리) ${effect.text}`, { actor: pid });
         break;

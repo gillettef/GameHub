@@ -289,6 +289,9 @@ MVP에서 **단순화 가능**한 부분: 선수/직원/임원/스폰서/이사�
   처리하면 선택이 경기 뒤로 밀려 경기에 반영되지 않는다. 그래서 `submitLineup`이 경기 전 효과를 바로 적용하고, `pending`이
   남으면 그 참가자 차례에 머문다. `resolvePending` 뒤 `advanceAfterLineup`(`friday.ts`)이 다음 참가자로(전원 제출이면
   판정) 넘긴다. 경기 전 득점 효과는 `phase.preGoals`에 보관. 테스트는 `settlePending`(`test-utils.ts`)으로 같은 흐름을 탄다.
+- **상대 팀 카드 미리 보기**(`peekOpponent` 효과, 직원 '다니엘 오코로'): `PlayerState.scouted`를 켜고 뷰는 본인에게만 다음 상대
+  카드를 앞면(`OpponentCardView revealed`)으로 그린다(다른 참가자·관전자는 보고서 면). 그 카드로 경기하면 풀린다. 봇은 정보만
+  주는 행동(`peekOpponent`·`text`)을 쓰지 않는다.
 - **토큰 효과 `spread`**: `addPlayerToken`/`removePlayerToken`의 `spread: true`는 count개를 1개씩 대상을 골라 나눠
   적용한다("약점을 3개까지 버립니다" 류, 스폰서 추가 보너스·이사회 '전 선수단 일괄'). 없으면 한 카드에 count개("선수 카드
   1장에 2개"). 대상을 고른 뒤 남은 대기 효과는 후보를 다시 계산해(0이면 버림, 1이면 자동 적용) 같은 선수를 헛되이 다시

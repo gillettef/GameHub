@@ -60,6 +60,7 @@ export interface PlayerState {
   tacticCards: string[];
   objective?: string;
   opponentDeck: string[]; // index 0 = 다음 상대
+  scouted: boolean; // 다음 상대 카드의 앞면을 미리 봤는가 (peekOpponent 효과). 그 카드로 경기하면 풀린다
   vp: number; // 개인 공급처의 승점 토큰
   pending: PendingEffect[];
   nextInstance: number;
