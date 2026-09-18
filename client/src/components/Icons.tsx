@@ -2,7 +2,7 @@ import type { Effect, PlayerToken, Resource, Track } from '@server/engine/types'
 import { RESOURCE_LABEL, TOKEN_LABEL, describeEffect } from '../labels';
 
 // 16px 단색 아이콘 세트. 색은 currentColor
-export type IconName = Resource | 'vp' | 'attack' | 'defense' | 'train' | 'injury' | 'suspension' | 'strength' | 'weakness' | 'tactic' | 'prospect' | 'goal' | 'die';
+export type IconName = Resource | 'vp' | 'attack' | 'defense' | 'train' | 'injury' | 'suspension' | 'strength' | 'weakness' | 'tactic' | 'prospect' | 'goal' | 'die' | 'eye';
 
 const PATHS: Record<IconName, React.ReactNode> = {
   money: (
@@ -45,6 +45,12 @@ const PATHS: Record<IconName, React.ReactNode> = {
   tactic: <path d="M2 3h12v10H2zM8 3v10M2 8h12" fill="none" stroke="currentColor" strokeWidth="1.5" />,
   prospect: <path d="M8 2v12M3 7l5-5 5 5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />,
   goal: <path d="M2 4h12v9H2zM2 4v9M14 4v9M5 4v9M8 4v9M11 4v9M2 7h12M2 10h12" fill="none" stroke="currentColor" strokeWidth="1" />,
+  eye: (
+    <>
+      <path d="M1.5 8s2.5-4.5 6.5-4.5S14.5 8 14.5 8 12 12.5 8 12.5 1.5 8 1.5 8z" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
+      <circle cx="8" cy="8" r="2.2" fill="currentColor" />
+    </>
+  ),
   die: (
     <>
       <rect x="2" y="2" width="12" height="12" rx="2.5" fill="none" stroke="currentColor" strokeWidth="1.6" />
@@ -147,6 +153,8 @@ export function EffectChip({ effect }: { effect: Effect }) {
       return <TokenChip token={effect.token} count={-effect.count} note={effect.spread && effect.count > 1 ? '1개씩' : undefined} title={title} />;
     case 'scoreGoal':
       return <Chip icon="goal" value={signed(effect.amount)} tone={effect.team === 'self' ? 'goal' : 'goal-opp'} title={title}>{effect.team === 'self' ? '' : '상대'}</Chip>;
+    case 'peekOpponent':
+      return <Chip icon="eye" tone="goal" title={title}>상대 카드 확인</Chip>;
     case 'text':
       return <span className="chip text" title={effect.text}>{effect.text}</span>;
   }

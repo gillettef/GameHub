@@ -281,7 +281,7 @@ export const STAFF_CARDS: StaffCard[] = [
     setPoints: [0, 1, 3, 6],
     action: {
       cost: { ops: 1 },
-      effects: [{ type: 'text', text: '상대 팀 카드 더미의 맨 위 카드를 확인하고 원래대로 되돌립니다.' }],
+      effects: [{ type: 'peekOpponent' }],
       text: '상대 팀 카드 더미의 맨 위 카드를 확인하고 원래대로 되돌립니다.',
     },
     placeholder: true,

@@ -52,6 +52,8 @@ export function describeEffect(e: Effect): string {
       return `${TOKEN_LABEL[e.token]} −${e.count}${e.spread && e.count > 1 ? ' (1개씩 나눠서, 최대)' : ''}`;
     case 'scoreGoal':
       return `${e.team === 'self' ? '우리 팀' : '상대 팀'} ${sign(e.amount)}골`;
+    case 'peekOpponent':
+      return '다음 상대 팀 카드 앞면 확인';
     case 'text':
       return e.text;
   }

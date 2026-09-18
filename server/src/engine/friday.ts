@@ -205,6 +205,7 @@ function resolveAllMatches(state: GameState, rng: Rng): void {
     const sub = state.phase.submitted[pid]!;
     const opponentCardId = player.opponentDeck.shift();
     if (!opponentCardId) throw new GameError('no opponent left');
+    player.scouted = false; // 미리 본 카드는 이번 경기로 소진
     const opponent = cards.opponent(opponentCardId);
     const played = sub.players.map((id) => instanceOf(player, id));
     const goals = { ...state.phase.preGoals[pid]! }; // 경기 전 효과는 제출 시점에 이미 적용됨

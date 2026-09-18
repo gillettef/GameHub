@@ -89,6 +89,7 @@ describe('경기 전 효과 (p.22)', () => {
     // p-s01 훈련 면: 경기 전 1[체력] → 선수 1명에 일시적 역량 1개 (대상 선택)
     const booster = addToRoster(a, 'p-s01');
     booster.trained = true;
+    a.scouted = true;
     const sub = autoLineup(a);
     if (!sub.players.includes(booster.instanceId)) sub.players.push(booster.instanceId);
     const lineup = { ...autoLineup(a, sub.players), activations: { [booster.instanceId]: { stamina: 1 } } };
@@ -106,6 +107,7 @@ describe('경기 전 효과 (p.22)', () => {
 
     for (const id of ['b', 'c', 'd']) s = settlePending(submitLineup(s, id, autoLineup(s.players[id]!), rng), rng);
     expect(s.phase.kind).toBe('friday.aftermath');
+    expect(s.players['a']!.scouted).toBe(false); // 미리 본 상대 카드는 경기로 소진
     // p.24: 경기 뒤 출전 선수의 일시적 토큰은 제거된다
     expect(s.players['a']!.roster.every((r) => r.tokens.strengthTemp === 0)).toBe(true);
   });

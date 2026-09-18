@@ -202,7 +202,8 @@ function MatchBoard({ p }: { p: PlayerPublicView }) {
         <div className="mb-bench"><span className="mb-line-label">벤치</span>{bench.map(token)}</div>
       </div>
       <div className="mb-side">
-        {p.nextOpponent ? <OpponentCardView cardId={p.nextOpponent} compact /> : <span className="muted small">남은 상대 없음</span>}
+        {p.nextOpponent ? <OpponentCardView cardId={p.nextOpponent} compact revealed={p.scouted && session?.playerId === p.id} /> : <span className="muted small">남은 상대 없음</span>}
+        {p.scouted && session?.playerId === p.id && <span className="muted small"><Icon name="eye" size={12} /> 앞면을 미리 봤습니다</span>}
         <span className="muted small">남은 상대 {p.opponentsLeft}팀</span>
       </div>
       <div className="mb-roster">

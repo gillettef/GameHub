@@ -55,6 +55,7 @@ function createPlayerState(id: PlayerId, name: string): PlayerState {
     office: 0,
     tacticCards: [],
     opponentDeck: [],
+    scouted: false,
     vp: 0,
     pending: [],
     nextInstance: 1,

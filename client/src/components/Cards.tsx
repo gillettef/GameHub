@@ -328,7 +328,7 @@ export function OpponentCardView({ cardId, revealed, ...props }: { cardId: strin
   const card = cards.opponent(cardId);
   return (
     <Card className="opponent" {...props}>
-      <div className="scout-head">스카우트 보고서</div>
+      <div className="scout-head">{revealed ? '상대 팀 카드' : '스카우트 보고서'}</div>
       <div className="opp-identity">
         <span className="emblem">{card.teamName.charAt(0)}</span>
         <span className="opp-name clamp2">{card.teamName}</span>
