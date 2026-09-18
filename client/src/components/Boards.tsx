@@ -1,13 +1,16 @@
+import { useEffect, useState } from 'react';
 import { cards } from '@server/engine/cards';
+import { billboardLimit } from '@server/engine/weekday';
 import { upkeepDue } from '@server/engine/weekend';
 import { RESOURCES, TRACK_MAX } from '@server/engine/types';
 import type { InfrastructureType, Resource } from '@server/engine/types';
 import type { PlayerPublicView } from '@server/engine/view';
 import { INFRA_LABEL, RESOURCE_LABEL } from '../labels';
 import { useView } from '../store';
-import { ExecutiveCardView, ObjectiveCardView, OpponentCardView, PlayerCardView, StaffCardView, TacticCardView } from './Cards';
+import { ExecutiveCardView, ObjectiveCardView, OpponentCardView, PlayerCardView, SponsorCardView, StaffCardView, TacticCardView } from './Cards';
 import { Chip, Icon } from './Icons';
 import { seatColor } from './Shell';
+import { Tabs } from './Tabs';
 
 const DAYS = [
   { key: 'mon', label: '월' },
@@ -74,7 +77,7 @@ function ClubBoard({ p }: { p: PlayerPublicView }) {
       </div>
       <div className="staff-row">
         <span className="board-label">직원 · 임원</span>
-        <div className="cards">
+        <div className="cards scroll-x">
           {p.staff.map((s, i) => (
             <StaffCardView key={`${s.cardId}-${i}`} cardId={s.cardId} exhausted={s.exhausted} suspension={s.suspension} />
           ))}
@@ -89,7 +92,7 @@ function ClubBoard({ p }: { p: PlayerPublicView }) {
 
 const GENERAL_SLOTS = 4;
 
-// 스타디움 보드 (룰북 p.6): 사무실 트랙, 기반 시설 슬롯, 관중석 1~4, 광고판 1~3, 명명권
+// 스타디움 보드 (룰북 p.6): 사무실 트랙, 기반 시설 슬롯, 관중석 1~4, 광고판 1~3, 명명권. 아래에 계약한 스폰서 카드
 function StadiumBoard({ p }: { p: PlayerPublicView }) {
   const office = cards.boardData.office;
   const general = p.infrastructure.filter((i) => !['stand3', 'stand4', 'billboard3'].includes(i));
@@ -107,44 +110,62 @@ function StadiumBoard({ p }: { p: PlayerPublicView }) {
       )}
     </span>
   );
+  const limit = billboardLimit(p);
   return (
-    <div className="stadium-board">
-      <div className="office-track" title="사무실 트랙: 비용 → 승점">
-        <span className="board-label">사무실</span>
-        {[...office].reverse().map((step, ri) => {
-          const i = office.length - 1 - ri;
-          return (
-            <span key={i} className={`office-step${p.office === i ? ' marker' : ''}${p.office > i ? ' passed' : ''}`}>
-              {step.cost > 0 ? <span className="office-cost"><Icon name="money" size={11} />{step.cost}</span> : <span className="office-cost">—</span>}
-              <span className="office-vp"><Icon name="vp" size={11} />{step.vp}</span>
+    <div className="stadium-wrap">
+      <div className="stadium-board">
+        <div className="office-track" title="사무실 트랙: 비용 → 승점">
+          <span className="board-label">사무실</span>
+          {[...office].reverse().map((step, ri) => {
+            const i = office.length - 1 - ri;
+            return (
+              <span key={i} className={`office-step${p.office === i ? ' marker' : ''}${p.office > i ? ' passed' : ''}`}>
+                {step.cost > 0 ? <span className="office-cost"><Icon name="money" size={11} />{step.cost}</span> : <span className="office-cost">—</span>}
+                <span className="office-vp"><Icon name="vp" size={11} />{step.vp}</span>
+              </span>
+            );
+          })}
+        </div>
+        <div className="stadium-main">
+          <div className="infra-grid">
+            {Array.from({ length: GENERAL_SLOTS }, (_, i) => slot(general[i], `g${i}`))}
+          </div>
+          <div className="stands">
+            <span className="stand printed"><Icon name="fandom" size={12} />1번 관중석</span>
+            <span className="stand printed"><Icon name="fandom" size={12} />2번 관중석</span>
+            {slot(has('stand3') ? 'stand3' : undefined, 's3', '3번 관중석')}
+            {slot(has('stand4') ? 'stand4' : undefined, 's4', '4번 관중석')}
+          </div>
+          <div className="billboards">
+            {[0, 1].map((i) => (
+              <span key={i} className={`billboard${p.sponsors.billboards[i] ? ' filled' : ''}`}>
+                {i + 1}번 광고판{p.sponsors.billboards[i] && `: ${cards.sponsor(p.sponsors.billboards[i]!).name}`}
+              </span>
+            ))}
+            <span className={`billboard${has('billboard3') ? '' : ' locked'}${p.sponsors.billboards[2] ? ' filled' : ''}`}>
+              3번 광고판{has('billboard3') ? (p.sponsors.billboards[2] ? `: ${cards.sponsor(p.sponsors.billboards[2]!).name}` : '') : ' (미건설)'}
             </span>
-          );
-        })}
-      </div>
-      <div className="stadium-main">
-        <div className="infra-grid">
-          {Array.from({ length: GENERAL_SLOTS }, (_, i) => slot(general[i], `g${i}`))}
+          </div>
         </div>
-        <div className="stands">
-          <span className="stand printed"><Icon name="fandom" size={12} />1번 관중석</span>
-          <span className="stand printed"><Icon name="fandom" size={12} />2번 관중석</span>
-          {slot(has('stand3') ? 'stand3' : undefined, 's3', '3번 관중석')}
-          {slot(has('stand4') ? 'stand4' : undefined, 's4', '4번 관중석')}
-        </div>
-        <div className="billboards">
-          {[0, 1].map((i) => (
-            <span key={i} className={`billboard${p.sponsors.billboards[i] ? ' filled' : ''}`}>
-              {i + 1}번 광고판{p.sponsors.billboards[i] && `: ${cards.sponsor(p.sponsors.billboards[i]!).name}`}
-            </span>
-          ))}
-          <span className={`billboard${has('billboard3') ? '' : ' locked'}${p.sponsors.billboards[2] ? ' filled' : ''}`}>
-            3번 광고판{has('billboard3') ? (p.sponsors.billboards[2] ? `: ${cards.sponsor(p.sponsors.billboards[2]!).name}` : '') : ' (미건설)'}
-          </span>
+        <div className={`naming-slot${p.sponsors.naming ? ' filled' : ''}`} title="스타디움 명명권 (카드는 앞면이 아래로)">
+          <span className="board-label">명명권</span>
+          <span>{p.sponsors.naming ? cards.sponsor(p.sponsors.naming).name : '—'}</span>
         </div>
       </div>
-      <div className={`naming-slot${p.sponsors.naming ? ' filled' : ''}`} title="스타디움 명명권">
-        <span className="board-label">명명권</span>
-        <span>{p.sponsors.naming ? cards.sponsor(p.sponsors.naming).name : '—'}</span>
+      <div className="sponsor-row">
+        <span className="board-label">
+          스폰서 계약 · 광고판 {p.sponsors.billboards.length}/{limit} · 명명권 {p.sponsors.naming ? 1 : 0}/1
+        </span>
+        {p.sponsors.billboards.length === 0 && !p.sponsors.naming ? (
+          <span className="muted small">계약한 스폰서가 없습니다. 스폰서 키트 계약은 효과만 받고 카드를 버립니다.</span>
+        ) : (
+          <div className="cards scroll-x">
+            {p.sponsors.billboards.map((id, i) => (
+              <SponsorCardView key={`${id}-${i}`} cardId={id} badge={`${i + 1}번 광고판`} />
+            ))}
+            {p.sponsors.naming && <SponsorCardView cardId={p.sponsors.naming} badge="명명권" faceDown />}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -189,8 +210,22 @@ function MatchBoard({ p }: { p: PlayerPublicView }) {
   );
 }
 
+type BoardTab = 'club' | 'stadium' | 'match' | 'hand';
+
+// 단계에 맞는 기본 탭: 금요일은 경기 보드, 그 밖에는 구단 보드
+function defaultTab(kind: string): BoardTab {
+  return kind.startsWith('friday') ? 'match' : 'club';
+}
+
+// 참가자 보드 패널: 구단 / 스타디움 / 경기 / (내) 손패 탭
 export function PlayerBoard({ p, privateInfo }: { p: PlayerPublicView; privateInfo?: { tacticCards: string[]; objective?: string } }) {
   const { view } = useView();
+  const [tab, setTab] = useState<BoardTab>(() => defaultTab(view.phase.kind));
+  useEffect(() => {
+    setTab(defaultTab(view.phase.kind));
+  }, [view.phase.kind]);
+  const hasHand = !!privateInfo && (privateInfo.tacticCards.length > 0 || !!privateInfo.objective);
+  const shown: BoardTab = tab === 'hand' && !hasHand ? 'club' : tab;
   return (
     <section className="panel board-panel" style={{ '--seat': seatColor(view, p.id) } as React.CSSProperties}>
       <div className="panel-head">
@@ -202,22 +237,26 @@ export function PlayerBoard({ p, privateInfo }: { p: PlayerPublicView; privateIn
           <Chip icon="vp" value={p.vp} title="승점 토큰" />
         </div>
       </div>
-      <h3>구단 보드</h3>
-      <ClubBoard p={p} />
-      <h3>스타디움 보드</h3>
-      <StadiumBoard p={p} />
-      <h3>경기 보드</h3>
-      <MatchBoard p={p} />
-      {privateInfo && (privateInfo.tacticCards.length > 0 || privateInfo.objective) && (
-        <>
-          <h3>내 손패</h3>
-          <div className="cards">
-            {privateInfo.tacticCards.map((t) => (
-              <TacticCardView key={t} cardId={t} compact />
-            ))}
-            {privateInfo.objective && <ObjectiveCardView cardId={privateInfo.objective} compact />}
-          </div>
-        </>
+      <Tabs<BoardTab>
+        tabs={[
+          { key: 'club', label: '구단 보드', badge: `직원 ${p.staff.length}` },
+          { key: 'stadium', label: '스타디움 보드', badge: `시설 ${p.infrastructure.length}/7` },
+          { key: 'match', label: '경기 보드', badge: `선수 ${p.roster.length}` },
+          ...(hasHand ? [{ key: 'hand' as const, label: '내 손패', badge: `${privateInfo!.tacticCards.length + (privateInfo!.objective ? 1 : 0)}` }] : []),
+        ]}
+        value={shown}
+        onChange={setTab}
+      />
+      {shown === 'club' && <ClubBoard p={p} />}
+      {shown === 'stadium' && <StadiumBoard p={p} />}
+      {shown === 'match' && <MatchBoard p={p} />}
+      {shown === 'hand' && privateInfo && (
+        <div className="cards">
+          {privateInfo.tacticCards.map((t) => (
+            <TacticCardView key={t} cardId={t} compact />
+          ))}
+          {privateInfo.objective && <ObjectiveCardView cardId={privateInfo.objective} compact />}
+        </div>
       )}
     </section>
   );

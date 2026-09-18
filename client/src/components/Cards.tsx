@@ -203,21 +203,35 @@ export function ExecutiveCardView({ cardId, exhausted, ...props }: { cardId: str
 }
 
 // 스폰서 카드: 브랜드 명판 + 계약 유형 3줄 + 보너스
-export function SponsorCardView({ cardId, ...props }: { cardId: string } & CardProps) {
+// 스폰서 카드 (룰북 p.18): 브랜드 명판 + 유형별 효과 3줄 + 추가 보너스. faceDown 은 명명권처럼 뒤집어 둔 카드(로고 면)
+export function SponsorCardView({ cardId, badge, faceDown, ...props }: { cardId: string; badge?: string; faceDown?: boolean } & CardProps) {
   const card = cards.sponsor(cardId);
+  if (faceDown) {
+    return (
+      <Card className="sponsor back" {...props}>
+        {badge && <span className="card-badge">{badge}</span>}
+        <div className="brand-plate logo">
+          <span className="brand-logo" aria-hidden="true">{card.name.trim().charAt(0)}</span>
+          <span className="brand-name clamp2">{card.name}</span>
+          <span className="brand-tag">스폰서 로고 · 앞면이 아래로</span>
+        </div>
+      </Card>
+    );
+  }
   return (
     <Card className="sponsor" {...props}>
+      {badge && <span className="card-badge">{badge}</span>}
       <div className="brand-plate">
         <span className="brand-name clamp2">{card.name}</span>
         <span className="brand-tag">스폰서</span>
       </div>
       <div className="sponsor-desc clamp2" title={card.description}>{card.description}</div>
       <div className="contract-rows">
-        <div className="contract-row" title="즉시 효과를 얻고 카드를 버립니다"><span className="contract-label">키트</span><EffectChips effects={card.kit} /></div>
-        <div className="contract-row" title="광고판 칸에 두고 카드 효과 또는 추가 보너스 중 하나"><span className="contract-label">광고판</span><EffectChips effects={card.billboard} /></div>
-        <div className="contract-row" title="스타디움에 두고 효과와 추가 보너스를 모두"><span className="contract-label">명명권</span><EffectChips effects={card.naming} /></div>
+        <div className="contract-row" title="스폰서 키트: 효과를 즉시 적용하고 카드를 버립니다 (제한 없음)"><span className="contract-label">키트</span><EffectChips effects={card.kit} /></div>
+        <div className="contract-row" title="광고판: 광고판 칸에 두고 카드 효과 또는 추가 보너스 중 하나 (최대 2장, 3번 광고판 건설 시 3장)"><span className="contract-label">광고판</span><EffectChips effects={card.billboard} /><span className="contract-or">또는 보너스</span></div>
+        <div className="contract-row" title="스타디움 명명권: 스타디움 보드 왼쪽에 뒤집어 두고 효과와 추가 보너스를 모두 (1장)"><span className="contract-label">명명권</span><EffectChips effects={card.naming} /><span className="contract-or">+ 보너스</span></div>
       </div>
-      <div className="sponsor-bonus" title="광고판(택1)·명명권(추가) 보너스"><span className="contract-label bonus">보너스</span><EffectChips effects={card.extraBonus} /></div>
+      <div className="sponsor-bonus" title="추가 보너스: 광고판은 카드 효과 대신 택1, 명명권은 효과에 더해 받음"><span className="contract-label bonus">보너스</span><EffectChips effects={card.extraBonus} /></div>
     </Card>
   );
 }

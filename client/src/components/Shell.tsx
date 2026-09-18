@@ -2,19 +2,20 @@ import { useState } from 'react';
 import { cards } from '@server/engine/cards';
 import type { LogEntry, PlayerId } from '@server/engine/state';
 import { RESOURCES } from '@server/engine/types';
-import type { SponsorContract } from '@server/engine/types';
-import { billboardLimit } from '@server/engine/weekday';
-import { CONTRACT_LABEL, DAY_LABEL, SEAT_COLORS, TOKEN_LABEL, phaseLabel } from '../labels';
+import { useCommit } from '../commit';
+import { DAY_LABEL, SEAT_COLORS, TOKEN_LABEL, phaseLabel } from '../labels';
+import { NotifyToggles } from '../notify';
 import { useStore, useView } from '../store';
 import { PlayerCardView, SponsorCardView, StaffCardView } from './Cards';
-import { Icon } from './Icons';
+import { CostChips, Icon } from './Icons';
+import { SponsorContractModal } from './Sponsor';
 
 export function seatColor(view: { seats: PlayerId[] }, pid: PlayerId): string {
   return SEAT_COLORS[view.seats.indexOf(pid)] ?? '#64748B';
 }
 
 export function Header({ subtitle }: { subtitle?: string }) {
-  const { view, room, connected, leave } = useView();
+  const { view, room, connected, session, leave } = useView();
   return (
     <header className="topbar">
       <div className="brand">
@@ -27,6 +28,7 @@ export function Header({ subtitle }: { subtitle?: string }) {
         <span className="phase">{phaseLabel(view.phase.kind)}{view.phase.kind === 'weekday' && ` · ${DAY_LABEL[view.phase.day]}`}</span>
       </div>
       <div className="conn">
+        {session && <NotifyToggles />}
         <span className={`dot ${connected ? 'on' : 'off'}`} />
         {connected ? '연결됨' : '재연결 중'}
         <button className="link" onClick={leave}>나가기</button>
@@ -97,54 +99,68 @@ export function Sidebar({ selected, onSelect }: { selected: PlayerId; onSelect: 
   );
 }
 
-// 이적 시장: 내 주중 차례면 오른쪽 3장을 클릭해 영입/고용/계약
-export function MarketPanel() {
-  const { view, session, act } = useStore() as ReturnType<typeof useStore> & { view: NonNullable<ReturnType<typeof useStore>['view']> };
+// 이적 시장: 내 주중 차례면 오른쪽 3장을 눌러 고르고, 아래 확정 막대에서 확정한다. 스폰서는 계약 유형 모달을 거친다
+export function MarketBody() {
+  const { view, session, act } = useView();
+  const { chosen, select } = useCommit();
   const [sponsorPick, setSponsorPick] = useState<number | null>(null);
-  if (!view) return null;
   const me = session ? view.players[session.playerId] : undefined;
   const canBuy = !!me && view.phase.kind === 'weekday' && view.phase.current === me.id && !view.phase.basicDone;
   const rows = [
-    ['players', '선수', (id: string, i: number) => <PlayerCardView key={id} cardId={id} onClick={canBuy && i >= 2 ? () => act({ type: 'recruitPlayer', marketIndex: i }) : undefined} />],
-    ['staff', '직원', (id: string, i: number) => <StaffCardView key={id} cardId={id} onClick={canBuy && i >= 2 ? () => act({ type: 'hireStaff', marketIndex: i }) : undefined} />],
+    [
+      'players',
+      '선수',
+      (id: string, i: number) => (
+        <PlayerCardView
+          key={id}
+          cardId={id}
+          chosen={chosen === `market:${id}`}
+          onClick={canBuy && i >= 2 ? () => select(`market:${id}`, { type: 'recruitPlayer', marketIndex: i }, <>선수 영입: <b>{cards.player(id).name}</b> <CostChips cost={{ money: cards.player(id).untrained.cost }} /></>) : undefined}
+        />
+      ),
+    ],
+    [
+      'staff',
+      '직원',
+      (id: string, i: number) => (
+        <StaffCardView
+          key={id}
+          cardId={id}
+          chosen={chosen === `market:${id}`}
+          onClick={canBuy && i >= 2 ? () => select(`market:${id}`, { type: 'hireStaff', marketIndex: i }, <>직원 고용: <b>{cards.staff(id).name}</b> <CostChips cost={{ money: cards.staff(id).cost }} /></>) : undefined}
+        />
+      ),
+    ],
     ['sponsors', '스폰서', (id: string, i: number) => <SponsorCardView key={id} cardId={id} onClick={canBuy && i >= 2 ? () => setSponsorPick(i) : undefined} />],
   ] as const;
-  const sign = (contract: SponsorContract, billboardChoice?: 'effect' | 'bonus') => {
-    if (sponsorPick === null) return;
-    act({ type: 'signSponsor', marketIndex: sponsorPick, contract, billboardChoice });
-    setSponsorPick(null);
-  };
+  const sponsorCardId = sponsorPick !== null ? view.market.sponsors[sponsorPick] : undefined;
   return (
-    <section className="panel">
-      <div className="panel-head">
-        <h2>이적 시장</h2>
-        <span className="muted small">오른쪽 3장만 구매 가능 · 유망주 더미 {view.deckCounts.prospects}장{canBuy && ' · 카드를 눌러 구매'}</span>
-      </div>
+    <>
+      <p className="muted small market-hint">
+        오른쪽 3장만 구매 가능 · 유망주 더미 {view.deckCounts.prospects}장{canBuy ? ' · 카드를 눌러 고르고 아래에서 확정' : ''}
+      </p>
       {rows.map(([key, label, render]) => (
         <div key={key} className="market-row-wrap">
           <h3>{label}</h3>
           <div className="cards market-row">{view.market[key].map((id, i) => render(id, i))}</div>
         </div>
       ))}
-      {sponsorPick !== null && view.market.sponsors[sponsorPick] && me && (
-        <div className="modal-backdrop" onClick={() => setSponsorPick(null)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h2>계약 유형</h2>
-            <SponsorCardView cardId={view.market.sponsors[sponsorPick]!} />
-            <div className="row wrap">
-              <button onClick={() => sign('kit')}>{CONTRACT_LABEL.kit} — 즉시 효과 후 버림</button>
-              <button disabled={me.sponsors.billboards.length >= billboardLimit(me)} onClick={() => sign('billboard', 'effect')}>{CONTRACT_LABEL.billboard} — 카드 효과</button>
-              <button disabled={me.sponsors.billboards.length >= billboardLimit(me)} onClick={() => sign('billboard', 'bonus')}>{CONTRACT_LABEL.billboard} — 추가 보너스</button>
-              <button disabled={!!me.sponsors.naming} onClick={() => sign('naming')}>{CONTRACT_LABEL.naming} — 효과 + 보너스</button>
-            </div>
-          </div>
-        </div>
+      {sponsorPick !== null && sponsorCardId && me && (
+        <SponsorContractModal
+          cardId={sponsorCardId}
+          me={me}
+          onClose={() => setSponsorPick(null)}
+          onSign={(c) => {
+            act({ type: 'signSponsor', marketIndex: sponsorPick, contract: c.contract, billboardChoice: c.billboardChoice });
+            setSponsorPick(null);
+          }}
+        />
       )}
-    </section>
+    </>
   );
 }
 
-export function LeaguePanel() {
+export function LeagueBody() {
   const { view } = useView();
   const entries = [
     ...view.seats.map((id) => ({ id, name: view.players[id]!.name, position: view.league.players[id]!, active: true })),
@@ -152,19 +168,16 @@ export function LeaguePanel() {
   ].sort((a, b) => b.position - a.position);
   const max = Math.max(1, ...entries.map((e) => e.position));
   return (
-    <section className="panel">
-      <div className="panel-head"><h2>리그 성적표</h2></div>
-      <ol className="league">
-        {entries.map((e, i) => (
-          <li key={i} className={`${e.id ? 'mine' : ''}${e.active ? '' : ' inactive'}`} style={e.id ? ({ '--seat': seatColor(view, e.id) } as React.CSSProperties) : undefined}>
-            <span className="rank">{i + 1}</span>
-            <span className="team">{e.id && <span className="seat-dot" />}{e.name}</span>
-            <span className="bar"><span style={{ width: `${(e.position / max) * 100}%` }} /></span>
-            <span className="pos">{e.position}</span>
-          </li>
-        ))}
-      </ol>
-    </section>
+    <ol className="league">
+      {entries.map((e, i) => (
+        <li key={i} className={`${e.id ? 'mine' : ''}${e.active ? '' : ' inactive'}`} style={e.id ? ({ '--seat': seatColor(view, e.id) } as React.CSSProperties) : undefined}>
+          <span className="rank">{i + 1}</span>
+          <span className="team">{e.id && <span className="seat-dot" />}{e.name}</span>
+          <span className="bar"><span style={{ width: `${(e.position / max) * 100}%` }} /></span>
+          <span className="pos">{e.position}</span>
+        </li>
+      ))}
+    </ol>
   );
 }
 
@@ -200,14 +213,18 @@ export function ActionLog() {
   );
 }
 
+// 효과 대상 선택 모달: 선수를 눌러 고르고 확정. 취소는 선택만 지운다(대상 선택 자체는 건너뛸 수 없다)
 export function PendingModal() {
   const { view, session, act } = useStore();
+  const [pick, setPick] = useState<string | null>(null);
   const me = view && session ? view.players[session.playerId] : undefined;
   const pending = me?.pending[0];
   if (!me || !pending) return null;
+  const picked = pick && pending.candidates.includes(pick) ? pick : null;
+  const pickedName = picked ? cards.player(me.roster.find((r) => r.instanceId === picked)?.cardId ?? '').name : null;
   return (
     <div className="modal-backdrop">
-      <div className="modal">
+      <div className="modal" role="dialog" aria-label="대상 선택">
         <h2>대상 선택 — {pending.source}</h2>
         <p className="muted small">
           {pending.effect.type === 'addPlayerToken' || pending.effect.type === 'removePlayerToken'
@@ -219,10 +236,22 @@ export function PendingModal() {
         <div className="cards">
           {pending.candidates.map((instanceId) => {
             const inst = me.roster.find((r) => r.instanceId === instanceId);
-            return inst ? (
-              <PlayerCardView key={instanceId} cardId={inst.cardId} instance={inst} onClick={() => act({ type: 'resolvePending', pendingId: pending.id, instanceId })} />
-            ) : null;
+            return inst ? <PlayerCardView key={instanceId} cardId={inst.cardId} instance={inst} chosen={picked === instanceId} onClick={() => setPick((p) => (p === instanceId ? null : instanceId))} /> : null;
           })}
+        </div>
+        <div className="modal-actions">
+          <button className="ghost" disabled={!picked} onClick={() => setPick(null)}>취소</button>
+          <button
+            className="primary"
+            disabled={!picked}
+            onClick={() => {
+              if (!picked) return;
+              act({ type: 'resolvePending', pendingId: pending.id, instanceId: picked });
+              setPick(null);
+            }}
+          >
+            {pickedName ? `${pickedName}에게 적용` : '선수를 고르세요'}
+          </button>
         </div>
       </div>
     </div>
