@@ -1,12 +1,14 @@
-import { useEffect, useState } from 'react';
 import { cards } from '@server/engine/cards';
 import { billboardLimit } from '@server/engine/weekday';
 import { upkeepDue } from '@server/engine/weekend';
 import { RESOURCES, TRACK_MAX } from '@server/engine/types';
 import type { InfrastructureType, Resource } from '@server/engine/types';
 import type { PlayerPublicView } from '@server/engine/view';
+import { useCommit } from '../commit';
 import { INFRA_LABEL, RESOURCE_LABEL } from '../labels';
 import { useView } from '../store';
+import { useUi } from '../ui';
+import type { BoardTab } from '../ui';
 import { ExecutiveCardView, ObjectiveCardView, OpponentCardView, PlayerCardView, SponsorCardView, StaffCardView, TacticCardView } from './Cards';
 import { Chip, Icon } from './Icons';
 import { seatColor } from './Shell';
@@ -171,8 +173,13 @@ function StadiumBoard({ p }: { p: PlayerPublicView }) {
   );
 }
 
-// 경기 보드 (룰북 p.8): 경기장(필드 토큰), 벤치, 선수 카드, 상대 팀 스카우트 보고서
+// 경기 보드 (룰북 p.8): 경기장(필드 토큰), 벤치, 선수 카드, 상대 팀 스카우트 보고서.
+// 사이드바에서 "선수 방출…"을 켜면(방출 모드) 내 선수 카드를 눌러 방출 대상을 고른다
 function MatchBoard({ p }: { p: PlayerPublicView }) {
+  const { view, session } = useView();
+  const { releasing } = useUi();
+  const { chosen, select } = useCommit();
+  const canRelease = releasing && !!session && session.playerId === p.id && view.phase.kind === 'weekday' && view.phase.current === p.id && !view.phase.basicDone;
   const field = p.uniforms.filter((u) => u.location === 'field');
   const bench = p.uniforms.filter((u) => u.location === 'bench');
   const nameOf = (instanceId?: string) => (instanceId ? cards.player(p.roster.find((r) => r.instanceId === instanceId)?.cardId ?? '').name : undefined);
@@ -199,10 +206,19 @@ function MatchBoard({ p }: { p: PlayerPublicView }) {
         <span className="muted small">남은 상대 {p.opponentsLeft}팀</span>
       </div>
       <div className="mb-roster">
-        <span className="board-label">선수 {p.roster.length}</span>
+        <span className="board-label">
+          선수 {p.roster.length}
+          {canRelease && <span className="release-hint">방출할 선수를 누르세요 — 2 + 현재 역량만큼 돈, 부상·출장정지면 절반</span>}
+        </span>
         <div className="cards">
           {p.roster.map((r) => (
-            <PlayerCardView key={r.instanceId} cardId={r.cardId} instance={r} />
+            <PlayerCardView
+              key={r.instanceId}
+              cardId={r.cardId}
+              instance={r}
+              chosen={chosen === `release:${r.instanceId}`}
+              onClick={canRelease ? () => select(`release:${r.instanceId}`, { type: 'releasePlayer', instanceId: r.instanceId }, <>방출: <b>{cards.player(r.cardId).name}</b></>) : undefined}
+            />
           ))}
         </div>
       </div>
@@ -210,24 +226,14 @@ function MatchBoard({ p }: { p: PlayerPublicView }) {
   );
 }
 
-type BoardTab = 'club' | 'stadium' | 'match' | 'hand';
-
-// 단계에 맞는 기본 탭: 금요일은 경기 보드, 그 밖에는 구단 보드
-function defaultTab(kind: string): BoardTab {
-  return kind.startsWith('friday') ? 'match' : 'club';
-}
-
-// 참가자 보드 패널: 구단 / 스타디움 / 경기 / (내) 손패 탭
+// 개인 보드: 구단 / 스타디움 / 경기 / (내) 손패 탭. 탭 상태는 UiProvider 가 단계에 맞춰 기본값을 정한다
 export function PlayerBoard({ p, privateInfo }: { p: PlayerPublicView; privateInfo?: { tacticCards: string[]; objective?: string } }) {
   const { view } = useView();
-  const [tab, setTab] = useState<BoardTab>(() => defaultTab(view.phase.kind));
-  useEffect(() => {
-    setTab(defaultTab(view.phase.kind));
-  }, [view.phase.kind]);
+  const { boardTab: tab, setBoardTab: setTab } = useUi();
   const hasHand = !!privateInfo && (privateInfo.tacticCards.length > 0 || !!privateInfo.objective);
   const shown: BoardTab = tab === 'hand' && !hasHand ? 'club' : tab;
   return (
-    <section className="panel board-panel" style={{ '--seat': seatColor(view, p.id) } as React.CSSProperties}>
+    <div className="board-panel" style={{ '--seat': seatColor(view, p.id) } as React.CSSProperties}>
       <div className="panel-head">
         <h2><span className="seat-dot" />{p.name}의 구단</h2>
         <div className="chips">
@@ -258,6 +264,6 @@ export function PlayerBoard({ p, privateInfo }: { p: PlayerPublicView; privateIn
           {privateInfo.objective && <ObjectiveCardView cardId={privateInfo.objective} compact />}
         </div>
       )}
-    </section>
+    </div>
   );
 }

@@ -90,10 +90,19 @@ notes/    규칙서 원본 및 텍스트 레퍼런스
 - `screens/` — 단계별 화면(Lobby/RoomLobby, Setup(드래프트·목표), Monday, Weekday, …). `components/Cards.tsx` —
   카드 종류별 렌더링, `components/Shell.tsx` — 헤더·참가자 요약·내 구단·이적 시장·리그·기록·대상 선택 모달.
   `labels.ts` — 한국어 라벨과 효과 DSL 설명 문자열.
-- `App.tsx`의 `GameLayout`이 3분할 레이아웃: 왼쪽 `Sidebar`(참가자 선택) / 가운데 `main-top`(단계 패널 +
-  우상단 `DiceTray`) → 선택한 참가자의 `PlayerBoard`(탭) → 이적 시장·리그 탭 패널 / 오른쪽 `ActionLog`(주차·요일별
-  묶음, 행위자 자리 색). `PhaseScreen`이 `view.phase.kind`로 단계 패널을 고른다. 관전자는 같은 레이아웃에
-  `PhaseStatus`. 레이아웃 위에 `PendingModal`·`ConfirmBar`·`EffectToasts`·`TurnAlert`가 고정 위치로 얹힌다.
+- `App.tsx`의 `GameLayout`: 헤더(`Header`) + 그 아래 **참가자 띠**(`PlayerStrip`: 자리 색·이름·자원/트랙·리그·승점·
+  상태 점, 누르면 그 참가자의 개인 보드) / 왼쪽 **행동 사이드바**(`components/ActionSidebar.tsx`: 단계·차례·내 할 일
+  `TurnStatus`, `DiceTray`, 주중이면 행동 목록 `WeekdayActions`, `LegendButton`) / 가운데 `main-top`(단계 패널,
+  **주중에는 없음**) → `MainTabs`(**개인 보드**: 구단/스타디움/경기/손패 탭 · **공용 보드**: 이적 시장(선수/직원/
+  스폰서 탭)/리그 성적표) / 오른쪽 `ActionLog`. 탐색 상태(선택 참가자·각 탭·방출 모드)는 `client/src/ui.tsx`
+  `UiProvider`/`useUi()`가 갖고, 단계가 바뀌면 기본 탭을 정한다(주중 → 공용/이적 시장, 경기 준비 → 개인/경기,
+  경기 결과·종료 → 공용/리그, 그 밖에 → 개인/구단). `PhaseScreen`이 `view.phase.kind`로 단계 패널을 고른다.
+  관전자는 같은 레이아웃에 `PhaseStatus`. 레이아웃 위에 `PendingModal`·`ConfirmBar`·`EffectToasts`·`TurnAlert`가
+  고정 위치로 얹힌다.
+- **주중 행동은 사이드바 목록**: 유망주 영입·시설 7종·사무실·카드 행동(유급 포함)·패스는 `select` → 확정 막대,
+  차례 끝내기는 즉시. 카드 고르기가 필요한 선수 영입/직원 고용/스폰서 계약 버튼은 공용 보드의 해당 시장 탭으로
+  이동시키고(`showMarket`), "선수 방출…"은 방출 모드를 켜고 개인 보드의 경기 보드로 이동해 내 선수 카드를
+  클릭하게 한다(`releasing`). 내 차례가 아니거나 조건(기본 행동 소진, 돈 부족, 소진 카드 등)이 안 맞으면 비활성.
 - **디자인 시스템** (`styles.css` `:root` 토큰): 밝은 회녹색 바탕 `--bg`, 잔디 초록 `--pitch` 구조색, 잉크 남색
   `--ink`, 역할 색(공격 `--attack` 주황 / 수비 `--defense` 파랑), 자원 색 `--c-money/fandom/ops/stamina`, 자리 색
   `SEAT_COLORS`. 글꼴은 IBM Plex Sans KR 한 가족. 텍스트 대신 **아이콘 칩**(`components/Icons.tsx`: SVG 아이콘
@@ -107,8 +116,7 @@ notes/    규칙서 원본 및 텍스트 레퍼런스
   양끝 초과/부족 자원 아이콘 + 칸별 조달량, 직원·임원 행), 스타디움 보드(사무실 트랙, 기반 시설 슬롯 4 +
   관중석 1~4 + 광고판 1~3 + 명명권, 아래에 계약한 스폰서 카드: 광고판은 앞면, 명명권은 뒤집힌 로고 면),
   경기 보드(필드/벤치 유니폼 토큰, 다음 상대 스카우트 보고서, 선수 카드). 세 보드와 내 손패는 **탭**
-  (`components/Tabs.tsx`)으로 전환한다 — 금요일 단계는 경기 보드, 그 밖에는 구단 보드가 기본. 보드 아래 공용 영역도
-  이적 시장 / 리그 성적표 탭(주중은 시장, 경기 결과·종료는 리그가 기본).
+  (`components/Tabs.tsx`)으로 전환한다(탭 상태는 `useUi()`).
 - **스폰서 계약** (`components/Sponsor.tsx` `SponsorContractModal`, 규칙서 p.18): 시장의 스폰서 카드를 누르면 모달에서
   세 유형을 나란히 비교해 고른다 — 스폰서 키트(효과 즉시, 카드 버림, 제한 없음) / 광고판(카드 효과 **또는** 추가
   보너스 택1, 기본 2장 + 3번 광고판 건설 시 3장) / 스타디움 명명권(효과 **+** 추가 보너스, 1장). 최대 수를 채운
