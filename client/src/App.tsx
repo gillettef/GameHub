@@ -1,11 +1,8 @@
-import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
-import type { PlayerId } from '@server/engine/state';
 import { CommitProvider, ConfirmBar } from './commit';
+import { ActionSidebar } from './components/ActionSidebar';
 import { PlayerBoard } from './components/Boards';
-import { DiceTray } from './components/DiceTray';
-import { LegendButton } from './components/Legend';
-import { ActionLog, Header, LeagueBody, MarketBody, PendingModal, Sidebar } from './components/Shell';
+import { ActionLog, Header, LeagueBody, MarketBody, PendingModal, PlayerStrip } from './components/Shell';
 import { Tabs } from './components/Tabs';
 import { EffectToasts } from './feed';
 import { NotifyProvider, TurnAlert } from './notify';
@@ -15,9 +12,11 @@ import { Lobby, RoomLobby } from './screens/Lobby';
 import { MondayScreen } from './screens/Monday';
 import { DraftScreen, ObjectiveScreen } from './screens/Setup';
 import { PhaseStatus } from './screens/Spectator';
-import { WeekdayScreen } from './screens/Weekday';
 import { StoreProvider, useGame, useStore, useView } from './store';
+import { UiProvider, useUi } from './ui';
+import type { MainTab, SharedTab } from './ui';
 
+// 단계 패널: 카드 고르기·이사회·경기 준비/결과처럼 넓은 화면이 필요한 단계만 메인 위에 둔다. 주중 행동은 사이드바에 있다
 function PhaseScreen() {
   const { view } = useGame();
   switch (view.phase.kind) {
@@ -28,7 +27,7 @@ function PhaseScreen() {
     case 'monday.board':
       return <MondayScreen />;
     case 'weekday':
-      return <WeekdayScreen />;
+      return null;
     case 'friday.prepare':
       return <FridayPrepareScreen />;
     case 'friday.aftermath':
@@ -38,29 +37,46 @@ function PhaseScreen() {
   }
 }
 
-type SharedTab = 'market' | 'league';
-
-// 3분할: 참가자 사이드바 / 단계 패널 + 선택한 참가자 보드(탭) + 공용 영역(이적 시장·리그 탭) / 기록
-export function GameLayout({ phasePanel, subtitle }: { phasePanel: ReactNode; subtitle?: string }) {
-  const { view, session, error } = useView();
-  const [selected, setSelected] = useState<PlayerId>(session?.playerId ?? view.seats[0]!);
-  useEffect(() => {
-    if (!view.seats.includes(selected)) setSelected(session?.playerId ?? view.seats[0]!);
-  }, [view.seats, selected, session?.playerId]);
-  // 턴제 단계에서 차례가 바뀌면 그 참가자의 보드를 보여준다 (원하면 사이드바에서 다른 참가자를 골라 볼 수 있다)
-  const current = 'current' in view.phase ? view.phase.current : null;
-  useEffect(() => {
-    if (current) setSelected(current);
-  }, [current]);
-  // 공용 영역 탭: 주중에는 이적 시장, 경기 결과·종료 때는 리그
-  const [shared, setShared] = useState<SharedTab>('market');
-  useEffect(() => {
-    if (view.phase.kind === 'friday.aftermath' || view.phase.kind === 'gameOver') setShared('league');
-    else if (view.phase.kind === 'weekday') setShared('market');
-  }, [view.phase.kind]);
-
+// 메인 탭: 개인 보드(구단/스타디움/경기/손패) / 공용 보드(이적 시장/리그 성적표)
+function MainTabs() {
+  const { view, session } = useView();
+  const { selected, mainTab, setMainTab, sharedTab, setSharedTab } = useUi();
   const p = view.players[selected] ?? view.players[view.seats[0]!]!;
   const isMe = session?.playerId === p.id;
+  return (
+    <section className="panel main-panel">
+      <Tabs<MainTab>
+        className="primary"
+        tabs={[
+          { key: 'personal', label: '개인 보드', badge: p.name },
+          { key: 'shared', label: '공용 보드' },
+        ]}
+        value={mainTab}
+        onChange={setMainTab}
+      />
+      {mainTab === 'personal' ? (
+        <PlayerBoard p={p} privateInfo={isMe ? view.self : undefined} />
+      ) : (
+        <>
+          <Tabs<SharedTab>
+            tabs={[
+              { key: 'market', label: '이적 시장' },
+              { key: 'league', label: '리그 성적표' },
+            ]}
+            value={sharedTab}
+            onChange={setSharedTab}
+          />
+          {sharedTab === 'market' ? <MarketBody /> : <LeagueBody />}
+        </>
+      )}
+    </section>
+  );
+}
+
+// 레이아웃: 헤더 + 참가자 띠 / 왼쪽 행동 사이드바 / 가운데 (단계 패널 +) 메인 탭 / 오른쪽 기록
+function Layout({ phasePanel, subtitle }: { phasePanel: ReactNode; subtitle?: string }) {
+  const { view, session, error } = useView();
+  const current = 'current' in view.phase ? view.phase.current : null;
   const myPending = session ? (view.players[session.playerId]?.pending.length ?? 0) : 0;
   // 선택(확정 대기)은 단계·차례·요일이 바뀌거나 대상 선택이 생기면 지운다
   const commitScope = [view.week, view.phase.kind, current ?? '', view.phase.kind === 'weekday' ? view.phase.day : '', myPending].join('|');
@@ -68,28 +84,12 @@ export function GameLayout({ phasePanel, subtitle }: { phasePanel: ReactNode; su
     <CommitProvider scope={commitScope}>
       <div className="game">
         <Header subtitle={subtitle} />
+        <PlayerStrip />
         <div className="columns">
-          <Sidebar selected={p.id} onSelect={setSelected} />
+          <ActionSidebar />
           <main className="main">
-            <div className="main-top">
-              <div className="main-top-phase">{phasePanel}</div>
-              <div className="main-side">
-                <DiceTray />
-                <LegendButton />
-              </div>
-            </div>
-            <PlayerBoard p={p} privateInfo={isMe ? view.self : undefined} />
-            <section className="panel shared-panel">
-              <Tabs<SharedTab>
-                tabs={[
-                  { key: 'market', label: '이적 시장' },
-                  { key: 'league', label: '리그 성적표' },
-                ]}
-                value={shared}
-                onChange={setShared}
-              />
-              {shared === 'market' ? <MarketBody /> : <LeagueBody />}
-            </section>
+            {view.phase.kind !== 'weekday' && <div className="main-top">{phasePanel}</div>}
+            <MainTabs />
           </main>
           <ActionLog />
         </div>
@@ -100,6 +100,14 @@ export function GameLayout({ phasePanel, subtitle }: { phasePanel: ReactNode; su
         {error && <div className="toast" role="alert">{error}</div>}
       </div>
     </CommitProvider>
+  );
+}
+
+export function GameLayout(props: { phasePanel: ReactNode; subtitle?: string }) {
+  return (
+    <UiProvider>
+      <Layout {...props} />
+    </UiProvider>
   );
 }
 

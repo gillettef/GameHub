@@ -6,9 +6,12 @@ import { useCommit } from '../commit';
 import { DAY_LABEL, SEAT_COLORS, TOKEN_LABEL, phaseLabel } from '../labels';
 import { NotifyToggles } from '../notify';
 import { useStore, useView } from '../store';
+import { useUi } from '../ui';
+import type { MarketTab } from '../ui';
 import { PlayerCardView, SponsorCardView, StaffCardView } from './Cards';
 import { CostChips, Icon } from './Icons';
 import { SponsorContractModal } from './Sponsor';
+import { Tabs } from './Tabs';
 
 export function seatColor(view: { seats: PlayerId[] }, pid: PlayerId): string {
   return SEAT_COLORS[view.seats.indexOf(pid)] ?? '#64748B';
@@ -58,24 +61,33 @@ function playerStatus(view: ReturnType<typeof useView>['view'], pid: PlayerId): 
   }
 }
 
-export function Sidebar({ selected, onSelect }: { selected: PlayerId; onSelect: (pid: PlayerId) => void }) {
+// 헤더 아래 참가자 띠: 자리 색·이름·자원(트랙)·리그 위치·승점·상태 점. 누르면 그 참가자의 개인 보드로
+export function PlayerStrip() {
   const { view, session, room } = useView();
+  const { selected, selectPlayer, mainTab } = useUi();
   return (
-    <nav className="sidebar" aria-label="참가자">
+    <nav className="player-strip" aria-label="참가자">
       {view.seats.map((id) => {
         const p = view.players[id]!;
         const status = playerStatus(view, id);
         const isMe = session?.playerId === id;
         const isBot = room?.players.find((r) => r.id === id)?.isBot;
         return (
-          <button key={id} className={`seat${selected === id ? ' selected' : ''}`} style={{ '--seat': seatColor(view, id) } as React.CSSProperties} onClick={() => onSelect(id)}>
+          <button
+            key={id}
+            className={`pseat${selected === id && mainTab === 'personal' ? ' selected' : ''}${status === 'acting' ? ' acting' : ''}`}
+            style={{ '--seat': seatColor(view, id) } as React.CSSProperties}
+            onClick={() => selectPlayer(id)}
+            title={`${p.name}의 개인 보드 보기`}
+          >
             <span className="seat-bar" />
-            <span className="seat-main">
+            <span className="pseat-main">
               <span className="seat-name">
                 {p.name}
                 {isMe && <span className="tag me">나</span>}
                 {isBot && <span className="tag">AI</span>}
                 {view.firstPlayer === id && <span className="tag first">선</span>}
+                {status && <span className={`seat-status ${status}`} title={{ acting: '행동 중', waiting: '대기', done: '완료' }[status]} />}
               </span>
               <span className="seat-res">
                 {RESOURCES.map((r) => (
@@ -83,15 +95,11 @@ export function Sidebar({ selected, onSelect }: { selected: PlayerId; onSelect: 
                     <Icon name={r} size={12} />{p.resources[r]}<small>{p.tracks[r]}</small>
                   </span>
                 ))}
-              </span>
-              <span className="seat-sub">
-                <span title="리그 성적표 위치"><Icon name="goal" size={12} />{view.league.players[id]}</span>
-                <span title="승점 토큰"><Icon name="vp" size={12} />{p.vp}</span>
-                <span>선수 {p.roster.length}</span>
-                <span>직원 {p.staff.length}</span>
+                <span className="res sub" title="리그 성적표 위치"><Icon name="goal" size={12} />{view.league.players[id]}</span>
+                <span className="res sub" title="승점 토큰"><Icon name="vp" size={12} />{p.vp}</span>
+                <span className="res sub" title="선수 수 · 직원 수">선수 {p.roster.length} · 직원 {p.staff.length}</span>
               </span>
             </span>
-            {status && <span className={`seat-status ${status}`} title={{ acting: '행동 중', waiting: '대기', done: '완료' }[status]} />}
           </button>
         );
       })}
@@ -99,52 +107,47 @@ export function Sidebar({ selected, onSelect }: { selected: PlayerId; onSelect: 
   );
 }
 
-// 이적 시장: 내 주중 차례면 오른쪽 3장을 눌러 고르고, 아래 확정 막대에서 확정한다. 스폰서는 계약 유형 모달을 거친다
+// 이적 시장: 선수/직원/스폰서 탭. 내 주중 차례면 오른쪽 3장을 눌러 고르고, 아래 확정 막대에서 확정한다. 스폰서는 계약 유형 모달을 거친다
 export function MarketBody() {
   const { view, session, act } = useView();
   const { chosen, select } = useCommit();
+  const { marketTab, setMarketTab } = useUi();
   const [sponsorPick, setSponsorPick] = useState<number | null>(null);
   const me = session ? view.players[session.playerId] : undefined;
   const canBuy = !!me && view.phase.kind === 'weekday' && view.phase.current === me.id && !view.phase.basicDone;
-  const rows = [
-    [
-      'players',
-      '선수',
-      (id: string, i: number) => (
-        <PlayerCardView
-          key={id}
-          cardId={id}
-          chosen={chosen === `market:${id}`}
-          onClick={canBuy && i >= 2 ? () => select(`market:${id}`, { type: 'recruitPlayer', marketIndex: i }, <>선수 영입: <b>{cards.player(id).name}</b> <CostChips cost={{ money: cards.player(id).untrained.cost }} /></>) : undefined}
-        />
-      ),
-    ],
-    [
-      'staff',
-      '직원',
-      (id: string, i: number) => (
-        <StaffCardView
-          key={id}
-          cardId={id}
-          chosen={chosen === `market:${id}`}
-          onClick={canBuy && i >= 2 ? () => select(`market:${id}`, { type: 'hireStaff', marketIndex: i }, <>직원 고용: <b>{cards.staff(id).name}</b> <CostChips cost={{ money: cards.staff(id).cost }} /></>) : undefined}
-        />
-      ),
-    ],
-    ['sponsors', '스폰서', (id: string, i: number) => <SponsorCardView key={id} cardId={id} onClick={canBuy && i >= 2 ? () => setSponsorPick(i) : undefined} />],
-  ] as const;
+  const render: Record<MarketTab, (id: string, i: number) => React.ReactNode> = {
+    players: (id, i) => (
+      <PlayerCardView
+        key={id}
+        cardId={id}
+        chosen={chosen === `market:${id}`}
+        onClick={canBuy && i >= 2 ? () => select(`market:${id}`, { type: 'recruitPlayer', marketIndex: i }, <>선수 영입: <b>{cards.player(id).name}</b> <CostChips cost={{ money: cards.player(id).untrained.cost }} /></>) : undefined}
+      />
+    ),
+    staff: (id, i) => (
+      <StaffCardView
+        key={id}
+        cardId={id}
+        chosen={chosen === `market:${id}`}
+        onClick={canBuy && i >= 2 ? () => select(`market:${id}`, { type: 'hireStaff', marketIndex: i }, <>직원 고용: <b>{cards.staff(id).name}</b> <CostChips cost={{ money: cards.staff(id).cost }} /></>) : undefined}
+      />
+    ),
+    sponsors: (id, i) => <SponsorCardView key={id} cardId={id} onClick={canBuy && i >= 2 ? () => setSponsorPick(i) : undefined} />,
+  };
   const sponsorCardId = sponsorPick !== null ? view.market.sponsors[sponsorPick] : undefined;
   return (
     <>
-      <p className="muted small market-hint">
-        오른쪽 3장만 구매 가능 · 유망주 더미 {view.deckCounts.prospects}장{canBuy ? ' · 카드를 눌러 고르고 아래에서 확정' : ''}
-      </p>
-      {rows.map(([key, label, render]) => (
-        <div key={key} className="market-row-wrap">
-          <h3>{label}</h3>
-          <div className="cards market-row">{view.market[key].map((id, i) => render(id, i))}</div>
-        </div>
-      ))}
+      <Tabs<MarketTab>
+        tabs={[
+          { key: 'players', label: '선수', badge: `유망주 더미 ${view.deckCounts.prospects}` },
+          { key: 'staff', label: '직원', badge: view.deckCounts.staff },
+          { key: 'sponsors', label: '스폰서', badge: view.deckCounts.sponsors },
+        ]}
+        value={marketTab}
+        onChange={setMarketTab}
+      />
+      <p className="muted small market-hint">오른쪽 3장만 구매 가능 · 왼쪽 2장은 다음 주에 오른쪽으로 밀립니다{canBuy ? ' · 카드를 눌러 고르고 아래에서 확정' : ''}</p>
+      <div className="cards market-row">{view.market[marketTab].map((id, i) => render[marketTab](id, i))}</div>
       {sponsorPick !== null && sponsorCardId && me && (
         <SponsorContractModal
           cardId={sponsorCardId}
