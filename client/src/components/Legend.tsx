@@ -23,6 +23,7 @@ const SECTIONS: { title: string; rows: Row[] }[] = [
     title: '변화 표시',
     rows: [
       { sample: <Chip icon="money" value="+2" />, name: '자원 획득/손실 (일시불)', desc: '색을 채운 칩. 자원 토큰을 그 자리에서 받거나(+) 잃습니다(−). 트랙 마커는 움직이지 않습니다.' },
+      { sample: <Chip icon="ops" value="−2" />, name: '비용 (지불)', desc: '행동·카드 효과·건설·유지비로 내는 자원. 얻는 것은 항상 +, 잃거나 내는 것은 항상 −로 표시합니다.' },
       { sample: <TrackChip track="stamina" delta={1} />, name: '능력치 트랙 이동', desc: '흰 바탕에 테두리·계단 그림·"트랙" 꼬리표가 있는 칩. 자원이 아니라 구단 보드의 트랙 마커를 옮겨 매주 월요일 조달량이 바뀝니다. 5를 넘으면 대신 보드에 표시된 자원을, 1 아래면 자원을 잃습니다.' },
       { sample: <Chip icon="train">훈련</Chip>, name: '훈련', desc: '선수 카드를 훈련 면으로 뒤집습니다. 보통 역량이 오르고 효과가 강해집니다.' },
       { sample: <Chip icon="tactic">전술</Chip>, name: '전술 카드', desc: '전술 카드를 1장 받습니다. 경기마다 포메이션으로 1장을 씁니다.' },

@@ -47,9 +47,9 @@ export function describeEffect(e: Effect): string {
     case 'placeStamina':
       return `선수 카드에 체력 ${e.count}개`;
     case 'addPlayerToken':
-      return `${TOKEN_LABEL[e.token]} +${e.count}`;
+      return `${TOKEN_LABEL[e.token]} +${e.count}${e.spread && e.count > 1 ? ' (1개씩 나눠서)' : ''}`;
     case 'removePlayerToken':
-      return `${TOKEN_LABEL[e.token]} −${e.count}`;
+      return `${TOKEN_LABEL[e.token]} −${e.count}${e.spread && e.count > 1 ? ' (1개씩 나눠서, 최대)' : ''}`;
     case 'scoreGoal':
       return `${e.team === 'self' ? '우리 팀' : '상대 팀'} ${sign(e.amount)}골`;
     case 'text':

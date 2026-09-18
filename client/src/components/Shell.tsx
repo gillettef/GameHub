@@ -228,10 +228,12 @@ export function PendingModal() {
   return (
     <div className="modal-backdrop">
       <div className="modal" role="dialog" aria-label="대상 선택">
-        <h2>대상 선택 — {pending.source}</h2>
+        <h2>대상 선택 — {pending.source}{me.pending.length > 1 ? ` (${me.pending.length}번 남음)` : ''}</h2>
         <p className="muted small">
-          {pending.effect.type === 'addPlayerToken' || pending.effect.type === 'removePlayerToken'
+          {pending.effect.type === 'addPlayerToken'
             ? `${TOKEN_LABEL[pending.effect.token]} ${pending.effect.count}개를 받을 선수를 고르세요`
+            : pending.effect.type === 'removePlayerToken'
+              ? `${TOKEN_LABEL[pending.effect.token]} ${pending.effect.count}개를 제거할 선수를 고르세요`
             : pending.effect.type === 'trainPlayer'
               ? '훈련할 선수를 고르세요'
               : '대상 선수를 고르세요'}

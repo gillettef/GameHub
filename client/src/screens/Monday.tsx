@@ -8,9 +8,9 @@ import { useGame } from '../store';
 import { useRevealedRoll } from '../ui';
 
 // 이사회는 선 참가자부터 한 명씩 진행한다. 차례인 참가자의 이사회 카드·임원·주사위 결과를 모두가 본다.
-// "이 결정 적용" 버튼 자체가 확정이다(대안은 팬덤 재굴림). 적용 결과는 효과 토스트가 보여준다
+// 굴리기·팬덤 재굴림·"결정 적용"은 모두 왼쪽 사이드바 주사위 트레이에 있다(사용자 요청). 적용 결과는 효과 토스트가 보여준다
 export function MondayScreen() {
-  const { view, act } = useGame();
+  const { view } = useGame();
   if (view.phase.kind !== 'monday.board') return null;
   const { current, meetings } = view.phase;
   const actor: PlayerId = current;
@@ -62,10 +62,9 @@ export function MondayScreen() {
                 <span className="decision-name">{color && COLOR_LABEL[color]} 결정</span>
               </div>
               {mine ? (
-                <div className="row">
-                  <button className="primary" onClick={() => act({ type: 'acceptBoardRoll' })}>이 결정 적용</button>
-                  <span className="muted small">마음에 안 들면 주사위 영역에서 팬덤 1개로 다시 굴릴 수 있습니다</span>
-                </div>
+                <p className="hint">
+                  <Icon name="die" size={14} /> 왼쪽 주사위 영역에서 <b>{color && COLOR_LABEL[color]} 결정 적용</b>을 누르거나, 팬덤 1개로 다시 굴리세요.
+                </p>
               ) : (
                 <p className="muted small">{player.name}이(가) 결정을 적용하거나 팬덤으로 다시 굴릴 수 있습니다.</p>
               )}

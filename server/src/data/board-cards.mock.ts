@@ -359,7 +359,7 @@ export const BOARD_CARDS: BoardCard[] = [
         ],
       },
       blue: {
-        text: '아픈 선수도 훈련시킵니다. 선수 카드에 [일시적 약점] 2개, [체력] +1',
+        text: '아픈 선수도 훈련시킵니다. 선수 카드 1장에 [일시적 약점] 2개, [체력] +1',
         effects: [
           { type: 'addPlayerToken', token: 'weaknessTemp', count: 2 },
           { type: 'gainResource', resource: 'stamina', amount: 1 },
@@ -684,10 +684,10 @@ export const BOARD_CARDS: BoardCard[] = [
         ],
       },
       red: {
-        text: '전 선수단에 일괄 적용합니다. [운영] -2, 선수 카드에서 [일시적 약점] 2개 제거',
+        text: '전 선수단에 일괄 적용합니다. [운영] -2, 선수 카드에서 [일시적 약점]을 2개까지 제거(1개씩 나눠서)',
         effects: [
           { type: 'gainResource', resource: 'ops', amount: -2 },
-          { type: 'removePlayerToken', token: 'weaknessTemp', count: 2 },
+          { type: 'removePlayerToken', token: 'weaknessTemp', count: 2, spread: true },
         ],
       },
     },
@@ -910,7 +910,7 @@ export const BOARD_CARDS: BoardCard[] = [
         ],
       },
       blue: {
-        text: '결함 장비를 그대로 씁니다. 선수 카드에 [일시적 약점] 2개, [돈] +2',
+        text: '결함 장비를 그대로 씁니다. 선수 카드 1장에 [일시적 약점] 2개, [돈] +2',
         effects: [
           { type: 'addPlayerToken', token: 'weaknessTemp', count: 2 },
           { type: 'gainResource', resource: 'money', amount: 2 },
@@ -984,15 +984,15 @@ export const BOARD_CARDS: BoardCard[] = [
   },
   {
     id: 'bc-35',
-    name: '명명권 분쟁',
-    description: '스타디움 명명권 스폰서가 계약 조건을 문제 삼고 나섰습니다. 변호사들이 바빠졌습니다.',
+    name: '유니폼 계약 분쟁',
+    description: '유니폼 스폰서가 계약 조건을 문제 삼고 나섰습니다. 변호사들이 바빠졌습니다.',
     decisions: {
       yellow: {
-        text: '계약을 파기합니다. 명명권 스폰서가 있다면 스폰서키트 효과를 반환하고, 없다면 [돈] +2',
+        text: '계약을 파기합니다. 유니폼 스폰서가 있다면 장내 방송 효과를 반환하고, 없다면 [돈] +2',
         effects: [
           {
             type: 'text',
-            text: '스타디움 명명권 스폰서가 있다면 해당 카드를 버리고 스폰서키트 효과를 반환합니다. 없다면 2[돈]을 얻습니다.',
+            text: '유니폼 스폰서가 있다면 해당 카드를 버리고 장내 방송 효과를 반환합니다. 없다면 2[돈]을 얻습니다.',
           },
         ],
       },

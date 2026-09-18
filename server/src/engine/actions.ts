@@ -1,6 +1,6 @@
 import { cards } from './cards';
 import { resolvePending } from './effects';
-import { acceptMatchRoll, rerollMatchDie, rollMatchDie, submitLineup } from './friday';
+import { acceptMatchRoll, advanceAfterLineup, rerollMatchDie, rollMatchDie, submitLineup } from './friday';
 import { CONTRACT_LABEL, INFRA_LABEL, matchDieLabel } from './labels';
 import { acceptBoardRoll, rerollBoardDie, rollBoardDie } from './monday';
 import type { Rng } from './rng';
@@ -54,6 +54,7 @@ function apply(state: GameState, pid: PlayerId, action: GameAction, rng: Rng): G
     case 'resolvePending': {
       const next = structuredClone(state);
       resolvePending(next, pid, action.pendingId, action.instanceId);
+      advanceAfterLineup(next, pid, rng); // 경기 전 효과의 대상 선택이 끝났으면 경기 준비 차례를 넘긴다
       return next;
     }
     case 'rollBoardDie':

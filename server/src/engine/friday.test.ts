@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
+import { applyAction } from './actions';
 import { cards } from './cards';
+import { addToRoster } from './effects';
 import { acceptMatchRoll, rerollMatchDie, rollMatchDie, standsCount, startFriday, submitLineup } from './friday';
 import { GameError } from './state';
 import type { GameState } from './state';
-import { autoLineup, gameAtMonday, seededRng } from './test-utils';
+import { autoLineup, gameAtMonday, seededRng, settlePending } from './test-utils';
 
 function friday(): GameState {
   const s = gameAtMonday();
@@ -16,7 +18,7 @@ function friday(): GameState {
 }
 
 function submitAll(s: GameState, seed = 1): GameState {
-  for (const id of s.seats) s = submitLineup(s, id, autoLineup(s.players[id]!), seededRng(seed));
+  for (const id of s.seats) s = settlePending(submitLineup(s, id, autoLineup(s.players[id]!), seededRng(seed)), seededRng(seed));
   return s;
 }
 
@@ -76,6 +78,36 @@ describe('경기 준비 제출 (p.20)', () => {
     const next = submitLineup(s, 'a', autoLineup(p, [p.roster[0]!.instanceId]), seededRng());
     expect(next.players['a']!.roster[1]!.tokens.suspension).toBe(1);
     expect(next.players['a']!.staff[0]!.suspension).toBe(0);
+  });
+});
+
+describe('경기 전 효과 (p.22)', () => {
+  it('대상 선택이 필요한 경기 전 효과는 제출 시점에 대기하고, 고른 뒤에야 다음 차례로 넘어가며 토큰이 경기에 반영된다', () => {
+    const rng = seededRng(7);
+    let s = friday();
+    const a = s.players['a']!;
+    // p-s01 훈련 면: 경기 전 1[체력] → 선수 1명에 일시적 역량 1개 (대상 선택)
+    const booster = addToRoster(a, 'p-s01');
+    booster.trained = true;
+    const sub = autoLineup(a);
+    if (!sub.players.includes(booster.instanceId)) sub.players.push(booster.instanceId);
+    const lineup = { ...autoLineup(a, sub.players), activations: { [booster.instanceId]: { stamina: 1 } } };
+    s = submitLineup(s, 'a', lineup, rng);
+    expect(s.phase.kind === 'friday.prepare' && s.phase.current).toBe('a'); // 대상 선택 전에는 차례가 넘어가지 않는다
+    expect(s.phase.kind === 'friday.prepare' && !!s.phase.submitted['a']).toBe(true);
+    const pending = s.players['a']!.pending[0]!;
+    expect(pending.effect).toEqual({ type: 'addPlayerToken', token: 'strengthTemp', count: 1 });
+    expect(() => submitLineup(s, 'b', autoLineup(s.players['b']!), rng)).toThrow(GameError);
+
+    s = applyAction(s, 'a', { type: 'resolvePending', pendingId: pending.id, instanceId: pending.candidates[0]! }, rng);
+    expect(s.players['a']!.roster.find((r) => r.instanceId === pending.candidates[0])!.tokens.strengthTemp).toBe(1); // 경기 전에 토큰이 있다
+    expect(s.phase.kind === 'friday.prepare' && s.phase.current).toBe('b');
+    expect(s.players['a']!.roster.find((r) => r.instanceId === booster.instanceId)!.exhausted).toBe(true);
+
+    for (const id of ['b', 'c', 'd']) s = settlePending(submitLineup(s, id, autoLineup(s.players[id]!), rng), rng);
+    expect(s.phase.kind).toBe('friday.aftermath');
+    // p.24: 경기 뒤 출전 선수의 일시적 토큰은 제거된다
+    expect(s.players['a']!.roster.every((r) => r.tokens.strengthTemp === 0)).toBe(true);
   });
 });
 

@@ -13,5 +13,5 @@ export const OBJECTIVE_CARDS: ObjectiveCard[] = [
   { id: 'ob-09', name: '든든한 금고', description: '이사회는 결산 보고서의 숫자를 가장 좋아합니다.', goal: '게임 종료 시 [돈]을 10개 이상 보유합니다.', perfect: '추가로 15개 이상 보유합니다.', placeholder: true },
   { id: 'ob-10', name: '무사고 시즌', description: '의료진의 꿈은 조용한 시즌입니다.', goal: '게임 종료 시 선수 카드 위에 [부상] 토큰이 하나도 없습니다.', perfect: '추가로 게임 동안 경기 영향 주사위로 [부상] 토큰을 한 번도 받지 않습니다.', placeholder: true },
   { id: 'ob-11', name: '본사 이전', description: '새 사무실의 창문 너머로 구장 전체가 내려다보입니다.', goal: '게임 종료 시 사무실 트랙에서 3번째 칸(9[승점]) 이상에 도달합니다.', perfect: '추가로 사무실 트랙의 마지막 칸(15[승점])에 도달합니다.', placeholder: true },
-  { id: 'ob-12', name: '후원사 총출동', description: '유니폼, 광고판, 구장 이름까지 전부 팔렸습니다.', goal: '게임 종료 시 스폰서 계약을 3건 이상 보유합니다.', perfect: '추가로 키트, 광고판, 명명권 3유형 계약을 각각 1건 이상 보유합니다.', placeholder: true },
+  { id: 'ob-12', name: '후원사 총출동', description: '유니폼, 광고판, 구장 이름까지 전부 팔렸습니다.', goal: '게임 종료 시 스폰서 계약을 3건 이상 보유합니다.', perfect: '추가로 장내 방송, 광고판, 유니폼 3유형 계약을 각각 1건 이상 보유합니다.', placeholder: true },
 ];

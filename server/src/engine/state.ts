@@ -124,7 +124,8 @@ export type Phase =
   // 한 명씩(current) 진행한다 (규칙서는 월요일·금요일을 동시 진행으로 두지만, 온라인에서는 서로의 진행을 지켜볼 수 있도록 턴제로 바꿨다)
   | { kind: 'monday.board'; current: PlayerId; meetings: Record<PlayerId, BoardMeeting> }
   | { kind: 'weekday'; day: Weekday; current: PlayerId; basicDone: boolean; paidDone: boolean }
-  | { kind: 'friday.prepare'; current: PlayerId; submitted: Record<PlayerId, LineupSubmission | null> }
+  // preGoals: 경기 전 효과가 미리 넣은 골 (경기 전 효과는 라인업 제출 시점에 적용되므로 판정 때까지 들고 있는다)
+  | { kind: 'friday.prepare'; current: PlayerId; submitted: Record<PlayerId, LineupSubmission | null>; preGoals: Record<PlayerId, { mine: number; theirs: number }> }
   | { kind: 'friday.aftermath'; current: PlayerId; matches: Record<PlayerId, MatchAftermath> }
   | { kind: 'gameOver'; scores: Record<PlayerId, ScoreBreakdown>; winners: PlayerId[] };
 
