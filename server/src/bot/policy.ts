@@ -50,16 +50,19 @@ function weekdayAction(view: GameView, me: PlayerPublicView, rng: Rng, failed: S
       }
     }
     if (can('recruitPlayer') && me.roster.length < ROSTER_TARGET) {
-      let best: { i: number; score: number } | null = null;
-      for (let i = 2; i <= 4; i++) {
-        const id = view.market.players[i];
-        if (!id) continue;
-        const side = cards.player(id).untrained;
-        if (side.cost > spare) continue;
-        const score = side.skill * 2 - side.cost + (side.goalkeeper && !me.roster.some((r) => activeSide(r).goalkeeper) ? 3 : 0);
-        if (!best || score > best.score) best = { i, score };
+      // 주전 행과 베테랑 행의 오른쪽 3장 중 가장 값진 카드
+      let best: { i: number; row: 'players' | 'veterans'; score: number } | null = null;
+      for (const row of ['players', 'veterans'] as const) {
+        for (let i = 2; i <= 4; i++) {
+          const id = view.market[row][i];
+          if (!id) continue;
+          const side = cards.player(id).untrained;
+          if (side.cost > spare) continue;
+          const score = side.skill * 2 - side.cost + (side.goalkeeper && !me.roster.some((r) => activeSide(r).goalkeeper) ? 3 : 0);
+          if (!best || score > best.score) best = { i, row, score };
+        }
       }
-      if (best) options.push({ type: 'recruitPlayer', marketIndex: best.i });
+      if (best) options.push({ type: 'recruitPlayer', marketIndex: best.i, row: best.row });
     }
     if (can('buildInfrastructure') && me.infrastructure.length < INFRASTRUCTURE_MAX && INFRASTRUCTURE_COST <= spare) {
       const type = INFRA_ORDER.find((t) => {
@@ -75,7 +78,9 @@ function weekdayAction(view: GameView, me: PlayerPublicView, rng: Rng, failed: S
       const step = cards.boardData.office[me.office];
       if (step && step.cost > 0 && step.cost <= spare) options.push({ type: 'buildOffice' });
     }
-    if (can('recruitProspect') && me.roster.length < ROSTER_TARGET && 2 <= spare && rng.float() < 0.3) options.push({ type: 'recruitProspect' });
+    if (can('recruitProspect') && me.roster.length < ROSTER_TARGET && view.nextProspect && cards.player(view.nextProspect).untrained.cost <= spare && rng.float() < 0.3) {
+      options.push({ type: 'recruitProspect' });
+    }
     // 우선순위 상위 2개 중 하나를 고른다. 없으면 패스
     return options[rng.int(Math.min(options.length, 2))] ?? { type: 'pass' };
   }

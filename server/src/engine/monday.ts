@@ -84,8 +84,10 @@ export function rerollBoardDie(state: GameState, pid: PlayerId, rng: Rng): GameS
   const m = meetingOf(next, pid);
   if (m.roll === null) throw new GameError('roll first');
   const player = getPlayer(next, pid);
-  if (hasTrait(player, 'freeBoardReroll')) {
-    addLog(next, '특성: 팬덤 없이 이사회 주사위를 다시 굴림', { actor: pid });
+  // 특성(팬덤 없이 재굴림)은 주당 1회 (사용자 결정, 2026-09). 그 뒤로는 팬덤을 낸다
+  if (hasTrait(player, 'freeBoardReroll') && !player.freeRerollUsed.board) {
+    player.freeRerollUsed.board = true;
+    addLog(next, '특성: 팬덤 없이 이사회 주사위를 다시 굴림 (이번 주 무료 재굴림 사용)', { actor: pid });
   } else {
     if (player.resources.fandom < 1) throw new GameError('not enough fandom');
     player.resources.fandom--;

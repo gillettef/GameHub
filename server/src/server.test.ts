@@ -113,7 +113,7 @@ describe('WebSocket 서버', () => {
     const base = `http://localhost:${(server.address() as AddressInfo).port}`;
     expect(await (await fetch(`${base}/health`)).json()).toEqual({ ok: true });
     const cards = (await (await fetch(`${base}/api/cards`)).json()) as { players: unknown[]; opponents: unknown[] };
-    expect(cards.players).toHaveLength(62);
+    expect(cards.players).toHaveLength(70);
     expect(cards.opponents).toHaveLength(64);
   });
 });

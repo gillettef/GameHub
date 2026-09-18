@@ -10,7 +10,7 @@ import { useView } from './store';
 export type MainTab = 'personal' | 'shared';
 export type BoardTab = 'club' | 'stadium' | 'match' | 'hand';
 export type SharedTab = 'market' | 'league';
-export type MarketTab = 'players' | 'staff' | 'sponsors';
+export type MarketTab = 'players' | 'veterans' | 'prospects' | 'staff' | 'sponsors'; // 주전 행 / 베테랑 행 / 유망주 더미 / 직원 / 스폰서
 
 interface UiStore {
   selected: PlayerId;

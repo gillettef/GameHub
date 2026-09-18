@@ -30,8 +30,13 @@ describe('참가자 뷰 (비공개 정보 제거)', () => {
     const s = gameAtMonday();
     const v = viewFor(s, 'c');
     expect(v.deckCounts.starters).toBe(s.decks.starters.length);
-    expect(JSON.stringify(v)).not.toContain(s.decks.prospects[0]!);
+    // 유망주 더미는 맨 위 카드만 공개(미훈련 면을 보고 영입), 그 아래는 비공개
+    expect(v.nextProspect).toBe(s.decks.prospects[0]!);
+    expect(JSON.stringify(v)).not.toContain(s.decks.prospects[1]!);
+    expect(JSON.stringify(v)).not.toContain(s.decks.starters[0]!);
+    expect(JSON.stringify(v)).not.toContain(s.decks.veterans[0]!);
     expect(v.market).toEqual(s.market);
+    expect(v.market.veterans).toHaveLength(5);
     expect(v.league).toEqual(s.league);
     expect(v.me).toBe('c');
   });

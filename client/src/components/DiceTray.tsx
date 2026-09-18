@@ -135,7 +135,8 @@ export function DiceTray() {
 
   if (!mode || !actor) return null;
   const canRoll = mine && !decided && roll === null;
-  const freeReroll = hasTrait(actor, mode === 'board' ? 'freeBoardReroll' : 'freeMatchReroll'); // 특성: 팬덤 없이 재굴림
+  // 특성: 팬덤 없이 재굴림 — 주당 1회, 이미 썼으면 팬덤을 낸다 (엔진과 같은 판정)
+  const freeReroll = hasTrait(actor, mode === 'board' ? 'freeBoardReroll' : 'freeMatchReroll') && !actor.freeRerollUsed[mode];
   const canReroll = mine && !decided && roll !== null && (freeReroll || actor.resources.fandom >= 1);
   // 눈이 나온 뒤 적용 버튼 라벨: 이사회는 결정 색(엔진과 같은 집계), 경기는 영향 표의 결과
   const acceptLabel = roll === null ? '' : mode === 'board' ? `${COLOR_LABEL[boardDecision(actor, roll)]} 결정 적용` : `적용: ${outcome ? matchDieLabel(outcome, roll) : ''}`;

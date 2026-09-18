@@ -7,7 +7,7 @@ import { GameError, WEEKDAYS, addLog, getPlayer, leftOf } from './state';
 import type { GameState, PlayerId, PlayerState, Weekday } from './state';
 import { hireCost, infraCost, marketMinIndex, prospectCost, traitSum } from './traits';
 import { INFRASTRUCTURE_MAX } from './types';
-import type { Cost, DayRestriction, Effect, InfrastructureType, SponsorContract } from './types';
+import type { Cost, DayRestriction, Effect, InfrastructureType, PlayerMarketRow, SponsorContract } from './types';
 
 const PAID_ACTION_OPS = 2;
 const BILLBOARD_BASE_LIMIT = 2;
@@ -51,21 +51,21 @@ function pay(player: PlayerState, cost: Cost): void {
   for (const [r, n] of Object.entries(cost) as [keyof Cost, number][]) player.resources[r] -= n;
 }
 
-// p.15 선수 영입: 맨 오른쪽 3장 중 1장
-export function recruitPlayer(state: GameState, pid: PlayerId, marketIndex: number, rng: Rng): GameState {
+// p.15 선수 영입: 맨 오른쪽 3장 중 1장. row = 주전 행('players') 또는 베테랑 행('veterans', 원작에 없는 행 — 사용자 결정 2026-09)
+export function recruitPlayer(state: GameState, pid: PlayerId, marketIndex: number, rng: Rng, row: PlayerMarketRow = 'players'): GameState {
   const next = structuredClone(state);
   const turn = requireBasic(next, pid);
   const player = getPlayer(next, pid);
-  const cardId = next.market.players[marketIndex];
+  const cardId = next.market[row][marketIndex];
   if (cardId === undefined) throw new GameError('no such market card');
   pay(player, { money: cards.player(cardId).untrained.cost });
-  takeFromMarket(next, 'players', marketIndex, rng, marketMinIndex(player, 'players'));
+  takeFromMarket(next, row, marketIndex, rng, marketMinIndex(player, 'players'));
   addToRoster(player, cardId);
   turn.basicDone = true;
   return next;
 }
 
-// p.15 유망주 영입: 더미 맨 위
+// p.15 유망주 영입: 더미 맨 위. 맨 위 카드의 미훈련 면(공격/수비·비용)은 공개돼 있고 훈련 면은 영입해야 본다
 export function recruitProspect(state: GameState, pid: PlayerId): GameState {
   const next = structuredClone(state);
   const turn = requireBasic(next, pid);

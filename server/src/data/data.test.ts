@@ -38,11 +38,11 @@ function expectValidSide(side: PlayerSide) {
 }
 
 describe('구성물 수량 (p.2)', () => {
-  it('선수 62 = 주전 36 + 유망주 18 + 베테랑 8', () => {
+  it('선수 70 = 주전 36 + 유망주 18 + 베테랑 16 (베테랑은 시장 행이 생겨 원작 8장에서 늘림)', () => {
     const byKind = (k: string) => PLAYER_CARDS.filter((c) => c.kind === k).length;
     expect(byKind('starter')).toBe(36);
     expect(byKind('prospect')).toBe(18);
-    expect(byKind('veteran')).toBe(8);
+    expect(byKind('veteran')).toBe(16);
   });
   it('직원 36, 스폰서 36, 이사회 36, 임원 16, 전술 12, 목표 12, 상대 팀 64', () => {
     expect(STAFF_CARDS).toHaveLength(36);
@@ -67,18 +67,42 @@ describe('선수 카드 (p.15~16, p.22)', () => {
       expectValidSide(c.trained);
     }
   });
-  it('유망주 미훈련 면은 전부 동일하고 번호가 없다', () => {
+  // 사용자 결정(2026-09): 유망주 미훈련 면은 역량 1·비용 1 고정, 공격/수비만 훈련 면과 같게 드러난다
+  it('유망주 미훈련 면은 역량 1·비용 1·번호 없음, 역할은 훈련 면과 같고, 이름은 본명', () => {
     const prospects = PLAYER_CARDS.filter((c) => c.kind === 'prospect');
-    const first = JSON.stringify(prospects[0]?.untrained);
+    const byRole = { attack: 0, defense: 0 };
     for (const p of prospects) {
-      expect(JSON.stringify(p.untrained)).toBe(first);
+      expect(p.untrained.cost).toBe(1);
+      expect(p.untrained.skill).toBe(1);
       expect(p.untrained.number).toBeUndefined();
+      expect(p.untrained.effect).toBeUndefined();
+      expect(p.untrained.role).toBe(p.trained.role);
+      expect(p.untrained.zones).toEqual(p.untrained.role === 'attack' ? ['CM', 'CF'] : ['CB', 'CM']);
+      expect(p.name).not.toBe('유망주'); // 본명을 미훈련 면에도 표시 (사용자 요청)
       expect(p.trained.number).toBeDefined();
+      expect(p.trained.cost).toBe(1);
+      expect(p.trained.skill >= 3 || p.trained.effect !== undefined).toBe(true); // 역량 중상 또는 상급 능력
+      byRole[p.untrained.role]++;
+    }
+    expect(byRole).toEqual({ attack: 9, defense: 9 });
+  });
+  it('주전은 미훈련 역량이 대체로 2이고, 훈련하면 역량이 오르거나 효과가 생긴다', () => {
+    const starters = PLAYER_CARDS.filter((c) => c.kind === 'starter');
+    expect(starters.filter((c) => c.untrained.skill === 2).length).toBeGreaterThanOrEqual(starters.length / 2);
+    for (const c of starters) {
+      expect(c.untrained.skill).toBeGreaterThanOrEqual(1);
+      expect(c.untrained.skill).toBeLessThanOrEqual(3);
+      expect(c.trained.skill > c.untrained.skill || c.trained.effect !== undefined).toBe(true);
+      expect(c.trained.cost).toBeLessThanOrEqual(c.untrained.cost);
     }
   });
-  it('베테랑은 미훈련 면 역량이 더 높다', () => {
+  it('베테랑은 미훈련 면 역량이 높고(3~4), 페널티(강제 효과 또는 훈련 시 역량 −2 이상)가 있다', () => {
     for (const v of PLAYER_CARDS.filter((c) => c.kind === 'veteran')) {
+      expect(v.untrained.skill).toBeGreaterThanOrEqual(3);
       expect(v.untrained.skill).toBeGreaterThan(v.trained.skill);
+      const mandatory = v.untrained.effect?.mandatory === true;
+      const trainingPenalty = v.untrained.skill - v.trained.skill >= 2;
+      expect(mandatory || trainingPenalty).toBe(true);
     }
   });
   it('골키퍼는 양면 모두 골키퍼', () => {
@@ -173,7 +197,7 @@ describe('보드 수치', () => {
     expect(BOARD_DATA.office.map((s) => s.cost)).toEqual([3, 5, 5, 7, 0]);
   });
   it('조달 트랙은 위치 1~5, 기반 시설 7종 (p.19)', () => {
-    for (const row of Object.values(BOARD_DATA.procurement)) expect(row).toHaveLength(TRACK_MAX);
+    for (const row of Object.values(BOARD_DATA.procurement)) expect(row).toEqual([1, 2, 3, 4, 5]); // 조달량 = 트랙 위치 (사용자 결정)
     expect(BOARD_DATA.infrastructure).toHaveLength(7);
     expect(BOARD_DATA.infrastructure.filter((i) => i.unique).map((i) => i.type).sort()).toEqual(['billboard3', 'stand3', 'stand4']);
   });

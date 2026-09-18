@@ -6,9 +6,9 @@ import { CONTRACT_LABEL, INFRA_LABEL, matchDieLabel } from './labels';
 import { acceptBoardRoll, rerollBoardDie, rollBoardDie } from './monday';
 import type { Rng } from './rng';
 import { chooseObjective, draftPick } from './setup';
-import { GameError, canUndoTurn, currentDay, getPlayer } from './state';
-import type { GameState, LineupSubmission, LogEntry, PlayerId } from './state';
-import type { InfrastructureType, SponsorContract } from './types';
+import { GameError, canUndoTurn, currentDay, getPlayer, hasTurnSnapshot } from './state';
+import type { Decks, GameState, LineupSubmission, LogEntry, PlayerId } from './state';
+import type { InfrastructureType, PlayerMarketRow, SponsorContract } from './types';
 import {
   buildInfrastructure,
   buildOffice,
@@ -30,8 +30,8 @@ export type GameAction =
   | { type: 'rollBoardDie' }
   | { type: 'rerollBoardDie' }
   | { type: 'acceptBoardRoll' }
-  | { type: 'recruitPlayer'; marketIndex: number }
-  | { type: 'recruitProspect' }
+  | { type: 'recruitPlayer'; marketIndex: number; row?: PlayerMarketRow } // row 생략 = 주전 행. 'veterans' = 베테랑 행
+  | { type: 'recruitProspect' } // 유망주 더미 맨 위 (미훈련 면 공개)
   | { type: 'releasePlayer'; instanceId: string }
   | { type: 'hireStaff'; marketIndex: number }
   | { type: 'signSponsor'; marketIndex: number; contract: SponsorContract; billboardChoice?: 'effect' | 'bonus' }
@@ -67,7 +67,7 @@ function apply(state: GameState, pid: PlayerId, action: GameAction, rng: Rng): G
     case 'acceptBoardRoll':
       return acceptBoardRoll(state, pid);
     case 'recruitPlayer':
-      return recruitPlayer(state, pid, action.marketIndex, rng);
+      return recruitPlayer(state, pid, action.marketIndex, rng, action.row ?? 'players');
     case 'recruitProspect':
       return recruitProspect(state, pid);
     case 'releasePlayer':
@@ -142,11 +142,14 @@ function describe(before: GameState, after: GameState, pid: PlayerId, action: Ga
     case 'acceptBoardRoll':
       return null; // monday.ts 가 결정 내용을 기록
     case 'recruitPlayer': {
-      const id = before.market.players[action.marketIndex];
-      return id ? `영입: ${cards.player(id).name}` : '영입';
+      const id = before.market[action.row ?? 'players'][action.marketIndex];
+      const kind = action.row === 'veterans' ? '베테랑 영입' : '영입';
+      return id ? `${kind}: ${cards.player(id).name}` : kind;
     }
-    case 'recruitProspect':
-      return '유망주 영입';
+    case 'recruitProspect': {
+      const id = before.decks.prospects[0];
+      return id ? `유망주 영입 (${cards.player(id).untrained.role === 'attack' ? '공격' : '수비'})` : '유망주 영입';
+    }
     case 'releasePlayer':
       return `방출: ${playerName(action.instanceId)}`;
     case 'hireStaff': {
@@ -196,15 +199,25 @@ function withTurnSnapshot(state: GameState, pid: PlayerId): GameState {
     void turnSnapshot;
     return rest;
   }
-  if (canUndoTurn(state, pid)) return state;
+  if (hasTurnSnapshot(state, pid)) return state; // 잠긴 스냅샷도 그대로 둔다 (다시 찍으면 잠금이 풀리므로)
   const { turnSnapshot, ...rest } = state;
   void turnSnapshot;
-  return { ...rest, turnSnapshot: { pid, week: state.week, day: state.phase.day, state: structuredClone(rest) } };
+  return { ...rest, turnSnapshot: { pid, week: state.week, day: state.phase.day, locked: false, state: structuredClone(rest) } };
+}
+
+const DECKS: readonly (keyof Omit<Decks, 'discards'>)[] = ['starters', 'prospects', 'veterans', 'staff', 'sponsors', 'board', 'tactics', 'objectives'];
+
+// 이번 행동으로 비공개 카드가 공개됐는가: 어떤 더미에서든 카드를 뽑았거나(시장 보충, 유망주 영입, 전술 카드 뽑기·교체) 상대 팀 카드를 미리 봤다.
+// 그런 차례는 "처음으로 되돌리기"로 무를 수 없다 — 본 정보를 되돌릴 수 없으므로 (사용자 결정, 2026-09)
+function revealedHiddenCard(before: GameState, after: GameState): boolean {
+  if (DECKS.some((d) => before.decks[d].length !== after.decks[d].length || before.decks[d][0] !== after.decks[d][0])) return true;
+  return Object.keys(after.players).some((id) => after.players[id]!.scouted && !before.players[id]?.scouted);
 }
 
 export function undoTurn(state: GameState, pid: PlayerId): GameState {
   if (state.phase.kind !== 'weekday') throw new GameError('undo only during weekdays');
   if (state.phase.current !== pid) throw new GameError('not your turn');
+  if (hasTurnSnapshot(state, pid) && state.turnSnapshot!.locked) throw new GameError('cannot undo after a card was revealed');
   if (!canUndoTurn(state, pid)) throw new GameError('nothing to undo');
   return structuredClone(state.turnSnapshot!.state);
 }
@@ -213,6 +226,9 @@ export function applyAction(state: GameState, pid: PlayerId, action: GameAction,
   getPlayer(state, pid);
   const base = action.type === 'undoTurn' ? state : withTurnSnapshot(state, pid);
   const next = apply(base, pid, action, rng);
+  if (action.type !== 'undoTurn' && hasTurnSnapshot(next, pid) && !next.turnSnapshot!.locked && revealedHiddenCard(state, next)) {
+    next.turnSnapshot = { ...next.turnSnapshot!, locked: true };
+  }
   const text = describe(state, next, pid, action);
   if (text) {
     // 행동 당시의 주차·요일로 기록하고, 행동이 낳은 후속 기록(경기 결과, 주말 정산 등)보다 앞에 둔다
