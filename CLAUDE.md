@@ -154,6 +154,8 @@ notes/    규칙서 원본 및 텍스트 레퍼런스
   --url`(빠른 터널, 계정 불필요, 첫 실행 시 `.dev/cloudflared.exe` 다운로드) 순으로 띄우고
   `https://….trycloudflare.com` 주소를 출력한다(`.dev/tunnel-url.txt`에도 저장). 주소는 매번 바뀌고 PC·터널이
   켜져 있는 동안만 유효. `/dev` 와 포트 3001을 공유하므로 먼저 `/dev-stop`. 종료도 `/dev-stop`(`.dev/tunnel-pids.json`).
+  **새 빌드를 반영할 때는 `tunnel.ps1 -Reload`**: 터널(`cloudflared`)은 그대로 두고 서버(node)만 교체하므로 공개 주소가
+  유지된다(주소는 cloudflared 프로세스에 묶여 있다). 터널 전체를 내렸다 올리면 주소가 바뀌니 배포 목적으로는 쓰지 않는다(사용자 요청, 2026-09).
 - **방법 B — 호스팅 (상시 주소)**: `render.yaml`(Render Blueprint, Node 22, 무료 플랜: 15분 미접속 시 슬립 →
   진행 중 판 유실)과 `Dockerfile`(멀티스테이지, Fly.io/Railway 등 컨테이너 호스팅용). 둘 다 헬스체크는 `/health`.
   게임 상태는 메모리에만 있으므로 인스턴스는 항상 1개여야 한다(스케일아웃 금지).
