@@ -23,7 +23,7 @@ export function PhaseStatus() {
           <li>차례: <b>{name(phase.current)}</b></li>
           {view.seats.map((id) => {
             const m = phase.meetings[id]!;
-            return <li key={id}><b>{name(id)}</b> {cards.board(m.card).name} — {m.decided ? '결정 완료' : m.roll === null ? '주사위 대기' : `주사위 ${m.roll}`}</li>;
+            return <li key={id}><b>{name(id)}</b> {cards.board(m.card).name} — {m.decided ? '결정 완료' : m.roll === null ? '주사위 대기' : '주사위 굴림 (왼쪽 주사위 참고)'}</li>;
           })}
         </ul>
       );
@@ -42,7 +42,7 @@ export function PhaseStatus() {
             const m = phase.matches[id]!;
             return (
               <li key={id}>
-                <b>{name(id)}</b> {m.report.myGoals}:{m.report.theirGoals} {cards.opponent(m.opponentCardId).teamName} ({{ win: '승', draw: '무', loss: '패' }[m.report.outcome]}) — {m.decided ? '완료' : m.roll === null ? '주사위 대기' : `주사위 ${m.roll}`}
+                <b>{name(id)}</b> {m.report.myGoals}:{m.report.theirGoals} {cards.opponent(m.opponentCardId).teamName} ({{ win: '승', draw: '무', loss: '패' }[m.report.outcome]}) — {m.decided ? '완료' : m.roll === null ? '주사위 대기' : '주사위 굴림 (왼쪽 주사위 참고)'}
               </li>
             );
           })}

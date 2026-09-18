@@ -5,6 +5,7 @@ import { Icon } from '../components/Icons';
 import { TurnBanner } from '../components/Turn';
 import { COLOR_LABEL } from '../labels';
 import { useGame } from '../store';
+import { useRevealedRoll } from '../ui';
 
 // 이사회는 선 참가자부터 한 명씩 진행한다. 차례인 참가자의 이사회 카드·임원·주사위 결과를 모두가 본다.
 // "이 결정 적용" 버튼 자체가 확정이다(대안은 팬덤 재굴림). 적용 결과는 효과 토스트가 보여준다
@@ -17,9 +18,11 @@ export function MondayScreen() {
   const player = view.players[actor]!;
   const mine = actor === view.me;
   const execIds = player.executives.map((e) => e.cardId);
+  // 눈은 사이드바 주사위가 멈춘 뒤에만 보여준다 (구르는 동안 결과가 먼저 드러나지 않게)
+  const roll = useRevealedRoll(actor, meeting.roll);
   // 집계와 결정 색은 엔진과 같은 함수를 쓴다 (모든 눈이 동수인 조합이면 첫 임원의 표)
-  const t = meeting.roll ? tallyVotes(player, meeting.roll) : null;
-  const color = meeting.roll ? boardDecision(player, meeting.roll) : null;
+  const t = roll ? tallyVotes(player, roll) : null;
+  const color = roll ? boardDecision(player, roll) : null;
   const done = Object.fromEntries(view.seats.map((id) => [id, meetings[id]!.decided]));
 
   return (
@@ -38,12 +41,16 @@ export function MondayScreen() {
         <div className="stack">
           {meeting.roll === null ? (
             <p className="hint">
-              <Icon name="die" size={14} /> {mine ? '오른쪽 위 주사위를 굴리세요.' : `${player.name}이(가) 주사위를 굴리기를 기다리는 중`}
+              <Icon name="die" size={14} /> {mine ? '왼쪽 주사위를 굴리세요.' : `${player.name}이(가) 주사위를 굴리기를 기다리는 중`}
+            </p>
+          ) : roll === null ? (
+            <p className="hint">
+              <Icon name="die" size={14} /> 주사위가 구르는 중…
             </p>
           ) : (
             <div className="stack">
               <div className="roll-result">
-                <span className="big-die">{meeting.roll}</span>
+                <span className="big-die">{roll}</span>
                 <span className="votes">
                   {(['yellow', 'blue', 'red'] as const).map((c) => (
                     <span key={c} className={`vote ${c}${color === c ? ' win' : ''}`}>

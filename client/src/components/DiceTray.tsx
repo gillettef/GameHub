@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Icon } from './Icons';
 import { useStore } from '../store';
+import { rollKeyOf, useUi } from '../ui';
 
 const SPIN_MS = 1100; // 굴리기를 누른 뒤 최소한 이만큼은 구른다
 const SPIN_FALLBACK_MS = 4000; // 서버 눈이 안 오면(거부 등) 이 뒤에 멈춘다
@@ -36,8 +37,10 @@ function Face({ n, className }: { n: number; className: string }) {
 
 // 사이드바의 주사위: 굴리기를 누르면 구르는 애니메이션이 시작되고, 서버가 정한 눈이 오면 최소 시간 뒤 그 면으로 멈춘다.
 // 멈추는 타이머는 ref 로 들고 있어 뷰가 중간에 바뀌어도(다음 차례로 넘어감 등) 취소되지 않는다.
+// 멈춘 눈은 ui.settledRoll 로 알리고, 이사회·경기 결과 패널은 그때까지 눈을 숨긴다(구르는 동안 결과가 먼저 보이지 않게).
 export function DiceTray() {
   const { view, session, act } = useStore();
+  const { setSettledRoll } = useUi();
   const [spinning, setSpinning] = useState(false);
   const [face, setFace] = useState(1);
   const spinningRef = useRef(false);
@@ -65,8 +68,11 @@ export function DiceTray() {
   }
   const actor = view && actorId ? view.players[actorId] : undefined;
   const mine = !!me && me.id === actorId;
-  const rollKey = `${actorId}:${roll}`;
+  const rollKey = rollKeyOf(actorId, roll);
+  const broadcast = view?.log.length ?? 0; // 같은 눈이 다시 나온 재굴림도 새 방송으로 감지하기 위해
   const lastRollKey = useRef(rollKey);
+  const rollKeyRef = useRef(rollKey);
+  rollKeyRef.current = rollKey;
 
   const settle = (n: number) => {
     faceRef.current = n;
@@ -74,6 +80,7 @@ export function DiceTray() {
     spinningRef.current = false;
     setSpinning(false);
     stopTimer.current = null;
+    setSettledRoll(rollKeyRef.current); // 멈춘 시점의 눈을 공개
   };
   // 굴린 지 SPIN_MS 가 지난 뒤 n 면으로 멈춘다 (이미 지났으면 바로)
   const stopAt = (n: number, minMs = SPIN_MS) => {
@@ -85,6 +92,7 @@ export function DiceTray() {
     spinStarted.current = Date.now();
     spinningRef.current = true;
     setSpinning(true);
+    setSettledRoll(null); // 구르는 동안은 눈을 숨긴다
   };
 
   useEffect(() => {
@@ -105,9 +113,11 @@ export function DiceTray() {
       stopAt(roll);
       return;
     }
+    // 구르지 않고 바로 보여주는 경우(새로고침 직후, 내가 굴렸는데 애니메이션이 없는 환경 등)
     faceRef.current = roll;
     setFace(roll);
-  }, [roll, rollKey, mine]); // 눈·차례가 바뀔 때만 (stopAt 등은 ref 기반이라 의존성에 넣지 않는다)
+    setSettledRoll(rollKey);
+  }, [roll, rollKey, mine, broadcast]); // 눈·차례·방송이 바뀔 때만 (stopAt 등은 ref 기반이라 의존성에 넣지 않는다)
 
   useEffect(
     () => () => {
@@ -145,7 +155,7 @@ export function DiceTray() {
         {decided ? (
           <span className="muted small">처리 완료</span>
         ) : !mine ? (
-          <span className="muted small">{roll === null ? '굴리기를 기다리는 중' : `눈 ${roll}`}</span>
+          <span className="muted small">{roll === null ? '굴리기를 기다리는 중' : spinning ? '구르는 중' : `눈 ${roll}`}</span>
         ) : (
           <>
             <button className="primary" disabled={spinning || !canRoll} onClick={() => start(false)}>
