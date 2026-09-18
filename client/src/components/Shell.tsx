@@ -4,13 +4,13 @@ import type { LogEntry, PlayerId } from '@server/engine/state';
 import { RESOURCES } from '@server/engine/types';
 import { hireCost, marketMinIndex } from '@server/engine/traits';
 import { useCommit } from '../commit';
-import { DAY_LABEL, SEAT_COLORS, TOKEN_LABEL, phaseLabel } from '../labels';
+import { DAY_LABEL, RESOURCE_LABEL, SEAT_COLORS, TOKEN_LABEL, phaseLabel } from '../labels';
 import { NotifyToggles } from '../notify';
 import { useStore, useView } from '../store';
 import { useUi } from '../ui';
 import type { MarketTab } from '../ui';
 import { PlayerCardView, SponsorCardView, StaffCardView } from './Cards';
-import { CostChips, Icon } from './Icons';
+import { CostChips, Icon, TrackGlyph } from './Icons';
 import { SponsorContractModal } from './Sponsor';
 import { Tabs } from './Tabs';
 
@@ -91,13 +91,16 @@ export function PlayerStrip() {
                 {status && <span className={`seat-status ${status}`} title={{ acting: '행동 중', waiting: '대기', done: '완료' }[status]} />}
               </span>
               <span className="seat-res">
+                {/* 자원마다 두 칸 알약: 왼쪽(색 채움) = 지금 보유한 자원, 오른쪽(흰 바탕·테두리·계단 그림) = 능력치 트랙 위치(월요일 조달 기준).
+                    효과 칩의 자원 칩/트랙 칩과 같은 시각 언어 */}
                 {RESOURCES.map((r) => (
-                  <span key={r} className={`res ${r}`} title={`${r} ${p.resources[r]} (트랙 ${p.tracks[r]})`}>
-                    <Icon name={r} size={12} />{p.resources[r]}<small>{p.tracks[r]}</small>
+                  <span key={r} className={`res-pill ${r}`} title={`${RESOURCE_LABEL[r]}: 보유 ${p.resources[r]}개 · 트랙 ${p.tracks[r]}칸 (월요일 조달 기준)`}>
+                    <span className="held"><Icon name={r} size={14} />{p.resources[r]}</span>
+                    <span className="track"><TrackGlyph up={false} size={14} />{p.tracks[r]}</span>
                   </span>
                 ))}
-                <span className="res sub" title="리그 성적표 위치"><Icon name="goal" size={12} />{view.league.players[id]}</span>
-                <span className="res sub" title="승점 토큰"><Icon name="vp" size={12} />{p.vp}</span>
+                <span className="res sub" title="리그 성적표 위치"><Icon name="goal" size={14} />{view.league.players[id]}</span>
+                <span className="res sub" title="승점 토큰"><Icon name="vp" size={14} />{p.vp}</span>
                 <span className="res sub" title="선수 수 · 직원 수">선수 {p.roster.length} · 직원 {p.staff.length}</span>
               </span>
             </span>

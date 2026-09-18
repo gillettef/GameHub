@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { MiniPitch } from './Cards';
-import { Chip, Icon, TokenChip, TrackChip } from './Icons';
+import { Chip, Icon, TokenChip, TrackChip, TrackGlyph } from './Icons';
 
 interface Row {
   sample: React.ReactNode;
@@ -18,6 +18,18 @@ const SECTIONS: { title: string; rows: Row[] }[] = [
       { sample: <Chip icon="ops" value={2} />, name: '운영', desc: '2개를 내면 그날 카드 행동을 한 번 더 할 수 있습니다(유급 행동).' },
       { sample: <Chip icon="stamina" value={1} />, name: '체력', desc: '경기에 내보내는 선수마다 1개씩 냅니다. 카드 효과 비용으로도 씁니다.' },
       { sample: <Chip icon="vp" value={2} />, name: '승점', desc: '게임 끝에 가장 많이 모은 사람이 이깁니다. 유망주 경력 칸의 승점은 카드 위에 남아 있습니다.' },
+      {
+        sample: (
+          <span className="seat-res legend-inline">
+            <span className="res-pill money">
+              <span className="held"><Icon name="money" size={14} />3</span>
+              <span className="track"><TrackGlyph up={false} size={14} />2</span>
+            </span>
+          </span>
+        ),
+        name: '참가자 띠의 자원 표시',
+        desc: '왼쪽 색 칸은 지금 보유한 자원 개수, 오른쪽 흰 칸(계단 그림)은 능력치 트랙 위치입니다. 트랙 위치에 따라 매주 월요일 조달량이 정해집니다.',
+      },
     ],
   },
   {
