@@ -10,16 +10,18 @@ const PRINTED_INFRASTRUCTURE = 4; // p.9: 관중석 2 + 광고판 2
 const UPKEEP_SUSPENSION = 2;
 const WEEKS = 6;
 
-// p.27: 선수/직원/기반 시설 보유 수에 따른 주말 유지비
-export function upkeepDue(player: Pick<PlayerState, 'roster' | 'staff' | 'infrastructure'>): number {
+// p.27: 선수/직원/기반 시설 보유 수에 따른 주말 유지비 (카드 효과 할인 반영)
+export function upkeepDue(player: Pick<PlayerState, 'roster' | 'staff' | 'infrastructure' | 'upkeepDiscount'>): number {
   const { upkeep } = cards.boardData;
   const at = (table: number[], n: number) => table[Math.min(n, table.length - 1)] ?? 0;
-  return at(upkeep.players, player.roster.length) + at(upkeep.staff, player.staff.length) + at(upkeep.stadium, PRINTED_INFRASTRUCTURE + player.infrastructure.length);
+  const base = at(upkeep.players, player.roster.length) + at(upkeep.staff, player.staff.length) + at(upkeep.stadium, PRINTED_INFRASTRUCTURE + player.infrastructure.length);
+  return Math.max(0, base - player.upkeepDiscount);
 }
 
 // p.25 3: 못 낸 돈 1개마다 직원 카드 1장에 출장정지 2개. 출장정지 없는 카드부터
 function payUpkeep(state: GameState, player: PlayerState): void {
   const due = upkeepDue(player);
+  player.upkeepDiscount = 0; // 할인은 한 번만
   const paid = Math.min(due, player.resources.money);
   player.resources.money -= paid;
   let shortfall = due - paid;
@@ -52,6 +54,8 @@ export function runWeekend(state: GameState, rng: Rng): void {
     player.resources.fandom = Math.min(1, player.resources.fandom);
     player.resources.stamina = Math.min(1, player.resources.stamina);
     player.resources.ops = Math.min(1, player.resources.ops);
+    // p.25 5: 이번 주의 점검용 토큰(요일 제한)은 버린다. 다음 주 것은 남긴다
+    player.restrictions = player.restrictions.filter((r) => r.week > state.week);
   }
 
   cycleMarket(state, 'players', rng);

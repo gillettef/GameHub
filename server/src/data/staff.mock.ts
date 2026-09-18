@@ -253,7 +253,7 @@ export const STAFF_CARDS: StaffCard[] = [
     setPoints: [0, 1, 3, 6],
     action: {
       cost: { ops: 1 },
-      effects: [{ type: 'text', text: '이적 시장의 선수 카드 1장을 버리고 새로 보충합니다.' }],
+      effects: [{ type: 'discardMarketCard', row: 'players' }],
       text: '이적 시장의 선수 카드 1장을 버리고 새로 보충합니다.',
     },
     trait: '선수 영입 시 이적 시장의 맨 왼쪽 2장도 선택할 수 있습니다.',

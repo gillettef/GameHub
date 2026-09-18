@@ -8,6 +8,7 @@ export {
   SECTOR_LABEL,
   SET_LABEL,
   TOKEN_LABEL,
+  describeCondition,
   describeCost,
   describeEffect,
   describeEffects,

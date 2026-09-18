@@ -68,7 +68,7 @@ describe('myTask', () => {
     }
     const other = s.seats.find((id) => id !== current)!;
     const view = viewFor(s, other);
-    view.players[other]!.pending = [{ id: 'x', source: '테스트', effect: { type: 'trainPlayer', count: 1 }, candidates: [] }];
+    view.players[other]!.pending = [{ id: 'x', source: '테스트', effect: { type: 'trainPlayer', count: 1 }, target: 'player', candidates: [] }];
     expect(myTask(view)).toBe('효과 대상을 고르세요');
   });
 });

@@ -6,7 +6,7 @@ import { ActionLog, Header, LeagueBody, MarketBody, PendingModal, PlayerStrip } 
 import { Tabs } from './components/Tabs';
 import { EffectToasts } from './feed';
 import { NotifyProvider, TurnAlert } from './notify';
-import { FridayAftermathScreen, FridayPrepareScreen } from './screens/Friday';
+import { FridayAftermathScreen, FridayMatchScreen, FridayPrepareScreen } from './screens/Friday';
 import { GameOverScreen } from './screens/GameOver';
 import { Lobby, RoomLobby } from './screens/Lobby';
 import { MondayScreen } from './screens/Monday';
@@ -30,6 +30,8 @@ function PhaseScreen() {
       return null;
     case 'friday.prepare':
       return <FridayPrepareScreen />;
+    case 'friday.match':
+      return <FridayMatchScreen />;
     case 'friday.aftermath':
       return <FridayAftermathScreen />;
     case 'gameOver':

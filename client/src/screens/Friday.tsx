@@ -7,6 +7,7 @@ import type { UniformToken } from '@server/engine/state';
 import { RESOURCES, SECTORS } from '@server/engine/types';
 import type { Resources, Sector } from '@server/engine/types';
 import { OpponentCardView, PlayerCardView, TacticCardView } from '../components/Cards';
+import { useCommit } from '../commit';
 import { CostChips, Icon, ResourceChip } from '../components/Icons';
 import { TurnBanner } from '../components/Turn';
 import { SECTOR_LABEL, matchDieLabel } from '../labels';
@@ -190,6 +191,68 @@ export function FridayPrepareScreen() {
           </div>
         </div>
       )}
+    </section>
+  );
+}
+
+// p.21 경기 진행: 상대 팀 카드가 공개되고, 포메이션에 쓴 카드가 아닌 전술 카드 1장의 효과를 쓸 수 있다(카드는 손에 남는다).
+// 선 참가자부터 한 명씩. 효과 카드는 select → 확정 막대, "효과 없이 진행"은 즉시 보낸다
+export function FridayMatchScreen() {
+  const { view, me, act } = useGame();
+  const { chosen, select } = useCommit();
+  if (view.phase.kind !== 'friday.match') return null;
+  const { current, decided, effectCard } = view.phase;
+  const actor = view.players[current]!;
+  const mine = current === view.me;
+  const formation = view.phase.mine?.tacticCardId;
+  const options = view.self.tacticCards.filter((id) => id !== formation && cards.tactic(id).effect);
+  const choosing = mine && !decided[view.me];
+  return (
+    <section className={`panel phase-panel${mine ? ' mine' : ''}`}>
+      <div className="panel-head">
+        <h2>경기 진행</h2>
+        <TurnBanner current={current} done={decided} />
+      </div>
+      <p className="hint">
+        {choosing
+          ? '상대 팀 카드가 공개됐습니다. 포메이션에 쓴 카드가 아닌 전술 카드 1장의 효과를 쓰거나, 효과 없이 진행하세요. 카드는 손에 남습니다.'
+          : mine && me.pending.length > 0
+            ? '전술 효과의 대상을 고르면 다음 참가자로 넘어갑니다.'
+            : `${actor.name}이(가) 상대 팀 카드를 확인하고 전술 효과 카드를 고르는 중입니다.`}
+      </p>
+      <div className="two-col">
+        <div className="stack">
+          <h3>{actor.name}의 상대</h3>
+          {actor.nextOpponent && <div className="cards"><OpponentCardView cardId={actor.nextOpponent} revealed /></div>}
+        </div>
+        <div className="stack">
+          {choosing ? (
+            <>
+              <h3>전술 효과 카드 <span className="muted">{options.length}장 가능</span></h3>
+              {options.length > 0 ? (
+                <div className="cards">
+                  {options.map((id) => (
+                    <TacticCardView key={id} cardId={id} compact chosen={chosen === `tactic:${id}`} onClick={() => select(`tactic:${id}`, { type: 'playTacticEffect', cardId: id }, <>전술 효과: <b>{cards.tactic(id).name}</b></>)} />
+                  ))}
+                </div>
+              ) : (
+                <p className="muted small">쓸 수 있는 효과 카드가 없습니다 (포메이션 카드는 효과로 쓸 수 없습니다).</p>
+              )}
+              <div className="row">
+                <button className="primary" onClick={() => act({ type: 'playTacticEffect', cardId: null })}>효과 없이 진행</button>
+              </div>
+            </>
+          ) : (
+            <ul className="status-list">
+              {view.seats.map((id) => (
+                <li key={id}>
+                  <b>{view.players[id]!.name}</b> — {decided[id] ? (effectCard[id] ? `전술 효과: ${cards.tactic(effectCard[id]!).name}` : '효과 없이 진행') : id === current ? '고르는 중' : '대기'}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
     </section>
   );
 }

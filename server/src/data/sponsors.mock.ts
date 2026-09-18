@@ -275,7 +275,7 @@ export const SPONSOR_CARDS: SponsorCard[] = [
       { type: 'gainResource', resource: 'money', amount: 1 },
       { type: 'moveTrack', track: 'fandom', delta: 1 },
     ],
-    extraBonus: [{ type: 'text', text: '매 경기 관중석에 [팬덤] 1개를 추가로 배치할 수 있습니다.' }],
+    extraBonus: [{ type: 'passive', passive: 'extraStand' }],
     placeholder: true,
   },
   {
@@ -532,7 +532,7 @@ export const SPONSOR_CARDS: SponsorCard[] = [
       { type: 'gainResource', resource: 'ops', amount: 1 },
       { type: 'moveTrack', track: 'fandom', delta: 1 },
     ],
-    extraBonus: [{ type: 'text', text: '경기에서 승리할 때마다 [팬덤] 1개를 추가로 얻습니다.' }],
+    extraBonus: [{ type: 'passive', passive: 'fandomOnWin' }],
     placeholder: true,
   },
   {
@@ -642,7 +642,7 @@ export const SPONSOR_CARDS: SponsorCard[] = [
     description: '구단 운영비를 보장해 주는 보험사로, 주말 유지비 걱정을 덜어 줍니다.',
     kit: [
       { type: 'gainResource', resource: 'money', amount: 2 },
-      { type: 'text', text: '이번 주말 유지비를 2[돈] 적게 지불합니다.' },
+      { type: 'upkeepDiscount', amount: 2 },
     ],
     billboard: [
       { type: 'gainResource', resource: 'money', amount: 3 },

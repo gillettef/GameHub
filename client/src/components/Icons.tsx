@@ -1,5 +1,5 @@
 import type { Effect, PlayerToken, Resource, Track } from '@server/engine/types';
-import { RESOURCE_LABEL, TOKEN_LABEL, describeEffect } from '../labels';
+import { DAY_LABEL, RESOURCE_LABEL, SECTOR_SHORT, TOKEN_LABEL, describeCondition, describeEffect } from '../labels';
 
 // 16px 단색 아이콘 세트. 색은 currentColor
 export type IconName = Resource | 'vp' | 'attack' | 'defense' | 'train' | 'injury' | 'suspension' | 'strength' | 'weakness' | 'tactic' | 'prospect' | 'goal' | 'die' | 'eye';
@@ -155,6 +155,37 @@ export function EffectChip({ effect }: { effect: Effect }) {
       return <Chip icon="goal" value={signed(effect.amount)} tone={effect.team === 'self' ? 'goal' : 'goal-opp'} title={title}>{effect.team === 'self' ? '' : '상대'}</Chip>;
     case 'peekOpponent':
       return <Chip icon="eye" tone="goal" title={title}>상대 카드 확인</Chip>;
+    case 'conditional':
+      return (
+        <span className="chips cond" title={title}>
+          <span className="chip cond-label">{describeCondition(effect.condition)}</span>
+          {effect.effects.map((e, i) => (
+            <EffectChip key={i} effect={e} />
+          ))}
+        </span>
+      );
+    case 'denyGoals':
+      return <Chip icon="goal" value={`−${effect.count}`} tone="goal-opp" title={title}>상대</Chip>;
+    case 'extraSaves':
+      return <Chip icon="defense" value={`+${effect.count}`} tone="defense" title={title}>선방</Chip>;
+    case 'sectorSkill':
+      return <Chip icon="strength" value={signed(effect.delta)} tone="strength" title={title}>{SECTOR_SHORT[effect.sector]} 전원</Chip>;
+    case 'flipUnmatchedToken':
+      return <Chip icon="attack" value={effect.count > 1 ? `×${effect.count}` : undefined} tone="attack" title={title}>토큰 뒤집기</Chip>;
+    case 'discardMarketCard':
+      return <Chip icon="tactic" tone="tactic" title={title}>시장 카드 버림</Chip>;
+    case 'addStaffSuspension':
+      return <Chip icon="suspension" value={`+${effect.count}`} tone="suspension" title={title}>직원</Chip>;
+    case 'releasePlayer':
+      return <Chip icon="prospect" tone="goal-opp" title={title}>선수 방출</Chip>;
+    case 'restrictDay':
+      return <Chip icon="suspension" tone="suspension" title={title}>{effect.week === 'next' ? '다음 주 ' : ''}{DAY_LABEL[effect.day]} {effect.mode === 'noBasic' ? '기본 행동 불가' : '카드 행동만'}</Chip>;
+    case 'breakNamingSponsor':
+      return <Chip icon="money" tone="goal-opp" title={title}>유니폼 계약 파기</Chip>;
+    case 'passive':
+      return <Chip icon="fandom" tone="vp" title={title}>{effect.passive === 'extraStand' ? '상시 관중석 +1' : '상시 승리 시 팬덤 +1'}</Chip>;
+    case 'upkeepDiscount':
+      return <Chip icon="money" value={`−${effect.amount}`} title={title}>유지비</Chip>;
     case 'text':
       return <span className="chip text" title={effect.text}>{effect.text}</span>;
   }

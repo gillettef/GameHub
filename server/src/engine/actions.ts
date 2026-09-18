@@ -1,6 +1,7 @@
 import { cards } from './cards';
 import { resolvePending } from './effects';
-import { acceptMatchRoll, advanceAfterLineup, rerollMatchDie, rollMatchDie, submitLineup } from './friday';
+import { marketCardName } from './effects';
+import { acceptMatchRoll, advanceFriday, playTacticEffect, rerollMatchDie, rollMatchDie, submitLineup } from './friday';
 import { CONTRACT_LABEL, INFRA_LABEL, matchDieLabel } from './labels';
 import { acceptBoardRoll, rerollBoardDie, rollBoardDie } from './monday';
 import type { Rng } from './rng';
@@ -25,7 +26,7 @@ import type { CardActionSource } from './weekday';
 export type GameAction =
   | { type: 'draftPick'; cardId: string }
   | { type: 'chooseObjective'; cardId: string }
-  | { type: 'resolvePending'; pendingId: string; instanceId: string }
+  | { type: 'resolvePending'; pendingId: string; choice: string } // choice: 대기 효과의 target 에 따라 선수 instanceId / 직원 index / 시장 index / 토큰 id
   | { type: 'rollBoardDie' }
   | { type: 'rerollBoardDie' }
   | { type: 'acceptBoardRoll' }
@@ -40,6 +41,7 @@ export type GameAction =
   | { type: 'pass' }
   | { type: 'endTurn' }
   | { type: 'submitLineup'; submission: LineupSubmission }
+  | { type: 'playTacticEffect'; cardId: string | null } // 경기 진행: 전술 효과 카드 1장 (null = 쓰지 않음)
   | { type: 'rollMatchDie' }
   | { type: 'rerollMatchDie' }
   | { type: 'acceptMatchRoll' }
@@ -53,8 +55,8 @@ function apply(state: GameState, pid: PlayerId, action: GameAction, rng: Rng): G
       return chooseObjective(state, pid, action.cardId);
     case 'resolvePending': {
       const next = structuredClone(state);
-      resolvePending(next, pid, action.pendingId, action.instanceId);
-      advanceAfterLineup(next, pid, rng); // 경기 전 효과의 대상 선택이 끝났으면 경기 준비 차례를 넘긴다
+      resolvePending(next, pid, action.pendingId, action.choice, rng);
+      advanceFriday(next, pid, rng); // 금요일 대상 선택이 끝났으면 차례를 넘긴다
       return next;
     }
     case 'rollBoardDie':
@@ -78,13 +80,15 @@ function apply(state: GameState, pid: PlayerId, action: GameAction, rng: Rng): G
     case 'buildOffice':
       return buildOffice(state, pid);
     case 'cardAction':
-      return cardAction(state, pid, action.source, action.paid ?? false);
+      return cardAction(state, pid, action.source, action.paid ?? false, rng);
     case 'pass':
       return pass(state, pid);
     case 'endTurn':
       return endTurn(state, pid);
     case 'submitLineup':
       return submitLineup(state, pid, action.submission, rng);
+    case 'playTacticEffect':
+      return playTacticEffect(state, pid, action.cardId, rng);
     case 'rollMatchDie':
       return rollMatchDie(state, pid, rng);
     case 'rerollMatchDie':
@@ -112,8 +116,19 @@ function describe(before: GameState, after: GameState, pid: PlayerId, action: Ga
       return '목표 카드를 골랐다';
     case 'resolvePending': {
       const pending = player.pending.find((p) => p.id === action.pendingId);
-      return `${pending?.source ?? '효과'} → ${playerName(action.instanceId)}`;
+      const c = action.choice;
+      const label =
+        pending?.target === 'staff'
+          ? (player.staff[Number(c)] ? cards.staff(player.staff[Number(c)]!.cardId).name : c)
+          : pending?.target === 'market'
+            ? (pending.row && before.market[pending.row][Number(c)] ? marketCardName(pending.row, before.market[pending.row][Number(c)]!) : c)
+            : pending?.target === 'token'
+              ? `토큰 ${player.uniforms.find((u) => u.id === c)?.number ?? '∅'}`
+              : playerName(c);
+      return `${pending?.source ?? '효과'} → ${label}`;
     }
+    case 'playTacticEffect':
+      return action.cardId === null ? '전술 효과 카드 없이 진행' : null; // 카드를 썼으면 friday.ts 가 기록
     case 'rollBoardDie':
     case 'rerollBoardDie': {
       const roll = after.phase.kind === 'monday.board' ? after.phase.meetings[pid]?.roll : null;

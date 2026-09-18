@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { acceptMatchRoll, rollMatchDie, submitLineup } from './friday';
+import { cards } from './cards';
+import { acceptMatchRoll, playTacticEffect, rollMatchDie, submitLineup } from './friday';
 import { acceptBoardRoll, rollBoardDie } from './monday';
 import type { Rng } from './rng';
 import type { GameState } from './state';
@@ -9,6 +10,7 @@ import { buildInfrastructure, buildOffice, cardAction, endTurn, hireStaff, pass,
 
 
 function tryActions(s: GameState, pid: string, rng: Rng): GameState {
+  if (s.phase.kind === 'weekday' && s.phase.basicDone) return s; // 요일 제한(기본 행동 불가)이면 바로 차례 끝
   const attempts: Array<() => GameState> = [
     () => recruitPlayer(s, pid, 2 + rng.int(3), rng),
     () => recruitProspect(s, pid),
@@ -16,7 +18,7 @@ function tryActions(s: GameState, pid: string, rng: Rng): GameState {
     () => signSponsor(s, pid, 2 + rng.int(3), (['kit', 'billboard', 'naming'] as const)[rng.int(3)]!, rng),
     () => buildInfrastructure(s, pid, (['lights', 'shop', 'execOffice', 'trainingGround', 'stand3', 'stand4', 'billboard3'] as const)[rng.int(7)]!),
     () => buildOffice(s, pid),
-    () => cardAction(s, pid, { kind: 'staff', index: rng.int(s.players[pid]!.staff.length) }),
+    () => cardAction(s, pid, { kind: 'staff', index: rng.int(s.players[pid]!.staff.length) }, false, rng),
   ];
   for (let i = 0; i < 4; i++) {
     try {
@@ -67,6 +69,13 @@ function playFullGame(seed: number): GameState {
         const pid = s.phase.current;
         const player = s.players[pid]!;
         s = submitLineup(s, pid, autoLineup(player, eligiblePlayers(player, player.resources.stamina)), rng);
+        break;
+      }
+      case 'friday.match': {
+        const pid = s.phase.current;
+        const formation = s.phase.submitted[pid]!.tacticCardId;
+        const card = s.players[pid]!.tacticCards.find((id) => id !== formation && cards.tactic(id).effect) ?? null;
+        s = playTacticEffect(s, pid, card, rng);
         break;
       }
       case 'friday.aftermath': {

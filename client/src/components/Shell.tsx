@@ -222,28 +222,70 @@ export function PendingModal() {
   const [pick, setPick] = useState<string | null>(null);
   const me = view && session ? view.players[session.playerId] : undefined;
   const pending = me?.pending[0];
-  if (!me || !pending) return null;
+  if (!me || !pending || !view) return null;
   const picked = pick && pending.candidates.includes(pick) ? pick : null;
-  const pickedName = picked ? cards.player(me.roster.find((r) => r.instanceId === picked)?.cardId ?? '').name : null;
+  const target = pending.target;
+  const row = pending.row ?? 'players';
+  const nameOf = (c: string): string => {
+    if (target === 'staff') return cards.staff(me.staff[Number(c)]?.cardId ?? '').name;
+    if (target === 'market') {
+      const id = view.market[row][Number(c)] ?? '';
+      return row === 'players' ? cards.player(id).name : row === 'staff' ? cards.staff(id).name : cards.sponsor(id).name;
+    }
+    if (target === 'token') return `토큰 ${me.uniforms.find((u) => u.id === c)?.number ?? '∅'}`;
+    return cards.player(me.roster.find((r) => r.instanceId === c)?.cardId ?? '').name;
+  };
+  const pickedName = picked ? nameOf(picked) : null;
+  const e = pending.effect;
+  const prompt =
+    e.type === 'addPlayerToken'
+      ? `${TOKEN_LABEL[e.token]} ${e.count}개를 받을 선수를 고르세요`
+      : e.type === 'removePlayerToken'
+        ? `${TOKEN_LABEL[e.token]} ${e.count}개를 제거할 선수를 고르세요`
+        : e.type === 'trainPlayer'
+          ? '훈련할 선수를 고르세요'
+          : e.type === 'placeStamina'
+            ? `체력 ${e.count}개를 올려놓을 선수를 고르세요`
+            : e.type === 'releasePlayer'
+              ? '방출할 선수를 고르세요 (방출 행동과 같은 보상)'
+              : e.type === 'addStaffSuspension'
+                ? `출장정지 ${e.count}개를 받을 직원 카드를 고르세요`
+                : e.type === 'discardMarketCard'
+                  ? '버릴 이적 시장 카드를 고르세요 (남은 카드는 오른쪽으로 밀리고 왼쪽이 보충됩니다)'
+                  : e.type === 'flipUnmatchedToken'
+                    ? '뒤집을 유니폼 토큰을 고르세요 (카드 없는 필드 토큰, 공격↔수비)'
+                    : '대상을 고르세요';
+  const toggle = (c: string) => setPick((p) => (p === c ? null : c));
+  const candidate = (c: string) => {
+    if (target === 'staff') {
+      const s = me.staff[Number(c)];
+      return s ? <StaffCardView key={c} cardId={s.cardId} exhausted={s.exhausted} suspension={s.suspension} chosen={picked === c} onClick={() => toggle(c)} /> : null;
+    }
+    if (target === 'market') {
+      const id = view.market[row][Number(c)];
+      if (!id) return null;
+      if (row === 'players') return <PlayerCardView key={c} cardId={id} chosen={picked === c} onClick={() => toggle(c)} />;
+      if (row === 'staff') return <StaffCardView key={c} cardId={id} chosen={picked === c} onClick={() => toggle(c)} />;
+      return <SponsorCardView key={c} cardId={id} chosen={picked === c} onClick={() => toggle(c)} />;
+    }
+    if (target === 'token') {
+      const u = me.uniforms.find((x) => x.id === c);
+      return u ? (
+        <button key={c} type="button" className={`utoken pick ${u.face}${picked === c ? ' chosen' : ''}`} onClick={() => toggle(c)} title={u.face === 'attack' ? '공격 → 수비' : '수비 → 공격'}>
+          <Icon name={u.face} size={11} />{u.number ?? '∅'}
+        </button>
+      ) : null;
+    }
+    const inst = me.roster.find((r) => r.instanceId === c);
+    return inst ? <PlayerCardView key={c} cardId={inst.cardId} instance={inst} chosen={picked === c} onClick={() => toggle(c)} /> : null;
+  };
+  const confirmLabel = !pickedName ? '대상을 고르세요' : target === 'market' ? `${pickedName} 버리기` : target === 'token' ? `${pickedName} 뒤집기` : `${pickedName}에게 적용`;
   return (
     <div className="modal-backdrop">
       <div className="modal" role="dialog" aria-label="대상 선택">
         <h2>대상 선택 — {pending.source}{me.pending.length > 1 ? ` (${me.pending.length}번 남음)` : ''}</h2>
-        <p className="muted small">
-          {pending.effect.type === 'addPlayerToken'
-            ? `${TOKEN_LABEL[pending.effect.token]} ${pending.effect.count}개를 받을 선수를 고르세요`
-            : pending.effect.type === 'removePlayerToken'
-              ? `${TOKEN_LABEL[pending.effect.token]} ${pending.effect.count}개를 제거할 선수를 고르세요`
-            : pending.effect.type === 'trainPlayer'
-              ? '훈련할 선수를 고르세요'
-              : '대상 선수를 고르세요'}
-        </p>
-        <div className="cards">
-          {pending.candidates.map((instanceId) => {
-            const inst = me.roster.find((r) => r.instanceId === instanceId);
-            return inst ? <PlayerCardView key={instanceId} cardId={inst.cardId} instance={inst} chosen={picked === instanceId} onClick={() => setPick((p) => (p === instanceId ? null : instanceId))} /> : null;
-          })}
-        </div>
+        <p className="muted small">{prompt}</p>
+        <div className={target === 'token' ? 'row' : 'cards'}>{pending.candidates.map(candidate)}</div>
         <div className="modal-actions">
           {view?.phase.kind === 'weekday' && view.phase.canUndo && (
             <button className="link" onClick={() => act({ type: 'undoTurn' })} title="이번 차례의 행동을 모두 무르고 차례 처음으로 되돌립니다">
@@ -256,11 +298,11 @@ export function PendingModal() {
             disabled={!picked}
             onClick={() => {
               if (!picked) return;
-              act({ type: 'resolvePending', pendingId: pending.id, instanceId: picked });
+              act({ type: 'resolvePending', pendingId: pending.id, choice: picked });
               setPick(null);
             }}
           >
-            {pickedName ? `${pickedName}에게 적용` : '선수를 고르세요'}
+            {confirmLabel}
           </button>
         </div>
       </div>

@@ -20,9 +20,10 @@ function WeekdayActions({ me }: { me: PlayerPublicView }) {
   const { chosen, select } = useCommit();
   const { showBoard, showMarket, releasing, setReleasing } = useUi();
   if (view.phase.kind !== 'weekday') return null;
-  const { day, current, basicDone, paidDone, canUndo } = view.phase;
+  const { day, current, basicDone, paidDone, canUndo, restriction } = view.phase;
   const myTurn = current === me.id;
-  const basic = myTurn && !basicDone;
+  // 요일 제한(점검용 토큰): 카드 행동만 가능한 날은 다른 기본 행동을 막는다. 기본 행동 불가인 날은 서버가 basicDone 으로 시작한다
+  const basic = myTurn && !basicDone && restriction !== 'cardActionOnly';
   const cls = (key: string) => `action-item${chosen === key ? ' chosen' : ''}`;
   const officeStep = cards.boardData.office[me.office];
   const toggleRelease = () => {
@@ -39,6 +40,9 @@ function WeekdayActions({ me }: { me: PlayerPublicView }) {
         </span>
       </div>
       {!myTurn && <p className="muted small">내 차례가 아닙니다. 차례가 오면 활성화됩니다.</p>}
+      {myTurn && restriction && (
+        <p className="error small">점검용 토큰: {restriction === 'noBasic' ? '오늘은 기본 행동을 할 수 없습니다 (유급 카드 행동만 가능)' : '오늘은 카드 행동만 할 수 있습니다'}</p>
+      )}
 
       <div className="action-list turn-actions">
         <button className="action-item primary" disabled={!myTurn || !basicDone} onClick={() => act({ type: 'endTurn' })}>
@@ -47,7 +51,7 @@ function WeekdayActions({ me }: { me: PlayerPublicView }) {
         <button className={cls('undo')} disabled={!myTurn || !canUndo} onClick={() => select('undo', { type: 'undoTurn' }, <>이번 차례의 행동을 모두 무르고 <b>차례 처음</b>으로 되돌립니다</>)} title="이번 차례에 한 행동을 모두 무릅니다 (차례를 끝내기 전까지만)">
           <span><Icon name="train" size={14} className="flip" />처음으로 되돌리기</span>
         </button>
-        <button className={`${cls('pass')} ghost`} disabled={!basic} onClick={() => select('pass', { type: 'pass' }, <>기본 행동을 <b>패스</b>합니다</>)}>
+        <button className={`${cls('pass')} ghost`} disabled={!myTurn || basicDone} onClick={() => select('pass', { type: 'pass' }, <>기본 행동을 <b>패스</b>합니다</>)}>
           <span>패스</span>
         </button>
       </div>

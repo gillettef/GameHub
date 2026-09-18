@@ -1,5 +1,6 @@
 import type { GameAction } from '../engine/actions';
 import { activeSide, cards } from '../engine/cards';
+import { standsCount } from '../engine/friday';
 import { buildLineup, eligiblePlayers } from '../engine/lineup';
 import type { Rng } from '../engine/rng';
 import { INFRASTRUCTURE_COST, INFRASTRUCTURE_MAX, RESOURCES } from '../engine/types';
@@ -91,7 +92,7 @@ export function decide(view: GameView, rng: Rng, failed: Set<string>): GameActio
   if (!me) return null;
   const pending = me.pending[0];
   if (pending && !failed.has('resolvePending')) {
-    return { type: 'resolvePending', pendingId: pending.id, instanceId: pending.candidates[rng.int(pending.candidates.length)]! };
+    return { type: 'resolvePending', pendingId: pending.id, choice: pending.candidates[rng.int(pending.candidates.length)]! };
   }
 
   const phase = view.phase;
@@ -119,8 +120,15 @@ export function decide(view: GameView, rng: Rng, failed: Set<string>): GameActio
       const players = eligiblePlayers(me, me.resources.stamina);
       const lineup = buildLineup(me, tacticCardId, formation, players);
       if (!lineup) return null;
-      const stands = Math.min(me.resources.fandom, 2 + me.infrastructure.filter((i) => i === 'stand3' || i === 'stand4').length);
+      const stands = Math.min(me.resources.fandom, standsCount(me));
       return { type: 'submitLineup', submission: { ...lineup, fandomInStands: stands } };
+    }
+    case 'friday.match': {
+      // 상대 공개 뒤 전술 효과 카드: 포메이션에 쓴 카드가 아닌 효과 카드가 있으면 쓴다
+      if (phase.current !== view.me || phase.decided[view.me]) return null;
+      const formation = phase.mine?.tacticCardId;
+      const card = view.self.tacticCards.find((id) => id !== formation && cards.tactic(id).effect);
+      return { type: 'playTacticEffect', cardId: card ?? null };
     }
     case 'friday.aftermath': {
       const m = phase.matches[view.me];

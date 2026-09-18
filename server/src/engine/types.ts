@@ -40,6 +40,18 @@ export type PlayerTokens = Record<PlayerToken, number>;
 // ---------- 효과 DSL ----------
 // MVP: 단순 효과만 엔진이 해석한다. 아직 구현되지 않은 복합 효과는 `text`로 두고 UI에만 표시한다.
 
+// 경기 조건 (선수 카드·전술 카드의 조건부 효과). 결과가 필요한 조건은 경기 후에 판정한다
+export type MatchCondition =
+  | { kind: 'outcome'; outcome: 'win' | 'draw' | 'loss' }
+  | { kind: 'goalsAtLeast'; goals: number } // 내 득점 N 이상
+  | { kind: 'cleanSheet' } // 실점 없음 (= 상대 무득점)
+  | { kind: 'inSector'; sector: Sector } // 이 효과를 가진 선수 카드의 토큰이 그 구획에 출전
+  | { kind: 'scoredInSector'; sector: Sector } // 내 그 구획에서 득점
+  | { kind: 'opponentHigherInLeague' }; // 상대 팀이 리그 성적표에서 나보다 앞
+
+export type Passive = 'extraStand' | 'fandomOnWin'; // 상시 효과: 관중석 +1 / 승리마다 팬덤 +1
+export type DayRestriction = 'noBasic' | 'cardActionOnly'; // 이사회 효과의 요일 제한 (점검용 토큰)
+
 export type Effect =
   | { type: 'gainResource'; resource: Resource; amount: number } // 음수 = 잃음
   | { type: 'moveTrack'; track: Track; delta: number }
@@ -49,10 +61,25 @@ export type Effect =
   | { type: 'recruitProspectFree' }
   | { type: 'placeStamina'; count: number } // 선수 카드 1장에 체력 올려놓기
   // spread: count개를 한 카드에 몰지 않고 1개씩 대상을 골라 나눠 놓거나 제거한다 ("카드에 있는 [약점]을 3개까지 버립니다" 류)
-  | { type: 'addPlayerToken'; token: PlayerToken; count: number; spread?: true }
+  // only: 'playedAttack' = 이번 경기에 출전 중인 [공격] 선수만 대상
+  | { type: 'addPlayerToken'; token: PlayerToken; count: number; spread?: true; only?: 'playedAttack' }
   | { type: 'removePlayerToken'; token: PlayerToken; count: number; spread?: true }
   | { type: 'scoreGoal'; team: 'self' | 'opponent'; amount: number } // 경기 중/후
   | { type: 'peekOpponent' } // 상대 팀 카드 더미 맨 위 카드의 앞면을 확인 (그 카드로 경기할 때까지 유지)
+  // ---- 경기 효과 (경기 준비·진행 중에만 뜻이 있고, 밖에서는 기록만 남긴다) ----
+  | { type: 'conditional'; condition: MatchCondition; effects: Effect[] }
+  | { type: 'denyGoals'; count: number } // 상대 득점 N개 무효 / 상대 슛 N개 막기 (구획 비교 득점에서 뺌)
+  | { type: 'extraSaves'; count: number } // 이번 경기 골키퍼 선방 +N
+  | { type: 'sectorSkill'; sector: Sector; delta: number } // 이번 경기 내 그 구획 선수 전원 역량 ±N
+  | { type: 'flipUnmatchedToken'; count: number } // 카드 없는 필드 유니폼 토큰 N개를 뒤집는다 (대상 선택, 영구)
+  // ---- 그 밖의 대상 선택·상태 효과 ----
+  | { type: 'discardMarketCard'; row: 'players' | 'staff' | 'sponsors' } // 이적 시장 카드 1장을 골라 버리고 보충
+  | { type: 'addStaffSuspension'; count: number } // 직원 카드 1장을 골라 출장정지 N개
+  | { type: 'releasePlayer' } // 선수 카드 1장을 골라 방출 행동으로 처리
+  | { type: 'restrictDay'; day: 'tue' | 'wed' | 'thu'; week: 'this' | 'next'; mode: DayRestriction }
+  | { type: 'breakNamingSponsor'; otherwise: Effect[] } // 유니폼 스폰서가 있으면 버리고 그 카드의 장내 방송 효과, 없으면 otherwise
+  | { type: 'passive'; passive: Passive }
+  | { type: 'upkeepDiscount'; amount: number } // 다음 주말 유지비 −N
   | { type: 'text'; text: string };
 
 export type Cost = Partial<Resources>;

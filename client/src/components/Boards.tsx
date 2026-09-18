@@ -43,9 +43,14 @@ function ClubBoard({ p }: { p: PlayerPublicView }) {
   return (
     <div className="club-board">
       <div className="day-track">
-        {DAYS.map((d) => (
-          <span key={d.key} className={`day${today === d.key ? ' now' : ''}`}>{d.label}</span>
-        ))}
+        {DAYS.map((d) => {
+          const r = p.restrictions.find((x) => x.week === view.week && x.day === d.key);
+          return (
+            <span key={d.key} className={`day${today === d.key ? ' now' : ''}${r ? ' inspect' : ''}`} title={r ? `점검용 토큰: ${r.mode === 'noBasic' ? '기본 행동 불가' : '카드 행동만 가능'}` : undefined}>
+              {d.label}
+            </span>
+          );
+        })}
         <span className="day weekend">주말</span>
       </div>
       <div className="club-grid">

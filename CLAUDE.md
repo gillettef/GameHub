@@ -213,7 +213,8 @@ MVP에서 **간소화하지 않고 원작 그대로 구현**할 부분: 경기 �
 
 MVP에서 **단순화 가능**한 부분: 선수/직원/임원/스폰서/이사회 카드의 **개별 효과 텍스트**는 처음엔 자원
 증감·훈련·토큰 부여 같은 단순 효과 위주로 구성하고, 조건부/복합 효과는 점진적으로 추가한다.
-전술 카드는 **포메이션만** 사용하고 효과는 2단계.
+(2026-09 현재 mock 카드의 모든 효과가 실제 로직으로 구현되어 `text` 효과는 남아 있지 않다. 새 카드에 `text`를 쓰면
+기록만 남고 아무 일도 일어나지 않으므로, 필요한 효과 종류를 DSL에 추가할 것. 전술 카드 효과는 경기 진행 단계에서 쓴다.)
 
 **현재 상태**: 위 1~6번 엔진 로직은 `server/src/engine/`에 구현·테스트 완료
 (`game.test.ts`가 4인 6주 한 판을 자동 진행). 서버 계층(방·WebSocket·개별 뷰)과 클라이언트 전 단계 화면
@@ -233,7 +234,7 @@ MVP에서 **단순화 가능**한 부분: 선수/직원/임원/스폰서/이사�
 - 방은 `RoomManager`(인메모리) — 코드 5자, 최대 4명, 호스트 = 생성자, 6시간 미활동 시 정리.
 
 ### 이후 확장 (2단계 이후)
-- 전술 카드 효과, 목표 카드 달성 판정(+2/+4 승점), 경기 전/중/후 조건부 카드 효과 전반
+- 목표 카드 달성 판정(+2/+4 승점)
 - 출장정지 세부(직원 카드 출장정지 시 특성·세트 승점 무효 등), 이사회 점검용 토큰 효과
 - 1인용 모드(시나리오 시트, 상대 팀 카드 덱 기반) — 이번 프로젝트 1차 범위에서는 제외.
 
@@ -289,6 +290,25 @@ MVP에서 **단순화 가능**한 부분: 선수/직원/임원/스폰서/이사�
   처리하면 선택이 경기 뒤로 밀려 경기에 반영되지 않는다. 그래서 `submitLineup`이 경기 전 효과를 바로 적용하고, `pending`이
   남으면 그 참가자 차례에 머문다. `resolvePending` 뒤 `advanceAfterLineup`(`friday.ts`)이 다음 참가자로(전원 제출이면
   판정) 넘긴다. 경기 전 득점 효과는 `phase.preGoals`에 보관. 테스트는 `settlePending`(`test-utils.ts`)으로 같은 흐름을 탄다.
+- **경기 진행 단계 `friday.match`**(p.21 8·p.28, 전술 효과 카드): 전원 라인업 제출 뒤 선 참가자부터 한 명씩, 자기 상대 팀 카드를
+  앞면으로 보고(모두에게 공개) 포메이션에 쓴 카드가 아닌 전술 카드 1장의 효과를 쓰거나(`playTacticEffect{cardId}`) 생략한다
+  (`cardId: null`). 카드는 손에 남는다(규칙서 "공급처로 되돌려" = 이후 주에도 사용). 전원 결정하면 경기 판정. 효과가 대상 선택을
+  만들면(리베로·역습) 고른 뒤에 넘어간다. 봇은 효과 카드가 있으면 쓴다.
+- **경기 효과 DSL**(`types.ts` Effect): 경기 판정 전에 쌓이는 보정치 `MatchMods`(`phase.preMatch[pid]`: 미리 넣은 골, `extraSaves`,
+  `denyGoals`(상대 득점 무효·슛 막기 = 구획 비교 득점에서 뺌), `sectorSkill`(이번 경기 내 구획 전원 역량), `deferred`)에 경기 전
+  효과·전술 효과·경기 중 효과가 넣고 `buildSide`/판정이 반영한다. `conditional{condition, effects}`는 `checkCondition`으로
+  판정하되 결과가 필요한 조건(승/무/패·N골 이상·무실점·구획 득점)은 경기 전에는 `deferred`에 미뤄 두고 판정 뒤에 적용한다
+  (`inSector`는 그 효과를 가진 선수 카드의 토큰 위치, `opponentHigherInLeague`는 상대 팀 리그 위치 > 내 위치). 경기 맥락 없이
+  쓰면 기록만 남긴다. `flipUnmatchedToken`은 카드 없는 필드 토큰을 골라 공격↔수비로 영구히 뒤집는다.
+- **대상 선택 일반화**(`PendingEffect.target`): `player`(선수 instanceId) / `staff`(직원 index) / `market`(시장 index, `row`) /
+  `token`(유니폼 토큰 id). `resolvePending{pendingId, choice}`. 대상 선택 모달이 종류별로 카드·토큰을 그린다. 새 대상 효과:
+  `releasePlayer`(방출 행동과 같은 보상), `addStaffSuspension`, `discardMarketCard`(아무 위치 1장 버리고 오른쪽으로 밀고 왼쪽 보충).
+- **요일 제한 `restrictDay`**(이사회 카드의 점검용 토큰): `PlayerState.restrictions[{week, day, mode}]`. `noBasic`은 그 날 차례가
+  시작될 때 기본 행동을 끝난 것으로 두고(유급 카드 행동·차례 끝내기만), `cardActionOnly`는 카드 행동·패스만 허용한다(`requireBasic`).
+  주말에 그 주 것을 버린다(p.25 5). 뷰 `phase.restriction`, 사이드바 안내, 구단 보드 요일 트랙에 빨간 점.
+- **상시 효과 `passive`**(`PlayerState.passives[{passive, source}]`, source = 카드 이름): `extraStand`(관중석 +1, `standsCount`),
+  `fandomOnWin`(승리마다 팬덤 +1). `breakNamingSponsor`(유니폼 계약 파기 → 카드 버리고 그 카드의 장내 방송 효과, 없으면 otherwise)는
+  그 카드의 상시 효과도 지운다. `upkeepDiscount`는 다음 주말 유지비에서 빼고 0으로.
 - **상대 팀 카드 미리 보기**(`peekOpponent` 효과, 직원 '다니엘 오코로'): `PlayerState.scouted`를 켜고 뷰는 본인에게만 다음 상대
   카드를 앞면(`OpponentCardView revealed`)으로 그린다(다른 참가자·관전자는 보고서 면). 그 카드로 경기하면 풀린다. 봇은 정보만
   주는 행동(`peekOpponent`·`text`)을 쓰지 않는다.
@@ -348,7 +368,7 @@ MVP에서 **단순화 가능**한 부분: 선수/직원/임원/스폰서/이사�
   정원 4명). 봇은 `server/src/bot/driver.ts`가 서버 안에서 움직인다: 사람 액션(또는 시작) 직후 `poke` →
   봇 한 액션씩 더 할 일이 없을 때까지 진행하고 매번 브로드캐스트. 간격은 `BOT_DELAY_MS`(기본 800ms) × 액션별
   배수(`PAUSE_FACTOR`: 주사위 굴림 4배 = 애니메이션이 멈추고 결과가 보일 때까지, 주중 행동·결정 적용·라인업 3배 =
-  효과 토스트를 읽을 시간, 차례 끝내기 1.5배, 드래프트 1배) — 사람이 봇의 선택과 결과를 지켜볼 수 있게(사용자 요청).
+  효과 토스트를 읽을 시간, 차례 끝내기 1.5배, 드래프트 1배, 전술 효과 3배) — 사람이 봇의 선택과 결과를 지켜볼 수 있게(사용자 요청).
   `runUntilIdle`(테스트·헤드리스)은 지연 없이 돈다. `RoomPlayer.isBot`, `RoomPlayerView.isBot`으로 구분.
 - `policy.ts` — GameView만 보고 판단하는 휴리스틱(사람과 같은 정보). 서버가 거부한 액션 종류는 그 차례 동안
   재시도하지 않아 교착이 없다. `driver.test.ts`(사람 1 + 봇 3), `bots.test.ts`(외부 ws 봇 4)가 한 판을 완주.

@@ -41,6 +41,7 @@ const PAUSE_FACTOR: Record<GameAction['type'], number> = {
   pass: 2,
   endTurn: 1.5,
   submitLineup: 3,
+  playTacticEffect: 3,
   rollMatchDie: 4,
   rerollMatchDie: 4,
   acceptMatchRoll: 3,

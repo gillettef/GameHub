@@ -39,6 +39,7 @@ function defaults(kind: string): { main: MainTab; board: BoardTab; shared: Share
     case 'weekday':
       return { main: 'shared', board: 'club', shared: 'market' };
     case 'friday.prepare':
+    case 'friday.match':
       return { main: 'personal', board: 'match', shared: 'market' };
     case 'friday.aftermath':
     case 'gameOver':

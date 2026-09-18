@@ -1,6 +1,6 @@
 import { cards } from './cards';
 import { resolvePending } from './effects';
-import { advanceAfterLineup } from './friday';
+import { advanceFriday, playTacticEffect } from './friday';
 import { createRng } from './rng';
 import type { Rng } from './rng';
 import { chooseObjective, createGame, draftPick } from './setup';
@@ -44,8 +44,18 @@ export function gameAtMonday(config: GameConfig = FOUR_PLAYERS, seed = 42): Game
 // 대기 중인 대상 선택을 전부 첫 후보로 처리하고, 경기 준비 중이면 차례를 넘긴다 (경기 전 효과의 대상 선택 뒤에 필요)
 export function settlePending(s: GameState, rng: Rng = seededRng()): GameState {
   for (const id of s.seats) {
-    for (const p of [...s.players[id]!.pending]) resolvePending(s, id, p.id, p.candidates[0]!);
-    advanceAfterLineup(s, id, rng);
+    for (const p of [...s.players[id]!.pending]) resolvePending(s, id, p.id, p.candidates[0]!, rng);
+    advanceFriday(s, id, rng);
+  }
+  return s;
+}
+
+// 경기 진행 단계: 전원 전술 효과 카드 없이 진행해 경기 판정까지 간다
+export function skipTacticEffects(s: GameState, rng: Rng = seededRng()): GameState {
+  let guard = 0;
+  while (s.phase.kind === 'friday.match') {
+    if (++guard > 20) throw new Error('match phase did not finish');
+    s = settlePending(playTacticEffect(s, s.phase.current, null, rng), rng);
   }
   return s;
 }

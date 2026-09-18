@@ -1,6 +1,8 @@
 import { canUndoTurn } from './state';
 import type { BoardMeeting, GameState, LineupSubmission, LogEntry, MatchAftermath, PlayerId, PlayerState, Weekday } from './state';
 import type { ScoreBreakdown } from './scoring';
+import type { DayRestriction } from './types';
+import { restrictionFor } from './weekday';
 
 // 참가자에게 보내는 뷰. 비공개 정보(다른 참가자의 드래프트 손패·목표 카드·전술 손패·라인업, 덱 내용)는 제거한다
 
@@ -8,8 +10,11 @@ export type PhaseView =
   | { kind: 'setup.draft'; round: 1 | 2 | 3; hand: string[]; handSizes: Record<PlayerId, number>; picked: Record<PlayerId, boolean> }
   | { kind: 'setup.objective'; options: string[]; chosen: Record<PlayerId, boolean> }
   | { kind: 'monday.board'; current: PlayerId; meetings: Record<PlayerId, BoardMeeting> }
-  | { kind: 'weekday'; day: Weekday; current: PlayerId; basicDone: boolean; paidDone: boolean; canUndo: boolean } // canUndo: 나(me)의 차례를 처음으로 되돌릴 수 있는가
+  // canUndo: 나(me)의 차례를 처음으로 되돌릴 수 있는가. restriction: 오늘 나에게 걸린 요일 제한(점검용 토큰)
+  | { kind: 'weekday'; day: Weekday; current: PlayerId; basicDone: boolean; paidDone: boolean; canUndo: boolean; restriction: DayRestriction | null }
   | { kind: 'friday.prepare'; current: PlayerId; submitted: Record<PlayerId, boolean>; mine: LineupSubmission | null }
+  // 경기 진행: 결정한 참가자와 그가 쓴 효과 카드(공개). mine = 내 라인업(포메이션 카드는 효과로 못 쓴다)
+  | { kind: 'friday.match'; current: PlayerId; decided: Record<PlayerId, boolean>; effectCard: Record<PlayerId, string | null>; mine: LineupSubmission | null }
   | { kind: 'friday.aftermath'; current: PlayerId; matches: Record<PlayerId, MatchAftermath> }
   | { kind: 'gameOver'; scores: Record<PlayerId, ScoreBreakdown>; winners: PlayerId[] };
 
@@ -73,10 +78,14 @@ function phaseView(state: GameState, me: PlayerId): PhaseView {
       };
     case 'setup.objective':
       return { kind: 'setup.objective', options: phase.options[me] ?? [], chosen: mapValues(phase.chosen, (c) => c !== null) };
-    case 'weekday':
-      return { ...phase, canUndo: canUndoTurn(state, me) };
+    case 'weekday': {
+      const self = state.players[me];
+      return { ...phase, canUndo: canUndoTurn(state, me), restriction: self ? restrictionFor(self, state.week, phase.day) : null };
+    }
     case 'friday.prepare':
       return { kind: 'friday.prepare', current: phase.current, submitted: mapValues(phase.submitted, (s) => s !== null), mine: phase.submitted[me] ?? null };
+    case 'friday.match':
+      return { kind: 'friday.match', current: phase.current, decided: phase.decided, effectCard: phase.effectCard, mine: phase.submitted[me] ?? null };
     default:
       return phase;
   }

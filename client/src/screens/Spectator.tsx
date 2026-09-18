@@ -34,6 +34,9 @@ export function PhaseStatus() {
     case 'friday.prepare':
       body = <p>차례: <b>{name(phase.current)}</b> · 라인업 준비 중: {waiting(phase.submitted) || '없음'}</p>;
       break;
+    case 'friday.match':
+      body = <p>차례: <b>{name(phase.current)}</b> · 전술 효과 결정 중: {waiting(phase.decided) || '없음'}</p>;
+      break;
     case 'friday.aftermath':
       body = (
         <ul className="status-list">
