@@ -203,7 +203,7 @@ export function ExecutiveCardView({ cardId, exhausted, ...props }: { cardId: str
 }
 
 // 스폰서 카드: 브랜드 명판 + 계약 유형 3줄 + 보너스
-// 스폰서 카드 (룰북 p.18): 브랜드 명판 + 유형별 효과 3줄 + 추가 보너스. faceDown 은 명명권처럼 뒤집어 둔 카드(로고 면)
+// 스폰서 카드 (룰북 p.18): 브랜드 명판 + 유형별 효과 3줄(장내 방송/광고판/유니폼) + 추가 보너스. faceDown 은 유니폼 계약처럼 뒤집어 둔 카드(로고 면)
 export function SponsorCardView({ cardId, badge, faceDown, ...props }: { cardId: string; badge?: string; faceDown?: boolean } & CardProps) {
   const card = cards.sponsor(cardId);
   if (faceDown) {
@@ -227,11 +227,11 @@ export function SponsorCardView({ cardId, badge, faceDown, ...props }: { cardId:
       </div>
       <div className="sponsor-desc clamp2" title={card.description}>{card.description}</div>
       <div className="contract-rows">
-        <div className="contract-row" title="스폰서 키트: 효과를 즉시 적용하고 카드를 버립니다 (제한 없음)"><span className="contract-label">키트</span><EffectChips effects={card.kit} /></div>
+        <div className="contract-row" title="장내 방송: 효과를 즉시 적용하고 카드를 버립니다 (제한 없음)"><span className="contract-label">장내 방송</span><EffectChips effects={card.kit} /></div>
         <div className="contract-row" title="광고판: 광고판 칸에 두고 카드 효과 또는 추가 보너스 중 하나 (최대 2장, 3번 광고판 건설 시 3장)"><span className="contract-label">광고판</span><EffectChips effects={card.billboard} /><span className="contract-or">또는 보너스</span></div>
-        <div className="contract-row" title="스타디움 명명권: 스타디움 보드 왼쪽에 뒤집어 두고 효과와 추가 보너스를 모두 (1장)"><span className="contract-label">명명권</span><EffectChips effects={card.naming} /><span className="contract-or">+ 보너스</span></div>
+        <div className="contract-row" title="유니폼: 스타디움 보드 왼쪽에 뒤집어 두고 효과와 추가 보너스를 모두 (1장)"><span className="contract-label">유니폼</span><EffectChips effects={card.naming} /><span className="contract-or">+ 보너스</span></div>
       </div>
-      <div className="sponsor-bonus" title="추가 보너스: 광고판은 카드 효과 대신 택1, 명명권은 효과에 더해 받음"><span className="contract-label bonus">보너스</span><EffectChips effects={card.extraBonus} /></div>
+      <div className="sponsor-bonus" title="추가 보너스: 광고판은 카드 효과 대신 택1, 유니폼은 효과에 더해 받음"><span className="contract-label bonus">보너스</span><EffectChips effects={card.extraBonus} /></div>
     </Card>
   );
 }

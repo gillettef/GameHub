@@ -94,7 +94,7 @@ function ClubBoard({ p }: { p: PlayerPublicView }) {
 
 const GENERAL_SLOTS = 4;
 
-// 스타디움 보드 (룰북 p.6): 사무실 트랙, 기반 시설 슬롯, 관중석 1~4, 광고판 1~3, 명명권. 아래에 계약한 스폰서 카드
+// 스타디움 보드 (룰북 p.6): 사무실 트랙, 기반 시설 슬롯, 관중석 1~4, 광고판 1~3, 유니폼 스폰서 칸. 아래에 계약한 스폰서 카드
 function StadiumBoard({ p }: { p: PlayerPublicView }) {
   const office = cards.boardData.office;
   const general = p.infrastructure.filter((i) => !['stand3', 'stand4', 'billboard3'].includes(i));
@@ -149,23 +149,23 @@ function StadiumBoard({ p }: { p: PlayerPublicView }) {
             </span>
           </div>
         </div>
-        <div className={`naming-slot${p.sponsors.naming ? ' filled' : ''}`} title="스타디움 명명권 (카드는 앞면이 아래로)">
-          <span className="board-label">명명권</span>
+        <div className={`naming-slot${p.sponsors.naming ? ' filled' : ''}`} title="유니폼 스폰서 (카드는 앞면이 아래로)">
+          <span className="board-label">유니폼</span>
           <span>{p.sponsors.naming ? cards.sponsor(p.sponsors.naming).name : '—'}</span>
         </div>
       </div>
       <div className="sponsor-row">
         <span className="board-label">
-          스폰서 계약 · 광고판 {p.sponsors.billboards.length}/{limit} · 명명권 {p.sponsors.naming ? 1 : 0}/1
+          스폰서 계약 · 광고판 {p.sponsors.billboards.length}/{limit} · 유니폼 {p.sponsors.naming ? 1 : 0}/1
         </span>
         {p.sponsors.billboards.length === 0 && !p.sponsors.naming ? (
-          <span className="muted small">계약한 스폰서가 없습니다. 스폰서 키트 계약은 효과만 받고 카드를 버립니다.</span>
+          <span className="muted small">계약한 스폰서가 없습니다. 장내 방송 계약은 효과만 받고 카드를 버립니다.</span>
         ) : (
           <div className="cards">
             {p.sponsors.billboards.map((id, i) => (
               <SponsorCardView key={`${id}-${i}`} cardId={id} badge={`${i + 1}번 광고판`} />
             ))}
-            {p.sponsors.naming && <SponsorCardView cardId={p.sponsors.naming} badge="명명권" faceDown />}
+            {p.sponsors.naming && <SponsorCardView cardId={p.sponsors.naming} badge="유니폼" faceDown />}
           </div>
         )}
       </div>

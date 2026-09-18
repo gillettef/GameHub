@@ -76,14 +76,27 @@ export function Chip({ icon, value, tone, title, children }: { icon?: IconName; 
 
 const signed = (n: number) => (n > 0 ? `+${n}` : `${n}`);
 
+// 자원 칩: 채운 바탕 = 자원 토큰을 바로 받거나 잃음 (트랙 마커와 무관)
 export function ResourceChip({ resource, amount, signedValue = false }: { resource: Resource; amount: number; signedValue?: boolean }) {
-  return <Chip icon={resource} value={signedValue ? signed(amount) : amount} title={`${RESOURCE_LABEL[resource]} ${amount}`} />;
+  return <Chip icon={resource} value={signedValue ? signed(amount) : amount} title={`${RESOURCE_LABEL[resource]} ${signedValue ? signed(amount) : amount}${signedValue ? ' (자원을 바로 받음)' : ''}`} />;
 }
 
-// 트랙 이동 칩: 자원 칩과 구분되게 "트랙" 글자와 화살표
+// 트랙 마커 그림: 올라가는 계단 세 칸 + 마커. 자원 칩(채운 바탕 = 자원을 바로 받음)과 달리
+// 트랙 칩은 흰 바탕 + 색 테두리 + 이 그림 + "트랙" 꼬리표로 "구단 보드의 마커를 옮긴다"는 뜻을 드러낸다
+function TrackGlyph({ up }: { up: boolean }) {
+  return (
+    <svg className="icon track-glyph" width={16} height={16} viewBox="0 0 16 16" aria-hidden="true">
+      <path d="M1.5 13.5h4v-3h4v-3h4v-3" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" strokeLinecap="round" />
+      {up ? <path d="M9.2 4.6 12 1.8l2.8 2.8" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" /> : <circle cx="3.5" cy="11" r="1.9" fill="currentColor" />}
+    </svg>
+  );
+}
+
+// 트랙 이동 칩: 자원 칩과 한눈에 구분되게 흰 바탕·테두리·트랙 그림·"트랙" 꼬리표
 export function TrackChip({ track, delta }: { track: Track; delta: number }) {
   return (
-    <Chip icon={track} value={<>{delta > 0 ? '▲' : '▼'}{Math.abs(delta)}</>} tone={`${track} delta`} title={`${RESOURCE_LABEL[track]} 트랙 ${signed(delta)}`}>
+    <Chip icon={track} value={<>{delta > 0 ? '▲' : '▼'}{Math.abs(delta)}</>} tone={`${track} delta`} title={`${RESOURCE_LABEL[track]} 트랙 마커 ${signed(delta)}칸 (자원을 받는 게 아니라 구단 보드의 마커 이동)`}>
+      <TrackGlyph up={delta > 0} />
       <span className="chip-note">트랙</span>
     </Chip>
   );
