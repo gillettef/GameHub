@@ -88,12 +88,12 @@ describe('선수 영입/방출 (p.15~16)', () => {
     expect(() => recruitPlayer(s0, 'a', 1, seededRng(), 'veterans')).toThrow(GameError);
   });
 
-  it('유망주는 더미 맨 위에서 (미훈련 면 비용 1)', () => {
+  it('유망주는 더미 맨 위에서 (미훈련 면 비용 2)', () => {
     const s0 = tuesday();
     const top = s0.decks.prospects[0]!;
     const s = recruitProspect(s0, 'a');
     expect(s.players['a']!.roster.at(-1)!.cardId).toBe(top);
-    expect(s.players['a']!.resources.money).toBe(20 - 1);
+    expect(s.players['a']!.resources.money).toBe(20 - 2);
     expect(s.decks.prospects[0]).not.toBe(top);
   });
 
