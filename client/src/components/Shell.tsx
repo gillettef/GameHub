@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { cards } from '@server/engine/cards';
 import type { LogEntry, PlayerId } from '@server/engine/state';
 import { RESOURCES } from '@server/engine/types';
+import { hireCost, marketMinIndex } from '@server/engine/traits';
 import { useCommit } from '../commit';
 import { DAY_LABEL, SEAT_COLORS, TOKEN_LABEL, phaseLabel } from '../labels';
 import { NotifyToggles } from '../notify';
@@ -121,7 +122,7 @@ export function MarketBody() {
         key={id}
         cardId={id}
         chosen={chosen === `market:${id}`}
-        onClick={canBuy && i >= 2 ? () => select(`market:${id}`, { type: 'recruitPlayer', marketIndex: i }, <>선수 영입: <b>{cards.player(id).name}</b> <CostChips cost={{ money: cards.player(id).untrained.cost }} /></>) : undefined}
+        onClick={canBuy && me && i >= marketMinIndex(me, 'players') ? () => select(`market:${id}`, { type: 'recruitPlayer', marketIndex: i }, <>선수 영입: <b>{cards.player(id).name}</b> <CostChips cost={{ money: cards.player(id).untrained.cost }} /></>) : undefined}
       />
     ),
     staff: (id, i) => (
@@ -129,10 +130,10 @@ export function MarketBody() {
         key={id}
         cardId={id}
         chosen={chosen === `market:${id}`}
-        onClick={canBuy && i >= 2 ? () => select(`market:${id}`, { type: 'hireStaff', marketIndex: i }, <>직원 고용: <b>{cards.staff(id).name}</b> <CostChips cost={{ money: cards.staff(id).cost }} /></>) : undefined}
+        onClick={canBuy && me && i >= 2 ? () => select(`market:${id}`, { type: 'hireStaff', marketIndex: i }, <>직원 고용: <b>{cards.staff(id).name}</b> <CostChips cost={{ money: hireCost(me, cards.staff(id).cost) }} /></>) : undefined}
       />
     ),
-    sponsors: (id, i) => <SponsorCardView key={id} cardId={id} onClick={canBuy && i >= 2 ? () => setSponsorPick(i) : undefined} />,
+    sponsors: (id, i) => <SponsorCardView key={id} cardId={id} onClick={canBuy && me && i >= marketMinIndex(me, 'sponsors') ? () => setSponsorPick(i) : undefined} />,
   };
   const sponsorCardId = sponsorPick !== null ? view.market.sponsors[sponsorPick] : undefined;
   return (

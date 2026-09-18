@@ -1,7 +1,7 @@
 import { cards } from './cards';
 import { resolvePending } from './effects';
 import { marketCardName } from './effects';
-import { acceptMatchRoll, advanceFriday, playTacticEffect, rerollMatchDie, rollMatchDie, submitLineup } from './friday';
+import { acceptMatchRoll, advanceFriday, playTacticEffect, redrawTactic, rerollMatchDie, rollMatchDie, submitLineup } from './friday';
 import { CONTRACT_LABEL, INFRA_LABEL, matchDieLabel } from './labels';
 import { acceptBoardRoll, rerollBoardDie, rollBoardDie } from './monday';
 import type { Rng } from './rng';
@@ -42,6 +42,7 @@ export type GameAction =
   | { type: 'endTurn' }
   | { type: 'submitLineup'; submission: LineupSubmission }
   | { type: 'playTacticEffect'; cardId: string | null } // 경기 진행: 전술 효과 카드 1장 (null = 쓰지 않음)
+  | { type: 'redrawTactic'; cardId: string } // 특성: 경기 준비 중 전술 카드 1장을 버리고 새로 뽑기
   | { type: 'rollMatchDie' }
   | { type: 'rerollMatchDie' }
   | { type: 'acceptMatchRoll' }
@@ -89,6 +90,8 @@ function apply(state: GameState, pid: PlayerId, action: GameAction, rng: Rng): G
       return submitLineup(state, pid, action.submission, rng);
     case 'playTacticEffect':
       return playTacticEffect(state, pid, action.cardId, rng);
+    case 'redrawTactic':
+      return redrawTactic(state, pid, action.cardId);
     case 'rollMatchDie':
       return rollMatchDie(state, pid, rng);
     case 'rerollMatchDie':
@@ -129,6 +132,8 @@ function describe(before: GameState, after: GameState, pid: PlayerId, action: Ga
     }
     case 'playTacticEffect':
       return action.cardId === null ? '전술 효과 카드 없이 진행' : null; // 카드를 썼으면 friday.ts 가 기록
+    case 'redrawTactic':
+      return '특성: 전술 카드 1장을 버리고 새로 뽑음';
     case 'rollBoardDie':
     case 'rerollBoardDie': {
       const roll = after.phase.kind === 'monday.board' ? after.phase.meetings[pid]?.roll : null;

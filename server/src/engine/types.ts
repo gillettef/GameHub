@@ -134,7 +134,7 @@ export interface StaffCard {
   setPoints: [number, number, number, number]; // 1/2/3/4장 보유 시 승점, 마지막이 상한
   bonus?: Effect[]; // 고용 즉시
   action?: { cost: Cost; effects: Effect[]; text: string };
-  trait?: string; // 지속 특성 (MVP: 텍스트만)
+  trait?: CardTrait; // 지속 특성
   placeholder?: true;
 }
 
@@ -166,6 +166,28 @@ export interface BoardCard {
 
 // ---------- 임원 카드 (p.7) ----------
 
+// 임원·직원 카드의 지속 특성. 계산은 engine/traits.ts 가 맡는다 (출장정지 카드의 특성은 무효, p.28)
+export type Trait =
+  | { kind: 'infraDiscount'; amount: number } // 기반 시설 건설 비용 −N
+  | { kind: 'hireDiscount'; amount: number } // 직원 고용 비용 −N
+  | { kind: 'prospectDiscount'; amount: number } // 유망주 영입 비용 −N
+  | { kind: 'freeLineupStamina'; count: number } // 경기마다 출전 선수 N명의 체력 비용 면제
+  | { kind: 'freeBoardReroll' } // 이사회 주사위 재굴림에 팬덤을 내지 않음
+  | { kind: 'freeMatchReroll' } // 경기 영향 주사위 재굴림에 팬덤을 내지 않음
+  | { kind: 'fandomOnSponsor'; amount: number } // 스폰서 계약 시 팬덤 +N
+  | { kind: 'keepStamina'; count: number } // 주말에 체력을 N개까지 남김
+  | { kind: 'extraSaves'; count: number } // 골키퍼 선방 +N (항상)
+  | { kind: 'marketReach'; row: 'players' | 'sponsors' } // 그 행은 맨 왼쪽 2장도 고를 수 있음
+  | { kind: 'releaseBonus'; amount: number } // 방출 시 돈 +N
+  | { kind: 'redrawTactic' } // 경기 준비 중 전술 카드 1장을 버리고 새로 뽑기 (경기일마다 1회)
+  | { kind: 'upkeepDiscount'; amount: number } // 주말 유지비 −N (보유하는 동안)
+  | { kind: 'upkeepSuspension'; count: number } // 유지비 미납 1돈당 출장정지 N개 (기본 2)
+  | { kind: 'standsBonusMoney'; amount: number }; // 관중석 팬덤을 돈으로 바꿀 때 +N
+export interface CardTrait {
+  text: string;
+  effect: Trait;
+}
+
 export interface ExecutiveCard {
   id: string;
   name: string;
@@ -174,7 +196,7 @@ export interface ExecutiveCard {
   trackAdjust: Partial<Record<Track, number>>; // 공개 시 능력치 마커 이동
   bonus?: Effect[]; // 즉시 보너스
   action?: { cost: Cost; effects: Effect[]; text: string };
-  trait?: string;
+  trait?: CardTrait;
   placeholder?: true;
 }
 

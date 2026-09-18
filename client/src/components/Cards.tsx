@@ -152,7 +152,7 @@ export function StaffCardView({ cardId, exhausted, suspension, ...props }: { car
           <div className="rb-box">
             {card.bonus && <EffectRow label="보너스" text={describeEffects(card.bonus)} effects={card.bonus} />}
             {card.action && <EffectRow label="행동" text={card.action.text} effects={card.action.effects} />}
-            {card.trait && <EffectRow label="특성" text={card.trait}><span className="trait-text clamp2">{card.trait}</span></EffectRow>}
+            {card.trait && <EffectRow label="특성" text={card.trait.text}><span className="trait-text clamp2">{card.trait.text}</span></EffectRow>}
           </div>
         </div>
       </div>
@@ -196,7 +196,7 @@ export function ExecutiveCardView({ cardId, exhausted, ...props }: { cardId: str
       <div className="rb-box">
         {card.bonus && <EffectRow label="보너스" text={describeEffects(card.bonus)} effects={card.bonus} />}
         {card.action && <EffectRow label="행동" text={card.action.text} cost={card.action.cost} effects={card.action.effects} />}
-        {card.trait && <EffectRow label="특성" text={card.trait}><span className="trait-text clamp3">{card.trait}</span></EffectRow>}
+        {card.trait && <EffectRow label="특성" text={card.trait.text}><span className="trait-text clamp3">{card.trait.text}</span></EffectRow>}
       </div>
     </Card>
   );

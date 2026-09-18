@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { MiniPitch } from './Cards';
 import { Chip, Icon, TokenChip, TrackChip } from './Icons';
 
@@ -71,7 +72,8 @@ export function LegendButton() {
       <button className="legend-button" onClick={() => setOpen(true)} title="화면에 쓰인 아이콘 설명">
         <Icon name="vp" size={14} />아이콘 설명
       </button>
-      {open && (
+      {open &&
+        createPortal(
         <div className="modal-backdrop" onClick={() => setOpen(false)}>
           <div className="modal legend" onClick={(e) => e.stopPropagation()} role="dialog" aria-label="아이콘 설명">
             <div className="panel-head">
@@ -95,8 +97,9 @@ export function LegendButton() {
               </section>
             ))}
           </div>
-        </div>
-      )}
+        </div>,
+          document.body,
+        )}
     </>
   );
 }

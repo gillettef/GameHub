@@ -101,7 +101,7 @@ export const STAFF_CARDS: StaffCard[] = [
     set: 'medical',
     setPoints: [1, 3, 5, 5],
     bonus: [{ type: 'gainResource', resource: 'stamina', amount: 2 }],
-    trait: '주말에 [체력]을 버릴 때 2개까지 남길 수 있습니다.',
+    trait: { text: '주말에 [체력]을 버릴 때 2개까지 남길 수 있습니다.', effect: { kind: 'keepStamina', count: 2 } },
     placeholder: true,
   },
   {
@@ -147,7 +147,7 @@ export const STAFF_CARDS: StaffCard[] = [
       effects: [{ type: 'placeStamina', count: 1 }],
       text: '선수 1명에 1[체력]을 올려놓습니다.',
     },
-    trait: '경기 영향 주사위를 재굴림할 때 [팬덤]을 내지 않습니다.',
+    trait: { text: '경기 영향 주사위를 재굴림할 때 [팬덤]을 내지 않습니다.', effect: { kind: 'freeMatchReroll' } },
     placeholder: true,
   },
   {
@@ -222,7 +222,7 @@ export const STAFF_CARDS: StaffCard[] = [
     set: 'coaching',
     setPoints: [0, 2, 4, 6],
     bonus: [{ type: 'placeStamina', count: 1 }],
-    trait: '골키퍼의 [선방]이 1개 더 있는 것으로 간주합니다.',
+    trait: { text: '골키퍼의 [선방]이 1개 더 있는 것으로 간주합니다.', effect: { kind: 'extraSaves', count: 1 } },
     placeholder: true,
   },
   {
@@ -256,7 +256,7 @@ export const STAFF_CARDS: StaffCard[] = [
       effects: [{ type: 'discardMarketCard', row: 'players' }],
       text: '이적 시장의 선수 카드 1장을 버리고 새로 보충합니다.',
     },
-    trait: '선수 영입 시 이적 시장의 맨 왼쪽 2장도 선택할 수 있습니다.',
+    trait: { text: '선수 영입 시 이적 시장의 맨 왼쪽 2장도 선택할 수 있습니다.', effect: { kind: 'marketReach', row: 'players' } },
     placeholder: true,
   },
   {
@@ -268,7 +268,7 @@ export const STAFF_CARDS: StaffCard[] = [
     set: 'scouting',
     setPoints: [0, 1, 3, 6],
     bonus: [{ type: 'recruitProspectFree' }],
-    trait: '유망주 영입 비용이 1[돈] 줄어듭니다.',
+    trait: { text: '유망주 영입 비용이 1[돈] 줄어듭니다.', effect: { kind: 'prospectDiscount', amount: 1 } },
     placeholder: true,
   },
   {
@@ -295,7 +295,7 @@ export const STAFF_CARDS: StaffCard[] = [
     set: 'scouting',
     setPoints: [0, 1, 3, 6],
     bonus: [{ type: 'gainResource', resource: 'money', amount: 2 }],
-    trait: '선수를 방출할 때 1[돈]을 추가로 얻습니다.',
+    trait: { text: '선수를 방출할 때 1[돈]을 추가로 얻습니다.', effect: { kind: 'releaseBonus', amount: 1 } },
     placeholder: true,
   },
   {
@@ -322,7 +322,7 @@ export const STAFF_CARDS: StaffCard[] = [
     set: 'scouting',
     setPoints: [0, 1, 3, 6],
     bonus: [{ type: 'drawTactic', count: 1 }],
-    trait: '스카우트 보고서를 확인한 후 전술 카드 1장을 버리고 새로 1장을 뽑을 수 있습니다.',
+    trait: { text: '스카우트 보고서를 확인한 후 전술 카드 1장을 버리고 새로 1장을 뽑을 수 있습니다.', effect: { kind: 'redrawTactic' } },
     placeholder: true,
   },
   {
@@ -349,7 +349,7 @@ export const STAFF_CARDS: StaffCard[] = [
     set: 'operations',
     setPoints: [1, 3, 4, 6],
     bonus: [{ type: 'moveTrack', track: 'money', delta: 1 }],
-    trait: '주말 유지비를 1[돈] 적게 지불합니다.',
+    trait: { text: '주말 유지비를 1[돈] 적게 지불합니다.', effect: { kind: 'upkeepDiscount', amount: 1 } },
     placeholder: true,
   },
   {
@@ -425,7 +425,7 @@ export const STAFF_CARDS: StaffCard[] = [
     set: 'operations',
     setPoints: [1, 3, 4, 6],
     bonus: [{ type: 'gainVP', amount: 1 }],
-    trait: '유지비를 지불하지 못해도 [출장정지]를 1개만 받습니다.',
+    trait: { text: '유지비를 지불하지 못해도 [출장정지]를 1개만 받습니다.', effect: { kind: 'upkeepSuspension', count: 1 } },
     placeholder: true,
   },
   {
@@ -453,7 +453,7 @@ export const STAFF_CARDS: StaffCard[] = [
     set: 'commercial',
     setPoints: [2, 3, 5, 5],
     bonus: [{ type: 'moveTrack', track: 'fandom', delta: 1 }],
-    trait: '경기 후 관중석의 [팬덤]으로 [돈]을 얻을 때 1[돈]을 추가로 얻습니다.',
+    trait: { text: '경기 후 관중석의 [팬덤]으로 [돈]을 얻을 때 1[돈]을 추가로 얻습니다.', effect: { kind: 'standsBonusMoney', amount: 1 } },
     placeholder: true,
   },
   {
@@ -469,7 +469,7 @@ export const STAFF_CARDS: StaffCard[] = [
       effects: [{ type: 'gainResource', resource: 'money', amount: 2 }],
       text: '2[돈]을 얻습니다.',
     },
-    trait: '스폰서 계약 시 이적 시장의 맨 왼쪽 2장도 선택할 수 있습니다.',
+    trait: { text: '스폰서 계약 시 이적 시장의 맨 왼쪽 2장도 선택할 수 있습니다.', effect: { kind: 'marketReach', row: 'sponsors' } },
     placeholder: true,
   },
   {

@@ -30,7 +30,7 @@ export const EXECUTIVE_CARDS: ExecutiveCard[] = [
     description: '건설사에서 잔뼈가 굵은 실무가. 도면 한 장이면 협상은 끝난다.',
     votes: ['yellow', 'yellow', 'yellow', 'blue', 'blue', 'red'],
     trackAdjust: { money: 1 },
-    trait: '스타디움 기반 시설 건설 비용이 1[돈] 줄어듭니다.',
+    trait: { text: '스타디움 기반 시설 건설 비용이 1[돈] 줄어듭니다.', effect: { kind: 'infraDiscount', amount: 1 } },
     placeholder: true,
   },
   {
@@ -74,7 +74,7 @@ export const EXECUTIVE_CARDS: ExecutiveCard[] = [
     description: '전술 노트를 손에서 놓지 않는 이론가. 상대 포메이션을 꿰뚫어 본다.',
     votes: ['blue', 'yellow', 'blue', 'red', 'blue', 'red'],
     trackAdjust: { stamina: 1 },
-    trait: '경기마다 출전 선수 1명의 [체력] 비용을 지불하지 않습니다.',
+    trait: { text: '경기마다 출전 선수 1명의 [체력] 비용을 지불하지 않습니다.', effect: { kind: 'freeLineupStamina', count: 1 } },
     placeholder: true,
   },
   {
@@ -117,7 +117,7 @@ export const EXECUTIVE_CARDS: ExecutiveCard[] = [
     description: '인사 전문가. 좋은 직원은 좋은 조건에서 나온다고 믿는다.',
     votes: ['red', 'red', 'red', 'yellow', 'yellow', 'blue'],
     trackAdjust: { fandom: 1, money: -1 },
-    trait: '직원 고용 비용이 1[돈] 줄어듭니다.',
+    trait: { text: '직원 고용 비용이 1[돈] 줄어듭니다.', effect: { kind: 'hireDiscount', amount: 1 } },
     placeholder: true,
   },
   {
@@ -139,7 +139,7 @@ export const EXECUTIVE_CARDS: ExecutiveCard[] = [
     description: '이사회 회의록을 가장 꼼꼼히 읽는 사람. 결정의 흐름을 바꾸는 법을 안다.',
     votes: ['yellow', 'blue', 'red', 'yellow', 'blue', 'red'],
     trackAdjust: { fandom: 1 },
-    trait: '이사회 주사위를 재굴림할 때 [팬덤]을 내지 않습니다.',
+    trait: { text: '이사회 주사위를 재굴림할 때 [팬덤]을 내지 않습니다.', effect: { kind: 'freeBoardReroll' } },
     placeholder: true,
   },
   {
@@ -173,7 +173,7 @@ export const EXECUTIVE_CARDS: ExecutiveCard[] = [
     description: '언론과 팬을 동시에 상대하는 대변인. 어떤 결정도 매끄럽게 포장한다.',
     votes: ['yellow', 'red', 'blue', 'blue', 'red', 'yellow'],
     trackAdjust: { fandom: 1 },
-    trait: '스폰서 계약을 맺을 때 1[팬덤]을 얻습니다.',
+    trait: { text: '스폰서 계약을 맺을 때 1[팬덤]을 얻습니다.', effect: { kind: 'fandomOnSponsor', amount: 1 } },
     placeholder: true,
   },
 ];

@@ -103,6 +103,8 @@ notes/    규칙서 원본 및 텍스트 레퍼런스
   유망주 영입·시설 7종·사무실·카드 행동(유급 포함)은 `select` → 확정 막대. 카드 고르기가 필요한 선수 영입/직원 고용/스폰서 계약 버튼은 공용 보드의 해당 시장 탭으로
   이동시키고(`showMarket`), "선수 방출…"은 방출 모드를 켜고 개인 보드의 경기 보드로 이동해 내 선수 카드를
   클릭하게 한다(`releasing`). 내 차례가 아니거나 조건(기본 행동 소진, 돈 부족, 소진 카드 등)이 안 맞으면 비활성.
+  **모달(아이콘 설명·스폰서 계약)은 `createPortal`로 `document.body`에 그린다** — 사이드바가 `position: sticky`라 자체 스태킹
+  컨텍스트를 만들어, 그 안에서 그린 `position: fixed` 모달이 메인 영역 뒤에 깔리기 때문. 새 모달도 같은 방식으로.
 - **디자인 시스템** (`styles.css` `:root` 토큰): 밝은 회녹색 바탕 `--bg`, 잔디 초록 `--pitch` 구조색, 잉크 남색
   `--ink`, 역할 색(공격 `--attack` 주황 / 수비 `--defense` 파랑), 자원 색 `--c-money/fandom/ops/stamina`, 자리 색
   `SEAT_COLORS`. 글꼴은 IBM Plex Sans KR 한 가족. 텍스트 대신 **아이콘 칩**(`components/Icons.tsx`: SVG 아이콘
@@ -309,6 +311,11 @@ MVP에서 **단순화 가능**한 부분: 선수/직원/임원/스폰서/이사�
 - **상시 효과 `passive`**(`PlayerState.passives[{passive, source}]`, source = 카드 이름): `extraStand`(관중석 +1, `standsCount`),
   `fandomOnWin`(승리마다 팬덤 +1). `breakNamingSponsor`(유니폼 계약 파기 → 카드 버리고 그 카드의 장내 방송 효과, 없으면 otherwise)는
   그 카드의 상시 효과도 지운다. `upkeepDiscount`는 다음 주말 유지비에서 빼고 0으로.
+- **임원·직원 특성 `trait`**(`types.ts` Trait, 계산은 `engine/traits.ts`): 카드의 `trait`는 `{text, effect}`. `traitsOf`는 임원 전부와
+  출장정지 없는 직원의 특성만 모은다(p.28). 종류: 건설/고용/유망주 비용 할인, 출전 체력 면제, 이사회·경기 영향 재굴림 무료,
+  스폰서 계약 시 팬덤, 주말 체력 보존, 선방 +1, 시장 맨 왼쪽 2장 선택(`marketMinIndex`), 방출 보너스, 전술 카드 새로 뽑기
+  (`redrawTactic` 액션, 경기 준비 중 1회, `PlayerState.tacticRedrawn`), 유지비 할인, 미납 출장정지 1개, 관중 수입 +1.
+  클라이언트도 같은 헬퍼로 비용·버튼 활성화를 계산한다.
 - **상대 팀 카드 미리 보기**(`peekOpponent` 효과, 직원 '다니엘 오코로'): `PlayerState.scouted`를 켜고 뷰는 본인에게만 다음 상대
   카드를 앞면(`OpponentCardView revealed`)으로 그린다(다른 참가자·관전자는 보고서 면). 그 카드로 경기하면 풀린다. 봇은 정보만
   주는 행동(`peekOpponent`·`text`)을 쓰지 않는다.

@@ -3,6 +3,7 @@ import { discardFromMarket } from './market';
 import type { Rng } from './rng';
 import { GameError, addLog, emptyTokens, getPlayer } from './state';
 import type { GameState, MatchMods, PendingTarget, PlayerId, PlayerInstance, PlayerState } from './state';
+import { traitSum } from './traits';
 import { TRACK_MAX, TRACK_MIN } from './types';
 import type { Effect, MatchCondition, Sector, Track } from './types';
 import { assignUniform, releaseUniform } from './uniforms';
@@ -50,6 +51,7 @@ export function releaseFromRoster(state: GameState, player: PlayerState, inst: P
   if (idx < 0) throw new GameError('no such player');
   let money = 2 + effectiveSkill(inst);
   if (inst.tokens.injury > 0 || inst.tokens.suspension > 0) money = Math.floor(money / 2);
+  money += traitSum(player, 'releaseBonus'); // 특성: 방출 시 돈 +N
   player.resources.money += money;
   player.vp += inst.careerVP;
   player.roster.splice(idx, 1);

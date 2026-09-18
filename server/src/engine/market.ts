@@ -28,9 +28,10 @@ function deckFor(state: GameState, row: MarketRow): { deck: string[]; discard: s
 }
 
 // 구매한 자리를 비우고 남은 카드를 오른쪽으로 민 뒤 맨 왼쪽을 새 카드로 채운다 (p.15, p.17, p.18)
-export function takeFromMarket(state: GameState, row: MarketRow, index: number, rng: Rng): string {
+// minIndex: 특성(맨 왼쪽 2장도 선택 가능)이 있으면 0
+export function takeFromMarket(state: GameState, row: MarketRow, index: number, rng: Rng, minIndex = MARKET_BUYABLE_FROM): string {
   const cards = state.market[row];
-  if (!Number.isInteger(index) || index < MARKET_BUYABLE_FROM || index >= cards.length) {
+  if (!Number.isInteger(index) || index < minIndex || index >= cards.length) {
     throw new GameError(`market index ${index} not purchasable`);
   }
   const [taken] = cards.splice(index, 1);

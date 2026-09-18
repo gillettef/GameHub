@@ -5,7 +5,8 @@ import { takeFromMarket } from './market';
 import type { Rng } from './rng';
 import { GameError, WEEKDAYS, addLog, getPlayer, leftOf } from './state';
 import type { GameState, PlayerId, PlayerState, Weekday } from './state';
-import { INFRASTRUCTURE_COST, INFRASTRUCTURE_MAX } from './types';
+import { hireCost, infraCost, marketMinIndex, prospectCost, traitSum } from './traits';
+import { INFRASTRUCTURE_MAX } from './types';
 import type { Cost, DayRestriction, Effect, InfrastructureType, SponsorContract } from './types';
 
 const PAID_ACTION_OPS = 2;
@@ -58,7 +59,7 @@ export function recruitPlayer(state: GameState, pid: PlayerId, marketIndex: numb
   const cardId = next.market.players[marketIndex];
   if (cardId === undefined) throw new GameError('no such market card');
   pay(player, { money: cards.player(cardId).untrained.cost });
-  takeFromMarket(next, 'players', marketIndex, rng);
+  takeFromMarket(next, 'players', marketIndex, rng, marketMinIndex(player, 'players'));
   addToRoster(player, cardId);
   turn.basicDone = true;
   return next;
@@ -71,7 +72,7 @@ export function recruitProspect(state: GameState, pid: PlayerId): GameState {
   const player = getPlayer(next, pid);
   const cardId = next.decks.prospects[0];
   if (!cardId) throw new GameError('prospect deck empty');
-  pay(player, { money: cards.player(cardId).untrained.cost });
+  pay(player, { money: prospectCost(player, cards.player(cardId).untrained.cost) });
   next.decks.prospects.shift();
   addToRoster(player, cardId);
   turn.basicDone = true;
@@ -98,7 +99,7 @@ export function hireStaff(state: GameState, pid: PlayerId, marketIndex: number, 
   const cardId = next.market.staff[marketIndex];
   if (cardId === undefined) throw new GameError('no such market card');
   const card = cards.staff(cardId);
-  pay(player, { money: card.cost });
+  pay(player, { money: hireCost(player, card.cost) });
   takeFromMarket(next, 'staff', marketIndex, rng);
   player.staff.push({ cardId, exhausted: false, suspension: 0 });
   if (card.bonus) applyEffects(next, pid, card.bonus, card.name, {}, rng);
@@ -128,23 +129,25 @@ export function signSponsor(
 
   switch (contract) {
     case 'kit':
-      takeFromMarket(next, 'sponsors', marketIndex, rng);
+      takeFromMarket(next, 'sponsors', marketIndex, rng, marketMinIndex(player, 'sponsors'));
       applyEffects(next, pid, card.kit, card.name, {}, rng);
       next.decks.discards.sponsors.push(cardId);
       break;
     case 'billboard':
       if (player.sponsors.billboards.length >= billboardLimit(player)) throw new GameError('billboard slots full');
-      takeFromMarket(next, 'sponsors', marketIndex, rng);
+      takeFromMarket(next, 'sponsors', marketIndex, rng, marketMinIndex(player, 'sponsors'));
       player.sponsors.billboards.push(cardId);
       applyEffects(next, pid, billboardChoice === 'bonus' ? card.extraBonus : card.billboard, card.name, {}, rng);
       break;
     case 'naming':
       if (player.sponsors.naming) throw new GameError('naming sponsor already signed');
-      takeFromMarket(next, 'sponsors', marketIndex, rng);
+      takeFromMarket(next, 'sponsors', marketIndex, rng, marketMinIndex(player, 'sponsors'));
       player.sponsors.naming = cardId;
       applyEffects(next, pid, [...card.naming, ...card.extraBonus], card.name, {}, rng);
       break;
   }
+  const fandomBonus = traitSum(player, 'fandomOnSponsor'); // 특성: 스폰서 계약 시 팬덤
+  if (fandomBonus > 0) player.resources.fandom += fandomBonus;
   turn.basicDone = true;
   return next;
 }
@@ -159,7 +162,7 @@ export function buildInfrastructure(state: GameState, pid: PlayerId, type: Infra
   if (player.infrastructure.length >= INFRASTRUCTURE_MAX) throw new GameError('stadium full');
   if (def.unique && player.infrastructure.includes(type)) throw new GameError(`${type} already built`);
   if (def.requires && !player.infrastructure.includes(def.requires)) throw new GameError(`${type} requires ${def.requires}`);
-  pay(player, { money: INFRASTRUCTURE_COST });
+  pay(player, { money: infraCost(player) });
   player.infrastructure.push(type);
   applyEffects(next, pid, def.bonus, def.name);
   turn.basicDone = true;
