@@ -1,4 +1,4 @@
-import { activeSide, cards, effectiveSkill } from './cards';
+import { activeSide, cards, effectiveSkill, instanceName } from './cards';
 import { discardFromMarket } from './market';
 import type { Rng } from './rng';
 import { GameError, addLog, emptyTokens, getPlayer } from './state';
@@ -141,7 +141,7 @@ function applyTargeted(state: GameState, player: PlayerState, effect: Effect, ch
     case 'releasePlayer': {
       const inst = findInstance(player, choice);
       const money = releaseFromRoster(state, player, inst);
-      addLog(state, `방출: ${cards.player(inst.cardId).name} (+${money}돈)`, { actor: player.id });
+      addLog(state, `방출: ${instanceName(inst)} (+${money}돈)`, { actor: player.id });
       return;
     }
     case 'addStaffSuspension': {

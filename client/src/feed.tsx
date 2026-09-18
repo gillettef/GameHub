@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { cards } from '@server/engine/cards';
+import { cards, instanceName } from '@server/engine/cards';
 import type { PlayerId } from '@server/engine/state';
 import { RESOURCES } from '@server/engine/types';
 import type { PlayerToken, Resource } from '@server/engine/types';
@@ -43,7 +43,7 @@ const TOKENS: PlayerToken[] = ['injury', 'suspension', 'strengthTemp', 'strength
 
 function playerName(p: PlayerPublicView, instanceId: string): string {
   const inst = p.roster.find((r) => r.instanceId === instanceId);
-  return inst ? cards.player(inst.cardId).name : instanceId;
+  return inst ? instanceName(inst) : instanceId;
 }
 
 // 참가자 한 명의 공개 상태 변화 (자원·트랙·승점·선수·직원·스폰서·시설·사무실·리그·전술 손패)
@@ -63,7 +63,7 @@ export function diffPlayer(a: PlayerPublicView, b: PlayerPublicView, leagueA: nu
   const after = new Map(b.roster.map((r) => [r.instanceId, r]));
   for (const r of b.roster) {
     const prev = before.get(r.instanceId);
-    const name = cards.player(r.cardId).name;
+    const name = instanceName(r);
     if (!prev) {
       out.push({ kind: 'text', icon: 'prospect', text: `영입 ${name}`, tone: 'prospect' });
       continue;

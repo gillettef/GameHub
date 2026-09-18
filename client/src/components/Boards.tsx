@@ -1,4 +1,4 @@
-import { cards } from '@server/engine/cards';
+import { cards, instanceName } from '@server/engine/cards';
 import { billboardLimit } from '@server/engine/weekday';
 import { upkeepDue } from '@server/engine/weekend';
 import { RESOURCES, TRACK_MAX } from '@server/engine/types';
@@ -223,7 +223,7 @@ function MatchBoard({ p }: { p: PlayerPublicView }) {
               cardId={r.cardId}
               instance={r}
               chosen={chosen === `release:${r.instanceId}`}
-              onClick={canRelease ? () => select(`release:${r.instanceId}`, { type: 'releasePlayer', instanceId: r.instanceId }, <>방출: <b>{cards.player(r.cardId).name}</b></>) : undefined}
+              onClick={canRelease ? () => select(`release:${r.instanceId}`, { type: 'releasePlayer', instanceId: r.instanceId }, <>방출: <b>{instanceName(r)}</b></>) : undefined}
             />
           ))}
         </div>

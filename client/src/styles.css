@@ -656,7 +656,7 @@ button.chosen, .split button.chosen { border-color: var(--pitch); box-shadow: 0 
 .market-hint { margin: 0 0 6px; }
 .market-row { min-height: calc(var(--card-h) + 8px); }
 .prospect-deck { min-height: calc(var(--card-h) + 8px); }
-.role-badge.inline { width: 18px; height: 18px; margin-left: 4px; border: 1px solid var(--line); vertical-align: -4px; }
+
 .staff-row .cards, .sponsor-row .cards { flex-wrap: wrap; }
 
 /* ---- 확정 막대: 고른 것을 보여주고 확정/취소 (Esc = 취소) ---- */

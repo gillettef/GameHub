@@ -63,3 +63,12 @@ export function effectiveSkill(instance: PlayerInstance): number {
   const t = instance.tokens;
   return Math.max(0, activeSide(instance).skill + t.strengthTemp + t.strengthPerm - t.weaknessTemp - t.weaknessPerm);
 }
+
+// 표시 이름: 유망주는 훈련 전에는 모든 카드가 똑같이 '유망주'로 보인다 (사용자 결정, 2026-09). 훈련 면(또는 훈련된 인스턴스)에서 본명
+export function playerName(cardId: string, trained = false): string {
+  const card = cards.player(cardId);
+  return card.kind === 'prospect' && !trained ? '유망주' : card.name;
+}
+export function instanceName(instance: PlayerInstance): string {
+  return playerName(instance.cardId, instance.trained);
+}
