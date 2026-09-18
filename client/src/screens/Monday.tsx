@@ -64,7 +64,7 @@ export function MondayScreen() {
               )}
             </div>
           )}
-          <div className="cards scroll-x" aria-label="임원">
+          <div className="cards" aria-label="임원">
             {execIds.map((id, i) => (
               <ExecutiveCardView key={`${id}-${i}`} cardId={id} compact />
             ))}

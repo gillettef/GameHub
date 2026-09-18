@@ -225,6 +225,7 @@ export interface InfrastructureDef {
   vp: number;
   bonus: Effect[];
   unique: boolean; // 관중석/광고판은 1개만
+  requires?: InfrastructureType; // 먼저 지어야 하는 시설 (4번 관중석 ← 3번 관중석, 번호 순서)
   placeholder?: true;
 }
 

@@ -1,3 +1,4 @@
+import { canUndoTurn } from './state';
 import type { BoardMeeting, GameState, LineupSubmission, LogEntry, MatchAftermath, PlayerId, PlayerState, Weekday } from './state';
 import type { ScoreBreakdown } from './scoring';
 
@@ -7,7 +8,7 @@ export type PhaseView =
   | { kind: 'setup.draft'; round: 1 | 2 | 3; hand: string[]; handSizes: Record<PlayerId, number>; picked: Record<PlayerId, boolean> }
   | { kind: 'setup.objective'; options: string[]; chosen: Record<PlayerId, boolean> }
   | { kind: 'monday.board'; current: PlayerId; meetings: Record<PlayerId, BoardMeeting> }
-  | { kind: 'weekday'; day: Weekday; current: PlayerId; basicDone: boolean; paidDone: boolean }
+  | { kind: 'weekday'; day: Weekday; current: PlayerId; basicDone: boolean; paidDone: boolean; canUndo: boolean } // canUndo: 나(me)의 차례를 처음으로 되돌릴 수 있는가
   | { kind: 'friday.prepare'; current: PlayerId; submitted: Record<PlayerId, boolean>; mine: LineupSubmission | null }
   | { kind: 'friday.aftermath'; current: PlayerId; matches: Record<PlayerId, MatchAftermath> }
   | { kind: 'gameOver'; scores: Record<PlayerId, ScoreBreakdown>; winners: PlayerId[] };
@@ -72,6 +73,8 @@ function phaseView(state: GameState, me: PlayerId): PhaseView {
       };
     case 'setup.objective':
       return { kind: 'setup.objective', options: phase.options[me] ?? [], chosen: mapValues(phase.chosen, (c) => c !== null) };
+    case 'weekday':
+      return { ...phase, canUndo: canUndoTurn(state, me) };
     case 'friday.prepare':
       return { kind: 'friday.prepare', current: phase.current, submitted: mapValues(phase.submitted, (s) => s !== null), mine: phase.submitted[me] ?? null };
     default:

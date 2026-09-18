@@ -143,11 +143,6 @@ label.row { flex-direction: row; align-items: center; }
 
 /* 사이드바: 단계·차례 상태, 주사위, 주중 행동 목록, 아이콘 설명 */
 .sidebar { display: flex; flex-direction: column; gap: 10px; position: sticky; top: calc(var(--head-h) + 14px); max-height: calc(100vh - var(--head-h) - 28px); overflow-y: auto; scrollbar-width: thin; }
-.turn-status { display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; }
-.turn-status.mine { border-left: 4px solid var(--pitch); }
-.ts-phase { font-size: var(--fs-sub); font-weight: 700; color: var(--muted); letter-spacing: 0.02em; }
-.ts-current { display: flex; align-items: center; font-size: 14px; }
-.ts-task { font-size: 13px; font-weight: 600; color: var(--pitch-dark); background: var(--pitch-tint); border-radius: 6px; padding: 4px 8px; }
 .action-panel { padding: 10px 12px 12px; }
 .action-panel h3 { margin: 10px 0 4px; }
 .action-list { display: flex; flex-direction: column; gap: 4px; }
@@ -159,8 +154,10 @@ label.row { flex-direction: row; align-items: center; }
 .action-split { display: grid; grid-template-columns: 1fr auto; }
 .action-split .action-item { border-radius: var(--radius) 0 0 var(--radius); }
 .action-split .paid { border-radius: 0 var(--radius) var(--radius) 0; border-left: 0; font-size: var(--fs-sub); padding: 6px 8px; }
-.turn-actions { margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--line); }
+.turn-actions { margin-top: 8px; padding-bottom: 10px; border-bottom: 1px dashed var(--line); }
+.icon.flip { transform: rotate(-90deg); }
 .sidebar .dice-tray { width: 100%; }
+.die-readout { font-size: var(--fs-sub); font-weight: 700; color: #ffe08a; min-height: 16px; }
 .release-hint { font-weight: 500; color: var(--gold); margin-left: 8px; }
 .seat-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--seat, var(--muted)); display: inline-block; margin-right: 6px; flex: none; }
 .seat-dot.neutral { background: var(--line-strong); }
@@ -271,7 +268,6 @@ label.row { flex-direction: row; align-items: center; }
 .card.exhausted { opacity: 0.6; }
 .card.exhausted::after { content: '소진'; position: absolute; top: 6px; right: 6px; font-size: var(--fs-sub); font-weight: 700; background: var(--ink); color: #fff; border-radius: 4px; padding: 1px 6px; z-index: 1; }
 .card-footer { position: absolute; left: 0; right: 0; bottom: 0; background: rgba(255, 255, 255, 0.96); border-top: 1px dashed var(--line); padding: 4px 8px; font-size: var(--fs-sub); }
-.market-row { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 6px; }
 .market-row .card:nth-child(-n + 2) { opacity: 0.5; }
 .rb-box { display: flex; flex-direction: column; gap: 4px; padding: 6px 9px; flex: 1; min-height: 0; overflow: hidden; }
 .portrait { width: 56px; height: 56px; border-radius: 50%; background: var(--surface); border: 2px solid var(--line-strong); display: inline-flex; align-items: center; justify-content: center; font-size: 22px; font-weight: 700; color: var(--ink-2); flex: none; }
@@ -603,22 +599,23 @@ label.row { flex-direction: row; align-items: center; }
 button.chosen, .split button.chosen { border-color: var(--pitch); box-shadow: 0 0 0 2px var(--pitch); color: var(--pitch-dark); background: var(--pitch-tint); }
 @media (prefers-reduced-motion: reduce) { .card.chosen, .card.chosen::after, .turn-banner, .turn-dot { animation: none; } }
 
-/* 카드 줄을 가로 스크롤로 (좁은 열에서 세로로 쌓이지 않게) */
-.cards.scroll-x { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 6px; scrollbar-width: thin; }
-
-/* ---- 탭 (보드 패널·공용 영역) ---- */
-.tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--line); margin: 10px 0 12px; overflow-x: auto; scrollbar-width: thin; }
-.tab { border: 0; border-bottom: 2px solid transparent; border-radius: 0; background: transparent; color: var(--ink-2); padding: 7px 12px; margin-bottom: -1px; font-weight: 600; white-space: nowrap; }
-.tab:hover:not(:disabled) { color: var(--pitch-dark); background: var(--surface-2); }
-.tab.active { color: var(--pitch-dark); border-bottom-color: var(--pitch); }
-.tab-badge { font-size: var(--fs-sub); font-weight: 600; color: var(--muted); background: var(--surface-2); border-radius: 999px; padding: 0 7px; line-height: 18px; }
-.tab.active .tab-badge { background: var(--pitch-tint); color: var(--pitch-dark); }
-.tabs.primary { margin: -4px 0 12px; gap: 4px; border-bottom-width: 2px; }
-.tabs.primary .tab { font-size: 15px; padding: 9px 16px; margin-bottom: -2px; }
+/* ---- 탭 (보드 패널·공용 영역): 고른 탭은 잔디색으로 채워 한눈에 구분 ---- */
+.tabs { display: flex; gap: 4px; padding: 4px; background: var(--surface-2); border: 1px solid var(--line); border-radius: 8px; margin: 10px 0 12px; flex-wrap: wrap; }
+.tab { border: 1px solid transparent; border-radius: 6px; background: transparent; color: var(--ink-2); padding: 6px 12px; font-weight: 600; white-space: nowrap; }
+.tab:hover:not(:disabled) { color: var(--pitch-dark); background: #fff; border-color: var(--line); }
+.tab.active, .tab.active:hover { color: #fff; background: var(--pitch); border-color: var(--pitch-dark); box-shadow: 0 1px 3px rgba(22, 92, 58, 0.35); }
+.tab-badge { font-size: var(--fs-sub); font-weight: 600; color: var(--muted); background: #fff; border-radius: 999px; padding: 0 7px; line-height: 18px; }
+.tab.active .tab-badge { background: rgba(255, 255, 255, 0.22); color: #fff; }
+.tabs.primary { margin: -4px 0 12px; padding: 5px; background: var(--ink); border-color: var(--ink); }
+.tabs.primary .tab { font-size: 15px; padding: 8px 18px; color: #c8d3e0; }
+.tabs.primary .tab:hover:not(.active) { color: #fff; background: rgba(255, 255, 255, 0.1); border-color: transparent; }
+.tabs.primary .tab.active { background: var(--pitch); border-color: var(--pitch); }
+.tabs.primary .tab-badge { background: rgba(255, 255, 255, 0.15); color: #fff; }
 .main-panel > .tabs:not(.primary) { margin-top: 0; }
 .board-panel .tabs { margin-top: 8px; }
 .market-hint { margin: 0 0 6px; }
 .market-row { min-height: calc(var(--card-h) + 8px); }
+.staff-row .cards, .sponsor-row .cards { flex-wrap: wrap; }
 
 /* ---- 확정 막대: 고른 것을 보여주고 확정/취소 (Esc = 취소) ---- */
 .confirm-bar { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); z-index: 15; display: flex; align-items: center; gap: 14px; max-width: min(720px, calc(100vw - 32px)); background: var(--ink); color: #fff; padding: 10px 12px 10px 16px; border-radius: 12px; box-shadow: 0 10px 30px rgba(27, 42, 65, 0.35); animation: confirm-in 0.25s ease-out; }

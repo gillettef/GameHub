@@ -5,7 +5,7 @@ import { CONTRACT_LABEL, INFRA_LABEL, matchDieLabel } from './labels';
 import { acceptBoardRoll, rerollBoardDie, rollBoardDie } from './monday';
 import type { Rng } from './rng';
 import { chooseObjective, draftPick } from './setup';
-import { GameError, currentDay, getPlayer } from './state';
+import { GameError, canUndoTurn, currentDay, getPlayer } from './state';
 import type { GameState, LineupSubmission, LogEntry, PlayerId } from './state';
 import type { InfrastructureType, SponsorContract } from './types';
 import {
@@ -42,7 +42,8 @@ export type GameAction =
   | { type: 'submitLineup'; submission: LineupSubmission }
   | { type: 'rollMatchDie' }
   | { type: 'rerollMatchDie' }
-  | { type: 'acceptMatchRoll' };
+  | { type: 'acceptMatchRoll' }
+  | { type: 'undoTurn' }; // 주중 내 차례를 처음 상태로 되돌린다 (차례 끝내기 전까지)
 
 function apply(state: GameState, pid: PlayerId, action: GameAction, rng: Rng): GameState {
   switch (action.type) {
@@ -89,6 +90,8 @@ function apply(state: GameState, pid: PlayerId, action: GameAction, rng: Rng): G
       return rerollMatchDie(state, pid, rng);
     case 'acceptMatchRoll':
       return acceptMatchRoll(state, pid, rng);
+    case 'undoTurn':
+      return undoTurn(state, pid);
     default:
       throw new GameError(`unknown action: ${(action as { type: string }).type}`);
   }
@@ -159,12 +162,36 @@ function describe(before: GameState, after: GameState, pid: PlayerId, action: Ga
       const m = before.phase.kind === 'friday.aftermath' ? before.phase.matches[pid] : undefined;
       return m?.roll ? `경기 영향 적용: ${matchDieLabel(m.report.outcome, m.roll)}` : null;
     }
+    case 'undoTurn':
+      return '차례를 처음으로 되돌림';
   }
+}
+
+// 주중 차례의 첫 행동 직전에 상태를 찍어 둔다. 주중이 아니면 묵은 스냅샷을 버린다
+function withTurnSnapshot(state: GameState, pid: PlayerId): GameState {
+  if (state.phase.kind !== 'weekday' || state.phase.current !== pid) {
+    if (!state.turnSnapshot) return state;
+    const { turnSnapshot, ...rest } = state;
+    void turnSnapshot;
+    return rest;
+  }
+  if (canUndoTurn(state, pid)) return state;
+  const { turnSnapshot, ...rest } = state;
+  void turnSnapshot;
+  return { ...rest, turnSnapshot: { pid, week: state.week, day: state.phase.day, state: structuredClone(rest) } };
+}
+
+export function undoTurn(state: GameState, pid: PlayerId): GameState {
+  if (state.phase.kind !== 'weekday') throw new GameError('undo only during weekdays');
+  if (state.phase.current !== pid) throw new GameError('not your turn');
+  if (!canUndoTurn(state, pid)) throw new GameError('nothing to undo');
+  return structuredClone(state.turnSnapshot!.state);
 }
 
 export function applyAction(state: GameState, pid: PlayerId, action: GameAction, rng: Rng): GameState {
   getPlayer(state, pid);
-  const next = apply(state, pid, action, rng);
+  const base = action.type === 'undoTurn' ? state : withTurnSnapshot(state, pid);
+  const next = apply(base, pid, action, rng);
   const text = describe(state, next, pid, action);
   if (text) {
     // 행동 당시의 주차·요일로 기록하고, 행동이 낳은 후속 기록(경기 결과, 주말 정산 등)보다 앞에 둔다

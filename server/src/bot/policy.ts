@@ -62,7 +62,7 @@ function weekdayAction(view: GameView, me: PlayerPublicView, rng: Rng, failed: S
     if (can('buildInfrastructure') && me.infrastructure.length < INFRASTRUCTURE_MAX && INFRASTRUCTURE_COST <= spare) {
       const type = INFRA_ORDER.find((t) => {
         const def = cards.boardData.infrastructure.find((i) => i.type === t)!;
-        return !(def.unique && me.infrastructure.includes(t));
+        return !(def.unique && me.infrastructure.includes(t)) && (!def.requires || me.infrastructure.includes(def.requires));
       });
       if (type) options.push({ type: 'buildInfrastructure', infrastructure: type });
     }

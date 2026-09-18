@@ -139,10 +139,19 @@ export interface LogEntry {
   text: string;
 }
 
+// 주중 차례 시작 시점의 상태. 그 차례의 첫 행동 직전에 찍어 두고, 참가자가 "처음으로 되돌리기"를 하면 복원한다
+export interface TurnSnapshot {
+  pid: PlayerId;
+  week: number;
+  day: Weekday;
+  state: Omit<GameState, 'turnSnapshot'>;
+}
+
 export interface GameState {
   id: string;
   division: Division;
   week: number; // 1~6
+  turnSnapshot?: TurnSnapshot; // 뷰에는 내려보내지 않는다 (다른 참가자의 비공개 정보 포함)
   phase: Phase;
   seats: PlayerId[]; // 시계 방향 순서
   firstPlayer: PlayerId;
@@ -168,6 +177,12 @@ export function currentDay(state: GameState): LogDay {
     case 'gameOver':
       return 'weekend';
   }
+}
+
+// 주중 내 차례의 스냅샷이 현재 차례(참가자·주차·요일)의 것인가 = "처음으로 되돌리기" 가능
+export function canUndoTurn(state: GameState, pid: PlayerId): boolean {
+  const snap = state.turnSnapshot;
+  return state.phase.kind === 'weekday' && state.phase.current === pid && !!snap && snap.pid === pid && snap.week === state.week && snap.day === state.phase.day;
 }
 
 export function addLog(state: GameState, text: string, opts: { actor?: PlayerId; day?: LogDay } = {}): void {

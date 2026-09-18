@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { Icon } from './Icons';
 import { useStore } from '../store';
 
-const SPIN_MS = 1100;
+const SPIN_MS = 1100; // 굴리기를 누른 뒤 최소한 이만큼은 구른다
+const SPIN_FALLBACK_MS = 4000; // 서버 눈이 안 오면(거부 등) 이 뒤에 멈춘다
 const PIPS: Record<number, [number, number][]> = {
   1: [[50, 50]],
   2: [[28, 28], [72, 72]],
@@ -33,13 +34,16 @@ function Face({ n, className }: { n: number; className: string }) {
   );
 }
 
-// 메인 영역 우상단 주사위: 굴리기를 누르면 실제로 구르는 애니메이션 후 서버가 정한 눈으로 멈춘다
+// 사이드바의 주사위: 굴리기를 누르면 구르는 애니메이션이 시작되고, 서버가 정한 눈이 오면 최소 시간 뒤 그 면으로 멈춘다.
+// 멈추는 타이머는 ref 로 들고 있어 뷰가 중간에 바뀌어도(다음 차례로 넘어감 등) 취소되지 않는다.
 export function DiceTray() {
   const { view, session, act } = useStore();
   const [spinning, setSpinning] = useState(false);
   const [face, setFace] = useState(1);
+  const spinningRef = useRef(false);
+  const faceRef = useRef(1);
   const spinStarted = useRef(0);
-  const pendingFace = useRef<number | null>(null);
+  const stopTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const me = view && session ? view.players[session.playerId] : undefined;
   const phase = view?.phase;
@@ -64,37 +68,60 @@ export function DiceTray() {
   const rollKey = `${actorId}:${roll}`;
   const lastRollKey = useRef(rollKey);
 
-  // 서버의 눈이 오면: 아직 구르는 중이면 최소 시간이 지난 뒤 멈추고, 아니면 바로 표시.
-  // 다른 참가자의 새 눈이 도착하면 짧게 굴러가는 모습을 보여준 뒤 멈춘다
+  const settle = (n: number) => {
+    faceRef.current = n;
+    setFace(n);
+    spinningRef.current = false;
+    setSpinning(false);
+    stopTimer.current = null;
+  };
+  // 굴린 지 SPIN_MS 가 지난 뒤 n 면으로 멈춘다 (이미 지났으면 바로)
+  const stopAt = (n: number, minMs = SPIN_MS) => {
+    if (stopTimer.current) clearTimeout(stopTimer.current);
+    const remaining = Math.max(0, minMs - (Date.now() - spinStarted.current));
+    stopTimer.current = setTimeout(() => settle(n), remaining);
+  };
+  const beginSpin = () => {
+    spinStarted.current = Date.now();
+    spinningRef.current = true;
+    setSpinning(true);
+  };
+
   useEffect(() => {
     const changed = lastRollKey.current !== rollKey;
     lastRollKey.current = rollKey;
-    if (roll === null) return;
-    if (spinning) {
-      pendingFace.current = roll;
-      const remaining = Math.max(0, SPIN_MS - (Date.now() - spinStarted.current));
-      const t = setTimeout(() => {
-        setFace(pendingFace.current ?? roll);
-        setSpinning(false);
-      }, remaining);
-      return () => clearTimeout(t);
-    }
-    if (changed && !mine) {
-      spinStarted.current = Date.now();
-      pendingFace.current = roll;
-      setSpinning(true);
+    if (roll === null) {
+      // 눈이 사라짐(다음 차례로 넘어감 등): 구르는 중이면 마지막 면으로 멈춘다
+      if (spinningRef.current) stopAt(faceRef.current);
       return;
     }
+    if (spinningRef.current) {
+      stopAt(roll); // 내가 굴린 결과가 도착
+      return;
+    }
+    if (changed && !mine) {
+      // 다른 참가자의 새 눈: 짧게 굴러가는 모습을 보여준 뒤 멈춘다
+      beginSpin();
+      stopAt(roll);
+      return;
+    }
+    faceRef.current = roll;
     setFace(roll);
-  }, [roll, rollKey, spinning, mine]);
+  }, [roll, rollKey, mine]); // 눈·차례가 바뀔 때만 (stopAt 등은 ref 기반이라 의존성에 넣지 않는다)
+
+  useEffect(
+    () => () => {
+      if (stopTimer.current) clearTimeout(stopTimer.current);
+    },
+    [],
+  );
 
   if (!mode || !actor) return null;
   const canRoll = mine && !decided && roll === null;
   const canReroll = mine && !decided && roll !== null && actor.resources.fandom >= 1;
   const start = (reroll: boolean) => {
-    spinStarted.current = Date.now();
-    pendingFace.current = null;
-    setSpinning(true);
+    beginSpin();
+    stopAt(faceRef.current, SPIN_FALLBACK_MS); // 서버가 거부하면 원래 면으로 되돌아간다
     if (mode === 'board') act({ type: reroll ? 'rerollBoardDie' : 'rollBoardDie' });
     else act({ type: reroll ? 'rerollMatchDie' : 'rollMatchDie' });
   };
@@ -113,6 +140,7 @@ export function DiceTray() {
           <Face n={4} className="bottom" />
         </div>
       </div>
+      <div className="die-readout" aria-label="주사위 눈">{roll !== null && !spinning ? `눈 ${roll}` : spinning ? '구르는 중' : '—'}</div>
       <div className="dice-actions">
         {decided ? (
           <span className="muted small">처리 완료</span>

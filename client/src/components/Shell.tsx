@@ -243,6 +243,11 @@ export function PendingModal() {
           })}
         </div>
         <div className="modal-actions">
+          {view?.phase.kind === 'weekday' && view.phase.canUndo && (
+            <button className="link" onClick={() => act({ type: 'undoTurn' })} title="이번 차례의 행동을 모두 무르고 차례 처음으로 되돌립니다">
+              차례 처음으로 되돌리기
+            </button>
+          )}
           <button className="ghost" disabled={!picked} onClick={() => setPick(null)}>취소</button>
           <button
             className="primary"

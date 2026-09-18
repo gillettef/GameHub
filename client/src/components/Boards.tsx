@@ -79,7 +79,7 @@ function ClubBoard({ p }: { p: PlayerPublicView }) {
       </div>
       <div className="staff-row">
         <span className="board-label">직원 · 임원</span>
-        <div className="cards scroll-x">
+        <div className="cards">
           {p.staff.map((s, i) => (
             <StaffCardView key={`${s.cardId}-${i}`} cardId={s.cardId} exhausted={s.exhausted} suspension={s.suspension} />
           ))}
@@ -161,7 +161,7 @@ function StadiumBoard({ p }: { p: PlayerPublicView }) {
         {p.sponsors.billboards.length === 0 && !p.sponsors.naming ? (
           <span className="muted small">계약한 스폰서가 없습니다. 스폰서 키트 계약은 효과만 받고 카드를 버립니다.</span>
         ) : (
-          <div className="cards scroll-x">
+          <div className="cards">
             {p.sponsors.billboards.map((id, i) => (
               <SponsorCardView key={`${id}-${i}`} cardId={id} badge={`${i + 1}번 광고판`} />
             ))}
