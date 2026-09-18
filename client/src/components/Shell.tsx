@@ -27,14 +27,14 @@ export function Header({ subtitle }: { subtitle?: string }) {
         <span className="room">방 {room?.code}</span>
         {subtitle && <span className="tag">{subtitle}</span>}
       </div>
-      <div className="status">
+      <div className="status" title={`${view.week}주차 · ${phaseLabel(view.phase.kind)}`}>
         <span className="week">{view.week}주차</span>
         <span className="phase">{phaseLabel(view.phase.kind)}{view.phase.kind === 'weekday' && ` · ${DAY_LABEL[view.phase.day]}`}</span>
       </div>
       <div className="conn">
         {session && <NotifyToggles />}
-        <span className={`dot ${connected ? 'on' : 'off'}`} />
-        {connected ? '연결됨' : '재연결 중'}
+        <span className={`dot ${connected ? 'on' : 'off'}`} title={connected ? '연결됨' : '재연결 중'} />
+        <span className="conn-text">{connected ? '연결됨' : '재연결 중'}</span>
         <button className="link" onClick={leave}>나가기</button>
       </div>
     </header>
