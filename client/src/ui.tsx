@@ -28,6 +28,8 @@ interface UiStore {
   showMarket: (t: MarketTab) => void; // 공용 보드 → 이적 시장 → 해당 행
   releasing: boolean; // 방출 모드: 경기 보드의 내 선수 카드를 눌러 방출 대상을 고른다
   setReleasing: (v: boolean) => void;
+  settledRoll: string | null; // 주사위 트레이가 멈춰 보여주고 있는 눈의 키(`actor:roll`). 구르는 동안은 null
+  setSettledRoll: (key: string | null) => void;
 }
 
 const UiContext = createContext<UiStore | null>(null);
@@ -54,6 +56,7 @@ export function UiProvider({ children }: { children: ReactNode }) {
   const [sharedTab, setSharedTab] = useState<SharedTab>(() => defaults(view.phase.kind).shared);
   const [marketTab, setMarketTab] = useState<MarketTab>('players');
   const [releasing, setReleasing] = useState(false);
+  const [settledRoll, setSettledRoll] = useState<string | null>(null);
 
   useEffect(() => {
     if (!view.seats.includes(selected)) setSelected(session?.playerId ?? view.seats[0]!);
@@ -93,8 +96,8 @@ export function UiProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo<UiStore>(
-    () => ({ selected, selectPlayer, mainTab, setMainTab, boardTab, setBoardTab, sharedTab, setSharedTab, showBoard, showShared, marketTab, setMarketTab, showMarket, releasing, setReleasing }),
-    [selected, selectPlayer, mainTab, boardTab, sharedTab, showBoard, showShared, marketTab, showMarket, releasing],
+    () => ({ selected, selectPlayer, mainTab, setMainTab, boardTab, setBoardTab, sharedTab, setSharedTab, showBoard, showShared, marketTab, setMarketTab, showMarket, releasing, setReleasing, settledRoll, setSettledRoll }),
+    [selected, selectPlayer, mainTab, boardTab, sharedTab, showBoard, showShared, marketTab, showMarket, releasing, settledRoll],
   );
   return <UiContext.Provider value={value}>{children}</UiContext.Provider>;
 }
@@ -103,4 +106,14 @@ export function useUi(): UiStore {
   const s = useContext(UiContext);
   if (!s) throw new Error('UiProvider missing');
   return s;
+}
+
+export function rollKeyOf(actorId: string | null, roll: number | null): string {
+  return `${actorId}:${roll}`;
+}
+
+// 서버가 정한 눈을 화면에 보여줘도 되는가: 주사위 트레이가 그 눈으로 멈춘 뒤에만. 구르는 동안은 null
+export function useRevealedRoll(actorId: string, roll: number | null): number | null {
+  const { settledRoll } = useUi();
+  return roll !== null && settledRoll === rollKeyOf(actorId, roll) ? roll : null;
 }

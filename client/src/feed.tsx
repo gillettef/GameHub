@@ -16,6 +16,8 @@ import { useView } from './store';
 const TOAST_MS = 3000;
 const MAX_TOASTS = 4;
 const MAX_DELTAS = 10;
+const ROLL_DELAY_MS = 1300; // 주사위 눈이 든 토스트는 주사위 애니메이션(1.1초)이 멈춘 뒤에 띄운다
+const ROLL_TEXT = /주사위 → \d|다시 굴림 → \d/;
 
 type Delta =
   | { kind: 'resource'; resource: Resource; amount: number }
@@ -196,7 +198,9 @@ export function EffectToasts() {
     const toast = buildToast(nextId.current, before, view);
     if (!toast) return;
     nextId.current += 1;
-    setToasts((t) => [...t, toast].slice(-MAX_TOASTS));
+    const push = () => setToasts((t) => [...t, toast].slice(-MAX_TOASTS));
+    if (toast.lines.some((l) => ROLL_TEXT.test(l.text))) setTimeout(push, ROLL_DELAY_MS);
+    else push();
   }, [view]);
 
   if (toasts.length === 0) return null;

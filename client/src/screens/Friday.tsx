@@ -11,6 +11,7 @@ import { CostChips, Icon, ResourceChip } from '../components/Icons';
 import { TurnBanner } from '../components/Turn';
 import { SECTOR_LABEL, matchDieLabel } from '../labels';
 import { useGame } from '../store';
+import { useRevealedRoll } from '../ui';
 
 function TokenChipView({ token, name }: { token: UniformToken; name?: string }) {
   return (
@@ -201,6 +202,7 @@ export function FridayAftermathScreen() {
   const actor = view.players[current]!;
   const mine = current === view.me;
   const m = matches[current]!;
+  const roll = useRevealedRoll(current, m.roll); // 사이드바 주사위가 멈춘 뒤에만 눈을 보여준다
   const opponent = cards.opponent(m.opponentCardId);
   const outcomeLabel = { win: '승리', draw: '무승부', loss: '패배' }[m.report.outcome];
   const done = Object.fromEntries(view.seats.map((id) => [id, matches[id]!.decided]));
@@ -248,7 +250,7 @@ export function FridayAftermathScreen() {
         <table className="die-table">
           <tbody>
             {[6, 5, 4, 3, 2, 1].map((face) => (
-              <tr key={face} className={m.roll === face ? 'hit' : ''}>
+              <tr key={face} className={roll === face ? 'hit' : ''}>
                 <td className="face">{face}</td>
                 <td>{matchDieLabel(m.report.outcome, face)}</td>
               </tr>
@@ -257,11 +259,15 @@ export function FridayAftermathScreen() {
         </table>
         {m.roll === null ? (
           <p className="hint">
-            <Icon name="die" size={14} /> {mine ? '오른쪽 위 주사위를 굴리세요.' : `${actor.name}이(가) 주사위를 굴리기를 기다리는 중`}
+            <Icon name="die" size={14} /> {mine ? '왼쪽 주사위를 굴리세요.' : `${actor.name}이(가) 주사위를 굴리기를 기다리는 중`}
+          </p>
+        ) : roll === null ? (
+          <p className="hint">
+            <Icon name="die" size={14} /> 주사위가 구르는 중…
           </p>
         ) : mine ? (
           <div className="row">
-            <button className="primary" onClick={() => act({ type: 'acceptMatchRoll' })}>적용: {matchDieLabel(m.report.outcome, m.roll)}</button>
+            <button className="primary" onClick={() => act({ type: 'acceptMatchRoll' })}>적용: {matchDieLabel(m.report.outcome, roll)}</button>
             <span className="muted small">팬덤 1개로 다시 굴릴 수 있습니다</span>
           </div>
         ) : (
