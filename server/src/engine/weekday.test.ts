@@ -148,8 +148,10 @@ describe('스타디움/사무실 건설 (p.19)', () => {
     expect(s.players['a']!.infrastructure).toEqual(['stand3']);
     resetBasic(s);
     expect(() => buildInfrastructure(s, 'a', 'stand3')).toThrow(GameError);
+    const moneyTrack = s.players['a']!.tracks.money;
     s = buildInfrastructure(s, 'a', 'shop');
-    expect(s.players['a']!.resources.money).toBe(15); // 3돈 지불 후 상점 보너스 +1
+    expect(s.players['a']!.resources.money).toBe(14); // 3돈 지불
+    expect(s.players['a']!.tracks.money).toBe(Math.min(5, moneyTrack + 1)); // 상점 보너스: 돈 트랙 +1
     s.players['a']!.infrastructure = ['shop', 'shop', 'shop', 'shop', 'shop', 'shop', 'shop'];
     resetBasic(s);
     expect(() => buildInfrastructure(s, 'a', 'lights')).toThrow(GameError);
