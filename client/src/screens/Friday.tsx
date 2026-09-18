@@ -6,7 +6,6 @@ import { SECTOR_PAIRS, sectorCounts } from '@server/engine/match';
 import type { UniformToken } from '@server/engine/state';
 import { RESOURCES, SECTORS } from '@server/engine/types';
 import type { Resources, Sector } from '@server/engine/types';
-import { useCommit } from '../commit';
 import { OpponentCardView, PlayerCardView, TacticCardView } from '../components/Cards';
 import { CostChips, Icon, ResourceChip } from '../components/Icons';
 import { TurnBanner } from '../components/Turn';
@@ -24,8 +23,7 @@ function TokenChipView({ token, name }: { token: UniformToken; name?: string }) 
 }
 
 export function FridayPrepareScreen() {
-  const { view, me } = useGame();
-  const { committing, commit } = useCommit();
+  const { view, me, act } = useGame();
   const [tacticCardId, setTacticCardId] = useState(view.self.tacticCards[0] ?? '');
   const [formationIndex, setFormationIndex] = useState(0);
   const [played, setPlayed] = useState<string[]>([]);
@@ -65,10 +63,11 @@ export function FridayPrepareScreen() {
   const affordable = RESOURCES.every((r) => (cost[r] ?? 0) <= me.resources[r]);
   const current = view.phase.current;
   const myTurn = current === view.me;
-  const canSubmit = myTurn && !submitted && issues.length === 0 && affordable && tacticCardId && !committing;
+  const canSubmit = myTurn && !submitted && issues.length === 0 && affordable && !!tacticCardId;
 
+  // "라인업 제출" 버튼 자체가 확정이다 (제출 전까지는 얼마든지 고칠 수 있다)
   const submit = () =>
-    commit('lineup', {
+    act({
       type: 'submitLineup',
       submission: { tacticCardId, formationIndex, players: played, placements, fandomInStands: stands, activations: activationMap },
     });
@@ -186,7 +185,7 @@ export function FridayPrepareScreen() {
               비용 {RESOURCES.filter((r) => (cost[r] ?? 0) > 0).map((r) => <ResourceChip key={r} resource={r} amount={cost[r]!} />)}
               {!affordable && <span className="error">자원 부족</span>}
             </span>
-            <button className={`primary${committing ? ' committing' : ''}`} disabled={!canSubmit} onClick={submit}>{committing ? '제출 중…' : '라인업 제출'}</button>
+            <button className="primary" disabled={!canSubmit} onClick={submit}>라인업 제출</button>
           </div>
         </div>
       )}
@@ -196,8 +195,7 @@ export function FridayPrepareScreen() {
 
 // 경기 결과도 선 참가자부터 한 명씩: 차례인 참가자의 경기 보고서와 주사위를 모두가 본다
 export function FridayAftermathScreen() {
-  const { view } = useGame();
-  const { chosen, committing, commit } = useCommit();
+  const { view, act } = useGame();
   if (view.phase.kind !== 'friday.aftermath') return null;
   const { current, matches } = view.phase;
   const actor = view.players[current]!;
@@ -250,7 +248,7 @@ export function FridayAftermathScreen() {
         <table className="die-table">
           <tbody>
             {[6, 5, 4, 3, 2, 1].map((face) => (
-              <tr key={face} className={`${m.roll === face ? 'hit' : ''}${chosen === 'roll' && m.roll === face ? ' chosen' : ''}`}>
+              <tr key={face} className={m.roll === face ? 'hit' : ''}>
                 <td className="face">{face}</td>
                 <td>{matchDieLabel(m.report.outcome, face)}</td>
               </tr>
@@ -263,9 +261,7 @@ export function FridayAftermathScreen() {
           </p>
         ) : mine ? (
           <div className="row">
-            <button className={`primary${committing ? ' committing' : ''}`} disabled={committing} onClick={() => commit('roll', { type: 'acceptMatchRoll' })}>
-              {committing ? '적용 중…' : `적용: ${matchDieLabel(m.report.outcome, m.roll)}`}
-            </button>
+            <button className="primary" onClick={() => act({ type: 'acceptMatchRoll' })}>적용: {matchDieLabel(m.report.outcome, m.roll)}</button>
             <span className="muted small">팬덤 1개로 다시 굴릴 수 있습니다</span>
           </div>
         ) : (

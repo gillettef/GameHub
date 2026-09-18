@@ -2,18 +2,22 @@ import { useState } from 'react';
 import { cards } from '@server/engine/cards';
 import { INFRASTRUCTURE_COST } from '@server/engine/types';
 import type { InfrastructureType } from '@server/engine/types';
+import { useCommit } from '../commit';
 import { PlayerCardView } from '../components/Cards';
 import { CostChips, Icon } from '../components/Icons';
 import { DAY_LABEL, INFRA_LABEL } from '../labels';
 import { useGame } from '../store';
 
+// 주중 행동: 버튼·카드를 누르면 고른 것이 강조되고, 아래 확정 막대에서 확정해야 서버에 보낸다. "차례 끝내기"만 즉시
 export function WeekdayScreen() {
   const { view, me, act } = useGame();
+  const { chosen, select } = useCommit();
   const [releasing, setReleasing] = useState(false);
   if (view.phase.kind !== 'weekday') return null;
   const { day, current, basicDone, paidDone } = view.phase;
   const myTurn = current === view.me;
   const officeStep = cards.boardData.office[me.office];
+  const cls = (key: string) => (chosen === key ? 'chosen' : '');
 
   if (!myTurn) {
     return (
@@ -34,12 +38,14 @@ export function WeekdayScreen() {
           기본 행동 {basicDone ? '완료' : '1회'} · 유급 행동(<Icon name="ops" size={12} />2) {paidDone ? '완료' : '가능'}
         </span>
       </div>
-      <p className="hint">아래 이적 시장의 카드를 눌러 영입·고용·계약할 수 있습니다.</p>
+      <p className="hint">아래 이적 시장 탭의 카드를 눌러 영입·고용·계약할 수 있습니다. 고른 뒤 화면 아래에서 확정하세요.</p>
 
       <div className="action-groups">
         <div className="action-group">
           <h3>선수</h3>
-          <button disabled={basicDone} onClick={() => act({ type: 'recruitProspect' })}><Icon name="prospect" />유망주 영입 <CostChips cost={{ money: 2 }} /></button>
+          <button disabled={basicDone} className={cls('prospect')} onClick={() => select('prospect', { type: 'recruitProspect' }, <>유망주 영입 <CostChips cost={{ money: 2 }} /></>)}>
+            <Icon name="prospect" />유망주 영입 <CostChips cost={{ money: 2 }} />
+          </button>
           <button disabled={basicDone} className={releasing ? 'active' : ''} onClick={() => setReleasing((v) => !v)}>선수 방출…</button>
         </div>
         <div className="action-group">
@@ -47,14 +53,19 @@ export function WeekdayScreen() {
           {cards.boardData.infrastructure.map((i) => (
             <button
               key={i.type}
+              className={cls(`infra:${i.type}`)}
               disabled={basicDone || (i.unique && me.infrastructure.includes(i.type))}
-              onClick={() => act({ type: 'buildInfrastructure', infrastructure: i.type as InfrastructureType })}
+              onClick={() => select(`infra:${i.type}`, { type: 'buildInfrastructure', infrastructure: i.type as InfrastructureType }, <>건설: <b>{INFRA_LABEL[i.type]}</b> <CostChips cost={{ money: INFRASTRUCTURE_COST }} /> → 승점 {i.vp}</>)}
               title={i.bonus.length ? '보너스 있음' : undefined}
             >
               {INFRA_LABEL[i.type]} <span className="chip vp"><Icon name="vp" />{i.vp}</span>
             </button>
           ))}
-          <button disabled={basicDone || !officeStep || officeStep.cost === 0} onClick={() => act({ type: 'buildOffice' })}>
+          <button
+            className={cls('office')}
+            disabled={basicDone || !officeStep || officeStep.cost === 0}
+            onClick={() => officeStep && select('office', { type: 'buildOffice' }, <>사무실 확장 <CostChips cost={{ money: officeStep.cost }} /> → 승점 {officeStep.vp}</>)}
+          >
             사무실 확장 {officeStep && officeStep.cost > 0 ? <CostChips cost={{ money: officeStep.cost }} /> : '(완료)'}
           </button>
         </div>
@@ -66,10 +77,20 @@ export function WeekdayScreen() {
             const blocked = s.exhausted || s.suspension > 0;
             return (
               <span key={`s${index}`} className="split">
-                <button disabled={blocked || basicDone} onClick={() => act({ type: 'cardAction', source: { kind: 'staff', index } })} title={card.action.text}>
+                <button
+                  className={cls(`staff:${index}`)}
+                  disabled={blocked || basicDone}
+                  onClick={() => select(`staff:${index}`, { type: 'cardAction', source: { kind: 'staff', index } }, <>카드 행동: <b>{card.name}</b> <CostChips cost={card.action!.cost} /> — {card.action!.text}</>)}
+                  title={card.action.text}
+                >
                   {card.name} <CostChips cost={card.action.cost} />
                 </button>
-                <button className="paid" disabled={blocked || paidDone || me.resources.ops < 2} onClick={() => act({ type: 'cardAction', source: { kind: 'staff', index }, paid: true })} title="운영 2개로 추가 수행">
+                <button
+                  className={`paid ${cls(`staff-paid:${index}`)}`}
+                  disabled={blocked || paidDone || me.resources.ops < 2}
+                  onClick={() => select(`staff-paid:${index}`, { type: 'cardAction', source: { kind: 'staff', index }, paid: true }, <>유급 카드 행동: <b>{card.name}</b> <CostChips cost={{ ops: 2, ...card.action!.cost }} /> — {card.action!.text}</>)}
+                  title="운영 2개로 추가 수행"
+                >
                   유급
                 </button>
               </span>
@@ -80,10 +101,20 @@ export function WeekdayScreen() {
             if (!card.action) return null;
             return (
               <span key={`e${index}`} className="split">
-                <button disabled={e.exhausted || basicDone} onClick={() => act({ type: 'cardAction', source: { kind: 'executive', index } })} title={card.action.text}>
+                <button
+                  className={cls(`exec:${index}`)}
+                  disabled={e.exhausted || basicDone}
+                  onClick={() => select(`exec:${index}`, { type: 'cardAction', source: { kind: 'executive', index } }, <>카드 행동: <b>{card.name}</b> <CostChips cost={card.action!.cost} /> — {card.action!.text}</>)}
+                  title={card.action.text}
+                >
                   {card.name} <CostChips cost={card.action.cost} />
                 </button>
-                <button className="paid" disabled={e.exhausted || paidDone || me.resources.ops < 2} onClick={() => act({ type: 'cardAction', source: { kind: 'executive', index }, paid: true })} title="운영 2개로 추가 수행">
+                <button
+                  className={`paid ${cls(`exec-paid:${index}`)}`}
+                  disabled={e.exhausted || paidDone || me.resources.ops < 2}
+                  onClick={() => select(`exec-paid:${index}`, { type: 'cardAction', source: { kind: 'executive', index }, paid: true }, <>유급 카드 행동: <b>{card.name}</b> <CostChips cost={{ ops: 2, ...card.action!.cost }} /> — {card.action!.text}</>)}
+                  title="운영 2개로 추가 수행"
+                >
                   유급
                 </button>
               </span>
@@ -92,7 +123,7 @@ export function WeekdayScreen() {
           {!me.staff.some((s) => cards.staff(s.cardId).action) && !me.executives.some((e) => cards.executive(e.cardId).action) && <span className="muted small">행동이 있는 카드가 없습니다</span>}
         </div>
         <div className="action-group turn">
-          <button className="ghost" disabled={basicDone} onClick={() => act({ type: 'pass' })}>패스</button>
+          <button className={`ghost ${cls('pass')}`} disabled={basicDone} onClick={() => select('pass', { type: 'pass' }, <>기본 행동을 <b>패스</b>합니다</>)}>패스</button>
           <button className="primary" disabled={!basicDone} onClick={() => act({ type: 'endTurn' })}>차례 끝내기</button>
         </div>
       </div>
@@ -102,7 +133,13 @@ export function WeekdayScreen() {
           <h3>방출할 선수 <span className="muted">— 2 + 현재 역량만큼 돈, 부상·출장정지면 절반</span></h3>
           <div className="cards">
             {me.roster.map((r) => (
-              <PlayerCardView key={r.instanceId} cardId={r.cardId} instance={r} onClick={() => { act({ type: 'releasePlayer', instanceId: r.instanceId }); setReleasing(false); }} />
+              <PlayerCardView
+                key={r.instanceId}
+                cardId={r.cardId}
+                instance={r}
+                chosen={chosen === `release:${r.instanceId}`}
+                onClick={() => select(`release:${r.instanceId}`, { type: 'releasePlayer', instanceId: r.instanceId }, <>방출: <b>{cards.player(r.cardId).name}</b></>)}
+              />
             ))}
           </div>
         </div>

@@ -3,14 +3,13 @@ import type { PlayerId } from '@server/engine/state';
 import { BoardCardView, ExecutiveCardView } from '../components/Cards';
 import { Icon } from '../components/Icons';
 import { TurnBanner } from '../components/Turn';
-import { useCommit } from '../commit';
 import { COLOR_LABEL } from '../labels';
 import { useGame } from '../store';
 
-// 이사회는 선 참가자부터 한 명씩 진행한다. 차례인 참가자의 이사회 카드·임원·주사위 결과를 모두가 본다
+// 이사회는 선 참가자부터 한 명씩 진행한다. 차례인 참가자의 이사회 카드·임원·주사위 결과를 모두가 본다.
+// "이 결정 적용" 버튼 자체가 확정이다(대안은 팬덤 재굴림). 적용 결과는 효과 토스트가 보여준다
 export function MondayScreen() {
-  const { view } = useGame();
-  const { chosen, committing, commit } = useCommit();
+  const { view, act } = useGame();
   if (view.phase.kind !== 'monday.board') return null;
   const { current, meetings } = view.phase;
   const actor: PlayerId = current;
@@ -35,7 +34,7 @@ export function MondayScreen() {
           : `${player.name}의 이사회입니다. 주사위 결과와 임원들의 투표를 함께 지켜보세요.`}
       </p>
       <div className="two-col">
-        <BoardCardView cardId={meeting.card} highlight={color} chosen={chosen === 'decision'} />
+        <BoardCardView cardId={meeting.card} highlight={color} />
         <div className="stack">
           {meeting.roll === null ? (
             <p className="hint">
@@ -57,9 +56,7 @@ export function MondayScreen() {
               </div>
               {mine ? (
                 <div className="row">
-                  <button className={`primary${committing ? ' committing' : ''}`} disabled={committing} onClick={() => commit('decision', { type: 'acceptBoardRoll' })}>
-                    {committing ? '결정 적용 중…' : '이 결정 적용'}
-                  </button>
+                  <button className="primary" onClick={() => act({ type: 'acceptBoardRoll' })}>이 결정 적용</button>
                   <span className="muted small">마음에 안 들면 주사위 영역에서 팬덤 1개로 다시 굴릴 수 있습니다</span>
                 </div>
               ) : (

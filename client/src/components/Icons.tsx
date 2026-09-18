@@ -2,7 +2,7 @@ import type { Effect, PlayerToken, Resource, Track } from '@server/engine/types'
 import { RESOURCE_LABEL, TOKEN_LABEL, describeEffect } from '../labels';
 
 // 16px 단색 아이콘 세트. 색은 currentColor
-type IconName = Resource | 'vp' | 'attack' | 'defense' | 'train' | 'injury' | 'suspension' | 'strength' | 'weakness' | 'tactic' | 'prospect' | 'goal' | 'die';
+export type IconName = Resource | 'vp' | 'attack' | 'defense' | 'train' | 'injury' | 'suspension' | 'strength' | 'weakness' | 'tactic' | 'prospect' | 'goal' | 'die';
 
 const PATHS: Record<IconName, React.ReactNode> = {
   money: (
