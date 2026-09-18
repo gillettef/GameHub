@@ -104,7 +104,7 @@ describe('특성 (임원·직원 지속 효과)', () => {
     const plain = hireStaff(plainState, 'a', 4, seededRng());
     expect(hired.players['a']!.resources.money).toBe(plain.players['a']!.resources.money + hireCost(plainState.players['a']!, cardCost) - hireCost(s.players['a']!, cardCost));
     const prospect = recruitProspect(s, 'a');
-    // 유망주 비용 1 − 할인 1 = 0
+    // 유망주 비용 2 − 할인 1 = 1
     expect(prospect.players['a']!.resources.money).toBe(10 - prospectCost(s.players['a']!, cards.player(s.decks.prospects[0]!).untrained.cost));
 
     s.players['a']!.staff.find((x) => x.cardId === 'st-19')!.suspension = 1;

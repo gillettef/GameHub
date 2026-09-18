@@ -67,12 +67,12 @@ describe('선수 카드 (p.15~16, p.22)', () => {
       expectValidSide(c.trained);
     }
   });
-  // 사용자 결정(2026-09): 유망주 미훈련 면은 역량 1·비용 1 고정, 공격/수비만 훈련 면과 같게 드러난다
-  it('유망주 미훈련 면은 역량 1·비용 1·번호 없음, 역할은 훈련 면과 같고, 이름은 본명', () => {
+  // 사용자 결정(2026-09): 유망주 미훈련 면은 역량 1·비용 2 고정, 공격/수비만 훈련 면과 같게 드러난다
+  it('유망주 미훈련 면은 역량 1·비용 2·번호 없음, 역할은 훈련 면과 같고, 이름은 본명', () => {
     const prospects = PLAYER_CARDS.filter((c) => c.kind === 'prospect');
     const byRole = { attack: 0, defense: 0 };
     for (const p of prospects) {
-      expect(p.untrained.cost).toBe(1);
+      expect(p.untrained.cost).toBe(2); // 유망주 영입 비용 2 고정 (사용자 결정)
       expect(p.untrained.skill).toBe(1);
       expect(p.untrained.number).toBeUndefined();
       expect(p.untrained.effect).toBeUndefined();
