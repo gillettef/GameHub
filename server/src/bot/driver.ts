@@ -1,3 +1,4 @@
+import type { GameAction } from '../engine/actions';
 import { createRng } from '../engine/rng';
 import type { Rng } from '../engine/rng';
 import { viewFor } from '../engine/view';
@@ -20,8 +21,34 @@ export function turnKeyOf(view: GameView): string {
   return `${view.week}:${phase.kind}:${day}:${current}`;
 }
 
+// 액션 뒤에 쉬는 시간(delayMs 의 배수). 사람이 지켜보며 봇의 선택과 결과(효과 토스트·주사위 애니메이션)를
+// 읽을 수 있도록, 굴린 뒤에는 주사위가 멈추고 결과가 보일 때까지, 행동 뒤에는 토스트가 떠 있는 동안 기다린다
+const PAUSE_FACTOR: Record<GameAction['type'], number> = {
+  draftPick: 1,
+  chooseObjective: 1,
+  resolvePending: 2,
+  rollBoardDie: 4,
+  rerollBoardDie: 4,
+  acceptBoardRoll: 3,
+  recruitPlayer: 3,
+  recruitProspect: 3,
+  releasePlayer: 3,
+  hireStaff: 3,
+  signSponsor: 3,
+  buildInfrastructure: 3,
+  buildOffice: 3,
+  cardAction: 3,
+  pass: 2,
+  endTurn: 1.5,
+  submitLineup: 3,
+  rollMatchDie: 4,
+  rerollMatchDie: 4,
+  acceptMatchRoll: 3,
+  undoTurn: 1,
+};
+
 // 방 안의 서버 측 봇을 움직인다. 사람 액션이 들어올 때마다 poke() 해 주면
-// 봇들이 한 번에 한 액션씩(관전 가능하도록 delayMs 간격) 더 할 일이 없을 때까지 진행한다
+// 봇들이 한 번에 한 액션씩(관전 가능하도록 delayMs 를 기준으로 액션마다 다른 간격) 더 할 일이 없을 때까지 진행한다
 export class BotDriver {
   private timers = new Map<string, NodeJS.Timeout>();
   private memory = new Map<string, BotMemory>();
@@ -32,15 +59,16 @@ export class BotDriver {
     private delayMs = 300,
   ) {}
 
-  poke(room: Room): void {
+  poke(room: Room, delay = this.delayMs): void {
     if (room.status !== 'playing' || !room.players.some((p) => p.isBot)) return;
     if (this.timers.has(room.code)) return;
     this.timers.set(
       room.code,
       setTimeout(() => {
         this.timers.delete(room.code);
-        if (this.step(room.code)) this.poke(this.rooms.get(room.code));
-      }, this.delayMs),
+        const applied = this.step(room.code);
+        if (applied) this.poke(this.rooms.get(room.code), this.delayMs * PAUSE_FACTOR[applied.type]);
+      }, delay),
     );
   }
 
@@ -51,15 +79,15 @@ export class BotDriver {
     return steps;
   }
 
-  // 봇 하나의 액션 하나를 적용. 적용했으면 true
-  private step(code: string): boolean {
+  // 봇 하나의 액션 하나를 적용. 적용한 액션을 돌려준다 (없으면 null)
+  private step(code: string): GameAction | null {
     let room: Room;
     try {
       room = this.rooms.get(code);
     } catch {
-      return false;
+      return null;
     }
-    if (room.status !== 'playing' || !room.game) return false;
+    if (room.status !== 'playing' || !room.game) return null;
 
     for (const bot of room.players.filter((p) => p.isBot)) {
       const view = viewFor(room.game, bot.id);
@@ -69,13 +97,13 @@ export class BotDriver {
       try {
         const next = this.rooms.act(code, bot.id, action);
         this.onChange(next);
-        return true;
+        return action;
       } catch (e) {
         if (!(e instanceof RoomError)) throw e;
         mem.failed.add(action.type === 'cardAction' && action.paid ? 'paidCardAction' : action.type);
       }
     }
-    return false;
+    return null;
   }
 
   private memoryFor(room: Room, botId: string, view: GameView): BotMemory {
