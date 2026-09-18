@@ -6,6 +6,7 @@ import type { Rng } from './rng';
 import { createGame } from './setup';
 import type { GameState } from './state';
 import { GameError, emptyMods } from './state';
+import type { Effect } from './types';
 
 function game(): GameState {
   return createGame({ id: 'g', division: 3, players: [{ id: 'a', name: 'A' }, { id: 'b', name: 'B' }] }, createRng(1));
@@ -204,6 +205,47 @@ describe('applyEffects', () => {
     const post = { ...pre, stage: 'post' as const, myGoals: 2, theirGoals: 0 };
     applyEffects(s, 'a', [mods.deferred[0]!.effect], '전술', { mods, match: post });
     expect(p.vp).toBe(1);
+  });
+
+  // 베테랑의 "이 선수에 부상"·"이 선수를 훈련" (사용자 요청, 2026-09)
+  it('target: self 는 효과를 가진 카드 자신에게만 대상 선택 없이 적용되고, 출처 카드가 없으면 무시된다', () => {
+    const s = game();
+    const p = s.players['a']!;
+    const inst = p.roster[0]!;
+    applyEffects(s, 'a', [{ type: 'addPlayerToken', token: 'injury', count: 1, target: 'self' }], 'v', { inst });
+    expect(inst.tokens.injury).toBe(1);
+    expect(p.pending).toHaveLength(0);
+    applyEffects(s, 'a', [{ type: 'trainPlayer', count: 1, target: 'self' }], 'v', { inst });
+    expect(inst.trained).toBe(true);
+    expect(p.roster[1]!.trained).toBe(false);
+    applyEffects(s, 'a', [{ type: 'trainPlayer', count: 1, target: 'self' }], 'v', { inst }); // 이미 훈련됨 → 무시
+    expect(p.pending).toHaveLength(0);
+    applyEffects(s, 'a', [{ type: 'removePlayerToken', token: 'injury', count: 1, target: 'self' }], 'v', { inst });
+    expect(inst.tokens.injury).toBe(0);
+    applyEffects(s, 'a', [{ type: 'addPlayerToken', token: 'injury', count: 1, target: 'self' }], 'v'); // 출처 없음
+    expect(p.roster.every((r) => r.tokens.injury === 0)).toBe(true);
+    expect(p.pending).toHaveLength(0);
+  });
+
+  it('rollDie 는 눈이 atMost 이하일 때만 효과를, 아니면 otherwise 를 적용하고 기록에 남긴다', () => {
+    const s = game();
+    const p = s.players['a']!;
+    const fixed = (face: number): Rng => ({ float: () => rng.float(), int: (n) => rng.int(n), shuffle: (a) => rng.shuffle(a), die: () => face });
+    const effect: Effect = { type: 'rollDie', atMost: 2, effects: [{ type: 'gainVP', amount: 1 }], otherwise: [{ type: 'gainResource', resource: 'money', amount: 1 }] };
+    applyEffects(s, 'a', [effect], 'v', {}, fixed(2));
+    expect(p.vp).toBe(1);
+    const money = p.resources.money;
+    applyEffects(s, 'a', [effect], 'v', {}, fixed(5));
+    expect(p.vp).toBe(1);
+    expect(p.resources.money).toBe(money + 1);
+    expect(s.log.some((l) => l.text.includes('주사위 5'))).toBe(true);
+    // 주사위로 자기 훈련 (베테랑 강제 훈련)
+    const inst = p.roster[0]!;
+    applyEffects(s, 'a', [{ type: 'rollDie', atMost: 3, effects: [{ type: 'trainPlayer', count: 1, target: 'self' }] }], 'v', { inst }, fixed(4));
+    expect(inst.trained).toBe(false);
+    applyEffects(s, 'a', [{ type: 'rollDie', atMost: 3, effects: [{ type: 'trainPlayer', count: 1, target: 'self' }] }], 'v', { inst }, fixed(3));
+    expect(inst.trained).toBe(true);
+    expect(() => applyEffects(s, 'a', [{ type: 'rollDie', atMost: 2, effects: [] }], 'v')).toThrow(GameError); // rng 없이 호출하면 실패
   });
 
   it('text 효과는 로그에만 남긴다', () => {

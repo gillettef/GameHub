@@ -11,13 +11,16 @@ import { DAY_LABEL, INFRA_LABEL, TOKEN_LABEL, phaseLabel } from './labels';
 import { useView } from './store';
 
 // 효과 적용 강조: 서버 뷰가 바뀔 때마다 직전 뷰와 비교해 "무슨 일이 있었는지"(새 기록 + 참가자별 변화)를
-// 화면 위쪽 토스트로 3초 동안 크게 보여준다. 봇이 연달아 움직여도 토스트가 쌓이므로(최대 4개) 놓치지 않는다.
+// 화면 위쪽 토스트로 1초 동안 크게 보여준다. 봇이 연달아 움직여도 토스트가 쌓이므로(최대 4개) 놓치지 않는다.
 
-const TOAST_MS = 3000;
+const TOAST_MS = 1000; // 사용자 요청(2026-09): 3초 → 1초. 봇은 이 시간이 지난 뒤에 다음 행동을 한다 (bot/driver.ts PAUSE_FACTOR)
 const MAX_TOASTS = 4;
 const MAX_DELTAS = 10;
 const ROLL_DELAY_MS = 1300; // 주사위 눈이 든 토스트는 주사위 애니메이션(1.1초)이 멈춘 뒤에 띄운다
 const ROLL_TEXT = /주사위 → \d|다시 굴림 → \d/;
+// 토스트를 띄우지 않는 기록: 임원 카드·목표 카드 고르기, 이사회 주사위 굴림·재굴림 — 화면(대기 표시·주사위 트레이)이 이미 보여 주므로
+// 알림 창까지는 필요 없다 (사용자 요청, 2026-09). 다시 살리려면 이 목록에서 빼면 된다.
+const QUIET_TEXT = /^(임원 카드를 골랐다|목표 카드를 골랐다|이사회 주사위 → \d|팬덤을 써서 다시 굴림 → \d)$/;
 
 type Delta =
   | { kind: 'resource'; resource: Resource; amount: number }
@@ -105,7 +108,9 @@ export function diffPlayer(a: PlayerPublicView, b: PlayerPublicView, leagueA: nu
 
 function buildToast(id: number, before: GameView, after: GameView): Toast | null {
   const lastLog = before.log[before.log.length - 1]?.id ?? 0;
-  const lines = after.log.filter((e) => e.id > lastLog).map((e) => ({ actor: e.actor, text: e.text }));
+  const fresh = after.log.filter((e) => e.id > lastLog);
+  if (fresh.length > 0 && fresh.every((e) => QUIET_TEXT.test(e.text))) return null; // 조용히 넘기는 행동(임원·목표 선택, 이사회 주사위)
+  const lines = fresh.filter((e) => !QUIET_TEXT.test(e.text)).map((e) => ({ actor: e.actor, text: e.text }));
   const players: PlayerDelta[] = [];
   for (const pid of after.seats) {
     const a = before.players[pid];

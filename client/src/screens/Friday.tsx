@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { activeSide, cards } from '@server/engine/cards';
+import { activeSide, cards, instanceName } from '@server/engine/cards';
 import { standsCount } from '@server/engine/friday';
 import { hasTrait, lineupStaminaCost } from '@server/engine/traits';
 import { autoPlace, previewField, validatePlacements } from '@server/engine/lineup';
@@ -39,7 +39,11 @@ export function FridayPrepareScreen() {
   const need = useMemo(() => sectorCounts(formation), [formation]);
   const field = useMemo(() => previewField(me.uniforms, played), [me.uniforms, played]);
   const issues = validatePlacements(field, me.roster, played, formation, placements);
-  const nameOf = (instanceId?: string) => (instanceId ? cards.player(me.roster.find((r) => r.instanceId === instanceId)?.cardId ?? '').name : undefined);
+  // 훈련 전 유망주는 배치판에서도 '유망주'로만 보여야 한다 (instanceName)
+  const nameOf = (instanceId?: string) => {
+    const inst = instanceId ? me.roster.find((r) => r.instanceId === instanceId) : undefined;
+    return inst ? instanceName(inst) : undefined;
+  };
 
   // 출전 선수·포메이션·필드 구성이 실제로 바뀔 때만 자동 배치 (서버 브로드캐스트마다 수동 배치를 덮어쓰지 않도록)
   const layoutKey = `${field.map((t) => t.id).join(',')}|${played.join(',')}|${formation.defenders}-${formation.midfielders}-${formation.forwards}`;

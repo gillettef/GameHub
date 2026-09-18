@@ -95,4 +95,19 @@ describe('undoTurn', () => {
     const b = applyAction(ended, 'b', { type: 'pass' }, rng);
     expect(canUndoTurn(b, 'b')).toBe(true);
   });
+
+  // 사용자 요청(2026-09): 선수를 훈련하면(훈련 면 공개) 그 차례는 되돌릴 수 없다 — 유망주를 훈련해 보고 마음에 안 들면 무르는 것을 막는다
+  it('선수를 훈련한 차례는 되돌릴 수 없다', () => {
+    const rng = seededRng(7);
+    const s0 = tuesday();
+    // 첫 번째 트레이너 카드 행동: 선수 1명 훈련 → 후보(베테랑·유망주)가 둘이라 대상 선택 대기
+    const chosen = applyAction(s0, 'a', { type: 'cardAction', source: { kind: 'staff', index: 0 } }, rng);
+    expect(chosen.players['a']!.pending).toHaveLength(1);
+    expect(canUndoTurn(chosen, 'a')).toBe(true); // 아직 아무 카드도 공개되지 않았다
+    const pending = chosen.players['a']!.pending[0]!;
+    const trained = applyAction(chosen, 'a', { type: 'resolvePending', pendingId: pending.id, choice: pending.candidates[0]! }, rng);
+    expect(trained.players['a']!.roster.find((r) => r.instanceId === pending.candidates[0])!.trained).toBe(true);
+    expect(canUndoTurn(trained, 'a')).toBe(false);
+    expect(() => applyAction(trained, 'a', { type: 'undoTurn' }, rng)).toThrow(/revealed/);
+  });
 });

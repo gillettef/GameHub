@@ -207,11 +207,15 @@ function withTurnSnapshot(state: GameState, pid: PlayerId): GameState {
 
 const DECKS: readonly (keyof Omit<Decks, 'discards'>)[] = ['starters', 'prospects', 'veterans', 'staff', 'sponsors', 'board', 'tactics', 'objectives'];
 
-// 이번 행동으로 비공개 카드가 공개됐는가: 어떤 더미에서든 카드를 뽑았거나(시장 보충, 유망주 영입, 전술 카드 뽑기·교체) 상대 팀 카드를 미리 봤다.
-// 그런 차례는 "처음으로 되돌리기"로 무를 수 없다 — 본 정보를 되돌릴 수 없으므로 (사용자 결정, 2026-09)
+// 이번 행동으로 비공개 카드가 공개됐는가: 어떤 더미에서든 카드를 뽑았거나(시장 보충, 유망주 영입, 전술 카드 뽑기·교체), 상대 팀 카드를 미리 봤거나,
+// 선수를 훈련했다(훈련 면이 공개된다 — 유망주는 특히 본명·능력이 드러남). 그런 차례는 "처음으로 되돌리기"로 무를 수 없다 — 본 정보를 되돌릴 수 없으므로 (사용자 결정, 2026-09)
 function revealedHiddenCard(before: GameState, after: GameState): boolean {
   if (DECKS.some((d) => before.decks[d].length !== after.decks[d].length || before.decks[d][0] !== after.decks[d][0])) return true;
-  return Object.keys(after.players).some((id) => after.players[id]!.scouted && !before.players[id]?.scouted);
+  return Object.keys(after.players).some((id) => {
+    const prev = before.players[id];
+    if (after.players[id]!.scouted && !prev?.scouted) return true;
+    return after.players[id]!.roster.some((inst) => inst.trained && !prev?.roster.find((r) => r.instanceId === inst.instanceId)?.trained);
+  });
 }
 
 export function undoTurn(state: GameState, pid: PlayerId): GameState {

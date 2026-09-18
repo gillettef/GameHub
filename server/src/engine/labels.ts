@@ -38,8 +38,11 @@ export function describeEffect(e: Effect): string {
       return `${RESOURCE_LABEL[e.track]} 트랙 ${sign(e.delta)}`;
     case 'gainVP':
       return `승점 ${sign(e.amount)}`;
-    case 'trainPlayer':
-      return `선수 ${e.count}명 훈련`;
+    case 'trainPlayer': {
+      const base = e.target === 'self' ? '이 선수를 훈련' : `선수 ${e.count}명 훈련`;
+      const extra = (Object.entries(e.withTokens ?? {}) as [PlayerToken, number][]).filter(([, n]) => n > 0).map(([t, n]) => `${TOKEN_LABEL[t]} +${n}`);
+      return extra.length ? `${base} (그 선수에 ${extra.join(', ')})` : base;
+    }
     case 'drawTactic':
       return `전술 카드 ${e.count}장`;
     case 'recruitProspectFree':
@@ -47,9 +50,11 @@ export function describeEffect(e: Effect): string {
     case 'placeStamina':
       return `선수 카드에 체력 ${e.count}개`;
     case 'addPlayerToken':
-      return `${TOKEN_LABEL[e.token]} +${e.count}${e.spread && e.count > 1 ? ' (1개씩 나눠서)' : ''}`;
+      return `${e.target === 'self' ? '이 선수에 ' : ''}${TOKEN_LABEL[e.token]} +${e.count}${e.spread && e.count > 1 ? ' (1개씩 나눠서)' : ''}`;
     case 'removePlayerToken':
-      return `${TOKEN_LABEL[e.token]} −${e.count}${e.spread && e.count > 1 ? ' (1개씩 나눠서, 최대)' : ''}`;
+      return `${e.target === 'self' ? '이 선수의 ' : ''}${TOKEN_LABEL[e.token]} −${e.count}${e.spread && e.count > 1 ? ' (1개씩 나눠서, 최대)' : ''}`;
+    case 'rollDie':
+      return `주사위 ${e.atMost} 이하면 ${describeEffects(e.effects)}${e.otherwise?.length ? `, 아니면 ${describeEffects(e.otherwise)}` : ''}`;
     case 'scoreGoal':
       return `${e.team === 'self' ? '우리 팀' : '상대 팀'} ${sign(e.amount)}골`;
     case 'peekOpponent':

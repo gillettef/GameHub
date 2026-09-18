@@ -4,6 +4,7 @@ import { ActionSidebar } from './components/ActionSidebar';
 import { PlayerBoard } from './components/Boards';
 import { ActionLog, Header, LeagueBody, MarketBody, PendingModal, PlayerStrip } from './components/Shell';
 import { Tabs } from './components/Tabs';
+import { TooltipLayer } from './components/Tooltip';
 import { EffectToasts } from './feed';
 import { NotifyProvider, TurnAlert } from './notify';
 import { FridayAftermathScreen, FridayMatchScreen, FridayPrepareScreen } from './screens/Friday';
@@ -126,6 +127,7 @@ export function App() {
     <StoreProvider>
       <NotifyProvider>
         <Router />
+        <TooltipLayer />
       </NotifyProvider>
     </StoreProvider>
   );

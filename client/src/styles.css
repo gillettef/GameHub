@@ -297,7 +297,8 @@ label.row { flex-direction: row; align-items: center; }
 
 /* 카드 공통: 같은 크기, 종류별로 다른 실루엣 */
 .cards { display: flex; flex-wrap: wrap; gap: 10px; }
-.card { width: var(--card-w); height: var(--card-h); flex: none; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-lg); display: flex; flex-direction: column; overflow: hidden; position: relative; }
+/* color 를 명시해 어두운 보드(구단 보드 직원 행 등) 안에서도 카드 글자가 흰색을 물려받지 않게 한다 — 직원 카드 머리띠 이름이 안 보이던 문제 */
+.card { width: var(--card-w); height: var(--card-h); flex: none; background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: var(--radius-lg); display: flex; flex-direction: column; overflow: hidden; position: relative; }
 .card.clickable { cursor: pointer; }
 .card.clickable:hover { border-color: var(--pitch); box-shadow: 0 0 0 1px var(--pitch); }
 .card.selected { border-color: var(--pitch); box-shadow: 0 0 0 2px var(--pitch); }
@@ -690,7 +691,7 @@ button.ghost.light:hover:not(:disabled) { border-color: #fff; color: #fff; }
 .fx-deltas .chip { font-size: 14px; line-height: 22px; padding: 2px 9px; }
 .fx-token { gap: 2px; }
 .fx-token-name { font-size: var(--fs-sub); color: var(--ink-2); }
-.fx-bar { position: absolute; left: 0; bottom: 0; height: 3px; width: 100%; background: var(--seat, var(--pitch)); transform-origin: left; animation: fx-bar 3s linear forwards; opacity: 0.8; }
+.fx-bar { position: absolute; left: 0; bottom: 0; height: 3px; width: 100%; background: var(--seat, var(--pitch)); transform-origin: left; animation: fx-bar 1s linear forwards; opacity: 0.8; }
 @keyframes fx-in { from { opacity: 0; transform: translateY(-10px) scale(0.96); } to { opacity: 1; transform: none; } }
 @keyframes fx-bar { from { transform: scaleX(1); } to { transform: scaleX(0); } }
 
@@ -703,7 +704,16 @@ button.ghost.light:hover:not(:disabled) { border-color: #fff; color: #fff; }
 .notify-toggles { display: inline-flex; gap: 4px; margin-right: 8px; }
 .notify-toggles .toggle { padding: 3px 8px; font-size: var(--fs-sub); color: var(--muted); border-color: var(--line); gap: 4px; }
 .notify-toggles .toggle.on { color: var(--pitch-dark); border-color: var(--pitch); background: var(--pitch-tint); }
-@media (prefers-reduced-motion: reduce) { .fx-toast, .turn-alert, .confirm-bar { animation: none; } .turn-alert { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .fx-toast, .turn-alert, .confirm-bar, .tip { animation: none; } .turn-alert { opacity: 1; } }
+
+/* ---- 툴팁: `title` 속성을 대신하는 말풍선 (components/Tooltip.tsx). 잉크색 바탕에 작은 꼬리, 위(above)/아래(below) ---- */
+.tip { position: fixed; z-index: 40; transform: translateX(-50%); max-width: min(300px, calc(100vw - 16px)); padding: 7px 11px; background: var(--ink); color: #fff; font-size: var(--fs-sub); line-height: 1.45; font-weight: 500; letter-spacing: 0.005em; border-radius: 8px; box-shadow: 0 8px 24px rgba(27, 42, 65, 0.28), 0 0 0 1px rgba(255, 255, 255, 0.06) inset; pointer-events: none; white-space: pre-line; word-break: keep-all; overflow-wrap: anywhere; animation: tip-in 0.16s ease-out both; }
+.tip::after { content: ''; position: absolute; left: 50%; width: 10px; height: 10px; background: var(--ink); transform: translateX(-50%) rotate(45deg); border-radius: 2px; }
+.tip.above::after { bottom: -4px; }
+.tip.below::after { top: -4px; }
+@keyframes tip-in { from { opacity: 0; translate: 0 3px; } to { opacity: 1; translate: 0 0; } }
+.tip.below { animation-name: tip-in-below; }
+@keyframes tip-in-below { from { opacity: 0; translate: 0 -3px; } to { opacity: 1; translate: 0 0; } }
 
 /* ---- 스폰서: 계약 모달, 보드의 계약 카드, 뒤집힌 카드 ---- */
 .modal.sponsor-modal { max-width: 860px; }

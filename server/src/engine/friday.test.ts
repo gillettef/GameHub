@@ -6,6 +6,7 @@ import { acceptMatchRoll, playTacticEffect, rerollMatchDie, rollMatchDie, stands
 import { GameError } from './state';
 import type { GameState } from './state';
 import { autoLineup, gameAtMonday, seededRng, settlePending, skipTacticEffects } from './test-utils';
+import { assignUniform } from './uniforms';
 
 function friday(): GameState {
   const s = gameAtMonday();
@@ -25,6 +26,13 @@ function submitAll(s: GameState, seed = 1): GameState {
 describe('경기 준비 제출 (p.20)', () => {
   it('출전 선수마다 체력 1, 관중석 팬덤 지불, 전원 제출 시 판정', () => {
     let s = friday();
+    // 베테랑의 강제 경기 후 페널티(돈 −1 등)가 관중 수입 검증을 흐리지 않게, a 의 베테랑을 능력 없는 카드로 바꾼다
+    for (const r of s.players['a']!.roster) {
+      if (cards.player(r.cardId).kind === 'veteran') {
+        r.cardId = 'p-v03';
+        assignUniform(s.players['a']!.uniforms, r.instanceId, activeSide(r));
+      }
+    }
     const sub = { ...autoLineup(s.players['a']!), fandomInStands: 2 };
     s = submitLineup(s, 'a', sub, seededRng());
     expect(s.players['a']!.resources.stamina).toBe(6 - sub.players.length); // 출전 선수마다 체력 1

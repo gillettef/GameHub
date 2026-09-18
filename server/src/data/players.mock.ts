@@ -1,18 +1,21 @@
-// PLACEHOLDER 데이터 — CLAUDE.md "Mock 데이터 정책"에 따라 창작한 선수 카드 (주전 36 / 유망주 18 / 베테랑 16). 실제 카드 데이터로 교체 예정.
+// PLACEHOLDER 데이터 — CLAUDE.md "Mock 데이터 정책"에 따라 창작한 선수 카드 (주전 38 / 유망주 20 / 베테랑 18). 실제 카드 데이터로 교체 예정.
 //
 // 세 종류의 설계 (사용자 결정, 2026-09):
-// - 주전(p-s01~p-s36, 골키퍼 p-s33~p-s36): 미훈련 면 역량 '중' = 대부분 2(비용 2~3), 소수만 1(비용 1~2)·3(비용 4).
-//   훈련 면은 역량 +1 **또는** 특수 능력(둘 다인 카드는 소수), 비용은 미훈련보다 1 낮게(최소 1).
-// - 유망주(p-p01~p-p18): 미훈련 면은 역량 1·비용 2·번호 없음·효과 없음으로 고정. role 은 훈련 면과 같아 영입 전에 공격/수비만
-//   알 수 있고(공격 zones ['CM','CF'] / 수비 ['CB','CM']), 본명은 name 에 (화면에는 훈련 전엔 '유망주', 훈련 후 본명 — playerName). 훈련 면(비용 1, 번호·경력 칸 있음)은
-//   '역량 2 + 강한 효과' 9장 / '역량 3~4, 효과 없음' 9장. 공격 9 / 수비 9.
-// - 베테랑(p-v01~p-v16): 미훈련 면 역량 '상'(3 대부분, 4 는 3장), 비용 2~3, 번호 2~11. 모든 베테랑에 페널티가 있다 —
-//   (a) 미훈련 면의 강제 경기 후 페널티(체력/팬덤/돈 −1, 일시적 약점) 또는 (b) 훈련 면 역량이 2 이상 낮은 대신 강한 효과.
-//   (a)+(b) 8장 / (a)만 4장(훈련 시 역량 −1) / (b)만 4장. 공격 8 / 수비 8.
+// - 주전(p-s01~p-s38, 골키퍼 p-s33~p-s38): 미훈련 면 역량 '중' = 대부분 2(비용 2~3), 소수만 1(비용 1~2)·3(비용 4).
+//   **훈련 전에도 특수 능력을 가질 수 있다**(사용자 요청, 2026-09). 훈련 면은 (A) 역량 +1(또는 골키퍼 선방 +1)에 같은 능력 유지,
+//   (B) 역량은 그대로 두고 능력이 강화(비용 ↓·수치 ↑·조건 완화), 또는 능력이 없던 카드는 역량 +1 / 새 능력. 비용은 미훈련보다 1 낮게(최소 1).
+//   훈련 전 능력이 있는 카드는 훈련 후에도 반드시 능력이 있다(능력이 사라지지 않음).
+// - 유망주(p-p01~p-p20): 미훈련 면은 역량 1·비용 2·번호 없음·효과 없음으로 고정. role 은 훈련 면과 같아 영입 전에 공격/수비/골키퍼만
+//   알 수 있고(공격 zones ['CM','CF'] / 수비 ['CB','CM'] / 골키퍼 [] + saves 1), 본명은 name 에 (화면에는 훈련 전엔 '유망주', 훈련 후 본명 — playerName).
+//   훈련 면(비용 1, 번호·경력 칸 있음)은 '역량 2 + 강한 효과' 또는 '역량 3~4, 효과 없음'. 공격 9 / 수비 9 / 골키퍼 2.
+// - 베테랑(p-v01~p-v18, 골키퍼 p-v17~p-v18): 미훈련 면 역량 '상'(3 대부분, 4 는 일부), 비용 2~3, 번호 2~11(골키퍼 1). 모든 베테랑에 페널티가 있다 —
+//   (a) 미훈련 면의 강제 경기 후 페널티: 자원 −1 / 일시적 약점(자기 카드) / **부상(자기 카드)** / **주사위로 부상** / **주사위로 강제 훈련**
+//   (b) 훈련 면 역량이 2 이상 낮은 대신 강한 효과, 또는 **양면 모두 능력 없음**(훈련되면 역량만 떨어지는 노장).
+//   부상·강제 훈련 류는 사용자 요청(2026-09): "경기를 뛰고 나면 부상, 주사위로 강제 훈련, 능력이 없는" 베테랑.
 import type { PlayerCard } from '../engine/types';
 
 export const PLAYER_CARDS: PlayerCard[] = [
-  // ---------- 주전 선수 36장 (p-s01~p-s36, 골키퍼 p-s33~p-s36) ----------
+  // ---------- 주전 선수 38장 (p-s01~p-s38, 골키퍼 p-s33~p-s38) ----------
   // 수비 16장 (p-s01~p-s16)
   { id: 'p-s01', kind: 'starter', name: '김태산', tags: ['수비수', '피지컬'], placeholder: true,
     untrained: { cost: 2, role: 'defense', zones: ['CB'], skill: 2, number: 4 },
@@ -24,6 +27,7 @@ export const PLAYER_CARDS: PlayerCard[] = [
   { id: 'p-s03', kind: 'starter', name: '마르코 벨트란', tags: ['수비수', '스피드'], placeholder: true,
     untrained: { cost: 3, role: 'defense', zones: ['CB', 'RW'], skill: 2, number: 2 },
     trained: { cost: 2, role: 'defense', zones: ['CB', 'RW'], skill: 3, number: 2 } },
+  // (B) 능력 강화: 돈 2 → 3
   { id: 'p-s04', kind: 'starter', name: '이준혁', tags: ['수비수', '상인'], placeholder: true,
     untrained: { cost: 2, role: 'defense', zones: ['CB'], skill: 2, number: 5,
       effect: { timing: 'afterMatch', mandatory: false, cost: { fandom: 1 }, effects: [{ type: 'gainResource', resource: 'money', amount: 2 }], text: '경기 후: 1[팬덤]을 지불하면 2[돈]을 얻습니다.' } },
@@ -36,25 +40,34 @@ export const PLAYER_CARDS: PlayerCard[] = [
   { id: 'p-s06', kind: 'starter', name: '정우빈', tags: ['미드필더'], placeholder: true,
     untrained: { cost: 2, role: 'defense', zones: ['CM'], skill: 1, number: 6 },
     trained: { cost: 1, role: 'defense', zones: ['CM'], skill: 2, number: 6 } },
+  // (A) 역량 +1, 능력 유지
   { id: 'p-s07', kind: 'starter', name: '니콜라 브라운', tags: ['미드필더', '워크호스'], placeholder: true,
-    untrained: { cost: 3, role: 'defense', zones: ['CM', 'RW'], skill: 2, number: 7 },
-    trained: { cost: 2, role: 'defense', zones: ['CM', 'RW'], skill: 3, number: 7 } },
+    untrained: { cost: 3, role: 'defense', zones: ['CM', 'RW'], skill: 2, number: 7,
+      effect: { timing: 'afterMatch', mandatory: false, cost: {}, effects: [{ type: 'gainResource', resource: 'stamina', amount: 1 }], text: '경기 후: 1[체력]을 얻습니다.' } },
+    trained: { cost: 2, role: 'defense', zones: ['CM', 'RW'], skill: 3, number: 7,
+      effect: { timing: 'afterMatch', mandatory: false, cost: {}, effects: [{ type: 'gainResource', resource: 'stamina', amount: 1 }], text: '경기 후: 1[체력]을 얻습니다.' } } },
   { id: 'p-s08', kind: 'starter', name: '한서율', tags: ['유틸리티'], placeholder: true,
     untrained: { cost: 3, role: 'defense', zones: ['CB', 'CM'], skill: 2, number: 5 },
     trained: { cost: 2, role: 'defense', zones: ['CB', 'CM'], skill: 3, number: 5 } },
+  // (B) 능력 강화: 팬덤 2 → 1
   { id: 'p-s09', kind: 'starter', name: '이브라힘 디알로', tags: ['수비수', '팬심'], placeholder: true,
-    untrained: { cost: 2, role: 'defense', zones: ['CB'], skill: 2, number: 13 },
+    untrained: { cost: 2, role: 'defense', zones: ['CB'], skill: 2, number: 13,
+      effect: { timing: 'afterMatch', mandatory: false, cost: { fandom: 2 }, effects: [{ type: 'gainVP', amount: 1 }], text: '경기 후: 2[팬덤]을 지불하면 1[승점]을 얻습니다.' } },
     trained: { cost: 1, role: 'defense', zones: ['CB'], skill: 2, number: 13,
       effect: { timing: 'afterMatch', mandatory: false, cost: { fandom: 1 }, effects: [{ type: 'gainVP', amount: 1 }], text: '경기 후: 1[팬덤]을 지불하면 1[승점]을 얻습니다.' } } },
+  // (A) 역량 +1, 능력 유지
   { id: 'p-s10', kind: 'starter', name: '최민재', tags: ['미드필더', '스피드'], placeholder: true,
-    untrained: { cost: 2, role: 'defense', zones: ['CM', 'LW'], skill: 2, number: 8 },
-    trained: { cost: 1, role: 'defense', zones: ['CM', 'LW'], skill: 2, number: 8,
+    untrained: { cost: 2, role: 'defense', zones: ['CM', 'LW'], skill: 2, number: 8,
+      effect: { timing: 'afterMatch', mandatory: false, cost: {}, effects: [{ type: 'conditional', condition: { kind: 'cleanSheet' }, effects: [{ type: 'gainResource', resource: 'fandom', amount: 1 }] }], text: '경기 후: 이 경기에서 실점하지 않았다면 1[팬덤]을 얻습니다.' } },
+    trained: { cost: 1, role: 'defense', zones: ['CM', 'LW'], skill: 3, number: 8,
       effect: { timing: 'afterMatch', mandatory: false, cost: {}, effects: [{ type: 'conditional', condition: { kind: 'cleanSheet' }, effects: [{ type: 'gainResource', resource: 'fandom', amount: 1 }] }], text: '경기 후: 이 경기에서 실점하지 않았다면 1[팬덤]을 얻습니다.' } } },
   { id: 'p-s11', kind: 'starter', name: '루카스 페레이라', tags: ['수비수', '신예'], placeholder: true,
     untrained: { cost: 1, role: 'defense', zones: ['CB'], skill: 1, number: 2 },
     trained: { cost: 1, role: 'defense', zones: ['CB'], skill: 2, number: 2 } },
+  // (B) 능력 강화: 체력+운영 → 체력만
   { id: 'p-s12', kind: 'starter', name: '강하늘', tags: ['수비수', '태클'], placeholder: true,
-    untrained: { cost: 3, role: 'defense', zones: ['CB', 'RW'], skill: 2, number: 3 },
+    untrained: { cost: 3, role: 'defense', zones: ['CB', 'RW'], skill: 2, number: 3,
+      effect: { timing: 'duringMatch', mandatory: false, cost: { stamina: 1, ops: 1 }, effects: [{ type: 'denyGoals', count: 1 }], text: '경기 중: 1[체력]과 1[운영]을 지불하면 상대 팀의 슛 1개를 막습니다.' } },
     trained: { cost: 2, role: 'defense', zones: ['CB', 'RW'], skill: 2, number: 3,
       effect: { timing: 'duringMatch', mandatory: false, cost: { stamina: 1 }, effects: [{ type: 'denyGoals', count: 1 }], text: '경기 중: 1[체력]을 지불하면 상대 팀의 슛 1개를 막습니다.' } } },
   { id: 'p-s13', kind: 'starter', name: '야닉 슈미트', tags: ['미드필더', '워크호스'], placeholder: true,
@@ -63,26 +76,34 @@ export const PLAYER_CARDS: PlayerCard[] = [
   { id: 'p-s14', kind: 'starter', name: '윤지훈', tags: ['수비수'], placeholder: true,
     untrained: { cost: 2, role: 'defense', zones: ['CB'], skill: 2, number: 6 },
     trained: { cost: 1, role: 'defense', zones: ['CB'], skill: 3, number: 6 } },
+  // (A) 역량 +1, 능력 유지
   { id: 'p-s15', kind: 'starter', name: '엘리아스 홀름', tags: ['수비수', '전술가'], placeholder: true,
-    untrained: { cost: 2, role: 'defense', zones: ['CB', 'LW'], skill: 2, number: 4 },
-    trained: { cost: 1, role: 'defense', zones: ['CB', 'LW'], skill: 2, number: 4,
+    untrained: { cost: 2, role: 'defense', zones: ['CB', 'LW'], skill: 2, number: 4,
+      effect: { timing: 'beforeMatch', mandatory: false, cost: { ops: 1 }, effects: [{ type: 'addPlayerToken', token: 'strengthTemp', count: 1 }], text: '경기 전: 1[운영]을 지불하면 선수 1명에 일시적 역량 토큰 1개를 놓습니다.' } },
+    trained: { cost: 1, role: 'defense', zones: ['CB', 'LW'], skill: 3, number: 4,
       effect: { timing: 'beforeMatch', mandatory: false, cost: { ops: 1 }, effects: [{ type: 'addPlayerToken', token: 'strengthTemp', count: 1 }], text: '경기 전: 1[운영]을 지불하면 선수 1명에 일시적 역량 토큰 1개를 놓습니다.' } } },
+  // (A) 역량 +1, 능력 유지
   { id: 'p-s16', kind: 'starter', name: '서동혁', tags: ['미드필더', '승부사'], placeholder: true,
-    untrained: { cost: 3, role: 'defense', zones: ['CM'], skill: 2, number: 15 },
+    untrained: { cost: 3, role: 'defense', zones: ['CM'], skill: 2, number: 15,
+      effect: { timing: 'afterMatch', mandatory: false, cost: {}, effects: [{ type: 'conditional', condition: { kind: 'outcome', outcome: 'draw' }, effects: [{ type: 'gainVP', amount: 1 }] }], text: '경기 후: 경기 결과가 무승부일 때 1[승점]을 얻습니다.' } },
     trained: { cost: 2, role: 'defense', zones: ['CM'], skill: 3, number: 15,
       effect: { timing: 'afterMatch', mandatory: false, cost: {}, effects: [{ type: 'conditional', condition: { kind: 'outcome', outcome: 'draw' }, effects: [{ type: 'gainVP', amount: 1 }] }], text: '경기 후: 경기 결과가 무승부일 때 1[승점]을 얻습니다.' } } },
   // 공격 16장 (p-s17~p-s32)
+  // (B) 능력 강화: 체력+팬덤 → 체력만
   { id: 'p-s17', kind: 'starter', name: '하민준', tags: ['포워드', '스나이퍼'], placeholder: true,
-    untrained: { cost: 3, role: 'attack', zones: ['CF'], skill: 2, number: 9 },
+    untrained: { cost: 3, role: 'attack', zones: ['CF'], skill: 2, number: 9,
+      effect: { timing: 'duringMatch', mandatory: false, cost: { stamina: 1, fandom: 1 }, effects: [{ type: 'scoreGoal', team: 'self', amount: 1 }], text: '경기 중: 1[체력]과 1[팬덤]을 지불하면 1골을 득점합니다.' } },
     trained: { cost: 2, role: 'attack', zones: ['CF'], skill: 2, number: 9,
       effect: { timing: 'duringMatch', mandatory: false, cost: { stamina: 1 }, effects: [{ type: 'scoreGoal', team: 'self', amount: 1 }], text: '경기 중: 1[체력]을 지불하면 1골을 득점합니다.' } } },
   { id: 'p-s18', kind: 'starter', name: '디에고 살라스', tags: ['포워드', '스피드'], placeholder: true,
     untrained: { cost: 4, role: 'attack', zones: ['CF', 'RW'], skill: 3, number: 11 },
     trained: { cost: 3, role: 'attack', zones: ['CF', 'RW'], skill: 4, number: 11,
       effect: { timing: 'duringMatch', mandatory: false, cost: { stamina: 1, fandom: 1 }, effects: [{ type: 'scoreGoal', team: 'self', amount: 1 }], text: '경기 중: 1[체력]과 1[팬덤]을 지불하면 1골을 득점합니다.' } } },
+  // (A) 역량 +1, 능력 유지
   { id: 'p-s19', kind: 'starter', name: '조현우', tags: ['미드필더', '플레이메이커'], placeholder: true,
-    untrained: { cost: 2, role: 'attack', zones: ['CM'], skill: 2, number: 10 },
-    trained: { cost: 1, role: 'attack', zones: ['CM'], skill: 2, number: 10,
+    untrained: { cost: 2, role: 'attack', zones: ['CM'], skill: 2, number: 10,
+      effect: { timing: 'afterMatch', mandatory: false, cost: {}, effects: [{ type: 'gainResource', resource: 'money', amount: 1 }], text: '경기 후: 1[돈]을 얻습니다.' } },
+    trained: { cost: 1, role: 'attack', zones: ['CM'], skill: 3, number: 10,
       effect: { timing: 'afterMatch', mandatory: false, cost: {}, effects: [{ type: 'gainResource', resource: 'money', amount: 1 }], text: '경기 후: 1[돈]을 얻습니다.' } } },
   { id: 'p-s20', kind: 'starter', name: '토마스 린드', tags: ['포워드', '헤더'], placeholder: true,
     untrained: { cost: 3, role: 'attack', zones: ['CF', 'LW'], skill: 2, number: 7 },
@@ -96,10 +117,12 @@ export const PLAYER_CARDS: PlayerCard[] = [
   { id: 'p-s23', kind: 'starter', name: '임채원', tags: ['윙어'], placeholder: true,
     untrained: { cost: 2, role: 'attack', zones: ['CM', 'LW'], skill: 2, number: 11 },
     trained: { cost: 1, role: 'attack', zones: ['CM', 'LW'], skill: 3, number: 11 } },
+  // (B) 능력 강화: 조건 3골 → 2골
   { id: 'p-s24', kind: 'starter', name: '라파엘 코스타', tags: ['포워드', '스나이퍼'], placeholder: true,
-    untrained: { cost: 3, role: 'attack', zones: ['CF'], skill: 2, number: 9 },
+    untrained: { cost: 3, role: 'attack', zones: ['CF'], skill: 2, number: 9,
+      effect: { timing: 'afterMatch', mandatory: false, cost: {}, effects: [{ type: 'conditional', condition: { kind: 'goalsAtLeast', goals: 3 }, effects: [{ type: 'gainVP', amount: 1 }] }], text: '경기 후: 이 경기에서 3골 이상 득점했다면 1[승점]을 얻습니다.' } },
     trained: { cost: 2, role: 'attack', zones: ['CF'], skill: 2, number: 9,
-      effect: { timing: 'afterMatch', mandatory: false, cost: {}, effects: [{ type: 'conditional', condition: { kind: 'goalsAtLeast', goals: 3 }, effects: [{ type: 'gainVP', amount: 1 }] }], text: '경기 후: 이 경기에서 3골 이상 득점했다면 1[승점]을 얻습니다.' } } },
+      effect: { timing: 'afterMatch', mandatory: false, cost: {}, effects: [{ type: 'conditional', condition: { kind: 'goalsAtLeast', goals: 2 }, effects: [{ type: 'gainVP', amount: 1 }] }], text: '경기 후: 이 경기에서 2골 이상 득점했다면 1[승점]을 얻습니다.' } } },
   { id: 'p-s25', kind: 'starter', name: '송재이', tags: ['유틸리티', '테크니션'], placeholder: true,
     untrained: { cost: 3, role: 'attack', zones: ['CM', 'CF'], skill: 2, number: 10 },
     trained: { cost: 2, role: 'attack', zones: ['CM', 'CF'], skill: 3, number: 10,
@@ -107,45 +130,67 @@ export const PLAYER_CARDS: PlayerCard[] = [
   { id: 'p-s26', kind: 'starter', name: '케빈 은다이', tags: ['포워드', '신예'], placeholder: true,
     untrained: { cost: 1, role: 'attack', zones: ['CF', 'RW'], skill: 1, number: 13 },
     trained: { cost: 1, role: 'attack', zones: ['CF', 'RW'], skill: 2, number: 13 } },
+  // (B) 능력 강화: 팬덤 2 → 1
   { id: 'p-s27', kind: 'starter', name: '안도윤', tags: ['포워드', '팬심'], placeholder: true,
-    untrained: { cost: 2, role: 'attack', zones: ['CF'], skill: 2, number: 15 },
+    untrained: { cost: 2, role: 'attack', zones: ['CF'], skill: 2, number: 15,
+      effect: { timing: 'duringMatch', mandatory: false, cost: { fandom: 2 }, effects: [{ type: 'scoreGoal', team: 'self', amount: 1 }], text: '경기 중: 2[팬덤]을 지불하면 1골을 득점합니다.' } },
     trained: { cost: 1, role: 'attack', zones: ['CF'], skill: 2, number: 15,
       effect: { timing: 'duringMatch', mandatory: false, cost: { fandom: 1 }, effects: [{ type: 'scoreGoal', team: 'self', amount: 1 }], text: '경기 중: 1[팬덤]을 지불하면 1골을 득점합니다.' } } },
+  // (A) 역량 +1, 능력 유지
   { id: 'p-s28', kind: 'starter', name: '미켈 요한센', tags: ['미드필더', '리더'], placeholder: true,
-    untrained: { cost: 3, role: 'attack', zones: ['CM'], skill: 2, number: 6 },
-    trained: { cost: 2, role: 'attack', zones: ['CM'], skill: 2, number: 6,
+    untrained: { cost: 3, role: 'attack', zones: ['CM'], skill: 2, number: 6,
+      effect: { timing: 'afterMatch', mandatory: false, cost: {}, effects: [{ type: 'moveTrack', track: 'fandom', delta: 1 }], text: '경기 후: 팬덤 트랙 마커를 1칸 올립니다.' } },
+    trained: { cost: 2, role: 'attack', zones: ['CM'], skill: 3, number: 6,
       effect: { timing: 'afterMatch', mandatory: false, cost: {}, effects: [{ type: 'moveTrack', track: 'fandom', delta: 1 }], text: '경기 후: 팬덤 트랙 마커를 1칸 올립니다.' } } },
   { id: 'p-s29', kind: 'starter', name: '문지호', tags: ['윙어'], placeholder: true,
     untrained: { cost: 2, role: 'attack', zones: ['CF', 'LW'], skill: 2, number: 11 },
     trained: { cost: 1, role: 'attack', zones: ['CF', 'LW'], skill: 3, number: 11 } },
+  // (A) 역량 +1, 능력 유지
   { id: 'p-s30', kind: 'starter', name: '이반 페트로프', tags: ['유틸리티'], placeholder: true,
-    untrained: { cost: 3, role: 'attack', zones: ['CB', 'CM'], skill: 2, number: 5 },
-    trained: { cost: 2, role: 'attack', zones: ['CB', 'CM'], skill: 2, number: 5,
+    untrained: { cost: 3, role: 'attack', zones: ['CB', 'CM'], skill: 2, number: 5,
+      effect: { timing: 'afterMatch', mandatory: false, cost: {}, effects: [{ type: 'conditional', condition: { kind: 'inSector', sector: 'CB' }, effects: [{ type: 'gainResource', resource: 'ops', amount: 1 }] }], text: '경기 후: 이 선수가 센터 백 구획에 출전했다면 1[운영]을 얻습니다.' } },
+    trained: { cost: 2, role: 'attack', zones: ['CB', 'CM'], skill: 3, number: 5,
       effect: { timing: 'afterMatch', mandatory: false, cost: {}, effects: [{ type: 'conditional', condition: { kind: 'inSector', sector: 'CB' }, effects: [{ type: 'gainResource', resource: 'ops', amount: 1 }] }], text: '경기 후: 이 선수가 센터 백 구획에 출전했다면 1[운영]을 얻습니다.' } } },
+  // (B) 능력 강화: 돈 2 → 3
   { id: 'p-s31', kind: 'starter', name: '남기현', tags: ['포워드', '상인'], placeholder: true,
-    untrained: { cost: 3, role: 'attack', zones: ['CF'], skill: 2, number: 14 },
+    untrained: { cost: 3, role: 'attack', zones: ['CF'], skill: 2, number: 14,
+      effect: { timing: 'afterMatch', mandatory: false, cost: { ops: 1 }, effects: [{ type: 'gainResource', resource: 'money', amount: 2 }], text: '경기 후: 1[운영]을 지불하면 2[돈]을 얻습니다.' } },
     trained: { cost: 2, role: 'attack', zones: ['CF'], skill: 2, number: 14,
-      effect: { timing: 'afterMatch', mandatory: false, cost: { ops: 1 }, effects: [{ type: 'gainResource', resource: 'money', amount: 2 }], text: '경기 후: 1[운영]을 지불하면 2[돈]을 얻습니다.' } } },
+      effect: { timing: 'afterMatch', mandatory: false, cost: { ops: 1 }, effects: [{ type: 'gainResource', resource: 'money', amount: 3 }], text: '경기 후: 1[운영]을 지불하면 3[돈]을 얻습니다.' } } },
   { id: 'p-s32', kind: 'starter', name: '파블로 리오스', tags: ['미드필더', '스피드'], placeholder: true,
     untrained: { cost: 2, role: 'attack', zones: ['CM', 'RW'], skill: 2, number: 7 },
     trained: { cost: 1, role: 'attack', zones: ['CM', 'RW'], skill: 3, number: 7 } },
-  // 골키퍼 4장 (p-s33~p-s36): 역량 + [선방] 개수 (p.22)
+  // 골키퍼 6장 (p-s33~p-s38): 역량 + [선방] 개수 (p.22)
   { id: 'p-s33', kind: 'starter', name: '오세훈', tags: ['골키퍼'], placeholder: true,
     untrained: { cost: 2, role: 'defense', zones: [], skill: 1, number: 1, goalkeeper: { saves: 1 } },
     trained: { cost: 1, role: 'defense', zones: [], skill: 2, number: 1, goalkeeper: { saves: 2 } } },
+  // (A) 선방 +1, 능력 유지
   { id: 'p-s34', kind: 'starter', name: '마티아스 콜', tags: ['골키퍼', '리더'], placeholder: true,
-    untrained: { cost: 3, role: 'defense', zones: [], skill: 2, number: 1, goalkeeper: { saves: 1 } },
+    untrained: { cost: 3, role: 'defense', zones: [], skill: 2, number: 1, goalkeeper: { saves: 1 },
+      effect: { timing: 'beforeMatch', mandatory: false, cost: { stamina: 1 }, effects: [{ type: 'extraSaves', count: 1 }], text: '경기 전: 1[체력]을 지불하면 이 경기에서 [선방]을 1개 추가로 얻습니다.' } },
     trained: { cost: 2, role: 'defense', zones: [], skill: 2, number: 1, goalkeeper: { saves: 2 },
       effect: { timing: 'beforeMatch', mandatory: false, cost: { stamina: 1 }, effects: [{ type: 'extraSaves', count: 1 }], text: '경기 전: 1[체력]을 지불하면 이 경기에서 [선방]을 1개 추가로 얻습니다.' } } },
+  // (B) 선방 +1, 능력 강화: 무실점 보상 팬덤 → 승점
   { id: 'p-s35', kind: 'starter', name: '김보라', tags: ['골키퍼', '반사신경'], placeholder: true,
-    untrained: { cost: 2, role: 'defense', zones: [], skill: 1, number: 1, goalkeeper: { saves: 1 } },
+    untrained: { cost: 2, role: 'defense', zones: [], skill: 1, number: 1, goalkeeper: { saves: 1 },
+      effect: { timing: 'afterMatch', mandatory: false, cost: {}, effects: [{ type: 'conditional', condition: { kind: 'cleanSheet' }, effects: [{ type: 'gainResource', resource: 'fandom', amount: 1 }] }], text: '경기 후: 이 경기에서 실점하지 않았다면 1[팬덤]을 얻습니다.' } },
     trained: { cost: 1, role: 'defense', zones: [], skill: 1, number: 1, goalkeeper: { saves: 2 },
       effect: { timing: 'afterMatch', mandatory: false, cost: {}, effects: [{ type: 'conditional', condition: { kind: 'cleanSheet' }, effects: [{ type: 'gainVP', amount: 1 }] }], text: '경기 후: 이 경기에서 실점하지 않았다면 1[승점]을 얻습니다.' } } },
   { id: 'p-s36', kind: 'starter', name: '안톤 베르그', tags: ['골키퍼', '피지컬'], placeholder: true,
     untrained: { cost: 4, role: 'defense', zones: [], skill: 2, number: 1, goalkeeper: { saves: 2 } },
     trained: { cost: 3, role: 'defense', zones: [], skill: 3, number: 1, goalkeeper: { saves: 2 } } },
+  { id: 'p-s37', kind: 'starter', name: '루카 마리니', tags: ['골키퍼', '신예'], placeholder: true,
+    untrained: { cost: 1, role: 'defense', zones: [], skill: 1, number: 1, goalkeeper: { saves: 1 } },
+    trained: { cost: 1, role: 'defense', zones: [], skill: 2, number: 1, goalkeeper: { saves: 1 },
+      effect: { timing: 'afterMatch', mandatory: false, cost: {}, effects: [{ type: 'conditional', condition: { kind: 'cleanSheet' }, effects: [{ type: 'gainResource', resource: 'fandom', amount: 1 }] }], text: '경기 후: 이 경기에서 실점하지 않았다면 1[팬덤]을 얻습니다.' } } },
+  // (A) 선방 +1, 능력 유지
+  { id: 'p-s38', kind: 'starter', name: '정한결', tags: ['골키퍼', '캡틴'], placeholder: true,
+    untrained: { cost: 3, role: 'defense', zones: [], skill: 2, number: 1, goalkeeper: { saves: 1 },
+      effect: { timing: 'duringMatch', mandatory: false, cost: { ops: 1 }, effects: [{ type: 'denyGoals', count: 1 }], text: '경기 중: 1[운영]을 지불하면 상대 팀의 슛 1개를 막습니다.' } },
+    trained: { cost: 2, role: 'defense', zones: [], skill: 2, number: 1, goalkeeper: { saves: 2 },
+      effect: { timing: 'duringMatch', mandatory: false, cost: { ops: 1 }, effects: [{ type: 'denyGoals', count: 1 }], text: '경기 중: 1[운영]을 지불하면 상대 팀의 슛 1개를 막습니다.' } } },
 
-  // ---------- 유망주 18장 (p-p01~p-p18): 미훈련 면 역량 1·비용 2 고정, role 만 훈련 면과 같고 훈련 전엔 화면에 '유망주'로 보인다 (p.16, 사용자 결정) ----------
+  // ---------- 유망주 20장 (p-p01~p-p20): 미훈련 면 역량 1·비용 2 고정, role 만 훈련 면과 같고 훈련 전엔 화면에 '유망주'로 보인다 (p.16, 사용자 결정) ----------
   // 공격 9장: 미훈련 { cost 2, attack, ['CM','CF'], skill 1 }
   { id: 'p-p01', kind: 'prospect', name: '한지우', tags: [], placeholder: true,
     untrained: { cost: 2, role: 'attack', zones: ['CM', 'CF'], skill: 1 },
@@ -211,23 +256,33 @@ export const PLAYER_CARDS: PlayerCard[] = [
   { id: 'p-p16', kind: 'prospect', name: '이하은', tags: [], placeholder: true,
     untrained: { cost: 2, role: 'defense', zones: ['CB', 'CM'], skill: 1 },
     trained: { cost: 1, role: 'defense', zones: ['CB'], skill: 3, number: 3, career: { appearances: 2, goals: 0 } } },
+  // 골키퍼 2장: 미훈련 { cost 2, defense, [], skill 1, saves 1 } — 영입 전에 골키퍼라는 것만 보인다
+  { id: 'p-p19', kind: 'prospect', name: '윤서준', tags: [], placeholder: true,
+    untrained: { cost: 2, role: 'defense', zones: [], skill: 1, goalkeeper: { saves: 1 } },
+    trained: { cost: 1, role: 'defense', zones: [], skill: 2, number: 1, goalkeeper: { saves: 2 }, career: { appearances: 2, goals: 0 },
+      effect: { timing: 'afterMatch', mandatory: false, cost: {}, effects: [{ type: 'conditional', condition: { kind: 'cleanSheet' }, effects: [{ type: 'gainVP', amount: 1 }] }], text: '경기 후: 이 경기에서 실점하지 않았다면 1[승점]을 얻습니다.' } } },
+  { id: 'p-p20', kind: 'prospect', name: '엘리오 산토스', tags: [], placeholder: true,
+    untrained: { cost: 2, role: 'defense', zones: [], skill: 1, goalkeeper: { saves: 1 } },
+    trained: { cost: 1, role: 'defense', zones: [], skill: 3, number: 1, goalkeeper: { saves: 2 }, career: { appearances: 2, goals: 0 } } },
 
-  // ---------- 베테랑 16장 (p-v01~p-v16): 미훈련 면 역량 상 + 페널티 (a) 강제 경기 후 페널티 / (b) 훈련 시 역량 −2 이상 대신 강한 효과 (p.15) ----------
-  // (a)+(b): v01, v02, v05, v06, v09, v12, v14, v16 / (a)만: v04, v08, v11, v15 / (b)만: v03, v07, v10, v13
+  // ---------- 베테랑 18장 (p-v01~p-v18, 골키퍼 p-v17~p-v18): 미훈련 면 역량 상 + 페널티 (p.15) ----------
+  // 페널티 종류: 자원 −1: v01, v04, v05, v16, v18 / 자기 약점: v08, v15 / 자기 부상(확정): v06 / 주사위 부상: v09, v12, v17 /
+  //   주사위 강제 훈련: v02, v11, v14 / 강제 효과 없이 훈련 시 역량 −2: v10, v13 / 양면 능력 없음(훈련 시 역량 −2): v03, v07
   { id: 'p-v01', kind: 'veteran', name: '최강민', tags: ['베테랑', '리더'], placeholder: true,
     untrained: { cost: 2, role: 'defense', zones: ['CB'], skill: 3, number: 4,
       effect: { timing: 'afterMatch', mandatory: true, cost: {}, effects: [{ type: 'gainResource', resource: 'fandom', amount: -1 }], text: '경기 후: 1[팬덤]을 잃습니다. (필수)' } },
     trained: { cost: 1, role: 'defense', zones: ['CB'], skill: 1, number: 4,
       effect: { timing: 'afterMatch', mandatory: false, cost: {}, effects: [{ type: 'gainResource', resource: 'fandom', amount: 2 }, { type: 'gainResource', resource: 'money', amount: 1 }], text: '경기 후: 2[팬덤]과 1[돈]을 얻습니다.' } } },
+  // 주사위 강제 훈련
   { id: 'p-v02', kind: 'veteran', name: '로베르토 카날', tags: ['베테랑', '미드필더'], placeholder: true,
     untrained: { cost: 3, role: 'defense', zones: ['CM'], skill: 4, number: 6,
-      effect: { timing: 'afterMatch', mandatory: true, cost: {}, effects: [{ type: 'gainResource', resource: 'stamina', amount: -1 }], text: '경기 후: 1[체력]을 잃습니다. (필수)' } },
+      effect: { timing: 'afterMatch', mandatory: true, cost: {}, effects: [{ type: 'rollDie', atMost: 3, effects: [{ type: 'trainPlayer', count: 1, target: 'self' }] }], text: '경기 후: 주사위를 굴려 3 이하가 나오면 이 선수를 훈련 면으로 뒤집습니다. (필수)' } },
     trained: { cost: 2, role: 'defense', zones: ['CM'], skill: 2, number: 6,
       effect: { timing: 'beforeMatch', mandatory: false, cost: {}, effects: [{ type: 'addPlayerToken', token: 'strengthTemp', count: 1 }], text: '경기 전: 선수 1명에 일시적 역량 토큰 1개를 놓습니다.' } } },
+  // 양면 능력 없음 — 훈련되면 역량만 떨어지는 노장
   { id: 'p-v03', kind: 'veteran', name: '박정훈', tags: ['베테랑', '포워드'], placeholder: true,
-    untrained: { cost: 2, role: 'attack', zones: ['CF'], skill: 3, number: 9 },
-    trained: { cost: 1, role: 'attack', zones: ['CF'], skill: 1, number: 9,
-      effect: { timing: 'duringMatch', mandatory: false, cost: { stamina: 1 }, effects: [{ type: 'scoreGoal', team: 'self', amount: 1 }], text: '경기 중: 1[체력]을 지불하면 1골을 득점합니다.' } } },
+    untrained: { cost: 3, role: 'attack', zones: ['CF'], skill: 4, number: 9 },
+    trained: { cost: 2, role: 'attack', zones: ['CF'], skill: 2, number: 9 } },
   { id: 'p-v04', kind: 'veteran', name: '얀 코발스키', tags: ['베테랑', '수비수'], placeholder: true,
     untrained: { cost: 2, role: 'defense', zones: ['CB', 'LW'], skill: 3, number: 3,
       effect: { timing: 'afterMatch', mandatory: true, cost: {}, effects: [{ type: 'gainResource', resource: 'money', amount: -1 }], text: '경기 후: 1[돈]을 잃습니다. (필수)' } },
@@ -238,51 +293,56 @@ export const PLAYER_CARDS: PlayerCard[] = [
       effect: { timing: 'afterMatch', mandatory: true, cost: {}, effects: [{ type: 'gainResource', resource: 'stamina', amount: -1 }], text: '경기 후: 1[체력]을 잃습니다. (필수)' } },
     trained: { cost: 1, role: 'attack', zones: ['CM'], skill: 1, number: 8,
       effect: { timing: 'afterMatch', mandatory: false, cost: {}, effects: [{ type: 'gainResource', resource: 'money', amount: 2 }, { type: 'gainResource', resource: 'ops', amount: 1 }], text: '경기 후: 2[돈]과 1[운영]을 얻습니다.' } } },
+  // 경기 후 확정 부상 — 다음 경기 전에 카드를 소진해 부상을 떼야 다시 출전 (p.24)
   { id: 'p-v06', kind: 'veteran', name: '마르셀 뒤랑', tags: ['베테랑', '피지컬'], placeholder: true,
     untrained: { cost: 3, role: 'attack', zones: ['CF', 'RW'], skill: 4, number: 11,
-      effect: { timing: 'afterMatch', mandatory: true, cost: {}, effects: [{ type: 'gainResource', resource: 'stamina', amount: -1 }], text: '경기 후: 1[체력]을 잃습니다. (필수)' } },
+      effect: { timing: 'afterMatch', mandatory: true, cost: {}, effects: [{ type: 'addPlayerToken', token: 'injury', count: 1, target: 'self' }], text: '경기 후: 이 선수에 부상 토큰 1개를 놓습니다. (필수)' } },
     trained: { cost: 2, role: 'attack', zones: ['CF', 'RW'], skill: 2, number: 11,
       effect: { timing: 'afterMatch', mandatory: false, cost: { fandom: 1 }, effects: [{ type: 'gainVP', amount: 1 }, { type: 'gainResource', resource: 'money', amount: 1 }], text: '경기 후: 1[팬덤]을 지불하면 1[승점]과 1[돈]을 얻습니다.' } } },
+  // 양면 능력 없음
   { id: 'p-v07', kind: 'veteran', name: '이승원', tags: ['베테랑', '유틸리티'], placeholder: true,
     untrained: { cost: 2, role: 'defense', zones: ['CB', 'CM'], skill: 3, number: 5 },
-    trained: { cost: 1, role: 'defense', zones: ['CB', 'CM'], skill: 1, number: 5,
-      effect: { timing: 'afterMatch', mandatory: false, cost: {}, effects: [{ type: 'moveTrack', track: 'ops', delta: 1 }], text: '경기 후: 운영 트랙 마커를 1칸 올립니다.' } } },
+    trained: { cost: 1, role: 'defense', zones: ['CB', 'CM'], skill: 1, number: 5 } },
   { id: 'p-v08', kind: 'veteran', name: '앙투안 르블랑', tags: ['베테랑', '윙어'], placeholder: true,
     untrained: { cost: 2, role: 'attack', zones: ['CM', 'LW'], skill: 3, number: 7,
-      effect: { timing: 'afterMatch', mandatory: true, cost: {}, effects: [{ type: 'addPlayerToken', token: 'weaknessTemp', count: 1 }], text: '경기 후: 이 선수에 일시적 약점 토큰 1개를 놓습니다. (필수)' } },
+      effect: { timing: 'afterMatch', mandatory: true, cost: {}, effects: [{ type: 'addPlayerToken', token: 'weaknessTemp', count: 1, target: 'self' }], text: '경기 후: 이 선수에 일시적 약점 토큰 1개를 놓습니다. (필수)' } },
     trained: { cost: 2, role: 'attack', zones: ['CM', 'LW'], skill: 2, number: 7,
       effect: { timing: 'duringMatch', mandatory: false, cost: { fandom: 1 }, effects: [{ type: 'scoreGoal', team: 'self', amount: 1 }], text: '경기 중: 1[팬덤]을 지불하면 1골을 득점합니다.' } } },
+  // 주사위 부상
   { id: 'p-v09', kind: 'veteran', name: '하비에르 몬테스', tags: ['베테랑', '수비수'], placeholder: true,
     untrained: { cost: 3, role: 'defense', zones: ['CB', 'RW'], skill: 3, number: 2,
-      effect: { timing: 'afterMatch', mandatory: true, cost: {}, effects: [{ type: 'gainResource', resource: 'fandom', amount: -1 }], text: '경기 후: 1[팬덤]을 잃습니다. (필수)' } },
+      effect: { timing: 'afterMatch', mandatory: true, cost: {}, effects: [{ type: 'rollDie', atMost: 2, effects: [{ type: 'addPlayerToken', token: 'injury', count: 1, target: 'self' }] }], text: '경기 후: 주사위를 굴려 2 이하가 나오면 이 선수에 부상 토큰 1개를 놓습니다. (필수)' } },
     trained: { cost: 1, role: 'defense', zones: ['CB', 'RW'], skill: 1, number: 2,
       effect: { timing: 'duringMatch', mandatory: false, cost: {}, effects: [{ type: 'denyGoals', count: 1 }], text: '경기 중: 상대 팀의 슛 1개를 막습니다.' } } },
   { id: 'p-v10', kind: 'veteran', name: '김용재', tags: ['베테랑', '윙어'], placeholder: true,
     untrained: { cost: 2, role: 'attack', zones: ['LW', 'CF'], skill: 3, number: 11 },
     trained: { cost: 1, role: 'attack', zones: ['LW', 'CF'], skill: 1, number: 11,
       effect: { timing: 'beforeMatch', mandatory: false, cost: { ops: 1 }, effects: [{ type: 'sectorSkill', sector: 'LW', delta: 1 }], text: '경기 전: 1[운영]을 지불하면 이 경기에서 내 레프트 윙 구획 선수 전원의 역량이 1 오릅니다.' } } },
+  // 주사위 강제 훈련
   { id: 'p-v11', kind: 'veteran', name: '오카다 켄', tags: ['베테랑', '미드필더'], placeholder: true,
     untrained: { cost: 2, role: 'defense', zones: ['CM'], skill: 3, number: 6,
-      effect: { timing: 'afterMatch', mandatory: true, cost: {}, effects: [{ type: 'gainResource', resource: 'money', amount: -1 }], text: '경기 후: 1[돈]을 잃습니다. (필수)' } },
+      effect: { timing: 'afterMatch', mandatory: true, cost: {}, effects: [{ type: 'rollDie', atMost: 2, effects: [{ type: 'trainPlayer', count: 1, target: 'self' }] }], text: '경기 후: 주사위를 굴려 2 이하가 나오면 이 선수를 훈련 면으로 뒤집습니다. (필수)' } },
     trained: { cost: 2, role: 'defense', zones: ['CM'], skill: 2, number: 6,
       effect: { timing: 'afterMatch', mandatory: false, cost: { stamina: 1 }, effects: [{ type: 'gainResource', resource: 'fandom', amount: 2 }], text: '경기 후: 1[체력]을 지불하면 2[팬덤]을 얻습니다.' } } },
+  // 주사위 부상
   { id: 'p-v12', kind: 'veteran', name: '에르난 곤살레스', tags: ['베테랑', '스트라이커'], placeholder: true,
     untrained: { cost: 3, role: 'attack', zones: ['CF'], skill: 4, number: 9,
-      effect: { timing: 'afterMatch', mandatory: true, cost: {}, effects: [{ type: 'gainResource', resource: 'fandom', amount: -1 }], text: '경기 후: 1[팬덤]을 잃습니다. (필수)' } },
+      effect: { timing: 'afterMatch', mandatory: true, cost: {}, effects: [{ type: 'rollDie', atMost: 3, effects: [{ type: 'addPlayerToken', token: 'injury', count: 1, target: 'self' }] }], text: '경기 후: 주사위를 굴려 3 이하가 나오면 이 선수에 부상 토큰 1개를 놓습니다. (필수)' } },
     trained: { cost: 2, role: 'attack', zones: ['CF'], skill: 2, number: 9,
       effect: { timing: 'duringMatch', mandatory: false, cost: { stamina: 1 }, effects: [{ type: 'scoreGoal', team: 'self', amount: 1 }, { type: 'gainResource', resource: 'fandom', amount: 1 }], text: '경기 중: 1[체력]을 지불하면 1골을 득점하고 1[팬덤]을 얻습니다.' } } },
   { id: 'p-v13', kind: 'veteran', name: '브루노 타바레스', tags: ['베테랑', '전술가'], placeholder: true,
     untrained: { cost: 3, role: 'defense', zones: ['CB'], skill: 3, number: 5 },
     trained: { cost: 1, role: 'defense', zones: ['CB'], skill: 1, number: 5,
       effect: { timing: 'afterMatch', mandatory: false, cost: {}, effects: [{ type: 'gainResource', resource: 'ops', amount: 1 }, { type: 'drawTactic', count: 1 }], text: '경기 후: 1[운영]을 얻고 전술 카드 1장을 뽑습니다.' } } },
+  // 주사위 강제 훈련
   { id: 'p-v14', kind: 'veteran', name: '정성훈', tags: ['베테랑', '승부사'], placeholder: true,
     untrained: { cost: 2, role: 'attack', zones: ['CM', 'RW'], skill: 3, number: 10,
-      effect: { timing: 'afterMatch', mandatory: true, cost: {}, effects: [{ type: 'gainResource', resource: 'stamina', amount: -1 }], text: '경기 후: 1[체력]을 잃습니다. (필수)' } },
+      effect: { timing: 'afterMatch', mandatory: true, cost: {}, effects: [{ type: 'rollDie', atMost: 2, effects: [{ type: 'trainPlayer', count: 1, target: 'self' }] }], text: '경기 후: 주사위를 굴려 2 이하가 나오면 이 선수를 훈련 면으로 뒤집습니다. (필수)' } },
     trained: { cost: 1, role: 'attack', zones: ['CM', 'RW'], skill: 1, number: 10,
       effect: { timing: 'afterMatch', mandatory: false, cost: {}, effects: [{ type: 'conditional', condition: { kind: 'outcome', outcome: 'win' }, effects: [{ type: 'gainVP', amount: 1 }, { type: 'gainResource', resource: 'fandom', amount: 1 }] }], text: '경기 후: 이 경기에 승리했다면 1[승점]과 1[팬덤]을 얻습니다.' } } },
   { id: 'p-v15', kind: 'veteran', name: '니콜라스 뒤부아', tags: ['베테랑', '수비수'], placeholder: true,
     untrained: { cost: 2, role: 'defense', zones: ['LW', 'CM'], skill: 3, number: 3,
-      effect: { timing: 'afterMatch', mandatory: true, cost: {}, effects: [{ type: 'addPlayerToken', token: 'weaknessTemp', count: 1 }], text: '경기 후: 이 선수에 일시적 약점 토큰 1개를 놓습니다. (필수)' } },
+      effect: { timing: 'afterMatch', mandatory: true, cost: {}, effects: [{ type: 'addPlayerToken', token: 'weaknessTemp', count: 1, target: 'self' }], text: '경기 후: 이 선수에 일시적 약점 토큰 1개를 놓습니다. (필수)' } },
     trained: { cost: 2, role: 'defense', zones: ['LW', 'CM'], skill: 2, number: 3,
       effect: { timing: 'afterMatch', mandatory: false, cost: { fandom: 1 }, effects: [{ type: 'gainVP', amount: 1 }], text: '경기 후: 1[팬덤]을 지불하면 1[승점]을 얻습니다.' } } },
   { id: 'p-v16', kind: 'veteran', name: '송민혁', tags: ['베테랑', '스트라이커'], placeholder: true,
@@ -290,4 +350,16 @@ export const PLAYER_CARDS: PlayerCard[] = [
       effect: { timing: 'afterMatch', mandatory: true, cost: {}, effects: [{ type: 'gainResource', resource: 'money', amount: -1 }], text: '경기 후: 1[돈]을 잃습니다. (필수)' } },
     trained: { cost: 1, role: 'attack', zones: ['CF'], skill: 1, number: 10,
       effect: { timing: 'duringMatch', mandatory: false, cost: {}, effects: [{ type: 'conditional', condition: { kind: 'scoredInSector', sector: 'CF' }, effects: [{ type: 'scoreGoal', team: 'self', amount: 1 }] }], text: '경기 중: 이 경기에서 내 센터 포워드 구획에서 득점했다면 1골을 추가로 득점합니다.' } } },
+  // 골키퍼 2장 (p-v17~p-v18)
+  // 주사위 부상
+  { id: 'p-v17', kind: 'veteran', name: '올리버 크라우스', tags: ['베테랑', '골키퍼'], placeholder: true,
+    untrained: { cost: 3, role: 'defense', zones: [], skill: 3, number: 1, goalkeeper: { saves: 2 },
+      effect: { timing: 'afterMatch', mandatory: true, cost: {}, effects: [{ type: 'rollDie', atMost: 2, effects: [{ type: 'addPlayerToken', token: 'injury', count: 1, target: 'self' }] }], text: '경기 후: 주사위를 굴려 2 이하가 나오면 이 선수에 부상 토큰 1개를 놓습니다. (필수)' } },
+    trained: { cost: 2, role: 'defense', zones: [], skill: 1, number: 1, goalkeeper: { saves: 3 },
+      effect: { timing: 'afterMatch', mandatory: false, cost: {}, effects: [{ type: 'conditional', condition: { kind: 'cleanSheet' }, effects: [{ type: 'gainVP', amount: 1 }] }], text: '경기 후: 이 경기에서 실점하지 않았다면 1[승점]을 얻습니다.' } } },
+  { id: 'p-v18', kind: 'veteran', name: '박성곤', tags: ['베테랑', '골키퍼'], placeholder: true,
+    untrained: { cost: 2, role: 'defense', zones: [], skill: 3, number: 1, goalkeeper: { saves: 1 },
+      effect: { timing: 'afterMatch', mandatory: true, cost: {}, effects: [{ type: 'gainResource', resource: 'stamina', amount: -1 }], text: '경기 후: 1[체력]을 잃습니다. (필수)' } },
+    trained: { cost: 1, role: 'defense', zones: [], skill: 1, number: 1, goalkeeper: { saves: 2 },
+      effect: { timing: 'duringMatch', mandatory: false, cost: { ops: 1 }, effects: [{ type: 'denyGoals', count: 1 }], text: '경기 중: 1[운영]을 지불하면 상대 팀의 슛 1개를 막습니다.' } } },
 ];

@@ -139,8 +139,20 @@ export function EffectChip({ effect }: { effect: Effect }) {
       return <TrackChip track={effect.track} delta={effect.delta} />;
     case 'gainVP':
       return <Chip icon="vp" value={signed(effect.amount)} title={title} />;
-    case 'trainPlayer':
-      return <Chip icon="train" value={effect.count > 1 ? `×${effect.count}` : undefined} title={title}>훈련</Chip>;
+    case 'trainPlayer': {
+      const chip = <Chip icon="train" value={effect.count > 1 && effect.target !== 'self' ? `×${effect.count}` : undefined} title={title}>{effect.target === 'self' ? '이 선수 훈련' : '훈련'}</Chip>;
+      const extra = (Object.entries(effect.withTokens ?? {}) as [PlayerToken, number][]).filter(([, n]) => n > 0);
+      if (extra.length === 0) return chip;
+      return (
+        <span className="chips cond" title={title}>
+          {chip}
+          <span className="chip cond-label">그 선수에</span>
+          {extra.map(([t, n]) => (
+            <TokenChip key={t} token={t} count={n} />
+          ))}
+        </span>
+      );
+    }
     case 'drawTactic':
       return <Chip icon="tactic" value={effect.count > 1 ? `×${effect.count}` : undefined} title={title}>전술</Chip>;
     case 'recruitProspectFree':
@@ -148,9 +160,26 @@ export function EffectChip({ effect }: { effect: Effect }) {
     case 'placeStamina':
       return <Chip icon="stamina" value={`◎${effect.count}`} title={title} />;
     case 'addPlayerToken':
-      return <TokenChip token={effect.token} count={effect.count} note={effect.spread && effect.count > 1 ? '1개씩' : undefined} title={title} />;
+      return <TokenChip token={effect.token} count={effect.count} note={effect.target === 'self' ? '이 선수' : effect.spread && effect.count > 1 ? '1개씩' : undefined} title={title} />;
     case 'removePlayerToken':
-      return <TokenChip token={effect.token} count={-effect.count} note={effect.spread && effect.count > 1 ? '1개씩' : undefined} title={title} />;
+      return <TokenChip token={effect.token} count={-effect.count} note={effect.target === 'self' ? '이 선수' : effect.spread && effect.count > 1 ? '1개씩' : undefined} title={title} />;
+    case 'rollDie':
+      return (
+        <span className="chips cond" title={title}>
+          <span className="chip cond-label"><Icon name="die" size={12} /> {effect.atMost} 이하</span>
+          {effect.effects.map((e, i) => (
+            <EffectChip key={i} effect={e} />
+          ))}
+          {effect.otherwise && effect.otherwise.length > 0 && (
+            <>
+              <span className="chip cond-label">아니면</span>
+              {effect.otherwise.map((e, i) => (
+                <EffectChip key={`o${i}`} effect={e} />
+              ))}
+            </>
+          )}
+        </span>
+      );
     case 'scoreGoal':
       return <Chip icon="goal" value={signed(effect.amount)} tone={effect.team === 'self' ? 'goal' : 'goal-opp'} title={title}>{effect.team === 'self' ? '' : '상대'}</Chip>;
     case 'peekOpponent':

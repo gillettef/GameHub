@@ -187,7 +187,11 @@ function MatchBoard({ p }: { p: PlayerPublicView }) {
   const canRelease = releasing && !!session && session.playerId === p.id && view.phase.kind === 'weekday' && view.phase.current === p.id && !view.phase.basicDone;
   const field = p.uniforms.filter((u) => u.location === 'field');
   const bench = p.uniforms.filter((u) => u.location === 'bench');
-  const nameOf = (instanceId?: string) => (instanceId ? cards.player(p.roster.find((r) => r.instanceId === instanceId)?.cardId ?? '').name : undefined);
+  // 훈련 전 유망주는 '유망주'로만 보여야 한다 (instanceName)
+  const nameOf = (instanceId?: string) => {
+    const inst = instanceId ? p.roster.find((r) => r.instanceId === instanceId) : undefined;
+    return inst ? instanceName(inst) : undefined;
+  };
   const token = (u: (typeof field)[number]) => (
     <span key={u.id} className={`utoken ${u.face}`} title={nameOf(u.cardInstanceId)}>
       <Icon name={u.face} size={11} />{u.number ?? '∅'}

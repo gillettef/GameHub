@@ -40,7 +40,7 @@ describe('createGame (p.4~p.10)', () => {
     expect(s.market.staff).toHaveLength(5);
     expect(s.market.sponsors).toHaveLength(5);
     for (const id of s.market.players) expect(s.decks.starters).not.toContain(id);
-    expect(s.decks.starters).toHaveLength(36 - 5);
+    expect(s.decks.starters).toHaveLength(38 - 5);
   });
 
   it('각 참가자: 첫 번째 트레이너 1, 베테랑 1 + 유망주 1, 기본 전술 1, 트랙 2, 자원 0', () => {
@@ -87,6 +87,10 @@ describe('createGame (p.4~p.10)', () => {
       for (const r of p.roster) {
         const side = r.trained ? cards.player(r.cardId).trained : cards.player(r.cardId).untrained;
         const token = p.uniforms.find((u) => u.cardInstanceId === r.instanceId);
+        if (side.goalkeeper) {
+          expect(token).toBeUndefined(); // 골키퍼는 유니폼 토큰이 없다 (p.8)
+          continue;
+        }
         expect(token?.location).toBe('field');
         expect(token?.face).toBe(side.role);
         if (side.number === undefined) expect(token?.number).toBeUndefined();
