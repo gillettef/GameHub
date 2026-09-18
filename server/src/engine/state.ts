@@ -1,6 +1,6 @@
 import type { MatchReport } from './match';
 import type { ScoreBreakdown } from './scoring';
-import type { Division, Effect, InfrastructureType, PlayerTokens, Resources, Role, Sector, TrackPositions } from './types';
+import type { DayRestriction, Division, Effect, InfrastructureType, Passive, PlayerTokens, Resources, Role, Sector, TrackPositions } from './types';
 
 export type PlayerId = string;
 
@@ -37,12 +37,16 @@ export interface ExecutiveInstance {
   exhausted: boolean;
 }
 
-// 대상 선택이 필요한 효과는 여기 쌓이고, 참가자가 resolvePending 으로 처리한다
+// 대상 선택이 필요한 효과는 여기 쌓이고, 참가자가 resolvePending 으로 처리한다.
+// target 에 따라 candidates 는 선수 instanceId / 직원 index / 이적 시장 index / 유니폼 토큰 id
+export type PendingTarget = 'player' | 'staff' | 'market' | 'token';
 export interface PendingEffect {
   id: string;
   effect: Effect;
   source: string;
-  candidates: string[]; // 선수 instanceId 목록
+  target: PendingTarget;
+  candidates: string[];
+  row?: 'players' | 'staff' | 'sponsors'; // target === 'market' 일 때 어느 행
 }
 
 export interface PlayerState {
@@ -61,6 +65,9 @@ export interface PlayerState {
   objective?: string;
   opponentDeck: string[]; // index 0 = 다음 상대
   scouted: boolean; // 다음 상대 카드의 앞면을 미리 봤는가 (peekOpponent 효과). 그 카드로 경기하면 풀린다
+  restrictions: { week: number; day: Weekday; mode: DayRestriction }[]; // 이사회 효과의 요일 제한(점검용 토큰). 그 주가 끝나면 버린다
+  passives: { passive: Passive; source: string }[]; // 상시 효과 (스폰서 추가 보너스 등). source = 카드 이름
+  upkeepDiscount: number; // 다음 주말 유지비 할인
   vp: number; // 개인 공급처의 승점 토큰
   pending: PendingEffect[];
   nextInstance: number;
@@ -110,6 +117,19 @@ export interface LineupSubmission {
   fandomInStands?: number;
 }
 
+// 경기 판정 전에 쌓이는 보정치: 경기 전 효과·전술 효과·경기 중 효과가 넣는다
+export interface MatchMods {
+  mine: number; // 효과로 미리 넣은 내 골
+  theirs: number;
+  extraSaves: number;
+  denyGoals: number;
+  sectorSkill: Partial<Record<Sector, number>>;
+  deferred: { source: string; effect: Effect; instanceId?: string }[]; // 경기 후 다시 판정할 조건부 효과
+}
+export function emptyMods(): MatchMods {
+  return { mine: 0, theirs: 0, extraSaves: 0, denyGoals: 0, sectorSkill: {}, deferred: [] };
+}
+
 export interface MatchAftermath {
   opponentCardId: string;
   played: string[];
@@ -125,8 +145,10 @@ export type Phase =
   // 한 명씩(current) 진행한다 (규칙서는 월요일·금요일을 동시 진행으로 두지만, 온라인에서는 서로의 진행을 지켜볼 수 있도록 턴제로 바꿨다)
   | { kind: 'monday.board'; current: PlayerId; meetings: Record<PlayerId, BoardMeeting> }
   | { kind: 'weekday'; day: Weekday; current: PlayerId; basicDone: boolean; paidDone: boolean }
-  // preGoals: 경기 전 효과가 미리 넣은 골 (경기 전 효과는 라인업 제출 시점에 적용되므로 판정 때까지 들고 있는다)
-  | { kind: 'friday.prepare'; current: PlayerId; submitted: Record<PlayerId, LineupSubmission | null>; preGoals: Record<PlayerId, { mine: number; theirs: number }> }
+  // preMatch: 경기 전 효과·전술 효과가 쌓는 보정치 (경기 전 효과는 라인업 제출 시점에 적용되므로 판정 때까지 들고 있는다)
+  | { kind: 'friday.prepare'; current: PlayerId; submitted: Record<PlayerId, LineupSubmission | null>; preMatch: Record<PlayerId, MatchMods> }
+  // p.21 경기 진행: 상대 팀 카드 공개 후 전술 효과 카드 1장 선택(또는 생략). effectCard = 결정한 참가자의 카드(null = 생략)
+  | { kind: 'friday.match'; current: PlayerId; submitted: Record<PlayerId, LineupSubmission>; preMatch: Record<PlayerId, MatchMods>; effectCard: Record<PlayerId, string | null>; decided: Record<PlayerId, boolean> }
   | { kind: 'friday.aftermath'; current: PlayerId; matches: Record<PlayerId, MatchAftermath> }
   | { kind: 'gameOver'; scores: Record<PlayerId, ScoreBreakdown>; winners: PlayerId[] };
 
@@ -174,6 +196,7 @@ export function currentDay(state: GameState): LogDay {
     case 'weekday':
       return state.phase.day;
     case 'friday.prepare':
+    case 'friday.match':
     case 'friday.aftermath':
       return 'fri';
     case 'gameOver':

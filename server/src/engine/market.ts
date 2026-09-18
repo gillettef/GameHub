@@ -40,6 +40,18 @@ export function takeFromMarket(state: GameState, row: MarketRow, index: number, 
   return taken!;
 }
 
+// 카드 효과: 시장의 카드 1장(아무 위치)을 버리고 남은 카드를 오른쪽으로 민 뒤 맨 왼쪽을 채운다
+export function discardFromMarket(state: GameState, row: MarketRow, index: number, rng: Rng): string {
+  const cards = state.market[row];
+  if (!Number.isInteger(index) || index < 0 || index >= cards.length) throw new GameError(`market index ${index} out of range`);
+  const [dropped] = cards.splice(index, 1);
+  const { deck, discard } = deckFor(state, row);
+  discard.push(dropped!);
+  const fresh = drawCard(deck, discard, rng);
+  if (fresh) cards.unshift(fresh);
+  return dropped!;
+}
+
 // 주말: 맨 오른쪽 카드를 버리고 채운다 (p.25)
 export function cycleMarket(state: GameState, row: MarketRow, rng: Rng): void {
   const cards = state.market[row];

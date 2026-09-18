@@ -1,19 +1,31 @@
-import { cards, effectiveSkill } from './cards';
-import { addToRoster, applyEffects } from './effects';
+import { cards } from './cards';
+import { addToRoster, applyEffects, releaseFromRoster } from './effects';
 import { startFriday } from './friday';
 import { takeFromMarket } from './market';
 import type { Rng } from './rng';
-import { GameError, WEEKDAYS, getPlayer, leftOf } from './state';
-import type { GameState, PlayerId, PlayerState } from './state';
+import { GameError, WEEKDAYS, addLog, getPlayer, leftOf } from './state';
+import type { GameState, PlayerId, PlayerState, Weekday } from './state';
 import { INFRASTRUCTURE_COST, INFRASTRUCTURE_MAX } from './types';
-import type { Cost, Effect, InfrastructureType, SponsorContract } from './types';
-import { releaseUniform } from './uniforms';
+import type { Cost, DayRestriction, Effect, InfrastructureType, SponsorContract } from './types';
 
 const PAID_ACTION_OPS = 2;
 const BILLBOARD_BASE_LIMIT = 2;
 
+// 이사회 효과의 요일 제한 (점검용 토큰): 그 주 그 요일에 기본 행동 불가 / 카드 행동만
+export function restrictionFor(player: Pick<PlayerState, 'restrictions'>, week: number, day: Weekday): DayRestriction | null {
+  return player.restrictions.find((r) => r.week === week && r.day === day)?.mode ?? null;
+}
+
+// 참가자의 주중 차례 시작: 기본 행동이 막힌 날이면 기본 행동을 끝난 것으로 두고 기록한다 (차례 끝내기만 가능)
+function beginTurn(state: GameState, day: Weekday, pid: PlayerId): void {
+  const mode = restrictionFor(getPlayer(state, pid), state.week, day);
+  state.phase = { kind: 'weekday', day, current: pid, basicDone: mode === 'noBasic', paidDone: false };
+  if (mode === 'noBasic') addLog(state, '점검용 토큰: 오늘은 기본 행동을 할 수 없음', { actor: pid });
+  else if (mode === 'cardActionOnly') addLog(state, '점검용 토큰: 오늘은 카드 행동만 할 수 있음', { actor: pid });
+}
+
 export function startWeekday(state: GameState): void {
-  state.phase = { kind: 'weekday', day: 'tue', current: state.firstPlayer, basicDone: false, paidDone: false };
+  beginTurn(state, 'tue', state.firstPlayer);
 }
 
 function turnOf(state: GameState, pid: PlayerId) {
@@ -22,9 +34,12 @@ function turnOf(state: GameState, pid: PlayerId) {
   return state.phase;
 }
 
-function requireBasic(state: GameState, pid: PlayerId) {
+function requireBasic(state: GameState, pid: PlayerId, kind: 'other' | 'cardAction' = 'other') {
   const turn = turnOf(state, pid);
   if (turn.basicDone) throw new GameError('basic action already taken today');
+  const mode = restrictionFor(getPlayer(state, pid), state.week, turn.day);
+  if (mode === 'noBasic') throw new GameError('no basic action today (board effect)');
+  if (mode === 'cardActionOnly' && kind !== 'cardAction') throw new GameError('only card actions today (board effect)');
   return turn;
 }
 
@@ -68,16 +83,9 @@ export function releasePlayer(state: GameState, pid: PlayerId, instanceId: strin
   const next = structuredClone(state);
   const turn = requireBasic(next, pid);
   const player = getPlayer(next, pid);
-  const idx = player.roster.findIndex((p) => p.instanceId === instanceId);
-  if (idx < 0) throw new GameError('no such player');
-  const inst = player.roster[idx]!;
-  let money = 2 + effectiveSkill(inst);
-  if (inst.tokens.injury > 0 || inst.tokens.suspension > 0) money = Math.floor(money / 2);
-  player.resources.money += money;
-  player.vp += inst.careerVP;
-  player.roster.splice(idx, 1);
-  releaseUniform(player.uniforms, instanceId);
-  next.decks.discards.players.push(inst.cardId);
+  const inst = player.roster.find((p) => p.instanceId === instanceId);
+  if (!inst) throw new GameError('no such player');
+  releaseFromRoster(next, player, inst);
   turn.basicDone = true;
   return next;
 }
@@ -93,7 +101,7 @@ export function hireStaff(state: GameState, pid: PlayerId, marketIndex: number, 
   pay(player, { money: card.cost });
   takeFromMarket(next, 'staff', marketIndex, rng);
   player.staff.push({ cardId, exhausted: false, suspension: 0 });
-  if (card.bonus) applyEffects(next, pid, card.bonus, card.name);
+  if (card.bonus) applyEffects(next, pid, card.bonus, card.name, {}, rng);
   turn.basicDone = true;
   return next;
 }
@@ -121,20 +129,20 @@ export function signSponsor(
   switch (contract) {
     case 'kit':
       takeFromMarket(next, 'sponsors', marketIndex, rng);
-      applyEffects(next, pid, card.kit, card.name);
+      applyEffects(next, pid, card.kit, card.name, {}, rng);
       next.decks.discards.sponsors.push(cardId);
       break;
     case 'billboard':
       if (player.sponsors.billboards.length >= billboardLimit(player)) throw new GameError('billboard slots full');
       takeFromMarket(next, 'sponsors', marketIndex, rng);
       player.sponsors.billboards.push(cardId);
-      applyEffects(next, pid, billboardChoice === 'bonus' ? card.extraBonus : card.billboard, card.name);
+      applyEffects(next, pid, billboardChoice === 'bonus' ? card.extraBonus : card.billboard, card.name, {}, rng);
       break;
     case 'naming':
       if (player.sponsors.naming) throw new GameError('naming sponsor already signed');
       takeFromMarket(next, 'sponsors', marketIndex, rng);
       player.sponsors.naming = cardId;
-      applyEffects(next, pid, [...card.naming, ...card.extraBonus], card.name);
+      applyEffects(next, pid, [...card.naming, ...card.extraBonus], card.name, {}, rng);
       break;
   }
   turn.basicDone = true;
@@ -174,10 +182,10 @@ export function buildOffice(state: GameState, pid: PlayerId): GameState {
 export type CardActionSource = { kind: 'staff'; index: number } | { kind: 'executive'; index: number };
 
 // p.19 카드 행동: 카드 소진(주 1회). p.14 추가 유급 행동: 운영 2개로 카드 행동 1회 더
-export function cardAction(state: GameState, pid: PlayerId, source: CardActionSource, paid = false): GameState {
+export function cardAction(state: GameState, pid: PlayerId, source: CardActionSource, paid: boolean, rng: Rng): GameState {
   const next = structuredClone(state);
-  const turn = turnOf(next, pid);
-  if (paid ? turn.paidDone : turn.basicDone) throw new GameError(paid ? 'paid action already taken today' : 'basic action already taken today');
+  const turn = paid ? turnOf(next, pid) : requireBasic(next, pid, 'cardAction');
+  if (paid && turn.paidDone) throw new GameError('paid action already taken today');
   const player = getPlayer(next, pid);
 
   let holder: { cardId: string; exhausted: boolean };
@@ -204,15 +212,18 @@ export function cardAction(state: GameState, pid: PlayerId, source: CardActionSo
 
   pay(player, paid ? { ...action.cost, ops: (action.cost.ops ?? 0) + PAID_ACTION_OPS } : action.cost);
   holder.exhausted = true;
-  applyEffects(next, pid, action.effects, name);
+  applyEffects(next, pid, action.effects, name, {}, rng);
   if (paid) turn.paidDone = true;
   else turn.basicDone = true;
   return next;
 }
 
+// 패스는 요일 제한과 무관하게 가능 (기본 행동을 하지 않는 것이므로)
 export function pass(state: GameState, pid: PlayerId): GameState {
   const next = structuredClone(state);
-  requireBasic(next, pid).basicDone = true;
+  const turn = turnOf(next, pid);
+  if (turn.basicDone) throw new GameError('basic action already taken today');
+  turn.basicDone = true;
   return next;
 }
 
@@ -223,12 +234,12 @@ export function endTurn(state: GameState, pid: PlayerId): GameState {
   if (!turn.basicDone) throw new GameError('take a basic action or pass first');
   const nextPlayer = leftOf(next, pid);
   if (nextPlayer !== next.firstPlayer) {
-    next.phase = { ...turn, current: nextPlayer, basicDone: false, paidDone: false };
+    beginTurn(next, turn.day, nextPlayer);
     return next;
   }
   const dayIdx = WEEKDAYS.indexOf(turn.day);
   const nextDay = WEEKDAYS[dayIdx + 1];
-  if (nextDay) next.phase = { kind: 'weekday', day: nextDay, current: next.firstPlayer, basicDone: false, paidDone: false };
+  if (nextDay) beginTurn(next, nextDay, next.firstPlayer);
   else startFriday(next);
   return next;
 }

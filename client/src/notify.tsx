@@ -53,6 +53,8 @@ export function myTask(view: GameView): string | null {
       return phase.current === view.me ? `${DAY_LABEL[phase.day]} 행동 차례` : null;
     case 'friday.prepare':
       return phase.current === view.me && !phase.submitted[view.me] ? '라인업을 짜세요' : null;
+    case 'friday.match':
+      return phase.current === view.me && !phase.decided[view.me] ? '전술 효과 카드를 고르세요' : null;
     case 'friday.aftermath':
       return phase.current === view.me && !phase.matches[view.me]?.decided ? '경기 영향 주사위를 굴리세요' : null;
     default:

@@ -175,28 +175,62 @@ describe('스타디움/사무실 건설 (p.19)', () => {
 describe('카드 행동과 추가 유급 행동 (p.14, p.19)', () => {
   it('첫 번째 트레이너 행동: 카드 소진, 주 1회, 유급이면 운영 2개 추가', () => {
     let s = tuesday();
-    s = cardAction(s, 'a', { kind: 'staff', index: 0 });
+    s = cardAction(s, 'a', { kind: 'staff', index: 0 }, false, seededRng());
     const p = s.players['a']!;
     expect(p.staff[0]!.exhausted).toBe(true);
     expect(p.pending.length + p.roster.filter((r) => r.trained).length).toBeGreaterThan(0);
-    expect(() => cardAction(s, 'a', { kind: 'staff', index: 0 }, true)).toThrow(GameError);
+    expect(() => cardAction(s, 'a', { kind: 'staff', index: 0 }, true, seededRng())).toThrow(GameError);
 
     s = tuesday();
-    s = cardAction(s, 'a', { kind: 'staff', index: 0 }, true);
+    s = cardAction(s, 'a', { kind: 'staff', index: 0 }, true, seededRng());
     expect(s.players['a']!.resources.ops).toBe(2);
     if (s.phase.kind !== 'weekday') throw new Error();
     expect(s.phase.paidDone).toBe(true);
     expect(s.phase.basicDone).toBe(false);
     s = pass(s, 'a');
-    expect(() => cardAction(s, 'a', { kind: 'staff', index: 0 }, true)).toThrow(GameError);
+    expect(() => cardAction(s, 'a', { kind: 'staff', index: 0 }, true, seededRng())).toThrow(GameError);
   });
 
   it('출장 정지 카드와 운영 부족은 거부', () => {
     const s = tuesday();
     s.players['a']!.staff[0]!.suspension = 1;
-    expect(() => cardAction(s, 'a', { kind: 'staff', index: 0 })).toThrow(GameError);
+    expect(() => cardAction(s, 'a', { kind: 'staff', index: 0 }, false, seededRng())).toThrow(GameError);
     s.players['a']!.staff[0]!.suspension = 0;
     s.players['a']!.resources.ops = 1;
-    expect(() => cardAction(s, 'a', { kind: 'staff', index: 0 }, true)).toThrow(GameError);
+    expect(() => cardAction(s, 'a', { kind: 'staff', index: 0 }, true, seededRng())).toThrow(GameError);
+  });
+});
+
+describe('요일 제한 (이사회 효과, 점검용 토큰)', () => {
+  it('기본 행동 불가: 차례가 시작될 때 기본 행동이 끝난 것으로 두고, 유급 행동과 차례 끝내기만 가능', () => {
+    const s = tuesday();
+    s.players['a']!.restrictions.push({ week: s.week, day: 'tue', mode: 'noBasic' });
+    const t = endTurn(pass(s, 'a'), 'a'); // b 차례로
+    // 다음 주 화요일 제한이 있는 b: 이번 주엔 영향 없음
+    expect(t.phase.kind === 'weekday' && t.phase.basicDone).toBe(false);
+    // a 에게 다시 차례가 오는 상황을 만들기 위해 수요일로: 4명이 모두 끝내면 요일이 바뀐다
+    let w = t;
+    for (const id of ['b', 'c', 'd']) w = endTurn(pass(w, id), id);
+    expect(w.phase.kind === 'weekday' && w.phase.day).toBe('wed');
+    // 수요일 제한을 건 상태로 다시 시작해 본다
+    const s2 = tuesday();
+    s2.players['a']!.restrictions.push({ week: s2.week, day: 'tue', mode: 'noBasic' });
+    startWeekday(s2);
+    expect(s2.phase.kind === 'weekday' && s2.phase.basicDone).toBe(true);
+    expect(() => recruitProspect(s2, 'a')).toThrow(GameError);
+    expect(() => pass(s2, 'a')).toThrow(GameError);
+    const paid = cardAction(s2, 'a', { kind: 'staff', index: 0 }, true, seededRng());
+    expect(paid.phase.kind === 'weekday' && paid.phase.paidDone).toBe(true);
+    expect(endTurn(paid, 'a').phase.kind).toBe('weekday');
+  });
+
+  it('카드 행동만: 다른 기본 행동은 거부되고 카드 행동과 패스는 된다', () => {
+    const s = tuesday();
+    s.players['a']!.restrictions.push({ week: s.week, day: 'tue', mode: 'cardActionOnly' });
+    expect(() => recruitProspect(s, 'a')).toThrow(GameError);
+    expect(() => buildOffice(s, 'a')).toThrow(GameError);
+    expect(pass(s, 'a').phase.kind).toBe('weekday');
+    const done = cardAction(s, 'a', { kind: 'staff', index: 0 }, false, seededRng());
+    expect(done.phase.kind === 'weekday' && done.phase.basicDone).toBe(true);
   });
 });

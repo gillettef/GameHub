@@ -10,7 +10,7 @@ export const BOARD_CARDS: BoardCard[] = [
       yellow: {
         text: '다음 주에는 목요일에 카드 행동만 수행할 수 있습니다. 화요일 칸에 [점검용 토큰]을 올려놓습니다.',
         effects: [
-          { type: 'text', text: '다음 주에는 목요일에 카드 행동만 수행할 수 있으며, 화요일 칸에 [점검용 토큰]을 올려놓습니다.' },
+          { type: 'restrictDay', day: 'thu', week: 'next', mode: 'cardActionOnly' },
         ],
       },
       blue: {
@@ -46,7 +46,7 @@ export const BOARD_CARDS: BoardCard[] = [
       },
       blue: {
         text: '그가 팀의 사기를 저해한다는 것을 알리고 방출로 처리합니다.',
-        effects: [{ type: 'text', text: '선수 카드 1장을 선택하여 방출 행동으로 처리합니다.' }],
+        effects: [{ type: 'releasePlayer' }],
       },
       red: {
         text: '선수 카드 1장을 선택하고 해당 카드에 2[출장정지]를 올려놓습니다.',
@@ -535,7 +535,7 @@ export const BOARD_CARDS: BoardCard[] = [
       },
       blue: {
         text: '사무 업무를 미루고 훈련장으로 갑니다. 이번 주 화요일에는 기본 행동을 수행할 수 없습니다.',
-        effects: [{ type: 'text', text: '이번 주 화요일에는 기본 행동을 수행할 수 없습니다.' }],
+        effects: [{ type: 'restrictDay', day: 'tue', week: 'this', mode: 'noBasic' }],
       },
       red: {
         text: '직원들이 카페에서 일합니다. [운영] -2, [팬덤] +1',
@@ -743,7 +743,7 @@ export const BOARD_CARDS: BoardCard[] = [
       },
       red: {
         text: '모두 집에서 쉽니다. 이번 주 수요일에는 기본 행동을 수행할 수 없습니다.',
-        effects: [{ type: 'text', text: '이번 주 수요일에는 기본 행동을 수행할 수 없습니다.' }],
+        effects: [{ type: 'restrictDay', day: 'wed', week: 'this', mode: 'noBasic' }],
       },
     },
     placeholder: true,
@@ -977,7 +977,7 @@ export const BOARD_CARDS: BoardCard[] = [
       },
       red: {
         text: '한 명을 징계합니다. 직원 카드 1장을 선택해 [출장정지] 1개를 올려놓습니다.',
-        effects: [{ type: 'text', text: '직원 카드 1장을 선택하여 [출장정지] 1개를 올려놓습니다.' }],
+        effects: [{ type: 'addStaffSuspension', count: 1 }],
       },
     },
     placeholder: true,
@@ -989,12 +989,7 @@ export const BOARD_CARDS: BoardCard[] = [
     decisions: {
       yellow: {
         text: '계약을 파기합니다. 유니폼 스폰서가 있다면 장내 방송 효과를 반환하고, 없다면 [돈] +2',
-        effects: [
-          {
-            type: 'text',
-            text: '유니폼 스폰서가 있다면 해당 카드를 버리고 장내 방송 효과를 반환합니다. 없다면 2[돈]을 얻습니다.',
-          },
-        ],
+        effects: [{ type: 'breakNamingSponsor', otherwise: [{ type: 'gainResource', resource: 'money', amount: 2 }] }],
       },
       blue: {
         text: '선수들이 스폰서 행사에 추가로 참여합니다. [돈] +1, [체력] -1',

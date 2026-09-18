@@ -250,6 +250,12 @@ label.row { flex-direction: row; align-items: center; }
 .chip-note { font-size: var(--fs-sub); font-weight: 600; }
 .chip.goal { background: var(--pitch-tint); color: var(--pitch-dark); }
 .chip.goal-opp { background: #f8e1df; color: var(--danger); }
+.chip.attack { background: #fde7d3; color: var(--attack); }
+.chip.defense { background: #dbe7fb; color: var(--defense); }
+.chips.cond { gap: 2px; padding: 1px 3px; border-radius: 6px; box-shadow: inset 0 0 0 1px var(--line, #d5dbe3); }
+.chip.cond-label { background: transparent; color: var(--ink-2); font-weight: 500; padding-left: 3px; }
+.utoken.pick { cursor: pointer; border: 2px solid transparent; }
+.utoken.pick.chosen { border-color: var(--ink); box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--ink); }
 .chip.text { font-weight: 400; color: var(--ink-2); max-width: 160px; overflow: hidden; text-overflow: ellipsis; }
 .chip.free { color: var(--muted); font-weight: 500; }
 .effect-line { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 13px; margin-top: 4px; }
@@ -509,6 +515,8 @@ label.row { flex-direction: row; align-items: center; }
 .day-track { display: flex; gap: 4px; }
 .day-track .day { flex: 1; text-align: center; padding: 4px 0; border-radius: 6px 6px 0 0; background: #3e4f6e; font-size: 13px; font-weight: 600; color: #b9c5d8; }
 .day-track .day.now { background: var(--yellow); color: #3a2e00; }
+.day-track .day.inspect { box-shadow: inset 0 0 0 2px var(--danger); }
+.day-track .day.inspect::after { content: ' ●'; color: var(--danger); font-size: 9px; vertical-align: middle; }
 .day-track .day.weekend { flex: 0.8; }
 .club-grid { display: grid; grid-template-columns: auto 1fr; gap: 12px; }
 @media (max-width: 700px) { .club-grid { grid-template-columns: 1fr; } }

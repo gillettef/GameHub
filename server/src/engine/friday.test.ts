@@ -2,10 +2,10 @@ import { describe, expect, it } from 'vitest';
 import { applyAction } from './actions';
 import { cards } from './cards';
 import { addToRoster } from './effects';
-import { acceptMatchRoll, rerollMatchDie, rollMatchDie, standsCount, startFriday, submitLineup } from './friday';
+import { acceptMatchRoll, playTacticEffect, rerollMatchDie, rollMatchDie, standsCount, startFriday, submitLineup } from './friday';
 import { GameError } from './state';
 import type { GameState } from './state';
-import { autoLineup, gameAtMonday, seededRng, settlePending } from './test-utils';
+import { autoLineup, gameAtMonday, seededRng, settlePending, skipTacticEffects } from './test-utils';
 
 function friday(): GameState {
   const s = gameAtMonday();
@@ -19,7 +19,7 @@ function friday(): GameState {
 
 function submitAll(s: GameState, seed = 1): GameState {
   for (const id of s.seats) s = settlePending(submitLineup(s, id, autoLineup(s.players[id]!), seededRng(seed)), seededRng(seed));
-  return s;
+  return skipTacticEffects(s, seededRng(seed));
 }
 
 describe('경기 준비 제출 (p.20)', () => {
@@ -31,7 +31,9 @@ describe('경기 준비 제출 (p.20)', () => {
     expect(s.players['a']!.resources.fandom).toBe(1);
     expect(() => submitLineup(s, 'a', sub, seededRng())).toThrow(GameError);
     expect(s.phase.kind).toBe('friday.prepare');
-    for (const id of ['b', 'c', 'd']) s = submitLineup(s, id, autoLineup(s.players[id]!), seededRng());
+    for (const id of ['b', 'c', 'd']) s = settlePending(submitLineup(s, id, autoLineup(s.players[id]!), seededRng()), seededRng());
+    expect(s.phase.kind).toBe('friday.match'); // 전원 제출 → 경기 진행(전술 효과) 단계
+    s = skipTacticEffects(s, seededRng());
     expect(s.phase.kind).toBe('friday.aftermath');
     expect(s.players['a']!.resources.money).toBe(5 + 2);
     expect(s.players['a']!.opponentDeck).toHaveLength(5);
@@ -100,16 +102,84 @@ describe('경기 전 효과 (p.22)', () => {
     expect(pending.effect).toEqual({ type: 'addPlayerToken', token: 'strengthTemp', count: 1 });
     expect(() => submitLineup(s, 'b', autoLineup(s.players['b']!), rng)).toThrow(GameError);
 
-    s = applyAction(s, 'a', { type: 'resolvePending', pendingId: pending.id, instanceId: pending.candidates[0]! }, rng);
+    s = applyAction(s, 'a', { type: 'resolvePending', pendingId: pending.id, choice: pending.candidates[0]! }, rng);
     expect(s.players['a']!.roster.find((r) => r.instanceId === pending.candidates[0])!.tokens.strengthTemp).toBe(1); // 경기 전에 토큰이 있다
     expect(s.phase.kind === 'friday.prepare' && s.phase.current).toBe('b');
     expect(s.players['a']!.roster.find((r) => r.instanceId === booster.instanceId)!.exhausted).toBe(true);
 
     for (const id of ['b', 'c', 'd']) s = settlePending(submitLineup(s, id, autoLineup(s.players[id]!), rng), rng);
+    expect(s.phase.kind).toBe('friday.match'); // 전원 제출 → 상대 공개·전술 효과 단계
+    s = skipTacticEffects(s, rng);
     expect(s.phase.kind).toBe('friday.aftermath');
     expect(s.players['a']!.scouted).toBe(false); // 미리 본 상대 카드는 경기로 소진
     // p.24: 경기 뒤 출전 선수의 일시적 토큰은 제거된다
     expect(s.players['a']!.roster.every((r) => r.tokens.strengthTemp === 0)).toBe(true);
+  });
+});
+
+describe('경기 진행: 전술 효과 카드 (p.21 8, p.28)', () => {
+  function toMatchPhase(seed = 5): { s: GameState; rng: ReturnType<typeof seededRng> } {
+    const rng = seededRng(seed);
+    let s = friday();
+    for (const id of s.seats) s = settlePending(submitLineup(s, id, autoLineup(s.players[id]!), rng), rng);
+    expect(s.phase.kind).toBe('friday.match');
+    return { s, rng };
+  }
+
+  it('포메이션 카드는 효과로 못 쓰고, 손에 없는 카드도 거부. 카드는 손에 남는다', () => {
+    const { s, rng } = toMatchPhase();
+    const formation = s.phase.kind === 'friday.match' ? s.phase.submitted['a']!.tacticCardId : '';
+    expect(() => playTacticEffect(s, 'a', formation, rng)).toThrow(GameError);
+    expect(() => playTacticEffect(s, 'a', 'tc-09', rng)).toThrow(GameError);
+    expect(() => playTacticEffect(s, 'b', null, rng)).toThrow(GameError); // 차례 아님
+    s.players['a']!.tacticCards.push('tc-09');
+    const next = playTacticEffect(s, 'a', 'tc-09', rng);
+    expect(next.players['a']!.tacticCards).toContain('tc-09');
+    expect(next.phase.kind === 'friday.match' && next.phase.effectCard['a']).toBe('tc-09');
+    expect(next.phase.kind === 'friday.match' && next.phase.current).toBe('b');
+  });
+
+  it('버스 세우기(상대 득점 1 무효)·토탈 풋볼(CM 역량 +1)·선방 추가가 경기 판정에 반영된다', () => {
+    const base = toMatchPhase(11);
+    // 기준: 아무 효과 없이
+    const plain = skipTacticEffects(base.s, seededRng(1));
+    const report = (st: GameState) => (st.phase.kind === 'friday.aftermath' ? st.phase.matches['a']!.report : null)!;
+    const raw = report(plain);
+
+    // 버스 세우기: 상대 득점이 있었다면 1 줄어든다
+    const bus = structuredClone(base.s);
+    bus.players['a']!.tacticCards.push('tc-09');
+    const withBus = report(skipTacticEffects(playTacticEffect(bus, 'a', 'tc-09', seededRng(1)), seededRng(1)));
+    expect(withBus.theirGoals).toBe(Math.max(0, raw.theirGoals - 1));
+    expect(withBus.myGoals).toBe(raw.myGoals);
+
+    // 선방 +2 를 mods 에 직접 넣으면 상대 득점이 늘지 않는다 (골키퍼 역량 ≥ 슛이면 막는다)
+    const saves = structuredClone(base.s);
+    if (saves.phase.kind === 'friday.match') saves.phase.preMatch['a']!.extraSaves = 2;
+    const withSaves = report(skipTacticEffects(saves, seededRng(1)));
+    expect(withSaves.theirGoals).toBeLessThanOrEqual(raw.theirGoals);
+
+    // CM 구획 역량 +3 이면 내 득점은 줄지 않는다
+    const total = structuredClone(base.s);
+    if (total.phase.kind === 'friday.match') total.phase.preMatch['a']!.sectorSkill = { CM: 3 };
+    const withTotal = report(skipTacticEffects(total, seededRng(1)));
+    expect(withTotal.myGoals).toBeGreaterThanOrEqual(raw.myGoals);
+  });
+
+  it('조건부 효과: 경기 후 조건(실점 없음 등)은 판정 뒤에 적용되고, 상시 효과 승리 팬덤도 붙는다', () => {
+    const { s, rng } = toMatchPhase(3);
+    const a = s.players['a']!;
+    a.tacticCards.push('tc-10'); // 팬덤 +1, 상대 무득점이면 돈 +1
+    a.passives.push({ passive: 'fandomOnWin', source: 't' });
+    const fandom = a.resources.fandom;
+    const money = a.resources.money;
+    const stands = s.phase.kind === 'friday.match' ? (s.phase.submitted['a']!.fandomInStands ?? 0) : 0;
+    const done = skipTacticEffects(playTacticEffect(s, 'a', 'tc-10', rng), rng);
+    const r = done.phase.kind === 'friday.aftermath' ? done.phase.matches['a']!.report : null;
+    expect(r).not.toBeNull();
+    const pa = done.players['a']!;
+    expect(pa.resources.fandom).toBe(fandom + 1 + (r!.outcome === 'win' ? 1 : 0));
+    expect(pa.resources.money).toBe(money + stands + (r!.theirGoals === 0 ? 1 : 0));
   });
 });
 

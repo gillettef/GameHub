@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { cards } from '@server/engine/cards';
 import { startFriday, submitLineup } from '@server/engine/friday';
 import { autoPlace, buildLineup, eligiblePlayers, previewField, validatePlacements } from '@server/engine/lineup';
-import { gameAtMonday, seededRng } from '@server/engine/test-utils';
+import { gameAtMonday, seededRng, settlePending, skipTacticEffects } from '@server/engine/test-utils';
 
 // 경기 준비 화면이 쓰는 헬퍼가 서버 검증을 통과하는 라인업을 만드는지 확인 (클라이언트 alias 경로로 실행)
 describe('lineup helpers', () => {
@@ -16,9 +16,10 @@ describe('lineup helpers', () => {
       const tacticCardId = p.tacticCards[0]!;
       const lineup = buildLineup(p, tacticCardId, cards.tactic(tacticCardId).formations[0]!, eligiblePlayers(p));
       expect(lineup).not.toBeNull();
-      s = submitLineup(s, id, { ...lineup!, fandomInStands: 1 }, seededRng(seed));
+      s = settlePending(submitLineup(s, id, { ...lineup!, fandomInStands: 1 }, seededRng(seed)), seededRng(seed));
     }
-    expect(s.phase.kind).toBe('friday.aftermath');
+    expect(s.phase.kind).toBe('friday.match');
+    expect(skipTacticEffects(s, seededRng(seed)).phase.kind).toBe('friday.aftermath');
   });
 
   it('배치 오류를 사람이 읽을 수 있게 보고한다', () => {

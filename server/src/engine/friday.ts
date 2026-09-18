@@ -1,11 +1,12 @@
 import { activeSide, cards, effectiveSkill } from './cards';
 import { applyEffects, moveTrack, trainPlayer } from './effects';
+import type { EffectContext, MatchContext } from './effects';
 import { resolveMatch, sectorCounts } from './match';
 import type { MatchReport, Slot, TeamSide } from './match';
 import { matchDieResult } from './matchDie';
 import type { Rng } from './rng';
-import { GameError, addLog, getPlayer, nextInTurn, requireTurn } from './state';
-import type { GameState, LineupSubmission, MatchAftermath, PlayerId, PlayerInstance, PlayerState } from './state';
+import { GameError, addLog, emptyMods, getPlayer, nextInTurn, requireTurn } from './state';
+import type { GameState, LineupSubmission, MatchAftermath, MatchMods, PlayerId, PlayerInstance, PlayerState } from './state';
 import { RESOURCES, SECTORS } from './types';
 import { runWeekend } from './weekend';
 import type { Cost, Effect, MatchTiming, OpponentTeamCard, PlayerEffect, Resources, Sector } from './types';
@@ -17,8 +18,9 @@ const LEAGUE_DRAW = 1;
 // placeholder: 상대 팀 주사위 눈 (p.2 그림: 0/1/3)
 const OPPONENT_DIE = [0, 0, 1, 1, 3, 3] as const;
 
-export function standsCount(player: Pick<PlayerState, 'infrastructure'>): number {
-  return PRINTED_STANDS + player.infrastructure.filter((i) => i === 'stand3' || i === 'stand4').length;
+// 관중석 수 = 인쇄 2 + 3·4번 관중석 + 상시 효과(스폰서 '매 경기 팬덤 1개 추가 배치')
+export function standsCount(player: Pick<PlayerState, 'infrastructure' | 'passives'>): number {
+  return PRINTED_STANDS + player.infrastructure.filter((i) => i === 'stand3' || i === 'stand4').length + player.passives.filter((p) => p.passive === 'extraStand').length;
 }
 
 export function startFriday(state: GameState): void {
@@ -26,7 +28,7 @@ export function startFriday(state: GameState): void {
     kind: 'friday.prepare',
     current: state.firstPlayer,
     submitted: Object.fromEntries(state.seats.map((id) => [id, null])),
-    preGoals: Object.fromEntries(state.seats.map((id) => [id, { mine: 0, theirs: 0 }])),
+    preMatch: Object.fromEntries(state.seats.map((id) => [id, emptyMods()])),
   };
 }
 
@@ -96,7 +98,13 @@ function validateLineup(player: PlayerState, sub: LineupSubmission): { players: 
   return { players };
 }
 
-// p.20 경기 준비 제출. 전원 제출하면 경기를 일괄 처리한다
+// 경기 전 맥락: 상대는 더미 맨 위 카드. 결과가 필요한 조건은 'defer' 된다
+function preMatchContext(player: PlayerState, sub: LineupSubmission): MatchContext {
+  const opponentCardId = player.opponentDeck[0];
+  return { stage: 'pre', myGoals: 0, theirGoals: 0, sectorGoals: {}, placements: sub.placements, opponentTeamId: opponentCardId ? cards.opponent(opponentCardId).teamId : '' };
+}
+
+// p.20 경기 준비 제출. 전원 제출하면 경기 진행(상대 공개·전술 효과) 단계로
 export function submitLineup(state: GameState, pid: PlayerId, sub: LineupSubmission, rng: Rng): GameState {
   const next = structuredClone(state);
   if (next.phase.kind !== 'friday.prepare') throw new GameError('not in match preparation');
@@ -126,20 +134,68 @@ export function submitLineup(state: GameState, pid: PlayerId, sub: LineupSubmiss
   next.phase.submitted[pid] = sub;
   // 경기 전 효과는 여기서 바로 적용한다. 판정과 같은 액션 안에서 처리하면 대상 선택(pending)이 경기 뒤로 밀려
   // 일시 역량 토큰 등이 경기에 반영되지 않는다. 대상 선택이 남으면 이 참가자 차례에 머물고,
-  // resolvePending 뒤 advanceAfterLineup 이 다음 참가자로 넘긴다
-  applyTimedEffects(next, pid, players, 'beforeMatch', next.phase.preGoals[pid]!);
-  advanceAfterLineup(next, pid, rng);
+  // resolvePending 뒤 advanceFriday 가 다음 참가자로 넘긴다
+  applyTimedEffects(next, pid, players, 'beforeMatch', { mods: next.phase.preMatch[pid]!, played: sub.players, match: preMatchContext(player, sub) }, rng);
+  advanceFriday(next, pid, rng);
   return next;
 }
 
-// 라인업을 제출한 참가자의 경기 전 효과 대상 선택이 모두 끝났으면 다음 참가자로, 전원 제출이면 경기 판정
-export function advanceAfterLineup(state: GameState, pid: PlayerId, rng: Rng): void {
-  if (state.phase.kind !== 'friday.prepare' || state.phase.current !== pid) return;
-  if (!state.phase.submitted[pid] || getPlayer(state, pid).pending.length > 0) return;
-  const submitted = state.phase.submitted;
-  const following = nextInTurn(state, (id) => submitted[id] !== null);
-  if (following) state.phase.current = following;
-  else resolveAllMatches(state, rng);
+// 금요일 턴제 진행: 경기 준비(라인업)와 경기 진행(전술 효과) 모두, 현재 참가자의 대상 선택이 끝나야 다음 참가자로.
+// 전원 라인업 제출 → 경기 진행 단계, 전원 전술 효과 결정 → 경기 판정
+export function advanceFriday(state: GameState, pid: PlayerId, rng: Rng): void {
+  const phase = state.phase;
+  if (phase.kind === 'friday.prepare') {
+    if (phase.current !== pid || !phase.submitted[pid] || getPlayer(state, pid).pending.length > 0) return;
+    const submitted = phase.submitted;
+    const following = nextInTurn(state, (id) => submitted[id] !== null);
+    if (following) phase.current = following;
+    else startMatchPhase(state);
+    return;
+  }
+  if (phase.kind === 'friday.match') {
+    if (phase.current !== pid || !phase.decided[pid] || getPlayer(state, pid).pending.length > 0) return;
+    const decided = phase.decided;
+    const following = nextInTurn(state, (id) => !!decided[id]);
+    if (following) phase.current = following;
+    else resolveAllMatches(state, rng);
+  }
+}
+
+// p.21 경기 진행: 상대 팀 카드를 공개하고(뷰가 현재 참가자의 카드를 앞면으로 보여준다) 전술 효과 카드 1장을 쓸 수 있다
+function startMatchPhase(state: GameState): void {
+  if (state.phase.kind !== 'friday.prepare') return;
+  const submitted: Record<PlayerId, LineupSubmission> = {};
+  for (const id of state.seats) submitted[id] = state.phase.submitted[id]!;
+  state.phase = {
+    kind: 'friday.match',
+    current: state.firstPlayer,
+    submitted,
+    preMatch: state.phase.preMatch,
+    effectCard: {},
+    decided: Object.fromEntries(state.seats.map((id) => [id, false])),
+  };
+}
+
+// p.21 8 / p.28: 포메이션에 쓴 카드가 아닌 전술 카드 1장의 효과를 적용한다(카드는 손에 남는다). null 이면 쓰지 않는다
+export function playTacticEffect(state: GameState, pid: PlayerId, cardId: string | null, rng: Rng): GameState {
+  const next = structuredClone(state);
+  if (next.phase.kind !== 'friday.match') throw new GameError('not in match phase');
+  requireTurn(next.phase, pid);
+  if (next.phase.decided[pid]) throw new GameError('already decided');
+  const player = getPlayer(next, pid);
+  const sub = next.phase.submitted[pid]!;
+  if (cardId !== null) {
+    if (!player.tacticCards.includes(cardId)) throw new GameError('tactic card not in hand');
+    if (cardId === sub.tacticCardId) throw new GameError('formation card cannot be used for its effect');
+    const card = cards.tactic(cardId);
+    if (!card.effect) throw new GameError('card has no effect');
+    addLog(next, `전술 효과: ${card.name}`, { actor: pid });
+    applyEffects(next, pid, card.effect.effects, card.name, { mods: next.phase.preMatch[pid]!, played: sub.players, match: preMatchContext(player, sub) }, rng);
+  }
+  next.phase.effectCard[pid] = cardId;
+  next.phase.decided[pid] = true;
+  advanceFriday(next, pid, rng);
+  return next;
 }
 
 function activated(inst: PlayerInstance, effect: PlayerEffect): boolean {
@@ -147,37 +203,27 @@ function activated(inst: PlayerInstance, effect: PlayerEffect): boolean {
   return RESOURCES.every((r) => (effect.cost[r] ?? 0) <= (inst.placed[r] ?? 0));
 }
 
-// 출전 선수 카드의 시점별 효과. 득점 효과는 경기 점수에 직접 반영
-function applyTimedEffects(state: GameState, pid: PlayerId, played: PlayerInstance[], timing: MatchTiming, goals: { mine: number; theirs: number }): void {
+// 출전 선수 카드의 시점별 효과. 득점·선방·득점 무효 같은 경기 효과는 ctx.mods 로 경기 판정에 반영된다
+function applyTimedEffects(state: GameState, pid: PlayerId, played: PlayerInstance[], timing: MatchTiming, ctx: EffectContext, rng: Rng): void {
   for (const inst of played) {
     const effect = activeSide(inst).effect;
     if (!effect || effect.timing !== timing || !activated(inst, effect)) continue;
-    const others: Effect[] = [];
-    for (const e of effect.effects) {
-      if (e.type === 'scoreGoal') {
-        if (e.team === 'self') goals.mine = Math.max(0, goals.mine + e.amount);
-        else goals.theirs = Math.max(0, goals.theirs + e.amount);
-      } else {
-        others.push(e);
-      }
-    }
-    if (others.length) applyEffects(state, pid, others, cards.player(inst.cardId).name);
+    applyEffects(state, pid, effect.effects, cards.player(inst.cardId).name, { ...ctx, inst }, rng);
     inst.exhausted = true;
   }
 }
 
-function buildSide(player: PlayerState, sub: LineupSubmission, played: PlayerInstance[]): TeamSide {
+function buildSide(player: PlayerState, sub: LineupSubmission, played: PlayerInstance[], mods: MatchMods): TeamSide {
   const sectors: Record<Sector, Slot[]> = { LW: [], CB: [], CM: [], CF: [], RW: [] };
   const playedIds = new Set(played.map((p) => p.instanceId));
   for (const token of player.uniforms.filter((u) => u.location === 'field')) {
     const inst = token.cardInstanceId && playedIds.has(token.cardInstanceId) ? instanceOf(player, token.cardInstanceId) : null;
-    sectors[sub.placements[token.id]!].push({ id: token.id, role: token.face, skill: inst ? effectiveSkill(inst) : 1 });
+    const sector = sub.placements[token.id]!;
+    sectors[sector].push({ id: token.id, role: token.face, skill: Math.max(0, (inst ? effectiveSkill(inst) : 1) + (mods.sectorSkill[sector] ?? 0)) });
   }
   const gk = played.find((p) => activeSide(p).goalkeeper);
-  return {
-    sectors,
-    goalkeeper: gk ? { skill: effectiveSkill(gk), saves: activeSide(gk).goalkeeper!.saves } : { skill: 1, saves: 1 },
-  };
+  const base = gk ? { skill: effectiveSkill(gk), saves: activeSide(gk).goalkeeper!.saves } : { skill: 1, saves: 1 };
+  return { sectors, goalkeeper: { ...base, saves: base.saves + mods.extraSaves } };
 }
 
 // 상대 카드는 상하 반전(p.20)이지만 SECTOR_PAIRS 가 내 LW↔상대 RW 로 짝짓기 때문에 카드 구획을 그대로 쓴다
@@ -196,36 +242,55 @@ function moveLeague(state: GameState, pid: PlayerId, teamId: string, outcome: Ma
 }
 
 function resolveAllMatches(state: GameState, rng: Rng): void {
-  if (state.phase.kind !== 'friday.prepare') return;
+  if (state.phase.kind !== 'friday.match') return;
   const matches: Record<PlayerId, MatchAftermath> = {};
   const faced = new Map<string, number>();
 
   for (const pid of state.seats) {
     const player = getPlayer(state, pid);
     const sub = state.phase.submitted[pid]!;
+    const mods = state.phase.preMatch[pid]!; // 경기 전 효과·전술 효과가 쌓아 둔 보정치
     const opponentCardId = player.opponentDeck.shift();
     if (!opponentCardId) throw new GameError('no opponent left');
     player.scouted = false; // 미리 본 카드는 이번 경기로 소진
     const opponent = cards.opponent(opponentCardId);
     const played = sub.players.map((id) => instanceOf(player, id));
-    const goals = { ...state.phase.preGoals[pid]! }; // 경기 전 효과는 제출 시점에 이미 적용됨
+    const pre: MatchContext = { stage: 'pre', myGoals: 0, theirGoals: 0, sectorGoals: {}, placements: sub.placements, opponentTeamId: opponent.teamId };
 
-    applyTimedEffects(state, pid, played, 'duringMatch', goals);
-    const raw = resolveMatch(buildSide(player, sub, played), opponentSide(opponent));
-    goals.mine += raw.myGoals;
-    goals.theirs += raw.theirGoals;
-    applyTimedEffects(state, pid, played, 'afterMatch', goals);
+    applyTimedEffects(state, pid, played, 'duringMatch', { mods, played: sub.players, match: pre }, rng);
+    const raw = resolveMatch(buildSide(player, sub, played, mods), opponentSide(opponent));
+    mods.mine += raw.myGoals;
+    mods.theirs += Math.max(0, raw.theirGoals - mods.denyGoals); // 득점 무효·슛 막기는 구획 비교 득점에만
+    const sectorGoals: Partial<Record<Sector, number>> = {};
+    for (const s of raw.sectors) sectorGoals[s.mine] = (sectorGoals[s.mine] ?? 0) + s.myGoals;
+    const post = (): MatchContext => ({ stage: 'post', myGoals: mods.mine, theirGoals: mods.theirs, sectorGoals, placements: sub.placements, opponentTeamId: opponent.teamId });
+
+    // 경기 전에 미뤄 둔 조건부 효과(전술 카드 등) → 경기 후 선수 효과
+    const deferred = mods.deferred;
+    mods.deferred = [];
+    for (const d of deferred) {
+      const inst = d.instanceId ? player.roster.find((r) => r.instanceId === d.instanceId) : undefined;
+      applyEffects(state, pid, [d.effect], d.source, { mods, played: sub.players, match: post(), inst }, rng);
+    }
+    applyTimedEffects(state, pid, played, 'afterMatch', { mods, played: sub.players, match: post() }, rng);
 
     const report: MatchReport = {
       ...raw,
-      myGoals: goals.mine,
-      theirGoals: goals.theirs,
-      outcome: goals.mine > goals.theirs ? 'win' : goals.mine < goals.theirs ? 'loss' : 'draw',
+      myGoals: mods.mine,
+      theirGoals: mods.theirs,
+      outcome: mods.mine > mods.theirs ? 'win' : mods.mine < mods.theirs ? 'loss' : 'draw',
     };
     addLog(state, `경기 결과 ${report.myGoals}:${report.theirGoals} vs ${opponent.teamName} (${{ win: '승리', draw: '무승부', loss: '패배' }[report.outcome]})`, { actor: pid });
 
     moveLeague(state, pid, opponent.teamId, report.outcome);
     faced.set(opponent.teamId, (faced.get(opponent.teamId) ?? 0) + 1);
+
+    // 상시 효과: 승리할 때마다 팬덤 +1 (스폰서 추가 보너스)
+    const fandomOnWin = player.passives.filter((p) => p.passive === 'fandomOnWin').length;
+    if (report.outcome === 'win' && fandomOnWin > 0) {
+      player.resources.fandom += fandomOnWin;
+      addLog(state, `승리 보너스: 팬덤 +${fandomOnWin}`, { actor: pid });
+    }
 
     // p.24 4: 관중석 팬덤 → 돈, 출전 선수의 자원·일시적 토큰 제거
     player.resources.money += sub.fandomInStands ?? 0;
@@ -294,7 +359,7 @@ export function rerollMatchDie(state: GameState, pid: PlayerId, rng: Rng): GameS
 function chooseAmong(player: PlayerState, candidates: PlayerInstance[], effect: Effect, source: string, apply: (inst: PlayerInstance) => void): void {
   if (candidates.length === 1) apply(candidates[0]!);
   else if (candidates.length > 1) {
-    player.pending.push({ id: `${source}#${player.pending.length}`, effect, source, candidates: candidates.map((c) => c.instanceId) });
+    player.pending.push({ id: `${source}#${player.pending.length}`, effect, source, target: 'player', candidates: candidates.map((c) => c.instanceId) });
   }
 }
 

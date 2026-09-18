@@ -1,4 +1,4 @@
-import type { DieColor, Effect, InfrastructureType, PlayerToken, Resource, Sector, SponsorContract, StaffSet } from './types';
+import type { DieColor, Effect, InfrastructureType, MatchCondition, PlayerToken, Resource, Sector, SponsorContract, StaffSet } from './types';
 
 // 한국어 라벨. 엔진 기록과 클라이언트가 공유한다
 
@@ -54,8 +54,49 @@ export function describeEffect(e: Effect): string {
       return `${e.team === 'self' ? '우리 팀' : '상대 팀'} ${sign(e.amount)}골`;
     case 'peekOpponent':
       return '다음 상대 팀 카드 앞면 확인';
+    case 'conditional':
+      return `${describeCondition(e.condition)}: ${describeEffects(e.effects)}`;
+    case 'denyGoals':
+      return `상대 득점 ${e.count}개 무효`;
+    case 'extraSaves':
+      return `이번 경기 선방 +${e.count}`;
+    case 'sectorSkill':
+      return `이번 경기 ${SECTOR_LABEL[e.sector]} 구획 전원 역량 ${sign(e.delta)}`;
+    case 'flipUnmatchedToken':
+      return `카드 없는 유니폼 토큰 ${e.count}개 뒤집기`;
+    case 'discardMarketCard':
+      return `이적 시장 ${{ players: '선수', staff: '직원', sponsors: '스폰서' }[e.row]} 카드 1장 버리고 보충`;
+    case 'addStaffSuspension':
+      return `직원 카드 1장에 출장정지 +${e.count}`;
+    case 'releasePlayer':
+      return '선수 1명 방출 (방출 행동과 같은 보상)';
+    case 'restrictDay':
+      return `${e.week === 'next' ? '다음 주' : '이번 주'} ${DAY_LABEL[e.day]} ${e.mode === 'noBasic' ? '기본 행동 불가' : '카드 행동만 가능'}`;
+    case 'breakNamingSponsor':
+      return `유니폼 스폰서가 있으면 계약 파기 후 그 카드의 장내 방송 효과, 없으면 ${describeEffects(e.otherwise)}`;
+    case 'passive':
+      return e.passive === 'extraStand' ? '상시: 매 경기 관중석 +1' : '상시: 승리할 때마다 팬덤 +1';
+    case 'upkeepDiscount':
+      return `다음 주말 유지비 −${e.amount}`;
     case 'text':
       return e.text;
+  }
+}
+
+export function describeCondition(c: MatchCondition): string {
+  switch (c.kind) {
+    case 'outcome':
+      return { win: '승리했다면', draw: '무승부라면', loss: '패배했다면' }[c.outcome];
+    case 'goalsAtLeast':
+      return `${c.goals}골 이상 득점했다면`;
+    case 'cleanSheet':
+      return '실점하지 않았다면';
+    case 'inSector':
+      return `이 선수가 ${SECTOR_LABEL[c.sector]} 구획에 출전했다면`;
+    case 'scoredInSector':
+      return `${SECTOR_LABEL[c.sector]} 구획에서 득점했다면`;
+    case 'opponentHigherInLeague':
+      return '상대 팀이 리그에서 더 앞서 있다면';
   }
 }
 
@@ -80,6 +121,8 @@ export function phaseLabel(kind: string): string {
       return '주중 행동';
     case 'friday.prepare':
       return '금요일 · 경기 준비';
+    case 'friday.match':
+      return '금요일 · 경기 진행';
     case 'friday.aftermath':
       return '금요일 · 경기 결과';
     case 'gameOver':
