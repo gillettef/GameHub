@@ -1,4 +1,6 @@
 import { cards } from './cards';
+import { resolvePending } from './effects';
+import { advanceAfterLineup } from './friday';
 import { createRng } from './rng';
 import type { Rng } from './rng';
 import { chooseObjective, createGame, draftPick } from './setup';
@@ -35,6 +37,15 @@ export function gameAtMonday(config: GameConfig = FOUR_PLAYERS, seed = 42): Game
   for (const id of s.seats) {
     if (s.phase.kind !== 'setup.objective') throw new Error('objective phase expected');
     s = chooseObjective(s, id, s.phase.options[id]![0]!);
+  }
+  return s;
+}
+
+// 대기 중인 대상 선택을 전부 첫 후보로 처리하고, 경기 준비 중이면 차례를 넘긴다 (경기 전 효과의 대상 선택 뒤에 필요)
+export function settlePending(s: GameState, rng: Rng = seededRng()): GameState {
+  for (const id of s.seats) {
+    for (const p of [...s.players[id]!.pending]) resolvePending(s, id, p.id, p.candidates[0]!);
+    advanceAfterLineup(s, id, rng);
   }
   return s;
 }

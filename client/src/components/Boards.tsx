@@ -51,14 +51,14 @@ function ClubBoard({ p }: { p: PlayerPublicView }) {
       <div className="club-grid">
         <div className="upkeep">
           {upkeepCols.map((c) => (
-            <div key={c.label} className="upkeep-col" title={`${c.label} ${c.count} → 유지비 ${c.table[Math.min(c.count, c.table.length - 1)]}`}>
+            <div key={c.label} className="upkeep-col" title={`${c.label} ${c.count} → 유지비 −${c.table[Math.min(c.count, c.table.length - 1)]}`}>
               {[8, 7, 6, 5, 4, 3, 2, 1].map((n) => (
                 <span key={n} className={`upkeep-cell band-${c.table[n]}${c.count === n || (n === 8 && c.count > 8) ? ' now' : ''}`}>{n}</span>
               ))}
               <span className="upkeep-label">{c.label}</span>
             </div>
           ))}
-          <div className="upkeep-total"><Icon name="money" size={12} />유지비 {upkeepDue(p)}</div>
+          <div className="upkeep-total" title="주말에 내는 돈"><Icon name="money" size={12} />유지비 −{upkeepDue(p)}</div>
         </div>
         <div className="tracks">
           {RESOURCES.map((r) => (
@@ -66,9 +66,9 @@ function ClubBoard({ p }: { p: PlayerPublicView }) {
               <span className={`track-icon ${r}`} title={RESOURCE_LABEL[r]}><Icon name={r} size={16} /></span>
               <span className="track-end" title={`1 미만이면 ${RESOURCE_LABEL[trackOverflow[r].below]} −1`}><Icon name={trackOverflow[r].below} size={11} />−1</span>
               {Array.from({ length: TRACK_MAX }, (_, i) => i + 1).map((n) => (
-                <span key={n} className={`track-cell${p.tracks[r] === n ? ' marker' : ''}`} title={`조달 ${procurement[r][n - 1]}`}>
+                <span key={n} className={`track-cell${p.tracks[r] === n ? ' marker' : ''}`} title={`월요일 조달 +${procurement[r][n - 1]}`}>
                   <span className="track-num">{n}</span>
-                  <span className="track-yield">{procurement[r][n - 1]}</span>
+                  <span className="track-yield">+{procurement[r][n - 1]}</span>
                 </span>
               ))}
               <span className="track-end" title={`5 초과면 ${RESOURCE_LABEL[trackOverflow[r].above]} +1`}><Icon name={trackOverflow[r].above} size={11} />+1</span>

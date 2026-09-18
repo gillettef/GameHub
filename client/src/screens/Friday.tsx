@@ -92,7 +92,7 @@ export function FridayPrepareScreen() {
           )}
         </div>
       ) : submitted ? (
-        <p className="muted">라인업을 제출했습니다. 다른 참가자를 기다리는 중</p>
+        <p className="muted">{me.pending.length > 0 ? '라인업을 제출했습니다. 경기 전 효과의 대상을 고르면 다음 참가자로 넘어갑니다.' : '라인업을 제출했습니다. 다른 참가자를 기다리는 중'}</p>
       ) : (
         <div className="stack">
           <div className="step">
@@ -183,7 +183,7 @@ export function FridayPrepareScreen() {
 
           <div className="submit-row">
             <span className="chips">
-              비용 {RESOURCES.filter((r) => (cost[r] ?? 0) > 0).map((r) => <ResourceChip key={r} resource={r} amount={cost[r]!} />)}
+              비용 {RESOURCES.filter((r) => (cost[r] ?? 0) > 0).map((r) => <ResourceChip key={r} resource={r} amount={cost[r]!} cost />)}
               {!affordable && <span className="error">자원 부족</span>}
             </span>
             <button className="primary" disabled={!canSubmit} onClick={submit}>라인업 제출</button>
@@ -196,7 +196,7 @@ export function FridayPrepareScreen() {
 
 // 경기 결과도 선 참가자부터 한 명씩: 차례인 참가자의 경기 보고서와 주사위를 모두가 본다
 export function FridayAftermathScreen() {
-  const { view, act } = useGame();
+  const { view } = useGame();
   if (view.phase.kind !== 'friday.aftermath') return null;
   const { current, matches } = view.phase;
   const actor = view.players[current]!;
@@ -266,10 +266,9 @@ export function FridayAftermathScreen() {
             <Icon name="die" size={14} /> 주사위가 구르는 중…
           </p>
         ) : mine ? (
-          <div className="row">
-            <button className="primary" onClick={() => act({ type: 'acceptMatchRoll' })}>적용: {matchDieLabel(m.report.outcome, roll)}</button>
-            <span className="muted small">팬덤 1개로 다시 굴릴 수 있습니다</span>
-          </div>
+          <p className="hint">
+            <Icon name="die" size={14} /> 왼쪽 주사위 영역에서 <b>적용: {matchDieLabel(m.report.outcome, roll)}</b>을 누르거나, 팬덤 1개로 다시 굴리세요.
+          </p>
         ) : (
           <p className="muted small">{actor.name}이(가) 결과를 적용하거나 팬덤으로 다시 굴릴 수 있습니다.</p>
         )}

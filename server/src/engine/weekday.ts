@@ -102,7 +102,7 @@ export function billboardLimit(player: Pick<PlayerState, 'infrastructure'>): num
   return BILLBOARD_BASE_LIMIT + (player.infrastructure.includes('billboard3') ? 1 : 0);
 }
 
-// p.18 스폰서 계약. 광고판은 카드 효과 또는 추가 보너스 중 택1, 명명권은 둘 다
+// p.18 스폰서 계약. 광고판은 카드 효과 또는 추가 보너스 중 택1, 유니폼(naming)은 둘 다
 export function signSponsor(
   state: GameState,
   pid: PlayerId,

@@ -48,8 +48,9 @@ export type Effect =
   | { type: 'drawTactic'; count: number }
   | { type: 'recruitProspectFree' }
   | { type: 'placeStamina'; count: number } // 선수 카드 1장에 체력 올려놓기
-  | { type: 'addPlayerToken'; token: PlayerToken; count: number }
-  | { type: 'removePlayerToken'; token: PlayerToken; count: number }
+  // spread: count개를 한 카드에 몰지 않고 1개씩 대상을 골라 나눠 놓거나 제거한다 ("카드에 있는 [약점]을 3개까지 버립니다" 류)
+  | { type: 'addPlayerToken'; token: PlayerToken; count: number; spread?: true }
+  | { type: 'removePlayerToken'; token: PlayerToken; count: number; spread?: true }
   | { type: 'scoreGoal'; team: 'self' | 'opponent'; amount: number } // 경기 중/후
   | { type: 'text'; text: string };
 
@@ -120,7 +121,7 @@ export interface SponsorCard {
   kit: Effect[];
   billboard: Effect[];
   naming: Effect[];
-  // 명명권: 항상 추가로 받음. 광고판: 이 보너스 또는 광고판 효과 중 택1 (p.18)
+  // 유니폼(naming): 항상 추가로 받음. 광고판: 이 보너스 또는 광고판 효과 중 택1 (p.18)
   extraBonus: Effect[];
   placeholder?: true;
 }

@@ -69,6 +69,44 @@ describe('applyEffects', () => {
     expect(p.pending).toHaveLength(0);
   });
 
+  it('spread 토큰 효과는 1개씩 대상을 골라 나눠 적용하고, 남은 대기 효과의 후보는 다시 계산한다', () => {
+    const s = game();
+    const p = s.players['a']!;
+    addToRoster(p, s.decks.starters[0]!);
+    const [x, y, z] = p.roster;
+    x!.tokens.weaknessTemp = 1;
+    y!.tokens.weaknessTemp = 2;
+    // "[약점]을 3개까지 버립니다": 후보(x, y)가 둘이라 3번 모두 대기
+    applyEffects(s, 'a', [{ type: 'removePlayerToken', token: 'weaknessTemp', count: 3, spread: true }], 'sponsor');
+    expect(p.pending).toHaveLength(3);
+    expect(p.pending[0]!.effect).toEqual({ type: 'removePlayerToken', token: 'weaknessTemp', count: 1 });
+    expect(p.pending[0]!.candidates).toEqual([x!.instanceId, y!.instanceId]);
+    resolvePending(s, 'a', p.pending[0]!.id, x!.instanceId);
+    expect(x!.tokens.weaknessTemp).toBe(0);
+    // x 는 더 이상 후보가 아니므로 남은 2개는 y 에게 자동 적용된다
+    expect(p.pending).toHaveLength(0);
+    expect(y!.tokens.weaknessTemp).toBe(0);
+    expect(z!.tokens.weaknessTemp).toBe(0);
+
+    // spread 없이 count 2 는 한 카드에 2개
+    applyEffects(s, 'a', [{ type: 'addPlayerToken', token: 'weaknessTemp', count: 2 }], 'board');
+    expect(p.pending).toHaveLength(1);
+    resolvePending(s, 'a', p.pending[0]!.id, z!.instanceId);
+    expect(z!.tokens.weaknessTemp).toBe(2);
+  });
+
+  it('훈련 2명: 첫 선수를 고르면 남은 대기 효과에서 그 선수가 빠진다', () => {
+    const s = game();
+    const p = s.players['a']!;
+    addToRoster(p, s.decks.starters[0]!);
+    applyEffects(s, 'a', [{ type: 'trainPlayer', count: 2 }], 'camp');
+    expect(p.pending).toHaveLength(2);
+    const first = p.pending[0]!.candidates[0]!;
+    resolvePending(s, 'a', p.pending[0]!.id, first);
+    expect(p.pending).toHaveLength(1);
+    expect(p.pending[0]!.candidates).not.toContain(first);
+  });
+
   it('유망주 훈련 시 번호 토큰으로 갈아탄다 (p.16)', () => {
     const s = game();
     const p = s.players['a']!;

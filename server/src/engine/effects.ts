@@ -81,20 +81,31 @@ function applyTargeted(player: PlayerState, effect: Effect, instance: PlayerInst
   }
 }
 
+// 대상을 여러 번 고르는 효과(훈련 N명, spread 토큰 N개)는 1개씩 N번으로 나눈다
+function targetedSteps(effect: Effect): { times: number; each: Effect } {
+  if (effect.type === 'trainPlayer') return { times: effect.count, each: effect };
+  if ((effect.type === 'addPlayerToken' || effect.type === 'removePlayerToken') && effect.spread) {
+    const { spread, ...rest } = effect;
+    void spread;
+    return { times: effect.count, each: { ...rest, count: 1 } };
+  }
+  return { times: 1, each: effect };
+}
+
 // 대상 선택이 필요한 효과: 후보 0 → 무시, 1 → 자동 적용, 2+ → pending
 export function applyEffects(state: GameState, pid: PlayerId, effects: readonly Effect[], source: string): void {
   const player = getPlayer(state, pid);
   for (const effect of effects) {
     const candidates = candidatesFor(player, effect);
     if (candidates) {
-      const times = effect.type === 'trainPlayer' ? effect.count : 1;
+      const { times, each } = targetedSteps(effect);
       for (let i = 0; i < times; i++) {
-        const cands = candidatesFor(player, effect) ?? [];
+        const cands = candidatesFor(player, each) ?? [];
         if (cands.length === 0) break;
         if (cands.length === 1) {
-          applyTargeted(player, effect, findInstance(player, cands[0]!));
+          applyTargeted(player, each, findInstance(player, cands[0]!));
         } else {
-          player.pending.push({ id: `${source}#${player.pending.length}#${i}`, effect, source, candidates: cands });
+          player.pending.push({ id: `${source}#${player.pending.length}#${i}`, effect: each, source, candidates: cands });
         }
       }
       continue;
@@ -138,4 +149,19 @@ export function resolvePending(state: GameState, pid: PlayerId, pendingId: strin
   if (!pending.candidates.includes(instanceId)) throw new GameError('invalid target');
   applyTargeted(player, pending.effect, findInstance(player, instanceId));
   player.pending.splice(idx, 1);
+  refreshPending(player);
+}
+
+// 앞선 선택으로 남은 대기 효과의 후보가 줄었을 수 있다 (약점 3개를 나눠 제거, 훈련 2명 등):
+// 후보를 다시 계산해 0이면 버리고 1이면 자동 적용한다
+function refreshPending(player: PlayerState): void {
+  for (const p of [...player.pending]) {
+    const cands = candidatesFor(player, p.effect) ?? [];
+    if (cands.length >= 2) {
+      p.candidates = cands;
+      continue;
+    }
+    player.pending.splice(player.pending.indexOf(p), 1);
+    if (cands.length === 1) applyTargeted(player, p.effect, findInstance(player, cands[0]!));
+  }
 }

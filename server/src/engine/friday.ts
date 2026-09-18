@@ -22,7 +22,12 @@ export function standsCount(player: Pick<PlayerState, 'infrastructure'>): number
 }
 
 export function startFriday(state: GameState): void {
-  state.phase = { kind: 'friday.prepare', current: state.firstPlayer, submitted: Object.fromEntries(state.seats.map((id) => [id, null])) };
+  state.phase = {
+    kind: 'friday.prepare',
+    current: state.firstPlayer,
+    submitted: Object.fromEntries(state.seats.map((id) => [id, null])),
+    preGoals: Object.fromEntries(state.seats.map((id) => [id, { mine: 0, theirs: 0 }])),
+  };
 }
 
 function instanceOf(player: PlayerState, instanceId: string): PlayerInstance {
@@ -119,11 +124,22 @@ export function submitLineup(state: GameState, pid: PlayerId, sub: LineupSubmiss
   for (const s of player.staff) if (s.suspension > 0) s.suspension--;
 
   next.phase.submitted[pid] = sub;
-  const submitted = next.phase.submitted;
-  const following = nextInTurn(next, (id) => submitted[id] !== null);
-  if (following) next.phase.current = following;
-  else resolveAllMatches(next, rng);
+  // 경기 전 효과는 여기서 바로 적용한다. 판정과 같은 액션 안에서 처리하면 대상 선택(pending)이 경기 뒤로 밀려
+  // 일시 역량 토큰 등이 경기에 반영되지 않는다. 대상 선택이 남으면 이 참가자 차례에 머물고,
+  // resolvePending 뒤 advanceAfterLineup 이 다음 참가자로 넘긴다
+  applyTimedEffects(next, pid, players, 'beforeMatch', next.phase.preGoals[pid]!);
+  advanceAfterLineup(next, pid, rng);
   return next;
+}
+
+// 라인업을 제출한 참가자의 경기 전 효과 대상 선택이 모두 끝났으면 다음 참가자로, 전원 제출이면 경기 판정
+export function advanceAfterLineup(state: GameState, pid: PlayerId, rng: Rng): void {
+  if (state.phase.kind !== 'friday.prepare' || state.phase.current !== pid) return;
+  if (!state.phase.submitted[pid] || getPlayer(state, pid).pending.length > 0) return;
+  const submitted = state.phase.submitted;
+  const following = nextInTurn(state, (id) => submitted[id] !== null);
+  if (following) state.phase.current = following;
+  else resolveAllMatches(state, rng);
 }
 
 function activated(inst: PlayerInstance, effect: PlayerEffect): boolean {
@@ -191,9 +207,8 @@ function resolveAllMatches(state: GameState, rng: Rng): void {
     if (!opponentCardId) throw new GameError('no opponent left');
     const opponent = cards.opponent(opponentCardId);
     const played = sub.players.map((id) => instanceOf(player, id));
-    const goals = { mine: 0, theirs: 0 };
+    const goals = { ...state.phase.preGoals[pid]! }; // 경기 전 효과는 제출 시점에 이미 적용됨
 
-    applyTimedEffects(state, pid, played, 'beforeMatch', goals);
     applyTimedEffects(state, pid, played, 'duringMatch', goals);
     const raw = resolveMatch(buildSide(player, sub, played), opponentSide(opponent));
     goals.mine += raw.myGoals;

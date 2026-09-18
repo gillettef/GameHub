@@ -1,20 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { resolvePending } from './effects';
 import { acceptMatchRoll, rollMatchDie, submitLineup } from './friday';
 import { acceptBoardRoll, rollBoardDie } from './monday';
 import type { Rng } from './rng';
 import type { GameState } from './state';
 import { TRACK_MAX, TRACK_MIN } from './types';
-import { autoLineup, eligiblePlayers, gameAtMonday, seededRng } from './test-utils';
+import { autoLineup, eligiblePlayers, gameAtMonday, seededRng, settlePending } from './test-utils';
 import { buildInfrastructure, buildOffice, cardAction, endTurn, hireStaff, pass, recruitPlayer, recruitProspect, signSponsor } from './weekday';
 
-// 대기 중인 대상 선택은 첫 후보로 처리
-function settlePending(s: GameState): GameState {
-  for (const id of s.seats) {
-    for (const p of [...s.players[id]!.pending]) resolvePending(s, id, p.id, p.candidates[0]!);
-  }
-  return s;
-}
 
 function tryActions(s: GameState, pid: string, rng: Rng): GameState {
   const attempts: Array<() => GameState> = [
@@ -57,7 +49,7 @@ function playFullGame(seed: number): GameState {
   let guard = 0;
   while (s.phase.kind !== 'gameOver') {
     if (++guard > 2000) throw new Error(`stuck in ${s.phase.kind} week ${s.week}`);
-    s = settlePending(s);
+    s = settlePending(s, rng);
     switch (s.phase.kind) {
       case 'monday.board': {
         const pid = s.phase.current;
@@ -67,7 +59,7 @@ function playFullGame(seed: number): GameState {
       case 'weekday': {
         const pid = s.phase.current;
         s = tryActions(s, pid, rng);
-        s = settlePending(s);
+        s = settlePending(s, rng);
         s = endTurn(s, pid);
         break;
       }

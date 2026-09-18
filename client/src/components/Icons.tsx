@@ -76,9 +76,12 @@ export function Chip({ icon, value, tone, title, children }: { icon?: IconName; 
 
 const signed = (n: number) => (n > 0 ? `+${n}` : `${n}`);
 
-// 자원 칩: 채운 바탕 = 자원 토큰을 바로 받거나 잃음 (트랙 마커와 무관)
-export function ResourceChip({ resource, amount, signedValue = false }: { resource: Resource; amount: number; signedValue?: boolean }) {
-  return <Chip icon={resource} value={signedValue ? signed(amount) : amount} title={`${RESOURCE_LABEL[resource]} ${signedValue ? signed(amount) : amount}${signedValue ? ' (자원을 바로 받음)' : ''}`} />;
+// 자원 칩: 채운 바탕 = 자원 토큰을 바로 받거나 잃음 (트랙 마커와 무관).
+// 얻는 것은 +, 잃거나 내는 것은 −로 항상 부호를 붙인다(사용자 요청). cost = 비용(지불)이라 −N
+export function ResourceChip({ resource, amount, signedValue = false, cost = false }: { resource: Resource; amount: number; signedValue?: boolean; cost?: boolean }) {
+  const value = cost ? `−${amount}` : signedValue ? signed(amount) : amount;
+  const title = cost ? `${RESOURCE_LABEL[resource]} ${amount} 지불` : `${RESOURCE_LABEL[resource]} ${signedValue ? signed(amount) : amount}${signedValue ? ' (자원을 바로 받음)' : ''}`;
+  return <Chip icon={resource} value={value} title={title} />;
 }
 
 // 트랙 마커 그림: 올라가는 계단 세 칸 + 마커. 자원 칩(채운 바탕 = 자원을 바로 받음)과 달리
@@ -111,11 +114,12 @@ const TOKEN_ICON: Record<PlayerToken, IconName> = {
   weaknessPerm: 'weakness',
 };
 
-export function TokenChip({ token, count }: { token: PlayerToken; count: number }) {
+export function TokenChip({ token, count, note, title }: { token: PlayerToken; count: number; note?: string; title?: string }) {
   const perm = token.endsWith('Perm');
   return (
-    <Chip icon={TOKEN_ICON[token]} value={count} tone={`${TOKEN_ICON[token]}${perm ? ' perm' : ''}`} title={`${TOKEN_LABEL[token]} ${count}`}>
+    <Chip icon={TOKEN_ICON[token]} value={count} tone={`${TOKEN_ICON[token]}${perm ? ' perm' : ''}`} title={title ?? `${TOKEN_LABEL[token]} ${count}`}>
       {perm && <span className="chip-note">영구</span>}
+      {note && <span className="chip-note">{note}</span>}
     </Chip>
   );
 }
@@ -138,9 +142,9 @@ export function EffectChip({ effect }: { effect: Effect }) {
     case 'placeStamina':
       return <Chip icon="stamina" value={`◎${effect.count}`} title={title} />;
     case 'addPlayerToken':
-      return <TokenChip token={effect.token} count={effect.count} />;
+      return <TokenChip token={effect.token} count={effect.count} note={effect.spread && effect.count > 1 ? '1개씩' : undefined} title={title} />;
     case 'removePlayerToken':
-      return <TokenChip token={effect.token} count={-effect.count} />;
+      return <TokenChip token={effect.token} count={-effect.count} note={effect.spread && effect.count > 1 ? '1개씩' : undefined} title={title} />;
     case 'scoreGoal':
       return <Chip icon="goal" value={signed(effect.amount)} tone={effect.team === 'self' ? 'goal' : 'goal-opp'} title={title}>{effect.team === 'self' ? '' : '상대'}</Chip>;
     case 'text':
@@ -164,7 +168,7 @@ export function CostChips({ cost }: { cost: Partial<Record<Resource, number>> })
   return (
     <span className="chips">
       {entries.map(([r, n]) => (
-        <ResourceChip key={r} resource={r} amount={n} />
+        <ResourceChip key={r} resource={r} amount={n} cost />
       ))}
     </span>
   );

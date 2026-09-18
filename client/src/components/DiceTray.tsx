@@ -1,5 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
+import { boardDecision } from '@server/engine/monday';
+import type { MatchReport } from '@server/engine/match';
 import { Icon } from './Icons';
+import { COLOR_LABEL, matchDieLabel } from '../labels';
 import { useStore } from '../store';
 import { rollKeyOf, useUi } from '../ui';
 
@@ -38,6 +41,7 @@ function Face({ n, className }: { n: number; className: string }) {
 // 사이드바의 주사위: 굴리기를 누르면 구르는 애니메이션이 시작되고, 서버가 정한 눈이 오면 최소 시간 뒤 그 면으로 멈춘다.
 // 멈추는 타이머는 ref 로 들고 있어 뷰가 중간에 바뀌어도(다음 차례로 넘어감 등) 취소되지 않는다.
 // 멈춘 눈은 ui.settledRoll 로 알리고, 이사회·경기 결과 패널은 그때까지 눈을 숨긴다(구르는 동안 결과가 먼저 보이지 않게).
+// 눈이 나온 뒤에는 "굴리기" 자리에 결정/결과 적용 버튼이 오고, 그 아래 팬덤 재굴림 버튼이 남는다 (굴림·재굴림·적용을 한곳에서).
 export function DiceTray() {
   const { view, session, act } = useStore();
   const { setSettledRoll } = useUi();
@@ -54,6 +58,7 @@ export function DiceTray() {
   let mode: 'board' | 'match' | null = null;
   let roll: number | null = null;
   let decided = false;
+  let outcome: MatchReport['outcome'] | null = null;
   let actorId: string | null = null;
   if (phase?.kind === 'monday.board') {
     mode = 'board';
@@ -65,6 +70,7 @@ export function DiceTray() {
     actorId = phase.current;
     roll = phase.matches[actorId]?.roll ?? null;
     decided = phase.matches[actorId]?.decided ?? false;
+    outcome = phase.matches[actorId]?.report.outcome ?? null;
   }
   const actor = view && actorId ? view.players[actorId] : undefined;
   const mine = !!me && me.id === actorId;
@@ -129,6 +135,9 @@ export function DiceTray() {
   if (!mode || !actor) return null;
   const canRoll = mine && !decided && roll === null;
   const canReroll = mine && !decided && roll !== null && actor.resources.fandom >= 1;
+  // 눈이 나온 뒤 적용 버튼 라벨: 이사회는 결정 색(엔진과 같은 집계), 경기는 영향 표의 결과
+  const acceptLabel = roll === null ? '' : mode === 'board' ? `${COLOR_LABEL[boardDecision(actor, roll)]} 결정 적용` : `적용: ${outcome ? matchDieLabel(outcome, roll) : ''}`;
+  const accept = () => act(mode === 'board' ? { type: 'acceptBoardRoll' } : { type: 'acceptMatchRoll' });
   const start = (reroll: boolean) => {
     beginSpin();
     stopAt(faceRef.current, SPIN_FALLBACK_MS); // 서버가 거부하면 원래 면으로 되돌아간다
@@ -158,9 +167,15 @@ export function DiceTray() {
           <span className="muted small">{roll === null ? '굴리기를 기다리는 중' : spinning ? '구르는 중' : `눈 ${roll}`}</span>
         ) : (
           <>
-            <button className="primary" disabled={spinning || !canRoll} onClick={() => start(false)}>
-              <Icon name="die" />굴리기
-            </button>
+            {roll === null ? (
+              <button className="primary" disabled={spinning || !canRoll} onClick={() => start(false)}>
+                <Icon name="die" />굴리기
+              </button>
+            ) : (
+              <button className="primary accept" disabled={spinning} onClick={accept} title="이 눈의 결과를 적용합니다">
+                {spinning ? '구르는 중' : acceptLabel}
+              </button>
+            )}
             <button disabled={spinning || !canReroll} onClick={() => start(true)} title="팬덤 1개를 내고 다시 굴립니다">
               <Icon name="fandom" />1 다시
             </button>
