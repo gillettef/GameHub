@@ -107,7 +107,27 @@ label.row { flex-direction: row; align-items: center; }
 .topbar .status { display: flex; gap: 10px; align-items: baseline; }
 .topbar .week { font-weight: 700; font-size: 15px; }
 .topbar .phase { color: var(--ink-2); }
-.topbar .conn { display: flex; justify-content: flex-end; align-items: center; gap: 6px; color: var(--muted); font-size: var(--fs-sub); }
+.topbar .conn { display: flex; justify-content: flex-end; align-items: center; gap: 6px; color: var(--muted); font-size: var(--fs-sub); white-space: nowrap; }
+/* 모바일: 높이 48px 는 유지(스티키 오프셋 --head-h 기준)하고, 라벨을 아이콘·줄임으로 바꾼다 */
+@media (max-width: 760px) {
+  .topbar { grid-template-columns: auto minmax(0, 1fr) auto; gap: 8px; padding: 0 10px; }
+  .topbar .brand { gap: 6px; min-width: 0; }
+  .topbar .brand .tag { display: none; }
+  .topbar .room { font-size: var(--fs-sub); white-space: nowrap; }
+  .topbar .status { flex-direction: column; align-items: center; gap: 0; line-height: 1.15; min-width: 0; text-align: center; }
+  .topbar .week { font-size: 13px; }
+  .topbar .phase { font-size: 12px; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .topbar .conn { gap: 4px; }
+  .topbar .conn-text { display: none; }
+  .topbar .conn .link { padding: 4px 4px; }
+  .notify-toggles { margin-right: 2px; }
+  .notify-toggles .toggle { padding: 3px 6px; }
+  .notify-toggles .toggle .label { display: none; }
+}
+@media (max-width: 400px) {
+  .topbar .wordmark { letter-spacing: 0.04em; font-size: 13px; }
+  .topbar .room { display: none; }
+}
 .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
 .dot.on { background: var(--pitch); }
 .dot.off { background: var(--danger); }

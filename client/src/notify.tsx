@@ -221,12 +221,12 @@ export function NotifyToggles() {
     <span className="notify-toggles" aria-label="알림 설정">
       <button className={`toggle${prefs.sound ? ' on' : ''}`} aria-pressed={prefs.sound} title={`내 차례가 오면 소리 (${prefs.sound ? '켜짐' : '꺼짐'})`} onClick={() => setPref('sound', !prefs.sound)}>
         <BellIcon />
-        소리
+        <span className="label">소리</span>
       </button>
       {desktopSupported && (
         <button className={`toggle${prefs.desktop ? ' on' : ''}`} aria-pressed={prefs.desktop} title={`다른 탭을 보고 있을 때 바탕화면 알림 (${prefs.desktop ? '켜짐' : '꺼짐'})`} onClick={() => setPref('desktop', !prefs.desktop)}>
           <ScreenIcon />
-          알림
+          <span className="label">알림</span>
         </button>
       )}
     </span>
