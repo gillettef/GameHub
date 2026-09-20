@@ -3,11 +3,15 @@ import { createPortal } from 'react-dom';
 
 // 전역 툴팁: 화면 곳곳의 `title` 속성을 브라우저 기본 툴팁 대신 디자인된 말풍선으로 보여준다 (사용자 요청, 2026-09).
 // 마우스가 올라간 순간 그 요소의 `title`을 `data-tip`으로 옮겨(기본 툴팁 억제) 내용을 읽고, 떠나면 되돌린다.
-// 컴포넌트마다 툴팁을 따로 만들 필요 없이 `title=`만 쓰면 된다. 터치 기기(hover 불가)에서는 아무것도 하지 않는다.
+// 컴포넌트마다 툴팁을 따로 만들 필요 없이 `title=`만 쓰면 된다.
+// 터치 기기(hover 불가)에서는 아이콘 칩·배지 같은 비조작 요소를 **누르면** 말풍선이 뜨고, 다른 곳을 누르거나 스크롤하면(또는 4초 뒤) 닫힌다.
+// 버튼·입력·누를 수 있는 카드 자체의 `title`은 누르는 것이 곧 조작이라 띄우지 않는다(그 안의 칩은 띄운다).
 
 const SHOW_DELAY_MS = 320;
 const GAP = 8; // 요소와 말풍선 사이
 const EDGE = 8; // 화면 가장자리 여백
+const TOUCH_HIDE_MS = 4000;
+const INTERACTIVE = 'button, a, input, select, textarea, label, .clickable';
 
 interface Tip {
   text: string;
@@ -41,6 +45,40 @@ function placeFor(el: Element, text: string): Tip {
 
 export function TooltipLayer() {
   const [tip, setTip] = useState<Tip | null>(null);
+
+  // 터치 기기: 누르면 바로 보인다
+  useEffect(() => {
+    if (typeof window === 'undefined' || window.matchMedia('(hover: hover)').matches) return;
+    let active: Element | null = null;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const hide = () => {
+      if (timer) clearTimeout(timer);
+      timer = null;
+      if (active) restoreTitle(active);
+      active = null;
+      setTip(null);
+    };
+    const onClick = (e: MouseEvent) => {
+      const el = (e.target as Element | null)?.closest?.('[title], [data-tip]') ?? null;
+      const same = el === active;
+      hide();
+      if (!el || same || el.matches(INTERACTIVE)) return;
+      const text = readTip(el);
+      if (!text) return;
+      active = el;
+      setTip(placeFor(el, text));
+      timer = setTimeout(hide, TOUCH_HIDE_MS);
+    };
+    document.addEventListener('click', onClick);
+    document.addEventListener('scroll', hide, true);
+    window.addEventListener('resize', hide);
+    return () => {
+      hide();
+      document.removeEventListener('click', onClick);
+      document.removeEventListener('scroll', hide, true);
+      window.removeEventListener('resize', hide);
+    };
+  }, []);
 
   useEffect(() => {
     if (typeof window === 'undefined' || !window.matchMedia('(hover: hover)').matches) return;

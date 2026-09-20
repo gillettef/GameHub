@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { DeviceSwitch } from '../device';
 import { useStore } from '../store';
 
 export function Lobby() {
@@ -28,6 +29,7 @@ export function Lobby() {
       <p className="muted small">혼자 해보려면 방을 만든 뒤 대기실에서 <b>AI 추가</b>로 봇을 넣고 시작하세요.</p>
       {!connected && <p className="muted small">서버에 연결하는 중…</p>}
       {error && <p className="error">{error}</p>}
+      <DeviceSwitch />
     </main>
   );
 }
@@ -70,6 +72,7 @@ export function RoomLobby() {
         <button className="link" onClick={leave}>나가기</button>
       </div>
       {error && <p className="error">{error}</p>}
+      <DeviceSwitch />
     </main>
   );
 }

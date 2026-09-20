@@ -738,3 +738,148 @@ button.ghost.light:hover:not(:disabled) { border-color: #fff; color: #fff; }
 .card.sponsor.back { background: repeating-linear-gradient(135deg, #fff6d6 0 10px, #fbefc4 10px 20px); justify-content: center; }
 .brand-plate.logo { margin: auto 16px; padding: 22px 12px; gap: 8px; }
 .brand-logo { width: 64px; height: 64px; border-radius: 50%; margin: 0 auto; background: var(--gold); color: #fff; font-size: 30px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; box-shadow: 0 0 0 4px #fff3c2; }
+
+/* ---- 화면 모드 선택 (device.tsx): 첫 접속 선택 화면, 로비 스위치, 헤더 전환 버튼 ---- */
+.device-chooser { max-width: 680px; margin: 40px auto; padding: 24px 20px; display: flex; flex-direction: column; gap: 12px; }
+.device-options { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 6px; }
+@media (max-width: 560px) { .device-chooser { margin: 12px auto; } .device-options { grid-template-columns: 1fr; } }
+.device-option { flex-direction: column; align-items: flex-start; gap: 6px; text-align: left; padding: 18px; border-radius: var(--radius-lg); font-weight: 400; background: var(--surface); box-shadow: var(--shadow); }
+.device-option.recommended { border-color: var(--pitch); box-shadow: 0 0 0 1px var(--pitch), var(--shadow); }
+.device-art { align-self: center; color: var(--pitch); padding: 6px 0 10px; }
+.device-title { font-size: 18px; font-weight: 700; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.device-desc { color: var(--ink-2); }
+.device-points { display: flex; flex-direction: column; gap: 2px; font-size: var(--fs-sub); color: var(--muted); }
+.device-points > span::before { content: '· '; }
+.device-switch { display: flex; align-items: center; gap: 6px; padding-top: 10px; border-top: 1px dashed var(--line); }
+.device-toggle { padding: 3px 8px; font-size: var(--fs-sub); color: var(--muted); border-color: var(--line); gap: 4px; }
+@media (max-width: 1180px) { .device-toggle .label { display: none; } }
+
+/* ---- 모바일용 화면 (html.mobile-ui, components/Mobile.tsx) ----
+   한 열 + 아래 고정 탭 막대. 모달은 body 로 포털되므로 .game 이 아니라 html 클래스 기준으로 건다.
+   화면 폭과 무관하게 적용한다(태블릿·가로 모드에서 모바일용을 골라도 같은 구성). 터치 대상은 40px 이상, 입력은 16px(iOS 확대 방지) */
+.mobile-ui { --nav-h: 56px; --safe-b: env(safe-area-inset-bottom, 0px); -webkit-text-size-adjust: 100%; }
+.mobile-ui body { overscroll-behavior-y: none; }
+.mobile-ui button { min-height: 40px; touch-action: manipulation; }
+.mobile-ui button.small, .mobile-ui .tab, .mobile-ui .toggle, .mobile-ui button.link { min-height: 34px; }
+.mobile-ui input, .mobile-ui select { font-size: 16px; min-height: 40px; }
+.mobile-ui input[type='checkbox'] { min-height: 0; width: 20px; height: 20px; }
+.mobile-ui .lobby { margin: 12px; padding: 20px 16px; }
+.mobile-ui .lobby .row > button:not(.link) { flex: 1; justify-content: center; }
+.mobile-ui .lobby input, .mobile-ui .lobby select { width: 100%; }
+
+/* 헤더: 48px 유지, 라벨은 아이콘으로 */
+.mobile-ui .topbar { grid-template-columns: auto minmax(0, 1fr) auto; gap: 8px; padding: 0 10px; }
+.mobile-ui .topbar .brand { gap: 6px; min-width: 0; }
+.mobile-ui .topbar .brand .tag { display: none; }
+.mobile-ui .topbar .room { font-size: var(--fs-sub); white-space: nowrap; }
+.mobile-ui .topbar .status { flex-direction: column; align-items: center; gap: 0; line-height: 1.15; min-width: 0; text-align: center; }
+.mobile-ui .topbar .week { font-size: 13px; }
+.mobile-ui .topbar .phase { font-size: 12px; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mobile-ui .topbar .conn { gap: 4px; }
+.mobile-ui .topbar .conn-text, .mobile-ui .topbar .toggle .label { display: none; }
+.mobile-ui .topbar .conn .link { padding: 4px; }
+.mobile-ui .notify-toggles { margin-right: 0; }
+.mobile-ui .topbar .toggle { padding: 3px 7px; }
+@media (max-width: 420px) { .mobile-ui .topbar .room { display: none; } }
+
+/* 참가자 띠(compact): 이름 알약 한 줄 + 내 자원 한 줄 */
+.player-strip.compact { flex-direction: column; gap: 5px; padding: 6px 10px; overflow: visible; }
+.seat-chips, .my-res { display: flex; gap: 6px; align-items: center; overflow-x: auto; scrollbar-width: none; }
+.seat-chips::-webkit-scrollbar, .my-res::-webkit-scrollbar, .mobile-ui .tabs::-webkit-scrollbar { display: none; }
+.seat-chip { flex: 1 0 auto; justify-content: center; padding: 3px 10px; min-height: 34px; border-radius: 999px; border: 1px solid var(--line); border-left: 5px solid var(--seat); font-weight: 400; font-size: 13px; background: var(--surface); }
+.seat-chip.selected { border-color: var(--seat); box-shadow: 0 0 0 1px var(--seat); }
+.seat-chip.acting { background: #fffcf2; }
+.seat-chip .pseat-main { padding: 0; }
+.seat-chip .seat-name { flex-wrap: nowrap; white-space: nowrap; }
+.my-res { font-size: var(--fs-sub); }
+.my-res-name { display: inline-flex; align-items: center; font-weight: 700; color: var(--ink-2); white-space: nowrap; flex: none; }
+.my-res .seat-res { flex-wrap: nowrap; flex: none; gap: 5px; }
+
+/* 본문: 한 열. 아래 탭 막대 + 확정 막대 자리만큼 바닥 여백 */
+.game.mobile { padding-bottom: calc(var(--nav-h) + var(--safe-b) + 76px); }
+.mobile-main { display: flex; flex-direction: column; gap: 10px; padding: 10px; min-width: 0; }
+.mobile-play { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.mobile-play[hidden] { display: none; }
+.mobile-ui .sidebar { display: contents; }
+.mobile-ui .legend-button { order: 9; }
+.mobile-ui .panel { padding: 12px; }
+.mobile-ui .board-panel { margin-left: -12px; padding-left: 8px; }
+.mobile-ui .panel-head { gap: 6px 10px; }
+.mobile-ui h2 { font-size: 17px; }
+.mobile-ui .two-col, .mobile-ui .club-grid, .mobile-ui .stadium-board, .mobile-ui .match-board, .mobile-ui .sponsor-modal-body { grid-template-columns: minmax(0, 1fr); }
+.mobile-ui .logbar { position: static; max-height: none; }
+
+/* 아래 탭 막대 */
+.mobile-nav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 8; display: grid; grid-template-columns: repeat(5, 1fr); background: var(--surface); border-top: 1px solid var(--line); padding: 0 env(safe-area-inset-right, 0px) var(--safe-b) env(safe-area-inset-left, 0px); box-shadow: 0 -2px 10px rgba(27, 42, 65, 0.06); }
+.mobile-nav button { position: relative; flex-direction: column; justify-content: center; gap: 1px; height: var(--nav-h); padding: 0; border: 0; border-radius: 0; background: none; color: var(--muted); font-size: var(--fs-sub); font-weight: 600; }
+.mobile-nav button.active { color: var(--pitch-dark); }
+.mobile-nav button.active::before { content: ''; position: absolute; top: 0; left: 22%; right: 22%; height: 3px; border-radius: 0 0 3px 3px; background: var(--pitch); }
+.nav-dot { position: absolute; top: 8px; left: calc(50% + 8px); width: 9px; height: 9px; border-radius: 50%; background: var(--gold); box-shadow: 0 0 0 2px var(--surface); animation: nav-dot-pulse 1.4s ease-in-out infinite; }
+@keyframes nav-dot-pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.35); } }
+
+/* 탭 막대 위에 뜨는 것들: 확정 막대, 차례 끝내기 막대, 오류 토스트 */
+.mobile-ui .confirm-bar, .mobile-turnbar { bottom: calc(var(--nav-h) + var(--safe-b) + 10px); width: calc(100vw - 20px); max-width: 560px; justify-content: space-between; gap: 10px; padding: 8px 10px 8px 14px; }
+.mobile-turnbar { position: fixed; left: 50%; transform: translateX(-50%); z-index: 14; display: flex; align-items: center; background: var(--ink); color: #fff; border-radius: 12px; box-shadow: 0 10px 30px rgba(27, 42, 65, 0.35); font-weight: 600; animation: confirm-in 0.25s ease-out; }
+.mobile-ui .confirm-label { font-size: 13px; min-width: 0; }
+.mobile-ui .toast { bottom: calc(var(--nav-h) + var(--safe-b) + 76px); width: max-content; max-width: calc(100vw - 24px); }
+.mobile-ui .fx-toasts { top: 54px; width: calc(100vw - 20px); max-width: 520px; }
+.mobile-ui .turn-alert { max-width: calc(100vw - 32px); padding: 14px 24px; text-align: center; }
+
+/* 카드 줄: 접지 않고 옆으로 민다 (카드 크기는 그대로 — 글자가 작아지지 않게) */
+.mobile-ui .cards, .mobile-ui .staff-row .cards, .mobile-ui .sponsor-row .cards { flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden; padding: 16px 10px 14px; margin: -8px -10px 0; scroll-snap-type: x proximity; -webkit-overflow-scrolling: touch; scrollbar-width: thin; }
+.mobile-ui .cards > .card { scroll-snap-align: center; }
+.mobile-ui .market-row, .mobile-ui .prospect-deck { min-height: 0; }
+.mobile-ui .tabs { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+.mobile-ui .tab { padding: 6px 10px; flex: none; }
+
+/* 주사위: 가로 배치 (왼쪽 주사위, 오른쪽 버튼) */
+.mobile-ui .dice-tray { width: 100%; display: grid; grid-template-columns: 72px minmax(0, 1fr); column-gap: 14px; row-gap: 2px; align-items: center; justify-items: stretch; padding: 12px 14px; }
+.mobile-ui .dice-title { grid-column: 2; grid-row: 1; }
+.mobile-ui .dice-actor { grid-column: 2; grid-row: 2; margin-top: 0; }
+.mobile-ui .die-stage { grid-column: 1; grid-row: 1 / span 3; }
+.mobile-ui .die-readout { grid-column: 1; grid-row: 4; text-align: center; }
+.mobile-ui .dice-actions { grid-column: 2; grid-row: 3 / span 2; flex-direction: row; align-items: center; margin-top: 6px; }
+.mobile-ui .dice-actions button { flex: 1; min-height: 44px; }
+.mobile-ui .dice-actions button:not(.primary) { flex: 0 1 auto; }
+
+/* 주중 행동 목록: 누르기 쉬운 높이 */
+.mobile-ui .action-item { padding: 10px 12px; font-size: 14px; }
+.mobile-ui .action-split .paid { padding: 10px 14px; }
+.mobile-ui .action-list { gap: 6px; }
+
+/* 보드: 좁은 폭에 맞춘 칸 크기 */
+.mobile-ui .club-board { padding: 8px; }
+.mobile-ui .tracks { overflow-x: auto; }
+.mobile-ui .track { grid-template-columns: 26px 26px repeat(5, 32px) 26px minmax(30px, 1fr); gap: 3px; }
+.mobile-ui .track-icon { width: 26px; height: 26px; }
+.mobile-ui .track-cell { width: 32px; height: 32px; }
+.mobile-ui .track-cell .track-num { font-size: 13px; }
+/* 유지비 표는 가로로 눕힌다: 종류마다 한 줄 (라벨 · 1~8) */
+.mobile-ui .upkeep { flex-direction: column; align-items: stretch; gap: 3px; }
+.mobile-ui .upkeep-col { flex-direction: row-reverse; justify-content: flex-end; gap: 3px; }
+.mobile-ui .upkeep-cell { flex: 1; max-width: 34px; height: 22px; }
+.mobile-ui .upkeep-label { writing-mode: horizontal-tb; height: auto; width: 52px; flex: none; }
+.mobile-ui .infra-grid, .mobile-ui .stands { grid-template-columns: repeat(2, 1fr); }
+.mobile-ui .billboards { grid-template-columns: 1fr; }
+.mobile-ui .mb-side { flex-direction: row; flex-wrap: wrap; align-items: center; }
+.mobile-ui .utoken { padding: 4px 10px; }
+.mobile-ui .pitch { grid-template-columns: 1fr 1.6fr 1fr; padding: 6px; gap: 4px; }
+.mobile-ui .sector { padding: 4px; }
+.mobile-ui .token-list { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; }
+.mobile-ui .token-list label { justify-content: space-between; min-width: 0; }
+.mobile-ui .token-list .utoken { flex: none; white-space: nowrap; max-width: 60%; }
+.mobile-ui .token-list .utoken-name { overflow: hidden; text-overflow: ellipsis; }
+.mobile-ui .token-list select { flex: 1; min-width: 0; padding: 7px 6px; }
+.mobile-ui .submit-row { position: sticky; bottom: calc(var(--nav-h) + var(--safe-b)); background: var(--surface); padding: 8px 0; z-index: 2; }
+.mobile-ui .scores { display: block; overflow-x: auto; }
+.mobile-ui .scores th, .mobile-ui .scores td { padding: 5px 8px; white-space: nowrap; }
+.mobile-ui .league li { grid-template-columns: 22px minmax(0, 1fr) 64px 28px; font-size: 14px; padding: 3px 0; }
+.mobile-ui .legend-row { grid-template-columns: 1fr; }
+.mobile-ui .contract-sub { grid-template-columns: 1fr; }
+
+/* 모달: 아래에서 올라오는 시트 */
+.mobile-ui .modal-backdrop { padding: 0; align-items: flex-end; }
+.mobile-ui .modal { max-height: 92vh; max-height: 92dvh; border-radius: 16px 16px 0 0; padding: 14px 12px 0; }
+.mobile-ui .modal-actions { position: sticky; bottom: 0; background: var(--surface); padding: 8px 0 calc(10px + var(--safe-b)); flex-wrap: wrap; }
+.mobile-ui .modal-actions button.primary { flex: 1; justify-content: center; }
+.mobile-ui .tip { font-size: 13px; }
