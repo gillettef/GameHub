@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { cards, instanceName } from '@server/engine/cards';
 import type { LogEntry, PlayerId } from '@server/engine/state';
 import { RESOURCES } from '@server/engine/types';
 import { hireCost, marketMinIndex, prospectCost } from '@server/engine/traits';
 import { useCommit } from '../commit';
+import { DeviceToggle, useDevice } from '../device';
 import { DAY_LABEL, RESOURCE_LABEL, SEAT_COLORS, TOKEN_LABEL, phaseLabel } from '../labels';
 import { NotifyToggles } from '../notify';
 import { useStore, useView } from '../store';
@@ -33,6 +34,7 @@ export function Header({ subtitle }: { subtitle?: string }) {
       </div>
       <div className="conn">
         {session && <NotifyToggles />}
+        <DeviceToggle />
         <span className={`dot ${connected ? 'on' : 'off'}`} title={connected ? '연결됨' : '재연결 중'} />
         <span className="conn-text">{connected ? '연결됨' : '재연결 중'}</span>
         <button className="link" onClick={leave}>나가기</button>
@@ -62,51 +64,68 @@ function playerStatus(view: ReturnType<typeof useView>['view'], pid: PlayerId): 
   }
 }
 
-// 헤더 아래 참가자 띠: 자리 색·이름·자원(트랙)·리그 위치·승점·상태 점. 누르면 그 참가자의 개인 보드로
-export function PlayerStrip() {
-  const { view, session, room } = useView();
-  const { selected, selectPlayer, mainTab } = useUi();
+// 자원마다 두 칸 알약: 왼쪽(색 채움) = 지금 보유한 자원, 오른쪽(흰 바탕·테두리·계단 그림) = 능력치 트랙 위치(월요일 조달 기준).
+// 효과 칩의 자원 칩/트랙 칩과 같은 시각 언어
+function SeatResources({ id, counts = true }: { id: PlayerId; counts?: boolean }) {
+  const { view } = useView();
+  const p = view.players[id]!;
   return (
-    <nav className="player-strip" aria-label="참가자">
-      {view.seats.map((id) => {
-        const p = view.players[id]!;
-        const status = playerStatus(view, id);
-        const isMe = session?.playerId === id;
-        const isBot = room?.players.find((r) => r.id === id)?.isBot;
-        return (
-          <button
-            key={id}
-            className={`pseat${selected === id && mainTab === 'personal' ? ' selected' : ''}${status === 'acting' ? ' acting' : ''}`}
-            style={{ '--seat': seatColor(view, id) } as React.CSSProperties}
-            onClick={() => selectPlayer(id)}
-            title={`${p.name}의 개인 보드 보기`}
-          >
-            <span className="seat-bar" />
-            <span className="pseat-main">
-              <span className="seat-name">
-                {p.name}
-                {isMe && <span className="tag me">나</span>}
-                {isBot && <span className="tag">AI</span>}
-                {view.firstPlayer === id && <span className="tag first">선</span>}
-                {status && <span className={`seat-status ${status}`} title={{ acting: '행동 중', waiting: '대기', done: '완료' }[status]} />}
-              </span>
-              <span className="seat-res">
-                {/* 자원마다 두 칸 알약: 왼쪽(색 채움) = 지금 보유한 자원, 오른쪽(흰 바탕·테두리·계단 그림) = 능력치 트랙 위치(월요일 조달 기준).
-                    효과 칩의 자원 칩/트랙 칩과 같은 시각 언어 */}
-                {RESOURCES.map((r) => (
-                  <span key={r} className={`res-pill ${r}`} title={`${RESOURCE_LABEL[r]}: 보유 ${p.resources[r]}개 · 트랙 ${p.tracks[r]}칸 (월요일 조달 기준)`}>
-                    <span className="held"><Icon name={r} size={14} />{p.resources[r]}</span>
-                    <span className="track"><TrackGlyph up={false} size={14} />{p.tracks[r]}</span>
-                  </span>
-                ))}
-                <span className="res sub" title="리그 성적표 위치"><Icon name="goal" size={14} />{view.league.players[id]}</span>
-                <span className="res sub" title="승점 토큰"><Icon name="vp" size={14} />{p.vp}</span>
-                <span className="res sub" title="선수 수 · 직원 수">선수 {p.roster.length} · 직원 {p.staff.length}</span>
-              </span>
-            </span>
-          </button>
-        );
-      })}
+    <span className="seat-res">
+      {RESOURCES.map((r) => (
+        <span key={r} className={`res-pill ${r}`} title={`${RESOURCE_LABEL[r]}: 보유 ${p.resources[r]}개 · 트랙 ${p.tracks[r]}칸 (월요일 조달 기준)`}>
+          <span className="held"><Icon name={r} size={14} />{p.resources[r]}</span>
+          <span className="track"><TrackGlyph up={false} size={14} />{p.tracks[r]}</span>
+        </span>
+      ))}
+      <span className="res sub" title="리그 성적표 위치"><Icon name="goal" size={14} />{view.league.players[id]}</span>
+      <span className="res sub" title="승점 토큰"><Icon name="vp" size={14} />{p.vp}</span>
+      {counts && <span className="res sub" title="선수 수 · 직원 수">선수 {p.roster.length} · 직원 {p.staff.length}</span>}
+    </span>
+  );
+}
+
+// 헤더 아래 참가자 띠: 자리 색·이름·자원(트랙)·리그 위치·승점·상태 점. 누르면 그 참가자의 개인 보드로.
+// compact(모바일용): 참가자는 이름 알약 한 줄로 줄이고, 그 아래에 내 자원(관전자는 고른 참가자) 한 줄만 둔다
+export function PlayerStrip({ compact = false }: { compact?: boolean }) {
+  const { view, session, room } = useView();
+  const { selected, selectPlayer, mainTab, mobileTab } = useUi();
+  const showing = compact ? mobileTab === 'board' : mainTab === 'personal';
+  const seats = view.seats.map((id) => {
+    const p = view.players[id]!;
+    const status = playerStatus(view, id);
+    const isMe = session?.playerId === id;
+    const isBot = room?.players.find((r) => r.id === id)?.isBot;
+    return (
+      <button
+        key={id}
+        className={`${compact ? 'seat-chip' : 'pseat'}${selected === id && showing ? ' selected' : ''}${status === 'acting' ? ' acting' : ''}`}
+        style={{ '--seat': seatColor(view, id) } as React.CSSProperties}
+        onClick={() => selectPlayer(id)}
+        title={`${p.name}의 개인 보드 보기`}
+      >
+        {!compact && <span className="seat-bar" />}
+        <span className="pseat-main">
+          <span className="seat-name">
+            {p.name}
+            {isMe && <span className="tag me">나</span>}
+            {isBot && <span className="tag">AI</span>}
+            {view.firstPlayer === id && <span className="tag first">선</span>}
+            {status && <span className={`seat-status ${status}`} title={{ acting: '행동 중', waiting: '대기', done: '완료' }[status]} />}
+          </span>
+          {!compact && <SeatResources id={id} />}
+        </span>
+      </button>
+    );
+  });
+  if (!compact) return <nav className="player-strip" aria-label="참가자">{seats}</nav>;
+  const resId = session && view.players[session.playerId] ? session.playerId : view.players[selected] ? selected : view.seats[0]!;
+  return (
+    <nav className="player-strip compact" aria-label="참가자">
+      <div className="seat-chips">{seats}</div>
+      <div className="my-res" style={{ '--seat': seatColor(view, resId) } as React.CSSProperties}>
+        <span className="my-res-name"><span className="seat-dot" />{session ? '내 자원' : view.players[resId]!.name}</span>
+        <SeatResources id={resId} counts={false} />
+      </div>
     </nav>
   );
 }
@@ -117,7 +136,13 @@ export function MarketBody() {
   const { view, session, act } = useView();
   const { chosen, select } = useCommit();
   const { marketTab, setMarketTab } = useUi();
+  const { mobile } = useDevice();
   const [sponsorPick, setSponsorPick] = useState<number | null>(null);
+  // 모바일용: 시장 행은 옆으로 미는 한 줄이라, 살 수 있는 오른쪽 3장이 먼저 보이게 오른쪽 끝으로 밀어 둔다
+  const rowRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (mobile && rowRef.current) rowRef.current.scrollLeft = rowRef.current.scrollWidth;
+  }, [mobile, marketTab]);
   const me = session ? view.players[session.playerId] : undefined;
   const canBuy = !!me && view.phase.kind === 'weekday' && view.phase.current === me.id && !view.phase.basicDone;
   const playerRow = (row: 'players' | 'veterans') => (id: string, i: number) => (
@@ -179,7 +204,7 @@ export function MarketBody() {
       ) : (
         <>
           <p className="muted small market-hint">오른쪽 3장만 구매 가능 · 왼쪽 2장은 다음 주에 오른쪽으로 밀립니다{canBuy ? ' · 카드를 눌러 고르고 아래에서 확정' : ''}</p>
-          <div className="cards market-row">{view.market[marketTab].map((id, i) => render[marketTab](id, i))}</div>
+          <div className="cards market-row" ref={rowRef}>{view.market[marketTab].map((id, i) => render[marketTab](id, i))}</div>
         </>
       )}
       {sponsorPick !== null && sponsorCardId && me && (

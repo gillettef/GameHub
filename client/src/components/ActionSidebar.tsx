@@ -15,7 +15,7 @@ import { LegendButton } from './Legend';
 // 메인의 해당 보드 탭으로 이동시키고, 나머지는 바로 선택 → 아래 확정 막대에서 확정한다.
 // 맨 위는 차례 끝내기(즉시)와 처음으로 되돌리기(확정 필요), 그 다음이 패스.
 
-function WeekdayActions({ me }: { me: PlayerPublicView }) {
+export function WeekdayActions({ me }: { me: PlayerPublicView }) {
   const { view, act } = useView();
   const { chosen, select } = useCommit();
   const { showBoard, showMarket, releasing, setReleasing } = useUi();

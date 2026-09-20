@@ -9,6 +9,7 @@ import { RESOURCES, SECTORS } from '@server/engine/types';
 import type { Resources, Sector } from '@server/engine/types';
 import { OpponentCardView, PlayerCardView, TacticCardView } from '../components/Cards';
 import { useCommit } from '../commit';
+import { useDevice } from '../device';
 import { CostChips, Icon, ResourceChip } from '../components/Icons';
 import { TurnBanner } from '../components/Turn';
 import { SECTOR_LABEL, matchDieLabel } from '../labels';
@@ -279,6 +280,7 @@ export function FridayMatchScreen() {
 // 경기 결과도 선 참가자부터 한 명씩: 차례인 참가자의 경기 보고서와 주사위를 모두가 본다
 export function FridayAftermathScreen() {
   const { view } = useGame();
+  const dicePlace = useDevice().mobile ? '위' : '왼쪽'; // 모바일용 화면은 주사위가 단계 패널 위에 있다
   if (view.phase.kind !== 'friday.aftermath') return null;
   const { current, matches } = view.phase;
   const actor = view.players[current]!;
@@ -341,7 +343,7 @@ export function FridayAftermathScreen() {
         </table>
         {m.roll === null ? (
           <p className="hint">
-            <Icon name="die" size={14} /> {mine ? '왼쪽 주사위를 굴리세요.' : `${actor.name}이(가) 주사위를 굴리기를 기다리는 중`}
+            <Icon name="die" size={14} /> {mine ? `${dicePlace} 주사위를 굴리세요.` : `${actor.name}이(가) 주사위를 굴리기를 기다리는 중`}
           </p>
         ) : roll === null ? (
           <p className="hint">
@@ -349,7 +351,7 @@ export function FridayAftermathScreen() {
           </p>
         ) : mine ? (
           <p className="hint">
-            <Icon name="die" size={14} /> 왼쪽 주사위 영역에서 <b>적용: {matchDieLabel(m.report.outcome, roll)}</b>을 누르거나, 팬덤 1개로 다시 굴리세요.
+            <Icon name="die" size={14} /> {dicePlace} 주사위 영역에서 <b>적용: {matchDieLabel(m.report.outcome, roll)}</b>을 누르거나, 팬덤 1개로 다시 굴리세요.
           </p>
         ) : (
           <p className="muted small">{actor.name}이(가) 결과를 적용하거나 팬덤으로 다시 굴릴 수 있습니다.</p>

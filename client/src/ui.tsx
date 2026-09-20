@@ -10,6 +10,7 @@ import { useView } from './store';
 export type MainTab = 'personal' | 'shared';
 export type BoardTab = 'club' | 'stadium' | 'match' | 'hand';
 export type SharedTab = 'market' | 'league';
+export type MobileTab = 'play' | 'board' | 'market' | 'league' | 'log'; // 모바일용 화면의 아래 탭 막대 (한 번에 한 영역만 보인다)
 export type MarketTab = 'players' | 'veterans' | 'prospects' | 'staff' | 'sponsors'; // 주전 행 / 베테랑 행 / 유망주 더미 / 직원 / 스폰서
 
 interface UiStore {
@@ -26,6 +27,8 @@ interface UiStore {
   marketTab: MarketTab; // 이적 시장 안의 선수/직원/스폰서 탭
   setMarketTab: (t: MarketTab) => void;
   showMarket: (t: MarketTab) => void; // 공용 보드 → 이적 시장 → 해당 행
+  mobileTab: MobileTab; // 모바일용: 진행(단계 패널·주사위·주중 행동) / 구단 / 시장 / 리그 / 기록. 단계가 바뀌면 '진행'으로
+  setMobileTab: (t: MobileTab) => void;
   releasing: boolean; // 방출 모드: 경기 보드의 내 선수 카드를 눌러 방출 대상을 고른다
   setReleasing: (v: boolean) => void;
   settledRoll: string | null; // 주사위 트레이가 멈춰 보여주고 있는 눈의 키(`actor:roll`). 구르는 동안은 null
@@ -56,6 +59,7 @@ export function UiProvider({ children }: { children: ReactNode }) {
   const [boardTab, setBoardTab] = useState<BoardTab>(() => defaults(view.phase.kind).board);
   const [sharedTab, setSharedTab] = useState<SharedTab>(() => defaults(view.phase.kind).shared);
   const [marketTab, setMarketTab] = useState<MarketTab>('players');
+  const [mobileTab, setMobileTab] = useState<MobileTab>('play');
   const [releasing, setReleasing] = useState(false);
   const [settledRoll, setSettledRoll] = useState<string | null>(null);
 
@@ -74,31 +78,36 @@ export function UiProvider({ children }: { children: ReactNode }) {
     setMainTab(d.main);
     setBoardTab(d.board);
     setSharedTab(d.shared);
+    setMobileTab('play');
     setReleasing(false);
   }, [view.phase.kind]);
 
   const selectPlayer = useCallback((pid: PlayerId) => {
     setSelected(pid);
     setMainTab('personal');
+    setMobileTab('board');
   }, []);
   const showBoard = useCallback((t: BoardTab, pid?: PlayerId) => {
     if (pid) setSelected(pid);
     setMainTab('personal');
     setBoardTab(t);
+    setMobileTab('board');
   }, []);
   const showShared = useCallback((t: SharedTab) => {
     setMainTab('shared');
     setSharedTab(t);
+    setMobileTab(t);
   }, []);
   const showMarket = useCallback((t: MarketTab) => {
     setMainTab('shared');
     setSharedTab('market');
     setMarketTab(t);
+    setMobileTab('market');
   }, []);
 
   const value = useMemo<UiStore>(
-    () => ({ selected, selectPlayer, mainTab, setMainTab, boardTab, setBoardTab, sharedTab, setSharedTab, showBoard, showShared, marketTab, setMarketTab, showMarket, releasing, setReleasing, settledRoll, setSettledRoll }),
-    [selected, selectPlayer, mainTab, boardTab, sharedTab, showBoard, showShared, marketTab, showMarket, releasing, settledRoll],
+    () => ({ selected, selectPlayer, mainTab, setMainTab, boardTab, setBoardTab, sharedTab, setSharedTab, showBoard, showShared, marketTab, setMarketTab, showMarket, mobileTab, setMobileTab, releasing, setReleasing, settledRoll, setSettledRoll }),
+    [selected, selectPlayer, mainTab, boardTab, sharedTab, showBoard, showShared, marketTab, showMarket, mobileTab, releasing, settledRoll],
   );
   return <UiContext.Provider value={value}>{children}</UiContext.Provider>;
 }
