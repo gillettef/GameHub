@@ -143,6 +143,7 @@ export function emptyMods(): MatchMods {
 export interface MatchAftermath {
   opponentCardId: string;
   played: string[];
+  placements: Record<string, Sector>; // 경기에 쓴 배치 (결과 화면에서 구획별 선수·득점자를 보여 준다. 경기가 끝났으니 공개)
   report: MatchReport;
   roll: number | null;
   // 경기 영향이 부상류면 그 결과를 적용한 뒤 12면체 부상 주사위를 참가자가 직접 굴린다 (p.24·p.27, 사용자 요청 2026-09).

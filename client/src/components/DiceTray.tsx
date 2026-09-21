@@ -7,7 +7,7 @@ import type { PlayerInstance } from '@server/engine/state';
 import { Icon } from './Icons';
 import { COLOR_LABEL, matchDieLabel } from '../labels';
 import { useStore } from '../store';
-import { rollKeyOf, useUi } from '../ui';
+import { resultKeyOf, rollKeyOf, useUi } from '../ui';
 
 const SPIN_MS = 1100; // 굴리기를 누른 뒤 최소한 이만큼은 구른다
 const SPIN_FALLBACK_MS = 4000; // 서버 눈이 안 오면(거부 등) 이 뒤에 멈춘다
@@ -80,7 +80,7 @@ function Face({ n, className }: { n: number; className: string }) {
 // 눈이 나온 뒤에는 "굴리기" 자리에 결정/결과 적용 버튼이 오고, 그 아래 팬덤 재굴림 버튼이 남는다 (굴림·재굴림·적용을 한곳에서).
 export function DiceTray() {
   const { view, session, act } = useStore();
-  const { setSettledRoll } = useUi();
+  const { setSettledRoll, resultSeen } = useUi();
   const [spinning, setSpinning] = useState(false);
   const [face, setFace] = useState(1);
   const spinningRef = useRef(false);
@@ -178,7 +178,9 @@ export function DiceTray() {
   );
 
   if (!mode || !actor) return null;
-  const canRoll = mine && !decided && roll === null;
+  // 경기 영향 주사위는 경기 결과 스텝에서 "결과 확인"을 누른 뒤에 굴린다 (스텝 진행, test_insight C4)
+  const needResultCheck = mode === 'match' && mine && roll === null && !!view && resultSeen !== resultKeyOf(view.week, actorId);
+  const canRoll = mine && !decided && roll === null && !needResultCheck;
   // 특성: 팬덤 없이 재굴림 — 주당 1회, 이미 썼으면 팬덤을 낸다 (엔진과 같은 판정)
   const freeReroll = mode !== 'injury' && hasTrait(actor, mode === 'board' ? 'freeBoardReroll' : 'freeMatchReroll') && !actor.freeRerollUsed[mode];
   const canReroll = mine && !decided && roll !== null && (freeReroll || actor.resources.fandom >= 1);
@@ -201,7 +203,7 @@ export function DiceTray() {
   };
 
   return (
-    <div className="dice-tray" aria-live="polite">
+    <div className={`dice-tray${mine && !decided && !spinning && !needResultCheck ? ' attention' : ''}`} aria-live="polite">
       <div className="dice-title">{mode === 'board' ? '이사회 주사위' : mode === 'injury' ? `부상 주사위 (12면체)${injury && injury.total > 1 ? ` ${injury.index + 1}/${injury.total}` : ''}` : '경기 영향 주사위'}</div>
       <div className="dice-actor">{mine ? '내 차례' : `${actor.name}의 차례`}</div>
       <div className="die-stage">
@@ -226,7 +228,9 @@ export function DiceTray() {
           <span className="muted small">{roll === null ? '굴리기를 기다리는 중' : spinning ? '구르는 중' : `눈 ${roll}`}</span>
         ) : (
           <>
-            {roll === null ? (
+            {needResultCheck ? (
+              <span className="muted small">경기 결과를 확인하면 굴릴 수 있습니다</span>
+            ) : roll === null ? (
               <button className="primary" disabled={spinning || !canRoll} onClick={() => start(false)}>
                 <Icon name="die" />굴리기
               </button>
@@ -235,9 +239,15 @@ export function DiceTray() {
                 {spinning ? '구르는 중' : acceptLabel}
               </button>
             )}
-            <button disabled={spinning || !canReroll} onClick={() => start(true)} title={freeReroll ? '특성: 팬덤 없이 다시 굴립니다' : '팬덤 1개를 내고 다시 굴립니다'}>
-              {freeReroll ? '무료 다시' : <><Icon name="fandom" />1 다시</>}
-            </button>
+            {/* 적용과 재굴림을 떼어 놓는다 — 재굴림하려다 적용을 누르는 실수 방지 (test_insight C5) */}
+            {roll !== null && (
+              <>
+                <span className="dice-or">마음에 안 들면</span>
+                <button className="reroll" disabled={spinning || !canReroll} onClick={() => start(true)} title={freeReroll ? '특성: 팬덤 없이 다시 굴립니다' : canReroll ? '팬덤 1개를 내고 다시 굴립니다' : '다시 굴릴 팬덤이 없습니다'}>
+                  {freeReroll ? '무료로 다시 굴리기' : <><Icon name="fandom" />1 내고 다시 굴리기</>}
+                </button>
+              </>
+            )}
           </>
         )}
       </div>

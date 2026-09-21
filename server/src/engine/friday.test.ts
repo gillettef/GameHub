@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { applyAction } from './actions';
-import { activeSide, cards } from './cards';
+import { activeSide, cards, tokenLabel } from './cards';
 import { addToRoster } from './effects';
 import { acceptInjuryRoll, acceptMatchRoll, playTacticEffect, rerollInjuryDie, rerollMatchDie, rollInjuryDie, rollMatchDie, standsCount, startFriday, submitLineup } from './friday';
 import { GameError } from './state';
@@ -24,6 +24,22 @@ function submitAll(s: GameState, seed = 1): GameState {
 }
 
 describe('경기 준비 제출 (p.20)', () => {
+  it('경기 결과에 배치와 득점자를 남긴다: 득점 토큰마다 "이름(번호)" 또는 "유니폼 N번" (test_insight C3)', () => {
+    for (const seed of [1, 2, 3]) {
+      const s = submitAll(friday(), seed);
+      if (s.phase.kind !== 'friday.aftermath') throw new Error();
+      for (const id of s.seats) {
+        const m = s.phase.matches[id]!;
+        const p = s.players[id]!;
+        expect(Object.keys(m.placements).sort()).toEqual(p.uniforms.filter((u) => u.location === 'field').map((u) => u.id).sort());
+        const labels = m.report.scorers.map((t) => tokenLabel(p, m.played, t));
+        for (const l of labels) expect(l).toMatch(/\(\d+번\)$|\(번호 없음\)$|^유니폼 /);
+        const logged = s.log.some((e) => e.actor === id && e.text === `득점: ${labels.join(' · ')}`);
+        expect(logged).toBe(labels.length > 0);
+      }
+    }
+  });
+
   it('출전 선수마다 체력 1, 관중석 팬덤 지불, 전원 제출 시 판정', () => {
     let s = friday();
     // 베테랑의 강제 경기 후 페널티(돈 −1 등)가 관중 수입 검증을 흐리지 않게, a 의 베테랑을 능력 없는 카드로 바꾼다

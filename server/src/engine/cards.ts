@@ -20,7 +20,7 @@ import type {
   StaffCard,
   TacticCard,
 } from './types';
-import type { PlayerInstance } from './state';
+import type { PlayerInstance, UniformToken } from './state';
 
 function index<T extends { id: string }>(list: readonly T[]): Map<string, T> {
   return new Map(list.map((c) => [c.id, c]));
@@ -73,4 +73,13 @@ export function playerName(cardId: string, trained = false): string {
 }
 export function instanceName(instance: PlayerInstance): string {
   return playerName(instance.cardId, instance.trained);
+}
+
+// 유니폼 토큰을 사람이 읽는 이름으로: 출전한 선수 카드의 토큰이면 "이름(번호)", 아니면 "유니폼 N번" (득점자 표시·기록용)
+export function tokenLabel(player: { roster: PlayerInstance[]; uniforms: UniformToken[] }, played: string[], tokenId: string): string {
+  const token = player.uniforms.find((u) => u.id === tokenId);
+  if (!token) return '유니폼 토큰';
+  const inst = token.cardInstanceId && played.includes(token.cardInstanceId) ? player.roster.find((r) => r.instanceId === token.cardInstanceId) : undefined;
+  const number = token.number !== undefined ? `${token.number}번` : '번호 없음';
+  return inst ? `${instanceName(inst)}(${number})` : `유니폼 ${number}`;
 }

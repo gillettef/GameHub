@@ -33,6 +33,8 @@ interface UiStore {
   setReleasing: (v: boolean) => void;
   settledRoll: string | null; // 주사위 트레이가 멈춰 보여주고 있는 눈의 키(`actor:roll`). 구르는 동안은 null
   setSettledRoll: (key: string | null) => void;
+  resultSeen: string | null; // 경기 결과를 확인한 키(`week:actor`). 내 경기 결과를 확인해야 경기 영향 주사위를 굴릴 수 있다 (스텝 진행)
+  setResultSeen: (key: string | null) => void;
 }
 
 const UiContext = createContext<UiStore | null>(null);
@@ -62,6 +64,7 @@ export function UiProvider({ children }: { children: ReactNode }) {
   const [mobileTab, setMobileTab] = useState<MobileTab>('play');
   const [releasing, setReleasing] = useState(false);
   const [settledRoll, setSettledRoll] = useState<string | null>(null);
+  const [resultSeen, setResultSeen] = useState<string | null>(null);
 
   useEffect(() => {
     if (!view.seats.includes(selected)) setSelected(session?.playerId ?? view.seats[0]!);
@@ -106,8 +109,8 @@ export function UiProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo<UiStore>(
-    () => ({ selected, selectPlayer, mainTab, setMainTab, boardTab, setBoardTab, sharedTab, setSharedTab, showBoard, showShared, marketTab, setMarketTab, showMarket, mobileTab, setMobileTab, releasing, setReleasing, settledRoll, setSettledRoll }),
-    [selected, selectPlayer, mainTab, boardTab, sharedTab, showBoard, showShared, marketTab, showMarket, mobileTab, releasing, settledRoll],
+    () => ({ selected, selectPlayer, mainTab, setMainTab, boardTab, setBoardTab, sharedTab, setSharedTab, showBoard, showShared, marketTab, setMarketTab, showMarket, mobileTab, setMobileTab, releasing, setReleasing, settledRoll, setSettledRoll, resultSeen, setResultSeen }),
+    [selected, selectPlayer, mainTab, boardTab, sharedTab, showBoard, showShared, marketTab, showMarket, mobileTab, releasing, settledRoll, resultSeen],
   );
   return <UiContext.Provider value={value}>{children}</UiContext.Provider>;
 }
@@ -116,6 +119,10 @@ export function useUi(): UiStore {
   const s = useContext(UiContext);
   if (!s) throw new Error('UiProvider missing');
   return s;
+}
+
+export function resultKeyOf(week: number, actorId: string | null): string {
+  return `${week}:${actorId}`;
 }
 
 // tag: 같은 참가자의 다른 주사위(경기 영향 6면체 / 부상 12면체 n번째)를 구분한다
