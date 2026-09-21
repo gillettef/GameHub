@@ -4,12 +4,11 @@ import type { GameView } from '@server/engine/view';
 import { DAY_LABEL } from './labels';
 import { useStore } from './store';
 
-// 턴 알림: 내가 무언가 해야 하는 상태가 되면 화면 가운데 배너 + 탭 제목 깜빡임 + (설정에 따라) 소리·바탕화면 알림.
+// 턴 알림: 내가 무언가 해야 하는 상태가 되면 탭 제목 깜빡임(가운데 배너는 없앴다 — 사용자 요청 2026-09) + (설정에 따라) 소리·바탕화면 알림.
 // 설정은 localStorage(eleven.notify)에 보관한다. 소리는 오디오 파일 없이 WebAudio 로 짧은 두 음을 낸다.
 
 const PREF_KEY = 'eleven.notify';
 const BASE_TITLE = 'Eleven';
-const ALERT_MS = 3200;
 const FLASH_MS = 1200;
 
 export interface NotifyPrefs {
@@ -103,7 +102,6 @@ function desktopNotify(body: string): void {
 interface NotifyStore {
   prefs: NotifyPrefs;
   setPref: (key: keyof NotifyPrefs, value: boolean) => void;
-  alert: { id: number; text: string } | null;
   desktopSupported: boolean;
 }
 
@@ -112,10 +110,8 @@ const NotifyContext = createContext<NotifyStore | null>(null);
 export function NotifyProvider({ children }: { children: ReactNode }) {
   const { view, session } = useStore();
   const [prefs, setPrefs] = useState<NotifyPrefs>(loadPrefs);
-  const [alert, setAlert] = useState<{ id: number; text: string } | null>(null);
   const prefsRef = useRef(prefs);
   prefsRef.current = prefs;
-  const nextId = useRef(1);
 
   const task = view && session && view.me === session.playerId ? myTask(view) : null;
   const needs = task !== null;
@@ -126,17 +122,10 @@ export function NotifyProvider({ children }: { children: ReactNode }) {
     const was = wasNeeded.current;
     wasNeeded.current = needs;
     if (was === null || was === needs || !needs || !task) return;
-    if (view?.phase.kind.startsWith('setup')) return; // 준비 단계는 패널 자체가 안내라 가운데 배너·소리를 띄우지 않는다
-    setAlert({ id: nextId.current++, text: task });
+    if (view?.phase.kind.startsWith('setup')) return; // 준비 단계는 패널 자체가 안내라 소리를 내지 않는다
     if (prefsRef.current.sound) beep();
     if (prefsRef.current.desktop) desktopNotify(task);
   }, [needs, task]);
-
-  useEffect(() => {
-    if (!alert) return;
-    const t = setTimeout(() => setAlert(null), ALERT_MS);
-    return () => clearTimeout(t);
-  }, [alert]);
 
   // 탭 제목: 내 차례면 종 표시, 탭이 뒤에 있으면 깜빡임
   useEffect(() => {
@@ -174,8 +163,8 @@ export function NotifyProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo<NotifyStore>(
-    () => ({ prefs, setPref, alert, desktopSupported: typeof Notification !== 'undefined' }),
-    [prefs, setPref, alert],
+    () => ({ prefs, setPref, desktopSupported: typeof Notification !== 'undefined' }),
+    [prefs, setPref],
   );
   return <NotifyContext.Provider value={value}>{children}</NotifyContext.Provider>;
 }
@@ -186,17 +175,6 @@ export function useNotify(): NotifyStore {
   return s;
 }
 
-// 화면 가운데 잠깐 떠오르는 "내 차례" 배너
-export function TurnAlert() {
-  const { alert } = useNotify();
-  if (!alert) return null;
-  return (
-    <div key={alert.id} className="turn-alert" role="status">
-      <span className="turn-alert-title">내 차례</span>
-      <span className="turn-alert-text">{alert.text}</span>
-    </div>
-  );
-}
 
 function BellIcon() {
   return (

@@ -7,7 +7,7 @@ import { ActionLog, Header, LeagueBody, MarketBody, PendingModal, PlayerStrip } 
 import { Tabs } from './components/Tabs';
 import { TooltipLayer } from './components/Tooltip';
 import { DeviceChooser, DeviceProvider, useDevice } from './device';
-import { NotifyProvider, TurnAlert } from './notify';
+import { NotifyProvider } from './notify';
 import { FridayAftermathScreen, FridayMatchScreen, FridayPrepareScreen } from './screens/Friday';
 import { GameOverScreen } from './screens/GameOver';
 import { Lobby, RoomLobby } from './screens/Lobby';
@@ -109,7 +109,6 @@ function Layout({ phasePanel, subtitle }: { phasePanel: ReactNode; subtitle?: st
         )}
         <PendingModal />
         <ConfirmBar />
-        <TurnAlert />
         {error && <div className="toast" role="alert">{error}</div>}
       </div>
     </CommitProvider>

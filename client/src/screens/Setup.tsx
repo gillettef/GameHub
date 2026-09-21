@@ -21,10 +21,9 @@ function Waiting({ done }: { done: Record<string, boolean> }) {
   );
 }
 
-// 드래프트·목표 카드: 카드를 누르면 강조되고 아래 확정 막대에서 확정해야 넘어간다
+// 임원 드래프트: 카드를 누르면 바로 영입한다 — 확정·취소 막대 없음(사용자 요청 2026-09). 목표 카드는 아래 확정 막대에서 확정해야 넘어간다
 export function DraftScreen() {
-  const { view } = useGame();
-  const { chosen, select } = useCommit();
+  const { view, act } = useGame();
   if (view.phase.kind !== 'setup.draft') return null;
   const { round, hand, picked } = view.phase;
   const mine = picked[view.me];
@@ -34,10 +33,10 @@ export function DraftScreen() {
         <h2>임원 드래프트 {round}/3</h2>
         <Waiting done={picked} />
       </div>
-      <p className="hint">임원 1명을 고르고 확정하면 남은 카드는 왼쪽 참가자에게 넘어갑니다. 주사위 눈의 색이 이사회에서 그 임원이 찍는 표입니다.</p>
+      <p className="hint">임원 1명을 누르면 바로 영입하고 남은 카드는 왼쪽 참가자에게 넘어갑니다. 주사위 눈의 색이 이사회에서 그 임원이 찍는 표입니다.</p>
       <div className="cards">
         {hand.map((cardId) => (
-          <ExecutiveCardView key={cardId} cardId={cardId} chosen={chosen === cardId} onClick={mine ? undefined : () => select(cardId, { type: 'draftPick', cardId }, <>임원 영입: <b>{cards.executive(cardId).name}</b></>)} />
+          <ExecutiveCardView key={cardId} cardId={cardId} onClick={mine ? undefined : () => act({ type: 'draftPick', cardId })} />
         ))}
       </div>
       {mine && <WaitingFor done={picked} />}
