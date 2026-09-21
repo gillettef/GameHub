@@ -15,3 +15,12 @@ removes the PID file. If there is no PID file it does nothing except report whet
 that happens, tell the user which PID holds the port and ask before killing it manually.
 
 To restart after changes: run `/dev-stop` then `/dev`.
+
+It also stops bots and **every** tunnel slot (`.dev/tunnel*-pids.json` — server 1 `main` and server 2
+`test`, see `/tunnel`). To stop only one tunnel slot and leave everything else running, pass `-Slot`:
+
+```
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\dev-stop.ps1 -Slot test
+```
+
+Stopping a slot's tunnel discards its public URL, so do not stop server 1 (`main`) unless the user asks.
