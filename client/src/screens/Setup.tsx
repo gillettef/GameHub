@@ -1,5 +1,3 @@
-import { cards } from '@server/engine/cards';
-import { useCommit } from '../commit';
 import { ExecutiveCardView, ObjectiveCardView } from '../components/Cards';
 import { useGame } from '../store';
 
@@ -21,7 +19,7 @@ function Waiting({ done }: { done: Record<string, boolean> }) {
   );
 }
 
-// 임원 드래프트: 카드를 누르면 바로 영입한다 — 확정·취소 막대 없음(사용자 요청 2026-09). 목표 카드는 아래 확정 막대에서 확정해야 넘어간다
+// 임원 드래프트: 카드를 누르면 바로 영입한다 — 확정·취소 막대 없음(사용자 요청 2026-09)
 export function DraftScreen() {
   const { view, act } = useGame();
   if (view.phase.kind !== 'setup.draft') return null;
@@ -44,9 +42,9 @@ export function DraftScreen() {
   );
 }
 
+// 목표 카드도 누르면 바로 보관한다 — 확정 막대 없음(사용자 요청 2026-09-22)
 export function ObjectiveScreen() {
-  const { view } = useGame();
-  const { chosen, select } = useCommit();
+  const { view, act } = useGame();
   if (view.phase.kind !== 'setup.objective') return null;
   const { options, chosen: chosenMap } = view.phase;
   const mine = chosenMap[view.me];
@@ -56,10 +54,10 @@ export function ObjectiveScreen() {
         <h2>목표 카드</h2>
         <Waiting done={chosenMap} />
       </div>
-      <p className="hint">2장 중 1장을 골라 확정하면 보관합니다. 다른 참가자에게는 보이지 않습니다.</p>
+      <p className="hint">2장 중 1장을 누르면 바로 보관합니다. 다른 참가자에게는 보이지 않습니다.</p>
       <div className="cards">
         {options.map((cardId) => (
-          <ObjectiveCardView key={cardId} cardId={cardId} chosen={chosen === cardId} onClick={mine ? undefined : () => select(cardId, { type: 'chooseObjective', cardId }, <>목표 카드: <b>{cards.objective(cardId).name}</b></>)} />
+          <ObjectiveCardView key={cardId} cardId={cardId} onClick={mine ? undefined : () => act({ type: 'chooseObjective', cardId })} />
         ))}
       </div>
       {mine && <WaitingFor done={chosenMap} />}
