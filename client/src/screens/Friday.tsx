@@ -15,6 +15,7 @@ import { TurnBanner } from '../components/Turn';
 import { UpkeepWarning } from '../components/Upkeep';
 import { SECTOR_LABEL, matchDieLabel } from '../labels';
 import { useGame } from '../store';
+import { injuryRollLabel } from '../components/DiceTray';
 import { useRevealedRoll } from '../ui';
 
 function TokenChipView({ token, name }: { token: UniformToken; name?: string }) {
@@ -288,7 +289,12 @@ export function FridayAftermathScreen() {
   const actor = view.players[current]!;
   const mine = current === view.me;
   const m = matches[current]!;
-  const roll = useRevealedRoll(current, m.roll); // 사이드바 주사위가 멈춘 뒤에만 눈을 보여준다
+  const revealed = useRevealedRoll(current, m.roll); // 사이드바 주사위가 멈춘 뒤에만 눈을 보여준다
+  const roll = m.injuryDice.length > 0 ? m.roll : revealed; // 이미 적용한 6면체 눈은 그대로 보여준다 (트레이는 부상 주사위로 넘어갔다)
+  // 경기 영향이 부상류였으면 이어서 12면체 부상 주사위 (p.24·p.27)
+  const injuryIndex = m.injuryDice.findIndex((d) => !d.applied);
+  const injuryDie = injuryIndex >= 0 ? m.injuryDice[injuryIndex]! : null;
+  const injuryRoll = useRevealedRoll(current, injuryDie?.roll ?? null, `d12-${injuryIndex}-`);
   const opponent = cards.opponent(m.opponentCardId);
   const outcomeLabel = { win: '승리', draw: '무승부', loss: '패배' }[m.report.outcome];
   const done = Object.fromEntries(view.seats.map((id) => [id, matches[id]!.decided]));
@@ -343,7 +349,9 @@ export function FridayAftermathScreen() {
             ))}
           </tbody>
         </table>
-        {m.roll === null ? (
+        {m.injuryDice.length > 0 ? (
+          <p className="muted small">경기 영향 적용: <b>{matchDieLabel(m.report.outcome, m.roll!)}</b> → 아래 부상 주사위로 누가 다치는지 정합니다.</p>
+        ) : m.roll === null ? (
           <p className="hint">
             <Icon name="die" size={14} /> {mine ? `${dicePlace} 주사위를 굴리세요.` : `${actor.name}이(가) 주사위를 굴리기를 기다리는 중`}
           </p>
@@ -359,6 +367,37 @@ export function FridayAftermathScreen() {
           <p className="muted small">{actor.name}이(가) 결과를 적용하거나 팬덤으로 다시 굴릴 수 있습니다.</p>
         )}
       </div>
+      {m.injuryDice.length > 0 && (
+        <div className="step">
+          <h3>부상 주사위 <span className="muted">12면체 · 눈 = 다치는 선수의 등번호 (12는 12번 이상) · 그 번호의 출전 선수가 없으면 아무 일도 없음</span></h3>
+          <ol className="injury-dice">
+            {m.injuryDice.map((d, i) => {
+              const shown = d.applied ? d.roll : i === injuryIndex ? injuryRoll : null;
+              return (
+                <li key={i} className={d.applied ? 'done' : i === injuryIndex ? 'now' : ''}>
+                  <span className="tag">부상 토큰 {d.count}개</span>{' '}
+                  {shown !== null ? <><b>눈 {shown}</b> — {injuryRollLabel(actor.roster, m.played, shown, d.count)}{d.applied ? ' (적용됨)' : ''}</> : i === injuryIndex ? (d.roll === null ? '굴리기 전' : '구르는 중…') : '대기'}
+                </li>
+              );
+            })}
+          </ol>
+          <p className="played-numbers muted small">
+            출전 선수 등번호: {actor.roster.filter((r) => m.played.includes(r.instanceId) && activeSide(r).number !== undefined).map((r) => activeSide(r).number).sort((a, b) => a! - b!).join(' · ') || '없음'}
+          </p>
+          {injuryDie && (
+            <p className="hint">
+              <Icon name="die" size={14} />{' '}
+              {!mine
+                ? `${actor.name}이(가) 부상 주사위를 굴리는 중`
+                : injuryDie.roll === null
+                  ? `${dicePlace} 주사위 영역에서 부상 주사위(12면체)를 굴리세요.`
+                  : injuryRoll === null
+                    ? '주사위가 구르는 중…'
+                    : `${dicePlace} 주사위 영역에서 결과를 적용하거나, 팬덤 1개로 다시 굴리세요.`}
+            </p>
+          )}
+        </div>
+      )}
     </section>
   );
 }

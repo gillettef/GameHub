@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
+import { activeSide, instanceName } from '@server/engine/cards';
 import { boardDecision } from '@server/engine/monday';
 import { hasTrait } from '@server/engine/traits';
 import type { MatchReport } from '@server/engine/match';
+import type { PlayerInstance } from '@server/engine/state';
 import { Icon } from './Icons';
 import { COLOR_LABEL, matchDieLabel } from '../labels';
 import { useStore } from '../store';
@@ -26,6 +28,39 @@ const FACE_TRANSFORM: Record<number, string> = {
   5: 'rotateY(90deg)',
   6: 'rotateY(180deg)',
 };
+
+// 부상 주사위(12면체) 눈에 해당하는 출전 선수: 눈 = 등번호, 12 는 12번 이상 (p.24·p.27)
+export function injuryTargets(roster: PlayerInstance[], played: string[], roll: number): PlayerInstance[] {
+  return roster.filter((r) => {
+    const n = activeSide(r).number;
+    return played.includes(r.instanceId) && n !== undefined && (roll === 12 ? n >= 12 : n === roll);
+  });
+}
+export function injuryRollLabel(roster: PlayerInstance[], played: string[], roll: number, count: number): string {
+  const who = roll === 12 ? '등번호 12 이상' : `등번호 ${roll}번`;
+  const hit = injuryTargets(roster, played, roll);
+  return hit.length > 0 ? `${who} ${hit.map((h) => instanceName(h)).join(' / ')} 부상 ${count}개` : `${who} 출전 선수 없음 — 아무 일도 없음`;
+}
+
+// 12면체: 정십이면체 윤곽(오각형 면) 위에 눈을 숫자로 보여준다. 구르는 동안에는 돌면서 숫자가 빠르게 바뀐다
+function D12({ n, spinning }: { n: number | null; spinning: boolean }) {
+  const [flicker, setFlicker] = useState(1);
+  useEffect(() => {
+    if (!spinning) return;
+    const t = setInterval(() => setFlicker((f) => (f % 12) + 1), 70);
+    return () => clearInterval(t);
+  }, [spinning]);
+  return (
+    <div className={`d12${spinning ? ' spinning' : ''}`}>
+      <svg viewBox="0 0 100 100" aria-hidden="true">
+        <polygon className="d12-body" points="50,3 79,12 97,36 97,64 79,88 50,97 21,88 3,64 3,36 21,12" />
+        <polygon className="d12-face" points="50,24 75,42 65,71 35,71 25,42" />
+        <path className="d12-edge" d="M50 24V3M75 42l22-6M65 71l14 17M35 71L21 88M25 42L3 36" />
+      </svg>
+      <span className="d12-num">{spinning ? flicker : (n ?? '?')}</span>
+    </div>
+  );
+}
 
 function Face({ n, className }: { n: number; className: string }) {
   return (
@@ -56,7 +91,8 @@ export function DiceTray() {
   const me = view && session ? view.players[session.playerId] : undefined;
   const phase = view?.phase;
   // 차례인 참가자(actor)의 주사위를 모두가 본다 (관전자 포함). 버튼은 내 차례일 때만
-  let mode: 'board' | 'match' | null = null;
+  let mode: 'board' | 'match' | 'injury' | null = null;
+  let injury: { index: number; total: number; count: number; played: string[] } | null = null;
   let roll: number | null = null;
   let decided = false;
   let outcome: MatchReport['outcome'] | null = null;
@@ -72,10 +108,18 @@ export function DiceTray() {
     roll = phase.matches[actorId]?.roll ?? null;
     decided = phase.matches[actorId]?.decided ?? false;
     outcome = phase.matches[actorId]?.report.outcome ?? null;
+    // 경기 영향이 부상류였으면 이어서 12면체 부상 주사위 (앞에서부터 하나씩)
+    const m = phase.matches[actorId];
+    const index = m ? m.injuryDice.findIndex((d) => !d.applied) : -1;
+    if (m && index >= 0) {
+      mode = 'injury';
+      roll = m.injuryDice[index]!.roll;
+      injury = { index, total: m.injuryDice.length, count: m.injuryDice[index]!.count, played: m.played };
+    }
   }
   const actor = view && actorId ? view.players[actorId] : undefined;
   const mine = !!me && me.id === actorId;
-  const rollKey = rollKeyOf(actorId, roll);
+  const rollKey = rollKeyOf(actorId, roll, injury ? `d12-${injury.index}-` : '');
   const broadcast = view?.log.length ?? 0; // 같은 눈이 다시 나온 재굴림도 새 방송으로 감지하기 위해
   const lastRollKey = useRef(rollKey);
   const rollKeyRef = useRef(rollKey);
@@ -136,31 +180,43 @@ export function DiceTray() {
   if (!mode || !actor) return null;
   const canRoll = mine && !decided && roll === null;
   // 특성: 팬덤 없이 재굴림 — 주당 1회, 이미 썼으면 팬덤을 낸다 (엔진과 같은 판정)
-  const freeReroll = hasTrait(actor, mode === 'board' ? 'freeBoardReroll' : 'freeMatchReroll') && !actor.freeRerollUsed[mode];
+  const freeReroll = mode !== 'injury' && hasTrait(actor, mode === 'board' ? 'freeBoardReroll' : 'freeMatchReroll') && !actor.freeRerollUsed[mode];
   const canReroll = mine && !decided && roll !== null && (freeReroll || actor.resources.fandom >= 1);
   // 눈이 나온 뒤 적용 버튼 라벨: 이사회는 결정 색(엔진과 같은 집계), 경기는 영향 표의 결과
-  const acceptLabel = roll === null ? '' : mode === 'board' ? `${COLOR_LABEL[boardDecision(actor, roll)]} 결정 적용` : `적용: ${outcome ? matchDieLabel(outcome, roll) : ''}`;
-  const accept = () => act(mode === 'board' ? { type: 'acceptBoardRoll' } : { type: 'acceptMatchRoll' });
+  const acceptLabel =
+    roll === null
+      ? ''
+      : mode === 'board'
+        ? `${COLOR_LABEL[boardDecision(actor, roll)]} 결정 적용`
+        : mode === 'injury' && injury
+          ? `적용: ${injuryRollLabel(actor.roster, injury.played, roll, injury.count)}`
+          : `적용: ${outcome ? matchDieLabel(outcome, roll) : ''}`;
+  const accept = () => act(mode === 'board' ? { type: 'acceptBoardRoll' } : mode === 'injury' ? { type: 'acceptInjuryRoll' } : { type: 'acceptMatchRoll' });
   const start = (reroll: boolean) => {
     beginSpin();
     stopAt(faceRef.current, SPIN_FALLBACK_MS); // 서버가 거부하면 원래 면으로 되돌아간다
     if (mode === 'board') act({ type: reroll ? 'rerollBoardDie' : 'rollBoardDie' });
+    else if (mode === 'injury') act({ type: reroll ? 'rerollInjuryDie' : 'rollInjuryDie' });
     else act({ type: reroll ? 'rerollMatchDie' : 'rollMatchDie' });
   };
 
   return (
     <div className="dice-tray" aria-live="polite">
-      <div className="dice-title">{mode === 'board' ? '이사회 주사위' : '경기 영향 주사위'}</div>
+      <div className="dice-title">{mode === 'board' ? '이사회 주사위' : mode === 'injury' ? `부상 주사위 (12면체)${injury && injury.total > 1 ? ` ${injury.index + 1}/${injury.total}` : ''}` : '경기 영향 주사위'}</div>
       <div className="dice-actor">{mine ? '내 차례' : `${actor.name}의 차례`}</div>
       <div className="die-stage">
-        <div className={`die3d${spinning ? ' spinning' : ''}`} style={spinning ? undefined : { transform: FACE_TRANSFORM[face] }}>
-          <Face n={1} className="front" />
-          <Face n={2} className="right" />
-          <Face n={6} className="back" />
-          <Face n={5} className="left" />
-          <Face n={3} className="top" />
-          <Face n={4} className="bottom" />
-        </div>
+        {mode === 'injury' ? (
+          <D12 n={roll !== null ? face : null} spinning={spinning} />
+        ) : (
+          <div className={`die3d${spinning ? ' spinning' : ''}`} style={spinning ? undefined : { transform: FACE_TRANSFORM[face] }}>
+            <Face n={1} className="front" />
+            <Face n={2} className="right" />
+            <Face n={6} className="back" />
+            <Face n={5} className="left" />
+            <Face n={3} className="top" />
+            <Face n={4} className="bottom" />
+          </div>
+        )}
       </div>
       <div className="die-readout" aria-label="주사위 눈">{roll !== null && !spinning ? `눈 ${roll}` : spinning ? '구르는 중' : '—'}</div>
       <div className="dice-actions">

@@ -145,7 +145,19 @@ export interface MatchAftermath {
   played: string[];
   report: MatchReport;
   roll: number | null;
+  // 경기 영향이 부상류면 그 결과를 적용한 뒤 12면체 부상 주사위를 참가자가 직접 굴린다 (p.24·p.27, 사용자 요청 2026-09).
+  // "두 번의 (심각한) 부상"이면 2개. 앞에서부터 하나씩 굴림 → (팬덤 재굴림) → 적용. count = 놓을 부상 토큰 수
+  injuryDice: InjuryDie[];
   decided: boolean;
+}
+export interface InjuryDie {
+  count: number;
+  roll: number | null;
+  applied: boolean;
+}
+// 지금 굴릴(또는 적용할) 부상 주사위. 없으면 undefined
+export function currentInjuryDie(m: Pick<MatchAftermath, 'injuryDice'>): InjuryDie | undefined {
+  return m.injuryDice.find((d) => !d.applied);
 }
 
 export type Phase =

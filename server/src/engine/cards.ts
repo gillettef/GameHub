@@ -50,6 +50,8 @@ export const cards = {
   tactic: (id: string): TacticCard => get(tactics, id, 'tactic'),
   objective: (id: string): ObjectiveCard => get(objectives, id, 'objective'),
   opponent: (id: string): OpponentTeamCard => get(opponents, id, 'opponent'),
+  // 상대 팀 이름: 팀마다 부에 따라 카드 id 가 다르므로(t01~08 은 3부·3/2부, t09~16 은 2/1부·1부) 팀 id 로 찾는다
+  teamName: (teamId: string): string => OPPONENT_CARDS.find((c) => c.teamId === teamId)?.teamName ?? teamId,
   boardData: BOARD_DATA,
 };
 

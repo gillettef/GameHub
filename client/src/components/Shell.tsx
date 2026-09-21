@@ -228,15 +228,19 @@ export function LeagueBody() {
   const { view } = useView();
   const entries = [
     ...view.seats.map((id) => ({ id, name: view.players[id]!.name, position: view.league.players[id]!, active: true })),
-    ...view.league.opponents.map((o) => ({ id: undefined, name: cards.opponent(`op-${o.teamId}-3a`).teamName, position: o.position, active: o.active })),
+    ...view.league.opponents.map((o) => ({ id: undefined, name: cards.teamName(o.teamId), position: o.position, active: o.active })),
   ].sort((a, b) => b.position - a.position);
+  const rankOf = (position: number) => 1 + entries.filter((e) => e.position > position).length; // 같은 칸은 같은 등수 (p.26)
   const max = Math.max(1, ...entries.map((e) => e.position));
   return (
     <ol className="league">
       {entries.map((e, i) => (
         <li key={i} className={`${e.id ? 'mine' : ''}${e.active ? '' : ' inactive'}`} style={e.id ? ({ '--seat': seatColor(view, e.id) } as React.CSSProperties) : undefined}>
-          <span className="rank">{i + 1}</span>
-          <span className="team">{e.id && <span className="seat-dot" />}{e.name}</span>
+          <span className="rank">{rankOf(e.position)}</span>
+          <span className="team">
+            {e.id && <span className="seat-dot" />}{e.name}
+            {!e.active && <span className="tag inactive-tag" title="이번 주에 참가자 2명 이상이 이 팀과 경기해서 마커가 비활성(검은색) 면입니다 (p.24). 다음에 아무도 이 팀을 상대하지 않는 주에는 주사위로 이동하는 대신 활성 면으로 돌아옵니다. 순위·승점 계산에는 그대로 포함됩니다.">비활성</span>}
+          </span>
           <span className="bar"><span style={{ width: `${(e.position / max) * 100}%` }} /></span>
           <span className="pos">{e.position}</span>
         </li>

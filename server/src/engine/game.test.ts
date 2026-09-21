@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { cards } from './cards';
-import { acceptMatchRoll, playTacticEffect, rollMatchDie, submitLineup } from './friday';
+import { playTacticEffect, rollMatchDie, submitLineup } from './friday';
 import { acceptBoardRoll, rollBoardDie } from './monday';
 import type { Rng } from './rng';
 import type { GameState } from './state';
 import { TRACK_MAX, TRACK_MIN } from './types';
-import { autoLineup, eligiblePlayers, gameAtMonday, seededRng, settlePending } from './test-utils';
+import { applyMatchRoll, autoLineup, eligiblePlayers, gameAtMonday, seededRng, settlePending } from './test-utils';
 import { buildInfrastructure, buildOffice, cardAction, endTurn, hireStaff, pass, recruitPlayer, recruitProspect, signSponsor } from './weekday';
 
 
@@ -80,7 +80,7 @@ function playFullGame(seed: number): GameState {
       }
       case 'friday.aftermath': {
         const pid = s.phase.current;
-        s = acceptMatchRoll(rollMatchDie(s, pid, rng), pid, rng);
+        s = applyMatchRoll(rollMatchDie(s, pid, rng), pid, rng);
         break;
       }
       default:

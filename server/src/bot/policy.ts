@@ -140,6 +140,9 @@ export function decide(view: GameView, rng: Rng, failed: Set<string>): GameActio
     case 'friday.aftermath': {
       const m = phase.matches[view.me];
       if (phase.current !== view.me || !m || m.decided) return null;
+      // 경기 영향이 부상류였으면 12면체 부상 주사위를 굴리고 적용한다
+      const injuryDie = m.injuryDice.find((d) => !d.applied);
+      if (injuryDie) return injuryDie.roll === null ? { type: 'rollInjuryDie' } : { type: 'acceptInjuryRoll' };
       return m.roll === null ? { type: 'rollMatchDie' } : { type: 'acceptMatchRoll' };
     }
     case 'gameOver':
