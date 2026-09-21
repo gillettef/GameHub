@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { cards, instanceName } from '@server/engine/cards';
 import type { LogEntry, PlayerId } from '@server/engine/state';
-import { RESOURCES } from '@server/engine/types';
+import { LEAGUE_MAX } from '@server/engine/friday';
+import { leagueRankPoints } from '@server/engine/scoring';
+import { RESOURCES, TRACK_MAX } from '@server/engine/types';
 import { hireCost, marketMinIndex, prospectCost } from '@server/engine/traits';
 import { WEEKS } from '@server/engine/weekend';
 import { useCommit } from '../commit';
@@ -13,13 +15,20 @@ import { useUi } from '../ui';
 import type { MarketTab } from '../ui';
 import { PlayerCardView, SponsorCardView, StaffCardView } from './Cards';
 import { ChatBody, unreadCount } from './Chat';
-import { CostChips, Icon, TrackGlyph } from './Icons';
+import { Crest } from './Crest';
+import { CostChips, Icon } from './Icons';
 import { UpkeepChip } from './Upkeep';
 import { SponsorContractModal } from './Sponsor';
 import { Tabs } from './Tabs';
 
 export function seatColor(view: { seats: PlayerId[] }, pid: PlayerId): string {
   return SEAT_COLORS[view.seats.indexOf(pid)] ?? '#64748B';
+}
+
+// 리그 등수: 같은 칸은 같은 등수 (p.26) — 상대 팀(비활성 포함) 전체와 비교
+export function leagueRankOf(view: { league: { players: Record<PlayerId, number>; opponents: { position: number }[] } }, pid: PlayerId): number {
+  const mine = view.league.players[pid] ?? 0;
+  return 1 + [...Object.values(view.league.players), ...view.league.opponents.map((o) => o.position)].filter((x) => x > mine).length;
 }
 
 export function Header({ subtitle }: { subtitle?: string }) {
@@ -73,23 +82,20 @@ function playerStatus(view: ReturnType<typeof useView>['view'], pid: PlayerId): 
   }
 }
 
-// 자원마다 두 칸 알약: 왼쪽(색 채움) = 지금 보유한 자원, 오른쪽(흰 바탕·테두리·계단 그림) = 능력치 트랙 위치(월요일 조달 기준).
-// 효과 칩의 자원 칩/트랙 칩과 같은 시각 언어
-function SeatResources({ id }: { id: PlayerId }) {
+// 자원 칸: 위 = 지금 보유한 자원(큰 숫자), 아래 = 능력치 트랙 위치를 5칸 눈금으로 (월요일 조달 기준)
+function SeatStats({ id }: { id: PlayerId }) {
   const { view } = useView();
   const p = view.players[id]!;
   return (
-    <span className="seat-res">
+    <span className="pseat-stats">
       {RESOURCES.map((r) => (
-        <span key={r} className={`res-pill ${r}`} title={`${RESOURCE_LABEL[r]}: 보유 ${p.resources[r]}개 · 트랙 ${p.tracks[r]}칸 (월요일 조달 기준)`}>
-          <span className="held"><Icon name={r} size={14} />{p.resources[r]}</span>
-          <span className="track"><TrackGlyph up={false} size={14} />{p.tracks[r]}</span>
+        <span key={r} className={`stat ${r}`} title={`${RESOURCE_LABEL[r]}: 보유 ${p.resources[r]}개 · 트랙 ${p.tracks[r]}칸 (월요일마다 +${p.tracks[r]})`}>
+          <span className="stat-top"><Icon name={r} size={14} /><b>{p.resources[r]}</b></span>
+          <span className="pips" aria-hidden="true">
+            {Array.from({ length: TRACK_MAX }, (_, i) => <i key={i} className={i < p.tracks[r] ? 'on' : ''} />)}
+          </span>
         </span>
       ))}
-      <UpkeepChip view={view} p={p} />
-      <span className="res sub" title="리그 성적표 위치"><Icon name="goal" size={14} />{view.league.players[id]}</span>
-      <span className="res sub" title="승점 토큰"><Icon name="vp" size={14} />{p.vp}</span>
-      <span className="res sub" title="선수 수 · 직원 수">선수 {p.roster.length} · 직원 {p.staff.length}</span>
     </span>
   );
 }
@@ -106,6 +112,18 @@ export function PlayerStrip() {
     const el = mine.current;
     if (el?.parentElement) el.parentElement.scrollLeft = el.offsetLeft - 8; // 띠가 sticky 라 offsetLeft 는 띠 기준
   }, []);
+  // 띠 높이가 내용에 따라 달라지므로(유지비 경고 등) 스티키 오프셋(--head-h)을 실제 높이로 맞춘다
+  const strip = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const el = strip.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const sync = () => document.documentElement.style.setProperty('--head-h', `${48 + el.offsetHeight}px`);
+    const ro = new ResizeObserver(sync);
+    ro.observe(el);
+    sync();
+    return () => ro.disconnect();
+  }, []);
+  const STATUS_LABEL = { acting: '행동 중', waiting: '대기', done: '완료' } as const;
   const seats = view.seats.map((id) => {
     const p = view.players[id]!;
     const status = playerStatus(view, id);
@@ -120,21 +138,31 @@ export function PlayerStrip() {
         onClick={() => selectPlayer(id)}
         title={`${p.name}의 개인 보드 보기`}
       >
-        <span className="seat-bar" />
-        <span className="pseat-main">
-          <span className="seat-name">
-            {p.name}
-            {isMe && <span className="tag me">나</span>}
-            {isBot && <span className="tag">AI</span>}
-            {view.firstPlayer === id && <span className="tag first">선</span>}
-            {status && <span className={`seat-status ${status}`} title={{ acting: '행동 중', waiting: '대기', done: '완료' }[status]} />}
+        <span className="pseat-head">
+          <Crest name={p.name} color={seatColor(view, id)} size={30} />
+          <span className="pseat-id">
+            <span className="seat-name">
+              <span className="seat-name-text">{p.name}</span>
+              {isMe && <span className="tag me">나</span>}
+              {isBot && <span className="tag">AI</span>}
+              {view.firstPlayer === id && <span className="tag first" title="선 참가자">선</span>}
+            </span>
+            <span className="pseat-meta">
+              <span title="리그 등수 · 리그 성적표 위치">리그 <b>{leagueRankOf(view, id)}위</b> ({view.league.players[id]}칸)</span>
+              <span title="승점 토큰"><Icon name="vp" size={12} />{p.vp}</span>
+              <span title="선수 수 · 직원 수">선수 {p.roster.length} · 직원 {p.staff.length}</span>
+            </span>
           </span>
-          <SeatResources id={id} />
+          {status && <span className={`seat-state ${status}`}>{STATUS_LABEL[status]}</span>}
+        </span>
+        <span className="pseat-body">
+          <SeatStats id={id} />
+          <span className="seat-res"><UpkeepChip view={view} p={p} /></span>
         </span>
       </button>
     );
   });
-  return <nav className="player-strip" aria-label="참가자">{seats}</nav>;
+  return <nav ref={strip} className="player-strip" aria-label="참가자">{seats}</nav>;
 }
 
 // 이적 시장: 주전/베테랑/유망주/직원/스폰서 탭. 내 주중 차례면 오른쪽 3장을 눌러 고르고, 아래 확정 막대에서 확정한다. 스폰서는 계약 유형 모달을 거친다.
@@ -145,10 +173,10 @@ export function MarketBody() {
   const { marketTab, setMarketTab } = useUi();
   const { mobile } = useDevice();
   const [sponsorPick, setSponsorPick] = useState<number | null>(null);
-  // 모바일용: 시장 행은 옆으로 미는 한 줄이라, 살 수 있는 오른쪽 3장이 먼저 보이게 오른쪽 끝으로 밀어 둔다
+  // 모바일용: 시장 행은 옆으로 미는 한 줄. '지금 구매 가능' 구역이 앞에 있으므로 탭을 바꾸면 맨 앞으로 되돌린다
   const rowRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    if (mobile && rowRef.current) rowRef.current.scrollLeft = rowRef.current.scrollWidth;
+    if (mobile && rowRef.current) rowRef.current.scrollLeft = 0;
   }, [mobile, marketTab]);
   const me = session ? view.players[session.playerId] : undefined;
   const canBuy = !!me && view.phase.kind === 'weekday' && view.phase.current === me.id && !view.phase.basicDone;
@@ -210,8 +238,28 @@ export function MarketBody() {
         </>
       ) : (
         <>
-          <p className="muted small market-hint">오른쪽 3장만 구매 가능 · 왼쪽 2장은 다음 주에 오른쪽으로 밀립니다{canBuy ? ' · 카드를 눌러 고르고 아래에서 확정' : ''}</p>
-          <div className="cards market-row" ref={rowRef}>{view.market[marketTab].map((id, i) => render[marketTab](id, i))}</div>
+          <p className="muted small market-hint">주말마다 '지금 구매 가능'의 마지막 카드를 버리고, '다음 주에 열림' 카드가 넘어옵니다{canBuy ? ' · 카드를 눌러 고르고 아래에서 확정' : ''}</p>
+          <div className="cards market-row" ref={rowRef}>
+            {(() => {
+              const row = view.market[marketTab];
+              // 구매 가능한 첫 위치: 기본은 오른쪽 3장(2), 특성(시장 맨 왼쪽까지)이 있으면 0
+              const from = marketTab === 'staff' ? 2 : me ? marketMinIndex(me, marketTab === 'sponsors' ? 'sponsors' : 'players') : 2;
+              return (
+                <>
+                  <div className="market-zone open">
+                    <span className="zone-label">지금 구매 가능</span>
+                    <div className="zone-cards">{row.slice(from).map((id, i) => render[marketTab](id, i + from))}</div>
+                  </div>
+                  {from > 0 && (
+                    <div className="market-zone locked">
+                      <span className="zone-label">다음 주에 열림</span>
+                      <div className="zone-cards">{row.slice(0, from).map((id, i) => render[marketTab](id, i))}</div>
+                    </div>
+                  )}
+                </>
+              );
+            })()}
+          </div>
         </>
       )}
       {sponsorPick !== null && sponsorCardId && me && (
@@ -230,27 +278,47 @@ export function MarketBody() {
 }
 
 export function LeagueBody() {
-  const { view } = useView();
+  const { view, session } = useView();
   const entries = [
     ...view.seats.map((id) => ({ id, name: view.players[id]!.name, position: view.league.players[id]!, active: true })),
     ...view.league.opponents.map((o) => ({ id: undefined, name: cards.teamName(o.teamId), position: o.position, active: o.active })),
   ].sort((a, b) => b.position - a.position);
   const rankOf = (position: number) => 1 + entries.filter((e) => e.position > position).length; // 같은 칸은 같은 등수 (p.26)
-  const max = Math.max(1, ...entries.map((e) => e.position));
   return (
-    <ol className="league">
-      {entries.map((e, i) => (
-        <li key={i} className={`${e.id ? 'mine' : ''}${e.active ? '' : ' inactive'}`} style={e.id ? ({ '--seat': seatColor(view, e.id) } as React.CSSProperties) : undefined}>
-          <span className="rank">{rankOf(e.position)}</span>
-          <span className="team">
-            {e.id && <span className="seat-dot" />}{e.name}
-            {!e.active && <span className="tag inactive-tag" title="이번 주에 참가자 2명 이상이 이 팀과 경기해서 마커가 비활성(검은색) 면입니다 (p.24). 다음에 아무도 이 팀을 상대하지 않는 주에는 주사위로 이동하는 대신 활성 면으로 돌아옵니다. 순위·승점 계산에는 그대로 포함됩니다.">비활성</span>}
-          </span>
-          <span className="bar"><span style={{ width: `${(e.position / max) * 100}%` }} /></span>
-          <span className="pos">{e.position}</span>
-        </li>
-      ))}
-    </ol>
+    <div className="league-table" role="table" aria-label="리그 성적표">
+      <div className="league-row head" role="row">
+        <span role="columnheader">순위</span>
+        <span role="columnheader">구단</span>
+        <span role="columnheader" className="league-track-head">성적표 위치 <span className="muted">(승 +3 · 무 +1)</span></span>
+        <span role="columnheader" className="num">칸</span>
+        <span role="columnheader" className="num" title="지금 등수로 시즌이 끝나면 받는 승점 (p.26)">종료 시 승점</span>
+      </div>
+      {entries.map((e, i) => {
+        const rank = rankOf(e.position);
+        const points = leagueRankPoints(rank);
+        return (
+          <div
+            key={i}
+            role="row"
+            className={`league-row${e.id ? ' mine' : ''}${e.id && e.id === session?.playerId ? ' me' : ''}${e.active ? '' : ' inactive'}${rank === 1 ? ' top' : ''}`}
+            style={e.id ? ({ '--seat': seatColor(view, e.id) } as React.CSSProperties) : undefined}
+          >
+            <span role="cell" className="rank">{rank}</span>
+            <span role="cell" className="team">
+              <Crest name={e.name} color={e.id ? seatColor(view, e.id) : undefined} size={22} />
+              <span className="team-name">{e.name}</span>
+              {e.id && e.id === session?.playerId && <span className="tag me">나</span>}
+              {!e.active && <span className="tag inactive-tag" title="이번 주에 참가자 2명 이상이 이 팀과 경기해서 마커가 비활성(검은색) 면입니다 (p.24). 다음에 아무도 이 팀을 상대하지 않는 주에는 주사위로 이동하는 대신 활성 면으로 돌아옵니다. 순위·승점 계산에는 그대로 포함됩니다.">비활성</span>}
+            </span>
+            <span role="cell" className="league-track" aria-hidden="true">
+              <span className="league-fill" style={{ width: `${(Math.min(e.position, LEAGUE_MAX) / LEAGUE_MAX) * 100}%` }} />
+            </span>
+            <span role="cell" className="num pos">{e.position}</span>
+            <span role="cell" className={`num pts${points < 0 ? ' minus' : ''}`}>{points > 0 ? `+${points}` : points}</span>
+          </div>
+        );
+      })}
+    </div>
   );
 }
 

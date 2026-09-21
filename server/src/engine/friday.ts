@@ -13,7 +13,7 @@ import { runWeekend } from './weekend';
 import type { Cost, Effect, MatchTiming, OpponentTeamCard, PlayerEffect, Resources, Sector } from './types';
 
 const PRINTED_STANDS = 2; // p.6 1번/2번 관중석
-const LEAGUE_MAX = 18;
+export const LEAGUE_MAX = 18; // 리그 성적표 마지막 칸
 const LEAGUE_WIN = 3;
 const LEAGUE_DRAW = 1;
 // placeholder: 상대 팀 주사위 눈 (p.2 그림: 0/1/3)
