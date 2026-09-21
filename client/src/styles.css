@@ -357,8 +357,8 @@ label.row { flex-direction: row; align-items: center; }
 .suspended-band { position: absolute; left: 0; right: 0; bottom: 0; display: flex; align-items: center; justify-content: center; gap: 4px; padding: 3px 6px; background: var(--danger); color: #fff; font-size: 12px; font-weight: 700; letter-spacing: 0.02em; }
 .tag.inactive-tag { background: var(--ink); color: #fff; margin-left: 6px; }
 /* 유지비 칩: 자원 알약 바로 옆, 점선 테두리 알약으로 눈에 띄게 */
-.seat-res .res.sub.upkeep { padding: 0 6px; border: 1px dashed var(--c-money); border-radius: 6px; color: var(--ink-2); font-weight: 700; white-space: nowrap; }
-.seat-res .res.sub.upkeep.short { color: var(--danger); border: 1px solid var(--danger); background: #fdecea; }
+.seat-res .res.sub.upkeep-chip { padding: 0 6px; border: 1px dashed var(--c-money); border-radius: 6px; color: var(--ink-2); font-weight: 700; white-space: nowrap; }
+.seat-res .res.sub.upkeep-chip.short { color: var(--danger); border: 1px solid var(--danger); background: #fdecea; }
 .upkeep-warning { margin: 0 0 6px; }
 .corner-bottom-right { position: absolute; bottom: 4px; right: 6px; }
 .note { font-size: var(--fs-sub); font-weight: 600; color: var(--defense); }
