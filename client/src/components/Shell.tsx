@@ -291,7 +291,7 @@ export function LeagueBody() {
         <span role="columnheader">구단</span>
         <span role="columnheader" className="league-track-head">성적표 위치 <span className="muted">(승 +3 · 무 +1)</span></span>
         <span role="columnheader" className="num">칸</span>
-        <span role="columnheader" className="num" title="지금 등수로 시즌이 끝나면 받는 승점 (p.26)">종료 시 승점</span>
+        <span role="columnheader" className="num" title="지금 등수로 시즌이 끝나면 받는 승점 (p.26)">승점</span>
       </div>
       {entries.map((e, i) => {
         const rank = rankOf(e.position);

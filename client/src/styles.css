@@ -1058,7 +1058,6 @@ th .crest, .crest-title .crest, .score-name .crest { vertical-align: middle; mar
 .track-end { font-size: var(--fs-sub); color: var(--muted); display: inline-flex; align-items: center; gap: 1px; justify-content: center; white-space: nowrap; }
 .track-cell { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; height: 40px; border-radius: var(--radius-sm); background: var(--surface-2); color: var(--muted); line-height: 1; border: 1.5px solid transparent; }
 .track-cell .track-num { font-size: 14px; font-weight: 700; }
-.track-cell .track-yield { font-size: var(--fs-sub); }
 .track-cell.filled { background: var(--rb); color: var(--rc); }
 .track-cell.marker { background: var(--rc); color: #fff; border-color: var(--rc); }
 /* 유지비: 종류마다 1~8+ 구간 막대, 지금 칸에 잉크 테두리 */
@@ -1226,3 +1225,10 @@ th .crest, .crest-title .crest, .score-name .crest { vertical-align: middle; mar
   .modal, .card.chosen, .card.chosen::after, .confirm-bar, .mobile-turnbar, .tip, .turn-banner { animation: none; }
   .card.clickable, button, .tab, input, select { transition: none; }
 }
+
+/* 보드에서 고르는 주중 행동 (사용자 요청 2026-09): 사이드바 메뉴는 이동만, 선택은 보드에서 → 확정 막대 */
+.card-slot { display: flex; flex-direction: column; gap: 6px; flex: none; width: var(--card-w); scroll-snap-align: center; }
+.card-slot .card-actions { width: 100%; }
+.build-tile { margin-bottom: 12px; border-color: var(--pitch); }
+.build-options { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 6px; }
+.mobile-ui .build-options { grid-template-columns: minmax(0, 1fr); }
