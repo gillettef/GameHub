@@ -125,9 +125,6 @@ export function attachWebSocket(wss: WebSocketServer, rooms: RoomManager, option
         broadcast(room);
         return;
       }
-      case 'setRandomOrder':
-        broadcast(rooms.setRandomOrder(session.roomCode, session.playerId, msg.on));
-        return;
       case 'startGame': {
         const room = rooms.start(session.roomCode, session.playerId);
         broadcast(room);

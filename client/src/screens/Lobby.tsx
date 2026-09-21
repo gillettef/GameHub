@@ -1,7 +1,5 @@
 import { useState } from 'react';
-import { ChatBody } from '../components/Chat';
 import { DeviceSwitch } from '../device';
-import { SEAT_COLORS } from '../labels';
 import { useStore } from '../store';
 
 export function Lobby() {
@@ -74,19 +72,12 @@ export function RoomLobby() {
           <option value={1}>1부 (어려움)</option>
         </select>
       </label>
-      <label className="row" title="켜면 게임을 시작할 때 자리(차례) 순서를 무작위로 섞습니다. 첫 자리가 1주차 선 참가자입니다. 끄면 입장 순서대로, 호스트가 선 참가자입니다.">
-        <input type="checkbox" checked={room.randomOrder} disabled={!isHost} onChange={(e) => send({ type: 'setRandomOrder', on: e.target.checked })} />
-        시작 순서 무작위 <span className="muted small">{room.randomOrder ? '시작할 때 차례 순서를 섞습니다' : '입장 순서대로 · 호스트가 선'}</span>
-      </label>
+      <p className="muted small">차례 순서는 게임을 시작할 때 무작위로 정해집니다.</p>
       <div className="row">
         {isHost ? <button className="primary" onClick={() => send({ type: 'startGame' })}>게임 시작</button> : <span className="muted">호스트가 시작하기를 기다리는 중…</span>}
         <button className="link" onClick={leave}>나가기</button>
       </div>
       {error && <p className="error">{error}</p>}
-      <section className="lobby-chat" aria-label="채팅">
-        <h2>채팅</h2>
-        <ChatBody colorOf={(pid) => SEAT_COLORS[room.players.findIndex((p) => p.id === pid)]} />
-      </section>
       <DeviceSwitch />
     </main>
   );

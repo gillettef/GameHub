@@ -24,7 +24,6 @@ export interface Room {
   code: string;
   hostId: string;
   division: Division;
-  randomOrder: boolean; // 시작할 때 자리 순서를 섞는다 (사용자 요청, 2026-09)
   status: 'lobby' | 'playing' | 'over';
   players: RoomPlayer[];
   seed: number;
@@ -62,7 +61,6 @@ export function roomView(room: Room): RoomView {
     code: room.code,
     status: room.status,
     division: room.division,
-    randomOrder: room.randomOrder,
     players: room.players.map((p) => ({ id: p.id, name: p.name, connected: p.connected, isHost: p.id === room.hostId, isBot: p.isBot })),
   };
 }
@@ -84,7 +82,6 @@ export class RoomManager {
       code,
       hostId: player.id,
       division: 3,
-      randomOrder: false,
       status: 'lobby',
       players: [player],
       seed,
@@ -145,15 +142,6 @@ export class RoomManager {
     return { room, kicked: kicked! };
   }
 
-  setRandomOrder(code: string, playerId: string, on: unknown): Room {
-    const room = this.get(code);
-    this.requireHost(room, playerId);
-    if (room.status !== 'lobby') throw new RoomError('game already started');
-    room.randomOrder = on === true;
-    room.updatedAt = Date.now();
-    return room;
-  }
-
   rejoin(code: string, playerId: string, token: string): { room: Room; player: RoomPlayer } {
     const room = this.get(code);
     const player = room.players.find((p) => p.id === playerId);
@@ -185,13 +173,13 @@ export class RoomManager {
     const room = this.get(code);
     this.requireHost(room, playerId);
     if (room.status !== 'lobby') throw new RoomError('game already started');
-    // 시작 순서 무작위: 자리(시계방향 차례)를 섞는다. 첫 자리가 1주차 선 참가자. 대기실 목록도 같은 순서로 맞춘다
-    if (room.randomOrder) room.players = room.rng.shuffle(room.players);
+    // 시작 순서는 항상 무작위(옵션 아님 — 사용자 결정 2026-09): 자리(시계방향 차례)를 섞는다. 첫 자리가 1주차 선 참가자. 대기실 목록도 같은 순서로 맞춘다
+    room.players = room.rng.shuffle(room.players);
     room.game = createGame(
       { id: room.code, division: room.division, players: room.players.map((p) => ({ id: p.id, name: p.name })) },
       room.rng,
     );
-    if (room.randomOrder) addLog(room.game, `시작 순서를 무작위로 정함: ${room.players.map((p) => p.name).join(' → ')}`);
+    if (room.players.length > 1) addLog(room.game, `시작 순서를 무작위로 정함: ${room.players.map((p) => p.name).join(' → ')}`);
     room.status = 'playing';
     room.updatedAt = Date.now();
     return room;

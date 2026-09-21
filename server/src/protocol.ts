@@ -16,7 +16,6 @@ export interface RoomView {
   code: string;
   status: 'lobby' | 'playing' | 'over';
   division: Division;
-  randomOrder: boolean; // 시작할 때 자리(차례) 순서를 무작위로 섞는다. 꺼져 있으면 입장 순서, 선 참가자 = 호스트
   players: RoomPlayerView[];
 }
 
@@ -39,7 +38,6 @@ export type ClientMessage =
   | { type: 'addBot' }
   | { type: 'removeBot'; playerId: string }
   | { type: 'kick'; playerId: string } // 호스트가 대기실에서 참가자를 내보낸다 (봇 포함, 자기 자신 제외)
-  | { type: 'setRandomOrder'; on: boolean } // 호스트: 시작 순서 무작위
   | { type: 'startGame' }
   | { type: 'action'; action: GameAction }
   | { type: 'chat'; text: string };

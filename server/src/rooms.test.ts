@@ -53,15 +53,12 @@ describe('RoomManager', () => {
     expect(() => rm.kick(room.code, host.id, again.id)).toThrow(RoomError); // 시작한 뒤에는 불가
   });
 
-  it('시작 순서 무작위: 켜면 자리 순서를 섞고(같은 참가자 집합, 첫 자리가 선 참가자) 기록에 남긴다. 끄면 입장 순서 그대로', () => {
+  it('시작 순서는 항상 무작위: 자리 순서를 섞고(같은 참가자 집합, 첫 자리가 선 참가자) 기록에 남긴다', () => {
     const orders = new Set<string>();
     for (let seed = 1; seed <= 12; seed++) {
       const rm = new RoomManager();
       const { room, player: host } = rm.create('a', seed);
       for (const n of ['b', 'c', 'd']) rm.join(room.code, n);
-      expect(() => rm.setRandomOrder(room.code, room.players[1]!.id, true)).toThrow(RoomError); // 호스트만
-      rm.setRandomOrder(room.code, host.id, true);
-      expect(roomView(room).randomOrder).toBe(true);
       const before = room.players.map((p) => p.id);
       rm.start(room.code, host.id);
       const seats = room.game!.seats;
@@ -72,13 +69,6 @@ describe('RoomManager', () => {
       orders.add(seats.map((id) => before.indexOf(id)).join(''));
     }
     expect(orders.size).toBeGreaterThan(3); // 시드에 따라 순서가 달라진다
-
-    const rm = new RoomManager();
-    const { room, player: host } = rm.create('a', 5);
-    for (const n of ['b', 'c', 'd']) rm.join(room.code, n);
-    const before = room.players.map((p) => p.id);
-    rm.start(room.code, host.id);
-    expect(room.game!.seats).toEqual(before);
   });
 
   it('재접속은 토큰이 맞아야 하고 연결 상태를 복구한다', () => {
