@@ -123,9 +123,18 @@ notes/    규칙서 원본 및 텍스트 레퍼런스
     오른쪽 끝으로 스크롤해 둔다(`MarketBody`). 탭 줄도 옆으로 밀리고 고른 탭이 보이게 맞춘다(`Tabs`). 모달은 바텀 시트, 확정 막대·오류
     토스트는 탭 막대 위, 주사위 트레이는 가로 배치, 유지비 표는 가로로 눕힘, 입력은 16px(iOS 확대 방지), 터치 대상 ≥ 40px.
   - 주사위 안내 문구는 모드에 따라 "왼쪽/위 주사위"(`useDevice().mobile`).
-- **디자인 시스템** (`styles.css` `:root` 토큰): 밝은 회녹색 바탕 `--bg`, 잔디 초록 `--pitch` 구조색, 잉크 남색
-  `--ink`, 역할 색(공격 `--attack` 주황 / 수비 `--defense` 파랑), 자원 색 `--c-money/fandom/ops/stamina`, 자리 색
-  `SEAT_COLORS`. 글꼴은 IBM Plex Sans KR 한 가족. 텍스트 대신 **아이콘 칩**(`components/Icons.tsx`: SVG 아이콘
+- **디자인 시스템 = 루트의 `DESIGN.md`**(네이버페이 레퍼런스, 사용자 지시 2026-09; PC용·모바일용 공통). `styles.css` `:root` 토큰이 그 값을 옮긴 것:
+  페이지 바탕 `--bg` #f6f8fa / 패널·카드 `--surface` #fff / 헤어라인 `--line` #dcdee0 / 잉크 `--ink` #1e1e23 · `--ink-2` #404048 · `--muted` #767678,
+  **액션색은 초록 하나**(`--pitch` #09aa5c, hover `--pitch-dark` #0b9552, 틴트 `--pitch-tint` #eef9f3 — 버튼·선택·활성·포커스·내 차례), 링크 `--link` #007eff,
+  오류 `--danger` #e53935. **그림자를 쓰지 않는다**(면 색 + 헤어라인으로 구분. 번짐 없는 `0 0 0 Npx` 선택 링은 테두리로 본다).
+  반지름 6(입력·보조 버튼)/8(주 버튼·탭)/12(게임 카드·안쪽 면)/20(패널·모달)/28(로비)/알약(칩·배지). 글꼴은 본문 Pretendard, 큰 제목(h1·워드마크·차례 알림·우승)만
+  NanumSquareNeo 700(`--font-display`). 움직임은 `--motion-fast/standard/slow` + `--ease-*`, 튀는(overshoot) 곡선 금지, `prefers-reduced-motion`이면 끈다.
+  입력 포커스는 초록 테두리, 모바일용 터치 대상 44px. 구단 보드·경기 보드는 `--surface-2` 면, 스타디움 보드는 초록 틴트 면(예전의 어두운 판 아님), 어두운 잉크 면은
+  주사위 트레이·확정 막대·툴팁·카드 이름 띠뿐. 잔디색(`--grass`)은 경기장 그림(배치판·전술 카드)에만 쓴다.
+  **게임 의미색은 정보 부호라 DESIGN.md 의 '초록 외 강조색 금지'에서 제외**(DESIGN.md 적용 순서: 사용자 지시 > 저장소 사실 > 디자인 계약): 역할 색(공격 `--attack` 주황 /
+  수비 `--defense` 파랑), 자원 색 `--c-money/fandom/ops/stamina`, 주사위 3색, 선수 종류 색, 자리 색 `SEAT_COLORS`. 새 화면은 색·반지름·글꼴을 하드코딩하지 말고 토큰을 쓸 것.
+  **누를 수 있는 것은 모두 `cursor: pointer`**(사용자 요청 2026-09): `button`/`[role=button]`/`.clickable`/`summary`/`select`/체크박스 라벨은 전역 규칙으로 걸리고,
+  누르면 닫히는 모달 바깥은 `.modal-backdrop.dismissable`. div 에 onClick 을 달면 `.clickable`을 붙일 것. 텍스트 대신 **아이콘 칩**(`components/Icons.tsx`: SVG 아이콘
   세트 + `EffectChips`/`CostChips`/`TrackChip`/`TokenChip`)으로 효과·비용·트랙 조정을 표현하고 전체 문장은
   `title` 툴팁에 둔다. 새 효과 종류를 DSL에 추가하면 `EffectChip`에도 분기를 추가할 것.
 - **헤더 주차 표시**(test_insight C8): "N/6주" + 진행 점 6개(좁은 화면·모바일용에서는 점 숨김), 마지막 주에는 빨간 "마지막 주" 배지. 총 주 수는 `weekend.ts` `WEEKS`.

@@ -95,7 +95,8 @@ export function PlayerCardView({ cardId, instance, ...props }: { cardId: string;
           <span className="clamp1">{name}</span>
           {instance?.trained && <span className="trained-star" title="훈련됨">★</span>}
         </div>
-        <div className="tag-band clamp1">{KIND_LABEL[card.kind]}{card.tags.length > 0 && ` · ${card.tags.join(' · ')}`}</div>
+        {/* 종류 라벨 + 태그. 베테랑 카드는 데이터 태그에도 '베테랑'이 있어 "베테랑 · 베테랑"으로 겹치던 것을 거른다 */}
+        <div className="tag-band clamp1">{[KIND_LABEL[card.kind], ...card.tags.filter((t) => t !== KIND_LABEL[card.kind])].join(' · ')}</div>
         {side.effect ? (
           <>
             <div className={`timing-band ${side.effect.timing}`}>{TIMING_LABEL[side.effect.timing]}{side.effect.mandatory && ' · 강제'}</div>

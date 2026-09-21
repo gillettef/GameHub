@@ -18,7 +18,7 @@ export function Lobby() {
         <input value={name} onChange={(e) => setName(e.target.value)} maxLength={20} placeholder="닉네임" />
       </label>
       <div className="row">
-        <button disabled={!ready} onClick={() => send({ type: 'createRoom', name })}>새 방 만들기</button>
+        <button className="primary" disabled={!ready} onClick={() => send({ type: 'createRoom', name })}>새 방 만들기</button>
       </div>
       <label>
         방 코드
@@ -70,7 +70,7 @@ export function RoomLobby() {
         </select>
       </label>
       <div className="row">
-        {isHost ? <button onClick={() => send({ type: 'startGame' })}>게임 시작</button> : <span className="muted">호스트가 시작하기를 기다리는 중…</span>}
+        {isHost ? <button className="primary" onClick={() => send({ type: 'startGame' })}>게임 시작</button> : <span className="muted">호스트가 시작하기를 기다리는 중…</span>}
         <button className="link" onClick={leave}>나가기</button>
       </div>
       {error && <p className="error">{error}</p>}

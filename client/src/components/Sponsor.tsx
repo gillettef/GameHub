@@ -35,7 +35,7 @@ export function SponsorContractModal({ cardId, me, onClose, onSign }: { cardId: 
   );
 
   return createPortal(
-    <div className="modal-backdrop" onClick={onClose}>
+    <div className="modal-backdrop dismissable" onClick={onClose}>
       <div className="modal sponsor-modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-label="스폰서 계약">
         <div className="panel-head">
           <h2>스폰서 계약 — {card.name}</h2>
