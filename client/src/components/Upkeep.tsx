@@ -21,13 +21,13 @@ export function UpkeepChip({ view, p }: { view: GameView; p: PlayerPublicView })
   const status = upkeepStatus(view, p);
   if (!status) {
     if (view.week < LAST_WEEK || view.phase.kind === 'gameOver') return null;
-    return <span className="res sub upkeep" title="마지막 주 주말에는 유지비를 내지 않고 게임이 끝납니다 (p.25)"><Icon name="money" size={14} />유지비 없음</span>;
+    return <span className="res sub upkeep-chip" title="마지막 주 주말에는 유지비를 내지 않고 게임이 끝납니다 (p.25)"><Icon name="money" size={14} />유지비 없음</span>;
   }
   const title = status.short > 0
     ? `${warningText(status, p.resources.money)} (경기 관중 수입은 아직 더하지 않은 값)`
     : `주말에 내는 유지비 ${status.due}돈 (선수·직원·기반 시설 수에 따라). 못 내면 1돈마다 직원 카드에 출장정지 2개`;
   return (
-    <span className={`res sub upkeep${status.short > 0 ? ' short' : ''}`} title={title}>
+    <span className={`res sub upkeep-chip${status.short > 0 ? ' short' : ''}`} title={title}>
       <Icon name="money" size={14} />유지비 −{status.due}{status.short > 0 && <b> ⚠</b>}
     </span>
   );
