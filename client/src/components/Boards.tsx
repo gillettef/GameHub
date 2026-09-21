@@ -12,6 +12,7 @@ import type { BoardTab } from '../ui';
 import { objectiveLevel } from '@server/engine/objectives';
 import { ExecutiveCardView, ObjectiveCardView, OpponentCardView, PlayerCardView, SponsorCardView, StaffCardView, TacticCardView } from './Cards';
 import { Chip, EffectChips, Icon } from './Icons';
+import { BuildOptions, CardActionButtons, useWeekdayTurn } from './ActionSidebar';
 import { PlayerCrest } from './Crest';
 import { seatColor } from './Shell';
 import { Tabs } from './Tabs';
@@ -32,8 +33,8 @@ function ClubBoard({ p }: { p: PlayerPublicView }) {
   return (
     <div className="club-board">
       <div className="club-grid">
-        <section className="tile" aria-label="능력치 트랙">
-          <h3 className="tile-title">능력치 <span className="tile-sub">월요일마다 마커 위치만큼 조달</span></h3>
+        <section className="tile" aria-label="자원 트랙">
+          <h3 className="tile-title">자원 <span className="tile-sub">월요일마다 마커 위치만큼 조달</span></h3>
           <div className="tracks">
             {RESOURCES.map((r) => (
               <div key={r} className={`track ${r}`}>
@@ -47,7 +48,6 @@ function ClubBoard({ p }: { p: PlayerPublicView }) {
                   {Array.from({ length: TRACK_MAX }, (_, i) => i + 1).map((n) => (
                     <span key={n} className={`track-cell${n <= p.tracks[r] ? ' filled' : ''}${p.tracks[r] === n ? ' marker' : ''}`} title={`${n}칸: 월요일 조달 +${procurement[r][n - 1]}`}>
                       <span className="track-num">{n}</span>
-                      <span className="track-yield">+{procurement[r][n - 1]}</span>
                     </span>
                   ))}
                   <span className="track-end" title={`5를 넘기면 ${RESOURCE_LABEL[trackOverflow[r].above]} +1`}><Icon name={trackOverflow[r].above} size={11} />+1</span>
@@ -90,7 +90,10 @@ function ClubBoard({ p }: { p: PlayerPublicView }) {
         ) : (
           <div className="cards">
             {p.staff.map((s, i) => (
-              <StaffCardView key={`${s.cardId}-${i}`} cardId={s.cardId} exhausted={s.exhausted} suspension={s.suspension} />
+              <div key={`${s.cardId}-${i}`} className="card-slot">
+                <StaffCardView cardId={s.cardId} exhausted={s.exhausted} suspension={s.suspension} />
+                <CardActionButtons me={p} kind="staff" index={i} />
+              </div>
             ))}
           </div>
         )}
@@ -103,7 +106,10 @@ function ClubBoard({ p }: { p: PlayerPublicView }) {
         ) : (
           <div className="cards">
             {p.executives.map((e, i) => (
-              <ExecutiveCardView key={`${e.cardId}-${i}`} cardId={e.cardId} exhausted={e.exhausted} />
+              <div key={`${e.cardId}-${i}`} className="card-slot">
+                <ExecutiveCardView cardId={e.cardId} exhausted={e.exhausted} />
+                <CardActionButtons me={p} kind="executive" index={i} />
+              </div>
             ))}
           </div>
         )}
@@ -132,6 +138,7 @@ function PitchLines() {
 // 스타디움 보드 (룰북 p.6): 경기장 평면도 — 가운데 잔디, 사방의 관중석 1~4, 터치라인의 광고판 1~3, 옆에 사무실(층)과 기반 시설 부지 4곳, 유니폼 스폰서.
 // 아래에 계약한 스폰서 카드
 function StadiumBoard({ p }: { p: PlayerPublicView }) {
+  const { myTurn } = useWeekdayTurn(p.id);
   const office = cards.boardData.office;
   const general = p.infrastructure.filter((i) => !['stand3', 'stand4', 'billboard3'].includes(i));
   const has = (t: InfrastructureType) => p.infrastructure.includes(t);
@@ -171,6 +178,13 @@ function StadiumBoard({ p }: { p: PlayerPublicView }) {
   };
   return (
     <div className="stadium-wrap">
+      {/* 내 주중 차례에만: 사이드바의 스타디움 메뉴가 여기로 데려온다 — 고르면 아래 확정 막대 (사용자 요청 2026-09) */}
+      {myTurn && (
+        <section className="tile build-tile" aria-label="건설">
+          <h3 className="tile-title">건설 <span className="tile-sub">기본 행동 · 시설 {p.infrastructure.length}/7 · 고른 뒤 아래에서 확정</span></h3>
+          <BuildOptions me={p} mode="select" />
+        </section>
+      )}
       <div className="stadium-board">
         <section className="tile office-tile" aria-label="사무실">
           <h3 className="tile-title">사무실</h3>

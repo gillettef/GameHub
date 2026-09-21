@@ -5,7 +5,7 @@ import { useView } from '../store';
 // 점검용 토큰은 내 것만 표시한다(관전자는 없음)
 
 const WEEK_DAYS = [
-  { key: 'mon', label: '월', what: '조달 · 이사회', hint: '월요일: 능력치 트랙만큼 자원을 받고 이사회를 엽니다' },
+  { key: 'mon', label: '월', what: '조달 · 이사회', hint: '월요일: 자원 트랙만큼 자원을 받고 이사회를 엽니다' },
   { key: 'tue', label: '화', what: '행동', hint: '화요일: 기본 행동 1회 + 운영 2개로 카드 행동 1회' },
   { key: 'wed', label: '수', what: '행동', hint: '수요일: 기본 행동 1회 + 운영 2개로 카드 행동 1회' },
   { key: 'thu', label: '목', what: '행동', hint: '목요일: 기본 행동 1회 + 운영 2개로 카드 행동 1회' },

@@ -37,7 +37,10 @@ describe('차례 진행 (p.12, p.14)', () => {
   it('선 참가자부터 시계방향, 3일 후 경기일', () => {
     let s = tuesday();
     expect(() => pass(s, 'b')).toThrow(GameError);
-    expect(() => endTurn(s, 'a')).toThrow(GameError);
+    expect(() => endTurn(s, 'b')).toThrow(GameError); // 차례가 아니면 끝낼 수 없다
+    const skipped = endTurn(s, 'a'); // 기본 행동 없이 끝내면 패스로 본다 (화면에 패스 버튼이 없다)
+    expect(skipped.phase.kind === 'weekday' && skipped.phase.current).toBe('b');
+    expect(skipped.log.at(-1)!.text).toContain('패스');
     const order: string[] = [];
     for (let i = 0; i < 12; i++) {
       if (s.phase.kind !== 'weekday') throw new Error();

@@ -231,11 +231,12 @@ export function pass(state: GameState, pid: PlayerId): GameState {
   return next;
 }
 
-// 기본 행동(또는 패스) 후 차례 종료. 전원 마치면 다음 요일, 목요일이 끝나면 경기일
+// 차례 종료. 기본 행동을 하지 않았으면 패스한 것으로 본다 — 화면에는 패스 버튼 없이 '차례 끝내기'만 있다 (사용자 요청 2026-09).
+// 전원 마치면 다음 요일, 목요일이 끝나면 경기일
 export function endTurn(state: GameState, pid: PlayerId): GameState {
   const next = structuredClone(state);
   const turn = turnOf(next, pid);
-  if (!turn.basicDone) throw new GameError('take a basic action or pass first');
+  if (!turn.basicDone) addLog(next, '기본 행동 없이 차례를 마침 (패스)', { actor: pid });
   const nextPlayer = leftOf(next, pid);
   if (nextPlayer !== next.firstPlayer) {
     beginTurn(next, turn.day, nextPlayer);
