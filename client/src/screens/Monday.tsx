@@ -42,9 +42,12 @@ export function MondayScreen() {
         <BoardCardView cardId={meeting.card} highlight={color} />
         <div className="stack">
           {meeting.roll === null ? (
-            <p className="hint">
-              <Icon name="die" size={14} /> {mine ? `${dicePlace} 주사위를 굴리세요.` : `${player.name}이(가) 주사위를 굴리기를 기다리는 중`}
-            </p>
+            // 내 차례에는 안내 문구를 두지 않는다 — 굴리기는 주사위 트레이가 깜빡여 알린다 (사용자 요청 2026-09)
+            !mine && (
+              <p className="hint">
+                <Icon name="die" size={14} /> {player.name}이(가) 주사위를 굴리기를 기다리는 중
+              </p>
+            )
           ) : roll === null ? (
             <p className="hint">
               <Icon name="die" size={14} /> 주사위가 구르는 중…
