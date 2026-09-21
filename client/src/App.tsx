@@ -91,7 +91,7 @@ function Layout({ phasePanel, subtitle }: { phasePanel: ReactNode; subtitle?: st
     <CommitProvider scope={commitScope}>
       <div className={`game${mobile ? ' mobile' : ''}`}>
         <Header subtitle={subtitle} />
-        <PlayerStrip compact={mobile} />
+        <PlayerStrip />
         {mobile ? (
           <>
             <MobileMain phasePanel={phasePanel} />
