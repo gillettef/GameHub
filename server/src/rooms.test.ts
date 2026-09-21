@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { EMBLEM_IDS } from './protocol';
 import { RoomError, RoomManager, roomView } from './rooms';
 
 describe('RoomManager', () => {
@@ -41,6 +42,10 @@ describe('RoomManager', () => {
     const { player: b } = rm.join(room.code, 'b');
     rm.addBot(room.code, host.id);
     expect(new Set(room.players.map((p) => p.emblem)).size).toBe(3);
+    // 처음 엠블럼은 무작위라 'castle'을 누가 받았을 수 있다 — 그러면 먼저 비워 둔다
+    for (const p of room.players) {
+      if (p.id !== b.id && p.emblem === 'castle') rm.setEmblem(room.code, p.id, EMBLEM_IDS.find((e) => !room.players.some((q) => q.emblem === e))!);
+    }
     rm.setEmblem(room.code, b.id, 'castle');
     expect(roomView(room).players.find((p) => p.id === b.id)!.emblem).toBe('castle');
     expect(() => rm.setEmblem(room.code, host.id, 'castle')).toThrow(RoomError); // 이미 쓰는 엠블럼
@@ -51,6 +56,20 @@ describe('RoomManager', () => {
     rm.start(room.code, host.id);
     expect(() => rm.setEmblem(room.code, host.id, 'sun')).toThrow(RoomError); // 시작한 뒤에는 불가
     expect(roomView(room).players.find((p) => p.id === b.id)!.emblem).toBe('castle'); // 게임 중에도 방 정보로 내려간다
+  });
+
+  it('구단 엠블럼: 처음 받는 것은 무작위다 (사람·봇 모두, 프리셋 순서대로가 아님)', () => {
+    const rm = new RoomManager();
+    const hosts = new Set<string>();
+    const bots = new Set<string>();
+    for (let i = 0; i < 40; i++) {
+      const { room, player: host } = rm.create('a');
+      rm.addBot(room.code, host.id);
+      hosts.add(host.emblem);
+      bots.add(room.players.find((p) => p.isBot)!.emblem);
+    }
+    expect(hosts.size).toBeGreaterThan(1);
+    expect(bots.size).toBeGreaterThan(1);
   });
 
   it('강퇴: 호스트만, 대기실에서만, 자기 자신은 안 되고, 봇·사람 모두 내보낼 수 있다. 내보낸 뒤에는 재접속도 안 된다', () => {

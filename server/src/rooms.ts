@@ -50,9 +50,11 @@ function makeCode(): string {
   return Array.from(bytes, (b) => CODE_ALPHABET[b % CODE_ALPHABET.length]!).join('');
 }
 
-// 아직 아무도 쓰지 않는 첫 엠블럼 (정원 4명 < 프리셋 12개라 항상 있다)
+// 아직 아무도 쓰지 않는 엠블럼 중 무작위 하나 (정원 4명 < 프리셋 12개라 항상 있다).
+// 게임 난수(room.rng)는 건드리지 않는다 — 시드 고정 판의 재현성과 무관한 꾸밈이라 Math.random 을 쓴다.
 function freeEmblem(players: RoomPlayer[]): EmblemId {
-  return EMBLEM_IDS.find((e) => !players.some((p) => p.emblem === e)) ?? EMBLEM_IDS[0];
+  const free = EMBLEM_IDS.filter((e) => !players.some((p) => p.emblem === e));
+  return free[Math.floor(Math.random() * free.length)] ?? EMBLEM_IDS[0];
 }
 
 function cleanName(name: unknown): string {
