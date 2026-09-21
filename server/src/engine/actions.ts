@@ -1,13 +1,13 @@
 import { cards, instanceName } from './cards';
 import { resolvePending } from './effects';
 import { marketCardName } from './effects';
-import { acceptMatchRoll, advanceFriday, playTacticEffect, redrawTactic, rerollMatchDie, rollMatchDie, submitLineup } from './friday';
+import { acceptInjuryRoll, acceptMatchRoll, advanceFriday, playTacticEffect, redrawTactic, rerollInjuryDie, rerollMatchDie, rollInjuryDie, rollMatchDie, submitLineup } from './friday';
 import { CONTRACT_LABEL, INFRA_LABEL, matchDieLabel } from './labels';
 import { acceptBoardRoll, rerollBoardDie, rollBoardDie } from './monday';
 import type { Rng } from './rng';
 import { chooseObjective, draftPick } from './setup';
 import { UPKEEP_SOURCE } from './weekend';
-import { GameError, canUndoTurn, currentDay, getPlayer, hasTurnSnapshot } from './state';
+import { GameError, canUndoTurn, currentDay, currentInjuryDie, getPlayer, hasTurnSnapshot } from './state';
 import type { Decks, GameState, LineupSubmission, LogEntry, PlayerId } from './state';
 import type { InfrastructureType, PlayerMarketRow, SponsorContract } from './types';
 import {
@@ -47,6 +47,10 @@ export type GameAction =
   | { type: 'rollMatchDie' }
   | { type: 'rerollMatchDie' }
   | { type: 'acceptMatchRoll' }
+  // 경기 영향이 부상류일 때의 12면체 부상 주사위 (p.24·p.27): 굴림 → 팬덤 재굴림 → 적용
+  | { type: 'rollInjuryDie' }
+  | { type: 'rerollInjuryDie' }
+  | { type: 'acceptInjuryRoll' }
   | { type: 'undoTurn' }; // 주중 내 차례를 처음 상태로 되돌린다 (차례 끝내기 전까지)
 
 function apply(state: GameState, pid: PlayerId, action: GameAction, rng: Rng): GameState {
@@ -103,6 +107,12 @@ function apply(state: GameState, pid: PlayerId, action: GameAction, rng: Rng): G
       return rerollMatchDie(state, pid, rng);
     case 'acceptMatchRoll':
       return acceptMatchRoll(state, pid, rng);
+    case 'rollInjuryDie':
+      return rollInjuryDie(state, pid, rng);
+    case 'rerollInjuryDie':
+      return rerollInjuryDie(state, pid, rng);
+    case 'acceptInjuryRoll':
+      return acceptInjuryRoll(state, pid, rng);
     case 'undoTurn':
       return undoTurn(state, pid);
     default:
@@ -191,6 +201,14 @@ function describe(before: GameState, after: GameState, pid: PlayerId, action: Ga
       const m = before.phase.kind === 'friday.aftermath' ? before.phase.matches[pid] : undefined;
       return m?.roll ? `경기 영향 적용: ${matchDieLabel(m.report.outcome, m.roll)}` : null;
     }
+    case 'rollInjuryDie':
+    case 'rerollInjuryDie': {
+      const m = after.phase.kind === 'friday.aftermath' ? after.phase.matches[pid] : undefined;
+      const die = m ? currentInjuryDie(m) : undefined;
+      return `${action.type === 'rerollInjuryDie' ? '팬덤을 써서 부상 주사위를 다시 굴림' : '12면체 부상 주사위'} → ${die?.roll ?? ''}`;
+    }
+    case 'acceptInjuryRoll':
+      return null; // friday.ts 의 injure 가 결과를 기록
     case 'undoTurn':
       return '차례를 처음으로 되돌림';
   }

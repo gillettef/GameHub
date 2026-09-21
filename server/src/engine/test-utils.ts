@@ -1,11 +1,12 @@
 import { cards } from './cards';
 import { resolvePending } from './effects';
-import { advanceFriday, playTacticEffect } from './friday';
+import { acceptInjuryRoll, acceptMatchRoll, advanceFriday, playTacticEffect, rollInjuryDie } from './friday';
 import { createRng } from './rng';
 import type { Rng } from './rng';
 import { chooseObjective, createGame, draftPick } from './setup';
 import type { GameConfig } from './setup';
-import type { GameState, LineupSubmission, PlayerState } from './state';
+import { currentInjuryDie } from './state';
+import type { GameState, LineupSubmission, PlayerId, PlayerState } from './state';
 import { buildLineup, eligiblePlayers } from './lineup';
 
 export { eligiblePlayers };
@@ -58,6 +59,15 @@ export function settlePending(s: GameState, rng: Rng = seededRng()): GameState {
 }
 
 // 경기 진행 단계: 전원 전술 효과 카드 없이 진행해 경기 판정까지 간다
+// 경기 영향 주사위 적용 + (부상류면) 12면체 부상 주사위까지 굴려 적용한다
+export function applyMatchRoll(s: GameState, pid: PlayerId, rng: Rng = seededRng()): GameState {
+  s = acceptMatchRoll(s, pid, rng);
+  while (s.phase.kind === 'friday.aftermath' && currentInjuryDie(s.phase.matches[pid]!)) {
+    s = acceptInjuryRoll(rollInjuryDie(s, pid, rng), pid, rng);
+  }
+  return s;
+}
+
 export function skipTacticEffects(s: GameState, rng: Rng = seededRng()): GameState {
   let guard = 0;
   while (s.phase.kind === 'friday.match') {

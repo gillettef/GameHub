@@ -2,10 +2,10 @@ import { describe, expect, it } from 'vitest';
 import { applyAction } from './actions';
 import { activeSide, cards } from './cards';
 import { addToRoster } from './effects';
-import { acceptMatchRoll, playTacticEffect, rerollMatchDie, rollMatchDie, standsCount, startFriday, submitLineup } from './friday';
+import { acceptInjuryRoll, acceptMatchRoll, playTacticEffect, rerollInjuryDie, rerollMatchDie, rollInjuryDie, rollMatchDie, standsCount, startFriday, submitLineup } from './friday';
 import { GameError } from './state';
 import type { GameState } from './state';
-import { autoLineup, gameAtMonday, seededRng, settlePending, skipTacticEffects } from './test-utils';
+import { applyMatchRoll, autoLineup, gameAtMonday, seededRng, settlePending, skipTacticEffects } from './test-utils';
 import { assignUniform } from './uniforms';
 
 function friday(): GameState {
@@ -257,6 +257,7 @@ describe('경기 결과 확인 (p.24)', () => {
     s = submitAll(s);
     const team = cards.opponent(shared).teamId;
     expect(s.league.opponents.find((o) => o.teamId === team)!.active).toBe(false);
+    expect(s.log.some((l) => l.text.includes('같은 상대') && l.text.includes('비활성'))).toBe(true); // 왜 비활성이 됐는지 기록에 남긴다
     const facedTeams = new Set(s.seats.map((id) => cards.opponent((s.phase as { matches: Record<string, { opponentCardId: string }> }).matches[id]!.opponentCardId).teamId));
     const unfaced = s.league.opponents.filter((o) => !facedTeams.has(o.teamId));
     expect(unfaced.length).toBeGreaterThan(0);
@@ -286,7 +287,7 @@ describe('경기 결과 확인 (p.24)', () => {
     expect(() => rerollMatchDie(s, 'a', seededRng())).toThrow(GameError);
     for (const id of s.seats) {
       if (id !== 'a') s = rollMatchDie(s, id, seededRng(id.charCodeAt(0)));
-      s = acceptMatchRoll(s, id, seededRng(3));
+      s = applyMatchRoll(s, id, seededRng(3));
     }
     expect(s.phase.kind).toBe('monday.board');
     expect(s.week).toBe(2);
@@ -314,11 +315,58 @@ describe('경기 결과 확인 (p.24)', () => {
     expect(p(weakness).pending.some((x) => x.effect.type === 'addPlayerToken' && x.effect.token === 'weaknessTemp')).toBe(true);
 
     for (const [roll, outcome, times] of [[2, 'win', 1], [1, 'win', 1], [1, 'draw', 2], [1, 'loss', 2]] as const) {
+      // 부상류는 바로 처리하지 않고 12면체 부상 주사위를 그만큼 굴리게 한다
       const s = acceptMatchRoll(withRoll(roll, outcome), 'a', seededRng(11));
-      expect(s.log.filter((l) => l.text.includes('부상 주사위'))).toHaveLength(times);
+      if (s.phase.kind !== 'friday.aftermath') throw new Error();
+      expect(s.phase.matches['a']!.injuryDice.map((d) => d.count)).toEqual(Array(times).fill(roll === 1 && outcome !== 'draw' ? 2 : 1));
+      expect(s.phase.matches['a']!.decided).toBe(false);
+      expect(s.phase.current).toBe('a');
     }
     // 패배 6은 승리 4와 같은 일시 역량
     expect(p(acceptMatchRoll(withRoll(6, 'loss'), 'a', seededRng())).pending.some((x) => x.effect.type === 'addPlayerToken' && x.effect.token === 'strengthTemp')).toBe(true);
+  });
+
+  it('부상 주사위(12면체, p.24·p.27): 참가자가 굴림 → 팬덤 재굴림 → 적용. 눈과 같은 등번호의 출전 선수가 부상, 없으면 아무 일도 없음', () => {
+    let s = submitAll(friday());
+    if (s.phase.kind !== 'friday.aftermath') throw new Error();
+    s.phase.matches['a']!.roll = 1; // 승리 1 = 심각한 부상(2개), 무승부 1 = 두 번의 부상
+    s.phase.matches['a']!.report.outcome = 'draw';
+    expect(() => rollInjuryDie(s, 'a', seededRng())).toThrow(GameError); // 경기 영향을 적용하기 전에는 굴릴 수 없다
+    s = acceptMatchRoll(s, 'a', seededRng());
+    expect(() => acceptMatchRoll(s, 'a', seededRng())).toThrow(GameError);
+    expect(() => rerollMatchDie(s, 'a', seededRng())).toThrow(GameError); // 적용한 6면체는 다시 굴릴 수 없다
+    expect(() => acceptInjuryRoll(s, 'a', seededRng())).toThrow(GameError); // 먼저 굴려야 한다
+    expect(() => rollInjuryDie(s, 'b', seededRng())).toThrow('not your turn');
+
+    s = rollInjuryDie(s, 'a', seededRng(1));
+    expect(() => rollInjuryDie(s, 'a', seededRng())).toThrow(GameError);
+    s.players['a']!.resources.fandom = 1;
+    s = rerollInjuryDie(s, 'a', seededRng(2));
+    expect(s.players['a']!.resources.fandom).toBe(0);
+    expect(() => rerollInjuryDie(s, 'a', seededRng())).toThrow(GameError); // 팬덤이 없다
+
+    // 첫 주사위: 출전 선수의 등번호가 나오게 한다 → 그 선수에 부상 1개
+    if (s.phase.kind !== 'friday.aftermath') throw new Error();
+    const played = s.phase.matches['a']!.played.map((id) => s.players['a']!.roster.find((r) => r.instanceId === id)!);
+    const target = played.find((r) => activeSide(r).number !== undefined && activeSide(r).number! < 12)!;
+    s.phase.matches['a']!.injuryDice[0]!.roll = activeSide(target).number!;
+    s = acceptInjuryRoll(s, 'a', seededRng());
+    expect(s.players['a']!.roster.find((r) => r.instanceId === target.instanceId)!.tokens.injury).toBe(1);
+    expect(s.players['a']!.matchDieInjured).toBe(true);
+    expect(s.phase.kind === 'friday.aftermath' && s.phase.current).toBe('a'); // 두 번째 주사위가 남았다
+
+    // 두 번째 주사위: 아무도 달지 않은 번호 → 아무 일도 없음 (기록에 이유가 남는다)
+    s = rollInjuryDie(s, 'a', seededRng(3));
+    if (s.phase.kind !== 'friday.aftermath') throw new Error();
+    const used = new Set(played.map((r) => activeSide(r).number));
+    const unused = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11].find((n) => !used.has(n))!;
+    s.phase.matches['a']!.injuryDice[1]!.roll = unused;
+    const before = s.players['a']!.roster.reduce((n, r) => n + r.tokens.injury, 0);
+    s = acceptInjuryRoll(s, 'a', seededRng());
+    expect(s.players['a']!.roster.reduce((n, r) => n + r.tokens.injury, 0)).toBe(before);
+    expect(s.log.at(-1)!.text).toContain(`등번호 ${unused}번 출전 선수가 없어`);
+    expect(s.phase.kind === 'friday.aftermath' && s.phase.matches['a']!.decided).toBe(true);
+    expect(s.phase.kind === 'friday.aftermath' && s.phase.current).toBe('b');
   });
 });
 
@@ -342,7 +390,7 @@ describe('금요일 차례 (턴제)', () => {
     for (const id of ['a', 'b', 'c', 'd']) {
       if (s.phase.kind !== 'friday.aftermath') throw new Error();
       expect(s.phase.current).toBe(id);
-      s = acceptMatchRoll(rollMatchDie(s, id, seededRng(2)), id, seededRng(3));
+      s = applyMatchRoll(rollMatchDie(s, id, seededRng(2)), id, seededRng(3));
     }
     expect(s.phase.kind).toBe('monday.board');
     if (s.phase.kind !== 'monday.board') throw new Error();

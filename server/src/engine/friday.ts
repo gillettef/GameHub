@@ -5,8 +5,8 @@ import { resolveMatch, sectorCounts } from './match';
 import type { MatchReport, Slot, TeamSide } from './match';
 import { matchDieResult } from './matchDie';
 import type { Rng } from './rng';
-import { GameError, addLog, emptyMods, getPlayer, nextInTurn, requireTurn } from './state';
-import type { GameState, LineupSubmission, MatchAftermath, MatchMods, PlayerId, PlayerInstance, PlayerState } from './state';
+import { GameError, addLog, currentInjuryDie, emptyMods, getPlayer, nextInTurn, requireTurn } from './state';
+import type { GameState, InjuryDie, LineupSubmission, MatchAftermath, MatchMods, PlayerId, PlayerInstance, PlayerState } from './state';
 import { hasTrait, lineupStaminaCost, traitCount, traitSum } from './traits';
 import { RESOURCES, SECTORS } from './types';
 import { runWeekend } from './weekend';
@@ -248,7 +248,7 @@ function moveLeague(state: GameState, pid: PlayerId, teamId: string, outcome: Ma
 function resolveAllMatches(state: GameState, rng: Rng): void {
   if (state.phase.kind !== 'friday.match') return;
   const matches: Record<PlayerId, MatchAftermath> = {};
-  const faced = new Map<string, number>();
+  const faced = new Map<string, PlayerId[]>(); // 상대 팀 → 이번 주에 그 팀과 경기한 참가자
 
   for (const pid of state.seats) {
     const player = getPlayer(state, pid);
@@ -288,7 +288,7 @@ function resolveAllMatches(state: GameState, rng: Rng): void {
 
     player.matchHistory.push({ week: state.week, outcome: report.outcome, myGoals: report.myGoals, theirGoals: report.theirGoals });
     moveLeague(state, pid, opponent.teamId, report.outcome);
-    faced.set(opponent.teamId, (faced.get(opponent.teamId) ?? 0) + 1);
+    faced.set(opponent.teamId, [...(faced.get(opponent.teamId) ?? []), pid]);
 
     // 상시 효과: 승리할 때마다 팬덤 +1 (스폰서 추가 보너스)
     const fandomOnWin = player.passives.filter((p) => p.passive === 'fandomOnWin').length;
@@ -319,16 +319,22 @@ function resolveAllMatches(state: GameState, rng: Rng): void {
         }
       }
     }
-    matches[pid] = { opponentCardId, played: sub.players, report, roll: null, decided: false };
+    matches[pid] = { opponentCardId, played: sub.players, report, roll: null, injuryDice: [], decided: false };
   }
 
   // p.24 3: 같은 상대와 2명 이상 경기 → 비활성. p.24 6: 아무도 상대하지 않은 팀은 상대 팀 주사위
   for (const opp of state.league.opponents) {
-    const n = faced.get(opp.teamId) ?? 0;
-    if (n >= 2) opp.active = false;
-    else if (n === 0) {
-      if (!opp.active) opp.active = true;
-      else opp.position = Math.min(LEAGUE_MAX, opp.position + OPPONENT_DIE[rng.int(6)]!);
+    const rivals = faced.get(opp.teamId) ?? [];
+    const n = rivals.length;
+    const teamName = cards.teamName(opp.teamId);
+    if (n >= 2) {
+      opp.active = false;
+      addLog(state, `${rivals.map((id) => getPlayer(state, id).name).join('·')}이(가) 같은 상대 ${teamName}와(과) 경기 → ${teamName} 마커를 비활성 면으로 뒤집음 (p.24: 다음에 아무도 상대하지 않는 주에는 주사위 이동 대신 활성 면으로 돌아옴)`);
+    } else if (n === 0) {
+      if (!opp.active) {
+        opp.active = true;
+        addLog(state, `${teamName}: 비활성이라 이번 주는 이동하지 않고 활성 면으로 돌아옴`);
+      } else opp.position = Math.min(LEAGUE_MAX, opp.position + OPPONENT_DIE[rng.int(6)]!);
     }
   }
   state.phase = { kind: 'friday.aftermath', current: state.firstPlayer, matches };
@@ -356,6 +362,7 @@ export function rerollMatchDie(state: GameState, pid: PlayerId, rng: Rng): GameS
   const next = structuredClone(state);
   const m = aftermathOf(next, pid);
   if (m.roll === null) throw new GameError('roll first');
+  if (m.injuryDice.length > 0) throw new GameError('match roll already applied');
   const player = getPlayer(next, pid);
   // 특성(팬덤 없이 재굴림)은 주당 1회 (사용자 결정, 2026-09). 그 뒤로는 팬덤을 낸다
   if (hasTrait(player, 'freeMatchReroll') && !player.freeRerollUsed.match) {
@@ -395,14 +402,14 @@ function chooseAmong(player: PlayerState, candidates: PlayerInstance[], effect: 
   }
 }
 
-// p.24/p.27 부상: 12면체 → 유니폼 번호. 12는 12 이상 번호 선수 중 선택
-function injure(state: GameState, player: PlayerState, played: PlayerInstance[], count: number, rng: Rng): void {
-  const face = rng.die(12);
+// p.24/p.27 부상: 12면체 눈 = 유니폼 번호. 12는 12 이상 번호 선수 중 선택. 눈은 참가자가 굴린 부상 주사위(injuryDice)에서 온다
+function injure(state: GameState, player: PlayerState, played: PlayerInstance[], count: number, face: number): void {
   const hit = played.filter((p) => {
     const n = activeSide(p).number;
     return n !== undefined && (face === 12 ? n >= 12 : n === face);
   });
-  addLog(state, `부상 주사위 ${face}: ${hit.length ? hit.map((h) => instanceName(h)).join(', ') : '해당 없음'}`, { actor: player.id });
+  const who = face === 12 ? '등번호 12 이상' : `등번호 ${face}번`;
+  addLog(state, `부상 주사위(12면체) ${face}: ${hit.length ? `${who} ${hit.map((h) => instanceName(h)).join(', ')} → 부상 ${count}개` : `${who} 출전 선수가 없어 아무 일도 없음`}`, { actor: player.id });
   if (hit.length > 0) player.matchDieInjured = true; // 목표 카드 '무사고 시즌' 판정용
   chooseAmong(player, hit, { type: 'addPlayerToken', token: 'injury', count }, '부상', (inst) => (inst.tokens.injury += count));
 }
@@ -411,8 +418,12 @@ export function acceptMatchRoll(state: GameState, pid: PlayerId, rng: Rng): Game
   const next = structuredClone(state);
   const m = aftermathOf(next, pid);
   if (m.roll === null) throw new GameError('roll first');
+  if (m.injuryDice.length > 0) throw new GameError('match roll already applied');
   const player = getPlayer(next, pid);
   const played = m.played.map((id) => instanceOf(player, id));
+  const injuryDice = (...counts: number[]) => {
+    m.injuryDice = counts.map((count) => ({ count, roll: null, applied: false }));
+  };
 
   // 결과는 경기 승/무/패에 따라 다르다 (경기 보드 표)
   switch (matchDieResult(m.report.outcome, m.roll)) {
@@ -428,27 +439,74 @@ export function acceptMatchRoll(state: GameState, pid: PlayerId, rng: Rng): Game
     case 'weakness':
       chooseAmong(player, played, { type: 'addPlayerToken', token: 'weaknessTemp', count: 1 }, '경기 영향:약점', (inst) => inst.tokens.weaknessTemp++);
       break;
+    // 부상류: 여기서 끝내지 않고 12면체 부상 주사위를 참가자가 굴리게 한다 (rollInjuryDie → acceptInjuryRoll)
     case 'injury':
-      injure(next, player, played, 1, rng);
+      injuryDice(1);
       break;
     case 'severeInjury':
-      injure(next, player, played, 2, rng);
+      injuryDice(2);
       break;
     case 'doubleInjury':
-      injure(next, player, played, 1, rng);
-      injure(next, player, played, 1, rng);
+      injuryDice(1, 1);
       break;
     case 'doubleSevereInjury':
-      injure(next, player, played, 2, rng);
-      injure(next, player, played, 2, rng);
+      injuryDice(2, 2);
       break;
   }
+  if (m.injuryDice.length === 0) finishAftermath(next, m, rng);
+  return next;
+}
+
+// 이 참가자의 경기 결과 처리가 끝났다: 다음 참가자로, 전원 끝났으면 주말
+function finishAftermath(state: GameState, m: MatchAftermath, rng: Rng): void {
   m.decided = true;
-  if (next.phase.kind === 'friday.aftermath') {
-    const matches = next.phase.matches;
-    const following = nextInTurn(next, (id) => matches[id]!.decided);
-    if (following) next.phase.current = following;
-    else runWeekend(next, rng);
-  }
+  if (state.phase.kind !== 'friday.aftermath') return;
+  const matches = state.phase.matches;
+  const following = nextInTurn(state, (id) => matches[id]!.decided);
+  if (following) state.phase.current = following;
+  else runWeekend(state, rng);
+}
+
+// p.24·p.27 부상 주사위(12면체). 경기 영향 주사위처럼 굴림 → 팬덤 1개로 재굴림(p.12: 상대 팀 주사위만 재굴림 불가) → 적용
+function injuryDieOf(state: GameState, pid: PlayerId): { m: MatchAftermath; die: InjuryDie } {
+  const m = aftermathOf(state, pid);
+  const die = currentInjuryDie(m);
+  if (!die) throw new GameError('no injury die to roll');
+  return { m, die };
+}
+
+export function rollInjuryDie(state: GameState, pid: PlayerId, rng: Rng): GameState {
+  const next = structuredClone(state);
+  const { die } = injuryDieOf(next, pid);
+  if (die.roll !== null) throw new GameError('already rolled; use reroll');
+  die.roll = rng.die(12);
+  return next;
+}
+
+export function rerollInjuryDie(state: GameState, pid: PlayerId, rng: Rng): GameState {
+  const next = structuredClone(state);
+  const { die } = injuryDieOf(next, pid);
+  if (die.roll === null) throw new GameError('roll first');
+  const player = getPlayer(next, pid);
+  if (player.resources.fandom < 1) throw new GameError('not enough fandom');
+  player.resources.fandom--;
+  die.roll = rng.die(12);
+  return next;
+}
+
+export function acceptInjuryRoll(state: GameState, pid: PlayerId, rng: Rng): GameState {
+  const next = structuredClone(state);
+  const { m, die } = injuryDieOf(next, pid);
+  if (die.roll === null) throw new GameError('roll first');
+  const player = getPlayer(next, pid);
+  injure(
+    next,
+    player,
+    m.played.map((id) => instanceOf(player, id)),
+    die.count,
+    die.roll,
+  );
+  die.applied = true;
+  if (!currentInjuryDie(m)) finishAftermath(next, m, rng);
   return next;
 }

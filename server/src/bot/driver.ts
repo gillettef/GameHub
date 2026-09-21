@@ -48,6 +48,9 @@ const PAUSE_FACTOR: Record<GameAction['type'], number> = {
   rollMatchDie: 4,
   rerollMatchDie: 4,
   acceptMatchRoll: 3,
+  rollInjuryDie: 4,
+  rerollInjuryDie: 4,
+  acceptInjuryRoll: 3,
   undoTurn: 1,
 };
 

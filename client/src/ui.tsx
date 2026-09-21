@@ -118,12 +118,13 @@ export function useUi(): UiStore {
   return s;
 }
 
-export function rollKeyOf(actorId: string | null, roll: number | null): string {
-  return `${actorId}:${roll}`;
+// tag: 같은 참가자의 다른 주사위(경기 영향 6면체 / 부상 12면체 n번째)를 구분한다
+export function rollKeyOf(actorId: string | null, roll: number | null, tag = ''): string {
+  return `${actorId}:${tag}${roll}`;
 }
 
 // 서버가 정한 눈을 화면에 보여줘도 되는가: 주사위 트레이가 그 눈으로 멈춘 뒤에만. 구르는 동안은 null
-export function useRevealedRoll(actorId: string, roll: number | null): number | null {
+export function useRevealedRoll(actorId: string, roll: number | null, tag = ''): number | null {
   const { settledRoll } = useUi();
-  return roll !== null && settledRoll === rollKeyOf(actorId, roll) ? roll : null;
+  return roll !== null && settledRoll === rollKeyOf(actorId, roll, tag) ? roll : null;
 }
