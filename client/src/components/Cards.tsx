@@ -159,7 +159,7 @@ export function StaffCardView({ cardId, exhausted, suspension, ...props }: { car
           <div className="rb-box">
             {card.bonus && <EffectRow label="보너스" text={describeEffects(card.bonus)} effects={card.bonus} />}
             {card.action && <EffectRow label="행동" text={card.action.text} effects={card.action.effects} />}
-            {card.trait && <EffectRow label="특성" text={card.trait.text}><span className="trait-text clamp2">{card.trait.text}</span></EffectRow>}
+            {card.trait && <EffectRow label="특성" text={card.trait.text}><span className="trait-text clamp4">{card.trait.text}</span></EffectRow>}
           </div>
         </div>
       </div>
@@ -257,7 +257,7 @@ export function BoardCardView({ cardId, highlight, ...props }: { cardId: string;
         {(['yellow', 'blue', 'red'] as const).map((c) => (
           <div key={c} className={`decision ${c}${highlight === c ? ' chosen' : ''}${highlight && highlight !== c ? ' dim' : ''}`} title={card.decisions[c].text}>
             <span className="decision-color">{COLOR_LABEL[c]}</span>
-            <span className="decision-text clamp2">{card.decisions[c].text}</span>
+            <span className="decision-text clamp3">{card.decisions[c].text}</span>
             <EffectChips effects={card.decisions[c].effects} />
           </div>
         ))}
