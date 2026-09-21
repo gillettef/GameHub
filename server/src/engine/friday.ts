@@ -1,4 +1,4 @@
-import { activeSide, cards, effectiveSkill, instanceName } from './cards';
+import { activeSide, cards, effectiveSkill, instanceName, tokenLabel } from './cards';
 import { applyEffects, moveTrack, trainPlayer } from './effects';
 import type { EffectContext, MatchContext } from './effects';
 import { resolveMatch, sectorCounts } from './match';
@@ -285,6 +285,7 @@ function resolveAllMatches(state: GameState, rng: Rng): void {
       outcome: mods.mine > mods.theirs ? 'win' : mods.mine < mods.theirs ? 'loss' : 'draw',
     };
     addLog(state, `경기 결과 ${report.myGoals}:${report.theirGoals} vs ${opponent.teamName} (${{ win: '승리', draw: '무승부', loss: '패배' }[report.outcome]})`, { actor: pid });
+    if (report.scorers.length > 0) addLog(state, `득점: ${report.scorers.map((id) => tokenLabel(player, sub.players, id)).join(' · ')}`, { actor: pid });
 
     player.matchHistory.push({ week: state.week, outcome: report.outcome, myGoals: report.myGoals, theirGoals: report.theirGoals });
     moveLeague(state, pid, opponent.teamId, report.outcome);
@@ -319,7 +320,7 @@ function resolveAllMatches(state: GameState, rng: Rng): void {
         }
       }
     }
-    matches[pid] = { opponentCardId, played: sub.players, report, roll: null, injuryDice: [], decided: false };
+    matches[pid] = { opponentCardId, played: sub.players, placements: sub.placements, report, roll: null, injuryDice: [], decided: false };
   }
 
   // p.24 3: 같은 상대와 2명 이상 경기 → 비활성. p.24 6: 아무도 상대하지 않은 팀은 상대 팀 주사위
