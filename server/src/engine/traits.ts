@@ -45,9 +45,9 @@ export function hireCost(player: Holder, cardCost: number): number {
 export function prospectCost(player: Holder, cardCost: number): number {
   return Math.max(0, cardCost - traitSum(player, 'prospectDiscount'));
 }
-// 출전 선수마다 체력 1 (p.20 3), 특성으로 일부 면제
-export function lineupStaminaCost(player: Holder, playedCount: number): number {
-  return Math.max(0, playedCount - traitCount(player, 'freeLineupStamina'));
+// 출전 선수마다 체력 1 (p.20 3). 카드에 미리 올려놓은 체력이 있는 선수는 그것을 쓰므로 빼고, 나머지에서 특성으로 일부 면제
+export function lineupStaminaCost(player: Holder, played: { stamina: number }[]): number {
+  return Math.max(0, played.filter((p) => p.stamina <= 0).length - traitCount(player, 'freeLineupStamina'));
 }
 // 이적 시장에서 고를 수 있는 가장 왼쪽 index: 기본은 오른쪽 3장(p.15), 특성이 있으면 5장 전부
 export function marketMinIndex(player: Holder, row: MarketRow): number {

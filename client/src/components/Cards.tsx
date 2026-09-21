@@ -113,8 +113,9 @@ export function PlayerCardView({ cardId, instance, ...props }: { cardId: string;
             {side.career ? <div className="effect-text">경력 칸 · 출전 {side.career.appearances} · 득점 {side.career.goals}</div> : <div className="effect-text muted">효과 없음</div>}
           </div>
         )}
-        {(tokens.length > 0 || (instance && instance.careerVP > 0)) && (
+        {(tokens.length > 0 || (instance && (instance.careerVP > 0 || instance.stamina > 0))) && (
           <div className="pc-foot chips">
+            {instance && instance.stamina > 0 && <Chip icon="stamina" value={instance.stamina} title={`카드에 올려놓은 체력 ${instance.stamina} — 출전할 때 1개를 출전 체력으로 쓰고 나머지는 남습니다`} />}
             {tokens.map(([t, n]) => (
               <TokenChip key={t} token={t} count={n} />
             ))}

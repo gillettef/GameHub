@@ -20,7 +20,8 @@ export interface PlayerInstance {
   cardId: string;
   trained: boolean;
   tokens: PlayerTokens;
-  placed: Partial<Resources>; // 경기 전 올려놓은 자원
+  placed: Partial<Resources>; // 경기 준비 때 효과 활성화용으로 올려놓은 자원 (경기 후 버림)
+  stamina: number; // 카드 효과(placeStamina)로 미리 올려놓은 체력. 출전할 때 1개를 출전 체력(p.20 3)으로 쓰고 나머지는 다음 경기까지 남는다 (사용자 결정)
   exhausted: boolean;
   careerVP: number; // 유망주 경력 칸에 놓인 승점 토큰 (p.16)
   careerUsed: { appearances: number; goals: number };

@@ -133,8 +133,11 @@ describe('특성 (임원·직원 지속 효과)', () => {
   it('출전 체력 면제(ex-07)·유지비 할인(st-25)', () => {
     const s = tuesday();
     withExec(s, 'a', 'ex-07');
-    expect(lineupStaminaCost(s.players['a']!, 3)).toBe(2);
-    expect(lineupStaminaCost(s.players['a']!, 0)).toBe(0);
+    const fresh = { stamina: 0 };
+    expect(lineupStaminaCost(s.players['a']!, [fresh, fresh, fresh])).toBe(2);
+    expect(lineupStaminaCost(s.players['a']!, [])).toBe(0);
+    // 미리 올려놓은 체력이 있는 선수는 자기 것을 쓰므로 비용에서 빠진다
+    expect(lineupStaminaCost(s.players['a']!, [fresh, fresh, { stamina: 2 }])).toBe(1);
     // 같은 직원 구성에서 특성이 살아 있으면 1돈 덜, 출장정지면 할인 없음
     const active = tuesday();
     withStaff(active, 'a', 'st-25');

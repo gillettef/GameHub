@@ -66,7 +66,7 @@ export function FridayPrepareScreen() {
   const usedNumbers = new Set(played.map((id) => activeSide(me.roster.find((r) => r.instanceId === id)!).number).filter((n) => n !== undefined));
   const togglePlayer = (instanceId: string) => setPlayed((p) => (p.includes(instanceId) ? p.filter((x) => x !== instanceId) : [...p, instanceId]));
 
-  const cost: Partial<Resources> = { stamina: lineupStaminaCost(me, played.length), fandom: stands };
+  const cost: Partial<Resources> = { stamina: lineupStaminaCost(me, me.roster.filter((r) => played.includes(r.instanceId))), fandom: stands };
   const activationMap: Record<string, Partial<Resources>> = {};
   for (const id of played) {
     if (!activations[id]) continue;
@@ -140,7 +140,7 @@ export function FridayPrepareScreen() {
           </div>
 
           <div className="step">
-            <h3>출전 선수 <span className="muted">선수마다 <Icon name="stamina" size={12} />1 · 부상·출장정지·같은 등번호는 불가</span></h3>
+            <h3>출전 선수 <span className="muted">선수마다 <Icon name="stamina" size={12} />1 (카드에 올려놓은 <Icon name="stamina" size={12} />가 있으면 그것을 사용) · 부상·출장정지·같은 등번호는 불가</span></h3>
             <div className="cards">
               {me.roster.map((r) => {
                 const side = activeSide(r);
