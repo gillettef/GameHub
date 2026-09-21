@@ -33,6 +33,10 @@ interface UiStore {
   setReleasing: (v: boolean) => void;
   settledRoll: string | null; // 주사위 트레이가 멈춰 보여주고 있는 눈의 키(`actor:roll`). 구르는 동안은 null
   setSettledRoll: (key: string | null) => void;
+  sideTab: 'log' | 'chat'; // 오른쪽(모바일은 '기록' 탭) 패널: 행동 기록 / 채팅
+  setSideTab: (t: 'log' | 'chat') => void;
+  chatSeen: number; // 내가 본 마지막 채팅 id — 그 뒤에 온 남의 글이 '안 읽음'
+  setChatSeen: (id: number) => void;
   resultSeen: string | null; // 경기 결과를 확인한 키(`week:actor`). 내 경기 결과를 확인해야 경기 영향 주사위를 굴릴 수 있다 (스텝 진행)
   setResultSeen: (key: string | null) => void;
 }
@@ -55,7 +59,7 @@ function defaults(kind: string): { main: MainTab; board: BoardTab; shared: Share
 }
 
 export function UiProvider({ children }: { children: ReactNode }) {
-  const { view, session } = useView();
+  const { view, session, chat } = useView();
   const [selected, setSelected] = useState<PlayerId>(session?.playerId ?? view.seats[0]!);
   const [mainTab, setMainTab] = useState<MainTab>(() => defaults(view.phase.kind).main);
   const [boardTab, setBoardTab] = useState<BoardTab>(() => defaults(view.phase.kind).board);
@@ -65,6 +69,8 @@ export function UiProvider({ children }: { children: ReactNode }) {
   const [releasing, setReleasing] = useState(false);
   const [settledRoll, setSettledRoll] = useState<string | null>(null);
   const [resultSeen, setResultSeen] = useState<string | null>(null);
+  const [sideTab, setSideTab] = useState<'log' | 'chat'>('log');
+  const [chatSeen, setChatSeen] = useState(() => chat.at(-1)?.id ?? 0); // 들어오기 전에 쌓인 글은 읽은 것으로
 
   useEffect(() => {
     if (!view.seats.includes(selected)) setSelected(session?.playerId ?? view.seats[0]!);
@@ -109,8 +115,8 @@ export function UiProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo<UiStore>(
-    () => ({ selected, selectPlayer, mainTab, setMainTab, boardTab, setBoardTab, sharedTab, setSharedTab, showBoard, showShared, marketTab, setMarketTab, showMarket, mobileTab, setMobileTab, releasing, setReleasing, settledRoll, setSettledRoll, resultSeen, setResultSeen }),
-    [selected, selectPlayer, mainTab, boardTab, sharedTab, showBoard, showShared, marketTab, showMarket, mobileTab, releasing, settledRoll, resultSeen],
+    () => ({ selected, selectPlayer, mainTab, setMainTab, boardTab, setBoardTab, sharedTab, setSharedTab, showBoard, showShared, marketTab, setMarketTab, showMarket, mobileTab, setMobileTab, releasing, setReleasing, settledRoll, setSettledRoll, resultSeen, setResultSeen, sideTab, setSideTab, chatSeen, setChatSeen }),
+    [selected, selectPlayer, mainTab, boardTab, sharedTab, showBoard, showShared, marketTab, showMarket, mobileTab, releasing, settledRoll, resultSeen, sideTab, chatSeen],
   );
   return <UiContext.Provider value={value}>{children}</UiContext.Provider>;
 }

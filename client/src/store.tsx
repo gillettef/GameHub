@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import type { ReactNode } from 'react';
 import type { GameAction } from '@server/engine/actions';
 import type { GameView } from '@server/engine/view';
-import type { ClientMessage, RoomView } from '@server/protocol';
+import type { ChatMessage, ClientMessage, RoomView } from '@server/protocol';
 import { Connection, loadSession, saveSession, wsUrl } from './ws';
 import type { Session } from './ws';
 
@@ -12,10 +12,12 @@ interface Store {
   spectating: string | null; // 관전 중인 방 코드
   room: RoomView | null;
   view: GameView | null;
+  chat: ChatMessage[]; // 방 채팅 (서버가 최근 것 전체를 보내 준다)
   error: string | null;
   send: (msg: ClientMessage) => void;
   act: (action: GameAction) => void;
   spectate: (code: string) => void;
+  sendChat: (text: string) => void;
   leave: () => void;
 }
 
@@ -28,6 +30,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [spectating, setSpectating] = useState<string | null>(null);
   const [room, setRoom] = useState<RoomView | null>(null);
   const [view, setView] = useState<GameView | null>(null);
+  const [chat, setChat] = useState<ChatMessage[]>([]);
   const [error, setError] = useState<string | null>(null);
   const sessionRef = useRef(session);
   sessionRef.current = session;
@@ -61,6 +64,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         case 'state':
           setView(msg.view);
           break;
+        case 'chat':
+          setChat(msg.messages);
+          break;
         case 'error':
           if (msg.message === 'room not found' || msg.message === 'invalid rejoin credentials') {
             saveSession(null);
@@ -90,19 +96,21 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, []);
   const act = useCallback((action: GameAction) => send({ type: 'action', action }), [send]);
   const spectate = useCallback((code: string) => send({ type: 'spectate', code }), [send]);
+  const sendChat = useCallback((text: string) => send({ type: 'chat', text }), [send]);
   const leave = useCallback(() => {
     saveSession(null);
     setSession(null);
     setSpectating(null);
     setRoom(null);
     setView(null);
+    setChat([]);
     connRef.current?.close();
     connRef.current?.connect();
   }, []);
 
   const value = useMemo<Store>(
-    () => ({ connected, session, spectating, room, view, error, send, act, spectate, leave }),
-    [connected, session, spectating, room, view, error, send, act, spectate, leave],
+    () => ({ connected, session, spectating, room, view, chat, error, send, act, spectate, sendChat, leave }),
+    [connected, session, spectating, room, view, chat, error, send, act, spectate, sendChat, leave],
   );
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
 }

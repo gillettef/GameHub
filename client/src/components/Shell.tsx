@@ -3,6 +3,7 @@ import { cards, instanceName } from '@server/engine/cards';
 import type { LogEntry, PlayerId } from '@server/engine/state';
 import { RESOURCES } from '@server/engine/types';
 import { hireCost, marketMinIndex, prospectCost } from '@server/engine/traits';
+import { WEEKS } from '@server/engine/weekend';
 import { useCommit } from '../commit';
 import { DeviceToggle, useDevice } from '../device';
 import { DAY_LABEL, RESOURCE_LABEL, SEAT_COLORS, TOKEN_LABEL, phaseLabel } from '../labels';
@@ -11,6 +12,7 @@ import { useStore, useView } from '../store';
 import { useUi } from '../ui';
 import type { MarketTab } from '../ui';
 import { PlayerCardView, SponsorCardView, StaffCardView } from './Cards';
+import { ChatBody, unreadCount } from './Chat';
 import { CostChips, Icon, TrackGlyph } from './Icons';
 import { UpkeepChip } from './Upkeep';
 import { SponsorContractModal } from './Sponsor';
@@ -29,8 +31,14 @@ export function Header({ subtitle }: { subtitle?: string }) {
         <span className="room">방 {room?.code}</span>
         {subtitle && <span className="tag">{subtitle}</span>}
       </div>
-      <div className="status" title={`${view.week}주차 · ${phaseLabel(view.phase.kind)}`}>
-        <span className="week">{view.week}주차</span>
+      <div className={`status${view.week >= WEEKS ? ' last-week' : ''}`} title={`${view.week}/${WEEKS}주차${view.week >= WEEKS ? ' · 마지막 주 (주말 유지비 없이 게임 종료)' : ''} · ${phaseLabel(view.phase.kind)}`}>
+        <span className="week">
+          {view.week}<span className="week-total">/{WEEKS}</span>주
+          {view.week >= WEEKS && <span className="week-last">마지막 주</span>}
+        </span>
+        <span className="week-dots" aria-hidden="true">
+          {Array.from({ length: WEEKS }, (_, i) => <i key={i} className={i + 1 < view.week ? 'past' : i + 1 === view.week ? 'now' : ''} />)}
+        </span>
         <span className="phase">{phaseLabel(view.phase.kind)}{view.phase.kind === 'weekday' && ` · ${DAY_LABEL[view.phase.day]}`}</span>
       </div>
       <div className="conn">
@@ -249,9 +257,16 @@ export function LeagueBody() {
   );
 }
 
-// 공개 행동 기록: 주차·요일별로 묶고 행위자를 자리 색으로 표시
+// 오른쪽 패널(모바일은 '기록' 탭): 공개 행동 기록 / 채팅. 기록은 주차·요일별로 묶고 행위자를 자리 색으로 표시.
+// 채팅 탭을 보고 있으면 온 글을 읽은 것으로 치고, 아니면 탭에 안 읽은 수를 붙인다
 export function ActionLog() {
-  const { view } = useView();
+  const { view, chat, session } = useView();
+  const { sideTab, setSideTab, chatSeen, setChatSeen } = useUi();
+  const lastChat = chat.at(-1)?.id ?? 0;
+  useEffect(() => {
+    if (sideTab === 'chat' && lastChat > chatSeen) setChatSeen(lastChat);
+  }, [sideTab, lastChat, chatSeen, setChatSeen]);
+  const unread = sideTab === 'chat' ? 0 : unreadCount(chat, chatSeen, session?.playerId);
   const groups: { key: string; week: number; day: LogEntry['day']; entries: LogEntry[] }[] = [];
   for (const entry of view.log) {
     const key = `${entry.week}-${entry.day}`;
@@ -261,8 +276,14 @@ export function ActionLog() {
   }
   return (
     <aside className="logbar" aria-label="기록">
-      <div className="panel-head"><h2>기록</h2></div>
-      <div className="log-scroll">
+      <div className="side-tabs" role="tablist">
+        <button role="tab" aria-selected={sideTab === 'log'} className={sideTab === 'log' ? 'active' : ''} onClick={() => setSideTab('log')}>기록</button>
+        <button role="tab" aria-selected={sideTab === 'chat'} className={sideTab === 'chat' ? 'active' : ''} onClick={() => setSideTab('chat')}>
+          채팅{unread > 0 && <span className="badge-count" aria-label={`안 읽은 채팅 ${unread}개`}>{unread}</span>}
+        </button>
+      </div>
+      {sideTab === 'chat' && <ChatBody colorOf={(pid) => seatColor(view, pid)} />}
+      <div className="log-scroll" hidden={sideTab !== 'log'}>
         {[...groups].reverse().map((g) => (
           <section key={g.key} className="log-group">
             <h3>{g.day === 'setup' ? '준비' : `${g.week}주차 ${DAY_LABEL[g.day]}`}</h3>

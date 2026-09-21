@@ -6,6 +6,7 @@ import { useUi } from '../ui';
 import type { MobileTab } from '../ui';
 import { ActionSidebar } from './ActionSidebar';
 import { PlayerBoard } from './Boards';
+import { unreadCount } from './Chat';
 import { ActionLog, LeagueBody, MarketBody } from './Shell';
 
 // 모바일용 화면 (device.tsx 에서 '모바일용'을 고른 경우): 한 열 + 아래 고정 탭 막대. 한 번에 한 영역만 보인다.
@@ -27,21 +28,24 @@ const NAV: { key: MobileTab; label: string }[] = [
   { key: 'board', label: '구단' },
   { key: 'market', label: '시장' },
   { key: 'league', label: '리그' },
-  { key: 'log', label: '기록' },
+  { key: 'log', label: '기록·채팅' },
 ];
 
 // 아래 고정 탭 막대. 내가 할 일이 있는데 '진행' 탭을 보고 있지 않으면 금색 점으로 알린다
 export function MobileNav() {
-  const { view, session } = useView();
-  const { mobileTab, setMobileTab } = useUi();
+  const { view, session, chat } = useView();
+  const { mobileTab, setMobileTab, sideTab, setSideTab, chatSeen } = useUi();
+  // 안 읽은 채팅: 채팅을 보고 있지 않을 때만 센다. 누르면 바로 채팅 탭으로
+  const unread = mobileTab === 'log' && sideTab === 'chat' ? 0 : unreadCount(chat, chatSeen, session?.playerId);
   const todo = !!session && myTask(view) !== null;
   return (
     <nav className="mobile-nav" aria-label="화면 전환">
       {NAV.map((t) => (
-        <button key={t.key} className={mobileTab === t.key ? 'active' : ''} aria-current={mobileTab === t.key ? 'page' : undefined} onClick={() => setMobileTab(t.key)}>
+        <button key={t.key} className={mobileTab === t.key ? 'active' : ''} aria-current={mobileTab === t.key ? 'page' : undefined} onClick={() => { if (t.key === 'log' && unread > 0) setSideTab('chat'); setMobileTab(t.key); }}>
           <svg viewBox="0 0 16 16" width={20} height={20} aria-hidden="true">{NAV_ICONS[t.key]}</svg>
           <span>{t.label}</span>
           {t.key === 'play' && todo && mobileTab !== 'play' && <span className="nav-dot" aria-label="내 차례" />}
+          {t.key === 'log' && unread > 0 && <span className="badge-count nav-badge" aria-label={`안 읽은 채팅 ${unread}개`}>{unread}</span>}
         </button>
       ))}
     </nav>

@@ -100,6 +100,28 @@ describe('WebSocket 서버', () => {
     guest.close();
   });
 
+  it('채팅: 방 전원(관전자 포함)에게 전달되고, 나중에 들어온 사람도 지난 글을 받으며, 관전자는 쓸 수 없다 (test_insight C9)', async () => {
+    const host = await Client.open(url);
+    host.send({ type: 'createRoom', name: '호스트' });
+    const { code } = await host.next('joined');
+    const watcher = await Client.open(url);
+    watcher.send({ type: 'spectate', code });
+    await watcher.next('spectating');
+
+    host.send({ type: 'chat', text: '  안녕하세요  ' });
+    const sent = (m: Extract<ServerMessage, { type: 'chat' }>) => m.messages.length === 1;
+    expect((await host.next('chat', sent)).messages[0]).toMatchObject({ name: '호스트', text: '안녕하세요' });
+    expect((await watcher.next('chat', sent)).messages[0]!.text).toBe('안녕하세요');
+
+    watcher.send({ type: 'chat', text: '관전자도 한마디' });
+    expect((await watcher.next('error')).message).toBe('spectators cannot act');
+
+    const late = await Client.open(url);
+    late.send({ type: 'joinRoom', code, name: '늦은 손님' });
+    expect((await late.next('chat')).messages.map((m) => m.text)).toEqual(['안녕하세요']);
+    for (const c of [host, watcher, late]) c.close();
+  });
+
   it('잘못된 메시지는 error 로 응답', async () => {
     const c = await Client.open(url);
     c.send({ type: 'startGame' });

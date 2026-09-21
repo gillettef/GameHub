@@ -36,6 +36,13 @@ export function attachWebSocket(wss: WebSocketServer, rooms: RoomManager, option
     }
   };
 
+  const broadcastChat = (room: Room) => {
+    for (const session of sessions.values()) {
+      if (session.roomCode !== room.code || (!session.playerId && !session.spectator)) continue;
+      send(session.socket, { type: 'chat', messages: room.chat });
+    }
+  };
+
   const bots = new BotDriver(rooms, broadcast, options.botDelayMs);
 
   const detach = (session: Session) => {
@@ -56,6 +63,7 @@ export function attachWebSocket(wss: WebSocketServer, rooms: RoomManager, option
     session.roomCode = room.code;
     session.playerId = playerId;
     send(session.socket, { type: 'joined', code: room.code, playerId, token });
+    send(session.socket, { type: 'chat', messages: room.chat });
     broadcast(room);
   };
 
@@ -85,6 +93,7 @@ export function attachWebSocket(wss: WebSocketServer, rooms: RoomManager, option
         session.roomCode = room.code;
         session.spectator = true;
         send(session.socket, { type: 'spectating', code: room.code });
+        send(session.socket, { type: 'chat', messages: room.chat });
         send(session.socket, { type: 'room', room: roomView(room) });
         if (room.game) send(session.socket, { type: 'state', view: viewFor(room.game, SPECTATOR_ID) });
         return;
@@ -116,6 +125,9 @@ export function attachWebSocket(wss: WebSocketServer, rooms: RoomManager, option
         bots.poke(room);
         return;
       }
+      case 'chat':
+        broadcastChat(rooms.chat(session.roomCode, session.playerId, msg.text));
+        return;
       default:
         throw new RoomError(`unknown message type: ${(msg as { type: string }).type}`);
     }
