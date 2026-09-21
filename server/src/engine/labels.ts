@@ -25,6 +25,16 @@ export const INFRA_LABEL: Record<InfrastructureType, string> = {
   stand4: '4번 관중석',
   billboard3: '3번 광고판',
 };
+// 기반 시설이 하는 일 한 줄 (p.19). 트랙 +1 은 건설 즉시 1회(보드 데이터의 bonus), 관중석·광고판은 칸이 늘어난다
+export const INFRA_EFFECT: Record<InfrastructureType, string> = {
+  lights: '건설 즉시 팬덤 트랙 +1칸 (매주 조달 팬덤 ↑)',
+  shop: '건설 즉시 돈 트랙 +1칸 (매주 조달 돈 ↑)',
+  execOffice: '건설 즉시 운영 트랙 +1칸 (매주 조달 운영 ↑)',
+  trainingGround: '건설 즉시 체력 트랙 +1칸 (매주 조달 체력 ↑)',
+  stand3: '관중석 +1석 (경기마다 팬덤 1개 더 놓아 돈으로)',
+  stand4: '관중석 +1석 (3번 관중석을 지은 뒤에만)',
+  billboard3: '광고판 스폰서를 3장까지 계약',
+};
 export const DAY_LABEL = { setup: '준비', mon: '월요일', tue: '화요일', wed: '수요일', thu: '목요일', fri: '금요일', weekend: '주말' } as const;
 export { matchDieLabel } from './matchDie';
 

@@ -7,7 +7,8 @@ import { createGame } from './engine/setup';
 import { GameError } from './engine/state';
 import type { GameState } from './engine/state';
 import type { Division } from './engine/types';
-import type { RoomView } from './protocol';
+import { CHAT_MAX_LENGTH } from './protocol';
+import type { ChatMessage, RoomView } from './protocol';
 
 export interface RoomPlayer {
   id: string;
@@ -28,6 +29,8 @@ export interface Room {
   seed: number;
   rng: Rng;
   game?: GameState;
+  chat: ChatMessage[]; // 최근 CHAT_KEEP 개
+  chatSeq: number;
   updatedAt: number;
 }
 
@@ -38,6 +41,8 @@ const CODE_LENGTH = 5;
 const MAX_PLAYERS = 4;
 const MAX_NAME = 20;
 const IDLE_MS = 6 * 60 * 60 * 1000;
+const CHAT_KEEP = 100;
+const CHAT_MIN_INTERVAL_MS = 300; // 같은 참가자의 연속 전송 간격 (도배 방지)
 
 function makeCode(): string {
   const bytes = randomBytes(CODE_LENGTH);
@@ -81,6 +86,8 @@ export class RoomManager {
       players: [player],
       seed,
       rng: createRng(seed),
+      chat: [],
+      chatSeq: 0,
       updatedAt: Date.now(),
     };
     this.rooms.set(code, room);
@@ -173,6 +180,22 @@ export class RoomManager {
     }
     if (room.game.phase.kind === 'gameOver') room.status = 'over';
     room.updatedAt = Date.now();
+    return room;
+  }
+
+  // 방 채팅: 참가자만 쓸 수 있다(관전자는 읽기만). 공백 정리 후 최대 CHAT_MAX_LENGTH 자, 최근 CHAT_KEEP 개만 보관
+  chat(code: string, playerId: string, text: unknown, now = Date.now()): Room {
+    const room = this.get(code);
+    const player = room.players.find((p) => p.id === playerId);
+    if (!player) throw new RoomError('not in this room');
+    if (typeof text !== 'string') throw new RoomError('text required');
+    const clean = text.replace(/\s+/g, ' ').trim().slice(0, CHAT_MAX_LENGTH);
+    if (!clean) throw new RoomError('text required');
+    const last = [...room.chat].reverse().find((m) => m.playerId === playerId);
+    if (last && now - last.at < CHAT_MIN_INTERVAL_MS) throw new RoomError('too many messages');
+    room.chat.push({ id: ++room.chatSeq, playerId, name: player.name, text: clean, at: now });
+    if (room.chat.length > CHAT_KEEP) room.chat.splice(0, room.chat.length - CHAT_KEEP);
+    room.updatedAt = now;
     return room;
   }
 

@@ -1,5 +1,7 @@
 import { useState } from 'react';
+import { ChatBody } from '../components/Chat';
 import { DeviceSwitch } from '../device';
+import { SEAT_COLORS } from '../labels';
 import { useStore } from '../store';
 
 export function Lobby() {
@@ -72,6 +74,10 @@ export function RoomLobby() {
         <button className="link" onClick={leave}>나가기</button>
       </div>
       {error && <p className="error">{error}</p>}
+      <section className="lobby-chat" aria-label="채팅">
+        <h2>채팅</h2>
+        <ChatBody colorOf={(pid) => SEAT_COLORS[room.players.findIndex((p) => p.id === pid)]} />
+      </section>
       <DeviceSwitch />
     </main>
   );

@@ -2,6 +2,23 @@ import { describe, expect, it } from 'vitest';
 import { RoomError, RoomManager, roomView } from './rooms';
 
 describe('RoomManager', () => {
+  it('채팅: 참가자만, 공백 정리·길이 제한·빈 글 거부·연속 전송 간격, 최근 100개만 보관 (test_insight C9)', () => {
+    const rm = new RoomManager();
+    const { room, player: host } = rm.create('a');
+    const { player: b } = rm.join(room.code, 'b');
+    rm.chat(room.code, host.id, '  안녕 \n  하세요  ', 1000);
+    expect(room.chat).toMatchObject([{ id: 1, playerId: host.id, name: 'a', text: '안녕 하세요', at: 1000 }]);
+    expect(() => rm.chat(room.code, host.id, '   ', 2000)).toThrow(RoomError);
+    expect(() => rm.chat(room.code, host.id, 42, 2000)).toThrow(RoomError);
+    expect(() => rm.chat(room.code, 'nobody', 'hi', 2000)).toThrow(RoomError);
+    expect(() => rm.chat(room.code, host.id, '도배', 1100)).toThrow(RoomError); // 300ms 안의 연속 전송
+    rm.chat(room.code, b.id, 'x'.repeat(500), 1100); // 다른 참가자는 바로 가능, 200자로 자름
+    expect(room.chat[1]!.text).toHaveLength(200);
+    for (let i = 0; i < 120; i++) rm.chat(room.code, host.id, `m${i}`, 10_000 + i * 1000);
+    expect(room.chat).toHaveLength(100);
+    expect(room.chat.at(-1)).toMatchObject({ id: 122, text: 'm119' });
+  });
+
   it('방 생성/입장: 코드 5자, 호스트, 최대 4명, 이름 중복 불가', () => {
     const rm = new RoomManager();
     const { room, player: host } = rm.create('  호스트  ');

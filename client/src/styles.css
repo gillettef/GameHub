@@ -107,6 +107,17 @@ label.row { flex-direction: row; align-items: center; }
 .topbar .status { display: flex; gap: 10px; align-items: baseline; }
 .topbar .week { font-weight: 700; font-size: 15px; }
 .topbar .phase { color: var(--ink-2); }
+/* 주차: N/6주 + 진행 점 6개. 마지막 주는 빨간 배지로 강조 (test_insight C8) */
+.topbar .week { white-space: nowrap; display: inline-flex; align-items: baseline; gap: 1px; }
+.topbar .week-total { color: var(--muted); font-weight: 500; font-size: 0.85em; }
+.topbar .week-last { margin-left: 6px; align-self: center; background: var(--danger); color: #fff; border-radius: 999px; padding: 1px 8px; font-size: 11px; font-weight: 700; animation: last-week 1.6s ease-in-out 3; }
+@keyframes last-week { 50% { box-shadow: 0 0 0 4px rgba(179, 38, 30, 0.25); } }
+.topbar .status.last-week .week { color: var(--danger); }
+.topbar .week-dots { display: inline-flex; gap: 3px; align-self: center; }
+.topbar .week-dots i { width: 7px; height: 7px; border-radius: 50%; background: var(--line); }
+.topbar .week-dots i.past { background: var(--pitch); }
+.topbar .week-dots i.now { background: var(--ink); box-shadow: 0 0 0 2px var(--pitch-tint); }
+.topbar .status.last-week .week-dots i.now { background: var(--danger); }
 .topbar .conn { display: flex; justify-content: flex-end; align-items: center; gap: 6px; color: var(--muted); font-size: var(--fs-sub); white-space: nowrap; }
 /* 모바일: 높이 48px 는 유지(스티키 오프셋 --head-h 기준)하고, 라벨을 아이콘·줄임으로 바꾼다 */
 @media (max-width: 760px) {
@@ -116,6 +127,8 @@ label.row { flex-direction: row; align-items: center; }
   .topbar .room { font-size: var(--fs-sub); white-space: nowrap; }
   .topbar .status { flex-direction: column; align-items: center; gap: 0; line-height: 1.15; min-width: 0; text-align: center; }
   .topbar .week { font-size: 13px; }
+  .topbar .week-dots { display: none; }
+  .topbar .week-last { padding: 0 6px; font-size: 10px; }
   .topbar .phase { font-size: 12px; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .topbar .conn { gap: 4px; }
   .topbar .conn-text { display: none; }
@@ -175,6 +188,12 @@ label.row { flex-direction: row; align-items: center; }
 .action-item { display: flex; justify-content: space-between; align-items: center; gap: 6px; width: 100%; text-align: left; padding: 6px 9px; font-weight: 500; }
 .action-item > span:first-child { display: inline-flex; align-items: center; gap: 4px; min-width: 0; }
 .action-item .chips { flex: none; }
+/* 시설 건설 버튼: 윗줄 이름·비용, 아랫줄 얻는 것(트랙 +1 / 칸 + 승점) */
+.action-item.infra-action { flex-direction: column; align-items: stretch; gap: 3px; }
+.action-item.infra-action > .infra-action-head { display: flex; justify-content: space-between; align-items: center; gap: 6px; }
+.infra-action-gain { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.infra-action-text { font-size: var(--fs-sub); color: var(--ink-2); border: 1px dashed var(--line-strong); border-radius: 999px; padding: 0 7px; }
+.infra-note { margin: 0 0 6px; }
 .action-item.active { border-color: var(--gold); box-shadow: inset 0 0 0 1px var(--gold); background: var(--gold-tint); }
 .action-item.primary { justify-content: center; font-weight: 600; }
 .action-split { display: grid; grid-template-columns: 1fr auto; }
@@ -519,6 +538,23 @@ label.row { flex-direction: row; align-items: center; }
 .logbar { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 14px 0 0; position: sticky; top: calc(var(--head-h) + 14px); max-height: calc(100vh - var(--head-h) - 28px); display: flex; flex-direction: column; }
 .logbar .panel-head { padding: 0 16px 8px; }
 .log-scroll { overflow: auto; padding: 0 12px 12px; }
+/* 기록 / 채팅 탭과 채팅 (test_insight C9) */
+.side-tabs { display: flex; gap: 4px; padding: 0 12px 8px; border-bottom: 1px solid var(--line); margin-bottom: 4px; }
+.side-tabs button { flex: 1; justify-content: center; border-color: transparent; background: none; color: var(--ink-2); padding: 5px 8px; font-size: 14px; }
+.side-tabs button.active { color: var(--pitch-dark); border-color: var(--pitch); box-shadow: inset 0 0 0 1px var(--pitch); background: var(--pitch-tint); }
+.badge-count { min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: var(--danger); color: #fff; font-size: 11px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; }
+.chat { display: flex; flex-direction: column; min-height: 0; flex: 1; }
+.chat-scroll { flex: 1; min-height: 160px; overflow: auto; padding: 4px 12px 8px; display: flex; flex-direction: column; gap: 6px; }
+.chat-msg { display: grid; grid-template-columns: auto 1fr; gap: 0 6px; align-items: baseline; font-size: 13px; border-left: 3px solid var(--seat, var(--line-strong)); padding: 2px 0 2px 8px; }
+.chat-msg.mine { background: var(--surface-2); border-radius: 0 6px 6px 0; }
+.chat-name { font-weight: 700; color: var(--seat, var(--ink)); }
+.chat-time { color: var(--muted); font-size: 11px; justify-self: end; }
+.chat-text { grid-column: 1 / -1; color: var(--ink); overflow-wrap: anywhere; white-space: pre-wrap; }
+.chat-form { display: flex; gap: 6px; padding: 8px 12px 12px; border-top: 1px solid var(--line); margin: 0; }
+.chat-form input { flex: 1; min-width: 0; }
+.lobby-chat { border: 1px solid var(--line); border-radius: var(--radius); display: flex; flex-direction: column; }
+.lobby-chat h2 { font-size: 14px; margin: 0; padding: 10px 12px 4px; }
+.lobby-chat .chat-scroll { max-height: 200px; min-height: 90px; }
 .log-group h3 { position: sticky; top: 0; background: var(--surface); margin: 8px 0 4px; padding: 4px 0; font-size: 13px; color: var(--pitch-dark); border-bottom: 1px solid var(--line); }
 .log-entry { display: grid; grid-template-columns: auto auto 1fr; gap: 0 4px; align-items: baseline; font-size: 13px; padding: 3px 4px; border-radius: 4px; }
 .log-entry:hover { background: var(--surface-2); }
@@ -841,6 +877,8 @@ button.ghost.light:hover:not(:disabled) { border-color: #fff; color: #fff; }
 .mobile-ui .topbar .room { font-size: var(--fs-sub); white-space: nowrap; }
 .mobile-ui .topbar .status { flex-direction: column; align-items: center; gap: 0; line-height: 1.15; min-width: 0; text-align: center; }
 .mobile-ui .topbar .week { font-size: 13px; }
+.mobile-ui .topbar .week-dots { display: none; }
+.mobile-ui .topbar .week-last { padding: 0 6px; font-size: 10px; }
 .mobile-ui .topbar .phase { font-size: 12px; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .mobile-ui .topbar .conn { gap: 4px; }
 .mobile-ui .topbar .conn-text, .mobile-ui .topbar .toggle .label { display: none; }
@@ -875,12 +913,14 @@ button.ghost.light:hover:not(:disabled) { border-color: #fff; color: #fff; }
 .mobile-ui h2 { font-size: 17px; }
 .mobile-ui .two-col, .mobile-ui .club-grid, .mobile-ui .stadium-board, .mobile-ui .match-board, .mobile-ui .sponsor-modal-body { grid-template-columns: minmax(0, 1fr); }
 .mobile-ui .logbar { position: static; max-height: none; }
+.mobile-ui .chat-scroll { min-height: 40vh; max-height: 55vh; }
 
 /* 아래 탭 막대 */
 .mobile-nav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 8; display: grid; grid-template-columns: repeat(5, 1fr); background: var(--surface); border-top: 1px solid var(--line); padding: 0 env(safe-area-inset-right, 0px) var(--safe-b) env(safe-area-inset-left, 0px); box-shadow: 0 -2px 10px rgba(27, 42, 65, 0.06); }
 .mobile-nav button { position: relative; flex-direction: column; justify-content: center; gap: 1px; height: var(--nav-h); padding: 0; border: 0; border-radius: 0; background: none; color: var(--muted); font-size: var(--fs-sub); font-weight: 600; }
 .mobile-nav button.active { color: var(--pitch-dark); }
 .mobile-nav button.active::before { content: ''; position: absolute; top: 0; left: 22%; right: 22%; height: 3px; border-radius: 0 0 3px 3px; background: var(--pitch); }
+.nav-badge { position: absolute; top: 5px; left: calc(50% + 6px); box-shadow: 0 0 0 2px var(--surface); }
 .nav-dot { position: absolute; top: 8px; left: calc(50% + 8px); width: 9px; height: 9px; border-radius: 50%; background: var(--gold); box-shadow: 0 0 0 2px var(--surface); animation: nav-dot-pulse 1.4s ease-in-out infinite; }
 @keyframes nav-dot-pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.35); } }
 

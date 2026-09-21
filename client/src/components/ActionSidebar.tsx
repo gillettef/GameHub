@@ -3,11 +3,11 @@ import { infraCost } from '@server/engine/traits';
 import type { InfrastructureType } from '@server/engine/types';
 import type { PlayerPublicView } from '@server/engine/view';
 import { useCommit } from '../commit';
-import { DAY_LABEL, INFRA_LABEL } from '../labels';
+import { DAY_LABEL, INFRA_EFFECT, INFRA_LABEL } from '../labels';
 import { useView } from '../store';
 import { useUi } from '../ui';
 import { DiceTray } from './DiceTray';
-import { CostChips, Icon } from './Icons';
+import { CostChips, EffectChips, Icon } from './Icons';
 import { UpkeepWarning } from './Upkeep';
 import { LegendButton } from './Legend';
 
@@ -89,19 +89,24 @@ export function WeekdayActions({ me }: { me: PlayerPublicView }) {
       <h3>
         스타디움 <span className="muted">{me.infrastructure.length}/7</span>
       </h3>
+      <p className="muted small infra-note">시설마다 <Icon name="vp" size={11} />게임 종료 승점 + 아래 효과. 트랙 +1은 건설 즉시 한 번 (5칸을 넘으면 자원으로).</p>
       <div className="action-list">
         {cards.boardData.infrastructure.map((i) => (
           <button
             key={i.type}
-            className={cls(`infra:${i.type}`)}
+            className={`${cls(`infra:${i.type}`)} infra-action`}
             disabled={!basic || (i.unique && me.infrastructure.includes(i.type)) || (!!i.requires && !me.infrastructure.includes(i.requires)) || me.infrastructure.length >= 7 || me.resources.money < infraCost(me)}
-            onClick={() => select(`infra:${i.type}`, { type: 'buildInfrastructure', infrastructure: i.type as InfrastructureType }, <>건설: <b>{INFRA_LABEL[i.type]}</b> <CostChips cost={{ money: infraCost(me) }} /> → 승점 {i.vp}</>)}
-            title={`${INFRA_LABEL[i.type]} · 돈 ${infraCost(me)} · 승점 ${i.vp}${i.bonus.length ? ' · 보너스 있음' : ''}${i.unique && me.infrastructure.includes(i.type) ? ' (이미 건설)' : ''}${i.requires && !me.infrastructure.includes(i.requires) ? ` (${INFRA_LABEL[i.requires]} 먼저)` : ''}`}
+            onClick={() => select(`infra:${i.type}`, { type: 'buildInfrastructure', infrastructure: i.type as InfrastructureType }, <>건설: <b>{INFRA_LABEL[i.type]}</b> <CostChips cost={{ money: infraCost(me) }} /> → {INFRA_EFFECT[i.type]} · 승점 {i.vp}</>)}
+            title={`${INFRA_LABEL[i.type]} · 돈 ${infraCost(me)} · ${INFRA_EFFECT[i.type]} · 게임 종료 승점 ${i.vp}${i.unique && me.infrastructure.includes(i.type) ? ' (이미 건설)' : ''}${i.requires && !me.infrastructure.includes(i.requires) ? ` (${INFRA_LABEL[i.requires]} 먼저)` : ''}`}
           >
-            <span>{INFRA_LABEL[i.type]}</span>
-            <span className="chips">
+            <span className="infra-action-head">
+              <span>{INFRA_LABEL[i.type]}{i.unique && me.infrastructure.includes(i.type) && <span className="muted small"> (건설함)</span>}</span>
               <CostChips cost={{ money: infraCost(me) }} />
-              <span className="chip vp"><Icon name="vp" size={12} />{i.vp}</span>
+            </span>
+            {/* 무엇을 주는지: 트랙 +1(건설 즉시) / 관중석·광고판 칸 + 게임 종료 승점 (test_insight C7) */}
+            <span className="infra-action-gain">
+              {i.bonus.length > 0 ? <EffectChips effects={i.bonus} /> : <span className="infra-action-text">{i.type === 'billboard3' ? '광고판 +1칸' : '관중석 +1석'}</span>}
+              <span className="chip vp" title={`게임 종료 승점 ${i.vp}`}><Icon name="vp" size={12} />{i.vp}</span>
             </span>
           </button>
         ))}

@@ -128,6 +128,9 @@ notes/    규칙서 원본 및 텍스트 레퍼런스
   `SEAT_COLORS`. 글꼴은 IBM Plex Sans KR 한 가족. 텍스트 대신 **아이콘 칩**(`components/Icons.tsx`: SVG 아이콘
   세트 + `EffectChips`/`CostChips`/`TrackChip`/`TokenChip`)으로 효과·비용·트랙 조정을 표현하고 전체 문장은
   `title` 툴팁에 둔다. 새 효과 종류를 DSL에 추가하면 `EffectChip`에도 분기를 추가할 것.
+- **헤더 주차 표시**(test_insight C8): "N/6주" + 진행 점 6개(좁은 화면·모바일용에서는 점 숨김), 마지막 주에는 빨간 "마지막 주" 배지. 총 주 수는 `weekend.ts` `WEEKS`.
+- **시설 건설 버튼은 효과를 보여 준다**(test_insight C7): 윗줄 이름·비용, 아랫줄 얻는 것(보드 데이터 `bonus`의 트랙 칩 또는 "관중석 +1석"/"광고판 +1칸") + 승점.
+  한 줄 설명은 `labels.ts` `INFRA_EFFECT`(툴팁·확정 막대·스타디움 보드 슬롯 툴팁 공용). 시설을 추가하면 여기에도 문구를 넣을 것.
 - **카드는 룰북 실물 구도를 따른다** (`components/Cards.tsx`): 선수 = 왼쪽 열(비용 배지·역할·배치 지역
   미니 경기장) + 초상(이름 첫 글자 메달) + 역량 불꽃 + 등번호 원 + 이름 띠 + 태그 띠 + 시점 띠 + 효과 상자.
   **선수 카드 왼쪽 열의 색은 선수 종류**(사용자 요청, 2026-09): 베테랑 갈색 / 주전 남색 / 유망주 하늘색(`kind-*` 클래스).
@@ -282,6 +285,10 @@ MVP에서 **단순화 가능**한 부분: 선수/직원/임원/스폰서/이사�
   `applyAction`에 넘기고 결과를 방 전원에게 각자의 `viewFor(state, pid)`로 브로드캐스트한다.
 - `GameView`(`engine/view.ts`)는 다른 참가자의 드래프트 손패·목표 카드·전술 손패·라인업·덱 내용을 제거한다.
   카드 정의(mock 데이터 전체)는 `GET /api/cards`로 받는다.
+- **채팅**(test_insight C9): 클라이언트→서버 `chat{text}`, 서버→클라이언트 `chat{messages}`(방의 최근 100개 전체 — 입장·재접속·관전 시작 때와 새 글마다).
+  게임 상태와 별개로 `Room.chat`에 쌓이고(대기실·게임 중 공통) 참가자만 쓴다(관전자는 읽기만). 공백 정리 후 200자(`CHAT_MAX_LENGTH`), 같은 참가자 300ms 간격 제한.
+  클라이언트는 `store.chat`/`sendChat`, `components/Chat.tsx` `ChatBody`(대기실 + 오른쪽 패널의 '채팅' 탭: `ui.sideTab`, 안 읽은 수 `ui.chatSeen`·`unreadCount`,
+  모바일은 아래 탭 막대 '기록·채팅'에 배지 — 누르면 채팅 탭으로).
 - 방은 `RoomManager`(인메모리) — 코드 5자, 최대 4명, 호스트 = 생성자, 6시간 미활동 시 정리.
 
 ### 이후 확장 (2단계 이후)

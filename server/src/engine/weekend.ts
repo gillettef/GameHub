@@ -11,7 +11,7 @@ import type { GameState, PlayerState } from './state';
 const PRINTED_INFRASTRUCTURE = 4; // p.9: 관중석 2 + 광고판 2
 const UPKEEP_SUSPENSION = 2;
 export const UPKEEP_SOURCE = '유지비 미납'; // 대기 효과(pending)의 source. 이 선택이 남아 있으면 다른 액션을 막는다 (actions.ts)
-const WEEKS = 6;
+export const WEEKS = 6;
 
 // p.27: 선수/직원/기반 시설 보유 수에 따른 주말 유지비 (카드 효과 할인 반영)
 export function upkeepDue(player: Pick<PlayerState, 'roster' | 'staff' | 'executives' | 'infrastructure' | 'upkeepDiscount'>): number {

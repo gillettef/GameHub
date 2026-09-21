@@ -2,6 +2,7 @@ export {
   COLOR_LABEL,
   CONTRACT_LABEL,
   DAY_LABEL,
+  INFRA_EFFECT,
   INFRA_LABEL,
   matchDieLabel,
   RESOURCE_LABEL,

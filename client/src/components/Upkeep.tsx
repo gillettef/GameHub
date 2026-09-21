@@ -1,8 +1,8 @@
-import { upkeepDue, upkeepSuspensionPer } from '@server/engine/weekend';
+import { WEEKS, upkeepDue, upkeepSuspensionPer } from '@server/engine/weekend';
 import type { GameView, PlayerPublicView } from '@server/engine/view';
 import { Icon } from './Icons';
 
-const LAST_WEEK = 6; // 6주차 주말은 유지비 없이 게임 종료 (p.25)
+const LAST_WEEK = WEEKS; // 6주차 주말은 유지비 없이 게임 종료 (p.25)
 
 // 이번 주말에 낼 유지비와 지금 돈으로 모자라는 액수. 미납 1돈마다 직원 카드 1장에 출장정지 per 개 (p.25 3)
 export function upkeepStatus(view: GameView, p: PlayerPublicView): { due: number; short: number; suspensions: number } | null {

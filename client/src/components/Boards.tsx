@@ -5,13 +5,13 @@ import { RESOURCES, TRACK_MAX } from '@server/engine/types';
 import type { InfrastructureType, Resource } from '@server/engine/types';
 import type { PlayerPublicView } from '@server/engine/view';
 import { useCommit } from '../commit';
-import { INFRA_LABEL, RESOURCE_LABEL } from '../labels';
+import { INFRA_EFFECT, INFRA_LABEL, RESOURCE_LABEL } from '../labels';
 import { useView } from '../store';
 import { useUi } from '../ui';
 import type { BoardTab } from '../ui';
 import { objectiveLevel } from '@server/engine/objectives';
 import { ExecutiveCardView, ObjectiveCardView, OpponentCardView, PlayerCardView, SponsorCardView, StaffCardView, TacticCardView } from './Cards';
-import { Chip, Icon } from './Icons';
+import { Chip, EffectChips, Icon } from './Icons';
 import { seatColor } from './Shell';
 import { Tabs } from './Tabs';
 
@@ -107,11 +107,14 @@ function StadiumBoard({ p }: { p: PlayerPublicView }) {
   const has = (t: InfrastructureType) => p.infrastructure.includes(t);
   const infraDef = (t: InfrastructureType) => cards.boardData.infrastructure.find((d) => d.type === t)!;
   const slot = (t: InfrastructureType | undefined, key: string, label?: string) => (
-    <span key={key} className={`infra-slot${t ? ' built' : ''}`} title={t ? `${INFRA_LABEL[t]} · 승점 ${infraDef(t).vp}` : label ?? '빈 슬롯'}>
+    <span key={key} className={`infra-slot${t ? ' built' : ''}`} title={t ? `${INFRA_LABEL[t]} · ${INFRA_EFFECT[t]} · 게임 종료 승점 ${infraDef(t).vp}` : label ? `${label} (미건설)` : '빈 기반 시설 슬롯 — 주중 기본 행동으로 건설'}>
       {t ? (
         <>
           <span className="infra-name">{INFRA_LABEL[t]}</span>
-          <Chip icon="vp" value={infraDef(t).vp} />
+          <span className="chips">
+            {infraDef(t).bonus.length > 0 && <EffectChips effects={infraDef(t).bonus} />}
+            <Chip icon="vp" value={infraDef(t).vp} />
+          </span>
         </>
       ) : (
         <span className="infra-empty">{label ?? '—'}</span>
