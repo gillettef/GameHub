@@ -8,6 +8,7 @@ import { useView } from '../store';
 import { useUi } from '../ui';
 import { DiceTray } from './DiceTray';
 import { CostChips, Icon } from './Icons';
+import { UpkeepWarning } from './Upkeep';
 import { LegendButton } from './Legend';
 
 // 왼쪽 사이드바: 주사위(이사회·경기 영향), 주중 행동 목록, 아이콘 설명. 누구 차례인지는 헤더 참가자 띠의 표시가 알려준다.
@@ -40,6 +41,7 @@ export function WeekdayActions({ me }: { me: PlayerPublicView }) {
           기본 {basicDone ? '완료' : '1회'} · 유급 {paidDone ? '완료' : '가능'}
         </span>
       </div>
+      <UpkeepWarning view={view} p={me} />
       {!myTurn && <p className="muted small">내 차례가 아닙니다. 차례가 오면 활성화됩니다.</p>}
       {myTurn && restriction && (
         <p className="error small">점검용 토큰: {restriction === 'noBasic' ? '오늘은 기본 행동을 할 수 없습니다 (유급 카드 행동만 가능)' : '오늘은 카드 행동만 할 수 있습니다'}</p>

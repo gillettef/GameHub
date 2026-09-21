@@ -6,6 +6,7 @@ import { CONTRACT_LABEL, INFRA_LABEL, matchDieLabel } from './labels';
 import { acceptBoardRoll, rerollBoardDie, rollBoardDie } from './monday';
 import type { Rng } from './rng';
 import { chooseObjective, draftPick } from './setup';
+import { UPKEEP_SOURCE } from './weekend';
 import { GameError, canUndoTurn, currentDay, getPlayer, hasTurnSnapshot } from './state';
 import type { Decks, GameState, LineupSubmission, LogEntry, PlayerId } from './state';
 import type { InfrastructureType, PlayerMarketRow, SponsorContract } from './types';
@@ -49,6 +50,10 @@ export type GameAction =
   | { type: 'undoTurn' }; // 주중 내 차례를 처음 상태로 되돌린다 (차례 끝내기 전까지)
 
 function apply(state: GameState, pid: PlayerId, action: GameAction, rng: Rng): GameState {
+  // 유지비 미납 출장정지를 놓을 직원을 고르기 전에는 다른 행동을 할 수 없다 (출장정지된 직원의 행동·특성을 먼저 써 버리지 못하게)
+  if (action.type !== 'resolvePending' && state.players[pid]?.pending.some((p) => p.source === UPKEEP_SOURCE)) {
+    throw new GameError('choose staff for unpaid upkeep first');
+  }
   switch (action.type) {
     case 'draftPick':
       return draftPick(state, pid, action.cardId);

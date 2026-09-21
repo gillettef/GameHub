@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
+import { applyAction } from './actions';
 import { cards } from './cards';
 import { finalScores, leagueRank, scorePlayer, staffSetPoints } from './scoring';
+import { GameError } from './state';
 import type { GameState } from './state';
 import { gameAtMonday, seededRng } from './test-utils';
-import { runWeekend, upkeepDue } from './weekend';
+import { UPKEEP_SOURCE, runWeekend, upkeepDue } from './weekend';
 
 function ready(): GameState {
   const s = gameAtMonday();
@@ -51,8 +53,8 @@ describe('주말 (p.25)', () => {
     expect(a.resources.money).toBe(10 - due + cards.boardData.procurement.money[a.tracks.money - 1]!);
   });
 
-  it('유지비 부족분마다 직원 카드에 출장정지 2개 (없는 카드부터)', () => {
-    const s = ready();
+  it('유지비 부족분마다 직원 카드 1장을 골라 출장정지 2개: 출장정지 없는 카드 먼저, 그 뒤로는 참가자가 고른다 (p.25 3)', () => {
+    let s = ready();
     const p = s.players['a']!;
     p.staff.push({ cardId: 'st-05', exhausted: false, suspension: 1 });
     p.roster.push(...Array.from({ length: 6 }, (_, i) => ({ ...structuredClone(p.roster[0]!), instanceId: `x${i}` })));
@@ -60,10 +62,36 @@ describe('주말 (p.25)', () => {
     const due = upkeepDue(p);
     expect(due).toBeGreaterThanOrEqual(2);
     runWeekend(s, seededRng());
-    const staff = s.players['a']!.staff;
-    expect(staff[0]!.suspension).toBeGreaterThanOrEqual(2); // 출장정지 없던 카드가 먼저 받는다
-    expect(staff.reduce((n, x) => n + x.suspension, 0)).toBe(1 + 2 * due);
-    expect(Math.abs(staff[0]!.suspension - staff[1]!.suspension)).toBeLessThanOrEqual(2); // 이후엔 적은 쪽부터
+    // 출장정지 없는 직원이 하나뿐이라 첫 미납분은 자동으로 그 카드에, 나머지는 고르기를 기다린다
+    expect(s.players['a']!.staff.map((x) => x.suspension)).toEqual([2, 1]);
+    expect(s.players['a']!.pending).toHaveLength(due - 1);
+    expect(s.players['a']!.pending[0]).toMatchObject({ source: UPKEEP_SOURCE, target: 'staff', candidates: ['0', '1'] });
+    // 고르기 전에는 다른 행동을 할 수 없다
+    s.phase = { kind: 'monday.board', current: 'a', meetings: s.phase.kind === 'monday.board' ? s.phase.meetings : {} };
+    expect(() => applyAction(s, 'a', { type: 'rollBoardDie' }, seededRng())).toThrow(GameError);
+    while (s.players['a']!.pending.length > 0) {
+      s = applyAction(s, 'a', { type: 'resolvePending', pendingId: s.players['a']!.pending[0]!.id, choice: '1' }, seededRng());
+    }
+    expect(s.players['a']!.staff.map((x) => x.suspension)).toEqual([2, 1 + 2 * (due - 1)]); // 전부 두 번째 직원에 몰아 놓기로 골랐다
+    expect(() => applyAction(s, 'a', { type: 'rollBoardDie' }, seededRng())).not.toThrow();
+  });
+
+  it('유지비 미납: 출장정지 없는 직원이 여럿이면 그중에서 고르고, 직원이 한 명이면 자동', () => {
+    let s = ready();
+    const p = s.players['a']!;
+    p.staff.push({ cardId: 'st-05', exhausted: false, suspension: 0 }, { cardId: 'st-06', exhausted: false, suspension: 3 });
+    p.resources.money = upkeepDue(p) - 1; // 1돈 부족
+    runWeekend(s, seededRng());
+    expect(s.players['a']!.pending[0]).toMatchObject({ candidates: ['0', '1'] }); // 이미 출장정지가 있는 세 번째 직원은 후보가 아니다
+    s = applyAction(s, 'a', { type: 'resolvePending', pendingId: s.players['a']!.pending[0]!.id, choice: '1' }, seededRng());
+    expect(s.players['a']!.staff.map((x) => x.suspension)).toEqual([0, 2, 3]);
+
+    const solo = ready();
+    solo.players['a']!.resources.money = 0;
+    const soloDue = upkeepDue(solo.players['a']!);
+    runWeekend(solo, seededRng());
+    expect(solo.players['a']!.pending).toHaveLength(0);
+    expect(solo.players['a']!.staff[0]!.suspension).toBe(2 * soloDue);
   });
 
   it('6주차 주말에는 유지비 없이 게임 종료', () => {
