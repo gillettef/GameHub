@@ -1,9 +1,13 @@
 import { activeSide, effectiveSkill, instanceName } from '@server/engine/cards';
 import type { PlayerInstance, UniformToken } from '@server/engine/state';
-import { SECTORS } from '@server/engine/types';
-import type { Sector } from '@server/engine/types';
+import { LINE_LABEL, REGION_LABEL } from '@server/engine/labels';
+import { lineCounts, regionLimit, regionLine, regionSector } from '@server/engine/match';
+import { COLUMNS, SECTORS } from '@server/engine/types';
+import type { Column, Formation, Line, Region } from '@server/engine/types';
 import { Icon } from './Icons';
 import { SECTOR_LABEL } from '../labels';
+
+const REGION_SHORT: Record<Column, string> = { L: '레프트 윙', C: '센터', R: '라이트 윙' };
 
 // 경기 준비·진행·결과 화면이 함께 쓰는 조각: 스텝 표시줄과 잔디 위 배치판
 
@@ -34,14 +38,14 @@ interface PitchProps {
   roster: PlayerInstance[];
   field: UniformToken[]; // 필드 유니폼 토큰 (벤치 교환 반영)
   played: string[];
-  placements: Record<string, Sector>;
-  need?: Record<Sector, number>; // 포메이션이 요구하는 구획별 인원 (있으면 n/m 표시)
+  placements: Record<string, Region>;
+  formation?: Formation; // 있으면 라인별 n/m 표시 (수비-미드-공격)
   showSkill?: boolean; // 토큰에 역량 표시 (카드 없는 토큰은 1)
   skills?: Record<string, number>; // 토큰 id → 경기 판정에 실제로 쓴 역량 (결과 화면: 일시적 토큰은 경기 후 버려져 지금 카드에서는 계산할 수 없다)
   scorers?: string[]; // 득점한 토큰 id — 공 아이콘
   selected?: string | null; // 옮기려고 고른 토큰
   onToken?: (tokenId: string) => void;
-  onSector?: (sector: Sector) => void;
+  onRegion?: (region: Region) => void;
 }
 
 export function playedInstance(roster: PlayerInstance[], played: string[], token: UniformToken): PlayerInstance | undefined {
@@ -71,31 +75,49 @@ export function TokenChipView({ token, inst, showSkill, usedSkill, goals = 0, se
   );
 }
 
-// 잔디 위 5구획 배치판. onToken/onSector 가 있으면 토큰을 누르고 구획을 눌러 옮긴다(고른 선수가 갈 수 있는 구획을 밝게 표시)
-export function LineupPitch({ roster, field, played, placements, need, showSkill, skills, scorers = [], selected, onToken, onSector }: PitchProps) {
+// 잔디 위 9지역 배치판 (p.20): 위에서부터 공격·미드·수비 라인, 라인마다 레프트 윙(최대 1) · 센터(1~3) · 라이트 윙(최대 1).
+// 라인 머리에 포메이션이 요구하는 인원(n/m)을 보여 준다. onToken/onRegion 이 있으면 토큰을 누르고 지역을 눌러 옮긴다(고른 선수가 갈 수 있는 지역을 밝게 표시)
+const PITCH_LINES: readonly Line[] = ['fwd', 'mid', 'back'];
+
+export function LineupPitch({ roster, field, played, placements, formation, showSkill, skills, scorers = [], selected, onToken, onRegion }: PitchProps) {
   const selectedToken = selected ? field.find((t) => t.id === selected) : undefined;
   const selectedInst = selectedToken ? playedInstance(roster, played, selectedToken) : undefined;
   const allowed = selectedToken ? (selectedInst ? activeSide(selectedInst).zones : SECTORS) : null;
+  const need = formation && lineCounts(formation);
   return (
-    <div className={`pitch${onSector ? ' editable' : ''}`}>
-      {SECTORS.map((s) => {
-        const here = field.filter((t) => placements[t.id] === s);
-        const cls = `sector ${s}${need && here.length === need[s] ? ' ok' : ''}${need && here.length > need[s] ? ' over' : ''}${allowed ? (allowed.includes(s) ? ' allowed' : ' blocked') : ''}`;
+    <div className={`pitch regions${onRegion ? ' editable' : ''}`}>
+      {PITCH_LINES.map((line) => {
+        const inLine = field.filter((t) => placements[t.id] && regionLine(placements[t.id]!) === line).length;
         return (
-          <div key={s} className={cls} onClick={onSector && selectedToken ? () => onSector(s) : undefined}>
-            <div className="sector-title">{SECTOR_LABEL[s]} {need && <span>{here.length}/{need[s]}</span>}</div>
-            {here.map((t) => (
-              <TokenChipView
-                key={t.id}
-                token={t}
-                inst={playedInstance(roster, played, t)}
-                showSkill={showSkill || skills?.[t.id] !== undefined}
-                usedSkill={skills?.[t.id]}
-                goals={scorers.filter((id) => id === t.id).length}
-                selected={t.id === selected}
-                onClick={onToken ? () => onToken(t.id) : undefined}
-              />
-            ))}
+          <div key={line} className="pitch-line" role="group" aria-label={`${LINE_LABEL[line]} 라인`}>
+            <div className={`line-head${need ? (inLine === need[line] ? ' ok' : inLine > need[line] ? ' over' : '') : ''}`}>
+              <b>{LINE_LABEL[line]}</b>
+              <span>{need ? `${inLine}/${need[line]}` : inLine}</span>
+            </div>
+            {COLUMNS.map((col) => {
+              const region: Region = `${line}-${col}`;
+              const here = field.filter((t) => placements[t.id] === region);
+              const { min, max } = regionLimit(region);
+              const can = allowed ? allowed.includes(regionSector(region)) : null;
+              const cls = `sector region col-${col}${here.length > max ? ' over' : need && here.length >= min && here.length > 0 ? ' ok' : ''}${can === null ? '' : can ? ' allowed' : ' blocked'}`;
+              return (
+                <div key={region} className={cls} title={`${REGION_LABEL[region]} — ${col === 'C' ? '1~3명' : '최대 1명'}`} onClick={onRegion && selectedToken && can ? () => onRegion(region) : undefined}>
+                  <div className="sector-title">{REGION_SHORT[col]} <span>{here.length}/{max}</span></div>
+                  {here.map((t) => (
+                    <TokenChipView
+                      key={t.id}
+                      token={t}
+                      inst={playedInstance(roster, played, t)}
+                      showSkill={showSkill || skills?.[t.id] !== undefined}
+                      usedSkill={skills?.[t.id]}
+                      goals={scorers.filter((id) => id === t.id).length}
+                      selected={t.id === selected}
+                      onClick={onToken ? () => onToken(t.id) : undefined}
+                    />
+                  ))}
+                </div>
+              );
+            })}
           </div>
         );
       })}

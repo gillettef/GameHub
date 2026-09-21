@@ -1,13 +1,12 @@
 import { activeSide } from './cards';
 import { swapBenchTokens } from './friday';
-import { sectorCounts } from './match';
+import { LINE_LABEL, REGION_LABEL } from './labels';
+import { lineCounts, regionColumn, regionIssues, regionLimit, regionLine, regionSector } from './match';
 import type { PlayerInstance, UniformToken } from './state';
-import { SECTORS } from './types';
-import type { Formation, Sector } from './types';
+import { LINES, REGIONS } from './types';
+import type { Formation, Region, Sector } from './types';
 
 // 경기 준비 도우미. 클라이언트 UI, 봇, 테스트가 공유한다 (순수 함수)
-
-const SECTOR_NAME: Record<Sector, string> = { LW: '레프트 윙', CB: '센터 백', CM: '센터 미드', CF: '센터 포워드', RW: '라이트 윙' };
 
 // 출전 가능한 선수(부상/출장정지 없음, 등번호 중복 없음, 골키퍼는 1명)를 최대 인원 안에서 고른다
 export function eligiblePlayers(player: { roster: PlayerInstance[] }, max = Infinity): string[] {
@@ -47,45 +46,58 @@ function zonesOf(roster: PlayerInstance[], instanceId: string | undefined): Sect
   return inst ? activeSide(inst).zones : null;
 }
 
-// 허용 구획이 적은 출전 선수부터 채우고 나머지 토큰은 남는 자리에. 못 넣은 토큰은 비워둔다
-export function autoPlace(field: UniformToken[], roster: PlayerInstance[], played: string[], formation: Formation): Record<string, Sector> {
-  const need = sectorCounts(formation);
-  const placements: Record<string, Sector> = {};
+// 9지역 자동 배치 (p.20): 라인별 인원 = 포메이션, 센터 지역 1~3, 윙 지역 최대 1.
+// 허용 구획이 적은 출전 선수부터 채우고(센터가 비어 있는 라인은 센터 몫 1자리를 남겨 둔다) 나머지 토큰은 남는 자리에. 못 넣은 토큰은 비워둔다
+export function autoPlace(field: UniformToken[], roster: PlayerInstance[], played: string[], formation: Formation): Record<string, Region> {
+  const need = lineCounts(formation);
+  const count = Object.fromEntries(REGIONS.map((r) => [r, 0])) as Record<Region, number>;
+  const placements: Record<string, Region> = {};
+  const room = (r: Region): boolean => {
+    const line = regionLine(r);
+    if (need[line] <= 0 || count[r] >= regionLimit(r).max) return false;
+    // 윙 지역에 놓아도 그 라인의 빈 센터를 채울 자리가 남아야 한다
+    return regionColumn(r) === 'C' || count[`${line}-C`] > 0 || need[line] >= 2;
+  };
+  const put = (tokenId: string, r: Region) => {
+    placements[tokenId] = r;
+    count[r]++;
+    need[regionLine(r)]--;
+  };
   const carded = field.filter((u) => u.cardInstanceId && played.includes(u.cardInstanceId));
   carded.sort((a, b) => (zonesOf(roster, a.cardInstanceId)?.length ?? 9) - (zonesOf(roster, b.cardInstanceId)?.length ?? 9));
   for (const token of carded) {
-    const sector = zonesOf(roster, token.cardInstanceId)?.find((z) => need[z] > 0);
-    if (!sector) continue;
-    placements[token.id] = sector;
-    need[sector]--;
+    const zones = zonesOf(roster, token.cardInstanceId) ?? [];
+    // 카드에 적힌 구획 순서대로, 같은 구획 안에서는 자리가 많이 남은 라인부터
+    const region = zones.flatMap((z) => REGIONS.filter((r) => regionSector(r) === z && room(r)).sort((a, b) => need[regionLine(b)] - need[regionLine(a)]))[0];
+    if (region) put(token.id, region);
   }
-  // 카드 없는 토큰만 남는 자리에 채운다. 허용 구획이 없어 못 넣은 출전 선수는 미배치로 남긴다
-  for (const token of field) {
-    if (token.id in placements || (token.cardInstanceId && played.includes(token.cardInstanceId))) continue;
-    const sector = SECTORS.find((z) => need[z] > 0);
-    if (!sector) break;
-    placements[token.id] = sector;
-    need[sector]--;
+  // 카드 없는 토큰만 남는 자리에 채운다: [수비] 면 토큰은 수비 라인부터, [공격] 면 토큰은 공격 라인부터 — 라인 안에서는 센터 → 레프트 윙 → 라이트 윙.
+  // 허용 구획이 없어 못 넣은 출전 선수는 미배치로 남긴다
+  const rest = field.filter((t) => !(t.id in placements) && !(t.cardInstanceId && played.includes(t.cardInstanceId)));
+  const COLUMN_ORDER = { C: 0, L: 1, R: 2 } as const;
+  for (const token of [...rest.filter((t) => t.face === 'defense'), ...rest.filter((t) => t.face === 'attack').reverse()]) {
+    const lineOrder = token.face === 'defense' ? LINES : [...LINES].reverse();
+    const region = REGIONS.filter(room).sort((x, y) => lineOrder.indexOf(regionLine(x)) - lineOrder.indexOf(regionLine(y)) || COLUMN_ORDER[regionColumn(x)] - COLUMN_ORDER[regionColumn(y)])[0];
+    if (!region) break;
+    put(token.id, region);
   }
   return placements;
 }
 
-export function validatePlacements(field: UniformToken[], roster: PlayerInstance[], played: string[], formation: Formation, placements: Record<string, Sector>): string[] {
+export function validatePlacements(field: UniformToken[], roster: PlayerInstance[], played: string[], formation: Formation, placements: Record<string, Region>): string[] {
   const issues: string[] = [];
-  const need = sectorCounts(formation);
-  const counts: Record<Sector, number> = { LW: 0, CB: 0, CM: 0, CF: 0, RW: 0 };
+  const regions: Region[] = [];
   for (const token of field) {
-    const sector = placements[token.id];
-    if (!sector) {
+    const region = placements[token.id];
+    if (!region || !REGIONS.includes(region)) {
       issues.push(`토큰 ${token.number ?? '∅'} 미배치`);
       continue;
     }
-    counts[sector]++;
+    regions.push(region);
     const zones = token.cardInstanceId && played.includes(token.cardInstanceId) ? zonesOf(roster, token.cardInstanceId) : null;
-    if (zones && !zones.includes(sector)) issues.push(`토큰 ${token.number ?? '∅'}: ${SECTOR_NAME[sector]} 배치 불가`);
+    if (zones && !zones.includes(regionSector(region))) issues.push(`토큰 ${token.number ?? '∅'}: ${REGION_LABEL[region]} 배치 불가`);
   }
-  for (const s of SECTORS) if (counts[s] !== need[s]) issues.push(`${SECTOR_NAME[s]} ${counts[s]}/${need[s]}`);
-  return issues;
+  return [...issues, ...regionIssues(formation, regions, (r) => REGION_LABEL[r], (l) => `${LINE_LABEL[l]} 라인`)];
 }
 
 // 자동 배치가 실패한 선수를 빼가며 서버가 받아들일 라인업을 만든다

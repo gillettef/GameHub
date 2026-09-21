@@ -84,11 +84,36 @@ describe('경기 준비 제출 (p.20)', () => {
     expect(() => submitLineup(s, 'a', { ...base, tacticCardId: 'tc-99' }, seededRng())).toThrow(GameError);
     expect(() => submitLineup(s, 'a', { ...base, formationIndex: 5 }, seededRng())).toThrow(GameError);
 
-    const wrong = { ...base, placements: { ...base.placements } };
-    const [first, second] = Object.keys(wrong.placements);
-    wrong.placements[first!] = wrong.placements[second!]!;
-    wrong.placements[second!] = 'RW';
+    const wrong = { ...base, placements: Object.fromEntries(Object.keys(base.placements).map((t) => [t, 'back-C' as const])) };
     expect(() => submitLineup(s, 'a', wrong, seededRng())).toThrow(GameError);
+  });
+
+  it('9지역 배치 (p.20): 라인별 인원 = 포메이션(수비-미드-공격), 센터 지역 1~3, 윙 지역 최대 1 — 라인 안에서 나누는 방법은 참가자가 고른다', () => {
+    const s = friday();
+    const p = s.players['a']!;
+    const base = autoLineup(p, []); // 선수 카드 없이 토큰만 — 허용 구획 제약 없이 지역 규칙만 본다
+    const formation = cards.tactic(base.tacticCardId).formations[base.formationIndex]!;
+    const inLine = (pl: typeof base.placements, line: string) => Object.values(pl).filter((r) => r.startsWith(line)).length;
+    expect([inLine(base.placements, 'back'), inLine(base.placements, 'mid'), inLine(base.placements, 'fwd')]).toEqual([formation.defenders, formation.midfielders, formation.forwards]);
+    expect(() => submitLineup(s, 'a', base, seededRng())).not.toThrow();
+
+    const tokensAt = (region: string) => Object.keys(base.placements).filter((t) => base.placements[t] === region);
+    const move = (tokenId: string, region: (typeof base.placements)[string]) => ({ ...base, placements: { ...base.placements, [tokenId]: region } });
+    // 수비 라인(4명 이상)은 센터 3 + 윙으로 자동 배치된다. 센터의 한 명을 비어 있는 윙으로 옮겨도(센터 2 + 양 윙) 유효하다
+    expect(formation.defenders).toBeGreaterThanOrEqual(4);
+    const backCenter = tokensAt('back-C');
+    const emptyWing = (['back-L', 'back-R'] as const).find((r) => tokensAt(r).length === 0);
+    if (emptyWing) expect(() => submitLineup(s, 'a', move(backCenter[0]!, emptyWing), seededRng())).not.toThrow();
+    // 윙 지역에는 1명까지
+    const fullWing = (['back-L', 'back-R'] as const).find((r) => tokensAt(r).length === 1)!;
+    expect(() => submitLineup(s, 'a', move(backCenter[0]!, fullWing), seededRng())).toThrow('formation mismatch');
+    // 라인 인원이 포메이션과 다르면 거부 (수비 한 명을 미드로)
+    expect(() => submitLineup(s, 'a', move(backCenter[0]!, 'mid-C'), seededRng())).toThrow('formation mismatch');
+    // 센터 지역을 비울 수 없다 (공격 라인의 센터를 모두 윙으로)
+    const fwdCenter = tokensAt('fwd-C');
+    if (fwdCenter.length === 1 && tokensAt('fwd-L').length === 0) expect(() => submitLineup(s, 'a', move(fwdCenter[0]!, 'fwd-L'), seededRng())).toThrow('formation mismatch');
+    // 없는 지역 이름
+    expect(() => submitLineup(s, 'a', move(backCenter[0]!, 'CB' as never), seededRng())).toThrow('invalid region');
   });
 
   it('골키퍼는 1명만 출전한다 — 등번호 없는 훈련 전 유망주 골키퍼도 포함 (사용자 제보 2026-09)', () => {
@@ -316,7 +341,7 @@ describe('경기 진행: 전술 효과 카드 (p.21 8, p.28)', () => {
     const base = withAttackers();
     const plain = aftermath(skipTacticEffects(structuredClone(base), seededRng(1)));
     const done = aftermath(skipTacticEffects(playCard(base, 'tc-08'), seededRng(1)));
-    const cm = Object.keys(plain.skills).filter((t) => plain.placements[t] === 'CM');
+    const cm = Object.keys(plain.skills).filter((t) => plain.placements[t] === 'mid-C');
     expect(cm.length).toBeGreaterThan(0);
     for (const t of Object.keys(plain.skills)) expect(done.skills[t]).toBe(plain.skills[t]! + (cm.includes(t) ? 1 : 0));
   });

@@ -4,8 +4,9 @@ import type { Rng } from './rng';
 import { GameError, addLog, emptyTokens, getPlayer } from './state';
 import type { GameState, MatchMods, PendingTarget, PlayerId, PlayerInstance, PlayerState } from './state';
 import { traitSum } from './traits';
+import { regionSector } from './match';
 import { TRACK_MAX, TRACK_MIN } from './types';
-import type { Effect, MarketRow, MatchCondition, PlayerToken, Sector, Track } from './types';
+import type { Effect, MarketRow, MatchCondition, PlayerToken, Region, Sector, Track } from './types';
 import { assignUniform, releaseUniform } from './uniforms';
 
 // p.7: 5를 넘기면 이동 대신 보드에 표시된 자원 획득, 1 아래로 내려가면 표시된 자원 손실 (트랙마다 다른 자원)
@@ -80,7 +81,7 @@ export interface MatchContext {
   myGoals: number;
   theirGoals: number;
   sectorGoals: Partial<Record<Sector, number>>; // 내 구획별 득점 (post)
-  placements: Record<string, Sector>; // 필드 토큰 id → 구획
+  placements: Record<string, Region>; // 필드 토큰 id → 지역
   opponentTeamId: string;
 }
 
@@ -221,7 +222,7 @@ export function checkCondition(state: GameState, pid: PlayerId, cond: MatchCondi
     case 'inSector': {
       if (!inst) return false;
       const token = getPlayer(state, pid).uniforms.find((u) => u.cardInstanceId === inst.instanceId);
-      return !!token && match.placements[token.id] === cond.sector;
+      return !!token && !!match.placements[token.id] && regionSector(match.placements[token.id]!) === cond.sector;
     }
     case 'outcome':
       if (match.stage === 'pre') return 'defer';

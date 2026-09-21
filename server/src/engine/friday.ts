@@ -1,14 +1,14 @@
 import { activeSide, cards, effectiveSkill, instanceName, tokenLabel } from './cards';
 import { applyEffects, moveTrack, trainPlayer } from './effects';
 import type { EffectContext, MatchContext } from './effects';
-import { resolveMatch, sectorCounts } from './match';
+import { regionIssues, regionSector, resolveMatch } from './match';
 import type { MatchReport, Slot, TeamSide } from './match';
 import { matchDieResult } from './matchDie';
 import type { Rng } from './rng';
 import { GameError, addLog, currentInjuryDie, emptyMods, getPlayer, nextInTurn, requireTurn } from './state';
 import type { GameState, InjuryDie, LineupSubmission, MatchAftermath, MatchMods, PlayerId, PlayerInstance, PlayerState } from './state';
 import { hasTrait, lineupStaminaCost, traitCount, traitSum } from './traits';
-import { RESOURCES, SECTORS } from './types';
+import { REGIONS, RESOURCES, SECTORS } from './types';
 import { runWeekend } from './weekend';
 import type { Cost, Effect, MatchTiming, OpponentTeamCard, PlayerEffect, Resources, Sector } from './types';
 
@@ -84,18 +84,17 @@ function validateLineup(player: PlayerState, sub: LineupSubmission): { players: 
   if (placedIds.length !== field.length || field.some((u) => !(u.id in sub.placements))) {
     throw new GameError('placements must cover exactly the field tokens');
   }
-  const counts: Record<Sector, number> = { LW: 0, CB: 0, CM: 0, CF: 0, RW: 0 };
+  // 9지역 배치 (p.20): 라인별 인원 = 포메이션, 센터 지역 1~3, 윙 지역 최대 1. 선수 카드는 허용 구획에 속한 지역에만
   for (const token of field) {
-    const sector = sub.placements[token.id]!;
-    if (!SECTORS.includes(sector)) throw new GameError(`invalid sector ${sector}`);
-    counts[sector]++;
+    const region = sub.placements[token.id]!;
+    if (!REGIONS.includes(region)) throw new GameError(`invalid region ${region}`);
     if (token.cardInstanceId && sub.players.includes(token.cardInstanceId)) {
       const zones = activeSide(instanceOf(player, token.cardInstanceId)).zones;
-      if (!zones.includes(sector)) throw new GameError(`${token.cardInstanceId} cannot play in ${sector}`);
+      if (!zones.includes(regionSector(region))) throw new GameError(`${token.cardInstanceId} cannot play in ${region}`);
     }
   }
-  const required = sectorCounts(formation);
-  for (const s of SECTORS) if (counts[s] !== required[s]) throw new GameError(`formation requires ${required[s]} in ${s}, got ${counts[s]}`);
+  const issues = regionIssues(formation, field.map((u) => sub.placements[u.id]!), (r) => r, (l) => l);
+  if (issues.length > 0) throw new GameError(`formation mismatch: ${issues.join(', ')}`);
 
   const stands = sub.fandomInStands ?? 0;
   if (stands < 0 || stands > standsCount(player)) throw new GameError('too many fandom in stands');
@@ -224,7 +223,7 @@ function buildSide(player: PlayerState, sub: LineupSubmission, played: PlayerIns
   const playedIds = new Set(played.map((p) => p.instanceId));
   for (const token of player.uniforms.filter((u) => u.location === 'field')) {
     const inst = token.cardInstanceId && playedIds.has(token.cardInstanceId) ? instanceOf(player, token.cardInstanceId) : null;
-    const sector = sub.placements[token.id]!;
+    const sector = regionSector(sub.placements[token.id]!);
     sectors[sector].push({ id: token.id, role: token.face, skill: Math.max(0, (inst ? effectiveSkill(inst) : 1) + (mods.sectorSkill[sector] ?? 0)) });
   }
   const gk = played.find((p) => activeSide(p).goalkeeper);
