@@ -115,8 +115,11 @@ function candidatesFor(state: GameState, player: PlayerState, effect: Effect, ct
     case 'removePlayerToken':
       if (effect.target === 'self') return self((p) => p.tokens[effect.token] > 0);
       return players(player.roster.filter((p) => p.tokens[effect.token] > 0).map((p) => p.instanceId));
-    case 'addStaffSuspension':
-      return { target: 'staff', candidates: player.staff.map((_, i) => String(i)) };
+    case 'addStaffSuspension': {
+      const all = player.staff.map((_, i) => String(i));
+      const clean = all.filter((i) => player.staff[Number(i)]!.suspension === 0);
+      return { target: 'staff', candidates: effect.unsuspendedFirst && clean.length > 0 ? clean : all };
+    }
     case 'discardMarketCard':
       return { target: 'market', candidates: state.market[effect.row].map((_, i) => String(i)), row: effect.row };
     case 'flipUnmatchedToken':
@@ -366,7 +369,9 @@ export function resolvePending(state: GameState, pid: PlayerId, pendingId: strin
 function refreshPending(state: GameState, player: PlayerState, rng: Rng): void {
   for (const p of [...player.pending]) {
     const found = candidatesFor(state, player, p.effect, {});
-    const cands = (found?.candidates ?? []).filter((c) => p.candidates.includes(c));
+    // 유지비 미납(unsuspendedFirst)은 앞선 선택으로 '출장정지 없는 직원'이 바뀌므로 후보를 새로 계산한 그대로 쓴다
+    const keepAll = p.effect.type === 'addStaffSuspension' && p.effect.unsuspendedFirst;
+    const cands = (found?.candidates ?? []).filter((c) => keepAll || p.candidates.includes(c));
     if (cands.length >= 2) {
       p.candidates = cands;
       continue;

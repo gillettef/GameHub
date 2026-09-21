@@ -131,7 +131,7 @@ export function PlayerCardView({ cardId, instance, ...props }: { cardId: string;
 export function StaffCardView({ cardId, exhausted, suspension, ...props }: { cardId: string; exhausted?: boolean; suspension?: number } & CardProps) {
   const card = cards.staff(cardId);
   return (
-    <Card className={`staff set-${card.set}${exhausted ? ' exhausted' : ''}`} {...props}>
+    <Card className={`staff set-${card.set}${exhausted ? ' exhausted' : ''}${suspension ? ' suspended' : ''}`} {...props}>
       <div className="staff-head">
         <span className="name clamp1">{card.name}</span>
         <span className="job">{card.job}{card.minPlayers === 3 && ' · 3인+'}</span>
@@ -149,7 +149,11 @@ export function StaffCardView({ cardId, exhausted, suspension, ...props }: { car
         <div className="pc-main">
           <div className="pc-top short">
             <Portrait name={card.name} tone={`set-${card.set}`} />
-            {suspension ? <span className="corner-bottom-right"><TokenChip token="suspension" count={suspension} /></span> : null}
+            {suspension ? (
+              <span className="suspended-band" title={`출장정지 ${suspension}개: 행동·특성을 쓸 수 없고 세트 승점에서 빠집니다. 경기마다 1개씩 제거되고, 게임이 끝날 때 남은 1개마다 승점 −1`}>
+                <Icon name="suspension" size={13} />출장정지 ×{suspension}
+              </span>
+            ) : null}
           </div>
           <div className="rb-box">
             {card.bonus && <EffectRow label="보너스" text={describeEffects(card.bonus)} effects={card.bonus} />}

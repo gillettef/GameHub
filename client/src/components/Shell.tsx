@@ -12,6 +12,7 @@ import { useUi } from '../ui';
 import type { MarketTab } from '../ui';
 import { PlayerCardView, SponsorCardView, StaffCardView } from './Cards';
 import { CostChips, Icon, TrackGlyph } from './Icons';
+import { UpkeepChip } from './Upkeep';
 import { SponsorContractModal } from './Sponsor';
 import { Tabs } from './Tabs';
 
@@ -79,6 +80,7 @@ function SeatResources({ id, counts = true }: { id: PlayerId; counts?: boolean }
       ))}
       <span className="res sub" title="리그 성적표 위치"><Icon name="goal" size={14} />{view.league.players[id]}</span>
       <span className="res sub" title="승점 토큰"><Icon name="vp" size={14} />{p.vp}</span>
+      <UpkeepChip view={view} p={p} />
       {counts && <span className="res sub" title="선수 수 · 직원 수">선수 {p.roster.length} · 직원 {p.staff.length}</span>}
     </span>
   );
@@ -309,7 +311,9 @@ export function PendingModal() {
             : e.type === 'releasePlayer'
               ? '방출할 선수를 고르세요 (방출 행동과 같은 보상)'
               : e.type === 'addStaffSuspension'
-                ? `출장정지 ${e.count}개를 받을 직원 카드를 고르세요`
+                ? e.unsuspendedFirst
+                  ? `유지비를 다 내지 못했습니다. 못 낸 1돈마다 직원 카드 1장에 출장정지 ${e.count}개를 놓습니다 — 받을 직원을 고르세요 (출장정지가 없는 직원이 있으면 그중에서). 출장정지된 직원은 행동·특성·세트 승점을 쓸 수 없고, 경기마다 1개씩 빠집니다.`
+                  : `출장정지 ${e.count}개를 받을 직원 카드를 고르세요`
                 : e.type === 'discardMarketCard'
                   ? '버릴 이적 시장 카드를 고르세요 (남은 카드는 오른쪽으로 밀리고 왼쪽이 보충됩니다)'
                   : e.type === 'flipUnmatchedToken'

@@ -12,6 +12,7 @@ import { useCommit } from '../commit';
 import { useDevice } from '../device';
 import { CostChips, Icon, ResourceChip } from '../components/Icons';
 import { TurnBanner } from '../components/Turn';
+import { UpkeepWarning } from '../components/Upkeep';
 import { SECTOR_LABEL, matchDieLabel } from '../labels';
 import { useGame } from '../store';
 import { useRevealedRoll } from '../ui';
@@ -200,6 +201,7 @@ export function FridayPrepareScreen() {
           <div className="step">
             <h3>관중석 <span className="muted">{standsCount(me)}석 · 놓은 <Icon name="fandom" size={12} />만큼 경기 후 <Icon name="money" size={12} /></span></h3>
             <input type="number" min={0} max={Math.min(standsCount(me), me.resources.fandom)} value={stands} onChange={(e) => setStands(Number(e.target.value))} />
+            <UpkeepWarning view={view} p={me} />
           </div>
 
           <div className="submit-row">

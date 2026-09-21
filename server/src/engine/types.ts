@@ -81,7 +81,8 @@ export type Effect =
   | { type: 'flipUnmatchedToken'; count: number } // 카드 없는 필드 유니폼 토큰 N개를 뒤집는다 (대상 선택, 영구)
   // ---- 그 밖의 대상 선택·상태 효과 ----
   | { type: 'discardMarketCard'; row: MarketRow } // 이적 시장 카드 1장을 골라 버리고 보충
-  | { type: 'addStaffSuspension'; count: number } // 직원 카드 1장을 골라 출장정지 N개
+  // 직원 카드 1장을 골라 출장정지 N개. unsuspendedFirst = 출장정지 없는 직원이 있으면 그중에서만 (p.25 3 유지비 미납)
+  | { type: 'addStaffSuspension'; count: number; unsuspendedFirst?: boolean }
   | { type: 'releasePlayer' } // 선수 카드 1장을 골라 방출 행동으로 처리
   | { type: 'restrictDay'; day: 'tue' | 'wed' | 'thu'; week: 'this' | 'next'; mode: DayRestriction }
   | { type: 'breakNamingSponsor'; otherwise: Effect[] } // 유니폼 스폰서가 있으면 버리고 그 카드의 장내 방송 효과, 없으면 otherwise
