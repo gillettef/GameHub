@@ -39,7 +39,7 @@ function savePrefs(prefs: NotifyPrefs): void {
 export function myTask(view: GameView): string | null {
   const me = view.players[view.me];
   if (!me) return null;
-  if (me.pending.length > 0) return '효과 대상을 고르세요';
+  if (me.pending.length > 0) return me.pending[0]!.target === 'die' ? '카드 효과 주사위를 굴리세요' : '효과 대상을 고르세요';
   const phase = view.phase;
   switch (phase.kind) {
     case 'setup.draft':

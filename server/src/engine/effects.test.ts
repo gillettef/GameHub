@@ -232,20 +232,47 @@ describe('applyEffects', () => {
     const p = s.players['a']!;
     const fixed = (face: number): Rng => ({ float: () => rng.float(), int: (n) => rng.int(n), shuffle: (a) => rng.shuffle(a), die: () => face });
     const effect: Effect = { type: 'rollDie', atMost: 2, effects: [{ type: 'gainVP', amount: 1 }], otherwise: [{ type: 'gainResource', resource: 'money', amount: 1 }] };
+    // 참가자가 직접 굴린다: 효과는 대기 효과(target 'die')로 쌓이고 roll → apply 로 처리한다 (사용자 요청 2026-09)
+    const rollAndApply = (face: number) => {
+      const pending = p.pending.find((x) => x.target === 'die')!;
+      expect(pending.candidates).toEqual(['roll']);
+      resolvePending(s, 'a', pending.id, 'roll', fixed(face));
+      expect(pending.roll).toBe(face);
+      resolvePending(s, 'a', pending.id, 'apply', fixed(face));
+    };
     applyEffects(s, 'a', [effect], 'v', {}, fixed(2));
+    expect(p.vp).toBe(0); // 굴리기 전에는 아무 일도 없다
+    rollAndApply(2);
     expect(p.vp).toBe(1);
     const money = p.resources.money;
-    applyEffects(s, 'a', [effect], 'v', {}, fixed(5));
+    applyEffects(s, 'a', [effect], 'v');
+    rollAndApply(5);
     expect(p.vp).toBe(1);
     expect(p.resources.money).toBe(money + 1);
     expect(s.log.some((l) => l.text.includes('주사위 5'))).toBe(true);
     // 주사위로 자기 훈련 (베테랑 강제 훈련)
     const inst = p.roster[0]!;
-    applyEffects(s, 'a', [{ type: 'rollDie', atMost: 3, effects: [{ type: 'trainPlayer', count: 1, target: 'self' }] }], 'v', { inst }, fixed(4));
+    const train: Effect = { type: 'rollDie', atMost: 3, effects: [{ type: 'trainPlayer', count: 1, target: 'self' }] };
+    applyEffects(s, 'a', [train], 'v', { inst });
+    rollAndApply(4);
     expect(inst.trained).toBe(false);
-    applyEffects(s, 'a', [{ type: 'rollDie', atMost: 3, effects: [{ type: 'trainPlayer', count: 1, target: 'self' }] }], 'v', { inst }, fixed(3));
+    applyEffects(s, 'a', [train], 'v', { inst });
+    rollAndApply(3);
     expect(inst.trained).toBe(true);
-    expect(() => applyEffects(s, 'a', [{ type: 'rollDie', atMost: 2, effects: [] }], 'v')).toThrow(GameError); // rng 없이 호출하면 실패
+    expect(p.pending).toHaveLength(0);
+    // 팬덤 1개로 다시 굴릴 수 있다 (p.12: 자기 주사위). 팬덤이 없으면 적용만
+    p.resources.fandom = 1;
+    applyEffects(s, 'a', [effect], 'v');
+    const pending = p.pending.find((x) => x.target === 'die')!;
+    expect(() => resolvePending(s, 'a', pending.id, 'apply', fixed(1))).toThrow(GameError); // 굴리기 전에는 적용할 수 없다
+    resolvePending(s, 'a', pending.id, 'roll', fixed(6));
+    expect(pending.candidates).toEqual(['apply', 'reroll']);
+    resolvePending(s, 'a', pending.id, 'reroll', fixed(1));
+    expect(p.resources.fandom).toBe(0);
+    expect(pending.roll).toBe(1);
+    expect(pending.candidates).toEqual(['apply']);
+    resolvePending(s, 'a', pending.id, 'apply', fixed(1));
+    expect(p.vp).toBe(2);
   });
 
   it('text 효과는 로그에만 남긴다', () => {

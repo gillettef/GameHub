@@ -450,7 +450,10 @@ MVP에서 **단순화 가능**한 부분: 선수/직원/임원/스폰서/이사�
   주는 행동(`peekOpponent`·`text`)을 쓰지 않는다.
 - **자기 자신 대상 `target: 'self'`**(`trainPlayer`/`addPlayerToken`/`removePlayerToken`): 효과를 가진 선수 카드 자신만 후보
   (`EffectContext.inst`, 없으면 무시) — "이 선수에 부상", "이 선수를 훈련". **주사위 효과 `rollDie{atMost, effects, otherwise?}`**:
-  d6을 굴려 눈이 atMost 이하면 effects, 아니면 otherwise. `rng`가 없으면 `GameError`. 베테랑의 강제 페널티에 쓴다.
+  d6 눈이 atMost 이하면 effects, 아니면 otherwise. 베테랑의 강제 페널티에 쓴다. **시스템이 몰래 굴리지 않고 참가자가 직접 굴린다**(사용자 요청 2026-09, "굴려졌는지 알기 어렵다"):
+  `applyEffects`는 굴리지 않고 대기 효과 `PendingEffect{target: 'die', candidates: ['roll'], instId}`를 쌓고, `resolvePending`의 choice 가 `roll`(굴림 → `pending.roll`에 눈, 후보가 `apply`/`reroll`로 바뀜) →
+  `reroll`(팬덤 1개, p.12 자기 주사위 재굴림) → `apply`(눈에 따라 effects/otherwise 적용, "이 선수" 대상은 `instId`로 복원) 순으로 처리한다(`effects.ts` `resolveDie`). 클라이언트는 `EffectDieModal`(Shell.tsx):
+  그 선수 카드 + 눈 범위별 결과 표 + 큰 주사위 + 굴리기/결과 적용/다시 굴리기. 봇·`settlePending`은 roll → apply. `refreshPending`은 주사위 대기 효과를 건드리지 않는다.
   `trainPlayer.withTokens`는 훈련한 그 선수에게 토큰을 함께 놓는다(첫 번째 트레이너 "혹독한 훈련").
 - **토큰 효과 `spread`**: `addPlayerToken`/`removePlayerToken`의 `spread: true`는 count개를 1개씩 대상을 골라 나눠
   적용한다("약점을 3개까지 버립니다" 류, 스폰서 추가 보너스·이사회 '전 선수단 일괄'). 없으면 한 카드에 count개("선수 카드

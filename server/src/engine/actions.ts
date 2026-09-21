@@ -135,6 +135,7 @@ function describe(before: GameState, after: GameState, pid: PlayerId, action: Ga
     case 'resolvePending': {
       const pending = player.pending.find((p) => p.id === action.pendingId);
       const c = action.choice;
+      if (pending?.target === 'die') return null; // 굴림·재굴림 결과는 effects.ts 가 기록한다
       const label =
         pending?.target === 'staff'
           ? (player.staff[Number(c)] ? cards.staff(player.staff[Number(c)]!.cardId).name : c)

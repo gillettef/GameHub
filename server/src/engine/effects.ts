@@ -2,7 +2,7 @@ import { activeSide, cards, effectiveSkill, instanceName } from './cards';
 import { discardFromMarket } from './market';
 import type { Rng } from './rng';
 import { GameError, addLog, emptyTokens, getPlayer } from './state';
-import type { GameState, MatchMods, PendingTarget, PlayerId, PlayerInstance, PlayerState } from './state';
+import type { GameState, MatchMods, PendingEffect, PendingTarget, PlayerId, PlayerInstance, PlayerState } from './state';
 import { traitSum } from './traits';
 import { regionSector } from './match';
 import { TRACK_MAX, TRACK_MIN } from './types';
@@ -339,13 +339,11 @@ export function applyEffects(state: GameState, pid: PlayerId, effects: readonly 
       case 'upkeepDiscount':
         player.upkeepDiscount += effect.amount;
         break;
-      case 'rollDie': {
-        const face = (rng ?? noRng()).die(6);
-        const hit = face <= effect.atMost;
-        addLog(state, `${source}: 주사위 ${face} (${effect.atMost} 이하면 적용) → ${hit ? '적용' : effect.otherwise?.length ? '대신 다른 효과' : '적용 안 함'}`, { actor: pid });
-        applyEffects(state, pid, hit ? effect.effects : (effect.otherwise ?? []), source, ctx, rng);
+      case 'rollDie':
+        // 시스템이 몰래 굴리지 않는다 (사용자 요청 2026-09: "굴려졌는지 알기 어렵다"): 대기 효과로 쌓아 두고 참가자가 직접 굴린다 — resolveDie
+        player.pending.push({ id: `${source}#${player.pending.length}#die`, effect, source, target: 'die', candidates: ['roll'], instId: ctx.inst?.instanceId });
+        addLog(state, `${source}: 주사위를 굴려야 함 (${effect.atMost} 이하면 적용)`, { actor: pid });
         break;
-      }
       case 'peekOpponent':
         if (player.opponentDeck.length === 0) {
           addLog(state, `${source}: 확인할 상대 팀 카드가 없음`, { actor: pid });
@@ -385,8 +383,35 @@ export function resolvePending(state: GameState, pid: PlayerId, pendingId: strin
   if (idx < 0) throw new GameError(`unknown pending effect: ${pendingId}`);
   const pending = player.pending[idx]!;
   if (!pending.candidates.includes(choice)) throw new GameError('invalid target');
+  if (pending.target === 'die') {
+    resolveDie(state, player, pending, choice, rng);
+    return;
+  }
   applyTargeted(state, player, pending.effect, choice, rng);
   player.pending.splice(idx, 1);
+  refreshPending(state, player, rng);
+}
+
+// 카드 효과 주사위 (rollDie): roll = 굴림 → 눈을 보여 주고 apply(결과 적용) 또는 reroll(팬덤 1개로 재굴림, p.12 — 자기 주사위)
+function resolveDie(state: GameState, player: PlayerState, pending: PendingEffect, choice: string, rng: Rng): void {
+  const effect = pending.effect;
+  if (effect.type !== 'rollDie') throw new GameError('not a die effect');
+  const outcome = (face: number) => (face <= effect.atMost ? '적용' : effect.otherwise?.length ? '대신 다른 효과' : '적용 안 함');
+  const options = () => (player.resources.fandom >= 1 ? ['apply', 'reroll'] : ['apply']);
+  if (choice === 'roll' || choice === 'reroll') {
+    if (choice === 'reroll') {
+      if (player.resources.fandom < 1) throw new GameError('not enough fandom to reroll');
+      player.resources.fandom -= 1;
+    }
+    pending.roll = rng.die(6);
+    pending.candidates = options();
+    addLog(state, `${pending.source}: ${choice === 'reroll' ? '팬덤 1개로 다시 굴림 → ' : ''}주사위 ${pending.roll} (${effect.atMost} 이하면 적용) → ${outcome(pending.roll)}`, { actor: player.id });
+    return;
+  }
+  const face = pending.roll!;
+  player.pending.splice(player.pending.indexOf(pending), 1);
+  const inst = pending.instId ? player.roster.find((r) => r.instanceId === pending.instId) : undefined;
+  applyEffects(state, player.id, face <= effect.atMost ? effect.effects : (effect.otherwise ?? []), pending.source, { inst }, rng);
   refreshPending(state, player, rng);
 }
 
@@ -394,6 +419,7 @@ export function resolvePending(state: GameState, pid: PlayerId, pendingId: strin
 // 후보를 다시 계산해 0이면 버리고 1이면 자동 적용한다. 원래 후보 밖으로 넓어지지는 않는다(출전 공격수 한정 등 맥락 필터 유지)
 function refreshPending(state: GameState, player: PlayerState, rng: Rng): void {
   for (const p of [...player.pending]) {
+    if (p.target === 'die') continue; // 주사위 대기 효과는 후보 계산 대상이 아니다
     // 출전 공격수 한정(only: 'playedAttack')은 경기 맥락이 있어야 후보가 나온다. 원래 후보가 곧 출전 선수였으므로 그것을 맥락으로 준다
     // (빈 맥락으로 다시 계산하면 후보가 0이 되어 남은 선택이 말없이 사라졌다)
     const found = candidatesFor(state, player, p.effect, { played: p.candidates });

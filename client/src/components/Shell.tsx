@@ -8,7 +8,7 @@ import { hireCost, marketMinIndex, prospectCost } from '@server/engine/traits';
 import { WEEKS } from '@server/engine/weekend';
 import { useCommit } from '../commit';
 import { DeviceToggle, useDevice } from '../device';
-import { DAY_LABEL, RESOURCE_LABEL, SEAT_COLORS, TOKEN_LABEL, phaseLabel } from '../labels';
+import { DAY_LABEL, RESOURCE_LABEL, SEAT_COLORS, TOKEN_LABEL, describeEffects, phaseLabel } from '../labels';
 import { NotifyToggles } from '../notify';
 import { useStore, useView } from '../store';
 import { useUi } from '../ui';
@@ -368,12 +368,57 @@ export function ActionLog() {
 }
 
 // 효과 대상 선택 모달: 선수를 눌러 고르고 확정. 취소는 선택만 지운다(대상 선택 자체는 건너뛸 수 없다)
+// 카드 효과 주사위 (rollDie — 베테랑의 강제 경기 후 효과 등): 시스템이 몰래 굴리지 않고 참가자가 직접 굴린다 (사용자 요청 2026-09).
+// 굴리기 → 눈과 결과를 보여 줌 → "결과 적용" 또는 팬덤 1개로 다시 굴리기 (p.12 자기 주사위 재굴림)
+function EffectDieModal() {
+  const { view, session, act } = useStore();
+  const me = view && session ? view.players[session.playerId] : undefined;
+  const pending = me?.pending[0];
+  if (!me || !pending || pending.effect.type !== 'rollDie') return null;
+  const e = pending.effect;
+  const inst = pending.instId ? me.roster.find((r) => r.instanceId === pending.instId) : undefined;
+  const rolled = pending.roll !== undefined;
+  const hit = rolled && pending.roll! <= e.atMost;
+  const send = (choice: string) => act({ type: 'resolvePending', pendingId: pending.id, choice });
+  const onHit = describeEffects(e.effects);
+  const onMiss = e.otherwise?.length ? describeEffects(e.otherwise) : '아무 일도 없음';
+  return (
+    <div className="modal-backdrop">
+      <div className="modal effect-die-modal" role="dialog" aria-label="카드 효과 주사위">
+        <h2>주사위 굴리기 — {pending.source}{me.pending.length > 1 ? ` (${me.pending.length}번 남음)` : ''}</h2>
+        <div className="effect-die-body">
+          {inst && <PlayerCardView cardId={inst.cardId} instance={inst} />}
+          <div className="effect-die-side">
+            <ul className="effect-die-rule">
+              <li className={rolled && hit ? 'now' : ''}><span className="die-range">1~{e.atMost}</span> {onHit}</li>
+              <li className={rolled && !hit ? 'now' : ''}><span className="die-range">{e.atMost + 1}~6</span> {onMiss}</li>
+            </ul>
+            <div className="effect-die-roll">
+              <span key={pending.roll ?? 'none'} className={`big-die effect-die${rolled ? ' rolled' : ''}`}>{rolled ? pending.roll : '?'}</span>
+              <span className="effect-die-result">{rolled ? (hit ? <b>적용: {onHit}</b> : <b>{onMiss}</b>) : '아직 굴리지 않았습니다'}</span>
+            </div>
+          </div>
+        </div>
+        <div className="modal-actions">
+          {rolled && pending.candidates.includes('reroll') && (
+            <button className="ghost small" onClick={() => send('reroll')} title="팬덤 1개를 내고 다시 굴립니다 (p.12)">
+              <Icon name="fandom" size={12} />−1 다시 굴리기
+            </button>
+          )}
+          {rolled ? <button className="primary" onClick={() => send('apply')}>결과 적용</button> : <button className="primary" onClick={() => send('roll')}><Icon name="die" size={14} />주사위 굴리기</button>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function PendingModal() {
   const { view, session, act } = useStore();
   const [pick, setPick] = useState<string | null>(null);
   const me = view && session ? view.players[session.playerId] : undefined;
   const pending = me?.pending[0];
   if (!me || !pending || !view) return null;
+  if (pending.target === 'die') return <EffectDieModal key={pending.id} />;
   const picked = pick && pending.candidates.includes(pick) ? pick : null;
   const target = pending.target;
   const row = pending.row ?? 'players';
