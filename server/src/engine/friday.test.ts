@@ -45,6 +45,7 @@ describe('경기 준비 제출 (p.20)', () => {
     expect(s.phase.kind).toBe('friday.aftermath');
     expect(s.players['a']!.resources.money).toBe(5 + 2);
     expect(s.players['a']!.opponentDeck).toHaveLength(5);
+    expect(s.players['a']!.matchHistory).toMatchObject([{ week: s.week }]); // 목표 카드 판정용 경기 기록 (p.27)
   });
 
   it('관중석 수 = 인쇄 2 + 3번/4번 관중석', () => {

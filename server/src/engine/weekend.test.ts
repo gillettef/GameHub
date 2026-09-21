@@ -114,7 +114,7 @@ describe('게임 종료 승점 (p.26)', () => {
     expect(score.infrastructure).toBe(2); // p.26 예시: 관중석 2개 = 2승점
     expect(score.office).toBe(5);
     expect(score.suspensions).toBe(-1);
-    expect(score.total).toBe(15 + 10 + score.staffSets + 2 + 5 - 1);
+    expect(score.total).toBe(15 + 10 + score.staffSets + 2 + 5 - 1 + score.objective);
   });
 
   it('동점이면 리그 순위, 그래도 같으면 공동 승리', () => {

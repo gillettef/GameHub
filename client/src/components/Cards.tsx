@@ -303,8 +303,8 @@ export function TacticCardView({ cardId, ...props }: { cardId: string } & CardPr
   );
 }
 
-// 목표 카드: 큰 별 + 목표/완벽 2단
-export function ObjectiveCardView({ cardId, ...props }: { cardId: string } & CardProps) {
+// 목표 카드: 큰 별 + 목표/완벽 2단. level(0/1/2)을 주면 지금 달성한 단에 ✓ 를 붙인다
+export function ObjectiveCardView({ cardId, level, ...props }: { cardId: string; level?: 0 | 1 | 2 } & CardProps) {
   const card = cards.objective(cardId);
   return (
     <Card className="objective" {...props}>
@@ -313,12 +313,12 @@ export function ObjectiveCardView({ cardId, ...props }: { cardId: string } & Car
         <span className="name clamp2">{card.name}</span>
       </div>
       <div className="objective-desc clamp2" title={card.description}>{card.description}</div>
-      <div className="objective-tier">
-        <span className="tier-label">목표 <Chip icon="vp" value="+2" /></span>
+      <div className={`objective-tier${level !== undefined && level >= 1 ? ' met' : ''}`}>
+        <span className="tier-label">목표 <Chip icon="vp" value="+2" />{level !== undefined && level >= 1 && <span className="tier-met" title="지금 상태로 달성">✓ 달성</span>}</span>
         <span className="tier-text clamp3" title={card.goal}>{card.goal}</span>
       </div>
-      <div className="objective-tier perfect">
-        <span className="tier-label">완벽 <Chip icon="vp" value="+2" /></span>
+      <div className={`objective-tier perfect${level === 2 ? ' met' : ''}`}>
+        <span className="tier-label">완벽 <Chip icon="vp" value="+2" />{level === 2 && <span className="tier-met" title="지금 상태로 완벽 달성">✓ 달성</span>}</span>
         <span className="tier-text clamp3" title={card.perfect}>{card.perfect}</span>
       </div>
     </Card>

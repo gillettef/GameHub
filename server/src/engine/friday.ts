@@ -286,6 +286,7 @@ function resolveAllMatches(state: GameState, rng: Rng): void {
     };
     addLog(state, `경기 결과 ${report.myGoals}:${report.theirGoals} vs ${opponent.teamName} (${{ win: '승리', draw: '무승부', loss: '패배' }[report.outcome]})`, { actor: pid });
 
+    player.matchHistory.push({ week: state.week, outcome: report.outcome, myGoals: report.myGoals, theirGoals: report.theirGoals });
     moveLeague(state, pid, opponent.teamId, report.outcome);
     faced.set(opponent.teamId, (faced.get(opponent.teamId) ?? 0) + 1);
 
@@ -402,6 +403,7 @@ function injure(state: GameState, player: PlayerState, played: PlayerInstance[],
     return n !== undefined && (face === 12 ? n >= 12 : n === face);
   });
   addLog(state, `부상 주사위 ${face}: ${hit.length ? hit.map((h) => instanceName(h)).join(', ') : '해당 없음'}`, { actor: player.id });
+  if (hit.length > 0) player.matchDieInjured = true; // 목표 카드 '무사고 시즌' 판정용
   chooseAmong(player, hit, { type: 'addPlayerToken', token: 'injury', count }, '부상', (inst) => (inst.tokens.injury += count));
 }
 

@@ -436,6 +436,8 @@ label.row { flex-direction: row; align-items: center; }
 .objective-desc { font-size: var(--fs-sub); color: var(--muted); padding: 0 12px 8px; flex: none; }
 .objective-tier { display: flex; flex-direction: column; gap: 3px; margin: 0 10px 6px; padding: 8px 10px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; }
 .objective-tier.perfect { border-color: var(--gold); background: var(--gold-tint); }
+.objective-tier.met { border-color: var(--pitch); box-shadow: inset 3px 0 0 var(--pitch); }
+.tier-met { margin-left: auto; color: var(--pitch); font-size: 12px; font-weight: 700; }
 .tier-label { display: flex; align-items: center; gap: 6px; font-weight: 700; font-size: 13px; }
 .tier-text { font-size: var(--fs-sub); color: var(--ink-2); }
 

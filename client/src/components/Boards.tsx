@@ -9,6 +9,7 @@ import { INFRA_LABEL, RESOURCE_LABEL } from '../labels';
 import { useView } from '../store';
 import { useUi } from '../ui';
 import type { BoardTab } from '../ui';
+import { objectiveLevel } from '@server/engine/objectives';
 import { ExecutiveCardView, ObjectiveCardView, OpponentCardView, PlayerCardView, SponsorCardView, StaffCardView, TacticCardView } from './Cards';
 import { Chip, Icon } from './Icons';
 import { seatColor } from './Shell';
@@ -271,7 +272,7 @@ export function PlayerBoard({ p, privateInfo }: { p: PlayerPublicView; privateIn
           {privateInfo.tacticCards.map((t) => (
             <TacticCardView key={t} cardId={t} compact />
           ))}
-          {privateInfo.objective && <ObjectiveCardView cardId={privateInfo.objective} compact />}
+          {privateInfo.objective && <ObjectiveCardView cardId={privateInfo.objective} level={objectiveLevel(p, view.league, privateInfo.objective)} compact />}
         </div>
       )}
     </div>

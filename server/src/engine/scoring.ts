@@ -1,4 +1,5 @@
 import { cards } from './cards';
+import { objectiveLevel, objectivePoints } from './objectives';
 import type { GameState, PlayerId, PlayerState } from './state';
 import type { StaffSet } from './types';
 
@@ -27,6 +28,9 @@ export interface ScoreBreakdown {
   infrastructure: number;
   office: number;
   suspensions: number; // 음수
+  objective: number; // 목표 카드 (p.27): 달성 2, 완벽 달성 4
+  objectiveCard?: string; // 게임 종료 때 공개
+  objectiveLevel: 0 | 1 | 2;
   total: number;
 }
 
@@ -54,7 +58,21 @@ export function scorePlayer(state: GameState, pid: PlayerId): ScoreBreakdown {
   const infrastructure = player.infrastructure.reduce((n, t) => n + (cards.boardData.infrastructure.find((i) => i.type === t)?.vp ?? 0), 0);
   const office = cards.boardData.office[player.office]?.vp ?? 0;
   const suspensions = -(player.roster.reduce((n, r) => n + r.tokens.suspension, 0) + player.staff.reduce((n, s) => n + s.suspension, 0));
-  return { leagueRank: rank, league, tokens, staffSets, infrastructure, office, suspensions, total: league + tokens + staffSets + infrastructure + office + suspensions };
+  const level = objectiveLevel(player, state.league, player.objective);
+  const objective = objectivePoints(level);
+  return {
+    leagueRank: rank,
+    league,
+    tokens,
+    staffSets,
+    infrastructure,
+    office,
+    suspensions,
+    objective,
+    objectiveCard: player.objective,
+    objectiveLevel: level,
+    total: league + tokens + staffSets + infrastructure + office + suspensions + objective,
+  };
 }
 
 // 동점이면 리그 순위가 높은 쪽, 그래도 같으면 공동 승리 (p.26)

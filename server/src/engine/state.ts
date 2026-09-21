@@ -71,6 +71,10 @@ export interface PlayerState {
   upkeepDiscount: number; // 다음 주말 유지비 할인
   tacticRedrawn: boolean; // 이번 경기일에 특성으로 전술 카드를 새로 뽑았는가 (경기일마다 1회)
   freeRerollUsed: { board: boolean; match: boolean }; // 특성(팬덤 없이 재굴림)을 이번 주에 썼는가 — 주당 1회, 주말에 초기화 (사용자 결정, 2026-09)
+  // 목표 카드 판정용 기록 (p.27, engine/objectives.ts)
+  matchHistory: { week: number; outcome: 'win' | 'draw' | 'loss'; myGoals: number; theirGoals: number }[];
+  matchDieInjured: boolean; // 경기 영향 주사위로 부상 토큰을 받은 적이 있는가
+  kitSponsors: number; // 장내 방송 계약 횟수 (카드는 버려지므로 따로 센다)
   vp: number; // 개인 공급처의 승점 토큰
   pending: PendingEffect[];
   nextInstance: number;
