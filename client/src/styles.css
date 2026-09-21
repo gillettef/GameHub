@@ -253,6 +253,11 @@ label.row { flex-direction: row; align-items: center; }
 .die-table tr.hit td { background: var(--pitch-tint); font-weight: 600; }
 .legend-button { width: 100%; justify-content: center; }
 .modal.legend { max-width: 720px; }
+/* 전체 카드 목록: 카드 크기를 유지한 채 여러 줄로 접는다(모바일용에서도 — .cards 의 한 줄 밀기를 쓰지 않는다) */
+.modal.catalog { max-width: 1180px; height: 90vh; }
+.catalog-tools { flex-wrap: wrap; gap: 10px; }
+.catalog-tools input[type='search'] { flex: 1; min-width: 180px; max-width: 320px; }
+.catalog-grid { display: flex; flex-wrap: wrap; gap: 10px; align-content: flex-start; overflow-y: auto; flex: 1; min-height: 0; padding: 8px 2px 12px; }
 .legend-section h3 { margin: 10px 0 4px; padding-bottom: 4px; border-bottom: 1px solid var(--line); }
 .legend-list { margin: 0; display: flex; flex-direction: column; gap: 4px; }
 .legend-row { display: grid; grid-template-columns: 210px 1fr; gap: 10px; align-items: center; padding: 4px 0; border-bottom: 1px dashed var(--line); }
@@ -901,6 +906,8 @@ button.ghost.light:hover:not(:disabled) { border-color: #fff; color: #fff; }
 .mobile-play[hidden] { display: none; }
 .mobile-ui .sidebar { display: contents; }
 .mobile-ui .legend-button { order: 9; }
+.mobile-ui .modal.catalog { height: 92dvh; }
+.mobile-ui .catalog-grid { justify-content: center; }
 .mobile-ui .panel { padding: 12px; }
 .mobile-ui .board-panel { margin-left: -12px; padding-left: 8px; }
 .mobile-ui .panel-head { gap: 6px 10px; }

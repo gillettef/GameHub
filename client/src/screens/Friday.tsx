@@ -4,7 +4,7 @@ import { standsCount } from '@server/engine/friday';
 import { hasTrait, lineupStaminaCost } from '@server/engine/traits';
 import { autoPlace, previewField, validatePlacements } from '@server/engine/lineup';
 import { SECTOR_PAIRS, sectorCounts } from '@server/engine/match';
-import type { PlayerInstance } from '@server/engine/state';
+import type { PlayerInstance, UniformToken } from '@server/engine/state';
 import { RESOURCES } from '@server/engine/types';
 import type { Resources, Sector } from '@server/engine/types';
 import { OpponentCardView, PlayerCardView, TacticCardView } from '../components/Cards';
@@ -313,6 +313,17 @@ export function FridayPrepareScreen() {
   );
 }
 
+// 지금 써도 아무 일도 일어나지 않는 전술 효과 카드의 이유 (대상이 없음). 엔진은 받아 주고 기록만 남기므로 화면에서 미리 막는다
+function tacticEffectBlock(cardId: string, me: { roster: PlayerInstance[]; uniforms: UniformToken[] }, played: string[]): string | null {
+  for (const e of cards.tactic(cardId).effect?.effects ?? []) {
+    if (e.type === 'addPlayerToken' && e.only === 'playedAttack' && !me.roster.some((r) => played.includes(r.instanceId) && activeSide(r).role === 'attack')) {
+      return '출전 중인 [공격] 선수 카드가 없어 효과가 없습니다 (카드 없는 유니폼 토큰은 대상이 아닙니다)';
+    }
+    if (e.type === 'flipUnmatchedToken' && !me.uniforms.some((u) => u.location === 'field' && !u.cardInstanceId)) return '카드 없는 필드 유니폼 토큰이 없어 효과가 없습니다';
+  }
+  return null;
+}
+
 // p.21 경기 진행: 상대 팀 카드가 공개되고, 포메이션에 쓴 카드가 아닌 전술 카드 1장의 효과를 쓸 수 있다(카드는 손에 남는다).
 // 선 참가자부터 한 명씩. 효과 카드는 select → 확정 막대, "효과 없이 진행"은 즉시 보낸다
 export function FridayMatchScreen() {
@@ -356,9 +367,19 @@ export function FridayMatchScreen() {
               <h3>전술 효과 카드 <span className="muted">{options.length}장 가능</span></h3>
               {options.length > 0 ? (
                 <div className="cards">
-                  {options.map((id) => (
-                    <TacticCardView key={id} cardId={id} compact chosen={chosen === `tactic:${id}`} onClick={() => select(`tactic:${id}`, { type: 'playTacticEffect', cardId: id }, <>전술 효과: <b>{cards.tactic(id).name}</b></>)} />
-                  ))}
+                  {options.map((id) => {
+                    const blocked = tacticEffectBlock(id, me, lineup?.players ?? []);
+                    return (
+                      <TacticCardView
+                        key={id}
+                        cardId={id}
+                        compact
+                        chosen={chosen === `tactic:${id}`}
+                        onClick={blocked ? undefined : () => select(`tactic:${id}`, { type: 'playTacticEffect', cardId: id }, <>전술 효과: <b>{cards.tactic(id).name}</b></>)}
+                        footer={blocked ? <span className="error small lineup-blocked">⛔ {blocked}</span> : undefined}
+                      />
+                    );
+                  })}
                 </div>
               ) : (
                 <p className="muted small">쓸 수 있는 효과 카드가 없습니다 (포메이션 카드는 효과로 쓸 수 없습니다).</p>
@@ -460,8 +481,9 @@ export function FridayAftermathScreen() {
               </table>
               {m.report.myGoals !== sectorGoals && <p className="muted small">카드·전술 효과로 넣은 골 {m.report.myGoals - sectorGoals > 0 ? '+' : ''}{m.report.myGoals - sectorGoals}</p>}
               {m.report.theirGoals !== sectorConceded && <p className="muted small">효과로 바뀐 실점 {m.report.theirGoals - sectorConceded > 0 ? '+' : ''}{m.report.theirGoals - sectorConceded}</p>}
-              <h3>{actor.name}의 라인업 <span className="muted">⚽ = 득점</span></h3>
-              <LineupPitch roster={actor.roster} field={field} played={m.played} placements={m.placements} scorers={m.report.scorers} />
+              <p className="muted small">전술 효과: {m.effectCard ? <><b>{cards.tactic(m.effectCard).name}</b> — {cards.tactic(m.effectCard).effect?.text}</> : '쓰지 않음'}</p>
+              <h3>{actor.name}의 라인업 <span className="muted">숫자 = 이 경기에 쓴 역량(일시적 토큰·전술 효과 포함) · ⚽ = 득점</span></h3>
+              <LineupPitch roster={actor.roster} field={field} played={m.played} placements={m.placements} skills={m.skills} scorers={m.report.scorers} />
               <p className="muted small">승리 +3칸, 무승부 양 팀 +1칸, 패배 상대 +3칸. 관중석의 팬덤은 돈이 됐습니다.</p>
             </div>
             <OpponentCardView cardId={m.opponentCardId} revealed />
