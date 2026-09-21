@@ -132,9 +132,15 @@ label.row { flex-direction: row; align-items: center; }
 .name { font-weight: 700; }
 
 /* 로비 */
-.lobby { max-width: 440px; margin: 60px auto; padding: 40px 28px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-xl); display: flex; flex-direction: column; gap: 16px; }
-.lobby button:not(.link):not(.small) { min-height: 44px; }
-.lobby input { min-height: 44px; font-size: 16px; }
+/* 로비(처음 접속 창·대기실)는 PC용·모바일용 어느 쪽을 골라도 같은 모양이다(사용자 요청 2026-09) — .mobile-ui 로 갈라 쓰지 않고
+   화면 폭에만 반응한다: 가운데 카드, 꽉 찬 버튼·입력, 터치 대상 44px, 입력 16px(iOS 확대 방지) */
+.lobby { max-width: 440px; width: calc(100% - 24px); margin: 60px auto; padding: 40px 28px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-xl); display: flex; flex-direction: column; gap: 16px; }
+.lobby button { min-height: 44px; touch-action: manipulation; }
+.lobby button.small, .lobby button.link { min-height: 36px; }
+.lobby .row > button:not(.link):not(.small) { flex: 1; justify-content: center; }
+.lobby input, .lobby select { width: 100%; min-height: 44px; font-size: 16px; }
+.lobby input[type='checkbox'] { min-height: 0; width: 20px; height: 20px; flex: none; }
+@media (max-width: 520px) { .lobby { margin: 12px auto; padding: 28px 16px; border-radius: var(--radius-lg); } }
 .lobby .players { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 6px; }
 .lobby .players li { justify-content: space-between; }
 
@@ -565,8 +571,9 @@ label.row { flex-direction: row; align-items: center; }
 .chat-form { display: flex; gap: 6px; padding: 8px 12px 12px; border-top: 1px solid var(--line); margin: 0; }
 .chat-form input { flex: 1; min-width: 0; }
 .lobby-chat { border: 1px solid var(--line); border-radius: var(--radius-md); overflow: hidden; display: flex; flex-direction: column; }
-.lobby-chat h2 { font-size: 14px; margin: 0; padding: 10px 12px 4px; }
-.lobby-chat .chat-scroll { max-height: 200px; min-height: 90px; }
+/* .lobby 를 앞에 붙여 .mobile-ui h2 / .mobile-ui .chat-scroll 보다 우선하게 한다(대기실도 모드와 무관하게 같은 모양) */
+.lobby .lobby-chat h2 { font-size: 14px; margin: 0; padding: 10px 12px 4px; }
+.lobby .lobby-chat .chat-scroll { max-height: 200px; min-height: 90px; }
 .log-group h3 { position: sticky; top: 0; background: var(--surface); margin: 8px 0 4px; padding: 4px 0; font-size: 13px; font-weight: 700; color: var(--ink); border-bottom: 1px solid var(--line); }
 .log-entry { display: grid; grid-template-columns: auto auto 1fr; gap: 0 4px; align-items: baseline; font-size: 13px; padding: 3px 4px; border-radius: 4px; }
 .log-entry:hover { background: var(--surface-2); }
@@ -817,10 +824,7 @@ button.ghost.light:hover:not(:disabled) { border-color: #fff; color: #fff; backg
 .mobile-ui button.small, .mobile-ui .tab, .mobile-ui .toggle, .mobile-ui button.link { min-height: 36px; }
 .mobile-ui input, .mobile-ui select { font-size: 16px; min-height: 44px; }
 .mobile-ui input[type='checkbox'] { min-height: 0; width: 20px; height: 20px; }
-/* 넓은 화면(PC·태블릿)에서 모바일용을 골라도 PC용처럼 가운데에 둔다. 좁은 화면에서는 max-width 440px 가 화면보다 넓어 양옆 12px 여백만 남는다 */
-.mobile-ui .lobby { margin: 12px auto; width: calc(100% - 24px); padding: 28px 16px; border-radius: var(--radius-lg); }
-.mobile-ui .lobby .row > button:not(.link) { flex: 1; justify-content: center; }
-.mobile-ui .lobby input, .mobile-ui .lobby select { width: 100%; }
+/* 로비는 모드와 무관하게 같은 모양 — 위쪽 '로비' 절의 규칙만 쓴다 */
 
 /* 헤더: 48px 유지, 라벨은 아이콘으로 */
 .mobile-ui .topbar { grid-template-columns: auto minmax(0, 1fr) auto; gap: 8px; padding: 0 10px; }
