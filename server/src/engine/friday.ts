@@ -75,6 +75,8 @@ function validateLineup(player: PlayerState, sub: LineupSubmission): { players: 
       numbers.add(n);
     }
   }
+  // 골키퍼는 1명만 출전한다 (사용자 제보 2026-09: 훈련 전 유망주 골키퍼는 등번호가 없어 번호 중복 검사를 빠져나갔다)
+  if (players.filter((inst) => activeSide(inst).goalkeeper).length > 1) throw new GameError('only one goalkeeper can play');
 
   swapBenchTokens(player, sub.players);
   const field = player.uniforms.filter((u) => u.location === 'field');

@@ -81,6 +81,7 @@ export function FridayPrepareScreen() {
     const n = activeSide(r).number;
     if (n !== undefined) numberOwner.set(n, r);
   }
+  const keeper = playedRoster.find((r) => activeSide(r).goalkeeper); // 골키퍼는 1명만 출전
   // 왜 못 고르는지 카드에 적어 준다 (C1: "주전 선수가 왜 선택이 안 되지")
   const blockReason = (r: PlayerInstance): string | null => {
     if (r.tokens.injury > 0) return `부상 ×${r.tokens.injury} — 출전 불가`;
@@ -88,6 +89,7 @@ export function FridayPrepareScreen() {
     const n = activeSide(r).number;
     const owner = n !== undefined ? numberOwner.get(n) : undefined;
     if (owner && owner.instanceId !== r.instanceId) return `등번호 ${n} 중복 — ${instanceName(owner)} 출전 중`;
+    if (activeSide(r).goalkeeper && keeper && keeper.instanceId !== r.instanceId) return `골키퍼는 1명만 — ${instanceName(keeper)} 출전 중`;
     return null;
   };
   const togglePlayer = (instanceId: string) => setPlayed((p) => (p.includes(instanceId) ? p.filter((x) => x !== instanceId) : [...p, instanceId]));

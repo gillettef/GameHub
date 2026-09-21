@@ -67,12 +67,17 @@ export function initialDraft(game: string, week: number, me: Me, tacticHand: str
   let played: string[];
   if (stored) {
     const numbers = new Set<number>();
+    let keeper = false; // 골키퍼는 1명만
     played = stored.played.filter((id) => {
       const inst = me.roster.find((r) => r.instanceId === id);
       if (!inst || inst.tokens.injury > 0 || inst.tokens.suspension > 0) return false;
       const n = activeSide(inst).number;
       if (n !== undefined && numbers.has(n)) return false;
       if (n !== undefined) numbers.add(n);
+      if (activeSide(inst).goalkeeper) {
+        if (keeper) return false;
+        keeper = true;
+      }
       return true;
     });
   } else played = affordablePlayers(me);
