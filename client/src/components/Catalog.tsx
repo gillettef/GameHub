@@ -81,7 +81,7 @@ function CatalogModal({ onClose }: { onClose: () => void }) {
   })();
 
   return createPortal(
-    <div className="modal-backdrop" onClick={onClose}>
+    <div className="modal-backdrop dismissable" onClick={onClose}>
       <div className="modal catalog" onClick={(e) => e.stopPropagation()} role="dialog" aria-label="카드 목록">
         <div className="panel-head">
           <h2>카드 목록</h2>

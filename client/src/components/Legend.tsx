@@ -86,7 +86,7 @@ export function LegendButton() {
       </button>
       {open &&
         createPortal(
-        <div className="modal-backdrop" onClick={() => setOpen(false)}>
+        <div className="modal-backdrop dismissable" onClick={() => setOpen(false)}>
           <div className="modal legend" onClick={(e) => e.stopPropagation()} role="dialog" aria-label="아이콘 설명">
             <div className="panel-head">
               <h2>아이콘 설명</h2>
