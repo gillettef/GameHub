@@ -1260,3 +1260,16 @@ th .crest, .crest-title .crest, .score-name .crest { vertical-align: middle; mar
 .stands-quick { display: flex; gap: 6px; justify-content: center; }
 .mobile-ui .stands-plan { grid-template-columns: 64px minmax(0, 1fr) 64px; padding: 8px; }
 .mobile-ui .stands-plan .stand.north, .mobile-ui .stands-plan .stand.south { margin: 0 70px; }
+
+/* 카드 효과 주사위 모달: 참가자가 직접 굴린다 */
+.effect-die-body { display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap; }
+.effect-die-side { flex: 1; min-width: 220px; display: flex; flex-direction: column; gap: 12px; }
+.effect-die-rule { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.effect-die-rule li { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: var(--radius-md); background: var(--surface-2); border: 1px solid transparent; }
+.effect-die-rule li.now { background: var(--pitch-tint); border-color: var(--pitch); font-weight: 600; }
+.die-range { flex: none; min-width: 44px; text-align: center; font-weight: 700; font-variant-numeric: tabular-nums; background: var(--ink); color: #fff; border-radius: var(--radius-pill); padding: 0 8px; }
+.effect-die-roll { display: flex; align-items: center; gap: 12px; }
+.big-die.effect-die { width: 64px; height: 64px; font-size: 34px; border-radius: var(--radius-md); flex: none; }
+.big-die.effect-die.rolled { animation: effect-die-in var(--motion-slow) var(--ease-enter) both; }
+@keyframes effect-die-in { from { transform: rotate(-180deg) scale(0.6); opacity: 0.2; } to { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .big-die.effect-die.rolled { animation: none; } }

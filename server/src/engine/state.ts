@@ -40,7 +40,7 @@ export interface ExecutiveInstance {
 
 // 대상 선택이 필요한 효과는 여기 쌓이고, 참가자가 resolvePending 으로 처리한다.
 // target 에 따라 candidates 는 선수 instanceId / 직원 index / 이적 시장 index / 유니폼 토큰 id
-export type PendingTarget = 'player' | 'staff' | 'market' | 'token';
+export type PendingTarget = 'player' | 'staff' | 'market' | 'token' | 'die'; // die = 카드 효과 주사위: 참가자가 직접 굴린다 (candidates: roll → apply/reroll)
 export interface PendingEffect {
   id: string;
   effect: Effect;
@@ -48,6 +48,8 @@ export interface PendingEffect {
   target: PendingTarget;
   candidates: string[];
   row?: MarketRow; // target === 'market' 일 때 어느 행
+  roll?: number; // target === 'die': 굴린 눈 (굴리기 전에는 없음)
+  instId?: string; // target === 'die': 효과를 가진 선수 카드 ("이 선수" 효과의 대상)
 }
 
 export interface PlayerState {

@@ -99,7 +99,9 @@ export function decide(view: GameView, rng: Rng, failed: Set<string>): GameActio
   if (!me) return null;
   const pending = me.pending[0];
   if (pending && !failed.has('resolvePending')) {
-    return { type: 'resolvePending', pendingId: pending.id, choice: pending.candidates[rng.int(pending.candidates.length)]! };
+    // 카드 효과 주사위는 굴리고(roll) 나온 대로 적용(apply)한다 — 팬덤 재굴림은 쓰지 않는다
+    const choice = pending.target === 'die' ? pending.candidates[0]! : pending.candidates[rng.int(pending.candidates.length)]!;
+    return { type: 'resolvePending', pendingId: pending.id, choice };
   }
 
   const phase = view.phase;
