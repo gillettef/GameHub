@@ -3,7 +3,7 @@ import { standsCount } from '@server/engine/friday';
 import { autoPlace, eligiblePlayers, previewField, validatePlacements } from '@server/engine/lineup';
 import { lineupStaminaCost } from '@server/engine/traits';
 import type { PlayerPublicView } from '@server/engine/view';
-import type { Sector } from '@server/engine/types';
+import type { Region } from '@server/engine/types';
 
 // 경기 준비 초안: 짜는 중인 라인업을 localStorage 에 두어 (1) 새로고침·대기 중에도 남고 (2) 다음 주에는 지난주 라인업을
 // 기본값으로 쓴다(사용자 요청, 2026-09). 서버에는 제출할 때만 보낸다. 저장소를 못 쓰는 환경이면 그냥 매번 새로 짠다.
@@ -14,7 +14,7 @@ export interface LineupDraft {
   tacticCardId: string;
   formationIndex: number;
   played: string[];
-  placements: Record<string, Sector>;
+  placements: Record<string, Region>;
   activations: Record<string, boolean>;
   stands: number;
   step: number;
@@ -84,7 +84,7 @@ export function initialDraft(game: string, week: number, me: Me, tacticHand: str
 
   const formation = formations[formationIndex];
   const field = previewField(me.uniforms, played);
-  let placements: Record<string, Sector> = {};
+  let placements: Record<string, Region> = {};
   if (formation) {
     const kept = stored?.placements ?? {};
     placements = stored && validatePlacements(field, me.roster, played, formation, kept).length === 0 ? kept : autoPlace(field, me.roster, played, formation);

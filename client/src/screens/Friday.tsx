@@ -3,10 +3,10 @@ import { activeSide, cards, instanceName, tokenLabel } from '@server/engine/card
 import { standsCount } from '@server/engine/friday';
 import { hasTrait, lineupStaminaCost } from '@server/engine/traits';
 import { autoPlace, previewField, validatePlacements } from '@server/engine/lineup';
-import { SECTOR_PAIRS, sectorCounts } from '@server/engine/match';
+import { SECTOR_PAIRS } from '@server/engine/match';
 import type { PlayerInstance, UniformToken } from '@server/engine/state';
 import { RESOURCES } from '@server/engine/types';
-import type { Resources, Sector } from '@server/engine/types';
+import type { Region, Resources } from '@server/engine/types';
 import { OpponentCardView, PlayerCardView, TacticCardView } from '../components/Cards';
 import { useCommit } from '../commit';
 import { useDevice } from '../device';
@@ -35,7 +35,7 @@ export function FridayPrepareScreen() {
   const [tacticCardId, setTacticCardId] = useState(init.tacticCardId);
   const [formationIndex, setFormationIndex] = useState(init.formationIndex);
   const [played, setPlayed] = useState<string[]>(init.played);
-  const [placements, setPlacements] = useState<Record<string, Sector>>(init.placements);
+  const [placements, setPlacements] = useState<Record<string, Region>>(init.placements);
   const [stands, setStands] = useState(init.stands);
   const [activations, setActivations] = useState<Record<string, boolean>>(init.activations);
   const [step, setStep] = useState(init.step);
@@ -44,7 +44,6 @@ export function FridayPrepareScreen() {
 
   const tactic = cards.tactic(tacticCardId || view.self.tacticCards[0]!);
   const formation = tactic.formations[formationIndex] ?? tactic.formations[0]!;
-  const need = useMemo(() => sectorCounts(formation), [formation]);
   const field = useMemo(() => previewField(me.uniforms, played), [me.uniforms, played]);
   const issues = validatePlacements(field, me.roster, played, formation, placements);
 
@@ -143,9 +142,9 @@ export function FridayPrepareScreen() {
     }
     setPicked(null);
   };
-  const onSector = (s: Sector) => {
+  const onRegion = (r: Region) => {
     if (!picked) return;
-    setPlacements((p) => ({ ...p, [picked]: s }));
+    setPlacements((p) => ({ ...p, [picked]: r }));
     setPicked(null);
   };
   const unplace = () => {
@@ -254,11 +253,11 @@ export function FridayPrepareScreen() {
                     배치 <span className="formation">{formation.defenders}-{formation.midfielders}-{formation.forwards}</span>
                     <button className="ghost small" onClick={() => { setPlacements(autoPlace(field, me.roster, played, formation)); setPicked(null); }}>자동 배치</button>
                   </h3>
-                  <p className="muted small">토큰을 누른 뒤 옮길 구획을 누르세요(밝은 구획이 그 선수가 설 수 있는 곳). 다른 토큰을 누르면 자리를 바꿉니다. 숫자는 역량.</p>
-                  <LineupPitch roster={me.roster} field={field} played={played} placements={placements} need={need} showSkill selected={picked} onToken={onToken} onSector={onSector} />
+                  <p className="muted small">포메이션 <b>{formation.defenders}-{formation.midfielders}-{formation.forwards}</b> = 수비·미드·공격 라인의 인원입니다. 라인마다 센터에 1~3명, 양쪽 윙에 최대 1명씩 나눠 세우세요. 토큰을 누른 뒤 옮길 지역을 누르면 옮겨지고(밝은 지역이 그 선수가 설 수 있는 곳), 다른 토큰을 누르면 자리를 바꿉니다. 숫자는 역량.</p>
+                  <LineupPitch roster={me.roster} field={field} played={played} placements={placements} formation={formation} showSkill selected={picked} onToken={onToken} onRegion={onRegion} />
                   {(unplaced.length > 0 || picked) && (
                     <div className={`unplaced${picked ? ' target' : ''}`} onClick={unplace}>
-                      <span className="muted small">미배치{picked ? ' (여기를 누르면 구획에서 뺍니다)' : ''}</span>
+                      <span className="muted small">미배치{picked ? ' (여기를 누르면 지역에서 뺍니다)' : ''}</span>
                       {unplaced.map((t) => (
                         <TokenChipView key={t.id} token={t} inst={playedInstance(me.roster, played, t)} showSkill selected={t.id === picked} onClick={() => onToken(t.id)} />
                       ))}
@@ -292,7 +291,7 @@ export function FridayPrepareScreen() {
                       {!affordable && <span className="error">자원 부족</span>}
                     </li>
                   </ul>
-                  <LineupPitch roster={me.roster} field={field} played={played} placements={placements} need={need} showSkill />
+                  <LineupPitch roster={me.roster} field={field} played={played} placements={placements} formation={formation} showSkill />
                 </div>
               )}
             </div>

@@ -622,11 +622,13 @@ select { appearance: none; -webkit-appearance: none; padding-right: 34px; backgr
 .pitch { display: grid; grid-template-columns: 1fr 2fr 1fr; grid-template-rows: repeat(3, auto); gap: 6px; background: var(--grass); border-radius: var(--radius-md); padding: 8px; margin: 8px 0; }
 .sector { background: rgba(255, 255, 255, 0.12); border: 1px dashed rgba(255, 255, 255, 0.35); border-radius: var(--radius); padding: 6px; min-height: 56px; display: flex; flex-wrap: wrap; gap: 4px; align-content: flex-start; }
 .sector.ok { border-style: solid; border-color: rgba(255, 255, 255, 0.7); }
-.sector.LW { grid-column: 1; grid-row: 1 / span 3; }
-.sector.RW { grid-column: 3; grid-row: 1 / span 3; }
-.sector.CF { grid-column: 2; grid-row: 1; }
-.sector.CM { grid-column: 2; grid-row: 2; }
-.sector.CB { grid-column: 2; grid-row: 3; }
+/* 9지역 배치판 (p.20): 위에서부터 공격·미드·수비 라인, 라인 = [라인 머리(n/m)] [레프트 윙 ≤1] [센터 1~3] [라이트 윙 ≤1] */
+.pitch.regions { display: flex; flex-direction: column; }
+.pitch-line { display: grid; grid-template-columns: 44px 1fr 2fr 1fr; gap: 6px; }
+.line-head { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; border-radius: var(--radius); background: rgba(0, 0, 0, 0.22); color: #fff; font-size: var(--fs-sub); line-height: 1.2; }
+.line-head b { font-size: var(--fs-body); }
+.line-head.ok { background: rgba(255, 255, 255, 0.9); color: var(--pitch-dark); }
+.line-head.over { background: #ffd0d0; color: #8a1c16; }
 .sector-title { width: 100%; font-size: var(--fs-sub); color: #d7f0e0; display: flex; justify-content: space-between; }
 .utoken { display: inline-flex; align-items: center; gap: 3px; background: var(--surface); border: 1.5px solid; border-radius: 999px; padding: 2px 8px; font-size: var(--fs-body); font-weight: 700; }
 .utoken.attack { border-color: var(--attack); color: var(--attack); }
@@ -946,7 +948,8 @@ button.ghost.light:hover:not(:disabled) { border-color: #fff; color: #fff; backg
 /* 보드: 좁은 폭에 맞춘 칸 크기 */
 /* 유지비 표는 가로로 눕힌다: 종류마다 한 줄 (라벨 · 1~8) */
 .mobile-ui .utoken { padding: 4px 10px; }
-.mobile-ui .pitch { grid-template-columns: 1fr 1.6fr 1fr; padding: 6px; gap: 4px; }
+.mobile-ui .pitch { padding: 6px; gap: 4px; }
+.mobile-ui .pitch-line { grid-template-columns: 34px 1fr 1.6fr 1fr; gap: 4px; }
 .mobile-ui .sector { padding: 4px; }
 .mobile-ui .token-list { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; }
 .mobile-ui .token-list label { justify-content: space-between; min-width: 0; }

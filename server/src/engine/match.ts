@@ -1,4 +1,5 @@
-import type { Formation, Role, Sector } from './types';
+import { CENTER_MAX } from './types';
+import type { Column, Formation, Line, Region, Role, Sector } from './types';
 
 // 규칙서 p.21~23 경기 진행 (구획 비교) 순수 로직
 
@@ -43,7 +44,47 @@ export const SECTOR_PAIRS: readonly [Sector, Sector][] = [
   ['CB', 'CF'],
 ];
 
-// 포메이션 → 구획별 인원 (라인당 센터 최대 3, 초과분은 LW 다음 RW). 각 윙 구획은 라인마다 1지역
+const CENTER_SECTOR: Record<Line, Sector> = { back: 'CB', mid: 'CM', fwd: 'CF' };
+
+export function regionLine(r: Region): Line {
+  return r.split('-')[0] as Line;
+}
+export function regionColumn(r: Region): Column {
+  return r.split('-')[1] as Column;
+}
+// 지역 → 구획: 윙 열은 라인과 상관없이 그 윙 구획, 센터 열은 라인의 센터 구획
+export function regionSector(r: Region): Sector {
+  const col = regionColumn(r);
+  return col === 'L' ? 'LW' : col === 'R' ? 'RW' : CENTER_SECTOR[regionLine(r)];
+}
+// 포메이션 → 라인별 인원
+export function lineCounts(f: Formation): Record<Line, number> {
+  return { back: f.defenders, mid: f.midfielders, fwd: f.forwards };
+}
+// 지역 정원 (p.20): 센터 지역 1~3, 윙 지역 0~1
+export function regionLimit(r: Region): { min: number; max: number } {
+  return regionColumn(r) === 'C' ? { min: 1, max: CENTER_MAX } : { min: 0, max: 1 };
+}
+// 배치 검증 (엔진·UI 공용): 라인별 인원이 포메이션과 같고 지역 정원을 지키는지. 문제를 사람이 읽을 문장으로 돌려준다
+export function regionIssues(formation: Formation, regions: Region[], label: (r: Region) => string, lineLabel: (l: Line) => string): string[] {
+  const issues: string[] = [];
+  const need = lineCounts(formation);
+  const count = (pred: (r: Region) => boolean) => regions.filter(pred).length;
+  for (const line of ['back', 'mid', 'fwd'] as const) {
+    const n = count((r) => regionLine(r) === line);
+    if (n !== need[line]) issues.push(`${lineLabel(line)} ${n}/${need[line]}`);
+    for (const col of ['L', 'C', 'R'] as const) {
+      const region: Region = `${line}-${col}`;
+      const { min, max } = regionLimit(region);
+      const here = count((r) => r === region);
+      if (here > max) issues.push(`${label(region)} 최대 ${max}명 (지금 ${here})`);
+      else if (here < min && need[line] > 0) issues.push(`${label(region)} 최소 ${min}명`);
+    }
+  }
+  return issues;
+}
+
+// 포메이션 → 구획별 인원의 **기본 배분**(라인당 센터 최대 3, 초과분은 LW 다음 RW). 참가자는 이와 다르게 나눌 수 있다 — 상대 팀 카드 생성·자동 배치의 기준으로만 쓴다
 export function sectorCounts(f: Formation): Record<Sector, number> {
   const counts: Record<Sector, number> = { LW: 0, CB: 0, CM: 0, CF: 0, RW: 0 };
   const lines: [Sector, number][] = [['CB', f.defenders], ['CM', f.midfielders], ['CF', f.forwards]];

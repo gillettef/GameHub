@@ -1,6 +1,6 @@
 import type { MatchReport } from './match';
 import type { ScoreBreakdown } from './scoring';
-import type { DayRestriction, Division, Effect, InfrastructureType, MarketRow, Passive, PlayerTokens, Resources, Role, Sector, TrackPositions } from './types';
+import type { DayRestriction, Division, Effect, InfrastructureType, MarketRow, Passive, PlayerTokens, Region, Resources, Role, Sector, TrackPositions } from './types';
 
 export type PlayerId = string;
 
@@ -122,7 +122,7 @@ export interface LineupSubmission {
   tacticCardId: string;
   formationIndex: number;
   players: string[]; // 출전 선수 instanceId (골키퍼 포함)
-  placements: Record<string, Sector>; // 필드 유니폼 토큰 id → 구획
+  placements: Record<string, Region>; // 필드 유니폼 토큰 id → 지역 (9지역, p.20)
   activations?: Record<string, Partial<Resources>>; // 선수 카드에 올려놓을 추가 자원
   fandomInStands?: number;
 }
@@ -143,7 +143,7 @@ export function emptyMods(): MatchMods {
 export interface MatchAftermath {
   opponentCardId: string;
   played: string[];
-  placements: Record<string, Sector>; // 경기에 쓴 배치 (결과 화면에서 구획별 선수·득점자를 보여 준다. 경기가 끝났으니 공개)
+  placements: Record<string, Region>; // 경기에 쓴 배치 (결과 화면에서 구획별 선수·득점자를 보여 준다. 경기가 끝났으니 공개)
   // 판정에 실제로 쓴 필드 토큰별 역량(일시적 토큰·전술 효과 포함). 일시적 토큰은 경기 후 버려지므로 결과 화면은 이 값을 보여 준다
   skills: Record<string, number>;
   effectCard: string | null; // 경기 진행 때 효과로 쓴 전술 카드

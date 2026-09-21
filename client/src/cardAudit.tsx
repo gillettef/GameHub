@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BOARD_CARDS, EXECUTIVE_CARDS, OBJECTIVE_CARDS, OPPONENT_CARDS, PLAYER_CARDS, SPONSOR_CARDS, STAFF_CARDS, TACTIC_CARDS } from '@server/data';
-import type { PlayerInstance } from '@server/engine/state';
+import { autoPlace } from '@server/engine/lineup';
+import type { PlayerInstance, UniformToken } from '@server/engine/state';
 import { BoardCardView, ExecutiveCardView, ObjectiveCardView, OpponentCardView, PlayerCardView, SponsorCardView, StaffCardView, TacticCardView } from './components/Cards';
+import { LineupPitch } from './components/Lineup';
 import './styles.css';
 
 // 개발용 카드 넘침 점검 (사용자 요청 2026-09, "텍스트가 카드 크기를 벗어난다"): 모든 카드를 실제 크기로 그리고
@@ -54,6 +56,22 @@ function Slot({ id, children }: { id: string; children: React.ReactNode }) {
   return <div data-audit={id} title={id}>{children}</div>;
 }
 
+// `?only=pitch`: 9지역 배치판을 포메이션별로 그려 눈으로 본다 (선수 카드 없는 토큰 10개를 자동 배치)
+const SAMPLE_FIELD: UniformToken[] = Array.from({ length: 10 }, (_, i) => ({ id: `u${i}`, number: i + 2, face: i < 5 ? 'defense' : 'attack', location: 'field' }));
+function PitchSamples() {
+  const formations = [...new Map(TACTIC_CARDS.flatMap((c) => c.formations).map((f) => [`${f.defenders}-${f.midfielders}-${f.forwards}`, f])).values()];
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(420px, 1fr))', gap: 16, width: '100%' }}>
+      {formations.map((f) => (
+        <section key={`${f.defenders}${f.midfielders}${f.forwards}`} className="panel">
+          <h3>{f.defenders}-{f.midfielders}-{f.forwards}</h3>
+          <LineupPitch roster={[]} field={SAMPLE_FIELD} played={[]} placements={autoPlace(SAMPLE_FIELD, [], [], f)} formation={f} showSkill />
+        </section>
+      ))}
+    </div>
+  );
+}
+
 // `?only=sponsor` 처럼 카드 종류 하나만 그릴 수 있다 (스크린샷으로 눈으로 볼 때)
 const only = new URLSearchParams(location.search).get('only');
 const show = (kind: string) => !only || only === kind;
@@ -68,6 +86,7 @@ function App() {
     <main style={{ padding: 16 }}>
       <pre id="audit" style={{ whiteSpace: 'pre-wrap', fontSize: 12 }}>{result}</pre>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
+        {only === 'pitch' && <PitchSamples />}
         {show('player') && PLAYER_CARDS.map((c) => <Slot key={c.id} id={`${c.id} ${c.name} (미훈련)`}><PlayerCardView cardId={c.id} /></Slot>)}
         {show('player') && PLAYER_CARDS.map((c) => <Slot key={`${c.id}-t`} id={`${c.id} ${c.name} (훈련)`}><PlayerCardView cardId={c.id} instance={trainedOf(c.id)} /></Slot>)}
         {show('staff') && STAFF_CARDS.map((c) => <Slot key={c.id} id={`${c.id} ${c.name}`}><StaffCardView cardId={c.id} /></Slot>)}

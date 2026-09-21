@@ -1,9 +1,16 @@
-import type { DieColor, Effect, InfrastructureType, MatchCondition, PlayerToken, Resource, Sector, SponsorContract, StaffSet } from './types';
+import type { DieColor, Effect, InfrastructureType, Line, MatchCondition, PlayerToken, Region, Resource, Sector, SponsorContract, StaffSet } from './types';
 
 // 한국어 라벨. 엔진 기록과 클라이언트가 공유한다
 
 export const RESOURCE_LABEL: Record<Resource, string> = { money: '돈', fandom: '팬덤', ops: '운영', stamina: '체력' };
 export const SECTOR_LABEL: Record<Sector, string> = { LW: '레프트 윙', CB: '센터 백', CM: '센터 미드', CF: '센터 포워드', RW: '라이트 윙' };
+// 9지역 (p.20): 라인(포메이션의 수비-미드-공격) × 열. 센터 열의 지역 이름은 그 구획 이름과 같다
+export const LINE_LABEL: Record<Line, string> = { back: '수비', mid: '미드', fwd: '공격' };
+export const REGION_LABEL: Record<Region, string> = {
+  'back-L': '수비 · 레프트 윙', 'back-C': '센터 백', 'back-R': '수비 · 라이트 윙',
+  'mid-L': '미드 · 레프트 윙', 'mid-C': '센터 미드', 'mid-R': '미드 · 라이트 윙',
+  'fwd-L': '공격 · 레프트 윙', 'fwd-C': '센터 포워드', 'fwd-R': '공격 · 라이트 윙',
+};
 export const TOKEN_LABEL: Record<PlayerToken, string> = {
   injury: '부상',
   suspension: '출장정지',

@@ -23,6 +23,16 @@ export type Sector = 'LW' | 'CB' | 'CM' | 'CF' | 'RW';
 export const SECTORS: readonly Sector[] = ['LW', 'CB', 'CM', 'CF', 'RW'];
 export const SECTOR_CAPACITY: Record<Sector, number> = { LW: 3, CB: 3, CM: 3, CF: 3, RW: 3 };
 
+// 9지역 = 3라인(백/미드/포워드) × 3열(레프트 윙/센터/라이트 윙). 포메이션 "수비-미드-공격"은 라인별 인원이고, 참가자는 라인 안에서
+// 센터 지역(1~3명)과 양쪽 윙 지역(각 최대 1명)에 나눠 배치한다 (p.20). 경기 판정은 지역을 5구획으로 묶어 비교한다 (p.21)
+export type Line = 'back' | 'mid' | 'fwd';
+export type Column = 'L' | 'C' | 'R';
+export type Region = `${Line}-${Column}`;
+export const LINES: readonly Line[] = ['back', 'mid', 'fwd'];
+export const COLUMNS: readonly Column[] = ['L', 'C', 'R'];
+export const REGIONS: readonly Region[] = LINES.flatMap((l) => COLUMNS.map((c): Region => `${l}-${c}`));
+export const CENTER_MAX = 3;
+
 export type Role = 'attack' | 'defense';
 
 // ---------- 카드 위 토큰 (p.27~28) ----------
