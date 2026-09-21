@@ -16,8 +16,8 @@
 ## A. 버그 / 규칙 누락
 
 ### A1. 선수 카드에 올려놓은 체력이 사라짐 (L107, L125) — ✅ 완료
-- 처리: `PlayerInstance.stamina`로 분리. 출전 시 1개를 출전 체력으로 쓰고 남은 것은 다음 경기까지 카드에 남는다(사용자 결정).
-  선수 카드에 체력 칩 표시, 올려놓을 때 토스트.
+- 처리: `PlayerInstance.stamina`로 분리. 출전 시 1개를 출전 체력으로 쓰고 남은 것은 경기 후 버린다(p.24 4, 미출전이면 남음).
+  2개를 올려놓던 이사회 안건(bc-01·bc-14·bc-36)은 1개로 줄였다. 선수 카드에 체력 칩 표시, 올려놓을 때 토스트.
 - 이사회 안건 등으로 선수 1명에게 체력 2개를 올려놓았는데 경기 뒤에 없어졌다.
 - 원인: `placeStamina` 효과가 `inst.placed.stamina`에 쌓지만(`engine/effects.ts:136`), `lineupStaminaCost`(`engine/traits.ts:49`)는
   이를 무시하고 출전 체력을 전액 받는다. 경기 후 `engine/friday.ts:302`에서 `inst.placed = {}`로 지워진다.

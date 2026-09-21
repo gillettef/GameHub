@@ -80,7 +80,7 @@ describe('경기 준비 제출 (p.20)', () => {
     expect(() => submitLineup(s, 'a', autoLineup(s.players['a']!), seededRng())).toThrow(GameError);
   });
 
-  it('카드에 미리 올려놓은 체력은 출전 체력으로 1개 쓰이고, 남은 것은 경기 뒤에도 카드에 남는다 (p.20 3, 사용자 결정)', () => {
+  it('카드에 미리 올려놓은 체력은 출전 체력으로 1개 쓰이고(p.20 3), 남은 것은 경기 후 버린다. 미출전 선수의 것은 남는다 (p.24 4)', () => {
     let s = friday();
     const sub = autoLineup(s.players['a']!);
     const [withTwo, benched] = [sub.players[0]!, s.players['a']!.roster.find((r) => !sub.players.includes(r.instanceId))];
@@ -93,7 +93,7 @@ describe('경기 준비 제출 (p.20)', () => {
     for (const id of ['b', 'c', 'd']) s = settlePending(submitLineup(s, id, autoLineup(s.players[id]!), seededRng()), seededRng());
     s = skipTacticEffects(s, seededRng());
     expect(s.phase.kind).toBe('friday.aftermath');
-    expect(s.players['a']!.roster.find((r) => r.instanceId === withTwo)!.stamina).toBe(1); // 경기 뒤에도 남는다
+    expect(s.players['a']!.roster.find((r) => r.instanceId === withTwo)!.stamina).toBe(0); // 출전 선수 카드 위 자원 마커는 모두 버린다
     if (benched) expect(s.players['a']!.roster.find((r) => r.instanceId === benched.instanceId)!.stamina).toBe(1); // 미출전 선수 것은 그대로
   });
 
