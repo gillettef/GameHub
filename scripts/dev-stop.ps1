@@ -1,4 +1,8 @@
-﻿$root = Split-Path -Parent $PSScriptRoot
+﻿param(
+  # 지정하면 그 터널 슬롯(scripts/tunnel.ps1 -Slot, 예: test)만 내리고 나머지(dev 서버·봇·다른 슬롯)는 그대로 둔다
+  [ValidatePattern('^[a-z0-9]*$')][string]$Slot = ''
+)
+$root = Split-Path -Parent $PSScriptRoot
 $devDir = Join-Path $root '.dev'
 $pidFile = Join-Path $devDir 'pids.json'
 
@@ -26,6 +30,23 @@ function Stop-Tree($name, $procId) {
   }
 }
 
+# 배포 모드 서버 + Cloudflare 터널 (scripts/tunnel.ps1 이 남긴 pid 파일). main 슬롯 = tunnel-pids.json, 그 밖 = tunnel-<slot>-pids.json
+function Stop-TunnelSlot($file) {
+  $slotName = if ($file.Name -eq 'tunnel-pids.json') { 'main' } else { $file.Name -replace '^tunnel-(.+)-pids\.json$', '$1' }
+  $tp = Get-Content $file.FullName -Raw | ConvertFrom-Json
+  foreach ($prop in $tp.PSObject.Properties) { Stop-Tree "$($prop.Name):$slotName" ([int]$prop.Value) }
+  Remove-Item $file.FullName -Force
+  $urlName = if ($slotName -eq 'main') { 'tunnel-url.txt' } else { "tunnel-$slotName-url.txt" }
+  Remove-Item (Join-Path $devDir $urlName) -Force -ErrorAction SilentlyContinue
+}
+
+if ($Slot) {
+  $name = if ($Slot -eq 'main') { 'tunnel-pids.json' } else { "tunnel-$Slot-pids.json" }
+  $file = Get-Item (Join-Path $devDir $name) -ErrorAction SilentlyContinue
+  if ($file) { Stop-TunnelSlot $file; Write-Host "완료 (슬롯 $Slot 만 종료)." } else { Write-Host "슬롯 '$Slot' 의 터널 기록이 없습니다 (.dev/$name)." }
+  exit 0
+}
+
 # 봇 프로세스 (scripts/bots.ps1 이 남긴 pid 파일)
 Get-ChildItem -Path $devDir -Filter 'bots-*.pid' -ErrorAction SilentlyContinue | ForEach-Object {
   $procId = [int](Get-Content $_.FullName -Raw).Trim()
@@ -33,14 +54,8 @@ Get-ChildItem -Path $devDir -Filter 'bots-*.pid' -ErrorAction SilentlyContinue |
   Remove-Item $_.FullName -Force
 }
 
-# 배포 모드 서버 + Cloudflare 터널 (scripts/tunnel.ps1 이 남긴 pid 파일)
-$tunnelPidFile = Join-Path $devDir 'tunnel-pids.json'
-if (Test-Path $tunnelPidFile) {
-  $tp = Get-Content $tunnelPidFile -Raw | ConvertFrom-Json
-  foreach ($prop in $tp.PSObject.Properties) { Stop-Tree $prop.Name ([int]$prop.Value) }
-  Remove-Item $tunnelPidFile -Force
-  Remove-Item (Join-Path $devDir 'tunnel-url.txt') -Force -ErrorAction SilentlyContinue
-}
+# 모든 터널 슬롯
+Get-ChildItem -Path $devDir -Filter 'tunnel*-pids.json' -ErrorAction SilentlyContinue | ForEach-Object { Stop-TunnelSlot $_ }
 
 if (-not (Test-Path $pidFile)) {
   Write-Host "실행 중인 dev 프로세스 기록이 없습니다 (.dev/pids.json 없음)."

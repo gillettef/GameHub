@@ -3,6 +3,15 @@ name: tunnel
 description: Expose the Eleven game to friends on other networks from this PC — builds the client+server, starts the production server (port 3001, serving the built client) and opens a Cloudflare quick tunnel (no account needed), then reports the public https://….trycloudflare.com URL. If a tunnel is already running, use -Reload to rebuild and swap only the game server so the public URL stays the same. Use when the user wants to play with people outside the local network right now without deploying to a host, or to push a new build to the running tunnel. Stop with /dev-stop.
 ---
 
+**Two slots (servers).** `-Slot main` (default, port 3001) is **server 1 — the stable server friends play on**;
+`-Slot test` (port 3002) is **server 2 — where new changes are tried out**. Each slot has its own tunnel,
+public URL, pid/log files (`.dev/tunnel-pids.json` vs `.dev/tunnel-test-pids.json`, `tunnel-url.txt` vs
+`tunnel-test-url.txt`, `serve.log` vs `serve-test.log`) and runs from its own copy of the build in
+`.dev/slots/<slot>/`, so rebuilding one never changes the other. After a code change, reload **only the
+test slot** (`-Reload -Slot test`); touch the main slot only when the user says to put the changes on
+server 1 (`-Reload`). Add `-Slot test` to either command below to act on server 2. Stop one slot with
+`scripts/dev-stop.ps1 -Slot test`; plain `/dev-stop` stops every slot.
+
 Two modes, both with the PowerShell tool:
 
 **A tunnel is already running** (`.dev/tunnel-pids.json` exists — this is the usual case after code

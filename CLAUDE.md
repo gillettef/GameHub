@@ -71,7 +71,7 @@
 server/   Node.js + TypeScript 게임 서버 (WebSocket). dev 포트 3001. `npm run dev`
 client/   React + Vite 프론트엔드.               dev 포트 5173. `npm run dev`
 scripts/  dev.ps1 / dev-stop.ps1 — 개발 서버 시작/종료 (/dev, /dev-stop 스킬이 호출)
-          tunnel.ps1 — 배포 모드 서버 + Cloudflare 빠른 터널로 공개 URL 발급 (/tunnel 스킬이 호출)
+          tunnel.ps1 — 배포 모드 서버 + Cloudflare 빠른 터널로 공개 URL 발급 (/tunnel 스킬이 호출). -Slot main/test 로 서버 두 벌
 Dockerfile, render.yaml — 호스팅 배포 설정 (아래 "배포" 절)
 notes/    규칙서 원본 및 텍스트 레퍼런스
 .dev/     개발 서버 PID·로그 (gitignore)
@@ -175,6 +175,10 @@ notes/    규칙서 원본 및 텍스트 레퍼런스
   켜져 있는 동안만 유효. `/dev` 와 포트 3001을 공유하므로 먼저 `/dev-stop`. 종료도 `/dev-stop`(`.dev/tunnel-pids.json`).
   **새 빌드를 반영할 때는 `tunnel.ps1 -Reload`**: 터널(`cloudflared`)은 그대로 두고 서버(node)만 교체하므로 공개 주소가
   유지된다(주소는 cloudflared 프로세스에 묶여 있다). 터널 전체를 내렸다 올리면 주소가 바뀌니 배포 목적으로는 쓰지 않는다(사용자 요청, 2026-09).
+  **서버 두 벌 — 슬롯**(사용자 요청, 2026-09): `-Slot main`(기본, 포트 3001) = **서버1, 친구들과 쓰는 안정 서버**, `-Slot test`(포트 3002) =
+  **서버2, 새 수정을 시험하는 서버**. 슬롯마다 터널·공개 주소·pid/로그(`.dev/tunnel-test-pids.json`, `tunnel-test-url.txt`, `serve-test.log`)가
+  따로이고, 빌드 결과를 `.dev/slots/<slot>/`에 복사해 그 사본으로 실행하므로 한쪽을 새로 빌드해도 다른 쪽(서버 코드·정적 파일)은 바뀌지 않는다.
+  서버1은 사용자가 "서버1에 반영"이라고 할 때만 `tunnel.ps1 -Reload`(= main)로 올린다. 한 슬롯만 내리려면 `dev-stop.ps1 -Slot test`.
 - **방법 B — 호스팅 (상시 주소)**: `render.yaml`(Render Blueprint, Node 22, 무료 플랜: 15분 미접속 시 슬립 →
   진행 중 판 유실)과 `Dockerfile`(멀티스테이지, Fly.io/Railway 등 컨테이너 호스팅용). 둘 다 헬스체크는 `/health`.
   게임 상태는 메모리에만 있으므로 인스턴스는 항상 1개여야 한다(스케일아웃 금지).
@@ -480,9 +484,10 @@ npm start              # 배포 모드로 실행 (PORT, HOST, STATIC_DIR 환경�
   끝난 채로 푸시하지 않은 상태로 두지 않는다.
 - 커밋 메시지는 **한국어**로 작성한다. 첫 줄은 무엇을 왜 바꿨는지 한 문장으로 요약한다.
 - 커밋 전 `git status`로 포함 파일을 확인한다. `.dev/`, `node_modules/`, `.env*`는 gitignore 대상.
-- **푸시까지 마친 뒤에는 `/tunnel -Reload`(= `scripts/tunnel.ps1 -Reload`)로 실행 중인 터널에 새 빌드를 반영한다**
-  (사용자 요청, 2026-09). 터널(`.dev/tunnel-pids.json`)이 떠 있지 않으면 건너뛰고 그 사실만 알린다 — 주소가 바뀌므로
-  터널을 새로 띄우지는 않는다. 서버가 교체되므로 진행 중인 판은 유실된다는 점도 함께 알린다.
+- **푸시까지 마친 뒤에는 `scripts/tunnel.ps1 -Reload -Slot test`로 서버2(시험 서버)에 새 빌드를 반영한다**
+  (사용자 요청, 2026-09). **서버1(main 슬롯)은 건드리지 않는다** — 사용자가 서버1에 반영하라고 할 때만 `tunnel.ps1 -Reload`.
+  서버2 터널(`.dev/tunnel-test-pids.json`)이 떠 있지 않으면 건너뛰고 그 사실만 알린다 — 주소가 바뀌므로
+  터널을 새로 띄우지는 않는다. 서버가 교체되므로 그 서버에서 진행 중인 판은 유실된다는 점도 함께 알린다.
 
 ## 개발 시 참고사항
 
