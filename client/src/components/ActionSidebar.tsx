@@ -11,8 +11,9 @@ import { CostChips, EffectChips, Icon } from './Icons';
 import { UpkeepWarning } from './Upkeep';
 import { CatalogButton } from './Catalog';
 import { LegendButton } from './Legend';
+import { WeekSchedule } from './WeekSchedule';
 
-// 왼쪽 사이드바: 주사위(이사회·경기 영향), 주중 행동 목록, 아이콘 설명. 누구 차례인지는 헤더 참가자 띠의 표시가 알려준다.
+// 왼쪽 사이드바: 이번 주 일정, 주사위(이사회·경기 영향), 주중 행동 목록, 아이콘 설명. 누구 차례인지는 헤더 참가자 띠의 표시가 알려준다.
 // 주중 행동은 전부 여기에 나열하고 지금 할 수 있는 것만 활성화한다. 카드 고르기가 필요한 행동(영입·고용·계약·방출)은
 // 메인의 해당 보드 탭으로 이동시키고, 나머지는 바로 선택 → 아래 확정 막대에서 확정한다.
 // 맨 위는 차례 끝내기(즉시)와 처음으로 되돌리기(확정 필요), 그 다음이 패스.
@@ -176,6 +177,7 @@ export function ActionSidebar() {
   const me = session ? view.players[session.playerId] : undefined;
   return (
     <aside className="sidebar" aria-label="행동">
+      <WeekSchedule />
       <DiceTray />
       {me && view.phase.kind === 'weekday' && <WeekdayActions me={me} />}
       <CatalogButton />

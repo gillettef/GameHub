@@ -1006,26 +1006,19 @@ button.ghost.light:hover:not(:disabled) { border-color: #fff; color: #fff; backg
 .seat-res { display: inline-flex; align-items: center; flex: none; }
 .seat-res .res.sub.upkeep-chip { display: inline-flex; align-items: center; gap: 3px; font-size: var(--fs-sub); line-height: 20px; }
 
-/* ---- 개인 보드 머리: 엠블럼 + 구단 이름 + 자원 타일 ---- */
+/* ---- 개인 보드 (구단 상태는 참가자 띠에 있어 머리를 따로 두지 않는다) ---- */
 .board-panel { border-left: 0; margin-left: 0; padding-left: 0; }
-.club-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding-bottom: 16px; border-bottom: 1px solid var(--line); }
-.club-id { display: flex; flex-direction: column; min-width: 0; flex: 1 1 180px; }
-.club-id h2 { font-size: var(--fs-title-lg); }
-.club-stats { display: flex; gap: 4px; margin: 0; flex-wrap: wrap; }
-.club-stat { --rc: var(--ink-2); display: flex; flex-direction: column; gap: 2px; min-width: 64px; padding: 6px 10px; border-radius: var(--radius); background: var(--surface-2); }
-.club-stat.money { --rc: var(--c-money); }
-.club-stat.fandom { --rc: var(--c-fandom); }
-.club-stat.ops { --rc: var(--c-ops); }
-.club-stat.stamina { --rc: var(--c-stamina); }
-.club-stat.vp { --rc: var(--c-vp); }
-.club-stat dt { display: flex; align-items: center; gap: 3px; font-size: var(--fs-sub); color: var(--rc); font-weight: 500; }
-.club-stat dd { margin: 0; font-size: 20px; font-weight: 700; line-height: 1.1; font-variant-numeric: tabular-nums; }
 
 /* ---- 구단 보드 ---- */
 .club-board { background: var(--surface-2); border-radius: var(--radius-lg); padding: 16px; color: var(--ink); display: flex; flex-direction: column; gap: 12px; }
 .club-grid { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 12px; align-items: start; }
 @media (max-width: 1000px) { .club-grid { grid-template-columns: minmax(0, 1fr); } }
-/* 이번 주 일정: 점과 선으로 이은 타임라인 */
+/* 이번 주 일정(진행 영역 맨 위, WeekSchedule): 점과 선으로 이은 타임라인. PC 사이드바는 좁아 요일만 보이고 오늘 설명은 아래 한 줄로 */
+.week-panel { padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+.week-title { font-size: var(--fs-title); }
+.week-today { margin: 0; font-size: var(--fs-sub); }
+.sidebar .week-what { display: none; }
+.mobile-ui .sidebar .week-what { display: block; }
 .week-rail { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); }
 .week-stop { position: relative; display: flex; flex-direction: column; align-items: center; gap: 2px; text-align: center; padding-top: 18px; color: var(--muted); min-width: 0; }
 .week-stop::before { content: ''; position: absolute; top: 5px; left: -50%; width: 100%; height: 2px; background: var(--line); }
@@ -1187,10 +1180,6 @@ button.ghost.light:hover:not(:disabled) { border-color: #fff; color: #fff; backg
 /* ---- 모바일용 ---- */
 .mobile-ui .player-strip { gap: 8px; padding: 8px 10px; scroll-snap-type: x proximity; scrollbar-width: none; }
 .mobile-ui .pseat { flex: 0 0 auto; width: min(320px, 86vw); min-width: 0; min-height: 0; padding: 8px 10px; gap: 6px; scroll-snap-align: start; scroll-margin-left: 10px; }
-.mobile-ui .club-head { gap: 8px 12px; padding-bottom: 12px; }
-.mobile-ui .club-stats { width: 100%; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); }
-.mobile-ui .club-stat { min-width: 0; padding: 6px 8px; }
-.mobile-ui .club-stat dd { font-size: 18px; }
 .mobile-ui .club-board, .mobile-ui .stadium-board, .mobile-ui .mb-field { padding: 8px; border-radius: var(--radius-md); }
 .mobile-ui .tile { padding: 12px; }
 .mobile-ui .club-grid, .mobile-ui .match-board { grid-template-columns: minmax(0, 1fr); }
@@ -1200,7 +1189,6 @@ button.ghost.light:hover:not(:disabled) { border-color: #fff; color: #fff; backg
 .mobile-ui .track-name { font-size: var(--fs-body); color: var(--ink-2); }
 .mobile-ui .track-stock { justify-self: end; }
 .mobile-ui .track-rail { grid-template-columns: 30px repeat(5, minmax(0, 1fr)) 30px; }
-.mobile-ui .week-what { font-size: var(--fs-sub); }
 .mobile-ui .upkeep-row { grid-template-columns: 64px minmax(0, 1fr) 36px; gap: 6px; }
 .mobile-ui .stadium-board { grid-template-columns: minmax(0, 1fr); }
 .mobile-ui .lots-tile { grid-template-columns: minmax(0, 1fr); gap: 12px; }
