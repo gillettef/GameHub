@@ -76,6 +76,7 @@ export function diffPlayer(a: PlayerPublicView, b: PlayerPublicView, leagueA: nu
       const d = r.tokens[t] - prev.tokens[t];
       if (d !== 0) out.push({ kind: 'token', token: t, count: d, name });
     }
+    if (r.stamina > prev.stamina) out.push({ kind: 'text', icon: 'stamina', text: `${name}에 체력 +${r.stamina - prev.stamina} 올려놓음`, tone: 'stamina' });
     if (r.careerVP !== prev.careerVP) out.push({ kind: 'text', icon: 'vp', text: `${name} 경력 승점 ${r.careerVP - prev.careerVP > 0 ? '+' : ''}${r.careerVP - prev.careerVP}`, tone: 'vp' });
   }
   for (const r of a.roster) if (!after.has(r.instanceId)) out.push({ kind: 'text', text: `방출 ${playerName(a, r.instanceId)}` });

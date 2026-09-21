@@ -116,11 +116,13 @@ export function submitLineup(state: GameState, pid: PlayerId, sub: LineupSubmiss
   const player = getPlayer(next, pid);
   const { players } = validateLineup(player, sub);
 
-  const cost: Partial<Resources> = { stamina: lineupStaminaCost(player, players.length), fandom: sub.fandomInStands ?? 0 };
+  const cost: Partial<Resources> = { stamina: lineupStaminaCost(player, players), fandom: sub.fandomInStands ?? 0 };
   for (const placed of Object.values(sub.activations ?? {})) {
     for (const r of RESOURCES) cost[r] = (cost[r] ?? 0) + (placed[r] ?? 0);
   }
   pay(player, cost);
+  // 미리 올려놓은 체력이 있는 출전 선수는 그중 1개를 출전 체력으로 쓴다. 남은 것은 카드에 그대로 (사용자 결정)
+  for (const inst of players) if (inst.stamina > 0) inst.stamina--;
   for (const [instanceId, placed] of Object.entries(sub.activations ?? {})) {
     const inst = instanceOf(player, instanceId);
     for (const r of RESOURCES) if (placed[r]) inst.placed[r] = (inst.placed[r] ?? 0) + placed[r];
@@ -299,7 +301,7 @@ function resolveAllMatches(state: GameState, rng: Rng): void {
     if ((sub.fandomInStands ?? 0) > 0) player.resources.money += traitSum(player, 'standsBonusMoney'); // 특성: 관중 수입 +N
     const scorerTokens = new Set(report.scorers);
     for (const inst of played) {
-      inst.placed = {};
+      inst.placed = {}; // 미리 올려놓은 체력(inst.stamina)의 남은 분은 버리지 않는다 (사용자 결정)
       inst.tokens.strengthTemp = 0;
       inst.tokens.weaknessTemp = 0;
       const career = activeSide(inst).career;

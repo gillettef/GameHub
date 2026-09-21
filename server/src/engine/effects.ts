@@ -30,6 +30,7 @@ export function addToRoster(player: PlayerState, cardId: string): PlayerInstance
     trained: false,
     tokens: emptyTokens(),
     placed: {},
+    stamina: 0,
     exhausted: false,
     careerVP: 0,
     careerUsed: { appearances: 0, goals: 0 },
@@ -134,8 +135,7 @@ function applyTargeted(state: GameState, player: PlayerState, effect: Effect, ch
       return;
     }
     case 'placeStamina': {
-      const inst = findInstance(player, choice);
-      inst.placed.stamina = (inst.placed.stamina ?? 0) + effect.count;
+      findInstance(player, choice).stamina += effect.count;
       return;
     }
     case 'addPlayerToken':
