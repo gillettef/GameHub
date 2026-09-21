@@ -7,6 +7,7 @@ import type { StaffSet } from '@server/engine/types';
 import type { GameView, PlayerPublicView } from '@server/engine/view';
 import { Stepper } from './Lineup';
 import type { StepDef } from './Lineup';
+import { PlayerCrest } from './Crest';
 import { seatColor } from './Shell';
 
 // 시즌 종료 승점 확인(사용자 요청, 2026-09): 항목을 하나씩 넘기며, 항목마다 참가자를 한 명씩 차례로 체크(✓)해 근거와 점수를 보여 준다.
@@ -114,7 +115,7 @@ export function ScoreReviewModal({ view, onClose }: { view: GameView; onClose: (
             return (
               <li key={id} className={`score-row${checked ? ' checked' : ''}${last && winners.includes(id) ? ' top' : ''}`} style={{ '--seat': seatColor(view, id) } as React.CSSProperties}>
                 <span className="score-check" aria-hidden>{checked ? '✓' : ''}</span>
-                <span className="score-name"><span className="seat-dot" />{p.name}{last && winners.includes(id) && <span className="tag done">우승</span>}</span>
+                <span className="score-name"><PlayerCrest id={id} name={p.name} color={seatColor(view, id)} size={20} />{p.name}{last && winners.includes(id) && <span className="tag done">우승</span>}</span>
                 <span className="score-evidence">
                   {checked &&
                     (item

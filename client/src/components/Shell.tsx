@@ -15,7 +15,7 @@ import { useUi } from '../ui';
 import type { MarketTab } from '../ui';
 import { PlayerCardView, SponsorCardView, StaffCardView } from './Cards';
 import { ChatBody, unreadCount } from './Chat';
-import { Crest } from './Crest';
+import { Crest, PlayerCrest } from './Crest';
 import { CostChips, Icon } from './Icons';
 import { UpkeepChip } from './Upkeep';
 import { SponsorContractModal } from './Sponsor';
@@ -139,7 +139,7 @@ export function PlayerStrip() {
         title={`${p.name}의 개인 보드 보기`}
       >
         <span className="pseat-head">
-          <Crest name={p.name} color={seatColor(view, id)} size={30} />
+          <PlayerCrest id={id} name={p.name} color={seatColor(view, id)} size={30} />
           <span className="pseat-id">
             <span className="seat-name">
               <span className="seat-name-text">{p.name}</span>
@@ -305,7 +305,7 @@ export function LeagueBody() {
           >
             <span role="cell" className="rank">{rank}</span>
             <span role="cell" className="team">
-              <Crest name={e.name} color={e.id ? seatColor(view, e.id) : undefined} size={22} />
+              {e.id ? <PlayerCrest id={e.id} name={e.name} color={seatColor(view, e.id)} size={22} /> : <Crest name={e.name} size={22} />}
               <span className="team-name">{e.name}</span>
               {e.id && e.id === session?.playerId && <span className="tag me">나</span>}
               {!e.active && <span className="tag inactive-tag" title="이번 주에 참가자 2명 이상이 이 팀과 경기해서 마커가 비활성(검은색) 면입니다 (p.24). 다음에 아무도 이 팀을 상대하지 않는 주에는 주사위로 이동하는 대신 활성 면으로 돌아옵니다. 순위·승점 계산에는 그대로 포함됩니다.">비활성</span>}

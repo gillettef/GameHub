@@ -1,4 +1,5 @@
 import type { PlayerId } from '@server/engine/state';
+import { PlayerCrest } from './Crest';
 import { seatColor } from './Shell';
 import { useView } from '../store';
 
@@ -12,6 +13,7 @@ export function TurnBanner({ current, done }: { current: PlayerId; done?: Record
     <div key={current} className={`turn-banner${mine ? ' mine' : ''}`} aria-live="polite">
       <span className="turn-now" style={{ '--seat': seatColor(view, current) } as React.CSSProperties}>
         <span className="turn-dot" />
+        <PlayerCrest id={current} name={view.players[current]!.name} color={seatColor(view, current)} size={22} />
         <b>{view.players[current]!.name}</b>의 차례{mine && ' · 나'}
       </span>
       <span className="turn-order">

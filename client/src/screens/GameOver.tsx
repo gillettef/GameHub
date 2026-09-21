@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { cards } from '@server/engine/cards';
 import { ObjectiveCardView } from '../components/Cards';
 import { ScoreReviewModal } from '../components/ScoreReview';
+import { PlayerCrest } from '../components/Crest';
 import { seatColor } from '../components/Shell';
 import { useView } from '../store';
 
@@ -33,7 +34,7 @@ export function GameOverScreen() {
             <th />
             {order.map((id) => (
               <th key={id} className={winners.includes(id) ? 'winner-col' : ''} style={{ '--seat': seatColor(view, id) } as React.CSSProperties}>
-                <span className="seat-dot" />{view.players[id]!.name}
+                <PlayerCrest id={id} name={view.players[id]!.name} color={seatColor(view, id)} size={20} />{view.players[id]!.name}
               </th>
             ))}
           </tr>

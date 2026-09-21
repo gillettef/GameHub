@@ -35,6 +35,24 @@ describe('RoomManager', () => {
     expect(roomView(room).players.map((p) => p.isHost)).toEqual([true, false, false, false]);
   });
 
+  it('구단 엠블럼: 입장하면 안 쓰는 것을 받고, 대기실에서만 바꾸며, 다른 참가자(봇 포함)의 것은 못 고른다', () => {
+    const rm = new RoomManager();
+    const { room, player: host } = rm.create('a');
+    const { player: b } = rm.join(room.code, 'b');
+    rm.addBot(room.code, host.id);
+    expect(new Set(room.players.map((p) => p.emblem)).size).toBe(3);
+    rm.setEmblem(room.code, b.id, 'castle');
+    expect(roomView(room).players.find((p) => p.id === b.id)!.emblem).toBe('castle');
+    expect(() => rm.setEmblem(room.code, host.id, 'castle')).toThrow(RoomError); // 이미 쓰는 엠블럼
+    expect(() => rm.setEmblem(room.code, host.id, room.players.find((p) => p.isBot)!.emblem)).toThrow(RoomError);
+    expect(() => rm.setEmblem(room.code, host.id, 'nope' as never)).toThrow(RoomError);
+    expect(() => rm.setEmblem(room.code, 'nobody', 'sun')).toThrow(RoomError);
+    rm.setEmblem(room.code, b.id, 'castle'); // 같은 것을 다시 골라도 된다
+    rm.start(room.code, host.id);
+    expect(() => rm.setEmblem(room.code, host.id, 'sun')).toThrow(RoomError); // 시작한 뒤에는 불가
+    expect(roomView(room).players.find((p) => p.id === b.id)!.emblem).toBe('castle'); // 게임 중에도 방 정보로 내려간다
+  });
+
   it('강퇴: 호스트만, 대기실에서만, 자기 자신은 안 되고, 봇·사람 모두 내보낼 수 있다. 내보낸 뒤에는 재접속도 안 된다', () => {
     const rm = new RoomManager();
     const { room, player: host } = rm.create('a');

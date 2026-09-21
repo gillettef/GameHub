@@ -7,7 +7,8 @@ import type { MobileTab } from '../ui';
 import { ActionSidebar } from './ActionSidebar';
 import { PlayerBoard } from './Boards';
 import { unreadCount } from './Chat';
-import { ActionLog, LeagueBody, MarketBody } from './Shell';
+import { PlayerCrest } from './Crest';
+import { ActionLog, LeagueBody, MarketBody, seatColor } from './Shell';
 
 // 모바일용 화면 (device.tsx 에서 '모바일용'을 고른 경우): 한 열 + 아래 고정 탭 막대. 한 번에 한 영역만 보인다.
 //   진행 = 주사위 · 주중 행동 목록 · 단계 패널(드래프트/이사회/경기 준비…) / 구단 = 고른 참가자의 개인 보드 /
@@ -85,7 +86,7 @@ export function MobileMain({ phasePanel }: { phasePanel: ReactNode }) {
       </div>
       {mobileTab === 'board' && (
         <section className="panel main-panel">
-          <div className="panel-head"><h2>{p.name}</h2></div>
+          <div className="panel-head"><h2 className="crest-title"><PlayerCrest id={p.id} name={p.name} color={seatColor(view, p.id)} size={22} />{p.name}</h2></div>
           <PlayerBoard p={p} privateInfo={isMe ? view.self : undefined} />
         </section>
       )}
