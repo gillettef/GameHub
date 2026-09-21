@@ -52,6 +52,11 @@ export function RoomLobby() {
               {p.isBot && '🤖 '}{p.name} {p.isHost && <span className="badge">호스트</span>} {!p.isBot && !p.connected && <span className="muted small">(연결 끊김)</span>}
             </span>
             {isHost && p.isBot && <button className="link small" onClick={() => send({ type: 'removeBot', playerId: p.id })}>제거</button>}
+            {isHost && !p.isBot && !p.isHost && (
+              <button className="link small danger" title="이 참가자를 방에서 내보냅니다 (대기실에서만)" onClick={() => window.confirm(`${p.name} 님을 방에서 내보낼까요?`) && send({ type: 'kick', playerId: p.id })}>
+                강퇴
+              </button>
+            )}
           </li>
         ))}
       </ul>
@@ -68,6 +73,10 @@ export function RoomLobby() {
           <option value={2}>2부 (보통)</option>
           <option value={1}>1부 (어려움)</option>
         </select>
+      </label>
+      <label className="row" title="켜면 게임을 시작할 때 자리(차례) 순서를 무작위로 섞습니다. 첫 자리가 1주차 선 참가자입니다. 끄면 입장 순서대로, 호스트가 선 참가자입니다.">
+        <input type="checkbox" checked={room.randomOrder} disabled={!isHost} onChange={(e) => send({ type: 'setRandomOrder', on: e.target.checked })} />
+        시작 순서 무작위 <span className="muted small">{room.randomOrder ? '시작할 때 차례 순서를 섞습니다' : '입장 순서대로 · 호스트가 선'}</span>
       </label>
       <div className="row">
         {isHost ? <button className="primary" onClick={() => send({ type: 'startGame' })}>게임 시작</button> : <span className="muted">호스트가 시작하기를 기다리는 중…</span>}

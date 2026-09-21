@@ -4,7 +4,7 @@ import type { GameAction } from './engine/actions';
 import { createRng } from './engine/rng';
 import type { Rng } from './engine/rng';
 import { createGame } from './engine/setup';
-import { GameError } from './engine/state';
+import { GameError, addLog } from './engine/state';
 import type { GameState } from './engine/state';
 import type { Division } from './engine/types';
 import { CHAT_MAX_LENGTH } from './protocol';
@@ -24,6 +24,7 @@ export interface Room {
   code: string;
   hostId: string;
   division: Division;
+  randomOrder: boolean; // 시작할 때 자리 순서를 섞는다 (사용자 요청, 2026-09)
   status: 'lobby' | 'playing' | 'over';
   players: RoomPlayer[];
   seed: number;
@@ -61,6 +62,7 @@ export function roomView(room: Room): RoomView {
     code: room.code,
     status: room.status,
     division: room.division,
+    randomOrder: room.randomOrder,
     players: room.players.map((p) => ({ id: p.id, name: p.name, connected: p.connected, isHost: p.id === room.hostId, isBot: p.isBot })),
   };
 }
@@ -82,6 +84,7 @@ export class RoomManager {
       code,
       hostId: player.id,
       division: 3,
+      randomOrder: false,
       status: 'lobby',
       players: [player],
       seed,
@@ -128,6 +131,29 @@ export class RoomManager {
     return room;
   }
 
+  // 강퇴(사용자 요청, 2026-09): 호스트가 대기실에서 참가자를 내보낸다. 봇·연결 끊긴 참가자도 대상, 자기 자신은 안 된다.
+  // 게임이 시작된 뒤에는 자리가 고정되어 있어 내보낼 수 없다
+  kick(code: string, playerId: string, targetId: string): { room: Room; kicked: RoomPlayer } {
+    const room = this.get(code);
+    this.requireHost(room, playerId);
+    if (room.status !== 'lobby') throw new RoomError('game already started');
+    if (targetId === room.hostId) throw new RoomError('cannot kick the host');
+    const idx = room.players.findIndex((p) => p.id === targetId);
+    if (idx < 0) throw new RoomError('no such player');
+    const [kicked] = room.players.splice(idx, 1);
+    room.updatedAt = Date.now();
+    return { room, kicked: kicked! };
+  }
+
+  setRandomOrder(code: string, playerId: string, on: unknown): Room {
+    const room = this.get(code);
+    this.requireHost(room, playerId);
+    if (room.status !== 'lobby') throw new RoomError('game already started');
+    room.randomOrder = on === true;
+    room.updatedAt = Date.now();
+    return room;
+  }
+
   rejoin(code: string, playerId: string, token: string): { room: Room; player: RoomPlayer } {
     const room = this.get(code);
     const player = room.players.find((p) => p.id === playerId);
@@ -159,10 +185,13 @@ export class RoomManager {
     const room = this.get(code);
     this.requireHost(room, playerId);
     if (room.status !== 'lobby') throw new RoomError('game already started');
+    // 시작 순서 무작위: 자리(시계방향 차례)를 섞는다. 첫 자리가 1주차 선 참가자. 대기실 목록도 같은 순서로 맞춘다
+    if (room.randomOrder) room.players = room.rng.shuffle(room.players);
     room.game = createGame(
       { id: room.code, division: room.division, players: room.players.map((p) => ({ id: p.id, name: p.name })) },
       room.rng,
     );
+    if (room.randomOrder) addLog(room.game, `시작 순서를 무작위로 정함: ${room.players.map((p) => p.name).join(' → ')}`);
     room.status = 'playing';
     room.updatedAt = Date.now();
     return room;

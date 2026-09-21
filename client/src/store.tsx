@@ -58,6 +58,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         case 'spectating':
           setSpectating(msg.code);
           break;
+        case 'kicked': // 호스트가 대기실에서 내보냄: 세션을 지우고 로비로
+          saveSession(null);
+          setSession(null);
+          setRoom(null);
+          setView(null);
+          setChat([]);
+          setError('호스트가 방에서 내보냈습니다');
+          break;
         case 'room':
           setRoom(msg.room);
           break;

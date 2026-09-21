@@ -35,6 +35,52 @@ describe('RoomManager', () => {
     expect(roomView(room).players.map((p) => p.isHost)).toEqual([true, false, false, false]);
   });
 
+  it('강퇴: 호스트만, 대기실에서만, 자기 자신은 안 되고, 봇·사람 모두 내보낼 수 있다. 내보낸 뒤에는 재접속도 안 된다', () => {
+    const rm = new RoomManager();
+    const { room, player: host } = rm.create('a');
+    const { player: b } = rm.join(room.code, 'b');
+    rm.addBot(room.code, host.id);
+    const bot = room.players.find((p) => p.isBot)!;
+    expect(() => rm.kick(room.code, b.id, host.id)).toThrow(RoomError); // 호스트만
+    expect(() => rm.kick(room.code, host.id, host.id)).toThrow(RoomError); // 자기 자신
+    expect(() => rm.kick(room.code, host.id, 'nobody')).toThrow(RoomError);
+    expect(rm.kick(room.code, host.id, b.id).kicked.id).toBe(b.id);
+    expect(rm.kick(room.code, host.id, bot.id).kicked.isBot).toBe(true);
+    expect(room.players.map((p) => p.id)).toEqual([host.id]);
+    expect(() => rm.rejoin(room.code, b.id, b.token)).toThrow(RoomError);
+    const again = rm.join(room.code, 'b').player; // 같은 이름으로 다시 들어올 수는 있다
+    rm.start(room.code, host.id);
+    expect(() => rm.kick(room.code, host.id, again.id)).toThrow(RoomError); // 시작한 뒤에는 불가
+  });
+
+  it('시작 순서 무작위: 켜면 자리 순서를 섞고(같은 참가자 집합, 첫 자리가 선 참가자) 기록에 남긴다. 끄면 입장 순서 그대로', () => {
+    const orders = new Set<string>();
+    for (let seed = 1; seed <= 12; seed++) {
+      const rm = new RoomManager();
+      const { room, player: host } = rm.create('a', seed);
+      for (const n of ['b', 'c', 'd']) rm.join(room.code, n);
+      expect(() => rm.setRandomOrder(room.code, room.players[1]!.id, true)).toThrow(RoomError); // 호스트만
+      rm.setRandomOrder(room.code, host.id, true);
+      expect(roomView(room).randomOrder).toBe(true);
+      const before = room.players.map((p) => p.id);
+      rm.start(room.code, host.id);
+      const seats = room.game!.seats;
+      expect([...seats].sort()).toEqual([...before].sort());
+      expect(room.game!.firstPlayer).toBe(seats[0]);
+      expect(room.players.map((p) => p.id)).toEqual(seats);
+      expect(room.game!.log.some((e) => e.text.startsWith('시작 순서를 무작위로 정함'))).toBe(true);
+      orders.add(seats.map((id) => before.indexOf(id)).join(''));
+    }
+    expect(orders.size).toBeGreaterThan(3); // 시드에 따라 순서가 달라진다
+
+    const rm = new RoomManager();
+    const { room, player: host } = rm.create('a', 5);
+    for (const n of ['b', 'c', 'd']) rm.join(room.code, n);
+    const before = room.players.map((p) => p.id);
+    rm.start(room.code, host.id);
+    expect(room.game!.seats).toEqual(before);
+  });
+
   it('재접속은 토큰이 맞아야 하고 연결 상태를 복구한다', () => {
     const rm = new RoomManager();
     const { room, player } = rm.create('a');
