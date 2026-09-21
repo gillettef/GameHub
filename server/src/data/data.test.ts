@@ -85,7 +85,7 @@ describe('선수 카드 (p.15~16, p.22)', () => {
       }
       expect(p.name).not.toBe('유망주'); // 데이터는 본명, 화면은 훈련 전 '유망주' (playerName)
       expect(p.trained.number).toBeDefined();
-      expect(p.trained.cost).toBe(1);
+      expect(p.trained.cost).toBe(2); // 훈련 면에도 비용 2 (사용자 요청, 2026-09)
       expect(p.trained.skill >= 3 || p.trained.effect !== undefined).toBe(true); // 역량 중상 또는 상급 능력
       byRole[p.untrained.goalkeeper ? 'goalkeeper' : p.untrained.role]++;
     }
