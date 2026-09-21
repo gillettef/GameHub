@@ -132,6 +132,7 @@ export function signSponsor(
       takeFromMarket(next, 'sponsors', marketIndex, rng, marketMinIndex(player, 'sponsors'));
       applyEffects(next, pid, card.kit, card.name, {}, rng);
       next.decks.discards.sponsors.push(cardId);
+      player.kitSponsors++;
       break;
     case 'billboard':
       if (player.sponsors.billboards.length >= billboardLimit(player)) throw new GameError('billboard slots full');

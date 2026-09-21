@@ -1,5 +1,9 @@
+import { cards } from '@server/engine/cards';
+import { ObjectiveCardView } from '../components/Cards';
 import { seatColor } from '../components/Shell';
 import { useView } from '../store';
+
+const LEVEL_LABEL = ['미달성', '목표 달성', '완벽 달성'] as const;
 
 const ROWS = [
   ['league', '리그 순위'],
@@ -7,6 +11,7 @@ const ROWS = [
   ['staffSets', '직원 세트'],
   ['infrastructure', '기반 시설'],
   ['office', '사무실'],
+  ['objective', '목표 카드'],
   ['suspensions', '출장정지'],
 ] as const;
 
@@ -38,7 +43,11 @@ export function GameOverScreen() {
           {ROWS.map(([key, label]) => (
             <tr key={key}>
               <td>{label}</td>
-              {order.map((id) => <td key={id}>{scores[id]![key]}</td>)}
+              {order.map((id) => (
+                <td key={id} title={key === 'objective' && scores[id]!.objectiveCard ? `${cards.objective(scores[id]!.objectiveCard!).name} — ${LEVEL_LABEL[scores[id]!.objectiveLevel]}` : undefined}>
+                  {scores[id]![key]}
+                </td>
+              ))}
             </tr>
           ))}
           <tr className="total">
@@ -47,6 +56,18 @@ export function GameOverScreen() {
           </tr>
         </tbody>
       </table>
+      {/* p.27: 마지막 경기 뒤 목표 카드를 공개한다 */}
+      <div className="step">
+        <h3>목표 카드 공개</h3>
+        <div className="cards">
+          {order.filter((id) => scores[id]!.objectiveCard).map((id) => (
+            <div key={id} className="stack" style={{ '--seat': seatColor(view, id) } as React.CSSProperties}>
+              <span className="small"><span className="seat-dot" />{view.players[id]!.name} · <b>{LEVEL_LABEL[scores[id]!.objectiveLevel]}</b> (+{scores[id]!.objective})</span>
+              <ObjectiveCardView cardId={scores[id]!.objectiveCard!} level={scores[id]!.objectiveLevel} compact />
+            </div>
+          ))}
+        </div>
+      </div>
       <button className="primary" onClick={leave}>로비로</button>
     </section>
   );

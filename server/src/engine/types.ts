@@ -233,12 +233,31 @@ export interface TacticCard {
 
 // ---------- 목표 카드 (p.27) ----------
 
+// 목표 판정 조건 (p.27). 판정은 engine/objectives.ts. 새 목표를 만들 때 필요한 종류가 없으면 여기에 추가한다
+export type ObjectiveCheck =
+  | { kind: 'weekWin'; week: number; margin?: number; cleanSheet?: boolean } // N주차 경기 승리 (+ 골 차 / 무실점)
+  | { kind: 'winStreak'; count: number } // N주 연속 승리
+  | { kind: 'leagueFirst'; lead?: number } // 종료 시 리그 1위 (+ 다른 모든 팀과 lead칸 이상 차이)
+  | { kind: 'staffSet'; count: number } // 같은 세트 직원 N장
+  | { kind: 'infrastructure'; count: number } // 건설한 기반 시설 토큰 N개
+  | { kind: 'trainedPlayers'; count: number }
+  | { kind: 'trainedProspects'; count: number }
+  | { kind: 'prospectGoalVP' } // 훈련된 유망주의 경력 칸에 득점 승점 토큰
+  | { kind: 'money'; amount: number }
+  | { kind: 'noInjuryTokens' } // 종료 시 선수 카드에 부상 토큰 없음
+  | { kind: 'noMatchDieInjury' } // 게임 동안 경기 영향 주사위로 부상 토큰을 받은 적 없음
+  | { kind: 'office'; index: number } // 사무실 트랙 index 이상
+  | { kind: 'sponsors'; count: number } // 스폰서 계약 N건 (장내 방송은 맺은 횟수, 광고판·유니폼은 보유)
+  | { kind: 'sponsorTypes' }; // 장내 방송·광고판·유니폼 각 1건 이상
+
 export interface ObjectiveCard {
   id: string;
   name: string;
   description: string;
   goal: string;
   perfect: string;
+  goalCheck: ObjectiveCheck;
+  perfectCheck: ObjectiveCheck; // goalCheck 를 달성한 위에 추가로 만족해야 하는 조건
   placeholder?: true;
 }
 
