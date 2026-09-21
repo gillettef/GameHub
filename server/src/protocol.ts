@@ -4,9 +4,14 @@ import type { GameView } from './engine/view';
 
 // WebSocket 메시지 (JSON). 클라이언트와 공유하는 계약
 
+// 구단 엠블럼 프리셋 (사용자 요청 2026-09): 대기실에서 참가자마다 하나씩 고른다(한 방에서 겹치지 않음). 그림은 클라이언트 `components/Crest.tsx`
+export const EMBLEM_IDS = ['star', 'crown', 'bolt', 'flame', 'ball', 'chevron', 'mountain', 'sun', 'wave', 'tree', 'castle', 'diamond'] as const;
+export type EmblemId = (typeof EMBLEM_IDS)[number];
+
 export interface RoomPlayerView {
   id: string;
   name: string;
+  emblem: EmblemId;
   connected: boolean;
   isHost: boolean;
   isBot: boolean;
@@ -35,6 +40,7 @@ export type ClientMessage =
   | { type: 'rejoin'; code: string; playerId: string; token: string }
   | { type: 'spectate'; code: string }
   | { type: 'setDivision'; division: Division }
+  | { type: 'setEmblem'; emblem: EmblemId } // 대기실에서 내 구단 엠블럼을 고른다 (다른 참가자가 쓰는 것은 불가)
   | { type: 'addBot' }
   | { type: 'removeBot'; playerId: string }
   | { type: 'kick'; playerId: string } // 호스트가 대기실에서 참가자를 내보낸다 (봇 포함, 자기 자신 제외)

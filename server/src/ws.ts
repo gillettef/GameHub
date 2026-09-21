@@ -105,6 +105,9 @@ export function attachWebSocket(wss: WebSocketServer, rooms: RoomManager, option
       case 'setDivision':
         broadcast(rooms.setDivision(session.roomCode, session.playerId, msg.division));
         return;
+      case 'setEmblem':
+        broadcast(rooms.setEmblem(session.roomCode, session.playerId, msg.emblem));
+        return;
       case 'addBot':
         broadcast(rooms.addBot(session.roomCode, session.playerId));
         return;

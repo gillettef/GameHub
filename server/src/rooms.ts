@@ -7,12 +7,13 @@ import { createGame } from './engine/setup';
 import { GameError, addLog } from './engine/state';
 import type { GameState } from './engine/state';
 import type { Division } from './engine/types';
-import { CHAT_MAX_LENGTH } from './protocol';
-import type { ChatMessage, RoomView } from './protocol';
+import { CHAT_MAX_LENGTH, EMBLEM_IDS } from './protocol';
+import type { ChatMessage, EmblemId, RoomView } from './protocol';
 
 export interface RoomPlayer {
   id: string;
   name: string;
+  emblem: EmblemId;
   token: string;
   connected: boolean;
   isBot: boolean;
@@ -49,6 +50,11 @@ function makeCode(): string {
   return Array.from(bytes, (b) => CODE_ALPHABET[b % CODE_ALPHABET.length]!).join('');
 }
 
+// 아직 아무도 쓰지 않는 첫 엠블럼 (정원 4명 < 프리셋 12개라 항상 있다)
+function freeEmblem(players: RoomPlayer[]): EmblemId {
+  return EMBLEM_IDS.find((e) => !players.some((p) => p.emblem === e)) ?? EMBLEM_IDS[0];
+}
+
 function cleanName(name: unknown): string {
   if (typeof name !== 'string') throw new RoomError('name required');
   const trimmed = name.trim().slice(0, MAX_NAME);
@@ -61,7 +67,7 @@ export function roomView(room: Room): RoomView {
     code: room.code,
     status: room.status,
     division: room.division,
-    players: room.players.map((p) => ({ id: p.id, name: p.name, connected: p.connected, isHost: p.id === room.hostId, isBot: p.isBot })),
+    players: room.players.map((p) => ({ id: p.id, name: p.name, emblem: p.emblem, connected: p.connected, isHost: p.id === room.hostId, isBot: p.isBot })),
   };
 }
 
@@ -77,7 +83,7 @@ export class RoomManager {
   create(name: string, seed = Date.now() % 2147483647): { room: Room; player: RoomPlayer } {
     let code = makeCode();
     while (this.rooms.has(code)) code = makeCode();
-    const player = this.newPlayer(name);
+    const player = this.newPlayer(name, []);
     const room: Room = {
       code,
       hostId: player.id,
@@ -98,7 +104,7 @@ export class RoomManager {
     const room = this.get(code);
     if (room.status !== 'lobby') throw new RoomError('game already started');
     if (room.players.length >= MAX_PLAYERS) throw new RoomError('room is full');
-    const player = this.newPlayer(name);
+    const player = this.newPlayer(name, room.players);
     if (room.players.some((p) => p.name === player.name)) throw new RoomError('name already taken');
     room.players.push(player);
     room.updatedAt = Date.now();
@@ -112,7 +118,7 @@ export class RoomManager {
     if (room.status !== 'lobby') throw new RoomError('game already started');
     if (room.players.length >= MAX_PLAYERS) throw new RoomError('room is full');
     const name = BOT_NAMES.find((n) => !room.players.some((p) => p.name === n)) ?? `봇-${room.players.length + 1}`;
-    room.players.push({ ...this.newPlayer(name), isBot: true });
+    room.players.push({ ...this.newPlayer(name, room.players), isBot: true });
     room.updatedAt = Date.now();
     return room;
   }
@@ -166,6 +172,19 @@ export class RoomManager {
     if (room.status !== 'lobby') throw new RoomError('game already started');
     if (![1, 2, 3].includes(division)) throw new RoomError('invalid division');
     room.division = division;
+    return room;
+  }
+
+  // 구단 엠블럼 고르기 (사용자 요청 2026-09): 대기실에서만, 참가자 누구나 자기 것을. 다른 참가자(봇 포함)가 쓰는 엠블럼은 고를 수 없다
+  setEmblem(code: string, playerId: string, emblem: EmblemId): Room {
+    const room = this.get(code);
+    const player = room.players.find((p) => p.id === playerId);
+    if (!player) throw new RoomError('not in this room');
+    if (room.status !== 'lobby') throw new RoomError('game already started');
+    if (!EMBLEM_IDS.includes(emblem)) throw new RoomError('invalid emblem');
+    if (room.players.some((p) => p.id !== playerId && p.emblem === emblem)) throw new RoomError('emblem already taken');
+    player.emblem = emblem;
+    room.updatedAt = Date.now();
     return room;
   }
 
@@ -232,7 +251,7 @@ export class RoomManager {
     if (room.hostId !== playerId) throw new RoomError('host only');
   }
 
-  private newPlayer(name: string): RoomPlayer {
-    return { id: randomUUID().slice(0, 8), name: cleanName(name), token: randomUUID(), connected: true, isBot: false };
+  private newPlayer(name: string, others: RoomPlayer[]): RoomPlayer {
+    return { id: randomUUID().slice(0, 8), name: cleanName(name), emblem: freeEmblem(others), token: randomUUID(), connected: true, isBot: false };
   }
 }

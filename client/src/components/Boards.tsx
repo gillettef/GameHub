@@ -12,7 +12,7 @@ import type { BoardTab } from '../ui';
 import { objectiveLevel } from '@server/engine/objectives';
 import { ExecutiveCardView, ObjectiveCardView, OpponentCardView, PlayerCardView, SponsorCardView, StaffCardView, TacticCardView } from './Cards';
 import { Chip, EffectChips, Icon } from './Icons';
-import { Crest } from './Crest';
+import { PlayerCrest } from './Crest';
 import { seatColor } from './Shell';
 import { Tabs } from './Tabs';
 
@@ -193,7 +193,7 @@ function StadiumBoard({ p }: { p: PlayerPublicView }) {
           {stand(1, 'west')}
           <div className="stadium-pitch">
             <PitchLines />
-            <span className="pitch-crest"><Crest name={p.name} color="rgba(255,255,255,0.22)" size={44} /></span>
+            <span className="pitch-crest"><PlayerCrest id={p.id} name={p.name} color="rgba(255,255,255,0.22)" size={44} /></span>
           </div>
           {stand(2, 'east')}
           <div className="billboards" aria-label="광고판">{[0, 1, 2].map(billboard)}</div>
