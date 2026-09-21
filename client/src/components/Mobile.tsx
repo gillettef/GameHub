@@ -85,6 +85,7 @@ export function MobileMain({ phasePanel }: { phasePanel: ReactNode }) {
       </div>
       {mobileTab === 'board' && (
         <section className="panel main-panel">
+          <div className="panel-head"><h2>{p.name}</h2></div>
           <PlayerBoard p={p} privateInfo={isMe ? view.self : undefined} />
         </section>
       )}

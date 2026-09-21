@@ -2,7 +2,7 @@ import { cards, instanceName } from '@server/engine/cards';
 import { billboardLimit } from '@server/engine/weekday';
 import { WEEKS, upkeepDue } from '@server/engine/weekend';
 import { RESOURCES, TRACK_MAX } from '@server/engine/types';
-import type { InfrastructureType, Resource } from '@server/engine/types';
+import type { InfrastructureType } from '@server/engine/types';
 import type { PlayerPublicView } from '@server/engine/view';
 import { useCommit } from '../commit';
 import { INFRA_EFFECT, INFRA_LABEL, RESOURCE_LABEL } from '../labels';
@@ -13,31 +13,14 @@ import { objectiveLevel } from '@server/engine/objectives';
 import { ExecutiveCardView, ObjectiveCardView, OpponentCardView, PlayerCardView, SponsorCardView, StaffCardView, TacticCardView } from './Cards';
 import { Chip, EffectChips, Icon } from './Icons';
 import { Crest } from './Crest';
-import { leagueRankOf, seatColor } from './Shell';
+import { seatColor } from './Shell';
 import { Tabs } from './Tabs';
 
-const WEEK_DAYS = [
-  { key: 'mon', label: '월', what: '조달 · 이사회', hint: '월요일: 능력치 트랙만큼 자원을 받고 이사회를 엽니다' },
-  { key: 'tue', label: '화', what: '행동', hint: '화요일: 기본 행동 1회 + 운영 2개로 카드 행동 1회' },
-  { key: 'wed', label: '수', what: '행동', hint: '수요일: 기본 행동 1회 + 운영 2개로 카드 행동 1회' },
-  { key: 'thu', label: '목', what: '행동', hint: '목요일: 기본 행동 1회 + 운영 2개로 카드 행동 1회' },
-  { key: 'fri', label: '금', what: '경기', hint: '금요일: 라인업 제출 → 경기 → 경기 영향 주사위' },
-  { key: 'weekend', label: '주말', what: '유지비 · 정리', hint: '주말: 유지비 지불, 시장 순환, 팬덤·체력·운영은 1개만 남김' },
-] as const;
-
-function currentDayKey(kind: string, day?: string): string | null {
-  if (kind === 'monday.board') return 'mon';
-  if (kind === 'weekday') return day ?? null;
-  if (kind.startsWith('friday')) return 'fri';
-  return null;
-}
-
-// 구단 보드 (룰북 p.7): 이번 주 일정, 능력치 트랙 4개(월요일 조달), 유지비 3종, 직원·임원.
+// 구단 보드 (룰북 p.7): 능력치 트랙 4개(월요일 조달), 유지비 3종, 직원, 임원.
+// 이번 주 일정은 진행 영역(components/WeekSchedule.tsx)으로 옮겼다 (사용자 요청 2026-09)
 // 실물 보드의 정보는 그대로 두고 운영 대시보드처럼 읽히게 배치한다 (DESIGN.md: 흰 타일 + #f6f8fa 면, 그림자 없음)
 function ClubBoard({ p }: { p: PlayerPublicView }) {
   const { view } = useView();
-  const today = currentDayKey(view.phase.kind, view.phase.kind === 'weekday' ? view.phase.day : undefined);
-  const todayIndex = today ? WEEK_DAYS.findIndex((d) => d.key === today) : -1;
   const { procurement, trackOverflow, upkeep } = cards.boardData;
   const stadiumCount = 4 + p.infrastructure.length;
   const upkeepRows: { label: string; count: number; table: number[] }[] = [
@@ -48,23 +31,6 @@ function ClubBoard({ p }: { p: PlayerPublicView }) {
   const lastWeek = view.week >= WEEKS;
   return (
     <div className="club-board">
-      <section className="tile week-tile" aria-label="이번 주 일정">
-        <h3 className="tile-title">{view.week}주차 일정</h3>
-        <ol className="week-rail">
-          {WEEK_DAYS.map((d, i) => {
-            const r = p.restrictions.find((x) => x.week === view.week && x.day === d.key);
-            const state = i < todayIndex ? 'past' : i === todayIndex ? 'now' : '';
-            return (
-              <li key={d.key} className={`week-stop ${state}${r ? ' inspect' : ''}`} title={r ? `점검용 토큰: ${r.mode === 'noBasic' ? '기본 행동 불가' : '카드 행동만 가능'}` : d.hint}>
-                <span className="week-dot" />
-                <span className="week-day">{d.label}</span>
-                <span className="week-what">{r ? (r.mode === 'noBasic' ? '기본 행동 불가' : '카드 행동만') : d.what}</span>
-              </li>
-            );
-          })}
-        </ol>
-      </section>
-
       <div className="club-grid">
         <section className="tile" aria-label="능력치 트랙">
           <h3 className="tile-title">능력치 <span className="tile-sub">월요일마다 마커 위치만큼 조달</span></h3>
@@ -117,16 +83,30 @@ function ClubBoard({ p }: { p: PlayerPublicView }) {
         </section>
       </div>
 
-      <section className="tile staff-row" aria-label="직원과 임원">
-        <h3 className="tile-title">직원 {p.staff.length} · 임원 {p.executives.length}</h3>
-        <div className="cards">
-          {p.staff.map((s, i) => (
-            <StaffCardView key={`${s.cardId}-${i}`} cardId={s.cardId} exhausted={s.exhausted} suspension={s.suspension} />
-          ))}
-          {p.executives.map((e, i) => (
-            <ExecutiveCardView key={`${e.cardId}-${i}`} cardId={e.cardId} exhausted={e.exhausted} />
-          ))}
-        </div>
+      <section className="tile staff-row" aria-label="직원">
+        <h3 className="tile-title">직원 <span className="tile-sub">{p.staff.length}명</span></h3>
+        {p.staff.length === 0 ? (
+          <span className="muted small">고용한 직원이 없습니다.</span>
+        ) : (
+          <div className="cards">
+            {p.staff.map((s, i) => (
+              <StaffCardView key={`${s.cardId}-${i}`} cardId={s.cardId} exhausted={s.exhausted} suspension={s.suspension} />
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section className="tile staff-row" aria-label="임원">
+        <h3 className="tile-title">임원 <span className="tile-sub">{p.executives.length}명 · 이사회 투표</span></h3>
+        {p.executives.length === 0 ? (
+          <span className="muted small">아직 임원을 고르지 않았습니다.</span>
+        ) : (
+          <div className="cards">
+            {p.executives.map((e, i) => (
+              <ExecutiveCardView key={`${e.cardId}-${i}`} cardId={e.cardId} exhausted={e.exhausted} />
+            ))}
+          </div>
+        )}
       </section>
     </div>
   );
@@ -332,7 +312,8 @@ function MatchBoard({ p }: { p: PlayerPublicView }) {
   );
 }
 
-// 개인 보드: 구단 / 스타디움 / 경기 / (내) 손패 탭. 탭 상태는 UiProvider 가 단계에 맞춰 기본값을 정한다
+// 개인 보드: 구단 / 스타디움 / 경기 / (내) 손패 탭. 탭 상태는 UiProvider 가 단계에 맞춰 기본값을 정한다.
+// 구단 상태(엠블럼·자원·승점)는 위 참가자 띠에 늘 보이므로 여기서 다시 그리지 않는다 (사용자 요청 2026-09)
 export function PlayerBoard({ p, privateInfo }: { p: PlayerPublicView; privateInfo?: { tacticCards: string[]; objective?: string } }) {
   const { view } = useView();
   const { boardTab: tab, setBoardTab: setTab } = useUi();
@@ -340,25 +321,6 @@ export function PlayerBoard({ p, privateInfo }: { p: PlayerPublicView; privateIn
   const shown: BoardTab = tab === 'hand' && !hasHand ? 'club' : tab;
   return (
     <div className="board-panel" style={{ '--seat': seatColor(view, p.id) } as React.CSSProperties}>
-      <header className="club-head">
-        <Crest name={p.name} color={seatColor(view, p.id)} size={44} />
-        <div className="club-id">
-          <h2>{p.name}</h2>
-          <span className="muted small">리그 {leagueRankOf(view, p.id)}위 · 선수 {p.roster.length}명 · 직원 {p.staff.length}명 · 시설 {p.infrastructure.length}/7</span>
-        </div>
-        <dl className="club-stats">
-          {RESOURCES.map((r: Resource) => (
-            <div key={r} className={`club-stat ${r}`}>
-              <dt><Icon name={r} size={12} />{RESOURCE_LABEL[r]}</dt>
-              <dd>{p.resources[r]}</dd>
-            </div>
-          ))}
-          <div className="club-stat vp">
-            <dt><Icon name="vp" size={12} />승점</dt>
-            <dd>{p.vp}</dd>
-          </div>
-        </dl>
-      </header>
       <Tabs<BoardTab>
         tabs={[
           { key: 'club', label: '구단 보드', badge: `직원 ${p.staff.length}` },
