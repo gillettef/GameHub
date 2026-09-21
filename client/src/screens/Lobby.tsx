@@ -1,6 +1,14 @@
 import { useState } from 'react';
 import { DeviceSwitch } from '../device';
 import { useStore } from '../store';
+import { Select } from '../components/Select';
+import type { SelectOption } from '../components/Select';
+
+const DIVISIONS: SelectOption<1 | 2 | 3>[] = [
+  { value: 3, label: '3부', hint: '쉬움' },
+  { value: 2, label: '2부', hint: '보통' },
+  { value: 1, label: '1부', hint: '어려움' },
+];
 
 export function Lobby() {
   const { send, spectate, connected, error } = useStore();
@@ -64,14 +72,11 @@ export function RoomLobby() {
           <span className="muted small">{full ? '정원(4명)이 찼습니다' : `${4 - room.players.length}자리 남음`}</span>
         </div>
       )}
-      <label>
-        상대할 부
-        <select value={room.division} disabled={!isHost} onChange={(e) => send({ type: 'setDivision', division: Number(e.target.value) as 1 | 2 | 3 })}>
-          <option value={3}>3부 (쉬움)</option>
-          <option value={2}>2부 (보통)</option>
-          <option value={1}>1부 (어려움)</option>
-        </select>
-      </label>
+      {/* label 로 감싸지 않는다 — 메뉴 항목을 누른 클릭이 label 을 거쳐 버튼을 다시 눌러 메뉴가 도로 열린다 */}
+      <div className="field">
+        <span>상대할 부{!isHost && <span className="muted small"> · 호스트가 정합니다</span>}</span>
+        <Select label="상대할 부" value={room.division} disabled={!isHost} options={DIVISIONS} onChange={(division) => send({ type: 'setDivision', division })} />
+      </div>
       <p className="muted small">차례 순서는 게임을 시작할 때 무작위로 정해집니다.</p>
       <div className="row">
         {isHost ? <button className="primary" onClick={() => send({ type: 'startGame' })}>게임 시작</button> : <span className="muted">호스트가 시작하기를 기다리는 중…</span>}
