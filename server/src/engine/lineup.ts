@@ -9,13 +9,18 @@ import type { Formation, Sector } from './types';
 
 const SECTOR_NAME: Record<Sector, string> = { LW: '레프트 윙', CB: '센터 백', CM: '센터 미드', CF: '센터 포워드', RW: '라이트 윙' };
 
-// 출전 가능한 선수(부상/출장정지 없음, 등번호 중복 없음)를 최대 인원 안에서 고른다
+// 출전 가능한 선수(부상/출장정지 없음, 등번호 중복 없음, 골키퍼는 1명)를 최대 인원 안에서 고른다
 export function eligiblePlayers(player: { roster: PlayerInstance[] }, max = Infinity): string[] {
   const numbers = new Set<number>();
   const chosen: string[] = [];
+  let keeper = false;
   for (const inst of player.roster) {
     if (chosen.length >= max) break;
     if (inst.tokens.injury > 0 || inst.tokens.suspension > 0) continue;
+    if (activeSide(inst).goalkeeper) {
+      if (keeper) continue;
+      keeper = true;
+    }
     const n = activeSide(inst).number;
     if (n !== undefined) {
       if (numbers.has(n)) continue;

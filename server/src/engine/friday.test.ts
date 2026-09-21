@@ -91,6 +91,22 @@ describe('경기 준비 제출 (p.20)', () => {
     expect(() => submitLineup(s, 'a', wrong, seededRng())).toThrow(GameError);
   });
 
+  it('골키퍼는 1명만 출전한다 — 등번호 없는 훈련 전 유망주 골키퍼도 포함 (사용자 제보 2026-09)', () => {
+    const s = friday();
+    const p = s.players['a']!;
+    p.roster = p.roster.filter((r) => !activeSide(r).goalkeeper);
+    const starter = addToRoster(p, 'p-s33'); // 주전 골키퍼 (1번)
+    const prospect = addToRoster(p, 'p-p19'); // 유망주 골키퍼 (훈련 전, 등번호 없음)
+    expect(activeSide(prospect).number).toBeUndefined();
+    // 도우미는 골키퍼를 한 명만 고른다
+    const picked = autoLineup(p).players.filter((id) => [starter.instanceId, prospect.instanceId].includes(id));
+    expect(picked).toEqual([starter.instanceId]);
+    // 둘 다 넣어 제출하면 엔진이 거부한다
+    const both = autoLineup(p, [starter.instanceId, prospect.instanceId]);
+    expect(() => submitLineup(s, 'a', { ...both, players: [starter.instanceId, prospect.instanceId] }, seededRng())).toThrow('only one goalkeeper can play');
+    expect(() => submitLineup(s, 'a', autoLineup(p, [prospect.instanceId]), seededRng())).not.toThrow();
+  });
+
   it('체력이 부족하면 거부', () => {
     const s = friday();
     s.players['a']!.resources.stamina = 1;
