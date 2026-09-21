@@ -2,40 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { acceptBoardRoll, rollBoardDie } from '@server/engine/monday';
 import { gameAtMonday, seededRng } from '@server/engine/test-utils';
 import { viewFor } from '@server/engine/view';
-import { diffPlayer } from './feed';
 import { myTask } from './notify';
 
-// 효과 토스트의 변화 계산과 턴 알림의 "내 할 일" 판정 (둘 다 서버 뷰만 보고 판단한다)
-describe('diffPlayer', () => {
-  it('자원·트랙·승점·토큰·영입 변화를 칩으로 뽑아낸다', () => {
-    const s = gameAtMonday();
-    const before = viewFor(s, 'a');
-    const next = structuredClone(s);
-    const p = next.players.a!;
-    p.resources.money += 3;
-    p.tracks.fandom += 1;
-    p.vp += 2;
-    p.roster[0]!.tokens.injury += 1;
-    const after = viewFor(next, 'a');
-    const deltas = diffPlayer(before.players.a!, after.players.a!, before.league.players.a, after.league.players.a);
-    expect(deltas).toEqual(
-      expect.arrayContaining([
-        { kind: 'resource', resource: 'money', amount: 3 },
-        { kind: 'track', track: 'fandom', delta: 1 },
-        { kind: 'vp', amount: 2 },
-        expect.objectContaining({ kind: 'token', token: 'injury', count: 1 }),
-      ]),
-    );
-    expect(deltas).toHaveLength(4);
-  });
-
-  it('변화가 없으면 빈 배열', () => {
-    const s = gameAtMonday();
-    const v = viewFor(s, 'a');
-    expect(diffPlayer(v.players.a!, v.players.a!, 0, 0)).toEqual([]);
-  });
-});
-
+// 턴 알림의 "내 할 일" 판정 (서버 뷰만 보고 판단한다)
 describe('myTask', () => {
   it('이사회는 차례인 참가자에게만 할 일이 있다', () => {
     const s = gameAtMonday();

@@ -9,7 +9,7 @@ import { useGame } from '../store';
 import { useRevealedRoll } from '../ui';
 
 // 이사회는 선 참가자부터 한 명씩 진행한다. 차례인 참가자의 이사회 카드·임원·주사위 결과를 모두가 본다.
-// 굴리기·팬덤 재굴림·"결정 적용"은 모두 왼쪽 사이드바 주사위 트레이에 있다(사용자 요청). 적용 결과는 효과 토스트가 보여준다
+// 굴리기·팬덤 재굴림·"결정 적용"은 모두 왼쪽 사이드바 주사위 트레이에 있다(사용자 요청). 적용 결과는 기록과 참가자 띠에 나타난다
 export function MondayScreen() {
   const { view } = useGame();
   const dicePlace = useDevice().mobile ? '위' : '왼쪽'; // 모바일용 화면은 주사위가 단계 패널 위에 있다

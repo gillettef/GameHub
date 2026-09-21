@@ -1,5 +1,7 @@
+import { useState } from 'react';
 import { cards } from '@server/engine/cards';
 import { ObjectiveCardView } from '../components/Cards';
+import { ScoreReviewModal } from '../components/ScoreReview';
 import { seatColor } from '../components/Shell';
 import { useView } from '../store';
 
@@ -17,6 +19,7 @@ const ROWS = [
 
 export function GameOverScreen() {
   const { view, leave } = useView();
+  const [review, setReview] = useState(true); // 시즌이 끝나면 항목별 승점 확인 모달을 먼저 띄운다 (닫은 뒤에는 버튼으로 다시)
   if (view.phase.kind !== 'gameOver') return null;
   const { scores, winners } = view.phase;
   const order = [...view.seats].sort((a, b) => scores[b]!.total - scores[a]!.total);
@@ -68,7 +71,11 @@ export function GameOverScreen() {
           ))}
         </div>
       </div>
-      <button className="primary" onClick={leave}>로비로</button>
+      <div className="row">
+        <button onClick={() => setReview(true)}>항목별 승점 확인</button>
+        <button className="primary" onClick={leave}>로비로</button>
+      </div>
+      {review && <ScoreReviewModal view={view} onClose={() => setReview(false)} />}
     </section>
   );
 }

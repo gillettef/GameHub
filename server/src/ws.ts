@@ -112,6 +112,22 @@ export function attachWebSocket(wss: WebSocketServer, rooms: RoomManager, option
         if (typeof msg.playerId !== 'string') throw new RoomError('playerId required');
         broadcast(rooms.removeBot(session.roomCode, session.playerId, msg.playerId));
         return;
+      case 'kick': {
+        if (typeof msg.playerId !== 'string') throw new RoomError('playerId required');
+        const { room, kicked } = rooms.kick(session.roomCode, session.playerId, msg.playerId);
+        // 내보낸 참가자의 연결에 알리고 방에서 떼어 낸다 (연결은 유지 — 로비로 돌아가 다른 방에 들어갈 수 있다)
+        for (const other of sessions.values()) {
+          if (other.roomCode === room.code && other.playerId === kicked.id) {
+            send(other.socket, { type: 'kicked' });
+            detach(other);
+          }
+        }
+        broadcast(room);
+        return;
+      }
+      case 'setRandomOrder':
+        broadcast(rooms.setRandomOrder(session.roomCode, session.playerId, msg.on));
+        return;
       case 'startGame': {
         const room = rooms.start(session.roomCode, session.playerId);
         broadcast(room);
