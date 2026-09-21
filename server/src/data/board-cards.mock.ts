@@ -14,11 +14,12 @@ export const BOARD_CARDS: BoardCard[] = [
         ],
       },
       blue: {
-        text: '3[돈]과 1[팬덤]을 얻고, 선수 카드 1장을 선택하여 2[체력]을 올려놓습니다.',
+        // 원문은 2[체력]이지만 출전 체력은 1개뿐이고 남는 것은 경기 후 버려져(p.24 4) 1개로 줄임 (사용자 결정, 2026-09)
+        text: '3[돈]과 1[팬덤]을 얻고, 선수 카드 1장을 선택하여 1[체력]을 올려놓습니다.',
         effects: [
           { type: 'gainResource', resource: 'money', amount: 3 },
           { type: 'gainResource', resource: 'fandom', amount: 1 },
-          { type: 'placeStamina', count: 2 },
+          { type: 'placeStamina', count: 1 },
         ],
       },
       red: {
@@ -388,11 +389,8 @@ export const BOARD_CARDS: BoardCard[] = [
         ],
       },
       blue: {
-        text: '핵심 선수의 컨디션 관리에 집중합니다. 선수 카드 1장에 2[체력], [돈] -1',
-        effects: [
-          { type: 'placeStamina', count: 2 },
-          { type: 'gainResource', resource: 'money', amount: -1 },
-        ],
+        text: '핵심 선수의 컨디션 관리에 집중합니다. 선수 카드 1장에 1[체력]',
+        effects: [{ type: 'placeStamina', count: 1 }],
       },
       red: {
         text: '대규모 응원전을 조직합니다. [팬덤] +3, [운영] -1',
@@ -1021,10 +1019,10 @@ export const BOARD_CARDS: BoardCard[] = [
         ],
       },
       blue: {
-        text: '선수들이 응원에 힘입어 컨디션을 끌어올립니다. 선수 카드 1장에 2[체력], [돈] -2',
+        text: '선수들이 응원에 힘입어 컨디션을 끌어올립니다. 선수 카드 1장에 1[체력], [돈] -1',
         effects: [
-          { type: 'placeStamina', count: 2 },
-          { type: 'gainResource', resource: 'money', amount: -2 },
+          { type: 'placeStamina', count: 1 },
+          { type: 'gainResource', resource: 'money', amount: -1 },
         ],
       },
       red: {

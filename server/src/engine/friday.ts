@@ -121,7 +121,7 @@ export function submitLineup(state: GameState, pid: PlayerId, sub: LineupSubmiss
     for (const r of RESOURCES) cost[r] = (cost[r] ?? 0) + (placed[r] ?? 0);
   }
   pay(player, cost);
-  // 미리 올려놓은 체력이 있는 출전 선수는 그중 1개를 출전 체력으로 쓴다. 남은 것은 카드에 그대로 (사용자 결정)
+  // 미리 올려놓은 체력이 있는 출전 선수는 그중 1개를 출전 체력으로 쓴다. 남은 것은 경기 후 버려진다(p.24 4)
   for (const inst of players) if (inst.stamina > 0) inst.stamina--;
   for (const [instanceId, placed] of Object.entries(sub.activations ?? {})) {
     const inst = instanceOf(player, instanceId);
@@ -301,7 +301,8 @@ function resolveAllMatches(state: GameState, rng: Rng): void {
     if ((sub.fandomInStands ?? 0) > 0) player.resources.money += traitSum(player, 'standsBonusMoney'); // 특성: 관중 수입 +N
     const scorerTokens = new Set(report.scorers);
     for (const inst of played) {
-      inst.placed = {}; // 미리 올려놓은 체력(inst.stamina)의 남은 분은 버리지 않는다 (사용자 결정)
+      inst.placed = {};
+      inst.stamina = 0; // 미리 올려놓고 남은 체력도 자원 마커라 함께 버린다. 미출전 선수의 것은 남는다
       inst.tokens.strengthTemp = 0;
       inst.tokens.weaknessTemp = 0;
       const career = activeSide(inst).career;
