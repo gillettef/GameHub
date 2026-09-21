@@ -173,6 +173,10 @@ notes/    규칙서 원본 및 텍스트 레퍼런스
   - 경기 결과 3스텝: ① 결과 확인(구획별 득점자 `tokenLabel`, 라인업 배치판에 ⚽ — `MatchAftermath.placements`) → ② 경기 영향 주사위 →
     ③ 부상 주사위(부상류일 때만). 스텝은 서버 상태에서 정해져 지켜보는 참가자도 같은 스텝을 보고, 지나온 스텝은 눌러서 다시 볼 수 있다.
     차례인 본인만 ①에서 "결과 확인"을 눌러야(`ui.resultSeen`) 트레이의 굴리기가 풀린다. 경기 진행 화면에도 상대 카드 옆에 내 라인업 배치판.
+- **전체 카드 목록** (`components/Catalog.tsx` `CatalogButton`, 사용자 요청 2026-09): 사이드바(모바일은 '진행' 탭)의 "카드 목록" 버튼 → 모달에서 종류별 탭
+  (주전/베테랑/유망주/직원/스폰서/이사회/임원/목표/전술/상대 팀) + 이름·효과 문구 검색, 선수 탭은 "훈련 면 보기"(유망주는 훈련 면이 기본).
+  `@server/data`의 배열을 그대로 읽는 읽기 전용 화면. 상대 팀 카드는 앞면이 경기 때 공개되는 정보라 스카우트 보고서 면만 보여 준다.
+  카드 줄은 `.catalog-grid`(모바일용에서도 여러 줄로 접음 — `.cards`의 한 줄 밀기를 쓰지 않는다).
 - `lineup.ts` — 경기 준비 화면의 헬퍼(벤치 교환 미리보기 `previewField`, 자동 배치 `autoPlace`, 검증
   `validatePlacements`). `lineup.test.ts`(client vitest, `@server` alias 사용)가 자동 배치 결과를 실제
   `submitLineup`에 넣어 서버가 받아들이는지 확인한다. 클라이언트 테스트도 `npm run check`에 포함된다.
@@ -378,6 +382,11 @@ MVP에서 **단순화 가능**한 부분: 선수/직원/임원/스폰서/이사�
   판정하되 결과가 필요한 조건(승/무/패·N골 이상·무실점·구획 득점)은 경기 전에는 `deferred`에 미뤄 두고 판정 뒤에 적용한다
   (`inSector`는 그 효과를 가진 선수 카드의 토큰 위치, `opponentHigherInLeague`는 상대 팀 리그 위치 > 내 위치). 경기 맥락 없이
   쓰면 기록만 남긴다. `flipUnmatchedToken`은 카드 없는 필드 토큰을 골라 공격↔수비로 영구히 뒤집는다.
+- **전술 효과가 "안 먹힌 것처럼" 보이지 않게**(사용자 제보 2026-09, 역습 tc-07): 일시적 역량 토큰은 경기 후 버려지므로 `MatchAftermath.skills`(토큰 id → 판정에 쓴 역량,
+  구획 보정 포함)와 `effectCard`를 남기고 경기 결과 화면의 배치판이 그 숫자와 쓴 전술 카드를 보여 준다. 대상 효과는 후보 0이면 "…이(가) 없어 효과 없음",
+  후보 1이면 "대상이 하나뿐이라 ○○에 바로 적용"을 기록에 남긴다(`applyEffects`). 역습의 대상은 **출전 중인 [공격] 선수 카드**뿐이다(카드 없는 공격 토큰은 아님) —
+  경기 진행 화면은 대상이 없는 전술 카드를 이유와 함께 막는다(`tacticEffectBlock`). `refreshPending`은 `only: 'playedAttack'` 대기 효과의 후보를 다시 셀 때
+  원래 후보를 출전 선수 맥락으로 준다(빈 맥락이면 후보 0이 되어 남은 선택이 사라지던 버그). 전술 효과 카드는 `friday.test.ts`에 카드별 테스트가 있다.
 - **대상 선택 일반화**(`PendingEffect.target`): `player`(선수 instanceId) / `staff`(직원 index) / `market`(시장 index, `row`) /
   `token`(유니폼 토큰 id). `resolvePending{pendingId, choice}`. 대상 선택 모달이 종류별로 카드·토큰을 그린다. 새 대상 효과:
   `releasePlayer`(방출 행동과 같은 보상), `addStaffSuspension`, `discardMarketCard`(아무 위치 1장 버리고 오른쪽으로 밀고 왼쪽 보충).

@@ -9,6 +9,7 @@ import { useUi } from '../ui';
 import { DiceTray } from './DiceTray';
 import { CostChips, EffectChips, Icon } from './Icons';
 import { UpkeepWarning } from './Upkeep';
+import { CatalogButton } from './Catalog';
 import { LegendButton } from './Legend';
 
 // 왼쪽 사이드바: 주사위(이사회·경기 영향), 주중 행동 목록, 아이콘 설명. 누구 차례인지는 헤더 참가자 띠의 표시가 알려준다.
@@ -177,6 +178,7 @@ export function ActionSidebar() {
     <aside className="sidebar" aria-label="행동">
       <DiceTray />
       {me && view.phase.kind === 'weekday' && <WeekdayActions me={me} />}
+      <CatalogButton />
       <LegendButton />
     </aside>
   );

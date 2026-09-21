@@ -177,6 +177,25 @@ function applyTargeted(state: GameState, player: PlayerState, effect: Effect, ch
   }
 }
 
+// 대상이 없을 때 기록에 남길 말
+const NO_TARGET: Partial<Record<Effect['type'], string>> = {
+  trainPlayer: '훈련할 수 있는 선수',
+  addPlayerToken: '토큰을 받을 선수(조건에 맞는 선수 카드)',
+  removePlayerToken: '그 토큰을 가진 선수',
+  placeStamina: '선수 카드',
+  releasePlayer: '방출할 선수',
+  addStaffSuspension: '직원 카드',
+  discardMarketCard: '이적 시장 카드',
+  flipUnmatchedToken: '카드 없는 필드 유니폼 토큰',
+};
+
+function targetName(state: GameState, player: PlayerState, found: { target: PendingTarget; row?: MarketRow }, choice: string): string {
+  if (found.target === 'staff') return cards.staff(player.staff[Number(choice)]?.cardId ?? '').name;
+  if (found.target === 'market') return marketCardName(found.row ?? 'players', state.market[found.row ?? 'players'][Number(choice)] ?? '');
+  if (found.target === 'token') return `유니폼 토큰 ${player.uniforms.find((u) => u.id === choice)?.number ?? '∅'}`;
+  return instanceName(findInstance(player, choice));
+}
+
 export function marketCardName(row: MarketRow, cardId: string): string {
   return row === 'players' || row === 'veterans' ? cards.player(cardId).name : row === 'staff' ? cards.staff(cardId).name : cards.sponsor(cardId).name;
 }
@@ -227,9 +246,15 @@ export function applyEffects(state: GameState, pid: PlayerId, effects: readonly 
       const { times, each } = targetedSteps(effect);
       for (let i = 0; i < times; i++) {
         const found = candidatesFor(state, player, each, ctx)!;
-        if (found.candidates.length === 0) break;
+        if (found.candidates.length === 0) {
+          // 아무 표시 없이 지나가면 효과가 고장 난 것처럼 보인다 (전술 카드 '역습'에 출전 공격 선수 카드가 없을 때 등)
+          if (i === 0) addLog(state, `${source}: ${NO_TARGET[effect.type] ?? '고를 수 있는 대상'}이(가) 없어 효과 없음`, { actor: pid });
+          break;
+        }
         if (found.candidates.length === 1) {
+          const name = targetName(state, player, found, found.candidates[0]!); // 방출·버리기는 적용하면 사라지므로 먼저 읽는다
           applyTargeted(state, player, each, found.candidates[0]!, rng ?? noRng());
+          addLog(state, `${source}: 대상이 하나뿐이라 ${name}에 바로 적용`, { actor: pid });
         } else {
           player.pending.push({ id: `${source}#${player.pending.length}#${i}`, effect: each, source, target: found.target, candidates: found.candidates, row: found.row });
         }
@@ -368,7 +393,9 @@ export function resolvePending(state: GameState, pid: PlayerId, pendingId: strin
 // 후보를 다시 계산해 0이면 버리고 1이면 자동 적용한다. 원래 후보 밖으로 넓어지지는 않는다(출전 공격수 한정 등 맥락 필터 유지)
 function refreshPending(state: GameState, player: PlayerState, rng: Rng): void {
   for (const p of [...player.pending]) {
-    const found = candidatesFor(state, player, p.effect, {});
+    // 출전 공격수 한정(only: 'playedAttack')은 경기 맥락이 있어야 후보가 나온다. 원래 후보가 곧 출전 선수였으므로 그것을 맥락으로 준다
+    // (빈 맥락으로 다시 계산하면 후보가 0이 되어 남은 선택이 말없이 사라졌다)
+    const found = candidatesFor(state, player, p.effect, { played: p.candidates });
     // 유지비 미납(unsuspendedFirst)은 앞선 선택으로 '출장정지 없는 직원'이 바뀌므로 후보를 새로 계산한 그대로 쓴다
     const keepAll = p.effect.type === 'addStaffSuspension' && p.effect.unsuspendedFirst;
     const cands = (found?.candidates ?? []).filter((c) => keepAll || p.candidates.includes(c));

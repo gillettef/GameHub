@@ -37,6 +37,7 @@ interface PitchProps {
   placements: Record<string, Sector>;
   need?: Record<Sector, number>; // 포메이션이 요구하는 구획별 인원 (있으면 n/m 표시)
   showSkill?: boolean; // 토큰에 역량 표시 (카드 없는 토큰은 1)
+  skills?: Record<string, number>; // 토큰 id → 경기 판정에 실제로 쓴 역량 (결과 화면: 일시적 토큰은 경기 후 버려져 지금 카드에서는 계산할 수 없다)
   scorers?: string[]; // 득점한 토큰 id — 공 아이콘
   selected?: string | null; // 옮기려고 고른 토큰
   onToken?: (tokenId: string) => void;
@@ -47,10 +48,10 @@ export function playedInstance(roster: PlayerInstance[], played: string[], token
   return token.cardInstanceId && played.includes(token.cardInstanceId) ? roster.find((r) => r.instanceId === token.cardInstanceId) : undefined;
 }
 
-export function TokenChipView({ token, inst, showSkill, goals = 0, selected, onClick }: { token: UniformToken; inst?: PlayerInstance; showSkill?: boolean; goals?: number; selected?: boolean; onClick?: () => void }) {
+export function TokenChipView({ token, inst, showSkill, usedSkill, goals = 0, selected, onClick }: { token: UniformToken; inst?: PlayerInstance; showSkill?: boolean; usedSkill?: number; goals?: number; selected?: boolean; onClick?: () => void }) {
   // 훈련 전 유망주는 배치판에서도 '유망주'로만 보여야 한다 (instanceName)
   const name = inst ? instanceName(inst) : undefined;
-  const skill = inst ? effectiveSkill(inst) : 1;
+  const skill = usedSkill ?? (inst ? effectiveSkill(inst) : 1);
   const title = `${name ?? '카드 없는 유니폼 토큰'} · ${token.face === 'attack' ? '공격' : '수비'} · 역량 ${skill}${inst ? ` · 배치 가능: ${activeSide(inst).zones.map((z) => SECTOR_LABEL[z]).join('/') || '없음'}` : ''}`;
   const body = (
     <>
@@ -71,7 +72,7 @@ export function TokenChipView({ token, inst, showSkill, goals = 0, selected, onC
 }
 
 // 잔디 위 5구획 배치판. onToken/onSector 가 있으면 토큰을 누르고 구획을 눌러 옮긴다(고른 선수가 갈 수 있는 구획을 밝게 표시)
-export function LineupPitch({ roster, field, played, placements, need, showSkill, scorers = [], selected, onToken, onSector }: PitchProps) {
+export function LineupPitch({ roster, field, played, placements, need, showSkill, skills, scorers = [], selected, onToken, onSector }: PitchProps) {
   const selectedToken = selected ? field.find((t) => t.id === selected) : undefined;
   const selectedInst = selectedToken ? playedInstance(roster, played, selectedToken) : undefined;
   const allowed = selectedToken ? (selectedInst ? activeSide(selectedInst).zones : SECTORS) : null;
@@ -88,7 +89,8 @@ export function LineupPitch({ roster, field, played, placements, need, showSkill
                 key={t.id}
                 token={t}
                 inst={playedInstance(roster, played, t)}
-                showSkill={showSkill}
+                showSkill={showSkill || skills?.[t.id] !== undefined}
+                usedSkill={skills?.[t.id]}
                 goals={scorers.filter((id) => id === t.id).length}
                 selected={t.id === selected}
                 onClick={onToken ? () => onToken(t.id) : undefined}

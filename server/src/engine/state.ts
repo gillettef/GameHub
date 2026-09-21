@@ -144,6 +144,9 @@ export interface MatchAftermath {
   opponentCardId: string;
   played: string[];
   placements: Record<string, Sector>; // 경기에 쓴 배치 (결과 화면에서 구획별 선수·득점자를 보여 준다. 경기가 끝났으니 공개)
+  // 판정에 실제로 쓴 필드 토큰별 역량(일시적 토큰·전술 효과 포함). 일시적 토큰은 경기 후 버려지므로 결과 화면은 이 값을 보여 준다
+  skills: Record<string, number>;
+  effectCard: string | null; // 경기 진행 때 효과로 쓴 전술 카드
   report: MatchReport;
   roll: number | null;
   // 경기 영향이 부상류면 그 결과를 적용한 뒤 12면체 부상 주사위를 참가자가 직접 굴린다 (p.24·p.27, 사용자 요청 2026-09).

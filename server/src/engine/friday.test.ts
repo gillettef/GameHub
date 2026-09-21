@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { applyAction } from './actions';
 import { activeSide, cards, tokenLabel } from './cards';
-import { addToRoster } from './effects';
+import { addToRoster, applyEffects } from './effects';
 import { acceptInjuryRoll, acceptMatchRoll, playTacticEffect, rerollInjuryDie, rerollMatchDie, rollInjuryDie, rollMatchDie, standsCount, startFriday, submitLineup } from './friday';
 import { GameError } from './state';
 import type { GameState } from './state';
@@ -225,6 +225,137 @@ describe('경기 진행: 전술 효과 카드 (p.21 8, p.28)', () => {
     if (total.phase.kind === 'friday.match') total.phase.preMatch['a']!.sectorSkill = { CM: 3 };
     const withTotal = report(skipTacticEffects(total, seededRng(1)));
     expect(withTotal.myGoals).toBeGreaterThanOrEqual(raw.myGoals);
+  });
+
+  // 전술 효과 카드 점검용: a 에게 능력 없는 공격 선수 2명(CF/LW 역량 2, CM/RW 역량 1)을 더해 라인업을 낸 경기 진행 단계
+  function withAttackers(seed = 7): GameState {
+    const rng = seededRng(seed);
+    let s = friday();
+    addToRoster(s.players['a']!, 'p-s20');
+    addToRoster(s.players['a']!, 'p-s21');
+    for (const id of s.seats) s = settlePending(submitLineup(s, id, autoLineup(s.players[id]!), rng), rng);
+    expect(s.phase.kind).toBe('friday.match');
+    return s;
+  }
+  const aftermath = (st: GameState) => (st.phase.kind === 'friday.aftermath' ? st.phase.matches['a']! : null)!;
+  const playCard = (st: GameState, cardId: string) => {
+    const copy = structuredClone(st);
+    copy.players['a']!.tacticCards.push(cardId);
+    return playTacticEffect(copy, 'a', cardId, seededRng(1));
+  };
+
+  it('역습(tc-07): 출전 중인 [공격] 선수 카드만 후보, 고른 선수의 역량 +1 이 그 경기 판정에 쓰이고 경기 후 버려진다', () => {
+    const base = withAttackers();
+    const a = base.players['a']!;
+    const sub = base.phase.kind === 'friday.match' ? base.phase.submitted['a']! : null;
+    const attackers = a.roster.filter((r) => sub!.players.includes(r.instanceId) && activeSide(r).role === 'attack');
+    expect(attackers.length).toBeGreaterThanOrEqual(2);
+    const target = a.roster.find((r) => r.cardId === 'p-s20')!;
+    const token = a.uniforms.find((u) => u.cardInstanceId === target.instanceId)!;
+    const plain = aftermath(skipTacticEffects(structuredClone(base), seededRng(1)));
+    expect(plain.skills[token.id]).toBe(2);
+    expect(plain.effectCard).toBeNull();
+
+    let s = playCard(base, 'tc-07');
+    const pending = s.players['a']!.pending;
+    expect(pending.length).toBe(1);
+    expect([...pending[0]!.candidates].sort()).toEqual(attackers.map((r) => r.instanceId).sort());
+    expect(s.phase.kind === 'friday.match' && s.phase.current).toBe('a'); // 대상을 고를 때까지 차례 유지
+    s = applyAction(s, 'a', { type: 'resolvePending', pendingId: pending[0]!.id, choice: target.instanceId }, seededRng(1));
+    expect(s.players['a']!.roster.find((r) => r.instanceId === target.instanceId)!.tokens.strengthTemp).toBe(1);
+    expect(s.phase.kind === 'friday.match' && s.phase.current).toBe('b');
+    const after = skipTacticEffects(s, seededRng(1));
+    const done = aftermath(after);
+    expect(done.skills[token.id]).toBe(3); // 판정에 쓴 역량
+    expect(done.effectCard).toBe('tc-07');
+    expect(done.report.myGoals).toBeGreaterThanOrEqual(plain.report.myGoals);
+    expect(after.players['a']!.roster.find((r) => r.instanceId === target.instanceId)!.tokens.strengthTemp).toBe(0);
+  });
+
+  it('역습(tc-07): 출전 중인 [공격] 선수 카드가 없으면 효과 없음을 기록하고, 1명이면 바로 적용하고 기록한다', () => {
+    const rng = seededRng(7);
+    const s = friday();
+    const a = s.players['a']!;
+    const sole = addToRoster(a, 'p-s20');
+    const others = a.roster.filter((r) => r !== sole && activeSide(r).role === 'attack').map((r) => r.instanceId);
+    const toMatch = (exclude: string[]) => {
+      let st = structuredClone(s);
+      const pa = st.players['a']!;
+      st = settlePending(submitLineup(st, 'a', autoLineup(pa, pa.roster.map((r) => r.instanceId).filter((id) => !exclude.includes(id))), rng), rng);
+      for (const id of ['b', 'c', 'd']) st = settlePending(submitLineup(st, id, autoLineup(st.players[id]!), rng), rng);
+      return playCard(st, 'tc-07');
+    };
+    const none = toMatch([sole.instanceId, ...others]);
+    expect(none.players['a']!.pending).toEqual([]);
+    expect(none.players['a']!.roster.every((r) => r.tokens.strengthTemp === 0)).toBe(true);
+    expect(none.log.some((e) => e.actor === 'a' && e.text.startsWith('역습:') && e.text.includes('효과 없음'))).toBe(true);
+
+    const one = toMatch(others);
+    expect(one.players['a']!.pending).toEqual([]);
+    expect(one.players['a']!.roster.find((r) => r.instanceId === sole.instanceId)!.tokens.strengthTemp).toBe(1);
+    expect(one.log.some((e) => e.actor === 'a' && e.text.includes('토마스 린드에 바로 적용'))).toBe(true);
+  });
+
+  it('토탈 풋볼(tc-08): 센터 미드필더 구획의 모든 토큰 역량 +1, 다른 구획은 그대로', () => {
+    const base = withAttackers();
+    const plain = aftermath(skipTacticEffects(structuredClone(base), seededRng(1)));
+    const done = aftermath(skipTacticEffects(playCard(base, 'tc-08'), seededRng(1)));
+    const cm = Object.keys(plain.skills).filter((t) => plain.placements[t] === 'CM');
+    expect(cm.length).toBeGreaterThan(0);
+    for (const t of Object.keys(plain.skills)) expect(done.skills[t]).toBe(plain.skills[t]! + (cm.includes(t) ? 1 : 0));
+  });
+
+  it('잃을 게 없어(tc-05): 상대 팀이 리그에서 나보다 위일 때만 +1골', () => {
+    const base = withAttackers();
+    const plain = aftermath(skipTacticEffects(structuredClone(base), seededRng(1)));
+    expect(aftermath(skipTacticEffects(playCard(base, 'tc-05'), seededRng(1))).report.myGoals).toBe(plain.report.myGoals); // 1주차: 같은 위치
+    const higher = structuredClone(base);
+    const teamId = cards.opponent(higher.players['a']!.opponentDeck[0]!).teamId;
+    higher.league.opponents.find((o) => o.teamId === teamId)!.position = 4;
+    expect(aftermath(skipTacticEffects(playCard(higher, 'tc-05'), seededRng(1))).report.myGoals).toBe(plain.report.myGoals + 1);
+  });
+
+  it('리베로(tc-06): 카드 없는 필드 토큰 1개를 골라 공격↔수비로 뒤집는다', () => {
+    const base = withAttackers();
+    let s = playCard(base, 'tc-06');
+    const pending = s.players['a']!.pending[0]!;
+    expect(pending.target).toBe('token');
+    const free = base.players['a']!.uniforms.filter((u) => u.location === 'field' && !u.cardInstanceId).map((u) => u.id);
+    expect([...pending.candidates].sort()).toEqual([...free].sort());
+    const before = base.players['a']!.uniforms.find((u) => u.id === pending.candidates[0])!.face;
+    s = applyAction(s, 'a', { type: 'resolvePending', pendingId: pending.id, choice: pending.candidates[0]! }, seededRng(1));
+    expect(s.players['a']!.uniforms.find((u) => u.id === pending.candidates[0])!.face).not.toBe(before);
+    expect(skipTacticEffects(s, seededRng(1)).phase.kind).toBe('friday.aftermath');
+  });
+
+  it('티키타카(tc-11): 센터 미드필더 구획에서 득점했을 때만 +1골 / 세트피스(tc-12): +1골과 체력 −1', () => {
+    const base = withAttackers();
+    const plain = aftermath(skipTacticEffects(structuredClone(base), seededRng(1)));
+    const cmGoals = plain.report.sectors.find((x) => x.mine === 'CM')!.myGoals;
+    expect(aftermath(skipTacticEffects(playCard(base, 'tc-11'), seededRng(1))).report.myGoals).toBe(plain.report.myGoals + (cmGoals > 0 ? 1 : 0));
+    // CM 구획에서 반드시 득점하게 만들면 +1
+    const strong = structuredClone(base);
+    if (strong.phase.kind === 'friday.match') strong.phase.preMatch['a']!.sectorSkill = { CM: 9 };
+    const strongPlain = aftermath(skipTacticEffects(structuredClone(strong), seededRng(1)));
+    expect(strongPlain.report.sectors.find((x) => x.mine === 'CM')!.myGoals).toBeGreaterThan(0);
+    expect(aftermath(skipTacticEffects(playCard(strong, 'tc-11'), seededRng(1))).report.myGoals).toBe(strongPlain.report.myGoals + 1);
+
+    const stamina = base.players['a']!.resources.stamina;
+    const setPiece = playCard(base, 'tc-12');
+    expect(setPiece.players['a']!.resources.stamina).toBe(Math.max(0, stamina - 1));
+    expect(aftermath(skipTacticEffects(setPiece, seededRng(1))).report.myGoals).toBe(plain.report.myGoals + 1);
+  });
+
+  it('출전 공격수 한정 대상 선택이 둘 남아 있을 때 하나를 고르면 나머지가 말없이 사라지지 않는다', () => {
+    const s = withAttackers();
+    const a = s.players['a']!;
+    const played = s.phase.kind === 'friday.match' ? s.phase.submitted['a']!.players : [];
+    const boost = [{ type: 'addPlayerToken', token: 'strengthTemp', count: 1, only: 'playedAttack' }] as const;
+    applyEffects(s, 'a', boost, '시험1', { played }, seededRng(1));
+    applyEffects(s, 'a', boost, '시험2', { played }, seededRng(1));
+    expect(a.pending.length).toBe(2);
+    const next = applyAction(s, 'a', { type: 'resolvePending', pendingId: a.pending[0]!.id, choice: a.pending[0]!.candidates[0]! }, seededRng(1));
+    expect(next.players['a']!.pending.length).toBe(1);
   });
 
   it('조건부 효과: 경기 후 조건(실점 없음 등)은 판정 뒤에 적용되고, 상시 효과 승리 팬덤도 붙는다', () => {

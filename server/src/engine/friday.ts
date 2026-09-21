@@ -262,7 +262,9 @@ function resolveAllMatches(state: GameState, rng: Rng): void {
     const pre: MatchContext = { stage: 'pre', myGoals: 0, theirGoals: 0, sectorGoals: {}, placements: sub.placements, opponentTeamId: opponent.teamId };
 
     applyTimedEffects(state, pid, played, 'duringMatch', { mods, played: sub.players, match: pre }, rng);
-    const raw = resolveMatch(buildSide(player, sub, played, mods), opponentSide(opponent));
+    const side = buildSide(player, sub, played, mods);
+    const skills = Object.fromEntries(Object.values(side.sectors).flatMap((slots) => slots.map((slot) => [slot.id, slot.skill])));
+    const raw = resolveMatch(side, opponentSide(opponent));
     mods.mine += raw.myGoals;
     mods.theirs += Math.max(0, raw.theirGoals - mods.denyGoals); // 득점 무효·슛 막기는 구획 비교 득점에만
     const sectorGoals: Partial<Record<Sector, number>> = {};
@@ -320,7 +322,7 @@ function resolveAllMatches(state: GameState, rng: Rng): void {
         }
       }
     }
-    matches[pid] = { opponentCardId, played: sub.players, placements: sub.placements, report, roll: null, injuryDice: [], decided: false };
+    matches[pid] = { opponentCardId, played: sub.players, placements: sub.placements, skills, effectCard: state.phase.effectCard[pid] ?? null, report, roll: null, injuryDice: [], decided: false };
   }
 
   // p.24 3: 같은 상대와 2명 이상 경기 → 비활성. p.24 6: 아무도 상대하지 않은 팀은 상대 팀 주사위
