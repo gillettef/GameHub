@@ -570,10 +570,6 @@ label.row { flex-direction: row; align-items: center; }
 .chat-text { grid-column: 1 / -1; color: var(--ink); overflow-wrap: anywhere; white-space: pre-wrap; }
 .chat-form { display: flex; gap: 6px; padding: 8px 12px 12px; border-top: 1px solid var(--line); margin: 0; }
 .chat-form input { flex: 1; min-width: 0; }
-.lobby-chat { border: 1px solid var(--line); border-radius: var(--radius-md); overflow: hidden; display: flex; flex-direction: column; }
-/* .lobby 를 앞에 붙여 .mobile-ui h2 / .mobile-ui .chat-scroll 보다 우선하게 한다(대기실도 모드와 무관하게 같은 모양) */
-.lobby .lobby-chat h2 { font-size: 14px; margin: 0; padding: 10px 12px 4px; }
-.lobby .lobby-chat .chat-scroll { max-height: 200px; min-height: 90px; }
 .log-group h3 { position: sticky; top: 0; background: var(--surface); margin: 8px 0 4px; padding: 4px 0; font-size: 13px; font-weight: 700; color: var(--ink); border-bottom: 1px solid var(--line); }
 .log-entry { display: grid; grid-template-columns: auto auto 1fr; gap: 0 4px; align-items: baseline; font-size: 13px; padding: 3px 4px; border-radius: 4px; }
 .log-entry:hover { background: var(--surface-2); }

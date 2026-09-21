@@ -3,7 +3,7 @@ import { CHAT_MAX_LENGTH } from '@server/protocol';
 import type { ChatMessage } from '@server/protocol';
 import { useStore } from '../store';
 
-// 방 채팅 (test_insight C9): 대기실과 게임 화면(오른쪽 기록 패널의 '채팅' 탭)이 함께 쓴다. 관전자는 읽기만.
+// 방 채팅 (test_insight C9): 게임 화면(오른쪽 기록 패널의 '채팅' 탭)에서만 쓴다 — 대기실에는 두지 않는다(사용자 요청 2026-09). 관전자는 읽기만.
 // 메시지는 서버가 방 단위로 최근 100개를 들고 있다가 입장·재접속 때 통째로 보내 준다.
 
 function timeOf(at: number): string {
