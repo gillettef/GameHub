@@ -75,7 +75,7 @@ function playerStatus(view: ReturnType<typeof useView>['view'], pid: PlayerId): 
 
 // 자원마다 두 칸 알약: 왼쪽(색 채움) = 지금 보유한 자원, 오른쪽(흰 바탕·테두리·계단 그림) = 능력치 트랙 위치(월요일 조달 기준).
 // 효과 칩의 자원 칩/트랙 칩과 같은 시각 언어
-function SeatResources({ id, counts = true }: { id: PlayerId; counts?: boolean }) {
+function SeatResources({ id }: { id: PlayerId }) {
   const { view } = useView();
   const p = view.players[id]!;
   return (
@@ -86,20 +86,26 @@ function SeatResources({ id, counts = true }: { id: PlayerId; counts?: boolean }
           <span className="track"><TrackGlyph up={false} size={14} />{p.tracks[r]}</span>
         </span>
       ))}
+      <UpkeepChip view={view} p={p} />
       <span className="res sub" title="리그 성적표 위치"><Icon name="goal" size={14} />{view.league.players[id]}</span>
       <span className="res sub" title="승점 토큰"><Icon name="vp" size={14} />{p.vp}</span>
-      <UpkeepChip view={view} p={p} />
-      {counts && <span className="res sub" title="선수 수 · 직원 수">선수 {p.roster.length} · 직원 {p.staff.length}</span>}
+      <span className="res sub" title="선수 수 · 직원 수">선수 {p.roster.length} · 직원 {p.staff.length}</span>
     </span>
   );
 }
 
-// 헤더 아래 참가자 띠: 자리 색·이름·자원(트랙)·리그 위치·승점·상태 점. 누르면 그 참가자의 개인 보드로.
-// compact(모바일용): 참가자는 이름 알약 한 줄로 줄이고, 그 아래에 내 자원(관전자는 고른 참가자) 한 줄만 둔다
-export function PlayerStrip({ compact = false }: { compact?: boolean }) {
+// 헤더 아래 참가자 띠: 자리 색·이름·자원(트랙)·유지비·리그 위치·승점·상태 점. 누르면 그 참가자의 개인 보드로.
+// PC용·모바일용이 같은 모양이다(사용자 요청 2026-09). 좁은 화면에서는 옆으로 밀리므로 처음에 내 자리가 보이게 맞춰 둔다
+export function PlayerStrip() {
   const { view, session, room } = useView();
   const { selected, selectPlayer, mainTab, mobileTab } = useUi();
-  const showing = compact ? mobileTab === 'board' : mainTab === 'personal';
+  const { mobile } = useDevice();
+  const showing = mobile ? mobileTab === 'board' : mainTab === 'personal';
+  const mine = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    const el = mine.current;
+    if (el?.parentElement) el.parentElement.scrollLeft = el.offsetLeft - 8; // 띠가 sticky 라 offsetLeft 는 띠 기준
+  }, []);
   const seats = view.seats.map((id) => {
     const p = view.players[id]!;
     const status = playerStatus(view, id);
@@ -108,12 +114,13 @@ export function PlayerStrip({ compact = false }: { compact?: boolean }) {
     return (
       <button
         key={id}
-        className={`${compact ? 'seat-chip' : 'pseat'}${selected === id && showing ? ' selected' : ''}${status === 'acting' ? ' acting' : ''}`}
+        ref={isMe ? mine : undefined}
+        className={`pseat${selected === id && showing ? ' selected' : ''}${status === 'acting' ? ' acting' : ''}`}
         style={{ '--seat': seatColor(view, id) } as React.CSSProperties}
         onClick={() => selectPlayer(id)}
         title={`${p.name}의 개인 보드 보기`}
       >
-        {!compact && <span className="seat-bar" />}
+        <span className="seat-bar" />
         <span className="pseat-main">
           <span className="seat-name">
             {p.name}
@@ -122,22 +129,12 @@ export function PlayerStrip({ compact = false }: { compact?: boolean }) {
             {view.firstPlayer === id && <span className="tag first">선</span>}
             {status && <span className={`seat-status ${status}`} title={{ acting: '행동 중', waiting: '대기', done: '완료' }[status]} />}
           </span>
-          {!compact && <SeatResources id={id} />}
+          <SeatResources id={id} />
         </span>
       </button>
     );
   });
-  if (!compact) return <nav className="player-strip" aria-label="참가자">{seats}</nav>;
-  const resId = session && view.players[session.playerId] ? session.playerId : view.players[selected] ? selected : view.seats[0]!;
-  return (
-    <nav className="player-strip compact" aria-label="참가자">
-      <div className="seat-chips">{seats}</div>
-      <div className="my-res" style={{ '--seat': seatColor(view, resId) } as React.CSSProperties}>
-        <span className="my-res-name"><span className="seat-dot" />{session ? '내 자원' : view.players[resId]!.name}</span>
-        <SeatResources id={resId} counts={false} />
-      </div>
-    </nav>
-  );
+  return <nav className="player-strip" aria-label="참가자">{seats}</nav>;
 }
 
 // 이적 시장: 주전/베테랑/유망주/직원/스폰서 탭. 내 주중 차례면 오른쪽 3장을 눌러 고르고, 아래 확정 막대에서 확정한다. 스폰서는 계약 유형 모달을 거친다.

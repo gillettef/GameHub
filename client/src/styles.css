@@ -356,7 +356,9 @@ label.row { flex-direction: row; align-items: center; }
 .card.staff.suspended .rb-box, .card.staff.suspended .staff-foot { opacity: 0.45; }
 .suspended-band { position: absolute; left: 0; right: 0; bottom: 0; display: flex; align-items: center; justify-content: center; gap: 4px; padding: 3px 6px; background: var(--danger); color: #fff; font-size: 12px; font-weight: 700; letter-spacing: 0.02em; }
 .tag.inactive-tag { background: var(--ink); color: #fff; margin-left: 6px; }
-.seat-res .res.sub.upkeep.short { color: var(--danger); font-weight: 700; }
+/* 유지비 칩: 자원 알약 바로 옆, 점선 테두리 알약으로 눈에 띄게 */
+.seat-res .res.sub.upkeep { padding: 0 6px; border: 1px dashed var(--c-money); border-radius: 6px; color: var(--ink-2); font-weight: 700; white-space: nowrap; }
+.seat-res .res.sub.upkeep.short { color: var(--danger); border: 1px solid var(--danger); background: #fdecea; }
 .upkeep-warning { margin: 0 0 6px; }
 .corner-bottom-right { position: absolute; bottom: 4px; right: 6px; }
 .note { font-size: var(--fs-sub); font-weight: 600; color: var(--defense); }
@@ -887,18 +889,10 @@ button.ghost.light:hover:not(:disabled) { border-color: #fff; color: #fff; }
 .mobile-ui .topbar .toggle { padding: 3px 7px; }
 @media (max-width: 420px) { .mobile-ui .topbar .room { display: none; } }
 
-/* 참가자 띠(compact): 이름 알약 한 줄 + 내 자원 한 줄 */
-.player-strip.compact { flex-direction: column; gap: 5px; padding: 6px 10px; overflow: visible; }
-.seat-chips, .my-res { display: flex; gap: 6px; align-items: center; overflow-x: auto; scrollbar-width: none; }
-.seat-chips::-webkit-scrollbar, .my-res::-webkit-scrollbar, .mobile-ui .tabs::-webkit-scrollbar { display: none; }
-.seat-chip { flex: 1 0 auto; justify-content: center; padding: 3px 10px; min-height: 34px; border-radius: 999px; border: 1px solid var(--line); border-left: 5px solid var(--seat); font-weight: 400; font-size: 13px; background: var(--surface); }
-.seat-chip.selected { border-color: var(--seat); box-shadow: 0 0 0 1px var(--seat); }
-.seat-chip.acting { background: #fffcf2; }
-.seat-chip .pseat-main { padding: 0; }
-.seat-chip .seat-name { flex-wrap: nowrap; white-space: nowrap; }
-.my-res { font-size: var(--fs-sub); }
-.my-res-name { display: inline-flex; align-items: center; font-weight: 700; color: var(--ink-2); white-space: nowrap; flex: none; }
-.my-res .seat-res { flex-wrap: nowrap; flex: none; gap: 5px; }
+/* 참가자 띠: PC용과 같은 모양(사용자 요청 2026-09). 옆으로 밀고, 자원이 두 줄 안에 들어오게 자리 폭만 넓힌다 */
+.mobile-ui .player-strip { gap: 6px; padding: 6px 10px; scroll-snap-type: x proximity; scrollbar-width: none; }
+.mobile-ui .player-strip::-webkit-scrollbar, .mobile-ui .tabs::-webkit-scrollbar { display: none; }
+.mobile-ui .pseat { flex: 0 0 auto; width: min(300px, 82vw); min-width: 0; scroll-snap-align: start; scroll-margin-left: 10px; }
 
 /* 본문: 한 열. 아래 탭 막대 + 확정 막대 자리만큼 바닥 여백 */
 .game.mobile { padding-bottom: calc(var(--nav-h) + var(--safe-b) + 76px); }
