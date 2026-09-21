@@ -141,6 +141,25 @@ describe('경기 전 효과 (p.22)', () => {
     // p.24: 경기 뒤 출전 선수의 일시적 토큰은 제거된다
     expect(s.players['a']!.roster.every((r) => r.tokens.strengthTemp === 0)).toBe(true);
   });
+
+  it('부상 제거 선수 효과는 경기 후에 적용된다: 벤치의 부상 선수가 다음 경기에 더 빨리 돌아온다 (배수아 p-p08)', () => {
+    const rng = seededRng(3);
+    let s = friday();
+    const a = s.players['a']!;
+    const medic = addToRoster(a, 'p-p08');
+    medic.trained = true;
+    assignUniform(a.uniforms, medic.instanceId, activeSide(medic));
+    const injured = addToRoster(a, 'p-s02');
+    injured.tokens.injury = 3;
+    const players = autoLineup(a).players.filter((id) => id !== injured.instanceId);
+    if (!players.includes(medic.instanceId)) players.push(medic.instanceId);
+    s = settlePending(submitLineup(s, 'a', autoLineup(a, players), rng), rng);
+    expect(s.players['a']!.roster.find((r) => r.instanceId === injured.instanceId)!.tokens.injury).toBe(2); // 경기 준비의 자동 −1 (p.20 4)만
+    for (const id of ['b', 'c', 'd']) s = settlePending(submitLineup(s, id, autoLineup(s.players[id]!), rng), rng);
+    s = settlePending(skipTacticEffects(s, rng), rng);
+    expect(s.phase.kind).toBe('friday.aftermath');
+    expect(s.players['a']!.roster.find((r) => r.instanceId === injured.instanceId)!.tokens.injury).toBe(1); // 경기 후 효과로 1개 더
+  });
 });
 
 describe('경기 진행: 전술 효과 카드 (p.21 8, p.28)', () => {
