@@ -1,7 +1,11 @@
 // PLACEHOLDER 데이터 — CLAUDE.md "Mock 데이터 정책"에 따라 창작한 스폰서 카드 36장 (p.18 구조 기준). 실제 카드 데이터로 교체 예정.
-// 균형 원칙(사용자 결정, 2026-09): 유니폼(1장, 효과 + 추가 보너스) > 광고판(2~3장, 효과 또는 보너스) > 장내 방송(제한 없음, 즉시 적용 후 버림).
-// 대략 장내 방송 ≈ 3, 광고판 ≈ 4, 유니폼 ≈ 4~5 가치로 잡았다 (자원 1 = 1, 트랙 +1 ≈ 2, 승점 ≈ 3, 훈련 ≈ 3, 전술 카드 ≈ 1.5).
-// 유니폼은 장기 보상(능력치 트랙 +1)을 자주 섞었고, 추가 보너스의 "약점을 N개까지 버림"은 1개씩 나눠 제거(spread)한다.
+// 균형 원칙(사용자 결정, 2026-09; 리밸런싱 2026-09-22):
+//   - 장내 방송(kit): 1회성·즉시 효과 위주, 셋 중 가장 약함 ≈ 3.
+//   - 광고판(billboard): 카드가 남고 효과 **또는** 추가 보너스 택1이므로 둘의 가치를 같게 맞춘다 — 효과 ≈ 4, 추가 보너스 ≈ 4.
+//   - 유니폼(naming): 효과 **+** 추가 보너스 모두 받으므로 유니폼 효과는 광고판 효과에서 약간 줄인 값 ≈ 3 (대개 자원 1개 적음). 합계 ≈ 7.
+// 가치 척도: 자원 1 = 1, 트랙 +1 ≈ 2, 승점 ≈ 3, 훈련 ≈ 3, 전술 카드 ≈ 1.5, 체력 올려놓기 ≈ 1, 부상·영구 약점 제거 ≈ 2(상황에 따라),
+// 상시 효과 관중석 +1 ≈ 3 / 승리마다 팬덤 ≈ 2, 유지비 −N ≈ N. 추가 보너스는 상황 의존 효과(토큰 제거 등)만으로 두지 않고 확정 보상을 함께 붙여 ≈ 4를 보장한다.
+// 일시적 약점은 다음 경기 뒤 어차피 버려지므로(friday.ts) 제거 효과의 가치가 낮다 — 규칙서 예시(p.18)를 따른 sp-01 에만 남겼다.
 import type { SponsorCard } from '../engine/types';
 
 export const SPONSOR_CARDS: SponsorCard[] = [
@@ -17,9 +21,11 @@ export const SPONSOR_CARDS: SponsorCard[] = [
     naming: [
       { type: 'gainResource', resource: 'money', amount: 2 },
       { type: 'gainResource', resource: 'stamina', amount: 1 },
-      { type: 'moveTrack', track: 'money', delta: 1 },
     ],
-    extraBonus: [{ type: 'removePlayerToken', token: 'weaknessTemp', count: 3, spread: true }],
+    extraBonus: [
+      { type: 'removePlayerToken', token: 'weaknessTemp', count: 3, spread: true },
+      { type: 'gainResource', resource: 'stamina', amount: 2 },
+    ],
     placeholder: true,
   },
   {
@@ -34,9 +40,11 @@ export const SPONSOR_CARDS: SponsorCard[] = [
     naming: [
       { type: 'gainResource', resource: 'ops', amount: 2 },
       { type: 'gainResource', resource: 'money', amount: 1 },
-      { type: 'moveTrack', track: 'ops', delta: 1 },
     ],
-    extraBonus: [{ type: 'drawTactic', count: 1 }],
+    extraBonus: [
+      { type: 'drawTactic', count: 2 },
+      { type: 'gainResource', resource: 'ops', amount: 1 },
+    ],
     placeholder: true,
   },
   {
@@ -51,9 +59,11 @@ export const SPONSOR_CARDS: SponsorCard[] = [
     naming: [
       { type: 'gainResource', resource: 'fandom', amount: 2 },
       { type: 'gainResource', resource: 'money', amount: 1 },
-      { type: 'moveTrack', track: 'fandom', delta: 1 },
     ],
-    extraBonus: [{ type: 'gainVP', amount: 1 }],
+    extraBonus: [
+      { type: 'gainVP', amount: 1 },
+      { type: 'gainResource', resource: 'fandom', amount: 1 },
+    ],
     placeholder: true,
   },
   {
@@ -69,11 +79,13 @@ export const SPONSOR_CARDS: SponsorCard[] = [
       { type: 'removePlayerToken', token: 'injury', count: 1 },
     ],
     naming: [
-      { type: 'gainResource', resource: 'money', amount: 2 },
-      { type: 'gainResource', resource: 'stamina', amount: 1 },
+      { type: 'gainResource', resource: 'money', amount: 1 },
       { type: 'removePlayerToken', token: 'injury', count: 1 },
     ],
-    extraBonus: [{ type: 'removePlayerToken', token: 'weaknessPerm', count: 1 }],
+    extraBonus: [
+      { type: 'removePlayerToken', token: 'weaknessPerm', count: 1 },
+      { type: 'gainResource', resource: 'stamina', amount: 2 },
+    ],
     placeholder: true,
   },
   {
@@ -88,9 +100,11 @@ export const SPONSOR_CARDS: SponsorCard[] = [
     naming: [
       { type: 'gainResource', resource: 'stamina', amount: 2 },
       { type: 'gainResource', resource: 'money', amount: 1 },
-      { type: 'moveTrack', track: 'stamina', delta: 1 },
     ],
-    extraBonus: [{ type: 'placeStamina', count: 1 }],
+    extraBonus: [
+      { type: 'trainPlayer', count: 1 },
+      { type: 'placeStamina', count: 1 },
+    ],
     placeholder: true,
   },
   {
@@ -107,10 +121,12 @@ export const SPONSOR_CARDS: SponsorCard[] = [
     ],
     naming: [
       { type: 'moveTrack', track: 'money', delta: 1 },
-      { type: 'gainResource', resource: 'money', amount: 2 },
+      { type: 'gainResource', resource: 'money', amount: 1 },
+    ],
+    extraBonus: [
+      { type: 'gainVP', amount: 1 },
       { type: 'gainResource', resource: 'ops', amount: 1 },
     ],
-    extraBonus: [{ type: 'gainVP', amount: 1 }],
     placeholder: true,
   },
   {
@@ -126,11 +142,13 @@ export const SPONSOR_CARDS: SponsorCard[] = [
       { type: 'gainResource', resource: 'fandom', amount: 2 },
     ],
     naming: [
-      { type: 'gainResource', resource: 'money', amount: 2 },
+      { type: 'gainResource', resource: 'money', amount: 1 },
       { type: 'gainResource', resource: 'fandom', amount: 2 },
-      { type: 'gainResource', resource: 'ops', amount: 1 },
     ],
-    extraBonus: [{ type: 'drawTactic', count: 1 }],
+    extraBonus: [
+      { type: 'drawTactic', count: 2 },
+      { type: 'gainResource', resource: 'fandom', amount: 1 },
+    ],
     placeholder: true,
   },
   {
@@ -142,11 +160,11 @@ export const SPONSOR_CARDS: SponsorCard[] = [
       { type: 'trainPlayer', count: 1 },
       { type: 'gainResource', resource: 'money', amount: 1 },
     ],
-    naming: [
-      { type: 'trainPlayer', count: 1 },
-      { type: 'gainResource', resource: 'money', amount: 2 },
+    naming: [{ type: 'trainPlayer', count: 1 }],
+    extraBonus: [
+      { type: 'moveTrack', track: 'stamina', delta: 1 },
+      { type: 'gainResource', resource: 'stamina', amount: 2 },
     ],
-    extraBonus: [{ type: 'placeStamina', count: 1 }],
     placeholder: true,
   },
   {
@@ -161,9 +179,11 @@ export const SPONSOR_CARDS: SponsorCard[] = [
     naming: [
       { type: 'gainResource', resource: 'fandom', amount: 2 },
       { type: 'gainResource', resource: 'money', amount: 1 },
-      { type: 'moveTrack', track: 'fandom', delta: 1 },
     ],
-    extraBonus: [{ type: 'gainVP', amount: 1 }],
+    extraBonus: [
+      { type: 'gainVP', amount: 1 },
+      { type: 'gainResource', resource: 'money', amount: 1 },
+    ],
     placeholder: true,
   },
   {
@@ -179,10 +199,13 @@ export const SPONSOR_CARDS: SponsorCard[] = [
       { type: 'gainResource', resource: 'ops', amount: -1 },
     ],
     naming: [
-      { type: 'gainResource', resource: 'money', amount: 6 },
-      { type: 'gainResource', resource: 'fandom', amount: -1 },
+      { type: 'gainResource', resource: 'money', amount: 4 },
+      { type: 'gainResource', resource: 'ops', amount: -1 },
     ],
-    extraBonus: [{ type: 'gainVP', amount: 1 }],
+    extraBonus: [
+      { type: 'gainVP', amount: 1 },
+      { type: 'gainResource', resource: 'money', amount: 1 },
+    ],
     placeholder: true,
   },
   {
@@ -200,9 +223,11 @@ export const SPONSOR_CARDS: SponsorCard[] = [
     naming: [
       { type: 'gainResource', resource: 'stamina', amount: 2 },
       { type: 'gainResource', resource: 'ops', amount: 1 },
+    ],
+    extraBonus: [
+      { type: 'removePlayerToken', token: 'weaknessPerm', count: 1 },
       { type: 'moveTrack', track: 'stamina', delta: 1 },
     ],
-    extraBonus: [{ type: 'removePlayerToken', token: 'weaknessTemp', count: 2, spread: true }],
     placeholder: true,
   },
   {
@@ -220,9 +245,11 @@ export const SPONSOR_CARDS: SponsorCard[] = [
     naming: [
       { type: 'gainResource', resource: 'fandom', amount: 2 },
       { type: 'gainResource', resource: 'ops', amount: 1 },
-      { type: 'moveTrack', track: 'fandom', delta: 1 },
     ],
-    extraBonus: [{ type: 'drawTactic', count: 1 }],
+    extraBonus: [
+      { type: 'passive', passive: 'fandomOnWin' },
+      { type: 'gainResource', resource: 'fandom', amount: 2 },
+    ],
     placeholder: true,
   },
   {
@@ -235,10 +262,13 @@ export const SPONSOR_CARDS: SponsorCard[] = [
       { type: 'moveTrack', track: 'money', delta: 1 },
     ],
     naming: [
-      { type: 'gainResource', resource: 'money', amount: 3 },
+      { type: 'gainResource', resource: 'money', amount: 1 },
       { type: 'moveTrack', track: 'money', delta: 1 },
     ],
-    extraBonus: [{ type: 'gainVP', amount: 1 }],
+    extraBonus: [
+      { type: 'gainVP', amount: 1 },
+      { type: 'gainResource', resource: 'ops', amount: 1 },
+    ],
     placeholder: true,
   },
   {
@@ -253,9 +283,11 @@ export const SPONSOR_CARDS: SponsorCard[] = [
     naming: [
       { type: 'gainResource', resource: 'ops', amount: 2 },
       { type: 'gainResource', resource: 'fandom', amount: 1 },
-      { type: 'moveTrack', track: 'ops', delta: 1 },
     ],
-    extraBonus: [{ type: 'gainVP', amount: 1 }],
+    extraBonus: [
+      { type: 'gainVP', amount: 1 },
+      { type: 'gainResource', resource: 'ops', amount: 1 },
+    ],
     placeholder: true,
   },
   {
@@ -271,11 +303,13 @@ export const SPONSOR_CARDS: SponsorCard[] = [
       { type: 'gainResource', resource: 'fandom', amount: 2 },
     ],
     naming: [
-      { type: 'gainResource', resource: 'fandom', amount: 2 },
       { type: 'gainResource', resource: 'money', amount: 1 },
-      { type: 'moveTrack', track: 'fandom', delta: 1 },
+      { type: 'gainResource', resource: 'fandom', amount: 2 },
     ],
-    extraBonus: [{ type: 'passive', passive: 'extraStand' }],
+    extraBonus: [
+      { type: 'passive', passive: 'extraStand' },
+      { type: 'gainResource', resource: 'fandom', amount: 1 },
+    ],
     placeholder: true,
   },
   {
@@ -293,9 +327,11 @@ export const SPONSOR_CARDS: SponsorCard[] = [
     naming: [
       { type: 'gainResource', resource: 'ops', amount: 2 },
       { type: 'gainResource', resource: 'stamina', amount: 1 },
-      { type: 'moveTrack', track: 'ops', delta: 1 },
     ],
-    extraBonus: [{ type: 'placeStamina', count: 1 }],
+    extraBonus: [
+      { type: 'moveTrack', track: 'ops', delta: 1 },
+      { type: 'gainResource', resource: 'stamina', amount: 2 },
+    ],
     placeholder: true,
   },
   {
@@ -312,10 +348,12 @@ export const SPONSOR_CARDS: SponsorCard[] = [
     ],
     naming: [
       { type: 'removePlayerToken', token: 'injury', count: 1 },
-      { type: 'gainResource', resource: 'stamina', amount: 2 },
-      { type: 'gainResource', resource: 'money', amount: 1 },
+      { type: 'gainResource', resource: 'stamina', amount: 1 },
     ],
-    extraBonus: [{ type: 'removePlayerToken', token: 'weaknessTemp', count: 3, spread: true }],
+    extraBonus: [
+      { type: 'removePlayerToken', token: 'weaknessPerm', count: 1 },
+      { type: 'moveTrack', track: 'stamina', delta: 1 },
+    ],
     placeholder: true,
   },
   {
@@ -330,9 +368,11 @@ export const SPONSOR_CARDS: SponsorCard[] = [
     naming: [
       { type: 'gainResource', resource: 'fandom', amount: 2 },
       { type: 'gainResource', resource: 'money', amount: 1 },
-      { type: 'gainVP', amount: 1 },
     ],
-    extraBonus: [{ type: 'gainVP', amount: 1 }],
+    extraBonus: [
+      { type: 'gainVP', amount: 1 },
+      { type: 'gainResource', resource: 'money', amount: 1 },
+    ],
     placeholder: true,
   },
   {
@@ -350,9 +390,11 @@ export const SPONSOR_CARDS: SponsorCard[] = [
     naming: [
       { type: 'gainResource', resource: 'stamina', amount: 2 },
       { type: 'gainResource', resource: 'money', amount: 1 },
-      { type: 'moveTrack', track: 'stamina', delta: 1 },
     ],
-    extraBonus: [{ type: 'removePlayerToken', token: 'weaknessPerm', count: 1 }],
+    extraBonus: [
+      { type: 'removePlayerToken', token: 'weaknessPerm', count: 1 },
+      { type: 'gainResource', resource: 'money', amount: 2 },
+    ],
     placeholder: true,
   },
   {
@@ -366,9 +408,12 @@ export const SPONSOR_CARDS: SponsorCard[] = [
     ],
     naming: [
       { type: 'moveTrack', track: 'stamina', delta: 1 },
-      { type: 'gainResource', resource: 'stamina', amount: 3 },
+      { type: 'gainResource', resource: 'stamina', amount: 1 },
     ],
-    extraBonus: [{ type: 'placeStamina', count: 1 }],
+    extraBonus: [
+      { type: 'trainPlayer', count: 1 },
+      { type: 'gainResource', resource: 'stamina', amount: 1 },
+    ],
     placeholder: true,
   },
   {
@@ -382,9 +427,12 @@ export const SPONSOR_CARDS: SponsorCard[] = [
     ],
     naming: [
       { type: 'moveTrack', track: 'fandom', delta: 1 },
-      { type: 'gainResource', resource: 'fandom', amount: 3 },
+      { type: 'gainResource', resource: 'fandom', amount: 1 },
     ],
-    extraBonus: [{ type: 'gainVP', amount: 1 }],
+    extraBonus: [
+      { type: 'passive', passive: 'extraStand' },
+      { type: 'gainResource', resource: 'money', amount: 1 },
+    ],
     placeholder: true,
   },
   {
@@ -398,9 +446,12 @@ export const SPONSOR_CARDS: SponsorCard[] = [
     ],
     naming: [
       { type: 'moveTrack', track: 'ops', delta: 1 },
-      { type: 'gainResource', resource: 'ops', amount: 3 },
+      { type: 'gainResource', resource: 'ops', amount: 1 },
     ],
-    extraBonus: [{ type: 'drawTactic', count: 1 }],
+    extraBonus: [
+      { type: 'drawTactic', count: 2 },
+      { type: 'gainResource', resource: 'ops', amount: 1 },
+    ],
     placeholder: true,
   },
   {
@@ -416,10 +467,13 @@ export const SPONSOR_CARDS: SponsorCard[] = [
       { type: 'gainResource', resource: 'stamina', amount: 2 },
     ],
     naming: [
-      { type: 'gainResource', resource: 'money', amount: 3 },
+      { type: 'gainResource', resource: 'money', amount: 1 },
       { type: 'gainResource', resource: 'stamina', amount: 2 },
     ],
-    extraBonus: [{ type: 'removePlayerToken', token: 'weaknessTemp', count: 2, spread: true }],
+    extraBonus: [
+      { type: 'upkeepDiscount', amount: 2 },
+      { type: 'gainResource', resource: 'stamina', amount: 2 },
+    ],
     placeholder: true,
   },
   {
@@ -435,11 +489,13 @@ export const SPONSOR_CARDS: SponsorCard[] = [
       { type: 'gainResource', resource: 'ops', amount: 2 },
     ],
     naming: [
-      { type: 'gainResource', resource: 'money', amount: 2 },
-      { type: 'gainResource', resource: 'ops', amount: 1 },
-      { type: 'moveTrack', track: 'ops', delta: 1 },
+      { type: 'gainResource', resource: 'money', amount: 1 },
+      { type: 'gainResource', resource: 'ops', amount: 2 },
     ],
-    extraBonus: [{ type: 'drawTactic', count: 1 }],
+    extraBonus: [
+      { type: 'drawTactic', count: 2 },
+      { type: 'gainResource', resource: 'money', amount: 1 },
+    ],
     placeholder: true,
   },
   {
@@ -452,11 +508,13 @@ export const SPONSOR_CARDS: SponsorCard[] = [
       { type: 'gainResource', resource: 'fandom', amount: 1 },
     ],
     naming: [
-      { type: 'gainResource', resource: 'money', amount: 3 },
+      { type: 'gainResource', resource: 'money', amount: 2 },
       { type: 'gainResource', resource: 'fandom', amount: 1 },
-      { type: 'moveTrack', track: 'money', delta: 1 },
     ],
-    extraBonus: [{ type: 'gainVP', amount: 1 }],
+    extraBonus: [
+      { type: 'gainVP', amount: 1 },
+      { type: 'gainResource', resource: 'money', amount: 1 },
+    ],
     placeholder: true,
   },
   {
@@ -474,12 +532,14 @@ export const SPONSOR_CARDS: SponsorCard[] = [
       { type: 'gainResource', resource: 'stamina', amount: 1 },
     ],
     naming: [
-      { type: 'gainResource', resource: 'money', amount: 1 },
       { type: 'gainResource', resource: 'fandom', amount: 2 },
       { type: 'gainResource', resource: 'stamina', amount: 1 },
-      { type: 'moveTrack', track: 'fandom', delta: 1 },
     ],
-    extraBonus: [{ type: 'placeStamina', count: 1 }],
+    extraBonus: [
+      { type: 'moveTrack', track: 'fandom', delta: 1 },
+      { type: 'placeStamina', count: 1 },
+      { type: 'gainResource', resource: 'fandom', amount: 1 },
+    ],
     placeholder: true,
   },
   {
@@ -488,18 +548,17 @@ export const SPONSOR_CARDS: SponsorCard[] = [
     description: '축구 전술 시뮬레이션 게임을 만드는 회사로, 코치진에게 분석 도구를 제공합니다.',
     kit: [
       { type: 'drawTactic', count: 1 },
-      { type: 'gainResource', resource: 'money', amount: 1 },
+      { type: 'gainResource', resource: 'money', amount: 2 },
     ],
     billboard: [
-      { type: 'drawTactic', count: 1 },
-      { type: 'gainResource', resource: 'money', amount: 2 },
+      { type: 'drawTactic', count: 2 },
+      { type: 'gainResource', resource: 'money', amount: 1 },
     ],
-    naming: [
-      { type: 'drawTactic', count: 1 },
-      { type: 'gainResource', resource: 'money', amount: 2 },
-      { type: 'gainResource', resource: 'ops', amount: 1 },
+    naming: [{ type: 'drawTactic', count: 2 }],
+    extraBonus: [
+      { type: 'moveTrack', track: 'ops', delta: 1 },
+      { type: 'gainResource', resource: 'ops', amount: 2 },
     ],
-    extraBonus: [{ type: 'drawTactic', count: 1 }],
     placeholder: true,
   },
   {
@@ -511,11 +570,12 @@ export const SPONSOR_CARDS: SponsorCard[] = [
       { type: 'trainPlayer', count: 1 },
       { type: 'gainResource', resource: 'stamina', amount: 1 },
     ],
-    naming: [
-      { type: 'trainPlayer', count: 1 },
-      { type: 'gainResource', resource: 'stamina', amount: 2 },
+    naming: [{ type: 'trainPlayer', count: 1 }],
+    extraBonus: [
+      { type: 'moveTrack', track: 'stamina', delta: 1 },
+      { type: 'placeStamina', count: 1 },
+      { type: 'gainResource', resource: 'stamina', amount: 1 },
     ],
-    extraBonus: [{ type: 'placeStamina', count: 1 }],
     placeholder: true,
   },
   {
@@ -530,9 +590,11 @@ export const SPONSOR_CARDS: SponsorCard[] = [
     naming: [
       { type: 'gainResource', resource: 'fandom', amount: 2 },
       { type: 'gainResource', resource: 'ops', amount: 1 },
-      { type: 'moveTrack', track: 'fandom', delta: 1 },
     ],
-    extraBonus: [{ type: 'passive', passive: 'fandomOnWin' }],
+    extraBonus: [
+      { type: 'passive', passive: 'fandomOnWin' },
+      { type: 'gainResource', resource: 'fandom', amount: 2 },
+    ],
     placeholder: true,
   },
   {
@@ -547,9 +609,11 @@ export const SPONSOR_CARDS: SponsorCard[] = [
     naming: [
       { type: 'gainResource', resource: 'money', amount: 2 },
       { type: 'gainResource', resource: 'ops', amount: 1 },
-      { type: 'gainVP', amount: 1 },
     ],
-    extraBonus: [{ type: 'gainVP', amount: 1 }],
+    extraBonus: [
+      { type: 'gainVP', amount: 1 },
+      { type: 'gainResource', resource: 'ops', amount: 1 },
+    ],
     placeholder: true,
   },
   {
@@ -558,11 +622,12 @@ export const SPONSOR_CARDS: SponsorCard[] = [
     description: '고산지대에서 길어 온 생수를 선수단에 무제한 공급하는 브랜드입니다.',
     kit: [{ type: 'gainResource', resource: 'stamina', amount: 3 }],
     billboard: [{ type: 'gainResource', resource: 'stamina', amount: 4 }],
-    naming: [
-      { type: 'gainResource', resource: 'stamina', amount: 3 },
+    naming: [{ type: 'gainResource', resource: 'stamina', amount: 3 }],
+    extraBonus: [
       { type: 'moveTrack', track: 'stamina', delta: 1 },
+      { type: 'placeStamina', count: 1 },
+      { type: 'gainResource', resource: 'stamina', amount: 1 },
     ],
-    extraBonus: [{ type: 'placeStamina', count: 1 }],
     placeholder: true,
   },
   {
@@ -571,11 +636,11 @@ export const SPONSOR_CARDS: SponsorCard[] = [
     description: '구단 사무실의 모든 서류와 문구를 책임지는 문구 전문 업체입니다.',
     kit: [{ type: 'gainResource', resource: 'ops', amount: 3 }],
     billboard: [{ type: 'gainResource', resource: 'ops', amount: 4 }],
-    naming: [
-      { type: 'gainResource', resource: 'ops', amount: 3 },
+    naming: [{ type: 'gainResource', resource: 'ops', amount: 3 }],
+    extraBonus: [
       { type: 'moveTrack', track: 'ops', delta: 1 },
+      { type: 'gainResource', resource: 'ops', amount: 2 },
     ],
-    extraBonus: [{ type: 'removePlayerToken', token: 'weaknessTemp', count: 2, spread: true }],
     placeholder: true,
   },
   {
@@ -591,10 +656,13 @@ export const SPONSOR_CARDS: SponsorCard[] = [
       { type: 'gainResource', resource: 'stamina', amount: -1 },
     ],
     naming: [
-      { type: 'gainResource', resource: 'money', amount: 6 },
+      { type: 'gainResource', resource: 'money', amount: 4 },
       { type: 'gainResource', resource: 'stamina', amount: -1 },
     ],
-    extraBonus: [{ type: 'gainVP', amount: 1 }],
+    extraBonus: [
+      { type: 'gainVP', amount: 1 },
+      { type: 'gainResource', resource: 'money', amount: 1 },
+    ],
     placeholder: true,
   },
   {
@@ -602,18 +670,21 @@ export const SPONSOR_CARDS: SponsorCard[] = [
     name: '별빛 영화관',
     description: '구단 다큐멘터리를 상영해 팬을 끌어모으지만, 촬영 협조에 손이 많이 갑니다.',
     kit: [
-      { type: 'gainResource', resource: 'fandom', amount: 3 },
-      { type: 'gainResource', resource: 'ops', amount: -1 },
-    ],
-    billboard: [
       { type: 'gainResource', resource: 'fandom', amount: 4 },
       { type: 'gainResource', resource: 'ops', amount: -1 },
     ],
-    naming: [
+    billboard: [
       { type: 'gainResource', resource: 'fandom', amount: 5 },
       { type: 'gainResource', resource: 'ops', amount: -1 },
     ],
-    extraBonus: [{ type: 'drawTactic', count: 1 }],
+    naming: [
+      { type: 'gainResource', resource: 'fandom', amount: 4 },
+      { type: 'gainResource', resource: 'ops', amount: -1 },
+    ],
+    extraBonus: [
+      { type: 'drawTactic', count: 2 },
+      { type: 'gainResource', resource: 'fandom', amount: 1 },
+    ],
     placeholder: true,
   },
   {
@@ -630,10 +701,12 @@ export const SPONSOR_CARDS: SponsorCard[] = [
     ],
     naming: [
       { type: 'removePlayerToken', token: 'weaknessPerm', count: 1 },
-      { type: 'gainResource', resource: 'money', amount: 2 },
-      { type: 'gainResource', resource: 'fandom', amount: 1 },
+      { type: 'gainResource', resource: 'money', amount: 1 },
     ],
-    extraBonus: [{ type: 'removePlayerToken', token: 'injury', count: 1 }],
+    extraBonus: [
+      { type: 'removePlayerToken', token: 'injury', count: 1 },
+      { type: 'gainResource', resource: 'stamina', amount: 2 },
+    ],
     placeholder: true,
   },
   {
@@ -641,7 +714,7 @@ export const SPONSOR_CARDS: SponsorCard[] = [
     name: '노란 우산 보험',
     description: '구단 운영비를 보장해 주는 보험사로, 주말 유지비 걱정을 덜어 줍니다.',
     kit: [
-      { type: 'gainResource', resource: 'money', amount: 2 },
+      { type: 'gainResource', resource: 'money', amount: 1 },
       { type: 'upkeepDiscount', amount: 2 },
     ],
     billboard: [
@@ -651,9 +724,11 @@ export const SPONSOR_CARDS: SponsorCard[] = [
     naming: [
       { type: 'gainResource', resource: 'money', amount: 2 },
       { type: 'gainResource', resource: 'stamina', amount: 1 },
-      { type: 'moveTrack', track: 'money', delta: 1 },
     ],
-    extraBonus: [{ type: 'gainVP', amount: 1 }],
+    extraBonus: [
+      { type: 'upkeepDiscount', amount: 2 },
+      { type: 'gainResource', resource: 'money', amount: 2 },
+    ],
     placeholder: true,
   },
 ];
