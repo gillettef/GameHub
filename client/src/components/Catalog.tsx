@@ -47,10 +47,10 @@ function CatalogModal({ onClose }: { onClose: () => void }) {
   const [trained, setTrained] = useState(false);
   const [query, setQuery] = useState('');
   const isPlayerTab = PLAYER_TABS.includes(tab);
-  // 유망주는 훈련 전 면이 모두 똑같아 훈련 면이 기본
+  // 탭을 옮기면 훈련 면 보기는 꺼진다 (유망주 탭도 기본은 훈련 전 면 — 사용자 요청)
   const changeTab = (next: CatalogTab) => {
     setTab(next);
-    setTrained(next === 'prospect');
+    setTrained(false);
   };
   const q = query.trim().toLowerCase();
   const match = (...texts: (string | undefined)[]) => !q || texts.some((t) => t?.toLowerCase().includes(q));
