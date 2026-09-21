@@ -121,7 +121,7 @@ function ClubBoard({ p }: { p: PlayerPublicView }) {
 const GENERAL_SLOTS = 4;
 
 // 경기장 그림(위에서 본 모습): 잔디 + 하프라인·센터서클·양쪽 페널티 박스. 스타디움 평면도와 경기 보드가 같이 쓴다
-function PitchLines() {
+export function PitchLines() {
   return (
     <svg className="pitch-lines" viewBox="0 0 300 180" preserveAspectRatio="none" aria-hidden="true" focusable="false">
       <rect x="6" y="6" width="288" height="168" rx="4" />

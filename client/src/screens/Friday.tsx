@@ -14,6 +14,7 @@ import { CostChips, Icon, ResourceChip } from '../components/Icons';
 import { LineupPitch, Stepper, TokenChipView, playedInstance } from '../components/Lineup';
 import type { StepDef } from '../components/Lineup';
 import { TurnBanner } from '../components/Turn';
+import { StandsPicker } from '../components/StandsPicker';
 import { UpkeepWarning } from '../components/Upkeep';
 import { SECTOR_LABEL, matchDieLabel } from '../labels';
 import { initialDraft, saveDraft } from '../lineupDraft';
@@ -270,14 +271,9 @@ export function FridayPrepareScreen() {
               {step === 3 && (
                 <div className="step">
                   <h3>관중석 <span className="muted">{standsCount(me)}석 · 놓은 <Icon name="fandom" size={12} />만큼 경기 후 <Icon name="money" size={12} /></span></h3>
-                  <div className="stands-picker">
-                    <button disabled={standsNow <= 0} onClick={() => setStands(standsNow - 1)} aria-label="관중석 팬덤 줄이기">−</button>
-                    <span className="stands-value"><Icon name="fandom" size={16} /> {standsNow} <span className="muted">/ {standsMax}</span></span>
-                    <button disabled={standsNow >= standsMax} onClick={() => setStands(standsNow + 1)} aria-label="관중석 팬덤 늘리기">+</button>
-                    <span className="chips">→ 경기 후 <ResourceChip resource="money" amount={standsNow} /></span>
-                  </div>
+                  <StandsPicker me={me} seats={standsCount(me)} max={standsMax} value={standsNow} onChange={setStands} />
                   <p className="muted small">
-                    보유 <Icon name="fandom" size={12} />{me.resources.fandom}. 넣을 수 있는 만큼 미리 채워 두었습니다 — 경기 뒤 주사위를 다시 굴릴 팬덤(1개씩)을 남기려면 줄이세요.
+                    관중석을 눌러 팬덤을 놓거나 뺍니다. 보유 <Icon name="fandom" size={12} />{me.resources.fandom}. 넣을 수 있는 만큼 미리 채워 두었습니다 — 경기 뒤 주사위를 다시 굴릴 팬덤(1개씩)을 남기려면 줄이세요.
                     {standsMax === 0 && ' 지금은 관중석에 놓을 팬덤이 없습니다.'}
                   </p>
                   <UpkeepWarning view={view} p={me} />

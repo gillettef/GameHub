@@ -3,8 +3,10 @@ import { createRoot } from 'react-dom/client';
 import { BOARD_CARDS, EXECUTIVE_CARDS, OBJECTIVE_CARDS, OPPONENT_CARDS, PLAYER_CARDS, SPONSOR_CARDS, STAFF_CARDS, TACTIC_CARDS } from '@server/data';
 import { autoPlace } from '@server/engine/lineup';
 import type { PlayerInstance, UniformToken } from '@server/engine/state';
+import type { PlayerPublicView } from '@server/engine/view';
 import { BoardCardView, ExecutiveCardView, ObjectiveCardView, OpponentCardView, PlayerCardView, SponsorCardView, StaffCardView, TacticCardView } from './components/Cards';
 import { LineupPitch } from './components/Lineup';
+import { StandsPicker } from './components/StandsPicker';
 import './styles.css';
 
 // 개발용 카드 넘침 점검 (사용자 요청 2026-09, "텍스트가 카드 크기를 벗어난다"): 모든 카드를 실제 크기로 그리고
@@ -72,6 +74,19 @@ function PitchSamples() {
   );
 }
 
+// `?only=stands`: 경기 준비의 관중석 배치 그림 (기본 2석 / 3·4번 건설 + 추가 관중석)
+function StandsSamples() {
+  const [a, setA] = useState(1);
+  const [b, setB] = useState(4);
+  const fake = (infrastructure: string[]) => ({ infrastructure }) as unknown as PlayerPublicView;
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 520px))', gap: 16, width: '100%' }}>
+      <section className="panel"><StandsPicker me={fake([])} seats={2} max={2} value={a} onChange={setA} /></section>
+      <section className="panel"><StandsPicker me={fake(['stand3', 'stand4'])} seats={5} max={5} value={b} onChange={setB} /></section>
+    </div>
+  );
+}
+
 // `?only=sponsor` 처럼 카드 종류 하나만 그릴 수 있다 (스크린샷으로 눈으로 볼 때)
 const only = new URLSearchParams(location.search).get('only');
 const show = (kind: string) => !only || only === kind;
@@ -87,6 +102,7 @@ function App() {
       <pre id="audit" style={{ whiteSpace: 'pre-wrap', fontSize: 12 }}>{result}</pre>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
         {only === 'pitch' && <PitchSamples />}
+        {only === 'stands' && <StandsSamples />}
         {show('player') && PLAYER_CARDS.map((c) => <Slot key={c.id} id={`${c.id} ${c.name} (미훈련)`}><PlayerCardView cardId={c.id} /></Slot>)}
         {show('player') && PLAYER_CARDS.map((c) => <Slot key={`${c.id}-t`} id={`${c.id} ${c.name} (훈련)`}><PlayerCardView cardId={c.id} instance={trainedOf(c.id)} /></Slot>)}
         {show('staff') && STAFF_CARDS.map((c) => <Slot key={c.id} id={`${c.id} ${c.name}`}><StaffCardView cardId={c.id} /></Slot>)}

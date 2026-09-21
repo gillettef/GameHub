@@ -938,7 +938,6 @@ button.ghost.light:hover:not(:disabled) { border-color: #fff; color: #fff; backg
 .mobile-ui .stepper button { flex-direction: column; gap: 2px; padding: 6px 2px; border-radius: var(--radius-md); justify-content: center; font-size: var(--fs-sub); }
 .mobile-ui .stepper-label { max-width: 100%; }
 .mobile-ui .step-nav button { min-height: 44px; flex: 1; justify-content: center; }
-.mobile-ui .stands-picker > button { width: 48px; height: 48px; }
 
 /* 주중 행동 목록: 누르기 쉬운 높이 */
 .mobile-ui .action-item { padding: 10px 12px; font-size: 14px; }
@@ -1235,3 +1234,29 @@ th .crest, .crest-title .crest, .score-name .crest { vertical-align: middle; mar
 .build-tile { margin-bottom: 12px; border-color: var(--pitch); }
 .build-options { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 6px; }
 .mobile-ui .build-options { grid-template-columns: minmax(0, 1fr); }
+
+/* 경기 준비 4단계: 경기장 평면도에서 관중석을 눌러 팬덤 배치 (사용자 요청 2026-09) */
+.stands-plan-wrap { display: flex; flex-direction: column; gap: 8px; margin: 8px 0; }
+.stands-plan { grid-template-columns: 76px minmax(0, 1fr) 76px; grid-template-rows: 56px minmax(150px, 1fr) auto 56px; background: var(--surface-2); }
+.stands-plan .stadium-pitch { min-height: 150px; }
+.stands-plan button.stand.seat { font: inherit; font-weight: 600; cursor: pointer; opacity: 1; }
+.stands-plan button.stand.seat:disabled { cursor: not-allowed; }
+.stands-plan button.stand.seat:not(.open) { opacity: 0.6; }
+.stands-plan .stand.seat.open { border: 2px dashed var(--c-fandom); color: var(--ink-2); background-color: var(--surface); background-image: none; }
+.stands-plan .stand.seat.open:hover:not(:disabled) { background-color: color-mix(in srgb, var(--c-fandom) 10%, var(--surface)); }
+.stands-plan .stand.seat.filled { border-style: solid; background-color: var(--c-fandom); color: #fff; }
+.stands-plan .stand.seat.filled:hover:not(:disabled) { background-color: var(--c-fandom); }
+.stands-plan .stand.seat .stand-name, .stands-plan .stand.seat.open .stand-name { background: transparent; padding: 0; }
+.seat-fan { display: inline-flex; align-items: center; gap: 3px; font-size: var(--fs-sub); writing-mode: horizontal-tb; color: var(--c-fandom); }
+.seat-fan.on { color: #fff; font-size: var(--fs-title); font-weight: 700; }
+.stands-plan .stand.west, .stands-plan .stand.east { writing-mode: horizontal-tb; flex-direction: column; }
+.stands-plan .stand.north, .stands-plan .stand.south { margin: 0 82px; }
+.stands-extra { grid-area: boards; display: flex; gap: 6px; justify-content: center; }
+.stands-extra .stand { min-width: 120px; min-height: 48px; }
+.stands-total { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; color: #fff; }
+.stands-total-value { display: inline-flex; align-items: baseline; gap: 6px; font-size: 40px; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }
+.stands-total-value small { font-size: var(--fs-title); font-weight: 500; opacity: 0.85; }
+.stands-total-note { display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-body); background: rgba(0, 0, 0, 0.25); border-radius: var(--radius-pill); padding: 2px 10px; }
+.stands-quick { display: flex; gap: 6px; justify-content: center; }
+.mobile-ui .stands-plan { grid-template-columns: 64px minmax(0, 1fr) 64px; padding: 8px; }
+.mobile-ui .stands-plan .stand.north, .mobile-ui .stands-plan .stand.south { margin: 0 70px; }
