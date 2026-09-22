@@ -150,6 +150,11 @@ export interface MatchAftermath {
   skills: Record<string, number>;
   effectCard: string | null; // 경기 진행 때 효과로 쓴 전술 카드
   report: MatchReport;
+  // 경기 보기·종료 화면용 (사용자 요청 2026-09-22): 구획 비교 전에 효과로 미리 넣은 골 / 효과로 무효화한 상대 득점 수 /
+  // 이 참가자의 판정 중 남은 기록(경기 중·후 효과, 승리 보너스 등 — "경기 결과"·"득점" 줄은 뺌)
+  preGoals: number;
+  denied: number;
+  effects: string[];
   roll: number | null;
   // 경기 영향이 부상류면 그 결과를 적용한 뒤 12면체 부상 주사위를 참가자가 직접 굴린다 (p.24·p.27, 사용자 요청 2026-09).
   // "두 번의 (심각한) 부상"이면 2개. 앞에서부터 하나씩 굴림 → (팬덤 재굴림) → 적용. count = 놓을 부상 토큰 수

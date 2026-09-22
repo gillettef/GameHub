@@ -72,6 +72,35 @@ describe('골키퍼 (p.22)', () => {
   });
 });
 
+describe('판정 트레이스 (경기 보기 화면용)', () => {
+  it('막은 짝·뚫린 슛·선방·득점을 구획마다 양방향으로 남긴다', () => {
+    // p.21 예시 1: 내 포워드 3·2 vs 상대 백(공격 2, 수비 3). 상대 수비 3이 내 3을 막고 2는 뚫려 득점(골키퍼 없음).
+    const mine = side({ CF: [A('11', 3), A('10', 2)] }, { skill: 0, saves: 0 });
+    const theirs = side({ CB: [A('b1', 2), D('b2', 3)] }, { skill: 1, saves: 1 });
+    const cf = resolveMatch(mine, theirs).sectors.find((s) => s.mine === 'CF')!;
+    expect(cf.myAttack.blocks).toEqual([{ attacker: '11', defender: 'b2' }]);
+    expect(cf.myAttack.unblocked).toEqual(['10']);
+    expect(cf.myAttack.saved).toEqual([]); // 역량 2 > 골키퍼 1
+    expect(cf.myAttack.scorers).toEqual(['10']);
+    // 상대 공격 2는 내 수비가 없어 뚫리고 내 골키퍼(0)는 못 막는다
+    expect(cf.theirAttack.attackers.map((s) => s.id)).toEqual(['b1']);
+    expect(cf.theirAttack.defenders).toEqual([]);
+    expect(cf.theirAttack.unblocked).toEqual(['b1']);
+    expect(cf.theirAttack.scorers).toEqual(['b1']);
+  });
+
+  it('골키퍼 선방은 saved 에, 골키퍼 정보는 report 에 남는다', () => {
+    const mine = side({ CF: [A('a', 1), A('b', 1), A('c', 3)] }, { skill: 0, saves: 0 });
+    const theirs = side({}, { skill: 2, saves: 2 });
+    const r = resolveMatch(mine, theirs);
+    const cf = r.sectors.find((s) => s.mine === 'CF')!;
+    expect(cf.myAttack.unblocked).toEqual(['a', 'b', 'c']);
+    expect(cf.myAttack.saved.sort()).toEqual(['a', 'b']);
+    expect(cf.myAttack.scorers).toEqual(['c']);
+    expect(r.goalkeepers).toEqual({ mine: { skill: 0, saves: 0 }, theirs: { skill: 2, saves: 2 } });
+  });
+});
+
 describe('전체 예시: 브릭턴 FC vs 그레이타운 볼스 2:2 (p.23)', () => {
   it('규칙서 예시 결과를 재현한다', () => {
     const brixton: TeamSide = {

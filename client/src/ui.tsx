@@ -39,6 +39,8 @@ interface UiStore {
   setChatSeen: (id: number) => void;
   resultSeen: string | null; // 경기 결과를 확인한 키(`week:actor`). 내 경기 결과를 확인해야 경기 영향 주사위를 굴릴 수 있다 (스텝 진행)
   setResultSeen: (key: string | null) => void;
+  matchWatched: string | null; // 경기 보기(재생)를 마치고 경기 종료 스텝으로 넘어간 키(`week:actor`) — 차례인 본인 기준
+  setMatchWatched: (key: string | null) => void;
 }
 
 const UiContext = createContext<UiStore | null>(null);
@@ -69,6 +71,7 @@ export function UiProvider({ children }: { children: ReactNode }) {
   const [releasing, setReleasing] = useState(false);
   const [settledRoll, setSettledRoll] = useState<string | null>(null);
   const [resultSeen, setResultSeen] = useState<string | null>(null);
+  const [matchWatched, setMatchWatched] = useState<string | null>(null);
   const [sideTab, setSideTab] = useState<'log' | 'chat'>('log');
   const [chatSeen, setChatSeen] = useState(() => chat.at(-1)?.id ?? 0); // 들어오기 전에 쌓인 글은 읽은 것으로
 
@@ -115,8 +118,8 @@ export function UiProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo<UiStore>(
-    () => ({ selected, selectPlayer, mainTab, setMainTab, boardTab, setBoardTab, sharedTab, setSharedTab, showBoard, showShared, marketTab, setMarketTab, showMarket, mobileTab, setMobileTab, releasing, setReleasing, settledRoll, setSettledRoll, resultSeen, setResultSeen, sideTab, setSideTab, chatSeen, setChatSeen }),
-    [selected, selectPlayer, mainTab, boardTab, sharedTab, showBoard, showShared, marketTab, showMarket, mobileTab, releasing, settledRoll, resultSeen, sideTab, chatSeen],
+    () => ({ selected, selectPlayer, mainTab, setMainTab, boardTab, setBoardTab, sharedTab, setSharedTab, showBoard, showShared, marketTab, setMarketTab, showMarket, mobileTab, setMobileTab, releasing, setReleasing, settledRoll, setSettledRoll, resultSeen, setResultSeen, matchWatched, setMatchWatched, sideTab, setSideTab, chatSeen, setChatSeen }),
+    [selected, selectPlayer, mainTab, boardTab, sharedTab, showBoard, showShared, marketTab, showMarket, mobileTab, releasing, settledRoll, resultSeen, matchWatched, sideTab, chatSeen],
   );
   return <UiContext.Provider value={value}>{children}</UiContext.Provider>;
 }
