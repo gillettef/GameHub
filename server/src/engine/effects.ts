@@ -7,7 +7,7 @@ import { traitSum } from './traits';
 import { regionSector } from './match';
 import { TRACK_MAX, TRACK_MIN } from './types';
 import type { Effect, MarketRow, MatchCondition, PlayerToken, Region, Sector, Track } from './types';
-import { assignUniform, releaseUniform } from './uniforms';
+import { assignUniform, releaseUniformOf } from './uniforms';
 
 // p.7: 5를 넘기면 이동 대신 보드에 표시된 자원 획득, 1 아래로 내려가면 표시된 자원 손실 (트랙마다 다른 자원)
 export function moveTrack(player: PlayerState, track: Track, delta: number): void {
@@ -57,7 +57,7 @@ export function releaseFromRoster(state: GameState, player: PlayerState, inst: P
   player.resources.money += money;
   player.vp += inst.careerVP;
   player.roster.splice(idx, 1);
-  releaseUniform(player.uniforms, inst.instanceId);
+  releaseUniformOf(player, inst);
   discardPlayerCard(state, inst.cardId);
   return money;
 }

@@ -1,4 +1,4 @@
-import { cards, instanceName } from '@server/engine/cards';
+import { activeSide, cards, instanceName } from '@server/engine/cards';
 import { billboardLimit } from '@server/engine/weekday';
 import { WEEKS, upkeepDue } from '@server/engine/weekend';
 import { RESOURCES, TRACK_MAX } from '@server/engine/types';
@@ -292,8 +292,11 @@ function MatchBoard({ p }: { p: PlayerPublicView }) {
   const token = (u: (typeof field)[number]) => {
     const inst = u.cardInstanceId ? p.roster.find((r) => r.instanceId === u.cardInstanceId) : undefined;
     const role = u.face === 'attack' ? '공격' : '수비';
+    // 같은 등번호 선수가 여럿이면 토큰은 하나를 나눠 쓴다 — 지금 연결된 선수를 보여 주고, 출전 선수를 고를 때 그 선수가 가져간다
+    const sharers = u.number !== undefined ? p.roster.filter((r) => !activeSide(r).goalkeeper && activeSide(r).number === u.number) : [];
+    const shared = sharers.length > 1 ? ` · 같은 ${u.number}번: ${sharers.map(instanceName).join(', ')} — 출전 선수로 고른 쪽이 이 토큰을 씁니다` : '';
     return (
-      <span key={u.id} className={`kit ${u.face}${inst ? ' carded' : ''}`} title={inst ? `${instanceName(inst)} · ${role}` : `카드 없는 유니폼 토큰 · ${role} · 역량 1`}>
+      <span key={u.id} className={`kit ${u.face}${inst ? ' carded' : ''}`} title={inst ? `${instanceName(inst)} · ${role}${shared}` : `카드 없는 유니폼 토큰 · ${role} · 역량 1${shared}`}>
         <span className="kit-no">{u.number ?? '–'}</span>
         <span className="kit-name">{inst ? instanceName(inst) : role}</span>
       </span>

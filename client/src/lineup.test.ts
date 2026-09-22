@@ -27,7 +27,7 @@ describe('lineup helpers', () => {
     const p = s.players['a']!;
     const players = eligiblePlayers(p);
     const formation = { defenders: 4, midfielders: 4, forwards: 2 };
-    const field = previewField(p.uniforms, players);
+    const field = previewField(p, players);
     const placements = autoPlace(field, p.roster, players, formation);
     delete placements[field[0]!.id];
     const issues = validatePlacements(field, p.roster, players, formation, placements);

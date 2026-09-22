@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { applyAction } from './actions';
-import { activeSide, cards, tokenLabel } from './cards';
+import { activeSide, cards, effectiveSkill, instanceName, tokenLabel } from './cards';
 import { addToRoster, applyEffects } from './effects';
+import { eligiblePlayers, previewField } from './lineup';
 import { acceptInjuryRoll, acceptMatchRoll, playTacticEffect, rerollInjuryDie, rerollMatchDie, rollInjuryDie, rollMatchDie, standsCount, startFriday, submitLineup } from './friday';
 import { GameError } from './state';
 import type { GameState } from './state';
@@ -86,6 +87,32 @@ describe('경기 준비 제출 (p.20)', () => {
 
     const wrong = { ...base, placements: Object.fromEntries(Object.keys(base.placements).map((t) => [t, 'back-C' as const])) };
     expect(() => submitLineup(s, 'a', wrong, seededRng())).toThrow(GameError);
+  });
+
+  it('같은 등번호 선수 둘 중 출전시킨 쪽이 토큰을 쓴다 (사용자 제보 2026-09-22: 나중에 영입한 쪽만 토큰과 연결돼 있었다)', () => {
+    const s = friday();
+    const p = s.players['a']!;
+    const a = p.roster.find((r) => !activeSide(r).goalkeeper && activeSide(r).number !== undefined && activeSide(r).number! <= 11)!;
+    const b = addToRoster(p, a.cardId); // 같은 카드 = 같은 등번호. 영입 시점의 토큰 연결은 b
+    const token = p.uniforms.find((u) => u.number === activeSide(a).number)!;
+    expect(token.cardInstanceId).toBe(b.instanceId);
+
+    const played = eligiblePlayers(p); // 번호 중복은 먼저 온 a 만 출전
+    expect(played).toContain(a.instanceId);
+    expect(played).not.toContain(b.instanceId);
+    // 미리보기(클라이언트·봇)도 출전 선수 기준으로 토큰을 연결한다
+    expect(previewField(p, played).find((u) => u.id === token.id)!.cardInstanceId).toBe(a.instanceId);
+
+    let next = submitLineup(s, 'a', autoLineup(p, played), seededRng());
+    const after = next.players['a']!.uniforms.find((u) => u.id === token.id)!;
+    expect(after.cardInstanceId).toBe(a.instanceId);
+    expect(after.face).toBe(activeSide(a).role);
+    for (const id of ['b', 'c', 'd']) next = settlePending(submitLineup(next, id, autoLineup(next.players[id]!), seededRng()), seededRng());
+    next = skipTacticEffects(next, seededRng());
+    if (next.phase.kind !== 'friday.aftermath') throw new Error();
+    const m = next.phase.matches['a']!;
+    expect(m.skills[token.id]).toBe(effectiveSkill(a)); // 카드 없는 토큰(역량 1)이 아니라 a 의 역량으로 판정
+    expect(tokenLabel(next.players['a']!, m.played, token.id)).toContain(instanceName(a));
   });
 
   it('9지역 배치 (p.20): 라인별 인원 = 포메이션(수비-미드-공격), 센터 지역 1~3, 윙 지역 최대 1 — 라인 안에서 나누는 방법은 참가자가 고른다', () => {

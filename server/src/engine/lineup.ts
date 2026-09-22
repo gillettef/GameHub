@@ -5,6 +5,7 @@ import { lineCounts, regionColumn, regionIssues, regionLimit, regionLine, region
 import type { PlayerInstance, UniformToken } from './state';
 import { LINES, REGIONS } from './types';
 import type { Formation, Region, Sector } from './types';
+import { claimUniforms } from './uniforms';
 
 // 경기 준비 도우미. 클라이언트 UI, 봇, 테스트가 공유한다 (순수 함수)
 
@@ -30,15 +31,16 @@ export function eligiblePlayers(player: { roster: PlayerInstance[] }, max = Infi
   return chosen;
 }
 
-// 출전 선수를 고른 뒤 벤치 토큰 교환까지 반영한 필드 토큰
-export function previewField(uniforms: UniformToken[], played: string[]): UniformToken[] {
-  const clone = structuredClone(uniforms);
+// 출전 선수를 고른 뒤 토큰 연결(같은 등번호면 출전하는 쪽, claimUniforms)과 벤치 토큰 교환까지 반영한 필드 토큰 — 서버 submitLineup 과 같은 순서
+export function previewField(player: { roster: PlayerInstance[]; uniforms: UniformToken[] }, played: string[]): UniformToken[] {
+  const clone = { roster: player.roster, uniforms: structuredClone(player.uniforms) };
+  claimUniforms(clone, played);
   try {
-    swapBenchTokens({ uniforms: clone }, played);
+    swapBenchTokens(clone, played);
   } catch {
     /* 교환할 토큰이 없으면 서버가 거부한다. 미리보기는 현재 필드로 */
   }
-  return clone.filter((u) => u.location === 'field');
+  return clone.uniforms.filter((u) => u.location === 'field');
 }
 
 function zonesOf(roster: PlayerInstance[], instanceId: string | undefined): Sector[] | null {
@@ -103,7 +105,7 @@ export function validatePlacements(field: UniformToken[], roster: PlayerInstance
 // 자동 배치가 실패한 선수를 빼가며 서버가 받아들일 라인업을 만든다
 export function buildLineup(player: { roster: PlayerInstance[]; uniforms: UniformToken[] }, tacticCardId: string, formation: Formation, players: string[]) {
   for (let attempt = players.length; attempt >= 0; attempt--) {
-    const field = previewField(player.uniforms, players);
+    const field = previewField(player, players);
     const placements = autoPlace(field, player.roster, players, formation);
     const issues = validatePlacements(field, player.roster, players, formation, placements);
     if (issues.length === 0) return { tacticCardId, formationIndex: 0, players, placements };
