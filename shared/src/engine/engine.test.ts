@@ -25,7 +25,19 @@ import {
   validatePlacement,
   withMarkers,
 } from './index.js';
-import { CORE_BASE_INCOME, CORE_SIGHT, CORE_SPEC, DECK_SIZE, DEFAULT_DECK_CHOICE, HAND_LIMIT, INITIAL_HAND_SIZE, STARTING_ENERGY, getMap, getSpec } from '../data/index.js';
+import {
+  CORE_BASE_INCOME,
+  CORE_SIGHT,
+  CORE_SPEC,
+  DECK_SIZE,
+  DEFAULT_DECK_CHOICE,
+  ENERGY_CAP,
+  HAND_LIMIT,
+  INITIAL_HAND_SIZE,
+  STARTING_ENERGY,
+  getMap,
+  getSpec,
+} from '../data/index.js';
 
 /** 코어 시야 2 → 5×5 칸 */
 const CORE_AREA = (2 * CORE_SIGHT + 1) ** 2;
@@ -345,6 +357,18 @@ describe('수입 (F020) · 드로우', () => {
     expect(player(t, 'p0').energy).toBe(STARTING_ENERGY + CORE_BASE_INCOME + 2);
     const log = t.log.find((l) => l.kind === 'income' && l.playerId === 'p0')!;
     expect(log.message).toContain('채굴기(광맥) +2');
+  });
+
+  it('에너지는 상한(20)을 넘지 않는다. 초과 수입은 버려지고 로그에 남는다', () => {
+    let s = setup(2);
+    s = addMarkers(s, marker('p0', 'refinery', { x: 5, y: 5 })); // 광맥, 생산 4
+    s = withHand(s, 'p0', [], ENERGY_CAP - 1);
+    s = { ...s, currentPlayerId: 'p1', turn: 2 };
+    const t = advanceTurn(withHand(s, 'p1', [], 3)); // → p0 턴, 수입 적용
+    expect(t.currentPlayerId).toBe('p0');
+    expect(player(t, 'p0').energy).toBe(ENERGY_CAP);
+    const log = t.log.find((l) => l.kind === 'income' && l.playerId === 'p0')!;
+    expect(log.message).toContain('상한');
   });
 
   it('F021: 건물이 파괴되면 수입·시야·영토가 즉시 줄어든다', () => {

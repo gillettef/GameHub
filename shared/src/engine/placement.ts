@@ -2,7 +2,7 @@
  * 배치 검증·적용, 즉발 마법 (Rules.md 6절, 7.2, F022). 순수 함수.
  */
 import type { CardId, GameState, Marker, PlacementError, PlayerId, Position } from '../types/index.js';
-import { INFILTRATE_RANGE, getSpec, hasSpec } from '../data/index.js';
+import { ENERGY_CAP, INFILTRATE_RANGE, getSpec, hasSpec } from '../data/index.js';
 import { addLog, damageEnemiesInRadius, healAlliesInRadius, nameOf, removeDestroyed, withMarkers } from './combat.js';
 import { chebyshev, inBounds, isInSight, markerAt, terrainAt } from './sight.js';
 import { getPlayer } from './scoring.js';
@@ -134,7 +134,9 @@ function applyInstantMagic(state: GameState, playerId: PlayerId, cardId: CardId,
     case 'energy': {
       s = {
         ...s,
-        players: s.players.map((p) => (p.id === playerId ? { ...p, energy: p.energy + effect.amount } : p)),
+        players: s.players.map((p) =>
+          p.id === playerId ? { ...p, energy: Math.min(p.energy + effect.amount, ENERGY_CAP) } : p,
+        ),
       };
       s = addLog(s, 'magic', playerId, `${spec.name}: 에너지 +${effect.amount}`);
       break;

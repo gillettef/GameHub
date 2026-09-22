@@ -10,6 +10,8 @@ export const MAX_PLAYERS = 4;
 export const STARTING_ENERGY = 5;
 /** 코어 기본 수입 (턴당). 건물이 하나도 없어도 굶지 않게 (2026-09-22: 1 → 2) */
 export const CORE_BASE_INCOME = 2;
+/** 에너지 저장 상한. 초과분은 버려진다 (2026-09-22: 후반 건물 누적 수입으로 무한정 쌓이는 것을 막음) */
+export const ENERGY_CAP = 20;
 export const CORE_HP = 20;
 export const CORE_SIGHT = 2;
 
@@ -37,6 +39,7 @@ export const CONSTANTS = {
   MAX_PLAYERS,
   STARTING_ENERGY,
   CORE_BASE_INCOME,
+  ENERGY_CAP,
   CORE_HP,
   CORE_SIGHT,
   INITIAL_HAND_SIZE,

@@ -4,6 +4,7 @@
     "MAX_PLAYERS": 4,
     "STARTING_ENERGY": 5,
     "CORE_BASE_INCOME": 2,
+    "ENERGY_CAP": 20,
     "CORE_HP": 20,
     "CORE_SIGHT": 2,
     "INITIAL_HAND_SIZE": 4,
