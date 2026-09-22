@@ -21,7 +21,7 @@ import { Tabs } from './Tabs';
 // 구단 보드 (룰북 p.7): 능력치 트랙 4개(월요일 조달), 유지비 3종, 직원, 임원.
 // 이번 주 일정은 진행 영역(components/WeekSchedule.tsx)으로 옮겼다 (사용자 요청 2026-09)
 // 실물 보드의 정보는 그대로 두고 운영 대시보드처럼 읽히게 배치한다 (DESIGN.md: 흰 타일 + #f6f8fa 면, 그림자 없음)
-// 관전 띠의 "보러 가기"로 온 카드·시설을 비춘다 (ui.spotlight — 그 참가자의 보드일 때만)
+// 다른 참가자가 방금 만진 카드·시설을 비춘다 (ui.spotlight — 그 참가자의 보드일 때만)
 function useSpot(pid: string, board: BoardTab): ActionFocus | null {
   const { spotlight } = useUi();
   return spotlight && spotlight.pid === pid && spotlight.focus.board === board ? spotlight.focus : null;

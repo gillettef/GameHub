@@ -271,14 +271,13 @@ notes/    규칙서 원본 및 텍스트 레퍼런스
   **임원 드래프트와 목표 카드는 확정 막대 없이 카드를 누르면 바로 영입·보관**한다(사용자 요청 2026-09; 목표 카드는 2026-09-22).
 - **메뉴·탭을 누르면 항상 화면 맨 위로**(사용자 요청 2026-09-22): `UiProvider`가 탐색 상태(`selected`·`mainTab`·`boardTab`·`sharedTab`·`marketTab`·`mobileTab`)가 바뀔 때마다
   `window.scrollTo(0)`(페이지는 window 스크롤, 헤더·사이드바는 sticky). 첫 마운트는 제외, `prefers-reduced-motion`이면 즉시 이동. 따라가기로 비춘 카드는 그 뒤 `scrollIntoView`로 보이게 한다.
-- **다른 참가자의 행동 알림 = 관전 띠**(`components/Follow.tsx` `FollowBar`, 사용자 요청 2026-09-22): 엔진 `applyAction`이 마지막 행동의 공개 요약 `GameState.lastAction{seq, pid, type, text, focus}`를
-  남기고(`text` = 기록 문구 `describe`, `focus` = `actions.ts` `focusOf`: 영입·방출 → 경기 보드(+선수 instanceId), 고용·카드 행동 → 구단 보드(+직원/임원 index), 스폰서 계약·건설·사무실 → 스타디움
-  보드(+카드/시설), 대상 선택 → 그 대상; 라인업·목표 카드 같은 비공개 선택은 focus 없음) 뷰 `view.lastAction`으로 내려간다. `UiProvider`는 **내 차례가 아닐 때** text 있는 행동이 오면 `ui.ticker`에
-  담고, 화면 아래 고정 띠(흰 면 + 자리 색 왼쪽 띠, 확정 막대와 같은 자리 — 확정 대기 중엔 숨김)에 "엠블럼 이름 · 문구 · [보러 가기] ✕"로 보여 준다. **화면은 옮기지 않는다** — 처음엔 행동마다
-  그 보드·탭으로 자동 이동했는데 봇의 연속 행동에 화면이 몇 초마다 튀어 정신없다는 피드백(2026-09-22)으로 관전 모드 형태로 바꿈. "보러 가기"(`ui.visitTicker`, focus 있을 때만)를 누르면
-  그때 `showBoard`/`showMarket`으로 이동하고 `ui.spotlight`로 만진 카드·시설을 6초 비춘다(`.card.spotlight` 등 초록 링 깜빡임; 보드는 `useSpot`). 새 행동이 오면 띠 내용이 바뀌고 20초 동안 없으면
-  사라진다(`TICKER_MS`); 내 차례가 시작되면 거둔다. 준비 단계(드래프트·목표)와 접속(재접속) 이전 행동은 알리지 않는다. 헤더의 눈 모양 **따라가기 토글**(`FollowToggle`,
-  `localStorage` `eleven.follow`, 기본 켜짐)로 끈다. 관전자도 같은 띠를 본다.
+- **다른 참가자의 행동 따라가기(관전)**(사용자 요청 2026-09-22): 엔진 `applyAction`이 마지막 행동의 공개 요약 `GameState.lastAction{seq, pid, type, text, focus}`를 남기고
+  (`text` = 기록 문구 `describe`, `focus` = `actions.ts` `focusOf`: 영입·방출 → 경기 보드(+선수 instanceId), 고용·카드 행동 → 구단 보드(+직원/임원 index), 스폰서 계약·건설·사무실 → 스타디움
+  보드(+카드/시설), 대상 선택 → 그 대상; 라인업·목표 카드 같은 비공개 선택은 focus 없음) 뷰 `view.lastAction`으로 내려간다. `UiProvider`는 **내 차례가 아닐 때** focus 있는 행동이 오면
+  `showBoard`/`showMarket`으로 그 참가자의 보드·탭으로 이동하고 `ui.spotlight`로 만진 카드·시설을 6초 비춘다(`.card.spotlight` 등 초록 링 깜빡임; 보드는 `useSpot`). 접속(재접속) 이전 행동은
+  따라가지 않는다. 헤더의 눈 모양 **따라가기 토글**(`FollowToggle`, `localStorage` `eleven.follow`, 기본 켜짐)로 끈다. 관전자도 같은 규칙으로 따라간다.
+  행동마다 화면이 옮겨지는 대신 아래 띠에 "보러 가기"를 두는 방식을 잠깐 시험했으나 **사용자 결정(2026-09-22)으로 자동 이동(행동 단위, 그대로)으로 되돌림** — "그냥 관전이 되면 된다".
+  `lastAction.text`는 그때 넣은 것으로 지금은 클라이언트가 쓰지 않는다.
 - **효과 토스트는 없앴다**(사용자 요청 2026-09: 참가자·봇이 행동한 뒤 화면 위에 뜨던 알림창 삭제 — `feed.tsx`·`EffectToasts` 제거). 무슨 일이 있었는지는 오른쪽 기록과
   참가자 띠의 자원 변화로 본다. `notify.test.ts`가 `myTask`를 검증.
 - **툴팁** (`components/Tooltip.tsx` `TooltipLayer`, `App`에 한 번 마운트): 화면의 모든 `title` 속성을 브라우저 기본 툴팁 대신
