@@ -1,8 +1,8 @@
 # AstralTab local dev stopper.
 # Kills the process trees recorded in .dev/*.pid. As a fallback it looks at
-# listeners on ports 3001 / 5173, but only kills a node/cmd process whose
-# command line points at THIS project directory. Anything else is left alone
-# and reported, so unrelated apps on those ports are never killed.
+# listeners on ports 3001 / 5173 / 8000, but only kills a node/cmd/python
+# process whose command line points at THIS project directory. Anything else
+# is left alone and reported, so unrelated apps on those ports are never killed.
 
 $ErrorActionPreference = 'Continue'
 $root   = Split-Path -Parent $PSScriptRoot
@@ -28,10 +28,9 @@ function Get-CmdLine([int]$procId) {
 function Is-ProjectDevProcess([int]$procId) {
     $proc = Get-Process -Id $procId -ErrorAction SilentlyContinue
     if (-not $proc) { return $false }
-    if ($proc.ProcessName -notin @('node', 'cmd')) { return $false }
+    if ($proc.ProcessName -notin @('node', 'cmd', 'python')) { return $false }
     $cl = Get-CmdLine $procId
     if ($cl -and $cl.ToLower().Contains($root.ToLower())) { return $true }
-    # node started via `cmd /c npm run dev` has cwd-relative cmdline; check parent
     try {
         $parentId = (Get-CimInstance Win32_Process -Filter "ProcessId = $procId").ParentProcessId
         if ($parentId) {
@@ -43,7 +42,7 @@ function Is-ProjectDevProcess([int]$procId) {
 }
 
 # 1) Kill by pid file (primary path)
-foreach ($name in @('server', 'client')) {
+foreach ($name in @('server', 'client', 'ai')) {
     $pidFile = Join-Path $devDir "$name.pid"
     if (Test-Path $pidFile) {
         $procId = Get-Content $pidFile
@@ -55,7 +54,7 @@ foreach ($name in @('server', 'client')) {
 }
 
 # 2) Fallback: only this project's dev processes still holding our ports
-foreach ($port in @(3001, 5173)) {
+foreach ($port in @(3001, 5173, 8000)) {
     $conns = Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue
     foreach ($c in $conns) {
         $procId = [int]$c.OwningProcess

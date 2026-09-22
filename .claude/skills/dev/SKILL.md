@@ -1,12 +1,13 @@
 ---
 name: dev
-description: 로컬 테스트용으로 백엔드(server, 3001)와 프론트엔드(client, 5173)를 현재 터미널의 백그라운드에서 함께 실행한다. "서버 켜줘", "dev 서버 실행", "로컬에서 띄워줘" 요청 시 사용. 종료는 /dev-stop.
+description: 로컬 테스트용으로 백엔드(server, 3001), 프론트엔드(client, 5173), Python AI 서비스(ai, 8000)를 현재 터미널의 백그라운드에서 함께 실행한다. "서버 켜줘", "dev 서버 실행", "로컬에서 띄워줘" 요청 시 사용. 종료는 /dev-stop.
 ---
 
-# /dev — 백엔드·프론트엔드 백그라운드 실행
+# /dev — 백엔드·프론트엔드·AI 백그라운드 실행
 
-서버(`server/`, 포트 3001)와 클라이언트(`client/`, 포트 5173)를 분리된 백그라운드 프로세스로 띄운다.
+서버(`server/`, 3001), 클라이언트(`client/`, 5173), Python AI 서비스(`ai/`, 8000)를 분리된 백그라운드 프로세스로 띄운다.
 프로세스는 터미널을 블로킹하지 않으며, PID는 `.dev/*.pid`, 로그는 `.dev/*.log`에 기록된다.
+AI 서비스는 `ai/.venv` 가 없으면 자동으로 만들고 `ai/requirements.txt` 를 설치한다 (이 PC의 Python 3.11은 PATH에 없어 스크립트가 절대 경로로 찾는다).
 
 ## 실행 절차
 
@@ -21,22 +22,25 @@ description: 로컬 테스트용으로 백엔드(server, 3001)와 프론트엔�
    - `already running` : 이미 실행 중. 그대로 사용한다.
    - `port ... already in use by another process` : `/dev-stop` 을 먼저 실행한 뒤 다시 시도한다.
    - `exited early` : 스크립트가 로그 마지막 20줄을 출력한다. 원인을 고친 뒤 재실행한다.
-   - `package.json not found - skipping` : 해당 워크스페이스가 아직 스캐폴딩되지 않았다. CLAUDE.md의 디렉터리 구조대로 먼저 생성한다.
+   - `package.json not found` / `requirements.txt not found - skipping` : 해당 워크스페이스가 아직 스캐폴딩되지 않았다. CLAUDE.md의 디렉터리 구조대로 먼저 생성한다.
+   - `Python not found` : Python 3.11+ 설치 경로를 `scripts/dev.ps1` 의 `$pythonCandidates` 에 추가한다.
 
 3. 사용자에게 접속 URL을 알려준다.
    - 클라이언트: http://localhost:5173
    - 서버: http://localhost:3001
+   - AI: http://localhost:8000
 
 ## 로그 확인
 
 ```
 tail -n 50 .dev/server.log
 tail -n 50 .dev/client.log
-tail -n 50 .dev/server.err.log
+tail -n 50 .dev/ai.log
+tail -n 50 .dev/ai.err.log      # uvicorn은 stderr에 로그를 쓴다
 ```
 
 ## 주의
 
 - `npm run dev`를 Bash 툴에서 직접 실행하지 않는다. 터미널이 블로킹된다.
-- 코드 변경 후 재시작이 필요하면 `/dev-stop` → `/dev` 순으로 실행한다. (Vite와 tsx/nodemon은 대부분 핫리로드되므로 보통은 재시작 불필요)
-- 의존성이 없으면 스크립트가 루트에서 `npm install`을 자동 실행한다.
+- 코드 변경 후 재시작이 필요하면 `/dev-stop` → `/dev` 순으로 실행한다. (Vite, tsx/nodemon, uvicorn `--reload` 모두 핫리로드되므로 보통은 재시작 불필요)
+- 의존성이 없으면 스크립트가 루트에서 `npm install`, `ai/.venv` 에 `pip install` 을 자동 실행한다. `ai/requirements.txt` 가 바뀌면 다음 `/dev` 때 다시 설치된다.
