@@ -1,0 +1,230 @@
+/**
+ * 화면용 파생값. 규칙 계산은 전부 shared/src/engine 을 호출하고(중복 구현 금지),
+ * 여기서는 셀 단위로 memo 하기 쉬운 평평한 구조로 바꾸기만 한다.
+ */
+import type { CardId, GameState, MarkerKind, PlayerId, PlayerState, Position, Terrain } from '@astraltab/shared';
+import {
+  computeIncome,
+  computeScores,
+  computeSightArea,
+  computeTerritory,
+  getSpec,
+  legalCells,
+  posKey,
+  terrainAt,
+  validateCard,
+} from '@astraltab/shared';
+
+export interface MarkerView {
+  id: string;
+  specId: CardId;
+  name: string;
+  kind: MarkerKind;
+  seat: number;
+  ownerName: string;
+  hp: number;
+  maxHp: number;
+  attack: number;
+  range: number;
+  sight: number;
+  score: number;
+  production: number;
+  remainingTurns: number | null;
+}
+
+export interface CellView {
+  x: number;
+  y: number;
+  key: string;
+  terrain: Terrain;
+  /** 영토 소유자 좌석. 무소유(경합·시야 밖·소행성)는 null */
+  ownerSeat: number | null;
+  /** 보는 사람(viewer)의 시야 영역 안인지 */
+  inSight: boolean;
+  marker: MarkerView | null;
+}
+
+export function seatOf(state: GameState, playerId: PlayerId): number {
+  return state.players.find((p) => p.id === playerId)?.seat ?? -1;
+}
+
+/** 보드 전체 셀을 y → x 순으로. 선택 카드와 무관한 값만 담는다 (선택 변경 시 재계산 안 함) */
+export function buildCells(state: GameState, viewerId: PlayerId | null): CellView[] {
+  const territory = computeTerritory(state);
+  const sight = new Set(viewerId ? computeSightArea(state, viewerId).map(posKey) : []);
+  const markerByKey = new Map(state.markers.map((m) => [posKey(m.pos), m] as const));
+  const seatById = new Map(state.players.map((p) => [p.id, p.seat] as const));
+  const nameById = new Map(state.players.map((p) => [p.id, p.nickname] as const));
+
+  const cells: CellView[] = [];
+  for (let y = 0; y < state.board.height; y++) {
+    for (let x = 0; x < state.board.width; x++) {
+      const pos: Position = { x, y };
+      const key = posKey(pos);
+      const owner = territory.owners[y]?.[x] ?? null;
+      const m = markerByKey.get(key);
+      let marker: MarkerView | null = null;
+      if (m) {
+        const spec = getSpec(m.specId);
+        marker = {
+          id: m.id,
+          specId: m.specId,
+          name: spec.name,
+          kind: m.kind,
+          seat: seatById.get(m.ownerId) ?? -1,
+          ownerName: nameById.get(m.ownerId) ?? m.ownerId,
+          hp: m.hp,
+          maxHp: spec.hp,
+          attack: spec.attack,
+          range: spec.range,
+          sight: spec.sight,
+          score: spec.score,
+          production: spec.production,
+          remainingTurns: m.remainingTurns,
+        };
+      }
+      cells.push({
+        x,
+        y,
+        key,
+        terrain: terrainAt(state.board, pos),
+        ownerSeat: owner === null ? null : (seatById.get(owner) ?? null),
+        inSight: sight.has(key),
+        marker,
+      });
+    }
+  }
+  return cells;
+}
+
+/** 선택한 카드를 놓을 수 있는 칸 키 집합. 카드 조건(손패·에너지)이 안 맞으면 빈 집합 */
+export function legalCellKeys(state: GameState, viewerId: PlayerId | null, cardId: CardId | null): Set<string> {
+  if (!viewerId || !cardId) return new Set();
+  if (validateCard(state, viewerId, cardId) !== null) return new Set();
+  return new Set(legalCells(state, viewerId, cardId).map(posKey));
+}
+
+export interface HandCardView {
+  /** 손패 안 위치. 같은 카드가 여러 장일 수 있어 index 로 구분한다 */
+  index: number;
+  cardId: CardId;
+  name: string;
+  kind: MarkerKind;
+  cost: number;
+  sight: number;
+  score: number;
+  hp: number;
+  attack: number;
+  range: number;
+  production: number;
+  keywords: string[];
+  description: string;
+  /** 지금 낼 수 있는가 */
+  playable: boolean;
+  /** 낼 수 없는 이유 (F009, F011). 낼 수 있으면 null */
+  reason: string | null;
+}
+
+/** 손패 카드별 표시값과 가능 여부. 낼 수 없는 이유는 엔진 메시지를 그대로 쓴다 */
+export function buildHand(state: GameState, playerId: PlayerId | null): HandCardView[] {
+  if (!playerId) return [];
+  const player = state.players.find((p) => p.id === playerId);
+  if (!player) return [];
+  const cellCountCache = new Map<CardId, number>();
+  return player.hand.map((cardId, index) => {
+    const spec = getSpec(cardId);
+    const cardErr = validateCard(state, playerId, cardId);
+    let reason: string | null = cardErr ? cardErr.message : null;
+    if (!reason) {
+      let n = cellCountCache.get(cardId);
+      if (n === undefined) {
+        n = legalCells(state, playerId, cardId).length;
+        cellCountCache.set(cardId, n);
+      }
+      if (n === 0) reason = '놓을 수 있는 칸이 없습니다';
+    }
+    return {
+      index,
+      cardId,
+      name: spec.name,
+      kind: spec.kind,
+      cost: spec.cost,
+      sight: spec.sight,
+      score: spec.score,
+      hp: spec.hp,
+      attack: spec.attack,
+      range: spec.range,
+      production: spec.production,
+      keywords: spec.keywords.map(keywordLabel),
+      description: spec.description,
+      playable: reason === null,
+      reason,
+    };
+  });
+}
+
+export function keywordLabel(k: string): string {
+  switch (k) {
+    case 'infiltrate':
+      return '침투';
+    case 'repair':
+      return '정비';
+    default:
+      return k;
+  }
+}
+
+export function kindLabel(kind: MarkerKind): string {
+  switch (kind) {
+    case 'core':
+      return '코어';
+    case 'building':
+      return '건물';
+    case 'unit':
+      return '유닛';
+    case 'magic':
+      return '마법';
+  }
+}
+
+export interface PlayerSummary {
+  id: PlayerId;
+  nickname: string;
+  seat: number;
+  alive: boolean;
+  isCurrent: boolean;
+  energy: number;
+  income: number;
+  territory: number;
+  markerScore: number;
+  total: number;
+  markerCount: number;
+  handCount: number;
+  deckCount: number;
+  discardCount: number;
+  passed: boolean;
+}
+
+/** 상태 탭(F010) 한 줄씩. 좌석 순 */
+export function buildPlayerSummaries(state: GameState): PlayerSummary[] {
+  const scores = computeScores(state);
+  return [...state.players]
+    .sort((a, b) => a.seat - b.seat)
+    .map((p: PlayerState) => ({
+      id: p.id,
+      nickname: p.nickname,
+      seat: p.seat,
+      alive: p.alive,
+      isCurrent: state.currentPlayerId === p.id,
+      energy: p.energy,
+      income: p.alive ? computeIncome(state, p.id).total : 0,
+      territory: scores[p.id]?.territory ?? 0,
+      markerScore: scores[p.id]?.markers ?? 0,
+      total: scores[p.id]?.total ?? 0,
+      markerCount: state.markers.filter((m) => m.ownerId === p.id).length,
+      handCount: p.hand.length,
+      deckCount: p.deck.length,
+      discardCount: p.discard.length,
+      passed: p.passed,
+    }));
+}

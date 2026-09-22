@@ -1,0 +1,106 @@
+.root {
+  height: 100%;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 280px;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: var(--space-2);
+}
+
+.panel {
+  padding: var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  min-height: 0;
+  overflow: auto;
+}
+
+.panel:nth-child(1) {
+  grid-column: 1 / -1;
+}
+
+.title {
+  font-size: var(--text-nav);
+  margin-bottom: var(--space-1);
+}
+
+.subtitle {
+  font-size: var(--text-small);
+  margin-top: var(--space-2);
+  margin-bottom: 4px;
+}
+
+.sub {
+  font-weight: 400;
+  font-size: var(--text-small);
+  color: var(--color-muted);
+  margin-left: var(--space-1);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-small);
+}
+
+.table th,
+.table td {
+  padding: 6px var(--space-1);
+  text-align: center;
+  white-space: nowrap;
+}
+
+.table th {
+  color: var(--color-muted);
+  font-weight: 500;
+  border-bottom: 1px solid var(--color-grid);
+}
+
+.table td.name {
+  text-align: left;
+  font-weight: 600;
+}
+
+.energy {
+  color: var(--color-energy);
+  font-weight: 700;
+}
+
+.total {
+  font-weight: 700;
+  color: var(--color-accent);
+}
+
+.current td {
+  background: color-mix(in srgb, var(--color-accent) 12%, transparent);
+}
+
+.me td.name::after {
+  content: ' (나)';
+  color: var(--color-muted);
+  font-weight: 400;
+}
+
+.hand {
+  list-style: none;
+  margin: 0;
+  padding: var(--space-1);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--color-canvas) 55%, transparent);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+.discard {
+  margin: 0;
+  padding-left: 18px;
+  font-size: var(--text-small);
+  line-height: 1.5;
+}
+
+.muted {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: var(--text-small);
+}

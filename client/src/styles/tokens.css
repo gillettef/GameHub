@@ -19,18 +19,27 @@
   --color-band-lavender: #faeeff;
   --color-band-sky: #d9e5f5;
   --color-band-amber: #fdd484;
+  --color-white: #ffffff;
+  --color-navy: #1a2352;
 
   /* 게임 도메인 색 (두 세계 공통 의미) */
-  --color-resource: #fdd484;
-  --color-mana: #777cdc;
-  --color-player-1: #419eff;
-  /* --color-player-2: 미정 (DESIGN.md에 없음, 사용자 결정 대기) */
-  /* --color-danger:   미정 (DESIGN.md에 없음, 사용자 결정 대기) */
+  --color-energy: #fdd484;
+  --color-building: #fdd484;
+  --color-vein: #fdd484;
+  --color-magic: #777cdc;
+  --color-asteroid: #36597d;
+  --color-grid: #36597d;
+  --color-seat-0: #419eff;
+  /* --color-seat-1, --color-seat-2, --color-seat-3: 미정 (DESIGN.md에 대비되는 색이 부족함, 사용자 결정 대기)
+   *   정해지기 전까지 좌석 1·2·3 은 흰색 패턴(빗금·점·격자)으로 구분한다. Board.module.css 참고 */
+  /* --color-danger: 미정 (DESIGN.md에 경고색이 없음, 사용자 결정 대기) */
 
   /* 타이포 */
   --font-body: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
   /* 디스플레이 폰트 미정: 정해지기 전까지 본문 폰트 700 */
   --font-display: var(--font-body);
+  --text-micro: 12px;
+  --text-small: 15px;
   --text-body: 16px;
   --text-nav: 17px;
   --text-sub: 28px;
@@ -47,6 +56,7 @@
   --space-6: 64px;
 
   /* 라운드 */
+  --radius-xs: 8px;
   --radius-sm: 10px;
   --radius-md: 16px;
   --radius-lg: 24px;
@@ -70,7 +80,7 @@
   --color-muted: #bbbbbb;
   --color-accent: #fff3b7;
   --color-accent-text: #1a2352;
-  --color-grid: #36597d;
+  --color-outline: #ffffff;
 }
 
 @media (prefers-reduced-motion: reduce) {

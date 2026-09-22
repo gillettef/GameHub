@@ -1,0 +1,46 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+}
+
+.compact {
+  flex-direction: column;
+  min-width: 200px;
+}
+
+.info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: var(--text-small);
+}
+
+.mine {
+  color: var(--color-accent);
+  font-weight: 600;
+}
+
+.other {
+  color: var(--color-muted);
+}
+
+.passes {
+  color: var(--color-muted);
+  font-size: var(--text-micro);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  align-items: center;
+}
+
+.confirmText {
+  flex-basis: 100%;
+  font-size: var(--text-small);
+}

@@ -1,0 +1,107 @@
+.root {
+  height: 100%;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 280px;
+  gap: var(--space-2);
+}
+
+.logPanel {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+}
+
+.title {
+  font-size: var(--text-nav);
+  margin-bottom: var(--space-1);
+}
+
+.sub {
+  font-weight: 400;
+  font-size: var(--text-small);
+  color: var(--color-muted);
+  margin-left: var(--space-1);
+}
+
+/* 로그 영역 안에서만 스크롤 (F012) */
+.log {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  min-height: 0;
+  flex: 1;
+  overflow-y: auto;
+  font-size: var(--text-small);
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 52px 48px 96px minmax(0, 1fr);
+  gap: var(--space-1);
+  padding: 5px var(--space-1);
+  border-radius: var(--radius-xs);
+  line-height: 1.4;
+}
+
+.row:nth-child(odd) {
+  background: color-mix(in srgb, var(--color-canvas) 40%, transparent);
+}
+
+.emphasis {
+  font-weight: 600;
+  border-left: 3px solid var(--color-accent);
+}
+
+.row[data-kind='result'] {
+  color: var(--color-accent);
+}
+
+.turn,
+.kind {
+  color: var(--color-muted);
+  white-space: nowrap;
+}
+
+.who {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.message {
+  overflow-wrap: anywhere;
+}
+
+.side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-height: 0;
+}
+
+.summary {
+  padding: var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+}
+
+.facts {
+  margin: 0;
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 4px var(--space-2);
+  font-size: var(--text-small);
+}
+
+.facts dt {
+  color: var(--color-muted);
+}
+
+.facts dd {
+  margin: 0;
+  font-weight: 600;
+}
