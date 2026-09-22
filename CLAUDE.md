@@ -21,7 +21,8 @@
 2. **commit 메시지는 가급적 한국어로 작성한다.** 제목은 `<타입>: <요약>` 형식 (예: `기능: 로비 초대 링크 생성 (F001)`, `수정: 턴 종료 시 자원 이중 가산 버그`). 관련 F-ID가 있으면 괄호로 덧붙인다.
 3. **push 대상 repo는 `https://github.com/gillettef/AstralTab.git` 이다.** 브랜치는 `main`을 기본으로 사용한다.
 4. **이 서비스는 DB를 사용하지 않는다.** notes/ 문서에 "데이터베이스", "Redis", "세션 스냅샷 저장" 등이 언급되어 있어도 DB·Redis·ORM을 도입하지 않는다. 자세한 내용은 아래 "DB 없는 상태 관리" 참고.
-5. 로컬 테스트 시 서버를 포그라운드로 직접 띄우지 않는다(터미널이 블로킹됨). 반드시 `/dev`로 시작하고 `/dev-stop`으로 종료한다.
+5. 로컬 테스트 시 서버를 포그라운드로 직접 띄우지 않는다(터미널이 블로킹됨). 반드시 `/dev`로 시작하고 `/dev-stop`으로 종료한다. `scripts/dev.ps1` 출력을 `| grep` 등 다른 프로세스로 파이프하지 않는다(분리된 자식 프로세스가 파이프를 물고 있어 명령이 끝나지 않는다).
+6. 포트 3001은 이 PC에서 사용자의 다른 프로젝트(Eleven)가 쓴다. AstralTab 서버는 3101을 쓰며, 3001을 점유한 프로세스는 절대 종료하지 않는다.
 
 ---
 
@@ -32,8 +33,8 @@ notes/의 추천 스택을 기반으로 하되, DB 없음·단일 언어 원칙�
 | 영역 | 선택 | 비고 |
 |---|---|---|
 | 언어 | TypeScript + Python | 서버·클라이언트·공용 타입은 TS, AI 서비스는 Python |
-| 백엔드 | Node.js 22 + Express + Socket.io | 포트 `3001` |
-| 프론트엔드 | React 18 + Vite + Zustand | 포트 `5173`, `/api`·`/socket.io`는 Vite proxy로 3001에 연결 |
+| 백엔드 | Node.js 22 + Express + Socket.io | 포트 `3101` |
+| 프론트엔드 | React 18 + Vite + Zustand | 포트 `5173`, `/api`·`/socket.io`는 Vite proxy로 3101에 연결 |
 | 스타일 | CSS Modules | 탭 전환 시 언마운트 대신 `display:none`/`visibility` 전환 |
 | 테스트 | Vitest | 룰 엔진은 순수 함수로 작성하고 단위 테스트 필수 |
 | AI | Python 3.11 + FastAPI + Minimax | 포트 `8000`. Node 서버가 AI 턴마다 HTTP로 호출. 자세한 내용은 "AI 서비스" 참고 |
@@ -205,6 +206,7 @@ AstralTab/
 | 의존성 설치 (Python) | `ai\.venv\Scripts\pip install -r ai\requirements.txt` (`/dev`가 venv 없으면 자동 생성) |
 | 테스트 (JS) | `npm test` (루트, 전 워크스페이스) |
 | 테스트 (Python) | `ai\.venv\Scripts\python -m pytest ai/tests` |
+| 공용 픽스처 재생성 | `npm run fixtures` (TS 엔진 출력 → `shared/fixtures/*.json`. 타입·기준표·엔진을 바꾸면 반드시 실행 후 pytest) |
 | 타입 검사 | `npx tsc --noEmit -p server` / `-p client` / `-p shared` |
 | 커밋 & 푸시 | `/commit-push` |
 

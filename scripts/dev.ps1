@@ -1,5 +1,5 @@
 # AstralTab local dev launcher.
-# Starts server (3001), client (5173) and the Python AI service (8000) as
+# Starts server (3101), client (5173) and the Python AI service (8000) as
 # detached background processes, writes PIDs to .dev/*.pid and logs to
 # .dev/*.log. Stop them with scripts/dev-stop.ps1.
 
@@ -26,7 +26,9 @@ function Find-Python {
 function Test-Port([int]$port) {
     foreach ($addr in @('127.0.0.1', '::1')) {
         try {
-            $c = New-Object Net.Sockets.TcpClient
+            # TcpClient() 기본 생성자는 IPv4 전용이라 ::1 에는 주소 패밀리를 명시해야 한다
+            $family = if ($addr -eq '::1') { [Net.Sockets.AddressFamily]::InterNetworkV6 } else { [Net.Sockets.AddressFamily]::InterNetwork }
+            $c = New-Object Net.Sockets.TcpClient($family)
             $ar = $c.BeginConnect($addr, $port, $null, $null)
             $ok = $ar.AsyncWaitHandle.WaitOne(300)
             if ($ok) { try { $c.EndConnect($ar) } catch { $ok = $false } }
@@ -136,12 +138,12 @@ function Start-PythonAI([string]$name, [string]$dir, [int]$port) {
     Wait-Started $p $name $port $pidFile $out $err
 }
 
-Start-Node     'server' (Join-Path $root 'server') 3001
+Start-Node     'server' (Join-Path $root 'server') 3101
 Start-Node     'client' (Join-Path $root 'client') 5173
 Start-PythonAI 'ai'     (Join-Path $root 'ai')     8000
 
 Write-Host ""
 Write-Host "Client : http://localhost:5173"
-Write-Host "Server : http://localhost:3001"
+Write-Host "Server : http://localhost:3101"
 Write-Host "AI     : http://localhost:8000"
 Write-Host "Stop   : scripts/dev-stop.ps1"
