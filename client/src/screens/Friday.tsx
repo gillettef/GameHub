@@ -219,29 +219,47 @@ export function FridayPrepareScreen() {
                     출전 {played.length}명 · 필요 <ResourceChip resource="stamina" amount={lineupCost.stamina ?? 0} cost /> / 보유 <Icon name="stamina" size={12} />{me.resources.stamina}
                     {!lineupAffordable && ' — 자원이 모자랍니다. 출전 선수나 효과 활성화를 줄이세요.'}
                   </p>
-                  <div className="cards">
-                    {me.roster.map((r) => {
-                      const side = activeSide(r);
-                      const reason = blockReason(r);
-                      const on = played.includes(r.instanceId);
+                  {/* 출전 / 벤치 두 구역으로 나눠 놓고 누르면 반대 구역으로 옮긴다 — 테두리 색만으로는 구분이 약했다 (사용자 요청 2026-09-22) */}
+                  <div className="lineup-groups">
+                    {(['on', 'off'] as const).map((group) => {
+                      const list = me.roster.filter((r) => played.includes(r.instanceId) === (group === 'on'));
                       return (
-                        <PlayerCardView
-                          key={r.instanceId}
-                          cardId={r.cardId}
-                          instance={r}
-                          selected={on}
-                          onClick={reason ? undefined : () => togglePlayer(r.instanceId)}
-                          footer={
-                            reason ? (
-                              <span className="error small lineup-blocked">⛔ {reason}</span>
-                            ) : on && side.effect && !side.effect.mandatory ? (
-                              <label className="row small" onClick={(e) => e.stopPropagation()}>
-                                <input type="checkbox" checked={!!activations[r.instanceId]} onChange={(e) => setActivations((a) => ({ ...a, [r.instanceId]: e.target.checked }))} />
-                                효과 활성화 <CostChips cost={side.effect.cost} />
-                              </label>
-                            ) : undefined
-                          }
-                        />
+                        <section key={group} className={`lineup-group ${group}`} aria-label={group === 'on' ? '출전 선수' : '벤치'}>
+                          <h4>
+                            {group === 'on' ? '출전' : '벤치'} <b>{list.length}명</b>
+                            <span className="muted">{group === 'on' ? '누르면 벤치로 내립니다' : '누르면 출전시킵니다'}</span>
+                          </h4>
+                          {list.length === 0 ? (
+                            <p className="muted small lineup-group-empty">{group === 'on' ? '아직 출전 선수가 없습니다. 벤치에서 선수를 누르세요.' : '모든 선수가 출전합니다.'}</p>
+                          ) : (
+                            <div className="cards">
+                              {list.map((r) => {
+                                const side = activeSide(r);
+                                const reason = blockReason(r);
+                                const on = group === 'on';
+                                return (
+                                  <PlayerCardView
+                                    key={r.instanceId}
+                                    cardId={r.cardId}
+                                    instance={r}
+                                    selected={on}
+                                    onClick={reason ? undefined : () => togglePlayer(r.instanceId)}
+                                    footer={
+                                      reason ? (
+                                        <span className="error small lineup-blocked">⛔ {reason}</span>
+                                      ) : on && side.effect && !side.effect.mandatory ? (
+                                        <label className="row small" onClick={(e) => e.stopPropagation()}>
+                                          <input type="checkbox" checked={!!activations[r.instanceId]} onChange={(e) => setActivations((a) => ({ ...a, [r.instanceId]: e.target.checked }))} />
+                                          효과 활성화 <CostChips cost={side.effect.cost} />
+                                        </label>
+                                      ) : undefined
+                                    }
+                                  />
+                                );
+                              })}
+                            </div>
+                          )}
+                        </section>
                       );
                     })}
                   </div>
