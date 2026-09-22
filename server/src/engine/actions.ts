@@ -215,7 +215,7 @@ function describe(before: GameState, after: GameState, pid: PlayerId, action: Ga
   }
 }
 
-// 이 행동이 만진 곳 (공개 정보만): 클라이언트가 다른 참가자의 행동을 따라가 그 보드·카드를 비춘다
+// 이 행동이 만진 곳 (공개 정보만): 클라이언트의 관전 띠에서 "보러 가기"를 누르면 그 보드·카드를 비춘다
 function focusOf(before: GameState, after: GameState, pid: PlayerId, action: GameAction): ActionFocus | undefined {
   const p = getPlayer(after, pid);
   switch (action.type) {
@@ -296,6 +296,6 @@ export function applyAction(state: GameState, pid: PlayerId, action: GameAction,
     next.log.splice(state.log.length, 0, entry);
     next.log.forEach((l, i) => (l.id = i + 1));
   }
-  next.lastAction = { seq: (state.lastAction?.seq ?? 0) + 1, pid, type: action.type, focus: focusOf(state, next, pid, action) };
+  next.lastAction = { seq: (state.lastAction?.seq ?? 0) + 1, pid, type: action.type, text: text ?? undefined, focus: focusOf(state, next, pid, action) };
   return next;
 }

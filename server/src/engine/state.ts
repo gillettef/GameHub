@@ -206,8 +206,8 @@ export interface TurnSnapshot {
   state: Omit<GameState, 'turnSnapshot'>;
 }
 
-// 마지막으로 적용된 행동의 공개 요약. 클라이언트가 다른 참가자(봇 포함)의 행동을 따라가며 그 보드·카드를 비춰 준다 (사용자 요청 2026-09-22).
-// focus 는 그 행동이 만진 곳 — 이미 공개된 정보만 담는다 (라인업·목표 카드 같은 비공개 선택은 focus 없음)
+// 마지막으로 적용된 행동의 공개 요약. 클라이언트가 다른 참가자(봇 포함)의 행동을 화면 아래 관전 띠로 알리고, 누르면 그 보드·카드를 비춰 준다 (사용자 요청 2026-09-22).
+// focus 는 그 행동이 만진 곳 — 이미 공개된 정보만 담는다 (라인업·목표 카드 같은 비공개 선택은 focus 없음). text 는 그 행동의 기록 문구(describe)와 같다
 export type ActionFocus =
   | { board: 'match'; instanceId?: string }
   | { board: 'club'; staffIndex?: number; executiveIndex?: number }
@@ -217,6 +217,7 @@ export interface LastAction {
   seq: number;
   pid: PlayerId;
   type: string;
+  text?: string;
   focus?: ActionFocus;
 }
 
