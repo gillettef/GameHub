@@ -54,22 +54,25 @@ interface CardFaceProps {
   onClick?: () => void;
   /** 호버 시 상세 팝업 (F017) */
   hoverDetails?: boolean;
+  /** 소유자 좌석. 있으면 배경을 좌석 색으로 물들인다 (덱 빌딩처럼 좌석이 아직 없는 화면은 생략) */
+  seat?: number;
 }
 
 /**
- * 손패·덱 빌딩 공용 카드. 비용·시야·점수는 항상 보이고(F011, F017), 종류별 색 띠로 구분한다.
+ * 손패·덱 빌딩 공용 카드. 비용·시야·점수는 항상 보이고(F011, F017).
+ * 배경은 소유자 좌석 색, 종류(건물·유닛·마법)는 카드 이름 텍스트 색으로 구분한다.
  */
-export const CardFace = memo(function CardFace({ spec, selected, disabled, reason, onClick, hoverDetails }: CardFaceProps) {
+export const CardFace = memo(function CardFace({ spec, selected, disabled, reason, onClick, hoverDetails, seat }: CardFaceProps) {
   return (
     <button
       type="button"
       className={cx(styles.card, selected && styles.selected, disabled && styles.disabled)}
       data-kind={spec.kind}
+      data-seat={seat ?? undefined}
       aria-pressed={selected ?? false}
       disabled={disabled && !onClick}
       onClick={onClick}
     >
-      <span className={styles.stripe} aria-hidden="true" />
       <span className={styles.head}>
         <span className={styles.name}>{spec.name}</span>
         <span className={styles.cost} title="비용">

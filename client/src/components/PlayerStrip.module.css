@@ -1,9 +1,14 @@
+/* 화면 상단 상태 창: 헤더 바로 아래, 항상 보인다. sticky 는 지금은 no-op(GamePage.module.css .header 주석 참고)
+   이지만 나중에 이 레벨에서 스크롤이 생겨도 계속 화면 위에 붙어 있도록 방어적으로 남겨 둔다 */
 .root {
+  position: sticky;
+  top: 0;
+  z-index: 3;
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-1);
-  padding: 6px var(--space-3);
-  background: color-mix(in srgb, var(--color-surface) 60%, transparent);
+  padding: 6px var(--space-2);
+  background: var(--color-surface);
 }
 
 .chip {

@@ -32,9 +32,10 @@
   gap: var(--space-4);
 }
 
+/* 언제나 모바일 폭이므로 한 열로 쌓는다 */
 .columns {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: 1fr;
   gap: var(--space-3);
 }
 
@@ -95,10 +96,4 @@
   background: var(--color-band-sky);
   color: var(--color-heading);
   font-weight: 600;
-}
-
-@media (max-width: 900px) {
-  .columns {
-    grid-template-columns: 1fr;
-  }
 }

@@ -10,10 +10,10 @@
   color: var(--color-muted);
 }
 
-/* 맵 */
+/* 맵. 언제나 모바일 폭이므로 한 열로 쌓는다 */
 .mapGroups {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: 1fr;
   gap: var(--space-3);
 }
 
@@ -77,7 +77,7 @@
 
 .picker {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: 1fr;
   gap: var(--space-3);
 }
 
@@ -117,11 +117,4 @@
   font-size: var(--text-small);
   font-weight: 700;
   color: var(--color-heading);
-}
-
-@media (max-width: 900px) {
-  .mapGroups,
-  .picker {
-    grid-template-columns: 1fr;
-  }
 }

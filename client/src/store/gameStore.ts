@@ -191,6 +191,15 @@ export const selectTab = (s: GameStore): TabId => s.tab;
 export const selectIsMyTurn = (s: GameStore): boolean =>
   s.state !== null && s.state.phase === 'playing' && s.state.currentPlayerId === s.viewerId && !s.handoffPending && !s.sending;
 
+/**
+ * `selectIsMyTurn` 과 달리 `sending`(온라인 전송 중 연타 방지) 은 보지 않는다. 손패 표시처럼
+ * "내 턴인가"로 마운트 여부를 결정하는 곳에 쓴다 — sending 을 넣으면 배치할 때마다 손패가
+ * 사라졌다 나타나며 보드가 리사이즈된다(ui-tab-reviewer 지적). 카드 클릭 잠금은 `selectIsMyTurn`
+ * (interactive prop)으로 따로 한다.
+ */
+export const selectOwnsTurn = (s: GameStore): boolean =>
+  s.state !== null && s.state.phase === 'playing' && s.state.currentPlayerId === s.viewerId && !s.handoffPending;
+
 /** 선택된 손패 카드 id. index 로 고르지만 배치·하이라이트는 cardId 로 한다 */
 export const selectSelectedCardId = (s: GameStore): CardId | null => {
   if (s.selectedHandIndex === null || !s.state || !s.viewerId) return null;

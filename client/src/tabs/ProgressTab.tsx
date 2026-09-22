@@ -39,16 +39,6 @@ export const ProgressTab = memo(function ProgressTab() {
 
   return (
     <div className={styles.root}>
-      <section className={styles.logPanel} aria-label="게임 로그">
-        <h2 className={styles.title}>
-          진행 기록 <span className={styles.sub}>{entries.length}건 · 최신 순</span>
-        </h2>
-        <ol className={styles.log}>
-          {entries.map((e, i) => (
-            <LogRow key={entries.length - i} entry={e} playerName={e.playerId ? nameOf(state, e.playerId) : null} />
-          ))}
-        </ol>
-      </section>
       <aside className={styles.side}>
         <div className={styles.summary}>
           <h2 className={styles.title}>현재</h2>
@@ -65,8 +55,18 @@ export const ProgressTab = memo(function ProgressTab() {
             <dd>{alive}명</dd>
           </dl>
         </div>
-        <TurnControls />
+        <TurnControls compact />
       </aside>
+      <section className={styles.logPanel} aria-label="게임 로그">
+        <h2 className={styles.title}>
+          진행 기록 <span className={styles.sub}>{entries.length}건 · 최신 순</span>
+        </h2>
+        <ol className={styles.log}>
+          {entries.map((e, i) => (
+            <LogRow key={entries.length - i} entry={e} playerName={e.playerId ? nameOf(state, e.playerId) : null} />
+          ))}
+        </ol>
+      </section>
     </div>
   );
 });

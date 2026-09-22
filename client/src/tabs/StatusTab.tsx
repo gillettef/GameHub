@@ -80,7 +80,7 @@ export const StatusTab = memo(function StatusTab() {
         <ul className={styles.hand}>
           {hand.map((c) => (
             <li key={`${c.index}-${c.cardId}`}>
-              <CardFace spec={getSpec(c.cardId)} disabled={!c.playable || !isMyTurn} reason={c.playable ? null : c.reason} />
+              <CardFace spec={getSpec(c.cardId)} disabled={!c.playable || !isMyTurn} reason={c.playable ? null : c.reason} seat={me.seat} />
             </li>
           ))}
           {hand.length === 0 && <li className={styles.muted}>손패가 비었습니다</li>}

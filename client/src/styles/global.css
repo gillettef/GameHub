@@ -11,15 +11,26 @@ body,
   margin: 0;
 }
 
+/* 화면 전체 좌우 폭을 모바일 크기로 고정한다(2026-09-22 사용자 지시): 넓은 화면에서는
+   #root 가 --app-max-width 로 잘리고 가운데 정렬되며, 바깥은 letterbox 색으로 채운다.
+   좁은 화면(실제 폭 < 480px)에서는 자연히 꽉 채운다. */
 body {
   font-family: var(--font-body);
   font-size: var(--text-body);
   color: var(--color-text);
-  background: var(--color-canvas);
+  background: var(--color-app-frame);
   -webkit-font-smoothing: antialiased;
   overflow: hidden;
   /* 모바일 좁은 폭에서 긴 닉네임·카드 이름이 레이아웃을 깨지 않게 */
   overflow-wrap: anywhere;
+  display: flex;
+  justify-content: center;
+}
+
+#root {
+  width: 100%;
+  max-width: var(--app-max-width);
+  background: var(--color-canvas);
 }
 
 h1,

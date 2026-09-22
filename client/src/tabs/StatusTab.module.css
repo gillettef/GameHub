@@ -1,22 +1,18 @@
+/* 언제나 모바일 폭이므로 패널을 세로로 쌓고, 넓은 표는 좌석별 카드 목록으로 접는다 */
 .root {
   height: 100%;
   min-height: 0;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 280px;
-  grid-template-rows: auto minmax(0, 1fr);
+  display: flex;
+  flex-direction: column;
   gap: var(--space-2);
+  overflow-y: auto;
 }
 
 .panel {
+  flex: none;
   padding: var(--space-2);
   border-radius: var(--radius-sm);
   background: var(--color-surface);
-  min-height: 0;
-  overflow: auto;
-}
-
-.panel:nth-child(1) {
-  grid-column: 1 / -1;
 }
 
 .title {
@@ -37,27 +33,42 @@
   margin-left: var(--space-1);
 }
 
+.table,
+.table thead,
+.table tbody,
+.table tr,
+.table th,
+.table td {
+  display: block;
+}
+
 .table {
   width: 100%;
-  border-collapse: collapse;
   font-size: var(--text-small);
 }
 
-.table th,
-.table td {
-  padding: 6px var(--space-1);
-  text-align: center;
-  white-space: nowrap;
+.table thead {
+  display: none;
 }
 
-.table th {
-  color: var(--color-muted);
-  font-weight: 500;
-  border-bottom: 1px solid var(--color-grid);
+.table tr {
+  margin-bottom: var(--space-1);
+  padding: var(--space-1);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--color-canvas) 40%, transparent);
+}
+
+.table td {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  text-align: right;
+  padding: 3px 2px;
+  white-space: normal;
 }
 
 .table td.name {
-  text-align: left;
+  text-align: right;
   font-weight: 600;
 }
 
@@ -117,9 +128,11 @@
   gap: 4px;
 }
 
-/* 데스크톱 표에서는 <th> 가 이미 라벨을 보여 주므로 숨긴다. 모바일 전용 라벨 */
 .cellLabel {
-  display: none;
+  display: inline;
+  color: var(--color-muted);
+  font-weight: 500;
+  text-align: left;
 }
 
 .seatDot {
@@ -144,52 +157,4 @@
 
 .seatDot[data-seat='3'] {
   background: var(--color-seat-3);
-}
-
-/* 모바일: 3열 배치를 세로로 쌓고, 넓은 표는 좌석별 카드 목록으로 접는다 */
-@media (max-width: 720px) {
-  .root {
-    grid-template-columns: 1fr;
-    grid-template-rows: none;
-  }
-
-  .panel:nth-child(1) {
-    grid-column: auto;
-  }
-
-  .table,
-  .table thead,
-  .table tbody,
-  .table tr,
-  .table th,
-  .table td {
-    display: block;
-  }
-
-  .table thead {
-    display: none;
-  }
-
-  .table tr {
-    margin-bottom: var(--space-1);
-    padding: var(--space-1);
-    border-radius: var(--radius-sm);
-    background: color-mix(in srgb, var(--color-canvas) 40%, transparent);
-  }
-
-  .table td {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    text-align: right;
-    padding: 3px 2px;
-    white-space: normal;
-  }
-
-  .cellLabel {
-    display: inline;
-    color: var(--color-muted);
-    font-weight: 500;
-    text-align: left;
-  }
 }
