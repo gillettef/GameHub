@@ -129,6 +129,60 @@ AstralTab/
 
 ---
 
+## 디자인 규칙
+
+**`DESIGN.md` 를 기본으로 작업한다.** UI를 만들거나 바꾸기 전에 반드시 읽는다. 적용 우선순위는 DESIGN.md 자체 규정을 따른다: 사용자 지시 > 저장소 사실 > DESIGN.md > 레퍼런스 영감.
+
+### DESIGN.md에서 그대로 승계하는 것
+
+- **플랫**: `box-shadow` 사용 금지. 구분은 배경색 블록과 여백으로 한다.
+- **필 CTA**: 주요 버튼은 50px 라운드 필, 저강조 버튼은 999px 아웃라인 필. 각진 버튼 금지.
+- **헤딩은 네이비** `#1a2352`, 순수 검정 금지(검정은 얇은 아웃라인에만).
+- **타이포**: 본문·UI는 Pretendard(CDN), 본문 15~17px. 헤딩용 디스플레이 폰트는 DESIGN.md의 커스텀 웹폰트를 쓸 수 없으므로 **미정**. 정해지기 전까지 헤딩도 Pretendard 700으로 두고 폰트 패밀리는 CSS 변수 하나(`--font-display`)로만 참조한다.
+- **간격**: 8px 리듬. 라운드는 10px(패널) / 16px(카드) / 24px(큰 컨테이너) / 50px·999px(필).
+- **모션**: `motion-fast` 120ms, `motion-standard` 220ms, `motion-slow` 340ms와 DESIGN.md의 easing 토큰. `prefers-reduced-motion` 존중. 탭 전환은 100ms 예산(F014) 때문에 `motion-fast` 이하로만.
+- **상태 문구**: 오류는 "오류"가 아니라 다음에 할 일을 적는다. 성공에 이모지 없음. 비활성은 회색 `#bbbbbb` 텍스트 + 투명도.
+- **보이스**: 선언형·현재형, 짧고 직접적인 CTA("방 만들기", "턴 종료").
+
+### AstralTab 컬러 월드 (DESIGN.md "A world per product" 적용)
+
+화면을 두 세계로 나눈다. 값은 모두 DESIGN.md 팔레트에서 가져온다.
+
+**비게임 화면** (랜딩, 로비, 대기실, 덱 빌딩, 결과): Corca 기업 프레임 그대로.
+
+| 역할 | 값 |
+|---|---|
+| 캔버스 | `#ffffff` |
+| 서피스·패널 | `#f1f5f9` |
+| 헤딩 | `#1a2352` |
+| 본문 | `#324158` |
+| 보조·비활성 | `#bbbbbb` |
+| 주요 CTA | 흰 필 + 네이비 라벨(어두운 밴드 위) 또는 `#777cdc` 필 + 흰 라벨 |
+| 강조 밴드 | `#faeeff`, `#d9e5f5`, `#fdd484` |
+
+**게임 플레이 대시보드** (탭 UI): Moonlight의 밤 무대를 AstralTab의 우주로 쓴다.
+
+| 역할 | 값 |
+|---|---|
+| 무대 배경 | Moonlight Deep `#402060` |
+| 패널·탭 바·카드 | Card Plum `#605070` |
+| 활성 탭·주요 버튼·선택 하이라이트 | Moonlight Cream `#fff3b7` |
+| 자원 수치·자원 건물 | Amber `#fdd484` |
+| 마나 수치·마법 카드 | Card Violet `#777cdc` |
+| 플레이어 1 (유닛·건물·영토) | Bright Blue `#419eff` |
+| 플레이어 2 | **미정** (DESIGN.md에 대비되는 따뜻한 색이 없음) |
+| 위험·파괴·자원 부족 경고 | **미정** (DESIGN.md에 경고색이 없음) |
+| 텍스트 | `#ffffff`, 보조 `#bbbbbb` |
+| 격자선 | Steel Blue `#36597d` |
+
+미정 항목은 DESIGN.md의 Unknowns 정책대로 그럴듯한 기본값을 넣지 않는다. 사용자가 정해 주면 이 표를 갱신하고 `client/src/styles/tokens.css` 에 반영한다.
+
+### 구현 방식
+
+- 모든 색·간격·라운드·모션 값은 `client/src/styles/tokens.css` 의 CSS 변수로만 쓴다. 컴포넌트 CSS에 HEX 직접 기입 금지.
+- 게임 화면 루트에 `data-world="game"` 을 두고 변수 값을 덮어써서 두 세계를 전환한다.
+- 두 세계를 한 화면에 섞지 않는다(DESIGN.md Don't).
+
 ## 코딩 규칙
 
 - 룰 엔진(`shared/src/engine`)은 **부수효과 없는 순수 함수**로 작성한다. `(state, action) => newState` 형태. `Math.random`이 필요하면 시드 기반 RNG를 상태에 넣어 재현 가능하게 한다.
