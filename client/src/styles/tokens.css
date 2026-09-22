@@ -1,0 +1,82 @@
+/*
+ * 디자인 토큰. 값은 DESIGN.md 팔레트에서만 가져온다 (CLAUDE.md "디자인 규칙").
+ * 컴포넌트 CSS에 HEX를 직접 쓰지 말고 이 변수만 참조한다.
+ *
+ * 두 세계:
+ *  - 기본(:root)           비게임 화면 — Corca 기업 프레임 (흰 캔버스, 네이비 헤딩)
+ *  - [data-world="game"]   게임 대시보드 — Moonlight 밤 무대
+ */
+:root {
+  /* 색: 비게임 화면 */
+  --color-canvas: #ffffff;
+  --color-surface: #f1f5f9;
+  --color-heading: #1a2352;
+  --color-text: #324158;
+  --color-muted: #bbbbbb;
+  --color-outline: #000000;
+  --color-accent: #777cdc;
+  --color-accent-text: #ffffff;
+  --color-band-lavender: #faeeff;
+  --color-band-sky: #d9e5f5;
+  --color-band-amber: #fdd484;
+
+  /* 게임 도메인 색 (두 세계 공통 의미) */
+  --color-resource: #fdd484;
+  --color-mana: #777cdc;
+  --color-player-1: #419eff;
+  /* --color-player-2: 미정 (DESIGN.md에 없음, 사용자 결정 대기) */
+  /* --color-danger:   미정 (DESIGN.md에 없음, 사용자 결정 대기) */
+
+  /* 타이포 */
+  --font-body: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  /* 디스플레이 폰트 미정: 정해지기 전까지 본문 폰트 700 */
+  --font-display: var(--font-body);
+  --text-body: 16px;
+  --text-nav: 17px;
+  --text-sub: 28px;
+  --text-section: 32px;
+  --text-stat: 46px;
+  --text-hero: 60px;
+
+  /* 간격 (8px 리듬) */
+  --space-1: 8px;
+  --space-2: 15px;
+  --space-3: 16px;
+  --space-4: 24px;
+  --space-5: 48px;
+  --space-6: 64px;
+
+  /* 라운드 */
+  --radius-sm: 10px;
+  --radius-md: 16px;
+  --radius-lg: 24px;
+  --radius-pill: 50px;
+  --radius-full: 999px;
+
+  /* 모션 */
+  --motion-fast: 120ms;
+  --motion-standard: 220ms;
+  --motion-slow: 340ms;
+  --ease-enter: cubic-bezier(0.2, 0.6, 0.25, 1);
+  --ease-exit: cubic-bezier(0.4, 0, 1, 1);
+  --ease-standard: cubic-bezier(0.25, 0.1, 0.25, 1);
+}
+
+[data-world='game'] {
+  --color-canvas: #402060;
+  --color-surface: #605070;
+  --color-heading: #ffffff;
+  --color-text: #ffffff;
+  --color-muted: #bbbbbb;
+  --color-accent: #fff3b7;
+  --color-accent-text: #1a2352;
+  --color-grid: #36597d;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-fast: 0ms;
+    --motion-standard: 0ms;
+    --motion-slow: 0ms;
+  }
+}

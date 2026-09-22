@@ -22,15 +22,19 @@ function Find-Python {
     return $null
 }
 
+# Vite (Node 22) listens on ::1 by default, uvicorn/express on 127.0.0.1 - probe both.
 function Test-Port([int]$port) {
-    try {
-        $c = New-Object Net.Sockets.TcpClient
-        $ar = $c.BeginConnect('127.0.0.1', $port, $null, $null)
-        $ok = $ar.AsyncWaitHandle.WaitOne(300)
-        if ($ok) { $c.EndConnect($ar) }
-        $c.Close()
-        return $ok
-    } catch { return $false }
+    foreach ($addr in @('127.0.0.1', '::1')) {
+        try {
+            $c = New-Object Net.Sockets.TcpClient
+            $ar = $c.BeginConnect($addr, $port, $null, $null)
+            $ok = $ar.AsyncWaitHandle.WaitOne(300)
+            if ($ok) { try { $c.EndConnect($ar) } catch { $ok = $false } }
+            $c.Close()
+            if ($ok) { return $true }
+        } catch {}
+    }
+    return $false
 }
 
 function Ensure-NodeDeps([string]$dir) {
