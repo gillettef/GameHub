@@ -725,6 +725,7 @@ button.utoken { font-size: var(--fs-body); }
 .rslot-mark { font-size: var(--fs-sub); }
 .rslot.idle { opacity: 0.55; }
 .rslot.blocked { opacity: 0.5; text-decoration: line-through; }
+.rslot.was-blocked, .rslot.was-saved { opacity: 0.7; } /* 지나간 구획에서 막힘·선방당함 — ✕·🧤 표시가 남는다 */
 .rslot.blocker { box-shadow: 0 0 0 2px var(--defense); }
 .rslot.goal { box-shadow: 0 0 0 2px var(--pitch); transform: translateY(-1px); }
 .rslot.saved { border-style: dashed; }

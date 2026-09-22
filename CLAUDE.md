@@ -210,7 +210,7 @@ notes/    규칙서 원본 및 텍스트 레퍼런스
   - **경기 보기(`MatchReplay`)**: 경기장 하나에 양 팀 — 위는 상대(상하 반전: GK·DC·MC·CF, 윙은 좌우 반전), 아래는 우리(CF·MC·DC·GK). 화면 왼쪽 열 = 내 LW ↔ 상대 RW, 오른쪽 = 내 RW ↔ 상대 LW.
     엔진이 판정 때 남긴 **트레이스**(`match.ts` `AttackTrace`: `SectorReport.theirAttack/myAttack` = 공격·수비 슬롯, 막은 짝 `blocks`, 뚫린 슛 `unblocked`, 선방 `saved`, 득점 `scorers`;
     `MatchReport.goalkeepers`)를 규칙서 순서(LW→RW→CF→CM→CB)대로 구획마다 "상대 공격 → 내 수비" · "내 공격 → 상대 수비" 두 스텝으로 재생한다(자동 2.2초 간격, 이전/다음/건너뛰기,
-    클라이언트 로컬 상태 — 서버는 결과만 정한다). 막힌 공격 ✕·흐림, 막은 수비 파란 링, 선방 🧤, 득점 ⚽ 누적, 점수판 갱신. 마지막에 효과 정리(`preGoals` 미리 넣은 골, `denied` 무효화한
+    클라이언트 로컬 상태 — 서버는 결과만 정한다). 막힌 공격 ✕·흐림, 막은 수비 파란 링, 선방 🧤, 득점 ⚽ 누적, 점수판 갱신. **✕·🧤 표시는 다음 구획으로 넘어가도 그 선수에 남는다**(`marksSoFar`, 사용자 요청 2026-09-22 — 흐림·취소선은 지금 스텝에만). 마지막에 효과 정리(`preGoals` 미리 넣은 골, `denied` 무효화한
     상대 득점, `effects` 기록)와 최종 점수. 구획 표기는 배치판 지역 용어와 맞춘다(CF·MC·DC, 윙은 LW·RW). `node scripts/card-audit.mjs only=replay shot.png`로 시드 고정 판의 스텝 몇 개를 그려 볼 수 있다.
     상대 슬롯 id 는 엔진 `opponentSide`와 같은 `${cardId}:${sector}${i}` 규칙.
 - **전체 카드 목록** (`components/Catalog.tsx` `CatalogButton`, 사용자 요청 2026-09): 사이드바(모바일은 '진행' 탭)의 "카드 목록" 버튼 → 모달에서 종류별 탭

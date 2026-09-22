@@ -118,14 +118,18 @@ export function MatchReplay({ actor, m, initialIndex = 0, autoplay = true }: { a
   const pair = step.kind === 'attack' ? SECTOR_PAIRS[step.pair]! : null; // [내 구획, 상대 구획]
   const attackingSide = step.kind === 'attack' ? step.side : null;
 
-  // 지금까지의 득점 표시(⚽ 누적)와 이번 스텝의 상태(막힘·막음·선방·득점)
-  const goalsSoFar = useMemo(() => {
+  // 지금까지의 득점 표시(⚽ 누적)와 못 넣은 표시(막힘 ✕ · 선방 🧤 — 다른 구획으로 넘어가도 남는다, 사용자 요청 2026-09-22), 이번 스텝의 상태(막힘·막음·선방·득점)
+  const { goalsSoFar, marksSoFar } = useMemo(() => {
     const g: Record<string, number> = {};
+    const marks: Record<string, 'blocked' | 'saved'> = {};
     for (let i = 1; i <= index && i < steps.length; i++) {
       const t = traceOf(m, steps[i]!);
-      if (t) for (const id of t.scorers) g[id] = (g[id] ?? 0) + 1;
+      if (!t) continue;
+      for (const id of t.scorers) g[id] = (g[id] ?? 0) + 1;
+      for (const b of t.blocks) marks[b.attacker] = 'blocked';
+      for (const id of t.saved) marks[id] = 'saved';
     }
-    return g;
+    return { goalsSoFar: g, marksSoFar: marks };
   }, [m, steps, index]);
   const stateOf = (id: string): string => {
     if (!trace) return '';
@@ -151,15 +155,16 @@ export function MatchReplay({ actor, m, initialIndex = 0, autoplay = true }: { a
   const renderSlot = (slot: RSlot, side: 'mine' | 'theirs') => {
     const st = stateOf(slot.id);
     const goals = goalsSoFar[slot.id] ?? 0;
-    const title = `${slot.label}${st === 'blocked' ? ' — 막힘' : st === 'blocker' ? ' — 공격을 막음' : st === 'goal' ? ' — 득점' : st === 'saved' ? ' — 골키퍼 선방' : ''}`;
+    const mark = marksSoFar[slot.id]; // 지나간 구획에서 막혔거나 선방당한 표시는 그대로 남는다
+    const title = `${slot.label}${st === 'blocked' || mark === 'blocked' ? ' — 막힘' : st === 'blocker' ? ' — 공격을 막음' : st === 'goal' ? ' — 득점' : st === 'saved' || mark === 'saved' ? ' — 골키퍼 선방' : ''}`;
     return (
-      <span key={slot.id} className={`rslot ${side} ${slot.role}${st ? ` ${st}` : ''}`} title={title}>
+      <span key={slot.id} className={`rslot ${side} ${slot.role}${st ? ` ${st}` : ''}${mark && st !== mark ? ` was-${mark}` : ''}`} title={title}>
         <Icon name={slot.role} size={11} />
         {slot.short && <b>{slot.short}</b>}
         <span className="rslot-skill">{slot.skill}</span>
         {goals > 0 && <span className="rslot-goal">{'⚽'.repeat(goals)}</span>}
-        {st === 'blocked' && <span className="rslot-mark">✕</span>}
-        {st === 'saved' && <span className="rslot-mark">🧤</span>}
+        {mark === 'blocked' && <span className="rslot-mark">✕</span>}
+        {mark === 'saved' && <span className="rslot-mark">🧤</span>}
       </span>
     );
   };
