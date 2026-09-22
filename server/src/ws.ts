@@ -17,6 +17,7 @@ const SPECTATOR_ID = '';
 
 export interface WsOptions {
   botDelayMs?: number;
+  botWatchMs?: number; // 봇이 경기 영향 주사위 전에 기다리는 경기 보기 시간
 }
 
 export function attachWebSocket(wss: WebSocketServer, rooms: RoomManager, options: WsOptions = {}): BotDriver {
@@ -43,7 +44,7 @@ export function attachWebSocket(wss: WebSocketServer, rooms: RoomManager, option
     }
   };
 
-  const bots = new BotDriver(rooms, broadcast, options.botDelayMs);
+  const bots = new BotDriver(rooms, broadcast, options.botDelayMs, options.botWatchMs);
 
   const detach = (session: Session) => {
     session.roomCode = undefined;

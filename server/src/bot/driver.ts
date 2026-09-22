@@ -66,19 +66,31 @@ export class BotDriver {
     private rooms: RoomManager,
     private onChange: (room: Room) => void,
     private delayMs = 300,
+    private watchMs = 24000, // 봇의 경기 보기(재생) 시간: 경기 영향 주사위를 굴리기 전에 사람들이 그 봇의 경기 재생을 볼 수 있게 기다린다
   ) {}
 
   poke(room: Room, delay = this.delayMs): void {
     if (room.status !== 'playing' || !room.players.some((p) => p.isBot)) return;
     if (this.timers.has(room.code)) return;
+    const wait = Math.max(delay, this.watchDelay(room));
     this.timers.set(
       room.code,
       setTimeout(() => {
         this.timers.delete(room.code);
         const applied = this.step(room.code);
         if (applied) this.poke(this.rooms.get(room.code), this.delayMs * PAUSE_FACTOR[applied.type]);
-      }, delay),
+      }, wait),
     );
+  }
+
+  // 경기 결과 단계에서 차례인 봇이 아직 주사위를 굴리지 않았으면(= 경기 보기 스텝) 재생 시간만큼 기다린다.
+  // 봇이 곧바로 굴리면 지켜보는 사람의 화면이 경기 보기에서 주사위 스텝으로 바로 넘어가 버린다 (사용자 제보 2026-09-22)
+  private watchDelay(room: Room): number {
+    const phase = room.game?.phase;
+    if (!phase || phase.kind !== 'friday.aftermath') return 0;
+    const bot = room.players.find((p) => p.id === phase.current && p.isBot);
+    const m = phase.matches[phase.current];
+    return bot && m && m.roll === null && m.injuryDice.length === 0 ? this.watchMs : 0;
   }
 
   // 지연 없이 봇이 할 수 있는 액션을 모두 처리 (테스트·헤드리스용). 처리한 액션 수를 돌려준다
