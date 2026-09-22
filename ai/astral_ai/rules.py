@@ -369,7 +369,8 @@ def _begin_turn(state: GameState) -> None:
         return
     _apply_repair(state, pid)
     _expire_persistent(state, pid)
-    _player(state, pid).energy += compute_income(state, pid)
+    p = _player(state, pid)
+    p.energy = min(p.energy + compute_income(state, pid), const("ENERGY_CAP"))
     _draw(state, pid)
 
 
@@ -412,7 +413,7 @@ def _apply_placement(state: GameState, player_id: str, card_id: str, pos: Positi
                 if m.ownerId == player_id and chebyshev(pos, m.pos) <= eff.radius:
                     m.hp = min(spec(m.specId).hp, m.hp + eff.amount)
         elif eff.kind == "energy":
-            p.energy += eff.amount
+            p.energy = min(p.energy + eff.amount, const("ENERGY_CAP"))
     else:
         marker = Marker(
             id=f"m{state.nextMarkerId}",

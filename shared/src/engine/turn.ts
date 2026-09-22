@@ -23,6 +23,7 @@ import {
   CORE_SPEC,
   DEFAULT_DECK_CHOICE,
   DRAW_PER_TURN,
+  ENERGY_CAP,
   HAND_LIMIT,
   INITIAL_HAND_SIZE,
   MAX_PLAYERS,
@@ -254,12 +255,14 @@ export function beginTurn(state: GameState): GameState {
 function applyIncome(state: GameState, playerId: PlayerId): GameState {
   const income = computeIncome(state, playerId);
   const before = getPlayer(state, playerId).energy;
+  const after = Math.min(before + income.total, ENERGY_CAP);
   const s: GameState = {
     ...state,
-    players: state.players.map((p) => (p.id === playerId ? { ...p, energy: p.energy + income.total } : p)),
+    players: state.players.map((p) => (p.id === playerId ? { ...p, energy: after } : p)),
   };
   const detail = income.items.map((i) => `${i.name}${i.vein ? '(광맥)' : ''} +${i.amount}`).join(', ');
-  return addLog(s, 'income', playerId, `수입 +${income.total} (${detail}), 에너지 ${before} → ${before + income.total}`);
+  const capped = after < before + income.total ? ` (상한 ${ENERGY_CAP} 초과분 버림)` : '';
+  return addLog(s, 'income', playerId, `수입 +${income.total} (${detail}), 에너지 ${before} → ${after}${capped}`);
 }
 
 function drawCard(state: GameState, playerId: PlayerId): GameState {

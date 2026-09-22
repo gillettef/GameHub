@@ -3727,7 +3727,7 @@
               "unitId": "battleship",
               "magicId": "gravity-wave"
             },
-            "energy": 21,
+            "energy": 20,
             "deck": [
               "extractor",
               "outpost",
@@ -4217,7 +4217,7 @@
             "round": 5,
             "playerId": "ai-1",
             "kind": "income",
-            "message": "수입 +4 (채굴기(광맥) +2, 코어 +2), 에너지 17 → 21"
+            "message": "수입 +4 (채굴기(광맥) +2, 코어 +2), 에너지 17 → 20 (상한 20 초과분 버림)"
           },
           {
             "turn": 10,
@@ -4320,7 +4320,7 @@
               "unitId": "battleship",
               "magicId": "gravity-wave"
             },
-            "energy": 21,
+            "energy": 20,
             "deck": [
               "extractor",
               "outpost",
@@ -4798,7 +4798,7 @@
             "round": 5,
             "playerId": "ai-1",
             "kind": "income",
-            "message": "수입 +4 (채굴기(광맥) +2, 코어 +2), 에너지 17 → 21"
+            "message": "수입 +4 (채굴기(광맥) +2, 코어 +2), 에너지 17 → 20 (상한 20 초과분 버림)"
           },
           {
             "turn": 10,
@@ -4955,7 +4955,7 @@
               "unitId": "battleship",
               "magicId": "gravity-wave"
             },
-            "energy": 23,
+            "energy": 20,
             "deck": [
               "extractor",
               "outpost",
@@ -5445,7 +5445,7 @@
             "round": 5,
             "playerId": "ai-1",
             "kind": "income",
-            "message": "수입 +4 (채굴기(광맥) +2, 코어 +2), 에너지 17 → 21"
+            "message": "수입 +4 (채굴기(광맥) +2, 코어 +2), 에너지 17 → 20 (상한 20 초과분 버림)"
           },
           {
             "turn": 10,
@@ -5522,7 +5522,7 @@
             "round": 6,
             "playerId": "ai-1",
             "kind": "income",
-            "message": "수입 +2 (코어 +2), 에너지 21 → 23"
+            "message": "수입 +2 (코어 +2), 에너지 20 → 20 (상한 20 초과분 버림)"
           },
           {
             "turn": 12,
@@ -5625,7 +5625,7 @@
               "unitId": "battleship",
               "magicId": "gravity-wave"
             },
-            "energy": 23,
+            "energy": 20,
             "deck": [
               "extractor",
               "outpost",
@@ -6109,7 +6109,7 @@
             "round": 5,
             "playerId": "ai-1",
             "kind": "income",
-            "message": "수입 +4 (채굴기(광맥) +2, 코어 +2), 에너지 17 → 21"
+            "message": "수입 +4 (채굴기(광맥) +2, 코어 +2), 에너지 17 → 20 (상한 20 초과분 버림)"
           },
           {
             "turn": 10,
@@ -6186,7 +6186,7 @@
             "round": 6,
             "playerId": "ai-1",
             "kind": "income",
-            "message": "수입 +2 (코어 +2), 에너지 21 → 23"
+            "message": "수입 +2 (코어 +2), 에너지 20 → 20 (상한 20 초과분 버림)"
           },
           {
             "turn": 12,
