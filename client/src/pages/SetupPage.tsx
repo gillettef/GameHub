@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import type { DeckChoice, MapId } from '@astraltab/shared';
-import { DEFAULT_MAP_ID, MAX_PLAYERS, getMap } from '@astraltab/shared';
+import { DEFAULT_MAP_ID, MAX_PLAYERS, MIN_PLAYERS, getMap, mapsForPlayers } from '@astraltab/shared';
 import { DeckPicker, isCompleteChoice, type PartialChoice } from '../components/DeckPicker';
 import { MapPicker } from '../components/MapPicker';
 import { makeSeed } from '../game/hotseat';
@@ -16,6 +16,7 @@ import styles from './SetupPage.module.css';
  */
 export function SetupPage({ onStart }: { onStart: () => void }) {
   const startHotseat = useGameStore((s) => s.startHotseat);
+  const [playerCount, setPlayerCount] = useState(getMap(DEFAULT_MAP_ID).players);
   const [mapId, setMapId] = useState<MapId>(DEFAULT_MAP_ID);
   const [nicknames, setNicknames] = useState<string[]>(() => Array.from({ length: MAX_PLAYERS }, () => ''));
   const [choices, setChoices] = useState<PartialChoice[]>(() => Array.from({ length: MAX_PLAYERS }, () => ({})));
@@ -30,6 +31,13 @@ export function SetupPage({ onStart }: { onStart: () => void }) {
   const pickMap = (id: MapId) => {
     setMapId(id);
     if (activeSeat >= getMap(id).players) setActiveSeat(0);
+    setError(null);
+  };
+
+  const pickPlayerCount = (n: number) => {
+    setPlayerCount(n);
+    if (getMap(mapId).players !== n) setMapId(mapsForPlayers(n)[0]!.id);
+    setActiveSeat(0);
     setError(null);
   };
 
@@ -64,12 +72,31 @@ export function SetupPage({ onStart }: { onStart: () => void }) {
 
       <main className={landing.main}>
         <section className={landing.section}>
-          <h2 className={landing.h2}>1. 맵</h2>
-          <MapPicker value={mapId} onChange={pickMap} />
+          <h2 className={landing.h2}>1. 참가 인원</h2>
+          <p className={landing.help}>같은 기기에서 번갈아 둘 인원. 이 인원수의 맵만 아래에 나타납니다.</p>
+          <div className={styles.seatTabs} role="tablist" aria-label="참가 인원">
+            {Array.from({ length: MAX_PLAYERS - MIN_PLAYERS + 1 }, (_, i) => MIN_PLAYERS + i).map((n) => (
+              <button
+                key={n}
+                type="button"
+                role="tab"
+                aria-selected={playerCount === n}
+                className={cx(styles.seatTab, playerCount === n && styles.seatTabActive)}
+                onClick={() => pickPlayerCount(n)}
+              >
+                {n}명
+              </button>
+            ))}
+          </div>
         </section>
 
         <section className={landing.section}>
-          <h2 className={landing.h2}>2. 플레이어 {map.players}명</h2>
+          <h2 className={landing.h2}>2. 맵</h2>
+          <MapPicker value={mapId} onChange={pickMap} filterPlayers={playerCount} />
+        </section>
+
+        <section className={landing.section}>
+          <h2 className={landing.h2}>3. 플레이어 {map.players}명</h2>
           <p className={landing.help}>좌석 순서가 곧 턴 순서입니다. 비워 두면 "플레이어 N"으로 들어갑니다.</p>
           <div className={styles.names}>
             {seats.map((i) => (
@@ -88,7 +115,7 @@ export function SetupPage({ onStart }: { onStart: () => void }) {
         </section>
 
         <section className={landing.section}>
-          <h2 className={landing.h2}>3. 덱 빌딩</h2>
+          <h2 className={landing.h2}>4. 덱 빌딩</h2>
           <p className={landing.help}>기본 덱은 전원 동일하고, 특수 카드를 건물·유닛·마법 종류별로 1장씩 고릅니다. 카드에 마우스를 올리면 상세 스펙이 보입니다.</p>
           <div className={styles.seatTabs} role="tablist" aria-label="덱을 고를 플레이어">
             {seats.map((i) => {
