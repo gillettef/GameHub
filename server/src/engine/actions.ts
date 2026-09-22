@@ -8,7 +8,7 @@ import type { Rng } from './rng';
 import { chooseObjective, draftPick } from './setup';
 import { UPKEEP_SOURCE } from './weekend';
 import { GameError, canUndoTurn, currentDay, currentInjuryDie, getPlayer, hasTurnSnapshot } from './state';
-import type { ActionFocus, Decks, GameState, LineupSubmission, LogEntry, PlayerId } from './state';
+import type { Decks, GameState, LineupSubmission, LogEntry, PlayerId } from './state';
 import type { InfrastructureType, PlayerMarketRow, SponsorContract } from './types';
 import {
   buildInfrastructure,
@@ -215,38 +215,6 @@ function describe(before: GameState, after: GameState, pid: PlayerId, action: Ga
   }
 }
 
-// 이 행동이 만진 곳 (공개 정보만): 클라이언트의 관전 띠에서 "보러 가기"를 누르면 그 보드·카드를 비춘다
-function focusOf(before: GameState, after: GameState, pid: PlayerId, action: GameAction): ActionFocus | undefined {
-  const p = getPlayer(after, pid);
-  switch (action.type) {
-    case 'recruitPlayer':
-    case 'recruitProspect':
-      return { board: 'match', instanceId: p.roster.at(-1)?.instanceId };
-    case 'releasePlayer':
-      return { board: 'match' };
-    case 'hireStaff':
-      return { board: 'club', staffIndex: p.staff.length - 1 };
-    case 'signSponsor':
-      return { board: 'stadium', sponsorCardId: before.market.sponsors[action.marketIndex] };
-    case 'buildInfrastructure':
-      return { board: 'stadium', infrastructure: action.infrastructure };
-    case 'buildOffice':
-      return { board: 'stadium', office: true };
-    case 'cardAction':
-      return action.source.kind === 'staff' ? { board: 'club', staffIndex: action.source.index } : { board: 'club', executiveIndex: action.source.index };
-    case 'resolvePending': {
-      const pending = getPlayer(before, pid).pending.find((x) => x.id === action.pendingId);
-      if (!pending) return undefined;
-      if (pending.target === 'player') return { board: 'match', instanceId: action.choice };
-      if (pending.target === 'staff') return { board: 'club', staffIndex: Number(action.choice) };
-      if (pending.target === 'market' && pending.row) return { board: 'market', row: pending.row };
-      return undefined;
-    }
-    default:
-      return undefined;
-  }
-}
-
 // 주중 차례의 첫 행동 직전에 상태를 찍어 둔다. 주중이 아니면 묵은 스냅샷을 버린다
 function withTurnSnapshot(state: GameState, pid: PlayerId): GameState {
   if (state.phase.kind !== 'weekday' || state.phase.current !== pid) {
@@ -296,6 +264,5 @@ export function applyAction(state: GameState, pid: PlayerId, action: GameAction,
     next.log.splice(state.log.length, 0, entry);
     next.log.forEach((l, i) => (l.id = i + 1));
   }
-  next.lastAction = { seq: (state.lastAction?.seq ?? 0) + 1, pid, type: action.type, text: text ?? undefined, focus: focusOf(state, next, pid, action) };
   return next;
 }

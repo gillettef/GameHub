@@ -1,27 +1,10 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import type { ActionFocus, PlayerId } from '@server/engine/state';
+import type { PlayerId } from '@server/engine/state';
 import { useView } from './store';
 
-// 다른 참가자(봇 포함)의 행동 따라가기 = 관전 (사용자 요청 2026-09-22): 내 차례가 아닐 때 서버가 내려준 마지막 행동(view.lastAction)의 focus 로
-// 그 참가자의 보드·탭으로 이동하고 만진 카드·시설을 몇 초 비춘다(spotlight). 헤더의 눈 토글로 끄고 켠다 (localStorage eleven.follow).
-// 중간에 "보러 가기" 띠를 눌러야 이동하는 방식을 시험했으나 사용자 결정(2026-09-22)으로 자동 이동으로 되돌림 — 그냥 관전이 되면 된다
-const FOLLOW_KEY = 'eleven.follow';
-const SPOTLIGHT_MS = 6000;
-export interface Spotlight {
-  seq: number;
-  pid: PlayerId;
-  focus: ActionFocus;
-}
 function reducedMotion(): boolean {
   return typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
-}
-function loadFollow(): boolean {
-  try {
-    return localStorage.getItem(FOLLOW_KEY) !== 'off';
-  } catch {
-    return true;
-  }
 }
 
 // 게임 화면의 탐색 상태: 어느 참가자의 보드를 보는지, 메인 탭(개인 보드/공용 보드)과 그 안의 하위 탭, 방출 모드.
@@ -62,9 +45,6 @@ interface UiStore {
   setResultSeen: (key: string | null) => void;
   matchWatched: string | null; // 경기 보기(재생)를 마치고 경기 종료 스텝으로 넘어간 키(`week:actor`) — 차례인 본인 기준
   setMatchWatched: (key: string | null) => void;
-  follow: boolean; // 다른 참가자의 행동을 따라가기
-  setFollow: (on: boolean) => void;
-  spotlight: Spotlight | null; // 방금 다른 참가자가 만진 카드·시설 (몇 초 뒤 사라진다)
 }
 
 const UiContext = createContext<UiStore | null>(null);
@@ -96,9 +76,6 @@ export function UiProvider({ children }: { children: ReactNode }) {
   const [settledRoll, setSettledRoll] = useState<string | null>(null);
   const [resultSeen, setResultSeen] = useState<string | null>(null);
   const [matchWatched, setMatchWatched] = useState<string | null>(null);
-  const [follow, setFollowState] = useState(loadFollow);
-  const [spotlight, setSpotlight] = useState<Spotlight | null>(null);
-  const seenSeq = useRef(view.lastAction?.seq ?? 0); // 접속(재접속) 시점 이전의 행동은 따라가지 않는다
   const [sideTab, setSideTab] = useState<'log' | 'chat'>('log');
   const [chatSeen, setChatSeen] = useState(() => chat.at(-1)?.id ?? 0); // 들어오기 전에 쌓인 글은 읽은 것으로
 
@@ -144,30 +121,10 @@ export function UiProvider({ children }: { children: ReactNode }) {
     setMobileTab('market');
   }, []);
 
-  const setFollow = useCallback((on: boolean) => {
-    setFollowState(on);
-    try {
-      localStorage.setItem(FOLLOW_KEY, on ? 'on' : 'off');
-    } catch {
-      /* 저장 못 해도 이번 세션에는 적용 */
-    }
-  }, []);
-
-  // 다른 참가자의 행동 따라가기: 내 차례가 아닐 때, focus 가 있는 행동(영입·고용·계약·건설·카드 행동·대상 선택)이 들어오면 그 보드로 이동하고 비춘다
-  const lastAction = view.lastAction;
+  // 내 차례가 오면 진행 화면이 먼저 보이게 (사용자 요청 2026-09-22): 다른 참가자의 보드·시장을 보고 있었을 수 있으므로
+  // 모바일은 '진행' 탭으로, PC 는 그 단계의 기본 탭으로 되돌린다
   const me = session?.playerId;
   const myTurn = 'current' in view.phase && view.phase.current === me;
-  useEffect(() => {
-    if (!lastAction || lastAction.seq === seenSeq.current) return;
-    seenSeq.current = lastAction.seq;
-    if (!follow || !lastAction.focus || lastAction.pid === me || myTurn) return;
-    const focus = lastAction.focus;
-    if (focus.board === 'market') showMarket(focus.row);
-    else showBoard(focus.board, lastAction.pid);
-    setSpotlight({ seq: lastAction.seq, pid: lastAction.pid, focus });
-  }, [lastAction, follow, me, myTurn, showBoard, showMarket]);
-  // 내 차례가 오면 진행 화면이 먼저 보이게 (사용자 요청 2026-09-22): 따라가기로 다른 참가자의 보드·시장에 가 있었을 수 있으므로
-  // 모바일은 '진행' 탭으로, PC 는 그 단계의 기본 탭으로 되돌린다. 내 차례를 따라가기(spotlight)가 덮어쓰지 않는 것은 위 효과의 myTurn 검사가 맡는다
   const prevMyTurn = useRef(myTurn);
   useEffect(() => {
     if (myTurn && !prevMyTurn.current) {
@@ -180,17 +137,6 @@ export function UiProvider({ children }: { children: ReactNode }) {
     prevMyTurn.current = myTurn;
   }, [myTurn, view.phase.kind]);
 
-  useEffect(() => {
-    if (!spotlight) return;
-    // 비춘 카드·시설이 화면 밖이면 보이는 곳으로 (탭 이동으로 맨 위로 간 뒤에 실행되도록 한 프레임 뒤)
-    const raf = requestAnimationFrame(() => document.querySelector('.spotlight')?.scrollIntoView({ block: 'center', behavior: reducedMotion() ? 'auto' : 'smooth' }));
-    const t = setTimeout(() => setSpotlight((s) => (s?.seq === spotlight.seq ? null : s)), SPOTLIGHT_MS);
-    return () => {
-      cancelAnimationFrame(raf);
-      clearTimeout(t);
-    };
-  }, [spotlight]);
-
   // 메뉴·탭을 누르면(또는 단계가 바뀌어 탭이 재설정되면) 항상 화면 맨 위로 (사용자 요청 2026-09-22). 페이지는 window 가 스크롤한다(헤더·사이드바는 sticky)
   const firstNav = useRef(true);
   useEffect(() => {
@@ -202,8 +148,8 @@ export function UiProvider({ children }: { children: ReactNode }) {
   }, [selected, mainTab, boardTab, sharedTab, marketTab, mobileTab]);
 
   const value = useMemo<UiStore>(
-    () => ({ selected, selectPlayer, mainTab, setMainTab, boardTab, setBoardTab, sharedTab, setSharedTab, showBoard, showShared, marketTab, setMarketTab, showMarket, mobileTab, setMobileTab, releasing, setReleasing, settledRoll, setSettledRoll, resultSeen, setResultSeen, matchWatched, setMatchWatched, follow, setFollow, spotlight, sideTab, setSideTab, chatSeen, setChatSeen }),
-    [selected, selectPlayer, mainTab, boardTab, sharedTab, showBoard, showShared, marketTab, showMarket, mobileTab, releasing, settledRoll, resultSeen, matchWatched, follow, setFollow, spotlight, sideTab, chatSeen],
+    () => ({ selected, selectPlayer, mainTab, setMainTab, boardTab, setBoardTab, sharedTab, setSharedTab, showBoard, showShared, marketTab, setMarketTab, showMarket, mobileTab, setMobileTab, releasing, setReleasing, settledRoll, setSettledRoll, resultSeen, setResultSeen, matchWatched, setMatchWatched, sideTab, setSideTab, chatSeen, setChatSeen }),
+    [selected, selectPlayer, mainTab, boardTab, sharedTab, showBoard, showShared, marketTab, showMarket, mobileTab, releasing, settledRoll, resultSeen, matchWatched, sideTab, chatSeen],
   );
   return <UiContext.Provider value={value}>{children}</UiContext.Provider>;
 }
@@ -212,22 +158,6 @@ export function useUi(): UiStore {
   const s = useContext(UiContext);
   if (!s) throw new Error('UiProvider missing');
   return s;
-}
-
-// 헤더 토글: 다른 참가자의 행동 따라가기(관전) 켜기/끄기 (알림 토글과 같은 모양)
-export function FollowToggle() {
-  const { follow, setFollow } = useUi();
-  return (
-    <span className="notify-toggles follow-toggle">
-      <button className={`toggle${follow ? ' on' : ''}`} aria-pressed={follow} title={`내 차례가 아닐 때 다른 참가자의 행동을 따라가 그 보드를 보여 줍니다 (${follow ? '켜짐' : '꺼짐'})`} onClick={() => setFollow(!follow)}>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-          <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" />
-          <circle cx="12" cy="12" r="3" />
-        </svg>
-        <span className="label">따라가기</span>
-      </button>
-    </span>
-  );
 }
 
 export function resultKeyOf(week: number, actorId: string | null): string {

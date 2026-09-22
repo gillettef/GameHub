@@ -1,5 +1,5 @@
 import { canUndoTurn } from './state';
-import type { BoardMeeting, GameState, LastAction, LineupSubmission, LogEntry, MatchAftermath, PlayerId, PlayerState, Weekday } from './state';
+import type { BoardMeeting, GameState, LineupSubmission, LogEntry, MatchAftermath, PlayerId, PlayerState, Weekday } from './state';
 import type { ScoreBreakdown } from './scoring';
 import type { DayRestriction } from './types';
 import { restrictionFor } from './weekday';
@@ -45,7 +45,6 @@ export interface GameView {
   deckCounts: Record<'starters' | 'prospects' | 'veterans' | 'staff' | 'sponsors' | 'board' | 'tactics' | 'objectives', number>;
   league: GameState['league'];
   log: LogEntry[];
-  lastAction?: LastAction; // 마지막 행동의 공개 요약 — 다른 참가자의 행동을 따라가기 (ui.tsx)
 }
 
 const LOG_TAIL = 100;
@@ -120,6 +119,5 @@ export function viewFor(state: GameState, me: PlayerId): GameView {
     },
     league: state.league,
     log: state.log.slice(-LOG_TAIL),
-    lastAction: state.lastAction,
   };
 }
