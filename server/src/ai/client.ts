@@ -1,6 +1,6 @@
 /**
  * Python AI 서비스(ai/, 포트 8000) HTTP 클라이언트.
- * AI 응답은 반드시 룰 엔진으로 재검증하고, 타임아웃·오류 시 END_TURN 으로 폴백한다.
+ * AI 응답은 반드시 룰 엔진으로 재검증하고, 타임아웃·오류 시 PASS 로 폴백한다.
  */
 import type { Action, GameState, PlayerId } from '@astraltab/shared';
 
@@ -24,7 +24,7 @@ export async function checkAiHealth(): Promise<'ok' | 'down'> {
 }
 
 export async function requestAiDecision(state: GameState, playerId: PlayerId): Promise<Action> {
-  const fallback: Action = { type: 'END_TURN', playerId };
+  const fallback: Action = { type: 'PASS', playerId };
   try {
     const res = await fetch(`${AI_BASE_URL}/decide`, {
       method: 'POST',
@@ -33,13 +33,13 @@ export async function requestAiDecision(state: GameState, playerId: PlayerId): P
       signal: AbortSignal.timeout(AI_TIMEOUT_MS + 200),
     });
     if (!res.ok) {
-      console.warn(`[ai] 응답 오류 ${res.status}, END_TURN 폴백`);
+      console.warn(`[ai] 응답 오류 ${res.status}, PASS 폴백`);
       return fallback;
     }
     const data = (await res.json()) as AiDecision;
     return data.action;
   } catch (err) {
-    console.warn(`[ai] 호출 실패 (${(err as Error).message}), END_TURN 폴백`);
+    console.warn(`[ai] 호출 실패 (${(err as Error).message}), PASS 폴백`);
     return fallback;
   }
 }

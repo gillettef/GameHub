@@ -1,0 +1,205 @@
+{
+  "roomId": "fixture-room",
+  "phase": "playing",
+  "mapId": "binary-star",
+  "board": {
+    "width": 11,
+    "height": 11,
+    "asteroids": [],
+    "veins": [
+      {
+        "x": 8,
+        "y": 2
+      },
+      {
+        "x": 5,
+        "y": 5
+      },
+      {
+        "x": 2,
+        "y": 8
+      }
+    ]
+  },
+  "roundLimit": 20,
+  "round": 1,
+  "turn": 1,
+  "currentPlayerId": "p0",
+  "players": [
+    {
+      "id": "p0",
+      "nickname": "철수",
+      "kind": "human",
+      "seat": 0,
+      "isReady": true,
+      "deckChoice": {
+        "buildingId": "refinery",
+        "unitId": "battleship",
+        "magicId": "gravity-wave"
+      },
+      "energy": 4,
+      "deck": [
+        "artillery",
+        "turret",
+        "artillery",
+        "extractor",
+        "fighter",
+        "turret",
+        "scout",
+        "meteor",
+        "outpost",
+        "fighter",
+        "refinery",
+        "outpost",
+        "battleship",
+        "extractor",
+        "gravity-wave",
+        "cruiser",
+        "scout",
+        "fighter"
+      ],
+      "hand": [
+        "outpost",
+        "shield",
+        "extractor",
+        "scout",
+        "extractor"
+      ],
+      "discard": [],
+      "alive": true,
+      "eliminatedOrder": null,
+      "passed": false
+    },
+    {
+      "id": "ai-1",
+      "nickname": "AI",
+      "kind": "ai",
+      "seat": 1,
+      "isReady": true,
+      "deckChoice": {
+        "buildingId": "refinery",
+        "unitId": "battleship",
+        "magicId": "gravity-wave"
+      },
+      "energy": 3,
+      "deck": [
+        "shield",
+        "fighter",
+        "scout",
+        "turret",
+        "artillery",
+        "outpost",
+        "meteor",
+        "artillery",
+        "outpost",
+        "scout",
+        "extractor",
+        "battleship",
+        "scout",
+        "fighter",
+        "extractor",
+        "extractor",
+        "outpost",
+        "extractor",
+        "fighter"
+      ],
+      "hand": [
+        "gravity-wave",
+        "refinery",
+        "turret",
+        "cruiser"
+      ],
+      "discard": [],
+      "alive": true,
+      "eliminatedOrder": null,
+      "passed": false
+    }
+  ],
+  "markers": [
+    {
+      "id": "m1",
+      "specId": "core",
+      "kind": "core",
+      "ownerId": "p0",
+      "pos": {
+        "x": 2,
+        "y": 2
+      },
+      "hp": 20,
+      "remainingTurns": null
+    },
+    {
+      "id": "m2",
+      "specId": "core",
+      "kind": "core",
+      "ownerId": "ai-1",
+      "pos": {
+        "x": 8,
+        "y": 8
+      },
+      "hp": 20,
+      "remainingTurns": null
+    }
+  ],
+  "nextMarkerId": 3,
+  "rngSeed": 3279484486,
+  "result": null,
+  "log": [
+    {
+      "turn": 0,
+      "round": 0,
+      "playerId": "p0",
+      "kind": "system",
+      "message": "철수 입장 (좌석 0)"
+    },
+    {
+      "turn": 0,
+      "round": 0,
+      "playerId": "ai-1",
+      "kind": "system",
+      "message": "AI 입장 (좌석 1)"
+    },
+    {
+      "turn": 1,
+      "round": 1,
+      "playerId": null,
+      "kind": "system",
+      "message": "게임 시작: 쌍성 (11×11, 20라운드)"
+    },
+    {
+      "turn": 1,
+      "round": 1,
+      "playerId": "p0",
+      "kind": "system",
+      "message": "철수 코어 (2,2) 배치, 에너지 3, 손패 4장"
+    },
+    {
+      "turn": 1,
+      "round": 1,
+      "playerId": "ai-1",
+      "kind": "system",
+      "message": "AI 코어 (8,8) 배치, 에너지 3, 손패 4장"
+    },
+    {
+      "turn": 1,
+      "round": 1,
+      "playerId": "p0",
+      "kind": "turn",
+      "message": "1턴 시작: 철수 (라운드 1)"
+    },
+    {
+      "turn": 1,
+      "round": 1,
+      "playerId": "p0",
+      "kind": "income",
+      "message": "수입 +1 (코어 +1), 에너지 3 → 4"
+    },
+    {
+      "turn": 1,
+      "round": 1,
+      "playerId": "p0",
+      "kind": "draw",
+      "message": "카드 1장 드로우 (손패 5장, 덱 18장)"
+    }
+  ]
+}

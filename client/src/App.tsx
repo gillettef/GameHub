@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { BOARD_HEIGHT, BOARD_WIDTH } from '@astraltab/shared';
+import { MAPS } from '@astraltab/shared';
 
 interface Health {
   ok: boolean;
@@ -31,9 +31,9 @@ export function App() {
         <dd>{error ?? (health ? '연결됨' : '확인 중')}</dd>
         <dt>AI 서비스</dt>
         <dd>{health ? (health.ai === 'ok' ? '연결됨' : '꺼져 있음') : '확인 중'}</dd>
-        <dt>보드 크기</dt>
+        <dt>맵</dt>
         <dd>
-          {BOARD_WIDTH} × {BOARD_HEIGHT}
+          {MAPS.map((m) => m.name).join(', ')}
         </dd>
       </dl>
     </main>

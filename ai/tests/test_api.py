@@ -9,8 +9,8 @@ client = TestClient(app)
 FIXTURES = Path(__file__).resolve().parents[2] / "shared" / "fixtures"
 
 
-def _started_state() -> dict:
-    return json.loads((FIXTURES / "started-state.json").read_text(encoding="utf-8"))
+def _first_turn() -> dict:
+    return json.loads((FIXTURES / "first-turn.json").read_text(encoding="utf-8"))
 
 
 def test_health() -> None:
@@ -19,13 +19,19 @@ def test_health() -> None:
     assert res.json()["status"] == "ok"
 
 
-def test_decide_returns_action_for_player() -> None:
-    res = client.post("/decide", json={"state": _started_state(), "playerId": "ai-1", "timeLimitMs": 2000})
+def test_decide_returns_legal_action_for_current_player() -> None:
+    res = client.post("/decide", json={"state": _first_turn(), "playerId": "p0", "timeLimitMs": 2000})
     assert res.status_code == 200
     body = res.json()
-    assert body["action"]["playerId"] == "ai-1"
-    assert body["action"]["type"] == "END_TURN"
+    assert body["action"]["playerId"] == "p0"
+    assert body["action"]["type"] in {"PLACE", "PASS"}
     assert body["elapsedMs"] < 2000
+
+
+def test_decide_passes_when_not_my_turn() -> None:
+    res = client.post("/decide", json={"state": _first_turn(), "playerId": "ai-1", "timeLimitMs": 2000})
+    assert res.status_code == 200
+    assert res.json()["action"] == {"type": "PASS", "playerId": "ai-1"}
 
 
 def test_decide_rejects_invalid_payload() -> None:
