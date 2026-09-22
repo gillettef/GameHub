@@ -6,7 +6,7 @@ import type { ClientToServerEvents, ServerToClientEvents } from '@astraltab/shar
 import { createInitialState } from '@astraltab/shared';
 import { checkAiHealth } from './ai/client.js';
 
-const PORT = Number(process.env.PORT ?? 3001);
+const PORT = Number(process.env.PORT ?? 3101);
 
 const app = express();
 app.use(cors());
@@ -28,7 +28,8 @@ io.on('connection', (socket) => {
   // 스캐폴딩 단계: 방 참여 시 빈 초기 상태만 돌려준다. 실제 방 관리는 rooms/ 에서 구현한다.
   socket.on('room:join', ({ roomId }) => {
     socket.join(roomId);
-    socket.emit('game:state', createInitialState(roomId));
+    // 시드는 서버가 발급한다 (엔진은 난수를 만들지 않는다)
+    socket.emit('game:state', createInitialState(roomId, (Date.now() ^ (Math.random() * 0xffffffff)) >>> 0));
   });
 
   socket.on('disconnect', (reason) => {

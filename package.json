@@ -11,6 +11,7 @@
   "scripts": {
     "test": "npm test --workspaces --if-present",
     "typecheck": "tsc --noEmit -p shared && tsc --noEmit -p server && tsc --noEmit -p client",
+    "fixtures": "tsx shared/scripts/write-fixtures.ts",
     "build": "npm run build --workspaces --if-present"
   },
   "devDependencies": {
