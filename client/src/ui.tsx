@@ -165,6 +165,20 @@ export function UiProvider({ children }: { children: ReactNode }) {
     else showBoard(focus.board, lastAction.pid);
     setSpotlight({ seq: lastAction.seq, pid: lastAction.pid, focus });
   }, [lastAction, follow, me, myTurn, showBoard, showMarket]);
+  // 내 차례가 오면 진행 화면이 먼저 보이게 (사용자 요청 2026-09-22): 따라가기로 다른 참가자의 보드·시장에 가 있었을 수 있으므로
+  // 모바일은 '진행' 탭으로, PC 는 그 단계의 기본 탭으로 되돌린다. 내 차례를 따라가기(spotlight)가 덮어쓰지 않는 것은 위 효과의 myTurn 검사가 맡는다
+  const prevMyTurn = useRef(myTurn);
+  useEffect(() => {
+    if (myTurn && !prevMyTurn.current) {
+      const d = defaults(view.phase.kind);
+      setMainTab(d.main);
+      setBoardTab(d.board);
+      setSharedTab(d.shared);
+      setMobileTab('play');
+    }
+    prevMyTurn.current = myTurn;
+  }, [myTurn, view.phase.kind]);
+
   useEffect(() => {
     if (!spotlight) return;
     // 비춘 카드·시설이 화면 밖이면 보이는 곳으로 (탭 이동으로 맨 위로 간 뒤에 실행되도록 한 프레임 뒤)
