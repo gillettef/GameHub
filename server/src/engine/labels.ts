@@ -4,13 +4,25 @@ import type { DieColor, Effect, InfrastructureType, Line, MatchCondition, Player
 
 export const RESOURCE_LABEL: Record<Resource, string> = { money: '돈', fandom: '팬덤', ops: '운영', stamina: '체력' };
 export const SECTOR_LABEL: Record<Sector, string> = { LW: '레프트 윙', CB: '센터 백', CM: '센터 미드', CF: '센터 포워드', RW: '라이트 윙' };
-// 9지역 (p.20): 라인(포메이션의 수비-미드-공격) × 열. 센터 열의 지역 이름은 그 구획 이름과 같다
+// 9지역 (p.20): 라인(포메이션의 수비-미드-공격) × 열. 용어는 사용자 결정(2026-09-22): 이름 "라인-열"(공격-왼쪽 …), 약어는 축구식 포지션 코드
+// (LW CF RW / ML MC MR / DL DC DR) + 골키퍼 GK. 카드의 배치 가능 구획(Sector: LW CB CM CF RW)은 5구획 단위라 그대로 둔다.
 export const LINE_LABEL: Record<Line, string> = { back: '수비', mid: '미드', fwd: '공격' };
 export const REGION_LABEL: Record<Region, string> = {
-  'back-L': '수비 · 레프트 윙', 'back-C': '센터 백', 'back-R': '수비 · 라이트 윙',
-  'mid-L': '미드 · 레프트 윙', 'mid-C': '센터 미드', 'mid-R': '미드 · 라이트 윙',
-  'fwd-L': '공격 · 레프트 윙', 'fwd-C': '센터 포워드', 'fwd-R': '공격 · 라이트 윙',
+  'back-L': '수비-왼쪽', 'back-C': '수비-중앙', 'back-R': '수비-오른쪽',
+  'mid-L': '미드-왼쪽', 'mid-C': '미드-중앙', 'mid-R': '미드-오른쪽',
+  'fwd-L': '공격-왼쪽', 'fwd-C': '공격-중앙', 'fwd-R': '공격-오른쪽',
 };
+export const REGION_CODE: Record<Region, string> = {
+  'back-L': 'DL', 'back-C': 'DC', 'back-R': 'DR',
+  'mid-L': 'ML', 'mid-C': 'MC', 'mid-R': 'MR',
+  'fwd-L': 'LW', 'fwd-C': 'CF', 'fwd-R': 'RW',
+};
+export const GK_CODE = 'GK';
+export const GK_LABEL = '골키퍼';
+// "공격-왼쪽(LW)" — 기록·툴팁·검증 메시지 공용
+export function regionName(r: Region): string {
+  return `${REGION_LABEL[r]}(${REGION_CODE[r]})`;
+}
 export const TOKEN_LABEL: Record<PlayerToken, string> = {
   injury: '부상',
   suspension: '출장정지',
