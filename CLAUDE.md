@@ -269,6 +269,8 @@ notes/    규칙서 원본 및 텍스트 레퍼런스
   소리를 내지 않고**, 고른 뒤에는 "다른 참가자를 기다리는 중… (이름)"만 보인다(사용자 요청, 2026-09).
   **화면 가운데 "내 차례" 배너(`TurnAlert`)는 없앴다**(사용자 요청 2026-09: 없어도 된다) — 내 차례는 참가자 띠의 '행동 중', 주사위 트레이 깜빡임, 소리·탭 제목으로 안다.
   **임원 드래프트와 목표 카드는 확정 막대 없이 카드를 누르면 바로 영입·보관**한다(사용자 요청 2026-09; 목표 카드는 2026-09-22).
+- **메뉴·탭을 누르면 항상 화면 맨 위로**(사용자 요청 2026-09-22): `UiProvider`가 탐색 상태(`selected`·`mainTab`·`boardTab`·`sharedTab`·`marketTab`·`mobileTab`)가 바뀔 때마다
+  `window.scrollTo(0)`(페이지는 window 스크롤, 헤더·사이드바는 sticky). 첫 마운트는 제외, `prefers-reduced-motion`이면 즉시 이동. 따라가기로 비춘 카드는 그 뒤 `scrollIntoView`로 보이게 한다.
 - **다른 참가자의 행동 따라가기**(사용자 요청 2026-09-22): 엔진 `applyAction`이 마지막 행동의 공개 요약 `GameState.lastAction{seq, pid, type, focus}`를 남기고(`actions.ts` `focusOf`:
   영입·방출 → 경기 보드(+선수 instanceId), 고용·카드 행동 → 구단 보드(+직원/임원 index), 스폰서 계약·건설·사무실 → 스타디움 보드(+카드/시설), 대상 선택 → 그 대상; 라인업·목표 카드 같은
   비공개 선택은 focus 없음) 뷰 `view.lastAction`으로 내려간다. `UiProvider`는 **내 차례가 아닐 때** focus 있는 행동이 오면 `showBoard`/`showMarket`으로 그 참가자의 보드·탭으로 이동하고
