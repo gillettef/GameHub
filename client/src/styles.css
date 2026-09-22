@@ -868,6 +868,15 @@ button.chosen, .split button.chosen { border-color: var(--pitch); box-shadow: 0 
 button.ghost.light { color: #fff; border-color: var(--muted); }
 button.ghost.light:hover:not(:disabled) { border-color: #fff; color: #fff; background: transparent; }
 @keyframes confirm-in { from { opacity: 0; transform: translate(-50%, 10px); } to { opacity: 1; transform: translate(-50%, 0); } }
+
+/* ---- 관전 띠 (components/Follow.tsx): 내 차례가 아닐 때 다른 참가자의 마지막 행동 한 줄. 확정 막대와 같은 자리지만 흰 면 + 자리 색 왼쪽 띠로 구분 ---- */
+.follow-bar { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); z-index: 14; display: flex; align-items: center; gap: 12px; max-width: min(720px, calc(100vw - 32px)); background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-left: 4px solid var(--seat, var(--muted)); padding: 8px 10px 8px 12px; border-radius: var(--radius-md); animation: confirm-in var(--motion-standard) var(--ease-enter); }
+.follow-actor { display: inline-flex; align-items: center; gap: 6px; flex: none; }
+.follow-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink-2); }
+.follow-bar .confirm-actions { gap: 4px; }
+.follow-bar button.primary { padding: 5px 10px; }
+.follow-bar button.close { width: 32px; padding: 5px 0; justify-content: center; border-color: transparent; color: var(--muted); }
+.follow-bar button.close:hover:not(:disabled) { color: var(--ink); background: var(--surface-2); }
 .modal-actions { display: flex; justify-content: flex-end; gap: 8px; padding-top: 8px; border-top: 1px solid var(--line); }
 
 
@@ -881,7 +890,7 @@ button.ghost.light:hover:not(:disabled) { border-color: #fff; color: #fff; backg
 .card.spotlight { border-color: var(--pitch); }
 @keyframes spotlight-pulse { 0%, 100% { box-shadow: 0 0 0 3px var(--pitch); } 50% { box-shadow: 0 0 0 6px var(--pitch-tint), 0 0 0 8px var(--pitch); } }
 @media (prefers-reduced-motion: reduce) { .card.spotlight, .infra-slot.spotlight, .stand.spotlight, .billboard.spotlight, .naming-slot.spotlight, .office-floor.spotlight { animation: none; } }
-@media (prefers-reduced-motion: reduce) { .confirm-bar, .tip { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .confirm-bar, .follow-bar, .tip { animation: none; } }
 
 /* ---- 툴팁: `title` 속성을 대신하는 말풍선 (components/Tooltip.tsx). 잉크색 바탕에 작은 꼬리, 위(above)/아래(below) ---- */
 .tip { position: fixed; z-index: 40; transform: translateX(-50%); max-width: min(300px, calc(100vw - 16px)); padding: 7px 11px; background: var(--ink); color: #fff; font-size: var(--fs-body); line-height: 1.45; font-weight: 500; letter-spacing: 0.005em; border-radius: var(--radius); pointer-events: none; white-space: pre-line; word-break: keep-all; overflow-wrap: anywhere; animation: tip-in var(--motion-fast) var(--ease-enter) both; }
@@ -987,8 +996,10 @@ button.ghost.light:hover:not(:disabled) { border-color: #fff; color: #fff; backg
 .nav-dot { position: absolute; top: 8px; left: calc(50% + 8px); width: 9px; height: 9px; border-radius: 50%; background: var(--pitch); box-shadow: 0 0 0 2px var(--surface); animation: nav-dot-pulse 1.4s ease-in-out infinite; }
 @keyframes nav-dot-pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.35); } }
 
-/* 탭 막대 위에 뜨는 것들: 확정 막대, 차례 끝내기 막대, 오류 토스트 */
+/* 탭 막대 위에 뜨는 것들: 확정 막대, 차례 끝내기 막대, 관전 띠, 오류 토스트 */
 .mobile-ui .confirm-bar, .mobile-turnbar { bottom: calc(var(--nav-h) + var(--safe-b) + 10px); width: calc(100vw - 20px); max-width: 560px; justify-content: space-between; gap: 10px; padding: 8px 10px 8px 14px; }
+.mobile-ui .follow-bar { bottom: calc(var(--nav-h) + var(--safe-b) + 10px); width: calc(100vw - 20px); max-width: 560px; gap: 8px; }
+.mobile-ui .follow-bar .follow-text { flex: 1; }
 .mobile-turnbar { position: fixed; left: 50%; transform: translateX(-50%); z-index: 14; display: flex; align-items: center; background: var(--ink); color: #fff; border-radius: var(--radius-md); font-weight: 600; animation: confirm-in var(--motion-standard) var(--ease-enter); }
 .mobile-ui .confirm-label { font-size: var(--fs-body); min-width: 0; }
 .mobile-ui .toast { bottom: calc(var(--nav-h) + var(--safe-b) + 76px); width: max-content; max-width: calc(100vw - 24px); }
@@ -1305,7 +1316,7 @@ th .crest, .crest-title .crest, .score-name .crest { vertical-align: middle; mar
 
 /* 움직임 줄이기: 전환·등장 애니메이션을 끈다 (주사위 회전은 위에서 따로 처리) */
 @media (prefers-reduced-motion: reduce) {
-  .modal, .card.chosen, .card.chosen::after, .confirm-bar, .mobile-turnbar, .tip, .turn-banner { animation: none; }
+  .modal, .card.chosen, .card.chosen::after, .confirm-bar, .mobile-turnbar, .follow-bar, .tip, .turn-banner { animation: none; }
   .card.clickable, button, .tab, input, select { transition: none; }
 }
 
