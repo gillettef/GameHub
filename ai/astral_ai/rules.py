@@ -62,10 +62,19 @@ def const(name: str) -> int:
 
 
 # --- 기하 · 시야 · 영토 (sight.ts) -------------------------------------------
+# 보드는 odd-r 오프셋 육각 좌표계다. 거리는 큐브 좌표로 바꿔 계산한다 (Rules.md 3절).
 
 
-def chebyshev(a: Position, b: Position) -> int:
-    return max(abs(a.x - b.x), abs(a.y - b.y))
+def _to_cube(p: Position) -> tuple[int, int, int]:
+    q = p.x - ((p.y - (p.y & 1)) >> 1)
+    r = p.y
+    return q, r, -q - r
+
+
+def hex_distance(a: Position, b: Position) -> int:
+    aq, ar, as_ = _to_cube(a)
+    bq, br, bs = _to_cube(b)
+    return max(abs(aq - bq), abs(ar - br), abs(as_ - bs))
 
 
 def in_bounds(state: GameState, p: Position) -> bool:
@@ -98,7 +107,7 @@ def markers_of(state: GameState, player_id: str) -> list[Marker]:
 
 def is_in_sight(state: GameState, player_id: str, p: Position) -> bool:
     return any(
-        m.ownerId == player_id and chebyshev(m.pos, p) <= spec(m.specId).sight for m in state.markers
+        m.ownerId == player_id and hex_distance(m.pos, p) <= spec(m.specId).sight for m in state.markers
     )
 
 
@@ -107,7 +116,7 @@ def cells_in_radius(state: GameState, center: Position, radius: int) -> list[Pos
     for y in range(center.y - radius, center.y + radius + 1):
         for x in range(center.x - radius, center.x + radius + 1):
             p = Position(x=x, y=y)
-            if in_bounds(state, p):
+            if in_bounds(state, p) and hex_distance(center, p) <= radius:
                 out.append(p)
     return out
 
@@ -228,7 +237,7 @@ def validate_cell(state: GameState, player_id: str, card_id: str, pos: Position)
         return "occupied"
     sp = spec(card_id)
     infiltrate = "infiltrate" in sp.keywords and any(
-        m.ownerId != player_id and chebyshev(m.pos, pos) <= const("INFILTRATE_RANGE") for m in state.markers
+        m.ownerId != player_id and hex_distance(m.pos, pos) <= const("INFILTRATE_RANGE") for m in state.markers
     )
     if not infiltrate and not is_in_sight(state, player_id, pos):
         return "out-of-sight"
@@ -302,10 +311,10 @@ def _resolve_combat(state: GameState, player_id: str) -> None:
     damage: dict[str, int] = {}
     for a in attackers:
         sp = spec(a.specId)
-        cands = [e for e in enemies if chebyshev(a.pos, e.pos) <= sp.range]
+        cands = [e for e in enemies if hex_distance(a.pos, e.pos) <= sp.range]
         if not cands:
             continue
-        target = min(cands, key=lambda e: (chebyshev(a.pos, e.pos), e.hp, e.pos.y, e.pos.x))
+        target = min(cands, key=lambda e: (hex_distance(a.pos, e.pos), e.hp, e.pos.y, e.pos.x))
         damage[target.id] = damage.get(target.id, 0) + sp.attack
     if not damage:
         return
@@ -323,7 +332,7 @@ def _apply_repair(state: GameState, player_id: str) -> None:
     heal: dict[str, int] = {}
     for r in repairers:
         for m in markers_of(state, player_id):
-            if chebyshev(r.pos, m.pos) <= radius and m.hp < spec(m.specId).hp:
+            if hex_distance(r.pos, m.pos) <= radius and m.hp < spec(m.specId).hp:
                 heal[m.id] = heal.get(m.id, 0) + amount
     for m in state.markers:
         if m.id in heal:
@@ -406,11 +415,11 @@ def _apply_placement(state: GameState, player_id: str, card_id: str, pos: Positi
     if sp.kind == "magic" and eff is not None and eff.kind != "persistent":
         if eff.kind == "damage":
             for m in state.markers:
-                if m.ownerId != player_id and chebyshev(pos, m.pos) <= eff.radius:
+                if m.ownerId != player_id and hex_distance(pos, m.pos) <= eff.radius:
                     m.hp -= eff.amount
         elif eff.kind == "heal":
             for m in state.markers:
-                if m.ownerId == player_id and chebyshev(pos, m.pos) <= eff.radius:
+                if m.ownerId == player_id and hex_distance(pos, m.pos) <= eff.radius:
                     m.hp = min(spec(m.specId).hp, m.hp + eff.amount)
         elif eff.kind == "energy":
             p.energy = min(p.energy + eff.amount, const("ENERGY_CAP"))

@@ -4,7 +4,7 @@
 import type { CardId, GameState, Marker, PlacementError, PlayerId, Position } from '../types/index.js';
 import { ENERGY_CAP, INFILTRATE_RANGE, getSpec, hasSpec } from '../data/index.js';
 import { addLog, damageEnemiesInRadius, healAlliesInRadius, nameOf, removeDestroyed, withMarkers } from './combat.js';
-import { chebyshev, inBounds, isInSight, markerAt, terrainAt } from './sight.js';
+import { hexDistance, inBounds, isInSight, markerAt, terrainAt } from './sight.js';
 import { getPlayer } from './scoring.js';
 
 function fmt(p: Position): string {
@@ -13,7 +13,7 @@ function fmt(p: Position): string {
 
 /** 침투 카드: 적 마커로부터 거리 1 이내 */
 function isAdjacentToEnemy(state: GameState, playerId: PlayerId, p: Position): boolean {
-  return state.markers.some((m) => m.ownerId !== playerId && chebyshev(m.pos, p) <= INFILTRATE_RANGE);
+  return state.markers.some((m) => m.ownerId !== playerId && hexDistance(m.pos, p) <= INFILTRATE_RANGE);
 }
 
 /** 카드·플레이어 조건(손패·에너지)만 검사. 칸 조건은 validateCell */

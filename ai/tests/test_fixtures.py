@@ -83,18 +83,19 @@ def test_first_turn_income_and_draw(started: GameState, first_turn: GameState) -
     """startGame = setupGame + 첫 플레이어 시작 단계. 수입 == compute_income, 드로우 1."""
     p0_before = next(p for p in started.players if p.id == "p0")
     p0_after = next(p for p in first_turn.players if p.id == "p0")
-    assert p0_after.energy - p0_before.energy == compute_income(started, "p0") == 2
+    assert p0_after.energy - p0_before.energy == compute_income(started, "p0") == 1
     assert len(p0_after.hand) == len(p0_before.hand) + 1
     assert p0_after.hand[:4] == p0_before.hand and p0_after.hand[4] == p0_before.deck[0]
 
 
 def test_sight_territory_scores(started: GameState) -> None:
-    assert len(compute_sight_area(started, "p0")) == 25
+    # 코어 시야 1 → 육각 반경 1 = 7칸 (3r(r+1)+1)
+    assert len(compute_sight_area(started, "p0")) == 7
     t = compute_territory(started)
-    assert t.counts == {"p0": 25, "ai-1": 25}
+    assert t.counts == {"p0": 7, "ai-1": 7}
     assert t.owners[2][2] == "p0" and t.owners[5][5] is None
     scores = compute_scores(started)
-    assert scores["p0"].model_dump() == {"territory": 25, "markers": 0, "total": 25}
+    assert scores["p0"].model_dump() == {"territory": 7, "markers": 0, "total": 7}
     assert compute_ranking(started) == ["ai-1", "p0"]  # 동점은 좌석 큰 쪽
 
 

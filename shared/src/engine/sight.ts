@@ -1,12 +1,31 @@
 /**
  * 시야 영역과 영토 (Rules.md 8절, F031). 순수 함수.
  * 순회 순서는 항상 y → x 오름차순 (Rules.md 13절).
+ *
+ * 보드는 odd-r 오프셋 육각 좌표계다: x는 열, y는 행이고 홀수 행은 반 칸 오른쪽으로
+ * 밀린다. 거리는 큐브 좌표로 변환해 계산한다 (Rules.md 3절).
  */
 import type { Board, GameState, Marker, PlayerId, Position, Terrain } from '../types/index.js';
 import { getSpec } from '../data/index.js';
 
-export function chebyshev(a: Position, b: Position): number {
-  return Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y));
+interface Cube {
+  q: number;
+  r: number;
+  s: number;
+}
+
+/** odd-r 오프셋 → 큐브 좌표 */
+function toCube(p: Position): Cube {
+  const q = p.x - ((p.y - (p.y & 1)) >> 1);
+  const r = p.y;
+  return { q, r, s: -q - r };
+}
+
+/** 육각 거리 (Rules.md 3절). 이웃 6칸은 거리 1 */
+export function hexDistance(a: Position, b: Position): number {
+  const ca = toCube(a);
+  const cb = toCube(b);
+  return Math.max(Math.abs(ca.q - cb.q), Math.abs(ca.r - cb.r), Math.abs(ca.s - cb.s));
 }
 
 export function posKey(p: Position): string {
@@ -51,7 +70,7 @@ export function cellsInRadius(board: Board, center: Position, radius: number): P
   for (let y = center.y - radius; y <= center.y + radius; y++) {
     for (let x = center.x - radius; x <= center.x + radius; x++) {
       const p = { x, y };
-      if (inBounds(board, p)) out.push(p);
+      if (inBounds(board, p) && hexDistance(center, p) <= radius) out.push(p);
     }
   }
   return out;
@@ -60,7 +79,7 @@ export function cellsInRadius(board: Board, center: Position, radius: number): P
 /** 칸 P가 플레이어의 시야 영역 안인가 (마커 M 중 dist(M,P) ≤ M.시야 인 것이 하나 이상) */
 export function isInSight(state: GameState, playerId: PlayerId, p: Position): boolean {
   return state.markers.some(
-    (m) => m.ownerId === playerId && chebyshev(m.pos, p) <= getSpec(m.specId).sight,
+    (m) => m.ownerId === playerId && hexDistance(m.pos, p) <= getSpec(m.specId).sight,
   );
 }
 
