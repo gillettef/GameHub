@@ -2,7 +2,6 @@ import type { ReactNode } from 'react';
 import { CommitProvider, ConfirmBar } from './commit';
 import { ActionSidebar } from './components/ActionSidebar';
 import { PlayerBoard } from './components/Boards';
-import { FollowBar } from './components/Follow';
 import { MobileMain, MobileNav, MobileTurnBar } from './components/Mobile';
 import { ActionLog, Header, LeagueBody, MarketBody, PendingModal, PlayerStrip } from './components/Shell';
 import { Tabs } from './components/Tabs';
@@ -109,7 +108,6 @@ function Layout({ phasePanel, subtitle }: { phasePanel: ReactNode; subtitle?: st
           </div>
         )}
         <PendingModal />
-        <FollowBar />
         <ConfirmBar />
         {error && <div className="toast" role="alert">{error}</div>}
       </div>
