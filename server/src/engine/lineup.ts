@@ -1,6 +1,6 @@
 import { activeSide } from './cards';
 import { swapBenchTokens } from './friday';
-import { LINE_LABEL, REGION_LABEL } from './labels';
+import { LINE_LABEL, regionName } from './labels';
 import { lineCounts, regionColumn, regionIssues, regionLimit, regionLine, regionSector } from './match';
 import type { PlayerInstance, UniformToken } from './state';
 import { LINES, REGIONS } from './types';
@@ -95,9 +95,9 @@ export function validatePlacements(field: UniformToken[], roster: PlayerInstance
     }
     regions.push(region);
     const zones = token.cardInstanceId && played.includes(token.cardInstanceId) ? zonesOf(roster, token.cardInstanceId) : null;
-    if (zones && !zones.includes(regionSector(region))) issues.push(`토큰 ${token.number ?? '∅'}: ${REGION_LABEL[region]} 배치 불가`);
+    if (zones && !zones.includes(regionSector(region))) issues.push(`토큰 ${token.number ?? '∅'}: ${regionName(region)} 배치 불가`);
   }
-  return [...issues, ...regionIssues(formation, regions, (r) => REGION_LABEL[r], (l) => `${LINE_LABEL[l]} 라인`)];
+  return [...issues, ...regionIssues(formation, regions, regionName, (l) => `${LINE_LABEL[l]} 라인`)];
 }
 
 // 자동 배치가 실패한 선수를 빼가며 서버가 받아들일 라인업을 만든다

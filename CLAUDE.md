@@ -401,7 +401,10 @@ MVP에서 **단순화 가능**한 부분: 선수/직원/임원/스폰서/이사�
   (`match.ts` `lineCounts`/`regionLimit`/`regionIssues` — 엔진 `submitLineup`과 UI 검증이 같은 함수). `LineupSubmission.placements`는 토큰 id → Region 이고, 경기 판정은 `regionSector`로
   5구획에 묶는다(윙 열은 라인과 무관하게 그 윙 구획, 센터 열은 CB/CM/CF). 선수 카드의 `zones`는 그대로 구획(Sector)이며 그 구획에 속한 지역 어디에나 설 수 있다. `sectorCounts`는 상대 팀 카드 생성의 기본 배분용으로만 남아 있다.
   `autoPlace`: 허용 구획이 적은 출전 선수부터(빈 센터 몫 1자리는 남김), 카드 없는 토큰은 [수비] 면은 수비 라인부터·[공격] 면은 공격 라인부터, 라인 안에서는 센터 → 레프트 윙 → 라이트 윙.
-  배치판(`LineupPitch`)은 위에서부터 공격·미드·수비 라인, 라인 머리에 `n/필요 인원`, 지역마다 `n/정원`. `node scripts/card-audit.mjs only=pitch shot.png`으로 포메이션별 모양을 볼 수 있다.
+  배치판(`LineupPitch`)은 위에서부터 공격·미드·수비 라인, 라인 머리에 `n/필요 인원`, 지역마다 `n/정원`.
+  **지역 용어**(사용자 결정 2026-09-22, `labels.ts` `REGION_LABEL`/`REGION_CODE`/`regionName`): 이름은 "라인-열"(공격-왼쪽 · 미드-중앙 · 수비-오른쪽 …), 약어는
+  공격 LW·CF·RW / 미드 ML·MC·MR / 수비 DL·DC·DR, 골키퍼 GK. 배치판 칸마다 코드(굵게)+이름, 맨 아래 **GK 줄**에 출전 골키퍼(이름·역량·선방, 없으면 "골키퍼 없음 1·선방 1")를
+  보여 준다 — 골키퍼는 토큰이 없어 배치 대상이 아니다. 카드의 배치 가능 구획(Sector `LW CB CM CF RW`)은 5구획 단위라 그대로 둔다. `node scripts/card-audit.mjs only=pitch shot.png`으로 포메이션별 모양을 볼 수 있다.
 - **이사회 투표가 6면 모두 동수인 임원 조합**(예: ex-03·ex-06·ex-11 은 모든 눈이 1-1-1): 재굴림으로는 결정이 나지
   않아 서버가 멈추므로, 그 경우 굴린 눈에서 **첫 임원(먼저 뽑은 임원)의 표**를 따른다(`boardDecision`, 기록에 남김).
   클라이언트 집계도 같은 함수를 쓴다.
