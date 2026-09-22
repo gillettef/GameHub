@@ -46,7 +46,7 @@ export function FridayPrepareScreen() {
 
   const tactic = cards.tactic(tacticCardId || view.self.tacticCards[0]!);
   const formation = tactic.formations[formationIndex] ?? tactic.formations[0]!;
-  const field = useMemo(() => previewField(me.uniforms, played), [me.uniforms, played]);
+  const field = useMemo(() => previewField(me, played), [me, played]);
   const issues = validatePlacements(field, me.roster, played, formation, placements);
 
   // 출전 선수·포메이션·필드 구성이 실제로 바뀔 때만 자동 배치 (서버 브로드캐스트마다 수동 배치를 덮어쓰지 않도록).

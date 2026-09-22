@@ -9,6 +9,7 @@ import { GameError, addLog, currentInjuryDie, emptyMods, getPlayer, nextInTurn, 
 import type { GameState, InjuryDie, LineupSubmission, MatchAftermath, MatchMods, PlayerId, PlayerInstance, PlayerState } from './state';
 import { hasTrait, lineupStaminaCost, traitCount, traitSum } from './traits';
 import { REGIONS, RESOURCES, SECTORS } from './types';
+import { claimUniforms } from './uniforms';
 import { runWeekend } from './weekend';
 import type { Cost, Effect, MatchTiming, OpponentTeamCard, PlayerEffect, Resources, Sector } from './types';
 
@@ -78,6 +79,7 @@ function validateLineup(player: PlayerState, sub: LineupSubmission): { players: 
   // 골키퍼는 1명만 출전한다 (사용자 제보 2026-09: 훈련 전 유망주 골키퍼는 등번호가 없어 번호 중복 검사를 빠져나갔다)
   if (players.filter((inst) => activeSide(inst).goalkeeper).length > 1) throw new GameError('only one goalkeeper can play');
 
+  claimUniforms(player, sub.players); // 같은 등번호 선수가 여럿이면 출전하는 쪽이 토큰을 가진다
   swapBenchTokens(player, sub.players);
   const field = player.uniforms.filter((u) => u.location === 'field');
   const placedIds = Object.keys(sub.placements);

@@ -52,7 +52,7 @@ describe('lineup draft', () => {
     expect(d.step).toBe(0); // 새 주는 첫 스텝부터
     expect(d.stands).toBe(Math.min(standsCount(me), 3)); // 관중석은 매주 최대치로 다시
     const formation = cards.tactic(d.tacticCardId).formations[d.formationIndex]!;
-    expect(validatePlacements(previewField(me.uniforms, d.played), me.roster, d.played, formation, d.placements)).toEqual([]);
+    expect(validatePlacements(previewField(me, d.played), me.roster, d.played, formation, d.placements)).toEqual([]);
   });
 
   it('같은 주의 초안(새로고침)은 스텝과 관중석까지 그대로 되살리고, 다른 판의 초안은 버린다', () => {

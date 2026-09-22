@@ -83,7 +83,7 @@ export function initialDraft(game: string, week: number, me: Me, tacticHand: str
   } else played = affordablePlayers(me);
 
   const formation = formations[formationIndex];
-  const field = previewField(me.uniforms, played);
+  const field = previewField(me, played);
   let placements: Record<string, Region> = {};
   if (formation) {
     const kept = stored?.placements ?? {};

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { cards, effectiveSkill } from './cards';
+import { activeSide, cards, effectiveSkill } from './cards';
+import { addToRoster } from './effects';
 import { GameError } from './state';
 import type { GameState } from './state';
 import { gameAtMonday, seededRng } from './test-utils';
@@ -119,6 +120,20 @@ describe('선수 영입/방출 (p.15~16)', () => {
     inst.tokens.injury = 1;
     const injured = releasePlayer(s0, 'a', inst.instanceId);
     expect(injured.players['a']!.resources.money).toBe(Math.floor(expected / 2));
+  });
+
+  it('방출: 같은 등번호의 남은 선수에게 토큰을 넘긴다 (사용자 제보 2026-09-22)', () => {
+    const s0 = tuesday();
+    const p0 = s0.players['a']!;
+    const a = p0.roster.find((r) => !activeSide(r).goalkeeper && activeSide(r).number !== undefined && activeSide(r).number! <= 11)!;
+    const b = addToRoster(p0, a.cardId); // 같은 등번호 → 토큰은 b 에 연결
+    const number = activeSide(a).number!;
+    expect(p0.uniforms.find((u) => u.number === number)!.cardInstanceId).toBe(b.instanceId);
+
+    const s = releasePlayer(s0, 'a', b.instanceId);
+    const token = s.players['a']!.uniforms.find((u) => u.number === number)!;
+    expect(token.cardInstanceId).toBe(a.instanceId); // 방출된 b 가 아니라 남은 a
+    expect(token.face).toBe(activeSide(a).role);
   });
 });
 
