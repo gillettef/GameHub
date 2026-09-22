@@ -1,0 +1,95 @@
+.inviteRow {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  width: 100%;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: minmax(280px, 1fr) 2fr;
+  gap: var(--space-3);
+}
+
+.seats {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.seat {
+  display: grid;
+  grid-template-columns: 64px 1fr auto auto;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--color-white);
+}
+
+.seatEmpty {
+  background: transparent;
+  border: 1px dashed var(--color-muted);
+  color: var(--color-muted);
+}
+
+.seatNo {
+  font-size: var(--text-small);
+  color: var(--color-muted);
+}
+
+.seatName {
+  font-weight: 600;
+  color: var(--color-heading);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.seatEmpty .seatName {
+  color: var(--color-muted);
+  font-weight: 400;
+}
+
+.badge,
+.badgeMuted {
+  font-size: var(--text-micro);
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  background: var(--color-band-lavender);
+  color: var(--color-heading);
+}
+
+.badgeMuted {
+  background: var(--color-surface);
+  color: var(--color-muted);
+}
+
+.seatState {
+  font-size: var(--text-small);
+  color: var(--color-muted);
+  white-space: nowrap;
+}
+
+.ready {
+  color: var(--color-heading);
+  font-weight: 600;
+}
+
+.readyRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+@media (max-width: 900px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}

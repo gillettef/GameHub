@@ -1,0 +1,127 @@
+/* 맵 피커 · 덱 피커 공용. 비게임 세계(흰 서피스)에서 쓴다 */
+.groupTitle {
+  font-size: var(--text-nav);
+  margin-bottom: var(--space-1);
+}
+
+.groupSub {
+  font-weight: 400;
+  font-size: var(--text-small);
+  color: var(--color-muted);
+}
+
+/* 맵 */
+.mapGroups {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.mapGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.mapCard {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--color-white);
+  border: 2px solid transparent;
+  text-align: left;
+  transition: border-color var(--motion-fast) var(--ease-standard);
+}
+
+.mapCard:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--color-accent) 50%, transparent);
+}
+
+.mapSelected,
+.mapSelected:hover:not(:disabled) {
+  border-color: var(--color-accent);
+  background: var(--color-band-lavender);
+}
+
+.mapDisabled {
+  opacity: 0.6;
+}
+
+.mapDisabled.mapSelected {
+  opacity: 1;
+}
+
+.mapName {
+  font-weight: 700;
+  color: var(--color-heading);
+}
+
+.mapMeta {
+  font-size: var(--text-small);
+  color: var(--color-text);
+}
+
+.mapDesc {
+  font-size: var(--text-small);
+  color: var(--color-muted);
+}
+
+/* 덱 */
+.deck {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.picker {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.pickColumn {
+  padding: var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--color-white);
+}
+
+.cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+.baseDeck {
+  padding: var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--color-white);
+}
+
+.summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--color-heading);
+  margin-bottom: var(--space-2);
+}
+
+.baseCard {
+  position: relative;
+}
+
+.copies {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  font-size: var(--text-small);
+  font-weight: 700;
+  color: var(--color-heading);
+}
+
+@media (max-width: 900px) {
+  .mapGroups,
+  .picker {
+    grid-template-columns: 1fr;
+  }
+}

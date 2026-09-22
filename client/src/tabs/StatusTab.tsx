@@ -80,7 +80,7 @@ export const StatusTab = memo(function StatusTab() {
 
       <section className={styles.panel} aria-label="덱과 버린 카드">
         <h2 className={styles.title}>
-          덱 <span className={styles.sub}>{me.deck.length}장 남음</span>
+          덱 <span className={styles.sub}>{rows.find((r) => r.id === viewerId)?.deckCount ?? me.deck.length}장 남음</span>
         </h2>
         <p className={styles.muted}>덱 순서는 공개되지 않습니다.</p>
         <h3 className={styles.subtitle}>이미 낸 카드 {me.discard.length}장</h3>
