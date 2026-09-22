@@ -10,6 +10,7 @@
 | 문서 | 내용 |
 |---|---|
 | `notes/Rules.md` | **규칙 정본**. 용어, 턴 진행, 배치·시야·전투·점수, 카드 29종, 맵 6개, 상수, 결정성 규칙 |
+| `notes/Rule.pdf` | Rules.md를 플레이어에게 쉬운 말로 풀어 쓴 규칙 설명서(PDF, 표지·차례·카드 표·맵 그림 포함). `scripts/build-rulebook.py`로 생성. 정본이 아니라 파생 문서이므로 Rules.md를 고치면 이 문서도 다시 만든다 |
 | `notes/PRD_AstralTab_*.md` | 제품 목표, 타겟, 시나리오, KPI, 리스크 |
 | `notes/기능명세서_AstralTab_*.md` | F001~F031 기능 ID, 설명, 수락 기준, 중요도 |
 | `notes/구현방법_AstralTab_*.md` | 실시간 동기화, 탭 전환 성능, 시야·전투·점수 판정, 다인전 AI 탐색 |
@@ -262,6 +263,7 @@ AstralTab/
 | 테스트 (Python) | `ai\.venv\Scripts\python -m pytest ai/tests` |
 | 공용 픽스처 재생성 | `npm run fixtures` (TS 엔진 출력 → `shared/fixtures/*.json`. 타입·데이터·엔진을 바꾸면 반드시 실행 후 pytest) |
 | 타입 검사 | `npx tsc --noEmit -p server` / `-p client` / `-p shared` |
+| 플레이어용 규칙 설명서 PDF 재생성 | `python scripts/build-rulebook.py` (reportlab 필요, `pip install reportlab`). Rules.md 를 바꾸면 이 스크립트의 값도 손으로 맞춰 다시 실행한다. 출력: `notes/Rule.pdf` |
 | 커밋 & 푸시 | `/commit-push` |
 
 ## 서브에이전트
