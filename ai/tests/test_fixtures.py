@@ -48,9 +48,9 @@ def scenario() -> dict:
 
 def test_specs_load(started: GameState) -> None:
     specs = load_specs()
-    assert specs.constants["STARTING_ENERGY"] == 3
+    assert specs.constants["STARTING_ENERGY"] == 5
     assert specs.cards["core"].hp == 20
-    assert len([c for c in specs.cards.values() if c.kind != "core"]) == 18
+    assert len([c for c in specs.cards.values() if c.kind != "core"]) == 19
     assert len(specs.maps) == 6
     for p in started.players:
         for card in p.hand + p.deck:
@@ -64,7 +64,7 @@ def test_started_state_matches_ts_schema(started: GameState) -> None:
     assert len(started.players) == 2
     assert [m.kind for m in started.markers] == ["core", "core"]
     for p in started.players:
-        assert p.energy == 3 and len(p.hand) == 4 and len(p.deck) == 19
+        assert p.energy == 5 and len(p.hand) == 4 and len(p.deck) == 21
 
 
 def test_roundtrip_is_lossless(started: GameState, first_turn: GameState) -> None:
@@ -83,7 +83,7 @@ def test_first_turn_income_and_draw(started: GameState, first_turn: GameState) -
     """startGame = setupGame + 첫 플레이어 시작 단계. 수입 == compute_income, 드로우 1."""
     p0_before = next(p for p in started.players if p.id == "p0")
     p0_after = next(p for p in first_turn.players if p.id == "p0")
-    assert p0_after.energy - p0_before.energy == compute_income(started, "p0") == 1
+    assert p0_after.energy - p0_before.energy == compute_income(started, "p0") == 2
     assert len(p0_after.hand) == len(p0_before.hand) + 1
     assert p0_after.hand[:4] == p0_before.hand and p0_after.hand[4] == p0_before.deck[0]
 

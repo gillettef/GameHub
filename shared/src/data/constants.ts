@@ -6,10 +6,10 @@
 export const MIN_PLAYERS = 2;
 export const MAX_PLAYERS = 4;
 
-/** 시작 에너지 */
-export const STARTING_ENERGY = 3;
-/** 코어 기본 수입 (턴당). 건물이 하나도 없어도 굶지 않게 */
-export const CORE_BASE_INCOME = 1;
+/** 시작 에너지 (2026-09-22: 3 → 5) */
+export const STARTING_ENERGY = 5;
+/** 코어 기본 수입 (턴당). 건물이 하나도 없어도 굶지 않게 (2026-09-22: 1 → 2) */
+export const CORE_BASE_INCOME = 2;
 export const CORE_HP = 20;
 export const CORE_SIGHT = 2;
 
@@ -18,7 +18,7 @@ export const INITIAL_HAND_SIZE = 4;
 export const HAND_LIMIT = 5;
 export const DRAW_PER_TURN = 1;
 
-export const BASE_DECK_SIZE = 20;
+export const BASE_DECK_SIZE = 22;
 /** 덱 빌딩에서 고르는 특수 카드 수 (건물·유닛·마법 각 1장) */
 export const SPECIAL_PICKS = 3;
 

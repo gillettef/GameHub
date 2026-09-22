@@ -25,7 +25,7 @@ import {
   validatePlacement,
   withMarkers,
 } from './index.js';
-import { CORE_SIGHT, CORE_SPEC, DECK_SIZE, DEFAULT_DECK_CHOICE, HAND_LIMIT, INITIAL_HAND_SIZE, STARTING_ENERGY, getMap, getSpec } from '../data/index.js';
+import { CORE_BASE_INCOME, CORE_SIGHT, CORE_SPEC, DECK_SIZE, DEFAULT_DECK_CHOICE, HAND_LIMIT, INITIAL_HAND_SIZE, STARTING_ENERGY, getMap, getSpec } from '../data/index.js';
 
 /** 코어 시야 2 → 5×5 칸 */
 const CORE_AREA = (2 * CORE_SIGHT + 1) ** 2;
@@ -165,7 +165,7 @@ describe('로비 · 덱 선택 · 시작 (F016, F018, F019)', () => {
     }
   });
 
-  it('F019: 시작 직후 에너지 3, 손패 4, 덱 19, 같은 시드는 같은 덱 순서', () => {
+  it('F019: 시작 직후 에너지 5, 손패 4, 덱 21, 같은 시드는 같은 덱 순서', () => {
     const s = setup(2);
     for (const p of s.players) {
       expect(p.energy).toBe(STARTING_ENERGY);
@@ -186,9 +186,9 @@ describe('로비 · 덱 선택 · 시작 (F016, F018, F019)', () => {
     expect(s.players[0]!.deck).not.toEqual(s.players[1]!.deck);
   });
 
-  it('첫 턴에도 시작 단계를 수행한다: 첫 플레이어 수입 +1, 드로우 1', () => {
+  it('첫 턴에도 시작 단계를 수행한다: 첫 플레이어 수입 +코어 기본 수입, 드로우 1', () => {
     const s = startGame(readyLobby(2));
-    expect(player(s, 'p0').energy).toBe(STARTING_ENERGY + 1);
+    expect(player(s, 'p0').energy).toBe(STARTING_ENERGY + CORE_BASE_INCOME);
     expect(player(s, 'p0').hand).toHaveLength(INITIAL_HAND_SIZE + 1);
     expect(player(s, 'p1').energy).toBe(STARTING_ENERGY);
     expect(player(s, 'p1').hand).toHaveLength(INITIAL_HAND_SIZE);
@@ -314,9 +314,9 @@ describe('배치 검증 (F022)', () => {
 });
 
 describe('수입 (F020) · 드로우', () => {
-  it('수입 = 코어 1 + 건물 생산, 광맥 위 건물 +1, 유닛은 보너스 없음', () => {
+  it('수입 = 코어 기본 수입 + 건물 생산, 광맥 위 건물 +1, 유닛은 보너스 없음', () => {
     let s = setup(2);
-    expect(computeIncome(s, 'p0').total).toBe(1);
+    expect(computeIncome(s, 'p0').total).toBe(CORE_BASE_INCOME);
     s = addMarkers(
       s,
       marker('p0', 'extractor', { x: 2, y: 8 }), // 광맥
@@ -326,14 +326,14 @@ describe('수입 (F020) · 드로우', () => {
       marker('p1', 'extractor', { x: 9, y: 9 }),
     );
     const inc = computeIncome(s, 'p0');
-    expect(inc.total).toBe(1 + 2 + 1 + 4);
+    expect(inc.total).toBe(CORE_BASE_INCOME + 2 + 1 + 4);
     expect(inc.items.map((i) => [i.name, i.amount, i.vein])).toEqual([
-      ['코어', 1, false],
+      ['코어', CORE_BASE_INCOME, false],
       ['채굴기', 1, false],
       ['정제소', 4, true],
       ['채굴기', 2, true],
     ]);
-    expect(computeIncome(s, 'p1').total).toBe(2);
+    expect(computeIncome(s, 'p1').total).toBe(CORE_BASE_INCOME + 1);
   });
 
   it('턴 시작 시 수입이 에너지에 더해지고 내역이 로그에 남는다', () => {
@@ -342,7 +342,7 @@ describe('수입 (F020) · 드로우', () => {
     s = { ...s, currentPlayerId: 'p1', turn: 2 };
     const t = advanceTurn(withHand(s, 'p1', [], 3)); // → p0 턴
     expect(t.currentPlayerId).toBe('p0');
-    expect(player(t, 'p0').energy).toBe(STARTING_ENERGY + 3);
+    expect(player(t, 'p0').energy).toBe(STARTING_ENERGY + CORE_BASE_INCOME + 2);
     const log = t.log.find((l) => l.kind === 'income' && l.playerId === 'p0')!;
     expect(log.message).toContain('채굴기(광맥) +2');
   });
@@ -351,13 +351,13 @@ describe('수입 (F020) · 드로우', () => {
     let s = setup(2);
     // p0 전초기지를 광맥 (5,5) 에 (생산 0 + 광맥 1), p1 포격함(공 3, 사거리 3) 이 (7,7) 에서 노린다
     s = addMarkers(s, marker('p0', 'outpost', { x: 5, y: 5 }, 3), marker('p1', 'artillery', { x: 7, y: 7 }));
-    expect(computeIncome(s, 'p0').total).toBe(2);
+    expect(computeIncome(s, 'p0').total).toBe(CORE_BASE_INCOME + 1);
     const territoryBefore = computeTerritory(s).counts.p0!;
     const sightBefore = computeSightArea(s, 'p0').length;
     // p0 패스 → p1 턴 시작 전투에서 전초기지 파괴
     const t = ok(withHand(s, 'p0', [], 3), pass('p0'));
     expect(t.markers.some((m) => m.specId === 'outpost')).toBe(false);
-    expect(computeIncome(t, 'p0').total).toBe(1);
+    expect(computeIncome(t, 'p0').total).toBe(CORE_BASE_INCOME);
     expect(computeTerritory(t).counts.p0!).toBeLessThan(territoryBefore);
     expect(computeSightArea(t, 'p0').length).toBeLessThan(sightBefore);
     expect(computeSightArea(t, 'p0')).toHaveLength(CORE_AREA);

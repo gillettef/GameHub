@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_DECK_CHOICE, INITIAL_HAND_SIZE, STARTING_ENERGY, getMap, legalCells } from '@astraltab/shared';
+import { CORE_BASE_INCOME, DECK_SIZE, DEFAULT_DECK_CHOICE, INITIAL_HAND_SIZE, STARTING_ENERGY, getMap, legalCells } from '@astraltab/shared';
 import { buildCells, buildHand, buildPlayerSummaries, legalCellKeys } from './derived';
 import { applyHotseatAction, createHotseatGame, hotseatPlayerId } from './hotseat';
 
@@ -22,7 +22,7 @@ describe('핫시트 어댑터', () => {
     expect(s.markers.filter((m) => m.kind === 'core')).toHaveLength(2);
     // 첫 플레이어는 수입 +1, 드로우 +1 을 이미 받았다
     const first = s.players[0]!;
-    expect(first.energy).toBe(STARTING_ENERGY + 1);
+    expect(first.energy).toBe(STARTING_ENERGY + CORE_BASE_INCOME);
     expect(first.hand).toHaveLength(INITIAL_HAND_SIZE + 1);
     const second = s.players[1]!;
     expect(second.energy).toBe(STARTING_ENERGY);
@@ -138,9 +138,9 @@ describe('화면 파생값', () => {
     expect(rows.map((r) => r.seat)).toEqual([0, 1]);
     for (const r of rows) {
       expect(r.total).toBe(r.territory + r.markerScore);
-      expect(r.income).toBe(1);
+      expect(r.income).toBe(CORE_BASE_INCOME);
       expect(r.markerCount).toBe(1);
-      expect(r.deckCount + r.handCount + r.discardCount).toBe(23);
+      expect(r.deckCount + r.handCount + r.discardCount).toBe(DECK_SIZE);
     }
     expect(rows[0]!.isCurrent).toBe(true);
   });
