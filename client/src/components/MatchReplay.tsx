@@ -87,7 +87,8 @@ export function MatchReplay({ actor, m, initialIndex = 0, autoplay = true }: { a
       setPlaying(false);
       return;
     }
-    const t = setTimeout(() => setIndex((i) => Math.min(last, i + 1)), index === 0 ? 1400 : 2200);
+    // 킥오프 1.2초 + 스텝 1.8초 × 12 ≈ 23초. 봇은 이 시간(driver.ts watchMs 24초)을 기다렸다가 주사위를 굴린다
+    const t = setTimeout(() => setIndex((i) => Math.min(last, i + 1)), index === 0 ? 1200 : 1800);
     return () => clearTimeout(t);
   }, [playing, index, last]);
 
