@@ -10,6 +10,7 @@ export type MarkerId = string;
 export type CardId = string;
 export type MapId = string;
 
+/** odd-r 오프셋 육각 좌표. x는 열, y는 행이며 홀수 행은 반 칸 오른쪽으로 밀린다 (Rules.md 3절) */
 export interface Position {
   x: number;
   y: number;
@@ -42,12 +43,12 @@ export interface CardSpec {
   special: boolean;
   /** 배치 비용(에너지). 코어는 0 */
   cost: number;
-  /** 시야 반경(체비쇼프). 즉발 마법은 0 */
+  /** 시야 반경(육각 거리). 즉발 마법은 0 */
   sight: number;
   /** 최대 체력. 즉발 마법은 0 */
   hp: number;
   attack: number;
-  /** 사거리(체비쇼프). 공격력이 없으면 0 */
+  /** 사거리(육각 거리). 공격력이 없으면 0 */
   range: number;
   /** 턴당 생산 에너지. 건물·코어만 > 0 */
   production: number;
@@ -79,7 +80,7 @@ export interface MapDef {
   name: string;
   /** 이 맵의 정원. 로비 인원과 같아야 시작할 수 있다 */
   players: number;
-  /** 한 변의 길이 (정사각) */
+  /** 한 변의 길이. 보드는 width=height=size 인 직사각 육각 판(odd-r 오프셋) */
   size: number;
   roundLimit: number;
   /** 좌석 순서대로 코어 좌표 */

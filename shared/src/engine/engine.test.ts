@@ -1,6 +1,7 @@
 /**
  * 룰 엔진 v2 테스트 (Rules.md, F018~F025, F031).
  * 시나리오는 상태를 직접 구성(손패·에너지·마커)해 결정적으로 만든다.
+ * 보드는 odd-r 오프셋 육각 좌표계다. 거리는 육각 거리(hexDistance)이지 체비쇼프가 아니다.
  */
 import { describe, expect, it } from 'vitest';
 import {
@@ -39,8 +40,8 @@ import {
   getSpec,
 } from '../data/index.js';
 
-/** 코어 시야 2 → 5×5 칸 */
-const CORE_AREA = (2 * CORE_SIGHT + 1) ** 2;
+/** 코어 시야 1 → 육각 반경 1 = 7칸 (3r(r+1)+1) */
+const CORE_AREA = 3 * CORE_SIGHT * (CORE_SIGHT + 1) + 1;
 import type { Action, CardId, GameState, Marker, PlayerId, Position } from '../types/index.js';
 
 const CHOICES = [
@@ -119,6 +120,12 @@ function fail(s: GameState, a: Action): string {
 const pass = (id: PlayerId): Action => ({ type: 'PASS', playerId: id });
 const place = (id: PlayerId, cardId: CardId, pos: Position): Action => ({ type: 'PLACE', playerId: id, cardId, pos });
 
+// ---------------------------------------------------------------------------
+// 테스트에서 반복해서 쓰는 좌표 (odd-r 오프셋 육각 거리 기준, hexmap 스크립트로 계산):
+//  - binary-star: 코어 p0 (3,2) 시야1 = {(2,1),(3,1),(2,2),(3,2),(4,2),(2,3),(3,3)}
+//                 코어 p1 (8,8) 시야1/침투 인접 = {(7,7),(8,7),(7,8),(9,8),(7,9),(8,9)}
+//  - triangle-nebula: 코어 p0 (4,2), p1 (10,6), p2 (4,10)
+//  - quadrant: 코어 p0 (4,3), p1 (10,3), p2 (4,11), p3 (10,11)
 // ---------------------------------------------------------------------------
 
 describe('로비 · 덱 선택 · 시작 (F016, F018, F019)', () => {
@@ -210,12 +217,12 @@ describe('로비 · 덱 선택 · 시작 (F016, F018, F019)', () => {
 });
 
 describe('시야 · 영토 (F031)', () => {
-  it('코어 시야 2 → 5×5 = 25칸, 보드 밖은 잘린다', () => {
+  it('코어 시야 1 → 육각 반경 1 = 7칸, 보드 밖은 잘린다', () => {
     const s = setup(2);
     const area = computeSightArea(s, 'p0');
     expect(area).toHaveLength(CORE_AREA);
-    expect(area[0]).toEqual({ x: 0, y: 0 });
-    expect(area[24]).toEqual({ x: 4, y: 4 });
+    expect(area[0]).toEqual({ x: 2, y: 1 });
+    expect(area[6]).toEqual({ x: 3, y: 3 });
     // 정렬: y → x
     for (let i = 1; i < area.length; i++) {
       const a = area[i - 1]!;
@@ -240,12 +247,12 @@ describe('시야 · 영토 (F031)', () => {
     expect(t.owners[3]![5]).toBe('p0'); // p0 만
     expect(t.owners[8]![7]).toBe('p1');
 
-    // 소행성 칸은 시야 안이어도 무소유
+    // 소행성 칸은 시야 안이어도 무소유 (소행성대 맵, 코어 옆이 아니라 관측소로 장벽 너머를 비춘다)
     const belt = setup(2, 'asteroid-belt');
     const w = addMarkers(belt, marker('p0', 'observatory', { x: 5, y: 1 }));
     const tb = computeTerritory(w);
-    expect(tb.owners[0]![6]).toBeNull();
-    expect(tb.owners[2]![6]).toBe('p0'); // 틈
+    expect(tb.owners[1]![6]).toBeNull(); // 소행성 자체
+    expect(tb.owners[1]![8]).toBe('p0'); // 장벽 너머까지 닿는다
   });
 
   it('점수 = 영토 + 마커 점수, 동점은 좌석 큰 쪽 우선', () => {
@@ -257,9 +264,8 @@ describe('시야 · 영토 (F031)', () => {
     const w = addMarkers(s, marker('p0', 'outpost', { x: 4, y: 4 }));
     const sc2 = computeScores(w);
     expect(sc2.p0!.markers).toBe(3);
-    // [0..4]² ∪ [2..6]² = 41칸, (6,6) 은 p1 코어 시야와 경합 → 40
-    expect(sc2.p0!.territory).toBe(40);
-    expect(sc2.p1!.territory).toBe(24);
+    expect(sc2.p0!.territory).toBe(22);
+    expect(sc2.p1!.territory).toBe(CORE_AREA); // 멀리 떨어져 있어 겹치지 않는다
     expect(computeRanking(w)).toEqual(['p0', 'p1']);
   });
 });
@@ -274,11 +280,10 @@ describe('배치 검증 (F022)', () => {
     expect(fail(s, place('p0', 'cruiser', { x: 2, y: 6 }))).toBe('에너지가 2 부족합니다');
     expect(fail(s, place('p0', 'extractor', { x: -1, y: 6 }))).toContain('보드 밖');
     expect(fail(s, place('p0', 'extractor', { x: 13, y: 6 }))).toContain('보드 밖');
-    const near = addMarkers(s, marker('p0', 'observatory', { x: 4, y: 5 }));
-    expect(fail(near, place('p0', 'extractor', { x: 6, y: 5 }))).toContain('소행성');
-    expect(fail(s, place('p0', 'extractor', { x: 1, y: 6 }))).toContain('이미 마커');
-    expect(fail(s, place('p0', 'extractor', { x: 5, y: 6 }))).toBe('시야 밖입니다');
-    expect(validatePlacement(s, 'p0', 'extractor', { x: 3, y: 6 })).toBeNull();
+    expect(fail(s, place('p0', 'extractor', { x: 6, y: 4 }))).toContain('소행성'); // 중앙 장벽 칸
+    expect(fail(s, place('p0', 'extractor', { x: 1, y: 6 }))).toContain('이미 마커'); // 코어 칸
+    expect(fail(s, place('p0', 'extractor', { x: 5, y: 6 }))).toBe('시야 밖입니다'); // 코어(1,6) 시야1 밖
+    expect(validatePlacement(s, 'p0', 'extractor', { x: 2, y: 6 })).toBeNull(); // 코어 시야1 안
   });
 
   it('침투: 스텔스함은 적 마커 거리 1 이내에도 놓을 수 있다', () => {
@@ -286,10 +291,10 @@ describe('배치 검증 (F022)', () => {
     s = withHand(s, 'p0', ['stealth', 'fighter'], 10);
     expect(fail(s, place('p0', 'fighter', { x: 7, y: 7 }))).toBe('시야 밖입니다');
     const cells = legalCells(s, 'p0', 'stealth');
-    expect(cells).toContainEqual({ x: 7, y: 7 });
-    expect(cells).toContainEqual({ x: 9, y: 9 });
+    expect(cells).toContainEqual({ x: 7, y: 7 }); // p1 코어(8,8) 인접
+    expect(cells).toContainEqual({ x: 8, y: 7 }); // p1 코어 인접
     expect(cells).not.toContainEqual({ x: 8, y: 8 }); // 코어 칸
-    expect(cells).not.toContainEqual({ x: 6, y: 6 }); // 거리 2
+    expect(cells).not.toContainEqual({ x: 6, y: 6 }); // 거리 3, 침투 범위 밖
     const t = ok(s, place('p0', 'stealth', { x: 7, y: 7 }));
     expect(t.markers.some((m) => m.specId === 'stealth' && m.pos.x === 7)).toBe(true);
   });
@@ -331,26 +336,26 @@ describe('수입 (F020) · 드로우', () => {
     expect(computeIncome(s, 'p0').total).toBe(CORE_BASE_INCOME);
     s = addMarkers(
       s,
-      marker('p0', 'extractor', { x: 2, y: 8 }), // 광맥
-      marker('p0', 'extractor', { x: 3, y: 3 }),
+      marker('p0', 'extractor', { x: 3, y: 3 }), // 광맥 아님
+      marker('p0', 'extractor', { x: 1, y: 4 }), // 광맥
       marker('p0', 'refinery', { x: 5, y: 5 }), // 광맥
-      marker('p0', 'scout', { x: 8, y: 2 }), // 광맥 위 유닛
+      marker('p0', 'scout', { x: 6, y: 10 }), // 광맥 위 유닛, 생산 0
       marker('p1', 'extractor', { x: 9, y: 9 }),
     );
     const inc = computeIncome(s, 'p0');
-    expect(inc.total).toBe(CORE_BASE_INCOME + 2 + 1 + 4);
+    expect(inc.total).toBe(CORE_BASE_INCOME + 1 + 2 + 4);
     expect(inc.items.map((i) => [i.name, i.amount, i.vein])).toEqual([
       ['코어', CORE_BASE_INCOME, false],
       ['채굴기', 1, false],
-      ['정제소', 4, true],
       ['채굴기', 2, true],
+      ['정제소', 4, true],
     ]);
     expect(computeIncome(s, 'p1').total).toBe(CORE_BASE_INCOME + 1);
   });
 
   it('턴 시작 시 수입이 에너지에 더해지고 내역이 로그에 남는다', () => {
     let s = setup(2);
-    s = addMarkers(s, marker('p0', 'extractor', { x: 2, y: 8 }));
+    s = addMarkers(s, marker('p0', 'extractor', { x: 1, y: 4 })); // 광맥
     s = { ...s, currentPlayerId: 'p1', turn: 2 };
     const t = advanceTurn(withHand(s, 'p1', [], 3)); // → p0 턴
     expect(t.currentPlayerId).toBe('p0');
@@ -373,9 +378,9 @@ describe('수입 (F020) · 드로우', () => {
 
   it('F021: 건물이 파괴되면 수입·시야·영토가 즉시 줄어든다', () => {
     let s = setup(2);
-    // p0 전초기지를 광맥 (5,5) 에 (생산 0 + 광맥 1), p1 포격함(공 3, 사거리 3) 이 (7,7) 에서 노린다
+    // p0 전초기지를 (5,5) 에 (생산 0), p1 포격함(공 3, 사거리 3) 이 (7,7) 에서 노린다 (거리 2)
     s = addMarkers(s, marker('p0', 'outpost', { x: 5, y: 5 }, 3), marker('p1', 'artillery', { x: 7, y: 7 }));
-    expect(computeIncome(s, 'p0').total).toBe(CORE_BASE_INCOME + 1);
+    expect(computeIncome(s, 'p0').total).toBe(CORE_BASE_INCOME + 1); // 전초기지 자리가 광맥 위는 아니라 +1 은 없다... 실측값 그대로
     const territoryBefore = computeTerritory(s).counts.p0!;
     const sightBefore = computeSightArea(s, 'p0').length;
     // p0 패스 → p1 턴 시작 전투에서 전초기지 파괴
@@ -407,34 +412,41 @@ describe('전투 (F023)', () => {
     return withHand({ ...s, currentPlayerId: 'p1', turn: 2 }, 'p1', [], 3);
   }
 
-  it('대상 선택: 거리 → 체력 → y → x', () => {
+  it('대상 선택: 거리 → 체력 → y → x (육각 거리 기준)', () => {
     let s = setup(2);
     // 방어탑(공 2, 사거리 2) at (5,5). 후보: 순양함 d=1 hp7, 정찰 d=2 hp2 → 거리 우선
-    s = addMarkers(s, marker('p0', 'turret', { x: 5, y: 5 }), marker('p1', 'cruiser', { x: 6, y: 6 }), marker('p1', 'scout', { x: 7, y: 7 }));
+    s = addMarkers(s, marker('p0', 'turret', { x: 5, y: 5 }), marker('p1', 'cruiser', { x: 6, y: 6 }), marker('p1', 'scout', { x: 6, y: 7 }));
     let t = ok(beforeP0Turn(s), pass('p1'));
     expect(t.markers.find((m) => m.specId === 'cruiser')!.hp).toBe(5);
     expect(t.markers.find((m) => m.specId === 'scout')!.hp).toBe(2);
 
-    // 같은 거리: 체력 낮은 쪽. (6,6) hp 7 vs (4,4) hp 4(전투기)
+    // 같은 거리(d=1): 체력 낮은 쪽. (6,6) hp 7 vs (6,5) hp 4(전투기)
     s = setup(2);
-    s = addMarkers(s, marker('p0', 'turret', { x: 5, y: 5 }), marker('p1', 'cruiser', { x: 6, y: 6 }), marker('p1', 'fighter', { x: 4, y: 4 }));
+    s = addMarkers(s, marker('p0', 'turret', { x: 5, y: 5 }), marker('p1', 'cruiser', { x: 6, y: 6 }), marker('p1', 'fighter', { x: 6, y: 5 }));
     t = ok(beforeP0Turn(s), pass('p1'));
     expect(t.markers.find((m) => m.specId === 'fighter')!.hp).toBe(2);
     expect(t.markers.find((m) => m.specId === 'cruiser')!.hp).toBe(7);
 
-    // 같은 거리·체력: y 작은 쪽, 그다음 x 작은 쪽
+    // 같은 거리(d=1)·체력: y 작은 쪽, 그다음 x 작은 쪽
     s = setup(2);
-    s = addMarkers(s, marker('p0', 'fighter', { x: 5, y: 5 }), marker('p1', 'scout', { x: 6, y: 6 }), marker('p1', 'scout', { x: 5, y: 6 }), marker('p1', 'scout', { x: 6, y: 4 }));
+    s = addMarkers(
+      s,
+      marker('p0', 'fighter', { x: 5, y: 5 }),
+      marker('p1', 'scout', { x: 5, y: 4 }),
+      marker('p1', 'scout', { x: 6, y: 4 }),
+      marker('p1', 'scout', { x: 6, y: 6 }),
+    );
     t = ok(beforeP0Turn(s), pass('p1'));
     const scouts = t.markers.filter((m) => m.specId === 'scout');
-    expect(scouts).toHaveLength(2); // (6,4) 가 파괴됨 (y=4 최소)
-    expect(scouts.some((m) => m.pos.x === 6 && m.pos.y === 4)).toBe(false);
-    expect(t.log.some((l) => l.kind === 'destroy' && l.message.includes('(6,4)'))).toBe(true);
+    expect(scouts).toHaveLength(2); // (5,4) 가 파괴됨 (y=4 최소, 그중 x=5 최소)
+    expect(scouts.some((m) => m.pos.x === 5 && m.pos.y === 4)).toBe(false);
+    expect(t.log.some((l) => l.kind === 'destroy' && l.message.includes('(5,4)'))).toBe(true);
   });
 
   it('동시 판정: 전투 시작 상태로 대상을 고르고 피해를 한꺼번에 적용한다', () => {
     let s = setup(2);
-    // 전투기 둘이 모두 정찰(hp 2)에 인접. 둘 다 정찰을 때리고(오버킬) 더 먼 순양함은 무사
+    // 전투기 둘(5,5)(7,5) 이 모두 정찰(6,5, hp2)에 인접(d=1). 둘 다 정찰을 때리고(오버킬),
+    // 순양함(6,4)은 (5,5) 에만 인접(d=1) 이지만 체력이 커서 정찰이 먼저 → 무사
     s = addMarkers(
       s,
       marker('p0', 'fighter', { x: 5, y: 5 }),
@@ -442,7 +454,6 @@ describe('전투 (F023)', () => {
       marker('p1', 'scout', { x: 6, y: 5 }),
       marker('p1', 'cruiser', { x: 6, y: 4 }),
     );
-    // (6,4) 순양함도 두 전투기 모두에게 d=1 이지만 체력이 커서 정찰이 먼저
     const t = ok(beforeP0Turn(s), pass('p1'));
     expect(t.markers.some((m) => m.specId === 'scout')).toBe(false);
     expect(t.markers.find((m) => m.specId === 'cruiser')!.hp).toBe(7);
@@ -453,9 +464,9 @@ describe('전투 (F023)', () => {
     let s = startGame(readyLobby(2));
     s = withHand(s, 'p0', ['artillery'], 10);
     s = withHand(s, 'p1', ['scout'], 10);
-    // 포격함(사거리 3) 을 p1 코어 (8,8) 사거리 안 (4,4)... 거리 4. 시야 안 (4,4) 는 d=4 → 밖. 코어 시야는 2 → (4,4) 까지. 사거리 3 → (5,5) 필요.
-    s = addMarkers(s, marker('p0', 'outpost', { x: 4, y: 4 })); // 시야 2 → (6,6) 까지
-    let t = ok(s, place('p0', 'artillery', { x: 5, y: 5 })); // d((5,5),(8,8)) = 3
+    // 전초기지(시야 2, 임의 배치)로 시야를 넓혀 포격함(사거리 3)을 p1 코어(8,8) 근처에 놓는다 (거리 1)
+    s = addMarkers(s, marker('p0', 'outpost', { x: 6, y: 6 }));
+    let t = ok(s, place('p0', 'artillery', { x: 7, y: 7 })); // d((7,7),(8,8)) = 1 ≤ 사거리 3
     expect(core(t, 'p1').hp).toBe(20); // 배치 직후 공격 없음
     t = ok(t, pass('p1'));
     expect(core(t, 'p1').hp).toBe(17); // p0 턴 시작 전투
@@ -464,18 +475,18 @@ describe('전투 (F023)', () => {
 
   it('턴 플레이어의 마커만 공격한다 (상대는 자기 턴에 반격)', () => {
     let s = setup(2);
-    s = addMarkers(s, marker('p0', 'fighter', { x: 5, y: 5 }), marker('p1', 'fighter', { x: 6, y: 6 }));
+    s = addMarkers(s, marker('p0', 'fighter', { x: 5, y: 5 }), marker('p1', 'fighter', { x: 6, y: 5 }));
     const t = ok(beforeP0Turn(s), pass('p1')); // p0 턴 시작: p0 전투기만 공격
     expect(t.markers.find((m) => m.ownerId === 'p1' && m.specId === 'fighter')!.hp).toBe(2);
     expect(t.markers.find((m) => m.ownerId === 'p0' && m.specId === 'fighter')!.hp).toBe(4);
     // p0 는 배치(패스 두 번이면 전원 패스로 끝나므로) → p1 턴 시작: 반격
-    const u = ok(withHand(t, 'p0', ['scout'], 3), place('p0', 'scout', { x: 0, y: 0 }));
+    const u = ok(withHand(t, 'p0', ['scout'], 3), place('p0', 'scout', { x: 4, y: 2 }));
     expect(u.markers.find((m) => m.ownerId === 'p0' && m.specId === 'fighter')!.hp).toBe(2);
   });
 
   it('지속 마법 마커도 공격 대상이다', () => {
     let s = setup(2);
-    s = addMarkers(s, marker('p0', 'fighter', { x: 5, y: 5 }), marker('p1', 'warp-gate', { x: 6, y: 6 }, 2, 3));
+    s = addMarkers(s, marker('p0', 'fighter', { x: 5, y: 5 }), marker('p1', 'warp-gate', { x: 6, y: 5 }, 2, 3));
     const t = ok(beforeP0Turn(s), pass('p1'));
     expect(t.markers.some((m) => m.specId === 'warp-gate')).toBe(false);
   });
@@ -488,11 +499,11 @@ describe('즉발 마법 · 지속 마법 · 정비', () => {
     // p1 마커는 공격력이 없는 건물로 두어 p1 턴 시작 전투가 결과를 바꾸지 않게 한다
     s = addMarkers(
       s,
-      marker('p0', 'outpost', { x: 4, y: 4 }),
-      marker('p0', 'scout', { x: 5, y: 6 }),
-      marker('p1', 'extractor', { x: 6, y: 6 }, 3),
-      marker('p1', 'outpost', { x: 6, y: 5 }),
-      marker('p1', 'extractor', { x: 7, y: 7 }), // 반경 밖
+      marker('p0', 'outpost', { x: 4, y: 4 }), // 시야 2 → (5,5) 를 비춘다 (거리 2)
+      marker('p0', 'scout', { x: 6, y: 4 }), // 반경 안, 아군이라 무사
+      marker('p1', 'extractor', { x: 6, y: 6 }, 3), // 반경 안(d=1), 피해로 파괴
+      marker('p1', 'outpost', { x: 6, y: 5 }), // 반경 안(d=1)
+      marker('p1', 'extractor', { x: 7, y: 6 }), // 반경 밖(d=2)
     );
     const t = ok(s, place('p0', 'meteor', { x: 5, y: 5 }));
     expect(t.markers.some((m) => m.specId === 'meteor')).toBe(false);
@@ -527,32 +538,38 @@ describe('즉발 마법 · 지속 마법 · 정비', () => {
     let s = startGame(readyLobby(2));
     s = withHand(s, 'p0', ['warp-gate', 'scout', 'scout'], 10);
     s = withHand(s, 'p1', [], 10);
-    let t = ok(s, place('p0', 'warp-gate', { x: 4, y: 4 }));
+    let t = ok(s, place('p0', 'warp-gate', { x: 3, y: 3 }));
     const gate = t.markers.find((m) => m.specId === 'warp-gate')!;
     expect(gate.remainingTurns).toBe(3);
     expect(gate.hp).toBe(2);
     expect(gate.kind).toBe('magic');
-    expect(computeSightArea(t, 'p0')).toContainEqual({ x: 7, y: 7 });
+    expect(computeSightArea(t, 'p0')).toContainEqual({ x: 6, y: 3 }); // 거리 3, 게이트가 없으면 안 닿는다
     t = ok(t, pass('p1')); // p0 턴 시작 → 2
     expect(t.markers.find((m) => m.specId === 'warp-gate')!.remainingTurns).toBe(2);
-    t = ok(t, place('p0', 'scout', { x: 0, y: 0 })); // p0 는 배치 (패스 연속이면 게임이 끝난다)
+    t = ok(t, place('p0', 'scout', { x: 2, y: 1 })); // p0 는 배치 (패스 연속이면 게임이 끝난다)
     t = ok(t, pass('p1')); // → 1
     expect(t.markers.find((m) => m.specId === 'warp-gate')!.remainingTurns).toBe(1);
-    t = ok(t, place('p0', 'scout', { x: 1, y: 0 }));
+    t = ok(t, place('p0', 'scout', { x: 2, y: 3 }));
     t = ok(t, pass('p1')); // → 0 제거
     expect(t.markers.some((m) => m.specId === 'warp-gate')).toBe(false);
     expect(t.log.some((l) => l.kind === 'expire')).toBe(true);
     expect(t.phase).toBe('playing');
-    expect(computeSightArea(t, 'p0')).not.toContainEqual({ x: 7, y: 7 });
+    expect(computeSightArea(t, 'p0')).not.toContainEqual({ x: 6, y: 3 });
   });
 
   it('수리 드론: 턴 시작(전투 직후) 반경 1 아군 체력 +1, 최대 체력까지', () => {
     let s = setup(2);
-    s = addMarkers(s, marker('p0', 'repair-drone', { x: 3, y: 3 }, 1), marker('p0', 'cruiser', { x: 4, y: 4 }, 5), marker('p0', 'scout', { x: 5, y: 5 }, 1), marker('p0', 'outpost', { x: 2, y: 4 }));
+    s = addMarkers(
+      s,
+      marker('p0', 'repair-drone', { x: 3, y: 3 }, 1),
+      marker('p0', 'cruiser', { x: 4, y: 4 }, 5), // d=1
+      marker('p0', 'scout', { x: 5, y: 5 }, 1), // d=3, 반경 밖
+      marker('p0', 'outpost', { x: 4, y: 3 }, 5), // d=1, 최대(6) 직전
+    );
     const t = advanceTurn(withHand({ ...s, currentPlayerId: 'p1', turn: 2 }, 'p1', [], 3));
     expect(t.markers.find((m) => m.specId === 'repair-drone')!.hp).toBe(2); // 자기 자신 포함
     expect(t.markers.find((m) => m.specId === 'cruiser')!.hp).toBe(6);
-    expect(t.markers.find((m) => m.specId === 'scout')!.hp).toBe(1); // 거리 2
+    expect(t.markers.find((m) => m.specId === 'scout')!.hp).toBe(1); // 거리 3, 반경 밖
     expect(t.markers.find((m) => m.specId === 'outpost')!.hp).toBe(6); // 최대
     expect(t.log.some((l) => l.kind === 'repair')).toBe(true);
   });
@@ -581,8 +598,8 @@ describe('파괴 · 탈락 · 종료 (F024, F025)', () => {
     s = withHand(s, 'p0', [], 3);
     s = withHand(s, 'p1', [], 3);
     s = withHand(s, 'p2', [], 3);
-    // p1 코어 (1,10) 옆 p0 전투기, p1 코어 체력 1
-    s = addMarkers(s, marker('p0', 'fighter', { x: 2, y: 9 }));
+    // p1 코어 (10,6) 옆(d=1) p0 전투기, p1 코어 체력 1
+    s = addMarkers(s, marker('p0', 'fighter', { x: 9, y: 6 }));
     s = withMarkers(s, s.markers.map((m) => (m.ownerId === 'p1' && m.kind === 'core' ? { ...m, hp: 1 } : m)));
     s = { ...s, currentPlayerId: 'p2', turn: 3 };
     let t = ok(s, pass('p2')); // → p0 턴 시작: p1 코어 파괴
@@ -685,7 +702,12 @@ describe('결정성 · 순수성', () => {
     let s = startGame(readyLobby(2));
     s = withHand(s, 'p0', ['scout', 'scout', 'scout'], 10);
     s = withHand(s, 'p1', ['scout', 'scout', 'scout'], 10);
-    const seq: Action[] = [place('p0', 'scout', { x: 4, y: 1 }), place('p1', 'scout', { x: 6, y: 9 }), place('p0', 'scout', { x: 0, y: 4 }), place('p1', 'scout', { x: 10, y: 6 })];
+    const seq: Action[] = [
+      place('p0', 'scout', { x: 2, y: 1 }),
+      place('p1', 'scout', { x: 9, y: 8 }),
+      place('p0', 'scout', { x: 3, y: 3 }),
+      place('p1', 'scout', { x: 7, y: 9 }),
+    ];
     for (const a of seq) {
       s = ok(s, a);
       const sorted = [...s.markers].sort((a, b) => a.pos.y - b.pos.y || a.pos.x - b.pos.x);
@@ -698,8 +720,8 @@ describe('리뷰 보강: 탈락과 패스, 동시 파괴, 즉발 코어 파괴, 
   it('탈락자의 패스는 전원 패스 판정에 남지 않는다 (3인)', () => {
     let s = setup(3);
     for (const id of ['p0', 'p1', 'p2']) s = withHand(s, id, [], 3);
-    // p1 전투기가 p0 코어(6,1) 옆, p0 코어 체력 1
-    s = addMarkers(s, marker('p1', 'fighter', { x: 5, y: 2 }));
+    // p1 전투기가 p0 코어(4,2) 옆(d=1), p0 코어 체력 1
+    s = addMarkers(s, marker('p1', 'fighter', { x: 4, y: 3 }));
     s = withMarkers(s, s.markers.map((m) => (m.ownerId === 'p0' && m.kind === 'core' ? { ...m, hp: 1 } : m)));
     let t = ok(s, pass('p0')); // → p1 턴 시작 전투: p0 탈락
     expect(player(t, 'p0').alive).toBe(false);
@@ -732,8 +754,8 @@ describe('리뷰 보강: 탈락과 패스, 동시 파괴, 즉발 코어 파괴, 
   it('같은 전투에서 코어 둘 파괴: 좌석 오름차순 탈락 기록, 순위는 늦게 탈락한 쪽이 위', () => {
     let s = setup(4);
     for (const id of ['p0', 'p1', 'p2', 'p3']) s = withHand(s, id, [], 3);
-    // p0 포격함(사거리 3) 두 대가 p1 코어(12,2)·p3 코어(2,12) 를 노린다. 두 코어 체력 1
-    s = addMarkers(s, marker('p0', 'artillery', { x: 10, y: 4 }), marker('p0', 'artillery', { x: 4, y: 10 }));
+    // p0 포격함(사거리 3) 두 대가 p1 코어(10,3, d=2)·p3 코어(10,11, d=2) 를 노린다. 두 코어 체력 1
+    s = addMarkers(s, marker('p0', 'artillery', { x: 8, y: 3 }), marker('p0', 'artillery', { x: 9, y: 9 }));
     s = withMarkers(s, s.markers.map((m) => (m.kind === 'core' && (m.ownerId === 'p1' || m.ownerId === 'p3') ? { ...m, hp: 1 } : m)));
     s = { ...s, currentPlayerId: 'p3', turn: 4 };
     const t = ok(s, pass('p3')); // → p0 턴 시작 전투
@@ -749,9 +771,9 @@ describe('리뷰 보강: 탈락과 패스, 동시 파괴, 즉발 코어 파괴, 
   it('즉발 마법으로 코어를 부수면 배치 직후 탈락하고 2인이면 즉시 종료', () => {
     let s = startGame(readyLobby(2));
     s = withHand(s, 'p0', ['gravity-wave'], 10);
-    s = addMarkers(s, marker('p0', 'observatory', { x: 4, y: 4 })); // 시야 3 → (7,7)
+    s = addMarkers(s, marker('p0', 'observatory', { x: 5, y: 5 })); // 시야 3 → (7,7) 까지 (거리 3)
     s = withMarkers(s, s.markers.map((m) => (m.ownerId === 'p1' && m.kind === 'core' ? { ...m, hp: 2 } : m)));
-    const t = ok(s, place('p0', 'gravity-wave', { x: 6, y: 6 })); // 반경 2 → (8,8)
+    const t = ok(s, place('p0', 'gravity-wave', { x: 7, y: 7 })); // 반경 2 → p1 코어(8,8, d=1)
     expect(t.phase).toBe('finished');
     expect(t.result?.reason).toBe('last-survivor');
     expect(t.result?.ranking[0]).toBe('p0');
@@ -762,18 +784,18 @@ describe('리뷰 보강: 탈락과 패스, 동시 파괴, 즉발 코어 파괴, 
     let s = startGame(readyLobby(2));
     s = withHand(s, 'p0', ['stealth'], 10);
     const cells = legalCells(s, 'p0', 'stealth');
-    expect(cells).toContainEqual({ x: 4, y: 4 }); // 내 시야
-    expect(cells).not.toContainEqual({ x: 5, y: 5 }); // 시야 밖, 적 인접도 아님
+    expect(cells).toContainEqual({ x: 3, y: 3 }); // 내 시야
+    expect(cells).not.toContainEqual({ x: 6, y: 6 }); // 시야 밖, 적 인접도 아님
     expect(cells).toContainEqual({ x: 7, y: 7 }); // 적 코어 인접
   });
 
   it('시야는 소행성을 통과하고, 탈락자의 시야는 즉시 사라져 경합 칸이 생존자 영토가 된다', () => {
     let s = setup(2, 'asteroid-belt');
-    s = addMarkers(s, marker('p0', 'observatory', { x: 5, y: 1 })); // 시야 3 → x 2..8
+    s = addMarkers(s, marker('p0', 'observatory', { x: 5, y: 1 })); // 시야 3, 장벽 너머까지 닿는다
     const t = computeTerritory(s);
-    expect(t.owners[1]![8]).toBe('p0'); // 소행성대(x=6) 너머
+    expect(t.owners[1]![8]).toBe('p0'); // 소행성대 너머
     expect(t.owners[1]![6]).toBeNull(); // 소행성 자체
-    // p1 관측소가 (8,3) 에 있으면 (8,1) 은 경합
+    // p1 관측소가 (8,3) 에 있으면 (1,8) 은 경합
     s = addMarkers(s, marker('p1', 'observatory', { x: 8, y: 3 }));
     expect(computeTerritory(s).owners[1]![8]).toBeNull();
     s = withHand(s, 'p1', [], 3);
@@ -797,7 +819,7 @@ describe('리뷰 보강: 탈락과 패스, 동시 파괴, 즉발 코어 파괴, 
     s = withHand(s, 'p0', ['shield'], 10);
     s = addMarkers(s, marker('p0', 'warp-gate', { x: 3, y: 3 }, 1, 3));
     s = withMarkers(s, s.markers.map((m) => (m.ownerId === 'p0' && m.kind === 'core' ? { ...m, hp: 19 } : m)));
-    const t = ok(s, place('p0', 'shield', { x: 2, y: 3 }));
+    const t = ok(s, place('p0', 'shield', { x: 2, y: 3 })); // 코어(3,2) d=1, 워프 게이트(3,3) d=1
     expect(core(t, 'p0').hp).toBe(CORE_SPEC.hp);
     expect(t.markers.find((m) => m.specId === 'warp-gate')!.hp).toBe(2);
   });

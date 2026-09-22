@@ -3,7 +3,7 @@
  */
 import type { GameLogEntry, GameState, LogKind, Marker, PlayerId, Position } from '../types/index.js';
 import { REPAIR_AMOUNT, REPAIR_RADIUS, getSpec } from '../data/index.js';
-import { chebyshev, markersOf, sortByPosition } from './sight.js';
+import { hexDistance, markersOf, sortByPosition } from './sight.js';
 import { getPlayer } from './scoring.js';
 
 export function addLog(state: GameState, kind: LogKind, playerId: PlayerId | null, message: string): GameState {
@@ -40,8 +40,8 @@ export function resolveCombat(state: GameState, playerId: PlayerId): GameState {
   for (const a of attackers) {
     const spec = getSpec(a.specId);
     const candidates = enemies
-      .filter((e) => chebyshev(a.pos, e.pos) <= spec.range)
-      .map((e) => ({ e, d: chebyshev(a.pos, e.pos) }))
+      .filter((e) => hexDistance(a.pos, e.pos) <= spec.range)
+      .map((e) => ({ e, d: hexDistance(a.pos, e.pos) }))
       .sort((p, q) => p.d - q.d || p.e.hp - q.e.hp || p.e.pos.y - q.e.pos.y || p.e.pos.x - q.e.pos.x);
     const target = candidates[0]?.e;
     if (!target) continue;
@@ -67,7 +67,7 @@ export function applyRepair(state: GameState, playerId: PlayerId): GameState {
   const heal = new Map<string, number>();
   for (const r of repairers) {
     for (const m of markersOf(s, playerId)) {
-      if (chebyshev(r.pos, m.pos) <= REPAIR_RADIUS && m.hp < getSpec(m.specId).hp) {
+      if (hexDistance(r.pos, m.pos) <= REPAIR_RADIUS && m.hp < getSpec(m.specId).hp) {
         heal.set(m.id, (heal.get(m.id) ?? 0) + REPAIR_AMOUNT);
       }
     }
@@ -113,7 +113,7 @@ export function damageEnemiesInRadius(
   amount: number,
 ): { state: GameState; hits: Marker[] } {
   const hits = sortByPosition(
-    state.markers.filter((m) => m.ownerId !== playerId && chebyshev(center, m.pos) <= radius),
+    state.markers.filter((m) => m.ownerId !== playerId && hexDistance(center, m.pos) <= radius),
   );
   const ids = new Set(hits.map((m) => m.id));
   const markers = state.markers.map((m) => (ids.has(m.id) ? { ...m, hp: m.hp - amount } : m));
@@ -130,7 +130,7 @@ export function healAlliesInRadius(
 ): { state: GameState; hits: Marker[] } {
   const hits = sortByPosition(
     state.markers.filter(
-      (m) => m.ownerId === playerId && chebyshev(center, m.pos) <= radius && m.hp < getSpec(m.specId).hp,
+      (m) => m.ownerId === playerId && hexDistance(center, m.pos) <= radius && m.hp < getSpec(m.specId).hp,
     ),
   );
   const ids = new Set(hits.map((m) => m.id));

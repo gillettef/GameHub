@@ -55,25 +55,27 @@ function marker(ownerId: PlayerId, specId: CardId, pos: Position, hp?: number): 
   return { id: `f${seq++}`, specId, kind: spec.kind, ownerId, pos, hp: hp ?? spec.hp, remainingTurns: null };
 }
 
+// 좌표는 odd-r 오프셋 육각 거리 기준. p0 코어 (3,2), ai-1 코어 (8,8) (binary-star).
+// 코어 시야 1(작다)이라 초반부터 전초기지·포격함으로 시야를 밀고 나가야 중앙에서 맞붙는다.
 let initial = firstTurn;
 initial = withHand(initial, 'p0', ['outpost', 'artillery', 'meteor', 'extractor', 'stealth'], 12);
 initial = withHand(initial, 'ai-1', ['scout', 'fighter', 'shield', 'warp-gate', 'repair-drone'], 12);
 initial = withMarkers(initial, [
   ...initial.markers,
-  marker('ai-1', 'extractor', { x: 8, y: 2 }, 2), // 광맥, 체력 2
-  marker('ai-1', 'scout', { x: 6, y: 6 }),
+  marker('ai-1', 'extractor', { x: 6, y: 10 }, 2), // 광맥, 체력 2
+  marker('ai-1', 'scout', { x: 6, y: 6 }), // 중앙 전진 배치
 ]);
 
 const actions: Action[] = [
-  { type: 'PLACE', playerId: 'p0', cardId: 'outpost', pos: { x: 4, y: 4 } }, // 시야 확장
-  { type: 'PLACE', playerId: 'ai-1', cardId: 'warp-gate', pos: { x: 7, y: 5 } }, // 지속 마법
-  { type: 'PLACE', playerId: 'p0', cardId: 'artillery', pos: { x: 5, y: 5 } }, // 사거리 3: 정찰(6,6) d1, 게이트(7,5) d2, 코어(8,8) d3
-  { type: 'PLACE', playerId: 'ai-1', cardId: 'fighter', pos: { x: 7, y: 7 } },
-  { type: 'PASS', playerId: 'p0' }, // p0 턴 시작에 포격함이 정찰 파괴 → ai 턴: 전투기가 포격함 공격
-  { type: 'PLACE', playerId: 'ai-1', cardId: 'shield', pos: { x: 7, y: 6 } }, // 회복
-  { type: 'PLACE', playerId: 'p0', cardId: 'meteor', pos: { x: 6, y: 6 } }, // 즉발 피해
-  { type: 'PLACE', playerId: 'ai-1', cardId: 'repair-drone', pos: { x: 8, y: 6 } },
-  { type: 'PLACE', playerId: 'p0', cardId: 'stealth', pos: { x: 9, y: 9 } }, // 침투
+  { type: 'PLACE', playerId: 'p0', cardId: 'outpost', pos: { x: 4, y: 2 } }, // 시야 확장
+  { type: 'PLACE', playerId: 'ai-1', cardId: 'warp-gate', pos: { x: 6, y: 5 } }, // 지속 마법
+  { type: 'PLACE', playerId: 'p0', cardId: 'artillery', pos: { x: 5, y: 4 } }, // 사거리 3: 전투기 d1이 정찰·게이트 d2보다 먼저 맞는다
+  { type: 'PLACE', playerId: 'ai-1', cardId: 'fighter', pos: { x: 6, y: 4 } }, // 이 배치가 p0 턴으로 넘기는 순간 p0 시작 단계가 돌아 포격함이 전투기를 즉시 공격한다
+  { type: 'PASS', playerId: 'p0' }, // p0 패스가 ai-1 턴으로 넘겨 ai-1 시작 단계에서 전투기가 포격함에 반격한다
+  { type: 'PLACE', playerId: 'ai-1', cardId: 'shield', pos: { x: 5, y: 5 } }, // 회복
+  { type: 'PLACE', playerId: 'p0', cardId: 'meteor', pos: { x: 5, y: 5 } }, // 즉발 피해: 반경1 안의 전투기·게이트·정찰 전부 동시 파괴
+  { type: 'PLACE', playerId: 'ai-1', cardId: 'repair-drone', pos: { x: 7, y: 7 } },
+  { type: 'PLACE', playerId: 'p0', cardId: 'stealth', pos: { x: 8, y: 7 } }, // 침투: 적 코어(8,8) 인접
   { type: 'PASS', playerId: 'ai-1' },
   { type: 'PLACE', playerId: 'p0', cardId: 'extractor', pos: { x: 3, y: 3 } }, // 패스 연속 리셋
   { type: 'SURRENDER', playerId: 'ai-1' },

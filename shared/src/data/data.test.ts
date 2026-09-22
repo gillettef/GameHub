@@ -19,6 +19,7 @@ import {
   isValidDeckChoice,
   specialCardsOf,
 } from './index.js';
+import { cellsInRadius, hexDistance } from '../engine/index.js';
 import type { CardSpec, Position } from '../types/index.js';
 
 type Row = [id: string, kind: CardSpec['kind'], cost: number, sight: number, hp: number, attack: number, range: number, production: number, score: number, copies: number];
@@ -65,9 +66,9 @@ function expectRow(spec: CardSpec, row: Row) {
 }
 
 describe('카드 기준표 (Rules.md 10절)', () => {
-  it('코어: 시야 2, 체력 20, 공격 0, 생산 1, 점수 0', () => {
+  it('코어: 시야 1, 체력 20, 공격 0, 생산 1, 점수 0', () => {
     expect(CORE_SPEC.kind).toBe('core');
-    expect(CORE_SPEC.sight).toBe(2);
+    expect(CORE_SPEC.sight).toBe(1);
     expect(CORE_SPEC.hp).toBe(20);
     expect(CORE_SPEC.attack).toBe(0);
     expect(CORE_SPEC.production).toBe(CONSTANTS.CORE_BASE_INCOME);
@@ -123,9 +124,9 @@ describe('카드 기준표 (Rules.md 10절)', () => {
 
   it('상수표 (Rules.md 12절)', () => {
     expect(CONSTANTS.STARTING_ENERGY).toBe(5);
-    expect(CONSTANTS.CORE_BASE_INCOME).toBe(2);
+    expect(CONSTANTS.CORE_BASE_INCOME).toBe(1);
     expect(CONSTANTS.CORE_HP).toBe(20);
-    expect(CONSTANTS.CORE_SIGHT).toBe(2);
+    expect(CONSTANTS.CORE_SIGHT).toBe(1);
     expect(CONSTANTS.INITIAL_HAND_SIZE).toBe(4);
     expect(CONSTANTS.HAND_LIMIT).toBe(5);
     expect(CONSTANTS.DRAW_PER_TURN).toBe(1);
@@ -154,30 +155,30 @@ interface MapRow {
 }
 
 const p = (x: number, y: number): Position => ({ x, y });
-const range = (from: number, to: number) => Array.from({ length: to - from + 1 }, (_, i) => from + i);
 
+// 좌표는 scripts/hexmap 계산 결과 (odd-r 오프셋). 좌석별 공정성은 아래 '좌석 공정성' describe 가 검증한다.
 const MAP_TABLE: MapRow[] = [
-  { id: 'binary-star', players: 2, size: 11, roundLimit: 20, cores: [p(2, 2), p(8, 8)], veins: [p(5, 5), p(2, 8), p(8, 2)], asteroids: [] },
+  { id: 'binary-star', players: 2, size: 11, roundLimit: 20, cores: [p(3, 2), p(8, 8)], veins: [p(5, 5), p(1, 4), p(6, 10)], asteroids: [] },
   {
     id: 'asteroid-belt', players: 2, size: 13, roundLimit: 20, cores: [p(1, 6), p(11, 6)],
-    veins: [p(4, 2), p(4, 10), p(8, 2), p(8, 10)],
-    asteroids: range(0, 12).filter((y) => ![2, 6, 10].includes(y)).map((y) => p(6, y)),
+    veins: [p(1, 3), p(11, 3), p(0, 9), p(10, 9)],
+    asteroids: [p(6, 0), p(6, 12), p(6, 1), p(5, 11), p(7, 2), p(5, 10), p(6, 3), p(5, 9), p(6, 4), p(6, 8)],
   },
-  { id: 'triangle-nebula', players: 3, size: 13, roundLimit: 18, cores: [p(6, 1), p(1, 10), p(11, 10)], veins: [p(6, 6), p(3, 5), p(9, 5), p(6, 10)], asteroids: [] },
+  { id: 'triangle-nebula', players: 3, size: 13, roundLimit: 18, cores: [p(4, 2), p(10, 6), p(4, 10)], veins: [p(1, 2), p(7, 6), p(1, 10), p(6, 6)], asteroids: [] },
   {
-    id: 'interstellar-route', players: 3, size: 15, roundLimit: 18, cores: [p(7, 1), p(1, 12), p(13, 12)],
-    veins: [p(7, 10), p(3, 6), p(11, 6)],
-    asteroids: [p(7, 3), p(7, 4), p(7, 5), p(7, 7), p(6, 8), p(5, 9), p(4, 10), p(8, 8), p(9, 9), p(10, 10)],
-  },
-  {
-    id: 'quadrant', players: 4, size: 15, roundLimit: 16, cores: [p(2, 2), p(12, 2), p(12, 12), p(2, 12)],
-    veins: [p(7, 7), p(7, 2), p(12, 7), p(7, 12), p(2, 7)],
-    asteroids: [p(7, 5), p(7, 6), p(7, 8), p(7, 9), p(5, 7), p(6, 7), p(8, 7), p(9, 7)],
+    id: 'interstellar-route', players: 3, size: 15, roundLimit: 18, cores: [p(5, 2), p(12, 7), p(5, 12)],
+    veins: [p(2, 3), p(10, 8), p(2, 13)],
+    asteroids: [p(7, 6), p(6, 5), p(6, 4), p(8, 7), p(9, 7), p(10, 7), p(7, 8), p(6, 9), p(6, 10)],
   },
   {
-    id: 'event-horizon', players: 4, size: 15, roundLimit: 16, cores: [p(7, 1), p(13, 7), p(7, 13), p(1, 7)],
-    veins: [p(3, 3), p(11, 3), p(11, 11), p(3, 11)],
-    asteroids: range(6, 8).flatMap((y) => range(6, 8).map((x) => p(x, y))),
+    id: 'quadrant', players: 4, size: 15, roundLimit: 16, cores: [p(4, 3), p(10, 3), p(4, 11), p(10, 11)],
+    veins: [p(7, 2), p(13, 2), p(7, 10), p(13, 10), p(7, 7)],
+    asteroids: [p(7, 6), p(8, 6), p(6, 7), p(8, 7), p(7, 8), p(8, 8)],
+  },
+  {
+    id: 'event-horizon', players: 4, size: 15, roundLimit: 16, cores: [p(4, 2), p(11, 2), p(4, 12), p(11, 12)],
+    veins: [p(1, 3), p(8, 3), p(1, 13), p(8, 13)],
+    asteroids: [p(7, 6), p(8, 6), p(6, 7), p(7, 7), p(8, 7), p(7, 8), p(8, 8)],
   },
 ];
 
@@ -217,4 +218,59 @@ describe('맵 6개 (Rules.md 11절)', () => {
   it('라운드 제한: 2인 20 / 3인 18 / 4인 16 (Rules.md 12절)', () => {
     for (const m of MAPS) expect(m.roundLimit).toBe({ 2: 20, 3: 18, 4: 16 }[m.players]);
   });
+});
+
+/**
+ * 육각 전환 후 좌석 공정성. 대칭 모양이 아니라 계산된 값으로 보장한다 (Rules.md 11절 서두).
+ * 좌표는 정사각이 아닌 odd-r 오프셋 육각 거리(hexDistance)로 잰다.
+ */
+describe('맵 6개: 좌석 공정성 (odd-r 오프셋 육각 거리)', () => {
+  /** 코어 시야(반경 1) 안, 코어 자신을 뺀 칸 중 보드 안이고 다른 코어·소행성이 없는 칸 수 */
+  function legalNeighbors(m: ReturnType<typeof getMap>, core: Position): number {
+    const others = new Set(
+      [...m.corePositions.filter((c) => c !== core), ...m.asteroids].map((q) => `${q.x},${q.y}`),
+    );
+    const board = { width: m.size, height: m.size, asteroids: m.asteroids, veins: m.veins };
+    return cellsInRadius(board, core, 1).filter((q) => q.x !== core.x || q.y !== core.y).filter(
+      (q) => !others.has(`${q.x},${q.y}`),
+    ).length;
+  }
+  function nearestVein(m: ReturnType<typeof getMap>, core: Position): number {
+    return Math.min(...m.veins.map((v) => hexDistance(core, v)));
+  }
+  function within3(points: Position[], core: Position): number {
+    return points.filter((q) => hexDistance(core, q) <= 3).length;
+  }
+  function edgeDistance(m: ReturnType<typeof getMap>, core: Position): number {
+    const board = { width: m.size, height: m.size, asteroids: m.asteroids, veins: m.veins };
+    let r = 0;
+    while (r < 10 && cellsInRadius(board, core, r + 1).length === 3 * (r + 1) * (r + 2) + 1) r++;
+    return r;
+  }
+  function pairDistances(m: ReturnType<typeof getMap>, core: Position): number[] {
+    return m.corePositions
+      .filter((c) => c !== core)
+      .map((c) => hexDistance(core, c))
+      .sort((a, b) => a - b);
+  }
+
+  for (const id of MAPS.map((m) => m.id)) {
+    it(`${id}: 좌석마다 배치 가능 칸·최근접 광맥·경계 여유·코어 거리 프로필이 동일`, () => {
+      const m = getMap(id);
+      const legal = m.corePositions.map((c) => legalNeighbors(m, c));
+      const nearest = m.corePositions.map((c) => nearestVein(m, c));
+      const veins3 = m.corePositions.map((c) => within3(m.veins, c));
+      const asteroids3 = m.corePositions.map((c) => within3(m.asteroids, c));
+      const edges = m.corePositions.map((c) => edgeDistance(m, c));
+      const profiles = m.corePositions.map((c) => pairDistances(m, c));
+
+      expect(new Set(legal).size).toBe(1);
+      expect(new Set(nearest).size).toBe(1);
+      expect(new Set(veins3).size).toBe(1);
+      expect(new Set(asteroids3).size).toBe(1);
+      expect(new Set(edges).size).toBe(1);
+      const firstProfile = JSON.stringify(profiles[0]);
+      for (const pr of profiles) expect(JSON.stringify(pr)).toBe(firstProfile);
+    });
+  }
 });

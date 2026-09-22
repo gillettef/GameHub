@@ -8,12 +8,13 @@ export const MAX_PLAYERS = 4;
 
 /** 시작 에너지 (2026-09-22: 3 → 5) */
 export const STARTING_ENERGY = 5;
-/** 코어 기본 수입 (턴당). 건물이 하나도 없어도 굶지 않게 (2026-09-22: 1 → 2) */
-export const CORE_BASE_INCOME = 2;
+/** 코어 기본 수입 (턴당). 건물이 하나도 없어도 굶지 않게 (2026-09-22: 1 → 2, 육각 전환 2 → 1) */
+export const CORE_BASE_INCOME = 1;
 /** 에너지 저장 상한. 초과분은 버려진다 (2026-09-22: 후반 건물 누적 수입으로 무한정 쌓이는 것을 막음) */
 export const ENERGY_CAP = 20;
 export const CORE_HP = 20;
-export const CORE_SIGHT = 2;
+/** 육각 거리 기준 시야 반경 (2026-09-22: 육각 전환 2 → 1) */
+export const CORE_SIGHT = 1;
 
 export const INITIAL_HAND_SIZE = 4;
 /** 손패 상한. 상한이면 드로우 생략 */
@@ -28,9 +29,9 @@ export const SPECIAL_PICKS = 3;
 export const VEIN_PRODUCTION_BONUS = 1;
 /** 영토 1칸 점수 */
 export const SCORE_PER_TERRITORY = 1;
-/** 침투 키워드: 적 마커로부터 이 거리 이내에도 배치 가능 */
+/** 침투 키워드: 적 마커로부터 이 육각 거리 이내에도 배치 가능 */
 export const INFILTRATE_RANGE = 1;
-/** 정비 키워드: 반경과 회복량 */
+/** 정비 키워드: 반경(육각 거리)과 회복량 */
 export const REPAIR_RADIUS = 1;
 export const REPAIR_AMOUNT = 1;
 
