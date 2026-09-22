@@ -1,0 +1,281 @@
+{
+  "roomId": "fixture-room",
+  "phase": "playing",
+  "turn": 1,
+  "turnLimit": 30,
+  "currentPlayerId": "p1",
+  "players": [
+    {
+      "id": "p1",
+      "nickname": "철수",
+      "kind": "human",
+      "isReady": true,
+      "deckChoice": {
+        "buildingId": "orbital-forge",
+        "unitId": "titan",
+        "magicId": "supernova"
+      },
+      "resources": 10,
+      "mana": 5,
+      "deck": [
+        {
+          "type": "building",
+          "specId": "mana-well"
+        },
+        {
+          "type": "building",
+          "specId": "mine"
+        },
+        {
+          "type": "unit",
+          "specId": "soldier"
+        },
+        {
+          "type": "building",
+          "specId": "outpost"
+        },
+        {
+          "type": "unit",
+          "specId": "tank"
+        },
+        {
+          "type": "building",
+          "specId": "orbital-forge"
+        },
+        {
+          "type": "building",
+          "specId": "mana-well"
+        },
+        {
+          "type": "unit",
+          "specId": "soldier"
+        },
+        {
+          "type": "magic",
+          "specId": "bolt"
+        },
+        {
+          "type": "building",
+          "specId": "mana-well"
+        },
+        {
+          "type": "unit",
+          "specId": "titan"
+        },
+        {
+          "type": "building",
+          "specId": "mine"
+        },
+        {
+          "type": "magic",
+          "specId": "supernova"
+        },
+        {
+          "type": "magic",
+          "specId": "repair"
+        },
+        {
+          "type": "unit",
+          "specId": "scout"
+        },
+        {
+          "type": "unit",
+          "specId": "soldier"
+        }
+      ],
+      "hand": [
+        {
+          "type": "unit",
+          "specId": "scout"
+        },
+        {
+          "type": "magic",
+          "specId": "bolt"
+        },
+        {
+          "type": "building",
+          "specId": "mine"
+        },
+        {
+          "type": "building",
+          "specId": "outpost"
+        },
+        {
+          "type": "magic",
+          "specId": "harvest"
+        }
+      ],
+      "discard": [],
+      "mainBaseId": "b-p1-base"
+    },
+    {
+      "id": "ai-1",
+      "nickname": "AI",
+      "kind": "ai",
+      "isReady": true,
+      "deckChoice": {
+        "buildingId": "nexus",
+        "unitId": "phantom",
+        "magicId": "rally"
+      },
+      "resources": 10,
+      "mana": 5,
+      "deck": [
+        {
+          "type": "building",
+          "specId": "outpost"
+        },
+        {
+          "type": "magic",
+          "specId": "bolt"
+        },
+        {
+          "type": "unit",
+          "specId": "soldier"
+        },
+        {
+          "type": "magic",
+          "specId": "repair"
+        },
+        {
+          "type": "unit",
+          "specId": "scout"
+        },
+        {
+          "type": "unit",
+          "specId": "phantom"
+        },
+        {
+          "type": "magic",
+          "specId": "bolt"
+        },
+        {
+          "type": "building",
+          "specId": "outpost"
+        },
+        {
+          "type": "unit",
+          "specId": "soldier"
+        },
+        {
+          "type": "building",
+          "specId": "mine"
+        },
+        {
+          "type": "magic",
+          "specId": "rally"
+        },
+        {
+          "type": "building",
+          "specId": "mana-well"
+        },
+        {
+          "type": "building",
+          "specId": "mine"
+        },
+        {
+          "type": "unit",
+          "specId": "soldier"
+        },
+        {
+          "type": "building",
+          "specId": "mine"
+        },
+        {
+          "type": "magic",
+          "specId": "harvest"
+        }
+      ],
+      "hand": [
+        {
+          "type": "building",
+          "specId": "mana-well"
+        },
+        {
+          "type": "building",
+          "specId": "mana-well"
+        },
+        {
+          "type": "unit",
+          "specId": "tank"
+        },
+        {
+          "type": "unit",
+          "specId": "scout"
+        },
+        {
+          "type": "building",
+          "specId": "nexus"
+        }
+      ],
+      "discard": [],
+      "mainBaseId": "b-ai-1-base"
+    }
+  ],
+  "board": {
+    "width": 10,
+    "height": 10
+  },
+  "buildings": [
+    {
+      "id": "b-p1-base",
+      "specId": "main-base",
+      "ownerId": "p1",
+      "pos": {
+        "x": 1,
+        "y": 1
+      },
+      "hp": 20
+    },
+    {
+      "id": "b-ai-1-base",
+      "specId": "main-base",
+      "ownerId": "ai-1",
+      "pos": {
+        "x": 8,
+        "y": 8
+      },
+      "hp": 20
+    }
+  ],
+  "units": [],
+  "rngSeed": 248188530,
+  "result": null,
+  "log": [
+    {
+      "turn": 0,
+      "kind": "system",
+      "message": "철수 님이 참여했습니다."
+    },
+    {
+      "turn": 0,
+      "kind": "system",
+      "message": "AI 님이 참여했습니다."
+    },
+    {
+      "turn": 0,
+      "kind": "system",
+      "message": "철수 님이 덱을 구성했습니다."
+    },
+    {
+      "turn": 0,
+      "kind": "system",
+      "message": "AI 님이 덱을 구성했습니다."
+    },
+    {
+      "turn": 0,
+      "kind": "system",
+      "message": "철수 님 준비 완료."
+    },
+    {
+      "turn": 0,
+      "kind": "system",
+      "message": "AI 님 준비 완료."
+    },
+    {
+      "turn": 1,
+      "kind": "system",
+      "message": "게임 시작. 메인 기지가 배치되고 자원 10, 마나 5, 카드 5장으로 시작합니다."
+    }
+  ]
+}
