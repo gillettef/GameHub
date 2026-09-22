@@ -9,7 +9,7 @@ function makeManager(): RoomManager {
   return new RoomManager({ seed: () => 42, now: () => 1000, roomId: () => `room${++n}` });
 }
 
-/** 사람 플레이어가 첫 합법 카드를 놓는다 (패스로 게임이 끝나지 않게) */
+/** 사람 플레이어가 첫 합법 카드를 놓고 턴을 마친다 (배치는 더 이상 턴을 끝내지 않으므로 PASS 로 넘긴다) */
 function placeFirst(m: RoomManager, roomId: string, id: PlayerId): void {
   const state = m.get(roomId)?.state as GameState;
   const player = state.players.find((p) => p.id === id);
@@ -17,7 +17,11 @@ function placeFirst(m: RoomManager, roomId: string, id: PlayerId): void {
     const cell = legalCells(state, id, card)[0];
     if (cell && player && player.energy >= 1) {
       const r = m.tryApply(roomId, { type: 'PLACE', playerId: id, cardId: card, pos: cell });
-      if (!r.error) return;
+      if (!r.error) {
+        const p = m.tryApply(roomId, { type: 'PASS', playerId: id }); // 배치했으므로 패스로는 기록되지 않는다
+        if (p.error) throw new Error(p.error);
+        return;
+      }
     }
   }
   throw new Error('놓을 카드가 없습니다');
@@ -155,7 +159,7 @@ describe('AI 턴 실행기 (F027)', () => {
       },
     });
 
-    // 사람이 배치 → AI 턴
+    // 사람이 배치 → 턴 종료 → AI 턴: 첫 응답이 불법이라 PASS 로 폴백하고 AI 턴이 끝난다
     placeFirst(m, 'room1', 'p1');
     runner.maybeRun('room1');
     expect(runner.isRunning('room1')).toBe(true);
@@ -165,12 +169,14 @@ describe('AI 턴 실행기 (F027)', () => {
     expect(m.get('room1')?.state.currentPlayerId).toBe('p1');
     expect(m.get('room1')?.state.log.some((e) => e.kind === 'pass' && e.playerId === aiId)).toBe(true);
 
-    // 두 번째 AI 턴은 배치
+    // 두 번째 AI 턴: 에너지가 허락하는 한 배치를 반복하다 더 놓을 수 없으면 스스로 PASS 로 턴을 마친다
     placeFirst(m, 'room1', 'p1');
+    const callsBefore = calls;
     runner.maybeRun('room1');
     await new Promise((r) => setTimeout(r, 20));
-    expect(calls).toBe(2);
+    expect(calls).toBeGreaterThan(callsBefore + 1); // 최소 한 번은 배치, 마지막엔 PASS 로 턴 종료
+    expect(m.get('room1')?.state.currentPlayerId).toBe('p1'); // 턴이 사람에게 돌아왔다
     expect(m.get('room1')?.state.log.some((e) => e.kind === 'place' && e.playerId === aiId)).toBe(true);
-    expect(changes.length).toBe(2);
+    expect(changes.length).toBe(calls); // onChange 는 매 적용마다 한 번씩
   });
 });

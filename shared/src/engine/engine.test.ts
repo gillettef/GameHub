@@ -299,11 +299,11 @@ describe('배치 검증 (F022)', () => {
     expect(t.markers.some((m) => m.specId === 'stealth' && m.pos.x === 7)).toBe(true);
   });
 
-  it('배치 성립: 비용 차감, 카드 버림, 마커 생성, 턴 종료. 두 번째 배치는 거부', () => {
+  it('배치 성립: 비용 차감, 카드 버림, 마커 생성. 에너지가 허락하면 같은 턴에 이어서 배치할 수 있다', () => {
     let s = startGame(readyLobby(2));
     s = withHand(s, 'p0', ['extractor', 'scout'], 5);
-    const t = ok(s, place('p0', 'extractor', { x: 3, y: 3 }));
-    const p0 = player(t, 'p0');
+    let t = ok(s, place('p0', 'extractor', { x: 3, y: 3 }));
+    let p0 = player(t, 'p0');
     expect(p0.energy).toBe(3);
     expect(p0.hand).toEqual(['scout']);
     expect(p0.discard).toEqual(['extractor']);
@@ -312,12 +312,65 @@ describe('배치 검증 (F022)', () => {
     expect(m.hp).toBe(4);
     expect(m.kind).toBe('building');
     expect(m.remainingTurns).toBeNull();
+    // 배치는 턴을 끝내지 않는다 — 여전히 같은 턴, 같은 플레이어
+    expect(t.currentPlayerId).toBe('p0');
+    expect(t.turn).toBe(1);
+    expect(p0.actedThisTurn).toBe(true);
+    expect(countPasses(t)).toBe(0);
+
+    // 이어서 두 번째 배치 (방금 놓은 채굴기 시야 안, 에너지가 남는 한 제한 없음)
+    t = ok(t, place('p0', 'scout', { x: 3, y: 4 }));
+    p0 = player(t, 'p0');
+    expect(p0.energy).toBe(2);
+    expect(p0.hand).toEqual([]);
+    expect(t.currentPlayerId).toBe('p0');
+    expect(t.markers.some((x) => x.specId === 'scout')).toBe(true);
+
+    // 턴 종료 — 이번 턴에 배치했으므로 패스로 기록되지 않는다
+    t = ok(t, pass('p0'));
     expect(t.currentPlayerId).toBe('p1');
     expect(t.turn).toBe(2);
     expect(countPasses(t)).toBe(0);
-    expect(fail(t, place('p0', 'scout', { x: 3, y: 4 }))).toContain('플레이어1의 턴');
+    expect(t.log.some((l) => l.message.includes('턴 종료'))).toBe(true);
+    expect(fail(t, place('p0', 'scout', { x: 3, y: 5 }))).toContain('플레이어1의 턴');
     expect(t.log.at(-1)?.kind).toBe('draw'); // p1 시작 단계까지 진행됨
     expect(t.markers.map((x) => x.pos)).toEqual([...t.markers.map((x) => x.pos)].sort((a, b) => a.y - b.y || a.x - b.x));
+  });
+
+  it('한 턴에 에너지가 허락하는 만큼 배치할 수 있고, 에너지가 바닥나면 더 놓을 수 없다', () => {
+    let s = startGame(readyLobby(2, 'asteroid-belt'));
+    s = withHand(s, 'p0', ['scout', 'scout', 'scout'], 2); // scout 비용 1, 에너지 2 → 최대 2장
+    let t = ok(s, place('p0', 'scout', { x: 2, y: 6 })); // 코어(1,6) 시야1 안
+    expect(player(t, 'p0').energy).toBe(1);
+    t = ok(t, place('p0', 'scout', { x: 3, y: 6 })); // 방금 놓은 정찰 드론(시야 2) 안
+    expect(player(t, 'p0').energy).toBe(0);
+    expect(t.currentPlayerId).toBe('p0'); // 여전히 내 턴
+    expect(fail(t, place('p0', 'scout', { x: 3, y: 5 }))).toContain('에너지');
+    expect(canPlay(t, 'p0', 'scout')).toBe(false);
+    expect(hasAnyPlay(t, 'p0')).toBe(false);
+  });
+
+  it('패스와 턴 종료의 차이: 아무것도 안 놓고 넘기면 패스, 하나라도 놓고 넘기면 패스가 아니다', () => {
+    let s = startGame(readyLobby(2));
+    s = withHand(s, 'p0', ['scout'], 10);
+    s = withHand(s, 'p1', [], 10);
+    // p0: 아무것도 놓지 않고 턴 종료 → 진짜 패스
+    let t = ok(s, pass('p0'));
+    expect(countPasses(t)).toBe(1);
+    expect(player(t, 'p0').passed).toBe(true);
+    const passLog = t.log.filter((l) => l.kind === 'pass').at(-1);
+    expect(passLog?.message).toContain('패스');
+    expect(passLog?.message).not.toContain('턴 종료');
+    // p1: 배치 후 턴 종료 → 패스로 기록되지 않는다
+    t = withHand(t, 'p1', ['scout'], 10);
+    t = ok(t, place('p1', 'scout', { x: 7, y: 7 }));
+    t = ok(t, pass('p1'));
+    expect(player(t, 'p1').passed).toBe(false);
+    expect(countPasses(t)).toBe(0); // p0 의 이전 패스도 배치로 이미 풀렸다
+    const endLog = t.log.filter((l) => l.kind === 'pass').at(-1);
+    expect(endLog?.message).toContain('턴 종료');
+    expect(t.phase).toBe('playing'); // 전원 패스가 아니므로 안 끝난다
+    expect(t.log.at(-1)?.kind).toBe('draw'); // p0 의 다음 턴 시작 단계까지 진행
   });
 
   it('canPlay / hasAnyPlay: 에너지 부족·놓을 칸 없음이면 낼 수 없다', () => {
@@ -468,6 +521,7 @@ describe('전투 (F023)', () => {
     s = addMarkers(s, marker('p0', 'outpost', { x: 6, y: 6 }));
     let t = ok(s, place('p0', 'artillery', { x: 7, y: 7 })); // d((7,7),(8,8)) = 1 ≤ 사거리 3
     expect(core(t, 'p1').hp).toBe(20); // 배치 직후 공격 없음
+    t = ok(t, pass('p0')); // p0 턴 종료 (배치했으므로 패스로 기록되지 않음)
     t = ok(t, pass('p1'));
     expect(core(t, 'p1').hp).toBe(17); // p0 턴 시작 전투
     expect(t.currentPlayerId).toBe('p0');
@@ -479,8 +533,9 @@ describe('전투 (F023)', () => {
     const t = ok(beforeP0Turn(s), pass('p1')); // p0 턴 시작: p0 전투기만 공격
     expect(t.markers.find((m) => m.ownerId === 'p1' && m.specId === 'fighter')!.hp).toBe(2);
     expect(t.markers.find((m) => m.ownerId === 'p0' && m.specId === 'fighter')!.hp).toBe(4);
-    // p0 는 배치(패스 두 번이면 전원 패스로 끝나므로) → p1 턴 시작: 반격
-    const u = ok(withHand(t, 'p0', ['scout'], 3), place('p0', 'scout', { x: 4, y: 2 }));
+    // p0 는 배치 후 턴 종료(패스 두 번이면 전원 패스로 끝나므로) → p1 턴 시작: 반격
+    let u = ok(withHand(t, 'p0', ['scout'], 3), place('p0', 'scout', { x: 4, y: 2 }));
+    u = ok(u, pass('p0'));
     expect(u.markers.find((m) => m.ownerId === 'p0' && m.specId === 'fighter')!.hp).toBe(2);
   });
 
@@ -544,12 +599,15 @@ describe('즉발 마법 · 지속 마법 · 정비', () => {
     expect(gate.hp).toBe(2);
     expect(gate.kind).toBe('magic');
     expect(computeSightArea(t, 'p0')).toContainEqual({ x: 6, y: 3 }); // 거리 3, 게이트가 없으면 안 닿는다
+    t = ok(t, pass('p0')); // p0 턴 종료 (배치했으므로 패스로 기록되지 않음)
     t = ok(t, pass('p1')); // p0 턴 시작 → 2
     expect(t.markers.find((m) => m.specId === 'warp-gate')!.remainingTurns).toBe(2);
     t = ok(t, place('p0', 'scout', { x: 2, y: 1 })); // p0 는 배치 (패스 연속이면 게임이 끝난다)
+    t = ok(t, pass('p0')); // 턴 종료
     t = ok(t, pass('p1')); // → 1
     expect(t.markers.find((m) => m.specId === 'warp-gate')!.remainingTurns).toBe(1);
     t = ok(t, place('p0', 'scout', { x: 2, y: 3 }));
+    t = ok(t, pass('p0')); // 턴 종료
     t = ok(t, pass('p1')); // → 0 제거
     expect(t.markers.some((m) => m.specId === 'warp-gate')).toBe(false);
     expect(t.log.some((l) => l.kind === 'expire')).toBe(true);
@@ -608,6 +666,7 @@ describe('파괴 · 탈락 · 종료 (F024, F025)', () => {
     expect(t.markers.some((m) => m.ownerId === 'p1')).toBe(false);
     expect(t.currentPlayerId).toBe('p0');
     t = ok(withHand(t, 'p0', ['scout'], 3), place('p0', 'scout', { x: 4, y: 3 }));
+    t = ok(t, pass('p0')); // 턴 종료
     expect(t.currentPlayerId).toBe('p2'); // p1 건너뜀
     expect(fail(t, pass('p1'))).toBeDefined();
     const ranking = computeRanking(t);
@@ -663,12 +722,16 @@ describe('파괴 · 탈락 · 종료 (F024, F025)', () => {
     s = withHand(s, 'p0', ['scout', 'scout'], 10);
     s = withHand(s, 'p1', ['scout', 'scout'], 10);
     let t = ok(s, place('p0', 'scout', { x: 3, y: 3 }));
+    t = ok(t, pass('p0'));
     expect(t.round).toBe(1);
     t = ok(t, place('p1', 'scout', { x: 7, y: 7 }));
+    t = ok(t, pass('p1'));
     expect(t.round).toBe(2);
     expect(t.turn).toBe(3);
     t = ok(t, place('p0', 'scout', { x: 3, y: 4 }));
+    t = ok(t, pass('p0'));
     t = ok(t, place('p1', 'scout', { x: 7, y: 6 }));
+    t = ok(t, pass('p1'));
     expect(t.phase).toBe('finished');
     expect(t.result?.reason).toBe('round-limit');
     expect(t.round).toBe(2);
@@ -704,9 +767,13 @@ describe('결정성 · 순수성', () => {
     s = withHand(s, 'p1', ['scout', 'scout', 'scout'], 10);
     const seq: Action[] = [
       place('p0', 'scout', { x: 2, y: 1 }),
+      pass('p0'),
       place('p1', 'scout', { x: 9, y: 8 }),
+      pass('p1'),
       place('p0', 'scout', { x: 3, y: 3 }),
+      pass('p0'),
       place('p1', 'scout', { x: 7, y: 9 }),
+      pass('p1'),
     ];
     for (const a of seq) {
       s = ok(s, a);

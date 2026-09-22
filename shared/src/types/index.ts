@@ -141,6 +141,8 @@ export interface PlayerState {
   eliminatedOrder: number | null;
   /** 현재 연속 패스 구간에서 패스했는지. 누군가 배치하면 전원 false (Rules.md 9.2-2) */
   passed: boolean;
+  /** 이번 턴에 배치를 한 번이라도 했는지. beginTurn 에서 false 로 리셋 (Rules.md 5.2) */
+  actedThisTurn: boolean;
 }
 
 /** 덱 빌딩은 lobby 단계 안에서 이뤄진다 (별도 phase 없음) */

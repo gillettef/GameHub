@@ -70,7 +70,8 @@
       "discard": [],
       "alive": true,
       "eliminatedOrder": null,
-      "passed": false
+      "passed": false,
+      "actedThisTurn": false
     },
     {
       "id": "ai-1",
@@ -116,7 +117,8 @@
       "discard": [],
       "alive": true,
       "eliminatedOrder": null,
-      "passed": false
+      "passed": false,
+      "actedThisTurn": false
     }
   ],
   "markers": [

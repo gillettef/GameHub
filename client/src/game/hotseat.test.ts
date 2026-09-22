@@ -59,12 +59,18 @@ describe('핫시트 어댑터', () => {
     const cell = legalCells(s0, p0, playable!.cardId)[0]!;
     const placed = applyHotseatAction(s0, { type: 'PLACE', playerId: p0, cardId: playable!.cardId, pos: cell });
     expect(placed.error).toBeUndefined();
-    expect(placed.state.currentPlayerId).toBe(p1);
-    expect(placed.state.turn).toBe(2);
+    expect(placed.state.currentPlayerId).toBe(p0); // 배치는 턴을 끝내지 않는다
+    expect(placed.state.turn).toBe(1);
     expect(placed.state.markers.some((m) => m.pos.x === cell.x && m.pos.y === cell.y)).toBe(true);
 
+    // 배치 후 턴 종료 (배치했으므로 패스로는 기록되지 않는다)
+    const ended = applyHotseatAction(placed.state, { type: 'PASS', playerId: p0 });
+    expect(ended.error).toBeUndefined();
+    expect(ended.state.currentPlayerId).toBe(p1);
+    expect(ended.state.turn).toBe(2);
+
     // 다음 플레이어가 패스하면 다시 첫 플레이어 턴, 라운드 2
-    const passed = applyHotseatAction(placed.state, { type: 'PASS', playerId: p1 });
+    const passed = applyHotseatAction(ended.state, { type: 'PASS', playerId: p1 });
     expect(passed.error).toBeUndefined();
     expect(passed.state.currentPlayerId).toBe(p0);
     expect(passed.state.round).toBe(2);

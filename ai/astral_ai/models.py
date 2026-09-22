@@ -138,6 +138,7 @@ class PlayerState(Strict):
     alive: bool
     eliminatedOrder: int | None
     passed: bool
+    actedThisTurn: bool
 
 
 class GameLogEntry(Strict):
