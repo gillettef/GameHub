@@ -658,7 +658,7 @@ select { appearance: none; -webkit-appearance: none; padding-right: 34px; backgr
 .lineup-opponent { position: sticky; top: calc(var(--head-h, 48px) + 8px); }
 .lineup-opponent > summary { cursor: pointer; font-weight: 700; font-size: var(--fs-body); padding: 4px 0 8px; }
 .lineup-blocked { font-weight: 700; }
-/* 경기 준비 2단계: 출전 구역(초록 틴트) / 벤치 구역(회색 면)으로 나눠 구분 — 테두리 색만으로는 약했다 */
+/* 경기 준비 2단계: 출전 구역(초록 틴트) / 벤치 구역(회색 면)으로 나눠 구분 — 테두리 색만으로는 약했다. 카드 위 '출전' 배지는 역량을 가려 뺐다 */
 .lineup-groups { display: flex; flex-direction: column; gap: 12px; }
 .lineup-group { border: 1px solid var(--line); border-radius: var(--radius-md); padding: 12px 14px 14px; }
 .lineup-group.on { background: var(--pitch-tint); border-color: var(--pitch); }
@@ -667,7 +667,6 @@ select { appearance: none; -webkit-appearance: none; padding-right: 34px; backgr
 .lineup-group.on > h4 { color: var(--pitch-dark); }
 .lineup-group > h4 > .muted { font-size: var(--fs-sub); font-weight: 400; }
 .lineup-group-empty { margin: 0; }
-.lineup-group.on .card::before { content: '출전'; position: absolute; top: 6px; right: 6px; z-index: 2; font-size: var(--fs-sub); font-weight: 700; background: var(--pitch); color: #fff; border-radius: var(--radius-pill); padding: 1px 8px; }
 .lineup-group.off .card { filter: saturate(0.35); opacity: 0.8; }
 .lineup-group.off .card.clickable:hover { filter: none; opacity: 1; }
 .mobile-ui .lineup-group { padding: 10px 10px 8px; }
