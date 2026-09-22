@@ -36,7 +36,7 @@ notes/의 추천 스택을 기반으로 하되, DB 없음·단일 언어 원칙�
 | 프론트엔드 | React 18 + Vite + Zustand | 포트 `5173`, `/api`·`/socket.io`는 Vite proxy로 3001에 연결 |
 | 스타일 | CSS Modules | 탭 전환 시 언마운트 대신 `display:none`/`visibility` 전환 |
 | 테스트 | Vitest | 룰 엔진은 순수 함수로 작성하고 단위 테스트 필수 |
-| AI | Node.js 내 Minimax (TS) | notes/의 Python 추천은 채택하지 않음 (환경에 Python 없음, 단일 언어 유지) |
+| AI | Node.js 내 Minimax (TS) | notes/의 Python 추천 대신 단일 언어(TS)로 통일. 별도 Python 프로세스·HTTP 브리지 없이 서버 게임 루프에서 직접 호출하기 위함. (Python 3.11은 PC에 설치돼 있으나 PATH에 없음: `py` 런처 또는 `%LOCALAPPDATA%ProgramsPythonPython311python.exe`) |
 | 저장소 | **없음** | 인메모리 + JSON 파일 스냅샷 |
 | 패키지 관리 | npm workspaces | `npm install`은 루트에서 한 번 |
 
