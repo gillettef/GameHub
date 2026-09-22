@@ -121,7 +121,7 @@
   justify-content: center;
   font-size: var(--text-micro);
   font-weight: 700;
-  color: var(--color-navy);
+  color: var(--color-accent-text);
   background: var(--color-white);
   border: 2px solid var(--color-white);
   border-radius: 50%;
@@ -206,7 +206,7 @@
   height: 13px;
   padding: 0 3px;
   border-radius: var(--radius-full);
-  background: var(--color-navy);
+  background: var(--color-accent-text);
   color: var(--color-white);
   font-size: 9px;
   line-height: 13px;

@@ -3,6 +3,7 @@
  * 여기서는 셀 단위로 memo 하기 쉬운 평평한 구조로 바꾸기만 한다.
  */
 import type { CardId, GameState, MarkerKind, PlayerId, PlayerState, Position, Terrain } from '@astraltab/shared';
+
 import {
   computeIncome,
   computeScores,
@@ -14,6 +15,13 @@ import {
   terrainAt,
   validateCard,
 } from '@astraltab/shared';
+
+/** 서버가 가린 상태에는 handCount·deckCount 가 있다. 없으면(핫시트 전체 공개) 배열 길이 */
+function countOf(p: PlayerState, key: 'hand' | 'deck'): number {
+  const masked = p as PlayerState & { handCount?: number; deckCount?: number };
+  const n = key === 'hand' ? masked.handCount : masked.deckCount;
+  return typeof n === 'number' ? n : p[key].length;
+}
 
 export interface MarkerView {
   id: string;
@@ -222,8 +230,8 @@ export function buildPlayerSummaries(state: GameState): PlayerSummary[] {
       markerScore: scores[p.id]?.markers ?? 0,
       total: scores[p.id]?.total ?? 0,
       markerCount: state.markers.filter((m) => m.ownerId === p.id).length,
-      handCount: p.hand.length,
-      deckCount: p.deck.length,
+      handCount: countOf(p, 'hand'),
+      deckCount: countOf(p, 'deck'),
       discardCount: p.discard.length,
       passed: p.passed,
     }));

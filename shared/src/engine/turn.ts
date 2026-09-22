@@ -123,6 +123,42 @@ function ready(state: GameState, playerId: PlayerId): ActionResult {
   return { state: s };
 }
 
+/**
+ * 로비에서 맵 변경 (F030). 보드·라운드 제한을 새 맵으로 바꾸고 플레이어·로그는 유지한다.
+ * 정원이 줄어 인원이 넘치면 거부한다. 준비 상태는 전원 해제한다(정원이 바뀌면 다시 확인해야 하므로).
+ */
+export function changeMap(state: GameState, mapId: MapId): ActionResult {
+  if (state.phase !== 'lobby') return { state, error: '이미 시작된 게임입니다' };
+  const map = getMap(mapId);
+  if (state.players.length > map.players) {
+    return { state, error: `${map.name} 맵은 ${map.players}명까지입니다 (현재 ${state.players.length}명)` };
+  }
+  const fresh = createInitialState(state.roomId, mapId, state.rngSeed);
+  let s: GameState = {
+    ...state,
+    mapId,
+    board: fresh.board,
+    roundLimit: fresh.roundLimit,
+    players: state.players.map((p) => (p.kind === 'ai' ? p : { ...p, isReady: false })),
+  };
+  s = addLog(s, 'system', null, `맵 변경: ${map.name} (${map.players}인, ${map.size}×${map.size}, ${map.roundLimit}라운드)`);
+  return { state: s };
+}
+
+/** 로비에서 퇴장. 뒷좌석을 당겨 좌석 번호를 다시 매긴다. 게임 중엔 기권(SURRENDER)을 써야 한다 */
+export function leaveLobby(state: GameState, playerId: PlayerId): ActionResult {
+  if (state.phase !== 'lobby') return { state, error: '게임 중에는 기권으로만 나갈 수 있습니다' };
+  const leaving = state.players.find((p) => p.id === playerId);
+  if (!leaving) return { state, error: '방에 없는 플레이어입니다' };
+  const remaining = state.players
+    .filter((p) => p.id !== playerId)
+    .sort((a, b) => a.seat - b.seat)
+    .map((p, seat) => (p.seat === seat ? p : { ...p, seat }));
+  let s: GameState = { ...state, players: remaining };
+  s = addLog(s, 'system', playerId, `${leaving.nickname} 퇴장`);
+  return { state: s };
+}
+
 /** 인원이 맵 정원과 같고 전원 덱 선택·준비 완료 (F002, F030) */
 export function canStart(state: GameState): boolean {
   const map = getMap(state.mapId);

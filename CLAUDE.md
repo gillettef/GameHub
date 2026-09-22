@@ -37,7 +37,9 @@
 - `ai/astral_ai/search.py` 는 1수 탐욕 자리표시자다. Minimax / max-n 은 Phase 3.
 - `client/` 는 **Phase 1 탭 UI 핫시트**가 구현됐다 (F008~F017). 설정 화면(맵·닉네임·덱 빌딩) → 게임 대시보드(보드·상태·진행 탭) → 결과 오버레이. 규칙 계산은 `client/src/game/hotseat.ts` 가 `shared/src/engine` 의 `applyAction` 을 직접 호출하는 로컬 어댑터로 처리하며, Phase 2 에서 Socket.io 어댑터(`client/src/socket`)로 교체한다. 개발용 바로가기 `/?quick&map=<id>&seed=<n>&tab=<board|status|progress>&select=<손패 index>`. Vitest 10개(client).
 - 좌석 1·2·3 색과 경고색은 **미정**이라 보드에서 흰색 패턴(빗금·점·격자)과 테두리 선 모양(dashed·dotted·double)으로 구분한다. 사용자가 색을 정하면 `tokens.css` 의 `--color-seat-1..3`, `--color-danger` 만 채우면 된다.
-- `server/` 는 아직 스캐폴딩이다. 다음 작업은 Phase 2 로비·맵 선택·초대, Socket.io 동기화, JSON 스냅샷 (F001~F007, F030).
+- **Phase 2 온라인 멀티플레이 + AI 좌석**이 구현됐다 (F001~F007, F026, F027, F030). 서버 `rooms/manager.ts`(방 생성·초대 id·비밀번호·좌석·맵 변경·AI 추가, 순수 로직 + Vitest 9개), `persistence/snapshots.ts`(`server/data/<env>/rooms/<roomId>.json`, 시작 시 복원), `game/aiTurn.ts`(AI 턴마다 Python `/decide` 호출 → 엔진 검증 → PASS 폴백), `index.ts`(Socket.io ack 이벤트, 플레이어별 `maskState` 브로드캐스트). 이벤트 계약은 `shared/src/types/events.ts`, 가림 함수는 `shared/src/mask.ts`.
+- 클라이언트 경로: `/` 랜딩(방 만들기·초대 링크 참여·핫시트), `/hotseat` 핫시트 설정→게임, `/room/:id` 온라인 로비→게임. 소켓 어댑터 `client/src/socket/client.ts`, 스토어는 `mode: hotseat | online` 으로 같은 액션을 쓴다. 재접속은 localStorage `playerToken` (`client/src/lib/identity.ts`).
+- AI 탐색은 아직 1수 탐욕(`ai/astral_ai/search.py`). Minimax / max-n, 평가 함수 가중치(F028, F029)는 다음 작업. 로비의 자동 시작(전원 준비 시 엔진 `ready()` 가 시작)은 F002 의 "방장 시작 버튼"과 다르므로 필요하면 엔진에 START 액션을 추가한다.
 
 ---
 

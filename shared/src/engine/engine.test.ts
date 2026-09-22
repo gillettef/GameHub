@@ -6,6 +6,8 @@ import { describe, expect, it } from 'vitest';
 import {
   advanceTurn,
   applyAction,
+  changeMap,
+  leaveLobby,
   canPlay,
   computeIncome,
   computeRanking,
@@ -774,5 +776,38 @@ describe('리뷰 보강: 탈락과 패스, 동시 파괴, 즉발 코어 파괴, 
     const t = ok(s, place('p0', 'shield', { x: 2, y: 3 }));
     expect(core(t, 'p0').hp).toBe(CORE_SPEC.hp);
     expect(t.markers.find((m) => m.specId === 'warp-gate')!.hp).toBe(2);
+  });
+});
+
+describe('로비 조작 (F002, F030)', () => {
+  it('맵 변경: 보드·라운드 제한이 바뀌고 사람 플레이어의 준비가 해제된다', () => {
+    let s = lobby(2);
+    s = applyAction(s, { type: 'SELECT_DECK', playerId: 'p0', choice: DEFAULT_DECK_CHOICE }).state;
+    s = applyAction(s, { type: 'READY', playerId: 'p0' }).state;
+    expect(s.players[0]?.isReady).toBe(true);
+    const r = changeMap(s, 'quadrant');
+    expect(r.error).toBeUndefined();
+    expect(r.state.mapId).toBe('quadrant');
+    expect(r.state.board.width).toBe(getMap('quadrant').size);
+    expect(r.state.roundLimit).toBe(getMap('quadrant').roundLimit);
+    expect(r.state.players[0]?.isReady).toBe(false);
+    expect(r.state.players).toHaveLength(2);
+    // 정원보다 인원이 많으면 거부
+    const three = lobby(3);
+    expect(changeMap(three, 'binary-star').error).toMatch(/2명까지/);
+    // 게임 중엔 거부
+    expect(changeMap(startGame(readyLobby(2)), 'quadrant').error).toBeDefined();
+  });
+
+  it('퇴장: 뒷좌석이 당겨지고 게임 중엔 거부된다', () => {
+    const s = lobby(3);
+    const r = leaveLobby(s, 'p1');
+    expect(r.error).toBeUndefined();
+    expect(r.state.players.map((p) => [p.id, p.seat])).toEqual([
+      ['p0', 0],
+      ['p2', 1],
+    ]);
+    expect(leaveLobby(s, 'nobody').error).toBeDefined();
+    expect(leaveLobby(startGame(readyLobby(2)), 'p0').error).toMatch(/기권/);
   });
 });

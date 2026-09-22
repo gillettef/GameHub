@@ -10,10 +10,9 @@ const REASON: Record<string, string> = {
 };
 
 /** 게임 종료 화면 (F024, F025): 순위·점수 분해·종료 사유. 보드를 다시 볼 수도 있다 */
-export function ResultOverlay() {
+export function ResultOverlay({ onNewGame }: { onNewGame: () => void }) {
   const state = useGameStore(selectState);
   const dismissResult = useGameStore((s) => s.dismissResult);
-  const backToSetup = useGameStore((s) => s.backToSetup);
   if (!state?.result) return null;
   const { ranking, scores, reason } = state.result;
   const winner = ranking[0];
@@ -45,7 +44,7 @@ export function ResultOverlay() {
           })}
         </ol>
         <div className={styles.actions}>
-          <button type="button" className="pill pill--lg" onClick={backToSetup}>
+          <button type="button" className="pill pill--lg" onClick={onNewGame} autoFocus>
             새 게임
           </button>
           <button type="button" className="pill pill--outline" onClick={dismissResult}>

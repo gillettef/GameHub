@@ -71,6 +71,12 @@
   color: var(--color-accent);
 }
 
+:global(.is-disabled) .energy,
+:global(.is-disabled) .total {
+  color: var(--color-muted);
+  font-weight: 400;
+}
+
 .current td {
   background: color-mix(in srgb, var(--color-accent) 12%, transparent);
 }
