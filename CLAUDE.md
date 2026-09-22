@@ -35,7 +35,9 @@
 
 - `shared/src`(types·data·engine), `ai/astral_ai`(models·rules·search), `shared/fixtures` 는 **v2 규칙(Rules.md)** 으로 재작성됐다. Vitest 61개, pytest 14개(픽스처 시나리오 재생으로 TS·Python 규칙 일치 검증)가 통과한다.
 - `ai/astral_ai/search.py` 는 1수 탐욕 자리표시자다. Minimax / max-n 은 Phase 3.
-- `server/`, `client/` 는 아직 스캐폴딩이다. 다음 작업은 Phase 1 탭 UI 핫시트(F008~F015), 그다음 Phase 2 로비·동기화.
+- `client/` 는 **Phase 1 탭 UI 핫시트**가 구현됐다 (F008~F017). 설정 화면(맵·닉네임·덱 빌딩) → 게임 대시보드(보드·상태·진행 탭) → 결과 오버레이. 규칙 계산은 `client/src/game/hotseat.ts` 가 `shared/src/engine` 의 `applyAction` 을 직접 호출하는 로컬 어댑터로 처리하며, Phase 2 에서 Socket.io 어댑터(`client/src/socket`)로 교체한다. 개발용 바로가기 `/?quick&map=<id>&seed=<n>&tab=<board|status|progress>&select=<손패 index>`. Vitest 10개(client).
+- 좌석 1·2·3 색과 경고색은 **미정**이라 보드에서 흰색 패턴(빗금·점·격자)과 테두리 선 모양(dashed·dotted·double)으로 구분한다. 사용자가 색을 정하면 `tokens.css` 의 `--color-seat-1..3`, `--color-danger` 만 채우면 된다.
+- `server/` 는 아직 스캐폴딩이다. 다음 작업은 Phase 2 로비·맵 선택·초대, Socket.io 동기화, JSON 스냅샷 (F001~F007, F030).
 
 ---
 
@@ -98,10 +100,13 @@ AstralTab/
 │       └── persistence/  # JSON 파일 스냅샷 저장/복구 (DB 아님)
 ├── client/
 │   └── src/
-│       ├── pages/        # Lobby, DeckBuilder, Game, Result
+│       ├── pages/        # SetupPage(맵·닉네임·덱 빌딩), GamePage(헤더·탭 바), ResultOverlay
 │       ├── tabs/         # BoardTab(격자+손패+패스), StatusTab, ProgressTab
+│       ├── components/   # Board, Cell, Hand, CardFace, TurnControls
+│       ├── game/         # hotseat.ts(로컬 어댑터), derived.ts(화면용 파생값, 엔진 호출만)
 │       ├── store/        # Zustand 전역 상태 (모든 탭 데이터 선로드)
-│       ├── socket/       # Socket.io 클라이언트, 재연결 처리
+│       ├── lib/          # cx 등 작은 유틸
+│       ├── socket/       # Socket.io 클라이언트, 재연결 처리 (Phase 2)
 │       └── styles/       # tokens.css, global.css
 └── ai/                   # Python AI 서비스 (FastAPI, 포트 8000)
     ├── pyproject.toml

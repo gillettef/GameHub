@@ -17,6 +17,7 @@ body {
   color: var(--color-text);
   background: var(--color-canvas);
   -webkit-font-smoothing: antialiased;
+  overflow: hidden;
 }
 
 h1,
@@ -28,35 +29,83 @@ h3 {
   margin: 0;
 }
 
-/* 스캐폴딩 확인 화면. Phase 1에서 제거한다. */
-.scaffold {
-  max-width: 640px;
-  margin: 0 auto;
-  padding: var(--space-6) var(--space-4);
+button {
+  font-family: inherit;
+  font-size: var(--text-body);
+  cursor: pointer;
+  border: 0;
+  background: none;
+  color: inherit;
+  padding: 0;
 }
 
-.scaffold h1 {
-  font-size: var(--text-section);
+button:disabled {
+  cursor: default;
 }
 
-.scaffold__lead {
-  margin: var(--space-1) 0 var(--space-4);
+input {
+  font-family: inherit;
+  font-size: var(--text-body);
+  color: inherit;
 }
 
-.scaffold__status {
-  display: grid;
-  grid-template-columns: max-content 1fr;
-  gap: var(--space-1) var(--space-4);
-  padding: var(--space-4);
-  background: var(--color-surface);
-  border-radius: var(--radius-sm);
-}
-
-.scaffold__status dt {
-  color: var(--color-heading);
+/* 필 CTA (DESIGN.md Buttons). 각진 버튼 금지 */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  height: 44px;
+  padding: var(--space-1) var(--space-4);
+  border-radius: var(--radius-pill);
+  background: var(--color-accent);
+  color: var(--color-accent-text);
   font-weight: 600;
+  white-space: nowrap;
+  transition:
+    opacity var(--motion-fast) var(--ease-standard),
+    transform var(--motion-fast) var(--ease-standard);
 }
 
-.scaffold__status dd {
-  margin: 0;
+.pill:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.pill:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.pill:disabled {
+  opacity: 0.4;
+}
+
+.pill--outline {
+  background: transparent;
+  color: var(--color-heading);
+  border: 1px solid var(--color-outline);
+  border-radius: var(--radius-full);
+  height: 38px;
+  padding: var(--space-1) var(--space-2);
+  font-weight: 500;
+}
+
+.pill--lg {
+  height: 56px;
+  padding: var(--space-1) var(--space-5);
+  font-size: var(--text-nav);
+}
+
+/* 비활성 텍스트: 회색 + 투명도 (DESIGN.md States) */
+.is-disabled {
+  color: var(--color-muted);
+  opacity: 0.7;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
 }

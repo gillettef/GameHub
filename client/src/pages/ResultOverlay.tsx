@@ -1,0 +1,58 @@
+import { nameOf } from '@astraltab/shared';
+import { cx } from '../lib/cx';
+import { selectState, useGameStore } from '../store/gameStore';
+import styles from './ResultOverlay.module.css';
+
+const REASON: Record<string, string> = {
+  'last-survivor': '최후 생존',
+  'all-pass': '전원 패스',
+  'round-limit': '라운드 제한',
+};
+
+/** 게임 종료 화면 (F024, F025): 순위·점수 분해·종료 사유. 보드를 다시 볼 수도 있다 */
+export function ResultOverlay() {
+  const state = useGameStore(selectState);
+  const dismissResult = useGameStore((s) => s.dismissResult);
+  const backToSetup = useGameStore((s) => s.backToSetup);
+  if (!state?.result) return null;
+  const { ranking, scores, reason } = state.result;
+  const winner = ranking[0];
+
+  return (
+    <div className={styles.backdrop} role="dialog" aria-modal="true" aria-labelledby="result-title">
+      <div className={styles.panel}>
+        <p className={styles.eyebrow}>게임 종료 · {REASON[reason] ?? reason}</p>
+        <h2 id="result-title" className={styles.title}>
+          {winner ? `${nameOf(state, winner)} 승리` : '결과'}
+        </h2>
+        <ol className={styles.ranking}>
+          {ranking.map((id, i) => {
+            const p = state.players.find((x) => x.id === id);
+            const s = scores[id];
+            return (
+              <li key={id} className={cx(styles.row, i === 0 && styles.first, p && !p.alive && 'is-disabled')}>
+                <span className={styles.rank}>{i + 1}위</span>
+                <span className={styles.name}>
+                  {p?.nickname ?? id}
+                  <span className={styles.seat}> 좌석 {(p?.seat ?? -1) + 1}</span>
+                </span>
+                <span className={styles.breakdown}>
+                  {p && !p.alive ? '탈락' : `영토 ${s?.territory ?? 0} + 마커 ${s?.markers ?? 0}`}
+                </span>
+                <span className={styles.total}>{s?.total ?? 0}점</span>
+              </li>
+            );
+          })}
+        </ol>
+        <div className={styles.actions}>
+          <button type="button" className="pill pill--lg" onClick={backToSetup}>
+            새 게임
+          </button>
+          <button type="button" className="pill pill--outline" onClick={dismissResult}>
+            보드 살펴보기
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}

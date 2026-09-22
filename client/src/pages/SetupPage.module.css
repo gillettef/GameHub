@@ -1,0 +1,276 @@
+/* 비게임 세계: 흰 캔버스, 네이비 헤딩, 서피스 블록으로 구분 */
+.root {
+  height: 100%;
+  overflow-y: auto;
+  background: var(--color-canvas);
+}
+
+.hero {
+  padding: var(--space-5) var(--space-4) var(--space-4);
+  background: var(--color-heading);
+  color: var(--color-white);
+}
+
+.title {
+  font-size: var(--text-hero);
+  color: var(--color-white);
+  line-height: 1.1;
+}
+
+.lead {
+  margin: var(--space-2) 0 0;
+  font-size: var(--text-nav);
+  opacity: 0.85;
+}
+
+.main {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: var(--space-4) var(--space-4) var(--space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.section {
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.h2 {
+  font-size: var(--text-sub);
+  margin-bottom: var(--space-2);
+}
+
+.h2Light {
+  font-size: var(--text-sub);
+  color: var(--color-white);
+}
+
+.h3 {
+  font-size: var(--text-nav);
+  margin-bottom: var(--space-1);
+}
+
+.h3sub {
+  font-weight: 400;
+  font-size: var(--text-small);
+  color: var(--color-muted);
+}
+
+.help {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-small);
+  color: var(--color-text);
+}
+
+/* 맵 */
+.mapGroups {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.mapGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.mapCard {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--color-white);
+  border: 2px solid transparent;
+  text-align: left;
+  transition: border-color var(--motion-fast) var(--ease-standard);
+}
+
+.mapCard:hover {
+  border-color: color-mix(in srgb, var(--color-accent) 50%, transparent);
+}
+
+.mapSelected,
+.mapSelected:hover {
+  border-color: var(--color-accent);
+  background: var(--color-band-lavender);
+}
+
+.mapName {
+  font-weight: 700;
+  color: var(--color-heading);
+}
+
+.mapMeta {
+  font-size: var(--text-small);
+  color: var(--color-text);
+}
+
+.mapDesc {
+  font-size: var(--text-small);
+  color: var(--color-muted);
+}
+
+/* 닉네임 */
+.names {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--space-2);
+}
+
+.nameField {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.seatLabel {
+  font-size: var(--text-small);
+  color: var(--color-heading);
+  font-weight: 600;
+}
+
+.input {
+  height: 44px;
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-muted);
+  background: var(--color-white);
+}
+
+.input:focus {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 0;
+  border-color: var(--color-accent);
+}
+
+/* 덱 빌딩 */
+.seatTabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin-bottom: var(--space-3);
+}
+
+.seatTab {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  height: 40px;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-full);
+  border: 1px solid var(--color-outline);
+  color: var(--color-heading);
+  font-weight: 600;
+  font-size: var(--text-small);
+}
+
+.seatTabActive {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: var(--color-accent-text);
+}
+
+.seatState {
+  font-weight: 400;
+  font-size: var(--text-micro);
+  opacity: 0.8;
+}
+
+.seatDone {
+  font-weight: 700;
+}
+
+.picker {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.pickColumn {
+  padding: var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--color-white);
+}
+
+.cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+.readyRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.readyRow .help {
+  margin: 0;
+}
+
+.baseDeck {
+  margin-top: var(--space-3);
+}
+
+.summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--color-heading);
+  margin-bottom: var(--space-2);
+}
+
+.baseCard {
+  position: relative;
+}
+
+.copies {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  font-size: var(--text-small);
+  font-weight: 700;
+  color: var(--color-heading);
+}
+
+/* 시작 밴드: 어두운 밴드 위 흰 필 CTA */
+.startBand {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  background: var(--color-heading);
+  color: var(--color-white);
+}
+
+.startHelp {
+  margin: var(--space-1) 0 0;
+  opacity: 0.85;
+}
+
+.error {
+  margin: var(--space-1) 0 0;
+  color: var(--color-band-amber);
+}
+
+.startButton {
+  background: var(--color-white);
+  color: var(--color-heading);
+}
+
+@media (max-width: 900px) {
+  .mapGroups,
+  .picker {
+    grid-template-columns: 1fr;
+  }
+
+  .startBand {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
