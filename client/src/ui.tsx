@@ -12,6 +12,9 @@ export interface Spotlight {
   pid: PlayerId;
   focus: ActionFocus;
 }
+function reducedMotion(): boolean {
+  return typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
 function loadFollow(): boolean {
   try {
     return localStorage.getItem(FOLLOW_KEY) !== 'off';
@@ -164,9 +167,24 @@ export function UiProvider({ children }: { children: ReactNode }) {
   }, [lastAction, follow, me, myTurn, showBoard, showMarket]);
   useEffect(() => {
     if (!spotlight) return;
+    // 비춘 카드·시설이 화면 밖이면 보이는 곳으로 (탭 이동으로 맨 위로 간 뒤에 실행되도록 한 프레임 뒤)
+    const raf = requestAnimationFrame(() => document.querySelector('.spotlight')?.scrollIntoView({ block: 'center', behavior: reducedMotion() ? 'auto' : 'smooth' }));
     const t = setTimeout(() => setSpotlight((s) => (s?.seq === spotlight.seq ? null : s)), SPOTLIGHT_MS);
-    return () => clearTimeout(t);
+    return () => {
+      cancelAnimationFrame(raf);
+      clearTimeout(t);
+    };
   }, [spotlight]);
+
+  // 메뉴·탭을 누르면(또는 단계가 바뀌어 탭이 재설정되면) 항상 화면 맨 위로 (사용자 요청 2026-09-22). 페이지는 window 가 스크롤한다(헤더·사이드바는 sticky)
+  const firstNav = useRef(true);
+  useEffect(() => {
+    if (firstNav.current) {
+      firstNav.current = false;
+      return;
+    }
+    window.scrollTo({ top: 0, behavior: reducedMotion() ? 'auto' : 'smooth' });
+  }, [selected, mainTab, boardTab, sharedTab, marketTab, mobileTab]);
 
   const value = useMemo<UiStore>(
     () => ({ selected, selectPlayer, mainTab, setMainTab, boardTab, setBoardTab, sharedTab, setSharedTab, showBoard, showShared, marketTab, setMarketTab, showMarket, mobileTab, setMobileTab, releasing, setReleasing, settledRoll, setSettledRoll, resultSeen, setResultSeen, matchWatched, setMatchWatched, follow, setFollow, spotlight, sideTab, setSideTab, chatSeen, setChatSeen }),
