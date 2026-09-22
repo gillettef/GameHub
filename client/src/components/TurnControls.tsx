@@ -10,7 +10,9 @@ interface TurnControlsProps {
 }
 
 /**
- * 패스·기권 (F013). 배치는 자동으로 턴을 끝내므로 '턴 종료' 버튼은 없다.
+ * 패스·턴 종료·기권 (F013). 에너지가 허락하는 한 한 턴에 여러 번 배치할 수 있고(Rules.md 5.2),
+ * 배치는 턴을 끝내지 않는다. 같은 버튼이 이번 턴에 한 번도 안 놓았으면 '패스', 하나 이상 놓았으면
+ * '턴 종료' 로 라벨을 바꾼다 — 후자는 전원 연속 패스 판정에 들어가지 않는다.
  * 기권 확인 단계는 스토어에 있어 보드·진행 탭이 같은 상태를 보고, 턴이 바뀌면 자동으로 풀린다.
  */
 export const TurnControls = memo(function TurnControls({ compact }: TurnControlsProps) {
@@ -28,6 +30,8 @@ export const TurnControls = memo(function TurnControls({ compact }: TurnControls
   const passes = countPasses(state);
   const current = state.currentPlayerId ? nameOf(state, state.currentPlayerId) : null;
   const me = state.players.find((p) => p.id === viewerId);
+  const acted = me?.actedThisTurn ?? false;
+  const endLabel = acted ? '턴 종료' : '패스';
 
   return (
     <div className={cx(styles.root, compact && styles.compact)}>
@@ -37,7 +41,7 @@ export const TurnControls = memo(function TurnControls({ compact }: TurnControls
         ) : me && !me.alive ? (
           <span className={styles.other}>탈락했습니다. 관전 중</span>
         ) : isMyTurn ? (
-          <span className={styles.mine}>내 턴 · 카드를 놓거나 패스</span>
+          <span className={styles.mine}>내 턴 · 카드를 이어서 놓거나 {endLabel}</span>
         ) : (
           <span className={styles.other}>{current}의 턴입니다</span>
         )}
@@ -58,7 +62,7 @@ export const TurnControls = memo(function TurnControls({ compact }: TurnControls
       ) : (
         <div className={styles.actions}>
           <button type="button" className="pill" disabled={!isMyTurn} onClick={pass}>
-            패스
+            {endLabel}
           </button>
           <button type="button" className="pill pill--outline" disabled={!isMyTurn} onClick={() => setConfirming(true)}>
             기권

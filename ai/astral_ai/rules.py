@@ -381,6 +381,7 @@ def _begin_turn(state: GameState) -> None:
     p = _player(state, pid)
     p.energy = min(p.energy + compute_income(state, pid), const("ENERGY_CAP"))
     _draw(state, pid)
+    p.actedThisTurn = False
 
 
 def _advance_turn(state: GameState) -> None:
@@ -459,14 +460,20 @@ def apply_action(state: GameState, action: Action) -> GameState:
         if err:
             raise ValueError(err)
         _apply_placement(s, action.playerId, action.cardId, action.pos)
+        # 누가 배치하든(자기 자신 포함) 전원 연속 패스 판정이 깨진다 (Rules.md 9.2-2)
         for p in s.players:
             p.passed = False
-        _advance_turn(s)
+        _player(s, action.playerId).actedThisTurn = True
+        # 즉발 마법으로 마지막 상대 코어가 깨졌으면 배치 중이라도 즉시 승리 (Rules.md 9.2-1)
+        if len(alive_players(s)) <= 1:
+            _finish(s, "last-survivor")
+        # 배치는 턴을 끝내지 않는다 — 같은 플레이어가 이어서 배치하거나 PASS 로 턴을 넘긴다 (Rules.md 5.2)
     elif isinstance(action, PassAction):
         err = _check_turn(s, action.playerId)
         if err:
             raise ValueError(err)
-        _player(s, action.playerId).passed = True
+        if not _player(s, action.playerId).actedThisTurn:
+            _player(s, action.playerId).passed = True
         _advance_turn(s)
     elif isinstance(action, SurrenderAction):
         err = _check_turn(s, action.playerId)
