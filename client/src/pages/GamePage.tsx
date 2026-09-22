@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { getMap, nameOf } from '@astraltab/shared';
 import { HandoffOverlay } from '../components/HandoffOverlay';
+import { PlayerStrip } from '../components/PlayerStrip';
 import { cx } from '../lib/cx';
 import { TABS, selectState, selectTab, selectViewerId, useGameStore, type TabId } from '../store/gameStore';
 import { BoardTab } from '../tabs/BoardTab';
@@ -91,6 +92,8 @@ export function GamePage({ onQuit }: GamePageProps) {
           </button>
         </nav>
       </header>
+
+      <PlayerStrip />
 
       {offline && (
         <div className={styles.banner} role="alert">
