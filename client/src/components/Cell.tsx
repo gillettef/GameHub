@@ -29,6 +29,7 @@ export const Cell = memo(function Cell({ cell, legal, onClick }: CellProps) {
       {cell.terrain === 'vein' && <span className={styles.vein} aria-hidden="true" />}
       {m && (
         <div className={styles.marker} data-kind={m.kind} data-seat={m.seat}>
+          <span className={styles.label}>{m.name.slice(0, 2)}</span>
           <span className={styles.hp}>{m.hp}</span>
           <span className={styles.seatBadge}>{m.seat + 1}</span>
           <div className={styles.tooltip} data-below={cell.y < 3 || undefined} role="tooltip">

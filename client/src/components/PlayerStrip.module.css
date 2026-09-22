@@ -1,0 +1,99 @@
+.root {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  padding: 6px var(--space-3);
+  background: color-mix(in srgb, var(--color-surface) 60%, transparent);
+}
+
+.chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px var(--space-1);
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--color-surface) 80%, transparent);
+  font-size: var(--text-micro);
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.chip.me {
+  border: 1px solid var(--color-outline);
+}
+
+.chip.current {
+  background: var(--color-accent);
+  color: var(--color-accent-text);
+}
+
+.chip.dead {
+  opacity: 0.5;
+}
+
+.chip.dead .name {
+  text-decoration: line-through;
+}
+
+.badge {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 2px solid var(--color-seat-0);
+  flex-shrink: 0;
+}
+
+.badge[data-seat='0'] {
+  border-color: var(--color-seat-0);
+  background: var(--color-seat-0);
+}
+
+.badge[data-seat='1'] {
+  border-color: var(--color-seat-1, var(--color-white));
+  border-style: dashed;
+}
+
+.badge[data-seat='2'] {
+  border-color: var(--color-seat-2, var(--color-white));
+  border-style: dotted;
+}
+
+.badge[data-seat='3'] {
+  border-color: var(--color-seat-3, var(--color-white));
+  border-style: double;
+  border-width: 3px;
+}
+
+.name {
+  font-weight: 600;
+  max-width: 96px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.energy {
+  color: var(--color-energy);
+  font-weight: 700;
+}
+
+.chip.current .energy {
+  color: inherit;
+}
+
+.score {
+  color: var(--color-muted);
+}
+
+.chip.current .score {
+  color: inherit;
+  opacity: 0.85;
+}
+
+.state {
+  font-weight: 600;
+  color: var(--color-muted);
+}
+
+.chip.current .state {
+  color: inherit;
+}
