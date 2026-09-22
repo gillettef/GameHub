@@ -17,10 +17,12 @@ function tuesday(): GameState {
   return s;
 }
 
+// 되돌리기 비교에서 뺄 것: 스냅샷·기록, 그리고 마지막 행동 요약(되돌린 뒤에는 'undoTurn' 이 남는 것이 맞다)
 const strip = (s: GameState) => {
-  const { turnSnapshot, log, ...rest } = s;
+  const { turnSnapshot, log, lastAction, ...rest } = s;
   void turnSnapshot;
   void log;
+  void lastAction;
   return rest;
 };
 

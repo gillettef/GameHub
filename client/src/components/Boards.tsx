@@ -4,6 +4,7 @@ import { WEEKS, upkeepDue } from '@server/engine/weekend';
 import { RESOURCES, TRACK_MAX } from '@server/engine/types';
 import type { InfrastructureType } from '@server/engine/types';
 import type { PlayerPublicView } from '@server/engine/view';
+import type { ActionFocus } from '@server/engine/state';
 import { useCommit } from '../commit';
 import { INFRA_EFFECT, INFRA_LABEL, RESOURCE_LABEL } from '../labels';
 import { useView } from '../store';
@@ -20,7 +21,16 @@ import { Tabs } from './Tabs';
 // 구단 보드 (룰북 p.7): 능력치 트랙 4개(월요일 조달), 유지비 3종, 직원, 임원.
 // 이번 주 일정은 진행 영역(components/WeekSchedule.tsx)으로 옮겼다 (사용자 요청 2026-09)
 // 실물 보드의 정보는 그대로 두고 운영 대시보드처럼 읽히게 배치한다 (DESIGN.md: 흰 타일 + #f6f8fa 면, 그림자 없음)
+// 다른 참가자가 방금 만진 카드·시설을 비춘다 (ui.spotlight — 그 참가자의 보드일 때만)
+function useSpot(pid: string, board: BoardTab): ActionFocus | null {
+  const { spotlight } = useUi();
+  return spotlight && spotlight.pid === pid && spotlight.focus.board === board ? spotlight.focus : null;
+}
+
 function ClubBoard({ p }: { p: PlayerPublicView }) {
+  const spot = useSpot(p.id, 'club');
+  const spotStaff = spot && spot.board === 'club' ? spot.staffIndex : undefined;
+  const spotExec = spot && spot.board === 'club' ? spot.executiveIndex : undefined;
   const { view } = useView();
   const { procurement, trackOverflow, upkeep } = cards.boardData;
   const stadiumCount = 4 + p.infrastructure.length;
@@ -91,7 +101,7 @@ function ClubBoard({ p }: { p: PlayerPublicView }) {
           <div className="cards">
             {p.staff.map((s, i) => (
               <div key={`${s.cardId}-${i}`} className="card-slot">
-                <StaffCardView cardId={s.cardId} exhausted={s.exhausted} suspension={s.suspension} />
+                <StaffCardView cardId={s.cardId} exhausted={s.exhausted} suspension={s.suspension} spotlight={spotStaff === i} />
                 <CardActionButtons me={p} kind="staff" index={i} />
               </div>
             ))}
@@ -107,7 +117,7 @@ function ClubBoard({ p }: { p: PlayerPublicView }) {
           <div className="cards">
             {p.executives.map((e, i) => (
               <div key={`${e.cardId}-${i}`} className="card-slot">
-                <ExecutiveCardView cardId={e.cardId} exhausted={e.exhausted} />
+                <ExecutiveCardView cardId={e.cardId} exhausted={e.exhausted} spotlight={spotExec === i} />
                 <CardActionButtons me={p} kind="executive" index={i} />
               </div>
             ))}
@@ -139,6 +149,10 @@ export function PitchLines() {
 // 아래에 계약한 스폰서 카드
 function StadiumBoard({ p }: { p: PlayerPublicView }) {
   const { myTurn } = useWeekdayTurn(p.id);
+  const spot = useSpot(p.id, 'stadium');
+  const spotInfra = spot && spot.board === 'stadium' ? spot.infrastructure : undefined;
+  const spotOffice = !!spot && spot.board === 'stadium' && !!spot.office;
+  const spotSponsor = spot && spot.board === 'stadium' ? spot.sponsorCardId : undefined;
   const office = cards.boardData.office;
   const general = p.infrastructure.filter((i) => !['stand3', 'stand4', 'billboard3'].includes(i));
   const has = (t: InfrastructureType) => p.infrastructure.includes(t);
@@ -153,7 +167,7 @@ function StadiumBoard({ p }: { p: PlayerPublicView }) {
         ? infraTitle(type)
         : `${n}번 관중석 (미건설) — 건설하면 경기 때 팬덤을 1개 더 놓을 수 있습니다${n === 4 ? ' · 3번 관중석을 먼저 지어야 합니다' : ''}`;
     return (
-      <div className={`stand ${side}${open ? ' open' : ''}`} title={title}>
+      <div className={`stand ${side}${open ? ' open' : ''}${type && spotInfra === type ? ' spotlight' : ''}`} title={title}>
         <span className="stand-name"><Icon name="fandom" size={12} />{n}번 관중석</span>
         {type && open && <Chip icon="vp" value={infraDef(type).vp} />}
         {!open && <span className="stand-state">미건설</span>}
@@ -170,7 +184,7 @@ function StadiumBoard({ p }: { p: PlayerPublicView }) {
         ? `${i + 1}번 광고판: ${cards.sponsor(id).name}`
         : `${i + 1}번 광고판 — 비어 있음`;
     return (
-      <div key={i} className={`billboard${id ? ' filled' : ''}${locked ? ' locked' : ''}`} title={title}>
+      <div key={i} className={`billboard${id ? ' filled' : ''}${locked ? ' locked' : ''}${(i === 2 && spotInfra === 'billboard3') || (id && id === spotSponsor) ? ' spotlight' : ''}`} title={title}>
         <span className="billboard-no">{i + 1}</span>
         <span className="billboard-name">{locked ? '미건설' : id ? cards.sponsor(id).name : '광고 모집 중'}</span>
       </div>
@@ -192,7 +206,7 @@ function StadiumBoard({ p }: { p: PlayerPublicView }) {
             {[...office].reverse().map((step, ri) => {
               const i = office.length - 1 - ri;
               return (
-                <li key={i} className={`office-floor${p.office === i ? ' marker' : ''}${p.office > i ? ' passed' : ''}`}>
+                <li key={i} className={`office-floor${p.office === i ? ' marker' : ''}${p.office > i ? ' passed' : ''}${spotOffice && p.office === i ? ' spotlight' : ''}`}>
                   <span className="office-level">{i === 0 ? '입구' : `${i}층`}</span>
                   <span className="office-vp"><Icon name="vp" size={11} />{step.vp}</span>
                   {step.cost > 0 && <span className="office-cost" title="위층으로 올라가는 비용">↑ <Icon name="money" size={11} />{step.cost}</span>}
@@ -220,7 +234,7 @@ function StadiumBoard({ p }: { p: PlayerPublicView }) {
             {Array.from({ length: GENERAL_SLOTS }, (_, i) => {
               const t = general[i];
               return (
-                <div key={i} className={`infra-slot${t ? ' built' : ''}`} title={t ? infraTitle(t) : '빈 부지 — 주중 기본 행동으로 기반 시설을 건설'}>
+                <div key={i} className={`infra-slot${t ? ' built' : ''}${t && t === spotInfra ? ' spotlight' : ''}`} title={t ? infraTitle(t) : '빈 부지 — 주중 기본 행동으로 기반 시설을 건설'}>
                   {t ? (
                     <>
                       <span className="infra-name">{INFRA_LABEL[t]}</span>
@@ -236,7 +250,7 @@ function StadiumBoard({ p }: { p: PlayerPublicView }) {
               );
             })}
           </div>
-          <div className={`naming-slot${p.sponsors.naming ? ' filled' : ''}`} title="유니폼 스폰서 (카드는 앞면이 아래로)">
+          <div className={`naming-slot${p.sponsors.naming ? ' filled' : ''}${p.sponsors.naming && p.sponsors.naming === spotSponsor ? ' spotlight' : ''}`} title="유니폼 스폰서 (카드는 앞면이 아래로)">
             <svg className="jersey" viewBox="0 0 32 28" aria-hidden="true" focusable="false"><path d="M11 2 3 6l3 7 3-1.5V26h14V11.5L26 13l3-7-8-4c-1 2-3 3-5 3s-4-1-5-3z" /></svg>
             <span className="naming-text">
               <span className="board-label">유니폼 스폰서</span>
@@ -254,9 +268,9 @@ function StadiumBoard({ p }: { p: PlayerPublicView }) {
         ) : (
           <div className="cards">
             {p.sponsors.billboards.map((id, i) => (
-              <SponsorCardView key={`${id}-${i}`} cardId={id} badge={`${i + 1}번 광고판`} />
+              <SponsorCardView key={`${id}-${i}`} cardId={id} badge={`${i + 1}번 광고판`} spotlight={id === spotSponsor} />
             ))}
-            {p.sponsors.naming && <SponsorCardView cardId={p.sponsors.naming} badge="유니폼" faceDown />}
+            {p.sponsors.naming && <SponsorCardView cardId={p.sponsors.naming} badge="유니폼" faceDown spotlight={p.sponsors.naming === spotSponsor} />}
           </div>
         )}
       </div>
@@ -269,6 +283,8 @@ function StadiumBoard({ p }: { p: PlayerPublicView }) {
 function MatchBoard({ p }: { p: PlayerPublicView }) {
   const { view, session } = useView();
   const { releasing } = useUi();
+  const spot = useSpot(p.id, 'match');
+  const spotInstance = spot && spot.board === 'match' ? spot.instanceId : undefined;
   const { chosen, select } = useCommit();
   const canRelease = releasing && !!session && session.playerId === p.id && view.phase.kind === 'weekday' && view.phase.current === p.id && !view.phase.basicDone;
   const field = p.uniforms.filter((u) => u.location === 'field');
@@ -317,6 +333,7 @@ function MatchBoard({ p }: { p: PlayerPublicView }) {
               cardId={r.cardId}
               instance={r}
               chosen={chosen === `release:${r.instanceId}`}
+              spotlight={r.instanceId === spotInstance}
               onClick={canRelease ? () => select(`release:${r.instanceId}`, { type: 'releasePlayer', instanceId: r.instanceId }, <>방출: <b>{instanceName(r)}</b></>) : undefined}
             />
           ))}

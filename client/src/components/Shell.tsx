@@ -11,7 +11,7 @@ import { DeviceToggle, useDevice } from '../device';
 import { DAY_LABEL, RESOURCE_LABEL, SEAT_COLORS, TOKEN_LABEL, describeEffects, phaseLabel } from '../labels';
 import { NotifyToggles } from '../notify';
 import { useStore, useView } from '../store';
-import { useUi } from '../ui';
+import { FollowToggle, useUi } from '../ui';
 import type { MarketTab } from '../ui';
 import { PlayerCardView, SponsorCardView, StaffCardView } from './Cards';
 import { ChatBody, unreadCount } from './Chat';
@@ -52,6 +52,7 @@ export function Header({ subtitle }: { subtitle?: string }) {
       </div>
       <div className="conn">
         {session && <NotifyToggles />}
+        <FollowToggle />
         <DeviceToggle />
         <span className={`dot ${connected ? 'on' : 'off'}`} title={connected ? '연결됨' : '재연결 중'} />
         <span className="conn-text">{connected ? '연결됨' : '재연결 중'}</span>

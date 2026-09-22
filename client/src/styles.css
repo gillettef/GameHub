@@ -876,6 +876,11 @@ button.ghost.light:hover:not(:disabled) { border-color: #fff; color: #fff; backg
 .notify-toggles { display: inline-flex; gap: 4px; margin-right: 8px; }
 .notify-toggles .toggle { padding: 3px 8px; font-size: var(--fs-sub); color: var(--muted); border-color: var(--line); gap: 4px; }
 .notify-toggles .toggle.on { color: var(--pitch-dark); border-color: var(--pitch); background: var(--pitch-tint); }
+/* 다른 참가자가 방금 만진 카드·시설 비추기 (ui.spotlight): 초록 선택 링이 몇 번 깜빡이고 몇 초 뒤 사라진다 */
+.card.spotlight, .infra-slot.spotlight, .stand.spotlight, .billboard.spotlight, .naming-slot.spotlight, .office-floor.spotlight { box-shadow: 0 0 0 3px var(--pitch); animation: spotlight-pulse 1.2s var(--ease-standard) 3; position: relative; z-index: 2; }
+.card.spotlight { border-color: var(--pitch); }
+@keyframes spotlight-pulse { 0%, 100% { box-shadow: 0 0 0 3px var(--pitch); } 50% { box-shadow: 0 0 0 6px var(--pitch-tint), 0 0 0 8px var(--pitch); } }
+@media (prefers-reduced-motion: reduce) { .card.spotlight, .infra-slot.spotlight, .stand.spotlight, .billboard.spotlight, .naming-slot.spotlight, .office-floor.spotlight { animation: none; } }
 @media (prefers-reduced-motion: reduce) { .confirm-bar, .tip { animation: none; } }
 
 /* ---- 툴팁: `title` 속성을 대신하는 말풍선 (components/Tooltip.tsx). 잉크색 바탕에 작은 꼬리, 위(above)/아래(below) ---- */

@@ -11,15 +11,16 @@ import { Chip, CostChips, EffectChips, Icon, TokenChip, TrackChip } from './Icon
 interface CardProps {
   selected?: boolean;
   chosen?: boolean; // 방금 고른 항목 강조 (useCommit)
+  spotlight?: boolean; // 다른 참가자가 방금 만진 카드 비추기 (ui.spotlight)
   onClick?: () => void;
   footer?: React.ReactNode;
   compact?: boolean;
 }
 
-function Card({ className, selected, chosen, onClick, footer, children }: CardProps & { className: string; children: React.ReactNode }) {
+function Card({ className, selected, chosen, spotlight, onClick, footer, children }: CardProps & { className: string; children: React.ReactNode }) {
   return (
     <div
-      className={`card ${className}${selected ? ' selected' : ''}${chosen ? ' chosen' : ''}${onClick ? ' clickable' : ''}`}
+      className={`card ${className}${selected ? ' selected' : ''}${chosen ? ' chosen' : ''}${spotlight ? ' spotlight' : ''}${onClick ? ' clickable' : ''}`}
       onClick={onClick}
       role={onClick ? 'button' : undefined}
       tabIndex={onClick ? 0 : undefined}
