@@ -21,3 +21,20 @@
   color: var(--color-muted);
   font-size: var(--text-small);
 }
+
+/* 모바일: 세로로 쌓지 않고 가로로 넘기며 고른다 (엄지로 훑어보기 좋게) */
+@media (max-width: 720px) {
+  .list {
+    flex-direction: row;
+    align-items: stretch;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-snap-type: x proximity;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .list > li {
+    scroll-snap-align: start;
+  }
+}
+

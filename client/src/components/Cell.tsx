@@ -1,4 +1,4 @@
-import { memo } from 'react';
+import { memo, type CSSProperties } from 'react';
 import type { CellView } from '../game/derived';
 import { kindLabel } from '../game/derived';
 import styles from './Board.module.css';
@@ -8,30 +8,49 @@ interface CellProps {
   /** 선택한 카드를 놓을 수 있는 칸 */
   legal: boolean;
   onClick: (x: number, y: number) => void;
+  /** Board 가 계산한 육각 위치·크기 (절대 배치) */
+  style: CSSProperties;
 }
 
 /**
- * 격자 한 칸. props 가 바뀐 칸만 다시 그린다 (F014).
- * 지형·영토·시야는 data 속성으로 넘기고 색은 Board.module.css 가 정한다.
+ * 육각 보드 한 칸. props 가 바뀐 칸만 다시 그린다 (F014).
+ * 지형·영토·시야는 data 속성으로 넘기고 색·모양은 Board.module.css 가 정한다.
+ * 육각 clip-path 는 `.hex` 레이어 하나에만 건다 — `.cell` 자체에 걸면 자손인 마커 툴팁이
+ * 육각 밖으로 못 빠져나가고 잘린다(clip-path 는 자손의 오버플로까지 함께 자른다).
  */
-export const Cell = memo(function Cell({ cell, legal, onClick }: CellProps) {
+export const Cell = memo(function Cell({ cell, legal, onClick, style }: CellProps) {
   const m = cell.marker;
   return (
     <div
       className={styles.cell}
-      data-terrain={cell.terrain}
-      data-owner={cell.ownerSeat ?? undefined}
-      data-sight={cell.inSight || undefined}
+      style={style}
       data-legal={legal || undefined}
       onClick={() => onClick(cell.x, cell.y)}
+      onKeyDown={
+        legal
+          ? (e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                onClick(cell.x, cell.y);
+              }
+            }
+          : undefined
+      }
+      role={legal ? 'button' : undefined}
+      tabIndex={legal ? 0 : -1}
       aria-label={`(${cell.x},${cell.y})`}
     >
-      {cell.terrain === 'vein' && <span className={styles.vein} aria-hidden="true" />}
+      <div className={styles.hex} data-terrain={cell.terrain} data-owner={cell.ownerSeat ?? undefined} data-sight={cell.inSight || undefined} aria-hidden="true">
+        {cell.terrain === 'vein' && <span className={styles.vein} aria-hidden="true" />}
+      </div>
       {m && (
-        <div className={styles.marker} data-kind={m.kind} data-seat={m.seat}>
-          <span className={styles.label}>{m.name.slice(0, 2)}</span>
-          <span className={styles.hp}>{m.hp}</span>
-          <span className={styles.seatBadge}>{m.seat + 1}</span>
+        <>
+          <div className={styles.marker} data-kind={m.kind} data-seat={m.seat}>
+            <span className={styles.label}>{m.name.slice(0, 2)}</span>
+            <span className={styles.hp}>{m.hp}</span>
+            <span className={styles.seatBadge}>{m.seat + 1}</span>
+          </div>
+          {/* .marker 의 형제로 둔다: .cell(칸)도 .marker(코어)도 clip-path 육각이라, 자손이면 밖으로 못 빠져나간다 */}
           <div className={styles.tooltip} data-below={cell.y < 3 || undefined} role="tooltip">
             <strong>{m.name}</strong>
             <span className={styles.tooltipMeta}>
@@ -64,7 +83,7 @@ export const Cell = memo(function Cell({ cell, legal, onClick }: CellProps) {
               )}
             </dl>
           </div>
-        </div>
+        </>
       )}
     </div>
   );

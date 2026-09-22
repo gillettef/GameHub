@@ -110,3 +110,86 @@
   color: var(--color-muted);
   font-size: var(--text-small);
 }
+
+.cellValue {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* 데스크톱 표에서는 <th> 가 이미 라벨을 보여 주므로 숨긴다. 모바일 전용 라벨 */
+.cellLabel {
+  display: none;
+}
+
+.seatDot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.seatDot[data-seat='0'] {
+  background: var(--color-seat-0);
+}
+
+.seatDot[data-seat='1'] {
+  background: var(--color-seat-1);
+}
+
+.seatDot[data-seat='2'] {
+  background: var(--color-seat-2);
+}
+
+.seatDot[data-seat='3'] {
+  background: var(--color-seat-3);
+}
+
+/* 모바일: 3열 배치를 세로로 쌓고, 넓은 표는 좌석별 카드 목록으로 접는다 */
+@media (max-width: 720px) {
+  .root {
+    grid-template-columns: 1fr;
+    grid-template-rows: none;
+  }
+
+  .panel:nth-child(1) {
+    grid-column: auto;
+  }
+
+  .table,
+  .table thead,
+  .table tbody,
+  .table tr,
+  .table th,
+  .table td {
+    display: block;
+  }
+
+  .table thead {
+    display: none;
+  }
+
+  .table tr {
+    margin-bottom: var(--space-1);
+    padding: var(--space-1);
+    border-radius: var(--radius-sm);
+    background: color-mix(in srgb, var(--color-canvas) 40%, transparent);
+  }
+
+  .table td {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    text-align: right;
+    padding: 3px 2px;
+    white-space: normal;
+  }
+
+  .cellLabel {
+    display: inline;
+    color: var(--color-muted);
+    font-weight: 500;
+    text-align: left;
+  }
+}

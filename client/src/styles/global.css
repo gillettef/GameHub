@@ -18,6 +18,8 @@ body {
   background: var(--color-canvas);
   -webkit-font-smoothing: antialiased;
   overflow: hidden;
+  /* 모바일 좁은 폭에서 긴 닉네임·카드 이름이 레이아웃을 깨지 않게 */
+  overflow-wrap: anywhere;
 }
 
 h1,

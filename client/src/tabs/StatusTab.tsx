@@ -1,4 +1,4 @@
-import { memo, useMemo } from 'react';
+import { memo, useMemo, type ReactNode } from 'react';
 import { getSpec } from '@astraltab/shared';
 import { CardFace } from '../components/CardFace';
 import { buildHand, buildPlayerSummaries } from '../game/derived';
@@ -47,17 +47,26 @@ export const StatusTab = memo(function StatusTab() {
           <tbody>
             {rows.map((r) => (
               <tr key={r.id} className={cx(!r.alive && 'is-disabled', r.isCurrent && styles.current, r.id === viewerId && styles.me)}>
-                <td>{r.seat + 1}</td>
-                <td className={styles.name}>{r.nickname}</td>
-                <td className={styles.energy}>{r.energy}</td>
-                <td>+{r.income}</td>
-                <td>{r.territory}</td>
-                <td>{r.markerScore}</td>
-                <td className={styles.total}>{r.total}</td>
-                <td>{r.markerCount}</td>
-                <td>{r.handCount}</td>
-                <td>{r.deckCount}</td>
-                <td>{!r.alive ? '탈락' : r.isCurrent ? '턴 진행 중' : r.passed ? '패스 중' : '대기'}</td>
+                <Cell label="좌석">
+                  <span className={styles.seatDot} data-seat={r.seat} aria-hidden="true" />
+                  {r.seat + 1}
+                </Cell>
+                <Cell label="닉네임" className={styles.name}>
+                  {r.nickname}
+                </Cell>
+                <Cell label="에너지" className={styles.energy}>
+                  {r.energy}
+                </Cell>
+                <Cell label="수입">+{r.income}</Cell>
+                <Cell label="영토">{r.territory}</Cell>
+                <Cell label="마커 점수">{r.markerScore}</Cell>
+                <Cell label="합계" className={styles.total}>
+                  {r.total}
+                </Cell>
+                <Cell label="마커">{r.markerCount}</Cell>
+                <Cell label="손패">{r.handCount}</Cell>
+                <Cell label="덱">{r.deckCount}</Cell>
+                <Cell label="상태">{!r.alive ? '탈락' : r.isCurrent ? '턴 진행 중' : r.passed ? '패스 중' : '대기'}</Cell>
               </tr>
             ))}
           </tbody>
@@ -99,3 +108,16 @@ export const StatusTab = memo(function StatusTab() {
     </div>
   );
 });
+
+/**
+ * 표의 칸 하나. 데스크톱에서는 보통 `<td>`, 모바일(720px 이하)에서는 CSS로 `label: value` 한 줄짜리 카드 행으로 접힌다.
+ * `data-label` 대신 실제 DOM에 라벨 텍스트를 넣어 모바일에서 값이 사라지는 레이아웃 버그를 피한다.
+ */
+function Cell({ label, className, children }: { label: string; className?: string; children: ReactNode }) {
+  return (
+    <td className={className}>
+      <span className={styles.cellLabel}>{label}</span>
+      <span className={styles.cellValue}>{children}</span>
+    </td>
+  );
+}

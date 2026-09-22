@@ -27,7 +27,8 @@
   gap: var(--space-1);
   padding: var(--space-1) var(--space-2) var(--space-1);
   border-radius: var(--radius-sm);
-  background: color-mix(in srgb, var(--color-surface) 45%, transparent);
+  /* 무대 배경의 성운 그라데이션이 위치마다 밝기가 달라 손패 힌트 대비가 흔들리지 않도록 충분히 불투명하게 */
+  background: color-mix(in srgb, var(--color-surface) 80%, transparent);
 }
 
 .handHead {
@@ -43,4 +44,23 @@
   font-weight: 400;
   font-size: var(--text-micro);
   color: var(--color-muted);
+  overflow-wrap: anywhere;
 }
+
+/* 모바일: 보드를 위에 크게, 손패·컨트롤은 아래로 쌓는다 (가로 스크롤은 손패 안에서만) */
+@media (max-width: 720px) {
+  .root {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(0, 1fr) auto;
+  }
+
+  .bottom {
+    flex-direction: column;
+  }
+
+  .handWrap {
+    flex: none;
+    max-height: 40vh;
+  }
+}
+
