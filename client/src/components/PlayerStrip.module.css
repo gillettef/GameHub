@@ -39,29 +39,23 @@
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  border: 2px solid var(--color-seat-0);
   flex-shrink: 0;
 }
 
 .badge[data-seat='0'] {
-  border-color: var(--color-seat-0);
   background: var(--color-seat-0);
 }
 
 .badge[data-seat='1'] {
-  border-color: var(--color-seat-1, var(--color-white));
-  border-style: dashed;
+  background: var(--color-seat-1);
 }
 
 .badge[data-seat='2'] {
-  border-color: var(--color-seat-2, var(--color-white));
-  border-style: dotted;
+  background: var(--color-seat-2);
 }
 
 .badge[data-seat='3'] {
-  border-color: var(--color-seat-3, var(--color-white));
-  border-style: double;
-  border-width: 3px;
+  background: var(--color-seat-3);
 }
 
 .name {

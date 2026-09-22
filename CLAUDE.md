@@ -34,10 +34,11 @@
 
 ## 코드 현황 (2026-09-22)
 
-- `shared/src`(types·data·engine), `ai/astral_ai`(models·rules·search), `shared/fixtures` 는 **v2 규칙(Rules.md)** 으로 재작성됐다. Vitest 61개, pytest 14개(픽스처 시나리오 재생으로 TS·Python 규칙 일치 검증)가 통과한다.
+- `shared/src`(types·data·engine), `ai/astral_ai`(models·rules·search), `shared/fixtures` 는 **v2 규칙(Rules.md)** 으로 재작성됐다. 2026-09-22 육각 전환(odd-r 오프셋, `hexDistance`/`hex_distance`, 코어 시야·수입 1)까지 반영. Vitest 70개(맵 6개 좌석 공정성 테스트 포함), pytest 14개(픽스처 시나리오 재생으로 TS·Python 규칙 일치 검증)가 통과한다.
 - `ai/astral_ai/search.py` 는 1수 탐욕 자리표시자다. Minimax / max-n 은 Phase 3.
-- `client/` 는 **Phase 1 탭 UI 핫시트**가 구현됐다 (F008~F017). 설정 화면(맵·닉네임·덱 빌딩) → 게임 대시보드(보드·상태·진행 탭) → 결과 오버레이. 규칙 계산은 `client/src/game/hotseat.ts` 가 `shared/src/engine` 의 `applyAction` 을 직접 호출하는 로컬 어댑터로 처리하며, Phase 2 에서 Socket.io 어댑터(`client/src/socket`)로 교체한다. 개발용 바로가기 `/?quick&map=<id>&seed=<n>&tab=<board|status|progress>&select=<손패 index>`. Vitest 10개(client).
-- 좌석 1·2·3 색과 경고색은 **미정**이라 보드에서 흰색 패턴(빗금·점·격자)과 테두리 선 모양(dashed·dotted·double)으로 구분한다. 사용자가 색을 정하면 `tokens.css` 의 `--color-seat-1..3`, `--color-danger` 만 채우면 된다.
+- `client/` 는 **Phase 1 탭 UI 핫시트**가 구현됐다 (F008~F017). 설정 화면(참가 인원 → 맵(인원수로 필터) → 닉네임 → 덱 빌딩) → 게임 대시보드(보드·상태·진행 탭) → 결과 오버레이. 규칙 계산은 `client/src/game/hotseat.ts` 가 `shared/src/engine` 의 `applyAction` 을 직접 호출하는 로컬 어댑터로 처리하며, Phase 2 에서 Socket.io 어댑터(`client/src/socket`)로 교체한다. 개발용 바로가기 `/?quick&map=<id>&seed=<n>&tab=<board|status|progress>&select=<손패 index>`. Vitest 10개(client).
+- 보드는 `Board.tsx`/`Board.module.css` 가 육각(odd-r, pointy-top)으로 렌더링한다. 컨테이너 가로·세로에 맞춰 육각 크기를 계산해 무스크롤(F015)·모바일을 함께 만족한다. 마커는 좌석 색으로 채우고 모양(코어=육각·건물=둥근 사각·유닛=원·마법=마름모)으로 종류를 구분한다(좌석 1·2·3 색 확정, 흰색 패턴 구분은 폐기). 경고색은 여전히 **미정**이다.
+- 화면은 모바일 우선이다: 본문 14px/최소 12px, `max-width:720px` 에서 `BoardTab`·`Hand`·`StatusTab`·`GamePage` 헤더가 레이아웃을 바꾼다. 자세한 내용은 아래 "모바일 우선" 절.
 - **Phase 2 온라인 멀티플레이 + AI 좌석**이 구현됐다 (F001~F007, F026, F027, F030). 서버 `rooms/manager.ts`(방 생성·초대 id·비밀번호·좌석·맵 변경·AI 추가, 순수 로직 + Vitest 9개), `persistence/snapshots.ts`(`server/data/<env>/rooms/<roomId>.json`, 시작 시 복원), `game/aiTurn.ts`(AI 턴마다 Python `/decide` 호출 → 엔진 검증 → PASS 폴백), `index.ts`(Socket.io ack 이벤트, 플레이어별 `maskState` 브로드캐스트). 이벤트 계약은 `shared/src/types/events.ts`, 가림 함수는 `shared/src/mask.ts`.
 - 클라이언트 경로: `/` 랜딩(방 만들기·초대 링크 참여·핫시트), `/hotseat` 핫시트 설정→게임, `/room/:id` 온라인 로비→게임. 소켓 어댑터 `client/src/socket/client.ts`, 스토어는 `mode: hotseat | online` 으로 같은 액션을 쓴다. 재접속은 localStorage `playerToken` (`client/src/lib/identity.ts`).
 - AI 탐색은 아직 1수 탐욕(`ai/astral_ai/search.py`). Minimax / max-n, 평가 함수 가중치(F028, F029)는 다음 작업. 로비의 자동 시작(전원 준비 시 엔진 `ready()` 가 시작)은 F002 의 "방장 시작 버튼"과 다르므로 필요하면 엔진에 START 액션을 추가한다.
@@ -157,12 +158,12 @@ AstralTab/
 
 ## 게임 규칙 요약 (자세한 내용은 notes/Rules.md)
 
-- **플레이어** 2~4명, 좌석 순서대로 턴. **맵** 6개(2인 2 / 3인 2 / 4인 2), 11×11 / 13×13 / 15×15. 지형은 빈 우주·소행성(배치 불가)·광맥(건물 생산 +1).
+- **플레이어** 2~4명, 좌석 순서대로 턴. **맵** 6개(2인 2 / 3인 2 / 4인 2), 11×11 / 13×13 / 15×15 육각 타일(odd-r 오프셋). 지형은 빈 우주·소행성(배치 불가)·광맥(건물 생산 +1).
 - **시작**: 코어가 맵 지정 좌표에 자동 배치(F018). 덱 = 기본 22 + 특수 3(덱 빌딩 F016), 시드 셔플, 손패 4, 에너지 5(F019).
-- **턴 시작(자동)**: 전투 → 정비 → 지속 마법 만료 → 수입(코어 2 + 건물 생산) → 드로우 1(손패 상한 5). (F020, F023)
+- **턴 시작(자동)**: 전투 → 정비 → 지속 마법 만료 → 수입(코어 1 + 건물 생산) → 드로우 1(손패 상한 5). (F020, F023)
 - **행동(하나만)**: 손패 카드 1장으로 마커 배치 / 패스 / 기권. 배치하면 턴이 끝난다. (F013, F022)
 - **배치 조건**: 손패 보유, 에너지 ≥ 비용, 빈 칸, 소행성 아님, **내 시야 영역 안**(침투 카드는 적 인접도 가능). (F022)
-- **시야**: 마커별 체비쇼프 반경. 시야 영역의 합집합이 배치 범위이자 영토의 근거. (F031)
+- **시야**: 마커별 육각 거리 반경(코어는 1). 시야 영역의 합집합이 배치 범위이자 영토의 근거. (F031)
 - **영토**: 정확히 한 플레이어의 시야 안인 빈 칸 + 마커 칸. 경합·소행성은 무소유. 1칸 1점.
 - **전투**: 턴 플레이어의 공격력 있는 마커가 사거리 안 적 하나를 자동 공격. 대상은 거리→체력→y→x 순. 동시 피해, 한꺼번에 제거. 마커는 이동하지 않는다. (F023)
 - **파괴**: 체력 0 이하 → 제거, 시야·생산·점수 즉시 소멸(F021). 코어 파괴 → 탈락, 마커 전부 제거. 생존자 1명 → 즉시 승리(F024).
@@ -210,30 +211,43 @@ AstralTab/
 | 주요 CTA | 흰 필 + 네이비 라벨(어두운 밴드 위) 또는 `#777cdc` 필 + 흰 라벨 |
 | 강조 밴드 | `#faeeff`, `#d9e5f5`, `#fdd484` |
 
-**게임 플레이 대시보드** (탭 UI): Moonlight의 밤 무대를 AstralTab의 우주로 쓴다.
+**게임 플레이 대시보드** (탭 UI): 심우주 네이비 무대. 2026-09-22 사용자 지시로 Moonlight 팔레트의 진보라 무대·패널(`#402060`/`#605070`)을 걷어내고 우주 공간에 어울리는 네이비로 바꿨다 — DESIGN.md 우선순위(사용자 지시 > 저장소 사실 > DESIGN.md > 레퍼런스)에 따라 이 두 값만 DESIGN.md 팔레트 밖에서 가져온 예외다. 무대 배경은 단색이 아니라 별·성운이 있는 그라데이션 "이미지"(`GamePage.module.css` 의 `background-image`, 청록·파랑 톤만 쓰고 보라 계열은 없음)다.
 
 | 역할 | 값 |
 |---|---|
-| 무대 배경 | Moonlight Deep `#402060` |
-| 패널·탭 바·카드 | Card Plum `#605070` |
+| 무대 배경 | 짙은 네이비 `#0b1224` + 별·성운 그라데이션(청록·파랑, `GamePage.module.css`) |
+| 패널·탭 바·카드 | 슬레이트 네이비 `#1c2947` |
 | 활성 탭·주요 버튼·선택 하이라이트·배치 가능 칸 | Moonlight Cream `#fff3b7` |
 | 에너지 수치·건물 마커·광맥 칸 | Amber `#fdd484` |
-| 마법 마커·마법 카드 | Card Violet `#777cdc` |
-| 좌석 0 (마커·시야·영토) | Bright Blue `#419eff` |
-| 좌석 1·2·3 | **미정** (DESIGN.md에 대비되는 색이 부족함) |
-| 시야 영역 / 영토 오버레이 | 좌석 색을 낮은 투명도로. 경합 칸은 오버레이 없음 |
+| 마법 카드 액센트(스트라이프) | Card Violet `#777cdc`. 보라는 이 용도로만 쓰고 배경에는 쓰지 않는다 |
+| 좌석 0 | Bright Blue `#419eff` |
+| 좌석 1 | 주황 `#e69f00` |
+| 좌석 2 | 청록 `#00c58e` |
+| 좌석 3 | 분홍 `#f178b6` |
+| 마커(보드 위) | 종류(코어=육각·건물=둥근 사각·유닛=원·마법=마름모)와 무관하게 **좌석 색으로 채운다**. 예전의 흰색 패턴(빗금·점·격자)·테두리 선 모양(dashed·dotted·double) 구분은 좌석색이 생기면서 없앴다 |
+| 시야 영역 / 영토 오버레이 | 좌석 색을 낮은 투명도로. 경합 칸은 오버레이 없음. 네 좌석 모두 같은 방식(패턴 없음) |
 | 위험·파괴·코어 위협 경고 | **미정** (DESIGN.md에 경고색이 없음) |
 | 소행성 칸 | Steel Blue `#36597d` 채움 |
 | 텍스트 | `#ffffff`, 보조 `#bbbbbb` |
-| 격자선 | Steel Blue `#36597d` |
+| 격자선 | Steel Blue `#36597d` (육각 셀을 살짝 축소해 그 틈으로 비친다) |
 
-미정 항목은 DESIGN.md의 Unknowns 정책대로 그럴듯한 기본값을 넣지 않는다. 사용자가 정해 주면 이 표를 갱신하고 `client/src/styles/tokens.css` 에 반영한다.
+경고색만 DESIGN.md Unknowns 정책대로 미정으로 남겨 뒀다. 사용자가 정해 주면 이 표를 갱신하고 `client/src/styles/tokens.css` 에 반영한다.
 
 ### 구현 방식
 
 - 모든 색·간격·라운드·모션 값은 `client/src/styles/tokens.css` 의 CSS 변수로만 쓴다. 컴포넌트 CSS에 HEX 직접 기입 금지.
 - 게임 화면 루트에 `data-world="game"` 을 두고 변수 값을 덮어써서 두 세계를 전환한다.
 - 두 세계를 한 화면에 섞지 않는다(DESIGN.md Don't).
+
+### 모바일 우선 (2026-09-22 사용자 지시)
+
+웹 배포지만 화면 구성은 모바일을 기준으로 한다. DESIGN.md의 데스크톱향 본문 15~17px 규정보다 이 지시가 우선한다.
+
+- **폰트**: 기본(`--text-body`) 14px, 그 아래로는 `--text-micro` 12px 밑으로 내려가지 않는다. 보드 마커 라벨·hp·좌석 배지도 12px 이상(`Board.module.css`).
+- **줄바꿈**: `body { overflow-wrap: anywhere }` (전역), 닉네임·카드 이름·툴팁이 좁은 폭에서 레이아웃을 깨지 않는다.
+- **레이아웃 전환**: `max-width: 720px` 미디어 쿼리로 전환한다. `BoardTab`(보드 위·손패+컨트롤 아래로 스택), `Hand`(세로 목록 → 가로 스크롤), `StatusTab`(표 → 좌석별 카드 목록, `<Cell label>` 컴포넌트가 데스크톱은 `<td>`, 모바일은 `라벨: 값` 줄로 접는다), `GamePage` 헤더(3열 → 세로 스택, 탭 바는 가로 스크롤).
+- **보드**: `Board.tsx` 가 컨테이너 가로·세로 모두에 맞춰 육각 크기를 계산하므로(F015 무스크롤) 별도 모바일 분기 없이 좁은 화면에서도 자동으로 맞는다.
+- 헤드리스 스크린샷으로 확인할 때 Chrome 헤드리스는 `--window-size` 를 요청해도 뷰포트 폭을 최소 ~504px 로 강제한다. 그보다 좁게 요청하면 실제 레이아웃 폭(504px)이 스크린샷 크롭 폭보다 커져 오른쪽 정렬된 값이 잘려 보이는 착시가 생긴다 — 모바일 확인은 `--window-size` 를 522 이상으로 준다.
 
 ## 코딩 규칙
 

@@ -29,23 +29,25 @@
   --color-magic: #777cdc;
   --color-asteroid: #36597d;
   --color-grid: #36597d;
+  /* 좌석 4색: 색각 이상 안전 조합(Okabe-Ito 계열). 마커는 이 색으로 채우고 종류는 모양(육각·사각·원·마름모)으로 구분한다 */
   --color-seat-0: #419eff;
-  /* --color-seat-1, --color-seat-2, --color-seat-3: 미정 (DESIGN.md에 대비되는 색이 부족함, 사용자 결정 대기)
-   *   정해지기 전까지 좌석 1·2·3 은 흰색 패턴(빗금·점·격자)으로 구분한다. Board.module.css 참고 */
+  --color-seat-1: #e69f00;
+  --color-seat-2: #00c58e;
+  --color-seat-3: #f178b6;
   /* --color-danger: 미정 (DESIGN.md에 경고색이 없음, 사용자 결정 대기) */
 
-  /* 타이포 */
+  /* 타이포: 모바일 우선. 기본 14px, 최소(micro) 12px 아래로는 내려가지 않는다 */
   --font-body: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
   /* 디스플레이 폰트 미정: 정해지기 전까지 본문 폰트 700 */
   --font-display: var(--font-body);
   --text-micro: 12px;
-  --text-small: 15px;
-  --text-body: 16px;
-  --text-nav: 17px;
-  --text-sub: 28px;
-  --text-section: 32px;
-  --text-stat: 46px;
-  --text-hero: 60px;
+  --text-small: 13px;
+  --text-body: 14px;
+  --text-nav: 15px;
+  --text-sub: 22px;
+  --text-section: 26px;
+  --text-stat: 36px;
+  --text-hero: 44px;
 
   /* 간격 (8px 리듬) */
   --space-1: 8px;
@@ -72,9 +74,10 @@
   --ease-standard: cubic-bezier(0.25, 0.1, 0.25, 1);
 }
 
+/* 게임 화면 무대: 심우주 네이비(별·성운은 GamePage.module.css 배경 그라데이션). 보라색 계열은 쓰지 않는다 */
 [data-world='game'] {
-  --color-canvas: #402060;
-  --color-surface: #605070;
+  --color-canvas: #0b1224;
+  --color-surface: #1c2947;
   --color-heading: #ffffff;
   --color-text: #ffffff;
   --color-muted: #bbbbbb;
