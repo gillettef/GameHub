@@ -1,11 +1,11 @@
 ---
 name: dev
-description: 로컬 테스트용으로 백엔드(server, 3001), 프론트엔드(client, 5173), Python AI 서비스(ai, 8000)를 현재 터미널의 백그라운드에서 함께 실행한다. "서버 켜줘", "dev 서버 실행", "로컬에서 띄워줘" 요청 시 사용. 종료는 /dev-stop.
+description: 로컬 테스트용으로 백엔드(server, 3101), 프론트엔드(client, 5173), Python AI 서비스(ai, 8000)를 현재 터미널의 백그라운드에서 함께 실행한다. "서버 켜줘", "dev 서버 실행", "로컬에서 띄워줘" 요청 시 사용. 종료는 /dev-stop.
 ---
 
 # /dev — 백엔드·프론트엔드·AI 백그라운드 실행
 
-서버(`server/`, 3001), 클라이언트(`client/`, 5173), Python AI 서비스(`ai/`, 8000)를 분리된 백그라운드 프로세스로 띄운다.
+서버(`server/`, 3101), 클라이언트(`client/`, 5173), Python AI 서비스(`ai/`, 8000)를 분리된 백그라운드 프로세스로 띄운다.
 프로세스는 터미널을 블로킹하지 않으며, PID는 `.dev/*.pid`, 로그는 `.dev/*.log`에 기록된다.
 AI 서비스는 `ai/.venv` 가 없으면 자동으로 만들고 `ai/requirements.txt` 를 설치한다 (이 PC의 Python 3.11은 PATH에 없어 스크립트가 절대 경로로 찾는다).
 
@@ -27,7 +27,7 @@ AI 서비스는 `ai/.venv` 가 없으면 자동으로 만들고 `ai/requirements
 
 3. 사용자에게 접속 URL을 알려준다.
    - 클라이언트: http://localhost:5173
-   - 서버: http://localhost:3001
+   - 서버: http://localhost:3101
    - AI: http://localhost:8000
 
 ## 로그 확인

@@ -1,6 +1,6 @@
 # AstralTab local dev stopper.
 # Kills the process trees recorded in .dev/*.pid. As a fallback it looks at
-# listeners on ports 3001 / 5173 / 8000, but only kills a node/cmd/python
+# listeners on ports 3101 / 5173 / 8000, but only kills a node/cmd/python
 # process whose command line points at THIS project directory. Anything else
 # is left alone and reported, so unrelated apps on those ports are never killed.
 
@@ -54,7 +54,7 @@ foreach ($name in @('server', 'client', 'ai')) {
 }
 
 # 2) Fallback: only this project's dev processes still holding our ports
-foreach ($port in @(3001, 5173, 8000)) {
+foreach ($port in @(3101, 5173, 8000)) {
     $conns = Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue
     foreach ($c in $conns) {
         $procId = [int]$c.OwningProcess
