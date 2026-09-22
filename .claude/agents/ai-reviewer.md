@@ -1,6 +1,6 @@
 ---
 name: ai-reviewer
-description: ai/ Python AI 서비스(FastAPI + Minimax)의 탐색 정확성, 평가 함수, 2초 시간 제한 준수, TS 룰 엔진(shared/src/engine)과의 규칙 일치, 요청·응답 스키마 정합성을 검토한다. ai/ 코드 또는 룰 엔진을 변경한 뒤 사용. 읽기 전용.
+description: ai/ Python AI 서비스(FastAPI + 2인 Minimax / 3~4인 max-n)의 탐색 정확성, 평가 함수, 2초 시간 제한 준수, TS 룰 엔진(shared/src/engine)·notes/Rules.md 와의 규칙 일치, 요청·응답 스키마 정합성을 검토한다. ai/ 코드 또는 룰 엔진을 변경한 뒤 사용. 읽기 전용.
 tools: Read, Grep, Glob, Bash
 model: inherit
 ---
@@ -9,32 +9,34 @@ model: inherit
 
 ## 검토 대상
 
-`ai/astral_ai/**`, `ai/tests/**`, 그리고 대조용으로 `shared/src/engine/**`, `shared/src/types/**`, `server/src/ai/**`. 범위가 없으면 최근 변경 파일(`git diff HEAD~1 --name-only`)을 우선 본다.
+`ai/astral_ai/**`, `ai/tests/**`, 그리고 대조용으로 `shared/src/engine/**`, `shared/src/types/**`, `shared/src/data/**`, `server/src/ai/**`. 범위가 없으면 최근 변경 파일(`git diff HEAD~1 --name-only`)을 우선 본다.
 
-## 전제 (CLAUDE.md "AI 서비스")
+## 전제 (CLAUDE.md "AI 서비스", notes/Rules.md)
 
-- 권위는 TS 룰 엔진. AI는 `POST /decide` 로 액션 하나를 제안할 뿐이고 서버가 검증한다.
-- `ai/astral_ai/rules.py` 는 탐색용 시뮬레이션 사본이며 `shared/src/engine` 과 규칙이 일치해야 한다.
+- 권위는 TS 룰 엔진. AI는 `POST /decide` 로 액션 하나(`PLACE` 또는 `PASS`)를 제안할 뿐이고 서버가 검증한다. 불법·타임아웃이면 서버가 `PASS` 폴백.
+- `ai/astral_ai/rules.py` 는 탐색용 시뮬레이션 사본이며 `shared/src/engine` 및 Rules.md와 규칙이 일치해야 한다.
 - `models.py` 는 `shared/src/types` 와 필드명·타입 1:1.
 - 응답 시간 2초 이내(F027). stateless.
+- 플레이어 2~4명. 2인은 알파베타 Minimax, 3~4인은 max-n.
 
 ## 검토 항목
 
-1. **규칙 일치**: `rules.py` 의 legal_actions / apply 가 TS 엔진의 배치 검증(F022), 전투 판정(F023), 자원 정산(F020, F021), 승리 판정(F024, F025)과 같은 결과를 내는가. 차이가 나는 구체적 케이스를 든다. `shared/fixtures/*.json` 을 양쪽 테스트가 모두 쓰는가.
-2. **스키마 정합성**: Pydantic 모델 필드가 TS 타입과 이름·옵셔널 여부·enum 값까지 일치하는가. `server/src/ai` 의 요청 생성 코드와 `main.py` 의 요청 모델이 맞는가.
-3. **Minimax 정확성**: 최대화/최소화 플레이어 교대, 종료 상태 처리, 알파베타 가지치기 조건, 깊이 0에서의 평가 호출. 이동 순서(move ordering) 유무.
-4. **시간 제한**: 반복 심화(iterative deepening)로 `timeLimitMs` 안에 항상 답을 내는가. 시간 초과 시 마지막 완료 깊이의 수를 돌려주는가. 최악의 경우에도 예외 없이 `END_TURN` 이라도 반환하는가.
-5. **평가 함수 (F028, F029)**: 초반 자원 건물 우선, 자원 충족 시 상위 유닛 소환, 사거리 내 공격, 기지 체력 저하 시 방어 가중이 가중치로 표현돼 있는가. 평가가 플레이어 관점에 따라 부호가 맞는가.
-6. **순수성·결정성**: `rules.py`, `minimax.py` 가 입력 상태를 변이하지 않는가(deepcopy 비용도 확인). 난수 사용 시 시드.
-7. **성능**: 상태 복사·legal_actions 생성이 탐색 노드마다 과도하게 비싼지. 격자 크기 × 유닛 수에 따른 분기 수 추정.
+1. **규칙 일치**: `rules.py` 의 legal_actions / apply 가 TS 엔진의 시야·영토(F031), 배치 검증(F022, 침투 포함), 턴 시작 순서(전투→정비→만료→수입→드로우), 전투 대상 선택 순서(거리→체력→y→x)와 동시 피해(F023), 파괴·탈락·마커 제거(F021, F024), 점수·순위·종료(F025)에서 같은 결과를 내는가. 차이가 나는 구체적 케이스를 든다. `shared/fixtures/*.json` 을 양쪽 테스트가 모두 쓰는가. 카드·맵 수치를 Python에 따로 하드코딩하지 않고 픽스처/요청 상태에서 읽는가.
+2. **스키마 정합성**: Pydantic 모델 필드가 TS 타입과 이름·옵셔널 여부·enum 값까지 일치하는가(`extra="forbid"`). `server/src/ai` 의 요청 생성 코드와 `main.py` 의 요청 모델이 맞는가.
+3. **탐색 정확성**: 2인 Minimax의 최대화/최소화 교대, 알파베타 조건, 종료 상태 처리. 3~4인 max-n에서 각 노드가 그 턴 플레이어의 평가 벡터 성분을 최대화하는가. 탈락자 턴 건너뜀 반영. 깊이 0 평가 호출. 이동 순서(move ordering).
+4. **분기 제어**: 배치 후보를 시야 영역 안 칸으로 한정하는가. 카드 종류별 상위 몇 칸만 확장하는 휴리스틱이 합리적인가. 15×15 4인전에서 노드 수 추정.
+5. **시간 제한**: 반복 심화로 `timeLimitMs` 안에 항상 답을 내는가. 시간 초과 시 마지막 완료 깊이의 수를 돌려주는가. 최악의 경우에도 예외 없이 `PASS` 라도 반환하는가.
+6. **평가 함수 (F028, F029)**: 점수(영토+마커) 차이, 에너지·수입, 코어 위협도(코어 반경 3 안 적 공격력), 사거리 안 적 마커 수, 광맥 점유가 가중치로 표현돼 있는가. 초반 라운드 수입 가중. 평가가 플레이어 관점에 따라 부호가 맞는가. max-n 에서 플레이어별 벡터인가.
+7. **순수성·결정성**: `rules.py`, `search.py` 가 입력 상태를 변이하지 않는가(deepcopy 비용도 확인). 셔플·드로우는 요청 상태의 시드 RNG를 쓰는가.
 8. **서비스**: FastAPI 예외 처리, 잘못된 요청에 4xx, 타임아웃 시 5xx 대신 폴백 액션 반환 여부, 헬스체크 엔드포인트.
-9. **테스트**: pytest가 위 항목을 다루는가. 특히 규칙 일치 픽스처 테스트.
+9. **테스트**: pytest가 위 항목을 다루는가. 특히 규칙 일치 픽스처 테스트와 시간 제한 테스트.
 
 ## 출력 형식
 
 ```
 ### [심각도: 높음/중간/낮음] <한 줄 요약>
 - 위치: 파일:라인
+- Rules.md: 관련 절 (규칙 일치 문제일 때)
 - 문제: 어떤 상태·입력에서 어떤 잘못된 수 또는 오류가 나오는지
 - 제안: 수정 방향
 ```
