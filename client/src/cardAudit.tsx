@@ -1,11 +1,14 @@
 import { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BOARD_CARDS, EXECUTIVE_CARDS, OBJECTIVE_CARDS, OPPONENT_CARDS, PLAYER_CARDS, SPONSOR_CARDS, STAFF_CARDS, TACTIC_CARDS } from '@server/data';
+import { startFriday, submitLineup } from '@server/engine/friday';
 import { autoPlace } from '@server/engine/lineup';
 import type { PlayerInstance, UniformToken } from '@server/engine/state';
+import { autoLineup, gameAtMonday, seededRng, settlePending, skipTacticEffects } from '@server/engine/test-utils';
 import type { PlayerPublicView } from '@server/engine/view';
 import { BoardCardView, ExecutiveCardView, ObjectiveCardView, OpponentCardView, PlayerCardView, SponsorCardView, StaffCardView, TacticCardView } from './components/Cards';
 import { LineupPitch } from './components/Lineup';
+import { MatchReplay, buildReplaySteps } from './components/MatchReplay';
 import { StandsPicker } from './components/StandsPicker';
 import './styles.css';
 
@@ -87,6 +90,38 @@ function StandsSamples() {
   );
 }
 
+// `?only=replay`: 경기 보기(MatchReplay)를 시드 고정 판의 실제 판정으로 그린다 — 킥오프 / 구획 비교 중 / 최종 스텝을 멈춰서
+function ReplaySamples() {
+  const [games] = useState(() => {
+    const rng = seededRng(7);
+    let s = gameAtMonday(undefined, 7);
+    startFriday(s);
+    for (const id of s.seats) {
+      const p = s.players[id]!;
+      p.resources = { money: 5, fandom: 2, ops: 2, stamina: 10 };
+      p.pending = [];
+      s = settlePending(submitLineup(s, id, { ...autoLineup(p), fandomInStands: 1 }, rng), rng);
+    }
+    s = skipTacticEffects(s, rng);
+    if (s.phase.kind !== 'friday.aftermath') throw new Error('aftermath expected');
+    const phase = s.phase;
+    return s.seats.slice(0, 2).map((id) => ({ actor: s.players[id]!, m: phase.matches[id]! }));
+  });
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(560px, 1fr))', gap: 16, width: '100%' }}>
+      {games.flatMap(({ actor, m }) => {
+        const n = buildReplaySteps(m).length;
+        return [0, 5, 6, n - 1].map((i) => (
+          <section key={`${actor.id}-${i}`} className="panel">
+            <h3>{actor.name} · 스텝 {i + 1}/{n}</h3>
+            <MatchReplay actor={actor} m={m} initialIndex={i} autoplay={false} />
+          </section>
+        ));
+      })}
+    </div>
+  );
+}
+
 // `?only=sponsor` 처럼 카드 종류 하나만 그릴 수 있다 (스크린샷으로 눈으로 볼 때)
 const only = new URLSearchParams(location.search).get('only');
 const show = (kind: string) => !only || only === kind;
@@ -103,6 +138,7 @@ function App() {
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
         {only === 'pitch' && <PitchSamples />}
         {only === 'stands' && <StandsSamples />}
+        {only === 'replay' && <ReplaySamples />}
         {show('player') && PLAYER_CARDS.map((c) => <Slot key={c.id} id={`${c.id} ${c.name} (미훈련)`}><PlayerCardView cardId={c.id} /></Slot>)}
         {show('player') && PLAYER_CARDS.map((c) => <Slot key={`${c.id}-t`} id={`${c.id} ${c.name} (훈련)`}><PlayerCardView cardId={c.id} instance={trainedOf(c.id)} /></Slot>)}
         {show('staff') && STAFF_CARDS.map((c) => <Slot key={c.id} id={`${c.id} ${c.name}`}><StaffCardView cardId={c.id} /></Slot>)}

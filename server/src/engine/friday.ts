@@ -261,11 +261,14 @@ function resolveAllMatches(state: GameState, rng: Rng): void {
     const opponent = cards.opponent(opponentCardId);
     const played = sub.players.map((id) => instanceOf(player, id));
     const pre: MatchContext = { stage: 'pre', myGoals: 0, theirGoals: 0, sectorGoals: {}, placements: sub.placements, opponentTeamId: opponent.teamId };
+    const logStart = state.log.length; // 이 참가자의 판정 중 남는 기록을 경기 종료 화면에 모아 보여 준다
 
     applyTimedEffects(state, pid, played, 'duringMatch', { mods, played: sub.players, match: pre }, rng);
     const side = buildSide(player, sub, played, mods);
     const skills = Object.fromEntries(Object.values(side.sectors).flatMap((slots) => slots.map((slot) => [slot.id, slot.skill])));
     const raw = resolveMatch(side, opponentSide(opponent));
+    const preGoals = mods.mine; // 경기 전 효과·전술 효과로 미리 넣은 골
+    const denied = Math.min(mods.denyGoals, raw.theirGoals);
     mods.mine += raw.myGoals;
     mods.theirs += Math.max(0, raw.theirGoals - mods.denyGoals); // 득점 무효·슛 막기는 구획 비교 득점에만
     const sectorGoals: Partial<Record<Sector, number>> = {};
@@ -323,7 +326,24 @@ function resolveAllMatches(state: GameState, rng: Rng): void {
         }
       }
     }
-    matches[pid] = { opponentCardId, played: sub.players, placements: sub.placements, skills, effectCard: state.phase.effectCard[pid] ?? null, report, roll: null, injuryDice: [], decided: false };
+    const effects = state.log
+      .slice(logStart)
+      .filter((e) => e.actor === pid && !e.text.startsWith('경기 결과 ') && !e.text.startsWith('득점: '))
+      .map((e) => e.text);
+    matches[pid] = {
+      opponentCardId,
+      played: sub.players,
+      placements: sub.placements,
+      skills,
+      effectCard: state.phase.effectCard[pid] ?? null,
+      report,
+      preGoals,
+      denied,
+      effects,
+      roll: null,
+      injuryDice: [],
+      decided: false,
+    };
   }
 
   // p.24 3: 같은 상대와 2명 이상 경기 → 비활성. p.24 6: 아무도 상대하지 않은 팀은 상대 팀 주사위

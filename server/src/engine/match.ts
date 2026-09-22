@@ -19,12 +19,24 @@ export interface TeamSide {
   goalkeeper: Goalkeeper;
 }
 
+// 한 구획에서 한 방향의 공격이 어떻게 처리됐는지 — 경기 보기 화면이 순서대로 재생한다 (사용자 요청 2026-09-22)
+export interface AttackTrace {
+  attackers: Slot[];
+  defenders: Slot[];
+  blocks: { attacker: string; defender: string }[]; // 수비 역량 ≥ 공격 역량으로 막은 짝 (짝짓기 최소화 규칙으로 고른 것)
+  unblocked: string[]; // 뚫린 슛 (공격자 id)
+  saved: string[]; // 그중 골키퍼가 선방한 것
+  scorers: string[]; // 득점
+}
+
 export interface SectorReport {
   mine: Sector;
   theirs: Sector;
   myGoals: number;
   theirGoals: number;
   myScorers: string[];
+  theirAttack: AttackTrace; // 상대 공격 → 내 수비·골키퍼 (먼저 처리)
+  myAttack: AttackTrace; // 내 공격 → 상대 수비·골키퍼
 }
 
 export interface MatchReport {
@@ -33,6 +45,7 @@ export interface MatchReport {
   outcome: 'win' | 'draw' | 'loss';
   sectors: SectorReport[];
   scorers: string[]; // 득점한 내 슬롯 id (유망주 경력 칸용)
+  goalkeepers: { mine: Goalkeeper; theirs: Goalkeeper }; // 판정에 쓴 골키퍼(선방 수는 경기 시작 때 값)
 }
 
 // 비교 순서 (p.21): 내 LW↔상대 RW, 내 RW↔상대 LW, 내 CF↔상대 CB, 내 CM↔상대 CM, 내 CB↔상대 CF
@@ -101,14 +114,25 @@ interface Shots {
   savesUsed: number;
   unblockedSkill: number;
   scorers: string[];
+  blocks: { attacker: string; defender: string }[];
+  unblocked: string[];
+  saved: string[];
 }
 
 // 뚫린 슛 목록에 골키퍼 적용: 역량 ≤ 골키퍼 역량인 슛만 남은 선방 수만큼 막는다 (p.22)
-function applyKeeper(unblocked: Slot[], gk: Goalkeeper, savesLeft: number): Shots {
+function applyKeeper(unblocked: Slot[], gk: Goalkeeper, savesLeft: number, blocks: Shots['blocks']): Shots {
   const savable = unblocked.filter((s) => s.skill <= gk.skill).sort((a, b) => b.skill - a.skill);
   const saved = new Set(savable.slice(0, Math.min(savesLeft, savable.length)).map((s) => s.id));
   const scorers = unblocked.filter((s) => !saved.has(s.id)).map((s) => s.id);
-  return { goals: scorers.length, savesUsed: saved.size, unblockedSkill: unblocked.reduce((n, s) => n + s.skill, 0), scorers };
+  return {
+    goals: scorers.length,
+    savesUsed: saved.size,
+    unblockedSkill: unblocked.reduce((n, s) => n + s.skill, 0),
+    scorers,
+    blocks: [...blocks],
+    unblocked: unblocked.map((s) => s.id),
+    saved: [...saved],
+  };
 }
 
 // 득점 최소 → 선방 소모 최소 → 뚫린 슛 역량 합 최소(강한 공격을 수비가 막는다)
@@ -122,10 +146,11 @@ function better(a: Shots, b: Shots): boolean {
 function resolveAttack(attackers: Slot[], defenders: Slot[], gk: Goalkeeper, savesLeft: number): Shots {
   let best: Shots | null = null;
   const used = new Array<boolean>(defenders.length).fill(false);
+  const blocks: Shots['blocks'] = []; // 지금 탐색 중인 짝
 
   const search = (i: number, unblocked: Slot[]) => {
     if (i === attackers.length) {
-      const shots = applyKeeper(unblocked, gk, savesLeft);
+      const shots = applyKeeper(unblocked, gk, savesLeft, blocks);
       if (!best || better(shots, best)) best = shots;
       return;
     }
@@ -135,12 +160,18 @@ function resolveAttack(attackers: Slot[], defenders: Slot[], gk: Goalkeeper, sav
     for (let d = 0; d < defenders.length; d++) {
       if (used[d] || defenders[d]!.skill < att.skill) continue; // 막으려면 수비 역량 ≥ 공격 역량
       used[d] = true;
+      blocks.push({ attacker: att.id, defender: defenders[d]!.id });
       search(i + 1, unblocked);
+      blocks.pop();
       used[d] = false;
     }
   };
   search(0, []);
   return best!;
+}
+
+function trace(attackers: Slot[], defenders: Slot[], shots: Shots): AttackTrace {
+  return { attackers, defenders, blocks: shots.blocks, unblocked: shots.unblocked, saved: shots.saved, scorers: shots.scorers };
 }
 
 function byRole(slots: Slot[], role: Role): Slot[] {
@@ -157,12 +188,24 @@ export function resolveMatch(mine: TeamSide, theirs: TeamSide): MatchReport {
     const mySlots = mine.sectors[m];
     const theirSlots = theirs.sectors[t];
 
-    const theirShots = resolveAttack(byRole(theirSlots, 'attack'), byRole(mySlots, 'defense'), mine.goalkeeper, mySaves);
+    const theirAttackers = byRole(theirSlots, 'attack');
+    const myDefenders = byRole(mySlots, 'defense');
+    const theirShots = resolveAttack(theirAttackers, myDefenders, mine.goalkeeper, mySaves);
     mySaves -= theirShots.savesUsed;
-    const myShots = resolveAttack(byRole(mySlots, 'attack'), byRole(theirSlots, 'defense'), theirs.goalkeeper, theirSaves);
+    const myAttackers = byRole(mySlots, 'attack');
+    const theirDefenders = byRole(theirSlots, 'defense');
+    const myShots = resolveAttack(myAttackers, theirDefenders, theirs.goalkeeper, theirSaves);
     theirSaves -= myShots.savesUsed;
 
-    sectors.push({ mine: m, theirs: t, myGoals: myShots.goals, theirGoals: theirShots.goals, myScorers: myShots.scorers });
+    sectors.push({
+      mine: m,
+      theirs: t,
+      myGoals: myShots.goals,
+      theirGoals: theirShots.goals,
+      myScorers: myShots.scorers,
+      theirAttack: trace(theirAttackers, myDefenders, theirShots),
+      myAttack: trace(myAttackers, theirDefenders, myShots),
+    });
     scorers.push(...myShots.scorers);
   }
 
@@ -174,5 +217,6 @@ export function resolveMatch(mine: TeamSide, theirs: TeamSide): MatchReport {
     outcome: myGoals > theirGoals ? 'win' : myGoals < theirGoals ? 'loss' : 'draw',
     sectors,
     scorers,
+    goalkeepers: { mine: { ...mine.goalkeeper }, theirs: { ...theirs.goalkeeper } },
   };
 }

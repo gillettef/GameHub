@@ -12,6 +12,7 @@ import { useCommit } from '../commit';
 import { useDevice } from '../device';
 import { CostChips, Icon, ResourceChip } from '../components/Icons';
 import { LineupPitch, Stepper, TokenChipView, playedInstance } from '../components/Lineup';
+import { MatchReplay } from '../components/MatchReplay';
 import type { StepDef } from '../components/Lineup';
 import { TurnBanner } from '../components/Turn';
 import { StandsPicker } from '../components/StandsPicker';
@@ -355,7 +356,7 @@ export function FridayMatchScreen() {
   return (
     <section className={`panel phase-panel${mine ? ' mine' : ''}`}>
       <div className="panel-head">
-        <h2>경기 진행</h2>
+        <h2>상대 팀 공개 · 전술 효과</h2>
         <TurnBanner current={current} done={decided} />
       </div>
       <p className="hint">
@@ -418,13 +419,14 @@ export function FridayMatchScreen() {
   );
 }
 
-// 경기 결과도 선 참가자부터 한 명씩: 차례인 참가자의 경기 보고서와 주사위를 모두가 본다.
-// 세 스텝으로 나눠 보여 준다 — ① 경기 결과 확인(득점자 이름) → ② 경기 영향 주사위 → ③ 부상 주사위(부상류일 때만).
-// 스텝은 서버 상태(굴림 여부·부상 주사위)에서 정해져 지켜보는 참가자도 같은 스텝을 본다. 차례인 본인만 ①에서 "결과 확인"을
-// 눌러야 주사위 트레이의 굴리기가 풀린다(ui.resultSeen) — 굴려야 하는지 몰라 멈춰 있던 문제(test_insight C4)
+// 경기 보기·종료도 선 참가자부터 한 명씩: 차례인 참가자의 경기와 주사위를 모두가 본다.
+// 네 스텝 — ⓪ 경기 보기(양 팀 배치 + 구획 비교 재생, MatchReplay) → ① 경기 종료(결과표·득점자·경기 후 효과) → ② 경기 영향 주사위 → ③ 부상 주사위(부상류일 때만).
+// 스텝은 서버 상태(굴림 여부·부상 주사위)에서 정해져 지켜보는 참가자도 같은 스텝을 본다. 차례인 본인은 ⓪에서 "경기 종료로"(ui.matchWatched),
+// ①에서 "결과 확인"(ui.resultSeen)을 눌러야 주사위 트레이의 굴리기가 풀린다 — 굴려야 하는지 몰라 멈춰 있던 문제(test_insight C4).
+// 경기 보기 전에는 그 경기의 점수를 화면 어디에도 먼저 보여 주지 않는다 (사용자 요청 2026-09-22)
 export function FridayAftermathScreen() {
   const { view } = useGame();
-  const { resultSeen, setResultSeen } = useUi();
+  const { resultSeen, setResultSeen, matchWatched, setMatchWatched } = useUi();
   const [override, setOverride] = useState<{ key: string; step: number } | null>(null); // 지나온 스텝을 다시 볼 때
   const dicePlace = useDevice().mobile ? '위' : '왼쪽'; // 모바일용 화면은 주사위가 단계 패널 위에 있다
   if (view.phase.kind !== 'friday.aftermath') return null;
@@ -444,11 +446,12 @@ export function FridayAftermathScreen() {
 
   const seenKey = resultKeyOf(view.week, current);
   const rolled = m.roll !== null || m.injuryDice.length > 0;
-  const derived = injuryDie ? 2 : rolled || (mine && resultSeen === seenKey) ? 1 : 0;
+  const derived = injuryDie ? 3 : rolled || (mine && resultSeen === seenKey) ? 2 : mine && matchWatched === seenKey ? 1 : 0;
   const overrideKey = `${seenKey}:${derived}`;
   const step = override?.key === overrideKey ? override.step : derived;
-  const stepLabels = ['경기 결과', '경기 영향 주사위', ...(m.injuryDice.length > 0 ? ['부상 주사위'] : [])];
-  const steps: StepDef[] = stepLabels.map((label, i) => ({ label, done: i < derived, disabled: i > derived }));
+  const stepLabels = ['경기 보기', '경기 종료', '경기 영향 주사위', ...(m.injuryDice.length > 0 ? ['부상 주사위'] : [])];
+  // 지켜보는 참가자도 경기 종료(①)까지는 언제든 눌러 볼 수 있다 (재생을 건너뛰고 결과만 보기)
+  const steps: StepDef[] = stepLabels.map((label, i) => ({ label, done: i < derived, disabled: i > Math.max(derived, 1) }));
 
   const sectorGoals = m.report.sectors.reduce((n, s) => n + s.myGoals, 0);
   const sectorConceded = m.report.sectors.reduce((n, s) => n + s.theirGoals, 0);
@@ -457,28 +460,48 @@ export function FridayAftermathScreen() {
   return (
     <section className={`panel phase-panel${mine ? ' mine' : ''}`}>
       <div className="panel-head">
-        <h2>경기 결과</h2>
+        <h2>경기</h2>
         <TurnBanner current={current} done={done} />
       </div>
       <p className="scores-row">
         {view.seats.map((id) => {
           const x = matches[id]!;
+          // 아직 경기를 보지 않은 참가자의 점수는 미리 보여 주지 않는다
+          const shown = x.decided || (id === current && step >= 1);
           return (
             <span key={id} className={`tag${id === current ? ' now' : ''}${x.decided ? ' done' : ''}`}>
-              {view.players[id]!.name} {x.report.myGoals}:{x.report.theirGoals} {{ win: '승', draw: '무', loss: '패' }[x.report.outcome]}
+              {view.players[id]!.name} {shown ? <>{x.report.myGoals}:{x.report.theirGoals} {{ win: '승', draw: '무', loss: '패' }[x.report.outcome]}</> : <span className="muted">vs {cards.opponent(x.opponentCardId).teamName}</span>}
             </span>
           );
         })}
       </p>
       <Stepper steps={steps} current={step} onSelect={(i) => setOverride({ key: overrideKey, step: i })} />
-      <div className="scoreline">
-        <span className="team">{actor.name}</span>
-        <span className={`score ${m.report.outcome}`}>{m.report.myGoals} : {m.report.theirGoals}</span>
-        <span className="team">{opponent.teamName}</span>
-        <span className={`outcome ${m.report.outcome}`}>{outcomeLabel}</span>
-      </div>
+      {step >= 1 && (
+        <div className="scoreline">
+          <span className="team">{actor.name}</span>
+          <span className={`score ${m.report.outcome}`}>{m.report.myGoals} : {m.report.theirGoals}</span>
+          <span className="team">{opponent.teamName}</span>
+          <span className={`outcome ${m.report.outcome}`}>{outcomeLabel}</span>
+        </div>
+      )}
 
       {step === 0 && (
+        <div className="step">
+          <h3>경기 보기 <span className="muted">위 = {opponent.teamName}(뒤집힌 상대 카드) · 아래 = {actor.name} · 규칙서 순서(p.21)로 구획을 비교합니다</span></h3>
+          <MatchReplay key={seenKey} actor={actor} m={m} />
+          {derived === 0 &&
+            (mine ? (
+              <div className="submit-row step-nav">
+                <span className="muted small">다 봤으면 경기 종료 화면으로 넘어갑니다. 건너뛰어도 됩니다.</span>
+                <button className="primary" onClick={() => setMatchWatched(seenKey)}>경기 종료로 →</button>
+              </div>
+            ) : (
+              <p className="muted small">{actor.name}의 경기입니다. 재생이 끝나면 {actor.name}이(가) 경기 종료 화면으로 넘어갑니다.</p>
+            ))}
+        </div>
+      )}
+
+      {step === 1 && (
         <div className="step">
           <div className="two-col">
             <div className="stack">
@@ -497,13 +520,21 @@ export function FridayAftermathScreen() {
               {m.report.myGoals !== sectorGoals && <p className="muted small">카드·전술 효과로 넣은 골 {m.report.myGoals - sectorGoals > 0 ? '+' : ''}{m.report.myGoals - sectorGoals}</p>}
               {m.report.theirGoals !== sectorConceded && <p className="muted small">효과로 바뀐 실점 {m.report.theirGoals - sectorConceded > 0 ? '+' : ''}{m.report.theirGoals - sectorConceded}</p>}
               <p className="muted small">전술 효과: {m.effectCard ? <><b>{cards.tactic(m.effectCard).name}</b> — {cards.tactic(m.effectCard).effect?.text}</> : '쓰지 않음'}</p>
+              <h3>경기 중·후 효과 <span className="muted">선수 카드 효과, 미뤄 둔 전술 조건, 승리 보너스</span></h3>
+              {m.effects.length > 0 ? (
+                <ul className="status-list match-effects">
+                  {m.effects.map((e, i) => <li key={i}>{e}</li>)}
+                </ul>
+              ) : (
+                <p className="muted small">적용된 효과가 없습니다.</p>
+              )}
               <h3>{actor.name}의 라인업 <span className="muted">숫자 = 이 경기에 쓴 역량(일시적 토큰·전술 효과 포함) · ⚽ = 득점</span></h3>
               <LineupPitch roster={actor.roster} field={field} played={m.played} placements={m.placements} skills={m.skills} scorers={m.report.scorers} />
               <p className="muted small">승리 +3칸, 무승부 양 팀 +1칸, 패배 상대 +3칸. 관중석의 팬덤은 돈이 됐습니다.</p>
             </div>
             <OpponentCardView cardId={m.opponentCardId} revealed />
           </div>
-          {derived === 0 &&
+          {derived === 1 &&
             (mine ? (
               <div className="submit-row step-nav">
                 <span className="muted small">결과를 확인했으면 경기 영향 주사위를 굴립니다.</span>
@@ -515,7 +546,7 @@ export function FridayAftermathScreen() {
         </div>
       )}
 
-      {step === 1 && (
+      {step === 2 && (
         <div className="step">
           <h3>경기 영향 주사위 <span className="muted">{outcomeLabel} 열</span></h3>
           <table className="die-table">
@@ -548,7 +579,7 @@ export function FridayAftermathScreen() {
         </div>
       )}
 
-      {step === 2 && (
+      {step === 3 && (
         <div className="step">
           <h3>부상 주사위 <span className="muted">12면체 · 눈 = 다치는 선수의 등번호 (12는 12번 이상) · 그 번호의 출전 선수가 없으면 아무 일도 없음</span></h3>
           <ol className="injury-dice">

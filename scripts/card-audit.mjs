@@ -35,7 +35,7 @@ try {
     m = dom.match(/<pre id="audit"[^>]*>([\s\S]*?)<\/pre>/);
   }
   if (!m?.[1]) throw new Error('점검 결과를 읽지 못했습니다 (페이지가 그려지지 않음)');
-  if (shot) await run(browser, [...common, `--window-size=1500,${only === "only=pitch" ? 1300 : only === "only=stands" ? 700 : only ? 2600 : 12000}`, `--screenshot=${shot}`, url], { timeout: 120000 });
+  if (shot) await run(browser, [...common, `--window-size=1500,${only === "only=pitch" ? 1300 : only === "only=stands" ? 700 : only === "only=replay" ? 3400 : only ? 2600 : 12000}`, `--screenshot=${shot}`, url], { timeout: 120000 });
   const findings = JSON.parse(m[1].replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&'));
   const hard = findings.filter((f) => f.kind !== 'clamped');
   for (const f of findings) console.log(`${f.kind.padEnd(8)} ${f.card} — ${f.where} (+${f.by}px)`);

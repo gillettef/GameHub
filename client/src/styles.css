@@ -693,6 +693,60 @@ button.utoken { font-size: var(--fs-body); }
 .unplaced { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; border: 1px dashed var(--line-strong); border-radius: var(--radius); padding: 6px 8px; margin-bottom: 6px; }
 .unplaced.target { cursor: pointer; border-color: var(--pitch); }
 .report td.scorers { color: var(--pitch-dark); font-weight: 600; }
+
+/* ---- 경기 보기 (MatchReplay): 경기장 하나에 양 팀. 위 = 상대(반전), 아래 = 우리. 비교 중인 구획 둘만 밝고 나머지는 흐림 ---- */
+.replay { display: flex; flex-direction: column; gap: 10px; }
+.replay-pitch { display: flex; flex-direction: column; gap: 6px; background: var(--grass); border-radius: var(--radius-md); padding: 8px; }
+.rteam { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.rteam.mine { justify-content: flex-start; }
+.rteam-name { color: #fff; font-weight: 700; font-size: var(--fs-body); }
+.rteam.theirs .rteam-name { margin-right: auto; }
+.rteam.mine .rteam-name { margin-left: auto; }
+.rhalf { display: grid; grid-template-columns: 1fr 2fr 1fr; gap: 6px; }
+.rcenter { display: flex; flex-direction: column; gap: 6px; }
+.rsector { background: rgba(255, 255, 255, 0.12); border: 1px dashed rgba(255, 255, 255, 0.35); border-radius: var(--radius); padding: 5px 6px; min-height: 44px; display: flex; flex-direction: column; gap: 4px; transition: background var(--motion-standard) var(--ease-standard), opacity var(--motion-standard) var(--ease-standard), border-color var(--motion-standard) var(--ease-standard); }
+.rsector.wing { min-height: 100%; }
+.rsector.dim, .rgk.dim { opacity: 0.4; }
+.rsector.active { background: rgba(255, 255, 255, 0.92); border-style: solid; border-color: #fff; }
+.rsector-title { display: flex; align-items: baseline; gap: 5px; font-size: var(--fs-sub); color: #d7f0e0; }
+.rsector-title b { color: #fff; font-size: var(--fs-body); }
+.rsector.active .rsector-title { color: var(--muted); }
+.rsector.active .rsector-title b { color: var(--ink); }
+.rsector-name { white-space: nowrap; }
+.rsector-role { margin-left: auto; font-weight: 700; color: var(--pitch-dark); }
+.rsector-slots { display: flex; flex-wrap: wrap; gap: 4px; }
+.rsector-empty { color: rgba(255, 255, 255, 0.6); }
+.rsector.active .rsector-empty { color: var(--muted); }
+.rslot { display: inline-flex; align-items: center; gap: 3px; background: var(--surface); border: 1.5px solid; border-radius: 999px; padding: 1px 7px; font-size: var(--fs-body); font-weight: 700; transition: opacity var(--motion-standard) var(--ease-standard), transform var(--motion-standard) var(--ease-enter); }
+.rslot.attack { border-color: var(--attack); color: var(--attack); }
+.rslot.defense, .rslot.gk { border-color: var(--defense); color: var(--defense); }
+.rslot-skill { background: var(--ink); color: #fff; border-radius: var(--radius-pill); min-width: 16px; height: 16px; padding: 0 4px; font-size: var(--fs-sub); display: inline-flex; align-items: center; justify-content: center; }
+.rslot-goal { font-size: 12px; }
+.rslot-mark { font-size: var(--fs-sub); }
+.rslot.idle { opacity: 0.55; }
+.rslot.blocked { opacity: 0.5; text-decoration: line-through; }
+.rslot.blocker { box-shadow: 0 0 0 2px var(--defense); }
+.rslot.goal { box-shadow: 0 0 0 2px var(--pitch); transform: translateY(-1px); }
+.rslot.saved { border-style: dashed; }
+.rgk { display: inline-flex; align-items: center; gap: 6px; background: rgba(0, 0, 0, 0.22); color: #fff; border-radius: var(--radius); padding: 4px 8px; font-size: var(--fs-sub); transition: background var(--motion-standard) var(--ease-standard), opacity var(--motion-standard) var(--ease-standard); }
+.rgk b { font-size: var(--fs-body); }
+.rgk.active { background: rgba(255, 255, 255, 0.92); color: var(--ink); }
+.rgk-saves { white-space: nowrap; }
+.rgk-now { font-weight: 700; }
+.rmidline { display: flex; justify-content: center; border-top: 1.5px solid rgba(255, 255, 255, 0.6); border-bottom: 1.5px solid rgba(255, 255, 255, 0.6); padding: 4px 0; }
+.rscore { display: inline-flex; align-items: center; gap: 10px; background: var(--ink); color: #fff; border-radius: var(--radius-pill); padding: 2px 12px; font-size: var(--fs-body); transition: transform var(--motion-standard) var(--ease-enter); }
+.rscore b { font-size: 18px; font-variant-numeric: tabular-nums; }
+.rscore .team { font-size: var(--fs-sub); opacity: 0.85; max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rscore.bump-mine, .rscore.bump-theirs { transform: scale(1.06); }
+.replay-caption { background: var(--surface-2); border-radius: var(--radius-md); padding: 10px 12px; min-height: 40px; color: var(--ink-2); }
+.replay-caption .good { color: var(--pitch-dark); }
+.replay-caption .bad { color: var(--danger); }
+.replay-extras { margin: 6px 0 0; padding-left: 18px; display: flex; flex-direction: column; gap: 2px; }
+.replay-controls { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.replay-count { margin-left: auto; }
+.mobile-ui .rhalf { grid-template-columns: 1fr 1.6fr 1fr; gap: 4px; }
+.mobile-ui .rscore .team { max-width: 80px; }
+@media (prefers-reduced-motion: reduce) { .rsector, .rgk, .rslot, .rscore { transition: none; } }
 /* 주사위 트레이: 내가 눌러야 할 때 테두리가 깜빡인다. 적용(주 버튼)과 재굴림은 떼어 놓는다 */
 .dice-tray.attention { animation: tray-pulse 1.4s ease-in-out infinite; }
 @keyframes tray-pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(9, 170, 92, 0); } 50% { box-shadow: 0 0 0 4px rgba(9, 170, 92, 0.8); } }
