@@ -31,12 +31,13 @@ notes/의 추천 스택을 기반으로 하되, DB 없음·단일 언어 원칙�
 
 | 영역 | 선택 | 비고 |
 |---|---|---|
-| 언어 | TypeScript (전 영역) | 서버·클라이언트·공용 타입 모두 TS |
+| 언어 | TypeScript + Python | 서버·클라이언트·공용 타입은 TS, AI 서비스는 Python |
 | 백엔드 | Node.js 22 + Express + Socket.io | 포트 `3001` |
 | 프론트엔드 | React 18 + Vite + Zustand | 포트 `5173`, `/api`·`/socket.io`는 Vite proxy로 3001에 연결 |
 | 스타일 | CSS Modules | 탭 전환 시 언마운트 대신 `display:none`/`visibility` 전환 |
 | 테스트 | Vitest | 룰 엔진은 순수 함수로 작성하고 단위 테스트 필수 |
-| AI | Node.js 내 Minimax (TS) | notes/의 Python 추천 대신 단일 언어(TS)로 통일. 별도 Python 프로세스·HTTP 브리지 없이 서버 게임 루프에서 직접 호출하기 위함. (Python 3.11.7은 PC에 설치돼 있으나 셸 PATH에 실행 파일 폴더가 없음: `C:\Users\User\AppData\Local\Programs\Python\Python311\python.exe`) |
+| AI | Python 3.11 + FastAPI + Minimax | 포트 `8000`. Node 서버가 AI 턴마다 HTTP로 호출. 자세한 내용은 "AI 서비스" 참고 |
+| Python 실행 | `ai/.venv` | PC의 Python 3.11.7은 PATH에 없다. `scripts/dev.ps1`이 `C:\Users\User\AppData\Local\Programs\Python\Python311\python.exe`로 venv를 만든다 |
 | 저장소 | **없음** | 인메모리 + JSON 파일 스냅샷 |
 | 패키지 관리 | npm workspaces | `npm install`은 루트에서 한 번 |
 
@@ -58,14 +59,24 @@ AstralTab/
 │       ├── index.ts      # Express + Socket.io 부트스트랩
 │       ├── rooms/        # 방 생성, 초대 링크, 비밀번호, 로비
 │       ├── game/         # 룸별 게임 루프, 액션 처리 → engine 호출 → 브로드캐스트
-│       ├── ai/           # Minimax AI 플레이어
+│       ├── ai/           # AI 서비스 HTTP 클라이언트 (ai/ 호출, 타임아웃·폴백)
 │       └── persistence/  # JSON 파일 스냅샷 저장/복구 (DB 아님)
-└── client/
-    └── src/
-        ├── pages/        # Lobby, DeckBuilder, Game, Result
-        ├── tabs/         # BoardTab, StatusTab, ProgressTab
-        ├── store/        # Zustand 전역 상태 (모든 탭 데이터 선로드)
-        └── socket/       # Socket.io 클라이언트, 재연결 처리
+├── client/
+│   └── src/
+│       ├── pages/        # Lobby, DeckBuilder, Game, Result
+│       ├── tabs/         # BoardTab, StatusTab, ProgressTab
+│       ├── store/        # Zustand 전역 상태 (모든 탭 데이터 선로드)
+│       └── socket/       # Socket.io 클라이언트, 재연결 처리
+└── ai/                   # Python AI 서비스 (FastAPI, 포트 8000)
+    ├── pyproject.toml
+    ├── requirements.txt
+    ├── astral_ai/
+    │   ├── main.py       # FastAPI 앱, POST /decide
+    │   ├── models.py     # GameState/Action Pydantic 모델 (shared/src/types 와 1:1)
+    │   ├── rules.py      # 탐색용 규칙 시뮬레이션 (legal_actions, apply)
+    │   ├── evaluate.py   # 보드 평가 함수 (자원, 유닛, 기지 체력, 영토)
+    │   └── minimax.py    # Minimax + 알파베타, 시간 제한
+    └── tests/            # pytest
 ```
 
 디렉터리가 아직 없다면 위 구조로 생성한다. 구조를 바꿀 경우 이 문서도 함께 갱신한다.
@@ -80,6 +91,21 @@ AstralTab/
 - **비동기 턴 모드(F005)** 도 같은 JSON 스냅샷으로 유지한다. 별도 큐·DB 없음.
 - **로그인/회원가입은 없다.** 유저플로우의 "로그인" 단계는 닉네임 입력으로 대체한다. 닉네임과 재접속용 `playerToken`은 브라우저 `localStorage`에 보관하고, 서버는 `roomId + playerToken` 으로 재접속 플레이어를 식별한다.
 - `server/data/` 는 git에 커밋하지 않는다(`.gitignore`).
+
+---
+
+## AI 서비스 (Python)
+
+- `ai/` 는 독립 FastAPI 프로세스다. Node 서버는 AI 플레이어의 턴이 오면 `POST http://localhost:8000/decide` 에 현재 `GameState`와 AI 플레이어 id를 보내고, 응답으로 받은 `Action` 하나를 **일반 플레이어 액션과 동일하게 룰 엔진으로 검증**한 뒤 적용한다.
+- 권위는 항상 TS 룰 엔진(`shared/src/engine`)에 있다. AI 응답이 불법 액션이거나 타임아웃(2초, F027)이면 서버는 `END_TURN` 으로 폴백하고 로그에 남긴다. AI 서비스가 죽어 있어도 게임이 멈추면 안 된다.
+- `ai/astral_ai/rules.py` 는 Minimax 탐색을 위한 **시뮬레이션 사본**이다. `shared/src/engine` 과 규칙이 어긋나면 AI가 불법 수를 두게 되므로, 룰 엔진을 바꾸면 반드시 `rules.py` 도 함께 고치고 양쪽에 같은 JSON 픽스처(`shared/fixtures/*.json`)로 테스트한다.
+- `ai/astral_ai/models.py` 의 Pydantic 모델은 `shared/src/types` 와 필드명·타입을 1:1로 맞춘다. 필드를 추가하면 양쪽 모두 갱신한다.
+- 요청·응답 스키마:
+  - 요청: `{ "state": GameState, "playerId": string, "timeLimitMs": number }`
+  - 응답: `{ "action": Action, "depth": number, "elapsedMs": number }`
+- 상태 없음(stateless). AI 서비스는 아무것도 저장하지 않는다.
+- 의존성은 `ai/requirements.txt` 에 고정하고 `ai/.venv` 에 설치한다. 시스템 Python에 직접 설치하지 않는다.
+- 행동 우선순위(F028, F029)는 `evaluate.py` 가중치로 표현한다. 초반 자원 건물 우선, 자원 충족 시 상위 유닛, 사거리 내 적 유닛 공격, 기지 체력 저하 시 방어 유닛 가중.
 
 ---
 
@@ -112,16 +138,19 @@ AstralTab/
 - 게임 내 주요 사건(자원 정산, 전투 결과, 파괴, 턴 전환)은 모두 `GameState.log`에 기록해 진행 탭에서 보이게 한다(F012, F020).
 - 새 기능은 해당 F-ID의 수락 기준을 만족하는지 확인한 뒤 완료로 간주한다. 룰 엔진 변경은 Vitest 테스트를 함께 추가한다.
 - 주석과 UI 문구는 한국어, 식별자는 영어.
+- Python 코드는 타입 힌트를 필수로 하고, `rules.py`·`minimax.py` 는 순수 함수로 작성한다. 테스트는 pytest.
 
 ## 자주 쓰는 명령
 
 | 목적 | 방법 |
 |---|---|
-| 서버·클라이언트 백그라운드 실행 | `/dev` |
-| 백그라운드 서버 종료 | `/dev-stop` |
-| 로그 확인 | `tail -n 50 .dev/server.log`, `tail -n 50 .dev/client.log` |
-| 의존성 설치 | `npm install` (루트) |
-| 테스트 | `npm test` (루트, 전 워크스페이스) |
+| 서버·클라이언트·AI 백그라운드 실행 | `/dev` |
+| 백그라운드 프로세스 종료 | `/dev-stop` |
+| 로그 확인 | `tail -n 50 .dev/server.log`, `.dev/client.log`, `.dev/ai.log` |
+| 의존성 설치 (JS) | `npm install` (루트) |
+| 의존성 설치 (Python) | `ai\.venv\Scripts\pip install -r ai\requirements.txt` (`/dev`가 venv 없으면 자동 생성) |
+| 테스트 (JS) | `npm test` (루트, 전 워크스페이스) |
+| 테스트 (Python) | `ai\.venv\Scripts\python -m pytest ai/tests` |
 | 타입 검사 | `npx tsc --noEmit -p server` / `-p client` / `-p shared` |
 | 커밋 & 푸시 | `/commit-push` |
 
@@ -133,5 +162,6 @@ AstralTab/
 | `rules-engine-reviewer` | 룰 엔진(자원·전투·승리 판정)의 순수성·결정성·엣지 케이스 검토 |
 | `realtime-sync-reviewer` | Socket.io 이벤트, 재접속, 상태 브로드캐스트, JSON 스냅샷 복구 검토 |
 | `ui-tab-reviewer` | 탭 UI 성능(100ms), 무스크롤 레이아웃, 불필요한 리렌더 검토 |
+| `ai-reviewer` | Python AI 서비스의 Minimax 탐색, 평가 함수, 시간 제한, TS 룰 엔진과의 규칙 일치 검토 |
 
 기능 구현을 마치면 `spec-checker`로 수락 기준을 확인하고, 영역에 맞는 리뷰어를 거친 뒤 `/commit-push`한다.
