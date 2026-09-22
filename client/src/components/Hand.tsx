@@ -10,10 +10,12 @@ interface HandProps {
   /** 내 턴이 아니면 어떤 카드도 고를 수 없다 (F009) */
   interactive: boolean;
   onSelect: (index: number | null) => void;
+  /** 손패 소유자 좌석. 카드 배경을 좌석 색으로 물들인다 */
+  seat?: number;
 }
 
 /** 보드 탭 하단 손패 (F009, F011). 낼 수 없는 카드는 음영 + 이유 */
-export const Hand = memo(function Hand({ cards, selectedIndex, interactive, onSelect }: HandProps) {
+export const Hand = memo(function Hand({ cards, selectedIndex, interactive, onSelect, seat }: HandProps) {
   if (cards.length === 0) {
     return <p className={styles.empty}>손패가 비었습니다. 패스로 턴을 넘기세요.</p>;
   }
@@ -29,6 +31,7 @@ export const Hand = memo(function Hand({ cards, selectedIndex, interactive, onSe
               disabled={!selectable}
               reason={interactive ? c.reason : null}
               onClick={selectable ? () => onSelect(selectedIndex === c.index ? null : c.index) : undefined}
+              seat={seat}
             />
           </li>
         );

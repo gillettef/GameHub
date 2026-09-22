@@ -5,7 +5,7 @@
   gap: 4px;
   width: 140px;
   height: 120px;
-  padding: var(--space-1) var(--space-1) var(--space-1) 14px;
+  padding: var(--space-1);
   border-radius: var(--radius-md);
   background: var(--color-surface);
   color: var(--color-text);
@@ -15,6 +15,23 @@
     border-color var(--motion-fast) var(--ease-standard),
     opacity var(--motion-fast) var(--ease-standard);
   overflow: visible;
+}
+
+/* 소유자 좌석 색으로 카드 배경을 물들인다. 표면색과 섞어 텍스트 대비를 지킨다 */
+.card[data-seat='0'] {
+  background: color-mix(in srgb, var(--color-seat-0) 30%, var(--color-surface));
+}
+
+.card[data-seat='1'] {
+  background: color-mix(in srgb, var(--color-seat-1) 30%, var(--color-surface));
+}
+
+.card[data-seat='2'] {
+  background: color-mix(in srgb, var(--color-seat-2) 30%, var(--color-surface));
+}
+
+.card[data-seat='3'] {
+  background: color-mix(in srgb, var(--color-seat-3) 30%, var(--color-surface));
 }
 
 .card:hover:not(:disabled) {
@@ -41,25 +58,6 @@
   color: var(--color-muted);
 }
 
-/* 종류별 색 띠: 건물 Amber, 마법 Violet, 유닛은 헤딩색(비게임 네이비 / 게임 흰색) */
-.stripe {
-  position: absolute;
-  left: 0;
-  top: 10px;
-  bottom: 10px;
-  width: 6px;
-  border-radius: var(--radius-full);
-  background: var(--color-heading);
-}
-
-.card[data-kind='building'] .stripe {
-  background: var(--color-building);
-}
-
-.card[data-kind='magic'] .stripe {
-  background: var(--color-magic);
-}
-
 .head {
   display: flex;
   align-items: center;
@@ -67,11 +65,20 @@
   gap: var(--space-1);
 }
 
+/* 종류(건물·유닛·마법)는 이름 텍스트 색으로 구분한다: 건물 Amber, 마법 Violet, 유닛은 헤딩색 */
 .name {
   font-weight: 700;
   color: var(--color-heading);
   font-size: var(--text-body);
   line-height: 1.2;
+}
+
+.card[data-kind='building'] .name {
+  color: var(--color-building);
+}
+
+.card[data-kind='magic'] .name {
+  color: var(--color-magic-text);
 }
 
 .cost {

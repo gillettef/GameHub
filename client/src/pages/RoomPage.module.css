@@ -5,9 +5,10 @@
   width: 100%;
 }
 
+/* 언제나 모바일 폭이므로 한 열로 쌓는다 */
 .grid {
   display: grid;
-  grid-template-columns: minmax(280px, 1fr) 2fr;
+  grid-template-columns: 1fr;
   gap: var(--space-3);
 }
 
@@ -86,10 +87,4 @@
   display: flex;
   align-items: center;
   gap: var(--space-2);
-}
-
-@media (max-width: 900px) {
-  .grid {
-    grid-template-columns: 1fr;
-  }
 }
