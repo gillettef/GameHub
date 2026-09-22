@@ -37,33 +37,35 @@
         "unitId": "battleship",
         "magicId": "gravity-wave"
       },
-      "energy": 3,
+      "energy": 5,
       "deck": [
-        "extractor",
-        "artillery",
-        "turret",
-        "artillery",
-        "extractor",
-        "fighter",
-        "turret",
-        "scout",
-        "meteor",
-        "outpost",
-        "fighter",
+        "gravity-wave",
         "refinery",
+        "extractor",
+        "outpost",
+        "outpost",
+        "meteor",
+        "extractor",
+        "artillery",
+        "scout",
+        "fighter",
+        "energy-cell",
+        "turret",
+        "energy-cell",
+        "scout",
         "outpost",
         "battleship",
         "extractor",
-        "gravity-wave",
-        "cruiser",
+        "fighter",
+        "shield",
         "scout",
-        "fighter"
+        "artillery"
       ],
       "hand": [
-        "outpost",
-        "shield",
+        "fighter",
+        "cruiser",
         "extractor",
-        "scout"
+        "turret"
       ],
       "discard": [],
       "alive": true,
@@ -81,33 +83,35 @@
         "unitId": "battleship",
         "magicId": "gravity-wave"
       },
-      "energy": 3,
+      "energy": 5,
       "deck": [
-        "shield",
-        "fighter",
-        "scout",
-        "turret",
-        "artillery",
-        "outpost",
         "meteor",
-        "artillery",
-        "outpost",
         "scout",
-        "extractor",
         "battleship",
         "scout",
-        "fighter",
-        "extractor",
         "extractor",
         "outpost",
-        "extractor",
-        "fighter"
-      ],
-      "hand": [
+        "fighter",
+        "energy-cell",
+        "shield",
         "gravity-wave",
         "refinery",
+        "fighter",
         "turret",
-        "cruiser"
+        "artillery",
+        "extractor",
+        "extractor",
+        "scout",
+        "cruiser",
+        "outpost",
+        "extractor",
+        "outpost"
+      ],
+      "hand": [
+        "artillery",
+        "energy-cell",
+        "turret",
+        "fighter"
       ],
       "discard": [],
       "alive": true,
@@ -142,7 +146,7 @@
     }
   ],
   "nextMarkerId": 3,
-  "rngSeed": 3279484486,
+  "rngSeed": 2015813146,
   "result": null,
   "log": [
     {
@@ -171,14 +175,14 @@
       "round": 1,
       "playerId": "p0",
       "kind": "system",
-      "message": "철수 코어 (2,2) 배치, 에너지 3, 손패 4장"
+      "message": "철수 코어 (2,2) 배치, 에너지 5, 손패 4장"
     },
     {
       "turn": 1,
       "round": 1,
       "playerId": "ai-1",
       "kind": "system",
-      "message": "AI 코어 (8,8) 배치, 에너지 3, 손패 4장"
+      "message": "AI 코어 (8,8) 배치, 에너지 5, 손패 4장"
     },
     {
       "turn": 1,

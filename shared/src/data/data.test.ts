@@ -34,6 +34,7 @@ const BASE_TABLE: Row[] = [
   ['cruiser', 'unit', 5, 1, 7, 3, 2, 0, 2, 1],
   ['meteor', 'magic', 3, 0, 0, 0, 0, 0, 0, 1],
   ['shield', 'magic', 2, 0, 0, 0, 0, 0, 0, 1],
+  ['energy-cell', 'magic', 0, 0, 0, 0, 0, 0, 0, 2],
 ];
 
 // Rules.md 10.3
@@ -69,7 +70,7 @@ describe('카드 기준표 (Rules.md 10절)', () => {
     expect(CORE_SPEC.sight).toBe(2);
     expect(CORE_SPEC.hp).toBe(20);
     expect(CORE_SPEC.attack).toBe(0);
-    expect(CORE_SPEC.production).toBe(1);
+    expect(CORE_SPEC.production).toBe(CONSTANTS.CORE_BASE_INCOME);
     expect(CORE_SPEC.score).toBe(0);
     expect(CORE_SPEC.copies).toBe(0);
   });
@@ -103,7 +104,8 @@ describe('카드 기준표 (Rules.md 10절)', () => {
     }
   });
 
-  it('기본 덱은 20장, 덱은 기본 20 + 특수 3 = 23장', () => {
+  it('기본 덱은 22장, 덱은 기본 22 + 특수 3 = 25장', () => {
+    expect(BASE_DECK.filter((id) => id === 'energy-cell')).toHaveLength(2);
     expect(BASE_DECK).toHaveLength(BASE_DECK_SIZE);
     expect(BASE_DECK.filter((id) => id === 'extractor')).toHaveLength(4);
     expect(BASE_DECK.filter((id) => id === 'cruiser')).toHaveLength(1);
@@ -120,14 +122,14 @@ describe('카드 기준표 (Rules.md 10절)', () => {
   });
 
   it('상수표 (Rules.md 12절)', () => {
-    expect(CONSTANTS.STARTING_ENERGY).toBe(3);
-    expect(CONSTANTS.CORE_BASE_INCOME).toBe(1);
+    expect(CONSTANTS.STARTING_ENERGY).toBe(5);
+    expect(CONSTANTS.CORE_BASE_INCOME).toBe(2);
     expect(CONSTANTS.CORE_HP).toBe(20);
     expect(CONSTANTS.CORE_SIGHT).toBe(2);
     expect(CONSTANTS.INITIAL_HAND_SIZE).toBe(4);
     expect(CONSTANTS.HAND_LIMIT).toBe(5);
     expect(CONSTANTS.DRAW_PER_TURN).toBe(1);
-    expect(CONSTANTS.BASE_DECK_SIZE).toBe(20);
+    expect(CONSTANTS.BASE_DECK_SIZE).toBe(22);
     expect(CONSTANTS.SPECIAL_PICKS).toBe(3);
     expect(CONSTANTS.VEIN_PRODUCTION_BONUS).toBe(1);
     expect(CONSTANTS.SCORE_PER_TERRITORY).toBe(1);

@@ -37,7 +37,7 @@ export const CORE_SPEC: CardSpec = {
   description: '시작 지점. 파괴되면 탈락한다.',
 };
 
-/** 10.2 기본 덱 (20장, 전원 동일) */
+/** 10.2 기본 덱 (22장, 전원 동일) */
 export const BASE_CARDS: CardSpec[] = [
   { ...base, id: 'extractor', name: '채굴기', kind: 'building', cost: 2, sight: 1, hp: 4, attack: 0, range: 0, production: 1, score: 2, copies: 4, description: '경제의 기본. 광맥 위에서는 생산 +1.' },
   { ...base, id: 'outpost', name: '전초기지', kind: 'building', cost: 3, sight: 2, hp: 6, attack: 0, range: 0, production: 0, score: 3, copies: 3, description: '시야·영토 확장.' },
@@ -48,6 +48,7 @@ export const BASE_CARDS: CardSpec[] = [
   { ...base, id: 'cruiser', name: '순양함', kind: 'unit', cost: 5, sight: 1, hp: 7, attack: 3, range: 2, production: 0, score: 2, copies: 1, description: '중견 전력.' },
   { ...base, id: 'meteor', name: '유성우', kind: 'magic', cost: 3, sight: 0, hp: 0, attack: 0, range: 0, production: 0, score: 0, copies: 1, effect: { kind: 'damage', amount: 3, radius: 1 }, description: '즉발: 반경 1 적 마커 전부에 피해 3.' },
   { ...base, id: 'shield', name: '차폐막', kind: 'magic', cost: 2, sight: 0, hp: 0, attack: 0, range: 0, production: 0, score: 0, copies: 1, effect: { kind: 'heal', amount: 3, radius: 1 }, description: '즉발: 반경 1 아군 마커 전부 체력 +3.' },
+  { ...base, id: 'energy-cell', name: '에너지 결정', kind: 'magic', cost: 0, sight: 0, hp: 0, attack: 0, range: 0, production: 0, score: 0, copies: 2, effect: { kind: 'energy', amount: 3 }, description: '즉발: 에너지 +3. 초반 경제 보조.' },
 ];
 
 /** 10.3 특수 카드 (덱 빌딩에서 종류별 1장 선택) */

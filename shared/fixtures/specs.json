@@ -2,14 +2,14 @@
   "constants": {
     "MIN_PLAYERS": 2,
     "MAX_PLAYERS": 4,
-    "STARTING_ENERGY": 3,
-    "CORE_BASE_INCOME": 1,
+    "STARTING_ENERGY": 5,
+    "CORE_BASE_INCOME": 2,
     "CORE_HP": 20,
     "CORE_SIGHT": 2,
     "INITIAL_HAND_SIZE": 4,
     "HAND_LIMIT": 5,
     "DRAW_PER_TURN": 1,
-    "BASE_DECK_SIZE": 20,
+    "BASE_DECK_SIZE": 22,
     "SPECIAL_PICKS": 3,
     "VEIN_PRODUCTION_BONUS": 1,
     "SCORE_PER_TERRITORY": 1,
@@ -27,7 +27,7 @@
     "hp": 20,
     "attack": 0,
     "range": 0,
-    "production": 1,
+    "production": 2,
     "score": 0,
     "keywords": [],
     "effect": null,
@@ -195,6 +195,26 @@
       "score": 0,
       "copies": 1,
       "description": "즉발: 반경 1 아군 마커 전부 체력 +3."
+    },
+    {
+      "special": false,
+      "keywords": [],
+      "effect": {
+        "kind": "energy",
+        "amount": 3
+      },
+      "id": "energy-cell",
+      "name": "에너지 결정",
+      "kind": "magic",
+      "cost": 0,
+      "sight": 0,
+      "hp": 0,
+      "attack": 0,
+      "range": 0,
+      "production": 0,
+      "score": 0,
+      "copies": 2,
+      "description": "즉발: 에너지 +3. 초반 경제 보조."
     },
     {
       "special": true,
