@@ -348,12 +348,31 @@ export function PlayerBoard({ p, privateInfo }: { p: PlayerPublicView; privateIn
       {shown === 'club' && <ClubBoard p={p} />}
       {shown === 'stadium' && <StadiumBoard p={p} />}
       {shown === 'match' && <MatchBoard p={p} />}
+      {/* 목표 카드와 전술 카드는 타일을 나눠 보여 준다 (사용자 요청 2026-09-22) */}
       {shown === 'hand' && privateInfo && (
-        <div className="cards">
-          {privateInfo.tacticCards.map((t) => (
-            <TacticCardView key={t} cardId={t} compact />
-          ))}
-          {privateInfo.objective && <ObjectiveCardView cardId={privateInfo.objective} level={objectiveLevel(p, view.league, privateInfo.objective)} compact />}
+        <div className="club-board hand-board">
+          <section className="tile" aria-label="목표 카드">
+            <h3 className="tile-title">목표 카드 <span className="tile-sub">본인만 볼 수 있음 · 게임 종료 때 달성 2 / 완벽 4 승점</span></h3>
+            {privateInfo.objective ? (
+              <div className="cards">
+                <ObjectiveCardView cardId={privateInfo.objective} level={objectiveLevel(p, view.league, privateInfo.objective)} compact />
+              </div>
+            ) : (
+              <p className="muted small">아직 고르지 않았습니다.</p>
+            )}
+          </section>
+          <section className="tile" aria-label="전술 카드">
+            <h3 className="tile-title">전술 카드 <span className="tile-sub">{privateInfo.tacticCards.length}장 · 경기 준비의 포메이션, 경기 진행의 효과에 사용</span></h3>
+            {privateInfo.tacticCards.length > 0 ? (
+              <div className="cards">
+                {privateInfo.tacticCards.map((t) => (
+                  <TacticCardView key={t} cardId={t} compact />
+                ))}
+              </div>
+            ) : (
+              <p className="muted small">전술 카드가 없습니다.</p>
+            )}
+          </section>
         </div>
       )}
     </div>
