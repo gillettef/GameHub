@@ -33,7 +33,24 @@
 
 ## 코드 현황 (2026-09-22)
 
-커밋 `5af6e5e` 까지의 `shared/src`, `ai/astral_ai`, `shared/fixtures` 는 **v1 규칙**(자원+마나, 유닛 이동, 메인 기지 파괴, 2인 고정)으로 작성됐다. v2 규칙(Rules.md)과 맞지 않으므로 Phase 1에서 **재작업**한다. 재작업 전까지 이 코드를 기준으로 새 기능을 얹지 않는다. 재작업이 끝나면 이 절을 지운다.
+- `shared/src`(types·data·engine), `ai/astral_ai`(models·rules·search), `shared/fixtures` 는 **v2 규칙(Rules.md)** 으로 재작성됐다. Vitest 61개, pytest 14개(픽스처 시나리오 재생으로 TS·Python 규칙 일치 검증)가 통과한다.
+- `ai/astral_ai/search.py` 는 1수 탐욕 자리표시자다. Minimax / max-n 은 Phase 3.
+- `server/`, `client/` 는 아직 스캐폴딩이다. 다음 작업은 Phase 1 탭 UI 핫시트(F008~F015), 그다음 Phase 2 로비·동기화.
+
+---
+
+## 실행 환경 (dev / test / prod)
+
+| 환경 | 시작 / 종료 | 서버 | 클라이언트 | AI | 용도 |
+|---|---|---|---|---|---|
+| dev | `/dev` · `/dev-stop` | 3101 (tsx watch) | 5173 (Vite, proxy) | 8000 (`--reload`) | 로컬 개발. 핫리로드 |
+| test | `/test-server` · `/test-server-stop` | 3301 | `client/dist/test` 를 3301에서 정적 서빙 | 8002 | 친구와 검증. 운영 전 확인 |
+| prod | `/prod-server` · `/prod-server-stop` | 3201 | `client/dist/prod` 를 3201에서 정적 서빙 | 8001 | 친구들이 접속하는 운영 |
+
+- test·prod 는 `scripts/serve.ps1 -Env <env>` 가 클라이언트를 빌드하고, Node 서버·AI·**Cloudflare 빠른 터널**(`.dev/bin/cloudflared.exe`, 자동 다운로드)을 띄운다. 공개 주소(`https://….trycloudflare.com`)는 `.dev/<env>-url.txt` 에 저장되며 **재시작마다 바뀐다**.
+- 서버는 환경 변수 `APP_ENV`, `PORT`, `HOST`, `CLIENT_DIST`, `DATA_DIR`, `AI_BASE_URL` 로 설정한다 (`server/src/index.ts` 주석). JSON 스냅샷 디렉터리는 `server/data/<env>`.
+- 공용 함수는 `scripts/common.ps1`. 종료 스크립트는 pid 파일 기준이며 포트 폴백은 이 프로젝트 프로세스만 대상으로 한다.
+- 세 환경은 포트가 겹치지 않아 동시에 띄울 수 있다. test·prod 는 핫리로드가 없으므로 코드 변경 후 종료 → 시작으로 재배포한다.
 
 ---
 
@@ -59,7 +76,7 @@ AstralTab/
 ├── DESIGN.md
 ├── package.json          # npm workspaces: server, client, shared
 ├── notes/                # 기획 문서. Rules.md가 규칙 정본
-├── scripts/              # dev.ps1, dev-stop.ps1
+├── scripts/              # common.ps1, dev.ps1, dev-stop.ps1, serve.ps1, serve-stop.ps1
 ├── shared/               # 서버·클라이언트 공용 타입, 카드·맵 데이터, 룰 엔진
 │   ├── fixtures/         # TS 엔진 출력 JSON. Python 테스트가 같은 파일을 읽는다
 │   └── src/
@@ -227,8 +244,10 @@ AstralTab/
 
 | 목적 | 방법 |
 |---|---|
-| 서버·클라이언트·AI 백그라운드 실행 | `/dev` |
-| 백그라운드 프로세스 종료 | `/dev-stop` |
+| 서버·클라이언트·AI 백그라운드 실행 (개발) | `/dev` |
+| 백그라운드 프로세스 종료 (개발) | `/dev-stop` |
+| 테스트 서버 실행 / 종료 (3301, 터널 공개) | `/test-server` · `/test-server-stop` |
+| 운영 서버 실행 / 종료 (3201, 터널 공개) | `/prod-server` · `/prod-server-stop` |
 | 로그 확인 | `tail -n 50 .dev/server.log`, `.dev/client.log`, `.dev/ai.log` |
 | 의존성 설치 (JS) | `npm install` (루트) |
 | 의존성 설치 (Python) | `ai\.venv\Scripts\pip install -r ai\requirements.txt` (`/dev`가 venv 없으면 자동 생성) |

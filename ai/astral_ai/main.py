@@ -2,7 +2,7 @@
 
 from fastapi import FastAPI
 
-from .minimax import decide
+from .search import decide
 from .models import DecideRequest, DecideResponse
 
 app = FastAPI(title="AstralTab AI", version="0.1.0")

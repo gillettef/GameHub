@@ -1,82 +1,76 @@
 /**
- * 점수 정산 (F025): 영토 점수 + 건물 점수. 순수 함수.
+ * 점수·순위·수입 (Rules.md 9절, 5.1-4, F020, F025). 순수 함수, 파생값.
  */
-import type { GameResult, GameResultReason, GameState, PlayerId, Position } from '../types/index.js';
-import { SCORE_PER_TERRITORY_CELL, TERRITORY_RADIUS, getBuildingSpec } from '../data/index.js';
+import type { GameState, PlayerId, PlayerState, Score } from '../types/index.js';
+import { SCORE_PER_TERRITORY, VEIN_PRODUCTION_BONUS, getSpec } from '../data/index.js';
+import { computeTerritory, markersOf, terrainAt } from './sight.js';
 
-/** 자기 건물로부터 TERRITORY_RADIUS 이내 칸의 집합. 여러 플레이어 건물이 겹치는 칸은 아무에게도 주지 않는다 */
-export function computeTerritory(state: GameState): Record<PlayerId, Position[]> {
-  const claims = new Map<string, Set<PlayerId>>();
-  for (const b of state.buildings) {
-    for (let dx = -TERRITORY_RADIUS; dx <= TERRITORY_RADIUS; dx++) {
-      for (let dy = -TERRITORY_RADIUS; dy <= TERRITORY_RADIUS; dy++) {
-        const x = b.pos.x + dx;
-        const y = b.pos.y + dy;
-        if (x < 0 || y < 0 || x >= state.board.width || y >= state.board.height) continue;
-        const key = `${x},${y}`;
-        const owners = claims.get(key) ?? new Set<PlayerId>();
-        owners.add(b.ownerId);
-        claims.set(key, owners);
-      }
-    }
-  }
-  const result: Record<PlayerId, Position[]> = {};
-  for (const p of state.players) result[p.id] = [];
-  for (const [key, owners] of claims) {
-    if (owners.size !== 1) continue;
-    const owner = [...owners][0] as PlayerId;
-    const [xs, ys] = key.split(',');
-    result[owner]?.push({ x: Number(xs), y: Number(ys) });
-  }
-  return result;
+/** 생존 플레이어를 좌석 순으로 */
+export function alivePlayers(state: GameState): PlayerState[] {
+  return state.players.filter((p) => p.alive).sort((a, b) => a.seat - b.seat);
 }
 
-export function computeScores(state: GameState): GameResult['scores'] {
+export function getPlayer(state: GameState, id: PlayerId): PlayerState {
+  const p = state.players.find((x) => x.id === id);
+  if (!p) throw new Error(`알 수 없는 플레이어: ${id}`);
+  return p;
+}
+
+/** 점수 = 영토 칸 수 × 1 + Σ 마커 점수. 탈락자는 0 */
+export function computeScores(state: GameState): Record<PlayerId, Score> {
   const territory = computeTerritory(state);
-  const scores: GameResult['scores'] = {};
+  const scores: Record<PlayerId, Score> = {};
   for (const p of state.players) {
-    const territoryScore = (territory[p.id]?.length ?? 0) * SCORE_PER_TERRITORY_CELL;
-    const buildingScore = state.buildings
-      .filter((b) => b.ownerId === p.id)
-      .reduce((sum, b) => sum + (getBuildingSpec(b.specId)?.score ?? 0), 0);
-    scores[p.id] = { territory: territoryScore, buildings: buildingScore, total: territoryScore + buildingScore };
+    if (!p.alive) {
+      scores[p.id] = { territory: 0, markers: 0, total: 0 };
+      continue;
+    }
+    const t = (territory.counts[p.id] ?? 0) * SCORE_PER_TERRITORY;
+    const m = markersOf(state, p.id).reduce((sum, mk) => sum + getSpec(mk.specId).score, 0);
+    scores[p.id] = { territory: t, markers: m, total: t + m };
   }
   return scores;
 }
 
-/** 점수로 승자를 정하고 게임을 종료한다. 동점이면 winnerId 는 null (무승부) */
-export function settleByScore(state: GameState, reason: GameResultReason): GameState {
-  const scores = computeScores(state);
-  let winnerId: PlayerId | null = null;
-  let best = -1;
-  let tie = false;
-  for (const p of state.players) {
-    const total = scores[p.id]?.total ?? 0;
-    if (total > best) {
-      best = total;
-      winnerId = p.id;
-      tie = false;
-    } else if (total === best) {
-      tie = true;
+/**
+ * 순위 (Rules.md 9.3): 생존자는 점수 내림차순, 동점은 좌석 번호 큰 쪽이 위.
+ * 탈락자는 생존자 아래, 늦게 탈락한 쪽이 위.
+ */
+export function computeRanking(state: GameState, scores = computeScores(state)): PlayerId[] {
+  const alive = state.players
+    .filter((p) => p.alive)
+    .sort((a, b) => (scores[b.id]?.total ?? 0) - (scores[a.id]?.total ?? 0) || b.seat - a.seat);
+  const dead = state.players
+    .filter((p) => !p.alive)
+    .sort((a, b) => (b.eliminatedOrder ?? -1) - (a.eliminatedOrder ?? -1));
+  return [...alive, ...dead].map((p) => p.id);
+}
+
+export interface IncomeItem {
+  markerId: string;
+  name: string;
+  amount: number;
+  /** 광맥 보너스가 포함됐는지 */
+  vein: boolean;
+}
+
+export interface Income {
+  total: number;
+  items: IncomeItem[];
+}
+
+/** 수입 = 코어 기본 수입 + 내 건물 생산 합(광맥 보너스 포함). y → x 순 내역 */
+export function computeIncome(state: GameState, playerId: PlayerId): Income {
+  const items: IncomeItem[] = [];
+  for (const m of markersOf(state, playerId)) {
+    const spec = getSpec(m.specId);
+    if (m.kind === 'core') {
+      items.push({ markerId: m.id, name: spec.name, amount: spec.production, vein: false });
+    } else if (m.kind === 'building') {
+      const vein = terrainAt(state.board, m.pos) === 'vein';
+      const amount = spec.production + (vein ? VEIN_PRODUCTION_BONUS : 0);
+      if (amount > 0) items.push({ markerId: m.id, name: spec.name, amount, vein });
     }
   }
-  if (tie) winnerId = null;
-
-  const winner = state.players.find((p) => p.id === winnerId);
-  const summary = state.players.map((p) => `${p.nickname} ${scores[p.id]?.total ?? 0}점`).join(', ');
-  const why = reason === 'turn-limit' ? '제한 턴 도달' : reason === 'deck-exhausted' ? '덱 소진' : '기지 파괴';
-  return {
-    ...state,
-    phase: 'finished',
-    currentPlayerId: null,
-    result: { winnerId, reason, scores },
-    log: [
-      ...state.log,
-      {
-        turn: state.turn,
-        kind: 'result',
-        message: winner ? `${why}. 점수 정산: ${summary}. ${winner.nickname} 승리!` : `${why}. 점수 정산: ${summary}. 무승부.`,
-      },
-    ],
-  };
+  return { total: items.reduce((s, i) => s + i.amount, 0), items };
 }

@@ -1,281 +1,191 @@
 {
   "roomId": "fixture-room",
   "phase": "playing",
+  "mapId": "binary-star",
+  "board": {
+    "width": 11,
+    "height": 11,
+    "asteroids": [],
+    "veins": [
+      {
+        "x": 8,
+        "y": 2
+      },
+      {
+        "x": 5,
+        "y": 5
+      },
+      {
+        "x": 2,
+        "y": 8
+      }
+    ]
+  },
+  "roundLimit": 20,
+  "round": 1,
   "turn": 1,
-  "turnLimit": 30,
-  "currentPlayerId": "p1",
+  "currentPlayerId": "p0",
   "players": [
     {
-      "id": "p1",
+      "id": "p0",
       "nickname": "철수",
       "kind": "human",
+      "seat": 0,
       "isReady": true,
       "deckChoice": {
-        "buildingId": "orbital-forge",
-        "unitId": "titan",
-        "magicId": "supernova"
+        "buildingId": "refinery",
+        "unitId": "battleship",
+        "magicId": "gravity-wave"
       },
-      "resources": 10,
-      "mana": 5,
+      "energy": 3,
       "deck": [
-        {
-          "type": "building",
-          "specId": "mana-well"
-        },
-        {
-          "type": "building",
-          "specId": "mine"
-        },
-        {
-          "type": "unit",
-          "specId": "soldier"
-        },
-        {
-          "type": "building",
-          "specId": "outpost"
-        },
-        {
-          "type": "unit",
-          "specId": "tank"
-        },
-        {
-          "type": "building",
-          "specId": "orbital-forge"
-        },
-        {
-          "type": "building",
-          "specId": "mana-well"
-        },
-        {
-          "type": "unit",
-          "specId": "soldier"
-        },
-        {
-          "type": "magic",
-          "specId": "bolt"
-        },
-        {
-          "type": "building",
-          "specId": "mana-well"
-        },
-        {
-          "type": "unit",
-          "specId": "titan"
-        },
-        {
-          "type": "building",
-          "specId": "mine"
-        },
-        {
-          "type": "magic",
-          "specId": "supernova"
-        },
-        {
-          "type": "magic",
-          "specId": "repair"
-        },
-        {
-          "type": "unit",
-          "specId": "scout"
-        },
-        {
-          "type": "unit",
-          "specId": "soldier"
-        }
+        "extractor",
+        "artillery",
+        "turret",
+        "artillery",
+        "extractor",
+        "fighter",
+        "turret",
+        "scout",
+        "meteor",
+        "outpost",
+        "fighter",
+        "refinery",
+        "outpost",
+        "battleship",
+        "extractor",
+        "gravity-wave",
+        "cruiser",
+        "scout",
+        "fighter"
       ],
       "hand": [
-        {
-          "type": "unit",
-          "specId": "scout"
-        },
-        {
-          "type": "magic",
-          "specId": "bolt"
-        },
-        {
-          "type": "building",
-          "specId": "mine"
-        },
-        {
-          "type": "building",
-          "specId": "outpost"
-        },
-        {
-          "type": "magic",
-          "specId": "harvest"
-        }
+        "outpost",
+        "shield",
+        "extractor",
+        "scout"
       ],
       "discard": [],
-      "mainBaseId": "b-p1-base"
+      "alive": true,
+      "eliminatedOrder": null,
+      "passed": false
     },
     {
       "id": "ai-1",
       "nickname": "AI",
       "kind": "ai",
+      "seat": 1,
       "isReady": true,
       "deckChoice": {
-        "buildingId": "nexus",
-        "unitId": "phantom",
-        "magicId": "rally"
+        "buildingId": "refinery",
+        "unitId": "battleship",
+        "magicId": "gravity-wave"
       },
-      "resources": 10,
-      "mana": 5,
+      "energy": 3,
       "deck": [
-        {
-          "type": "building",
-          "specId": "outpost"
-        },
-        {
-          "type": "magic",
-          "specId": "bolt"
-        },
-        {
-          "type": "unit",
-          "specId": "soldier"
-        },
-        {
-          "type": "magic",
-          "specId": "repair"
-        },
-        {
-          "type": "unit",
-          "specId": "scout"
-        },
-        {
-          "type": "unit",
-          "specId": "phantom"
-        },
-        {
-          "type": "magic",
-          "specId": "bolt"
-        },
-        {
-          "type": "building",
-          "specId": "outpost"
-        },
-        {
-          "type": "unit",
-          "specId": "soldier"
-        },
-        {
-          "type": "building",
-          "specId": "mine"
-        },
-        {
-          "type": "magic",
-          "specId": "rally"
-        },
-        {
-          "type": "building",
-          "specId": "mana-well"
-        },
-        {
-          "type": "building",
-          "specId": "mine"
-        },
-        {
-          "type": "unit",
-          "specId": "soldier"
-        },
-        {
-          "type": "building",
-          "specId": "mine"
-        },
-        {
-          "type": "magic",
-          "specId": "harvest"
-        }
+        "shield",
+        "fighter",
+        "scout",
+        "turret",
+        "artillery",
+        "outpost",
+        "meteor",
+        "artillery",
+        "outpost",
+        "scout",
+        "extractor",
+        "battleship",
+        "scout",
+        "fighter",
+        "extractor",
+        "extractor",
+        "outpost",
+        "extractor",
+        "fighter"
       ],
       "hand": [
-        {
-          "type": "building",
-          "specId": "mana-well"
-        },
-        {
-          "type": "building",
-          "specId": "mana-well"
-        },
-        {
-          "type": "unit",
-          "specId": "tank"
-        },
-        {
-          "type": "unit",
-          "specId": "scout"
-        },
-        {
-          "type": "building",
-          "specId": "nexus"
-        }
+        "gravity-wave",
+        "refinery",
+        "turret",
+        "cruiser"
       ],
       "discard": [],
-      "mainBaseId": "b-ai-1-base"
+      "alive": true,
+      "eliminatedOrder": null,
+      "passed": false
     }
   ],
-  "board": {
-    "width": 10,
-    "height": 10
-  },
-  "buildings": [
+  "markers": [
     {
-      "id": "b-p1-base",
-      "specId": "main-base",
-      "ownerId": "p1",
+      "id": "m1",
+      "specId": "core",
+      "kind": "core",
+      "ownerId": "p0",
       "pos": {
-        "x": 1,
-        "y": 1
+        "x": 2,
+        "y": 2
       },
-      "hp": 20
+      "hp": 20,
+      "remainingTurns": null
     },
     {
-      "id": "b-ai-1-base",
-      "specId": "main-base",
+      "id": "m2",
+      "specId": "core",
+      "kind": "core",
       "ownerId": "ai-1",
       "pos": {
         "x": 8,
         "y": 8
       },
-      "hp": 20
+      "hp": 20,
+      "remainingTurns": null
     }
   ],
-  "units": [],
-  "rngSeed": 248188530,
+  "nextMarkerId": 3,
+  "rngSeed": 3279484486,
   "result": null,
   "log": [
     {
       "turn": 0,
+      "round": 0,
+      "playerId": "p0",
       "kind": "system",
-      "message": "철수 님이 참여했습니다."
+      "message": "철수 입장 (좌석 0)"
     },
     {
       "turn": 0,
+      "round": 0,
+      "playerId": "ai-1",
       "kind": "system",
-      "message": "AI 님이 참여했습니다."
-    },
-    {
-      "turn": 0,
-      "kind": "system",
-      "message": "철수 님이 덱을 구성했습니다."
-    },
-    {
-      "turn": 0,
-      "kind": "system",
-      "message": "AI 님이 덱을 구성했습니다."
-    },
-    {
-      "turn": 0,
-      "kind": "system",
-      "message": "철수 님 준비 완료."
-    },
-    {
-      "turn": 0,
-      "kind": "system",
-      "message": "AI 님 준비 완료."
+      "message": "AI 입장 (좌석 1)"
     },
     {
       "turn": 1,
+      "round": 1,
+      "playerId": null,
       "kind": "system",
-      "message": "게임 시작. 메인 기지가 배치되고 자원 10, 마나 5, 카드 5장으로 시작합니다."
+      "message": "게임 시작: 쌍성 (11×11, 20라운드)"
+    },
+    {
+      "turn": 1,
+      "round": 1,
+      "playerId": "p0",
+      "kind": "system",
+      "message": "철수 코어 (2,2) 배치, 에너지 3, 손패 4장"
+    },
+    {
+      "turn": 1,
+      "round": 1,
+      "playerId": "ai-1",
+      "kind": "system",
+      "message": "AI 코어 (8,8) 배치, 에너지 3, 손패 4장"
+    },
+    {
+      "turn": 1,
+      "round": 1,
+      "playerId": "p0",
+      "kind": "turn",
+      "message": "1턴 시작: 철수 (라운드 1)"
     }
   ]
 }

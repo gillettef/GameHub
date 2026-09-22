@@ -1,0 +1,6171 @@
+{
+  "initial": {
+    "roomId": "fixture-room",
+    "phase": "playing",
+    "mapId": "binary-star",
+    "board": {
+      "width": 11,
+      "height": 11,
+      "asteroids": [],
+      "veins": [
+        {
+          "x": 8,
+          "y": 2
+        },
+        {
+          "x": 5,
+          "y": 5
+        },
+        {
+          "x": 2,
+          "y": 8
+        }
+      ]
+    },
+    "roundLimit": 20,
+    "round": 1,
+    "turn": 1,
+    "currentPlayerId": "p0",
+    "players": [
+      {
+        "id": "p0",
+        "nickname": "철수",
+        "kind": "human",
+        "seat": 0,
+        "isReady": true,
+        "deckChoice": {
+          "buildingId": "refinery",
+          "unitId": "battleship",
+          "magicId": "gravity-wave"
+        },
+        "energy": 12,
+        "deck": [
+          "artillery",
+          "turret",
+          "artillery",
+          "extractor",
+          "fighter",
+          "turret",
+          "scout",
+          "meteor",
+          "outpost",
+          "fighter",
+          "refinery",
+          "outpost",
+          "battleship",
+          "extractor",
+          "gravity-wave",
+          "cruiser",
+          "scout",
+          "fighter"
+        ],
+        "hand": [
+          "outpost",
+          "artillery",
+          "meteor",
+          "extractor",
+          "stealth"
+        ],
+        "discard": [],
+        "alive": true,
+        "eliminatedOrder": null,
+        "passed": false
+      },
+      {
+        "id": "ai-1",
+        "nickname": "AI",
+        "kind": "ai",
+        "seat": 1,
+        "isReady": true,
+        "deckChoice": {
+          "buildingId": "refinery",
+          "unitId": "battleship",
+          "magicId": "gravity-wave"
+        },
+        "energy": 12,
+        "deck": [
+          "shield",
+          "fighter",
+          "scout",
+          "turret",
+          "artillery",
+          "outpost",
+          "meteor",
+          "artillery",
+          "outpost",
+          "scout",
+          "extractor",
+          "battleship",
+          "scout",
+          "fighter",
+          "extractor",
+          "extractor",
+          "outpost",
+          "extractor",
+          "fighter"
+        ],
+        "hand": [
+          "scout",
+          "fighter",
+          "shield",
+          "warp-gate",
+          "repair-drone"
+        ],
+        "discard": [],
+        "alive": true,
+        "eliminatedOrder": null,
+        "passed": false
+      }
+    ],
+    "markers": [
+      {
+        "id": "m1",
+        "specId": "core",
+        "kind": "core",
+        "ownerId": "p0",
+        "pos": {
+          "x": 2,
+          "y": 2
+        },
+        "hp": 20,
+        "remainingTurns": null
+      },
+      {
+        "id": "f500",
+        "specId": "extractor",
+        "kind": "building",
+        "ownerId": "ai-1",
+        "pos": {
+          "x": 8,
+          "y": 2
+        },
+        "hp": 2,
+        "remainingTurns": null
+      },
+      {
+        "id": "f501",
+        "specId": "scout",
+        "kind": "unit",
+        "ownerId": "ai-1",
+        "pos": {
+          "x": 6,
+          "y": 6
+        },
+        "hp": 2,
+        "remainingTurns": null
+      },
+      {
+        "id": "m2",
+        "specId": "core",
+        "kind": "core",
+        "ownerId": "ai-1",
+        "pos": {
+          "x": 8,
+          "y": 8
+        },
+        "hp": 20,
+        "remainingTurns": null
+      }
+    ],
+    "nextMarkerId": 3,
+    "rngSeed": 3279484486,
+    "result": null,
+    "log": [
+      {
+        "turn": 0,
+        "round": 0,
+        "playerId": "p0",
+        "kind": "system",
+        "message": "철수 입장 (좌석 0)"
+      },
+      {
+        "turn": 0,
+        "round": 0,
+        "playerId": "ai-1",
+        "kind": "system",
+        "message": "AI 입장 (좌석 1)"
+      },
+      {
+        "turn": 1,
+        "round": 1,
+        "playerId": null,
+        "kind": "system",
+        "message": "게임 시작: 쌍성 (11×11, 20라운드)"
+      },
+      {
+        "turn": 1,
+        "round": 1,
+        "playerId": "p0",
+        "kind": "system",
+        "message": "철수 코어 (2,2) 배치, 에너지 3, 손패 4장"
+      },
+      {
+        "turn": 1,
+        "round": 1,
+        "playerId": "ai-1",
+        "kind": "system",
+        "message": "AI 코어 (8,8) 배치, 에너지 3, 손패 4장"
+      },
+      {
+        "turn": 1,
+        "round": 1,
+        "playerId": "p0",
+        "kind": "turn",
+        "message": "1턴 시작: 철수 (라운드 1)"
+      },
+      {
+        "turn": 1,
+        "round": 1,
+        "playerId": "p0",
+        "kind": "income",
+        "message": "수입 +1 (코어 +1), 에너지 3 → 4"
+      },
+      {
+        "turn": 1,
+        "round": 1,
+        "playerId": "p0",
+        "kind": "draw",
+        "message": "카드 1장 드로우 (손패 5장, 덱 18장)"
+      }
+    ]
+  },
+  "steps": [
+    {
+      "action": {
+        "type": "PLACE",
+        "playerId": "p0",
+        "cardId": "outpost",
+        "pos": {
+          "x": 4,
+          "y": 4
+        }
+      },
+      "state": {
+        "roomId": "fixture-room",
+        "phase": "playing",
+        "mapId": "binary-star",
+        "board": {
+          "width": 11,
+          "height": 11,
+          "asteroids": [],
+          "veins": [
+            {
+              "x": 8,
+              "y": 2
+            },
+            {
+              "x": 5,
+              "y": 5
+            },
+            {
+              "x": 2,
+              "y": 8
+            }
+          ]
+        },
+        "roundLimit": 20,
+        "round": 1,
+        "turn": 2,
+        "currentPlayerId": "ai-1",
+        "players": [
+          {
+            "id": "p0",
+            "nickname": "철수",
+            "kind": "human",
+            "seat": 0,
+            "isReady": true,
+            "deckChoice": {
+              "buildingId": "refinery",
+              "unitId": "battleship",
+              "magicId": "gravity-wave"
+            },
+            "energy": 9,
+            "deck": [
+              "artillery",
+              "turret",
+              "artillery",
+              "extractor",
+              "fighter",
+              "turret",
+              "scout",
+              "meteor",
+              "outpost",
+              "fighter",
+              "refinery",
+              "outpost",
+              "battleship",
+              "extractor",
+              "gravity-wave",
+              "cruiser",
+              "scout",
+              "fighter"
+            ],
+            "hand": [
+              "artillery",
+              "meteor",
+              "extractor",
+              "stealth"
+            ],
+            "discard": [
+              "outpost"
+            ],
+            "alive": true,
+            "eliminatedOrder": null,
+            "passed": false
+          },
+          {
+            "id": "ai-1",
+            "nickname": "AI",
+            "kind": "ai",
+            "seat": 1,
+            "isReady": true,
+            "deckChoice": {
+              "buildingId": "refinery",
+              "unitId": "battleship",
+              "magicId": "gravity-wave"
+            },
+            "energy": 15,
+            "deck": [
+              "shield",
+              "fighter",
+              "scout",
+              "turret",
+              "artillery",
+              "outpost",
+              "meteor",
+              "artillery",
+              "outpost",
+              "scout",
+              "extractor",
+              "battleship",
+              "scout",
+              "fighter",
+              "extractor",
+              "extractor",
+              "outpost",
+              "extractor",
+              "fighter"
+            ],
+            "hand": [
+              "scout",
+              "fighter",
+              "shield",
+              "warp-gate",
+              "repair-drone"
+            ],
+            "discard": [],
+            "alive": true,
+            "eliminatedOrder": null,
+            "passed": false
+          }
+        ],
+        "markers": [
+          {
+            "id": "m1",
+            "specId": "core",
+            "kind": "core",
+            "ownerId": "p0",
+            "pos": {
+              "x": 2,
+              "y": 2
+            },
+            "hp": 20,
+            "remainingTurns": null
+          },
+          {
+            "id": "f500",
+            "specId": "extractor",
+            "kind": "building",
+            "ownerId": "ai-1",
+            "pos": {
+              "x": 8,
+              "y": 2
+            },
+            "hp": 2,
+            "remainingTurns": null
+          },
+          {
+            "id": "m3",
+            "specId": "outpost",
+            "kind": "building",
+            "ownerId": "p0",
+            "pos": {
+              "x": 4,
+              "y": 4
+            },
+            "hp": 6,
+            "remainingTurns": null
+          },
+          {
+            "id": "f501",
+            "specId": "scout",
+            "kind": "unit",
+            "ownerId": "ai-1",
+            "pos": {
+              "x": 6,
+              "y": 6
+            },
+            "hp": 2,
+            "remainingTurns": null
+          },
+          {
+            "id": "m2",
+            "specId": "core",
+            "kind": "core",
+            "ownerId": "ai-1",
+            "pos": {
+              "x": 8,
+              "y": 8
+            },
+            "hp": 20,
+            "remainingTurns": null
+          }
+        ],
+        "nextMarkerId": 4,
+        "rngSeed": 3279484486,
+        "result": null,
+        "log": [
+          {
+            "turn": 0,
+            "round": 0,
+            "playerId": "p0",
+            "kind": "system",
+            "message": "철수 입장 (좌석 0)"
+          },
+          {
+            "turn": 0,
+            "round": 0,
+            "playerId": "ai-1",
+            "kind": "system",
+            "message": "AI 입장 (좌석 1)"
+          },
+          {
+            "turn": 1,
+            "round": 1,
+            "playerId": null,
+            "kind": "system",
+            "message": "게임 시작: 쌍성 (11×11, 20라운드)"
+          },
+          {
+            "turn": 1,
+            "round": 1,
+            "playerId": "p0",
+            "kind": "system",
+            "message": "철수 코어 (2,2) 배치, 에너지 3, 손패 4장"
+          },
+          {
+            "turn": 1,
+            "round": 1,
+            "playerId": "ai-1",
+            "kind": "system",
+            "message": "AI 코어 (8,8) 배치, 에너지 3, 손패 4장"
+          },
+          {
+            "turn": 1,
+            "round": 1,
+            "playerId": "p0",
+            "kind": "turn",
+            "message": "1턴 시작: 철수 (라운드 1)"
+          },
+          {
+            "turn": 1,
+            "round": 1,
+            "playerId": "p0",
+            "kind": "income",
+            "message": "수입 +1 (코어 +1), 에너지 3 → 4"
+          },
+          {
+            "turn": 1,
+            "round": 1,
+            "playerId": "p0",
+            "kind": "draw",
+            "message": "카드 1장 드로우 (손패 5장, 덱 18장)"
+          },
+          {
+            "turn": 1,
+            "round": 1,
+            "playerId": "p0",
+            "kind": "place",
+            "message": "철수: (4,4)에 전초기지 배치 (비용 3, 에너지 12 → 9)"
+          },
+          {
+            "turn": 2,
+            "round": 1,
+            "playerId": "ai-1",
+            "kind": "turn",
+            "message": "2턴 시작: AI (라운드 1)"
+          },
+          {
+            "turn": 2,
+            "round": 1,
+            "playerId": "ai-1",
+            "kind": "income",
+            "message": "수입 +3 (채굴기(광맥) +2, 코어 +1), 에너지 12 → 15"
+          },
+          {
+            "turn": 2,
+            "round": 1,
+            "playerId": "ai-1",
+            "kind": "draw",
+            "message": "손패 상한(5장)이라 드로우 생략"
+          }
+        ]
+      }
+    },
+    {
+      "action": {
+        "type": "PLACE",
+        "playerId": "ai-1",
+        "cardId": "warp-gate",
+        "pos": {
+          "x": 7,
+          "y": 5
+        }
+      },
+      "state": {
+        "roomId": "fixture-room",
+        "phase": "playing",
+        "mapId": "binary-star",
+        "board": {
+          "width": 11,
+          "height": 11,
+          "asteroids": [],
+          "veins": [
+            {
+              "x": 8,
+              "y": 2
+            },
+            {
+              "x": 5,
+              "y": 5
+            },
+            {
+              "x": 2,
+              "y": 8
+            }
+          ]
+        },
+        "roundLimit": 20,
+        "round": 2,
+        "turn": 3,
+        "currentPlayerId": "p0",
+        "players": [
+          {
+            "id": "p0",
+            "nickname": "철수",
+            "kind": "human",
+            "seat": 0,
+            "isReady": true,
+            "deckChoice": {
+              "buildingId": "refinery",
+              "unitId": "battleship",
+              "magicId": "gravity-wave"
+            },
+            "energy": 10,
+            "deck": [
+              "turret",
+              "artillery",
+              "extractor",
+              "fighter",
+              "turret",
+              "scout",
+              "meteor",
+              "outpost",
+              "fighter",
+              "refinery",
+              "outpost",
+              "battleship",
+              "extractor",
+              "gravity-wave",
+              "cruiser",
+              "scout",
+              "fighter"
+            ],
+            "hand": [
+              "artillery",
+              "meteor",
+              "extractor",
+              "stealth",
+              "artillery"
+            ],
+            "discard": [
+              "outpost"
+            ],
+            "alive": true,
+            "eliminatedOrder": null,
+            "passed": false
+          },
+          {
+            "id": "ai-1",
+            "nickname": "AI",
+            "kind": "ai",
+            "seat": 1,
+            "isReady": true,
+            "deckChoice": {
+              "buildingId": "refinery",
+              "unitId": "battleship",
+              "magicId": "gravity-wave"
+            },
+            "energy": 12,
+            "deck": [
+              "shield",
+              "fighter",
+              "scout",
+              "turret",
+              "artillery",
+              "outpost",
+              "meteor",
+              "artillery",
+              "outpost",
+              "scout",
+              "extractor",
+              "battleship",
+              "scout",
+              "fighter",
+              "extractor",
+              "extractor",
+              "outpost",
+              "extractor",
+              "fighter"
+            ],
+            "hand": [
+              "scout",
+              "fighter",
+              "shield",
+              "repair-drone"
+            ],
+            "discard": [
+              "warp-gate"
+            ],
+            "alive": true,
+            "eliminatedOrder": null,
+            "passed": false
+          }
+        ],
+        "markers": [
+          {
+            "id": "m1",
+            "specId": "core",
+            "kind": "core",
+            "ownerId": "p0",
+            "pos": {
+              "x": 2,
+              "y": 2
+            },
+            "hp": 20,
+            "remainingTurns": null
+          },
+          {
+            "id": "f500",
+            "specId": "extractor",
+            "kind": "building",
+            "ownerId": "ai-1",
+            "pos": {
+              "x": 8,
+              "y": 2
+            },
+            "hp": 2,
+            "remainingTurns": null
+          },
+          {
+            "id": "m3",
+            "specId": "outpost",
+            "kind": "building",
+            "ownerId": "p0",
+            "pos": {
+              "x": 4,
+              "y": 4
+            },
+            "hp": 6,
+            "remainingTurns": null
+          },
+          {
+            "id": "m4",
+            "specId": "warp-gate",
+            "kind": "magic",
+            "ownerId": "ai-1",
+            "pos": {
+              "x": 7,
+              "y": 5
+            },
+            "hp": 2,
+            "remainingTurns": 3
+          },
+          {
+            "id": "f501",
+            "specId": "scout",
+            "kind": "unit",
+            "ownerId": "ai-1",
+            "pos": {
+              "x": 6,
+              "y": 6
+            },
+            "hp": 2,
+            "remainingTurns": null
+          },
+          {
+            "id": "m2",
+            "specId": "core",
+            "kind": "core",
+            "ownerId": "ai-1",
+            "pos": {
+              "x": 8,
+              "y": 8
+            },
+            "hp": 20,
+            "remainingTurns": null
+          }
+        ],
+        "nextMarkerId": 5,
+        "rngSeed": 3279484486,
+        "result": null,
+        "log": [
+          {
+            "turn": 0,
+            "round": 0,
+            "playerId": "p0",
+            "kind": "system",
+            "message": "철수 입장 (좌석 0)"
+          },
+          {
+            "turn": 0,
+            "round": 0,
+            "playerId": "ai-1",
+            "kind": "system",
+            "message": "AI 입장 (좌석 1)"
+          },
+          {
+            "turn": 1,
+            "round": 1,
+            "playerId": null,
+            "kind": "system",
+            "message": "게임 시작: 쌍성 (11×11, 20라운드)"
+          },
+          {
+            "turn": 1,
+            "round": 1,
+            "playerId": "p0",
+            "kind": "system",
+            "message": "철수 코어 (2,2) 배치, 에너지 3, 손패 4장"
+          },
+          {
+            "turn": 1,
+            "round": 1,
+            "playerId": "ai-1",
+            "kind": "system",
+            "message": "AI 코어 (8,8) 배치, 에너지 3, 손패 4장"
+          },
+          {
+            "turn": 1,
+            "round": 1,
+            "playerId": "p0",
+            "kind": "turn",
+            "message": "1턴 시작: 철수 (라운드 1)"
+          },
+          {
+            "turn": 1,
+            "round": 1,
+            "playerId": "p0",
+            "kind": "income",
+            "message": "수입 +1 (코어 +1), 에너지 3 → 4"
+          },
+          {
+            "turn": 1,
+            "round": 1,
+            "playerId": "p0",
+            "kind": "draw",
+            "message": "카드 1장 드로우 (손패 5장, 덱 18장)"
+          },
+          {
+            "turn": 1,
+            "round": 1,
+            "playerId": "p0",
+            "kind": "place",
+            "message": "철수: (4,4)에 전초기지 배치 (비용 3, 에너지 12 → 9)"
+          },
+          {
+            "turn": 2,
+            "round": 1,
+            "playerId": "ai-1",
+            "kind": "turn",
+            "message": "2턴 시작: AI (라운드 1)"
+          },
+          {
+            "turn": 2,
+            "round": 1,
+            "playerId": "ai-1",
+            "kind": "income",
+            "message": "수입 +3 (채굴기(광맥) +2, 코어 +1), 에너지 12 → 15"
+          },
+          {
+            "turn": 2,
+            "round": 1,
+            "playerId": "ai-1",
+            "kind": "draw",
+            "message": "손패 상한(5장)이라 드로우 생략"
+          },
+          {
+            "turn": 2,
+            "round": 1,
+            "playerId": "ai-1",
+            "kind": "place",
+            "message": "AI: (7,5)에 워프 게이트 배치 (비용 3, 에너지 15 → 12)"
+          },
+          {
+            "turn": 3,
+            "round": 2,
+            "playerId": "p0",
+            "kind": "turn",
+            "message": "3턴 시작: 철수 (라운드 2)"
+          },
+          {
+            "turn": 3,
+            "round": 2,
+            "playerId": "p0",
+            "kind": "income",
+            "message": "수입 +1 (코어 +1), 에너지 9 → 10"
+          },
+          {
+            "turn": 3,
+            "round": 2,
+            "playerId": "p0",
+            "kind": "draw",
+            "message": "카드 1장 드로우 (손패 5장, 덱 17장)"
+          }
+        ]
+      }
+    },
+    {
+      "action": {
+        "type": "PLACE",
+        "playerId": "p0",
+        "cardId": "artillery",
+        "pos": {
+          "x": 5,
+          "y": 5
+        }
+      },
+      "state": {
+        "roomId": "fixture-room",
+        "phase": "playing",
+        "mapId": "binary-star",
+        "board": {
+          "width": 11,
+          "height": 11,
+          "asteroids": [],
+          "veins": [
+            {
+              "x": 8,
+              "y": 2
+            },
+            {
+              "x": 5,
+              "y": 5
+            },
+            {
+              "x": 2,
+              "y": 8
+            }
+          ]
+        },
+        "roundLimit": 20,
+        "round": 2,
+        "turn": 4,
+        "currentPlayerId": "ai-1",
+        "players": [
+          {
+            "id": "p0",
+            "nickname": "철수",
+            "kind": "human",
+            "seat": 0,
+            "isReady": true,
+            "deckChoice": {
+              "buildingId": "refinery",
+              "unitId": "battleship",
+              "magicId": "gravity-wave"
+            },
+            "energy": 6,
+            "deck": [
+              "turret",
+              "artillery",
+              "extractor",
+              "fighter",
+              "turret",
+              "scout",
+              "meteor",
+              "outpost",
+              "fighter",
+              "refinery",
+              "outpost",
+              "battleship",
+              "extractor",
+              "gravity-wave",
+              "cruiser",
+              "scout",
+              "fighter"
+            ],
+            "hand": [
+              "meteor",
+              "extractor",
+              "stealth",
+              "artillery"
+            ],
+            "discard": [
+              "outpost",
+              "artillery"
+            ],
+            "alive": true,
+            "eliminatedOrder": null,
+            "passed": false
+          },
+          {
+            "id": "ai-1",
+            "nickname": "AI",
+            "kind": "ai",
+            "seat": 1,
+            "isReady": true,
+            "deckChoice": {
+              "buildingId": "refinery",
+              "unitId": "battleship",
+              "magicId": "gravity-wave"
+            },
+            "energy": 15,
+            "deck": [
+              "fighter",
+              "scout",
+              "turret",
+              "artillery",
+              "outpost",
+              "meteor",
+              "artillery",
+              "outpost",
+              "scout",
+              "extractor",
+              "battleship",
+              "scout",
+              "fighter",
+              "extractor",
+              "extractor",
+              "outpost",
+              "extractor",
+              "fighter"
+            ],
+            "hand": [
+              "scout",
+              "fighter",
+              "shield",
+              "repair-drone",
+              "shield"
+            ],
+            "discard": [
+              "warp-gate"
+            ],
+            "alive": true,
+            "eliminatedOrder": null,
+            "passed": false
+          }
+        ],
+        "markers": [
+          {
+            "id": "m1",
+            "specId": "core",
+            "kind": "core",
+            "ownerId": "p0",
+            "pos": {
+              "x": 2,
+              "y": 2
+            },
+            "hp": 20,
+            "remainingTurns": null
+          },
+          {
+            "id": "f500",
+            "specId": "extractor",
+            "kind": "building",
+            "ownerId": "ai-1",
+            "pos": {
+              "x": 8,
+              "y": 2
+            },
+            "hp": 2,
+            "remainingTurns": null
+          },
+          {
+            "id": "m3",
+            "specId": "outpost",
+            "kind": "building",
+            "ownerId": "p0",
+            "pos": {
+              "x": 4,
+              "y": 4
+            },
+            "hp": 6,
+            "remainingTurns": null
+          },
+          {
+            "id": "m5",
+            "specId": "artillery",
+            "kind": "unit",
+            "ownerId": "p0",
+            "pos": {
+              "x": 5,
+              "y": 5
+            },
+            "hp": 2,
+            "remainingTurns": null
+          },
+          {
+            "id": "m4",
+            "specId": "warp-gate",
+            "kind": "magic",
+            "ownerId": "ai-1",
+            "pos": {
+              "x": 7,
+              "y": 5
+            },
+            "hp": 2,
+            "remainingTurns": 2
+          },
+          {
+            "id": "f501",
+            "specId": "scout",
+            "kind": "unit",
+            "ownerId": "ai-1",
+            "pos": {
+              "x": 6,
+              "y": 6
+            },
+            "hp": 2,
+            "remainingTurns": null
+          },
+          {
+            "id": "m2",
+            "specId": "core",
+            "kind": "core",
+            "ownerId": "ai-1",
+            "pos": {
+              "x": 8,
+              "y": 8
+            },
+            "hp": 20,
+            "remainingTurns": null
+          }
+        ],
+        "nextMarkerId": 6,
+        "rngSeed": 3279484486,
+        "result": null,
+        "log": [
+          {
+            "turn": 0,
+            "round": 0,
+            "playerId": "p0",
+            "kind": "system",
+            "message": "철수 입장 (좌석 0)"
+          },
+          {
+            "turn": 0,
+            "round": 0,
+            "playerId": "ai-1",
+            "kind": "system",
+            "message": "AI 입장 (좌석 1)"
+          },
+          {
+            "turn": 1,
+            "round": 1,
+            "playerId": null,
+            "kind": "system",
+            "message": "게임 시작: 쌍성 (11×11, 20라운드)"
+          },
+          {
+            "turn": 1,
+            "round": 1,
+            "playerId": "p0",
+            "kind": "system",
+            "message": "철수 코어 (2,2) 배치, 에너지 3, 손패 4장"
+          },
+          {
+            "turn": 1,
+            "round": 1,
+            "playerId": "ai-1",
+            "kind": "system",
+            "message": "AI 코어 (8,8) 배치, 에너지 3, 손패 4장"
+          },
+          {
+            "turn": 1,
+            "round": 1,
+            "playerId": "p0",
+            "kind": "turn",
+            "message": "1턴 시작: 철수 (라운드 1)"
+          },
+          {
+            "turn": 1,
+            "round": 1,
+            "playerId": "p0",
+            "kind": "income",
+            "message": "수입 +1 (코어 +1), 에너지 3 → 4"
+          },
+          {
+            "turn": 1,
+            "round": 1,
+            "playerId": "p0",
+            "kind": "draw",
+            "message": "카드 1장 드로우 (손패 5장, 덱 18장)"
+          },
+          {
+            "turn": 1,
+            "round": 1,
+            "playerId": "p0",
+            "kind": "place",
+            "message": "철수: (4,4)에 전초기지 배치 (비용 3, 에너지 12 → 9)"
+          },
+          {
+            "turn": 2,
+            "round": 1,
+            "playerId": "ai-1",
+            "kind": "turn",
+            "message": "2턴 시작: AI (라운드 1)"
+          },
+          {
+            "turn": 2,
+            "round": 1,
+            "playerId": "ai-1",
+            "kind": "income",
+            "message": "수입 +3 (채굴기(광맥) +2, 코어 +1), 에너지 12 → 15"
+          },
+          {
+            "turn": 2,
+            "round": 1,
+            "playerId": "ai-1",
+            "kind": "draw",
+            "message": "손패 상한(5장)이라 드로우 생략"
+          },
+          {
+            "turn": 2,
+            "round": 1,
+            "playerId": "ai-1",
+            "kind": "place",
+            "message": "AI: (7,5)에 워프 게이트 배치 (비용 3, 에너지 15 → 12)"
+          },
+          {
+            "turn": 3,
+            "round": 2,
+            "playerId": "p0",
+            "kind": "turn",
+            "message": "3턴 시작: 철수 (라운드 2)"
+          },
+          {
+            "turn": 3,
+            "round": 2,
+            "playerId": "p0",
+            "kind": "income",
+            "message": "수입 +1 (코어 +1), 에너지 9 → 10"
+          },
+          {
+            "turn": 3,
+            "round": 2,
+            "playerId": "p0",
+            "kind": "draw",
+            "message": "카드 1장 드로우 (손패 5장, 덱 17장)"
+          },
+          {
+            "turn": 3,
+            "round": 2,
+            "playerId": "p0",
+            "kind": "place",
+            "message": "철수: (5,5)에 포격함 배치 (비용 4, 에너지 10 → 6)"
+          },
+          {
+            "turn": 4,
+            "round": 2,
+            "playerId": "ai-1",
+            "kind": "turn",
+            "message": "4턴 시작: AI (라운드 2)"
+          },
+          {
+            "turn": 4,
+            "round": 2,
+            "playerId": "ai-1",
+            "kind": "combat",
+            "message": "정찰 드론(6,6) → 철수의 포격함(5,5) 피해 1"
+          },
+          {
+            "turn": 4,
+            "round": 2,
+            "playerId": "ai-1",
+            "kind": "income",
+            "message": "수입 +3 (채굴기(광맥) +2, 코어 +1), 에너지 12 → 15"
+          },
+          {
+            "turn": 4,
+            "round": 2,
+            "playerId": "ai-1",
+            "kind": "draw",
+            "message": "카드 1장 드로우 (손패 5장, 덱 18장)"
+          }
+        ]
+      }
+    },
+    {
+      "action": {
+        "type": "PLACE",
+        "playerId": "ai-1",
+        "cardId": "fighter",
+        "pos": {
+          "x": 7,
+          "y": 7
+        }
+      },
+      "state": {
+        "roomId": "fixture-room",
+        "phase": "playing",
+        "mapId": "binary-star",
+        "board": {
+          "width": 11,
+          "height": 11,
+          "asteroids": [],
+          "veins": [
+            {
+              "x": 8,
+              "y": 2
+            },
+            {
+              "x": 5,
+              "y": 5
+            },
+            {
+              "x": 2,
+              "y": 8
+            }
+          ]
+        },
+        "roundLimit": 20,
+        "round": 3,
+        "turn": 5,
+        "currentPlayerId": "p0",
+        "players": [
+          {
+            "id": "p0",
+            "nickname": "철수",
+            "kind": "human",
+            "seat": 0,
+            "isReady": true,
+            "deckChoice": {
+              "buildingId": "refinery",
+              "unitId": "battleship",
+              "magicId": "gravity-wave"
+            },
+            "energy": 7,
+            "deck": [
+              "artillery",
+              "extractor",
+              "fighter",
+              "turret",
+              "scout",
+              "meteor",
+              "outpost",
+              "fighter",
+              "refinery",
+              "outpost",
+              "battleship",
+              "extractor",
+              "gravity-wave",
+              "cruiser",
+              "scout",
+              "fighter"
+            ],
+            "hand": [
+              "meteor",
+              "extractor",
+              "stealth",
+              "artillery",
+              "turret"
+            ],
+            "discard": [
+              "outpost",
+              "artillery"
+            ],
+            "alive": true,
+            "eliminatedOrder": null,
+            "passed": false
+          },
+          {
+            "id": "ai-1",
+            "nickname": "AI",
+            "kind": "ai",
+            "seat": 1,
+            "isReady": true,
+            "deckChoice": {
+              "buildingId": "refinery",
+              "unitId": "battleship",
+              "magicId": "gravity-wave"
+            },
+            "energy": 12,
+            "deck": [
+              "fighter",
+              "scout",
+              "turret",
+              "artillery",
+              "outpost",
+              "meteor",
+              "artillery",
+              "outpost",
+              "scout",
+              "extractor",
+              "battleship",
+              "scout",
+              "fighter",
+              "extractor",
+              "extractor",
+              "outpost",
+              "extractor",
+              "fighter"
+            ],
+            "hand": [
+              "scout",
+              "shield",
+              "repair-drone",
+              "shield"
+            ],
+            "discard": [
+              "warp-gate",
+              "fighter"
+            ],
+            "alive": true,
+            "eliminatedOrder": null,
+            "passed": false
+          }
+        ],
+        "markers": [
+          {
+            "id": "m1",
+            "specId": "core",
+            "kind": "core",
+            "ownerId": "p0",
+            "pos": {
+              "x": 2,
+              "y": 2
+            },
+            "hp": 20,
+            "remainingTurns": null
+          },
+          {
+            "id": "f500",
+            "specId": "extractor",
+            "kind": "building",
+            "ownerId": "ai-1",
+            "pos": {
+              "x": 8,
+              "y": 2
+            },
+            "hp": 2,
+            "remainingTurns": null
+          },
+          {
+            "id": "m3",
+            "specId": "outpost",
+            "kind": "building",
+            "ownerId": "p0",
+            "pos": {
+              "x": 4,
+              "y": 4
+            },
+            "hp": 6,
+            "remainingTurns": null
+          },
+          {
+            "id": "m5",
+            "specId": "artillery",
+            "kind": "unit",
+            "ownerId": "p0",
+            "pos": {
+              "x": 5,
+              "y": 5
+            },
+            "hp": 2,
+            "remainingTurns": null
+          },
+          {
+            "id": "m4",
+            "specId": "warp-gate",
+            "kind": "magic",
+            "ownerId": "ai-1",
+            "pos": {
+              "x": 7,
+              "y": 5
+            },
+            "hp": 2,
+            "remainingTurns": 2
+          },
+          {
+            "id": "m6",
+            "specId": "fighter",
+            "kind": "unit",
+            "ownerId": "ai-1",
+            "pos": {
+              "x": 7,
+              "y": 7
+            },
+            "hp": 4,
+            "remainingTurns": null
+          },
+          {
+            "id": "m2",
+            "specId": "core",
+            "kind": "core",
+            "ownerId": "ai-1",
+            "pos": {
+              "x": 8,
+              "y": 8
+            },
+            "hp": 20,
+            "remainingTurns": null
+          }
+        ],
+        "nextMarkerId": 7,
+        "rngSeed": 3279484486,
+        "result": null,
+        "log": [
+          {
+            "turn": 0,
+            "round": 0,
+            "playerId": "p0",
+            "kind": "system",
+            "message": "철수 입장 (좌석 0)"
+          },
+          {
+            "turn": 0,
+            "round": 0,
+            "playerId": "ai-1",
+            "kind": "system",
+            "message": "AI 입장 (좌석 1)"
+          },
+          {
+            "turn": 1,
+            "round": 1,
+            "playerId": null,
+            "kind": "system",
+            "message": "게임 시작: 쌍성 (11×11, 20라운드)"
+          },
+          {
+            "turn": 1,
+            "round": 1,
+            "playerId": "p0",
+            "kind": "system",
+            "message": "철수 코어 (2,2) 배치, 에너지 3, 손패 4장"
+          },
+          {
+            "turn": 1,
+            "round": 1,
+            "playerId": "ai-1",
+            "kind": "system",
+            "message": "AI 코어 (8,8) 배치, 에너지 3, 손패 4장"
+          },
+          {
+            "turn": 1,
+            "round": 1,
+            "playerId": "p0",
+            "kind": "turn",
+            "message": "1턴 시작: 철수 (라운드 1)"
+          },
+          {
+            "turn": 1,
+            "round": 1,
+            "playerId": "p0",
+            "kind": "income",
+            "message": "수입 +1 (코어 +1), 에너지 3 → 4"
+          },
+          {
+            "turn": 1,
+            "round": 1,
+            "playerId": "p0",
+            "kind": "draw",
+            "message": "카드 1장 드로우 (손패 5장, 덱 18장)"
+          },
+          {
+            "turn": 1,
+            "round": 1,
+            "playerId": "p0",
+            "kind": "place",
+            "message": "철수: (4,4)에 전초기지 배치 (비용 3, 에너지 12 → 9)"
+          },
+          {
+            "turn": 2,
+            "round": 1,
+            "playerId": "ai-1",
+            "kind": "turn",
+            "message": "2턴 시작: AI (라운드 1)"
+          },
+          {
+            "turn": 2,
+            "round": 1,
+            "playerId": "ai-1",
+            "kind": "income",
+            "message": "수입 +3 (채굴기(광맥) +2, 코어 +1), 에너지 12 → 15"
+          },
+          {
+            "turn": 2,
+            "round": 1,
+            "playerId": "ai-1",
+            "kind": "draw",
+            "message": "손패 상한(5장)이라 드로우 생략"
+          },
+          {
+            "turn": 2,
+            "round": 1,
+            "playerId": "ai-1",
+            "kind": "place",
+            "message": "AI: (7,5)에 워프 게이트 배치 (비용 3, 에너지 15 → 12)"
+          },
+          {
+            "turn": 3,
+            "round": 2,
+            "playerId": "p0",
+            "kind": "turn",
+            "message": "3턴 시작: 철수 (라운드 2)"
+          },
+          {
+            "turn": 3,
+            "round": 2,
+            "playerId": "p0",
+            "kind": "income",
+            "message": "수입 +1 (코어 +1), 에너지 9 → 10"
+          },
+          {
+            "turn": 3,
+            "round": 2,
+            "playerId": "p0",
+            "kind": "draw",
+            "message": "카드 1장 드로우 (손패 5장, 덱 17장)"
+          },
+          {
+            "turn": 3,
+            "round": 2,
+            "playerId": "p0",
+            "kind": "place",
+            "message": "철수: (5,5)에 포격함 배치 (비용 4, 에너지 10 → 6)"
+          },
+          {
+            "turn": 4,
+            "round": 2,
+            "playerId": "ai-1",
+            "kind": "turn",
+            "message": "4턴 시작: AI (라운드 2)"
+          },
+          {
+            "turn": 4,
+            "round": 2,
+            "playerId": "ai-1",
+            "kind": "combat",
+            "message": "정찰 드론(6,6) → 철수의 포격함(5,5) 피해 1"
+          },
+          {
+            "turn": 4,
+            "round": 2,
+            "playerId": "ai-1",
+            "kind": "income",
+            "message": "수입 +3 (채굴기(광맥) +2, 코어 +1), 에너지 12 → 15"
+          },
+          {
+            "turn": 4,
+            "round": 2,
+            "playerId": "ai-1",
+            "kind": "draw",
+            "message": "카드 1장 드로우 (손패 5장, 덱 18장)"
+          },
+          {
+            "turn": 4,
+            "round": 2,
+            "playerId": "ai-1",
+            "kind": "place",
+            "message": "AI: (7,7)에 전투기 배치 (비용 3, 에너지 15 → 12)"
+          },
+          {
+            "turn": 5,
+            "round": 3,
+            "playerId": "p0",
+            "kind": "turn",
+            "message": "5턴 시작: 철수 (라운드 3)"
+          },
+          {
+            "turn": 5,
+            "round": 3,
+            "playerId": "p0",
+            "kind": "combat",
+            "message": "포격함(5,5) → AI의 정찰 드론(6,6) 피해 3"
+          },
+          {
+            "turn": 5,
+            "round": 3,
+            "playerId": "ai-1",
+            "kind": "destroy",
+            "message": "AI의 정찰 드론(6,6) 파괴"
+          },
+          {
+            "turn": 5,
+            "round": 3,
+            "playerId": "p0",
+            "kind": "income",
+            "message": "수입 +1 (코어 +1), 에너지 6 → 7"
+          },
+          {
+            "turn": 5,
+            "round": 3,
+            "playerId": "p0",
+            "kind": "draw",
+            "message": "카드 1장 드로우 (손패 5장, 덱 16장)"
+          }
+        ]
+      }
+    },
+    {
+      "action": {
+        "type": "PASS",
+        "playerId": "p0"
+      },
+      "state": {
+        "roomId": "fixture-room",
+        "phase": "playing",
+        "mapId": "binary-star",
+        "board": {
+          "width": 11,
+          "height": 11,
+          "asteroids": [],
+          "veins": [
+            {
+              "x": 8,
+              "y": 2
+            },
+            {
+              "x": 5,
+              "y": 5
+            },
+            {
+              "x": 2,
+              "y": 8
+            }
+          ]
+        },
+        "roundLimit": 20,
+        "round": 3,
+        "turn": 6,
+        "currentPlayerId": "ai-1",
+        "players": [
+          {
+            "id": "p0",
+            "nickname": "철수",
+            "kind": "human",
+            "seat": 0,
+            "isReady": true,
+            "deckChoice": {
+              "buildingId": "refinery",
+              "unitId": "battleship",
+              "magicId": "gravity-wave"
+            },
+            "energy": 7,
+            "deck": [
+              "artillery",
+              "extractor",
+              "fighter",
+              "turret",
+              "scout",
+              "meteor",
+              "outpost",
+              "fighter",
+              "refinery",
+              "outpost",
+              "battleship",
+              "extractor",
+              "gravity-wave",
+              "cruiser",
+              "scout",
+              "fighter"
+            ],
+            "hand": [
+              "meteor",
+              "extractor",
+              "stealth",
+              "artillery",
+              "turret"
+            ],
+            "discard": [
+              "outpost",
+              "artillery"
+            ],
+            "alive": true,
+            "eliminatedOrder": null,
+            "passed": true
+          },
+          {
+            "id": "ai-1",
+            "nickname": "AI",
+            "kind": "ai",
+            "seat": 1,
+            "isReady": true,
+            "deckChoice": {
+              "buildingId": "refinery",
+              "unitId": "battleship",
+              "magicId": "gravity-wave"
+            },
+            "energy": 15,
+            "deck": [
+              "scout",
+              "turret",
+              "artillery",
+              "outpost",
+              "meteor",
+              "artillery",
+              "outpost",
+              "scout",
+              "extractor",
+              "battleship",
+              "scout",
+              "fighter",
+              "extractor",
+              "extractor",
+              "outpost",
+              "extractor",
+              "fighter"
+            ],
+            "hand": [
+              "scout",
+              "shield",
+              "repair-drone",
+              "shield",
+              "fighter"
+            ],
+            "discard": [
+              "warp-gate",
+              "fighter"
+            ],
+            "alive": true,
+            "eliminatedOrder": null,
+            "passed": false
+          }
+        ],
+        "markers": [
+          {
+            "id": "m1",
+            "specId": "core",
+            "kind": "core",
+            "ownerId": "p0",
+            "pos": {
+              "x": 2,
+              "y": 2
+            },
+            "hp": 20,
+            "remainingTurns": null
+          },
+          {
+            "id": "f500",
+            "specId": "extractor",
+            "kind": "building",
+            "ownerId": "ai-1",
+            "pos": {
+              "x": 8,
+              "y": 2
+            },
+            "hp": 2,
+            "remainingTurns": null
+          },
+          {
+            "id": "m3",
+            "specId": "outpost",
+            "kind": "building",
+            "ownerId": "p0",
+            "pos": {
+              "x": 4,
+              "y": 4
+            },
+            "hp": 6,
+            "remainingTurns": null
+          },
+          {
+            "id": "m5",
+            "specId": "artillery",
+            "kind": "unit",
+            "ownerId": "p0",
+            "pos": {
+              "x": 5,
+              "y": 5
+            },
+            "hp": 2,
+            "remainingTurns": null
+          },
+          {
+            "id": "m4",
+            "specId": "warp-gate",
+            "kind": "magic",
+            "ownerId": "ai-1",
+            "pos": {
+              "x": 7,
+              "y": 5
+            },
+            "hp": 2,
+            "remainingTurns": 1
+          },
+          {
+            "id": "m6",
+            "specId": "fighter",
+            "kind": "unit",
+            "ownerId": "ai-1",
+            "pos": {
+              "x": 7,
+              "y": 7
+            },
+            "hp": 4,
+            "remainingTurns": null
+          },
+          {
+            "id": "m2",
+            "specId": "core",
+            "kind": "core",
+            "ownerId": "ai-1",
+            "pos": {
+              "x": 8,
+              "y": 8
+            },
+            "hp": 20,
+            "remainingTurns": null
+          }
+        ],
+        "nextMarkerId": 7,
+        "rngSeed": 3279484486,
+        "result": null,
+        "log": [
+          {
+            "turn": 0,
+            "round": 0,
+            "playerId": "p0",
+            "kind": "system",
+            "message": "철수 입장 (좌석 0)"
+          },
+          {
+            "turn": 0,
+            "round": 0,
+            "playerId": "ai-1",
+            "kind": "system",
+            "message": "AI 입장 (좌석 1)"
+          },
+          {
+            "turn": 1,
+            "round": 1,
+            "playerId": null,
+            "kind": "system",
+            "message": "게임 시작: 쌍성 (11×11, 20라운드)"
+          },
+          {
+            "turn": 1,
+            "round": 1,
+            "playerId": "p0",
+            "kind": "system",
+            "message": "철수 코어 (2,2) 배치, 에너지 3, 손패 4장"
+          },
+          {
+            "turn": 1,
+            "round": 1,
+            "playerId": "ai-1",
+            "kind": "system",
+            "message": "AI 코어 (8,8) 배치, 에너지 3, 손패 4장"
+          },
+          {
+            "turn": 1,
+            "round": 1,
+            "playerId": "p0",
+            "kind": "turn",
+            "message": "1턴 시작: 철수 (라운드 1)"
+          },
+          {
+            "turn": 1,
+            "round": 1,
+            "playerId": "p0",
+            "kind": "income",
+            "message": "수입 +1 (코어 +1), 에너지 3 → 4"
+          },
+          {
+            "turn": 1,
+            "round": 1,
+            "playerId": "p0",
+            "kind": "draw",
+            "message": "카드 1장 드로우 (손패 5장, 덱 18장)"
+          },
+          {
+            "turn": 1,
+            "round": 1,
+            "playerId": "p0",
+            "kind": "place",
+            "message": "철수: (4,4)에 전초기지 배치 (비용 3, 에너지 12 → 9)"
+          },
+          {
+            "turn": 2,
+            "round": 1,
+            "playerId": "ai-1",
+            "kind": "turn",
+            "message": "2턴 시작: AI (라운드 1)"
+          },
+          {
+            "turn": 2,
+            "round": 1,
+            "playerId": "ai-1",
+            "kind": "income",
+            "message": "수입 +3 (채굴기(광맥) +2, 코어 +1), 에너지 12 → 15"
+          },
+          {
+            "turn": 2,
+            "round": 1,
+            "playerId": "ai-1",
+            "kind": "draw",
+            "message": "손패 상한(5장)이라 드로우 생략"
+          },
+          {
+            "turn": 2,
+            "round": 1,
+            "playerId": "ai-1",
+            "kind": "place",
+            "message": "AI: (7,5)에 워프 게이트 배치 (비용 3, 에너지 15 → 12)"
+          },
+          {
+            "turn": 3,
+            "round": 2,
+            "playerId": "p0",
+            "kind": "turn",
+            "message": "3턴 시작: 철수 (라운드 2)"
+          },
+          {
+            "turn": 3,
+            "round": 2,
+            "playerId": "p0",
+            "kind": "income",
+            "message": "수입 +1 (코어 +1), 에너지 9 → 10"
+          },
+          {
+            "turn": 3,
+            "round": 2,
+            "playerId": "p0",
+            "kind": "draw",
+            "message": "카드 1장 드로우 (손패 5장, 덱 17장)"
+          },
+          {
+            "turn": 3,
+            "round": 2,
+            "playerId": "p0",
+            "kind": "place",
+            "message": "철수: (5,5)에 포격함 배치 (비용 4, 에너지 10 → 6)"
+          },
+          {
+            "turn": 4,
+            "round": 2,
+            "playerId": "ai-1",
+            "kind": "turn",
+            "message": "4턴 시작: AI (라운드 2)"
+          },
+          {
+            "turn": 4,
+            "round": 2,
+            "playerId": "ai-1",
+            "kind": "combat",
+            "message": "정찰 드론(6,6) → 철수의 포격함(5,5) 피해 1"
+          },
+          {
+            "turn": 4,
+            "round": 2,
+            "playerId": "ai-1",
+            "kind": "income",
+            "message": "수입 +3 (채굴기(광맥) +2, 코어 +1), 에너지 12 → 15"
+          },
+          {
+            "turn": 4,
+            "round": 2,
+            "playerId": "ai-1",
+            "kind": "draw",
+            "message": "카드 1장 드로우 (손패 5장, 덱 18장)"
+          },
+          {
+            "turn": 4,
+            "round": 2,
+            "playerId": "ai-1",
+            "kind": "place",
+            "message": "AI: (7,7)에 전투기 배치 (비용 3, 에너지 15 → 12)"
+          },
+          {
+            "turn": 5,
+            "round": 3,
+            "playerId": "p0",
+            "kind": "turn",
+            "message": "5턴 시작: 철수 (라운드 3)"
+          },
+          {
+            "turn": 5,
+            "round": 3,
+            "playerId": "p0",
+            "kind": "combat",
+            "message": "포격함(5,5) → AI의 정찰 드론(6,6) 피해 3"
+          },
+          {
+            "turn": 5,
+            "round": 3,
+            "playerId": "ai-1",
+            "kind": "destroy",
+            "message": "AI의 정찰 드론(6,6) 파괴"
+          },
+          {
+            "turn": 5,
+            "round": 3,
+            "playerId": "p0",
+            "kind": "income",
+            "message": "수입 +1 (코어 +1), 에너지 6 → 7"
+          },
+          {
+            "turn": 5,
+            "round": 3,
+            "playerId": "p0",
+            "kind": "draw",
+            "message": "카드 1장 드로우 (손패 5장, 덱 16장)"
+          },
+          {
+            "turn": 5,
+            "round": 3,
+            "playerId": "p0",
+            "kind": "pass",
+            "message": "철수 패스 (연속 1)"
+          },
+          {
+            "turn": 6,
+            "round": 3,
+            "playerId": "ai-1",
+            "kind": "turn",
+            "message": "6턴 시작: AI (라운드 3)"
+          },
+          {
+            "turn": 6,
+            "round": 3,
+            "playerId": "ai-1",
+            "kind": "income",
+            "message": "수입 +3 (채굴기(광맥) +2, 코어 +1), 에너지 12 → 15"
+          },
+          {
+            "turn": 6,
+            "round": 3,
+            "playerId": "ai-1",
+            "kind": "draw",
+            "message": "카드 1장 드로우 (손패 5장, 덱 17장)"
+          }
+        ]
+      }
+    },
+    {
+      "action": {
+        "type": "PLACE",
+        "playerId": "ai-1",
+        "cardId": "shield",
+        "pos": {
+          "x": 7,
+          "y": 6
+        }
+      },
+      "state": {
+        "roomId": "fixture-room",
+        "phase": "playing",
+        "mapId": "binary-star",
+        "board": {
+          "width": 11,
+          "height": 11,
+          "asteroids": [],
+          "veins": [
+            {
+              "x": 8,
+              "y": 2
+            },
+            {
+              "x": 5,
+              "y": 5
+            },
+            {
+              "x": 2,
+              "y": 8
+            }
+          ]
+        },
+        "roundLimit": 20,
+        "round": 4,
+        "turn": 7,
+        "currentPlayerId": "p0",
+        "players": [
+          {
+            "id": "p0",
+            "nickname": "철수",
+            "kind": "human",
+            "seat": 0,
+            "isReady": true,
+            "deckChoice": {
+              "buildingId": "refinery",
+              "unitId": "battleship",
+              "magicId": "gravity-wave"
+            },
+            "energy": 8,
+            "deck": [
+              "artillery",
+              "extractor",
+              "fighter",
+              "turret",
+              "scout",
+              "meteor",
+              "outpost",
+              "fighter",
+              "refinery",
+              "outpost",
+              "battleship",
+              "extractor",
+              "gravity-wave",
+              "cruiser",
+              "scout",
+              "fighter"
+            ],
+            "hand": [
+              "meteor",
+              "extractor",
+              "stealth",
+              "artillery",
+              "turret"
+            ],
+            "discard": [
+              "outpost",
+              "artillery"
+            ],
+            "alive": true,
+            "eliminatedOrder": null,
+            "passed": false
+          },
+          {
+            "id": "ai-1",
+            "nickname": "AI",
+            "kind": "ai",
+            "seat": 1,
+            "isReady": true,
+            "deckChoice": {
+              "buildingId": "refinery",
+              "unitId": "battleship",
+              "magicId": "gravity-wave"
+            },
+            "energy": 13,
+            "deck": [
+              "scout",
+              "turret",
+              "artillery",
+              "outpost",
+              "meteor",
+              "artillery",
+              "outpost",
+              "scout",
+              "extractor",
+              "battleship",
+              "scout",
+              "fighter",
+              "extractor",
+              "extractor",
+              "outpost",
+              "extractor",
+              "fighter"
+            ],
+            "hand": [
+              "scout",
+              "repair-drone",
+              "shield",
+              "fighter"
+            ],
+            "discard": [
+              "warp-gate",
+              "fighter",
+              "shield"
+            ],
+            "alive": true,
+            "eliminatedOrder": null,
+            "passed": false
+          }
+        ],
+        "markers": [
+          {
+            "id": "m1",
+            "specId": "core",
+            "kind": "core",
+            "ownerId": "p0",
+            "pos": {
+              "x": 2,
+              "y": 2
+            },
+            "hp": 20,
+            "remainingTurns": null
+          },
+          {
+            "id": "f500",
+            "specId": "extractor",
+            "kind": "building",
+            "ownerId": "ai-1",
+            "pos": {
+              "x": 8,
+              "y": 2
+            },
+            "hp": 2,
+            "remainingTurns": null
+          },
+          {
+            "id": "m3",
+            "specId": "outpost",
+            "kind": "building",
+            "ownerId": "p0",
+            "pos": {
+              "x": 4,
+              "y": 4
+            },
+            "hp": 6,
+            "remainingTurns": null
+          },
+          {
+            "id": "m5",
+            "specId": "artillery",
+            "kind": "unit",
+            "ownerId": "p0",
+            "pos": {
+              "x": 5,
+              "y": 5
+            },
+            "hp": 2,
+            "remainingTurns": null
+          },
+          {
+            "id": "m6",
+            "specId": "fighter",
+            "kind": "unit",
+            "ownerId": "ai-1",
+            "pos": {
+              "x": 7,
+              "y": 7
+            },
+            "hp": 4,
+            "remainingTurns": null
+          },
+          {
+            "id": "m2",
+            "specId": "core",
+            "kind": "core",
+            "ownerId": "ai-1",
+            "pos": {
+              "x": 8,
+              "y": 8
+            },
+            "hp": 20,
+            "remainingTurns": null
+          }
+        ],
+        "nextMarkerId": 7,
+        "rngSeed": 3279484486,
+        "result": null,
+        "log": [
+          {
+            "turn": 0,
+            "round": 0,
+            "playerId": "p0",
+            "kind": "system",
+            "message": "철수 입장 (좌석 0)"
+          },
+          {
+            "turn": 0,
+            "round": 0,
+            "playerId": "ai-1",
+            "kind": "system",
+            "message": "AI 입장 (좌석 1)"
+          },
+          {
+            "turn": 1,
+            "round": 1,
+            "playerId": null,
+            "kind": "system",
+            "message": "게임 시작: 쌍성 (11×11, 20라운드)"
+          },
+          {
+            "turn": 1,
+            "round": 1,
+            "playerId": "p0",
+            "kind": "system",
+            "message": "철수 코어 (2,2) 배치, 에너지 3, 손패 4장"
+          },
+          {
+            "turn": 1,
+            "round": 1,
+            "playerId": "ai-1",
+            "kind": "system",
+            "message": "AI 코어 (8,8) 배치, 에너지 3, 손패 4장"
+          },
+          {
+            "turn": 1,
+            "round": 1,
+            "playerId": "p0",
+            "kind": "turn",
+            "message": "1턴 시작: 철수 (라운드 1)"
+          },
+          {
+            "turn": 1,
+            "round": 1,
+            "playerId": "p0",
+            "kind": "income",
+            "message": "수입 +1 (코어 +1), 에너지 3 → 4"
+          },
+          {
+            "turn": 1,
+            "round": 1,
+            "playerId": "p0",
+            "kind": "draw",
+            "message": "카드 1장 드로우 (손패 5장, 덱 18장)"
+          },
+          {
+            "turn": 1,
+            "round": 1,
+            "playerId": "p0",
+            "kind": "place",
+            "message": "철수: (4,4)에 전초기지 배치 (비용 3, 에너지 12 → 9)"
+          },
+          {
+            "turn": 2,
+            "round": 1,
+            "playerId": "ai-1",
+            "kind": "turn",
+            "message": "2턴 시작: AI (라운드 1)"
+          },
+          {
+            "turn": 2,
+            "round": 1,
+            "playerId": "ai-1",
+            "kind": "income",
+            "message": "수입 +3 (채굴기(광맥) +2, 코어 +1), 에너지 12 → 15"
+          },
+          {
+            "turn": 2,
+            "round": 1,
+            "playerId": "ai-1",
+            "kind": "draw",
+            "message": "손패 상한(5장)이라 드로우 생략"
+          },
+          {
+            "turn": 2,
+            "round": 1,
+            "playerId": "ai-1",
+            "kind": "place",
+            "message": "AI: (7,5)에 워프 게이트 배치 (비용 3, 에너지 15 → 12)"
+          },
+          {
+            "turn": 3,
+            "round": 2,
+            "playerId": "p0",
+            "kind": "turn",
+            "message": "3턴 시작: 철수 (라운드 2)"
+          },
+          {
+            "turn": 3,
+            "round": 2,
+            "playerId": "p0",
+            "kind": "income",
+            "message": "수입 +1 (코어 +1), 에너지 9 → 10"
+          },
+          {
+            "turn": 3,
+            "round": 2,
+            "playerId": "p0",
+            "kind": "draw",
+            "message": "카드 1장 드로우 (손패 5장, 덱 17장)"
+          },
+          {
+            "turn": 3,
+            "round": 2,
+            "playerId": "p0",
+            "kind": "place",
+            "message": "철수: (5,5)에 포격함 배치 (비용 4, 에너지 10 → 6)"
+          },
+          {
+            "turn": 4,
+            "round": 2,
+            "playerId": "ai-1",
+            "kind": "turn",
+            "message": "4턴 시작: AI (라운드 2)"
+          },
+          {
+            "turn": 4,
+            "round": 2,
+            "playerId": "ai-1",
+            "kind": "combat",
+            "message": "정찰 드론(6,6) → 철수의 포격함(5,5) 피해 1"
+          },
+          {
+            "turn": 4,
+            "round": 2,
+            "playerId": "ai-1",
+            "kind": "income",
+            "message": "수입 +3 (채굴기(광맥) +2, 코어 +1), 에너지 12 → 15"
+          },
+          {
+            "turn": 4,
+            "round": 2,
+            "playerId": "ai-1",
+            "kind": "draw",
+            "message": "카드 1장 드로우 (손패 5장, 덱 18장)"
+          },
+          {
+            "turn": 4,
+            "round": 2,
+            "playerId": "ai-1",
+            "kind": "place",
+            "message": "AI: (7,7)에 전투기 배치 (비용 3, 에너지 15 → 12)"
+          },
+          {
+            "turn": 5,
+            "round": 3,
+            "playerId": "p0",
+            "kind": "turn",
+            "message": "5턴 시작: 철수 (라운드 3)"
+          },
+          {
+            "turn": 5,
+            "round": 3,
+            "playerId": "p0",
+            "kind": "combat",
+            "message": "포격함(5,5) → AI의 정찰 드론(6,6) 피해 3"
+          },
+          {
+            "turn": 5,
+            "round": 3,
+            "playerId": "ai-1",
+            "kind": "destroy",
+            "message": "AI의 정찰 드론(6,6) 파괴"
+          },
+          {
+            "turn": 5,
+            "round": 3,
+            "playerId": "p0",
+            "kind": "income",
+            "message": "수입 +1 (코어 +1), 에너지 6 → 7"
+          },
+          {
+            "turn": 5,
+            "round": 3,
+            "playerId": "p0",
+            "kind": "draw",
+            "message": "카드 1장 드로우 (손패 5장, 덱 16장)"
+          },
+          {
+            "turn": 5,
+            "round": 3,
+            "playerId": "p0",
+            "kind": "pass",
+            "message": "철수 패스 (연속 1)"
+          },
+          {
+            "turn": 6,
+            "round": 3,
+            "playerId": "ai-1",
+            "kind": "turn",
+            "message": "6턴 시작: AI (라운드 3)"
+          },
+          {
+            "turn": 6,
+            "round": 3,
+            "playerId": "ai-1",
+            "kind": "income",
+            "message": "수입 +3 (채굴기(광맥) +2, 코어 +1), 에너지 12 → 15"
+          },
+          {
+            "turn": 6,
+            "round": 3,
+            "playerId": "ai-1",
+            "kind": "draw",
+            "message": "카드 1장 드로우 (손패 5장, 덱 17장)"
+          },
+          {
+            "turn": 6,
+            "round": 3,
+            "playerId": "ai-1",
+            "kind": "place",
+            "message": "AI: (7,6)에 차폐막 배치 (비용 2, 에너지 15 → 13)"
+          },
+          {
+            "turn": 6,
+            "round": 3,
+            "playerId": "ai-1",
+            "kind": "magic",
+            "message": "차폐막: 대상 없음 체력 +3"
+          },
+          {
+            "turn": 7,
+            "round": 4,
+            "playerId": "p0",
+            "kind": "turn",
+            "message": "7턴 시작: 철수 (라운드 4)"
+          },
+          {
+            "turn": 7,
+            "round": 4,
+            "playerId": "p0",
+            "kind": "combat",
+            "message": "포격함(5,5) → AI의 워프 게이트(7,5) 피해 3"
+          },
+          {
+            "turn": 7,
+            "round": 4,
+            "playerId": "ai-1",
+            "kind": "destroy",
+            "message": "AI의 워프 게이트(7,5) 파괴"
+          },
+          {
+            "turn": 7,
+            "round": 4,
+            "playerId": "p0",
+            "kind": "income",
+            "message": "수입 +1 (코어 +1), 에너지 7 → 8"
+          },
+          {
+            "turn": 7,
+            "round": 4,
+            "playerId": "p0",
+            "kind": "draw",
+            "message": "손패 상한(5장)이라 드로우 생략"
+          }
+        ]
+      }
+    },
+    {
+      "action": {
+        "type": "PLACE",
+        "playerId": "p0",
+        "cardId": "meteor",
+        "pos": {
+          "x": 6,
+          "y": 6
+        }
+      },
+      "state": {
+        "roomId": "fixture-room",
+        "phase": "playing",
+        "mapId": "binary-star",
+        "board": {
+          "width": 11,
+          "height": 11,
+          "asteroids": [],
+          "veins": [
+            {
+              "x": 8,
+              "y": 2
+            },
+            {
+              "x": 5,
+              "y": 5
+            },
+            {
+              "x": 2,
+              "y": 8
+            }
+          ]
+        },
+        "roundLimit": 20,
+        "round": 4,
+        "turn": 8,
+        "currentPlayerId": "ai-1",
+        "players": [
+          {
+            "id": "p0",
+            "nickname": "철수",
+            "kind": "human",
+            "seat": 0,
+            "isReady": true,
+            "deckChoice": {
+              "buildingId": "refinery",
+              "unitId": "battleship",
+              "magicId": "gravity-wave"
+            },
+            "energy": 5,
+            "deck": [
+              "artillery",
+              "extractor",
+              "fighter",
+              "turret",
+              "scout",
+              "meteor",
+              "outpost",
+              "fighter",
+              "refinery",
+              "outpost",
+              "battleship",
+              "extractor",
+              "gravity-wave",
+              "cruiser",
+              "scout",
+              "fighter"
+            ],
+            "hand": [
+              "extractor",
+              "stealth",
+              "artillery",
+              "turret"
+            ],
+            "discard": [
+              "outpost",
+              "artillery",
+              "meteor"
+            ],
+            "alive": true,
+            "eliminatedOrder": null,
+            "passed": false
+          },
+          {
+            "id": "ai-1",
+            "nickname": "AI",
+            "kind": "ai",
+            "seat": 1,
+            "isReady": true,
+            "deckChoice": {
+              "buildingId": "refinery",
+              "unitId": "battleship",
+              "magicId": "gravity-wave"
+            },
+            "energy": 16,
+            "deck": [
+              "turret",
+              "artillery",
+              "outpost",
+              "meteor",
+              "artillery",
+              "outpost",
+              "scout",
+              "extractor",
+              "battleship",
+              "scout",
+              "fighter",
+              "extractor",
+              "extractor",
+              "outpost",
+              "extractor",
+              "fighter"
+            ],
+            "hand": [
+              "scout",
+              "repair-drone",
+              "shield",
+              "fighter",
+              "scout"
+            ],
+            "discard": [
+              "warp-gate",
+              "fighter",
+              "shield"
+            ],
+            "alive": true,
+            "eliminatedOrder": null,
+            "passed": false
+          }
+        ],
+        "markers": [
+          {
+            "id": "m1",
+            "specId": "core",
+            "kind": "core",
+            "ownerId": "p0",
+            "pos": {
+              "x": 2,
+              "y": 2
+            },
+            "hp": 20,
+            "remainingTurns": null
+          },
+          {
+            "id": "f500",
+            "specId": "extractor",
+            "kind": "building",
+            "ownerId": "ai-1",
+            "pos": {
+              "x": 8,
+              "y": 2
+            },
+            "hp": 2,
+            "remainingTurns": null
+          },
+          {
+            "id": "m3",
+            "specId": "outpost",
+            "kind": "building",
+            "ownerId": "p0",
+            "pos": {
+              "x": 4,
+              "y": 4
+            },
+            "hp": 6,
+            "remainingTurns": null
+          },
+          {
+            "id": "m5",
+            "specId": "artillery",
+            "kind": "unit",
+            "ownerId": "p0",
+            "pos": {
+              "x": 5,
+              "y": 5
+            },
+            "hp": 2,
+            "remainingTurns": null
+          },
+          {
+            "id": "m6",
+            "specId": "fighter",
+            "kind": "unit",
+            "ownerId": "ai-1",
+            "pos": {
+              "x": 7,
+              "y": 7
+            },
+            "hp": 1,
+            "remainingTurns": null
+          },
+          {
+            "id": "m2",
+            "specId": "core",
+            "kind": "core",
+            "ownerId": "ai-1",
+            "pos": {
+              "x": 8,
+              "y": 8
+            },
+            "hp": 20,
+            "remainingTurns": null
+          }
+        ],
+        "nextMarkerId": 7,
+        "rngSeed": 3279484486,
+        "result": null,
+        "log": [
+          {
+            "turn": 0,
+            "round": 0,
+            "playerId": "p0",
+            "kind": "system",
+            "message": "철수 입장 (좌석 0)"
+          },
+          {
+            "turn": 0,
+            "round": 0,
+            "playerId": "ai-1",
+            "kind": "system",
+            "message": "AI 입장 (좌석 1)"
+          },
+          {
+            "turn": 1,
+            "round": 1,
+            "playerId": null,
+            "kind": "system",
+            "message": "게임 시작: 쌍성 (11×11, 20라운드)"
+          },
+          {
+            "turn": 1,
+            "round": 1,
+            "playerId": "p0",
+            "kind": "system",
+            "message": "철수 코어 (2,2) 배치, 에너지 3, 손패 4장"
+          },
+          {
+            "turn": 1,
+            "round": 1,
+            "playerId": "ai-1",
+            "kind": "system",
+            "message": "AI 코어 (8,8) 배치, 에너지 3, 손패 4장"
+          },
+          {
+            "turn": 1,
+            "round": 1,
+            "playerId": "p0",
+            "kind": "turn",
+            "message": "1턴 시작: 철수 (라운드 1)"
+          },
+          {
+            "turn": 1,
+            "round": 1,
+            "playerId": "p0",
+            "kind": "income",
+            "message": "수입 +1 (코어 +1), 에너지 3 → 4"
+          },
+          {
+            "turn": 1,
+            "round": 1,
+            "playerId": "p0",
+            "kind": "draw",
+            "message": "카드 1장 드로우 (손패 5장, 덱 18장)"
+          },
+          {
+            "turn": 1,
+            "round": 1,
+            "playerId": "p0",
+            "kind": "place",
+            "message": "철수: (4,4)에 전초기지 배치 (비용 3, 에너지 12 → 9)"
+          },
+          {
+            "turn": 2,
+            "round": 1,
+            "playerId": "ai-1",
+            "kind": "turn",
+            "message": "2턴 시작: AI (라운드 1)"
+          },
+          {
+            "turn": 2,
+            "round": 1,
+            "playerId": "ai-1",
+            "kind": "income",
+            "message": "수입 +3 (채굴기(광맥) +2, 코어 +1), 에너지 12 → 15"
+          },
+          {
+            "turn": 2,
+            "round": 1,
+            "playerId": "ai-1",
+            "kind": "draw",
+            "message": "손패 상한(5장)이라 드로우 생략"
+          },
+          {
+            "turn": 2,
+            "round": 1,
+            "playerId": "ai-1",
+            "kind": "place",
+            "message": "AI: (7,5)에 워프 게이트 배치 (비용 3, 에너지 15 → 12)"
+          },
+          {
+            "turn": 3,
+            "round": 2,
+            "playerId": "p0",
+            "kind": "turn",
+            "message": "3턴 시작: 철수 (라운드 2)"
+          },
+          {
+            "turn": 3,
+            "round": 2,
+            "playerId": "p0",
+            "kind": "income",
+            "message": "수입 +1 (코어 +1), 에너지 9 → 10"
+          },
+          {
+            "turn": 3,
+            "round": 2,
+            "playerId": "p0",
+            "kind": "draw",
+            "message": "카드 1장 드로우 (손패 5장, 덱 17장)"
+          },
+          {
+            "turn": 3,
+            "round": 2,
+            "playerId": "p0",
+            "kind": "place",
+            "message": "철수: (5,5)에 포격함 배치 (비용 4, 에너지 10 → 6)"
+          },
+          {
+            "turn": 4,
+            "round": 2,
+            "playerId": "ai-1",
+            "kind": "turn",
+            "message": "4턴 시작: AI (라운드 2)"
+          },
+          {
+            "turn": 4,
+            "round": 2,
+            "playerId": "ai-1",
+            "kind": "combat",
+            "message": "정찰 드론(6,6) → 철수의 포격함(5,5) 피해 1"
+          },
+          {
+            "turn": 4,
+            "round": 2,
+            "playerId": "ai-1",
+            "kind": "income",
+            "message": "수입 +3 (채굴기(광맥) +2, 코어 +1), 에너지 12 → 15"
+          },
+          {
+            "turn": 4,
+            "round": 2,
+            "playerId": "ai-1",
+            "kind": "draw",
+            "message": "카드 1장 드로우 (손패 5장, 덱 18장)"
+          },
+          {
+            "turn": 4,
+            "round": 2,
+            "playerId": "ai-1",
+            "kind": "place",
+            "message": "AI: (7,7)에 전투기 배치 (비용 3, 에너지 15 → 12)"
+          },
+          {
+            "turn": 5,
+            "round": 3,
+            "playerId": "p0",
+            "kind": "turn",
+            "message": "5턴 시작: 철수 (라운드 3)"
+          },
+          {
+            "turn": 5,
+            "round": 3,
+            "playerId": "p0",
+            "kind": "combat",
+            "message": "포격함(5,5) → AI의 정찰 드론(6,6) 피해 3"
+          },
+          {
+            "turn": 5,
+            "round": 3,
+            "playerId": "ai-1",
+            "kind": "destroy",
+            "message": "AI의 정찰 드론(6,6) 파괴"
+          },
+          {
+            "turn": 5,
+            "round": 3,
+            "playerId": "p0",
+            "kind": "income",
+            "message": "수입 +1 (코어 +1), 에너지 6 → 7"
+          },
+          {
+            "turn": 5,
+            "round": 3,
+            "playerId": "p0",
+            "kind": "draw",
+            "message": "카드 1장 드로우 (손패 5장, 덱 16장)"
+          },
+          {
+            "turn": 5,
+            "round": 3,
+            "playerId": "p0",
+            "kind": "pass",
+            "message": "철수 패스 (연속 1)"
+          },
+          {
+            "turn": 6,
+            "round": 3,
+            "playerId": "ai-1",
+            "kind": "turn",
+            "message": "6턴 시작: AI (라운드 3)"
+          },
+          {
+            "turn": 6,
+            "round": 3,
+            "playerId": "ai-1",
+            "kind": "income",
+            "message": "수입 +3 (채굴기(광맥) +2, 코어 +1), 에너지 12 → 15"
+          },
+          {
+            "turn": 6,
+            "round": 3,
+            "playerId": "ai-1",
+            "kind": "draw",
+            "message": "카드 1장 드로우 (손패 5장, 덱 17장)"
+          },
+          {
+            "turn": 6,
+            "round": 3,
+            "playerId": "ai-1",
+            "kind": "place",
+            "message": "AI: (7,6)에 차폐막 배치 (비용 2, 에너지 15 → 13)"
+          },
+          {
+            "turn": 6,
+            "round": 3,
+            "playerId": "ai-1",
+            "kind": "magic",
+            "message": "차폐막: 대상 없음 체력 +3"
+          },
+          {
+            "turn": 7,
+            "round": 4,
+            "playerId": "p0",
+            "kind": "turn",
+            "message": "7턴 시작: 철수 (라운드 4)"
+          },
+          {
+            "turn": 7,
+            "round": 4,
+            "playerId": "p0",
+            "kind": "combat",
+            "message": "포격함(5,5) → AI의 워프 게이트(7,5) 피해 3"
+          },
+          {
+            "turn": 7,
+            "round": 4,
+            "playerId": "ai-1",
+            "kind": "destroy",
+            "message": "AI의 워프 게이트(7,5) 파괴"
+          },
+          {
+            "turn": 7,
+            "round": 4,
+            "playerId": "p0",
+            "kind": "income",
+            "message": "수입 +1 (코어 +1), 에너지 7 → 8"
+          },
+          {
+            "turn": 7,
+            "round": 4,
+            "playerId": "p0",
+            "kind": "draw",
+            "message": "손패 상한(5장)이라 드로우 생략"
+          },
+          {
+            "turn": 7,
+            "round": 4,
+            "playerId": "p0",
+            "kind": "place",
+            "message": "철수: (6,6)에 유성우 배치 (비용 3, 에너지 8 → 5)"
+          },
+          {
+            "turn": 7,
+            "round": 4,
+            "playerId": "p0",
+            "kind": "magic",
+            "message": "유성우: AI의 전투기(7,7) 피해 3"
+          },
+          {
+            "turn": 8,
+            "round": 4,
+            "playerId": "ai-1",
+            "kind": "turn",
+            "message": "8턴 시작: AI (라운드 4)"
+          },
+          {
+            "turn": 8,
+            "round": 4,
+            "playerId": "ai-1",
+            "kind": "income",
+            "message": "수입 +3 (채굴기(광맥) +2, 코어 +1), 에너지 13 → 16"
+          },
+          {
+            "turn": 8,
+            "round": 4,
+            "playerId": "ai-1",
+            "kind": "draw",
+            "message": "카드 1장 드로우 (손패 5장, 덱 16장)"
+          }
+        ]
+      }
+    },
+    {
+      "action": {
+        "type": "PLACE",
+        "playerId": "ai-1",
+        "cardId": "repair-drone",
+        "pos": {
+          "x": 8,
+          "y": 6
+        }
+      },
+      "state": {
+        "roomId": "fixture-room",
+        "phase": "playing",
+        "mapId": "binary-star",
+        "board": {
+          "width": 11,
+          "height": 11,
+          "asteroids": [],
+          "veins": [
+            {
+              "x": 8,
+              "y": 2
+            },
+            {
+              "x": 5,
+              "y": 5
+            },
+            {
+              "x": 2,
+              "y": 8
+            }
+          ]
+        },
+        "roundLimit": 20,
+        "round": 5,
+        "turn": 9,
+        "currentPlayerId": "p0",
+        "players": [
+          {
+            "id": "p0",
+            "nickname": "철수",
+            "kind": "human",
+            "seat": 0,
+            "isReady": true,
+            "deckChoice": {
+              "buildingId": "refinery",
+              "unitId": "battleship",
+              "magicId": "gravity-wave"
+            },
+            "energy": 6,
+            "deck": [
+              "extractor",
+              "fighter",
+              "turret",
+              "scout",
+              "meteor",
+              "outpost",
+              "fighter",
+              "refinery",
+              "outpost",
+              "battleship",
+              "extractor",
+              "gravity-wave",
+              "cruiser",
+              "scout",
+              "fighter"
+            ],
+            "hand": [
+              "extractor",
+              "stealth",
+              "artillery",
+              "turret",
+              "artillery"
+            ],
+            "discard": [
+              "outpost",
+              "artillery",
+              "meteor"
+            ],
+            "alive": true,
+            "eliminatedOrder": null,
+            "passed": false
+          },
+          {
+            "id": "ai-1",
+            "nickname": "AI",
+            "kind": "ai",
+            "seat": 1,
+            "isReady": true,
+            "deckChoice": {
+              "buildingId": "refinery",
+              "unitId": "battleship",
+              "magicId": "gravity-wave"
+            },
+            "energy": 13,
+            "deck": [
+              "turret",
+              "artillery",
+              "outpost",
+              "meteor",
+              "artillery",
+              "outpost",
+              "scout",
+              "extractor",
+              "battleship",
+              "scout",
+              "fighter",
+              "extractor",
+              "extractor",
+              "outpost",
+              "extractor",
+              "fighter"
+            ],
+            "hand": [
+              "scout",
+              "shield",
+              "fighter",
+              "scout"
+            ],
+            "discard": [
+              "warp-gate",
+              "fighter",
+              "shield",
+              "repair-drone"
+            ],
+            "alive": true,
+            "eliminatedOrder": null,
+            "passed": false
+          }
+        ],
+        "markers": [
+          {
+            "id": "m1",
+            "specId": "core",
+            "kind": "core",
+            "ownerId": "p0",
+            "pos": {
+              "x": 2,
+              "y": 2
+            },
+            "hp": 20,
+            "remainingTurns": null
+          },
+          {
+            "id": "f500",
+            "specId": "extractor",
+            "kind": "building",
+            "ownerId": "ai-1",
+            "pos": {
+              "x": 8,
+              "y": 2
+            },
+            "hp": 2,
+            "remainingTurns": null
+          },
+          {
+            "id": "m3",
+            "specId": "outpost",
+            "kind": "building",
+            "ownerId": "p0",
+            "pos": {
+              "x": 4,
+              "y": 4
+            },
+            "hp": 6,
+            "remainingTurns": null
+          },
+          {
+            "id": "m5",
+            "specId": "artillery",
+            "kind": "unit",
+            "ownerId": "p0",
+            "pos": {
+              "x": 5,
+              "y": 5
+            },
+            "hp": 2,
+            "remainingTurns": null
+          },
+          {
+            "id": "m7",
+            "specId": "repair-drone",
+            "kind": "unit",
+            "ownerId": "ai-1",
+            "pos": {
+              "x": 8,
+              "y": 6
+            },
+            "hp": 2,
+            "remainingTurns": null
+          },
+          {
+            "id": "m2",
+            "specId": "core",
+            "kind": "core",
+            "ownerId": "ai-1",
+            "pos": {
+              "x": 8,
+              "y": 8
+            },
+            "hp": 20,
+            "remainingTurns": null
+          }
+        ],
+        "nextMarkerId": 8,
+        "rngSeed": 3279484486,
+        "result": null,
+        "log": [
+          {
+            "turn": 0,
+            "round": 0,
+            "playerId": "p0",
+            "kind": "system",
+            "message": "철수 입장 (좌석 0)"
+          },
+          {
+            "turn": 0,
+            "round": 0,
+            "playerId": "ai-1",
+            "kind": "system",
+            "message": "AI 입장 (좌석 1)"
+          },
+          {
+            "turn": 1,
+            "round": 1,
+            "playerId": null,
+            "kind": "system",
+            "message": "게임 시작: 쌍성 (11×11, 20라운드)"
+          },
+          {
+            "turn": 1,
+            "round": 1,
+            "playerId": "p0",
+            "kind": "system",
+            "message": "철수 코어 (2,2) 배치, 에너지 3, 손패 4장"
+          },
+          {
+            "turn": 1,
+            "round": 1,
+            "playerId": "ai-1",
+            "kind": "system",
+            "message": "AI 코어 (8,8) 배치, 에너지 3, 손패 4장"
+          },
+          {
+            "turn": 1,
+            "round": 1,
+            "playerId": "p0",
+            "kind": "turn",
+            "message": "1턴 시작: 철수 (라운드 1)"
+          },
+          {
+            "turn": 1,
+            "round": 1,
+            "playerId": "p0",
+            "kind": "income",
+            "message": "수입 +1 (코어 +1), 에너지 3 → 4"
+          },
+          {
+            "turn": 1,
+            "round": 1,
+            "playerId": "p0",
+            "kind": "draw",
+            "message": "카드 1장 드로우 (손패 5장, 덱 18장)"
+          },
+          {
+            "turn": 1,
+            "round": 1,
+            "playerId": "p0",
+            "kind": "place",
+            "message": "철수: (4,4)에 전초기지 배치 (비용 3, 에너지 12 → 9)"
+          },
+          {
+            "turn": 2,
+            "round": 1,
+            "playerId": "ai-1",
+            "kind": "turn",
+            "message": "2턴 시작: AI (라운드 1)"
+          },
+          {
+            "turn": 2,
+            "round": 1,
+            "playerId": "ai-1",
+            "kind": "income",
+            "message": "수입 +3 (채굴기(광맥) +2, 코어 +1), 에너지 12 → 15"
+          },
+          {
+            "turn": 2,
+            "round": 1,
+            "playerId": "ai-1",
+            "kind": "draw",
+            "message": "손패 상한(5장)이라 드로우 생략"
+          },
+          {
+            "turn": 2,
+            "round": 1,
+            "playerId": "ai-1",
+            "kind": "place",
+            "message": "AI: (7,5)에 워프 게이트 배치 (비용 3, 에너지 15 → 12)"
+          },
+          {
+            "turn": 3,
+            "round": 2,
+            "playerId": "p0",
+            "kind": "turn",
+            "message": "3턴 시작: 철수 (라운드 2)"
+          },
+          {
+            "turn": 3,
+            "round": 2,
+            "playerId": "p0",
+            "kind": "income",
+            "message": "수입 +1 (코어 +1), 에너지 9 → 10"
+          },
+          {
+            "turn": 3,
+            "round": 2,
+            "playerId": "p0",
+            "kind": "draw",
+            "message": "카드 1장 드로우 (손패 5장, 덱 17장)"
+          },
+          {
+            "turn": 3,
+            "round": 2,
+            "playerId": "p0",
+            "kind": "place",
+            "message": "철수: (5,5)에 포격함 배치 (비용 4, 에너지 10 → 6)"
+          },
+          {
+            "turn": 4,
+            "round": 2,
+            "playerId": "ai-1",
+            "kind": "turn",
+            "message": "4턴 시작: AI (라운드 2)"
+          },
+          {
+            "turn": 4,
+            "round": 2,
+            "playerId": "ai-1",
+            "kind": "combat",
+            "message": "정찰 드론(6,6) → 철수의 포격함(5,5) 피해 1"
+          },
+          {
+            "turn": 4,
+            "round": 2,
+            "playerId": "ai-1",
+            "kind": "income",
+            "message": "수입 +3 (채굴기(광맥) +2, 코어 +1), 에너지 12 → 15"
+          },
+          {
+            "turn": 4,
+            "round": 2,
+            "playerId": "ai-1",
+            "kind": "draw",
+            "message": "카드 1장 드로우 (손패 5장, 덱 18장)"
+          },
+          {
+            "turn": 4,
+            "round": 2,
+            "playerId": "ai-1",
+            "kind": "place",
+            "message": "AI: (7,7)에 전투기 배치 (비용 3, 에너지 15 → 12)"
+          },
+          {
+            "turn": 5,
+            "round": 3,
+            "playerId": "p0",
+            "kind": "turn",
+            "message": "5턴 시작: 철수 (라운드 3)"
+          },
+          {
+            "turn": 5,
+            "round": 3,
+            "playerId": "p0",
+            "kind": "combat",
+            "message": "포격함(5,5) → AI의 정찰 드론(6,6) 피해 3"
+          },
+          {
+            "turn": 5,
+            "round": 3,
+            "playerId": "ai-1",
+            "kind": "destroy",
+            "message": "AI의 정찰 드론(6,6) 파괴"
+          },
+          {
+            "turn": 5,
+            "round": 3,
+            "playerId": "p0",
+            "kind": "income",
+            "message": "수입 +1 (코어 +1), 에너지 6 → 7"
+          },
+          {
+            "turn": 5,
+            "round": 3,
+            "playerId": "p0",
+            "kind": "draw",
+            "message": "카드 1장 드로우 (손패 5장, 덱 16장)"
+          },
+          {
+            "turn": 5,
+            "round": 3,
+            "playerId": "p0",
+            "kind": "pass",
+            "message": "철수 패스 (연속 1)"
+          },
+          {
+            "turn": 6,
+            "round": 3,
+            "playerId": "ai-1",
+            "kind": "turn",
+            "message": "6턴 시작: AI (라운드 3)"
+          },
+          {
+            "turn": 6,
+            "round": 3,
+            "playerId": "ai-1",
+            "kind": "income",
+            "message": "수입 +3 (채굴기(광맥) +2, 코어 +1), 에너지 12 → 15"
+          },
+          {
+            "turn": 6,
+            "round": 3,
+            "playerId": "ai-1",
+            "kind": "draw",
+            "message": "카드 1장 드로우 (손패 5장, 덱 17장)"
+          },
+          {
+            "turn": 6,
+            "round": 3,
+            "playerId": "ai-1",
+            "kind": "place",
+            "message": "AI: (7,6)에 차폐막 배치 (비용 2, 에너지 15 → 13)"
+          },
+          {
+            "turn": 6,
+            "round": 3,
+            "playerId": "ai-1",
+            "kind": "magic",
+            "message": "차폐막: 대상 없음 체력 +3"
+          },
+          {
+            "turn": 7,
+            "round": 4,
+            "playerId": "p0",
+            "kind": "turn",
+            "message": "7턴 시작: 철수 (라운드 4)"
+          },
+          {
+            "turn": 7,
+            "round": 4,
+            "playerId": "p0",
+            "kind": "combat",
+            "message": "포격함(5,5) → AI의 워프 게이트(7,5) 피해 3"
+          },
+          {
+            "turn": 7,
+            "round": 4,
+            "playerId": "ai-1",
+            "kind": "destroy",
+            "message": "AI의 워프 게이트(7,5) 파괴"
+          },
+          {
+            "turn": 7,
+            "round": 4,
+            "playerId": "p0",
+            "kind": "income",
+            "message": "수입 +1 (코어 +1), 에너지 7 → 8"
+          },
+          {
+            "turn": 7,
+            "round": 4,
+            "playerId": "p0",
+            "kind": "draw",
+            "message": "손패 상한(5장)이라 드로우 생략"
+          },
+          {
+            "turn": 7,
+            "round": 4,
+            "playerId": "p0",
+            "kind": "place",
+            "message": "철수: (6,6)에 유성우 배치 (비용 3, 에너지 8 → 5)"
+          },
+          {
+            "turn": 7,
+            "round": 4,
+            "playerId": "p0",
+            "kind": "magic",
+            "message": "유성우: AI의 전투기(7,7) 피해 3"
+          },
+          {
+            "turn": 8,
+            "round": 4,
+            "playerId": "ai-1",
+            "kind": "turn",
+            "message": "8턴 시작: AI (라운드 4)"
+          },
+          {
+            "turn": 8,
+            "round": 4,
+            "playerId": "ai-1",
+            "kind": "income",
+            "message": "수입 +3 (채굴기(광맥) +2, 코어 +1), 에너지 13 → 16"
+          },
+          {
+            "turn": 8,
+            "round": 4,
+            "playerId": "ai-1",
+            "kind": "draw",
+            "message": "카드 1장 드로우 (손패 5장, 덱 16장)"
+          },
+          {
+            "turn": 8,
+            "round": 4,
+            "playerId": "ai-1",
+            "kind": "place",
+            "message": "AI: (8,6)에 수리 드론 배치 (비용 3, 에너지 16 → 13)"
+          },
+          {
+            "turn": 9,
+            "round": 5,
+            "playerId": "p0",
+            "kind": "turn",
+            "message": "9턴 시작: 철수 (라운드 5)"
+          },
+          {
+            "turn": 9,
+            "round": 5,
+            "playerId": "p0",
+            "kind": "combat",
+            "message": "포격함(5,5) → AI의 전투기(7,7) 피해 3"
+          },
+          {
+            "turn": 9,
+            "round": 5,
+            "playerId": "ai-1",
+            "kind": "destroy",
+            "message": "AI의 전투기(7,7) 파괴"
+          },
+          {
+            "turn": 9,
+            "round": 5,
+            "playerId": "p0",
+            "kind": "income",
+            "message": "수입 +1 (코어 +1), 에너지 5 → 6"
+          },
+          {
+            "turn": 9,
+            "round": 5,
+            "playerId": "p0",
+            "kind": "draw",
+            "message": "카드 1장 드로우 (손패 5장, 덱 15장)"
+          }
+        ]
+      }
+    },
+    {
+      "action": {
+        "type": "PLACE",
+        "playerId": "p0",
+        "cardId": "stealth",
+        "pos": {
+          "x": 9,
+          "y": 9
+        }
+      },
+      "state": {
+        "roomId": "fixture-room",
+        "phase": "playing",
+        "mapId": "binary-star",
+        "board": {
+          "width": 11,
+          "height": 11,
+          "asteroids": [],
+          "veins": [
+            {
+              "x": 8,
+              "y": 2
+            },
+            {
+              "x": 5,
+              "y": 5
+            },
+            {
+              "x": 2,
+              "y": 8
+            }
+          ]
+        },
+        "roundLimit": 20,
+        "round": 5,
+        "turn": 10,
+        "currentPlayerId": "ai-1",
+        "players": [
+          {
+            "id": "p0",
+            "nickname": "철수",
+            "kind": "human",
+            "seat": 0,
+            "isReady": true,
+            "deckChoice": {
+              "buildingId": "refinery",
+              "unitId": "battleship",
+              "magicId": "gravity-wave"
+            },
+            "energy": 1,
+            "deck": [
+              "extractor",
+              "fighter",
+              "turret",
+              "scout",
+              "meteor",
+              "outpost",
+              "fighter",
+              "refinery",
+              "outpost",
+              "battleship",
+              "extractor",
+              "gravity-wave",
+              "cruiser",
+              "scout",
+              "fighter"
+            ],
+            "hand": [
+              "extractor",
+              "artillery",
+              "turret",
+              "artillery"
+            ],
+            "discard": [
+              "outpost",
+              "artillery",
+              "meteor",
+              "stealth"
+            ],
+            "alive": true,
+            "eliminatedOrder": null,
+            "passed": false
+          },
+          {
+            "id": "ai-1",
+            "nickname": "AI",
+            "kind": "ai",
+            "seat": 1,
+            "isReady": true,
+            "deckChoice": {
+              "buildingId": "refinery",
+              "unitId": "battleship",
+              "magicId": "gravity-wave"
+            },
+            "energy": 16,
+            "deck": [
+              "artillery",
+              "outpost",
+              "meteor",
+              "artillery",
+              "outpost",
+              "scout",
+              "extractor",
+              "battleship",
+              "scout",
+              "fighter",
+              "extractor",
+              "extractor",
+              "outpost",
+              "extractor",
+              "fighter"
+            ],
+            "hand": [
+              "scout",
+              "shield",
+              "fighter",
+              "scout",
+              "turret"
+            ],
+            "discard": [
+              "warp-gate",
+              "fighter",
+              "shield",
+              "repair-drone"
+            ],
+            "alive": true,
+            "eliminatedOrder": null,
+            "passed": false
+          }
+        ],
+        "markers": [
+          {
+            "id": "m1",
+            "specId": "core",
+            "kind": "core",
+            "ownerId": "p0",
+            "pos": {
+              "x": 2,
+              "y": 2
+            },
+            "hp": 20,
+            "remainingTurns": null
+          },
+          {
+            "id": "f500",
+            "specId": "extractor",
+            "kind": "building",
+            "ownerId": "ai-1",
+            "pos": {
+              "x": 8,
+              "y": 2
+            },
+            "hp": 2,
+            "remainingTurns": null
+          },
+          {
+            "id": "m3",
+            "specId": "outpost",
+            "kind": "building",
+            "ownerId": "p0",
+            "pos": {
+              "x": 4,
+              "y": 4
+            },
+            "hp": 6,
+            "remainingTurns": null
+          },
+          {
+            "id": "m5",
+            "specId": "artillery",
+            "kind": "unit",
+            "ownerId": "p0",
+            "pos": {
+              "x": 5,
+              "y": 5
+            },
+            "hp": 2,
+            "remainingTurns": null
+          },
+          {
+            "id": "m7",
+            "specId": "repair-drone",
+            "kind": "unit",
+            "ownerId": "ai-1",
+            "pos": {
+              "x": 8,
+              "y": 6
+            },
+            "hp": 2,
+            "remainingTurns": null
+          },
+          {
+            "id": "m2",
+            "specId": "core",
+            "kind": "core",
+            "ownerId": "ai-1",
+            "pos": {
+              "x": 8,
+              "y": 8
+            },
+            "hp": 20,
+            "remainingTurns": null
+          },
+          {
+            "id": "m8",
+            "specId": "stealth",
+            "kind": "unit",
+            "ownerId": "p0",
+            "pos": {
+              "x": 9,
+              "y": 9
+            },
+            "hp": 4,
+            "remainingTurns": null
+          }
+        ],
+        "nextMarkerId": 9,
+        "rngSeed": 3279484486,
+        "result": null,
+        "log": [
+          {
+            "turn": 0,
+            "round": 0,
+            "playerId": "p0",
+            "kind": "system",
+            "message": "철수 입장 (좌석 0)"
+          },
+          {
+            "turn": 0,
+            "round": 0,
+            "playerId": "ai-1",
+            "kind": "system",
+            "message": "AI 입장 (좌석 1)"
+          },
+          {
+            "turn": 1,
+            "round": 1,
+            "playerId": null,
+            "kind": "system",
+            "message": "게임 시작: 쌍성 (11×11, 20라운드)"
+          },
+          {
+            "turn": 1,
+            "round": 1,
+            "playerId": "p0",
+            "kind": "system",
+            "message": "철수 코어 (2,2) 배치, 에너지 3, 손패 4장"
+          },
+          {
+            "turn": 1,
+            "round": 1,
+            "playerId": "ai-1",
+            "kind": "system",
+            "message": "AI 코어 (8,8) 배치, 에너지 3, 손패 4장"
+          },
+          {
+            "turn": 1,
+            "round": 1,
+            "playerId": "p0",
+            "kind": "turn",
+            "message": "1턴 시작: 철수 (라운드 1)"
+          },
+          {
+            "turn": 1,
+            "round": 1,
+            "playerId": "p0",
+            "kind": "income",
+            "message": "수입 +1 (코어 +1), 에너지 3 → 4"
+          },
+          {
+            "turn": 1,
+            "round": 1,
+            "playerId": "p0",
+            "kind": "draw",
+            "message": "카드 1장 드로우 (손패 5장, 덱 18장)"
+          },
+          {
+            "turn": 1,
+            "round": 1,
+            "playerId": "p0",
+            "kind": "place",
+            "message": "철수: (4,4)에 전초기지 배치 (비용 3, 에너지 12 → 9)"
+          },
+          {
+            "turn": 2,
+            "round": 1,
+            "playerId": "ai-1",
+            "kind": "turn",
+            "message": "2턴 시작: AI (라운드 1)"
+          },
+          {
+            "turn": 2,
+            "round": 1,
+            "playerId": "ai-1",
+            "kind": "income",
+            "message": "수입 +3 (채굴기(광맥) +2, 코어 +1), 에너지 12 → 15"
+          },
+          {
+            "turn": 2,
+            "round": 1,
+            "playerId": "ai-1",
+            "kind": "draw",
+            "message": "손패 상한(5장)이라 드로우 생략"
+          },
+          {
+            "turn": 2,
+            "round": 1,
+            "playerId": "ai-1",
+            "kind": "place",
+            "message": "AI: (7,5)에 워프 게이트 배치 (비용 3, 에너지 15 → 12)"
+          },
+          {
+            "turn": 3,
+            "round": 2,
+            "playerId": "p0",
+            "kind": "turn",
+            "message": "3턴 시작: 철수 (라운드 2)"
+          },
+          {
+            "turn": 3,
+            "round": 2,
+            "playerId": "p0",
+            "kind": "income",
+            "message": "수입 +1 (코어 +1), 에너지 9 → 10"
+          },
+          {
+            "turn": 3,
+            "round": 2,
+            "playerId": "p0",
+            "kind": "draw",
+            "message": "카드 1장 드로우 (손패 5장, 덱 17장)"
+          },
+          {
+            "turn": 3,
+            "round": 2,
+            "playerId": "p0",
+            "kind": "place",
+            "message": "철수: (5,5)에 포격함 배치 (비용 4, 에너지 10 → 6)"
+          },
+          {
+            "turn": 4,
+            "round": 2,
+            "playerId": "ai-1",
+            "kind": "turn",
+            "message": "4턴 시작: AI (라운드 2)"
+          },
+          {
+            "turn": 4,
+            "round": 2,
+            "playerId": "ai-1",
+            "kind": "combat",
+            "message": "정찰 드론(6,6) → 철수의 포격함(5,5) 피해 1"
+          },
+          {
+            "turn": 4,
+            "round": 2,
+            "playerId": "ai-1",
+            "kind": "income",
+            "message": "수입 +3 (채굴기(광맥) +2, 코어 +1), 에너지 12 → 15"
+          },
+          {
+            "turn": 4,
+            "round": 2,
+            "playerId": "ai-1",
+            "kind": "draw",
+            "message": "카드 1장 드로우 (손패 5장, 덱 18장)"
+          },
+          {
+            "turn": 4,
+            "round": 2,
+            "playerId": "ai-1",
+            "kind": "place",
+            "message": "AI: (7,7)에 전투기 배치 (비용 3, 에너지 15 → 12)"
+          },
+          {
+            "turn": 5,
+            "round": 3,
+            "playerId": "p0",
+            "kind": "turn",
+            "message": "5턴 시작: 철수 (라운드 3)"
+          },
+          {
+            "turn": 5,
+            "round": 3,
+            "playerId": "p0",
+            "kind": "combat",
+            "message": "포격함(5,5) → AI의 정찰 드론(6,6) 피해 3"
+          },
+          {
+            "turn": 5,
+            "round": 3,
+            "playerId": "ai-1",
+            "kind": "destroy",
+            "message": "AI의 정찰 드론(6,6) 파괴"
+          },
+          {
+            "turn": 5,
+            "round": 3,
+            "playerId": "p0",
+            "kind": "income",
+            "message": "수입 +1 (코어 +1), 에너지 6 → 7"
+          },
+          {
+            "turn": 5,
+            "round": 3,
+            "playerId": "p0",
+            "kind": "draw",
+            "message": "카드 1장 드로우 (손패 5장, 덱 16장)"
+          },
+          {
+            "turn": 5,
+            "round": 3,
+            "playerId": "p0",
+            "kind": "pass",
+            "message": "철수 패스 (연속 1)"
+          },
+          {
+            "turn": 6,
+            "round": 3,
+            "playerId": "ai-1",
+            "kind": "turn",
+            "message": "6턴 시작: AI (라운드 3)"
+          },
+          {
+            "turn": 6,
+            "round": 3,
+            "playerId": "ai-1",
+            "kind": "income",
+            "message": "수입 +3 (채굴기(광맥) +2, 코어 +1), 에너지 12 → 15"
+          },
+          {
+            "turn": 6,
+            "round": 3,
+            "playerId": "ai-1",
+            "kind": "draw",
+            "message": "카드 1장 드로우 (손패 5장, 덱 17장)"
+          },
+          {
+            "turn": 6,
+            "round": 3,
+            "playerId": "ai-1",
+            "kind": "place",
+            "message": "AI: (7,6)에 차폐막 배치 (비용 2, 에너지 15 → 13)"
+          },
+          {
+            "turn": 6,
+            "round": 3,
+            "playerId": "ai-1",
+            "kind": "magic",
+            "message": "차폐막: 대상 없음 체력 +3"
+          },
+          {
+            "turn": 7,
+            "round": 4,
+            "playerId": "p0",
+            "kind": "turn",
+            "message": "7턴 시작: 철수 (라운드 4)"
+          },
+          {
+            "turn": 7,
+            "round": 4,
+            "playerId": "p0",
+            "kind": "combat",
+            "message": "포격함(5,5) → AI의 워프 게이트(7,5) 피해 3"
+          },
+          {
+            "turn": 7,
+            "round": 4,
+            "playerId": "ai-1",
+            "kind": "destroy",
+            "message": "AI의 워프 게이트(7,5) 파괴"
+          },
+          {
+            "turn": 7,
+            "round": 4,
+            "playerId": "p0",
+            "kind": "income",
+            "message": "수입 +1 (코어 +1), 에너지 7 → 8"
+          },
+          {
+            "turn": 7,
+            "round": 4,
+            "playerId": "p0",
+            "kind": "draw",
+            "message": "손패 상한(5장)이라 드로우 생략"
+          },
+          {
+            "turn": 7,
+            "round": 4,
+            "playerId": "p0",
+            "kind": "place",
+            "message": "철수: (6,6)에 유성우 배치 (비용 3, 에너지 8 → 5)"
+          },
+          {
+            "turn": 7,
+            "round": 4,
+            "playerId": "p0",
+            "kind": "magic",
+            "message": "유성우: AI의 전투기(7,7) 피해 3"
+          },
+          {
+            "turn": 8,
+            "round": 4,
+            "playerId": "ai-1",
+            "kind": "turn",
+            "message": "8턴 시작: AI (라운드 4)"
+          },
+          {
+            "turn": 8,
+            "round": 4,
+            "playerId": "ai-1",
+            "kind": "income",
+            "message": "수입 +3 (채굴기(광맥) +2, 코어 +1), 에너지 13 → 16"
+          },
+          {
+            "turn": 8,
+            "round": 4,
+            "playerId": "ai-1",
+            "kind": "draw",
+            "message": "카드 1장 드로우 (손패 5장, 덱 16장)"
+          },
+          {
+            "turn": 8,
+            "round": 4,
+            "playerId": "ai-1",
+            "kind": "place",
+            "message": "AI: (8,6)에 수리 드론 배치 (비용 3, 에너지 16 → 13)"
+          },
+          {
+            "turn": 9,
+            "round": 5,
+            "playerId": "p0",
+            "kind": "turn",
+            "message": "9턴 시작: 철수 (라운드 5)"
+          },
+          {
+            "turn": 9,
+            "round": 5,
+            "playerId": "p0",
+            "kind": "combat",
+            "message": "포격함(5,5) → AI의 전투기(7,7) 피해 3"
+          },
+          {
+            "turn": 9,
+            "round": 5,
+            "playerId": "ai-1",
+            "kind": "destroy",
+            "message": "AI의 전투기(7,7) 파괴"
+          },
+          {
+            "turn": 9,
+            "round": 5,
+            "playerId": "p0",
+            "kind": "income",
+            "message": "수입 +1 (코어 +1), 에너지 5 → 6"
+          },
+          {
+            "turn": 9,
+            "round": 5,
+            "playerId": "p0",
+            "kind": "draw",
+            "message": "카드 1장 드로우 (손패 5장, 덱 15장)"
+          },
+          {
+            "turn": 9,
+            "round": 5,
+            "playerId": "p0",
+            "kind": "place",
+            "message": "철수: (9,9)에 스텔스함 배치 (비용 5, 에너지 6 → 1)"
+          },
+          {
+            "turn": 10,
+            "round": 5,
+            "playerId": "ai-1",
+            "kind": "turn",
+            "message": "10턴 시작: AI (라운드 5)"
+          },
+          {
+            "turn": 10,
+            "round": 5,
+            "playerId": "ai-1",
+            "kind": "income",
+            "message": "수입 +3 (채굴기(광맥) +2, 코어 +1), 에너지 13 → 16"
+          },
+          {
+            "turn": 10,
+            "round": 5,
+            "playerId": "ai-1",
+            "kind": "draw",
+            "message": "카드 1장 드로우 (손패 5장, 덱 15장)"
+          }
+        ]
+      }
+    },
+    {
+      "action": {
+        "type": "PASS",
+        "playerId": "ai-1"
+      },
+      "state": {
+        "roomId": "fixture-room",
+        "phase": "playing",
+        "mapId": "binary-star",
+        "board": {
+          "width": 11,
+          "height": 11,
+          "asteroids": [],
+          "veins": [
+            {
+              "x": 8,
+              "y": 2
+            },
+            {
+              "x": 5,
+              "y": 5
+            },
+            {
+              "x": 2,
+              "y": 8
+            }
+          ]
+        },
+        "roundLimit": 20,
+        "round": 6,
+        "turn": 11,
+        "currentPlayerId": "p0",
+        "players": [
+          {
+            "id": "p0",
+            "nickname": "철수",
+            "kind": "human",
+            "seat": 0,
+            "isReady": true,
+            "deckChoice": {
+              "buildingId": "refinery",
+              "unitId": "battleship",
+              "magicId": "gravity-wave"
+            },
+            "energy": 2,
+            "deck": [
+              "fighter",
+              "turret",
+              "scout",
+              "meteor",
+              "outpost",
+              "fighter",
+              "refinery",
+              "outpost",
+              "battleship",
+              "extractor",
+              "gravity-wave",
+              "cruiser",
+              "scout",
+              "fighter"
+            ],
+            "hand": [
+              "extractor",
+              "artillery",
+              "turret",
+              "artillery",
+              "extractor"
+            ],
+            "discard": [
+              "outpost",
+              "artillery",
+              "meteor",
+              "stealth"
+            ],
+            "alive": true,
+            "eliminatedOrder": null,
+            "passed": false
+          },
+          {
+            "id": "ai-1",
+            "nickname": "AI",
+            "kind": "ai",
+            "seat": 1,
+            "isReady": true,
+            "deckChoice": {
+              "buildingId": "refinery",
+              "unitId": "battleship",
+              "magicId": "gravity-wave"
+            },
+            "energy": 16,
+            "deck": [
+              "artillery",
+              "outpost",
+              "meteor",
+              "artillery",
+              "outpost",
+              "scout",
+              "extractor",
+              "battleship",
+              "scout",
+              "fighter",
+              "extractor",
+              "extractor",
+              "outpost",
+              "extractor",
+              "fighter"
+            ],
+            "hand": [
+              "scout",
+              "shield",
+              "fighter",
+              "scout",
+              "turret"
+            ],
+            "discard": [
+              "warp-gate",
+              "fighter",
+              "shield",
+              "repair-drone"
+            ],
+            "alive": true,
+            "eliminatedOrder": null,
+            "passed": true
+          }
+        ],
+        "markers": [
+          {
+            "id": "m1",
+            "specId": "core",
+            "kind": "core",
+            "ownerId": "p0",
+            "pos": {
+              "x": 2,
+              "y": 2
+            },
+            "hp": 20,
+            "remainingTurns": null
+          },
+          {
+            "id": "m3",
+            "specId": "outpost",
+            "kind": "building",
+            "ownerId": "p0",
+            "pos": {
+              "x": 4,
+              "y": 4
+            },
+            "hp": 6,
+            "remainingTurns": null
+          },
+          {
+            "id": "m5",
+            "specId": "artillery",
+            "kind": "unit",
+            "ownerId": "p0",
+            "pos": {
+              "x": 5,
+              "y": 5
+            },
+            "hp": 2,
+            "remainingTurns": null
+          },
+          {
+            "id": "m7",
+            "specId": "repair-drone",
+            "kind": "unit",
+            "ownerId": "ai-1",
+            "pos": {
+              "x": 8,
+              "y": 6
+            },
+            "hp": 2,
+            "remainingTurns": null
+          },
+          {
+            "id": "m2",
+            "specId": "core",
+            "kind": "core",
+            "ownerId": "ai-1",
+            "pos": {
+              "x": 8,
+              "y": 8
+            },
+            "hp": 17,
+            "remainingTurns": null
+          },
+          {
+            "id": "m8",
+            "specId": "stealth",
+            "kind": "unit",
+            "ownerId": "p0",
+            "pos": {
+              "x": 9,
+              "y": 9
+            },
+            "hp": 4,
+            "remainingTurns": null
+          }
+        ],
+        "nextMarkerId": 9,
+        "rngSeed": 3279484486,
+        "result": null,
+        "log": [
+          {
+            "turn": 0,
+            "round": 0,
+            "playerId": "p0",
+            "kind": "system",
+            "message": "철수 입장 (좌석 0)"
+          },
+          {
+            "turn": 0,
+            "round": 0,
+            "playerId": "ai-1",
+            "kind": "system",
+            "message": "AI 입장 (좌석 1)"
+          },
+          {
+            "turn": 1,
+            "round": 1,
+            "playerId": null,
+            "kind": "system",
+            "message": "게임 시작: 쌍성 (11×11, 20라운드)"
+          },
+          {
+            "turn": 1,
+            "round": 1,
+            "playerId": "p0",
+            "kind": "system",
+            "message": "철수 코어 (2,2) 배치, 에너지 3, 손패 4장"
+          },
+          {
+            "turn": 1,
+            "round": 1,
+            "playerId": "ai-1",
+            "kind": "system",
+            "message": "AI 코어 (8,8) 배치, 에너지 3, 손패 4장"
+          },
+          {
+            "turn": 1,
+            "round": 1,
+            "playerId": "p0",
+            "kind": "turn",
+            "message": "1턴 시작: 철수 (라운드 1)"
+          },
+          {
+            "turn": 1,
+            "round": 1,
+            "playerId": "p0",
+            "kind": "income",
+            "message": "수입 +1 (코어 +1), 에너지 3 → 4"
+          },
+          {
+            "turn": 1,
+            "round": 1,
+            "playerId": "p0",
+            "kind": "draw",
+            "message": "카드 1장 드로우 (손패 5장, 덱 18장)"
+          },
+          {
+            "turn": 1,
+            "round": 1,
+            "playerId": "p0",
+            "kind": "place",
+            "message": "철수: (4,4)에 전초기지 배치 (비용 3, 에너지 12 → 9)"
+          },
+          {
+            "turn": 2,
+            "round": 1,
+            "playerId": "ai-1",
+            "kind": "turn",
+            "message": "2턴 시작: AI (라운드 1)"
+          },
+          {
+            "turn": 2,
+            "round": 1,
+            "playerId": "ai-1",
+            "kind": "income",
+            "message": "수입 +3 (채굴기(광맥) +2, 코어 +1), 에너지 12 → 15"
+          },
+          {
+            "turn": 2,
+            "round": 1,
+            "playerId": "ai-1",
+            "kind": "draw",
+            "message": "손패 상한(5장)이라 드로우 생략"
+          },
+          {
+            "turn": 2,
+            "round": 1,
+            "playerId": "ai-1",
+            "kind": "place",
+            "message": "AI: (7,5)에 워프 게이트 배치 (비용 3, 에너지 15 → 12)"
+          },
+          {
+            "turn": 3,
+            "round": 2,
+            "playerId": "p0",
+            "kind": "turn",
+            "message": "3턴 시작: 철수 (라운드 2)"
+          },
+          {
+            "turn": 3,
+            "round": 2,
+            "playerId": "p0",
+            "kind": "income",
+            "message": "수입 +1 (코어 +1), 에너지 9 → 10"
+          },
+          {
+            "turn": 3,
+            "round": 2,
+            "playerId": "p0",
+            "kind": "draw",
+            "message": "카드 1장 드로우 (손패 5장, 덱 17장)"
+          },
+          {
+            "turn": 3,
+            "round": 2,
+            "playerId": "p0",
+            "kind": "place",
+            "message": "철수: (5,5)에 포격함 배치 (비용 4, 에너지 10 → 6)"
+          },
+          {
+            "turn": 4,
+            "round": 2,
+            "playerId": "ai-1",
+            "kind": "turn",
+            "message": "4턴 시작: AI (라운드 2)"
+          },
+          {
+            "turn": 4,
+            "round": 2,
+            "playerId": "ai-1",
+            "kind": "combat",
+            "message": "정찰 드론(6,6) → 철수의 포격함(5,5) 피해 1"
+          },
+          {
+            "turn": 4,
+            "round": 2,
+            "playerId": "ai-1",
+            "kind": "income",
+            "message": "수입 +3 (채굴기(광맥) +2, 코어 +1), 에너지 12 → 15"
+          },
+          {
+            "turn": 4,
+            "round": 2,
+            "playerId": "ai-1",
+            "kind": "draw",
+            "message": "카드 1장 드로우 (손패 5장, 덱 18장)"
+          },
+          {
+            "turn": 4,
+            "round": 2,
+            "playerId": "ai-1",
+            "kind": "place",
+            "message": "AI: (7,7)에 전투기 배치 (비용 3, 에너지 15 → 12)"
+          },
+          {
+            "turn": 5,
+            "round": 3,
+            "playerId": "p0",
+            "kind": "turn",
+            "message": "5턴 시작: 철수 (라운드 3)"
+          },
+          {
+            "turn": 5,
+            "round": 3,
+            "playerId": "p0",
+            "kind": "combat",
+            "message": "포격함(5,5) → AI의 정찰 드론(6,6) 피해 3"
+          },
+          {
+            "turn": 5,
+            "round": 3,
+            "playerId": "ai-1",
+            "kind": "destroy",
+            "message": "AI의 정찰 드론(6,6) 파괴"
+          },
+          {
+            "turn": 5,
+            "round": 3,
+            "playerId": "p0",
+            "kind": "income",
+            "message": "수입 +1 (코어 +1), 에너지 6 → 7"
+          },
+          {
+            "turn": 5,
+            "round": 3,
+            "playerId": "p0",
+            "kind": "draw",
+            "message": "카드 1장 드로우 (손패 5장, 덱 16장)"
+          },
+          {
+            "turn": 5,
+            "round": 3,
+            "playerId": "p0",
+            "kind": "pass",
+            "message": "철수 패스 (연속 1)"
+          },
+          {
+            "turn": 6,
+            "round": 3,
+            "playerId": "ai-1",
+            "kind": "turn",
+            "message": "6턴 시작: AI (라운드 3)"
+          },
+          {
+            "turn": 6,
+            "round": 3,
+            "playerId": "ai-1",
+            "kind": "income",
+            "message": "수입 +3 (채굴기(광맥) +2, 코어 +1), 에너지 12 → 15"
+          },
+          {
+            "turn": 6,
+            "round": 3,
+            "playerId": "ai-1",
+            "kind": "draw",
+            "message": "카드 1장 드로우 (손패 5장, 덱 17장)"
+          },
+          {
+            "turn": 6,
+            "round": 3,
+            "playerId": "ai-1",
+            "kind": "place",
+            "message": "AI: (7,6)에 차폐막 배치 (비용 2, 에너지 15 → 13)"
+          },
+          {
+            "turn": 6,
+            "round": 3,
+            "playerId": "ai-1",
+            "kind": "magic",
+            "message": "차폐막: 대상 없음 체력 +3"
+          },
+          {
+            "turn": 7,
+            "round": 4,
+            "playerId": "p0",
+            "kind": "turn",
+            "message": "7턴 시작: 철수 (라운드 4)"
+          },
+          {
+            "turn": 7,
+            "round": 4,
+            "playerId": "p0",
+            "kind": "combat",
+            "message": "포격함(5,5) → AI의 워프 게이트(7,5) 피해 3"
+          },
+          {
+            "turn": 7,
+            "round": 4,
+            "playerId": "ai-1",
+            "kind": "destroy",
+            "message": "AI의 워프 게이트(7,5) 파괴"
+          },
+          {
+            "turn": 7,
+            "round": 4,
+            "playerId": "p0",
+            "kind": "income",
+            "message": "수입 +1 (코어 +1), 에너지 7 → 8"
+          },
+          {
+            "turn": 7,
+            "round": 4,
+            "playerId": "p0",
+            "kind": "draw",
+            "message": "손패 상한(5장)이라 드로우 생략"
+          },
+          {
+            "turn": 7,
+            "round": 4,
+            "playerId": "p0",
+            "kind": "place",
+            "message": "철수: (6,6)에 유성우 배치 (비용 3, 에너지 8 → 5)"
+          },
+          {
+            "turn": 7,
+            "round": 4,
+            "playerId": "p0",
+            "kind": "magic",
+            "message": "유성우: AI의 전투기(7,7) 피해 3"
+          },
+          {
+            "turn": 8,
+            "round": 4,
+            "playerId": "ai-1",
+            "kind": "turn",
+            "message": "8턴 시작: AI (라운드 4)"
+          },
+          {
+            "turn": 8,
+            "round": 4,
+            "playerId": "ai-1",
+            "kind": "income",
+            "message": "수입 +3 (채굴기(광맥) +2, 코어 +1), 에너지 13 → 16"
+          },
+          {
+            "turn": 8,
+            "round": 4,
+            "playerId": "ai-1",
+            "kind": "draw",
+            "message": "카드 1장 드로우 (손패 5장, 덱 16장)"
+          },
+          {
+            "turn": 8,
+            "round": 4,
+            "playerId": "ai-1",
+            "kind": "place",
+            "message": "AI: (8,6)에 수리 드론 배치 (비용 3, 에너지 16 → 13)"
+          },
+          {
+            "turn": 9,
+            "round": 5,
+            "playerId": "p0",
+            "kind": "turn",
+            "message": "9턴 시작: 철수 (라운드 5)"
+          },
+          {
+            "turn": 9,
+            "round": 5,
+            "playerId": "p0",
+            "kind": "combat",
+            "message": "포격함(5,5) → AI의 전투기(7,7) 피해 3"
+          },
+          {
+            "turn": 9,
+            "round": 5,
+            "playerId": "ai-1",
+            "kind": "destroy",
+            "message": "AI의 전투기(7,7) 파괴"
+          },
+          {
+            "turn": 9,
+            "round": 5,
+            "playerId": "p0",
+            "kind": "income",
+            "message": "수입 +1 (코어 +1), 에너지 5 → 6"
+          },
+          {
+            "turn": 9,
+            "round": 5,
+            "playerId": "p0",
+            "kind": "draw",
+            "message": "카드 1장 드로우 (손패 5장, 덱 15장)"
+          },
+          {
+            "turn": 9,
+            "round": 5,
+            "playerId": "p0",
+            "kind": "place",
+            "message": "철수: (9,9)에 스텔스함 배치 (비용 5, 에너지 6 → 1)"
+          },
+          {
+            "turn": 10,
+            "round": 5,
+            "playerId": "ai-1",
+            "kind": "turn",
+            "message": "10턴 시작: AI (라운드 5)"
+          },
+          {
+            "turn": 10,
+            "round": 5,
+            "playerId": "ai-1",
+            "kind": "income",
+            "message": "수입 +3 (채굴기(광맥) +2, 코어 +1), 에너지 13 → 16"
+          },
+          {
+            "turn": 10,
+            "round": 5,
+            "playerId": "ai-1",
+            "kind": "draw",
+            "message": "카드 1장 드로우 (손패 5장, 덱 15장)"
+          },
+          {
+            "turn": 10,
+            "round": 5,
+            "playerId": "ai-1",
+            "kind": "pass",
+            "message": "AI 패스 (연속 1)"
+          },
+          {
+            "turn": 11,
+            "round": 6,
+            "playerId": "p0",
+            "kind": "turn",
+            "message": "11턴 시작: 철수 (라운드 6)"
+          },
+          {
+            "turn": 11,
+            "round": 6,
+            "playerId": "p0",
+            "kind": "combat",
+            "message": "포격함(5,5) → AI의 채굴기(8,2) 피해 3"
+          },
+          {
+            "turn": 11,
+            "round": 6,
+            "playerId": "p0",
+            "kind": "combat",
+            "message": "스텔스함(9,9) → AI의 코어(8,8) 피해 3"
+          },
+          {
+            "turn": 11,
+            "round": 6,
+            "playerId": "ai-1",
+            "kind": "destroy",
+            "message": "AI의 채굴기(8,2) 파괴"
+          },
+          {
+            "turn": 11,
+            "round": 6,
+            "playerId": "p0",
+            "kind": "income",
+            "message": "수입 +1 (코어 +1), 에너지 1 → 2"
+          },
+          {
+            "turn": 11,
+            "round": 6,
+            "playerId": "p0",
+            "kind": "draw",
+            "message": "카드 1장 드로우 (손패 5장, 덱 14장)"
+          }
+        ]
+      }
+    },
+    {
+      "action": {
+        "type": "PLACE",
+        "playerId": "p0",
+        "cardId": "extractor",
+        "pos": {
+          "x": 3,
+          "y": 3
+        }
+      },
+      "state": {
+        "roomId": "fixture-room",
+        "phase": "playing",
+        "mapId": "binary-star",
+        "board": {
+          "width": 11,
+          "height": 11,
+          "asteroids": [],
+          "veins": [
+            {
+              "x": 8,
+              "y": 2
+            },
+            {
+              "x": 5,
+              "y": 5
+            },
+            {
+              "x": 2,
+              "y": 8
+            }
+          ]
+        },
+        "roundLimit": 20,
+        "round": 6,
+        "turn": 12,
+        "currentPlayerId": "ai-1",
+        "players": [
+          {
+            "id": "p0",
+            "nickname": "철수",
+            "kind": "human",
+            "seat": 0,
+            "isReady": true,
+            "deckChoice": {
+              "buildingId": "refinery",
+              "unitId": "battleship",
+              "magicId": "gravity-wave"
+            },
+            "energy": 0,
+            "deck": [
+              "fighter",
+              "turret",
+              "scout",
+              "meteor",
+              "outpost",
+              "fighter",
+              "refinery",
+              "outpost",
+              "battleship",
+              "extractor",
+              "gravity-wave",
+              "cruiser",
+              "scout",
+              "fighter"
+            ],
+            "hand": [
+              "artillery",
+              "turret",
+              "artillery",
+              "extractor"
+            ],
+            "discard": [
+              "outpost",
+              "artillery",
+              "meteor",
+              "stealth",
+              "extractor"
+            ],
+            "alive": true,
+            "eliminatedOrder": null,
+            "passed": false
+          },
+          {
+            "id": "ai-1",
+            "nickname": "AI",
+            "kind": "ai",
+            "seat": 1,
+            "isReady": true,
+            "deckChoice": {
+              "buildingId": "refinery",
+              "unitId": "battleship",
+              "magicId": "gravity-wave"
+            },
+            "energy": 17,
+            "deck": [
+              "artillery",
+              "outpost",
+              "meteor",
+              "artillery",
+              "outpost",
+              "scout",
+              "extractor",
+              "battleship",
+              "scout",
+              "fighter",
+              "extractor",
+              "extractor",
+              "outpost",
+              "extractor",
+              "fighter"
+            ],
+            "hand": [
+              "scout",
+              "shield",
+              "fighter",
+              "scout",
+              "turret"
+            ],
+            "discard": [
+              "warp-gate",
+              "fighter",
+              "shield",
+              "repair-drone"
+            ],
+            "alive": true,
+            "eliminatedOrder": null,
+            "passed": false
+          }
+        ],
+        "markers": [
+          {
+            "id": "m1",
+            "specId": "core",
+            "kind": "core",
+            "ownerId": "p0",
+            "pos": {
+              "x": 2,
+              "y": 2
+            },
+            "hp": 20,
+            "remainingTurns": null
+          },
+          {
+            "id": "m9",
+            "specId": "extractor",
+            "kind": "building",
+            "ownerId": "p0",
+            "pos": {
+              "x": 3,
+              "y": 3
+            },
+            "hp": 4,
+            "remainingTurns": null
+          },
+          {
+            "id": "m3",
+            "specId": "outpost",
+            "kind": "building",
+            "ownerId": "p0",
+            "pos": {
+              "x": 4,
+              "y": 4
+            },
+            "hp": 6,
+            "remainingTurns": null
+          },
+          {
+            "id": "m5",
+            "specId": "artillery",
+            "kind": "unit",
+            "ownerId": "p0",
+            "pos": {
+              "x": 5,
+              "y": 5
+            },
+            "hp": 2,
+            "remainingTurns": null
+          },
+          {
+            "id": "m7",
+            "specId": "repair-drone",
+            "kind": "unit",
+            "ownerId": "ai-1",
+            "pos": {
+              "x": 8,
+              "y": 6
+            },
+            "hp": 2,
+            "remainingTurns": null
+          },
+          {
+            "id": "m2",
+            "specId": "core",
+            "kind": "core",
+            "ownerId": "ai-1",
+            "pos": {
+              "x": 8,
+              "y": 8
+            },
+            "hp": 17,
+            "remainingTurns": null
+          },
+          {
+            "id": "m8",
+            "specId": "stealth",
+            "kind": "unit",
+            "ownerId": "p0",
+            "pos": {
+              "x": 9,
+              "y": 9
+            },
+            "hp": 4,
+            "remainingTurns": null
+          }
+        ],
+        "nextMarkerId": 10,
+        "rngSeed": 3279484486,
+        "result": null,
+        "log": [
+          {
+            "turn": 0,
+            "round": 0,
+            "playerId": "p0",
+            "kind": "system",
+            "message": "철수 입장 (좌석 0)"
+          },
+          {
+            "turn": 0,
+            "round": 0,
+            "playerId": "ai-1",
+            "kind": "system",
+            "message": "AI 입장 (좌석 1)"
+          },
+          {
+            "turn": 1,
+            "round": 1,
+            "playerId": null,
+            "kind": "system",
+            "message": "게임 시작: 쌍성 (11×11, 20라운드)"
+          },
+          {
+            "turn": 1,
+            "round": 1,
+            "playerId": "p0",
+            "kind": "system",
+            "message": "철수 코어 (2,2) 배치, 에너지 3, 손패 4장"
+          },
+          {
+            "turn": 1,
+            "round": 1,
+            "playerId": "ai-1",
+            "kind": "system",
+            "message": "AI 코어 (8,8) 배치, 에너지 3, 손패 4장"
+          },
+          {
+            "turn": 1,
+            "round": 1,
+            "playerId": "p0",
+            "kind": "turn",
+            "message": "1턴 시작: 철수 (라운드 1)"
+          },
+          {
+            "turn": 1,
+            "round": 1,
+            "playerId": "p0",
+            "kind": "income",
+            "message": "수입 +1 (코어 +1), 에너지 3 → 4"
+          },
+          {
+            "turn": 1,
+            "round": 1,
+            "playerId": "p0",
+            "kind": "draw",
+            "message": "카드 1장 드로우 (손패 5장, 덱 18장)"
+          },
+          {
+            "turn": 1,
+            "round": 1,
+            "playerId": "p0",
+            "kind": "place",
+            "message": "철수: (4,4)에 전초기지 배치 (비용 3, 에너지 12 → 9)"
+          },
+          {
+            "turn": 2,
+            "round": 1,
+            "playerId": "ai-1",
+            "kind": "turn",
+            "message": "2턴 시작: AI (라운드 1)"
+          },
+          {
+            "turn": 2,
+            "round": 1,
+            "playerId": "ai-1",
+            "kind": "income",
+            "message": "수입 +3 (채굴기(광맥) +2, 코어 +1), 에너지 12 → 15"
+          },
+          {
+            "turn": 2,
+            "round": 1,
+            "playerId": "ai-1",
+            "kind": "draw",
+            "message": "손패 상한(5장)이라 드로우 생략"
+          },
+          {
+            "turn": 2,
+            "round": 1,
+            "playerId": "ai-1",
+            "kind": "place",
+            "message": "AI: (7,5)에 워프 게이트 배치 (비용 3, 에너지 15 → 12)"
+          },
+          {
+            "turn": 3,
+            "round": 2,
+            "playerId": "p0",
+            "kind": "turn",
+            "message": "3턴 시작: 철수 (라운드 2)"
+          },
+          {
+            "turn": 3,
+            "round": 2,
+            "playerId": "p0",
+            "kind": "income",
+            "message": "수입 +1 (코어 +1), 에너지 9 → 10"
+          },
+          {
+            "turn": 3,
+            "round": 2,
+            "playerId": "p0",
+            "kind": "draw",
+            "message": "카드 1장 드로우 (손패 5장, 덱 17장)"
+          },
+          {
+            "turn": 3,
+            "round": 2,
+            "playerId": "p0",
+            "kind": "place",
+            "message": "철수: (5,5)에 포격함 배치 (비용 4, 에너지 10 → 6)"
+          },
+          {
+            "turn": 4,
+            "round": 2,
+            "playerId": "ai-1",
+            "kind": "turn",
+            "message": "4턴 시작: AI (라운드 2)"
+          },
+          {
+            "turn": 4,
+            "round": 2,
+            "playerId": "ai-1",
+            "kind": "combat",
+            "message": "정찰 드론(6,6) → 철수의 포격함(5,5) 피해 1"
+          },
+          {
+            "turn": 4,
+            "round": 2,
+            "playerId": "ai-1",
+            "kind": "income",
+            "message": "수입 +3 (채굴기(광맥) +2, 코어 +1), 에너지 12 → 15"
+          },
+          {
+            "turn": 4,
+            "round": 2,
+            "playerId": "ai-1",
+            "kind": "draw",
+            "message": "카드 1장 드로우 (손패 5장, 덱 18장)"
+          },
+          {
+            "turn": 4,
+            "round": 2,
+            "playerId": "ai-1",
+            "kind": "place",
+            "message": "AI: (7,7)에 전투기 배치 (비용 3, 에너지 15 → 12)"
+          },
+          {
+            "turn": 5,
+            "round": 3,
+            "playerId": "p0",
+            "kind": "turn",
+            "message": "5턴 시작: 철수 (라운드 3)"
+          },
+          {
+            "turn": 5,
+            "round": 3,
+            "playerId": "p0",
+            "kind": "combat",
+            "message": "포격함(5,5) → AI의 정찰 드론(6,6) 피해 3"
+          },
+          {
+            "turn": 5,
+            "round": 3,
+            "playerId": "ai-1",
+            "kind": "destroy",
+            "message": "AI의 정찰 드론(6,6) 파괴"
+          },
+          {
+            "turn": 5,
+            "round": 3,
+            "playerId": "p0",
+            "kind": "income",
+            "message": "수입 +1 (코어 +1), 에너지 6 → 7"
+          },
+          {
+            "turn": 5,
+            "round": 3,
+            "playerId": "p0",
+            "kind": "draw",
+            "message": "카드 1장 드로우 (손패 5장, 덱 16장)"
+          },
+          {
+            "turn": 5,
+            "round": 3,
+            "playerId": "p0",
+            "kind": "pass",
+            "message": "철수 패스 (연속 1)"
+          },
+          {
+            "turn": 6,
+            "round": 3,
+            "playerId": "ai-1",
+            "kind": "turn",
+            "message": "6턴 시작: AI (라운드 3)"
+          },
+          {
+            "turn": 6,
+            "round": 3,
+            "playerId": "ai-1",
+            "kind": "income",
+            "message": "수입 +3 (채굴기(광맥) +2, 코어 +1), 에너지 12 → 15"
+          },
+          {
+            "turn": 6,
+            "round": 3,
+            "playerId": "ai-1",
+            "kind": "draw",
+            "message": "카드 1장 드로우 (손패 5장, 덱 17장)"
+          },
+          {
+            "turn": 6,
+            "round": 3,
+            "playerId": "ai-1",
+            "kind": "place",
+            "message": "AI: (7,6)에 차폐막 배치 (비용 2, 에너지 15 → 13)"
+          },
+          {
+            "turn": 6,
+            "round": 3,
+            "playerId": "ai-1",
+            "kind": "magic",
+            "message": "차폐막: 대상 없음 체력 +3"
+          },
+          {
+            "turn": 7,
+            "round": 4,
+            "playerId": "p0",
+            "kind": "turn",
+            "message": "7턴 시작: 철수 (라운드 4)"
+          },
+          {
+            "turn": 7,
+            "round": 4,
+            "playerId": "p0",
+            "kind": "combat",
+            "message": "포격함(5,5) → AI의 워프 게이트(7,5) 피해 3"
+          },
+          {
+            "turn": 7,
+            "round": 4,
+            "playerId": "ai-1",
+            "kind": "destroy",
+            "message": "AI의 워프 게이트(7,5) 파괴"
+          },
+          {
+            "turn": 7,
+            "round": 4,
+            "playerId": "p0",
+            "kind": "income",
+            "message": "수입 +1 (코어 +1), 에너지 7 → 8"
+          },
+          {
+            "turn": 7,
+            "round": 4,
+            "playerId": "p0",
+            "kind": "draw",
+            "message": "손패 상한(5장)이라 드로우 생략"
+          },
+          {
+            "turn": 7,
+            "round": 4,
+            "playerId": "p0",
+            "kind": "place",
+            "message": "철수: (6,6)에 유성우 배치 (비용 3, 에너지 8 → 5)"
+          },
+          {
+            "turn": 7,
+            "round": 4,
+            "playerId": "p0",
+            "kind": "magic",
+            "message": "유성우: AI의 전투기(7,7) 피해 3"
+          },
+          {
+            "turn": 8,
+            "round": 4,
+            "playerId": "ai-1",
+            "kind": "turn",
+            "message": "8턴 시작: AI (라운드 4)"
+          },
+          {
+            "turn": 8,
+            "round": 4,
+            "playerId": "ai-1",
+            "kind": "income",
+            "message": "수입 +3 (채굴기(광맥) +2, 코어 +1), 에너지 13 → 16"
+          },
+          {
+            "turn": 8,
+            "round": 4,
+            "playerId": "ai-1",
+            "kind": "draw",
+            "message": "카드 1장 드로우 (손패 5장, 덱 16장)"
+          },
+          {
+            "turn": 8,
+            "round": 4,
+            "playerId": "ai-1",
+            "kind": "place",
+            "message": "AI: (8,6)에 수리 드론 배치 (비용 3, 에너지 16 → 13)"
+          },
+          {
+            "turn": 9,
+            "round": 5,
+            "playerId": "p0",
+            "kind": "turn",
+            "message": "9턴 시작: 철수 (라운드 5)"
+          },
+          {
+            "turn": 9,
+            "round": 5,
+            "playerId": "p0",
+            "kind": "combat",
+            "message": "포격함(5,5) → AI의 전투기(7,7) 피해 3"
+          },
+          {
+            "turn": 9,
+            "round": 5,
+            "playerId": "ai-1",
+            "kind": "destroy",
+            "message": "AI의 전투기(7,7) 파괴"
+          },
+          {
+            "turn": 9,
+            "round": 5,
+            "playerId": "p0",
+            "kind": "income",
+            "message": "수입 +1 (코어 +1), 에너지 5 → 6"
+          },
+          {
+            "turn": 9,
+            "round": 5,
+            "playerId": "p0",
+            "kind": "draw",
+            "message": "카드 1장 드로우 (손패 5장, 덱 15장)"
+          },
+          {
+            "turn": 9,
+            "round": 5,
+            "playerId": "p0",
+            "kind": "place",
+            "message": "철수: (9,9)에 스텔스함 배치 (비용 5, 에너지 6 → 1)"
+          },
+          {
+            "turn": 10,
+            "round": 5,
+            "playerId": "ai-1",
+            "kind": "turn",
+            "message": "10턴 시작: AI (라운드 5)"
+          },
+          {
+            "turn": 10,
+            "round": 5,
+            "playerId": "ai-1",
+            "kind": "income",
+            "message": "수입 +3 (채굴기(광맥) +2, 코어 +1), 에너지 13 → 16"
+          },
+          {
+            "turn": 10,
+            "round": 5,
+            "playerId": "ai-1",
+            "kind": "draw",
+            "message": "카드 1장 드로우 (손패 5장, 덱 15장)"
+          },
+          {
+            "turn": 10,
+            "round": 5,
+            "playerId": "ai-1",
+            "kind": "pass",
+            "message": "AI 패스 (연속 1)"
+          },
+          {
+            "turn": 11,
+            "round": 6,
+            "playerId": "p0",
+            "kind": "turn",
+            "message": "11턴 시작: 철수 (라운드 6)"
+          },
+          {
+            "turn": 11,
+            "round": 6,
+            "playerId": "p0",
+            "kind": "combat",
+            "message": "포격함(5,5) → AI의 채굴기(8,2) 피해 3"
+          },
+          {
+            "turn": 11,
+            "round": 6,
+            "playerId": "p0",
+            "kind": "combat",
+            "message": "스텔스함(9,9) → AI의 코어(8,8) 피해 3"
+          },
+          {
+            "turn": 11,
+            "round": 6,
+            "playerId": "ai-1",
+            "kind": "destroy",
+            "message": "AI의 채굴기(8,2) 파괴"
+          },
+          {
+            "turn": 11,
+            "round": 6,
+            "playerId": "p0",
+            "kind": "income",
+            "message": "수입 +1 (코어 +1), 에너지 1 → 2"
+          },
+          {
+            "turn": 11,
+            "round": 6,
+            "playerId": "p0",
+            "kind": "draw",
+            "message": "카드 1장 드로우 (손패 5장, 덱 14장)"
+          },
+          {
+            "turn": 11,
+            "round": 6,
+            "playerId": "p0",
+            "kind": "place",
+            "message": "철수: (3,3)에 채굴기 배치 (비용 2, 에너지 2 → 0)"
+          },
+          {
+            "turn": 12,
+            "round": 6,
+            "playerId": "ai-1",
+            "kind": "turn",
+            "message": "12턴 시작: AI (라운드 6)"
+          },
+          {
+            "turn": 12,
+            "round": 6,
+            "playerId": "ai-1",
+            "kind": "income",
+            "message": "수입 +1 (코어 +1), 에너지 16 → 17"
+          },
+          {
+            "turn": 12,
+            "round": 6,
+            "playerId": "ai-1",
+            "kind": "draw",
+            "message": "손패 상한(5장)이라 드로우 생략"
+          }
+        ]
+      }
+    },
+    {
+      "action": {
+        "type": "SURRENDER",
+        "playerId": "ai-1"
+      },
+      "state": {
+        "roomId": "fixture-room",
+        "phase": "finished",
+        "mapId": "binary-star",
+        "board": {
+          "width": 11,
+          "height": 11,
+          "asteroids": [],
+          "veins": [
+            {
+              "x": 8,
+              "y": 2
+            },
+            {
+              "x": 5,
+              "y": 5
+            },
+            {
+              "x": 2,
+              "y": 8
+            }
+          ]
+        },
+        "roundLimit": 20,
+        "round": 6,
+        "turn": 12,
+        "currentPlayerId": null,
+        "players": [
+          {
+            "id": "p0",
+            "nickname": "철수",
+            "kind": "human",
+            "seat": 0,
+            "isReady": true,
+            "deckChoice": {
+              "buildingId": "refinery",
+              "unitId": "battleship",
+              "magicId": "gravity-wave"
+            },
+            "energy": 0,
+            "deck": [
+              "fighter",
+              "turret",
+              "scout",
+              "meteor",
+              "outpost",
+              "fighter",
+              "refinery",
+              "outpost",
+              "battleship",
+              "extractor",
+              "gravity-wave",
+              "cruiser",
+              "scout",
+              "fighter"
+            ],
+            "hand": [
+              "artillery",
+              "turret",
+              "artillery",
+              "extractor"
+            ],
+            "discard": [
+              "outpost",
+              "artillery",
+              "meteor",
+              "stealth",
+              "extractor"
+            ],
+            "alive": true,
+            "eliminatedOrder": null,
+            "passed": false
+          },
+          {
+            "id": "ai-1",
+            "nickname": "AI",
+            "kind": "ai",
+            "seat": 1,
+            "isReady": true,
+            "deckChoice": {
+              "buildingId": "refinery",
+              "unitId": "battleship",
+              "magicId": "gravity-wave"
+            },
+            "energy": 17,
+            "deck": [
+              "artillery",
+              "outpost",
+              "meteor",
+              "artillery",
+              "outpost",
+              "scout",
+              "extractor",
+              "battleship",
+              "scout",
+              "fighter",
+              "extractor",
+              "extractor",
+              "outpost",
+              "extractor",
+              "fighter"
+            ],
+            "hand": [
+              "scout",
+              "shield",
+              "fighter",
+              "scout",
+              "turret"
+            ],
+            "discard": [
+              "warp-gate",
+              "fighter",
+              "shield",
+              "repair-drone"
+            ],
+            "alive": false,
+            "eliminatedOrder": 0,
+            "passed": false
+          }
+        ],
+        "markers": [
+          {
+            "id": "m1",
+            "specId": "core",
+            "kind": "core",
+            "ownerId": "p0",
+            "pos": {
+              "x": 2,
+              "y": 2
+            },
+            "hp": 20,
+            "remainingTurns": null
+          },
+          {
+            "id": "m9",
+            "specId": "extractor",
+            "kind": "building",
+            "ownerId": "p0",
+            "pos": {
+              "x": 3,
+              "y": 3
+            },
+            "hp": 4,
+            "remainingTurns": null
+          },
+          {
+            "id": "m3",
+            "specId": "outpost",
+            "kind": "building",
+            "ownerId": "p0",
+            "pos": {
+              "x": 4,
+              "y": 4
+            },
+            "hp": 6,
+            "remainingTurns": null
+          },
+          {
+            "id": "m5",
+            "specId": "artillery",
+            "kind": "unit",
+            "ownerId": "p0",
+            "pos": {
+              "x": 5,
+              "y": 5
+            },
+            "hp": 2,
+            "remainingTurns": null
+          },
+          {
+            "id": "m8",
+            "specId": "stealth",
+            "kind": "unit",
+            "ownerId": "p0",
+            "pos": {
+              "x": 9,
+              "y": 9
+            },
+            "hp": 4,
+            "remainingTurns": null
+          }
+        ],
+        "nextMarkerId": 10,
+        "rngSeed": 3279484486,
+        "result": {
+          "reason": "last-survivor",
+          "ranking": [
+            "p0",
+            "ai-1"
+          ],
+          "scores": {
+            "p0": {
+              "territory": 50,
+              "markers": 7,
+              "total": 57
+            },
+            "ai-1": {
+              "territory": 0,
+              "markers": 0,
+              "total": 0
+            }
+          }
+        },
+        "log": [
+          {
+            "turn": 0,
+            "round": 0,
+            "playerId": "p0",
+            "kind": "system",
+            "message": "철수 입장 (좌석 0)"
+          },
+          {
+            "turn": 0,
+            "round": 0,
+            "playerId": "ai-1",
+            "kind": "system",
+            "message": "AI 입장 (좌석 1)"
+          },
+          {
+            "turn": 1,
+            "round": 1,
+            "playerId": null,
+            "kind": "system",
+            "message": "게임 시작: 쌍성 (11×11, 20라운드)"
+          },
+          {
+            "turn": 1,
+            "round": 1,
+            "playerId": "p0",
+            "kind": "system",
+            "message": "철수 코어 (2,2) 배치, 에너지 3, 손패 4장"
+          },
+          {
+            "turn": 1,
+            "round": 1,
+            "playerId": "ai-1",
+            "kind": "system",
+            "message": "AI 코어 (8,8) 배치, 에너지 3, 손패 4장"
+          },
+          {
+            "turn": 1,
+            "round": 1,
+            "playerId": "p0",
+            "kind": "turn",
+            "message": "1턴 시작: 철수 (라운드 1)"
+          },
+          {
+            "turn": 1,
+            "round": 1,
+            "playerId": "p0",
+            "kind": "income",
+            "message": "수입 +1 (코어 +1), 에너지 3 → 4"
+          },
+          {
+            "turn": 1,
+            "round": 1,
+            "playerId": "p0",
+            "kind": "draw",
+            "message": "카드 1장 드로우 (손패 5장, 덱 18장)"
+          },
+          {
+            "turn": 1,
+            "round": 1,
+            "playerId": "p0",
+            "kind": "place",
+            "message": "철수: (4,4)에 전초기지 배치 (비용 3, 에너지 12 → 9)"
+          },
+          {
+            "turn": 2,
+            "round": 1,
+            "playerId": "ai-1",
+            "kind": "turn",
+            "message": "2턴 시작: AI (라운드 1)"
+          },
+          {
+            "turn": 2,
+            "round": 1,
+            "playerId": "ai-1",
+            "kind": "income",
+            "message": "수입 +3 (채굴기(광맥) +2, 코어 +1), 에너지 12 → 15"
+          },
+          {
+            "turn": 2,
+            "round": 1,
+            "playerId": "ai-1",
+            "kind": "draw",
+            "message": "손패 상한(5장)이라 드로우 생략"
+          },
+          {
+            "turn": 2,
+            "round": 1,
+            "playerId": "ai-1",
+            "kind": "place",
+            "message": "AI: (7,5)에 워프 게이트 배치 (비용 3, 에너지 15 → 12)"
+          },
+          {
+            "turn": 3,
+            "round": 2,
+            "playerId": "p0",
+            "kind": "turn",
+            "message": "3턴 시작: 철수 (라운드 2)"
+          },
+          {
+            "turn": 3,
+            "round": 2,
+            "playerId": "p0",
+            "kind": "income",
+            "message": "수입 +1 (코어 +1), 에너지 9 → 10"
+          },
+          {
+            "turn": 3,
+            "round": 2,
+            "playerId": "p0",
+            "kind": "draw",
+            "message": "카드 1장 드로우 (손패 5장, 덱 17장)"
+          },
+          {
+            "turn": 3,
+            "round": 2,
+            "playerId": "p0",
+            "kind": "place",
+            "message": "철수: (5,5)에 포격함 배치 (비용 4, 에너지 10 → 6)"
+          },
+          {
+            "turn": 4,
+            "round": 2,
+            "playerId": "ai-1",
+            "kind": "turn",
+            "message": "4턴 시작: AI (라운드 2)"
+          },
+          {
+            "turn": 4,
+            "round": 2,
+            "playerId": "ai-1",
+            "kind": "combat",
+            "message": "정찰 드론(6,6) → 철수의 포격함(5,5) 피해 1"
+          },
+          {
+            "turn": 4,
+            "round": 2,
+            "playerId": "ai-1",
+            "kind": "income",
+            "message": "수입 +3 (채굴기(광맥) +2, 코어 +1), 에너지 12 → 15"
+          },
+          {
+            "turn": 4,
+            "round": 2,
+            "playerId": "ai-1",
+            "kind": "draw",
+            "message": "카드 1장 드로우 (손패 5장, 덱 18장)"
+          },
+          {
+            "turn": 4,
+            "round": 2,
+            "playerId": "ai-1",
+            "kind": "place",
+            "message": "AI: (7,7)에 전투기 배치 (비용 3, 에너지 15 → 12)"
+          },
+          {
+            "turn": 5,
+            "round": 3,
+            "playerId": "p0",
+            "kind": "turn",
+            "message": "5턴 시작: 철수 (라운드 3)"
+          },
+          {
+            "turn": 5,
+            "round": 3,
+            "playerId": "p0",
+            "kind": "combat",
+            "message": "포격함(5,5) → AI의 정찰 드론(6,6) 피해 3"
+          },
+          {
+            "turn": 5,
+            "round": 3,
+            "playerId": "ai-1",
+            "kind": "destroy",
+            "message": "AI의 정찰 드론(6,6) 파괴"
+          },
+          {
+            "turn": 5,
+            "round": 3,
+            "playerId": "p0",
+            "kind": "income",
+            "message": "수입 +1 (코어 +1), 에너지 6 → 7"
+          },
+          {
+            "turn": 5,
+            "round": 3,
+            "playerId": "p0",
+            "kind": "draw",
+            "message": "카드 1장 드로우 (손패 5장, 덱 16장)"
+          },
+          {
+            "turn": 5,
+            "round": 3,
+            "playerId": "p0",
+            "kind": "pass",
+            "message": "철수 패스 (연속 1)"
+          },
+          {
+            "turn": 6,
+            "round": 3,
+            "playerId": "ai-1",
+            "kind": "turn",
+            "message": "6턴 시작: AI (라운드 3)"
+          },
+          {
+            "turn": 6,
+            "round": 3,
+            "playerId": "ai-1",
+            "kind": "income",
+            "message": "수입 +3 (채굴기(광맥) +2, 코어 +1), 에너지 12 → 15"
+          },
+          {
+            "turn": 6,
+            "round": 3,
+            "playerId": "ai-1",
+            "kind": "draw",
+            "message": "카드 1장 드로우 (손패 5장, 덱 17장)"
+          },
+          {
+            "turn": 6,
+            "round": 3,
+            "playerId": "ai-1",
+            "kind": "place",
+            "message": "AI: (7,6)에 차폐막 배치 (비용 2, 에너지 15 → 13)"
+          },
+          {
+            "turn": 6,
+            "round": 3,
+            "playerId": "ai-1",
+            "kind": "magic",
+            "message": "차폐막: 대상 없음 체력 +3"
+          },
+          {
+            "turn": 7,
+            "round": 4,
+            "playerId": "p0",
+            "kind": "turn",
+            "message": "7턴 시작: 철수 (라운드 4)"
+          },
+          {
+            "turn": 7,
+            "round": 4,
+            "playerId": "p0",
+            "kind": "combat",
+            "message": "포격함(5,5) → AI의 워프 게이트(7,5) 피해 3"
+          },
+          {
+            "turn": 7,
+            "round": 4,
+            "playerId": "ai-1",
+            "kind": "destroy",
+            "message": "AI의 워프 게이트(7,5) 파괴"
+          },
+          {
+            "turn": 7,
+            "round": 4,
+            "playerId": "p0",
+            "kind": "income",
+            "message": "수입 +1 (코어 +1), 에너지 7 → 8"
+          },
+          {
+            "turn": 7,
+            "round": 4,
+            "playerId": "p0",
+            "kind": "draw",
+            "message": "손패 상한(5장)이라 드로우 생략"
+          },
+          {
+            "turn": 7,
+            "round": 4,
+            "playerId": "p0",
+            "kind": "place",
+            "message": "철수: (6,6)에 유성우 배치 (비용 3, 에너지 8 → 5)"
+          },
+          {
+            "turn": 7,
+            "round": 4,
+            "playerId": "p0",
+            "kind": "magic",
+            "message": "유성우: AI의 전투기(7,7) 피해 3"
+          },
+          {
+            "turn": 8,
+            "round": 4,
+            "playerId": "ai-1",
+            "kind": "turn",
+            "message": "8턴 시작: AI (라운드 4)"
+          },
+          {
+            "turn": 8,
+            "round": 4,
+            "playerId": "ai-1",
+            "kind": "income",
+            "message": "수입 +3 (채굴기(광맥) +2, 코어 +1), 에너지 13 → 16"
+          },
+          {
+            "turn": 8,
+            "round": 4,
+            "playerId": "ai-1",
+            "kind": "draw",
+            "message": "카드 1장 드로우 (손패 5장, 덱 16장)"
+          },
+          {
+            "turn": 8,
+            "round": 4,
+            "playerId": "ai-1",
+            "kind": "place",
+            "message": "AI: (8,6)에 수리 드론 배치 (비용 3, 에너지 16 → 13)"
+          },
+          {
+            "turn": 9,
+            "round": 5,
+            "playerId": "p0",
+            "kind": "turn",
+            "message": "9턴 시작: 철수 (라운드 5)"
+          },
+          {
+            "turn": 9,
+            "round": 5,
+            "playerId": "p0",
+            "kind": "combat",
+            "message": "포격함(5,5) → AI의 전투기(7,7) 피해 3"
+          },
+          {
+            "turn": 9,
+            "round": 5,
+            "playerId": "ai-1",
+            "kind": "destroy",
+            "message": "AI의 전투기(7,7) 파괴"
+          },
+          {
+            "turn": 9,
+            "round": 5,
+            "playerId": "p0",
+            "kind": "income",
+            "message": "수입 +1 (코어 +1), 에너지 5 → 6"
+          },
+          {
+            "turn": 9,
+            "round": 5,
+            "playerId": "p0",
+            "kind": "draw",
+            "message": "카드 1장 드로우 (손패 5장, 덱 15장)"
+          },
+          {
+            "turn": 9,
+            "round": 5,
+            "playerId": "p0",
+            "kind": "place",
+            "message": "철수: (9,9)에 스텔스함 배치 (비용 5, 에너지 6 → 1)"
+          },
+          {
+            "turn": 10,
+            "round": 5,
+            "playerId": "ai-1",
+            "kind": "turn",
+            "message": "10턴 시작: AI (라운드 5)"
+          },
+          {
+            "turn": 10,
+            "round": 5,
+            "playerId": "ai-1",
+            "kind": "income",
+            "message": "수입 +3 (채굴기(광맥) +2, 코어 +1), 에너지 13 → 16"
+          },
+          {
+            "turn": 10,
+            "round": 5,
+            "playerId": "ai-1",
+            "kind": "draw",
+            "message": "카드 1장 드로우 (손패 5장, 덱 15장)"
+          },
+          {
+            "turn": 10,
+            "round": 5,
+            "playerId": "ai-1",
+            "kind": "pass",
+            "message": "AI 패스 (연속 1)"
+          },
+          {
+            "turn": 11,
+            "round": 6,
+            "playerId": "p0",
+            "kind": "turn",
+            "message": "11턴 시작: 철수 (라운드 6)"
+          },
+          {
+            "turn": 11,
+            "round": 6,
+            "playerId": "p0",
+            "kind": "combat",
+            "message": "포격함(5,5) → AI의 채굴기(8,2) 피해 3"
+          },
+          {
+            "turn": 11,
+            "round": 6,
+            "playerId": "p0",
+            "kind": "combat",
+            "message": "스텔스함(9,9) → AI의 코어(8,8) 피해 3"
+          },
+          {
+            "turn": 11,
+            "round": 6,
+            "playerId": "ai-1",
+            "kind": "destroy",
+            "message": "AI의 채굴기(8,2) 파괴"
+          },
+          {
+            "turn": 11,
+            "round": 6,
+            "playerId": "p0",
+            "kind": "income",
+            "message": "수입 +1 (코어 +1), 에너지 1 → 2"
+          },
+          {
+            "turn": 11,
+            "round": 6,
+            "playerId": "p0",
+            "kind": "draw",
+            "message": "카드 1장 드로우 (손패 5장, 덱 14장)"
+          },
+          {
+            "turn": 11,
+            "round": 6,
+            "playerId": "p0",
+            "kind": "place",
+            "message": "철수: (3,3)에 채굴기 배치 (비용 2, 에너지 2 → 0)"
+          },
+          {
+            "turn": 12,
+            "round": 6,
+            "playerId": "ai-1",
+            "kind": "turn",
+            "message": "12턴 시작: AI (라운드 6)"
+          },
+          {
+            "turn": 12,
+            "round": 6,
+            "playerId": "ai-1",
+            "kind": "income",
+            "message": "수입 +1 (코어 +1), 에너지 16 → 17"
+          },
+          {
+            "turn": 12,
+            "round": 6,
+            "playerId": "ai-1",
+            "kind": "draw",
+            "message": "손패 상한(5장)이라 드로우 생략"
+          },
+          {
+            "turn": 12,
+            "round": 6,
+            "playerId": "ai-1",
+            "kind": "surrender",
+            "message": "AI 기권"
+          },
+          {
+            "turn": 12,
+            "round": 6,
+            "playerId": "ai-1",
+            "kind": "eliminate",
+            "message": "AI 탈락 (기권). 남은 마커 제거"
+          },
+          {
+            "turn": 12,
+            "round": 6,
+            "playerId": "p0",
+            "kind": "result",
+            "message": "게임 종료 (최후 생존): 1위 철수 57점, 2위 AI 0점"
+          }
+        ]
+      }
+    }
+  ]
+}

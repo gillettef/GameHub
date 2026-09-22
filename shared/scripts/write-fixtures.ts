@@ -2,37 +2,94 @@
  * shared/fixtures/*.json 을 생성한다. TS 엔진 출력이 기준이고,
  * Python(ai/tests) 은 이 파일을 읽어 모델·규칙 일치를 검증한다.
  *
- *   npx tsx shared/scripts/write-fixtures.ts
+ *   npm run fixtures   (= npx tsx shared/scripts/write-fixtures.ts)
+ *
+ *  specs.json          카드·코어·맵·상수 기준표
+ *  started-state.json  setupGame 직후 (F018/F019: 코어 배치, 손패 4, 에너지 3, 시작 단계 전)
+ *  first-turn.json     startGame 직후 (첫 플레이어 시작 단계까지)
+ *  scenario.json       손패를 고정한 2인 대국의 액션 시퀀스와 각 단계 결과 상태.
+ *                      Python 은 initial 에서 actions 를 차례로 적용해 states 와 (log 제외) 같은지 확인한다.
  */
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { applyAction, createInitialState, createPlayer, joinPlayer } from '../src/engine/index.js';
-import { DEFAULT_DECK_CHOICE } from '../src/data/index.js';
-import { BUILDINGS, MAGICS, UNITS, BASE_DECK } from '../src/data/index.js';
+import { applyAction, createInitialState, createPlayer, joinPlayer, setupGame, startGame, withMarkers } from '../src/engine/index.js';
+import { ALL_SPECS, CONSTANTS, CORE_SPEC, DEFAULT_DECK_CHOICE, MAPS, getSpec } from '../src/data/index.js';
+import type { Action, CardId, GameState, Marker, PlayerId, Position } from '../src/types/index.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const out = join(here, '..', 'fixtures');
 mkdirSync(out, { recursive: true });
-
-let s = createInitialState('fixture-room', 42);
-s = joinPlayer(s, createPlayer('p1', '철수')).state;
-s = joinPlayer(s, createPlayer('ai-1', 'AI', 'ai')).state;
-s = applyAction(s, { type: 'SELECT_DECK', playerId: 'p1', choice: DEFAULT_DECK_CHOICE }).state;
-s = applyAction(s, { type: 'SELECT_DECK', playerId: 'ai-1', choice: { buildingId: 'nexus', unitId: 'phantom', magicId: 'rally' } }).state;
-s = applyAction(s, { type: 'READY', playerId: 'p1' }).state;
-s = applyAction(s, { type: 'READY', playerId: 'ai-1' }).state;
-const started = s;
-// 1턴은 생산·드로우가 없으므로, 생산이 일어나는 2턴 진입 직후 상태를 픽스처로 남긴다
-let t = applyAction(started, { type: 'END_TURN', playerId: 'p1' }).state;
-t = applyAction(t, { type: 'END_TURN', playerId: 'ai-1' }).state; // → turn 2, p1 생산
-const afterEndTurn = t;
 
 const write = (name: string, data: unknown) => {
   writeFileSync(join(out, name), JSON.stringify(data, null, 2) + '\n', 'utf8');
   console.log(`wrote fixtures/${name}`);
 };
 
+// --- 로비 → 시작 -------------------------------------------------------------
+
+let lobby = createInitialState('fixture-room', 'binary-star', 42);
+lobby = joinPlayer(lobby, createPlayer('p0', '철수')).state;
+lobby = joinPlayer(lobby, createPlayer('ai-1', 'AI', 'ai')).state;
+lobby = applyAction(lobby, { type: 'SELECT_DECK', playerId: 'p0', choice: DEFAULT_DECK_CHOICE }).state;
+lobby = applyAction(lobby, { type: 'READY', playerId: 'p0' }).state; // ai-1 은 이미 준비 완료 → 시작
+if (lobby.phase !== 'playing') throw new Error('픽스처: 게임이 시작되지 않았습니다');
+
+// READY 가 startGame 까지 진행하므로, setupGame 직후 상태는 따로 만든다
+let ready = createInitialState('fixture-room', 'binary-star', 42);
+ready = joinPlayer(ready, createPlayer('p0', '철수')).state;
+ready = joinPlayer(ready, createPlayer('ai-1', 'AI', 'ai')).state;
+ready = { ...ready, players: ready.players.map((p) => ({ ...p, deckChoice: DEFAULT_DECK_CHOICE, isReady: true })) };
+const started = setupGame(ready);
+const firstTurn = startGame(ready);
+if (JSON.stringify(firstTurn) !== JSON.stringify(lobby)) throw new Error('픽스처: READY 경로와 startGame 경로가 다릅니다');
+
+// --- 시나리오: 손패 고정, 전투·마법·파괴·탈락 포함 --------------------------------
+
+function withHand(s: GameState, id: PlayerId, hand: CardId[], energy: number): GameState {
+  return { ...s, players: s.players.map((p) => (p.id === id ? { ...p, hand, energy } : p)) };
+}
+let seq = 500;
+function marker(ownerId: PlayerId, specId: CardId, pos: Position, hp?: number): Marker {
+  const spec = getSpec(specId);
+  return { id: `f${seq++}`, specId, kind: spec.kind, ownerId, pos, hp: hp ?? spec.hp, remainingTurns: null };
+}
+
+let initial = firstTurn;
+initial = withHand(initial, 'p0', ['outpost', 'artillery', 'meteor', 'extractor', 'stealth'], 12);
+initial = withHand(initial, 'ai-1', ['scout', 'fighter', 'shield', 'warp-gate', 'repair-drone'], 12);
+initial = withMarkers(initial, [
+  ...initial.markers,
+  marker('ai-1', 'extractor', { x: 8, y: 2 }, 2), // 광맥, 체력 2
+  marker('ai-1', 'scout', { x: 6, y: 6 }),
+]);
+
+const actions: Action[] = [
+  { type: 'PLACE', playerId: 'p0', cardId: 'outpost', pos: { x: 4, y: 4 } }, // 시야 확장
+  { type: 'PLACE', playerId: 'ai-1', cardId: 'warp-gate', pos: { x: 7, y: 5 } }, // 지속 마법
+  { type: 'PLACE', playerId: 'p0', cardId: 'artillery', pos: { x: 5, y: 5 } }, // 사거리 3: 정찰(6,6) d1, 게이트(7,5) d2, 코어(8,8) d3
+  { type: 'PLACE', playerId: 'ai-1', cardId: 'fighter', pos: { x: 7, y: 7 } },
+  { type: 'PASS', playerId: 'p0' }, // p0 턴 시작에 포격함이 정찰 파괴 → ai 턴: 전투기가 포격함 공격
+  { type: 'PLACE', playerId: 'ai-1', cardId: 'shield', pos: { x: 7, y: 6 } }, // 회복
+  { type: 'PLACE', playerId: 'p0', cardId: 'meteor', pos: { x: 6, y: 6 } }, // 즉발 피해
+  { type: 'PLACE', playerId: 'ai-1', cardId: 'repair-drone', pos: { x: 8, y: 6 } },
+  { type: 'PLACE', playerId: 'p0', cardId: 'stealth', pos: { x: 9, y: 9 } }, // 침투
+  { type: 'PASS', playerId: 'ai-1' },
+  { type: 'PLACE', playerId: 'p0', cardId: 'extractor', pos: { x: 3, y: 3 } }, // 패스 연속 리셋
+  { type: 'SURRENDER', playerId: 'ai-1' },
+];
+
+const steps: { action: Action; state: GameState }[] = [];
+let cur = initial;
+for (const action of actions) {
+  const r = applyAction(cur, action);
+  if (r.error) throw new Error(`픽스처 시나리오 오류 (${JSON.stringify(action)}): ${r.error}`);
+  cur = r.state;
+  steps.push({ action, state: cur });
+}
+if (cur.phase !== 'finished') throw new Error('픽스처 시나리오가 종료되지 않았습니다');
+
+write('specs.json', { constants: CONSTANTS, core: CORE_SPEC, cards: ALL_SPECS.filter((c) => c.kind !== 'core'), maps: MAPS });
 write('started-state.json', started);
-write('after-end-turn.json', afterEndTurn);
-write('specs.json', { buildings: BUILDINGS, units: UNITS, magics: MAGICS, baseDeck: BASE_DECK });
+write('first-turn.json', firstTurn);
+write('scenario.json', { initial, steps });

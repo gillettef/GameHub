@@ -1,387 +1,763 @@
 {
-  "buildings": [
+  "constants": {
+    "MIN_PLAYERS": 2,
+    "MAX_PLAYERS": 4,
+    "STARTING_ENERGY": 3,
+    "CORE_BASE_INCOME": 1,
+    "CORE_HP": 20,
+    "CORE_SIGHT": 2,
+    "INITIAL_HAND_SIZE": 4,
+    "HAND_LIMIT": 5,
+    "DRAW_PER_TURN": 1,
+    "BASE_DECK_SIZE": 20,
+    "SPECIAL_PICKS": 3,
+    "VEIN_PRODUCTION_BONUS": 1,
+    "SCORE_PER_TERRITORY": 1,
+    "INFILTRATE_RANGE": 1,
+    "REPAIR_RADIUS": 1,
+    "REPAIR_AMOUNT": 1
+  },
+  "core": {
+    "id": "core",
+    "name": "코어",
+    "kind": "core",
+    "special": false,
+    "cost": 0,
+    "sight": 2,
+    "hp": 20,
+    "attack": 0,
+    "range": 0,
+    "production": 1,
+    "score": 0,
+    "keywords": [],
+    "effect": null,
+    "copies": 0,
+    "description": "시작 지점. 파괴되면 탈락한다."
+  },
+  "cards": [
     {
-      "id": "main-base",
-      "name": "메인 기지",
-      "kind": "main-base",
       "special": false,
-      "cost": {
-        "resources": 0,
-        "mana": 0
-      },
-      "hp": 20,
-      "defense": 2,
-      "production": {
-        "resources": 1,
-        "mana": 1
-      },
-      "score": 0,
-      "description": "파괴되면 즉시 패배한다. 매 턴 자원 1, 마나 1을 생산한다."
-    },
-    {
-      "id": "mine",
-      "name": "채굴 기지",
-      "kind": "resource",
-      "special": false,
-      "cost": {
-        "resources": 3,
-        "mana": 0
-      },
-      "hp": 6,
-      "defense": 0,
-      "production": {
-        "resources": 2,
-        "mana": 0
-      },
-      "score": 1,
-      "description": "매 턴 자원 2를 생산한다."
-    },
-    {
-      "id": "mana-well",
-      "name": "마나 우물",
-      "kind": "mana",
-      "special": false,
-      "cost": {
-        "resources": 3,
-        "mana": 0
-      },
-      "hp": 6,
-      "defense": 0,
-      "production": {
-        "resources": 0,
-        "mana": 1
-      },
-      "score": 1,
-      "description": "매 턴 마나 1을 생산한다."
-    },
-    {
-      "id": "outpost",
-      "name": "전초 기지",
-      "kind": "defense",
-      "special": false,
-      "cost": {
-        "resources": 4,
-        "mana": 0
-      },
-      "hp": 8,
-      "defense": 1,
-      "production": {
-        "resources": 0,
-        "mana": 0
-      },
-      "score": 2,
-      "description": "생산은 없지만 영토를 넓히고 건물 점수 2를 준다."
-    },
-    {
-      "id": "orbital-forge",
-      "name": "궤도 제련소",
-      "kind": "resource",
-      "special": true,
-      "cost": {
-        "resources": 6,
-        "mana": 0
-      },
-      "hp": 8,
-      "defense": 1,
-      "production": {
-        "resources": 4,
-        "mana": 0
-      },
-      "score": 2,
-      "description": "매 턴 자원 4를 생산하는 고효율 채굴 시설."
-    },
-    {
-      "id": "nexus",
-      "name": "성운 넥서스",
-      "kind": "mana",
-      "special": true,
-      "cost": {
-        "resources": 5,
-        "mana": 0
-      },
-      "hp": 7,
-      "defense": 1,
-      "production": {
-        "resources": 0,
-        "mana": 3
-      },
-      "score": 2,
-      "description": "매 턴 마나 3을 생산한다."
-    },
-    {
-      "id": "bastion",
-      "name": "성채",
-      "kind": "defense",
-      "special": true,
-      "cost": {
-        "resources": 6,
-        "mana": 0
-      },
-      "hp": 15,
-      "defense": 3,
-      "production": {
-        "resources": 0,
-        "mana": 0
-      },
-      "score": 4,
-      "description": "매우 단단한 방어 시설. 건물 점수 4."
-    }
-  ],
-  "units": [
-    {
-      "id": "scout",
-      "name": "정찰선",
-      "special": false,
-      "cost": {
-        "resources": 2,
-        "mana": 0
-      },
-      "hp": 3,
-      "attack": 1,
-      "defense": 0,
-      "moveRange": 3,
-      "attackRange": 1,
-      "description": "빠르지만 약하다. 영토 확장과 견제용."
-    },
-    {
-      "id": "soldier",
-      "name": "전투함",
-      "special": false,
-      "cost": {
-        "resources": 3,
-        "mana": 0
-      },
-      "hp": 5,
-      "attack": 2,
-      "defense": 1,
-      "moveRange": 2,
-      "attackRange": 1,
-      "description": "기본 전투 유닛."
-    },
-    {
-      "id": "tank",
-      "name": "중순양함",
-      "special": false,
-      "cost": {
-        "resources": 5,
-        "mana": 1
-      },
-      "hp": 9,
-      "attack": 3,
-      "defense": 2,
-      "moveRange": 1,
-      "attackRange": 1,
-      "description": "느리지만 단단하다. 기지 공략의 핵심."
-    },
-    {
-      "id": "titan",
-      "name": "타이탄",
-      "special": true,
-      "cost": {
-        "resources": 10,
-        "mana": 3
-      },
-      "hp": 15,
-      "attack": 6,
-      "defense": 3,
-      "moveRange": 1,
-      "attackRange": 1,
-      "description": "자원을 모아 배치하는 결전 병기. 기지 파괴의 열쇠."
-    },
-    {
-      "id": "phantom",
-      "name": "팬텀",
-      "special": true,
-      "cost": {
-        "resources": 5,
-        "mana": 2
-      },
+      "keywords": [],
+      "effect": null,
+      "id": "extractor",
+      "name": "채굴기",
+      "kind": "building",
+      "cost": 2,
+      "sight": 1,
       "hp": 4,
-      "attack": 4,
-      "defense": 0,
-      "moveRange": 4,
-      "attackRange": 1,
-      "description": "한 턴에 4칸 이동하는 기습 유닛."
+      "attack": 0,
+      "range": 0,
+      "production": 1,
+      "score": 2,
+      "copies": 4,
+      "description": "경제의 기본. 광맥 위에서는 생산 +1."
     },
     {
-      "id": "warden",
-      "name": "워든",
-      "special": true,
-      "cost": {
-        "resources": 6,
-        "mana": 2
-      },
-      "hp": 10,
+      "special": false,
+      "keywords": [],
+      "effect": null,
+      "id": "outpost",
+      "name": "전초기지",
+      "kind": "building",
+      "cost": 3,
+      "sight": 2,
+      "hp": 6,
+      "attack": 0,
+      "range": 0,
+      "production": 0,
+      "score": 3,
+      "copies": 3,
+      "description": "시야·영토 확장."
+    },
+    {
+      "special": false,
+      "keywords": [],
+      "effect": null,
+      "id": "turret",
+      "name": "방어탑",
+      "kind": "building",
+      "cost": 4,
+      "sight": 1,
+      "hp": 6,
       "attack": 2,
-      "defense": 4,
-      "moveRange": 1,
-      "attackRange": 2,
-      "description": "사거리 2의 방어 유닛. 기지 수비에 적합."
-    }
-  ],
-  "magics": [
+      "range": 2,
+      "production": 0,
+      "score": 2,
+      "copies": 2,
+      "description": "고정 방어."
+    },
     {
-      "id": "bolt",
-      "name": "플라즈마 볼트",
       "special": false,
-      "cost": {
-        "resources": 0,
-        "mana": 2
-      },
+      "keywords": [],
+      "effect": null,
+      "id": "scout",
+      "name": "정찰 드론",
+      "kind": "unit",
+      "cost": 1,
+      "sight": 2,
+      "hp": 2,
+      "attack": 1,
+      "range": 1,
+      "production": 0,
+      "score": 1,
+      "copies": 3,
+      "description": "값싼 시야 확장."
+    },
+    {
+      "special": false,
+      "keywords": [],
+      "effect": null,
+      "id": "fighter",
+      "name": "전투기",
+      "kind": "unit",
+      "cost": 3,
+      "sight": 1,
+      "hp": 4,
+      "attack": 2,
+      "range": 1,
+      "production": 0,
+      "score": 1,
+      "copies": 3,
+      "description": "근접 압박."
+    },
+    {
+      "special": false,
+      "keywords": [],
+      "effect": null,
+      "id": "artillery",
+      "name": "포격함",
+      "kind": "unit",
+      "cost": 4,
+      "sight": 1,
+      "hp": 3,
+      "attack": 3,
+      "range": 3,
+      "production": 0,
+      "score": 1,
+      "copies": 2,
+      "description": "긴 사거리, 낮은 체력."
+    },
+    {
+      "special": false,
+      "keywords": [],
+      "effect": null,
+      "id": "cruiser",
+      "name": "순양함",
+      "kind": "unit",
+      "cost": 5,
+      "sight": 1,
+      "hp": 7,
+      "attack": 3,
+      "range": 2,
+      "production": 0,
+      "score": 2,
+      "copies": 1,
+      "description": "중견 전력."
+    },
+    {
+      "special": false,
+      "keywords": [],
       "effect": {
-        "type": "damage",
+        "kind": "damage",
         "amount": 3,
-        "radius": 0
-      },
-      "description": "대상 하나에 피해 3."
-    },
-    {
-      "id": "repair",
-      "name": "나노 수리",
-      "special": false,
-      "cost": {
-        "resources": 0,
-        "mana": 2
-      },
-      "effect": {
-        "type": "heal",
-        "amount": 4
-      },
-      "description": "아군 유닛 또는 건물의 체력 4 회복."
-    },
-    {
-      "id": "harvest",
-      "name": "소행성 채집",
-      "special": false,
-      "cost": {
-        "resources": 0,
-        "mana": 1
-      },
-      "effect": {
-        "type": "gain",
-        "resources": 3,
-        "mana": 0
-      },
-      "description": "즉시 자원 3 획득."
-    },
-    {
-      "id": "supernova",
-      "name": "초신성",
-      "special": true,
-      "cost": {
-        "resources": 0,
-        "mana": 5
-      },
-      "effect": {
-        "type": "damage",
-        "amount": 5,
         "radius": 1
       },
-      "description": "대상 칸과 주변 1칸의 모든 개체에 피해 5."
+      "id": "meteor",
+      "name": "유성우",
+      "kind": "magic",
+      "cost": 3,
+      "sight": 0,
+      "hp": 0,
+      "attack": 0,
+      "range": 0,
+      "production": 0,
+      "score": 0,
+      "copies": 1,
+      "description": "즉발: 반경 1 적 마커 전부에 피해 3."
     },
     {
-      "id": "rally",
-      "name": "전군 돌격",
-      "special": true,
-      "cost": {
-        "resources": 0,
-        "mana": 3
-      },
+      "special": false,
+      "keywords": [],
       "effect": {
-        "type": "buff-attack",
+        "kind": "heal",
+        "amount": 3,
+        "radius": 1
+      },
+      "id": "shield",
+      "name": "차폐막",
+      "kind": "magic",
+      "cost": 2,
+      "sight": 0,
+      "hp": 0,
+      "attack": 0,
+      "range": 0,
+      "production": 0,
+      "score": 0,
+      "copies": 1,
+      "description": "즉발: 반경 1 아군 마커 전부 체력 +3."
+    },
+    {
+      "special": true,
+      "keywords": [],
+      "effect": null,
+      "copies": 0,
+      "id": "refinery",
+      "name": "정제소",
+      "kind": "building",
+      "cost": 5,
+      "sight": 1,
+      "hp": 5,
+      "attack": 0,
+      "range": 0,
+      "production": 3,
+      "score": 4,
+      "description": "생산 +3."
+    },
+    {
+      "special": true,
+      "keywords": [],
+      "effect": null,
+      "copies": 0,
+      "id": "observatory",
+      "name": "관측소",
+      "kind": "building",
+      "cost": 4,
+      "sight": 3,
+      "hp": 4,
+      "attack": 0,
+      "range": 0,
+      "production": 0,
+      "score": 3,
+      "description": "넓은 시야."
+    },
+    {
+      "special": true,
+      "keywords": [],
+      "effect": null,
+      "copies": 0,
+      "id": "fortress",
+      "name": "요새",
+      "kind": "building",
+      "cost": 6,
+      "sight": 2,
+      "hp": 12,
+      "attack": 2,
+      "range": 2,
+      "production": 0,
+      "score": 5,
+      "description": "튼튼한 방어 거점."
+    },
+    {
+      "special": true,
+      "keywords": [],
+      "effect": null,
+      "copies": 0,
+      "id": "battleship",
+      "name": "전함",
+      "kind": "unit",
+      "cost": 8,
+      "sight": 2,
+      "hp": 12,
+      "attack": 4,
+      "range": 2,
+      "production": 0,
+      "score": 3,
+      "description": "최강 전력."
+    },
+    {
+      "special": true,
+      "keywords": [
+        "infiltrate"
+      ],
+      "effect": null,
+      "copies": 0,
+      "id": "stealth",
+      "name": "스텔스함",
+      "kind": "unit",
+      "cost": 5,
+      "sight": 1,
+      "hp": 4,
+      "attack": 3,
+      "range": 1,
+      "production": 0,
+      "score": 1,
+      "description": "침투: 적 마커 거리 1 이내에도 배치 가능."
+    },
+    {
+      "special": true,
+      "keywords": [
+        "repair"
+      ],
+      "effect": null,
+      "copies": 0,
+      "id": "repair-drone",
+      "name": "수리 드론",
+      "kind": "unit",
+      "cost": 3,
+      "sight": 1,
+      "hp": 2,
+      "attack": 0,
+      "range": 0,
+      "production": 0,
+      "score": 1,
+      "description": "정비: 내 턴 시작 시(전투 직후) 반경 1 아군 체력 +1."
+    },
+    {
+      "special": true,
+      "keywords": [],
+      "effect": {
+        "kind": "damage",
         "amount": 2,
-        "durationTurns": 1
+        "radius": 2
       },
-      "description": "이번 턴 모든 아군 유닛 공격력 +2."
+      "copies": 0,
+      "id": "gravity-wave",
+      "name": "중력파",
+      "kind": "magic",
+      "cost": 5,
+      "sight": 0,
+      "hp": 0,
+      "attack": 0,
+      "range": 0,
+      "production": 0,
+      "score": 0,
+      "description": "즉발: 반경 2 적 마커 전부에 피해 2."
     },
     {
-      "id": "siphon",
-      "name": "차원 흡수",
       "special": true,
-      "cost": {
-        "resources": 0,
-        "mana": 3
-      },
+      "keywords": [],
       "effect": {
-        "type": "gain",
-        "resources": 4,
-        "mana": 2
+        "kind": "persistent",
+        "durationTurns": 3
       },
-      "description": "즉시 자원 4, 마나 2 획득."
+      "copies": 0,
+      "id": "warp-gate",
+      "name": "워프 게이트",
+      "kind": "magic",
+      "cost": 3,
+      "sight": 3,
+      "hp": 2,
+      "attack": 0,
+      "range": 0,
+      "production": 0,
+      "score": 0,
+      "description": "지속 3턴: 시야 3 제공. 파괴 가능."
+    },
+    {
+      "special": true,
+      "keywords": [],
+      "effect": {
+        "kind": "energy",
+        "amount": 6
+      },
+      "copies": 0,
+      "id": "energy-storm",
+      "name": "에너지 폭풍",
+      "kind": "magic",
+      "cost": 2,
+      "sight": 0,
+      "hp": 0,
+      "attack": 0,
+      "range": 0,
+      "production": 0,
+      "score": 0,
+      "description": "즉발: 에너지 +6."
     }
   ],
-  "baseDeck": [
+  "maps": [
     {
-      "type": "building",
-      "specId": "mine"
+      "id": "binary-star",
+      "name": "쌍성",
+      "players": 2,
+      "size": 11,
+      "roundLimit": 20,
+      "corePositions": [
+        {
+          "x": 2,
+          "y": 2
+        },
+        {
+          "x": 8,
+          "y": 8
+        }
+      ],
+      "asteroids": [],
+      "veins": [
+        {
+          "x": 8,
+          "y": 2
+        },
+        {
+          "x": 5,
+          "y": 5
+        },
+        {
+          "x": 2,
+          "y": 8
+        }
+      ],
+      "description": "소행성 없는 열린 맵. 180° 회전 대칭."
     },
     {
-      "type": "building",
-      "specId": "mine"
+      "id": "asteroid-belt",
+      "name": "소행성대",
+      "players": 2,
+      "size": 13,
+      "roundLimit": 20,
+      "corePositions": [
+        {
+          "x": 1,
+          "y": 6
+        },
+        {
+          "x": 11,
+          "y": 6
+        }
+      ],
+      "asteroids": [
+        {
+          "x": 6,
+          "y": 0
+        },
+        {
+          "x": 6,
+          "y": 1
+        },
+        {
+          "x": 6,
+          "y": 3
+        },
+        {
+          "x": 6,
+          "y": 4
+        },
+        {
+          "x": 6,
+          "y": 5
+        },
+        {
+          "x": 6,
+          "y": 7
+        },
+        {
+          "x": 6,
+          "y": 8
+        },
+        {
+          "x": 6,
+          "y": 9
+        },
+        {
+          "x": 6,
+          "y": 11
+        },
+        {
+          "x": 6,
+          "y": 12
+        }
+      ],
+      "veins": [
+        {
+          "x": 4,
+          "y": 2
+        },
+        {
+          "x": 8,
+          "y": 2
+        },
+        {
+          "x": 4,
+          "y": 10
+        },
+        {
+          "x": 8,
+          "y": 10
+        }
+      ],
+      "description": "가운데 세로 소행성대. 틈은 y=2, 6, 10. 좌우 대칭."
     },
     {
-      "type": "building",
-      "specId": "mine"
+      "id": "triangle-nebula",
+      "name": "삼각 성운",
+      "players": 3,
+      "size": 13,
+      "roundLimit": 18,
+      "corePositions": [
+        {
+          "x": 6,
+          "y": 1
+        },
+        {
+          "x": 1,
+          "y": 10
+        },
+        {
+          "x": 11,
+          "y": 10
+        }
+      ],
+      "asteroids": [],
+      "veins": [
+        {
+          "x": 3,
+          "y": 5
+        },
+        {
+          "x": 9,
+          "y": 5
+        },
+        {
+          "x": 6,
+          "y": 6
+        },
+        {
+          "x": 6,
+          "y": 10
+        }
+      ],
+      "description": "소행성 없는 3인 맵. 동점 시 후공 우선으로 비대칭을 보정한다."
     },
     {
-      "type": "building",
-      "specId": "mana-well"
+      "id": "interstellar-route",
+      "name": "성간 항로",
+      "players": 3,
+      "size": 15,
+      "roundLimit": 18,
+      "corePositions": [
+        {
+          "x": 7,
+          "y": 1
+        },
+        {
+          "x": 1,
+          "y": 12
+        },
+        {
+          "x": 13,
+          "y": 12
+        }
+      ],
+      "asteroids": [
+        {
+          "x": 7,
+          "y": 3
+        },
+        {
+          "x": 7,
+          "y": 4
+        },
+        {
+          "x": 7,
+          "y": 5
+        },
+        {
+          "x": 7,
+          "y": 7
+        },
+        {
+          "x": 6,
+          "y": 8
+        },
+        {
+          "x": 8,
+          "y": 8
+        },
+        {
+          "x": 5,
+          "y": 9
+        },
+        {
+          "x": 9,
+          "y": 9
+        },
+        {
+          "x": 4,
+          "y": 10
+        },
+        {
+          "x": 10,
+          "y": 10
+        }
+      ],
+      "veins": [
+        {
+          "x": 3,
+          "y": 6
+        },
+        {
+          "x": 11,
+          "y": 6
+        },
+        {
+          "x": 7,
+          "y": 10
+        }
+      ],
+      "description": "중앙에서 세 갈래로 뻗은 소행성 살."
     },
     {
-      "type": "building",
-      "specId": "mana-well"
+      "id": "quadrant",
+      "name": "사분면",
+      "players": 4,
+      "size": 15,
+      "roundLimit": 16,
+      "corePositions": [
+        {
+          "x": 2,
+          "y": 2
+        },
+        {
+          "x": 12,
+          "y": 2
+        },
+        {
+          "x": 12,
+          "y": 12
+        },
+        {
+          "x": 2,
+          "y": 12
+        }
+      ],
+      "asteroids": [
+        {
+          "x": 7,
+          "y": 5
+        },
+        {
+          "x": 7,
+          "y": 6
+        },
+        {
+          "x": 5,
+          "y": 7
+        },
+        {
+          "x": 6,
+          "y": 7
+        },
+        {
+          "x": 8,
+          "y": 7
+        },
+        {
+          "x": 9,
+          "y": 7
+        },
+        {
+          "x": 7,
+          "y": 8
+        },
+        {
+          "x": 7,
+          "y": 9
+        }
+      ],
+      "veins": [
+        {
+          "x": 7,
+          "y": 2
+        },
+        {
+          "x": 2,
+          "y": 7
+        },
+        {
+          "x": 7,
+          "y": 7
+        },
+        {
+          "x": 12,
+          "y": 7
+        },
+        {
+          "x": 7,
+          "y": 12
+        }
+      ],
+      "description": "중앙 십자 소행성, 중심은 광맥. 90° 회전 대칭."
     },
     {
-      "type": "building",
-      "specId": "mana-well"
-    },
-    {
-      "type": "building",
-      "specId": "outpost"
-    },
-    {
-      "type": "building",
-      "specId": "outpost"
-    },
-    {
-      "type": "unit",
-      "specId": "scout"
-    },
-    {
-      "type": "unit",
-      "specId": "scout"
-    },
-    {
-      "type": "unit",
-      "specId": "soldier"
-    },
-    {
-      "type": "unit",
-      "specId": "soldier"
-    },
-    {
-      "type": "unit",
-      "specId": "soldier"
-    },
-    {
-      "type": "unit",
-      "specId": "tank"
-    },
-    {
-      "type": "magic",
-      "specId": "bolt"
-    },
-    {
-      "type": "magic",
-      "specId": "bolt"
-    },
-    {
-      "type": "magic",
-      "specId": "repair"
-    },
-    {
-      "type": "magic",
-      "specId": "harvest"
+      "id": "event-horizon",
+      "name": "사건의 지평선",
+      "players": 4,
+      "size": 15,
+      "roundLimit": 16,
+      "corePositions": [
+        {
+          "x": 7,
+          "y": 1
+        },
+        {
+          "x": 13,
+          "y": 7
+        },
+        {
+          "x": 7,
+          "y": 13
+        },
+        {
+          "x": 1,
+          "y": 7
+        }
+      ],
+      "asteroids": [
+        {
+          "x": 6,
+          "y": 6
+        },
+        {
+          "x": 7,
+          "y": 6
+        },
+        {
+          "x": 8,
+          "y": 6
+        },
+        {
+          "x": 6,
+          "y": 7
+        },
+        {
+          "x": 7,
+          "y": 7
+        },
+        {
+          "x": 8,
+          "y": 7
+        },
+        {
+          "x": 6,
+          "y": 8
+        },
+        {
+          "x": 7,
+          "y": 8
+        },
+        {
+          "x": 8,
+          "y": 8
+        }
+      ],
+      "veins": [
+        {
+          "x": 3,
+          "y": 3
+        },
+        {
+          "x": 11,
+          "y": 3
+        },
+        {
+          "x": 3,
+          "y": 11
+        },
+        {
+          "x": 11,
+          "y": 11
+        }
+      ],
+      "description": "중앙 3×3 소행성. 90° 회전 대칭."
     }
   ]
 }

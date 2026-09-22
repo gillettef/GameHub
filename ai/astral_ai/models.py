@@ -1,5 +1,5 @@
 """
-shared/src/types/index.ts 와 1:1로 맞추는 Pydantic 모델.
+shared/src/types/index.ts 와 1:1로 맞추는 Pydantic 모델 (규칙 v2).
 TS 쪽 필드를 추가하면 여기도 함께 갱신한다. 일치 여부는 tests/test_fixtures.py 가 검증한다.
 """
 
@@ -10,9 +10,18 @@ from pydantic import BaseModel, ConfigDict, Field
 PlayerKind = Literal["human", "ai"]
 GamePhase = Literal["lobby", "playing", "finished"]
 CardType = Literal["building", "unit", "magic"]
-BuildingKind = Literal["main-base", "resource", "mana", "defense"]
-LogKind = Literal["system", "production", "place", "move", "combat", "magic", "turn", "result"]
-GameResultReason = Literal["base-destroyed", "deck-exhausted", "turn-limit"]
+MarkerKind = Literal["core", "building", "unit", "magic"]
+Keyword = Literal["infiltrate", "repair"]
+Terrain = Literal["space", "asteroid", "vein"]
+LogKind = Literal[
+    "system", "turn", "combat", "repair", "expire", "income", "draw",
+    "place", "magic", "destroy", "eliminate", "pass", "surrender", "result",
+]
+GameResultReason = Literal["last-survivor", "all-pass", "round-limit"]
+PlacementErrorCode = Literal[
+    "not-playing", "unknown-player", "not-your-turn", "not-in-hand", "not-enough-energy",
+    "out-of-bounds", "asteroid", "occupied", "out-of-sight",
+]
 
 
 class Strict(BaseModel):
@@ -26,83 +35,52 @@ class Position(Strict):
     y: int
 
 
-# --- 카드 스펙 -------------------------------------------------------------
-
-
-class Cost(Strict):
-    resources: int
-    mana: int
-
-
-class Production(Strict):
-    resources: int
-    mana: int
-
-
-class BuildingSpec(Strict):
-    id: str
-    name: str
-    kind: BuildingKind
-    special: bool
-    cost: Cost
-    hp: int
-    defense: int
-    production: Production
-    score: int
-    description: str
-
-
-class UnitSpec(Strict):
-    id: str
-    name: str
-    special: bool
-    cost: Cost
-    hp: int
-    attack: int
-    defense: int
-    moveRange: int
-    attackRange: int
-    description: str
+# --- 카드 기준표 -------------------------------------------------------------
 
 
 class DamageEffect(Strict):
-    type: Literal["damage"]
+    kind: Literal["damage"]
     amount: int
     radius: int
 
 
 class HealEffect(Strict):
-    type: Literal["heal"]
+    kind: Literal["heal"]
+    amount: int
+    radius: int
+
+
+class EnergyEffect(Strict):
+    kind: Literal["energy"]
     amount: int
 
 
-class GainEffect(Strict):
-    type: Literal["gain"]
-    resources: int
-    mana: int
-
-
-class BuffAttackEffect(Strict):
-    type: Literal["buff-attack"]
-    amount: int
+class PersistentEffect(Strict):
+    kind: Literal["persistent"]
     durationTurns: int
 
 
-MagicEffect = Annotated[DamageEffect | HealEffect | GainEffect | BuffAttackEffect, Field(discriminator="type")]
+MagicEffect = Annotated[
+    DamageEffect | HealEffect | EnergyEffect | PersistentEffect, Field(discriminator="kind")
+]
 
 
-class MagicSpec(Strict):
+class CardSpec(Strict):
     id: str
     name: str
+    kind: MarkerKind
     special: bool
-    cost: Cost
-    effect: MagicEffect
+    cost: int
+    sight: int
+    hp: int
+    attack: int
+    range: int
+    production: int
+    score: int
+    keywords: list[Keyword]
+    effect: MagicEffect | None
+    copies: int
     description: str
-
-
-class CardRef(Strict):
-    type: CardType
-    specId: str
 
 
 class DeckChoice(Strict):
@@ -111,88 +89,95 @@ class DeckChoice(Strict):
     magicId: str
 
 
-# --- 보드 개체 -------------------------------------------------------------
+# --- 맵 -----------------------------------------------------------------------
 
 
-class BuildingInstance(Strict):
+class MapDef(Strict):
+    id: str
+    name: str
+    players: int
+    size: int
+    roundLimit: int
+    corePositions: list[Position]
+    asteroids: list[Position]
+    veins: list[Position]
+    description: str
+
+
+class Board(Strict):
+    width: int
+    height: int
+    asteroids: list[Position]
+    veins: list[Position]
+
+
+# --- 마커 · 플레이어 · 상태 ---------------------------------------------------
+
+
+class Marker(Strict):
     id: str
     specId: str
+    kind: MarkerKind
     ownerId: str
     pos: Position
     hp: int
-
-
-class AttackBuff(Strict):
-    amount: int
-    remainingTurns: int
-
-
-class UnitInstance(Strict):
-    id: str
-    specId: str
-    ownerId: str
-    pos: Position
-    hp: int
-    hasActed: bool
-    attackBuff: AttackBuff | None
-
-
-# --- 플레이어 · 게임 상태 --------------------------------------------------
+    remainingTurns: int | None
 
 
 class PlayerState(Strict):
     id: str
     nickname: str
     kind: PlayerKind
+    seat: int
     isReady: bool
     deckChoice: DeckChoice | None
-    resources: int
-    mana: int
-    deck: list[CardRef]
-    hand: list[CardRef]
-    discard: list[CardRef]
-    mainBaseId: str | None
-
-
-class Board(Strict):
-    width: int
-    height: int
+    energy: int
+    deck: list[str]
+    hand: list[str]
+    discard: list[str]
+    alive: bool
+    eliminatedOrder: int | None
+    passed: bool
 
 
 class GameLogEntry(Strict):
     turn: int
+    round: int
+    playerId: str | None
     kind: LogKind
     message: str
 
 
 class Score(Strict):
     territory: int
-    buildings: int
+    markers: int
     total: int
 
 
 class GameResult(Strict):
-    winnerId: str | None
     reason: GameResultReason
+    ranking: list[str]
     scores: dict[str, Score]
 
 
 class GameState(Strict):
     roomId: str
     phase: GamePhase
+    mapId: str
+    board: Board
+    roundLimit: int
+    round: int
     turn: int
-    turnLimit: int
     currentPlayerId: str | None
     players: list[PlayerState]
-    board: Board
-    buildings: list[BuildingInstance]
-    units: list[UnitInstance]
+    markers: list[Marker]
+    nextMarkerId: int
     rngSeed: int
     result: GameResult | None
-    log: list[GameLogEntry] = Field(default_factory=list)
+    log: list[GameLogEntry]
 
 
-# --- 액션 -------------------------------------------------------------------
+# --- 액션 ---------------------------------------------------------------------
 
 
 class SelectDeckAction(Strict):
@@ -206,60 +191,30 @@ class ReadyAction(Strict):
     playerId: str
 
 
-class PlaceBuildingAction(Strict):
-    type: Literal["PLACE_BUILDING"]
+class PlaceAction(Strict):
+    type: Literal["PLACE"]
     playerId: str
-    handIndex: int
+    cardId: str
     pos: Position
 
 
-class PlaceUnitAction(Strict):
-    type: Literal["PLACE_UNIT"]
+class PassAction(Strict):
+    type: Literal["PASS"]
     playerId: str
-    handIndex: int
-    pos: Position
 
 
-class MoveUnitAction(Strict):
-    type: Literal["MOVE_UNIT"]
-    playerId: str
-    unitId: str
-    to: Position
-
-
-class AttackAction(Strict):
-    type: Literal["ATTACK"]
-    playerId: str
-    unitId: str
-    targetId: str
-
-
-class CastMagicAction(Strict):
-    type: Literal["CAST_MAGIC"]
-    playerId: str
-    handIndex: int
-    target: Position | str | None
-
-
-class EndTurnAction(Strict):
-    type: Literal["END_TURN"]
+class SurrenderAction(Strict):
+    type: Literal["SURRENDER"]
     playerId: str
 
 
 Action = Annotated[
-    SelectDeckAction
-    | ReadyAction
-    | PlaceBuildingAction
-    | PlaceUnitAction
-    | MoveUnitAction
-    | AttackAction
-    | CastMagicAction
-    | EndTurnAction,
+    SelectDeckAction | ReadyAction | PlaceAction | PassAction | SurrenderAction,
     Field(discriminator="type"),
 ]
 
 
-# --- API --------------------------------------------------------------------
+# --- HTTP 요청·응답 (CLAUDE.md "AI 서비스") ------------------------------------
 
 
 class DecideRequest(Strict):
