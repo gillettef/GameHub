@@ -11,7 +11,7 @@
     "HAND_LIMIT": 5,
     "DRAW_PER_TURN": 1,
     "BASE_DECK_SIZE": 22,
-    "SPECIAL_PICKS": 3,
+    "DECK_SIZE": 25,
     "VEIN_PRODUCTION_BONUS": 1,
     "SCORE_PER_TERRITORY": 1,
     "KOMI_PER_SEAT": 1,
@@ -361,7 +361,7 @@
       "production": 0,
       "score": 2,
       "copies": 1,
-      "description": "군락에서 가장 비싼 유닛. 정비: 내 턴 시작 시 반경 1 아군 체력 +1."
+      "description": "군락에서 가장 비싼 유닛. 정비: 내 턴을 끝낼 때 반경 1 아군 체력 +1."
     },
     {
       "race": "swarm",
@@ -626,7 +626,7 @@
       "special": true,
       "keywords": [],
       "effect": null,
-      "copies": 0,
+      "copies": 2,
       "id": "refinery",
       "name": "정제소",
       "kind": "building",
@@ -644,7 +644,7 @@
       "special": true,
       "keywords": [],
       "effect": null,
-      "copies": 0,
+      "copies": 2,
       "id": "observatory",
       "name": "관측소",
       "kind": "building",
@@ -662,7 +662,7 @@
       "special": true,
       "keywords": [],
       "effect": null,
-      "copies": 0,
+      "copies": 2,
       "id": "fortress",
       "name": "요새",
       "kind": "building",
@@ -680,7 +680,7 @@
       "special": true,
       "keywords": [],
       "effect": null,
-      "copies": 0,
+      "copies": 2,
       "id": "battleship",
       "name": "전함",
       "kind": "unit",
@@ -700,7 +700,7 @@
         "infiltrate"
       ],
       "effect": null,
-      "copies": 0,
+      "copies": 2,
       "id": "stealth",
       "name": "스텔스함",
       "kind": "unit",
@@ -720,7 +720,7 @@
         "repair"
       ],
       "effect": null,
-      "copies": 0,
+      "copies": 2,
       "id": "repair-drone",
       "name": "수리 드론",
       "kind": "unit",
@@ -731,7 +731,7 @@
       "range": 0,
       "production": 0,
       "score": 1,
-      "description": "정비: 내 턴 시작 시(전투 직후) 반경 1 아군 체력 +1."
+      "description": "정비: 내 턴을 끝낼 때(전투 직후) 반경 1 아군 체력 +1."
     },
     {
       "race": "coalition",
@@ -742,7 +742,7 @@
         "amount": 2,
         "radius": 2
       },
-      "copies": 0,
+      "copies": 2,
       "id": "gravity-wave",
       "name": "중력파",
       "kind": "magic",
@@ -763,7 +763,7 @@
         "kind": "persistent",
         "durationTurns": 3
       },
-      "copies": 0,
+      "copies": 2,
       "id": "warp-gate",
       "name": "워프 게이트",
       "kind": "magic",
@@ -784,7 +784,7 @@
         "kind": "energy",
         "amount": 6
       },
-      "copies": 0,
+      "copies": 2,
       "id": "energy-storm",
       "name": "에너지 폭풍",
       "kind": "magic",
@@ -802,7 +802,7 @@
       "special": true,
       "keywords": [],
       "effect": null,
-      "copies": 0,
+      "copies": 2,
       "id": "hive-fortress",
       "name": "군체 요새",
       "kind": "building",
@@ -820,7 +820,7 @@
       "special": true,
       "keywords": [],
       "effect": null,
-      "copies": 0,
+      "copies": 2,
       "id": "chitin-refinery",
       "name": "키틴 정제소",
       "kind": "building",
@@ -838,7 +838,7 @@
       "special": true,
       "keywords": [],
       "effect": null,
-      "copies": 0,
+      "copies": 2,
       "id": "spore-tower",
       "name": "포자탑",
       "kind": "building",
@@ -856,7 +856,7 @@
       "special": true,
       "keywords": [],
       "effect": null,
-      "copies": 0,
+      "copies": 2,
       "id": "alpha-brood",
       "name": "알파 개체",
       "kind": "unit",
@@ -876,7 +876,7 @@
         "infiltrate"
       ],
       "effect": null,
-      "copies": 0,
+      "copies": 2,
       "id": "burrower",
       "name": "잠행자",
       "kind": "unit",
@@ -896,7 +896,7 @@
         "repair"
       ],
       "effect": null,
-      "copies": 0,
+      "copies": 2,
       "id": "nurse-drone",
       "name": "치유충",
       "kind": "unit",
@@ -907,7 +907,7 @@
       "range": 0,
       "production": 0,
       "score": 1,
-      "description": "정비: 내 턴 시작 시 반경 1 아군 체력 +1."
+      "description": "정비: 내 턴을 끝낼 때 반경 1 아군 체력 +1."
     },
     {
       "race": "swarm",
@@ -918,7 +918,7 @@
         "amount": 3,
         "radius": 2
       },
-      "copies": 0,
+      "copies": 2,
       "id": "plague-burst",
       "name": "역병 폭발",
       "kind": "magic",
@@ -939,7 +939,7 @@
         "kind": "persistent",
         "durationTurns": 3
       },
-      "copies": 0,
+      "copies": 2,
       "id": "pheromone-beacon",
       "name": "페로몬 신호기",
       "kind": "magic",
@@ -960,7 +960,7 @@
         "kind": "energy",
         "amount": 5
       },
-      "copies": 0,
+      "copies": 2,
       "id": "overgrowth",
       "name": "대증식",
       "kind": "magic",
@@ -980,7 +980,7 @@
         "overclock"
       ],
       "effect": null,
-      "copies": 0,
+      "copies": 2,
       "id": "singularity-forge",
       "name": "특이점 공방",
       "kind": "building",
@@ -998,7 +998,7 @@
       "special": true,
       "keywords": [],
       "effect": null,
-      "copies": 0,
+      "copies": 2,
       "id": "deep-scanner",
       "name": "심층 스캐너",
       "kind": "building",
@@ -1016,7 +1016,7 @@
       "special": true,
       "keywords": [],
       "effect": null,
-      "copies": 0,
+      "copies": 2,
       "id": "citadel",
       "name": "성채",
       "kind": "building",
@@ -1034,7 +1034,7 @@
       "special": true,
       "keywords": [],
       "effect": null,
-      "copies": 0,
+      "copies": 2,
       "id": "titan",
       "name": "타이탄",
       "kind": "unit",
@@ -1054,7 +1054,7 @@
         "infiltrate"
       ],
       "effect": null,
-      "copies": 0,
+      "copies": 2,
       "id": "cloak-unit",
       "name": "위장 유닛",
       "kind": "unit",
@@ -1074,7 +1074,7 @@
         "repair"
       ],
       "effect": null,
-      "copies": 0,
+      "copies": 2,
       "id": "repair-node",
       "name": "수복 노드",
       "kind": "unit",
@@ -1085,7 +1085,7 @@
       "range": 0,
       "production": 0,
       "score": 1,
-      "description": "정비: 내 턴 시작 시 반경 1 아군 체력 +1."
+      "description": "정비: 내 턴을 끝낼 때 반경 1 아군 체력 +1."
     },
     {
       "race": "automata",
@@ -1096,7 +1096,7 @@
         "amount": 3,
         "radius": 2
       },
-      "copies": 0,
+      "copies": 2,
       "id": "graviton-lance",
       "name": "중력자 랜스",
       "kind": "magic",
@@ -1117,7 +1117,7 @@
         "kind": "persistent",
         "durationTurns": 3
       },
-      "copies": 0,
+      "copies": 2,
       "id": "stasis-field",
       "name": "정지장",
       "kind": "magic",
@@ -1138,7 +1138,7 @@
         "kind": "energy",
         "amount": 7
       },
-      "copies": 0,
+      "copies": 2,
       "id": "core-surge",
       "name": "코어 증폭",
       "kind": "magic",

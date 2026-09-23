@@ -31,7 +31,7 @@ def test_decide_returns_legal_action_for_current_player() -> None:
 def test_decide_passes_when_not_my_turn() -> None:
     res = client.post("/decide", json={"state": _first_turn(), "playerId": "ai-1", "timeLimitMs": 2000})
     assert res.status_code == 200
-    assert res.json()["action"] == {"type": "PASS", "playerId": "ai-1"}
+    assert res.json()["action"] == {"type": "PASS", "playerId": "ai-1", "discardCardIds": None}
 
 
 def test_decide_rejects_invalid_payload() -> None:

@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { DeckChoice, MapId } from '@astraltab/shared';
-import { DEFAULT_MAP_ID, MAX_PLAYERS, MIN_PLAYERS, RACES, getMap, getSpec, mapsForPlayers } from '@astraltab/shared';
-import { CardFace } from '../components/CardFace';
+import { DECK_SIZE, DEFAULT_MAP_ID, MAX_PLAYERS, MIN_PLAYERS, RACES, getMap, mapsForPlayers } from '@astraltab/shared';
+import { DeckPicker, isCompleteChoice, type PartialChoice } from '../components/DeckPicker';
+import { MapPicker } from '../components/MapPicker';
 import { makeSeed } from '../game/hotseat';
 import { cx } from '../lib/cx';
 import { randomDeckChoice, randomMapId, shuffleIndices } from '../lib/randomPicks';
@@ -10,17 +11,23 @@ import { useGameStore } from '../store/gameStore';
 import landing from './LandingPage.module.css';
 import styles from './SetupPage.module.css';
 
+function deckTotal(c: PartialChoice): number {
+  return Object.values(c.cards ?? {}).reduce((sum, n) => sum + n, 0);
+}
+
 /**
- * 핫시트 설정 화면 (비게임 세계): 참가 인원 → 닉네임 → 게임 시작.
- * 맵·종족·특수 카드는 2026-09-23 사용자 지시로 플레이어가 직접 고르지 않고 전부 무작위 배정한다
- * ("다시 뽑기"로 전체를 한 번에 다시 무작위 배정할 수는 있다). 온라인 방은 RoomPage 의 로비가 맡는다.
+ * 핫시트 설정 화면 (비게임 세계): 참가 인원 → 맵 → 종족·덱 구성 → 닉네임 → 게임 시작.
+ * 2026-09-22 사용자 지시로 한동안 전부 무작위 배정만 했으나(다시 뽑기로만 바꿀 수 있었다),
+ * 2026-09-23 사용자 지시로 맵·종족·덱을 직접 고를 수 있는 화면으로 되돌렸다 — 참가 인원을 고르면
+ * 무작위 기본값이 채워지고, 이후 맵 피커·덱 피커로 자유롭게 바꾸거나 "무작위" 버튼으로 다시 뽑을 수 있다.
+ * 온라인 방은 RoomPage 의 로비가 맡는다.
  */
 export function SetupPage({ onStart }: { onStart: () => void }) {
   const startHotseat = useGameStore((s) => s.startHotseat);
   const [playerCount, setPlayerCount] = useState(getMap(DEFAULT_MAP_ID).players);
   const [mapId, setMapId] = useState<MapId>(DEFAULT_MAP_ID);
   const [nicknames, setNicknames] = useState<string[]>(() => Array.from({ length: MAX_PLAYERS }, () => ''));
-  const [choices, setChoices] = useState<DeckChoice[]>(() => Array.from({ length: MAX_PLAYERS }, () => randomDeckChoice()));
+  const [choices, setChoices] = useState<PartialChoice[]>(() => Array.from({ length: MAX_PLAYERS }, () => randomDeckChoice()));
   const [error, setError] = useState<string | null>(null);
 
   const map = getMap(mapId);
@@ -31,7 +38,7 @@ export function SetupPage({ onStart }: { onStart: () => void }) {
     setChoices(Array.from({ length: n }, () => randomDeckChoice()));
   };
 
-  // 처음 화면에 들어오면 한 번 무작위 배정한다
+  // 처음 화면에 들어오면 한 번 무작위 배정한다 (그 뒤로는 아래 컨트롤로 자유롭게 바꾼다)
   useEffect(() => {
     randomizeAll(playerCount);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -43,7 +50,17 @@ export function SetupPage({ onStart }: { onStart: () => void }) {
     setError(null);
   };
 
+  const updateChoice = (i: number, next: PartialChoice) => {
+    setChoices((prev) => prev.map((c, j) => (j === i ? next : c)));
+    setError(null);
+  };
+
   const start = () => {
+    const incomplete = seats.find((i) => !isCompleteChoice(choices[i]));
+    if (incomplete !== undefined) {
+      setError(`플레이어 ${incomplete + 1}의 덱을 정확히 ${DECK_SIZE}장으로 구성해야 합니다`);
+      return;
+    }
     try {
       // 선턴이 유리하므로(덤으로 일부 보정하지만) 입력 순서 그대로 좌석을 주지 않고 무작위로 섞는다
       // (2026-09-23 사용자 지시: 선턴도 랜덤으로). 좌석 색·턴 순서는 이 시점에 정해진다.
@@ -91,31 +108,26 @@ export function SetupPage({ onStart }: { onStart: () => void }) {
 
         <section className={landing.section}>
           <div className={styles.sectionHead}>
-            <h2 className={landing.h2}>2. 맵 · 종족 · 특수 카드</h2>
-            <button type="button" className="pill pill--outline" onClick={() => randomizeAll(playerCount)}>
-              다시 뽑기
+            <h2 className={landing.h2}>2. 맵</h2>
+            <button type="button" className="pill pill--outline" onClick={() => setMapId(randomMapId(mapsForPlayers(playerCount)))}>
+              무작위
             </button>
           </div>
-          <p className={landing.help}>맵과 각 플레이어의 종족·특수 카드는 자동으로 무작위 배정됩니다. 마음에 안 들면 다시 뽑을 수 있습니다.</p>
-          <div className={styles.mapCard}>
-            <span className={styles.mapName}>{map.name}</span>
-            <span className={styles.mapMeta}>
-              {map.players}인 · {map.size}×{map.size} · {map.roundLimit}라운드
-            </span>
-            <span className={styles.mapDesc}>{map.description}</span>
-          </div>
+          <p className={landing.help}>{map.players}명이 들어가는 맵 중에서 고르세요.</p>
+          <MapPicker value={mapId} onChange={setMapId} filterPlayers={playerCount} />
         </section>
 
         <section className={landing.section}>
           <h2 className={landing.h2}>3. 플레이어 {map.players}명</h2>
           <p className={landing.help}>
             닉네임을 비워 두면 "플레이어 N"으로 들어갑니다. 턴 순서(좌석)는 여기 입력 순서와 무관하게 게임 시작 시
-            무작위로 정해집니다(2026-09-23: 선턴이 유리해 순서를 미리 정하지 않습니다).
+            무작위로 정해집니다(2026-09-23: 선턴이 유리해 순서를 미리 정하지 않습니다). 종족·덱은 자유롭게 고르거나
+            "무작위"로 다시 뽑으세요 — 덱은 카드마다 상한 이내로 정확히 {DECK_SIZE}장을 채워야 합니다.
           </p>
           <div className={styles.seatBlocks}>
             {seats.map((i) => {
-              const choice = choices[i];
-              const race = choice ? RACES.find((r) => r.id === choice.race) : undefined;
+              const choice = choices[i] ?? {};
+              const race = choice.race ? RACES.find((r) => r.id === choice.race) : undefined;
               return (
                 <div key={i} className={styles.seatBlock}>
                   <label className={styles.nameField}>
@@ -128,18 +140,18 @@ export function SetupPage({ onStart }: { onStart: () => void }) {
                       onChange={(e) => setNicknames((prev) => prev.map((v, j) => (j === i ? e.target.value : v)))}
                     />
                   </label>
-                  {choice && race && (
-                    <>
-                      <span className={styles.seatRace}>
-                        종족 <strong>{race.name}</strong> · {race.concept}
-                      </span>
-                      <div className={styles.seatCards}>
-                        <CardFace spec={getSpec(choice.buildingId)} seat={i} hoverDetails />
-                        <CardFace spec={getSpec(choice.unitId)} seat={i} hoverDetails />
-                        <CardFace spec={getSpec(choice.magicId)} seat={i} hoverDetails />
-                      </div>
-                    </>
-                  )}
+                  <details className={styles.deckDetails}>
+                    <summary className={styles.deckSummary}>
+                      {race ? `종족 ${race.name} · 덱 ${deckTotal(choice)}/${DECK_SIZE}장` : '종족·덱 고르기'}
+                      {isCompleteChoice(choice) ? '' : ' (미완성)'}
+                    </summary>
+                    <DeckPicker
+                      choice={choice}
+                      onPickRace={(r) => updateChoice(i, { race: r, cards: {} })}
+                      onSetCount={(cardId, n) => updateChoice(i, { ...choice, cards: { ...choice.cards, [cardId]: Math.max(0, n) } })}
+                      onRandom={() => updateChoice(i, randomDeckChoice())}
+                    />
+                  </details>
                 </div>
               );
             })}

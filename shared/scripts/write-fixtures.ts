@@ -71,26 +71,29 @@ initial = withMarkers(initial, [
 ]);
 
 // 한 턴에 배치는 한 번만 할 수 있다(2026-09-23, Rules.md 5.2). 배치는 턴을 자동으로 끝내지
-// 않으므로 매 배치 뒤에 PASS(=턴 종료, 배치했으므로 패스로는 기록되지 않는다)를 명시적으로 끼워 넣는다.
+// 않으므로 매 배치 뒤에 PASS(=턴 종료)를 명시적으로 끼워 넣는다. 2026-09-23부터 마커 효과(전투·
+// 정비·지속 마법 만료·수입·드로우)는 다음 사람 턴 시작이 아니라 **그 마커의 주인이 자기 턴을 끝내는
+// 바로 그 순간**에 처리된다 — 그래서 공격은 다음 턴까지 기다리지 않고, 방금 놓은 마커가 사거리 안
+// 적이 있으면 그 자리에서 바로 공격한다.
 const actions: Action[] = [
   { type: 'PLACE', playerId: 'p0', cardId: 'outpost', pos: { x: 4, y: 2 } }, // 시야 확장
-  { type: 'PASS', playerId: 'p0' }, // 배치 후 턴 종료
+  { type: 'PASS', playerId: 'p0' }, // 배치 후 턴 종료. 아직 사거리 안 적이 없어 조용하다
   { type: 'PLACE', playerId: 'ai-1', cardId: 'warp-gate', pos: { x: 6, y: 5 } }, // 지속 마법
   { type: 'PASS', playerId: 'ai-1' }, // 배치 후 턴 종료
-  { type: 'PLACE', playerId: 'p0', cardId: 'artillery', pos: { x: 5, y: 4 } }, // 앞서 놓은 전초기지(시야2) 안, 코어(시야1) 밖
+  { type: 'PLACE', playerId: 'p0', cardId: 'artillery', pos: { x: 5, y: 4 } }, // 사거리 3 안에 워프 게이트·정찰 드론
+  { type: 'PASS', playerId: 'p0' }, // 배치 직후 턴 종료 → 포격함이 즉시 공격해 워프 게이트(체력 2)를 파괴한다
+  { type: 'PLACE', playerId: 'ai-1', cardId: 'fighter', pos: { x: 6, y: 4 } }, // 포격함(5,4) 거리 1
+  { type: 'PASS', playerId: 'ai-1' }, // 배치 직후 턴 종료 → 전투기가 즉시 반격해 포격함 체력이 준다
+  { type: 'PASS', playerId: 'p0' }, // 이번 턴엔 놓지 않은 진짜 패스 — 그래도 포격함이 다시 전투기를 공격한다
+  { type: 'PLACE', playerId: 'ai-1', cardId: 'shield', pos: { x: 5, y: 5 } }, // 즉발 회복: 반경 1 아군 체력 +3
+  { type: 'PASS', playerId: 'ai-1' }, // 배치 후 턴 종료 → 전투기가 약해진 포격함을 마저 파괴한다
+  { type: 'PLACE', playerId: 'p0', cardId: 'meteor', pos: { x: 6, y: 2 } }, // 즉발 피해(반경 안에 적이 없어도 유효)
   { type: 'PASS', playerId: 'p0' }, // 배치 후 턴 종료
-  { type: 'PLACE', playerId: 'ai-1', cardId: 'fighter', pos: { x: 6, y: 4 } }, // 앞서 놓은 워프 게이트(시야3) 안
-  { type: 'PASS', playerId: 'ai-1' }, // 이 턴 종료가 p0 턴으로 넘겨 p0 시작 단계에서 포격함이 전투기를 즉시 공격한다 (사거리 3)
-  { type: 'PASS', playerId: 'p0' }, // p0 는 이번 턴에 놓지 않은 진짜 패스 — ai-1 턴으로 넘겨 ai-1 시작 단계에서 전투기가 포격함에 반격한다
-  { type: 'PLACE', playerId: 'ai-1', cardId: 'shield', pos: { x: 5, y: 5 } }, // 회복
-  { type: 'PASS', playerId: 'ai-1' }, // 배치 후 턴 종료
-  { type: 'PLACE', playerId: 'p0', cardId: 'meteor', pos: { x: 5, y: 5 } }, // 즉발 피해: 반경1 안의 적 마커 전부 동시 파괴
-  { type: 'PASS', playerId: 'p0' }, // 배치 후 턴 종료
-  { type: 'PLACE', playerId: 'ai-1', cardId: 'repair-drone', pos: { x: 7, y: 6 } },
-  { type: 'PASS', playerId: 'ai-1' }, // 배치 후 턴 종료
-  { type: 'PLACE', playerId: 'p0', cardId: 'stealth', pos: { x: 8, y: 7 } }, // 침투: 적 코어(7,7) 인접
-  { type: 'PASS', playerId: 'p0' }, // 배치 후 턴 종료
-  { type: 'PASS', playerId: 'ai-1' }, // 진짜 패스
+  { type: 'PLACE', playerId: 'ai-1', cardId: 'repair-drone', pos: { x: 7, y: 6 } }, // 정비 키워드
+  { type: 'PASS', playerId: 'ai-1' }, // 배치 후 턴 종료 → 정비 효과 처리
+  { type: 'PLACE', playerId: 'p0', cardId: 'stealth', pos: { x: 8, y: 7 } }, // 침투: 적 코어(7,7) 인접, 사거리 1
+  { type: 'PASS', playerId: 'p0' }, // 배치 직후 턴 종료 → 침투 유닛이 적 코어를 공격한다
+  { type: 'PASS', playerId: 'ai-1' }, // 진짜 패스 → 코어가 다시 공격받는다(정비로 일부 회복된 뒤)
   { type: 'PLACE', playerId: 'p0', cardId: 'extractor', pos: { x: 3, y: 3 } }, // 패스 연속 리셋
   { type: 'PASS', playerId: 'p0' }, // 배치 후 턴 종료 → ai-1 턴
   { type: 'SURRENDER', playerId: 'ai-1' },

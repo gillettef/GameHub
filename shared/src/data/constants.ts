@@ -21,9 +21,10 @@ export const INITIAL_HAND_SIZE = 4;
 export const HAND_LIMIT = 5;
 export const DRAW_PER_TURN = 1;
 
+/** 종족별 기본 카드 표(카탈로그 분류)의 copies 합. baseDeckOf 불변식 검증에만 쓴다 */
 export const BASE_DECK_SIZE = 22;
-/** 덱 빌딩에서 고르는 특수 카드 수 (건물·유닛·마법 각 1장) */
-export const SPECIAL_PICKS = 3;
+/** 덱 빌딩에서 완성해야 하는 총 장수. 2026-09-23부터 기본/특수 구분 없이 이 장수를 채우면 된다 */
+export const DECK_SIZE = 25;
 
 /** 광맥 위 건물의 생산 보너스 */
 export const VEIN_PRODUCTION_BONUS = 1;
@@ -53,7 +54,7 @@ export const CONSTANTS = {
   HAND_LIMIT,
   DRAW_PER_TURN,
   BASE_DECK_SIZE,
-  SPECIAL_PICKS,
+  DECK_SIZE,
   VEIN_PRODUCTION_BONUS,
   SCORE_PER_TERRITORY,
   KOMI_PER_SEAT,

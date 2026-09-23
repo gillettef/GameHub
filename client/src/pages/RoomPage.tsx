@@ -1,8 +1,8 @@
 import { useEffect, useState, type CSSProperties } from 'react';
 import type { RoomPeek } from '@astraltab/shared';
-import { DEFAULT_DECK_CHOICE, MAPS, RACES, getMap, getSpec } from '@astraltab/shared';
-import { CardFace } from '../components/CardFace';
-import { isCompleteChoice, type PartialChoice } from '../components/DeckPicker';
+import { DECK_SIZE, DEFAULT_DECK_CHOICE, getMap, mapsForPlayers } from '@astraltab/shared';
+import { DeckPicker, isCompleteChoice, type PartialChoice } from '../components/DeckPicker';
+import { MapPicker } from '../components/MapPicker';
 import { cx } from '../lib/cx';
 import { getNickname, getPlayerToken, getRoomPassword, setNickname, setRoomPassword } from '../lib/identity';
 import { randomDeckChoice, randomMapId } from '../lib/randomPicks';
@@ -231,21 +231,20 @@ function LobbyView({ roomId, onQuit }: { roomId: string; onQuit: () => void }) {
     if (!res.ok && res.message) setNotice(res.message);
   };
 
-  const pickRandomDeck = () => {
-    const next = randomDeckChoice();
+  const applyChoice = (next: PartialChoice) => {
     setChoice(next);
-    dispatch({ type: 'SELECT_DECK', playerId: viewerId, choice: next });
+    if (isCompleteChoice(next)) dispatch({ type: 'SELECT_DECK', playerId: viewerId, choice: next });
   };
+
+  const pickRandomDeck = () => applyChoice(randomDeckChoice());
 
   const currentChoice: PartialChoice = me?.deckChoice ?? choice;
 
-  // 종족·특수 카드는 2026-09-23 사용자 지시로 직접 고르지 않고 자동 배정한다. 아직 배정 전이면 한 번 뽑는다
+  // 처음 들어오면 무작위 기본값을 한 번 채운다 (2026-09-23: 그 뒤로는 DeckPicker 로 자유롭게 바꾼다)
   useEffect(() => {
     if (me && !me.deckChoice) pickRandomDeck();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [me?.id, me?.deckChoice]);
-
-  const race = currentChoice.race ? RACES.find((r) => r.id === currentChoice.race) : undefined;
 
   return (
     <div className={landing.root}>
@@ -344,49 +343,31 @@ function LobbyView({ roomId, onQuit }: { roomId: string; onQuit: () => void }) {
             <div className={styles.sectionHead}>
               <h2 className={landing.h2}>맵</h2>
               {isHost && (
-                <button
-                  type="button"
-                  className="pill pill--outline"
-                  onClick={() => request(api.setMap(roomId, randomMapId(MAPS.filter((m) => m.players >= state.players.length))))}
-                >
-                  다시 뽑기
+                <button type="button" className="pill pill--outline" onClick={() => request(api.setMap(roomId, randomMapId(mapsForPlayers(state.players.length))))}>
+                  무작위
                 </button>
               )}
             </div>
             <p className={landing.help}>
-              맵은 자동으로 무작위 배정됩니다.{isHost ? ' 방장은 다시 뽑을 수 있습니다.' : ' 방장만 다시 뽑을 수 있습니다.'}
+              {isHost ? '방장만 맵을 바꿀 수 있습니다.' : '방장이 맵을 정합니다.'}
               {!full && ` 인원이 정원(${map.players}명)과 같아야 시작합니다.`}
             </p>
-            <div className={styles.mapCard}>
-              <span className={styles.mapName}>{map.name}</span>
-              <span className={styles.mapMeta}>
-                {map.players}인 · {map.size}×{map.size} · {map.roundLimit}라운드
-              </span>
-              <span className={styles.mapDesc}>{map.description}</span>
-            </div>
+            <MapPicker value={state.mapId} onChange={(id) => request(api.setMap(roomId, id))} disabled={!isHost} currentPlayers={state.players.length} />
           </section>
         </div>
 
         <section className={landing.section}>
-          <div className={styles.sectionHead}>
-            <h2 className={landing.h2}>내 종족 · 특수 카드</h2>
-            <button type="button" className="pill pill--outline" onClick={pickRandomDeck}>
-              다시 뽑기
-            </button>
-          </div>
-          <p className={landing.help}>종족과 특수 카드 3장은 자동으로 무작위 배정됩니다. 마음에 안 들면 다시 뽑고 준비 완료를 누르세요.</p>
-          {race && (
-            <span className={styles.seatRace}>
-              종족 <strong>{race.name}</strong> · {race.concept}
-            </span>
-          )}
-          {isCompleteChoice(currentChoice) && (
-            <div className={styles.seatCards}>
-              <CardFace spec={getSpec(currentChoice.buildingId)} seat={me?.seat} hoverDetails />
-              <CardFace spec={getSpec(currentChoice.unitId)} seat={me?.seat} hoverDetails />
-              <CardFace spec={getSpec(currentChoice.magicId)} seat={me?.seat} hoverDetails />
-            </div>
-          )}
+          <h2 className={landing.h2}>내 종족 · 덱</h2>
+          <p className={landing.help}>
+            {me?.isReady ? '준비를 취소하면 다시 바꿀 수 있습니다.' : `카드마다 상한 이내로 자유롭게 골라 정확히 ${DECK_SIZE}장을 채우세요. "랜덤"으로 한 번에 다시 뽑을 수도 있습니다.`}
+          </p>
+          <DeckPicker
+            choice={currentChoice}
+            disabled={me?.isReady}
+            onPickRace={(r) => applyChoice({ race: r, cards: {} })}
+            onSetCount={(cardId, n) => applyChoice({ ...currentChoice, cards: { ...currentChoice.cards, [cardId]: Math.max(0, n) } })}
+            onRandom={pickRandomDeck}
+          />
           <div className={styles.readyRow}>
             {me?.isReady ? (
               <button
@@ -407,7 +388,7 @@ function LobbyView({ roomId, onQuit }: { roomId: string; onQuit: () => void }) {
               </button>
             )}
             <span className={landing.help}>
-              {isCompleteChoice(currentChoice) ? '세 장을 모두 골랐습니다.' : '건물·유닛·마법을 하나씩 고르세요.'}
+              {isCompleteChoice(currentChoice) ? `덱 ${DECK_SIZE}장을 모두 채웠습니다.` : '종족을 고르고 덱을 채우세요.'}
             </span>
           </div>
         </section>

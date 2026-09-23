@@ -27,6 +27,9 @@ export const TurnControls = memo(function TurnControls({ compact }: TurnControls
   const setConfirming = useGameStore((s) => s.setSurrenderConfirming);
   const pass = useGameStore((s) => s.pass);
   const surrender = useGameStore((s) => s.surrender);
+  const discardMode = useGameStore((s) => s.discardMode);
+  const discardIndices = useGameStore((s) => s.discardIndices);
+  const toggleDiscardMode = useGameStore((s) => s.toggleDiscardMode);
 
   if (!state || !viewerId) return null;
   const finished = state.phase === 'finished';
@@ -35,7 +38,8 @@ export const TurnControls = memo(function TurnControls({ compact }: TurnControls
   const current = state.currentPlayerId ? nameOf(state, state.currentPlayerId) : null;
   const me = state.players.find((p) => p.id === viewerId);
   const acted = me?.actedThisTurn ?? false;
-  const endLabel = acted ? '턴 종료' : '패스';
+  const discardCount = discardIndices.length;
+  const endLabel = (acted ? '턴 종료' : '패스') + (discardCount > 0 ? ` (${discardCount}장 교체)` : '');
 
   const status = finished
     ? '게임 종료'
@@ -65,6 +69,15 @@ export const TurnControls = memo(function TurnControls({ compact }: TurnControls
           <span className={styles.passesBadge} title={`연속 패스 ${passes} / ${alive}`}>
             {passes}/{alive}
           </span>
+          <button
+            type="button"
+            className={cx('pill', 'pill--outline', discardMode && styles.discardActive)}
+            disabled={!isMyTurn}
+            onClick={toggleDiscardMode}
+            title="패스/턴 종료 시 함께 버리고 다시 뽑을 카드를 고릅니다"
+          >
+            손패 교체{discardCount > 0 ? ` ${discardCount}` : ''}
+          </button>
           <button type="button" className="pill" disabled={!isMyTurn} onClick={pass}>
             {endLabel}
           </button>

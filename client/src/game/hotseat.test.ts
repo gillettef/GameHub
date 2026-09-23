@@ -9,24 +9,23 @@ const twoPlayers = () =>
     seed: 42,
     players: [
       { nickname: '갑', deckChoice: DEFAULT_DECK_CHOICE },
-      { nickname: '', deckChoice: { race: 'coalition', buildingId: 'observatory', unitId: 'stealth', magicId: 'energy-storm' } },
+      { nickname: '', deckChoice: DEFAULT_DECK_CHOICE },
     ],
   });
 
 describe('핫시트 어댑터', () => {
-  it('맵 정원만큼 앉히고 첫 턴 시작 단계까지 진행한다 (F018, F019)', () => {
+  it('맵 정원만큼 앉히고 첫 턴을 시작한다 (F018, F019)', () => {
     const s = twoPlayers();
     expect(s.phase).toBe('playing');
     expect(s.players.map((p) => p.nickname)).toEqual(['갑', '플레이어 2']);
     expect(s.currentPlayerId).toBe(hotseatPlayerId(0));
     expect(s.markers.filter((m) => m.kind === 'core')).toHaveLength(2);
-    // 첫 플레이어는 수입 +1, 드로우 +1 을 이미 받았다
-    const first = s.players[0]!;
-    expect(first.energy).toBe(STARTING_ENERGY + CORE_BASE_INCOME);
-    expect(first.hand).toHaveLength(INITIAL_HAND_SIZE + 1);
-    const second = s.players[1]!;
-    expect(second.energy).toBe(STARTING_ENERGY);
-    expect(second.hand).toHaveLength(INITIAL_HAND_SIZE);
+    // 2026-09-23부터 턴 시작 시 자동 효과가 없다 — 첫 플레이어도 초기 배분(손패 4, 에너지 5)만 갖는다.
+    // 전투·수입·드로우는 그 플레이어가 자기 턴을 끝낼 때 비로소 일어난다.
+    for (const p of s.players) {
+      expect(p.energy).toBe(STARTING_ENERGY);
+      expect(p.hand).toHaveLength(INITIAL_HAND_SIZE);
+    }
   });
 
   it('정원이 맞지 않으면 시작하지 않는다', () => {

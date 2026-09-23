@@ -92,6 +92,12 @@
   gap: var(--space-1);
 }
 
+.raceCardIcon {
+  width: 20px;
+  height: 20px;
+  color: var(--color-accent);
+}
+
 .racePrompt {
   padding: var(--space-2);
   border-radius: var(--radius-sm);
@@ -100,46 +106,80 @@
   font-size: var(--text-small);
 }
 
-.picker {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: var(--space-3);
-}
-
-.pickColumn {
-  padding: var(--space-2);
-  border-radius: var(--radius-sm);
-  background: var(--color-white);
-}
-
 .cards {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-1);
 }
 
-.baseDeck {
-  padding: var(--space-2);
+/* 덱 총 장수 표시 (F016 개편): DECK_SIZE 에 정확히 맞아야 준비할 수 있다 */
+.deckTotal {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 6px var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--color-band-lavender);
+  color: var(--color-heading);
+  font-weight: 700;
+  font-size: var(--text-small);
+  text-align: center;
+}
+
+.deckTotalComplete {
+  background: var(--color-accent);
+  color: var(--color-white);
+}
+
+/* 카드 목록: 카드 한 장 + 장수 스테퍼 */
+.cardList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cardRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 6px;
   border-radius: var(--radius-sm);
   background: var(--color-white);
 }
 
-.summary {
-  cursor: pointer;
-  font-weight: 600;
+.stepper {
+  flex: none;
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.stepperBtn {
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--color-outline);
+  background: var(--color-white);
   color: var(--color-heading);
-  margin-bottom: var(--space-2);
+  font-size: var(--text-nav);
+  font-weight: 700;
+  line-height: 1;
 }
 
-.baseCard {
-  position: relative;
+.stepperBtn:disabled {
+  opacity: 0.4;
 }
 
-.copies {
-  position: absolute;
-  right: 8px;
-  bottom: 8px;
-  font-size: var(--text-small);
+.stepperCount {
+  min-width: 34px;
+  text-align: center;
   font-weight: 700;
   color: var(--color-heading);
+}
+
+.stepperMax {
+  font-weight: 400;
+  color: var(--color-muted);
+  font-size: var(--text-micro);
 }

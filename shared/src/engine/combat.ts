@@ -1,5 +1,5 @@
 /**
- * 전투·정비·지속 마법 만료·파괴·탈락 (Rules.md 7절, 5.1, F023, F024). 순수 함수.
+ * 전투·정비·지속 마법 만료·파괴·탈락 (Rules.md 7절, 5.2, F023, F024). 순수 함수.
  */
 import type { GameLogEntry, GameState, LogKind, Marker, PlayerId, Position } from '../types/index.js';
 import { REPAIR_AMOUNT, REPAIR_RADIUS, getSpec } from '../data/index.js';
