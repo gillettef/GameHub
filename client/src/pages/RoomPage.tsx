@@ -222,7 +222,9 @@ function LobbyView({ roomId, onQuit }: { roomId: string; onQuit: () => void }) {
   };
 
   const pick = (key: keyof DeckChoice, id: string) => {
-    const next = { ...choice, [key]: choice[key] === id ? undefined : id };
+    const picked = choice[key] === id ? undefined : id;
+    // 종족을 바꾸면(또는 해제하면) 이전 종족의 특수 카드 선택은 더 이상 유효하지 않다
+    const next: PartialChoice = key === 'race' ? { race: picked as PartialChoice['race'] } : { ...choice, [key]: picked };
     setChoice(next);
     if (isCompleteChoice(next)) dispatch({ type: 'SELECT_DECK', playerId: viewerId, choice: next });
   };

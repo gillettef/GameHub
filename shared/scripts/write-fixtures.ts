@@ -64,6 +64,10 @@ initial = withMarkers(initial, [
   ...initial.markers,
   marker('ai-1', 'extractor', { x: 6, y: 10 }, 2), // 광맥, 체력 2
   marker('ai-1', 'scout', { x: 6, y: 6 }), // 중앙 전진 배치
+  // 과부하(오토마타) TS·Python 교차 검증: 두 제작 노드가 서로 반경 1 안이라 매 턴 수입에
+  // 이웃 보너스가 붙는다. 액션이 쓰는 칸과 겹치지 않는 구석(1,1)/(1,2)에 둔다.
+  marker('p0', 'fab-node', { x: 1, y: 1 }),
+  marker('p0', 'fab-node', { x: 1, y: 2 }),
 ]);
 
 // 배치는 더 이상 턴을 끝내지 않으므로(Rules.md 5.2), 턴을 넘기려면 배치 뒤에 PASS(=턴 종료, 배치했으므로

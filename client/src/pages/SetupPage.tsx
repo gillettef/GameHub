@@ -42,7 +42,15 @@ export function SetupPage({ onStart }: { onStart: () => void }) {
   };
 
   const pick = (key: keyof DeckChoice, id: string) => {
-    setChoices((prev) => prev.map((c, i) => (i === activeSeat ? { ...c, [key]: c[key] === id ? undefined : id } : c)));
+    setChoices((prev) =>
+      prev.map((c, i) => {
+        if (i !== activeSeat) return c;
+        const next = c[key] === id ? undefined : id;
+        // 종족을 바꾸면(또는 해제하면) 이전 종족의 특수 카드 선택은 더 이상 유효하지 않다
+        if (key === 'race') return { race: next as PartialChoice['race'] };
+        return { ...c, [key]: next };
+      }),
+    );
   };
 
   const start = () => {

@@ -34,6 +34,9 @@ export const INFILTRATE_RANGE = 1;
 /** 정비 키워드: 반경(육각 거리)과 회복량 */
 export const REPAIR_RADIUS = 1;
 export const REPAIR_AMOUNT = 1;
+/** 과부하 키워드(오토마타): 반경과 인접 건물 1개당 생산 보너스 */
+export const OVERCLOCK_RADIUS = 1;
+export const OVERCLOCK_BONUS_PER_NEIGHBOR = 1;
 
 export const CONSTANTS = {
   MIN_PLAYERS,
@@ -53,4 +56,6 @@ export const CONSTANTS = {
   INFILTRATE_RANGE,
   REPAIR_RADIUS,
   REPAIR_AMOUNT,
+  OVERCLOCK_RADIUS,
+  OVERCLOCK_BONUS_PER_NEIGHBOR,
 } as const;

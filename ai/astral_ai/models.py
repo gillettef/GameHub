@@ -11,7 +11,8 @@ PlayerKind = Literal["human", "ai"]
 GamePhase = Literal["lobby", "playing", "finished"]
 CardType = Literal["building", "unit", "magic"]
 MarkerKind = Literal["core", "building", "unit", "magic"]
-Keyword = Literal["infiltrate", "repair"]
+Keyword = Literal["infiltrate", "repair", "overclock"]
+RaceId = Literal["coalition", "swarm", "automata"]
 Terrain = Literal["space", "asteroid", "vein"]
 LogKind = Literal[
     "system", "turn", "combat", "repair", "expire", "income", "draw",
@@ -69,6 +70,7 @@ class CardSpec(Strict):
     id: str
     name: str
     kind: MarkerKind
+    race: RaceId | None
     special: bool
     cost: int
     sight: int
@@ -84,6 +86,7 @@ class CardSpec(Strict):
 
 
 class DeckChoice(Strict):
+    race: RaceId
     buildingId: str
     unitId: str
     magicId: str

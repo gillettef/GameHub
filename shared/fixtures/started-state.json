@@ -33,6 +33,7 @@
       "seat": 0,
       "isReady": true,
       "deckChoice": {
+        "race": "coalition",
         "buildingId": "refinery",
         "unitId": "battleship",
         "magicId": "gravity-wave"
@@ -80,6 +81,7 @@
       "seat": 1,
       "isReady": true,
       "deckChoice": {
+        "race": "coalition",
         "buildingId": "refinery",
         "unitId": "battleship",
         "magicId": "gravity-wave"

@@ -177,8 +177,24 @@ export function keywordLabel(k: string): string {
       return '침투';
     case 'repair':
       return '정비';
+    case 'overclock':
+      return '과부하';
     default:
       return k;
+  }
+}
+
+/** 키워드 배지에 다는 설명. 카드별 description 과 별개로, 키워드 자체의 공통 뜻(F017) */
+export function keywordExplain(k: string): string {
+  switch (k) {
+    case 'infiltrate':
+      return '침투: 적 마커 거리 1 이내에도 배치 가능';
+    case 'repair':
+      return '정비: 내 턴 시작 시 반경 1 아군 체력 +1';
+    case 'overclock':
+      return '과부하: 턴 시작 시 반경 1 이내 자신 건물 수만큼 생산 추가';
+    default:
+      return keywordLabel(k);
   }
 }
 
