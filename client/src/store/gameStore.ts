@@ -14,13 +14,14 @@ import { applyHotseatAction, createHotseatGame, type HotseatConfig } from '../ga
 import { api } from '../socket/client';
 
 export type Mode = 'hotseat' | 'online';
-export type TabId = 'board' | 'status' | 'progress';
+export type TabId = 'board' | 'status' | 'progress' | 'help';
 export type Connection = 'idle' | 'connecting' | 'connected' | 'disconnected';
 
 export const TABS: { id: TabId; label: string }[] = [
   { id: 'board', label: '보드' },
   { id: 'status', label: '상태' },
   { id: 'progress', label: '진행' },
+  { id: 'help', label: '설명' },
 ];
 
 interface GameStore {

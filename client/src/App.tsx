@@ -19,7 +19,7 @@ function readQuickStart(): { mapId: string; seed: number; tab: TabId | null; sel
   return {
     mapId: q.get('map') ?? DEFAULT_MAP_ID,
     seed: Number(q.get('seed') ?? makeSeed()),
-    tab: tab === 'status' || tab === 'progress' || tab === 'board' ? tab : null,
+    tab: tab === 'status' || tab === 'progress' || tab === 'board' || tab === 'help' ? tab : null,
     select: q.has('select') ? Number(q.get('select')) : null,
   };
 }

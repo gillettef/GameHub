@@ -4,8 +4,9 @@ import { keywordExplain, keywordLabel, kindLabel } from '../game/derived';
 import { cx } from '../lib/cx';
 import styles from './CardFace.module.css';
 
-/** 스탯 아이콘. 선 굵기·스타일을 TabDock 아이콘과 맞춘다(고정폭 선, currentColor) */
-const ICONS = {
+/** 스탯 아이콘. 선 굵기·스타일을 TabDock 아이콘과 맞춘다(고정폭 선, currentColor).
+ * 설명 탭(HelpTab)이 같은 아이콘을 그대로 재사용하도록 내보낸다 */
+export const ICONS = {
   cost: (
     <svg viewBox="0 0 24 24" width="10" height="10" fill="currentColor" aria-hidden="true">
       <path d="M13 2 4 14h6l-1 8 9-12h-6z" />
