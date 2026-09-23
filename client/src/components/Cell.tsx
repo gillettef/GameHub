@@ -1,7 +1,10 @@
-import { memo, type CSSProperties } from 'react';
+import { memo, useRef, useState, type CSSProperties } from 'react';
 import type { CellView } from '../game/derived';
 import { kindLabel } from '../game/derived';
 import styles from './Board.module.css';
+
+/** 툴팁 대략 높이(px). 위쪽 여유가 이보다 적으면 아래로 뒤집는다 */
+const TOOLTIP_SPACE = 160;
 
 interface CellProps {
   cell: CellView;
@@ -20,12 +23,25 @@ interface CellProps {
  */
 export const Cell = memo(function Cell({ cell, legal, onClick, style }: CellProps) {
   const m = cell.marker;
+  const cellRef = useRef<HTMLDivElement>(null);
+  const [below, setBelow] = useState(cell.y < 3);
+
+  /** 호버·포커스 시점에 실제 화면 위 여유를 재서 위/아래를 정한다 (확대 모드의 스크롤 컨테이너에서도
+   * 정확하다 — 칸 좌표(y)만 보는 고정 판정은 스크롤 위치에 따라 틀릴 수 있다) */
+  const updateTooltipSide = () => {
+    const rect = cellRef.current?.getBoundingClientRect();
+    if (rect) setBelow(rect.top < TOOLTIP_SPACE);
+  };
+
   return (
     <div
       className={styles.cell}
       style={style}
+      ref={cellRef}
       data-legal={legal || undefined}
       onClick={() => onClick(cell.x, cell.y)}
+      onMouseEnter={m ? updateTooltipSide : undefined}
+      onFocus={m ? updateTooltipSide : undefined}
       onKeyDown={
         legal
           ? (e) => {
@@ -51,7 +67,7 @@ export const Cell = memo(function Cell({ cell, legal, onClick, style }: CellProp
             <span className={styles.seatBadge}>{m.seat + 1}</span>
           </div>
           {/* .marker 의 형제로 둔다: .cell(칸)도 .marker(코어)도 clip-path 육각이라, 자손이면 밖으로 못 빠져나간다 */}
-          <div className={styles.tooltip} data-below={cell.y < 3 || undefined} role="tooltip">
+          <div className={styles.tooltip} data-below={below || undefined} role="tooltip">
             <strong>{m.name}</strong>
             <span className={styles.tooltipMeta}>
               {kindLabel(m.kind)} · {m.ownerName} (좌석 {m.seat + 1})
