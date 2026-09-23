@@ -230,28 +230,13 @@
   font-size: var(--text-small);
 }
 
-.seatBadge {
-  position: absolute;
-  top: -5px;
-  right: -5px;
-  min-width: 14px;
-  height: 14px;
-  padding: 0 3px;
-  border-radius: var(--radius-full);
-  background: var(--color-heading);
-  color: var(--color-canvas);
-  font-size: var(--text-micro);
-  line-height: 14px;
-  text-align: center;
-}
-
-/* 마커 툴팁 (F008): 호버 시에만 */
+/* 마커 툴팁 (F008): 호버 시에만. 좌우는 Cell.tsx 가 재서 --tooltip-shift 로 넘긴다(F015: 앱 프레임 밖으로 안 나가게) */
 .tooltip {
   display: none;
   position: absolute;
   left: 50%;
   bottom: calc(100% + 8px);
-  transform: translateX(-50%);
+  transform: translateX(calc(-50% + var(--tooltip-shift, 0px)));
   z-index: 30;
   width: 168px;
   padding: var(--space-1) var(--space-2);

@@ -136,6 +136,24 @@
   line-height: 1.5;
 }
 
+/* 종족 표시 (2026-09-23 사용자 지시): 닉네임 아래 작은 텍스트 한 줄 */
+.race {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--color-muted);
+  font-size: var(--text-micro);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.raceIcon {
+  flex: none;
+  width: 10px;
+  height: 10px;
+}
+
 /* 2026-09-24: 좁은 카드에서 flex 아이템이 내용보다 줄어들면 안의 텍스트가 줄바꿈되던 문제
    (예: "+1/턴" 이 "+1" / "턴" 두 줄로) — 아이콘 표기로 바꾸면서 각 항목을 한 줄로 고정한다 */
 .statsRow {
