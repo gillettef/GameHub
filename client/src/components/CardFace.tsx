@@ -63,8 +63,8 @@ export function effectLabel(spec: CardSpec): string | null {
   }
 }
 
-/** 아이콘 + 값 한 쌍. 카드 앞면 스탯 줄과 팝오버 스펙 표에서 함께 쓴다 */
-function Stat({ icon, value, title }: { icon: ReactNode; value: string; title: string }) {
+/** 아이콘 + 값 한 쌍. 카드 앞면 스탯 줄과 팝오버 스펙 표, 상단 상태 창(PlayerStrip)에서도 쓴다 */
+export function Stat({ icon, value, title }: { icon: ReactNode; value: string; title: string }) {
   return (
     <span className={styles.stat} title={title}>
       <span className={styles.statIcon}>{icon}</span>
@@ -119,6 +119,9 @@ interface CardFaceProps {
   hoverDetails?: boolean;
   /** 소유자 좌석. 있으면 배경을 좌석 색으로 물들인다 (덱 빌딩처럼 좌석이 아직 없는 화면은 생략) */
   seat?: number;
+  /** 보드 탭 손패용 축소 크기(2026-09-24 사용자 지시: 보드 영역을 넓히려고 손패를 줄인다).
+   * 종류 이름 줄을 생략한다 — 모양 배지 + 이름 색으로도 구분되므로(설명 탭 참고) */
+  compact?: boolean;
 }
 
 /**
@@ -126,12 +129,12 @@ interface CardFaceProps {
  * 배경은 소유자 좌석 색, 종류(건물·유닛·마법)는 카드 이름 텍스트 색 + 이름 앞 모양 배지로 구분한다
  * (보드 마커의 모양 언어: 건물=둥근 사각·유닛=원·마법=마름모 — Board.module.css 와 맞춘다).
  */
-export const CardFace = memo(function CardFace({ spec, selected, disabled, reason, onClick, hoverDetails, seat }: CardFaceProps) {
+export const CardFace = memo(function CardFace({ spec, selected, disabled, reason, onClick, hoverDetails, seat, compact }: CardFaceProps) {
   const effect = effectLabel(spec);
   return (
     <button
       type="button"
-      className={cx(styles.card, selected && styles.selected, disabled && styles.disabled)}
+      className={cx(styles.card, compact && styles.compact, selected && styles.selected, disabled && styles.disabled)}
       data-kind={spec.kind}
       data-seat={seat ?? undefined}
       aria-pressed={selected ?? false}
@@ -141,14 +144,19 @@ export const CardFace = memo(function CardFace({ spec, selected, disabled, reaso
       <span className={styles.head}>
         <span className={styles.name}>
           <span className={styles.kindGlyph} aria-hidden="true" />
-          {spec.name}
+          <span className={styles.nameText}>{spec.name}</span>
         </span>
         <span className={styles.cost} title="비용">
           <span className={styles.costIcon}>{ICONS.cost}</span>
           {spec.cost}
         </span>
       </span>
-      <span className={styles.kind}>{kindLabel(spec.kind)}{spec.special ? ' · 특수' : ''}</span>
+      {!compact && (
+        <span className={styles.kind}>
+          {kindLabel(spec.kind)}
+          {spec.special ? ' · 특수' : ''}
+        </span>
+      )}
       <span className={styles.stats}>
         <Stat icon={ICONS.sight} value={String(spec.sight)} title="시야" />
         <Stat icon={ICONS.score} value={String(spec.score)} title="점수" />

@@ -1,5 +1,6 @@
 import { memo, useMemo, type CSSProperties } from 'react';
 import { nameOf } from '@astraltab/shared';
+import { ICONS, Stat } from './CardFace';
 import { buildPlayerSummaries } from '../game/derived';
 import { cx } from '../lib/cx';
 import { selectState, selectViewerId, useGameStore } from '../store/gameStore';
@@ -58,9 +59,15 @@ export const PlayerStrip = memo(function PlayerStrip({ onQuit }: PlayerStripProp
                   {r.id === viewerId && <span className={styles.meTag}>나</span>}
                 </div>
                 <div className={styles.statsRow}>
-                  <span className={styles.energy}>{r.energy} 에너지</span>
-                  <span className={styles.income}>+{r.income}/턴</span>
-                  <span className={styles.score}>{r.total}점</span>
+                  <span className={styles.energy}>
+                    <Stat icon={ICONS.cost} value={String(r.energy)} title="에너지" />
+                  </span>
+                  <span className={styles.income}>
+                    <Stat icon={ICONS.production} value={`+${r.income}`} title="턴당 생산" />
+                  </span>
+                  <span className={styles.score}>
+                    <Stat icon={ICONS.score} value={String(r.total)} title="점수(덤 포함)" />
+                  </span>
                 </div>
               </div>
               <span className={cx(styles.stateBadge, r.isCurrent && styles.stateBadgeCurrent, !r.alive && styles.stateBadgeDead)}>

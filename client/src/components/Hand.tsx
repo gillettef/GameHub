@@ -32,6 +32,7 @@ export const Hand = memo(function Hand({ cards, selectedIndex, interactive, onSe
               reason={interactive ? c.reason : null}
               onClick={selectable ? () => onSelect(selectedIndex === c.index ? null : c.index) : undefined}
               seat={seat}
+              compact
             />
           </li>
         );
