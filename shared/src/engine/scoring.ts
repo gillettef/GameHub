@@ -2,7 +2,14 @@
  * 점수·순위·수입 (Rules.md 9절, 5.1-4, F020, F025). 순수 함수, 파생값.
  */
 import type { GameState, PlayerId, PlayerState, Position, Score } from '../types/index.js';
-import { OVERCLOCK_BONUS_PER_NEIGHBOR, OVERCLOCK_RADIUS, SCORE_PER_TERRITORY, VEIN_PRODUCTION_BONUS, getSpec } from '../data/index.js';
+import {
+  KOMI_PER_SEAT,
+  OVERCLOCK_BONUS_PER_NEIGHBOR,
+  OVERCLOCK_RADIUS,
+  SCORE_PER_TERRITORY,
+  VEIN_PRODUCTION_BONUS,
+  getSpec,
+} from '../data/index.js';
 import { computeTerritory, hexDistance, markersOf, terrainAt } from './sight.js';
 
 /** 생존 플레이어를 좌석 순으로 */
@@ -16,18 +23,19 @@ export function getPlayer(state: GameState, id: PlayerId): PlayerState {
   return p;
 }
 
-/** 점수 = 영토 칸 수 × 1 + Σ 마커 점수. 탈락자는 0 */
+/** 점수 = 영토 칸 수 × 1 + Σ 마커 점수 + 덤(좌석 번호 × KOMI_PER_SEAT). 탈락자는 0 */
 export function computeScores(state: GameState): Record<PlayerId, Score> {
   const territory = computeTerritory(state);
   const scores: Record<PlayerId, Score> = {};
   for (const p of state.players) {
     if (!p.alive) {
-      scores[p.id] = { territory: 0, markers: 0, total: 0 };
+      scores[p.id] = { territory: 0, markers: 0, komi: 0, total: 0 };
       continue;
     }
     const t = (territory.counts[p.id] ?? 0) * SCORE_PER_TERRITORY;
     const m = markersOf(state, p.id).reduce((sum, mk) => sum + getSpec(mk.specId).score, 0);
-    scores[p.id] = { territory: t, markers: m, total: t + m };
+    const komi = p.seat * KOMI_PER_SEAT;
+    scores[p.id] = { territory: t, markers: m, komi, total: t + m + komi };
   }
   return scores;
 }

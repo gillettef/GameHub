@@ -180,14 +180,16 @@ def get_player(state: GameState, player_id: str) -> PlayerState:
 def compute_scores(state: GameState) -> dict[str, Score]:
     territory = compute_territory(state)
     per_cell = const("SCORE_PER_TERRITORY")
+    komi_per_seat = const("KOMI_PER_SEAT")
     scores: dict[str, Score] = {}
     for p in state.players:
         if not p.alive:
-            scores[p.id] = Score(territory=0, markers=0, total=0)
+            scores[p.id] = Score(territory=0, markers=0, komi=0, total=0)
             continue
         t = territory.counts.get(p.id, 0) * per_cell
         m = sum(spec(mk.specId).score for mk in markers_of(state, p.id))
-        scores[p.id] = Score(territory=t, markers=m, total=t + m)
+        komi = p.seat * komi_per_seat
+        scores[p.id] = Score(territory=t, markers=m, komi=komi, total=t + m + komi)
     return scores
 
 
@@ -234,6 +236,8 @@ def validate_card(state: GameState, player_id: str, card_id: str) -> PlacementEr
     player = get_player(state, player_id)
     if state.currentPlayerId != player_id or not player.alive:
         return "not-your-turn"
+    if player.actedThisTurn:
+        return "already-placed"
     if card_id not in load_specs().cards or card_id not in player.hand:
         return "not-in-hand"
     if player.energy < spec(card_id).cost:

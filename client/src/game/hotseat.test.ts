@@ -143,7 +143,7 @@ describe('화면 파생값', () => {
     const rows = buildPlayerSummaries(s);
     expect(rows.map((r) => r.seat)).toEqual([0, 1]);
     for (const r of rows) {
-      expect(r.total).toBe(r.territory + r.markerScore);
+      expect(r.total).toBe(r.territory + r.markerScore + r.komi);
       expect(r.income).toBe(CORE_BASE_INCOME);
       expect(r.markerCount).toBe(1);
       expect(r.deckCount + r.handCount + r.discardCount).toBe(DECK_SIZE);

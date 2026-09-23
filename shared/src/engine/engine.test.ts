@@ -35,6 +35,7 @@ import {
   ENERGY_CAP,
   HAND_LIMIT,
   INITIAL_HAND_SIZE,
+  KOMI_PER_SEAT,
   STARTING_ENERGY,
   getMap,
   getSpec,
@@ -282,8 +283,8 @@ describe('시야 · 영토 (F031)', () => {
   it('점수 = 영토 + 마커 점수, 동점은 좌석 큰 쪽 우선', () => {
     const s = setup(2);
     const sc = computeScores(s);
-    expect(sc.p0).toEqual({ territory: CORE_AREA, markers: 0, total: CORE_AREA });
-    expect(sc.p1).toEqual({ territory: CORE_AREA, markers: 0, total: CORE_AREA });
+    expect(sc.p0).toEqual({ territory: CORE_AREA, markers: 0, komi: 0, total: CORE_AREA });
+    expect(sc.p1).toEqual({ territory: CORE_AREA, markers: 0, komi: KOMI_PER_SEAT, total: CORE_AREA + KOMI_PER_SEAT });
     expect(computeRanking(s)).toEqual(['p1', 'p0']);
     const w = addMarkers(s, marker('p0', 'outpost', { x: 4, y: 4 }));
     const sc2 = computeScores(w);
@@ -323,7 +324,7 @@ describe('배치 검증 (F022)', () => {
     expect(t.markers.some((m) => m.specId === 'stealth' && m.pos.x === 7)).toBe(true);
   });
 
-  it('배치 성립: 비용 차감, 카드 버림, 마커 생성. 에너지가 허락하면 같은 턴에 이어서 배치할 수 있다', () => {
+  it('배치 성립: 비용 차감, 카드 버림, 마커 생성. 턴당 배치는 한 번뿐이다', () => {
     let s = startGame(readyLobby(2));
     s = withHand(s, 'p0', ['extractor', 'scout'], 5);
     let t = ok(s, place('p0', 'extractor', { x: 3, y: 3 }));
@@ -342,13 +343,10 @@ describe('배치 검증 (F022)', () => {
     expect(p0.actedThisTurn).toBe(true);
     expect(countPasses(t)).toBe(0);
 
-    // 이어서 두 번째 배치 (방금 놓은 채굴기 시야 안, 에너지가 남는 한 제한 없음)
-    t = ok(t, place('p0', 'scout', { x: 3, y: 4 }));
-    p0 = player(t, 'p0');
-    expect(p0.energy).toBe(2);
-    expect(p0.hand).toEqual([]);
-    expect(t.currentPlayerId).toBe('p0');
-    expect(t.markers.some((x) => x.specId === 'scout')).toBe(true);
+    // 이번 턴에는 더 놓을 수 없다 (에너지·손패·칸이 모두 남아 있어도)
+    expect(fail(t, place('p0', 'scout', { x: 3, y: 4 }))).toBe('이번 턴에는 이미 마커를 놓았습니다');
+    expect(canPlay(t, 'p0', 'scout')).toBe(false);
+    expect(hasAnyPlay(t, 'p0')).toBe(false);
 
     // 턴 종료 — 이번 턴에 배치했으므로 패스로 기록되지 않는다
     t = ok(t, pass('p0'));
@@ -361,17 +359,19 @@ describe('배치 검증 (F022)', () => {
     expect(t.markers.map((x) => x.pos)).toEqual([...t.markers.map((x) => x.pos)].sort((a, b) => a.y - b.y || a.x - b.x));
   });
 
-  it('한 턴에 에너지가 허락하는 만큼 배치할 수 있고, 에너지가 바닥나면 더 놓을 수 없다', () => {
+  it('다음 턴이 오면 다시 한 번 배치할 수 있다 (actedThisTurn 이 턴 시작마다 풀린다)', () => {
     let s = startGame(readyLobby(2, 'asteroid-belt'));
-    s = withHand(s, 'p0', ['scout', 'scout', 'scout'], 2); // scout 비용 1, 에너지 2 → 최대 2장
+    s = withHand(s, 'p0', ['scout', 'scout'], 5);
     let t = ok(s, place('p0', 'scout', { x: 2, y: 6 })); // 코어(1,6) 시야1 안
-    expect(player(t, 'p0').energy).toBe(1);
-    t = ok(t, place('p0', 'scout', { x: 3, y: 6 })); // 방금 놓은 정찰 드론(시야 2) 안
-    expect(player(t, 'p0').energy).toBe(0);
-    expect(t.currentPlayerId).toBe('p0'); // 여전히 내 턴
-    expect(fail(t, place('p0', 'scout', { x: 3, y: 5 }))).toContain('에너지');
-    expect(canPlay(t, 'p0', 'scout')).toBe(false);
-    expect(hasAnyPlay(t, 'p0')).toBe(false);
+    expect(player(t, 'p0').energy).toBe(4);
+    expect(fail(t, place('p0', 'scout', { x: 3, y: 6 }))).toBe('이번 턴에는 이미 마커를 놓았습니다');
+    t = ok(t, pass('p0')); // 턴 종료
+    t = withHand(t, 'p1', [], 3);
+    t = ok(t, pass('p1')); // p1 패스 → p0 턴
+    expect(t.currentPlayerId).toBe('p0');
+    expect(player(t, 'p0').actedThisTurn).toBe(false);
+    t = ok(t, place('p0', 'scout', { x: 3, y: 6 })); // 다시 배치 가능
+    expect(t.markers.filter((m) => m.specId === 'scout')).toHaveLength(2);
   });
 
   it('패스와 턴 종료의 차이: 아무것도 안 놓고 넘기면 패스, 하나라도 놓고 넘기면 패스가 아니다', () => {
@@ -715,7 +715,7 @@ describe('파괴 · 탈락 · 종료 (F024, F025)', () => {
     const ranking = computeRanking(t);
     expect(ranking[0]).toBe('p0'); // 마커 2개 + 넓은 영토
     expect(ranking[2]).toBe('p1'); // 탈락자는 맨 아래
-    expect(computeScores(t).p1).toEqual({ territory: 0, markers: 0, total: 0 });
+    expect(computeScores(t).p1).toEqual({ territory: 0, markers: 0, komi: 0, total: 0 });
   });
 
   it('기권: 즉시 탈락, 2인전이면 상대 승리, 3인전이면 계속', () => {

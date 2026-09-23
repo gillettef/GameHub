@@ -37,6 +37,7 @@ export const StatusTab = memo(function StatusTab() {
               <th>수입</th>
               <th>영토</th>
               <th>마커 점수</th>
+              <th>덤</th>
               <th>합계</th>
               <th>마커</th>
               <th>손패</th>
@@ -60,6 +61,9 @@ export const StatusTab = memo(function StatusTab() {
                 <Cell label="수입">+{r.income}</Cell>
                 <Cell label="영토">{r.territory}</Cell>
                 <Cell label="마커 점수">{r.markerScore}</Cell>
+                <Cell label="덤" className={styles.muted}>
+                  +{r.komi}
+                </Cell>
                 <Cell label="합계" className={styles.total}>
                   {r.total}
                 </Cell>

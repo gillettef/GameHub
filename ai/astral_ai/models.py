@@ -20,7 +20,7 @@ LogKind = Literal[
 ]
 GameResultReason = Literal["last-survivor", "all-pass", "round-limit"]
 PlacementErrorCode = Literal[
-    "not-playing", "unknown-player", "not-your-turn", "not-in-hand", "not-enough-energy",
+    "not-playing", "unknown-player", "not-your-turn", "already-placed", "not-in-hand", "not-enough-energy",
     "out-of-bounds", "asteroid", "occupied", "out-of-sight",
 ]
 
@@ -155,6 +155,7 @@ class GameLogEntry(Strict):
 class Score(Strict):
     territory: int
     markers: int
+    komi: int
     total: int
 
 

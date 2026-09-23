@@ -29,6 +29,9 @@ export const SPECIAL_PICKS = 3;
 export const VEIN_PRODUCTION_BONUS = 1;
 /** 영토 1칸 점수 */
 export const SCORE_PER_TERRITORY = 1;
+/** 덤(komi): 좌석 번호 × 이 값을 최종 점수에 더한다. 선턴(좌석 0)이 유리하므로 나중 좌석일수록
+ * 소소한 보너스를 받는다 (2026-09-23 신설, Rules.md 9.1/9.3) */
+export const KOMI_PER_SEAT = 1;
 /** 침투 키워드: 적 마커로부터 이 육각 거리 이내에도 배치 가능 */
 export const INFILTRATE_RANGE = 1;
 /** 정비 키워드: 반경(육각 거리)과 회복량 */
@@ -53,6 +56,7 @@ export const CONSTANTS = {
   SPECIAL_PICKS,
   VEIN_PRODUCTION_BONUS,
   SCORE_PER_TERRITORY,
+  KOMI_PER_SEAT,
   INFILTRATE_RANGE,
   REPAIR_RADIUS,
   REPAIR_AMOUNT,
