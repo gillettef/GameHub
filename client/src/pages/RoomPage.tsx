@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import type { DeckChoice, MapId, RoomPeek } from '@astraltab/shared';
-import { DEFAULT_DECK_CHOICE, getMap } from '@astraltab/shared';
+import { DEFAULT_DECK_CHOICE, MAPS, getMap } from '@astraltab/shared';
 import { DeckPicker, isCompleteChoice, type PartialChoice } from '../components/DeckPicker';
 import { MapPicker } from '../components/MapPicker';
 import { cx } from '../lib/cx';
 import { getNickname, getPlayerToken, getRoomPassword, setNickname, setRoomPassword } from '../lib/identity';
+import { randomDeckChoice, randomMapId } from '../lib/randomPicks';
 import { navigate, roomUrl } from '../lib/router';
 import { api, connectSocket, getSocket } from '../socket/client';
 import { selectState, selectViewerId, useGameStore } from '../store/gameStore';
@@ -229,6 +230,12 @@ function LobbyView({ roomId, onQuit }: { roomId: string; onQuit: () => void }) {
     if (isCompleteChoice(next)) dispatch({ type: 'SELECT_DECK', playerId: viewerId, choice: next });
   };
 
+  const pickRandomDeck = () => {
+    const next = randomDeckChoice();
+    setChoice(next);
+    dispatch({ type: 'SELECT_DECK', playerId: viewerId, choice: next });
+  };
+
   const currentChoice: PartialChoice = me?.deckChoice ?? choice;
 
   return (
@@ -300,7 +307,18 @@ function LobbyView({ roomId, onQuit }: { roomId: string; onQuit: () => void }) {
           </section>
 
           <section className={landing.section}>
-            <h2 className={landing.h2}>맵</h2>
+            <div className={styles.sectionHead}>
+              <h2 className={landing.h2}>맵</h2>
+              {isHost && (
+                <button
+                  type="button"
+                  className="pill pill--outline"
+                  onClick={() => request(api.setMap(roomId, randomMapId(MAPS.filter((m) => m.players >= state.players.length))))}
+                >
+                  랜덤
+                </button>
+              )}
+            </div>
             <p className={landing.help}>
               {isHost ? '방장이 고릅니다. 정원이 현재 인원보다 작은 맵은 고를 수 없습니다.' : '방장만 맵을 바꿀 수 있습니다.'}
               {!full && ` 인원이 정원(${map.players}명)과 같아야 시작합니다.`}
@@ -317,7 +335,7 @@ function LobbyView({ roomId, onQuit }: { roomId: string; onQuit: () => void }) {
         <section className={landing.section}>
           <h2 className={landing.h2}>내 덱</h2>
           <p className={landing.help}>특수 카드를 종류별로 1장씩 고르면 준비 완료를 누를 수 있습니다. 준비 후 카드를 바꾸면 준비가 풀립니다.</p>
-          <DeckPicker choice={currentChoice} onPick={pick} />
+          <DeckPicker choice={currentChoice} onPick={pick} onRandom={pickRandomDeck} />
           <div className={styles.readyRow}>
             {me?.isReady ? (
               <button

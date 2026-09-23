@@ -5,6 +5,7 @@ import { DeckPicker, isCompleteChoice, type PartialChoice } from '../components/
 import { MapPicker } from '../components/MapPicker';
 import { makeSeed } from '../game/hotseat';
 import { cx } from '../lib/cx';
+import { randomDeckChoice, randomMapId } from '../lib/randomPicks';
 import { navigate } from '../lib/router';
 import { useGameStore } from '../store/gameStore';
 import landing from './LandingPage.module.css';
@@ -53,6 +54,10 @@ export function SetupPage({ onStart }: { onStart: () => void }) {
     );
   };
 
+  const pickRandomDeck = () => {
+    setChoices((prev) => prev.map((c, i) => (i === activeSeat ? randomDeckChoice() : c)));
+  };
+
   const start = () => {
     try {
       startHotseat({
@@ -99,7 +104,12 @@ export function SetupPage({ onStart }: { onStart: () => void }) {
         </section>
 
         <section className={landing.section}>
-          <h2 className={landing.h2}>2. 맵</h2>
+          <div className={styles.sectionHead}>
+            <h2 className={landing.h2}>2. 맵</h2>
+            <button type="button" className="pill pill--outline" onClick={() => pickMap(randomMapId(mapsForPlayers(playerCount)))}>
+              랜덤
+            </button>
+          </div>
           <MapPicker value={mapId} onChange={pickMap} filterPlayers={playerCount} />
         </section>
 
@@ -143,7 +153,7 @@ export function SetupPage({ onStart }: { onStart: () => void }) {
               );
             })}
           </div>
-          <DeckPicker choice={active} onPick={pick} />
+          <DeckPicker choice={active} onPick={pick} onRandom={pickRandomDeck} />
           <div className={styles.readyRow}>
             <button type="button" className="pill" disabled={!isCompleteChoice(active)} onClick={() => setActiveSeat((activeSeat + 1) % map.players)}>
               준비 완료 · 다음 플레이어

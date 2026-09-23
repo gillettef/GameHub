@@ -1,4 +1,12 @@
 /* 핫시트 설정 화면 고유 스타일. 공용 레이아웃은 LandingPage.module.css */
+.sectionHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-bottom: var(--space-1);
+}
+
 .names {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));

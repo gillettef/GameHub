@@ -1,5 +1,8 @@
 /* 맵 피커 · 덱 피커 공용. 비게임 세계(흰 서피스)에서 쓴다 */
 .groupTitle {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-1);
   font-size: var(--text-nav);
   margin-bottom: var(--space-1);
 }
@@ -8,6 +11,13 @@
   font-weight: 400;
   font-size: var(--text-small);
   color: var(--color-muted);
+}
+
+.randomButton {
+  margin-left: auto;
+  height: 30px;
+  padding: 0 var(--space-2);
+  font-size: var(--text-small);
 }
 
 /* 맵. 언제나 모바일 폭이므로 한 열로 쌓는다 */
