@@ -4,7 +4,7 @@ import { DEFAULT_MAP_ID, MAX_PLAYERS, MIN_PLAYERS, RACES, getMap, getSpec, mapsF
 import { CardFace } from '../components/CardFace';
 import { makeSeed } from '../game/hotseat';
 import { cx } from '../lib/cx';
-import { randomDeckChoice, randomMapId } from '../lib/randomPicks';
+import { randomDeckChoice, randomMapId, shuffleIndices } from '../lib/randomPicks';
 import { navigate } from '../lib/router';
 import { useGameStore } from '../store/gameStore';
 import landing from './LandingPage.module.css';
@@ -45,10 +45,13 @@ export function SetupPage({ onStart }: { onStart: () => void }) {
 
   const start = () => {
     try {
+      // 선턴이 유리하므로(덤으로 일부 보정하지만) 입력 순서 그대로 좌석을 주지 않고 무작위로 섞는다
+      // (2026-09-23 사용자 지시: 선턴도 랜덤으로). 좌석 색·턴 순서는 이 시점에 정해진다.
+      const order = shuffleIndices(seats.length);
       startHotseat({
         mapId,
         seed: makeSeed(),
-        players: seats.map((i) => ({
+        players: order.map((i) => ({
           nickname: nicknames[i]?.trim() || `플레이어 ${i + 1}`,
           deckChoice: choices[i] as DeckChoice,
         })),
@@ -105,7 +108,10 @@ export function SetupPage({ onStart }: { onStart: () => void }) {
 
         <section className={landing.section}>
           <h2 className={landing.h2}>3. 플레이어 {map.players}명</h2>
-          <p className={landing.help}>좌석 순서가 곧 턴 순서입니다. 닉네임을 비워 두면 "플레이어 N"으로 들어갑니다.</p>
+          <p className={landing.help}>
+            닉네임을 비워 두면 "플레이어 N"으로 들어갑니다. 턴 순서(좌석)는 여기 입력 순서와 무관하게 게임 시작 시
+            무작위로 정해집니다(2026-09-23: 선턴이 유리해 순서를 미리 정하지 않습니다).
+          </p>
           <div className={styles.seatBlocks}>
             {seats.map((i) => {
               const choice = choices[i];
@@ -113,7 +119,7 @@ export function SetupPage({ onStart }: { onStart: () => void }) {
               return (
                 <div key={i} className={styles.seatBlock}>
                   <label className={styles.nameField}>
-                    <span className={styles.seatLabel}>좌석 {i + 1}</span>
+                    <span className={styles.seatLabel}>플레이어 {i + 1}</span>
                     <input
                       className={landing.input}
                       value={nicknames[i] ?? ''}
