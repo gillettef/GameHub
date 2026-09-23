@@ -1,4 +1,7 @@
 // PLACEHOLDER 데이터 — CLAUDE.md "Mock 데이터 정책"에 따라 창작한 스폰서 카드 36장 (p.18 구조 기준). 실제 카드 데이터로 교체 예정.
+// 리밸런싱(사용자 요청, 2026-09-24): 자원 트랙(돈/팬덤/운영/체력)을 올려주는 효과가 너무 적다는 피드백에 따라, 광고판·유니폼
+// 효과 대부분이 그 카드의 테마 자원에 moveTrack +1을 포함하도록 gainResource 일부를 교체했다(총가치는 아래 척도대로 유지).
+// 규칙서 예시 sp-01과 훈련/토큰 제거/전술 등 고유 메커니즘이 이미 테마인 카드 일부는 그대로 두었다.
 // 균형 원칙(사용자 결정, 2026-09; 리밸런싱 2026-09-22):
 //   - 장내 방송(kit): 1회성·즉시 효과 위주, 셋 중 가장 약함 ≈ 3.
 //   - 광고판(billboard): 카드가 남고 효과 **또는** 추가 보너스 택1이므로 둘의 가치를 같게 맞춘다 — 효과 ≈ 4, 추가 보너스 ≈ 4.
@@ -34,11 +37,11 @@ export const SPONSOR_CARDS: SponsorCard[] = [
     description: '무엇이든 하루 만에 배송하는 물류 회사로, 구단 운영을 한층 빠르게 만들어 줍니다.',
     kit: [{ type: 'gainResource', resource: 'ops', amount: 3 }],
     billboard: [
-      { type: 'gainResource', resource: 'ops', amount: 2 },
+      { type: 'moveTrack', track: 'ops', delta: 1 },
       { type: 'gainResource', resource: 'money', amount: 2 },
     ],
     naming: [
-      { type: 'gainResource', resource: 'ops', amount: 2 },
+      { type: 'moveTrack', track: 'ops', delta: 1 },
       { type: 'gainResource', resource: 'money', amount: 1 },
     ],
     extraBonus: [
@@ -53,11 +56,11 @@ export const SPONSOR_CARDS: SponsorCard[] = [
     description: '아마도 피자일 무언가를 파는 배달 전문점으로, 경기장 근처 팬들에게 인기가 많습니다.',
     kit: [{ type: 'gainResource', resource: 'fandom', amount: 3 }],
     billboard: [
-      { type: 'gainResource', resource: 'fandom', amount: 2 },
+      { type: 'moveTrack', track: 'fandom', delta: 1 },
       { type: 'gainResource', resource: 'money', amount: 2 },
     ],
     naming: [
-      { type: 'gainResource', resource: 'fandom', amount: 2 },
+      { type: 'moveTrack', track: 'fandom', delta: 1 },
       { type: 'gainResource', resource: 'money', amount: 1 },
     ],
     extraBonus: [
@@ -94,12 +97,12 @@ export const SPONSOR_CARDS: SponsorCard[] = [
     description: '매일 아침 선수단에 신선한 우유를 배달해 주는 지역 목장 브랜드입니다.',
     kit: [{ type: 'gainResource', resource: 'stamina', amount: 3 }],
     billboard: [
-      { type: 'gainResource', resource: 'stamina', amount: 3 },
-      { type: 'gainResource', resource: 'money', amount: 1 },
+      { type: 'moveTrack', track: 'stamina', delta: 1 },
+      { type: 'gainResource', resource: 'stamina', amount: 2 },
     ],
     naming: [
-      { type: 'gainResource', resource: 'stamina', amount: 2 },
-      { type: 'gainResource', resource: 'money', amount: 1 },
+      { type: 'moveTrack', track: 'stamina', delta: 1 },
+      { type: 'gainResource', resource: 'stamina', amount: 1 },
     ],
     extraBonus: [
       { type: 'trainPlayer', count: 1 },
@@ -138,12 +141,12 @@ export const SPONSOR_CARDS: SponsorCard[] = [
       { type: 'gainResource', resource: 'fandom', amount: 1 },
     ],
     billboard: [
+      { type: 'moveTrack', track: 'fandom', delta: 1 },
       { type: 'gainResource', resource: 'money', amount: 2 },
-      { type: 'gainResource', resource: 'fandom', amount: 2 },
     ],
     naming: [
+      { type: 'moveTrack', track: 'fandom', delta: 1 },
       { type: 'gainResource', resource: 'money', amount: 1 },
-      { type: 'gainResource', resource: 'fandom', amount: 2 },
     ],
     extraBonus: [
       { type: 'drawTactic', count: 2 },
@@ -173,11 +176,11 @@ export const SPONSOR_CARDS: SponsorCard[] = [
     description: '경기장 매점의 단골 과자 브랜드로, 팬들의 입을 즐겁게 합니다.',
     kit: [{ type: 'gainResource', resource: 'fandom', amount: 3 }],
     billboard: [
-      { type: 'gainResource', resource: 'fandom', amount: 3 },
-      { type: 'gainResource', resource: 'money', amount: 1 },
+      { type: 'moveTrack', track: 'fandom', delta: 1 },
+      { type: 'gainResource', resource: 'money', amount: 2 },
     ],
     naming: [
-      { type: 'gainResource', resource: 'fandom', amount: 2 },
+      { type: 'moveTrack', track: 'fandom', delta: 1 },
       { type: 'gainResource', resource: 'money', amount: 1 },
     ],
     extraBonus: [
@@ -217,11 +220,11 @@ export const SPONSOR_CARDS: SponsorCard[] = [
       { type: 'gainResource', resource: 'ops', amount: 1 },
     ],
     billboard: [
-      { type: 'gainResource', resource: 'stamina', amount: 2 },
+      { type: 'moveTrack', track: 'stamina', delta: 1 },
       { type: 'gainResource', resource: 'ops', amount: 2 },
     ],
     naming: [
-      { type: 'gainResource', resource: 'stamina', amount: 2 },
+      { type: 'moveTrack', track: 'stamina', delta: 1 },
       { type: 'gainResource', resource: 'ops', amount: 1 },
     ],
     extraBonus: [
@@ -239,11 +242,11 @@ export const SPONSOR_CARDS: SponsorCard[] = [
       { type: 'gainResource', resource: 'ops', amount: 1 },
     ],
     billboard: [
-      { type: 'gainResource', resource: 'fandom', amount: 2 },
+      { type: 'moveTrack', track: 'fandom', delta: 1 },
       { type: 'gainResource', resource: 'ops', amount: 2 },
     ],
     naming: [
-      { type: 'gainResource', resource: 'fandom', amount: 2 },
+      { type: 'moveTrack', track: 'fandom', delta: 1 },
       { type: 'gainResource', resource: 'ops', amount: 1 },
     ],
     extraBonus: [
@@ -277,11 +280,11 @@ export const SPONSOR_CARDS: SponsorCard[] = [
     description: '구단 전용 요금제를 내놓은 통신사로, 사무실 업무가 한결 수월해집니다.',
     kit: [{ type: 'gainResource', resource: 'ops', amount: 3 }],
     billboard: [
-      { type: 'gainResource', resource: 'ops', amount: 3 },
-      { type: 'gainResource', resource: 'fandom', amount: 1 },
+      { type: 'moveTrack', track: 'ops', delta: 1 },
+      { type: 'gainResource', resource: 'fandom', amount: 2 },
     ],
     naming: [
-      { type: 'gainResource', resource: 'ops', amount: 2 },
+      { type: 'moveTrack', track: 'ops', delta: 1 },
       { type: 'gainResource', resource: 'fandom', amount: 1 },
     ],
     extraBonus: [
@@ -299,12 +302,12 @@ export const SPONSOR_CARDS: SponsorCard[] = [
       { type: 'gainResource', resource: 'fandom', amount: 2 },
     ],
     billboard: [
+      { type: 'moveTrack', track: 'fandom', delta: 1 },
       { type: 'gainResource', resource: 'money', amount: 2 },
-      { type: 'gainResource', resource: 'fandom', amount: 2 },
     ],
     naming: [
+      { type: 'moveTrack', track: 'fandom', delta: 1 },
       { type: 'gainResource', resource: 'money', amount: 1 },
-      { type: 'gainResource', resource: 'fandom', amount: 2 },
     ],
     extraBonus: [
       { type: 'passive', passive: 'extraStand' },
@@ -321,11 +324,11 @@ export const SPONSOR_CARDS: SponsorCard[] = [
       { type: 'gainResource', resource: 'stamina', amount: 1 },
     ],
     billboard: [
-      { type: 'gainResource', resource: 'ops', amount: 2 },
+      { type: 'moveTrack', track: 'ops', delta: 1 },
       { type: 'gainResource', resource: 'stamina', amount: 2 },
     ],
     naming: [
-      { type: 'gainResource', resource: 'ops', amount: 2 },
+      { type: 'moveTrack', track: 'ops', delta: 1 },
       { type: 'gainResource', resource: 'stamina', amount: 1 },
     ],
     extraBonus: [
@@ -344,7 +347,7 @@ export const SPONSOR_CARDS: SponsorCard[] = [
     ],
     billboard: [
       { type: 'removePlayerToken', token: 'injury', count: 1 },
-      { type: 'gainResource', resource: 'stamina', amount: 2 },
+      { type: 'moveTrack', track: 'stamina', delta: 1 },
     ],
     naming: [
       { type: 'removePlayerToken', token: 'injury', count: 1 },
@@ -362,11 +365,11 @@ export const SPONSOR_CARDS: SponsorCard[] = [
     description: '선수들을 광고 모델로 기용하고 싶어 하는 화장품 브랜드입니다.',
     kit: [{ type: 'gainResource', resource: 'fandom', amount: 3 }],
     billboard: [
-      { type: 'gainResource', resource: 'fandom', amount: 2 },
+      { type: 'moveTrack', track: 'fandom', delta: 1 },
       { type: 'gainResource', resource: 'money', amount: 2 },
     ],
     naming: [
-      { type: 'gainResource', resource: 'fandom', amount: 2 },
+      { type: 'moveTrack', track: 'fandom', delta: 1 },
       { type: 'gainResource', resource: 'money', amount: 1 },
     ],
     extraBonus: [
@@ -384,11 +387,11 @@ export const SPONSOR_CARDS: SponsorCard[] = [
       { type: 'gainResource', resource: 'money', amount: 1 },
     ],
     billboard: [
-      { type: 'gainResource', resource: 'stamina', amount: 2 },
+      { type: 'moveTrack', track: 'stamina', delta: 1 },
       { type: 'gainResource', resource: 'money', amount: 2 },
     ],
     naming: [
-      { type: 'gainResource', resource: 'stamina', amount: 2 },
+      { type: 'moveTrack', track: 'stamina', delta: 1 },
       { type: 'gainResource', resource: 'money', amount: 1 },
     ],
     extraBonus: [
@@ -463,12 +466,12 @@ export const SPONSOR_CARDS: SponsorCard[] = [
       { type: 'gainResource', resource: 'stamina', amount: 1 },
     ],
     billboard: [
+      { type: 'moveTrack', track: 'stamina', delta: 1 },
       { type: 'gainResource', resource: 'money', amount: 2 },
-      { type: 'gainResource', resource: 'stamina', amount: 2 },
     ],
     naming: [
+      { type: 'moveTrack', track: 'stamina', delta: 1 },
       { type: 'gainResource', resource: 'money', amount: 1 },
-      { type: 'gainResource', resource: 'stamina', amount: 2 },
     ],
     extraBonus: [
       { type: 'upkeepDiscount', amount: 2 },
@@ -485,12 +488,12 @@ export const SPONSOR_CARDS: SponsorCard[] = [
       { type: 'gainResource', resource: 'ops', amount: 1 },
     ],
     billboard: [
+      { type: 'moveTrack', track: 'ops', delta: 1 },
       { type: 'gainResource', resource: 'money', amount: 2 },
-      { type: 'gainResource', resource: 'ops', amount: 2 },
     ],
     naming: [
+      { type: 'moveTrack', track: 'ops', delta: 1 },
       { type: 'gainResource', resource: 'money', amount: 1 },
-      { type: 'gainResource', resource: 'ops', amount: 2 },
     ],
     extraBonus: [
       { type: 'drawTactic', count: 2 },
@@ -504,11 +507,11 @@ export const SPONSOR_CARDS: SponsorCard[] = [
     description: '원정 팀 숙소로 유명한 고급 호텔로, 구단에 넉넉한 후원금을 약속했습니다.',
     kit: [{ type: 'gainResource', resource: 'money', amount: 3 }],
     billboard: [
-      { type: 'gainResource', resource: 'money', amount: 3 },
-      { type: 'gainResource', resource: 'fandom', amount: 1 },
+      { type: 'moveTrack', track: 'money', delta: 1 },
+      { type: 'gainResource', resource: 'fandom', amount: 2 },
     ],
     naming: [
-      { type: 'gainResource', resource: 'money', amount: 2 },
+      { type: 'moveTrack', track: 'money', delta: 1 },
       { type: 'gainResource', resource: 'fandom', amount: 1 },
     ],
     extraBonus: [
@@ -527,13 +530,12 @@ export const SPONSOR_CARDS: SponsorCard[] = [
       { type: 'gainResource', resource: 'stamina', amount: 1 },
     ],
     billboard: [
-      { type: 'gainResource', resource: 'money', amount: 1 },
+      { type: 'moveTrack', track: 'money', delta: 1 },
       { type: 'gainResource', resource: 'fandom', amount: 2 },
-      { type: 'gainResource', resource: 'stamina', amount: 1 },
     ],
     naming: [
-      { type: 'gainResource', resource: 'fandom', amount: 2 },
-      { type: 'gainResource', resource: 'stamina', amount: 1 },
+      { type: 'moveTrack', track: 'stamina', delta: 1 },
+      { type: 'gainResource', resource: 'fandom', amount: 1 },
     ],
     extraBonus: [
       { type: 'moveTrack', track: 'fandom', delta: 1 },
@@ -584,11 +586,11 @@ export const SPONSOR_CARDS: SponsorCard[] = [
     description: '홈경기 승리마다 밤하늘을 수놓는 불꽃놀이 업체입니다.',
     kit: [{ type: 'gainResource', resource: 'fandom', amount: 3 }],
     billboard: [
-      { type: 'gainResource', resource: 'fandom', amount: 3 },
-      { type: 'gainResource', resource: 'ops', amount: 1 },
+      { type: 'moveTrack', track: 'fandom', delta: 1 },
+      { type: 'gainResource', resource: 'ops', amount: 2 },
     ],
     naming: [
-      { type: 'gainResource', resource: 'fandom', amount: 2 },
+      { type: 'moveTrack', track: 'fandom', delta: 1 },
       { type: 'gainResource', resource: 'ops', amount: 1 },
     ],
     extraBonus: [
@@ -603,11 +605,11 @@ export const SPONSOR_CARDS: SponsorCard[] = [
     description: '임원진의 단골 양복점으로, 구단의 품격을 높여 줍니다.',
     kit: [{ type: 'gainResource', resource: 'money', amount: 3 }],
     billboard: [
-      { type: 'gainResource', resource: 'money', amount: 3 },
-      { type: 'gainResource', resource: 'ops', amount: 1 },
+      { type: 'moveTrack', track: 'money', delta: 1 },
+      { type: 'gainResource', resource: 'ops', amount: 2 },
     ],
     naming: [
-      { type: 'gainResource', resource: 'money', amount: 2 },
+      { type: 'moveTrack', track: 'money', delta: 1 },
       { type: 'gainResource', resource: 'ops', amount: 1 },
     ],
     extraBonus: [
@@ -621,8 +623,14 @@ export const SPONSOR_CARDS: SponsorCard[] = [
     name: '마운틴 생수',
     description: '고산지대에서 길어 온 생수를 선수단에 무제한 공급하는 브랜드입니다.',
     kit: [{ type: 'gainResource', resource: 'stamina', amount: 3 }],
-    billboard: [{ type: 'gainResource', resource: 'stamina', amount: 4 }],
-    naming: [{ type: 'gainResource', resource: 'stamina', amount: 3 }],
+    billboard: [
+      { type: 'moveTrack', track: 'stamina', delta: 1 },
+      { type: 'gainResource', resource: 'stamina', amount: 2 },
+    ],
+    naming: [
+      { type: 'moveTrack', track: 'stamina', delta: 1 },
+      { type: 'gainResource', resource: 'stamina', amount: 1 },
+    ],
     extraBonus: [
       { type: 'moveTrack', track: 'stamina', delta: 1 },
       { type: 'placeStamina', count: 1 },
@@ -635,8 +643,14 @@ export const SPONSOR_CARDS: SponsorCard[] = [
     name: '리본 문구',
     description: '구단 사무실의 모든 서류와 문구를 책임지는 문구 전문 업체입니다.',
     kit: [{ type: 'gainResource', resource: 'ops', amount: 3 }],
-    billboard: [{ type: 'gainResource', resource: 'ops', amount: 4 }],
-    naming: [{ type: 'gainResource', resource: 'ops', amount: 3 }],
+    billboard: [
+      { type: 'moveTrack', track: 'ops', delta: 1 },
+      { type: 'gainResource', resource: 'ops', amount: 2 },
+    ],
+    naming: [
+      { type: 'moveTrack', track: 'ops', delta: 1 },
+      { type: 'gainResource', resource: 'ops', amount: 1 },
+    ],
     extraBonus: [
       { type: 'moveTrack', track: 'ops', delta: 1 },
       { type: 'gainResource', resource: 'ops', amount: 2 },
@@ -697,7 +711,7 @@ export const SPONSOR_CARDS: SponsorCard[] = [
     ],
     billboard: [
       { type: 'removePlayerToken', token: 'weaknessPerm', count: 1 },
-      { type: 'gainResource', resource: 'money', amount: 2 },
+      { type: 'moveTrack', track: 'money', delta: 1 },
     ],
     naming: [
       { type: 'removePlayerToken', token: 'weaknessPerm', count: 1 },
@@ -718,11 +732,11 @@ export const SPONSOR_CARDS: SponsorCard[] = [
       { type: 'upkeepDiscount', amount: 2 },
     ],
     billboard: [
-      { type: 'gainResource', resource: 'money', amount: 3 },
-      { type: 'gainResource', resource: 'stamina', amount: 1 },
+      { type: 'moveTrack', track: 'money', delta: 1 },
+      { type: 'gainResource', resource: 'stamina', amount: 2 },
     ],
     naming: [
-      { type: 'gainResource', resource: 'money', amount: 2 },
+      { type: 'moveTrack', track: 'money', delta: 1 },
       { type: 'gainResource', resource: 'stamina', amount: 1 },
     ],
     extraBonus: [
