@@ -178,10 +178,21 @@ describe('카드 기준표 (Rules.md 10절)', () => {
       expect(buildDeck(choice)).toHaveLength(DECK_SIZE);
     });
 
-    it(`${race}: 카드 상한을 넘겨 넣으면 무효`, () => {
-      const spec = BASE_CARDS_BY_RACE[race][0]!;
-      const choice = { race, cards: { [spec.id]: spec.copies + 1 } };
-      expect(isValidDeckChoice(choice)).toBe(false);
+    it(`${race}: 카드 상한을 넘겨 넣으면 무효 (합계는 DECK_SIZE 그대로 맞춰 상한 검사만 격리한다)`, () => {
+      const first = BASE_CARDS_BY_RACE[race][0]!;
+      const specials = specialCardsOf(race, 'building').concat(specialCardsOf(race, 'unit'), specialCardsOf(race, 'magic'));
+      const cards: Record<string, number> = {
+        ...Object.fromEntries(BASE_CARDS_BY_RACE[race].map((c) => [c.id, c.copies])),
+        [specials[0]!.id]: 1,
+        [specials[1]!.id]: 1,
+        [specials[2]!.id]: 1,
+      };
+      // 기본 카드 하나를 상한보다 1장 더 넣고, 특수 카드 하나를 그만큼 빼 합계는 DECK_SIZE 로 그대로 둔다.
+      // 상한 검사가 없다면(합계·종족·id 조건만 본다면) 이 조합도 "유효"로 잘못 통과한다.
+      cards[first.id] = first.copies + 1;
+      cards[specials[0]!.id] = 0;
+      expect(Object.values(cards).reduce((a, b) => a + b, 0)).toBe(DECK_SIZE);
+      expect(isValidDeckChoice({ race, cards })).toBe(false);
     });
   }
 
@@ -202,6 +213,8 @@ describe('카드 기준표 (Rules.md 10절)', () => {
     expect(isValidDeckChoice({ race: 'coalition', cards: { extractor: 1 } })).toBe(false);
     // 존재하지 않는 카드 id
     expect(isValidDeckChoice({ race: 'coalition', cards: { nope: DECK_SIZE } })).toBe(false);
+    // 존재하지 않는 카드 id는 0장으로 끼워 넣어도 무효(장수와 무관하게 id 자체를 검사한다)
+    expect(isValidDeckChoice({ race: 'coalition', cards: { ...DEFAULT_DECK_CHOICE.cards, nope: 0 } })).toBe(false);
     // 종족 자체가 잘못됨
     expect(isValidDeckChoice({ race: 'nope' as RaceId, cards: DEFAULT_DECK_CHOICE.cards })).toBe(false);
   });

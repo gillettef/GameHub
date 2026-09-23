@@ -38,10 +38,13 @@ interface GameStore {
   tab: TabId;
   /** 보드 탭에서 고른 손패 카드 (손패 index). 배치 후 해제 */
   selectedHandIndex: number | null;
-  /** 손패 교체 모드(패스/턴 종료 시 함께 버릴 카드 고르기, Rules.md 5.2, 2026-09-23) */
+  /** 손패 교체 모드(패스/턴 종료 시 함께 버릴 카드 고르기, Rules.md 5.2, 2026-09-23).
+   * Hand 카드 클릭이 배치 대신 "버릴 카드 고르기"로 바뀔 뿐, 배치 선택 자체를 지우지는 않는다 */
   discardMode: boolean;
-  /** 교체 모드에서 고른 손패 index 들 */
-  discardIndices: number[];
+  /** 교체 모드에서 고른 카드 id 들(다중 집합 — 같은 카드 여러 장 가능). index 가 아니라 cardId 로
+   * 추적한다 — 같은 턴에 카드를 배치하면 손패 배열이 바뀌어 index 가 밀릴 수 있기 때문이다.
+   * PASS 를 보낼 때 실제로 그만큼 손패에 없으면 엔진이 거부한다(validateDiscard) */
+  discardCardIds: CardId[];
   /** 마지막 안내 문구 (배치 거부 사유 등). 다음에 할 일을 적는다 */
   notice: string | null;
   /** 결과 오버레이를 닫고 보드를 살펴보는 중인지 */
@@ -61,7 +64,8 @@ interface GameStore {
   placeAt: (x: number, y: number) => void;
   pass: () => void;
   toggleDiscardMode: () => void;
-  toggleDiscardIndex: (index: number) => void;
+  /** willSelect: 이 카드를 교체 목록에 추가(true)할지 뺄(false)지. Hand.tsx 가 현재 선택 여부로 계산한다 */
+  setDiscardCard: (cardId: CardId, willSelect: boolean) => void;
   surrender: () => void;
   setSurrenderConfirming: (on: boolean) => void;
   acknowledgeHandoff: () => void;
@@ -83,7 +87,7 @@ const EMPTY = {
   tab: 'board' as TabId,
   selectedHandIndex: null,
   discardMode: false,
-  discardIndices: [] as number[],
+  discardCardIds: [] as CardId[],
   notice: null,
   resultDismissed: false,
   surrenderConfirming: false,
@@ -114,12 +118,12 @@ export const useGameStore = create<GameStore>((set, get) => ({
       state,
       viewerId: you,
       connection: 'connected',
-      // 턴이 바뀌면 선택·확인 단계를 정리한다. 손패 교체 선택(index 기반)은 어떤 액션이든
-      // 손패 구성이 바뀔 수 있어(배치로 카드가 빠지는 등) 매 스냅샷마다 무조건 비운다 — 안 비우면
-      // 인덱스가 밀려 엉뚱한 카드를 가리킬 수 있다.
+      // 턴이 바뀌면 선택·확인 단계를 정리한다. 손패 교체 선택은 cardId 로 추적하므로(index 아님)
+      // 같은 턴 안에서 배치로 손패가 바뀌어도 안전하다 — 실제로 그만큼 남아 있지 않으면 PASS 시점에
+      // 엔진이 거부한다.
       selectedHandIndex: turnChanged ? null : prev.selectedHandIndex,
-      discardMode: false,
-      discardIndices: [],
+      discardMode: turnChanged ? false : prev.discardMode,
+      discardCardIds: turnChanged ? [] : prev.discardCardIds,
       surrenderConfirming: turnChanged ? false : prev.surrenderConfirming,
       sending: false,
     });
@@ -147,12 +151,13 @@ export const useGameStore = create<GameStore>((set, get) => ({
     }
     const next = result.state;
     const viewerChanged = next.currentPlayerId !== null && next.currentPlayerId !== get().viewerId;
+    const turnChanged = next.turn !== state.turn || next.phase !== state.phase;
     set({
       state: maskState(next, null),
       viewerId: next.currentPlayerId ?? get().viewerId,
-      selectedHandIndex: null,
-      discardMode: false,
-      discardIndices: [],
+      selectedHandIndex: turnChanged ? null : get().selectedHandIndex,
+      discardMode: turnChanged ? false : get().discardMode,
+      discardCardIds: turnChanged ? [] : get().discardCardIds,
       notice: null,
       surrenderConfirming: false,
       handoffPending: viewerChanged && next.phase === 'playing',
@@ -173,20 +178,26 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
 
   pass: () => {
-    const { viewerId, state, discardIndices, dispatch } = get();
+    // dispatch 결과(성공/실패)를 기다리지 않고 여기서 먼저 선택을 지우면, 서버 거부·통신 실패 시
+    // 사용자가 무엇을 골랐었는지 알 길 없이 선택만 사라진다 — 리셋은 성공 경로(dispatch 안의
+    // applySnapshot/핫시트 성공 분기)에만 맡긴다.
+    const { viewerId, discardCardIds, dispatch } = get();
     if (!viewerId) return;
-    const hand = state?.players.find((p) => p.id === viewerId)?.hand ?? [];
-    const discardCardIds = discardIndices.map((i) => hand[i]).filter((id): id is CardId => id !== undefined);
     dispatch({ type: 'PASS', playerId: viewerId, ...(discardCardIds.length > 0 ? { discardCardIds } : {}) });
-    set({ discardMode: false, discardIndices: [] });
   },
 
-  toggleDiscardMode: () => set((s) => ({ discardMode: !s.discardMode, discardIndices: [], selectedHandIndex: null })),
+  // discardMode 를 끌 때는 선택을 지우지 않는다 — 배치 모드로 잠깐 돌아갔다 와도 고른 카드가 유지된다.
+  // 켤 때만 배치용 선택(selectedHandIndex)과 겹치지 않게 지운다.
+  toggleDiscardMode: () => set((s) => ({ discardMode: !s.discardMode, selectedHandIndex: s.discardMode ? s.selectedHandIndex : null })),
 
-  toggleDiscardIndex: (index) =>
-    set((s) => ({
-      discardIndices: s.discardIndices.includes(index) ? s.discardIndices.filter((i) => i !== index) : [...s.discardIndices, index],
-    })),
+  setDiscardCard: (cardId, willSelect) =>
+    set((s) => {
+      if (willSelect) return { discardCardIds: [...s.discardCardIds, cardId] };
+      const next = [...s.discardCardIds];
+      const idx = next.indexOf(cardId);
+      if (idx !== -1) next.splice(idx, 1);
+      return { discardCardIds: next };
+    }),
 
   surrender: () => {
     const { viewerId, dispatch } = get();

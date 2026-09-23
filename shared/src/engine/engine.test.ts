@@ -512,6 +512,77 @@ describe('수입 (F020) · 드로우', () => {
   });
 });
 
+describe('손패 교체 (Rules.md 5.2, discardCardIds)', () => {
+  const passDiscard = (id: PlayerId, discardCardIds: CardId[]): Action => ({ type: 'PASS', playerId: id, discardCardIds });
+
+  it('정상 교체: 버린 카드 + 덱을 섞어 손패 상한까지 다시 뽑고, 손패+덱 합계는 그대로다', () => {
+    let s = setup(2);
+    s = withHand(s, 'p0', ['scout', 'scout', 'fighter'], 10, ['artillery', 'cruiser', 'meteor', 'shield']);
+    const beforeTotal = player(s, 'p0').hand.length + player(s, 'p0').deck.length;
+    const t = ok(s, passDiscard('p0', ['scout', 'fighter']));
+    const after = player(t, 'p0');
+    expect(after.hand.length + after.deck.length).toBe(beforeTotal); // 아무것도 사라지거나 생기지 않는다
+    expect(after.hand).toHaveLength(HAND_LIMIT); // 총 7장 남아 있어 상한(5)까지 채워진다
+    const log = t.log.filter((l) => l.kind === 'draw' && l.playerId === 'p0').at(-1);
+    expect(log?.message).toContain('2장 교체');
+  });
+
+  it('손패에 없는 카드는 버릴 수 없다(같은 카드를 가진 수보다 많이 지정해도 거부)', () => {
+    let s = setup(2);
+    s = withHand(s, 'p0', ['scout'], 10);
+    expect(fail(s, passDiscard('p0', ['fighter']))).toContain('손패에 없는');
+    expect(fail(s, passDiscard('p0', ['scout', 'scout']))).toContain('손패에 없는'); // scout 1장뿐인데 2장 지정
+  });
+
+  it('같은 카드를 손패에 있는 만큼 정확히 버릴 수 있다(거부되지 않는다)', () => {
+    let s = setup(2);
+    s = withHand(s, 'p0', ['scout', 'scout'], 10, ['fighter']);
+    const beforeTotal = player(s, 'p0').hand.length + player(s, 'p0').deck.length;
+    const t = ok(s, passDiscard('p0', ['scout', 'scout']));
+    const after = player(t, 'p0');
+    // 버린 카드가 다시 덱에 섞여 드로우 후보가 되므로 'scout' 이 다시 뽑힐 수 있다 — 개수가
+    // 사라지지 않는다는 것(합계 보존)까지만 확인한다. "버릴 수 없다"는 손패에 없을 때만 거부된다.
+    expect(after.hand.length + after.deck.length).toBe(beforeTotal);
+  });
+
+  it('손패 상한까지만 다시 뽑고 나머지는 덱에 남는다', () => {
+    let s = setup(2);
+    s = withHand(s, 'p0', ['scout'], 10, ['fighter', 'artillery', 'cruiser', 'meteor', 'shield', 'outpost', 'turret']);
+    const t = ok(s, passDiscard('p0', ['scout']));
+    expect(player(t, 'p0').hand).toHaveLength(HAND_LIMIT);
+    expect(player(t, 'p0').deck.length).toBeGreaterThan(0);
+  });
+
+  it('덱이 부족하면 있는 만큼만 다시 뽑는다', () => {
+    let s = setup(2);
+    s = withHand(s, 'p0', ['scout', 'fighter'], 10, ['artillery']); // 덱 1장뿐
+    const beforeTotal = player(s, 'p0').hand.length + player(s, 'p0').deck.length;
+    const t = ok(s, passDiscard('p0', ['scout', 'fighter']));
+    const after = player(t, 'p0');
+    expect(after.hand.length + after.deck.length).toBe(beforeTotal);
+    expect(after.deck).toHaveLength(0); // 있는 카드를 전부 뽑아 써서 덱이 바닥난다
+    expect(after.hand.length).toBeLessThan(HAND_LIMIT); // 상한까지 채울 카드가 모자란다
+  });
+
+  it('전투로 게임이 즉시 끝나면 손패 교체는 적용되지 않는다', () => {
+    let s = setup(2);
+    s = addMarkers(s, marker('p0', 'fighter', { x: 7, y: 7 })); // p1 코어 자리, 거리 0
+    s = withMarkers(s, s.markers.map((m) => (m.ownerId === 'p1' && m.kind === 'core' ? { ...m, hp: 1 } : m)));
+    s = withHand(s, 'p0', ['scout'], 3);
+    const t = ok(s, passDiscard('p0', ['scout']));
+    expect(t.phase).toBe('finished');
+    expect(t.result?.reason).toBe('last-survivor');
+    expect(player(t, 'p0').hand).toEqual(['scout']); // 교체는커녕 드로우조차 일어나지 않았다
+  });
+
+  it('discardCardIds 를 생략하면(패스만) 정상 드로우만 일어나고 손패 교체 로그는 없다', () => {
+    let s = setup(2);
+    s = withHand(s, 'p0', ['scout'], 10);
+    const t = ok(s, pass('p0'));
+    expect(t.log.some((l) => l.kind === 'draw' && l.message.includes('교체'))).toBe(false);
+  });
+});
+
 describe('전투 (F023)', () => {
   /** p0 가 패스하면(빈 손패) 자기 자신의 전투 등 효과가 그 자리에서 즉시 처리된다 */
   function readyP0Pass(s: GameState): GameState {

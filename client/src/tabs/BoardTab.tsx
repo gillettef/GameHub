@@ -25,8 +25,8 @@ export const BoardTab = memo(function BoardTab() {
   const selectedCardId = useGameStore(selectSelectedCardId);
   const selectedHandIndex = useGameStore((s) => s.selectedHandIndex);
   const discardMode = useGameStore((s) => s.discardMode);
-  const discardIndices = useGameStore((s) => s.discardIndices);
-  const toggleDiscardIndex = useGameStore((s) => s.toggleDiscardIndex);
+  const discardCardIds = useGameStore((s) => s.discardCardIds);
+  const setDiscardCard = useGameStore((s) => s.setDiscardCard);
   const placeAt = useGameStore((s) => s.placeAt);
   const selectHandCard = useGameStore((s) => s.selectHandCard);
 
@@ -52,7 +52,7 @@ export const BoardTab = memo(function BoardTab() {
                 {!isMyTurn
                   ? ' · 상대 차례(구경만 가능)'
                   : discardMode
-                    ? ` · 버릴 카드 ${discardIndices.length}장 선택 중`
+                    ? ` · 버릴 카드 ${discardCardIds.length}장 선택 중`
                     : ` · ${selectedCardId ? '밝은 칸을 클릭해 배치' : '카드를 골라 배치 가능 칸 확인'}`}
               </div>
               <div className={styles.handBody}>
@@ -63,8 +63,8 @@ export const BoardTab = memo(function BoardTab() {
                   onSelect={selectHandCard}
                   seat={viewerSeat}
                   discardMode={discardMode}
-                  discardIndices={discardIndices}
-                  onToggleDiscard={toggleDiscardIndex}
+                  discardCardIds={discardCardIds}
+                  onSetDiscard={setDiscardCard}
                 />
               </div>
             </div>
