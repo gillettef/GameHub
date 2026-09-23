@@ -209,6 +209,7 @@ describe('카드 기준표 (Rules.md 10절)', () => {
     expect(CONSTANTS.SPECIAL_PICKS).toBe(3);
     expect(CONSTANTS.VEIN_PRODUCTION_BONUS).toBe(1);
     expect(CONSTANTS.SCORE_PER_TERRITORY).toBe(1);
+    expect(CONSTANTS.KOMI_PER_SEAT).toBe(1);
     expect(CONSTANTS.MIN_PLAYERS).toBe(2);
     expect(CONSTANTS.MAX_PLAYERS).toBe(4);
     expect(CONSTANTS.OVERCLOCK_RADIUS).toBe(1);

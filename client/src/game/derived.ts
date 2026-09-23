@@ -221,6 +221,8 @@ export interface PlayerSummary {
   income: number;
   territory: number;
   markerScore: number;
+  /** 덤(komi): 좌석 번호 × 상수. 선턴 유리함 보정 (Rules.md 9.1) */
+  komi: number;
   total: number;
   markerCount: number;
   handCount: number;
@@ -244,6 +246,7 @@ export function buildPlayerSummaries(state: GameState): PlayerSummary[] {
       income: p.alive ? computeIncome(state, p.id).total : 0,
       territory: scores[p.id]?.territory ?? 0,
       markerScore: scores[p.id]?.markers ?? 0,
+      komi: scores[p.id]?.komi ?? 0,
       total: scores[p.id]?.total ?? 0,
       markerCount: state.markers.filter((m) => m.ownerId === p.id).length,
       handCount: countOf(p, 'hand'),

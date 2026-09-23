@@ -189,6 +189,8 @@ export interface GameLogEntry {
 export interface Score {
   territory: number;
   markers: number;
+  /** 덤(komi): 좌석 번호 × KOMI_PER_SEAT. 선턴(좌석 0) 유리함을 보정한다 (Rules.md 9.1) */
+  komi: number;
   total: number;
 }
 
@@ -242,6 +244,7 @@ export type PlacementErrorCode =
   | 'not-playing'
   | 'unknown-player'
   | 'not-your-turn'
+  | 'already-placed'
   | 'not-in-hand'
   | 'not-enough-energy'
   | 'out-of-bounds'

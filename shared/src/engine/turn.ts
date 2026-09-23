@@ -5,7 +5,7 @@
  * 턴 흐름:
  *  setupGame  : 코어 배치, 덱 셔플, 손패 4, 에너지 3 (시작 단계 전 상태. F018/F019 기준)
  *  beginTurn  : 시작 단계 — 전투 → 정비 → 지속 마법 만료 → 수입 → 드로우
- *  행동       : PLACE(에너지가 허락하는 한 반복 가능) / PASS(패스 또는 턴 종료) / SURRENDER
+ *  행동       : PLACE(턴당 1회만) / PASS(패스 또는 턴 종료) / SURRENDER
  *  advanceTurn: 종료 단계 — 종료 조건 확인 → 다음 생존자에게 턴 → beginTurn
  */
 import type {
@@ -347,7 +347,8 @@ export function applyAction(state: GameState, action: Action): ActionResult {
       };
       // 즉발 마법으로 마지막 상대 코어가 깨졌으면 배치 중이라도 즉시 승리 (Rules.md 9.2-1)
       if (alivePlayers(s).length <= 1) return { state: finishGame(s, 'last-survivor') };
-      // 배치는 턴을 끝내지 않는다 — 같은 플레이어가 이어서 배치하거나 PASS 로 턴을 넘긴다 (Rules.md 5.2)
+      // 배치는 턴을 자동으로 끝내지 않지만, actedThisTurn 이 서므로 같은 턴에 더는 놓을 수 없다
+      // (validateCard 의 already-placed) — PASS(턴 종료)로 넘긴다 (Rules.md 5.2)
       return { state: s };
     }
     case 'PASS': {

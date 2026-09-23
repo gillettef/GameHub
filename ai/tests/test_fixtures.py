@@ -96,8 +96,8 @@ def test_sight_territory_scores(started: GameState) -> None:
     assert t.counts == {"p0": 7, "ai-1": 7}
     assert t.owners[2][2] == "p0" and t.owners[5][5] is None
     scores = compute_scores(started)
-    assert scores["p0"].model_dump() == {"territory": 7, "markers": 0, "total": 7}
-    assert compute_ranking(started) == ["ai-1", "p0"]  # 동점은 좌석 큰 쪽
+    assert scores["p0"].model_dump() == {"territory": 7, "markers": 0, "komi": 0, "total": 7}
+    assert compute_ranking(started) == ["ai-1", "p0"]  # ai-1(좌석1)이 덤 1점 앞선다
 
 
 def test_scenario_replays_identically(scenario: dict) -> None:

@@ -24,6 +24,9 @@ export function validateCard(state: GameState, playerId: PlayerId, cardId: CardI
   if (state.currentPlayerId !== playerId || !player.alive) {
     return { code: 'not-your-turn', message: `${nameOf(state, state.currentPlayerId ?? playerId)}의 턴입니다` };
   }
+  if (player.actedThisTurn) {
+    return { code: 'already-placed', message: '이번 턴에는 이미 마커를 놓았습니다' };
+  }
   if (!hasSpec(cardId) || !player.hand.includes(cardId)) {
     return { code: 'not-in-hand', message: '손패에 없는 카드입니다' };
   }
