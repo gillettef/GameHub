@@ -263,7 +263,7 @@
       "range": 0,
       "production": 0,
       "score": 3,
-      "copies": 2,
+      "copies": 3,
       "description": "시야·영토 확장."
     },
     {
@@ -301,7 +301,7 @@
       "range": 1,
       "production": 0,
       "score": 1,
-      "copies": 4,
+      "copies": 3,
       "description": "가장 싼 공격 유닛. 침투: 적 마커 거리 1 이내에도 배치 가능."
     },
     {
