@@ -19,32 +19,7 @@
   font-weight: 600;
 }
 
-/* 맵 요약 카드 (2026-09-23: 맵은 더 이상 고르지 않고 자동 배정된 것을 보여주기만 한다) */
-.mapCard {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: var(--space-2);
-  border-radius: var(--radius-sm);
-  background: var(--color-white);
-}
-
-.mapName {
-  font-weight: 700;
-  color: var(--color-heading);
-}
-
-.mapMeta {
-  font-size: var(--text-small);
-  color: var(--color-text);
-}
-
-.mapDesc {
-  font-size: var(--text-small);
-  color: var(--color-muted);
-}
-
-/* 좌석별 닉네임 + 자동 배정된 종족·특수 카드 (2026-09-23: 종족·카드는 고르지 않고 결과만 보여준다) */
+/* 좌석별 닉네임 + 종족·덱 구성(2026-09-23: 접었다 펼 수 있는 DeckPicker) */
 .seatBlocks {
   display: flex;
   flex-direction: column;
@@ -60,15 +35,15 @@
   background: var(--color-white);
 }
 
-.seatRace {
-  font-size: var(--text-small);
-  color: var(--color-text);
+.deckDetails {
+  margin-top: 4px;
 }
 
-.seatCards {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-1);
+.deckSummary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--color-heading);
+  font-size: var(--text-small);
 }
 
 .seatTabs {

@@ -63,3 +63,10 @@
   height: 30px;
   padding: 0 var(--space-2);
 }
+
+/* 손패 교체 모드가 켜져 있을 때 토글 버튼 강조 */
+.discardActive {
+  background: var(--color-accent);
+  color: var(--color-accent-text);
+  border-color: var(--color-accent);
+}

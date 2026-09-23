@@ -80,10 +80,17 @@ def test_rejects_unknown_field() -> None:
         GameState.model_validate(raw)
 
 
-def test_first_turn_income_and_draw(started: GameState, first_turn: GameState) -> None:
-    """startGame = setupGame + 첫 플레이어 시작 단계. 수입 == compute_income, 드로우 1."""
+def test_first_turn_has_no_automatic_effects(started: GameState, first_turn: GameState) -> None:
+    """2026-09-23부터 startGame == setupGame — 자동 효과는 "턴 시작"이 아니라 그 플레이어가
+    자기 턴을 끝낼 때 처리되므로, 게임 시작 시점에는 첫 플레이어에게도 아무 보너스가 없다."""
+    assert first_turn.model_dump(mode="json") == started.model_dump(mode="json")
+
+
+def test_pass_resolves_own_income_and_draw(started: GameState) -> None:
+    """턴을 끝내면 그 순간 자기 수입·드로우가 즉시 처리된다 (Rules.md 5.2, 2026-09-23)."""
     p0_before = next(p for p in started.players if p.id == "p0")
-    p0_after = next(p for p in first_turn.players if p.id == "p0")
+    after = apply_action(started, PassAction(type="PASS", playerId="p0"))
+    p0_after = next(p for p in after.players if p.id == "p0")
     assert p0_after.energy - p0_before.energy == compute_income(started, "p0") == 1
     assert len(p0_after.hand) == len(p0_before.hand) + 1
     assert p0_after.hand[:4] == p0_before.hand and p0_after.hand[4] == p0_before.deck[0]

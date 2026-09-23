@@ -61,6 +61,39 @@ def const(name: str) -> int:
     return load_specs().constants[name]
 
 
+# --- 시드 RNG (rng.ts, mulberry32) --------------------------------------------
+# 손패 교체(discardCardIds)가 덱을 섞을 때만 쓴다. TS 와 비트 단위로 같은 결과가 나와야 한다 —
+# 부호 없는 32비트 정수로만 다루면(오른쪽 시프트를 항상 `>>>`처럼) JS 의 Math.imul·비트 연산과
+# 값이 일치한다(모듈로 2^32 연산은 부호 해석과 무관하다).
+
+
+def _u32(x: int) -> int:
+    return x & 0xFFFFFFFF
+
+
+def _imul(a: int, b: int) -> int:
+    return _u32(a * b)
+
+
+def next_random(seed: int) -> tuple[float, int]:
+    t = _u32(seed + 0x6D2B79F5)
+    x = _imul(t ^ (t >> 15), _u32(1 | t))
+    x = _u32((x + _imul(x ^ (x >> 7), _u32(61 | x))) ^ x)
+    value = _u32(x ^ (x >> 14)) / 4294967296
+    return value, t
+
+
+def shuffle(items: list[str], seed: int) -> tuple[list[str], int]:
+    """Fisher-Yates. 입력을 변이하지 않고 새 리스트와 새 seed 를 돌려준다"""
+    out = list(items)
+    s = seed
+    for i in range(len(out) - 1, 0, -1):
+        value, s = next_random(s)
+        j = int(value * (i + 1))
+        out[i], out[j] = out[j], out[i]
+    return out, s
+
+
 # --- 기하 · 시야 · 영토 (sight.ts) -------------------------------------------
 # 보드는 odd-r 오프셋 육각 좌표계다. 거리는 큐브 좌표로 바꿔 계산한다 (Rules.md 3절).
 
@@ -385,23 +418,51 @@ def _finish(state: GameState, reason: str) -> None:
     state.result = GameResult(reason=reason, ranking=compute_ranking(state, scores), scores=scores)  # type: ignore[arg-type]
 
 
-def _begin_turn(state: GameState) -> None:
-    pid = state.currentPlayerId
-    if state.phase != "playing" or pid is None:
-        return
-    _resolve_combat(state, pid)
+def _resolve_turn_end(state: GameState, player_id: str) -> None:
+    """2026-09-23부터 자동 효과는 다음 사람 턴 시작이 아니라 그 플레이어 자신이 턴을 끝낼 때
+    처리된다 (Rules.md 5.2): 전투 → 정비 → 지속 마법 만료 → 수입 → 드로우."""
+    _resolve_combat(state, player_id)
     if len(alive_players(state)) <= 1:
         _finish(state, "last-survivor")
         return
-    _apply_repair(state, pid)
-    _expire_persistent(state, pid)
-    p = _player(state, pid)
-    p.energy = min(p.energy + compute_income(state, pid), const("ENERGY_CAP"))
-    _draw(state, pid)
-    p.actedThisTurn = False
+    _apply_repair(state, player_id)
+    _expire_persistent(state, player_id)
+    p = _player(state, player_id)
+    p.energy = min(p.energy + compute_income(state, player_id), const("ENERGY_CAP"))
+    _draw(state, player_id)
+
+
+def _validate_discard(state: GameState, player_id: str, ids: list[str]) -> str | None:
+    if not ids:
+        return None
+    hand = list(_player(state, player_id).hand)
+    for card_id in ids:
+        if card_id not in hand:
+            return "손패에 없는 카드는 버릴 수 없습니다"
+        hand.remove(card_id)
+    return None
+
+
+def _apply_discard_exchange(state: GameState, player_id: str, ids: list[str]) -> None:
+    """턴을 끝낼 때 손패를 원하는 만큼 버리고 덱과 섞어 손패 상한까지 다시 뽑는다 (Rules.md 5.2).
+    ids 는 _validate_discard 로 이미 검증된 상태여야 한다."""
+    if not ids:
+        return
+    p = _player(state, player_id)
+    remaining = list(p.hand)
+    for card_id in ids:
+        remaining.remove(card_id)
+    shuffled, seed = shuffle(list(p.deck) + list(ids), state.rngSeed)
+    limit = const("HAND_LIMIT")
+    n = min(limit - len(remaining), len(shuffled))
+    state.rngSeed = seed
+    p.hand = remaining + shuffled[:n]
+    p.deck = shuffled[n:]
 
 
 def _advance_turn(state: GameState) -> None:
+    """다음 생존자에게 턴을 넘긴다. 자동 효과는 더 이상 여기서 일어나지 않는다 — 그 사람이
+    PLACE 할 수 있도록 actedThisTurn 만 리셋한다."""
     if state.phase != "playing" or state.currentPlayerId is None:
         return
     alive = alive_players(state)
@@ -420,7 +481,7 @@ def _advance_turn(state: GameState) -> None:
         state.round += 1
     state.turn += 1
     state.currentPlayerId = nxt.id
-    _begin_turn(state)
+    _player(state, nxt.id).actedThisTurn = False
 
 
 def _apply_placement(state: GameState, player_id: str, card_id: str, pos: Position) -> None:
@@ -489,7 +550,16 @@ def apply_action(state: GameState, action: Action) -> GameState:
         err = _check_turn(s, action.playerId)
         if err:
             raise ValueError(err)
-        if not _player(s, action.playerId).actedThisTurn:
+        discard_ids = action.discardCardIds or []
+        discard_err = _validate_discard(s, action.playerId, discard_ids)
+        if discard_err:
+            raise ValueError(discard_err)
+        acted = _player(s, action.playerId).actedThisTurn
+        _resolve_turn_end(s, action.playerId)
+        if s.phase == "finished":
+            return s
+        _apply_discard_exchange(s, action.playerId, discard_ids)
+        if not acted:
             _player(s, action.playerId).passed = True
         _advance_turn(s)
     elif isinstance(action, SurrenderAction):

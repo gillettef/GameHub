@@ -86,10 +86,10 @@ class CardSpec(Strict):
 
 
 class DeckChoice(Strict):
+    """2026-09-23 개편: 기본/특수 구분 없이 cardId → 장수(그 카드의 copies 상한 이내)로 자유롭게 고른다."""
+
     race: RaceId
-    buildingId: str
-    unitId: str
-    magicId: str
+    cards: dict[str, int]
 
 
 # --- 맵 -----------------------------------------------------------------------
@@ -206,6 +206,7 @@ class PlaceAction(Strict):
 class PassAction(Strict):
     type: Literal["PASS"]
     playerId: str
+    discardCardIds: list[str] | None = None
 
 
 class SurrenderAction(Strict):

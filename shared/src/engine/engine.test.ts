@@ -5,7 +5,6 @@
  */
 import { describe, expect, it } from 'vitest';
 import {
-  advanceTurn,
   applyAction,
   changeMap,
   leaveLobby,
@@ -27,6 +26,7 @@ import {
   withMarkers,
 } from './index.js';
 import {
+  BASE_CARDS_BY_RACE,
   CORE_BASE_INCOME,
   CORE_SIGHT,
   CORE_SPEC,
@@ -43,12 +43,19 @@ import {
 
 /** 코어 시야 1 → 육각 반경 1 = 7칸 (3r(r+1)+1) */
 const CORE_AREA = 3 * CORE_SIGHT * (CORE_SIGHT + 1) + 1;
-import type { Action, CardId, GameState, Marker, PlayerId, Position } from '../types/index.js';
+import type { Action, CardId, DeckChoice, GameState, Marker, PlayerId, Position, RaceId } from '../types/index.js';
 
-const CHOICES = [
+/** 그 종족의 기본 카드를 상한까지 채우고, specials 를 한 장씩 더한 덱(합계 DECK_SIZE) */
+function raceDeck(race: RaceId, specials: CardId[] = []): DeckChoice {
+  const cards: Record<CardId, number> = Object.fromEntries(BASE_CARDS_BY_RACE[race].map((c) => [c.id, c.copies]));
+  for (const id of specials) cards[id] = (cards[id] ?? 0) + 1;
+  return { race, cards };
+}
+
+const CHOICES: DeckChoice[] = [
   DEFAULT_DECK_CHOICE,
-  { race: 'coalition' as const, buildingId: 'observatory', unitId: 'stealth', magicId: 'warp-gate' },
-  { race: 'coalition' as const, buildingId: 'fortress', unitId: 'repair-drone', magicId: 'energy-storm' },
+  raceDeck('coalition', ['observatory', 'stealth', 'warp-gate']),
+  raceDeck('coalition', ['fortress', 'repair-drone', 'energy-storm']),
   DEFAULT_DECK_CHOICE,
 ];
 
@@ -140,25 +147,18 @@ describe('로비 · 덱 선택 · 시작 (F016, F018, F019)', () => {
     expect(joinPlayer(four, createPlayer('p9', '늦음')).error).toBeDefined();
   });
 
-  it('덱 선택은 종류별 특수 카드 하나씩, 덱을 고르기 전엔 준비 불가', () => {
+  it('덱 선택은 정확히 DECK_SIZE 장(카드마다 상한 이내)이어야 하고, 고르기 전엔 준비할 수 없다', () => {
     const s = lobby(2);
-    expect(fail(s, { type: 'READY', playerId: 'p0' })).toContain('특수 카드');
-    expect(fail(s, { type: 'SELECT_DECK', playerId: 'p0', choice: { race: 'coalition', buildingId: 'extractor', unitId: 'stealth', magicId: 'warp-gate' } })).toContain('특수 카드');
+    expect(fail(s, { type: 'READY', playerId: 'p0' })).toContain('덱을 먼저');
+    expect(fail(s, { type: 'SELECT_DECK', playerId: 'p0', choice: { race: 'coalition', cards: { extractor: 1 } } })).toContain('덱을 정확히');
+    expect(fail(s, { type: 'SELECT_DECK', playerId: 'p0', choice: { race: 'coalition', cards: { extractor: 999 } } })).toContain('덱을 정확히'); // 상한 초과
     expect(fail(s, { type: 'SELECT_DECK', playerId: 'zzz', choice: DEFAULT_DECK_CHOICE })).toBeDefined();
   });
 
   it('종족이 다른 두 플레이어가 한 대국에서 각자 자기 종족 카드로만 덱이 채워진다(교차 오염 없음)', () => {
     let s = lobby(2);
-    s = ok(s, {
-      type: 'SELECT_DECK',
-      playerId: 'p0',
-      choice: { race: 'swarm', buildingId: 'hive-fortress', unitId: 'alpha-brood', magicId: 'plague-burst' },
-    });
-    s = ok(s, {
-      type: 'SELECT_DECK',
-      playerId: 'p1',
-      choice: { race: 'automata', buildingId: 'citadel', unitId: 'titan', magicId: 'graviton-lance' },
-    });
+    s = ok(s, { type: 'SELECT_DECK', playerId: 'p0', choice: raceDeck('swarm', ['hive-fortress', 'alpha-brood', 'plague-burst']) });
+    s = ok(s, { type: 'SELECT_DECK', playerId: 'p1', choice: raceDeck('automata', ['citadel', 'titan', 'graviton-lance']) });
     s = ok(s, { type: 'READY', playerId: 'p0' });
     s = ok(s, { type: 'READY', playerId: 'p1' });
     expect(s.phase).toBe('playing');
@@ -217,8 +217,10 @@ describe('로비 · 덱 선택 · 시작 (F016, F018, F019)', () => {
       expect(p.deck).toHaveLength(DECK_SIZE - INITIAL_HAND_SIZE);
       expect(p.alive).toBe(true);
       const all = [...p.hand, ...p.deck].sort();
-      expect(all.filter((c) => c === 'extractor')).toHaveLength(4);
-      expect(all).toContain(p.deckChoice!.buildingId);
+      // 고른 덱 구성(카드별 장수)이 실제 손패+덱에 그대로 반영된다
+      for (const [id, n] of Object.entries(p.deckChoice!.cards)) {
+        expect(all.filter((c) => c === id)).toHaveLength(n);
+      }
     }
     expect(s.round).toBe(1);
     expect(s.turn).toBe(1);
@@ -230,14 +232,24 @@ describe('로비 · 덱 선택 · 시작 (F016, F018, F019)', () => {
     expect(s.players[0]!.deck).not.toEqual(s.players[1]!.deck);
   });
 
-  it('첫 턴에도 시작 단계를 수행한다: 첫 플레이어 수입 +코어 기본 수입, 드로우 1', () => {
+  it('첫 턴 시작에는 자동 효과가 없다: 초기 배분만 갖고 첫 배치를 한다 (2026-09-23)', () => {
     const s = startGame(readyLobby(2));
-    expect(player(s, 'p0').energy).toBe(STARTING_ENERGY + CORE_BASE_INCOME);
-    expect(player(s, 'p0').hand).toHaveLength(INITIAL_HAND_SIZE + 1);
+    expect(player(s, 'p0').energy).toBe(STARTING_ENERGY);
+    expect(player(s, 'p0').hand).toHaveLength(INITIAL_HAND_SIZE);
     expect(player(s, 'p1').energy).toBe(STARTING_ENERGY);
     expect(player(s, 'p1').hand).toHaveLength(INITIAL_HAND_SIZE);
-    expect(s.log.map((l) => l.kind)).toContain('income');
-    expect(s.log.map((l) => l.kind)).toContain('draw');
+    expect(s.log.map((l) => l.kind)).not.toContain('income');
+    expect(s.log.map((l) => l.kind)).not.toContain('draw');
+  });
+
+  it('턴을 끝내면 그 순간 자기 수입·드로우가 처리된다 (2026-09-23)', () => {
+    let s = startGame(readyLobby(2));
+    s = withHand(s, 'p0', [], 3);
+    const t = ok(s, { type: 'PASS', playerId: 'p0' });
+    expect(player(t, 'p0').energy).toBe(3 + CORE_BASE_INCOME);
+    expect(player(t, 'p0').hand).toHaveLength(1);
+    expect(t.log.map((l) => l.kind)).toContain('income');
+    expect(t.log.map((l) => l.kind)).toContain('draw');
   });
 });
 
@@ -355,7 +367,7 @@ describe('배치 검증 (F022)', () => {
     expect(countPasses(t)).toBe(0);
     expect(t.log.some((l) => l.message.includes('턴 종료'))).toBe(true);
     expect(fail(t, place('p0', 'scout', { x: 3, y: 5 }))).toContain('플레이어1의 턴');
-    expect(t.log.at(-1)?.kind).toBe('draw'); // p1 시작 단계까지 진행됨
+    expect(t.log.at(-1)?.kind).toBe('turn'); // p0 자신의 수입·드로우 처리 후 p1 턴 시작 로그까지 남는다
     expect(t.markers.map((x) => x.pos)).toEqual([...t.markers.map((x) => x.pos)].sort((a, b) => a.y - b.y || a.x - b.x));
   });
 
@@ -394,7 +406,7 @@ describe('배치 검증 (F022)', () => {
     const endLog = t.log.filter((l) => l.kind === 'pass').at(-1);
     expect(endLog?.message).toContain('턴 종료');
     expect(t.phase).toBe('playing'); // 전원 패스가 아니므로 안 끝난다
-    expect(t.log.at(-1)?.kind).toBe('draw'); // p0 의 다음 턴 시작 단계까지 진행
+    expect(t.log.at(-1)?.kind).toBe('turn'); // p1 자신의 수입·드로우 처리 후 p0 턴 시작 로그까지 남는다
   });
 
   it('canPlay / hasAnyPlay: 에너지 부족·놓을 칸 없음이면 낼 수 없다', () => {
@@ -449,13 +461,11 @@ describe('수입 (F020) · 드로우', () => {
     expect(inc.items.find((i) => i.markerId === s.markers.find((m) => m.specId === 'extractor' && m.pos.x === 4)!.id)!.amount).toBe(1); // 과부하 없는 건물은 보너스 없음
   });
 
-  it('턴 시작 시 수입이 에너지에 더해지고 내역이 로그에 남는다', () => {
+  it('턴을 끝내면 수입이 에너지에 더해지고 내역이 로그에 남는다', () => {
     let s = setup(2);
     s = addMarkers(s, marker('p0', 'extractor', { x: 1, y: 1 })); // 광맥
-    s = { ...s, currentPlayerId: 'p1', turn: 2 };
-    const t = advanceTurn(withHand(s, 'p1', [], 3)); // → p0 턴
-    expect(t.currentPlayerId).toBe('p0');
-    expect(player(t, 'p0').energy).toBe(STARTING_ENERGY + CORE_BASE_INCOME + 2);
+    const t = ok(withHand(s, 'p0', [], 3), pass('p0'));
+    expect(player(t, 'p0').energy).toBe(3 + CORE_BASE_INCOME + 2);
     const log = t.log.find((l) => l.kind === 'income' && l.playerId === 'p0')!;
     expect(log.message).toContain('채굴기(광맥) +2');
   });
@@ -464,9 +474,7 @@ describe('수입 (F020) · 드로우', () => {
     let s = setup(2);
     s = addMarkers(s, marker('p0', 'refinery', { x: 6, y: 3 })); // 광맥, 생산 4
     s = withHand(s, 'p0', [], ENERGY_CAP - 1);
-    s = { ...s, currentPlayerId: 'p1', turn: 2 };
-    const t = advanceTurn(withHand(s, 'p1', [], 3)); // → p0 턴, 수입 적용
-    expect(t.currentPlayerId).toBe('p0');
+    const t = ok(s, pass('p0'));
     expect(player(t, 'p0').energy).toBe(ENERGY_CAP);
     const log = t.log.find((l) => l.kind === 'income' && l.playerId === 'p0')!;
     expect(log.message).toContain('상한');
@@ -479,8 +487,10 @@ describe('수입 (F020) · 드로우', () => {
     expect(computeIncome(s, 'p0').total).toBe(CORE_BASE_INCOME + 1); // 광맥 보너스 +1
     const territoryBefore = computeTerritory(s).counts.p0!;
     const sightBefore = computeSightArea(s, 'p0').length;
-    // p0 패스 → p1 턴 시작 전투에서 전초기지 파괴
-    const t = ok(withHand(s, 'p0', [], 3), pass('p0'));
+    // p0 가 턴을 끝내도 아직 아무 일도 없다 — 공격은 p1 자신이 턴을 끝낼 때 일어난다
+    let t = ok(withHand(s, 'p0', [], 3), pass('p0'));
+    expect(t.markers.some((m) => m.specId === 'outpost')).toBe(true);
+    t = ok(withHand(t, 'p1', [], 3), pass('p1')); // p1 자신의 전투에서 전초기지 파괴
     expect(t.markers.some((m) => m.specId === 'outpost')).toBe(false);
     expect(computeIncome(t, 'p0').total).toBe(CORE_BASE_INCOME);
     expect(computeTerritory(t).counts.p0!).toBeLessThan(territoryBefore);
@@ -492,34 +502,34 @@ describe('수입 (F020) · 드로우', () => {
   it('드로우: 손패 5장이면 생략, 덱이 비면 생략', () => {
     let s = setup(2);
     s = withHand(s, 'p0', ['scout', 'scout', 'scout', 'scout', 'scout'], 3);
-    let t = advanceTurn({ ...s, currentPlayerId: 'p1', turn: 2 });
+    let t = ok(s, pass('p0'));
     expect(player(t, 'p0').hand).toHaveLength(HAND_LIMIT);
-    expect(t.log.at(-1)?.message).toContain('상한');
+    expect(t.log.find((l) => l.kind === 'draw' && l.playerId === 'p0')?.message).toContain('상한');
     s = withHand(s, 'p0', ['scout'], 3, []);
-    t = advanceTurn({ ...s, currentPlayerId: 'p1', turn: 2 });
+    t = ok(s, pass('p0'));
     expect(player(t, 'p0').hand).toEqual(['scout']);
-    expect(t.log.at(-1)?.message).toContain('덱이 비어');
+    expect(t.log.find((l) => l.kind === 'draw' && l.playerId === 'p0')?.message).toContain('덱이 비어');
   });
 });
 
 describe('전투 (F023)', () => {
-  /** p1 턴 상태를 만들어 p1 이 패스하면 p0 시작 단계(전투)가 돈다 */
-  function beforeP0Turn(s: GameState): GameState {
-    return withHand({ ...s, currentPlayerId: 'p1', turn: 2 }, 'p1', [], 3);
+  /** p0 가 패스하면(빈 손패) 자기 자신의 전투 등 효과가 그 자리에서 즉시 처리된다 */
+  function readyP0Pass(s: GameState): GameState {
+    return withHand(s, 'p0', [], 3);
   }
 
   it('대상 선택: 거리 → 체력 → y → x (육각 거리 기준)', () => {
     let s = setup(2);
     // 방어탑(공 2, 사거리 2) at (5,5). 후보: 순양함 d=1 hp7, 정찰 d=2 hp2 → 거리 우선
     s = addMarkers(s, marker('p0', 'turret', { x: 5, y: 5 }), marker('p1', 'cruiser', { x: 6, y: 6 }), marker('p1', 'scout', { x: 6, y: 7 }));
-    let t = ok(beforeP0Turn(s), pass('p1'));
+    let t = ok(readyP0Pass(s), pass('p0'));
     expect(t.markers.find((m) => m.specId === 'cruiser')!.hp).toBe(5);
     expect(t.markers.find((m) => m.specId === 'scout')!.hp).toBe(2);
 
     // 같은 거리(d=1): 체력 낮은 쪽. (6,6) hp 7 vs (6,5) hp 4(전투기)
     s = setup(2);
     s = addMarkers(s, marker('p0', 'turret', { x: 5, y: 5 }), marker('p1', 'cruiser', { x: 6, y: 6 }), marker('p1', 'fighter', { x: 6, y: 5 }));
-    t = ok(beforeP0Turn(s), pass('p1'));
+    t = ok(readyP0Pass(s), pass('p0'));
     expect(t.markers.find((m) => m.specId === 'fighter')!.hp).toBe(2);
     expect(t.markers.find((m) => m.specId === 'cruiser')!.hp).toBe(7);
 
@@ -532,7 +542,7 @@ describe('전투 (F023)', () => {
       marker('p1', 'scout', { x: 6, y: 4 }),
       marker('p1', 'scout', { x: 6, y: 6 }),
     );
-    t = ok(beforeP0Turn(s), pass('p1'));
+    t = ok(readyP0Pass(s), pass('p0'));
     const scouts = t.markers.filter((m) => m.specId === 'scout');
     expect(scouts).toHaveLength(2); // (5,4) 가 파괴됨 (y=4 최소, 그중 x=5 최소)
     expect(scouts.some((m) => m.pos.x === 5 && m.pos.y === 4)).toBe(false);
@@ -550,42 +560,39 @@ describe('전투 (F023)', () => {
       marker('p1', 'scout', { x: 6, y: 5 }),
       marker('p1', 'cruiser', { x: 6, y: 4 }),
     );
-    const t = ok(beforeP0Turn(s), pass('p1'));
+    const t = ok(readyP0Pass(s), pass('p0'));
     expect(t.markers.some((m) => m.specId === 'scout')).toBe(false);
     expect(t.markers.find((m) => m.specId === 'cruiser')!.hp).toBe(7);
     expect(t.log.filter((l) => l.kind === 'combat')).toHaveLength(2);
   });
 
-  it('마커를 놓은 직후에는 공격하지 않고, 한 바퀴 뒤 내 턴 시작에 공격한다', () => {
+  it('마커를 놓고 턴을 끝내면 그 자리에서 바로 공격한다 (다음 턴까지 기다리지 않는다, 2026-09-23)', () => {
     let s = startGame(readyLobby(2));
     s = withHand(s, 'p0', ['artillery'], 10);
-    s = withHand(s, 'p1', ['scout'], 10);
     // 전초기지(시야 2, (5,5))로 시야를 넓혀 포격함(사거리 3)을 p1 코어(7,7) 근처에 놓는다 (거리 1)
     s = addMarkers(s, marker('p0', 'outpost', { x: 5, y: 5 }));
     let t = ok(s, place('p0', 'artillery', { x: 6, y: 7 })); // d((6,7),(7,7)) = 1 ≤ 사거리 3
-    expect(core(t, 'p1').hp).toBe(20); // 배치 직후 공격 없음
-    t = ok(t, pass('p0')); // p0 턴 종료 (배치했으므로 패스로 기록되지 않음)
-    t = ok(t, pass('p1'));
-    expect(core(t, 'p1').hp).toBe(17); // p0 턴 시작 전투
-    expect(t.currentPlayerId).toBe('p0');
+    expect(core(t, 'p1').hp).toBe(20); // 배치 자체는 공격이 아니다
+    t = ok(t, pass('p0')); // 턴 종료 → p0 자신의 전투가 즉시 처리된다
+    expect(core(t, 'p1').hp).toBe(17); // 같은 액션 안에서 바로 공격
+    expect(t.currentPlayerId).toBe('p1');
   });
 
-  it('턴 플레이어의 마커만 공격한다 (상대는 자기 턴에 반격)', () => {
+  it('턴을 끝내는 플레이어의 마커만 공격한다 (상대는 자기 턴을 끝낼 때 반격)', () => {
     let s = setup(2);
     s = addMarkers(s, marker('p0', 'fighter', { x: 5, y: 5 }), marker('p1', 'fighter', { x: 6, y: 5 }));
-    const t = ok(beforeP0Turn(s), pass('p1')); // p0 턴 시작: p0 전투기만 공격
+    const t = ok(readyP0Pass(s), pass('p0')); // p0 자신만 공격
     expect(t.markers.find((m) => m.ownerId === 'p1' && m.specId === 'fighter')!.hp).toBe(2);
     expect(t.markers.find((m) => m.ownerId === 'p0' && m.specId === 'fighter')!.hp).toBe(4);
-    // p0 는 배치 후 턴 종료(패스 두 번이면 전원 패스로 끝나므로) → p1 턴 시작: 반격
-    let u = ok(withHand(t, 'p0', ['scout'], 3), place('p0', 'scout', { x: 4, y: 2 }));
-    u = ok(u, pass('p0'));
+    // p1 이 자기 턴을 끝내면 반격
+    const u = ok(withHand(t, 'p1', [], 3), pass('p1'));
     expect(u.markers.find((m) => m.ownerId === 'p0' && m.specId === 'fighter')!.hp).toBe(2);
   });
 
   it('지속 마법 마커도 공격 대상이다', () => {
     let s = setup(2);
     s = addMarkers(s, marker('p0', 'fighter', { x: 5, y: 5 }), marker('p1', 'warp-gate', { x: 6, y: 5 }, 2, 3));
-    const t = ok(beforeP0Turn(s), pass('p1'));
+    const t = ok(readyP0Pass(s), pass('p0'));
     expect(t.markers.some((m) => m.specId === 'warp-gate')).toBe(false);
   });
 });
@@ -632,33 +639,33 @@ describe('즉발 마법 · 지속 마법 · 정비', () => {
     expect(t.markers).toHaveLength(2);
   });
 
-  it('워프 게이트: 시야 3 마커로 남고 소유자 턴 시작마다 1 줄어 0이면 제거', () => {
+  it('워프 게이트: 시야 3 마커로 남고 소유자가 자기 턴을 끝낼 때마다 1 줄어 0이면 제거', () => {
     let s = startGame(readyLobby(2));
     s = withHand(s, 'p0', ['warp-gate', 'scout', 'scout'], 10);
-    s = withHand(s, 'p1', [], 10);
     let t = ok(s, place('p0', 'warp-gate', { x: 3, y: 3 }));
     const gate = t.markers.find((m) => m.specId === 'warp-gate')!;
     expect(gate.remainingTurns).toBe(3);
     expect(gate.hp).toBe(2);
     expect(gate.kind).toBe('magic');
     expect(computeSightArea(t, 'p0')).toContainEqual({ x: 6, y: 3 }); // 거리 3, 게이트가 없으면 안 닿는다
-    t = ok(t, pass('p0')); // p0 턴 종료 (배치했으므로 패스로 기록되지 않음)
-    t = ok(t, pass('p1')); // p0 턴 시작 → 2
+    t = ok(t, pass('p0')); // p0 자신이 턴을 끝내는 순간 바로 1 줄어든다
     expect(t.markers.find((m) => m.specId === 'warp-gate')!.remainingTurns).toBe(2);
+    t = withHand(t, 'p1', [], 10);
+    t = ok(t, pass('p1'));
     t = ok(t, place('p0', 'scout', { x: 2, y: 1 })); // p0 는 배치 (패스 연속이면 게임이 끝난다)
-    t = ok(t, pass('p0')); // 턴 종료
-    t = ok(t, pass('p1')); // → 1
+    t = ok(t, pass('p0')); // → 1
     expect(t.markers.find((m) => m.specId === 'warp-gate')!.remainingTurns).toBe(1);
+    t = withHand(t, 'p1', [], 10);
+    t = ok(t, pass('p1'));
     t = ok(t, place('p0', 'scout', { x: 2, y: 3 }));
-    t = ok(t, pass('p0')); // 턴 종료
-    t = ok(t, pass('p1')); // → 0 제거
+    t = ok(t, pass('p0')); // → 0 제거
     expect(t.markers.some((m) => m.specId === 'warp-gate')).toBe(false);
     expect(t.log.some((l) => l.kind === 'expire')).toBe(true);
     expect(t.phase).toBe('playing');
     expect(computeSightArea(t, 'p0')).not.toContainEqual({ x: 6, y: 3 });
   });
 
-  it('수리 드론: 턴 시작(전투 직후) 반경 1 아군 체력 +1, 최대 체력까지', () => {
+  it('수리 드론: 턴을 끝낼 때(전투 직후) 반경 1 아군 체력 +1, 최대 체력까지', () => {
     let s = setup(2);
     s = addMarkers(
       s,
@@ -667,7 +674,7 @@ describe('즉발 마법 · 지속 마법 · 정비', () => {
       marker('p0', 'scout', { x: 5, y: 5 }, 1), // d=3, 반경 밖
       marker('p0', 'outpost', { x: 4, y: 3 }, 5), // d=1, 최대(6) 직전
     );
-    const t = advanceTurn(withHand({ ...s, currentPlayerId: 'p1', turn: 2 }, 'p1', [], 3));
+    const t = ok(withHand(s, 'p0', [], 3), pass('p0'));
     expect(t.markers.find((m) => m.specId === 'repair-drone')!.hp).toBe(2); // 자기 자신 포함
     expect(t.markers.find((m) => m.specId === 'cruiser')!.hp).toBe(6);
     expect(t.markers.find((m) => m.specId === 'scout')!.hp).toBe(1); // 거리 3, 반경 밖
@@ -681,7 +688,7 @@ describe('파괴 · 탈락 · 종료 (F024, F025)', () => {
     let s = setup(2);
     s = addMarkers(s, marker('p0', 'fighter', { x: 7, y: 7 }), marker('p1', 'scout', { x: 9, y: 9 }));
     s = withMarkers(s, s.markers.map((m) => (m.ownerId === 'p1' && m.kind === 'core' ? { ...m, hp: 2 } : m)));
-    const t = ok(withHand({ ...s, currentPlayerId: 'p1', turn: 2 }, 'p1', [], 3), pass('p1'));
+    const t = ok(withHand(s, 'p0', [], 3), pass('p0'));
     expect(t.phase).toBe('finished');
     expect(t.result?.reason).toBe('last-survivor');
     expect(t.result?.ranking).toEqual(['p0', 'p1']);
@@ -696,20 +703,15 @@ describe('파괴 · 탈락 · 종료 (F024, F025)', () => {
 
   it('3인전: 탈락자는 턴에서 건너뛰고 순위는 생존자 아래', () => {
     let s = setup(3);
-    s = withHand(s, 'p0', [], 3);
-    s = withHand(s, 'p1', [], 3);
-    s = withHand(s, 'p2', [], 3);
+    s = withHand(s, 'p0', ['scout'], 3);
     // p1 코어 (7,1) 옆(d=1) p0 전투기, p1 코어 체력 1
     s = addMarkers(s, marker('p0', 'fighter', { x: 8, y: 1 }));
     s = withMarkers(s, s.markers.map((m) => (m.ownerId === 'p1' && m.kind === 'core' ? { ...m, hp: 1 } : m)));
-    s = { ...s, currentPlayerId: 'p2', turn: 3 };
-    let t = ok(s, pass('p2')); // → p0 턴 시작: p1 코어 파괴
+    let t = ok(s, place('p0', 'scout', { x: 2, y: 3 })); // 코어(1,3) 시야1 안
+    t = ok(t, pass('p0')); // p0 자신의 전투: p1 코어 파괴 → 탈락, 다음 생존자(p2)로 턴이 넘어간다
     expect(t.phase).toBe('playing');
     expect(player(t, 'p1').alive).toBe(false);
     expect(t.markers.some((m) => m.ownerId === 'p1')).toBe(false);
-    expect(t.currentPlayerId).toBe('p0');
-    t = ok(withHand(t, 'p0', ['scout'], 3), place('p0', 'scout', { x: 2, y: 3 })); // 코어(1,3) 시야1 안
-    t = ok(t, pass('p0')); // 턴 종료
     expect(t.currentPlayerId).toBe('p2'); // p1 건너뜀
     expect(fail(t, pass('p1'))).toBeDefined();
     const ranking = computeRanking(t);
@@ -833,12 +835,14 @@ describe('리뷰 보강: 탈락과 패스, 동시 파괴, 즉발 코어 파괴, 
     // p1 전투기가 p0 코어(1,3) 옆(d=1), p0 코어 체력 1
     s = addMarkers(s, marker('p1', 'fighter', { x: 2, y: 3 }));
     s = withMarkers(s, s.markers.map((m) => (m.ownerId === 'p0' && m.kind === 'core' ? { ...m, hp: 1 } : m)));
-    let t = ok(s, pass('p0')); // → p1 턴 시작 전투: p0 탈락
+    let t = ok(s, pass('p0')); // p0 자신은 공격력 있는 마커가 없어 아무 일도 없다
+    expect(t.phase).toBe('playing');
+    expect(countPasses(t)).toBe(1); // p0 만 패스
+    t = ok(t, pass('p1')); // p1 자신의 전투: p0 코어 파괴 → 탈락
     expect(player(t, 'p0').alive).toBe(false);
-    t = ok(t, pass('p1'));
     expect(t.phase).toBe('playing'); // p2 는 아직 패스하지 않았다
     expect(t.currentPlayerId).toBe('p2');
-    expect(countPasses(t)).toBe(1);
+    expect(countPasses(t)).toBe(1); // 탈락한 p0 의 패스는 세지 않는다(생존자 중엔 p1 만 패스)
     t = ok(t, pass('p2'));
     expect(t.phase).toBe('finished');
     expect(t.result?.reason).toBe('all-pass');
@@ -867,8 +871,7 @@ describe('리뷰 보강: 탈락과 패스, 동시 파괴, 즉발 코어 파괴, 
     // p0 포격함(사거리 3) 두 대가 p1 코어(8,4, d=2)·p3 코어(1,5, d=2) 를 노린다. 두 코어 체력 1
     s = addMarkers(s, marker('p0', 'artillery', { x: 6, y: 4 }), marker('p0', 'artillery', { x: 0, y: 4 }));
     s = withMarkers(s, s.markers.map((m) => (m.kind === 'core' && (m.ownerId === 'p1' || m.ownerId === 'p3') ? { ...m, hp: 1 } : m)));
-    s = { ...s, currentPlayerId: 'p3', turn: 4 };
-    const t = ok(s, pass('p3')); // → p0 턴 시작 전투
+    const t = ok(s, pass('p0')); // p0 자신의 전투에서 두 코어가 동시에 파괴된다
     expect(player(t, 'p1').alive).toBe(false);
     expect(player(t, 'p3').alive).toBe(false);
     expect(player(t, 'p1').eliminatedOrder).toBe(0);
@@ -919,7 +922,7 @@ describe('리뷰 보강: 탈락과 패스, 동시 파괴, 즉발 코어 파괴, 
     let s = setup(2);
     s = addMarkers(s, marker('p0', 'fighter', { x: 3, y: 3 }));
     const before = s.markers.map((m) => m.hp);
-    const t = advanceTurn(withHand({ ...s, currentPlayerId: 'p1', turn: 2 }, 'p1', [], 3));
+    const t = ok(withHand(s, 'p0', [], 3), pass('p0'));
     expect(t.markers.map((m) => m.hp)).toEqual(before);
     expect(t.log.some((l) => l.kind === 'combat')).toBe(false);
   });

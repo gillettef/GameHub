@@ -2,14 +2,18 @@
  * 로비 → 게임 시작 → 턴 진행 (Rules.md 4절, 5절, 9.2, F018~F020, F024, F025).
  * 순수 함수. `applyAction(state, action) => { state, error? }`. 입력 state 를 변이하지 않는다.
  *
- * 턴 흐름:
- *  setupGame  : 코어 배치, 덱 셔플, 손패 4, 에너지 3 (시작 단계 전 상태. F018/F019 기준)
- *  beginTurn  : 시작 단계 — 전투 → 정비 → 지속 마법 만료 → 수입 → 드로우
+ * 턴 흐름 (2026-09-23 사용자 지시로 자동 효과 시점을 "다음 사람 턴 시작"에서
+ * "내 턴을 끝내는 시점"으로 옮겼다 — Rules.md 5절):
+ *  setupGame  : 코어 배치, 덱 셔플, 손패 4, 에너지 5 (첫 턴 시작 전 상태. F018/F019 기준)
  *  행동       : PLACE(턴당 1회만) / PASS(패스 또는 턴 종료) / SURRENDER
- *  advanceTurn: 종료 단계 — 종료 조건 확인 → 다음 생존자에게 턴 → beginTurn
+ *  PASS       : 턴을 끝내는 그 플레이어 자신의 전투 → 정비 → 지속 마법 만료 → 수입 → 드로우 →
+ *               (선택) 손패 교체 를 즉시 처리한 뒤 다음 생존자에게 턴을 넘긴다
+ *  advanceTurn: 종료 조건 확인 → 다음 생존자로 currentPlayerId 전환 (자동 효과 없음, 그 사람이
+ *               자기 턴을 끝낼 때 비로소 처리된다)
  */
 import type {
   Action,
+  CardId,
   DeckChoice,
   GameResultReason,
   GameState,
@@ -21,6 +25,7 @@ import type {
 } from '../types/index.js';
 import {
   CORE_SPEC,
+  DECK_SIZE,
   DEFAULT_DECK_CHOICE,
   DRAW_PER_TURN,
   ENERGY_CAP,
@@ -106,7 +111,7 @@ export function joinPlayer(state: GameState, player: PlayerState): ActionResult 
 function selectDeck(state: GameState, playerId: PlayerId, choice: DeckChoice): ActionResult {
   if (state.phase !== 'lobby') return { state, error: '이미 시작된 게임입니다' };
   if (!state.players.some((p) => p.id === playerId)) return { state, error: '방에 없는 플레이어입니다' };
-  if (!isValidDeckChoice(choice)) return { state, error: '건물·유닛·마법 특수 카드를 하나씩 골라야 합니다' };
+  if (!isValidDeckChoice(choice)) return { state, error: `덱을 정확히 ${DECK_SIZE}장으로(카드마다 상한 이내로) 구성해야 합니다` };
   return {
     state: {
       ...state,
@@ -119,7 +124,7 @@ function ready(state: GameState, playerId: PlayerId): ActionResult {
   if (state.phase !== 'lobby') return { state, error: '이미 시작된 게임입니다' };
   const player = state.players.find((p) => p.id === playerId);
   if (!player) return { state, error: '방에 없는 플레이어입니다' };
-  if (!player.deckChoice) return { state, error: '특수 카드를 먼저 골라야 합니다' };
+  if (!player.deckChoice) return { state, error: '덱을 먼저 구성해야 합니다' };
   let s: GameState = { ...state, players: state.players.map((p) => (p.id === playerId ? { ...p, isReady: true } : p)) };
   if (canStart(s)) s = startGame(s);
   return { state: s };
@@ -231,28 +236,13 @@ export function setupGame(state: GameState): GameState {
   return s;
 }
 
-/** setupGame + 첫 플레이어의 시작 단계 */
+/**
+ * setupGame 만으로 충분하다. 예전에는 여기서 첫 플레이어의 "턴 시작" 자동 효과를 미리 한 번
+ * 돌렸지만, 이제 자동 효과는 그 플레이어가 자기 턴을 끝낼 때(PASS) 처리되므로 게임 시작 시점에는
+ * 아무 효과도 없다 — 첫 플레이어는 초기 배분(손패 4장, 에너지 5)만으로 첫 배치를 한다.
+ */
 export function startGame(state: GameState): GameState {
-  return beginTurn(setupGame(state));
-}
-
-// ---------------------------------------------------------------------------
-// 턴 시작 단계 (5.1)
-// ---------------------------------------------------------------------------
-
-export function beginTurn(state: GameState): GameState {
-  const playerId = state.currentPlayerId;
-  if (state.phase !== 'playing' || playerId === null) return state;
-
-  let s = resolveCombat(state, playerId);
-  if (alivePlayers(s).length <= 1) return finishGame(s, 'last-survivor');
-
-  s = applyRepair(s, playerId);
-  s = expirePersistentMagic(s, playerId);
-  s = applyIncome(s, playerId);
-  s = drawCard(s, playerId);
-  s = { ...s, players: s.players.map((p) => (p.id === playerId ? { ...p, actedThisTurn: false } : p)) };
-  return s;
+  return setupGame(state);
 }
 
 function applyIncome(state: GameState, playerId: PlayerId): GameState {
@@ -304,7 +294,12 @@ export function finishGame(state: GameState, reason: GameResultReason): GameStat
   return s;
 }
 
-/** 종료 단계: 종료 조건을 확인하고 다음 생존 플레이어의 시작 단계까지 진행한다 */
+/**
+ * 종료 단계: 종료 조건을 확인하고 currentPlayerId 를 다음 생존자로 넘긴다.
+ * 자동 효과(전투·수입·드로우)는 더 이상 여기서 일어나지 않는다 — 그 플레이어가 자기 턴을
+ * 끝낼 때(PASS) 이미 처리됐거나, 처리될 것이다. 여기서는 다음 사람이 PLACE 할 수 있도록
+ * actedThisTurn 만 리셋한다.
+ */
 export function advanceTurn(state: GameState): GameState {
   if (state.phase !== 'playing' || state.currentPlayerId === null) return state;
   const alive = alivePlayers(state);
@@ -319,9 +314,14 @@ export function advanceTurn(state: GameState): GameState {
     if (s.round >= s.roundLimit) return finishGame(s, 'round-limit');
     s = { ...s, round: s.round + 1 };
   }
-  s = { ...s, turn: s.turn + 1, currentPlayerId: next.id };
+  s = {
+    ...s,
+    turn: s.turn + 1,
+    currentPlayerId: next.id,
+    players: s.players.map((p) => (p.id === next.id ? { ...p, actedThisTurn: false } : p)),
+  };
   s = addLog(s, 'turn', next.id, `${s.turn}턴 시작: ${next.nickname} (라운드 ${s.round})`);
-  return beginTurn(s);
+  return s;
 }
 
 // ---------------------------------------------------------------------------
@@ -354,10 +354,25 @@ export function applyAction(state: GameState, action: Action): ActionResult {
     case 'PASS': {
       const err = checkTurn(state, action.playerId);
       if (err) return { state, error: err };
+      const discardIds = action.discardCardIds ?? [];
+      const discardErr = validateDiscard(state, action.playerId, discardIds);
+      if (discardErr) return { state, error: discardErr };
+
       const acted = getPlayer(state, action.playerId).actedThisTurn;
-      let s: GameState = acted
-        ? state
-        : { ...state, players: state.players.map((p) => (p.id === action.playerId ? { ...p, passed: true } : p)) };
+
+      // 턴을 끝내는 본인의 마커 효과를 여기서 즉시 처리한다(Rules.md 5절, 2026-09-23 사용자 지시):
+      // 전투 → 정비 → 지속 마법 만료 → 수입 → 드로우 → (선택) 손패 교체.
+      let s = resolveCombat(state, action.playerId);
+      if (alivePlayers(s).length <= 1) return { state: finishGame(s, 'last-survivor') };
+      s = applyRepair(s, action.playerId);
+      s = expirePersistentMagic(s, action.playerId);
+      s = applyIncome(s, action.playerId);
+      s = drawCard(s, action.playerId);
+      s = applyDiscardExchange(s, action.playerId, discardIds);
+
+      s = acted
+        ? s
+        : { ...s, players: s.players.map((p) => (p.id === action.playerId ? { ...p, passed: true } : p)) };
       s = addLog(
         s,
         'pass',
@@ -389,4 +404,43 @@ function checkTurn(state: GameState, playerId: PlayerId): string | null {
   if (state.currentPlayerId !== playerId) return `${nameOf(state, state.currentPlayerId as PlayerId)}의 턴입니다`;
   if (!getPlayer(state, playerId).alive) return '탈락한 플레이어입니다';
   return null;
+}
+
+/** discardCardIds 가 전부 실제 손패 안의 카드(같은 카드 중복 지정 시 그만큼의 장수)인지 확인 */
+function validateDiscard(state: GameState, playerId: PlayerId, ids: CardId[]): string | null {
+  if (ids.length === 0) return null;
+  const hand = [...getPlayer(state, playerId).hand];
+  for (const id of ids) {
+    const idx = hand.indexOf(id);
+    if (idx === -1) return '손패에 없는 카드는 버릴 수 없습니다';
+    hand.splice(idx, 1);
+  }
+  return null;
+}
+
+/**
+ * 턴을 끝낼 때 손패 카드를 원하는 만큼(0장도 가능) 버리고 남은 덱과 합쳐 시드 RNG로 섞은 뒤,
+ * 손패 상한(HAND_LIMIT)까지 다시 뽑는다. discardIds 는 validateDiscard 로 이미 검증된 상태여야 한다.
+ */
+function applyDiscardExchange(state: GameState, playerId: PlayerId, discardIds: CardId[]): GameState {
+  if (discardIds.length === 0) return state;
+  const player = getPlayer(state, playerId);
+  const remainingHand = [...player.hand];
+  for (const id of discardIds) remainingHand.splice(remainingHand.indexOf(id), 1);
+
+  const { items: shuffled, seed } = shuffle([...player.deck, ...discardIds], state.rngSeed);
+  const n = Math.min(HAND_LIMIT - remainingHand.length, shuffled.length);
+  const drawn = shuffled.slice(0, n);
+  const deck = shuffled.slice(n);
+  const s: GameState = {
+    ...state,
+    rngSeed: seed,
+    players: state.players.map((p) => (p.id === playerId ? { ...p, hand: [...remainingHand, ...drawn], deck } : p)),
+  };
+  return addLog(
+    s,
+    'draw',
+    playerId,
+    `${discardIds.length}장 교체: 덱과 섞어 ${drawn.length}장 새로 뽑음 (손패 ${remainingHand.length + drawn.length}장, 덱 ${deck.length}장)`,
+  );
 }

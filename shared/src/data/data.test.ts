@@ -53,15 +53,15 @@ const COALITION_BASE: Row[] = [
   ['energy-cell', 'magic', 0, 0, 0, 0, 0, 0, 0, 2],
 ];
 const COALITION_SPECIAL: Row[] = [
-  ['refinery', 'building', 5, 1, 5, 0, 0, 3, 4, 0],
-  ['observatory', 'building', 4, 3, 4, 0, 0, 0, 3, 0],
-  ['fortress', 'building', 6, 2, 12, 2, 2, 0, 5, 0],
-  ['battleship', 'unit', 8, 2, 12, 4, 2, 0, 3, 0],
-  ['stealth', 'unit', 5, 1, 4, 3, 1, 0, 1, 0],
-  ['repair-drone', 'unit', 3, 1, 2, 0, 0, 0, 1, 0],
-  ['gravity-wave', 'magic', 5, 0, 0, 0, 0, 0, 0, 0],
-  ['warp-gate', 'magic', 3, 3, 2, 0, 0, 0, 0, 0],
-  ['energy-storm', 'magic', 2, 0, 0, 0, 0, 0, 0, 0],
+  ['refinery', 'building', 5, 1, 5, 0, 0, 3, 4, 2],
+  ['observatory', 'building', 4, 3, 4, 0, 0, 0, 3, 2],
+  ['fortress', 'building', 6, 2, 12, 2, 2, 0, 5, 2],
+  ['battleship', 'unit', 8, 2, 12, 4, 2, 0, 3, 2],
+  ['stealth', 'unit', 5, 1, 4, 3, 1, 0, 1, 2],
+  ['repair-drone', 'unit', 3, 1, 2, 0, 0, 0, 1, 2],
+  ['gravity-wave', 'magic', 5, 0, 0, 0, 0, 0, 0, 2],
+  ['warp-gate', 'magic', 3, 3, 2, 0, 0, 0, 0, 2],
+  ['energy-storm', 'magic', 2, 0, 0, 0, 0, 0, 0, 2],
 ];
 
 // 크릴 군락
@@ -78,15 +78,15 @@ const SWARM_BASE: Row[] = [
   ['frenzy', 'magic', 1, 0, 0, 0, 0, 0, 0, 1],
 ];
 const SWARM_SPECIAL: Row[] = [
-  ['hive-fortress', 'building', 6, 2, 14, 3, 1, 0, 5, 0],
-  ['chitin-refinery', 'building', 5, 1, 5, 0, 0, 3, 4, 0],
-  ['spore-tower', 'building', 4, 3, 4, 0, 0, 0, 3, 0],
-  ['alpha-brood', 'unit', 7, 2, 10, 4, 1, 0, 3, 0],
-  ['burrower', 'unit', 4, 1, 4, 2, 1, 0, 1, 0],
-  ['nurse-drone', 'unit', 2, 1, 2, 0, 0, 0, 1, 0],
-  ['plague-burst', 'magic', 5, 0, 0, 0, 0, 0, 0, 0],
-  ['pheromone-beacon', 'magic', 3, 3, 2, 0, 0, 0, 0, 0],
-  ['overgrowth', 'magic', 2, 0, 0, 0, 0, 0, 0, 0],
+  ['hive-fortress', 'building', 6, 2, 14, 3, 1, 0, 5, 2],
+  ['chitin-refinery', 'building', 5, 1, 5, 0, 0, 3, 4, 2],
+  ['spore-tower', 'building', 4, 3, 4, 0, 0, 0, 3, 2],
+  ['alpha-brood', 'unit', 7, 2, 10, 4, 1, 0, 3, 2],
+  ['burrower', 'unit', 4, 1, 4, 2, 1, 0, 1, 2],
+  ['nurse-drone', 'unit', 2, 1, 2, 0, 0, 0, 1, 2],
+  ['plague-burst', 'magic', 5, 0, 0, 0, 0, 0, 0, 2],
+  ['pheromone-beacon', 'magic', 3, 3, 2, 0, 0, 0, 0, 2],
+  ['overgrowth', 'magic', 2, 0, 0, 0, 0, 0, 0, 2],
 ];
 
 // 오토마타 집정체
@@ -103,15 +103,15 @@ const AUTOMATA_BASE: Row[] = [
   ['power-surge', 'magic', 0, 0, 0, 0, 0, 0, 0, 2],
 ];
 const AUTOMATA_SPECIAL: Row[] = [
-  ['singularity-forge', 'building', 7, 1, 10, 0, 0, 4, 6, 0],
-  ['deep-scanner', 'building', 5, 4, 4, 0, 0, 0, 4, 0],
-  ['citadel', 'building', 8, 2, 16, 3, 2, 0, 6, 0],
-  ['titan', 'unit', 8, 2, 14, 5, 2, 0, 4, 0],
-  ['cloak-unit', 'unit', 6, 1, 5, 3, 1, 0, 2, 0],
-  ['repair-node', 'unit', 4, 1, 3, 0, 0, 0, 1, 0],
-  ['graviton-lance', 'magic', 6, 0, 0, 0, 0, 0, 0, 0],
-  ['stasis-field', 'magic', 4, 4, 3, 0, 0, 0, 0, 0],
-  ['core-surge', 'magic', 3, 0, 0, 0, 0, 0, 0, 0],
+  ['singularity-forge', 'building', 7, 1, 10, 0, 0, 4, 6, 2],
+  ['deep-scanner', 'building', 5, 4, 4, 0, 0, 0, 4, 2],
+  ['citadel', 'building', 8, 2, 16, 3, 2, 0, 6, 2],
+  ['titan', 'unit', 8, 2, 14, 5, 2, 0, 4, 2],
+  ['cloak-unit', 'unit', 6, 1, 5, 3, 1, 0, 2, 2],
+  ['repair-node', 'unit', 4, 1, 3, 0, 0, 0, 1, 2],
+  ['graviton-lance', 'magic', 6, 0, 0, 0, 0, 0, 0, 2],
+  ['stasis-field', 'magic', 4, 4, 3, 0, 0, 0, 0, 2],
+  ['core-surge', 'magic', 3, 0, 0, 0, 0, 0, 0, 2],
 ];
 
 const RACE_TABLES: Record<RaceId, { base: Row[]; special: Row[] }> = {
@@ -164,15 +164,24 @@ describe('카드 기준표 (Rules.md 10절)', () => {
       }
     });
 
-    it(`${race}: 종족 특수 카드로 덱을 만들면 ${DECK_SIZE}장이다`, () => {
+    it(`${race}: 기본 카드를 상한까지 채우고 특수 카드 3장을 더하면 ${DECK_SIZE}장이다`, () => {
       const choice = {
         race,
-        buildingId: specialCardsOf(race, 'building')[0]!.id,
-        unitId: specialCardsOf(race, 'unit')[0]!.id,
-        magicId: specialCardsOf(race, 'magic')[0]!.id,
+        cards: {
+          ...Object.fromEntries(BASE_CARDS_BY_RACE[race].map((c) => [c.id, c.copies])),
+          [specialCardsOf(race, 'building')[0]!.id]: 1,
+          [specialCardsOf(race, 'unit')[0]!.id]: 1,
+          [specialCardsOf(race, 'magic')[0]!.id]: 1,
+        },
       };
       expect(isValidDeckChoice(choice)).toBe(true);
       expect(buildDeck(choice)).toHaveLength(DECK_SIZE);
+    });
+
+    it(`${race}: 카드 상한을 넘겨 넣으면 무효`, () => {
+      const spec = BASE_CARDS_BY_RACE[race][0]!;
+      const choice = { race, cards: { [spec.id]: spec.copies + 1 } };
+      expect(isValidDeckChoice(choice)).toBe(false);
     });
   }
 
@@ -185,16 +194,16 @@ describe('카드 기준표 (Rules.md 10절)', () => {
     expect(getSpec('singularity-forge').keywords).toEqual(['overclock']);
   });
 
-  it('종족이 다른 특수 카드를 섞으면 무효, 종족 자체가 잘못돼도 무효', () => {
+  it('다른 종족 카드가 섞이거나, 장수 합이 안 맞거나, 종족 자체가 잘못되면 무효', () => {
     expect(isValidDeckChoice(DEFAULT_DECK_CHOICE)).toBe(true);
-    expect(
-      isValidDeckChoice({ race: 'coalition', buildingId: 'chitin-refinery', unitId: 'battleship', magicId: 'gravity-wave' }),
-    ).toBe(false); // chitin-refinery 는 swarm 소속
-    expect(isValidDeckChoice({ race: 'coalition', buildingId: 'extractor', unitId: 'battleship', magicId: 'warp-gate' })).toBe(false); // 특수 아님
-    expect(isValidDeckChoice({ race: 'coalition', buildingId: 'refinery', unitId: 'refinery', magicId: 'warp-gate' })).toBe(false); // kind 불일치
-    expect(
-      isValidDeckChoice({ race: 'nope' as RaceId, buildingId: 'refinery', unitId: 'battleship', magicId: 'gravity-wave' }),
-    ).toBe(false);
+    // chitin-refinery 는 swarm 소속 — coalition 덱에 섞으면 무효
+    expect(isValidDeckChoice({ race: 'coalition', cards: { ...DEFAULT_DECK_CHOICE.cards, refinery: 0, 'chitin-refinery': 1 } })).toBe(false);
+    // 합계가 DECK_SIZE 보다 적으면 무효
+    expect(isValidDeckChoice({ race: 'coalition', cards: { extractor: 1 } })).toBe(false);
+    // 존재하지 않는 카드 id
+    expect(isValidDeckChoice({ race: 'coalition', cards: { nope: DECK_SIZE } })).toBe(false);
+    // 종족 자체가 잘못됨
+    expect(isValidDeckChoice({ race: 'nope' as RaceId, cards: DEFAULT_DECK_CHOICE.cards })).toBe(false);
   });
 
   it('상수표 (Rules.md 12절)', () => {
@@ -206,7 +215,7 @@ describe('카드 기준표 (Rules.md 10절)', () => {
     expect(CONSTANTS.HAND_LIMIT).toBe(5);
     expect(CONSTANTS.DRAW_PER_TURN).toBe(1);
     expect(CONSTANTS.BASE_DECK_SIZE).toBe(22);
-    expect(CONSTANTS.SPECIAL_PICKS).toBe(3);
+    expect(CONSTANTS.DECK_SIZE).toBe(25);
     expect(CONSTANTS.VEIN_PRODUCTION_BONUS).toBe(1);
     expect(CONSTANTS.SCORE_PER_TERRITORY).toBe(1);
     expect(CONSTANTS.KOMI_PER_SEAT).toBe(1);

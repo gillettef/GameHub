@@ -38,6 +38,10 @@ interface GameStore {
   tab: TabId;
   /** 보드 탭에서 고른 손패 카드 (손패 index). 배치 후 해제 */
   selectedHandIndex: number | null;
+  /** 손패 교체 모드(패스/턴 종료 시 함께 버릴 카드 고르기, Rules.md 5.2, 2026-09-23) */
+  discardMode: boolean;
+  /** 교체 모드에서 고른 손패 index 들 */
+  discardIndices: number[];
   /** 마지막 안내 문구 (배치 거부 사유 등). 다음에 할 일을 적는다 */
   notice: string | null;
   /** 결과 오버레이를 닫고 보드를 살펴보는 중인지 */
@@ -56,6 +60,8 @@ interface GameStore {
   dispatch: (action: Action) => void;
   placeAt: (x: number, y: number) => void;
   pass: () => void;
+  toggleDiscardMode: () => void;
+  toggleDiscardIndex: (index: number) => void;
   surrender: () => void;
   setSurrenderConfirming: (on: boolean) => void;
   acknowledgeHandoff: () => void;
@@ -76,6 +82,8 @@ const EMPTY = {
   connection: 'idle' as Connection,
   tab: 'board' as TabId,
   selectedHandIndex: null,
+  discardMode: false,
+  discardIndices: [] as number[],
   notice: null,
   resultDismissed: false,
   surrenderConfirming: false,
@@ -106,8 +114,12 @@ export const useGameStore = create<GameStore>((set, get) => ({
       state,
       viewerId: you,
       connection: 'connected',
-      // 턴이 바뀌면 선택·확인 단계를 정리한다
+      // 턴이 바뀌면 선택·확인 단계를 정리한다. 손패 교체 선택(index 기반)은 어떤 액션이든
+      // 손패 구성이 바뀔 수 있어(배치로 카드가 빠지는 등) 매 스냅샷마다 무조건 비운다 — 안 비우면
+      // 인덱스가 밀려 엉뚱한 카드를 가리킬 수 있다.
       selectedHandIndex: turnChanged ? null : prev.selectedHandIndex,
+      discardMode: false,
+      discardIndices: [],
       surrenderConfirming: turnChanged ? false : prev.surrenderConfirming,
       sending: false,
     });
@@ -139,6 +151,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
       state: maskState(next, null),
       viewerId: next.currentPlayerId ?? get().viewerId,
       selectedHandIndex: null,
+      discardMode: false,
+      discardIndices: [],
       notice: null,
       surrenderConfirming: false,
       handoffPending: viewerChanged && next.phase === 'playing',
@@ -159,9 +173,20 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
 
   pass: () => {
-    const { viewerId, dispatch } = get();
-    if (viewerId) dispatch({ type: 'PASS', playerId: viewerId });
+    const { viewerId, state, discardIndices, dispatch } = get();
+    if (!viewerId) return;
+    const hand = state?.players.find((p) => p.id === viewerId)?.hand ?? [];
+    const discardCardIds = discardIndices.map((i) => hand[i]).filter((id): id is CardId => id !== undefined);
+    dispatch({ type: 'PASS', playerId: viewerId, ...(discardCardIds.length > 0 ? { discardCardIds } : {}) });
+    set({ discardMode: false, discardIndices: [] });
   },
+
+  toggleDiscardMode: () => set((s) => ({ discardMode: !s.discardMode, discardIndices: [], selectedHandIndex: null })),
+
+  toggleDiscardIndex: (index) =>
+    set((s) => ({
+      discardIndices: s.discardIndices.includes(index) ? s.discardIndices.filter((i) => i !== index) : [...s.discardIndices, index],
+    })),
 
   surrender: () => {
     const { viewerId, dispatch } = get();
@@ -194,15 +219,6 @@ export const selectViewerId = (s: GameStore): PlayerId | null => s.viewerId;
 export const selectTab = (s: GameStore): TabId => s.tab;
 export const selectIsMyTurn = (s: GameStore): boolean =>
   s.state !== null && s.state.phase === 'playing' && s.state.currentPlayerId === s.viewerId && !s.handoffPending && !s.sending;
-
-/**
- * `selectIsMyTurn` 과 달리 `sending`(온라인 전송 중 연타 방지) 은 보지 않는다. 손패 표시처럼
- * "내 턴인가"로 마운트 여부를 결정하는 곳에 쓴다 — sending 을 넣으면 배치할 때마다 손패가
- * 사라졌다 나타나며 보드가 리사이즈된다(ui-tab-reviewer 지적). 카드 클릭 잠금은 `selectIsMyTurn`
- * (interactive prop)으로 따로 한다.
- */
-export const selectOwnsTurn = (s: GameStore): boolean =>
-  s.state !== null && s.state.phase === 'playing' && s.state.currentPlayerId === s.viewerId && !s.handoffPending;
 
 /** 선택된 손패 카드 id. index 로 고르지만 배치·하이라이트는 cardId 로 한다 */
 export const selectSelectedCardId = (s: GameStore): CardId | null => {

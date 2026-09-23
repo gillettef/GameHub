@@ -1,17 +1,22 @@
 /**
  * 카드 기준표 (Rules.md 10절). 수치는 이 파일에만 둔다.
- * 종족 3개(coalition/swarm/automata)가 완전히 다른 기본 덱 22장 + 특수 카드 풀 9장을 쓴다.
+ * 종족 3개(coalition/swarm/automata)가 완전히 다른 기본 카드 22종 + 특수 카드 풀 9종을 쓴다.
+ * 2026-09-23부터 "기본/특수" 구분은 카탈로그 분류일 뿐, 덱 빌딩에서는 구분하지 않는다 — 같은
+ * 종족의 카드라면 무엇이든 각 카드의 `copies`(덱 안 최대 장수) 상한까지 자유롭게 섞어 넣는다.
  * Rules.md 표와 일치하는지 data.test.ts 가 검증한다.
  */
 import type { CardId, CardSpec, CardType, DeckChoice, RaceDef, RaceId } from '../types/index.js';
-import { BASE_DECK_SIZE, CORE_BASE_INCOME, CORE_HP, CORE_SIGHT, SPECIAL_PICKS } from './constants.js';
+import { BASE_DECK_SIZE, CORE_BASE_INCOME, CORE_HP, CORE_SIGHT, DECK_SIZE } from './constants.js';
 
 function baseOf(race: RaceId): Pick<CardSpec, 'race' | 'special' | 'keywords' | 'effect'> {
   return { race, special: false, keywords: [], effect: null };
 }
 
+/** 특수 카드 기본 상한 2장. 기본 카드보다 강한 만큼 낮게 잡는다(밸런스 1차값, 플레이테스트로 조정) */
+const SPECIAL_MAX_COPIES = 2;
+
 function specialOf(race: RaceId): Pick<CardSpec, 'race' | 'special' | 'keywords' | 'effect' | 'copies'> {
-  return { race, special: true, keywords: [], effect: null, copies: 0 };
+  return { race, special: true, keywords: [], effect: null, copies: SPECIAL_MAX_COPIES };
 }
 
 /** 10.1 코어. 덱에 없고 시작 시 자동 배치. 종족과 무관하게 전 좌석 동일(공정성) */
@@ -66,7 +71,7 @@ export const COALITION_SPECIAL_CARDS: CardSpec[] = [
   { ...coalitionSpecial, id: 'fortress', name: '요새', kind: 'building', cost: 6, sight: 2, hp: 12, attack: 2, range: 2, production: 0, score: 5, description: '튼튼한 방어 거점.' },
   { ...coalitionSpecial, id: 'battleship', name: '전함', kind: 'unit', cost: 8, sight: 2, hp: 12, attack: 4, range: 2, production: 0, score: 3, description: '최강 전력.' },
   { ...coalitionSpecial, id: 'stealth', name: '스텔스함', kind: 'unit', cost: 5, sight: 1, hp: 4, attack: 3, range: 1, production: 0, score: 1, keywords: ['infiltrate'], description: '침투: 적 마커 거리 1 이내에도 배치 가능.' },
-  { ...coalitionSpecial, id: 'repair-drone', name: '수리 드론', kind: 'unit', cost: 3, sight: 1, hp: 2, attack: 0, range: 0, production: 0, score: 1, keywords: ['repair'], description: '정비: 내 턴 시작 시(전투 직후) 반경 1 아군 체력 +1.' },
+  { ...coalitionSpecial, id: 'repair-drone', name: '수리 드론', kind: 'unit', cost: 3, sight: 1, hp: 2, attack: 0, range: 0, production: 0, score: 1, keywords: ['repair'], description: '정비: 내 턴을 끝낼 때(전투 직후) 반경 1 아군 체력 +1.' },
   { ...coalitionSpecial, id: 'gravity-wave', name: '중력파', kind: 'magic', cost: 5, sight: 0, hp: 0, attack: 0, range: 0, production: 0, score: 0, effect: { kind: 'damage', amount: 2, radius: 2 }, description: '즉발: 반경 2 적 마커 전부에 피해 2.' },
   { ...coalitionSpecial, id: 'warp-gate', name: '워프 게이트', kind: 'magic', cost: 3, sight: 3, hp: 2, attack: 0, range: 0, production: 0, score: 0, effect: { kind: 'persistent', durationTurns: 3 }, description: '지속 3턴: 시야 3 제공. 파괴 가능.' },
   { ...coalitionSpecial, id: 'energy-storm', name: '에너지 폭풍', kind: 'magic', cost: 2, sight: 0, hp: 0, attack: 0, range: 0, production: 0, score: 0, effect: { kind: 'energy', amount: 6 }, description: '즉발: 에너지 +6.' },
@@ -86,7 +91,7 @@ export const SWARM_BASE_CARDS: CardSpec[] = [
   { ...swarmBase, id: 'drone', name: '유충병', kind: 'unit', cost: 1, sight: 1, hp: 2, attack: 1, range: 1, production: 0, score: 1, copies: 3, keywords: ['infiltrate'], description: '가장 싼 공격 유닛. 침투: 적 마커 거리 1 이내에도 배치 가능.' },
   { ...swarmBase, id: 'stalker', name: '추적자', kind: 'unit', cost: 2, sight: 1, hp: 3, attack: 2, range: 1, production: 0, score: 1, copies: 4, keywords: ['infiltrate'], description: '군락의 주력. 침투: 적 마커 거리 1 이내에도 배치 가능.' },
   { ...swarmBase, id: 'spitter', name: '산성분사체', kind: 'unit', cost: 3, sight: 1, hp: 3, attack: 2, range: 2, production: 0, score: 1, copies: 2, description: '값싼 사거리 압박.' },
-  { ...swarmBase, id: 'brood-queen', name: '산란여왕', kind: 'unit', cost: 5, sight: 1, hp: 6, attack: 2, range: 1, production: 0, score: 2, copies: 1, keywords: ['repair'], description: '군락에서 가장 비싼 유닛. 정비: 내 턴 시작 시 반경 1 아군 체력 +1.' },
+  { ...swarmBase, id: 'brood-queen', name: '산란여왕', kind: 'unit', cost: 5, sight: 1, hp: 6, attack: 2, range: 1, production: 0, score: 2, copies: 1, keywords: ['repair'], description: '군락에서 가장 비싼 유닛. 정비: 내 턴을 끝낼 때 반경 1 아군 체력 +1.' },
   { ...swarmBase, id: 'acid-spray', name: '산성 포자', kind: 'magic', cost: 2, sight: 0, hp: 0, attack: 0, range: 0, production: 0, score: 0, copies: 2, effect: { kind: 'damage', amount: 2, radius: 1 }, description: '즉발: 반경 1 적 마커 전부에 피해 2.' },
   { ...swarmBase, id: 'swarm-call', name: '소집 신호', kind: 'magic', cost: 0, sight: 0, hp: 0, attack: 0, range: 0, production: 0, score: 0, copies: 1, effect: { kind: 'energy', amount: 2 }, description: '즉발: 에너지 +2.' },
   { ...swarmBase, id: 'frenzy', name: '광란', kind: 'magic', cost: 1, sight: 0, hp: 0, attack: 0, range: 0, production: 0, score: 0, copies: 1, effect: { kind: 'heal', amount: 2, radius: 1 }, description: '즉발: 반경 1 아군 마커 전부 체력 +2.' },
@@ -98,7 +103,7 @@ export const SWARM_SPECIAL_CARDS: CardSpec[] = [
   { ...swarmSpecial, id: 'spore-tower', name: '포자탑', kind: 'building', cost: 4, sight: 3, hp: 4, attack: 0, range: 0, production: 0, score: 3, description: '넓은 시야.' },
   { ...swarmSpecial, id: 'alpha-brood', name: '알파 개체', kind: 'unit', cost: 7, sight: 2, hp: 10, attack: 4, range: 1, production: 0, score: 3, description: '군락에서 가장 강한 개체. 근접 전용.' },
   { ...swarmSpecial, id: 'burrower', name: '잠행자', kind: 'unit', cost: 4, sight: 1, hp: 4, attack: 2, range: 1, production: 0, score: 1, keywords: ['infiltrate'], description: '침투: 적 마커 거리 1 이내에도 배치 가능.' },
-  { ...swarmSpecial, id: 'nurse-drone', name: '치유충', kind: 'unit', cost: 2, sight: 1, hp: 2, attack: 0, range: 0, production: 0, score: 1, keywords: ['repair'], description: '정비: 내 턴 시작 시 반경 1 아군 체력 +1.' },
+  { ...swarmSpecial, id: 'nurse-drone', name: '치유충', kind: 'unit', cost: 2, sight: 1, hp: 2, attack: 0, range: 0, production: 0, score: 1, keywords: ['repair'], description: '정비: 내 턴을 끝낼 때 반경 1 아군 체력 +1.' },
   { ...swarmSpecial, id: 'plague-burst', name: '역병 폭발', kind: 'magic', cost: 5, sight: 0, hp: 0, attack: 0, range: 0, production: 0, score: 0, effect: { kind: 'damage', amount: 3, radius: 2 }, description: '즉발: 반경 2 적 마커 전부에 피해 3.' },
   { ...swarmSpecial, id: 'pheromone-beacon', name: '페로몬 신호기', kind: 'magic', cost: 3, sight: 3, hp: 2, attack: 0, range: 0, production: 0, score: 0, effect: { kind: 'persistent', durationTurns: 3 }, description: '지속 3턴: 시야 3 제공. 파괴 가능.' },
   { ...swarmSpecial, id: 'overgrowth', name: '대증식', kind: 'magic', cost: 2, sight: 0, hp: 0, attack: 0, range: 0, production: 0, score: 0, effect: { kind: 'energy', amount: 5 }, description: '즉발: 에너지 +5.' },
@@ -130,7 +135,7 @@ export const AUTOMATA_SPECIAL_CARDS: CardSpec[] = [
   { ...automataSpecial, id: 'citadel', name: '성채', kind: 'building', cost: 8, sight: 2, hp: 16, attack: 3, range: 2, production: 0, score: 6, description: '게임에서 가장 튼튼한 건물.' },
   { ...automataSpecial, id: 'titan', name: '타이탄', kind: 'unit', cost: 8, sight: 2, hp: 14, attack: 5, range: 2, production: 0, score: 4, description: '게임에서 가장 강한 유닛.' },
   { ...automataSpecial, id: 'cloak-unit', name: '위장 유닛', kind: 'unit', cost: 6, sight: 1, hp: 5, attack: 3, range: 1, production: 0, score: 2, keywords: ['infiltrate'], description: '침투: 적 마커 거리 1 이내에도 배치 가능.' },
-  { ...automataSpecial, id: 'repair-node', name: '수복 노드', kind: 'unit', cost: 4, sight: 1, hp: 3, attack: 0, range: 0, production: 0, score: 1, keywords: ['repair'], description: '정비: 내 턴 시작 시 반경 1 아군 체력 +1.' },
+  { ...automataSpecial, id: 'repair-node', name: '수복 노드', kind: 'unit', cost: 4, sight: 1, hp: 3, attack: 0, range: 0, production: 0, score: 1, keywords: ['repair'], description: '정비: 내 턴을 끝낼 때 반경 1 아군 체력 +1.' },
   { ...automataSpecial, id: 'graviton-lance', name: '중력자 랜스', kind: 'magic', cost: 6, sight: 0, hp: 0, attack: 0, range: 0, production: 0, score: 0, effect: { kind: 'damage', amount: 3, radius: 2 }, description: '즉발: 반경 2 적 마커 전부에 피해 3.' },
   { ...automataSpecial, id: 'stasis-field', name: '정지장', kind: 'magic', cost: 4, sight: 4, hp: 3, attack: 0, range: 0, production: 0, score: 0, effect: { kind: 'persistent', durationTurns: 3 }, description: '지속 3턴: 시야 4 제공. 파괴 가능.' },
   { ...automataSpecial, id: 'core-surge', name: '코어 증폭', kind: 'magic', cost: 3, sight: 0, hp: 0, attack: 0, range: 0, production: 0, score: 0, effect: { kind: 'energy', amount: 7 }, description: '즉발: 에너지 +7.' },
@@ -187,27 +192,40 @@ export function specialCardsOf(race: RaceId, type: CardType): CardSpec[] {
   return SPECIAL_CARDS_BY_RACE[race].filter((c) => c.kind === type);
 }
 
-/** 덱 빌딩을 건너뛸 때(AI 좌석, 테스트) 쓰는 기본 선택: 인류 연합, 종류별 첫 번째 특수 카드 */
+/** 종족의 카드 전체(기본 + 특수, 구분 없이) — 덱 빌딩은 이 풀에서 자유롭게 고른다 */
+export function cardPoolOf(race: RaceId): CardSpec[] {
+  return [...BASE_CARDS_BY_RACE[race], ...SPECIAL_CARDS_BY_RACE[race]];
+}
+
+/** 덱 빌딩을 건너뛸 때(AI 좌석, 테스트) 쓰는 기본 선택: 인류 연합 기본 카드 22장 + 특수 카드 3장 */
 export const DEFAULT_DECK_CHOICE: DeckChoice = {
   race: 'coalition',
-  buildingId: 'refinery',
-  unitId: 'battleship',
-  magicId: 'gravity-wave',
+  cards: {
+    ...Object.fromEntries(COALITION_BASE_CARDS.map((c) => [c.id, c.copies])),
+    refinery: 1,
+    battleship: 1,
+    'gravity-wave': 1,
+  },
 };
 
-/** 덱 선택이 유효한 종족의, 종류별 특수 카드 하나씩인지 검사한다 */
+/** 덱 선택이 유효한 종족의 카드로만, 카드당 상한(copies) 이내, 합계 DECK_SIZE 장인지 검사한다 */
 export function isValidDeckChoice(choice: DeckChoice): boolean {
   if (!RACES.some((r) => r.id === choice.race)) return false;
-  const ok = (id: CardId, type: CardType) =>
-    hasSpec(id) && getSpec(id).special && getSpec(id).kind === type && getSpec(id).race === choice.race;
-  return ok(choice.buildingId, 'building') && ok(choice.unitId, 'unit') && ok(choice.magicId, 'magic');
+  const pool = new Map(cardPoolOf(choice.race).map((c) => [c.id, c] as const));
+  let total = 0;
+  for (const [id, n] of Object.entries(choice.cards)) {
+    if (n === 0) continue;
+    const spec = pool.get(id);
+    if (!spec || !Number.isInteger(n) || n < 0 || n > spec.copies) return false;
+    total += n;
+  }
+  return total === DECK_SIZE;
 }
 
-/** 종족 기본 22 + 특수 3 = 25장 (셔플 전) */
+/** 고른 카드를 장수만큼 펼친다 (셔플 전 순서). choice 는 isValidDeckChoice 를 통과해야 한다 */
 export function buildDeck(choice: DeckChoice): CardId[] {
-  const picks = [choice.buildingId, choice.unitId, choice.magicId];
-  if (picks.length !== SPECIAL_PICKS) throw new Error(`특수 카드 수 불일치: ${picks.length} !== ${SPECIAL_PICKS}`);
-  return [...baseDeckOf(choice.race), ...picks];
+  if (!isValidDeckChoice(choice)) throw new Error('유효하지 않은 덱 선택입니다');
+  const out: CardId[] = [];
+  for (const [id, n] of Object.entries(choice.cards)) out.push(...Array<CardId>(n).fill(id));
+  return out;
 }
-
-export const DECK_SIZE = BASE_DECK_SIZE + SPECIAL_PICKS;

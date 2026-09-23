@@ -25,8 +25,8 @@ export type CardType = 'building' | 'unit' | 'magic';
 /** 보드 위 마커 종류. 코어는 덱에 없지만 마커다 */
 export type MarkerKind = 'core' | CardType;
 
-/** 침투: 적 마커 거리 1 이내에도 배치 가능. 정비: 턴 시작 시 반경 1 아군 체력 +1.
- * 과부하: 턴 시작 수입 계산 시 반경 1 이내 자신 소유 건물 수만큼 생산 추가(오토마타 종족) */
+/** 침투: 적 마커 거리 1 이내에도 배치 가능. 정비: 내 턴을 끝낼 때 반경 1 아군 체력 +1.
+ * 과부하: 내 턴을 끝낼 때의 수입 계산 시 반경 1 이내 자신 소유 건물 수만큼 생산 추가(오토마타 종족) */
 export type Keyword = 'infiltrate' | 'repair' | 'overclock';
 
 /** 종족 (완전 비대칭 카드 세트, notes/Rules.md 10절) */
@@ -51,7 +51,8 @@ export interface CardSpec {
   kind: MarkerKind;
   /** 소속 종족. 코어만 null(종족 공통) */
   race: RaceId | null;
-  /** 특수 카드 여부. 덱 빌딩(F016)에서 종류별 1장만 고른다 */
+  /** 예전 "기본/특수" 카드 구분의 흔적(카탈로그 표시용). 2026-09-23부터 덱 빌딩에서는
+   * 쓰지 않는다 — 기본이든 특수든 같은 방식으로 자유롭게 고른다(copies 가 상한을 정한다) */
   special: boolean;
   /** 배치 비용(에너지). 코어는 0 */
   cost: number;
@@ -69,17 +70,19 @@ export interface CardSpec {
   keywords: Keyword[];
   /** 마법 카드만. 그 외 null */
   effect: MagicEffect | null;
-  /** 기본 덱 장수. 특수 카드·코어는 0 */
+  /** 덱에 넣을 수 있는 이 카드의 최대 장수(덱 빌딩 상한). 코어는 0(덱에 없음) */
   copies: number;
   description: string;
 }
 
-/** 덱 빌딩(F016)에서 플레이어가 고르는 종족 + 특수 카드 세 장 */
+/**
+ * 덱 빌딩(F016, 2026-09-23 개편)에서 플레이어가 고르는 종족 + 카드 구성.
+ * `cards`: cardId → 덱에 넣을 장수. 그 종족의 카드라면(기본·특수 구분 없이) 무엇이든,
+ * 각 카드의 `copies` 상한 이내로 원하는 만큼 넣을 수 있다. 합계는 DECK_SIZE 장이어야 한다.
+ */
 export interface DeckChoice {
   race: RaceId;
-  buildingId: CardId;
-  unitId: CardId;
-  magicId: CardId;
+  cards: Record<CardId, number>;
 }
 
 // ---------------------------------------------------------------------------
@@ -122,7 +125,7 @@ export interface Marker {
   ownerId: PlayerId;
   pos: Position;
   hp: number;
-  /** 지속 마법의 남은 턴. 소유자 턴 시작마다 1 줄고 0이면 제거. 그 외 null */
+  /** 지속 마법의 남은 턴. 소유자가 자기 턴을 끝낼 때마다 1 줄고 0이면 제거. 그 외 null */
   remainingTurns: number | null;
 }
 
@@ -154,7 +157,7 @@ export interface PlayerState {
   eliminatedOrder: number | null;
   /** 현재 연속 패스 구간에서 패스했는지. 누군가 배치하면 전원 false (Rules.md 9.2-2) */
   passed: boolean;
-  /** 이번 턴에 배치를 한 번이라도 했는지. beginTurn 에서 false 로 리셋 (Rules.md 5.2) */
+  /** 이번 턴에 배치를 한 번이라도 했는지. advanceTurn 이 다음 사람 턴으로 넘길 때 false 로 리셋 (Rules.md 5.2) */
   actedThisTurn: boolean;
 }
 
@@ -234,7 +237,8 @@ export type Action =
   | { type: 'SELECT_DECK'; playerId: PlayerId; choice: DeckChoice }
   | { type: 'READY'; playerId: PlayerId }
   | { type: 'PLACE'; playerId: PlayerId; cardId: CardId; pos: Position }
-  | { type: 'PASS'; playerId: PlayerId }
+  /** discardCardIds: 턴을 끝내며 함께 버리고 다시 뽑을 손패 카드(0장 이상, 없으면 생략). Rules.md 5.2 */
+  | { type: 'PASS'; playerId: PlayerId; discardCardIds?: CardId[] }
   | { type: 'SURRENDER'; playerId: PlayerId };
 
 export type ActionType = Action['type'];

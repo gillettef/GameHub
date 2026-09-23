@@ -13,9 +13,9 @@ const STATS: { icon: keyof typeof ICONS; label: string; desc: string }[] = [
   { icon: 'sight', label: '시야', desc: '이 마커를 중심으로 한 육각 거리 반경. 시야가 겹친 영역의 합집합이 배치 가능 범위이자 영토의 근거입니다.' },
   { icon: 'score', label: '점수', desc: '이 마커가 살아 있는 동안 더해지는 마커 점수. 파괴되면 즉시 사라집니다.' },
   { icon: 'hp', label: '체력', desc: '0 이하가 되면 파괴됩니다. 코어가 파괴되면 탈락합니다.' },
-  { icon: 'attack', label: '공격', desc: '턴 시작 시 사거리 안 적 하나를 자동으로 공격합니다. 대상은 거리 → 체력 → y → x 순으로 정해집니다.' },
+  { icon: 'attack', label: '공격', desc: '내 턴을 끝낼 때 사거리 안 적 하나를 자동으로 공격합니다. 대상은 거리 → 체력 → y → x 순으로 정해집니다.' },
   { icon: 'range', label: '사거리', desc: '공격이 닿는 육각 거리.' },
-  { icon: 'production', label: '생산', desc: '내 턴 수입 정산에서 코어 수입에 더해지는 양. 광맥 위 건물은 +1 추가됩니다.' },
+  { icon: 'production', label: '생산', desc: '내 턴을 끝낼 때 수입 정산에서 코어 수입에 더해지는 양. 광맥 위 건물은 +1 추가됩니다.' },
 ];
 
 const SHAPES: { kind: 'core' | 'building' | 'unit' | 'magic'; label: string; desc: string }[] = [
