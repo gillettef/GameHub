@@ -141,26 +141,48 @@
 }
 
 .marker[data-seat='0'] {
-  background: var(--color-seat-0);
+  --seat-fill: var(--color-seat-0);
+  background: var(--seat-fill);
 }
 
 .marker[data-seat='1'] {
-  background: var(--color-seat-1);
+  --seat-fill: var(--color-seat-1);
+  background: var(--seat-fill);
 }
 
 .marker[data-seat='2'] {
-  background: var(--color-seat-2);
+  --seat-fill: var(--color-seat-2);
+  background: var(--seat-fill);
 }
 
 .marker[data-seat='3'] {
-  background: var(--color-seat-3);
+  --seat-fill: var(--color-seat-3);
+  background: var(--seat-fill);
 }
 
-/* 종류별 모양 */
+/* 종류별 모양. 코어는 clip-path 를 마커 자신이 아니라 ::before 한 겹에만 건다 —
+   자손(생산 배지)이 자신에 걸린 clip-path 때문에 육각 밖으로 못 빠져나가고 잘리던 문제
+   (2026-09-24, .tooltip 를 형제로 뺀 것과 같은 이유). 마커 자신은 배경·테두리 없는 순수
+   위치 기준(78%×78%)으로만 쓰고, ::before 가 그 자리를 꽉 채운 실제 육각 도형이다. */
 .marker[data-kind='core'] {
   width: 78%;
   height: 78%;
-  border-width: 3px;
+  background: none;
+  border: none;
+}
+
+.marker[data-kind='core']::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  /* 음수 z-index: .marker 안에서 실제 내용(아이콘·체력)보다 먼저(뒤에) 칠해지게 한다.
+     position:absolute + z-index:auto 인 채로 두면 flex 자손(아이콘 등)보다 나중에(위에)
+     칠해져 가려 버린다(2026-09-24 확인) — .marker 자체가 스태킹 컨텍스트라 이 음수 값은
+     그 안에만 적용되고 셀 배경 등 바깥으로 새지 않는다. */
+  z-index: -1;
+  background: var(--seat-fill);
+  border: 3px solid var(--color-canvas);
+  box-sizing: border-box;
   clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
 }
 
