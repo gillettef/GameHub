@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
 import type { RoomPeek } from '@astraltab/shared';
 import { DEFAULT_DECK_CHOICE, MAPS, RACES, getMap, getSpec } from '@astraltab/shared';
 import { CardFace } from '../components/CardFace';
@@ -217,6 +217,15 @@ function LobbyView({ roomId, onQuit }: { roomId: string; onQuit: () => void }) {
     }
   };
 
+  const canShare = typeof navigator !== 'undefined' && typeof navigator.share === 'function';
+  const share = async () => {
+    try {
+      await navigator.share({ title: 'AstralTab 초대', text: `${map.name} 방에 초대합니다`, url });
+    } catch {
+      /* 취소는 조용히 무시 */
+    }
+  };
+
   const request = async (p: Promise<{ ok: boolean; message?: string }>) => {
     const res = await p;
     if (!res.ok && res.message) setNotice(res.message);
@@ -243,9 +252,26 @@ function LobbyView({ roomId, onQuit }: { roomId: string; onQuit: () => void }) {
       <header className={landing.hero}>
         <h1 className={landing.title}>대기실</h1>
         <p className={landing.lead}>
-          방 {roomId} · {map.name} · {readyCount} / {map.players}명 준비 · 전원 준비되면 자동으로 시작합니다
-          {connection !== 'connected' && ' · 연결 중…'}
+          방 {roomId} · {map.name} · 전원 준비되면 자동으로 시작합니다
+          {connection !== 'connected' && (
+            <span className={styles.connecting}>
+              <span className={styles.connectingDot} aria-hidden="true" /> 연결 중…
+            </span>
+          )}
         </p>
+        <div className={styles.readyDots} role="status" aria-label={`${readyCount} / ${map.players}명 준비`}>
+          {seats.map((p, i) => (
+            <span
+              key={i}
+              className={cx(styles.readyDot, p?.isReady && styles.readyDotDone, !p && styles.readyDotEmpty)}
+              style={{ '--seat-color': `var(--color-seat-${i})` } as CSSProperties}
+              title={p ? `${p.nickname} · ${p.isReady ? '준비 완료' : '준비 중'}` : '빈 좌석'}
+            />
+          ))}
+          <span className={styles.readyCount}>
+            {readyCount} / {map.players}명 준비
+          </span>
+        </div>
       </header>
       <main className={landing.main}>
         {notice && (
@@ -258,6 +284,11 @@ function LobbyView({ roomId, onQuit }: { roomId: string; onQuit: () => void }) {
           <h2 className={landing.h2}>초대 링크</h2>
           <div className={styles.inviteRow}>
             <input className={landing.input} value={url} readOnly onFocus={(e) => e.currentTarget.select()} aria-label="초대 링크" />
+            {canShare && (
+              <button type="button" className="pill pill--outline" onClick={share}>
+                공유
+              </button>
+            )}
             <button type="button" className="pill" onClick={copy}>
               {copied ? '복사됨' : '링크 복사'}
             </button>
@@ -271,7 +302,10 @@ function LobbyView({ roomId, onQuit }: { roomId: string; onQuit: () => void }) {
             <ul className={styles.seats}>
               {seats.map((p, i) => (
                 <li key={i} className={cx(styles.seat, !p && styles.seatEmpty)}>
-                  <span className={styles.seatNo}>좌석 {i + 1}</span>
+                  <span className={styles.seatNo}>
+                    <span className={styles.seatDot} style={{ '--seat-color': `var(--color-seat-${i})` } as CSSProperties} aria-hidden="true" />
+                    좌석 {i + 1}
+                  </span>
                   {p ? (
                     <>
                       <span className={styles.seatName}>

@@ -47,8 +47,85 @@
 }
 
 .seatNo {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   font-size: var(--text-small);
   color: var(--color-muted);
+}
+
+/* 좌석 색 미리보기(2026-09-23): 실제 대국의 좌석 색을 로비에서 미리 보여준다 */
+.seatDot {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--seat-color);
+}
+
+/* 준비 현황 요약: 좌석마다 점 하나(2026-09-23) */
+.readyDots {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.readyDot {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid var(--seat-color);
+  background: transparent;
+}
+
+.readyDotDone {
+  background: var(--seat-color);
+}
+
+.readyDotEmpty {
+  border-color: var(--color-muted);
+  border-style: dashed;
+  opacity: 0.5;
+}
+
+.readyCount {
+  margin-left: 4px;
+  font-size: var(--text-small);
+  color: var(--color-heading);
+  font-weight: 600;
+}
+
+.connecting {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 4px;
+}
+
+.connectingDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  animation: connecting-pulse 1s ease-in-out infinite;
+}
+
+@keyframes connecting-pulse {
+  0%,
+  100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .connectingDot {
+    animation: none;
+  }
 }
 
 .seatName {
