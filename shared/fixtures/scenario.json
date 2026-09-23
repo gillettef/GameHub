@@ -4,21 +4,21 @@
     "phase": "playing",
     "mapId": "binary-star",
     "board": {
-      "width": 11,
-      "height": 11,
+      "width": 10,
+      "height": 10,
       "asteroids": [],
       "veins": [
         {
           "x": 1,
-          "y": 4
-        },
-        {
-          "x": 5,
-          "y": 5
+          "y": 1
         },
         {
           "x": 6,
-          "y": 10
+          "y": 3
+        },
+        {
+          "x": 6,
+          "y": 8
         }
       ]
     },
@@ -132,8 +132,8 @@
         "kind": "building",
         "ownerId": "p0",
         "pos": {
-          "x": 1,
-          "y": 1
+          "x": 0,
+          "y": 0
         },
         "hp": 6,
         "remainingTurns": null
@@ -144,8 +144,8 @@
         "kind": "building",
         "ownerId": "p0",
         "pos": {
-          "x": 1,
-          "y": 2
+          "x": 0,
+          "y": 1
         },
         "hp": 6,
         "remainingTurns": null
@@ -180,8 +180,8 @@
         "kind": "core",
         "ownerId": "ai-1",
         "pos": {
-          "x": 8,
-          "y": 8
+          "x": 7,
+          "y": 7
         },
         "hp": 20,
         "remainingTurns": null
@@ -193,7 +193,7 @@
         "ownerId": "ai-1",
         "pos": {
           "x": 6,
-          "y": 10
+          "y": 8
         },
         "hp": 2,
         "remainingTurns": null
@@ -222,7 +222,7 @@
         "round": 1,
         "playerId": null,
         "kind": "system",
-        "message": "게임 시작: 쌍성 (11×11, 20라운드)"
+        "message": "게임 시작: 쌍성 (10×10, 20라운드)"
       },
       {
         "turn": 1,
@@ -236,7 +236,7 @@
         "round": 1,
         "playerId": "ai-1",
         "kind": "system",
-        "message": "AI 코어 (8,8) 배치, 에너지 5, 손패 4장"
+        "message": "AI 코어 (7,7) 배치, 에너지 5, 손패 4장"
       },
       {
         "turn": 1,
@@ -277,21 +277,21 @@
         "phase": "playing",
         "mapId": "binary-star",
         "board": {
-          "width": 11,
-          "height": 11,
+          "width": 10,
+          "height": 10,
           "asteroids": [],
           "veins": [
             {
               "x": 1,
-              "y": 4
-            },
-            {
-              "x": 5,
-              "y": 5
+              "y": 1
             },
             {
               "x": 6,
-              "y": 10
+              "y": 3
+            },
+            {
+              "x": 6,
+              "y": 8
             }
           ]
         },
@@ -406,8 +406,8 @@
             "kind": "building",
             "ownerId": "p0",
             "pos": {
-              "x": 1,
-              "y": 1
+              "x": 0,
+              "y": 0
             },
             "hp": 6,
             "remainingTurns": null
@@ -418,8 +418,8 @@
             "kind": "building",
             "ownerId": "p0",
             "pos": {
-              "x": 1,
-              "y": 2
+              "x": 0,
+              "y": 1
             },
             "hp": 6,
             "remainingTurns": null
@@ -466,8 +466,8 @@
             "kind": "core",
             "ownerId": "ai-1",
             "pos": {
-              "x": 8,
-              "y": 8
+              "x": 7,
+              "y": 7
             },
             "hp": 20,
             "remainingTurns": null
@@ -479,7 +479,7 @@
             "ownerId": "ai-1",
             "pos": {
               "x": 6,
-              "y": 10
+              "y": 8
             },
             "hp": 2,
             "remainingTurns": null
@@ -508,7 +508,7 @@
             "round": 1,
             "playerId": null,
             "kind": "system",
-            "message": "게임 시작: 쌍성 (11×11, 20라운드)"
+            "message": "게임 시작: 쌍성 (10×10, 20라운드)"
           },
           {
             "turn": 1,
@@ -522,7 +522,7 @@
             "round": 1,
             "playerId": "ai-1",
             "kind": "system",
-            "message": "AI 코어 (8,8) 배치, 에너지 5, 손패 4장"
+            "message": "AI 코어 (7,7) 배치, 에너지 5, 손패 4장"
           },
           {
             "turn": 1,
@@ -565,21 +565,21 @@
         "phase": "playing",
         "mapId": "binary-star",
         "board": {
-          "width": 11,
-          "height": 11,
+          "width": 10,
+          "height": 10,
           "asteroids": [],
           "veins": [
             {
               "x": 1,
-              "y": 4
-            },
-            {
-              "x": 5,
-              "y": 5
+              "y": 1
             },
             {
               "x": 6,
-              "y": 10
+              "y": 3
+            },
+            {
+              "x": 6,
+              "y": 8
             }
           ]
         },
@@ -694,8 +694,8 @@
             "kind": "building",
             "ownerId": "p0",
             "pos": {
-              "x": 1,
-              "y": 1
+              "x": 0,
+              "y": 0
             },
             "hp": 6,
             "remainingTurns": null
@@ -706,8 +706,8 @@
             "kind": "building",
             "ownerId": "p0",
             "pos": {
-              "x": 1,
-              "y": 2
+              "x": 0,
+              "y": 1
             },
             "hp": 6,
             "remainingTurns": null
@@ -754,8 +754,8 @@
             "kind": "core",
             "ownerId": "ai-1",
             "pos": {
-              "x": 8,
-              "y": 8
+              "x": 7,
+              "y": 7
             },
             "hp": 20,
             "remainingTurns": null
@@ -767,7 +767,7 @@
             "ownerId": "ai-1",
             "pos": {
               "x": 6,
-              "y": 10
+              "y": 8
             },
             "hp": 2,
             "remainingTurns": null
@@ -796,7 +796,7 @@
             "round": 1,
             "playerId": null,
             "kind": "system",
-            "message": "게임 시작: 쌍성 (11×11, 20라운드)"
+            "message": "게임 시작: 쌍성 (10×10, 20라운드)"
           },
           {
             "turn": 1,
@@ -810,7 +810,7 @@
             "round": 1,
             "playerId": "ai-1",
             "kind": "system",
-            "message": "AI 코어 (8,8) 배치, 에너지 5, 손패 4장"
+            "message": "AI 코어 (7,7) 배치, 에너지 5, 손패 4장"
           },
           {
             "turn": 1,
@@ -886,21 +886,21 @@
         "phase": "playing",
         "mapId": "binary-star",
         "board": {
-          "width": 11,
-          "height": 11,
+          "width": 10,
+          "height": 10,
           "asteroids": [],
           "veins": [
             {
               "x": 1,
-              "y": 4
-            },
-            {
-              "x": 5,
-              "y": 5
+              "y": 1
             },
             {
               "x": 6,
-              "y": 10
+              "y": 3
+            },
+            {
+              "x": 6,
+              "y": 8
             }
           ]
         },
@@ -1016,8 +1016,8 @@
             "kind": "building",
             "ownerId": "p0",
             "pos": {
-              "x": 1,
-              "y": 1
+              "x": 0,
+              "y": 0
             },
             "hp": 6,
             "remainingTurns": null
@@ -1028,8 +1028,8 @@
             "kind": "building",
             "ownerId": "p0",
             "pos": {
-              "x": 1,
-              "y": 2
+              "x": 0,
+              "y": 1
             },
             "hp": 6,
             "remainingTurns": null
@@ -1088,8 +1088,8 @@
             "kind": "core",
             "ownerId": "ai-1",
             "pos": {
-              "x": 8,
-              "y": 8
+              "x": 7,
+              "y": 7
             },
             "hp": 20,
             "remainingTurns": null
@@ -1101,7 +1101,7 @@
             "ownerId": "ai-1",
             "pos": {
               "x": 6,
-              "y": 10
+              "y": 8
             },
             "hp": 2,
             "remainingTurns": null
@@ -1130,7 +1130,7 @@
             "round": 1,
             "playerId": null,
             "kind": "system",
-            "message": "게임 시작: 쌍성 (11×11, 20라운드)"
+            "message": "게임 시작: 쌍성 (10×10, 20라운드)"
           },
           {
             "turn": 1,
@@ -1144,7 +1144,7 @@
             "round": 1,
             "playerId": "ai-1",
             "kind": "system",
-            "message": "AI 코어 (8,8) 배치, 에너지 5, 손패 4장"
+            "message": "AI 코어 (7,7) 배치, 에너지 5, 손패 4장"
           },
           {
             "turn": 1,
@@ -1222,21 +1222,21 @@
         "phase": "playing",
         "mapId": "binary-star",
         "board": {
-          "width": 11,
-          "height": 11,
+          "width": 10,
+          "height": 10,
           "asteroids": [],
           "veins": [
             {
               "x": 1,
-              "y": 4
-            },
-            {
-              "x": 5,
-              "y": 5
+              "y": 1
             },
             {
               "x": 6,
-              "y": 10
+              "y": 3
+            },
+            {
+              "x": 6,
+              "y": 8
             }
           ]
         },
@@ -1352,8 +1352,8 @@
             "kind": "building",
             "ownerId": "p0",
             "pos": {
-              "x": 1,
-              "y": 1
+              "x": 0,
+              "y": 0
             },
             "hp": 6,
             "remainingTurns": null
@@ -1364,8 +1364,8 @@
             "kind": "building",
             "ownerId": "p0",
             "pos": {
-              "x": 1,
-              "y": 2
+              "x": 0,
+              "y": 1
             },
             "hp": 6,
             "remainingTurns": null
@@ -1424,8 +1424,8 @@
             "kind": "core",
             "ownerId": "ai-1",
             "pos": {
-              "x": 8,
-              "y": 8
+              "x": 7,
+              "y": 7
             },
             "hp": 20,
             "remainingTurns": null
@@ -1437,7 +1437,7 @@
             "ownerId": "ai-1",
             "pos": {
               "x": 6,
-              "y": 10
+              "y": 8
             },
             "hp": 2,
             "remainingTurns": null
@@ -1466,7 +1466,7 @@
             "round": 1,
             "playerId": null,
             "kind": "system",
-            "message": "게임 시작: 쌍성 (11×11, 20라운드)"
+            "message": "게임 시작: 쌍성 (10×10, 20라운드)"
           },
           {
             "turn": 1,
@@ -1480,7 +1480,7 @@
             "round": 1,
             "playerId": "ai-1",
             "kind": "system",
-            "message": "AI 코어 (8,8) 배치, 에너지 5, 손패 4장"
+            "message": "AI 코어 (7,7) 배치, 에너지 5, 손패 4장"
           },
           {
             "turn": 1,
@@ -1591,21 +1591,21 @@
         "phase": "playing",
         "mapId": "binary-star",
         "board": {
-          "width": 11,
-          "height": 11,
+          "width": 10,
+          "height": 10,
           "asteroids": [],
           "veins": [
             {
               "x": 1,
-              "y": 4
-            },
-            {
-              "x": 5,
-              "y": 5
+              "y": 1
             },
             {
               "x": 6,
-              "y": 10
+              "y": 3
+            },
+            {
+              "x": 6,
+              "y": 8
             }
           ]
         },
@@ -1721,8 +1721,8 @@
             "kind": "building",
             "ownerId": "p0",
             "pos": {
-              "x": 1,
-              "y": 1
+              "x": 0,
+              "y": 0
             },
             "hp": 6,
             "remainingTurns": null
@@ -1733,8 +1733,8 @@
             "kind": "building",
             "ownerId": "p0",
             "pos": {
-              "x": 1,
-              "y": 2
+              "x": 0,
+              "y": 1
             },
             "hp": 6,
             "remainingTurns": null
@@ -1805,8 +1805,8 @@
             "kind": "core",
             "ownerId": "ai-1",
             "pos": {
-              "x": 8,
-              "y": 8
+              "x": 7,
+              "y": 7
             },
             "hp": 20,
             "remainingTurns": null
@@ -1818,7 +1818,7 @@
             "ownerId": "ai-1",
             "pos": {
               "x": 6,
-              "y": 10
+              "y": 8
             },
             "hp": 2,
             "remainingTurns": null
@@ -1847,7 +1847,7 @@
             "round": 1,
             "playerId": null,
             "kind": "system",
-            "message": "게임 시작: 쌍성 (11×11, 20라운드)"
+            "message": "게임 시작: 쌍성 (10×10, 20라운드)"
           },
           {
             "turn": 1,
@@ -1861,7 +1861,7 @@
             "round": 1,
             "playerId": "ai-1",
             "kind": "system",
-            "message": "AI 코어 (8,8) 배치, 에너지 5, 손패 4장"
+            "message": "AI 코어 (7,7) 배치, 에너지 5, 손패 4장"
           },
           {
             "turn": 1,
@@ -1974,21 +1974,21 @@
         "phase": "playing",
         "mapId": "binary-star",
         "board": {
-          "width": 11,
-          "height": 11,
+          "width": 10,
+          "height": 10,
           "asteroids": [],
           "veins": [
             {
               "x": 1,
-              "y": 4
-            },
-            {
-              "x": 5,
-              "y": 5
+              "y": 1
             },
             {
               "x": 6,
-              "y": 10
+              "y": 3
+            },
+            {
+              "x": 6,
+              "y": 8
             }
           ]
         },
@@ -2104,8 +2104,8 @@
             "kind": "building",
             "ownerId": "p0",
             "pos": {
-              "x": 1,
-              "y": 1
+              "x": 0,
+              "y": 0
             },
             "hp": 6,
             "remainingTurns": null
@@ -2116,8 +2116,8 @@
             "kind": "building",
             "ownerId": "p0",
             "pos": {
-              "x": 1,
-              "y": 2
+              "x": 0,
+              "y": 1
             },
             "hp": 6,
             "remainingTurns": null
@@ -2188,8 +2188,8 @@
             "kind": "core",
             "ownerId": "ai-1",
             "pos": {
-              "x": 8,
-              "y": 8
+              "x": 7,
+              "y": 7
             },
             "hp": 20,
             "remainingTurns": null
@@ -2201,7 +2201,7 @@
             "ownerId": "ai-1",
             "pos": {
               "x": 6,
-              "y": 10
+              "y": 8
             },
             "hp": 2,
             "remainingTurns": null
@@ -2230,7 +2230,7 @@
             "round": 1,
             "playerId": null,
             "kind": "system",
-            "message": "게임 시작: 쌍성 (11×11, 20라운드)"
+            "message": "게임 시작: 쌍성 (10×10, 20라운드)"
           },
           {
             "turn": 1,
@@ -2244,7 +2244,7 @@
             "round": 1,
             "playerId": "ai-1",
             "kind": "system",
-            "message": "AI 코어 (8,8) 배치, 에너지 5, 손패 4장"
+            "message": "AI 코어 (7,7) 배치, 에너지 5, 손패 4장"
           },
           {
             "turn": 1,
@@ -2390,21 +2390,21 @@
         "phase": "playing",
         "mapId": "binary-star",
         "board": {
-          "width": 11,
-          "height": 11,
+          "width": 10,
+          "height": 10,
           "asteroids": [],
           "veins": [
             {
               "x": 1,
-              "y": 4
-            },
-            {
-              "x": 5,
-              "y": 5
+              "y": 1
             },
             {
               "x": 6,
-              "y": 10
+              "y": 3
+            },
+            {
+              "x": 6,
+              "y": 8
             }
           ]
         },
@@ -2520,8 +2520,8 @@
             "kind": "building",
             "ownerId": "p0",
             "pos": {
-              "x": 1,
-              "y": 1
+              "x": 0,
+              "y": 0
             },
             "hp": 6,
             "remainingTurns": null
@@ -2532,8 +2532,8 @@
             "kind": "building",
             "ownerId": "p0",
             "pos": {
-              "x": 1,
-              "y": 2
+              "x": 0,
+              "y": 1
             },
             "hp": 6,
             "remainingTurns": null
@@ -2616,8 +2616,8 @@
             "kind": "core",
             "ownerId": "ai-1",
             "pos": {
-              "x": 8,
-              "y": 8
+              "x": 7,
+              "y": 7
             },
             "hp": 20,
             "remainingTurns": null
@@ -2629,7 +2629,7 @@
             "ownerId": "ai-1",
             "pos": {
               "x": 6,
-              "y": 10
+              "y": 8
             },
             "hp": 2,
             "remainingTurns": null
@@ -2658,7 +2658,7 @@
             "round": 1,
             "playerId": null,
             "kind": "system",
-            "message": "게임 시작: 쌍성 (11×11, 20라운드)"
+            "message": "게임 시작: 쌍성 (10×10, 20라운드)"
           },
           {
             "turn": 1,
@@ -2672,7 +2672,7 @@
             "round": 1,
             "playerId": "ai-1",
             "kind": "system",
-            "message": "AI 코어 (8,8) 배치, 에너지 5, 손패 4장"
+            "message": "AI 코어 (7,7) 배치, 에너지 5, 손패 4장"
           },
           {
             "turn": 1,
@@ -2820,21 +2820,21 @@
         "phase": "playing",
         "mapId": "binary-star",
         "board": {
-          "width": 11,
-          "height": 11,
+          "width": 10,
+          "height": 10,
           "asteroids": [],
           "veins": [
             {
               "x": 1,
-              "y": 4
-            },
-            {
-              "x": 5,
-              "y": 5
+              "y": 1
             },
             {
               "x": 6,
-              "y": 10
+              "y": 3
+            },
+            {
+              "x": 6,
+              "y": 8
             }
           ]
         },
@@ -2950,8 +2950,8 @@
             "kind": "building",
             "ownerId": "p0",
             "pos": {
-              "x": 1,
-              "y": 1
+              "x": 0,
+              "y": 0
             },
             "hp": 6,
             "remainingTurns": null
@@ -2962,8 +2962,8 @@
             "kind": "building",
             "ownerId": "p0",
             "pos": {
-              "x": 1,
-              "y": 2
+              "x": 0,
+              "y": 1
             },
             "hp": 6,
             "remainingTurns": null
@@ -3046,8 +3046,8 @@
             "kind": "core",
             "ownerId": "ai-1",
             "pos": {
-              "x": 8,
-              "y": 8
+              "x": 7,
+              "y": 7
             },
             "hp": 20,
             "remainingTurns": null
@@ -3059,7 +3059,7 @@
             "ownerId": "ai-1",
             "pos": {
               "x": 6,
-              "y": 10
+              "y": 8
             },
             "hp": 2,
             "remainingTurns": null
@@ -3088,7 +3088,7 @@
             "round": 1,
             "playerId": null,
             "kind": "system",
-            "message": "게임 시작: 쌍성 (11×11, 20라운드)"
+            "message": "게임 시작: 쌍성 (10×10, 20라운드)"
           },
           {
             "turn": 1,
@@ -3102,7 +3102,7 @@
             "round": 1,
             "playerId": "ai-1",
             "kind": "system",
-            "message": "AI 코어 (8,8) 배치, 에너지 5, 손패 4장"
+            "message": "AI 코어 (7,7) 배치, 에너지 5, 손패 4장"
           },
           {
             "turn": 1,
@@ -3285,21 +3285,21 @@
         "phase": "playing",
         "mapId": "binary-star",
         "board": {
-          "width": 11,
-          "height": 11,
+          "width": 10,
+          "height": 10,
           "asteroids": [],
           "veins": [
             {
               "x": 1,
-              "y": 4
-            },
-            {
-              "x": 5,
-              "y": 5
+              "y": 1
             },
             {
               "x": 6,
-              "y": 10
+              "y": 3
+            },
+            {
+              "x": 6,
+              "y": 8
             }
           ]
         },
@@ -3415,8 +3415,8 @@
             "kind": "building",
             "ownerId": "p0",
             "pos": {
-              "x": 1,
-              "y": 1
+              "x": 0,
+              "y": 0
             },
             "hp": 6,
             "remainingTurns": null
@@ -3427,8 +3427,8 @@
             "kind": "building",
             "ownerId": "p0",
             "pos": {
-              "x": 1,
-              "y": 2
+              "x": 0,
+              "y": 1
             },
             "hp": 6,
             "remainingTurns": null
@@ -3511,8 +3511,8 @@
             "kind": "core",
             "ownerId": "ai-1",
             "pos": {
-              "x": 8,
-              "y": 8
+              "x": 7,
+              "y": 7
             },
             "hp": 20,
             "remainingTurns": null
@@ -3524,7 +3524,7 @@
             "ownerId": "ai-1",
             "pos": {
               "x": 6,
-              "y": 10
+              "y": 8
             },
             "hp": 2,
             "remainingTurns": null
@@ -3553,7 +3553,7 @@
             "round": 1,
             "playerId": null,
             "kind": "system",
-            "message": "게임 시작: 쌍성 (11×11, 20라운드)"
+            "message": "게임 시작: 쌍성 (10×10, 20라운드)"
           },
           {
             "turn": 1,
@@ -3567,7 +3567,7 @@
             "round": 1,
             "playerId": "ai-1",
             "kind": "system",
-            "message": "AI 코어 (8,8) 배치, 에너지 5, 손패 4장"
+            "message": "AI 코어 (7,7) 배치, 에너지 5, 손패 4장"
           },
           {
             "turn": 1,
@@ -3790,21 +3790,21 @@
         "phase": "playing",
         "mapId": "binary-star",
         "board": {
-          "width": 11,
-          "height": 11,
+          "width": 10,
+          "height": 10,
           "asteroids": [],
           "veins": [
             {
               "x": 1,
-              "y": 4
-            },
-            {
-              "x": 5,
-              "y": 5
+              "y": 1
             },
             {
               "x": 6,
-              "y": 10
+              "y": 3
+            },
+            {
+              "x": 6,
+              "y": 8
             }
           ]
         },
@@ -3920,8 +3920,8 @@
             "kind": "building",
             "ownerId": "p0",
             "pos": {
-              "x": 1,
-              "y": 1
+              "x": 0,
+              "y": 0
             },
             "hp": 6,
             "remainingTurns": null
@@ -3932,8 +3932,8 @@
             "kind": "building",
             "ownerId": "p0",
             "pos": {
-              "x": 1,
-              "y": 2
+              "x": 0,
+              "y": 1
             },
             "hp": 6,
             "remainingTurns": null
@@ -4016,8 +4016,8 @@
             "kind": "core",
             "ownerId": "ai-1",
             "pos": {
-              "x": 8,
-              "y": 8
+              "x": 7,
+              "y": 7
             },
             "hp": 20,
             "remainingTurns": null
@@ -4029,7 +4029,7 @@
             "ownerId": "ai-1",
             "pos": {
               "x": 6,
-              "y": 10
+              "y": 8
             },
             "hp": 2,
             "remainingTurns": null
@@ -4058,7 +4058,7 @@
             "round": 1,
             "playerId": null,
             "kind": "system",
-            "message": "게임 시작: 쌍성 (11×11, 20라운드)"
+            "message": "게임 시작: 쌍성 (10×10, 20라운드)"
           },
           {
             "turn": 1,
@@ -4072,7 +4072,7 @@
             "round": 1,
             "playerId": "ai-1",
             "kind": "system",
-            "message": "AI 코어 (8,8) 배치, 에너지 5, 손패 4장"
+            "message": "AI 코어 (7,7) 배치, 에너지 5, 손패 4장"
           },
           {
             "turn": 1,
@@ -4304,21 +4304,21 @@
         "phase": "playing",
         "mapId": "binary-star",
         "board": {
-          "width": 11,
-          "height": 11,
+          "width": 10,
+          "height": 10,
           "asteroids": [],
           "veins": [
             {
               "x": 1,
-              "y": 4
-            },
-            {
-              "x": 5,
-              "y": 5
+              "y": 1
             },
             {
               "x": 6,
-              "y": 10
+              "y": 3
+            },
+            {
+              "x": 6,
+              "y": 8
             }
           ]
         },
@@ -4434,8 +4434,8 @@
             "kind": "building",
             "ownerId": "p0",
             "pos": {
-              "x": 1,
-              "y": 1
+              "x": 0,
+              "y": 0
             },
             "hp": 6,
             "remainingTurns": null
@@ -4446,8 +4446,8 @@
             "kind": "building",
             "ownerId": "p0",
             "pos": {
-              "x": 1,
-              "y": 2
+              "x": 0,
+              "y": 1
             },
             "hp": 6,
             "remainingTurns": null
@@ -4530,8 +4530,8 @@
             "kind": "core",
             "ownerId": "ai-1",
             "pos": {
-              "x": 8,
-              "y": 8
+              "x": 7,
+              "y": 7
             },
             "hp": 20,
             "remainingTurns": null
@@ -4543,7 +4543,7 @@
             "ownerId": "ai-1",
             "pos": {
               "x": 6,
-              "y": 10
+              "y": 8
             },
             "hp": 2,
             "remainingTurns": null
@@ -4572,7 +4572,7 @@
             "round": 1,
             "playerId": null,
             "kind": "system",
-            "message": "게임 시작: 쌍성 (11×11, 20라운드)"
+            "message": "게임 시작: 쌍성 (10×10, 20라운드)"
           },
           {
             "turn": 1,
@@ -4586,7 +4586,7 @@
             "round": 1,
             "playerId": "ai-1",
             "kind": "system",
-            "message": "AI 코어 (8,8) 배치, 에너지 5, 손패 4장"
+            "message": "AI 코어 (7,7) 배치, 에너지 5, 손패 4장"
           },
           {
             "turn": 1,
@@ -4858,21 +4858,21 @@
         "phase": "playing",
         "mapId": "binary-star",
         "board": {
-          "width": 11,
-          "height": 11,
+          "width": 10,
+          "height": 10,
           "asteroids": [],
           "veins": [
             {
               "x": 1,
-              "y": 4
-            },
-            {
-              "x": 5,
-              "y": 5
+              "y": 1
             },
             {
               "x": 6,
-              "y": 10
+              "y": 3
+            },
+            {
+              "x": 6,
+              "y": 8
             }
           ]
         },
@@ -4988,8 +4988,8 @@
             "kind": "building",
             "ownerId": "p0",
             "pos": {
-              "x": 1,
-              "y": 1
+              "x": 0,
+              "y": 0
             },
             "hp": 6,
             "remainingTurns": null
@@ -5000,8 +5000,8 @@
             "kind": "building",
             "ownerId": "p0",
             "pos": {
-              "x": 1,
-              "y": 2
+              "x": 0,
+              "y": 1
             },
             "hp": 6,
             "remainingTurns": null
@@ -5048,8 +5048,8 @@
             "kind": "core",
             "ownerId": "ai-1",
             "pos": {
-              "x": 8,
-              "y": 8
+              "x": 7,
+              "y": 7
             },
             "hp": 20,
             "remainingTurns": null
@@ -5061,7 +5061,7 @@
             "ownerId": "ai-1",
             "pos": {
               "x": 6,
-              "y": 10
+              "y": 8
             },
             "hp": 2,
             "remainingTurns": null
@@ -5090,7 +5090,7 @@
             "round": 1,
             "playerId": null,
             "kind": "system",
-            "message": "게임 시작: 쌍성 (11×11, 20라운드)"
+            "message": "게임 시작: 쌍성 (10×10, 20라운드)"
           },
           {
             "turn": 1,
@@ -5104,7 +5104,7 @@
             "round": 1,
             "playerId": "ai-1",
             "kind": "system",
-            "message": "AI 코어 (8,8) 배치, 에너지 5, 손패 4장"
+            "message": "AI 코어 (7,7) 배치, 에너지 5, 손패 4장"
           },
           {
             "turn": 1,
@@ -5406,21 +5406,21 @@
         "phase": "playing",
         "mapId": "binary-star",
         "board": {
-          "width": 11,
-          "height": 11,
+          "width": 10,
+          "height": 10,
           "asteroids": [],
           "veins": [
             {
               "x": 1,
-              "y": 4
-            },
-            {
-              "x": 5,
-              "y": 5
+              "y": 1
             },
             {
               "x": 6,
-              "y": 10
+              "y": 3
+            },
+            {
+              "x": 6,
+              "y": 8
             }
           ]
         },
@@ -5536,8 +5536,8 @@
             "kind": "building",
             "ownerId": "p0",
             "pos": {
-              "x": 1,
-              "y": 1
+              "x": 0,
+              "y": 0
             },
             "hp": 6,
             "remainingTurns": null
@@ -5548,8 +5548,8 @@
             "kind": "building",
             "ownerId": "p0",
             "pos": {
-              "x": 1,
-              "y": 2
+              "x": 0,
+              "y": 1
             },
             "hp": 6,
             "remainingTurns": null
@@ -5596,8 +5596,8 @@
             "kind": "core",
             "ownerId": "ai-1",
             "pos": {
-              "x": 8,
-              "y": 8
+              "x": 7,
+              "y": 7
             },
             "hp": 20,
             "remainingTurns": null
@@ -5609,7 +5609,7 @@
             "ownerId": "ai-1",
             "pos": {
               "x": 6,
-              "y": 10
+              "y": 8
             },
             "hp": 2,
             "remainingTurns": null
@@ -5638,7 +5638,7 @@
             "round": 1,
             "playerId": null,
             "kind": "system",
-            "message": "게임 시작: 쌍성 (11×11, 20라운드)"
+            "message": "게임 시작: 쌍성 (10×10, 20라운드)"
           },
           {
             "turn": 1,
@@ -5652,7 +5652,7 @@
             "round": 1,
             "playerId": "ai-1",
             "kind": "system",
-            "message": "AI 코어 (8,8) 배치, 에너지 5, 손패 4장"
+            "message": "AI 코어 (7,7) 배치, 에너지 5, 손패 4장"
           },
           {
             "turn": 1,
@@ -5979,7 +5979,7 @@
         "cardId": "repair-drone",
         "pos": {
           "x": 7,
-          "y": 7
+          "y": 6
         }
       },
       "state": {
@@ -5987,21 +5987,21 @@
         "phase": "playing",
         "mapId": "binary-star",
         "board": {
-          "width": 11,
-          "height": 11,
+          "width": 10,
+          "height": 10,
           "asteroids": [],
           "veins": [
             {
               "x": 1,
-              "y": 4
-            },
-            {
-              "x": 5,
-              "y": 5
+              "y": 1
             },
             {
               "x": 6,
-              "y": 10
+              "y": 3
+            },
+            {
+              "x": 6,
+              "y": 8
             }
           ]
         },
@@ -6117,8 +6117,8 @@
             "kind": "building",
             "ownerId": "p0",
             "pos": {
-              "x": 1,
-              "y": 1
+              "x": 0,
+              "y": 0
             },
             "hp": 6,
             "remainingTurns": null
@@ -6129,8 +6129,8 @@
             "kind": "building",
             "ownerId": "p0",
             "pos": {
-              "x": 1,
-              "y": 2
+              "x": 0,
+              "y": 1
             },
             "hp": 6,
             "remainingTurns": null
@@ -6178,7 +6178,7 @@
             "ownerId": "ai-1",
             "pos": {
               "x": 7,
-              "y": 7
+              "y": 6
             },
             "hp": 2,
             "remainingTurns": null
@@ -6189,8 +6189,8 @@
             "kind": "core",
             "ownerId": "ai-1",
             "pos": {
-              "x": 8,
-              "y": 8
+              "x": 7,
+              "y": 7
             },
             "hp": 20,
             "remainingTurns": null
@@ -6202,7 +6202,7 @@
             "ownerId": "ai-1",
             "pos": {
               "x": 6,
-              "y": 10
+              "y": 8
             },
             "hp": 2,
             "remainingTurns": null
@@ -6231,7 +6231,7 @@
             "round": 1,
             "playerId": null,
             "kind": "system",
-            "message": "게임 시작: 쌍성 (11×11, 20라운드)"
+            "message": "게임 시작: 쌍성 (10×10, 20라운드)"
           },
           {
             "turn": 1,
@@ -6245,7 +6245,7 @@
             "round": 1,
             "playerId": "ai-1",
             "kind": "system",
-            "message": "AI 코어 (8,8) 배치, 에너지 5, 손패 4장"
+            "message": "AI 코어 (7,7) 배치, 에너지 5, 손패 4장"
           },
           {
             "turn": 1,
@@ -6567,7 +6567,7 @@
             "round": 4,
             "playerId": "ai-1",
             "kind": "place",
-            "message": "AI: (7,7)에 수리 드론 배치 (비용 3, 에너지 16 → 13)"
+            "message": "AI: (7,6)에 수리 드론 배치 (비용 3, 에너지 16 → 13)"
           }
         ]
       }
@@ -6582,21 +6582,21 @@
         "phase": "playing",
         "mapId": "binary-star",
         "board": {
-          "width": 11,
-          "height": 11,
+          "width": 10,
+          "height": 10,
           "asteroids": [],
           "veins": [
             {
               "x": 1,
-              "y": 4
-            },
-            {
-              "x": 5,
-              "y": 5
+              "y": 1
             },
             {
               "x": 6,
-              "y": 10
+              "y": 3
+            },
+            {
+              "x": 6,
+              "y": 8
             }
           ]
         },
@@ -6712,8 +6712,8 @@
             "kind": "building",
             "ownerId": "p0",
             "pos": {
-              "x": 1,
-              "y": 1
+              "x": 0,
+              "y": 0
             },
             "hp": 6,
             "remainingTurns": null
@@ -6724,8 +6724,8 @@
             "kind": "building",
             "ownerId": "p0",
             "pos": {
-              "x": 1,
-              "y": 2
+              "x": 0,
+              "y": 1
             },
             "hp": 6,
             "remainingTurns": null
@@ -6767,25 +6767,13 @@
             "remainingTurns": null
           },
           {
-            "id": "m7",
-            "specId": "repair-drone",
-            "kind": "unit",
-            "ownerId": "ai-1",
-            "pos": {
-              "x": 7,
-              "y": 7
-            },
-            "hp": 2,
-            "remainingTurns": null
-          },
-          {
             "id": "m2",
             "specId": "core",
             "kind": "core",
             "ownerId": "ai-1",
             "pos": {
-              "x": 8,
-              "y": 8
+              "x": 7,
+              "y": 7
             },
             "hp": 20,
             "remainingTurns": null
@@ -6797,7 +6785,7 @@
             "ownerId": "ai-1",
             "pos": {
               "x": 6,
-              "y": 10
+              "y": 8
             },
             "hp": 2,
             "remainingTurns": null
@@ -6826,7 +6814,7 @@
             "round": 1,
             "playerId": null,
             "kind": "system",
-            "message": "게임 시작: 쌍성 (11×11, 20라운드)"
+            "message": "게임 시작: 쌍성 (10×10, 20라운드)"
           },
           {
             "turn": 1,
@@ -6840,7 +6828,7 @@
             "round": 1,
             "playerId": "ai-1",
             "kind": "system",
-            "message": "AI 코어 (8,8) 배치, 에너지 5, 손패 4장"
+            "message": "AI 코어 (7,7) 배치, 에너지 5, 손패 4장"
           },
           {
             "turn": 1,
@@ -7162,7 +7150,7 @@
             "round": 4,
             "playerId": "ai-1",
             "kind": "place",
-            "message": "AI: (7,7)에 수리 드론 배치 (비용 3, 에너지 16 → 13)"
+            "message": "AI: (7,6)에 수리 드론 배치 (비용 3, 에너지 16 → 13)"
           },
           {
             "turn": 8,
@@ -7177,6 +7165,20 @@
             "playerId": "p0",
             "kind": "turn",
             "message": "9턴 시작: 철수 (라운드 5)"
+          },
+          {
+            "turn": 9,
+            "round": 5,
+            "playerId": "p0",
+            "kind": "combat",
+            "message": "포격함(5,4) → AI의 수리 드론(7,6) 피해 3"
+          },
+          {
+            "turn": 9,
+            "round": 5,
+            "playerId": "ai-1",
+            "kind": "destroy",
+            "message": "AI의 수리 드론(7,6) 파괴"
           },
           {
             "turn": 9,
@@ -7210,21 +7212,21 @@
         "phase": "playing",
         "mapId": "binary-star",
         "board": {
-          "width": 11,
-          "height": 11,
+          "width": 10,
+          "height": 10,
           "asteroids": [],
           "veins": [
             {
               "x": 1,
-              "y": 4
-            },
-            {
-              "x": 5,
-              "y": 5
+              "y": 1
             },
             {
               "x": 6,
-              "y": 10
+              "y": 3
+            },
+            {
+              "x": 6,
+              "y": 8
             }
           ]
         },
@@ -7340,8 +7342,8 @@
             "kind": "building",
             "ownerId": "p0",
             "pos": {
-              "x": 1,
-              "y": 1
+              "x": 0,
+              "y": 0
             },
             "hp": 6,
             "remainingTurns": null
@@ -7352,8 +7354,8 @@
             "kind": "building",
             "ownerId": "p0",
             "pos": {
-              "x": 1,
-              "y": 2
+              "x": 0,
+              "y": 1
             },
             "hp": 6,
             "remainingTurns": null
@@ -7395,15 +7397,15 @@
             "remainingTurns": null
           },
           {
-            "id": "m7",
-            "specId": "repair-drone",
-            "kind": "unit",
+            "id": "m2",
+            "specId": "core",
+            "kind": "core",
             "ownerId": "ai-1",
             "pos": {
               "x": 7,
               "y": 7
             },
-            "hp": 2,
+            "hp": 20,
             "remainingTurns": null
           },
           {
@@ -7419,25 +7421,13 @@
             "remainingTurns": null
           },
           {
-            "id": "m2",
-            "specId": "core",
-            "kind": "core",
-            "ownerId": "ai-1",
-            "pos": {
-              "x": 8,
-              "y": 8
-            },
-            "hp": 20,
-            "remainingTurns": null
-          },
-          {
             "id": "f500",
             "specId": "extractor",
             "kind": "building",
             "ownerId": "ai-1",
             "pos": {
               "x": 6,
-              "y": 10
+              "y": 8
             },
             "hp": 2,
             "remainingTurns": null
@@ -7466,7 +7456,7 @@
             "round": 1,
             "playerId": null,
             "kind": "system",
-            "message": "게임 시작: 쌍성 (11×11, 20라운드)"
+            "message": "게임 시작: 쌍성 (10×10, 20라운드)"
           },
           {
             "turn": 1,
@@ -7480,7 +7470,7 @@
             "round": 1,
             "playerId": "ai-1",
             "kind": "system",
-            "message": "AI 코어 (8,8) 배치, 에너지 5, 손패 4장"
+            "message": "AI 코어 (7,7) 배치, 에너지 5, 손패 4장"
           },
           {
             "turn": 1,
@@ -7802,7 +7792,7 @@
             "round": 4,
             "playerId": "ai-1",
             "kind": "place",
-            "message": "AI: (7,7)에 수리 드론 배치 (비용 3, 에너지 16 → 13)"
+            "message": "AI: (7,6)에 수리 드론 배치 (비용 3, 에너지 16 → 13)"
           },
           {
             "turn": 8,
@@ -7817,6 +7807,20 @@
             "playerId": "p0",
             "kind": "turn",
             "message": "9턴 시작: 철수 (라운드 5)"
+          },
+          {
+            "turn": 9,
+            "round": 5,
+            "playerId": "p0",
+            "kind": "combat",
+            "message": "포격함(5,4) → AI의 수리 드론(7,6) 피해 3"
+          },
+          {
+            "turn": 9,
+            "round": 5,
+            "playerId": "ai-1",
+            "kind": "destroy",
+            "message": "AI의 수리 드론(7,6) 파괴"
           },
           {
             "turn": 9,
@@ -7852,21 +7856,21 @@
         "phase": "playing",
         "mapId": "binary-star",
         "board": {
-          "width": 11,
-          "height": 11,
+          "width": 10,
+          "height": 10,
           "asteroids": [],
           "veins": [
             {
               "x": 1,
-              "y": 4
-            },
-            {
-              "x": 5,
-              "y": 5
+              "y": 1
             },
             {
               "x": 6,
-              "y": 10
+              "y": 3
+            },
+            {
+              "x": 6,
+              "y": 8
             }
           ]
         },
@@ -7982,8 +7986,8 @@
             "kind": "building",
             "ownerId": "p0",
             "pos": {
-              "x": 1,
-              "y": 1
+              "x": 0,
+              "y": 0
             },
             "hp": 6,
             "remainingTurns": null
@@ -7994,8 +7998,8 @@
             "kind": "building",
             "ownerId": "p0",
             "pos": {
-              "x": 1,
-              "y": 2
+              "x": 0,
+              "y": 1
             },
             "hp": 6,
             "remainingTurns": null
@@ -8037,15 +8041,15 @@
             "remainingTurns": null
           },
           {
-            "id": "m7",
-            "specId": "repair-drone",
-            "kind": "unit",
+            "id": "m2",
+            "specId": "core",
+            "kind": "core",
             "ownerId": "ai-1",
             "pos": {
               "x": 7,
               "y": 7
             },
-            "hp": 2,
+            "hp": 20,
             "remainingTurns": null
           },
           {
@@ -8061,25 +8065,13 @@
             "remainingTurns": null
           },
           {
-            "id": "m2",
-            "specId": "core",
-            "kind": "core",
-            "ownerId": "ai-1",
-            "pos": {
-              "x": 8,
-              "y": 8
-            },
-            "hp": 20,
-            "remainingTurns": null
-          },
-          {
             "id": "f500",
             "specId": "extractor",
             "kind": "building",
             "ownerId": "ai-1",
             "pos": {
               "x": 6,
-              "y": 10
+              "y": 8
             },
             "hp": 2,
             "remainingTurns": null
@@ -8108,7 +8100,7 @@
             "round": 1,
             "playerId": null,
             "kind": "system",
-            "message": "게임 시작: 쌍성 (11×11, 20라운드)"
+            "message": "게임 시작: 쌍성 (10×10, 20라운드)"
           },
           {
             "turn": 1,
@@ -8122,7 +8114,7 @@
             "round": 1,
             "playerId": "ai-1",
             "kind": "system",
-            "message": "AI 코어 (8,8) 배치, 에너지 5, 손패 4장"
+            "message": "AI 코어 (7,7) 배치, 에너지 5, 손패 4장"
           },
           {
             "turn": 1,
@@ -8444,7 +8436,7 @@
             "round": 4,
             "playerId": "ai-1",
             "kind": "place",
-            "message": "AI: (7,7)에 수리 드론 배치 (비용 3, 에너지 16 → 13)"
+            "message": "AI: (7,6)에 수리 드론 배치 (비용 3, 에너지 16 → 13)"
           },
           {
             "turn": 8,
@@ -8459,6 +8451,20 @@
             "playerId": "p0",
             "kind": "turn",
             "message": "9턴 시작: 철수 (라운드 5)"
+          },
+          {
+            "turn": 9,
+            "round": 5,
+            "playerId": "p0",
+            "kind": "combat",
+            "message": "포격함(5,4) → AI의 수리 드론(7,6) 피해 3"
+          },
+          {
+            "turn": 9,
+            "round": 5,
+            "playerId": "ai-1",
+            "kind": "destroy",
+            "message": "AI의 수리 드론(7,6) 파괴"
           },
           {
             "turn": 9,
@@ -8522,21 +8528,21 @@
         "phase": "playing",
         "mapId": "binary-star",
         "board": {
-          "width": 11,
-          "height": 11,
+          "width": 10,
+          "height": 10,
           "asteroids": [],
           "veins": [
             {
               "x": 1,
-              "y": 4
-            },
-            {
-              "x": 5,
-              "y": 5
+              "y": 1
             },
             {
               "x": 6,
-              "y": 10
+              "y": 3
+            },
+            {
+              "x": 6,
+              "y": 8
             }
           ]
         },
@@ -8652,8 +8658,8 @@
             "kind": "building",
             "ownerId": "p0",
             "pos": {
-              "x": 1,
-              "y": 1
+              "x": 0,
+              "y": 0
             },
             "hp": 6,
             "remainingTurns": null
@@ -8664,8 +8670,8 @@
             "kind": "building",
             "ownerId": "p0",
             "pos": {
-              "x": 1,
-              "y": 2
+              "x": 0,
+              "y": 1
             },
             "hp": 6,
             "remainingTurns": null
@@ -8707,6 +8713,18 @@
             "remainingTurns": null
           },
           {
+            "id": "m2",
+            "specId": "core",
+            "kind": "core",
+            "ownerId": "ai-1",
+            "pos": {
+              "x": 7,
+              "y": 7
+            },
+            "hp": 17,
+            "remainingTurns": null
+          },
+          {
             "id": "m8",
             "specId": "stealth",
             "kind": "unit",
@@ -8719,25 +8737,13 @@
             "remainingTurns": null
           },
           {
-            "id": "m2",
-            "specId": "core",
-            "kind": "core",
-            "ownerId": "ai-1",
-            "pos": {
-              "x": 8,
-              "y": 8
-            },
-            "hp": 20,
-            "remainingTurns": null
-          },
-          {
             "id": "f500",
             "specId": "extractor",
             "kind": "building",
             "ownerId": "ai-1",
             "pos": {
               "x": 6,
-              "y": 10
+              "y": 8
             },
             "hp": 2,
             "remainingTurns": null
@@ -8766,7 +8772,7 @@
             "round": 1,
             "playerId": null,
             "kind": "system",
-            "message": "게임 시작: 쌍성 (11×11, 20라운드)"
+            "message": "게임 시작: 쌍성 (10×10, 20라운드)"
           },
           {
             "turn": 1,
@@ -8780,7 +8786,7 @@
             "round": 1,
             "playerId": "ai-1",
             "kind": "system",
-            "message": "AI 코어 (8,8) 배치, 에너지 5, 손패 4장"
+            "message": "AI 코어 (7,7) 배치, 에너지 5, 손패 4장"
           },
           {
             "turn": 1,
@@ -9102,7 +9108,7 @@
             "round": 4,
             "playerId": "ai-1",
             "kind": "place",
-            "message": "AI: (7,7)에 수리 드론 배치 (비용 3, 에너지 16 → 13)"
+            "message": "AI: (7,6)에 수리 드론 배치 (비용 3, 에너지 16 → 13)"
           },
           {
             "turn": 8,
@@ -9117,6 +9123,20 @@
             "playerId": "p0",
             "kind": "turn",
             "message": "9턴 시작: 철수 (라운드 5)"
+          },
+          {
+            "turn": 9,
+            "round": 5,
+            "playerId": "p0",
+            "kind": "combat",
+            "message": "포격함(5,4) → AI의 수리 드론(7,6) 피해 3"
+          },
+          {
+            "turn": 9,
+            "round": 5,
+            "playerId": "ai-1",
+            "kind": "destroy",
+            "message": "AI의 수리 드론(7,6) 파괴"
           },
           {
             "turn": 9,
@@ -9186,14 +9206,7 @@
             "round": 6,
             "playerId": "p0",
             "kind": "combat",
-            "message": "스텔스함(8,7) → AI의 수리 드론(7,7) 피해 3"
-          },
-          {
-            "turn": 11,
-            "round": 6,
-            "playerId": "ai-1",
-            "kind": "destroy",
-            "message": "AI의 수리 드론(7,7) 파괴"
+            "message": "스텔스함(8,7) → AI의 코어(7,7) 피해 3"
           },
           {
             "turn": 11,
@@ -9227,21 +9240,21 @@
         "phase": "playing",
         "mapId": "binary-star",
         "board": {
-          "width": 11,
-          "height": 11,
+          "width": 10,
+          "height": 10,
           "asteroids": [],
           "veins": [
             {
               "x": 1,
-              "y": 4
-            },
-            {
-              "x": 5,
-              "y": 5
+              "y": 1
             },
             {
               "x": 6,
-              "y": 10
+              "y": 3
+            },
+            {
+              "x": 6,
+              "y": 8
             }
           ]
         },
@@ -9357,8 +9370,8 @@
             "kind": "building",
             "ownerId": "p0",
             "pos": {
-              "x": 1,
-              "y": 1
+              "x": 0,
+              "y": 0
             },
             "hp": 6,
             "remainingTurns": null
@@ -9369,8 +9382,8 @@
             "kind": "building",
             "ownerId": "p0",
             "pos": {
-              "x": 1,
-              "y": 2
+              "x": 0,
+              "y": 1
             },
             "hp": 6,
             "remainingTurns": null
@@ -9424,6 +9437,18 @@
             "remainingTurns": null
           },
           {
+            "id": "m2",
+            "specId": "core",
+            "kind": "core",
+            "ownerId": "ai-1",
+            "pos": {
+              "x": 7,
+              "y": 7
+            },
+            "hp": 17,
+            "remainingTurns": null
+          },
+          {
             "id": "m8",
             "specId": "stealth",
             "kind": "unit",
@@ -9436,25 +9461,13 @@
             "remainingTurns": null
           },
           {
-            "id": "m2",
-            "specId": "core",
-            "kind": "core",
-            "ownerId": "ai-1",
-            "pos": {
-              "x": 8,
-              "y": 8
-            },
-            "hp": 20,
-            "remainingTurns": null
-          },
-          {
             "id": "f500",
             "specId": "extractor",
             "kind": "building",
             "ownerId": "ai-1",
             "pos": {
               "x": 6,
-              "y": 10
+              "y": 8
             },
             "hp": 2,
             "remainingTurns": null
@@ -9483,7 +9496,7 @@
             "round": 1,
             "playerId": null,
             "kind": "system",
-            "message": "게임 시작: 쌍성 (11×11, 20라운드)"
+            "message": "게임 시작: 쌍성 (10×10, 20라운드)"
           },
           {
             "turn": 1,
@@ -9497,7 +9510,7 @@
             "round": 1,
             "playerId": "ai-1",
             "kind": "system",
-            "message": "AI 코어 (8,8) 배치, 에너지 5, 손패 4장"
+            "message": "AI 코어 (7,7) 배치, 에너지 5, 손패 4장"
           },
           {
             "turn": 1,
@@ -9819,7 +9832,7 @@
             "round": 4,
             "playerId": "ai-1",
             "kind": "place",
-            "message": "AI: (7,7)에 수리 드론 배치 (비용 3, 에너지 16 → 13)"
+            "message": "AI: (7,6)에 수리 드론 배치 (비용 3, 에너지 16 → 13)"
           },
           {
             "turn": 8,
@@ -9834,6 +9847,20 @@
             "playerId": "p0",
             "kind": "turn",
             "message": "9턴 시작: 철수 (라운드 5)"
+          },
+          {
+            "turn": 9,
+            "round": 5,
+            "playerId": "p0",
+            "kind": "combat",
+            "message": "포격함(5,4) → AI의 수리 드론(7,6) 피해 3"
+          },
+          {
+            "turn": 9,
+            "round": 5,
+            "playerId": "ai-1",
+            "kind": "destroy",
+            "message": "AI의 수리 드론(7,6) 파괴"
           },
           {
             "turn": 9,
@@ -9903,14 +9930,7 @@
             "round": 6,
             "playerId": "p0",
             "kind": "combat",
-            "message": "스텔스함(8,7) → AI의 수리 드론(7,7) 피해 3"
-          },
-          {
-            "turn": 11,
-            "round": 6,
-            "playerId": "ai-1",
-            "kind": "destroy",
-            "message": "AI의 수리 드론(7,7) 파괴"
+            "message": "스텔스함(8,7) → AI의 코어(7,7) 피해 3"
           },
           {
             "turn": 11,
@@ -9946,21 +9966,21 @@
         "phase": "playing",
         "mapId": "binary-star",
         "board": {
-          "width": 11,
-          "height": 11,
+          "width": 10,
+          "height": 10,
           "asteroids": [],
           "veins": [
             {
               "x": 1,
-              "y": 4
-            },
-            {
-              "x": 5,
-              "y": 5
+              "y": 1
             },
             {
               "x": 6,
-              "y": 10
+              "y": 3
+            },
+            {
+              "x": 6,
+              "y": 8
             }
           ]
         },
@@ -10076,8 +10096,8 @@
             "kind": "building",
             "ownerId": "p0",
             "pos": {
-              "x": 1,
-              "y": 1
+              "x": 0,
+              "y": 0
             },
             "hp": 6,
             "remainingTurns": null
@@ -10088,8 +10108,8 @@
             "kind": "building",
             "ownerId": "p0",
             "pos": {
-              "x": 1,
-              "y": 2
+              "x": 0,
+              "y": 1
             },
             "hp": 6,
             "remainingTurns": null
@@ -10143,6 +10163,18 @@
             "remainingTurns": null
           },
           {
+            "id": "m2",
+            "specId": "core",
+            "kind": "core",
+            "ownerId": "ai-1",
+            "pos": {
+              "x": 7,
+              "y": 7
+            },
+            "hp": 17,
+            "remainingTurns": null
+          },
+          {
             "id": "m8",
             "specId": "stealth",
             "kind": "unit",
@@ -10155,25 +10187,13 @@
             "remainingTurns": null
           },
           {
-            "id": "m2",
-            "specId": "core",
-            "kind": "core",
-            "ownerId": "ai-1",
-            "pos": {
-              "x": 8,
-              "y": 8
-            },
-            "hp": 20,
-            "remainingTurns": null
-          },
-          {
             "id": "f500",
             "specId": "extractor",
             "kind": "building",
             "ownerId": "ai-1",
             "pos": {
               "x": 6,
-              "y": 10
+              "y": 8
             },
             "hp": 2,
             "remainingTurns": null
@@ -10202,7 +10222,7 @@
             "round": 1,
             "playerId": null,
             "kind": "system",
-            "message": "게임 시작: 쌍성 (11×11, 20라운드)"
+            "message": "게임 시작: 쌍성 (10×10, 20라운드)"
           },
           {
             "turn": 1,
@@ -10216,7 +10236,7 @@
             "round": 1,
             "playerId": "ai-1",
             "kind": "system",
-            "message": "AI 코어 (8,8) 배치, 에너지 5, 손패 4장"
+            "message": "AI 코어 (7,7) 배치, 에너지 5, 손패 4장"
           },
           {
             "turn": 1,
@@ -10538,7 +10558,7 @@
             "round": 4,
             "playerId": "ai-1",
             "kind": "place",
-            "message": "AI: (7,7)에 수리 드론 배치 (비용 3, 에너지 16 → 13)"
+            "message": "AI: (7,6)에 수리 드론 배치 (비용 3, 에너지 16 → 13)"
           },
           {
             "turn": 8,
@@ -10553,6 +10573,20 @@
             "playerId": "p0",
             "kind": "turn",
             "message": "9턴 시작: 철수 (라운드 5)"
+          },
+          {
+            "turn": 9,
+            "round": 5,
+            "playerId": "p0",
+            "kind": "combat",
+            "message": "포격함(5,4) → AI의 수리 드론(7,6) 피해 3"
+          },
+          {
+            "turn": 9,
+            "round": 5,
+            "playerId": "ai-1",
+            "kind": "destroy",
+            "message": "AI의 수리 드론(7,6) 파괴"
           },
           {
             "turn": 9,
@@ -10622,14 +10656,7 @@
             "round": 6,
             "playerId": "p0",
             "kind": "combat",
-            "message": "스텔스함(8,7) → AI의 수리 드론(7,7) 피해 3"
-          },
-          {
-            "turn": 11,
-            "round": 6,
-            "playerId": "ai-1",
-            "kind": "destroy",
-            "message": "AI의 수리 드론(7,7) 파괴"
+            "message": "스텔스함(8,7) → AI의 코어(7,7) 피해 3"
           },
           {
             "turn": 11,
@@ -10693,21 +10720,21 @@
         "phase": "finished",
         "mapId": "binary-star",
         "board": {
-          "width": 11,
-          "height": 11,
+          "width": 10,
+          "height": 10,
           "asteroids": [],
           "veins": [
             {
               "x": 1,
-              "y": 4
-            },
-            {
-              "x": 5,
-              "y": 5
+              "y": 1
             },
             {
               "x": 6,
-              "y": 10
+              "y": 3
+            },
+            {
+              "x": 6,
+              "y": 8
             }
           ]
         },
@@ -10823,8 +10850,8 @@
             "kind": "building",
             "ownerId": "p0",
             "pos": {
-              "x": 1,
-              "y": 1
+              "x": 0,
+              "y": 0
             },
             "hp": 6,
             "remainingTurns": null
@@ -10835,8 +10862,8 @@
             "kind": "building",
             "ownerId": "p0",
             "pos": {
-              "x": 1,
-              "y": 2
+              "x": 0,
+              "y": 1
             },
             "hp": 6,
             "remainingTurns": null
@@ -10912,10 +10939,10 @@
           ],
           "scores": {
             "p0": {
-              "territory": 37,
+              "territory": 35,
               "markers": 13,
               "komi": 0,
-              "total": 50
+              "total": 48
             },
             "ai-1": {
               "territory": 0,
@@ -10945,7 +10972,7 @@
             "round": 1,
             "playerId": null,
             "kind": "system",
-            "message": "게임 시작: 쌍성 (11×11, 20라운드)"
+            "message": "게임 시작: 쌍성 (10×10, 20라운드)"
           },
           {
             "turn": 1,
@@ -10959,7 +10986,7 @@
             "round": 1,
             "playerId": "ai-1",
             "kind": "system",
-            "message": "AI 코어 (8,8) 배치, 에너지 5, 손패 4장"
+            "message": "AI 코어 (7,7) 배치, 에너지 5, 손패 4장"
           },
           {
             "turn": 1,
@@ -11281,7 +11308,7 @@
             "round": 4,
             "playerId": "ai-1",
             "kind": "place",
-            "message": "AI: (7,7)에 수리 드론 배치 (비용 3, 에너지 16 → 13)"
+            "message": "AI: (7,6)에 수리 드론 배치 (비용 3, 에너지 16 → 13)"
           },
           {
             "turn": 8,
@@ -11296,6 +11323,20 @@
             "playerId": "p0",
             "kind": "turn",
             "message": "9턴 시작: 철수 (라운드 5)"
+          },
+          {
+            "turn": 9,
+            "round": 5,
+            "playerId": "p0",
+            "kind": "combat",
+            "message": "포격함(5,4) → AI의 수리 드론(7,6) 피해 3"
+          },
+          {
+            "turn": 9,
+            "round": 5,
+            "playerId": "ai-1",
+            "kind": "destroy",
+            "message": "AI의 수리 드론(7,6) 파괴"
           },
           {
             "turn": 9,
@@ -11365,14 +11406,7 @@
             "round": 6,
             "playerId": "p0",
             "kind": "combat",
-            "message": "스텔스함(8,7) → AI의 수리 드론(7,7) 피해 3"
-          },
-          {
-            "turn": 11,
-            "round": 6,
-            "playerId": "ai-1",
-            "kind": "destroy",
-            "message": "AI의 수리 드론(7,7) 파괴"
+            "message": "스텔스함(8,7) → AI의 코어(7,7) 피해 3"
           },
           {
             "turn": 11,
@@ -11442,7 +11476,7 @@
             "round": 6,
             "playerId": "p0",
             "kind": "result",
-            "message": "게임 종료 (최후 생존): 1위 철수 50점, 2위 AI 0점"
+            "message": "게임 종료 (최후 생존): 1위 철수 48점, 2위 AI 0점"
           }
         ]
       }

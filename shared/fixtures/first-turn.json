@@ -3,21 +3,21 @@
   "phase": "playing",
   "mapId": "binary-star",
   "board": {
-    "width": 11,
-    "height": 11,
+    "width": 10,
+    "height": 10,
     "asteroids": [],
     "veins": [
       {
         "x": 1,
-        "y": 4
-      },
-      {
-        "x": 5,
-        "y": 5
+        "y": 1
       },
       {
         "x": 6,
-        "y": 10
+        "y": 3
+      },
+      {
+        "x": 6,
+        "y": 8
       }
     ]
   },
@@ -142,8 +142,8 @@
       "kind": "core",
       "ownerId": "ai-1",
       "pos": {
-        "x": 8,
-        "y": 8
+        "x": 7,
+        "y": 7
       },
       "hp": 20,
       "remainingTurns": null
@@ -172,7 +172,7 @@
       "round": 1,
       "playerId": null,
       "kind": "system",
-      "message": "게임 시작: 쌍성 (11×11, 20라운드)"
+      "message": "게임 시작: 쌍성 (10×10, 20라운드)"
     },
     {
       "turn": 1,
@@ -186,7 +186,7 @@
       "round": 1,
       "playerId": "ai-1",
       "kind": "system",
-      "message": "AI 코어 (8,8) 배치, 에너지 5, 손패 4장"
+      "message": "AI 코어 (7,7) 배치, 에너지 5, 손패 4장"
     },
     {
       "turn": 1,
