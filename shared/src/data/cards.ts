@@ -214,8 +214,8 @@ export function isValidDeckChoice(choice: DeckChoice): boolean {
   const pool = new Map(cardPoolOf(choice.race).map((c) => [c.id, c] as const));
   let total = 0;
   for (const [id, n] of Object.entries(choice.cards)) {
-    if (n === 0) continue;
     const spec = pool.get(id);
+    // 장수가 0이어도 카드 id 자체는 그 종족의 실제 카드여야 한다(모르는 id를 0장으로 끼워 넣는 것도 거부)
     if (!spec || !Number.isInteger(n) || n < 0 || n > spec.copies) return false;
     total += n;
   }

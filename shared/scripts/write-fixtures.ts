@@ -95,7 +95,10 @@ const actions: Action[] = [
   { type: 'PASS', playerId: 'p0' }, // 배치 직후 턴 종료 → 침투 유닛이 적 코어를 공격한다
   { type: 'PASS', playerId: 'ai-1' }, // 진짜 패스 → 코어가 다시 공격받는다(정비로 일부 회복된 뒤)
   { type: 'PLACE', playerId: 'p0', cardId: 'extractor', pos: { x: 3, y: 3 } }, // 패스 연속 리셋
-  { type: 'PASS', playerId: 'p0' }, // 배치 후 턴 종료 → ai-1 턴
+  // 배치 후 턴 종료 + 손패 교체(Rules.md 5.2, discardCardIds): 이 시점 p0 손패는
+  // ['gravity-wave','refinery','extractor','outpost'] 라서 앞의 둘을 버리고 다시 뽑는다.
+  // TS·Python 셔플(mulberry32 포팅)이 정말 같은 결과를 내는지 fixture 재생으로 확인하는 유일한 지점.
+  { type: 'PASS', playerId: 'p0', discardCardIds: ['gravity-wave', 'refinery'] },
   { type: 'SURRENDER', playerId: 'ai-1' },
 ];
 

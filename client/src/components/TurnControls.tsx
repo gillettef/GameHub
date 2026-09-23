@@ -28,7 +28,7 @@ export const TurnControls = memo(function TurnControls({ compact }: TurnControls
   const pass = useGameStore((s) => s.pass);
   const surrender = useGameStore((s) => s.surrender);
   const discardMode = useGameStore((s) => s.discardMode);
-  const discardIndices = useGameStore((s) => s.discardIndices);
+  const discardCardIds = useGameStore((s) => s.discardCardIds);
   const toggleDiscardMode = useGameStore((s) => s.toggleDiscardMode);
 
   if (!state || !viewerId) return null;
@@ -38,8 +38,9 @@ export const TurnControls = memo(function TurnControls({ compact }: TurnControls
   const current = state.currentPlayerId ? nameOf(state, state.currentPlayerId) : null;
   const me = state.players.find((p) => p.id === viewerId);
   const acted = me?.actedThisTurn ?? false;
-  const discardCount = discardIndices.length;
-  const endLabel = (acted ? '턴 종료' : '패스') + (discardCount > 0 ? ` (${discardCount}장 교체)` : '');
+  const discardCount = discardCardIds.length;
+  // 좁은 화면에서 알약 바가 줄바꿈되지 않도록 접미사를 짧게 둔다("(N장 교체)" 대신 "·N")
+  const endLabel = (acted ? '턴 종료' : '패스') + (discardCount > 0 ? ` ·${discardCount}` : '');
 
   const status = finished
     ? '게임 종료'
@@ -76,7 +77,7 @@ export const TurnControls = memo(function TurnControls({ compact }: TurnControls
             onClick={toggleDiscardMode}
             title="패스/턴 종료 시 함께 버리고 다시 뽑을 카드를 고릅니다"
           >
-            손패 교체{discardCount > 0 ? ` ${discardCount}` : ''}
+            교체{discardCount > 0 ? ` ${discardCount}` : ''}
           </button>
           <button type="button" className="pill" disabled={!isMyTurn} onClick={pass}>
             {endLabel}

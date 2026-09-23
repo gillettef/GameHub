@@ -10293,7 +10293,11 @@
     {
       "action": {
         "type": "PASS",
-        "playerId": "p0"
+        "playerId": "p0",
+        "discardCardIds": [
+          "gravity-wave",
+          "refinery"
+        ]
       },
       "state": {
         "roomId": "fixture-room",
@@ -10349,29 +10353,29 @@
             },
             "energy": 20,
             "deck": [
+              "scout",
+              "artillery",
+              "refinery",
+              "turret",
+              "battleship",
+              "energy-cell",
+              "scout",
+              "fighter",
               "meteor",
               "extractor",
-              "artillery",
-              "scout",
-              "fighter",
-              "energy-cell",
-              "turret",
-              "energy-cell",
-              "scout",
-              "outpost",
-              "battleship",
-              "extractor",
-              "fighter",
               "shield",
               "scout",
-              "artillery"
+              "outpost",
+              "extractor",
+              "fighter",
+              "energy-cell"
             ],
             "hand": [
-              "gravity-wave",
-              "refinery",
               "extractor",
               "outpost",
-              "outpost"
+              "outpost",
+              "gravity-wave",
+              "artillery"
             ],
             "discard": [
               "outpost",
@@ -10583,7 +10587,7 @@
           }
         ],
         "nextMarkerId": 10,
-        "rngSeed": 2015813146,
+        "rngSeed": 3087660895,
         "result": null,
         "log": [
           {
@@ -11066,6 +11070,13 @@
             "turn": 11,
             "round": 6,
             "playerId": "p0",
+            "kind": "draw",
+            "message": "2장 교체: 덱과 섞어 2장 새로 뽑음 (손패 5장, 덱 16장)"
+          },
+          {
+            "turn": 11,
+            "round": 6,
+            "playerId": "p0",
             "kind": "pass",
             "message": "철수 턴 종료"
           },
@@ -11138,29 +11149,29 @@
             },
             "energy": 20,
             "deck": [
+              "scout",
+              "artillery",
+              "refinery",
+              "turret",
+              "battleship",
+              "energy-cell",
+              "scout",
+              "fighter",
               "meteor",
               "extractor",
-              "artillery",
-              "scout",
-              "fighter",
-              "energy-cell",
-              "turret",
-              "energy-cell",
-              "scout",
-              "outpost",
-              "battleship",
-              "extractor",
-              "fighter",
               "shield",
               "scout",
-              "artillery"
+              "outpost",
+              "extractor",
+              "fighter",
+              "energy-cell"
             ],
             "hand": [
-              "gravity-wave",
-              "refinery",
               "extractor",
               "outpost",
-              "outpost"
+              "outpost",
+              "gravity-wave",
+              "artillery"
             ],
             "discard": [
               "outpost",
@@ -11312,7 +11323,7 @@
           }
         ],
         "nextMarkerId": 10,
-        "rngSeed": 2015813146,
+        "rngSeed": 3087660895,
         "result": {
           "reason": "last-survivor",
           "ranking": [
@@ -11810,6 +11821,13 @@
             "playerId": "p0",
             "kind": "draw",
             "message": "카드 1장 드로우 (손패 5장, 덱 16장)"
+          },
+          {
+            "turn": 11,
+            "round": 6,
+            "playerId": "p0",
+            "kind": "draw",
+            "message": "2장 교체: 덱과 섞어 2장 새로 뽑음 (손패 5장, 덱 16장)"
           },
           {
             "turn": 11,
