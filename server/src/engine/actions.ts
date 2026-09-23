@@ -2,7 +2,7 @@ import { cards, instanceName } from './cards';
 import { resolvePending } from './effects';
 import { marketCardName } from './effects';
 import { acceptInjuryRoll, acceptMatchRoll, advanceFriday, playTacticEffect, redrawTactic, rerollInjuryDie, rerollMatchDie, rollInjuryDie, rollMatchDie, submitLineup } from './friday';
-import { CONTRACT_LABEL, INFRA_LABEL, matchDieLabel } from './labels';
+import { CONTRACT_LABEL, INFRA_LABEL, SET_LABEL, executiveSource, matchDieLabel, staffSource, tagged } from './labels';
 import { acceptBoardRoll, rerollBoardDie, rollBoardDie } from './monday';
 import type { Rng } from './rng';
 import { chooseObjective, draftPick } from './setup';
@@ -129,9 +129,9 @@ function describe(before: GameState, after: GameState, pid: PlayerId, action: Ga
   };
   switch (action.type) {
     case 'draftPick':
-      return '임원 카드를 골랐다';
+      return tagged('준비', '임원 카드를 골랐다');
     case 'chooseObjective':
-      return '목표 카드를 골랐다';
+      return tagged('준비', '목표 카드를 골랐다');
     case 'resolvePending': {
       const pending = player.pending.find((p) => p.id === action.pendingId);
       const c = action.choice;
@@ -147,71 +147,70 @@ function describe(before: GameState, after: GameState, pid: PlayerId, action: Ga
       return `${pending?.source ?? '효과'} → ${label}`;
     }
     case 'playTacticEffect':
-      return action.cardId === null ? '전술 효과 카드 없이 진행' : null; // 카드를 썼으면 friday.ts 가 기록
+      return action.cardId === null ? tagged('전술', '효과 카드 없이 진행') : null; // 카드를 썼으면 friday.ts 가 기록
     case 'redrawTactic':
-      return '특성: 전술 카드 1장을 버리고 새로 뽑음';
+      return tagged('특성', '전술 카드 1장을 버리고 새로 뽑음');
     case 'rollBoardDie':
     case 'rerollBoardDie': {
       const roll = after.phase.kind === 'monday.board' ? after.phase.meetings[pid]?.roll : null;
-      return `${action.type === 'rerollBoardDie' ? '팬덤을 써서 다시 굴림' : '이사회 주사위'} → ${roll}`;
+      return tagged('이사회', `${action.type === 'rerollBoardDie' ? '팬덤을 써서 다시 굴림' : '주사위'} → ${roll}`);
     }
     case 'acceptBoardRoll':
       return null; // monday.ts 가 결정 내용을 기록
     case 'recruitPlayer': {
       const id = before.market[action.row ?? 'players'][action.marketIndex];
-      const kind = action.row === 'veterans' ? '베테랑 영입' : '영입';
-      return id ? `${kind}: ${cards.player(id).name}` : kind;
+      return tagged(action.row === 'veterans' ? '베테랑' : '주전', id ? `영입: ${cards.player(id).name}` : '영입');
     }
     case 'recruitProspect': {
       const id = before.decks.prospects[0];
-      return id ? `유망주 영입 (${cards.player(id).untrained.role === 'attack' ? '공격' : '수비'})` : '유망주 영입';
+      return tagged('유망주', id ? `영입 (${cards.player(id).untrained.role === 'attack' ? '공격' : '수비'})` : '영입');
     }
     case 'releasePlayer':
-      return `방출: ${playerName(action.instanceId)}`;
+      return tagged('선수', `방출: ${playerName(action.instanceId)}`);
     case 'hireStaff': {
       const id = before.market.staff[action.marketIndex];
-      return id ? `고용: ${cards.staff(id).name}` : '고용';
+      return id ? tagged(SET_LABEL[cards.staff(id).set], `고용: ${cards.staff(id).name}`) : tagged('직원', '고용');
     }
     case 'signSponsor': {
       const id = before.market.sponsors[action.marketIndex];
-      return `${CONTRACT_LABEL[action.contract]} 계약: ${id ? cards.sponsor(id).name : ''}`;
+      return tagged('스폰서', `${CONTRACT_LABEL[action.contract]} 계약: ${id ? cards.sponsor(id).name : ''}`);
     }
     case 'buildInfrastructure':
-      return `건설: ${INFRA_LABEL[action.infrastructure]}`;
+      return tagged('건설', INFRA_LABEL[action.infrastructure]);
     case 'buildOffice':
-      return `사무실 확장 → ${getPlayer(after, pid).office}단계`;
+      return tagged('건설', `사무실 확장 → ${getPlayer(after, pid).office}단계`);
     case 'cardAction': {
       const holder = action.source.kind === 'staff' ? player.staff[action.source.index] : player.executives[action.source.index];
-      const name = holder ? (action.source.kind === 'staff' ? cards.staff(holder.cardId).name : cards.executive(holder.cardId).name) : '카드';
+      const name = holder ? (action.source.kind === 'staff' ? staffSource(cards.staff(holder.cardId)) : executiveSource(cards.executive(holder.cardId))) : '카드';
       return `${name} 행동${action.paid ? ' (유급)' : ''}`;
     }
     case 'pass':
-      return '패스';
+      return tagged('차례', '패스');
     case 'endTurn':
       return null;
     case 'submitLineup': {
       const f = cards.tactic(action.submission.tacticCardId).formations[action.submission.formationIndex];
-      return `라인업 제출 (${f ? `${f.defenders}-${f.midfielders}-${f.forwards}` : ''}, 출전 ${action.submission.players.length}명)`;
+      return tagged('경기', `라인업 제출 (${f ? `${f.defenders}-${f.midfielders}-${f.forwards}` : ''}, 출전 ${action.submission.players.length}명)`);
     }
     case 'rollMatchDie':
     case 'rerollMatchDie': {
       const roll = after.phase.kind === 'friday.aftermath' ? after.phase.matches[pid]?.roll : null;
-      return `${action.type === 'rerollMatchDie' ? '팬덤을 써서 다시 굴림' : '경기 영향 주사위'} → ${roll}`;
+      return tagged('경기 영향', `${action.type === 'rerollMatchDie' ? '팬덤을 써서 다시 굴림' : '주사위'} → ${roll}`);
     }
     case 'acceptMatchRoll': {
       const m = before.phase.kind === 'friday.aftermath' ? before.phase.matches[pid] : undefined;
-      return m?.roll ? `경기 영향 적용: ${matchDieLabel(m.report.outcome, m.roll)}` : null;
+      return m?.roll ? tagged('경기 영향', `적용: ${matchDieLabel(m.report.outcome, m.roll)}`) : null;
     }
     case 'rollInjuryDie':
     case 'rerollInjuryDie': {
       const m = after.phase.kind === 'friday.aftermath' ? after.phase.matches[pid] : undefined;
       const die = m ? currentInjuryDie(m) : undefined;
-      return `${action.type === 'rerollInjuryDie' ? '팬덤을 써서 부상 주사위를 다시 굴림' : '12면체 부상 주사위'} → ${die?.roll ?? ''}`;
+      return tagged('부상', `${action.type === 'rerollInjuryDie' ? '팬덤을 써서 부상 주사위를 다시 굴림' : '12면체 부상 주사위'} → ${die?.roll ?? ''}`);
     }
     case 'acceptInjuryRoll':
       return null; // friday.ts 의 injure 가 결과를 기록
     case 'undoTurn':
-      return '차례를 처음으로 되돌림';
+      return tagged('차례', '처음으로 되돌림');
   }
 }
 

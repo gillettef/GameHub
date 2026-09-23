@@ -1,4 +1,4 @@
-import type { DieColor, Effect, InfrastructureType, Line, MatchCondition, PlayerToken, Region, Resource, Sector, SponsorContract, StaffSet } from './types';
+import type { BoardCard, DieColor, Effect, ExecutiveCard, InfrastructureType, Line, MatchCondition, PlayerCard, PlayerToken, Region, Resource, Sector, SponsorCard, SponsorContract, StaffCard, StaffSet, TacticCard } from './types';
 
 // 한국어 라벨. 엔진 기록과 클라이언트가 공유한다
 
@@ -56,6 +56,24 @@ export const INFRA_EFFECT: Record<InfrastructureType, string> = {
 };
 export const DAY_LABEL = { setup: '준비', mon: '월요일', tue: '화요일', wed: '수요일', thu: '목요일', fri: '금요일', weekend: '주말' } as const;
 export { matchDieLabel } from './matchDie';
+
+// 기록 문구의 분류 꼬리표 "[분류] …" (사용자 요청 2026-09-24: "[코치] 박승호 > 유망주", "[스폰서] 유니폼 계약: 골든 부츠"처럼 무엇에 관한 기록인지
+// 앞에 붙인다). 효과의 source 문자열(대기 효과 제목·기록의 "…: 대상이 하나뿐이라" 앞부분)도 같은 형식이라 카드 효과 기록에도 꼬리표가 남는다.
+// 직원은 세트 이름(코칭·의료·…)이 분류. 클라이언트 기록 패널은 splitLogTag 로 꼬리표를 떼어 따로 그린다.
+export function tagged(tag: string, text: string): string {
+  return `[${tag}] ${text}`;
+}
+export function splitLogTag(text: string): { tag: string | null; text: string } {
+  const m = /^\[([^\]]+)\]\s*/.exec(text);
+  return m ? { tag: m[1]!, text: text.slice(m[0].length) } : { tag: null, text };
+}
+export const staffSource = (card: Pick<StaffCard, 'name' | 'set'>): string => tagged(SET_LABEL[card.set], card.name);
+export const executiveSource = (card: Pick<ExecutiveCard, 'name'>): string => tagged('임원', card.name);
+export const sponsorSource = (card: Pick<SponsorCard, 'name'>): string => tagged('스폰서', card.name);
+export const tacticSource = (card: Pick<TacticCard, 'name'>): string => tagged('전술', card.name);
+export const playerSource = (card: Pick<PlayerCard, 'name'>): string => tagged('선수', card.name);
+export const boardSource = (card: Pick<BoardCard, 'name'>): string => tagged('이사회', card.name);
+export const infraSource = (name: string): string => tagged('건설', name);
 
 const sign = (n: number) => (n > 0 ? `+${n}` : `${n}`);
 

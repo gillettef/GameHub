@@ -1,7 +1,7 @@
 import { cards } from './cards';
 import { applyEffects } from './effects';
 import type { Rng } from './rng';
-import { COLOR_LABEL } from './labels';
+import { COLOR_LABEL, boardSource, tagged } from './labels';
 import { GameError, addLog, getPlayer, nextInTurn, requireTurn } from './state';
 import type { GameState, PlayerId, PlayerState } from './state';
 import { hasTrait } from './traits';
@@ -60,13 +60,13 @@ export function boardDecision(player: Pick<PlayerState, 'executives'>, face: num
 function rollUntilDecisive(state: GameState, player: PlayerState, rng: Rng): number {
   if (!hasDecisiveFace(player)) {
     const face = rng.die(6);
-    addLog(state, `임원 투표가 모든 눈에서 동수 → 첫 임원 ${cards.executive(player.executives[0]!.cardId).name}의 표를 따름`, { actor: player.id });
+    addLog(state, tagged('이사회', `임원 투표가 모든 눈에서 동수 → 첫 임원 ${cards.executive(player.executives[0]!.cardId).name}의 표를 따름`), { actor: player.id });
     return face;
   }
   for (;;) {
     const face = rng.die(6);
     if (winningColor(tallyVotes(player, face))) return face;
-    addLog(state, '이사회 투표 동수 → 무료 재굴림', { actor: player.id });
+    addLog(state, tagged('이사회', '투표 동수 → 무료 재굴림'), { actor: player.id });
   }
 }
 
@@ -87,7 +87,7 @@ export function rerollBoardDie(state: GameState, pid: PlayerId, rng: Rng): GameS
   // 특성(팬덤 없이 재굴림)은 주당 1회 (사용자 결정, 2026-09). 그 뒤로는 팬덤을 낸다
   if (hasTrait(player, 'freeBoardReroll') && !player.freeRerollUsed.board) {
     player.freeRerollUsed.board = true;
-    addLog(next, '특성: 팬덤 없이 이사회 주사위를 다시 굴림 (이번 주 무료 재굴림 사용)', { actor: pid });
+    addLog(next, tagged('특성', '팬덤 없이 이사회 주사위를 다시 굴림 (이번 주 무료 재굴림 사용)'), { actor: pid });
   } else {
     if (player.resources.fandom < 1) throw new GameError('not enough fandom');
     player.resources.fandom--;
@@ -103,8 +103,8 @@ export function acceptBoardRoll(state: GameState, pid: PlayerId): GameState {
   const player = getPlayer(next, pid);
   const color = boardDecision(player, m.roll);
   const card = cards.board(m.card);
-  addLog(next, `이사회 "${card.name}" → ${COLOR_LABEL[color]} 결정: ${card.decisions[color].text}`, { actor: pid });
-  applyEffects(next, pid, card.decisions[color].effects, `이사회:${card.name}`);
+  addLog(next, tagged('이사회', `"${card.name}" → ${COLOR_LABEL[color]} 결정: ${card.decisions[color].text}`), { actor: pid });
+  applyEffects(next, pid, card.decisions[color].effects, boardSource(card));
   next.decks.discards.board.push(m.card);
   m.decided = true;
 

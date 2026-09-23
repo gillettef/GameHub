@@ -102,7 +102,7 @@ describe('RoomManager', () => {
       expect([...seats].sort()).toEqual([...before].sort());
       expect(room.game!.firstPlayer).toBe(seats[0]);
       expect(room.players.map((p) => p.id)).toEqual(seats);
-      expect(room.game!.log.some((e) => e.text.startsWith('시작 순서를 무작위로 정함'))).toBe(true);
+      expect(room.game!.log.some((e) => e.text.startsWith('[준비] 시작 순서를 무작위로 정함'))).toBe(true);
       orders.add(seats.map((id) => before.indexOf(id)).join(''));
     }
     expect(orders.size).toBeGreaterThan(3); // 시드에 따라 순서가 달라진다

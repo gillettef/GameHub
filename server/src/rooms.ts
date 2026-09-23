@@ -1,6 +1,7 @@
 import { randomBytes, randomUUID } from 'node:crypto';
 import { applyAction } from './engine/actions';
 import type { GameAction } from './engine/actions';
+import { tagged } from './engine/labels';
 import { createRng } from './engine/rng';
 import type { Rng } from './engine/rng';
 import { createGame } from './engine/setup';
@@ -200,7 +201,7 @@ export class RoomManager {
       { id: room.code, division: room.division, players: room.players.map((p) => ({ id: p.id, name: p.name })) },
       room.rng,
     );
-    if (room.players.length > 1) addLog(room.game, `시작 순서를 무작위로 정함: ${room.players.map((p) => p.name).join(' → ')}`);
+    if (room.players.length > 1) addLog(room.game, tagged('준비', `시작 순서를 무작위로 정함: ${room.players.map((p) => p.name).join(' → ')}`));
     room.status = 'playing';
     room.updatedAt = Date.now();
     return room;

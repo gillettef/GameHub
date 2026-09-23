@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { PLAYER_CARDS } from '../data';
+import { cards } from './cards';
 import { addToRoster, applyEffects, moveTrack, resolvePending } from './effects';
+import { sponsorSource } from './labels';
 import { createRng } from './rng';
 import type { Rng } from './rng';
 import { createGame } from './setup';
@@ -149,7 +151,7 @@ describe('applyEffects', () => {
     expect(p.resources.money).toBe(2);
     // 있으면 카드를 버리고 장내 방송 효과(sp-25: 돈 +3)로 보상, 그 카드의 상시 효과도 사라진다
     p.sponsors.naming = 'sp-25';
-    p.passives.push({ passive: 'fandomOnWin', source: '왕관 호텔' });
+    p.passives.push({ passive: 'fandomOnWin', source: sponsorSource(cards.sponsor('sp-25')) }); // 상시 효과의 source = 꼬리표 붙은 카드 이름
     applyEffects(s, 'a', [{ type: 'breakNamingSponsor', otherwise: [] }], '이사회');
     expect(p.sponsors.naming).toBeUndefined();
     expect(s.decks.discards.sponsors).toContain('sp-25');

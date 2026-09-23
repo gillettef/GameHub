@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { cards, instanceName } from '@server/engine/cards';
 import type { LogEntry, PlayerId } from '@server/engine/state';
 import { LEAGUE_MAX } from '@server/engine/friday';
+import { splitLogTag } from '@server/engine/labels';
 import { leagueRankPoints } from '@server/engine/scoring';
 import { RESOURCES, TRACK_MAX } from '@server/engine/types';
 import { hireCost, marketMinIndex, prospectCost } from '@server/engine/traits';
@@ -352,13 +353,20 @@ export function ActionLog() {
         {[...groups].reverse().map((g) => (
           <section key={g.key} className="log-group">
             <h3>{g.day === 'setup' ? '준비' : `${g.week}주차 ${DAY_LABEL[g.day]}`}</h3>
-            {[...g.entries].reverse().map((e) => (
-              <div key={e.id} className="log-entry" style={e.actor ? ({ '--seat': seatColor(view, e.actor) } as React.CSSProperties) : undefined}>
-                {e.actor ? <span className="seat-dot" /> : <span className="seat-dot neutral" />}
-                <span className="log-actor">{e.actor ? view.players[e.actor]?.name : ''}</span>
-                <span className="log-text">{e.text}</span>
-              </div>
-            ))}
+            {[...g.entries].reverse().map((e) => {
+              // "[분류] 문구" — 분류 꼬리표(직원 세트·스폰서·경기·이사회 …)를 떼어 따로 그린다 (사용자 요청 2026-09-24)
+              const { tag, text } = splitLogTag(e.text);
+              return (
+                <div key={e.id} className="log-entry" style={e.actor ? ({ '--seat': seatColor(view, e.actor) } as React.CSSProperties) : undefined}>
+                  {e.actor ? <span className="seat-dot" /> : <span className="seat-dot neutral" />}
+                  <span className="log-actor">{e.actor ? view.players[e.actor]?.name : ''}</span>
+                  <span className="log-text">
+                    {tag && <span className="log-tag">[{tag}]</span>}
+                    {text}
+                  </span>
+                </div>
+              );
+            })}
           </section>
         ))}
         {view.log.length === 0 && <p className="muted small">아직 기록이 없습니다.</p>}

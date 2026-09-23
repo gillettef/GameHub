@@ -104,7 +104,7 @@ describe('한 판 전체 시뮬레이션', () => {
       expect(s.players[id]!.opponentDeck).toHaveLength(0);
       expect(Number.isFinite(s.phase.scores[id]!.total)).toBe(true);
     }
-    expect(s.log.filter((l) => /^경기 결과 \d+:\d+/.test(l.text))).toHaveLength(6 * 4);
+    expect(s.log.filter((l) => /^\[경기\] 결과 \d+:\d+/.test(l.text))).toHaveLength(6 * 4);
     expect(s.log.every((l) => l.week >= 1 && l.week <= 6 && l.id > 0)).toBe(true);
   });
 });
