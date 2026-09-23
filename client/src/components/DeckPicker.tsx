@@ -23,16 +23,23 @@ interface DeckPickerProps {
   disabled?: boolean;
   /** 기본 덱 22장 구성을 항상 펼쳐 보일지 (F016) */
   showBaseDeck?: boolean;
+  /** 종족 + 특수 카드 3장을 한 번에 무작위로 채운다. 없으면 "랜덤" 버튼을 숨긴다 */
+  onRandom?: () => void;
 }
 
 /** 종족 선택 → 그 종족 특수 카드 종류별 1장 선택 (F016) + 호버 상세 (F017) */
-export const DeckPicker = memo(function DeckPicker({ choice, onPick, disabled, showBaseDeck = true }: DeckPickerProps) {
+export const DeckPicker = memo(function DeckPicker({ choice, onPick, disabled, showBaseDeck = true, onRandom }: DeckPickerProps) {
   const race = choice.race as RaceId | undefined;
   return (
     <div className={styles.deck}>
       <div>
         <h3 className={styles.groupTitle}>
           종족 <span className={styles.groupSub}>1개 선택</span>
+          {onRandom && (
+            <button type="button" className={cx('pill', 'pill--outline', styles.randomButton)} disabled={disabled} onClick={onRandom}>
+              랜덤
+            </button>
+          )}
         </h3>
         <div className={styles.raceRow}>
           {RACES.map((r) => (
