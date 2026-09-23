@@ -148,6 +148,10 @@
   font-weight: 700;
 }
 
+.income {
+  color: var(--color-muted);
+}
+
 .score {
   font-weight: 600;
 }

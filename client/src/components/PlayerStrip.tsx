@@ -47,7 +47,7 @@ export const PlayerStrip = memo(function PlayerStrip({ onQuit }: PlayerStripProp
               role="listitem"
               className={cx(styles.card, r.isCurrent && styles.current, !r.alive && styles.dead)}
               style={{ '--seat-color': `var(--color-seat-${r.seat})` } as CSSProperties}
-              title={`${r.nickname} · 에너지 ${r.energy} · 점수 ${r.total}`}
+              title={`${r.nickname} · 에너지 ${r.energy} (턴당 +${r.income}) · 점수 ${r.total}`}
             >
               <span className={styles.avatar} aria-hidden="true">
                 {r.nickname.slice(0, 1)}
@@ -59,6 +59,7 @@ export const PlayerStrip = memo(function PlayerStrip({ onQuit }: PlayerStripProp
                 </div>
                 <div className={styles.statsRow}>
                   <span className={styles.energy}>{r.energy} 에너지</span>
+                  <span className={styles.income}>+{r.income}/턴</span>
                   <span className={styles.score}>{r.total}점</span>
                 </div>
               </div>
