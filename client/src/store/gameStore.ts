@@ -14,13 +14,16 @@ import { applyHotseatAction, createHotseatGame, type HotseatConfig } from '../ga
 import { api } from '../socket/client';
 
 export type Mode = 'hotseat' | 'online';
-export type TabId = 'board' | 'status' | 'progress' | 'help';
+export type TabId = 'board' | 'status' | 'progress' | 'cards' | 'help';
 export type Connection = 'idle' | 'connecting' | 'connected' | 'disconnected';
 
+/** 순서 = 하단 독 표시 순서. 대국 진행(보드·상태·진행) 다음에 참고 자료(카드·설명)를 둔다
+ * (2026-09-23 카드 탭 추가하며 재배치) */
 export const TABS: { id: TabId; label: string }[] = [
   { id: 'board', label: '보드' },
   { id: 'status', label: '상태' },
   { id: 'progress', label: '진행' },
+  { id: 'cards', label: '카드' },
   { id: 'help', label: '설명' },
 ];
 

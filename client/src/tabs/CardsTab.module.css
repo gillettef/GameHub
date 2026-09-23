@@ -1,0 +1,63 @@
+/* 카드 탭 (2026-09-23): 다른 탭과 같은 패널·스크롤 패턴(StatusTab.module.css 참고) */
+.root {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  overflow-y: auto;
+}
+
+/* CardFace 기본(좌석 없음) 배경이 --color-surface 라, 패널은 --color-canvas 로 대비를 준다
+   (SetupPage 의 "기본 덱 구성" 목록과 같은 명암 관계, Pickers.module.css 참고) */
+.panel {
+  flex: none;
+  padding: var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--color-canvas);
+}
+
+.title {
+  font-size: var(--text-nav);
+  margin-bottom: 4px;
+}
+
+.help {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-small);
+  color: var(--color-muted);
+}
+
+.group {
+  margin-top: var(--space-2);
+}
+
+.group + .group {
+  margin-top: var(--space-3);
+}
+
+.summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--color-heading);
+  margin-bottom: var(--space-2);
+}
+
+.cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+.cardWrap {
+  position: relative;
+}
+
+.copies {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  font-size: var(--text-small);
+  font-weight: 700;
+  color: var(--color-heading);
+}
