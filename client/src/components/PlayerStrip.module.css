@@ -52,10 +52,17 @@
   font-weight: 600;
 }
 
+/* 2026-09-24 사용자 지시: 3~4인일 때 2열 grid가 2행으로 접혀 PlayerStrip 높이가 늘어나고 그만큼
+   보드 영역이 줄어 손패 패널이 맵 하단을 가리던 문제 — 인원수와 무관하게 항상 한 줄로 유지하고,
+   카드 폭은 고정한 채 가로로 훑어보게 한다(Hand.module.css 와 같은 패턴) */
 .players {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  display: flex;
+  flex-direction: row;
   gap: 6px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* 좌석 색은 인라인 style 로 --seat-color 를 받는다(카드마다 다른 좌석) */
@@ -64,6 +71,9 @@
   display: flex;
   align-items: center;
   gap: 6px;
+  flex: none;
+  width: 208px;
+  scroll-snap-align: start;
   padding: 4px var(--space-1) 4px 5px;
   border-radius: var(--radius-md);
   background: color-mix(in srgb, var(--seat-color) 14%, var(--color-canvas));
@@ -71,9 +81,6 @@
   transition:
     background var(--motion-fast) var(--ease-standard),
     border-color var(--motion-fast) var(--ease-standard);
-  /* 그리드 아이템 기본 min-width:auto 가 내용(닉네임)만큼 넓어지려 해서 .players 가 화면 폭을
-     밀어내고 넘치는 걸 막는다(Hand.module.css 의 같은 문제 참고) */
-  min-width: 0;
 }
 
 .card.current {
