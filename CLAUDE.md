@@ -283,6 +283,7 @@ AstralTab/
 | 타입 검사 | `npx tsc --noEmit -p server` / `-p client` / `-p shared` |
 | 플레이어용 규칙 설명서 PDF 재생성 | `python scripts/build-rulebook.py` (reportlab 필요, `pip install reportlab`). Rules.md 를 바꾸면 이 스크립트의 값도 손으로 맞춰 다시 실행한다. 출력: `notes/Rule.pdf` |
 | 커밋 & 푸시 | `/commit-push` |
+| 테스트·운영 서버에 최신 코드 반영(주소 유지) | `powershell -File scripts/redeploy-keep-url.ps1 -Env test\|prod`. 클라이언트를 다시 빌드하고 Node 서버·Python AI 만 재기동한다 — cloudflared 터널은 건드리지 않아 `.dev/<env>-url.txt` 의 공개 주소가 바뀌지 않는다. 터널이 이미 떠 있어야 한다(먼저 `/test-server`·`/prod-server` 로 한 번 켠 상태) |
 
 ## 서브에이전트
 
