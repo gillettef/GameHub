@@ -12,11 +12,11 @@ interface BoardProps {
   onCellClick: (x: number, y: number) => void;
 }
 
-/** 보기 기본 반지름(s). 손가락으로 정확히 짚을 수 있는 크기 (2026-09-23 사용자 지시: 축소판을 없애고
- * 확대판만 기본으로 쓰면서 더 키웠다). 2026-09-24: 핀치 확대/축소로 이 값을 벗어날 수 있다 */
-const ZOOM_S = 34;
+/** 보기 기본 반지름(s). 2026-09-23 사용자 지시로 한 번 확대판을 기본으로 키웠으나, 2026-09-24
+ * 사용자 지시로 다시 최소(축소)값을 기본으로 되돌렸다. 핀치 확대/축소로 MIN_ZOOM_S~MAX_ZOOM_S 사이를 벗어날 수 있다 */
 const MIN_ZOOM_S = 20;
 const MAX_ZOOM_S = 56;
+const ZOOM_S = MIN_ZOOM_S;
 
 /** 두 터치 지점 사이 거리 (핀치 확대/축소 판정용) */
 function touchDistance(a: Touch, b: Touch): number {
@@ -44,8 +44,8 @@ function geometryFromS(size: number, s: number): Geometry {
 }
 
 /**
- * 육각 보드 (F008, odd-r 오프셋). 고정 크기 확대판만 쓴다(2026-09-23 사용자 지시: 축소판 폐기).
- * 부모 영역보다 커지면 스크롤해서 살펴본다. 셀은 절대 배치 + clip-path 육각형.
+ * 육각 보드 (F008, odd-r 오프셋). 기본 크기는 최소 줌(MIN_ZOOM_S, 2026-09-24 사용자 지시)이고
+ * 핀치로 확대할 수 있다. 부모 영역보다 커지면 스크롤해서 살펴본다. 셀은 절대 배치 + clip-path 육각형.
  */
 export const Board = memo(function Board({ size, cells, legal, viewerSeat, onCellClick }: BoardProps) {
   const viewportRef = useRef<HTMLDivElement>(null);
