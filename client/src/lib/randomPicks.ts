@@ -9,6 +9,16 @@ function pickOne<T>(items: T[]): T {
   return items[Math.floor(Math.random() * items.length)] as T;
 }
 
+/** 0..n-1 의 무작위 순열 (Fisher-Yates). 핫시트 턴 순서(좌석) 무작위 배정에 쓴다(2026-09-23 사용자 지시) */
+export function shuffleIndices(n: number): number[] {
+  const arr = Array.from({ length: n }, (_, i) => i);
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j] as number, arr[i] as number];
+  }
+  return arr;
+}
+
 export function randomMapId(candidates: MapDef[]): MapId {
   return pickOne(candidates).id;
 }
