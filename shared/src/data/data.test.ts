@@ -67,9 +67,9 @@ const COALITION_SPECIAL: Row[] = [
 // 크릴 군락
 const SWARM_BASE: Row[] = [
   ['larva-nest', 'building', 1, 1, 3, 0, 0, 1, 1, 3],
-  ['bio-spire', 'building', 3, 2, 5, 0, 0, 0, 3, 2],
+  ['bio-spire', 'building', 3, 2, 5, 0, 0, 0, 3, 3],
   ['spike-turret', 'building', 4, 1, 5, 3, 1, 0, 2, 2],
-  ['drone', 'unit', 1, 1, 2, 1, 1, 0, 1, 4],
+  ['drone', 'unit', 1, 1, 2, 1, 1, 0, 1, 3],
   ['stalker', 'unit', 2, 1, 3, 2, 1, 0, 1, 4],
   ['spitter', 'unit', 3, 1, 3, 2, 2, 0, 1, 2],
   ['brood-queen', 'unit', 5, 1, 6, 2, 1, 0, 2, 1],

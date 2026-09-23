@@ -279,6 +279,7 @@ AstralTab/
 | 테스트 (JS) | `npm test` (루트, 전 워크스페이스) |
 | 테스트 (Python) | `ai\.venv\Scripts\python -m pytest ai/tests` |
 | 공용 픽스처 재생성 | `npm run fixtures` (TS 엔진 출력 → `shared/fixtures/*.json`. 타입·데이터·엔진을 바꾸면 반드시 실행 후 pytest) |
+| 종족 밸런스 시뮬레이션 | `npx tsx shared/scripts/balance-sim.ts [판수]` (기본 100판). 휴리스틱 봇끼리 2인전을 자동으로 돌려 종족별 승률·평균 점수를 집계한다. 카드 수치를 바꾼 뒤 1차 스크리닝용, 최종 확정은 실제 플레이테스트로 |
 | 타입 검사 | `npx tsc --noEmit -p server` / `-p client` / `-p shared` |
 | 플레이어용 규칙 설명서 PDF 재생성 | `python scripts/build-rulebook.py` (reportlab 필요, `pip install reportlab`). Rules.md 를 바꾸면 이 스크립트의 값도 손으로 맞춰 다시 실행한다. 출력: `notes/Rule.pdf` |
 | 커밋 & 푸시 | `/commit-push` |
