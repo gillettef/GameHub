@@ -40,8 +40,7 @@ export const BoardTab = memo(function BoardTab() {
       {ownsTurn && (
         <div className={styles.handWrap}>
           <div className={styles.handHead}>
-            <span>손패 {hand.length}장</span>
-            <span className={styles.hint}>{selectedCardId ? '밝은 칸을 클릭해 배치' : '카드를 골라 배치 가능 칸 확인'}</span>
+            손패 {hand.length}장 · {selectedCardId ? '밝은 칸을 클릭해 배치' : '카드를 골라 배치 가능 칸 확인'}
           </div>
           <Hand cards={hand} selectedIndex={selectedHandIndex} interactive={isMyTurn} onSelect={selectHandCard} seat={viewerSeat} />
         </div>

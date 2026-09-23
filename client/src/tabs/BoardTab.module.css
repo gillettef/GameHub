@@ -14,15 +14,17 @@
   min-width: 0;
 }
 
+/* 손패는 보드 탭에서 보드 다음으로 비중 있는 영역이지만, 보드에 세로 공간을 더 주려고
+   2026-09-24 사용자 지시로 카드 크기(CardFace compact)와 이 래퍼의 여백을 함께 줄였다. */
 .handWrap {
   flex: none;
-  max-height: 34vh;
+  max-height: 26vh;
   min-height: 0;
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
-  padding: var(--space-1) var(--space-2) var(--space-1);
+  gap: 4px;
+  padding: 6px var(--space-1);
   border-radius: var(--radius-sm);
   /* 무대 배경의 성운 그라데이션이 위치마다 밝기가 달라 손패 힌트 대비가 흔들리지 않도록 충분히 불투명하게 */
   background: color-mix(in srgb, var(--color-surface) 80%, transparent);
@@ -30,16 +32,8 @@
 
 .handHead {
   flex: none;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  font-size: var(--text-small);
-  font-weight: 600;
-}
-
-.hint {
-  font-weight: 400;
   font-size: var(--text-micro);
+  font-weight: 600;
   color: var(--color-muted);
   overflow-wrap: anywhere;
 }

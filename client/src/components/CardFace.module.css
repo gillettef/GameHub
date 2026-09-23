@@ -17,6 +17,40 @@
   overflow: visible;
 }
 
+/* 보드 탭 손패 전용 축소 크기(2026-09-24): 종류 이름 줄이 빠지는 만큼 더 줄어든다 */
+.card.compact {
+  width: 112px;
+  height: 96px;
+  gap: 2px;
+  padding: 6px;
+}
+
+.card.compact .reason {
+  min-height: 1.1em;
+}
+
+/* 좁은 폭에서 이름이 두 줄로 줄바꿈되며 아래 스탯을 밀어내던 문제(2026-09-24) — 말줄임으로 바꾼다.
+   가로로 넉넉한 카드 탭·덱 빌딩(비압축)은 그대로 두 줄까지 보여준다 */
+.card.compact .name {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.nameText {
+  min-width: 0;
+}
+
+.card.compact .nameText {
+  display: inline-block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.card.compact .cost {
+  flex: none;
+}
+
 /* 소유자 좌석 색으로 카드 배경을 물들인다. 표면색과 섞어 텍스트 대비를 지킨다 */
 .card[data-seat='0'] {
   background: color-mix(in srgb, var(--color-seat-0) 30%, var(--color-surface));
@@ -63,6 +97,8 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-1);
+  /* 이름이 길면 줄바꿈 대신 말줄임(.name 참고)이 되도록 flex 아이템이 내용 폭 밑으로도 줄어들게 한다 */
+  min-width: 0;
 }
 
 /* 종류(건물·유닛·마법)는 이름 텍스트 색 + 이름 앞 모양 배지로 구분한다: 건물 Amber, 마법 Violet, 유닛은

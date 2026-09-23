@@ -7,8 +7,8 @@
   z-index: 3;
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: var(--space-1) var(--space-2);
+  gap: 4px;
+  padding: 6px var(--space-2);
   background: var(--color-surface);
 }
 
@@ -63,8 +63,8 @@
   position: relative;
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px var(--space-1) 6px 6px;
+  gap: 6px;
+  padding: 4px var(--space-1) 4px 5px;
   border-radius: var(--radius-md);
   background: color-mix(in srgb, var(--seat-color) 14%, var(--color-canvas));
   border: 1.5px solid color-mix(in srgb, var(--seat-color) 32%, transparent);
@@ -91,8 +91,8 @@
 
 .avatar {
   flex: none;
-  width: 26px;
-  height: 26px;
+  width: 22px;
+  height: 22px;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -136,11 +136,22 @@
   line-height: 1.5;
 }
 
+/* 2026-09-24: 좁은 카드에서 flex 아이템이 내용보다 줄어들면 안의 텍스트가 줄바꿈되던 문제
+   (예: "+1/턴" 이 "+1" / "턴" 두 줄로) — 아이콘 표기로 바꾸면서 각 항목을 한 줄로 고정한다 */
 .statsRow {
   display: flex;
-  gap: 6px;
+  flex-wrap: nowrap;
+  gap: 8px;
+  overflow: hidden;
   font-size: var(--text-micro);
   color: var(--color-muted);
+}
+
+.energy,
+.income,
+.score {
+  flex: none;
+  white-space: nowrap;
 }
 
 .energy {
