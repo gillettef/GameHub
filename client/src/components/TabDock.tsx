@@ -21,6 +21,12 @@ const ICONS: Record<TabId, ReactNode> = {
       <path d="M4 20V10M11 20V4M18 20v-7" strokeLinecap="round" />
     </svg>
   ),
+  cards: (
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+      <rect x="3" y="7" width="13" height="14" rx="2" transform="rotate(-8 9.5 14)" />
+      <rect x="8" y="3" width="13" height="14" rx="2" />
+    </svg>
+  ),
   help: (
     <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
       <circle cx="12" cy="12" r="9" />
