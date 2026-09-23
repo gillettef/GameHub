@@ -1,12 +1,11 @@
-/* 언제나 모바일 폭(전역 폭 제한, global.css)이라 위→아래 한 방향 구성만 쓴다:
-   [맵, 남는 공간을 모두 차지 — 손패는 그 위에 뜨는 서랍] → [패스/턴 종료·기권]
-   (2026-09-24 사용자 지시: 맵 세로 공간을 최대로) */
+/* 언제나 모바일 폭(전역 폭 제한, global.css)이라 위→아래 한 방향 구성만 쓴다: 맵이 탭을 거의
+   다 채우고, 손패·턴 컨트롤은 그 위에 뜨는 바닥 패널이다(2026-09-24 사용자 지시: 맵 세로 공간을
+   최대로 + 턴 컨트롤을 낮고 떠 있는 모양으로). */
 .root {
   height: 100%;
   min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
 }
 
 .boardArea {
@@ -17,51 +16,41 @@
   overflow: hidden;
 }
 
-/* 손패 서랍: 맵 위에 겹쳐 뜬다. 접으면 손잡이 줄만 남아 맵을 거의 다 볼 수 있다 */
-.handDrawer {
+/* 맵 위에 겹쳐 뜨는 바닥 패널: 손패(내 차례일 때만) + 턴 컨트롤(항상). 화면 가장자리에
+   여백을 둬 "떠 있는" 느낌을 주고, 두 요소는 세로로 쌓이되 각자 자기 모양(둥근 사각·알약)을 가진다 */
+.floatingBottom {
   position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  left: var(--space-1);
+  right: var(--space-1);
+  bottom: var(--space-1);
   z-index: 4;
   display: flex;
   flex-direction: column;
-  max-height: 42%;
-  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  align-items: stretch;
+  gap: 6px;
+}
+
+.handPanel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  max-height: 40vh;
+  border-radius: var(--radius-md);
   /* 무대 배경의 성운 그라데이션이 위치마다 밝기가 달라 손패 대비가 흔들리지 않도록 충분히 불투명하게 */
   background: color-mix(in srgb, var(--color-surface) 94%, transparent);
   -webkit-backdrop-filter: blur(6px);
   backdrop-filter: blur(6px);
 }
 
-.handHandle {
+.handLabel {
   flex: none;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-1);
-  height: 32px;
-  padding: 0 var(--space-2);
+  padding: 6px var(--space-2) 0;
   font-size: var(--text-micro);
   font-weight: 600;
   color: var(--color-muted);
-  overflow-wrap: anywhere;
-  text-align: left;
-}
-
-.handHandleText {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.chevron {
-  flex: none;
-  transition: transform var(--motion-fast) var(--ease-standard);
-}
-
-.chevronOpen {
-  transform: rotate(180deg);
 }
 
 .handBody {
@@ -69,5 +58,5 @@
   flex-direction: column;
   flex: 1;
   min-height: 0;
-  padding: 0 var(--space-1) 6px;
+  padding: 4px var(--space-1) 6px;
 }
