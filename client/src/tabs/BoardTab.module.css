@@ -1,5 +1,6 @@
 /* 언제나 모바일 폭(전역 폭 제한, global.css)이라 위→아래 한 방향 구성만 쓴다:
-   [내 턴이면 손패, 가로 스크롤] → [맵, 남는 공간을 모두 차지] → [패스/턴 종료·기권] */
+   [맵, 남는 공간을 모두 차지 — 손패는 그 위에 뜨는 서랍] → [패스/턴 종료·기권]
+   (2026-09-24 사용자 지시: 맵 세로 공간을 최대로) */
 .root {
   height: 100%;
   min-height: 0;
@@ -9,31 +10,64 @@
 }
 
 .boardArea {
+  position: relative;
   flex: 1;
   min-height: 0;
   min-width: 0;
+  overflow: hidden;
 }
 
-/* 손패는 보드 탭에서 보드 다음으로 비중 있는 영역이지만, 보드에 세로 공간을 더 주려고
-   2026-09-24 사용자 지시로 카드 크기(CardFace compact)와 이 래퍼의 여백을 함께 줄였다. */
-.handWrap {
-  flex: none;
-  max-height: 26vh;
-  min-height: 0;
-  min-width: 0;
+/* 손패 서랍: 맵 위에 겹쳐 뜬다. 접으면 손잡이 줄만 남아 맵을 거의 다 볼 수 있다 */
+.handDrawer {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 4;
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: 6px var(--space-1);
-  border-radius: var(--radius-sm);
-  /* 무대 배경의 성운 그라데이션이 위치마다 밝기가 달라 손패 힌트 대비가 흔들리지 않도록 충분히 불투명하게 */
-  background: color-mix(in srgb, var(--color-surface) 80%, transparent);
+  max-height: 42%;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  /* 무대 배경의 성운 그라데이션이 위치마다 밝기가 달라 손패 대비가 흔들리지 않도록 충분히 불투명하게 */
+  background: color-mix(in srgb, var(--color-surface) 94%, transparent);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
 }
 
-.handHead {
+.handHandle {
   flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-1);
+  height: 32px;
+  padding: 0 var(--space-2);
   font-size: var(--text-micro);
   font-weight: 600;
   color: var(--color-muted);
   overflow-wrap: anywhere;
+  text-align: left;
+}
+
+.handHandleText {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chevron {
+  flex: none;
+  transition: transform var(--motion-fast) var(--ease-standard);
+}
+
+.chevronOpen {
+  transform: rotate(180deg);
+}
+
+.handBody {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  padding: 0 var(--space-1) 6px;
 }

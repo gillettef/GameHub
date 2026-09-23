@@ -41,6 +41,34 @@ body {
   background: var(--color-canvas);
 }
 
+/* 스크롤바 디자인 (2026-09-24 사용자 지시): 브라우저 기본 굵은 스크롤바 대신 톤에 맞춘 얇은
+   스크롤바를 쓴다. 보드 확대판 패닝, 상태·진행·카드·설명 탭, 손패 가로 스크롤 전부에 적용된다. */
+:root {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--color-muted) 55%, transparent) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: color-mix(in srgb, var(--color-muted) 55%, transparent);
+  border-radius: var(--radius-full);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background-color: color-mix(in srgb, var(--color-muted) 80%, transparent);
+  background-clip: padding-box;
+}
+
 h1,
 h2,
 h3 {
