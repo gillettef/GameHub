@@ -4,6 +4,7 @@ import { PlayerStrip } from '../components/PlayerStrip';
 import { TabDock } from '../components/TabDock';
 import { selectState, selectTab, selectViewerId, useGameStore, type TabId } from '../store/gameStore';
 import { BoardTab } from '../tabs/BoardTab';
+import { HelpTab } from '../tabs/HelpTab';
 import { ProgressTab } from '../tabs/ProgressTab';
 import { StatusTab } from '../tabs/StatusTab';
 import { ResultOverlay } from './ResultOverlay';
@@ -66,6 +67,9 @@ export function GamePage({ onQuit }: GamePageProps) {
         </TabPanel>
         <TabPanel id="progress" active={tab}>
           <ProgressTab />
+        </TabPanel>
+        <TabPanel id="help" active={tab}>
+          <HelpTab />
         </TabPanel>
       </main>
 

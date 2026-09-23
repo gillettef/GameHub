@@ -21,6 +21,13 @@ const ICONS: Record<TabId, ReactNode> = {
       <path d="M4 20V10M11 20V4M18 20v-7" strokeLinecap="round" />
     </svg>
   ),
+  help: (
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+      <circle cx="12" cy="12" r="9" />
+      <path d="M9.3 9.3a2.7 2.7 0 1 1 3.9 2.4c-.9.5-1.2 1-1.2 1.9" strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx="12" cy="17" r="0.9" fill="currentColor" stroke="none" />
+    </svg>
+  ),
 };
 
 /**
