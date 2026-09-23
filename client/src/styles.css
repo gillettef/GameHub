@@ -617,6 +617,7 @@ select { appearance: none; -webkit-appearance: none; padding-right: 34px; backgr
 .log-entry .seat-dot { width: 7px; height: 7px; margin-right: 2px; }
 .log-actor { font-weight: 600; color: var(--seat, var(--ink)); }
 .log-text { color: var(--ink-2); word-break: keep-all; }
+.log-tag { font-weight: 700; color: var(--ink); margin-right: 4px; white-space: nowrap; } /* "[코칭]" 같은 분류 꼬리표 */
 
 /* 경기장 (경기 준비) */
 .pitch { display: grid; grid-template-columns: 1fr 2fr 1fr; grid-template-rows: repeat(3, auto); gap: 6px; background: var(--grass); border-radius: var(--radius-md); padding: 8px; margin: 8px 0; }
@@ -1308,6 +1309,8 @@ th .crest, .crest-title .crest, .score-name .crest { vertical-align: middle; mar
 /* 보드에서 고르는 주중 행동 (사용자 요청 2026-09): 사이드바 메뉴는 이동만, 선택은 보드에서 → 확정 막대 */
 .card-slot { display: flex; flex-direction: column; gap: 6px; flex: none; width: var(--card-w); scroll-snap-align: center; }
 .card-slot .card-actions { width: 100%; }
+/* 진행 영역의 카드 행동 버튼으로 이동해 온 카드: 잠깐 초록 테두리 (ui.tsx showCard). 번짐 없는 링이라 그림자 아님 */
+.card-slot.focus-flash { box-shadow: 0 0 0 3px var(--pitch); border-radius: var(--radius-md); }
 .build-tile { margin-bottom: 12px; border-color: var(--pitch); }
 .build-options { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 6px; }
 .mobile-ui .build-options { grid-template-columns: minmax(0, 1fr); }

@@ -1,5 +1,6 @@
 import { cards } from './cards';
 import { applyEffects } from './effects';
+import { tagged } from './labels';
 import { cycleMarket } from './market';
 import { startMonday } from './monday';
 import type { Rng } from './rng';
@@ -10,7 +11,7 @@ import type { GameState, PlayerState } from './state';
 
 const PRINTED_INFRASTRUCTURE = 4; // p.9: 관중석 2 + 광고판 2
 const UPKEEP_SUSPENSION = 2;
-export const UPKEEP_SOURCE = '유지비 미납'; // 대기 효과(pending)의 source. 이 선택이 남아 있으면 다른 액션을 막는다 (actions.ts)
+export const UPKEEP_SOURCE = tagged('유지비', '미납'); // 대기 효과(pending)의 source. 이 선택이 남아 있으면 다른 액션을 막는다 (actions.ts)
 export const WEEKS = 6;
 
 // p.27: 선수/직원/기반 시설 보유 수에 따른 주말 유지비 (카드 효과 할인 반영)
@@ -35,7 +36,7 @@ function payUpkeep(state: GameState, player: PlayerState, rng: Rng): void {
   player.resources.money -= paid;
   const shortfall = due - paid;
   const per = upkeepSuspensionPer(player);
-  addLog(state, shortfall > 0 ? `유지비 ${due} 중 ${paid}만 지불 → 직원 출장정지 ${shortfall * per}개` : `유지비 ${due} 지불`, { actor: player.id, day: 'weekend' });
+  addLog(state, tagged('유지비', shortfall > 0 ? `${due} 중 ${paid}만 지불 → 직원 출장정지 ${shortfall * per}개` : `${due} 지불`), { actor: player.id, day: 'weekend' });
   for (let i = 0; i < shortfall; i++) applyEffects(state, player.id, [{ type: 'addStaffSuspension', count: per, unsuspendedFirst: true }], UPKEEP_SOURCE, {}, rng);
 }
 
@@ -74,7 +75,7 @@ export function runWeekend(state: GameState, rng: Rng): void {
   if (prospect) state.decks.discards.prospects.push(prospect);
 
   state.firstPlayer = leftOf(state, state.firstPlayer);
-  addLog(state, `${state.week}주차 종료. 다음 선 참가자: ${getPlayer(state, state.firstPlayer).name}`, { day: 'weekend' });
+  addLog(state, tagged('주말', `${state.week}주차 종료. 다음 선 참가자: ${getPlayer(state, state.firstPlayer).name}`), { day: 'weekend' });
   state.week++;
   startMonday(state);
 }

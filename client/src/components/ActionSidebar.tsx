@@ -108,7 +108,7 @@ export function CardActionButtons({ me, kind, index }: { me: PlayerPublicView; k
 export function WeekdayActions({ me }: { me: PlayerPublicView }) {
   const { view, act } = useView();
   const { chosen, select } = useCommit();
-  const { showBoard, showMarket, releasing, setReleasing } = useUi();
+  const { showBoard, showCard, showMarket, releasing, setReleasing } = useUi();
   if (view.phase.kind !== 'weekday') return null;
   const { day, current, basicDone, paidDone, canUndo, restriction } = view.phase;
   const myTurn = current === me.id;
@@ -121,9 +121,9 @@ export function WeekdayActions({ me }: { me: PlayerPublicView }) {
     setReleasing(next);
     if (next) showBoard('match', me.id);
   };
-  // 카드 행동 버튼: 구단 보드로 이동만 시킨다 — 기본/유급은 그 카드 아래에서 고른다
+  // 카드 행동 버튼: 구단 보드의 그 카드로 이동만 시킨다 — 기본/유급은 그 카드 아래에서 고른다. key 는 구단 보드 card-slot 의 data-focus 와 같다
   const cardNav = (key: string, name: string, text: string, cost: Parameters<typeof CostChips>[0]['cost'], usable: boolean) => (
-    <button key={key} className="action-item" disabled={!usable} onClick={() => showBoard('club', me.id)} title={`구단 보드의 ${name} 카드 아래에서 행동(기본/유급)을 고릅니다 — ${text}`}>
+    <button key={key} className="action-item" disabled={!usable} onClick={() => showCard(key, me.id)} title={`구단 보드의 ${name} 카드 아래에서 행동(기본/유급)을 고릅니다 — ${text}`}>
       <span>{name}…</span>
       <CostChips cost={cost} />
     </button>
@@ -194,11 +194,11 @@ export function WeekdayActions({ me }: { me: PlayerPublicView }) {
       <div className="action-list">
         {me.staff.map((s, index) => {
           const card = cards.staff(s.cardId);
-          return card.action ? cardNav(`s${index}`, card.name, card.action.text, card.action.cost, myTurn && !s.exhausted && s.suspension === 0 && (!basicDone || canPay)) : null;
+          return card.action ? cardNav(`staff:${index}`, card.name, card.action.text, card.action.cost, myTurn && !s.exhausted && s.suspension === 0 && (!basicDone || canPay)) : null;
         })}
         {me.executives.map((e, index) => {
           const card = cards.executive(e.cardId);
-          return card.action ? cardNav(`e${index}`, card.name, card.action.text, card.action.cost, myTurn && !e.exhausted && (!basicDone || canPay)) : null;
+          return card.action ? cardNav(`executive:${index}`, card.name, card.action.text, card.action.cost, myTurn && !e.exhausted && (!basicDone || canPay)) : null;
         })}
         {!me.staff.some((s) => cards.staff(s.cardId).action) && !me.executives.some((e) => cards.executive(e.cardId).action) && <span className="muted small">행동이 있는 카드가 없습니다</span>}
       </div>

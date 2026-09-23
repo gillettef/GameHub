@@ -1,6 +1,7 @@
 import { cards } from './cards';
 import { addToRoster, applyEffects, releaseFromRoster } from './effects';
 import { startFriday } from './friday';
+import { executiveSource, infraSource, sponsorSource, staffSource, tagged } from './labels';
 import { takeFromMarket } from './market';
 import type { Rng } from './rng';
 import { GameError, WEEKDAYS, addLog, getPlayer, leftOf } from './state';
@@ -21,8 +22,8 @@ export function restrictionFor(player: Pick<PlayerState, 'restrictions'>, week: 
 function beginTurn(state: GameState, day: Weekday, pid: PlayerId): void {
   const mode = restrictionFor(getPlayer(state, pid), state.week, day);
   state.phase = { kind: 'weekday', day, current: pid, basicDone: mode === 'noBasic', paidDone: false };
-  if (mode === 'noBasic') addLog(state, '점검용 토큰: 오늘은 기본 행동을 할 수 없음', { actor: pid });
-  else if (mode === 'cardActionOnly') addLog(state, '점검용 토큰: 오늘은 카드 행동만 할 수 있음', { actor: pid });
+  if (mode === 'noBasic') addLog(state, tagged('점검용 토큰', '오늘은 기본 행동을 할 수 없음'), { actor: pid });
+  else if (mode === 'cardActionOnly') addLog(state, tagged('점검용 토큰', '오늘은 카드 행동만 할 수 있음'), { actor: pid });
 }
 
 export function startWeekday(state: GameState): void {
@@ -102,7 +103,7 @@ export function hireStaff(state: GameState, pid: PlayerId, marketIndex: number, 
   pay(player, { money: hireCost(player, card.cost) });
   takeFromMarket(next, 'staff', marketIndex, rng);
   player.staff.push({ cardId, exhausted: false, suspension: 0 });
-  if (card.bonus) applyEffects(next, pid, card.bonus, card.name, {}, rng);
+  if (card.bonus) applyEffects(next, pid, card.bonus, staffSource(card), {}, rng);
   turn.basicDone = true;
   return next;
 }
@@ -130,7 +131,7 @@ export function signSponsor(
   switch (contract) {
     case 'kit':
       takeFromMarket(next, 'sponsors', marketIndex, rng, marketMinIndex(player, 'sponsors'));
-      applyEffects(next, pid, card.kit, card.name, {}, rng);
+      applyEffects(next, pid, card.kit, sponsorSource(card), {}, rng);
       next.decks.discards.sponsors.push(cardId);
       player.kitSponsors++;
       break;
@@ -138,13 +139,13 @@ export function signSponsor(
       if (player.sponsors.billboards.length >= billboardLimit(player)) throw new GameError('billboard slots full');
       takeFromMarket(next, 'sponsors', marketIndex, rng, marketMinIndex(player, 'sponsors'));
       player.sponsors.billboards.push(cardId);
-      applyEffects(next, pid, billboardChoice === 'bonus' ? card.extraBonus : card.billboard, card.name, {}, rng);
+      applyEffects(next, pid, billboardChoice === 'bonus' ? card.extraBonus : card.billboard, sponsorSource(card), {}, rng);
       break;
     case 'naming':
       if (player.sponsors.naming) throw new GameError('naming sponsor already signed');
       takeFromMarket(next, 'sponsors', marketIndex, rng, marketMinIndex(player, 'sponsors'));
       player.sponsors.naming = cardId;
-      applyEffects(next, pid, [...card.naming, ...card.extraBonus], card.name, {}, rng);
+      applyEffects(next, pid, [...card.naming, ...card.extraBonus], sponsorSource(card), {}, rng);
       break;
   }
   const fandomBonus = traitSum(player, 'fandomOnSponsor'); // 특성: 스폰서 계약 시 팬덤
@@ -165,7 +166,7 @@ export function buildInfrastructure(state: GameState, pid: PlayerId, type: Infra
   if (def.requires && !player.infrastructure.includes(def.requires)) throw new GameError(`${type} requires ${def.requires}`);
   pay(player, { money: infraCost(player) });
   player.infrastructure.push(type);
-  applyEffects(next, pid, def.bonus, def.name);
+  applyEffects(next, pid, def.bonus, infraSource(def.name));
   turn.basicDone = true;
   return next;
 }
@@ -202,14 +203,14 @@ export function cardAction(state: GameState, pid: PlayerId, source: CardActionSo
     const card = cards.staff(staff.cardId);
     holder = staff;
     action = card.action;
-    name = card.name;
+    name = staffSource(card);
   } else {
     const exec = player.executives[source.index];
     if (!exec) throw new GameError('no such card');
     const card = cards.executive(exec.cardId);
     holder = exec;
     action = card.action;
-    name = card.name;
+    name = executiveSource(card);
   }
   if (holder.exhausted) throw new GameError('card already used this week');
   if (!action) throw new GameError('card has no action');
@@ -236,7 +237,7 @@ export function pass(state: GameState, pid: PlayerId): GameState {
 export function endTurn(state: GameState, pid: PlayerId): GameState {
   const next = structuredClone(state);
   const turn = turnOf(next, pid);
-  if (!turn.basicDone) addLog(next, '기본 행동 없이 차례를 마침 (패스)', { actor: pid });
+  if (!turn.basicDone) addLog(next, tagged('차례', '기본 행동 없이 차례를 마침 (패스)'), { actor: pid });
   const nextPlayer = leftOf(next, pid);
   if (nextPlayer !== next.firstPlayer) {
     beginTurn(next, turn.day, nextPlayer);

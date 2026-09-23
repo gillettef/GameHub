@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import type { PlayerId } from '@server/engine/state';
+import { useDevice } from './device';
 import { useView } from './store';
 
 function reducedMotion(): boolean {
@@ -27,6 +28,7 @@ interface UiStore {
   sharedTab: SharedTab;
   setSharedTab: (t: SharedTab) => void;
   showBoard: (t: BoardTab, pid?: PlayerId) => void; // 개인 보드의 특정 탭으로 이동
+  showCard: (key: string, pid?: PlayerId) => void; // 구단 보드의 그 직원·임원 카드(`data-focus` 키, 'staff:2'/'executive:0')로 이동해 화면을 그 카드에 맞춘다
   showShared: (t: SharedTab) => void; // 공용 보드의 특정 탭으로 이동
   marketTab: MarketTab; // 이적 시장 안의 선수/직원/스폰서 탭
   setMarketTab: (t: MarketTab) => void;
@@ -109,6 +111,18 @@ export function UiProvider({ children }: { children: ReactNode }) {
     setBoardTab(t);
     setMobileTab('board');
   }, []);
+  // 카드 행동 버튼(진행 영역) → 구단 보드의 그 카드로 (사용자 요청 2026-09-24: 전에는 구단 보드 맨 위로만 갔다).
+  // 이동할 카드는 ref 에 두고 navTick 으로 아래 스크롤 효과를 깨운다 — 이미 구단 보드를 보고 있어 탭 상태가 안 바뀌어도 스크롤되게
+  const focusRef = useRef<string | null>(null);
+  const [navTick, setNavTick] = useState(0);
+  const showCard = useCallback((key: string, pid?: PlayerId) => {
+    focusRef.current = key;
+    if (pid) setSelected(pid);
+    setMainTab('personal');
+    setBoardTab('club');
+    setMobileTab('board');
+    setNavTick((n) => n + 1);
+  }, []);
   const showShared = useCallback((t: SharedTab) => {
     setMainTab('shared');
     setSharedTab(t);
@@ -124,8 +138,10 @@ export function UiProvider({ children }: { children: ReactNode }) {
   // 내 차례가 오면 진행 화면이 먼저 보이게 (사용자 요청 2026-09-22): 다른 참가자의 보드·시장을 보고 있었을 수 있으므로
   // 모바일은 '진행' 탭으로, PC 는 그 단계의 기본 탭으로 되돌린다
   const me = session?.playerId;
+  const turnBased = 'current' in view.phase;
   const myTurn = 'current' in view.phase && view.phase.current === me;
   const prevMyTurn = useRef(myTurn);
+  const { mobile } = useDevice();
   useEffect(() => {
     if (myTurn && !prevMyTurn.current) {
       const d = defaults(view.phase.kind);
@@ -133,23 +149,39 @@ export function UiProvider({ children }: { children: ReactNode }) {
       setBoardTab(d.board);
       setSharedTab(d.shared);
       setMobileTab('play');
+    } else if (!myTurn && prevMyTurn.current && turnBased && mobile) {
+      // 내 차례가 끝나 다른 참가자 차례가 되면 모바일은 '기록·채팅' 탭의 기록으로 (사용자 요청 2026-09-24): '진행' 탭은 남의 차례엔 비어 있고,
+      // 다른 참가자가 무엇을 하는지는 기록으로 본다 (행동 따라가기 기능은 없앴다). PC 는 오른쪽 기록이 늘 보이므로 그대로
+      setMobileTab('log');
+      setSideTab('log');
     }
     prevMyTurn.current = myTurn;
-  }, [myTurn, view.phase.kind]);
+  }, [myTurn, turnBased, mobile, view.phase.kind]);
 
-  // 메뉴·탭을 누르면(또는 단계가 바뀌어 탭이 재설정되면) 항상 화면 맨 위로 (사용자 요청 2026-09-22). 페이지는 window 가 스크롤한다(헤더·사이드바는 sticky)
+  // 메뉴·탭을 누르면(또는 단계가 바뀌어 탭이 재설정되면) 항상 화면 맨 위로 (사용자 요청 2026-09-22). 페이지는 window 가 스크롤한다(헤더·사이드바는 sticky).
+  // showCard 로 왔으면 맨 위 대신 그 카드(`data-focus`)가 보이게 맞추고 잠깐 초록 테두리로 표시한다
   const firstNav = useRef(true);
   useEffect(() => {
     if (firstNav.current) {
       firstNav.current = false;
       return;
     }
-    window.scrollTo({ top: 0, behavior: reducedMotion() ? 'auto' : 'smooth' });
-  }, [selected, mainTab, boardTab, sharedTab, marketTab, mobileTab]);
+    const behavior = reducedMotion() ? 'auto' : 'smooth';
+    const key = focusRef.current;
+    focusRef.current = null;
+    const target = key ? document.querySelector<HTMLElement>(`[data-focus="${key}"]`) : null;
+    if (target) {
+      target.scrollIntoView({ block: 'center', inline: 'center', behavior });
+      target.classList.add('focus-flash');
+      const timer = setTimeout(() => target.classList.remove('focus-flash'), 1600);
+      return () => clearTimeout(timer);
+    }
+    window.scrollTo({ top: 0, behavior });
+  }, [selected, mainTab, boardTab, sharedTab, marketTab, mobileTab, navTick]);
 
   const value = useMemo<UiStore>(
-    () => ({ selected, selectPlayer, mainTab, setMainTab, boardTab, setBoardTab, sharedTab, setSharedTab, showBoard, showShared, marketTab, setMarketTab, showMarket, mobileTab, setMobileTab, releasing, setReleasing, settledRoll, setSettledRoll, resultSeen, setResultSeen, matchWatched, setMatchWatched, sideTab, setSideTab, chatSeen, setChatSeen }),
-    [selected, selectPlayer, mainTab, boardTab, sharedTab, showBoard, showShared, marketTab, showMarket, mobileTab, releasing, settledRoll, resultSeen, matchWatched, sideTab, chatSeen],
+    () => ({ selected, selectPlayer, mainTab, setMainTab, boardTab, setBoardTab, sharedTab, setSharedTab, showBoard, showCard, showShared, marketTab, setMarketTab, showMarket, mobileTab, setMobileTab, releasing, setReleasing, settledRoll, setSettledRoll, resultSeen, setResultSeen, matchWatched, setMatchWatched, sideTab, setSideTab, chatSeen, setChatSeen }),
+    [selected, selectPlayer, mainTab, boardTab, sharedTab, showBoard, showCard, showShared, marketTab, showMarket, mobileTab, releasing, settledRoll, resultSeen, matchWatched, sideTab, chatSeen],
   );
   return <UiContext.Provider value={value}>{children}</UiContext.Provider>;
 }

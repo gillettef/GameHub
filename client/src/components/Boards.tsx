@@ -90,7 +90,7 @@ function ClubBoard({ p }: { p: PlayerPublicView }) {
         ) : (
           <div className="cards">
             {p.staff.map((s, i) => (
-              <div key={`${s.cardId}-${i}`} className="card-slot">
+              <div key={`${s.cardId}-${i}`} className="card-slot" data-focus={`staff:${i}`}>
                 <StaffCardView cardId={s.cardId} exhausted={s.exhausted} suspension={s.suspension} />
                 <CardActionButtons me={p} kind="staff" index={i} />
               </div>
@@ -106,7 +106,7 @@ function ClubBoard({ p }: { p: PlayerPublicView }) {
         ) : (
           <div className="cards">
             {p.executives.map((e, i) => (
-              <div key={`${e.cardId}-${i}`} className="card-slot">
+              <div key={`${e.cardId}-${i}`} className="card-slot" data-focus={`executive:${i}`}>
                 <ExecutiveCardView cardId={e.cardId} exhausted={e.exhausted} />
                 <CardActionButtons me={p} kind="executive" index={i} />
               </div>

@@ -35,7 +35,7 @@ describe('경기 준비 제출 (p.20)', () => {
         expect(Object.keys(m.placements).sort()).toEqual(p.uniforms.filter((u) => u.location === 'field').map((u) => u.id).sort());
         const labels = m.report.scorers.map((t) => tokenLabel(p, m.played, t));
         for (const l of labels) expect(l).toMatch(/\(\d+번\)$|\(번호 없음\)$|^유니폼 /);
-        const logged = s.log.some((e) => e.actor === id && e.text === `득점: ${labels.join(' · ')}`);
+        const logged = s.log.some((e) => e.actor === id && e.text === `[경기] 득점: ${labels.join(' · ')}`);
         expect(logged).toBe(labels.length > 0);
       }
     }
@@ -356,7 +356,7 @@ describe('경기 진행: 전술 효과 카드 (p.21 8, p.28)', () => {
     const none = toMatch([sole.instanceId, ...others]);
     expect(none.players['a']!.pending).toEqual([]);
     expect(none.players['a']!.roster.every((r) => r.tokens.strengthTemp === 0)).toBe(true);
-    expect(none.log.some((e) => e.actor === 'a' && e.text.startsWith('역습:') && e.text.includes('효과 없음'))).toBe(true);
+    expect(none.log.some((e) => e.actor === 'a' && e.text.startsWith('[전술] 역습:') && e.text.includes('효과 없음'))).toBe(true);
 
     const one = toMatch(others);
     expect(one.players['a']!.pending).toEqual([]);

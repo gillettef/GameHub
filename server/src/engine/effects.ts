@@ -1,5 +1,6 @@
 import { activeSide, cards, effectiveSkill, instanceName } from './cards';
 import { discardFromMarket } from './market';
+import { sponsorSource, tagged } from './labels';
 import type { Rng } from './rng';
 import { GameError, addLog, emptyTokens, getPlayer } from './state';
 import type { GameState, MatchMods, PendingEffect, PendingTarget, PlayerId, PlayerInstance, PlayerState } from './state';
@@ -153,7 +154,7 @@ function applyTargeted(state: GameState, player: PlayerState, effect: Effect, ch
     case 'releasePlayer': {
       const inst = findInstance(player, choice);
       const money = releaseFromRoster(state, player, inst);
-      addLog(state, `방출: ${instanceName(inst)} (+${money}돈)`, { actor: player.id });
+      addLog(state, tagged('선수', `방출: ${instanceName(inst)} (+${money}돈)`), { actor: player.id });
       return;
     }
     case 'addStaffSuspension': {
@@ -164,7 +165,7 @@ function applyTargeted(state: GameState, player: PlayerState, effect: Effect, ch
     }
     case 'discardMarketCard': {
       const dropped = discardFromMarket(state, effect.row, Number(choice), rng);
-      addLog(state, `이적 시장 카드 버림: ${marketCardName(effect.row, dropped)}`, { actor: player.id });
+      addLog(state, tagged('이적 시장', `카드 버림: ${marketCardName(effect.row, dropped)}`), { actor: player.id });
       return;
     }
     case 'flipUnmatchedToken': {
@@ -328,9 +329,9 @@ export function applyEffects(state: GameState, pid: PlayerId, effects: readonly 
         const card = cards.sponsor(naming);
         delete player.sponsors.naming;
         state.decks.discards.sponsors.push(naming);
-        player.passives = player.passives.filter((p) => p.source !== card.name);
+        player.passives = player.passives.filter((p) => p.source !== sponsorSource(card));
         addLog(state, `${source}: 유니폼 스폰서 ${card.name} 계약 파기 → 장내 방송 효과로 보상`, { actor: pid });
-        applyEffects(state, pid, card.kit, card.name, ctx, rng);
+        applyEffects(state, pid, card.kit, sponsorSource(card), ctx, rng);
         break;
       }
       case 'passive':

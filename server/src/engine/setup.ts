@@ -1,6 +1,7 @@
 import { EXECUTIVE_CARDS, OBJECTIVE_CARDS, OPPONENT_CARDS, PLAYER_CARDS, SPONSOR_CARDS, STAFF_CARDS, TACTIC_CARDS, BOARD_CARDS } from '../data';
 import { cards } from './cards';
 import { addToRoster, applyEffects, moveTrack } from './effects';
+import { executiveSource } from './labels';
 import { startMonday } from './monday';
 import { GameError, getPlayer, leftOf } from './state';
 import type { GameState, PlayerId, PlayerState } from './state';
@@ -187,7 +188,7 @@ function revealExecutives(state: GameState): void {
       for (const [track, delta] of Object.entries(card.trackAdjust)) {
         moveTrack(player, track as keyof typeof card.trackAdjust, delta);
       }
-      if (card.bonus) applyEffects(state, id, card.bonus, card.name);
+      if (card.bonus) applyEffects(state, id, card.bonus, executiveSource(card));
     }
   }
   state.phase = {

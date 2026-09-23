@@ -3,6 +3,7 @@ import { applyEffects, moveTrack, trainPlayer } from './effects';
 import type { EffectContext, MatchContext } from './effects';
 import { regionIssues, regionSector, resolveMatch } from './match';
 import type { MatchReport, Slot, TeamSide } from './match';
+import { playerSource, tacticSource, tagged } from './labels';
 import { matchDieResult } from './matchDie';
 import type { Rng } from './rng';
 import { GameError, addLog, currentInjuryDie, emptyMods, getPlayer, nextInTurn, requireTurn } from './state';
@@ -196,8 +197,8 @@ export function playTacticEffect(state: GameState, pid: PlayerId, cardId: string
     if (cardId === sub.tacticCardId) throw new GameError('formation card cannot be used for its effect');
     const card = cards.tactic(cardId);
     if (!card.effect) throw new GameError('card has no effect');
-    addLog(next, `전술 효과: ${card.name}`, { actor: pid });
-    applyEffects(next, pid, card.effect.effects, card.name, { mods: next.phase.preMatch[pid]!, played: sub.players, match: preMatchContext(player, sub) }, rng);
+    addLog(next, tagged('전술', `효과 사용: ${card.name}`), { actor: pid });
+    applyEffects(next, pid, card.effect.effects, tacticSource(card), { mods: next.phase.preMatch[pid]!, played: sub.players, match: preMatchContext(player, sub) }, rng);
   }
   next.phase.effectCard[pid] = cardId;
   next.phase.decided[pid] = true;
@@ -215,7 +216,7 @@ function applyTimedEffects(state: GameState, pid: PlayerId, played: PlayerInstan
   for (const inst of played) {
     const effect = activeSide(inst).effect;
     if (!effect || effect.timing !== timing || !activated(inst, effect)) continue;
-    applyEffects(state, pid, effect.effects, cards.player(inst.cardId).name, { ...ctx, inst }, rng);
+    applyEffects(state, pid, effect.effects, playerSource(cards.player(inst.cardId)), { ...ctx, inst }, rng);
     inst.exhausted = true;
   }
 }
@@ -292,8 +293,8 @@ function resolveAllMatches(state: GameState, rng: Rng): void {
       theirGoals: mods.theirs,
       outcome: mods.mine > mods.theirs ? 'win' : mods.mine < mods.theirs ? 'loss' : 'draw',
     };
-    addLog(state, `경기 결과 ${report.myGoals}:${report.theirGoals} vs ${opponent.teamName} (${{ win: '승리', draw: '무승부', loss: '패배' }[report.outcome]})`, { actor: pid });
-    if (report.scorers.length > 0) addLog(state, `득점: ${report.scorers.map((id) => tokenLabel(player, sub.players, id)).join(' · ')}`, { actor: pid });
+    addLog(state, tagged('경기', `결과 ${report.myGoals}:${report.theirGoals} vs ${opponent.teamName} (${{ win: '승리', draw: '무승부', loss: '패배' }[report.outcome]})`), { actor: pid });
+    if (report.scorers.length > 0) addLog(state, tagged('경기', `득점: ${report.scorers.map((id) => tokenLabel(player, sub.players, id)).join(' · ')}`), { actor: pid });
 
     player.matchHistory.push({ week: state.week, outcome: report.outcome, myGoals: report.myGoals, theirGoals: report.theirGoals });
     moveLeague(state, pid, opponent.teamId, report.outcome);
@@ -303,7 +304,7 @@ function resolveAllMatches(state: GameState, rng: Rng): void {
     const fandomOnWin = player.passives.filter((p) => p.passive === 'fandomOnWin').length;
     if (report.outcome === 'win' && fandomOnWin > 0) {
       player.resources.fandom += fandomOnWin;
-      addLog(state, `승리 보너스: 팬덤 +${fandomOnWin}`, { actor: pid });
+      addLog(state, tagged('경기', `승리 보너스: 팬덤 +${fandomOnWin}`), { actor: pid });
     }
 
     // p.24 4: 관중석 팬덤 → 돈, 출전 선수의 자원·일시적 토큰 제거
@@ -355,11 +356,11 @@ function resolveAllMatches(state: GameState, rng: Rng): void {
     const teamName = cards.teamName(opp.teamId);
     if (n >= 2) {
       opp.active = false;
-      addLog(state, `${rivals.map((id) => getPlayer(state, id).name).join('·')}이(가) 같은 상대 ${teamName}와(과) 경기 → ${teamName} 마커를 비활성 면으로 뒤집음 (p.24: 다음에 아무도 상대하지 않는 주에는 주사위 이동 대신 활성 면으로 돌아옴)`);
+      addLog(state, tagged('리그', `${rivals.map((id) => getPlayer(state, id).name).join('·')}이(가) 같은 상대 ${teamName}와(과) 경기 → ${teamName} 마커를 비활성 면으로 뒤집음 (p.24: 다음에 아무도 상대하지 않는 주에는 주사위 이동 대신 활성 면으로 돌아옴)`));
     } else if (n === 0) {
       if (!opp.active) {
         opp.active = true;
-        addLog(state, `${teamName}: 비활성이라 이번 주는 이동하지 않고 활성 면으로 돌아옴`);
+        addLog(state, tagged('리그', `${teamName}: 비활성이라 이번 주는 이동하지 않고 활성 면으로 돌아옴`));
       } else opp.position = Math.min(LEAGUE_MAX, opp.position + OPPONENT_DIE[rng.int(6)]!);
     }
   }
@@ -393,7 +394,7 @@ export function rerollMatchDie(state: GameState, pid: PlayerId, rng: Rng): GameS
   // 특성(팬덤 없이 재굴림)은 주당 1회 (사용자 결정, 2026-09). 그 뒤로는 팬덤을 낸다
   if (hasTrait(player, 'freeMatchReroll') && !player.freeRerollUsed.match) {
     player.freeRerollUsed.match = true;
-    addLog(next, '특성: 팬덤 없이 경기 영향 주사위를 다시 굴림 (이번 주 무료 재굴림 사용)', { actor: pid });
+    addLog(next, tagged('특성', '팬덤 없이 경기 영향 주사위를 다시 굴림 (이번 주 무료 재굴림 사용)'), { actor: pid });
   } else {
     if (player.resources.fandom < 1) throw new GameError('not enough fandom');
     player.resources.fandom--;
@@ -435,7 +436,7 @@ function injure(state: GameState, player: PlayerState, played: PlayerInstance[],
     return n !== undefined && (face === 12 ? n >= 12 : n === face);
   });
   const who = face === 12 ? '등번호 12 이상' : `등번호 ${face}번`;
-  addLog(state, `부상 주사위(12면체) ${face}: ${hit.length ? `${who} ${hit.map((h) => instanceName(h)).join(', ')} → 부상 ${count}개` : `${who} 출전 선수가 없어 아무 일도 없음`}`, { actor: player.id });
+  addLog(state, tagged('부상', `12면체 주사위 ${face}: ${hit.length ? `${who} ${hit.map((h) => instanceName(h)).join(', ')} → 부상 ${count}개` : `${who} 출전 선수가 없어 아무 일도 없음`}`), { actor: player.id });
   if (hit.length > 0) player.matchDieInjured = true; // 목표 카드 '무사고 시즌' 판정용
   chooseAmong(player, hit, { type: 'addPlayerToken', token: 'injury', count }, '부상', (inst) => (inst.tokens.injury += count));
 }
