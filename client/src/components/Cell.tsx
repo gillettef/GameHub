@@ -1,6 +1,7 @@
 import { memo, useRef, useState, type CSSProperties } from 'react';
 import type { CellView } from '../game/derived';
 import { kindLabel } from '../game/derived';
+import { CardArt } from '../game/cardArt';
 import styles from './Board.module.css';
 
 /** 툴팁 대략 높이(px). 위쪽 여유가 이보다 적으면 아래로 뒤집는다 */
@@ -62,7 +63,7 @@ export const Cell = memo(function Cell({ cell, legal, onClick, style }: CellProp
       {m && (
         <>
           <div className={styles.marker} data-kind={m.kind} data-seat={m.seat}>
-            <span className={styles.label}>{m.name.slice(0, 2)}</span>
+            <CardArt cardId={m.specId} className={styles.art} />
             <span className={styles.hp}>{m.hp}</span>
             <span className={styles.seatBadge}>{m.seat + 1}</span>
           </div>
