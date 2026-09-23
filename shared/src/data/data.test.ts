@@ -234,29 +234,30 @@ interface MapRow {
 
 const p = (x: number, y: number): Position => ({ x, y });
 
-// 좌표는 scripts/hexmap 계산 결과 (odd-r 오프셋). 좌석별 공정성은 아래 '좌석 공정성' describe 가 검증한다.
+// 좌표는 scripts/hexmap 계산 결과 (odd-r 오프셋, 2026-09-23 10x10 재설계). 좌석별 공정성은
+// 아래 '좌석 공정성' describe 가 검증한다.
 const MAP_TABLE: MapRow[] = [
-  { id: 'binary-star', players: 2, size: 11, roundLimit: 20, cores: [p(3, 2), p(8, 8)], veins: [p(5, 5), p(1, 4), p(6, 10)], asteroids: [] },
+  { id: 'binary-star', players: 2, size: 10, roundLimit: 20, cores: [p(3, 2), p(7, 7)], veins: [p(1, 1), p(6, 3), p(6, 8)], asteroids: [] },
   {
-    id: 'asteroid-belt', players: 2, size: 13, roundLimit: 20, cores: [p(1, 6), p(11, 6)],
-    veins: [p(1, 3), p(11, 3), p(0, 9), p(10, 9)],
-    asteroids: [p(6, 0), p(6, 12), p(6, 1), p(5, 11), p(7, 2), p(5, 10), p(6, 3), p(5, 9), p(6, 4), p(6, 8)],
+    id: 'asteroid-belt', players: 2, size: 10, roundLimit: 20, cores: [p(1, 4), p(8, 5)],
+    veins: [p(1, 2), p(8, 7), p(2, 6), p(7, 3)],
+    asteroids: [p(4, 0), p(4, 1), p(4, 2), p(4, 3), p(5, 6), p(5, 7), p(5, 8), p(5, 9)],
   },
-  { id: 'triangle-nebula', players: 3, size: 13, roundLimit: 18, cores: [p(4, 2), p(10, 6), p(4, 10)], veins: [p(1, 2), p(7, 6), p(1, 10), p(6, 6)], asteroids: [] },
+  { id: 'triangle-nebula', players: 3, size: 10, roundLimit: 18, cores: [p(1, 3), p(7, 1), p(6, 8)], veins: [p(3, 5), p(5, 2), p(6, 5)], asteroids: [] },
   {
-    id: 'interstellar-route', players: 3, size: 15, roundLimit: 18, cores: [p(5, 2), p(12, 7), p(5, 12)],
-    veins: [p(2, 3), p(10, 8), p(2, 13)],
-    asteroids: [p(7, 6), p(6, 5), p(6, 4), p(8, 7), p(9, 7), p(10, 7), p(7, 8), p(6, 9), p(6, 10)],
-  },
-  {
-    id: 'quadrant', players: 4, size: 15, roundLimit: 16, cores: [p(4, 3), p(10, 3), p(4, 11), p(10, 11)],
-    veins: [p(7, 2), p(13, 2), p(7, 10), p(13, 10), p(7, 7)],
-    asteroids: [p(7, 6), p(8, 6), p(6, 7), p(8, 7), p(7, 8), p(8, 8)],
+    id: 'interstellar-route', players: 3, size: 10, roundLimit: 18, cores: [p(2, 3), p(7, 2), p(5, 7)],
+    veins: [p(3, 5), p(5, 2), p(6, 5)],
+    asteroids: [p(6, 4), p(7, 4), p(8, 4), p(4, 5), p(4, 6), p(3, 7), p(4, 3), p(4, 2), p(3, 1)],
   },
   {
-    id: 'event-horizon', players: 4, size: 15, roundLimit: 16, cores: [p(4, 2), p(11, 2), p(4, 12), p(11, 12)],
-    veins: [p(1, 3), p(8, 3), p(1, 13), p(8, 13)],
-    asteroids: [p(7, 6), p(8, 6), p(6, 7), p(7, 7), p(8, 7), p(7, 8), p(8, 8)],
+    id: 'quadrant', players: 4, size: 10, roundLimit: 16, cores: [p(4, 1), p(8, 4), p(5, 8), p(1, 5)],
+    veins: [p(2, 0), p(9, 1), p(0, 8), p(7, 9)],
+    asteroids: [p(4, 4), p(5, 4), p(4, 5), p(5, 5)],
+  },
+  {
+    id: 'event-horizon', players: 4, size: 10, roundLimit: 16, cores: [p(6, 1), p(8, 4), p(3, 8), p(1, 5)],
+    veins: [p(0, 0), p(9, 1), p(0, 8), p(9, 9)],
+    asteroids: [p(4, 3), p(4, 4), p(5, 4), p(4, 5), p(5, 5), p(5, 6)],
   },
 ];
 

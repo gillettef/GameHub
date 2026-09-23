@@ -55,19 +55,19 @@ function marker(ownerId: PlayerId, specId: CardId, pos: Position, hp?: number): 
   return { id: `f${seq++}`, specId, kind: spec.kind, ownerId, pos, hp: hp ?? spec.hp, remainingTurns: null };
 }
 
-// 좌표는 odd-r 오프셋 육각 거리 기준. p0 코어 (3,2), ai-1 코어 (8,8) (binary-star).
+// 좌표는 odd-r 오프셋 육각 거리 기준. p0 코어 (3,2), ai-1 코어 (7,7) (binary-star, 2026-09-23 10x10 재설계).
 // 코어 시야 1(작다)이라 초반부터 전초기지·포격함으로 시야를 밀고 나가야 중앙에서 맞붙는다.
 let initial = firstTurn;
 initial = withHand(initial, 'p0', ['outpost', 'artillery', 'meteor', 'extractor', 'stealth'], 14);
 initial = withHand(initial, 'ai-1', ['scout', 'fighter', 'shield', 'warp-gate', 'repair-drone'], 12);
 initial = withMarkers(initial, [
   ...initial.markers,
-  marker('ai-1', 'extractor', { x: 6, y: 10 }, 2), // 광맥, 체력 2
+  marker('ai-1', 'extractor', { x: 6, y: 8 }, 2), // 광맥, 체력 2
   marker('ai-1', 'scout', { x: 6, y: 6 }), // 중앙 전진 배치
   // 과부하(오토마타) TS·Python 교차 검증: 두 제작 노드가 서로 반경 1 안이라 매 턴 수입에
-  // 이웃 보너스가 붙는다. 액션이 쓰는 칸과 겹치지 않는 구석(1,1)/(1,2)에 둔다.
-  marker('p0', 'fab-node', { x: 1, y: 1 }),
-  marker('p0', 'fab-node', { x: 1, y: 2 }),
+  // 이웃 보너스가 붙는다. 액션이 쓰는 칸과 겹치지 않는 구석(0,0)/(0,1)에 둔다.
+  marker('p0', 'fab-node', { x: 0, y: 0 }),
+  marker('p0', 'fab-node', { x: 0, y: 1 }),
 ]);
 
 // 한 턴에 배치는 한 번만 할 수 있다(2026-09-23, Rules.md 5.2). 배치는 턴을 자동으로 끝내지
@@ -86,9 +86,9 @@ const actions: Action[] = [
   { type: 'PASS', playerId: 'ai-1' }, // 배치 후 턴 종료
   { type: 'PLACE', playerId: 'p0', cardId: 'meteor', pos: { x: 5, y: 5 } }, // 즉발 피해: 반경1 안의 적 마커 전부 동시 파괴
   { type: 'PASS', playerId: 'p0' }, // 배치 후 턴 종료
-  { type: 'PLACE', playerId: 'ai-1', cardId: 'repair-drone', pos: { x: 7, y: 7 } },
+  { type: 'PLACE', playerId: 'ai-1', cardId: 'repair-drone', pos: { x: 7, y: 6 } },
   { type: 'PASS', playerId: 'ai-1' }, // 배치 후 턴 종료
-  { type: 'PLACE', playerId: 'p0', cardId: 'stealth', pos: { x: 8, y: 7 } }, // 침투: 적 코어(8,8) 인접
+  { type: 'PLACE', playerId: 'p0', cardId: 'stealth', pos: { x: 8, y: 7 } }, // 침투: 적 코어(7,7) 인접
   { type: 'PASS', playerId: 'p0' }, // 배치 후 턴 종료
   { type: 'PASS', playerId: 'ai-1' }, // 진짜 패스
   { type: 'PLACE', playerId: 'p0', cardId: 'extractor', pos: { x: 3, y: 3 } }, // 패스 연속 리셋
