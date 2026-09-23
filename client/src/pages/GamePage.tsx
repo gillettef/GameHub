@@ -1,9 +1,8 @@
 import { useEffect } from 'react';
-import { getMap, nameOf } from '@astraltab/shared';
 import { HandoffOverlay } from '../components/HandoffOverlay';
 import { PlayerStrip } from '../components/PlayerStrip';
-import { cx } from '../lib/cx';
-import { TABS, selectState, selectTab, selectViewerId, useGameStore, type TabId } from '../store/gameStore';
+import { TabDock } from '../components/TabDock';
+import { selectState, selectTab, selectViewerId, useGameStore, type TabId } from '../store/gameStore';
 import { BoardTab } from '../tabs/BoardTab';
 import { ProgressTab } from '../tabs/ProgressTab';
 import { StatusTab } from '../tabs/StatusTab';
@@ -26,7 +25,6 @@ export function GamePage({ onQuit }: GamePageProps) {
   const room = useGameStore((s) => s.room);
   const connection = useGameStore((s) => s.connection);
   const tab = useGameStore(selectTab);
-  const setTab = useGameStore((s) => s.setTab);
   const notice = useGameStore((s) => s.notice);
   const clearNotice = useGameStore((s) => s.clearNotice);
   const resultDismissed = useGameStore((s) => s.resultDismissed);
@@ -40,60 +38,13 @@ export function GamePage({ onQuit }: GamePageProps) {
   }, [notice, clearNotice]);
 
   if (!state || !viewerId) return null;
-  const map = getMap(state.mapId);
-  const me = state.players.find((p) => p.id === viewerId);
-  const current = state.currentPlayerId ? nameOf(state, state.currentPlayerId) : null;
   const showResult = state.phase === 'finished' && !resultDismissed;
   const offline = mode === 'online' && connection !== 'connected';
   const absent = mode === 'online' && room ? state.players.filter((p) => p.kind === 'human' && !room.connected.includes(p.id)) : [];
 
   return (
     <div className={styles.root} data-world="game">
-      <header className={styles.header}>
-        <div className={styles.brand}>
-          <h1 className={styles.logo}>AstralTab</h1>
-          <span className={styles.map}>
-            {map.name} · {map.size}×{map.size}
-            {mode === 'online' && room ? ` · 방 ${room.roomId}` : ' · 핫시트'}
-          </span>
-        </div>
-        <div className={styles.turnInfo}>
-          <span className={styles.round}>
-            라운드 {state.round}
-            <span className={styles.limit}> / {state.roundLimit}</span>
-          </span>
-          <span className={styles.turn}>{state.turn}턴</span>
-          <span className={styles.who}>
-            {state.phase === 'finished' ? '게임 종료' : state.currentPlayerId === viewerId ? '내 차례' : `${current}의 차례`}
-          </span>
-          {me && (
-            <span className={styles.energy} title="내 에너지">
-              에너지 {me.energy}
-            </span>
-          )}
-        </div>
-        <nav className={styles.tabs} role="tablist" aria-label="게임 탭">
-          {TABS.map((t) => (
-            <button
-              key={t.id}
-              id={`tab-${t.id}`}
-              type="button"
-              role="tab"
-              aria-selected={tab === t.id}
-              aria-controls={`panel-${t.id}`}
-              className={cx(styles.tab, tab === t.id && styles.tabActive)}
-              onClick={() => setTab(t.id)}
-            >
-              {t.label}
-            </button>
-          ))}
-          <button type="button" className={styles.quit} onClick={onQuit}>
-            나가기
-          </button>
-        </nav>
-      </header>
-
-      <PlayerStrip />
+      <PlayerStrip onQuit={onQuit} />
 
       {offline && (
         <div className={styles.banner} role="alert">
@@ -117,6 +68,8 @@ export function GamePage({ onQuit }: GamePageProps) {
           <ProgressTab />
         </TabPanel>
       </main>
+
+      <TabDock />
 
       {notice && (
         <div className={styles.notice} role="status">

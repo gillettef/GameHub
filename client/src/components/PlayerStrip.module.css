@@ -1,73 +1,146 @@
-/* 화면 상단 상태 창: 헤더 바로 아래, 항상 보인다. sticky 는 지금은 no-op(GamePage.module.css .header 주석 참고)
-   이지만 나중에 이 레벨에서 스크롤이 생겨도 계속 화면 위에 붙어 있도록 방어적으로 남겨 둔다 */
+/* 화면 유일한 상단 요소 (2026-09-23): 라운드·턴 메타 줄 + 좌석 색 플레이어 카드.
+   sticky 는 지금은 no-op(GamePage .root·body 가 overflow:hidden) 이지만 나중에 이 레벨에서
+   스크롤이 생겨도 계속 화면 위에 붙어 있도록 방어적으로 남겨 둔다 */
 .root {
   position: sticky;
   top: 0;
   z-index: 3;
   display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-1);
-  padding: 6px var(--space-2);
+  flex-direction: column;
+  gap: 6px;
+  padding: var(--space-1) var(--space-2);
   background: var(--color-surface);
 }
 
-.chip {
+.meta {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  font-size: var(--text-small);
+}
+
+.round {
+  font-weight: 700;
+  color: var(--color-heading);
+}
+
+.limit {
+  font-weight: 400;
+  color: var(--color-muted);
+}
+
+.turnNum {
+  color: var(--color-muted);
+}
+
+.whoTurn {
+  font-weight: 600;
+  color: var(--color-accent);
+  overflow-wrap: anywhere;
+}
+
+.quit {
+  margin-left: auto;
+  /* 모바일 우선 터치 영역 기준(44px)에 맞춘다 — 메타 줄 자체가 이 높이로 늘어나 자리를 잡는다 */
+  height: 36px;
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-full);
+  border: 1px solid var(--color-muted);
+  color: var(--color-muted);
+  font-size: var(--text-micro);
+  font-weight: 600;
+}
+
+.players {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px;
+}
+
+/* 좌석 색은 인라인 style 로 --seat-color 를 받는다(카드마다 다른 좌석) */
+.card {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 3px var(--space-1);
-  border-radius: var(--radius-full);
-  background: color-mix(in srgb, var(--color-surface) 80%, transparent);
-  font-size: var(--text-micro);
-  line-height: 1.4;
-  white-space: nowrap;
+  gap: 8px;
+  padding: 6px var(--space-1) 6px 6px;
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--seat-color) 14%, var(--color-canvas));
+  border: 1.5px solid color-mix(in srgb, var(--seat-color) 32%, transparent);
+  transition:
+    background var(--motion-fast) var(--ease-standard),
+    border-color var(--motion-fast) var(--ease-standard);
+  /* 그리드 아이템 기본 min-width:auto 가 내용(닉네임)만큼 넓어지려 해서 .players 가 화면 폭을
+     밀어내고 넘치는 걸 막는다(Hand.module.css 의 같은 문제 참고) */
+  min-width: 0;
 }
 
-.chip.me {
-  border: 1px solid var(--color-outline);
+.card.current {
+  background: color-mix(in srgb, var(--seat-color) 30%, var(--color-canvas));
+  border-color: var(--seat-color);
 }
 
-.chip.current {
-  background: var(--color-accent);
-  color: var(--color-accent-text);
-}
-
-.chip.dead {
+.card.dead {
   opacity: 0.5;
 }
 
-.chip.dead .name {
+.card.dead .name {
   text-decoration: line-through;
 }
 
-.badge {
-  width: 10px;
-  height: 10px;
+.avatar {
+  flex: none;
+  width: 26px;
+  height: 26px;
   border-radius: 50%;
-  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--seat-color);
+  color: var(--color-navy);
+  font-weight: 700;
+  font-size: var(--text-small);
 }
 
-.badge[data-seat='0'] {
-  background: var(--color-seat-0);
+.info {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
 }
 
-.badge[data-seat='1'] {
-  background: var(--color-seat-1);
-}
-
-.badge[data-seat='2'] {
-  background: var(--color-seat-2);
-}
-
-.badge[data-seat='3'] {
-  background: var(--color-seat-3);
+.nameRow {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
 }
 
 .name {
-  font-weight: 600;
-  max-width: 96px;
+  font-weight: 700;
+  color: var(--color-heading);
+  font-size: var(--text-small);
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.meTag {
+  flex: none;
+  padding: 0 4px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--color-outline);
+  font-size: var(--text-micro);
+  line-height: 1.5;
+}
+
+.statsRow {
+  display: flex;
+  gap: 6px;
+  font-size: var(--text-micro);
+  color: var(--color-muted);
 }
 
 .energy {
@@ -75,24 +148,28 @@
   font-weight: 700;
 }
 
-.chip.current .energy {
-  color: inherit;
-}
-
 .score {
-  color: var(--color-muted);
-}
-
-.chip.current .score {
-  color: inherit;
-  opacity: 0.85;
-}
-
-.state {
   font-weight: 600;
-  color: var(--color-muted);
 }
 
-.chip.current .state {
-  color: inherit;
+.stateBadge {
+  flex: none;
+  align-self: flex-start;
+  padding: 2px 6px;
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--color-muted) 25%, transparent);
+  color: var(--color-muted);
+  font-size: var(--text-micro);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.stateBadgeCurrent {
+  background: var(--seat-color);
+  color: var(--color-navy);
+}
+
+.stateBadgeDead {
+  background: transparent;
+  border: 1px solid var(--color-muted);
 }
