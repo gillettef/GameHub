@@ -46,8 +46,8 @@ import type { Action, CardId, GameState, Marker, PlayerId, Position } from '../t
 
 const CHOICES = [
   DEFAULT_DECK_CHOICE,
-  { buildingId: 'observatory', unitId: 'stealth', magicId: 'warp-gate' },
-  { buildingId: 'fortress', unitId: 'repair-drone', magicId: 'energy-storm' },
+  { race: 'coalition' as const, buildingId: 'observatory', unitId: 'stealth', magicId: 'warp-gate' },
+  { race: 'coalition' as const, buildingId: 'fortress', unitId: 'repair-drone', magicId: 'energy-storm' },
   DEFAULT_DECK_CHOICE,
 ];
 
@@ -142,8 +142,32 @@ describe('로비 · 덱 선택 · 시작 (F016, F018, F019)', () => {
   it('덱 선택은 종류별 특수 카드 하나씩, 덱을 고르기 전엔 준비 불가', () => {
     const s = lobby(2);
     expect(fail(s, { type: 'READY', playerId: 'p0' })).toContain('특수 카드');
-    expect(fail(s, { type: 'SELECT_DECK', playerId: 'p0', choice: { buildingId: 'extractor', unitId: 'stealth', magicId: 'warp-gate' } })).toContain('특수 카드');
+    expect(fail(s, { type: 'SELECT_DECK', playerId: 'p0', choice: { race: 'coalition', buildingId: 'extractor', unitId: 'stealth', magicId: 'warp-gate' } })).toContain('특수 카드');
     expect(fail(s, { type: 'SELECT_DECK', playerId: 'zzz', choice: DEFAULT_DECK_CHOICE })).toBeDefined();
+  });
+
+  it('종족이 다른 두 플레이어가 한 대국에서 각자 자기 종족 카드로만 덱이 채워진다(교차 오염 없음)', () => {
+    let s = lobby(2);
+    s = ok(s, {
+      type: 'SELECT_DECK',
+      playerId: 'p0',
+      choice: { race: 'swarm', buildingId: 'hive-fortress', unitId: 'alpha-brood', magicId: 'plague-burst' },
+    });
+    s = ok(s, {
+      type: 'SELECT_DECK',
+      playerId: 'p1',
+      choice: { race: 'automata', buildingId: 'citadel', unitId: 'titan', magicId: 'graviton-lance' },
+    });
+    s = ok(s, { type: 'READY', playerId: 'p0' });
+    s = ok(s, { type: 'READY', playerId: 'p1' });
+    expect(s.phase).toBe('playing');
+    const p0 = player(s, 'p0');
+    const p1 = player(s, 'p1');
+    expect([...p0.hand, ...p0.deck].every((id) => getSpec(id).race === 'swarm')).toBe(true);
+    expect([...p1.hand, ...p1.deck].every((id) => getSpec(id).race === 'automata')).toBe(true);
+    // 서로 다른 종족의 카드 id 는 상대 손패·덱에 전혀 섞이지 않는다
+    expect([...p0.hand, ...p0.deck].some((id) => getSpec(id).race === 'automata')).toBe(false);
+    expect([...p1.hand, ...p1.deck].some((id) => getSpec(id).race === 'swarm')).toBe(false);
   });
 
   it('AI 좌석은 기본 덱을 자동 선택하고 준비 완료 상태로 들어온다 (F026)', () => {
@@ -404,6 +428,25 @@ describe('수입 (F020) · 드로우', () => {
       ['정제소', 4, true],
     ]);
     expect(computeIncome(s, 'p1').total).toBe(CORE_BASE_INCOME + 1);
+  });
+
+  it('과부하 키워드(오토마타): 반경 1 이내 자신 건물 수만큼 생산 추가, 뭉치지 않으면 보너스 없음', () => {
+    let s = setup(2);
+    s = addMarkers(
+      s,
+      marker('p0', 'fab-node', { x: 3, y: 3 }), // 과부하, 이웃 2개(아래 두 건물) → +2
+      marker('p0', 'extractor', { x: 4, y: 4 }), // d=1, 과부하 없는 일반 건물도 이웃 수에는 들어간다
+      marker('p0', 'turret', { x: 4, y: 3 }), // d=1
+      marker('p0', 'scout', { x: 2, y: 3 }), // d=1 이지만 유닛이라 이웃 수에 안 들어간다
+      marker('p0', 'extractor', { x: 5, y: 3 }), // d=2, 반경(1) 밖이라 이웃 수에 안 들어간다
+      marker('p0', 'fab-node', { x: 9, y: 9 }), // 이웃 없음 → 보너스 0
+    );
+    const inc = computeIncome(s, 'p0');
+    const clustered = inc.items.find((i) => i.markerId === s.markers.find((m) => m.specId === 'fab-node' && m.pos.x === 3)!.id)!;
+    const lonely = inc.items.find((i) => i.markerId === s.markers.find((m) => m.specId === 'fab-node' && m.pos.x === 9)!.id)!;
+    expect(clustered.amount).toBe(1 + 2); // 생산 1 + 이웃 2(유닛·반경 밖 건물은 제외) × 보너스 1
+    expect(lonely.amount).toBe(1);
+    expect(inc.items.find((i) => i.markerId === s.markers.find((m) => m.specId === 'extractor' && m.pos.x === 4)!.id)!.amount).toBe(1); // 과부하 없는 건물은 보너스 없음
   });
 
   it('턴 시작 시 수입이 에너지에 더해지고 내역이 로그에 남는다', () => {

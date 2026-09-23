@@ -1,9 +1,9 @@
 /**
  * 점수·순위·수입 (Rules.md 9절, 5.1-4, F020, F025). 순수 함수, 파생값.
  */
-import type { GameState, PlayerId, PlayerState, Score } from '../types/index.js';
-import { SCORE_PER_TERRITORY, VEIN_PRODUCTION_BONUS, getSpec } from '../data/index.js';
-import { computeTerritory, markersOf, terrainAt } from './sight.js';
+import type { GameState, PlayerId, PlayerState, Position, Score } from '../types/index.js';
+import { OVERCLOCK_BONUS_PER_NEIGHBOR, OVERCLOCK_RADIUS, SCORE_PER_TERRITORY, VEIN_PRODUCTION_BONUS, getSpec } from '../data/index.js';
+import { computeTerritory, hexDistance, markersOf, terrainAt } from './sight.js';
 
 /** 생존 플레이어를 좌석 순으로 */
 export function alivePlayers(state: GameState): PlayerState[] {
@@ -59,7 +59,15 @@ export interface Income {
   items: IncomeItem[];
 }
 
-/** 수입 = 코어 기본 수입 + 내 건물 생산 합(광맥 보너스 포함). y → x 순 내역 */
+/** 과부하 키워드(오토마타): 반경 1 이내 자신 소유 다른 건물 수 × 보너스를 생산에 더한다 */
+function overclockBonus(state: GameState, playerId: PlayerId, markerId: string, pos: Position): number {
+  const neighbors = markersOf(state, playerId).filter(
+    (o) => o.id !== markerId && o.kind === 'building' && hexDistance(o.pos, pos) <= OVERCLOCK_RADIUS,
+  ).length;
+  return neighbors * OVERCLOCK_BONUS_PER_NEIGHBOR;
+}
+
+/** 수입 = 코어 기본 수입 + 내 건물 생산 합(광맥·과부하 보너스 포함). y → x 순 내역 */
 export function computeIncome(state: GameState, playerId: PlayerId): Income {
   const items: IncomeItem[] = [];
   for (const m of markersOf(state, playerId)) {
@@ -68,7 +76,8 @@ export function computeIncome(state: GameState, playerId: PlayerId): Income {
       items.push({ markerId: m.id, name: spec.name, amount: spec.production, vein: false });
     } else if (m.kind === 'building') {
       const vein = terrainAt(state.board, m.pos) === 'vein';
-      const amount = spec.production + (vein ? VEIN_PRODUCTION_BONUS : 0);
+      const overclock = spec.keywords.includes('overclock') ? overclockBonus(state, playerId, m.id, m.pos) : 0;
+      const amount = spec.production + (vein ? VEIN_PRODUCTION_BONUS : 0) + overclock;
       if (amount > 0) items.push({ markerId: m.id, name: spec.name, amount, vein });
     }
   }

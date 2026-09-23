@@ -25,8 +25,18 @@ export type CardType = 'building' | 'unit' | 'magic';
 /** 보드 위 마커 종류. 코어는 덱에 없지만 마커다 */
 export type MarkerKind = 'core' | CardType;
 
-/** 침투: 적 마커 거리 1 이내에도 배치 가능. 정비: 턴 시작 시 반경 1 아군 체력 +1 */
-export type Keyword = 'infiltrate' | 'repair';
+/** 침투: 적 마커 거리 1 이내에도 배치 가능. 정비: 턴 시작 시 반경 1 아군 체력 +1.
+ * 과부하: 턴 시작 수입 계산 시 반경 1 이내 자신 소유 건물 수만큼 생산 추가(오토마타 종족) */
+export type Keyword = 'infiltrate' | 'repair' | 'overclock';
+
+/** 종족 (완전 비대칭 카드 세트, notes/Rules.md 10절) */
+export type RaceId = 'coalition' | 'swarm' | 'automata';
+
+export interface RaceDef {
+  id: RaceId;
+  name: string;
+  concept: string;
+}
 
 /** 마법 효과. 즉발형은 배치 즉시 적용 후 사라지고, 지속형은 마커로 남는다 (Rules.md 7.2) */
 export type MagicEffect =
@@ -39,6 +49,8 @@ export interface CardSpec {
   id: CardId;
   name: string;
   kind: MarkerKind;
+  /** 소속 종족. 코어만 null(종족 공통) */
+  race: RaceId | null;
   /** 특수 카드 여부. 덱 빌딩(F016)에서 종류별 1장만 고른다 */
   special: boolean;
   /** 배치 비용(에너지). 코어는 0 */
@@ -62,8 +74,9 @@ export interface CardSpec {
   description: string;
 }
 
-/** 덱 빌딩(F016)에서 플레이어가 고르는 특수 카드 세 장 */
+/** 덱 빌딩(F016)에서 플레이어가 고르는 종족 + 특수 카드 세 장 */
 export interface DeckChoice {
+  race: RaceId;
   buildingId: CardId;
   unitId: CardId;
   magicId: CardId;

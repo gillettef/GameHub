@@ -198,6 +198,18 @@ def compute_ranking(state: GameState, scores: dict[str, Score] | None = None) ->
     return [p.id for p in alive] + [p.id for p in dead]
 
 
+def _overclock_bonus(state: GameState, player_id: str, marker_id: str, pos: Position) -> int:
+    """과부하 키워드(오토마타): 반경 1 이내 자신 소유 다른 건물 수 × 보너스"""
+    radius = const("OVERCLOCK_RADIUS")
+    per_neighbor = const("OVERCLOCK_BONUS_PER_NEIGHBOR")
+    neighbors = sum(
+        1
+        for o in markers_of(state, player_id)
+        if o.id != marker_id and o.kind == "building" and hex_distance(o.pos, pos) <= radius
+    )
+    return neighbors * per_neighbor
+
+
 def compute_income(state: GameState, player_id: str) -> int:
     total = 0
     bonus = const("VEIN_PRODUCTION_BONUS")
@@ -206,7 +218,8 @@ def compute_income(state: GameState, player_id: str) -> int:
         if m.kind == "core":
             total += sp.production
         elif m.kind == "building":
-            total += sp.production + (bonus if terrain_at(state, m.pos) == "vein" else 0)
+            overclock = _overclock_bonus(state, player_id, m.id, m.pos) if "overclock" in sp.keywords else 0
+            total += sp.production + (bonus if terrain_at(state, m.pos) == "vein" else 0) + overclock
     return total
 
 

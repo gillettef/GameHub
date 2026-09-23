@@ -16,12 +16,15 @@
     "SCORE_PER_TERRITORY": 1,
     "INFILTRATE_RANGE": 1,
     "REPAIR_RADIUS": 1,
-    "REPAIR_AMOUNT": 1
+    "REPAIR_AMOUNT": 1,
+    "OVERCLOCK_RADIUS": 1,
+    "OVERCLOCK_BONUS_PER_NEIGHBOR": 1
   },
   "core": {
     "id": "core",
     "name": "코어",
     "kind": "core",
+    "race": null,
     "special": false,
     "cost": 0,
     "sight": 1,
@@ -37,6 +40,7 @@
   },
   "cards": [
     {
+      "race": "coalition",
       "special": false,
       "keywords": [],
       "effect": null,
@@ -54,6 +58,7 @@
       "description": "경제의 기본. 광맥 위에서는 생산 +1."
     },
     {
+      "race": "coalition",
       "special": false,
       "keywords": [],
       "effect": null,
@@ -71,6 +76,7 @@
       "description": "시야·영토 확장."
     },
     {
+      "race": "coalition",
       "special": false,
       "keywords": [],
       "effect": null,
@@ -88,6 +94,7 @@
       "description": "고정 방어."
     },
     {
+      "race": "coalition",
       "special": false,
       "keywords": [],
       "effect": null,
@@ -105,6 +112,7 @@
       "description": "값싼 시야 확장."
     },
     {
+      "race": "coalition",
       "special": false,
       "keywords": [],
       "effect": null,
@@ -122,6 +130,7 @@
       "description": "근접 압박."
     },
     {
+      "race": "coalition",
       "special": false,
       "keywords": [],
       "effect": null,
@@ -139,6 +148,7 @@
       "description": "긴 사거리, 낮은 체력."
     },
     {
+      "race": "coalition",
       "special": false,
       "keywords": [],
       "effect": null,
@@ -156,6 +166,7 @@
       "description": "중견 전력."
     },
     {
+      "race": "coalition",
       "special": false,
       "keywords": [],
       "effect": {
@@ -177,6 +188,7 @@
       "description": "즉발: 반경 1 적 마커 전부에 피해 3."
     },
     {
+      "race": "coalition",
       "special": false,
       "keywords": [],
       "effect": {
@@ -198,6 +210,7 @@
       "description": "즉발: 반경 1 아군 마커 전부 체력 +3."
     },
     {
+      "race": "coalition",
       "special": false,
       "keywords": [],
       "effect": {
@@ -215,9 +228,400 @@
       "production": 0,
       "score": 0,
       "copies": 2,
-      "description": "즉발: 에너지 +3. 초반 경제 보조."
+      "description": "즉발: 에너지 +3. 초반 경제 보조. 빈 칸에 놓고 즉시 사라진다."
     },
     {
+      "race": "swarm",
+      "special": false,
+      "keywords": [],
+      "effect": null,
+      "id": "larva-nest",
+      "name": "알집",
+      "kind": "building",
+      "cost": 1,
+      "sight": 1,
+      "hp": 3,
+      "attack": 0,
+      "range": 0,
+      "production": 1,
+      "score": 1,
+      "copies": 3,
+      "description": "가장 싼 경제 건물. 광맥 위에서는 생산 +1."
+    },
+    {
+      "race": "swarm",
+      "special": false,
+      "keywords": [],
+      "effect": null,
+      "id": "bio-spire",
+      "name": "생체첨탑",
+      "kind": "building",
+      "cost": 3,
+      "sight": 2,
+      "hp": 5,
+      "attack": 0,
+      "range": 0,
+      "production": 0,
+      "score": 3,
+      "copies": 2,
+      "description": "시야·영토 확장."
+    },
+    {
+      "race": "swarm",
+      "special": false,
+      "keywords": [],
+      "effect": null,
+      "id": "spike-turret",
+      "name": "가시탑",
+      "kind": "building",
+      "cost": 4,
+      "sight": 1,
+      "hp": 5,
+      "attack": 3,
+      "range": 1,
+      "production": 0,
+      "score": 2,
+      "copies": 2,
+      "description": "근접 방어. 사거리는 짧지만 공격력이 높다."
+    },
+    {
+      "race": "swarm",
+      "special": false,
+      "keywords": [
+        "infiltrate"
+      ],
+      "effect": null,
+      "id": "drone",
+      "name": "유충병",
+      "kind": "unit",
+      "cost": 1,
+      "sight": 1,
+      "hp": 2,
+      "attack": 1,
+      "range": 1,
+      "production": 0,
+      "score": 1,
+      "copies": 4,
+      "description": "가장 싼 공격 유닛. 침투: 적 마커 거리 1 이내에도 배치 가능."
+    },
+    {
+      "race": "swarm",
+      "special": false,
+      "keywords": [
+        "infiltrate"
+      ],
+      "effect": null,
+      "id": "stalker",
+      "name": "추적자",
+      "kind": "unit",
+      "cost": 2,
+      "sight": 1,
+      "hp": 3,
+      "attack": 2,
+      "range": 1,
+      "production": 0,
+      "score": 1,
+      "copies": 4,
+      "description": "군락의 주력. 침투: 적 마커 거리 1 이내에도 배치 가능."
+    },
+    {
+      "race": "swarm",
+      "special": false,
+      "keywords": [],
+      "effect": null,
+      "id": "spitter",
+      "name": "산성분사체",
+      "kind": "unit",
+      "cost": 3,
+      "sight": 1,
+      "hp": 3,
+      "attack": 2,
+      "range": 2,
+      "production": 0,
+      "score": 1,
+      "copies": 2,
+      "description": "값싼 사거리 압박."
+    },
+    {
+      "race": "swarm",
+      "special": false,
+      "keywords": [
+        "repair"
+      ],
+      "effect": null,
+      "id": "brood-queen",
+      "name": "산란여왕",
+      "kind": "unit",
+      "cost": 5,
+      "sight": 1,
+      "hp": 6,
+      "attack": 2,
+      "range": 1,
+      "production": 0,
+      "score": 2,
+      "copies": 1,
+      "description": "군락에서 가장 비싼 유닛. 정비: 내 턴 시작 시 반경 1 아군 체력 +1."
+    },
+    {
+      "race": "swarm",
+      "special": false,
+      "keywords": [],
+      "effect": {
+        "kind": "damage",
+        "amount": 2,
+        "radius": 1
+      },
+      "id": "acid-spray",
+      "name": "산성 포자",
+      "kind": "magic",
+      "cost": 2,
+      "sight": 0,
+      "hp": 0,
+      "attack": 0,
+      "range": 0,
+      "production": 0,
+      "score": 0,
+      "copies": 2,
+      "description": "즉발: 반경 1 적 마커 전부에 피해 2."
+    },
+    {
+      "race": "swarm",
+      "special": false,
+      "keywords": [],
+      "effect": {
+        "kind": "energy",
+        "amount": 2
+      },
+      "id": "swarm-call",
+      "name": "소집 신호",
+      "kind": "magic",
+      "cost": 0,
+      "sight": 0,
+      "hp": 0,
+      "attack": 0,
+      "range": 0,
+      "production": 0,
+      "score": 0,
+      "copies": 1,
+      "description": "즉발: 에너지 +2."
+    },
+    {
+      "race": "swarm",
+      "special": false,
+      "keywords": [],
+      "effect": {
+        "kind": "heal",
+        "amount": 2,
+        "radius": 1
+      },
+      "id": "frenzy",
+      "name": "광란",
+      "kind": "magic",
+      "cost": 1,
+      "sight": 0,
+      "hp": 0,
+      "attack": 0,
+      "range": 0,
+      "production": 0,
+      "score": 0,
+      "copies": 1,
+      "description": "즉발: 반경 1 아군 마커 전부 체력 +2."
+    },
+    {
+      "race": "automata",
+      "special": false,
+      "keywords": [
+        "overclock"
+      ],
+      "effect": null,
+      "id": "fab-node",
+      "name": "제작 노드",
+      "kind": "building",
+      "cost": 3,
+      "sight": 1,
+      "hp": 6,
+      "attack": 0,
+      "range": 0,
+      "production": 1,
+      "score": 3,
+      "copies": 3,
+      "description": "경제의 기본. 과부하: 반경 1 이내 자신 건물 수만큼 생산 추가."
+    },
+    {
+      "race": "automata",
+      "special": false,
+      "keywords": [],
+      "effect": null,
+      "id": "sentry-pylon",
+      "name": "감시 첨탑",
+      "kind": "building",
+      "cost": 4,
+      "sight": 3,
+      "hp": 5,
+      "attack": 0,
+      "range": 0,
+      "production": 0,
+      "score": 3,
+      "copies": 2,
+      "description": "넓은 시야."
+    },
+    {
+      "race": "automata",
+      "special": false,
+      "keywords": [],
+      "effect": null,
+      "id": "bastion",
+      "name": "보루",
+      "kind": "building",
+      "cost": 5,
+      "sight": 1,
+      "hp": 10,
+      "attack": 2,
+      "range": 2,
+      "production": 0,
+      "score": 3,
+      "copies": 2,
+      "description": "튼튼한 고정 방어."
+    },
+    {
+      "race": "automata",
+      "special": false,
+      "keywords": [],
+      "effect": null,
+      "id": "probe",
+      "name": "정찰 유닛",
+      "kind": "unit",
+      "cost": 1,
+      "sight": 2,
+      "hp": 2,
+      "attack": 0,
+      "range": 0,
+      "production": 0,
+      "score": 1,
+      "copies": 4,
+      "description": "공격력이 없는 순수 정찰용. 군락과 달리 초반 공세 수단이 없다."
+    },
+    {
+      "race": "automata",
+      "special": false,
+      "keywords": [],
+      "effect": null,
+      "id": "sentinel",
+      "name": "파수병",
+      "kind": "unit",
+      "cost": 4,
+      "sight": 1,
+      "hp": 5,
+      "attack": 2,
+      "range": 1,
+      "production": 0,
+      "score": 1,
+      "copies": 3,
+      "description": "기본 전투 유닛. 다른 종족보다 값이 비싸다."
+    },
+    {
+      "race": "automata",
+      "special": false,
+      "keywords": [],
+      "effect": null,
+      "id": "railgun-frame",
+      "name": "레일건 유닛",
+      "kind": "unit",
+      "cost": 5,
+      "sight": 1,
+      "hp": 4,
+      "attack": 4,
+      "range": 3,
+      "production": 0,
+      "score": 2,
+      "copies": 2,
+      "description": "긴 사거리, 높은 화력."
+    },
+    {
+      "race": "automata",
+      "special": false,
+      "keywords": [],
+      "effect": null,
+      "id": "dreadnought-core",
+      "name": "드레드노트 코어",
+      "kind": "unit",
+      "cost": 6,
+      "sight": 1,
+      "hp": 10,
+      "attack": 3,
+      "range": 2,
+      "production": 0,
+      "score": 3,
+      "copies": 1,
+      "description": "기본 덱에서 가장 강한 유닛."
+    },
+    {
+      "race": "automata",
+      "special": false,
+      "keywords": [],
+      "effect": {
+        "kind": "damage",
+        "amount": 2,
+        "radius": 1
+      },
+      "id": "overload-pulse",
+      "name": "과부하 펄스",
+      "kind": "magic",
+      "cost": 4,
+      "sight": 0,
+      "hp": 0,
+      "attack": 0,
+      "range": 0,
+      "production": 0,
+      "score": 0,
+      "copies": 2,
+      "description": "즉발: 반경 1 적 마커 전부에 피해 2."
+    },
+    {
+      "race": "automata",
+      "special": false,
+      "keywords": [],
+      "effect": {
+        "kind": "heal",
+        "amount": 4,
+        "radius": 1
+      },
+      "id": "nanite-repair",
+      "name": "나노 수복",
+      "kind": "magic",
+      "cost": 3,
+      "sight": 0,
+      "hp": 0,
+      "attack": 0,
+      "range": 0,
+      "production": 0,
+      "score": 0,
+      "copies": 1,
+      "description": "즉발: 반경 1 아군 마커 전부 체력 +4."
+    },
+    {
+      "race": "automata",
+      "special": false,
+      "keywords": [],
+      "effect": {
+        "kind": "energy",
+        "amount": 2
+      },
+      "id": "power-surge",
+      "name": "전력 폭증",
+      "kind": "magic",
+      "cost": 0,
+      "sight": 0,
+      "hp": 0,
+      "attack": 0,
+      "range": 0,
+      "production": 0,
+      "score": 0,
+      "copies": 2,
+      "description": "즉발: 에너지 +2. 이 종족에서 가장 싼 카드."
+    },
+    {
+      "race": "coalition",
       "special": true,
       "keywords": [],
       "effect": null,
@@ -235,6 +639,7 @@
       "description": "생산 +3."
     },
     {
+      "race": "coalition",
       "special": true,
       "keywords": [],
       "effect": null,
@@ -252,6 +657,7 @@
       "description": "넓은 시야."
     },
     {
+      "race": "coalition",
       "special": true,
       "keywords": [],
       "effect": null,
@@ -269,6 +675,7 @@
       "description": "튼튼한 방어 거점."
     },
     {
+      "race": "coalition",
       "special": true,
       "keywords": [],
       "effect": null,
@@ -286,6 +693,7 @@
       "description": "최강 전력."
     },
     {
+      "race": "coalition",
       "special": true,
       "keywords": [
         "infiltrate"
@@ -305,6 +713,7 @@
       "description": "침투: 적 마커 거리 1 이내에도 배치 가능."
     },
     {
+      "race": "coalition",
       "special": true,
       "keywords": [
         "repair"
@@ -324,6 +733,7 @@
       "description": "정비: 내 턴 시작 시(전투 직후) 반경 1 아군 체력 +1."
     },
     {
+      "race": "coalition",
       "special": true,
       "keywords": [],
       "effect": {
@@ -345,6 +755,7 @@
       "description": "즉발: 반경 2 적 마커 전부에 피해 2."
     },
     {
+      "race": "coalition",
       "special": true,
       "keywords": [],
       "effect": {
@@ -365,6 +776,7 @@
       "description": "지속 3턴: 시야 3 제공. 파괴 가능."
     },
     {
+      "race": "coalition",
       "special": true,
       "keywords": [],
       "effect": {
@@ -383,6 +795,360 @@
       "production": 0,
       "score": 0,
       "description": "즉발: 에너지 +6."
+    },
+    {
+      "race": "swarm",
+      "special": true,
+      "keywords": [],
+      "effect": null,
+      "copies": 0,
+      "id": "hive-fortress",
+      "name": "군체 요새",
+      "kind": "building",
+      "cost": 6,
+      "sight": 2,
+      "hp": 14,
+      "attack": 3,
+      "range": 1,
+      "production": 0,
+      "score": 5,
+      "description": "군락의 방어 거점. 근접 전용."
+    },
+    {
+      "race": "swarm",
+      "special": true,
+      "keywords": [],
+      "effect": null,
+      "copies": 0,
+      "id": "chitin-refinery",
+      "name": "키틴 정제소",
+      "kind": "building",
+      "cost": 5,
+      "sight": 1,
+      "hp": 5,
+      "attack": 0,
+      "range": 0,
+      "production": 3,
+      "score": 4,
+      "description": "생산 +3."
+    },
+    {
+      "race": "swarm",
+      "special": true,
+      "keywords": [],
+      "effect": null,
+      "copies": 0,
+      "id": "spore-tower",
+      "name": "포자탑",
+      "kind": "building",
+      "cost": 4,
+      "sight": 3,
+      "hp": 4,
+      "attack": 0,
+      "range": 0,
+      "production": 0,
+      "score": 3,
+      "description": "넓은 시야."
+    },
+    {
+      "race": "swarm",
+      "special": true,
+      "keywords": [],
+      "effect": null,
+      "copies": 0,
+      "id": "alpha-brood",
+      "name": "알파 개체",
+      "kind": "unit",
+      "cost": 7,
+      "sight": 2,
+      "hp": 10,
+      "attack": 4,
+      "range": 1,
+      "production": 0,
+      "score": 3,
+      "description": "군락에서 가장 강한 개체. 근접 전용."
+    },
+    {
+      "race": "swarm",
+      "special": true,
+      "keywords": [
+        "infiltrate"
+      ],
+      "effect": null,
+      "copies": 0,
+      "id": "burrower",
+      "name": "잠행자",
+      "kind": "unit",
+      "cost": 4,
+      "sight": 1,
+      "hp": 4,
+      "attack": 2,
+      "range": 1,
+      "production": 0,
+      "score": 1,
+      "description": "침투: 적 마커 거리 1 이내에도 배치 가능."
+    },
+    {
+      "race": "swarm",
+      "special": true,
+      "keywords": [
+        "repair"
+      ],
+      "effect": null,
+      "copies": 0,
+      "id": "nurse-drone",
+      "name": "치유충",
+      "kind": "unit",
+      "cost": 2,
+      "sight": 1,
+      "hp": 2,
+      "attack": 0,
+      "range": 0,
+      "production": 0,
+      "score": 1,
+      "description": "정비: 내 턴 시작 시 반경 1 아군 체력 +1."
+    },
+    {
+      "race": "swarm",
+      "special": true,
+      "keywords": [],
+      "effect": {
+        "kind": "damage",
+        "amount": 3,
+        "radius": 2
+      },
+      "copies": 0,
+      "id": "plague-burst",
+      "name": "역병 폭발",
+      "kind": "magic",
+      "cost": 5,
+      "sight": 0,
+      "hp": 0,
+      "attack": 0,
+      "range": 0,
+      "production": 0,
+      "score": 0,
+      "description": "즉발: 반경 2 적 마커 전부에 피해 3."
+    },
+    {
+      "race": "swarm",
+      "special": true,
+      "keywords": [],
+      "effect": {
+        "kind": "persistent",
+        "durationTurns": 3
+      },
+      "copies": 0,
+      "id": "pheromone-beacon",
+      "name": "페로몬 신호기",
+      "kind": "magic",
+      "cost": 3,
+      "sight": 3,
+      "hp": 2,
+      "attack": 0,
+      "range": 0,
+      "production": 0,
+      "score": 0,
+      "description": "지속 3턴: 시야 3 제공. 파괴 가능."
+    },
+    {
+      "race": "swarm",
+      "special": true,
+      "keywords": [],
+      "effect": {
+        "kind": "energy",
+        "amount": 5
+      },
+      "copies": 0,
+      "id": "overgrowth",
+      "name": "대증식",
+      "kind": "magic",
+      "cost": 2,
+      "sight": 0,
+      "hp": 0,
+      "attack": 0,
+      "range": 0,
+      "production": 0,
+      "score": 0,
+      "description": "즉발: 에너지 +5."
+    },
+    {
+      "race": "automata",
+      "special": true,
+      "keywords": [
+        "overclock"
+      ],
+      "effect": null,
+      "copies": 0,
+      "id": "singularity-forge",
+      "name": "특이점 공방",
+      "kind": "building",
+      "cost": 7,
+      "sight": 1,
+      "hp": 10,
+      "attack": 0,
+      "range": 0,
+      "production": 4,
+      "score": 6,
+      "description": "생산 +4. 과부하: 반경 1 이내 자신 건물 수만큼 생산 추가."
+    },
+    {
+      "race": "automata",
+      "special": true,
+      "keywords": [],
+      "effect": null,
+      "copies": 0,
+      "id": "deep-scanner",
+      "name": "심층 스캐너",
+      "kind": "building",
+      "cost": 5,
+      "sight": 4,
+      "hp": 4,
+      "attack": 0,
+      "range": 0,
+      "production": 0,
+      "score": 4,
+      "description": "아주 넓은 시야."
+    },
+    {
+      "race": "automata",
+      "special": true,
+      "keywords": [],
+      "effect": null,
+      "copies": 0,
+      "id": "citadel",
+      "name": "성채",
+      "kind": "building",
+      "cost": 8,
+      "sight": 2,
+      "hp": 16,
+      "attack": 3,
+      "range": 2,
+      "production": 0,
+      "score": 6,
+      "description": "게임에서 가장 튼튼한 건물."
+    },
+    {
+      "race": "automata",
+      "special": true,
+      "keywords": [],
+      "effect": null,
+      "copies": 0,
+      "id": "titan",
+      "name": "타이탄",
+      "kind": "unit",
+      "cost": 8,
+      "sight": 2,
+      "hp": 14,
+      "attack": 5,
+      "range": 2,
+      "production": 0,
+      "score": 4,
+      "description": "게임에서 가장 강한 유닛."
+    },
+    {
+      "race": "automata",
+      "special": true,
+      "keywords": [
+        "infiltrate"
+      ],
+      "effect": null,
+      "copies": 0,
+      "id": "cloak-unit",
+      "name": "위장 유닛",
+      "kind": "unit",
+      "cost": 6,
+      "sight": 1,
+      "hp": 5,
+      "attack": 3,
+      "range": 1,
+      "production": 0,
+      "score": 2,
+      "description": "침투: 적 마커 거리 1 이내에도 배치 가능."
+    },
+    {
+      "race": "automata",
+      "special": true,
+      "keywords": [
+        "repair"
+      ],
+      "effect": null,
+      "copies": 0,
+      "id": "repair-node",
+      "name": "수복 노드",
+      "kind": "unit",
+      "cost": 4,
+      "sight": 1,
+      "hp": 3,
+      "attack": 0,
+      "range": 0,
+      "production": 0,
+      "score": 1,
+      "description": "정비: 내 턴 시작 시 반경 1 아군 체력 +1."
+    },
+    {
+      "race": "automata",
+      "special": true,
+      "keywords": [],
+      "effect": {
+        "kind": "damage",
+        "amount": 3,
+        "radius": 2
+      },
+      "copies": 0,
+      "id": "graviton-lance",
+      "name": "중력자 랜스",
+      "kind": "magic",
+      "cost": 6,
+      "sight": 0,
+      "hp": 0,
+      "attack": 0,
+      "range": 0,
+      "production": 0,
+      "score": 0,
+      "description": "즉발: 반경 2 적 마커 전부에 피해 3."
+    },
+    {
+      "race": "automata",
+      "special": true,
+      "keywords": [],
+      "effect": {
+        "kind": "persistent",
+        "durationTurns": 3
+      },
+      "copies": 0,
+      "id": "stasis-field",
+      "name": "정지장",
+      "kind": "magic",
+      "cost": 4,
+      "sight": 4,
+      "hp": 3,
+      "attack": 0,
+      "range": 0,
+      "production": 0,
+      "score": 0,
+      "description": "지속 3턴: 시야 4 제공. 파괴 가능."
+    },
+    {
+      "race": "automata",
+      "special": true,
+      "keywords": [],
+      "effect": {
+        "kind": "energy",
+        "amount": 7
+      },
+      "copies": 0,
+      "id": "core-surge",
+      "name": "코어 증폭",
+      "kind": "magic",
+      "cost": 3,
+      "sight": 0,
+      "hp": 0,
+      "attack": 0,
+      "range": 0,
+      "production": 0,
+      "score": 0,
+      "description": "즉발: 에너지 +7."
     }
   ],
   "maps": [

@@ -9,7 +9,7 @@ const twoPlayers = () =>
     seed: 42,
     players: [
       { nickname: '갑', deckChoice: DEFAULT_DECK_CHOICE },
-      { nickname: '', deckChoice: { buildingId: 'observatory', unitId: 'stealth', magicId: 'energy-storm' } },
+      { nickname: '', deckChoice: { race: 'coalition', buildingId: 'observatory', unitId: 'stealth', magicId: 'energy-storm' } },
     ],
   });
 

@@ -9,7 +9,7 @@
 
 | 문서 | 내용 |
 |---|---|
-| `notes/Rules.md` | **규칙 정본**. 용어, 턴 진행, 배치·시야·전투·점수, 카드 29종, 맵 6개, 상수, 결정성 규칙 |
+| `notes/Rules.md` | **규칙 정본**. 용어, 턴 진행, 배치·시야·전투·점수, 종족 3개(카드 57종 + 공용 코어), 맵 6개, 상수, 결정성 규칙 |
 | `notes/Rule.pdf` | Rules.md를 플레이어에게 쉬운 말로 풀어 쓴 규칙 설명서(PDF, 표지·차례·카드 표·맵 그림 포함). `scripts/build-rulebook.py`로 생성. 정본이 아니라 파생 문서이므로 Rules.md를 고치면 이 문서도 다시 만든다 |
 | `notes/PRD_AstralTab_*.md` | 제품 목표, 타겟, 시나리오, KPI, 리스크 |
 | `notes/기능명세서_AstralTab_*.md` | F001~F031 기능 ID, 설명, 수락 기준, 중요도 |
@@ -34,7 +34,7 @@
 
 ## 코드 현황 (2026-09-22)
 
-- `shared/src`(types·data·engine), `ai/astral_ai`(models·rules·search), `shared/fixtures` 는 **v2 규칙(Rules.md)** 으로 재작성됐다. 2026-09-22 육각 전환(odd-r 오프셋, `hexDistance`/`hex_distance`, 코어 시야·수입 1)까지 반영. Vitest 70개(맵 6개 좌석 공정성 테스트 포함), pytest 14개(픽스처 시나리오 재생으로 TS·Python 규칙 일치 검증)가 통과한다.
+- `shared/src`(types·data·engine), `ai/astral_ai`(models·rules·search), `shared/fixtures` 는 **v2 규칙(Rules.md)** 으로 재작성됐다. 2026-09-22 육각 전환(odd-r 오프셋, `hexDistance`/`hex_distance`, 코어 시야·수입 1)에 이어 2026-09-23 **종족 3개**(인류 연합·크릴 군락·오토마타 집정체, `Keyword`에 `overclock` 추가, `computeIncome`/`compute_income` 에 과부하 계산)까지 반영. Vitest 84개(shared, 맵 6개 좌석 공정성 테스트 포함) + 10개(client) + 9개(server), pytest 14개(픽스처 시나리오 재생으로 TS·Python 규칙 일치 검증)가 통과한다.
 - `ai/astral_ai/search.py` 는 1수 탐욕 자리표시자다. Minimax / max-n 은 Phase 3.
 - `client/` 는 **Phase 1 탭 UI 핫시트**가 구현됐다 (F008~F017). 설정 화면(참가 인원 → 맵(인원수로 필터) → 닉네임 → 덱 빌딩) → 게임 대시보드(보드·상태·진행 탭) → 결과 오버레이. 규칙 계산은 `client/src/game/hotseat.ts` 가 `shared/src/engine` 의 `applyAction` 을 직접 호출하는 로컬 어댑터로 처리하며, Phase 2 에서 Socket.io 어댑터(`client/src/socket`)로 교체한다. 개발용 바로가기 `/?quick&map=<id>&seed=<n>&tab=<board|status|progress>&select=<손패 index>`. Vitest 10개(client).
 - 보드는 `Board.tsx`/`Board.module.css` 가 육각(odd-r, pointy-top)으로 렌더링한다. 컨테이너 가로·세로에 맞춰 육각 크기를 계산해 무스크롤(F015)·모바일을 함께 만족한다. 마커는 좌석 색으로 채우고 모양(코어=육각·건물=둥근 사각·유닛=원·마법=마름모)으로 종류를 구분한다(좌석 1·2·3 색 확정, 흰색 패턴 구분은 폐기). 경고색은 여전히 **미정**이다.

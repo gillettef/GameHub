@@ -50,7 +50,8 @@ def test_specs_load(started: GameState) -> None:
     specs = load_specs()
     assert specs.constants["STARTING_ENERGY"] == 5
     assert specs.cards["core"].hp == 20
-    assert len([c for c in specs.cards.values() if c.kind != "core"]) == 19
+    # 3종족(coalition/swarm/automata) × (기본 10종 + 특수 9종) = 57
+    assert len([c for c in specs.cards.values() if c.kind != "core"]) == 57
     assert len(specs.maps) == 6
     for p in started.players:
         for card in p.hand + p.deck:
