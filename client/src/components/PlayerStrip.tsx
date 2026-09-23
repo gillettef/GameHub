@@ -1,5 +1,6 @@
 import { memo, useMemo, type CSSProperties } from 'react';
-import { nameOf } from '@astraltab/shared';
+import { RACES, nameOf } from '@astraltab/shared';
+import { RaceArt } from '../game/raceArt';
 import { ICONS, Stat } from './CardFace';
 import { buildPlayerSummaries } from '../game/derived';
 import { cx } from '../lib/cx';
@@ -58,6 +59,12 @@ export const PlayerStrip = memo(function PlayerStrip({ onQuit }: PlayerStripProp
                   <span className={styles.name}>{r.nickname}</span>
                   {r.id === viewerId && <span className={styles.meTag}>나</span>}
                 </div>
+                {r.race && (
+                  <span className={styles.race}>
+                    <RaceArt raceId={r.race} className={styles.raceIcon} />
+                    {RACES.find((race) => race.id === r.race)?.name}
+                  </span>
+                )}
                 <div className={styles.statsRow}>
                   <span className={styles.energy}>
                     <Stat icon={ICONS.cost} value={String(r.energy)} title="에너지" />

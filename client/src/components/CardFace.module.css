@@ -122,25 +122,25 @@
   color: var(--color-magic-text);
 }
 
-/* 이름 앞 모양 배지. color: currentColor 라 위 이름 색을 그대로 물려받는다 */
-.kindGlyph {
+/* 이름 앞 카드별 아이콘(cardArt.tsx). color: currentColor 라 위 이름 색을 그대로 물려받는다 */
+.cardIcon {
   flex: none;
-  width: 8px;
-  height: 8px;
-  background: currentColor;
+  width: 14px;
+  height: 14px;
 }
 
-.card[data-kind='building'] .kindGlyph {
-  border-radius: 2.5px;
+.card.compact .cardIcon {
+  width: 12px;
+  height: 12px;
 }
 
-.card[data-kind='unit'] .kindGlyph {
-  border-radius: 50%;
-}
-
-.card[data-kind='magic'] .kindGlyph {
-  border-radius: 1.5px;
-  transform: rotate(45deg) scale(0.85);
+/* 종류 줄의 종족 아이콘 (.kind 안, 텍스트와 같은 줄) */
+.raceIcon {
+  display: inline-flex;
+  width: 10px;
+  height: 10px;
+  vertical-align: -1px;
+  margin-right: 2px;
 }
 
 .cost {

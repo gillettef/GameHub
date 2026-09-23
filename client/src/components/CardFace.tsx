@@ -1,6 +1,9 @@
 import { memo, type ReactNode } from 'react';
 import type { CardSpec } from '@astraltab/shared';
+import { RACES } from '@astraltab/shared';
+import { CardArt } from '../game/cardArt';
 import { keywordExplain, keywordLabel, kindLabel } from '../game/derived';
+import { RaceArt } from '../game/raceArt';
 import { cx } from '../lib/cx';
 import styles from './CardFace.module.css';
 
@@ -47,6 +50,12 @@ export const ICONS = {
   ),
 } satisfies Record<string, ReactNode>;
 
+/** 종족 이름. 코어처럼 종족이 없는 카드는 null (F031 관련 아님, 그냥 공용 카드) */
+export function raceLabel(spec: CardSpec): string | null {
+  if (!spec.race) return null;
+  return RACES.find((r) => r.id === spec.race)?.name ?? null;
+}
+
 /** 마법 효과를 한국어 한 줄로 */
 export function effectLabel(spec: CardSpec): string | null {
   const e = spec.effect;
@@ -76,6 +85,8 @@ export function Stat({ icon, value, title }: { icon: ReactNode; value: string; t
 /** 카드 상세 스펙 표 (F011, F017). 0인 항목은 생략한다 */
 export const SpecRows = memo(function SpecRows({ spec }: { spec: CardSpec }) {
   const rows: [ReactNode, string][] = [];
+  const race = raceLabel(spec);
+  if (race && spec.race) rows.push([<RaceArt raceId={spec.race} />, `종족 ${race}`]);
   rows.push([ICONS.cost, `비용 ${spec.cost}`]);
   rows.push([ICONS.sight, `시야 ${spec.sight}`]);
   rows.push([ICONS.score, `점수 ${spec.score}`]);
@@ -143,7 +154,7 @@ export const CardFace = memo(function CardFace({ spec, selected, disabled, reaso
     >
       <span className={styles.head}>
         <span className={styles.name}>
-          <span className={styles.kindGlyph} aria-hidden="true" />
+          <CardArt cardId={spec.id} className={styles.cardIcon} />
           <span className={styles.nameText}>{spec.name}</span>
         </span>
         <span className={styles.cost} title="비용">
@@ -154,7 +165,13 @@ export const CardFace = memo(function CardFace({ spec, selected, disabled, reaso
       {!compact && (
         <span className={styles.kind}>
           {kindLabel(spec.kind)}
-          {spec.special ? ' · 특수' : ''}
+          {spec.race && (
+            <>
+              {' · '}
+              <RaceArt raceId={spec.race} className={styles.raceIcon} />
+              {raceLabel(spec)}
+            </>
+          )}
         </span>
       )}
       <span className={styles.stats}>
