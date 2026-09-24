@@ -12,6 +12,10 @@ interface DeckPickerProps {
   disabled?: boolean;
   /** 종족을 통째로 무작위로 고른다. 없으면 "랜덤" 버튼을 숨긴다 */
   onRandom?: () => void;
+  /** 고정 덱 25장 목록까지 보여줄지. 종족 카드만 고르면 되는 화면(온라인 대기실 위자드)에서는
+   * false 로 꺼서 "덱 25/25장 (고정)" 이하를 통째로 숨긴다(2026-09-24 사용자 지시). 기본값 true —
+   * 핫시트 설정 화면은 그대로 도감을 보여준다 */
+  showDeck?: boolean;
 }
 
 /**
@@ -20,7 +24,7 @@ interface DeckPickerProps {
  * 아래 카드 목록은 도감처럼 그 종족의 카드 풀 전체를 보여주며, 고정 덱에 포함된 장수만 표시한다
  * (읽기 전용). 카드 하나하나의 상세(호버 팝오버)는 CardFace 가 그대로 맡는다.
  */
-export const DeckPicker = memo(function DeckPicker({ race, onPickRace, disabled, onRandom }: DeckPickerProps) {
+export const DeckPicker = memo(function DeckPicker({ race, onPickRace, disabled, onRandom, showDeck = true }: DeckPickerProps) {
   return (
     <div className={styles.deck}>
       <div>
@@ -52,7 +56,7 @@ export const DeckPicker = memo(function DeckPicker({ race, onPickRace, disabled,
 
       {!race && <p className={styles.racePrompt}>종족을 고르면 고정된 카드 25장 구성이 곧바로 정해집니다.</p>}
 
-      {race && (
+      {race && showDeck && (
         <>
           <div className={cx(styles.deckTotal, styles.deckTotalComplete)}>덱 {DECK_SIZE} / {DECK_SIZE}장 (고정)</div>
           <div className={styles.cardList}>

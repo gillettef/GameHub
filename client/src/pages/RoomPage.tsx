@@ -1,10 +1,9 @@
-import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
 import type { RaceId, RoomPeek } from '@astraltab/shared';
-import { getMap, mapsForPlayers } from '@astraltab/shared';
+import { MAX_PLAYERS, getMap, mapsForPlayers } from '@astraltab/shared';
 import { DeckPicker } from '../components/DeckPicker';
 import { DockShell } from '../components/DockShell';
 import { MapPicker } from '../components/MapPicker';
-import type { SetupDockTab } from '../components/SetupDock';
 import { cx } from '../lib/cx';
 import { getNickname, getPlayerToken, getRoomPassword, setNickname, setRoomPassword } from '../lib/identity';
 import { randomMapId, randomRaceId } from '../lib/randomPicks';
@@ -191,11 +190,9 @@ function Shell({ title, children }: { title: string; children: React.ReactNode }
 
 type LobbyTab = 'room' | 'players' | 'map' | 'race';
 
-/** 위자드 순서 (2026-09-24 사용자 지시: 자유 탭 전환 대신 방→좌석→맵→종족 순으로 안내한다).
- * 맵 단계는 좌석 인원과 무관하게 항상 열려 있다 — 인원수에 맞는 맵만 고를 수 있는 조건은
- * MapPicker 의 currentPlayers 비활성화(너무 작은 맵만 흐리게)가 이미 만족한다(F030). 방장 혼자
- * 방을 만든 직후에도 맵을 미리 훑어볼 수 있어야 하므로 맵 탭 자체를 잠그지 않는다(spec-checker
- * 지적). 종족만 맵 단계를 한 번 거쳐야 열린다. */
+/** 위자드 순서 (2026-09-24 사용자 지시: 자유 탭 전환 대신 방→좌석→맵→종족 순으로 안내하고,
+ * 하단 독 대신 각 단계 안의 다음/이전 버튼으로만 이동한다). 좌석 단계는 맵과 무관하게 사람이든
+ * AI든 최대 4인까지 채울 수 있고, 맵 단계에서 그 인원수에 맞는 맵을 고른다(F030). */
 const STEP_ORDER: LobbyTab[] = ['room', 'players', 'map', 'race'];
 const STEP_LABEL: Record<LobbyTab, string> = { room: '방', players: '좌석', map: '맵', race: '종족' };
 
@@ -209,8 +206,6 @@ function LobbyView({ roomId, onQuit }: { roomId: string; onQuit: () => void }) {
   const setNotice = useGameStore((s) => s.setNotice);
   const [tab, setTab] = useState<LobbyTab>('players');
   const [copied, setCopied] = useState(false);
-  // 맵 탭을 한 번이라도 열었는지(종족 단계를 열기 위한 조건뿐이라 좌석 인원과는 무관하다)
-  const [visitedMap, setVisitedMap] = useState(false);
 
   const me = state?.players.find((p) => p.id === viewerId);
 
@@ -220,24 +215,18 @@ function LobbyView({ roomId, onQuit }: { roomId: string; onQuit: () => void }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [me?.id, me?.race]);
 
-  useEffect(() => {
-    if (tab === 'map') setVisitedMap(true);
-  }, [tab]);
-
-  const unlocked: Record<LobbyTab, boolean> = useMemo(() => ({ room: true, players: true, map: true, race: visitedMap }), [visitedMap]);
-  const tabs: SetupDockTab[] = useMemo(
-    () => STEP_ORDER.map((id) => ({ id, label: STEP_LABEL[id], disabled: !unlocked[id] })),
-    [unlocked],
-  );
-  const goTab = useCallback((id: string) => setTab(id as LobbyTab), []);
-
   if (!state || !viewerId || !room || !me) return null;
   const isHost = room.hostId === viewerId;
   const map = getMap(state.mapId);
-  const seats = Array.from({ length: map.players }, (_, i) => state.players.find((p) => p.seat === i) ?? null);
+  // 좌석 목록·상단 준비 현황은 맵 정원이 아니라 항상 최대 인원(4)만큼 보여준다 — 좌석 단계가
+  // 맵보다 먼저이므로 "몇 명이 참여하는지"가 아직 맵에 매이지 않는다(2026-09-24 사용자 지시).
+  const seats = Array.from({ length: MAX_PLAYERS }, (_, i) => state.players.find((p) => p.seat === i) ?? null);
   const readyCount = state.players.filter((p) => p.isReady).length;
   const full = state.players.length === map.players;
   const url = roomUrl(roomId);
+  const stepIndex = STEP_ORDER.indexOf(tab);
+  const goPrev = () => setTab(STEP_ORDER[stepIndex - 1] ?? tab);
+  const goNext = () => setTab(STEP_ORDER[stepIndex + 1] ?? tab);
 
   const copy = async () => {
     try {
@@ -271,13 +260,13 @@ function LobbyView({ roomId, onQuit }: { roomId: string; onQuit: () => void }) {
       heroTitle="대기실"
       heroSubtitle={
         <>
-          방 {roomId} · {map.name}
+          방 {roomId} · {map.name} · {stepIndex + 1}/{STEP_ORDER.length}단계 · {STEP_LABEL[tab]}
           {connection !== 'connected' && (
             <span className={styles.connecting}>
               <span className={styles.connectingDot} aria-hidden="true" /> 연결 중…
             </span>
           )}
-          <span className={styles.readyDots} role="status" aria-label={`${readyCount} / ${map.players}명 준비`}>
+          <span className={styles.readyDots} role="status" aria-label={`${readyCount} / ${state.players.length}명 준비`}>
             {seats.map((p, i) => (
               <span
                 key={i}
@@ -287,15 +276,12 @@ function LobbyView({ roomId, onQuit }: { roomId: string; onQuit: () => void }) {
               />
             ))}
             <span className={styles.readyCount}>
-              {readyCount} / {map.players}명 준비
+              {readyCount} / {state.players.length}명 준비
             </span>
           </span>
         </>
       }
-      tabs={tabs}
       activeTab={tab}
-      onTabChange={goTab}
-      dockLabel="대기실 탭"
       footer={
         me.isReady ? (
           <button type="button" className="pill pill--outline" onClick={() => pickRace(me.race ?? 'coalition')}>
@@ -333,7 +319,7 @@ function LobbyView({ roomId, onQuit }: { roomId: string; onQuit: () => void }) {
           </div>
           <p className={landing.help}>{room.hasPassword ? '비밀번호가 걸린 방입니다. 친구에게 비밀번호도 알려 주세요.' : '링크를 아는 사람은 누구나 들어올 수 있습니다.'}</p>
           <div className={styles.wizardNav}>
-            <button type="button" className="pill pill--outline" onClick={() => setTab('players')}>
+            <button type="button" className="pill pill--outline" onClick={goNext}>
               다음: 좌석 정하기
             </button>
           </div>
@@ -343,8 +329,9 @@ function LobbyView({ roomId, onQuit }: { roomId: string; onQuit: () => void }) {
       {tab === 'players' && (
         <section className={landing.section}>
           <h2 className={landing.h2}>
-            좌석 {state.players.length} / {map.players}
+            좌석 {state.players.length} / {MAX_PLAYERS}
           </h2>
+          <p className={landing.help}>사람 또는 AI로 최대 {MAX_PLAYERS}명까지 채울 수 있습니다. 몇 명인지에 맞는 맵은 다음 단계에서 고릅니다.</p>
           <ul className={styles.seats}>
             {seats.map((p, i) => (
               <li key={i} className={cx(styles.seat, !p && styles.seatEmpty)}>
@@ -382,10 +369,13 @@ function LobbyView({ roomId, onQuit }: { roomId: string; onQuit: () => void }) {
             ))}
           </ul>
           <div className={styles.wizardNav}>
+            <button type="button" className="pill pill--outline" onClick={goPrev}>
+              이전: 방으로
+            </button>
             <button type="button" className="pill pill--outline" onClick={onQuit}>
               나가기
             </button>
-            <button type="button" className="pill pill--outline" onClick={() => setTab('map')}>
+            <button type="button" className="pill pill--outline" onClick={goNext}>
               다음: 맵 정하기
             </button>
           </div>
@@ -408,36 +398,28 @@ function LobbyView({ roomId, onQuit }: { roomId: string; onQuit: () => void }) {
           </p>
           <MapPicker value={state.mapId} onChange={(id) => request(api.setMap(roomId, id))} disabled={!isHost} currentPlayers={state.players.length} />
           <div className={styles.wizardNav}>
-            <button type="button" className="pill pill--outline" onClick={() => setTab('race')}>
+            <button type="button" className="pill pill--outline" onClick={goPrev}>
+              이전: 좌석으로
+            </button>
+            <button type="button" className="pill pill--outline" onClick={goNext}>
               다음: 종족 정하기
             </button>
           </div>
         </section>
       )}
 
-      {tab === 'race' &&
-        (unlocked.race ? (
-          <section className={landing.section}>
-            <h2 className={landing.h2}>내 종족</h2>
-            <p className={landing.help}>{me.isReady ? '준비를 취소하면 다시 바꿀 수 있습니다.' : '종족을 고르면 그 종족의 고정 덱이 정해집니다. "랜덤"으로 다시 뽑을 수도 있습니다.'}</p>
-            <DeckPicker race={me.race} disabled={me.isReady} onPickRace={pickRace} onRandom={() => pickRace(randomRaceId())} />
-          </section>
-        ) : (
-          <LockedStep title="종족" reason="맵 탭을 한 번 확인하면 종족을 고를 수 있습니다." backLabel="맵 탭으로" onBack={() => setTab('map')} />
-        ))}
+      {tab === 'race' && (
+        <section className={landing.section}>
+          <h2 className={landing.h2}>내 종족</h2>
+          <p className={landing.help}>{me.isReady ? '준비를 취소하면 다시 바꿀 수 있습니다.' : '종족을 고르면 그 종족의 고정 덱이 정해집니다. "랜덤"으로 다시 뽑을 수도 있습니다.'}</p>
+          <DeckPicker race={me.race} disabled={me.isReady} onPickRace={pickRace} onRandom={() => pickRace(randomRaceId())} showDeck={false} />
+          <div className={styles.wizardNav}>
+            <button type="button" className="pill pill--outline" onClick={goPrev}>
+              이전: 맵으로
+            </button>
+          </div>
+        </section>
+      )}
     </DockShell>
-  );
-}
-
-/** 아직 열리지 않은 위자드 단계(LandingPage 의 잠긴 탭 안내와 같은 패턴). */
-function LockedStep({ title, reason, backLabel, onBack }: { title: string; reason: string; backLabel: string; onBack: () => void }) {
-  return (
-    <section className={landing.section}>
-      <h2 className={landing.h2}>{title} · 아직 열리지 않았습니다</h2>
-      <p className={landing.help}>{reason}</p>
-      <button type="button" className="pill pill--outline" onClick={onBack}>
-        {backLabel}
-      </button>
-    </section>
   );
 }
