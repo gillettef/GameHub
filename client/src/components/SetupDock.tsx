@@ -33,6 +33,7 @@ export const SetupDock = memo(function SetupDock({ tabs, active, onChange, label
           type="button"
           role="tab"
           aria-selected={active === t.id}
+          aria-disabled={t.disabled || undefined}
           aria-controls={`${idPrefix}-panel-${t.id}`}
           className={cx(styles.item, active === t.id && styles.active, t.disabled && styles.locked)}
           onClick={() => onChange(t.id)}

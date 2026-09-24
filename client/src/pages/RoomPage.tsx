@@ -1,4 +1,4 @@
-import { useEffect, useState, type CSSProperties } from 'react';
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react';
 import type { RaceId, RoomPeek } from '@astraltab/shared';
 import { getMap, mapsForPlayers } from '@astraltab/shared';
 import { DeckPicker } from '../components/DeckPicker';
@@ -191,12 +191,13 @@ function Shell({ title, children }: { title: string; children: React.ReactNode }
 
 type LobbyTab = 'room' | 'players' | 'map' | 'race';
 
-const LOBBY_TABS: SetupDockTab[] = [
-  { id: 'room', label: '방' },
-  { id: 'players', label: '플레이어' },
-  { id: 'map', label: '맵' },
-  { id: 'race', label: '종족' },
-];
+/** 위자드 순서 (2026-09-24 사용자 지시: 자유 탭 전환 대신 방→좌석→맵→종족 순으로 안내한다).
+ * 맵 단계는 좌석 인원과 무관하게 항상 열려 있다 — 인원수에 맞는 맵만 고를 수 있는 조건은
+ * MapPicker 의 currentPlayers 비활성화(너무 작은 맵만 흐리게)가 이미 만족한다(F030). 방장 혼자
+ * 방을 만든 직후에도 맵을 미리 훑어볼 수 있어야 하므로 맵 탭 자체를 잠그지 않는다(spec-checker
+ * 지적). 종족만 맵 단계를 한 번 거쳐야 열린다. */
+const STEP_ORDER: LobbyTab[] = ['room', 'players', 'map', 'race'];
+const STEP_LABEL: Record<LobbyTab, string> = { room: '방', players: '좌석', map: '맵', race: '종족' };
 
 function LobbyView({ roomId, onQuit }: { roomId: string; onQuit: () => void }) {
   const state = useGameStore(selectState);
@@ -208,6 +209,8 @@ function LobbyView({ roomId, onQuit }: { roomId: string; onQuit: () => void }) {
   const setNotice = useGameStore((s) => s.setNotice);
   const [tab, setTab] = useState<LobbyTab>('players');
   const [copied, setCopied] = useState(false);
+  // 맵 탭을 한 번이라도 열었는지(종족 단계를 열기 위한 조건뿐이라 좌석 인원과는 무관하다)
+  const [visitedMap, setVisitedMap] = useState(false);
 
   const me = state?.players.find((p) => p.id === viewerId);
 
@@ -216,6 +219,17 @@ function LobbyView({ roomId, onQuit }: { roomId: string; onQuit: () => void }) {
     if (viewerId && me && !me.race) dispatch({ type: 'SELECT_RACE', playerId: viewerId, race: randomRaceId() });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [me?.id, me?.race]);
+
+  useEffect(() => {
+    if (tab === 'map') setVisitedMap(true);
+  }, [tab]);
+
+  const unlocked: Record<LobbyTab, boolean> = useMemo(() => ({ room: true, players: true, map: true, race: visitedMap }), [visitedMap]);
+  const tabs: SetupDockTab[] = useMemo(
+    () => STEP_ORDER.map((id) => ({ id, label: STEP_LABEL[id], disabled: !unlocked[id] })),
+    [unlocked],
+  );
+  const goTab = useCallback((id: string) => setTab(id as LobbyTab), []);
 
   if (!state || !viewerId || !room || !me) return null;
   const isHost = room.hostId === viewerId;
@@ -278,9 +292,9 @@ function LobbyView({ roomId, onQuit }: { roomId: string; onQuit: () => void }) {
           </span>
         </>
       }
-      tabs={LOBBY_TABS}
+      tabs={tabs}
       activeTab={tab}
-      onTabChange={(id) => setTab(id as LobbyTab)}
+      onTabChange={goTab}
       dockLabel="대기실 탭"
       footer={
         me.isReady ? (
@@ -318,6 +332,11 @@ function LobbyView({ roomId, onQuit }: { roomId: string; onQuit: () => void }) {
             </button>
           </div>
           <p className={landing.help}>{room.hasPassword ? '비밀번호가 걸린 방입니다. 친구에게 비밀번호도 알려 주세요.' : '링크를 아는 사람은 누구나 들어올 수 있습니다.'}</p>
+          <div className={styles.wizardNav}>
+            <button type="button" className="pill pill--outline" onClick={() => setTab('players')}>
+              다음: 좌석 정하기
+            </button>
+          </div>
         </section>
       )}
 
@@ -362,9 +381,14 @@ function LobbyView({ roomId, onQuit }: { roomId: string; onQuit: () => void }) {
               </li>
             ))}
           </ul>
-          <button type="button" className="pill pill--outline" onClick={onQuit}>
-            나가기
-          </button>
+          <div className={styles.wizardNav}>
+            <button type="button" className="pill pill--outline" onClick={onQuit}>
+              나가기
+            </button>
+            <button type="button" className="pill pill--outline" onClick={() => setTab('map')}>
+              다음: 맵 정하기
+            </button>
+          </div>
         </section>
       )}
 
@@ -383,16 +407,37 @@ function LobbyView({ roomId, onQuit }: { roomId: string; onQuit: () => void }) {
             {!full && ` 인원이 정원(${map.players}명)과 같아야 시작합니다.`}
           </p>
           <MapPicker value={state.mapId} onChange={(id) => request(api.setMap(roomId, id))} disabled={!isHost} currentPlayers={state.players.length} />
+          <div className={styles.wizardNav}>
+            <button type="button" className="pill pill--outline" onClick={() => setTab('race')}>
+              다음: 종족 정하기
+            </button>
+          </div>
         </section>
       )}
 
-      {tab === 'race' && (
-        <section className={landing.section}>
-          <h2 className={landing.h2}>내 종족</h2>
-          <p className={landing.help}>{me.isReady ? '준비를 취소하면 다시 바꿀 수 있습니다.' : '종족을 고르면 그 종족의 고정 덱이 정해집니다. "랜덤"으로 다시 뽑을 수도 있습니다.'}</p>
-          <DeckPicker race={me.race} disabled={me.isReady} onPickRace={pickRace} onRandom={() => pickRace(randomRaceId())} />
-        </section>
-      )}
+      {tab === 'race' &&
+        (unlocked.race ? (
+          <section className={landing.section}>
+            <h2 className={landing.h2}>내 종족</h2>
+            <p className={landing.help}>{me.isReady ? '준비를 취소하면 다시 바꿀 수 있습니다.' : '종족을 고르면 그 종족의 고정 덱이 정해집니다. "랜덤"으로 다시 뽑을 수도 있습니다.'}</p>
+            <DeckPicker race={me.race} disabled={me.isReady} onPickRace={pickRace} onRandom={() => pickRace(randomRaceId())} />
+          </section>
+        ) : (
+          <LockedStep title="종족" reason="맵 탭을 한 번 확인하면 종족을 고를 수 있습니다." backLabel="맵 탭으로" onBack={() => setTab('map')} />
+        ))}
     </DockShell>
+  );
+}
+
+/** 아직 열리지 않은 위자드 단계(LandingPage 의 잠긴 탭 안내와 같은 패턴). */
+function LockedStep({ title, reason, backLabel, onBack }: { title: string; reason: string; backLabel: string; onBack: () => void }) {
+  return (
+    <section className={landing.section}>
+      <h2 className={landing.h2}>{title} · 아직 열리지 않았습니다</h2>
+      <p className={landing.help}>{reason}</p>
+      <button type="button" className="pill pill--outline" onClick={onBack}>
+        {backLabel}
+      </button>
+    </section>
   );
 }

@@ -28,8 +28,10 @@
   color: var(--color-accent-text);
 }
 
+/* 비활성 상태: 회색 텍스트 + 투명도 (DESIGN.md States, global.css 의 .is-disabled 와 같은 규칙) */
 .locked {
   color: var(--color-muted);
+  opacity: 0.7;
 }
 
 .locked.active {
