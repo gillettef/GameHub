@@ -51,7 +51,9 @@
   color: var(--color-heading);
 }
 
-/* 이 바 안에서만 버튼 높이를 줄인다 (기본 .pill 44px / .pill--outline 38px 는 다른 화면 그대로) */
+/* 이 바 안에서만 버튼 높이를 줄인다 (기본 .pill 44px / .pill--outline 38px 는 다른 화면 그대로).
+   같은 줄에 있는 교체·패스·기권은 모두 대등한 동작이라 채움·아웃라인과 무관하게 높이를 맞춘다
+   (2026-09-24 사용자 지시: 한 화면에서 버튼 크기가 서로 다르면 안 된다). */
 .row :global(.pill) {
   flex: none;
   height: 34px;
@@ -60,7 +62,7 @@
 }
 
 .row :global(.pill--outline) {
-  height: 30px;
+  height: 34px;
   padding: 0 var(--space-2);
 }
 
