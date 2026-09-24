@@ -5,6 +5,12 @@
   width: 100%;
 }
 
+/* 공유·복사는 대등한 동작이라 아웃라인·채움과 무관하게 높이를 맞춘다
+   (기본 .pill--outline 은 38px 로 .pill 44px 보다 낮아 한 줄에서 어긋나 보였다) */
+.inviteRow :global(.pill--outline) {
+  height: 44px;
+}
+
 .sectionHead {
   display: flex;
   align-items: baseline;
