@@ -7,6 +7,7 @@ import type { Action, GameState, MapId, PlayerId, RoomId, RoomInfo, RoomPeek } f
 import {
   DEFAULT_MAP_ID,
   MAX_PLAYERS,
+  RACES,
   applyAction,
   changeMap,
   createInitialState,
@@ -219,7 +220,8 @@ export class RoomManager {
     if (room.state.players.length >= capacity) throw new RoomError(`정원(${capacity}명)이 찼습니다`);
     const aiCount = room.state.players.filter((p) => p.kind === 'ai').length;
     const playerId = `p${room.nextPlayerNo}`;
-    const joined = joinPlayer(room.state, createPlayer(playerId, `AI ${aiCount + 1}`, 'ai'));
+    const race = RACES[this.opts.seed() % RACES.length]?.id ?? 'coalition';
+    const joined = joinPlayer(room.state, createPlayer(playerId, `AI ${aiCount + 1}`, 'ai', race));
     if (joined.error) throw new RoomError(joined.error);
     room.state = joined.state;
     room.nextPlayerNo += 1;
