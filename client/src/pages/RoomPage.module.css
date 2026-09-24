@@ -11,6 +11,14 @@
   height: 44px;
 }
 
+/* 위자드 단계 이동(다음/나가기 등). 모두 pill--outline 하나로 통일해 한 줄 안에서 높이가 갈리지 않게 한다 */
+.wizardNav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
 .sectionHead {
   display: flex;
   align-items: baseline;
