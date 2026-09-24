@@ -75,8 +75,16 @@ export function createInitialState(roomId: string, mapId: MapId, rngSeed: number
   };
 }
 
-/** 좌석은 joinPlayer 가 정한다. AI 좌석은 기본 종족을 자동 선택하고 준비 완료로 들어온다 (F026) */
-export function createPlayer(id: PlayerId, nickname: string, kind: PlayerKind = 'human'): PlayerState {
+/**
+ * 좌석은 joinPlayer 가 정한다. AI 좌석은 종족을 자동 선택하고 준비 완료로 들어온다 (F026).
+ * `aiRace` 를 주지 않으면 기본값(coalition)으로 떨어진다 — 호출자가 랜덤을 원하면 직접 골라 넘긴다.
+ */
+export function createPlayer(
+  id: PlayerId,
+  nickname: string,
+  kind: PlayerKind = 'human',
+  aiRace: RaceId = 'coalition',
+): PlayerState {
   const ai = kind === 'ai';
   return {
     id,
@@ -84,7 +92,7 @@ export function createPlayer(id: PlayerId, nickname: string, kind: PlayerKind = 
     kind,
     seat: -1,
     isReady: ai,
-    race: ai ? 'coalition' : null,
+    race: ai ? aiRace : null,
     energy: 0,
     deck: [],
     hand: [],
