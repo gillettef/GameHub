@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CORE_BASE_INCOME, DECK_SIZE, DEFAULT_DECK_CHOICE, INITIAL_HAND_SIZE, STARTING_ENERGY, getMap, legalCells } from '@astraltab/shared';
+import { CORE_BASE_INCOME, DECK_SIZE, INITIAL_HAND_SIZE, STARTING_ENERGY, getMap, legalCells } from '@astraltab/shared';
 import { buildCells, buildHand, buildPlayerSummaries, legalCellKeys } from './derived';
 import { applyHotseatAction, createHotseatGame, hotseatPlayerId } from './hotseat';
 
@@ -8,8 +8,8 @@ const twoPlayers = () =>
     mapId: 'binary-star',
     seed: 42,
     players: [
-      { nickname: '갑', deckChoice: DEFAULT_DECK_CHOICE },
-      { nickname: '', deckChoice: DEFAULT_DECK_CHOICE },
+      { nickname: '갑', race: 'coalition' },
+      { nickname: '', race: 'coalition' },
     ],
   });
 
@@ -30,7 +30,7 @@ describe('핫시트 어댑터', () => {
 
   it('정원이 맞지 않으면 시작하지 않는다', () => {
     expect(() =>
-      createHotseatGame({ mapId: 'binary-star', seed: 1, players: [{ nickname: 'a', deckChoice: DEFAULT_DECK_CHOICE }] }),
+      createHotseatGame({ mapId: 'binary-star', seed: 1, players: [{ nickname: 'a', race: 'coalition' }] }),
     ).toThrow(/2명/);
   });
 

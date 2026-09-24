@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { DEFAULT_DECK_CHOICE, DEFAULT_MAP_ID, getMap } from '@astraltab/shared';
+import { DEFAULT_MAP_ID, getMap } from '@astraltab/shared';
 import { makeSeed } from './game/hotseat';
 import { navigate, useRoute } from './lib/router';
 import { GamePage } from './pages/GamePage';
@@ -47,7 +47,7 @@ export function App() {
     startHotseat({
       mapId: map.id,
       seed: quick.seed,
-      players: Array.from({ length: map.players }, (_, i) => ({ nickname: `플레이어 ${i + 1}`, deckChoice: DEFAULT_DECK_CHOICE })),
+      players: Array.from({ length: map.players }, (_, i) => ({ nickname: `플레이어 ${i + 1}`, race: 'coalition' as const })),
     });
     acknowledgeHandoff();
     if (quick.tab) setTab(quick.tab);

@@ -5,12 +5,12 @@
  * 서버 대신 흉내 낸다. Phase 2 에서 Socket.io 어댑터(client/src/socket)가 같은 인터페이스
  * (`dispatch(action) → 새 상태`)로 교체되며, 그때부터 클라이언트는 엔진을 배치 가능 칸 계산에만 쓴다.
  */
-import type { Action, DeckChoice, GameState, MapId, PlayerId } from '@astraltab/shared';
+import type { Action, GameState, MapId, PlayerId, RaceId } from '@astraltab/shared';
 import { applyAction, createInitialState, createPlayer, getMap, joinPlayer } from '@astraltab/shared';
 
 export interface HotseatPlayerConfig {
   nickname: string;
-  deckChoice: DeckChoice;
+  race: RaceId;
 }
 
 export interface HotseatConfig {
@@ -44,7 +44,7 @@ export function createHotseatGame(config: HotseatConfig): GameState {
   });
   config.players.forEach((p, seat) => {
     const id = hotseatPlayerId(seat);
-    const chosen = applyAction(state, { type: 'SELECT_DECK', playerId: id, choice: p.deckChoice });
+    const chosen = applyAction(state, { type: 'SELECT_RACE', playerId: id, race: p.race });
     if (chosen.error) throw new Error(chosen.error);
     const readied = applyAction(chosen.state, { type: 'READY', playerId: id });
     if (readied.error) throw new Error(readied.error);

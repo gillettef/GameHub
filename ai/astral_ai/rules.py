@@ -353,6 +353,15 @@ def _remove_destroyed(state: GameState) -> None:
             _eliminate(state, p.id)
 
 
+def _prioritized_targets(attacker_pos: Position, enemies: list[Marker], range_: int) -> list[Marker]:
+    """7.1: 거리 → 체력 → y → x 오름차순으로 정렬하고, `veil`(은신) 마커는 다른 비은신 후보가
+    있으면 뒤로 뺀다. 후보 전부가 은신이면 그 안에서만 위 순서로 고른다 (combat.ts prioritizedTargets)."""
+    in_range = [e for e in enemies if hex_distance(attacker_pos, e.pos) <= range_]
+    ordered = sorted(in_range, key=lambda e: (hex_distance(attacker_pos, e.pos), e.hp, e.pos.y, e.pos.x))
+    non_veiled = [e for e in ordered if "veil" not in spec(e.specId).keywords]
+    return non_veiled if non_veiled else ordered
+
+
 def _resolve_combat(state: GameState, player_id: str) -> None:
     attackers = [m for m in markers_of(state, player_id) if spec(m.specId).attack > 0]
     if not attackers:
@@ -361,11 +370,10 @@ def _resolve_combat(state: GameState, player_id: str) -> None:
     damage: dict[str, int] = {}
     for a in attackers:
         sp = spec(a.specId)
-        cands = [e for e in enemies if hex_distance(a.pos, e.pos) <= sp.range]
-        if not cands:
-            continue
-        target = min(cands, key=lambda e: (hex_distance(a.pos, e.pos), e.hp, e.pos.y, e.pos.x))
-        damage[target.id] = damage.get(target.id, 0) + sp.attack
+        candidates = _prioritized_targets(a.pos, enemies, sp.range)
+        targets = candidates[:2] if "barrage" in sp.keywords else candidates[:1]
+        for target in targets:
+            damage[target.id] = damage.get(target.id, 0) + sp.attack
     if not damage:
         return
     for m in state.markers:

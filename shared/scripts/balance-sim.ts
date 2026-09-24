@@ -8,12 +8,14 @@
  * 봇 정책: 매 배치 기회마다 손패 카드 × 놓을 수 있는 칸 조합을 전부(칸이 많으면 표본) 훑어
  * "비용 대비 가치 + 상황 보너스(사거리 안 적, 과부하 이웃, 광맥)"가 가장 높은 곳에 놓는다.
  * 더 이상 값어치 있는 수가 없으면 패스한다. 게임 내 결정성 RNG(rngSeed)와는 별도로,
- * 시뮬레이터 자신의 선택(특수 카드 무작위 선택, 칸 표본 추출)은 이 파일만의 시드 PRNG를 쓴다.
+ * 시뮬레이터 자신의 선택(칸 표본 추출)은 이 파일만의 시드 PRNG를 쓴다.
+ * 2026-09-24: 덱 빌딩 자유 선택이 폐지되어 종족마다 고정 덱 하나뿐이라, 더 이상 덱 구성을
+ * 무작위로 고를 필요가 없다 — 종족만 정하면 `buildDeck`이 나머지를 정한다.
  */
 import { applyAction, canPlay, createInitialState, createPlayer, joinPlayer, legalCells, terrainAt } from '../src/engine/index.js';
 import { hexDistance } from '../src/engine/sight.js';
-import { RACES, getSpec, mapsForPlayers, specialCardsOf } from '../src/data/index.js';
-import type { Action, CardId, CardSpec, DeckChoice, GameState, PlayerId, Position, RaceId } from '../src/types/index.js';
+import { RACES, getSpec, mapsForPlayers } from '../src/data/index.js';
+import type { CardId, CardSpec, GameState, PlayerId, Position, RaceId } from '../src/types/index.js';
 
 // --- 시뮬레이터 전용 시드 PRNG (게임 엔진의 rngSeed 와 무관) ---------------------------------
 
@@ -28,10 +30,6 @@ function mulberry32(seed: number) {
 }
 
 type Rand = () => number;
-
-function pickOne<T>(items: readonly T[], rand: Rand): T {
-  return items[Math.floor(rand() * items.length)] as T;
-}
 
 function sample<T>(items: readonly T[], n: number, rand: Rand): T[] {
   if (items.length <= n) return [...items];
@@ -105,15 +103,6 @@ function botTurn(state: GameState, playerId: PlayerId, rand: Rand): GameState {
   return s;
 }
 
-function randomDeckChoice(race: RaceId, rand: Rand): DeckChoice {
-  return {
-    race,
-    buildingId: pickOne(specialCardsOf(race, 'building'), rand).id,
-    unitId: pickOne(specialCardsOf(race, 'unit'), rand).id,
-    magicId: pickOne(specialCardsOf(race, 'magic'), rand).id,
-  };
-}
-
 // --- 한 판 실행 ---------------------------------------------------------------------------
 
 export interface GameSummary {
@@ -133,9 +122,8 @@ function playGame(mapId: string, races: RaceId[], engineSeed: number, simSeed: n
     s = joinPlayer(s, createPlayer(`p${i}`, `P${i}`)).state;
   }
   for (let i = 0; i < races.length; i++) {
-    const choice = randomDeckChoice(races[i] as RaceId, rand);
-    const r = applyAction(s, { type: 'SELECT_DECK', playerId: `p${i}`, choice });
-    if (r.error) throw new Error(`SELECT_DECK 실패: ${r.error}`);
+    const r = applyAction(s, { type: 'SELECT_RACE', playerId: `p${i}`, race: races[i] as RaceId });
+    if (r.error) throw new Error(`SELECT_RACE 실패: ${r.error}`);
     s = r.state;
   }
   for (let i = 0; i < races.length; i++) {
@@ -169,14 +157,15 @@ function playGame(mapId: string, races: RaceId[], engineSeed: number, simSeed: n
   };
 }
 
-// --- 대진표 구성 (2인, 종족 3쌍 × 좌석 순서 2가지) ------------------------------------------
+// --- 대진표 구성 (2인, 종족 5개의 모든 조합 10쌍 × 좌석 순서 2가지, 2026-09-24 5종족 확장) -----
 
 const RACE_IDS = RACES.map((r) => r.id);
-const PAIRS: [RaceId, RaceId][] = [
-  ['coalition', 'swarm'],
-  ['coalition', 'automata'],
-  ['swarm', 'automata'],
-];
+const PAIRS: [RaceId, RaceId][] = [];
+for (let i = 0; i < RACE_IDS.length; i++) {
+  for (let j = i + 1; j < RACE_IDS.length; j++) {
+    PAIRS.push([RACE_IDS[i] as RaceId, RACE_IDS[j] as RaceId]);
+  }
+}
 const TWO_PLAYER_MAPS = mapsForPlayers(2).map((m) => m.id);
 
 function buildSchedule(totalGames: number): { mapId: string; races: RaceId[] }[] {

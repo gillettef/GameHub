@@ -11,8 +11,8 @@ PlayerKind = Literal["human", "ai"]
 GamePhase = Literal["lobby", "playing", "finished"]
 CardType = Literal["building", "unit", "magic"]
 MarkerKind = Literal["core", "building", "unit", "magic"]
-Keyword = Literal["infiltrate", "repair", "overclock"]
-RaceId = Literal["coalition", "swarm", "automata"]
+Keyword = Literal["infiltrate", "repair", "overclock", "veil", "barrage"]
+RaceId = Literal["coalition", "swarm", "automata", "shade", "siege"]
 Terrain = Literal["space", "asteroid", "vein"]
 LogKind = Literal[
     "system", "turn", "combat", "repair", "expire", "income", "draw",
@@ -85,13 +85,6 @@ class CardSpec(Strict):
     description: str
 
 
-class DeckChoice(Strict):
-    """2026-09-23 개편: 기본/특수 구분 없이 cardId → 장수(그 카드의 copies 상한 이내)로 자유롭게 고른다."""
-
-    race: RaceId
-    cards: dict[str, int]
-
-
 # --- 맵 -----------------------------------------------------------------------
 
 
@@ -133,7 +126,7 @@ class PlayerState(Strict):
     kind: PlayerKind
     seat: int
     isReady: bool
-    deckChoice: DeckChoice | None
+    race: RaceId | None
     energy: int
     deck: list[str]
     hand: list[str]
@@ -185,10 +178,10 @@ class GameState(Strict):
 # --- 액션 ---------------------------------------------------------------------
 
 
-class SelectDeckAction(Strict):
-    type: Literal["SELECT_DECK"]
+class SelectRaceAction(Strict):
+    type: Literal["SELECT_RACE"]
     playerId: str
-    choice: DeckChoice
+    race: RaceId
 
 
 class ReadyAction(Strict):
@@ -215,7 +208,7 @@ class SurrenderAction(Strict):
 
 
 Action = Annotated[
-    SelectDeckAction | ReadyAction | PlaceAction | PassAction | SurrenderAction,
+    SelectRaceAction | ReadyAction | PlaceAction | PassAction | SurrenderAction,
     Field(discriminator="type"),
 ]
 

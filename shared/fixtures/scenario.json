@@ -33,24 +33,7 @@
         "kind": "human",
         "seat": 0,
         "isReady": true,
-        "deckChoice": {
-          "race": "coalition",
-          "cards": {
-            "extractor": 4,
-            "outpost": 3,
-            "turret": 2,
-            "scout": 3,
-            "fighter": 3,
-            "artillery": 2,
-            "cruiser": 1,
-            "meteor": 1,
-            "shield": 1,
-            "energy-cell": 2,
-            "refinery": 1,
-            "battleship": 1,
-            "gravity-wave": 1
-          }
-        },
+        "race": "coalition",
         "energy": 14,
         "deck": [
           "gravity-wave",
@@ -94,24 +77,7 @@
         "kind": "ai",
         "seat": 1,
         "isReady": true,
-        "deckChoice": {
-          "race": "coalition",
-          "cards": {
-            "extractor": 4,
-            "outpost": 3,
-            "turret": 2,
-            "scout": 3,
-            "fighter": 3,
-            "artillery": 2,
-            "cruiser": 1,
-            "meteor": 1,
-            "shield": 1,
-            "energy-cell": 2,
-            "refinery": 1,
-            "battleship": 1,
-            "gravity-wave": 1
-          }
-        },
+        "race": "coalition",
         "energy": 12,
         "deck": [
           "meteor",
@@ -317,24 +283,7 @@
             "kind": "human",
             "seat": 0,
             "isReady": true,
-            "deckChoice": {
-              "race": "coalition",
-              "cards": {
-                "extractor": 4,
-                "outpost": 3,
-                "turret": 2,
-                "scout": 3,
-                "fighter": 3,
-                "artillery": 2,
-                "cruiser": 1,
-                "meteor": 1,
-                "shield": 1,
-                "energy-cell": 2,
-                "refinery": 1,
-                "battleship": 1,
-                "gravity-wave": 1
-              }
-            },
+            "race": "coalition",
             "energy": 11,
             "deck": [
               "gravity-wave",
@@ -379,24 +328,7 @@
             "kind": "ai",
             "seat": 1,
             "isReady": true,
-            "deckChoice": {
-              "race": "coalition",
-              "cards": {
-                "extractor": 4,
-                "outpost": 3,
-                "turret": 2,
-                "scout": 3,
-                "fighter": 3,
-                "artillery": 2,
-                "cruiser": 1,
-                "meteor": 1,
-                "shield": 1,
-                "energy-cell": 2,
-                "refinery": 1,
-                "battleship": 1,
-                "gravity-wave": 1
-              }
-            },
+            "race": "coalition",
             "energy": 12,
             "deck": [
               "meteor",
@@ -616,24 +548,7 @@
             "kind": "human",
             "seat": 0,
             "isReady": true,
-            "deckChoice": {
-              "race": "coalition",
-              "cards": {
-                "extractor": 4,
-                "outpost": 3,
-                "turret": 2,
-                "scout": 3,
-                "fighter": 3,
-                "artillery": 2,
-                "cruiser": 1,
-                "meteor": 1,
-                "shield": 1,
-                "energy-cell": 2,
-                "refinery": 1,
-                "battleship": 1,
-                "gravity-wave": 1
-              }
-            },
+            "race": "coalition",
             "energy": 16,
             "deck": [
               "refinery",
@@ -678,24 +593,7 @@
             "kind": "ai",
             "seat": 1,
             "isReady": true,
-            "deckChoice": {
-              "race": "coalition",
-              "cards": {
-                "extractor": 4,
-                "outpost": 3,
-                "turret": 2,
-                "scout": 3,
-                "fighter": 3,
-                "artillery": 2,
-                "cruiser": 1,
-                "meteor": 1,
-                "shield": 1,
-                "energy-cell": 2,
-                "refinery": 1,
-                "battleship": 1,
-                "gravity-wave": 1
-              }
-            },
+            "race": "coalition",
             "energy": 12,
             "deck": [
               "meteor",
@@ -948,24 +846,7 @@
             "kind": "human",
             "seat": 0,
             "isReady": true,
-            "deckChoice": {
-              "race": "coalition",
-              "cards": {
-                "extractor": 4,
-                "outpost": 3,
-                "turret": 2,
-                "scout": 3,
-                "fighter": 3,
-                "artillery": 2,
-                "cruiser": 1,
-                "meteor": 1,
-                "shield": 1,
-                "energy-cell": 2,
-                "refinery": 1,
-                "battleship": 1,
-                "gravity-wave": 1
-              }
-            },
+            "race": "coalition",
             "energy": 16,
             "deck": [
               "refinery",
@@ -1010,24 +891,7 @@
             "kind": "ai",
             "seat": 1,
             "isReady": true,
-            "deckChoice": {
-              "race": "coalition",
-              "cards": {
-                "extractor": 4,
-                "outpost": 3,
-                "turret": 2,
-                "scout": 3,
-                "fighter": 3,
-                "artillery": 2,
-                "cruiser": 1,
-                "meteor": 1,
-                "shield": 1,
-                "energy-cell": 2,
-                "refinery": 1,
-                "battleship": 1,
-                "gravity-wave": 1
-              }
-            },
+            "race": "coalition",
             "energy": 9,
             "deck": [
               "meteor",
@@ -1295,24 +1159,7 @@
             "kind": "human",
             "seat": 0,
             "isReady": true,
-            "deckChoice": {
-              "race": "coalition",
-              "cards": {
-                "extractor": 4,
-                "outpost": 3,
-                "turret": 2,
-                "scout": 3,
-                "fighter": 3,
-                "artillery": 2,
-                "cruiser": 1,
-                "meteor": 1,
-                "shield": 1,
-                "energy-cell": 2,
-                "refinery": 1,
-                "battleship": 1,
-                "gravity-wave": 1
-              }
-            },
+            "race": "coalition",
             "energy": 16,
             "deck": [
               "refinery",
@@ -1357,24 +1204,7 @@
             "kind": "ai",
             "seat": 1,
             "isReady": true,
-            "deckChoice": {
-              "race": "coalition",
-              "cards": {
-                "extractor": 4,
-                "outpost": 3,
-                "turret": 2,
-                "scout": 3,
-                "fighter": 3,
-                "artillery": 2,
-                "cruiser": 1,
-                "meteor": 1,
-                "shield": 1,
-                "energy-cell": 2,
-                "refinery": 1,
-                "battleship": 1,
-                "gravity-wave": 1
-              }
-            },
+            "race": "coalition",
             "energy": 12,
             "deck": [
               "scout",
@@ -1675,24 +1505,7 @@
             "kind": "human",
             "seat": 0,
             "isReady": true,
-            "deckChoice": {
-              "race": "coalition",
-              "cards": {
-                "extractor": 4,
-                "outpost": 3,
-                "turret": 2,
-                "scout": 3,
-                "fighter": 3,
-                "artillery": 2,
-                "cruiser": 1,
-                "meteor": 1,
-                "shield": 1,
-                "energy-cell": 2,
-                "refinery": 1,
-                "battleship": 1,
-                "gravity-wave": 1
-              }
-            },
+            "race": "coalition",
             "energy": 12,
             "deck": [
               "refinery",
@@ -1737,24 +1550,7 @@
             "kind": "ai",
             "seat": 1,
             "isReady": true,
-            "deckChoice": {
-              "race": "coalition",
-              "cards": {
-                "extractor": 4,
-                "outpost": 3,
-                "turret": 2,
-                "scout": 3,
-                "fighter": 3,
-                "artillery": 2,
-                "cruiser": 1,
-                "meteor": 1,
-                "shield": 1,
-                "energy-cell": 2,
-                "refinery": 1,
-                "battleship": 1,
-                "gravity-wave": 1
-              }
-            },
+            "race": "coalition",
             "energy": 12,
             "deck": [
               "scout",
@@ -2069,24 +1865,7 @@
             "kind": "human",
             "seat": 0,
             "isReady": true,
-            "deckChoice": {
-              "race": "coalition",
-              "cards": {
-                "extractor": 4,
-                "outpost": 3,
-                "turret": 2,
-                "scout": 3,
-                "fighter": 3,
-                "artillery": 2,
-                "cruiser": 1,
-                "meteor": 1,
-                "shield": 1,
-                "energy-cell": 2,
-                "refinery": 1,
-                "battleship": 1,
-                "gravity-wave": 1
-              }
-            },
+            "race": "coalition",
             "energy": 17,
             "deck": [
               "extractor",
@@ -2131,24 +1910,7 @@
             "kind": "ai",
             "seat": 1,
             "isReady": true,
-            "deckChoice": {
-              "race": "coalition",
-              "cards": {
-                "extractor": 4,
-                "outpost": 3,
-                "turret": 2,
-                "scout": 3,
-                "fighter": 3,
-                "artillery": 2,
-                "cruiser": 1,
-                "meteor": 1,
-                "shield": 1,
-                "energy-cell": 2,
-                "refinery": 1,
-                "battleship": 1,
-                "gravity-wave": 1
-              }
-            },
+            "race": "coalition",
             "energy": 12,
             "deck": [
               "scout",
@@ -2498,24 +2260,7 @@
             "kind": "human",
             "seat": 0,
             "isReady": true,
-            "deckChoice": {
-              "race": "coalition",
-              "cards": {
-                "extractor": 4,
-                "outpost": 3,
-                "turret": 2,
-                "scout": 3,
-                "fighter": 3,
-                "artillery": 2,
-                "cruiser": 1,
-                "meteor": 1,
-                "shield": 1,
-                "energy-cell": 2,
-                "refinery": 1,
-                "battleship": 1,
-                "gravity-wave": 1
-              }
-            },
+            "race": "coalition",
             "energy": 17,
             "deck": [
               "extractor",
@@ -2560,24 +2305,7 @@
             "kind": "ai",
             "seat": 1,
             "isReady": true,
-            "deckChoice": {
-              "race": "coalition",
-              "cards": {
-                "extractor": 4,
-                "outpost": 3,
-                "turret": 2,
-                "scout": 3,
-                "fighter": 3,
-                "artillery": 2,
-                "cruiser": 1,
-                "meteor": 1,
-                "shield": 1,
-                "energy-cell": 2,
-                "refinery": 1,
-                "battleship": 1,
-                "gravity-wave": 1
-              }
-            },
+            "race": "coalition",
             "energy": 9,
             "deck": [
               "scout",
@@ -2941,24 +2669,7 @@
             "kind": "human",
             "seat": 0,
             "isReady": true,
-            "deckChoice": {
-              "race": "coalition",
-              "cards": {
-                "extractor": 4,
-                "outpost": 3,
-                "turret": 2,
-                "scout": 3,
-                "fighter": 3,
-                "artillery": 2,
-                "cruiser": 1,
-                "meteor": 1,
-                "shield": 1,
-                "energy-cell": 2,
-                "refinery": 1,
-                "battleship": 1,
-                "gravity-wave": 1
-              }
-            },
+            "race": "coalition",
             "energy": 17,
             "deck": [
               "extractor",
@@ -3003,24 +2714,7 @@
             "kind": "ai",
             "seat": 1,
             "isReady": true,
-            "deckChoice": {
-              "race": "coalition",
-              "cards": {
-                "extractor": 4,
-                "outpost": 3,
-                "turret": 2,
-                "scout": 3,
-                "fighter": 3,
-                "artillery": 2,
-                "cruiser": 1,
-                "meteor": 1,
-                "shield": 1,
-                "energy-cell": 2,
-                "refinery": 1,
-                "battleship": 1,
-                "gravity-wave": 1
-              }
-            },
+            "race": "coalition",
             "energy": 12,
             "deck": [
               "battleship",
@@ -3419,24 +3113,7 @@
             "kind": "human",
             "seat": 0,
             "isReady": true,
-            "deckChoice": {
-              "race": "coalition",
-              "cards": {
-                "extractor": 4,
-                "outpost": 3,
-                "turret": 2,
-                "scout": 3,
-                "fighter": 3,
-                "artillery": 2,
-                "cruiser": 1,
-                "meteor": 1,
-                "shield": 1,
-                "energy-cell": 2,
-                "refinery": 1,
-                "battleship": 1,
-                "gravity-wave": 1
-              }
-            },
+            "race": "coalition",
             "energy": 20,
             "deck": [
               "extractor",
@@ -3481,24 +3158,7 @@
             "kind": "ai",
             "seat": 1,
             "isReady": true,
-            "deckChoice": {
-              "race": "coalition",
-              "cards": {
-                "extractor": 4,
-                "outpost": 3,
-                "turret": 2,
-                "scout": 3,
-                "fighter": 3,
-                "artillery": 2,
-                "cruiser": 1,
-                "meteor": 1,
-                "shield": 1,
-                "energy-cell": 2,
-                "refinery": 1,
-                "battleship": 1,
-                "gravity-wave": 1
-              }
-            },
+            "race": "coalition",
             "energy": 12,
             "deck": [
               "battleship",
@@ -3937,24 +3597,7 @@
             "kind": "human",
             "seat": 0,
             "isReady": true,
-            "deckChoice": {
-              "race": "coalition",
-              "cards": {
-                "extractor": 4,
-                "outpost": 3,
-                "turret": 2,
-                "scout": 3,
-                "fighter": 3,
-                "artillery": 2,
-                "cruiser": 1,
-                "meteor": 1,
-                "shield": 1,
-                "energy-cell": 2,
-                "refinery": 1,
-                "battleship": 1,
-                "gravity-wave": 1
-              }
-            },
+            "race": "coalition",
             "energy": 20,
             "deck": [
               "extractor",
@@ -3999,24 +3642,7 @@
             "kind": "ai",
             "seat": 1,
             "isReady": true,
-            "deckChoice": {
-              "race": "coalition",
-              "cards": {
-                "extractor": 4,
-                "outpost": 3,
-                "turret": 2,
-                "scout": 3,
-                "fighter": 3,
-                "artillery": 2,
-                "cruiser": 1,
-                "meteor": 1,
-                "shield": 1,
-                "energy-cell": 2,
-                "refinery": 1,
-                "battleship": 1,
-                "gravity-wave": 1
-              }
-            },
+            "race": "coalition",
             "energy": 10,
             "deck": [
               "battleship",
@@ -4464,24 +4090,7 @@
             "kind": "human",
             "seat": 0,
             "isReady": true,
-            "deckChoice": {
-              "race": "coalition",
-              "cards": {
-                "extractor": 4,
-                "outpost": 3,
-                "turret": 2,
-                "scout": 3,
-                "fighter": 3,
-                "artillery": 2,
-                "cruiser": 1,
-                "meteor": 1,
-                "shield": 1,
-                "energy-cell": 2,
-                "refinery": 1,
-                "battleship": 1,
-                "gravity-wave": 1
-              }
-            },
+            "race": "coalition",
             "energy": 20,
             "deck": [
               "extractor",
@@ -4526,24 +4135,7 @@
             "kind": "ai",
             "seat": 1,
             "isReady": true,
-            "deckChoice": {
-              "race": "coalition",
-              "cards": {
-                "extractor": 4,
-                "outpost": 3,
-                "turret": 2,
-                "scout": 3,
-                "fighter": 3,
-                "artillery": 2,
-                "cruiser": 1,
-                "meteor": 1,
-                "shield": 1,
-                "energy-cell": 2,
-                "refinery": 1,
-                "battleship": 1,
-                "gravity-wave": 1
-              }
-            },
+            "race": "coalition",
             "energy": 13,
             "deck": [
               "scout",
@@ -5026,24 +4618,7 @@
             "kind": "human",
             "seat": 0,
             "isReady": true,
-            "deckChoice": {
-              "race": "coalition",
-              "cards": {
-                "extractor": 4,
-                "outpost": 3,
-                "turret": 2,
-                "scout": 3,
-                "fighter": 3,
-                "artillery": 2,
-                "cruiser": 1,
-                "meteor": 1,
-                "shield": 1,
-                "energy-cell": 2,
-                "refinery": 1,
-                "battleship": 1,
-                "gravity-wave": 1
-              }
-            },
+            "race": "coalition",
             "energy": 17,
             "deck": [
               "extractor",
@@ -5088,24 +4663,7 @@
             "kind": "ai",
             "seat": 1,
             "isReady": true,
-            "deckChoice": {
-              "race": "coalition",
-              "cards": {
-                "extractor": 4,
-                "outpost": 3,
-                "turret": 2,
-                "scout": 3,
-                "fighter": 3,
-                "artillery": 2,
-                "cruiser": 1,
-                "meteor": 1,
-                "shield": 1,
-                "energy-cell": 2,
-                "refinery": 1,
-                "battleship": 1,
-                "gravity-wave": 1
-              }
-            },
+            "race": "coalition",
             "energy": 13,
             "deck": [
               "scout",
@@ -5597,24 +5155,7 @@
             "kind": "human",
             "seat": 0,
             "isReady": true,
-            "deckChoice": {
-              "race": "coalition",
-              "cards": {
-                "extractor": 4,
-                "outpost": 3,
-                "turret": 2,
-                "scout": 3,
-                "fighter": 3,
-                "artillery": 2,
-                "cruiser": 1,
-                "meteor": 1,
-                "shield": 1,
-                "energy-cell": 2,
-                "refinery": 1,
-                "battleship": 1,
-                "gravity-wave": 1
-              }
-            },
+            "race": "coalition",
             "energy": 20,
             "deck": [
               "outpost",
@@ -5659,24 +5200,7 @@
             "kind": "ai",
             "seat": 1,
             "isReady": true,
-            "deckChoice": {
-              "race": "coalition",
-              "cards": {
-                "extractor": 4,
-                "outpost": 3,
-                "turret": 2,
-                "scout": 3,
-                "fighter": 3,
-                "artillery": 2,
-                "cruiser": 1,
-                "meteor": 1,
-                "shield": 1,
-                "energy-cell": 2,
-                "refinery": 1,
-                "battleship": 1,
-                "gravity-wave": 1
-              }
-            },
+            "race": "coalition",
             "energy": 13,
             "deck": [
               "scout",
@@ -6201,24 +5725,7 @@
             "kind": "human",
             "seat": 0,
             "isReady": true,
-            "deckChoice": {
-              "race": "coalition",
-              "cards": {
-                "extractor": 4,
-                "outpost": 3,
-                "turret": 2,
-                "scout": 3,
-                "fighter": 3,
-                "artillery": 2,
-                "cruiser": 1,
-                "meteor": 1,
-                "shield": 1,
-                "energy-cell": 2,
-                "refinery": 1,
-                "battleship": 1,
-                "gravity-wave": 1
-              }
-            },
+            "race": "coalition",
             "energy": 20,
             "deck": [
               "outpost",
@@ -6263,24 +5770,7 @@
             "kind": "ai",
             "seat": 1,
             "isReady": true,
-            "deckChoice": {
-              "race": "coalition",
-              "cards": {
-                "extractor": 4,
-                "outpost": 3,
-                "turret": 2,
-                "scout": 3,
-                "fighter": 3,
-                "artillery": 2,
-                "cruiser": 1,
-                "meteor": 1,
-                "shield": 1,
-                "energy-cell": 2,
-                "refinery": 1,
-                "battleship": 1,
-                "gravity-wave": 1
-              }
-            },
+            "race": "coalition",
             "energy": 10,
             "deck": [
               "scout",
@@ -6819,24 +6309,7 @@
             "kind": "human",
             "seat": 0,
             "isReady": true,
-            "deckChoice": {
-              "race": "coalition",
-              "cards": {
-                "extractor": 4,
-                "outpost": 3,
-                "turret": 2,
-                "scout": 3,
-                "fighter": 3,
-                "artillery": 2,
-                "cruiser": 1,
-                "meteor": 1,
-                "shield": 1,
-                "energy-cell": 2,
-                "refinery": 1,
-                "battleship": 1,
-                "gravity-wave": 1
-              }
-            },
+            "race": "coalition",
             "energy": 20,
             "deck": [
               "outpost",
@@ -6881,24 +6354,7 @@
             "kind": "ai",
             "seat": 1,
             "isReady": true,
-            "deckChoice": {
-              "race": "coalition",
-              "cards": {
-                "extractor": 4,
-                "outpost": 3,
-                "turret": 2,
-                "scout": 3,
-                "fighter": 3,
-                "artillery": 2,
-                "cruiser": 1,
-                "meteor": 1,
-                "shield": 1,
-                "energy-cell": 2,
-                "refinery": 1,
-                "battleship": 1,
-                "gravity-wave": 1
-              }
-            },
+            "race": "coalition",
             "energy": 13,
             "deck": [
               "extractor",
@@ -7470,24 +6926,7 @@
             "kind": "human",
             "seat": 0,
             "isReady": true,
-            "deckChoice": {
-              "race": "coalition",
-              "cards": {
-                "extractor": 4,
-                "outpost": 3,
-                "turret": 2,
-                "scout": 3,
-                "fighter": 3,
-                "artillery": 2,
-                "cruiser": 1,
-                "meteor": 1,
-                "shield": 1,
-                "energy-cell": 2,
-                "refinery": 1,
-                "battleship": 1,
-                "gravity-wave": 1
-              }
-            },
+            "race": "coalition",
             "energy": 15,
             "deck": [
               "outpost",
@@ -7532,24 +6971,7 @@
             "kind": "ai",
             "seat": 1,
             "isReady": true,
-            "deckChoice": {
-              "race": "coalition",
-              "cards": {
-                "extractor": 4,
-                "outpost": 3,
-                "turret": 2,
-                "scout": 3,
-                "fighter": 3,
-                "artillery": 2,
-                "cruiser": 1,
-                "meteor": 1,
-                "shield": 1,
-                "energy-cell": 2,
-                "refinery": 1,
-                "battleship": 1,
-                "gravity-wave": 1
-              }
-            },
+            "race": "coalition",
             "energy": 13,
             "deck": [
               "extractor",
@@ -8135,24 +7557,7 @@
             "kind": "human",
             "seat": 0,
             "isReady": true,
-            "deckChoice": {
-              "race": "coalition",
-              "cards": {
-                "extractor": 4,
-                "outpost": 3,
-                "turret": 2,
-                "scout": 3,
-                "fighter": 3,
-                "artillery": 2,
-                "cruiser": 1,
-                "meteor": 1,
-                "shield": 1,
-                "energy-cell": 2,
-                "refinery": 1,
-                "battleship": 1,
-                "gravity-wave": 1
-              }
-            },
+            "race": "coalition",
             "energy": 20,
             "deck": [
               "outpost",
@@ -8197,24 +7602,7 @@
             "kind": "ai",
             "seat": 1,
             "isReady": true,
-            "deckChoice": {
-              "race": "coalition",
-              "cards": {
-                "extractor": 4,
-                "outpost": 3,
-                "turret": 2,
-                "scout": 3,
-                "fighter": 3,
-                "artillery": 2,
-                "cruiser": 1,
-                "meteor": 1,
-                "shield": 1,
-                "energy-cell": 2,
-                "refinery": 1,
-                "battleship": 1,
-                "gravity-wave": 1
-              }
-            },
+            "race": "coalition",
             "energy": 13,
             "deck": [
               "extractor",
@@ -8835,24 +8223,7 @@
             "kind": "human",
             "seat": 0,
             "isReady": true,
-            "deckChoice": {
-              "race": "coalition",
-              "cards": {
-                "extractor": 4,
-                "outpost": 3,
-                "turret": 2,
-                "scout": 3,
-                "fighter": 3,
-                "artillery": 2,
-                "cruiser": 1,
-                "meteor": 1,
-                "shield": 1,
-                "energy-cell": 2,
-                "refinery": 1,
-                "battleship": 1,
-                "gravity-wave": 1
-              }
-            },
+            "race": "coalition",
             "energy": 20,
             "deck": [
               "outpost",
@@ -8897,24 +8268,7 @@
             "kind": "ai",
             "seat": 1,
             "isReady": true,
-            "deckChoice": {
-              "race": "coalition",
-              "cards": {
-                "extractor": 4,
-                "outpost": 3,
-                "turret": 2,
-                "scout": 3,
-                "fighter": 3,
-                "artillery": 2,
-                "cruiser": 1,
-                "meteor": 1,
-                "shield": 1,
-                "energy-cell": 2,
-                "refinery": 1,
-                "battleship": 1,
-                "gravity-wave": 1
-              }
-            },
+            "race": "coalition",
             "energy": 16,
             "deck": [
               "extractor",
@@ -9575,24 +8929,7 @@
             "kind": "human",
             "seat": 0,
             "isReady": true,
-            "deckChoice": {
-              "race": "coalition",
-              "cards": {
-                "extractor": 4,
-                "outpost": 3,
-                "turret": 2,
-                "scout": 3,
-                "fighter": 3,
-                "artillery": 2,
-                "cruiser": 1,
-                "meteor": 1,
-                "shield": 1,
-                "energy-cell": 2,
-                "refinery": 1,
-                "battleship": 1,
-                "gravity-wave": 1
-              }
-            },
+            "race": "coalition",
             "energy": 18,
             "deck": [
               "outpost",
@@ -9637,24 +8974,7 @@
             "kind": "ai",
             "seat": 1,
             "isReady": true,
-            "deckChoice": {
-              "race": "coalition",
-              "cards": {
-                "extractor": 4,
-                "outpost": 3,
-                "turret": 2,
-                "scout": 3,
-                "fighter": 3,
-                "artillery": 2,
-                "cruiser": 1,
-                "meteor": 1,
-                "shield": 1,
-                "energy-cell": 2,
-                "refinery": 1,
-                "battleship": 1,
-                "gravity-wave": 1
-              }
-            },
+            "race": "coalition",
             "energy": 16,
             "deck": [
               "extractor",
@@ -10333,24 +9653,7 @@
             "kind": "human",
             "seat": 0,
             "isReady": true,
-            "deckChoice": {
-              "race": "coalition",
-              "cards": {
-                "extractor": 4,
-                "outpost": 3,
-                "turret": 2,
-                "scout": 3,
-                "fighter": 3,
-                "artillery": 2,
-                "cruiser": 1,
-                "meteor": 1,
-                "shield": 1,
-                "energy-cell": 2,
-                "refinery": 1,
-                "battleship": 1,
-                "gravity-wave": 1
-              }
-            },
+            "race": "coalition",
             "energy": 20,
             "deck": [
               "scout",
@@ -10395,24 +9698,7 @@
             "kind": "ai",
             "seat": 1,
             "isReady": true,
-            "deckChoice": {
-              "race": "coalition",
-              "cards": {
-                "extractor": 4,
-                "outpost": 3,
-                "turret": 2,
-                "scout": 3,
-                "fighter": 3,
-                "artillery": 2,
-                "cruiser": 1,
-                "meteor": 1,
-                "shield": 1,
-                "energy-cell": 2,
-                "refinery": 1,
-                "battleship": 1,
-                "gravity-wave": 1
-              }
-            },
+            "race": "coalition",
             "energy": 16,
             "deck": [
               "extractor",
@@ -11129,24 +10415,7 @@
             "kind": "human",
             "seat": 0,
             "isReady": true,
-            "deckChoice": {
-              "race": "coalition",
-              "cards": {
-                "extractor": 4,
-                "outpost": 3,
-                "turret": 2,
-                "scout": 3,
-                "fighter": 3,
-                "artillery": 2,
-                "cruiser": 1,
-                "meteor": 1,
-                "shield": 1,
-                "energy-cell": 2,
-                "refinery": 1,
-                "battleship": 1,
-                "gravity-wave": 1
-              }
-            },
+            "race": "coalition",
             "energy": 20,
             "deck": [
               "scout",
@@ -11191,24 +10460,7 @@
             "kind": "ai",
             "seat": 1,
             "isReady": true,
-            "deckChoice": {
-              "race": "coalition",
-              "cards": {
-                "extractor": 4,
-                "outpost": 3,
-                "turret": 2,
-                "scout": 3,
-                "fighter": 3,
-                "artillery": 2,
-                "cruiser": 1,
-                "meteor": 1,
-                "shield": 1,
-                "energy-cell": 2,
-                "refinery": 1,
-                "battleship": 1,
-                "gravity-wave": 1
-              }
-            },
+            "race": "coalition",
             "energy": 16,
             "deck": [
               "extractor",

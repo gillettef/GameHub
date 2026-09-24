@@ -1,11 +1,13 @@
 import { useEffect, useState, type CSSProperties } from 'react';
-import type { RoomPeek } from '@astraltab/shared';
-import { DECK_SIZE, DEFAULT_DECK_CHOICE, getMap, mapsForPlayers } from '@astraltab/shared';
-import { DeckPicker, isCompleteChoice, type PartialChoice } from '../components/DeckPicker';
+import type { RaceId, RoomPeek } from '@astraltab/shared';
+import { getMap, mapsForPlayers } from '@astraltab/shared';
+import { DeckPicker } from '../components/DeckPicker';
+import { DockShell } from '../components/DockShell';
 import { MapPicker } from '../components/MapPicker';
+import type { SetupDockTab } from '../components/SetupDock';
 import { cx } from '../lib/cx';
 import { getNickname, getPlayerToken, getRoomPassword, setNickname, setRoomPassword } from '../lib/identity';
-import { randomDeckChoice, randomMapId } from '../lib/randomPicks';
+import { randomMapId, randomRaceId } from '../lib/randomPicks';
 import { navigate, roomUrl } from '../lib/router';
 import { api, connectSocket, getSocket } from '../socket/client';
 import { selectState, selectViewerId, useGameStore } from '../store/gameStore';
@@ -187,6 +189,15 @@ function Shell({ title, children }: { title: string; children: React.ReactNode }
 // 로비 (F002, F026, F030, F016)
 // ---------------------------------------------------------------------------
 
+type LobbyTab = 'room' | 'players' | 'map' | 'race';
+
+const LOBBY_TABS: SetupDockTab[] = [
+  { id: 'room', label: '방' },
+  { id: 'players', label: '플레이어' },
+  { id: 'map', label: '맵' },
+  { id: 'race', label: '종족' },
+];
+
 function LobbyView({ roomId, onQuit }: { roomId: string; onQuit: () => void }) {
   const state = useGameStore(selectState);
   const viewerId = useGameStore(selectViewerId);
@@ -195,11 +206,18 @@ function LobbyView({ roomId, onQuit }: { roomId: string; onQuit: () => void }) {
   const dispatch = useGameStore((s) => s.dispatch);
   const notice = useGameStore((s) => s.notice);
   const setNotice = useGameStore((s) => s.setNotice);
-  const [choice, setChoice] = useState<PartialChoice>({});
+  const [tab, setTab] = useState<LobbyTab>('players');
   const [copied, setCopied] = useState(false);
 
-  if (!state || !viewerId || !room) return null;
-  const me = state.players.find((p) => p.id === viewerId);
+  const me = state?.players.find((p) => p.id === viewerId);
+
+  // 처음 들어오면 무작위 종족을 한 번 골라 준다 (2026-09-23: 그 뒤로는 종족 탭에서 자유롭게 바꾼다)
+  useEffect(() => {
+    if (viewerId && me && !me.race) dispatch({ type: 'SELECT_RACE', playerId: viewerId, race: randomRaceId() });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [me?.id, me?.race]);
+
+  if (!state || !viewerId || !room || !me) return null;
   const isHost = room.hostId === viewerId;
   const map = getMap(state.mapId);
   const seats = Array.from({ length: map.players }, (_, i) => state.players.find((p) => p.seat === i) ?? null);
@@ -231,54 +249,61 @@ function LobbyView({ roomId, onQuit }: { roomId: string; onQuit: () => void }) {
     if (!res.ok && res.message) setNotice(res.message);
   };
 
-  const applyChoice = (next: PartialChoice) => {
-    setChoice(next);
-    if (isCompleteChoice(next)) dispatch({ type: 'SELECT_DECK', playerId: viewerId, choice: next });
-  };
-
-  const pickRandomDeck = () => applyChoice(randomDeckChoice());
-
-  const currentChoice: PartialChoice = me?.deckChoice ?? choice;
-
-  // 처음 들어오면 무작위 기본값을 한 번 채운다 (2026-09-23: 그 뒤로는 DeckPicker 로 자유롭게 바꾼다)
-  useEffect(() => {
-    if (me && !me.deckChoice) pickRandomDeck();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [me?.id, me?.deckChoice]);
+  const pickRace = (race: RaceId) => dispatch({ type: 'SELECT_RACE', playerId: viewerId, race });
 
   return (
-    <div className={landing.root}>
-      <header className={landing.hero}>
-        <h1 className={landing.title}>대기실</h1>
-        <p className={landing.lead}>
-          방 {roomId} · {map.name} · 전원 준비되면 자동으로 시작합니다
+    <DockShell
+      id="lobby"
+      heroTitle="대기실"
+      heroSubtitle={
+        <>
+          방 {roomId} · {map.name}
           {connection !== 'connected' && (
             <span className={styles.connecting}>
               <span className={styles.connectingDot} aria-hidden="true" /> 연결 중…
             </span>
           )}
-        </p>
-        <div className={styles.readyDots} role="status" aria-label={`${readyCount} / ${map.players}명 준비`}>
-          {seats.map((p, i) => (
-            <span
-              key={i}
-              className={cx(styles.readyDot, p?.isReady && styles.readyDotDone, !p && styles.readyDotEmpty)}
-              style={{ '--seat-color': `var(--color-seat-${i})` } as CSSProperties}
-              title={p ? `${p.nickname} · ${p.isReady ? '준비 완료' : '준비 중'}` : '빈 좌석'}
-            />
-          ))}
-          <span className={styles.readyCount}>
-            {readyCount} / {map.players}명 준비
+          <span className={styles.readyDots} role="status" aria-label={`${readyCount} / ${map.players}명 준비`}>
+            {seats.map((p, i) => (
+              <span
+                key={i}
+                className={cx(styles.readyDot, p?.isReady && styles.readyDotDone, !p && styles.readyDotEmpty)}
+                style={{ '--seat-color': `var(--color-seat-${i})` } as CSSProperties}
+                title={p ? `${p.nickname} · ${p.isReady ? '준비 완료' : '준비 중'}` : '빈 좌석'}
+              />
+            ))}
+            <span className={styles.readyCount}>
+              {readyCount} / {map.players}명 준비
+            </span>
           </span>
-        </div>
-      </header>
-      <main className={landing.main}>
-        {notice && (
-          <p className={landing.error} role="status">
-            {notice}
-          </p>
-        )}
+        </>
+      }
+      tabs={LOBBY_TABS}
+      activeTab={tab}
+      onTabChange={(id) => setTab(id as LobbyTab)}
+      dockLabel="대기실 탭"
+      footer={
+        me.isReady ? (
+          <button type="button" className="pill pill--outline" onClick={() => pickRace(me.race ?? 'coalition')}>
+            준비 취소
+          </button>
+        ) : (
+          <>
+            <button type="button" className="pill pill--lg" disabled={!me.race} onClick={() => dispatch({ type: 'READY', playerId: viewerId })}>
+              준비 완료
+            </button>
+            <span className={landing.help}>{me.race ? '종족을 다시 고르면 준비가 풀립니다.' : '종족을 고르세요.'}</span>
+          </>
+        )
+      }
+    >
+      {notice && (
+        <p className={landing.error} role="status">
+          {notice}
+        </p>
+      )}
 
+      {tab === 'room' && (
         <section className={landing.section}>
           <h2 className={landing.h2}>초대 링크</h2>
           <div className={styles.inviteRow}>
@@ -294,105 +319,80 @@ function LobbyView({ roomId, onQuit }: { roomId: string; onQuit: () => void }) {
           </div>
           <p className={landing.help}>{room.hasPassword ? '비밀번호가 걸린 방입니다. 친구에게 비밀번호도 알려 주세요.' : '링크를 아는 사람은 누구나 들어올 수 있습니다.'}</p>
         </section>
+      )}
 
-        <div className={styles.grid}>
-          <section className={landing.section}>
-            <h2 className={landing.h2}>좌석 {state.players.length} / {map.players}</h2>
-            <ul className={styles.seats}>
-              {seats.map((p, i) => (
-                <li key={i} className={cx(styles.seat, !p && styles.seatEmpty)}>
-                  <span className={styles.seatNo}>
-                    <span className={styles.seatDot} style={{ '--seat-color': `var(--color-seat-${i})` } as CSSProperties} aria-hidden="true" />
-                    좌석 {i + 1}
-                  </span>
-                  {p ? (
-                    <>
-                      <span className={styles.seatName}>
-                        {p.nickname}
-                        {p.id === viewerId && ' (나)'}
-                        {p.id === room.hostId && <span className={styles.badge}>방장</span>}
-                        {p.kind === 'ai' && <span className={styles.badge}>AI</span>}
-                        {p.kind === 'human' && !room.connected.includes(p.id) && <span className={styles.badgeMuted}>접속 끊김</span>}
-                      </span>
-                      <span className={cx(styles.seatState, p.isReady && styles.ready)}>{p.isReady ? '준비 완료' : p.deckChoice ? '덱 선택함' : '덱 고르는 중'}</span>
-                      {isHost && p.kind === 'ai' && (
-                        <button type="button" className="pill pill--outline" onClick={() => request(api.removeAi(roomId, p.id))}>
-                          제거
-                        </button>
-                      )}
-                    </>
-                  ) : (
-                    <>
-                      <span className={styles.seatName}>빈 좌석</span>
-                      {isHost && (
-                        <button type="button" className="pill pill--outline" onClick={() => request(api.addAi(roomId))}>
-                          AI 추가
-                        </button>
-                      )}
-                    </>
-                  )}
-                </li>
-              ))}
-            </ul>
-            <button type="button" className="pill pill--outline" onClick={onQuit}>
-              나가기
-            </button>
-          </section>
-
-          <section className={landing.section}>
-            <div className={styles.sectionHead}>
-              <h2 className={landing.h2}>맵</h2>
-              {isHost && (
-                <button type="button" className="pill pill--outline" onClick={() => request(api.setMap(roomId, randomMapId(mapsForPlayers(state.players.length))))}>
-                  무작위
-                </button>
-              )}
-            </div>
-            <p className={landing.help}>
-              {isHost ? '방장만 맵을 바꿀 수 있습니다.' : '방장이 맵을 정합니다.'}
-              {!full && ` 인원이 정원(${map.players}명)과 같아야 시작합니다.`}
-            </p>
-            <MapPicker value={state.mapId} onChange={(id) => request(api.setMap(roomId, id))} disabled={!isHost} currentPlayers={state.players.length} />
-          </section>
-        </div>
-
+      {tab === 'players' && (
         <section className={landing.section}>
-          <h2 className={landing.h2}>내 종족 · 덱</h2>
-          <p className={landing.help}>
-            {me?.isReady ? '준비를 취소하면 다시 바꿀 수 있습니다.' : `카드마다 상한 이내로 자유롭게 골라 정확히 ${DECK_SIZE}장을 채우세요. "랜덤"으로 한 번에 다시 뽑을 수도 있습니다.`}
-          </p>
-          <DeckPicker
-            choice={currentChoice}
-            disabled={me?.isReady}
-            onPickRace={(r) => applyChoice({ race: r, cards: {} })}
-            onSetCount={(cardId, n) => applyChoice({ ...currentChoice, cards: { ...currentChoice.cards, [cardId]: Math.max(0, n) } })}
-            onRandom={pickRandomDeck}
-          />
-          <div className={styles.readyRow}>
-            {me?.isReady ? (
-              <button
-                type="button"
-                className="pill pill--outline"
-                onClick={() => dispatch({ type: 'SELECT_DECK', playerId: viewerId, choice: me.deckChoice ?? DEFAULT_DECK_CHOICE })}
-              >
-                준비 취소
-              </button>
-            ) : (
-              <button
-                type="button"
-                className="pill pill--lg"
-                disabled={!isCompleteChoice(currentChoice)}
-                onClick={() => dispatch({ type: 'READY', playerId: viewerId })}
-              >
-                준비 완료
+          <h2 className={landing.h2}>
+            좌석 {state.players.length} / {map.players}
+          </h2>
+          <ul className={styles.seats}>
+            {seats.map((p, i) => (
+              <li key={i} className={cx(styles.seat, !p && styles.seatEmpty)}>
+                <span className={styles.seatNo}>
+                  <span className={styles.seatDot} style={{ '--seat-color': `var(--color-seat-${i})` } as CSSProperties} aria-hidden="true" />
+                  좌석 {i + 1}
+                </span>
+                {p ? (
+                  <>
+                    <span className={styles.seatName}>
+                      {p.nickname}
+                      {p.id === viewerId && ' (나)'}
+                      {p.id === room.hostId && <span className={styles.badge}>방장</span>}
+                      {p.kind === 'ai' && <span className={styles.badge}>AI</span>}
+                      {p.kind === 'human' && !room.connected.includes(p.id) && <span className={styles.badgeMuted}>접속 끊김</span>}
+                    </span>
+                    <span className={cx(styles.seatState, p.isReady && styles.ready)}>{p.isReady ? '준비 완료' : p.race ? '종족 선택함' : '종족 고르는 중'}</span>
+                    {isHost && p.kind === 'ai' && (
+                      <button type="button" className="pill pill--outline" onClick={() => request(api.removeAi(roomId, p.id))}>
+                        제거
+                      </button>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <span className={styles.seatName}>빈 좌석</span>
+                    {isHost && (
+                      <button type="button" className="pill pill--outline" onClick={() => request(api.addAi(roomId))}>
+                        AI 추가
+                      </button>
+                    )}
+                  </>
+                )}
+              </li>
+            ))}
+          </ul>
+          <button type="button" className="pill pill--outline" onClick={onQuit}>
+            나가기
+          </button>
+        </section>
+      )}
+
+      {tab === 'map' && (
+        <section className={landing.section}>
+          <div className={styles.sectionHead}>
+            <h2 className={landing.h2}>맵</h2>
+            {isHost && (
+              <button type="button" className="pill pill--outline" onClick={() => request(api.setMap(roomId, randomMapId(mapsForPlayers(state.players.length))))}>
+                무작위
               </button>
             )}
-            <span className={landing.help}>
-              {isCompleteChoice(currentChoice) ? `덱 ${DECK_SIZE}장을 모두 채웠습니다.` : '종족을 고르고 덱을 채우세요.'}
-            </span>
           </div>
+          <p className={landing.help}>
+            {isHost ? '방장만 맵을 바꿀 수 있습니다.' : '방장이 맵을 정합니다.'}
+            {!full && ` 인원이 정원(${map.players}명)과 같아야 시작합니다.`}
+          </p>
+          <MapPicker value={state.mapId} onChange={(id) => request(api.setMap(roomId, id))} disabled={!isHost} currentPlayers={state.players.length} />
         </section>
-      </main>
-    </div>
+      )}
+
+      {tab === 'race' && (
+        <section className={landing.section}>
+          <h2 className={landing.h2}>내 종족</h2>
+          <p className={landing.help}>{me.isReady ? '준비를 취소하면 다시 바꿀 수 있습니다.' : '종족을 고르면 그 종족의 고정 덱이 정해집니다. "랜덤"으로 다시 뽑을 수도 있습니다.'}</p>
+          <DeckPicker race={me.race} disabled={me.isReady} onPickRace={pickRace} onRandom={() => pickRace(randomRaceId())} />
+        </section>
+      )}
+    </DockShell>
   );
 }

@@ -26,13 +26,12 @@ import {
   withMarkers,
 } from './index.js';
 import {
-  BASE_CARDS_BY_RACE,
   CORE_BASE_INCOME,
   CORE_SIGHT,
   CORE_SPEC,
   DECK_SIZE,
-  DEFAULT_DECK_CHOICE,
   ENERGY_CAP,
+  FIXED_DECKS,
   HAND_LIMIT,
   INITIAL_HAND_SIZE,
   KOMI_PER_SEAT,
@@ -43,21 +42,10 @@ import {
 
 /** 코어 시야 1 → 육각 반경 1 = 7칸 (3r(r+1)+1) */
 const CORE_AREA = 3 * CORE_SIGHT * (CORE_SIGHT + 1) + 1;
-import type { Action, CardId, DeckChoice, GameState, Marker, PlayerId, Position, RaceId } from '../types/index.js';
+import type { Action, CardId, GameState, Marker, PlayerId, Position, RaceId } from '../types/index.js';
 
-/** 그 종족의 기본 카드를 상한까지 채우고, specials 를 한 장씩 더한 덱(합계 DECK_SIZE) */
-function raceDeck(race: RaceId, specials: CardId[] = []): DeckChoice {
-  const cards: Record<CardId, number> = Object.fromEntries(BASE_CARDS_BY_RACE[race].map((c) => [c.id, c.copies]));
-  for (const id of specials) cards[id] = (cards[id] ?? 0) + 1;
-  return { race, cards };
-}
-
-const CHOICES: DeckChoice[] = [
-  DEFAULT_DECK_CHOICE,
-  raceDeck('coalition', ['observatory', 'stealth', 'warp-gate']),
-  raceDeck('coalition', ['fortress', 'repair-drone', 'energy-storm']),
-  DEFAULT_DECK_CHOICE,
-];
+/** 대부분의 시나리오 테스트는 인류 연합 카드 id(fighter/scout/turret 등)를 직접 참조하므로 기본은 전원 coalition. */
+const RACES_FOR_TEST: RaceId[] = ['coalition', 'coalition', 'coalition', 'coalition'];
 
 function lobby(n = 2, mapId?: string, seed = 42): GameState {
   const map = mapId ?? { 2: 'binary-star', 3: 'triangle-nebula', 4: 'quadrant' }[n];
@@ -68,7 +56,7 @@ function lobby(n = 2, mapId?: string, seed = 42): GameState {
 
 function readyLobby(n = 2, mapId?: string, seed = 42): GameState {
   let s = lobby(n, mapId, seed);
-  for (let i = 0; i < n; i++) s = applyAction(s, { type: 'SELECT_DECK', playerId: `p${i}`, choice: CHOICES[i]! }).state;
+  for (let i = 0; i < n; i++) s = applyAction(s, { type: 'SELECT_RACE', playerId: `p${i}`, race: RACES_FOR_TEST[i]! }).state;
   for (let i = 0; i < n - 1; i++) s = applyAction(s, { type: 'READY', playerId: `p${i}` }).state;
   return { ...s, players: s.players.map((p) => ({ ...p, isReady: true })) };
 }
@@ -147,18 +135,17 @@ describe('로비 · 덱 선택 · 시작 (F016, F018, F019)', () => {
     expect(joinPlayer(four, createPlayer('p9', '늦음')).error).toBeDefined();
   });
 
-  it('덱 선택은 정확히 DECK_SIZE 장(카드마다 상한 이내)이어야 하고, 고르기 전엔 준비할 수 없다', () => {
+  it('종족 선택은 실제 종족 id여야 하고, 고르기 전엔 준비할 수 없다', () => {
     const s = lobby(2);
-    expect(fail(s, { type: 'READY', playerId: 'p0' })).toContain('덱을 먼저');
-    expect(fail(s, { type: 'SELECT_DECK', playerId: 'p0', choice: { race: 'coalition', cards: { extractor: 1 } } })).toContain('덱을 정확히');
-    expect(fail(s, { type: 'SELECT_DECK', playerId: 'p0', choice: { race: 'coalition', cards: { extractor: 999 } } })).toContain('덱을 정확히'); // 상한 초과
-    expect(fail(s, { type: 'SELECT_DECK', playerId: 'zzz', choice: DEFAULT_DECK_CHOICE })).toBeDefined();
+    expect(fail(s, { type: 'READY', playerId: 'p0' })).toContain('종족을 먼저');
+    expect(fail(s, { type: 'SELECT_RACE', playerId: 'p0', race: 'nope' as RaceId })).toContain('알 수 없는 종족');
+    expect(fail(s, { type: 'SELECT_RACE', playerId: 'zzz', race: 'coalition' })).toBeDefined();
   });
 
   it('종족이 다른 두 플레이어가 한 대국에서 각자 자기 종족 카드로만 덱이 채워진다(교차 오염 없음)', () => {
     let s = lobby(2);
-    s = ok(s, { type: 'SELECT_DECK', playerId: 'p0', choice: raceDeck('swarm', ['hive-fortress', 'alpha-brood', 'plague-burst']) });
-    s = ok(s, { type: 'SELECT_DECK', playerId: 'p1', choice: raceDeck('automata', ['citadel', 'titan', 'graviton-lance']) });
+    s = ok(s, { type: 'SELECT_RACE', playerId: 'p0', race: 'swarm' });
+    s = ok(s, { type: 'SELECT_RACE', playerId: 'p1', race: 'automata' });
     s = ok(s, { type: 'READY', playerId: 'p0' });
     s = ok(s, { type: 'READY', playerId: 'p1' });
     expect(s.phase).toBe('playing');
@@ -171,21 +158,21 @@ describe('로비 · 덱 선택 · 시작 (F016, F018, F019)', () => {
     expect([...p1.hand, ...p1.deck].some((id) => getSpec(id).race === 'swarm')).toBe(false);
   });
 
-  it('AI 좌석은 기본 덱을 자동 선택하고 준비 완료 상태로 들어온다 (F026)', () => {
+  it('AI 좌석은 기본 종족을 자동 선택하고 준비 완료 상태로 들어온다 (F026)', () => {
     const ai = createPlayer('ai-1', 'AI', 'ai');
     expect(ai.isReady).toBe(true);
-    expect(ai.deckChoice).toEqual(DEFAULT_DECK_CHOICE);
+    expect(ai.race).toBe('coalition');
   });
 
   it('맵 정원과 인원이 같고 전원 준비돼야 시작한다 (F002, F030)', () => {
     // 3인 맵에 2명
     let s = lobby(2, 'triangle-nebula');
-    for (const id of ['p0', 'p1']) s = ok(s, { type: 'SELECT_DECK', playerId: id, choice: DEFAULT_DECK_CHOICE });
+    for (const id of ['p0', 'p1']) s = ok(s, { type: 'SELECT_RACE', playerId: id, race: 'coalition' });
     for (const id of ['p0', 'p1']) s = ok(s, { type: 'READY', playerId: id });
     expect(s.phase).toBe('lobby');
     // 2인 맵에 2명 → 마지막 READY 로 시작
     let t = lobby(2);
-    for (const id of ['p0', 'p1']) t = ok(t, { type: 'SELECT_DECK', playerId: id, choice: DEFAULT_DECK_CHOICE });
+    for (const id of ['p0', 'p1']) t = ok(t, { type: 'SELECT_RACE', playerId: id, race: 'coalition' });
     t = ok(t, { type: 'READY', playerId: 'p0' });
     expect(t.phase).toBe('lobby');
     t = ok(t, { type: 'READY', playerId: 'p1' });
@@ -217,8 +204,8 @@ describe('로비 · 덱 선택 · 시작 (F016, F018, F019)', () => {
       expect(p.deck).toHaveLength(DECK_SIZE - INITIAL_HAND_SIZE);
       expect(p.alive).toBe(true);
       const all = [...p.hand, ...p.deck].sort();
-      // 고른 덱 구성(카드별 장수)이 실제 손패+덱에 그대로 반영된다
-      for (const [id, n] of Object.entries(p.deckChoice!.cards)) {
+      // 종족의 고정 덱 구성(카드별 장수)이 실제 손패+덱에 그대로 반영된다
+      for (const [id, n] of Object.entries(FIXED_DECKS[p.race!])) {
         expect(all.filter((c) => c === id)).toHaveLength(n);
       }
     }
@@ -666,6 +653,53 @@ describe('전투 (F023)', () => {
     const t = ok(readyP0Pass(s), pass('p0'));
     expect(t.markers.some((m) => m.specId === 'warp-gate')).toBe(false);
   });
+
+  it('은신(veil): 다른 표적이 있으면 은신 마커는 공격받지 않는다', () => {
+    let s = setup(2);
+    // fighter(사거리1) at (5,5): 후보는 wisp(은신, d=1)와 scout(비은신, d=1) — 거리 같아도 은신은 후순위
+    s = addMarkers(s, marker('p0', 'fighter', { x: 5, y: 5 }), marker('p1', 'wisp', { x: 6, y: 5 }), marker('p1', 'scout', { x: 5, y: 6 }));
+    const t = ok(readyP0Pass(s), pass('p0'));
+    expect(t.markers.find((m) => m.specId === 'wisp')).toBeDefined(); // 은신은 무사
+    expect(t.markers.find((m) => m.specId === 'scout')).toBeUndefined(); // 비은신이 대신 맞아 파괴
+  });
+
+  it('은신(veil): 후보 전부가 은신이면 기존 우선순위대로 그 안에서 공격받는다', () => {
+    let s = setup(2);
+    s = addMarkers(s, marker('p0', 'fighter', { x: 5, y: 5 }), marker('p1', 'wisp', { x: 6, y: 5 }), marker('p1', 'wisp', { x: 5, y: 6 }));
+    const t = ok(readyP0Pass(s), pass('p0'));
+    const survivors = t.markers.filter((m) => m.specId === 'wisp');
+    expect(survivors).toHaveLength(1); // 하나는 파괴됨(체력 1)
+    expect(survivors[0]!.pos).toEqual({ x: 5, y: 6 }); // y 오름차순 우선 → (6,5)가 먼저 죽는다
+  });
+
+  it('다중 포격(barrage): 주 표적 외에 다음 순위 적에도 동시에 피해를 준다', () => {
+    let s = setup(2);
+    // howitzer(사거리3, barrage) at (5,5): 후보 cruiser(d=1, hp7)·scout(d=1, hp2) → 체력 낮은 scout이 주 표적, cruiser가 다음 순위
+    s = addMarkers(s, marker('p0', 'howitzer', { x: 5, y: 5 }), marker('p1', 'scout', { x: 6, y: 5 }), marker('p1', 'cruiser', { x: 5, y: 6 }));
+    const t = ok(readyP0Pass(s), pass('p0'));
+    expect(t.markers.some((m) => m.specId === 'scout')).toBe(false); // 주 표적: 파괴
+    expect(t.markers.find((m) => m.specId === 'cruiser')!.hp).toBe(5); // 다음 순위도 동시에 피해 2
+    expect(t.log.filter((l) => l.kind === 'combat')).toHaveLength(2);
+  });
+
+  it('다중 포격(barrage): 후보가 하나뿐이면 그 하나만 공격한다', () => {
+    // p1 코어(7,7)까지 거리 5(사거리 4 밖)로 멀리 떨어뜨려 유일한 후보가 scout 하나뿐이게 한다
+    let s = setup(2);
+    s = addMarkers(s, marker('p0', 'howitzer', { x: 4, y: 3 }), marker('p1', 'scout', { x: 5, y: 3 }));
+    const t = ok(readyP0Pass(s), pass('p0'));
+    expect(t.markers.some((m) => m.specId === 'scout')).toBe(false);
+    expect(t.log.filter((l) => l.kind === 'combat')).toHaveLength(1);
+  });
+
+  it('다중 포격 + 은신: 은신 후보는 다중 포격의 다음 순위 표적에서도 제외된다', () => {
+    // 후보: scout(비은신, d=1)과 wisp(은신, d=1) 뿐(p1 코어는 사거리 밖) → 비은신이 하나뿐이라 다음 순위가 없다
+    let s = setup(2);
+    s = addMarkers(s, marker('p0', 'howitzer', { x: 4, y: 3 }), marker('p1', 'scout', { x: 5, y: 3 }), marker('p1', 'wisp', { x: 4, y: 2 }));
+    const t = ok(readyP0Pass(s), pass('p0'));
+    expect(t.markers.some((m) => m.specId === 'scout')).toBe(false);
+    expect(t.markers.find((m) => m.specId === 'wisp')).toBeDefined(); // 은신이라 다음 순위로도 안 맞는다
+    expect(t.log.filter((l) => l.kind === 'combat')).toHaveLength(1);
+  });
 });
 
 describe('즉발 마법 · 지속 마법 · 정비', () => {
@@ -1012,7 +1046,7 @@ describe('리뷰 보강: 탈락과 패스, 동시 파괴, 즉발 코어 파괴, 
 describe('로비 조작 (F002, F030)', () => {
   it('맵 변경: 보드·라운드 제한이 바뀌고 사람 플레이어의 준비가 해제된다', () => {
     let s = lobby(2);
-    s = applyAction(s, { type: 'SELECT_DECK', playerId: 'p0', choice: DEFAULT_DECK_CHOICE }).state;
+    s = applyAction(s, { type: 'SELECT_RACE', playerId: 'p0', race: 'coalition' }).state;
     s = applyAction(s, { type: 'READY', playerId: 'p0' }).state;
     expect(s.players[0]?.isReady).toBe(true);
     const r = changeMap(s, 'quadrant');

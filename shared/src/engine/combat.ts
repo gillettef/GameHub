@@ -25,9 +25,23 @@ function fmt(p: Position): string {
 }
 
 /**
- * 7.1 자동 공격. 턴 플레이어의 공격력 > 0 마커 각각이 사거리 안 적 하나를 공격한다.
- * 대상: 거리 → 남은 체력 → y → x 오름차순. 피해는 전투 시작 상태 기준으로 동시 적용.
- * 피해 적용 후 removeDestroyed 로 한꺼번에 제거한다.
+ * 7.1 대상 후보를 우선순위(거리 → 남은 체력 → y → x)로 정렬하고, `은신` 마커는 다른 비은신 후보가
+ * 있으면 뒤로 뺀다(그림자 결사 종족, Rules.md 7.1). 비은신 후보가 하나도 없을 때만 은신 후보가 앞으로 온다.
+ */
+function prioritizedTargets(attackerPos: Position, enemies: readonly Marker[], range: number): Marker[] {
+  const sorted = enemies
+    .filter((e) => hexDistance(attackerPos, e.pos) <= range)
+    .map((e) => ({ e, d: hexDistance(attackerPos, e.pos) }))
+    .sort((p, q) => p.d - q.d || p.e.hp - q.e.hp || p.e.pos.y - q.e.pos.y || p.e.pos.x - q.e.pos.x)
+    .map((p) => p.e);
+  const nonVeiled = sorted.filter((e) => !getSpec(e.specId).keywords.includes('veil'));
+  return nonVeiled.length > 0 ? nonVeiled : sorted;
+}
+
+/**
+ * 7.1 자동 공격. 턴 플레이어의 공격력 > 0 마커 각각이 사거리 안 적 하나(또는 `다중 포격`이면 둘)를
+ * 공격한다. 대상: 거리 → 남은 체력 → y → x 오름차순, `은신` 마커는 다른 표적이 있으면 제외.
+ * 피해는 전투 시작 상태 기준으로 동시 적용. 피해 적용 후 removeDestroyed 로 한꺼번에 제거한다.
  */
 export function resolveCombat(state: GameState, playerId: PlayerId): GameState {
   const attackers = markersOf(state, playerId).filter((m) => getSpec(m.specId).attack > 0);
@@ -39,19 +53,17 @@ export function resolveCombat(state: GameState, playerId: PlayerId): GameState {
 
   for (const a of attackers) {
     const spec = getSpec(a.specId);
-    const candidates = enemies
-      .filter((e) => hexDistance(a.pos, e.pos) <= spec.range)
-      .map((e) => ({ e, d: hexDistance(a.pos, e.pos) }))
-      .sort((p, q) => p.d - q.d || p.e.hp - q.e.hp || p.e.pos.y - q.e.pos.y || p.e.pos.x - q.e.pos.x);
-    const target = candidates[0]?.e;
-    if (!target) continue;
-    damage.set(target.id, (damage.get(target.id) ?? 0) + spec.attack);
-    s = addLog(
-      s,
-      'combat',
-      playerId,
-      `${spec.name}${fmt(a.pos)} → ${nameOf(s, target.ownerId)}의 ${getSpec(target.specId).name}${fmt(target.pos)} 피해 ${spec.attack}`,
-    );
+    const candidates = prioritizedTargets(a.pos, enemies, spec.range);
+    const targets = spec.keywords.includes('barrage') ? candidates.slice(0, 2) : candidates.slice(0, 1);
+    for (const target of targets) {
+      damage.set(target.id, (damage.get(target.id) ?? 0) + spec.attack);
+      s = addLog(
+        s,
+        'combat',
+        playerId,
+        `${spec.name}${fmt(a.pos)} → ${nameOf(s, target.ownerId)}의 ${getSpec(target.specId).name}${fmt(target.pos)} 피해 ${spec.attack}`,
+      );
+    }
   }
 
   if (damage.size === 0) return s;
