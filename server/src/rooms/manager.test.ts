@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Action, GameState, PlayerId } from '@astraltab/shared';
-import { DEFAULT_DECK_CHOICE, canPlay, getMap, legalCells, maskState } from '@astraltab/shared';
+import { canPlay, getMap, legalCells, maskState } from '@astraltab/shared';
 import { createAiRunner } from '../game/aiTurn.js';
 import { RoomError, RoomManager } from './manager.js';
 
@@ -29,7 +29,7 @@ function placeFirst(m: RoomManager, roomId: string, id: PlayerId): void {
 
 function readyAll(m: RoomManager, roomId: string, ids: PlayerId[]): void {
   for (const id of ids) {
-    m.act(roomId, id, { type: 'SELECT_DECK', playerId: id, choice: DEFAULT_DECK_CHOICE });
+    m.act(roomId, id, { type: 'SELECT_RACE', playerId: id, race: 'coalition' });
     m.act(roomId, id, { type: 'READY', playerId: id });
   }
 }

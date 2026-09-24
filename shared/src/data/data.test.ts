@@ -9,14 +9,13 @@ import {
   CONSTANTS,
   CORE_SPEC,
   DECK_SIZE,
-  DEFAULT_DECK_CHOICE,
+  FIXED_DECKS,
   MAPS,
   RACES,
   SPECIAL_CARDS_BY_RACE,
   buildDeck,
   getMap,
   getSpec,
-  isValidDeckChoice,
   specialCardsOf,
 } from './index.js';
 import { cellsInRadius, hexDistance } from '../engine/index.js';
@@ -114,10 +113,71 @@ const AUTOMATA_SPECIAL: Row[] = [
   ['core-surge', 'magic', 3, 0, 0, 0, 0, 0, 0, 2],
 ];
 
+// 그림자 결사
+const SHADE_BASE: Row[] = [
+  ['null-collector', 'building', 2, 1, 4, 0, 0, 1, 2, 4],
+  ['dead-relay', 'building', 3, 2, 6, 0, 0, 0, 3, 3],
+  ['ambush-node', 'building', 4, 1, 5, 2, 2, 0, 2, 2],
+  ['wisp', 'unit', 1, 2, 1, 1, 1, 0, 1, 3],
+  ['shade-blade', 'unit', 2, 1, 2, 2, 1, 0, 1, 3],
+  ['phase-striker', 'unit', 3, 1, 2, 3, 2, 0, 1, 2],
+  ['wraith', 'unit', 5, 1, 5, 3, 1, 0, 2, 1],
+  ['void-burst', 'magic', 3, 0, 0, 0, 0, 0, 0, 1],
+  ['mirage-field', 'magic', 2, 0, 0, 0, 0, 0, 0, 1],
+  ['dark-cell', 'magic', 0, 0, 0, 0, 0, 0, 0, 2],
+];
+const SHADE_SPECIAL: Row[] = [
+  ['black-market', 'building', 5, 1, 5, 0, 0, 3, 4, 2],
+  ['veiled-array', 'building', 4, 3, 4, 0, 0, 0, 3, 2],
+  ['shroud-bastion', 'building', 6, 2, 11, 3, 2, 0, 5, 2],
+  ['nightmare', 'unit', 7, 1, 9, 4, 1, 0, 3, 2],
+  ['phantom-agent', 'unit', 5, 1, 3, 3, 1, 0, 1, 2],
+  ['medic-wisp', 'unit', 3, 1, 2, 0, 0, 0, 1, 2],
+  ['eclipse-wave', 'magic', 5, 0, 0, 0, 0, 0, 0, 2],
+  ['false-signal', 'magic', 3, 3, 2, 0, 0, 0, 0, 2],
+  ['entropy-surge', 'magic', 2, 0, 0, 0, 0, 0, 0, 2],
+];
+
+// 노바 포병단
+const SIEGE_BASE: Row[] = [
+  ['strip-mine', 'building', 2, 1, 4, 0, 0, 1, 2, 4],
+  ['relay-spire', 'building', 3, 2, 6, 0, 0, 0, 3, 3],
+  ['flak-tower', 'building', 4, 1, 6, 2, 3, 0, 2, 2],
+  ['spotter', 'unit', 1, 3, 2, 0, 0, 0, 1, 3],
+  ['gunner', 'unit', 3, 1, 3, 2, 2, 0, 1, 3],
+  ['howitzer', 'unit', 5, 1, 3, 2, 3, 0, 1, 2],
+  ['dreadshell', 'unit', 6, 1, 8, 3, 2, 0, 3, 1],
+  ['orbital-strike', 'magic', 3, 0, 0, 0, 0, 0, 0, 1],
+  ['repair-field', 'magic', 2, 0, 0, 0, 0, 0, 0, 1],
+  ['charge-cell', 'magic', 0, 0, 0, 0, 0, 0, 0, 2],
+];
+const SIEGE_SPECIAL: Row[] = [
+  ['heavy-foundry', 'building', 5, 1, 5, 0, 0, 3, 4, 2],
+  ['far-scope', 'building', 4, 4, 4, 0, 0, 0, 3, 2],
+  ['siege-bastion', 'building', 6, 2, 10, 4, 4, 0, 5, 2],
+  ['titan-cannon', 'unit', 8, 2, 10, 5, 4, 0, 4, 2],
+  ['saboteur', 'unit', 5, 1, 4, 3, 2, 0, 1, 2],
+  ['field-medic', 'unit', 3, 1, 2, 0, 0, 0, 1, 2],
+  ['barrage-shell', 'magic', 6, 0, 0, 0, 0, 0, 0, 2],
+  ['designator-beacon', 'magic', 4, 4, 3, 0, 0, 0, 0, 2],
+  ['overcharge-round', 'magic', 3, 0, 0, 0, 0, 0, 0, 2],
+];
+
 const RACE_TABLES: Record<RaceId, { base: Row[]; special: Row[] }> = {
   coalition: { base: COALITION_BASE, special: COALITION_SPECIAL },
   swarm: { base: SWARM_BASE, special: SWARM_SPECIAL },
   automata: { base: AUTOMATA_BASE, special: AUTOMATA_SPECIAL },
+  shade: { base: SHADE_BASE, special: SHADE_SPECIAL },
+  siege: { base: SIEGE_BASE, special: SIEGE_SPECIAL },
+};
+
+/** 종족별 고정 덱(Rules.md 10.7절)의 특수 필러 3장: 건물 1·유닛 1·마법 1 */
+const FIXED_FILLERS: Record<RaceId, [building: string, unit: string, magic: string]> = {
+  coalition: ['refinery', 'battleship', 'gravity-wave'],
+  swarm: ['chitin-refinery', 'alpha-brood', 'overgrowth'],
+  automata: ['deep-scanner', 'repair-node', 'core-surge'],
+  shade: ['black-market', 'medic-wisp', 'entropy-surge'],
+  siege: ['heavy-foundry', 'field-medic', 'overcharge-round'],
 };
 
 describe('카드 기준표 (Rules.md 10절)', () => {
@@ -132,8 +192,8 @@ describe('카드 기준표 (Rules.md 10절)', () => {
     expect(CORE_SPEC.copies).toBe(0);
   });
 
-  it('종족은 3개다', () => {
-    expect(RACES.map((r) => r.id)).toEqual(['coalition', 'swarm', 'automata']);
+  it('종족은 5개다', () => {
+    expect(RACES.map((r) => r.id)).toEqual(['coalition', 'swarm', 'automata', 'shade', 'siege']);
   });
 
   for (const race of RACES.map((r) => r.id)) {
@@ -164,59 +224,40 @@ describe('카드 기준표 (Rules.md 10절)', () => {
       }
     });
 
-    it(`${race}: 기본 카드를 상한까지 채우고 특수 카드 3장을 더하면 ${DECK_SIZE}장이다`, () => {
-      const choice = {
-        race,
-        cards: {
-          ...Object.fromEntries(BASE_CARDS_BY_RACE[race].map((c) => [c.id, c.copies])),
-          [specialCardsOf(race, 'building')[0]!.id]: 1,
-          [specialCardsOf(race, 'unit')[0]!.id]: 1,
-          [specialCardsOf(race, 'magic')[0]!.id]: 1,
-        },
-      };
-      expect(isValidDeckChoice(choice)).toBe(true);
-      expect(buildDeck(choice)).toHaveLength(DECK_SIZE);
-    });
-
-    it(`${race}: 카드 상한을 넘겨 넣으면 무효 (합계는 DECK_SIZE 그대로 맞춰 상한 검사만 격리한다)`, () => {
-      const first = BASE_CARDS_BY_RACE[race][0]!;
-      const specials = specialCardsOf(race, 'building').concat(specialCardsOf(race, 'unit'), specialCardsOf(race, 'magic'));
-      const cards: Record<string, number> = {
-        ...Object.fromEntries(BASE_CARDS_BY_RACE[race].map((c) => [c.id, c.copies])),
-        [specials[0]!.id]: 1,
-        [specials[1]!.id]: 1,
-        [specials[2]!.id]: 1,
-      };
-      // 기본 카드 하나를 상한보다 1장 더 넣고, 특수 카드 하나를 그만큼 빼 합계는 DECK_SIZE 로 그대로 둔다.
-      // 상한 검사가 없다면(합계·종족·id 조건만 본다면) 이 조합도 "유효"로 잘못 통과한다.
-      cards[first.id] = first.copies + 1;
-      cards[specials[0]!.id] = 0;
-      expect(Object.values(cards).reduce((a, b) => a + b, 0)).toBe(DECK_SIZE);
-      expect(isValidDeckChoice({ race, cards })).toBe(false);
+    it(`${race}: 고정 덱은 기본 22장 전부 + 특수 필러(건물1·유닛1·마법1) = ${DECK_SIZE}장이다 (Rules.md 10.7절)`, () => {
+      const [building, unit, magic] = FIXED_FILLERS[race];
+      const deck = FIXED_DECKS[race];
+      for (const c of BASE_CARDS_BY_RACE[race]) expect(deck[c.id]).toBe(c.copies);
+      expect(deck[building]).toBe(1);
+      expect(deck[unit]).toBe(1);
+      expect(deck[magic]).toBe(1);
+      expect(specialCardsOf(race, 'building').some((c) => c.id === building)).toBe(true);
+      expect(specialCardsOf(race, 'unit').some((c) => c.id === unit)).toBe(true);
+      expect(specialCardsOf(race, 'magic').some((c) => c.id === magic)).toBe(true);
+      expect(Object.values(deck).reduce((a, b) => a + b, 0)).toBe(DECK_SIZE);
+      expect(buildDeck(race)).toHaveLength(DECK_SIZE);
     });
   }
 
-  it('키워드: 침투·정비·과부하가 각 종족에 있다', () => {
+  it('키워드: 침투·정비·과부하·은신·다중 포격이 각 종족에 있다', () => {
     expect(getSpec('stealth').keywords).toEqual(['infiltrate']);
     expect(getSpec('repair-drone').keywords).toEqual(['repair']);
     expect(getSpec('drone').keywords).toEqual(['infiltrate']);
     expect(getSpec('nurse-drone').keywords).toEqual(['repair']);
     expect(getSpec('fab-node').keywords).toEqual(['overclock']);
     expect(getSpec('singularity-forge').keywords).toEqual(['overclock']);
+    expect(getSpec('wisp').keywords).toEqual(['veil']);
+    expect(getSpec('shade-blade').keywords).toEqual(['veil', 'infiltrate']);
+    expect(getSpec('howitzer').keywords).toEqual(['barrage']);
+    expect(getSpec('titan-cannon').keywords).toEqual(['barrage']);
   });
 
-  it('다른 종족 카드가 섞이거나, 장수 합이 안 맞거나, 종족 자체가 잘못되면 무효', () => {
-    expect(isValidDeckChoice(DEFAULT_DECK_CHOICE)).toBe(true);
-    // chitin-refinery 는 swarm 소속 — coalition 덱에 섞으면 무효
-    expect(isValidDeckChoice({ race: 'coalition', cards: { ...DEFAULT_DECK_CHOICE.cards, refinery: 0, 'chitin-refinery': 1 } })).toBe(false);
-    // 합계가 DECK_SIZE 보다 적으면 무효
-    expect(isValidDeckChoice({ race: 'coalition', cards: { extractor: 1 } })).toBe(false);
-    // 존재하지 않는 카드 id
-    expect(isValidDeckChoice({ race: 'coalition', cards: { nope: DECK_SIZE } })).toBe(false);
-    // 존재하지 않는 카드 id는 0장으로 끼워 넣어도 무효(장수와 무관하게 id 자체를 검사한다)
-    expect(isValidDeckChoice({ race: 'coalition', cards: { ...DEFAULT_DECK_CHOICE.cards, nope: 0 } })).toBe(false);
-    // 종족 자체가 잘못됨
-    expect(isValidDeckChoice({ race: 'nope' as RaceId, cards: DEFAULT_DECK_CHOICE.cards })).toBe(false);
+  it('종족마다 고정 덱의 카드 id는 전부 그 종족 소속이다', () => {
+    for (const race of RACES.map((r) => r.id)) {
+      for (const id of Object.keys(FIXED_DECKS[race])) {
+        expect(getSpec(id).race).toBe(race);
+      }
+    }
   });
 
   it('상수표 (Rules.md 12절)', () => {

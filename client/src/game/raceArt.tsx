@@ -5,7 +5,8 @@
 import { memo, type ReactNode } from 'react';
 import type { RaceId } from '@astraltab/shared';
 
-/** 인류 연합: 방어 느낌의 방패. 크릴 군락: 여럿이 뭉친 벌집/군체. 오토마타 집정체: 기계 톱니 */
+/** 인류 연합: 방어 느낌의 방패. 크릴 군락: 여럿이 뭉친 벌집/군체. 오토마타 집정체: 기계 톱니.
+ * 그림자 결사: 은신 느낌의 두건(눈 두 점). 노바 포병단: 사거리 느낌의 조준 십자선 */
 const RACE_GLYPHS: Record<RaceId, ReactNode> = {
   coalition: <path d="M12 2.5 19.5 5.5v5.5c0 5.5-3.2 8.7-7.5 10.5-4.3-1.8-7.5-5-7.5-10.5V5.5Z" strokeLinejoin="round" />,
   swarm: (
@@ -21,6 +22,21 @@ const RACE_GLYPHS: Record<RaceId, ReactNode> = {
         d="M12 3v2.6M12 18.4V21M21 12h-2.6M5.6 12H3M18.1 5.9l-1.9 1.9M7.8 16.3l-1.9 1.9M18.1 18.1l-1.9-1.9M7.8 7.7 5.9 5.9"
         strokeLinecap="round"
       />
+    </>
+  ),
+  shade: (
+    <>
+      <path d="M5 20v-7c0-4 3-8 7-8s7 4 7 8v7" strokeLinejoin="round" />
+      <path d="M5 20h14" />
+      <circle cx="9.6" cy="12" r="0.9" fill="currentColor" stroke="none" />
+      <circle cx="14.4" cy="12" r="0.9" fill="currentColor" stroke="none" />
+    </>
+  ),
+  siege: (
+    <>
+      <circle cx="12" cy="12" r="5" />
+      <circle cx="12" cy="12" r="1.1" fill="currentColor" stroke="none" />
+      <path d="M12 2v3.4M12 18.6V22M2 12h3.4M18.6 12H22" strokeLinecap="round" />
     </>
   ),
 };

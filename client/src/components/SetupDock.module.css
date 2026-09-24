@@ -1,0 +1,38 @@
+/* 하단 탭 독 (비게임 세계). 플랫(box-shadow 금지) — 경계는 배경색 대비 + 얇은 위쪽 선으로만 */
+.root {
+  display: flex;
+  gap: 4px;
+  padding: 6px var(--space-1);
+  padding-bottom: calc(6px + env(safe-area-inset-bottom, 0px));
+  background: var(--color-surface);
+  border-top: 1px solid color-mix(in srgb, var(--color-outline) 12%, transparent);
+}
+
+.item {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 48px;
+  border-radius: var(--radius-sm);
+  color: var(--color-heading);
+  font-size: var(--text-small);
+  font-weight: 600;
+  transition:
+    background var(--motion-fast) var(--ease-standard),
+    color var(--motion-fast) var(--ease-standard);
+}
+
+.active {
+  background: var(--color-accent);
+  color: var(--color-accent-text);
+}
+
+.locked {
+  color: var(--color-muted);
+}
+
+.locked.active {
+  background: color-mix(in srgb, var(--color-accent) 45%, transparent);
+  color: var(--color-white);
+}

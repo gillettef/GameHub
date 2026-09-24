@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from astral_ai.models import Action, GameState, PassAction, PlaceAction, Position
+from astral_ai.models import Action, Board, GameState, Marker, PassAction, PlaceAction, PlayerState, Position
 from astral_ai.rules import (
     apply_action,
     compute_income,
@@ -18,6 +18,7 @@ from astral_ai.rules import (
     compute_territory,
     legal_actions,
     load_specs,
+    sort_markers,
     strip_log,
     validate_placement,
 )
@@ -50,8 +51,8 @@ def test_specs_load(started: GameState) -> None:
     specs = load_specs()
     assert specs.constants["STARTING_ENERGY"] == 5
     assert specs.cards["core"].hp == 20
-    # 3종족(coalition/swarm/automata) × (기본 10종 + 특수 9종) = 57
-    assert len([c for c in specs.cards.values() if c.kind != "core"]) == 57
+    # 5종족(coalition/swarm/automata/shade/siege) × (기본 10종 + 특수 9종) = 95
+    assert len([c for c in specs.cards.values() if c.kind != "core"]) == 95
     assert len(specs.maps) == 6
     for p in started.players:
         for card in p.hand + p.deck:
@@ -142,3 +143,92 @@ def test_legal_actions_end_with_pass(first_turn: GameState) -> None:
         assert isinstance(a, PlaceAction)
         assert validate_placement(first_turn, "p0", a.cardId, a.pos) is None
     assert legal_actions(first_turn, "ai-1") == []
+
+
+# --- 은신(veil)·다중 포격(barrage) 대상 선택 (Rules.md 7.1, engine.test.ts '전투 (F023)' 사본) --------
+
+
+def _player(pid: str, seat: int) -> PlayerState:
+    return PlayerState(
+        id=pid, nickname=pid, kind="human", seat=seat, isReady=True, race="coalition",
+        energy=10, deck=[], hand=[], discard=[], alive=True, eliminatedOrder=None,
+        passed=False, actedThisTurn=False,
+    )
+
+
+def _combat_state(markers: list[Marker]) -> GameState:
+    """전투만 검증하는 최소 상태: p0 턴에 PASS 하면 그 자리에서 p0 마커가 자동 공격한다."""
+    return GameState(
+        roomId="r", phase="playing", mapId="binary-star",
+        board=Board(width=10, height=10, asteroids=[], veins=[]), roundLimit=20,
+        round=1, turn=1, currentPlayerId="p0",
+        players=[_player("p0", 0), _player("p1", 1)],
+        markers=sort_markers(markers), nextMarkerId=100, rngSeed=1, result=None, log=[],
+    )
+
+
+def _marker(owner: str, spec_id: str, x: int, y: int, hp: int | None = None) -> Marker:
+    sp = load_specs().spec(spec_id)
+    return Marker(id=f"{owner}-{spec_id}-{x}-{y}", specId=spec_id, kind=sp.kind, ownerId=owner, pos=Position(x=x, y=y), hp=hp if hp is not None else sp.hp, remainingTurns=None)
+
+
+def _by_spec(state: GameState, spec_id: str) -> Marker | None:
+    return next((m for m in state.markers if m.specId == spec_id), None)
+
+
+def test_veil_target_excluded_while_non_veiled_candidate_remains() -> None:
+    s = _combat_state([
+        _marker("p0", "fighter", 5, 5),
+        _marker("p1", "wisp", 6, 5),  # veil, d=1, hp1
+        _marker("p1", "scout", 5, 6),  # 비은신, d=1, hp2
+    ])
+    t = apply_action(s, PassAction(type="PASS", playerId="p0"))
+    assert _by_spec(t, "wisp") is not None  # 은신은 무사
+    assert _by_spec(t, "scout") is None  # 비은신이 대신 파괴
+
+
+def test_veil_all_candidates_veiled_falls_back_to_normal_priority() -> None:
+    s = _combat_state([
+        _marker("p0", "fighter", 5, 5),
+        _marker("p1", "wisp", 6, 5),
+        _marker("p1", "wisp", 5, 6),
+    ])
+    t = apply_action(s, PassAction(type="PASS", playerId="p0"))
+    survivors = [m for m in t.markers if m.specId == "wisp"]
+    assert len(survivors) == 1
+    assert (survivors[0].pos.x, survivors[0].pos.y) == (5, 6)  # y 오름차순 우선 → (6,5)가 먼저 죽는다
+
+
+def test_barrage_hits_primary_and_next_priority_target() -> None:
+    s = _combat_state([
+        _marker("p0", "howitzer", 5, 5),
+        _marker("p1", "scout", 6, 5),  # d=1, hp2 → 주 표적
+        _marker("p1", "cruiser", 5, 6),  # d=1, hp7 → 다음 순위
+    ])
+    t = apply_action(s, PassAction(type="PASS", playerId="p0"))
+    assert _by_spec(t, "scout") is None
+    cruiser = _by_spec(t, "cruiser")
+    assert cruiser is not None and cruiser.hp == 5  # howitzer 공격력 2, 한 번 맞음
+
+
+def test_barrage_with_single_candidate_hits_only_once() -> None:
+    s = _combat_state([
+        _marker("p0", "howitzer", 4, 3),
+        _marker("p1", "cruiser", 5, 3, hp=7),  # 유일한 후보. 두 번 맞으면 hp<=3
+    ])
+    t = apply_action(s, PassAction(type="PASS", playerId="p0"))
+    cruiser = _by_spec(t, "cruiser")
+    assert cruiser is not None and cruiser.hp == 5
+
+
+def test_barrage_secondary_target_also_respects_veil() -> None:
+    s = _combat_state([
+        _marker("p0", "howitzer", 4, 3),
+        _marker("p1", "cruiser", 5, 3, hp=7),  # 비은신, 유일한 비은신 후보
+        _marker("p1", "wisp", 4, 2),  # 은신 → 다음 순위에서도 제외
+    ])
+    t = apply_action(s, PassAction(type="PASS", playerId="p0"))
+    cruiser = _by_spec(t, "cruiser")
+    assert cruiser is not None and cruiser.hp == 5  # 한 번만 맞음
+    wisp = _by_spec(t, "wisp")
+    assert wisp is not None and wisp.hp == 1  # 은신이라 전혀 안 맞음

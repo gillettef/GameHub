@@ -14,7 +14,6 @@
 import type {
   Action,
   CardId,
-  DeckChoice,
   GameResultReason,
   GameState,
   MapId,
@@ -22,20 +21,19 @@ import type {
   PlayerId,
   PlayerKind,
   PlayerState,
+  RaceId,
 } from '../types/index.js';
 import {
   CORE_SPEC,
-  DECK_SIZE,
-  DEFAULT_DECK_CHOICE,
   DRAW_PER_TURN,
   ENERGY_CAP,
   HAND_LIMIT,
   INITIAL_HAND_SIZE,
   MAX_PLAYERS,
+  RACES,
   STARTING_ENERGY,
   buildDeck,
   getMap,
-  isValidDeckChoice,
 } from '../data/index.js';
 import { addLog, applyRepair, eliminatePlayer, expirePersistentMagic, nameOf, resolveCombat, withMarkers } from './combat.js';
 import { applyPlacement, validatePlacement } from './placement.js';
@@ -77,7 +75,7 @@ export function createInitialState(roomId: string, mapId: MapId, rngSeed: number
   };
 }
 
-/** 좌석은 joinPlayer 가 정한다. AI 좌석은 기본 덱을 자동 선택하고 준비 완료로 들어온다 (F026) */
+/** 좌석은 joinPlayer 가 정한다. AI 좌석은 기본 종족을 자동 선택하고 준비 완료로 들어온다 (F026) */
 export function createPlayer(id: PlayerId, nickname: string, kind: PlayerKind = 'human'): PlayerState {
   const ai = kind === 'ai';
   return {
@@ -86,7 +84,7 @@ export function createPlayer(id: PlayerId, nickname: string, kind: PlayerKind = 
     kind,
     seat: -1,
     isReady: ai,
-    deckChoice: ai ? { ...DEFAULT_DECK_CHOICE } : null,
+    race: ai ? 'coalition' : null,
     energy: 0,
     deck: [],
     hand: [],
@@ -108,14 +106,14 @@ export function joinPlayer(state: GameState, player: PlayerState): ActionResult 
   return { state: s };
 }
 
-function selectDeck(state: GameState, playerId: PlayerId, choice: DeckChoice): ActionResult {
+function selectRace(state: GameState, playerId: PlayerId, race: RaceId): ActionResult {
   if (state.phase !== 'lobby') return { state, error: '이미 시작된 게임입니다' };
   if (!state.players.some((p) => p.id === playerId)) return { state, error: '방에 없는 플레이어입니다' };
-  if (!isValidDeckChoice(choice)) return { state, error: `덱을 정확히 ${DECK_SIZE}장으로(카드마다 상한 이내로) 구성해야 합니다` };
+  if (!RACES.some((r) => r.id === race)) return { state, error: '알 수 없는 종족입니다' };
   return {
     state: {
       ...state,
-      players: state.players.map((p) => (p.id === playerId ? { ...p, deckChoice: choice, isReady: false } : p)),
+      players: state.players.map((p) => (p.id === playerId ? { ...p, race, isReady: false } : p)),
     },
   };
 }
@@ -124,7 +122,7 @@ function ready(state: GameState, playerId: PlayerId): ActionResult {
   if (state.phase !== 'lobby') return { state, error: '이미 시작된 게임입니다' };
   const player = state.players.find((p) => p.id === playerId);
   if (!player) return { state, error: '방에 없는 플레이어입니다' };
-  if (!player.deckChoice) return { state, error: '덱을 먼저 구성해야 합니다' };
+  if (!player.race) return { state, error: '종족을 먼저 골라야 합니다' };
   let s: GameState = { ...state, players: state.players.map((p) => (p.id === playerId ? { ...p, isReady: true } : p)) };
   if (canStart(s)) s = startGame(s);
   return { state: s };
@@ -166,13 +164,13 @@ export function leaveLobby(state: GameState, playerId: PlayerId): ActionResult {
   return { state: s };
 }
 
-/** 인원이 맵 정원과 같고 전원 덱 선택·준비 완료 (F002, F030) */
+/** 인원이 맵 정원과 같고 전원 종족 선택·준비 완료 (F002, F030) */
 export function canStart(state: GameState): boolean {
   const map = getMap(state.mapId);
   return (
     state.phase === 'lobby' &&
     state.players.length === map.players &&
-    state.players.every((p) => p.isReady && p.deckChoice !== null)
+    state.players.every((p) => p.isReady && p.race !== null)
   );
 }
 
@@ -197,7 +195,7 @@ export function setupGame(state: GameState): GameState {
     const corePos = map.corePositions[p.seat];
     if (!corePos) throw new Error(`맵 ${map.id}에 좌석 ${p.seat} 코어 좌표가 없습니다`);
     markers.push({ id: `m${nextId++}`, specId: CORE_SPEC.id, kind: 'core', ownerId: p.id, pos: corePos, hp: CORE_SPEC.hp, remainingTurns: null });
-    const r = shuffle(buildDeck(p.deckChoice as DeckChoice), seed);
+    const r = shuffle(buildDeck(p.race as RaceId), seed);
     seed = r.seed;
     dealt.push({
       ...p,
@@ -330,8 +328,8 @@ export function advanceTurn(state: GameState): GameState {
 
 export function applyAction(state: GameState, action: Action): ActionResult {
   switch (action.type) {
-    case 'SELECT_DECK':
-      return selectDeck(state, action.playerId, action.choice);
+    case 'SELECT_RACE':
+      return selectRace(state, action.playerId, action.race);
     case 'READY':
       return ready(state, action.playerId);
     case 'PLACE': {

@@ -212,6 +212,50 @@ export const CARD_GLYPH: Record<CardId, GlyphId> = {
   'graviton-lance': 'gravity-ring',
   'stasis-field': 'portal',
   'core-surge': 'energy-bolt',
+
+  // 그림자 결사 기본
+  'null-collector': 'drill',
+  'dead-relay': 'antenna',
+  'ambush-node': 'turret',
+  wisp: 'drone-scout',
+  'shade-blade': 'blade',
+  'phase-striker': 'cannon',
+  wraith: 'cruiser',
+  'void-burst': 'meteor',
+  'mirage-field': 'shield-cross',
+  'dark-cell': 'crystal',
+  // 그림자 결사 특수
+  'black-market': 'refinery',
+  'veiled-array': 'dish-wide',
+  'shroud-bastion': 'fortress',
+  nightmare: 'crown',
+  'phantom-agent': 'cloak',
+  'medic-wisp': 'wrench',
+  'eclipse-wave': 'gravity-ring',
+  'false-signal': 'portal',
+  'entropy-surge': 'energy-bolt',
+
+  // 노바 포병단 기본
+  'strip-mine': 'drill',
+  'relay-spire': 'antenna',
+  'flak-tower': 'turret',
+  spotter: 'drone-scout',
+  gunner: 'blade',
+  howitzer: 'cannon',
+  dreadshell: 'cruiser',
+  'orbital-strike': 'meteor',
+  'repair-field': 'shield-cross',
+  'charge-cell': 'crystal',
+  // 노바 포병단 특수
+  'heavy-foundry': 'refinery',
+  'far-scope': 'dish-wide',
+  'siege-bastion': 'fortress',
+  'titan-cannon': 'crown',
+  saboteur: 'cloak',
+  'field-medic': 'wrench',
+  'barrage-shell': 'gravity-ring',
+  'designator-beacon': 'portal',
+  'overcharge-round': 'energy-bolt',
 };
 
 interface CardArtProps {

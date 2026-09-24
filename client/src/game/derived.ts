@@ -179,6 +179,10 @@ export function keywordLabel(k: string): string {
       return '정비';
     case 'overclock':
       return '과부하';
+    case 'veil':
+      return '은신';
+    case 'barrage':
+      return '다중 포격';
     default:
       return k;
   }
@@ -193,6 +197,10 @@ export function keywordExplain(k: string): string {
       return '정비: 내 턴을 끝낼 때 반경 1 아군 체력 +1';
     case 'overclock':
       return '과부하: 내 턴을 끝낼 때의 수입 계산 시 반경 1 이내 자신 건물 수만큼 생산 추가';
+    case 'veil':
+      return '은신: 다른 적 표적이 남아 있으면 공격받지 않는다';
+    case 'barrage':
+      return '다중 포격: 주 표적 외 다음 순위 적에도 동시에 피해';
     default:
       return keywordLabel(k);
   }
@@ -215,7 +223,7 @@ export interface PlayerSummary {
   id: PlayerId;
   nickname: string;
   seat: number;
-  /** 덱 빌딩에서 고른 종족. 아직 안 골랐으면(로비 중) null */
+  /** 로비에서 고른 종족. 아직 안 골랐으면 null */
   race: RaceId | null;
   alive: boolean;
   isCurrent: boolean;
@@ -242,7 +250,7 @@ export function buildPlayerSummaries(state: GameState): PlayerSummary[] {
       id: p.id,
       nickname: p.nickname,
       seat: p.seat,
-      race: p.deckChoice?.race ?? null,
+      race: p.race,
       alive: p.alive,
       isCurrent: state.currentPlayerId === p.id,
       energy: p.energy,

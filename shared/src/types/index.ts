@@ -26,11 +26,13 @@ export type CardType = 'building' | 'unit' | 'magic';
 export type MarkerKind = 'core' | CardType;
 
 /** 침투: 적 마커 거리 1 이내에도 배치 가능. 정비: 내 턴을 끝낼 때 반경 1 아군 체력 +1.
- * 과부하: 내 턴을 끝낼 때의 수입 계산 시 반경 1 이내 자신 소유 건물 수만큼 생산 추가(오토마타 종족) */
-export type Keyword = 'infiltrate' | 'repair' | 'overclock';
+ * 과부하: 내 턴을 끝낼 때의 수입 계산 시 반경 1 이내 자신 소유 건물 수만큼 생산 추가(오토마타 종족).
+ * 은신: 전투 대상 선택 시 다른 적 마커가 남아 있으면 표적에서 제외(그림자 결사 종족, Rules.md 7.1).
+ * 다중 포격: 주 표적 외에 다음 순위 적 마커에도 같은 공격력으로 동시에 피해(노바 포병단 종족, Rules.md 7.1) */
+export type Keyword = 'infiltrate' | 'repair' | 'overclock' | 'veil' | 'barrage';
 
 /** 종족 (완전 비대칭 카드 세트, notes/Rules.md 10절) */
-export type RaceId = 'coalition' | 'swarm' | 'automata';
+export type RaceId = 'coalition' | 'swarm' | 'automata' | 'shade' | 'siege';
 
 export interface RaceDef {
   id: RaceId;
@@ -73,16 +75,6 @@ export interface CardSpec {
   /** 덱에 넣을 수 있는 이 카드의 최대 장수(덱 빌딩 상한). 코어는 0(덱에 없음) */
   copies: number;
   description: string;
-}
-
-/**
- * 덱 빌딩(F016, 2026-09-23 개편)에서 플레이어가 고르는 종족 + 카드 구성.
- * `cards`: cardId → 덱에 넣을 장수. 그 종족의 카드라면(기본·특수 구분 없이) 무엇이든,
- * 각 카드의 `copies` 상한 이내로 원하는 만큼 넣을 수 있다. 합계는 DECK_SIZE 장이어야 한다.
- */
-export interface DeckChoice {
-  race: RaceId;
-  cards: Record<CardId, number>;
 }
 
 // ---------------------------------------------------------------------------
@@ -143,8 +135,8 @@ export interface PlayerState {
   seat: number;
   /** 로비에서 준비 완료 여부 */
   isReady: boolean;
-  /** 덱 빌딩에서 고른 특수 카드. 고르기 전엔 null */
-  deckChoice: DeckChoice | null;
+  /** 고른 종족. 고르면 그 종족의 고정 덱(cards.ts fixedDeckOf)이 정해진다. 고르기 전엔 null */
+  race: RaceId | null;
   energy: number;
   /** 뽑을 카드 더미 (맨 앞이 다음 카드). 서버는 타인에게 보내지 않는다 */
   deck: CardId[];
@@ -234,7 +226,7 @@ export interface GameState {
 // ---------------------------------------------------------------------------
 
 export type Action =
-  | { type: 'SELECT_DECK'; playerId: PlayerId; choice: DeckChoice }
+  | { type: 'SELECT_RACE'; playerId: PlayerId; race: RaceId }
   | { type: 'READY'; playerId: PlayerId }
   | { type: 'PLACE'; playerId: PlayerId; cardId: CardId; pos: Position }
   /** discardCardIds: 턴을 끝내며 함께 버리고 다시 뽑을 손패 카드(0장 이상, 없으면 생략). Rules.md 5.2 */

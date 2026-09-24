@@ -14,7 +14,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { applyAction, createInitialState, createPlayer, joinPlayer, setupGame, startGame, withMarkers } from '../src/engine/index.js';
-import { ALL_SPECS, CONSTANTS, CORE_SPEC, DEFAULT_DECK_CHOICE, MAPS, getSpec } from '../src/data/index.js';
+import { ALL_SPECS, CONSTANTS, CORE_SPEC, MAPS, getSpec } from '../src/data/index.js';
 import type { Action, CardId, GameState, Marker, PlayerId, Position } from '../src/types/index.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -31,7 +31,7 @@ const write = (name: string, data: unknown) => {
 let lobby = createInitialState('fixture-room', 'binary-star', 42);
 lobby = joinPlayer(lobby, createPlayer('p0', '철수')).state;
 lobby = joinPlayer(lobby, createPlayer('ai-1', 'AI', 'ai')).state;
-lobby = applyAction(lobby, { type: 'SELECT_DECK', playerId: 'p0', choice: DEFAULT_DECK_CHOICE }).state;
+lobby = applyAction(lobby, { type: 'SELECT_RACE', playerId: 'p0', race: 'coalition' }).state;
 lobby = applyAction(lobby, { type: 'READY', playerId: 'p0' }).state; // ai-1 은 이미 준비 완료 → 시작
 if (lobby.phase !== 'playing') throw new Error('픽스처: 게임이 시작되지 않았습니다');
 
@@ -39,7 +39,7 @@ if (lobby.phase !== 'playing') throw new Error('픽스처: 게임이 시작되�
 let ready = createInitialState('fixture-room', 'binary-star', 42);
 ready = joinPlayer(ready, createPlayer('p0', '철수')).state;
 ready = joinPlayer(ready, createPlayer('ai-1', 'AI', 'ai')).state;
-ready = { ...ready, players: ready.players.map((p) => ({ ...p, deckChoice: DEFAULT_DECK_CHOICE, isReady: true })) };
+ready = { ...ready, players: ready.players.map((p) => ({ ...p, race: 'coalition', isReady: true })) };
 const started = setupGame(ready);
 const firstTurn = startGame(ready);
 if (JSON.stringify(firstTurn) !== JSON.stringify(lobby)) throw new Error('픽스처: READY 경로와 startGame 경로가 다릅니다');
