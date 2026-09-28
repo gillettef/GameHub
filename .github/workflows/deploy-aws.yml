@@ -1,0 +1,76 @@
+name: Deploy to AWS
+
+# main에 push되면 AWS EC2(test+prod)에 자동 배포한다.
+# 저장소가 비공개라 EC2가 직접 clone/pull 하지 못하므로, 이 워크플로가 대신
+# git archive로 워킹트리를 EC2로 전송하고(scp 대신 ssh 파이프), 서버에서
+# scripts/aws/deploy-remote.sh 가 빌드·systemd 재시작을 수행한다.
+#
+# SSH(22)는 관리자 PC의 고정 IP로만 열려 있어 GitHub Actions 러너가 그대로는
+# 접속할 수 없다. 그래서 배포 직전에 러너의 공인 IP를 보안 그룹에 임시로 추가하고,
+# 끝나면(성공하든 실패하든) 반드시 제거한다. 이 임시 규칙 추가/삭제만 하는
+# 최소 권한 IAM 사용자(astraltab-ci)의 키를 쓴다 — 그 외 AWS 권한은 없다.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      target:
+        description: '배포 대상'
+        required: false
+        default: 'all'
+        type: choice
+        options: [all, prod, test]
+
+concurrency:
+  group: deploy-aws
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (보안 그룹 SSH 규칙 전용 최소 권한)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: 이 러너의 IP를 SSH(22)에 임시 허용
+        run: |
+          RUNNER_IP="$(curl -s https://checkip.amazonaws.com)"
+          echo "RUNNER_IP=${RUNNER_IP}" >> "$GITHUB_ENV"
+          aws ec2 authorize-security-group-ingress \
+            --group-id "${{ secrets.AWS_SECURITY_GROUP_ID }}" \
+            --ip-permissions "IpProtocol=tcp,FromPort=22,ToPort=22,IpRanges=[{CidrIp=${RUNNER_IP}/32,Description=github-actions-temp}]"
+
+      - name: SSH 키 준비
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.EC2_SSH_PRIVATE_KEY }}" > ~/.ssh/ci_key
+          chmod 600 ~/.ssh/ci_key
+          ssh-keyscan -H "${{ secrets.EC2_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: 소스 전송 (git archive)
+        run: |
+          git archive HEAD | ssh -i ~/.ssh/ci_key ec2-user@${{ secrets.EC2_HOST }} \
+            "mkdir -p ~/AstralTab && tar -x -C ~/AstralTab"
+
+      - name: 빌드 & systemd 재시작
+        run: |
+          TARGET="${{ github.event.inputs.target }}"
+          if [ -z "$TARGET" ]; then TARGET="all"; fi
+          ssh -i ~/.ssh/ci_key ec2-user@${{ secrets.EC2_HOST }} \
+            "bash ~/AstralTab/scripts/aws/deploy-remote.sh $TARGET"
+
+      - name: 임시 SSH 허용 제거
+        if: always()
+        run: |
+          if [ -n "${RUNNER_IP:-}" ]; then
+            aws ec2 revoke-security-group-ingress \
+              --group-id "${{ secrets.AWS_SECURITY_GROUP_ID }}" \
+              --ip-permissions "IpProtocol=tcp,FromPort=22,ToPort=22,IpRanges=[{CidrIp=${RUNNER_IP}/32}]" || true
+          fi
