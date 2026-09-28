@@ -41,3 +41,14 @@
 .active::before {
   opacity: 1;
 }
+
+/* 설명 탭을 아직 안 열어 본 사람에게만 보이는 점 배지 (2026-09-28) */
+.badge {
+  position: absolute;
+  top: 6px;
+  left: calc(50% + 7px);
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-accent);
+}

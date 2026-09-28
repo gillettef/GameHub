@@ -1,5 +1,6 @@
-import { memo, type ReactNode } from 'react';
+import { memo, useEffect, useState, type ReactNode } from 'react';
 import { cx } from '../lib/cx';
+import { hasSeenHelpTab, markHelpTabSeen } from '../lib/onboarding';
 import { TABS, selectTab, useGameStore, type TabId } from '../store/gameStore';
 import styles from './TabDock.module.css';
 
@@ -44,6 +45,15 @@ export const TabDock = memo(function TabDock() {
   const tab = useGameStore(selectTab);
   const setTab = useGameStore((s) => s.setTab);
 
+  // 처음 온 사람이 설명 탭이 있다는 걸 알아채게 점 배지를 띄운다. 한 번 열어 보면 다시는 안 뜬다
+  const [helpSeen, setHelpSeen] = useState(hasSeenHelpTab);
+  useEffect(() => {
+    if (tab === 'help' && !helpSeen) {
+      markHelpTabSeen();
+      setHelpSeen(true);
+    }
+  }, [tab, helpSeen]);
+
   return (
     <nav className={styles.root} role="tablist" aria-label="게임 탭">
       {TABS.map((t) => (
@@ -59,6 +69,7 @@ export const TabDock = memo(function TabDock() {
         >
           {ICONS[t.id]}
           <span>{t.label}</span>
+          {t.id === 'help' && !helpSeen && <span className={styles.badge} aria-label="새 안내" />}
         </button>
       ))}
     </nav>
