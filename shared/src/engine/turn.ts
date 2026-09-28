@@ -6,8 +6,8 @@
  * "내 턴을 끝내는 시점"으로 옮겼다 — Rules.md 5절):
  *  setupGame  : 코어 배치, 덱 셔플, 손패 4, 에너지 5 (첫 턴 시작 전 상태. F018/F019 기준)
  *  행동       : PLACE(턴당 1회만) / PASS(패스 또는 턴 종료) / SURRENDER
- *  PASS       : 턴을 끝내는 그 플레이어 자신의 전투 → 정비 → 지속 마법 만료 → 수입 → 드로우 →
- *               (선택) 손패 교체 를 즉시 처리한 뒤 다음 생존자에게 턴을 넘긴다
+ *  PASS       : 턴을 끝내는 그 플레이어 자신의 전투 → 정비 → 지형 피해(이온 폭풍) → 지속 마법 만료 →
+ *               수입 → 드로우 → (선택) 손패 교체 를 즉시 처리한 뒤 다음 생존자에게 턴을 넘긴다
  *  advanceTurn: 종료 조건 확인 → 다음 생존자로 currentPlayerId 전환 (자동 효과 없음, 그 사람이
  *               자기 턴을 끝낼 때 비로소 처리된다)
  */
@@ -35,7 +35,7 @@ import {
   buildDeck,
   getMap,
 } from '../data/index.js';
-import { addLog, applyRepair, eliminatePlayer, expirePersistentMagic, nameOf, resolveCombat, withMarkers } from './combat.js';
+import { addLog, applyRepair, applyTerrainHazards, eliminatePlayer, expirePersistentMagic, nameOf, resolveCombat, withMarkers } from './combat.js';
 import { applyPlacement, validatePlacement } from './placement.js';
 import { shuffle } from './rng.js';
 import { alivePlayers, computeIncome, computeRanking, computeScores, getPlayer } from './scoring.js';
@@ -61,6 +61,13 @@ export function createInitialState(roomId: string, mapId: MapId, rngSeed: number
       height: map.size,
       asteroids: map.asteroids.map((p) => ({ ...p })),
       veins: map.veins.map((p) => ({ ...p })),
+      nebulas: map.nebulas.map((p) => ({ ...p })),
+      debrisFields: map.debrisFields.map((p) => ({ ...p })),
+      ionStorms: map.ionStorms.map((p) => ({ ...p })),
+      relicSites: map.relicSites.map((p) => ({ ...p })),
+      gravityRifts: map.gravityRifts.map((p) => ({ ...p })),
+      gunEmplacements: map.gunEmplacements.map((p) => ({ ...p })),
+      jammingFields: map.jammingFields.map((p) => ({ ...p })),
     },
     roundLimit: map.roundLimit,
     round: 0,
@@ -202,7 +209,7 @@ export function setupGame(state: GameState): GameState {
   for (const p of players) {
     const corePos = map.corePositions[p.seat];
     if (!corePos) throw new Error(`맵 ${map.id}에 좌석 ${p.seat} 코어 좌표가 없습니다`);
-    markers.push({ id: `m${nextId++}`, specId: CORE_SPEC.id, kind: 'core', ownerId: p.id, pos: corePos, hp: CORE_SPEC.hp, remainingTurns: null });
+    markers.push({ id: `m${nextId++}`, specId: CORE_SPEC.id, kind: 'core', ownerId: p.id, pos: corePos, hp: CORE_SPEC.hp, maxHp: CORE_SPEC.hp, remainingTurns: null });
     const r = shuffle(buildDeck(p.race as RaceId), seed);
     seed = r.seed;
     dealt.push({
@@ -367,10 +374,12 @@ export function applyAction(state: GameState, action: Action): ActionResult {
       const acted = getPlayer(state, action.playerId).actedThisTurn;
 
       // 턴을 끝내는 본인의 마커 효과를 여기서 즉시 처리한다(Rules.md 5절, 2026-09-23 사용자 지시):
-      // 전투 → 정비 → 지속 마법 만료 → 수입 → 드로우 → (선택) 손패 교체.
+      // 전투 → 정비 → 지형 피해(이온 폭풍) → 지속 마법 만료 → 수입 → 드로우 → (선택) 손패 교체.
       let s = resolveCombat(state, action.playerId);
       if (alivePlayers(s).length <= 1) return { state: finishGame(s, 'last-survivor') };
       s = applyRepair(s, action.playerId);
+      s = applyTerrainHazards(s, action.playerId);
+      if (alivePlayers(s).length <= 1) return { state: finishGame(s, 'last-survivor') };
       s = expirePersistentMagic(s, action.playerId);
       s = applyIncome(s, action.playerId);
       s = drawCard(s, action.playerId);

@@ -13,7 +13,10 @@ CardType = Literal["building", "unit", "magic"]
 MarkerKind = Literal["core", "building", "unit", "magic"]
 Keyword = Literal["infiltrate", "repair", "overclock", "veil", "barrage"]
 RaceId = Literal["coalition", "swarm", "automata", "shade", "siege"]
-Terrain = Literal["space", "asteroid", "vein"]
+Terrain = Literal[
+    "space", "asteroid", "vein", "nebula", "debrisField", "ionStorm",
+    "relicSite", "gravityRift", "gunEmplacement", "jammingField",
+]
 LogKind = Literal[
     "system", "turn", "combat", "repair", "expire", "income", "draw",
     "place", "magic", "destroy", "eliminate", "pass", "surrender", "result",
@@ -97,6 +100,13 @@ class MapDef(Strict):
     corePositions: list[Position]
     asteroids: list[Position]
     veins: list[Position]
+    nebulas: list[Position]
+    debrisFields: list[Position]
+    ionStorms: list[Position]
+    relicSites: list[Position]
+    gravityRifts: list[Position]
+    gunEmplacements: list[Position]
+    jammingFields: list[Position]
     description: str
 
 
@@ -105,6 +115,13 @@ class Board(Strict):
     height: int
     asteroids: list[Position]
     veins: list[Position]
+    nebulas: list[Position]
+    debrisFields: list[Position]
+    ionStorms: list[Position]
+    relicSites: list[Position]
+    gravityRifts: list[Position]
+    gunEmplacements: list[Position]
+    jammingFields: list[Position]
 
 
 # --- 마커 · 플레이어 · 상태 ---------------------------------------------------
@@ -117,6 +134,7 @@ class Marker(Strict):
     ownerId: str
     pos: Position
     hp: int
+    maxHp: int
     remainingTurns: int | None
 
 

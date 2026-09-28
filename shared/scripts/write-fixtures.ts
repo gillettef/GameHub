@@ -52,7 +52,7 @@ function withHand(s: GameState, id: PlayerId, hand: CardId[], energy: number): G
 let seq = 500;
 function marker(ownerId: PlayerId, specId: CardId, pos: Position, hp?: number): Marker {
   const spec = getSpec(specId);
-  return { id: `f${seq++}`, specId, kind: spec.kind, ownerId, pos, hp: hp ?? spec.hp, remainingTurns: null };
+  return { id: `f${seq++}`, specId, kind: spec.kind, ownerId, pos, hp: hp ?? spec.hp, maxHp: spec.hp, remainingTurns: null };
 }
 
 // 좌표는 odd-r 오프셋 육각 거리 기준. p0 코어 (3,2), ai-1 코어 (7,7) (binary-star, 2026-09-23 10x10 재설계).

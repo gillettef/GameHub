@@ -18,9 +18,27 @@ interface DeckPickerProps {
   showDeck?: boolean;
 }
 
+/** 주사위 아이콘. "랜덤" 타일 전용(2026-09-28: 종족 카드 5장 맨 앞에 6번째 타일로 둔다) */
+function DiceIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" width="20" height="20" className={className} fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+      <rect x="4" y="4" width="16" height="16" rx="4" />
+      <circle cx="8.5" cy="8.5" r="1.3" fill="currentColor" stroke="none" />
+      <circle cx="15.5" cy="8.5" r="1.3" fill="currentColor" stroke="none" />
+      <circle cx="12" cy="12" r="1.3" fill="currentColor" stroke="none" />
+      <circle cx="8.5" cy="15.5" r="1.3" fill="currentColor" stroke="none" />
+      <circle cx="15.5" cy="15.5" r="1.3" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
 /**
  * 종족 선택 (F016, 2026-09-24 개편: 덱 빌딩 자유 선택 폐지). 종족을 고르면 그 종족의 고정
  * 덱(`FIXED_DECKS`, Rules.md 10.7절)이 곧바로 정해진다 — 카드를 낱장으로 고르지 않는다.
+ * "랜덤"은 5개 종족 타일 맨 앞에 같은 모양의 6번째 타일로 둔다(2026-09-28 사용자 지시) — 누르면
+ * 무작위 종족이 곧바로 정해지고, 그 종족 타일이 선택 표시되어 결과가 바로 보인다. 이 결과는
+ * 일반 선택과 똑같이 GameState.players[].race 에 저장되므로 대기실은 물론 실제 게임 중에도
+ * PlayerStrip 에서 계속 확인할 수 있다.
  * 아래 카드 목록은 도감처럼 그 종족의 카드 풀 전체를 보여주며, 고정 덱에 포함된 장수만 표시한다
  * (읽기 전용). 카드 하나하나의 상세(호버 팝오버)는 CardFace 가 그대로 맡는다.
  */
@@ -30,13 +48,15 @@ export const DeckPicker = memo(function DeckPicker({ race, onPickRace, disabled,
       <div>
         <h3 className={styles.groupTitle}>
           종족 <span className={styles.groupSub}>1개 선택 · 덱은 자동 고정</span>
-          {onRandom && (
-            <button type="button" className={cx('pill', 'pill--outline', styles.randomButton)} disabled={disabled} onClick={onRandom}>
-              랜덤
-            </button>
-          )}
         </h3>
         <div className={styles.raceRow}>
+          {onRandom && (
+            <button type="button" className={cx(styles.mapCard, styles.randomCard, disabled && styles.mapDisabled)} disabled={disabled} onClick={onRandom}>
+              <DiceIcon className={styles.raceCardIcon} />
+              <span className={styles.mapName}>랜덤</span>
+              <span className={styles.mapDesc}>무작위로 하나 고릅니다</span>
+            </button>
+          )}
           {RACES.map((r) => (
             <button
               key={r.id}

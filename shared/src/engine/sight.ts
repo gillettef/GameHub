@@ -6,7 +6,14 @@
  * 밀린다. 거리는 큐브 좌표로 변환해 계산한다 (Rules.md 3절).
  */
 import type { Board, GameState, Marker, PlayerId, Position, Terrain } from '../types/index.js';
-import { getSpec } from '../data/index.js';
+import {
+  DEBRIS_FIELD_HP_PENALTY,
+  GUN_EMPLACEMENT_ATTACK_BONUS,
+  JAMMING_FIELD_RANGE_PENALTY,
+  NEBULA_SIGHT_PENALTY,
+  TERRITORY_RADIUS,
+  getSpec,
+} from '../data/index.js';
 
 interface Cube {
   q: number;
@@ -43,7 +50,43 @@ export function inBounds(board: Board, p: Position): boolean {
 export function terrainAt(board: Board, p: Position): Terrain {
   if (board.asteroids.some((a) => samePos(a, p))) return 'asteroid';
   if (board.veins.some((v) => samePos(v, p))) return 'vein';
+  if (board.nebulas.some((v) => samePos(v, p))) return 'nebula';
+  if (board.debrisFields.some((v) => samePos(v, p))) return 'debrisField';
+  if (board.ionStorms.some((v) => samePos(v, p))) return 'ionStorm';
+  if (board.relicSites.some((v) => samePos(v, p))) return 'relicSite';
+  if (board.gravityRifts.some((v) => samePos(v, p))) return 'gravityRift';
+  if (board.gunEmplacements.some((v) => samePos(v, p))) return 'gunEmplacement';
+  if (board.jammingFields.some((v) => samePos(v, p))) return 'jammingField';
   return 'space';
+}
+
+/** 그 칸에 놓인 마커의 유효 시야(성운 -1, 최소 1). 배치 가능 범위·시야 오버레이에만 쓴다 —
+ * 점수(영토)는 2026-09-28부터 이 값과 무관하게 고정 반경 TERRITORY_RADIUS 를 쓴다 */
+export function effectiveSight(board: Board, pos: Position, baseSight: number): number {
+  if (baseSight <= 0) return baseSight;
+  const penalty = terrainAt(board, pos) === 'nebula' ? NEBULA_SIGHT_PENALTY : 0;
+  return Math.max(1, baseSight - penalty);
+}
+
+/** 그 칸에 놓인 마커의 유효 최대 체력(파편지대 -1, 최소 1). 배치 시점에 구해 Marker.maxHp 에 굳힌다 */
+export function effectiveMaxHp(board: Board, pos: Position, baseHp: number): number {
+  if (baseHp <= 0) return baseHp;
+  const penalty = terrainAt(board, pos) === 'debrisField' ? DEBRIS_FIELD_HP_PENALTY : 0;
+  return Math.max(1, baseHp - penalty);
+}
+
+/** 그 칸에 놓인 마커의 유효 공격력(포대 발판 +1) */
+export function effectiveAttack(board: Board, pos: Position, baseAttack: number): number {
+  if (baseAttack <= 0) return baseAttack;
+  const bonus = terrainAt(board, pos) === 'gunEmplacement' ? GUN_EMPLACEMENT_ATTACK_BONUS : 0;
+  return baseAttack + bonus;
+}
+
+/** 그 칸에 놓인 마커의 유효 사거리(교란지대 -1, 최소 0) */
+export function effectiveRange(board: Board, pos: Position, baseRange: number): number {
+  if (baseRange <= 0) return baseRange;
+  const penalty = terrainAt(board, pos) === 'jammingField' ? JAMMING_FIELD_RANGE_PENALTY : 0;
+  return Math.max(0, baseRange - penalty);
 }
 
 /** y 오름차순 → x 오름차순 */
@@ -76,19 +119,22 @@ export function cellsInRadius(board: Board, center: Position, radius: number): P
   return out;
 }
 
-/** 칸 P가 플레이어의 시야 영역 안인가 (마커 M 중 dist(M,P) ≤ M.시야 인 것이 하나 이상) */
+/** 칸 P가 플레이어의 시야 영역 안인가 (마커 M 중 dist(M,P) ≤ M.유효 시야 인 것이 하나 이상) */
 export function isInSight(state: GameState, playerId: PlayerId, p: Position): boolean {
   return state.markers.some(
-    (m) => m.ownerId === playerId && hexDistance(m.pos, p) <= getSpec(m.specId).sight,
+    (m) =>
+      m.ownerId === playerId &&
+      hexDistance(m.pos, p) <= effectiveSight(state.board, m.pos, getSpec(m.specId).sight),
   );
 }
 
-/** 플레이어의 시야 영역 = 모든 마커 시야의 합집합. y → x 순, 중복 없음 */
+/** 플레이어의 시야 영역 = 모든 마커 유효 시야의 합집합. y → x 순, 중복 없음 */
 export function computeSightArea(state: GameState, playerId: PlayerId): Position[] {
   const seen = new Set<string>();
   const out: Position[] = [];
   for (const m of markersOf(state, playerId)) {
-    for (const p of cellsInRadius(state.board, m.pos, getSpec(m.specId).sight)) {
+    const sight = effectiveSight(state.board, m.pos, getSpec(m.specId).sight);
+    for (const p of cellsInRadius(state.board, m.pos, sight)) {
       const k = posKey(p);
       if (!seen.has(k)) {
         seen.add(k);
@@ -107,16 +153,18 @@ export interface Territory {
 }
 
 /**
- * 영토 판정 (Rules.md 8절):
+ * 영토 판정 (Rules.md 8절, 2026-09-28 개편):
  *  - 마커 칸 → 소유자
- *  - 빈 칸이 정확히 한 플레이어 시야 안 → 그 플레이어
- *  - 경합·시야 밖·소행성 → null
+ *  - 빈 칸이 정확히 한 플레이어의 "마커 주변 반경 TERRITORY_RADIUS" 안 → 그 플레이어
+ *  - 경합·범위 밖·소행성 → null
+ * 마커의 시야 스탯(가변)은 배치 가능 범위에만 쓰고, 점수 판정은 카드 종류와 무관하게 이 고정
+ * 반경 하나로 계산한다(사용자 지시) — 시야가 큰 카드 한 장이 점수를 독식하지 않게 한다.
  */
 export function computeTerritory(state: GameState): Territory {
   const { board } = state;
   const claims = new Map<string, Set<PlayerId>>();
   for (const m of state.markers) {
-    for (const p of cellsInRadius(board, m.pos, getSpec(m.specId).sight)) {
+    for (const p of cellsInRadius(board, m.pos, TERRITORY_RADIUS)) {
       const k = posKey(p);
       let set = claims.get(k);
       if (!set) {

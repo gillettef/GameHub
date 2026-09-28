@@ -1,14 +1,26 @@
+/* 단계 진행 표시(2026-09-28 사용자 지시: 로비 재설계 — 텍스트("2/4단계")만으로는 눈에 잘 안 띄어 점으로 보강) */
+.stepDots {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+
+.stepDot {
+  width: 16px;
+  height: 4px;
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--color-white) 30%, transparent);
+}
+
+.stepDotDone {
+  background: var(--color-white);
+}
+
 .inviteRow {
   display: flex;
   gap: var(--space-2);
   align-items: center;
   width: 100%;
-}
-
-/* 공유·복사는 대등한 동작이라 아웃라인·채움과 무관하게 높이를 맞춘다
-   (기본 .pill--outline 은 38px 로 .pill 44px 보다 낮아 한 줄에서 어긋나 보였다) */
-.inviteRow :global(.pill--outline) {
-  height: 44px;
 }
 
 /* 위자드 단계 이동(다음/나가기 등). 모두 pill--outline 하나로 통일해 한 줄 안에서 높이가 갈리지 않게 한다 */

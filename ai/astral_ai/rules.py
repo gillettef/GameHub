@@ -114,12 +114,56 @@ def in_bounds(state: GameState, p: Position) -> bool:
     return 0 <= p.x < state.board.width and 0 <= p.y < state.board.height
 
 
+_TERRAIN_ARRAY_FIELDS: list[tuple[str, str]] = [
+    ("asteroids", "asteroid"),
+    ("veins", "vein"),
+    ("nebulas", "nebula"),
+    ("debrisFields", "debrisField"),
+    ("ionStorms", "ionStorm"),
+    ("relicSites", "relicSite"),
+    ("gravityRifts", "gravityRift"),
+    ("gunEmplacements", "gunEmplacement"),
+    ("jammingFields", "jammingField"),
+]
+
+
 def terrain_at(state: GameState, p: Position) -> str:
-    if any(a.x == p.x and a.y == p.y for a in state.board.asteroids):
-        return "asteroid"
-    if any(v.x == p.x and v.y == p.y for v in state.board.veins):
-        return "vein"
+    for field, name in _TERRAIN_ARRAY_FIELDS:
+        if any(q.x == p.x and q.y == p.y for q in getattr(state.board, field)):
+            return name
     return "space"
+
+
+def effective_sight(state: GameState, pos: Position, base_sight: int) -> int:
+    """그 칸의 유효 시야(성운 -1, 최소 1). 배치 가능 범위에만 쓴다 — 영토는 고정 반경을 쓴다"""
+    if base_sight <= 0:
+        return base_sight
+    penalty = const("NEBULA_SIGHT_PENALTY") if terrain_at(state, pos) == "nebula" else 0
+    return max(1, base_sight - penalty)
+
+
+def effective_max_hp(state: GameState, pos: Position, base_hp: int) -> int:
+    """그 칸의 유효 최대 체력(파편지대 -1, 최소 1). 배치 시점에 구해 Marker.maxHp 에 굳힌다"""
+    if base_hp <= 0:
+        return base_hp
+    penalty = const("DEBRIS_FIELD_HP_PENALTY") if terrain_at(state, pos) == "debrisField" else 0
+    return max(1, base_hp - penalty)
+
+
+def effective_attack(state: GameState, pos: Position, base_attack: int) -> int:
+    """그 칸의 유효 공격력(포대 발판 +1)"""
+    if base_attack <= 0:
+        return base_attack
+    bonus = const("GUN_EMPLACEMENT_ATTACK_BONUS") if terrain_at(state, pos) == "gunEmplacement" else 0
+    return base_attack + bonus
+
+
+def effective_range(state: GameState, pos: Position, base_range: int) -> int:
+    """그 칸의 유효 사거리(교란지대 -1, 최소 0)"""
+    if base_range <= 0:
+        return base_range
+    penalty = const("JAMMING_FIELD_RANGE_PENALTY") if terrain_at(state, pos) == "jammingField" else 0
+    return max(0, base_range - penalty)
 
 
 def marker_at(state: GameState, p: Position) -> Marker | None:
@@ -140,7 +184,8 @@ def markers_of(state: GameState, player_id: str) -> list[Marker]:
 
 def is_in_sight(state: GameState, player_id: str, p: Position) -> bool:
     return any(
-        m.ownerId == player_id and hex_distance(m.pos, p) <= spec(m.specId).sight for m in state.markers
+        m.ownerId == player_id and hex_distance(m.pos, p) <= effective_sight(state, m.pos, spec(m.specId).sight)
+        for m in state.markers
     )
 
 
@@ -157,7 +202,8 @@ def cells_in_radius(state: GameState, center: Position, radius: int) -> list[Pos
 def compute_sight_area(state: GameState, player_id: str) -> list[Position]:
     seen: set[tuple[int, int]] = set()
     for m in markers_of(state, player_id):
-        for p in cells_in_radius(state, m.pos, spec(m.specId).sight):
+        sight = effective_sight(state, m.pos, spec(m.specId).sight)
+        for p in cells_in_radius(state, m.pos, sight):
             seen.add((p.x, p.y))
     return [Position(x=x, y=y) for (x, y) in sorted(seen, key=lambda t: (t[1], t[0]))]
 
@@ -169,9 +215,12 @@ class Territory:
 
 
 def compute_territory(state: GameState) -> Territory:
+    """2026-09-28부터 카드 시야가 아니라 고정 반경(TERRITORY_RADIUS)으로 영토를 계산한다.
+    배치 가능 범위(sight)는 그대로 가변이다 — is_in_sight/compute_sight_area 참고"""
+    radius = const("TERRITORY_RADIUS")
     claims: dict[tuple[int, int], set[str]] = {}
     for m in state.markers:
-        for p in cells_in_radius(state, m.pos, spec(m.specId).sight):
+        for p in cells_in_radius(state, m.pos, radius):
             claims.setdefault((p.x, p.y), set()).add(m.ownerId)
     asteroid = {(a.x, a.y) for a in state.board.asteroids}
     marker_owner = {(m.pos.x, m.pos.y): m.ownerId for m in state.markers}
@@ -210,6 +259,17 @@ def get_player(state: GameState, player_id: str) -> PlayerState:
     raise KeyError(player_id)
 
 
+def _marker_score(state: GameState, m: Marker) -> int:
+    """마커 하나의 점수. 유물지대는 +1, 중력 균열은 -1(최소 0)"""
+    base = spec(m.specId).score
+    terrain = terrain_at(state, m.pos)
+    if terrain == "relicSite":
+        return base + const("RELIC_SITE_SCORE_BONUS")
+    if terrain == "gravityRift":
+        return max(0, base - const("GRAVITY_RIFT_SCORE_PENALTY"))
+    return base
+
+
 def compute_scores(state: GameState) -> dict[str, Score]:
     territory = compute_territory(state)
     per_cell = const("SCORE_PER_TERRITORY")
@@ -220,7 +280,7 @@ def compute_scores(state: GameState) -> dict[str, Score]:
             scores[p.id] = Score(territory=0, markers=0, komi=0, total=0)
             continue
         t = territory.counts.get(p.id, 0) * per_cell
-        m = sum(spec(mk.specId).score for mk in markers_of(state, p.id))
+        m = sum(_marker_score(state, mk) for mk in markers_of(state, p.id))
         komi = p.seat * komi_per_seat
         scores[p.id] = Score(territory=t, markers=m, komi=komi, total=t + m + komi)
     return scores
@@ -370,10 +430,12 @@ def _resolve_combat(state: GameState, player_id: str) -> None:
     damage: dict[str, int] = {}
     for a in attackers:
         sp = spec(a.specId)
-        candidates = _prioritized_targets(a.pos, enemies, sp.range)
+        attack = effective_attack(state, a.pos, sp.attack)
+        range_ = effective_range(state, a.pos, sp.range)
+        candidates = _prioritized_targets(a.pos, enemies, range_)
         targets = candidates[:2] if "barrage" in sp.keywords else candidates[:1]
         for target in targets:
-            damage[target.id] = damage.get(target.id, 0) + sp.attack
+            damage[target.id] = damage.get(target.id, 0) + attack
     if not damage:
         return
     for m in state.markers:
@@ -390,11 +452,24 @@ def _apply_repair(state: GameState, player_id: str) -> None:
     heal: dict[str, int] = {}
     for r in repairers:
         for m in markers_of(state, player_id):
-            if hex_distance(r.pos, m.pos) <= radius and m.hp < spec(m.specId).hp:
+            if hex_distance(r.pos, m.pos) <= radius and m.hp < m.maxHp:
                 heal[m.id] = heal.get(m.id, 0) + amount
     for m in state.markers:
         if m.id in heal:
-            m.hp = min(spec(m.specId).hp, m.hp + heal[m.id])
+            m.hp = min(m.maxHp, m.hp + heal[m.id])
+
+
+def _apply_terrain_hazards(state: GameState, player_id: str) -> None:
+    """이온 폭풍: 내 마커 중 이온 폭풍 칸에 있는 것마다 매 턴 피해 1(지속, 만료 없음)"""
+    hit = [m for m in markers_of(state, player_id) if terrain_at(state, m.pos) == "ionStorm"]
+    if not hit:
+        return
+    damage = const("ION_STORM_DAMAGE")
+    ids = {m.id for m in hit}
+    for m in state.markers:
+        if m.id in ids:
+            m.hp -= damage
+    _remove_destroyed(state)
 
 
 def _expire_persistent(state: GameState, player_id: str) -> None:
@@ -428,12 +503,16 @@ def _finish(state: GameState, reason: str) -> None:
 
 def _resolve_turn_end(state: GameState, player_id: str) -> None:
     """2026-09-23부터 자동 효과는 다음 사람 턴 시작이 아니라 그 플레이어 자신이 턴을 끝낼 때
-    처리된다 (Rules.md 5.2): 전투 → 정비 → 지속 마법 만료 → 수입 → 드로우."""
+    처리된다 (Rules.md 5.2): 전투 → 정비 → 지형 피해(이온 폭풍) → 지속 마법 만료 → 수입 → 드로우."""
     _resolve_combat(state, player_id)
     if len(alive_players(state)) <= 1:
         _finish(state, "last-survivor")
         return
     _apply_repair(state, player_id)
+    _apply_terrain_hazards(state, player_id)
+    if len(alive_players(state)) <= 1:
+        _finish(state, "last-survivor")
+        return
     _expire_persistent(state, player_id)
     p = _player(state, player_id)
     p.energy = min(p.energy + compute_income(state, player_id), const("ENERGY_CAP"))
@@ -507,17 +586,20 @@ def _apply_placement(state: GameState, player_id: str, card_id: str, pos: Positi
         elif eff.kind == "heal":
             for m in state.markers:
                 if m.ownerId == player_id and hex_distance(pos, m.pos) <= eff.radius:
-                    m.hp = min(spec(m.specId).hp, m.hp + eff.amount)
+                    m.hp = min(m.maxHp, m.hp + eff.amount)
         elif eff.kind == "energy":
             p.energy = min(p.energy + eff.amount, const("ENERGY_CAP"))
     else:
+        # 파편지대에 놓이면 최대 체력이 배치 시점에 -1 되어 고정된다(Rules.md 3절, 2026-09-28)
+        max_hp = effective_max_hp(state, pos, sp.hp)
         marker = Marker(
             id=f"m{state.nextMarkerId}",
             specId=card_id,
             kind=sp.kind,
             ownerId=player_id,
             pos=pos,
-            hp=sp.hp,
+            hp=max_hp,
+            maxHp=max_hp,
             remainingTurns=eff.durationTurns if eff is not None and eff.kind == "persistent" else None,
         )
         state.nextMarkerId += 1

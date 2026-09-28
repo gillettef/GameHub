@@ -1,6 +1,6 @@
-import { useEffect, useState, type CSSProperties } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import type { RaceId, RoomPeek } from '@astraltab/shared';
-import { MAX_PLAYERS, getMap, mapsForPlayers } from '@astraltab/shared';
+import { MAX_PLAYERS, getMap, mapsForAtLeast } from '@astraltab/shared';
 import { DeckPicker } from '../components/DeckPicker';
 import { DockShell } from '../components/DockShell';
 import { MapPicker } from '../components/MapPicker';
@@ -215,6 +215,18 @@ function LobbyView({ roomId, onQuit }: { roomId: string; onQuit: () => void }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [me?.id, me?.race]);
 
+  // 맵이 바뀌면(방장이 직접 고르거나, 좌석이 늘어 정원에 안 맞는 맵이 자동으로 더 큰 맵으로
+  // 바뀌거나) 전원 준비가 풀린다(changeMap, shared/src/engine/turn.ts) — 특히 자동 전환은
+  // 원인이 화면에 안 보이므로, 어느 경우든 안내 문구로 알려 준다(2026-09-28, 리뷰 반영).
+  const prevMapIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!state) return;
+    if (prevMapIdRef.current !== null && prevMapIdRef.current !== state.mapId) {
+      setNotice(`맵이 ${getMap(state.mapId).name}(으)로 바뀌어 준비가 초기화됐습니다. 종족을 다시 확인하고 준비해 주세요.`);
+    }
+    prevMapIdRef.current = state.mapId;
+  }, [state?.mapId, setNotice]);
+
   if (!state || !viewerId || !room || !me) return null;
   const isHost = room.hostId === viewerId;
   const map = getMap(state.mapId);
@@ -260,6 +272,11 @@ function LobbyView({ roomId, onQuit }: { roomId: string; onQuit: () => void }) {
       heroTitle="대기실"
       heroSubtitle={
         <>
+          <span className={styles.stepDots} role="status" aria-label={`${stepIndex + 1}/${STEP_ORDER.length}단계 · ${STEP_LABEL[tab]}`}>
+            {STEP_ORDER.map((s, i) => (
+              <span key={s} className={cx(styles.stepDot, i <= stepIndex && styles.stepDotDone)} />
+            ))}
+          </span>
           방 {roomId} · {map.name} · {stepIndex + 1}/{STEP_ORDER.length}단계 · {STEP_LABEL[tab]}
           {connection !== 'connected' && (
             <span className={styles.connecting}>
@@ -319,7 +336,7 @@ function LobbyView({ roomId, onQuit }: { roomId: string; onQuit: () => void }) {
           </div>
           <p className={landing.help}>{room.hasPassword ? '비밀번호가 걸린 방입니다. 친구에게 비밀번호도 알려 주세요.' : '링크를 아는 사람은 누구나 들어올 수 있습니다.'}</p>
           <div className={styles.wizardNav}>
-            <button type="button" className="pill pill--outline" onClick={goNext}>
+            <button type="button" className="pill" onClick={goNext}>
               다음: 좌석 정하기
             </button>
           </div>
@@ -375,7 +392,7 @@ function LobbyView({ roomId, onQuit }: { roomId: string; onQuit: () => void }) {
             <button type="button" className="pill pill--outline" onClick={onQuit}>
               나가기
             </button>
-            <button type="button" className="pill pill--outline" onClick={goNext}>
+            <button type="button" className="pill" onClick={goNext}>
               다음: 맵 정하기
             </button>
           </div>
@@ -387,21 +404,21 @@ function LobbyView({ roomId, onQuit }: { roomId: string; onQuit: () => void }) {
           <div className={styles.sectionHead}>
             <h2 className={landing.h2}>맵</h2>
             {isHost && (
-              <button type="button" className="pill pill--outline" onClick={() => request(api.setMap(roomId, randomMapId(mapsForPlayers(state.players.length))))}>
+              <button type="button" className="pill pill--outline" onClick={() => request(api.setMap(roomId, randomMapId(mapsForAtLeast(state.players.length))))}>
                 무작위
               </button>
             )}
           </div>
           <p className={landing.help}>
-            {isHost ? '방장만 맵을 바꿀 수 있습니다.' : '방장이 맵을 정합니다.'}
+            {isHost ? '방장만 맵을 바꿀 수 있습니다.' : '방장이 맵을 정합니다.'} 지금 좌석 수({state.players.length}명)보다 작은 맵은 보이지 않습니다.
             {!full && ` 인원이 정원(${map.players}명)과 같아야 시작합니다.`}
           </p>
-          <MapPicker value={state.mapId} onChange={(id) => request(api.setMap(roomId, id))} disabled={!isHost} currentPlayers={state.players.length} />
+          <MapPicker value={state.mapId} onChange={(id) => request(api.setMap(roomId, id))} disabled={!isHost} minPlayers={state.players.length} />
           <div className={styles.wizardNav}>
             <button type="button" className="pill pill--outline" onClick={goPrev}>
               이전: 좌석으로
             </button>
-            <button type="button" className="pill pill--outline" onClick={goNext}>
+            <button type="button" className="pill" onClick={goNext}>
               다음: 종족 정하기
             </button>
           </div>

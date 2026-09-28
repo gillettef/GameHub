@@ -30,6 +30,19 @@ export const DECK_SIZE = 25;
 export const VEIN_PRODUCTION_BONUS = 1;
 /** 영토 1칸 점수 */
 export const SCORE_PER_TERRITORY = 1;
+/** 영토 점수 판정 반경(육각 거리). 2026-09-28부터 마커의 시야 스탯이 아니라 이 고정값을 쓴다 —
+ * 배치 가능 범위(시야)는 그대로 두고 "점수만" 마커 주변 이 반경으로 계산한다(Rules.md 8절) */
+export const TERRITORY_RADIUS = 1;
+
+/** 새 지형 7종의 효과 수치(2026-09-28 신설, Rules.md 3절). 전부 "그 칸에 놓인 마커"에 배치
+ * 시점 또는 매 턴 적용되는 고정 수정치다 */
+export const NEBULA_SIGHT_PENALTY = 1;
+export const DEBRIS_FIELD_HP_PENALTY = 1;
+export const ION_STORM_DAMAGE = 1;
+export const RELIC_SITE_SCORE_BONUS = 1;
+export const GRAVITY_RIFT_SCORE_PENALTY = 1;
+export const GUN_EMPLACEMENT_ATTACK_BONUS = 1;
+export const JAMMING_FIELD_RANGE_PENALTY = 1;
 /** 덤(komi): 좌석 번호 × 이 값을 최종 점수에 더한다. 선턴(좌석 0)이 유리하므로 나중 좌석일수록
  * 소소한 보너스를 받는다 (2026-09-23 신설, Rules.md 9.1/9.3) */
 export const KOMI_PER_SEAT = 1;
@@ -57,6 +70,14 @@ export const CONSTANTS = {
   DECK_SIZE,
   VEIN_PRODUCTION_BONUS,
   SCORE_PER_TERRITORY,
+  TERRITORY_RADIUS,
+  NEBULA_SIGHT_PENALTY,
+  DEBRIS_FIELD_HP_PENALTY,
+  ION_STORM_DAMAGE,
+  RELIC_SITE_SCORE_BONUS,
+  GRAVITY_RIFT_SCORE_PENALTY,
+  GUN_EMPLACEMENT_ATTACK_BONUS,
+  JAMMING_FIELD_RANGE_PENALTY,
   KOMI_PER_SEAT,
   INFILTRATE_RANGE,
   REPAIR_RADIUS,
