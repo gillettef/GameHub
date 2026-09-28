@@ -1,5 +1,6 @@
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
-import type { CellView } from '../game/derived';
+import type { BoardEffect, CellView } from '../game/derived';
+import { diffMarkerEffects, snapshotMarkers } from '../game/derived';
 import { Cell } from './Cell';
 import styles from './Board.module.css';
 
@@ -161,6 +162,53 @@ export const Board = memo(function Board({ size, cells, legal, viewerSeat, onCel
     return map;
   }, [cells, geo]);
 
+  // 전투·파괴 시각 피드백(2026-09-28). 룰 엔진 로그는 좌표를 구조화해 담지 않으므로(문자열뿐),
+  // 엔진을 건드리지 않고 클라이언트에서 직전 렌더의 markers 와 비교(diff)해 트리거한다.
+  // 마커는 이동하지 않으므로 같은 칸 key 에서 id 가 사라지면 파괴, hp 가 줄면 피격으로 본다.
+  const prevMarkersRef = useRef<ReturnType<typeof snapshotMarkers> | null>(null);
+  const effectTimeouts = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
+  const [effects, setEffects] = useState<Map<string, BoardEffect>>(new Map());
+
+  useEffect(() => {
+    const next = snapshotMarkers(cells);
+    const prev = prevMarkersRef.current;
+    prevMarkersRef.current = next;
+    if (!prev) return; // 첫 렌더는 비교 대상이 없다
+
+    const diffs = diffMarkerEffects(prev, next);
+    if (diffs.length === 0) return;
+
+    setEffects((old) => {
+      const m = new Map(old);
+      for (const e of diffs) m.set(e.id, e);
+      return m;
+    });
+    for (const e of diffs) {
+      const { id } = e;
+      // Board.module.css 의 .effectDestroy/.effectHit 애니메이션 시간(var(--motion-slow)/--motion-fast,
+      // tokens.css 340ms/120ms)과 맞춘다 — 어긋나면 애니메이션이 끝난 뒤에도 투명해진 DOM이 남아 있거나
+      // 반대로 끝나기 전에 지워진다. 토큰 값을 바꾸면 여기도 같이 바꾼다.
+      const duration = e.type === 'destroy' ? 340 : 120;
+      const t = setTimeout(() => {
+        effectTimeouts.current.delete(t);
+        setEffects((old) => {
+          if (!old.has(id)) return old;
+          const m = new Map(old);
+          m.delete(id);
+          return m;
+        });
+      }, duration);
+      effectTimeouts.current.add(t);
+    }
+  }, [cells]);
+
+  useEffect(
+    () => () => {
+      for (const t of effectTimeouts.current) clearTimeout(t);
+    },
+    [],
+  );
+
   return (
     <div className={styles.area}>
       <div className={styles.viewport} ref={viewportRef}>
@@ -168,6 +216,24 @@ export const Board = memo(function Board({ size, cells, legal, viewerSeat, onCel
           {cells.map((cell) => (
             <Cell key={cell.key} cell={cell} legal={legal.has(cell.key)} onClick={onCellClick} style={cellStyles.get(cell.key)!} />
           ))}
+          {[...effects.entries()].map(([id, e]) => {
+            const cellStyle = cellStyles.get(e.cellKey);
+            if (!cellStyle) return null;
+            const effectStyle = {
+              ...cellStyle,
+              '--effect-color': `var(--color-seat-${e.seat}, var(--color-white))`,
+            } as CSSProperties;
+            return (
+              <div
+                key={id}
+                className={`${styles.effect} ${e.type === 'destroy' ? styles.effectDestroy : styles.effectHit}`}
+                style={effectStyle}
+                aria-hidden="true"
+              >
+                <div className={styles.ring} />
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>

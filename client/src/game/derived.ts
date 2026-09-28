@@ -105,6 +105,48 @@ export function buildCells(state: GameState, viewerId: PlayerId | null): CellVie
   return cells;
 }
 
+export interface MarkerSnapshot {
+  id: string;
+  hp: number;
+  seat: number;
+}
+
+/** 칸 key → 마커 스냅샷. Board 가 매 렌더 직전 상태와 비교(diff)해 전투·파괴 이펙트를 뽑는 데 쓴다 */
+export function snapshotMarkers(cells: CellView[]): Map<string, MarkerSnapshot> {
+  const map = new Map<string, MarkerSnapshot>();
+  for (const cell of cells) {
+    if (cell.marker) map.set(cell.key, { id: cell.marker.id, hp: cell.marker.hp, seat: cell.marker.seat });
+  }
+  return map;
+}
+
+export interface BoardEffect {
+  /** React key 등으로 쓰는 유일 키. 같은 칸에서 이벤트가 다시 나도 겹치지 않게 값들을 조합한다 */
+  id: string;
+  cellKey: string;
+  type: 'destroy' | 'hit';
+  seat: number;
+}
+
+/**
+ * 직전 마커 스냅샷과 비교해 파괴·피격 이펙트를 뽑아낸다(2026-09-28, 전투 시각 피드백).
+ * 룰 엔진 로그(`GameState.log`)는 파괴 위치를 구조화된 필드가 아니라 메시지 문자열에만 담으므로,
+ * 엔진·AI 픽스처를 건드리지 않고 클라이언트에서 직접 diff 한다. 마커는 절대 이동하지 않으므로
+ * 같은 칸에서 id 가 사라지면 파괴, id 는 같은데 hp 가 줄면 피격으로 본다.
+ */
+export function diffMarkerEffects(prev: Map<string, MarkerSnapshot>, next: Map<string, MarkerSnapshot>): BoardEffect[] {
+  const effects: BoardEffect[] = [];
+  for (const [cellKey, prevM] of prev) {
+    const nextM = next.get(cellKey);
+    if (!nextM || nextM.id !== prevM.id) {
+      effects.push({ id: `${cellKey}:destroy:${prevM.id}`, cellKey, type: 'destroy', seat: prevM.seat });
+    } else if (nextM.hp < prevM.hp) {
+      effects.push({ id: `${cellKey}:hit:${nextM.id}:${nextM.hp}`, cellKey, type: 'hit', seat: nextM.seat });
+    }
+  }
+  return effects;
+}
+
 /** 선택한 카드를 놓을 수 있는 칸 키 집합. 카드 조건(손패·에너지)이 안 맞으면 빈 집합 */
 export function legalCellKeys(state: GameState, viewerId: PlayerId | null, cardId: CardId | null): Set<string> {
   if (!viewerId || !cardId) return new Set();
