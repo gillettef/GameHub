@@ -38,8 +38,8 @@
 }
 
 .banner {
-  background: var(--color-accent);
-  color: var(--color-accent-text);
+  background: var(--color-danger);
+  color: var(--color-white);
 }
 
 .bannerSoft {

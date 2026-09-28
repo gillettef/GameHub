@@ -73,7 +73,8 @@ h1,
 h2,
 h3 {
   font-family: var(--font-display);
-  font-weight: 700;
+  /* Gothic A1 은 900 굵기만 불러온다(index.html) — 다른 굵기를 요청하면 합성 볼드가 걸려 흐려진다 */
+  font-weight: 900;
   color: var(--color-heading);
   margin: 0;
 }
