@@ -39,6 +39,17 @@ export function GamePage({ onQuit }: GamePageProps) {
     return () => window.clearTimeout(t);
   }, [notice, clearNotice]);
 
+  // 내 턴 인지 신호(2026-09-28): 특히 온라인 대전에서 다른 브라우저 탭을 보고 있어도
+  // 탭 제목으로 내 차례가 왔음을 알 수 있게 한다. 화면을 떠나면(다른 페이지 이동) 기본 제목으로 되돌린다
+  useEffect(() => {
+    if (!state || !viewerId) return;
+    const isMyTurn = state.phase === 'playing' && state.currentPlayerId === viewerId;
+    document.title = isMyTurn ? '내 차례 · AstralTab' : 'AstralTab';
+  }, [state, viewerId]);
+  useEffect(() => () => {
+    document.title = 'AstralTab';
+  }, []);
+
   if (!state || !viewerId) return null;
   const showResult = state.phase === 'finished' && !resultDismissed;
   const offline = mode === 'online' && connection !== 'connected';
