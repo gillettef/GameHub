@@ -37,7 +37,7 @@
 - `shared/src`(types·data·engine), `ai/astral_ai`(models·rules·search), `shared/fixtures` 는 **v2 규칙(Rules.md)** 으로 재작성됐다. 2026-09-22 육각 전환(odd-r 오프셋, `hexDistance`/`hex_distance`, 코어 시야·수입 1)에 이어 2026-09-23 **종족 3개**(인류 연합·크릴 군락·오토마타 집정체, `Keyword`에 `overclock` 추가, `computeIncome`/`compute_income` 에 과부하 계산)까지 반영. Vitest 84개(shared, 맵 6개 좌석 공정성 테스트 포함) + 10개(client) + 9개(server), pytest 14개(픽스처 시나리오 재생으로 TS·Python 규칙 일치 검증)가 통과한다.
 - `ai/astral_ai/search.py` 는 1수 탐욕 자리표시자다. Minimax / max-n 은 Phase 3.
 - `client/` 는 **Phase 1 탭 UI 핫시트**가 구현됐다 (F008~F017). 설정 화면(참가 인원 → 맵(인원수로 필터) → 닉네임 → 덱 빌딩) → 게임 대시보드(보드·상태·진행 탭) → 결과 오버레이. 규칙 계산은 `client/src/game/hotseat.ts` 가 `shared/src/engine` 의 `applyAction` 을 직접 호출하는 로컬 어댑터로 처리하며, Phase 2 에서 Socket.io 어댑터(`client/src/socket`)로 교체한다. 개발용 바로가기 `/?quick&map=<id>&seed=<n>&tab=<board|status|progress>&select=<손패 index>`. Vitest 10개(client).
-- 보드는 `Board.tsx`/`Board.module.css` 가 육각(odd-r, pointy-top)으로 렌더링한다. 컨테이너 가로·세로에 맞춰 육각 크기를 계산해 무스크롤(F015)·모바일을 함께 만족한다. 마커는 좌석 색으로 채우고 모양(코어=육각·건물=둥근 사각·유닛=원·마법=마름모)으로 종류를 구분한다(좌석 1·2·3 색 확정, 흰색 패턴 구분은 폐기). 경고색은 여전히 **미정**이다.
+- 보드는 `Board.tsx`/`Board.module.css` 가 육각(odd-r, pointy-top)으로 렌더링한다. 컨테이너 가로·세로에 맞춰 육각 크기를 계산해 무스크롤(F015)·모바일을 함께 만족한다. 마커는 좌석 색으로 채우고 모양(코어=육각·건물=둥근 사각·유닛=원·마법=마름모)으로 종류를 구분한다(좌석 1·2·3 색 확정, 흰색 패턴 구분은 폐기). 경고색은 2026-09-28에 Danger Red `#e5484d`로 확정했다(연결 끊김·기권 확정처럼 돌이킬 수 없는 경고 전용, 아래 디자인 표 참고).
 - 화면은 모바일 우선이다: 본문 14px/최소 12px, `max-width:720px` 에서 `BoardTab`·`Hand`·`StatusTab`·`GamePage` 헤더가 레이아웃을 바꾼다. 자세한 내용은 아래 "모바일 우선" 절.
 - **Phase 2 온라인 멀티플레이 + AI 좌석**이 구현됐다 (F001~F007, F026, F027, F030). 서버 `rooms/manager.ts`(방 생성·초대 id·비밀번호·좌석·맵 변경·AI 추가, 순수 로직 + Vitest 9개), `persistence/snapshots.ts`(`server/data/<env>/rooms/<roomId>.json`, 시작 시 복원), `game/aiTurn.ts`(AI 턴마다 Python `/decide` 호출 → 엔진 검증 → PASS 폴백), `index.ts`(Socket.io ack 이벤트, 플레이어별 `maskState` 브로드캐스트). 이벤트 계약은 `shared/src/types/events.ts`, 가림 함수는 `shared/src/mask.ts`.
 - 클라이언트 경로: `/` 랜딩(방 만들기·초대 링크 참여·핫시트), `/hotseat` 핫시트 설정→게임, `/room/:id` 온라인 로비→게임. 소켓 어댑터 `client/src/socket/client.ts`, 스토어는 `mode: hotseat | online` 으로 같은 액션을 쓴다. 재접속은 localStorage `playerToken` (`client/src/lib/identity.ts`).
@@ -192,7 +192,7 @@ AstralTab/
 - **플랫**: `box-shadow` 사용 금지. 구분은 배경색 블록과 여백으로 한다.
 - **필 CTA**: 주요 버튼은 50px 라운드 필, 저강조 버튼은 999px 아웃라인 필. 각진 버튼 금지.
 - **헤딩은 네이비** `#1a2352`, 순수 검정 금지(검정은 얇은 아웃라인에만).
-- **타이포**: 본문·UI는 Pretendard(CDN), 본문 15~17px. 헤딩용 디스플레이 폰트는 **미정**. 정해지기 전까지 헤딩도 Pretendard 700으로 두고 폰트 패밀리는 CSS 변수 하나(`--font-display`)로만 참조한다.
+- **타이포**: 본문·UI는 Pretendard(CDN), 본문 15~17px. 헤딩용 디스플레이 폰트는 2026-09-28에 Gothic A1 굵기 900(구글 폰트, `client/index.html`에서 로드)으로 확정했다. 처음 고른 Black Han Sans 는 "플" 같은 획 많은 글자가 앱 실제 헤딩 크기(15px 대)에서 뭉개져 되돌렸다. 폰트 패밀리는 CSS 변수 하나(`--font-display`)로만 참조하고, 로드 실패 시 본문 폰트(Pretendard)로 자연스럽게 대체된다.
 - **간격**: 8px 리듬. 라운드는 10px(패널) / 16px(카드) / 24px(큰 컨테이너) / 50px·999px(필).
 - **모션**: `motion-fast` 120ms, `motion-standard` 220ms, `motion-slow` 340ms와 DESIGN.md의 easing 토큰. `prefers-reduced-motion` 존중. 탭 전환은 100ms 예산(F014) 때문에 `motion-fast` 이하로만.
 - **상태 문구**: 오류는 "오류"가 아니라 다음에 할 일을 적는다("에너지가 2 부족합니다", "시야 밖입니다"). 성공에 이모지 없음. 비활성은 회색 `#bbbbbb` 텍스트 + 투명도.
@@ -230,12 +230,12 @@ AstralTab/
 | 마커(보드 위) | 종류(코어=육각·건물=둥근 사각·유닛=원·마법=마름모)와 무관하게 **좌석 색으로 채운다**. 예전의 흰색 패턴(빗금·점·격자)·테두리 선 모양(dashed·dotted·double) 구분은 좌석색이 생기면서 없앴다 |
 | 손패 카드(보드·상태 탭) | 배경을 소유자 **좌석 색**으로 물들인다(표면색과 섞어 텍스트 대비 유지, `CardFace.module.css`). 종류 구분은 위 "마법 카드 액센트" 처럼 이름 텍스트 색으로 한다(2026-09-22 사용자 지시) |
 | 시야 영역 / 영토 오버레이 | 좌석 색을 낮은 투명도로. 경합 칸은 오버레이 없음. 네 좌석 모두 같은 방식(패턴 없음) |
-| 위험·파괴·코어 위협 경고 | **미정** (DESIGN.md에 경고색이 없음) |
+| 위험·경고(돌이킬 수 없는 동작) | Danger Red `#e5484d` (2026-09-28 확정, DESIGN.md에 없던 값이라 좌석 1·3 색과 안 겹치게 새로 골랐다). 연결 끊김 배너(`GamePage.module.css`), 기권 확정 문구(`TurnControls.module.css`)에 쓴다. "카드를 낼 수 없음" 같은 비활성 상태는 여전히 회색(`--color-muted`) — 돌이킬 수 없는 경고와 단순 비활성을 색으로 구분한다. 코어 위협도 같은 새 지표는 아직 없음 |
 | 소행성 칸 | Steel Blue `#36597d` 채움 |
 | 텍스트 | `#ffffff`, 보조 `#bbbbbb` |
 | 격자선 | Steel Blue `#36597d` (육각 셀을 살짝 축소해 그 틈으로 비친다) |
 
-경고색만 DESIGN.md Unknowns 정책대로 미정으로 남겨 뒀다. 사용자가 정해 주면 이 표를 갱신하고 `client/src/styles/tokens.css` 에 반영한다.
+경고색은 2026-09-28에 확정해 위 표와 `client/src/styles/tokens.css`(`--color-danger`)에 반영했다. 더 미정으로 남은 값은 없다.
 
 ### 구현 방식
 

@@ -48,7 +48,8 @@
   flex: 1 1 auto;
   min-width: 120px;
   font-size: var(--text-small);
-  color: var(--color-heading);
+  font-weight: 600;
+  color: var(--color-danger);
 }
 
 /* 이 바 안에서만 버튼 높이를 줄인다 (기본 .pill 44px / .pill--outline 38px 는 다른 화면 그대로).
