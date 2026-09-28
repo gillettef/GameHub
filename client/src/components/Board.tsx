@@ -1,6 +1,8 @@
-import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { hexDistance } from '@astraltab/shared';
 import type { BoardEffect, CellView } from '../game/derived';
 import { diffMarkerEffects, snapshotMarkers } from '../game/derived';
+import { markPreviewHintSeen } from '../lib/onboarding';
 import { Cell } from './Cell';
 import styles from './Board.module.css';
 
@@ -10,6 +12,8 @@ interface BoardProps {
   legal: Set<string>;
   /** 보는 사람의 좌석. 시야 오버레이 색을 정한다 */
   viewerSeat: number;
+  /** 선택한 카드의 시야 반경. 배치 프리뷰(길게 누르기) 계산에 쓴다. 카드 미선택 시 0 */
+  previewSight: number;
   onCellClick: (x: number, y: number) => void;
 }
 
@@ -48,7 +52,7 @@ function geometryFromS(size: number, s: number): Geometry {
  * 육각 보드 (F008, odd-r 오프셋). 기본 크기는 최소 줌(MIN_ZOOM_S, 2026-09-24 사용자 지시)이고
  * 핀치로 확대할 수 있다. 부모 영역보다 커지면 스크롤해서 살펴본다. 셀은 절대 배치 + clip-path 육각형.
  */
-export const Board = memo(function Board({ size, cells, legal, viewerSeat, onCellClick }: BoardProps) {
+export const Board = memo(function Board({ size, cells, legal, viewerSeat, previewSight, onCellClick }: BoardProps) {
   const viewportRef = useRef<HTMLDivElement>(null);
   const [zoomS, setZoomS] = useState(ZOOM_S);
   const zoomSRef = useRef(zoomS);
@@ -209,12 +213,42 @@ export const Board = memo(function Board({ size, cells, legal, viewerSeat, onCel
     [],
   );
 
+  // 배치 프리뷰(2026-09-28, 길게 누르기): 빈 칸을 길게 누르면 이 카드를 여기 놓았을 때 새로
+  // 넓어질 시야를 미리 보여준다. 짧게 탭하면 지금처럼 곧바로 배치되고(Cell.tsx 가 처리), 여기서는
+  // "어느 칸을 기준으로 반경을 계산할지"만 들고 있는다. 콜백은 useCallback 으로 고정해 Cell 의
+  // React.memo 가 매 렌더마다 깨지지 않게 한다.
+  const [previewAnchor, setPreviewAnchor] = useState<{ x: number; y: number } | null>(null);
+  const handlePreviewStart = useCallback((x: number, y: number) => {
+    markPreviewHintSeen();
+    setPreviewAnchor({ x, y });
+  }, []);
+  const handlePreviewEnd = useCallback(() => setPreviewAnchor(null), []);
+
+  const previewKeys = useMemo(() => {
+    if (!previewAnchor || previewSight <= 0) return new Set<string>();
+    const set = new Set<string>();
+    for (const cell of cells) {
+      if (cell.inSight) continue; // 이미 내 시야인 칸은 "새로 얻는" 게 아니다
+      if (hexDistance(previewAnchor, { x: cell.x, y: cell.y }) <= previewSight) set.add(cell.key);
+    }
+    return set;
+  }, [previewAnchor, previewSight, cells]);
+
   return (
     <div className={styles.area}>
       <div className={styles.viewport} ref={viewportRef}>
         <div className={styles.grid} style={style} role="group" aria-label={`육각 보드 ${size}×${size}칸`}>
           {cells.map((cell) => (
-            <Cell key={cell.key} cell={cell} legal={legal.has(cell.key)} onClick={onCellClick} style={cellStyles.get(cell.key)!} />
+            <Cell
+              key={cell.key}
+              cell={cell}
+              legal={legal.has(cell.key)}
+              preview={previewKeys.has(cell.key)}
+              onClick={onCellClick}
+              onPreviewStart={handlePreviewStart}
+              onPreviewEnd={handlePreviewEnd}
+              style={cellStyles.get(cell.key)!}
+            />
           ))}
           {[...effects.entries()].map(([id, e]) => {
             const cellStyle = cellStyles.get(e.cellKey);

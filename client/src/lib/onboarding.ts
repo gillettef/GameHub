@@ -4,6 +4,7 @@
  * UI 힌트) 별도 파일로 둔다.
  */
 const HELP_TAB_SEEN_KEY = 'astraltab.seenHelpTab';
+const PLACEMENT_PREVIEW_SEEN_KEY = 'astraltab.seenPlacementPreview';
 
 function read(key: string): string | null {
   try {
@@ -28,4 +29,13 @@ export function hasSeenHelpTab(): boolean {
 
 export function markHelpTabSeen(): void {
   write(HELP_TAB_SEEN_KEY, '1');
+}
+
+/** 칸을 길게 눌러 배치 프리뷰(새로 넓어질 시야)를 본 적이 있는가. 아직이면 손패 패널에 안내 문구를 덧붙인다 */
+export function hasSeenPlacementPreview(): boolean {
+  return read(PLACEMENT_PREVIEW_SEEN_KEY) === '1';
+}
+
+export function markPreviewHintSeen(): void {
+  write(PLACEMENT_PREVIEW_SEEN_KEY, '1');
 }

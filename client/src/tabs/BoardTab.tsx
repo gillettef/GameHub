@@ -1,8 +1,10 @@
 import { memo, useMemo } from 'react';
+import { getSpec } from '@astraltab/shared';
 import { Board } from '../components/Board';
 import { Hand } from '../components/Hand';
 import { TurnControls } from '../components/TurnControls';
 import { buildCells, buildHand, legalCellKeys, seatOf } from '../game/derived';
+import { hasSeenPlacementPreview } from '../lib/onboarding';
 import { selectIsMyTurn, selectSelectedCardId, selectState, selectViewerId, useGameStore } from '../store/gameStore';
 import styles from './BoardTab.module.css';
 
@@ -36,14 +38,24 @@ export const BoardTab = memo(function BoardTab() {
     [state, viewerId, selectedCardId],
   );
   const hand = useMemo(() => (state ? buildHand(state, viewerId) : []), [state, viewerId]);
+  // 배치 프리뷰(길게 누르기, 2026-09-28)용 시야 반경. 카드 미선택 시 0 — Board 가 프리뷰를 계산 안 한다
+  const previewSight = selectedCardId ? getSpec(selectedCardId).sight : 0;
 
   if (!state || !viewerId) return null;
   const viewerSeat = seatOf(state, viewerId);
+  const placeHint = hasSeenPlacementPreview() ? '밝은 칸을 클릭해 배치' : '밝은 칸을 클릭해 배치 · 길게 누르면 시야 미리보기';
 
   return (
     <div className={styles.root}>
       <div className={styles.boardArea}>
-        <Board size={state.board.width} cells={cells} legal={legal} viewerSeat={viewerSeat} onCellClick={placeAt} />
+        <Board
+          size={state.board.width}
+          cells={cells}
+          legal={legal}
+          viewerSeat={viewerSeat}
+          previewSight={previewSight}
+          onCellClick={placeAt}
+        />
         <div className={styles.floatingBottom}>
           {state.phase === 'playing' && (
             <div className={styles.handPanel}>
@@ -53,7 +65,7 @@ export const BoardTab = memo(function BoardTab() {
                   ? ' · 상대 차례(구경만 가능)'
                   : discardMode
                     ? ` · 버릴 카드 ${discardCardIds.length}장 선택 중`
-                    : ` · ${selectedCardId ? '밝은 칸을 클릭해 배치' : '카드를 골라 배치 가능 칸 확인'}`}
+                    : ` · ${selectedCardId ? placeHint : '카드를 골라 배치 가능 칸 확인'}`}
               </div>
               <div className={styles.handBody}>
                 <Hand

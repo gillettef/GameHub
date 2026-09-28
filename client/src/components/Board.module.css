@@ -38,6 +38,10 @@
   align-items: center;
   justify-content: center;
   cursor: default;
+  /* 배치 프리뷰(길게 누르기)가 iOS 콜아웃 메뉴·텍스트 선택으로 오작동하지 않게 한다 */
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 .hex {
@@ -64,6 +68,16 @@
   transform: rotate(45deg);
   opacity: 0.7;
   border-radius: 2px;
+}
+
+/* 배치 프리뷰(2026-09-28, 길게 누르기): 이 카드를 여기 놓으면 새로 시야에 들어올 칸.
+   "배치 가능" 표시와 같은 계열(Moonlight Cream)을 쓰되 동그라미로 구분한다 */
+.previewMark {
+  position: absolute;
+  inset: 14%;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--color-accent) 45%, transparent);
+  pointer-events: none;
 }
 
 /* 영토 오버레이: 네 좌석 모두 같은 방식(색 저투명도). 패턴 구분 없음 — 색이 있으므로 */
