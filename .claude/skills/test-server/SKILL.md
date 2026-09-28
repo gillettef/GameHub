@@ -1,44 +1,31 @@
 ---
 name: test-server
-description: 운영에 올리기 전 검증용 테스트 서버를 실행한다. 클라이언트를 빌드해 Node 서버(3301)가 정적 서빙하고, Python AI(8002)를 띄우고, Cloudflare 빠른 터널로 공개 주소를 만든다. 운영(3201)과 동시에 띄울 수 있다. "테스트 서버 켜줘", "스테이징 실행", "친구랑 테스트할 서버" 요청 시 사용. 종료는 /test-server-stop.
+description: 운영에 올리기 전 검증용 테스트 서버(AWS EC2 상시 서버, http://<Elastic IP>:3301)에 최신 코드를 배포한다. 운영(3201)과 같은 인스턴스에서 포트만 분리돼 동시에 존재한다. "테스트 서버 켜줘", "스테이징 실행", "친구랑 테스트할 서버", "테스트에 반영해줘" 요청 시 사용. 완전히 끄려면 /test-server-stop.
 ---
 
-# /test-server — 테스트 서버 실행 (test)
+# /test-server — 테스트(test) 배포 (AWS EC2)
 
-`scripts/serve.ps1 -Env test` 로 아래 세 프로세스를 백그라운드로 띄운다. PID는 `.dev/test-*.pid`, 로그는 `.dev/test-*.log`.
-
-| 프로세스 | 내용 |
-|---|---|
-| `test-ai` | `ai/.venv` uvicorn, 127.0.0.1:8002 |
-| `test-server` | `server/` tsx, 0.0.0.0:3301. `client/dist/test` 를 같은 포트에서 정적 서빙 |
-| `test-tunnel` | `.dev/bin/cloudflared.exe` 빠른 터널 → 공개 URL |
-
-운영과 빌드 디렉터리(`client/dist/test`)·데이터 디렉터리(`server/data/test`)·포트가 모두 분리돼 있어 운영 서버에 영향을 주지 않는다.
+2026-09-28부터 test도 prod와 같은 **AWS EC2 상시 서버**(systemd `astraltab-test-server`/`astraltab-test-ai`, 3301/8002)에서 24시간 돌아간다. 데이터 디렉터리(`server/data/test`)·클라이언트 빌드(`client/dist/test`)·포트가 prod와 분리돼 있어 운영에 영향을 주지 않는다.
 
 ## 실행 절차
 
-1. Bash 툴로 **포그라운드** 실행한다 (출력을 파이프하지 않는다).
+1. Bash 툴로 실행한다.
 
    ```
-   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/serve.ps1 -Env test
+   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/deploy-aws.ps1 -Env test
    ```
 
-   빌드 생략은 `-NoBuild`, 터널 없이 LAN만은 `-NoTunnel`.
-
-2. 출력을 확인한다. 항목별 의미는 `/prod-server` 와 같다 (`started` 정상, `already running` 은 `/test-server-stop` 후 재실행, `port ... in use` 는 3301/8002 점유, `exited early` 는 로그 확인).
-
-3. 사용자에게 `Public :` 줄의 `https://….trycloudflare.com` 주소를 알려준다 (`.dev/test-url.txt` 에도 저장). 재시작하면 주소가 바뀐다.
+2. `DEPLOY_OK (test)` 와 `=== 배포 완료 ===` 를 확인한다.
+3. 사용자에게 `http://<.dev/aws-public-ip.txt 의 IP>:3301` 을 알려준다.
 
 ## 로그 확인
 
 ```
-tail -n 50 .dev/test-server.log
-tail -n 50 .dev/test-server.err.log
-tail -n 50 .dev/test-ai.err.log
-tail -n 50 .dev/test-tunnel.err.log
+ssh -i .dev/astraltab-key.pem ec2-user@$(cat .dev/aws-public-ip.txt) "sudo journalctl -u astraltab-test-server -n 100"
+ssh -i .dev/astraltab-key.pem ec2-user@$(cat .dev/aws-public-ip.txt) "sudo journalctl -u astraltab-test-ai -n 100"
 ```
 
 ## 주의
 
-- 핫리로드 없음. 코드를 바꿨으면 `/test-server-stop` → `/test-server`.
-- 테스트에서 확인이 끝난 변경만 `/prod-server` 로 올린다.
+- 이 프로젝트의 기본 방침은 "수정은 test까지만" 이다 — 사용자가 명시적으로 요청하지 않는 한 `/prod-server` 로 넘어가지 않는다.
+- 인스턴스를 새로 만드는 절차는 `/prod-server` 스킬 문서 참고 (같은 인스턴스라 공용).

@@ -47,16 +47,18 @@
 
 ## 실행 환경 (dev / test / prod)
 
-| 환경 | 시작 / 종료 | 서버 | 클라이언트 | AI | 용도 |
+| 환경 | 위치 | 서버 | 클라이언트 | AI | 용도 |
 |---|---|---|---|---|---|
-| dev | `/dev` · `/dev-stop` | 3101 (tsx watch) | 5173 (Vite, proxy) | 8000 (`--reload`) | 로컬 개발. 핫리로드 |
-| test | `/test-server` · `/test-server-stop` | 3301 | `client/dist/test` 를 3301에서 정적 서빙 | 8002 | 친구와 검증. 운영 전 확인 |
-| prod | `/prod-server` · `/prod-server-stop` | 3201 | `client/dist/prod` 를 3201에서 정적 서빙 | 8001 | 친구들이 접속하는 운영 |
+| dev | 로컬 PC, `/dev` · `/dev-stop` | 3101 (tsx watch) | 5173 (Vite, proxy) | 8000 (`--reload`) | 로컬 개발. 핫리로드 |
+| test | **AWS EC2 상시 서버** | 3301 (systemd `astraltab-test-server`) | `client/dist/test` 를 3301에서 정적 서빙 | 8002 (systemd `astraltab-test-ai`) | 친구와 검증. 운영 전 확인 |
+| prod | **AWS EC2 상시 서버** | 3201 (systemd `astraltab-prod-server`) | `client/dist/prod` 를 3201에서 정적 서빙 | 8001 (systemd `astraltab-prod-ai`) | 친구들이 접속하는 운영 |
 
-- test·prod 는 `scripts/serve.ps1 -Env <env>` 가 클라이언트를 빌드하고, Node 서버·AI·**Cloudflare 빠른 터널**(`.dev/bin/cloudflared.exe`, 자동 다운로드)을 띄운다. 공개 주소(`https://….trycloudflare.com`)는 `.dev/<env>-url.txt` 에 저장되며 **재시작마다 바뀐다**.
-- 서버는 환경 변수 `APP_ENV`, `PORT`, `HOST`, `CLIENT_DIST`, `DATA_DIR`, `AI_BASE_URL` 로 설정한다 (`server/src/index.ts` 주석). JSON 스냅샷 디렉터리는 `server/data/<env>`.
-- 공용 함수는 `scripts/common.ps1`. 종료 스크립트는 pid 파일 기준이며 포트 폴백은 이 프로젝트 프로세스만 대상으로 한다.
-- 세 환경은 포트가 겹치지 않아 동시에 띄울 수 있다. test·prod 는 핫리로드가 없으므로 코드 변경 후 종료 → 시작으로 재배포한다.
+- **2026-09-28 사용자 지시로 test·prod 를 로컬 PC + Cloudflare 빠른 터널 방식에서 AWS EC2 상시 서버로 완전히 옮겼다.** 로컬 PC를 켜 둘 필요 없이 항상 접속 가능하다. 옛 방식이던 `scripts/serve.ps1`/`serve-stop.ps1`(Cloudflare 터널)은 삭제했다. `/test-server`·`/prod-server` 스킬은 이제 "실행"이 아니라 `scripts/deploy-aws.ps1` 를 통한 **재배포**를 의미하도록 다시 정의했다.
+- **AWS 인프라**: 리전 서울(`ap-northeast-2`), EC2 t3.small (Amazon Linux 2023), Elastic IP(고정 공인 IP, `.dev/aws-public-ip.txt` 에 저장 — git에 커밋하지 않음). 도메인은 아직 없어 `http://<Elastic IP>:3201`(prod) / `:3301`(test) 로 접속한다. 보안 그룹은 22(SSH, 관리자 IP만)·3201·3301 만 인바운드로 연다. SSH 키(`.dev/astraltab-key.pem`)와 인스턴스 id(`.dev/aws-instance-id.txt`)도 `.dev/`(gitignore)에 있다.
+- GitHub 저장소가 비공개라 EC2에서 직접 `git clone`/`pull` 하지 않는다. 로컬에서 `git archive`로 워킹트리를 패키징해 ssh로 전송하는 방식(`scripts/deploy-aws.ps1`)을 쓴다.
+- **코드를 바꾼 뒤 배포**: `powershell -File scripts/deploy-aws.ps1 -Env test` (또는 `prod`, 기본값은 `all`). 로컬 커밋 여부와 무관하게 현재 워킹트리를 전송하지만, 관례상 커밋 후 배포한다. 인스턴스를 새로 만드는 절차(최초 1회)는 `scripts/aws/provision.sh`(Node·Python·의존성 설치) → `scripts/aws/units.sh`(systemd 서비스 4개 등록) 참고.
+- 서버는 환경 변수 `APP_ENV`, `PORT`, `HOST`, `CLIENT_DIST`, `DATA_DIR`, `AI_BASE_URL` 로 설정한다 (`server/src/index.ts` 주석, EC2에서는 systemd unit 파일에 박혀 있다). JSON 스냅샷 디렉터리는 EC2의 `~/AstralTab/server/data/<env>`.
+- dev는 여전히 로컬 PC에서 `/dev`·`/dev-stop`으로 돌린다. 공용 함수는 `scripts/common.ps1`.
 
 ---
 
@@ -82,7 +84,7 @@ AstralTab/
 ├── DESIGN.md
 ├── package.json          # npm workspaces: server, client, shared
 ├── notes/                # 기획 문서. Rules.md가 규칙 정본
-├── scripts/              # common.ps1, dev.ps1, dev-stop.ps1, serve.ps1, serve-stop.ps1
+├── scripts/              # common.ps1, dev.ps1, dev-stop.ps1, deploy-aws.ps1, aws/(provision.sh, units.sh, deploy-remote.sh)
 ├── shared/               # 서버·클라이언트 공용 타입, 카드·맵 데이터, 룰 엔진
 │   ├── fixtures/         # TS 엔진 출력 JSON. Python 테스트가 같은 파일을 읽는다
 │   └── src/
@@ -271,9 +273,9 @@ AstralTab/
 |---|---|
 | 서버·클라이언트·AI 백그라운드 실행 (개발) | `/dev` |
 | 백그라운드 프로세스 종료 (개발) | `/dev-stop` |
-| 테스트 서버 실행 / 종료 (3301, 터널 공개) | `/test-server` · `/test-server-stop` |
-| 운영 서버 실행 / 종료 (3201, 터널 공개) | `/prod-server` · `/prod-server-stop` |
-| 로그 확인 | `tail -n 50 .dev/server.log`, `.dev/client.log`, `.dev/ai.log` |
+| AWS test/prod 서버에 배포 | `powershell -File scripts/deploy-aws.ps1 -Env test\|prod\|all` (기본 `all`). `git archive`로 워킹트리를 EC2로 전송 후 빌드·systemd 재시작 |
+| AWS 서버 로그 확인 | `ssh -i .dev/astraltab-key.pem ec2-user@$(cat .dev/aws-public-ip.txt) "sudo journalctl -u astraltab-prod-server -n 100"` (서비스명은 astraltab-\<prod\|test\>-\<server\|ai\>) |
+| 로그 확인 (dev) | `tail -n 50 .dev/server.log`, `.dev/client.log`, `.dev/ai.log` |
 | 의존성 설치 (JS) | `npm install` (루트) |
 | 의존성 설치 (Python) | `ai\.venv\Scripts\pip install -r ai\requirements.txt` (`/dev`가 venv 없으면 자동 생성) |
 | 테스트 (JS) | `npm test` (루트, 전 워크스페이스) |
@@ -283,7 +285,6 @@ AstralTab/
 | 타입 검사 | `npx tsc --noEmit -p server` / `-p client` / `-p shared` |
 | 플레이어용 규칙 설명서 PDF 재생성 | `python scripts/build-rulebook.py` (reportlab 필요, `pip install reportlab`). Rules.md 를 바꾸면 이 스크립트의 값도 손으로 맞춰 다시 실행한다. 출력: `notes/Rule.pdf` |
 | 커밋 & 푸시 | `/commit-push` |
-| 테스트·운영 서버에 최신 코드 반영(주소 유지) | `powershell -File scripts/redeploy-keep-url.ps1 -Env test\|prod`. 클라이언트를 다시 빌드하고 Node 서버·Python AI 만 재기동한다 — cloudflared 터널은 건드리지 않아 `.dev/<env>-url.txt` 의 공개 주소가 바뀌지 않는다. 터널이 이미 떠 있어야 한다(먼저 `/test-server`·`/prod-server` 로 한 번 켠 상태) |
 
 ## 서브에이전트
 
