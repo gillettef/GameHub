@@ -16,10 +16,15 @@ from astral_ai.rules import (
     compute_scores,
     compute_sight_area,
     compute_territory,
+    effective_attack,
+    effective_max_hp,
+    effective_range,
+    effective_sight,
     legal_actions,
     load_specs,
     sort_markers,
     strip_log,
+    terrain_at,
     validate_placement,
 )
 from pydantic import TypeAdapter
@@ -160,7 +165,10 @@ def _combat_state(markers: list[Marker]) -> GameState:
     """전투만 검증하는 최소 상태: p0 턴에 PASS 하면 그 자리에서 p0 마커가 자동 공격한다."""
     return GameState(
         roomId="r", phase="playing", mapId="binary-star",
-        board=Board(width=10, height=10, asteroids=[], veins=[]), roundLimit=20,
+        board=Board(
+            width=10, height=10, asteroids=[], veins=[], nebulas=[], debrisFields=[], ionStorms=[],
+            relicSites=[], gravityRifts=[], gunEmplacements=[], jammingFields=[],
+        ), roundLimit=20,
         round=1, turn=1, currentPlayerId="p0",
         players=[_player("p0", 0), _player("p1", 1)],
         markers=sort_markers(markers), nextMarkerId=100, rngSeed=1, result=None, log=[],
@@ -169,7 +177,10 @@ def _combat_state(markers: list[Marker]) -> GameState:
 
 def _marker(owner: str, spec_id: str, x: int, y: int, hp: int | None = None) -> Marker:
     sp = load_specs().spec(spec_id)
-    return Marker(id=f"{owner}-{spec_id}-{x}-{y}", specId=spec_id, kind=sp.kind, ownerId=owner, pos=Position(x=x, y=y), hp=hp if hp is not None else sp.hp, remainingTurns=None)
+    return Marker(
+        id=f"{owner}-{spec_id}-{x}-{y}", specId=spec_id, kind=sp.kind, ownerId=owner, pos=Position(x=x, y=y),
+        hp=hp if hp is not None else sp.hp, maxHp=sp.hp, remainingTurns=None,
+    )
 
 
 def _by_spec(state: GameState, spec_id: str) -> Marker | None:
@@ -232,3 +243,77 @@ def test_barrage_secondary_target_also_respects_veil() -> None:
     assert cruiser is not None and cruiser.hp == 5  # 한 번만 맞음
     wisp = _by_spec(t, "wisp")
     assert wisp is not None and wisp.hp == 1  # 은신이라 전혀 안 맞음
+
+
+# --- 새 지형 7종 (Rules.md 3절, 2026-09-28 신설, engine.test.ts '새 지형 7종' 사본) ---------------
+# 좌표는 shared/src/data/maps.ts 에 박아 둔 실제 맵 좌표를 그대로 쓴다.
+
+
+def _board_of(map_id: str) -> Board:
+    m = load_specs().maps[map_id]
+    return Board(
+        width=m.size, height=m.size, asteroids=m.asteroids, veins=m.veins, nebulas=m.nebulas,
+        debrisFields=m.debrisFields, ionStorms=m.ionStorms, relicSites=m.relicSites,
+        gravityRifts=m.gravityRifts, gunEmplacements=m.gunEmplacements, jammingFields=m.jammingFields,
+    )
+
+
+def _state_with_map(map_id: str, markers: list[Marker]) -> GameState:
+    return GameState(
+        roomId="r", phase="playing", mapId=map_id, board=_board_of(map_id), roundLimit=20,
+        round=1, turn=1, currentPlayerId="p0", players=[_player("p0", 0), _player("p1", 1)],
+        markers=sort_markers(markers), nextMarkerId=100, rngSeed=1, result=None, log=[],
+    )
+
+
+def test_nebula_reduces_effective_sight_only(started: GameState) -> None:
+    b = _board_of("binary-star")
+    assert terrain_at(started, Position(x=2, y=4)) == "nebula"
+    assert effective_sight(started, Position(x=2, y=4), 2) == 1  # outpost 시야2 → 1
+    assert effective_sight(started, Position(x=2, y=4), 1) == 1  # 최소 1
+    assert effective_sight(started, Position(x=0, y=0), 2) == 2  # 성운 아니면 그대로
+    assert b.nebulas  # 좌표가 실제로 파싱됐다
+
+
+def test_debris_field_reduces_max_hp() -> None:
+    s = _state_with_map("asteroid-belt", [])
+    assert terrain_at(s, Position(x=1, y=1)) == "debrisField"
+    assert effective_max_hp(s, Position(x=1, y=1), 4) == 3  # extractor 체력4 → 3
+
+
+def test_ion_storm_deals_damage_when_owner_ends_turn() -> None:
+    # 연속 2회 패스(전원 패스)는 게임을 끝내버리므로(Rules.md 9.2-2), 자기 턴을 끝낼 때 한 번
+    # 즉시 깎이는지만 apply_action 경유로 확인한다 — "만료 없이 매 턴 반복"은
+    # engine.test.ts 쪽에서 applyTerrainHazards 를 직접 두 번 불러 이미 검증한다.
+    s = _state_with_map("triangle-nebula", [_marker("p0", "extractor", 3, 2)])  # 이온 폭풍, 체력4
+    assert terrain_at(s, Position(x=3, y=2)) == "ionStorm"
+    t = apply_action(s, PassAction(type="PASS", playerId="p0"))
+    m1 = _by_spec(t, "extractor")
+    assert m1 is not None and m1.hp == 3
+
+
+def test_relic_site_and_gravity_rift_adjust_marker_score() -> None:
+    relic = _state_with_map("binary-star", [_marker("p0", "outpost", 1, 5)])  # 유물지대, outpost 점수3
+    assert terrain_at(relic, Position(x=1, y=5)) == "relicSite"
+    assert compute_scores(relic)["p0"].markers == 4
+
+    rift = _state_with_map("asteroid-belt", [_marker("p0", "outpost", 8, 2)])  # 중력 균열
+    assert terrain_at(rift, Position(x=8, y=2)) == "gravityRift"
+    assert compute_scores(rift)["p0"].markers == 2
+
+
+def test_gun_emplacement_boosts_attack() -> None:
+    s = _state_with_map("interstellar-route", [])
+    assert terrain_at(s, Position(x=1, y=4)) == "gunEmplacement"
+    fighter_attack = load_specs().spec("fighter").attack
+    assert effective_attack(s, Position(x=1, y=4), fighter_attack) == fighter_attack + 1
+
+
+def test_jamming_field_reduces_range() -> None:
+    s = _state_with_map("quadrant", [])
+    assert terrain_at(s, Position(x=4, y=0)) == "jammingField"
+    fighter_range = load_specs().spec("fighter").range
+    turret_range = load_specs().spec("turret").range
+    assert effective_range(s, Position(x=4, y=0), fighter_range) == fighter_range - 1
+    assert effective_range(s, Position(x=4, y=0), turret_range) == turret_range - 1
+    assert effective_range(s, Position(x=0, y=0), turret_range) == turret_range  # 교란지대 아니면 그대로

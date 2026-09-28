@@ -272,11 +272,19 @@ describe('카드 기준표 (Rules.md 10절)', () => {
     expect(CONSTANTS.DECK_SIZE).toBe(25);
     expect(CONSTANTS.VEIN_PRODUCTION_BONUS).toBe(1);
     expect(CONSTANTS.SCORE_PER_TERRITORY).toBe(1);
+    expect(CONSTANTS.TERRITORY_RADIUS).toBe(1);
     expect(CONSTANTS.KOMI_PER_SEAT).toBe(1);
     expect(CONSTANTS.MIN_PLAYERS).toBe(2);
     expect(CONSTANTS.MAX_PLAYERS).toBe(4);
     expect(CONSTANTS.OVERCLOCK_RADIUS).toBe(1);
     expect(CONSTANTS.OVERCLOCK_BONUS_PER_NEIGHBOR).toBe(1);
+    expect(CONSTANTS.NEBULA_SIGHT_PENALTY).toBe(1);
+    expect(CONSTANTS.DEBRIS_FIELD_HP_PENALTY).toBe(1);
+    expect(CONSTANTS.ION_STORM_DAMAGE).toBe(1);
+    expect(CONSTANTS.RELIC_SITE_SCORE_BONUS).toBe(1);
+    expect(CONSTANTS.GRAVITY_RIFT_SCORE_PENALTY).toBe(1);
+    expect(CONSTANTS.GUN_EMPLACEMENT_ATTACK_BONUS).toBe(1);
+    expect(CONSTANTS.JAMMING_FIELD_RANGE_PENALTY).toBe(1);
   });
 
   it('알 수 없는 카드는 오류', () => {
@@ -324,6 +332,17 @@ const MAP_TABLE: MapRow[] = [
   },
 ];
 
+/** 새 지형 7종(2026-09-28 신설)의 맵별 좌표. 배치는 120°/180° 회전·점대칭으로 좌석 공정성을 맞췄다
+ * (4인 맵 2곳은 기존 코어처럼 완전 대칭이 없어, 각 코어에서 육각 거리 1인 바깥쪽 칸으로 맞췄다) */
+const EXTRA_TERRAIN_TABLE: Record<string, Partial<Record<'nebulas' | 'debrisFields' | 'ionStorms' | 'relicSites' | 'gravityRifts' | 'gunEmplacements' | 'jammingFields', Position[]>>> = {
+  'binary-star': { nebulas: [p(2, 4), p(8, 5)], relicSites: [p(1, 5), p(9, 4)] },
+  'asteroid-belt': { debrisFields: [p(1, 1), p(8, 8)], gravityRifts: [p(8, 2), p(1, 7)] },
+  'triangle-nebula': { ionStorms: [p(3, 2), p(7, 3), p(7, 6)] },
+  'interstellar-route': { gunEmplacements: [p(1, 4), p(7, 0), p(9, 4)] },
+  quadrant: { jammingFields: [p(4, 0), p(9, 4), p(5, 9), p(0, 5)] },
+  'event-horizon': { nebulas: [p(6, 0), p(9, 4), p(3, 9), p(0, 5)] },
+};
+
 const sortPos = (a: Position[]) => a.slice().sort((u, v) => u.y - v.y || u.x - v.x);
 
 describe('맵 6개 (Rules.md 11절)', () => {
@@ -343,9 +362,30 @@ describe('맵 6개 (Rules.md 11절)', () => {
     });
   }
 
-  it('코어·광맥·소행성은 서로 겹치지 않고 보드 안이다', () => {
+  for (const [id, extra] of Object.entries(EXTRA_TERRAIN_TABLE)) {
+    it(`${id}: 새 지형 7종 좌표`, () => {
+      const m = getMap(id);
+      const keys = ['nebulas', 'debrisFields', 'ionStorms', 'relicSites', 'gravityRifts', 'gunEmplacements', 'jammingFields'] as const;
+      for (const key of keys) {
+        expect(sortPos(m[key])).toEqual(sortPos(extra[key] ?? []));
+      }
+    });
+  }
+
+  it('코어·광맥·소행성·새 지형은 서로 겹치지 않고 보드 안이다', () => {
     for (const m of MAPS) {
-      const all = [...m.corePositions, ...m.veins, ...m.asteroids];
+      const all = [
+        ...m.corePositions,
+        ...m.veins,
+        ...m.asteroids,
+        ...m.nebulas,
+        ...m.debrisFields,
+        ...m.ionStorms,
+        ...m.relicSites,
+        ...m.gravityRifts,
+        ...m.gunEmplacements,
+        ...m.jammingFields,
+      ];
       const keys = all.map((q) => `${q.x},${q.y}`);
       expect(new Set(keys).size).toBe(keys.length);
       for (const q of all) {
@@ -366,13 +406,30 @@ describe('맵 6개 (Rules.md 11절)', () => {
  * 육각 전환 후 좌석 공정성. 대칭 모양이 아니라 계산된 값으로 보장한다 (Rules.md 11절 서두).
  * 좌표는 정사각이 아닌 odd-r 오프셋 육각 거리(hexDistance)로 잰다.
  */
+/** MapDef → Board. 새 지형 7종은 배치를 막지 않으므로(소행성만 막음) 공정성 계산에 넣지 않는다 */
+function boardOf(m: ReturnType<typeof getMap>) {
+  return {
+    width: m.size,
+    height: m.size,
+    asteroids: m.asteroids,
+    veins: m.veins,
+    nebulas: m.nebulas,
+    debrisFields: m.debrisFields,
+    ionStorms: m.ionStorms,
+    relicSites: m.relicSites,
+    gravityRifts: m.gravityRifts,
+    gunEmplacements: m.gunEmplacements,
+    jammingFields: m.jammingFields,
+  };
+}
+
 describe('맵 6개: 좌석 공정성 (odd-r 오프셋 육각 거리)', () => {
   /** 코어 시야(반경 1) 안, 코어 자신을 뺀 칸 중 보드 안이고 다른 코어·소행성이 없는 칸 수 */
   function legalNeighbors(m: ReturnType<typeof getMap>, core: Position): number {
     const others = new Set(
       [...m.corePositions.filter((c) => c !== core), ...m.asteroids].map((q) => `${q.x},${q.y}`),
     );
-    const board = { width: m.size, height: m.size, asteroids: m.asteroids, veins: m.veins };
+    const board = boardOf(m);
     return cellsInRadius(board, core, 1).filter((q) => q.x !== core.x || q.y !== core.y).filter(
       (q) => !others.has(`${q.x},${q.y}`),
     ).length;
@@ -384,7 +441,7 @@ describe('맵 6개: 좌석 공정성 (odd-r 오프셋 육각 거리)', () => {
     return points.filter((q) => hexDistance(core, q) <= 3).length;
   }
   function edgeDistance(m: ReturnType<typeof getMap>, core: Position): number {
-    const board = { width: m.size, height: m.size, asteroids: m.asteroids, veins: m.veins };
+    const board = boardOf(m);
     let r = 0;
     while (r < 10 && cellsInRadius(board, core, r + 1).length === 3 * (r + 1) * (r + 2) + 1) r++;
     return r;

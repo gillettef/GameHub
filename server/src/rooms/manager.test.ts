@@ -55,14 +55,18 @@ describe('RoomManager 생성·입장·퇴장 (F001, F002, F003)', () => {
     expect(playerId).toBe('p2');
   });
 
-  it('정원이 차면 거부, 같은 토큰은 재접속으로 처리', () => {
+  it('정원(항상 최대 4명, 맵과 무관)이 차면 거부, 같은 토큰은 재접속으로 처리', () => {
     const m = makeManager();
-    m.create({ playerToken: 't1', nickname: '갑' });
+    m.create({ playerToken: 't1', nickname: '갑' }); // 기본 맵은 2인용
     m.join({ roomId: 'room1', playerToken: 't2', nickname: '을' });
-    expect(() => m.join({ roomId: 'room1', playerToken: 't3', nickname: '병' })).toThrow(/정원/);
+    m.join({ roomId: 'room1', playerToken: 't3', nickname: '병' });
+    m.join({ roomId: 'room1', playerToken: 't4', nickname: '정' });
+    expect(() => m.join({ roomId: 'room1', playerToken: 't5', nickname: '무' })).toThrow(/정원/);
     const again = m.join({ roomId: 'room1', playerToken: 't2', nickname: '무시됨' });
     expect(again).toMatchObject({ playerId: 'p2', reconnected: true });
-    expect(m.get('room1')?.state.players).toHaveLength(2);
+    expect(m.get('room1')?.state.players).toHaveLength(4);
+    // 좌석이 2인용 기본 맵 정원을 넘어서면 정원에 맞는 맵으로 자동 전환된다
+    expect(getMap(m.get('room1')!.state.mapId).players).toBeGreaterThanOrEqual(4);
   });
 
   it('없는 방·잘못된 닉네임은 거부', () => {
@@ -101,6 +105,19 @@ describe('로비 설정 · AI 좌석 (F026, F030)', () => {
     expect(m.get('room1')?.state.players.map((p) => p.id)).toEqual(['p1', 'p2', ai2]);
     // AI 는 준비 완료로 들어온다 (F026)
     expect(m.get('room1')?.state.players.find((p) => p.id === ai2)).toMatchObject({ isReady: true, kind: 'ai' });
+  });
+
+  it('AI 로 기본 맵(2인용) 정원을 넘기면 맵이 자동으로 커진다(2026-09-28)', () => {
+    const m = makeManager();
+    m.create({ playerToken: 't1', nickname: '갑' });
+    expect(m.get('room1')?.state.mapId).toBe('binary-star');
+    m.addAi('room1', 'p1');
+    expect(getMap(m.get('room1')!.state.mapId).players).toBe(2);
+    m.addAi('room1', 'p1');
+    expect(getMap(m.get('room1')!.state.mapId).players).toBeGreaterThanOrEqual(3);
+    m.addAi('room1', 'p1');
+    expect(getMap(m.get('room1')!.state.mapId).players).toBe(4);
+    expect(() => m.addAi('room1', 'p1')).toThrow(/정원/);
   });
 
   it('전원 준비되면 게임이 시작되고 AI 좌석을 사람이 조작할 수 없다', () => {

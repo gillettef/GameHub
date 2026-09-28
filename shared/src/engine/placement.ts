@@ -4,7 +4,7 @@
 import type { CardId, GameState, Marker, PlacementError, PlayerId, Position } from '../types/index.js';
 import { ENERGY_CAP, INFILTRATE_RANGE, getSpec, hasSpec } from '../data/index.js';
 import { addLog, damageEnemiesInRadius, healAlliesInRadius, nameOf, removeDestroyed, withMarkers } from './combat.js';
-import { hexDistance, inBounds, isInSight, markerAt, terrainAt } from './sight.js';
+import { effectiveMaxHp, hexDistance, inBounds, isInSight, markerAt, terrainAt } from './sight.js';
 import { getPlayer } from './scoring.js';
 
 function fmt(p: Position): string {
@@ -100,13 +100,17 @@ export function applyPlacement(state: GameState, playerId: PlayerId, cardId: Car
   if (spec.kind === 'magic' && effect && effect.kind !== 'persistent') {
     s = applyInstantMagic(s, playerId, cardId, pos);
   } else {
+    // 파편지대에 놓이면 최대 체력이 배치 시점에 -1 되어 고정된다(Rules.md 3절, 2026-09-28) —
+    // 이후 정비·회복은 이 줄어든 상한을 넘지 못한다
+    const maxHp = effectiveMaxHp(s.board, pos, spec.hp);
     const marker: Marker = {
       id: `m${s.nextMarkerId}`,
       specId: cardId,
       kind: spec.kind,
       ownerId: playerId,
       pos,
-      hp: spec.hp,
+      hp: maxHp,
+      maxHp,
       remainingTurns: effect && effect.kind === 'persistent' ? effect.durationTurns : null,
     };
     s = withMarkers({ ...s, nextMarkerId: s.nextMarkerId + 1 }, [...s.markers, marker]);

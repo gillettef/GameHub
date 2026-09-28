@@ -14,6 +14,14 @@
     "DECK_SIZE": 25,
     "VEIN_PRODUCTION_BONUS": 1,
     "SCORE_PER_TERRITORY": 1,
+    "TERRITORY_RADIUS": 1,
+    "NEBULA_SIGHT_PENALTY": 1,
+    "DEBRIS_FIELD_HP_PENALTY": 1,
+    "ION_STORM_DAMAGE": 1,
+    "RELIC_SITE_SCORE_BONUS": 1,
+    "GRAVITY_RIFT_SCORE_PENALTY": 1,
+    "GUN_EMPLACEMENT_ATTACK_BONUS": 1,
+    "JAMMING_FIELD_RANGE_PENALTY": 1,
     "KOMI_PER_SEAT": 1,
     "INFILTRATE_RANGE": 1,
     "REPAIR_RADIUS": 1,
@@ -1942,7 +1950,32 @@
           "y": 8
         }
       ],
-      "description": "소행성 없는 열린 맵. 좌석별 조건(배치 가능 칸·광맥 거리·경계 여유)이 완전히 같다."
+      "nebulas": [
+        {
+          "x": 2,
+          "y": 4
+        },
+        {
+          "x": 8,
+          "y": 5
+        }
+      ],
+      "debrisFields": [],
+      "ionStorms": [],
+      "relicSites": [
+        {
+          "x": 9,
+          "y": 4
+        },
+        {
+          "x": 1,
+          "y": 5
+        }
+      ],
+      "gravityRifts": [],
+      "gunEmplacements": [],
+      "jammingFields": [],
+      "description": "소행성 없는 열린 맵. 좌석별 조건(배치 가능 칸·광맥 거리·경계 여유)이 완전히 같다. 성운(2,4)/(8,5), 유물지대(1,5)/(9,4) 180도 점대칭 추가(2026-09-28)."
     },
     {
       "id": "asteroid-belt",
@@ -2012,7 +2045,32 @@
           "y": 7
         }
       ],
-      "description": "중앙 장벽(180° 점대칭). 좌석별 조건이 완전히 같다."
+      "nebulas": [],
+      "debrisFields": [
+        {
+          "x": 1,
+          "y": 1
+        },
+        {
+          "x": 8,
+          "y": 8
+        }
+      ],
+      "ionStorms": [],
+      "relicSites": [],
+      "gravityRifts": [
+        {
+          "x": 8,
+          "y": 2
+        },
+        {
+          "x": 1,
+          "y": 7
+        }
+      ],
+      "gunEmplacements": [],
+      "jammingFields": [],
+      "description": "중앙 장벽(180° 점대칭). 좌석별 조건이 완전히 같다. 파편지대(1,1)/(8,8), 중력균열(8,2)/(1,7) 180도 점대칭 추가(2026-09-28)."
     },
     {
       "id": "triangle-nebula",
@@ -2049,7 +2107,27 @@
           "y": 5
         }
       ],
-      "description": "소행성 없는 3인 맵. 120° 회전 완전 대칭(육각에서는 정사각과 달리 3인도 완전 대칭이 된다)."
+      "nebulas": [],
+      "debrisFields": [],
+      "ionStorms": [
+        {
+          "x": 3,
+          "y": 2
+        },
+        {
+          "x": 7,
+          "y": 3
+        },
+        {
+          "x": 7,
+          "y": 6
+        }
+      ],
+      "relicSites": [],
+      "gravityRifts": [],
+      "gunEmplacements": [],
+      "jammingFields": [],
+      "description": "소행성 없는 3인 맵. 120° 회전 완전 대칭(육각에서는 정사각과 달리 3인도 완전 대칭이 된다). 이온폭풍(3,2)/(7,3)/(7,6) 120도 회전 대칭 추가(2026-09-28)."
     },
     {
       "id": "interstellar-route",
@@ -2123,7 +2201,27 @@
           "y": 5
         }
       ],
-      "description": "중앙에서 세 갈래로 뻗은 소행성 살, 120° 회전 완전 대칭."
+      "nebulas": [],
+      "debrisFields": [],
+      "ionStorms": [],
+      "relicSites": [],
+      "gravityRifts": [],
+      "gunEmplacements": [
+        {
+          "x": 7,
+          "y": 0
+        },
+        {
+          "x": 1,
+          "y": 4
+        },
+        {
+          "x": 9,
+          "y": 4
+        }
+      ],
+      "jammingFields": [],
+      "description": "중앙에서 세 갈래로 뻗은 소행성 살, 120° 회전 완전 대칭. 포대발판(1,4)/(7,0)/(9,4) 120도 회전 대칭 추가(2026-09-28)."
     },
     {
       "id": "quadrant",
@@ -2185,7 +2283,31 @@
           "y": 9
         }
       ],
-      "description": "중앙 소행성 블록 + 네 모서리 광맥(마름모꼴 배치). 육각은 90° 완전 대칭이 없어 좌표를 계산해 4좌석 거리 프로필을 동일하게 맞췄다."
+      "nebulas": [],
+      "debrisFields": [],
+      "ionStorms": [],
+      "relicSites": [],
+      "gravityRifts": [],
+      "gunEmplacements": [],
+      "jammingFields": [
+        {
+          "x": 4,
+          "y": 0
+        },
+        {
+          "x": 9,
+          "y": 4
+        },
+        {
+          "x": 0,
+          "y": 5
+        },
+        {
+          "x": 5,
+          "y": 9
+        }
+      ],
+      "description": "중앙 소행성 블록 + 네 모서리 광맥(마름모꼴 배치). 육각은 90° 완전 대칭이 없어 좌표를 계산해 4좌석 거리 프로필을 동일하게 맞췄다. 교란지대 4곳(각 코어에서 육각 거리 1, 바깥쪽) 추가(2026-09-28)."
     },
     {
       "id": "event-horizon",
@@ -2255,7 +2377,31 @@
           "y": 9
         }
       ],
-      "description": "중앙 소행성 덩어리(길쭉한 육각 블록). 육각은 90° 완전 대칭이 없어 좌표를 계산해 4좌석 거리 프로필을 동일하게 맞췄다."
+      "nebulas": [
+        {
+          "x": 6,
+          "y": 0
+        },
+        {
+          "x": 9,
+          "y": 4
+        },
+        {
+          "x": 0,
+          "y": 5
+        },
+        {
+          "x": 3,
+          "y": 9
+        }
+      ],
+      "debrisFields": [],
+      "ionStorms": [],
+      "relicSites": [],
+      "gravityRifts": [],
+      "gunEmplacements": [],
+      "jammingFields": [],
+      "description": "중앙 소행성 덩어리(길쭉한 육각 블록). 육각은 90° 완전 대칭이 없어 좌표를 계산해 4좌석 거리 프로필을 동일하게 맞췄다. 성운 4곳(각 코어에서 육각 거리 1, 바깥쪽) 추가(2026-09-28) — 사건의 지평선답게 시야를 가린다."
     }
   ]
 }

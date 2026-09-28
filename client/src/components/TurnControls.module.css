@@ -52,18 +52,16 @@
   color: var(--color-danger);
 }
 
-/* 이 바 안에서만 버튼 높이를 줄인다 (기본 .pill 44px / .pill--outline 38px 는 다른 화면 그대로).
-   같은 줄에 있는 교체·패스·기권은 모두 대등한 동작이라 채움·아웃라인과 무관하게 높이를 맞춘다
-   (2026-09-24 사용자 지시: 한 화면에서 버튼 크기가 서로 다르면 안 된다). */
+/* 버튼 높이는 이제 global.css 의 .pill/.pill--outline 기본값(34px)이 앱 전체와 이미 같다
+   (2026-09-28 사용자 지시: 모든 버튼 크기를 통일). 이 바 안에서는 좁은 자리에 맞춰 좌우 여백과
+   글자 크기만 살짝 줄인다. */
 .row :global(.pill) {
   flex: none;
-  height: 34px;
   padding: 0 var(--space-3);
   font-size: var(--text-small);
 }
 
 .row :global(.pill--outline) {
-  height: 34px;
   padding: 0 var(--space-2);
 }
 

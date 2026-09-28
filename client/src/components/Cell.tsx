@@ -4,6 +4,29 @@ import { kindLabel } from '../game/derived';
 import { CardArt } from '../game/cardArt';
 import styles from './Board.module.css';
 
+/** 지형 7종(2026-09-28) 전용 장식 요소. `vein`은 이미 위에서 따로 그린다.
+ * `space`/`asteroid`는 장식 없이 `.hex[data-terrain]` 배경색만으로 충분하다 */
+function TerrainDecorator({ terrain }: { terrain: CellView['terrain'] }) {
+  switch (terrain) {
+    case 'nebula':
+      return <span className={styles.nebula} aria-hidden="true" />;
+    case 'debrisField':
+      return <span className={styles.debrisField} aria-hidden="true" />;
+    case 'ionStorm':
+      return <span className={styles.ionStorm} aria-hidden="true" />;
+    case 'relicSite':
+      return <span className={styles.relicSite} aria-hidden="true" />;
+    case 'gravityRift':
+      return <span className={styles.gravityRift} aria-hidden="true" />;
+    case 'gunEmplacement':
+      return <span className={styles.gunEmplacement} aria-hidden="true" />;
+    case 'jammingField':
+      return <span className={styles.jammingField} aria-hidden="true" />;
+    default:
+      return null;
+  }
+}
+
 /** 툴팁 대략 높이(px). 위쪽 여유가 이보다 적으면 아래로 뒤집는다 */
 const TOOLTIP_SPACE = 160;
 /** 툴팁 대략 너비(px, Board.module.css .tooltip width 168 + 여유) */
@@ -149,6 +172,7 @@ export const Cell = memo(function Cell({ cell, legal, preview, onClick, onPrevie
     >
       <div className={styles.hex} data-terrain={cell.terrain} data-owner={cell.ownerSeat ?? undefined} data-sight={cell.inSight || undefined} aria-hidden="true">
         {cell.terrain === 'vein' && <span className={styles.vein} aria-hidden="true" />}
+        <TerrainDecorator terrain={cell.terrain} />
         {preview && <span className={styles.previewMark} aria-hidden="true" />}
       </div>
       {m && (

@@ -1,11 +1,13 @@
 /**
  * 점수·순위·수입 (Rules.md 9절, 5.1-4, F020, F025). 순수 함수, 파생값.
  */
-import type { GameState, PlayerId, PlayerState, Position, Score } from '../types/index.js';
+import type { GameState, Marker, PlayerId, PlayerState, Position, Score } from '../types/index.js';
 import {
+  GRAVITY_RIFT_SCORE_PENALTY,
   KOMI_PER_SEAT,
   OVERCLOCK_BONUS_PER_NEIGHBOR,
   OVERCLOCK_RADIUS,
+  RELIC_SITE_SCORE_BONUS,
   SCORE_PER_TERRITORY,
   VEIN_PRODUCTION_BONUS,
   getSpec,
@@ -23,7 +25,17 @@ export function getPlayer(state: GameState, id: PlayerId): PlayerState {
   return p;
 }
 
-/** 점수 = 영토 칸 수 × 1 + Σ 마커 점수 + 덤(좌석 번호 × KOMI_PER_SEAT). 탈락자는 0 */
+/** 마커 하나의 점수. 유물지대는 +1, 중력 균열은 -1(최소 0) — 카드 기본 점수에 그 칸의 지형을
+ * 더한다(Rules.md 3절, 9.1). UI(상태 탭·보드 툴팁)도 이 함수로 실제 반영되는 점수를 보여준다 */
+export function markerScore(state: GameState, m: Marker): number {
+  const base = getSpec(m.specId).score;
+  const terrain = terrainAt(state.board, m.pos);
+  if (terrain === 'relicSite') return base + RELIC_SITE_SCORE_BONUS;
+  if (terrain === 'gravityRift') return Math.max(0, base - GRAVITY_RIFT_SCORE_PENALTY);
+  return base;
+}
+
+/** 점수 = 영토 칸 수 × 1 + Σ 마커 점수(지형 보정 포함) + 덤(좌석 번호 × KOMI_PER_SEAT). 탈락자는 0 */
 export function computeScores(state: GameState): Record<PlayerId, Score> {
   const territory = computeTerritory(state);
   const scores: Record<PlayerId, Score> = {};
@@ -33,7 +45,7 @@ export function computeScores(state: GameState): Record<PlayerId, Score> {
       continue;
     }
     const t = (territory.counts[p.id] ?? 0) * SCORE_PER_TERRITORY;
-    const m = markersOf(state, p.id).reduce((sum, mk) => sum + getSpec(mk.specId).score, 0);
+    const m = markersOf(state, p.id).reduce((sum, mk) => sum + markerScore(state, mk), 0);
     const komi = p.seat * KOMI_PER_SEAT;
     scores[p.id] = { territory: t, markers: m, komi, total: t + m + komi };
   }

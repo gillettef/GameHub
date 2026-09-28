@@ -16,6 +16,7 @@ import {
   hasMap,
   joinPlayer,
   leaveLobby,
+  mapsForAtLeast,
 } from '@astraltab/shared';
 
 export class RoomError extends Error {}
@@ -156,9 +157,11 @@ export class RoomManager {
     }
     if (room.state.phase !== 'lobby') throw new RoomError('이미 시작된 게임입니다');
     if (!isValidNickname(input.nickname)) throw new RoomError('닉네임은 1~12자로 입력하세요');
-    const capacity = getMap(room.state.mapId).players;
-    if (room.state.players.length >= capacity) {
-      throw new RoomError(`정원(${capacity}명)이 찼습니다. 방장이 AI 좌석을 비우거나 더 큰 맵을 고르면 들어올 수 있습니다`);
+    // 좌석 정원은 맵이 아니라 항상 최대 인원(4)이다(2026-09-28 사용자 지시: 좌석 선택이 맵
+    // 선택보다 먼저이므로 기본 맵(2인용)에 막혀 못 들어오면 안 된다). 맵이 좌석 수보다 작아지면
+    // bumpMapIfTooSmall 이 자동으로 맞는 맵으로 바꾼다
+    if (room.state.players.length >= MAX_PLAYERS) {
+      throw new RoomError(`정원은 최대 ${MAX_PLAYERS}명입니다`);
     }
     const playerId = `p${room.nextPlayerNo}`;
     const joined = joinPlayer(room.state, createPlayer(playerId, input.nickname.trim(), 'human'));
@@ -166,6 +169,7 @@ export class RoomManager {
     room.state = joined.state;
     room.nextPlayerNo += 1;
     room.tokens[input.playerToken] = playerId;
+    this.bumpMapIfTooSmall(room);
     this.touch(room);
     return { room, playerId, reconnected: false };
   }
@@ -200,6 +204,17 @@ export class RoomManager {
     if (room.hostId !== playerId) throw new RoomError('방장만 할 수 있습니다');
   }
 
+  /** 좌석이 늘어 현재 맵 정원을 넘으면 정원에 맞는 가장 작은 맵으로 자동 전환한다
+   * (join/addAi 가 부른다). 방장이 맵 단계에서 다시 고를 수도 있다 */
+  private bumpMapIfTooSmall(room: Room): void {
+    const count = room.state.players.length;
+    if (getMap(room.state.mapId).players >= count) return;
+    const fit = mapsForAtLeast(count)[0];
+    if (!fit) return;
+    const r = changeMap(room.state, fit.id);
+    if (!r.error) room.state = r.state;
+  }
+
   setMap(roomId: RoomId, byPlayerId: PlayerId, mapId: MapId): Room {
     const room = this.require(roomId);
     this.requireHost(room, byPlayerId);
@@ -216,8 +231,8 @@ export class RoomManager {
     const room = this.require(roomId);
     this.requireHost(room, byPlayerId);
     if (room.state.phase !== 'lobby') throw new RoomError('이미 시작된 게임입니다');
-    const capacity = getMap(room.state.mapId).players;
-    if (room.state.players.length >= capacity) throw new RoomError(`정원(${capacity}명)이 찼습니다`);
+    // join() 과 같은 이유로 맵이 아니라 최대 인원(4)까지 채울 수 있다
+    if (room.state.players.length >= MAX_PLAYERS) throw new RoomError(`정원은 최대 ${MAX_PLAYERS}명입니다`);
     const aiCount = room.state.players.filter((p) => p.kind === 'ai').length;
     const playerId = `p${room.nextPlayerNo}`;
     const race = RACES[this.opts.seed() % RACES.length]?.id ?? 'coalition';
@@ -225,6 +240,7 @@ export class RoomManager {
     if (joined.error) throw new RoomError(joined.error);
     room.state = joined.state;
     room.nextPlayerNo += 1;
+    this.bumpMapIfTooSmall(room);
     this.touch(room);
     return { room, playerId };
   }

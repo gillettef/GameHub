@@ -2,8 +2,8 @@
  * 전투·정비·지속 마법 만료·파괴·탈락 (Rules.md 7절, 5.2, F023, F024). 순수 함수.
  */
 import type { GameLogEntry, GameState, LogKind, Marker, PlayerId, Position } from '../types/index.js';
-import { REPAIR_AMOUNT, REPAIR_RADIUS, getSpec } from '../data/index.js';
-import { hexDistance, markersOf, sortByPosition } from './sight.js';
+import { ION_STORM_DAMAGE, REPAIR_AMOUNT, REPAIR_RADIUS, getSpec } from '../data/index.js';
+import { effectiveAttack, effectiveRange, hexDistance, markersOf, sortByPosition, terrainAt } from './sight.js';
 import { getPlayer } from './scoring.js';
 
 export function addLog(state: GameState, kind: LogKind, playerId: PlayerId | null, message: string): GameState {
@@ -53,15 +53,17 @@ export function resolveCombat(state: GameState, playerId: PlayerId): GameState {
 
   for (const a of attackers) {
     const spec = getSpec(a.specId);
-    const candidates = prioritizedTargets(a.pos, enemies, spec.range);
+    const attack = effectiveAttack(s.board, a.pos, spec.attack);
+    const range = effectiveRange(s.board, a.pos, spec.range);
+    const candidates = prioritizedTargets(a.pos, enemies, range);
     const targets = spec.keywords.includes('barrage') ? candidates.slice(0, 2) : candidates.slice(0, 1);
     for (const target of targets) {
-      damage.set(target.id, (damage.get(target.id) ?? 0) + spec.attack);
+      damage.set(target.id, (damage.get(target.id) ?? 0) + attack);
       s = addLog(
         s,
         'combat',
         playerId,
-        `${spec.name}${fmt(a.pos)} → ${nameOf(s, target.ownerId)}의 ${getSpec(target.specId).name}${fmt(target.pos)} 피해 ${spec.attack}`,
+        `${spec.name}${fmt(a.pos)} → ${nameOf(s, target.ownerId)}의 ${getSpec(target.specId).name}${fmt(target.pos)} 피해 ${attack}`,
       );
     }
   }
@@ -79,7 +81,7 @@ export function applyRepair(state: GameState, playerId: PlayerId): GameState {
   const heal = new Map<string, number>();
   for (const r of repairers) {
     for (const m of markersOf(s, playerId)) {
-      if (hexDistance(r.pos, m.pos) <= REPAIR_RADIUS && m.hp < getSpec(m.specId).hp) {
+      if (hexDistance(r.pos, m.pos) <= REPAIR_RADIUS && m.hp < m.maxHp) {
         heal.set(m.id, (heal.get(m.id) ?? 0) + REPAIR_AMOUNT);
       }
     }
@@ -88,7 +90,7 @@ export function applyRepair(state: GameState, playerId: PlayerId): GameState {
   const markers = s.markers.map((m) => {
     const h = heal.get(m.id);
     if (h === undefined) return m;
-    return { ...m, hp: Math.min(getSpec(m.specId).hp, m.hp + h) };
+    return { ...m, hp: Math.min(m.maxHp, m.hp + h) };
   });
   s = withMarkers(s, markers);
   const names = sortByPosition(s.markers.filter((m) => heal.has(m.id)))
@@ -114,6 +116,20 @@ export function expirePersistentMagic(state: GameState, playerId: PlayerId): Gam
     }
   }
   return withMarkers(s, next);
+}
+
+/** 지형 피해(이온 폭풍): 내 마커 중 이온 폭풍 칸에 있는 것마다 매 턴 피해 1(지속, 만료 없음).
+ * 파괴 정리(removeDestroyed)까지 여기서 끝낸다 — 호출자는 그 뒤 생존자 수만 확인하면 된다 */
+export function applyTerrainHazards(state: GameState, playerId: PlayerId): GameState {
+  const hit = markersOf(state, playerId).filter((m) => terrainAt(state.board, m.pos) === 'ionStorm');
+  if (hit.length === 0) return state;
+  let s = state;
+  const ids = new Set(hit.map((m) => m.id));
+  const markers = s.markers.map((m) => (ids.has(m.id) ? { ...m, hp: m.hp - ION_STORM_DAMAGE } : m));
+  s = withMarkers(s, markers);
+  const names = hit.map((m) => `${getSpec(m.specId).name}${fmt(m.pos)}`).join(', ');
+  s = addLog(s, 'combat', playerId, `이온 폭풍: ${names} 피해 ${ION_STORM_DAMAGE}`);
+  return removeDestroyed(s);
 }
 
 /** 7.2 즉발 피해: 중심 반경 안 적 마커 전부에 N 피해. 파괴 정리는 호출자가 한다 */
@@ -142,12 +158,12 @@ export function healAlliesInRadius(
 ): { state: GameState; hits: Marker[] } {
   const hits = sortByPosition(
     state.markers.filter(
-      (m) => m.ownerId === playerId && hexDistance(center, m.pos) <= radius && m.hp < getSpec(m.specId).hp,
+      (m) => m.ownerId === playerId && hexDistance(center, m.pos) <= radius && m.hp < m.maxHp,
     ),
   );
   const ids = new Set(hits.map((m) => m.id));
   const markers = state.markers.map((m) =>
-    ids.has(m.id) ? { ...m, hp: Math.min(getSpec(m.specId).hp, m.hp + amount) } : m,
+    ids.has(m.id) ? { ...m, hp: Math.min(m.maxHp, m.hp + amount) } : m,
   );
   return { state: withMarkers(state, markers), hits };
 }

@@ -6,6 +6,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   applyAction,
+  applyPlacement,
+  applyTerrainHazards,
   changeMap,
   leaveLobby,
   canPlay,
@@ -17,11 +19,17 @@ import {
   countPasses,
   createInitialState,
   createPlayer,
+  effectiveAttack,
+  effectiveMaxHp,
+  effectiveRange,
+  effectiveSight,
   hasAnyPlay,
   joinPlayer,
   legalCells,
+  resolveCombat,
   setupGame,
   startGame,
+  terrainAt,
   validatePlacement,
   withMarkers,
 } from './index.js';
@@ -75,9 +83,9 @@ function withHand(s: GameState, playerId: PlayerId, hand: CardId[], energy = 10,
 }
 
 let idSeq = 100;
-function marker(ownerId: PlayerId, specId: CardId, pos: Position, hp?: number, remainingTurns: number | null = null): Marker {
+function marker(ownerId: PlayerId, specId: CardId, pos: Position, hp?: number, remainingTurns: number | null = null, maxHp?: number): Marker {
   const spec = getSpec(specId);
-  return { id: `t${idSeq++}`, specId, kind: spec.kind, ownerId, pos, hp: hp ?? spec.hp, remainingTurns };
+  return { id: `t${idSeq++}`, specId, kind: spec.kind, ownerId, pos, hp: hp ?? spec.hp, maxHp: maxHp ?? spec.hp, remainingTurns };
 }
 
 function addMarkers(s: GameState, ...ms: Marker[]): GameState {
@@ -262,21 +270,24 @@ describe('시야 · 영토 (F031)', () => {
     expect(t.owners[2]![2]).toBe('p0');
     expect(t.owners[5]![5]).toBeNull();
 
-    // p0 전초기지(시야 2)를 (5,5)에, p1 정찰 드론(시야 2)을 (6,6)에 → 겹치는 칸은 경합
+    // p0 전초기지(시야 2)를 (5,5)에, p1 정찰 드론(시야 2)을 (6,6)에 → 겹치는 칸은 경합.
+    // 점수(영토)는 2026-09-28부터 카드 시야가 아니라 마커 주변 고정 반경 1이므로, 카드 시야
+    // 스탯은 아래 배치 가능 범위(시야 밖 판정)에는 여전히 쓰이지만 영토 판정에는 안 쓰인다.
     s = addMarkers(s, marker('p0', 'outpost', { x: 5, y: 5 }), marker('p1', 'scout', { x: 6, y: 6 }));
     t = computeTerritory(s);
     expect(t.owners[5]![5]).toBe('p0'); // 마커 칸
     expect(t.owners[6]![6]).toBe('p1');
-    expect(t.owners[5]![6]).toBeNull(); // 둘 다 시야 안 → 경합
-    expect(t.owners[3]![5]).toBe('p0'); // p0 만
-    expect(t.owners[8]![7]).toBe('p1');
+    expect(t.owners[5]![6]).toBeNull(); // 둘 다 반경 1 안 → 경합
+    expect(t.owners[4]![5]).toBe('p0'); // p0 만 (반경 1 이내)
+    expect(t.owners[8]![7]).toBe('p1'); // p1 만 (반경 1 이내)
 
-    // 소행성 칸은 시야 안이어도 무소유 (소행성대 맵, 코어 옆이 아니라 관측소로 장벽 너머를 비춘다)
+    // 소행성 칸은 반경 안이어도 무소유 (소행성대 맵, 관측소 바로 옆이 소행성 장벽)
     const belt = setup(2, 'asteroid-belt');
     const w = addMarkers(belt, marker('p0', 'observatory', { x: 3, y: 1 }));
     const tb = computeTerritory(w);
-    expect(tb.owners[1]![4]).toBeNull(); // 소행성 자체
-    expect(tb.owners[1]![6]).toBe('p0'); // 장벽 너머까지 닿는다
+    expect(tb.owners[1]![4]).toBeNull(); // 소행성 자체(관측소와 거리 1이지만 여전히 무소유)
+    expect(tb.owners[1]![2]).toBe('p0'); // 관측소 반경 1 안
+    expect(tb.owners[1]![6]).toBeNull(); // 장벽 너머는 반경 밖(2026-09-28: 고정 반경이라 더는 닿지 않는다)
   });
 
   it('점수 = 영토 + 마커 점수, 동점은 좌석 큰 쪽 우선', () => {
@@ -288,7 +299,9 @@ describe('시야 · 영토 (F031)', () => {
     const w = addMarkers(s, marker('p0', 'outpost', { x: 4, y: 4 }));
     const sc2 = computeScores(w);
     expect(sc2.p0!.markers).toBe(3);
-    expect(sc2.p0!.territory).toBe(22);
+    // 2026-09-28: 영토는 카드 시야가 아니라 마커 주변 고정 반경 1 — 코어(7칸)와 전초기지(7칸)의
+    // 합집합이 22가 아니라 13칸(겹치는 칸만큼 줄어든다)
+    expect(sc2.p0!.territory).toBe(13);
     expect(sc2.p1!.territory).toBe(CORE_AREA); // 멀리 떨어져 있어 겹치지 않는다
     expect(computeRanking(w)).toEqual(['p0', 'p1']);
   });
@@ -1007,19 +1020,17 @@ describe('리뷰 보강: 탈락과 패스, 동시 파괴, 즉발 코어 파괴, 
     expect(cells).toContainEqual({ x: 6, y: 7 }); // 적 코어(7,7) 인접
   });
 
-  it('시야는 소행성을 통과하고, 탈락자의 시야는 즉시 사라져 경합 칸이 생존자 영토가 된다', () => {
+  it('탈락자의 시야는 즉시 사라져 경합 칸이 생존자 영토가 된다', () => {
+    // 2026-09-28: 영토(점수)는 마커 주변 고정 반경 1이라 "시야가 소행성 장벽을 넘어 멀리 닿는다"는
+    // 더는 영토에 드러나지 않는다(배치 가능 범위에는 여전히 유효 — 배치 검증 테스트 참고).
+    // 대신 두 관측소를 가까이 둬 반경 1끼리 겹치는 경합 칸을 만든다.
     let s = setup(2, 'asteroid-belt');
-    s = addMarkers(s, marker('p0', 'observatory', { x: 3, y: 1 })); // 시야 3, 장벽 너머까지 닿는다
-    const t = computeTerritory(s);
-    expect(t.owners[1]![6]).toBe('p0'); // 소행성대 너머
-    expect(t.owners[1]![4]).toBeNull(); // 소행성 자체
-    // p1 관측소가 (8,1) 에 있으면 (x=6,y=1) 은 경합
-    s = addMarkers(s, marker('p1', 'observatory', { x: 8, y: 1 }));
-    expect(computeTerritory(s).owners[1]![6]).toBeNull();
+    s = addMarkers(s, marker('p0', 'observatory', { x: 1, y: 6 }), marker('p1', 'observatory', { x: 3, y: 6 }));
+    expect(computeTerritory(s).owners[6]![2]).toBeNull(); // (2,6) 둘 다 반경 1 안 → 경합
     s = withHand(s, 'p1', [], 3);
     const u = ok({ ...s, currentPlayerId: 'p1', turn: 2 }, { type: 'SURRENDER', playerId: 'p1' });
     expect(u.phase).toBe('finished');
-    expect(computeTerritory(u).owners[1]![6]).toBe('p0');
+    expect(computeTerritory(u).owners[6]![2]).toBe('p0');
     expect(computeSightArea(u, 'p1')).toHaveLength(0);
   });
 
@@ -1073,5 +1084,69 @@ describe('로비 조작 (F002, F030)', () => {
     ]);
     expect(leaveLobby(s, 'nobody').error).toBeDefined();
     expect(leaveLobby(startGame(readyLobby(2)), 'p0').error).toMatch(/기권/);
+  });
+});
+
+/**
+ * 새 지형 7종 (Rules.md 3절, 2026-09-28 신설). 좌표는 shared/src/data/maps.ts 에 박아 둔
+ * 실제 맵 좌표를 그대로 쓴다(성운·유물지대 binary-star, 파편지대·중력균열 asteroid-belt,
+ * 이온폭풍 triangle-nebula, 포대발판 interstellar-route, 교란지대 quadrant).
+ */
+describe('새 지형 7종 (2026-09-28)', () => {
+  it('성운: 그 칸 마커의 유효 시야만 -1(최소 1). 배치 범위에만 영향, 영토엔 무관(고정 반경 1이라)', () => {
+    const s = setup(2); // binary-star
+    expect(terrainAt(s.board, { x: 2, y: 4 })).toBe('nebula');
+    expect(effectiveSight(s.board, { x: 2, y: 4 }, 2)).toBe(1); // outpost 시야2 → 1
+    expect(effectiveSight(s.board, { x: 2, y: 4 }, 1)).toBe(1); // 최소 1
+    expect(effectiveSight(s.board, { x: 0, y: 0 }, 2)).toBe(2); // 성운 아니면 그대로
+  });
+
+  it('파편지대: 배치 시점에 최대 체력 -1(최소 1)로 굳는다', () => {
+    const s = setup(2, 'asteroid-belt');
+    expect(terrainAt(s.board, { x: 1, y: 1 })).toBe('debrisField');
+    const placed = applyPlacement(s, 'p0', 'extractor', { x: 1, y: 1 }); // extractor 체력4
+    const m = placed.markers.find((mk) => mk.pos.x === 1 && mk.pos.y === 1)!;
+    expect(m.hp).toBe(3);
+    expect(m.maxHp).toBe(3);
+  });
+
+  it('이온 폭풍: 그 칸의 내 마커는 턴을 끝낼 때마다 피해 1(지속, 만료 없음)', () => {
+    let s = setup(3, 'triangle-nebula');
+    expect(terrainAt(s.board, { x: 3, y: 2 })).toBe('ionStorm');
+    s = addMarkers(s, marker('p0', 'extractor', { x: 3, y: 2 })); // 체력4
+    s = applyTerrainHazards(s, 'p0');
+    expect(s.markers.find((m) => m.pos.x === 3 && m.pos.y === 2)?.hp).toBe(3);
+    s = applyTerrainHazards(s, 'p0'); // 다음 턴에도 또 깎인다(만료 없음)
+    expect(s.markers.find((m) => m.pos.x === 3 && m.pos.y === 2)?.hp).toBe(2);
+  });
+
+  it('유물지대: 마커 점수 +1, 중력 균열: 마커 점수 -1(최소 0)', () => {
+    const relic = addMarkers(setup(2), marker('p0', 'outpost', { x: 1, y: 5 })); // binary-star 유물지대, outpost 점수3
+    expect(terrainAt(relic.board, { x: 1, y: 5 })).toBe('relicSite');
+    expect(computeScores(relic).p0!.markers).toBe(4);
+
+    const rift = addMarkers(setup(2, 'asteroid-belt'), marker('p0', 'outpost', { x: 8, y: 2 })); // 중력 균열
+    expect(terrainAt(rift.board, { x: 8, y: 2 })).toBe('gravityRift');
+    expect(computeScores(rift).p0!.markers).toBe(2);
+  });
+
+  it('포대 발판: 그 칸 마커의 공격력 +1', () => {
+    let s = setup(3, 'interstellar-route');
+    expect(terrainAt(s.board, { x: 1, y: 4 })).toBe('gunEmplacement');
+    expect(effectiveAttack(s.board, { x: 1, y: 4 }, getSpec('fighter').attack)).toBe(3); // 2 → 3
+    s = addMarkers(s, marker('p0', 'fighter', { x: 1, y: 4 }), marker('p1', 'scout', { x: 2, y: 4 })); // scout 체력2
+    const after = resolveCombat(s, 'p0');
+    // 공격 3 > 체력 2 → 파괴 정리로 제거됨(공격 2 그대로였다면 체력 2에 딱 맞아도 파괴는 같지만,
+    // 보너스가 실제로 전투 피해 로그에 반영됐는지는 아래 로그로 확인)
+    expect(after.markers.some((m) => m.specId === 'scout')).toBe(false);
+    expect(after.log.some((l) => l.message.includes('피해 3'))).toBe(true);
+  });
+
+  it('교란지대: 그 칸 마커의 사거리 -1(최소 0)', () => {
+    const s = setup(4, 'quadrant');
+    expect(terrainAt(s.board, { x: 4, y: 0 })).toBe('jammingField');
+    expect(effectiveRange(s.board, { x: 4, y: 0 }, getSpec('fighter').range)).toBe(0); // 1 → 0
+    expect(effectiveRange(s.board, { x: 4, y: 0 }, getSpec('turret').range)).toBe(1); // 2 → 1
+    expect(effectiveRange(s.board, { x: 0, y: 0 }, getSpec('turret').range)).toBe(2); // 교란지대 아니면 그대로
   });
 });

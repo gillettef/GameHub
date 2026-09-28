@@ -19,7 +19,32 @@
         "x": 6,
         "y": 8
       }
-    ]
+    ],
+    "nebulas": [
+      {
+        "x": 2,
+        "y": 4
+      },
+      {
+        "x": 8,
+        "y": 5
+      }
+    ],
+    "debrisFields": [],
+    "ionStorms": [],
+    "relicSites": [
+      {
+        "x": 9,
+        "y": 4
+      },
+      {
+        "x": 1,
+        "y": 5
+      }
+    ],
+    "gravityRifts": [],
+    "gunEmplacements": [],
+    "jammingFields": []
   },
   "roundLimit": 20,
   "round": 1,
@@ -124,6 +149,7 @@
         "y": 2
       },
       "hp": 20,
+      "maxHp": 20,
       "remainingTurns": null
     },
     {
@@ -136,6 +162,7 @@
         "y": 7
       },
       "hp": 20,
+      "maxHp": 20,
       "remainingTurns": null
     }
   ],

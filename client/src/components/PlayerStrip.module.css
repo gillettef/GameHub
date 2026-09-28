@@ -42,8 +42,8 @@
 
 .quit {
   margin-left: auto;
-  /* 모바일 우선 터치 영역 기준(44px)에 맞춘다 — 메타 줄 자체가 이 높이로 늘어나 자리를 잡는다 */
-  height: 36px;
+  /* 다른 화면의 .pill 계열과 같은 34px (2026-09-28 사용자 지시: 모든 버튼 크기를 통일) */
+  height: 34px;
   padding: 0 var(--space-2);
   border-radius: var(--radius-full);
   border: 1px solid var(--color-muted);

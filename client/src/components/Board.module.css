@@ -70,6 +70,116 @@
   border-radius: 2px;
 }
 
+/* 지형 7종(2026-09-28, Rules.md 3절): 색은 전부 tokens.css 변수에서만 가져온다.
+ * 보너스(유물지대·포대 발판)는 Amber 계열, 페널티(성운·교란지대)는 Card Violet 계열,
+ * 지속 피해(이온 폭풍)·체력 페널티(파편지대)는 Danger Red 계열로 묶어 "좋다/나쁘다/위험하다"를
+ * 색으로도 구분한다. 그 안에서는 장식 모양(사각·다이아몬드·삼각·고리·십자·지그재그)으로 나눈다 —
+ * 소행성·광맥과 같은 원칙(색+모양, 색맹 안전). 장식은 `.hex` 의 형제 span 이다(Cell.tsx). */
+.hex[data-terrain='nebula'] {
+  background: color-mix(in srgb, var(--color-magic) 20%, var(--color-canvas));
+}
+
+.nebula {
+  position: absolute;
+  inset: 26%;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--color-magic) 45%, transparent);
+  filter: blur(1.5px);
+}
+
+.hex[data-terrain='jammingField'] {
+  background: color-mix(in srgb, var(--color-magic) 32%, var(--color-canvas));
+}
+
+.jammingField {
+  position: absolute;
+  inset: 30%;
+  border: 2px solid color-mix(in srgb, var(--color-magic) 80%, transparent);
+  border-radius: 3px;
+}
+
+.hex[data-terrain='relicSite'] {
+  background: color-mix(in srgb, var(--color-vein) 24%, var(--color-canvas));
+}
+
+.relicSite {
+  position: absolute;
+  width: 22%;
+  height: 22%;
+  border: 2px solid var(--color-vein);
+  transform: rotate(45deg);
+}
+
+.hex[data-terrain='gunEmplacement'] {
+  background: color-mix(in srgb, var(--color-vein) 36%, var(--color-canvas));
+}
+
+.gunEmplacement {
+  position: absolute;
+  width: 26%;
+  height: 4px;
+  background: var(--color-vein);
+}
+
+.gunEmplacement::after {
+  content: '';
+  position: absolute;
+  inset: -11px 11px;
+  width: 4px;
+  height: 26%;
+  background: var(--color-vein);
+}
+
+.hex[data-terrain='debrisField'] {
+  background: color-mix(in srgb, var(--color-danger) 16%, var(--color-canvas));
+}
+
+.debrisField {
+  position: absolute;
+  inset: 30%;
+  clip-path: polygon(50% 0%, 100% 100%, 0% 100%);
+  background: color-mix(in srgb, var(--color-danger) 55%, transparent);
+}
+
+.hex[data-terrain='gravityRift'] {
+  background: color-mix(in srgb, var(--color-danger) 12%, var(--color-canvas));
+}
+
+.gravityRift {
+  position: absolute;
+  inset: 24%;
+  border-radius: 50%;
+  border: 2px solid color-mix(in srgb, var(--color-danger) 70%, transparent);
+}
+
+.hex[data-terrain='ionStorm'] {
+  background: color-mix(in srgb, var(--color-danger) 26%, var(--color-canvas));
+}
+
+.ionStorm {
+  position: absolute;
+  inset: 22%;
+  clip-path: polygon(55% 0%, 20% 55%, 45% 55%, 30% 100%, 80% 40%, 50% 40%);
+  background: var(--color-danger);
+  animation: astral-ion-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes astral-ion-pulse {
+  0%,
+  100% {
+    opacity: 0.65;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ionStorm {
+    animation: none;
+  }
+}
+
 /* 배치 프리뷰(2026-09-28, 길게 누르기): 이 카드를 여기 놓으면 새로 시야에 들어올 칸.
    "배치 가능" 표시와 같은 계열(Moonlight Cream)을 쓰되 동그라미로 구분한다 */
 .previewMark {

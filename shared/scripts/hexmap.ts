@@ -7,7 +7,11 @@ import { cellsInRadius, hexDistance } from '../src/engine/index.js';
 import { MAPS } from '../src/data/index.js';
 import type { Board, Position } from '../src/types/index.js';
 
-export function legalNeighbors(board: Board, core: Position, others: Position[]): number {
+/** 이 스크립트는 좌석 공정성(코어·소행성·광맥)만 재고 성운 등 새 지형 7종은 의도적으로
+ * 보지 않는다(data.test.ts 주석과 동일) — cellsInRadius 가 실제로 읽는 필드만 받는다 */
+type FairnessBoard = Pick<Board, 'width' | 'height' | 'asteroids' | 'veins'>;
+
+export function legalNeighbors(board: FairnessBoard, core: Position, others: Position[]): number {
   const otherSet = new Set(others.map((q) => `${q.x},${q.y}`));
   return cellsInRadius(board, core, 1)
     .filter((q) => q.x !== core.x || q.y !== core.y)
@@ -19,7 +23,7 @@ export function nearestVein(core: Position, veins: Position[]): number {
 export function within3(points: Position[], core: Position): number {
   return points.filter((q) => hexDistance(core, q) <= 3).length;
 }
-export function edgeDistance(board: Board, core: Position): number {
+export function edgeDistance(board: FairnessBoard, core: Position): number {
   let r = 0;
   while (r < 10 && cellsInRadius(board, core, r + 1).length === 3 * (r + 1) * (r + 2) + 1) r++;
   return r;
@@ -29,7 +33,7 @@ export function pairDistances(core: Position, cores: Position[]): number[] {
 }
 
 export function report(name: string, size: number, cores: Position[], asteroids: Position[], veins: Position[]) {
-  const board: Board = { width: size, height: size, asteroids, veins };
+  const board: FairnessBoard = { width: size, height: size, asteroids, veins };
   console.log(`\n=== ${name} (size ${size}) ===`);
   for (const c of cores) {
     const others = [...cores.filter((x) => x !== c), ...asteroids];

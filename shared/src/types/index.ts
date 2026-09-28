@@ -81,7 +81,25 @@ export interface CardSpec {
 // 맵 (Rules.md 11절). 실제 값은 shared/src/data/maps.ts 에만 둔다.
 // ---------------------------------------------------------------------------
 
-export type Terrain = 'space' | 'asteroid' | 'vein';
+/**
+ * 지형 (Rules.md 3절, 2026-09-28 확장). 소행성·광맥 외 7종을 추가했다 — 전부 "그 칸에 놓인
+ * 마커"에 붙는 고정 수정치이고, 마커는 이동하지 않으므로 한번 놓이면 그 효과가 계속 간다.
+ *  - nebula(성운): 시야 -1        - debrisField(파편지대): 최대 체력 -1
+ *  - ionStorm(이온 폭풍): 수입 정산마다 피해 1(지속)     - relicSite(유물지대): 점수 +1
+ *  - gravityRift(중력 균열): 점수 -1                      - gunEmplacement(포대 발판): 공격력 +1
+ *  - jammingField(교란지대): 사거리 -1
+ */
+export type Terrain =
+  | 'space'
+  | 'asteroid'
+  | 'vein'
+  | 'nebula'
+  | 'debrisField'
+  | 'ionStorm'
+  | 'relicSite'
+  | 'gravityRift'
+  | 'gunEmplacement'
+  | 'jammingField';
 
 export interface MapDef {
   id: MapId;
@@ -95,6 +113,13 @@ export interface MapDef {
   corePositions: Position[];
   asteroids: Position[];
   veins: Position[];
+  nebulas: Position[];
+  debrisFields: Position[];
+  ionStorms: Position[];
+  relicSites: Position[];
+  gravityRifts: Position[];
+  gunEmplacements: Position[];
+  jammingFields: Position[];
   description: string;
 }
 
@@ -104,6 +129,13 @@ export interface Board {
   height: number;
   asteroids: Position[];
   veins: Position[];
+  nebulas: Position[];
+  debrisFields: Position[];
+  ionStorms: Position[];
+  relicSites: Position[];
+  gravityRifts: Position[];
+  gunEmplacements: Position[];
+  jammingFields: Position[];
 }
 
 // ---------------------------------------------------------------------------
@@ -117,6 +149,9 @@ export interface Marker {
   ownerId: PlayerId;
   pos: Position;
   hp: number;
+  /** 이 마커의 체력 상한. 보통 카드 기본 체력과 같지만, 파편지대(debrisField)에 놓이면
+   * 배치 시점에 -1 되어 고정된다(Rules.md 3절). 회복·정비는 이 값을 넘지 못한다 */
+  maxHp: number;
   /** 지속 마법의 남은 턴. 소유자가 자기 턴을 끝낼 때마다 1 줄고 0이면 제거. 그 외 null */
   remainingTurns: number | null;
 }
