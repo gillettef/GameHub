@@ -1,0 +1,53 @@
+# main 브랜치에 push되면 AWS EC2(서버3)에 자동 배포한다.
+# GitHub 저장소가 비공개라 인스턴스에서 git clone이 안 되므로, 이 워크플로가 직접 빌드한 뒤
+# client/dist·server/dist·package.json류를 scp로 올리고 systemd 서비스(eleven)를 재시작한다.
+# (로컬에서 수동 배포할 때 쓰는 scripts/aws-deploy.ps1과 같은 절차)
+#
+# 필요한 저장소 시크릿 (Settings → Secrets and variables → Actions):
+#   EC2_HOST     인스턴스 공개 IP
+#   EC2_USER     ec2-user
+#   EC2_SSH_KEY  .dev/aws/eleven-debug.pem 파일 내용 그대로
+
+name: Deploy to AWS EC2
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: 빌드
+        run: |
+          npm ci
+          npm run build
+
+      - name: SSH 키 준비
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H "${{ secrets.EC2_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: 서버 정지
+        run: ssh -i ~/.ssh/deploy_key "${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}" "sudo systemctl stop eleven"
+
+      - name: 산출물 업로드
+        run: |
+          scp -i ~/.ssh/deploy_key package.json package-lock.json "${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/opt/eleven/"
+          scp -i ~/.ssh/deploy_key server/package.json "${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/opt/eleven/server/package.json"
+          scp -i ~/.ssh/deploy_key client/package.json "${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/opt/eleven/client/package.json"
+          scp -i ~/.ssh/deploy_key -r server/dist "${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/opt/eleven/server/dist"
+          scp -i ~/.ssh/deploy_key -r client/dist "${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/opt/eleven/client/dist"
+
+      - name: 의존성 설치 + 재시작 + 헬스체크
+        run: |
+          ssh -i ~/.ssh/deploy_key "${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}" "cd /opt/eleven && npm ci --omit=dev && sudo systemctl restart eleven && sleep 2 && curl -sf http://localhost:3001/health"
