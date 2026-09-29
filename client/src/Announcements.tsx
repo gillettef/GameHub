@@ -47,6 +47,8 @@ const STAT_KEYS: StatKey[] = ["intelligence", "stamina", "charm", "spellPower"];
 const ROW_GAP = 0.2;
 const TOKEN_GAP = 0.07;
 const MAX_ICONS = 12;
+// 연출이 끝난 뒤 결과를 눈으로 확인할 수 있게 머무는 시간(초)
+const HOLD_AFTER = 2.2;
 
 let nextId = 1;
 const make = (a: Omit<Announcement, "id" | "tiles" | "lines"> & { tiles?: Tile[]; lines?: string[] }): Announcement => ({
@@ -184,7 +186,7 @@ function build(prev: GameState, next: GameState, myId: string): Announcement[] {
 // 연출이 끝나기까지 걸리는 시간(ms)
 function playDuration(tokens: NonNullable<Announcement["tokens"]>): number {
   const longest = Math.max(0, ...tokens.rows.map((r) => Math.min(MAX_ICONS, Math.max(r.stamina, r.spell))));
-  return (tokens.rows.length * ROW_GAP + longest * TOKEN_GAP + 0.5 + 0.6) * 1000;
+  return (tokens.rows.length * ROW_GAP + longest * TOKEN_GAP + 0.5 + HOLD_AFTER) * 1000;
 }
 
 function TokenLine({
