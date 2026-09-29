@@ -1,0 +1,118 @@
+/**
+ * 카드별 일러스트(2026-09-29). 파일은 `client/public/cards/<종족>/<파일명>.svg` 에 있고 <img> 로 불러온다.
+ * 파일명이 카드 id 와 다른 카드가 있어 여기서 한 번에 이어 준다(수치가 아니라 에셋 경로라 client 에 둔다).
+ */
+import type { CardId } from '@astraltab/shared';
+
+const BASE = `${import.meta.env.BASE_URL}cards/`;
+
+/** 카드 id → `<종족>/<파일명>` (확장자 제외). 코어는 종족이 없어 파일명만 */
+const CARD_IMAGE: Record<string, string> = {
+  core: 'core',
+
+  extractor: 'coalition/extractor',
+  outpost: 'coalition/outpost',
+  turret: 'coalition/defense-tower',
+  scout: 'coalition/scout-drone',
+  fighter: 'coalition/fighter',
+  artillery: 'coalition/gunship',
+  cruiser: 'coalition/cruiser',
+  meteor: 'coalition/meteor-shower',
+  shield: 'coalition/barrier',
+  'energy-cell': 'coalition/energy-crystal',
+  refinery: 'coalition/refinery',
+  observatory: 'coalition/observatory',
+  fortress: 'coalition/fortress',
+  battleship: 'coalition/battleship',
+  stealth: 'coalition/stealth-ship',
+  'repair-drone': 'coalition/repair-drone',
+  'gravity-wave': 'coalition/gravity-wave',
+  'warp-gate': 'coalition/warp-gate',
+  'energy-storm': 'coalition/energy-storm',
+
+  'larva-nest': 'swarm/larva-nest',
+  'bio-spire': 'swarm/bio-spire',
+  'spike-turret': 'swarm/spine-tower',
+  drone: 'swarm/larva',
+  stalker: 'swarm/tracker',
+  spitter: 'swarm/acid-spitter',
+  'brood-queen': 'swarm/brood-queen',
+  'acid-spray': 'swarm/acid-spores',
+  frenzy: 'swarm/frenzy',
+  'swarm-call': 'swarm/rally-signal',
+  'chitin-refinery': 'swarm/chitin-refinery',
+  'spore-tower': 'swarm/spore-tower',
+  'hive-fortress': 'swarm/hive-fortress',
+  'alpha-brood': 'swarm/alpha',
+  burrower: 'swarm/lurker',
+  'nurse-drone': 'swarm/healer-bug',
+  'plague-burst': 'swarm/plague-burst',
+  'pheromone-beacon': 'swarm/pheromone-beacon',
+  overgrowth: 'swarm/mass-spawn',
+
+  'fab-node': 'automata/fab-node',
+  'sentry-pylon': 'automata/watch-spire',
+  bastion: 'automata/bastion',
+  probe: 'automata/probe',
+  sentinel: 'automata/sentinel',
+  'railgun-frame': 'automata/railgun',
+  'dreadnought-core': 'automata/dreadnought-core',
+  'overload-pulse': 'automata/overload-pulse',
+  'nanite-repair': 'automata/nano-repair',
+  'power-surge': 'automata/power-surge',
+  'singularity-forge': 'automata/singularity-forge',
+  'deep-scanner': 'automata/deep-scanner',
+  citadel: 'automata/citadel',
+  titan: 'automata/titan',
+  'cloak-unit': 'automata/cloak-unit',
+  'repair-node': 'automata/repair-node',
+  'graviton-lance': 'automata/graviton-lance',
+  'stasis-field': 'automata/stasis-field',
+  'core-surge': 'automata/core-amplifier',
+
+  'null-collector': 'shade/null-collector',
+  'dead-relay': 'shade/dune-relay',
+  'ambush-node': 'shade/ambush-spire',
+  wisp: 'shade/phantom',
+  'shade-blade': 'shade/shadow-blade',
+  'phase-striker': 'shade/phase-sniper',
+  wraith: 'shade/wraith-ship',
+  'void-burst': 'shade/void-blast',
+  'mirage-field': 'shade/mirage-ward',
+  'dark-cell': 'shade/dark-crystal',
+  'black-market': 'shade/black-market',
+  'veiled-array': 'shade/veiled-watch',
+  'shroud-bastion': 'shade/veil-bastion',
+  nightmare: 'shade/nightmare',
+  'phantom-agent': 'shade/ghost-agent',
+  'medic-wisp': 'shade/heal-phantom',
+  'eclipse-wave': 'shade/eclipse-wave',
+  'false-signal': 'shade/false-signal',
+  'entropy-surge': 'shade/entropy-surge',
+
+  'strip-mine': 'siege/orbital-mine',
+  'relay-spire': 'siege/relay-spire',
+  'flak-tower': 'siege/flak-turret',
+  spotter: 'siege/spotter',
+  gunner: 'siege/artillery',
+  howitzer: 'siege/howitzer',
+  dreadshell: 'siege/bombard-cruiser',
+  'orbital-strike': 'siege/orbital-strike',
+  'repair-field': 'siege/repair-yard',
+  'charge-cell': 'siege/charge-crystal',
+  'heavy-foundry': 'siege/heavy-arsenal',
+  'far-scope': 'siege/long-observatory',
+  'siege-bastion': 'siege/siege-bastion',
+  'titan-cannon': 'siege/titan-cannon',
+  saboteur: 'siege/infiltrator-spotter',
+  'field-medic': 'siege/field-mechanic',
+  'barrage-shell': 'siege/saturation-shell',
+  'designator-beacon': 'siege/target-designator',
+  'overcharge-round': 'siege/overcharge-shell',
+};
+
+/** 카드 일러스트 URL. 매핑에 없으면 null (호출부가 이미지 없이 그린다) */
+export function cardImageUrl(cardId: CardId): string | null {
+  const path = CARD_IMAGE[cardId];
+  return path ? `${BASE}${path}.svg` : null;
+}

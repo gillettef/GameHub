@@ -282,3 +282,31 @@
 .rows dd {
   margin: 0;
 }
+
+/* 카드 일러스트(2026-09-29). 카드 전체 배경에 옅게 깔고, 내용은 그 위(z-index 1)에 둔다 */
+.art {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: inherit;
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.card > :not(.art):not(.popover) {
+  position: relative;
+  z-index: 1;
+}
+
+.disabled .art {
+  opacity: 0.2;
+}
+
+.popoverArt {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+}

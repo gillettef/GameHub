@@ -2,6 +2,7 @@ import { memo, type ReactNode } from 'react';
 import type { CardSpec } from '@astraltab/shared';
 import { RACES } from '@astraltab/shared';
 import { CardArt } from '../game/cardArt';
+import { cardImageUrl } from '../game/cardImage';
 import { keywordExplain, keywordLabel, kindLabel } from '../game/derived';
 import { RaceArt } from '../game/raceArt';
 import { cx } from '../lib/cx';
@@ -143,6 +144,7 @@ interface CardFaceProps {
  */
 export const CardFace = memo(function CardFace({ spec, selected, disabled, reason, onClick, hoverDetails, seat, compact }: CardFaceProps) {
   const effect = effectLabel(spec);
+  const image = cardImageUrl(spec.id);
   return (
     <button
       type="button"
@@ -153,6 +155,7 @@ export const CardFace = memo(function CardFace({ spec, selected, disabled, reaso
       disabled={disabled && !onClick}
       onClick={onClick}
     >
+      {image && <img className={styles.art} src={image} alt="" loading="lazy" draggable={false} />}
       <span className={styles.head}>
         <span className={styles.name}>
           <CardArt cardId={spec.id} className={styles.cardIcon} />
@@ -194,6 +197,7 @@ export const CardFace = memo(function CardFace({ spec, selected, disabled, reaso
       {reason && <span className={styles.reason}>{reason}</span>}
       {hoverDetails && (
         <span className={styles.popover} role="tooltip">
+          {image && <img className={styles.popoverArt} src={image} alt="" />}
           <span className={styles.popoverTitle}>{spec.name}</span>
           <span className={styles.popoverDesc}>{spec.description}</span>
           <SpecRows spec={spec} />
