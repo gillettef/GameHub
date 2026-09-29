@@ -143,6 +143,14 @@ describe('로비 · 덱 선택 · 시작 (F016, F018, F019)', () => {
     expect(joinPlayer(four, createPlayer('p9', '늦음')).error).toBeDefined();
   });
 
+  it('지형 필드가 없는 옛 형식 board 의 로비도 시작 시 맵에서 다시 만들어 정상 시작한다', () => {
+    const ready = readyLobby(2);
+    const { nebulas: _n, jammingFields: _j, ...oldBoard } = ready.board;
+    const started = setupGame({ ...ready, board: oldBoard as unknown as GameState['board'] });
+    expect(started.board.nebulas).toEqual(ready.board.nebulas);
+    expect(() => computeSightArea(started, 'p0')).not.toThrow();
+  });
+
   it('종족 선택은 실제 종족 id여야 하고, 고르기 전엔 준비할 수 없다', () => {
     const s = lobby(2);
     expect(fail(s, { type: 'READY', playerId: 'p0' })).toContain('종족을 먼저');

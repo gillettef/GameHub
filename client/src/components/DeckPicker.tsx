@@ -12,6 +12,9 @@ interface DeckPickerProps {
   disabled?: boolean;
   /** 종족을 통째로 무작위로 고른다. 없으면 "랜덤" 버튼을 숨긴다 */
   onRandom?: () => void;
+  /** 랜덤 타일이 선택된 상태. true 면 `race` 가 이미 정해져 있어도 어떤 종족인지 숨긴다
+   * (랜덤 선택 → 준비 완료 → 인게임에서 종족 공개, 2026-09-29 사용자 지시) */
+  randomSelected?: boolean;
   /** 고정 덱 25장 목록까지 보여줄지. 종족 카드만 고르면 되는 화면(온라인 대기실 위자드)에서는
    * false 로 꺼서 "덱 25/25장 (고정)" 이하를 통째로 숨긴다(2026-09-24 사용자 지시). 기본값 true —
    * 핫시트 설정 화면은 그대로 도감을 보여준다 */
@@ -36,13 +39,15 @@ function DiceIcon({ className }: { className?: string }) {
  * 종족 선택 (F016, 2026-09-24 개편: 덱 빌딩 자유 선택 폐지). 종족을 고르면 그 종족의 고정
  * 덱(`FIXED_DECKS`, Rules.md 10.7절)이 곧바로 정해진다 — 카드를 낱장으로 고르지 않는다.
  * "랜덤"은 5개 종족 타일 맨 앞에 같은 모양의 6번째 타일로 둔다(2026-09-28 사용자 지시) — 누르면
- * 무작위 종족이 곧바로 정해지고, 그 종족 타일이 선택 표시되어 결과가 바로 보인다. 이 결과는
- * 일반 선택과 똑같이 GameState.players[].race 에 저장되므로 대기실은 물론 실제 게임 중에도
- * PlayerStrip 에서 계속 확인할 수 있다.
+ * 무작위 종족이 내부적으로 정해지지만 화면에는 "랜덤" 타일만 선택 표시하고 어떤 종족인지는
+ * 게임이 시작된 뒤 PlayerStrip 에서 알 수 있다(2026-09-29 사용자 지시). 결과는 일반 선택과 똑같이
+ * GameState.players[].race 에 저장된다.
  * 아래 카드 목록은 도감처럼 그 종족의 카드 풀 전체를 보여주며, 고정 덱에 포함된 장수만 표시한다
  * (읽기 전용). 카드 하나하나의 상세(호버 팝오버)는 CardFace 가 그대로 맡는다.
  */
-export const DeckPicker = memo(function DeckPicker({ race, onPickRace, disabled, onRandom, showDeck = true }: DeckPickerProps) {
+export const DeckPicker = memo(function DeckPicker({ race: pickedRace, onPickRace, disabled, onRandom, randomSelected = false, showDeck = true }: DeckPickerProps) {
+  // 랜덤을 골랐다면 실제로 정해진 종족은 게임에 들어가기 전까지 화면에 드러내지 않는다
+  const race = randomSelected ? null : pickedRace;
   return (
     <div className={styles.deck}>
       <div>
@@ -51,10 +56,16 @@ export const DeckPicker = memo(function DeckPicker({ race, onPickRace, disabled,
         </h3>
         <div className={styles.raceRow}>
           {onRandom && (
-            <button type="button" className={cx(styles.mapCard, styles.randomCard, disabled && styles.mapDisabled)} disabled={disabled} onClick={onRandom}>
+            <button
+              type="button"
+              className={cx(styles.mapCard, styles.randomCard, randomSelected && styles.mapSelected, disabled && styles.mapDisabled)}
+              aria-pressed={randomSelected}
+              disabled={disabled}
+              onClick={onRandom}
+            >
               <DiceIcon className={styles.raceCardIcon} />
               <span className={styles.mapName}>랜덤</span>
-              <span className={styles.mapDesc}>무작위로 하나 고릅니다</span>
+              <span className={styles.mapDesc}>{randomSelected ? '게임이 시작되면 알려 줍니다' : '무작위로 하나 고릅니다'}</span>
             </button>
           )}
           {RACES.map((r) => (
@@ -74,7 +85,7 @@ export const DeckPicker = memo(function DeckPicker({ race, onPickRace, disabled,
         </div>
       </div>
 
-      {!race && <p className={styles.racePrompt}>종족을 고르면 고정된 카드 25장 구성이 곧바로 정해집니다.</p>}
+      {!race && !randomSelected && <p className={styles.racePrompt}>종족을 고르면 고정된 카드 25장 구성이 곧바로 정해집니다.</p>}
 
       {race && showDeck && (
         <>
