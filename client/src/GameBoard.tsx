@@ -407,13 +407,14 @@ export function GameBoard({
         <div className="mt-1.5 h-1.5 w-full rounded-full bg-purple-100 overflow-hidden" aria-hidden>
           <div className="h-full bg-pink-300 transition-all" style={{ width: `${(game.round / 12) * 100}%` }} />
         </div>
-        <div className="mt-1.5 flex gap-1.5 overflow-x-auto pb-0.5" aria-label="내 능력치">
+        <div className="mt-1.5 flex flex-wrap gap-1.5" aria-label="내 능력치">
           <Chip icon="bulb" label="지력" value={effectiveStat(me, "intelligence")} className="bg-sky-100 text-sky-800" />
           <Chip icon="bolt" label="체력" value={effectiveStat(me, "stamina")} className="bg-green-100 text-green-800" />
           <Chip icon="heart" label="매력" value={effectiveStat(me, "charm")} className="bg-pink-100 text-pink-800" />
           <Chip icon="sparkle" label="주문력" value={effectiveStat(me, "spellPower")} className="bg-purple-100 text-purple-800" />
           <Chip icon="cap" label="학점" value={me.credit} className="bg-amber-100 text-amber-800" />
-          <span className="mx-0.5 w-px shrink-0 self-stretch bg-purple-200" aria-hidden />
+        </div>
+        <div className="mt-1.5 flex flex-wrap gap-1.5" aria-label="내 토큰">
           <Chip icon="staminaToken" label="체력토큰" showLabel value={staminaAfter === me.staminaTokens ? me.staminaTokens : `${me.staminaTokens}→${staminaAfter}`} className="bg-green-50 text-green-700 ring-1 ring-green-200" />
           <Chip icon="spellbookToken" label="주문서" showLabel value={me.spellbookTokens} className="bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200" />
         </div>
