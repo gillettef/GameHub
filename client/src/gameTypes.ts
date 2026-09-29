@@ -11,12 +11,25 @@ export interface ClassCard {
   statBoost: { stat: StatKey; amount: number };
 }
 
-export interface EquipmentCard {
+export type LabCardKind = "study" | "exam" | "insight" | "supply";
+
+// 연구 카드 (연구실 실험). summary는 효과를 한 줄로 풀어 쓴 문구
+export interface LabCard {
   id: string;
   name: string;
   description: string;
-  tempBoosts: Partial<Record<StatKey, number>>;
-  credit?: number;
+  kind: LabCardKind;
+  summary: string;
+}
+
+// 연구 카드로 엿본 탐험 카드 (엿본 본인에게만 전송)
+export interface PeekedExploration {
+  id: string;
+  name: string;
+  description: string;
+  checkText?: string;
+  successText: string;
+  failureText: string;
 }
 
 export type CreatureElement = "sky" | "land" | "ocean";
@@ -59,10 +72,12 @@ export interface PlayerGameState {
   staminaTokens: number;
   spellbookTokens: number;
   pendingStaminaTokens: number;
+  pendingSpellbookTokens: number;
+  peekedExploration: PeekedExploration | null;
   tournamentTrack: number;
   classCards: ClassCard[];
   creatures: CreatureCard[];
-  equipment: EquipmentCard[];
+  equipment: LabCard[];
   grimoires: GrimoireCard[];
   offeredClassCards: ClassCard[];
   hasActedThisPhase: boolean;
@@ -87,6 +102,8 @@ export interface GameState {
   activitySlots: Record<ActivityId, string | null>;
   activityOrder: string[];
   activityTurnPointer: number;
+  duelTargetId: string | null;
+  pendingLab: { playerId: string; cards: LabCard[] } | null;
   examResults: ExamResult[];
   log: GameLogEntry[];
   winnerIds?: string[];
@@ -110,15 +127,25 @@ export const ACTIVITY_LABEL: Record<ActivityId, string> = {
 // 활동 카드에 함께 보여줄 한 줄 설명 (집중하면 +1)
 export const ACTIVITY_HINT: Record<ActivityId, string> = {
   tournament: "주문력만큼 트랙 전진 (집중: +1칸)",
-  creature: "주문서로 마법생물 데려오기 (집중: 주문서 -1)",
-  duel: "주사위 + 주문력으로 승부 (집중: +1)",
-  exploration: "주사위 + 능력치로 판정 (집중: +1)",
-  lab: "지력만큼 재료를 펼쳐 최고의 장비 획득 (집중: +1장)",
+  creature: "주문서로 마법생물 획득, 속성을 모으면 학점 (집중: 주문서 -1)",
+  duel: "아직 안 고른 한 명을 지목해 강제 대결 (집중: +1)",
+  exploration: "한방 노리기! 크게 벌거나 크게 잃는 판정 (집중: +1)",
+  lab: "심화학습: 지력만큼 연구 카드를 펼쳐 1장 고르기 (집중: +1장)",
 };
 
 export function effectiveStat(player: PlayerGameState, stat: StatKey): number {
-  return player[stat] + (player.tempBoosts[stat] ?? 0);
+  return Math.max(0, player[stat] + (player.tempBoosts[stat] ?? 0));
 }
+
+export const ELEMENT_LABEL: Record<CreatureElement, string> = { sky: "하늘", land: "육지", ocean: "바다" };
+
+export const LAB_KIND_ICON: Record<LabCardKind, string> = { study: "📚", exam: "📝", insight: "🔮", supply: "🎒" };
+export const LAB_KIND_LABEL: Record<LabCardKind, string> = {
+  study: "심화 수업",
+  exam: "시험 대비",
+  insight: "엿보기",
+  supply: "보급",
+};
 
 export const ELEMENT_ICON: Record<CreatureElement, string> = { sky: "☁️", land: "🌱", ocean: "🌊" };
 

@@ -3,13 +3,17 @@ import {
   ACTIVITY_HINT,
   ACTIVITY_LABEL,
   ELEMENT_ICON,
+  ELEMENT_LABEL,
+  LAB_KIND_ICON,
+  LAB_KIND_LABEL,
   STAT_LABEL,
   describeAbility,
   effectiveStat,
   type ActivityId,
+  type CreatureElement,
   type GameState,
+  type LabCard,
   type PlayerGameState,
-  type StatKey,
 } from "./gameTypes";
 
 const ACTIVITY_IDS: ActivityId[] = ["tournament", "creature", "duel", "exploration", "lab"];
@@ -37,17 +41,23 @@ function PlayerStatCard({ player, isMe }: { player: PlayerGameState; isMe: boole
       <p className="text-sm text-purple-700">
         🏆 토너먼트 {player.tournamentTrack}/10 · 🔋 체력토큰 {player.staminaTokens} · 📖 주문서 {player.spellbookTokens} · 📚 수업 {player.classCards.length}장
       </p>
+      {player.peekedExploration && (
+        <div className="mt-2 rounded-2xl border border-indigo-200 bg-indigo-50 px-2.5 py-2 text-sm text-indigo-800">
+          <p>
+            <span aria-hidden>🔮</span> 엿본 탐험 카드: <b>{player.peekedExploration.name}</b>
+          </p>
+          <p className="text-xs text-indigo-600">{player.peekedExploration.description}</p>
+          {player.peekedExploration.checkText && <p className="text-xs">🎲 {player.peekedExploration.checkText}</p>}
+          <p className="text-xs">✅ 성공: {player.peekedExploration.successText}</p>
+          <p className="text-xs">⚠️ 실패: {player.peekedExploration.failureText}</p>
+        </div>
+      )}
       {player.equipment.length > 0 && (
         <ul className="mt-2 flex flex-col gap-1">
           {player.equipment.map((c) => (
             <li key={c.id} className="rounded-2xl bg-white/70 px-2.5 py-1.5 text-sm text-purple-800">
               <span aria-hidden>🧪</span> <b>{c.name}</b>
-              <span className="block text-xs text-purple-600">
-                {Object.entries(c.tempBoosts)
-                  .map(([stat, n]) => `${STAT_LABEL[stat as StatKey]} 임시 +${n}`)
-                  .join(", ")}
-                {c.credit ? ` 학점 +${c.credit}` : ""}
-              </span>
+              <span className="block text-xs text-purple-600">{c.summary}</span>
             </li>
           ))}
         </ul>
@@ -66,7 +76,12 @@ function PlayerStatCard({ player, isMe }: { player: PlayerGameState; isMe: boole
         </ul>
       )}
       {player.creatures.length > 0 && (
-        <ul className="mt-2 flex flex-col gap-1">
+        <p className="mt-2 text-xs text-purple-600">
+          유형 모으기: {(["sky", "land", "ocean"] as CreatureElement[]).map((el) => `${ELEMENT_ICON[el]}${ELEMENT_LABEL[el]} ${player.creatures.filter((c) => c.element === el).length}`).join(" · ")}
+        </p>
+      )}
+      {player.creatures.length > 0 && (
+        <ul className="mt-1 flex flex-col gap-1">
           {player.creatures.map((c) => (
             <li key={c.id} className="rounded-2xl bg-white/70 px-2.5 py-1.5 text-sm text-purple-800">
               <span aria-hidden>{ELEMENT_ICON[c.element]}</span> <b>{c.name}</b>
@@ -171,21 +186,50 @@ function ClassPhasePanel({
   );
 }
 
+function LabChoicePanel({ cards, onChoose }: { cards: LabCard[]; onChoose: (cardId: string) => void }) {
+  return (
+    <div className="bg-white rounded-3xl border-2 border-purple-200 shadow-sm p-4">
+      <p className="text-sm text-purple-500 mb-2">연구실 실험: 펼쳐진 연구 카드 중 1장을 고르세요</p>
+      <div className="flex flex-col gap-2">
+        {cards.map((card) => (
+          <button
+            key={card.id}
+            onClick={() => onChoose(card.id)}
+            className="rounded-xl border-2 border-purple-200 bg-purple-50 min-h-12 px-3 py-3 text-left text-purple-800 active:scale-95 transition-transform"
+          >
+            <span aria-hidden>{LAB_KIND_ICON[card.kind]}</span> <b>{card.name}</b>
+            <span className="ml-1 text-xs text-purple-500">({LAB_KIND_LABEL[card.kind]})</span>
+            <span className="block text-sm">{card.summary}</span>
+            <span className="block text-xs text-purple-500">{card.description}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function ActivityPhasePanel({
   game,
   myId,
   onSelect,
+  onChooseLabCard,
 }: {
   game: GameState;
   myId: string;
   onSelect: (activityId: ActivityId, targetPlayerId?: string, useStamina?: boolean) => void;
+  onChooseLabCard: (cardId: string) => void;
 }) {
-  const currentTurnPlayerId = game.activityOrder[game.activityTurnPointer];
+  const currentTurnPlayerId = game.pendingLab?.playerId ?? game.activityOrder[game.activityTurnPointer];
   const isMyTurn = currentTurnPlayerId === myId;
+  const duelTargets = game.turnOrder.filter((id) => id !== myId && !game.players[id].hasActedThisPhase);
   const [pendingActivity, setPendingActivity] = useState<ActivityId | null>(null);
   const [focus, setFocus] = useState(false);
   const staminaTokens = game.players[myId]?.staminaTokens ?? 0;
   const orderText = game.activityOrder.map((id) => game.players[id].name).join(" → ");
+
+  if (isMyTurn && game.pendingLab) {
+    return <LabChoicePanel cards={game.pendingLab.cards} onChoose={onChooseLabCard} />;
+  }
 
   if (!isMyTurn) {
     return (
@@ -196,12 +240,12 @@ function ActivityPhasePanel({
   }
 
   if (pendingActivity === "duel") {
-    const others = game.turnOrder.filter((id) => id !== myId);
     return (
       <div className="bg-white rounded-3xl border-2 border-purple-200 shadow-sm p-4">
-        <p className="text-sm text-purple-500 mb-2">주문 대결 상대를 선택하세요</p>
+        <p className="text-sm text-purple-500 mb-1">아직 활동을 고르지 않은 한 명을 지목하세요</p>
+        <p className="text-xs text-purple-400 mb-2">지목당한 친구는 이번 달 방과후활동으로 주문 대결을 하게 돼요.</p>
         <div className="flex flex-col gap-2">
-          {others.map((id) => (
+          {duelTargets.map((id) => (
             <button
               key={id}
               className="rounded-xl border border-purple-200 min-h-12 px-3 py-3 text-purple-700 bg-purple-50 active:scale-95 transition-transform"
@@ -235,18 +279,23 @@ function ActivityPhasePanel({
           if (occupant) {
             return (
               <div key={activityId} className="rounded-xl border border-gray-200 min-h-12 px-3 py-3 text-gray-500 bg-gray-100">
-                {label} — {game.players[occupant].name} 선택됨
+                {label} — {game.players[occupant].name}
+              {activityId === "duel" && game.duelTargetId ? ` vs ${game.players[game.duelTargetId].name}` : ""} 선택됨
               </div>
             );
           }
+          const noTarget = activityId === "duel" && duelTargets.length === 0;
           return (
             <button
               key={activityId}
-              className="rounded-xl border border-purple-300 min-h-12 px-3 py-3 text-purple-700 bg-white active:bg-purple-100 active:scale-95 transition-transform"
+              disabled={noTarget}
+              className="rounded-xl border border-purple-300 min-h-12 px-3 py-3 text-purple-700 bg-white active:bg-purple-100 active:scale-95 transition-transform disabled:opacity-50 disabled:active:scale-100"
               onClick={() => (activityId === "duel" ? setPendingActivity("duel") : onSelect(activityId, undefined, focus && staminaTokens > 0))}
             >
               {label}
-              <span className="block text-xs text-purple-400">{ACTIVITY_HINT[activityId]}</span>
+              <span className="block text-xs text-purple-400">
+                {noTarget ? "지목할 수 있는 친구가 없어요" : ACTIVITY_HINT[activityId]}
+              </span>
             </button>
           );
         })}
@@ -291,11 +340,13 @@ export function GameBoard({
   myId,
   onSubmitClassChoice,
   onSelectActivity,
+  onChooseLabCard,
 }: {
   game: GameState;
   myId: string;
   onSubmitClassChoice: (keepCardIds: string[]) => void;
   onSelectActivity: (activityId: ActivityId, targetPlayerId?: string, useStamina?: boolean) => void;
+  onChooseLabCard: (cardId: string) => void;
 }) {
   const latestExam = game.examResults[game.examResults.length - 1];
 
@@ -314,7 +365,7 @@ export function GameBoard({
       </div>
 
       {game.phase === "class" && <ClassPhasePanel game={game} myId={myId} onSubmit={onSubmitClassChoice} />}
-      {game.phase === "activity" && <ActivityPhasePanel game={game} myId={myId} onSelect={onSelectActivity} />}
+      {game.phase === "activity" && <ActivityPhasePanel game={game} myId={myId} onSelect={onSelectActivity} onChooseLabCard={onChooseLabCard} />}
       {game.phase === "ended" && <EndedPanel game={game} />}
 
       {latestExam && (

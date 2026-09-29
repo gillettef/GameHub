@@ -16,23 +16,39 @@ export interface ClassCard {
   statBoost: { stat: StatKey; amount: number };
 }
 
-// 카드 효과 묶음 (탐험/장비 공용). 영구 능력치, 시험까지 유지되는 임시 능력치, 학점, 마법 주문서, 다음 달 체력토큰
+// 카드 효과 묶음 (탐험/연구 카드 공용). 영구 능력치, 시험까지 유지되는 임시 능력치, 학점,
+// 다음 달 마법 주문서/체력토큰(그 달의 토큰은 4주차에 소멸하므로 다음 달 준비 때 반영), 탐험 카드 엿보기
 export interface CardEffect {
   stats?: Partial<Record<StatKey, number>>;
   tempStats?: Partial<Record<StatKey, number>>;
   credit?: number;
-  spellbookTokens?: number;
+  nextSpellbook?: number;
   nextStamina?: number;
+  peekExploration?: boolean;
 }
 
-export interface EquipmentCard {
+// 연구 카드 (연구실 실험 = 심화학습). study: 능력치 영구 증가 / exam: 시험까지 유지되는 임시 능력치·학점 /
+// insight: 탐험 카드 덱 맨 위 엿보기 / supply: 다음 달 토큰
+export type LabCardKind = "study" | "exam" | "insight" | "supply";
+
+export interface LabCard {
   id: string;
   name: string;
   description: string;
-  // 다음 시험까지 유지되는 임시 능력치 증가 (시험 후 카드는 버림 더미로)
-  tempBoosts: Partial<Record<StatKey, number>>;
-  // 장비를 얻는 즉시 받는 학점 (소량 학점 경로)
-  credit?: number;
+  kind: LabCardKind;
+  effect: CardEffect;
+  // 효과를 한 줄로 풀어 쓴 문구 (클라이언트 표시용)
+  summary: string;
+}
+
+// 엿본 탐험 카드 (엿본 사람에게만 전송)
+export interface PeekedExploration {
+  id: string;
+  name: string;
+  description: string;
+  checkText?: string;
+  successText: string;
+  failureText: string;
 }
 
 export type CreatureElement = "sky" | "land" | "ocean";
@@ -93,10 +109,13 @@ export interface PlayerGameState {
   spellbookTokens: number;
   // 마법생물 효과로 다음 달 준비(1주차) 때 체력토큰에 더해지는(또는 빼지는) 값
   pendingStaminaTokens: number;
+  pendingSpellbookTokens: number;
   tournamentTrack: number;
   classCards: ClassCard[];
   creatures: CreatureCard[];
-  equipment: EquipmentCard[];
+  // 다음 시험까지 유지되는 연구 카드 (시험 카드)
+  equipment: LabCard[];
+  peekedExploration: PeekedExploration | null;
   grimoires: GrimoireCard[];
   offeredClassCards: ClassCard[];
   hasActedThisPhase: boolean;
@@ -121,9 +140,13 @@ export interface GameState {
   activitySlots: Record<ActivityId, string | null>;
   activityOrder: string[];
   activityTurnPointer: number;
+  // 이번 달 주문 대결에서 강제 지목당한 플레이어
+  duelTargetId: string | null;
+  // 연구실 실험 중 카드 선택 대기 (후보 카드는 고르는 본인에게만 전송)
+  pendingLab: { playerId: string; cards: LabCard[] } | null;
   examResults: ExamResult[];
   // 수업카드/마법생물 카드 덱·버림 더미 (서버 전용, 클라이언트에는 전송하지 않음)
-  equipmentPile: Pile<EquipmentCard>;
+  labPile: Pile<LabCard>;
   explorationPile: Pile<ExplorationCard>;
   grimoirePile: Pile<GrimoireCard>;
   classDeck: ClassCard[];
@@ -135,8 +158,8 @@ export interface GameState {
 }
 
 export function effectiveStat(player: PlayerGameState, stat: StatKey): number {
-  return player[stat] + (player.tempBoosts[stat] ?? 0);
+  return Math.max(0, player[stat] + (player.tempBoosts[stat] ?? 0));
 }
 
 // 클라이언트에 전송되는 게임 상태 (서버 전용 덱 정보 제외)
-export type PublicGameState = Omit<GameState, "equipmentPile" | "explorationPile" | "grimoirePile" | "classDeck" | "classDiscard" | "creatureDeck" | "creatureDiscard">;
+export type PublicGameState = Omit<GameState, "labPile" | "explorationPile" | "grimoirePile" | "classDeck" | "classDiscard" | "creatureDeck" | "creatureDiscard">;

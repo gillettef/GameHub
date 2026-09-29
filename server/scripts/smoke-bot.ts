@@ -47,17 +47,21 @@ const send = (h: Human, msg: object) => h.socket.send(JSON.stringify(msg));
 function act(h: Human) {
   const game = h.game;
   if (!game || !h.playerId) return;
-  const key = `${game.round}:${game.phase}:${game.activityTurnPointer}`;
+  const key = `${game.round}:${game.phase}:${game.activityTurnPointer}:${game.pendingLab ? "lab" : ""}`;
   if (h.lastAction === key) return;
   const me = game.players[h.playerId];
   if (game.phase === "class" && !me.hasActedThisPhase) {
     h.lastAction = key;
     send(h, { type: "submit_class_choice", keepCardIds: me.offeredClassCards.slice(0, me.staminaTokens).map((c) => c.id) });
-  } else if (game.phase === "activity" && game.activityOrder[game.activityTurnPointer] === h.playerId) {
+  } else if (game.phase === "activity" && game.pendingLab?.playerId === h.playerId) {
     h.lastAction = key;
-    const free = ACTIVITIES.filter((a) => game.activitySlots[a] === null);
+    send(h, { type: "choose_lab_card", cardId: game.pendingLab.cards[0].id });
+  } else if (game.phase === "activity" && !game.pendingLab && game.activityOrder[game.activityTurnPointer] === h.playerId) {
+    h.lastAction = key;
+    const targets = game.turnOrder.filter((id) => id !== h.playerId && !game.players[id].hasActedThisPhase);
+    const free = ACTIVITIES.filter((a) => game.activitySlots[a] === null && (a !== "duel" || targets.length > 0));
     const activityId = free[Math.floor(Math.random() * free.length)];
-    const targetPlayerId = activityId === "duel" ? game.turnOrder.find((id) => id !== h.playerId) : undefined;
+    const targetPlayerId = activityId === "duel" ? targets[0] : undefined;
     send(h, { type: "select_activity", activityId, targetPlayerId });
   }
 }

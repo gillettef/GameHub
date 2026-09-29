@@ -6,8 +6,8 @@ import express from "express";
 import { randomUUID } from "node:crypto";
 import { WebSocketServer, type WebSocket } from "ws";
 import { createRoom, getRoom, joinRoom, leaveRoom, leaveRoomIfNoHumans, broadcast, type Player, type Room } from "./rooms.js";
-import { BOT_NAMES, chooseActivityAction, chooseClassCards, pickBotPersonality } from "./game/bot.js";
-import { createGame, selectActivity, submitClassChoice } from "./game/engine.js";
+import { BOT_NAMES, chooseActivityAction, chooseClassCards, chooseLabCard, pickBotPersonality } from "./game/bot.js";
+import { chooseLabCard as submitLabChoice, createGame, selectActivity, submitClassChoice } from "./game/engine.js";
 import type { ClientMessage, ServerMessage } from "./messages.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -48,7 +48,8 @@ function scheduleBots(room: Room): void {
   if (game.phase === "class") {
     actorId = game.turnOrder.find((id) => room.players.get(id)?.bot && !game.players[id].hasActedThisPhase);
   } else if (game.phase === "activity") {
-    const currentId = game.activityOrder[game.activityTurnPointer];
+    // 연구 카드를 고르는 중이면 그 플레이어가 행동할 차례
+    const currentId = game.pendingLab?.playerId ?? game.activityOrder[game.activityTurnPointer];
     if (room.players.get(currentId)?.bot) actorId = currentId;
   }
   if (!actorId) return;
@@ -62,6 +63,8 @@ function scheduleBots(room: Room): void {
     try {
       if (room.game.phase === "class") {
         submitClassChoice(room.game, botId, chooseClassCards(room.game, botId, bot.bot));
+      } else if (room.game.phase === "activity" && room.game.pendingLab) {
+        submitLabChoice(room.game, botId, chooseLabCard(room.game, bot.bot));
       } else if (room.game.phase === "activity") {
         const { activityId, targetPlayerId, useStamina } = chooseActivityAction(room.game, botId, bot.bot);
         selectActivity(room.game, botId, activityId, targetPlayerId, useStamina);
@@ -82,13 +85,20 @@ function broadcastGameState(room: Room): void {
   for (const player of room.players.values()) {
     if (player.bot) continue;
     const players = Object.fromEntries(
-      Object.entries(game.players).map(([id, p]) => [id, id === player.id ? p : { ...p, offeredClassCards: [] }]),
+      Object.entries(game.players).map(([id, p]) => [
+        id,
+        id === player.id ? p : { ...p, offeredClassCards: [], peekedExploration: null },
+      ]),
     );
+    // 펼쳐진 연구 카드 후보는 고르는 본인에게만 보여 준다
+    const pendingLab = game.pendingLab
+      ? { playerId: game.pendingLab.playerId, cards: game.pendingLab.playerId === player.id ? game.pendingLab.cards : [] }
+      : null;
     // 수업카드/마법생물 덱 구성은 비공개이므로 전송하지 않는다
-    const { equipmentPile: _ep, explorationPile: _xp, grimoirePile: _gp, classDeck: _cd, classDiscard: _cdd, creatureDeck: _deck, creatureDiscard: _discard, ...publicGame } = game;
+    const { labPile: _lp, explorationPile: _xp, grimoirePile: _gp, classDeck: _cd, classDiscard: _cdd, creatureDeck: _deck, creatureDiscard: _discard, ...publicGame } = game;
     send(player.socket, {
       type: "game_state",
-      game: { ...publicGame, players },
+      game: { ...publicGame, players, pendingLab },
     });
   }
 }
@@ -207,6 +217,18 @@ wss.on("connection", (socket) => {
       if (!room.game) return;
       try {
         submitClassChoice(room.game, playerId, message.keepCardIds);
+        broadcastGameState(room);
+        scheduleBots(room);
+      } catch (err) {
+        send(socket, { type: "error", message: err instanceof Error ? err.message : "알 수 없는 오류" });
+      }
+      return;
+    }
+
+    if (message.type === "choose_lab_card") {
+      if (!room.game) return;
+      try {
+        submitLabChoice(room.game, playerId, message.cardId);
         broadcastGameState(room);
         scheduleBots(room);
       } catch (err) {

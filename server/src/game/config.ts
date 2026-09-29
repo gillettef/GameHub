@@ -15,8 +15,15 @@ export const BALANCE = {
   tournamentRewards: [2, 1],
   // 시험 순위별 학점 (1위, 2위, 그 이하는 마지막 값)
   examCredits: [3, 2, 1],
-  // 연구실 실험에서 지력만큼 펼치는 실험 재료(장비 카드)의 최대 장수
-  labMaxCandidates: 4,
+  // 연구실 실험에서 지력만큼 펼치는 연구 카드의 최대 장수
+  labMaxCandidates: 3,
+  // 마법생물 유형 모으기 학점 (세븐원더스 과학 카드 방식): 점수 = Σ(속성별 장수²) + 세트보너스 × 가장 적은 속성 장수,
+  // 학점 = floor(점수 / 나누는 수). 새 카드를 얻을 때 늘어난 학점을 즉시 받는다
+  creatureSetBonus: 5,
+  creatureScoreDivisor: 5,
+  // 탐험 역전 보너스: 선두와의 성장 점수(능력치 합 + 학점×3) 격차가 이 값 이상이면 판정에 보너스를 더한다
+  catchUpGap: 4,
+  catchUpBonus: 2,
   // 주문 대결에서 패자가 잃는 마법 주문서 수
   duelLoserTokenLoss: 1,
 };

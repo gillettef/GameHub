@@ -28,7 +28,7 @@ import { useGameSocket } from "./useGameSocket";
 import { GameBoard } from "./GameBoard";
 
 function App() {
-  const { state, game, lastError, createRoom, joinRoom, startGame, addBot, removeBot, submitClassChoice, selectActivity } =
+  const { state, game, lastError, createRoom, joinRoom, startGame, addBot, removeBot, submitClassChoice, selectActivity, chooseLabCard } =
     useGameSocket();
   const [playerName, setPlayerName] = useState("");
   const [joinCode, setJoinCode] = useState("");
@@ -58,6 +58,7 @@ ${window.location.href}`;
         myId={state.playerId}
         onSubmitClassChoice={submitClassChoice}
         onSelectActivity={selectActivity}
+        onChooseLabCard={chooseLabCard}
       />
     );
   }

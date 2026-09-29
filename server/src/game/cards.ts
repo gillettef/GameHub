@@ -2,7 +2,7 @@
 // (수량/수치는 모두 초안이며 플레이테스트 후 조정 — notes/기획_정리.md 12~16절 참고)
 import { randomUUID } from "node:crypto";
 import { CREATURE_CARDS } from "./creatures.js";
-import { equipmentTemplates } from "./equipmentCards.js";
+import { labTemplates } from "./labCards.js";
 import { explorationTemplates } from "./explorationCards.js";
 import { grimoireTemplates } from "./grimoireCards.js";
 import type { CreatureCard, Pile } from "./types.js";
@@ -26,11 +26,20 @@ function createPile<T>(templates: Omit<T, "id">[]): Pile<T> {
   return { draw: shuffled(templates.map((t) => ({ ...t, id: randomUUID() }) as T)), discard: [] };
 }
 
-export const createEquipmentPile = () => createPile(equipmentTemplates());
+export const createLabPile = () => createPile(labTemplates());
 export const createExplorationPile = () => createPile(explorationTemplates());
 export const createGrimoirePile = () => createPile(grimoireTemplates());
 
 // 더미에서 1장 뽑는다. 뽑을 더미가 비면 버림 더미를 섞어 다시 쓰고, 둘 다 비면 undefined
+// 더미 맨 위 카드를 뽑지 않고 확인한다 (뽑을 더미가 비면 버림 더미를 섞어 준비)
+export function peekPile<T>(pile: Pile<T>): T | undefined {
+  if (pile.draw.length === 0) {
+    pile.draw = shuffled(pile.discard);
+    pile.discard = [];
+  }
+  return pile.draw[pile.draw.length - 1];
+}
+
 export function drawFromPile<T>(pile: Pile<T>): T | undefined {
   if (pile.draw.length === 0) {
     pile.draw = shuffled(pile.discard);

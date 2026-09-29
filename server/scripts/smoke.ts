@@ -65,16 +65,20 @@ async function main() {
     if (!game || !c.playerId) return;
     const me = game.players[c.playerId];
     // 같은 단계에서 중복 전송하지 않도록 (라운드/단계/차례)별로 한 번만 행동한다
-    const key = `${game.round}:${game.phase}:${game.activityTurnPointer}`;
+    const key = `${game.round}:${game.phase}:${game.activityTurnPointer}:${game.pendingLab ? "lab" : ""}`;
     if (c.lastAction === key) return;
     if (game.phase === "class" && !me.hasActedThisPhase) {
       const keep = me.offeredClassCards.slice(0, me.staminaTokens).map((card) => card.id);
       c.lastAction = key;
       send(c, { type: "submit_class_choice", keepCardIds: keep });
-    } else if (game.phase === "activity" && game.activityOrder[game.activityTurnPointer] === c.playerId) {
-      const free = ACTIVITIES.filter((a) => game.activitySlots[a] === null);
+    } else if (game.phase === "activity" && game.pendingLab?.playerId === c.playerId) {
+      c.lastAction = key;
+      send(c, { type: "choose_lab_card", cardId: game.pendingLab.cards[0].id });
+    } else if (game.phase === "activity" && !game.pendingLab && game.activityOrder[game.activityTurnPointer] === c.playerId) {
+      const targets = game.turnOrder.filter((id) => id !== c.playerId && !game.players[id].hasActedThisPhase);
+      const free = ACTIVITIES.filter((a) => game.activitySlots[a] === null && (a !== "duel" || targets.length > 0));
       const activityId = free[Math.floor(Math.random() * free.length)];
-      const targetPlayerId = activityId === "duel" ? game.turnOrder.find((id) => id !== c.playerId) : undefined;
+      const targetPlayerId = activityId === "duel" ? targets[0] : undefined;
       c.lastAction = key;
       send(c, { type: "select_activity", activityId, targetPlayerId });
     }
@@ -93,12 +97,13 @@ async function main() {
 
   // 비공개 정보가 클라이언트로 새지 않는지 확인
   const raw = JSON.stringify(game);
-  for (const key of ["classDeck", "creatureDeck", "equipmentPile", "explorationPile", "grimoirePile"]) {
+  for (const key of ["classDeck", "creatureDeck", "labPile", "explorationPile", "grimoirePile"]) {
     if (raw.includes(`"${key}"`)) throw new Error(`비공개 필드가 전송되었습니다: ${key}`);
   }
   for (const c of clients) {
     for (const [id, p] of Object.entries(c.game!.players)) {
       if (id !== c.playerId && p.offeredClassCards.length > 0) throw new Error("다른 플레이어의 제시 카드가 노출되었습니다");
+      if (id !== c.playerId && p.peekedExploration) throw new Error("다른 플레이어가 엿본 탐험 카드가 노출되었습니다");
     }
   }
 

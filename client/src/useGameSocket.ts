@@ -145,5 +145,13 @@ export function useGameSocket() {
     [ensureSocket, send],
   );
 
-  return { state, game, lastError, createRoom, joinRoom, startGame, addBot, removeBot, submitClassChoice, selectActivity };
+  const chooseLabCard = useCallback(
+    (cardId: string) => {
+      const socket = ensureSocket();
+      send(socket, { type: "choose_lab_card", cardId });
+    },
+    [ensureSocket, send],
+  );
+
+  return { state, game, lastError, createRoom, joinRoom, startGame, addBot, removeBot, submitClassChoice, selectActivity, chooseLabCard };
 }

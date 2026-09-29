@@ -13,7 +13,8 @@ export type ClientMessage =
   | { type: "add_bot" }
   | { type: "remove_bot"; botId: string }
   | { type: "submit_class_choice"; keepCardIds: string[] }
-  | { type: "select_activity"; activityId: ActivityId; targetPlayerId?: string; useStamina?: boolean };
+  | { type: "select_activity"; activityId: ActivityId; targetPlayerId?: string; useStamina?: boolean }
+  | { type: "choose_lab_card"; cardId: string };
 
 export type ServerMessage =
   | { type: "room_created"; roomCode: string; playerId: string; players: RoomPlayerInfo[] }
