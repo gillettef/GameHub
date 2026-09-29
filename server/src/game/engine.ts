@@ -2,14 +2,16 @@
 // 문서에 명시되지 않아 임의로 정한 부분은 "ASSUMPTION" 주석으로 표시했습니다.
 import {
   drawClassCard,
-  drawCreatureCard,
+  createCreatureDeck,
   drawEquipmentCard,
   drawExplorationCard,
   drawGrimoireCard,
 } from "./cards.js";
+import { describeAbility } from "./creatures.js";
 import {
   effectiveStat,
   type ActivityId,
+  type CreatureAbility,
   type ExamResult,
   type GameState,
   type PlayerGameState,
@@ -40,6 +42,23 @@ function rotateFrom<T>(items: T[], startIndex: number): T[] {
   return [...items.slice(startIndex), ...items.slice(0, startIndex)];
 }
 
+// 플레이어가 가진 마법생물 중 해당 트리거의 능력만 모은다
+function abilitiesOf(player: PlayerGameState, trigger: CreatureAbility["trigger"]): CreatureAbility[] {
+  return player.creatures.map((c) => c.ability).filter((a) => a.trigger === trigger);
+}
+
+function sumEffect(abilities: CreatureAbility[], effect: CreatureAbility["effect"]): number {
+  return abilities.filter((a) => a.effect === effect).reduce((sum, a) => sum + a.amount, 0);
+}
+
+function drawCreature(state: GameState) {
+  if (state.creatureDeck.length === 0) {
+    state.creatureDeck = shuffle(state.creatureDiscard);
+    state.creatureDiscard = [];
+  }
+  return state.creatureDeck.pop();
+}
+
 function log(state: GameState, message: string): void {
   state.log.push({ round: state.round, message });
 }
@@ -56,6 +75,7 @@ function createPlayer(id: string, name: string): PlayerGameState {
     tempBoosts: {},
     staminaTokens: 0,
     spellbookTokens: 0,
+    pendingStaminaTokens: 0,
     tournamentTrack: 0,
     classCards: [],
     creatures: [],
@@ -81,6 +101,8 @@ export function createGame(players: { id: string; name: string }[]): GameState {
     activityOrder: [],
     activityTurnPointer: 0,
     examResults: [],
+    creatureDeck: createCreatureDeck(),
+    creatureDiscard: [],
     log: [],
   };
   beginRound(state);
@@ -96,8 +118,13 @@ function beginRound(state: GameState): void {
   for (const playerId of state.turnOrder) {
     const player = state.players[playerId];
     // 1주차(준비): 체력 수치만큼 체력토큰, 주문력 수치만큼 마법 주문서 획득
-    player.staminaTokens = effectiveStat(player, "stamina");
-    player.spellbookTokens = effectiveStat(player, "spellPower");
+    const prepAbilities = abilitiesOf(player, "prep");
+    player.staminaTokens = Math.max(
+      0,
+      effectiveStat(player, "stamina") + player.pendingStaminaTokens + sumEffect(prepAbilities, "stamina"),
+    );
+    player.pendingStaminaTokens = 0;
+    player.spellbookTokens = effectiveStat(player, "spellPower") + sumEffect(prepAbilities, "spellbook");
   }
   beginClassPhase(state);
 }
@@ -172,13 +199,23 @@ function resolveActivity(
       break;
     }
     case "creature": {
-      const card = drawCreatureCard();
+      const card = drawCreature(state);
+      if (!card) {
+        log(state, `${player.name}: 마법생물 덱이 비어 있습니다`);
+        break;
+      }
       if (player.spellbookTokens >= card.requiredSpellPower) {
         player.spellbookTokens -= card.requiredSpellPower;
         player.creatures.push(card);
-        log(state, `${player.name}: 마법생물 "${card.name}" 획득`);
+        const gain = card.ability.trigger === "acquire" && card.ability.effect === "spellPower" ? card.ability.amount : 0;
+        player.spellPower += gain;
+        log(
+          state,
+          `${player.name}: 마법생물 "${card.name}" 획득 (${describeAbility(card.ability)})`,
+        );
       } else {
-        log(state, `${player.name}: 마법 주문서가 부족해 마법생물을 놓쳤습니다`);
+        state.creatureDiscard.push(card);
+        log(state, `${player.name}: "${card.name}"(요구 주문서 ${card.requiredSpellPower}개)를 데려오지 못했습니다`);
       }
       break;
     }
@@ -187,8 +224,17 @@ function resolveActivity(
         throw new Error("주문 대결 상대를 지정해야 합니다.");
       }
       const target = state.players[targetPlayerId];
-      const challengerRoll = rollD6() + effectiveStat(player, "spellPower");
-      const defenderRoll = rollD6() + effectiveStat(target, "spellPower");
+      // 마법생물 능력: 참여 시(duel)는 양쪽, 도전받았을 때(defend)는 도전받은 쪽만 적용
+      const challengerAbilities = abilitiesOf(player, "duel");
+      const defenderAbilities = [...abilitiesOf(target, "duel"), ...abilitiesOf(target, "defend")];
+      const challengerRoll = Math.max(
+        0,
+        rollD6() + effectiveStat(player, "spellPower") + sumEffect(challengerAbilities, "rollBonus") - sumEffect(defenderAbilities, "enemyRollPenalty"),
+      );
+      const defenderRoll = Math.max(
+        0,
+        rollD6() + effectiveStat(target, "spellPower") + sumEffect(defenderAbilities, "rollBonus") - sumEffect(challengerAbilities, "enemyRollPenalty"),
+      );
       // 동점이면 매력이 높은 쪽, 매력도 같으면 도전받은 쪽(defender)이 승리 (주사위 재굴림 대신 기존 규칙 유지)
       const challengerWins =
         challengerRoll !== defenderRoll
@@ -196,10 +242,18 @@ function resolveActivity(
           : effectiveStat(player, "charm") > effectiveStat(target, "charm");
       const winner = challengerWins ? player : target;
       const loser = winner === player ? target : player;
+      const loserAbilities = [...(loser === player ? challengerAbilities : defenderAbilities), ...abilitiesOf(loser, "lose")];
+      // 체력토큰 효과는 다음 달 준비 때 반영
+      player.pendingStaminaTokens += sumEffect(challengerAbilities, "stamina");
+      target.pendingStaminaTokens += sumEffect(defenderAbilities, "stamina");
+      target.pendingStaminaTokens -= sumEffect(challengerAbilities, "enemyStamina");
+      player.pendingStaminaTokens -= sumEffect(defenderAbilities, "enemyStamina");
+      loser.pendingStaminaTokens += sumEffect(abilitiesOf(loser, "lose"), "stamina");
+      winner.pendingStaminaTokens -= sumEffect(abilitiesOf(loser, "lose"), "enemyStamina");
       const grimoire = drawGrimoireCard();
       winner.grimoires.push(grimoire);
       winner[grimoire.statBoost.stat] += grimoire.statBoost.amount;
-      if (loser.spellbookTokens > 0) loser.spellbookTokens -= 1;
+      if (loser.spellbookTokens > 0 && sumEffect(loserAbilities, "immune") === 0) loser.spellbookTokens -= 1;
       log(
         state,
         `${player.name}(${challengerRoll}) vs ${target.name}(${defenderRoll}): ${winner.name} 승리, 마도서 "${grimoire.name}" 획득`,

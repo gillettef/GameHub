@@ -1,4 +1,4 @@
-import type { ActivityId, GameState } from "./game/types.js";
+import type { ActivityId, PublicGameState } from "./game/types.js";
 
 export type ClientMessage =
   | { type: "create_room"; playerName: string }
@@ -12,5 +12,5 @@ export type ServerMessage =
   | { type: "room_joined"; roomCode: string; playerId: string; players: { id: string; name: string }[] }
   | { type: "player_joined"; playerId: string; playerName: string }
   | { type: "player_left"; playerId: string }
-  | { type: "game_state"; game: GameState }
+  | { type: "game_state"; game: PublicGameState }
   | { type: "error"; message: string };
