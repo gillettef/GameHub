@@ -88,12 +88,13 @@ export const SpecRows = memo(function SpecRows({ spec }: { spec: CardSpec }) {
   const race = raceLabel(spec);
   if (race && spec.race) rows.push([<RaceArt raceId={spec.race} />, `종족 ${race}`]);
   rows.push([ICONS.cost, `비용 ${spec.cost}`]);
-  rows.push([ICONS.sight, `시야 ${spec.sight}`]);
-  rows.push([ICONS.score, `점수 ${spec.score}`]);
+  // 즉발 마법은 마커로 남지 않아 시야·점수가 의미 없다 — 지속 마법만 시야를 보여 준다
+  if (spec.kind !== 'magic' || spec.sight > 0) rows.push([ICONS.sight, `시야 ${spec.sight}`]);
+  if (spec.kind !== 'magic') rows.push([ICONS.score, `점수 ${spec.score}`]);
   if (spec.hp > 0) rows.push([ICONS.hp, `체력 ${spec.hp}`]);
   if (spec.attack > 0) rows.push([ICONS.attack, `공격 ${spec.attack}`]);
   if (spec.range > 0) rows.push([ICONS.range, `사거리 ${spec.range}`]);
-  if (spec.production > 0 && spec.kind !== 'core') rows.push([ICONS.production, `생산 ${spec.production}`]);
+  if (spec.production > 0) rows.push([ICONS.production, spec.kind === 'core' ? `기본 수입 ${spec.production}` : `생산 ${spec.production}`]);
   const effect = effectLabel(spec);
   return (
     <dl className={styles.rows}>
@@ -175,8 +176,8 @@ export const CardFace = memo(function CardFace({ spec, selected, disabled, reaso
         </span>
       )}
       <span className={styles.stats}>
-        <Stat icon={ICONS.sight} value={String(spec.sight)} title="시야" />
-        <Stat icon={ICONS.score} value={String(spec.score)} title="점수" />
+        {(spec.kind !== 'magic' || spec.sight > 0) && <Stat icon={ICONS.sight} value={String(spec.sight)} title="시야" />}
+        {spec.kind !== 'magic' && <Stat icon={ICONS.score} value={String(spec.score)} title="점수" />}
       </span>
       <span className={styles.substats}>
         {spec.hp > 0 && <Stat icon={ICONS.hp} value={String(spec.hp)} title="체력" />}

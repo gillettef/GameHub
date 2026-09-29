@@ -2,9 +2,10 @@
  * 화면용 파생값. 규칙 계산은 전부 shared/src/engine 을 호출하고(중복 구현 금지),
  * 여기서는 셀 단위로 memo 하기 쉬운 평평한 구조로 바꾸기만 한다.
  */
-import type { CardId, GameState, MarkerKind, PlayerId, PlayerState, Position, RaceId, Terrain } from '@astraltab/shared';
+import type { CardId, CardSpec, GameState, MarkerKind, PlayerId, PlayerState, Position, RaceId, Terrain } from '@astraltab/shared';
 
 import {
+  ENERGY_CAP,
   computeIncome,
   computeScores,
   computeSightArea,
@@ -242,15 +243,32 @@ export function keywordExplain(k: string): string {
     case 'infiltrate':
       return '침투: 적 마커 거리 1 이내에도 배치 가능';
     case 'repair':
-      return '정비: 내 턴을 끝낼 때 반경 1 아군 체력 +1';
+      return '정비: 내 턴을 끝낼 때 반경 1 아군(자신 포함) 체력 +1. 정비 마커가 여럿이면 중첩';
     case 'overclock':
       return '과부하: 내 턴을 끝낼 때의 수입 계산 시 반경 1 이내 자신 건물 수만큼 생산 추가';
     case 'veil':
-      return '은신: 다른 적 표적이 남아 있으면 공격받지 않는다';
+      return '은신: 사거리 안에 은신 아닌 적 표적이 남아 있으면 자동 공격을 받지 않는다. 마법 피해는 그대로 받는다';
     case 'barrage':
-      return '다중 포격: 주 표적 외 다음 순위 적에도 동시에 피해';
+      return '다중 포격: 주 표적 외 다음 순위 적 하나에도 같은 피해를 동시에 준다';
     default:
       return keywordLabel(k);
+  }
+}
+
+/** 마법 카드 효과의 정확한 뜻. 카드 설명에 없는 "어디에 놓고 어디가 영향받는지"를 채운다 */
+export function effectExplain(spec: CardSpec): string | null {
+  const e = spec.effect;
+  if (!e) return null;
+  const base = '내 시야 안의 빈 칸에 놓습니다(마커 위에는 못 놓음).';
+  switch (e.kind) {
+    case 'damage':
+      return `${base} 그 칸 중심 반경 ${e.radius} 안의 적 마커 전부에 피해 ${e.amount}, 놓은 뒤 사라집니다. 은신 마커도 맞습니다.`;
+    case 'heal':
+      return `${base} 그 칸 중심 반경 ${e.radius} 안의 아군 마커 전부 체력 +${e.amount}(최대 체력까지), 놓은 뒤 사라집니다.`;
+    case 'energy':
+      return `${base} 에너지 +${e.amount}(상한 ${ENERGY_CAP}) 후 사라집니다.`;
+    case 'persistent':
+      return `${base} 마커로 남아 시야 ${spec.sight}을 제공합니다. 놓은 턴을 포함해 내 턴 ${e.durationTurns}번째를 끝낼 때 사라지며, 파괴될 수 있습니다.`;
   }
 }
 

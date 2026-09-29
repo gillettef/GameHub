@@ -23,7 +23,7 @@ const KIND_LABEL: Record<LogKind, string> = {
   result: '결과',
 };
 
-/** 눈에 띄어야 하는 사건. 경고색은 미정이라 굵기·테두리로만 강조한다 */
+/** 눈에 띄어야 하는 사건. 굵기·테두리로 강조한다 */
 const EMPHASIS: ReadonlySet<LogKind> = new Set<LogKind>(['combat', 'destroy', 'eliminate', 'result', 'surrender']);
 
 /**

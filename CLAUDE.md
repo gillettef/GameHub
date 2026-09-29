@@ -9,7 +9,7 @@
 
 | 문서 | 내용 |
 |---|---|
-| `notes/Rules.md` | **규칙 정본**. 용어, 턴 진행, 배치·시야·전투·점수, 종족 3개(카드 57종 + 공용 코어), 맵 6개, 상수, 결정성 규칙 |
+| `notes/Rules.md` | **규칙 정본**. 용어, 턴 진행, 배치·시야·전투·점수, 종족 5개(카드 95종 + 공용 코어), 맵 6개, 상수, 결정성 규칙 |
 | `notes/Rule.pdf` | Rules.md를 플레이어에게 쉬운 말로 풀어 쓴 규칙 설명서(PDF, 표지·차례·카드 표·맵 그림 포함). `scripts/build-rulebook.py`로 생성. 정본이 아니라 파생 문서이므로 Rules.md를 고치면 이 문서도 다시 만든다 |
 | `notes/PRD_AstralTab_*.md` | 제품 목표, 타겟, 시나리오, KPI, 리스크 |
 | `notes/기능명세서_AstralTab_*.md` | F001~F031 기능 ID, 설명, 수락 기준, 중요도 |
@@ -35,7 +35,7 @@
 
 ## 코드 현황 (2026-09-22)
 
-- `shared/src`(types·data·engine), `ai/astral_ai`(models·rules·search), `shared/fixtures` 는 **v2 규칙(Rules.md)** 으로 재작성됐다. 2026-09-22 육각 전환(odd-r 오프셋, `hexDistance`/`hex_distance`, 코어 시야·수입 1)에 이어 2026-09-23 **종족 3개**(인류 연합·크릴 군락·오토마타 집정체, `Keyword`에 `overclock` 추가, `computeIncome`/`compute_income` 에 과부하 계산)까지 반영. Vitest 84개(shared, 맵 6개 좌석 공정성 테스트 포함) + 10개(client) + 9개(server), pytest 14개(픽스처 시나리오 재생으로 TS·Python 규칙 일치 검증)가 통과한다.
+- `shared/src`(types·data·engine), `ai/astral_ai`(models·rules·search), `shared/fixtures` 는 **v2 규칙(Rules.md)** 으로 재작성됐다. 2026-09-22 육각 전환(odd-r 오프셋, `hexDistance`/`hex_distance`, 코어 시야·수입 1)에 이어 2026-09-23 종족 3개(인류 연합·크릴 군락·오토마타 집정체, `Keyword`에 `overclock` 추가, `computeIncome`/`compute_income` 에 과부하 계산)까지 반영. Vitest 119개(shared, 맵 6개 좌석 공정성 테스트 포함) + 18개(client) + 13개(server), pytest 26개(픽스처 시나리오 재생으로 TS·Python 규칙 일치 검증)가 통과한다.
 - `ai/astral_ai/search.py` 는 1수 탐욕 자리표시자다. Minimax / max-n 은 Phase 3.
 - `client/` 는 **Phase 1 탭 UI 핫시트**가 구현됐다 (F008~F017). 설정 화면(참가 인원 → 맵(인원수로 필터) → 닉네임 → 덱 빌딩) → 게임 대시보드(보드·상태·진행 탭) → 결과 오버레이. 규칙 계산은 `client/src/game/hotseat.ts` 가 `shared/src/engine` 의 `applyAction` 을 직접 호출하는 로컬 어댑터로 처리하며, Phase 2 에서 Socket.io 어댑터(`client/src/socket`)로 교체한다. 개발용 바로가기 `/?quick&map=<id>&seed=<n>&tab=<board|status|progress>&select=<손패 index>`. Vitest 10개(client).
 - 보드는 `Board.tsx`/`Board.module.css` 가 육각(odd-r, pointy-top)으로 렌더링한다. 컨테이너 가로·세로에 맞춰 육각 크기를 계산해 무스크롤(F015)·모바일을 함께 만족한다. 마커는 좌석 색으로 채우고 모양(코어=육각·건물=둥근 사각·유닛=원·마법=마름모)으로 종류를 구분한다(좌석 1·2·3 색 확정, 흰색 패턴 구분은 폐기). 경고색은 2026-09-28에 Danger Red `#e5484d`로 확정했다(연결 끊김·기권 확정처럼 돌이킬 수 없는 경고 전용, 아래 디자인 표 참고).
@@ -58,7 +58,7 @@
 - **AWS 인프라**: 리전 서울(`ap-northeast-2`), EC2 t3.small (Amazon Linux 2023), Elastic IP(고정 공인 IP, `.dev/aws-public-ip.txt` 에 저장 — git에 커밋하지 않음). 도메인은 아직 없어 `http://<Elastic IP>:3201`(prod) / `:3301`(test) 로 접속한다. 보안 그룹은 22(SSH, 관리자 IP만)·3201·3301 만 인바운드로 연다. SSH 키(`.dev/astraltab-key.pem`)와 인스턴스 id(`.dev/aws-instance-id.txt`)도 `.dev/`(gitignore)에 있다.
 - GitHub 저장소가 비공개라 EC2에서 직접 `git clone`/`pull` 하지 않는다. 로컬에서 `git archive`로 워킹트리를 패키징해 ssh로 전송하는 방식(`scripts/deploy-aws.ps1`)을 쓴다.
 - **코드를 바꾼 뒤 배포**: `powershell -File scripts/deploy-aws.ps1 -Env test` (또는 `prod`, 기본값은 `all`). 로컬 커밋 여부와 무관하게 현재 워킹트리를 전송하지만, 관례상 커밋 후 배포한다. 인스턴스를 새로 만드는 절차(최초 1회)는 `scripts/aws/provision.sh`(Node·Python·의존성 설치) → `scripts/aws/units.sh`(systemd 서비스 4개 등록) 참고.
-- **2026-09-28부터 `main`에 push되면 GitHub Actions(`.github/workflows/deploy-aws.yml`)가 test·prod 모두 자동 배포한다.** `/commit-push` 로 main에 올리는 순간 곧바로 운영에 반영된다는 뜻이므로, "운영은 사용자가 명시 요청할 때만"이라는 예전 방침은 **배포 자체(자동)** 가 아니라 **언제 main에 push할지(수동 판단)** 로 옮겨졌다 — 검증 전 변경은 별도 브랜치에 두고, 확인 후에만 main에 push한다. 이 워크플로는 SSH(22)를 관리자 IP로만 열어 둔 보안 그룹에 러너의 IP를 배포 직전에 임시로 추가했다가 끝나면 반드시 제거한다(그 권한만 있는 최소 권한 IAM 사용자 `astraltab-ci` 사용). GitHub 저장소 Secrets(`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`, `AWS_SECURITY_GROUP_ID`, `EC2_HOST`, `EC2_SSH_PRIVATE_KEY`)가 설정돼 있어야 동작한다. 수동 배포(`scripts/deploy-aws.ps1`)는 관리자 개인키(`astraltab-key.pem`)를 그대로 쓰고, CI는 별도 키(`astraltab-github-actions`, EC2 `authorized_keys`에 추가)를 쓴다.
+- **`main`에 push되면 GitHub Actions(`.github/workflows/deploy-aws.yml`)가 먼저 테스트·타입 검사·pytest(`verify` job)를 돌리고, 통과하면 test 서버에만 자동 배포한다(2026-09-29 변경).** 운영(prod)은 Actions 탭에서 `Deploy to AWS`를 수동 실행(배포 대상 prod/all)할 때만 배포된다 — test에서 확인한 뒤 사용자가 명시 요청할 때 올린다. 검증 전 변경은 별도 브랜치에 둔다. Secret `EC2_HOST_KEY`(known_hosts 한 줄)를 넣으면 배포 시 호스트 키를 고정한다. 이 워크플로는 SSH(22)를 관리자 IP로만 열어 둔 보안 그룹에 러너의 IP를 배포 직전에 임시로 추가했다가 끝나면 반드시 제거한다(그 권한만 있는 최소 권한 IAM 사용자 `astraltab-ci` 사용). GitHub 저장소 Secrets(`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`, `AWS_SECURITY_GROUP_ID`, `EC2_HOST`, `EC2_SSH_PRIVATE_KEY`)가 설정돼 있어야 동작한다. 수동 배포(`scripts/deploy-aws.ps1`)는 관리자 개인키(`astraltab-key.pem`)를 그대로 쓰고, CI는 별도 키(`astraltab-github-actions`, EC2 `authorized_keys`에 추가)를 쓴다.
 - 서버는 환경 변수 `APP_ENV`, `PORT`, `HOST`, `CLIENT_DIST`, `DATA_DIR`, `AI_BASE_URL` 로 설정한다 (`server/src/index.ts` 주석, EC2에서는 systemd unit 파일에 박혀 있다). JSON 스냅샷 디렉터리는 EC2의 `~/AstralTab/server/data/<env>`.
 - dev는 여전히 로컬 PC에서 `/dev`·`/dev-stop`으로 돌린다. 공용 함수는 `scripts/common.ps1`.
 
@@ -162,17 +162,17 @@ AstralTab/
 
 ## 게임 규칙 요약 (자세한 내용은 notes/Rules.md)
 
-- **플레이어** 2~4명, 좌석 순서대로 턴. **맵** 6개(2인 2 / 3인 2 / 4인 2), 11×11 / 13×13 / 15×15 육각 타일(odd-r 오프셋). 지형은 빈 우주·소행성(배치 불가)·광맥(건물 생산 +1).
-- **시작**: 코어가 맵 지정 좌표에 자동 배치(F018). 덱 = 기본 22 + 특수 3(덱 빌딩 F016), 시드 셔플, 손패 4, 에너지 5(F019).
+- **플레이어** 2~4명, 좌석 순서대로 턴. **맵** 6개(2인 2 / 3인 2 / 4인 2), 전부 10×10 육각 타일(odd-r 오프셋). 지형은 빈 우주·소행성(배치 불가)·광맥(건물 생산 +1)에 성운·파편지대·이온 폭풍·유물지대·중력 균열·포대 발판·교란지대(Rules.md 3절).
+- **시작**: 코어가 맵 지정 좌표에 자동 배치(F018). 덱 = 종족별 고정 25장(기본 22 + 특수 3, F016), 시드 셔플, 손패 4, 에너지 5(F019).
 - **턴을 끝낼 때(자동, 2026-09-23부터 "시작"이 아니라 "종료" 시점)**: 전투 → 정비 → 지속 마법 만료 → 수입(코어 1 + 건물 생산) → 드로우 1(손패 상한 5) → (선택) 손패 교체. (F020, F023)
 - **행동**: 손패 카드로 마커 배치(턴당 1회) / 패스·턴 종료(원하는 만큼 손패를 버리고 덱과 섞어 5장까지 다시 뽑을 수 있다) / 기권. 이번 턴에 하나도 안 놓고 턴을 넘기면 패스로 기록된다. (F013, F022)
 - **배치 조건**: 손패 보유, 에너지 ≥ 비용, 빈 칸, 소행성 아님, **내 시야 영역 안**(침투 카드는 적 인접도 가능). (F022)
-- **시야**: 마커별 육각 거리 반경(코어는 1). 시야 영역의 합집합이 배치 범위이자 영토의 근거. (F031)
-- **영토**: 정확히 한 플레이어의 시야 안인 빈 칸 + 마커 칸. 경합·소행성은 무소유. 1칸 1점.
+- **시야**: 마커별 육각 거리 반경(코어는 1). 시야 영역의 합집합이 배치 범위. 영토·점수는 시야와 별개로 마커 주변 고정 반경 `TERRITORY_RADIUS`(1)로 계산한다. (F031)
+- **영토**: 정확히 한 플레이어의 마커 반경 1 안인 빈 칸 + 마커 칸. 경합·소행성은 무소유. 1칸 1점.
 - **전투**: 턴 플레이어의 공격력 있는 마커가 사거리 안 적 하나를 자동 공격. 대상은 거리→체력→y→x 순. 동시 피해, 한꺼번에 제거. 마커는 이동하지 않는다. (F023)
 - **파괴**: 체력 0 이하 → 제거, 시야·생산·점수 즉시 소멸(F021). 코어 파괴 → 탈락, 마커 전부 제거. 생존자 1명 → 즉시 승리(F024).
 - **종료·점수**: 전원 연속 패스 또는 맵 라운드 제한 → 점수(영토 + 마커 + 덤) 순위. 덤은 좌석 번호 × 상수(선턴 유리함 보정). 그래도 동점이면 좌석 번호 큰 쪽. 탈락자는 하위. (F025)
-- **탭 UI**: 보드(F008, F009: 격자·시야·영토·손패·패스) / 상태(F010, F011: 에너지·비용·시야·점수) / 진행(F012, F013). 탭 전환 100ms 이내(F014), 데스크톱에서 수직 스크롤 없음(F015).
+- **탭 UI**(보드·상태·진행·카드·설명 5탭): 보드(F008, F009: 격자·시야·영토·손패·패스, 카드 선택·마커 탭 시 설명 패널) / 상태(F010, F011: 에너지·비용·시야·점수) / 진행(F012, F013). 탭 전환 100ms 이내(F014), 데스크톱에서 수직 스크롤 없음(F015).
 - **멀티플레이**: 초대 링크(F001), 로비·좌석(F002), 비밀번호(F003), 맵 선택(F030), Socket.io 0.5초 이내(F004).
 - **AI**: AI 좌석(F026), 2초 이내 결정(F027), 경제 우선(F028), 공격·방어 전환(F029).
 

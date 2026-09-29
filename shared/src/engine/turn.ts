@@ -194,7 +194,7 @@ export function canStart(state: GameState): boolean {
 // ---------------------------------------------------------------------------
 
 /**
- * F018/F019: 좌석 순으로 코어 배치, 덱(기본 20 + 특수 3) 시드 셔플, 손패 4, 에너지 3.
+ * F018/F019: 좌석 순으로 코어 배치, 종족 고정 덱(25장) 시드 셔플, 손패 4, 에너지 5.
  * 첫 턴의 시작 단계는 아직 실행하지 않는다 (startGame 이 이어서 실행).
  */
 export function setupGame(state: GameState): GameState {

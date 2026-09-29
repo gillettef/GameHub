@@ -338,9 +338,16 @@ function LobbyView({ roomId, onQuit }: { roomId: string; onQuit: () => void }) {
       activeTab={tab}
       footer={
         me.isReady ? (
-          <button type="button" className="pill pill--outline" onClick={() => dispatch({ type: 'SELECT_RACE', playerId: viewerId, race: me.race ?? 'coalition' })}>
-            준비 취소
-          </button>
+          <>
+            <button type="button" className="pill pill--outline" onClick={() => dispatch({ type: 'SELECT_RACE', playerId: viewerId, race: me.race ?? 'coalition' })}>
+              준비 취소
+            </button>
+            <span className={landing.help}>
+              {full
+                ? '다른 플레이어가 준비하면 바로 시작합니다.'
+                : `좌석 ${state.players.length}명, 맵 정원 ${map.players}명이라 시작하지 못합니다. 맵이나 좌석을 맞춰 주세요.`}
+            </span>
+          </>
         ) : tab === 'race' ? (
           <>
             <button type="button" className="pill pill--lg" disabled={!me.race} onClick={() => dispatch({ type: 'READY', playerId: viewerId })}>

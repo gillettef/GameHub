@@ -1,6 +1,7 @@
 name: Deploy to AWS
 
-# main에 push되면 AWS EC2(test+prod)에 자동 배포한다.
+# main에 push되면 테스트·타입 검사를 통과했을 때만 AWS EC2 **test 서버**에 자동 배포한다.
+# 운영(prod)은 Actions 탭에서 '배포 대상'을 prod 또는 all 로 직접 실행할 때만 배포된다(검증 후 수동).
 # 저장소가 비공개라 EC2가 직접 clone/pull 하지 못하므로, 이 워크플로가 대신
 # git archive로 워킹트리를 EC2로 전송하고(scp 대신 ssh 파이프), 서버에서
 # scripts/aws/deploy-remote.sh 가 빌드·systemd 재시작을 수행한다.
@@ -27,7 +28,24 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: npm ci
+      - run: npm test
+      - run: npx tsc --noEmit -p shared && npx tsc --noEmit -p server && npx tsc --noEmit -p client
+      - run: pip install -r ai/requirements.txt && python -m pytest ai/tests -q
+
   deploy:
+    needs: verify
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -52,7 +70,14 @@ jobs:
           mkdir -p ~/.ssh
           printf '%s\n' "${{ secrets.EC2_SSH_PRIVATE_KEY }}" > ~/.ssh/ci_key
           chmod 600 ~/.ssh/ci_key
-          ssh-keyscan -H "${{ secrets.EC2_HOST }}" >> ~/.ssh/known_hosts
+          # EC2_HOST_KEY(known_hosts 한 줄, 예: ssh-keyscan 결과)를 Secret 으로 두면 호스트 키를 고정한다.
+          # 없으면 예전처럼 keyscan 하지만 중간자 공격에는 취약하다
+          if [ -n "${{ secrets.EC2_HOST_KEY }}" ]; then
+            printf '%s
+' "${{ secrets.EC2_HOST_KEY }}" >> ~/.ssh/known_hosts
+          else
+            ssh-keyscan -H "${{ secrets.EC2_HOST }}" >> ~/.ssh/known_hosts
+          fi
 
       - name: 소스 전송 (git archive)
         run: |
@@ -61,8 +86,8 @@ jobs:
 
       - name: 빌드 & systemd 재시작
         run: |
-          TARGET="${{ github.event.inputs.target }}"
-          if [ -z "$TARGET" ]; then TARGET="all"; fi
+          # push 는 test 만, prod 는 수동 실행(workflow_dispatch)에서만
+          TARGET="${{ github.event.inputs.target || 'test' }}"
           ssh -i ~/.ssh/ci_key ec2-user@${{ secrets.EC2_HOST }} \
             "bash ~/AstralTab/scripts/aws/deploy-remote.sh $TARGET"
 

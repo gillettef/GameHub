@@ -45,6 +45,8 @@ interface GameStore {
    * 추적한다 — 같은 턴에 카드를 배치하면 손패 배열이 바뀌어 index 가 밀릴 수 있기 때문이다.
    * PASS 를 보낼 때 실제로 그만큼 손패에 없으면 엔진이 거부한다(validateDiscard) */
   discardCardIds: CardId[];
+  /** 보드에서 탭해 살펴보는 마커 id (모바일엔 호버가 없어 탭으로 정보를 본다) */
+  inspectedMarkerId: string | null;
   /** 마지막 안내 문구 (배치 거부 사유 등). 다음에 할 일을 적는다 */
   notice: string | null;
   /** 결과 오버레이를 닫고 보드를 살펴보는 중인지 */
@@ -88,6 +90,7 @@ const EMPTY = {
   selectedHandIndex: null,
   discardMode: false,
   discardCardIds: [] as CardId[],
+  inspectedMarkerId: null as string | null,
   notice: null,
   resultDismissed: false,
   surrenderConfirming: false,
@@ -121,7 +124,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
       // 턴이 바뀌면 선택·확인 단계를 정리한다. 손패 교체 선택은 cardId 로 추적하므로(index 아님)
       // 같은 턴 안에서 배치로 손패가 바뀌어도 안전하다 — 실제로 그만큼 남아 있지 않으면 PASS 시점에
       // 엔진이 거부한다.
-      selectedHandIndex: turnChanged ? null : prev.selectedHandIndex,
+      // 이번 턴에 처음 배치가 성립했으면 손패가 밀리므로 선택도 함께 푼다
+      selectedHandIndex: turnChanged || placedNow(prev.state, state, you) ? null : prev.selectedHandIndex,
       discardMode: turnChanged ? false : prev.discardMode,
       discardCardIds: turnChanged ? [] : prev.discardCardIds,
       surrenderConfirming: turnChanged ? false : prev.surrenderConfirming,
@@ -155,7 +159,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     set({
       state: maskState(next, null),
       viewerId: next.currentPlayerId ?? get().viewerId,
-      selectedHandIndex: turnChanged ? null : get().selectedHandIndex,
+      selectedHandIndex: turnChanged || action.type === 'PLACE' ? null : get().selectedHandIndex,
       discardMode: turnChanged ? false : get().discardMode,
       discardCardIds: turnChanged ? [] : get().discardCardIds,
       notice: null,
@@ -166,7 +170,14 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   placeAt: (x, y) => {
     const { state, viewerId, selectedHandIndex, dispatch, setNotice } = get();
-    if (!state || !viewerId || selectedHandIndex === null) return;
+    if (!state || !viewerId) return;
+    // 마커가 있는 칸을 탭하면 배치 대신 정보를 보여 준다. 카드를 안 골랐을 때 빈 칸을 탭하면 정보를 닫는다
+    const marker = state.markers.find((m) => m.pos.x === x && m.pos.y === y);
+    if (marker || selectedHandIndex === null) {
+      set({ inspectedMarkerId: marker && marker.id !== get().inspectedMarkerId ? marker.id : null });
+      return;
+    }
+    set({ inspectedMarkerId: null });
     const cardId = state.players.find((p) => p.id === viewerId)?.hand[selectedHandIndex];
     if (!cardId) return;
     const err = validatePlacement(state, viewerId, cardId, { x, y });
@@ -224,6 +235,13 @@ export const useGameStore = create<GameStore>((set, get) => ({
 // ---------------------------------------------------------------------------
 // 선택자 (컴포넌트는 필요한 조각만 구독한다)
 // ---------------------------------------------------------------------------
+
+/** 직전 스냅샷에서는 아직 안 놓았고 지금은 놓은 상태인가 (내 배치가 방금 성립) */
+function placedNow(prev: MaskedGameState | null, next: MaskedGameState, you: PlayerId): boolean {
+  const was = prev?.players.find((p) => p.id === you)?.actedThisTurn ?? false;
+  const is = next.players.find((p) => p.id === you)?.actedThisTurn ?? false;
+  return !was && is;
+}
 
 export const selectState = (s: GameStore): MaskedGameState | null => s.state;
 export const selectViewerId = (s: GameStore): PlayerId | null => s.viewerId;

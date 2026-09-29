@@ -23,7 +23,7 @@ export const DRAW_PER_TURN = 1;
 
 /** 종족별 기본 카드 표(카탈로그 분류)의 copies 합. baseDeckOf 불변식 검증에만 쓴다 */
 export const BASE_DECK_SIZE = 22;
-/** 덱 빌딩에서 완성해야 하는 총 장수. 2026-09-23부터 기본/특수 구분 없이 이 장수를 채우면 된다 */
+/** 종족별 고정 덱의 총 장수(기본 22 + 특수 3). 2026-09-24부터 덱 빌딩은 없다 */
 export const DECK_SIZE = 25;
 
 /** 광맥 위 건물의 생산 보너스 */
