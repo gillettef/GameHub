@@ -308,3 +308,27 @@
   object-fit: cover;
   border-radius: var(--radius-sm);
 }
+
+/* 비용은 이름 옆이 아니라 일러스트 오른쪽 위 모서리에 얹어, 이름이 카드 폭을 다 쓰게 한다(2026-09-29) */
+.artWrap {
+  position: relative;
+  flex: none;
+}
+
+.artWrap .cost {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  height: 22px;
+  min-width: 26px;
+  padding: 0 6px;
+}
+
+/* 이름이 길면 말줄임 대신 두 줄까지 줄바꿈 */
+.card.compact .nameText {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  white-space: normal;
+  line-height: 1.15;
+}

@@ -155,15 +155,17 @@ export const CardFace = memo(function CardFace({ spec, selected, disabled, reaso
       disabled={disabled && !onClick}
       onClick={onClick}
     >
-      {image && <img className={styles.art} src={image} alt="" loading="lazy" draggable={false} />}
+      <span className={styles.artWrap}>
+{image && <img className={styles.art} src={image} alt="" loading="lazy" draggable={false} />}
+        <span className={styles.cost} title="비용">
+          <span className={styles.costIcon}>{ICONS.cost}</span>
+          {spec.cost}
+        </span>
+      </span>
       <span className={styles.head}>
         <span className={styles.name}>
           <CardArt cardId={spec.id} className={styles.cardIcon} />
           <span className={styles.nameText}>{spec.name}</span>
-        </span>
-        <span className={styles.cost} title="비용">
-          <span className={styles.costIcon}>{ICONS.cost}</span>
-          {spec.cost}
         </span>
       </span>
       {!compact && (
