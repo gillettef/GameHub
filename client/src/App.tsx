@@ -22,12 +22,12 @@ function App() {
   if (state.status === "in_room" && state.roomCode) {
     const canStart = state.players.length >= 2 && state.players.length <= 5;
     return (
-      <main className="min-h-screen bg-purple-50 flex flex-col items-center px-4 py-8">
-        <h1 className="text-2xl font-bold text-purple-700 mb-1">마법학교</h1>
-        <p className="text-sm text-purple-400 mb-6">방 코드를 친구에게 공유해보세요</p>
+      <main className="min-h-dvh flex flex-col items-center px-4 py-8">
+        <h1 className="text-3xl font-display text-purple-700 mb-1">마법학교</h1>
+        <p className="text-sm text-purple-500 mb-6">방 코드를 친구에게 공유해보세요</p>
 
         <div className="bg-white rounded-2xl shadow-sm px-8 py-5 mb-6">
-          <p className="text-4xl font-mono font-bold tracking-widest text-purple-600 text-center">
+          <p className="pop-in text-5xl font-display font-bold tracking-widest text-purple-600 text-center">
             {state.roomCode}
           </p>
         </div>
@@ -35,7 +35,7 @@ function App() {
         <div className="w-full max-w-sm bg-white rounded-2xl shadow-sm p-4 mb-4">
           <h2 className="text-sm font-semibold text-purple-500 mb-2">참가한 플레이어 ({state.players.length}/5)</h2>
           <ul className="space-y-1">
-            {state.players.length === 0 && <li className="text-purple-300 text-sm">아직 아무도 없어요</li>}
+            {state.players.length === 0 && <li className="text-purple-500 text-sm">아직 아무도 없어요</li>}
             {state.players.map((p) => (
               <li key={p.id} className="text-purple-700">
                 {p.name}
@@ -46,36 +46,39 @@ function App() {
 
         {state.isHost && (
           <button
-            className="w-full max-w-sm rounded-xl bg-purple-500 text-white font-semibold py-3 disabled:opacity-40"
+            className="w-full max-w-sm rounded-2xl bg-purple-500 text-white font-semibold min-h-12 py-3 disabled:opacity-40"
             disabled={!canStart}
             onClick={startGame}
           >
             {canStart ? "게임 시작" : "2~5인이 모여야 시작할 수 있어요"}
           </button>
         )}
-        {!state.isHost && <p className="text-purple-400 text-sm">방장이 게임을 시작하면 자동으로 시작됩니다</p>}
+        {!state.isHost && <p className="text-purple-500 text-sm">방장이 게임을 시작하면 자동으로 시작됩니다</p>}
 
-        {lastError && <p className="text-red-500 text-sm mt-3">{lastError}</p>}
+        {lastError && <p className="text-pink-600 bg-pink-50 rounded-2xl px-3 py-2 text-sm mt-3">{lastError}</p>}
       </main>
     );
   }
 
   return (
-    <main className="min-h-screen bg-purple-50 flex flex-col items-center justify-center px-4 py-8 gap-6">
+    <main className="min-h-dvh flex flex-col items-center justify-center px-4 py-8 gap-6">
       <div className="text-center">
-        <h1 className="text-3xl font-bold text-purple-700">마법학교</h1>
-        <p className="text-sm text-purple-400 mt-1">친구들과 함께 즐기는 마법 학교 보드게임</p>
+        <h1 className="text-4xl font-display text-purple-700">마법학교</h1>
+        <p className="text-sm text-purple-500 mt-1">친구들과 함께 즐기는 마법 학교 보드게임</p>
       </div>
 
       <input
-        className="w-full max-w-sm rounded-xl border border-purple-200 px-4 py-3 text-purple-800 placeholder-purple-300 focus:outline-none focus:ring-2 focus:ring-purple-300"
+        className="w-full max-w-sm rounded-2xl border border-purple-200 px-4 py-3 text-purple-800 placeholder-purple-300 focus:outline-none focus:ring-2 focus:ring-purple-300"
         placeholder="닉네임을 입력하세요"
+        maxLength={10}
+        autoComplete="off"
+        enterKeyHint="done"
         value={playerName}
         onChange={(e) => setPlayerName(e.target.value)}
       />
 
       <button
-        className="w-full max-w-sm rounded-xl bg-purple-500 text-white font-semibold py-3 disabled:opacity-40"
+        className="w-full max-w-sm rounded-2xl bg-purple-500 text-white font-semibold min-h-12 py-3 disabled:opacity-40"
         disabled={!playerName.trim()}
         onClick={() => createRoom(playerName.trim())}
       >
@@ -84,20 +87,23 @@ function App() {
 
       <div className="w-full max-w-sm flex items-center gap-2">
         <div className="flex-1 h-px bg-purple-200" />
-        <span className="text-purple-300 text-sm">또는</span>
+        <span className="text-purple-500 text-sm">또는</span>
         <div className="flex-1 h-px bg-purple-200" />
       </div>
 
       <div className="w-full max-w-sm flex gap-2">
         <input
-          className="flex-1 rounded-xl border border-purple-200 px-4 py-3 text-purple-800 placeholder-purple-300 uppercase focus:outline-none focus:ring-2 focus:ring-purple-300"
+          className="flex-1 rounded-2xl border border-purple-200 px-4 py-3 text-purple-800 placeholder-purple-300 uppercase focus:outline-none focus:ring-2 focus:ring-purple-300"
           placeholder="방 코드"
+          autoComplete="off"
+          autoCapitalize="characters"
+          enterKeyHint="go"
           maxLength={4}
           value={joinCode}
           onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
         />
         <button
-          className="rounded-xl bg-purple-200 text-purple-700 font-semibold px-5 disabled:opacity-40"
+          className="rounded-2xl bg-purple-200 text-purple-700 font-semibold min-h-12 px-5 disabled:opacity-40"
           disabled={!playerName.trim() || joinCode.trim().length !== 4}
           onClick={() => joinRoom(joinCode.trim(), playerName.trim())}
         >
@@ -106,7 +112,7 @@ function App() {
       </div>
 
       {(state.status === "error" || lastError) && (
-        <p className="text-red-500 text-sm">{state.errorMessage ?? lastError}</p>
+        <p className="text-pink-600 bg-pink-50 rounded-2xl px-3 py-2 text-sm">{state.errorMessage ?? lastError}</p>
       )}
     </main>
   );
