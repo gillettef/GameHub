@@ -1233,7 +1233,7 @@ th .crest, .crest-title .crest, .score-name .crest { vertical-align: middle; mar
 
 /* ---- 리그 성적표: 순위표 ---- */
 .league-table { display: flex; flex-direction: column; margin-top: 8px; border: 1px solid var(--line); border-radius: var(--radius-md); overflow: hidden; }
-.league-row { display: grid; grid-template-columns: 44px minmax(120px, 1.2fr) minmax(80px, 2fr) 44px 88px; gap: 12px; align-items: center; padding: 8px 16px; border-bottom: 1px solid var(--surface-3); font-size: var(--fs-body); }
+.league-row { display: grid; grid-template-columns: 44px minmax(120px, 1.2fr) minmax(80px, 2fr) 72px 44px 88px; gap: 12px; align-items: center; padding: 8px 16px; border-bottom: 1px solid var(--surface-3); font-size: var(--fs-body); }
 .league-row:last-child { border-bottom: 0; }
 .league-row.head { background: var(--surface-2); font-size: var(--fs-sub); font-weight: 500; color: var(--muted); padding: 8px 16px; border-bottom: 1px solid var(--line); }
 .league-row .num { text-align: right; font-variant-numeric: tabular-nums; }
@@ -1247,6 +1247,7 @@ th .crest, .crest-title .crest, .score-name .crest { vertical-align: middle; mar
 .league-fill { position: absolute; inset: 0 auto 0 0; border-radius: var(--radius-pill); background: var(--line-strong); }
 .league-row.mine .league-fill { background: var(--seat); }
 .league-row .pos { font-weight: 700; }
+.league-row .record { color: var(--ink-2); white-space: nowrap; }
 .league-row .pts { font-weight: 700; color: var(--ink-2); }
 .league-row .pts.minus { color: var(--danger); }
 .league-row.inactive .team-name { color: var(--muted); text-decoration: line-through; }
@@ -1281,7 +1282,7 @@ th .crest, .crest-title .crest, .score-name .crest { vertical-align: middle; mar
 .mobile-ui .zone-cards { flex-wrap: nowrap; }
 .mobile-ui .market-zone { padding: 8px; border-radius: var(--radius-md); }
 .mobile-ui .zone-cards .card { scroll-snap-align: center; }
-.mobile-ui .league-row { grid-template-columns: 28px minmax(0, 1fr) 36px 56px; gap: 8px; padding: 8px 10px; }
+.mobile-ui .league-row { grid-template-columns: 28px minmax(0, 1fr) 56px 36px 56px; gap: 8px; padding: 8px 10px; }
 .mobile-ui .league-row .league-track, .mobile-ui .league-row .league-track-head { display: none; }
 
 /* 움직임 줄이기: 전환·등장 애니메이션을 끈다 (주사위 회전은 위에서 따로 처리) */

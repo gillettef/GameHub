@@ -290,11 +290,19 @@ export function MarketBody() {
   );
 }
 
+interface Record3 { win: number; draw: number; loss: number }
+const recordOf = (history: { outcome: 'win' | 'draw' | 'loss' }[]): Record3 => ({
+  win: history.filter((h) => h.outcome === 'win').length,
+  draw: history.filter((h) => h.outcome === 'draw').length,
+  loss: history.filter((h) => h.outcome === 'loss').length,
+});
+
 export function LeagueBody() {
   const { view, session } = useView();
   const entries = [
-    ...view.seats.map((id) => ({ id, name: view.players[id]!.name, position: view.league.players[id]!, active: true })),
-    ...view.league.opponents.map((o) => ({ id: undefined, name: cards.teamName(o.teamId), position: o.position, active: o.active })),
+    ...view.seats.map((id) => ({ id, name: view.players[id]!.name, position: view.league.players[id]!, active: true, record: recordOf(view.players[id]!.matchHistory) })),
+    // 상대 팀은 경기 없이 상대 팀 주사위로만 움직여서 승무패가 없다
+    ...view.league.opponents.map((o) => ({ id: undefined, name: cards.teamName(o.teamId), position: o.position, active: o.active, record: null as Record3 | null })),
   ].sort((a, b) => b.position - a.position);
   const rankOf = (position: number) => 1 + entries.filter((e) => e.position > position).length; // 같은 칸은 같은 등수 (p.26)
   return (
@@ -303,6 +311,7 @@ export function LeagueBody() {
         <span role="columnheader">순위</span>
         <span role="columnheader">구단</span>
         <span role="columnheader" className="league-track-head">성적표 위치 <span className="muted">(승 +3 · 무 +1)</span></span>
+        <span role="columnheader" className="num" title="지금까지의 경기 성적: 승 - 무 - 패 (상대 팀은 경기하지 않아 없음)">승-무-패</span>
         <span role="columnheader" className="num">칸</span>
         <span role="columnheader" className="num" title="지금 등수로 시즌이 끝나면 받는 승점 (p.26)">승점</span>
       </div>
@@ -325,6 +334,9 @@ export function LeagueBody() {
             </span>
             <span role="cell" className="league-track" aria-hidden="true">
               <span className="league-fill" style={{ width: `${(Math.min(e.position, LEAGUE_MAX) / LEAGUE_MAX) * 100}%` }} />
+            </span>
+            <span role="cell" className="num record" title={e.record ? `${e.record.win}승 ${e.record.draw}무 ${e.record.loss}패` : '상대 팀은 경기 없이 주사위로 움직여 승무패가 없습니다'}>
+              {e.record ? `${e.record.win}-${e.record.draw}-${e.record.loss}` : '–'}
             </span>
             <span role="cell" className="num pos">{e.position}</span>
             <span role="cell" className={`num pts${points < 0 ? ' minus' : ''}`}>{points > 0 ? `+${points}` : points}</span>
