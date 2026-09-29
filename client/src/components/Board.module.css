@@ -354,65 +354,6 @@
   font-size: var(--text-small);
 }
 
-/* 마커 툴팁 (F008): 호버 시에만. 좌우는 Cell.tsx 가 재서 --tooltip-shift 로 넘긴다(F015: 앱 프레임 밖으로 안 나가게) */
-.tooltip {
-  display: none;
-  position: absolute;
-  left: 50%;
-  bottom: calc(100% + 8px);
-  transform: translateX(calc(-50% + var(--tooltip-shift, 0px)));
-  z-index: 30;
-  width: 168px;
-  padding: var(--space-1) var(--space-2);
-  border-radius: var(--radius-sm);
-  background: var(--color-surface);
-  border: 1px solid var(--color-accent);
-  color: var(--color-white);
-  font-size: var(--text-small);
-  font-weight: 400;
-  text-align: left;
-  pointer-events: none;
-}
-
-.tooltip[data-below] {
-  bottom: auto;
-  top: calc(100% + 8px);
-}
-
-/* .tooltip 는 .marker 의 형제다(Cell.tsx) — 코어 마커 자체가 clip-path 육각이라 자손으로 두면 잘린다.
-   키보드로 칸에 포커스가 가도(legal 칸만 탭 가능) 같은 툴팁이 보이게 한다 */
-.marker:hover ~ .tooltip,
-.cell:focus-visible .tooltip {
-  display: block;
-}
-
-.tooltip strong {
-  display: block;
-  color: var(--color-accent);
-}
-
-.tooltipMeta {
-  display: block;
-  font-size: var(--text-micro);
-  color: var(--color-muted);
-  margin-bottom: 4px;
-}
-
-.tooltip dl {
-  margin: 0;
-  display: grid;
-  grid-template-columns: max-content 1fr;
-  gap: 1px var(--space-1);
-}
-
-.tooltip dt {
-  color: var(--color-muted);
-}
-
-.tooltip dd {
-  margin: 0;
-}
-
 /* 전투·파괴 피드백(2026-09-28): 새 색을 만들지 않고 파괴/피격된 마커의 좌석 색을 그대로 써서
    퍼졌다 사라지는 링 하나로 표시한다. 위치는 Board 가 넘기는 cellStyles 를 그대로 재사용한다. */
 .effect {
