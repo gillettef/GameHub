@@ -30,6 +30,12 @@ function shuffle<T>(items: T[]): T[] {
   return arr;
 }
 
+// 동점 처리 공통 규칙: 매력이 높은 쪽 우선, 매력도 같으면 주사위(무작위)로 결정
+function compareTieBreak(state: GameState, aId: string, bId: string): number {
+  const charmDiff = effectiveStat(state.players[bId], "charm") - effectiveStat(state.players[aId], "charm");
+  return charmDiff !== 0 ? charmDiff : Math.random() < 0.5 ? -1 : 1;
+}
+
 function rotateFrom<T>(items: T[], startIndex: number): T[] {
   return [...items.slice(startIndex), ...items.slice(0, startIndex)];
 }
@@ -83,6 +89,10 @@ export function createGame(players: { id: string; name: string }[]): GameState {
 
 function beginRound(state: GameState): void {
   log(state, `${state.round}라운드 시작`);
+  // 선 플레이어: 매력이 가장 높은 플레이어 (동점이면 주사위), 이후 그 플레이어부터 시계방향
+  const starterId = [...state.turnOrder].sort((a, b) => compareTieBreak(state, a, b))[0];
+  state.startingPlayerIndex = state.turnOrder.indexOf(starterId);
+  log(state, `선 플레이어: ${state.players[starterId].name}`);
   for (const playerId of state.turnOrder) {
     const player = state.players[playerId];
     // 1주차(준비): 체력 수치만큼 체력토큰, 주문력 수치만큼 마법 주문서 획득
@@ -179,8 +189,12 @@ function resolveActivity(
       const target = state.players[targetPlayerId];
       const challengerRoll = rollD6() + effectiveStat(player, "spellPower");
       const defenderRoll = rollD6() + effectiveStat(target, "spellPower");
-      // 동점이면 도전받은 쪽(defender)이 승리
-      const winner = challengerRoll > defenderRoll ? player : target;
+      // 동점이면 매력이 높은 쪽, 매력도 같으면 도전받은 쪽(defender)이 승리 (주사위 재굴림 대신 기존 규칙 유지)
+      const challengerWins =
+        challengerRoll !== defenderRoll
+          ? challengerRoll > defenderRoll
+          : effectiveStat(player, "charm") > effectiveStat(target, "charm");
+      const winner = challengerWins ? player : target;
       const loser = winner === player ? target : player;
       const grimoire = drawGrimoireCard();
       winner.grimoires.push(grimoire);
@@ -193,7 +207,7 @@ function resolveActivity(
       break;
     }
     case "exploration": {
-      // ASSUMPTION: "협력" 처리는 탐험 카드 내용이 구체화되면 확정 (notes/기획_정리.md 5-4, 8절). 현재는 단독 처리 임시 버전.
+      // 협력 없이 단독 처리로 확정 (2026-09-29)
       const card = drawExplorationCard();
       player.staminaTokens += card.rewardStaminaTokens;
       log(state, `${player.name}: 비밀의 방 탐색 → 체력토큰 ${card.rewardStaminaTokens}개 획득`);
@@ -254,42 +268,24 @@ function beginCleanupPhase(state: GameState): void {
 
 function advanceRound(state: GameState): void {
   state.round += 1;
-  // ASSUMPTION: 문서에 명시되지 않아, 매 라운드 선 플레이어를 한 명씩 시계방향으로 돌리는 방식으로 정함
-  state.startingPlayerIndex = (state.startingPlayerIndex + 1) % state.turnOrder.length;
   beginRound(state);
 }
 
 function resolveExam(state: GameState, examType: "midterm_exam" | "final_exam"): void {
   state.phase = examType;
 
-  let candidates = state.turnOrder.map((id) => ({
-    playerId: id,
-    score: rollDicePool(effectiveStat(state.players[id], "intelligence")),
-  }));
-
-  // 동점 처리: 주문력이 높은 쪽 우선, 그래도 동점이면 재굴림 (최대 10회 시도 후 순서 고정)
-  for (let attempt = 0; attempt < 10; attempt++) {
-    const scoreGroups = new Map<number, string[]>();
-    for (const c of candidates) {
-      scoreGroups.set(c.score, [...(scoreGroups.get(c.score) ?? []), c.playerId]);
-    }
-    const stillTiedIds = [...scoreGroups.values()]
-      .filter((ids) => ids.length > 1)
-      .flatMap((ids) => {
-        const spellPowers = new Set(ids.map((id) => effectiveStat(state.players[id], "spellPower")));
-        return spellPowers.size > 1 ? [] : ids; // 주문력으로 갈리면 재굴림 불필요
-      });
-    if (stillTiedIds.length === 0) break;
-    candidates = candidates.map((c) =>
-      stillTiedIds.includes(c.playerId)
-        ? { ...c, score: rollDicePool(effectiveStat(state.players[c.playerId], "intelligence")) }
-        : c,
+  const scores = new Map(
+    state.turnOrder.map((id) => [id, rollDicePool(effectiveStat(state.players[id], "intelligence"))]),
+  );
+  // 동점: 주문력 높은 쪽 → 매력 높은 쪽 → 주사위(무작위) 순으로 우선
+  const ranked = state.turnOrder
+    .map((id) => ({ playerId: id, score: scores.get(id) ?? 0 }))
+    .sort(
+      (x, y) =>
+        y.score - x.score ||
+        effectiveStat(state.players[y.playerId], "spellPower") - effectiveStat(state.players[x.playerId], "spellPower") ||
+        compareTieBreak(state, x.playerId, y.playerId),
     );
-  }
-
-  const ranked = candidates
-    .map((c) => ({ ...c, spellPower: effectiveStat(state.players[c.playerId], "spellPower") }))
-    .sort((a, b) => b.score - a.score || b.spellPower - a.spellPower);
 
   const result: ExamResult = { round: state.round, scores: [] };
   ranked.forEach((entry, index) => {
@@ -321,20 +317,18 @@ function rollDicePool(diceCount: number): number {
 }
 
 function applyTournamentFinalRewards(state: GameState): void {
-  const tracks = [...new Set(state.turnOrder.map((id) => state.players[id].tournamentTrack))].sort(
-    (a, b) => b - a,
+  // 트랙 위치가 높은 순, 동점이면 매력 → 주사위로 순위를 갈라 1위 +2, 2위 +1 (트랙 0칸은 제외)
+  const ranked = [...state.turnOrder].sort(
+    (a, b) =>
+      state.players[b].tournamentTrack - state.players[a].tournamentTrack || compareTieBreak(state, a, b),
   );
-  const [firstTrack, secondTrack] = tracks;
-  for (const playerId of state.turnOrder) {
+  const rewards = [2, 1];
+  ranked.slice(0, rewards.length).forEach((playerId, index) => {
     const player = state.players[playerId];
-    if (firstTrack !== undefined && player.tournamentTrack === firstTrack && firstTrack > 0) {
-      player.credit += 2;
-      log(state, `${player.name}: 마법 토너먼트 1위 보상 학점 +2`);
-    } else if (secondTrack !== undefined && player.tournamentTrack === secondTrack && secondTrack > 0) {
-      player.credit += 1;
-      log(state, `${player.name}: 마법 토너먼트 2위 보상 학점 +1`);
-    }
-  }
+    if (player.tournamentTrack <= 0) return;
+    player.credit += rewards[index];
+    log(state, `${player.name}: 마법 토너먼트 ${index + 1}위 보상 학점 +${rewards[index]}`);
+  });
 }
 
 function finalizeGame(state: GameState): void {
@@ -343,7 +337,10 @@ function finalizeGame(state: GameState): void {
     playerId: id,
     achievement: effectiveStat(state.players[id], "spellPower") * state.players[id].credit,
   }));
-  const maxAchievement = Math.max(...achievements.map((a) => a.achievement));
-  state.winnerIds = achievements.filter((a) => a.achievement === maxAchievement).map((a) => a.playerId);
+  // 성취도 동점이면 매력 → 주사위 순으로 단독 승자 결정
+  achievements.sort(
+    (a, b) => b.achievement - a.achievement || compareTieBreak(state, a.playerId, b.playerId),
+  );
+  state.winnerIds = [achievements[0].playerId];
   log(state, "게임 종료: 마법 성취도(주문력 × 학점) 최고 플레이어 승리");
 }
