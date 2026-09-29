@@ -21,13 +21,8 @@ function Chip({ icon, label, value, className }: { icon: string; label: string; 
 }
 
 function PlayerStatCard({ player, isMe }: { player: PlayerGameState; isMe: boolean }) {
-  return (
-    <div
-      className={`rounded-3xl border-2 p-3 shadow-sm ${isMe ? "border-pink-300 bg-pink-50" : "border-purple-200 bg-white"}`}
-    >
-      <p className="font-display text-lg text-purple-700 mb-2 truncate">
-        {player.name} {isMe && <span className="text-sm text-pink-500">(나)</span>}
-      </p>
+  const body = (
+    <>
       <div className="flex flex-wrap gap-1.5 mb-1.5">
         <Chip icon={STAT_ICON.intelligence} label="지력" value={effectiveStat(player, "intelligence")} className="bg-sky-100 text-sky-800" />
         <Chip icon={STAT_ICON.stamina} label="체력" value={effectiveStat(player, "stamina")} className="bg-green-100 text-green-800" />
@@ -38,7 +33,30 @@ function PlayerStatCard({ player, isMe }: { player: PlayerGameState; isMe: boole
       <p className="text-sm text-purple-700">
         🏆 토너먼트 {player.tournamentTrack}/10 · 🔋 체력토큰 {player.staminaTokens} · 📖 주문서 {player.spellbookTokens}
       </p>
-    </div>
+    </>
+  );
+
+  // 내 카드는 항상 펼치고, 다른 플레이어는 한 줄 요약으로 접어 세로 길이를 줄인다
+  if (isMe) {
+    return (
+      <div className="rounded-3xl border-2 border-pink-300 bg-pink-50 p-3 shadow-sm">
+        <p className="font-display text-lg text-purple-700 mb-2 truncate">
+          {player.name} <span className="text-sm text-pink-500">(나)</span>
+        </p>
+        {body}
+      </div>
+    );
+  }
+  return (
+    <details className="rounded-3xl border-2 border-purple-200 bg-white shadow-sm">
+      <summary className="flex min-h-12 cursor-pointer items-center justify-between gap-2 px-3 py-2 font-display text-purple-700">
+        <span className="truncate">{player.name}</span>
+        <span className="shrink-0 text-sm text-purple-600">
+          🎓 {player.credit} · ✨ {effectiveStat(player, "spellPower")}
+        </span>
+      </summary>
+      <div className="px-3 pb-3">{body}</div>
+    </details>
   );
 }
 
@@ -53,6 +71,7 @@ function ClassPhasePanel({
 }) {
   const me = game.players[myId];
   const [selected, setSelected] = useState<string[]>([]);
+  const [limitHint, setLimitHint] = useState(false);
 
   if (me.hasActedThisPhase) {
     const waiting = game.turnOrder.filter((id) => !game.players[id].hasActedThisPhase);
@@ -64,9 +83,12 @@ function ClassPhasePanel({
   }
 
   const toggle = (cardId: string) => {
-    setSelected((prev) =>
-      prev.includes(cardId) ? prev.filter((id) => id !== cardId) : prev.length < me.staminaTokens ? [...prev, cardId] : prev,
-    );
+    if (!selected.includes(cardId) && selected.length >= me.staminaTokens) {
+      setLimitHint(true);
+      return;
+    }
+    setLimitHint(false);
+    setSelected((prev) => (prev.includes(cardId) ? prev.filter((id) => id !== cardId) : [...prev, cardId]));
   };
 
   return (
@@ -91,6 +113,11 @@ function ClassPhasePanel({
           );
         })}
       </div>
+      {limitHint && (
+        <p role="alert" className="mb-3 rounded-2xl bg-pink-50 px-3 py-2 text-sm text-pink-600">
+          체력토큰이 부족해서 더 고를 수 없어요. 다른 카드를 해제해 주세요.
+        </p>
+      )}
       <button
         className="w-full min-h-12 rounded-xl bg-purple-500 text-white font-semibold py-3 active:scale-95 transition-transform"
         onClick={() => onSubmit(selected)}
