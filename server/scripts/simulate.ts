@@ -2,7 +2,7 @@
 // 봇은 단순한 휴리스틱이라 사람의 플레이를 대신하진 못하지만, 다음을 빠르게 점검할 수 있습니다.
 //  - 어떤 전략(토너먼트 몰빵, 마법생물 몰빵 등)이 지나치게 강하거나 약한가
 //  - 최종 능력치/학점/성취도가 어느 범위에 분포하는가
-//  - 방과후활동 5종 중 봇이 무엇을 선호하고 그 결과는 어떤가
+//  - 자율활동 5종 중 봇이 무엇을 선호하고 그 결과는 어떤가
 import { chooseActivityAction, chooseClassCards, chooseLabCard, type BotStrategy } from "../src/game/bot.js";
 import { BALANCE } from "../src/game/config.js";
 import { chooseLabCard as submitLabChoice, createGame, selectActivity, submitClassChoice } from "../src/game/engine.js";
@@ -18,8 +18,8 @@ const STRATEGIES: BotStrategy[] = [
   { name: "주문 대결 몰빵", classWeights: { intelligence: 1, spellPower: 1.5, stamina: 1, charm: 0.5 }, activityBias: focus("duel") },
   { name: "탐험 몰빵", classWeights: { intelligence: 1.2, spellPower: 1.2, stamina: 1, charm: 0.6 }, activityBias: focus("exploration") },
   { name: "연구실 몰빵", classWeights: { intelligence: 1.2, spellPower: 1.2, stamina: 1, charm: 0.6 }, activityBias: focus("lab") },
-  { name: "지력 몰빵(수업)", classWeights: { intelligence: 3, spellPower: 0.8, stamina: 1, charm: 0.3 }, activityBias: even },
-  { name: "주문력 몰빵(수업)", classWeights: { intelligence: 0.8, spellPower: 3, stamina: 1, charm: 0.3 }, activityBias: even },
+  { name: "지력 몰빵(정규수업)", classWeights: { intelligence: 3, spellPower: 0.8, stamina: 1, charm: 0.3 }, activityBias: even },
+  { name: "주문력 몰빵(정규수업)", classWeights: { intelligence: 0.8, spellPower: 3, stamina: 1, charm: 0.3 }, activityBias: even },
   { name: "무작위", classWeights: { intelligence: 1, spellPower: 1, stamina: 1, charm: 1 }, activityBias: even, random: true },
 ];
 
@@ -123,8 +123,8 @@ for (const s of STRATEGIES) {
 }
 console.table(strategyRows);
 
-// 3) 방과후활동 선택 비율
-console.log("\n[3] 전략별 방과후활동 선택 비율 (위 시뮬레이션 전체 누적)");
+// 3) 자율활동 선택 비율
+console.log("\n[3] 전략별 자율활동 선택 비율 (위 시뮬레이션 전체 누적)");
 console.table(
   Object.entries(activityPicks).map(([name, picks]) => {
     const total = Object.values(picks).reduce((a, b) => a + b, 0) || 1;

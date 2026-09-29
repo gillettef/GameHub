@@ -1,6 +1,6 @@
 // AI 봇 의사결정. 실제 게임(함께 플레이)과 밸런스 시뮬레이션(scripts/simulate.ts)이 함께 사용합니다.
 // 봇은 단순한 휴리스틱으로 움직입니다. 수업카드는 성향에 맞는 능력치를 우선해 체력토큰이 허용하는 만큼 고르고,
-// 방과후활동은 상황(주문서 보유량, 토너먼트 진행도 등)과 성향 가중치를 곱해 점수가 높은 구역을 고릅니다.
+// 자율활동은 상황(주문서 보유량, 토너먼트 진행도 등)과 성향 가중치를 곱해 점수가 높은 구역을 고릅니다.
 import { BALANCE } from "./config.js";
 import { growthGap } from "./engine.js";
 import { effectiveStat, type ActivityId, type GameState, type StatKey } from "./types.js";
@@ -35,7 +35,7 @@ export function pickBotPersonality(): BotStrategy {
   return BOT_PERSONALITIES[Math.floor(Math.random() * BOT_PERSONALITIES.length)];
 }
 
-// 수업 단계: 습득할 수업카드 id 목록
+// 정규수업 단계: 습득할 수업카드 id 목록
 export function chooseClassCards(state: GameState, playerId: string, strategy: BotStrategy): string[] {
   const p = state.players[playerId];
   if (strategy.random) {
@@ -52,7 +52,7 @@ export function chooseClassCards(state: GameState, playerId: string, strategy: B
     .map((c) => c.id);
 }
 
-// 방과후활동 단계: 선택할 구역과 (주문 대결이면) 상대
+// 자율활동 단계: 선택할 구역과 (주문 대결이면) 상대
 export function chooseActivityAction(
   state: GameState,
   playerId: string,
