@@ -26,6 +26,7 @@ async function copyText(text: string): Promise<boolean> {
 }
 import { useGameSocket } from "./useGameSocket";
 import { GameBoard } from "./GameBoard";
+import { RulesModal } from "./Rules";
 
 function App() {
   const { state, game, lastError, createRoom, joinRoom, startGame, addBot, removeBot, submitClassChoice, selectActivity, chooseLabCard } =
@@ -33,6 +34,16 @@ function App() {
   const [playerName, setPlayerName] = useState("");
   const [joinCode, setJoinCode] = useState("");
   const [copied, setCopied] = useState(false);
+  const [showRules, setShowRules] = useState(false);
+  const rulesButton = (
+    <button
+      className="fixed right-3 top-[max(0.75rem,env(safe-area-inset-top))] z-30 min-h-11 rounded-full bg-white/90 px-4 text-sm text-purple-700 shadow-sm active:scale-95 transition-transform"
+      onClick={() => setShowRules(true)}
+    >
+      📖 규칙
+    </button>
+  );
+  const rulesModal = showRules && <RulesModal onClose={() => setShowRules(false)} />;
 
   const shareRoom = async (code: string) => {
     const text = `마법학교 방 코드: ${code}
@@ -66,6 +77,9 @@ ${window.location.href}`;
   if (state.status === "in_room" && state.roomCode) {
     const canStart = state.players.length >= 2 && state.players.length <= 5;
     return (
+      <>
+      {rulesButton}
+      {rulesModal}
       <main className="min-h-dvh flex flex-col items-center px-4 py-8">
         <h1 className="text-3xl font-display text-purple-700 mb-1">마법학교</h1>
         <p className="text-sm text-purple-500 mb-6">방 코드를 친구에게 공유해보세요</p>
@@ -129,10 +143,14 @@ ${window.location.href}`;
 
         {lastError && <p className="text-pink-600 bg-pink-50 rounded-2xl px-3 py-2 text-sm mt-3">{lastError}</p>}
       </main>
+      </>
     );
   }
 
   return (
+    <>
+    {rulesButton}
+    {rulesModal}
     <main className="min-h-dvh flex flex-col items-center justify-center px-4 py-8 gap-6">
       <div className="text-center">
         <h1 className="text-4xl font-display text-purple-700">마법학교</h1>
@@ -187,6 +205,7 @@ ${window.location.href}`;
         <p className="text-pink-600 bg-pink-50 rounded-2xl px-3 py-2 text-sm">{state.errorMessage ?? lastError}</p>
       )}
     </main>
+    </>
   );
 }
 
