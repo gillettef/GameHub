@@ -35,8 +35,8 @@ function broadcastGameState(room: Room): void {
     const players = Object.fromEntries(
       Object.entries(game.players).map(([id, p]) => [id, id === player.id ? p : { ...p, offeredClassCards: [] }]),
     );
-    // 마법생물 덱 구성은 비공개이므로 전송하지 않는다
-    const { creatureDeck: _deck, creatureDiscard: _discard, ...publicGame } = game;
+    // 수업카드/마법생물 덱 구성은 비공개이므로 전송하지 않는다
+    const { classDeck: _cd, classDiscard: _cdd, creatureDeck: _deck, creatureDiscard: _discard, ...publicGame } = game;
     send(player.socket, {
       type: "game_state",
       game: { ...publicGame, players },

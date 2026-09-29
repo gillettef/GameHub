@@ -1,12 +1,13 @@
 // 게임 진행 규칙 출처: notes/기획_정리.md (2026-09-28 정리본)
 // 문서에 명시되지 않아 임의로 정한 부분은 "ASSUMPTION" 주석으로 표시했습니다.
 import {
-  drawClassCard,
+  createClassDeck,
   createCreatureDeck,
   drawEquipmentCard,
   drawExplorationCard,
   drawGrimoireCard,
 } from "./cards.js";
+import { randomUUID } from "node:crypto";
 import { describeAbility } from "./creatures.js";
 import {
   effectiveStat,
@@ -59,6 +60,20 @@ function drawCreature(state: GameState) {
   return state.creatureDeck.pop();
 }
 
+function drawClassCards(state: GameState, count: number) {
+  const drawn = [];
+  for (let i = 0; i < count; i++) {
+    if (state.classDeck.length === 0) {
+      state.classDeck = shuffle(state.classDiscard);
+      state.classDiscard = [];
+    }
+    const card = state.classDeck.pop();
+    if (!card) break; // 덱과 버림 더미가 모두 비면 더 뽑지 못함
+    drawn.push(card);
+  }
+  return drawn;
+}
+
 function log(state: GameState, message: string): void {
   state.log.push({ round: state.round, message });
 }
@@ -101,6 +116,8 @@ export function createGame(players: { id: string; name: string }[]): GameState {
     activityOrder: [],
     activityTurnPointer: 0,
     examResults: [],
+    classDeck: createClassDeck(randomUUID),
+    classDiscard: [],
     creatureDeck: createCreatureDeck(),
     creatureDiscard: [],
     log: [],
@@ -134,7 +151,7 @@ function beginClassPhase(state: GameState): void {
   for (const playerId of state.turnOrder) {
     const player = state.players[playerId];
     const drawCount = effectiveStat(player, "intelligence");
-    player.offeredClassCards = Array.from({ length: drawCount }, () => drawClassCard());
+    player.offeredClassCards = drawClassCards(state, drawCount);
     player.hasActedThisPhase = false;
   }
   log(state, "2주차(수업): 수업카드 배분");
@@ -165,6 +182,8 @@ export function submitClassChoice(state: GameState, playerId: string, keepCardId
     player.classCards.push(card);
   }
   player.staminaTokens -= uniqueKeepIds.length;
+  // 고르지 않은 카드는 버림 더미로
+  state.classDiscard.push(...player.offeredClassCards.filter((c) => !uniqueKeepIds.includes(c.id)));
   player.offeredClassCards = [];
   player.hasActedThisPhase = true;
   log(state, `${player.name}: 수업카드 ${keptCards.length}장 습득`);

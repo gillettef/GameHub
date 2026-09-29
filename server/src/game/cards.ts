@@ -3,7 +3,7 @@
 // 카드 콘텐츠 제작 작업에서 실제 카드로 교체될 예정입니다.
 import { randomUUID } from "node:crypto";
 import { CREATURE_CARDS } from "./creatures.js";
-import type { ClassCard, CreatureCard, EquipmentCard, ExplorationCard, GrimoireCard, StatKey } from "./types.js";
+import type { CreatureCard, EquipmentCard, ExplorationCard, GrimoireCard, StatKey } from "./types.js";
 
 const STATS: StatKey[] = ["intelligence", "stamina", "charm", "spellPower"];
 
@@ -18,17 +18,13 @@ const STAT_LABEL: Record<StatKey, string> = {
   spellPower: "주문력",
 };
 
-export function drawClassCard(): ClassCard {
-  const stat = pickRandom(STATS);
-  const amount = 1;
-  return { id: randomUUID(), name: `${STAT_LABEL[stat]} 수업`, statBoost: { stat, amount } };
-}
-
 export function drawEquipmentCard(): EquipmentCard {
   const stat = pickRandom(STATS);
   const amount = Math.random() < 0.5 ? 1 : 2;
   return { id: randomUUID(), name: `${STAT_LABEL[stat]} 강화 장비`, tempBoost: { stat, amount } };
 }
+
+export { createClassDeck } from "./classCards.js";
 
 export function createCreatureDeck(): CreatureCard[] {
   const deck = CREATURE_CARDS.map((card) => ({ ...card, id: randomUUID() }));

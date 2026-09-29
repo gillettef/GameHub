@@ -7,6 +7,7 @@ export type GamePhase = "prep" | "class" | "activity" | "cleanup" | "midterm_exa
 export interface ClassCard {
   id: string;
   name: string;
+  description: string;
   statBoost: { stat: StatKey; amount: number };
 }
 

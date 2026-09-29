@@ -33,7 +33,7 @@ function PlayerStatCard({ player, isMe }: { player: PlayerGameState; isMe: boole
         <Chip icon="🎓" label="학점" value={player.credit} className="bg-amber-100 text-amber-800" />
       </div>
       <p className="text-sm text-purple-700">
-        🏆 토너먼트 {player.tournamentTrack}/10 · 🔋 체력토큰 {player.staminaTokens} · 📖 주문서 {player.spellbookTokens}
+        🏆 토너먼트 {player.tournamentTrack}/10 · 🔋 체력토큰 {player.staminaTokens} · 📖 주문서 {player.spellbookTokens} · 📚 수업 {player.classCards.length}장
       </p>
       {player.creatures.length > 0 && (
         <ul className="mt-2 flex flex-col gap-1">
@@ -121,6 +121,7 @@ function ClassPhasePanel({
               }`}
             >
               {isSelected ? "✓ " : ""}{card.name} (+{card.statBoost.amount} {STAT_LABEL[card.statBoost.stat]})
+              <span className="block text-xs opacity-80">{card.description}</span>
             </button>
           );
         })}
