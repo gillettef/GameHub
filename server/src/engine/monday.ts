@@ -1,12 +1,12 @@
 import { cards } from './cards';
 import { applyEffects } from './effects';
 import type { Rng } from './rng';
-import { COLOR_LABEL, boardSource, tagged } from './labels';
+import { COLOR_LABEL, RESOURCE_LABEL, boardSource, tagged } from './labels';
 import { GameError, addLog, getPlayer, nextInTurn, requireTurn } from './state';
 import type { GameState, PlayerId, PlayerState } from './state';
 import { hasTrait } from './traits';
 import { RESOURCES } from './types';
-import type { DieColor } from './types';
+import type { DieColor, Effect, Resource } from './types';
 import { startWeekday } from './weekday';
 
 // p.12 조달: 트랙 위치에 따라 자원 획득. p.13 이사회: 각자 이사회 카드 1장 공개
@@ -96,6 +96,20 @@ export function rerollBoardDie(state: GameState, pid: PlayerId, rng: Rng): GameS
   return next;
 }
 
+// 결정의 비용은 '자원을 잃는' 효과(gainResource 음수)다. 보상(그 밖의 효과)이 함께 있는 결정에서 비용을 다 낼 수 없으면 그 자원을 돌려준다 (효과 순서대로 따져서, 앞에서 얻은 자원은 뒤의 비용에 쓸 수 있다).
+// 보상 없이 손해만 있는 결정은 강제 페널티라 해당하지 않는다 (없는 자원은 0에서 멈춘다)
+export function unaffordableCost(player: Pick<PlayerState, 'resources'>, effects: readonly Effect[]): Resource | null {
+  const isCost = (e: Effect) => e.type === 'gainResource' && e.amount < 0;
+  if (!effects.some((e) => !isCost(e))) return null;
+  const have = { ...player.resources };
+  for (const e of effects) {
+    if (e.type !== 'gainResource') continue;
+    have[e.resource] += e.amount;
+    if (have[e.resource] < 0) return e.resource;
+  }
+  return null;
+}
+
 export function acceptBoardRoll(state: GameState, pid: PlayerId): GameState {
   const next = structuredClone(state);
   const m = meetingOf(next, pid);
@@ -104,7 +118,13 @@ export function acceptBoardRoll(state: GameState, pid: PlayerId): GameState {
   const color = boardDecision(player, m.roll);
   const card = cards.board(m.card);
   addLog(next, tagged('이사회', `"${card.name}" → ${COLOR_LABEL[color]} 결정: ${card.decisions[color].text}`), { actor: pid });
-  applyEffects(next, pid, card.decisions[color].effects, boardSource(card));
+  const short = unaffordableCost(player, card.decisions[color].effects);
+  if (short) {
+    // 비용을 다 낼 수 없으면 결정을 이행하지 못한다: 자원도 내지 않고 보상도 없다 (예전에는 0 에서 멈춰 보상만 공짜로 받았다)
+    addLog(next, tagged('이사회', `${RESOURCE_LABEL[short]}이(가) 부족해 결정을 이행하지 못했습니다 (비용을 내지 않고 보상도 없음)`), { actor: pid });
+  } else {
+    applyEffects(next, pid, card.decisions[color].effects, boardSource(card));
+  }
   next.decks.discards.board.push(m.card);
   m.decided = true;
 

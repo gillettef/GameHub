@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import { BOARD_CARDS } from '../data';
 import { cards } from './cards';
-import { acceptBoardRoll, boardDecision, hasDecisiveFace, rerollBoardDie, rollBoardDie, tallyVotes, winningColor } from './monday';
+import { acceptBoardRoll, boardDecision, unaffordableCost, hasDecisiveFace, rerollBoardDie, rollBoardDie, tallyVotes, winningColor } from './monday';
 import { GameError } from './state';
 import { RESOURCES } from './types';
 import { FOUR_PLAYERS, gameAtMonday, seededRng } from './test-utils';
@@ -118,5 +119,47 @@ describe('모든 눈이 동수인 임원 조합', () => {
     const accepted = acceptBoardRoll(rolled, 'a');
     if (accepted.phase.kind !== 'monday.board') throw new Error();
     expect(accepted.phase.meetings['a']!.decided).toBe(true);
+  });
+});
+
+describe('이사회 결정의 비용 강제', () => {
+  const pay = (resource: 'money' | 'ops', amount: number) => ({ type: 'gainResource' as const, resource, amount });
+  const vp = { type: 'gainVP' as const, amount: 1 };
+  const res = (money: number, ops = 0) => ({ resources: { money, fandom: 0, ops, stamina: 0 } });
+
+  it('보상이 함께 있는 결정은 비용을 다 낼 수 없으면 이행하지 못한다', () => {
+    expect(unaffordableCost(res(1), [pay('money', -2), vp])).toBe('money');
+    expect(unaffordableCost(res(2), [pay('money', -2), vp])).toBeNull();
+    expect(unaffordableCost(res(5, 1), [pay('money', -2), pay('ops', -2), vp])).toBe('ops');
+  });
+
+  it('앞에서 얻은 자원은 뒤의 비용에 쓸 수 있고, 보상 없이 손해만 있는 결정은 강제 페널티다', () => {
+    expect(unaffordableCost(res(0), [pay('money', 2), pay('money', -2), vp])).toBeNull();
+    expect(unaffordableCost(res(0), [pay('money', -2)])).toBeNull();
+  });
+
+  it('비용을 못 내면 자원도 그대로, 승점도 없다 (모든 이사회 카드 결정에 대해)', () => {
+    let checked = 0;
+    for (const card of BOARD_CARDS) {
+      for (const color of ['yellow', 'blue', 'red'] as const) {
+        const effects = card.decisions[color].effects;
+        if (unaffordableCost(res(0), effects) === null) continue;
+        const s = gameAtMonday();
+        if (s.phase.kind !== 'monday.board') throw new Error();
+        const pid = s.phase.current;
+        const p = s.players[pid]!;
+        p.resources = { money: 0, fandom: 0, ops: 0, stamina: 0 };
+        s.phase.meetings[pid]!.card = card.id;
+        const face = [1, 2, 3, 4, 5, 6].find((f) => boardDecision(p, f) === color);
+        if (face === undefined) continue; // 이 임원 조합으로는 그 색이 안 나온다
+        s.phase.meetings[pid]!.roll = face;
+        checked++;
+        const vpBefore = p.vp;
+        const after = acceptBoardRoll(s, pid);
+        expect(after.players[pid]!.resources).toEqual({ money: 0, fandom: 0, ops: 0, stamina: 0 });
+        expect(after.players[pid]!.vp).toBe(vpBefore);
+      }
+    }
+    expect(checked).toBeGreaterThan(0);
   });
 });

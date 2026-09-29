@@ -1058,6 +1058,10 @@ th .crest, .crest-title .crest, .score-name .crest { vertical-align: middle; mar
 .pseat-meta { display: flex; gap: 8px; align-items: center; font-size: var(--fs-sub); color: var(--muted); white-space: nowrap; overflow: hidden; }
 .pseat-meta > span { display: inline-flex; align-items: center; gap: 2px; }
 .pseat-meta b { color: var(--ink); font-weight: 700; }
+@media (prefers-reduced-motion: no-preference) {
+  .score-num { animation: score-bump var(--motion-slow) var(--ease-standard); } /* 승점이 바뀐 순간 잠깐 초록으로 알린다 */
+}
+@keyframes score-bump { from { color: var(--pitch); } to { color: var(--ink); } }
 .seat-state { flex: none; align-self: flex-start; font-size: var(--fs-sub); font-weight: 500; border-radius: var(--radius-pill); padding: 1px 8px; background: var(--surface-2); color: var(--muted); }
 .seat-state.acting { background: var(--pitch); color: #fff; font-weight: 700; }
 .seat-state.done { background: var(--ink); color: #fff; }

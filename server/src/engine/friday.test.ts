@@ -641,3 +641,20 @@ describe('금요일 차례 (턴제)', () => {
     expect(s.phase.current).toBe('b');
   });
 });
+
+describe('베테랑 강제 페널티: 영구 약점 (p-v08·p-v15 미훈련 면)', () => {
+  it('경기 후 영구 약점 토큰이 남는다 (일시 토큰이면 같은 처리에서 지워져 페널티가 없었다)', () => {
+    for (const cardId of ['p-v08', 'p-v15']) {
+      const s = friday();
+      const a = s.players['a']!;
+      const vet = a.roster.find((r) => cards.player(r.cardId).kind === 'veteran')!;
+      vet.cardId = cardId;
+      assignUniform(a.uniforms, vet.instanceId, activeSide(vet));
+      expect(autoLineup(a).players).toContain(vet.instanceId);
+      const done = submitAll(s);
+      const after = done.players['a']!.roster.find((r) => r.instanceId === vet.instanceId)!;
+      expect(after.tokens.weaknessPerm).toBe(1);
+      expect(after.tokens.weaknessTemp).toBe(0);
+    }
+  });
+});
