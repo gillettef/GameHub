@@ -1,14 +1,23 @@
-import { useState } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import { Icon, type IconName } from "./Icons";
 import { ACTIVITY_LABEL, STAT_LABEL, type ActivityId, type GameState, type StatKey } from "./gameTypes";
 
-// 주차가 시작될 때 뜨는 "배너"와, 내 활동·시험 결과를 알려 주는 "결과 모달"을 순서대로 보여 준다. 둘 다 확인을 눌러야 넘어간다.
+// 주차가 시작될 때 뜨는 "배너"와, 내 활동·시험 결과를 알려 주는 "결과 모달"을 순서대로 보여 준다. 둘 다 버튼을 눌러야 넘어간다.
+// 1주차(토큰 획득)·4주차(토큰 소멸) 배너는 버튼을 누르면 모두의 토큰이 들어오거나 사라지는 연출이 나온 뒤 다음으로 넘어간다.
 // (봇은 화면이 없으므로 서버가 타이머로 알아서 진행한다)
 // 서버는 상태 스냅샷만 보내므로, 이전 상태와 비교해서 무슨 일이 있었는지 클라이언트가 유추한다.
 
 interface Tile {
   text: string;
   tone?: "good" | "bad";
+}
+
+interface TokenRow {
+  id: string;
+  name: string;
+  isMe: boolean;
+  stamina: number;
+  spell: number;
 }
 
 interface Announcement {
@@ -20,6 +29,8 @@ interface Announcement {
   lines: string[];
   tiles: Tile[];
   track?: { from: number; to: number };
+  // 있으면 버튼을 눌렀을 때 토큰이 들어오거나(gain) 사라지는(wipe) 연출을 보여 준다
+  tokens?: { mode: "gain" | "wipe"; rows: TokenRow[] };
 }
 
 const ACTIVITY_ICON: Record<ActivityId, IconName> = {
@@ -32,6 +43,11 @@ const ACTIVITY_ICON: Record<ActivityId, IconName> = {
 const ACTIVITY_IDS = Object.keys(ACTIVITY_ICON) as ActivityId[];
 const STAT_KEYS: StatKey[] = ["intelligence", "stamina", "charm", "spellPower"];
 
+// 토큰 연출 타이밍(초)과 한 줄에 그릴 토큰 최대 개수
+const ROW_GAP = 0.2;
+const TOKEN_GAP = 0.07;
+const MAX_ICONS = 12;
+
 let nextId = 1;
 const make = (a: Omit<Announcement, "id" | "tiles" | "lines"> & { tiles?: Tile[]; lines?: string[] }): Announcement => ({
   tiles: [],
@@ -40,17 +56,43 @@ const make = (a: Omit<Announcement, "id" | "tiles" | "lines"> & { tiles?: Tile[]
   id: nextId++,
 });
 
-function prepBanner(game: GameState, myId: string, afterCleanup: boolean): Announcement {
-  const me = game.players[myId];
+// 나를 맨 위에 두고 나머지는 진행 순서대로
+function tokenRows(game: GameState, myId: string, amounts: { id: string; stamina: number; spell: number }[]): TokenRow[] {
+  const rows = amounts.map((a) => ({ ...a, name: game.players[a.id].name, isMe: a.id === myId }));
+  return [...rows.filter((r) => r.isMe), ...rows.filter((r) => !r.isMe)];
+}
+
+function prepBanner(game: GameState, myId: string): Announcement {
   return make({
     kind: "banner",
     icon: "calendar",
     title: `${game.round}개월 1주차 · 준비`,
-    subtitle: afterCleanup ? "4주차 정리로 남은 토큰은 사라졌어요" : undefined,
-    tiles: [
-      { text: `체력토큰 ${me.staminaTokens}개`, tone: "good" },
-      { text: `주문서 ${me.spellbookTokens}개`, tone: "good" },
-    ],
+    subtitle: "체력만큼 체력토큰, 주문력만큼 주문서를 받아요",
+    tokens: {
+      mode: "gain",
+      rows: tokenRows(
+        game,
+        myId,
+        game.turnOrder.map((id) => ({ id, stamina: game.players[id].staminaTokens, spell: game.players[id].spellbookTokens })),
+      ),
+    },
+  });
+}
+
+function cleanupBanner(prev: GameState, next: GameState, myId: string): Announcement {
+  return make({
+    kind: "banner",
+    icon: "bag",
+    title: `${prev.round}개월 4주차 · 정리`,
+    subtitle: "남은 토큰은 사라져요. 능력치와 카드, 학점은 그대로예요",
+    tokens: {
+      mode: "wipe",
+      rows: tokenRows(
+        next,
+        myId,
+        next.cleanupSummary.map((c) => ({ id: c.playerId, stamina: c.staminaTokens, spell: c.spellbookTokens })),
+      ),
+    },
   });
 }
 
@@ -126,20 +168,119 @@ function examResult(next: GameState, myId: string): Announcement {
 function build(prev: GameState, next: GameState, myId: string): Announcement[] {
   const out: Announcement[] = [];
   const roundChanged = next.round > prev.round;
-  if (prev.phase === "activity" && (next.phase !== "activity" || roundChanged || next.log.length > prev.log.length)) {
+  const activityEnded = prev.phase === "activity" && (next.phase !== "activity" || roundChanged);
+  if (prev.phase === "activity" && (activityEnded || next.log.length > prev.log.length)) {
     const r = activityResult(prev, next, myId);
     if (r) out.push(r);
   }
+  // 자율활동이 끝나면 4주차 정리 → (시험) → 다음 달 1주차 준비 → 2주차 정규수업 순서
+  if (activityEnded) out.push(cleanupBanner(prev, next, myId));
   if (next.examResults.length > prev.examResults.length) out.push(examResult(next, myId));
-  if (roundChanged && next.phase === "class") out.push(prepBanner(next, myId, true), classBanner(next));
+  if (roundChanged && next.phase === "class") out.push(prepBanner(next, myId), classBanner(next));
   else if (prev.phase === "class" && next.phase === "activity") out.push(activityBanner(next, myId));
   return out;
+}
+
+// 연출이 끝나기까지 걸리는 시간(ms)
+function playDuration(tokens: NonNullable<Announcement["tokens"]>): number {
+  const longest = Math.max(0, ...tokens.rows.map((r) => Math.min(MAX_ICONS, Math.max(r.stamina, r.spell))));
+  return (tokens.rows.length * ROW_GAP + longest * TOKEN_GAP + 0.5 + 0.6) * 1000;
+}
+
+function TokenLine({
+  icon,
+  label,
+  count,
+  mode,
+  playing,
+  startDelay,
+  color,
+}: {
+  icon: IconName;
+  label: string;
+  count: number;
+  mode: "gain" | "wipe";
+  playing: boolean;
+  startDelay: number;
+  color: string;
+}) {
+  const shown = Math.min(count, MAX_ICONS);
+  const delayOf = (i: number) => ({ "--d": `${(startDelay + i * TOKEN_GAP).toFixed(2)}s` }) as CSSProperties;
+  const endDelay = { "--d": `${(startDelay + shown * TOKEN_GAP + 0.2).toFixed(2)}s` } as CSSProperties;
+  return (
+    <div className="mt-1 flex items-center gap-2">
+      <span className="w-14 shrink-0 text-left text-xs text-purple-500">{label}</span>
+      <span className="flex min-h-5 flex-1 flex-wrap gap-0.5">
+        {count === 0 && <span className="text-xs text-purple-300">없음</span>}
+        {Array.from({ length: shown }, (_, i) =>
+          mode === "gain" && !playing ? (
+            <span key={i} className="h-5 w-5 rounded-full border-2 border-dashed border-purple-200" aria-hidden />
+          ) : (
+            <span key={i} className={mode === "gain" ? "token-in" : playing ? "token-out" : ""} style={playing ? delayOf(i) : undefined}>
+              <Icon name={icon} className={`h-5 w-5 ${color}`} />
+            </span>
+          ),
+        )}
+      </span>
+      <b className="w-10 shrink-0 text-right text-sm text-purple-700">
+        {mode === "gain" ? (
+          playing ? (
+            <span className="token-in inline-block" style={endDelay}>
+              +{count}
+            </span>
+          ) : (
+            "–"
+          )
+        ) : playing ? (
+          <span className="token-in inline-block" style={endDelay}>
+            0
+          </span>
+        ) : (
+          count
+        )}
+      </b>
+    </div>
+  );
+}
+
+function TokenBoard({ tokens, playing }: { tokens: NonNullable<Announcement["tokens"]>; playing: boolean }) {
+  return (
+    <ul className="mt-3 flex flex-col gap-1.5">
+      {tokens.rows.map((row, index) => (
+        <li key={row.id} className={`rounded-2xl px-3 py-2 ${row.isMe ? "bg-pink-50 ring-2 ring-pink-200" : "bg-purple-50"}`}>
+          <p className="truncate text-left font-display text-sm text-purple-700">
+            {row.name}
+            {row.isMe ? " (나)" : ""}
+          </p>
+          <TokenLine
+            icon="staminaToken"
+            label="체력토큰"
+            count={row.stamina}
+            mode={tokens.mode}
+            playing={playing}
+            startDelay={index * ROW_GAP}
+            color="text-green-500"
+          />
+          <TokenLine
+            icon="spellbookToken"
+            label="주문서"
+            count={row.spell}
+            mode={tokens.mode}
+            playing={playing}
+            startDelay={index * ROW_GAP + Math.min(row.stamina, MAX_ICONS) * TOKEN_GAP}
+            color="text-indigo-500"
+          />
+        </li>
+      ))}
+    </ul>
+  );
 }
 
 export function AnnouncementLayer({ game, myId }: { game: GameState; myId: string }) {
   // 렌더 중에 이전 상태와 비교해 큐를 늘린다 (effect 안에서 setState하지 않기 위한 패턴)
   const [prev, setPrev] = useState(game);
-  const [queue, setQueue] = useState<Announcement[]>(() => [prepBanner(game, myId, false), classBanner(game)]);
+  const [queue, setQueue] = useState<Announcement[]>(() => [prepBanner(game, myId), classBanner(game)]);
+  const [playing, setPlaying] = useState(false);
   if (prev !== game) {
     setPrev(game);
     const added = build(prev, game, myId);
@@ -149,9 +290,20 @@ export function AnnouncementLayer({ game, myId }: { game: GameState; myId: strin
   const current = queue[0];
   const dismiss = () => setQueue((q) => q.slice(1));
 
+  // 토큰 연출이 끝나면 저절로 다음 알림으로 넘어간다
+  useEffect(() => {
+    if (!playing || !current?.tokens) return;
+    const timer = setTimeout(() => {
+      setPlaying(false);
+      setQueue((q) => (q[0]?.id === current.id ? q.slice(1) : q));
+    }, playDuration(current.tokens));
+    return () => clearTimeout(timer);
+  }, [playing, current]);
+
   if (!current) return null;
   const isResult = current.kind === "result";
   const remaining = queue.length - 1;
+  const onButton = () => (current.tokens ? setPlaying(true) : dismiss());
 
   return (
     <div
@@ -160,12 +312,17 @@ export function AnnouncementLayer({ game, myId }: { game: GameState; myId: strin
       aria-modal="true"
       aria-label={current.title}
     >
-      <div key={current.id} className="pop-in w-full max-w-sm rounded-3xl border-2 border-pink-200 bg-white p-5 text-center shadow-lg">
+      <div
+        key={current.id}
+        className="pop-in max-h-[88dvh] w-full max-w-sm overflow-y-auto rounded-3xl border-2 border-pink-200 bg-white p-5 text-center shadow-lg"
+      >
         <span className="mx-auto mb-2 flex h-14 w-14 items-center justify-center rounded-full bg-pink-100 text-pink-500">
           <Icon name={current.icon} className="h-8 w-8" />
         </span>
         <h2 className="text-xl text-purple-700">{current.title}</h2>
         {current.subtitle && <p className="mt-1 text-sm text-purple-500">{current.subtitle}</p>}
+
+        {current.tokens && <TokenBoard tokens={current.tokens} playing={playing} />}
 
         {current.track && (
           <div className="mt-3" aria-label={`토너먼트 트랙 ${current.track.from}에서 ${current.track.to}칸`}>
@@ -211,14 +368,20 @@ export function AnnouncementLayer({ game, myId }: { game: GameState; myId: strin
           </ul>
         )}
 
-        <button
-          className="mt-4 min-h-12 w-full rounded-2xl bg-purple-500 py-3 font-semibold text-white active:scale-95 transition-transform"
-          onClick={dismiss}
-          autoFocus
-        >
-          {isResult ? "확인" : "시작하기"}
-          {remaining > 0 ? ` (${remaining}개 더 있어요)` : ""}
-        </button>
+        {playing ? (
+          <p className="mt-4 min-h-12 py-3 text-sm text-purple-500" aria-live="polite">
+            {current.tokens?.mode === "gain" ? "토큰을 받는 중이에요..." : "토큰을 정리하는 중이에요..."}
+          </p>
+        ) : (
+          <button
+            className="mt-4 min-h-12 w-full rounded-2xl bg-purple-500 py-3 font-semibold text-white active:scale-95 transition-transform"
+            onClick={onButton}
+            autoFocus
+          >
+            {isResult ? "확인" : "시작하기"}
+            {remaining > 0 ? ` (${remaining}개 더 있어요)` : ""}
+          </button>
+        )}
       </div>
     </div>
   );
