@@ -98,10 +98,11 @@ function log(state: GameState, message: string): void {
   state.log.push({ round: state.round, message });
 }
 
-function createPlayer(id: string, name: string): PlayerGameState {
+function createPlayer(id: string, name: string, isBot = false): PlayerGameState {
   return {
     id,
     name,
+    isBot,
     ...BALANCE.initialStats,
     credit: BALANCE.initialCredit,
     tempBoosts: {},
@@ -118,7 +119,7 @@ function createPlayer(id: string, name: string): PlayerGameState {
   };
 }
 
-export function createGame(players: { id: string; name: string }[]): GameState {
+export function createGame(players: { id: string; name: string; isBot?: boolean }[]): GameState {
   // ASSUMPTION: 선 플레이어는 무작위로 정하고(문서상 "무작위 또는 협의"), 좌석 순서(시계방향)는 참가 순서를 그대로 사용한다.
   const turnOrder = shuffle(players.map((p) => p.id));
   const state: GameState = {
@@ -127,7 +128,7 @@ export function createGame(players: { id: string; name: string }[]): GameState {
     turnOrder,
     startingPlayerIndex: 0,
     players: Object.fromEntries(
-      players.map((p) => [p.id, createPlayer(p.id, p.name)]),
+      players.map((p) => [p.id, createPlayer(p.id, p.name, p.isBot)]),
     ),
     activitySlots: { tournament: null, creature: null, duel: null, exploration: null, lab: null },
     activityOrder: [],

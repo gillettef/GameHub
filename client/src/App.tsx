@@ -28,7 +28,7 @@ import { useGameSocket } from "./useGameSocket";
 import { GameBoard } from "./GameBoard";
 
 function App() {
-  const { state, game, lastError, createRoom, joinRoom, startGame, submitClassChoice, selectActivity } =
+  const { state, game, lastError, createRoom, joinRoom, startGame, addBot, removeBot, submitClassChoice, selectActivity } =
     useGameSocket();
   const [playerName, setPlayerName] = useState("");
   const [joinCode, setJoinCode] = useState("");
@@ -87,12 +87,33 @@ ${window.location.href}`;
           <ul className="space-y-1">
             {state.players.length === 0 && <li className="text-purple-500 text-sm">아직 아무도 없어요</li>}
             {state.players.map((p) => (
-              <li key={p.id} className="text-purple-700">
-                {p.name}
+              <li key={p.id} className="flex items-center justify-between gap-2 text-purple-700">
+                <span className="truncate">
+                  {p.isBot ? "" : "🙂 "}
+                  {p.name}
+                </span>
+                {p.isBot && state.isHost && (
+                  <button
+                    className="shrink-0 min-h-11 min-w-11 rounded-full text-sm text-pink-500 active:scale-95 transition-transform"
+                    aria-label={`${p.name} 제거`}
+                    onClick={() => removeBot(p.id)}
+                  >
+                    ✕
+                  </button>
+                )}
               </li>
             ))}
           </ul>
         </div>
+
+        {state.isHost && state.players.length < 5 && (
+          <button
+            className="w-full max-w-sm min-h-12 rounded-2xl bg-sky-100 text-sky-800 py-3 mb-4 active:scale-95 transition-transform"
+            onClick={addBot}
+          >
+            🤖 봇 친구 추가하기
+          </button>
+        )}
 
         {state.isHost && (
           <button
@@ -100,7 +121,7 @@ ${window.location.href}`;
             disabled={!canStart}
             onClick={startGame}
           >
-            {canStart ? "게임 시작" : "2~5인이 모여야 시작할 수 있어요"}
+            {canStart ? "게임 시작" : "2~5인이 모여야 시작할 수 있어요 (봇도 인원으로 셈해요)"}
           </button>
         )}
         {!state.isHost && <p className="text-purple-500 text-sm">방장이 게임을 시작하면 자동으로 시작됩니다</p>}

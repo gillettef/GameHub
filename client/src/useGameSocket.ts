@@ -5,6 +5,7 @@ import type { ActivityId, GameState } from "./gameTypes";
 export interface RoomPlayer {
   id: string;
   name: string;
+  isBot?: boolean;
 }
 
 interface LobbyState {
@@ -64,7 +65,7 @@ export function useGameSocket() {
         case "player_joined":
           setState((prev) => ({
             ...prev,
-            players: [...prev.players, { id: message.playerId, name: message.playerName }],
+            players: [...prev.players, { id: message.playerId, name: message.playerName, isBot: message.isBot }],
           }));
           break;
         case "player_left":
@@ -117,6 +118,17 @@ export function useGameSocket() {
     send(socket, { type: "start_game" });
   }, [ensureSocket, send]);
 
+  const addBot = useCallback(() => {
+    send(ensureSocket(), { type: "add_bot" });
+  }, [ensureSocket, send]);
+
+  const removeBot = useCallback(
+    (botId: string) => {
+      send(ensureSocket(), { type: "remove_bot", botId });
+    },
+    [ensureSocket, send],
+  );
+
   const submitClassChoice = useCallback(
     (keepCardIds: string[]) => {
       const socket = ensureSocket();
@@ -133,5 +145,5 @@ export function useGameSocket() {
     [ensureSocket, send],
   );
 
-  return { state, game, lastError, createRoom, joinRoom, startGame, submitClassChoice, selectActivity };
+  return { state, game, lastError, createRoom, joinRoom, startGame, addBot, removeBot, submitClassChoice, selectActivity };
 }

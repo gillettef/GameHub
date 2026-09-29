@@ -3,22 +3,15 @@
 //  - 어떤 전략(토너먼트 몰빵, 마법생물 몰빵 등)이 지나치게 강하거나 약한가
 //  - 최종 능력치/학점/성취도가 어느 범위에 분포하는가
 //  - 방과후활동 5종 중 봇이 무엇을 선호하고 그 결과는 어떤가
+import { chooseActivityAction, chooseClassCards, type BotStrategy } from "../src/game/bot.js";
 import { BALANCE } from "../src/game/config.js";
 import { createGame, selectActivity, submitClassChoice } from "../src/game/engine.js";
-import { effectiveStat, type ActivityId, type GameState, type StatKey } from "../src/game/types.js";
+import type { ActivityId, GameState } from "../src/game/types.js";
 
-const ACTIVITIES: ActivityId[] = ["tournament", "creature", "duel", "exploration", "lab"];
-
-interface Strategy {
-  name: string;
-  classWeights: Record<StatKey, number>;
-  activityBias: Record<ActivityId, number>;
-}
-
-const even = { tournament: 1, creature: 1, duel: 1, exploration: 1, lab: 1 };
+const even: Record<ActivityId, number> = { tournament: 1, creature: 1, duel: 1, exploration: 1, lab: 1 };
 const focus = (a: ActivityId): Record<ActivityId, number> => ({ ...even, [a]: 6 });
 
-const STRATEGIES: Strategy[] = [
+const STRATEGIES: BotStrategy[] = [
   { name: "균형형", classWeights: { intelligence: 1.2, spellPower: 1.2, stamina: 1, charm: 0.6 }, activityBias: even },
   { name: "토너먼트 몰빵", classWeights: { intelligence: 1, spellPower: 1.5, stamina: 1, charm: 0.5 }, activityBias: focus("tournament") },
   { name: "마법생물 몰빵", classWeights: { intelligence: 1, spellPower: 1.2, stamina: 1, charm: 0.5 }, activityBias: focus("creature") },
@@ -27,49 +20,12 @@ const STRATEGIES: Strategy[] = [
   { name: "연구실 몰빵", classWeights: { intelligence: 1.2, spellPower: 1.2, stamina: 1, charm: 0.6 }, activityBias: focus("lab") },
   { name: "지력 몰빵(수업)", classWeights: { intelligence: 3, spellPower: 0.8, stamina: 1, charm: 0.3 }, activityBias: even },
   { name: "주문력 몰빵(수업)", classWeights: { intelligence: 0.8, spellPower: 3, stamina: 1, charm: 0.3 }, activityBias: even },
-  { name: "무작위", classWeights: { intelligence: 1, spellPower: 1, stamina: 1, charm: 1 }, activityBias: even },
+  { name: "무작위", classWeights: { intelligence: 1, spellPower: 1, stamina: 1, charm: 1 }, activityBias: even, random: true },
 ];
 
 const activityPicks: Record<string, Record<ActivityId, number>> = {};
 
-function chooseClass(state: GameState, id: string, s: Strategy): string[] {
-  const p = state.players[id];
-  if (s.name === "무작위") {
-    const n = Math.floor(Math.random() * (Math.min(p.staminaTokens, p.offeredClassCards.length) + 1));
-    return p.offeredClassCards.slice(0, n).map((c) => c.id);
-  }
-  return [...p.offeredClassCards]
-    .sort((a, b) => b.statBoost.amount * s.classWeights[b.statBoost.stat] - a.statBoost.amount * s.classWeights[a.statBoost.stat])
-    .slice(0, p.staminaTokens)
-    .map((c) => c.id);
-}
-
-function chooseActivity(state: GameState, id: string, s: Strategy): { activityId: ActivityId; target?: string } {
-  const p = state.players[id];
-  const free = ACTIVITIES.filter((a) => state.activitySlots[a] === null);
-  const others = state.turnOrder.filter((x) => x !== id);
-  const base: Record<ActivityId, number> = {
-    tournament: Math.min(effectiveStat(p, "spellPower"), BALANCE.tournamentMaxTrack - p.tournamentTrack) * 0.5,
-    creature: p.spellbookTokens >= 3 ? 2 : 0.5,
-    duel: 1.5,
-    exploration: 1.2,
-    lab: 1.5,
-  };
-  const scored = free.map((a) => ({
-    a,
-    score: (s.name === "무작위" ? 1 : base[a] * s.activityBias[a]) * (0.7 + Math.random() * 0.6),
-  }));
-  scored.sort((x, y) => y.score - x.score);
-  const activityId = scored[0].a;
-  // 주문 대결 상대: 주문력이 가장 높은(가장 위협적인) 플레이어
-  const target =
-    activityId === "duel"
-      ? [...others].sort((a, b) => state.players[b].spellPower - state.players[a].spellPower)[0]
-      : undefined;
-  return { activityId, target };
-}
-
-function playGame(strategies: Strategy[]): GameState {
+function playGame(strategies: BotStrategy[]): GameState {
   const ids = strategies.map((_, i) => `p${i}`);
   const state = createGame(ids.map((id) => ({ id, name: id })));
   const byId = Object.fromEntries(ids.map((id, i) => [id, strategies[i]]));
@@ -77,11 +33,11 @@ function playGame(strategies: Strategy[]): GameState {
   while (state.phase !== "ended" && guard++ < 1000) {
     if (state.phase === "class") {
       for (const id of state.turnOrder) {
-        if (!state.players[id].hasActedThisPhase) submitClassChoice(state, id, chooseClass(state, id, byId[id]));
+        if (!state.players[id].hasActedThisPhase) submitClassChoice(state, id, chooseClassCards(state, id, byId[id]));
       }
     } else if (state.phase === "activity") {
       const id = state.activityOrder[state.activityTurnPointer];
-      const { activityId, target } = chooseActivity(state, id, byId[id]);
+      const { activityId, targetPlayerId: target } = chooseActivityAction(state, id, byId[id]);
       const picks = (activityPicks[byId[id].name] ??= { tournament: 0, creature: 0, duel: 0, exploration: 0, lab: 0 });
       picks[activityId] += 1;
       selectActivity(state, id, activityId, target);

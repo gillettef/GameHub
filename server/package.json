@@ -9,6 +9,7 @@
     "start": "node dist/index.js",
     "simulate": "tsx scripts/simulate.ts",
     "smoke": "tsx scripts/smoke.ts",
+    "smoke:bot": "tsx scripts/smoke-bot.ts",
     "playtest": "npm --prefix ../client run build && tsx src/index.ts"
   },
   "dependencies": {

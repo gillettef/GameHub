@@ -49,6 +49,7 @@ export interface GrimoireCard {
 export interface PlayerGameState {
   id: string;
   name: string;
+  isBot?: boolean;
   intelligence: number;
   stamina: number;
   charm: number;
