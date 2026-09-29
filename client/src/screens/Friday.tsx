@@ -9,7 +9,6 @@ import { RESOURCES } from '@server/engine/types';
 import type { Region, Resources } from '@server/engine/types';
 import { OpponentCardView, PlayerCardView, TacticCardView } from '../components/Cards';
 import { useCommit } from '../commit';
-import { useDevice } from '../device';
 import { CostChips, Icon, ResourceChip } from '../components/Icons';
 import { LineupPitch, Stepper, TokenChipView, playedInstance } from '../components/Lineup';
 import { MatchReplay } from '../components/MatchReplay';
@@ -31,7 +30,6 @@ const PREPARE_STEPS = ['전술', '출전 선수', '배치', '관중석·제출']
 // 초안은 lineupDraft 가 저장해 다음 주의 기본값으로 쓴다. 상대 팀 카드는 모든 스텝 옆에 고정.
 export function FridayPrepareScreen() {
   const { view, me, act } = useGame();
-  const { mobile } = useDevice();
   const game = `${view.id}:${view.me}`;
   const [init] = useState(() => initialDraft(game, view.week, me, view.self.tacticCards));
   const [tacticCardId, setTacticCardId] = useState(init.tacticCardId);
@@ -42,7 +40,7 @@ export function FridayPrepareScreen() {
   const [activations, setActivations] = useState<Record<string, boolean>>(init.activations);
   const [step, setStep] = useState(init.step);
   const [picked, setPicked] = useState<string | null>(null); // 배치 스텝에서 옮기려고 고른 토큰
-  const [opponentOpen, setOpponentOpen] = useState(!mobile); // 모바일용은 접어 두고 필요할 때 펼친다
+  const [opponentOpen, setOpponentOpen] = useState(false); // 접어 두고 필요할 때 펼친다
 
   const tactic = cards.tactic(tacticCardId || view.self.tacticCards[0]!);
   const formation = tactic.formations[formationIndex] ?? tactic.formations[0]!;
@@ -428,7 +426,7 @@ export function FridayAftermathScreen() {
   const { view } = useGame();
   const { resultSeen, setResultSeen, matchWatched, setMatchWatched } = useUi();
   const [override, setOverride] = useState<{ key: string; step: number } | null>(null); // 지나온 스텝을 다시 볼 때
-  const dicePlace = useDevice().mobile ? '위' : '왼쪽'; // 모바일용 화면은 주사위가 단계 패널 위에 있다
+  const dicePlace = '위'; // 주사위는 단계 패널 위에 있다
   if (view.phase.kind !== 'friday.aftermath') return null;
   const { current, matches } = view.phase;
   const actor = view.players[current]!;

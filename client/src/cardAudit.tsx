@@ -129,7 +129,6 @@ const show = (kind: string) => !only || only === kind;
 function App() {
   const [result, setResult] = useState('');
   useEffect(() => {
-    if (location.search.includes('mobile')) document.documentElement.classList.add('mobile-ui');
     void document.fonts.ready.then(() => requestAnimationFrame(() => setResult(JSON.stringify(audit()))));
   }, []);
   return (

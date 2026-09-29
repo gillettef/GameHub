@@ -8,7 +8,6 @@ import { RESOURCES, TRACK_MAX } from '@server/engine/types';
 import { hireCost, marketMinIndex, prospectCost } from '@server/engine/traits';
 import { WEEKS } from '@server/engine/weekend';
 import { useCommit } from '../commit';
-import { DeviceToggle, useDevice } from '../device';
 import { DAY_LABEL, RESOURCE_LABEL, SEAT_COLORS, TOKEN_LABEL, describeEffects, phaseLabel } from '../labels';
 import { NotifyToggles } from '../notify';
 import { useStore, useView } from '../store';
@@ -53,7 +52,6 @@ export function Header({ subtitle }: { subtitle?: string }) {
       </div>
       <div className="conn">
         {session && <NotifyToggles />}
-        <DeviceToggle />
         <span className={`dot ${connected ? 'on' : 'off'}`} title={connected ? '연결됨' : '재연결 중'} />
         <span className="conn-text">{connected ? '연결됨' : '재연결 중'}</span>
         <button className="link" onClick={leave}>나가기</button>
@@ -105,9 +103,8 @@ function SeatStats({ id }: { id: PlayerId }) {
 // PC용·모바일용이 같은 모양이다(사용자 요청 2026-09). 좁은 화면에서는 옆으로 밀리므로 처음에 내 자리가 보이게 맞춰 둔다
 export function PlayerStrip() {
   const { view, session, room } = useView();
-  const { selected, selectPlayer, mainTab, mobileTab } = useUi();
-  const { mobile } = useDevice();
-  const showing = mobile ? mobileTab === 'board' : mainTab === 'personal';
+  const { selected, selectPlayer, mobileTab } = useUi();
+  const showing = mobileTab === 'board';
   const mine = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     const el = mine.current;
@@ -172,13 +169,12 @@ export function MarketBody() {
   const { view, session, act } = useView();
   const { chosen, select } = useCommit();
   const { marketTab, setMarketTab } = useUi();
-  const { mobile } = useDevice();
   const [sponsorPick, setSponsorPick] = useState<number | null>(null);
   // 모바일용: 시장 행은 옆으로 미는 한 줄. '지금 구매 가능' 구역이 앞에 있으므로 탭을 바꾸면 맨 앞으로 되돌린다
   const rowRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    if (mobile && rowRef.current) rowRef.current.scrollLeft = 0;
-  }, [mobile, marketTab]);
+    if (rowRef.current) rowRef.current.scrollLeft = 0;
+  }, [marketTab]);
   const me = session ? view.players[session.playerId] : undefined;
   const canBuy = !!me && view.phase.kind === 'weekday' && view.phase.current === me.id && !view.phase.basicDone;
   const playerRow = (row: 'players' | 'veterans') => (id: string, i: number) => (

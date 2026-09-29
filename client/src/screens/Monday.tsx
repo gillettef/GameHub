@@ -3,7 +3,6 @@ import type { PlayerId } from '@server/engine/state';
 import { BoardCardView, ExecutiveCardView } from '../components/Cards';
 import { Icon } from '../components/Icons';
 import { TurnBanner } from '../components/Turn';
-import { useDevice } from '../device';
 import { COLOR_LABEL } from '../labels';
 import { useGame } from '../store';
 import { useRevealedRoll } from '../ui';
@@ -12,7 +11,7 @@ import { useRevealedRoll } from '../ui';
 // 굴리기·팬덤 재굴림·"결정 적용"은 모두 왼쪽 사이드바 주사위 트레이에 있다(사용자 요청). 적용 결과는 기록과 참가자 띠에 나타난다
 export function MondayScreen() {
   const { view } = useGame();
-  const dicePlace = useDevice().mobile ? '위' : '왼쪽'; // 모바일용 화면은 주사위가 단계 패널 위에 있다
+  const dicePlace = '위'; // 주사위는 단계 패널 위에 있다
   if (view.phase.kind !== 'monday.board') return null;
   const { current, meetings } = view.phase;
   const actor: PlayerId = current;

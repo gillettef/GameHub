@@ -1,5 +1,5 @@
 // 카드 넘침 점검: Vite 로 client/card-audit.html 을 띄우고 헤드리스 브라우저(Edge/Chrome)로 열어 결과(JSON)를 읽어 출력한다.
-// 사용: node scripts/card-audit.mjs [mobile] [only=sponsor] [shot.png] — 카드 밖으로 나가거나 잘리는 것이 있으면 종료 코드 1 (말줄임은 참고용)
+// 사용: node scripts/card-audit.mjs [only=sponsor] [shot.png] — 카드 밖으로 나가거나 잘리는 것이 있으면 종료 코드 1 (말줄임은 참고용)
 import { execFile } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -39,7 +39,7 @@ try {
   const findings = JSON.parse(m[1].replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&'));
   const hard = findings.filter((f) => f.kind !== 'clamped');
   for (const f of findings) console.log(`${f.kind.padEnd(8)} ${f.card} — ${f.where} (+${f.by}px)`);
-  console.log(`\n${mobile ? '모바일용' : 'PC용'}: 카드 밖/잘림 ${hard.length}건, 말줄임 ${findings.length - hard.length}건`);
+  console.log(`\n모바일 화면: 카드 밖/잘림 ${hard.length}건, 말줄임 ${findings.length - hard.length}건`);
   process.exitCode = hard.length > 0 ? 1 : 0;
 } finally {
   await server.close();
