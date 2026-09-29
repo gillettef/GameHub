@@ -27,6 +27,7 @@ async function copyText(text: string): Promise<boolean> {
 import { useGameSocket } from "./useGameSocket";
 import { GameBoard } from "./GameBoard";
 import { RulesModal } from "./Rules";
+import { Icon } from "./Icons";
 
 function App() {
   const { state, game, lastError, createRoom, joinRoom, startGame, addBot, removeBot, submitClassChoice, selectActivity, chooseLabCard } =
@@ -40,7 +41,8 @@ function App() {
       className="fixed right-3 top-[max(0.75rem,env(safe-area-inset-top))] z-30 min-h-11 rounded-full bg-white/90 px-4 text-sm text-purple-700 shadow-sm active:scale-95 transition-transform"
       onClick={() => setShowRules(true)}
     >
-      📖 규칙
+      <Icon name="book" className="mr-1 h-4 w-4" />
+      규칙
     </button>
   );
   const rulesModal = showRules && <RulesModal onClose={() => setShowRules(false)} />;
@@ -94,7 +96,11 @@ ${window.location.href}`;
           className="w-full max-w-sm min-h-12 rounded-2xl bg-pink-200 text-pink-800 py-3 mb-4 active:scale-95 transition-transform"
           onClick={() => shareRoom(state.roomCode!)}
         >
-          {copied ? "✅ 복사했어요!" : "📤 방 코드 공유·복사"}
+          {copied ? (
+            <><Icon name="check" className="mr-1 h-5 w-5" />복사했어요!</>
+          ) : (
+            <><Icon name="share" className="mr-1 h-5 w-5" />방 코드 공유·복사</>
+          )}
         </button>
 
         <div className="w-full max-w-sm bg-white rounded-2xl shadow-sm p-4 mb-4">
@@ -104,7 +110,7 @@ ${window.location.href}`;
             {state.players.map((p) => (
               <li key={p.id} className="flex items-center justify-between gap-2 text-purple-700">
                 <span className="truncate">
-                  {p.isBot ? "" : "🙂 "}
+                  {p.isBot ? null : <Icon name="user" className="mr-1 h-4 w-4" />}
                   {p.name}
                 </span>
                 {p.isBot && state.isHost && (
@@ -113,7 +119,7 @@ ${window.location.href}`;
                     aria-label={`${p.name} 제거`}
                     onClick={() => removeBot(p.id)}
                   >
-                    ✕
+                    <Icon name="x" className="h-4 w-4" />
                   </button>
                 )}
               </li>
@@ -126,7 +132,8 @@ ${window.location.href}`;
             className="w-full max-w-sm min-h-12 rounded-2xl bg-sky-100 text-sky-800 py-3 mb-4 active:scale-95 transition-transform"
             onClick={addBot}
           >
-            🤖 봇 친구 추가하기
+            <Icon name="robot" className="mr-1 h-5 w-5" />
+            봇 친구 추가하기
           </button>
         )}
 
