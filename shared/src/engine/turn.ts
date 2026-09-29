@@ -229,6 +229,9 @@ export function setupGame(state: GameState): GameState {
   let s: GameState = withMarkers(
     {
       ...state,
+      // 지형은 맵이 정본이다. 지형 필드가 생기기 전 형식으로 저장된 로비 스냅샷이 복구돼도
+      // 시작 시점에 맵에서 다시 만들어 terrainAt 등이 undefined 를 만지지 않게 한다
+      board: createInitialState(state.roomId, state.mapId, state.rngSeed).board,
       phase: 'playing',
       players: dealt,
       nextMarkerId: nextId,

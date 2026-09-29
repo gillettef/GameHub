@@ -206,12 +206,19 @@ function LobbyView({ roomId, onQuit }: { roomId: string; onQuit: () => void }) {
   const setNotice = useGameStore((s) => s.setNotice);
   const [tab, setTab] = useState<LobbyTab>('players');
   const [copied, setCopied] = useState(false);
+  // 랜덤으로 고른 종족은 게임이 시작되기 전까지 화면에 드러내지 않는다(2026-09-29 사용자 지시).
+  // 실제 종족은 엔진 상태에 이미 들어 있고, 이 플래그는 이 화면이 그것을 가리는 용도일 뿐이다
+  const [randomRace, setRandomRace] = useState(false);
 
   const me = state?.players.find((p) => p.id === viewerId);
 
-  // 처음 들어오면 무작위 종족을 한 번 골라 준다 (2026-09-23: 그 뒤로는 종족 탭에서 자유롭게 바꾼다)
+  // 처음 들어오면 무작위 종족을 한 번 골라 준다 (2026-09-23: 그 뒤로는 종족 탭에서 자유롭게 바꾼다).
+  // 기본값도 "랜덤" 선택으로 취급해 게임 시작 전에는 가려 둔다
   useEffect(() => {
-    if (viewerId && me && !me.race) dispatch({ type: 'SELECT_RACE', playerId: viewerId, race: randomRaceId() });
+    if (viewerId && me && !me.race) {
+      setRandomRace(true);
+      dispatch({ type: 'SELECT_RACE', playerId: viewerId, race: randomRaceId() });
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [me?.id, me?.race]);
 
@@ -264,7 +271,14 @@ function LobbyView({ roomId, onQuit }: { roomId: string; onQuit: () => void }) {
     if (!res.ok && res.message) setNotice(res.message);
   };
 
-  const pickRace = (race: RaceId) => dispatch({ type: 'SELECT_RACE', playerId: viewerId, race });
+  const pickRace = (race: RaceId) => {
+    setRandomRace(false);
+    dispatch({ type: 'SELECT_RACE', playerId: viewerId, race });
+  };
+  const pickRandom = () => {
+    setRandomRace(true);
+    dispatch({ type: 'SELECT_RACE', playerId: viewerId, race: randomRaceId() });
+  };
 
   return (
     <DockShell
@@ -301,17 +315,17 @@ function LobbyView({ roomId, onQuit }: { roomId: string; onQuit: () => void }) {
       activeTab={tab}
       footer={
         me.isReady ? (
-          <button type="button" className="pill pill--outline" onClick={() => pickRace(me.race ?? 'coalition')}>
+          <button type="button" className="pill pill--outline" onClick={() => dispatch({ type: 'SELECT_RACE', playerId: viewerId, race: me.race ?? 'coalition' })}>
             준비 취소
           </button>
-        ) : (
+        ) : tab === 'race' ? (
           <>
             <button type="button" className="pill pill--lg" disabled={!me.race} onClick={() => dispatch({ type: 'READY', playerId: viewerId })}>
               준비 완료
             </button>
             <span className={landing.help}>{me.race ? '종족을 다시 고르면 준비가 풀립니다.' : '종족을 고르세요.'}</span>
           </>
-        )
+        ) : undefined
       }
     >
       {notice && (
@@ -428,8 +442,8 @@ function LobbyView({ roomId, onQuit }: { roomId: string; onQuit: () => void }) {
       {tab === 'race' && (
         <section className={landing.section}>
           <h2 className={landing.h2}>내 종족</h2>
-          <p className={landing.help}>{me.isReady ? '준비를 취소하면 다시 바꿀 수 있습니다.' : '종족을 고르면 그 종족의 고정 덱이 정해집니다. "랜덤"으로 다시 뽑을 수도 있습니다.'}</p>
-          <DeckPicker race={me.race} disabled={me.isReady} onPickRace={pickRace} onRandom={() => pickRace(randomRaceId())} showDeck={false} />
+          <p className={landing.help}>{me.isReady ? '준비를 취소하면 다시 바꿀 수 있습니다.' : '종족을 고르면 그 종족의 고정 덱이 정해집니다. "랜덤"을 고르면 게임이 시작될 때 종족이 공개됩니다.'}</p>
+          <DeckPicker race={me.race} disabled={me.isReady} onPickRace={pickRace} onRandom={pickRandom} randomSelected={randomRace} showDeck={false} />
           <div className={styles.wizardNav}>
             <button type="button" className="pill pill--outline" onClick={goPrev}>
               이전: 맵으로
