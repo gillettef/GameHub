@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Icon, type IconName } from "./Icons";
 import { ACTIVITY_LABEL, STAT_LABEL, type ActivityId, type GameState, type StatKey } from "./gameTypes";
 
-// 주차가 시작될 때 잠깐 뜨는 "배너"와, 내 활동·시험 결과를 확인시키는 "결과 모달"을 순서대로 보여 준다.
+// 주차가 시작될 때 뜨는 "배너"와, 내 활동·시험 결과를 알려 주는 "결과 모달"을 순서대로 보여 준다. 둘 다 확인을 눌러야 넘어간다.
+// (봇은 화면이 없으므로 서버가 타이머로 알아서 진행한다)
 // 서버는 상태 스냅샷만 보내므로, 이전 상태와 비교해서 무슨 일이 있었는지 클라이언트가 유추한다.
 
 interface Tile {
@@ -30,7 +31,6 @@ const ACTIVITY_ICON: Record<ActivityId, IconName> = {
 };
 const ACTIVITY_IDS = Object.keys(ACTIVITY_ICON) as ActivityId[];
 const STAT_KEYS: StatKey[] = ["intelligence", "stamina", "charm", "spellPower"];
-const BANNER_MS = 2200;
 
 let nextId = 1;
 const make = (a: Omit<Announcement, "id" | "tiles" | "lines"> & { tiles?: Tile[]; lines?: string[] }): Announcement => ({
@@ -149,22 +149,16 @@ export function AnnouncementLayer({ game, myId }: { game: GameState; myId: strin
   const current = queue[0];
   const dismiss = () => setQueue((q) => q.slice(1));
 
-  useEffect(() => {
-    if (!current || current.kind !== "banner") return;
-    const timer = setTimeout(() => setQueue((q) => (q[0]?.id === current.id ? q.slice(1) : q)), BANNER_MS);
-    return () => clearTimeout(timer);
-  }, [current]);
-
   if (!current) return null;
   const isResult = current.kind === "result";
+  const remaining = queue.length - 1;
 
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-purple-900/30 p-6"
-      role={isResult ? "dialog" : "status"}
-      aria-modal={isResult}
+      role="dialog"
+      aria-modal="true"
       aria-label={current.title}
-      onClick={isResult ? undefined : dismiss}
     >
       <div key={current.id} className="pop-in w-full max-w-sm rounded-3xl border-2 border-pink-200 bg-white p-5 text-center shadow-lg">
         <span className="mx-auto mb-2 flex h-14 w-14 items-center justify-center rounded-full bg-pink-100 text-pink-500">
@@ -217,17 +211,14 @@ export function AnnouncementLayer({ game, myId }: { game: GameState; myId: strin
           </ul>
         )}
 
-        {isResult ? (
-          <button
-            className="mt-4 min-h-12 w-full rounded-2xl bg-purple-500 py-3 font-semibold text-white active:scale-95 transition-transform"
-            onClick={dismiss}
-            autoFocus
-          >
-            확인{queue.length > 1 ? ` (${queue.length - 1}개 더 있어요)` : ""}
-          </button>
-        ) : (
-          <p className="mt-3 text-xs text-purple-400">화면을 누르면 닫혀요</p>
-        )}
+        <button
+          className="mt-4 min-h-12 w-full rounded-2xl bg-purple-500 py-3 font-semibold text-white active:scale-95 transition-transform"
+          onClick={dismiss}
+          autoFocus
+        >
+          {isResult ? "확인" : "시작하기"}
+          {remaining > 0 ? ` (${remaining}개 더 있어요)` : ""}
+        </button>
       </div>
     </div>
   );
