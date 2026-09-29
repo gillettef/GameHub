@@ -17,6 +17,7 @@ import {
   type PlayerGameState,
 } from "./gameTypes";
 import { RulesGuide } from "./Rules";
+import { AnnouncementLayer } from "./Announcements";
 
 const ACTIVITY_IDS: ActivityId[] = ["tournament", "creature", "duel", "exploration", "lab"];
 
@@ -504,6 +505,8 @@ export function GameBoard({
           ))}
         </ul>
       </nav>
+
+      <AnnouncementLayer game={game} myId={myId} />
     </div>
   );
 }
