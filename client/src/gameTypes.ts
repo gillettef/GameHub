@@ -107,6 +107,7 @@ export interface GameState {
   duelTargetId: string | null;
   pendingLab: { playerId: string; cards: LabCard[] } | null;
   examResults: ExamResult[];
+  cleanupSummary: { playerId: string; staminaTokens: number; spellbookTokens: number }[];
   log: GameLogEntry[];
   winnerIds?: string[];
 }

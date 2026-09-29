@@ -181,6 +181,7 @@ export function createGame(players: { id: string; name: string; isBot?: boolean 
     duelTargetId: null,
     pendingLab: null,
     examResults: [],
+    cleanupSummary: [],
     labPile: createLabPile(),
     explorationPile: createExplorationPile(),
     grimoirePile: createGrimoirePile(),
@@ -479,6 +480,11 @@ export function chooseLabCard(state: GameState, playerId: string, cardId: string
 
 function beginCleanupPhase(state: GameState): void {
   state.phase = "cleanup";
+  state.cleanupSummary = state.turnOrder.map((id) => ({
+    playerId: id,
+    staminaTokens: state.players[id].staminaTokens,
+    spellbookTokens: state.players[id].spellbookTokens,
+  }));
   for (const playerId of state.turnOrder) {
     const player = state.players[playerId];
     player.staminaTokens = 0;

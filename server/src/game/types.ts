@@ -145,6 +145,8 @@ export interface GameState {
   // 연구실 실험 중 카드 선택 대기 (후보 카드는 고르는 본인에게만 전송)
   pendingLab: { playerId: string; cards: LabCard[] } | null;
   examResults: ExamResult[];
+  // 가장 최근 4주차(정리)에서 소멸한 토큰 (화면의 정리 연출용)
+  cleanupSummary: { playerId: string; staminaTokens: number; spellbookTokens: number }[];
   // 수업카드/마법생물 카드 덱·버림 더미 (서버 전용, 클라이언트에는 전송하지 않음)
   labPile: Pile<LabCard>;
   explorationPile: Pile<ExplorationCard>;
