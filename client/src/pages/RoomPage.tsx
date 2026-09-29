@@ -196,6 +196,24 @@ type LobbyTab = 'room' | 'players' | 'map' | 'race';
 const STEP_ORDER: LobbyTab[] = ['room', 'players', 'map', 'race'];
 const STEP_LABEL: Record<LobbyTab, string> = { room: '방', players: '좌석', map: '맵', race: '종족' };
 
+const RANDOM_RACE_KEY = 'astraltab.randomRace.';
+
+function readRandomRace(roomId: string): boolean {
+  try {
+    return window.sessionStorage.getItem(RANDOM_RACE_KEY + roomId) !== '0';
+  } catch {
+    return true;
+  }
+}
+
+function writeRandomRace(roomId: string, on: boolean): void {
+  try {
+    window.sessionStorage.setItem(RANDOM_RACE_KEY + roomId, on ? '1' : '0');
+  } catch {
+    /* 저장 못 해도 화면 상태로는 유지된다 */
+  }
+}
+
 function LobbyView({ roomId, onQuit }: { roomId: string; onQuit: () => void }) {
   const state = useGameStore(selectState);
   const viewerId = useGameStore(selectViewerId);
@@ -208,7 +226,13 @@ function LobbyView({ roomId, onQuit }: { roomId: string; onQuit: () => void }) {
   const [copied, setCopied] = useState(false);
   // 랜덤으로 고른 종족은 게임이 시작되기 전까지 화면에 드러내지 않는다(2026-09-29 사용자 지시).
   // 실제 종족은 엔진 상태에 이미 들어 있고, 이 플래그는 이 화면이 그것을 가리는 용도일 뿐이다
-  const [randomRace, setRandomRace] = useState(false);
+  // 기본값은 "랜덤" — 종족 단계에 처음 들어가도 랜덤 타일만 선택돼 있다. 종족을 직접 골랐을 때만 해제하고,
+  // 새로고침해도 유지되도록 방별로 sessionStorage 에 남긴다(막혀 있으면 메모리로만)
+  const [randomRace, setRandomRaceState] = useState(() => readRandomRace(roomId));
+  const setRandomRace = (on: boolean) => {
+    setRandomRaceState(on);
+    writeRandomRace(roomId, on);
+  };
 
   const me = state?.players.find((p) => p.id === viewerId);
 
@@ -216,7 +240,6 @@ function LobbyView({ roomId, onQuit }: { roomId: string; onQuit: () => void }) {
   // 기본값도 "랜덤" 선택으로 취급해 게임 시작 전에는 가려 둔다
   useEffect(() => {
     if (viewerId && me && !me.race) {
-      setRandomRace(true);
       dispatch({ type: 'SELECT_RACE', playerId: viewerId, race: randomRaceId() });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
