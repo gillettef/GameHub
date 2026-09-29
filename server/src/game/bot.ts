@@ -56,7 +56,7 @@ export function chooseActivityAction(
   state: GameState,
   playerId: string,
   strategy: BotStrategy,
-): { activityId: ActivityId; targetPlayerId?: string } {
+): { activityId: ActivityId; targetPlayerId?: string; useStamina: boolean } {
   const p = state.players[playerId];
   const free = ACTIVITIES.filter((a) => state.activitySlots[a] === null);
   const base: Record<ActivityId, number> = {
@@ -64,7 +64,8 @@ export function chooseActivityAction(
     creature: p.spellbookTokens >= 3 ? 2 : 0.5,
     duel: 1.5,
     exploration: 1.2,
-    lab: 1.5,
+    // 지력이 높을수록 실험 재료를 많이 펼치므로 연구실의 매력이 올라간다
+    lab: 1 + 0.3 * effectiveStat(p, "intelligence"),
   };
   const scored = free.map((a) => ({
     a,
@@ -79,5 +80,6 @@ export function chooseActivityAction(
           .filter((id) => id !== playerId)
           .sort((a, b) => state.players[b].spellPower - state.players[a].spellPower)[0]
       : undefined;
-  return { activityId, targetPlayerId };
+  // 남은 체력토큰은 4주차에 소멸하므로 있으면 집중에 쓴다
+  return { activityId, targetPlayerId, useStamina: p.staminaTokens > 0 };
 }

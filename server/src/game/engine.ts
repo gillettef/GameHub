@@ -17,6 +17,7 @@ import {
   type ActivityId,
   type CardEffect,
   type CreatureAbility,
+  type EquipmentCard,
   type StatKey,
   type ExamResult,
   type GameState,
@@ -44,8 +45,18 @@ function compareTieBreak(state: GameState, aId: string, bId: string): number {
   return charmDiff !== 0 ? charmDiff : Math.random() < 0.5 ? -1 : 1;
 }
 
-function rotateFrom<T>(items: T[], startIndex: number): T[] {
-  return [...items.slice(startIndex), ...items.slice(0, startIndex)];
+// 3주차(방과후활동) 구역 선택 순서: 현재 매력이 높은 순 (동점이면 주사위). 2주차 수업카드로 바뀐 매력이 반영된다
+function orderByCharm(state: GameState): string[] {
+  return state.turnOrder
+    .map((id) => ({ id, charm: effectiveStat(state.players[id], "charm"), roll: Math.random() }))
+    .sort((a, b) => b.charm - a.charm || b.roll - a.roll)
+    .map((entry) => entry.id);
+}
+
+// 연구실 실험 후보 카드의 가치 (영구 학점을 더 높게 쳐서 가장 좋은 결과물을 고른다)
+function equipmentValue(card: EquipmentCard): number {
+  const boosts = Object.values(card.tempBoosts).reduce((sum, n) => sum + (n ?? 0), 0);
+  return boosts + (card.credit ?? 0) * 3;
 }
 
 // 플레이어가 가진 마법생물 중 해당 트리거의 능력만 모은다
@@ -149,10 +160,6 @@ export function createGame(players: { id: string; name: string; isBot?: boolean 
 
 function beginRound(state: GameState): void {
   log(state, `${state.round}라운드 시작`);
-  // 선 플레이어: 매력이 가장 높은 플레이어 (동점이면 주사위), 이후 그 플레이어부터 시계방향
-  const starterId = [...state.turnOrder].sort((a, b) => compareTieBreak(state, a, b))[0];
-  state.startingPlayerIndex = state.turnOrder.indexOf(starterId);
-  log(state, `선 플레이어: ${state.players[starterId].name}`);
   for (const playerId of state.turnOrder) {
     const player = state.players[playerId];
     // 1주차(준비): 체력 수치만큼 체력토큰, 주문력 수치만큼 마법 주문서 획득
@@ -217,12 +224,13 @@ export function submitClassChoice(state: GameState, playerId: string, keepCardId
 function beginActivityPhase(state: GameState): void {
   state.phase = "activity";
   state.activitySlots = { tournament: null, creature: null, duel: null, exploration: null, lab: null };
-  state.activityOrder = rotateFrom(state.turnOrder, state.startingPlayerIndex);
+  state.activityOrder = orderByCharm(state);
+  state.startingPlayerIndex = state.turnOrder.indexOf(state.activityOrder[0]);
   state.activityTurnPointer = 0;
   for (const playerId of state.turnOrder) {
     state.players[playerId].hasActedThisPhase = false;
   }
-  log(state, "3주차(방과후활동) 시작");
+  log(state, `3주차(방과후활동) 시작 — 매력 순서: ${state.activityOrder.map((id) => state.players[id].name).join(" → ")}`);
 }
 
 function resolveActivity(
@@ -230,10 +238,11 @@ function resolveActivity(
   activityId: ActivityId,
   player: PlayerGameState,
   targetPlayerId: string | undefined,
+  boost: number,
 ): void {
   switch (activityId) {
     case "tournament": {
-      const gain = effectiveStat(player, "spellPower");
+      const gain = effectiveStat(player, "spellPower") + boost;
       player.tournamentTrack = Math.min(BALANCE.tournamentMaxTrack, player.tournamentTrack + gain);
       log(state, `${player.name}: 마법 토너먼트 참가 (트랙 ${player.tournamentTrack}칸)`);
       break;
@@ -244,8 +253,10 @@ function resolveActivity(
         log(state, `${player.name}: 마법생물 덱이 비어 있습니다`);
         break;
       }
-      if (player.spellbookTokens >= card.requiredSpellPower) {
-        player.spellbookTokens -= card.requiredSpellPower;
+      // 체력토큰으로 집중하면 필요한 마법 주문서가 줄어든다 (최소 1개)
+      const cost = Math.max(1, card.requiredSpellPower - boost);
+      if (player.spellbookTokens >= cost) {
+        player.spellbookTokens -= cost;
         player.creatures.push(card);
         const gain = card.ability.trigger === "acquire" && card.ability.effect === "spellPower" ? card.ability.amount : 0;
         player.spellPower += gain;
@@ -269,7 +280,7 @@ function resolveActivity(
       const defenderAbilities = [...abilitiesOf(target, "duel"), ...abilitiesOf(target, "defend")];
       const challengerRoll = Math.max(
         0,
-        rollD6() + effectiveStat(player, "spellPower") + sumEffect(challengerAbilities, "rollBonus") - sumEffect(defenderAbilities, "enemyRollPenalty"),
+        rollD6() + boost + effectiveStat(player, "spellPower") + sumEffect(challengerAbilities, "rollBonus") - sumEffect(defenderAbilities, "enemyRollPenalty"),
       );
       const defenderRoll = Math.max(
         0,
@@ -312,7 +323,7 @@ function resolveActivity(
       let rollText = "";
       if (card.check) {
         const roll = rollD6();
-        const total = roll + effectiveStat(player, card.check.stat);
+        const total = roll + boost + effectiveStat(player, card.check.stat);
         success = total >= card.check.target;
         rollText = ` (판정 ${total}/${card.check.target} ${success ? "성공" : "실패"})`;
       }
@@ -323,12 +334,23 @@ function resolveActivity(
       break;
     }
     case "lab": {
-      const card = drawFromPile(state.equipmentPile);
-      if (!card) break;
+      // 지력만큼 실험 재료(장비 카드)를 펼쳐 그중 가장 좋은 결과물 1장을 얻는다 (체력토큰으로 집중하면 1장 더)
+      const candidates: EquipmentCard[] = [];
+      const count = Math.min(BALANCE.labMaxCandidates, effectiveStat(player, "intelligence")) + boost;
+      for (let i = 0; i < count; i++) {
+        const drawn = drawFromPile(state.equipmentPile);
+        if (!drawn) break;
+        candidates.push(drawn);
+      }
+      if (candidates.length === 0) break;
+      const pooled = candidates.length;
+      candidates.sort((a, b) => equipmentValue(b) - equipmentValue(a));
+      const [card, ...rest] = candidates;
+      state.equipmentPile.discard.push(...rest);
       player.equipment.push(card);
       applyCardEffect(player, { tempStats: card.tempBoosts, credit: card.credit });
       const gained = describeEffect({ tempStats: card.tempBoosts, credit: card.credit });
-      log(state, `${player.name}: 연구실 실험 → "${card.name}" (${gained})`);
+      log(state, `${player.name}: 연구실 실험 (재료 ${pooled}장 중) → "${card.name}" (${gained})`);
       break;
     }
   }
@@ -339,6 +361,7 @@ export function selectActivity(
   playerId: string,
   activityId: ActivityId,
   targetPlayerId?: string,
+  useStamina = false,
 ): void {
   if (state.phase !== "activity") throw new Error("지금은 방과후활동 단계가 아닙니다.");
   const currentTurnPlayerId = state.activityOrder[state.activityTurnPointer];
@@ -347,7 +370,10 @@ export function selectActivity(
   if (state.activitySlots[activityId] !== null) throw new Error("이미 다른 플레이어가 선택한 구역입니다.");
 
   const player = state.players[playerId];
-  resolveActivity(state, activityId, player, targetPlayerId);
+  // 남은 체력토큰 1개를 써서 집중하면 활동마다 +1 효과 (토큰은 4주차에 소멸하므로 남겨도 쓸모없다)
+  if (useStamina && player.staminaTokens < 1) throw new Error("집중에 쓸 체력토큰이 없습니다.");
+  resolveActivity(state, activityId, player, targetPlayerId, useStamina ? 1 : 0);
+  if (useStamina) player.staminaTokens -= 1;
   state.activitySlots[activityId] = playerId;
   player.hasActedThisPhase = true;
   state.activityTurnPointer += 1;

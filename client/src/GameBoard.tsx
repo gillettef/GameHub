@@ -1,5 +1,6 @@
 import { useState } from "react";
 import {
+  ACTIVITY_HINT,
   ACTIVITY_LABEL,
   ELEMENT_ICON,
   STAT_LABEL,
@@ -177,11 +178,14 @@ function ActivityPhasePanel({
 }: {
   game: GameState;
   myId: string;
-  onSelect: (activityId: ActivityId, targetPlayerId?: string) => void;
+  onSelect: (activityId: ActivityId, targetPlayerId?: string, useStamina?: boolean) => void;
 }) {
   const currentTurnPlayerId = game.activityOrder[game.activityTurnPointer];
   const isMyTurn = currentTurnPlayerId === myId;
   const [pendingActivity, setPendingActivity] = useState<ActivityId | null>(null);
+  const [focus, setFocus] = useState(false);
+  const staminaTokens = game.players[myId]?.staminaTokens ?? 0;
+  const orderText = game.activityOrder.map((id) => game.players[id].name).join(" → ");
 
   if (!isMyTurn) {
     return (
@@ -201,7 +205,7 @@ function ActivityPhasePanel({
             <button
               key={id}
               className="rounded-xl border border-purple-200 min-h-12 px-3 py-3 text-purple-700 bg-purple-50 active:scale-95 transition-transform"
-              onClick={() => onSelect("duel", id)}
+              onClick={() => onSelect("duel", id, focus && staminaTokens > 0)}
             >
               {game.players[id].name}
             </button>
@@ -216,7 +220,14 @@ function ActivityPhasePanel({
 
   return (
     <div className="bg-white rounded-3xl border-2 border-purple-200 shadow-sm p-4">
-      <p className="text-sm text-purple-500 mb-2">3주차(방과후활동): 구역을 선택하세요</p>
+      <p className="text-sm text-purple-500 mb-1">3주차(방과후활동): 구역을 선택하세요</p>
+      <p className="text-xs text-purple-400 mb-2">💖 매력 순서: {orderText}</p>
+      {staminaTokens > 0 && (
+        <label className="flex items-center gap-2 min-h-11 mb-2 rounded-xl bg-green-50 px-3 text-sm text-green-800">
+          <input type="checkbox" className="h-5 w-5" checked={focus} onChange={(e) => setFocus(e.target.checked)} />
+          <span>💪 체력토큰 1개로 집중하기 (활동 효과 +1)</span>
+        </label>
+      )}
       <div className="grid grid-cols-1 gap-2">
         {ACTIVITY_IDS.map((activityId) => {
           const occupant = game.activitySlots[activityId];
@@ -232,9 +243,10 @@ function ActivityPhasePanel({
             <button
               key={activityId}
               className="rounded-xl border border-purple-300 min-h-12 px-3 py-3 text-purple-700 bg-white active:bg-purple-100 active:scale-95 transition-transform"
-              onClick={() => (activityId === "duel" ? setPendingActivity("duel") : onSelect(activityId))}
+              onClick={() => (activityId === "duel" ? setPendingActivity("duel") : onSelect(activityId, undefined, focus && staminaTokens > 0))}
             >
               {label}
+              <span className="block text-xs text-purple-400">{ACTIVITY_HINT[activityId]}</span>
             </button>
           );
         })}
@@ -283,7 +295,7 @@ export function GameBoard({
   game: GameState;
   myId: string;
   onSubmitClassChoice: (keepCardIds: string[]) => void;
-  onSelectActivity: (activityId: ActivityId, targetPlayerId?: string) => void;
+  onSelectActivity: (activityId: ActivityId, targetPlayerId?: string, useStamina?: boolean) => void;
 }) {
   const latestExam = game.examResults[game.examResults.length - 1];
 

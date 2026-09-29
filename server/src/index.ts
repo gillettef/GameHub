@@ -63,8 +63,8 @@ function scheduleBots(room: Room): void {
       if (room.game.phase === "class") {
         submitClassChoice(room.game, botId, chooseClassCards(room.game, botId, bot.bot));
       } else if (room.game.phase === "activity") {
-        const { activityId, targetPlayerId } = chooseActivityAction(room.game, botId, bot.bot);
-        selectActivity(room.game, botId, activityId, targetPlayerId);
+        const { activityId, targetPlayerId, useStamina } = chooseActivityAction(room.game, botId, bot.bot);
+        selectActivity(room.game, botId, activityId, targetPlayerId, useStamina);
       }
     } catch (err) {
       console.error("봇 행동 오류:", err);
@@ -218,7 +218,7 @@ wss.on("connection", (socket) => {
     if (message.type === "select_activity") {
       if (!room.game) return;
       try {
-        selectActivity(room.game, playerId, message.activityId, message.targetPlayerId);
+        selectActivity(room.game, playerId, message.activityId, message.targetPlayerId, message.useStamina);
         broadcastGameState(room);
         scheduleBots(room);
       } catch (err) {

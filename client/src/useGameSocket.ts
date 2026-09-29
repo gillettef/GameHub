@@ -138,9 +138,9 @@ export function useGameSocket() {
   );
 
   const selectActivity = useCallback(
-    (activityId: ActivityId, targetPlayerId?: string) => {
+    (activityId: ActivityId, targetPlayerId?: string, useStamina?: boolean) => {
       const socket = ensureSocket();
-      send(socket, { type: "select_activity", activityId, targetPlayerId });
+      send(socket, { type: "select_activity", activityId, targetPlayerId, useStamina });
     },
     [ensureSocket, send],
   );
