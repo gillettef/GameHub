@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Icon, InlineIcon, type IconName } from "./Icons";
 import {
   ACTIVITY_HINT,
   ACTIVITY_LABEL,
@@ -19,12 +20,14 @@ import { RulesGuide } from "./Rules";
 
 const ACTIVITY_IDS: ActivityId[] = ["tournament", "creature", "duel", "exploration", "lab"];
 
-const STAT_ICON = { intelligence: "🧠", stamina: "💪", charm: "💖", spellPower: "✨" } as const;
+const MEDAL_COLOR = ["text-amber-500", "text-slate-400", "text-orange-500"];
 
-function Chip({ icon, label, value, className }: { icon: string; label: string; value: string | number; className: string }) {
+function Chip({ icon, label, value, className, showLabel }: { icon: IconName; label: string; value: string | number; className: string; showLabel?: boolean }) {
   return (
-    <span className={`rounded-full px-2.5 py-1 text-sm whitespace-nowrap ${className}`} aria-label={`${label} ${value}`}>
-      <span aria-hidden>{icon}</span> {value}
+    <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-sm whitespace-nowrap ${className}`} aria-label={`${label} ${value}`}>
+      <Icon name={icon} className="h-4 w-4" />
+      {showLabel && <span className="text-xs">{label}</span>}
+      {value}
     </span>
   );
 }
@@ -33,31 +36,31 @@ function PlayerStatCard({ player, isMe }: { player: PlayerGameState; isMe: boole
   const body = (
     <>
       <div className="flex flex-wrap gap-1.5 mb-1.5">
-        <Chip icon={STAT_ICON.intelligence} label="지력" value={effectiveStat(player, "intelligence")} className="bg-sky-100 text-sky-800" />
-        <Chip icon={STAT_ICON.stamina} label="체력" value={effectiveStat(player, "stamina")} className="bg-green-100 text-green-800" />
-        <Chip icon={STAT_ICON.charm} label="매력" value={effectiveStat(player, "charm")} className="bg-pink-100 text-pink-800" />
-        <Chip icon={STAT_ICON.spellPower} label="주문력" value={effectiveStat(player, "spellPower")} className="bg-purple-100 text-purple-800" />
-        <Chip icon="🎓" label="학점" value={player.credit} className="bg-amber-100 text-amber-800" />
+        <Chip icon="bulb" label="지력" value={effectiveStat(player, "intelligence")} className="bg-sky-100 text-sky-800" />
+        <Chip icon="bolt" label="체력" value={effectiveStat(player, "stamina")} className="bg-green-100 text-green-800" />
+        <Chip icon="heart" label="매력" value={effectiveStat(player, "charm")} className="bg-pink-100 text-pink-800" />
+        <Chip icon="sparkle" label="주문력" value={effectiveStat(player, "spellPower")} className="bg-purple-100 text-purple-800" />
+        <Chip icon="cap" label="학점" value={player.credit} className="bg-amber-100 text-amber-800" />
       </div>
-      <p className="text-sm text-purple-700">
-        🏆 토너먼트 {player.tournamentTrack}/10 · 🔋 체력토큰 {player.staminaTokens} · 📖 주문서 {player.spellbookTokens} · 📚 수업 {player.classCards.length}장
+      <p className="text-sm text-purple-700 leading-7">
+        <InlineIcon name="trophy" /> 토너먼트 {player.tournamentTrack}/10 · <InlineIcon name="staminaToken" /> 체력토큰 {player.staminaTokens} · <InlineIcon name="spellbookToken" /> 주문서 {player.spellbookTokens} · <InlineIcon name="book" /> 수업 {player.classCards.length}장
       </p>
       {player.peekedExploration && (
         <div className="mt-2 rounded-2xl border border-indigo-200 bg-indigo-50 px-2.5 py-2 text-sm text-indigo-800">
           <p>
-            <span aria-hidden>🔮</span> 엿본 탐험 카드: <b>{player.peekedExploration.name}</b>
+            <InlineIcon name="crystal" /> 엿본 탐험 카드: <b>{player.peekedExploration.name}</b>
           </p>
           <p className="text-xs text-indigo-600">{player.peekedExploration.description}</p>
-          {player.peekedExploration.checkText && <p className="text-xs">🎲 {player.peekedExploration.checkText}</p>}
-          <p className="text-xs">✅ 성공: {player.peekedExploration.successText}</p>
-          <p className="text-xs">⚠️ 실패: {player.peekedExploration.failureText}</p>
+          {player.peekedExploration.checkText && <p className="text-xs"><InlineIcon name="dice" /> {player.peekedExploration.checkText}</p>}
+          <p className="text-xs"><InlineIcon name="check" /> 성공: {player.peekedExploration.successText}</p>
+          <p className="text-xs"><InlineIcon name="warn" /> 실패: {player.peekedExploration.failureText}</p>
         </div>
       )}
       {player.equipment.length > 0 && (
         <ul className="mt-2 flex flex-col gap-1">
           {player.equipment.map((c) => (
             <li key={c.id} className="rounded-2xl bg-white/70 px-2.5 py-1.5 text-sm text-purple-800">
-              <span aria-hidden>🧪</span> <b>{c.name}</b>
+              <InlineIcon name="flask" /> <b>{c.name}</b>
               <span className="block text-xs text-purple-600">{c.summary}</span>
             </li>
           ))}
@@ -67,7 +70,7 @@ function PlayerStatCard({ player, isMe }: { player: PlayerGameState; isMe: boole
         <ul className="mt-2 flex flex-col gap-1">
           {player.grimoires.map((c) => (
             <li key={c.id} className="rounded-2xl bg-white/70 px-2.5 py-1.5 text-sm text-purple-800">
-              <span aria-hidden>📕</span> <b>{c.name}</b>
+              <InlineIcon name="grimoire" /> <b>{c.name}</b>
               <span className="block text-xs text-purple-600">
                 {STAT_LABEL[c.statBoost.stat]} +{c.statBoost.amount}
                 {c.ability ? ` · ${describeAbility(c.ability)}` : ""}
@@ -78,14 +81,19 @@ function PlayerStatCard({ player, isMe }: { player: PlayerGameState; isMe: boole
       )}
       {player.creatures.length > 0 && (
         <p className="mt-2 text-xs text-purple-600">
-          유형 모으기: {(["sky", "land", "ocean"] as CreatureElement[]).map((el) => `${ELEMENT_ICON[el]}${ELEMENT_LABEL[el]} ${player.creatures.filter((c) => c.element === el).length}`).join(" · ")}
+          유형 모으기:{" "}
+          {(["sky", "land", "ocean"] as CreatureElement[]).map((el) => (
+            <span key={el} className="mr-2 whitespace-nowrap">
+              <InlineIcon name={ELEMENT_ICON[el]} /> {ELEMENT_LABEL[el]} {player.creatures.filter((c) => c.element === el).length}
+            </span>
+          ))}
         </p>
       )}
       {player.creatures.length > 0 && (
         <ul className="mt-1 flex flex-col gap-1">
           {player.creatures.map((c) => (
             <li key={c.id} className="rounded-2xl bg-white/70 px-2.5 py-1.5 text-sm text-purple-800">
-              <span aria-hidden>{ELEMENT_ICON[c.element]}</span> <b>{c.name}</b>
+              <InlineIcon name={ELEMENT_ICON[c.element]} /> <b>{c.name}</b>
               <span className="block text-xs text-purple-600">{describeAbility(c.ability)}</span>
             </li>
           ))}
@@ -110,7 +118,7 @@ function PlayerStatCard({ player, isMe }: { player: PlayerGameState; isMe: boole
       <summary className="flex min-h-12 cursor-pointer items-center justify-between gap-2 px-3 py-2 font-display text-purple-700">
         <span className="truncate">{player.name}</span>
         <span className="shrink-0 text-sm text-purple-600">
-          🎓 {player.credit} · ✨ {effectiveStat(player, "spellPower")}
+          <InlineIcon name="cap" /> {player.credit} · <InlineIcon name="sparkle" /> {effectiveStat(player, "spellPower")}
         </span>
       </summary>
       <div className="px-3 pb-3">{body}</div>
@@ -122,13 +130,16 @@ function ClassPhasePanel({
   game,
   myId,
   onSubmit,
+  selected,
+  setSelected,
 }: {
   game: GameState;
   myId: string;
   onSubmit: (keepCardIds: string[]) => void;
+  selected: string[];
+  setSelected: (updater: (prev: string[]) => string[]) => void;
 }) {
   const me = game.players[myId];
-  const [selected, setSelected] = useState<string[]>([]);
   const [limitHint, setLimitHint] = useState(false);
 
   if (me.hasActedThisPhase) {
@@ -166,7 +177,7 @@ function ClassPhasePanel({
                 isSelected ? "bg-purple-500 text-white border-purple-700" : "bg-purple-50 text-purple-700 border-purple-200"
               }`}
             >
-              {isSelected ? "✓ " : ""}{card.name} (+{card.statBoost.amount} {STAT_LABEL[card.statBoost.stat]})
+              {isSelected && <Icon name="check" className="mr-1 h-4 w-4" />}{card.name} (+{card.statBoost.amount} {STAT_LABEL[card.statBoost.stat]})
               <span className="block text-xs opacity-80">{card.description}</span>
             </button>
           );
@@ -198,7 +209,7 @@ function LabChoicePanel({ cards, onChoose }: { cards: LabCard[]; onChoose: (card
             onClick={() => onChoose(card.id)}
             className="rounded-xl border-2 border-purple-200 bg-purple-50 min-h-12 px-3 py-3 text-left text-purple-800 active:scale-95 transition-transform"
           >
-            <span aria-hidden>{LAB_KIND_ICON[card.kind]}</span> <b>{card.name}</b>
+            <InlineIcon name={LAB_KIND_ICON[card.kind]} /> <b>{card.name}</b>
             <span className="ml-1 text-xs text-purple-500">({LAB_KIND_LABEL[card.kind]})</span>
             <span className="block text-sm">{card.summary}</span>
             <span className="block text-xs text-purple-500">{card.description}</span>
@@ -266,11 +277,11 @@ function ActivityPhasePanel({
   return (
     <div className="bg-white rounded-3xl border-2 border-purple-200 shadow-sm p-4">
       <p className="text-sm text-purple-500 mb-1">3주차(자율활동): 구역을 선택하세요</p>
-      <p className="text-xs text-purple-400 mb-2">💖 매력 순서: {orderText}</p>
+      <p className="text-xs text-purple-400 mb-2"><InlineIcon name="heart" /> 매력 순서: {orderText}</p>
       {staminaTokens > 0 && (
         <label className="flex items-center gap-2 min-h-11 mb-2 rounded-xl bg-green-50 px-3 text-sm text-green-800">
           <input type="checkbox" className="h-5 w-5" checked={focus} onChange={(e) => setFocus(e.target.checked)} />
-          <span>💪 체력토큰 1개로 집중하기 (활동 효과 +1)</span>
+          <span><InlineIcon name="staminaToken" /> 체력토큰 1개로 집중하기 (활동 효과 +1)</span>
         </label>
       )}
       <div className="grid grid-cols-1 gap-2">
@@ -310,12 +321,11 @@ function EndedPanel({ game }: { game: GameState }) {
   const ranked = [...game.turnOrder]
     .map((id) => game.players[id])
     .sort((a, b) => b.spellPower * b.credit - a.spellPower * a.credit);
-  const medals = ["🥇", "🥈", "🥉"];
 
   return (
     <div className="pop-in bg-white rounded-3xl border-2 border-amber-200 p-4 shadow-sm">
       <p className="font-display text-xl text-purple-700 mb-3 text-center">
-        🎉 {winnerIds.map((id) => game.players[id].name).join(", ")} 승리! 🎉
+        <InlineIcon name="sparkle" /> {winnerIds.map((id) => game.players[id].name).join(", ")} 승리! <InlineIcon name="sparkle" />
       </p>
       <ol className="flex flex-col gap-2">
         {ranked.map((p, i) => (
@@ -324,7 +334,7 @@ function EndedPanel({ game }: { game: GameState }) {
             className={`rounded-2xl px-3 py-2 ${winnerIds.includes(p.id) ? "bg-amber-100" : "bg-purple-50"}`}
           >
             <p className="font-display text-purple-800 truncate">
-              {medals[i] ?? `${i + 1}위`} {p.name}
+              {i < 3 ? <Icon name="medal" className={`h-5 w-5 ${MEDAL_COLOR[i]}`} /> : `${i + 1}위`} {p.name}
             </p>
             <p className="text-sm text-purple-700">
               주문력 {p.spellPower} × 학점 {p.credit} = <b>성취도 {p.spellPower * p.credit}</b>
@@ -338,11 +348,11 @@ function EndedPanel({ game }: { game: GameState }) {
 
 type TabId = "game" | "players" | "news" | "rules";
 
-const TABS: { id: TabId; icon: string; label: string }[] = [
-  { id: "game", icon: "🎮", label: "게임" },
-  { id: "players", icon: "👥", label: "친구들" },
-  { id: "news", icon: "📜", label: "소식" },
-  { id: "rules", icon: "📖", label: "규칙" },
+const TABS: { id: TabId; icon: IconName; label: string }[] = [
+  { id: "game", icon: "wand", label: "게임" },
+  { id: "players", icon: "users", label: "친구들" },
+  { id: "news", icon: "scroll", label: "소식" },
+  { id: "rules", icon: "book", label: "규칙" },
 ];
 
 export function GameBoard({
@@ -359,12 +369,21 @@ export function GameBoard({
   onChooseLabCard: (cardId: string) => void;
 }) {
   const [tab, setTab] = useState<TabId>("game");
+  // 라운드·주차가 바뀌면 이전 선택은 자동으로 무효가 된다
+  const selectionKey = `${game.round}-${game.phase}`;
+  const [selection, setSelection] = useState<{ key: string; ids: string[] }>({ key: selectionKey, ids: [] });
+  const classSelected = selection.key === selectionKey ? selection.ids : [];
+  const setClassSelected = (updater: (prev: string[]) => string[]) =>
+    setSelection({ key: selectionKey, ids: updater(classSelected) });
   const latestExam = game.examResults[game.examResults.length - 1];
   const me = game.players[myId];
   const activityTurnId = game.pendingLab?.playerId ?? game.activityOrder[game.activityTurnPointer];
   // 내가 행동해야 하는 순간에는 게임 탭에 알림 점을 띄운다
   const myTurn =
     (game.phase === "class" && !me.hasActedThisPhase) || (game.phase === "activity" && activityTurnId === myId);
+  // 수업카드를 고르는 중이면 확정 전이라도 소모될 체력토큰을 미리 반영해서 보여준다
+  const staminaAfter =
+    game.phase === "class" && !me.hasActedThisPhase ? me.staminaTokens - classSelected.length : me.staminaTokens;
   const phaseText =
     game.phase === "class" ? "2주차 정규수업" : game.phase === "activity" ? "3주차 자율활동" : "게임 종료";
 
@@ -377,9 +396,10 @@ export function GameBoard({
     <div className="min-h-dvh flex flex-col max-w-md mx-auto">
       <header className="sticky top-0 z-40 border-b-2 border-purple-100 bg-purple-50/95 px-4 pb-2 pt-[max(0.5rem,env(safe-area-inset-top))] backdrop-blur">
         <div className="flex items-center justify-between gap-2">
-          <h1 className="text-lg text-purple-700 whitespace-nowrap">🏫 {game.round}/12개월</h1>
+          <h1 className="text-lg text-purple-700 whitespace-nowrap"><Icon name="school" className="mr-1 h-5 w-5" />{game.round}/12개월</h1>
           <p className={`truncate rounded-full px-3 py-1 text-sm ${myTurn ? "bg-pink-200 text-pink-800" : "bg-purple-100 text-purple-600"}`}>
-            {myTurn ? "✋ 내 차례 · " : ""}
+            {myTurn && <Icon name="bell" className="mr-1 h-4 w-4" />}
+            {myTurn ? "내 차례 · " : ""}
             {phaseText}
           </p>
         </div>
@@ -387,20 +407,21 @@ export function GameBoard({
           <div className="h-full bg-pink-300 transition-all" style={{ width: `${(game.round / 12) * 100}%` }} />
         </div>
         <div className="mt-1.5 flex gap-1.5 overflow-x-auto pb-0.5" aria-label="내 능력치">
-          <Chip icon="🧠" label="지력" value={effectiveStat(me, "intelligence")} className="bg-sky-100 text-sky-800" />
-          <Chip icon="💪" label="체력" value={effectiveStat(me, "stamina")} className="bg-green-100 text-green-800" />
-          <Chip icon="💖" label="매력" value={effectiveStat(me, "charm")} className="bg-pink-100 text-pink-800" />
-          <Chip icon="✨" label="주문력" value={effectiveStat(me, "spellPower")} className="bg-purple-100 text-purple-800" />
-          <Chip icon="🎓" label="학점" value={me.credit} className="bg-amber-100 text-amber-800" />
-          <Chip icon="🔋" label="체력토큰" value={me.staminaTokens} className="bg-green-50 text-green-700" />
-          <Chip icon="📖" label="주문서" value={me.spellbookTokens} className="bg-indigo-50 text-indigo-700" />
+          <Chip icon="bulb" label="지력" value={effectiveStat(me, "intelligence")} className="bg-sky-100 text-sky-800" />
+          <Chip icon="bolt" label="체력" value={effectiveStat(me, "stamina")} className="bg-green-100 text-green-800" />
+          <Chip icon="heart" label="매력" value={effectiveStat(me, "charm")} className="bg-pink-100 text-pink-800" />
+          <Chip icon="sparkle" label="주문력" value={effectiveStat(me, "spellPower")} className="bg-purple-100 text-purple-800" />
+          <Chip icon="cap" label="학점" value={me.credit} className="bg-amber-100 text-amber-800" />
+          <span className="mx-0.5 w-px shrink-0 self-stretch bg-purple-200" aria-hidden />
+          <Chip icon="staminaToken" label="체력토큰" showLabel value={staminaAfter === me.staminaTokens ? me.staminaTokens : `${me.staminaTokens}→${staminaAfter}`} className="bg-green-50 text-green-700 ring-1 ring-green-200" />
+          <Chip icon="spellbookToken" label="주문서" showLabel value={me.spellbookTokens} className="bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200" />
         </div>
       </header>
 
       <main className="flex-1 px-4 py-4 pb-24 flex flex-col gap-4">
         {tab === "game" && (
           <>
-            {game.phase === "class" && <ClassPhasePanel game={game} myId={myId} onSubmit={onSubmitClassChoice} />}
+            {game.phase === "class" && <ClassPhasePanel game={game} myId={myId} onSubmit={onSubmitClassChoice} selected={classSelected} setSelected={setClassSelected} />}
             {game.phase === "activity" && (
               <ActivityPhasePanel game={game} myId={myId} onSelect={onSelectActivity} onChooseLabCard={onChooseLabCard} />
             )}
@@ -409,7 +430,7 @@ export function GameBoard({
             {latestExam && (
               <div className="bg-sky-50 border-2 border-sky-200 rounded-3xl p-3 text-sm">
                 <p className="font-display text-base text-sky-700 mb-1">
-                  📝 {latestExam.round === 6 ? "중간고사" : "기말고사"} 결과
+                  <InlineIcon name="note" /> {latestExam.round === 6 ? "중간고사" : "기말고사"} 결과
                 </p>
                 {latestExam.scores.map((s) => (
                   <p key={s.playerId} className="text-sky-800 truncate">
@@ -424,7 +445,7 @@ export function GameBoard({
                 className="text-left rounded-3xl border-2 border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 active:scale-95 transition-transform"
                 onClick={() => selectTab("news")}
               >
-                <span className="font-display text-amber-700">📜 방금 소식</span>
+                <span className="font-display text-amber-700"><InlineIcon name="scroll" /> 방금 소식</span>
                 <span className="block truncate">{game.log[game.log.length - 1].message}</span>
               </button>
             )}
@@ -441,7 +462,7 @@ export function GameBoard({
 
         {tab === "news" && (
           <div className="rounded-3xl border-2 border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
-            <p className="font-display text-base text-amber-700 mb-1">📜 최근 소식</p>
+            <p className="font-display text-base text-amber-700 mb-1"><InlineIcon name="scroll" /> 최근 소식</p>
             {game.log.length === 0 && <p className="text-amber-700">아직 소식이 없어요</p>}
             <ul className="flex flex-col gap-1.5">
               {game.log
@@ -471,8 +492,8 @@ export function GameBoard({
                 aria-current={tab === t.id ? "page" : undefined}
                 onClick={() => selectTab(t.id)}
               >
-                <span className={`text-xl leading-none rounded-full px-4 py-0.5 ${tab === t.id ? "bg-purple-100" : ""}`} aria-hidden>
-                  {t.icon}
+                <span className={`rounded-full px-4 py-0.5 ${tab === t.id ? "bg-purple-100" : ""}`}>
+                  <Icon name={t.icon} className="h-6 w-6" />
                 </span>
                 {t.label}
                 {t.id === "game" && myTurn && tab !== "game" && (

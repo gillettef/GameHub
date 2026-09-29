@@ -1,3 +1,5 @@
+import type { IconName } from "./Icons";
+
 export type StatKey = "intelligence" | "stamina" | "charm" | "spellPower";
 
 export type ActivityId = "tournament" | "creature" | "duel" | "exploration" | "lab";
@@ -139,7 +141,7 @@ export function effectiveStat(player: PlayerGameState, stat: StatKey): number {
 
 export const ELEMENT_LABEL: Record<CreatureElement, string> = { sky: "하늘", land: "육지", ocean: "바다" };
 
-export const LAB_KIND_ICON: Record<LabCardKind, string> = { study: "📚", exam: "📝", insight: "🔮", supply: "🎒" };
+export const LAB_KIND_ICON: Record<LabCardKind, IconName> = { study: "book", exam: "note", insight: "crystal", supply: "bag" };
 export const LAB_KIND_LABEL: Record<LabCardKind, string> = {
   study: "심화 수업",
   exam: "시험 대비",
@@ -147,7 +149,7 @@ export const LAB_KIND_LABEL: Record<LabCardKind, string> = {
   supply: "보급",
 };
 
-export const ELEMENT_ICON: Record<CreatureElement, string> = { sky: "☁️", land: "🌱", ocean: "🌊" };
+export const ELEMENT_ICON: Record<CreatureElement, IconName> = { sky: "cloud", land: "sprout", ocean: "wave" };
 
 export function describeAbility(a: CreatureAbility): string {
   const when = { acquire: "획득 즉시", prep: "매달 준비 때", duel: "주문 대결 참여 시", defend: "대결 도전받을 때", lose: "대결 패배 시" }[a.trigger];
