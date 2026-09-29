@@ -42,7 +42,7 @@ export function createApp(rooms = new RoomManager(), options: AppOptions = {}): 
     res.writeHead(404);
     res.end();
   });
-  const wss = new WebSocketServer({ server, path: '/ws' });
+  const wss = new WebSocketServer({ server, path: '/ws', maxPayload: 64 * 1024 });
   const bots = attachWebSocket(wss, rooms, options);
   return { server, rooms, bots };
 }

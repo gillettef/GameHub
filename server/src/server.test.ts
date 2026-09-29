@@ -46,7 +46,7 @@ class Client {
 }
 
 describe('WebSocket 서버', () => {
-  const { server, rooms } = createApp();
+  const { server, rooms } = createApp(undefined, { allowClientSeed: true });
   let url = '';
 
   beforeAll(async () => {
@@ -54,6 +54,20 @@ describe('WebSocket 서버', () => {
     url = `ws://localhost:${(server.address() as AddressInfo).port}/ws`;
   });
   afterAll(() => server.close());
+
+  it('한 연결이 메시지를 너무 빨리 보내면 too many requests 로 막고, 잠시 뒤 다시 받는다', async () => {
+    const c = await Client.open(url);
+    for (let i = 0; i < 60; i++) c.send({ type: 'spectate', code: 'ZZZZZ' });
+    expect((await c.next('error', (m) => m.message === 'too many requests')).message).toBe('too many requests');
+    c.close();
+  });
+
+  it('한 연결로 만들 수 있는 방 수에 상한이 있다', async () => {
+    const c = await Client.open(url);
+    for (let i = 0; i < 6; i++) c.send({ type: 'createRoom', name: `방${i}` });
+    expect((await c.next('error', (m) => m.message === 'too many rooms')).message).toBe('too many rooms');
+    c.close();
+  });
 
   it('방 생성 → 입장 → 시작 → 드래프트 액션 → 각자 다른 뷰', async () => {
     const host = await Client.open(url);

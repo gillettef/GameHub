@@ -4,6 +4,7 @@ import { cards } from '@server/engine/cards';
 import type { SponsorContract } from '@server/engine/types';
 import type { PlayerPublicView } from '@server/engine/view';
 import { billboardLimit } from '@server/engine/weekday';
+import { useEscape } from '../a11y';
 import { CONTRACT_LABEL } from '../labels';
 import { SponsorCardView } from './Cards';
 import { EffectChips } from './Icons';
@@ -20,6 +21,7 @@ export interface ContractChoice {
 }
 
 export function SponsorContractModal({ cardId, me, onClose, onSign }: { cardId: string; me: PlayerPublicView; onClose: () => void; onSign: (choice: ContractChoice) => void }) {
+  useEscape(onClose);
   const card = cards.sponsor(cardId);
   const [choice, setChoice] = useState<ContractChoice | null>(null);
   const billboards = me.sponsors.billboards.length;
@@ -36,7 +38,7 @@ export function SponsorContractModal({ cardId, me, onClose, onSign }: { cardId: 
 
   return createPortal(
     <div className="modal-backdrop dismissable" onClick={onClose}>
-      <div className="modal sponsor-modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-label="스폰서 계약">
+      <div className="modal sponsor-modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="스폰서 계약">
         <div className="panel-head">
           <h2>스폰서 계약 — {card.name}</h2>
           <span className="muted small">계약 유형을 고르고 확정하세요</span>

@@ -4,6 +4,7 @@ import { GK_CODE, GK_LABEL, LINE_LABEL, REGION_CODE, REGION_LABEL, regionName } 
 import { lineCounts, regionLimit, regionLine, regionSector } from '@server/engine/match';
 import { COLUMNS, SECTORS } from '@server/engine/types';
 import type { Formation, Line, Region } from '@server/engine/types';
+import { pressable } from '../a11y';
 import { Icon } from './Icons';
 import { SECTOR_LABEL } from '../labels';
 
@@ -101,7 +102,7 @@ export function LineupPitch({ roster, field, played, placements, formation, show
               const can = allowed ? allowed.includes(regionSector(region)) : null;
               const cls = `sector region col-${col}${here.length > max ? ' over' : need && here.length >= min && here.length > 0 ? ' ok' : ''}${can === null ? '' : can ? ' allowed' : ' blocked'}`;
               return (
-                <div key={region} className={cls} title={`${regionName(region)} — ${col === 'C' ? '1~3명' : '최대 1명'}`} onClick={onRegion && selectedToken && can ? () => onRegion(region) : undefined}>
+                <div key={region} className={cls} title={`${regionName(region)} — ${col === 'C' ? '1~3명' : '최대 1명'}`} {...pressable(onRegion && selectedToken && can ? () => onRegion(region) : undefined)}>
                   <div className="sector-title">
                     <b className="region-code">{REGION_CODE[region]}</b>
                     <span className="region-name">{REGION_LABEL[region]}</span>

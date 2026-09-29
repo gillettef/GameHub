@@ -5,6 +5,7 @@ import { emptyTokens } from '@server/engine/state';
 import type { PlayerInstance } from '@server/engine/state';
 import type { PlayerKind } from '@server/engine/types';
 import { BoardCardView, ExecutiveCardView, ObjectiveCardView, OpponentCardView, PlayerCardView, SponsorCardView, StaffCardView, TacticCardView } from './Cards';
+import { useEscape } from '../a11y';
 import { Icon } from './Icons';
 import { Tabs } from './Tabs';
 import type { TabDef } from './Tabs';
@@ -43,6 +44,7 @@ const trainedInstance = (cardId: string): PlayerInstance => ({
 });
 
 function CatalogModal({ onClose }: { onClose: () => void }) {
+  useEscape(onClose);
   const [tab, setTab] = useState<CatalogTab>('starter');
   const [trained, setTrained] = useState(false);
   const [query, setQuery] = useState('');
@@ -82,7 +84,7 @@ function CatalogModal({ onClose }: { onClose: () => void }) {
 
   return createPortal(
     <div className="modal-backdrop dismissable" onClick={onClose}>
-      <div className="modal catalog" onClick={(e) => e.stopPropagation()} role="dialog" aria-label="카드 목록">
+      <div className="modal catalog" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="카드 목록">
         <div className="panel-head">
           <h2>카드 목록</h2>
           <button className="ghost small" onClick={onClose}>닫기</button>

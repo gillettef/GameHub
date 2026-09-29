@@ -86,7 +86,7 @@ export function describeEffect(e: Effect): string {
     case 'gainVP':
       return `승점 ${sign(e.amount)}`;
     case 'trainPlayer': {
-      const base = e.target === 'self' ? '이 선수를 훈련' : `선수 ${e.count}명 훈련`;
+      const base = e.target === 'self' ? '이 선수를 훈련' : `${e.only === 'prospect' ? '유망주' : '선수'} ${e.count}명 훈련`;
       const extra = (Object.entries(e.withTokens ?? {}) as [PlayerToken, number][]).filter(([, n]) => n > 0).map(([t, n]) => `${TOKEN_LABEL[t]} +${n}`);
       return extra.length ? `${base} (그 선수에 ${extra.join(', ')})` : base;
     }

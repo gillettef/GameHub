@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import type { GameAction } from '@server/engine/actions';
 import type { GameView } from '@server/engine/view';
 import type { ChatMessage, ClientMessage, RoomView } from '@server/protocol';
+import { koError } from './errors';
 import { Connection, loadSession, saveSession, wsUrl } from './ws';
 import type { Session } from './ws';
 
@@ -22,7 +23,7 @@ interface Store {
 }
 
 const StoreContext = createContext<Store | null>(null);
-const ERROR_MS = 4000;
+const ERROR_MS = 6000;
 
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [connected, setConnected] = useState(false);
@@ -31,7 +32,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [room, setRoom] = useState<RoomView | null>(null);
   const [view, setView] = useState<GameView | null>(null);
   const [chat, setChat] = useState<ChatMessage[]>([]);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setErrorText] = useState<string | null>(null);
+  const [errorSeq, setErrorSeq] = useState(0); // 같은 오류가 반복돼도 토스트 타이머를 다시 건다
+  const setError = useCallback((text: string | null) => {
+    setErrorText(text);
+    if (text) setErrorSeq((n) => n + 1);
+  }, []);
   const sessionRef = useRef(session);
   sessionRef.current = session;
   const spectatingRef = useRef(spectating);
@@ -80,8 +86,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             saveSession(null);
             setSession(null);
             setSpectating(null);
+            setRoom(null); // 서버가 다시 떴거나 방이 사라졌다면 옛 화면을 남기지 않는다
+            setView(null);
+            setChat([]);
           }
-          setError(msg.message);
+          setError(koError(msg.message));
           break;
       }
     });
@@ -91,17 +100,17 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       offMsg();
       conn.close();
     };
-  }, []);
+  }, [setError]);
 
   useEffect(() => {
     if (!error) return;
     const t = setTimeout(() => setError(null), ERROR_MS);
     return () => clearTimeout(t);
-  }, [error]);
+  }, [error, errorSeq]);
 
   const send = useCallback((msg: ClientMessage) => {
     if (!connRef.current?.send(msg)) setError('서버에 연결되어 있지 않습니다');
-  }, []);
+  }, [setError]);
   const act = useCallback((action: GameAction) => send({ type: 'action', action }), [send]);
   const spectate = useCallback((code: string) => send({ type: 'spectate', code }), [send]);
   const sendChat = useCallback((text: string) => send({ type: 'chat', text }), [send]);

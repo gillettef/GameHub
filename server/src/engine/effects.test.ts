@@ -294,3 +294,23 @@ describe('applyEffects', () => {
     else expect(token?.face).toBe(card.untrained.role);
   });
 });
+
+describe('trainPlayer only: prospect (직원 st-13 "유망주 1명을 훈련")', () => {
+  it('유망주만 후보가 되고, 유망주가 하나뿐이면 바로 훈련한다', () => {
+    const s = game();
+    const p = s.players['a']!;
+    p.roster = [];
+    addToRoster(p, 'p-s01');
+    addToRoster(p, 'p-p01');
+    addToRoster(p, 'p-p04');
+    applyEffects(s, 'a', [{ type: 'trainPlayer', count: 1, only: 'prospect' }], '[테스트]', {}, rng);
+    expect(p.pending).toHaveLength(1);
+    expect(p.pending[0]!.candidates.map((id) => p.roster.find((r) => r.instanceId === id)!.cardId).sort()).toEqual(['p-p01', 'p-p04']);
+    p.roster = p.roster.filter((r) => r.cardId !== 'p-p04');
+    p.pending = [];
+    applyEffects(s, 'a', [{ type: 'trainPlayer', count: 1, only: 'prospect' }], '[테스트]', {}, rng);
+    expect(p.pending).toHaveLength(0);
+    expect(p.roster.find((r) => r.cardId === 'p-p01')!.trained).toBe(true);
+    expect(p.roster.find((r) => r.cardId === 'p-s01')!.trained).toBe(false); // 주전은 훈련 안 됨
+  });
+});

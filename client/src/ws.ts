@@ -38,19 +38,26 @@ export class Connection {
   private statusListeners = new Set<StatusListener>();
   private backoff = RECONNECT_MIN_MS;
   private closed = false;
+  private retry: ReturnType<typeof setTimeout> | null = null;
 
   constructor(private url: string, private onOpen: (c: Connection) => void) {}
 
   connect(): void {
+    // 이미 열려 있거나 연결 중이면 새로 만들지 않는다 (소켓이 둘 살아 있으면 rejoin 이 두 번 간다)
+    if (this.socket && (this.socket.readyState === WebSocket.OPEN || this.socket.readyState === WebSocket.CONNECTING)) return;
+    if (this.retry) clearTimeout(this.retry);
+    this.retry = null;
     this.closed = false;
     const socket = new WebSocket(this.url);
     this.socket = socket;
     socket.onopen = () => {
+      if (this.socket !== socket) return;
       this.backoff = RECONNECT_MIN_MS;
       for (const l of this.statusListeners) l(true);
       this.onOpen(this);
     };
     socket.onmessage = (ev) => {
+      if (this.socket !== socket) return; // 닫힌 옛 소켓의 메시지는 무시
       let msg: ServerMessage;
       try {
         msg = JSON.parse(String(ev.data)) as ServerMessage;
@@ -60,16 +67,25 @@ export class Connection {
       for (const l of this.listeners) l(msg);
     };
     socket.onclose = () => {
+      if (this.socket !== socket) return; // 이미 새 소켓으로 교체됨 — 옛 소켓의 close 가 재연결을 또 예약하지 않게
+      this.socket = null;
       for (const l of this.statusListeners) l(false);
       if (this.closed) return;
-      setTimeout(() => this.connect(), this.backoff);
+      this.retry = setTimeout(() => this.connect(), this.backoff);
       this.backoff = Math.min(RECONNECT_MAX_MS, this.backoff * 2);
     };
   }
 
   close(): void {
     this.closed = true;
-    this.socket?.close();
+    if (this.retry) clearTimeout(this.retry);
+    this.retry = null;
+    const socket = this.socket;
+    this.socket = null; // 먼저 떼어 놓아야 이 소켓의 onclose 가 재연결을 예약하지 않는다
+    if (socket) {
+      socket.close();
+      for (const l of this.statusListeners) l(false);
+    }
   }
 
   send(msg: ClientMessage): boolean {

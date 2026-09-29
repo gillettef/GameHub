@@ -8,7 +8,7 @@ export const BOARD_CARDS: BoardCard[] = [
     description: '원정 경기가 이번 시즌 중에 가장 먼 곳에서 열립니다.',
     decisions: {
       yellow: {
-        text: '다음 주에는 목요일에 카드 행동만 수행할 수 있습니다. 화요일 칸에 [점검용 토큰]을 올려놓습니다.',
+        text: '다음 주에는 목요일에 카드 행동만 수행할 수 있습니다. 목요일 칸에 [점검용 토큰]을 올려놓습니다.',
         effects: [
           { type: 'restrictDay', day: 'thu', week: 'next', mode: 'cardActionOnly' },
         ],
