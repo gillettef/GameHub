@@ -140,7 +140,7 @@ export function EffectChip({ effect }: { effect: Effect }) {
     case 'gainVP':
       return <Chip icon="vp" value={signed(effect.amount)} title={title} />;
     case 'trainPlayer': {
-      const chip = <Chip icon="train" value={effect.count > 1 && effect.target !== 'self' ? `×${effect.count}` : undefined} title={title}>{effect.target === 'self' ? '이 선수 훈련' : '훈련'}</Chip>;
+      const chip = <Chip icon="train" value={effect.count > 1 && effect.target !== 'self' ? `×${effect.count}` : undefined} title={title}>{effect.target === 'self' ? '이 선수 훈련' : effect.only === 'prospect' ? '유망주 훈련' : '훈련'}</Chip>;
       const extra = (Object.entries(effect.withTokens ?? {}) as [PlayerToken, number][]).filter(([, n]) => n > 0);
       if (extra.length === 0) return chip;
       return (

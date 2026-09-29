@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
+import { useEscape } from '../a11y';
 import { MiniPitch } from './Cards';
 import { Chip, Icon, TokenChip, TrackChip, TrackGlyph } from './Icons';
 
@@ -79,6 +80,7 @@ const SECTIONS: { title: string; rows: Row[] }[] = [
 
 export function LegendButton() {
   const [open, setOpen] = useState(false);
+  useEscape(() => setOpen(false), open);
   return (
     <>
       <button className="legend-button" onClick={() => setOpen(true)} title="화면에 쓰인 아이콘 설명">
@@ -87,7 +89,7 @@ export function LegendButton() {
       {open &&
         createPortal(
         <div className="modal-backdrop dismissable" onClick={() => setOpen(false)}>
-          <div className="modal legend" onClick={(e) => e.stopPropagation()} role="dialog" aria-label="아이콘 설명">
+          <div className="modal legend" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="아이콘 설명">
             <div className="panel-head">
               <h2>아이콘 설명</h2>
               <button className="ghost small" onClick={() => setOpen(false)}>닫기</button>

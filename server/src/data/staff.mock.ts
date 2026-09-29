@@ -190,7 +190,7 @@ export const STAFF_CARDS: StaffCard[] = [
     bonus: [{ type: 'recruitProspectFree' }],
     action: {
       cost: { stamina: 1 },
-      effects: [{ type: 'trainPlayer', count: 1 }],
+      effects: [{ type: 'trainPlayer', count: 1, only: 'prospect' }],
       text: '유망주 1명을 훈련시킵니다.',
     },
     placeholder: true,
@@ -425,7 +425,7 @@ export const STAFF_CARDS: StaffCard[] = [
     action: {
       cost: { ops: 1 },
       effects: [{ type: 'removePlayerToken', token: 'suspension', count: 1 }],
-      text: '카드 1장의 [출장정지] 토큰 1개를 제거합니다.',
+      text: '선수 카드 1장의 [출장정지] 토큰 1개를 제거합니다.',
     },
     placeholder: true,
   },

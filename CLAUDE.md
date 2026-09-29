@@ -286,6 +286,16 @@ notes/    규칙서 원본 및 텍스트 레퍼런스
   억제하고 떠나면 되돌린다(hover 중 React 가 title 을 바꾸면 MutationObserver 로 갱신). 새 컴포넌트도 그냥 `title=`만 쓰면 된다.
   터치 기기(`hover: none`)에서는 아이콘 칩·배지 같은 비조작 요소를 **누르면** 말풍선이 뜨고 다른 곳을 누르거나 스크롤하면(또는 4초 뒤) 닫힌다
   (버튼·입력·누를 수 있는 카드 자체의 `title`은 띄우지 않는다).
+- **서버 오류 문구는 한국어로 바꿔 보인다**(`client/src/errors.ts` `koError`): 서버 GameError/RoomError 는 영어 코드용 문구라 그대로 내면 뜻을 모른다. 새 오류를 추가하면 `EXACT`/`PATTERNS`에도 넣을 것 —
+  없는 문구는 "지금은 그 행동을 할 수 없습니다"로 대체하고 원문은 콘솔에만 남긴다. 토스트는 6초, 같은 오류가 반복돼도 타이머를 다시 건다(`errorSeq`).
+- **연결(`ws.ts`)**: 소켓마다 자기 것인지 확인(`this.socket !== socket`)해 옛 소켓의 close/message 가 재연결을 또 예약하거나 상태를 덮지 않게 한다. `close()`는 재연결 타이머도 지운다.
+  "방을 찾을 수 없음/재접속 정보 오류"가 오면 세션뿐 아니라 `room`·`view`·`chat`도 비워 옛 게임 화면이 남지 않게 한다.
+- **접근성 공용**(`client/src/a11y.ts`): `useEscape`(모달 Esc 닫기 — 카탈로그·아이콘 설명·스폰서 계약·승점 확인, 대상 선택 같은 강제 선택 모달은 닫지 않음), `pressable(handler)`(눌러서 쓰는 div 에 role/tabIndex/Enter·Space).
+  새 모달은 `role="dialog" aria-modal="true"` + `useEscape`, 클릭 가능한 div 는 `pressable`을 쓴다.
+- **서버 방어**(`ws.ts`/`app.ts`/`rooms.ts`): `maxPayload` 64KB, 소켓당 속도 제한(버스트 30·초당 10, 초과 시 `too many requests`), 연결당 방 5개·서버 전체 200개, 30초 하트비트(pong 없으면 끊음),
+  방 시드는 `randomInt`(클라이언트가 보낸 `seed`는 `WsOptions.allowClientSeed`가 켜진 테스트에서만 받음 — 시드를 알면 덱·목표 카드를 추측할 수 있다). 지연 0 으로 보내는 외부 봇 테스트는 `noRateLimit`.
+- **임원 드래프트 중에는 다른 참가자가 고른 임원을 뷰에서 뺀다**(`view.ts`, 규칙서 p.7: 세 장을 다 고른 뒤 공개). 다음 상대 팀 카드 id(`nextOpponent`)·유망주 더미 맨 위 카드 id(`nextProspect`)는 여전히 보낸다 —
+  카드 데이터가 클라이언트 번들에 있어 id 를 숨겨도 본인이 조회할 수 있고, 스카우트 보고서 면은 공개 정보라서 얻는 이득이 작다고 보고 남겨 둔 결정.
 - **비공개 정보가 있다.** 목표 카드(본인만 열람), 유망주 카드의 훈련 면(영입 전까지 비공개), 임원
   드래프트 중 손패는 해당 참가자에게만 전송하고 다른 클라이언트에 브로드캐스트하지 않는다.
   서버가 권위(authoritative)를 갖고, 클라이언트에는 각자 볼 수 있는 뷰만 내려준다.

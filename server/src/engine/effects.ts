@@ -102,7 +102,7 @@ function candidatesFor(state: GameState, player: PlayerState, effect: Effect, ct
   switch (effect.type) {
     case 'trainPlayer':
       if (effect.target === 'self') return self((p) => !p.trained);
-      return players(player.roster.filter((p) => !p.trained).map((p) => p.instanceId));
+      return players(player.roster.filter((p) => !p.trained && (effect.only !== 'prospect' || cards.player(p.cardId).kind === 'prospect')).map((p) => p.instanceId));
     case 'placeStamina':
     case 'releasePlayer':
       return players(player.roster.map((p) => p.instanceId));

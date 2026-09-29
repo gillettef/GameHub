@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createGame } from './setup';
+import { createGame, draftPick } from './setup';
 import { FOUR_PLAYERS, gameAtMonday, seededRng } from './test-utils';
 import { viewFor } from './view';
 
@@ -11,6 +11,20 @@ describe('참가자 뷰 (비공개 정보 제거)', () => {
     expect(v.phase.hand).toEqual(s.phase.hands['a']);
     expect(v.phase.handSizes).toEqual({ a: 4, b: 4, c: 4, d: 4 });
     expect(JSON.stringify(v)).not.toContain(s.phase.hands['b']![0]);
+  });
+
+  it('드래프트 중에는 다른 참가자가 고른 임원이 보이지 않고 내 것만 보인다 (p.7: 세 장을 다 고른 뒤 공개)', () => {
+    let s = createGame(FOUR_PLAYERS, seededRng());
+    for (const id of s.seats) {
+      if (s.phase.kind !== 'setup.draft') throw new Error();
+      s = draftPick(s, id, s.phase.hands[id]![0]!); // 1라운드 전원 선택 완료
+    }
+    const mine = s.players['a']!.executives.map((e) => e.cardId);
+    expect(mine).toHaveLength(1);
+    const v = viewFor(s, 'a');
+    expect(v.players['a']!.executives.map((e) => e.cardId)).toEqual(mine);
+    for (const other of ['b', 'c', 'd']) expect(v.players[other]!.executives).toEqual([]);
+    expect(viewFor(s, '').players['a']!.executives).toEqual([]); // 관전자도 못 본다
   });
 
   it('목표 카드·전술 손패·상대 팀 덱은 본인 것만', () => {

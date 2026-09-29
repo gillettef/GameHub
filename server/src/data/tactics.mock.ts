@@ -18,7 +18,7 @@ export const TACTIC_CARDS: TacticCard[] = [
   { id: 'tc-09', name: '버스 세우기', basic: false, formations: [{ defenders: 5, midfielders: 4, forwards: 1 }],
     effect: { text: '이번 경기에서 상대 팀의 첫 번째 득점을 무효로 합니다.', effects: [{ type: 'denyGoals', count: 1 }] }, placeholder: true },
   { id: 'tc-10', name: '하이 프레스', basic: false, formations: [{ defenders: 4, midfielders: 2, forwards: 4 }],
-    effect: { text: '경기 후 1[팬덤]을 얻습니다. 상대 팀이 득점하지 못했다면 추가로 1[돈]을 얻습니다.', effects: [{ type: 'gainResource', resource: 'fandom', amount: 1 }, { type: 'conditional', condition: { kind: 'cleanSheet' }, effects: [{ type: 'gainResource', resource: 'money', amount: 1 }] }] }, placeholder: true },
+    effect: { text: '1[팬덤]을 얻습니다. 경기 후 상대 팀이 득점하지 못했다면 추가로 1[돈]을 얻습니다.', effects: [{ type: 'gainResource', resource: 'fandom', amount: 1 }, { type: 'conditional', condition: { kind: 'cleanSheet' }, effects: [{ type: 'gainResource', resource: 'money', amount: 1 }] }] }, placeholder: true },
   { id: 'tc-11', name: '티키타카', basic: false, formations: [{ defenders: 3, midfielders: 5, forwards: 2 }],
     effect: { text: '당신의 센터 미드필더 구획에서 득점했다면, 추가로 1골을 득점합니다.', effects: [{ type: 'conditional', condition: { kind: 'scoredInSector', sector: 'CM' }, effects: [{ type: 'scoreGoal', team: 'self', amount: 1 }] }] }, placeholder: true },
   { id: 'tc-12', name: '세트피스', basic: false, formations: [{ defenders: 4, midfielders: 4, forwards: 2 }],

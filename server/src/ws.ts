@@ -7,6 +7,10 @@ import type { Room } from './rooms';
 
 interface Session {
   socket: WebSocket;
+  tokens: number; // 속도 제한용 (토큰 버킷)
+  refilledAt: number;
+  created: number; // 이 연결로 만든 방 수
+  alive: boolean; // 하트비트: 마지막 ping 이후 pong 을 받았는가
   roomCode?: string;
   playerId?: string; // 관전자는 없음
   spectator?: boolean;
@@ -14,8 +18,14 @@ interface Session {
 
 const MAX_MESSAGE_BYTES = 64 * 1024;
 const SPECTATOR_ID = '';
+const RATE_BURST = 30; // 소켓 하나가 한꺼번에 보낼 수 있는 메시지 수
+const RATE_PER_SEC = 10; // 이후 초당 회복량
+const MAX_ROOMS_PER_SOCKET = 5; // 연결 하나로 만들 수 있는 방 수
+const HEARTBEAT_MS = 30_000;
 
 export interface WsOptions {
+  noRateLimit?: boolean; // 테스트 전용: 지연 없이 보내는 외부 봇을 위해 속도 제한을 끈다
+  allowClientSeed?: boolean; // 테스트 전용: createRoom 의 seed 를 받는다 (운영에서는 무시 — 시드를 알면 비공개 카드를 추측할 수 있다)
   botDelayMs?: number;
   botWatchMs?: number; // 봇이 경기 영향 주사위 전에 기다리는 경기 보기 시간
 }
@@ -71,7 +81,9 @@ export function attachWebSocket(wss: WebSocketServer, rooms: RoomManager, option
   const handle = (session: Session, msg: ClientMessage) => {
     switch (msg.type) {
       case 'createRoom': {
-        const { room, player } = rooms.create(msg.name, typeof msg.seed === 'number' ? msg.seed : undefined);
+        if (session.created >= MAX_ROOMS_PER_SOCKET) throw new RoomError('too many rooms');
+        session.created++;
+        const { room, player } = rooms.create(msg.name, options.allowClientSeed && typeof msg.seed === 'number' ? msg.seed : undefined);
         bind(session, room, player.id, player.token);
         return;
       }
@@ -151,10 +163,19 @@ export function attachWebSocket(wss: WebSocketServer, rooms: RoomManager, option
   };
 
   wss.on('connection', (socket) => {
-    const session: Session = { socket };
+    const session: Session = { socket, tokens: RATE_BURST, refilledAt: Date.now(), created: 0, alive: true };
     sessions.set(socket, session);
+    socket.on('pong', () => (session.alive = true));
 
     socket.on('message', (raw) => {
+      const now = Date.now();
+      session.tokens = Math.min(RATE_BURST, session.tokens + ((now - session.refilledAt) / 1000) * RATE_PER_SEC);
+      session.refilledAt = now;
+      if (!options.noRateLimit && session.tokens < 1) {
+        send(socket, { type: 'error', message: 'too many requests' });
+        return;
+      }
+      session.tokens -= 1;
       if (raw.toString().length > MAX_MESSAGE_BYTES) {
         send(socket, { type: 'error', message: 'message too large' });
         return;
@@ -185,6 +206,20 @@ export function attachWebSocket(wss: WebSocketServer, rooms: RoomManager, option
       }
     });
   });
+
+  // 하트비트: 응답 없는 반쯤 끊긴 연결을 정리해 '연결됨'으로 남지 않게 한다
+  const heartbeat = setInterval(() => {
+    for (const s of sessions.values()) {
+      if (!s.alive) {
+        s.socket.terminate();
+        continue;
+      }
+      s.alive = false;
+      s.socket.ping();
+    }
+  }, HEARTBEAT_MS);
+  heartbeat.unref();
+  wss.on('close', () => clearInterval(heartbeat));
 
   return bots;
 }

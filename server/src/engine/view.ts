@@ -103,7 +103,11 @@ export function viewFor(state: GameState, me: PlayerId): GameView {
     seats: state.seats,
     firstPlayer: state.firstPlayer,
     phase: phaseView(state, me),
-    players: mapValues(state.players, publicPlayer),
+    players: mapValues(state.players, (p) => {
+      const pub = publicPlayer(p);
+      // 임원 드래프트 중에는 다른 참가자가 이미 고른 임원을 보여 주지 않는다 — 규칙서 p.7: 세 장을 다 고른 뒤에 공개
+      return state.phase.kind === 'setup.draft' && p.id !== me ? { ...pub, executives: [] } : pub;
+    }),
     self: { objective: self?.objective, tacticCards: self?.tacticCards ?? [] },
     market: state.market,
     nextProspect: d.prospects[0] ?? null,

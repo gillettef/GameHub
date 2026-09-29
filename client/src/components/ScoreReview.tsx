@@ -5,6 +5,7 @@ import { INFRA_LABEL, SET_LABEL } from '@server/engine/labels';
 import type { ScoreBreakdown } from '@server/engine/scoring';
 import type { StaffSet } from '@server/engine/types';
 import type { GameView, PlayerPublicView } from '@server/engine/view';
+import { useEscape } from '../a11y';
 import { Stepper } from './Lineup';
 import type { StepDef } from './Lineup';
 import { PlayerCrest } from './Crest';
@@ -69,6 +70,7 @@ function evidence(key: ItemKey, view: GameView, p: PlayerPublicView, score: Scor
 }
 
 export function ScoreReviewModal({ view, onClose }: { view: GameView; onClose: () => void }) {
+  useEscape(onClose);
   const [step, setStep] = useState(0);
   const [shown, setShown] = useState(0); // 이번 항목에서 체크가 끝난 참가자 수
   const phase = view.phase;
@@ -96,7 +98,7 @@ export function ScoreReviewModal({ view, onClose }: { view: GameView; onClose: (
 
   return createPortal(
     <div className="modal-backdrop">
-      <div className="modal score-review" role="dialog" aria-label="승점 확인">
+      <div className="modal score-review" role="dialog" aria-modal="true" aria-label="승점 확인">
         <div className="panel-head">
           <h2>승점 확인 <span className="muted small">{Math.min(step + 1, steps.length)} / {steps.length}</span></h2>
           <button className="ghost small" onClick={onClose}>닫기</button>

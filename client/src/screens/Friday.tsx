@@ -7,6 +7,7 @@ import { SECTOR_PAIRS } from '@server/engine/match';
 import type { PlayerInstance, UniformToken } from '@server/engine/state';
 import { RESOURCES } from '@server/engine/types';
 import type { Region, Resources } from '@server/engine/types';
+import { pressable } from '../a11y';
 import { OpponentCardView, PlayerCardView, TacticCardView } from '../components/Cards';
 import { useCommit } from '../commit';
 import { CostChips, Icon, ResourceChip } from '../components/Icons';
@@ -274,7 +275,7 @@ export function FridayPrepareScreen() {
                   <p className="muted small">포메이션 <b>{formation.defenders}-{formation.midfielders}-{formation.forwards}</b> = 수비·미드·공격 라인의 인원입니다. 라인마다 센터에 1~3명, 양쪽 윙에 최대 1명씩 나눠 세우세요. 토큰을 누른 뒤 옮길 지역을 누르면 옮겨지고(밝은 지역이 그 선수가 설 수 있는 곳), 다른 토큰을 누르면 자리를 바꿉니다. 숫자는 역량.</p>
                   <LineupPitch roster={me.roster} field={field} played={played} placements={placements} formation={formation} showSkill selected={picked} onToken={onToken} onRegion={onRegion} />
                   {(unplaced.length > 0 || picked) && (
-                    <div className={`unplaced${picked ? ' target' : ''}`} onClick={unplace}>
+                    <div className={`unplaced${picked ? ' target' : ''}`} {...pressable(unplace)}>
                       <span className="muted small">미배치{picked ? ' (여기를 누르면 지역에서 뺍니다)' : ''}</span>
                       {unplaced.map((t) => (
                         <TokenChipView key={t.id} token={t} inst={playedInstance(me.roster, played, t)} showSkill selected={t.id === picked} onClick={() => onToken(t.id)} />

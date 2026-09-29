@@ -71,7 +71,7 @@ export type Effect =
   | { type: 'moveTrack'; track: Track; delta: number }
   | { type: 'gainVP'; amount: number }
   // withTokens: 훈련한 그 선수에게 함께 놓는 토큰 ("혹독한 훈련: 훈련 + 영구 역량 1 + 부상 1" 류의 첫 번째 트레이너)
-  | ({ type: 'trainPlayer'; count: number; withTokens?: Partial<Record<PlayerToken, number>> } & SelfTarget)
+  | ({ type: 'trainPlayer'; count: number; only?: 'prospect'; withTokens?: Partial<Record<PlayerToken, number>> } & SelfTarget)
   | { type: 'drawTactic'; count: number }
   | { type: 'recruitProspectFree' }
   | { type: 'placeStamina'; count: number } // 선수 카드 1장에 체력 올려놓기

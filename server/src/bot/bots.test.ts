@@ -5,7 +5,7 @@ import { Bot } from './bot';
 
 // 봇 4명이 실제 WebSocket 으로 한 판을 끝까지 돌린다 (서버·프로토콜·뷰·정책 통합)
 describe('봇 4인플', () => {
-  const { server, rooms } = createApp();
+  const { server, rooms } = createApp(undefined, { noRateLimit: true });
   let url = '';
 
   beforeAll(async () => {

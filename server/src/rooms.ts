@@ -1,4 +1,4 @@
-import { randomBytes, randomUUID } from 'node:crypto';
+import { randomBytes, randomUUID, randomInt } from 'node:crypto';
 import { applyAction } from './engine/actions';
 import type { GameAction } from './engine/actions';
 import { tagged } from './engine/labels';
@@ -42,6 +42,7 @@ const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const CODE_LENGTH = 5;
 const MAX_PLAYERS = 4;
 const MAX_NAME = 20;
+const MAX_ROOMS = 200; // 동시에 열 수 있는 방 수 (메모리 보호)
 const IDLE_MS = 6 * 60 * 60 * 1000;
 const CHAT_KEEP = 100;
 const CHAT_MIN_INTERVAL_MS = 300; // 같은 참가자의 연속 전송 간격 (도배 방지)
@@ -83,7 +84,9 @@ export class RoomManager {
     return room;
   }
 
-  create(name: string, seed = Date.now() % 2147483647): { room: Room; player: RoomPlayer } {
+  // 시드는 덱 순서·드래프트·목표 카드를 정한다 — 시간값이면 추측해서 남의 비공개 카드를 알아낼 수 있으니 암호학적 난수를 쓴다
+  create(name: string, seed = randomInt(1, 2147483647)): { room: Room; player: RoomPlayer } {
+    if (this.rooms.size >= MAX_ROOMS) throw new RoomError('too many rooms');
     let code = makeCode();
     while (this.rooms.has(code)) code = makeCode();
     const player = this.newPlayer(name, []);

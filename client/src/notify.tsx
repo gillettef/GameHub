@@ -198,12 +198,12 @@ export function NotifyToggles() {
   const { prefs, setPref, desktopSupported } = useNotify();
   return (
     <span className="notify-toggles" aria-label="알림 설정">
-      <button className={`toggle${prefs.sound ? ' on' : ''}`} aria-pressed={prefs.sound} title={`내 차례가 오면 소리 (${prefs.sound ? '켜짐' : '꺼짐'})`} onClick={() => setPref('sound', !prefs.sound)}>
+      <button className={`toggle${prefs.sound ? ' on' : ''}`} aria-pressed={prefs.sound} title={`내 차례가 오면 소리 (${prefs.sound ? '켜짐' : '꺼짐'})`} aria-label={`내 차례가 오면 소리 (${prefs.sound ? '켜짐' : '꺼짐'})`} onClick={() => setPref('sound', !prefs.sound)}>
         <BellIcon />
         <span className="label">소리</span>
       </button>
       {desktopSupported && (
-        <button className={`toggle${prefs.desktop ? ' on' : ''}`} aria-pressed={prefs.desktop} title={`다른 탭을 보고 있을 때 바탕화면 알림 (${prefs.desktop ? '켜짐' : '꺼짐'})`} onClick={() => setPref('desktop', !prefs.desktop)}>
+        <button className={`toggle${prefs.desktop ? ' on' : ''}`} aria-pressed={prefs.desktop} title={`다른 탭을 보고 있을 때 바탕화면 알림 (${prefs.desktop ? '켜짐' : '꺼짐'})`} aria-label={`다른 탭을 보고 있을 때 바탕화면 알림 (${prefs.desktop ? '켜짐' : '꺼짐'})`} onClick={() => setPref('desktop', !prefs.desktop)}>
           <ScreenIcon />
           <span className="label">알림</span>
         </button>
