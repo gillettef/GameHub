@@ -14,7 +14,9 @@ export interface ClassCard {
 export interface EquipmentCard {
   id: string;
   name: string;
-  tempBoost: { stat: StatKey; amount: number };
+  description: string;
+  tempBoosts: Partial<Record<StatKey, number>>;
+  credit?: number;
 }
 
 export type CreatureElement = "sky" | "land" | "ocean";
@@ -39,7 +41,9 @@ export interface CreatureCard {
 export interface GrimoireCard {
   id: string;
   name: string;
+  description: string;
   statBoost: { stat: StatKey; amount: number };
+  ability?: CreatureAbility;
 }
 
 export interface PlayerGameState {

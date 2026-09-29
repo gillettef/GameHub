@@ -3,16 +3,20 @@
 import {
   createClassDeck,
   createCreatureDeck,
-  drawEquipmentCard,
-  drawExplorationCard,
-  drawGrimoireCard,
+  createEquipmentPile,
+  createExplorationPile,
+  createGrimoirePile,
+  drawFromPile,
 } from "./cards.js";
 import { randomUUID } from "node:crypto";
 import { describeAbility } from "./creatures.js";
+import { describeEffect } from "./explorationCards.js";
 import {
   effectiveStat,
   type ActivityId,
+  type CardEffect,
   type CreatureAbility,
+  type StatKey,
   type ExamResult,
   type GameState,
   type PlayerGameState,
@@ -45,7 +49,11 @@ function rotateFrom<T>(items: T[], startIndex: number): T[] {
 
 // 플레이어가 가진 마법생물 중 해당 트리거의 능력만 모은다
 function abilitiesOf(player: PlayerGameState, trigger: CreatureAbility["trigger"]): CreatureAbility[] {
-  return player.creatures.map((c) => c.ability).filter((a) => a.trigger === trigger);
+  const abilities = [
+    ...player.creatures.map((c) => c.ability),
+    ...player.grimoires.flatMap((g) => (g.ability ? [g.ability] : [])),
+  ];
+  return abilities.filter((a) => a.trigger === trigger);
 }
 
 function sumEffect(abilities: CreatureAbility[], effect: CreatureAbility["effect"]): number {
@@ -72,6 +80,17 @@ function drawClassCards(state: GameState, count: number) {
     drawn.push(card);
   }
   return drawn;
+}
+
+// 탐험/장비 카드 효과를 플레이어에게 적용한다
+function applyCardEffect(player: PlayerGameState, effect: CardEffect): void {
+  for (const [stat, amount] of Object.entries(effect.stats ?? {})) player[stat as StatKey] += amount;
+  for (const [stat, amount] of Object.entries(effect.tempStats ?? {})) {
+    player.tempBoosts[stat as StatKey] = (player.tempBoosts[stat as StatKey] ?? 0) + amount;
+  }
+  player.credit += effect.credit ?? 0;
+  player.spellbookTokens = Math.max(0, player.spellbookTokens + (effect.spellbookTokens ?? 0));
+  player.pendingStaminaTokens += effect.nextStamina ?? 0;
 }
 
 function log(state: GameState, message: string): void {
@@ -116,6 +135,9 @@ export function createGame(players: { id: string; name: string }[]): GameState {
     activityOrder: [],
     activityTurnPointer: 0,
     examResults: [],
+    equipmentPile: createEquipmentPile(),
+    explorationPile: createExplorationPile(),
+    grimoirePile: createGrimoirePile(),
     classDeck: createClassDeck(randomUUID),
     classDiscard: [],
     creatureDeck: createCreatureDeck(),
@@ -269,29 +291,43 @@ function resolveActivity(
       player.pendingStaminaTokens -= sumEffect(defenderAbilities, "enemyStamina");
       loser.pendingStaminaTokens += sumEffect(abilitiesOf(loser, "lose"), "stamina");
       winner.pendingStaminaTokens -= sumEffect(abilitiesOf(loser, "lose"), "enemyStamina");
-      const grimoire = drawGrimoireCard();
-      winner.grimoires.push(grimoire);
-      winner[grimoire.statBoost.stat] += grimoire.statBoost.amount;
+      const grimoire = drawFromPile(state.grimoirePile);
+      if (grimoire) {
+        winner.grimoires.push(grimoire);
+        winner[grimoire.statBoost.stat] += grimoire.statBoost.amount;
+      }
       if (loser.spellbookTokens > 0 && sumEffect(loserAbilities, "immune") === 0) loser.spellbookTokens -= 1;
       log(
         state,
-        `${player.name}(${challengerRoll}) vs ${target.name}(${defenderRoll}): ${winner.name} 승리, 마도서 "${grimoire.name}" 획득`,
+        `${player.name}(${challengerRoll}) vs ${target.name}(${defenderRoll}): ${winner.name} 승리${grimoire ? `, 마도서 "${grimoire.name}" 획득` : ""}`,
       );
       break;
     }
     case "exploration": {
       // 협력 없이 단독 처리로 확정 (2026-09-29)
-      const card = drawExplorationCard();
-      player.staminaTokens += card.rewardStaminaTokens;
-      log(state, `${player.name}: 비밀의 방 탐색 → 체력토큰 ${card.rewardStaminaTokens}개 획득`);
+      const card = drawFromPile(state.explorationPile);
+      if (!card) break;
+      let success = true;
+      let rollText = "";
+      if (card.check) {
+        const roll = rollD6();
+        const total = roll + effectiveStat(player, card.check.stat);
+        success = total >= card.check.target;
+        rollText = ` (판정 ${total}/${card.check.target} ${success ? "성공" : "실패"})`;
+      }
+      const effect = success ? card.success : card.failure;
+      applyCardEffect(player, effect);
+      state.explorationPile.discard.push(card);
+      log(state, `${player.name}: 비밀의 방 "${card.name}"${rollText} → ${describeEffect(effect)}`);
       break;
     }
     case "lab": {
-      const card = drawEquipmentCard();
+      const card = drawFromPile(state.equipmentPile);
+      if (!card) break;
       player.equipment.push(card);
-      const { stat, amount } = card.tempBoost;
-      player.tempBoosts[stat] = (player.tempBoosts[stat] ?? 0) + amount;
-      log(state, `${player.name}: 연구실 실험 → "${card.name}" (${stat} 임시 +${amount})`);
+      applyCardEffect(player, { tempStats: card.tempBoosts, credit: card.credit });
+      const gained = describeEffect({ tempStats: card.tempBoosts, credit: card.credit });
+      log(state, `${player.name}: 연구실 실험 → "${card.name}" (${gained})`);
       break;
     }
   }
@@ -372,7 +408,11 @@ function resolveExam(state: GameState, examType: "midterm_exam" | "final_exam"):
 
   // 연구실 실험으로 얻은 임시 능력치 증가분은 다음 시험까지 유지된 뒤 소멸
   for (const playerId of state.turnOrder) {
-    state.players[playerId].tempBoosts = {};
+    const p = state.players[playerId];
+    p.tempBoosts = {};
+    // 효과가 끝난 장비카드는 버림 더미로
+    state.equipmentPile.discard.push(...p.equipment);
+    p.equipment = [];
   }
 
   if (examType === "final_exam") {

@@ -8,6 +8,7 @@ import {
   type ActivityId,
   type GameState,
   type PlayerGameState,
+  type StatKey,
 } from "./gameTypes";
 
 const ACTIVITY_IDS: ActivityId[] = ["tournament", "creature", "duel", "exploration", "lab"];
@@ -35,6 +36,34 @@ function PlayerStatCard({ player, isMe }: { player: PlayerGameState; isMe: boole
       <p className="text-sm text-purple-700">
         🏆 토너먼트 {player.tournamentTrack}/10 · 🔋 체력토큰 {player.staminaTokens} · 📖 주문서 {player.spellbookTokens} · 📚 수업 {player.classCards.length}장
       </p>
+      {player.equipment.length > 0 && (
+        <ul className="mt-2 flex flex-col gap-1">
+          {player.equipment.map((c) => (
+            <li key={c.id} className="rounded-2xl bg-white/70 px-2.5 py-1.5 text-sm text-purple-800">
+              <span aria-hidden>🧪</span> <b>{c.name}</b>
+              <span className="block text-xs text-purple-600">
+                {Object.entries(c.tempBoosts)
+                  .map(([stat, n]) => `${STAT_LABEL[stat as StatKey]} 임시 +${n}`)
+                  .join(", ")}
+                {c.credit ? ` 학점 +${c.credit}` : ""}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+      {player.grimoires.length > 0 && (
+        <ul className="mt-2 flex flex-col gap-1">
+          {player.grimoires.map((c) => (
+            <li key={c.id} className="rounded-2xl bg-white/70 px-2.5 py-1.5 text-sm text-purple-800">
+              <span aria-hidden>📕</span> <b>{c.name}</b>
+              <span className="block text-xs text-purple-600">
+                {STAT_LABEL[c.statBoost.stat]} +{c.statBoost.amount}
+                {c.ability ? ` · ${describeAbility(c.ability)}` : ""}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
       {player.creatures.length > 0 && (
         <ul className="mt-2 flex flex-col gap-1">
           {player.creatures.map((c) => (
@@ -286,6 +315,17 @@ export function GameBoard({
               {s.rank}위 {game.players[s.playerId].name} — 점수 {s.score}, 학점 +{s.creditAwarded}
             </p>
           ))}
+        </div>
+      )}
+
+      {game.log.length > 0 && (
+        <div className="rounded-3xl border-2 border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+          <p className="font-display text-base text-amber-700 mb-1">📜 최근 소식</p>
+          <ul className="flex flex-col gap-0.5">
+            {game.log.slice(-6).reverse().map((entry, i) => (
+              <li key={game.log.length - i}>{entry.message}</li>
+            ))}
+          </ul>
         </div>
       )}
 

@@ -16,10 +16,23 @@ export interface ClassCard {
   statBoost: { stat: StatKey; amount: number };
 }
 
+// 카드 효과 묶음 (탐험/장비 공용). 영구 능력치, 시험까지 유지되는 임시 능력치, 학점, 마법 주문서, 다음 달 체력토큰
+export interface CardEffect {
+  stats?: Partial<Record<StatKey, number>>;
+  tempStats?: Partial<Record<StatKey, number>>;
+  credit?: number;
+  spellbookTokens?: number;
+  nextStamina?: number;
+}
+
 export interface EquipmentCard {
   id: string;
   name: string;
-  tempBoost: { stat: StatKey; amount: number };
+  description: string;
+  // 다음 시험까지 유지되는 임시 능력치 증가 (시험 후 카드는 버림 더미로)
+  tempBoosts: Partial<Record<StatKey, number>>;
+  // 장비를 얻는 즉시 받는 학점 (소량 학점 경로)
+  credit?: number;
 }
 
 export type CreatureElement = "sky" | "land" | "ocean";
@@ -44,13 +57,26 @@ export interface CreatureCard {
 export interface GrimoireCard {
   id: string;
   name: string;
+  description: string;
   statBoost: { stat: StatKey; amount: number };
+  // 마법생물과 같은 방식으로 동작하는 추가 능력 (선택)
+  ability?: CreatureAbility;
 }
 
 export interface ExplorationCard {
   id: string;
   name: string;
-  rewardStaminaTokens: number;
+  description: string;
+  // 판정: 주사위 1개 + 해당 능력치 >= target 이면 성공. 없으면 무조건 성공
+  check?: { stat: StatKey; target: number };
+  success: CardEffect;
+  failure: CardEffect;
+}
+
+// 뽑을 더미 + 버림 더미 (서버 전용)
+export interface Pile<T> {
+  draw: T[];
+  discard: T[];
 }
 
 export interface PlayerGameState {
@@ -96,6 +122,9 @@ export interface GameState {
   activityTurnPointer: number;
   examResults: ExamResult[];
   // 수업카드/마법생물 카드 덱·버림 더미 (서버 전용, 클라이언트에는 전송하지 않음)
+  equipmentPile: Pile<EquipmentCard>;
+  explorationPile: Pile<ExplorationCard>;
+  grimoirePile: Pile<GrimoireCard>;
   classDeck: ClassCard[];
   classDiscard: ClassCard[];
   creatureDeck: CreatureCard[];
@@ -109,4 +138,4 @@ export function effectiveStat(player: PlayerGameState, stat: StatKey): number {
 }
 
 // 클라이언트에 전송되는 게임 상태 (서버 전용 덱 정보 제외)
-export type PublicGameState = Omit<GameState, "classDeck" | "classDiscard" | "creatureDeck" | "creatureDiscard">;
+export type PublicGameState = Omit<GameState, "equipmentPile" | "explorationPile" | "grimoirePile" | "classDeck" | "classDiscard" | "creatureDeck" | "creatureDiscard">;
