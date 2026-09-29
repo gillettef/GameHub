@@ -1,4 +1,5 @@
 import type { WebSocket } from "ws";
+import type { GameState } from "./game/types.js";
 
 export interface Player {
   id: string;
@@ -10,6 +11,7 @@ export interface Room {
   code: string;
   hostId: string;
   players: Map<string, Player>;
+  game?: GameState;
 }
 
 const rooms = new Map<string, Room>();

@@ -1,12 +1,26 @@
 import { useState } from "react";
 import { useGameSocket } from "./useGameSocket";
+import { GameBoard } from "./GameBoard";
 
 function App() {
-  const { state, createRoom, joinRoom } = useGameSocket();
+  const { state, game, lastError, createRoom, joinRoom, startGame, submitClassChoice, selectActivity } =
+    useGameSocket();
   const [playerName, setPlayerName] = useState("");
   const [joinCode, setJoinCode] = useState("");
 
+  if (state.status === "in_room" && game && state.playerId) {
+    return (
+      <GameBoard
+        game={game}
+        myId={state.playerId}
+        onSubmitClassChoice={submitClassChoice}
+        onSelectActivity={selectActivity}
+      />
+    );
+  }
+
   if (state.status === "in_room" && state.roomCode) {
+    const canStart = state.players.length >= 2 && state.players.length <= 5;
     return (
       <main className="min-h-screen bg-purple-50 flex flex-col items-center px-4 py-8">
         <h1 className="text-2xl font-bold text-purple-700 mb-1">마법학교</h1>
@@ -18,8 +32,8 @@ function App() {
           </p>
         </div>
 
-        <div className="w-full max-w-sm bg-white rounded-2xl shadow-sm p-4">
-          <h2 className="text-sm font-semibold text-purple-500 mb-2">참가한 플레이어</h2>
+        <div className="w-full max-w-sm bg-white rounded-2xl shadow-sm p-4 mb-4">
+          <h2 className="text-sm font-semibold text-purple-500 mb-2">참가한 플레이어 ({state.players.length}/5)</h2>
           <ul className="space-y-1">
             {state.players.length === 0 && <li className="text-purple-300 text-sm">아직 아무도 없어요</li>}
             {state.players.map((p) => (
@@ -29,6 +43,19 @@ function App() {
             ))}
           </ul>
         </div>
+
+        {state.isHost && (
+          <button
+            className="w-full max-w-sm rounded-xl bg-purple-500 text-white font-semibold py-3 disabled:opacity-40"
+            disabled={!canStart}
+            onClick={startGame}
+          >
+            {canStart ? "게임 시작" : "2~5인이 모여야 시작할 수 있어요"}
+          </button>
+        )}
+        {!state.isHost && <p className="text-purple-400 text-sm">방장이 게임을 시작하면 자동으로 시작됩니다</p>}
+
+        {lastError && <p className="text-red-500 text-sm mt-3">{lastError}</p>}
       </main>
     );
   }
@@ -78,7 +105,9 @@ function App() {
         </button>
       </div>
 
-      {state.status === "error" && <p className="text-red-500 text-sm">{state.errorMessage}</p>}
+      {(state.status === "error" || lastError) && (
+        <p className="text-red-500 text-sm">{state.errorMessage ?? lastError}</p>
+      )}
     </main>
   );
 }

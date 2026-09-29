@@ -4,7 +4,8 @@ import { fileURLToPath } from "node:url";
 import express from "express";
 import { randomUUID } from "node:crypto";
 import { WebSocketServer, type WebSocket } from "ws";
-import { createRoom, getRoom, joinRoom, leaveRoom, broadcast, type Player } from "./rooms.js";
+import { createRoom, getRoom, joinRoom, leaveRoom, broadcast, type Player, type Room } from "./rooms.js";
+import { createGame, selectActivity, submitClassChoice } from "./game/engine.js";
 import type { ClientMessage, ServerMessage } from "./messages.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -26,6 +27,11 @@ function send(socket: WebSocket, message: ServerMessage): void {
   socket.send(JSON.stringify(message));
 }
 
+function broadcastGameState(room: Room): void {
+  if (!room.game) return;
+  broadcast(room, { type: "game_state", game: room.game });
+}
+
 wss.on("connection", (socket) => {
   let currentRoomCode: string | undefined;
   let playerId: string | undefined;
@@ -44,7 +50,12 @@ wss.on("connection", (socket) => {
       const player: Player = { id: playerId, name: message.playerName, socket };
       const room = createRoom(player);
       currentRoomCode = room.code;
-      send(socket, { type: "room_created", roomCode: room.code, playerId });
+      send(socket, {
+        type: "room_created",
+        roomCode: room.code,
+        playerId,
+        players: [...room.players.values()].map((p) => ({ id: p.id, name: p.name })),
+      });
       return;
     }
 
@@ -52,6 +63,14 @@ wss.on("connection", (socket) => {
       const room = getRoom(message.roomCode);
       if (!room) {
         send(socket, { type: "error", message: "존재하지 않는 방 코드입니다." });
+        return;
+      }
+      if (room.game) {
+        send(socket, { type: "error", message: "이미 게임이 시작된 방입니다." });
+        return;
+      }
+      if (room.players.size >= 5) {
+        send(socket, { type: "error", message: "방이 가득 찼습니다 (최대 5인)." });
         return;
       }
       playerId = randomUUID();
@@ -65,6 +84,50 @@ wss.on("connection", (socket) => {
         players: [...room.players.values()].map((p) => ({ id: p.id, name: p.name })),
       });
       broadcast(room, { type: "player_joined", playerId, playerName: message.playerName }, playerId);
+      return;
+    }
+
+    // 아래 액션들은 방에 참가한 뒤에만 유효
+    if (!currentRoomCode || !playerId) {
+      send(socket, { type: "error", message: "먼저 방에 참가해야 합니다." });
+      return;
+    }
+    const room = getRoom(currentRoomCode);
+    if (!room) return;
+
+    if (message.type === "start_game") {
+      if (room.hostId !== playerId) {
+        send(socket, { type: "error", message: "방장만 게임을 시작할 수 있습니다." });
+        return;
+      }
+      if (room.players.size < 2 || room.players.size > 5) {
+        send(socket, { type: "error", message: "게임은 2~5인이 필요합니다." });
+        return;
+      }
+      room.game = createGame([...room.players.values()].map((p) => ({ id: p.id, name: p.name })));
+      broadcastGameState(room);
+      return;
+    }
+
+    if (message.type === "submit_class_choice") {
+      if (!room.game) return;
+      try {
+        submitClassChoice(room.game, playerId, message.keepCardIds);
+        broadcastGameState(room);
+      } catch (err) {
+        send(socket, { type: "error", message: err instanceof Error ? err.message : "알 수 없는 오류" });
+      }
+      return;
+    }
+
+    if (message.type === "select_activity") {
+      if (!room.game) return;
+      try {
+        selectActivity(room.game, playerId, message.activityId, message.targetPlayerId);
+        broadcastGameState(room);
+      } catch (err) {
+        send(socket, { type: "error", message: err instanceof Error ? err.message : "알 수 없는 오류" });
+      }
       return;
     }
   });

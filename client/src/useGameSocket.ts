@@ -1,15 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ClientMessage, ServerMessage } from "./messages";
+import type { ActivityId, GameState } from "./gameTypes";
 
 export interface RoomPlayer {
   id: string;
   name: string;
 }
 
-interface GameState {
+interface LobbyState {
   status: "idle" | "connecting" | "in_room" | "error";
   roomCode?: string;
   playerId?: string;
+  isHost?: boolean;
   players: RoomPlayer[];
   errorMessage?: string;
 }
@@ -21,7 +23,9 @@ function getWebSocketUrl(): string {
 
 export function useGameSocket() {
   const socketRef = useRef<WebSocket | null>(null);
-  const [state, setState] = useState<GameState>({ status: "idle", players: [] });
+  const [state, setState] = useState<LobbyState>({ status: "idle", players: [] });
+  const [game, setGame] = useState<GameState | null>(null);
+  const [lastError, setLastError] = useState<string | null>(null);
 
   useEffect(() => {
     return () => {
@@ -40,13 +44,20 @@ export function useGameSocket() {
       const message: ServerMessage = JSON.parse(event.data);
       switch (message.type) {
         case "room_created":
-          setState({ status: "in_room", roomCode: message.roomCode, playerId: message.playerId, players: [] });
+          setState({
+            status: "in_room",
+            roomCode: message.roomCode,
+            playerId: message.playerId,
+            isHost: true,
+            players: message.players,
+          });
           break;
         case "room_joined":
           setState({
             status: "in_room",
             roomCode: message.roomCode,
             playerId: message.playerId,
+            isHost: false,
             players: message.players,
           });
           break;
@@ -59,8 +70,11 @@ export function useGameSocket() {
         case "player_left":
           setState((prev) => ({ ...prev, players: prev.players.filter((p) => p.id !== message.playerId) }));
           break;
+        case "game_state":
+          setGame(message.game);
+          break;
         case "error":
-          setState((prev) => ({ ...prev, status: "error", errorMessage: message.message }));
+          setLastError(message.message);
           break;
       }
     };
@@ -72,16 +86,13 @@ export function useGameSocket() {
     return socket;
   }, []);
 
-  const send = useCallback(
-    (socket: WebSocket, message: ClientMessage) => {
-      if (socket.readyState === WebSocket.OPEN) {
-        socket.send(JSON.stringify(message));
-      } else {
-        socket.addEventListener("open", () => socket.send(JSON.stringify(message)), { once: true });
-      }
-    },
-    [],
-  );
+  const send = useCallback((socket: WebSocket, message: ClientMessage) => {
+    if (socket.readyState === WebSocket.OPEN) {
+      socket.send(JSON.stringify(message));
+    } else {
+      socket.addEventListener("open", () => socket.send(JSON.stringify(message)), { once: true });
+    }
+  }, []);
 
   const createRoom = useCallback(
     (playerName: string) => {
@@ -101,5 +112,26 @@ export function useGameSocket() {
     [ensureSocket, send],
   );
 
-  return { state, createRoom, joinRoom };
+  const startGame = useCallback(() => {
+    const socket = ensureSocket();
+    send(socket, { type: "start_game" });
+  }, [ensureSocket, send]);
+
+  const submitClassChoice = useCallback(
+    (keepCardIds: string[]) => {
+      const socket = ensureSocket();
+      send(socket, { type: "submit_class_choice", keepCardIds });
+    },
+    [ensureSocket, send],
+  );
+
+  const selectActivity = useCallback(
+    (activityId: ActivityId, targetPlayerId?: string) => {
+      const socket = ensureSocket();
+      send(socket, { type: "select_activity", activityId, targetPlayerId });
+    },
+    [ensureSocket, send],
+  );
+
+  return { state, game, lastError, createRoom, joinRoom, startGame, submitClassChoice, selectActivity };
 }
