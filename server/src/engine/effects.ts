@@ -380,6 +380,14 @@ function noRng(): Rng {
 
 export function resolvePending(state: GameState, pid: PlayerId, pendingId: string, choice: string, rng: Rng): void {
   const player = getPlayer(state, pid);
+  const existed = player.pending.some((p) => p.id === pendingId);
+  // 그새 선수를 방출·훈련해 후보가 사라졌을 수 있다: 먼저 후보를 다시 계산해 무효가 된 대기 효과는 정리한다.
+  // (그대로 두면 고를 수 있는 대상이 없어 이 참가자에서 금요일 진행이 영원히 멈춘다)
+  const dieId = player.pending.find((p) => p.id === pendingId)?.target === 'die';
+  if (existed && !dieId) {
+    refreshPending(state, player, rng);
+    if (!player.pending.some((p) => p.id === pendingId)) return; // 후보가 없어 정리됐거나 하나뿐이라 자동 적용됨
+  }
   const idx = player.pending.findIndex((p) => p.id === pendingId);
   if (idx < 0) throw new GameError(`unknown pending effect: ${pendingId}`);
   const pending = player.pending[idx]!;

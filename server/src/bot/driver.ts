@@ -77,8 +77,14 @@ export class BotDriver {
       room.code,
       setTimeout(() => {
         this.timers.delete(room.code);
-        const applied = this.step(room.code);
-        if (applied) this.poke(this.rooms.get(room.code), this.delayMs * PAUSE_FACTOR[applied.type]);
+        try {
+          const applied = this.step(room.code);
+          if (applied) this.poke(this.rooms.get(room.code), this.delayMs * PAUSE_FACTOR[applied.type]);
+        } catch (e) {
+          // 타이머 안의 예외는 프로세스를 죽인다 — 방이 그새 정리됐거나 예상 밖 오류여도 서버는 살려 둔다
+          console.error(`[bot] 방 ${room.code} 처리 중 오류:`, e);
+          this.forget(room.code);
+        }
       }, wait),
     );
   }
@@ -106,6 +112,7 @@ export class BotDriver {
     try {
       room = this.rooms.get(code);
     } catch {
+      this.forget(code); // 방이 사라졌으면 봇 기억도 함께 지운다
       return null;
     }
     if (room.status !== 'playing' || !room.game) return null;
@@ -128,6 +135,13 @@ export class BotDriver {
       }
     }
     return null;
+  }
+
+  private forget(code: string): void {
+    const t = this.timers.get(code);
+    if (t) clearTimeout(t);
+    this.timers.delete(code);
+    for (const key of this.memory.keys()) if (key.startsWith(`${code}:`)) this.memory.delete(key);
   }
 
   private memoryFor(room: Room, botId: string, view: GameView): BotMemory {

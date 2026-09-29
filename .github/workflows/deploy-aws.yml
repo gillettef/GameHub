@@ -15,6 +15,11 @@ on:
     branches: [main]
   workflow_dispatch: {}
 
+# 배포가 겹쳐 서로의 업로드·재시작을 밟지 않게 한 번에 하나만 돌린다
+concurrency:
+  group: deploy-aws
+  cancel-in-progress: false
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -25,10 +30,13 @@ jobs:
         with:
           node-version: "22"
 
-      - name: 빌드
+      - name: 검사 (타입체크·린트·테스트) — 통과해야 배포한다
         run: |
           npm ci
-          npm run build
+          npm run check
+
+      - name: 빌드
+        run: npm run build
 
       - name: SSH 키 준비
         run: |
@@ -37,17 +45,18 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -H "${{ secrets.EC2_HOST }}" >> ~/.ssh/known_hosts
 
-      - name: 서버 정지
-        run: ssh -i ~/.ssh/deploy_key "${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}" "sudo systemctl stop eleven"
-
-      - name: 산출물 업로드
+      # 서버를 세운 채로 임시 폴더(upload)에 먼저 올린다. 업로드가 실패하면 서비스는 그대로 산다.
+      # (scp -r 는 대상 폴더가 이미 있으면 그 안에 dist/dist 로 중첩되므로, 항상 새 임시 폴더에 올린 뒤 교체한다)
+      - name: 산출물 업로드 (임시 폴더)
         run: |
-          scp -i ~/.ssh/deploy_key package.json package-lock.json "${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/opt/eleven/"
-          scp -i ~/.ssh/deploy_key server/package.json "${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/opt/eleven/server/package.json"
-          scp -i ~/.ssh/deploy_key client/package.json "${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/opt/eleven/client/package.json"
-          scp -i ~/.ssh/deploy_key -r server/dist "${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/opt/eleven/server/dist"
-          scp -i ~/.ssh/deploy_key -r client/dist "${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/opt/eleven/client/dist"
+          H="${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}"
+          ssh -i ~/.ssh/deploy_key "$H" "rm -rf /opt/eleven/upload && mkdir -p /opt/eleven/upload/server /opt/eleven/upload/client"
+          scp -i ~/.ssh/deploy_key package.json package-lock.json "$H:/opt/eleven/upload/"
+          scp -i ~/.ssh/deploy_key server/package.json "$H:/opt/eleven/upload/server/package.json"
+          scp -i ~/.ssh/deploy_key client/package.json "$H:/opt/eleven/upload/client/package.json"
+          scp -i ~/.ssh/deploy_key -r server/dist "$H:/opt/eleven/upload/server/"
+          scp -i ~/.ssh/deploy_key -r client/dist "$H:/opt/eleven/upload/client/"
 
-      - name: 의존성 설치 + 재시작 + 헬스체크
+      - name: 교체 + 의존성 설치 + 재시작 + 헬스체크
         run: |
-          ssh -i ~/.ssh/deploy_key "${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}" "cd /opt/eleven && npm ci --omit=dev && sudo systemctl restart eleven && sleep 2 && curl -sf http://localhost:3001/health"
+          ssh -i ~/.ssh/deploy_key "${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}" "set -e; cd /opt/eleven && sudo systemctl stop eleven && rm -rf server/dist client/dist && mv upload/server/dist server/dist && mv upload/client/dist client/dist && cp upload/package.json upload/package-lock.json . && cp upload/server/package.json server/package.json && cp upload/client/package.json client/package.json && rm -rf upload && npm ci --omit=dev && sudo systemctl restart eleven && sleep 2 && curl -sf http://localhost:3001/health"

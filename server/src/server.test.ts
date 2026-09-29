@@ -174,6 +174,12 @@ describe('정적 클라이언트 서빙 (배포 모드)', () => {
     expect((await fetch(`${base}/assets/..%2F..%2Fpackage.json`)).status).toBe(404);
   });
 
+  it('잘못된 % 인코딩 주소는 400 으로 답하고 서버는 살아 있다 (예외로 프로세스가 죽지 않게)', async () => {
+    expect((await fetch(`${base}/%`)).status).toBe(400);
+    expect((await fetch(`${base}/%E0%A4%A`)).status).toBe(400);
+    expect(await (await fetch(`${base}/health`)).json()).toEqual({ ok: true });
+  });
+
   it('정적 디렉터리가 없으면 404 (개발 모드)', async () => {
     const { server: bare } = createApp(new RoomManager(), { staticDir: join(dir, 'nope') });
     await new Promise<void>((resolve) => bare.listen(0, resolve));
