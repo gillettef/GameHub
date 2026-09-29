@@ -46,20 +46,19 @@
 
 ---
 
-## 실행 환경 (dev / test / prod)
+## 실행 환경 (dev / 운영)
 
 | 환경 | 위치 | 서버 | 클라이언트 | AI | 용도 |
 |---|---|---|---|---|---|
 | dev | 로컬 PC, `/dev` · `/dev-stop` | 3101 (tsx watch) | 5173 (Vite, proxy) | 8000 (`--reload`) | 로컬 개발. 핫리로드 |
-| test | **AWS EC2 상시 서버** | 3301 (systemd `astraltab-test-server`) | `client/dist/test` 를 3301에서 정적 서빙 | 8002 (systemd `astraltab-test-ai`) | 친구와 검증. 운영 전 확인 |
-| prod | **AWS EC2 상시 서버** | 3201 (systemd `astraltab-prod-server`) | `client/dist/prod` 를 3201에서 정적 서빙 | 8001 (systemd `astraltab-prod-ai`) | 친구들이 접속하는 운영 |
+| 운영 | **AWS EC2 상시 서버** | 3201 (systemd `astraltab-prod-server`) | `client/dist/prod` 를 3201에서 정적 서빙 | 8001 (systemd `astraltab-prod-ai`) | 친구들이 접속하는 **유일한 서버**. `main` push 시 자동 배포 |
 
-- **2026-09-28 사용자 지시로 test·prod 를 로컬 PC + Cloudflare 빠른 터널 방식에서 AWS EC2 상시 서버로 완전히 옮겼다.** 로컬 PC를 켜 둘 필요 없이 항상 접속 가능하다. 옛 방식이던 `scripts/serve.ps1`/`serve-stop.ps1`(Cloudflare 터널)은 삭제했다. `/test-server`·`/prod-server` 스킬은 이제 "실행"이 아니라 `scripts/deploy-aws.ps1` 를 통한 **재배포**를 의미하도록 다시 정의했다.
-- **AWS 인프라**: 리전 서울(`ap-northeast-2`), EC2 t3.small (Amazon Linux 2023), Elastic IP(고정 공인 IP, `.dev/aws-public-ip.txt` 에 저장 — git에 커밋하지 않음). 도메인은 아직 없어 `http://<Elastic IP>:3201`(prod) / `:3301`(test) 로 접속한다. 보안 그룹은 22(SSH, 관리자 IP만)·3201·3301 만 인바운드로 연다. SSH 키(`.dev/astraltab-key.pem`)와 인스턴스 id(`.dev/aws-instance-id.txt`)도 `.dev/`(gitignore)에 있다.
+- **2026-09-28 사용자 지시로 서버를 로컬 PC + Cloudflare 빠른 터널 방식에서 AWS EC2 상시 서버로 완전히 옮겼다.** 로컬 PC를 켜 둘 필요 없이 항상 접속 가능하다. **2026-09-29 사용자 지시로 test/prod 구분을 없애고 단일 운영 서버로 통일했다** — GitHub에 올리면(`main` push) AWS로 자동 배포되며 이것이 곧 운영이다. systemd 서비스명·`dist/prod`·`data/prod` 의 "prod" 는 예전 이름을 그대로 둔 것이다(EC2의 실제 방 스냅샷 경로 유지). `/prod-server` 스킬은 push 없이 수동 재배포할 때만 쓴다.
+- **AWS 인프라**: 리전 서울(`ap-northeast-2`), EC2 t3.small (Amazon Linux 2023), Elastic IP(고정 공인 IP, `.dev/aws-public-ip.txt` 에 저장 — git에 커밋하지 않음). 도메인은 아직 없어 `http://<Elastic IP>:3201` 로 접속한다. 보안 그룹은 22(SSH, 관리자 IP만)·3201 만 인바운드로 연다. SSH 키(`.dev/astraltab-key.pem`)와 인스턴스 id(`.dev/aws-instance-id.txt`)도 `.dev/`(gitignore)에 있다.
 - GitHub 저장소가 비공개라 EC2에서 직접 `git clone`/`pull` 하지 않는다. 로컬에서 `git archive`로 워킹트리를 패키징해 ssh로 전송하는 방식(`scripts/deploy-aws.ps1`)을 쓴다.
-- **코드를 바꾼 뒤 배포**: `powershell -File scripts/deploy-aws.ps1 -Env test` (또는 `prod`, 기본값은 `all`). 로컬 커밋 여부와 무관하게 현재 워킹트리를 전송하지만, 관례상 커밋 후 배포한다. 인스턴스를 새로 만드는 절차(최초 1회)는 `scripts/aws/provision.sh`(Node·Python·의존성 설치) → `scripts/aws/units.sh`(systemd 서비스 4개 등록) 참고.
-- **`main`에 push되면 GitHub Actions(`.github/workflows/deploy-aws.yml`)가 먼저 테스트·타입 검사·pytest(`verify` job)를 돌리고, 통과하면 test 서버에만 자동 배포한다(2026-09-29 변경).** 운영(prod)은 Actions 탭에서 `Deploy to AWS`를 수동 실행(배포 대상 prod/all)할 때만 배포된다 — test에서 확인한 뒤 사용자가 명시 요청할 때 올린다. 검증 전 변경은 별도 브랜치에 둔다. Secret `EC2_HOST_KEY`(known_hosts 한 줄)를 넣으면 배포 시 호스트 키를 고정한다. 이 워크플로는 SSH(22)를 관리자 IP로만 열어 둔 보안 그룹에 러너의 IP를 배포 직전에 임시로 추가했다가 끝나면 반드시 제거한다(그 권한만 있는 최소 권한 IAM 사용자 `astraltab-ci` 사용). GitHub 저장소 Secrets(`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`, `AWS_SECURITY_GROUP_ID`, `EC2_HOST`, `EC2_SSH_PRIVATE_KEY`)가 설정돼 있어야 동작한다. 수동 배포(`scripts/deploy-aws.ps1`)는 관리자 개인키(`astraltab-key.pem`)를 그대로 쓰고, CI는 별도 키(`astraltab-github-actions`, EC2 `authorized_keys`에 추가)를 쓴다.
-- 서버는 환경 변수 `APP_ENV`, `PORT`, `HOST`, `CLIENT_DIST`, `DATA_DIR`, `AI_BASE_URL` 로 설정한다 (`server/src/index.ts` 주석, EC2에서는 systemd unit 파일에 박혀 있다). JSON 스냅샷 디렉터리는 EC2의 `~/AstralTab/server/data/<env>`.
+- **수동 배포**: `powershell -File scripts/deploy-aws.ps1`. 로컬 커밋 여부와 무관하게 현재 워킹트리를 전송한다. 인스턴스를 새로 만드는 절차(최초 1회)는 `scripts/aws/provision.sh`(Node·Python·의존성 설치) → `scripts/aws/units.sh`(systemd 서비스 2개 등록) 참고.
+- **`main`에 push되면 GitHub Actions(`.github/workflows/deploy-aws.yml`)가 먼저 테스트·타입 검사·pytest(`verify` job)를 돌리고, 통과하면 EC2에 자동 배포한다(운영 단일 서버).** push 자체가 운영 반영이므로 검증 전 변경은 별도 브랜치에 둔다. Actions 탭의 `Deploy to AWS` 수동 실행(workflow_dispatch)으로 재배포도 가능하다. Secret `EC2_HOST_KEY`(known_hosts 한 줄)를 넣으면 배포 시 호스트 키를 고정한다. 이 워크플로는 SSH(22)를 관리자 IP로만 열어 둔 보안 그룹에 러너의 IP를 배포 직전에 임시로 추가했다가 끝나면 반드시 제거한다(그 권한만 있는 최소 권한 IAM 사용자 `astraltab-ci` 사용). GitHub 저장소 Secrets(`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`, `AWS_SECURITY_GROUP_ID`, `EC2_HOST`, `EC2_SSH_PRIVATE_KEY`)가 설정돼 있어야 동작한다. 수동 배포(`scripts/deploy-aws.ps1`)는 관리자 개인키(`astraltab-key.pem`)를 그대로 쓰고, CI는 별도 키(`astraltab-github-actions`, EC2 `authorized_keys`에 추가)를 쓴다.
+- 서버는 환경 변수 `APP_ENV`, `PORT`, `HOST`, `CLIENT_DIST`, `DATA_DIR`, `AI_BASE_URL` 로 설정한다 (`server/src/index.ts` 주석, EC2에서는 systemd unit 파일에 박혀 있다). JSON 스냅샷 디렉터리는 EC2의 `~/AstralTab/server/data/prod`.
 - dev는 여전히 로컬 PC에서 `/dev`·`/dev-stop`으로 돌린다. 공용 함수는 `scripts/common.ps1`.
 
 ---
@@ -275,7 +274,7 @@ AstralTab/
 |---|---|
 | 서버·클라이언트·AI 백그라운드 실행 (개발) | `/dev` |
 | 백그라운드 프로세스 종료 (개발) | `/dev-stop` |
-| AWS test/prod 서버에 배포 | `powershell -File scripts/deploy-aws.ps1 -Env test\|prod\|all` (기본 `all`). `git archive`로 워킹트리를 EC2로 전송 후 빌드·systemd 재시작 |
+| AWS 서버에 배포 | `main` push 시 자동. 수동은 `powershell -File scripts/deploy-aws.ps1`. `git archive`로 워킹트리를 EC2로 전송 후 빌드·systemd 재시작 |
 | AWS 서버 로그 확인 | `ssh -i .dev/astraltab-key.pem ec2-user@$(cat .dev/aws-public-ip.txt) "sudo journalctl -u astraltab-prod-server -n 100"` (서비스명은 astraltab-\<prod\|test\>-\<server\|ai\>) |
 | 로그 확인 (dev) | `tail -n 50 .dev/server.log`, `.dev/client.log`, `.dev/ai.log` |
 | 의존성 설치 (JS) | `npm install` (루트) |

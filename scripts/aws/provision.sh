@@ -18,13 +18,12 @@ npm install
 
 cd client
 npx vite build --outDir dist/prod --emptyOutDir
-npx vite build --outDir dist/test --emptyOutDir
 cd ..
 
 python3.11 -m venv ai/.venv
 ai/.venv/bin/pip install -q --upgrade pip
 ai/.venv/bin/pip install -q -r ai/requirements.txt
 
-mkdir -p server/data/prod server/data/test
+mkdir -p server/data/prod
 
 echo "PROVISION_OK"

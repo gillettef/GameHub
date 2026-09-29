@@ -2,7 +2,7 @@
 # Starts server (3101), client (5173, Vite) and the Python AI service (8000) as
 # detached background processes, writes PIDs to .dev/*.pid and logs to
 # .dev/*.log. Stop them with scripts/dev-stop.ps1.
-# 운영·테스트 서버는 scripts/serve.ps1 -Env prod|test (공용 함수: scripts/common.ps1).
+# 운영 서버는 AWS EC2 에서 상시 실행된다(main push 시 GitHub Actions 자동 배포).
 
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'common.ps1')

@@ -1,7 +1,7 @@
 name: Deploy to AWS
 
-# main에 push되면 테스트·타입 검사를 통과했을 때만 AWS EC2 **test 서버**에 자동 배포한다.
-# 운영(prod)은 Actions 탭에서 '배포 대상'을 prod 또는 all 로 직접 실행할 때만 배포된다(검증 후 수동).
+# main에 push되면 테스트·타입 검사를 통과했을 때만 AWS EC2 서버(단일 운영 환경)에 자동 배포한다.
+# Actions 탭에서 수동 실행(workflow_dispatch)해 재배포할 수도 있다.
 # 저장소가 비공개라 EC2가 직접 clone/pull 하지 못하므로, 이 워크플로가 대신
 # git archive로 워킹트리를 EC2로 전송하고(scp 대신 ssh 파이프), 서버에서
 # scripts/aws/deploy-remote.sh 가 빌드·systemd 재시작을 수행한다.
@@ -15,13 +15,6 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
-    inputs:
-      target:
-        description: '배포 대상'
-        required: false
-        default: 'all'
-        type: choice
-        options: [all, prod, test]
 
 concurrency:
   group: deploy-aws
@@ -86,10 +79,8 @@ jobs:
 
       - name: 빌드 & systemd 재시작
         run: |
-          # push 는 test 만, prod 는 수동 실행(workflow_dispatch)에서만
-          TARGET="${{ github.event.inputs.target || 'test' }}"
           ssh -i ~/.ssh/ci_key ec2-user@${{ secrets.EC2_HOST }} \
-            "bash ~/AstralTab/scripts/aws/deploy-remote.sh $TARGET"
+            "bash ~/AstralTab/scripts/aws/deploy-remote.sh"
 
       - name: 임시 SSH 허용 제거
         if: always()
