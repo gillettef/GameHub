@@ -69,3 +69,8 @@
   top: var(--space-1);
   z-index: 5;
 }
+
+/* 카드 설명은 안내용이라 탭을 가로채지 않는다: 가려진 칸도 그대로 눌러 배치할 수 있다 */
+.cardInfo {
+  pointer-events: none;
+}

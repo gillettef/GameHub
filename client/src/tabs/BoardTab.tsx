@@ -1,4 +1,4 @@
-import { memo, useMemo } from 'react';
+import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { getSpec } from '@astraltab/shared';
 import { Board } from '../components/Board';
 import { Hand } from '../components/Hand';
@@ -34,6 +34,17 @@ export const BoardTab = memo(function BoardTab() {
   const inspectedMarkerId = useGameStore((s) => s.inspectedMarkerId);
   const selectHandCard = useGameStore((s) => s.selectHandCard);
 
+  // 카드 설명은 맵을 가리므로, 보드를 탭하면 닫는다(카드 선택은 유지). 다른 카드를 고르면 다시 뜬다
+  const [cardInfoHidden, setCardInfoHidden] = useState(false);
+  useEffect(() => setCardInfoHidden(false), [selectedHandIndex]);
+  const handleCellClick = useCallback(
+    (x: number, y: number) => {
+      setCardInfoHidden(true);
+      placeAt(x, y);
+    },
+    [placeAt],
+  );
+
   const cells = useMemo(() => (state ? buildCells(state, viewerId) : []), [state, viewerId]);
   const legal = useMemo(
     () => (state ? legalCellKeys(state, viewerId, selectedCardId) : new Set<string>()),
@@ -62,13 +73,15 @@ export const BoardTab = memo(function BoardTab() {
           viewerSeat={viewerSeat}
           previewSight={previewSight}
           previewAll={previewAll}
-          onCellClick={placeAt}
+          onCellClick={handleCellClick}
         />
         <div className={styles.floatingTop}>
           {inspected?.marker ? (
             <MarkerInfo marker={inspected.marker} terrain={inspected.terrain} onClose={() => placeAt(inspected.x, inspected.y)} />
-          ) : selectedCardId && !discardMode ? (
-            <CardInfo cardId={selectedCardId} />
+          ) : selectedCardId && !discardMode && !cardInfoHidden ? (
+            <div className={styles.cardInfo}>
+              <CardInfo cardId={selectedCardId} />
+            </div>
           ) : null}
         </div>
         <div className={styles.floatingBottom}>
