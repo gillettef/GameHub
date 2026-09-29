@@ -1,7 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import type { PlayerId } from '@server/engine/state';
-import { useDevice } from './device';
 import { useView } from './store';
 
 function reducedMotion(): boolean {
@@ -141,7 +140,6 @@ export function UiProvider({ children }: { children: ReactNode }) {
   const turnBased = 'current' in view.phase;
   const myTurn = 'current' in view.phase && view.phase.current === me;
   const prevMyTurn = useRef(myTurn);
-  const { mobile } = useDevice();
   useEffect(() => {
     if (myTurn && !prevMyTurn.current) {
       const d = defaults(view.phase.kind);
@@ -149,14 +147,14 @@ export function UiProvider({ children }: { children: ReactNode }) {
       setBoardTab(d.board);
       setSharedTab(d.shared);
       setMobileTab('play');
-    } else if (!myTurn && prevMyTurn.current && turnBased && mobile) {
+    } else if (!myTurn && prevMyTurn.current && turnBased) {
       // 내 차례가 끝나 다른 참가자 차례가 되면 모바일은 '기록·채팅' 탭의 기록으로 (사용자 요청 2026-09-24): '진행' 탭은 남의 차례엔 비어 있고,
       // 다른 참가자가 무엇을 하는지는 기록으로 본다 (행동 따라가기 기능은 없앴다). PC 는 오른쪽 기록이 늘 보이므로 그대로
       setMobileTab('log');
       setSideTab('log');
     }
     prevMyTurn.current = myTurn;
-  }, [myTurn, turnBased, mobile, view.phase.kind]);
+  }, [myTurn, turnBased, view.phase.kind]);
 
   // 메뉴·탭을 누르면(또는 단계가 바뀌어 탭이 재설정되면) 항상 화면 맨 위로 (사용자 요청 2026-09-22). 페이지는 window 가 스크롤한다(헤더·사이드바는 sticky).
   // showCard 로 왔으면 맨 위 대신 그 카드(`data-focus`)가 보이게 맞추고 잠깐 초록 테두리로 표시한다
