@@ -47,7 +47,7 @@ function compareTieBreak(state: GameState, aId: string, bId: string): number {
   return charmDiff !== 0 ? charmDiff : Math.random() < 0.5 ? -1 : 1;
 }
 
-// 3주차(방과후활동) 구역 선택 순서: 현재 매력이 높은 순 (동점이면 주사위). 2주차 수업카드로 바뀐 매력이 반영된다
+// 3주차(자율활동) 구역 선택 순서: 현재 매력이 높은 순 (동점이면 주사위). 2주차 수업카드로 바뀐 매력이 반영된다
 function orderByCharm(state: GameState): string[] {
   return state.turnOrder
     .map((id) => ({ id, charm: effectiveStat(state.players[id], "charm"), roll: Math.random() }))
@@ -222,7 +222,7 @@ function beginClassPhase(state: GameState): void {
     player.offeredClassCards = drawClassCards(state, drawCount);
     player.hasActedThisPhase = false;
   }
-  log(state, "2주차(수업): 수업카드 배분");
+  log(state, "2주차(정규수업): 수업카드 배분");
 }
 
 function allPlayersActed(state: GameState): boolean {
@@ -230,7 +230,7 @@ function allPlayersActed(state: GameState): boolean {
 }
 
 export function submitClassChoice(state: GameState, playerId: string, keepCardIds: string[]): void {
-  if (state.phase !== "class") throw new Error("지금은 수업 단계가 아닙니다.");
+  if (state.phase !== "class") throw new Error("지금은 정규수업 단계가 아닙니다.");
   const player = state.players[playerId];
   if (!player) throw new Error("플레이어를 찾을 수 없습니다.");
   if (player.hasActedThisPhase) throw new Error("이미 수업 카드를 선택했습니다.");
@@ -272,7 +272,7 @@ function beginActivityPhase(state: GameState): void {
   for (const playerId of state.turnOrder) {
     state.players[playerId].hasActedThisPhase = false;
   }
-  log(state, `3주차(방과후활동) 시작 — 매력 순서: ${state.activityOrder.map((id) => state.players[id].name).join(" → ")}`);
+  log(state, `3주차(자율활동) 시작 — 매력 순서: ${state.activityOrder.map((id) => state.players[id].name).join(" → ")}`);
 }
 
 function resolveActivity(
@@ -321,8 +321,8 @@ function resolveActivity(
         throw new Error("주문 대결 상대를 지정해야 합니다.");
       }
       const target = state.players[targetPlayerId];
-      if (target.hasActedThisPhase) throw new Error("아직 방과후활동을 고르지 않은 플레이어만 지목할 수 있습니다.");
-      // 지목당한 플레이어는 이번 달 방과후활동으로 주문 대결을 강제로 하게 된다 (자기 차례는 건너뜀)
+      if (target.hasActedThisPhase) throw new Error("아직 자율활동을 고르지 않은 플레이어만 지목할 수 있습니다.");
+      // 지목당한 플레이어는 이번 달 자율활동으로 주문 대결을 강제로 하게 된다 (자기 차례는 건너뜀)
       target.hasActedThisPhase = true;
       state.duelTargetId = target.id;
       // 지목당한 쪽은 남은 체력토큰이 있으면 자동으로 집중해 굴림 +1 (토큰은 어차피 4주차에 소멸)
@@ -415,7 +415,7 @@ export function selectActivity(
   targetPlayerId?: string,
   useStamina = false,
 ): void {
-  if (state.phase !== "activity") throw new Error("지금은 방과후활동 단계가 아닙니다.");
+  if (state.phase !== "activity") throw new Error("지금은 자율활동 단계가 아닙니다.");
   if (state.pendingLab) throw new Error("연구 카드를 먼저 골라야 합니다.");
   const currentTurnPlayerId = state.activityOrder[state.activityTurnPointer];
   if (currentTurnPlayerId !== playerId) throw new Error("당신의 차례가 아닙니다.");

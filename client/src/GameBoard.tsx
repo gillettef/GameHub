@@ -151,7 +151,7 @@ function ClassPhasePanel({
   return (
     <div className="bg-white rounded-3xl border-2 border-purple-200 shadow-sm p-4">
       <p className="text-sm text-purple-500 mb-2">
-        2주차(수업): 카드 1장당 체력토큰 1개가 필요합니다. (선택 {selected.length}/{me.staminaTokens})
+        2주차(정규수업): 카드 1장당 체력토큰 1개가 필요합니다. (선택 {selected.length}/{me.staminaTokens})
       </p>
       <div className="flex flex-wrap gap-2 mb-3">
         {me.offeredClassCards.map((card) => {
@@ -243,7 +243,7 @@ function ActivityPhasePanel({
     return (
       <div className="bg-white rounded-3xl border-2 border-purple-200 shadow-sm p-4">
         <p className="text-sm text-purple-500 mb-1">아직 활동을 고르지 않은 한 명을 지목하세요</p>
-        <p className="text-xs text-purple-400 mb-2">지목당한 친구는 이번 달 방과후활동으로 주문 대결을 하게 돼요.</p>
+        <p className="text-xs text-purple-400 mb-2">지목당한 친구는 이번 달 자율활동으로 주문 대결을 하게 돼요.</p>
         <div className="flex flex-col gap-2">
           {duelTargets.map((id) => (
             <button
@@ -264,7 +264,7 @@ function ActivityPhasePanel({
 
   return (
     <div className="bg-white rounded-3xl border-2 border-purple-200 shadow-sm p-4">
-      <p className="text-sm text-purple-500 mb-1">3주차(방과후활동): 구역을 선택하세요</p>
+      <p className="text-sm text-purple-500 mb-1">3주차(자율활동): 구역을 선택하세요</p>
       <p className="text-xs text-purple-400 mb-2">💖 매력 순서: {orderText}</p>
       {staminaTokens > 0 && (
         <label className="flex items-center gap-2 min-h-11 mb-2 rounded-xl bg-green-50 px-3 text-sm text-green-800">
@@ -358,8 +358,8 @@ export function GameBoard({
           <div className="h-full bg-pink-300 transition-all" style={{ width: `${(game.round / 12) * 100}%` }} />
         </div>
         <p className="text-sm text-purple-500 mt-1">
-          {game.phase === "class" && "2주차: 수업"}
-          {game.phase === "activity" && "3주차: 방과후활동"}
+          {game.phase === "class" && "2주차: 정규수업"}
+          {game.phase === "activity" && "3주차: 자율활동"}
           {game.phase === "ended" && "게임 종료"}
         </p>
       </div>
