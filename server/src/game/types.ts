@@ -12,6 +12,7 @@ export type GamePhase = "prep" | "class" | "activity" | "cleanup" | "midterm_exa
 export interface ClassCard {
   id: string;
   name: string;
+  description: string;
   statBoost: { stat: StatKey; amount: number };
 }
 
@@ -94,7 +95,9 @@ export interface GameState {
   activityOrder: string[];
   activityTurnPointer: number;
   examResults: ExamResult[];
-  // 마법생물 카드 덱/버림 더미 (서버 전용, 클라이언트에는 전송하지 않음)
+  // 수업카드/마법생물 카드 덱·버림 더미 (서버 전용, 클라이언트에는 전송하지 않음)
+  classDeck: ClassCard[];
+  classDiscard: ClassCard[];
   creatureDeck: CreatureCard[];
   creatureDiscard: CreatureCard[];
   log: GameLogEntry[];
@@ -106,4 +109,4 @@ export function effectiveStat(player: PlayerGameState, stat: StatKey): number {
 }
 
 // 클라이언트에 전송되는 게임 상태 (서버 전용 덱 정보 제외)
-export type PublicGameState = Omit<GameState, "creatureDeck" | "creatureDiscard">;
+export type PublicGameState = Omit<GameState, "classDeck" | "classDiscard" | "creatureDeck" | "creatureDiscard">;
