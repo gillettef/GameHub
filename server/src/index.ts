@@ -5,7 +5,8 @@ import { fileURLToPath } from "node:url";
 import express from "express";
 import { randomUUID } from "node:crypto";
 import { WebSocketServer, type WebSocket } from "ws";
-import { createRoom, getRoom, joinRoom, leaveRoom, broadcast, type Player, type Room } from "./rooms.js";
+import { createRoom, getRoom, joinRoom, leaveRoom, leaveRoomIfNoHumans, broadcast, type Player, type Room } from "./rooms.js";
+import { BOT_NAMES, chooseActivityAction, chooseClassCards, pickBotPersonality } from "./game/bot.js";
 import { createGame, selectActivity, submitClassChoice } from "./game/engine.js";
 import type { ClientMessage, ServerMessage } from "./messages.js";
 
@@ -24,8 +25,54 @@ app.get("*", (_req, res) => {
 const server = createServer(app);
 const wss = new WebSocketServer({ server, path: "/ws" });
 
-function send(socket: WebSocket, message: ServerMessage): void {
-  socket.send(JSON.stringify(message));
+function send(socket: WebSocket | undefined, message: ServerMessage): void {
+  if (socket && socket.readyState === socket.OPEN) socket.send(JSON.stringify(message));
+}
+
+const playerInfo = (room: Room) =>
+  [...room.players.values()].map((p) => ({ id: p.id, name: p.name, isBot: p.bot ? true : undefined }));
+
+// 봇이 생각하는 시간 (테스트에서는 BOT_SPEED=20 처럼 배속을 줄 수 있음)
+const BOT_SPEED = Number(process.env.BOT_SPEED) || 1;
+const BOT_MIN_DELAY_MS = 1000 / BOT_SPEED;
+const BOT_MAX_DELAY_MS = 2000 / BOT_SPEED;
+const MAX_PLAYERS = 5;
+
+// 봇이 행동해야 하는 상황이면 잠시 생각하는 시간을 두고 한 번 행동한 뒤, 다음 행동을 다시 예약한다
+function scheduleBots(room: Room): void {
+  if (room.botTimer) return;
+  const game = room.game;
+  if (!game || game.phase === "ended") return;
+
+  let actorId: string | undefined;
+  if (game.phase === "class") {
+    actorId = game.turnOrder.find((id) => room.players.get(id)?.bot && !game.players[id].hasActedThisPhase);
+  } else if (game.phase === "activity") {
+    const currentId = game.activityOrder[game.activityTurnPointer];
+    if (room.players.get(currentId)?.bot) actorId = currentId;
+  }
+  if (!actorId) return;
+
+  const botId = actorId;
+  const delay = BOT_MIN_DELAY_MS + Math.random() * (BOT_MAX_DELAY_MS - BOT_MIN_DELAY_MS);
+  room.botTimer = setTimeout(() => {
+    room.botTimer = undefined;
+    const bot = room.players.get(botId);
+    if (!bot?.bot || !room.game) return;
+    try {
+      if (room.game.phase === "class") {
+        submitClassChoice(room.game, botId, chooseClassCards(room.game, botId, bot.bot));
+      } else if (room.game.phase === "activity") {
+        const { activityId, targetPlayerId } = chooseActivityAction(room.game, botId, bot.bot);
+        selectActivity(room.game, botId, activityId, targetPlayerId);
+      }
+    } catch (err) {
+      console.error("봇 행동 오류:", err);
+      return;
+    }
+    broadcastGameState(room);
+    scheduleBots(room);
+  }, delay);
 }
 
 function broadcastGameState(room: Room): void {
@@ -33,6 +80,7 @@ function broadcastGameState(room: Room): void {
   if (!game) return;
   // 다른 플레이어에게 제시된 수업카드는 비공개이므로 각자에게 본인 것만 포함해서 전송
   for (const player of room.players.values()) {
+    if (player.bot) continue;
     const players = Object.fromEntries(
       Object.entries(game.players).map(([id, p]) => [id, id === player.id ? p : { ...p, offeredClassCards: [] }]),
     );
@@ -67,7 +115,7 @@ wss.on("connection", (socket) => {
         type: "room_created",
         roomCode: room.code,
         playerId,
-        players: [...room.players.values()].map((p) => ({ id: p.id, name: p.name })),
+        players: playerInfo(room),
       });
       return;
     }
@@ -94,7 +142,7 @@ wss.on("connection", (socket) => {
         type: "room_joined",
         roomCode: room.code,
         playerId,
-        players: [...room.players.values()].map((p) => ({ id: p.id, name: p.name })),
+        players: playerInfo(room),
       });
       broadcast(room, { type: "player_joined", playerId, playerName: message.playerName }, playerId);
       return;
@@ -108,6 +156,38 @@ wss.on("connection", (socket) => {
     const room = getRoom(currentRoomCode);
     if (!room) return;
 
+    if (message.type === "add_bot") {
+      if (room.hostId !== playerId) {
+        send(socket, { type: "error", message: "방장만 봇을 추가할 수 있습니다." });
+        return;
+      }
+      if (room.game) {
+        send(socket, { type: "error", message: "게임이 시작된 뒤에는 봇을 추가할 수 없습니다." });
+        return;
+      }
+      if (room.players.size >= MAX_PLAYERS) {
+        send(socket, { type: "error", message: "방이 가득 찼습니다 (최대 5인)." });
+        return;
+      }
+      const usedNames = new Set([...room.players.values()].map((p) => p.name));
+      const name = BOT_NAMES.find((n) => !usedNames.has(`${n} 🤖`)) ?? BOT_NAMES[0];
+      const bot: Player = { id: randomUUID(), name: `${name} 🤖`, bot: pickBotPersonality() };
+      room.players.set(bot.id, bot);
+      broadcast(room, { type: "player_joined", playerId: bot.id, playerName: bot.name, isBot: true });
+      return;
+    }
+
+    if (message.type === "remove_bot") {
+      const target = room.players.get(message.botId);
+      if (room.hostId !== playerId || room.game || !target?.bot) {
+        send(socket, { type: "error", message: "봇을 제거할 수 없습니다." });
+        return;
+      }
+      room.players.delete(target.id);
+      broadcast(room, { type: "player_left", playerId: target.id });
+      return;
+    }
+
     if (message.type === "start_game") {
       if (room.hostId !== playerId) {
         send(socket, { type: "error", message: "방장만 게임을 시작할 수 있습니다." });
@@ -117,8 +197,9 @@ wss.on("connection", (socket) => {
         send(socket, { type: "error", message: "게임은 2~5인이 필요합니다." });
         return;
       }
-      room.game = createGame([...room.players.values()].map((p) => ({ id: p.id, name: p.name })));
+      room.game = createGame([...room.players.values()].map((p) => ({ id: p.id, name: p.name, isBot: !!p.bot })));
       broadcastGameState(room);
+      scheduleBots(room);
       return;
     }
 
@@ -127,6 +208,7 @@ wss.on("connection", (socket) => {
       try {
         submitClassChoice(room.game, playerId, message.keepCardIds);
         broadcastGameState(room);
+        scheduleBots(room);
       } catch (err) {
         send(socket, { type: "error", message: err instanceof Error ? err.message : "알 수 없는 오류" });
       }
@@ -138,6 +220,7 @@ wss.on("connection", (socket) => {
       try {
         selectActivity(room.game, playerId, message.activityId, message.targetPlayerId);
         broadcastGameState(room);
+        scheduleBots(room);
       } catch (err) {
         send(socket, { type: "error", message: err instanceof Error ? err.message : "알 수 없는 오류" });
       }
@@ -148,6 +231,18 @@ wss.on("connection", (socket) => {
   socket.on("close", () => {
     if (currentRoomCode && playerId) {
       const room = getRoom(currentRoomCode);
+      const leaving = room?.players.get(playerId);
+      if (room && leaving && room.game && room.game.phase !== "ended") {
+        // 게임 도중 접속이 끊기면 봇이 자리를 이어받아 남은 사람들이 계속 플레이할 수 있게 한다
+        leaving.bot = pickBotPersonality();
+        leaving.socket = undefined;
+        if (room.game.players[playerId]) room.game.players[playerId].isBot = true;
+        room.game.log.push({ round: room.game.round, message: `${leaving.name}님의 연결이 끊겨 봇이 이어받습니다` });
+        if (leaveRoomIfNoHumans(room)) return;
+        broadcastGameState(room);
+        scheduleBots(room);
+        return;
+      }
       leaveRoom(currentRoomCode, playerId);
       if (room) {
         broadcast(room, { type: "player_left", playerId });

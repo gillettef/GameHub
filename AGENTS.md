@@ -42,5 +42,5 @@
 
 - `.claude/agents/`: 이 프로젝트 전용 서브에이전트 (게임 규칙 검토, 모바일 UX 검토 등)
 - `notes/플레이테스트_가이드.md`: 플레이테스트 실행 방법, 관찰 항목, 기록 양식, 수치 조정 지점
-- `server/scripts/`: `npm run simulate`(봇 밸런스 시뮬레이션), `npm run smoke`(WebSocket 스모크 테스트). 밸런스 수치는 `server/src/game/config.ts`
+- `server/scripts/`: `npm run simulate`(봇 밸런스 시뮬레이션), `npm run smoke`/`npm run smoke:bot`(WebSocket 스모크 테스트). 봇 AI는 `server/src/game/bot.ts`. 밸런스 수치는 `server/src/game/config.ts`
 - `.claude/skills/commit-and-push/`: 규칙 1·2·3을 실행하는 커밋/푸시 스킬 (`/commit-and-push`)

@@ -1,16 +1,24 @@
 import type { ActivityId, PublicGameState } from "./game/types.js";
 
+export interface RoomPlayerInfo {
+  id: string;
+  name: string;
+  isBot?: boolean;
+}
+
 export type ClientMessage =
   | { type: "create_room"; playerName: string }
   | { type: "join_room"; roomCode: string; playerName: string }
   | { type: "start_game" }
+  | { type: "add_bot" }
+  | { type: "remove_bot"; botId: string }
   | { type: "submit_class_choice"; keepCardIds: string[] }
   | { type: "select_activity"; activityId: ActivityId; targetPlayerId?: string };
 
 export type ServerMessage =
-  | { type: "room_created"; roomCode: string; playerId: string; players: { id: string; name: string }[] }
-  | { type: "room_joined"; roomCode: string; playerId: string; players: { id: string; name: string }[] }
-  | { type: "player_joined"; playerId: string; playerName: string }
+  | { type: "room_created"; roomCode: string; playerId: string; players: RoomPlayerInfo[] }
+  | { type: "room_joined"; roomCode: string; playerId: string; players: RoomPlayerInfo[] }
+  | { type: "player_joined"; playerId: string; playerName: string; isBot?: boolean }
   | { type: "player_left"; playerId: string }
   | { type: "game_state"; game: PublicGameState }
   | { type: "error"; message: string };
