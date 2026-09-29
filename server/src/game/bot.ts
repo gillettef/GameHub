@@ -2,6 +2,7 @@
 // 봇은 단순한 휴리스틱으로 움직입니다. 수업카드는 성향에 맞는 능력치를 우선해 체력토큰이 허용하는 만큼 고르고,
 // 방과후활동은 상황(주문서 보유량, 토너먼트 진행도 등)과 성향 가중치를 곱해 점수가 높은 구역을 고릅니다.
 import { BALANCE } from "./config.js";
+import { growthGap } from "./engine.js";
 import { effectiveStat, type ActivityId, type GameState, type StatKey } from "./types.js";
 
 export const ACTIVITIES: ActivityId[] = ["tournament", "creature", "duel", "exploration", "lab"];
@@ -58,12 +59,15 @@ export function chooseActivityAction(
   strategy: BotStrategy,
 ): { activityId: ActivityId; targetPlayerId?: string; useStamina: boolean } {
   const p = state.players[playerId];
-  const free = ACTIVITIES.filter((a) => state.activitySlots[a] === null);
+  // 주문 대결은 아직 활동을 고르지 않은 플레이어가 있어야만 고를 수 있다 (그중 한 명을 강제로 지목)
+  const targets = state.turnOrder.filter((id) => id !== playerId && !state.players[id].hasActedThisPhase);
+  const free = ACTIVITIES.filter((a) => state.activitySlots[a] === null && (a !== "duel" || targets.length > 0));
   const base: Record<ActivityId, number> = {
     tournament: Math.min(effectiveStat(p, "spellPower"), BALANCE.tournamentMaxTrack - p.tournamentTrack) * 0.5,
     creature: p.spellbookTokens >= 3 ? 2 : 0.5,
     duel: 1.5,
-    exploration: 1.2,
+    // 선두에게 뒤처졌다면 한 방을 노려볼 만하다 (탐험 역전 보너스)
+    exploration: growthGap(state, playerId) >= BALANCE.catchUpGap ? 2.4 : 1.2,
     // 지력이 높을수록 실험 재료를 많이 펼치므로 연구실의 매력이 올라간다
     lab: 1 + 0.3 * effectiveStat(p, "intelligence"),
   };
@@ -73,13 +77,27 @@ export function chooseActivityAction(
   }));
   scored.sort((x, y) => y.score - x.score);
   const activityId = scored[0].a;
-  // 주문 대결 상대: 주문력이 가장 높은(가장 위협적인) 플레이어
+  // 주문 대결 상대: 아직 활동을 고르지 않은 플레이어 중 주문력이 가장 높은(가장 위협적인) 사람
   const targetPlayerId =
     activityId === "duel"
-      ? state.turnOrder
-          .filter((id) => id !== playerId)
-          .sort((a, b) => state.players[b].spellPower - state.players[a].spellPower)[0]
+      ? [...targets].sort((a, b) => state.players[b].spellPower - state.players[a].spellPower)[0]
       : undefined;
   // 남은 체력토큰은 4주차에 소멸하므로 있으면 집중에 쓴다
   return { activityId, targetPlayerId, useStamina: p.staminaTokens > 0 };
+}
+
+// 연구실 실험: 펼쳐진 연구 카드 중 고를 카드 id (영구 능력치는 성향 가중치로, 임시/토큰/엿보기는 낮게 평가)
+export function chooseLabCard(state: GameState, strategy: BotStrategy): string {
+  const cards = state.pendingLab?.cards ?? [];
+  if (strategy.random) return cards[Math.floor(Math.random() * cards.length)].id;
+  const value = (card: (typeof cards)[number]): number => {
+    const e = card.effect;
+    let v = 0;
+    for (const [stat, n] of Object.entries(e.stats ?? {})) v += (n ?? 0) * strategy.classWeights[stat as StatKey] * 1.5;
+    for (const [stat, n] of Object.entries(e.tempStats ?? {})) v += (n ?? 0) * strategy.classWeights[stat as StatKey] * 0.5;
+    v += (e.credit ?? 0) * 3;
+    v += (e.peekExploration ? 0.8 : 0) + (e.nextSpellbook ?? 0) * 0.4 + (e.nextStamina ?? 0) * 0.5;
+    return v;
+  };
+  return [...cards].sort((a, b) => value(b) - value(a))[0].id;
 }

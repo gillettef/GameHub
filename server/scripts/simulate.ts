@@ -3,9 +3,9 @@
 //  - 어떤 전략(토너먼트 몰빵, 마법생물 몰빵 등)이 지나치게 강하거나 약한가
 //  - 최종 능력치/학점/성취도가 어느 범위에 분포하는가
 //  - 방과후활동 5종 중 봇이 무엇을 선호하고 그 결과는 어떤가
-import { chooseActivityAction, chooseClassCards, type BotStrategy } from "../src/game/bot.js";
+import { chooseActivityAction, chooseClassCards, chooseLabCard, type BotStrategy } from "../src/game/bot.js";
 import { BALANCE } from "../src/game/config.js";
-import { createGame, selectActivity, submitClassChoice } from "../src/game/engine.js";
+import { chooseLabCard as submitLabChoice, createGame, selectActivity, submitClassChoice } from "../src/game/engine.js";
 import type { ActivityId, GameState } from "../src/game/types.js";
 
 const even: Record<ActivityId, number> = { tournament: 1, creature: 1, duel: 1, exploration: 1, lab: 1 };
@@ -41,6 +41,7 @@ function playGame(strategies: BotStrategy[]): GameState {
       const picks = (activityPicks[byId[id].name] ??= { tournament: 0, creature: 0, duel: 0, exploration: 0, lab: 0 });
       picks[activityId] += 1;
       selectActivity(state, id, activityId, target, useStamina);
+      if (state.pendingLab) submitLabChoice(state, id, chooseLabCard(state, byId[id]));
     } else {
       throw new Error(`예상치 못한 단계: ${state.phase}`);
     }
