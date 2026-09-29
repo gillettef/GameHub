@@ -28,8 +28,15 @@ function send(socket: WebSocket, message: ServerMessage): void {
 }
 
 function broadcastGameState(room: Room): void {
-  if (!room.game) return;
-  broadcast(room, { type: "game_state", game: room.game });
+  const game = room.game;
+  if (!game) return;
+  // 다른 플레이어에게 제시된 수업카드는 비공개이므로 각자에게 본인 것만 포함해서 전송
+  for (const player of room.players.values()) {
+    const players = Object.fromEntries(
+      Object.entries(game.players).map(([id, p]) => [id, id === player.id ? p : { ...p, offeredClassCards: [] }]),
+    );
+    send(player.socket, { type: "game_state", game: { ...game, players } });
+  }
 }
 
 wss.on("connection", (socket) => {

@@ -62,7 +62,7 @@ function ClassPhasePanel({
   return (
     <div className="bg-white rounded-xl p-4">
       <p className="text-sm text-purple-500 mb-2">
-        2주차(수업): 카드 1장당 체력토큰 1개가 필요합니다. (보유 체력토큰 {me.staminaTokens}개)
+        2주차(수업): 카드 1장당 체력토큰 1개가 필요합니다. (선택 {selected.length}/{me.staminaTokens})
       </p>
       <div className="flex flex-wrap gap-2 mb-3">
         {me.offeredClassCards.map((card) => {
@@ -71,20 +71,21 @@ function ClassPhasePanel({
             <button
               key={card.id}
               onClick={() => toggle(card.id)}
-              className={`rounded-lg border px-3 py-2 text-sm ${
-                isSelected ? "bg-purple-500 text-white border-purple-500" : "bg-purple-50 text-purple-700 border-purple-200"
+              aria-pressed={isSelected}
+              className={`rounded-xl border-2 min-h-12 px-3 py-3 text-sm active:scale-95 transition-transform ${
+                isSelected ? "bg-purple-500 text-white border-purple-700" : "bg-purple-50 text-purple-700 border-purple-200"
               }`}
             >
-              {card.name} (+{card.statBoost.amount} {STAT_LABEL[card.statBoost.stat]})
+              {isSelected ? "✓ " : ""}{card.name} (+{card.statBoost.amount} {STAT_LABEL[card.statBoost.stat]})
             </button>
           );
         })}
       </div>
       <button
-        className="w-full rounded-xl bg-purple-500 text-white font-semibold py-2"
+        className="w-full min-h-12 rounded-xl bg-purple-500 text-white font-semibold py-3 active:scale-95 transition-transform"
         onClick={() => onSubmit(selected)}
       >
-        {selected.length}장 습득 확정
+        {selected.length === 0 ? "습득 없이 넘어가기" : `${selected.length}장 습득 확정`}
       </button>
     </div>
   );
@@ -120,13 +121,13 @@ function ActivityPhasePanel({
           {others.map((id) => (
             <button
               key={id}
-              className="rounded-lg border border-purple-200 px-3 py-2 text-purple-700 bg-purple-50"
+              className="rounded-xl border border-purple-200 min-h-12 px-3 py-3 text-purple-700 bg-purple-50 active:scale-95 transition-transform"
               onClick={() => onSelect("duel", id)}
             >
               {game.players[id].name}
             </button>
           ))}
-          <button className="text-sm text-purple-400 mt-1" onClick={() => setPendingActivity(null)}>
+          <button className="text-sm text-purple-500 min-h-11 w-full" onClick={() => setPendingActivity(null)}>
             취소
           </button>
         </div>
@@ -143,7 +144,7 @@ function ActivityPhasePanel({
           const label = ACTIVITY_LABEL[activityId];
           if (occupant) {
             return (
-              <div key={activityId} className="rounded-lg border border-purple-100 px-3 py-2 text-purple-300 bg-purple-50">
+              <div key={activityId} className="rounded-xl border border-gray-200 min-h-12 px-3 py-3 text-gray-500 bg-gray-100">
                 {label} — {game.players[occupant].name} 선택됨
               </div>
             );
@@ -151,7 +152,7 @@ function ActivityPhasePanel({
           return (
             <button
               key={activityId}
-              className="rounded-lg border border-purple-300 px-3 py-2 text-purple-700 bg-white hover:bg-purple-50"
+              className="rounded-xl border border-purple-300 min-h-12 px-3 py-3 text-purple-700 bg-white active:bg-purple-100 active:scale-95 transition-transform"
               onClick={() => (activityId === "duel" ? setPendingActivity("duel") : onSelect(activityId))}
             >
               {label}
@@ -212,7 +213,7 @@ export function GameBoard({
   const latestExam = game.examResults[game.examResults.length - 1];
 
   return (
-    <div className="min-h-screen bg-purple-50 px-4 py-6 flex flex-col gap-4 max-w-md mx-auto">
+    <div className="min-h-dvh bg-purple-50 px-4 py-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] flex flex-col gap-4 max-w-md mx-auto">
       <div className="text-center">
         <h1 className="text-xl font-bold text-purple-700">마법학교 — {game.round}라운드</h1>
         <p className="text-sm text-purple-400">
