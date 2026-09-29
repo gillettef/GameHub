@@ -1,4 +1,29 @@
 import { useState } from "react";
+
+// HTTP 환경에서는 navigator.clipboard를 쓸 수 없어서 execCommand로 대체한다
+async function copyText(text: string): Promise<boolean> {
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch {
+    // 아래 폴백으로 진행
+  }
+  const el = document.createElement("textarea");
+  el.value = text;
+  el.style.position = "fixed";
+  el.style.opacity = "0";
+  document.body.appendChild(el);
+  el.select();
+  try {
+    return document.execCommand("copy");
+  } catch {
+    return false;
+  } finally {
+    document.body.removeChild(el);
+  }
+}
 import { useGameSocket } from "./useGameSocket";
 import { GameBoard } from "./GameBoard";
 
@@ -7,6 +32,24 @@ function App() {
     useGameSocket();
   const [playerName, setPlayerName] = useState("");
   const [joinCode, setJoinCode] = useState("");
+  const [copied, setCopied] = useState(false);
+
+  const shareRoom = async (code: string) => {
+    const text = `마법학교 방 코드: ${code}
+${window.location.href}`;
+    if (typeof navigator.share === "function") {
+      try {
+        await navigator.share({ title: "마법학교", text });
+        return;
+      } catch (err) {
+        if (err instanceof DOMException && err.name === "AbortError") return;
+      }
+    }
+    if (await copyText(text)) {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
 
   if (state.status === "in_room" && game && state.playerId) {
     return (
@@ -31,6 +74,13 @@ function App() {
             {state.roomCode}
           </p>
         </div>
+
+        <button
+          className="w-full max-w-sm min-h-12 rounded-2xl bg-pink-200 text-pink-800 py-3 mb-4 active:scale-95 transition-transform"
+          onClick={() => shareRoom(state.roomCode!)}
+        >
+          {copied ? "✅ 복사했어요!" : "📤 방 코드 공유·복사"}
+        </button>
 
         <div className="w-full max-w-sm bg-white rounded-2xl shadow-sm p-4 mb-4">
           <h2 className="text-sm font-semibold text-purple-500 mb-2">참가한 플레이어 ({state.players.length}/5)</h2>
