@@ -6,7 +6,10 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc -p tsconfig.json",
-    "start": "node dist/index.js"
+    "start": "node dist/index.js",
+    "simulate": "tsx scripts/simulate.ts",
+    "smoke": "tsx scripts/smoke.ts",
+    "playtest": "npm --prefix ../client run build && tsx src/index.ts"
   },
   "dependencies": {
     "express": "^4.21.2",

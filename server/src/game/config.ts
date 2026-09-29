@@ -1,0 +1,25 @@
+// 플레이테스트 중 조정할 밸런스 수치 모음 (notes/기획_정리.md 8절의 "플레이테스트 후 조정" 항목).
+// 값을 바꾸면 엔진 전체에 반영되며, 시뮬레이션 스크립트(server/scripts/simulate.ts)가 이 객체를 직접 바꿔 비교합니다.
+// 카드 종류별 수치(수업/장비/탐험/마도서/마법생물)는 각 *Cards.ts / creatures.ts에서 조정합니다.
+import type { StatKey } from "./types.js";
+
+export const BALANCE = {
+  // 라운드 구조 — 기획 확정값(12라운드, 6라운드 후 중간고사). 바꾸면 클라이언트 표시(12/12)와도 맞춰야 함
+  totalRounds: 12,
+  midtermRound: 6,
+  // 게임 시작 능력치 (11-2의 임시안: 전원 1, 학점 0)
+  initialStats: { intelligence: 1, stamina: 1, charm: 1, spellPower: 1 } as Record<StatKey, number>,
+  initialCredit: 0,
+  // 마법 토너먼트: 트랙 길이와 최종 순위 보상 (1위, 2위 순서)
+  tournamentMaxTrack: 10,
+  tournamentRewards: [2, 1],
+  // 시험 순위별 학점 (1위, 2위, 그 이하는 마지막 값)
+  examCredits: [3, 2, 1],
+  // 주문 대결에서 패자가 잃는 마법 주문서 수
+  duelLoserTokenLoss: 1,
+};
+
+export function examCreditForRank(rank: number): number {
+  const credits = BALANCE.examCredits;
+  return credits[Math.min(rank, credits.length) - 1];
+}
