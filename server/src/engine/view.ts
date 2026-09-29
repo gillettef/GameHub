@@ -1,5 +1,6 @@
 import { canUndoTurn } from './state';
 import type { BoardMeeting, GameState, LineupSubmission, LogEntry, MatchAftermath, PlayerId, PlayerState, Weekday } from './state';
+import { scorePlayer } from './scoring';
 import type { ScoreBreakdown } from './scoring';
 import type { DayRestriction } from './types';
 import { restrictionFor } from './weekday';
@@ -18,8 +19,12 @@ export type PhaseView =
   | { kind: 'friday.aftermath'; current: PlayerId; matches: Record<PlayerId, MatchAftermath> }
   | { kind: 'gameOver'; scores: Record<PlayerId, ScoreBreakdown>; winners: PlayerId[] };
 
+// 지금 이 순간의 승점(시즌이 지금 끝난다면). 목표 카드는 비공개라 뺀 값 — 내 것은 self.objectiveScore 로 따로 준다
+export type LiveScore = Pick<ScoreBreakdown, 'leagueRank' | 'league' | 'tokens' | 'staffSets' | 'infrastructure' | 'office' | 'suspensions'> & { total: number };
+
 export type PlayerPublicView = Omit<PlayerState, 'objective' | 'tacticCards' | 'opponentDeck' | 'nextInstance'> & {
   hasObjective: boolean;
+  score: LiveScore;
   tacticCardCount: number;
   nextOpponent?: string;
   opponentsLeft: number;
@@ -27,6 +32,7 @@ export type PlayerPublicView = Omit<PlayerState, 'objective' | 'tacticCards' | '
 
 export interface PlayerPrivateView {
   objective?: string;
+  objectiveScore: number; // 목표 카드를 지금 상태로 판정한 승점 (달성 2 / 완벽 4, 아직이면 0)
   tacticCards: string[];
 }
 
@@ -49,13 +55,21 @@ export interface GameView {
 
 const LOG_TAIL = 100;
 
-function publicPlayer(p: PlayerState): PlayerPublicView {
+function liveScore(state: GameState, id: PlayerId): LiveScore {
+  const { objective, objectiveCard, objectiveLevel, ...rest } = scorePlayer(state, id);
+  void objectiveCard;
+  void objectiveLevel;
+  return { ...rest, total: rest.total - objective };
+}
+
+function publicPlayer(p: PlayerState, score: LiveScore): PlayerPublicView {
   const { objective, tacticCards, opponentDeck, ...rest } = p;
   const { nextInstance, ...publicRest } = rest;
   void nextInstance;
   return {
     ...publicRest,
     hasObjective: objective !== undefined,
+    score,
     tacticCardCount: tacticCards.length,
     nextOpponent: opponentDeck[0],
     opponentsLeft: opponentDeck.length,
@@ -104,11 +118,11 @@ export function viewFor(state: GameState, me: PlayerId): GameView {
     firstPlayer: state.firstPlayer,
     phase: phaseView(state, me),
     players: mapValues(state.players, (p) => {
-      const pub = publicPlayer(p);
+      const pub = publicPlayer(p, liveScore(state, p.id));
       // 임원 드래프트 중에는 다른 참가자가 이미 고른 임원을 보여 주지 않는다 — 규칙서 p.7: 세 장을 다 고른 뒤에 공개
       return state.phase.kind === 'setup.draft' && p.id !== me ? { ...pub, executives: [] } : pub;
     }),
-    self: { objective: self?.objective, tacticCards: self?.tacticCards ?? [] },
+    self: { objective: self?.objective, objectiveScore: self ? scorePlayer(state, me).objective : 0, tacticCards: self?.tacticCards ?? [] },
     market: state.market,
     nextProspect: d.prospects[0] ?? null,
     deckCounts: {

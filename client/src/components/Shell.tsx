@@ -101,6 +101,8 @@ function SeatStats({ id }: { id: PlayerId }) {
 
 // 헤더 아래 참가자 띠: 자리 색·이름·자원(트랙)·유지비·리그 위치·승점·상태 점. 누르면 그 참가자의 개인 보드로.
 // PC용·모바일용이 같은 모양이다(사용자 요청 2026-09). 좁은 화면에서는 옆으로 밀리므로 처음에 내 자리가 보이게 맞춰 둔다
+const signedPoints = (n: number) => (n > 0 ? `+${n}` : String(n));
+
 export function PlayerStrip() {
   const { view, session, room } = useView();
   const { selected, selectPlayer, mobileTab } = useUi();
@@ -127,6 +129,20 @@ export function PlayerStrip() {
     const status = playerStatus(view, id);
     const isMe = session?.playerId === id;
     const isBot = room?.players.find((r) => r.id === id)?.isBot;
+    // 지금 시즌이 끝난다면 받을 승점: 리그 순위 + 승점 토큰 + 직원 세트 + 시설 + 사무실 − 출장정지. 목표 카드는 비공개라 내 것만 더한다 (서버가 매번 새로 계산해 보낸다)
+    const sc = p.score;
+    const objective = isMe ? view.self.objectiveScore : 0;
+    const scoreTotal = sc.total + objective;
+    const scoreTip = [
+      `지금 시즌이 끝나면 ${scoreTotal}점`,
+      `리그 ${sc.leagueRank}위 ${signedPoints(sc.league)}`,
+      `승점 토큰 ${signedPoints(sc.tokens)}`,
+      `직원 세트 ${signedPoints(sc.staffSets)}`,
+      `기반 시설 ${signedPoints(sc.infrastructure)}`,
+      `사무실 ${signedPoints(sc.office)}`,
+      `출장정지 ${signedPoints(sc.suspensions)}`,
+      isMe ? `목표 카드 ${signedPoints(objective)}` : '목표 카드는 비공개라 제외',
+    ].join(' · ');
     return (
       <button
         key={id}
@@ -147,7 +163,7 @@ export function PlayerStrip() {
             </span>
             <span className="pseat-meta">
               <span title="리그 등수 · 리그 성적표 위치">리그 <b>{leagueRankOf(view, id)}위</b> ({view.league.players[id]}칸)</span>
-              <span title="승점 토큰"><Icon name="vp" size={12} />{p.vp}</span>
+              <span className="score-live" title={scoreTip}><Icon name="vp" size={12} />승점 <b key={scoreTotal} className="score-num">{scoreTotal}</b></span>
               <span title="선수 수 · 직원 수">선수 {p.roster.length} · 직원 {p.staff.length}</span>
             </span>
           </span>

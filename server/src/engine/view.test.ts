@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { scorePlayer } from './scoring';
 import { createGame, draftPick } from './setup';
 import { FOUR_PLAYERS, gameAtMonday, seededRng } from './test-utils';
 import { viewFor } from './view';
@@ -25,6 +26,21 @@ describe('참가자 뷰 (비공개 정보 제거)', () => {
     expect(v.players['a']!.executives.map((e) => e.cardId)).toEqual(mine);
     for (const other of ['b', 'c', 'd']) expect(v.players[other]!.executives).toEqual([]);
     expect(viewFor(s, '').players['a']!.executives).toEqual([]); // 관전자도 못 본다
+  });
+
+  it('지금 승점(score)이 상태를 바꿀 때마다 새로 계산돼 실려 온다: 토큰·사무실·시설이 반영되고 목표 카드는 남에게 안 보인다', () => {
+    const s = gameAtMonday();
+    const base = viewFor(s, 'b').players['a']!.score.total;
+    s.players['a']!.vp += 2;
+    expect(viewFor(s, 'b').players['a']!.score.total).toBe(base + 2);
+    s.players['a']!.office = 1;
+    const office = scorePlayer(s, 'a').office;
+    expect(viewFor(s, 'b').players['a']!.score.total).toBe(base + 2 + office - scorePlayer(gameAtMonday(), 'a').office);
+    const full = scorePlayer(s, 'a');
+    expect(viewFor(s, 'b').players['a']!.score.total).toBe(full.total - full.objective); // 남이 보는 값은 목표 카드 제외
+    expect(viewFor(s, 'a').self.objectiveScore).toBe(full.objective);
+    expect(viewFor(s, 'b').self.objectiveScore).toBe(scorePlayer(s, 'b').objective); // 각자 자기 것만
+    expect(JSON.stringify(viewFor(s, 'b').players['a']!.score)).not.toContain('objective');
   });
 
   it('목표 카드·전술 손패·상대 팀 덱은 본인 것만', () => {

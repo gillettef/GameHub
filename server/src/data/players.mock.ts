@@ -305,7 +305,7 @@ export const PLAYER_CARDS: PlayerCard[] = [
     trained: { cost: 1, role: 'defense', zones: ['CB', 'CM'], skill: 1, number: 5 } },
   { id: 'p-v08', kind: 'veteran', name: '앙투안 르블랑', tags: ['베테랑', '윙어'], placeholder: true,
     untrained: { cost: 2, role: 'attack', zones: ['CM', 'LW'], skill: 3, number: 7,
-      effect: { timing: 'afterMatch', mandatory: true, cost: {}, effects: [{ type: 'addPlayerToken', token: 'weaknessTemp', count: 1, target: 'self' }], text: '경기 후: 이 선수에 일시적 약점 토큰 1개를 놓습니다. (필수)' } },
+      effect: { timing: 'afterMatch', mandatory: true, cost: {}, effects: [{ type: 'addPlayerToken', token: 'weaknessPerm', count: 1, target: 'self' }], text: '경기 후: 이 선수에 영구 약점 토큰 1개를 놓습니다. (필수)' } },
     trained: { cost: 2, role: 'attack', zones: ['CM', 'LW'], skill: 2, number: 7,
       effect: { timing: 'duringMatch', mandatory: false, cost: { fandom: 1 }, effects: [{ type: 'scoreGoal', team: 'self', amount: 1 }], text: '경기 중: 1[팬덤]을 지불하면 1골을 득점합니다.' } } },
   // 주사위 부상
@@ -342,7 +342,7 @@ export const PLAYER_CARDS: PlayerCard[] = [
       effect: { timing: 'afterMatch', mandatory: false, cost: {}, effects: [{ type: 'conditional', condition: { kind: 'outcome', outcome: 'win' }, effects: [{ type: 'gainVP', amount: 1 }, { type: 'gainResource', resource: 'fandom', amount: 1 }] }], text: '경기 후: 이 경기에 승리했다면 1[승점]과 1[팬덤]을 얻습니다.' } } },
   { id: 'p-v15', kind: 'veteran', name: '니콜라스 뒤부아', tags: ['베테랑', '수비수'], placeholder: true,
     untrained: { cost: 2, role: 'defense', zones: ['LW', 'CM'], skill: 3, number: 3,
-      effect: { timing: 'afterMatch', mandatory: true, cost: {}, effects: [{ type: 'addPlayerToken', token: 'weaknessTemp', count: 1, target: 'self' }], text: '경기 후: 이 선수에 일시적 약점 토큰 1개를 놓습니다. (필수)' } },
+      effect: { timing: 'afterMatch', mandatory: true, cost: {}, effects: [{ type: 'addPlayerToken', token: 'weaknessPerm', count: 1, target: 'self' }], text: '경기 후: 이 선수에 영구 약점 토큰 1개를 놓습니다. (필수)' } },
     trained: { cost: 2, role: 'defense', zones: ['LW', 'CM'], skill: 2, number: 3,
       effect: { timing: 'afterMatch', mandatory: false, cost: { fandom: 1 }, effects: [{ type: 'gainVP', amount: 1 }], text: '경기 후: 1[팬덤]을 지불하면 1[승점]을 얻습니다.' } } },
   { id: 'p-v16', kind: 'veteran', name: '송민혁', tags: ['베테랑', '스트라이커'], placeholder: true,
