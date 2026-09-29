@@ -1,6 +1,45 @@
 @import "tailwindcss";
 
+@theme {
+  --font-display: "Jua", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+}
+
 body {
   margin: 0;
   color-scheme: light;
+  background: linear-gradient(180deg, #fdf4ff 0%, #f3e8ff 55%, #e0f2fe 100%) fixed;
+  touch-action: manipulation;
+}
+
+h1,
+h2,
+button {
+  font-family: var(--font-display);
+}
+
+button:focus-visible,
+input:focus-visible {
+  outline: 3px solid #d8b4fe;
+  outline-offset: 2px;
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.pop-in {
+  animation: pop-in 0.25s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pop-in {
+    animation: none;
+  }
 }

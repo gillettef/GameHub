@@ -10,24 +10,34 @@ import {
 
 const ACTIVITY_IDS: ActivityId[] = ["tournament", "creature", "duel", "exploration", "lab"];
 
+const STAT_ICON = { intelligence: "🧠", stamina: "💪", charm: "💖", spellPower: "✨" } as const;
+
+function Chip({ icon, label, value, className }: { icon: string; label: string; value: string | number; className: string }) {
+  return (
+    <span className={`rounded-full px-2.5 py-1 text-sm whitespace-nowrap ${className}`} aria-label={`${label} ${value}`}>
+      <span aria-hidden>{icon}</span> {value}
+    </span>
+  );
+}
+
 function PlayerStatCard({ player, isMe }: { player: PlayerGameState; isMe: boolean }) {
   return (
-    <div className={`rounded-xl border p-3 ${isMe ? "border-purple-400 bg-purple-100" : "border-purple-200 bg-white"}`}>
-      <p className="font-semibold text-purple-700 mb-1">
-        {player.name} {isMe && <span className="text-xs text-purple-400">(나)</span>}
+    <div
+      className={`rounded-3xl border-2 p-3 shadow-sm ${isMe ? "border-pink-300 bg-pink-50" : "border-purple-200 bg-white"}`}
+    >
+      <p className="font-display text-lg text-purple-700 mb-2 truncate">
+        {player.name} {isMe && <span className="text-sm text-pink-500">(나)</span>}
       </p>
-      <div className="grid grid-cols-4 gap-1 text-xs text-purple-600 mb-1">
-        <span>지력 {effectiveStat(player, "intelligence")}</span>
-        <span>체력 {effectiveStat(player, "stamina")}</span>
-        <span>매력 {effectiveStat(player, "charm")}</span>
-        <span>주문력 {effectiveStat(player, "spellPower")}</span>
+      <div className="flex flex-wrap gap-1.5 mb-1.5">
+        <Chip icon={STAT_ICON.intelligence} label="지력" value={effectiveStat(player, "intelligence")} className="bg-sky-100 text-sky-800" />
+        <Chip icon={STAT_ICON.stamina} label="체력" value={effectiveStat(player, "stamina")} className="bg-green-100 text-green-800" />
+        <Chip icon={STAT_ICON.charm} label="매력" value={effectiveStat(player, "charm")} className="bg-pink-100 text-pink-800" />
+        <Chip icon={STAT_ICON.spellPower} label="주문력" value={effectiveStat(player, "spellPower")} className="bg-purple-100 text-purple-800" />
+        <Chip icon="🎓" label="학점" value={player.credit} className="bg-amber-100 text-amber-800" />
       </div>
-      <div className="flex flex-wrap gap-2 text-xs text-purple-500">
-        <span>학점 {player.credit}</span>
-        <span>토너먼트 {player.tournamentTrack}/10</span>
-        <span>체력토큰 {player.staminaTokens}</span>
-        <span>마법주문서 {player.spellbookTokens}</span>
-      </div>
+      <p className="text-sm text-purple-700">
+        🏆 토너먼트 {player.tournamentTrack}/10 · 🔋 체력토큰 {player.staminaTokens} · 📖 주문서 {player.spellbookTokens}
+      </p>
     </div>
   );
 }
@@ -47,7 +57,7 @@ function ClassPhasePanel({
   if (me.hasActedThisPhase) {
     const waiting = game.turnOrder.filter((id) => !game.players[id].hasActedThisPhase);
     return (
-      <div className="bg-white rounded-xl p-4 text-center text-purple-500">
+      <div className="bg-white rounded-3xl border-2 border-purple-200 shadow-sm p-4 text-center text-purple-500">
         수업카드를 선택했습니다. {waiting.map((id) => game.players[id].name).join(", ")}님을 기다리는 중...
       </div>
     );
@@ -60,7 +70,7 @@ function ClassPhasePanel({
   };
 
   return (
-    <div className="bg-white rounded-xl p-4">
+    <div className="bg-white rounded-3xl border-2 border-purple-200 shadow-sm p-4">
       <p className="text-sm text-purple-500 mb-2">
         2주차(수업): 카드 1장당 체력토큰 1개가 필요합니다. (선택 {selected.length}/{me.staminaTokens})
       </p>
@@ -106,7 +116,7 @@ function ActivityPhasePanel({
 
   if (!isMyTurn) {
     return (
-      <div className="bg-white rounded-xl p-4 text-center text-purple-500">
+      <div className="bg-white rounded-3xl border-2 border-purple-200 shadow-sm p-4 text-center text-purple-500">
         {game.players[currentTurnPlayerId]?.name}님의 차례를 기다리는 중...
       </div>
     );
@@ -115,7 +125,7 @@ function ActivityPhasePanel({
   if (pendingActivity === "duel") {
     const others = game.turnOrder.filter((id) => id !== myId);
     return (
-      <div className="bg-white rounded-xl p-4">
+      <div className="bg-white rounded-3xl border-2 border-purple-200 shadow-sm p-4">
         <p className="text-sm text-purple-500 mb-2">주문 대결 상대를 선택하세요</p>
         <div className="flex flex-col gap-2">
           {others.map((id) => (
@@ -136,7 +146,7 @@ function ActivityPhasePanel({
   }
 
   return (
-    <div className="bg-white rounded-xl p-4">
+    <div className="bg-white rounded-3xl border-2 border-purple-200 shadow-sm p-4">
       <p className="text-sm text-purple-500 mb-2">3주차(방과후활동): 구역을 선택하세요</p>
       <div className="grid grid-cols-1 gap-2">
         {ACTIVITY_IDS.map((activityId) => {
@@ -169,32 +179,28 @@ function EndedPanel({ game }: { game: GameState }) {
   const ranked = [...game.turnOrder]
     .map((id) => game.players[id])
     .sort((a, b) => b.spellPower * b.credit - a.spellPower * a.credit);
+  const medals = ["🥇", "🥈", "🥉"];
 
   return (
-    <div className="bg-white rounded-xl p-4">
-      <p className="text-lg font-bold text-purple-700 mb-3 text-center">
+    <div className="pop-in bg-white rounded-3xl border-2 border-amber-200 p-4 shadow-sm">
+      <p className="font-display text-xl text-purple-700 mb-3 text-center">
         🎉 {winnerIds.map((id) => game.players[id].name).join(", ")} 승리! 🎉
       </p>
-      <table className="w-full text-sm text-purple-700">
-        <thead>
-          <tr className="text-left text-purple-400">
-            <th className="py-1">이름</th>
-            <th className="py-1">주문력</th>
-            <th className="py-1">학점</th>
-            <th className="py-1">마법 성취도</th>
-          </tr>
-        </thead>
-        <tbody>
-          {ranked.map((p) => (
-            <tr key={p.id} className={winnerIds.includes(p.id) ? "font-semibold text-purple-800" : ""}>
-              <td className="py-1">{p.name}</td>
-              <td className="py-1">{p.spellPower}</td>
-              <td className="py-1">{p.credit}</td>
-              <td className="py-1">{p.spellPower * p.credit}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <ol className="flex flex-col gap-2">
+        {ranked.map((p, i) => (
+          <li
+            key={p.id}
+            className={`rounded-2xl px-3 py-2 ${winnerIds.includes(p.id) ? "bg-amber-100" : "bg-purple-50"}`}
+          >
+            <p className="font-display text-purple-800 truncate">
+              {medals[i] ?? `${i + 1}위`} {p.name}
+            </p>
+            <p className="text-sm text-purple-700">
+              주문력 {p.spellPower} × 학점 {p.credit} = <b>성취도 {p.spellPower * p.credit}</b>
+            </p>
+          </li>
+        ))}
+      </ol>
     </div>
   );
 }
@@ -213,10 +219,13 @@ export function GameBoard({
   const latestExam = game.examResults[game.examResults.length - 1];
 
   return (
-    <div className="min-h-dvh bg-purple-50 px-4 py-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] flex flex-col gap-4 max-w-md mx-auto">
+    <div className="min-h-dvh px-4 py-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] flex flex-col gap-4 max-w-md mx-auto">
       <div className="text-center">
-        <h1 className="text-xl font-bold text-purple-700">마법학교 — {game.round}라운드</h1>
-        <p className="text-sm text-purple-400">
+        <h1 className="text-2xl text-purple-700">🏫 마법학교 — {game.round}/12개월</h1>
+        <div className="mx-auto mt-2 h-2 w-40 rounded-full bg-purple-100 overflow-hidden" aria-hidden>
+          <div className="h-full bg-pink-300 transition-all" style={{ width: `${(game.round / 12) * 100}%` }} />
+        </div>
+        <p className="text-sm text-purple-500 mt-1">
           {game.phase === "class" && "2주차: 수업"}
           {game.phase === "activity" && "3주차: 방과후활동"}
           {game.phase === "ended" && "게임 종료"}
@@ -228,12 +237,12 @@ export function GameBoard({
       {game.phase === "ended" && <EndedPanel game={game} />}
 
       {latestExam && (
-        <div className="bg-purple-100 rounded-xl p-3 text-sm">
-          <p className="font-semibold text-purple-600 mb-1">
-            {latestExam.round === 6 ? "중간고사" : "기말고사"} 결과
+        <div className="bg-sky-50 border-2 border-sky-200 rounded-3xl p-3 text-sm">
+          <p className="font-display text-base text-sky-700 mb-1">
+            📝 {latestExam.round === 6 ? "중간고사" : "기말고사"} 결과
           </p>
           {latestExam.scores.map((s) => (
-            <p key={s.playerId} className="text-purple-600">
+            <p key={s.playerId} className="text-sky-800 truncate">
               {s.rank}위 {game.players[s.playerId].name} — 점수 {s.score}, 학점 +{s.creditAwarded}
             </p>
           ))}
