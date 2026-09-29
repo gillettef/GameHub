@@ -15,6 +15,7 @@ import {
   type LabCard,
   type PlayerGameState,
 } from "./gameTypes";
+import { RulesGuide } from "./Rules";
 
 const ACTIVITY_IDS: ActivityId[] = ["tournament", "creature", "duel", "exploration", "lab"];
 
@@ -335,6 +336,15 @@ function EndedPanel({ game }: { game: GameState }) {
   );
 }
 
+type TabId = "game" | "players" | "news" | "rules";
+
+const TABS: { id: TabId; icon: string; label: string }[] = [
+  { id: "game", icon: "🎮", label: "게임" },
+  { id: "players", icon: "👥", label: "친구들" },
+  { id: "news", icon: "📜", label: "소식" },
+  { id: "rules", icon: "📖", label: "규칙" },
+];
+
 export function GameBoard({
   game,
   myId,
@@ -348,55 +358,131 @@ export function GameBoard({
   onSelectActivity: (activityId: ActivityId, targetPlayerId?: string, useStamina?: boolean) => void;
   onChooseLabCard: (cardId: string) => void;
 }) {
+  const [tab, setTab] = useState<TabId>("game");
   const latestExam = game.examResults[game.examResults.length - 1];
+  const me = game.players[myId];
+  const activityTurnId = game.pendingLab?.playerId ?? game.activityOrder[game.activityTurnPointer];
+  // 내가 행동해야 하는 순간에는 게임 탭에 알림 점을 띄운다
+  const myTurn =
+    (game.phase === "class" && !me.hasActedThisPhase) || (game.phase === "activity" && activityTurnId === myId);
+  const phaseText =
+    game.phase === "class" ? "2주차 정규수업" : game.phase === "activity" ? "3주차 자율활동" : "게임 종료";
+
+  const selectTab = (id: TabId) => {
+    setTab(id);
+    window.scrollTo({ top: 0 });
+  };
 
   return (
-    <div className="min-h-dvh px-4 py-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] flex flex-col gap-4 max-w-md mx-auto">
-      <div className="text-center">
-        <h1 className="text-2xl text-purple-700">🏫 마법학교 — {game.round}/12개월</h1>
-        <div className="mx-auto mt-2 h-2 w-40 rounded-full bg-purple-100 overflow-hidden" aria-hidden>
+    <div className="min-h-dvh flex flex-col max-w-md mx-auto">
+      <header className="sticky top-0 z-40 border-b-2 border-purple-100 bg-purple-50/95 px-4 pb-2 pt-[max(0.5rem,env(safe-area-inset-top))] backdrop-blur">
+        <div className="flex items-center justify-between gap-2">
+          <h1 className="text-lg text-purple-700 whitespace-nowrap">🏫 {game.round}/12개월</h1>
+          <p className={`truncate rounded-full px-3 py-1 text-sm ${myTurn ? "bg-pink-200 text-pink-800" : "bg-purple-100 text-purple-600"}`}>
+            {myTurn ? "✋ 내 차례 · " : ""}
+            {phaseText}
+          </p>
+        </div>
+        <div className="mt-1.5 h-1.5 w-full rounded-full bg-purple-100 overflow-hidden" aria-hidden>
           <div className="h-full bg-pink-300 transition-all" style={{ width: `${(game.round / 12) * 100}%` }} />
         </div>
-        <p className="text-sm text-purple-500 mt-1">
-          {game.phase === "class" && "2주차: 정규수업"}
-          {game.phase === "activity" && "3주차: 자율활동"}
-          {game.phase === "ended" && "게임 종료"}
-        </p>
-      </div>
-
-      {game.phase === "class" && <ClassPhasePanel game={game} myId={myId} onSubmit={onSubmitClassChoice} />}
-      {game.phase === "activity" && <ActivityPhasePanel game={game} myId={myId} onSelect={onSelectActivity} onChooseLabCard={onChooseLabCard} />}
-      {game.phase === "ended" && <EndedPanel game={game} />}
-
-      {latestExam && (
-        <div className="bg-sky-50 border-2 border-sky-200 rounded-3xl p-3 text-sm">
-          <p className="font-display text-base text-sky-700 mb-1">
-            📝 {latestExam.round === 6 ? "중간고사" : "기말고사"} 결과
-          </p>
-          {latestExam.scores.map((s) => (
-            <p key={s.playerId} className="text-sky-800 truncate">
-              {s.rank}위 {game.players[s.playerId].name} — 점수 {s.score}, 학점 +{s.creditAwarded}
-            </p>
-          ))}
+        <div className="mt-1.5 flex gap-1.5 overflow-x-auto pb-0.5" aria-label="내 능력치">
+          <Chip icon="🧠" label="지력" value={effectiveStat(me, "intelligence")} className="bg-sky-100 text-sky-800" />
+          <Chip icon="💪" label="체력" value={effectiveStat(me, "stamina")} className="bg-green-100 text-green-800" />
+          <Chip icon="💖" label="매력" value={effectiveStat(me, "charm")} className="bg-pink-100 text-pink-800" />
+          <Chip icon="✨" label="주문력" value={effectiveStat(me, "spellPower")} className="bg-purple-100 text-purple-800" />
+          <Chip icon="🎓" label="학점" value={me.credit} className="bg-amber-100 text-amber-800" />
+          <Chip icon="🔋" label="체력토큰" value={me.staminaTokens} className="bg-green-50 text-green-700" />
+          <Chip icon="📖" label="주문서" value={me.spellbookTokens} className="bg-indigo-50 text-indigo-700" />
         </div>
-      )}
+      </header>
 
-      {game.log.length > 0 && (
-        <div className="rounded-3xl border-2 border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
-          <p className="font-display text-base text-amber-700 mb-1">📜 최근 소식</p>
-          <ul className="flex flex-col gap-0.5">
-            {game.log.slice(-6).reverse().map((entry, i) => (
-              <li key={game.log.length - i}>{entry.message}</li>
+      <main className="flex-1 px-4 py-4 pb-24 flex flex-col gap-4">
+        {tab === "game" && (
+          <>
+            {game.phase === "class" && <ClassPhasePanel game={game} myId={myId} onSubmit={onSubmitClassChoice} />}
+            {game.phase === "activity" && (
+              <ActivityPhasePanel game={game} myId={myId} onSelect={onSelectActivity} onChooseLabCard={onChooseLabCard} />
+            )}
+            {game.phase === "ended" && <EndedPanel game={game} />}
+
+            {latestExam && (
+              <div className="bg-sky-50 border-2 border-sky-200 rounded-3xl p-3 text-sm">
+                <p className="font-display text-base text-sky-700 mb-1">
+                  📝 {latestExam.round === 6 ? "중간고사" : "기말고사"} 결과
+                </p>
+                {latestExam.scores.map((s) => (
+                  <p key={s.playerId} className="text-sky-800 truncate">
+                    {s.rank}위 {game.players[s.playerId].name} — 점수 {s.score}, 학점 +{s.creditAwarded}
+                  </p>
+                ))}
+              </div>
+            )}
+
+            {game.log.length > 0 && (
+              <button
+                className="text-left rounded-3xl border-2 border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 active:scale-95 transition-transform"
+                onClick={() => selectTab("news")}
+              >
+                <span className="font-display text-amber-700">📜 방금 소식</span>
+                <span className="block truncate">{game.log[game.log.length - 1].message}</span>
+              </button>
+            )}
+          </>
+        )}
+
+        {tab === "players" && (
+          <div className="flex flex-col gap-2">
+            {game.turnOrder.map((id) => (
+              <PlayerStatCard key={id} player={game.players[id]} isMe={id === myId} />
             ))}
-          </ul>
-        </div>
-      )}
+          </div>
+        )}
 
-      <div className="flex flex-col gap-2">
-        {game.turnOrder.map((id) => (
-          <PlayerStatCard key={id} player={game.players[id]} isMe={id === myId} />
-        ))}
-      </div>
+        {tab === "news" && (
+          <div className="rounded-3xl border-2 border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+            <p className="font-display text-base text-amber-700 mb-1">📜 최근 소식</p>
+            {game.log.length === 0 && <p className="text-amber-700">아직 소식이 없어요</p>}
+            <ul className="flex flex-col gap-1.5">
+              {game.log
+                .slice(-30)
+                .reverse()
+                .map((entry, i) => (
+                  <li key={game.log.length - i}>{entry.message}</li>
+                ))}
+            </ul>
+          </div>
+        )}
+
+        {tab === "rules" && <RulesGuide />}
+      </main>
+
+      <nav
+        className="fixed bottom-0 left-1/2 z-40 w-full max-w-md -translate-x-1/2 border-t-2 border-purple-100 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur"
+        aria-label="메뉴"
+      >
+        <ul className="grid grid-cols-4">
+          {TABS.map((t) => (
+            <li key={t.id}>
+              <button
+                className={`relative flex min-h-14 w-full flex-col items-center justify-center text-xs active:scale-95 transition-transform ${
+                  tab === t.id ? "text-purple-700" : "text-purple-400"
+                }`}
+                aria-current={tab === t.id ? "page" : undefined}
+                onClick={() => selectTab(t.id)}
+              >
+                <span className={`text-xl leading-none rounded-full px-4 py-0.5 ${tab === t.id ? "bg-purple-100" : ""}`} aria-hidden>
+                  {t.icon}
+                </span>
+                {t.label}
+                {t.id === "game" && myTurn && tab !== "game" && (
+                  <span className="absolute right-[28%] top-1.5 h-2.5 w-2.5 rounded-full bg-pink-400" aria-label="내 차례" />
+                )}
+              </button>
+            </li>
+          ))}
+        </ul>
+      </nav>
     </div>
   );
 }
