@@ -134,3 +134,10 @@
   font-weight: 600;
   color: var(--color-heading);
 }
+
+/* 견본 안의 육각은 보드 셀과 달리 flex 가 아니라, 크기 지정 장식(광맥·유물지대·포대 발판)이 모서리에 붙는다 */
+.swatch > * {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}

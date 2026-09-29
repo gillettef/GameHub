@@ -1,4 +1,5 @@
 import { memo, type CSSProperties } from 'react';
+import { TERRITORY_RADIUS } from '@astraltab/shared';
 import { ICONS } from '../components/CardFace';
 import boardStyles from '../components/Board.module.css';
 import { cx } from '../lib/cx';
@@ -10,12 +11,25 @@ const KEYWORDS = ['infiltrate', 'repair', 'overclock'];
 
 const STATS: { icon: keyof typeof ICONS; label: string; desc: string }[] = [
   { icon: 'cost', label: '비용', desc: '배치에 필요한 에너지. 손패 카드·팝오버에 항상 보입니다.' },
-  { icon: 'sight', label: '시야', desc: '이 마커를 중심으로 한 육각 거리 반경. 시야가 겹친 영역의 합집합이 배치 가능 범위이자 영토의 근거입니다.' },
-  { icon: 'score', label: '점수', desc: '이 마커가 살아 있는 동안 더해지는 마커 점수. 파괴되면 즉시 사라집니다.' },
+  { icon: 'sight', label: '시야', desc: '이 마커를 중심으로 한 육각 거리 반경. 시야가 겹친 영역의 합집합이 배치 가능 범위입니다(성운 위에서는 -1). 영토 점수는 시야와 무관합니다.' },
+  { icon: 'score', label: '점수', desc: '이 마커가 살아 있는 동안 더해지는 마커 점수(유물지대 +1, 중력 균열 -1). 파괴되면 즉시 사라집니다.' },
   { icon: 'hp', label: '체력', desc: '0 이하가 되면 파괴됩니다. 코어가 파괴되면 탈락합니다.' },
   { icon: 'attack', label: '공격', desc: '내 턴을 끝낼 때 사거리 안 적 하나를 자동으로 공격합니다. 대상은 거리 → 체력 → y → x 순으로 정해집니다.' },
   { icon: 'range', label: '사거리', desc: '공격이 닿는 육각 거리.' },
   { icon: 'production', label: '생산', desc: '내 턴을 끝낼 때 수입 정산에서 코어 수입에 더해지는 양. 광맥 위 건물은 +1 추가됩니다.' },
+];
+
+/** 지형 설명. 수치는 Rules.md 3절과 같다. 장식 클래스는 Cell.tsx 의 TerrainDecorator 와 같은 것을 쓴다 */
+const TERRAIN_LEGEND: { terrain: string; deco?: string; label: string; desc: string }[] = [
+  { terrain: 'asteroid', label: '소행성', desc: '마커를 놓을 수 없고 영토로 치지 않습니다. 시야·사거리는 통과합니다.' },
+  { terrain: 'vein', deco: 'vein', label: '광맥', desc: '이 칸에 지은 건물은 생산 +1을 더 받습니다. 유닛·마법은 보너스가 없습니다.' },
+  { terrain: 'nebula', deco: 'nebula', label: '성운', desc: '이 칸의 마커는 시야 -1(최소 1). 배치 가능 범위만 줄고 점수에는 영향이 없습니다.' },
+  { terrain: 'debrisField', deco: 'debrisField', label: '파편지대', desc: '이 칸의 마커는 최대 체력 -1(최소 1). 놓는 순간 정해지며 회복해도 이 상한을 넘지 못합니다.' },
+  { terrain: 'ionStorm', deco: 'ionStorm', label: '이온 폭풍', desc: '이 칸의 마커는 소유자가 턴을 끝낼 때마다 피해 1을 받습니다.' },
+  { terrain: 'relicSite', deco: 'relicSite', label: '유물지대', desc: '이 칸의 마커는 점수 +1.' },
+  { terrain: 'gravityRift', deco: 'gravityRift', label: '중력 균열', desc: '이 칸의 마커는 점수 -1(최소 0).' },
+  { terrain: 'gunEmplacement', deco: 'gunEmplacement', label: '포대 발판', desc: '이 칸의 마커는 공격력 +1. 공격력이 없는 마커는 효과가 없습니다.' },
+  { terrain: 'jammingField', deco: 'jammingField', label: '교란지대', desc: '이 칸의 마커는 사거리 -1(최소 0).' },
 ];
 
 const SHAPES: { kind: 'core' | 'building' | 'unit' | 'magic'; label: string; desc: string }[] = [
@@ -95,27 +109,21 @@ export const HelpTab = memo(function HelpTab() {
 
       <section className={styles.panel}>
         <h2 className={styles.title}>지형</h2>
+        <p className={styles.help}>효과는 그 칸에 놓인 마커에 붙고, 마커는 움직이지 않으므로 한번 놓으면 계속 갑니다. 카드 수치는 기본값이며 보드 마커 툴팁에는 지형이 반영된 값이 나옵니다.</p>
         <ul className={styles.legendList}>
-          <li className={styles.legendRow}>
-            <span className={styles.swatch} aria-hidden="true">
-              <span className={boardStyles.hex} data-terrain="asteroid" />
-            </span>
-            <div>
-              <strong className={styles.legendLabel}>소행성</strong>
-              <p className={styles.legendDesc}>마커를 놓을 수 없습니다.</p>
-            </div>
-          </li>
-          <li className={styles.legendRow}>
-            <span className={styles.swatch} aria-hidden="true">
-              <span className={boardStyles.hex} data-terrain="vein">
-                <span className={boardStyles.vein} />
+          {TERRAIN_LEGEND.map((t) => (
+            <li key={t.terrain} className={styles.legendRow}>
+              <span className={styles.swatch} aria-hidden="true">
+                <span className={boardStyles.hex} data-terrain={t.terrain}>
+                  {t.deco && <span className={boardStyles[t.deco]} />}
+                </span>
               </span>
-            </span>
-            <div>
-              <strong className={styles.legendLabel}>광맥</strong>
-              <p className={styles.legendDesc}>이 칸의 건물은 생산 +1을 더 받습니다.</p>
-            </div>
-          </li>
+              <div>
+                <strong className={styles.legendLabel}>{t.label}</strong>
+                <p className={styles.legendDesc}>{t.desc}</p>
+              </div>
+            </li>
+          ))}
         </ul>
       </section>
 
@@ -128,7 +136,7 @@ export const HelpTab = memo(function HelpTab() {
             </span>
             <div>
               <strong className={styles.legendLabel}>영토 (색 채움)</strong>
-              <p className={styles.legendDesc}>정확히 한 플레이어의 시야 안인 빈 칸·마커 칸. 1칸 1점입니다. 경합·소행성은 무소유(오버레이 없음).</p>
+              <p className={styles.legendDesc}>{`정확히 한 플레이어의 마커에서 거리 ${TERRITORY_RADIUS} 이내인 빈 칸과 마커 칸. 1칸 1점이며 마커의 시야 수치와는 무관합니다. 경합·소행성은 무소유(오버레이 없음).`}</p>
             </div>
           </li>
           <li className={styles.legendRow}>

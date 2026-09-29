@@ -14,7 +14,7 @@ export const CardsTab = memo(function CardsTab() {
     <div className={styles.root}>
       <section className={styles.panel}>
         <h2 className={styles.title}>코어</h2>
-        <p className={styles.help}>종족과 무관하게 전 좌석 동일. 게임 시작 시 자동 배치되며 덱에는 없습니다.</p>
+        <p className={styles.help}>카드에 적힌 시야·체력·공격·사거리·점수는 기본값입니다. 놓은 칸의 지형에 따라 달라지며(설명 탭 지형 참고) 보드 마커 툴팁에 반영된 값이 나옵니다. 종족과 무관하게 전 좌석 동일. 게임 시작 시 자동 배치되며 덱에는 없습니다.</p>
         <div className={styles.cards}>
           <CardFace spec={CORE_SPEC} hoverDetails />
         </div>
@@ -23,7 +23,7 @@ export const CardsTab = memo(function CardsTab() {
       {RACES.map((race) => (
         <section key={race.id} className={styles.panel}>
           <h2 className={styles.title}>{race.name}</h2>
-          <p className={styles.help}>{race.concept} · 덱 빌딩에서는 아래 카드 전부를 상한(×N)까지 자유롭게 섞어 넣습니다.</p>
+          <p className={styles.help}>{race.concept} · 종족을 고르면 고정 덱이 정해집니다. ×N은 카드 풀 상한입니다.</p>
           <details className={styles.group} open>
             <summary className={styles.summary}>기본 카드 {BASE_CARDS_BY_RACE[race.id].length}종</summary>
             <div className={styles.cards}>
