@@ -36,7 +36,7 @@ export function ResultOverlay({ onNewGame }: { onNewGame: () => void }) {
                   <span className={styles.seat}> 좌석 {(p?.seat ?? -1) + 1}</span>
                 </span>
                 <span className={styles.breakdown}>
-                  {p && !p.alive ? '탈락' : `영토 ${s?.territory ?? 0} + 마커 ${s?.markers ?? 0}`}
+                  {p && !p.alive ? '탈락' : `영토 ${s?.territory ?? 0} + 마커 ${s?.markers ?? 0} + 덤 ${s?.komi ?? 0}`}
                 </span>
                 <span className={styles.total}>{s?.total ?? 0}점</span>
               </li>

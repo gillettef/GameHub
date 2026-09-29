@@ -7,7 +7,7 @@ import { keywordExplain, keywordLabel } from '../game/derived';
 import styles from './HelpTab.module.css';
 
 const SEATS = [0, 1, 2, 3];
-const KEYWORDS = ['infiltrate', 'repair', 'overclock'];
+const KEYWORDS = ['infiltrate', 'repair', 'overclock', 'veil', 'barrage'];
 
 const STATS: { icon: keyof typeof ICONS; label: string; desc: string }[] = [
   { icon: 'cost', label: '비용', desc: '배치에 필요한 에너지. 손패 카드·팝오버에 항상 보입니다.' },
@@ -20,7 +20,7 @@ const STATS: { icon: keyof typeof ICONS; label: string; desc: string }[] = [
 ];
 
 /** 지형 설명. 수치는 Rules.md 3절과 같다. 장식 클래스는 Cell.tsx 의 TerrainDecorator 와 같은 것을 쓴다 */
-const TERRAIN_LEGEND: { terrain: string; deco?: string; label: string; desc: string }[] = [
+export const TERRAIN_LEGEND: { terrain: string; deco?: string; label: string; desc: string }[] = [
   { terrain: 'asteroid', label: '소행성', desc: '마커를 놓을 수 없고 영토로 치지 않습니다. 시야·사거리는 통과합니다.' },
   { terrain: 'vein', deco: 'vein', label: '광맥', desc: '이 칸에 지은 건물은 생산 +1을 더 받습니다. 유닛·마법은 보너스가 없습니다.' },
   { terrain: 'nebula', deco: 'nebula', label: '성운', desc: '이 칸의 마커는 시야 -1(최소 1). 배치 가능 범위만 줄고 점수에는 영향이 없습니다.' },
@@ -29,7 +29,7 @@ const TERRAIN_LEGEND: { terrain: string; deco?: string; label: string; desc: str
   { terrain: 'relicSite', deco: 'relicSite', label: '유물지대', desc: '이 칸의 마커는 점수 +1.' },
   { terrain: 'gravityRift', deco: 'gravityRift', label: '중력 균열', desc: '이 칸의 마커는 점수 -1(최소 0).' },
   { terrain: 'gunEmplacement', deco: 'gunEmplacement', label: '포대 발판', desc: '이 칸의 마커는 공격력 +1. 공격력이 없는 마커는 효과가 없습니다.' },
-  { terrain: 'jammingField', deco: 'jammingField', label: '교란지대', desc: '이 칸의 마커는 사거리 -1(최소 0).' },
+  { terrain: 'jammingField', deco: 'jammingField', label: '교란지대', desc: '이 칸의 마커는 사거리 -1(최소 0). 사거리 1인 근접 마커는 0이 되어 공격할 수 없습니다.' },
 ];
 
 const SHAPES: { kind: 'core' | 'building' | 'unit' | 'magic'; label: string; desc: string }[] = [

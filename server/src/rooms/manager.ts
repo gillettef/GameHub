@@ -41,6 +41,11 @@ export interface RoomManagerOptions {
   roomId: () => RoomId;
 }
 
+/** 서버 하나가 동시에 들고 있을 수 있는 방 수 (공개 IP 에서 방을 무한히 만드는 것을 막는다) */
+export const MAX_ROOMS = 300;
+const IDLE_MS = 24 * 60 * 60 * 1000;
+const PLAYING_IDLE_MS = 7 * IDLE_MS;
+
 const ROOM_ID_ALPHABET = 'abcdefghjkmnpqrstuvwxyz23456789';
 
 /** 초대 링크용 짧은 방 id (혼동되는 글자 제외). 서버에서 랜덤 발급 */
@@ -48,6 +53,21 @@ export function randomRoomId(length = 6): RoomId {
   let out = '';
   for (let i = 0; i < length; i++) out += ROOM_ID_ALPHABET[Math.floor(Math.random() * ROOM_ID_ALPHABET.length)];
   return out;
+}
+
+/** 소켓으로 들어온 액션의 모양 검사. 타입 정의만 믿고 엔진에 넘기지 않는다(조작된 클라이언트 방어) */
+export function actionShapeError(action: unknown): string | null {
+  const a = action as Record<string, unknown> | null;
+  if (!a || typeof a !== 'object' || typeof a.type !== 'string' || typeof a.playerId !== 'string') return '잘못된 요청입니다';
+  if (a.type === 'PLACE') {
+    const pos = a.pos as Record<string, unknown> | null;
+    if (typeof a.cardId !== 'string' || !pos || !Number.isInteger(pos.x) || !Number.isInteger(pos.y)) return '잘못된 배치 요청입니다';
+  }
+  if (a.type === 'PASS' && a.discardCardIds !== undefined) {
+    const ids = a.discardCardIds;
+    if (!Array.isArray(ids) || ids.length > 10 || ids.some((id) => typeof id !== 'string')) return '잘못된 교체 요청입니다';
+  }
+  return null;
 }
 
 export function isValidNickname(nickname: string): boolean {
@@ -81,7 +101,30 @@ export class RoomManager {
 
   /** 스냅샷 복구 (F007). 같은 id 가 있으면 덮어쓴다 */
   load(room: Room): void {
+    // 지형 필드가 생기기 전 형식으로 저장된 스냅샷은 맵에서 board 를 다시 만든다(마커·플레이어는 유지).
+    // 옛 board 로는 terrainAt 이 undefined.some 으로 죽어 그 방이 열리지 않는다
+    const b = room.state.board as Partial<GameState['board']>;
+    if (!b.nebulas || !b.debrisFields || !b.ionStorms || !b.relicSites || !b.gravityRifts || !b.gunEmplacements || !b.jammingFields) {
+      if (hasMap(room.state.mapId)) {
+        room.state = { ...room.state, board: createInitialState(room.roomId, room.state.mapId, 0).board };
+      }
+    }
     this.rooms.set(room.roomId, room);
+  }
+
+  /** 오래 방치된 방을 지우고 지운 id 를 돌려준다. 끝난 방·로비는 하루, 진행 중인 방은 이레 동안 변화가 없을 때 */
+  pruneStale(): RoomId[] {
+    const now = this.opts.now();
+    const removed: RoomId[] = [];
+    for (const room of this.rooms.values()) {
+      const idle = now - room.updatedAt;
+      const limit = room.state.phase === 'playing' ? PLAYING_IDLE_MS : IDLE_MS;
+      if (idle > limit) {
+        this.rooms.delete(room.roomId);
+        removed.push(room.roomId);
+      }
+    }
+    return removed;
   }
 
   private require(roomId: RoomId): Room {
@@ -121,6 +164,7 @@ export class RoomManager {
     if (password !== null && !/^\d{4}$/.test(password)) throw new RoomError('비밀번호는 숫자 4자리입니다');
     const mapId = input.mapId ?? DEFAULT_MAP_ID;
     if (!hasMap(mapId)) throw new RoomError('없는 맵입니다');
+    if (this.rooms.size >= MAX_ROOMS) throw new RoomError('서버가 가득 찼습니다. 잠시 후 다시 시도하세요');
 
     let roomId = this.opts.roomId();
     while (this.rooms.has(roomId)) roomId = this.opts.roomId();
@@ -263,6 +307,8 @@ export class RoomManager {
 
   /** 사람 플레이어의 액션. 본인 id 로만 보낼 수 있다 */
   act(roomId: RoomId, byPlayerId: PlayerId, action: Action): Room {
+    const shapeError = actionShapeError(action);
+    if (shapeError) throw new RoomError(shapeError);
     if (action.playerId !== byPlayerId) throw new RoomError('다른 플레이어의 액션은 보낼 수 없습니다');
     const player = this.require(roomId).state.players.find((p) => p.id === byPlayerId);
     if (player?.kind === 'ai') throw new RoomError('AI 좌석은 서버가 조작합니다');

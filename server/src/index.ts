@@ -40,6 +40,11 @@ app.use(express.json());
 const manager = new RoomManager();
 const snapshots = new SnapshotStore(DATA_DIR);
 
+/** 비밀번호 오입력 기록(주소별). 5번 틀리면 5분간 입장 시도를 막는다 */
+const joinFailures = new Map<string, { count: number; until: number }>();
+const MAX_JOIN_FAILURES = 5;
+const JOIN_LOCK_MS = 5 * 60 * 1000;
+
 // F007: 서버 시작 시 스냅샷 복원
 for (const room of snapshots.loadAll()) manager.load(room);
 console.log(`[server] 복원된 방 ${manager.list().length}개`);
@@ -147,7 +152,23 @@ io.on('connection', (socket: AppSocket) => {
 
   socket.on('room:join', (payload, ack) => {
     try {
-      const { room, playerId, reconnected } = manager.join(payload);
+      // 4자리 비밀번호 무차별 대입 방지: 같은 주소에서 실패가 쌓이면 잠시 막는다
+      const ip = socket.handshake.address;
+      const lock = joinFailures.get(ip);
+      if (lock && lock.count >= MAX_JOIN_FAILURES && Date.now() < lock.until) {
+        throw new RoomError('입장 시도가 너무 많습니다. 몇 분 뒤 다시 시도하세요');
+      }
+      let joined: ReturnType<typeof manager.join>;
+      try {
+        joined = manager.join(payload);
+      } catch (err) {
+        if (err instanceof RoomError && /비밀번호가 다릅니다/.test(err.message)) {
+          const cur = lock && Date.now() < lock.until ? lock : { count: 0, until: 0 };
+          joinFailures.set(ip, { count: cur.count + 1, until: Date.now() + JOIN_LOCK_MS });
+        }
+        throw err;
+      }
+      const { room, playerId, reconnected } = joined;
       attach(socket, room.roomId, playerId);
       ack({ ok: true, playerId });
       if (reconnected) broadcast(room);
@@ -240,4 +261,13 @@ httpServer.listen(PORT, HOST, () => {
   console.log(`[server] data dir: ${DATA_DIR}`);
   // 복원된 방 중 AI 턴에서 멈춘 방은 이어서 돌린다
   for (const room of manager.list()) ai.maybeRun(room.roomId);
+  // 오래 방치된 방과 만료된 비밀번호 잠금을 시간마다 정리한다
+  setInterval(() => {
+    for (const id of manager.pruneStale()) {
+      snapshots.delete(id);
+      console.log(`[room] 방치된 방 정리 ${id}`);
+    }
+    const now = Date.now();
+    for (const [ip, f] of joinFailures) if (now >= f.until) joinFailures.delete(ip);
+  }, 60 * 60 * 1000).unref();
 });

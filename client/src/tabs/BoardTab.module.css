@@ -60,3 +60,12 @@
   min-height: 0;
   padding: 4px var(--space-1) 6px;
 }
+
+/* 카드·마커 설명 패널: 맵 위쪽에 뜬다(손패는 아래). 모바일엔 호버가 없어 탭·선택으로 띄운다 */
+.floatingTop {
+  position: absolute;
+  left: var(--space-1);
+  right: var(--space-1);
+  top: var(--space-1);
+  z-index: 5;
+}

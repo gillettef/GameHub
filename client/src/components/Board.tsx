@@ -14,6 +14,8 @@ interface BoardProps {
   viewerSeat: number;
   /** 선택한 카드의 시야 반경. 배치 프리뷰(길게 누르기) 계산에 쓴다. 카드 미선택 시 0 */
   previewSight: number;
+  /** true 면 이미 시야인 칸도 프리뷰에 포함한다(즉발 마법의 효과 반경처럼 "새 시야"가 아닌 범위) */
+  previewAll?: boolean;
   onCellClick: (x: number, y: number) => void;
 }
 
@@ -52,7 +54,7 @@ function geometryFromS(size: number, s: number): Geometry {
  * 육각 보드 (F008, odd-r 오프셋). 기본 크기는 최소 줌(MIN_ZOOM_S, 2026-09-24 사용자 지시)이고
  * 핀치로 확대할 수 있다. 부모 영역보다 커지면 스크롤해서 살펴본다. 셀은 절대 배치 + clip-path 육각형.
  */
-export const Board = memo(function Board({ size, cells, legal, viewerSeat, previewSight, onCellClick }: BoardProps) {
+export const Board = memo(function Board({ size, cells, legal, viewerSeat, previewSight, previewAll = false, onCellClick }: BoardProps) {
   const viewportRef = useRef<HTMLDivElement>(null);
   const [zoomS, setZoomS] = useState(ZOOM_S);
   const zoomSRef = useRef(zoomS);
@@ -228,11 +230,11 @@ export const Board = memo(function Board({ size, cells, legal, viewerSeat, previ
     if (!previewAnchor || previewSight <= 0) return new Set<string>();
     const set = new Set<string>();
     for (const cell of cells) {
-      if (cell.inSight) continue; // 이미 내 시야인 칸은 "새로 얻는" 게 아니다
+      if (cell.inSight && !previewAll) continue; // 이미 내 시야인 칸은 "새로 얻는" 게 아니다
       if (hexDistance(previewAnchor, { x: cell.x, y: cell.y }) <= previewSight) set.add(cell.key);
     }
     return set;
-  }, [previewAnchor, previewSight, cells]);
+  }, [previewAnchor, previewSight, previewAll, cells]);
 
   return (
     <div className={styles.area}>

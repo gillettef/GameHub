@@ -2,6 +2,7 @@ import { memo, useMemo } from 'react';
 import { getSpec } from '@astraltab/shared';
 import { Board } from '../components/Board';
 import { Hand } from '../components/Hand';
+import { CardInfo, MarkerInfo } from '../components/InfoPanel';
 import { TurnControls } from '../components/TurnControls';
 import { buildCells, buildHand, legalCellKeys, seatOf } from '../game/derived';
 import { hasSeenPlacementPreview } from '../lib/onboarding';
@@ -30,6 +31,7 @@ export const BoardTab = memo(function BoardTab() {
   const discardCardIds = useGameStore((s) => s.discardCardIds);
   const setDiscardCard = useGameStore((s) => s.setDiscardCard);
   const placeAt = useGameStore((s) => s.placeAt);
+  const inspectedMarkerId = useGameStore((s) => s.inspectedMarkerId);
   const selectHandCard = useGameStore((s) => s.selectHandCard);
 
   const cells = useMemo(() => (state ? buildCells(state, viewerId) : []), [state, viewerId]);
@@ -39,7 +41,12 @@ export const BoardTab = memo(function BoardTab() {
   );
   const hand = useMemo(() => (state ? buildHand(state, viewerId) : []), [state, viewerId]);
   // 배치 프리뷰(길게 누르기, 2026-09-28)용 시야 반경. 카드 미선택 시 0 — Board 가 프리뷰를 계산 안 한다
-  const previewSight = selectedCardId ? getSpec(selectedCardId).sight : 0;
+  // 즉발 피해·회복 마법은 시야가 아니라 효과 반경을 프리뷰한다(어느 칸이 영향받는지 미리 본다)
+  const selectedSpec = selectedCardId ? getSpec(selectedCardId) : null;
+  const effect = selectedSpec?.effect ?? null;
+  const previewAll = effect?.kind === 'damage' || effect?.kind === 'heal';
+  const previewSight = !selectedSpec ? 0 : previewAll && effect && 'radius' in effect ? effect.radius : selectedSpec.sight;
+  const inspected = inspectedMarkerId ? cells.find((c) => c.marker?.id === inspectedMarkerId) : undefined;
 
   if (!state || !viewerId) return null;
   const viewerSeat = seatOf(state, viewerId);
@@ -54,8 +61,16 @@ export const BoardTab = memo(function BoardTab() {
           legal={legal}
           viewerSeat={viewerSeat}
           previewSight={previewSight}
+          previewAll={previewAll}
           onCellClick={placeAt}
         />
+        <div className={styles.floatingTop}>
+          {inspected?.marker ? (
+            <MarkerInfo marker={inspected.marker} terrain={inspected.terrain} onClose={() => placeAt(inspected.x, inspected.y)} />
+          ) : selectedCardId && !discardMode ? (
+            <CardInfo cardId={selectedCardId} />
+          ) : null}
+        </div>
         <div className={styles.floatingBottom}>
           {state.phase === 'playing' && (
             <div className={styles.handPanel}>
@@ -64,7 +79,7 @@ export const BoardTab = memo(function BoardTab() {
                 {!isMyTurn
                   ? ' · 상대 차례(구경만 가능)'
                   : discardMode
-                    ? ` · 버릴 카드 ${discardCardIds.length}장 선택 중`
+                    ? ` · 버릴 카드 ${discardCardIds.length}장 선택 중 (패스 시 덱과 섞어 다시 뽑음)`
                     : ` · ${selectedCardId ? placeHint : '카드를 골라 배치 가능 칸 확인'}`}
               </div>
               <div className={styles.handBody}>

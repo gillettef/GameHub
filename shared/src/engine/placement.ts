@@ -39,7 +39,10 @@ export function validateCard(state: GameState, playerId: PlayerId, cardId: CardI
 
 /** 칸 조건만 검사 (보드 안, 소행성 아님, 빈 칸, 시야 안 또는 침투) */
 export function validateCell(state: GameState, playerId: PlayerId, cardId: CardId, pos: Position): PlacementError | null {
-  if (!inBounds(state.board, pos)) return { code: 'out-of-bounds', message: '보드 밖입니다' };
+  // 정수가 아닌 좌표(3.5 같은 값)는 칸이 아니다 — 조작된 클라이언트가 유령 마커를 만들지 못하게 막는다
+  if (!Number.isInteger(pos?.x) || !Number.isInteger(pos?.y) || !inBounds(state.board, pos)) {
+    return { code: 'out-of-bounds', message: '보드 밖입니다' };
+  }
   if (terrainAt(state.board, pos) === 'asteroid') return { code: 'asteroid', message: '소행성에는 놓을 수 없습니다' };
   if (markerAt(state, pos)) return { code: 'occupied', message: '이미 마커가 있는 칸입니다' };
   const spec = getSpec(cardId);

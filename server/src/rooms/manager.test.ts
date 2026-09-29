@@ -197,3 +197,34 @@ describe('AI 턴 실행기 (F027)', () => {
     expect(changes.length).toBe(calls); // onChange 는 매 적용마다 한 번씩
   });
 });
+
+describe('입력 검증 · 방 정리', () => {
+  it('정수가 아닌 좌표·잘못된 모양의 액션은 거부한다', () => {
+    const m = makeManager();
+    const { room, playerId } = m.create({ playerToken: 't1', nickname: '갑' });
+    const bad = { type: 'PLACE', playerId, cardId: 'scout', pos: { x: 1.5, y: 2 } } as unknown as Action;
+    expect(() => m.act(room.roomId, playerId, bad)).toThrow(RoomError);
+    expect(() => m.act(room.roomId, playerId, { type: 'PASS', playerId, discardCardIds: 'abc' } as unknown as Action)).toThrow(RoomError);
+    expect(() => m.act(room.roomId, playerId, null as unknown as Action)).toThrow(RoomError);
+  });
+
+  it('오래 방치된 방만 정리한다', () => {
+    let now = 1000;
+    const m = new RoomManager({ seed: () => 42, now: () => now, roomId: (() => { let n = 0; return () => `room${++n}`; })() });
+    const a = m.create({ playerToken: 't1', nickname: '갑' }).room;
+    now += 2 * 24 * 60 * 60 * 1000;
+    const b = m.create({ playerToken: 't2', nickname: '을' }).room;
+    expect(m.pruneStale()).toEqual([a.roomId]);
+    expect(m.get(b.roomId)).toBeDefined();
+  });
+
+  it('지형 필드가 없는 옛 스냅샷은 불러올 때 board 를 다시 만든다', () => {
+    const m = makeManager();
+    const { room } = m.create({ playerToken: 't1', nickname: '갑' });
+    const old = JSON.parse(JSON.stringify(room));
+    delete old.state.board.nebulas;
+    delete old.state.board.ionStorms;
+    m.load(old);
+    expect(m.get(room.roomId)?.state.board.nebulas).toBeDefined();
+  });
+});

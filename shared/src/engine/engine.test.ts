@@ -325,6 +325,9 @@ describe('배치 검증 (F022)', () => {
     expect(fail(s, place('p0', 'cruiser', { x: 2, y: 4 }))).toBe('에너지가 2 부족합니다');
     expect(fail(s, place('p0', 'extractor', { x: -1, y: 4 }))).toContain('보드 밖');
     expect(fail(s, place('p0', 'extractor', { x: 10, y: 4 }))).toContain('보드 밖');
+    // 정수가 아닌 좌표는 칸이 아니다(조작된 클라이언트의 유령 마커 방지)
+    expect(fail(s, place('p0', 'extractor', { x: 1.5, y: 4 }))).toContain('보드 밖');
+    expect(fail(s, place('p0', 'extractor', { x: 2, y: Number.NaN }))).toContain('보드 밖');
     expect(fail(s, place('p0', 'extractor', { x: 4, y: 2 }))).toContain('소행성'); // 중앙 장벽 칸
     expect(fail(s, place('p0', 'extractor', { x: 1, y: 4 }))).toContain('이미 마커'); // 코어 칸
     expect(fail(s, place('p0', 'extractor', { x: 3, y: 4 }))).toBe('시야 밖입니다'); // 코어(1,4) 시야1 밖

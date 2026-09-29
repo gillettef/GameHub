@@ -1,5 +1,5 @@
-import { memo } from 'react';
-import { countPasses, nameOf } from '@astraltab/shared';
+import { memo, useEffect, useState } from 'react';
+import { countPasses, hasAnyPlay, nameOf } from '@astraltab/shared';
 import { cx } from '../lib/cx';
 import { selectIsMyTurn, selectState, selectViewerId, useGameStore } from '../store/gameStore';
 import styles from './TurnControls.module.css';
@@ -31,6 +31,15 @@ export const TurnControls = memo(function TurnControls({ compact }: TurnControls
   const discardCardIds = useGameStore((s) => s.discardCardIds);
   const toggleDiscardMode = useGameStore((s) => s.toggleDiscardMode);
 
+  // 낼 수 있는 카드가 남았는데 배치 없이 패스하려면 한 번 더 눌러 확인한다(오탭 방지, 턴이 즉시 끝나 되돌릴 수 없다)
+  const [passArmed, setPassArmed] = useState(false);
+  useEffect(() => {
+    if (!passArmed) return;
+    const t = window.setTimeout(() => setPassArmed(false), 3000);
+    return () => window.clearTimeout(t);
+  }, [passArmed]);
+  useEffect(() => setPassArmed(false), [state?.turn]);
+
   if (!state || !viewerId) return null;
   const finished = state.phase === 'finished';
   const alive = state.players.filter((p) => p.alive).length;
@@ -40,7 +49,8 @@ export const TurnControls = memo(function TurnControls({ compact }: TurnControls
   const acted = me?.actedThisTurn ?? false;
   const discardCount = discardCardIds.length;
   // 좁은 화면에서 알약 바가 줄바꿈되지 않도록 접미사를 짧게 둔다("(N장 교체)" 대신 "·N")
-  const endLabel = (acted ? '턴 종료' : '패스') + (discardCount > 0 ? ` ·${discardCount}` : '');
+  const wouldWaste = !acted && isMyTurn && state.phase === 'playing' && hasAnyPlay(state, viewerId);
+  const endLabel = passArmed ? '한 번 더: 패스' : (acted ? '턴 종료' : '패스') + (discardCount > 0 ? ` ·${discardCount}` : '');
 
   const status = finished
     ? '게임 종료'
@@ -76,10 +86,16 @@ export const TurnControls = memo(function TurnControls({ compact }: TurnControls
             disabled={!isMyTurn}
             onClick={toggleDiscardMode}
             title="패스/턴 종료 시 함께 버리고 다시 뽑을 카드를 고릅니다"
+            aria-label="손패 교체: 버릴 카드를 골라 덱과 섞어 다시 뽑기"
           >
             교체{discardCount > 0 ? ` ${discardCount}` : ''}
           </button>
-          <button type="button" className="pill" disabled={!isMyTurn} onClick={pass}>
+          <button type="button" className="pill" disabled={!isMyTurn} onClick={() => {
+              if (wouldWaste && !passArmed) setPassArmed(true);
+              else pass();
+            }}
+            title={wouldWaste ? '낼 수 있는 카드가 남아 있습니다. 한 번 더 누르면 패스합니다' : undefined}
+          >
             {endLabel}
           </button>
           <button type="button" className="pill pill--outline" disabled={!isMyTurn} onClick={() => setConfirming(true)}>
