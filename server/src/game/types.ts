@@ -21,10 +21,23 @@ export interface EquipmentCard {
   tempBoost: { stat: StatKey; amount: number };
 }
 
+export type CreatureElement = "sky" | "land" | "ocean";
+
+export interface CreatureAbility {
+  trigger: "acquire" | "prep" | "duel" | "defend" | "lose";
+  effect: "spellPower" | "spellbook" | "stamina" | "rollBonus" | "enemyRollPenalty" | "enemyStamina" | "immune";
+  amount: number;
+}
+
 export interface CreatureCard {
   id: string;
+  cardNo: number;
   name: string;
+  element: CreatureElement;
+  kind: "animal" | "plant";
   requiredSpellPower: number;
+  ability: CreatureAbility;
+  description: string;
 }
 
 export interface GrimoireCard {
@@ -50,6 +63,8 @@ export interface PlayerGameState {
   tempBoosts: Partial<Record<StatKey, number>>;
   staminaTokens: number;
   spellbookTokens: number;
+  // 마법생물 효과로 다음 달 준비(1주차) 때 체력토큰에 더해지는(또는 빼지는) 값
+  pendingStaminaTokens: number;
   tournamentTrack: number;
   classCards: ClassCard[];
   creatures: CreatureCard[];
@@ -79,6 +94,9 @@ export interface GameState {
   activityOrder: string[];
   activityTurnPointer: number;
   examResults: ExamResult[];
+  // 마법생물 카드 덱/버림 더미 (서버 전용, 클라이언트에는 전송하지 않음)
+  creatureDeck: CreatureCard[];
+  creatureDiscard: CreatureCard[];
   log: GameLogEntry[];
   winnerIds?: string[];
 }
@@ -86,3 +104,6 @@ export interface GameState {
 export function effectiveStat(player: PlayerGameState, stat: StatKey): number {
   return player[stat] + (player.tempBoosts[stat] ?? 0);
 }
+
+// 클라이언트에 전송되는 게임 상태 (서버 전용 덱 정보 제외)
+export type PublicGameState = Omit<GameState, "creatureDeck" | "creatureDiscard">;

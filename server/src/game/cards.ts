@@ -1,7 +1,8 @@
 // NOTE: 카드 실제 텍스트/수량은 아직 미확정입니다 (notes/기획_정리.md 8절 참고).
-// 아래 카드 풀은 게임 로직(라운드 진행/자원 흐름)을 동작시키기 위한 임시 콘텐츠이며,
+// (마법생물 카드는 creatures.ts에 30장 실제 데이터로 구현됨) 아래 카드 풀은 게임 로직(라운드 진행/자원 흐름)을 동작시키기 위한 임시 콘텐츠이며,
 // 카드 콘텐츠 제작 작업에서 실제 카드로 교체될 예정입니다.
 import { randomUUID } from "node:crypto";
+import { CREATURE_CARDS } from "./creatures.js";
 import type { ClassCard, CreatureCard, EquipmentCard, ExplorationCard, GrimoireCard, StatKey } from "./types.js";
 
 const STATS: StatKey[] = ["intelligence", "stamina", "charm", "spellPower"];
@@ -29,9 +30,13 @@ export function drawEquipmentCard(): EquipmentCard {
   return { id: randomUUID(), name: `${STAT_LABEL[stat]} 강화 장비`, tempBoost: { stat, amount } };
 }
 
-export function drawCreatureCard(): CreatureCard {
-  const requiredSpellPower = 2 + Math.floor(Math.random() * 4); // 2~5
-  return { id: randomUUID(), name: "이름 없는 마법생물", requiredSpellPower };
+export function createCreatureDeck(): CreatureCard[] {
+  const deck = CREATURE_CARDS.map((card) => ({ ...card, id: randomUUID() }));
+  for (let i = deck.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [deck[i], deck[j]] = [deck[j], deck[i]];
+  }
+  return deck;
 }
 
 export function drawGrimoireCard(): GrimoireCard {

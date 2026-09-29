@@ -1,7 +1,9 @@
 import { useState } from "react";
 import {
   ACTIVITY_LABEL,
+  ELEMENT_ICON,
   STAT_LABEL,
+  describeAbility,
   effectiveStat,
   type ActivityId,
   type GameState,
@@ -33,6 +35,16 @@ function PlayerStatCard({ player, isMe }: { player: PlayerGameState; isMe: boole
       <p className="text-sm text-purple-700">
         🏆 토너먼트 {player.tournamentTrack}/10 · 🔋 체력토큰 {player.staminaTokens} · 📖 주문서 {player.spellbookTokens}
       </p>
+      {player.creatures.length > 0 && (
+        <ul className="mt-2 flex flex-col gap-1">
+          {player.creatures.map((c) => (
+            <li key={c.id} className="rounded-2xl bg-white/70 px-2.5 py-1.5 text-sm text-purple-800">
+              <span aria-hidden>{ELEMENT_ICON[c.element]}</span> <b>{c.name}</b>
+              <span className="block text-xs text-purple-600">{describeAbility(c.ability)}</span>
+            </li>
+          ))}
+        </ul>
+      )}
     </>
   );
 
