@@ -15,6 +15,8 @@ export const BALANCE = {
   tournamentRewards: [2, 1],
   // 시험 순위별 학점 (1위, 2위, 그 이하는 마지막 값)
   examCredits: [3, 2, 1],
+  // 연구실 실험에서 지력만큼 펼치는 실험 재료(장비 카드)의 최대 장수
+  labMaxCandidates: 4,
   // 주문 대결에서 패자가 잃는 마법 주문서 수
   duelLoserTokenLoss: 1,
 };

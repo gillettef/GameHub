@@ -37,10 +37,10 @@ function playGame(strategies: BotStrategy[]): GameState {
       }
     } else if (state.phase === "activity") {
       const id = state.activityOrder[state.activityTurnPointer];
-      const { activityId, targetPlayerId: target } = chooseActivityAction(state, id, byId[id]);
+      const { activityId, targetPlayerId: target, useStamina } = chooseActivityAction(state, id, byId[id]);
       const picks = (activityPicks[byId[id].name] ??= { tournament: 0, creature: 0, duel: 0, exploration: 0, lab: 0 });
       picks[activityId] += 1;
-      selectActivity(state, id, activityId, target);
+      selectActivity(state, id, activityId, target, useStamina);
     } else {
       throw new Error(`예상치 못한 단계: ${state.phase}`);
     }

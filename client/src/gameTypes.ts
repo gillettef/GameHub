@@ -107,6 +107,15 @@ export const ACTIVITY_LABEL: Record<ActivityId, string> = {
   lab: "연구실 실험",
 };
 
+// 활동 카드에 함께 보여줄 한 줄 설명 (집중하면 +1)
+export const ACTIVITY_HINT: Record<ActivityId, string> = {
+  tournament: "주문력만큼 트랙 전진 (집중: +1칸)",
+  creature: "주문서로 마법생물 데려오기 (집중: 주문서 -1)",
+  duel: "주사위 + 주문력으로 승부 (집중: +1)",
+  exploration: "주사위 + 능력치로 판정 (집중: +1)",
+  lab: "지력만큼 재료를 펼쳐 최고의 장비 획득 (집중: +1장)",
+};
+
 export function effectiveStat(player: PlayerGameState, stat: StatKey): number {
   return player[stat] + (player.tempBoosts[stat] ?? 0);
 }
