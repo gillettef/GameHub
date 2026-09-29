@@ -100,7 +100,14 @@ function validateLineup(player: PlayerState, sub: LineupSubmission): { players: 
   if (issues.length > 0) throw new GameError(`formation mismatch: ${issues.join(', ')}`);
 
   const stands = sub.fandomInStands ?? 0;
-  if (stands < 0 || stands > standsCount(player)) throw new GameError('too many fandom in stands');
+  if (!Number.isInteger(stands) || stands < 0 || stands > standsCount(player)) throw new GameError('too many fandom in stands');
+  // 효과 활성화용 자원: 출전 선수에게만, 0 이상의 정수만 (음수를 내면 자원이 생겨 버린다)
+  for (const [instanceId, placed] of Object.entries(sub.activations ?? {})) {
+    if (!sub.players.includes(instanceId)) throw new GameError('activation for a player who is not playing');
+    for (const [r, n] of Object.entries(placed)) {
+      if (!(RESOURCES as readonly string[]).includes(r) || !Number.isInteger(n) || n < 0) throw new GameError('invalid activation amount');
+    }
+  }
   return { players };
 }
 

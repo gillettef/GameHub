@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { applyAction } from './actions';
 import { activeSide, cards, effectiveSkill, instanceName, tokenLabel } from './cards';
-import { addToRoster, applyEffects } from './effects';
+import { addToRoster, applyEffects, resolvePending } from './effects';
 import { eligiblePlayers, previewField } from './lineup';
 import { acceptInjuryRoll, acceptMatchRoll, playTacticEffect, rerollInjuryDie, rerollMatchDie, rollInjuryDie, rollMatchDie, standsCount, startFriday, submitLineup } from './friday';
 import { GameError } from './state';
@@ -23,6 +23,33 @@ function submitAll(s: GameState, seed = 1): GameState {
   for (const id of s.seats) s = settlePending(submitLineup(s, id, autoLineup(s.players[id]!), seededRng(seed)), seededRng(seed));
   return skipTacticEffects(s, seededRng(seed));
 }
+
+describe('경기 준비 제출 — 클라이언트가 보낸 값 검증', () => {
+  it('효과 활성화 자원이 음수·소수이거나 출전하지 않는 선수 것이면 거부한다 (음수면 자원이 공짜로 생겼다)', () => {
+    const s = friday();
+    const sub = autoLineup(s.players['a']!);
+    const first = sub.players[0]!;
+    const money = s.players['a']!.resources.money;
+    expect(() => submitLineup(s, 'a', { ...sub, activations: { [first]: { money: -50 } } }, seededRng())).toThrow(GameError);
+    expect(() => submitLineup(s, 'a', { ...sub, activations: { [first]: { money: 0.5 } } }, seededRng())).toThrow(GameError);
+    expect(() => submitLineup(s, 'a', { ...sub, activations: { nobody: { money: 1 } } }, seededRng())).toThrow(GameError);
+    expect(() => submitLineup(s, 'a', { ...sub, fandomInStands: 1.5 }, seededRng())).toThrow(GameError);
+    expect(() => submitLineup(s, 'a', { ...sub, fandomInStands: -1 }, seededRng())).toThrow(GameError);
+    expect(s.players['a']!.resources.money).toBe(money); // 입력 상태는 그대로
+  });
+});
+
+describe('대기 효과가 무효가 되어도 진행이 멈추지 않는다', () => {
+  it('후보 선수가 모두 사라진 대기 효과는 옛 후보를 골라도 오류 없이 정리된다', () => {
+    const s = friday();
+    const p = s.players['a']!;
+    const [x, y] = p.roster.slice(0, 2).map((r) => r.instanceId);
+    p.pending = [{ id: 'stale#0', effect: { type: 'trainPlayer', count: 1 }, source: '[테스트]', target: 'player', candidates: [x!, y!] }];
+    p.roster = p.roster.filter((r) => r.instanceId !== x && r.instanceId !== y); // 그새 둘 다 방출
+    expect(() => resolvePending(s, 'a', 'stale#0', x!, seededRng())).not.toThrow();
+    expect(p.pending).toHaveLength(0);
+  });
+});
 
 describe('경기 준비 제출 (p.20)', () => {
   it('경기 결과에 배치와 득점자를 남긴다: 득점 토큰마다 "이름(번호)" 또는 "유니폼 N번" (test_insight C3)', () => {

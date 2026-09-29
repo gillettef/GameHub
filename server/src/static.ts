@@ -35,7 +35,13 @@ export function createStaticHandler(dir: string | undefined): StaticHandler | nu
 
   return (req, res) => {
     if (req.method !== 'GET' && req.method !== 'HEAD') return false;
-    const pathname = decodeURIComponent((req.url ?? '/').split('?')[0] ?? '/');
+    let pathname: string;
+    try {
+      pathname = decodeURIComponent((req.url ?? '/').split('?')[0] ?? '/');
+    } catch {
+      res.writeHead(400).end('bad request'); // 잘못된 % 인코딩 — 예외로 프로세스가 죽지 않게
+      return true;
+    }
     // 경로 탈출 방지: normalize 후 root 안에 있는지 확인
     const candidate = normalize(join(root, pathname));
     if (candidate !== root && !candidate.startsWith(root + sep)) return false;
