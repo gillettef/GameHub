@@ -16,6 +16,8 @@ export interface Room {
   players: Map<string, Player>;
   game?: GameState;
   botTimer?: ReturnType<typeof setTimeout>;
+  // 게임 종료 후 방을 자동 삭제하기 위한 타이머
+  expireTimer?: ReturnType<typeof setTimeout>;
 }
 
 const rooms = new Map<string, Room>();
@@ -50,9 +52,21 @@ export function joinRoom(code: string, player: Player): Room | undefined {
 // 사람이 한 명도 남지 않았으면 방을 정리하고 true를 반환한다 (봇만 남은 방이 계속 돌아가는 것을 방지)
 export function leaveRoomIfNoHumans(room: Room): boolean {
   if ([...room.players.values()].some((p) => !p.bot)) return false;
-  if (room.botTimer) clearTimeout(room.botTimer);
-  rooms.delete(room.code);
+  deleteRoom(room);
   return true;
+}
+
+export function deleteRoom(room: Room): void {
+  if (room.botTimer) clearTimeout(room.botTimer);
+  if (room.expireTimer) clearTimeout(room.expireTimer);
+  rooms.delete(room.code);
+}
+
+// 게임이 끝난 방은 일정 시간이 지나면 메모리에서 삭제한다 (이미 예약돼 있으면 무시)
+export const ENDED_ROOM_TTL_MS = 5 * 60 * 1000;
+export function scheduleRoomExpiry(room: Room, ttlMs = ENDED_ROOM_TTL_MS): void {
+  if (room.expireTimer) return;
+  room.expireTimer = setTimeout(() => deleteRoom(room), ttlMs);
 }
 
 export function leaveRoom(code: string, playerId: string): void {

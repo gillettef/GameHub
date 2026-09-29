@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import express from "express";
 import { randomUUID } from "node:crypto";
 import { WebSocketServer, type WebSocket } from "ws";
-import { createRoom, getRoom, joinRoom, leaveRoom, leaveRoomIfNoHumans, broadcast, type Player, type Room } from "./rooms.js";
+import { createRoom, getRoom, joinRoom, leaveRoom, leaveRoomIfNoHumans, scheduleRoomExpiry, broadcast, type Player, type Room } from "./rooms.js";
 import { BOT_NAMES, chooseActivityAction, chooseClassCards, chooseLabCard, pickBotPersonality } from "./game/bot.js";
 import { chooseLabCard as submitLabChoice, createGame, selectActivity, submitClassChoice } from "./game/engine.js";
 import type { ClientMessage, ServerMessage } from "./messages.js";
@@ -81,6 +81,7 @@ function scheduleBots(room: Room): void {
 function broadcastGameState(room: Room): void {
   const game = room.game;
   if (!game) return;
+  if (game.phase === "ended") scheduleRoomExpiry(room);
   // 다른 플레이어에게 제시된 수업카드는 비공개이므로 각자에게 본인 것만 포함해서 전송
   for (const player of room.players.values()) {
     if (player.bot) continue;
@@ -206,6 +207,10 @@ wss.on("connection", (socket) => {
       if (room.players.size < 2 || room.players.size > 5) {
         send(socket, { type: "error", message: "게임은 2~5인이 필요합니다." });
         return;
+      }
+      if (room.expireTimer) {
+        clearTimeout(room.expireTimer);
+        room.expireTimer = undefined;
       }
       room.game = createGame([...room.players.values()].map((p) => ({ id: p.id, name: p.name, isBot: !!p.bot })));
       broadcastGameState(room);
