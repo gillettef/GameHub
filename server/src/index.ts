@@ -1,4 +1,5 @@
 import { createServer } from "node:http";
+import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import express from "express";
@@ -157,4 +158,10 @@ wss.on("connection", (socket) => {
 
 server.listen(PORT, () => {
   console.log(`서버가 http://localhost:${PORT} 에서 실행 중입니다.`);
+  // 같은 와이파이의 스마트폰으로 접속할 때 사용할 주소 (플레이테스트용)
+  for (const addrs of Object.values(os.networkInterfaces())) {
+    for (const addr of addrs ?? []) {
+      if (addr.family === "IPv4" && !addr.internal) console.log(`  스마트폰 접속 주소: http://${addr.address}:${PORT}`);
+    }
+  }
 });

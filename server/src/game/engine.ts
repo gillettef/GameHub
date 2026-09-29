@@ -9,6 +9,7 @@ import {
   drawFromPile,
 } from "./cards.js";
 import { randomUUID } from "node:crypto";
+import { BALANCE, examCreditForRank } from "./config.js";
 import { describeAbility } from "./creatures.js";
 import { describeEffect } from "./explorationCards.js";
 import {
@@ -101,11 +102,8 @@ function createPlayer(id: string, name: string): PlayerGameState {
   return {
     id,
     name,
-    intelligence: 1,
-    stamina: 1,
-    charm: 1,
-    spellPower: 1,
-    credit: 0,
+    ...BALANCE.initialStats,
+    credit: BALANCE.initialCredit,
     tempBoosts: {},
     staminaTokens: 0,
     spellbookTokens: 0,
@@ -235,7 +233,7 @@ function resolveActivity(
   switch (activityId) {
     case "tournament": {
       const gain = effectiveStat(player, "spellPower");
-      player.tournamentTrack = Math.min(10, player.tournamentTrack + gain);
+      player.tournamentTrack = Math.min(BALANCE.tournamentMaxTrack, player.tournamentTrack + gain);
       log(state, `${player.name}: 마법 토너먼트 참가 (트랙 ${player.tournamentTrack}칸)`);
       break;
     }
@@ -296,7 +294,9 @@ function resolveActivity(
         winner.grimoires.push(grimoire);
         winner[grimoire.statBoost.stat] += grimoire.statBoost.amount;
       }
-      if (loser.spellbookTokens > 0 && sumEffect(loserAbilities, "immune") === 0) loser.spellbookTokens -= 1;
+      if (loser.spellbookTokens > 0 && sumEffect(loserAbilities, "immune") === 0) {
+        loser.spellbookTokens = Math.max(0, loser.spellbookTokens - BALANCE.duelLoserTokenLoss);
+      }
       log(
         state,
         `${player.name}(${challengerRoll}) vs ${target.name}(${defenderRoll}): ${winner.name} 승리${grimoire ? `, 마도서 "${grimoire.name}" 획득` : ""}`,
@@ -366,9 +366,9 @@ function beginCleanupPhase(state: GameState): void {
   }
   log(state, "4주차(정리): 남은 토큰 소멸");
 
-  if (state.round === 6) {
+  if (state.round === BALANCE.midtermRound) {
     resolveExam(state, "midterm_exam");
-  } else if (state.round === 12) {
+  } else if (state.round === BALANCE.totalRounds) {
     resolveExam(state, "final_exam");
   } else {
     advanceRound(state);
@@ -399,7 +399,7 @@ function resolveExam(state: GameState, examType: "midterm_exam" | "final_exam"):
   const result: ExamResult = { round: state.round, scores: [] };
   ranked.forEach((entry, index) => {
     const rank = index + 1;
-    const creditAwarded = rank === 1 ? 3 : rank === 2 ? 2 : 1;
+    const creditAwarded = examCreditForRank(rank);
     state.players[entry.playerId].credit += creditAwarded;
     result.scores.push({ playerId: entry.playerId, score: entry.score, rank, creditAwarded });
   });
@@ -435,7 +435,7 @@ function applyTournamentFinalRewards(state: GameState): void {
     (a, b) =>
       state.players[b].tournamentTrack - state.players[a].tournamentTrack || compareTieBreak(state, a, b),
   );
-  const rewards = [2, 1];
+  const rewards = BALANCE.tournamentRewards;
   ranked.slice(0, rewards.length).forEach((playerId, index) => {
     const player = state.players[playerId];
     if (player.tournamentTrack <= 0) return;
