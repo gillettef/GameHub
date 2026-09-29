@@ -22,4 +22,4 @@ ssh -i .dev/astraltab-key.pem ec2-user@$(cat .dev/aws-public-ip.txt) "sudo syste
 ## 주의
 
 - 접속 중이던 친구들에게 서버가 내려갔음을 알려야 한다고 사용자에게 말한다.
-- 코드를 반영하는 게 목적이면 이 스킬 대신 `/prod-server`(`scripts/deploy-aws.ps1 -Env prod`)를 쓴다 — 재배포 과정에서 서비스가 자동으로 재시작된다.
+- 코드를 반영하는 게 목적이면 이 스킬 대신 `main` push 또는 `/prod-server`를 쓴다 — 재배포 과정에서 서비스가 자동으로 재시작된다.

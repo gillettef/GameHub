@@ -1,4 +1,4 @@
-# AstralTab 실행 스크립트 공용 함수. dev.ps1 / serve.ps1 / *-stop.ps1 이 dot-source 한다.
+# AstralTab 실행 스크립트 공용 함수. dev.ps1 / dev-stop.ps1 이 dot-source 한다.
 #   . (Join-Path $PSScriptRoot 'common.ps1')
 # $root, $devDir 를 정의하고 포트 확인·의존성 설치·프로세스 시작/종료 헬퍼를 제공한다.
 
@@ -183,14 +183,5 @@ function Stop-Services([string[]]$names, [int[]]$ports) {
                 Write-Host "[port $port] in use by PID $procId ($pname) - NOT from this project, left running"
             }
         }
-    }
-}
-
-# 운영/테스트 환경 설정표. dev 는 dev.ps1 이 따로 관리한다 (3101 / 5173 / 8000).
-function Get-EnvConfig([string]$envName) {
-    switch ($envName) {
-        'prod' { return @{ Name = 'prod'; ServerPort = 3201; AiPort = 8001 } }
-        'test' { return @{ Name = 'test'; ServerPort = 3301; AiPort = 8002 } }
-        default { throw "unknown env: $envName (prod | test)" }
     }
 }
