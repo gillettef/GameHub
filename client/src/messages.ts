@@ -9,6 +9,10 @@ export interface RoomPlayerInfo {
 export type ClientMessage =
   | { type: "create_room"; playerName: string }
   | { type: "join_room"; roomCode: string; playerName: string }
+  // 끊겼던 연결을 되살릴 때: 이전에 받은 방 코드와 플레이어 id로 같은 자리에 복귀한다
+  | { type: "rejoin_room"; roomCode: string; playerId: string }
+  // 연결이 살아 있는지 확인하는 신호 (서버는 pong으로 답한다)
+  | { type: "ping" }
   | { type: "start_game" }
   | { type: "add_bot" }
   | { type: "remove_bot"; botId: string }
@@ -22,6 +26,9 @@ export type ClientMessage =
 export type ServerMessage =
   | { type: "room_created"; roomCode: string; playerId: string; players: RoomPlayerInfo[] }
   | { type: "room_joined"; roomCode: string; playerId: string; players: RoomPlayerInfo[] }
+  | { type: "room_rejoined"; roomCode: string; playerId: string; isHost: boolean; players: RoomPlayerInfo[] }
+  | { type: "rejoin_failed" }
+  | { type: "pong" }
   | { type: "player_joined"; playerId: string; playerName: string; isBot?: boolean }
   | { type: "player_left"; playerId: string }
   | { type: "game_state"; game: GameState }
