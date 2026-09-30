@@ -1,6 +1,7 @@
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { hexDistance } from '@astraltab/shared';
-import type { BoardEffect, CellView } from '../game/derived';
+import type { CardId } from '@astraltab/shared';
+import type { BoardEffect, CellOverlay, CellView } from '../game/derived';
 import { diffMarkerEffects, snapshotMarkers } from '../game/derived';
 import { markPreviewHintSeen } from '../lib/onboarding';
 import { Cell } from './Cell';
@@ -16,6 +17,10 @@ interface BoardProps {
   previewSight: number;
   /** true 면 이미 시야인 칸도 프리뷰에 포함한다(즉발 마법의 효과 반경처럼 "새 시야"가 아닌 범위) */
   previewAll?: boolean;
+  /** 배치 후보 미리보기 표시(칸 key → 표시). 후보가 없으면 생략 */
+  overlays?: Map<string, CellOverlay>;
+  /** 후보 칸에 그릴 고스트 카드 */
+  ghostCardId?: CardId | null;
   onCellClick: (x: number, y: number) => void;
 }
 
@@ -54,7 +59,7 @@ function geometryFromS(size: number, s: number): Geometry {
  * 육각 보드 (F008, odd-r 오프셋). 기본 크기는 최소 줌(MIN_ZOOM_S, 2026-09-24 사용자 지시)이고
  * 핀치로 확대할 수 있다. 부모 영역보다 커지면 스크롤해서 살펴본다. 셀은 절대 배치 + clip-path 육각형.
  */
-export const Board = memo(function Board({ size, cells, legal, viewerSeat, previewSight, previewAll = false, onCellClick }: BoardProps) {
+export const Board = memo(function Board({ size, cells, legal, viewerSeat, previewSight, previewAll = false, overlays, ghostCardId, onCellClick }: BoardProps) {
   const viewportRef = useRef<HTMLDivElement>(null);
   const [zoomS, setZoomS] = useState(ZOOM_S);
   const zoomSRef = useRef(zoomS);
@@ -246,6 +251,8 @@ export const Board = memo(function Board({ size, cells, legal, viewerSeat, previ
               cell={cell}
               legal={legal.has(cell.key)}
               preview={previewKeys.has(cell.key)}
+              overlay={overlays?.get(cell.key)}
+              ghostCardId={ghostCardId ?? undefined}
               onClick={onCellClick}
               onPreviewStart={handlePreviewStart}
               onPreviewEnd={handlePreviewEnd}

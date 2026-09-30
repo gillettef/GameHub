@@ -12,10 +12,13 @@ import {
   computeTerritory,
   effectiveAttack,
   effectiveRange,
+  applyPlacement,
   effectiveSight,
   getSpec,
+  hexDistance,
   legalCells,
   markerScore,
+  planAttacks,
   posKey,
   terrainAt,
   validateCard,
@@ -331,4 +334,96 @@ export function buildPlayerSummaries(state: GameState): PlayerSummary[] {
       discardCount: p.discard.length,
       passed: p.passed,
     }));
+}
+
+/** 배치 후보 칸 미리보기에서 셀마다 덧그리는 표시 */
+export interface CellOverlay {
+  /** 배치 후보 칸(고스트 마커를 그린다) */
+  candidate?: boolean;
+  /** 턴 종료 때 이 칸 마커가 받을 예상 피해(마법 즉발 + 자동 공격 합계) */
+  hit?: number;
+  /** 예상 피해로 파괴됨 */
+  lethal?: boolean;
+  /** 아군이 받을 회복량(즉발 회복 마법) */
+  heal?: number;
+  /** 새 마커의 공격 대상(이 칸을 놓으면 새로 생기는 공격) */
+  fromNew?: boolean;
+  /** 후보 칸을 사거리에 두는 적 마커 */
+  threat?: boolean;
+}
+
+export interface PlacementPreview {
+  overlays: Map<string, CellOverlay>;
+  /** 적 마커 몇 기가 피해를 받는가 / 그중 파괴 */
+  hits: number;
+  kills: number;
+  /** 새 마커가 공격할 적 수 */
+  newAttacks: number;
+  /** 후보 칸을 사거리에 두는 적 마커 수 */
+  exposedTo: number;
+  /** 배치 전 대비 내 점수 변화(영토+마커, 덤 포함) */
+  scoreDelta: number;
+}
+
+/**
+ * 카드를 pos 에 놓고 턴을 끝냈을 때 벌어질 일을 엔진 함수로 미리 계산한다(중복 구현 없음):
+ * applyPlacement(즉발 마법 포함) → planAttacks(자동 공격). 수입·정비·이온 폭풍은 다루지 않는다.
+ * 적 마커가 나중에 노출되는지는 적 마커의 현재 사거리만 본다(그 적이 실제로 이 마커를 고를지는 모른다).
+ */
+export function buildPlacementPreview(state: GameState, viewerId: PlayerId, cardId: CardId, pos: Position): PlacementPreview {
+  const after = applyPlacement(state, viewerId, cardId, pos);
+  const overlays = new Map<string, CellOverlay>();
+  const put = (key: string, patch: CellOverlay) => overlays.set(key, { ...overlays.get(key), ...patch });
+  put(posKey(pos), { candidate: true });
+
+  // 총 피해 = 즉발 마법(배치 직후 hp 변화) + 자동 공격. 즉발로 이미 사라진 마커는 hp 전부를 피해로 본다
+  const damage = new Map<string, number>();
+  const hpNow = new Map(state.markers.map((m) => [m.id, m.hp] as const));
+  const afterById = new Map(after.markers.map((m) => [m.id, m] as const));
+  const owner = new Map(state.markers.map((m) => [m.id, m.ownerId] as const));
+  for (const m of state.markers) {
+    const a = afterById.get(m.id);
+    if (m.ownerId === viewerId) {
+      if (a && a.hp > m.hp) put(posKey(m.pos), { heal: a.hp - m.hp });
+      continue;
+    }
+    const lost = a ? m.hp - a.hp : m.hp;
+    if (lost > 0) damage.set(m.id, lost);
+  }
+  const plan = planAttacks(after, viewerId);
+  let newAttacks = 0;
+  for (const p of plan) {
+    damage.set(p.target.id, (damage.get(p.target.id) ?? 0) + p.damage);
+    if (p.attacker.pos.x === pos.x && p.attacker.pos.y === pos.y) {
+      newAttacks++;
+      put(posKey(p.target.pos), { fromNew: true });
+    }
+  }
+  let kills = 0;
+  for (const [id, dmg] of damage) {
+    const m = state.markers.find((x) => x.id === id);
+    if (!m || owner.get(id) === viewerId) continue;
+    const lethal = dmg >= (hpNow.get(id) ?? m.hp);
+    if (lethal) kills++;
+    put(posKey(m.pos), { hit: dmg, lethal });
+  }
+
+  // 후보 칸에 마커가 남는 카드(유닛·건물·지속 마법)일 때만 노출을 본다
+  const placed = afterById.size > state.markers.length ? after.markers.find((m) => m.pos.x === pos.x && m.pos.y === pos.y) : undefined;
+  let exposedTo = 0;
+  if (placed) {
+    for (const e of state.markers) {
+      if (e.ownerId === viewerId) continue;
+      const spec = getSpec(e.specId);
+      if (spec.attack <= 0) continue;
+      if (hexDistance(e.pos, pos) <= effectiveRange(state.board, e.pos, spec.range)) {
+        exposedTo++;
+        put(posKey(e.pos), { threat: true });
+      }
+    }
+  }
+
+  const before = computeScores(state)[viewerId]?.total ?? 0;
+  const later = computeScores(after)[viewerId]?.total ?? 0;
+  return { overlays, hits: damage.size, kills, newAttacks, exposedTo, scoreDelta: later - before };
 }

@@ -4,7 +4,7 @@ import { Board } from '../components/Board';
 import { Hand } from '../components/Hand';
 import { CardInfo, MarkerInfo } from '../components/InfoPanel';
 import { TurnControls } from '../components/TurnControls';
-import { buildCells, buildHand, legalCellKeys, seatOf } from '../game/derived';
+import { buildCells, buildHand, buildPlacementPreview, legalCellKeys, seatOf } from '../game/derived';
 import { hasSeenPlacementPreview } from '../lib/onboarding';
 import { selectIsMyTurn, selectSelectedCardId, selectState, selectViewerId, useGameStore } from '../store/gameStore';
 import styles from './BoardTab.module.css';
@@ -33,6 +33,9 @@ export const BoardTab = memo(function BoardTab() {
   const placeAt = useGameStore((s) => s.placeAt);
   const inspectedMarkerId = useGameStore((s) => s.inspectedMarkerId);
   const selectHandCard = useGameStore((s) => s.selectHandCard);
+  const pendingPos = useGameStore((s) => s.pendingPos);
+  const confirmPlacement = useGameStore((s) => s.confirmPlacement);
+  const cancelPlacement = useGameStore((s) => s.cancelPlacement);
 
   // 카드 설명은 맵을 가리므로, 보드를 탭하면 닫는다(카드 선택은 유지). 다른 카드를 고르면 다시 뜬다
   const [cardInfoHidden, setCardInfoHidden] = useState(false);
@@ -57,11 +60,16 @@ export const BoardTab = memo(function BoardTab() {
   const effect = selectedSpec?.effect ?? null;
   const previewAll = effect?.kind === 'damage' || effect?.kind === 'heal';
   const previewSight = !selectedSpec ? 0 : previewAll && effect && 'radius' in effect ? effect.radius : selectedSpec.sight;
+  // 배치 후보가 있으면 엔진 함수로 '여기 놓고 턴을 끝내면' 무슨 일이 생기는지 미리 계산한다
+  const placement = useMemo(
+    () => (state && viewerId && selectedCardId && pendingPos ? buildPlacementPreview(state, viewerId, selectedCardId, pendingPos) : null),
+    [state, viewerId, selectedCardId, pendingPos],
+  );
   const inspected = inspectedMarkerId ? cells.find((c) => c.marker?.id === inspectedMarkerId) : undefined;
 
   if (!state || !viewerId) return null;
   const viewerSeat = seatOf(state, viewerId);
-  const placeHint = hasSeenPlacementPreview() ? '밝은 칸을 클릭해 배치' : '밝은 칸을 클릭해 배치 · 길게 누르면 시야 미리보기';
+  const placeHint = hasSeenPlacementPreview() ? '밝은 칸을 눌러 위치 선택' : '밝은 칸을 눌러 위치 선택 · 길게 누르면 시야 미리보기';
 
   return (
     <div className={styles.root}>
@@ -73,6 +81,8 @@ export const BoardTab = memo(function BoardTab() {
           viewerSeat={viewerSeat}
           previewSight={previewSight}
           previewAll={previewAll}
+          overlays={placement?.overlays}
+          ghostCardId={placement ? selectedCardId : null}
           onCellClick={handleCellClick}
         />
         <div className={styles.floatingTop}>
@@ -85,6 +95,32 @@ export const BoardTab = memo(function BoardTab() {
           ) : null}
         </div>
         <div className={styles.floatingBottom}>
+          {placement && isMyTurn && selectedCardId && (
+            <div className={styles.confirmBar} role="group" aria-label="배치 확인">
+              <div className={styles.confirmInfo}>
+                <strong>{getSpec(selectedCardId).name}</strong> ({pendingPos!.x},{pendingPos!.y})
+                <span className={styles.confirmStats}>
+                  {placement.newAttacks > 0 && <span className={styles.statHit}>공격 {placement.newAttacks}</span>}
+                  {placement.kills > 0 ? (
+                    <span className={styles.statHit}>파괴 예상 {placement.kills}</span>
+                  ) : placement.hits > 0 ? (
+                    <span className={styles.statHit}>피격 {placement.hits}</span>
+                  ) : null}
+                  {placement.exposedTo > 0 && <span className={styles.statWarn}>적 사거리 {placement.exposedTo}</span>}
+                  {placement.scoreDelta !== 0 && (
+                    <span>점수 {placement.scoreDelta > 0 ? '+' : ''}{placement.scoreDelta}</span>
+                  )}
+                  {placement.hits === 0 && placement.exposedTo === 0 && placement.scoreDelta === 0 && <span>전투 없음</span>}
+                </span>
+              </div>
+              <button type="button" className="pill pill--outline" onClick={cancelPlacement}>
+                취소
+              </button>
+              <button type="button" className="pill" onClick={confirmPlacement}>
+                배치 확정
+              </button>
+            </div>
+          )}
           {state.phase === 'playing' && (
             <div className={styles.handPanel}>
               <div className={styles.handLabel}>
