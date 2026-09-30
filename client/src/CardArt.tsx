@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { cardImageUrl } from "./cardImages";
+import { useModalLock } from "./modalLock";
 
 // 카드 한 장을 화면에 보여 주는 정보 (카드 종류와 상관없이 같은 모양)
 export interface CardInfo {
@@ -54,6 +55,7 @@ export function CardZoom({ card, onClose, children }: { card: CardInfo; onClose:
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
+  useModalLock();
 
   return (
     <div
