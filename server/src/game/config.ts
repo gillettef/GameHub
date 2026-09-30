@@ -44,8 +44,8 @@ export const BALANCE = {
   // 카드를 한 장 열 때 드는 지력토큰: 수업카드뿐 아니라 자율활동에서 카드를 열 때(마법생물 조련·비밀의 방 탐색·연구실 실험)도 똑같이 낸다.
   // 카드를 습득하는 데 드는 체력토큰은 카드마다 정해져 있다 (수업카드 takeCost, 연구 카드 cost)
   openCardCost: 1,
-  // 위 지력토큰이 드는 활동. 마법생물 조련·비밀의 방 탐색은 카드를 열 때 지력토큰이 들지 않는다 (2026-09-30)
-  openCardCostActivities: ["duel", "lab"] as ActivityId[],
+  // 위 지력토큰이 드는 활동. 2026-09-30: 모든 구역에서 카드를 열 때 지력토큰이 들지 않는다 (빈 배열). 지력토큰의 새 역할은 검토 중
+  openCardCostActivities: [] as ActivityId[],
   // 매력토큰: 1주차에 매력 수치만큼 받는다. 언제든 charmExchangeRate개를 지력토큰·체력토큰 1개로 바꿔 낼 수 있고,
   // 마도서 등 "교환 비율" 능력 카드가 있으면 최소 charmExchangeRateMin개까지 내려간다. 구역 두 번째 참가비는 매력토큰 1개로 낼 수 있다
   charmExchangeRate: 3,

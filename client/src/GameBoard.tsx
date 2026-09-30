@@ -221,7 +221,7 @@ function ClassPhasePanel({ game, myId, onTake }: { game: GameState; myId: string
         </button>
       )}
       <p className="mt-3 text-xs text-purple-500">
-        남은 카드는 사라져요. 지력토큰은 3주차 구역에서 카드를 열 때 써요. (덱에 남은 카드 {game.classLeft}장)
+        남은 카드는 사라져요. (덱에 남은 카드 {game.classLeft}장)
       </p>
     </div>
   );
