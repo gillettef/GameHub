@@ -767,8 +767,13 @@ function startActivity(state: GameState, activityId: ActivityId, player: PlayerG
   switch (activityId) {
     case "tournament": {
       const gain = effectiveStat(player, "spellPower") + boost;
+      const before = player.tournamentTrack;
       player.tournamentTrack += gain;
-      log(state, `${player.name}: 마법 토너먼트 참가 (트랙 ${player.tournamentTrack}칸)`);
+      const step = BALANCE.tournamentMilestoneStep;
+      const milestones = step > 0 ? Math.floor(player.tournamentTrack / step) - Math.floor(before / step) : 0;
+      const milestoneCredit = milestones * BALANCE.tournamentMilestoneCredit;
+      player.credit += milestoneCredit;
+      log(state, `${player.name}: 마법 토너먼트 참가 (트랙 ${player.tournamentTrack}칸)${milestoneCredit > 0 ? ` — 이정표 학점 +${milestoneCredit}` : ""}`);
       break;
     }
     case "duel":

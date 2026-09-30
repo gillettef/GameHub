@@ -15,6 +15,9 @@ export const BALANCE = {
   initialCredit: 0,
   // 마법 토너먼트: 최종 순위 보상 (1위, 2위 순서). 트랙에는 상한이 없다
   tournamentRewards: [2, 1],
+  // 마법 토너먼트 이정표: 참가해서 트랙이 milestoneStep칸을 넘을 때마다 학점 milestoneCredit을 바로 받는다 (다른 사람과 경쟁하지 않는 보상)
+  tournamentMilestoneStep: 20,
+  tournamentMilestoneCredit: 1,
   // 시험 순위별 학점 (1위, 2위, 그 이하는 마지막 값)
   examCredits: [3, 2, 1],
   // 2주차(정규수업): 인원수 + classMarketExtra 장을 공개하고, 지력 높은 순으로 1장씩 가져간다. 수업카드 덱은 인원 × classDeckPerPlayer 장

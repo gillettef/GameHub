@@ -1,0 +1,51 @@
+// 임시 튜닝 하네스: 균형형 1명 + 활동 몰빵 1명씩 vs 균형형 봇, 4인. 환경변수 BAL='{"tournamentRewards":[4,2]}' 로 BALANCE를 덮어쓴다.
+import { BALANCE } from "../src/game/config.js";
+if (process.env.BAL) Object.assign(BALANCE, JSON.parse(process.env.BAL));
+const { chooseActivityAction, choosePick, playClassTurn } = await import("../src/game/bot.js");
+const { chooseActivityCard, createGame, selectActivity, submitRoll } = await import("../src/game/engine.js");
+type BotStrategy = import("../src/game/bot.js").BotStrategy;
+type ActivityId = import("../src/game/types.js").ActivityId;
+type GameState = import("../src/game/types.js").GameState;
+
+const even: Record<ActivityId, number> = { tournament: 1, creature: 1, duel: 1, exploration: 1, lab: 1 };
+const W = { intelligence: 1.2, spellPower: 1.2, stamina: 1, charm: 0.6 };
+const focus = (a: ActivityId): Record<ActivityId, number> => ({ ...even, [a]: 6 });
+const STRATS: BotStrategy[] = [
+  { name: "균형형", classWeights: W, activityBias: even },
+  { name: "토너먼트", classWeights: { ...W, spellPower: 1.5 }, activityBias: focus("tournament") },
+  { name: "마법생물", classWeights: W, activityBias: focus("creature") },
+  { name: "주문대결", classWeights: { ...W, spellPower: 1.5 }, activityBias: focus("duel") },
+  { name: "탐험", classWeights: W, activityBias: focus("exploration") },
+  { name: "연구실", classWeights: W, activityBias: focus("lab") },
+];
+
+function play(strats: BotStrategy[]): GameState {
+  const ids = strats.map((_, i) => `p${i}`);
+  const state = createGame(ids.map((id) => ({ id, name: id })));
+  const by = Object.fromEntries(ids.map((id, i) => [id, strats[i]]));
+  let guard = 0;
+  while (state.phase !== "ended" && guard++ < 6000) {
+    if (state.pendingRoll) { for (const e of [...state.pendingRoll.entries]) if (e.dice === null) submitRoll(state, e.playerId); }
+    else if (state.pendingPick) chooseActivityCard(state, state.pendingPick.playerId, choosePick(state, by[state.pendingPick.playerId]));
+    else if (state.phase === "class") { const id = state.classPickOrder[state.classPickPointer]; playClassTurn(state, id, by[id]); }
+    else { const id = state.activityOrder[state.activityTurnPointer]; const a = chooseActivityAction(state, id, by[id]); selectActivity(state, id, a.activityId, a.targetPlayerId, a.useStamina); }
+  }
+  return state;
+}
+
+const N = Number(process.argv[2]) || 150;
+const n = Number(process.argv[3]) || 4;
+const rows: Record<string, unknown>[] = [];
+for (const s of STRATS) {
+  let wins = 0; const ach: number[] = [], cr: number[] = [], sp: number[] = [];
+  for (let g = 0; g < N; g++) {
+    const st = play([s, ...Array.from({ length: n - 1 }, () => STRATS[0])]);
+    const p = st.players.p0;
+    if (st.winnerIds?.includes("p0")) wins++;
+    ach.push(p.spellPower * p.credit); cr.push(p.credit); sp.push(p.spellPower);
+  }
+  const m = (x: number[]) => +(x.reduce((a, b) => a + b, 0) / x.length).toFixed(1);
+  rows.push({ 전략: s.name, 승률: `${((wins / N) * 100).toFixed(0)}%`, 성취도: m(ach), 학점: m(cr), 주문력: m(sp) });
+}
+console.log(`BAL=${process.env.BAL ?? "{}"} ${N}판 x ${n}인 (기대 ${(100 / n).toFixed(0)}%)`);
+console.table(rows);
