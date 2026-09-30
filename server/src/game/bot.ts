@@ -3,11 +3,8 @@
 // 자율활동은 상황(주문서 보유량, 토너먼트 진행도 등)과 성향 가중치를 곱해 점수가 높은 구역을 고릅니다.
 import { BALANCE } from "./config.js";
 import {
-  activityExtraCost,
-  activityOpenCost,
   availableActivities,
   canPay,
-  charmRate,
   duelTargets,
   growthGap,
   takeClassCard,
@@ -86,7 +83,7 @@ export function chooseActivityAction(
   state: GameState,
   playerId: string,
   strategy: BotStrategy,
-): { activityId: ActivityId; targetPlayerId?: string; useStamina: boolean } {
+): { activityId: ActivityId; targetPlayerId?: string } {
   const p = state.players[playerId];
   // 주문 대결은 아직 활동을 고르지 않은 플레이어가 있어야만 고를 수 있다 (그중 한 명을 강제로 지목)
   const targets = duelTargets(state, playerId);
@@ -101,12 +98,11 @@ export function chooseActivityAction(
     lab: 1.6,
   };
   const scored = free.map((a) => {
-    // 이미 친구가 있는 구역은 체력토큰이 더 들어서 조금 덜 끌린다. 다만 협력 탐험 카드가 기다리고 있으면 함께하러 간다
+    // 이미 친구가 있는 구역은 체력토큰이 더 들어서 조금 덜 끌린다
     const crowded = state.activitySlots[a].length > 0 ? 0.8 : 1;
-    const coop = a === "exploration" && state.coopWaiting ? 2 : 1;
     return {
       a,
-      score: (strategy.random ? 1 : base[a] * strategy.activityBias[a] * crowded * coop) * (0.7 + Math.random() * 0.6),
+      score: (strategy.random ? 1 : base[a] * strategy.activityBias[a] * crowded) * (0.7 + Math.random() * 0.6),
     };
   });
   scored.sort((x, y) => y.score - x.score);
@@ -116,14 +112,7 @@ export function chooseActivityAction(
     activityId === "duel"
       ? [...targets].sort((a, b) => state.players[b].spellPower - state.players[a].spellPower)[0]
       : undefined;
-  // 남은 체력토큰은 4주차에 소멸하므로 (참가비를 낸 뒤에도) 남아 있으면 집중에 쓴다.
-  // 다만 연구실은 카드를 고를 때 체력토큰이 들기 때문에 넉넉할 때만 집중한다
-  const extra = activityExtraCost(state, activityId);
-  const feeByCharm = Math.min(extra, p.charmTokens);
-  const spare = p.staminaTokens - (extra - feeByCharm) + Math.floor((p.charmTokens - feeByCharm) / charmRate(p));
-  // 엔진과 같은 규칙으로 (지력토큰·참가비까지 함께) 집중할 여력이 실제로 있는지 확인한다
-  const canFocus = canPay(p, activityOpenCost(state, activityId), 1, extra);
-  return { activityId, targetPlayerId, useStamina: canFocus && (activityId === "lab" ? spare >= 3 : spare > 0) };
+  return { activityId, targetPlayerId };
 }
 
 // 카드 효과의 대략적인 가치 (영구 능력치는 성향 가중치로, 임시/토큰/엿보기는 낮게 평가)
@@ -137,13 +126,13 @@ function effectValue(state: GameState, strategy: BotStrategy, e: CardEffect): nu
 }
 
 // 탐험 카드: 성공 확률(주사위 + 능력치 + 집중 + 역전 보너스)로 기대값을 계산한다. 협력 카드는 두 번째 참가자를 기다려야 해서 낮게 본다
-function explorationValue(state: GameState, strategy: BotStrategy, player: PlayerGameState, card: ExplorationCard, boost: number): number {
+function explorationValue(state: GameState, strategy: BotStrategy, player: PlayerGameState, card: ExplorationCard): number {
   const success = effectValue(state, strategy, card.success);
   const failure = effectValue(state, strategy, card.failure);
   if (card.coop) return 0.6 * success;
   if (!card.check) return success;
   const catchUp = growthGap(state, player.id) >= BALANCE.catchUpGap ? BALANCE.catchUpBonus : 0;
-  const need = card.check.target - effectiveStat(player, card.check.stat) - boost - catchUp;
+  const need = card.check.target - effectiveStat(player, card.check.stat) - catchUp;
   const p = Math.min(1, Math.max(0, (7 - Math.min(7, Math.max(1, need))) / 6));
   return p * success + (1 - p) * failure;
 }
@@ -165,10 +154,9 @@ export function choosePick(state: GameState, strategy: BotStrategy): string | nu
   const pick = state.pendingPick;
   if (!pick) return null;
   const player = state.players[pick.playerId];
-  const boost = pick.boost;
   const cards = state.hidden.offers[pick.activityId] ?? [];
   const afford = (card: (typeof cards)[number]): boolean => {
-    if (pick.activityId === "creature") return player.spellbookTokens >= Math.max(1, (card as CreatureCard).requiredSpellPower - boost);
+    if (pick.activityId === "creature") return player.spellbookTokens >= (card as CreatureCard).requiredSpellPower;
     if (pick.activityId === "lab") return canPay(player, 0, (card as LabCard).cost);
     return true;
   };
@@ -184,7 +172,7 @@ export function choosePick(state: GameState, strategy: BotStrategy): string | nu
         return effectValue(state, strategy, lab.effect) - lab.cost * 0.3; // 같은 효과라면 싼 카드가 좋다
       }
       case "exploration":
-        return explorationValue(state, strategy, player, card as ExplorationCard, boost);
+        return explorationValue(state, strategy, player, card as ExplorationCard);
       default:
         return grimoireValue(state, strategy, card as GrimoireCard);
     }

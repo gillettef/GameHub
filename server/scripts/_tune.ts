@@ -2,7 +2,8 @@
 import { BALANCE } from "../src/game/config.js";
 if (process.env.BAL) Object.assign(BALANCE, JSON.parse(process.env.BAL));
 const { chooseActivityAction, choosePick, playClassTurn } = await import("../src/game/bot.js");
-const { chooseActivityCard, createGame, selectActivity, submitRoll } = await import("../src/game/engine.js");
+const { advanceResolution, chooseActivityCard, createGame, finalScore, selectActivity } = await import("../src/game/engine.js");
+const { rollAndConfirm } = await import("./_drive.js");
 type BotStrategy = import("../src/game/bot.js").BotStrategy;
 type ActivityId = import("../src/game/types.js").ActivityId;
 type GameState = import("../src/game/types.js").GameState;
@@ -25,10 +26,11 @@ function play(strats: BotStrategy[]): GameState {
   const by = Object.fromEntries(ids.map((id, i) => [id, strats[i]]));
   let guard = 0;
   while (state.phase !== "ended" && guard++ < 6000) {
-    if (state.pendingRoll) { for (const e of [...state.pendingRoll.entries]) if (e.dice === null) submitRoll(state, e.playerId); }
+    if (state.pendingRoll) rollAndConfirm(state);
     else if (state.pendingPick) chooseActivityCard(state, state.pendingPick.playerId, choosePick(state, by[state.pendingPick.playerId]));
     else if (state.phase === "class") { const id = state.classPickOrder[state.classPickPointer]; playClassTurn(state, id, by[id]); }
-    else { const id = state.activityOrder[state.activityTurnPointer]; const a = chooseActivityAction(state, id, by[id]); selectActivity(state, id, a.activityId, a.targetPlayerId, a.useStamina); }
+    else if (state.activityStage === "resolve") advanceResolution(state);
+    else { const id = state.activityOrder[state.activityTurnPointer]; const a = chooseActivityAction(state, id, by[id]); selectActivity(state, id, a.activityId, a.targetPlayerId); }
   }
   return state;
 }
@@ -42,7 +44,7 @@ for (const s of STRATS) {
     const st = play([s, ...Array.from({ length: n - 1 }, () => STRATS[0])]);
     const p = st.players.p0;
     if (st.winnerIds?.includes("p0")) wins++;
-    ach.push(p.spellPower * p.credit); cr.push(p.credit); sp.push(p.spellPower);
+    ach.push(finalScore(p)); cr.push(p.credit); sp.push(p.spellPower);
   }
   const m = (x: number[]) => +(x.reduce((a, b) => a + b, 0) / x.length).toFixed(1);
   rows.push({ 전략: s.name, 승률: `${((wins / N) * 100).toFixed(0)}%`, 성취도: m(ach), 학점: m(cr), 주문력: m(sp) });

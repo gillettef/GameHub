@@ -16,11 +16,13 @@ export function nextAction(game: PublicGameState, playerId: string): SmokeAction
   const roll = game.pendingRoll;
   if (roll) {
     const mine = roll.entries.find((e) => e.playerId === playerId);
-    if (mine && mine.dice === null) return { key: `${base}:roll:${roll.kind}`, message: { type: "roll_dice" } };
+    if (mine && mine.dice === null) return { key: `${base}:roll:${roll.kind}:${roll.title}`, message: { type: "roll_dice" } };
+    // 모두 굴렸으면 결과를 보고 확인을 누른다
+    if (mine && !mine.confirmed && roll.entries.every((e) => e.dice !== null)) return { key: `${base}:confirm:${roll.kind}:${roll.title}`, message: { type: "confirm_roll" } };
     return null;
   }
 
-  // 정규수업: 지력 순서상 내 차례에만 공개된 카드 중 체력토큰으로 살 수 있는 카드 1장을 가져간다 (없으면 넘어감)
+  // 정규수업: 선 순서상 내 차례에만 공개된 카드 중 체력토큰으로 살 수 있는 카드 1장을 가져간다 (없으면 넘어감)
   if (game.phase === "class") {
     if (game.classPickOrder[game.classPickPointer] !== playerId) return null;
     const card = game.classMarket.find((c) => canPay(me, 0, c.takeCost));
@@ -34,12 +36,12 @@ export function nextAction(game: PublicGameState, playerId: string): SmokeAction
     const card = cards.find((c) => {
       if (!c.cost) return true;
       if (c.cost.kind === "stamina") return canPay(me, 0, c.cost.amount);
-      return me.spellbookTokens >= Math.max(1, c.cost.amount - pick.boost);
+      return me.spellbookTokens >= c.cost.amount;
     });
-    return { key: `${base}:pick:${game.activityTurnPointer}:${cards.length}`, message: { type: "pick_activity_card", cardId: card?.id ?? null } };
+    return { key: `${base}:pick:${game.activityResolvePointer}:${cards.length}`, message: { type: "pick_activity_card", cardId: card?.id ?? null } };
   }
 
-  if (game.phase === "activity" && !game.pendingPick && game.activityOrder[game.activityTurnPointer] === playerId) {
+  if (game.phase === "activity" && game.activityStage === "choose" && game.activityOrder[game.activityTurnPointer] === playerId) {
     const free = availableActivities(game, playerId);
     const activityId = free[Math.floor(Math.random() * free.length)];
     const targetPlayerId = activityId === "duel" ? duelTargets(game, playerId)[0] : undefined;

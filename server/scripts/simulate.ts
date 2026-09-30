@@ -5,7 +5,8 @@
 //  - 자율활동 5종 중 봇이 무엇을 선호하고 그 결과는 어떤가
 import { chooseActivityAction, choosePick, playClassTurn, type BotStrategy } from "../src/game/bot.js";
 import { BALANCE } from "../src/game/config.js";
-import { chooseActivityCard, classCardsLeft, createGame, selectActivity, submitRoll } from "../src/game/engine.js";
+import { advanceResolution, chooseActivityCard, classCardsLeft, createGame, finalScore, selectActivity } from "../src/game/engine.js";
+import { rollAndConfirm } from "./_drive.js";
 import type { ActivityId, GameState } from "../src/game/types.js";
 
 const even: Record<ActivityId, number> = { tournament: 1, creature: 1, duel: 1, exploration: 1, lab: 1 };
@@ -37,8 +38,8 @@ function playGame(strategies: BotStrategy[]): GameState {
   lastNormalExhaustRound = 0;
   while (state.phase !== "ended" && guard++ < 5000) {
     if (state.pendingRoll) {
-      // 주사위를 굴려야 하는 사람이 모두 버튼을 누른다
-      for (const entry of [...state.pendingRoll.entries]) if (entry.dice === null) submitRoll(state, entry.playerId);
+      // 주사위를 굴려야 하는 사람이 모두 버튼을 누르고 결과를 확인한다
+      rollAndConfirm(state);
     } else if (state.pendingPick) {
       // 공개된 카드(구역 카드·주문 대결 마도서)를 고른다
       const pickerId = state.pendingPick.playerId;
@@ -48,12 +49,15 @@ function playGame(strategies: BotStrategy[]): GameState {
       const id = state.classPickOrder[state.classPickPointer];
       playClassTurn(state, id, byId[id]);
       if (lastNormalExhaustRound === 0 && classCardsLeft(state) === 0) lastNormalExhaustRound = state.round;
+    } else if (state.phase === "activity" && state.activityStage === "resolve") {
+      // 모두 고른 활동을 선택한 순서대로 하나씩 진행한다
+      advanceResolution(state);
     } else if (state.phase === "activity") {
       const id = state.activityOrder[state.activityTurnPointer];
-      const { activityId, targetPlayerId: target, useStamina } = chooseActivityAction(state, id, byId[id]);
+      const { activityId, targetPlayerId: target } = chooseActivityAction(state, id, byId[id]);
       const picks = (activityPicks[byId[id].name] ??= { tournament: 0, creature: 0, duel: 0, exploration: 0, lab: 0 });
       picks[activityId] += 1;
-      selectActivity(state, id, activityId, target, useStamina);
+      selectActivity(state, id, activityId, target);
     } else {
       throw new Error(`예상치 못한 단계: ${state.phase}`);
     }
@@ -99,11 +103,11 @@ for (let n = 2; n <= 5; n++) {
       rows.charm.push(p.charm);
       rows.spellPower.push(p.spellPower);
       rows.credit.push(p.credit);
-      rows.achievement.push(p.spellPower * p.credit);
+      rows.achievement.push(finalScore(p));
       rows.creatures.push(p.creatures.length);
       rows.grimoires.push(p.grimoires.length);
     }
-    rows.top.push(Math.max(...players.map((p) => p.spellPower * p.credit)));
+    rows.top.push(Math.max(...players.map((p) => finalScore(p))));
     rows.exhausted.push(lastNormalExhaustRound > 0 ? 1 : 0);
     if (lastNormalExhaustRound > 0) rows.exhaustRound.push(lastNormalExhaustRound);
   }
@@ -134,7 +138,7 @@ for (const s of STRATEGIES) {
   for (let g = 0; g < games; g++) {
     const state = playGame([s, ...Array.from({ length: playerCount - 1 }, () => STRATEGIES[0])]);
     if (state.winnerIds?.includes("p0")) wins += 1;
-    achievements.push(state.players.p0.spellPower * state.players.p0.credit);
+    achievements.push(finalScore(state.players.p0));
     credits.push(state.players.p0.credit);
   }
   strategyRows.push({ 전략: s.name, 승률: pct(wins / games), 평균성취도: fixed(mean(achievements)), 평균학점: fixed(mean(credits)) });

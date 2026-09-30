@@ -1,7 +1,8 @@
 // 능력치 1점의 가치 실험: 한 명(p0)에게만 시작 능력치를 +2 주고 나머지는 모두 균형형 봇으로 돌려, 능력치별로 성취도·승률이 얼마나 달라지는지 비교합니다.
 // 몰빵 전략 승률과 달리 봇 성향에 덜 좌우되어 "각 능력치의 역할이 균형 잡혔는가"를 보는 데 쓴다. (사용법: npm run simulate:stat -- [게임 수] [인원])
 import { chooseActivityAction, choosePick, playClassTurn, type BotStrategy } from "../src/game/bot.js";
-import { chooseActivityCard, createGame, selectActivity, submitRoll } from "../src/game/engine.js";
+import { advanceResolution, chooseActivityCard, createGame, finalScore, selectActivity } from "../src/game/engine.js";
+import { rollAndConfirm } from "./_drive.js";
 import type { ActivityId, GameState, StatKey } from "../src/game/types.js";
 const even: Record<ActivityId, number> = { tournament: 1, creature: 1, duel: 1, exploration: 1, lab: 1 };
 const S: BotStrategy = { name: "균형형", classWeights: { intelligence: 1.2, spellPower: 1.2, stamina: 1, charm: 0.6 }, activityBias: even };
@@ -12,18 +13,19 @@ function play(n: number, bump?: StatKey, amount = 2): GameState {
     const p = state.players.p0;
     p[bump] += amount;
     p.intelligenceTokens = p.intelligence; p.staminaTokens = p.stamina; p.charmTokens = p.charm; p.spellbookTokens = p.spellPower;
-    // 지력이 바뀌었으니 1라운드 수업카드 선택 순서도 다시 정한다
-    state.classPickOrder = [...state.turnOrder].sort((a, b) => state.players[b].intelligence - state.players[a].intelligence || state.players[b].charm - state.players[a].charm);
   }
   let guard = 0;
   while (state.phase !== "ended" && guard++ < 5000) {
-    if (state.pendingRoll) { for (const e of [...state.pendingRoll.entries]) if (e.dice === null) submitRoll(state, e.playerId); }
+    if (state.pendingRoll) rollAndConfirm(state);
     else if (state.pendingPick) chooseActivityCard(state, state.pendingPick.playerId, choosePick(state, S));
       else if (state.phase === "class") playClassTurn(state, state.classPickOrder[state.classPickPointer], S);
     else if (state.phase === "activity") {
-      const id = state.activityOrder[state.activityTurnPointer];
-      const a = chooseActivityAction(state, id, S);
-      selectActivity(state, id, a.activityId, a.targetPlayerId, a.useStamina);
+      if (state.activityStage === "resolve") advanceResolution(state);
+      else {
+        const id = state.activityOrder[state.activityTurnPointer];
+        const a = chooseActivityAction(state, id, S);
+        selectActivity(state, id, a.activityId, a.targetPlayerId);
+      }
     } else throw new Error("phase " + state.phase);
   }
   return state;
@@ -37,8 +39,8 @@ for (const bump of [undefined, "intelligence", "stamina", "charm", "spellPower"]
     const st = play(n, bump);
     const p0 = st.players.p0;
     if (st.winnerIds?.includes("p0")) wins++;
-    ach.push(p0.spellPower * p0.credit); cr.push(p0.credit); sp.push(p0.spellPower);
-    for (const id of st.turnOrder) if (id !== "p0") oth.push(st.players[id].spellPower * st.players[id].credit);
+    ach.push(finalScore(p0)); cr.push(p0.credit); sp.push(p0.spellPower);
+    for (const id of st.turnOrder) if (id !== "p0") oth.push(finalScore(st.players[id]));
   }
   rows.push({ 시작보너스: bump ? `${bump} +2` : "없음(기준)", 승률: `${((wins / N) * 100).toFixed(1)}%`, "내 성취도": +mean(ach).toFixed(1), "상대 평균": +mean(oth).toFixed(1), 차이: +(mean(ach) - mean(oth)).toFixed(1), 학점: +mean(cr).toFixed(2), 주문력: +mean(sp).toFixed(2) });
 }

@@ -106,12 +106,24 @@ function cleanupBanner(prev: GameState, next: GameState, myId: string): Announce
   });
 }
 
+const starterName = (game: GameState): string => game.players[game.turnOrder[game.startingPlayerIndex]].name;
+
+// 게임 시작 때 주사위로 첫 달의 선이 정해졌다
+const firstPlayerBanner = (game: GameState, myId: string): Announcement =>
+  make({
+    kind: "banner",
+    icon: "dice",
+    title: "선이 정해졌어요!",
+    subtitle: `${starterName(game)}님이 첫 달의 선이에요. 선부터 시계방향으로 진행해요`,
+    lines: [`순서: ${game.classPickOrder.map((id) => game.players[id].name).join(" → ")}`, ...(game.turnOrder[game.startingPlayerIndex] === myId ? ["내가 선이에요!"] : [])],
+  });
+
 const classBanner = (game: GameState): Announcement =>
   make({
     kind: "banner",
     icon: "book",
     title: `${game.round}개월 2주차 · 정규수업`,
-    subtitle: "지력 순서대로 공개된 수업카드를 한 장씩 가져가요. 카드마다 드는 체력토큰이 달라요",
+    subtitle: `이번 달 선은 ${starterName(game)}님! 선부터 시계방향으로 공개된 수업카드를 한 장씩 가져가요. 카드마다 드는 체력토큰이 달라요`,
   });
 
 function activityBanner(game: GameState, myId: string): Announcement {
@@ -120,8 +132,22 @@ function activityBanner(game: GameState, myId: string): Announcement {
     kind: "banner",
     icon: "compass",
     title: `${game.round}개월 3주차 · 자율활동`,
-    subtitle: `매력 순서: ${game.activityOrder.map((id) => game.players[id].name).join(" → ")}`,
+    subtitle: `선 ${starterName(game)}님부터 시계방향으로 활동을 골라요: ${game.activityOrder.map((id) => game.players[id].name).join(" → ")}`,
     lines: myOrder > 0 ? [`내 순서는 ${myOrder}번째예요`] : [],
+  });
+}
+
+// 모두 활동을 골랐다: 누가 무엇을 골랐는지 공개하고 차례대로 진행한다
+function resolveBanner(game: GameState, myId: string): Announcement {
+  return make({
+    kind: "banner",
+    icon: "compass",
+    title: "모두 골랐어요!",
+    subtitle: "고른 순서대로 한 명씩 진행해요",
+    lines: game.activityChoices.map(
+      (c, i) =>
+        `${i + 1}. ${game.players[c.playerId].name}${c.playerId === myId ? " (나)" : ""} — ${ACTIVITY_LABEL[c.activityId]}${c.targetPlayerId ? ` → ${game.players[c.targetPlayerId].name} 지목` : ""}`,
+    ),
   });
 }
 
@@ -203,7 +229,8 @@ function build(prev: GameState, next: GameState, myId: string): Announcement[] {
   const out: Announcement[] = [];
   const roundChanged = next.round > prev.round;
   const activityEnded = prev.phase === "activity" && (next.phase !== "activity" || roundChanged);
-  if (prev.phase === "activity" && (activityEnded || next.log.length > prev.log.length)) {
+  // 활동 결과는 진행 단계에서만 알린다 (선택 단계의 "무엇을 골랐다"는 소식은 결과가 아니다)
+  if (prev.phase === "activity" && prev.activityStage === "resolve" && (activityEnded || next.log.length > prev.log.length)) {
     const r = activityResult(prev, next, myId);
     if (r) out.push(r);
   }
@@ -213,8 +240,12 @@ function build(prev: GameState, next: GameState, myId: string): Announcement[] {
   if (next.examResults.length > prev.examResults.length) out.push(examResult(next, myId));
   if (!prev.exams.midterm && next.exams.midterm) out.push(examRevealBanner(next, "midterm"));
   if (!prev.exams.final && next.exams.final) out.push(examRevealBanner(next, "final"));
-  if (roundChanged && next.phase === "class") out.push(prepBanner(next, myId), classBanner(next));
+  if (prev.phase === "setup" && next.phase === "class") out.push(firstPlayerBanner(next, myId), prepBanner(next, myId), classBanner(next));
+  else if (roundChanged && next.phase === "class") out.push(prepBanner(next, myId), classBanner(next));
   else if (prev.phase === "class" && next.phase === "activity") out.push(activityBanner(next, myId));
+  if (next.phase === "activity" && prev.activityStage === "choose" && next.activityStage === "resolve" && next.activityChoices.length > 0 && prev.phase === "activity") {
+    out.push(resolveBanner(next, myId));
+  }
   return out;
 }
 
@@ -341,7 +372,8 @@ function TokenBoard({ tokens, playing }: { tokens: NonNullable<Announcement["tok
 export function AnnouncementLayer({ game, myId }: { game: GameState; myId: string }) {
   // 렌더 중에 이전 상태와 비교해 큐를 늘린다 (effect 안에서 setState하지 않기 위한 패턴)
   const [prev, setPrev] = useState(game);
-  const [queue, setQueue] = useState<Announcement[]>(() => [prepBanner(game, myId), classBanner(game)]);
+  // 게임 시작 직후(선 정하기)에는 아직 1주차가 시작되지 않았으므로 선이 정해진 뒤에 배너를 보여 준다
+  const [queue, setQueue] = useState<Announcement[]>(() => (game.phase === "setup" ? [] : [prepBanner(game, myId), classBanner(game)]));
   const [playing, setPlaying] = useState(false);
   if (prev !== game) {
     setPrev(game);

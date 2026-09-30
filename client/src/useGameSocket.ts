@@ -325,10 +325,15 @@ export function useGameSocket() {
     send(socket, { type: "roll_dice" });
   }, [ensureSocket, send]);
 
+  const confirmRoll = useCallback(() => {
+    const socket = ensureSocket();
+    send(socket, { type: "confirm_roll" });
+  }, [ensureSocket, send]);
+
   const selectActivity = useCallback(
-    (activityId: ActivityId, targetPlayerId?: string, useStamina?: boolean) => {
+    (activityId: ActivityId, targetPlayerId?: string) => {
       const socket = ensureSocket();
-      send(socket, { type: "select_activity", activityId, targetPlayerId, useStamina });
+      send(socket, { type: "select_activity", activityId, targetPlayerId });
     },
     [ensureSocket, send],
   );
@@ -341,5 +346,5 @@ export function useGameSocket() {
     [ensureSocket, send],
   );
 
-  return { state, game, lastError, errorSeq, reconnecting, createRoom, joinRoom, startGame, addBot, removeBot, takeClassCard, rollDice, selectActivity, pickActivityCard };
+  return { state, game, lastError, errorSeq, reconnecting, createRoom, joinRoom, startGame, addBot, removeBot, takeClassCard, rollDice, confirmRoll, selectActivity, pickActivityCard };
 }

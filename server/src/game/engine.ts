@@ -16,6 +16,7 @@ import { describeExam, pickExamCards } from "./examCards.js";
 import { describeEffect } from "./explorationCards.js";
 import {
   effectiveStat,
+  type ActivityChoice,
   type ActivityId,
   type CardEffect,
   type ClassCard,
@@ -71,12 +72,25 @@ function compareTieBreak(state: GameState, aId: string, bId: string): number {
   return charmDiff !== 0 ? charmDiff : Math.random() < 0.5 ? -1 : 1;
 }
 
-// 3주차(자율활동) 구역 선택 순서: 현재 매력이 높은 순 (동점이면 주사위). 2주차 수업카드로 바뀐 매력이 반영된다
-function orderByCharm(state: GameState): string[] {
-  return state.turnOrder
-    .map((id) => ({ id, charm: effectiveStat(state.players[id], "charm"), roll: Math.random() }))
-    .sort((a, b) => b.charm - a.charm || b.roll - a.roll)
-    .map((entry) => entry.id);
+// 이번 달 선 플레이어부터 시계방향(turnOrder 순서)으로 한 바퀴 — 정규수업과 자율활동 선택 순서
+function orderFromStarter(state: Pick<GameState, "turnOrder" | "startingPlayerIndex">): string[] {
+  const n = state.turnOrder.length;
+  return Array.from({ length: n }, (_, i) => state.turnOrder[(state.startingPlayerIndex + i) % n]);
+}
+
+// 4주차(정리): 매력이 가장 높은 플레이어가 다음 달 선이 된다.
+// 현재 선과 매력이 같거나 더 높은 사람이 없으면 그대로, 최고 매력이 여럿이면 현재 선에서 시계방향으로 가장 가까운 사람
+export function nextStarterIndex(state: GameState): number {
+  const n = state.turnOrder.length;
+  const charmOf = (id: string) => effectiveStat(state.players[id], "charm");
+  const best = Math.max(...state.turnOrder.map(charmOf));
+  const current = state.startingPlayerIndex;
+  if (charmOf(state.turnOrder[current]) === best) return current;
+  for (let i = 1; i < n; i++) {
+    const index = (current + i) % n;
+    if (charmOf(state.turnOrder[index]) === best) return index;
+  }
+  return current;
 }
 
 // 성장 점수: 영구 능력치 합 + 학점 × 3. 선두와의 격차가 크면 탐험에서 역전 보너스를 받는다
@@ -92,6 +106,11 @@ export function growthGap(state: GameState, playerId: string): number {
 
 // 마법생물 유형 점수 (세븐원더스의 과학 카드 방식): 같은 속성이 늘수록 제곱으로 커지고, 세 속성을 고루 모으면 세트 보너스.
 // 학점은 이 점수를 나눈 몫이며, 새 카드를 얻을 때 늘어난 만큼 즉시 받는다.
+// 마법생물 세트 수: 하늘·육지·바다를 1장씩 묶은 세트 (가장 적은 속성의 장수)
+export function creatureSets(creatures: CreatureCard[]): number {
+  return Math.min(...(["sky", "land", "ocean"] as const).map((el) => creatures.filter((c) => c.element === el).length));
+}
+
 function creatureCollectionCredit(creatures: CreatureCard[]): number {
   const counts = { sky: 0, land: 0, ocean: 0 };
   for (const c of creatures) counts[c.element] += 1;
@@ -193,19 +212,24 @@ function createPlayer(id: string, name: string, isBot = false): PlayerGameState 
 }
 
 export function createGame(players: { id: string; name: string; isBot?: boolean }[]): GameState {
-  // ASSUMPTION: 선 플레이어는 무작위로 정하고(문서상 "무작위 또는 협의"), 좌석 순서(시계방향)는 참가 순서를 그대로 사용한다.
-  const turnOrder = shuffle(players.map((p) => p.id));
+  // 좌석 순서(시계방향)는 참가 순서를 그대로 쓰고, 첫 달의 선 플레이어는 주사위를 굴려 정한다
+  const turnOrder = players.map((p) => p.id);
   const state: GameState = {
     round: 1,
-    phase: "prep",
+    phase: "setup",
     turnOrder,
     startingPlayerIndex: 0,
     players: Object.fromEntries(
       players.map((p) => [p.id, createPlayer(p.id, p.name, p.isBot)]),
     ),
     activitySlots: emptySlots(),
+    activityStage: "choose",
     activityOrder: [],
     activityTurnPointer: 0,
+    activityChoices: [],
+    activityResolvePointer: 0,
+    activityResolveStarted: false,
+    activityResults: [],
     duels: [],
     classMarket: [],
     classPickOrder: [],
@@ -227,8 +251,19 @@ export function createGame(players: { id: string; name: string; isBot?: boolean 
     creatureDiscard: [],
     log: [],
   };
-  beginRound(state);
+  beginFirstRoll(state, turnOrder);
   return state;
+}
+
+// 게임 시작: 주사위를 굴려 가장 높은 사람이 첫 달의 선 (동점이면 동점자끼리 다시 굴린다)
+function beginFirstRoll(state: GameState, contenders: string[]): void {
+  state.hidden.roll = { kind: "first", contenders };
+  state.pendingRoll = {
+    kind: "first",
+    title: contenders.length === state.turnOrder.length ? "선 정하기" : "선 정하기 · 동점자 다시 굴리기",
+    lines: ["주사위를 굴려 가장 높은 친구가 첫 달의 선이 돼요. 선부터 시계방향으로 진행해요"],
+    entries: contenders.map((id) => ({ playerId: id, label: state.players[id].name, diceCount: 1, dice: null, confirmed: false })),
+  };
 }
 
 // ── 토큰 지불: 매력토큰은 언제든 charmRate개(기본 3개)를 지력토큰·체력토큰 1개로 바꿔 낼 수 있고,
@@ -288,20 +323,7 @@ function beginRound(state: GameState): void {
   beginClassPhase(state);
 }
 
-// 지력이 높은 순(동점이면 매력, 그다음 주사위)으로 수업카드를 고르는 순서
-function orderByIntelligence(state: GameState): string[] {
-  return state.turnOrder
-    .map((id) => ({
-      id,
-      intelligence: effectiveStat(state.players[id], "intelligence"),
-      charm: effectiveStat(state.players[id], "charm"),
-      roll: Math.random(),
-    }))
-    .sort((a, b) => b.intelligence - a.intelligence || b.charm - a.charm || b.roll - a.roll)
-    .map((entry) => entry.id);
-}
-
-// 2주차(정규수업): 인원수 + 1장을 공개하고, 지력이 높은 플레이어부터 원하는 카드 1장을 (체력토큰을 내고) 가져간다
+// 2주차(정규수업): 인원수 + 1장을 공개하고, 선 플레이어부터 시계방향으로 원하는 카드 1장을 (체력토큰을 내고) 가져간다
 function beginClassPhase(state: GameState): void {
   state.phase = "class";
   for (const playerId of state.turnOrder) state.players[playerId].hasActedThisPhase = false;
@@ -312,11 +334,11 @@ function beginClassPhase(state: GameState): void {
     if (!card) break;
     state.classMarket.push(card);
   }
-  state.classPickOrder = orderByIntelligence(state);
+  state.classPickOrder = orderFromStarter(state);
   state.classPickPointer = 0;
   log(
     state,
-    `2주차(정규수업): 수업카드 ${state.classMarket.length}장 공개 — 지력 순서: ${state.classPickOrder.map((id) => state.players[id].name).join(" → ")}`,
+    `2주차(정규수업): 수업카드 ${state.classMarket.length}장 공개 — 선 ${state.players[state.classPickOrder[0]].name}부터: ${state.classPickOrder.map((id) => state.players[id].name).join(" → ")}`,
   );
 }
 
@@ -358,9 +380,13 @@ export function takeClassCard(state: GameState, playerId: string, cardId: string
 function beginActivityPhase(state: GameState): void {
   state.phase = "activity";
   state.activitySlots = emptySlots();
-  state.activityOrder = orderByCharm(state);
-  state.startingPlayerIndex = state.turnOrder.indexOf(state.activityOrder[0]);
+  state.activityStage = "choose";
+  state.activityOrder = orderFromStarter(state);
   state.activityTurnPointer = 0;
+  state.activityChoices = [];
+  state.activityResolvePointer = 0;
+  state.activityResolveStarted = false;
+  state.activityResults = [];
   state.duels = [];
   state.activityOffers = {};
   state.pendingPick = null;
@@ -370,18 +396,20 @@ function beginActivityPhase(state: GameState): void {
   for (const playerId of state.turnOrder) {
     state.players[playerId].hasActedThisPhase = false;
   }
-  log(state, `3주차(자율활동) 시작 — 매력 순서: ${state.activityOrder.map((id) => state.players[id].name).join(" → ")}`);
+  log(state, `3주차(자율활동) 시작 — 선 ${state.players[state.activityOrder[0]].name}부터 활동을 골라요: ${state.activityOrder.map((id) => state.players[id].name).join(" → ")}`);
+  // 고를 수 있는 활동이 없는 플레이어는 처음부터 쉬어 간다
+  skipUnavailableChoosers(state);
 }
 
 // ── 자율활동: 구역 선택 규칙 ──
 
 export type ActivityView = Pick<GameState, "activitySlots" | "players" | "turnOrder" | "coopWaiting" | "activityOffers">;
 
-// 구역에 처음 들어와 카드를 여는 사람이 내는 지력토큰 (마법생물 조련·비밀의 방 탐색·주문 대결·연구실 실험).
-// 이미 카드가 열려 있으면(두 번째 참가자) 새로 열 필요가 없으니 내지 않는다
-export function activityOpenCost(state: Pick<GameState, "activityOffers">, activityId: ActivityId): number {
-  if (activityId === "tournament") return 0;
-  return state.activityOffers[activityId] ? 0 : BALANCE.openCardCost;
+// 구역에 처음 들어와 카드를 여는 사람이 내는 지력토큰 (주문 대결·연구실 실험만. 마법생물 조련·비밀의 방 탐색은 들지 않는다).
+// 이미 다른 친구가 고른 구역이면(두 번째 참가자) 새로 열 필요가 없으니 내지 않는다
+export function activityOpenCost(state: Pick<GameState, "activitySlots">, activityId: ActivityId): number {
+  if (!BALANCE.openCardCostActivities.includes(activityId)) return 0;
+  return state.activitySlots[activityId].length > 0 ? 0 : BALANCE.openCardCost;
 }
 
 // 이미 다른 플레이어가 있는 구역에 들어갈 때 내야 하는 체력토큰
@@ -421,17 +449,8 @@ function describeRoll(dice: number[], bonusParts: [string, number][]): string {
 
 // ── 자율활동: 활동별 처리 ──
 
-function startDuel(state: GameState, player: PlayerGameState, targetPlayerId: string | undefined, boost: number): void {
-  const target = targetPlayerId ? state.players[targetPlayerId] : undefined;
-  if (!target || target.id === player.id) throw new Error("주문 대결 상대를 지정해야 합니다.");
-  if (target.hasActedThisPhase) throw new Error("아직 자율활동을 고르지 않은 플레이어만 지목할 수 있습니다.");
-  // 지목당한 플레이어는 이번 달 자율활동으로 주문 대결을 강제로 하게 된다 (자기 차례는 건너뜀)
-  target.hasActedThisPhase = true;
-  state.duels.push({ challengerId: player.id, targetId: target.id });
-  // 지목당한 쪽은 남은 체력토큰이 있으면 자동으로 집중해 굴림 +1 (토큰은 어차피 4주차에 소멸)
-  const defenderBoost = canPay(target, 0, 1) ? 1 : 0;
-  if (defenderBoost) pay(target, "stamina", 1);
-  state.hidden.roll = { kind: "duel", challengerId: player.id, targetId: target.id, challengerBoost: boost, defenderBoost };
+function startDuel(state: GameState, player: PlayerGameState, target: PlayerGameState): void {
+  state.hidden.roll = { kind: "duel", challengerId: player.id, targetId: target.id };
   state.pendingRoll = {
     kind: "duel",
     title: `주문 대결 · ${player.name} vs ${target.name}`,
@@ -440,8 +459,8 @@ function startDuel(state: GameState, player: PlayerGameState, targetPlayerId: st
       `주사위 + 주문력이 큰 쪽이 이겨요. 도전자는 지목당한 친구에게 매력 ${BALANCE.duelCharmFee}을 건네요`,
     ],
     entries: [
-      { playerId: player.id, label: `${player.name} (도전자)`, diceCount: 1, dice: null },
-      { playerId: target.id, label: `${target.name} (지목당함)`, diceCount: 1, dice: null },
+      { playerId: player.id, label: `${player.name} (도전자)`, diceCount: 1, dice: null, confirmed: false },
+      { playerId: target.id, label: `${target.name} (지목당함)`, diceCount: 1, dice: null, confirmed: false },
     ],
   };
 }
@@ -463,8 +482,8 @@ function resolveDuel(state: GameState, ctx: Extract<RollContext, { kind: "duel" 
   const defenderBonus = sumEffect(defenderAbilities, "rollBonus") - sumEffect(challengerAbilities, "enemyRollPenalty");
   const challengerSpell = effectiveStat(player, "spellPower");
   const defenderSpell = effectiveStat(target, "spellPower");
-  const challengerRoll = Math.max(0, challengerDie + ctx.challengerBoost + challengerSpell + challengerBonus);
-  const defenderRoll = Math.max(0, defenderDie + ctx.defenderBoost + defenderSpell + defenderBonus);
+  const challengerRoll = Math.max(0, challengerDie + challengerSpell + challengerBonus);
+  const defenderRoll = Math.max(0, defenderDie + defenderSpell + defenderBonus);
   // 동점이면 매력이 높은 쪽, 매력도 같으면 도전받은 쪽(defender)이 승리 (주사위 재굴림 대신 기존 규칙 유지)
   const challengerWins =
     challengerRoll !== defenderRoll
@@ -484,17 +503,17 @@ function resolveDuel(state: GameState, ctx: Extract<RollContext, { kind: "duel" 
   if (loser !== target && loser.spellbookTokens > 0 && sumEffect(loserAbilities, "immune") === 0) {
     loser.spellbookTokens = Math.max(0, loser.spellbookTokens - BALANCE.duelLoserTokenLoss);
   }
-  const rollText = (die: number, boost: number, spell: number, bonus: number, total: number) =>
-    `${describeRoll([die], [["집중", boost], ["주문력", spell], ["능력", bonus]])} = ${total}`;
+  const rollText = (die: number, spell: number, bonus: number, total: number) =>
+    `${describeRoll([die], [["주문력", spell], ["능력", bonus]])} = ${total}`;
   log(
     state,
-    `${player.name}(${rollText(challengerDie, ctx.challengerBoost, challengerSpell, challengerBonus, challengerRoll)})이(가) ${target.name}(${rollText(defenderDie, ctx.defenderBoost, defenderSpell, defenderBonus, defenderRoll)})을(를) 지목! ${winner.name} 승리${fee > 0 ? ` — ${player.name}이(가) ${target.name}에게 매력 ${fee}을 건넸어요` : ""}`,
+    `${player.name}(${rollText(challengerDie, challengerSpell, challengerBonus, challengerRoll)})이(가) ${target.name}(${rollText(defenderDie, defenderSpell, defenderBonus, defenderRoll)})을(를) 지목! ${winner.name} 승리${fee > 0 ? ` — ${player.name}이(가) ${target.name}에게 매력 ${fee}을 건넸어요` : ""}`,
   );
   // 이긴 사람이 구역에 공개된 마도서 중 1장을 가져간다 (한 장만 남았으면 자동으로)
   const rewards = offerCards(state, "duel");
-  if (rewards.length === 1) takeOffered(state, winner, "duel", rewards[0], 0);
+  if (rewards.length === 1) takeOffered(state, winner, "duel", rewards[0]);
   else if (rewards.length > 1) {
-    state.pendingPick = { playerId: winner.id, activityId: "duel", mode: "reward", boost: 0 };
+    state.pendingPick = { playerId: winner.id, activityId: "duel", mode: "reward" };
   }
 }
 
@@ -503,10 +522,9 @@ function startExplorationRoll(
   state: GameState,
   card: ExplorationCard,
   playerIds: string[],
-  boosts: Record<string, number>,
   mode: "single" | "pair",
 ): void {
-  const ctx: RollContext = { kind: "exploration", card, playerIds, boosts, mode };
+  const ctx: RollContext = { kind: "exploration", card, playerIds, mode };
   const rule = explorationRule(card, mode);
   if (!rule) {
     resolveExploration(state, ctx, {});
@@ -522,7 +540,7 @@ function startExplorationRoll(
       card.description,
       mode === "pair" ? `둘의 (주사위 + ${stat}) 합이 ${target} 이상이면 성공! 보상은 둘 다 받아요` : `주사위 + ${stat} ≥ ${target} 이면 성공`,
     ],
-    entries: playerIds.map((id) => ({ playerId: id, label: state.players[id].name, diceCount: 1, dice: null })),
+    entries: playerIds.map((id) => ({ playerId: id, label: state.players[id].name, diceCount: 1, dice: null, confirmed: false })),
   };
 }
 
@@ -533,7 +551,7 @@ function explorationRule(card: ExplorationCard, mode: "single" | "pair"): { stat
 }
 
 function resolveExploration(state: GameState, ctx: Extract<RollContext, { kind: "exploration" }>, dice: Record<string, number>): void {
-  const { card, playerIds, boosts, mode } = ctx;
+  const { card, playerIds, mode } = ctx;
   let success = true;
   let rollText = "";
   const rule = explorationRule(card, mode);
@@ -544,8 +562,8 @@ function resolveExploration(state: GameState, ctx: Extract<RollContext, { kind: 
       // 선두와의 격차가 크면 역전 보너스: 뒤처진 플레이어의 한 방을 돕는다
       const catchUp = growthGap(state, id) >= BALANCE.catchUpGap ? BALANCE.catchUpBonus : 0;
       const statValue = effectiveStat(p, stat);
-      const total = dice[id] + (boosts[id] ?? 0) + catchUp + statValue;
-      return { p, total, text: `${describeRoll([dice[id]], [["집중", boosts[id] ?? 0], [STAT_NAME[stat], statValue], ["역전", catchUp]])} = ${total}` };
+      const total = dice[id] + catchUp + statValue;
+      return { p, total, text: `${describeRoll([dice[id]], [[STAT_NAME[stat], statValue], ["역전", catchUp]])} = ${total}` };
     });
     const target = rule.target;
     const total = sum(parts.map((x) => x.total));
@@ -627,9 +645,9 @@ function discardToZone(state: GameState, activityId: ActivityId, cards: OfferedC
   else state.explorationPile.discard.push(...(cards as ExplorationCard[]));
 }
 
-// 구역에 처음 들어온 사람이 카드를 연다 (기본 2장. 연구실은 집중하면 1장 더)
-function openOffer(state: GameState, activityId: ActivityId, boost: number): void {
-  const count = BALANCE.activityOpenCount + (activityId === "lab" ? boost : 0);
+// 구역에 처음 들어온 사람이 카드를 연다 (기본 2장)
+function openOffer(state: GameState, activityId: ActivityId): void {
+  const count = BALANCE.activityOpenCount;
   const cards: OfferedCard[] = [];
   for (let i = 0; i < count; i++) {
     const card = drawForZone(state, activityId);
@@ -653,24 +671,23 @@ function discardOffers(state: GameState): void {
   state.activityOffers = {};
 }
 
-const creatureCost = (card: CreatureCard, boost: number) => Math.max(1, card.requiredSpellPower - boost);
+const creatureCost = (card: CreatureCard) => card.requiredSpellPower;
 
 // 이 카드를 지금 가져갈 수 있는가 (비용을 낼 수 있는가). 마법생물은 마법 주문서, 연구 카드는 체력토큰(매력토큰으로 대신 가능)
-function canTake(player: PlayerGameState, activityId: ActivityId, card: OfferedCard, boost: number): boolean {
-  if (activityId === "creature") return player.spellbookTokens >= creatureCost(card as CreatureCard, boost);
+function canTake(player: PlayerGameState, activityId: ActivityId, card: OfferedCard): boolean {
+  if (activityId === "creature") return player.spellbookTokens >= creatureCost(card as CreatureCard);
   if (activityId === "lab") return canPay(player, 0, (card as LabCard).cost);
   return true;
 }
 
 // 공개된 카드를 실제로 가져와 효과를 적용한다 (비용도 여기서 낸다)
-function takeOffered(state: GameState, player: PlayerGameState, activityId: ActivityId, card: OfferedCard, boost: number): void {
+function takeOffered(state: GameState, player: PlayerGameState, activityId: ActivityId, card: OfferedCard): void {
   state.hidden.offers[activityId] = offerCards(state, activityId).filter((c) => c.id !== card.id);
   syncOfferView(state, activityId);
   switch (activityId) {
     case "creature": {
       const creature = card as CreatureCard;
-      // 체력토큰으로 집중하면 필요한 마법 주문서가 줄어든다 (최소 1개)
-      player.spellbookTokens -= creatureCost(creature, boost);
+      player.spellbookTokens -= creatureCost(creature);
       const creditBefore = creatureCollectionCredit(player.creatures);
       player.creatures.push(creature);
       if (creature.ability.trigger === "acquire" && creature.ability.effect === "spellPower") player.spellPower += creature.ability.amount;
@@ -704,18 +721,18 @@ function takeOffered(state: GameState, player: PlayerGameState, activityId: Acti
       const exploration = card as ExplorationCard;
       if (exploration.coop) {
         // 협력 카드: 함께할 친구가 나타날 때까지 기다린다 (끝까지 없으면 3주차 마지막에 무효)
-        state.hidden.coop = { card: exploration, playerId: player.id, boost };
+        state.hidden.coop = { card: exploration, playerId: player.id };
         state.coopWaiting = describeCoop(exploration, player.id);
         log(state, `${player.name}: 비밀의 방에서 협력 카드 "${exploration.name}"를 골랐어요! 함께할 친구를 기다려요`);
       } else {
-        startExplorationRoll(state, exploration, [player.id], { [player.id]: boost }, "single");
+        startExplorationRoll(state, exploration, [player.id], "single");
       }
     }
   }
 }
 
 // 구역에 들어온 사람의 카드 처리: 처음 온 사람은 카드를 열고 원하는 카드를 고르고, 두 번째 참가자는 남은 카드를 가져간다
-function startZonePick(state: GameState, activityId: ActivityId, player: PlayerGameState, boost: number): void {
+function startZonePick(state: GameState, activityId: ActivityId, player: PlayerGameState): void {
   const isFirst = !state.hidden.offers[activityId];
   if (activityId === "exploration" && state.hidden.coop) {
     // 함께할 친구를 기다리는 협력 카드가 있으면 그 카드에 합류한다 (남은 카드는 버려진다)
@@ -725,10 +742,10 @@ function startZonePick(state: GameState, activityId: ActivityId, player: PlayerG
     discardToZone(state, "exploration", offerCards(state, "exploration"));
     state.hidden.offers.exploration = [];
     syncOfferView(state, "exploration");
-    startExplorationRoll(state, hold.card, [hold.playerId, player.id], { [hold.playerId]: hold.boost, [player.id]: boost }, "pair");
+    startExplorationRoll(state, hold.card, [hold.playerId, player.id], "pair");
     return;
   }
-  if (isFirst) openOffer(state, activityId, boost);
+  if (isFirst) openOffer(state, activityId);
   // 협력 카드는 함께할 자리가 있을 때만 의미가 있다: 두 번째 참가자는 협력 카드를 고를 수 없으니 남은 카드가 협력 카드면 새로 뽑는다
   if (!isFirst && activityId === "exploration") {
     const rest = offerCards(state, "exploration");
@@ -751,22 +768,24 @@ function startZonePick(state: GameState, activityId: ActivityId, player: PlayerG
     log(state, `${player.name}: ${ACTIVITY_NAME[activityId]}에 남은 카드가 없어요`);
     return;
   }
-  const takeable = cards.filter((c) => canTake(player, activityId, c, boost));
+  const takeable = cards.filter((c) => canTake(player, activityId, c));
   if (takeable.length === 0) {
     log(state, `${player.name}: 비용이 모자라서 ${ACTIVITY_NAME[activityId]}의 카드를 가져오지 못했어요`);
     return;
   }
   if (cards.length === 1) {
-    takeOffered(state, player, activityId, cards[0], boost);
+    takeOffered(state, player, activityId, cards[0]);
     return;
   }
-  state.pendingPick = { playerId: player.id, activityId, mode: "take", boost };
+  state.pendingPick = { playerId: player.id, activityId, mode: "take" };
 }
 
-function startActivity(state: GameState, activityId: ActivityId, player: PlayerGameState, targetPlayerId: string | undefined, boost: number): void {
-  switch (activityId) {
+// 활동 하나를 실제로 진행한다 (진행 단계에서 선택한 순서대로 하나씩 호출된다)
+function startActivity(state: GameState, choice: ActivityChoice): void {
+  const player = state.players[choice.playerId];
+  switch (choice.activityId) {
     case "tournament": {
-      const gain = effectiveStat(player, "spellPower") + boost;
+      const gain = effectiveStat(player, "spellPower");
       const before = player.tournamentTrack;
       player.tournamentTrack += gain;
       const step = BALANCE.tournamentMilestoneStep;
@@ -776,26 +795,22 @@ function startActivity(state: GameState, activityId: ActivityId, player: PlayerG
       log(state, `${player.name}: 마법 토너먼트 참가 (트랙 ${player.tournamentTrack}칸)${milestoneCredit > 0 ? ` — 이정표 학점 +${milestoneCredit}` : ""}`);
       break;
     }
-    case "duel":
+    case "duel": {
       // 주문 대결은 이긴 사람이 마도서를 고른다: 처음 도전한 사람이 카드를 열어 둔다
-      if (!state.hidden.offers.duel) openOffer(state, "duel", boost);
-      startDuel(state, player, targetPlayerId, boost);
+      if (!state.hidden.offers.duel) openOffer(state, "duel");
+      startDuel(state, player, state.players[choice.targetPlayerId!]);
       break;
+    }
     default:
-      startZonePick(state, activityId, player, boost);
+      startZonePick(state, choice.activityId, player);
   }
 }
 
-export function selectActivity(
-  state: GameState,
-  playerId: string,
-  activityId: ActivityId,
-  targetPlayerId?: string,
-  useStamina = false,
-): void {
+// 선택 단계: 선부터 시계방향으로 각자 활동을 고른다. 고른 활동은 모두에게 공개되고, 모두 고르면 진행 단계에서 하나씩 처리한다.
+// 비용(구역 두 번째 참가비·카드를 여는 지력토큰)은 고르는 순간 낸다
+export function selectActivity(state: GameState, playerId: string, activityId: ActivityId, targetPlayerId?: string): void {
   if (state.phase !== "activity") throw new Error("지금은 자율활동 단계가 아닙니다.");
-  if (state.pendingPick) throw new Error("공개된 카드 중 하나를 먼저 골라야 합니다.");
-  if (state.pendingRoll) throw new Error("주사위를 먼저 굴려야 합니다.");
+  if (state.activityStage !== "choose") throw new Error("이미 모두 활동을 골랐어요. 차례대로 진행 중이에요.");
   const currentTurnPlayerId = state.activityOrder[state.activityTurnPointer];
   if (currentTurnPlayerId !== playerId) throw new Error("당신의 차례가 아닙니다.");
   if (!ACTIVITY_IDS.includes(activityId)) throw new Error("존재하지 않는 활동입니다.");
@@ -803,33 +818,38 @@ export function selectActivity(
   const player = state.players[playerId];
   const blocked = activityBlockReason(state, playerId, activityId);
   if (blocked) throw new Error(blocked);
-  // 먼저 온 친구가 있는 구역은 체력토큰 1개를 더 내고, 남은 체력토큰 1개로 집중하면 활동마다 +1 효과
-  // (토큰은 4주차에 소멸하므로 남겨도 쓸모없다)
-  const extra = activityExtraCost(state, activityId);
-  const focusCost = useStamina ? 1 : 0;
-  const feeByCharm = planPayment(player, activityOpenCost(state, activityId), focusCost, extra);
-  if (feeByCharm < 0) throw new Error("집중에 쓸 체력토큰이 없습니다.");
+  let target: PlayerGameState | undefined;
   if (activityId === "duel") {
-    const target = targetPlayerId ? state.players[targetPlayerId] : undefined;
+    target = targetPlayerId ? state.players[targetPlayerId] : undefined;
     if (!target || target.id === playerId) throw new Error("주문 대결 상대를 지정해야 합니다.");
     if (target.hasActedThisPhase) throw new Error("아직 자율활동을 고르지 않은 플레이어만 지목할 수 있습니다.");
   }
-
-  player.charmTokens -= feeByCharm; // 참가비는 매력토큰 1개로 (체력토큰 대신) 낼 수 있다
-  pay(player, "stamina", extra - feeByCharm + focusCost);
+  // 먼저 온 친구가 있는 구역은 체력토큰 1개를 더 낸다 (매력토큰 1개로 대신 낼 수 있다)
+  const extra = activityExtraCost(state, activityId);
+  const feeByCharm = planPayment(player, activityOpenCost(state, activityId), 0, extra);
+  if (feeByCharm < 0) throw new Error("토큰이 부족합니다.");
+  player.charmTokens -= feeByCharm;
+  pay(player, "stamina", extra - feeByCharm);
   // 구역에 처음 들어와 카드를 여는 사람이 지력토큰을 낸다
   pay(player, "intelligence", activityOpenCost(state, activityId));
   state.activitySlots[activityId].push(playerId);
   player.hasActedThisPhase = true;
-  startActivity(state, activityId, player, targetPlayerId, focusCost);
-  // 공개된 카드를 고르거나 주사위를 굴릴 때까지 차례가 끝나지 않는다
-  if (!state.pendingPick && !state.pendingRoll) finishActivityTurn(state);
+  state.activityChoices.push({ playerId, activityId, targetPlayerId: target?.id });
+  if (target) {
+    // 지목당한 플레이어는 이번 달 자율활동으로 주문 대결을 강제로 하게 된다 (자기 차례는 건너뜀)
+    target.hasActedThisPhase = true;
+    state.duels.push({ challengerId: playerId, targetId: target.id });
+    log(state, `${player.name}: ${ACTIVITY_NAME[activityId]} 선택 — ${target.name}님을 지목했어요`);
+  } else {
+    log(state, `${player.name}: ${ACTIVITY_NAME[activityId]} 선택`);
+  }
+  state.activityTurnPointer += 1;
+  skipUnavailableChoosers(state);
 }
 
-// 다음 차례로 넘긴다. 주문 대결에 지목당해 이미 활동을 마친 플레이어는 건너뛰고,
-// 고를 수 있는 활동이 없는 플레이어는 쉬어 가며 다음 달 체력토큰 +1을 받는다
-function finishActivityTurn(state: GameState): void {
-  if (state.activityTurnPointer < state.activityOrder.length) state.activityTurnPointer += 1;
+// 다음에 고를 사람을 찾는다. 주문 대결에 지목당해 이미 활동이 정해진 플레이어는 건너뛰고,
+// 고를 수 있는 활동이 없는 플레이어는 쉬어 가며 다음 달 체력토큰 +1을 받는다. 모두 골랐으면 진행 단계로 넘어간다
+function skipUnavailableChoosers(state: GameState): void {
   while (state.activityTurnPointer < state.activityOrder.length) {
     const player = state.players[state.activityOrder[state.activityTurnPointer]];
     if (!player.hasActedThisPhase && availableActivities(state, player.id).length === 0) {
@@ -837,12 +857,60 @@ function finishActivityTurn(state: GameState): void {
       player.pendingStaminaTokens += 1;
       log(state, `${player.name}: 고를 수 있는 구역이 없어 쉬어 갑니다 (다음 달 체력토큰 +1)`);
     }
-    if (!player.hasActedThisPhase) break;
+    if (!player.hasActedThisPhase) return;
     state.activityTurnPointer += 1;
   }
-  if (state.activityTurnPointer < state.activityOrder.length) return;
+  beginResolveStage(state);
+}
 
-  // 끝까지 함께할 친구가 나타나지 않은 협력 카드는 무효가 된다 (열었던 지력토큰과 집중한 체력토큰은 돌려받지 못한다)
+function beginResolveStage(state: GameState): void {
+  state.activityStage = "resolve";
+  state.activityResolvePointer = 0;
+  state.activityResolveStarted = false;
+  state.activityResults = [];
+  if (state.activityChoices.length === 0) {
+    endActivityPhase(state);
+    return;
+  }
+  log(state, `모두 활동을 골랐어요! 차례대로 진행해요: ${state.activityChoices.map((c) => `${state.players[c.playerId].name}(${ACTIVITY_NAME[c.activityId]})`).join(" → ")}`);
+}
+
+// 진행 단계: 다음 활동 하나를 시작한다 (서버가 화면 연출용 간격을 두고 호출한다). 시작할 활동이 없으면 아무 일도 하지 않는다
+export function canAdvanceResolution(state: GameState): boolean {
+  return (
+    state.phase === "activity" &&
+    state.activityStage === "resolve" &&
+    !state.activityResolveStarted &&
+    !state.pendingPick &&
+    !state.pendingRoll &&
+    state.activityResolvePointer < state.activityChoices.length
+  );
+}
+
+export function advanceResolution(state: GameState): void {
+  if (!canAdvanceResolution(state)) return;
+  const choice = state.activityChoices[state.activityResolvePointer];
+  state.activityResolveStarted = true;
+  state.hidden.resolveLogStart = state.log.length;
+  startActivity(state, choice);
+  // 공개된 카드를 고르거나 주사위를 굴릴 때까지 다음으로 넘어가지 않는다
+  if (!state.pendingPick && !state.pendingRoll) finishResolutionStep(state);
+}
+
+// 현재 활동의 진행을 마치고 결과를 남긴다. 마지막 활동이었다면 3주차를 마친다
+function finishResolutionStep(state: GameState): void {
+  const choice = state.activityChoices[state.activityResolvePointer];
+  if (choice) {
+    const lines = state.log.slice(state.hidden.resolveLogStart ?? 0).map((e) => e.message);
+    state.activityResults.push({ playerId: choice.playerId, activityId: choice.activityId, lines });
+  }
+  state.activityResolvePointer += 1;
+  state.activityResolveStarted = false;
+  if (state.activityResolvePointer >= state.activityChoices.length) endActivityPhase(state);
+}
+
+function endActivityPhase(state: GameState): void {
+  // 끝까지 함께할 친구가 나타나지 않은 협력 카드는 무효가 된다 (열었던 지력토큰은 돌려받지 못한다)
   const hold = state.hidden.coop;
   if (hold) {
     state.hidden.coop = null;
@@ -860,26 +928,26 @@ export function chooseActivityCard(state: GameState, playerId: string, cardId: s
   const pick = state.pendingPick;
   if (!pick || pick.playerId !== playerId) throw new Error("지금은 카드를 고를 수 없습니다.");
   const player = state.players[playerId];
-  const boost = pick.boost;
   if (cardId === null) {
     if (pick.mode === "reward" || pick.activityId === "exploration") throw new Error("공개된 카드 중 하나를 골라야 해요.");
     state.pendingPick = null;
     log(state, `${player.name}: ${ACTIVITY_NAME[pick.activityId]}의 카드를 가져가지 않고 넘어갔어요`);
-    finishActivityTurn(state);
+    finishResolutionStep(state);
     return;
   }
   const card = offerCards(state, pick.activityId).find((c) => c.id === cardId);
   if (!card) throw new Error("공개된 카드 중에서만 고를 수 있습니다.");
-  if (!canTake(player, pick.activityId, card, boost)) throw new Error("비용이 모자라서 이 카드는 가져갈 수 없어요 (매력토큰으로 대신 낼 수 있어요).");
+  if (!canTake(player, pick.activityId, card)) throw new Error("비용이 모자라서 이 카드는 가져갈 수 없어요 (매력토큰으로 대신 낼 수 있어요).");
   state.pendingPick = null;
-  takeOffered(state, player, pick.activityId, card, boost);
-  // 탐험 판정이나 다음 선택이 남아 있지 않으면 차례를 넘긴다
-  if (!state.pendingRoll && !state.pendingPick) finishActivityTurn(state);
+  takeOffered(state, player, pick.activityId, card);
+  // 탐험 판정이나 다음 선택이 남아 있지 않으면 다음 활동으로 넘긴다
+  if (!state.pendingRoll && !state.pendingPick) finishResolutionStep(state);
 }
 
-// ── 주사위 굴리기 (주문 대결·탐험 판정·시험) ──
+// ── 주사위 굴리기 (선 정하기·주문 대결·탐험 판정·시험) ──
+// 굴려야 하는 사람이 모두 굴리면 결과가 화면에 나오고, 굴린 사람들이 결과를 눈으로 확인한 뒤 "확인"을 눌러야 결과가 적용된다
 
-// 주사위 굴리기 버튼: 서버가 굴려서 결과를 기록하고, 굴려야 하는 사람이 모두 굴렸으면 결과를 처리한다
+// 주사위 굴리기 버튼: 서버가 굴려서 결과를 기록한다
 export function submitRoll(state: GameState, playerId: string): void {
   const pending = state.pendingRoll;
   if (!pending) throw new Error("지금은 주사위를 굴릴 차례가 아닙니다.");
@@ -887,7 +955,22 @@ export function submitRoll(state: GameState, playerId: string): void {
   if (!entry) throw new Error("이번 굴림에 참여하지 않습니다.");
   if (entry.dice) throw new Error("이미 주사위를 굴렸습니다.");
   entry.dice = rollDice(entry.diceCount);
-  if (pending.entries.every((e) => e.dice !== null)) resolveRoll(state);
+}
+
+// 모두 굴렸는가 (결과를 확인하는 단계)
+export function rollRevealed(state: Pick<GameState, "pendingRoll">): boolean {
+  return !!state.pendingRoll && state.pendingRoll.entries.every((e) => e.dice !== null);
+}
+
+// 결과 확인 버튼: 모든 참여자가 확인하면 결과를 적용한다
+export function confirmRoll(state: GameState, playerId: string): void {
+  const pending = state.pendingRoll;
+  if (!pending) throw new Error("지금은 주사위 결과를 확인할 때가 아닙니다.");
+  const entry = pending.entries.find((e) => e.playerId === playerId);
+  if (!entry) throw new Error("이번 굴림에 참여하지 않습니다.");
+  if (!rollRevealed(state)) throw new Error("모두 주사위를 굴린 뒤에 확인할 수 있어요.");
+  entry.confirmed = true;
+  if (pending.entries.every((e) => e.confirmed)) resolveRoll(state);
 }
 
 function resolveRoll(state: GameState): void {
@@ -897,15 +980,31 @@ function resolveRoll(state: GameState): void {
   const diceOf = (id: string) => pending.entries.find((e) => e.playerId === id)?.dice ?? [];
   state.pendingRoll = null;
   state.hidden.roll = null;
-  if (ctx.kind === "duel") {
+  if (ctx.kind === "first") {
+    resolveFirstRoll(state, ctx.contenders, diceOf);
+  } else if (ctx.kind === "duel") {
     resolveDuel(state, ctx, diceOf(ctx.challengerId)[0], diceOf(ctx.targetId)[0]);
-    if (!state.pendingPick) finishActivityTurn(state);
+    if (!state.pendingPick) finishResolutionStep(state);
   } else if (ctx.kind === "exploration") {
     resolveExploration(state, ctx, Object.fromEntries(ctx.playerIds.map((id) => [id, diceOf(id)[0]])));
-    finishActivityTurn(state);
+    finishResolutionStep(state);
   } else {
     resolveExam(state, ctx.examType, ctx.card, Object.fromEntries(state.turnOrder.map((id) => [id, diceOf(id)])));
   }
+}
+
+// 선 정하기: 가장 높은 눈이 선. 동점이면 동점자끼리 다시 굴린다
+function resolveFirstRoll(state: GameState, contenders: string[], diceOf: (id: string) => number[]): void {
+  const top = Math.max(...contenders.map((id) => diceOf(id)[0]));
+  const winners = contenders.filter((id) => diceOf(id)[0] === top);
+  if (winners.length > 1) {
+    log(state, `선 정하기: ${winners.map((id) => state.players[id].name).join(", ")}님이 ${top}으로 동점이라 다시 굴려요`);
+    beginFirstRoll(state, winners);
+    return;
+  }
+  state.startingPlayerIndex = state.turnOrder.indexOf(winners[0]);
+  log(state, `선 정하기: ${state.players[winners[0]].name}님이 선이에요! 선부터 시계방향으로 진행해요`);
+  beginRound(state);
 }
 
 function beginCleanupPhase(state: GameState): void {
@@ -926,6 +1025,13 @@ function beginCleanupPhase(state: GameState): void {
     player.hasActedThisPhase = false;
   }
   log(state, "4주차(정리): 남은 토큰 소멸");
+  const nextIndex = nextStarterIndex(state);
+  if (nextIndex !== state.startingPlayerIndex) {
+    state.startingPlayerIndex = nextIndex;
+    log(state, `4주차(정리): 매력이 가장 높은 ${state.players[state.turnOrder[nextIndex]].name}님이 다음 달 선이 돼요`);
+  } else {
+    log(state, `4주차(정리): 다음 달도 ${state.players[state.turnOrder[nextIndex]].name}님이 선이에요 (매력이 가장 높거나 같아요)`);
+  }
 
   if (state.round === BALANCE.midtermRound) {
     beginExam(state, "midterm_exam");
@@ -966,11 +1072,11 @@ function beginExam(state: GameState, examType: "midterm_exam" | "final_exam"): v
     lines: [`${describeExam(card, STAT_NAME)}로 점수를 내고, 높은 순서로 순위를 매겨요`],
     entries: state.turnOrder.map((id) => {
       const diceCount = effectiveStat(state.players[id], card.diceStat);
-      return { playerId: id, label: state.players[id].name, diceCount, dice: diceCount === 0 ? [] : null };
+      return { playerId: id, label: state.players[id].name, diceCount, dice: diceCount === 0 ? [] : null, confirmed: diceCount === 0 };
     }),
   };
   // 굴릴 주사위가 하나도 없으면 바로 결과를 처리한다
-  if (state.pendingRoll.entries.every((e) => e.dice !== null)) resolveRoll(state);
+  if (state.pendingRoll.entries.every((e) => e.confirmed)) resolveRoll(state);
 }
 
 function resolveExam(state: GameState, examType: "midterm_exam" | "final_exam", card: ExamCard, diceByPlayer: Record<string, number[]>): void {
@@ -1028,16 +1134,21 @@ function applyTournamentFinalRewards(state: GameState): void {
   });
 }
 
+// 최종 점수: 마법 성취도(주문력 × 학점) + 마법생물 세트(하늘·육지·바다 1장씩) 점수
+export function finalScore(player: PlayerGameState): number {
+  return effectiveStat(player, "spellPower") * player.credit + creatureSets(player.creatures) * BALANCE.creatureSetScore;
+}
+
 function finalizeGame(state: GameState): void {
   state.phase = "ended";
   const achievements = state.turnOrder.map((id) => ({
     playerId: id,
-    achievement: effectiveStat(state.players[id], "spellPower") * state.players[id].credit,
+    achievement: finalScore(state.players[id]),
   }));
   // 성취도 동점이면 매력 → 주사위 순으로 단독 승자 결정
   achievements.sort(
     (a, b) => b.achievement - a.achievement || compareTieBreak(state, a.playerId, b.playerId),
   );
   state.winnerIds = [achievements[0].playerId];
-  log(state, "게임 종료: 마법 성취도(주문력 × 학점) 최고 플레이어 승리");
+  log(state, "게임 종료: 최종 점수(주문력 × 학점 + 마법생물 세트 점수) 최고 플레이어 승리");
 }
