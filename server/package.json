@@ -8,6 +8,7 @@
     "build": "tsc -p tsconfig.json",
     "start": "node dist/index.js",
     "simulate": "tsx scripts/simulate.ts",
+    "simulate:stat": "tsx scripts/stat-value.ts",
     "check": "tsx scripts/rules-check.ts",
     "smoke": "tsx scripts/smoke.ts",
     "smoke:bot": "tsx scripts/smoke-bot.ts",
