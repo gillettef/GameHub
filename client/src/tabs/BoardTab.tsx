@@ -80,7 +80,7 @@ export const BoardTab = memo(function BoardTab() {
             <MarkerInfo marker={inspected.marker} terrain={inspected.terrain} onClose={() => placeAt(inspected.x, inspected.y)} />
           ) : selectedCardId && !discardMode && !cardInfoHidden ? (
             <div className={styles.cardInfo}>
-              <CardInfo cardId={selectedCardId} />
+              <CardInfo cardId={selectedCardId} onClose={() => setCardInfoHidden(true)} />
             </div>
           ) : null}
         </div>

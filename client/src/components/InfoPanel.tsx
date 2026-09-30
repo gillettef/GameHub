@@ -58,7 +58,7 @@ const InfoPanel = memo(function InfoPanel({ title, meta, stats, spec, terrain, o
 });
 
 /** 손패에서 고른 카드의 설명 */
-export const CardInfo = memo(function CardInfo({ cardId }: { cardId: string }) {
+export const CardInfo = memo(function CardInfo({ cardId, onClose }: { cardId: string; onClose?: () => void }) {
   const spec = getSpec(cardId);
   const bits = [`비용 ${spec.cost}`, `시야 ${spec.sight}`];
   if (spec.hp > 0) bits.push(`체력 ${spec.hp}`);
@@ -66,7 +66,7 @@ export const CardInfo = memo(function CardInfo({ cardId }: { cardId: string }) {
   if (spec.range > 0) bits.push(`사거리 ${spec.range}`);
   if (spec.production > 0) bits.push(`생산 +${spec.production}`);
   bits.push(`점수 ${spec.score}`);
-  return <InfoPanel title={spec.name} meta={kindLabel(spec.kind)} stats={bits.join(' · ')} spec={spec} />;
+  return <InfoPanel title={spec.name} meta={kindLabel(spec.kind)} stats={bits.join(' · ')} spec={spec} onClose={onClose} />;
 });
 
 /** 보드에서 탭한 마커의 설명 (지형 보정이 반영된 실제 수치) */
