@@ -74,8 +74,17 @@ function templates(): Omit<ClassCard, "id">[] {
 
 export const CLASS_DECK_SIZE = templates().length;
 
-export function createClassDeck(makeId: () => string): ClassCard[] {
-  const deck = templates().map((t) => ({ ...t, id: makeId() }));
+// 덱은 인원 × perPlayer장: 능력치마다 같은 장수가 되도록 능력치별 12장 한 벌을 섞어 필요한 만큼 이어 붙인다
+export function createClassDeck(makeId: () => string, playerCount = 4, perPlayer = 14): ClassCard[] {
+  const perStat = Math.ceil((playerCount * perPlayer) / STATS.length);
+  const deck: ClassCard[] = [];
+  for (const stat of STATS) {
+    const pool = templates().filter((t) => t.statBoost.stat === stat);
+    for (let i = 0; i < perStat; i++) {
+      if (i % pool.length === 0) for (let k = pool.length - 1; k > 0; k--) { const j = Math.floor(Math.random() * (k + 1)); [pool[k], pool[j]] = [pool[j], pool[k]]; }
+      deck.push({ ...pool[i % pool.length], id: makeId() });
+    }
+  }
   for (let i = deck.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [deck[i], deck[j]] = [deck[j], deck[i]];

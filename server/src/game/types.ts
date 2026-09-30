@@ -128,7 +128,6 @@ export interface PlayerGameState {
   equipment: LabCard[];
   peekedExploration: PeekedExploration | null;
   grimoires: GrimoireCard[];
-  offeredClassCards: ClassCard[];
   hasActedThisPhase: boolean;
 }
 
@@ -184,8 +183,26 @@ export type RollContext =
   | { kind: "exploration"; card: ExplorationCard; playerIds: string[]; boosts: Record<string, number>; mode: "single" | "pair" }
   | { kind: "exam"; examType: "midterm_exam" | "final_exam"; card: ExamCard };
 
+// 구역에 공개된 카드를 화면에 보여 주기 위한 정보 (카드 종류와 상관없이 같은 모양)
+export interface OfferCardView {
+  id: string;
+  name: string;
+  description: string;
+  lines: string[];
+  // 이 카드를 가져가는 데 드는 비용 (체력토큰 또는 마법 주문서)
+  cost?: { kind: "stamina" | "spellbook"; amount: number };
+}
+
+export interface ActivityOffer {
+  cards: OfferCardView[];
+}
+
+export type OfferedCard = CreatureCard | LabCard | ExplorationCard | GrimoireCard;
+
 export interface HiddenState {
   roll: RollContext | null;
+  // 구역에 공개된 실제 카드 (activityOffers와 같은 순서·같은 장수)
+  offers: Partial<Record<ActivityId, OfferedCard[]>>;
   // 이번 게임의 시험 카드 (공개 시점 전에는 서버만 안다)
   examPlan: { midterm: ExamCard; final: ExamCard };
   // 협력 카드를 뽑았지만 아직 함께할 친구가 없는 상태 (boost: 뽑은 사람이 집중으로 쓴 체력토큰 효과)
@@ -204,8 +221,14 @@ export interface GameState {
   activityTurnPointer: number;
   // 이번 달 주문 대결 목록 (도전자 → 지목당한 사람). 지목당한 사람은 구역을 차지하지 않고 추가 비용도 내지 않는다
   duels: DuelPair[];
-  // 연구실 실험 중 카드 선택 대기 (후보 카드는 고르는 본인에게만 전송)
-  pendingLab: { playerId: string; cards: LabCard[] } | null;
+  // 2주차(정규수업): 이번 달에 공개된 수업카드(인원수+1장, 모두 볼 수 있다)와 선택 순서(지력 높은 순). 순서대로 1장씩 가져간다
+  classMarket: ClassCard[];
+  classPickOrder: string[];
+  classPickPointer: number;
+  // 3주차(자율활동): 구역에 처음 들어온 사람이 열어 둔 카드(모두 볼 수 있다). 먼저 온 사람이 원하는 카드를 가져가고 남는 카드는 두 번째 참가자가 가져간다
+  activityOffers: Partial<Record<ActivityId, ActivityOffer>>;
+  // 공개된 카드 중 하나를 고르는 중 (take: 구역에서 카드 가져가기, reward: 주문 대결 승자의 마도서 선택)
+  pendingPick: { playerId: string; activityId: ActivityId; mode: "take" | "reward"; boost: number } | null;
   // 주사위를 굴리는 중 (주문 대결·탐험 판정·시험)
   pendingRoll: PendingRoll | null;
   // 함께할 친구를 기다리는 협력 탐험 카드

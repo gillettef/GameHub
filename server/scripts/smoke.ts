@@ -78,9 +78,7 @@ async function main() {
   const game = host.game;
   const errors = clients.flatMap((c) => c.errors);
   if (!game || game.phase !== "ended") throw new Error(`게임이 끝나지 않았습니다 (phase=${game?.phase}, round=${game?.round}, errors=${errors.join("|")})`);
-  // 여러 클라이언트가 마지막 남은 수업카드를 동시에 열려는 경합은 정상적인 거절이다
-  const unexpected = errors.filter((e) => !e.includes("더 열 수 있는 수업카드가 없습니다"));
-  if (unexpected.length) throw new Error(`서버 오류 메시지 수신: ${unexpected.join(" | ")}`);
+  if (errors.length) throw new Error(`서버 오류 메시지 수신: ${errors.join(" | ")}`);
 
   // 비공개 정보가 클라이언트로 새지 않는지 확인
   const raw = JSON.stringify(game);
@@ -89,7 +87,6 @@ async function main() {
   }
   for (const c of clients) {
     for (const [id, p] of Object.entries(c.game!.players)) {
-      if (id !== c.playerId && p.offeredClassCards.length > 0) throw new Error("다른 플레이어의 제시 카드가 노출되었습니다");
       if (id !== c.playerId && p.peekedExploration) throw new Error("다른 플레이어가 엿본 탐험 카드가 노출되었습니다");
     }
   }

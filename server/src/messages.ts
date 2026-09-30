@@ -12,12 +12,12 @@ export type ClientMessage =
   | { type: "start_game" }
   | { type: "add_bot" }
   | { type: "remove_bot"; botId: string }
-  | { type: "open_class_card" }
-  | { type: "submit_class_choice"; keepCardIds: string[] }
+  // 2주차: 공개된 수업카드 중 1장을 가져간다 (cardId가 null이면 가져가지 않고 넘어간다)
+  | { type: "take_class_card"; cardId: string | null }
   | { type: "roll_dice" }
   | { type: "select_activity"; activityId: ActivityId; targetPlayerId?: string; useStamina?: boolean }
-  // cardId가 null이면 연구 카드를 고르지 않고 넘어간다
-  | { type: "choose_lab_card"; cardId: string | null };
+  // 3주차 구역에 공개된 카드 중 1장을 고른다 (마법생물·연구 카드는 cardId가 null이면 가져가지 않고 넘어간다)
+  | { type: "pick_activity_card"; cardId: string | null };
 
 export type ServerMessage =
   | { type: "room_created"; roomCode: string; playerId: string; players: RoomPlayerInfo[] }

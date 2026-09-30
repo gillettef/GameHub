@@ -87,7 +87,6 @@ export interface PlayerGameState {
   creatures: CreatureCard[];
   equipment: LabCard[];
   grimoires: GrimoireCard[];
-  offeredClassCards: ClassCard[];
   hasActedThisPhase: boolean;
 }
 
@@ -119,6 +118,20 @@ export interface PendingRoll {
   entries: { playerId: string; label: string; diceCount: number; dice: number[] | null }[];
 }
 
+// 구역에 공개된 카드를 보여 주기 위한 정보 (카드 종류와 상관없이 같은 모양)
+export interface OfferCardView {
+  id: string;
+  name: string;
+  description: string;
+  lines: string[];
+  // 가져가는 데 드는 비용 (체력토큰 또는 마법 주문서)
+  cost?: { kind: "stamina" | "spellbook"; amount: number };
+}
+
+export interface ActivityOffer {
+  cards: OfferCardView[];
+}
+
 // 함께할 친구를 기다리는 협력 탐험 카드
 export interface CoopWaiting {
   playerId: string;
@@ -137,7 +150,7 @@ export interface DuelPair {
 
 // 서버가 알려 주는 규칙 수치 (비용 안내용)
 export interface PublicRules {
-  // 카드를 한 장 열 때 드는 지력토큰 (수업카드·마법생물·비밀의 방·연구 카드·마도서 공통)
+  // 3주차 구역에 처음 들어와 카드를 열 때 드는 지력토큰
   openCardCost: number;
   activityMaxParticipants: number;
   activitySecondParticipantCost: number;
@@ -161,7 +174,14 @@ export interface GameState {
   activityOrder: string[];
   activityTurnPointer: number;
   duels: DuelPair[];
-  pendingLab: { playerId: string; cards: LabCard[] } | null;
+  // 2주차(정규수업): 공개된 수업카드(인원수+1장)와 선택 순서(지력 높은 순)
+  classMarket: ClassCard[];
+  classPickOrder: string[];
+  classPickPointer: number;
+  // 3주차 구역에 공개된 카드 (처음 들어온 사람이 열고, 먼저 온 사람이 고르고 남은 카드는 두 번째 참가자가 가져간다)
+  activityOffers: Partial<Record<ActivityId, ActivityOffer>>;
+  // 공개된 카드 중 하나를 고르는 중 (take: 구역에서 가져가기, reward: 주문 대결 승자의 마도서 선택). boost: 집중 효과(마법생물 주문서 -1)
+  pendingPick: { playerId: string; activityId: ActivityId; mode: "take" | "reward"; boost: number } | null;
   pendingRoll: PendingRoll | null;
   coopWaiting: CoopWaiting | null;
   // 공개된 시험 카드 (공개 전에는 null)
@@ -197,10 +217,10 @@ export const ACTIVITY_LABEL: Record<ActivityId, string> = {
 // 활동 카드에 함께 보여줄 한 줄 설명 (집중하면 +1)
 export const ACTIVITY_HINT: Record<ActivityId, string> = {
   tournament: "주문력만큼 트랙 전진 (집중: +1칸)",
-  creature: "주문서로 마법생물 획득, 속성을 모으면 학점 (집중: 주문서 -1)",
-  duel: "아직 안 고른 한 명을 지목해 강제 대결, 이기면 마도서 (집중: +1)",
-  exploration: "한방 노리기! 크게 벌거나 크게 잃는 판정 (집중: +1)",
-  lab: "심화학습: 지력만큼 연구 카드를 펼쳐 1장 고르기, 카드마다 체력토큰이 들어요 (집중: +1장)",
+  creature: "카드 2장 공개, 주문서로 마법생물 획득, 속성을 모으면 학점 (집중: 주문서 -1)",
+  duel: "아직 안 고른 한 명을 지목해 강제 대결, 이기면 공개된 마도서 1장 고르기 (집중: +1)",
+  exploration: "카드 2장 중 하나를 골라 한방 노리기! 크게 벌거나 크게 잃는 판정 (집중: +1)",
+  lab: "심화학습: 연구 카드 2장 중 1장 고르기, 카드마다 체력토큰이 들어요 (집중: 3장 공개)",
 };
 
 export function effectiveStat(player: PlayerGameState, stat: StatKey): number {
@@ -209,11 +229,10 @@ export function effectiveStat(player: PlayerGameState, stat: StatKey): number {
 
 // ── 자율활동 구역 선택 규칙 (서버 engine.ts와 같은 규칙. 버튼을 미리 막고 이유를 보여 주기 위해 복제) ──
 
-// 카드를 여는 활동에서 내야 하는 지력토큰 (연구실은 펼치는 카드 한 장마다). 이미 열린 협력 탐험 카드에 합류할 때는 없다
+// 구역에 처음 들어와 카드를 여는 사람이 내는 지력토큰. 이미 카드가 열려 있으면(두 번째 참가자) 내지 않는다
 export function activityOpenCost(game: GameState, activityId: ActivityId): number {
-  if (activityId === "creature" || activityId === "lab" || activityId === "duel") return game.rules.openCardCost;
-  if (activityId === "exploration") return game.coopWaiting ? 0 : game.rules.openCardCost;
-  return 0;
+  if (activityId === "tournament") return 0;
+  return game.activityOffers[activityId] ? 0 : game.rules.openCardCost;
 }
 
 // 이미 다른 플레이어가 있는 구역에 들어갈 때 내야 하는 체력토큰
