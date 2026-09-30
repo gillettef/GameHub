@@ -9,14 +9,12 @@ export type ActivityId =
 
 export type GamePhase = "prep" | "class" | "activity" | "cleanup" | "midterm_exam" | "final_exam" | "ended";
 
-// 수업카드 등급: 등급마다 카드를 여는 데 드는 지력토큰과 습득하는 데 드는 체력토큰이 다르다 (config.ts의 classCardCosts)
-export type ClassTier = "normal" | "rare";
-
 export interface ClassCard {
   id: string;
   name: string;
   description: string;
-  tier: ClassTier;
+  // 이 카드를 습득하는 데 드는 체력토큰 (카드마다 다르다. 카드를 열어 봐야 알 수 있다)
+  takeCost: number;
   statBoost: { stat: StatKey; amount: number };
 }
 
@@ -39,6 +37,8 @@ export interface LabCard {
   id: string;
   name: string;
   description: string;
+  // 이 카드를 고르는 데 드는 체력토큰
+  cost: number;
   kind: LabCardKind;
   effect: CardEffect;
   // 효과를 한 줄로 풀어 쓴 문구 (클라이언트 표시용)
@@ -89,9 +89,9 @@ export interface ExplorationCard {
   description: string;
   // 판정: 주사위 1개 + 해당 능력치 >= target 이면 성공. 없으면 무조건 성공
   check?: { stat: StatKey; target: number };
-  // 협력 카드: 두 명이 함께해야 열린다. 둘의 (주사위 + 능력치) 합이 pairTarget 이상이면 성공하고 두 명 모두 효과를 받는다.
-  // 끝까지 함께할 친구가 없으면 혼자 도전하며, 이때는 check(단독 목표값)를 쓴다
-  coop?: { pairTarget: number };
+  // 협력 카드: 두 명이 함께해야 열린다. 둘의 (주사위 + stat) 합이 pairTarget 이상이면 성공하고 두 명 모두 효과를 받는다.
+  // 끝까지 함께할 친구가 없으면 무효가 된다 (check는 쓰지 않는다)
+  coop?: { stat: StatKey; pairTarget: number };
   success: CardEffect;
   failure: CardEffect;
 }
@@ -155,7 +155,7 @@ export interface CoopWaiting {
   name: string;
   description: string;
   pairText: string;
-  soloText: string;
+  voidText: string;
   successText: string;
   failureText: string;
 }
@@ -169,7 +169,7 @@ export interface DuelPair {
 // 주사위 결과가 나온 뒤 처리에 필요한 서버 전용 정보 (클라이언트에는 보내지 않음)
 export type RollContext =
   | { kind: "duel"; challengerId: string; targetId: string; challengerBoost: number; defenderBoost: number }
-  | { kind: "exploration"; card: ExplorationCard; playerIds: string[]; boosts: Record<string, number>; mode: "single" | "pair" | "solo" }
+  | { kind: "exploration"; card: ExplorationCard; playerIds: string[]; boosts: Record<string, number>; mode: "single" | "pair" }
   | { kind: "exam"; examType: "midterm_exam" | "final_exam" };
 
 export interface HiddenState {
@@ -204,7 +204,7 @@ export interface GameState {
   labPile: Pile<LabCard>;
   explorationPile: Pile<ExplorationCard>;
   grimoirePile: Pile<GrimoireCard>;
-  classDecks: Record<ClassTier, ClassCard[]>;
+  classDeck: ClassCard[];
   classDiscard: ClassCard[];
   creatureDeck: CreatureCard[];
   creatureDiscard: CreatureCard[];
@@ -217,16 +217,19 @@ export function effectiveStat(player: PlayerGameState, stat: StatKey): number {
 }
 
 // 클라이언트에 전송되는 게임 상태 (서버 전용 덱 정보 제외)
-export type PublicGameState = Omit<GameState, "hidden" | "labPile" | "explorationPile" | "grimoirePile" | "classDecks" | "classDiscard" | "creatureDeck" | "creatureDiscard"> & {
-  // 아직 열 수 있는 수업카드 수 (등급별). 덱 구성은 비공개지만 남은 장수는 알려 준다
-  classLeft: Record<ClassTier, number>;
+export type PublicGameState = Omit<GameState, "hidden" | "labPile" | "explorationPile" | "grimoirePile" | "classDeck" | "classDiscard" | "creatureDeck" | "creatureDiscard"> & {
+  // 아직 열 수 있는 수업카드 수. 덱 구성은 비공개지만 남은 장수는 알려 준다
+  classLeft: number;
   // 화면 표시용 규칙 수치 (config.ts의 BALANCE에서 가져옴)
   rules: PublicRules;
 };
 
 export interface PublicRules {
-  classCardCosts: Record<ClassTier, { open: number; take: number }>;
+  // 카드를 한 장 열 때 드는 지력토큰 (수업카드·마법생물·비밀의 방·연구 카드 공통)
+  openCardCost: number;
   activityMaxParticipants: number;
   activitySecondParticipantCost: number;
   duelCharmFee: number;
+  // 마법 토너먼트 최종 순위 보상 (1위, 2위 순서, 학점)
+  tournamentRewards: number[];
 }

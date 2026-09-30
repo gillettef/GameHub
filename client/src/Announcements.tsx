@@ -109,7 +109,7 @@ const classBanner = (game: GameState): Announcement =>
     kind: "banner",
     icon: "book",
     title: `${game.round}개월 2주차 · 정규수업`,
-    subtitle: "지력토큰으로 수업카드를 열고, 체력토큰으로 습득해요",
+    subtitle: "지력토큰으로 수업카드를 열고, 체력토큰으로 습득해요. 카드마다 드는 체력토큰이 달라요",
   });
 
 function activityBanner(game: GameState, myId: string): Announcement {
@@ -361,22 +361,14 @@ export function AnnouncementLayer({ game, myId }: { game: GameState; myId: strin
         {current.tokens && <TokenBoard tokens={current.tokens} playing={playing} />}
 
         {current.track && (
-          <div className="mt-3" aria-label={`토너먼트 트랙 ${current.track.from}에서 ${current.track.to}칸`}>
-            <div className="grid grid-cols-10 gap-0.5">
-              {Array.from({ length: 10 }, (_, i) => {
-                const n = i + 1;
-                const gained = n > current.track!.from && n <= current.track!.to;
-                const had = n <= current.track!.from;
-                return (
-                  <span
-                    key={n}
-                    className={`h-3 rounded-full ${gained ? "bg-pink-400" : had ? "bg-purple-300" : "bg-purple-100"}`}
-                  />
-                );
-              })}
+          <div className="mt-3" role="img" aria-label={`토너먼트 트랙 ${current.track.from}칸에서 ${current.track.to}칸`}>
+            {/* 트랙에는 상한이 없으므로 막대의 길이는 max(도착 칸, 10)을 기준으로 잡는다 */}
+            <div className="relative h-3 w-full overflow-hidden rounded-full bg-purple-100">
+              <div className="absolute inset-y-0 left-0 rounded-full bg-pink-400" style={{ width: `${(current.track.to / Math.max(current.track.to, 10)) * 100}%` }} />
+              <div className="absolute inset-y-0 left-0 rounded-full bg-purple-300" style={{ width: `${(current.track.from / Math.max(current.track.to, 10)) * 100}%` }} />
             </div>
             <p className="mt-1 text-sm text-purple-700">
-              {current.track.from}칸 → <b>{current.track.to}칸</b> / 10
+              {current.track.from}칸 → <b>{current.track.to}칸</b>
             </p>
           </div>
         )}

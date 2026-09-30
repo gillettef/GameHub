@@ -1,4 +1,4 @@
-import type { ActivityId, ClassTier, PublicGameState } from "./game/types.js";
+import type { ActivityId, PublicGameState } from "./game/types.js";
 
 export interface RoomPlayerInfo {
   id: string;
@@ -12,11 +12,12 @@ export type ClientMessage =
   | { type: "start_game" }
   | { type: "add_bot" }
   | { type: "remove_bot"; botId: string }
-  | { type: "open_class_card"; tier: ClassTier }
+  | { type: "open_class_card" }
   | { type: "submit_class_choice"; keepCardIds: string[] }
   | { type: "roll_dice" }
   | { type: "select_activity"; activityId: ActivityId; targetPlayerId?: string; useStamina?: boolean }
-  | { type: "choose_lab_card"; cardId: string };
+  // cardId가 null이면 연구 카드를 고르지 않고 넘어간다
+  | { type: "choose_lab_card"; cardId: string | null };
 
 export type ServerMessage =
   | { type: "room_created"; roomCode: string; playerId: string; players: RoomPlayerInfo[] }

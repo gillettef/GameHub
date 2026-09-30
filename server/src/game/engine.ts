@@ -1,7 +1,7 @@
 // 게임 진행 규칙 출처: notes/기획_정리.md (2026-09-28 정리본)
 // 문서에 명시되지 않아 임의로 정한 부분은 "ASSUMPTION" 주석으로 표시했습니다.
 import {
-  createClassDecks,
+  createClassDeck,
   createCreatureDeck,
   createExplorationPile,
   createGrimoirePile,
@@ -18,7 +18,6 @@ import {
   type ActivityId,
   type CardEffect,
   type ClassCard,
-  type ClassTier,
   type CoopWaiting,
   type CreatureAbility,
   type CreatureCard,
@@ -32,7 +31,6 @@ import {
 } from "./types.js";
 
 const ACTIVITY_IDS: ActivityId[] = ["tournament", "creature", "duel", "exploration", "lab"];
-const CLASS_TIERS: ClassTier[] = ["normal", "rare"];
 
 function rollD6(): number {
   return 1 + Math.floor(Math.random() * 6);
@@ -111,30 +109,27 @@ function drawCreature(state: GameState) {
   return state.creatureDeck.pop();
 }
 
-// 해당 등급 덱에서 1장 뽑는다. 덱이 비면 그 등급의 버림 카드를 섞어 다시 쓰고, 그래도 없으면 undefined
-function drawClassCard(state: GameState, tier: ClassTier): ClassCard | undefined {
-  if (state.classDecks[tier].length === 0) {
-    state.classDecks[tier] = shuffle(state.classDiscard.filter((c) => c.tier === tier));
-    state.classDiscard = state.classDiscard.filter((c) => c.tier !== tier);
+// 덱에서 1장 뽑는다. 덱이 비면 버림 더미를 섞어 다시 쓰고, 그래도 없으면 undefined
+function drawClassCard(state: GameState): ClassCard | undefined {
+  if (state.classDeck.length === 0) {
+    state.classDeck = shuffle(state.classDiscard);
+    state.classDiscard = [];
   }
-  return state.classDecks[tier].pop();
+  return state.classDeck.pop();
 }
 
 // 아직 열 수 있는 수업카드 수 (덱 + 버림 더미)
-export function classCardsLeft(state: Pick<GameState, "classDecks" | "classDiscard">, tier: ClassTier): number {
-  return state.classDecks[tier].length + state.classDiscard.filter((c) => c.tier === tier).length;
+export function classCardsLeft(state: Pick<GameState, "classDeck" | "classDiscard">): number {
+  return state.classDeck.length + state.classDiscard.length;
 }
-
-export const classOpenCost = (tier: ClassTier): number => BALANCE.classCardCosts[tier].open;
-export const classTakeCost = (card: Pick<ClassCard, "tier">): number => BALANCE.classCardCosts[card.tier].take;
 
 const STAT_NAME: Record<StatKey, string> = { intelligence: "지력", stamina: "체력", charm: "매력", spellPower: "주문력" };
 
 // 탐험 카드의 판정 문구 (엿보기·협력 대기 표시용)
 function checkTextOf(card: ExplorationCard): string | undefined {
+  if (card.coop) return `협력 카드 — 둘의 (주사위 + ${STAT_NAME[card.coop.stat]}) 합 ≥ ${card.coop.pairTarget} (혼자면 무효)`;
   if (!card.check) return undefined;
   const stat = STAT_NAME[card.check.stat];
-  if (card.coop) return `협력 카드 — 둘의 (주사위 + ${stat}) 합 ≥ ${card.coop.pairTarget} (혼자면 주사위 + ${stat} ≥ ${card.check.target})`;
   return `${stat} 판정 (주사위 + ${stat} ≥ ${card.check.target})`;
 }
 
@@ -214,7 +209,7 @@ export function createGame(players: { id: string; name: string; isBot?: boolean 
     labPile: createLabPile(),
     explorationPile: createExplorationPile(),
     grimoirePile: createGrimoirePile(),
-    classDecks: createClassDecks(randomUUID),
+    classDeck: createClassDeck(randomUUID),
     classDiscard: [],
     creatureDeck: createCreatureDeck(),
     creatureDiscard: [],
@@ -259,16 +254,15 @@ function allPlayersActed(state: GameState): boolean {
   return state.turnOrder.every((id) => state.players[id].hasActedThisPhase);
 }
 
-// 2주차: 지력토큰을 내고 원하는 등급의 수업카드를 1장 연다 (열린 카드는 본인만 볼 수 있다)
-export function openClassCard(state: GameState, playerId: string, tier: ClassTier): void {
+// 2주차: 지력토큰을 내고 수업카드를 덱에서 1장 연다 (열린 카드는 본인만 볼 수 있고, 카드마다 습득 비용이 다르다)
+export function openClassCard(state: GameState, playerId: string): void {
   if (state.phase !== "class") throw new Error("지금은 정규수업 단계가 아닙니다.");
   const player = state.players[playerId];
   if (!player) throw new Error("플레이어를 찾을 수 없습니다.");
   if (player.hasActedThisPhase) throw new Error("이미 수업 카드를 선택했습니다.");
-  if (!CLASS_TIERS.includes(tier)) throw new Error("존재하지 않는 카드 등급입니다.");
-  const cost = classOpenCost(tier);
-  if (player.intelligenceTokens < cost) throw new Error(`지력토큰이 부족합니다 (이 카드는 지력토큰 ${cost}개가 필요).`);
-  const card = drawClassCard(state, tier);
+  const cost = BALANCE.openCardCost;
+  if (player.intelligenceTokens < cost) throw new Error(`지력토큰이 부족합니다 (카드를 열려면 지력토큰 ${cost}개가 필요).`);
+  const card = drawClassCard(state);
   if (!card) throw new Error("더 열 수 있는 수업카드가 없습니다.");
   player.intelligenceTokens -= cost;
   player.offeredClassCards.push(card);
@@ -286,7 +280,7 @@ export function submitClassChoice(state: GameState, playerId: string, keepCardId
     throw new Error("열어 본 수업카드 중에서만 선택할 수 있습니다.");
   }
   const keptCards = player.offeredClassCards.filter((c) => uniqueKeepIds.includes(c.id));
-  const cost = sum(keptCards.map(classTakeCost));
+  const cost = sum(keptCards.map((c) => c.takeCost));
   if (player.staminaTokens < cost) {
     throw new Error(`체력토큰이 부족합니다 (선택한 카드에 체력토큰 ${cost}개 필요).`);
   }
@@ -326,7 +320,15 @@ function beginActivityPhase(state: GameState): void {
 
 // ── 자율활동: 구역 선택 규칙 ──
 
-export type ActivityView = Pick<GameState, "activitySlots" | "players" | "turnOrder">;
+export type ActivityView = Pick<GameState, "activitySlots" | "players" | "turnOrder" | "coopWaiting">;
+
+// 카드를 여는 활동에서 내야 하는 지력토큰 (마법생물 조련·비밀의 방 탐색·연구실 실험은 카드를 1장 이상 열고, 주문 대결은 이긴 쪽이 받을 마도서 카드를 도전자가 연다)
+// 단, 이미 열려 있는 협력 탐험 카드에 합류할 때는 새 카드를 열지 않으므로 내지 않는다
+export function activityOpenCost(state: Pick<GameState, "coopWaiting">, activityId: ActivityId): number {
+  if (activityId === "creature" || activityId === "lab" || activityId === "duel") return BALANCE.openCardCost;
+  if (activityId === "exploration") return state.coopWaiting ? 0 : BALANCE.openCardCost;
+  return 0;
+}
 
 // 이미 다른 플레이어가 있는 구역에 들어갈 때 내야 하는 체력토큰
 export function activityExtraCost(state: Pick<GameState, "activitySlots">, activityId: ActivityId): number {
@@ -345,6 +347,8 @@ export function activityBlockReason(state: ActivityView, playerId: string, activ
   if (slots.length >= BALANCE.activityMaxParticipants) return "이미 두 명이 참여한 구역입니다.";
   const extra = activityExtraCost(state, activityId);
   if (player.staminaTokens < extra) return `이미 참여한 친구가 있어서 체력토큰 ${extra}개가 더 필요해요.`;
+  const open = activityOpenCost(state, activityId);
+  if (player.intelligenceTokens < open) return `카드를 열 지력토큰 ${open}개가 필요해요.`;
   if (activityId === "duel") {
     if (duelTargets(state, playerId).length === 0) return "지목할 수 있는 친구가 없어요.";
     if (player.charm < BALANCE.duelCharmFee) return `지목당한 친구에게 건넬 매력(${BALANCE.duelCharmFee})이 없어요.`;
@@ -445,15 +449,16 @@ function startExplorationRoll(
   card: ExplorationCard,
   playerIds: string[],
   boosts: Record<string, number>,
-  mode: "single" | "pair" | "solo",
+  mode: "single" | "pair",
 ): void {
   const ctx: RollContext = { kind: "exploration", card, playerIds, boosts, mode };
-  if (!card.check) {
+  const rule = explorationRule(card, mode);
+  if (!rule) {
     resolveExploration(state, ctx, {});
     return;
   }
-  const stat = STAT_NAME[card.check.stat];
-  const target = mode === "pair" ? card.coop!.pairTarget : card.check.target;
+  const stat = STAT_NAME[rule.stat];
+  const target = rule.target;
   state.hidden.roll = ctx;
   state.pendingRoll = {
     kind: "exploration",
@@ -466,12 +471,19 @@ function startExplorationRoll(
   };
 }
 
+// 탐험 카드의 판정 규칙: 협력 카드는 두 명의 합, 일반 카드는 혼자 판정. 판정이 없는 카드는 null
+function explorationRule(card: ExplorationCard, mode: "single" | "pair"): { stat: StatKey; target: number } | null {
+  if (mode === "pair" && card.coop) return { stat: card.coop.stat, target: card.coop.pairTarget };
+  return card.check ? { stat: card.check.stat, target: card.check.target } : null;
+}
+
 function resolveExploration(state: GameState, ctx: Extract<RollContext, { kind: "exploration" }>, dice: Record<string, number>): void {
   const { card, playerIds, boosts, mode } = ctx;
   let success = true;
   let rollText = "";
-  if (card.check) {
-    const stat = card.check.stat;
+  const rule = explorationRule(card, mode);
+  if (rule) {
+    const stat = rule.stat;
     const parts = playerIds.map((id) => {
       const p = state.players[id];
       // 선두와의 격차가 크면 역전 보너스: 뒤처진 플레이어의 한 방을 돕는다
@@ -480,7 +492,7 @@ function resolveExploration(state: GameState, ctx: Extract<RollContext, { kind: 
       const total = dice[id] + (boosts[id] ?? 0) + catchUp + statValue;
       return { p, total, text: `${describeRoll([dice[id]], [["집중", boosts[id] ?? 0], [STAT_NAME[stat], statValue], ["역전", catchUp]])} = ${total}` };
     });
-    const target = mode === "pair" ? card.coop!.pairTarget : card.check.target;
+    const target = rule.target;
     const total = sum(parts.map((x) => x.total));
     success = total >= target;
     rollText =
@@ -488,23 +500,21 @@ function resolveExploration(state: GameState, ctx: Extract<RollContext, { kind: 
         ? ` (${parts.map((x) => `${x.p.name} ${x.text}`).join(", ")} → 합 ${total}/${target} ${success ? "성공" : "실패"})`
         : ` (${parts[0].text} / 목표 ${target} ${success ? "성공" : "실패"})`;
   }
-  // 협력 카드에 혼자 도전해 실패한 경우는 문이 열리지 않을 뿐 손해는 없다 (합류할 친구가 없었던 것이므로)
-  const effect = success ? card.success : mode === "solo" ? {} : card.failure;
+  const effect = success ? card.success : card.failure;
   for (const id of playerIds) applyCardEffect(state, state.players[id], effect);
   state.explorationPile.discard.push(card);
   const names = playerIds.map((id) => state.players[id].name).join(" · ");
-  const soloFail = !success && mode === "solo";
-  log(state, `${names}: 비밀의 방 "${card.name}"${rollText} → ${soloFail ? "문이 열리지 않았어요 (손해는 없어요)" : describeEffect(effect)}${playerIds.length > 1 ? " (두 명 모두 적용)" : ""}`);
+  log(state, `${names}: 비밀의 방 "${card.name}"${rollText} → ${describeEffect(effect)}${playerIds.length > 1 ? " (두 명 모두 적용)" : ""}`);
 }
 
 function describeCoop(card: ExplorationCard, playerId: string): CoopWaiting {
-  const stat = STAT_NAME[card.check!.stat];
+  const stat = STAT_NAME[card.coop!.stat];
   return {
     playerId,
     name: card.name,
     description: card.description,
     pairText: `둘의 (주사위 + ${stat}) 합이 ${card.coop!.pairTarget} 이상이면 성공`,
-    soloText: `함께할 친구가 없으면 마지막에 혼자 도전해요 (주사위 + ${stat} ≥ ${card.check!.target})`,
+    voidText: "함께할 친구가 끝까지 나타나지 않으면 이 카드는 무효가 돼요",
     successText: `${describeEffect(card.success)} (두 명 모두)`,
     failureText: `${describeEffect(card.failure)} (두 명 모두)`,
   };
@@ -533,7 +543,7 @@ function startExploration(state: GameState, player: PlayerGameState, boost: numb
   for (const p of Object.values(state.players)) if (p.peekedExploration && usedIds.has(p.peekedExploration.id)) p.peekedExploration = null;
   if (!card) return;
   if (card.coop) {
-    // 협력 카드: 함께할 친구가 나타날 때까지 기다린다 (끝까지 없으면 3주차 마지막에 혼자 도전)
+    // 협력 카드: 함께할 친구가 나타날 때까지 기다린다 (끝까지 없으면 3주차 마지막에 무효)
     state.hidden.coop = { card, playerId: player.id, boost };
     state.coopWaiting = describeCoop(card, player.id);
     log(state, `${player.name}: 비밀의 방에서 협력 카드 "${card.name}"를 발견! 함께할 친구를 기다려요`);
@@ -546,7 +556,7 @@ function startActivity(state: GameState, activityId: ActivityId, player: PlayerG
   switch (activityId) {
     case "tournament": {
       const gain = effectiveStat(player, "spellPower") + boost;
-      player.tournamentTrack = Math.min(BALANCE.tournamentMaxTrack, player.tournamentTrack + gain);
+      player.tournamentTrack += gain;
       log(state, `${player.name}: 마법 토너먼트 참가 (트랙 ${player.tournamentTrack}칸)`);
       break;
     }
@@ -584,17 +594,20 @@ function startActivity(state: GameState, activityId: ActivityId, player: PlayerG
       startExploration(state, player, boost);
       break;
     case "lab": {
-      // 지력만큼 연구 카드를 펼치고(체력토큰으로 집중하면 1장 더), 그중 1장을 직접 고른다 (chooseLabCard)
+      // 지력만큼 연구 카드를 펼치고(체력토큰으로 집중하면 1장 더), 그중 1장을 직접 고른다 (chooseLabCard).
+      // 카드를 한 장 열 때마다 지력토큰이 들기 때문에 지력토큰이 모자라면 그만큼만 펼친다 (최소 1장)
       const candidates: LabCard[] = [];
-      const count = Math.max(1, Math.min(BALANCE.labMaxCandidates, effectiveStat(player, "intelligence"))) + boost;
+      const wanted = Math.max(1, Math.min(BALANCE.labMaxCandidates, effectiveStat(player, "intelligence"))) + boost;
+      const count = Math.max(1, Math.min(wanted, Math.floor(player.intelligenceTokens / BALANCE.openCardCost)));
       for (let i = 0; i < count; i++) {
         const drawn = drawFromPile(state.labPile);
         if (!drawn) break;
         candidates.push(drawn);
       }
       if (candidates.length === 0) break;
+      player.intelligenceTokens -= candidates.length * BALANCE.openCardCost;
       state.pendingLab = { playerId: player.id, cards: candidates };
-      log(state, `${player.name}: 연구실 실험 — 연구 카드 ${candidates.length}장을 펼쳤어요`);
+      log(state, `${player.name}: 연구실 실험 — 연구 카드 ${candidates.length}장을 펼쳤어요 (지력토큰 ${candidates.length * BALANCE.openCardCost}개)`);
       break;
     }
   }
@@ -629,6 +642,8 @@ export function selectActivity(
   }
 
   player.staminaTokens -= extra + focusCost;
+  // 마법생물 조련·비밀의 방 탐색은 카드를 1장 열 때 지력토큰을 낸다 (연구실은 펼치는 장수만큼 startActivity에서 낸다)
+  if (activityId !== "lab") player.intelligenceTokens -= activityOpenCost(state, activityId);
   state.activitySlots[activityId].push(playerId);
   player.hasActedThisPhase = true;
   startActivity(state, activityId, player, targetPlayerId, focusCost);
@@ -652,25 +667,33 @@ function finishActivityTurn(state: GameState): void {
   }
   if (state.activityTurnPointer < state.activityOrder.length) return;
 
-  // 끝까지 함께할 친구가 나타나지 않은 협력 카드는 처음 뽑은 사람이 혼자 도전한다
+  // 끝까지 함께할 친구가 나타나지 않은 협력 카드는 무효가 된다 (열었던 지력토큰과 집중한 체력토큰은 돌려받지 못한다)
   const hold = state.hidden.coop;
   if (hold) {
     state.hidden.coop = null;
     state.coopWaiting = null;
-    log(state, `${state.players[hold.playerId].name}: 함께할 친구가 없어 협력 카드 "${hold.card.name}"에 혼자 도전해요`);
-    startExplorationRoll(state, hold.card, [hold.playerId], { [hold.playerId]: hold.boost }, "solo");
-    if (state.pendingRoll) return;
+    state.explorationPile.discard.push(hold.card);
+    log(state, `${state.players[hold.playerId].name}: 함께할 친구가 없어 협력 카드 "${hold.card.name}"이(가) 무효가 되었어요`);
   }
   beginCleanupPhase(state);
 }
 
-// 연구실 실험: 펼쳐진 연구 카드 중 1장을 골라 효과를 받는다
-export function chooseLabCard(state: GameState, playerId: string, cardId: string): void {
+// 연구실 실험: 펼쳐진 연구 카드 중 1장을 골라(체력토큰 cost개) 효과를 받는다. cardId가 null이면 아무것도 고르지 않고 넘어간다
+export function chooseLabCard(state: GameState, playerId: string, cardId: string | null): void {
   const pending = state.pendingLab;
   if (!pending || pending.playerId !== playerId) throw new Error("지금은 연구 카드를 고를 수 없습니다.");
+  const player = state.players[playerId];
+  if (cardId === null) {
+    state.labPile.discard.push(...pending.cards);
+    state.pendingLab = null;
+    log(state, `${player.name}: 연구 카드를 고르지 않고 넘어갔어요`);
+    finishActivityTurn(state);
+    return;
+  }
   const card = pending.cards.find((c) => c.id === cardId);
   if (!card) throw new Error("펼쳐진 연구 카드 중에서만 고를 수 있습니다.");
-  const player = state.players[playerId];
+  if (player.staminaTokens < card.cost) throw new Error(`체력토큰이 부족합니다 (이 카드는 체력토큰 ${card.cost}개가 필요).`);
+  player.staminaTokens -= card.cost;
   applyCardEffect(state, player, card.effect);
   // 시험 카드는 다음 시험까지 보관하고, 나머지는 효과를 받는 즉시 버림 더미로
   const rest = pending.cards.filter((c) => c.id !== card.id);
@@ -678,7 +701,7 @@ export function chooseLabCard(state: GameState, playerId: string, cardId: string
   if (card.kind === "exam") player.equipment.push(card);
   else state.labPile.discard.push(card);
   state.pendingLab = null;
-  log(state, `${player.name}: 연구 카드 "${card.name}" 선택 (${card.summary})`);
+  log(state, `${player.name}: 연구 카드 "${card.name}" 선택 (${card.summary}${card.cost > 0 ? `, 체력토큰 ${card.cost}개` : ""})`);
   finishActivityTurn(state);
 }
 
