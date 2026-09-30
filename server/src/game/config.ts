@@ -7,6 +7,9 @@ export const BALANCE = {
   // 라운드 구조 — 기획 확정값(12라운드, 6라운드 후 중간고사). 바꾸면 클라이언트 표시(12/12)와도 맞춰야 함
   totalRounds: 12,
   midtermRound: 6,
+  // 시험 카드 공개 시점: 이 라운드가 끝난 뒤 다음 시험(중간고사·기말고사)의 카드를 모두에게 공개한다
+  midtermRevealRound: 3,
+  finalRevealRound: 9,
   // 게임 시작 능력치 (2026-09-30 변경: 전원 2, 학점 0)
   initialStats: { intelligence: 2, stamina: 2, charm: 2, spellPower: 2 } as Record<StatKey, number>,
   initialCredit: 0,
