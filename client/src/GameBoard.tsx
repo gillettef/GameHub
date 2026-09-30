@@ -9,6 +9,7 @@ import {
   charmRate,
   ELEMENT_ICON,
   ELEMENT_LABEL,
+  LAB_KIND_LABEL,
   STAT_LABEL,
   activityBlockReason,
   activityExtraCost,
@@ -18,11 +19,13 @@ import {
   effectiveStat,
   finalScore,
   type ActivityId,
+  type ClassCard,
   type CreatureElement,
   type GameState,
   type OfferCardView,
   type PlayerGameState,
 } from "./gameTypes";
+import { CardArt, CardGrid, PickGrid, type CardInfo } from "./CardArt";
 import { RulesGuide } from "./Rules";
 import { GameMenu } from "./Leave";
 import { AnnouncementLayer } from "./Announcements";
@@ -74,6 +77,7 @@ function PlayerStatCard({ player, isMe, rules }: { player: PlayerGameState; isMe
       </p>
       {player.peekedExploration && (
         <div className="mt-2 rounded-2xl border border-indigo-200 bg-indigo-50 px-2.5 py-2 text-sm text-indigo-800">
+          <CardArt name={player.peekedExploration.name} className="mb-1.5 max-w-52" />
           <p>
             <InlineIcon name="crystal" /> 엿본 탐험 카드: <b>{player.peekedExploration.name}</b>
           </p>
@@ -83,28 +87,11 @@ function PlayerStatCard({ player, isMe, rules }: { player: PlayerGameState; isMe
           <p className="text-xs"><InlineIcon name="warn" /> 실패: {player.peekedExploration.failureText}</p>
         </div>
       )}
-      {player.equipment.length > 0 && (
-        <ul className="mt-2 flex flex-col gap-1">
-          {player.equipment.map((c) => (
-            <li key={c.id} className="rounded-2xl bg-white/70 px-2.5 py-1.5 text-sm text-purple-800">
-              <InlineIcon name="flask" /> <b>{c.name}</b>
-              <span className="block text-xs text-purple-600">{c.summary}</span>
-            </li>
-          ))}
-        </ul>
-      )}
-      {player.grimoires.length > 0 && (
-        <ul className="mt-2 flex flex-col gap-1">
-          {player.grimoires.map((c) => (
-            <li key={c.id} className="rounded-2xl bg-white/70 px-2.5 py-1.5 text-sm text-purple-800">
-              <InlineIcon name="grimoire" /> <b>{c.name}</b>
-              <span className="block text-xs text-purple-600">
-                {STAT_LABEL[c.statBoost.stat]} +{c.statBoost.amount}
-                {c.ability ? ` · ${describeAbility(c.ability)}` : ""}
-              </span>
-            </li>
-          ))}
-        </ul>
+      {ownedCardInfos(player).length > 0 && (
+        <div className="mt-2">
+          <p className="mb-1 text-xs text-purple-500">가진 카드 (누르면 크게 볼 수 있어요)</p>
+          <CardGrid cards={ownedCardInfos(player)} />
+        </div>
       )}
       {player.creatures.length > 0 && (
         <p className="mt-2 text-xs text-purple-600">
@@ -118,16 +105,6 @@ function PlayerStatCard({ player, isMe, rules }: { player: PlayerGameState; isMe
             세트 {creatureSets(player.creatures)}개 (+{creatureSets(player.creatures) * rules.creatureSetScore}점)
           </span>
         </p>
-      )}
-      {player.creatures.length > 0 && (
-        <ul className="mt-1 flex flex-col gap-1">
-          {player.creatures.map((c) => (
-            <li key={c.id} className="rounded-2xl bg-white/70 px-2.5 py-1.5 text-sm text-purple-800">
-              <InlineIcon name={ELEMENT_ICON[c.element]} /> <b>{c.name}</b>
-              <span className="block text-xs text-purple-600">{describeAbility(c.ability)}</span>
-            </li>
-          ))}
-        </ul>
       )}
     </>
   );
@@ -154,6 +131,40 @@ function PlayerStatCard({ player, isMe, rules }: { player: PlayerGameState; isMe
       <div className="px-3 pb-3">{body}</div>
     </details>
   );
+}
+
+function classCardInfo(card: ClassCard): CardInfo {
+  return {
+    name: card.name,
+    badge: `+${card.statBoost.amount} ${STAT_LABEL[card.statBoost.stat]} · 체력토큰 ${card.takeCost}개`,
+    rare: card.statBoost.amount >= 2,
+    lines: [card.description, <><InlineIcon name="staminaToken" /> 습득 체력토큰 {card.takeCost}개</>],
+  };
+}
+
+function offerCardInfo(card: OfferCardView): CardInfo {
+  return {
+    name: card.name,
+    badge: card.cost ? (card.cost.kind === "stamina" ? `체력토큰 ${card.cost.amount}개` : `주문서 ${card.cost.amount}개`) : undefined,
+    lines: [card.description, ...card.lines],
+  };
+}
+
+function ownedCardInfos(player: PlayerGameState): CardInfo[] {
+  return [
+    ...player.classCards.map(classCardInfo),
+    ...player.equipment.map((c) => ({ name: c.name, badge: LAB_KIND_LABEL[c.kind], lines: [c.description, c.summary] })),
+    ...player.grimoires.map((c) => ({
+      name: c.name,
+      badge: `${STAT_LABEL[c.statBoost.stat]} +${c.statBoost.amount}`,
+      lines: [c.description, ...(c.ability ? [describeAbility(c.ability)] : [])],
+    })),
+    ...player.creatures.map((c) => ({
+      name: c.name,
+      badge: `${ELEMENT_LABEL[c.element]} · 필요 주문력 ${c.requiredSpellPower}`,
+      lines: [c.description, describeAbility(c.ability)],
+    })),
+  ];
 }
 
 function ClassPhasePanel({ game, myId, onTake }: { game: GameState; myId: string; onTake: (cardId: string | null) => void }) {
@@ -193,31 +204,20 @@ function ClassPhasePanel({ game, myId, onTake }: { game: GameState; myId: string
       {game.classMarket.length === 0 ? (
         <p className="mb-3 rounded-2xl bg-purple-50 px-3 py-3 text-center text-sm text-purple-600">공개된 카드가 없어요</p>
       ) : (
-        <div className="flex flex-col gap-2 mb-3">
-          {game.classMarket.map((card) => {
-            const affordable = canPay(game, me, 0, card.takeCost);
-            return (
-              <div
-                key={card.id}
-                className={`rounded-xl border-2 px-3 py-3 text-sm ${card.statBoost.amount >= 2 ? "bg-amber-50 border-amber-300" : "bg-purple-50 border-purple-200"} text-purple-700`}
-              >
-                <b>{card.name}</b> (+{card.statBoost.amount} {STAT_LABEL[card.statBoost.stat]})
-                <span className="block text-xs opacity-80">{card.description}</span>
-                <span className="block text-xs opacity-80">
-                  <InlineIcon name="staminaToken" /> 습득 체력토큰 {card.takeCost}개
-                </span>
-                {isMyTurn && (
-                  <button
-                    disabled={!affordable}
-                    onClick={() => onTake(card.id)}
-                    className="mt-2 w-full min-h-11 rounded-xl bg-purple-500 text-white font-semibold py-2 active:scale-95 transition-transform disabled:bg-gray-200 disabled:text-gray-600 disabled:active:scale-100"
-                  >
-                    {affordable ? "가져가기" : "체력토큰이 부족해요"}
-                  </button>
-                )}
-              </div>
-            );
-          })}
+        <div className="mb-3">
+          <p className="mb-2 text-xs text-purple-500">카드를 누르면 크게 볼 수 있어요</p>
+          <PickGrid
+            items={game.classMarket.map((card) => {
+              const affordable = canPay(game, me, 0, card.takeCost);
+              return {
+                key: card.id,
+                card: classCardInfo(card),
+                onAction: isMyTurn ? () => onTake(card.id) : undefined,
+                actionLabel: affordable ? "가져가기" : "체력토큰이 부족해요",
+                disabled: !affordable,
+              };
+            })}
+          />
         </div>
       )}
 
@@ -249,8 +249,13 @@ function ExamInfoPanel({ game }: { game: GameState }) {
       </p>
       {card ? (
         <>
-          <p><b>{card.name}</b> — {describeExam(card)}</p>
-          <p className="text-xs text-sky-600">{card.description}</p>
+          <div className="flex items-center gap-3">
+            <CardArt name={card.name} className="w-28 shrink-0" />
+            <div className="min-w-0">
+              <p><b>{card.name}</b> — {describeExam(card)}</p>
+              <p className="text-xs text-sky-600">{card.description}</p>
+            </div>
+          </div>
         </>
       ) : (
         <p className="text-xs text-sky-600">시험 과목은 {revealRound}개월이 끝나면 공개돼요. 그때까지는 고르게 키워 두면 안전해요.</p>
@@ -284,30 +289,19 @@ function PickPanel({ game, myId, onPick }: { game: GameState; myId: string; onPi
         (<InlineIcon name="staminaToken" /> 내 체력토큰 {me.staminaTokens}개 · <InlineIcon name="spellbookToken" /> 주문서 {me.spellbookTokens}개 · <InlineIcon name="charmToken" /> 매력토큰 {me.charmTokens}개)
       </p>
       <div className="flex flex-col gap-2">
-        {cards.map((card) => {
-          const ok = affordable(card);
-          return (
-            <button
-              key={card.id}
-              disabled={!ok}
-              onClick={() => onPick(card.id)}
-              className="rounded-xl border-2 border-purple-200 bg-purple-50 min-h-12 px-3 py-3 text-left text-purple-800 active:scale-95 transition-transform disabled:border-gray-200 disabled:bg-gray-100 disabled:text-gray-600 disabled:active:scale-100"
-            >
-              <b>{card.name}</b>
-              <span className="block text-xs text-purple-500">{card.description}</span>
-              {card.lines.map((line) => (
-                <span key={line} className="block text-sm">{line}</span>
-              ))}
-              {card.cost && (
-                <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-xs text-green-800">
-                  <InlineIcon name={card.cost.kind === "stamina" ? "staminaToken" : "spellbookToken"} />
-                  {card.cost.kind === "stamina" ? `체력토큰 ${card.cost.amount}개` : `주문서 ${card.cost.amount}개`}
-                  {!ok && " · 부족해요"}
-                </span>
-              )}
-            </button>
-          );
-        })}
+        <p className="text-xs text-purple-500">카드를 누르면 크게 볼 수 있어요</p>
+        <PickGrid
+          items={cards.map((card) => {
+            const ok = affordable(card);
+            return {
+              key: card.id,
+              card: offerCardInfo(card),
+              onAction: () => onPick(card.id),
+              actionLabel: ok ? "가져가기" : "부족해요",
+              disabled: !ok,
+            };
+          })}
+        />
         {canSkip && (
           <button className="mt-1 min-h-11 w-full rounded-xl text-sm text-purple-600 active:scale-95 transition-transform" onClick={() => onPick(null)}>
             아무것도 가져가지 않고 넘어가기
@@ -329,6 +323,7 @@ function CoopNotice({ game, myId }: { game: GameState; myId: string }) {
         <InlineIcon name="users" /> <b>협력 카드 &quot;{coop.name}&quot;</b>
         <span className="text-xs text-indigo-700"> — {coop.playerId === myId ? "내가" : `${owner}님이`} 발견했어요</span>
       </p>
+      <CardArt name={coop.name} className="mt-2 max-w-52" />
       {coop.playerId !== myId ? (
         <p className="mt-1 rounded-xl bg-white/70 px-2 py-1 text-sm font-semibold">비밀의 방 탐색을 고르면 함께할 수 있어요! 보상은 둘 다 받아요</p>
       ) : (
