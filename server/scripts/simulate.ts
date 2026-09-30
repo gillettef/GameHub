@@ -41,7 +41,7 @@ function playGame(strategies: BotStrategy[]): GameState {
       for (const id of state.turnOrder) {
         if (!state.players[id].hasActedThisPhase) playClassTurn(state, id, byId[id]);
       }
-      if (lastNormalExhaustRound === 0 && classCardsLeft(state, "normal") === 0) lastNormalExhaustRound = state.round;
+      if (lastNormalExhaustRound === 0 && classCardsLeft(state) === 0) lastNormalExhaustRound = state.round;
     } else if (state.phase === "activity") {
       const id = state.activityOrder[state.activityTurnPointer];
       const { activityId, targetPlayerId: target, useStamina } = chooseActivityAction(state, id, byId[id]);
@@ -113,7 +113,7 @@ for (let n = 2; n <= 5; n++) {
     "1위 성취도": fixed(mean(rows.top)),
     마법생물: fixed(mean(rows.creatures)),
     마도서: fixed(mean(rows.grimoires)),
-    "일반카드 소진율": pct(mean(rows.exhausted)),
+    "수업카드 소진율": pct(mean(rows.exhausted)),
     "소진 라운드": rows.exhaustRound.length ? fixed(mean(rows.exhaustRound)) : "-",
   });
 }

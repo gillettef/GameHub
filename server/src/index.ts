@@ -57,7 +57,7 @@ function runBotFallback(game: GameState, botId: string): void {
   } else if (game.phase === "class") {
     submitClassChoice(game, botId, []);
   } else if (game.pendingLab) {
-    submitLabChoice(game, botId, game.pendingLab.cards[0].id);
+    submitLabChoice(game, botId, null);
   } else if (game.phase === "activity") {
     const activityId = availableActivities(game, botId)[0];
     if (activityId) selectActivity(game, botId, activityId, activityId === "duel" ? duelTargets(game, botId)[0] : undefined, false);
@@ -116,10 +116,11 @@ function scheduleBots(room: Room): void {
 
 // 화면에 보여 줄 규칙 수치 (비용 안내가 서버 설정과 어긋나지 않도록 서버가 알려 준다)
 const PUBLIC_RULES: PublicRules = {
-  classCardCosts: BALANCE.classCardCosts,
+  openCardCost: BALANCE.openCardCost,
   activityMaxParticipants: BALANCE.activityMaxParticipants,
   activitySecondParticipantCost: BALANCE.activitySecondParticipantCost,
   duelCharmFee: BALANCE.duelCharmFee,
+  tournamentRewards: BALANCE.tournamentRewards,
 };
 
 function broadcastGameState(room: Room): void {
@@ -140,10 +141,10 @@ function broadcastGameState(room: Room): void {
       ? { playerId: game.pendingLab.playerId, cards: game.pendingLab.playerId === player.id ? game.pendingLab.cards : [] }
       : null;
     // 카드 덱 구성과 주사위 처리 정보는 비공개이므로 전송하지 않는다
-    const { hidden: _h, labPile: _lp, explorationPile: _xp, grimoirePile: _gp, classDecks: _cd, classDiscard: _cdd, creatureDeck: _deck, creatureDiscard: _discard, ...publicGame } = game;
+    const { hidden: _h, labPile: _lp, explorationPile: _xp, grimoirePile: _gp, classDeck: _cd, classDiscard: _cdd, creatureDeck: _deck, creatureDiscard: _discard, ...publicGame } = game;
     send(player.socket, {
       type: "game_state",
-      game: { ...publicGame, players, pendingLab, classLeft: { normal: classCardsLeft(game, "normal"), rare: classCardsLeft(game, "rare") }, rules: PUBLIC_RULES },
+      game: { ...publicGame, players, pendingLab, classLeft: classCardsLeft(game), rules: PUBLIC_RULES },
     });
   }
 }
@@ -265,7 +266,7 @@ wss.on("connection", (socket) => {
     if (message.type === "open_class_card") {
       if (!room.game) return;
       try {
-        openClassCard(room.game, playerId, message.tier);
+        openClassCard(room.game, playerId);
         broadcastGameState(room);
       } catch (err) {
         send(socket, { type: "error", message: err instanceof Error ? err.message : "알 수 없는 오류" });

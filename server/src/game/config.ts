@@ -10,8 +10,7 @@ export const BALANCE = {
   // 게임 시작 능력치 (11-2의 임시안: 전원 1, 학점 0)
   initialStats: { intelligence: 1, stamina: 1, charm: 1, spellPower: 1 } as Record<StatKey, number>,
   initialCredit: 0,
-  // 마법 토너먼트: 트랙 길이와 최종 순위 보상 (1위, 2위 순서)
-  tournamentMaxTrack: 10,
+  // 마법 토너먼트: 최종 순위 보상 (1위, 2위 순서). 트랙에는 상한이 없다
   tournamentRewards: [2, 1],
   // 시험 순위별 학점 (1위, 2위, 그 이하는 마지막 값)
   examCredits: [3, 2, 1],
@@ -31,11 +30,9 @@ export const BALANCE = {
   // 자율활동 구역 하나에 들어갈 수 있는 최대 인원, 그리고 이미 한 명이 들어와 있는 구역에 두 번째로 들어갈 때 내는 체력토큰
   activityMaxParticipants: 2,
   activitySecondParticipantCost: 1,
-  // 수업카드 등급별 비용: 카드를 열 때 지력토큰(open), 습득할 때 체력토큰(take)을 낸다
-  classCardCosts: {
-    normal: { open: 1, take: 1 },
-    rare: { open: 2, take: 2 },
-  } as Record<"normal" | "rare", { open: number; take: number }>,
+  // 카드를 한 장 열 때 드는 지력토큰: 수업카드뿐 아니라 자율활동에서 카드를 열 때(마법생물 조련·비밀의 방 탐색·연구실 실험)도 똑같이 낸다.
+  // 카드를 습득하는 데 드는 체력토큰은 카드마다 정해져 있다 (수업카드 takeCost, 연구 카드 cost)
+  openCardCost: 1,
 };
 
 export function examCreditForRank(rank: number): number {

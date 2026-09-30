@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ClientMessage, ServerMessage } from "./messages";
-import type { ActivityId, ClassTier, GameState } from "./gameTypes";
+import type { ActivityId, GameState } from "./gameTypes";
 
 export interface RoomPlayer {
   id: string;
@@ -140,13 +140,10 @@ export function useGameSocket() {
     [ensureSocket, send],
   );
 
-  const openClassCard = useCallback(
-    (tier: ClassTier) => {
-      const socket = ensureSocket();
-      send(socket, { type: "open_class_card", tier });
-    },
-    [ensureSocket, send],
-  );
+  const openClassCard = useCallback(() => {
+    const socket = ensureSocket();
+    send(socket, { type: "open_class_card" });
+  }, [ensureSocket, send]);
 
   const rollDice = useCallback(() => {
     const socket = ensureSocket();
@@ -162,7 +159,7 @@ export function useGameSocket() {
   );
 
   const chooseLabCard = useCallback(
-    (cardId: string) => {
+    (cardId: string | null) => {
       const socket = ensureSocket();
       send(socket, { type: "choose_lab_card", cardId });
     },

@@ -7,7 +7,7 @@ import { explorationTemplates } from "./explorationCards.js";
 import { grimoireTemplates } from "./grimoireCards.js";
 import type { CreatureCard, Pile } from "./types.js";
 
-export { createClassDecks } from "./classCards.js";
+export { createClassDeck } from "./classCards.js";
 
 function shuffled<T>(items: T[]): T[] {
   const arr = [...items];

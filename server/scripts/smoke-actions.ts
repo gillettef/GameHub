@@ -22,25 +22,26 @@ export function nextAction(game: PublicGameState, playerId: string): SmokeAction
   }
 
   if (game.phase === "class" && !me.hasActedThisPhase) {
-    // 체력토큰으로 가져갈 수 있는 만큼 일반 카드를 열어 보고, 다 열었으면 가져간다
-    const costs = BALANCE.classCardCosts;
-    const openedCost = me.offeredClassCards.reduce((sum, c) => sum + costs[c.tier].take, 0);
+    // 3주차에 카드를 열 지력토큰 1개는 남기고, 체력토큰이 남아 있는 동안 카드를 열어 본다. 다 열었으면 살 수 있는 카드를 가져간다
+    const openedCost = me.offeredClassCards.reduce((sum, c) => sum + c.takeCost, 0);
     const key = `${base}:class:${me.offeredClassCards.length}`;
-    if (game.classLeft.normal > 0 && me.intelligenceTokens >= costs.normal.open && openedCost + costs.normal.take <= me.staminaTokens) {
-      return { key: `${key}:open`, message: { type: "open_class_card", tier: "normal" } };
+    if (game.classLeft > 0 && me.intelligenceTokens - BALANCE.openCardCost >= 1 && openedCost < me.staminaTokens) {
+      return { key: `${key}:open`, message: { type: "open_class_card" } };
     }
     let stamina = me.staminaTokens;
     const keep: string[] = [];
     for (const card of me.offeredClassCards) {
-      if (costs[card.tier].take > stamina) continue;
-      stamina -= costs[card.tier].take;
+      if (card.takeCost > stamina) continue;
+      stamina -= card.takeCost;
       keep.push(card.id);
     }
     return { key: `${key}:submit`, message: { type: "submit_class_choice", keepCardIds: keep } };
   }
 
   if (game.phase === "activity" && game.pendingLab?.playerId === playerId) {
-    return { key: `${base}:lab:${game.activityTurnPointer}`, message: { type: "choose_lab_card", cardId: game.pendingLab.cards[0].id } };
+    // 체력토큰으로 살 수 있는 카드가 있으면 고르고, 없으면 고르지 않고 넘어간다
+    const card = game.pendingLab.cards.find((c) => c.cost <= me.staminaTokens);
+    return { key: `${base}:lab:${game.activityTurnPointer}`, message: { type: "choose_lab_card", cardId: card?.id ?? null } };
   }
 
   if (game.phase === "activity" && !game.pendingLab && game.activityOrder[game.activityTurnPointer] === playerId) {
