@@ -74,3 +74,8 @@
 .cardInfo {
   pointer-events: none;
 }
+
+/* 닫기(×) 버튼은 눌러야 하므로 클릭을 받는다 */
+.cardInfo button {
+  pointer-events: auto;
+}
