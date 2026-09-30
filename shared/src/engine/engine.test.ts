@@ -26,6 +26,7 @@ import {
   hasAnyPlay,
   joinPlayer,
   legalCells,
+  planAttacks,
   resolveCombat,
   setupGame,
   startGame,
@@ -1159,5 +1160,17 @@ describe('새 지형 7종 (2026-09-28)', () => {
     expect(effectiveRange(s.board, { x: 4, y: 0 }, getSpec('fighter').range)).toBe(0); // 1 → 0
     expect(effectiveRange(s.board, { x: 4, y: 0 }, getSpec('turret').range)).toBe(1); // 2 → 1
     expect(effectiveRange(s.board, { x: 0, y: 0 }, getSpec('turret').range)).toBe(2); // 교란지대 아니면 그대로
+  });
+
+  it('planAttacks: 상태를 바꾸지 않고 resolveCombat 과 같은 대상·피해를 돌려준다', () => {
+    let s = setup(3, 'interstellar-route');
+    s = addMarkers(s, marker('p0', 'fighter', { x: 1, y: 4 }), marker('p1', 'scout', { x: 2, y: 4 })); // 포대 발판: 공격 3
+    const before = JSON.stringify(s);
+    const plan = planAttacks(s, 'p0');
+    expect(JSON.stringify(s)).toBe(before);
+    expect(plan).toHaveLength(1);
+    expect(plan[0]!.target.specId).toBe('scout');
+    expect(plan[0]!.damage).toBe(3);
+    expect(resolveCombat(s, 'p0').log.some((l) => l.message.includes('피해 ' + plan[0]!.damage))).toBe(true);
   });
 });

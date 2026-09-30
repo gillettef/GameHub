@@ -1,5 +1,6 @@
 import { memo, useCallback, useRef, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react';
-import type { CellView } from '../game/derived';
+import type { CardId } from '@astraltab/shared';
+import type { CellOverlay, CellView } from '../game/derived';
 import { CardArt } from '../game/cardArt';
 import styles from './Board.module.css';
 
@@ -42,6 +43,10 @@ interface CellProps {
    * 실제 배치는 이 콜백과 무관하게 짧은 탭(click)에서만 일어난다 */
   onPreviewStart: (x: number, y: number) => void;
   onPreviewEnd: () => void;
+  /** 배치 후보 미리보기 표시(고스트 마커·예상 피해·위협). 후보가 없으면 undefined */
+  overlay?: CellOverlay;
+  /** 후보 칸에 그릴 카드 */
+  ghostCardId?: CardId;
   /** Board 가 계산한 육각 위치·크기 (절대 배치) */
   style: CSSProperties;
 }
@@ -51,7 +56,7 @@ interface CellProps {
  * 지형·영토·시야는 data 속성으로 넘기고 색·모양은 Board.module.css 가 정한다.
  * 육각 clip-path 는 `.hex` 레이어 하나에만 건다 — `.cell` 자체에 걸면 자손이 잘린다.
  */
-export const Cell = memo(function Cell({ cell, legal, preview, onClick, onPreviewStart, onPreviewEnd, style }: CellProps) {
+export const Cell = memo(function Cell({ cell, legal, preview, overlay, ghostCardId, onClick, onPreviewStart, onPreviewEnd, style }: CellProps) {
   const m = cell.marker;
 
   // 배치 프리뷰(길게 누르기). click 은 pointerup 다음에 발생하므로, 길게 누르기가 발동됐으면
@@ -120,6 +125,10 @@ export const Cell = memo(function Cell({ cell, legal, preview, onClick, onPrevie
       className={styles.cell}
       style={style}
       data-legal={legal || undefined}
+      data-candidate={overlay?.candidate || undefined}
+      data-threat={overlay?.threat || undefined}
+      data-hit={overlay?.hit ? (overlay.lethal ? 'lethal' : 'hit') : undefined}
+      data-from-new={overlay?.fromNew || undefined}
       onClick={handleClick}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
@@ -145,6 +154,21 @@ export const Cell = memo(function Cell({ cell, legal, preview, onClick, onPrevie
         <TerrainDecorator terrain={cell.terrain} />
         {preview && <span className={styles.previewMark} aria-hidden="true" />}
       </div>
+      {overlay?.candidate && ghostCardId && (
+        <div className={styles.ghost} aria-hidden="true">
+          <CardArt cardId={ghostCardId} className={styles.art} />
+        </div>
+      )}
+      {overlay?.hit ? (
+        <span className={styles.hitBadge} data-lethal={overlay.lethal || undefined} aria-hidden="true">
+          {overlay.lethal ? '파괴' : '-' + overlay.hit}
+        </span>
+      ) : null}
+      {overlay?.heal ? (
+        <span className={styles.healBadge} aria-hidden="true">
+          {'+' + overlay.heal}
+        </span>
+      ) : null}
       {m && (
           <div className={styles.marker} data-kind={m.kind} data-seat={m.seat}>
             <CardArt cardId={m.specId} className={styles.art} />

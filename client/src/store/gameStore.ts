@@ -38,6 +38,9 @@ interface GameStore {
   tab: TabId;
   /** 보드 탭에서 고른 손패 카드 (손패 index). 배치 후 해제 */
   selectedHandIndex: number | null;
+  /** 배치 후보 칸. 카드를 고르고 칸을 탭하면 곧바로 놓지 않고 여기에 보류해 미리보기(예상 전투)를 보여 준다.
+   * '배치 확정'(confirmPlacement)을 눌러야 엔진에 PLACE 가 전송된다 — 취소는 클라이언트에서만 일어난다 */
+  pendingPos: { x: number; y: number } | null;
   /** 손패 교체 모드(패스/턴 종료 시 함께 버릴 카드 고르기, Rules.md 5.2, 2026-09-23).
    * Hand 카드 클릭이 배치 대신 "버릴 카드 고르기"로 바뀔 뿐, 배치 선택 자체를 지우지는 않는다 */
   discardMode: boolean;
@@ -64,6 +67,9 @@ interface GameStore {
   setConnection: (connection: Connection) => void;
   dispatch: (action: Action) => void;
   placeAt: (x: number, y: number) => void;
+  /** 보류 중인 배치 후보를 실제로 놓는다 */
+  confirmPlacement: () => void;
+  cancelPlacement: () => void;
   pass: () => void;
   toggleDiscardMode: () => void;
   /** willSelect: 이 카드를 교체 목록에 추가(true)할지 뺄(false)지. Hand.tsx 가 현재 선택 여부로 계산한다 */
@@ -88,6 +94,7 @@ const EMPTY = {
   connection: 'idle' as Connection,
   tab: 'board' as TabId,
   selectedHandIndex: null,
+  pendingPos: null as { x: number; y: number } | null,
   discardMode: false,
   discardCardIds: [] as CardId[],
   inspectedMarkerId: null as string | null,
@@ -126,6 +133,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       // 엔진이 거부한다.
       // 이번 턴에 처음 배치가 성립했으면 손패가 밀리므로 선택도 함께 푼다
       selectedHandIndex: turnChanged || placedNow(prev.state, state, you) ? null : prev.selectedHandIndex,
+      pendingPos: turnChanged || placedNow(prev.state, state, you) ? null : prev.pendingPos,
       discardMode: turnChanged ? false : prev.discardMode,
       discardCardIds: turnChanged ? [] : prev.discardCardIds,
       surrenderConfirming: turnChanged ? false : prev.surrenderConfirming,
@@ -160,6 +168,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       state: maskState(next, null),
       viewerId: next.currentPlayerId ?? get().viewerId,
       selectedHandIndex: turnChanged || action.type === 'PLACE' ? null : get().selectedHandIndex,
+      pendingPos: null,
       discardMode: turnChanged ? false : get().discardMode,
       discardCardIds: turnChanged ? [] : get().discardCardIds,
       notice: null,
@@ -185,8 +194,26 @@ export const useGameStore = create<GameStore>((set, get) => ({
       setNotice(err.message);
       return;
     }
-    dispatch({ type: 'PLACE', playerId: viewerId, cardId, pos: { x, y } });
+    // 같은 후보 칸을 다시 탭하면 후보를 거둔다. 다른 칸이면 후보를 옮긴다. 실제 배치는 confirmPlacement
+    const cur = get().pendingPos;
+    set({ pendingPos: cur && cur.x === x && cur.y === y ? null : { x, y }, notice: null });
   },
+
+  confirmPlacement: () => {
+    const { state, viewerId, selectedHandIndex, pendingPos, dispatch, setNotice } = get();
+    if (!state || !viewerId || selectedHandIndex === null || !pendingPos) return;
+    const cardId = state.players.find((p) => p.id === viewerId)?.hand[selectedHandIndex];
+    if (!cardId) return;
+    const err = validatePlacement(state, viewerId, cardId, pendingPos);
+    if (err) {
+      set({ pendingPos: null });
+      setNotice(err.message);
+      return;
+    }
+    dispatch({ type: 'PLACE', playerId: viewerId, cardId, pos: pendingPos });
+  },
+
+  cancelPlacement: () => set({ pendingPos: null }),
 
   pass: () => {
     // dispatch 결과(성공/실패)를 기다리지 않고 여기서 먼저 선택을 지우면, 서버 거부·통신 실패 시
@@ -199,7 +226,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   // discardMode 를 끌 때는 선택을 지우지 않는다 — 배치 모드로 잠깐 돌아갔다 와도 고른 카드가 유지된다.
   // 켤 때만 배치용 선택(selectedHandIndex)과 겹치지 않게 지운다.
-  toggleDiscardMode: () => set((s) => ({ discardMode: !s.discardMode, selectedHandIndex: s.discardMode ? s.selectedHandIndex : null })),
+  toggleDiscardMode: () =>
+    set((s) => ({ discardMode: !s.discardMode, selectedHandIndex: s.discardMode ? s.selectedHandIndex : null, pendingPos: null })),
 
   setDiscardCard: (cardId, willSelect) =>
     set((s) => {
@@ -224,7 +252,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   selectHandCard: (index) => {
     if (!selectIsMyTurn(get())) return;
-    set({ selectedHandIndex: index, notice: null });
+    set({ selectedHandIndex: index, pendingPos: null, notice: null });
   },
   setNotice: (message) => set({ notice: message }),
   clearNotice: () => set({ notice: null }),

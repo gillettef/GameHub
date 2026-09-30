@@ -38,34 +38,50 @@ function prioritizedTargets(attackerPos: Position, enemies: readonly Marker[], r
   return nonVeiled.length > 0 ? nonVeiled : sorted;
 }
 
+export interface PlannedAttack {
+  attacker: Marker;
+  target: Marker;
+  damage: number;
+}
+
 /**
- * 7.1 자동 공격. 턴 플레이어의 공격력 > 0 마커 각각이 사거리 안 적 하나(또는 `다중 포격`이면 둘)를
- * 공격한다. 대상: 거리 → 남은 체력 → y → x 오름차순, `은신` 마커는 다른 표적이 있으면 제외.
- * 피해는 전투 시작 상태 기준으로 동시 적용. 피해 적용 후 removeDestroyed 로 한꺼번에 제거한다.
+ * 7.1 자동 공격 계획. 턴 플레이어의 공격력 > 0 마커 각각이 사거리 안 적 하나(또는 `다중 포격`이면 둘)를
+ * 누구에게 얼마를 주는지 순서대로 돌려준다. 대상: 거리 → 남은 체력 → y → x 오름차순, `은신` 마커는
+ * 다른 표적이 있으면 제외. 상태를 바꾸지 않으므로 배치 전 전투 예측(UI)에도 그대로 쓴다.
  */
-export function resolveCombat(state: GameState, playerId: PlayerId): GameState {
+export function planAttacks(state: GameState, playerId: PlayerId): PlannedAttack[] {
   const attackers = markersOf(state, playerId).filter((m) => getSpec(m.specId).attack > 0);
-  if (attackers.length === 0) return state;
-
   const enemies = state.markers.filter((m) => m.ownerId !== playerId);
-  const damage = new Map<string, number>();
-  let s = state;
-
+  const plan: PlannedAttack[] = [];
   for (const a of attackers) {
     const spec = getSpec(a.specId);
-    const attack = effectiveAttack(s.board, a.pos, spec.attack);
-    const range = effectiveRange(s.board, a.pos, spec.range);
+    const attack = effectiveAttack(state.board, a.pos, spec.attack);
+    const range = effectiveRange(state.board, a.pos, spec.range);
     const candidates = prioritizedTargets(a.pos, enemies, range);
     const targets = spec.keywords.includes('barrage') ? candidates.slice(0, 2) : candidates.slice(0, 1);
-    for (const target of targets) {
-      damage.set(target.id, (damage.get(target.id) ?? 0) + attack);
-      s = addLog(
-        s,
-        'combat',
-        playerId,
-        `${spec.name}${fmt(a.pos)} → ${nameOf(s, target.ownerId)}의 ${getSpec(target.specId).name}${fmt(target.pos)} 피해 ${attack}`,
-      );
-    }
+    for (const target of targets) plan.push({ attacker: a, target, damage: attack });
+  }
+  return plan;
+}
+
+/**
+ * 7.1 자동 공격 적용. 피해는 전투 시작 상태 기준으로 동시 적용(planAttacks). 피해 적용 후
+ * removeDestroyed 로 한꺼번에 제거한다.
+ */
+export function resolveCombat(state: GameState, playerId: PlayerId): GameState {
+  const plan = planAttacks(state, playerId);
+  if (plan.length === 0) return state;
+
+  const damage = new Map<string, number>();
+  let s = state;
+  for (const { attacker, target, damage: dmg } of plan) {
+    damage.set(target.id, (damage.get(target.id) ?? 0) + dmg);
+    s = addLog(
+      s,
+      'combat',
+      playerId,
+      `${getSpec(attacker.specId).name}${fmt(attacker.pos)} → ${nameOf(s, target.ownerId)}의 ${getSpec(target.specId).name}${fmt(target.pos)} 피해 ${dmg}`,
+    );
   }
 
   if (damage.size === 0) return s;

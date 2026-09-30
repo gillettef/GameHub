@@ -402,3 +402,66 @@
     transform: scale(1.1);
   }
 }
+
+/* 배치 후보 칸(2026-09-30): 탭하면 곧바로 놓지 않고 이 표시로 보류한다. 고스트 마커는 반투명 */
+.cell[data-candidate] .hex {
+  background: color-mix(in srgb, var(--color-accent) 55%, var(--color-canvas));
+}
+
+.cell[data-candidate] .hex::before {
+  opacity: 0;
+}
+
+.ghost {
+  position: absolute;
+  inset: 12%;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.75;
+  border: 2px dashed var(--color-accent);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+/* 예상 전투: 붉은 원 = 턴 종료 때 맞을 적, 노란 링 = 이 칸을 사거리에 둔 적(노출) */
+.cell[data-hit] .hex {
+  background: color-mix(in srgb, var(--color-danger) 40%, var(--color-canvas));
+}
+
+.cell[data-hit='lethal'] .hex {
+  background: color-mix(in srgb, var(--color-danger) 70%, var(--color-canvas));
+}
+
+.cell[data-from-new] .hex::after {
+  background: var(--color-danger);
+}
+
+.cell[data-threat] .marker {
+  outline: 3px dashed var(--color-danger);
+  outline-offset: 1px;
+}
+
+.hitBadge,
+.healBadge {
+  position: absolute;
+  left: 50%;
+  top: -2px;
+  z-index: 6;
+  transform: translateX(-50%);
+  padding: 0 5px;
+  border-radius: var(--radius-full);
+  background: var(--color-danger);
+  color: var(--color-white);
+  font-size: var(--text-micro);
+  font-weight: 700;
+  line-height: 1.4;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.healBadge {
+  background: var(--color-seat-2);
+  color: var(--color-navy);
+}
