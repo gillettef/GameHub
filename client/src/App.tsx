@@ -28,14 +28,20 @@ import { useGameSocket } from "./useGameSocket";
 import { GameBoard } from "./GameBoard";
 import { RulesModal } from "./Rules";
 import { Icon } from "./Icons";
+import { LeaveConfirm, useBackGuard } from "./Leave";
 
 function App() {
-  const { state, game, lastError, errorSeq, reconnecting, createRoom, joinRoom, startGame, addBot, removeBot, takeClassCard, rollDice, rerollDice, confirmRoll, selectActivity, pickActivityCard } =
+  const { state, game, lastError, errorSeq, reconnecting, createRoom, joinRoom, leaveRoom, startGame, addBot, removeBot, takeClassCard, rollDice, rerollDice, confirmRoll, selectActivity, pickActivityCard } =
     useGameSocket();
   const [playerName, setPlayerName] = useState("");
   const [joinCode, setJoinCode] = useState("");
   const [copied, setCopied] = useState(false);
   const [showRules, setShowRules] = useState(false);
+  const [leaveAsk, setLeaveAsk] = useState(false);
+  const inRoom = state.status === "in_room";
+  // 대기실에서도 뒤로가기로 실수로 방을 떠나지 않도록 확인을 거친다 (게임 화면은 GameMenu가 따로 맡는다)
+  const inLobby = inRoom && !game;
+  useBackGuard(() => setLeaveAsk(true), inLobby);
   const rulesButton = (
     <button
       className="fixed right-3 top-[max(0.75rem,env(safe-area-inset-top))] z-30 min-h-11 rounded-full bg-white/90 px-4 text-sm text-purple-700 shadow-sm active:scale-95 transition-transform"
@@ -88,6 +94,7 @@ ${window.location.href}`;
         onRollDice={rollDice}
         onRerollDice={rerollDice}
         onConfirmRoll={confirmRoll}
+        onLeave={leaveRoom}
       />
       </>
     );
@@ -167,7 +174,13 @@ ${window.location.href}`;
         {!state.isHost && <p className="text-purple-500 text-sm">방장이 게임을 시작하면 자동으로 시작됩니다</p>}
 
         {lastError && <p className="text-pink-600 bg-pink-50 rounded-2xl px-3 py-2 text-sm mt-3">{lastError}</p>}
+
+        <button className="mt-6 min-h-11 rounded-full px-5 text-sm text-pink-600 active:scale-95 transition-transform" onClick={() => setLeaveAsk(true)}>
+          <Icon name="door" className="mr-1 h-4 w-4" />
+          방 나가기
+        </button>
       </main>
+      {leaveAsk && <LeaveConfirm inGame={false} onCancel={() => setLeaveAsk(false)} onLeave={() => { setLeaveAsk(false); leaveRoom(); }} />}
       </>
     );
   }

@@ -148,6 +148,9 @@ export function useGameSocket() {
         case "player_left":
           setState((prev) => ({ ...prev, players: prev.players.filter((p) => p.id !== message.playerId) }));
           break;
+        case "host_changed":
+          setState((prev) => ({ ...prev, isHost: prev.playerId === message.hostId }));
+          break;
         case "game_state":
           setGame(message.game);
           break;
@@ -296,6 +299,23 @@ export function useGameSocket() {
     [ensureSocket, send],
   );
 
+  // 방(게임)에서 나가 처음 화면으로 돌아간다. 저장된 방 정보를 지워 자동 재접속으로 다시 들어오지 않게 한다
+  const leaveRoom = useCallback(() => {
+    const socket = socketRef.current;
+    if (socket && socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ type: "leave_room" } satisfies ClientMessage));
+    sessionRef.current = null;
+    saveSession(null);
+    if (reconnectTimerRef.current !== undefined) {
+      clearTimeout(reconnectTimerRef.current);
+      reconnectTimerRef.current = undefined;
+    }
+    attemptsRef.current = 0;
+    setReconnecting(false);
+    setGame(null);
+    setLastError(null);
+    setState({ status: "idle", players: [] });
+  }, []);
+
   const startGame = useCallback(() => {
     const socket = ensureSocket();
     send(socket, { type: "start_game" });
@@ -354,5 +374,5 @@ export function useGameSocket() {
     [ensureSocket, send],
   );
 
-  return { state, game, lastError, errorSeq, reconnecting, createRoom, joinRoom, startGame, addBot, removeBot, takeClassCard, rollDice, rerollDice, confirmRoll, selectActivity, pickActivityCard };
+  return { state, game, lastError, errorSeq, reconnecting, createRoom, joinRoom, leaveRoom, startGame, addBot, removeBot, takeClassCard, rollDice, rerollDice, confirmRoll, selectActivity, pickActivityCard };
 }

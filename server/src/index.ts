@@ -303,6 +303,23 @@ wss.on("connection", (socket) => {
     const room = getRoom(currentRoomCode);
     if (!room) return;
 
+    if (message.type === "leave_room") {
+      const leaving = room.players.get(playerId);
+      const leftId = playerId;
+      // 이 연결은 더 이상 방과 무관하다 (뒤늦은 close 이벤트가 유예 타이머를 만들지 않도록 소켓도 떼어 둔다)
+      currentRoomCode = undefined;
+      playerId = undefined;
+      if (!leaving) return;
+      leaving.socket = undefined;
+      if (leaving.graceTimer) {
+        clearTimeout(leaving.graceTimer);
+        leaving.graceTimer = undefined;
+      }
+      send(socket, { type: "left_room" });
+      handleVoluntaryLeave(room, leaving, leftId);
+      return;
+    }
+
     if (message.type === "add_bot") {
       if (room.hostId !== playerId) {
         send(socket, { type: "error", message: "방장만 봇을 추가할 수 있습니다." });
@@ -462,8 +479,38 @@ function handleAwayExpired(room: Room, leaving: Player): void {
     scheduleBots(room);
     return;
   }
+  const previousHostId = room.hostId;
   leaveRoom(room.code, leaving.id);
+  if (!getRoom(room.code)) return;
   broadcast(room, { type: "player_left", playerId: leaving.id });
+  notifyHostChange(room, previousHostId);
+}
+
+// 방장이 바뀌었으면 남은 사람들에게 알린다
+function notifyHostChange(room: Room, previousHostId: string): void {
+  if (room.hostId !== previousHostId) broadcast(room, { type: "host_changed", hostId: room.hostId });
+}
+
+// 자발적으로 나간 플레이어를 정리한다. 진행 중인 게임이면 기다리지 않고 바로 봇이 이어받고(돌아올 수 없음), 그 외에는 방에서 뺀다
+function handleVoluntaryLeave(room: Room, leaving: Player, leavingId: string): void {
+  const previousHostId = room.hostId;
+  if (room.game && room.game.phase !== "ended") {
+    leaving.bot = pickBotPersonality();
+    leaving.wasHuman = undefined;
+    if (room.game.players[leavingId]) room.game.players[leavingId].isBot = true;
+    room.game.log.push({ round: room.game.round, message: `${leaving.name}님이 게임을 떠나 봇이 이어받습니다` });
+    if (leaveRoomIfNoHumans(room)) return;
+    // 봇이 된 방장은 방장 자리를 남은 사람에게 넘긴다
+    if (room.hostId === leavingId) room.hostId = [...room.players.values()].find((p) => !p.bot)!.id;
+    notifyHostChange(room, previousHostId);
+    broadcastGameState(room);
+    scheduleBots(room);
+    return;
+  }
+  leaveRoom(room.code, leavingId);
+  if (!getRoom(room.code)) return;
+  broadcast(room, { type: "player_left", playerId: leavingId });
+  notifyHostChange(room, previousHostId);
 }
 
 // 죽은 연결(전원 꺼짐, 백그라운드로 밀린 폰 등)을 주기적으로 찾아 끊는다 — 끊기면 위의 유예 절차가 시작된다
