@@ -171,6 +171,7 @@ function createPlayer(id: string, name: string, isBot = false): PlayerGameState 
     tempBoosts: {},
     intelligenceTokens: 0,
     staminaTokens: 0,
+    charmTokens: 0,
     spellbookTokens: 0,
     pendingStaminaTokens: 0,
     pendingSpellbookTokens: 0,
@@ -219,6 +220,40 @@ export function createGame(players: { id: string; name: string; isBot?: boolean 
   return state;
 }
 
+// ── 토큰 지불: 매력토큰은 언제든 charmRate개(기본 3개)를 지력토큰·체력토큰 1개로 바꿔 낼 수 있고,
+//    자율활동 구역의 두 번째 참가비는 매력토큰 1개로 (체력토큰 대신) 낼 수 있다 ──
+
+type PayKind = "intelligence" | "stamina";
+type Payer = Pick<PlayerGameState, "intelligenceTokens" | "staminaTokens" | "charmTokens" | "grimoires" | "creatures">;
+
+// 매력토큰 몇 개가 다른 토큰 1개가 되는가 ("always/charmRate" 능력을 가진 카드로 줄어들지만 최소 charmExchangeRateMin)
+export function charmRate(p: Pick<PlayerGameState, "grimoires" | "creatures">): number {
+  const abilities = [...p.creatures.map((c) => c.ability), ...p.grimoires.flatMap((g) => (g.ability ? [g.ability] : []))];
+  const cut = sumEffect(abilities.filter((a) => a.trigger === "always"), "charmRate");
+  return Math.max(BALANCE.charmExchangeRateMin, BALANCE.charmExchangeRate - cut);
+}
+
+// 지력토큰 int개 + 체력토큰 stamina개 + (매력토큰 1개로 낼 수도 있는) 참가비 fee개를 낼 방법이 있는가.
+// 참가비에 매력토큰을 몇 개 쓸지(k)를 돌려주고, 낼 수 없으면 -1. 매력토큰을 참가비에 많이 쓸수록 교환용 매력토큰이 줄어 유리/불리가 갈리므로 가능한 k 중 가장 큰 값을 고른다
+export function planPayment(p: Payer, int: number, stamina: number, fee = 0): number {
+  const rate = charmRate(p);
+  for (let k = Math.min(fee, p.charmTokens); k >= 0; k--) {
+    const lack = Math.max(0, int - p.intelligenceTokens) + Math.max(0, stamina + fee - k - p.staminaTokens);
+    if (lack * rate <= p.charmTokens - k) return k;
+  }
+  return -1;
+}
+
+export const canPay = (p: Payer, int: number, stamina: number, fee = 0): boolean => planPayment(p, int, stamina, fee) >= 0;
+
+// n개를 낸다: 가진 토큰을 먼저 쓰고 모자란 만큼을 매력토큰(부족분 × 환율)으로 낸다
+function pay(p: PlayerGameState, kind: PayKind, n: number): void {
+  const own = Math.min(n, kind === "intelligence" ? p.intelligenceTokens : p.staminaTokens);
+  if (kind === "intelligence") p.intelligenceTokens -= own;
+  else p.staminaTokens -= own;
+  p.charmTokens -= (n - own) * charmRate(p);
+}
+
 function beginRound(state: GameState): void {
   log(state, `${state.round}라운드 시작`);
   for (const playerId of state.turnOrder) {
@@ -236,6 +271,8 @@ function beginRound(state: GameState): void {
       effectiveStat(player, "spellPower") + player.pendingSpellbookTokens + sumEffect(prepAbilities, "spellbook"),
     );
     player.pendingSpellbookTokens = 0;
+    // 매력 수치만큼 매력토큰: 지력토큰·체력토큰이 모자랄 때 대신 낼 수 있는 만능 토큰
+    player.charmTokens = effectiveStat(player, "charm");
   }
   beginClassPhase(state);
 }
@@ -261,10 +298,10 @@ export function openClassCard(state: GameState, playerId: string): void {
   if (!player) throw new Error("플레이어를 찾을 수 없습니다.");
   if (player.hasActedThisPhase) throw new Error("이미 수업 카드를 선택했습니다.");
   const cost = BALANCE.openCardCost;
-  if (player.intelligenceTokens < cost) throw new Error(`지력토큰이 부족합니다 (카드를 열려면 지력토큰 ${cost}개가 필요).`);
+  if (!canPay(player, cost, 0)) throw new Error(`지력토큰이 부족합니다 (카드를 열려면 지력토큰 ${cost}개가 필요, 매력토큰으로 대신 낼 수 있어요).`);
   const card = drawClassCard(state);
   if (!card) throw new Error("더 열 수 있는 수업카드가 없습니다.");
-  player.intelligenceTokens -= cost;
+  pay(player, "intelligence", cost);
   player.offeredClassCards.push(card);
 }
 
@@ -281,15 +318,15 @@ export function submitClassChoice(state: GameState, playerId: string, keepCardId
   }
   const keptCards = player.offeredClassCards.filter((c) => uniqueKeepIds.includes(c.id));
   const cost = sum(keptCards.map((c) => c.takeCost));
-  if (player.staminaTokens < cost) {
-    throw new Error(`체력토큰이 부족합니다 (선택한 카드에 체력토큰 ${cost}개 필요).`);
+  if (!canPay(player, 0, cost)) {
+    throw new Error(`체력토큰이 부족합니다 (선택한 카드에 체력토큰 ${cost}개 필요, 매력토큰으로 대신 낼 수 있어요).`);
   }
 
   for (const card of keptCards) {
     player[card.statBoost.stat] += card.statBoost.amount;
     player.classCards.push(card);
   }
-  player.staminaTokens -= cost;
+  pay(player, "stamina", cost);
   // 고르지 않은 카드는 버림 더미로
   state.classDiscard.push(...player.offeredClassCards.filter((c) => !uniqueKeepIds.includes(c.id)));
   player.offeredClassCards = [];
@@ -346,9 +383,9 @@ export function activityBlockReason(state: ActivityView, playerId: string, activ
   const slots = state.activitySlots[activityId];
   if (slots.length >= BALANCE.activityMaxParticipants) return "이미 두 명이 참여한 구역입니다.";
   const extra = activityExtraCost(state, activityId);
-  if (player.staminaTokens < extra) return `이미 참여한 친구가 있어서 체력토큰 ${extra}개가 더 필요해요.`;
+  if (!canPay(player, 0, 0, extra)) return `이미 참여한 친구가 있어서 체력토큰 ${extra}개가 더 필요해요 (매력토큰 ${extra}개로 낼 수도 있어요).`;
   const open = activityOpenCost(state, activityId);
-  if (player.intelligenceTokens < open) return `카드를 열 지력토큰 ${open}개가 필요해요.`;
+  if (!canPay(player, open, 0, extra)) return `카드를 열 지력토큰 ${open}개가 필요해요 (매력토큰 ${charmRate(player)}개로 지력토큰 1개를 대신할 수 있어요).`;
   if (activityId === "duel") {
     if (duelTargets(state, playerId).length === 0) return "지목할 수 있는 친구가 없어요.";
     if (player.charm < BALANCE.duelCharmFee) return `지목당한 친구에게 건넬 매력(${BALANCE.duelCharmFee})이 없어요.`;
@@ -375,8 +412,8 @@ function startDuel(state: GameState, player: PlayerGameState, targetPlayerId: st
   target.hasActedThisPhase = true;
   state.duels.push({ challengerId: player.id, targetId: target.id });
   // 지목당한 쪽은 남은 체력토큰이 있으면 자동으로 집중해 굴림 +1 (토큰은 어차피 4주차에 소멸)
-  const defenderBoost = target.staminaTokens > 0 ? 1 : 0;
-  target.staminaTokens -= defenderBoost;
+  const defenderBoost = canPay(target, 0, 1) ? 1 : 0;
+  if (defenderBoost) pay(target, "stamina", 1);
   state.hidden.roll = { kind: "duel", challengerId: player.id, targetId: target.id, challengerBoost: boost, defenderBoost };
   state.pendingRoll = {
     kind: "duel",
@@ -598,14 +635,14 @@ function startActivity(state: GameState, activityId: ActivityId, player: PlayerG
       // 카드를 한 장 열 때마다 지력토큰이 들기 때문에 지력토큰이 모자라면 그만큼만 펼친다 (최소 1장)
       const candidates: LabCard[] = [];
       const wanted = Math.max(1, Math.min(BALANCE.labMaxCandidates, effectiveStat(player, "intelligence"))) + boost;
-      const count = Math.max(1, Math.min(wanted, Math.floor(player.intelligenceTokens / BALANCE.openCardCost)));
+      const count = Math.max(1, Math.min(wanted, Math.floor((player.intelligenceTokens + Math.floor(player.charmTokens / charmRate(player))) / BALANCE.openCardCost)));
       for (let i = 0; i < count; i++) {
         const drawn = drawFromPile(state.labPile);
         if (!drawn) break;
         candidates.push(drawn);
       }
       if (candidates.length === 0) break;
-      player.intelligenceTokens -= candidates.length * BALANCE.openCardCost;
+      pay(player, "intelligence", candidates.length * BALANCE.openCardCost);
       state.pendingLab = { playerId: player.id, cards: candidates };
       log(state, `${player.name}: 연구실 실험 — 연구 카드 ${candidates.length}장을 펼쳤어요 (지력토큰 ${candidates.length * BALANCE.openCardCost}개)`);
       break;
@@ -634,16 +671,18 @@ export function selectActivity(
   // (토큰은 4주차에 소멸하므로 남겨도 쓸모없다)
   const extra = activityExtraCost(state, activityId);
   const focusCost = useStamina ? 1 : 0;
-  if (player.staminaTokens < extra + focusCost) throw new Error("집중에 쓸 체력토큰이 없습니다.");
+  const feeByCharm = planPayment(player, activityOpenCost(state, activityId), focusCost, extra);
+  if (feeByCharm < 0) throw new Error("집중에 쓸 체력토큰이 없습니다.");
   if (activityId === "duel") {
     const target = targetPlayerId ? state.players[targetPlayerId] : undefined;
     if (!target || target.id === playerId) throw new Error("주문 대결 상대를 지정해야 합니다.");
     if (target.hasActedThisPhase) throw new Error("아직 자율활동을 고르지 않은 플레이어만 지목할 수 있습니다.");
   }
 
-  player.staminaTokens -= extra + focusCost;
+  player.charmTokens -= feeByCharm; // 참가비는 매력토큰 1개로 (체력토큰 대신) 낼 수 있다
+  pay(player, "stamina", extra - feeByCharm + focusCost);
   // 마법생물 조련·비밀의 방 탐색은 카드를 1장 열 때 지력토큰을 낸다 (연구실은 펼치는 장수만큼 startActivity에서 낸다)
-  if (activityId !== "lab") player.intelligenceTokens -= activityOpenCost(state, activityId);
+  if (activityId !== "lab") pay(player, "intelligence", activityOpenCost(state, activityId));
   state.activitySlots[activityId].push(playerId);
   player.hasActedThisPhase = true;
   startActivity(state, activityId, player, targetPlayerId, focusCost);
@@ -692,8 +731,8 @@ export function chooseLabCard(state: GameState, playerId: string, cardId: string
   }
   const card = pending.cards.find((c) => c.id === cardId);
   if (!card) throw new Error("펼쳐진 연구 카드 중에서만 고를 수 있습니다.");
-  if (player.staminaTokens < card.cost) throw new Error(`체력토큰이 부족합니다 (이 카드는 체력토큰 ${card.cost}개가 필요).`);
-  player.staminaTokens -= card.cost;
+  if (!canPay(player, 0, card.cost)) throw new Error(`체력토큰이 부족합니다 (이 카드는 체력토큰 ${card.cost}개가 필요, 매력토큰으로 대신 낼 수 있어요).`);
+  pay(player, "stamina", card.cost);
   applyCardEffect(state, player, card.effect);
   // 시험 카드는 다음 시험까지 보관하고, 나머지는 효과를 받는 즉시 버림 더미로
   const rest = pending.cards.filter((c) => c.id !== card.id);
@@ -742,12 +781,14 @@ function beginCleanupPhase(state: GameState): void {
     playerId: id,
     intelligenceTokens: state.players[id].intelligenceTokens,
     staminaTokens: state.players[id].staminaTokens,
+    charmTokens: state.players[id].charmTokens,
     spellbookTokens: state.players[id].spellbookTokens,
   }));
   for (const playerId of state.turnOrder) {
     const player = state.players[playerId];
     player.intelligenceTokens = 0;
     player.staminaTokens = 0;
+    player.charmTokens = 0;
     player.spellbookTokens = 0;
     player.hasActedThisPhase = false;
   }

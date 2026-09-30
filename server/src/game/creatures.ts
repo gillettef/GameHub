@@ -76,7 +76,7 @@ export const CREATURE_CARDS: readonly Omit<CreatureCard, "id">[] = DEFS.map(
 );
 
 export function describeAbility(a: CreatureAbility): string {
-  const when = { acquire: "획득 즉시", prep: "매달 준비 때", duel: "주문 대결 참여 시", defend: "대결 도전받을 때", lose: "대결 패배 시" }[a.trigger];
+  const when = { acquire: "획득 즉시", prep: "매달 준비 때", duel: "주문 대결 참여 시", defend: "대결 도전받을 때", lose: "대결 패배 시", always: "항상" }[a.trigger];
   const what = {
     spellPower: `주문력 영구 +${a.amount}`,
     spellbook: `마법 주문서 +${a.amount}`,
@@ -85,6 +85,7 @@ export function describeAbility(a: CreatureAbility): string {
     enemyRollPenalty: `상대 굴림 -${a.amount}`,
     enemyStamina: `상대 다음 달 체력토큰 -${a.amount}`,
     immune: "주문서를 잃지 않음",
+    charmRate: `매력토큰 교환 비율 -${a.amount} (매력토큰 ${Math.max(2, 3 - a.amount)}개 = 다른 토큰 1개)`,
   }[a.effect];
   return `${when}: ${what}`;
 }

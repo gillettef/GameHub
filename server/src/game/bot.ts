@@ -4,7 +4,10 @@
 import { BALANCE } from "./config.js";
 import {
   activityExtraCost,
+  activityOpenCost,
   availableActivities,
+  canPay,
+  charmRate,
   classCardsLeft,
   duelTargets,
   growthGap,
@@ -51,7 +54,8 @@ const isLabLeaning = (strategy: BotStrategy) => strategy.activityBias.lab >= 3;
 export function playClassTurn(state: GameState, playerId: string, strategy: BotStrategy): void {
   const p = state.players[playerId];
   const tokenReserve = isLabLeaning(strategy) ? 3 : 1;
-  const staminaBudget = Math.max(0, p.staminaTokens - (isLabLeaning(strategy) ? 3 : 0));
+  // 매력토큰은 체력토큰 대신 낼 수 있으므로 체력토큰처럼 센다
+  const staminaBudget = Math.max(0, p.staminaTokens + Math.floor(p.charmTokens / charmRate(p)) - (isLabLeaning(strategy) ? 3 : 0));
   // 성향에 맞는 능력치의 카드를 우선해서 (싼 카드일수록 좋게 보고) 체력토큰이 허용하는 만큼 습득할 카드를 고른다
   const value = (c: (typeof p.offeredClassCards)[number]) =>
     strategy.random ? Math.random() : (c.statBoost.amount * strategy.classWeights[c.statBoost.stat]) / c.takeCost;
@@ -111,14 +115,19 @@ export function chooseActivityAction(
       : undefined;
   // 남은 체력토큰은 4주차에 소멸하므로 (참가비를 낸 뒤에도) 남아 있으면 집중에 쓴다.
   // 다만 연구실은 카드를 고를 때 체력토큰이 들기 때문에 넉넉할 때만 집중한다
-  const spare = p.staminaTokens - activityExtraCost(state, activityId);
-  return { activityId, targetPlayerId, useStamina: activityId === "lab" ? spare >= 5 : spare > 0 };
+  const extra = activityExtraCost(state, activityId);
+  const feeByCharm = Math.min(extra, p.charmTokens);
+  const spare = p.staminaTokens - (extra - feeByCharm) + Math.floor((p.charmTokens - feeByCharm) / charmRate(p));
+  // 엔진과 같은 규칙으로 (지력토큰·참가비까지 함께) 집중할 여력이 실제로 있는지 확인한다
+  const canFocus = canPay(p, activityOpenCost(state, activityId), 1, extra);
+  return { activityId, targetPlayerId, useStamina: canFocus && (activityId === "lab" ? spare >= 5 : spare > 0) };
 }
 
 // 연구실 실험: 펼쳐진 연구 카드 중 체력토큰으로 살 수 있는 카드의 id (영구 능력치는 성향 가중치로, 임시/토큰/엿보기는 낮게 평가).
 // 살 수 있는 카드가 없으면 null(아무것도 고르지 않고 넘어감)
 export function chooseLabCard(state: GameState, strategy: BotStrategy): string | null {
-  const stamina = state.players[state.pendingLab?.playerId ?? ""]?.staminaTokens ?? 0;
+  const owner = state.players[state.pendingLab?.playerId ?? ""];
+  const stamina = owner ? owner.staminaTokens + Math.floor(owner.charmTokens / charmRate(owner)) : 0;
   const cards = (state.pendingLab?.cards ?? []).filter((c) => c.cost <= stamina);
   if (cards.length === 0) return null;
   if (strategy.random) return cards[Math.floor(Math.random() * cards.length)].id;

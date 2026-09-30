@@ -120,6 +120,8 @@ const PUBLIC_RULES: PublicRules = {
   activityMaxParticipants: BALANCE.activityMaxParticipants,
   activitySecondParticipantCost: BALANCE.activitySecondParticipantCost,
   duelCharmFee: BALANCE.duelCharmFee,
+  charmExchangeRate: BALANCE.charmExchangeRate,
+  charmExchangeRateMin: BALANCE.charmExchangeRateMin,
   tournamentRewards: BALANCE.tournamentRewards,
 };
 

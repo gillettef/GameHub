@@ -4,6 +4,8 @@ import {
   ACTIVITY_HINT,
   ACTIVITY_LABEL,
   activityOpenCost,
+  canPay,
+  charmRate,
   ELEMENT_ICON,
   ELEMENT_LABEL,
   LAB_KIND_ICON,
@@ -62,7 +64,7 @@ function PlayerStatCard({ player, isMe }: { player: PlayerGameState; isMe: boole
         <Chip icon="cap" label="학점" value={player.credit} className="bg-amber-100 text-amber-800" />
       </div>
       <p className="text-sm text-purple-700 leading-7">
-        <InlineIcon name="trophy" /> 토너먼트 {player.tournamentTrack}칸 · <InlineIcon name="intToken" /> 지력토큰 {player.intelligenceTokens} · <InlineIcon name="staminaToken" /> 체력토큰 {player.staminaTokens} · <InlineIcon name="spellbookToken" /> 주문서 {player.spellbookTokens} · <InlineIcon name="book" /> 수업 {player.classCards.length}장
+        <InlineIcon name="trophy" /> 토너먼트 {player.tournamentTrack}칸 · <InlineIcon name="intToken" /> 지력토큰 {player.intelligenceTokens} · <InlineIcon name="staminaToken" /> 체력토큰 {player.staminaTokens} · <InlineIcon name="charmToken" /> 매력토큰 {player.charmTokens} · <InlineIcon name="spellbookToken" /> 주문서 {player.spellbookTokens} · <InlineIcon name="book" /> 수업 {player.classCards.length}장
       </p>
       {player.peekedExploration && (
         <div className="mt-2 rounded-2xl border border-indigo-200 bg-indigo-50 px-2.5 py-2 text-sm text-indigo-800">
@@ -175,7 +177,7 @@ function ClassPhasePanel({
   const selectedCost = me.offeredClassCards.filter((c) => selected.includes(c.id)).reduce((sum, c) => sum + c.takeCost, 0);
 
   const toggle = (card: ClassCard) => {
-    if (!selected.includes(card.id) && selectedCost + card.takeCost > me.staminaTokens) {
+    if (!selected.includes(card.id) && !canPay(game, me, 0, selectedCost + card.takeCost)) {
       setLimitHint(true);
       return;
     }
@@ -187,14 +189,14 @@ function ClassPhasePanel({
     <div className="bg-white rounded-3xl border-2 border-purple-200 shadow-sm p-4">
       <p className="text-sm text-purple-500 mb-1">2주차(정규수업): 지력토큰으로 카드를 열고, 체력토큰으로 습득해요</p>
       <p className="text-xs text-purple-500 mb-2">
-        <InlineIcon name="intToken" /> 지력토큰 {me.intelligenceTokens}개 · <InlineIcon name="staminaToken" /> 체력토큰 {me.staminaTokens}개
+        <InlineIcon name="intToken" /> 지력토큰 {me.intelligenceTokens}개 · <InlineIcon name="staminaToken" /> 체력토큰 {me.staminaTokens}개 · <InlineIcon name="charmToken" /> 매력토큰 {me.charmTokens}개 (매력토큰 {charmRate(game, me)}개 = 지력·체력토큰 1개)
       </p>
       <p className="text-xs text-purple-500 mb-3">
         카드마다 습득에 드는 체력토큰이 달라요. 열어 보고 마음에 드는 카드만 가져가세요. 3주차에 카드를 여는 활동(마법생물·비밀의 방·연구실·주문 대결)에도 지력토큰이 들어요.
       </p>
 
       <button
-        disabled={me.intelligenceTokens < game.rules.openCardCost || game.classLeft === 0}
+        disabled={!canPay(game, me, game.rules.openCardCost, 0) || game.classLeft === 0}
         onClick={onOpen}
         className="mb-3 w-full rounded-xl border-2 border-sky-200 bg-sky-50 min-h-14 px-3 py-2 text-sky-800 active:scale-95 transition-transform disabled:border-gray-200 disabled:bg-gray-100 disabled:text-gray-600 disabled:active:scale-100"
       >
@@ -203,7 +205,7 @@ function ClassPhasePanel({
         <span className="block text-xs">
           {game.classLeft === 0
             ? "카드가 모두 소진됐어요"
-            : me.intelligenceTokens < game.rules.openCardCost
+            : !canPay(game, me, game.rules.openCardCost, 0)
               ? "지력토큰이 부족해요"
               : `덱에 남은 카드 ${game.classLeft}장`}
         </span>
@@ -248,18 +250,18 @@ function ClassPhasePanel({
   );
 }
 
-function LabChoicePanel({ cards, staminaTokens, onChoose }: { cards: LabCard[]; staminaTokens: number; onChoose: (cardId: string | null) => void }) {
+function LabChoicePanel({ cards, staminaTokens, canAfford, onChoose }: { cards: LabCard[]; staminaTokens: number; canAfford: (cost: number) => boolean; onChoose: (cardId: string | null) => void }) {
   return (
     <div className="bg-white rounded-3xl border-2 border-purple-200 shadow-sm p-4">
       <p className="text-sm text-purple-600 mb-1">연구실 실험: 펼쳐진 연구 카드 중 1장을 고르세요</p>
       <p className="text-xs text-purple-500 mb-2">
-        카드마다 드는 <InlineIcon name="staminaToken" /> 체력토큰이 달라요 (내 체력토큰 {staminaTokens}개). 살 수 있는 카드가 없으면 넘어가도 돼요.
+        카드마다 드는 <InlineIcon name="staminaToken" /> 체력토큰이 달라요 (내 체력토큰 {staminaTokens}개, 모자라면 매력토큰으로 대신 낼 수 있어요). 살 수 있는 카드가 없으면 넘어가도 돼요.
       </p>
       <div className="flex flex-col gap-2">
         {cards.map((card) => (
           <button
             key={card.id}
-            disabled={card.cost > staminaTokens}
+            disabled={!canAfford(card.cost)}
             onClick={() => onChoose(card.id)}
             className="rounded-xl border-2 border-purple-200 bg-purple-50 min-h-12 px-3 py-3 text-left text-purple-800 active:scale-95 transition-transform disabled:border-gray-200 disabled:bg-gray-100 disabled:text-gray-600 disabled:active:scale-100"
           >
@@ -269,7 +271,7 @@ function LabChoicePanel({ cards, staminaTokens, onChoose }: { cards: LabCard[]; 
             <span className="block text-xs text-purple-500">{card.description}</span>
             <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-xs text-green-800">
               <InlineIcon name="staminaToken" /> {card.cost > 0 ? `체력토큰 ${card.cost}개` : "무료"}
-              {card.cost > staminaTokens && " · 부족해요"}
+              {!canAfford(card.cost) && " · 부족해요"}
             </span>
           </button>
         ))}
@@ -326,12 +328,13 @@ function ActivityPhasePanel({
   const [pendingActivity, setPendingActivity] = useState<ActivityId | null>(null);
   const [focus, setFocus] = useState(false);
   const staminaTokens = game.players[myId]?.staminaTokens ?? 0;
+  const meNow = game.players[myId];
   const orderText = game.activityOrder.map((id) => game.players[id].name).join(" → ");
   const namesOf = (ids: string[]) => ids.map((id) => game.players[id].name).join(" · ");
   const fee = game.rules.duelCharmFee;
 
   if (isMyTurn && game.pendingLab) {
-    return <LabChoicePanel cards={game.pendingLab.cards} staminaTokens={staminaTokens} onChoose={onChooseLabCard} />;
+    return <LabChoicePanel cards={game.pendingLab.cards} staminaTokens={staminaTokens} canAfford={(cost) => canPay(game, meNow, 0, cost)} onChoose={onChooseLabCard} />;
   }
 
   if (!isMyTurn) {
@@ -363,7 +366,7 @@ function ActivityPhasePanel({
             <button
               key={id}
               className="rounded-xl border border-purple-200 min-h-12 px-3 py-3 text-purple-700 bg-purple-50 active:scale-95 transition-transform"
-              onClick={() => onSelect("duel", id, focus && staminaTokens - extra > 0)}
+              onClick={() => onSelect("duel", id, focus && canPay(game, meNow, activityOpenCost(game, "duel"), 1, extra))}
             >
               {game.players[id].name}
             </button>
@@ -381,10 +384,10 @@ function ActivityPhasePanel({
       <p className="text-sm text-purple-600 mb-1">3주차(자율활동): 구역을 선택하세요</p>
       <p className="text-xs text-purple-500 mb-1"><InlineIcon name="heart" /> 매력 순서: {orderText}</p>
       <p className="text-xs text-purple-500 mb-2">
-        구역당 최대 {game.rules.activityMaxParticipants}명 · 먼저 온 친구가 있으면 <InlineIcon name="staminaToken" /> 체력토큰 {game.rules.activitySecondParticipantCost}개 추가
+        구역당 최대 {game.rules.activityMaxParticipants}명 · 먼저 온 친구가 있으면 <InlineIcon name="staminaToken" /> 체력토큰 {game.rules.activitySecondParticipantCost}개 추가 (<InlineIcon name="charmToken" /> 매력토큰 {game.rules.activitySecondParticipantCost}개로 대신 가능)
       </p>
       <CoopNotice game={game} myId={myId} />
-      {staminaTokens > 0 && (
+      {(staminaTokens > 0 || (meNow && meNow.charmTokens >= charmRate(game, meNow))) && (
         <label className="flex items-center gap-2 min-h-11 mb-2 rounded-xl bg-green-50 px-3 text-sm text-green-800">
           <input type="checkbox" className="h-5 w-5" checked={focus} onChange={(e) => setFocus(e.target.checked)} />
           <span><InlineIcon name="staminaToken" /> 체력토큰 1개로 집중하기 (활동 효과 +1)</span>
@@ -420,7 +423,7 @@ function ActivityPhasePanel({
               key={activityId}
               className="rounded-xl border border-purple-300 min-h-12 px-3 py-3 text-purple-700 bg-white active:bg-purple-100 active:scale-95 transition-transform"
               onClick={() =>
-                activityId === "duel" ? setPendingActivity("duel") : onSelect(activityId, undefined, focus && staminaTokens - extra > 0)
+                activityId === "duel" ? setPendingActivity("duel") : onSelect(activityId, undefined, focus && canPay(game, meNow, activityOpenCost(game, activityId), 1, extra))
               }
             >
               {label}
@@ -433,7 +436,7 @@ function ActivityPhasePanel({
               {(who || extra > 0 || openCost > 0) && (
                 <span className="mt-1 flex flex-wrap gap-1">
                   {who && <span className="rounded-full bg-purple-100 px-2 py-0.5 text-xs text-purple-700">{who} 참여 중</span>}
-                  {extra > 0 && <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs text-green-800">체력토큰 +{extra}</span>}
+                  {extra > 0 && <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs text-green-800">체력토큰 +{extra} (또는 매력토큰 {extra}개)</span>}
                   {openCost > 0 && (
                     <span className="rounded-full bg-sky-100 px-2 py-0.5 text-xs text-sky-800">
                       지력토큰 {openCost}개{activityId === "lab" ? " (카드 1장당)" : ""}
@@ -720,6 +723,7 @@ export function GameBoard({
         <div className="mt-1.5 flex flex-wrap gap-1.5" role="group" aria-label="내 토큰">
           <Chip icon="intToken" label="지력토큰" showLabel value={me.intelligenceTokens} className="bg-sky-50 text-sky-700 ring-1 ring-sky-200" />
           <Chip icon="staminaToken" label="체력토큰" showLabel value={staminaAfter === me.staminaTokens ? me.staminaTokens : `${me.staminaTokens}→${staminaAfter}`} className="bg-green-50 text-green-700 ring-1 ring-green-200" />
+          <Chip icon="charmToken" label="매력토큰" showLabel value={me.charmTokens} className="bg-pink-50 text-pink-700 ring-1 ring-pink-200" />
           <Chip icon="spellbookToken" label="주문서" showLabel value={me.spellbookTokens} className="bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200" />
         </div>
       </header>
