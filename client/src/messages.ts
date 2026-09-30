@@ -13,6 +13,8 @@ export type ClientMessage =
   | { type: "rejoin_room"; roomCode: string; playerId: string }
   // 연결이 살아 있는지 확인하는 신호 (서버는 pong으로 답한다)
   | { type: "ping" }
+  // 방(게임)에서 자발적으로 나간다 (게임 중이면 봇이 자리를 이어받고, 다시 돌아올 수 없다)
+  | { type: "leave_room" }
   | { type: "start_game" }
   | { type: "add_bot" }
   | { type: "remove_bot"; botId: string }
@@ -35,5 +37,7 @@ export type ServerMessage =
   | { type: "pong" }
   | { type: "player_joined"; playerId: string; playerName: string; isBot?: boolean }
   | { type: "player_left"; playerId: string }
+  | { type: "host_changed"; hostId: string }
+  | { type: "left_room" }
   | { type: "game_state"; game: GameState }
   | { type: "error"; message: string };

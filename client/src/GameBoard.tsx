@@ -24,6 +24,7 @@ import {
   type PlayerGameState,
 } from "./gameTypes";
 import { RulesGuide } from "./Rules";
+import { GameMenu } from "./Leave";
 import { AnnouncementLayer } from "./Announcements";
 
 const ACTIVITY_IDS: ActivityId[] = ["tournament", "creature", "duel", "exploration", "lab"];
@@ -776,7 +777,7 @@ function ErrorToast({ message, seq }: { message: string | null; seq: number }) {
   );
 }
 
-function EndedPanel({ game }: { game: GameState }) {
+function EndedPanel({ game, onLeave }: { game: GameState; onLeave: () => void }) {
   const winnerIds = game.winnerIds ?? [];
   const ranked = [...game.turnOrder]
     .map((id) => game.players[id])
@@ -808,6 +809,13 @@ function EndedPanel({ game }: { game: GameState }) {
           </li>
         ))}
       </ol>
+      <button
+        className="mt-4 min-h-12 w-full rounded-2xl bg-purple-500 font-semibold text-white active:scale-95 transition-transform"
+        onClick={onLeave}
+      >
+        <Icon name="door" className="mr-1 h-5 w-5" />
+        처음 화면으로 나가기
+      </button>
     </div>
   );
 }
@@ -889,6 +897,7 @@ export function GameBoard({
   onRollDice,
   onRerollDice,
   onConfirmRoll,
+  onLeave,
 }: {
   game: GameState;
   myId: string;
@@ -900,6 +909,7 @@ export function GameBoard({
   onRollDice: () => void;
   onRerollDice: (diceIndexes: number[]) => void;
   onConfirmRoll: () => void;
+  onLeave: () => void;
 }) {
   const [tab, setTab] = useState<TabId>("game");
   const latestExam = game.examResults[game.examResults.length - 1];
@@ -943,6 +953,7 @@ export function GameBoard({
             {myTurn ? "내 차례 · " : ""}
             {phaseText}
           </p>
+          <GameMenu inGame={game.phase !== "ended"} onLeave={onLeave} />
         </div>
         <div className="mt-1.5 h-1.5 w-full rounded-full bg-purple-100 overflow-hidden" aria-hidden>
           <div className="h-full bg-pink-300 transition-all" style={{ width: `${(game.round / 12) * 100}%` }} />
@@ -975,7 +986,7 @@ export function GameBoard({
             {game.phase === "activity" && (
               <ActivityPhasePanel game={game} myId={myId} onSelect={onSelectActivity} onPick={onPickActivityCard} />
             )}
-            {game.phase === "ended" && <EndedPanel game={game} />}
+            {game.phase === "ended" && <EndedPanel game={game} onLeave={onLeave} />}
 
             <ExamInfoPanel game={game} />
 

@@ -99,6 +99,7 @@ const PATHS = {
     </>
   ),
   // 상태·행동
+  menu: <path d="M5 7h14M5 12h14M5 17h14" />,
   check: <path d="M5 12.5 10 17.5 19 7" />,
   x: <path d="M6 6l12 12M18 6 6 18" />,
   warn: (

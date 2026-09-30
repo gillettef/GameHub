@@ -24,7 +24,7 @@
 
 - **플레이 방식**: 각자 스마트폰/기기로 온라인 실시간 접속하는 멀티플레이 (한 기기 핫시트 방식 아님)
 - **프론트엔드**: React + TypeScript + Vite + Tailwind CSS. 별도 백엔드 API 없이 전부 WebSocket으로 통신하므로 Next.js 같은 서버 프레임워크는 불필요, 정적 파일로 빌드
-- **실시간 통신/게임 상태**: Node.js + Express + `ws`(WebSocket). 게임방(room) 상태는 서버 프로세스 메모리에만 보관 — **DB 없음**, 서버 재시작 시 진행 중인 게임은 사라짐. 단, 모바일에서 다른 앱(카톡 등)을 보고 오면 WebSocket이 끊기므로 **같은 방·같은 자리로 자동 재접속**은 지원한다 (클라이언트가 방 코드·playerId를 localStorage에 저장 → `rejoin_room`, 서버는 끊긴 사람을 45초(`AWAY_GRACE_MS`) 기다린 뒤 봇으로 대체하며 봇이 맡은 뒤에도 돌아오면 사람에게 되돌려 줌, ping/pong 하트비트로 죽은 연결 감지)
+- **실시간 통신/게임 상태**: Node.js + Express + `ws`(WebSocket). 게임방(room) 상태는 서버 프로세스 메모리에만 보관 — **DB 없음**, 서버 재시작 시 진행 중인 게임은 사라짐. 단, 모바일에서 다른 앱(카톡 등)을 보고 오면 WebSocket이 끊기므로 **같은 방·같은 자리로 자동 재접속**은 지원한다 (나가기 버튼(`leave_room`)은 자발적 퇴장으로, 게임 중이면 즉시 봇이 이어받고 복귀 불가·방장은 남은 사람에게 이양. 클라이언트가 방 코드·playerId를 localStorage에 저장 → `rejoin_room`, 서버는 끊긴 사람을 45초(`AWAY_GRACE_MS`) 기다린 뒤 봇으로 대체하며 봇이 맡은 뒤에도 돌아오면 사람에게 되돌려 줌, ping/pong 하트비트로 죽은 연결 감지)
 - **계정/로그인**: 없음. 호스트가 방을 만들면 방 코드가 발급되고 다른 플레이어는 코드로 입장(Jackbox 방식)
 - **배포**: AWS EC2 인스턴스 1대에서 Express 서버가 프론트 빌드 결과(정적 파일)와 WebSocket을 함께 서빙
 - **HTTPS/WSS**: 사용하지 않음, 순수 HTTP+WS로 단순화. 친구들끼리만 사용하는 캐주얼한 개인 프로젝트라 트래픽 암호화나 인증서 관리 부담을 감수할 필요가 없다고 판단(브라우저에 "안전하지 않음" 표시는 뜨지만 차단되지는 않음). 이후 더 넓은 공개 배포나 PWA 기능이 필요해지면 재검토
@@ -42,6 +42,6 @@
 
 - `.claude/agents/`: 이 프로젝트 전용 서브에이전트 (게임 규칙 검토, 모바일 UX 검토 등)
 - `notes/플레이테스트_가이드.md`: 플레이테스트 실행 방법, 관찰 항목, 기록 양식, 수치 조정 지점
-- `server/scripts/`: `npm run check`(규칙 단위 검증), `npm run simulate`(봇 밸런스 시뮬레이션), `npm run smoke`/`npm run smoke:bot`/`npm run smoke:rejoin`(WebSocket 스모크 테스트, rejoin은 `AWAY_GRACE_MS=1500` 서버 필요). 봇 AI는 `server/src/game/bot.ts`. 밸런스 수치는 `server/src/game/config.ts`
+- `server/scripts/`: `npm run check`(규칙 단위 검증), `npm run simulate`(봇 밸런스 시뮬레이션), `npm run smoke`/`npm run smoke:bot`/`npm run smoke:rejoin`/`npm run smoke:leave`(WebSocket 스모크 테스트, rejoin은 `AWAY_GRACE_MS=1500` 서버 필요). 봇 AI는 `server/src/game/bot.ts`. 밸런스 수치는 `server/src/game/config.ts`
 - `.claude/skills/commit-and-push/`: 규칙 1·2·3을 실행하는 커밋/푸시 스킬 (`/commit-and-push`)
 - `.claude/skills/dev/`, `.claude/skills/dev-stop/`: 다른 네트워크의 친구들과 플레이하기 위해 서버+Cloudflare 퀵 터널을 띄우고(`/dev`) 종료(`/dev-stop`)하는 스킬. 상태/로그는 `.dev/`(gitignore)
