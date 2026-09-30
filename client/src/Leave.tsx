@@ -1,5 +1,14 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { Icon } from "./Icons";
+import { useModalLock } from "./modalLock";
+
+// 팝업은 body 바로 아래에 그린다. 헤더의 backdrop-blur 같은 것이 fixed의 기준 영역을 바꿔 팝업 윗부분이 잘리는 것을 막는다.
+// 떠 있는 동안 뒤 화면의 연출도 멈춘다.
+function Overlay({ children }: { children: ReactNode }) {
+  useModalLock();
+  return createPortal(children, document.body);
+}
 
 // 나가기 확인 창. 게임 중에는 봇이 대신하고 돌아올 수 없다는 것을 알려 준다
 export function LeaveConfirm({ inGame, onCancel, onLeave }: { inGame: boolean; onCancel: () => void; onLeave: () => void }) {
@@ -10,6 +19,7 @@ export function LeaveConfirm({ inGame, onCancel, onLeave }: { inGame: boolean; o
   }, [onCancel]);
 
   return (
+    <Overlay>
     <div
       className="fixed inset-0 z-[60] flex items-end justify-center bg-purple-900/40 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:items-center"
       role="dialog"
@@ -33,6 +43,7 @@ export function LeaveConfirm({ inGame, onCancel, onLeave }: { inGame: boolean; o
         </div>
       </div>
     </div>
+    </Overlay>
   );
 }
 
@@ -80,6 +91,7 @@ export function GameMenu({ inGame, onLeave }: { inGame: boolean; onLeave: () => 
         <Icon name="menu" className="h-6 w-6" />
       </button>
       {sheet && (
+        <Overlay>
         <div
           className="fixed inset-0 z-[55] flex items-end justify-center bg-purple-900/30 px-4 pb-[max(1rem,env(safe-area-inset-bottom))]"
           role="dialog"
@@ -103,6 +115,7 @@ export function GameMenu({ inGame, onLeave }: { inGame: boolean; onLeave: () => 
             </button>
           </div>
         </div>
+        </Overlay>
       )}
       {confirming && <LeaveConfirm inGame={inGame} onCancel={() => setConfirming(false)} onLeave={onLeave} />}
     </>

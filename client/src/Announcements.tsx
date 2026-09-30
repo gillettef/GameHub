@@ -1,4 +1,5 @@
-import { useEffect, useState, type CSSProperties } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { useModalOpen } from "./modalLock";
 import { Icon, type IconName } from "./Icons";
 import { ACTIVITY_LABEL, STAT_LABEL, describeExam, type ActivityId, type GameState, type StatKey } from "./gameTypes";
 
@@ -385,14 +386,24 @@ export function AnnouncementLayer({ game, myId }: { game: GameState; myId: strin
   const dismiss = () => setQueue((q) => q.slice(1));
 
   // 토큰 연출이 끝나면 저절로 다음 알림으로 넘어간다
+  // 다른 팝업(메뉴·나가기 확인 등)이 떠 있는 동안은 연출과 타이머를 멈추고, 닫히면 남은 시간만큼 이어 간다
+  const paused = useModalOpen();
+  const leftRef = useRef<{ id: number; ms: number } | null>(null);
   useEffect(() => {
-    if (!playing || !current?.tokens) return;
+    if (!playing || !current?.tokens || paused) return;
+    const left = leftRef.current?.id === current.id ? leftRef.current : { id: current.id, ms: playDuration(current.tokens) };
+    leftRef.current = left;
+    const startedAt = Date.now();
     const timer = setTimeout(() => {
+      leftRef.current = null;
       setPlaying(false);
       setQueue((q) => (q[0]?.id === current.id ? q.slice(1) : q));
-    }, playDuration(current.tokens));
-    return () => clearTimeout(timer);
-  }, [playing, current]);
+    }, left.ms);
+    return () => {
+      clearTimeout(timer);
+      left.ms = Math.max(0, left.ms - (Date.now() - startedAt));
+    };
+  }, [playing, current, paused]);
 
   if (!current) return null;
   const isResult = current.kind === "result";

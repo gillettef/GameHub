@@ -74,6 +74,15 @@ input:focus-visible {
   animation: pop-in 0.25s ease-out;
 }
 
+/* 모달/팝업이 떠 있는 동안 뒤 화면의 연출은 멈춘다 (팝업 안쪽은 제외) */
+body[data-modal-open] :not([role="dialog"], [role="dialog"] *) {
+  animation-play-state: paused !important;
+}
+body[data-modal-open] .token-in,
+body[data-modal-open] .token-out {
+  animation-play-state: paused !important;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .pop-in,
   .token-in,

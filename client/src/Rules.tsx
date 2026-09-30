@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { Icon, InlineIcon, type IconName } from "./Icons";
+import { useModalLock } from "./modalLock";
 
 const I = ({ n }: { n: IconName }) => <InlineIcon name={n} />;
 
@@ -115,6 +116,7 @@ export function RulesModal({ onClose }: { onClose: () => void }) {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
+  useModalLock();
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-purple-50" role="dialog" aria-modal="true" aria-label="게임 규칙">
