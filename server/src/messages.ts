@@ -19,7 +19,9 @@ export type ClientMessage =
   // 2주차: 공개된 수업카드 중 1장을 가져간다 (cardId가 null이면 가져가지 않고 넘어간다)
   | { type: "take_class_card"; cardId: string | null }
   | { type: "roll_dice" }
-  | { type: "select_activity"; activityId: ActivityId; targetPlayerId?: string; useStamina?: boolean }
+  // 모두 굴린 뒤 결과를 확인하고 다음으로 넘긴다 (모든 참여자가 누르면 결과가 적용된다)
+  | { type: "confirm_roll" }
+  | { type: "select_activity"; activityId: ActivityId; targetPlayerId?: string }
   // 3주차 구역에 공개된 카드 중 1장을 고른다 (마법생물·연구 카드는 cardId가 null이면 가져가지 않고 넘어간다)
   | { type: "pick_activity_card"; cardId: string | null };
 

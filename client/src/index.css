@@ -126,3 +126,26 @@ input:focus-visible {
     animation: none;
   }
 }
+
+/* 3주차 진행 단계: 지금 진행 중인 활동을 살짝 두근거리게 강조 */
+@keyframes spotlight {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(244, 114, 182, 0.55);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(244, 114, 182, 0);
+    transform: scale(1.015);
+  }
+}
+
+.spotlight {
+  animation: spotlight 1.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spotlight {
+    animation: none;
+  }
+}

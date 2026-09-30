@@ -1,7 +1,7 @@
 // 플레이테스트 중 조정할 밸런스 수치 모음 (notes/기획_정리.md 8절의 "플레이테스트 후 조정" 항목).
 // 값을 바꾸면 엔진 전체에 반영되며, 시뮬레이션 스크립트(server/scripts/simulate.ts)가 이 객체를 직접 바꿔 비교합니다.
 // 카드 종류별 수치(수업/장비/탐험/마도서/마법생물)는 각 *Cards.ts / creatures.ts에서 조정합니다.
-import type { StatKey } from "./types.js";
+import type { ActivityId, StatKey } from "./types.js";
 
 export const BALANCE = {
   // 라운드 구조 — 기획 확정값(12라운드, 6라운드 후 중간고사). 바꾸면 클라이언트 표시(12/12)와도 맞춰야 함
@@ -29,6 +29,8 @@ export const BALANCE = {
   // 학점 = floor(점수 / 나누는 수). 새 카드를 얻을 때 늘어난 학점을 즉시 받는다
   creatureSetBonus: 5,
   creatureScoreDivisor: 16,
+  // 최종 점수 = 주문력 × 학점 + 마법생물 세트(하늘·육지·바다 1장씩) 수 × creatureSetScore (기획 검토 중: 3점 또는 5점)
+  creatureSetScore: 3,
   // 탐험 역전 보너스: 선두와의 성장 점수(능력치 합 + 학점×3) 격차가 이 값 이상이면 판정에 보너스를 더한다
   catchUpGap: 4,
   catchUpBonus: 2,
@@ -42,6 +44,8 @@ export const BALANCE = {
   // 카드를 한 장 열 때 드는 지력토큰: 수업카드뿐 아니라 자율활동에서 카드를 열 때(마법생물 조련·비밀의 방 탐색·연구실 실험)도 똑같이 낸다.
   // 카드를 습득하는 데 드는 체력토큰은 카드마다 정해져 있다 (수업카드 takeCost, 연구 카드 cost)
   openCardCost: 1,
+  // 위 지력토큰이 드는 활동. 마법생물 조련·비밀의 방 탐색은 카드를 열 때 지력토큰이 들지 않는다 (2026-09-30)
+  openCardCostActivities: ["duel", "lab"] as ActivityId[],
   // 매력토큰: 1주차에 매력 수치만큼 받는다. 언제든 charmExchangeRate개를 지력토큰·체력토큰 1개로 바꿔 낼 수 있고,
   // 마도서 등 "교환 비율" 능력 카드가 있으면 최소 charmExchangeRateMin개까지 내려간다. 구역 두 번째 참가비는 매력토큰 1개로 낼 수 있다
   charmExchangeRate: 3,

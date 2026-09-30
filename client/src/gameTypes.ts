@@ -4,7 +4,7 @@ export type StatKey = "intelligence" | "stamina" | "charm" | "spellPower";
 
 export type ActivityId = "tournament" | "creature" | "duel" | "exploration" | "lab";
 
-export type GamePhase = "prep" | "class" | "activity" | "cleanup" | "midterm_exam" | "final_exam" | "ended";
+export type GamePhase = "setup" | "prep" | "class" | "activity" | "cleanup" | "midterm_exam" | "final_exam" | "ended";
 
 export interface ClassCard {
   id: string;
@@ -110,12 +110,28 @@ export interface ExamResult {
   scores: { playerId: string; score: number; dice: number[]; bonus: number; rank: number; creditAwarded: number }[];
 }
 
-// 주사위를 굴리는 중 (주문 대결·탐험 판정·시험). dice가 null이면 아직 안 굴린 사람
+// 주사위를 굴리는 중 (선 정하기·주문 대결·탐험 판정·시험). dice가 null이면 아직 안 굴린 사람.
+// 모두 굴리면 결과가 보이고, 굴린 사람들이 확인(confirmed)을 눌러야 결과가 적용된다
 export interface PendingRoll {
-  kind: "duel" | "exploration" | "exam";
+  kind: "first" | "duel" | "exploration" | "exam";
   title: string;
   lines: string[];
-  entries: { playerId: string; label: string; diceCount: number; dice: number[] | null }[];
+  entries: { playerId: string; label: string; diceCount: number; dice: number[] | null; confirmed: boolean }[];
+}
+
+// 3주차 선택 단계에서 각자 고른 활동 (모두에게 공개). 진행 단계에서는 이 순서대로 하나씩 처리한다
+export interface ActivityChoice {
+  playerId: string;
+  activityId: ActivityId;
+  // 주문 대결이면 지목한 친구
+  targetPlayerId?: string;
+}
+
+// 진행이 끝난 활동의 결과
+export interface ActivityResult {
+  playerId: string;
+  activityId: ActivityId;
+  lines: string[];
 }
 
 // 구역에 공개된 카드를 보여 주기 위한 정보 (카드 종류와 상관없이 같은 모양)
@@ -150,8 +166,9 @@ export interface DuelPair {
 
 // 서버가 알려 주는 규칙 수치 (비용 안내용)
 export interface PublicRules {
-  // 3주차 구역에 처음 들어와 카드를 열 때 드는 지력토큰
+  // 3주차 구역에 처음 들어와 카드를 열 때 드는 지력토큰, 그리고 그 지력토큰이 드는 활동
   openCardCost: number;
+  openCardCostActivities: ActivityId[];
   activityMaxParticipants: number;
   activitySecondParticipantCost: number;
   duelCharmFee: number;
@@ -162,6 +179,8 @@ export interface PublicRules {
   charmExchangeRateMin: number;
   // 마법 토너먼트 최종 순위 보상 (1위, 2위 순서, 학점)
   tournamentRewards: number[];
+  // 최종 점수 = 주문력 × 학점 + 마법생물 세트(하늘·육지·바다 1장씩) 수 × creatureSetScore
+  creatureSetScore: number;
 }
 
 export interface GameState {
@@ -171,17 +190,24 @@ export interface GameState {
   startingPlayerIndex: number;
   players: Record<string, PlayerGameState>;
   activitySlots: Record<ActivityId, string[]>;
+  // 3주차: 먼저 각자 활동을 고르고("choose", 선부터 시계방향), 모두 고르면 그 순서대로 하나씩 진행한다("resolve")
+  activityStage: "choose" | "resolve";
   activityOrder: string[];
   activityTurnPointer: number;
+  activityChoices: ActivityChoice[];
+  // 진행 단계: 지금 처리 중인(또는 곧 처리할) 활동의 activityChoices 인덱스, 이미 시작했는지, 끝난 활동의 결과
+  activityResolvePointer: number;
+  activityResolveStarted: boolean;
+  activityResults: ActivityResult[];
   duels: DuelPair[];
-  // 2주차(정규수업): 공개된 수업카드(인원수+1장)와 선택 순서(지력 높은 순)
+  // 2주차(정규수업): 공개된 수업카드(인원수+1장)와 선택 순서(선부터 시계방향)
   classMarket: ClassCard[];
   classPickOrder: string[];
   classPickPointer: number;
   // 3주차 구역에 공개된 카드 (처음 들어온 사람이 열고, 먼저 온 사람이 고르고 남은 카드는 두 번째 참가자가 가져간다)
   activityOffers: Partial<Record<ActivityId, ActivityOffer>>;
-  // 공개된 카드 중 하나를 고르는 중 (take: 구역에서 가져가기, reward: 주문 대결 승자의 마도서 선택). boost: 집중 효과(마법생물 주문서 -1)
-  pendingPick: { playerId: string; activityId: ActivityId; mode: "take" | "reward"; boost: number } | null;
+  // 공개된 카드 중 하나를 고르는 중 (take: 구역에서 가져가기, reward: 주문 대결 승자의 마도서 선택)
+  pendingPick: { playerId: string; activityId: ActivityId; mode: "take" | "reward" } | null;
   pendingRoll: PendingRoll | null;
   coopWaiting: CoopWaiting | null;
   // 공개된 시험 카드 (공개 전에는 null)
@@ -214,13 +240,13 @@ export const ACTIVITY_LABEL: Record<ActivityId, string> = {
   lab: "연구실 실험",
 };
 
-// 활동 카드에 함께 보여줄 한 줄 설명 (집중하면 +1)
+// 활동 카드에 함께 보여줄 한 줄 설명
 export const ACTIVITY_HINT: Record<ActivityId, string> = {
-  tournament: "주문력만큼 트랙 전진 (집중: +1칸)",
-  creature: "카드 2장 공개, 주문서로 마법생물 획득, 속성을 모으면 학점 (집중: 주문서 -1)",
-  duel: "아직 안 고른 한 명을 지목해 강제 대결, 이기면 공개된 마도서 1장 고르기 (집중: +1)",
-  exploration: "카드 2장 중 하나를 골라 한방 노리기! 크게 벌거나 크게 잃는 판정 (집중: +1)",
-  lab: "심화학습: 연구 카드 2장 중 1장 고르기, 카드마다 체력토큰이 들어요 (집중: 3장 공개)",
+  tournament: "주문력만큼 트랙 전진",
+  creature: "카드 2장 공개, 주문서로 마법생물 획득, 속성을 모으면 학점 + 세트 점수",
+  duel: "아직 안 고른 한 명을 지목해 강제 대결, 이기면 공개된 마도서 1장 고르기",
+  exploration: "카드 2장 중 하나를 골라 한방 노리기! 크게 벌거나 크게 잃는 판정",
+  lab: "심화학습: 연구 카드 2장 중 1장 고르기, 카드마다 체력토큰이 들어요",
 };
 
 export function effectiveStat(player: PlayerGameState, stat: StatKey): number {
@@ -229,10 +255,10 @@ export function effectiveStat(player: PlayerGameState, stat: StatKey): number {
 
 // ── 자율활동 구역 선택 규칙 (서버 engine.ts와 같은 규칙. 버튼을 미리 막고 이유를 보여 주기 위해 복제) ──
 
-// 구역에 처음 들어와 카드를 여는 사람이 내는 지력토큰. 이미 카드가 열려 있으면(두 번째 참가자) 내지 않는다
+// 구역에 처음 들어와 카드를 여는 사람이 내는 지력토큰 (연구실·주문 대결만). 이미 다른 친구가 고른 구역이면(두 번째 참가자) 내지 않는다
 export function activityOpenCost(game: GameState, activityId: ActivityId): number {
-  if (activityId === "tournament") return 0;
-  return game.activityOffers[activityId] ? 0 : game.rules.openCardCost;
+  if (!game.rules.openCardCostActivities.includes(activityId)) return 0;
+  return game.activitySlots[activityId].length > 0 ? 0 : game.rules.openCardCost;
 }
 
 // 이미 다른 플레이어가 있는 구역에 들어갈 때 내야 하는 체력토큰
@@ -302,4 +328,14 @@ export function describeAbility(a: CreatureAbility): string {
     charmRate: `매력토큰 교환 비율 -${a.amount} (매력토큰 2개 = 다른 토큰 1개)`,
   }[a.effect];
   return `${when}: ${what}`;
+}
+
+// 마법생물 세트 수: 하늘·육지·바다를 1장씩 묶은 세트 (가장 적은 속성의 장수)
+export function creatureSets(creatures: CreatureCard[]): number {
+  return Math.min(...(["sky", "land", "ocean"] as CreatureElement[]).map((el) => creatures.filter((c) => c.element === el).length));
+}
+
+// 최종 점수: 마법 성취도(주문력 × 학점) + 마법생물 세트 점수
+export function finalScore(game: Pick<GameState, "rules">, player: PlayerGameState): number {
+  return effectiveStat(player, "spellPower") * player.credit + creatureSets(player.creatures) * game.rules.creatureSetScore;
 }

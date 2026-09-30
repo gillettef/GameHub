@@ -17,6 +17,10 @@ import {
   selectActivity,
   takeClassCard,
   submitRoll,
+  confirmRoll,
+  advanceResolution,
+  canAdvanceResolution,
+  rollRevealed,
 } from "./game/engine.js";
 import type { ClientMessage, ServerMessage } from "./messages.js";
 import type { GameState, PublicRules } from "./game/types.js";
@@ -47,6 +51,9 @@ const playerInfo = (room: Room) =>
 const BOT_SPEED = Number(process.env.BOT_SPEED) || 1;
 const BOT_MIN_DELAY_MS = 1000 / BOT_SPEED;
 const BOT_MAX_DELAY_MS = 2000 / BOT_SPEED;
+// 활동을 하나씩 진행할 때 다음 활동으로 넘어가기 전 기다리는 시간(결과를 눈으로 볼 수 있게), 봇이 주사위 결과를 확인하기 전 기다리는 시간
+const RESOLVE_STEP_MS = 3000 / BOT_SPEED;
+const ROLL_REVEAL_MS = 2500 / BOT_SPEED;
 const MAX_PLAYERS = 5;
 // 접속이 끊긴 사람이 돌아오기를 기다리는 시간 (이후엔 게임 중이면 봇이 자리를 맡고, 대기실이면 퇴장 처리)
 const AWAY_GRACE_MS = Number(process.env.AWAY_GRACE_MS) || 45_000;
@@ -55,7 +62,9 @@ const HEARTBEAT_INTERVAL_MS = 15_000;
 // 봇의 평소 판단이 예외를 내더라도 게임이 멈추지 않도록 가장 단순한 행동으로 대신한다
 function runBotFallback(game: GameState, botId: string): void {
   if (game.pendingRoll) {
-    submitRoll(game, botId);
+    const entry = game.pendingRoll.entries.find((e) => e.playerId === botId);
+    if (entry?.dice === null) submitRoll(game, botId);
+    else confirmRoll(game, botId);
   } else if (game.phase === "class") {
     takeClassCard(game, botId, null);
   } else if (game.pendingPick) {
@@ -63,9 +72,9 @@ function runBotFallback(game: GameState, botId: string): void {
     const first = game.activityOffers[game.pendingPick.activityId]?.cards[0]?.id ?? null;
     const mustPick = game.pendingPick.mode === "reward" || game.pendingPick.activityId === "exploration";
     chooseActivityCard(game, botId, mustPick ? first : null);
-  } else if (game.phase === "activity") {
+  } else if (game.phase === "activity" && game.activityStage === "choose") {
     const activityId = availableActivities(game, botId)[0];
-    if (activityId) selectActivity(game, botId, activityId, activityId === "duel" ? duelTargets(game, botId)[0] : undefined, false);
+    if (activityId) selectActivity(game, botId, activityId, activityId === "duel" ? duelTargets(game, botId)[0] : undefined);
   }
 }
 
@@ -76,36 +85,67 @@ function scheduleBots(room: Room): void {
   if (!game || game.phase === "ended") return;
 
   let actorId: string | undefined;
+  // advance: 사람·봇 상관없이 서버가 시간을 두고 다음 활동을 진행시키는 경우 (결과를 눈으로 볼 수 있는 간격)
+  let advance = false;
+  let delay = BOT_MIN_DELAY_MS + Math.random() * (BOT_MAX_DELAY_MS - BOT_MIN_DELAY_MS);
   if (game.pendingRoll) {
-    // 주사위를 굴려야 하는 봇은 사람처럼 버튼을 누른다 (사람이 굴리는 동안 봇도 자기 몫을 굴림)
-    actorId = game.pendingRoll.entries.find((e) => e.dice === null && room.players.get(e.playerId)?.bot)?.playerId;
+    // 주사위를 굴려야 하는 봇은 사람처럼 버튼을 누른다 (사람이 굴리는 동안 봇도 자기 몫을 굴림).
+    // 모두 굴린 뒤에는 결과를 볼 시간을 준 다음 봇이 확인을 누른다
+    const bots = game.pendingRoll.entries.filter((e) => room.players.get(e.playerId)?.bot);
+    if (rollRevealed(game)) {
+      actorId = bots.find((e) => !e.confirmed)?.playerId;
+      delay = ROLL_REVEAL_MS;
+    } else {
+      actorId = bots.find((e) => e.dice === null)?.playerId;
+    }
   } else if (game.phase === "class") {
-    // 지력 순서대로 한 명씩 수업카드를 고른다
+    // 선부터 시계방향으로 한 명씩 수업카드를 고른다
     const currentId = game.classPickOrder[game.classPickPointer];
     if (room.players.get(currentId)?.bot) actorId = currentId;
-  } else if (game.phase === "activity") {
-    // 공개된 카드를 고르는 중이면 그 플레이어가 행동할 차례
-    const currentId = game.pendingPick?.playerId ?? game.activityOrder[game.activityTurnPointer];
+  } else if (game.phase === "activity" && game.activityStage === "choose") {
+    const currentId = game.activityOrder[game.activityTurnPointer];
     if (room.players.get(currentId)?.bot) actorId = currentId;
+  } else if (game.phase === "activity") {
+    if (game.pendingPick) {
+      // 공개된 카드를 고르는 중이면 그 플레이어가 행동할 차례
+      const currentId = game.pendingPick.playerId;
+      if (room.players.get(currentId)?.bot) actorId = currentId;
+    } else if (canAdvanceResolution(game)) {
+      advance = true;
+      delay = RESOLVE_STEP_MS;
+    }
   }
-  if (!actorId) return;
+  if (!actorId && !advance) return;
 
   const botId = actorId;
-  const delay = BOT_MIN_DELAY_MS + Math.random() * (BOT_MAX_DELAY_MS - BOT_MIN_DELAY_MS);
   room.botTimer = setTimeout(() => {
     room.botTimer = undefined;
-    const bot = room.players.get(botId);
-    if (!bot?.bot || !room.game) return;
+    if (!room.game) return;
+    if (advance) {
+      try {
+        advanceResolution(room.game);
+      } catch (err) {
+        console.error("활동 진행 오류:", err);
+        return;
+      }
+      broadcastGameState(room);
+      scheduleBots(room);
+      return;
+    }
+    const bot = botId ? room.players.get(botId) : undefined;
+    if (!botId || !bot?.bot) return;
     try {
       if (room.game.pendingRoll) {
-        submitRoll(room.game, botId);
+        const entry = room.game.pendingRoll.entries.find((e) => e.playerId === botId);
+        if (entry?.dice === null) submitRoll(room.game, botId);
+        else confirmRoll(room.game, botId);
       } else if (room.game.phase === "class") {
         playClassTurn(room.game, botId, bot.bot);
       } else if (room.game.phase === "activity" && room.game.pendingPick) {
         chooseActivityCard(room.game, botId, choosePick(room.game, bot.bot));
       } else if (room.game.phase === "activity") {
-        const { activityId, targetPlayerId, useStamina } = chooseActivityAction(room.game, botId, bot.bot);
-        selectActivity(room.game, botId, activityId, targetPlayerId, useStamina);
+        const { activityId, targetPlayerId } = chooseActivityAction(room.game, botId, bot.bot);
+        selectActivity(room.game, botId, activityId, targetPlayerId);
       }
     } catch (err) {
       console.error("봇 행동 오류:", err);
@@ -124,6 +164,7 @@ function scheduleBots(room: Room): void {
 // 화면에 보여 줄 규칙 수치 (비용 안내가 서버 설정과 어긋나지 않도록 서버가 알려 준다)
 const PUBLIC_RULES: PublicRules = {
   openCardCost: BALANCE.openCardCost,
+  openCardCostActivities: BALANCE.openCardCostActivities,
   activityMaxParticipants: BALANCE.activityMaxParticipants,
   activitySecondParticipantCost: BALANCE.activitySecondParticipantCost,
   duelCharmFee: BALANCE.duelCharmFee,
@@ -133,6 +174,7 @@ const PUBLIC_RULES: PublicRules = {
   charmExchangeRate: BALANCE.charmExchangeRate,
   charmExchangeRateMin: BALANCE.charmExchangeRateMin,
   tournamentRewards: BALANCE.tournamentRewards,
+  creatureSetScore: BALANCE.creatureSetScore,
 };
 
 function broadcastGameState(room: Room): void {
@@ -321,6 +363,19 @@ wss.on("connection", (socket) => {
       return;
     }
 
+    if (message.type === "confirm_roll") {
+      if (!room.game) return;
+      try {
+        confirmRoll(room.game, playerId);
+        broadcastGameState(room);
+        scheduleBots(room);
+      } catch (err) {
+        send(socket, { type: "error", message: err instanceof Error ? err.message : "알 수 없는 오류" });
+        broadcastGameState(room);
+      }
+      return;
+    }
+
     if (message.type === "take_class_card") {
       if (!room.game) return;
       try {
@@ -351,7 +406,7 @@ wss.on("connection", (socket) => {
     if (message.type === "select_activity") {
       if (!room.game) return;
       try {
-        selectActivity(room.game, playerId, message.activityId, message.targetPlayerId, message.useStamina);
+        selectActivity(room.game, playerId, message.activityId, message.targetPlayerId);
         broadcastGameState(room);
         scheduleBots(room);
       } catch (err) {
