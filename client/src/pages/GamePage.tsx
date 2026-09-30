@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { OpponentRecap } from '../components/OpponentRecap';
 import { HandoffOverlay } from '../components/HandoffOverlay';
 import { PlayerStrip } from '../components/PlayerStrip';
 import { TabDock } from '../components/TabDock';
@@ -89,6 +90,8 @@ export function GamePage({ onQuit }: GamePageProps) {
       </main>
 
       <TabDock />
+
+      <OpponentRecap />
 
       {notice && (
         <div className={styles.notice} role="status">

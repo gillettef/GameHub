@@ -1,4 +1,4 @@
-import { memo, useMemo, type CSSProperties } from 'react';
+import { memo, useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { RACES, nameOf } from '@astraltab/shared';
 import { RaceArt } from '../game/raceArt';
 import { ICONS, Stat } from './CardFace';
@@ -19,6 +19,13 @@ interface PlayerStripProps {
 export const PlayerStrip = memo(function PlayerStrip({ onQuit }: PlayerStripProps) {
   const state = useGameStore(selectState);
   const viewerId = useGameStore(selectViewerId);
+  // 나가기는 한 번 더 눌러야 실행한다(핫시트는 진행 중인 판이 사라진다)
+  const [quitArmed, setQuitArmed] = useState(false);
+  useEffect(() => {
+    if (!quitArmed) return;
+    const t = window.setTimeout(() => setQuitArmed(false), 3000);
+    return () => window.clearTimeout(t);
+  }, [quitArmed]);
   const rows = useMemo(() => (state ? buildPlayerSummaries(state) : []), [state]);
 
   if (!state || rows.length === 0) return null;
@@ -36,8 +43,8 @@ export const PlayerStrip = memo(function PlayerStrip({ onQuit }: PlayerStripProp
         <span className={styles.whoTurn}>
           {state.phase === 'finished' ? '게임 종료' : isMyTurn ? '내 차례' : `${current}의 차례`}
         </span>
-        <button type="button" className={styles.quit} onClick={onQuit}>
-          나가기
+        <button type="button" className={styles.quit} onClick={() => (quitArmed ? onQuit() : setQuitArmed(true))}>
+          {quitArmed ? '한 번 더: 나가기' : '나가기'}
         </button>
       </div>
       <div className={styles.players} role="list" aria-label="플레이어 현황 요약">
