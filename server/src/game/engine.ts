@@ -23,7 +23,10 @@ import {
   type CreatureAbility,
   type CreatureCard,
   type ExplorationCard,
+  type GrimoireCard,
   type LabCard,
+  type OfferCardView,
+  type OfferedCard,
   type StatKey,
   type ExamCard,
   type ExamResult,
@@ -33,6 +36,13 @@ import {
 } from "./types.js";
 
 const ACTIVITY_IDS: ActivityId[] = ["tournament", "creature", "duel", "exploration", "lab"];
+const ACTIVITY_NAME: Record<ActivityId, string> = {
+  tournament: "마법 토너먼트",
+  creature: "마법생물 조련",
+  duel: "주문 대결",
+  exploration: "비밀의 방",
+  lab: "연구실 실험",
+};
 
 function rollD6(): number {
   return 1 + Math.floor(Math.random() * 6);
@@ -120,11 +130,6 @@ function drawClassCard(state: GameState): ClassCard | undefined {
   return state.classDeck.pop();
 }
 
-// 아직 열 수 있는 수업카드 수 (덱 + 버림 더미)
-export function classCardsLeft(state: Pick<GameState, "classDeck" | "classDiscard">): number {
-  return state.classDeck.length + state.classDiscard.length;
-}
-
 const STAT_NAME: Record<StatKey, string> = { intelligence: "지력", stamina: "체력", charm: "매력", spellPower: "주문력" };
 
 // 탐험 카드의 판정 문구 (엿보기·협력 대기 표시용)
@@ -183,7 +188,6 @@ function createPlayer(id: string, name: string, isBot = false): PlayerGameState 
     creatures: [],
     equipment: [],
     grimoires: [],
-    offeredClassCards: [],
     hasActedThisPhase: false,
   };
 }
@@ -203,17 +207,21 @@ export function createGame(players: { id: string; name: string; isBot?: boolean 
     activityOrder: [],
     activityTurnPointer: 0,
     duels: [],
-    pendingLab: null,
+    classMarket: [],
+    classPickOrder: [],
+    classPickPointer: 0,
+    activityOffers: {},
+    pendingPick: null,
     pendingRoll: null,
     coopWaiting: null,
     exams: { midterm: null, final: null },
     examResults: [],
     cleanupSummary: [],
-    hidden: { roll: null, coop: null, examPlan: pickExamCards() },
+    hidden: { roll: null, coop: null, offers: {}, examPlan: pickExamCards() },
     labPile: createLabPile(),
     explorationPile: createExplorationPile(),
     grimoirePile: createGrimoirePile(),
-    classDeck: createClassDeck(randomUUID),
+    classDeck: createClassDeck(randomUUID, players.length, BALANCE.classDeckPerPlayer),
     classDiscard: [],
     creatureDeck: createCreatureDeck(),
     creatureDiscard: [],
@@ -280,63 +288,69 @@ function beginRound(state: GameState): void {
   beginClassPhase(state);
 }
 
+// 지력이 높은 순(동점이면 매력, 그다음 주사위)으로 수업카드를 고르는 순서
+function orderByIntelligence(state: GameState): string[] {
+  return state.turnOrder
+    .map((id) => ({
+      id,
+      intelligence: effectiveStat(state.players[id], "intelligence"),
+      charm: effectiveStat(state.players[id], "charm"),
+      roll: Math.random(),
+    }))
+    .sort((a, b) => b.intelligence - a.intelligence || b.charm - a.charm || b.roll - a.roll)
+    .map((entry) => entry.id);
+}
+
+// 2주차(정규수업): 인원수 + 1장을 공개하고, 지력이 높은 플레이어부터 원하는 카드 1장을 (체력토큰을 내고) 가져간다
 function beginClassPhase(state: GameState): void {
   state.phase = "class";
-  for (const playerId of state.turnOrder) {
-    const player = state.players[playerId];
-    player.offeredClassCards = [];
-    player.hasActedThisPhase = false;
+  for (const playerId of state.turnOrder) state.players[playerId].hasActedThisPhase = false;
+  state.classMarket = [];
+  const count = state.turnOrder.length + BALANCE.classMarketExtra;
+  while (state.classMarket.length < count) {
+    const card = drawClassCard(state);
+    if (!card) break;
+    state.classMarket.push(card);
   }
-  log(state, "2주차(정규수업): 지력토큰으로 수업카드를 열고 체력토큰으로 습득");
+  state.classPickOrder = orderByIntelligence(state);
+  state.classPickPointer = 0;
+  log(
+    state,
+    `2주차(정규수업): 수업카드 ${state.classMarket.length}장 공개 — 지력 순서: ${state.classPickOrder.map((id) => state.players[id].name).join(" → ")}`,
+  );
 }
 
-function allPlayersActed(state: GameState): boolean {
-  return state.turnOrder.every((id) => state.players[id].hasActedThisPhase);
+// 아직 열 수 있는 수업카드 수 (덱 + 버림 더미)
+export function classCardsLeft(state: Pick<GameState, "classDeck" | "classDiscard">): number {
+  return state.classDeck.length + state.classDiscard.length;
 }
 
-// 2주차: 지력토큰을 내고 수업카드를 덱에서 1장 연다 (열린 카드는 본인만 볼 수 있고, 카드마다 습득 비용이 다르다)
-export function openClassCard(state: GameState, playerId: string): void {
+// 2주차: 내 차례에 공개된 수업카드 중 1장을 가져간다 (체력토큰 takeCost개 필요, 모자라면 매력토큰으로 대신). cardId가 null이면 가져가지 않고 넘어간다
+export function takeClassCard(state: GameState, playerId: string, cardId: string | null): void {
   if (state.phase !== "class") throw new Error("지금은 정규수업 단계가 아닙니다.");
   const player = state.players[playerId];
   if (!player) throw new Error("플레이어를 찾을 수 없습니다.");
-  if (player.hasActedThisPhase) throw new Error("이미 수업 카드를 선택했습니다.");
-  const cost = BALANCE.openCardCost;
-  if (!canPay(player, cost, 0)) throw new Error(`지력토큰이 부족합니다 (카드를 열려면 지력토큰 ${cost}개가 필요, 매력토큰으로 대신 낼 수 있어요).`);
-  const card = drawClassCard(state);
-  if (!card) throw new Error("더 열 수 있는 수업카드가 없습니다.");
-  pay(player, "intelligence", cost);
-  player.offeredClassCards.push(card);
-}
-
-export function submitClassChoice(state: GameState, playerId: string, keepCardIds: string[]): void {
-  if (state.phase !== "class") throw new Error("지금은 정규수업 단계가 아닙니다.");
-  const player = state.players[playerId];
-  if (!player) throw new Error("플레이어를 찾을 수 없습니다.");
-  if (player.hasActedThisPhase) throw new Error("이미 수업 카드를 선택했습니다.");
-
-  const offeredIds = new Set(player.offeredClassCards.map((c) => c.id));
-  const uniqueKeepIds = [...new Set(keepCardIds)];
-  if (!uniqueKeepIds.every((id) => offeredIds.has(id))) {
-    throw new Error("열어 본 수업카드 중에서만 선택할 수 있습니다.");
-  }
-  const keptCards = player.offeredClassCards.filter((c) => uniqueKeepIds.includes(c.id));
-  const cost = sum(keptCards.map((c) => c.takeCost));
-  if (!canPay(player, 0, cost)) {
-    throw new Error(`체력토큰이 부족합니다 (선택한 카드에 체력토큰 ${cost}개 필요, 매력토큰으로 대신 낼 수 있어요).`);
-  }
-
-  for (const card of keptCards) {
+  if (state.classPickOrder[state.classPickPointer] !== playerId) throw new Error("당신의 차례가 아닙니다.");
+  if (cardId === null) {
+    log(state, `${player.name}: 수업카드를 가져가지 않고 넘어갔어요`);
+  } else {
+    const card = state.classMarket.find((c) => c.id === cardId);
+    if (!card) throw new Error("공개된 수업카드 중에서만 고를 수 있습니다.");
+    if (!canPay(player, 0, card.takeCost)) {
+      throw new Error(`체력토큰이 부족합니다 (이 카드는 체력토큰 ${card.takeCost}개 필요, 매력토큰으로 대신 낼 수 있어요).`);
+    }
+    pay(player, "stamina", card.takeCost);
     player[card.statBoost.stat] += card.statBoost.amount;
     player.classCards.push(card);
+    state.classMarket = state.classMarket.filter((c) => c.id !== cardId);
+    log(state, `${player.name}: 수업카드 "${card.name}" 습득 (${STAT_NAME[card.statBoost.stat]} +${card.statBoost.amount})`);
   }
-  pay(player, "stamina", cost);
-  // 고르지 않은 카드는 버림 더미로
-  state.classDiscard.push(...player.offeredClassCards.filter((c) => !uniqueKeepIds.includes(c.id)));
-  player.offeredClassCards = [];
   player.hasActedThisPhase = true;
-  log(state, `${player.name}: 수업카드 ${keptCards.length}장 습득`);
-
-  if (allPlayersActed(state)) {
+  state.classPickPointer += 1;
+  if (state.classPickPointer >= state.classPickOrder.length) {
+    // 아무도 가져가지 않은 카드는 버림 더미로 (덱이 비면 다시 섞어 쓴다)
+    state.classDiscard.push(...state.classMarket);
+    state.classMarket = [];
     beginActivityPhase(state);
   }
 }
@@ -348,10 +362,11 @@ function beginActivityPhase(state: GameState): void {
   state.startingPlayerIndex = state.turnOrder.indexOf(state.activityOrder[0]);
   state.activityTurnPointer = 0;
   state.duels = [];
-  state.pendingLab = null;
+  state.activityOffers = {};
+  state.pendingPick = null;
   state.pendingRoll = null;
   state.coopWaiting = null;
-  state.hidden = { ...state.hidden, roll: null, coop: null }; // 시험 카드 계획(examPlan)은 게임 내내 유지
+  state.hidden = { ...state.hidden, roll: null, coop: null, offers: {} }; // 시험 카드 계획(examPlan)은 게임 내내 유지
   for (const playerId of state.turnOrder) {
     state.players[playerId].hasActedThisPhase = false;
   }
@@ -360,14 +375,13 @@ function beginActivityPhase(state: GameState): void {
 
 // ── 자율활동: 구역 선택 규칙 ──
 
-export type ActivityView = Pick<GameState, "activitySlots" | "players" | "turnOrder" | "coopWaiting">;
+export type ActivityView = Pick<GameState, "activitySlots" | "players" | "turnOrder" | "coopWaiting" | "activityOffers">;
 
-// 카드를 여는 활동에서 내야 하는 지력토큰 (마법생물 조련·비밀의 방 탐색·연구실 실험은 카드를 1장 이상 열고, 주문 대결은 이긴 쪽이 받을 마도서 카드를 도전자가 연다)
-// 단, 이미 열려 있는 협력 탐험 카드에 합류할 때는 새 카드를 열지 않으므로 내지 않는다
-export function activityOpenCost(state: Pick<GameState, "coopWaiting">, activityId: ActivityId): number {
-  if (activityId === "creature" || activityId === "lab" || activityId === "duel") return BALANCE.openCardCost;
-  if (activityId === "exploration") return state.coopWaiting ? 0 : BALANCE.openCardCost;
-  return 0;
+// 구역에 처음 들어와 카드를 여는 사람이 내는 지력토큰 (마법생물 조련·비밀의 방 탐색·주문 대결·연구실 실험).
+// 이미 카드가 열려 있으면(두 번째 참가자) 새로 열 필요가 없으니 내지 않는다
+export function activityOpenCost(state: Pick<GameState, "activityOffers">, activityId: ActivityId): number {
+  if (activityId === "tournament") return 0;
+  return state.activityOffers[activityId] ? 0 : BALANCE.openCardCost;
 }
 
 // 이미 다른 플레이어가 있는 구역에 들어갈 때 내야 하는 체력토큰
@@ -466,11 +480,6 @@ function resolveDuel(state: GameState, ctx: Extract<RollContext, { kind: "duel" 
   player.pendingStaminaTokens -= sumEffect(defenderAbilities, "enemyStamina");
   loser.pendingStaminaTokens += sumEffect(abilitiesOf(loser, "lose"), "stamina");
   winner.pendingStaminaTokens -= sumEffect(abilitiesOf(loser, "lose"), "enemyStamina");
-  const grimoire = drawFromPile(state.grimoirePile);
-  if (grimoire) {
-    winner.grimoires.push(grimoire);
-    winner[grimoire.statBoost.stat] += grimoire.statBoost.amount;
-  }
   // 강제로 지목당한 쪽은 져도 마법 주문서를 잃지 않는다
   if (loser !== target && loser.spellbookTokens > 0 && sumEffect(loserAbilities, "immune") === 0) {
     loser.spellbookTokens = Math.max(0, loser.spellbookTokens - BALANCE.duelLoserTokenLoss);
@@ -479,8 +488,14 @@ function resolveDuel(state: GameState, ctx: Extract<RollContext, { kind: "duel" 
     `${describeRoll([die], [["집중", boost], ["주문력", spell], ["능력", bonus]])} = ${total}`;
   log(
     state,
-    `${player.name}(${rollText(challengerDie, ctx.challengerBoost, challengerSpell, challengerBonus, challengerRoll)})이(가) ${target.name}(${rollText(defenderDie, ctx.defenderBoost, defenderSpell, defenderBonus, defenderRoll)})을(를) 지목! ${winner.name} 승리${grimoire ? `, 마도서 "${grimoire.name}" 획득` : ""}${fee > 0 ? ` — ${player.name}이(가) ${target.name}에게 매력 ${fee}을 건넸어요` : ""}`,
+    `${player.name}(${rollText(challengerDie, ctx.challengerBoost, challengerSpell, challengerBonus, challengerRoll)})이(가) ${target.name}(${rollText(defenderDie, ctx.defenderBoost, defenderSpell, defenderBonus, defenderRoll)})을(를) 지목! ${winner.name} 승리${fee > 0 ? ` — ${player.name}이(가) ${target.name}에게 매력 ${fee}을 건넸어요` : ""}`,
   );
+  // 이긴 사람이 구역에 공개된 마도서 중 1장을 가져간다 (한 장만 남았으면 자동으로)
+  const rewards = offerCards(state, "duel");
+  if (rewards.length === 1) takeOffered(state, winner, "duel", rewards[0], 0);
+  else if (rewards.length > 1) {
+    state.pendingPick = { playerId: winner.id, activityId: "duel", mode: "reward", boost: 0 };
+  }
 }
 
 // 탐험 판정 주사위 굴리기 시작 (판정 없는 카드는 바로 처리)
@@ -560,36 +575,192 @@ function describeCoop(card: ExplorationCard, playerId: string): CoopWaiting {
   };
 }
 
-function startExploration(state: GameState, player: PlayerGameState, boost: number): void {
-  // 함께할 친구를 기다리는 협력 카드가 있으면 그 카드에 합류한다
-  const hold = state.hidden.coop;
-  if (hold) {
+// ── 3주차 구역에 공개된 카드: 처음 들어온 사람이 2장을 열고, 먼저 온 사람이 원하는 카드를 가져가고 남는 카드는 두 번째 참가자가 가져간다 ──
+
+function offerCards(state: GameState, activityId: ActivityId): OfferedCard[] {
+  return state.hidden.offers[activityId] ?? [];
+}
+
+function offerViewOf(activityId: ActivityId, card: OfferedCard): OfferCardView {
+  switch (activityId) {
+    case "creature": {
+      const c = card as CreatureCard;
+      return { id: c.id, name: c.name, description: c.description, lines: [describeAbility(c.ability)], cost: { kind: "spellbook", amount: c.requiredSpellPower } };
+    }
+    case "lab": {
+      const c = card as LabCard;
+      return { id: c.id, name: c.name, description: c.description, lines: [c.summary], cost: c.cost > 0 ? { kind: "stamina", amount: c.cost } : undefined };
+    }
+    case "exploration": {
+      const c = card as ExplorationCard;
+      const check = checkTextOf(c);
+      return {
+        id: c.id,
+        name: c.name,
+        description: c.description,
+        lines: [...(check ? [check] : ["판정 없음"]), `성공: ${describeEffect(c.success)}`, `실패: ${describeEffect(c.failure)}`],
+      };
+    }
+    default: {
+      const c = card as GrimoireCard;
+      const ability = c.ability ? describeAbility(c.ability) : "";
+      return { id: c.id, name: c.name, description: c.description, lines: [`${STAT_NAME[c.statBoost.stat]} +${c.statBoost.amount}`, ...(ability ? [ability] : [])] };
+    }
+  }
+}
+
+function syncOfferView(state: GameState, activityId: ActivityId): void {
+  state.activityOffers[activityId] = { cards: offerCards(state, activityId).map((c) => offerViewOf(activityId, c)) };
+}
+
+function drawForZone(state: GameState, activityId: ActivityId): OfferedCard | undefined {
+  if (activityId === "creature") return drawCreature(state);
+  if (activityId === "lab") return drawFromPile(state.labPile);
+  if (activityId === "duel") return drawFromPile(state.grimoirePile);
+  return drawFromPile(state.explorationPile);
+}
+
+function discardToZone(state: GameState, activityId: ActivityId, cards: OfferedCard[]): void {
+  if (activityId === "creature") state.creatureDiscard.push(...(cards as CreatureCard[]));
+  else if (activityId === "lab") state.labPile.discard.push(...(cards as LabCard[]));
+  else if (activityId === "duel") state.grimoirePile.discard.push(...(cards as GrimoireCard[]));
+  else state.explorationPile.discard.push(...(cards as ExplorationCard[]));
+}
+
+// 구역에 처음 들어온 사람이 카드를 연다 (기본 2장. 연구실은 집중하면 1장 더)
+function openOffer(state: GameState, activityId: ActivityId, boost: number): void {
+  const count = BALANCE.activityOpenCount + (activityId === "lab" ? boost : 0);
+  const cards: OfferedCard[] = [];
+  for (let i = 0; i < count; i++) {
+    const card = drawForZone(state, activityId);
+    if (!card) break;
+    cards.push(card);
+  }
+  state.hidden.offers[activityId] = cards;
+  syncOfferView(state, activityId);
+  // 열린 탐험 카드를 엿보고 있던 플레이어의 정보는 낡은 것이 된다
+  if (activityId === "exploration") {
+    const usedIds = new Set(cards.map((c) => c.id));
+    for (const p of Object.values(state.players)) if (p.peekedExploration && usedIds.has(p.peekedExploration.id)) p.peekedExploration = null;
+  }
+  log(state, `${ACTIVITY_NAME[activityId]}: 카드 ${cards.length}장이 공개됐어요 — ${cards.map((c) => `"${c.name}"`).join(", ")}`);
+}
+
+// 3주차가 끝나면 아무도 가져가지 않은 공개 카드는 버림 더미로 돌아간다
+function discardOffers(state: GameState): void {
+  for (const activityId of Object.keys(state.hidden.offers) as ActivityId[]) discardToZone(state, activityId, offerCards(state, activityId));
+  state.hidden.offers = {};
+  state.activityOffers = {};
+}
+
+const creatureCost = (card: CreatureCard, boost: number) => Math.max(1, card.requiredSpellPower - boost);
+
+// 이 카드를 지금 가져갈 수 있는가 (비용을 낼 수 있는가). 마법생물은 마법 주문서, 연구 카드는 체력토큰(매력토큰으로 대신 가능)
+function canTake(player: PlayerGameState, activityId: ActivityId, card: OfferedCard, boost: number): boolean {
+  if (activityId === "creature") return player.spellbookTokens >= creatureCost(card as CreatureCard, boost);
+  if (activityId === "lab") return canPay(player, 0, (card as LabCard).cost);
+  return true;
+}
+
+// 공개된 카드를 실제로 가져와 효과를 적용한다 (비용도 여기서 낸다)
+function takeOffered(state: GameState, player: PlayerGameState, activityId: ActivityId, card: OfferedCard, boost: number): void {
+  state.hidden.offers[activityId] = offerCards(state, activityId).filter((c) => c.id !== card.id);
+  syncOfferView(state, activityId);
+  switch (activityId) {
+    case "creature": {
+      const creature = card as CreatureCard;
+      // 체력토큰으로 집중하면 필요한 마법 주문서가 줄어든다 (최소 1개)
+      player.spellbookTokens -= creatureCost(creature, boost);
+      const creditBefore = creatureCollectionCredit(player.creatures);
+      player.creatures.push(creature);
+      if (creature.ability.trigger === "acquire" && creature.ability.effect === "spellPower") player.spellPower += creature.ability.amount;
+      // 유형 모으기 보너스: 새 카드로 늘어난 유형 점수만큼 학점을 즉시 받는다
+      const collectionCredit = creatureCollectionCredit(player.creatures) - creditBefore;
+      player.credit += collectionCredit;
+      log(
+        state,
+        `${player.name}: 마법생물 "${creature.name}" 획득 (${describeAbility(creature.ability)})${collectionCredit > 0 ? ` — 유형 모으기 보너스 학점 +${collectionCredit}` : ""}`,
+      );
+      break;
+    }
+    case "lab": {
+      const lab = card as LabCard;
+      pay(player, "stamina", lab.cost);
+      applyCardEffect(state, player, lab.effect);
+      // 시험 카드는 다음 시험까지 보관하고, 나머지는 효과를 받는 즉시 버림 더미로
+      if (lab.kind === "exam") player.equipment.push(lab);
+      else state.labPile.discard.push(lab);
+      log(state, `${player.name}: 연구 카드 "${lab.name}" 선택 (${lab.summary}${lab.cost > 0 ? `, 체력토큰 ${lab.cost}개` : ""})`);
+      break;
+    }
+    case "duel": {
+      const grimoire = card as GrimoireCard;
+      player.grimoires.push(grimoire);
+      player[grimoire.statBoost.stat] += grimoire.statBoost.amount;
+      log(state, `${player.name}: 마도서 "${grimoire.name}" 획득`);
+      break;
+    }
+    default: {
+      const exploration = card as ExplorationCard;
+      if (exploration.coop) {
+        // 협력 카드: 함께할 친구가 나타날 때까지 기다린다 (끝까지 없으면 3주차 마지막에 무효)
+        state.hidden.coop = { card: exploration, playerId: player.id, boost };
+        state.coopWaiting = describeCoop(exploration, player.id);
+        log(state, `${player.name}: 비밀의 방에서 협력 카드 "${exploration.name}"를 골랐어요! 함께할 친구를 기다려요`);
+      } else {
+        startExplorationRoll(state, exploration, [player.id], { [player.id]: boost }, "single");
+      }
+    }
+  }
+}
+
+// 구역에 들어온 사람의 카드 처리: 처음 온 사람은 카드를 열고 원하는 카드를 고르고, 두 번째 참가자는 남은 카드를 가져간다
+function startZonePick(state: GameState, activityId: ActivityId, player: PlayerGameState, boost: number): void {
+  const isFirst = !state.hidden.offers[activityId];
+  if (activityId === "exploration" && state.hidden.coop) {
+    // 함께할 친구를 기다리는 협력 카드가 있으면 그 카드에 합류한다 (남은 카드는 버려진다)
+    const hold = state.hidden.coop;
     state.hidden.coop = null;
     state.coopWaiting = null;
+    discardToZone(state, "exploration", offerCards(state, "exploration"));
+    state.hidden.offers.exploration = [];
+    syncOfferView(state, "exploration");
     startExplorationRoll(state, hold.card, [hold.playerId, player.id], { [hold.playerId]: hold.boost, [player.id]: boost }, "pair");
     return;
   }
-  // 협력 카드는 합류할 자리가 남아 있을 때만 열린다: 구역이 이미 가득 찼다면(두 번째 참가자) 아무도 합류할 수 없으니 다시 뽑는다
-  const canJoin = state.activitySlots.exploration.length < BALANCE.activityMaxParticipants;
-  const skipped: ExplorationCard[] = [];
-  let card = drawFromPile(state.explorationPile);
-  while (card?.coop && !canJoin) {
-    skipped.push(card);
-    card = drawFromPile(state.explorationPile);
+  if (isFirst) openOffer(state, activityId, boost);
+  // 협력 카드는 함께할 자리가 있을 때만 의미가 있다: 두 번째 참가자는 협력 카드를 고를 수 없으니 남은 카드가 협력 카드면 새로 뽑는다
+  if (!isFirst && activityId === "exploration") {
+    const rest = offerCards(state, "exploration");
+    const skipped = rest.filter((c) => (c as ExplorationCard).coop);
+    if (skipped.length > 0) {
+      discardToZone(state, "exploration", skipped);
+      let kept = rest.filter((c) => !(c as ExplorationCard).coop);
+      while (kept.length < rest.length) {
+        const drawn = drawFromPile(state.explorationPile) as ExplorationCard | undefined;
+        if (!drawn) break;
+        if (drawn.coop) discardToZone(state, "exploration", [drawn]);
+        else kept = [...kept, drawn];
+      }
+      state.hidden.offers.exploration = kept;
+      syncOfferView(state, "exploration");
+    }
   }
-  state.explorationPile.discard.push(...skipped);
-  // 이 카드(또는 건너뛴 카드)를 엿보고 있던 플레이어의 정보는 낡은 것이 된다
-  const usedIds = new Set([...skipped, ...(card ? [card] : [])].map((c) => c.id));
-  for (const p of Object.values(state.players)) if (p.peekedExploration && usedIds.has(p.peekedExploration.id)) p.peekedExploration = null;
-  if (!card) return;
-  if (card.coop) {
-    // 협력 카드: 함께할 친구가 나타날 때까지 기다린다 (끝까지 없으면 3주차 마지막에 무효)
-    state.hidden.coop = { card, playerId: player.id, boost };
-    state.coopWaiting = describeCoop(card, player.id);
-    log(state, `${player.name}: 비밀의 방에서 협력 카드 "${card.name}"를 발견! 함께할 친구를 기다려요`);
+  const cards = offerCards(state, activityId);
+  if (cards.length === 0) {
+    log(state, `${player.name}: ${ACTIVITY_NAME[activityId]}에 남은 카드가 없어요`);
     return;
   }
-  startExplorationRoll(state, card, [player.id], { [player.id]: boost }, "single");
+  const takeable = cards.filter((c) => canTake(player, activityId, c, boost));
+  if (takeable.length === 0) {
+    log(state, `${player.name}: 비용이 모자라서 ${ACTIVITY_NAME[activityId]}의 카드를 가져오지 못했어요`);
+    return;
+  }
+  if (cards.length === 1) {
+    takeOffered(state, player, activityId, cards[0], boost);
+    return;
+  }
+  state.pendingPick = { playerId: player.id, activityId, mode: "take", boost };
 }
 
 function startActivity(state: GameState, activityId: ActivityId, player: PlayerGameState, targetPlayerId: string | undefined, boost: number): void {
@@ -600,56 +771,13 @@ function startActivity(state: GameState, activityId: ActivityId, player: PlayerG
       log(state, `${player.name}: 마법 토너먼트 참가 (트랙 ${player.tournamentTrack}칸)`);
       break;
     }
-    case "creature": {
-      const card = drawCreature(state);
-      if (!card) {
-        log(state, `${player.name}: 마법생물 덱이 비어 있습니다`);
-        break;
-      }
-      // 체력토큰으로 집중하면 필요한 마법 주문서가 줄어든다 (최소 1개)
-      const cost = Math.max(1, card.requiredSpellPower - boost);
-      if (player.spellbookTokens >= cost) {
-        player.spellbookTokens -= cost;
-        const creditBefore = creatureCollectionCredit(player.creatures);
-        player.creatures.push(card);
-        const gain = card.ability.trigger === "acquire" && card.ability.effect === "spellPower" ? card.ability.amount : 0;
-        player.spellPower += gain;
-        // 유형 모으기 보너스: 새 카드로 늘어난 유형 점수만큼 학점을 즉시 받는다
-        const collectionCredit = creatureCollectionCredit(player.creatures) - creditBefore;
-        player.credit += collectionCredit;
-        log(
-          state,
-          `${player.name}: 마법생물 "${card.name}" 획득 (${describeAbility(card.ability)})${collectionCredit > 0 ? ` — 유형 모으기 보너스 학점 +${collectionCredit}` : ""}`,
-        );
-      } else {
-        state.creatureDiscard.push(card);
-        log(state, `${player.name}: "${card.name}"(요구 주문서 ${card.requiredSpellPower}개)를 데려오지 못했습니다`);
-      }
-      break;
-    }
     case "duel":
+      // 주문 대결은 이긴 사람이 마도서를 고른다: 처음 도전한 사람이 카드를 열어 둔다
+      if (!state.hidden.offers.duel) openOffer(state, "duel", boost);
       startDuel(state, player, targetPlayerId, boost);
       break;
-    case "exploration":
-      startExploration(state, player, boost);
-      break;
-    case "lab": {
-      // 지력만큼 연구 카드를 펼치고(체력토큰으로 집중하면 1장 더), 그중 1장을 직접 고른다 (chooseLabCard).
-      // 카드를 한 장 열 때마다 지력토큰이 들기 때문에 지력토큰이 모자라면 그만큼만 펼친다 (최소 1장)
-      const candidates: LabCard[] = [];
-      const wanted = Math.max(1, Math.min(BALANCE.labMaxCandidates, effectiveStat(player, "intelligence"))) + boost;
-      const count = Math.max(1, Math.min(wanted, Math.floor((player.intelligenceTokens + Math.floor(player.charmTokens / charmRate(player))) / BALANCE.openCardCost)));
-      for (let i = 0; i < count; i++) {
-        const drawn = drawFromPile(state.labPile);
-        if (!drawn) break;
-        candidates.push(drawn);
-      }
-      if (candidates.length === 0) break;
-      pay(player, "intelligence", candidates.length * BALANCE.openCardCost);
-      state.pendingLab = { playerId: player.id, cards: candidates };
-      log(state, `${player.name}: 연구실 실험 — 연구 카드 ${candidates.length}장을 펼쳤어요 (지력토큰 ${candidates.length * BALANCE.openCardCost}개)`);
-      break;
-    }
+    default:
+      startZonePick(state, activityId, player, boost);
   }
 }
 
@@ -661,7 +789,7 @@ export function selectActivity(
   useStamina = false,
 ): void {
   if (state.phase !== "activity") throw new Error("지금은 자율활동 단계가 아닙니다.");
-  if (state.pendingLab) throw new Error("연구 카드를 먼저 골라야 합니다.");
+  if (state.pendingPick) throw new Error("공개된 카드 중 하나를 먼저 골라야 합니다.");
   if (state.pendingRoll) throw new Error("주사위를 먼저 굴려야 합니다.");
   const currentTurnPlayerId = state.activityOrder[state.activityTurnPointer];
   if (currentTurnPlayerId !== playerId) throw new Error("당신의 차례가 아닙니다.");
@@ -684,13 +812,13 @@ export function selectActivity(
 
   player.charmTokens -= feeByCharm; // 참가비는 매력토큰 1개로 (체력토큰 대신) 낼 수 있다
   pay(player, "stamina", extra - feeByCharm + focusCost);
-  // 마법생물 조련·비밀의 방 탐색은 카드를 1장 열 때 지력토큰을 낸다 (연구실은 펼치는 장수만큼 startActivity에서 낸다)
-  if (activityId !== "lab") pay(player, "intelligence", activityOpenCost(state, activityId));
+  // 구역에 처음 들어와 카드를 여는 사람이 지력토큰을 낸다
+  pay(player, "intelligence", activityOpenCost(state, activityId));
   state.activitySlots[activityId].push(playerId);
   player.hasActedThisPhase = true;
   startActivity(state, activityId, player, targetPlayerId, focusCost);
-  // 연구 카드를 고르거나 주사위를 굴릴 때까지 차례가 끝나지 않는다
-  if (!state.pendingLab && !state.pendingRoll) finishActivityTurn(state);
+  // 공개된 카드를 고르거나 주사위를 굴릴 때까지 차례가 끝나지 않는다
+  if (!state.pendingPick && !state.pendingRoll) finishActivityTurn(state);
 }
 
 // 다음 차례로 넘긴다. 주문 대결에 지목당해 이미 활동을 마친 플레이어는 건너뛰고,
@@ -717,34 +845,31 @@ function finishActivityTurn(state: GameState): void {
     state.explorationPile.discard.push(hold.card);
     log(state, `${state.players[hold.playerId].name}: 함께할 친구가 없어 협력 카드 "${hold.card.name}"이(가) 무효가 되었어요`);
   }
+  discardOffers(state);
   beginCleanupPhase(state);
 }
 
-// 연구실 실험: 펼쳐진 연구 카드 중 1장을 골라(체력토큰 cost개) 효과를 받는다. cardId가 null이면 아무것도 고르지 않고 넘어간다
-export function chooseLabCard(state: GameState, playerId: string, cardId: string | null): void {
-  const pending = state.pendingLab;
-  if (!pending || pending.playerId !== playerId) throw new Error("지금은 연구 카드를 고를 수 없습니다.");
+// 구역에 공개된 카드 중 1장을 고른다 (마법생물·연구 카드는 비용을 낼 수 있어야 하고, cardId가 null이면 가져가지 않고 넘어간다.
+// 비밀의 방 카드와 주문 대결 마도서는 반드시 골라야 한다)
+export function chooseActivityCard(state: GameState, playerId: string, cardId: string | null): void {
+  const pick = state.pendingPick;
+  if (!pick || pick.playerId !== playerId) throw new Error("지금은 카드를 고를 수 없습니다.");
   const player = state.players[playerId];
+  const boost = pick.boost;
   if (cardId === null) {
-    state.labPile.discard.push(...pending.cards);
-    state.pendingLab = null;
-    log(state, `${player.name}: 연구 카드를 고르지 않고 넘어갔어요`);
+    if (pick.mode === "reward" || pick.activityId === "exploration") throw new Error("공개된 카드 중 하나를 골라야 해요.");
+    state.pendingPick = null;
+    log(state, `${player.name}: ${ACTIVITY_NAME[pick.activityId]}의 카드를 가져가지 않고 넘어갔어요`);
     finishActivityTurn(state);
     return;
   }
-  const card = pending.cards.find((c) => c.id === cardId);
-  if (!card) throw new Error("펼쳐진 연구 카드 중에서만 고를 수 있습니다.");
-  if (!canPay(player, 0, card.cost)) throw new Error(`체력토큰이 부족합니다 (이 카드는 체력토큰 ${card.cost}개가 필요, 매력토큰으로 대신 낼 수 있어요).`);
-  pay(player, "stamina", card.cost);
-  applyCardEffect(state, player, card.effect);
-  // 시험 카드는 다음 시험까지 보관하고, 나머지는 효과를 받는 즉시 버림 더미로
-  const rest = pending.cards.filter((c) => c.id !== card.id);
-  state.labPile.discard.push(...rest);
-  if (card.kind === "exam") player.equipment.push(card);
-  else state.labPile.discard.push(card);
-  state.pendingLab = null;
-  log(state, `${player.name}: 연구 카드 "${card.name}" 선택 (${card.summary}${card.cost > 0 ? `, 체력토큰 ${card.cost}개` : ""})`);
-  finishActivityTurn(state);
+  const card = offerCards(state, pick.activityId).find((c) => c.id === cardId);
+  if (!card) throw new Error("공개된 카드 중에서만 고를 수 있습니다.");
+  if (!canTake(player, pick.activityId, card, boost)) throw new Error("비용이 모자라서 이 카드는 가져갈 수 없어요 (매력토큰으로 대신 낼 수 있어요).");
+  state.pendingPick = null;
+  takeOffered(state, player, pick.activityId, card, boost);
+  // 탐험 판정이나 다음 선택이 남아 있지 않으면 차례를 넘긴다
+  if (!state.pendingRoll && !state.pendingPick) finishActivityTurn(state);
 }
 
 // ── 주사위 굴리기 (주문 대결·탐험 판정·시험) ──
@@ -769,7 +894,7 @@ function resolveRoll(state: GameState): void {
   state.hidden.roll = null;
   if (ctx.kind === "duel") {
     resolveDuel(state, ctx, diceOf(ctx.challengerId)[0], diceOf(ctx.targetId)[0]);
-    finishActivityTurn(state);
+    if (!state.pendingPick) finishActivityTurn(state);
   } else if (ctx.kind === "exploration") {
     resolveExploration(state, ctx, Object.fromEntries(ctx.playerIds.map((id) => [id, diceOf(id)[0]])));
     finishActivityTurn(state);

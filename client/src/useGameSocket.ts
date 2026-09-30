@@ -132,18 +132,13 @@ export function useGameSocket() {
     [ensureSocket, send],
   );
 
-  const submitClassChoice = useCallback(
-    (keepCardIds: string[]) => {
+  const takeClassCard = useCallback(
+    (cardId: string | null) => {
       const socket = ensureSocket();
-      send(socket, { type: "submit_class_choice", keepCardIds });
+      send(socket, { type: "take_class_card", cardId });
     },
     [ensureSocket, send],
   );
-
-  const openClassCard = useCallback(() => {
-    const socket = ensureSocket();
-    send(socket, { type: "open_class_card" });
-  }, [ensureSocket, send]);
 
   const rollDice = useCallback(() => {
     const socket = ensureSocket();
@@ -158,13 +153,13 @@ export function useGameSocket() {
     [ensureSocket, send],
   );
 
-  const chooseLabCard = useCallback(
+  const pickActivityCard = useCallback(
     (cardId: string | null) => {
       const socket = ensureSocket();
-      send(socket, { type: "choose_lab_card", cardId });
+      send(socket, { type: "pick_activity_card", cardId });
     },
     [ensureSocket, send],
   );
 
-  return { state, game, lastError, errorSeq, createRoom, joinRoom, startGame, addBot, removeBot, openClassCard, submitClassChoice, rollDice, selectActivity, chooseLabCard };
+  return { state, game, lastError, errorSeq, createRoom, joinRoom, startGame, addBot, removeBot, takeClassCard, rollDice, selectActivity, pickActivityCard };
 }

@@ -1,5 +1,5 @@
 // AI 봇 의사결정. 실제 게임(함께 플레이)과 밸런스 시뮬레이션(scripts/simulate.ts)이 함께 사용합니다.
-// 봇은 단순한 휴리스틱으로 움직입니다. 수업카드는 지력토큰으로 열어 보고 성향에 맞는 능력치를 우선해 체력토큰이 허용하는 만큼 고르고,
+// 봇은 단순한 휴리스틱으로 움직입니다. 수업카드는 공개된 카드 중 성향에 맞는 능력치를 우선해 체력토큰이 허용하는 카드를 1장 고르고,
 // 자율활동은 상황(주문서 보유량, 토너먼트 진행도 등)과 성향 가중치를 곱해 점수가 높은 구역을 고릅니다.
 import { BALANCE } from "./config.js";
 import {
@@ -8,13 +8,22 @@ import {
   availableActivities,
   canPay,
   charmRate,
-  classCardsLeft,
   duelTargets,
   growthGap,
-  openClassCard,
-  submitClassChoice,
+  takeClassCard,
 } from "./engine.js";
-import { effectiveStat, type ActivityId, type GameState, type StatKey } from "./types.js";
+import {
+  effectiveStat,
+  type ActivityId,
+  type CardEffect,
+  type CreatureCard,
+  type ExplorationCard,
+  type GameState,
+  type GrimoireCard,
+  type LabCard,
+  type PlayerGameState,
+  type StatKey,
+} from "./types.js";
 
 export const ACTIVITIES: ActivityId[] = ["tournament", "creature", "duel", "exploration", "lab"];
 
@@ -46,7 +55,7 @@ export function pickBotPersonality(): BotStrategy {
   return BOT_PERSONALITIES[Math.floor(Math.random() * BOT_PERSONALITIES.length)];
 }
 
-// 연구실만 파는 성향은 3주차에 카드를 여러 장 펼치므로 지력·체력토큰을 더 남겨 둔다
+// 연구실만 파는 성향은 연구 카드 값(체력토큰)을 치를 수 있도록 체력토큰을 조금 남겨 둔다
 const isLabLeaning = (strategy: BotStrategy) => strategy.activityBias.lab >= 3;
 
 // 공개된 다음 시험 카드가 겨냥하는 능력치는 더 키운다 (주사위 능력치 ×1.6, 보너스 능력치 ×1.25)
@@ -56,33 +65,20 @@ function examWeight(state: GameState, stat: StatKey): number {
   return upcoming.diceStat === stat ? 1.6 : upcoming.bonusStat === stat ? 1.25 : 1;
 }
 
-// 정규수업 단계 한 턴: 지력토큰으로 수업카드를 열어 보고, 체력토큰이 허용하는 만큼 골라 습득한다.
-// 3주차에 카드를 여는 활동(마법생물·비밀의 방·연구실)에도 지력토큰이 들기 때문에 일부는 남겨 둔다
+const pickOne = <T,>(items: T[]): T => items[Math.floor(Math.random() * items.length)];
+
+// 정규수업: 내 차례에 공개된 수업카드 중 성향에 맞는 능력치를 우선해서, 체력토큰(매력토큰 교환 포함)으로 살 수 있는 카드 1장을 고른다
 export function playClassTurn(state: GameState, playerId: string, strategy: BotStrategy): void {
   const p = state.players[playerId];
-  const tokenReserve = isLabLeaning(strategy) ? 3 : 1;
-  // 매력토큰은 체력토큰 대신 낼 수 있으므로 체력토큰처럼 센다
-  const staminaBudget = Math.max(0, p.staminaTokens + Math.floor(p.charmTokens / charmRate(p)) - (isLabLeaning(strategy) ? 3 : 0));
-  // 성향에 맞는 능력치의 카드를 우선해서 (싼 카드일수록 좋게 보고) 체력토큰이 허용하는 만큼 습득할 카드를 고른다
-  const value = (c: (typeof p.offeredClassCards)[number]) =>
-    strategy.random ? Math.random() : (c.statBoost.amount * strategy.classWeights[c.statBoost.stat] * examWeight(state, c.statBoost.stat)) / c.takeCost;
-  const pickKeep = () => {
-    let stamina = staminaBudget;
-    const keep: string[] = [];
-    for (const card of [...p.offeredClassCards].sort((a, b) => value(b) - value(a))) {
-      if (strategy.random && Math.random() < 0.3) continue;
-      if (card.takeCost > stamina) continue;
-      keep.push(card.id);
-      stamina -= card.takeCost;
-    }
-    return { keep, left: stamina };
-  };
-  // 카드를 열려면 지력토큰이 든다. 습득할 여력(체력토큰)이 남아 있을 때만 더 열어 본다
-  while (p.intelligenceTokens - BALANCE.openCardCost >= (strategy.random ? 0 : tokenReserve) && classCardsLeft(state) > 0) {
-    if (strategy.random ? Math.random() < 0.2 : pickKeep().left < 1) break;
-    openClassCard(state, playerId);
+  const reserve = isLabLeaning(strategy) ? 2 : 0;
+  const value = (c: (typeof state.classMarket)[number]) =>
+    (c.statBoost.amount * strategy.classWeights[c.statBoost.stat] * examWeight(state, c.statBoost.stat)) - c.takeCost * 0.1;
+  const affordable = state.classMarket.filter((c) => canPay(p, 0, c.takeCost + reserve) || (strategy.random && canPay(p, 0, c.takeCost)));
+  let choice: string | null = null;
+  if (affordable.length > 0) {
+    choice = strategy.random ? (Math.random() < 0.2 ? null : pickOne(affordable).id) : [...affordable].sort((a, b) => value(b) - value(a))[0].id;
   }
-  submitClassChoice(state, playerId, pickKeep().keep);
+  takeClassCard(state, playerId, choice);
 }
 
 // 자율활동 단계: 선택할 구역과 (주문 대결이면) 상대
@@ -101,8 +97,8 @@ export function chooseActivityAction(
     duel: 1.5,
     // 선두에게 뒤처졌다면 한 방을 노려볼 만하다 (탐험 역전 보너스)
     exploration: growthGap(state, playerId) >= BALANCE.catchUpGap ? 2.4 : 1.2,
-    // 지력이 높을수록 실험 재료를 많이 펼치므로 연구실의 매력이 올라간다
-    lab: 1 + 0.3 * effectiveStat(p, "intelligence"),
+    // 연구실은 공개된 연구 카드 중 골라 영구 성장을 얻는다
+    lab: 1.6,
   };
   const scored = free.map((a) => {
     // 이미 친구가 있는 구역은 체력토큰이 더 들어서 조금 덜 끌린다. 다만 협력 탐험 카드가 기다리고 있으면 함께하러 간다
@@ -127,25 +123,71 @@ export function chooseActivityAction(
   const spare = p.staminaTokens - (extra - feeByCharm) + Math.floor((p.charmTokens - feeByCharm) / charmRate(p));
   // 엔진과 같은 규칙으로 (지력토큰·참가비까지 함께) 집중할 여력이 실제로 있는지 확인한다
   const canFocus = canPay(p, activityOpenCost(state, activityId), 1, extra);
-  return { activityId, targetPlayerId, useStamina: canFocus && (activityId === "lab" ? spare >= 5 : spare > 0) };
+  return { activityId, targetPlayerId, useStamina: canFocus && (activityId === "lab" ? spare >= 3 : spare > 0) };
 }
 
-// 연구실 실험: 펼쳐진 연구 카드 중 체력토큰으로 살 수 있는 카드의 id (영구 능력치는 성향 가중치로, 임시/토큰/엿보기는 낮게 평가).
-// 살 수 있는 카드가 없으면 null(아무것도 고르지 않고 넘어감)
-export function chooseLabCard(state: GameState, strategy: BotStrategy): string | null {
-  const owner = state.players[state.pendingLab?.playerId ?? ""];
-  const stamina = owner ? owner.staminaTokens + Math.floor(owner.charmTokens / charmRate(owner)) : 0;
-  const cards = (state.pendingLab?.cards ?? []).filter((c) => c.cost <= stamina);
-  if (cards.length === 0) return null;
-  if (strategy.random) return cards[Math.floor(Math.random() * cards.length)].id;
-  const value = (card: (typeof cards)[number]): number => {
-    const e = card.effect;
-    let v = 0;
-    for (const [stat, n] of Object.entries(e.stats ?? {})) v += (n ?? 0) * strategy.classWeights[stat as StatKey] * examWeight(state, stat as StatKey) * 1.5;
-    for (const [stat, n] of Object.entries(e.tempStats ?? {})) v += (n ?? 0) * strategy.classWeights[stat as StatKey] * examWeight(state, stat as StatKey) * 0.5;
-    v += (e.credit ?? 0) * 3;
-    v += (e.peekExploration ? 0.8 : 0) + (e.nextSpellbook ?? 0) * 0.4 + (e.nextStamina ?? 0) * 0.5;
-    return v - card.cost * 0.3; // 같은 효과라면 싼 카드가 좋다
+// 카드 효과의 대략적인 가치 (영구 능력치는 성향 가중치로, 임시/토큰/엿보기는 낮게 평가)
+function effectValue(state: GameState, strategy: BotStrategy, e: CardEffect): number {
+  let v = 0;
+  for (const [stat, n] of Object.entries(e.stats ?? {})) v += (n ?? 0) * strategy.classWeights[stat as StatKey] * examWeight(state, stat as StatKey) * 1.5;
+  for (const [stat, n] of Object.entries(e.tempStats ?? {})) v += (n ?? 0) * strategy.classWeights[stat as StatKey] * examWeight(state, stat as StatKey) * 0.5;
+  v += (e.credit ?? 0) * 3;
+  v += (e.peekExploration ? 0.8 : 0) + (e.nextSpellbook ?? 0) * 0.4 + (e.nextStamina ?? 0) * 0.5;
+  return v;
+}
+
+// 탐험 카드: 성공 확률(주사위 + 능력치 + 집중 + 역전 보너스)로 기대값을 계산한다. 협력 카드는 두 번째 참가자를 기다려야 해서 낮게 본다
+function explorationValue(state: GameState, strategy: BotStrategy, player: PlayerGameState, card: ExplorationCard, boost: number): number {
+  const success = effectValue(state, strategy, card.success);
+  const failure = effectValue(state, strategy, card.failure);
+  if (card.coop) return 0.6 * success;
+  if (!card.check) return success;
+  const catchUp = growthGap(state, player.id) >= BALANCE.catchUpGap ? BALANCE.catchUpBonus : 0;
+  const need = card.check.target - effectiveStat(player, card.check.stat) - boost - catchUp;
+  const p = Math.min(1, Math.max(0, (7 - Math.min(7, Math.max(1, need))) / 6));
+  return p * success + (1 - p) * failure;
+}
+
+// 마법생물: 능력과 유형 모으기(같은 속성이 늘수록 학점)를 반영한다
+function creatureValue(state: GameState, strategy: BotStrategy, player: PlayerGameState, card: CreatureCard): number {
+  const a = card.ability;
+  let v = 1 + (a.trigger === "acquire" && a.effect === "spellPower" ? a.amount * 1.5 * strategy.classWeights.spellPower : 0.6);
+  v += player.creatures.filter((c) => c.element === card.element).length * 0.6;
+  return v - card.requiredSpellPower * 0.1;
+}
+
+function grimoireValue(state: GameState, strategy: BotStrategy, card: GrimoireCard): number {
+  return card.statBoost.amount * strategy.classWeights[card.statBoost.stat] * examWeight(state, card.statBoost.stat) + (card.ability ? 0.4 : 0);
+}
+
+// 구역에 공개된 카드 중 고를 카드의 id (비용을 낼 수 있는 카드만). 마법생물·연구 카드는 살 수 있는 카드가 없으면 null(가져가지 않고 넘어감)
+export function choosePick(state: GameState, strategy: BotStrategy): string | null {
+  const pick = state.pendingPick;
+  if (!pick) return null;
+  const player = state.players[pick.playerId];
+  const boost = pick.boost;
+  const cards = state.hidden.offers[pick.activityId] ?? [];
+  const afford = (card: (typeof cards)[number]): boolean => {
+    if (pick.activityId === "creature") return player.spellbookTokens >= Math.max(1, (card as CreatureCard).requiredSpellPower - boost);
+    if (pick.activityId === "lab") return canPay(player, 0, (card as LabCard).cost);
+    return true;
   };
-  return [...cards].sort((a, b) => value(b) - value(a))[0].id;
+  const options = cards.filter(afford);
+  if (options.length === 0) return null;
+  if (strategy.random) return pickOne(options).id;
+  const value = (card: (typeof cards)[number]): number => {
+    switch (pick.activityId) {
+      case "creature":
+        return creatureValue(state, strategy, player, card as CreatureCard);
+      case "lab": {
+        const lab = card as LabCard;
+        return effectValue(state, strategy, lab.effect) - lab.cost * 0.3; // 같은 효과라면 싼 카드가 좋다
+      }
+      case "exploration":
+        return explorationValue(state, strategy, player, card as ExplorationCard, boost);
+      default:
+        return grimoireValue(state, strategy, card as GrimoireCard);
+    }
+  };
+  return [...options].sort((a, b) => value(b) - value(a))[0].id;
 }

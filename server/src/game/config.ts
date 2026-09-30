@@ -17,8 +17,11 @@ export const BALANCE = {
   tournamentRewards: [2, 1],
   // 시험 순위별 학점 (1위, 2위, 그 이하는 마지막 값)
   examCredits: [3, 2, 1],
-  // 연구실 실험에서 지력만큼 펼치는 연구 카드의 최대 장수
-  labMaxCandidates: 3,
+  // 2주차(정규수업): 인원수 + classMarketExtra 장을 공개하고, 지력 높은 순으로 1장씩 가져간다. 수업카드 덱은 인원 × classDeckPerPlayer 장
+  classMarketExtra: 1,
+  classDeckPerPlayer: 14,
+  // 3주차 구역(비밀의 방·마법생물·주문 대결·연구실)에서 처음 들어온 사람이 여는 카드 수 (집중이나 특정 카드로 달라질 수 있다)
+  activityOpenCount: 2,
   // 마법생물 유형 모으기 학점 (세븐원더스 과학 카드 방식): 점수 = Σ(속성별 장수²) + 세트보너스 × 가장 적은 속성 장수,
   // 학점 = floor(점수 / 나누는 수). 새 카드를 얻을 때 늘어난 학점을 즉시 받는다
   creatureSetBonus: 5,

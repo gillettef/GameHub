@@ -3,9 +3,9 @@
 //  - 어떤 전략(토너먼트 몰빵, 마법생물 몰빵 등)이 지나치게 강하거나 약한가
 //  - 최종 능력치/학점/성취도가 어느 범위에 분포하는가
 //  - 자율활동 5종 중 봇이 무엇을 선호하고 그 결과는 어떤가
-import { chooseActivityAction, chooseLabCard, playClassTurn, type BotStrategy } from "../src/game/bot.js";
+import { chooseActivityAction, choosePick, playClassTurn, type BotStrategy } from "../src/game/bot.js";
 import { BALANCE } from "../src/game/config.js";
-import { chooseLabCard as submitLabChoice, classCardsLeft, createGame, selectActivity, submitRoll } from "../src/game/engine.js";
+import { chooseActivityCard, classCardsLeft, createGame, selectActivity, submitRoll } from "../src/game/engine.js";
 import type { ActivityId, GameState } from "../src/game/types.js";
 
 const even: Record<ActivityId, number> = { tournament: 1, creature: 1, duel: 1, exploration: 1, lab: 1 };
@@ -39,10 +39,14 @@ function playGame(strategies: BotStrategy[]): GameState {
     if (state.pendingRoll) {
       // 주사위를 굴려야 하는 사람이 모두 버튼을 누른다
       for (const entry of [...state.pendingRoll.entries]) if (entry.dice === null) submitRoll(state, entry.playerId);
+    } else if (state.pendingPick) {
+      // 공개된 카드(구역 카드·주문 대결 마도서)를 고른다
+      const pickerId = state.pendingPick.playerId;
+      chooseActivityCard(state, pickerId, choosePick(state, byId[pickerId]));
     } else if (state.phase === "class") {
-      for (const id of state.turnOrder) {
-        if (!state.players[id].hasActedThisPhase) playClassTurn(state, id, byId[id]);
-      }
+      // 지력이 높은 순서대로 한 명씩 공개된 수업카드 1장을 가져간다
+      const id = state.classPickOrder[state.classPickPointer];
+      playClassTurn(state, id, byId[id]);
       if (lastNormalExhaustRound === 0 && classCardsLeft(state) === 0) lastNormalExhaustRound = state.round;
     } else if (state.phase === "activity") {
       const id = state.activityOrder[state.activityTurnPointer];
@@ -50,7 +54,6 @@ function playGame(strategies: BotStrategy[]): GameState {
       const picks = (activityPicks[byId[id].name] ??= { tournament: 0, creature: 0, duel: 0, exploration: 0, lab: 0 });
       picks[activityId] += 1;
       selectActivity(state, id, activityId, target, useStamina);
-      if (state.pendingLab) submitLabChoice(state, id, chooseLabCard(state, byId[id]));
     } else {
       throw new Error(`예상치 못한 단계: ${state.phase}`);
     }

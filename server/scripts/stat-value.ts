@@ -1,7 +1,7 @@
 // 능력치 1점의 가치 실험: 한 명(p0)에게만 시작 능력치를 +2 주고 나머지는 모두 균형형 봇으로 돌려, 능력치별로 성취도·승률이 얼마나 달라지는지 비교합니다.
 // 몰빵 전략 승률과 달리 봇 성향에 덜 좌우되어 "각 능력치의 역할이 균형 잡혔는가"를 보는 데 쓴다. (사용법: npm run simulate:stat -- [게임 수] [인원])
-import { chooseActivityAction, chooseLabCard, playClassTurn, type BotStrategy } from "../src/game/bot.js";
-import { chooseLabCard as submitLabChoice, createGame, selectActivity, submitRoll } from "../src/game/engine.js";
+import { chooseActivityAction, choosePick, playClassTurn, type BotStrategy } from "../src/game/bot.js";
+import { chooseActivityCard, createGame, selectActivity, submitRoll } from "../src/game/engine.js";
 import type { ActivityId, GameState, StatKey } from "../src/game/types.js";
 const even: Record<ActivityId, number> = { tournament: 1, creature: 1, duel: 1, exploration: 1, lab: 1 };
 const S: BotStrategy = { name: "균형형", classWeights: { intelligence: 1.2, spellPower: 1.2, stamina: 1, charm: 0.6 }, activityBias: even };
@@ -12,16 +12,18 @@ function play(n: number, bump?: StatKey, amount = 2): GameState {
     const p = state.players.p0;
     p[bump] += amount;
     p.intelligenceTokens = p.intelligence; p.staminaTokens = p.stamina; p.charmTokens = p.charm; p.spellbookTokens = p.spellPower;
+    // 지력이 바뀌었으니 1라운드 수업카드 선택 순서도 다시 정한다
+    state.classPickOrder = [...state.turnOrder].sort((a, b) => state.players[b].intelligence - state.players[a].intelligence || state.players[b].charm - state.players[a].charm);
   }
   let guard = 0;
   while (state.phase !== "ended" && guard++ < 5000) {
     if (state.pendingRoll) { for (const e of [...state.pendingRoll.entries]) if (e.dice === null) submitRoll(state, e.playerId); }
-    else if (state.phase === "class") { for (const id of state.turnOrder) if (!state.players[id].hasActedThisPhase) playClassTurn(state, id, S); }
+    else if (state.pendingPick) chooseActivityCard(state, state.pendingPick.playerId, choosePick(state, S));
+      else if (state.phase === "class") playClassTurn(state, state.classPickOrder[state.classPickPointer], S);
     else if (state.phase === "activity") {
       const id = state.activityOrder[state.activityTurnPointer];
       const a = chooseActivityAction(state, id, S);
       selectActivity(state, id, a.activityId, a.targetPlayerId, a.useStamina);
-      if (state.pendingLab) submitLabChoice(state, id, chooseLabCard(state, S));
     } else throw new Error("phase " + state.phase);
   }
   return state;

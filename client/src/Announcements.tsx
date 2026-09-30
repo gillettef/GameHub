@@ -111,7 +111,7 @@ const classBanner = (game: GameState): Announcement =>
     kind: "banner",
     icon: "book",
     title: `${game.round}개월 2주차 · 정규수업`,
-    subtitle: "지력토큰으로 수업카드를 열고, 체력토큰으로 습득해요. 카드마다 드는 체력토큰이 달라요",
+    subtitle: "지력 순서대로 공개된 수업카드를 한 장씩 가져가요. 카드마다 드는 체력토큰이 달라요",
   });
 
 function activityBanner(game: GameState, myId: string): Announcement {
@@ -127,8 +127,8 @@ function activityBanner(game: GameState, myId: string): Announcement {
 
 // 내가 한(또는 나에게 일어난) 자율활동의 결과. 새 로그 중 내 이름이 들어간 것과 내 수치 변화를 모은다
 function activityResult(prev: GameState, next: GameState, myId: string): Announcement | null {
-  // 연구 카드를 고르는 중이거나 주사위를 굴리는 중이면 결과가 나온 뒤에 보여 준다 (시험 굴림은 활동이 끝난 뒤의 일이라 예외)
-  if (next.pendingLab?.playerId === myId) return null;
+  // 공개된 카드를 고르는 중이거나 주사위를 굴리는 중이면 결과가 나온 뒤에 보여 준다 (시험 굴림은 활동이 끝난 뒤의 일이라 예외)
+  if (next.pendingPick?.playerId === myId) return null;
   if (next.pendingRoll && next.pendingRoll.kind !== "exam") return null;
   const before = prev.players[myId];
   const after = next.players[myId];
