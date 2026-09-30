@@ -24,7 +24,21 @@ import {
 import { grimoireTemplates } from "../src/game/grimoireCards.js";
 import { labTemplates } from "../src/game/labCards.js";
 import type { ExplorationCard, GameState, GrimoireCard, LabCard, PlayerGameState } from "../src/game/types.js";
+import { BALANCE } from "../src/game/config.js";
 import { rollAndConfirm } from "./_drive.js";
+
+// 지력토큰 카드 공개 비용 장치는 남아 있으므로(현재 config는 빈 배열), 비용 규칙을 켜서 검증할 때 쓴다
+function withOpenCost(fn: () => void): () => void {
+  return () => {
+    const saved = BALANCE.openCardCostActivities;
+    BALANCE.openCardCostActivities = ["duel", "lab"];
+    try {
+      fn();
+    } finally {
+      BALANCE.openCardCostActivities = saved;
+    }
+  };
+}
 
 let passed = 0;
 function test(name: string, fn: () => void) {
@@ -293,7 +307,7 @@ test("자율활동: 먼저 모두 고르고(선택은 모두에게 공개), 모�
   assert.equal(state.activityResults.length, 3);
 });
 
-test("카드를 여는 구역 중 연구실·주문 대결은 지력토큰이 필요하다 (매력토큰 3개가 1개를 대신한다). 마법생물 조련·비밀의 방은 들지 않는다", () => {
+test("카드를 여는 구역 중 연구실·주문 대결은 지력토큰이 필요하다 (매력토큰 3개가 1개를 대신한다). 마법생물 조련·비밀의 방은 들지 않는다", withOpenCost(() => {
   const state = newGame(3);
   toActivity(state, 0);
   setTokens(state, 0);
@@ -305,6 +319,16 @@ test("카드를 여는 구역 중 연구실·주문 대결은 지력토큰이 �
   state.players[a].intelligenceTokens = 1;
   selectActivity(state, a, "lab");
   assert.equal(state.players[a].intelligenceTokens, 0);
+}));
+
+test("기본 설정에서는 어떤 구역도 카드를 열 때 지력토큰이 들지 않는다", () => {
+  assert.deepEqual(BALANCE.openCardCostActivities, []);
+  const state = newGame(3);
+  toActivity(state, 0);
+  setTokens(state, 3);
+  const [a] = state.activityOrder;
+  const avail = availableActivities(state, a);
+  assert.ok(avail.includes("lab") && avail.includes("duel") && avail.includes("creature") && avail.includes("exploration"));
 });
 
 test("마법생물 조련·비밀의 방은 카드를 열어도 지력토큰이 들지 않는다", () => {
@@ -318,7 +342,7 @@ test("마법생물 조련·비밀의 방은 카드를 열어도 지력토큰이 
   assert.equal(state.players[b].intelligenceTokens, 2);
 });
 
-test("구역에 처음 고른 사람이 지력토큰 1개를 내고 카드 2장을 연다. 두 번째 참가자는 지력토큰을 내지 않는다", () => {
+test("구역에 처음 고른 사람이 지력토큰 1개를 내고 카드 2장을 연다. 두 번째 참가자는 지력토큰을 내지 않는다", withOpenCost(() => {
   const state = newGame(3);
   toActivity(state);
   setTokens(state, 3);
@@ -331,7 +355,7 @@ test("구역에 처음 고른 사람이 지력토큰 1개를 내고 카드 2장�
   finishChoosing(state);
   advanceResolution(state);
   assert.equal(state.activityOffers.lab?.cards.length, 2, "공개된 카드는 모두가 볼 수 있다");
-});
+}));
 
 test("마법생물 조련: 먼저 온 사람이 원하는 카드를 주문서를 내고 가져가고, 남는 카드는 두 번째 참가자가 가져간다", () => {
   const state = newGame(3);
@@ -523,7 +547,7 @@ test("협력 탐험: 두 번째 참가자는 협력 카드를 받을 수 없어 
   assert.ok(state.explorationPile.discard.some((c) => c.id === "coop-test"));
 });
 
-test("주문 대결: 이긴 사람이 공개된 마도서 중 1장을 고른다", () => {
+test("주문 대결: 이긴 사람이 공개된 마도서 중 1장을 고른다", withOpenCost(() => {
   const state = newGame(3);
   toActivity(state);
   setTokens(state, 0);
@@ -550,7 +574,7 @@ test("주문 대결: 이긴 사람이 공개된 마도서 중 1장을 고른다"
   assert.equal(state.pendingPick, null);
   assert.equal(state.activityResolvePointer, 1, "보상을 고른 뒤 다음 진행으로 넘어간다");
   assert.equal(state.activityOffers.duel?.cards.length, 1);
-});
+}));
 
 test("자율활동이 끝나면 아무도 가져가지 않은 공개 카드는 버림 더미로 돌아간다", () => {
   const state = newGame(2);
@@ -670,7 +694,7 @@ test("참가비를 매력토큰으로 내면 체력토큰은 그대로 남는다
   assert.equal(state.players[b].staminaTokens, 2, "참가비는 매력토큰이 냈다");
 });
 
-test("구역 카드를 열 지력토큰이 모자라면 매력토큰 3개가 1개를 대신한다", () => {
+test("구역 카드를 열 지력토큰이 모자라면 매력토큰 3개가 1개를 대신한다", withOpenCost(() => {
   const state = newGame(2);
   toActivity(state, 0);
   setTokens(state, 0);
@@ -681,7 +705,7 @@ test("구역 카드를 열 지력토큰이 모자라면 매력토큰 3개가 1�
   assert.ok(availableActivities(state, a).includes("lab"));
   selectActivity(state, a, "lab");
   assert.equal(state.players[a].charmTokens, 0);
-});
+}));
 
 test("마도서 '매혹의 화술서'·'반짝 스타일북'이 있으면 매력토큰 2개가 다른 토큰 1개를 대신한다 (최소 2개)", () => {
   const state = newGame(2);
