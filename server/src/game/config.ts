@@ -7,8 +7,8 @@ export const BALANCE = {
   // 라운드 구조 — 기획 확정값(12라운드, 6라운드 후 중간고사). 바꾸면 클라이언트 표시(12/12)와도 맞춰야 함
   totalRounds: 12,
   midtermRound: 6,
-  // 게임 시작 능력치 (11-2의 임시안: 전원 1, 학점 0)
-  initialStats: { intelligence: 1, stamina: 1, charm: 1, spellPower: 1 } as Record<StatKey, number>,
+  // 게임 시작 능력치 (2026-09-30 변경: 전원 2, 학점 0)
+  initialStats: { intelligence: 2, stamina: 2, charm: 2, spellPower: 2 } as Record<StatKey, number>,
   initialCredit: 0,
   // 마법 토너먼트: 최종 순위 보상 (1위, 2위 순서). 트랙에는 상한이 없다
   tournamentRewards: [2, 1],

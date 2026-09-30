@@ -45,9 +45,9 @@ console.log("\n=== 규칙 검증 ===");
 test("1주차에 지력·체력·주문력 수치만큼 토큰을 받는다", () => {
   const state = newGame(2);
   for (const p of Object.values(state.players)) {
-    assert.equal(p.intelligenceTokens, 1);
-    assert.equal(p.staminaTokens, 1);
-    assert.equal(p.spellbookTokens, 1);
+    assert.equal(p.intelligenceTokens, p.intelligence);
+    assert.equal(p.staminaTokens, p.stamina);
+    assert.equal(p.spellbookTokens, p.spellPower);
   }
 });
 
