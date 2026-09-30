@@ -76,7 +76,7 @@
       "kind": "building",
       "cost": 3,
       "sight": 2,
-      "hp": 6,
+      "hp": 7,
       "attack": 0,
       "range": 0,
       "production": 0,
@@ -95,7 +95,7 @@
       "cost": 4,
       "sight": 1,
       "hp": 6,
-      "attack": 2,
+      "attack": 3,
       "range": 2,
       "production": 0,
       "score": 2,
@@ -249,7 +249,7 @@
       "kind": "building",
       "cost": 1,
       "sight": 1,
-      "hp": 3,
+      "hp": 4,
       "attack": 0,
       "range": 0,
       "production": 1,
@@ -290,7 +290,7 @@
       "range": 1,
       "production": 0,
       "score": 2,
-      "copies": 2,
+      "copies": 1,
       "description": "근접 방어. 사거리는 짧지만 공격력이 높다."
     },
     {
@@ -305,7 +305,7 @@
       "kind": "unit",
       "cost": 1,
       "sight": 1,
-      "hp": 2,
+      "hp": 3,
       "attack": 1,
       "range": 1,
       "production": 0,
@@ -330,7 +330,7 @@
       "range": 1,
       "production": 0,
       "score": 1,
-      "copies": 4,
+      "copies": 5,
       "description": "군락의 주력. 침투: 적 마커 거리 1 이내에도 배치 가능."
     },
     {
@@ -345,7 +345,7 @@
       "kind": "unit",
       "cost": 3,
       "sight": 1,
-      "hp": 3,
+      "hp": 4,
       "attack": 2,
       "range": 2,
       "production": 0,
@@ -422,7 +422,7 @@
       "keywords": [],
       "effect": {
         "kind": "heal",
-        "amount": 2,
+        "amount": 3,
         "radius": 1
       },
       "id": "frenzy",
@@ -436,7 +436,7 @@
       "production": 0,
       "score": 0,
       "copies": 1,
-      "description": "즉발: 반경 1 아군 마커 전부 체력 +2."
+      "description": "즉발: 반경 1 아군 마커 전부 체력 +3."
     },
     {
       "race": "automata",

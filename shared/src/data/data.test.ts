@@ -41,8 +41,8 @@ function expectRow(spec: CardSpec, row: Row, race: RaceId) {
 // Rules.md 10.2 (인류 연합, 변경 없음)
 const COALITION_BASE: Row[] = [
   ['extractor', 'building', 2, 1, 4, 0, 0, 1, 2, 4],
-  ['outpost', 'building', 3, 2, 6, 0, 0, 0, 3, 3],
-  ['turret', 'building', 4, 1, 6, 2, 2, 0, 2, 2],
+  ['outpost', 'building', 3, 2, 7, 0, 0, 0, 3, 3],
+  ['turret', 'building', 4, 1, 6, 3, 2, 0, 2, 2],
   ['scout', 'unit', 1, 2, 2, 1, 1, 0, 1, 3],
   ['fighter', 'unit', 3, 1, 4, 2, 1, 0, 1, 3],
   ['artillery', 'unit', 4, 1, 3, 3, 3, 0, 1, 2],
@@ -65,12 +65,12 @@ const COALITION_SPECIAL: Row[] = [
 
 // 크릴 군락
 const SWARM_BASE: Row[] = [
-  ['larva-nest', 'building', 1, 1, 3, 0, 0, 1, 1, 3],
+  ['larva-nest', 'building', 1, 1, 4, 0, 0, 1, 1, 3],
   ['bio-spire', 'building', 3, 2, 5, 0, 0, 0, 3, 3],
-  ['spike-turret', 'building', 4, 1, 5, 3, 1, 0, 2, 2],
-  ['drone', 'unit', 1, 1, 2, 1, 1, 0, 1, 3],
-  ['stalker', 'unit', 2, 1, 4, 2, 1, 0, 1, 4],
-  ['spitter', 'unit', 3, 1, 3, 2, 2, 0, 1, 2],
+  ['spike-turret', 'building', 4, 1, 5, 3, 1, 0, 2, 1],
+  ['drone', 'unit', 1, 1, 3, 1, 1, 0, 1, 3],
+  ['stalker', 'unit', 2, 1, 4, 2, 1, 0, 1, 5],
+  ['spitter', 'unit', 3, 1, 4, 2, 2, 0, 1, 2],
   ['brood-queen', 'unit', 5, 1, 7, 2, 1, 0, 2, 1],
   ['acid-spray', 'magic', 2, 0, 0, 0, 0, 0, 0, 2],
   ['swarm-call', 'magic', 0, 0, 0, 0, 0, 0, 0, 1],
@@ -174,7 +174,7 @@ const RACE_TABLES: Record<RaceId, { base: Row[]; special: Row[] }> = {
 /** 종족별 고정 덱(Rules.md 10.7절)의 특수 필러 3장: 건물 1·유닛 1·마법 1 */
 const FIXED_FILLERS: Record<RaceId, [building: string, unit: string, magic: string]> = {
   coalition: ['refinery', 'battleship', 'gravity-wave'],
-  swarm: ['chitin-refinery', 'alpha-brood', 'overgrowth'],
+  swarm: ['chitin-refinery', 'nurse-drone', 'overgrowth'],
   automata: ['deep-scanner', 'repair-node', 'core-surge'],
   shade: ['black-market', 'medic-wisp', 'entropy-surge'],
   siege: ['heavy-foundry', 'field-medic', 'overcharge-round'],

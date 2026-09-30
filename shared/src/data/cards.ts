@@ -56,8 +56,8 @@ const coalitionSpecial = specialOf('coalition');
 
 export const COALITION_BASE_CARDS: CardSpec[] = [
   { ...coalitionBase, id: 'extractor', name: '채굴기', kind: 'building', cost: 2, sight: 1, hp: 4, attack: 0, range: 0, production: 1, score: 2, copies: 4, description: '경제의 기본. 광맥 위에서는 생산 +1.' },
-  { ...coalitionBase, id: 'outpost', name: '전초기지', kind: 'building', cost: 3, sight: 2, hp: 6, attack: 0, range: 0, production: 0, score: 3, copies: 3, description: '시야·영토 확장.' },
-  { ...coalitionBase, id: 'turret', name: '방어탑', kind: 'building', cost: 4, sight: 1, hp: 6, attack: 2, range: 2, production: 0, score: 2, copies: 2, description: '고정 방어.' },
+  { ...coalitionBase, id: 'outpost', name: '전초기지', kind: 'building', cost: 3, sight: 2, hp: 7, attack: 0, range: 0, production: 0, score: 3, copies: 3, description: '시야·영토 확장.' },
+  { ...coalitionBase, id: 'turret', name: '방어탑', kind: 'building', cost: 4, sight: 1, hp: 6, attack: 3, range: 2, production: 0, score: 2, copies: 2, description: '고정 방어.' },
   { ...coalitionBase, id: 'scout', name: '정찰 드론', kind: 'unit', cost: 1, sight: 2, hp: 2, attack: 1, range: 1, production: 0, score: 1, copies: 3, description: '값싼 시야 확장.' },
   { ...coalitionBase, id: 'fighter', name: '전투기', kind: 'unit', cost: 3, sight: 1, hp: 4, attack: 2, range: 1, production: 0, score: 1, copies: 3, description: '근접 압박.' },
   { ...coalitionBase, id: 'artillery', name: '포격함', kind: 'unit', cost: 4, sight: 1, hp: 3, attack: 3, range: 3, production: 0, score: 1, copies: 2, description: '긴 사거리, 낮은 체력.' },
@@ -87,16 +87,16 @@ const swarmBase = baseOf('swarm');
 const swarmSpecial = specialOf('swarm');
 
 export const SWARM_BASE_CARDS: CardSpec[] = [
-  { ...swarmBase, id: 'larva-nest', name: '알집', kind: 'building', cost: 1, sight: 1, hp: 3, attack: 0, range: 0, production: 1, score: 1, copies: 3, description: '가장 싼 경제 건물. 광맥 위에서는 생산 +1.' },
+  { ...swarmBase, id: 'larva-nest', name: '알집', kind: 'building', cost: 1, sight: 1, hp: 4, attack: 0, range: 0, production: 1, score: 1, copies: 3, description: '가장 싼 경제 건물. 광맥 위에서는 생산 +1.' },
   { ...swarmBase, id: 'bio-spire', name: '생체첨탑', kind: 'building', cost: 3, sight: 2, hp: 5, attack: 0, range: 0, production: 0, score: 3, copies: 3, description: '시야·영토 확장.' },
-  { ...swarmBase, id: 'spike-turret', name: '가시탑', kind: 'building', cost: 4, sight: 1, hp: 5, attack: 3, range: 1, production: 0, score: 2, copies: 2, description: '근접 방어. 사거리는 짧지만 공격력이 높다.' },
-  { ...swarmBase, id: 'drone', name: '유충병', kind: 'unit', cost: 1, sight: 1, hp: 2, attack: 1, range: 1, production: 0, score: 1, copies: 3, keywords: ['infiltrate'], description: '가장 싼 공격 유닛. 침투: 적 마커 거리 1 이내에도 배치 가능.' },
-  { ...swarmBase, id: 'stalker', name: '추적자', kind: 'unit', cost: 2, sight: 1, hp: 4, attack: 2, range: 1, production: 0, score: 1, copies: 4, keywords: ['infiltrate'], description: '군락의 주력. 침투: 적 마커 거리 1 이내에도 배치 가능.' },
-  { ...swarmBase, id: 'spitter', name: '산성분사체', kind: 'unit', cost: 3, sight: 1, hp: 3, attack: 2, range: 2, production: 0, score: 1, copies: 2, keywords: ['infiltrate'], description: '값싼 사거리 압박. 침투: 적 마커 거리 1 이내에도 배치 가능.' },
+  { ...swarmBase, id: 'spike-turret', name: '가시탑', kind: 'building', cost: 4, sight: 1, hp: 5, attack: 3, range: 1, production: 0, score: 2, copies: 1, description: '근접 방어. 사거리는 짧지만 공격력이 높다.' },
+  { ...swarmBase, id: 'drone', name: '유충병', kind: 'unit', cost: 1, sight: 1, hp: 3, attack: 1, range: 1, production: 0, score: 1, copies: 3, keywords: ['infiltrate'], description: '가장 싼 공격 유닛. 침투: 적 마커 거리 1 이내에도 배치 가능.' },
+  { ...swarmBase, id: 'stalker', name: '추적자', kind: 'unit', cost: 2, sight: 1, hp: 4, attack: 2, range: 1, production: 0, score: 1, copies: 5, keywords: ['infiltrate'], description: '군락의 주력. 침투: 적 마커 거리 1 이내에도 배치 가능.' },
+  { ...swarmBase, id: 'spitter', name: '산성분사체', kind: 'unit', cost: 3, sight: 1, hp: 4, attack: 2, range: 2, production: 0, score: 1, copies: 2, keywords: ['infiltrate'], description: '값싼 사거리 압박. 침투: 적 마커 거리 1 이내에도 배치 가능.' },
   { ...swarmBase, id: 'brood-queen', name: '산란여왕', kind: 'unit', cost: 5, sight: 1, hp: 7, attack: 2, range: 1, production: 0, score: 2, copies: 1, keywords: ['repair'], description: '군락에서 가장 비싼 유닛. 정비: 내 턴을 끝낼 때 반경 1 아군 체력 +1.' },
   { ...swarmBase, id: 'acid-spray', name: '산성 포자', kind: 'magic', cost: 2, sight: 0, hp: 0, attack: 0, range: 0, production: 0, score: 0, copies: 2, effect: { kind: 'damage', amount: 3, radius: 1 }, description: '즉발: 반경 1 적 마커 전부에 피해 3.' },
   { ...swarmBase, id: 'swarm-call', name: '소집 신호', kind: 'magic', cost: 0, sight: 0, hp: 0, attack: 0, range: 0, production: 0, score: 0, copies: 1, effect: { kind: 'energy', amount: 2 }, description: '즉발: 에너지 +2.' },
-  { ...swarmBase, id: 'frenzy', name: '광란', kind: 'magic', cost: 1, sight: 0, hp: 0, attack: 0, range: 0, production: 0, score: 0, copies: 1, effect: { kind: 'heal', amount: 2, radius: 1 }, description: '즉발: 반경 1 아군 마커 전부 체력 +2.' },
+  { ...swarmBase, id: 'frenzy', name: '광란', kind: 'magic', cost: 1, sight: 0, hp: 0, attack: 0, range: 0, production: 0, score: 0, copies: 1, effect: { kind: 'heal', amount: 3, radius: 1 }, description: '즉발: 반경 1 아군 마커 전부 체력 +3.' },
 ];
 
 export const SWARM_SPECIAL_CARDS: CardSpec[] = [
@@ -272,8 +272,8 @@ export function cardPoolOf(race: RaceId): CardSpec[] {
  * 건물 1·유닛 1·마법 1 = 25장(DECK_SIZE). 특수 3장은 전 종족에서 경제·생존·에너지 보조 카드로만
  * 골라(가장 강한 카드 제외) 종족 간 격차가 기본 22장의 정체성에서만 나오게 했다.
  * 예외 둘: `coalition`은 2026-09-23 이전부터 쓰던 기본값(`battleship` 포함)을 그대로 고정했고,
- * `swarm`은 밸런스 시뮬레이션(`balance-sim.ts` 300판, 필러만 고른 첫 값은 승률 35.8%로 처짐)에
- * 따라 유닛 특수를 필러 대신 종족 최강 유닛 `alpha-brood`로 올렸다 (자세한 근거는 Rules.md 10.7절).
+ * `swarm`은 2026-09-24에 유닛 특수를 종족 최강 유닛 `alpha-brood`로 올렸다가, 2026-09-30에 초반 유닛을
+ * 튼튼하게 고치면서 다시 필러 `nurse-drone`으로 되돌렸다 (자세한 근거는 Rules.md 10.7절).
  */
 function fixed(race: RaceId, fillers: { building: CardId; unit: CardId; magic: CardId }): [RaceId, Record<CardId, number>] {
   const cards: Record<CardId, number> = Object.fromEntries(BASE_CARDS_BY_RACE[race].map((c) => [c.id, c.copies]));
@@ -285,7 +285,7 @@ function fixed(race: RaceId, fillers: { building: CardId; unit: CardId; magic: C
 
 export const FIXED_DECKS: Record<RaceId, Record<CardId, number>> = Object.fromEntries([
   fixed('coalition', { building: 'refinery', unit: 'battleship', magic: 'gravity-wave' }),
-  fixed('swarm', { building: 'chitin-refinery', unit: 'alpha-brood', magic: 'overgrowth' }),
+  fixed('swarm', { building: 'chitin-refinery', unit: 'nurse-drone', magic: 'overgrowth' }),
   fixed('automata', { building: 'deep-scanner', unit: 'repair-node', magic: 'core-surge' }),
   fixed('shade', { building: 'black-market', unit: 'medic-wisp', magic: 'entropy-surge' }),
   fixed('siege', { building: 'heavy-foundry', unit: 'field-medic', magic: 'overcharge-round' }),
