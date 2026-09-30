@@ -1,0 +1,48 @@
+/* 내 차례 시작 시 뜨는 지난 턴 요약(2026-09-30). 맵을 덜 가리도록 상단 안쪽에 얇게 */
+.root {
+  position: absolute;
+  left: var(--space-1);
+  right: var(--space-1);
+  top: 120px;
+  z-index: 6;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--color-surface) 96%, transparent);
+  color: var(--color-text);
+  font-size: var(--text-micro);
+  animation: recap-in var(--motion-standard) var(--ease-enter);
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: var(--text-small);
+}
+
+.close {
+  width: 28px;
+  height: 28px;
+  color: var(--color-muted);
+  font-size: var(--text-body);
+}
+
+.list {
+  margin: 0;
+  padding-left: var(--space-3);
+}
+
+.more {
+  color: var(--color-muted);
+}
+
+@keyframes recap-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
