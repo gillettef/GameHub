@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ClientMessage, ServerMessage } from "./messages";
-import type { ActivityId, GameState } from "./gameTypes";
+import type { ActivityId, ClassTier, GameState } from "./gameTypes";
 
 export interface RoomPlayer {
   id: string;
@@ -27,6 +27,8 @@ export function useGameSocket() {
   const [state, setState] = useState<LobbyState>({ status: "idle", players: [] });
   const [game, setGame] = useState<GameState | null>(null);
   const [lastError, setLastError] = useState<string | null>(null);
+  // 같은 오류가 연달아 와도 화면에 다시 알릴 수 있도록 오류가 올 때마다 늘어나는 번호
+  const [errorSeq, setErrorSeq] = useState(0);
 
   useEffect(() => {
     return () => {
@@ -76,6 +78,7 @@ export function useGameSocket() {
           break;
         case "error":
           setLastError(message.message);
+          setErrorSeq((n) => n + 1);
           break;
       }
     };
@@ -137,6 +140,19 @@ export function useGameSocket() {
     [ensureSocket, send],
   );
 
+  const openClassCard = useCallback(
+    (tier: ClassTier) => {
+      const socket = ensureSocket();
+      send(socket, { type: "open_class_card", tier });
+    },
+    [ensureSocket, send],
+  );
+
+  const rollDice = useCallback(() => {
+    const socket = ensureSocket();
+    send(socket, { type: "roll_dice" });
+  }, [ensureSocket, send]);
+
   const selectActivity = useCallback(
     (activityId: ActivityId, targetPlayerId?: string, useStamina?: boolean) => {
       const socket = ensureSocket();
@@ -153,5 +169,5 @@ export function useGameSocket() {
     [ensureSocket, send],
   );
 
-  return { state, game, lastError, createRoom, joinRoom, startGame, addBot, removeBot, submitClassChoice, selectActivity, chooseLabCard };
+  return { state, game, lastError, errorSeq, createRoom, joinRoom, startGame, addBot, removeBot, openClassCard, submitClassChoice, rollDice, selectActivity, chooseLabCard };
 }

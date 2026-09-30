@@ -3,11 +3,11 @@
 // 사용법: (다른 터미널에서 서버 실행 후) npm run smoke -- [인원(2~5)] [포트]
 import WebSocket from "ws";
 import type { ServerMessage } from "../src/messages.js";
-import type { ActivityId, PublicGameState } from "../src/game/types.js";
+import type { PublicGameState } from "../src/game/types.js";
+import { nextAction } from "./smoke-actions.js";
 
 const count = Number(process.argv[2]) || 3;
 const port = Number(process.argv[3]) || 8080;
-const ACTIVITIES: ActivityId[] = ["tournament", "creature", "duel", "exploration", "lab"];
 
 interface Client {
   name: string;
@@ -61,27 +61,12 @@ async function main() {
   }
 
   const act = (c: Client) => {
-    const game = c.game;
-    if (!game || !c.playerId) return;
-    const me = game.players[c.playerId];
-    // 같은 단계에서 중복 전송하지 않도록 (라운드/단계/차례)별로 한 번만 행동한다
-    const key = `${game.round}:${game.phase}:${game.activityTurnPointer}:${game.pendingLab ? "lab" : ""}`;
-    if (c.lastAction === key) return;
-    if (game.phase === "class" && !me.hasActedThisPhase) {
-      const keep = me.offeredClassCards.slice(0, me.staminaTokens).map((card) => card.id);
-      c.lastAction = key;
-      send(c, { type: "submit_class_choice", keepCardIds: keep });
-    } else if (game.phase === "activity" && game.pendingLab?.playerId === c.playerId) {
-      c.lastAction = key;
-      send(c, { type: "choose_lab_card", cardId: game.pendingLab.cards[0].id });
-    } else if (game.phase === "activity" && !game.pendingLab && game.activityOrder[game.activityTurnPointer] === c.playerId) {
-      const targets = game.turnOrder.filter((id) => id !== c.playerId && !game.players[id].hasActedThisPhase);
-      const free = ACTIVITIES.filter((a) => game.activitySlots[a] === null && (a !== "duel" || targets.length > 0));
-      const activityId = free[Math.floor(Math.random() * free.length)];
-      const targetPlayerId = activityId === "duel" ? targets[0] : undefined;
-      c.lastAction = key;
-      send(c, { type: "select_activity", activityId, targetPlayerId });
-    }
+    if (!c.game || !c.playerId) return;
+    const action = nextAction(c.game, c.playerId);
+    // 같은 상황에서 중복 전송하지 않도록 표식(key)이 바뀔 때만 행동한다
+    if (!action || c.lastAction === action.key) return;
+    c.lastAction = action.key;
+    send(c, action.message);
   };
   for (const c of clients) c.onState = () => act(c);
 
@@ -93,11 +78,13 @@ async function main() {
   const game = host.game;
   const errors = clients.flatMap((c) => c.errors);
   if (!game || game.phase !== "ended") throw new Error(`게임이 끝나지 않았습니다 (phase=${game?.phase}, round=${game?.round}, errors=${errors.join("|")})`);
-  if (errors.length) throw new Error(`서버 오류 메시지 수신: ${errors.join(" | ")}`);
+  // 여러 클라이언트가 마지막 남은 수업카드를 동시에 열려는 경합은 정상적인 거절이다
+  const unexpected = errors.filter((e) => !e.includes("더 열 수 있는 수업카드가 없습니다"));
+  if (unexpected.length) throw new Error(`서버 오류 메시지 수신: ${unexpected.join(" | ")}`);
 
   // 비공개 정보가 클라이언트로 새지 않는지 확인
   const raw = JSON.stringify(game);
-  for (const key of ["classDeck", "creatureDeck", "labPile", "explorationPile", "grimoirePile"]) {
+  for (const key of ["classDecks", "creatureDeck", "labPile", "explorationPile", "grimoirePile", "hidden"]) {
     if (raw.includes(`"${key}"`)) throw new Error(`비공개 필드가 전송되었습니다: ${key}`);
   }
   for (const c of clients) {

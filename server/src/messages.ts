@@ -1,4 +1,4 @@
-import type { ActivityId, PublicGameState } from "./game/types.js";
+import type { ActivityId, ClassTier, PublicGameState } from "./game/types.js";
 
 export interface RoomPlayerInfo {
   id: string;
@@ -12,7 +12,9 @@ export type ClientMessage =
   | { type: "start_game" }
   | { type: "add_bot" }
   | { type: "remove_bot"; botId: string }
+  | { type: "open_class_card"; tier: ClassTier }
   | { type: "submit_class_choice"; keepCardIds: string[] }
+  | { type: "roll_dice" }
   | { type: "select_activity"; activityId: ActivityId; targetPlayerId?: string; useStamina?: boolean }
   | { type: "choose_lab_card"; cardId: string };
 

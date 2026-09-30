@@ -2,11 +2,11 @@
 // 사용법: (다른 터미널에서 서버 실행 후) npm run smoke:bot -- [봇 수(1~4)] [포트]
 import WebSocket from "ws";
 import type { ServerMessage } from "../src/messages.js";
-import type { ActivityId, PublicGameState } from "../src/game/types.js";
+import type { PublicGameState } from "../src/game/types.js";
+import { nextAction } from "./smoke-actions.js";
 
 const botCount = Number(process.argv[2]) || 3;
 const port = Number(process.argv[3]) || 8080;
-const ACTIVITIES: ActivityId[] = ["tournament", "creature", "duel", "exploration", "lab"];
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 interface Human {
@@ -45,25 +45,12 @@ const send = (h: Human, msg: object) => h.socket.send(JSON.stringify(msg));
 
 // 사람 플레이어 역할: 봇과 같은 단순한 방식으로 행동한다
 function act(h: Human) {
-  const game = h.game;
-  if (!game || !h.playerId) return;
-  const key = `${game.round}:${game.phase}:${game.activityTurnPointer}:${game.pendingLab ? "lab" : ""}`;
-  if (h.lastAction === key) return;
-  const me = game.players[h.playerId];
-  if (game.phase === "class" && !me.hasActedThisPhase) {
-    h.lastAction = key;
-    send(h, { type: "submit_class_choice", keepCardIds: me.offeredClassCards.slice(0, me.staminaTokens).map((c) => c.id) });
-  } else if (game.phase === "activity" && game.pendingLab?.playerId === h.playerId) {
-    h.lastAction = key;
-    send(h, { type: "choose_lab_card", cardId: game.pendingLab.cards[0].id });
-  } else if (game.phase === "activity" && !game.pendingLab && game.activityOrder[game.activityTurnPointer] === h.playerId) {
-    h.lastAction = key;
-    const targets = game.turnOrder.filter((id) => id !== h.playerId && !game.players[id].hasActedThisPhase);
-    const free = ACTIVITIES.filter((a) => game.activitySlots[a] === null && (a !== "duel" || targets.length > 0));
-    const activityId = free[Math.floor(Math.random() * free.length)];
-    const targetPlayerId = activityId === "duel" ? targets[0] : undefined;
-    send(h, { type: "select_activity", activityId, targetPlayerId });
-  }
+  if (!h.game || !h.playerId) return;
+  const action = nextAction(h.game, h.playerId);
+  // 같은 상황에서 중복 전송하지 않도록 표식(key)이 바뀔 때만 행동한다
+  if (!action || h.lastAction === action.key) return;
+  h.lastAction = action.key;
+  send(h, action.message);
 }
 
 async function main() {

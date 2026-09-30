@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import { Icon, InlineIcon, type IconName } from "./Icons";
 import {
   ACTIVITY_HINT,
@@ -8,9 +8,15 @@ import {
   LAB_KIND_ICON,
   LAB_KIND_LABEL,
   STAT_LABEL,
+  TIER_LABEL,
+  activityBlockReason,
+  activityExtraCost,
   describeAbility,
+  duelTargets,
   effectiveStat,
   type ActivityId,
+  type ClassCard,
+  type ClassTier,
   type CreatureElement,
   type GameState,
   type LabCard,
@@ -20,14 +26,28 @@ import { RulesGuide } from "./Rules";
 import { AnnouncementLayer } from "./Announcements";
 
 const ACTIVITY_IDS: ActivityId[] = ["tournament", "creature", "duel", "exploration", "lab"];
+const CLASS_TIERS: ClassTier[] = ["normal", "rare"];
 
 const MEDAL_COLOR = ["text-amber-500", "text-slate-400", "text-orange-500"];
 
 function Chip({ icon, label, value, className, showLabel }: { icon: IconName; label: string; value: string | number; className: string; showLabel?: boolean }) {
   return (
-    <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-sm whitespace-nowrap ${className}`} aria-label={`${label} ${value}`}>
+    <span role="img" className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-sm whitespace-nowrap ${className}`} aria-label={`${label} ${value}`}>
       <Icon name={icon} className="h-4 w-4" />
       {showLabel && <span className="text-xs">{label}</span>}
+      {value}
+    </span>
+  );
+}
+
+// 굴려서 나온 주사위 눈 하나
+function DiceFace({ value, delay = 0 }: { value: number; delay?: number }) {
+  return (
+    <span
+      className="dice-pop inline-flex h-10 w-10 items-center justify-center rounded-xl border-2 border-pink-300 bg-white font-display text-xl text-pink-600 shadow-sm"
+      style={{ "--d": `${delay.toFixed(2)}s` } as CSSProperties}
+      aria-label={`주사위 ${value}`}
+    >
       {value}
     </span>
   );
@@ -44,7 +64,7 @@ function PlayerStatCard({ player, isMe }: { player: PlayerGameState; isMe: boole
         <Chip icon="cap" label="학점" value={player.credit} className="bg-amber-100 text-amber-800" />
       </div>
       <p className="text-sm text-purple-700 leading-7">
-        <InlineIcon name="trophy" /> 토너먼트 {player.tournamentTrack}/10 · <InlineIcon name="staminaToken" /> 체력토큰 {player.staminaTokens} · <InlineIcon name="spellbookToken" /> 주문서 {player.spellbookTokens} · <InlineIcon name="book" /> 수업 {player.classCards.length}장
+        <InlineIcon name="trophy" /> 토너먼트 {player.tournamentTrack}/10 · <InlineIcon name="intToken" /> 지력토큰 {player.intelligenceTokens} · <InlineIcon name="staminaToken" /> 체력토큰 {player.staminaTokens} · <InlineIcon name="spellbookToken" /> 주문서 {player.spellbookTokens} · <InlineIcon name="book" /> 수업 {player.classCards.length}장
       </p>
       {player.peekedExploration && (
         <div className="mt-2 rounded-2xl border border-indigo-200 bg-indigo-50 px-2.5 py-2 text-sm text-indigo-800">
@@ -127,15 +147,20 @@ function PlayerStatCard({ player, isMe }: { player: PlayerGameState; isMe: boole
   );
 }
 
+// 열어 본 수업카드 한 장을 습득하는 데 드는 체력토큰
+const takeCost = (game: GameState, card: Pick<ClassCard, "tier">) => game.rules.classCardCosts[card.tier].take;
+
 function ClassPhasePanel({
   game,
   myId,
+  onOpen,
   onSubmit,
   selected,
   setSelected,
 }: {
   game: GameState;
   myId: string;
+  onOpen: (tier: ClassTier) => void;
   onSubmit: (keepCardIds: string[]) => void;
   selected: string[];
   setSelected: (updater: (prev: string[]) => string[]) => void;
@@ -152,48 +177,83 @@ function ClassPhasePanel({
     );
   }
 
-  const toggle = (cardId: string) => {
-    if (!selected.includes(cardId) && selected.length >= me.staminaTokens) {
+  const selectedCost = me.offeredClassCards.filter((c) => selected.includes(c.id)).reduce((sum, c) => sum + takeCost(game, c), 0);
+
+  const toggle = (card: ClassCard) => {
+    if (!selected.includes(card.id) && selectedCost + takeCost(game, card) > me.staminaTokens) {
       setLimitHint(true);
       return;
     }
     setLimitHint(false);
-    setSelected((prev) => (prev.includes(cardId) ? prev.filter((id) => id !== cardId) : [...prev, cardId]));
+    setSelected((prev) => (prev.includes(card.id) ? prev.filter((id) => id !== card.id) : [...prev, card.id]));
   };
 
   return (
     <div className="bg-white rounded-3xl border-2 border-purple-200 shadow-sm p-4">
-      <p className="text-sm text-purple-500 mb-2">
-        2주차(정규수업): 카드 1장당 체력토큰 1개가 필요합니다. (선택 {selected.length}/{me.staminaTokens})
+      <p className="text-sm text-purple-500 mb-1">2주차(정규수업): 지력토큰으로 카드를 열고, 체력토큰으로 습득해요</p>
+      <p className="text-xs text-purple-400 mb-3">
+        <InlineIcon name="intToken" /> 지력토큰 {me.intelligenceTokens}개 · <InlineIcon name="staminaToken" /> 체력토큰 {me.staminaTokens}개
       </p>
-      <div className="flex flex-wrap gap-2 mb-3">
-        {me.offeredClassCards.map((card) => {
-          const isSelected = selected.includes(card.id);
+
+      <div className="grid grid-cols-2 gap-2 mb-3">
+        {CLASS_TIERS.map((tier) => {
+          const cost = game.rules.classCardCosts[tier];
+          const left = game.classLeft[tier];
+          const noToken = me.intelligenceTokens < cost.open;
           return (
             <button
-              key={card.id}
-              onClick={() => toggle(card.id)}
-              aria-pressed={isSelected}
-              className={`rounded-xl border-2 min-h-12 px-3 py-3 text-sm active:scale-95 transition-transform ${
-                isSelected ? "bg-purple-500 text-white border-purple-700" : "bg-purple-50 text-purple-700 border-purple-200"
+              key={tier}
+              disabled={noToken || left === 0}
+              onClick={() => onOpen(tier)}
+              className={`rounded-xl border-2 min-h-16 px-2 py-2 text-sm active:scale-95 transition-transform disabled:border-gray-200 disabled:bg-gray-100 disabled:text-gray-600 disabled:active:scale-100 ${
+                tier === "rare" ? "border-amber-300 bg-amber-50 text-amber-800" : "border-sky-200 bg-sky-50 text-sky-800"
               }`}
             >
-              {isSelected && <Icon name="check" className="mr-1 h-4 w-4" />}{card.name} (+{card.statBoost.amount} {STAT_LABEL[card.statBoost.stat]})
-              <span className="block text-xs opacity-80">{card.description}</span>
+              <Icon name="book" className="mr-1 h-4 w-4" />
+              {TIER_LABEL[tier]} 카드 열기
+              <span className="block text-xs">지력토큰 {cost.open}개 · 습득 체력토큰 {cost.take}개</span>
+              <span className="block text-xs">
+                {left === 0 ? "카드가 모두 소진됐어요" : noToken ? "지력토큰이 부족해요" : `남은 카드 ${left}장`}
+              </span>
             </button>
           );
         })}
       </div>
+
       {limitHint && (
         <p role="alert" className="mb-3 rounded-2xl bg-pink-50 px-3 py-2 text-sm text-pink-600">
           체력토큰이 부족해서 더 고를 수 없어요. 다른 카드를 해제해 주세요.
         </p>
       )}
+      {me.offeredClassCards.length === 0 ? (
+        <p className="mb-3 rounded-2xl bg-purple-50 px-3 py-3 text-center text-sm text-purple-600">열어 본 카드가 없어요. 위 버튼으로 카드를 열어 보세요</p>
+      ) : (
+        <div className="flex flex-col gap-2 mb-3">
+          {me.offeredClassCards.map((card) => {
+            const isSelected = selected.includes(card.id);
+            return (
+              <button
+                key={card.id}
+                onClick={() => toggle(card)}
+                aria-pressed={isSelected}
+                className={`rounded-xl border-2 min-h-12 px-3 py-3 text-sm text-left active:scale-95 transition-transform ${
+                  isSelected ? "bg-purple-500 text-white border-purple-700" : card.tier === "rare" ? "bg-amber-50 text-purple-700 border-amber-300" : "bg-purple-50 text-purple-700 border-purple-200"
+                }`}
+              >
+                {isSelected && <Icon name="check" className="mr-1 h-4 w-4" />}{card.name} (+{card.statBoost.amount} {STAT_LABEL[card.statBoost.stat]})
+                <span className="block text-xs opacity-80">{card.description}</span>
+                <span className="block text-xs opacity-80"><InlineIcon name="staminaToken" /> 습득 체력토큰 {takeCost(game, card)}개</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       <button
         className="w-full min-h-12 rounded-xl bg-purple-500 text-white font-semibold py-3 active:scale-95 transition-transform"
         onClick={() => onSubmit(selected)}
       >
-        {selected.length === 0 ? "습득 없이 넘어가기" : `${selected.length}장 습득 확정`}
+        {selected.length === 0 ? "습득 없이 넘어가기" : `${selected.length}장 습득 확정 (체력토큰 ${selectedCost}개)`}
       </button>
     </div>
   );
@@ -221,6 +281,34 @@ function LabChoicePanel({ cards, onChoose }: { cards: LabCard[]; onChoose: (card
   );
 }
 
+// 함께할 친구를 기다리는 협력 탐험 카드 안내 (모두에게 공개)
+function CoopNotice({ game, myId }: { game: GameState; myId: string }) {
+  const coop = game.coopWaiting;
+  if (!coop) return null;
+  const owner = game.players[coop.playerId]?.name ?? "";
+  return (
+    <div className="mb-3 rounded-2xl border-2 border-indigo-200 bg-indigo-50 px-3 py-2 text-sm text-indigo-800">
+      <p>
+        <InlineIcon name="users" /> <b>협력 카드 &quot;{coop.name}&quot;</b>
+        <span className="text-xs text-indigo-700"> — {coop.playerId === myId ? "내가" : `${owner}님이`} 발견했어요</span>
+      </p>
+      {coop.playerId !== myId ? (
+        <p className="mt-1 rounded-xl bg-white/70 px-2 py-1 text-sm font-semibold">비밀의 방 탐색을 고르면 함께할 수 있어요! 보상은 둘 다 받아요</p>
+      ) : (
+        <p className="mt-1 rounded-xl bg-white/70 px-2 py-1 text-sm">함께할 친구를 기다리는 중이에요</p>
+      )}
+      <details className="mt-1">
+        <summary className="min-h-9 cursor-pointer py-1 text-xs text-indigo-700">자세히 보기</summary>
+        <p className="text-xs text-indigo-700">{coop.description}</p>
+        <p className="text-xs"><InlineIcon name="dice" /> {coop.pairText}</p>
+        <p className="text-xs"><InlineIcon name="check" /> 성공: {coop.successText}</p>
+        <p className="text-xs"><InlineIcon name="warn" /> 실패: {coop.failureText}</p>
+        <p className="text-xs text-indigo-700">{coop.soloText}</p>
+      </details>
+    </div>
+  );
+}
+
 function ActivityPhasePanel({
   game,
   myId,
@@ -234,11 +322,13 @@ function ActivityPhasePanel({
 }) {
   const currentTurnPlayerId = game.pendingLab?.playerId ?? game.activityOrder[game.activityTurnPointer];
   const isMyTurn = currentTurnPlayerId === myId;
-  const duelTargets = game.turnOrder.filter((id) => id !== myId && !game.players[id].hasActedThisPhase);
+  const targets = duelTargets(game, myId);
   const [pendingActivity, setPendingActivity] = useState<ActivityId | null>(null);
   const [focus, setFocus] = useState(false);
   const staminaTokens = game.players[myId]?.staminaTokens ?? 0;
   const orderText = game.activityOrder.map((id) => game.players[id].name).join(" → ");
+  const namesOf = (ids: string[]) => ids.map((id) => game.players[id].name).join(" · ");
+  const fee = game.rules.duelCharmFee;
 
   if (isMyTurn && game.pendingLab) {
     return <LabChoicePanel cards={game.pendingLab.cards} onChoose={onChooseLabCard} />;
@@ -246,28 +336,39 @@ function ActivityPhasePanel({
 
   if (!isMyTurn) {
     return (
-      <div className="bg-white rounded-3xl border-2 border-purple-200 shadow-sm p-4 text-center text-purple-500">
-        {game.players[currentTurnPlayerId]?.name}님의 차례를 기다리는 중...
+      <div className="bg-white rounded-3xl border-2 border-purple-200 shadow-sm p-4">
+        <CoopNotice game={game} myId={myId} />
+        <p className="text-center text-purple-500">{game.players[currentTurnPlayerId]?.name}님의 차례를 기다리는 중...</p>
+        <ul className="mt-3 flex flex-col gap-1 text-xs text-purple-500">
+          {ACTIVITY_IDS.filter((a) => game.activitySlots[a].length > 0).map((a) => (
+            <li key={a} className="rounded-xl bg-purple-50 px-3 py-1.5">
+              {ACTIVITY_LABEL[a]} — {namesOf(game.activitySlots[a])}
+            </li>
+          ))}
+        </ul>
       </div>
     );
   }
 
   if (pendingActivity === "duel") {
+    const extra = activityExtraCost(game, "duel");
     return (
       <div className="bg-white rounded-3xl border-2 border-purple-200 shadow-sm p-4">
-        <p className="text-sm text-purple-500 mb-1">아직 활동을 고르지 않은 한 명을 지목하세요</p>
-        <p className="text-xs text-purple-400 mb-2">지목당한 친구는 이번 달 자율활동으로 주문 대결을 하게 돼요.</p>
+        <p className="text-sm text-purple-600 mb-1">아직 활동을 고르지 않은 한 명을 지목하세요</p>
+        <p className="text-xs text-purple-500 mb-2">
+          지목당한 친구는 이번 달 자율활동으로 주문 대결을 하게 돼요. 결과와 상관없이 지목한 친구에게 <InlineIcon name="heart" /> 매력 {fee}을 건네요.
+        </p>
         <div className="flex flex-col gap-2">
-          {duelTargets.map((id) => (
+          {targets.map((id) => (
             <button
               key={id}
               className="rounded-xl border border-purple-200 min-h-12 px-3 py-3 text-purple-700 bg-purple-50 active:scale-95 transition-transform"
-              onClick={() => onSelect("duel", id, focus && staminaTokens > 0)}
+              onClick={() => onSelect("duel", id, focus && staminaTokens - extra > 0)}
             >
               {game.players[id].name}
             </button>
           ))}
-          <button className="text-sm text-purple-500 min-h-11 w-full" onClick={() => setPendingActivity(null)}>
+          <button className="mt-2 text-sm text-purple-600 min-h-11 w-full" onClick={() => setPendingActivity(null)}>
             취소
           </button>
         </div>
@@ -277,8 +378,12 @@ function ActivityPhasePanel({
 
   return (
     <div className="bg-white rounded-3xl border-2 border-purple-200 shadow-sm p-4">
-      <p className="text-sm text-purple-500 mb-1">3주차(자율활동): 구역을 선택하세요</p>
-      <p className="text-xs text-purple-400 mb-2"><InlineIcon name="heart" /> 매력 순서: {orderText}</p>
+      <p className="text-sm text-purple-600 mb-1">3주차(자율활동): 구역을 선택하세요</p>
+      <p className="text-xs text-purple-500 mb-1"><InlineIcon name="heart" /> 매력 순서: {orderText}</p>
+      <p className="text-xs text-purple-500 mb-2">
+        구역당 최대 {game.rules.activityMaxParticipants}명 · 먼저 온 친구가 있으면 <InlineIcon name="staminaToken" /> 체력토큰 {game.rules.activitySecondParticipantCost}개 추가
+      </p>
+      <CoopNotice game={game} myId={myId} />
       {staminaTokens > 0 && (
         <label className="flex items-center gap-2 min-h-11 mb-2 rounded-xl bg-green-50 px-3 text-sm text-green-800">
           <input type="checkbox" className="h-5 w-5" checked={focus} onChange={(e) => setFocus(e.target.checked)} />
@@ -287,32 +392,145 @@ function ActivityPhasePanel({
       )}
       <div className="grid grid-cols-1 gap-2">
         {ACTIVITY_IDS.map((activityId) => {
-          const occupant = game.activitySlots[activityId];
           const label = ACTIVITY_LABEL[activityId];
-          if (occupant) {
+          const occupants = game.activitySlots[activityId];
+          const reason = activityBlockReason(game, myId, activityId);
+          const extra = activityExtraCost(game, activityId);
+          // 이미 이 구역에 들어간 친구들 (주문 대결은 누구를 지목했는지도 함께)
+          const who = occupants
+            .map((id) => {
+              const duel = activityId === "duel" ? game.duels.find((d) => d.challengerId === id) : undefined;
+              return `${game.players[id].name}${duel ? ` → ${game.players[duel.targetId].name}` : ""}`;
+            })
+            .join(" · ");
+          if (reason) {
             return (
-              <div key={activityId} className="rounded-xl border border-gray-200 min-h-12 px-3 py-3 text-gray-500 bg-gray-100">
-                {label} — {game.players[occupant].name}
-              {activityId === "duel" && game.duelTargetId ? ` vs ${game.players[game.duelTargetId].name}` : ""} 선택됨
+              <div key={activityId} aria-disabled="true" className="rounded-xl border border-gray-200 min-h-12 px-3 py-3 text-gray-600 bg-gray-100">
+                {label}
+                <span className="block text-xs">
+                  {who && `${who} 참여 중 · `}
+                  {reason}
+                </span>
               </div>
             );
           }
-          const noTarget = activityId === "duel" && duelTargets.length === 0;
           return (
             <button
               key={activityId}
-              disabled={noTarget}
-              className="rounded-xl border border-purple-300 min-h-12 px-3 py-3 text-purple-700 bg-white active:bg-purple-100 active:scale-95 transition-transform disabled:opacity-50 disabled:active:scale-100"
-              onClick={() => (activityId === "duel" ? setPendingActivity("duel") : onSelect(activityId, undefined, focus && staminaTokens > 0))}
+              className="rounded-xl border border-purple-300 min-h-12 px-3 py-3 text-purple-700 bg-white active:bg-purple-100 active:scale-95 transition-transform"
+              onClick={() =>
+                activityId === "duel" ? setPendingActivity("duel") : onSelect(activityId, undefined, focus && staminaTokens - extra > 0)
+              }
             >
               {label}
-              <span className="block text-xs text-purple-400">
-                {noTarget ? "지목할 수 있는 친구가 없어요" : ACTIVITY_HINT[activityId]}
+              {activityId === "exploration" && game.coopWaiting && (
+                <span className="ml-1 rounded-full bg-indigo-100 px-2 py-0.5 text-xs text-indigo-800">함께해요!</span>
+              )}
+              <span className="block text-xs text-purple-600">
+                {activityId === "duel" ? `아직 안 고른 한 명을 지목 · 매력 ${fee}을 건네요 (집중: +1)` : ACTIVITY_HINT[activityId]}
               </span>
+              {(who || extra > 0) && (
+                <span className="mt-1 flex flex-wrap gap-1">
+                  {who && <span className="rounded-full bg-purple-100 px-2 py-0.5 text-xs text-purple-700">{who} 참여 중</span>}
+                  {extra > 0 && <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs text-green-800">체력토큰 +{extra}</span>}
+                </span>
+              )}
             </button>
           );
         })}
       </div>
+    </div>
+  );
+}
+
+// 주사위 굴리기 (주문 대결·탐험 판정·시험): 굴려야 하는 사람이 버튼을 누르면 서버가 굴려서 결과를 알려 준다
+function RollPanel({ game, myId, onRoll }: { game: GameState; myId: string; onRoll: () => void }) {
+  const pending = game.pendingRoll;
+  const [clickedFor, setClickedFor] = useState<string | null>(null);
+  // 버튼을 누른 뒤 응답이 없어도 잠시 뒤 다시 누를 수 있게 풀어 준다
+  useEffect(() => {
+    if (!clickedFor) return;
+    const timer = setTimeout(() => setClickedFor(null), 4000);
+    return () => clearTimeout(timer);
+  }, [clickedFor]);
+  if (!pending) return null;
+
+  const mine = pending.entries.find((e) => e.playerId === myId);
+  const canRoll = !!mine && mine.dice === null;
+  const clicked = clickedFor === pending.title;
+  const waiting = pending.entries.filter((e) => e.dice === null && e.playerId !== myId);
+
+  return (
+    <div className="pop-in bg-white rounded-3xl border-2 border-pink-300 shadow-sm p-4">
+      <p className="font-display text-lg text-purple-700 text-center">
+        <InlineIcon name="dice" /> {pending.title}
+      </p>
+      {pending.lines.map((line) => (
+        <p key={line} className="mt-1 text-center text-sm text-purple-500">
+          {line}
+        </p>
+      ))}
+
+      <ul className="mt-3 flex flex-col gap-2">
+        {pending.entries.map((entry) => (
+          <li key={entry.playerId} className={`rounded-2xl px-3 py-2 ${entry.playerId === myId ? "bg-pink-50 ring-2 ring-pink-200" : "bg-purple-50"}`}>
+            <p className="truncate text-sm text-purple-700">
+              {entry.label}
+              {entry.playerId === myId ? " (나)" : ""}
+            </p>
+            {entry.dice === null ? (
+              <p className="text-xs text-purple-400">아직 안 굴렸어요 (주사위 {entry.diceCount}개)</p>
+            ) : entry.dice.length === 0 ? (
+              <p className="text-xs text-purple-400">굴릴 주사위가 없어요</p>
+            ) : (
+              <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                {entry.dice.map((d, i) => (
+                  <DiceFace key={i} value={d} delay={i * 0.06} />
+                ))}
+                {entry.dice.length > 1 && <b className="ml-1 text-purple-700">합계 {entry.dice.reduce((a, b) => a + b, 0)}</b>}
+              </div>
+            )}
+          </li>
+        ))}
+      </ul>
+
+      {canRoll && mine ? (
+        <button
+          disabled={clicked}
+          className="mt-3 flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl bg-pink-500 py-3 text-lg font-semibold text-white active:scale-95 transition-transform disabled:opacity-70 disabled:active:scale-100"
+          onClick={() => {
+            setClickedFor(pending.title);
+            onRoll();
+          }}
+        >
+          <span className={clicked ? "dice-wiggle inline-flex" : "inline-flex"}>
+            <Icon name="dice" className="h-6 w-6" />
+          </span>
+          {clicked ? "굴리는 중..." : mine.diceCount > 1 ? `주사위 ${mine.diceCount}개 굴리기` : "주사위 굴리기"}
+        </button>
+      ) : (
+        <p className="mt-3 flex items-center justify-center gap-2 text-center text-sm text-purple-600" aria-live="polite">
+          <span className="dice-wiggle inline-flex text-pink-400">
+            <Icon name="dice" className="h-5 w-5" />
+          </span>
+          {waiting.length > 0 ? `${waiting.map((e) => e.label.replace(/ \(.*\)$/, "")).join(", ")}님이 굴리기를 기다리는 중...` : "결과를 계산하는 중..."}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function ErrorToast({ message, seq }: { message: string | null; seq: number }) {
+  const [dismissedSeq, setDismissedSeq] = useState(0);
+  useEffect(() => {
+    if (seq === 0) return;
+    const timer = setTimeout(() => setDismissedSeq(seq), 4500);
+    return () => clearTimeout(timer);
+  }, [seq]);
+  if (!message || seq === 0 || dismissedSeq === seq) return null;
+  return (
+    <div className="pointer-events-none fixed inset-x-0 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-[60] flex justify-center px-4" role="alert">
+      <p className="pop-in max-w-sm rounded-2xl border-2 border-pink-200 bg-white px-4 py-2 text-sm text-pink-600 shadow-lg">{message}</p>
     </div>
   );
 }
@@ -359,15 +577,23 @@ const TABS: { id: TabId; icon: IconName; label: string }[] = [
 export function GameBoard({
   game,
   myId,
+  errorMessage,
+  errorSeq,
+  onOpenClassCard,
   onSubmitClassChoice,
   onSelectActivity,
   onChooseLabCard,
+  onRollDice,
 }: {
   game: GameState;
   myId: string;
+  errorMessage: string | null;
+  errorSeq: number;
+  onOpenClassCard: (tier: ClassTier) => void;
   onSubmitClassChoice: (keepCardIds: string[]) => void;
   onSelectActivity: (activityId: ActivityId, targetPlayerId?: string, useStamina?: boolean) => void;
   onChooseLabCard: (cardId: string) => void;
+  onRollDice: () => void;
 }) {
   const [tab, setTab] = useState<TabId>("game");
   // 라운드·주차가 바뀌면 이전 선택은 자동으로 무효가 된다
@@ -379,14 +605,28 @@ export function GameBoard({
   const latestExam = game.examResults[game.examResults.length - 1];
   const me = game.players[myId];
   const activityTurnId = game.pendingLab?.playerId ?? game.activityOrder[game.activityTurnPointer];
+  const myRollPending = !!game.pendingRoll?.entries.some((e) => e.playerId === myId && e.dice === null);
   // 내가 행동해야 하는 순간에는 게임 탭에 알림 점을 띄운다
   const myTurn =
-    (game.phase === "class" && !me.hasActedThisPhase) || (game.phase === "activity" && activityTurnId === myId);
+    myRollPending ||
+    (!game.pendingRoll &&
+      ((game.phase === "class" && !me.hasActedThisPhase) || (game.phase === "activity" && activityTurnId === myId)));
   // 수업카드를 고르는 중이면 확정 전이라도 소모될 체력토큰을 미리 반영해서 보여준다
-  const staminaAfter =
-    game.phase === "class" && !me.hasActedThisPhase ? me.staminaTokens - classSelected.length : me.staminaTokens;
+  const selectedClassCost =
+    game.phase === "class" && !me.hasActedThisPhase
+      ? me.offeredClassCards.filter((c) => classSelected.includes(c.id)).reduce((sum, c) => sum + takeCost(game, c), 0)
+      : 0;
+  const staminaAfter = me.staminaTokens - selectedClassCost;
   const phaseText =
-    game.phase === "class" ? "2주차 정규수업" : game.phase === "activity" ? "3주차 자율활동" : "게임 종료";
+    game.phase === "class"
+      ? "2주차 정규수업"
+      : game.phase === "activity"
+        ? "3주차 자율활동"
+        : game.phase === "midterm_exam"
+          ? "중간고사"
+          : game.phase === "final_exam"
+            ? "기말고사"
+            : "게임 종료";
 
   const selectTab = (id: TabId) => {
     setTab(id);
@@ -407,14 +647,15 @@ export function GameBoard({
         <div className="mt-1.5 h-1.5 w-full rounded-full bg-purple-100 overflow-hidden" aria-hidden>
           <div className="h-full bg-pink-300 transition-all" style={{ width: `${(game.round / 12) * 100}%` }} />
         </div>
-        <div className="mt-1.5 flex flex-wrap gap-1.5" aria-label="내 능력치">
+        <div className="mt-1.5 flex flex-wrap gap-1.5" role="group" aria-label="내 능력치">
           <Chip icon="bulb" label="지력" value={effectiveStat(me, "intelligence")} className="bg-sky-100 text-sky-800" />
           <Chip icon="bolt" label="체력" value={effectiveStat(me, "stamina")} className="bg-green-100 text-green-800" />
           <Chip icon="heart" label="매력" value={effectiveStat(me, "charm")} className="bg-pink-100 text-pink-800" />
           <Chip icon="sparkle" label="주문력" value={effectiveStat(me, "spellPower")} className="bg-purple-100 text-purple-800" />
           <Chip icon="cap" label="학점" value={me.credit} className="bg-amber-100 text-amber-800" />
         </div>
-        <div className="mt-1.5 flex flex-wrap gap-1.5" aria-label="내 토큰">
+        <div className="mt-1.5 flex flex-wrap gap-1.5" role="group" aria-label="내 토큰">
+          <Chip icon="intToken" label="지력토큰" showLabel value={me.intelligenceTokens} className="bg-sky-50 text-sky-700 ring-1 ring-sky-200" />
           <Chip icon="staminaToken" label="체력토큰" showLabel value={staminaAfter === me.staminaTokens ? me.staminaTokens : `${me.staminaTokens}→${staminaAfter}`} className="bg-green-50 text-green-700 ring-1 ring-green-200" />
           <Chip icon="spellbookToken" label="주문서" showLabel value={me.spellbookTokens} className="bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200" />
         </div>
@@ -423,9 +664,24 @@ export function GameBoard({
       <main className="flex-1 px-4 py-4 pb-24 flex flex-col gap-4">
         {tab === "game" && (
           <>
-            {game.phase === "class" && <ClassPhasePanel game={game} myId={myId} onSubmit={onSubmitClassChoice} selected={classSelected} setSelected={setClassSelected} />}
-            {game.phase === "activity" && (
-              <ActivityPhasePanel game={game} myId={myId} onSelect={onSelectActivity} onChooseLabCard={onChooseLabCard} />
+            {game.pendingRoll ? (
+              <RollPanel game={game} myId={myId} onRoll={onRollDice} />
+            ) : (
+              <>
+                {game.phase === "class" && (
+                  <ClassPhasePanel
+                    game={game}
+                    myId={myId}
+                    onOpen={onOpenClassCard}
+                    onSubmit={onSubmitClassChoice}
+                    selected={classSelected}
+                    setSelected={setClassSelected}
+                  />
+                )}
+                {game.phase === "activity" && (
+                  <ActivityPhasePanel game={game} myId={myId} onSelect={onSelectActivity} onChooseLabCard={onChooseLabCard} />
+                )}
+              </>
             )}
             {game.phase === "ended" && <EndedPanel game={game} />}
 
@@ -435,8 +691,9 @@ export function GameBoard({
                   <InlineIcon name="note" /> {latestExam.round === 6 ? "중간고사" : "기말고사"} 결과
                 </p>
                 {latestExam.scores.map((s) => (
-                  <p key={s.playerId} className="text-sky-800 truncate">
-                    {s.rank}위 {game.players[s.playerId].name} — 점수 {s.score}, 학점 +{s.creditAwarded}
+                  <p key={s.playerId} className="text-sky-800">
+                    {s.rank}위 {game.players[s.playerId].name} — 점수 {s.score}
+                    {s.dice.length > 0 && <span className="text-xs text-sky-600"> (주사위 {s.dice.join("+")})</span>}, 학점 +{s.creditAwarded}
                   </p>
                 ))}
               </div>
@@ -508,6 +765,7 @@ export function GameBoard({
       </nav>
 
       <AnnouncementLayer game={game} myId={myId} />
+      <ErrorToast message={errorMessage} seq={errorSeq} />
     </div>
   );
 }
