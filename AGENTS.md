@@ -44,3 +44,4 @@
 - `notes/플레이테스트_가이드.md`: 플레이테스트 실행 방법, 관찰 항목, 기록 양식, 수치 조정 지점
 - `server/scripts/`: `npm run check`(규칙 단위 검증), `npm run simulate`(봇 밸런스 시뮬레이션), `npm run smoke`/`npm run smoke:bot`/`npm run smoke:rejoin`(WebSocket 스모크 테스트, rejoin은 `AWAY_GRACE_MS=1500` 서버 필요). 봇 AI는 `server/src/game/bot.ts`. 밸런스 수치는 `server/src/game/config.ts`
 - `.claude/skills/commit-and-push/`: 규칙 1·2·3을 실행하는 커밋/푸시 스킬 (`/commit-and-push`)
+- `.claude/skills/dev/`, `.claude/skills/dev-stop/`: 다른 네트워크의 친구들과 플레이하기 위해 서버+Cloudflare 퀵 터널을 띄우고(`/dev`) 종료(`/dev-stop`)하는 스킬. 상태/로그는 `.dev/`(gitignore)
