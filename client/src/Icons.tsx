@@ -41,6 +41,12 @@ const PATHS = {
       <path d="M10.7 16.6h2.6" />
     </>
   ),
+  charmToken: (
+    <>
+      <circle {...F} cx="12" cy="12" r="9" />
+      <path d="M12 16.6S7.6 13.8 7.6 10.8a2.3 2.3 0 0 1 4.4-1 2.3 2.3 0 0 1 4.4 1c0 3-4.4 5.8-4.4 5.8z" />
+    </>
+  ),
   spellbookToken: (
     <>
       <circle {...F} cx="12" cy="12" r="9" />

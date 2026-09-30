@@ -18,6 +18,7 @@ interface TokenRow {
   isMe: boolean;
   int: number;
   stamina: number;
+  charm: number;
   spell: number;
 }
 
@@ -60,7 +61,7 @@ const make = (a: Omit<Announcement, "id" | "tiles" | "lines"> & { tiles?: Tile[]
 });
 
 // 나를 맨 위에 두고 나머지는 진행 순서대로
-function tokenRows(game: GameState, myId: string, amounts: { id: string; int: number; stamina: number; spell: number }[]): TokenRow[] {
+function tokenRows(game: GameState, myId: string, amounts: { id: string; int: number; stamina: number; charm: number; spell: number }[]): TokenRow[] {
   const rows = amounts.map((a) => ({ ...a, name: game.players[a.id].name, isMe: a.id === myId }));
   return [...rows.filter((r) => r.isMe), ...rows.filter((r) => !r.isMe)];
 }
@@ -70,7 +71,7 @@ function prepBanner(game: GameState, myId: string): Announcement {
     kind: "banner",
     icon: "calendar",
     title: `${game.round}개월 1주차 · 준비`,
-    subtitle: "지력만큼 지력토큰, 체력만큼 체력토큰, 주문력만큼 주문서를 받아요",
+    subtitle: "지력만큼 지력토큰, 체력만큼 체력토큰, 매력만큼 매력토큰, 주문력만큼 주문서를 받아요",
     tokens: {
       mode: "gain",
       rows: tokenRows(
@@ -80,6 +81,7 @@ function prepBanner(game: GameState, myId: string): Announcement {
           id,
           int: game.players[id].intelligenceTokens,
           stamina: game.players[id].staminaTokens,
+          charm: game.players[id].charmTokens,
           spell: game.players[id].spellbookTokens,
         })),
       ),
@@ -98,7 +100,7 @@ function cleanupBanner(prev: GameState, next: GameState, myId: string): Announce
       rows: tokenRows(
         next,
         myId,
-        next.cleanupSummary.map((c) => ({ id: c.playerId, int: c.intelligenceTokens, stamina: c.staminaTokens, spell: c.spellbookTokens })),
+        next.cleanupSummary.map((c) => ({ id: c.playerId, int: c.intelligenceTokens, stamina: c.staminaTokens, charm: c.charmTokens, spell: c.spellbookTokens })),
       ),
     },
   });
@@ -296,16 +298,25 @@ function TokenBoard({ tokens, playing }: { tokens: NonNullable<Announcement["tok
             startDelay={index * ROW_GAP + Math.min(row.int, MAX_ICONS) * TOKEN_GAP}
             color="text-green-500"
           />}
+          {(tokens.mode === "gain" || row.charm > 0) && <TokenLine
+            icon="charmToken"
+            label="매력토큰"
+            count={row.charm}
+            mode={tokens.mode}
+            playing={playing}
+            startDelay={index * ROW_GAP + (Math.min(row.int, MAX_ICONS) + Math.min(row.stamina, MAX_ICONS)) * TOKEN_GAP}
+            color="text-pink-500"
+          />}
           {(tokens.mode === "gain" || row.spell > 0) && <TokenLine
             icon="spellbookToken"
             label="주문서"
             count={row.spell}
             mode={tokens.mode}
             playing={playing}
-            startDelay={index * ROW_GAP + (Math.min(row.int, MAX_ICONS) + Math.min(row.stamina, MAX_ICONS)) * TOKEN_GAP}
+            startDelay={index * ROW_GAP + (Math.min(row.int, MAX_ICONS) + Math.min(row.stamina, MAX_ICONS) + Math.min(row.charm, MAX_ICONS)) * TOKEN_GAP}
             color="text-indigo-500"
           />}
-          {tokens.mode === "wipe" && row.int + row.stamina + row.spell === 0 && <p className="mt-1 text-left text-xs text-purple-400">남은 토큰이 없어요</p>}
+          {tokens.mode === "wipe" && row.int + row.stamina + row.charm + row.spell === 0 && <p className="mt-1 text-left text-xs text-purple-400">남은 토큰이 없어요</p>}
         </li>
       ))}
     </ul>

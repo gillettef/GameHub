@@ -58,8 +58,8 @@ export interface PeekedExploration {
 export type CreatureElement = "sky" | "land" | "ocean";
 
 export interface CreatureAbility {
-  trigger: "acquire" | "prep" | "duel" | "defend" | "lose";
-  effect: "spellPower" | "spellbook" | "stamina" | "rollBonus" | "enemyRollPenalty" | "enemyStamina" | "immune";
+  trigger: "acquire" | "prep" | "duel" | "defend" | "lose" | "always";
+  effect: "spellPower" | "spellbook" | "stamina" | "rollBonus" | "enemyRollPenalty" | "enemyStamina" | "immune" | "charmRate";
   amount: number;
 }
 
@@ -115,6 +115,8 @@ export interface PlayerGameState {
   // 1주차에 지력만큼 받는 지력토큰: 2주차에 수업카드를 여는 데 쓴다 (정리 때 소멸)
   intelligenceTokens: number;
   staminaTokens: number;
+  // 1주차에 매력 수치만큼 받는 만능 토큰: 지력토큰·체력토큰이 모자랄 때 대신 낸다 (정리 때 소멸)
+  charmTokens: number;
   spellbookTokens: number;
   // 마법생물 효과로 다음 달 준비(1주차) 때 체력토큰에 더해지는(또는 빼지는) 값
   pendingStaminaTokens: number;
@@ -198,7 +200,7 @@ export interface GameState {
   coopWaiting: CoopWaiting | null;
   examResults: ExamResult[];
   // 가장 최근 4주차(정리)에서 소멸한 토큰 (화면의 정리 연출용)
-  cleanupSummary: { playerId: string; intelligenceTokens: number; staminaTokens: number; spellbookTokens: number }[];
+  cleanupSummary: { playerId: string; intelligenceTokens: number; staminaTokens: number; charmTokens: number; spellbookTokens: number }[];
   // 카드 덱·버림 더미와 주사위 처리 정보 (서버 전용, 클라이언트에는 전송하지 않음)
   hidden: HiddenState;
   labPile: Pile<LabCard>;
@@ -230,6 +232,9 @@ export interface PublicRules {
   activityMaxParticipants: number;
   activitySecondParticipantCost: number;
   duelCharmFee: number;
+  // 매력토큰 교환: 기본 charmExchangeRate개 = 지력·체력토큰 1개 (카드로 최소 charmExchangeRateMin개까지)
+  charmExchangeRate: number;
+  charmExchangeRateMin: number;
   // 마법 토너먼트 최종 순위 보상 (1위, 2위 순서, 학점)
   tournamentRewards: number[];
 }

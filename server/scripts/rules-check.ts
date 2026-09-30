@@ -13,6 +13,8 @@ import {
   submitClassChoice,
   submitRoll,
 } from "../src/game/engine.js";
+import { charmRate } from "../src/game/engine.js";
+import { grimoireTemplates } from "../src/game/grimoireCards.js";
 import type { GameState, LabCard } from "../src/game/types.js";
 
 let passed = 0;
@@ -95,7 +97,7 @@ test("연구실은 펼치는 카드 한 장마다 지력토큰이 들고, 카드
   const [a, b] = state.activityOrder;
   state.players[a].intelligence = 3;
   state.players[a].intelligenceTokens = 2; // 3장을 펼치고 싶지만 토큰은 2개
-  state.players[a].staminaTokens = 0;
+  Object.assign(state.players[a], { staminaTokens: 0, charmTokens: 0 });
   selectActivity(state, a, "lab");
   assert.equal(state.pendingLab?.cards.length, 2);
   assert.equal(state.players[a].intelligenceTokens, 0);
@@ -124,7 +126,7 @@ test("자율활동 구역은 최대 2명, 두 번째 참가자는 체력토큰 1
   const state = newGame(3);
   toActivity(state);
   const [a, b, c] = state.activityOrder;
-  for (const id of state.turnOrder) state.players[id].staminaTokens = 0;
+  for (const id of state.turnOrder) Object.assign(state.players[id], { staminaTokens: 0, charmTokens: 0 });
   selectActivity(state, a, "tournament");
   assert.deepEqual(state.activitySlots.tournament, [a]);
   assert.throws(() => selectActivity(state, b, "tournament"), /체력토큰 1개가 더 필요/);
@@ -151,7 +153,7 @@ test("주문 대결: 도전자가 지목당한 친구에게 매력 1을 건네�
   const state = newGame(3);
   toActivity(state);
   const [a, b, c] = state.activityOrder;
-  for (const id of state.turnOrder) state.players[id].staminaTokens = 0;
+  for (const id of state.turnOrder) Object.assign(state.players[id], { staminaTokens: 0, charmTokens: 0 });
   // 승자가 받는 마도서가 매력을 올리면 결과가 흔들리므로 마도서 더미를 비워 둔다
   state.grimoirePile = { draw: [], discard: [] };
   const charmA = state.players[a].charm;
@@ -193,7 +195,7 @@ test("협력 탐험: 합류하면 둘의 합으로 판정하고 보상이 둘 �
   const state = newGame(3);
   toActivity(state);
   const [a, b] = state.activityOrder;
-  for (const id of state.turnOrder) state.players[id].staminaTokens = 2;
+  for (const id of state.turnOrder) Object.assign(state.players[id], { staminaTokens: 2, charmTokens: 0 });
   state.explorationPile.draw.push(coopCard());
   selectActivity(state, a, "exploration");
   assert.equal(state.players[a].intelligenceTokens, 4, "카드를 연 사람은 지력토큰 1개를 낸다");
@@ -219,7 +221,7 @@ test("협력 탐험: 끝까지 친구가 없으면 무효가 된다", () => {
   const state = newGame(2);
   toActivity(state);
   const [a, b] = state.activityOrder;
-  for (const id of state.turnOrder) state.players[id].staminaTokens = 0;
+  for (const id of state.turnOrder) Object.assign(state.players[id], { staminaTokens: 0, charmTokens: 0 });
   state.explorationPile.draw.push(coopCard());
   const before = { ...state.players[a] };
   selectActivity(state, a, "exploration");
@@ -237,7 +239,7 @@ test("협력 탐험: 두 번째 참가자가 뽑을 때는 합류할 자리가 �
   const state = newGame(3);
   toActivity(state);
   const [a, b] = state.activityOrder;
-  for (const id of state.turnOrder) state.players[id].staminaTokens = 2;
+  for (const id of state.turnOrder) Object.assign(state.players[id], { staminaTokens: 2, charmTokens: 0 });
   // 첫 참가자가 일반(판정 없는) 카드를 처리하고 나면, 두 번째 참가자 몫의 맨 위 카드가 협력 카드가 되도록 쌓아 둔다
   const safe = explorationTemplates().find((t) => !t.check && !t.coop);
   assert.ok(safe);
@@ -285,6 +287,80 @@ test("시험: 지력만큼 주사위를 굴려야 결과가 나온다", () => {
   }
   assert.equal(state.phase, "class");
   assert.equal(state.round, 7);
+});
+
+test("1주차에 매력 수치만큼 매력토큰을 받는다", () => {
+  const state = newGame(2);
+  for (const p of Object.values(state.players)) assert.equal(p.charmTokens, p.charm);
+});
+
+test("매력토큰 3개는 언제든 지력토큰 1개를 대신한다 (수업카드 열기)", () => {
+  const state = newGame(2);
+  const id = state.turnOrder[0];
+  const p = state.players[id];
+  p.intelligenceTokens = 0;
+  p.charmTokens = 2;
+  assert.throws(() => openClassCard(state, id), /지력토큰이 부족/);
+  p.charmTokens = 4;
+  openClassCard(state, id);
+  assert.equal(p.charmTokens, 1, "매력토큰 3개를 냈다");
+  assert.equal(p.offeredClassCards.length, 1);
+});
+
+test("매력토큰 3개는 체력토큰 1개를 대신한다 (수업카드 습득)", () => {
+  const state = newGame(2);
+  const id = state.turnOrder[0];
+  const p = state.players[id];
+  p.intelligenceTokens = 1;
+  openClassCard(state, id);
+  const card = p.offeredClassCards[0];
+  p.staminaTokens = 0;
+  p.charmTokens = card.takeCost * 3 - 1;
+  assert.throws(() => submitClassChoice(state, id, [card.id]), /체력토큰이 부족/);
+  p.charmTokens = card.takeCost * 3;
+  submitClassChoice(state, id, [card.id]);
+  assert.equal(p.charmTokens, 0);
+  assert.equal(p.classCards.length, 1);
+});
+
+test("구역 두 번째 참가비는 매력토큰 1개로 낼 수 있다", () => {
+  const state = newGame(3);
+  toActivity(state);
+  const [a, b] = state.activityOrder;
+  for (const id of state.turnOrder) Object.assign(state.players[id], { staminaTokens: 0, charmTokens: 0 });
+  selectActivity(state, a, "tournament");
+  assert.throws(() => selectActivity(state, b, "tournament"), /체력토큰 1개가 더 필요/);
+  state.players[b].charmTokens = 1;
+  selectActivity(state, b, "tournament");
+  assert.equal(state.players[b].charmTokens, 0);
+  assert.deepEqual(state.activitySlots.tournament, [a, b]);
+});
+
+test("참가비를 매력토큰으로 내면 체력토큰은 그대로 남는다", () => {
+  const state = newGame(3);
+  toActivity(state);
+  const [a, b] = state.activityOrder;
+  for (const id of state.turnOrder) Object.assign(state.players[id], { staminaTokens: 2, charmTokens: 0 });
+  selectActivity(state, a, "tournament");
+  state.players[b].charmTokens = 1;
+  selectActivity(state, b, "tournament");
+  assert.equal(state.players[b].staminaTokens, 2, "참가비는 매력토큰이 냈다");
+});
+
+test("마도서 '매혹의 화술서'·'반짝 스타일북'이 있으면 매력토큰 2개가 다른 토큰 1개를 대신한다 (최소 2개)", () => {
+  const state = newGame(2);
+  const p = state.players[state.turnOrder[0]];
+  assert.equal(charmRate(p), 3);
+  const books = grimoireTemplates().filter((g) => g.ability?.effect === "charmRate");
+  assert.equal(books.length, 2);
+  p.grimoires.push({ ...books[0], id: "g1" });
+  assert.equal(charmRate(p), 2);
+  p.grimoires.push({ ...books[1], id: "g2" });
+  assert.equal(charmRate(p), 2, "환율은 2 아래로 내려가지 않는다");
+  p.intelligenceTokens = 0;
+  p.charmTokens = 2;
+  openClassCard(state, state.turnOrder[0]);
+  assert.equal(p.charmTokens, 0);
 });
 
 console.log(`\n${passed}개 검증 통과\n`);
