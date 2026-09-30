@@ -69,9 +69,9 @@ const SWARM_BASE: Row[] = [
   ['bio-spire', 'building', 3, 2, 5, 0, 0, 0, 3, 3],
   ['spike-turret', 'building', 4, 1, 5, 3, 1, 0, 2, 2],
   ['drone', 'unit', 1, 1, 2, 1, 1, 0, 1, 3],
-  ['stalker', 'unit', 2, 1, 3, 2, 1, 0, 1, 4],
+  ['stalker', 'unit', 2, 1, 4, 2, 1, 0, 1, 4],
   ['spitter', 'unit', 3, 1, 3, 2, 2, 0, 1, 2],
-  ['brood-queen', 'unit', 5, 1, 6, 2, 1, 0, 2, 1],
+  ['brood-queen', 'unit', 5, 1, 7, 2, 1, 0, 2, 1],
   ['acid-spray', 'magic', 2, 0, 0, 0, 0, 0, 0, 2],
   ['swarm-call', 'magic', 0, 0, 0, 0, 0, 0, 0, 1],
   ['frenzy', 'magic', 1, 0, 0, 0, 0, 0, 0, 1],
@@ -90,13 +90,13 @@ const SWARM_SPECIAL: Row[] = [
 
 // 오토마타 집정체
 const AUTOMATA_BASE: Row[] = [
-  ['fab-node', 'building', 3, 1, 6, 0, 0, 1, 3, 3],
+  ['fab-node', 'building', 3, 1, 7, 0, 0, 1, 3, 3],
   ['sentry-pylon', 'building', 4, 3, 5, 0, 0, 0, 3, 2],
-  ['bastion', 'building', 5, 1, 10, 2, 2, 0, 3, 2],
+  ['bastion', 'building', 4, 1, 10, 2, 2, 0, 3, 2],
   ['probe', 'unit', 1, 2, 2, 0, 0, 0, 1, 4],
-  ['sentinel', 'unit', 4, 1, 5, 2, 1, 0, 1, 3],
-  ['railgun-frame', 'unit', 5, 1, 4, 4, 3, 0, 2, 2],
-  ['dreadnought-core', 'unit', 6, 1, 10, 3, 2, 0, 3, 1],
+  ['sentinel', 'unit', 4, 1, 6, 2, 1, 0, 1, 3],
+  ['railgun-frame', 'unit', 5, 1, 5, 4, 3, 0, 2, 2],
+  ['dreadnought-core', 'unit', 5, 1, 10, 3, 2, 0, 3, 1],
   ['overload-pulse', 'magic', 4, 0, 0, 0, 0, 0, 0, 2],
   ['nanite-repair', 'magic', 3, 0, 0, 0, 0, 0, 0, 1],
   ['power-surge', 'magic', 0, 0, 0, 0, 0, 0, 0, 2],
@@ -118,9 +118,9 @@ const SHADE_BASE: Row[] = [
   ['null-collector', 'building', 2, 1, 4, 0, 0, 1, 2, 4],
   ['dead-relay', 'building', 3, 2, 6, 0, 0, 0, 3, 3],
   ['ambush-node', 'building', 4, 1, 5, 2, 2, 0, 2, 2],
-  ['wisp', 'unit', 1, 2, 1, 1, 1, 0, 1, 3],
-  ['shade-blade', 'unit', 2, 1, 2, 2, 1, 0, 1, 3],
-  ['phase-striker', 'unit', 3, 1, 2, 3, 2, 0, 1, 2],
+  ['wisp', 'unit', 1, 2, 2, 1, 1, 0, 1, 3],
+  ['shade-blade', 'unit', 2, 1, 3, 2, 1, 0, 1, 3],
+  ['phase-striker', 'unit', 3, 1, 3, 3, 2, 0, 1, 2],
   ['wraith', 'unit', 5, 1, 5, 3, 1, 0, 2, 1],
   ['void-burst', 'magic', 3, 0, 0, 0, 0, 0, 0, 1],
   ['mirage-field', 'magic', 2, 0, 0, 0, 0, 0, 0, 1],
@@ -142,10 +142,10 @@ const SHADE_SPECIAL: Row[] = [
 const SIEGE_BASE: Row[] = [
   ['strip-mine', 'building', 2, 1, 4, 0, 0, 1, 2, 4],
   ['relay-spire', 'building', 3, 2, 6, 0, 0, 0, 3, 3],
-  ['flak-tower', 'building', 4, 1, 6, 2, 3, 0, 2, 2],
+  ['flak-tower', 'building', 4, 1, 6, 3, 3, 0, 2, 2],
   ['spotter', 'unit', 1, 3, 2, 0, 0, 0, 1, 3],
-  ['gunner', 'unit', 3, 1, 3, 2, 2, 0, 1, 3],
-  ['howitzer', 'unit', 5, 1, 3, 2, 3, 0, 1, 2],
+  ['gunner', 'unit', 3, 1, 3, 2, 3, 0, 1, 3],
+  ['howitzer', 'unit', 5, 1, 4, 2, 3, 0, 1, 2],
   ['dreadshell', 'unit', 6, 1, 8, 3, 2, 0, 3, 1],
   ['orbital-strike', 'magic', 3, 0, 0, 0, 0, 0, 0, 1],
   ['repair-field', 'magic', 2, 0, 0, 0, 0, 0, 0, 1],
@@ -248,6 +248,7 @@ describe('카드 기준표 (Rules.md 10절)', () => {
     expect(getSpec('singularity-forge').keywords).toEqual(['overclock']);
     expect(getSpec('wisp').keywords).toEqual(['veil']);
     expect(getSpec('shade-blade').keywords).toEqual(['veil', 'infiltrate']);
+    expect(getSpec('spitter').keywords).toEqual(['infiltrate']);
     expect(getSpec('howitzer').keywords).toEqual(['barrage']);
     expect(getSpec('titan-cannon').keywords).toEqual(['barrage']);
   });

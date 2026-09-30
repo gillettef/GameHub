@@ -242,7 +242,7 @@ def test_barrage_secondary_target_also_respects_veil() -> None:
     cruiser = _by_spec(t, "cruiser")
     assert cruiser is not None and cruiser.hp == 5  # 한 번만 맞음
     wisp = _by_spec(t, "wisp")
-    assert wisp is not None and wisp.hp == 1  # 은신이라 전혀 안 맞음
+    assert wisp is not None and wisp.hp == 2  # 은신이라 전혀 안 맞음
 
 
 # --- 새 지형 7종 (Rules.md 3절, 2026-09-28 신설, engine.test.ts '새 지형 7종' 사본) ---------------
