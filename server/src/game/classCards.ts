@@ -1,7 +1,7 @@
 // 수업카드 덱 (48장). 원본 기획(notes/마법학교.xlsx Sheet1)의 "수업 카드에는 지력, 체력, 주문력, 매력을
 // 직접 증가하는 카드가 있다 (ex. 교과서 +1, 수업 +2)"를 바탕으로 구성한 초안입니다.
 // 능력치별 12장: +1 카드 10장(이름 5종 × 2장), +2 카드 2장(이름 2종 × 1장). 수치/수량은 플레이테스트 후 조정합니다.
-import type { ClassCard, StatKey } from "./types.js";
+import type { ClassCard, ClassTier, StatKey } from "./types.js";
 
 type Def = [name: string, description: string];
 
@@ -62,20 +62,29 @@ function templates(): Omit<ClassCard, "id">[] {
   const list: Omit<ClassCard, "id">[] = [];
   for (const stat of STATS) {
     for (const [name, description] of NORMAL[stat]) {
-      for (let i = 0; i < 2; i++) list.push({ name, description, statBoost: { stat, amount: 1 } });
+      for (let i = 0; i < 2; i++) list.push({ name, description, tier: "normal", statBoost: { stat, amount: 1 } });
     }
-    for (const [name, description] of RARE[stat]) list.push({ name, description, statBoost: { stat, amount: 2 } });
+    for (const [name, description] of RARE[stat]) list.push({ name, description, tier: "rare", statBoost: { stat, amount: 2 } });
   }
   return list;
 }
 
 export const CLASS_DECK_SIZE = templates().length;
 
-export function createClassDeck(makeId: () => string): ClassCard[] {
-  const deck = templates().map((t) => ({ ...t, id: makeId() }));
-  for (let i = deck.length - 1; i > 0; i--) {
+function shuffled<T>(items: T[]): T[] {
+  const arr = [...items];
+  for (let i = arr.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
-    [deck[i], deck[j]] = [deck[j], deck[i]];
+    [arr[i], arr[j]] = [arr[j], arr[i]];
   }
-  return deck;
+  return arr;
+}
+
+// 등급별로 나뉜 덱: 플레이어는 어느 등급의 카드를 열지 미리 고를 수 있다
+export function createClassDecks(makeId: () => string): Record<ClassTier, ClassCard[]> {
+  const cards = templates().map((t) => ({ ...t, id: makeId() }));
+  return {
+    normal: shuffled(cards.filter((c) => c.tier === "normal")),
+    rare: shuffled(cards.filter((c) => c.tier === "rare")),
+  };
 }

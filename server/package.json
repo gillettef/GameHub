@@ -8,6 +8,7 @@
     "build": "tsc -p tsconfig.json",
     "start": "node dist/index.js",
     "simulate": "tsx scripts/simulate.ts",
+    "check": "tsx scripts/rules-check.ts",
     "smoke": "tsx scripts/smoke.ts",
     "smoke:bot": "tsx scripts/smoke-bot.ts",
     "playtest": "npm --prefix ../client run build && tsx src/index.ts"

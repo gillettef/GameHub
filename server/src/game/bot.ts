@@ -1,9 +1,19 @@
 // AI 봇 의사결정. 실제 게임(함께 플레이)과 밸런스 시뮬레이션(scripts/simulate.ts)이 함께 사용합니다.
-// 봇은 단순한 휴리스틱으로 움직입니다. 수업카드는 성향에 맞는 능력치를 우선해 체력토큰이 허용하는 만큼 고르고,
+// 봇은 단순한 휴리스틱으로 움직입니다. 수업카드는 지력토큰으로 열어 보고 성향에 맞는 능력치를 우선해 체력토큰이 허용하는 만큼 고르고,
 // 자율활동은 상황(주문서 보유량, 토너먼트 진행도 등)과 성향 가중치를 곱해 점수가 높은 구역을 고릅니다.
 import { BALANCE } from "./config.js";
-import { growthGap } from "./engine.js";
-import { effectiveStat, type ActivityId, type GameState, type StatKey } from "./types.js";
+import {
+  activityExtraCost,
+  availableActivities,
+  classCardsLeft,
+  classOpenCost,
+  classTakeCost,
+  duelTargets,
+  growthGap,
+  openClassCard,
+  submitClassChoice,
+} from "./engine.js";
+import { effectiveStat, type ActivityId, type ClassTier, type GameState, type StatKey } from "./types.js";
 
 export const ACTIVITIES: ActivityId[] = ["tournament", "creature", "duel", "exploration", "lab"];
 
@@ -35,21 +45,37 @@ export function pickBotPersonality(): BotStrategy {
   return BOT_PERSONALITIES[Math.floor(Math.random() * BOT_PERSONALITIES.length)];
 }
 
-// 정규수업 단계: 습득할 수업카드 id 목록
-export function chooseClassCards(state: GameState, playerId: string, strategy: BotStrategy): string[] {
+// 정규수업 단계 한 턴: 지력토큰으로 수업카드를 열어 보고, 체력토큰이 허용하는 만큼 골라 습득한다
+export function playClassTurn(state: GameState, playerId: string, strategy: BotStrategy): void {
   const p = state.players[playerId];
-  if (strategy.random) {
-    const n = Math.floor(Math.random() * (Math.min(p.staminaTokens, p.offeredClassCards.length) + 1));
-    return p.offeredClassCards.slice(0, n).map((c) => c.id);
+  // 열 수 있는 만큼 연다. 열어도 체력토큰이 모자라 가져가지 못하는 카드는 열지 않는다 (무작위 봇은 아무렇게나 연다)
+  let budget = p.staminaTokens;
+  for (;;) {
+    const can = (tier: ClassTier) =>
+      p.intelligenceTokens >= classOpenCost(tier) &&
+      classCardsLeft(state, tier) > 0 &&
+      (strategy.random || budget >= classTakeCost({ tier }));
+    const canNormal = can("normal");
+    const canRare = can("rare");
+    if (!canNormal && !canRare) break;
+    if (strategy.random && Math.random() < 0.2) break;
+    const tier: ClassTier = canRare && (!canNormal || Math.random() < 0.25) ? "rare" : "normal";
+    openClassCard(state, playerId, tier);
+    budget -= classTakeCost({ tier });
   }
-  return [...p.offeredClassCards]
-    .sort(
-      (a, b) =>
-        b.statBoost.amount * strategy.classWeights[b.statBoost.stat] -
-        a.statBoost.amount * strategy.classWeights[a.statBoost.stat],
-    )
-    .slice(0, p.staminaTokens)
-    .map((c) => c.id);
+  // 성향에 맞는 능력치의 카드를 우선해서 체력토큰이 허용하는 만큼 습득한다
+  const value = (c: (typeof p.offeredClassCards)[number]) =>
+    strategy.random ? Math.random() : (c.statBoost.amount * strategy.classWeights[c.statBoost.stat]) / classTakeCost(c);
+  let stamina = p.staminaTokens;
+  const keep: string[] = [];
+  for (const card of [...p.offeredClassCards].sort((a, b) => value(b) - value(a))) {
+    if (strategy.random && Math.random() < 0.3) continue;
+    const cost = classTakeCost(card);
+    if (cost > stamina) continue;
+    keep.push(card.id);
+    stamina -= cost;
+  }
+  submitClassChoice(state, playerId, keep);
 }
 
 // 자율활동 단계: 선택할 구역과 (주문 대결이면) 상대
@@ -60,8 +86,8 @@ export function chooseActivityAction(
 ): { activityId: ActivityId; targetPlayerId?: string; useStamina: boolean } {
   const p = state.players[playerId];
   // 주문 대결은 아직 활동을 고르지 않은 플레이어가 있어야만 고를 수 있다 (그중 한 명을 강제로 지목)
-  const targets = state.turnOrder.filter((id) => id !== playerId && !state.players[id].hasActedThisPhase);
-  const free = ACTIVITIES.filter((a) => state.activitySlots[a] === null && (a !== "duel" || targets.length > 0));
+  const targets = duelTargets(state, playerId);
+  const free = availableActivities(state, playerId);
   const base: Record<ActivityId, number> = {
     tournament: Math.min(effectiveStat(p, "spellPower"), BALANCE.tournamentMaxTrack - p.tournamentTrack) * 0.5,
     creature: p.spellbookTokens >= 3 ? 2 : 0.5,
@@ -71,10 +97,15 @@ export function chooseActivityAction(
     // 지력이 높을수록 실험 재료를 많이 펼치므로 연구실의 매력이 올라간다
     lab: 1 + 0.3 * effectiveStat(p, "intelligence"),
   };
-  const scored = free.map((a) => ({
-    a,
-    score: (strategy.random ? 1 : base[a] * strategy.activityBias[a]) * (0.7 + Math.random() * 0.6),
-  }));
+  const scored = free.map((a) => {
+    // 이미 친구가 있는 구역은 체력토큰이 더 들어서 조금 덜 끌린다. 다만 협력 탐험 카드가 기다리고 있으면 함께하러 간다
+    const crowded = state.activitySlots[a].length > 0 ? 0.8 : 1;
+    const coop = a === "exploration" && state.coopWaiting ? 2 : 1;
+    return {
+      a,
+      score: (strategy.random ? 1 : base[a] * strategy.activityBias[a] * crowded * coop) * (0.7 + Math.random() * 0.6),
+    };
+  });
   scored.sort((x, y) => y.score - x.score);
   const activityId = scored[0].a;
   // 주문 대결 상대: 아직 활동을 고르지 않은 플레이어 중 주문력이 가장 높은(가장 위협적인) 사람
@@ -82,8 +113,8 @@ export function chooseActivityAction(
     activityId === "duel"
       ? [...targets].sort((a, b) => state.players[b].spellPower - state.players[a].spellPower)[0]
       : undefined;
-  // 남은 체력토큰은 4주차에 소멸하므로 있으면 집중에 쓴다
-  return { activityId, targetPlayerId, useStamina: p.staminaTokens > 0 };
+  // 남은 체력토큰은 4주차에 소멸하므로 (참가비를 낸 뒤에도) 남아 있으면 집중에 쓴다
+  return { activityId, targetPlayerId, useStamina: p.staminaTokens - activityExtraCost(state, activityId) > 0 };
 }
 
 // 연구실 실험: 펼쳐진 연구 카드 중 고를 카드 id (영구 능력치는 성향 가중치로, 임시/토큰/엿보기는 낮게 평가)

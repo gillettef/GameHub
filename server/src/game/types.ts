@@ -9,10 +9,14 @@ export type ActivityId =
 
 export type GamePhase = "prep" | "class" | "activity" | "cleanup" | "midterm_exam" | "final_exam" | "ended";
 
+// 수업카드 등급: 등급마다 카드를 여는 데 드는 지력토큰과 습득하는 데 드는 체력토큰이 다르다 (config.ts의 classCardCosts)
+export type ClassTier = "normal" | "rare";
+
 export interface ClassCard {
   id: string;
   name: string;
   description: string;
+  tier: ClassTier;
   statBoost: { stat: StatKey; amount: number };
 }
 
@@ -85,6 +89,9 @@ export interface ExplorationCard {
   description: string;
   // 판정: 주사위 1개 + 해당 능력치 >= target 이면 성공. 없으면 무조건 성공
   check?: { stat: StatKey; target: number };
+  // 협력 카드: 두 명이 함께해야 열린다. 둘의 (주사위 + 능력치) 합이 pairTarget 이상이면 성공하고 두 명 모두 효과를 받는다.
+  // 끝까지 함께할 친구가 없으면 혼자 도전하며, 이때는 check(단독 목표값)를 쓴다
+  coop?: { pairTarget: number };
   success: CardEffect;
   failure: CardEffect;
 }
@@ -105,6 +112,8 @@ export interface PlayerGameState {
   spellPower: number;
   credit: number;
   tempBoosts: Partial<Record<StatKey, number>>;
+  // 1주차에 지력만큼 받는 지력토큰: 2주차에 수업카드를 여는 데 쓴다 (정리 때 소멸)
+  intelligenceTokens: number;
   staminaTokens: number;
   spellbookTokens: number;
   // 마법생물 효과로 다음 달 준비(1주차) 때 체력토큰에 더해지는(또는 빼지는) 값
@@ -128,7 +137,45 @@ export interface GameLogEntry {
 
 export interface ExamResult {
   round: number;
-  scores: { playerId: string; score: number; rank: number; creditAwarded: number }[];
+  scores: { playerId: string; score: number; dice: number[]; rank: number; creditAwarded: number }[];
+}
+
+// 주사위 굴리기 단계: 굴려야 하는 사람이 모두 버튼을 눌러 굴릴 때까지 게임이 기다린다
+export interface PendingRoll {
+  kind: "duel" | "exploration" | "exam";
+  title: string;
+  lines: string[];
+  // dice가 null이면 아직 안 굴린 사람
+  entries: { playerId: string; label: string; diceCount: number; dice: number[] | null }[];
+}
+
+// 협력 탐험 카드가 함께할 친구를 기다리는 중 (공개 정보)
+export interface CoopWaiting {
+  playerId: string;
+  name: string;
+  description: string;
+  pairText: string;
+  soloText: string;
+  successText: string;
+  failureText: string;
+}
+
+// 주문 대결 한 건: 도전자가 상대를 지목했다
+export interface DuelPair {
+  challengerId: string;
+  targetId: string;
+}
+
+// 주사위 결과가 나온 뒤 처리에 필요한 서버 전용 정보 (클라이언트에는 보내지 않음)
+export type RollContext =
+  | { kind: "duel"; challengerId: string; targetId: string; challengerBoost: number; defenderBoost: number }
+  | { kind: "exploration"; card: ExplorationCard; playerIds: string[]; boosts: Record<string, number>; mode: "single" | "pair" | "solo" }
+  | { kind: "exam"; examType: "midterm_exam" | "final_exam" };
+
+export interface HiddenState {
+  roll: RollContext | null;
+  // 협력 카드를 뽑았지만 아직 함께할 친구가 없는 상태 (boost: 뽑은 사람이 집중으로 쓴 체력토큰 효과)
+  coop: { card: ExplorationCard; playerId: string; boost: number } | null;
 }
 
 export interface GameState {
@@ -137,21 +184,27 @@ export interface GameState {
   turnOrder: string[];
   startingPlayerIndex: number;
   players: Record<string, PlayerGameState>;
-  activitySlots: Record<ActivityId, string | null>;
+  // 구역마다 최대 2명까지 참여할 수 있다 (먼저 들어온 사람이 있으면 체력토큰 1개를 더 낸다)
+  activitySlots: Record<ActivityId, string[]>;
   activityOrder: string[];
   activityTurnPointer: number;
-  // 이번 달 주문 대결에서 강제 지목당한 플레이어
-  duelTargetId: string | null;
+  // 이번 달 주문 대결 목록 (도전자 → 지목당한 사람). 지목당한 사람은 구역을 차지하지 않고 추가 비용도 내지 않는다
+  duels: DuelPair[];
   // 연구실 실험 중 카드 선택 대기 (후보 카드는 고르는 본인에게만 전송)
   pendingLab: { playerId: string; cards: LabCard[] } | null;
+  // 주사위를 굴리는 중 (주문 대결·탐험 판정·시험)
+  pendingRoll: PendingRoll | null;
+  // 함께할 친구를 기다리는 협력 탐험 카드
+  coopWaiting: CoopWaiting | null;
   examResults: ExamResult[];
   // 가장 최근 4주차(정리)에서 소멸한 토큰 (화면의 정리 연출용)
-  cleanupSummary: { playerId: string; staminaTokens: number; spellbookTokens: number }[];
-  // 수업카드/마법생물 카드 덱·버림 더미 (서버 전용, 클라이언트에는 전송하지 않음)
+  cleanupSummary: { playerId: string; intelligenceTokens: number; staminaTokens: number; spellbookTokens: number }[];
+  // 카드 덱·버림 더미와 주사위 처리 정보 (서버 전용, 클라이언트에는 전송하지 않음)
+  hidden: HiddenState;
   labPile: Pile<LabCard>;
   explorationPile: Pile<ExplorationCard>;
   grimoirePile: Pile<GrimoireCard>;
-  classDeck: ClassCard[];
+  classDecks: Record<ClassTier, ClassCard[]>;
   classDiscard: ClassCard[];
   creatureDeck: CreatureCard[];
   creatureDiscard: CreatureCard[];
@@ -164,4 +217,16 @@ export function effectiveStat(player: PlayerGameState, stat: StatKey): number {
 }
 
 // 클라이언트에 전송되는 게임 상태 (서버 전용 덱 정보 제외)
-export type PublicGameState = Omit<GameState, "labPile" | "explorationPile" | "grimoirePile" | "classDeck" | "classDiscard" | "creatureDeck" | "creatureDiscard">;
+export type PublicGameState = Omit<GameState, "hidden" | "labPile" | "explorationPile" | "grimoirePile" | "classDecks" | "classDiscard" | "creatureDeck" | "creatureDiscard"> & {
+  // 아직 열 수 있는 수업카드 수 (등급별). 덱 구성은 비공개지만 남은 장수는 알려 준다
+  classLeft: Record<ClassTier, number>;
+  // 화면 표시용 규칙 수치 (config.ts의 BALANCE에서 가져옴)
+  rules: PublicRules;
+};
+
+export interface PublicRules {
+  classCardCosts: Record<ClassTier, { open: number; take: number }>;
+  activityMaxParticipants: number;
+  activitySecondParticipantCost: number;
+  duelCharmFee: number;
+}

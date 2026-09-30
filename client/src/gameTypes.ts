@@ -6,10 +6,13 @@ export type ActivityId = "tournament" | "creature" | "duel" | "exploration" | "l
 
 export type GamePhase = "prep" | "class" | "activity" | "cleanup" | "midterm_exam" | "final_exam" | "ended";
 
+export type ClassTier = "normal" | "rare";
+
 export interface ClassCard {
   id: string;
   name: string;
   description: string;
+  tier: ClassTier;
   statBoost: { stat: StatKey; amount: number };
 }
 
@@ -71,6 +74,7 @@ export interface PlayerGameState {
   spellPower: number;
   credit: number;
   tempBoosts: Partial<Record<StatKey, number>>;
+  intelligenceTokens: number;
   staminaTokens: number;
   spellbookTokens: number;
   pendingStaminaTokens: number;
@@ -92,7 +96,39 @@ export interface GameLogEntry {
 
 export interface ExamResult {
   round: number;
-  scores: { playerId: string; score: number; rank: number; creditAwarded: number }[];
+  scores: { playerId: string; score: number; dice: number[]; rank: number; creditAwarded: number }[];
+}
+
+// 주사위를 굴리는 중 (주문 대결·탐험 판정·시험). dice가 null이면 아직 안 굴린 사람
+export interface PendingRoll {
+  kind: "duel" | "exploration" | "exam";
+  title: string;
+  lines: string[];
+  entries: { playerId: string; label: string; diceCount: number; dice: number[] | null }[];
+}
+
+// 함께할 친구를 기다리는 협력 탐험 카드
+export interface CoopWaiting {
+  playerId: string;
+  name: string;
+  description: string;
+  pairText: string;
+  soloText: string;
+  successText: string;
+  failureText: string;
+}
+
+export interface DuelPair {
+  challengerId: string;
+  targetId: string;
+}
+
+// 서버가 알려 주는 규칙 수치 (비용 안내용)
+export interface PublicRules {
+  classCardCosts: Record<ClassTier, { open: number; take: number }>;
+  activityMaxParticipants: number;
+  activitySecondParticipantCost: number;
+  duelCharmFee: number;
 }
 
 export interface GameState {
@@ -101,13 +137,17 @@ export interface GameState {
   turnOrder: string[];
   startingPlayerIndex: number;
   players: Record<string, PlayerGameState>;
-  activitySlots: Record<ActivityId, string | null>;
+  activitySlots: Record<ActivityId, string[]>;
   activityOrder: string[];
   activityTurnPointer: number;
-  duelTargetId: string | null;
+  duels: DuelPair[];
   pendingLab: { playerId: string; cards: LabCard[] } | null;
+  pendingRoll: PendingRoll | null;
+  coopWaiting: CoopWaiting | null;
   examResults: ExamResult[];
-  cleanupSummary: { playerId: string; staminaTokens: number; spellbookTokens: number }[];
+  cleanupSummary: { playerId: string; intelligenceTokens: number; staminaTokens: number; spellbookTokens: number }[];
+  classLeft: Record<ClassTier, number>;
+  rules: PublicRules;
   log: GameLogEntry[];
   winnerIds?: string[];
 }
@@ -136,8 +176,35 @@ export const ACTIVITY_HINT: Record<ActivityId, string> = {
   lab: "심화학습: 지력만큼 연구 카드를 펼쳐 1장 고르기 (집중: +1장)",
 };
 
+export const TIER_LABEL: Record<ClassTier, string> = { normal: "일반", rare: "특별" };
+
 export function effectiveStat(player: PlayerGameState, stat: StatKey): number {
   return Math.max(0, player[stat] + (player.tempBoosts[stat] ?? 0));
+}
+
+// ── 자율활동 구역 선택 규칙 (서버 engine.ts와 같은 규칙. 버튼을 미리 막고 이유를 보여 주기 위해 복제) ──
+
+// 이미 다른 플레이어가 있는 구역에 들어갈 때 내야 하는 체력토큰
+export function activityExtraCost(game: GameState, activityId: ActivityId): number {
+  return game.activitySlots[activityId].length >= 1 ? game.rules.activitySecondParticipantCost : 0;
+}
+
+// 주문 대결에서 지목할 수 있는 플레이어 (아직 자율활동을 고르지 않은 사람)
+export function duelTargets(game: GameState, playerId: string): string[] {
+  return game.turnOrder.filter((id) => id !== playerId && !game.players[id].hasActedThisPhase);
+}
+
+// 이 활동을 고를 수 없는 이유 (고를 수 있으면 null)
+export function activityBlockReason(game: GameState, playerId: string, activityId: ActivityId): string | null {
+  const player = game.players[playerId];
+  if (game.activitySlots[activityId].length >= game.rules.activityMaxParticipants) return "이미 두 명이 참여했어요";
+  const extra = activityExtraCost(game, activityId);
+  if (player.staminaTokens < extra) return `체력토큰 ${extra}개가 더 필요해요`;
+  if (activityId === "duel") {
+    if (duelTargets(game, playerId).length === 0) return "지목할 수 있는 친구가 없어요";
+    if (player.charm < game.rules.duelCharmFee) return `건넬 매력(${game.rules.duelCharmFee})이 없어요`;
+  }
+  return null;
 }
 
 export const ELEMENT_LABEL: Record<CreatureElement, string> = { sky: "하늘", land: "육지", ocean: "바다" };

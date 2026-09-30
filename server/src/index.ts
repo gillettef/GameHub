@@ -5,10 +5,22 @@ import { fileURLToPath } from "node:url";
 import express from "express";
 import { randomUUID } from "node:crypto";
 import { WebSocketServer, type WebSocket } from "ws";
+import { BALANCE } from "./game/config.js";
 import { createRoom, getRoom, joinRoom, leaveRoom, leaveRoomIfNoHumans, scheduleRoomExpiry, broadcast, type Player, type Room } from "./rooms.js";
-import { BOT_NAMES, chooseActivityAction, chooseClassCards, chooseLabCard, pickBotPersonality } from "./game/bot.js";
-import { chooseLabCard as submitLabChoice, createGame, selectActivity, submitClassChoice } from "./game/engine.js";
+import { BOT_NAMES, chooseActivityAction, chooseLabCard, pickBotPersonality, playClassTurn } from "./game/bot.js";
+import {
+  availableActivities,
+  chooseLabCard as submitLabChoice,
+  classCardsLeft,
+  createGame,
+  duelTargets,
+  openClassCard,
+  selectActivity,
+  submitClassChoice,
+  submitRoll,
+} from "./game/engine.js";
 import type { ClientMessage, ServerMessage } from "./messages.js";
+import type { GameState, PublicRules } from "./game/types.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT ? Number(process.env.PORT) : 8080;
@@ -38,6 +50,20 @@ const BOT_MIN_DELAY_MS = 1000 / BOT_SPEED;
 const BOT_MAX_DELAY_MS = 2000 / BOT_SPEED;
 const MAX_PLAYERS = 5;
 
+// 봇의 평소 판단이 예외를 내더라도 게임이 멈추지 않도록 가장 단순한 행동으로 대신한다
+function runBotFallback(game: GameState, botId: string): void {
+  if (game.pendingRoll) {
+    submitRoll(game, botId);
+  } else if (game.phase === "class") {
+    submitClassChoice(game, botId, []);
+  } else if (game.pendingLab) {
+    submitLabChoice(game, botId, game.pendingLab.cards[0].id);
+  } else if (game.phase === "activity") {
+    const activityId = availableActivities(game, botId)[0];
+    if (activityId) selectActivity(game, botId, activityId, activityId === "duel" ? duelTargets(game, botId)[0] : undefined, false);
+  }
+}
+
 // 봇이 행동해야 하는 상황이면 잠시 생각하는 시간을 두고 한 번 행동한 뒤, 다음 행동을 다시 예약한다
 function scheduleBots(room: Room): void {
   if (room.botTimer) return;
@@ -45,7 +71,10 @@ function scheduleBots(room: Room): void {
   if (!game || game.phase === "ended") return;
 
   let actorId: string | undefined;
-  if (game.phase === "class") {
+  if (game.pendingRoll) {
+    // 주사위를 굴려야 하는 봇은 사람처럼 버튼을 누른다 (사람이 굴리는 동안 봇도 자기 몫을 굴림)
+    actorId = game.pendingRoll.entries.find((e) => e.dice === null && room.players.get(e.playerId)?.bot)?.playerId;
+  } else if (game.phase === "class") {
     actorId = game.turnOrder.find((id) => room.players.get(id)?.bot && !game.players[id].hasActedThisPhase);
   } else if (game.phase === "activity") {
     // 연구 카드를 고르는 중이면 그 플레이어가 행동할 차례
@@ -61,8 +90,10 @@ function scheduleBots(room: Room): void {
     const bot = room.players.get(botId);
     if (!bot?.bot || !room.game) return;
     try {
-      if (room.game.phase === "class") {
-        submitClassChoice(room.game, botId, chooseClassCards(room.game, botId, bot.bot));
+      if (room.game.pendingRoll) {
+        submitRoll(room.game, botId);
+      } else if (room.game.phase === "class") {
+        playClassTurn(room.game, botId, bot.bot);
       } else if (room.game.phase === "activity" && room.game.pendingLab) {
         submitLabChoice(room.game, botId, chooseLabCard(room.game, bot.bot));
       } else if (room.game.phase === "activity") {
@@ -71,12 +102,25 @@ function scheduleBots(room: Room): void {
       }
     } catch (err) {
       console.error("봇 행동 오류:", err);
-      return;
+      try {
+        runBotFallback(room.game, botId);
+      } catch (fallbackErr) {
+        console.error("봇 대체 행동도 실패:", fallbackErr);
+        return;
+      }
     }
     broadcastGameState(room);
     scheduleBots(room);
   }, delay);
 }
+
+// 화면에 보여 줄 규칙 수치 (비용 안내가 서버 설정과 어긋나지 않도록 서버가 알려 준다)
+const PUBLIC_RULES: PublicRules = {
+  classCardCosts: BALANCE.classCardCosts,
+  activityMaxParticipants: BALANCE.activityMaxParticipants,
+  activitySecondParticipantCost: BALANCE.activitySecondParticipantCost,
+  duelCharmFee: BALANCE.duelCharmFee,
+};
 
 function broadcastGameState(room: Room): void {
   const game = room.game;
@@ -95,11 +139,11 @@ function broadcastGameState(room: Room): void {
     const pendingLab = game.pendingLab
       ? { playerId: game.pendingLab.playerId, cards: game.pendingLab.playerId === player.id ? game.pendingLab.cards : [] }
       : null;
-    // 수업카드/마법생물 덱 구성은 비공개이므로 전송하지 않는다
-    const { labPile: _lp, explorationPile: _xp, grimoirePile: _gp, classDeck: _cd, classDiscard: _cdd, creatureDeck: _deck, creatureDiscard: _discard, ...publicGame } = game;
+    // 카드 덱 구성과 주사위 처리 정보는 비공개이므로 전송하지 않는다
+    const { hidden: _h, labPile: _lp, explorationPile: _xp, grimoirePile: _gp, classDecks: _cd, classDiscard: _cdd, creatureDeck: _deck, creatureDiscard: _discard, ...publicGame } = game;
     send(player.socket, {
       type: "game_state",
-      game: { ...publicGame, players, pendingLab },
+      game: { ...publicGame, players, pendingLab, classLeft: { normal: classCardsLeft(game, "normal"), rare: classCardsLeft(game, "rare") }, rules: PUBLIC_RULES },
     });
   }
 }
@@ -215,6 +259,32 @@ wss.on("connection", (socket) => {
       room.game = createGame([...room.players.values()].map((p) => ({ id: p.id, name: p.name, isBot: !!p.bot })));
       broadcastGameState(room);
       scheduleBots(room);
+      return;
+    }
+
+    if (message.type === "open_class_card") {
+      if (!room.game) return;
+      try {
+        openClassCard(room.game, playerId, message.tier);
+        broadcastGameState(room);
+      } catch (err) {
+        send(socket, { type: "error", message: err instanceof Error ? err.message : "알 수 없는 오류" });
+        // 동시에 같은 카드를 열려는 경우 등 화면이 낡았을 수 있으니 최신 상태를 다시 보낸다
+        broadcastGameState(room);
+      }
+      return;
+    }
+
+    if (message.type === "roll_dice") {
+      if (!room.game) return;
+      try {
+        submitRoll(room.game, playerId);
+        broadcastGameState(room);
+        scheduleBots(room);
+      } catch (err) {
+        send(socket, { type: "error", message: err instanceof Error ? err.message : "알 수 없는 오류" });
+        broadcastGameState(room);
+      }
       return;
     }
 

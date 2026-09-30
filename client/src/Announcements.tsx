@@ -16,6 +16,7 @@ interface TokenRow {
   id: string;
   name: string;
   isMe: boolean;
+  int: number;
   stamina: number;
   spell: number;
 }
@@ -59,7 +60,7 @@ const make = (a: Omit<Announcement, "id" | "tiles" | "lines"> & { tiles?: Tile[]
 });
 
 // 나를 맨 위에 두고 나머지는 진행 순서대로
-function tokenRows(game: GameState, myId: string, amounts: { id: string; stamina: number; spell: number }[]): TokenRow[] {
+function tokenRows(game: GameState, myId: string, amounts: { id: string; int: number; stamina: number; spell: number }[]): TokenRow[] {
   const rows = amounts.map((a) => ({ ...a, name: game.players[a.id].name, isMe: a.id === myId }));
   return [...rows.filter((r) => r.isMe), ...rows.filter((r) => !r.isMe)];
 }
@@ -69,13 +70,18 @@ function prepBanner(game: GameState, myId: string): Announcement {
     kind: "banner",
     icon: "calendar",
     title: `${game.round}개월 1주차 · 준비`,
-    subtitle: "체력만큼 체력토큰, 주문력만큼 주문서를 받아요",
+    subtitle: "지력만큼 지력토큰, 체력만큼 체력토큰, 주문력만큼 주문서를 받아요",
     tokens: {
       mode: "gain",
       rows: tokenRows(
         game,
         myId,
-        game.turnOrder.map((id) => ({ id, stamina: game.players[id].staminaTokens, spell: game.players[id].spellbookTokens })),
+        game.turnOrder.map((id) => ({
+          id,
+          int: game.players[id].intelligenceTokens,
+          stamina: game.players[id].staminaTokens,
+          spell: game.players[id].spellbookTokens,
+        })),
       ),
     },
   });
@@ -92,7 +98,7 @@ function cleanupBanner(prev: GameState, next: GameState, myId: string): Announce
       rows: tokenRows(
         next,
         myId,
-        next.cleanupSummary.map((c) => ({ id: c.playerId, stamina: c.staminaTokens, spell: c.spellbookTokens })),
+        next.cleanupSummary.map((c) => ({ id: c.playerId, int: c.intelligenceTokens, stamina: c.staminaTokens, spell: c.spellbookTokens })),
       ),
     },
   });
@@ -103,7 +109,7 @@ const classBanner = (game: GameState): Announcement =>
     kind: "banner",
     icon: "book",
     title: `${game.round}개월 2주차 · 정규수업`,
-    subtitle: "지력만큼 수업카드를 받았어요. 체력토큰 1개로 1장을 습득해요",
+    subtitle: "지력토큰으로 수업카드를 열고, 체력토큰으로 습득해요",
   });
 
 function activityBanner(game: GameState, myId: string): Announcement {
@@ -119,8 +125,9 @@ function activityBanner(game: GameState, myId: string): Announcement {
 
 // 내가 한(또는 나에게 일어난) 자율활동의 결과. 새 로그 중 내 이름이 들어간 것과 내 수치 변화를 모은다
 function activityResult(prev: GameState, next: GameState, myId: string): Announcement | null {
-  // 연구 카드를 고르는 중이면 고른 뒤의 결과를 보여 준다
+  // 연구 카드를 고르는 중이거나 주사위를 굴리는 중이면 결과가 나온 뒤에 보여 준다 (시험 굴림은 활동이 끝난 뒤의 일이라 예외)
   if (next.pendingLab?.playerId === myId) return null;
+  if (next.pendingRoll && next.pendingRoll.kind !== "exam") return null;
   const before = prev.players[myId];
   const after = next.players[myId];
   const lines = next.log.slice(prev.log.length).map((e) => e.message).filter((m) => m.includes(after.name));
@@ -141,8 +148,8 @@ function activityResult(prev: GameState, next: GameState, myId: string): Announc
   const track = after.tournamentTrack !== before.tournamentTrack ? { from: before.tournamentTrack, to: after.tournamentTrack } : undefined;
   if (lines.length === 0 && tiles.length === 0 && !track) return null;
 
-  const mine = ACTIVITY_IDS.find((a) => next.activitySlots[a] === myId);
-  const forcedDuel = !mine && next.duelTargetId === myId;
+  const mine = ACTIVITY_IDS.find((a) => next.activitySlots[a].includes(myId));
+  const forcedDuel = !mine && next.duels.some((d) => d.targetId === myId);
   const activity: ActivityId | undefined = mine ?? (forcedDuel ? "duel" : undefined);
   return make({
     kind: "result",
@@ -155,6 +162,15 @@ function activityResult(prev: GameState, next: GameState, myId: string): Announc
   });
 }
 
+function examBanner(next: GameState): Announcement {
+  return make({
+    kind: "banner",
+    icon: "dice",
+    title: next.phase === "midterm_exam" ? "중간고사 시작!" : "기말고사 시작!",
+    subtitle: "지력 수치만큼 주사위를 굴려 합산한 점수로 순위를 매겨요",
+  });
+}
+
 function examResult(next: GameState, myId: string): Announcement {
   const result = next.examResults[next.examResults.length - 1];
   return make({
@@ -162,7 +178,8 @@ function examResult(next: GameState, myId: string): Announcement {
     icon: "note",
     title: result.round === 6 ? "중간고사 결과" : "기말고사 결과",
     lines: result.scores.map(
-      (s) => `${s.rank}위 ${next.players[s.playerId].name}${s.playerId === myId ? " (나)" : ""} — 점수 ${s.score}, 학점 +${s.creditAwarded}`,
+      (s) =>
+        `${s.rank}위 ${next.players[s.playerId].name}${s.playerId === myId ? " (나)" : ""} — 점수 ${s.score}${s.dice.length > 0 ? ` (주사위 ${s.dice.join("+")})` : ""}, 학점 +${s.creditAwarded}`,
     ),
   });
 }
@@ -177,6 +194,7 @@ function build(prev: GameState, next: GameState, myId: string): Announcement[] {
   }
   // 자율활동이 끝나면 4주차 정리 → (시험) → 다음 달 1주차 준비 → 2주차 정규수업 순서
   if (activityEnded) out.push(cleanupBanner(prev, next, myId));
+  if (prev.phase !== next.phase && next.pendingRoll?.kind === "exam") out.push(examBanner(next));
   if (next.examResults.length > prev.examResults.length) out.push(examResult(next, myId));
   if (roundChanged && next.phase === "class") out.push(prepBanner(next, myId), classBanner(next));
   else if (prev.phase === "class" && next.phase === "activity") out.push(activityBanner(next, myId));
@@ -185,8 +203,14 @@ function build(prev: GameState, next: GameState, myId: string): Announcement[] {
 
 // 연출이 끝나기까지 걸리는 시간(ms)
 function playDuration(tokens: NonNullable<Announcement["tokens"]>): number {
-  const longest = Math.max(0, ...tokens.rows.map((r) => Math.min(MAX_ICONS, Math.max(r.stamina, r.spell))));
-  return (tokens.rows.length * ROW_GAP + longest * TOKEN_GAP + 0.5 + HOLD_AFTER) * 1000;
+  // 한 사람의 세 줄(지력토큰 → 체력토큰 → 주문서)은 차례로 들어오므로 가장 늦게 끝나는 사람 기준으로 계산한다
+  const finish = Math.max(
+    0,
+    ...tokens.rows.map(
+      (r, i) => i * ROW_GAP + (Math.min(MAX_ICONS, r.int) + Math.min(MAX_ICONS, r.stamina) + Math.min(MAX_ICONS, r.spell)) * TOKEN_GAP,
+    ),
+  );
+  return (finish + 0.5 + HOLD_AFTER) * 1000;
 }
 
 function TokenLine({
@@ -254,24 +278,34 @@ function TokenBoard({ tokens, playing }: { tokens: NonNullable<Announcement["tok
             {row.name}
             {row.isMe ? " (나)" : ""}
           </p>
-          <TokenLine
+          {(tokens.mode === "gain" || row.int > 0) && <TokenLine
+            icon="intToken"
+            label="지력토큰"
+            count={row.int}
+            mode={tokens.mode}
+            playing={playing}
+            startDelay={index * ROW_GAP}
+            color="text-sky-500"
+          />}
+          {(tokens.mode === "gain" || row.stamina > 0) && <TokenLine
             icon="staminaToken"
             label="체력토큰"
             count={row.stamina}
             mode={tokens.mode}
             playing={playing}
-            startDelay={index * ROW_GAP}
+            startDelay={index * ROW_GAP + Math.min(row.int, MAX_ICONS) * TOKEN_GAP}
             color="text-green-500"
-          />
-          <TokenLine
+          />}
+          {(tokens.mode === "gain" || row.spell > 0) && <TokenLine
             icon="spellbookToken"
             label="주문서"
             count={row.spell}
             mode={tokens.mode}
             playing={playing}
-            startDelay={index * ROW_GAP + Math.min(row.stamina, MAX_ICONS) * TOKEN_GAP}
+            startDelay={index * ROW_GAP + (Math.min(row.int, MAX_ICONS) + Math.min(row.stamina, MAX_ICONS)) * TOKEN_GAP}
             color="text-indigo-500"
-          />
+          />}
+          {tokens.mode === "wipe" && row.int + row.stamina + row.spell === 0 && <p className="mt-1 text-left text-xs text-purple-400">남은 토큰이 없어요</p>}
         </li>
       ))}
     </ul>
@@ -371,9 +405,20 @@ export function AnnouncementLayer({ game, myId }: { game: GameState; myId: strin
         )}
 
         {playing ? (
-          <p className="mt-4 min-h-12 py-3 text-sm text-purple-500" aria-live="polite">
-            {current.tokens?.mode === "gain" ? "토큰을 받는 중이에요..." : "토큰을 정리하는 중이에요..."}
-          </p>
+          <div className="mt-4 flex min-h-12 items-center justify-between gap-2 py-1">
+            <p className="text-sm text-purple-600" aria-live="polite">
+              {current.tokens?.mode === "gain" ? "토큰을 받는 중이에요..." : "토큰을 정리하는 중이에요..."}
+            </p>
+            <button
+              className="min-h-11 shrink-0 rounded-full bg-purple-100 px-4 text-sm text-purple-700 active:scale-95 transition-transform"
+              onClick={() => {
+                setPlaying(false);
+                dismiss();
+              }}
+            >
+              건너뛰기
+            </button>
+          </div>
         ) : (
           <button
             className="mt-4 min-h-12 w-full rounded-2xl bg-purple-500 py-3 font-semibold text-white active:scale-95 transition-transform"

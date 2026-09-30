@@ -3,9 +3,9 @@
 //  - 어떤 전략(토너먼트 몰빵, 마법생물 몰빵 등)이 지나치게 강하거나 약한가
 //  - 최종 능력치/학점/성취도가 어느 범위에 분포하는가
 //  - 자율활동 5종 중 봇이 무엇을 선호하고 그 결과는 어떤가
-import { chooseActivityAction, chooseClassCards, chooseLabCard, type BotStrategy } from "../src/game/bot.js";
+import { chooseActivityAction, chooseLabCard, playClassTurn, type BotStrategy } from "../src/game/bot.js";
 import { BALANCE } from "../src/game/config.js";
-import { chooseLabCard as submitLabChoice, createGame, selectActivity, submitClassChoice } from "../src/game/engine.js";
+import { chooseLabCard as submitLabChoice, classCardsLeft, createGame, selectActivity, submitRoll } from "../src/game/engine.js";
 import type { ActivityId, GameState } from "../src/game/types.js";
 
 const even: Record<ActivityId, number> = { tournament: 1, creature: 1, duel: 1, exploration: 1, lab: 1 };
@@ -24,17 +24,24 @@ const STRATEGIES: BotStrategy[] = [
 ];
 
 const activityPicks: Record<string, Record<ActivityId, number>> = {};
+// 가장 최근에 끝난 게임에서 일반 수업카드가 처음 바닥난 라운드 (한 번도 안 바닥났으면 0)
+let lastNormalExhaustRound = 0;
 
 function playGame(strategies: BotStrategy[]): GameState {
   const ids = strategies.map((_, i) => `p${i}`);
   const state = createGame(ids.map((id) => ({ id, name: id })));
   const byId = Object.fromEntries(ids.map((id, i) => [id, strategies[i]]));
   let guard = 0;
-  while (state.phase !== "ended" && guard++ < 1000) {
-    if (state.phase === "class") {
+  lastNormalExhaustRound = 0;
+  while (state.phase !== "ended" && guard++ < 5000) {
+    if (state.pendingRoll) {
+      // 주사위를 굴려야 하는 사람이 모두 버튼을 누른다
+      for (const entry of [...state.pendingRoll.entries]) if (entry.dice === null) submitRoll(state, entry.playerId);
+    } else if (state.phase === "class") {
       for (const id of state.turnOrder) {
-        if (!state.players[id].hasActedThisPhase) submitClassChoice(state, id, chooseClassCards(state, id, byId[id]));
+        if (!state.players[id].hasActedThisPhase) playClassTurn(state, id, byId[id]);
       }
+      if (lastNormalExhaustRound === 0 && classCardsLeft(state, "normal") === 0) lastNormalExhaustRound = state.round;
     } else if (state.phase === "activity") {
       const id = state.activityOrder[state.activityTurnPointer];
       const { activityId, targetPlayerId: target, useStamina } = chooseActivityAction(state, id, byId[id]);
@@ -73,6 +80,8 @@ for (let n = 2; n <= 5; n++) {
     credit: [] as number[],
     achievement: [] as number[],
     top: [] as number[],
+    exhausted: [] as number[],
+    exhaustRound: [] as number[],
     creatures: [] as number[],
     grimoires: [] as number[],
   };
@@ -90,6 +99,8 @@ for (let n = 2; n <= 5; n++) {
       rows.grimoires.push(p.grimoires.length);
     }
     rows.top.push(Math.max(...players.map((p) => p.spellPower * p.credit)));
+    rows.exhausted.push(lastNormalExhaustRound > 0 ? 1 : 0);
+    if (lastNormalExhaustRound > 0) rows.exhaustRound.push(lastNormalExhaustRound);
   }
   summary.push({
     인원: n,
@@ -102,6 +113,8 @@ for (let n = 2; n <= 5; n++) {
     "1위 성취도": fixed(mean(rows.top)),
     마법생물: fixed(mean(rows.creatures)),
     마도서: fixed(mean(rows.grimoires)),
+    "일반카드 소진율": pct(mean(rows.exhausted)),
+    "소진 라운드": rows.exhaustRound.length ? fixed(mean(rows.exhaustRound)) : "-",
   });
 }
 console.table(summary);

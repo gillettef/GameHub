@@ -84,3 +84,45 @@ input:focus-visible {
     opacity: 0;
   }
 }
+
+/* 주사위 굴리기 */
+@keyframes dice-tumble {
+  0% {
+    opacity: 0;
+    transform: rotate(-220deg) scale(0.3);
+  }
+  60% {
+    opacity: 1;
+    transform: rotate(18deg) scale(1.2);
+  }
+  100% {
+    opacity: 1;
+    transform: rotate(0) scale(1);
+  }
+}
+
+@keyframes dice-wiggle {
+  0%,
+  100% {
+    transform: rotate(-12deg);
+  }
+  50% {
+    transform: rotate(12deg) translateY(-3px);
+  }
+}
+
+.dice-pop {
+  animation: dice-tumble 0.55s ease-out both;
+  animation-delay: var(--d, 0s);
+}
+
+.dice-wiggle {
+  animation: dice-wiggle 0.5s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dice-pop,
+  .dice-wiggle {
+    animation: none;
+  }
+}

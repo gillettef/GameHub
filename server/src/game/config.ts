@@ -26,6 +26,16 @@ export const BALANCE = {
   catchUpBonus: 2,
   // 주문 대결에서 패자가 잃는 마법 주문서 수
   duelLoserTokenLoss: 1,
+  // 주문 대결을 건 도전자가 지목당한 플레이어에게 건네는 매력 (결과와 상관없이 지불)
+  duelCharmFee: 1,
+  // 자율활동 구역 하나에 들어갈 수 있는 최대 인원, 그리고 이미 한 명이 들어와 있는 구역에 두 번째로 들어갈 때 내는 체력토큰
+  activityMaxParticipants: 2,
+  activitySecondParticipantCost: 1,
+  // 수업카드 등급별 비용: 카드를 열 때 지력토큰(open), 습득할 때 체력토큰(take)을 낸다
+  classCardCosts: {
+    normal: { open: 1, take: 1 },
+    rare: { open: 2, take: 2 },
+  } as Record<"normal" | "rare", { open: number; take: number }>,
 };
 
 export function examCreditForRank(rank: number): number {
