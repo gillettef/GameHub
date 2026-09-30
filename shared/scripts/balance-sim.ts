@@ -14,8 +14,20 @@
  */
 import { applyAction, canPlay, createInitialState, createPlayer, joinPlayer, legalCells, terrainAt } from '../src/engine/index.js';
 import { hexDistance } from '../src/engine/sight.js';
-import { RACES, getSpec, mapsForPlayers } from '../src/data/index.js';
+import { FIXED_DECKS, RACES, getSpec, mapsForPlayers } from '../src/data/index.js';
+import { readFileSync } from 'node:fs';
 import type { CardId, CardSpec, GameState, PlayerId, Position, RaceId } from '../src/types/index.js';
+
+// --- 수치 오버라이드 (탐색용) -----------------------------------------------------------------
+// SIM_OVERRIDES=<json 파일 경로> 로 카드 수치·고정 덱을 파일 수정 없이 덮어써 본다.
+//   { "cards": { "<id>": { "cost": 3, "hp": 5 } }, "decks": { "<race>": { "<id>": 개수, ... } } }
+// 확정한 값은 shared/src/data/cards.ts 와 Rules.md 에 옮긴다.
+const overridePath = process.env.SIM_OVERRIDES;
+if (overridePath) {
+  const o = JSON.parse(readFileSync(overridePath, 'utf-8')) as { cards?: Record<string, Partial<CardSpec>>; decks?: Record<string, Record<string, number>> };
+  for (const [id, patch] of Object.entries(o.cards ?? {})) Object.assign(getSpec(id), patch);
+  for (const [race, deck] of Object.entries(o.decks ?? {})) (FIXED_DECKS as Record<string, Record<string, number>>)[race] = deck;
+}
 
 // --- 시뮬레이터 전용 시드 PRNG (게임 엔진의 rngSeed 와 무관) ---------------------------------
 
@@ -170,7 +182,10 @@ const TWO_PLAYER_MAPS = mapsForPlayers(2).map((m) => m.id);
 
 function buildSchedule(totalGames: number): { mapId: string; races: RaceId[] }[] {
   const configs: RaceId[][] = [];
+  // SIM_PAIR="a,b" 이면 그 한 쌍만 돌린다(원인 분석용)
+  const only = process.env.SIM_PAIR?.split(',');
   for (const [a, b] of PAIRS) {
+    if (only && !(only.includes(a) && only.includes(b))) continue;
     configs.push([a, b]);
     configs.push([b, a]);
   }
@@ -249,6 +264,64 @@ function main() {
     );
   }
   console.log('\n종료 사유:', Object.fromEntries(reasonCount));
+
+  // 쌍별 승률 행렬: 행 종족이 열 종족을 상대로 이긴 비율(좌석 순서·맵 섞임, 2인전 전용).
+  // 상성 설계(목표 45:55)와 무상성(목표 50:50)을 확인하는 용도다.
+  const pairWins = new Map<string, number>();
+  const pairGames = new Map<string, number>();
+  for (const g of summaries) {
+    const [a, b] = g.seats as [RaceId, RaceId];
+    const key = [a, b].sort().join('|');
+    pairGames.set(key, (pairGames.get(key) ?? 0) + 1);
+    if (g.winnerRace) pairWins.set(`${g.winnerRace}>${g.winnerRace === a ? b : a}`, (pairWins.get(`${g.winnerRace}>${g.winnerRace === a ? b : a}`) ?? 0) + 1);
+  }
+  // 목표 상성: 순환 swarm>siege>automata>shade>coalition>swarm 은 55:45, 나머지 쌍은 50:50
+  const CYCLE = ['swarm', 'siege', 'automata', 'shade', 'coalition'];
+  let sq = 0;
+  let pairCount = 0;
+  const lines: string[] = [];
+  for (let i = 0; i < RACE_IDS.length; i++) {
+    for (let j = i + 1; j < RACE_IDS.length; j++) {
+      const a = RACE_IDS[i] as string;
+      const b = RACE_IDS[j] as string;
+      const n = pairGames.get([a, b].sort().join('|')) ?? 0;
+      if (n === 0) continue;
+      const rate = ((pairWins.get(`${a}>${b}`) ?? 0) / n) * 100;
+      const ia = CYCLE.indexOf(a);
+      const ib = CYCLE.indexOf(b);
+      const target = (ia + 1) % 5 === ib ? 55 : (ib + 1) % 5 === ia ? 45 : 50;
+      sq += (rate - target) ** 2;
+      pairCount++;
+      lines.push(`${a} vs ${b}: ${rate.toFixed(1)}% (목표 ${target}%, 편차 ${(rate - target).toFixed(1)})`);
+    }
+  }
+  const rms = Math.sqrt(sq / Math.max(pairCount, 1));
+  const rates = RACE_IDS.map((r) => ((wins.get(r) ?? 0) / Math.max(games.get(r) ?? 1, 1)) * 100);
+  console.log('\n쌍별 목표 대비 (a가 b를 이긴 %):');
+  console.log(lines.join('\n'));
+  console.log(`쌍별 RMS 오차 ${rms.toFixed(2)}%p / 종족 전체 승률 범위 ${Math.min(...rates).toFixed(1)}~${Math.max(...rates).toFixed(1)}%`);
+  // 튜닝 도구가 읽는 기계 판독 줄: 쌍별 "a>b" 승률과 종족 전체 승률
+  const machine: Record<string, number> = {};
+  for (const a of RACE_IDS) {
+    machine[`all:${a}`] = ((wins.get(a) ?? 0) / Math.max(games.get(a) ?? 1, 1)) * 100;
+    for (const b of RACE_IDS) {
+      if (a === b) continue;
+      const n = pairGames.get([a, b].sort().join('|')) ?? 0;
+      if (n > 0) machine[`${a}>${b}`] = ((pairWins.get(`${a}>${b}`) ?? 0) / n) * 100;
+    }
+  }
+  console.log(`RESULT_JSON ${JSON.stringify(machine)}`);
+  console.log('\n쌍별 승률 (행이 열을 이긴 %, 무승부 제외 없이 판수 기준)');
+  console.log(''.padEnd(10), ...RACE_IDS.map((r) => r.padEnd(10)));
+  for (const row of RACE_IDS) {
+    const cells = RACE_IDS.map((col) => {
+      if (row === col) return '-'.padEnd(10);
+      const n = pairGames.get([row, col].sort().join('|')) ?? 0;
+      const w = pairWins.get(`${row}>${col}`) ?? 0;
+      return (n > 0 ? `${((w / n) * 100).toFixed(0)}%(${n})` : '-').padEnd(10);
+    });
+    console.log(row.padEnd(10), ...cells);
+  }
 }
 
 main();
