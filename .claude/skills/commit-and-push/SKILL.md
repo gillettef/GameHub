@@ -1,11 +1,11 @@
 ---
 name: commit-and-push
-description: 마법학교 프로젝트의 작업 종료 시 git commit & push 규칙(AGENTS.md 규칙 1·2)을 수행한다. 코드/문서 변경 작업을 마쳤을 때, 또는 사용자가 "커밋해줘", "푸시해줘", "commit and push"라고 요청할 때 사용한다.
+description: 마법학교 프로젝트의 작업 종료 시 git commit & push 규칙(CLAUDE.md 규칙 1·2)을 수행한다. 코드/문서 변경 작업을 마쳤을 때, 또는 사용자가 "커밋해줘", "푸시해줘", "commit and push"라고 요청할 때 사용한다.
 ---
 
 # commit-and-push
 
-`AGENTS.md`의 필수 작업 규칙에 따라, 이 저장소에서는 작업을 마칠 때마다 커밋 후 원격 저장소(`https://github.com/gillettef/MagicAcademy.git`, 브랜치 `main`)로 push까지 완료한다. 이 스킬은 그 과정을 안전하고 일관되게 수행하기 위한 절차다.
+`CLAUDE.md`의 필수 작업 규칙에 따라, 이 저장소에서는 작업을 마칠 때마다 커밋 후 원격 저장소(`https://github.com/gillettef/MagicAcademy.git`, 브랜치 `main`)로 push까지 완료한다. 이 스킬은 그 과정을 안전하고 일관되게 수행하기 위한 절차다.
 
 ## 절차
 
@@ -21,7 +21,7 @@ description: 마법학교 프로젝트의 작업 종료 시 git commit & push �
 3. **스테이징**
    - 관련 파일만 이름으로 지정해서 `git add`한다 (`git add -A`/`git add .` 남용 금지).
 
-4. **커밋 메시지 작성 (한국어 우선 — AGENTS.md 규칙 2)**
+4. **커밋 메시지 작성 (한국어 우선 — CLAUDE.md 규칙 2)**
    - 무엇을 바꿨는지보다 **왜** 바꿨는지 중심으로 1~2문장 작성.
    - `git log`를 참고해 기존 커밋 메시지 스타일을 따른다.
    - Heredoc으로 메시지를 전달해 포맷을 보존한다.
