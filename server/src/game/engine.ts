@@ -104,19 +104,9 @@ export function growthGap(state: GameState, playerId: string): number {
   return best - growthScore(state.players[playerId]);
 }
 
-// 마법생물 유형 점수 (세븐원더스의 과학 카드 방식): 같은 속성이 늘수록 제곱으로 커지고, 세 속성을 고루 모으면 세트 보너스.
-// 학점은 이 점수를 나눈 몫이며, 새 카드를 얻을 때 늘어난 만큼 즉시 받는다.
 // 마법생물 세트 수: 하늘·육지·바다를 1장씩 묶은 세트 (가장 적은 속성의 장수)
 export function creatureSets(creatures: CreatureCard[]): number {
   return Math.min(...(["sky", "land", "ocean"] as const).map((el) => creatures.filter((c) => c.element === el).length));
-}
-
-function creatureCollectionCredit(creatures: CreatureCard[]): number {
-  const counts = { sky: 0, land: 0, ocean: 0 };
-  for (const c of creatures) counts[c.element] += 1;
-  const values = Object.values(counts);
-  const score = values.reduce((sum, n) => sum + n * n, 0) + BALANCE.creatureSetBonus * Math.min(...values);
-  return Math.floor(score / BALANCE.creatureScoreDivisor);
 }
 
 // 플레이어가 가진 마법생물 중 해당 트리거의 능력만 모은다
@@ -262,7 +252,7 @@ function beginFirstRoll(state: GameState, contenders: string[]): void {
     kind: "first",
     title: contenders.length === state.turnOrder.length ? "선 정하기" : "선 정하기 · 동점자 다시 굴리기",
     lines: ["주사위를 굴려 가장 높은 친구가 첫 달의 선이 돼요. 선부터 시계방향으로 진행해요"],
-    entries: contenders.map((id) => ({ playerId: id, label: state.players[id].name, diceCount: 1, dice: null, confirmed: false })),
+    entries: contenders.map((id) => ({ playerId: id, label: state.players[id].name, diceCount: 1, dice: null, confirmed: false, rerolls: 0 })),
   };
 }
 
@@ -459,8 +449,8 @@ function startDuel(state: GameState, player: PlayerGameState, target: PlayerGame
       `주사위 + 주문력이 큰 쪽이 이겨요. 도전자는 지목당한 친구에게 매력 ${BALANCE.duelCharmFee}을 건네요`,
     ],
     entries: [
-      { playerId: player.id, label: `${player.name} (도전자)`, diceCount: 1, dice: null, confirmed: false },
-      { playerId: target.id, label: `${target.name} (지목당함)`, diceCount: 1, dice: null, confirmed: false },
+      { playerId: player.id, label: `${player.name} (도전자)`, diceCount: 1, dice: null, confirmed: false, rerolls: 0 },
+      { playerId: target.id, label: `${target.name} (지목당함)`, diceCount: 1, dice: null, confirmed: false, rerolls: 0 },
     ],
   };
 }
@@ -540,7 +530,7 @@ function startExplorationRoll(
       card.description,
       mode === "pair" ? `둘의 (주사위 + ${stat}) 합이 ${target} 이상이면 성공! 보상은 둘 다 받아요` : `주사위 + ${stat} ≥ ${target} 이면 성공`,
     ],
-    entries: playerIds.map((id) => ({ playerId: id, label: state.players[id].name, diceCount: 1, dice: null, confirmed: false })),
+    entries: playerIds.map((id) => ({ playerId: id, label: state.players[id].name, diceCount: 1, dice: null, confirmed: false, rerolls: 0 })),
   };
 }
 
@@ -688,16 +678,9 @@ function takeOffered(state: GameState, player: PlayerGameState, activityId: Acti
     case "creature": {
       const creature = card as CreatureCard;
       player.spellbookTokens -= creatureCost(creature);
-      const creditBefore = creatureCollectionCredit(player.creatures);
       player.creatures.push(creature);
       if (creature.ability.trigger === "acquire" && creature.ability.effect === "spellPower") player.spellPower += creature.ability.amount;
-      // 유형 모으기 보너스: 새 카드로 늘어난 유형 점수만큼 학점을 즉시 받는다
-      const collectionCredit = creatureCollectionCredit(player.creatures) - creditBefore;
-      player.credit += collectionCredit;
-      log(
-        state,
-        `${player.name}: 마법생물 "${creature.name}" 획득 (${describeAbility(creature.ability)})${collectionCredit > 0 ? ` — 유형 모으기 보너스 학점 +${collectionCredit}` : ""}`,
-      );
+      log(state, `${player.name}: 마법생물 "${creature.name}" 획득 (${describeAbility(creature.ability)})`);
       break;
     }
     case "lab": {
@@ -962,6 +945,28 @@ export function rollRevealed(state: Pick<GameState, "pendingRoll">): boolean {
   return !!state.pendingRoll && state.pendingRoll.entries.every((e) => e.dice !== null);
 }
 
+// 다시 굴리기: 모두 굴린 뒤 아직 확인하지 않았다면, 지력토큰 1개당 주사위 1개를 원하는 만큼(일부 주사위만) 다시 굴린다.
+// 지력토큰이 모자라면 매력토큰 3개가 1개를 대신한다. 몇 번이든 지력토큰이 허락하는 만큼 다시 굴릴 수 있다
+export function rerollDice(state: GameState, playerId: string, diceIndexes: number[]): void {
+  const pending = state.pendingRoll;
+  if (!pending) throw new Error("지금은 주사위를 다시 굴릴 때가 아닙니다.");
+  if (pending.kind === "first") throw new Error("선 정하기 주사위는 다시 굴릴 수 없어요.");
+  const entry = pending.entries.find((e) => e.playerId === playerId);
+  if (!entry) throw new Error("이번 굴림에 참여하지 않습니다.");
+  if (!rollRevealed(state) || entry.dice === null) throw new Error("모두 주사위를 굴린 뒤에 다시 굴릴 수 있어요.");
+  if (entry.confirmed) throw new Error("이미 결과를 확인했어요.");
+  const indexes = [...new Set(diceIndexes)];
+  if (indexes.length === 0) throw new Error("다시 굴릴 주사위를 골라 주세요.");
+  if (indexes.some((i) => !Number.isInteger(i) || i < 0 || i >= entry.dice!.length)) throw new Error("없는 주사위입니다.");
+  const player = state.players[playerId];
+  if (!canPay(player, indexes.length, 0)) throw new Error(`지력토큰이 부족해요 (주사위 ${indexes.length}개를 다시 굴리려면 ${indexes.length}개, 매력토큰 ${charmRate(player)}개로 1개를 대신할 수 있어요).`);
+  pay(player, "intelligence", indexes.length);
+  const before = indexes.map((i) => entry.dice![i]);
+  for (const i of indexes) entry.dice[i] = rollD6();
+  entry.rerolls += indexes.length;
+  log(state, `${player.name}: 지력토큰 ${indexes.length}개로 주사위를 다시 굴렸어요 (${before.join(", ")} → ${indexes.map((i) => entry.dice![i]).join(", ")})`);
+}
+
 // 결과 확인 버튼: 모든 참여자가 확인하면 결과를 적용한다
 export function confirmRoll(state: GameState, playerId: string): void {
   const pending = state.pendingRoll;
@@ -1009,22 +1014,24 @@ function resolveFirstRoll(state: GameState, contenders: string[], diceOf: (id: s
 
 function beginCleanupPhase(state: GameState): void {
   state.phase = "cleanup";
+  const examFollows = state.round === BALANCE.midtermRound || state.round === BALANCE.totalRounds;
   state.cleanupSummary = state.turnOrder.map((id) => ({
     playerId: id,
-    intelligenceTokens: state.players[id].intelligenceTokens,
+    intelligenceTokens: examFollows ? 0 : state.players[id].intelligenceTokens,
     staminaTokens: state.players[id].staminaTokens,
     charmTokens: state.players[id].charmTokens,
     spellbookTokens: state.players[id].spellbookTokens,
   }));
   for (const playerId of state.turnOrder) {
     const player = state.players[playerId];
-    player.intelligenceTokens = 0;
+    // 시험이 이어지는 달에는 남은 지력토큰을 시험 주사위 다시 굴리기에 쓸 수 있도록 시험이 끝날 때까지 남겨 둔다
+    if (!examFollows) player.intelligenceTokens = 0;
     player.staminaTokens = 0;
     player.charmTokens = 0;
     player.spellbookTokens = 0;
     player.hasActedThisPhase = false;
   }
-  log(state, "4주차(정리): 남은 토큰 소멸");
+  log(state, examFollows ? "4주차(정리): 남은 토큰 소멸 (지력토큰은 시험 주사위 다시 굴리기용으로 남겨 둬요)" : "4주차(정리): 남은 토큰 소멸");
   const nextIndex = nextStarterIndex(state);
   if (nextIndex !== state.startingPlayerIndex) {
     state.startingPlayerIndex = nextIndex;
@@ -1072,7 +1079,7 @@ function beginExam(state: GameState, examType: "midterm_exam" | "final_exam"): v
     lines: [`${describeExam(card, STAT_NAME)}로 점수를 내고, 높은 순서로 순위를 매겨요`],
     entries: state.turnOrder.map((id) => {
       const diceCount = effectiveStat(state.players[id], card.diceStat);
-      return { playerId: id, label: state.players[id].name, diceCount, dice: diceCount === 0 ? [] : null, confirmed: diceCount === 0 };
+      return { playerId: id, label: state.players[id].name, diceCount, dice: diceCount === 0 ? [] : null, confirmed: diceCount === 0, rerolls: 0 };
     }),
   };
   // 굴릴 주사위가 하나도 없으면 바로 결과를 처리한다
@@ -1105,6 +1112,7 @@ function resolveExam(state: GameState, examType: "midterm_exam" | "final_exam", 
   // 연구실 실험으로 얻은 임시 능력치 증가분은 다음 시험까지 유지된 뒤 소멸
   for (const playerId of state.turnOrder) {
     const p = state.players[playerId];
+    p.intelligenceTokens = 0; // 시험 다시 굴리기에 쓰고 남은 지력토큰도 소멸
     p.tempBoosts = {};
     // 효과가 끝난 시험 카드는 버림 더미로
     state.labPile.discard.push(...p.equipment);

@@ -6,6 +6,7 @@ import {
   availableActivities,
   canPay,
   duelTargets,
+  rerollDice,
   growthGap,
   takeClassCard,
 } from "./engine.js";
@@ -137,11 +138,30 @@ function explorationValue(state: GameState, strategy: BotStrategy, player: Playe
   return p * success + (1 - p) * failure;
 }
 
-// 마법생물: 능력과 유형 모으기(같은 속성이 늘수록 학점)를 반영한다
+// 결과 확인 전에 낮게 나온 주사위(1~2)를 지력토큰이 허락하는 만큼 다시 굴린다 (선 정하기는 제외)
+export function rerollLowDice(state: GameState, playerId: string): void {
+  const pending = state.pendingRoll;
+  const entry = pending?.entries.find((e) => e.playerId === playerId);
+  if (!pending || pending.kind === "first" || !entry?.dice) return;
+  const p = state.players[playerId];
+  const low = entry.dice.map((d, i) => ({ d, i })).filter((x) => x.d <= 2).map((x) => x.i);
+  for (let n = Math.min(low.length, p.intelligenceTokens); n > 0; n--) {
+    try {
+      rerollDice(state, playerId, low.slice(0, n));
+      return;
+    } catch {
+      // 토큰이 모자라면 더 적은 수로 다시 시도한다
+    }
+  }
+}
+
+// 마법생물: 능력과 세트 모으기(하늘·육지·바다를 1장씩 모으면 최종 점수)를 반영한다
 function creatureValue(state: GameState, strategy: BotStrategy, player: PlayerGameState, card: CreatureCard): number {
   const a = card.ability;
   let v = 1 + (a.trigger === "acquire" && a.effect === "spellPower" ? a.amount * 1.5 * strategy.classWeights.spellPower : 0.6);
-  v += player.creatures.filter((c) => c.element === card.element).length * 0.6;
+  // 세트(하늘·육지·바다 1장씩)를 완성하는 데 가장 부족한 속성일수록 가치가 높다
+  const counts = (["sky", "land", "ocean"] as const).map((el) => player.creatures.filter((c) => c.element === el).length);
+  if (player.creatures.filter((c) => c.element === card.element).length === Math.min(...counts)) v += 1;
   return v - card.requiredSpellPower * 0.1;
 }
 

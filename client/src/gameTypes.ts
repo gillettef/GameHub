@@ -116,7 +116,7 @@ export interface PendingRoll {
   kind: "first" | "duel" | "exploration" | "exam";
   title: string;
   lines: string[];
-  entries: { playerId: string; label: string; diceCount: number; dice: number[] | null; confirmed: boolean }[];
+  entries: { playerId: string; label: string; diceCount: number; dice: number[] | null; confirmed: boolean; rerolls: number }[];
 }
 
 // 3주차 선택 단계에서 각자 고른 활동 (모두에게 공개). 진행 단계에서는 이 순서대로 하나씩 처리한다
@@ -243,7 +243,7 @@ export const ACTIVITY_LABEL: Record<ActivityId, string> = {
 // 활동 카드에 함께 보여줄 한 줄 설명
 export const ACTIVITY_HINT: Record<ActivityId, string> = {
   tournament: "주문력만큼 트랙 전진",
-  creature: "카드 2장 공개, 주문서로 마법생물 획득, 속성을 모으면 학점 + 세트 점수",
+  creature: "카드 2장 공개, 주문서로 마법생물 획득, 하늘·육지·바다를 1장씩 모으면 세트 점수",
   duel: "아직 안 고른 한 명을 지목해 강제 대결, 이기면 공개된 마도서 1장 고르기",
   exploration: "카드 2장 중 하나를 골라 한방 노리기! 크게 벌거나 크게 잃는 판정",
   lab: "심화학습: 연구 카드 2장 중 1장 고르기, 카드마다 체력토큰이 들어요",

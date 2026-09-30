@@ -41,13 +41,18 @@ function Chip({ icon, label, value, className, showLabel }: { icon: IconName; la
 }
 
 // 굴려서 나온 주사위 눈 하나
-function DiceFace({ value, delay = 0 }: { value: number; delay?: number }) {
-  return (
-    <span
-      className="dice-pop inline-flex h-10 w-10 items-center justify-center rounded-xl border-2 border-pink-300 bg-white font-display text-xl text-pink-600 shadow-sm"
-      style={{ "--d": `${delay.toFixed(2)}s` } as CSSProperties}
-      aria-label={`주사위 ${value}`}
-    >
+function DiceFace({ value, delay = 0, selected, onToggle }: { value: number; delay?: number; selected?: boolean; onToggle?: () => void }) {
+  const cls = `dice-pop inline-flex h-11 w-11 items-center justify-center rounded-xl border-2 font-display text-xl shadow-sm ${
+    selected ? "border-purple-500 bg-purple-100 text-purple-700 ring-2 ring-purple-300" : "border-pink-300 bg-white text-pink-600"
+  }`;
+  const style = { "--d": `${delay.toFixed(2)}s` } as CSSProperties;
+  // 다시 굴릴 주사위를 고를 수 있을 때는 누르면 선택/해제되는 버튼이 된다
+  return onToggle ? (
+    <button type="button" className={`${cls} active:scale-95 transition-transform`} style={style} aria-pressed={!!selected} aria-label={`주사위 ${value}${selected ? " (다시 굴리기 선택됨)" : ""}`} onClick={onToggle}>
+      {value}
+    </button>
+  ) : (
+    <span className={cls} style={style} aria-label={`주사위 ${value}`}>
       {value}
     </span>
   );
@@ -102,7 +107,7 @@ function PlayerStatCard({ player, isMe, rules }: { player: PlayerGameState; isMe
       )}
       {player.creatures.length > 0 && (
         <p className="mt-2 text-xs text-purple-600">
-          유형 모으기:{" "}
+          세트 모으기:{" "}
           {(["sky", "land", "ocean"] as CreatureElement[]).map((el) => (
             <span key={el} className="mr-2 whitespace-nowrap">
               <InlineIcon name={ELEMENT_ICON[el]} /> {ELEMENT_LABEL[el]} {player.creatures.filter((c) => c.element === el).length}
@@ -607,9 +612,23 @@ function ActivityPhasePanel({
 
 // 주사위 굴리기 (선 정하기·주문 대결·탐험 판정·시험): 굴려야 하는 사람이 버튼을 누르면 서버가 굴려서 결과를 알려 주고,
 // 모두 굴린 뒤에는 결과를 눈으로 확인하고 "확인" 버튼을 눌러야 결과가 적용된다
-function RollPanel({ game, myId, onRoll, onConfirm }: { game: GameState; myId: string; onRoll: () => void; onConfirm: () => void }) {
+function RollPanel({
+  game,
+  myId,
+  onRoll,
+  onReroll,
+  onConfirm,
+}: {
+  game: GameState;
+  myId: string;
+  onRoll: () => void;
+  onReroll: (diceIndexes: number[]) => void;
+  onConfirm: () => void;
+}) {
   const pending = game.pendingRoll;
   const [clickedFor, setClickedFor] = useState<string | null>(null);
+  // 다시 굴리려고 고른 내 주사위 번호
+  const [selected, setSelected] = useState<number[]>([]);
   // 버튼을 누른 뒤 응답이 없어도 잠시 뒤 다시 누를 수 있게 풀어 준다
   useEffect(() => {
     if (!clickedFor) return;
@@ -622,6 +641,12 @@ function RollPanel({ game, myId, onRoll, onConfirm }: { game: GameState; myId: s
   const revealed = pending.entries.every((e) => e.dice !== null);
   const canRoll = !!mine && mine.dice === null;
   const canConfirm = !!mine && revealed && !mine.confirmed;
+  const me = game.players[myId];
+  // 결과를 확인하기 전에는 지력토큰으로 일부 주사위만 다시 굴릴 수 있다 (선 정하기는 제외)
+  const canReroll = canConfirm && pending.kind !== "first" && !!mine && (mine.dice?.length ?? 0) > 0;
+  const rerollCost = selected.length;
+  const rerollOk = rerollCost > 0 && canPay(game, me, rerollCost, 0);
+  const toggle = (i: number) => setSelected((cur) => (cur.includes(i) ? cur.filter((x) => x !== i) : [...cur, i]));
   const rollKey = `roll:${pending.title}`;
   const confirmKey = `confirm:${pending.title}`;
   const waiting = pending.entries.filter((e) => e.dice === null && e.playerId !== myId);
@@ -655,9 +680,16 @@ function RollPanel({ game, myId, onRoll, onConfirm }: { game: GameState; myId: s
             ) : (
               <div className="mt-1 flex flex-wrap items-center gap-1.5">
                 {entry.dice.map((d, i) => (
-                  <DiceFace key={i} value={d} delay={i * 0.06} />
+                  <DiceFace
+                    key={`${i}-${d}-${entry.rerolls}`}
+                    value={d}
+                    delay={i * 0.06}
+                    selected={entry.playerId === myId && canReroll && selected.includes(i)}
+                    onToggle={entry.playerId === myId && canReroll ? () => toggle(i) : undefined}
+                  />
                 ))}
                 {entry.dice.length > 1 && <b className="ml-1 text-purple-700">합계 {entry.dice.reduce((a, b) => a + b, 0)}</b>}
+                {entry.rerolls > 0 && <span className="ml-1 text-xs text-sky-700">다시 굴림 {entry.rerolls}개</span>}
               </div>
             )}
           </li>
@@ -680,6 +712,24 @@ function RollPanel({ game, myId, onRoll, onConfirm }: { game: GameState; myId: s
         </button>
       ) : canConfirm ? (
         <>
+          {canReroll && (
+            <div className="mt-3 rounded-2xl bg-sky-50 px-3 py-2 text-sm text-sky-800">
+              <p>
+                <InlineIcon name="intToken" /> 지력토큰 {me.intelligenceTokens}개 · 주사위를 눌러 고르면 <b>1개당 주사위 1개</b>를 다시 굴려요 (매력토큰 {charmRate(game, me)}개 = 지력토큰 1개)
+              </p>
+              <button
+                disabled={!rerollOk}
+                className="mt-2 flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-sky-500 py-2 font-semibold text-white active:scale-95 transition-transform disabled:bg-gray-200 disabled:text-gray-600 disabled:active:scale-100"
+                onClick={() => {
+                  onReroll(selected);
+                  setSelected([]);
+                }}
+              >
+                <Icon name="dice" className="h-5 w-5" />
+                {rerollCost === 0 ? "다시 굴릴 주사위를 골라요" : rerollOk ? `선택한 ${rerollCost}개 다시 굴리기 (지력토큰 ${rerollCost}개)` : "지력토큰이 부족해요"}
+              </button>
+            </div>
+          )}
           <p className="mt-3 text-center text-sm text-purple-600">결과를 확인했으면 다음으로 넘어가요. 모두 확인하면 결과가 적용돼요.</p>
           <button
             disabled={clickedFor === confirmKey}
@@ -837,6 +887,7 @@ export function GameBoard({
   onSelectActivity,
   onPickActivityCard,
   onRollDice,
+  onRerollDice,
   onConfirmRoll,
 }: {
   game: GameState;
@@ -847,6 +898,7 @@ export function GameBoard({
   onSelectActivity: (activityId: ActivityId, targetPlayerId?: string) => void;
   onPickActivityCard: (cardId: string | null) => void;
   onRollDice: () => void;
+  onRerollDice: (diceIndexes: number[]) => void;
   onConfirmRoll: () => void;
 }) {
   const [tab, setTab] = useState<TabId>("game");
@@ -918,7 +970,7 @@ export function GameBoard({
                 <InlineIcon name="sparkle" /> 이번 달 선: <b>{starterName}</b> (선부터 시계방향으로 진행해요)
               </p>
             )}
-            {game.pendingRoll && <RollPanel game={game} myId={myId} onRoll={onRollDice} onConfirm={onConfirmRoll} />}
+            {game.pendingRoll && <RollPanel game={game} myId={myId} onRoll={onRollDice} onReroll={onRerollDice} onConfirm={onConfirmRoll} />}
             {game.phase === "class" && !game.pendingRoll && <ClassPhasePanel game={game} myId={myId} onTake={onTakeClassCard} />}
             {game.phase === "activity" && (
               <ActivityPhasePanel game={game} myId={myId} onSelect={onSelectActivity} onPick={onPickActivityCard} />

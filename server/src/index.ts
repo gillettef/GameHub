@@ -7,7 +7,7 @@ import { randomUUID } from "node:crypto";
 import { WebSocketServer, type WebSocket } from "ws";
 import { BALANCE } from "./game/config.js";
 import { createRoom, getRoom, joinRoom, leaveRoom, leaveRoomIfNoHumans, scheduleRoomExpiry, broadcast, type Player, type Room } from "./rooms.js";
-import { BOT_NAMES, chooseActivityAction, choosePick, pickBotPersonality, playClassTurn } from "./game/bot.js";
+import { BOT_NAMES, chooseActivityAction, choosePick, pickBotPersonality, playClassTurn, rerollLowDice } from "./game/bot.js";
 import {
   availableActivities,
   chooseActivityCard,
@@ -18,6 +18,7 @@ import {
   takeClassCard,
   submitRoll,
   confirmRoll,
+  rerollDice,
   advanceResolution,
   canAdvanceResolution,
   rollRevealed,
@@ -138,7 +139,10 @@ function scheduleBots(room: Room): void {
       if (room.game.pendingRoll) {
         const entry = room.game.pendingRoll.entries.find((e) => e.playerId === botId);
         if (entry?.dice === null) submitRoll(room.game, botId);
-        else confirmRoll(room.game, botId);
+        else {
+          rerollLowDice(room.game, botId);
+          confirmRoll(room.game, botId);
+        }
       } else if (room.game.phase === "class") {
         playClassTurn(room.game, botId, bot.bot);
       } else if (room.game.phase === "activity" && room.game.pendingPick) {
@@ -356,6 +360,18 @@ wss.on("connection", (socket) => {
         submitRoll(room.game, playerId);
         broadcastGameState(room);
         scheduleBots(room);
+      } catch (err) {
+        send(socket, { type: "error", message: err instanceof Error ? err.message : "알 수 없는 오류" });
+        broadcastGameState(room);
+      }
+      return;
+    }
+
+    if (message.type === "reroll_dice") {
+      if (!room.game) return;
+      try {
+        rerollDice(room.game, playerId, message.diceIndexes);
+        broadcastGameState(room);
       } catch (err) {
         send(socket, { type: "error", message: err instanceof Error ? err.message : "알 수 없는 오류" });
         broadcastGameState(room);

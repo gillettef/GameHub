@@ -325,6 +325,14 @@ export function useGameSocket() {
     send(socket, { type: "roll_dice" });
   }, [ensureSocket, send]);
 
+  const rerollDice = useCallback(
+    (diceIndexes: number[]) => {
+      const socket = ensureSocket();
+      send(socket, { type: "reroll_dice", diceIndexes });
+    },
+    [ensureSocket, send],
+  );
+
   const confirmRoll = useCallback(() => {
     const socket = ensureSocket();
     send(socket, { type: "confirm_roll" });
@@ -346,5 +354,5 @@ export function useGameSocket() {
     [ensureSocket, send],
   );
 
-  return { state, game, lastError, errorSeq, reconnecting, createRoom, joinRoom, startGame, addBot, removeBot, takeClassCard, rollDice, confirmRoll, selectActivity, pickActivityCard };
+  return { state, game, lastError, errorSeq, reconnecting, createRoom, joinRoom, startGame, addBot, removeBot, takeClassCard, rollDice, rerollDice, confirmRoll, selectActivity, pickActivityCard };
 }

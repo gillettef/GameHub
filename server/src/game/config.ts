@@ -25,12 +25,8 @@ export const BALANCE = {
   classDeckPerPlayer: 14,
   // 3주차 구역(비밀의 방·마법생물·주문 대결·연구실)에서 처음 들어온 사람이 여는 카드 수 (집중이나 특정 카드로 달라질 수 있다)
   activityOpenCount: 2,
-  // 마법생물 유형 모으기 학점 (세븐원더스 과학 카드 방식): 점수 = Σ(속성별 장수²) + 세트보너스 × 가장 적은 속성 장수,
-  // 학점 = floor(점수 / 나누는 수). 새 카드를 얻을 때 늘어난 학점을 즉시 받는다
-  creatureSetBonus: 5,
-  creatureScoreDivisor: 16,
   // 최종 점수 = 주문력 × 학점 + 마법생물 세트(하늘·육지·바다 1장씩) 수 × creatureSetScore (기획 검토 중: 3점 또는 5점)
-  creatureSetScore: 3,
+  creatureSetScore: 5,
   // 탐험 역전 보너스: 선두와의 성장 점수(능력치 합 + 학점×3) 격차가 이 값 이상이면 판정에 보너스를 더한다
   catchUpGap: 4,
   catchUpBonus: 2,

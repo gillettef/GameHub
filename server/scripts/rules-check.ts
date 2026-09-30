@@ -16,6 +16,7 @@ import {
   creatureSets,
   finalScore,
   nextStarterIndex,
+  rerollDice,
   rollRevealed,
   selectActivity,
   submitRoll,
@@ -725,6 +726,76 @@ test("마도서 '매혹의 화술서'·'반짝 스타일북'이 있으면 매력
   assert.equal(p.charmTokens, 0);
 });
 
+// ── 주사위 다시 굴리기 (지력토큰) ──
+
+test("주사위 다시 굴리기: 모두 굴린 뒤 확인 전에, 지력토큰 1개당 원하는 주사위만 다시 굴린다", () => {
+  const state = newGame(3);
+  toActivity(state);
+  const [a, b, c] = state.activityOrder;
+  setTokens(state, 0);
+  state.grimoirePile = { draw: [], discard: [] };
+  selectActivity(state, a, "duel", b);
+  selectActivity(state, c, "tournament");
+  advanceResolution(state);
+  const roll = state.pendingRoll!;
+  assert.throws(() => rerollDice(state, a, [0]), /모두 주사위를 굴린 뒤/);
+  submitRoll(state, a);
+  submitRoll(state, b);
+  const entry = roll.entries.find((e) => e.playerId === a)!;
+  // 여러 개 굴리는 상황을 만들어 일부 주사위만 다시 굴리는지 확인한다
+  entry.dice = [1, 2, 3];
+  state.players[a].intelligenceTokens = 2;
+  assert.throws(() => rerollDice(state, a, []), /골라 주세요/);
+  assert.throws(() => rerollDice(state, a, [5]), /없는 주사위/);
+  assert.throws(() => rerollDice(state, c, [0]), /참여하지 않습니다/);
+  assert.throws(() => rerollDice(state, a, [0, 1, 2]), /지력토큰이 부족/);
+  assert.equal(state.players[a].intelligenceTokens, 2, "실패하면 토큰이 줄지 않는다");
+  rerollDice(state, a, [0, 2]);
+  assert.equal(state.players[a].intelligenceTokens, 0);
+  assert.equal(entry.dice[1], 2, "고르지 않은 주사위는 그대로");
+  assert.ok(entry.dice.every((d) => d >= 1 && d <= 6));
+  assert.equal(entry.rerolls, 2);
+  assert.throws(() => rerollDice(state, a, [1]), /지력토큰이 부족/);
+  state.players[a].intelligenceTokens = 1;
+  confirmRoll(state, a);
+  assert.throws(() => rerollDice(state, a, [1]), /이미 결과를 확인했어요/);
+  assert.throws(() => submitRoll(state, a), /이미 주사위를 굴렸습니다/);
+});
+
+test("주사위 다시 굴리기: 매력토큰 3개가 지력토큰 1개를 대신한다. 선 정하기 주사위는 다시 굴릴 수 없다", () => {
+  const raw = createGame([{ id: "p0", name: "p0" }, { id: "p1", name: "p1" }]);
+  for (const e of [...raw.pendingRoll!.entries]) submitRoll(raw, e.playerId);
+  assert.throws(() => rerollDice(raw, "p0", [0]), /선 정하기/);
+  const state = newGame(2);
+  toActivity(state);
+  const [a, b] = state.activityOrder;
+  state.grimoirePile = { draw: [], discard: [] };
+  selectActivity(state, a, "duel", b);
+  advanceResolution(state);
+  for (const e of [...state.pendingRoll!.entries]) submitRoll(state, e.playerId);
+  state.players[a].intelligenceTokens = 0;
+  state.players[a].charmTokens = 2;
+  assert.throws(() => rerollDice(state, a, [0]), /지력토큰이 부족/);
+  state.players[a].charmTokens = 3;
+  rerollDice(state, a, [0]);
+  assert.equal(state.players[a].charmTokens, 0);
+});
+
+test("시험이 이어지는 달에는 남은 지력토큰이 시험 다시 굴리기용으로 남고, 시험이 끝나면 소멸한다", () => {
+  const state = newGame(3);
+  let guard = 0;
+  while (state.phase !== "midterm_exam" && guard++ < 3000) botStep(state);
+  assert.equal(state.phase, "midterm_exam");
+  assert.ok(state.turnOrder.every((id) => state.players[id].intelligenceTokens > 0), "봇은 지력토큰을 쓰지 않았으니 시험 때까지 남아 있다");
+  const id = state.turnOrder.find((x) => state.pendingRoll!.entries.find((e) => e.playerId === x)!.diceCount > 0)!;
+  const tokens = state.players[id].intelligenceTokens;
+  for (const e of [...state.pendingRoll!.entries]) if (e.dice === null) submitRoll(state, e.playerId);
+  rerollDice(state, id, [0]);
+  assert.equal(state.players[id].intelligenceTokens, tokens - 1);
+  for (const e of [...state.pendingRoll!.entries]) confirmRoll(state, e.playerId);
+  assert.ok(state.turnOrder.every((x) => state.players[x].intelligenceTokens === state.players[x].intelligence), "시험 뒤 새 달의 준비에서 다시 받는다");
+});
+
 // ── 시험 ──
 
 test("시험: 시험 카드가 정한 능력치만큼 주사위를 굴리고 보너스 능력치를 더한다 (굴린 뒤 확인해야 결과가 적용된다)", () => {
@@ -802,10 +873,10 @@ test("최종 점수 = 주문력 × 학점 + 마법생물 세트(하늘·육지·
   const ocean = CREATURE_CARDS.filter((c) => c.element === "ocean");
   p.creatures = [sky[0], sky[1], land[0], ocean[0]].map((c, i) => ({ ...c, id: `f${i}` }));
   assert.equal(creatureSets(p.creatures), 1, "하늘 2·육지 1·바다 1 = 1세트");
-  assert.equal(finalScore(p), 12 + 3);
+  assert.equal(finalScore(p), 12 + BALANCE.creatureSetScore);
   p.creatures.push(...[land[1], ocean[1]].map((c, i) => ({ ...c, id: `g${i}` })));
   assert.equal(creatureSets(p.creatures), 2);
-  assert.equal(finalScore(p), 12 + 6);
+  assert.equal(finalScore(p), 12 + BALANCE.creatureSetScore * 2);
 });
 
 test("게임이 끝나면 최종 점수가 가장 높은 플레이어가 승리한다", () => {

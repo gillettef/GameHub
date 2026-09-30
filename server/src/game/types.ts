@@ -152,13 +152,13 @@ export interface ExamResult {
 }
 
 // 주사위 굴리기 단계: 굴려야 하는 사람이 모두 버튼을 눌러 굴릴 때까지 게임이 기다린다
-// 모두 굴리면 결과를 보여 주고, 굴린 사람들이 "확인"을 눌러야 결과가 적용된다
+// 모두 굴리면 결과를 보여 주고, 굴린 사람들은 (지력토큰으로 일부 주사위를 다시 굴린 뒤) "확인"을 눌러야 결과가 적용된다
 export interface PendingRoll {
   kind: "first" | "duel" | "exploration" | "exam";
   title: string;
   lines: string[];
   // dice가 null이면 아직 안 굴린 사람, confirmed는 결과를 확인하고 다음으로 넘기기를 누른 사람
-  entries: { playerId: string; label: string; diceCount: number; dice: number[] | null; confirmed: boolean }[];
+  entries: { playerId: string; label: string; diceCount: number; dice: number[] | null; confirmed: boolean; rerolls: number }[];
 }
 
 // 협력 탐험 카드가 함께할 친구를 기다리는 중 (공개 정보)
