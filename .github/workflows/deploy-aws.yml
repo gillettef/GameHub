@@ -66,8 +66,7 @@ jobs:
           # EC2_HOST_KEY(known_hosts 한 줄, 예: ssh-keyscan 결과)를 Secret 으로 두면 호스트 키를 고정한다.
           # 없으면 예전처럼 keyscan 하지만 중간자 공격에는 취약하다
           if [ -n "${{ secrets.EC2_HOST_KEY }}" ]; then
-            printf '%s
-' "${{ secrets.EC2_HOST_KEY }}" >> ~/.ssh/known_hosts
+            echo "${{ secrets.EC2_HOST_KEY }}" >> ~/.ssh/known_hosts
           else
             ssh-keyscan -H "${{ secrets.EC2_HOST }}" >> ~/.ssh/known_hosts
           fi
