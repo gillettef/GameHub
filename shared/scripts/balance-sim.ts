@@ -161,26 +161,31 @@ function recordTurnEnd(pre: GameState, post: GameState, playerId: PlayerId): voi
     me.firstDamageRoundSum += pre.round;
     me.firstDamageGames++;
   }
-  // 전투가 난 턴에 한해, 피해자 쪽 은신/비은신 마커의 피격률과 손실을 센다
-  for (const k of victims) {
-    const veil = getSpec(k.specId).keywords.includes('veil');
-    const vm = metricsOf(raceOfPlayer(k.ownerId));
-    const wasHit = hit.has(k);
-    if (veil) {
-      vm.veilExposed++;
-      if (wasHit) vm.veilHit++;
-    } else if (k.kind !== 'core') {
-      vm.plainExposed++;
-      if (wasHit) vm.plainHit++;
-    }
-    if (!postById.has(k.id)) vm.lostMarkers++;
-  }
   // 공격 측: 사거리 안에 적이 있는 공격 마커 수 대비 실제 피해를 입은 적 수
   const attackers = pre.markers.filter((k) => {
     if (k.ownerId !== playerId) return false;
     const sp = getSpec(k.specId);
     return sp.attack > 0 && victims.some((v) => hexDistance(k.pos, v.pos) <= sp.range);
   });
+  const attackersAll = pre.markers.filter((k) => k.ownerId === playerId && getSpec(k.specId).attack > 0);
+  // 전투가 난 턴에 한해, 피해자 쪽 마커 중 "공격자의 사거리 안에 있던 것"만 은신/비은신 피격률로 센다
+  // (사거리 밖 후방 건물까지 분모에 넣으면 앞으로 나간 은신 유닛에게 불리하게 왜곡된다). 손실은 전부 센다
+  for (const k of victims) {
+    const veil = getSpec(k.specId).keywords.includes('veil');
+    const vm = metricsOf(raceOfPlayer(k.ownerId));
+    const wasHit = hit.has(k);
+    const inRange = attackersAll.some((a) => hexDistance(a.pos, k.pos) <= getSpec(a.specId).range);
+    if (inRange && k.kind !== 'core') {
+      if (veil) {
+        vm.veilExposed++;
+        if (wasHit) vm.veilHit++;
+      } else {
+        vm.plainExposed++;
+        if (wasHit) vm.plainHit++;
+      }
+    }
+    if (!postById.has(k.id)) vm.lostMarkers++;
+  }
   me.hitEnemies += hit.size;
   me.activeAttackers += attackers.length;
   for (const k of attackers) me.rangeSum += getSpec(k.specId).range;
@@ -441,7 +446,7 @@ function main() {
     const m = metricsOf(race);
     console.log(race.padEnd(10), ...CHECKPOINTS.map((r) => `${div(m.markersAt[r]!.sum, m.markersAt[r]!.n)} / ${div(m.incomeAt[r]!.sum, m.incomeAt[r]!.n)}`.padEnd(14)));
   }
-  console.log('\n전투가 난 턴의 은신 마커 vs 비은신 마커 피격률:');
+  console.log('\n전투가 난 턴, 적 사거리 안에 있던 은신 vs 비은신 마커의 피격률:');
   for (const race of RACE_IDS) {
     const m = metricsOf(race);
     if (m.veilExposed === 0) continue;

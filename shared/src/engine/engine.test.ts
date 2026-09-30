@@ -603,17 +603,17 @@ describe('전투 (F023)', () => {
 
   it('대상 선택: 거리 → 체력 → y → x (육각 거리 기준)', () => {
     let s = setup(2);
-    // 방어탑(공 2, 사거리 2) at (5,5). 후보: 순양함 d=1 hp7, 정찰 d=2 hp2 → 거리 우선
+    // 방어탑(공 3, 사거리 2) at (5,5). 후보: 순양함 d=1 hp7, 정찰 d=2 hp2 → 거리 우선
     s = addMarkers(s, marker('p0', 'turret', { x: 5, y: 5 }), marker('p1', 'cruiser', { x: 6, y: 6 }), marker('p1', 'scout', { x: 6, y: 7 }));
     let t = ok(readyP0Pass(s), pass('p0'));
-    expect(t.markers.find((m) => m.specId === 'cruiser')!.hp).toBe(5);
+    expect(t.markers.find((m) => m.specId === 'cruiser')!.hp).toBe(4);
     expect(t.markers.find((m) => m.specId === 'scout')!.hp).toBe(2);
 
     // 같은 거리(d=1): 체력 낮은 쪽. (6,6) hp 7 vs (6,5) hp 4(전투기)
     s = setup(2);
     s = addMarkers(s, marker('p0', 'turret', { x: 5, y: 5 }), marker('p1', 'cruiser', { x: 6, y: 6 }), marker('p1', 'fighter', { x: 6, y: 5 }));
     t = ok(readyP0Pass(s), pass('p0'));
-    expect(t.markers.find((m) => m.specId === 'fighter')!.hp).toBe(2);
+    expect(t.markers.find((m) => m.specId === 'fighter')!.hp).toBe(1);
     expect(t.markers.find((m) => m.specId === 'cruiser')!.hp).toBe(7);
 
     // 같은 거리(d=1)·체력: y 작은 쪽, 그다음 x 작은 쪽
@@ -743,7 +743,7 @@ describe('즉발 마법 · 지속 마법 · 정비', () => {
     const t = ok(s, place('p0', 'meteor', { x: 5, y: 5 }));
     expect(t.markers.some((m) => m.specId === 'meteor')).toBe(false);
     expect(t.markers.some((m) => m.ownerId === 'p1' && m.pos.x === 6 && m.pos.y === 6)).toBe(false);
-    expect(t.markers.find((m) => m.ownerId === 'p1' && m.specId === 'outpost')!.hp).toBe(3);
+    expect(t.markers.find((m) => m.ownerId === 'p1' && m.specId === 'outpost')!.hp).toBe(4);
     expect(t.markers.find((m) => m.ownerId === 'p1' && m.pos.x === 7)!.hp).toBe(4);
     expect(t.markers.find((m) => m.ownerId === 'p0' && m.specId === 'scout')!.hp).toBe(2);
     expect(player(t, 'p0').discard).toEqual(['meteor']);
