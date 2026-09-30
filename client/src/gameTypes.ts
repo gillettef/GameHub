@@ -96,9 +96,19 @@ export interface GameLogEntry {
   message: string;
 }
 
+// 시험 카드: 시험 점수 = diceStat 수치만큼 굴린 주사위 합 + bonusStat 수치
+export interface ExamCard {
+  id: string;
+  name: string;
+  description: string;
+  diceStat: StatKey;
+  bonusStat?: StatKey;
+}
+
 export interface ExamResult {
   round: number;
-  scores: { playerId: string; score: number; dice: number[]; rank: number; creditAwarded: number }[];
+  card: ExamCard;
+  scores: { playerId: string; score: number; dice: number[]; bonus: number; rank: number; creditAwarded: number }[];
 }
 
 // 주사위를 굴리는 중 (주문 대결·탐험 판정·시험). dice가 null이면 아직 안 굴린 사람
@@ -132,6 +142,9 @@ export interface PublicRules {
   activityMaxParticipants: number;
   activitySecondParticipantCost: number;
   duelCharmFee: number;
+  midtermRound: number;
+  midtermRevealRound: number;
+  finalRevealRound: number;
   charmExchangeRate: number;
   charmExchangeRateMin: number;
   // 마법 토너먼트 최종 순위 보상 (1위, 2위 순서, 학점)
@@ -151,6 +164,8 @@ export interface GameState {
   pendingLab: { playerId: string; cards: LabCard[] } | null;
   pendingRoll: PendingRoll | null;
   coopWaiting: CoopWaiting | null;
+  // 공개된 시험 카드 (공개 전에는 null)
+  exams: { midterm: ExamCard | null; final: ExamCard | null };
   examResults: ExamResult[];
   cleanupSummary: { playerId: string; intelligenceTokens: number; staminaTokens: number; charmTokens: number; spellbookTokens: number }[];
   classLeft: number;
@@ -165,6 +180,11 @@ export const STAT_LABEL: Record<StatKey, string> = {
   charm: "매력",
   spellPower: "주문력",
 };
+
+// 시험 카드가 점수를 내는 방식 설명 (예: "매력 수치만큼 주사위 + 지력 수치")
+export function describeExam(card: Pick<ExamCard, "diceStat" | "bonusStat">): string {
+  return `${STAT_LABEL[card.diceStat]} 수치만큼 주사위${card.bonusStat ? ` + ${STAT_LABEL[card.bonusStat]} 수치` : ""}`;
+}
 
 export const ACTIVITY_LABEL: Record<ActivityId, string> = {
   tournament: "마법 토너먼트 참가",

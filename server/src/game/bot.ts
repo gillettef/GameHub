@@ -49,6 +49,13 @@ export function pickBotPersonality(): BotStrategy {
 // 연구실만 파는 성향은 3주차에 카드를 여러 장 펼치므로 지력·체력토큰을 더 남겨 둔다
 const isLabLeaning = (strategy: BotStrategy) => strategy.activityBias.lab >= 3;
 
+// 공개된 다음 시험 카드가 겨냥하는 능력치는 더 키운다 (주사위 능력치 ×1.6, 보너스 능력치 ×1.25)
+function examWeight(state: GameState, stat: StatKey): number {
+  const upcoming = state.round <= BALANCE.midtermRound ? state.exams.midterm : state.exams.final;
+  if (!upcoming) return 1;
+  return upcoming.diceStat === stat ? 1.6 : upcoming.bonusStat === stat ? 1.25 : 1;
+}
+
 // 정규수업 단계 한 턴: 지력토큰으로 수업카드를 열어 보고, 체력토큰이 허용하는 만큼 골라 습득한다.
 // 3주차에 카드를 여는 활동(마법생물·비밀의 방·연구실)에도 지력토큰이 들기 때문에 일부는 남겨 둔다
 export function playClassTurn(state: GameState, playerId: string, strategy: BotStrategy): void {
@@ -58,7 +65,7 @@ export function playClassTurn(state: GameState, playerId: string, strategy: BotS
   const staminaBudget = Math.max(0, p.staminaTokens + Math.floor(p.charmTokens / charmRate(p)) - (isLabLeaning(strategy) ? 3 : 0));
   // 성향에 맞는 능력치의 카드를 우선해서 (싼 카드일수록 좋게 보고) 체력토큰이 허용하는 만큼 습득할 카드를 고른다
   const value = (c: (typeof p.offeredClassCards)[number]) =>
-    strategy.random ? Math.random() : (c.statBoost.amount * strategy.classWeights[c.statBoost.stat]) / c.takeCost;
+    strategy.random ? Math.random() : (c.statBoost.amount * strategy.classWeights[c.statBoost.stat] * examWeight(state, c.statBoost.stat)) / c.takeCost;
   const pickKeep = () => {
     let stamina = staminaBudget;
     const keep: string[] = [];
@@ -134,8 +141,8 @@ export function chooseLabCard(state: GameState, strategy: BotStrategy): string |
   const value = (card: (typeof cards)[number]): number => {
     const e = card.effect;
     let v = 0;
-    for (const [stat, n] of Object.entries(e.stats ?? {})) v += (n ?? 0) * strategy.classWeights[stat as StatKey] * 1.5;
-    for (const [stat, n] of Object.entries(e.tempStats ?? {})) v += (n ?? 0) * strategy.classWeights[stat as StatKey] * 0.5;
+    for (const [stat, n] of Object.entries(e.stats ?? {})) v += (n ?? 0) * strategy.classWeights[stat as StatKey] * examWeight(state, stat as StatKey) * 1.5;
+    for (const [stat, n] of Object.entries(e.tempStats ?? {})) v += (n ?? 0) * strategy.classWeights[stat as StatKey] * examWeight(state, stat as StatKey) * 0.5;
     v += (e.credit ?? 0) * 3;
     v += (e.peekExploration ? 0.8 : 0) + (e.nextSpellbook ?? 0) * 0.4 + (e.nextStamina ?? 0) * 0.5;
     return v - card.cost * 0.3; // 같은 효과라면 싼 카드가 좋다

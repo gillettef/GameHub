@@ -251,7 +251,7 @@ test("협력 탐험: 두 번째 참가자가 뽑을 때는 합류할 자리가 �
   assert.ok(state.explorationPile.discard.some((c) => c.id === "coop-test"));
 });
 
-test("시험: 지력만큼 주사위를 굴려야 결과가 나온다", () => {
+test("시험: 시험 카드가 정한 능력치만큼 주사위를 굴리고 보너스 능력치를 더한다", () => {
   const state = newGame(3);
   const strategy = BOT_PERSONALITIES[0];
   let guard = 0;
@@ -271,18 +271,23 @@ test("시험: 지력만큼 주사위를 굴려야 결과가 나온다", () => {
   assert.equal(state.examResults.length, 0, "주사위를 굴리기 전에는 결과가 없다");
   const pending = state.pendingRoll;
   assert.ok(pending && pending.kind === "exam");
-  // 주사위 수 = 지력 + 연구 카드로 받은 임시 지력 (시험이 끝나면 임시분은 사라지므로 미리 저장해 둔다)
+  // 주사위 수 = 시험 카드의 주사위 능력치 + 연구 카드로 받은 임시 능력치 (시험이 끝나면 임시분은 사라지므로 미리 저장해 둔다)
+  const card = state.exams.midterm;
+  assert.ok(card, "중간고사 카드는 3라운드 뒤에 공개되어 있다");
   const diceCounts = new Map<string, number>();
+  const bonuses = new Map<string, number>();
   for (const entry of pending.entries) {
     const p = state.players[entry.playerId];
-    diceCounts.set(entry.playerId, p.intelligence + (p.tempBoosts.intelligence ?? 0));
+    diceCounts.set(entry.playerId, p[card.diceStat] + (p.tempBoosts[card.diceStat] ?? 0));
+    bonuses.set(entry.playerId, card.bonusStat ? p[card.bonusStat] + (p.tempBoosts[card.bonusStat] ?? 0) : 0);
     assert.equal(entry.diceCount, diceCounts.get(entry.playerId));
   }
   rollAll(state);
   assert.equal(state.examResults.length, 1);
   for (const score of state.examResults[0].scores) {
     assert.equal(score.dice.length, diceCounts.get(score.playerId));
-    assert.equal(score.score, score.dice.reduce((a, b) => a + b, 0));
+    assert.equal(score.bonus, bonuses.get(score.playerId));
+    assert.equal(score.score, score.dice.reduce((a, b) => a + b, 0) + score.bonus);
     assert.ok(score.dice.every((d) => d >= 1 && d <= 6));
   }
   assert.equal(state.phase, "class");
@@ -361,6 +366,41 @@ test("마도서 '매혹의 화술서'·'반짝 스타일북'이 있으면 매력
   p.charmTokens = 2;
   openClassCard(state, state.turnOrder[0]);
   assert.equal(p.charmTokens, 0);
+});
+
+test("시험 카드: 게임마다 서로 다른 능력치를 겨냥하는 두 장이 정해지고, 3·9라운드 종료 후에 공개된다", () => {
+  for (let i = 0; i < 30; i++) {
+    const plan = newGame(2).hidden.examPlan;
+    assert.notEqual(plan.midterm.diceStat, plan.final.diceStat);
+    assert.notEqual(plan.midterm.id, plan.final.id);
+  }
+  const state = newGame(3);
+  const strategy = BOT_PERSONALITIES[0];
+  assert.deepEqual(state.exams, { midterm: null, final: null });
+  const plan = state.hidden.examPlan;
+  const seen: Record<number, { midterm: unknown; final: unknown }> = {};
+  let guard = 0;
+  while (state.phase !== "ended" && guard++ < 6000) {
+    seen[state.round] ??= { midterm: state.exams.midterm, final: state.exams.final };
+    if (state.pendingRoll) rollAll(state);
+    else if (state.phase === "class") {
+      for (const id of state.turnOrder) if (!state.players[id].hasActedThisPhase) playClassTurn(state, id, strategy);
+    } else {
+      const id = state.activityOrder[state.activityTurnPointer];
+      const pick = chooseActivityAction(state, id, strategy);
+      selectActivity(state, id, pick.activityId, pick.targetPlayerId, pick.useStamina);
+      if (state.pendingLab) submitLabChoice(state, id, chooseLabCard(state, strategy));
+    }
+  }
+  assert.equal(state.phase, "ended");
+  assert.equal(seen[3].midterm, null, "3라운드 중에는 아직 비공개");
+  assert.equal(seen[4].midterm, plan.midterm, "3라운드가 끝나면 중간고사 카드가 공개된다");
+  assert.equal(seen[4].final, null);
+  assert.equal(seen[9].final, null, "9라운드 중에는 기말고사 카드가 비공개");
+  assert.equal(seen[10].final, plan.final, "9라운드가 끝나면 기말고사 카드가 공개된다");
+  assert.equal(state.examResults.length, 2);
+  assert.equal(state.examResults[0].card.id, plan.midterm.id);
+  assert.equal(state.examResults[1].card.id, plan.final.id);
 });
 
 console.log(`\n${passed}개 검증 통과\n`);

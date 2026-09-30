@@ -137,9 +137,19 @@ export interface GameLogEntry {
   message: string;
 }
 
+// 시험 카드 (examCards.ts): 시험 점수 = diceStat 수치만큼 굴린 주사위 합 + bonusStat 수치
+export interface ExamCard {
+  id: string;
+  name: string;
+  description: string;
+  diceStat: StatKey;
+  bonusStat?: StatKey;
+}
+
 export interface ExamResult {
   round: number;
-  scores: { playerId: string; score: number; dice: number[]; rank: number; creditAwarded: number }[];
+  card: ExamCard;
+  scores: { playerId: string; score: number; dice: number[]; bonus: number; rank: number; creditAwarded: number }[];
 }
 
 // 주사위 굴리기 단계: 굴려야 하는 사람이 모두 버튼을 눌러 굴릴 때까지 게임이 기다린다
@@ -172,10 +182,12 @@ export interface DuelPair {
 export type RollContext =
   | { kind: "duel"; challengerId: string; targetId: string; challengerBoost: number; defenderBoost: number }
   | { kind: "exploration"; card: ExplorationCard; playerIds: string[]; boosts: Record<string, number>; mode: "single" | "pair" }
-  | { kind: "exam"; examType: "midterm_exam" | "final_exam" };
+  | { kind: "exam"; examType: "midterm_exam" | "final_exam"; card: ExamCard };
 
 export interface HiddenState {
   roll: RollContext | null;
+  // 이번 게임의 시험 카드 (공개 시점 전에는 서버만 안다)
+  examPlan: { midterm: ExamCard; final: ExamCard };
   // 협력 카드를 뽑았지만 아직 함께할 친구가 없는 상태 (boost: 뽑은 사람이 집중으로 쓴 체력토큰 효과)
   coop: { card: ExplorationCard; playerId: string; boost: number } | null;
 }
@@ -198,6 +210,8 @@ export interface GameState {
   pendingRoll: PendingRoll | null;
   // 함께할 친구를 기다리는 협력 탐험 카드
   coopWaiting: CoopWaiting | null;
+  // 공개된 시험 카드 (3라운드 종료 후 중간고사, 9라운드 종료 후 기말고사 카드가 공개되기 전에는 null)
+  exams: { midterm: ExamCard | null; final: ExamCard | null };
   examResults: ExamResult[];
   // 가장 최근 4주차(정리)에서 소멸한 토큰 (화면의 정리 연출용)
   cleanupSummary: { playerId: string; intelligenceTokens: number; staminaTokens: number; charmTokens: number; spellbookTokens: number }[];
@@ -232,6 +246,10 @@ export interface PublicRules {
   activityMaxParticipants: number;
   activitySecondParticipantCost: number;
   duelCharmFee: number;
+  // 시험이 열리는 라운드와, 시험 카드가 공개되는 라운드 (이 라운드가 끝난 뒤 공개)
+  midtermRound: number;
+  midtermRevealRound: number;
+  finalRevealRound: number;
   // 매력토큰 교환: 기본 charmExchangeRate개 = 지력·체력토큰 1개 (카드로 최소 charmExchangeRateMin개까지)
   charmExchangeRate: number;
   charmExchangeRateMin: number;

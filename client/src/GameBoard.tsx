@@ -4,6 +4,7 @@ import {
   ACTIVITY_HINT,
   ACTIVITY_LABEL,
   activityOpenCost,
+  describeExam,
   canPay,
   charmRate,
   ELEMENT_ICON,
@@ -246,6 +247,32 @@ function ClassPhasePanel({
       >
         {selected.length === 0 ? "습득 없이 넘어가기" : `${selected.length}장 습득 확정 (체력토큰 ${selectedCost}개)`}
       </button>
+    </div>
+  );
+}
+
+// 다음 시험의 시험 카드 안내: 공개 전에는 언제 공개되는지, 공개 후에는 어떤 능력치로 점수를 내는지 보여 준다
+function ExamInfoPanel({ game }: { game: GameState }) {
+  if (game.phase === "ended") return null;
+  const { midtermRound, midtermRevealRound, finalRevealRound } = game.rules;
+  const isMidterm = game.round <= midtermRound && game.examResults.length === 0;
+  const card = isMidterm ? game.exams.midterm : game.exams.final;
+  const name = isMidterm ? "중간고사" : "기말고사";
+  const examRound = isMidterm ? midtermRound : 12;
+  const revealRound = isMidterm ? midtermRevealRound : finalRevealRound;
+  return (
+    <div className="bg-sky-50 border-2 border-sky-200 rounded-3xl p-3 text-sm text-sky-800">
+      <p className="font-display text-base text-sky-700 mb-0.5">
+        <InlineIcon name="note" /> 다음 시험: {name} ({examRound}개월 끝)
+      </p>
+      {card ? (
+        <>
+          <p><b>{card.name}</b> — {describeExam(card)}</p>
+          <p className="text-xs text-sky-600">{card.description}</p>
+        </>
+      ) : (
+        <p className="text-xs text-sky-600">시험 과목은 {revealRound}개월이 끝나면 공개돼요. 그때까지는 고르게 키워 두면 안전해요.</p>
+      )}
     </div>
   );
 }
@@ -752,15 +779,19 @@ export function GameBoard({
             )}
             {game.phase === "ended" && <EndedPanel game={game} />}
 
+            <ExamInfoPanel game={game} />
+
             {latestExam && (
               <div className="bg-sky-50 border-2 border-sky-200 rounded-3xl p-3 text-sm">
                 <p className="font-display text-base text-sky-700 mb-1">
-                  <InlineIcon name="note" /> {latestExam.round === 6 ? "중간고사" : "기말고사"} 결과
+                  <InlineIcon name="note" /> {latestExam.round === 6 ? "중간고사" : "기말고사"} 결과 · {latestExam.card.name}
                 </p>
                 {latestExam.scores.map((s) => (
                   <p key={s.playerId} className="text-sky-800">
                     {s.rank}위 {game.players[s.playerId].name} — 점수 {s.score}
-                    {s.dice.length > 0 && <span className="text-xs text-sky-600"> (주사위 {s.dice.join("+")})</span>}, 학점 +{s.creditAwarded}
+                    {(s.dice.length > 0 || s.bonus > 0) && (
+                      <span className="text-xs text-sky-600"> ({s.dice.length > 0 ? `주사위 ${s.dice.join("+")}` : ""}{s.bonus > 0 ? ` 보너스 +${s.bonus}` : ""})</span>
+                    )}, 학점 +{s.creditAwarded}
                   </p>
                 ))}
               </div>

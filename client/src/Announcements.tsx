@@ -1,6 +1,6 @@
 import { useEffect, useState, type CSSProperties } from "react";
 import { Icon, type IconName } from "./Icons";
-import { ACTIVITY_LABEL, STAT_LABEL, type ActivityId, type GameState, type StatKey } from "./gameTypes";
+import { ACTIVITY_LABEL, STAT_LABEL, describeExam, type ActivityId, type GameState, type StatKey } from "./gameTypes";
 
 // 주차가 시작될 때 뜨는 "배너"와, 내 활동·시험 결과를 알려 주는 "결과 모달"을 순서대로 보여 준다. 둘 다 버튼을 눌러야 넘어간다.
 // 1주차(토큰 획득)·4주차(토큰 소멸) 배너는 버튼을 누르면 모두의 토큰이 들어오거나 사라지는 연출이 나온 뒤 다음으로 넘어간다.
@@ -165,11 +165,24 @@ function activityResult(prev: GameState, next: GameState, myId: string): Announc
 }
 
 function examBanner(next: GameState): Announcement {
+  const card = next.exams[next.phase === "midterm_exam" ? "midterm" : "final"]!;
   return make({
     kind: "banner",
     icon: "dice",
     title: next.phase === "midterm_exam" ? "중간고사 시작!" : "기말고사 시작!",
-    subtitle: "지력 수치만큼 주사위를 굴려 합산한 점수로 순위를 매겨요",
+    subtitle: `${card.name}: ${describeExam(card)}로 점수를 내요`,
+  });
+}
+
+// 3라운드·9라운드가 끝나면 다음 시험의 시험 카드가 공개된다
+function examRevealBanner(next: GameState, which: "midterm" | "final"): Announcement {
+  const card = next.exams[which]!;
+  return make({
+    kind: "banner",
+    icon: "note",
+    title: `${which === "midterm" ? "중간고사" : "기말고사"} 과목 공개!`,
+    subtitle: `"${card.name}" — ${describeExam(card)}`,
+    lines: [card.description, `시험까지 ${STAT_LABEL[card.diceStat]}${card.bonusStat ? `과 ${STAT_LABEL[card.bonusStat]}` : ""}을(를) 키워 두면 유리해요`],
   });
 }
 
@@ -178,10 +191,10 @@ function examResult(next: GameState, myId: string): Announcement {
   return make({
     kind: "result",
     icon: "note",
-    title: result.round === 6 ? "중간고사 결과" : "기말고사 결과",
+    title: `${result.round === 6 ? "중간고사" : "기말고사"} 결과 · ${result.card.name}`,
     lines: result.scores.map(
       (s) =>
-        `${s.rank}위 ${next.players[s.playerId].name}${s.playerId === myId ? " (나)" : ""} — 점수 ${s.score}${s.dice.length > 0 ? ` (주사위 ${s.dice.join("+")})` : ""}, 학점 +${s.creditAwarded}`,
+        `${s.rank}위 ${next.players[s.playerId].name}${s.playerId === myId ? " (나)" : ""} — 점수 ${s.score}${s.dice.length > 0 || s.bonus > 0 ? ` (${[s.dice.length > 0 ? `주사위 ${s.dice.join("+")}` : "", s.bonus > 0 ? `보너스 +${s.bonus}` : ""].filter(Boolean).join(" ")})` : ""}, 학점 +${s.creditAwarded}`,
     ),
   });
 }
@@ -198,6 +211,8 @@ function build(prev: GameState, next: GameState, myId: string): Announcement[] {
   if (activityEnded) out.push(cleanupBanner(prev, next, myId));
   if (prev.phase !== next.phase && next.pendingRoll?.kind === "exam") out.push(examBanner(next));
   if (next.examResults.length > prev.examResults.length) out.push(examResult(next, myId));
+  if (!prev.exams.midterm && next.exams.midterm) out.push(examRevealBanner(next, "midterm"));
+  if (!prev.exams.final && next.exams.final) out.push(examRevealBanner(next, "final"));
   if (roundChanged && next.phase === "class") out.push(prepBanner(next, myId), classBanner(next));
   else if (prev.phase === "class" && next.phase === "activity") out.push(activityBanner(next, myId));
   return out;
@@ -209,7 +224,7 @@ function playDuration(tokens: NonNullable<Announcement["tokens"]>): number {
   const finish = Math.max(
     0,
     ...tokens.rows.map(
-      (r, i) => i * ROW_GAP + (Math.min(MAX_ICONS, r.int) + Math.min(MAX_ICONS, r.stamina) + Math.min(MAX_ICONS, r.spell)) * TOKEN_GAP,
+      (r, i) => i * ROW_GAP + (Math.min(MAX_ICONS, r.int) + Math.min(MAX_ICONS, r.stamina) + Math.min(MAX_ICONS, r.charm) + Math.min(MAX_ICONS, r.spell)) * TOKEN_GAP,
     ),
   );
   return (finish + 0.5 + HOLD_AFTER) * 1000;

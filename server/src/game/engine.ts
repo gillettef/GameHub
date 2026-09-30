@@ -12,6 +12,7 @@ import {
 import { randomUUID } from "node:crypto";
 import { BALANCE, examCreditForRank } from "./config.js";
 import { describeAbility } from "./creatures.js";
+import { describeExam, pickExamCards } from "./examCards.js";
 import { describeEffect } from "./explorationCards.js";
 import {
   effectiveStat,
@@ -24,6 +25,7 @@ import {
   type ExplorationCard,
   type LabCard,
   type StatKey,
+  type ExamCard,
   type ExamResult,
   type GameState,
   type PlayerGameState,
@@ -204,9 +206,10 @@ export function createGame(players: { id: string; name: string; isBot?: boolean 
     pendingLab: null,
     pendingRoll: null,
     coopWaiting: null,
+    exams: { midterm: null, final: null },
     examResults: [],
     cleanupSummary: [],
-    hidden: { roll: null, coop: null },
+    hidden: { roll: null, coop: null, examPlan: pickExamCards() },
     labPile: createLabPile(),
     explorationPile: createExplorationPile(),
     grimoirePile: createGrimoirePile(),
@@ -348,7 +351,7 @@ function beginActivityPhase(state: GameState): void {
   state.pendingLab = null;
   state.pendingRoll = null;
   state.coopWaiting = null;
-  state.hidden = { roll: null, coop: null };
+  state.hidden = { ...state.hidden, roll: null, coop: null }; // 시험 카드 계획(examPlan)은 게임 내내 유지
   for (const playerId of state.turnOrder) {
     state.players[playerId].hasActedThisPhase = false;
   }
@@ -771,7 +774,7 @@ function resolveRoll(state: GameState): void {
     resolveExploration(state, ctx, Object.fromEntries(ctx.playerIds.map((id) => [id, diceOf(id)[0]])));
     finishActivityTurn(state);
   } else {
-    resolveExam(state, ctx.examType, Object.fromEntries(state.turnOrder.map((id) => [id, diceOf(id)])));
+    resolveExam(state, ctx.examType, ctx.card, Object.fromEntries(state.turnOrder.map((id) => [id, diceOf(id)])));
   }
 }
 
@@ -804,20 +807,35 @@ function beginCleanupPhase(state: GameState): void {
 }
 
 function advanceRound(state: GameState): void {
+  revealExamCard(state);
   state.round += 1;
   beginRound(state);
 }
 
-// 시험: 각자 지력 수치만큼 주사위를 굴려(버튼) 합산한다
+// 3라운드·9라운드가 끝나면 다음 시험(중간고사·기말고사)의 시험 카드를 공개한다
+function revealExamCard(state: GameState): void {
+  const plan = state.hidden.examPlan;
+  const which = state.round === BALANCE.midtermRevealRound ? "midterm" : state.round === BALANCE.finalRevealRound ? "final" : null;
+  if (!which) return;
+  state.exams[which] = plan[which];
+  log(state, `${which === "midterm" ? "중간고사" : "기말고사"} 과목 공개: "${plan[which].name}" (${describeExam(plan[which], STAT_NAME)})`);
+}
+
+// 시험: 시험 카드가 정한 능력치 수치만큼 주사위를 굴려(버튼) 합산하고, 보너스 능력치가 있으면 그 수치를 더한다
+function examBonus(state: GameState, playerId: string, card: ExamCard): number {
+  return card.bonusStat ? effectiveStat(state.players[playerId], card.bonusStat) : 0;
+}
+
 function beginExam(state: GameState, examType: "midterm_exam" | "final_exam"): void {
   state.phase = examType;
-  state.hidden.roll = { kind: "exam", examType };
+  const card = state.hidden.examPlan[examType === "midterm_exam" ? "midterm" : "final"];
+  state.hidden.roll = { kind: "exam", examType, card };
   state.pendingRoll = {
     kind: "exam",
-    title: examType === "midterm_exam" ? "중간고사" : "기말고사",
-    lines: ["지력 수치만큼 주사위를 굴려 합산한 점수로 순위를 매겨요"],
+    title: `${examType === "midterm_exam" ? "중간고사" : "기말고사"} · ${card.name}`,
+    lines: [`${describeExam(card, STAT_NAME)}로 점수를 내고, 높은 순서로 순위를 매겨요`],
     entries: state.turnOrder.map((id) => {
-      const diceCount = effectiveStat(state.players[id], "intelligence");
+      const diceCount = effectiveStat(state.players[id], card.diceStat);
       return { playerId: id, label: state.players[id].name, diceCount, dice: diceCount === 0 ? [] : null };
     }),
   };
@@ -825,8 +843,9 @@ function beginExam(state: GameState, examType: "midterm_exam" | "final_exam"): v
   if (state.pendingRoll.entries.every((e) => e.dice !== null)) resolveRoll(state);
 }
 
-function resolveExam(state: GameState, examType: "midterm_exam" | "final_exam", diceByPlayer: Record<string, number[]>): void {
-  const scores = new Map(state.turnOrder.map((id) => [id, sum(diceByPlayer[id] ?? [])]));
+function resolveExam(state: GameState, examType: "midterm_exam" | "final_exam", card: ExamCard, diceByPlayer: Record<string, number[]>): void {
+  const bonusOf = Object.fromEntries(state.turnOrder.map((id) => [id, examBonus(state, id, card)]));
+  const scores = new Map(state.turnOrder.map((id) => [id, sum(diceByPlayer[id] ?? []) + bonusOf[id]]));
   // 동점: 주문력 높은 쪽 → 매력 높은 쪽 → 주사위(무작위) 순으로 우선
   const ranked = state.turnOrder
     .map((id) => ({ playerId: id, score: scores.get(id) ?? 0 }))
@@ -837,12 +856,12 @@ function resolveExam(state: GameState, examType: "midterm_exam" | "final_exam", 
         compareTieBreak(state, x.playerId, y.playerId),
     );
 
-  const result: ExamResult = { round: state.round, scores: [] };
+  const result: ExamResult = { round: state.round, card, scores: [] };
   ranked.forEach((entry, index) => {
     const rank = index + 1;
     const creditAwarded = examCreditForRank(rank);
     state.players[entry.playerId].credit += creditAwarded;
-    result.scores.push({ playerId: entry.playerId, score: entry.score, dice: diceByPlayer[entry.playerId] ?? [], rank, creditAwarded });
+    result.scores.push({ playerId: entry.playerId, score: entry.score, dice: diceByPlayer[entry.playerId] ?? [], bonus: bonusOf[entry.playerId], rank, creditAwarded });
   });
   state.examResults.push(result);
   log(state, `${examType === "midterm_exam" ? "중간고사" : "기말고사"} 결과 반영 (학점 지급 완료)`);
