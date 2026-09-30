@@ -20,6 +20,8 @@ export type ClientMessage =
   | { type: "take_class_card"; cardId: string | null }
   | { type: "roll_dice" }
   // 모두 굴린 뒤 결과를 확인하고 다음으로 넘긴다
+  // 결과 확인 전에 지력토큰 1개당 주사위 1개를 다시 굴린다 (굴린 주사위 중 원하는 것만: 0부터 시작하는 번호)
+  | { type: "reroll_dice"; diceIndexes: number[] }
   | { type: "confirm_roll" }
   | { type: "select_activity"; activityId: ActivityId; targetPlayerId?: string }
   // 3주차 구역에 공개된 카드 중 1장을 고른다 (마법생물·연구 카드는 cardId가 null이면 가져가지 않고 넘어간다)

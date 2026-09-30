@@ -30,7 +30,7 @@ import { RulesModal } from "./Rules";
 import { Icon } from "./Icons";
 
 function App() {
-  const { state, game, lastError, errorSeq, reconnecting, createRoom, joinRoom, startGame, addBot, removeBot, takeClassCard, rollDice, confirmRoll, selectActivity, pickActivityCard } =
+  const { state, game, lastError, errorSeq, reconnecting, createRoom, joinRoom, startGame, addBot, removeBot, takeClassCard, rollDice, rerollDice, confirmRoll, selectActivity, pickActivityCard } =
     useGameSocket();
   const [playerName, setPlayerName] = useState("");
   const [joinCode, setJoinCode] = useState("");
@@ -86,6 +86,7 @@ ${window.location.href}`;
         onSelectActivity={selectActivity}
         onPickActivityCard={pickActivityCard}
         onRollDice={rollDice}
+        onRerollDice={rerollDice}
         onConfirmRoll={confirmRoll}
       />
       </>
