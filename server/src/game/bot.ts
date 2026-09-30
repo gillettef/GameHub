@@ -92,7 +92,7 @@ export function chooseActivityAction(
   const targets = duelTargets(state, playerId);
   const free = availableActivities(state, playerId);
   const base: Record<ActivityId, number> = {
-    tournament: effectiveStat(p, "spellPower") * 0.5,
+    tournament: effectiveStat(p, "spellPower") * 0.25,
     creature: p.spellbookTokens >= 3 ? 2 : 0.5,
     duel: 1.5,
     // 선두에게 뒤처졌다면 한 방을 노려볼 만하다 (탐험 역전 보너스)
