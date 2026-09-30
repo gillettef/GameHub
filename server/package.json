@@ -13,6 +13,7 @@
     "check": "tsx scripts/rules-check.ts",
     "smoke": "tsx scripts/smoke.ts",
     "smoke:bot": "tsx scripts/smoke-bot.ts",
+    "smoke:rejoin": "tsx scripts/smoke-rejoin.ts",
     "playtest": "npm --prefix ../client run build && tsx src/index.ts"
   },
   "dependencies": {

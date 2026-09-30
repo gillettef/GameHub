@@ -8,6 +8,10 @@ export interface Player {
   // 봇은 소켓이 없고, 서버가 대신 행동한다
   socket?: WebSocket;
   bot?: BotStrategy;
+  // 접속이 끊긴 사람을 기다리는 유예 타이머 (그 안에 돌아오면 같은 자리로 복귀)
+  graceTimer?: ReturnType<typeof setTimeout>;
+  // 접속이 끊겨 봇이 대신 맡게 된 사람 (돌아오면 다시 사람에게 돌려준다)
+  wasHuman?: boolean;
 }
 
 export interface Room {
@@ -59,6 +63,7 @@ export function leaveRoomIfNoHumans(room: Room): boolean {
 export function deleteRoom(room: Room): void {
   if (room.botTimer) clearTimeout(room.botTimer);
   if (room.expireTimer) clearTimeout(room.expireTimer);
+  for (const p of room.players.values()) if (p.graceTimer) clearTimeout(p.graceTimer);
   rooms.delete(room.code);
 }
 
@@ -72,6 +77,8 @@ export function scheduleRoomExpiry(room: Room, ttlMs = ENDED_ROOM_TTL_MS): void 
 export function leaveRoom(code: string, playerId: string): void {
   const room = getRoom(code);
   if (!room) return;
+  const leaving = room.players.get(playerId);
+  if (leaving?.graceTimer) clearTimeout(leaving.graceTimer);
   room.players.delete(playerId);
   if (leaveRoomIfNoHumans(room)) return;
   // 방장이 나가면 남은 사람 중 첫 번째가 방장을 이어받는다

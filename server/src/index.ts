@@ -48,6 +48,9 @@ const BOT_SPEED = Number(process.env.BOT_SPEED) || 1;
 const BOT_MIN_DELAY_MS = 1000 / BOT_SPEED;
 const BOT_MAX_DELAY_MS = 2000 / BOT_SPEED;
 const MAX_PLAYERS = 5;
+// 접속이 끊긴 사람이 돌아오기를 기다리는 시간 (이후엔 게임 중이면 봇이 자리를 맡고, 대기실이면 퇴장 처리)
+const AWAY_GRACE_MS = Number(process.env.AWAY_GRACE_MS) || 45_000;
+const HEARTBEAT_INTERVAL_MS = 15_000;
 
 // 봇의 평소 판단이 예외를 내더라도 게임이 멈추지 않도록 가장 단순한 행동으로 대신한다
 function runBotFallback(game: GameState, botId: string): void {
@@ -161,6 +164,46 @@ wss.on("connection", (socket) => {
       message = JSON.parse(raw.toString());
     } catch {
       send(socket, { type: "error", message: "잘못된 메시지 형식입니다." });
+      return;
+    }
+
+    if (message.type === "ping") {
+      send(socket, { type: "pong" });
+      return;
+    }
+
+    if (message.type === "rejoin_room") {
+      const room = getRoom(message.roomCode);
+      const player = room?.players.get(message.playerId);
+      // 처음부터 봇이었던 자리는 사람이 되돌릴 수 없다
+      if (!room || !player || (player.bot && !player.wasHuman)) {
+        send(socket, { type: "rejoin_failed" });
+        return;
+      }
+      const old = player.socket;
+      player.socket = socket;
+      if (old && old !== socket) old.terminate();
+      if (player.graceTimer) {
+        clearTimeout(player.graceTimer);
+        player.graceTimer = undefined;
+      }
+      if (player.bot) {
+        // 봇이 임시로 맡고 있던 자리를 다시 사람에게 돌려준다
+        player.bot = undefined;
+        player.wasHuman = undefined;
+        if (room.game?.players[player.id]) room.game.players[player.id].isBot = false;
+        room.game?.log.push({ round: room.game.round, message: `${player.name}님이 돌아왔습니다` });
+      }
+      playerId = player.id;
+      currentRoomCode = room.code;
+      send(socket, {
+        type: "room_rejoined",
+        roomCode: room.code,
+        playerId: player.id,
+        isHost: room.hostId === player.id,
+        players: playerInfo(room),
+      });
+      if (room.game) broadcastGameState(room);
       return;
     }
 
@@ -319,27 +362,56 @@ wss.on("connection", (socket) => {
   });
 
   socket.on("close", () => {
-    if (currentRoomCode && playerId) {
-      const room = getRoom(currentRoomCode);
-      const leaving = room?.players.get(playerId);
-      if (room && leaving && room.game && room.game.phase !== "ended") {
-        // 게임 도중 접속이 끊기면 봇이 자리를 이어받아 남은 사람들이 계속 플레이할 수 있게 한다
-        leaving.bot = pickBotPersonality();
-        leaving.socket = undefined;
-        if (room.game.players[playerId]) room.game.players[playerId].isBot = true;
-        room.game.log.push({ round: room.game.round, message: `${leaving.name}님의 연결이 끊겨 봇이 이어받습니다` });
-        if (leaveRoomIfNoHumans(room)) return;
-        broadcastGameState(room);
-        scheduleBots(room);
-        return;
-      }
-      leaveRoom(currentRoomCode, playerId);
-      if (room) {
-        broadcast(room, { type: "player_left", playerId });
-      }
-    }
+    if (!currentRoomCode || !playerId) return;
+    const room = getRoom(currentRoomCode);
+    const leaving = room?.players.get(playerId);
+    // 이미 새 연결로 갈아탄 옛 소켓이 뒤늦게 닫히는 경우는 무시한다
+    if (!room || !leaving || leaving.socket !== socket) return;
+    leaving.socket = undefined;
+    // 모바일에서 다른 앱을 잠깐 보고 오면 연결이 끊기므로, 바로 내보내지 않고 돌아올 시간을 준다
+    if (leaving.graceTimer) clearTimeout(leaving.graceTimer);
+    leaving.graceTimer = setTimeout(() => {
+      leaving.graceTimer = undefined;
+      handleAwayExpired(room, leaving);
+    }, AWAY_GRACE_MS);
   });
 });
+
+// 유예 시간 안에 돌아오지 않은 플레이어를 정리한다
+function handleAwayExpired(room: Room, leaving: Player): void {
+  if (leaving.socket || !room.players.has(leaving.id)) return;
+  if (room.game && room.game.phase !== "ended") {
+    // 게임 도중 끝내 돌아오지 않으면 봇이 자리를 이어받아 남은 사람들이 계속 플레이할 수 있게 한다
+    leaving.bot = pickBotPersonality();
+    leaving.wasHuman = true;
+    if (room.game.players[leaving.id]) room.game.players[leaving.id].isBot = true;
+    room.game.log.push({ round: room.game.round, message: `${leaving.name}님의 연결이 끊겨 봇이 이어받습니다` });
+    if (leaveRoomIfNoHumans(room)) return;
+    broadcastGameState(room);
+    scheduleBots(room);
+    return;
+  }
+  leaveRoom(room.code, leaving.id);
+  broadcast(room, { type: "player_left", playerId: leaving.id });
+}
+
+// 죽은 연결(전원 꺼짐, 백그라운드로 밀린 폰 등)을 주기적으로 찾아 끊는다 — 끊기면 위의 유예 절차가 시작된다
+const aliveSockets = new WeakSet<WebSocket>();
+wss.on("connection", (socket) => {
+  aliveSockets.add(socket);
+  socket.on("pong", () => aliveSockets.add(socket));
+  socket.on("message", () => aliveSockets.add(socket));
+});
+setInterval(() => {
+  for (const socket of wss.clients) {
+    if (!aliveSockets.has(socket)) {
+      socket.terminate();
+      continue;
+    }
+    aliveSockets.delete(socket);
+    socket.ping();
+  }
+}, HEARTBEAT_INTERVAL_MS).unref();
 
 server.listen(PORT, () => {
   console.log(`서버가 http://localhost:${PORT} 에서 실행 중입니다.`);

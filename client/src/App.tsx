@@ -30,7 +30,7 @@ import { RulesModal } from "./Rules";
 import { Icon } from "./Icons";
 
 function App() {
-  const { state, game, lastError, errorSeq, createRoom, joinRoom, startGame, addBot, removeBot, takeClassCard, rollDice, selectActivity, pickActivityCard } =
+  const { state, game, lastError, errorSeq, reconnecting, createRoom, joinRoom, startGame, addBot, removeBot, takeClassCard, rollDice, selectActivity, pickActivityCard } =
     useGameSocket();
   const [playerName, setPlayerName] = useState("");
   const [joinCode, setJoinCode] = useState("");
@@ -64,8 +64,19 @@ ${window.location.href}`;
     }
   };
 
+  const reconnectBanner = reconnecting && (
+    <div
+      role="status"
+      className="fixed inset-x-0 top-0 z-50 bg-purple-600/95 px-4 pb-2 pt-[max(0.5rem,env(safe-area-inset-top))] text-center text-sm text-white shadow-md"
+    >
+      연결이 끊겨 다시 연결하는 중이에요…
+    </div>
+  );
+
   if (state.status === "in_room" && game && state.playerId) {
     return (
+      <>
+      {reconnectBanner}
       <GameBoard
         game={game}
         myId={state.playerId}
@@ -76,6 +87,7 @@ ${window.location.href}`;
         onPickActivityCard={pickActivityCard}
         onRollDice={rollDice}
       />
+      </>
     );
   }
 
@@ -83,6 +95,7 @@ ${window.location.href}`;
     const canStart = state.players.length >= 2 && state.players.length <= 5;
     return (
       <>
+      {reconnectBanner}
       {rulesButton}
       {rulesModal}
       <main className="min-h-dvh flex flex-col items-center px-4 py-8">
