@@ -12,7 +12,7 @@
  * 2026-09-24: 덱 빌딩 자유 선택이 폐지되어 종족마다 고정 덱 하나뿐이라, 더 이상 덱 구성을
  * 무작위로 고를 필요가 없다 — 종족만 정하면 `buildDeck`이 나머지를 정한다.
  */
-import { applyAction, canPlay, createInitialState, createPlayer, joinPlayer, legalCells, terrainAt } from '../src/engine/index.js';
+import { applyAction, canPlay, computeIncome, createInitialState, createPlayer, joinPlayer, legalCells, terrainAt } from '../src/engine/index.js';
 import { hexDistance } from '../src/engine/sight.js';
 import { FIXED_DECKS, RACES, getSpec, mapsForPlayers } from '../src/data/index.js';
 import { readFileSync } from 'node:fs';
@@ -53,6 +53,137 @@ function sample<T>(items: readonly T[], n: number, rand: Rand): T[] {
     pool.splice(idx, 1);
   }
   return out;
+}
+
+// --- 종족 컨셉 지표 ----------------------------------------------------------------------------
+// 승률만으로는 "이 종족이 컨셉대로 이기는가"를 알 수 없어서, 대국 중 종족별 행동을 함께 집계한다.
+//   - 물량(swarm): 배치 평균 비용, 라운드 5/10/15의 마커 수, 잃은 마커 수
+//   - 침투(swarm·shade): 적 마커 거리 1 이내에 침투 카드를 놓은 비율
+//   - 축적(automata): 라운드 5/10/15의 턴 수입
+//   - 은신(shade): 전투가 났을 때 은신 마커와 비은신 마커의 피격률
+//   - 포격(siege): 전투 한 번에 공격 유닛 하나가 때리는 적 수, 선제 타격 비율
+const CHECKPOINTS = [5, 10, 15] as const;
+
+interface RaceMetrics {
+  games: number;
+  placements: number;
+  costSum: number;
+  unitPlacements: number;
+  infiltratePlacements: number;
+  infiltrateAdjacent: number;
+  lostMarkers: number;
+  veilExposed: number;
+  veilHit: number;
+  plainExposed: number;
+  plainHit: number;
+  hitEnemies: number;
+  activeAttackers: number;
+  rangeSum: number;
+  firstStrikeGames: number;
+  firstStrikeWins: number;
+  firstDamageRoundSum: number;
+  firstDamageGames: number;
+  markersAt: Record<number, { sum: number; n: number }>;
+  incomeAt: Record<number, { sum: number; n: number }>;
+}
+
+function newMetrics(): RaceMetrics {
+  return {
+    games: 0, placements: 0, costSum: 0, unitPlacements: 0, infiltratePlacements: 0, infiltrateAdjacent: 0,
+    lostMarkers: 0, veilExposed: 0, veilHit: 0, plainExposed: 0, plainHit: 0, hitEnemies: 0, activeAttackers: 0,
+    rangeSum: 0, firstStrikeGames: 0, firstStrikeWins: 0, firstDamageRoundSum: 0, firstDamageGames: 0,
+    markersAt: Object.fromEntries(CHECKPOINTS.map((r) => [r, { sum: 0, n: 0 }])),
+    incomeAt: Object.fromEntries(CHECKPOINTS.map((r) => [r, { sum: 0, n: 0 }])),
+  };
+}
+
+const METRICS = new Map<RaceId, RaceMetrics>();
+function metricsOf(race: RaceId): RaceMetrics {
+  let m = METRICS.get(race);
+  if (!m) {
+    m = newMetrics();
+    METRICS.set(race, m);
+  }
+  return m;
+}
+
+/** 한 판 안에서만 쓰는 임시 기록 */
+interface GameTrack {
+  races: RaceId[];
+  firstDamageTurn: Map<PlayerId, number>;
+  checkpointDone: Set<string>;
+}
+let TRACK: GameTrack | null = null;
+
+function raceOfPlayer(playerId: PlayerId): RaceId {
+  return (TRACK as GameTrack).races[Number(playerId.slice(1))] as RaceId;
+}
+
+function recordPlacement(before: GameState, playerId: PlayerId, spec: CardSpec, pos: Position): void {
+  const m = metricsOf(raceOfPlayer(playerId));
+  m.placements++;
+  m.costSum += spec.cost;
+  if (spec.kind === 'unit') m.unitPlacements++;
+  if (spec.keywords.includes('infiltrate')) {
+    m.infiltratePlacements++;
+    if (before.markers.some((o) => o.ownerId !== playerId && hexDistance(pos, o.pos) <= 1)) m.infiltrateAdjacent++;
+  }
+}
+
+/** 내 턴이 끝나며(전투 처리 직후) 상태가 바뀐 결과를 종족 지표로 옮긴다 */
+function recordTurnEnd(pre: GameState, post: GameState, playerId: PlayerId): void {
+  const track = TRACK as GameTrack;
+  const me = metricsOf(raceOfPlayer(playerId));
+
+  for (const r of CHECKPOINTS) {
+    const key = `${playerId}:${r}`;
+    if (pre.round === r && !track.checkpointDone.has(key)) {
+      track.checkpointDone.add(key);
+      me.markersAt[r]!.sum += pre.markers.filter((k) => k.ownerId === playerId && k.kind !== 'core').length;
+      me.markersAt[r]!.n++;
+      me.incomeAt[r]!.sum += computeIncome(pre, playerId).total;
+      me.incomeAt[r]!.n++;
+    }
+  }
+
+  const postById = new Map(post.markers.map((k) => [k.id, k]));
+  const victims = pre.markers.filter((k) => k.ownerId !== playerId);
+  const hit = new Set(
+    victims.filter((k) => {
+      const after = postById.get(k.id);
+      return !after || after.hp < k.hp;
+    }),
+  );
+  if (hit.size === 0) return;
+
+  if (!track.firstDamageTurn.has(playerId)) {
+    track.firstDamageTurn.set(playerId, pre.turn);
+    me.firstDamageRoundSum += pre.round;
+    me.firstDamageGames++;
+  }
+  // 전투가 난 턴에 한해, 피해자 쪽 은신/비은신 마커의 피격률과 손실을 센다
+  for (const k of victims) {
+    const veil = getSpec(k.specId).keywords.includes('veil');
+    const vm = metricsOf(raceOfPlayer(k.ownerId));
+    const wasHit = hit.has(k);
+    if (veil) {
+      vm.veilExposed++;
+      if (wasHit) vm.veilHit++;
+    } else if (k.kind !== 'core') {
+      vm.plainExposed++;
+      if (wasHit) vm.plainHit++;
+    }
+    if (!postById.has(k.id)) vm.lostMarkers++;
+  }
+  // 공격 측: 사거리 안에 적이 있는 공격 마커 수 대비 실제 피해를 입은 적 수
+  const attackers = pre.markers.filter((k) => {
+    if (k.ownerId !== playerId) return false;
+    const sp = getSpec(k.specId);
+    return sp.attack > 0 && victims.some((v) => hexDistance(k.pos, v.pos) <= sp.range);
+  });
+  me.hitEnemies += hit.size;
+  me.activeAttackers += attackers.length;
+  for (const k of attackers) me.rangeSum += getSpec(k.specId).range;
 }
 
 // --- 휴리스틱 봇 -------------------------------------------------------------------------
@@ -107,10 +238,13 @@ function botTurn(state: GameState, playerId: PlayerId, rand: Rand): GameState {
     if (!best) break;
     const r = applyAction(s, { type: 'PLACE', playerId, cardId: best.cardId, pos: best.pos });
     if (r.error) break; // canPlay/legalCells 로 이미 걸러졌으니 정상 경로에선 발생하지 않는다
+    recordPlacement(s, playerId, getSpec(best.cardId), best.pos);
     s = r.state;
   }
   if (s.phase === 'playing' && s.currentPlayerId === playerId) {
+    const pre = s;
     s = applyAction(s, { type: 'PASS', playerId }).state;
+    recordTurnEnd(pre, s, playerId);
   }
   return s;
 }
@@ -129,6 +263,9 @@ export interface GameSummary {
 
 function playGame(mapId: string, races: RaceId[], engineSeed: number, simSeed: number): GameSummary {
   const rand = mulberry32(simSeed);
+  const track: GameTrack = { races, firstDamageTurn: new Map(), checkpointDone: new Set() };
+  TRACK = track;
+  for (const r of races) metricsOf(r).games++;
   let s = createInitialState('sim', mapId, engineSeed);
   for (let i = 0; i < races.length; i++) {
     s = joinPlayer(s, createPlayer(`p${i}`, `P${i}`)).state;
@@ -148,6 +285,17 @@ function playGame(mapId: string, races: RaceId[], engineSeed: number, simSeed: n
     s = botTurn(s, pid, rand);
   }
   if (s.phase !== 'finished') throw new Error(`게임이 끝나지 않았습니다 (턴 상한): ${mapId} ${races.join(',')}`);
+
+  // 선제 타격: 먼저 적에게 피해를 준 쪽 (서로 같은 턴일 수는 없다)
+  const t0 = track.firstDamageTurn.get('p0');
+  const t1 = track.firstDamageTurn.get('p1');
+  if (t0 !== undefined && t1 !== undefined && t0 !== t1) {
+    for (const [pid, mine, theirs] of [['p0', t0, t1], ['p1', t1, t0]] as const) {
+      const mm = metricsOf(raceOfPlayer(pid));
+      mm.firstStrikeGames++;
+      if (mine < theirs) mm.firstStrikeWins++;
+    }
+  }
 
   const result = s.result!;
   const winnerId = result.ranking[0] ?? null;
@@ -264,6 +412,41 @@ function main() {
     );
   }
   console.log('\n종료 사유:', Object.fromEntries(reasonCount));
+
+  // 종족 컨셉 지표 (위 "종족 컨셉 지표" 주석 참고)
+  const div = (a: number, b: number, d = 1): string => (b > 0 ? (a / b).toFixed(d) : '-');
+  const pct = (a: number, b: number): string => (b > 0 ? `${((a / b) * 100).toFixed(0)}%` : '-');
+  console.log('\n종족 컨셉 지표:');
+  console.log(
+    '종족'.padEnd(10), '배치비용'.padEnd(9), '유닛비율'.padEnd(9), '침투밀착'.padEnd(9), '잃은마커'.padEnd(9),
+    '첫피해R'.padEnd(9), '선제타격'.padEnd(9), '적피해/공격자'.padEnd(13), '평균사거리',
+  );
+  for (const race of RACE_IDS) {
+    const m = metricsOf(race);
+    console.log(
+      race.padEnd(10),
+      div(m.costSum, m.placements, 2).padEnd(9),
+      pct(m.unitPlacements, m.placements).padEnd(9),
+      pct(m.infiltrateAdjacent, m.infiltratePlacements).padEnd(9),
+      div(m.lostMarkers, m.games).padEnd(9),
+      div(m.firstDamageRoundSum, m.firstDamageGames).padEnd(9),
+      pct(m.firstStrikeWins, m.firstStrikeGames).padEnd(9),
+      div(m.hitEnemies, m.activeAttackers, 2).padEnd(13),
+      div(m.rangeSum, m.activeAttackers, 2),
+    );
+  }
+  console.log('\n라운드별 마커 수(코어 제외) / 턴 수입:');
+  console.log('종족'.padEnd(10), ...CHECKPOINTS.map((r) => `R${r}`.padEnd(14)));
+  for (const race of RACE_IDS) {
+    const m = metricsOf(race);
+    console.log(race.padEnd(10), ...CHECKPOINTS.map((r) => `${div(m.markersAt[r]!.sum, m.markersAt[r]!.n)} / ${div(m.incomeAt[r]!.sum, m.incomeAt[r]!.n)}`.padEnd(14)));
+  }
+  console.log('\n전투가 난 턴의 은신 마커 vs 비은신 마커 피격률:');
+  for (const race of RACE_IDS) {
+    const m = metricsOf(race);
+    if (m.veilExposed === 0) continue;
+    console.log(race.padEnd(10), `은신 ${pct(m.veilHit, m.veilExposed)} (n=${m.veilExposed})`, `비은신 ${pct(m.plainHit, m.plainExposed)} (n=${m.plainExposed})`);
+  }
 
   // 쌍별 승률 행렬: 행 종족이 열 종족을 상대로 이긴 비율(좌석 순서·맵 섞임, 2인전 전용).
   // 상성 설계(목표 45:55)와 무상성(목표 50:50)을 확인하는 용도다.
