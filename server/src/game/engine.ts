@@ -1277,6 +1277,8 @@ function finishCleanup(state: GameState): void {
   };
   // 토큰이 소멸하기 전의 매력토큰으로 선을 정한다
   const nextIndex = nextStarterIndex(state);
+  const starterName = state.players[state.turnOrder[nextIndex]].name;
+  const starterTokens = state.players[state.turnOrder[nextIndex]].charmTokens;
   state.cleanupSummary = state.turnOrder.map((id) => {
     const p = state.players[id];
     const kept = keptOf(id);
@@ -1309,9 +1311,9 @@ function finishCleanup(state: GameState): void {
   log(state, "4주차(정리): 남은 토큰 소멸 (남기기로 한 토큰은 다음 달로 가요)");
   if (nextIndex !== state.startingPlayerIndex) {
     state.startingPlayerIndex = nextIndex;
-    log(state, `4주차(정리): 매력이 가장 높은 ${state.players[state.turnOrder[nextIndex]].name}님이 다음 달 선이 돼요`);
+    log(state, BALANCE.starterRule === "charmTokens" ? `4주차(정리): 남은 매력토큰이 가장 많은 ${starterName}님(${starterTokens}개)이 다음 달 선이 돼요` : `4주차(정리): ${starterName}님이 다음 달 선이 돼요`);
   } else {
-    log(state, `4주차(정리): 다음 달도 ${state.players[state.turnOrder[nextIndex]].name}님이 선이에요 (매력이 가장 높거나 같아요)`);
+    log(state, `4주차(정리): 다음 달도 ${starterName}님이 선이에요`);
   }
 
   advanceRound(state);
