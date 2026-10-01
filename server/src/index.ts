@@ -6,6 +6,7 @@ import express from "express";
 import { randomUUID } from "node:crypto";
 import { WebSocketServer, type WebSocket } from "ws";
 import { BALANCE } from "./game/config.js";
+import { MIN_CREATURE_COST } from "./game/creatures.js";
 import { createRoom, getRoom, joinRoom, leaveRoom, leaveRoomIfNoHumans, scheduleRoomExpiry, broadcast, type Player, type Room } from "./rooms.js";
 import { BOT_NAMES, chooseActivityAction, choosePick, pickBotPersonality, playClassTurn, rerollLowDice } from "./game/bot.js";
 import {
@@ -179,6 +180,7 @@ const PUBLIC_RULES: PublicRules = {
   charmExchangeRateMin: BALANCE.charmExchangeRateMin,
   tournamentRewards: BALANCE.tournamentRewards,
   creatureSetScore: BALANCE.creatureSetScore,
+  creatureMinCost: MIN_CREATURE_COST,
 };
 
 function broadcastGameState(room: Room): void {

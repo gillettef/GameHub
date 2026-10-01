@@ -75,6 +75,9 @@ export const CREATURE_CARDS: readonly Omit<CreatureCard, "id">[] = DEFS.map(
   }),
 );
 
+// 어떤 마법생물이든 가져오려면 최소 이만큼의 마법 주문서가 있어야 한다 (구역을 고르기 전에 미리 막는 데 쓴다)
+export const MIN_CREATURE_COST = Math.min(...CREATURE_CARDS.map((c) => c.requiredSpellPower));
+
 export function describeAbility(a: CreatureAbility): string {
   const when = { acquire: "획득 즉시", prep: "매달 준비 때", duel: "주문 대결 참여 시", defend: "대결 도전받을 때", lose: "대결 패배 시", always: "항상" }[a.trigger];
   const what = {
