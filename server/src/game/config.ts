@@ -14,9 +14,9 @@ export const BALANCE = {
   initialStats: { intelligence: 2, stamina: 2, charm: 2, spellPower: 2 } as Record<StatKey, number>,
   initialCredit: 0,
   // 마법 토너먼트: 최종 순위 보상 (1위, 2위 순서). 트랙에는 상한이 없다
-  tournamentRewards: [2, 1],
+  tournamentRewards: [4, 2],
   // 마법 토너먼트는 주문력 수치만큼 굴린 주사위 합만큼 전진한다. 이정표: 참가해서 트랙이 milestoneStep칸을 넘을 때마다 학점 milestoneCredit을 바로 받는다 (다른 사람과 경쟁하지 않는 보상)
-  tournamentMilestoneStep: 100,
+  tournamentMilestoneStep: 70,
   tournamentMilestoneCredit: 1,
   // 다음 달 선 결정 규칙 (4주차에 판정, 2026-10-01 기본값을 charmTokens로 변경): "charm" 매력 수치가 가장 높은 친구(현재 선이 최고면 유지) / "charmTokens" 남은 매력토큰이 가장 많은 친구 /
   // "charmPlusTokens" 매력 + 남은 매력토큰 / "rotate" 단순 시계방향 (비교용). 동점이면 현재 선에서 시계방향으로 가까운 친구
@@ -30,8 +30,8 @@ export const BALANCE = {
   // 학기별 수업카드 구성: statWeights = 덱 안 능력치별 비율, spellExtraCost = 주문력 카드에 더해지는 습득 체력토큰,
   // nonSpellCostCap = 주문력 외 카드의 습득 체력토큰 상한. 1학기는 싸고 지력·체력·매력 위주(주문력은 소수), 2학기는 주문력 위주
   classSemesters: [
-    { statWeights: { intelligence: 3, stamina: 3, charm: 3, spellPower: 1 } as Record<StatKey, number>, spellExtraCost: 1, nonSpellCostCap: 2 },
-    { statWeights: { intelligence: 2, stamina: 2, charm: 1, spellPower: 4 } as Record<StatKey, number>, spellExtraCost: 2, nonSpellCostCap: 3 },
+    { statWeights: { intelligence: 3, stamina: 3, charm: 3, spellPower: 1 } as Record<StatKey, number>, spellExtraCost: 5, nonSpellCostCap: 2 },
+    { statWeights: { intelligence: 3, stamina: 3, charm: 2, spellPower: 2 } as Record<StatKey, number>, spellExtraCost: 9, nonSpellCostCap: 3 },
   ],
   // 3주차 구역(비밀의 방·마법생물·주문 대결·연구실)에서 처음 들어온 사람이 여는 카드 수 (집중이나 특정 카드로 달라질 수 있다)
   activityOpenCount: 2,
@@ -42,9 +42,9 @@ export const BALANCE = {
   rollBenchmarkStart: 2,
   rollBenchmarkPerRound: 0.5,
   // 주문 대결 도전자가 지목당한 친구에게 건네는 마나토큰 개수 (매력 참가비 duelCharmFee와 별도. 지목당해도 마나토큰이 있어야 굴릴 수 있게 하는 장치)
-  duelManaFee: 1,
+  duelManaFee: 0,
   // 연구실 실험: 카드를 보고 지력토큰을 몇 개 낼지 골라 낸 개수만큼(최소 1개) 주사위를 굴려 합이 이 값 이상이면 성공 (안정적인 능력치 상향)
-  labTarget: 2,
+  labTarget: 4,
   // 연구실 실험에서 굴림 버튼의 기본 주사위 수 (지력토큰이 있으면 이 개수까지 미리 골라 둔다. 봇은 기본값 그대로 굴린다)
   labDefaultDice: 2,
   // 탐험 카드 목표값 배율 (1이면 카드에 적힌 난이도 그대로)
