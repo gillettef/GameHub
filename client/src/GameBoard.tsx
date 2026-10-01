@@ -245,7 +245,7 @@ function ExamInfoPanel({ game }: { game: GameState }) {
   return (
     <div className="bg-sky-50 border-2 border-sky-200 rounded-3xl p-3 text-sm text-sky-800">
       <p className="font-display text-base text-sky-700 mb-0.5">
-        <InlineIcon name="note" /> 다음 시험: {name} ({examRound}개월 끝)
+        <InlineIcon name="note" /> 다음 시험: {name} ({examRound}개월 2~3주차 대신)
       </p>
       {card ? (
         <>
@@ -771,11 +771,10 @@ function RollPanel({
   );
 }
 
-// 4주차(정리): 남은 지력토큰·체력토큰 중 1개를 다음 달로 남길 수 있다 (시험이 이어지는 달은 지력토큰이 시험용으로 이미 남아서 제외)
+// 4주차(정리): 남은 지력토큰·체력토큰 중 1개를 다음 달로 남길 수 있다
 function CleanupPanel({ game, myId, onKeep }: { game: GameState; myId: string; onKeep: (choice: KeepChoice) => void }) {
   const me = game.players[myId];
   const myChoice = game.cleanupKeep[myId]; // undefined: 남길 수 있는 토큰이 없음, null: 고르는 중
-  const examFollows = game.round === game.rules.midtermRound || game.round === 12;
   const waiting = Object.entries(game.cleanupKeep)
     .filter(([id, choice]) => choice === null && id !== myId)
     .map(([id]) => game.players[id].name);
@@ -789,7 +788,7 @@ function CleanupPanel({ game, myId, onKeep }: { game: GameState; myId: string; o
       <p className="mt-1 text-center text-sm text-purple-500">남은 토큰은 사라지지만, 지력토큰이나 체력토큰 중 <b>1개</b>는 다음 달로 남길 수 있어요.</p>
       {myChoice === null ? (
         <div className="mt-3 flex flex-col gap-2">
-          {!examFollows && me.intelligenceTokens > 0 && (
+          {me.intelligenceTokens > 0 && (
             <button
               className="min-h-12 rounded-2xl bg-sky-100 px-3 py-2 text-sky-800 font-semibold active:scale-95 transition-transform"
               onClick={() => onKeep("intelligence")}
@@ -811,7 +810,6 @@ function CleanupPanel({ game, myId, onKeep }: { game: GameState; myId: string; o
           >
             남기지 않기
           </button>
-          {examFollows && <p className="text-center text-xs text-purple-500">시험이 이어지는 달이라 지력토큰은 시험 다시 굴리기용으로 이미 남아 있어요.</p>}
         </div>
       ) : (
         <p className="mt-3 rounded-2xl bg-purple-50 px-3 py-2 text-center text-sm text-purple-600">
