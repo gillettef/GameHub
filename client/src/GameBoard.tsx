@@ -715,9 +715,9 @@ function RollPanel({
               <div className="mt-1 flex flex-wrap items-center gap-1.5">
                 {entry.dice.map((d, i) => (
                   <DiceFace
-                    key={`${i}-${d}-${entry.rerolls}`}
+                    key={`${i}-${entry.rerollCounts?.[i] ?? 0}`}
                     value={d}
-                    delay={i * 0.06}
+                    delay={(entry.rerollCounts?.[i] ?? 0) > 0 ? 0 : i * 0.06}
                     selected={entry.playerId === myId && canReroll && selected.includes(i)}
                     onToggle={entry.playerId === myId && canReroll ? () => toggle(i) : undefined}
                   />

@@ -18,6 +18,9 @@ export const BALANCE = {
   // 마법 토너먼트는 주문력 수치만큼 굴린 주사위 합만큼 전진한다. 이정표: 참가해서 트랙이 milestoneStep칸을 넘을 때마다 학점 milestoneCredit을 바로 받는다 (다른 사람과 경쟁하지 않는 보상)
   tournamentMilestoneStep: 100,
   tournamentMilestoneCredit: 1,
+  // 다음 달 선 결정 규칙 (4주차에 판정): "charm" 매력 수치가 가장 높은 친구(현재 선이 최고면 유지) / "charmTokens" 남은 매력토큰이 가장 많은 친구 /
+  // "charmPlusTokens" 매력 + 남은 매력토큰 / "rotate" 단순 시계방향 (비교용). 동점이면 현재 선에서 시계방향으로 가까운 친구
+  starterRule: "charm" as "charm" | "charmTokens" | "charmPlusTokens" | "rotate",
   // 시험 순위별 학점 (1위, 2위, 그 이하는 마지막 값)
   examCredits: [3, 2, 1],
   // 2주차(정규수업): 인원수 + classMarketExtra 장을 공개하고, 선부터 시계방향으로 1장씩 가져간다.
