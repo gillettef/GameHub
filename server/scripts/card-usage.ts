@@ -12,7 +12,7 @@ const rows: Record<string, unknown>[] = [];
 for (const n of [2, 3, 4, 5]) {
   const m = { classTaken: [] as number[], classOut: [] as number[], creatures: [] as number[], creatureOut: [] as number[], grimoire: [] as number[], grimOut: [] as number[], expl: [] as number[], lab: [] as number[], cls: [] as number[] };
   for (let g = 0; g < N; g++) {
-    const state: GameState = createGame(Array.from({ length: n }, (_, i) => ({ id: `p${i}`, name: `p${i}` })));
+    const state: GameState = createGame(Array.from({ length: n }, (_, i) => ({ id: `p${i}`, name: `p${i}`, isBot: true })));
     let classOut = 0, creatureOut = 0, grimOut = 0, explRe = 0, labRe = 0, clsRe = 0;
     let pe = state.explorationPile.draw.length, pl = state.labPile.draw.length, pc = state.classDeck.length;
     let guard = 0;

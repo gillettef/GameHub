@@ -38,7 +38,7 @@ export const BALANCE = {
   // 탐험 카드 목표값 배율 (1이면 카드에 적힌 난이도 그대로)
   exploreDifficultyScale: 1.25,
   // 주문력 수업카드가 다른 능력치 카드보다 더 드는 습득 체력토큰
-  spellClassExtraCost: 4,
+  spellClassExtraCost: 5,
   // 탐험 역전 보너스: 선두와의 성장 점수(능력치 합 + 학점×3) 격차가 이 값 이상이면 판정에 보너스를 더한다
   catchUpGap: 4,
   catchUpBonus: 2,

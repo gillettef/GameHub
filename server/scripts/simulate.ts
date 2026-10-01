@@ -46,7 +46,7 @@ let lastNormalExhaustRound = 0;
 
 function playGame(strategies: BotStrategy[]): GameState {
   const ids = strategies.map((_, i) => `p${i}`);
-  const state = createGame(ids.map((id) => ({ id, name: id })));
+  const state = createGame(ids.map((id) => ({ id, name: id, isBot: true })));
   const byId = Object.fromEntries(ids.map((id, i) => [id, strategies[i]]));
   let guard = 0;
   lastNormalExhaustRound = 0;

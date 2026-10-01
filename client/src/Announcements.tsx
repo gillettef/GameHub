@@ -95,7 +95,10 @@ function cleanupBanner(prev: GameState, next: GameState, myId: string): Announce
     kind: "banner",
     icon: "bag",
     title: `${prev.round}개월 4주차 · 정리`,
-    subtitle: "남은 토큰은 사라져요. 능력치와 카드, 학점은 그대로예요",
+    subtitle: "남은 토큰은 사라져요(골라서 남긴 지력·체력토큰 1개는 다음 달로 가요). 능력치와 카드, 학점은 그대로예요",
+    lines: next.cleanupSummary
+      .filter((c) => c.kept)
+      .map((c) => `${next.players[c.playerId].name}${c.playerId === myId ? " (나)" : ""}: ${c.kept === "intelligence" ? "지력" : "체력"}토큰 1개를 다음 달로 남겼어요`),
     tokens: {
       mode: "wipe",
       rows: tokenRows(
@@ -236,7 +239,9 @@ function build(prev: GameState, next: GameState, myId: string): Announcement[] {
     if (r) out.push(r);
   }
   // 자율활동이 끝나면 4주차 정리 → (시험) → 다음 달 1주차 준비 → 2주차 정규수업 순서
-  if (activityEnded) out.push(cleanupBanner(prev, next, myId));
+  // 4주차 정리는 남길 토큰을 모두 고른 뒤에 끝난다 (고를 토큰이 없으면 3주차가 끝나자마자 지나간다)
+  const cleanupDone = (prev.phase === "activity" || prev.phase === "cleanup") && next.phase !== "activity" && next.phase !== "cleanup";
+  if (cleanupDone) out.push(cleanupBanner(prev, next, myId));
   if (prev.phase !== next.phase && next.pendingRoll?.kind === "exam") out.push(examBanner(next));
   if (next.examResults.length > prev.examResults.length) out.push(examResult(next, myId));
   if (!prev.exams.midterm && next.exams.midterm) out.push(examRevealBanner(next, "midterm"));

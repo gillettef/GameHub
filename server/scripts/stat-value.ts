@@ -8,7 +8,7 @@ const even: Record<ActivityId, number> = { tournament: 1, creature: 1, duel: 1, 
 const S: BotStrategy = { name: "균형형", classWeights: { intelligence: 1.2, spellPower: 1.2, stamina: 1, charm: 0.6 }, activityBias: even };
 function play(n: number, bump?: StatKey, amount = 2): GameState {
   const ids = Array.from({ length: n }, (_, i) => `p${i}`);
-  const state = createGame(ids.map((id) => ({ id, name: id })));
+  const state = createGame(ids.map((id) => ({ id, name: id, isBot: true })));
   if (bump) {
     const p = state.players.p0;
     p[bump] += amount;

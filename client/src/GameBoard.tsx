@@ -20,6 +20,7 @@ import {
   type ClassCard,
   type CreatureElement,
   type GameState,
+  type KeepChoice,
   type OfferCardView,
   type PlayerGameState,
 } from "./gameTypes";
@@ -770,6 +771,58 @@ function RollPanel({
   );
 }
 
+// 4주차(정리): 남은 지력토큰·체력토큰 중 1개를 다음 달로 남길 수 있다 (시험이 이어지는 달은 지력토큰이 시험용으로 이미 남아서 제외)
+function CleanupPanel({ game, myId, onKeep }: { game: GameState; myId: string; onKeep: (choice: KeepChoice) => void }) {
+  const me = game.players[myId];
+  const myChoice = game.cleanupKeep[myId]; // undefined: 남길 수 있는 토큰이 없음, null: 고르는 중
+  const examFollows = game.round === game.rules.midtermRound || game.round === 12;
+  const waiting = Object.entries(game.cleanupKeep)
+    .filter(([id, choice]) => choice === null && id !== myId)
+    .map(([id]) => game.players[id].name);
+  const label = (choice: KeepChoice) => (choice === "intelligence" ? "지력토큰" : choice === "stamina" ? "체력토큰" : "남기지 않기");
+
+  return (
+    <div className="pop-in bg-white rounded-3xl border-2 border-pink-300 shadow-sm p-4">
+      <p className="font-display text-lg text-purple-700 text-center">
+        <InlineIcon name="bag" /> 4주차 정리
+      </p>
+      <p className="mt-1 text-center text-sm text-purple-500">남은 토큰은 사라지지만, 지력토큰이나 체력토큰 중 <b>1개</b>는 다음 달로 남길 수 있어요.</p>
+      {myChoice === null ? (
+        <div className="mt-3 flex flex-col gap-2">
+          {!examFollows && me.intelligenceTokens > 0 && (
+            <button
+              className="min-h-12 rounded-2xl bg-sky-100 px-3 py-2 text-sky-800 font-semibold active:scale-95 transition-transform"
+              onClick={() => onKeep("intelligence")}
+            >
+              <InlineIcon name="intToken" /> 지력토큰 1개 남기기 (남은 {me.intelligenceTokens}개 중)
+            </button>
+          )}
+          {me.staminaTokens > 0 && (
+            <button
+              className="min-h-12 rounded-2xl bg-green-100 px-3 py-2 text-green-800 font-semibold active:scale-95 transition-transform"
+              onClick={() => onKeep("stamina")}
+            >
+              <InlineIcon name="staminaToken" /> 체력토큰 1개 남기기 (남은 {me.staminaTokens}개 중)
+            </button>
+          )}
+          <button
+            className="min-h-12 rounded-2xl bg-purple-100 px-3 py-2 text-purple-700 active:scale-95 transition-transform"
+            onClick={() => onKeep("none")}
+          >
+            남기지 않기
+          </button>
+          {examFollows && <p className="text-center text-xs text-purple-500">시험이 이어지는 달이라 지력토큰은 시험 다시 굴리기용으로 이미 남아 있어요.</p>}
+        </div>
+      ) : (
+        <p className="mt-3 rounded-2xl bg-purple-50 px-3 py-2 text-center text-sm text-purple-600">
+          {myChoice === undefined ? "남길 수 있는 토큰이 없어요." : `${label(myChoice)}${myChoice === "none" ? "" : " 1개를 남기기로 했어요."}`}
+        </p>
+      )}
+      {waiting.length > 0 && <p className="mt-2 text-center text-xs text-purple-500">{waiting.join(", ")}님이 고르는 중이에요...</p>}
+    </div>
+  );
+}
+
 function ErrorToast({ message, seq }: { message: string | null; seq: number }) {
   const [dismissedSeq, setDismissedSeq] = useState(0);
   useEffect(() => {
@@ -856,6 +909,7 @@ export function GameBoard({
   onRollDice,
   onRerollDice,
   onConfirmRoll,
+  onKeepToken,
   onLeave,
 }: {
   game: GameState;
@@ -868,6 +922,7 @@ export function GameBoard({
   onRollDice: () => void;
   onRerollDice: (diceIndexes: number[]) => void;
   onConfirmRoll: () => void;
+  onKeepToken: (choice: KeepChoice) => void;
   onLeave: () => void;
 }) {
   const [tab, setTab] = useState<TabId>("game");
@@ -881,6 +936,7 @@ export function GameBoard({
   // 내가 행동해야 하는 순간에는 게임 탭에 알림 점을 띄운다
   const myTurn =
     myRollPending ||
+    game.cleanupKeep[myId] === null ||
     (!game.pendingRoll &&
       ((game.phase === "class" && game.classPickOrder[game.classPickPointer] === myId) || (game.phase === "activity" && activityTurnId === myId)));
   const starterName = game.players[game.turnOrder[game.startingPlayerIndex]]?.name;
@@ -891,7 +947,9 @@ export function GameBoard({
       ? "2주차 정규수업"
       : game.phase === "activity"
         ? "3주차 자율활동"
-        : game.phase === "midterm_exam"
+        : game.phase === "cleanup"
+          ? "4주차 정리"
+          : game.phase === "midterm_exam"
           ? "중간고사"
           : game.phase === "final_exam"
             ? "기말고사"
@@ -942,6 +1000,7 @@ export function GameBoard({
             )}
             {game.pendingRoll && <RollPanel game={game} myId={myId} onRoll={onRollDice} onReroll={onRerollDice} onConfirm={onConfirmRoll} />}
             {game.phase === "class" && !game.pendingRoll && <ClassPhasePanel game={game} myId={myId} onTake={onTakeClassCard} />}
+            {game.phase === "cleanup" && <CleanupPanel game={game} myId={myId} onKeep={onKeepToken} />}
             {game.phase === "activity" && (
               <ActivityPhasePanel game={game} myId={myId} onSelect={onSelectActivity} onPick={onPickActivityCard} />
             )}

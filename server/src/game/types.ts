@@ -7,6 +7,9 @@ export type ActivityId =
   | "exploration" // 비밀의 방 탐색
   | "lab"; // 연구실 실험
 
+// 4주차(정리)에서 다음 달로 남기는 토큰: 지력토큰 1개, 체력토큰 1개, 또는 남기지 않기
+export type KeepChoice = "intelligence" | "stamina" | "none";
+
 export type GamePhase = "setup" | "prep" | "class" | "activity" | "cleanup" | "midterm_exam" | "final_exam" | "ended";
 
 export interface ClassCard {
@@ -121,6 +124,8 @@ export interface PlayerGameState {
   // 마법생물 효과로 다음 달 준비(1주차) 때 체력토큰에 더해지는(또는 빼지는) 값
   pendingStaminaTokens: number;
   pendingSpellbookTokens: number;
+  // 4주차(정리)에서 골라 다음 달 준비 때 더해지는 지력토큰·체력토큰 (각 0 또는 1, 둘 중 하나만 1)
+  carryTokens: { intelligence: number; stamina: number };
   tournamentTrack: number;
   classCards: ClassCard[];
   creatures: CreatureCard[];
@@ -267,7 +272,10 @@ export interface GameState {
   exams: { midterm: ExamCard | null; final: ExamCard | null };
   examResults: ExamResult[];
   // 가장 최근 4주차(정리)에서 소멸한 토큰 (화면의 정리 연출용)
-  cleanupSummary: { playerId: string; intelligenceTokens: number; staminaTokens: number; charmTokens: number; spellbookTokens: number }[];
+  // (kept: 이 사람이 다음 달로 남긴 토큰 1개. 소멸 수량은 남긴 것을 뺀 값)
+  cleanupSummary: { playerId: string; intelligenceTokens: number; staminaTokens: number; charmTokens: number; spellbookTokens: number; kept: "intelligence" | "stamina" | null }[];
+  // 4주차(정리)에서 다음 달로 남길 토큰을 고르는 중: 남길 수 있는 토큰이 있는 사람만 들어 있고, null이면 아직 고르지 않았다
+  cleanupKeep: Record<string, KeepChoice | null>;
   // 카드 덱·버림 더미와 주사위 처리 정보 (서버 전용, 클라이언트에는 전송하지 않음)
   hidden: HiddenState;
   labPile: Pile<LabCard>;
