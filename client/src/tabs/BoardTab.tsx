@@ -2,7 +2,6 @@ import { memo, useMemo } from 'react';
 import { getSpec } from '@astraltab/shared';
 import { Board } from '../components/Board';
 import { Hand } from '../components/Hand';
-import { MarkerInfo } from '../components/InfoPanel';
 import { SwapIcon } from '../components/icons';
 import { TurnControls } from '../components/TurnControls';
 import { buildCells, buildHand, buildPlacementPreview, legalCellKeys, seatOf } from '../game/derived';
@@ -32,7 +31,6 @@ export const BoardTab = memo(function BoardTab() {
   const discardCardIds = useGameStore((s) => s.discardCardIds);
   const setDiscardCard = useGameStore((s) => s.setDiscardCard);
   const placeAt = useGameStore((s) => s.placeAt);
-  const inspectedMarkerId = useGameStore((s) => s.inspectedMarkerId);
   const openCardModal = useGameStore((s) => s.openCardModal);
   const pendingPos = useGameStore((s) => s.pendingPos);
   const confirmPlacement = useGameStore((s) => s.confirmPlacement);
@@ -57,7 +55,6 @@ export const BoardTab = memo(function BoardTab() {
     () => (state && viewerId && selectedCardId && pendingPos ? buildPlacementPreview(state, viewerId, selectedCardId, pendingPos) : null),
     [state, viewerId, selectedCardId, pendingPos],
   );
-  const inspected = inspectedMarkerId ? cells.find((c) => c.marker?.id === inspectedMarkerId) : undefined;
 
   if (!state || !viewerId) return null;
   const viewerSeat = seatOf(state, viewerId);
@@ -77,11 +74,6 @@ export const BoardTab = memo(function BoardTab() {
           ghostCardId={placement ? selectedCardId : null}
           onCellClick={handleCellClick}
         />
-        <div className={styles.floatingTop}>
-          {inspected?.marker ? (
-            <MarkerInfo marker={inspected.marker} terrain={inspected.terrain} onClose={() => placeAt(inspected.x, inspected.y)} />
-          ) : null}
-        </div>
         <div className={styles.floatingBottom}>
           {placement && isMyTurn && selectedCardId && (
             <div className={styles.confirmBar} role="group" aria-label="배치 확인">

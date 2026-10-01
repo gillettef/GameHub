@@ -15,8 +15,8 @@ import { api } from '../socket/client';
 
 export type Mode = 'hotseat' | 'online';
 export type TabId = 'board' | 'status' | 'progress' | 'cards' | 'help';
-/** 확대해서 볼 카드. 손패는 index(같은 카드 여러 장 구분), 카탈로그(카드 탭)는 카드 id */
-export type CardModalTarget = { kind: 'hand'; index: number } | { kind: 'spec'; cardId: CardId };
+/** 확대해서 볼 카드. 손패는 index(같은 카드 여러 장 구분), 카탈로그(카드 탭)는 카드 id, 보드에서 탭한 마커는 마커 id */
+export type CardModalTarget = { kind: 'hand'; index: number } | { kind: 'spec'; cardId: CardId } | { kind: 'marker'; markerId: string };
 export type Connection = 'idle' | 'connecting' | 'connected' | 'disconnected';
 
 /** 순서 = 하단 독 표시 순서. 대국 진행(보드·상태·진행) 다음에 참고 자료(카드·설명)를 둔다
@@ -50,8 +50,6 @@ interface GameStore {
    * 추적한다 — 같은 턴에 카드를 배치하면 손패 배열이 바뀌어 index 가 밀릴 수 있기 때문이다.
    * PASS 를 보낼 때 실제로 그만큼 손패에 없으면 엔진이 거부한다(validateDiscard) */
   discardCardIds: CardId[];
-  /** 보드에서 탭해 살펴보는 마커 id (모바일엔 호버가 없어 탭으로 정보를 본다) */
-  inspectedMarkerId: string | null;
   /** 마지막 안내 문구 (배치 거부 사유 등). 다음에 할 일을 적는다 */
   notice: string | null;
   /** 결과 오버레이를 닫고 보드를 살펴보는 중인지 */
@@ -100,7 +98,6 @@ const EMPTY = {
   pendingPos: null as { x: number; y: number } | null,
   discardMode: false,
   discardCardIds: [] as CardId[],
-  inspectedMarkerId: null as string | null,
   notice: null,
   resultDismissed: false,
   cardModal: null as CardModalTarget | null,
@@ -183,13 +180,14 @@ export const useGameStore = create<GameStore>((set, get) => ({
   placeAt: (x, y) => {
     const { state, viewerId, selectedHandIndex, dispatch, setNotice } = get();
     if (!state || !viewerId) return;
-    // 마커가 있는 칸을 탭하면 배치 대신 정보를 보여 준다. 카드를 안 골랐을 때 빈 칸을 탭하면 정보를 닫는다
+    // 마커가 있는 칸을 탭하면 배치 대신 그 마커를 카드 확대 모달로 보여 준다(2026-10-01, 예전 설명 패널 대체).
+    // 빈 칸은 카드를 안 골랐으면 아무 일도 없다
     const marker = state.markers.find((m) => m.pos.x === x && m.pos.y === y);
-    if (marker || selectedHandIndex === null) {
-      set({ inspectedMarkerId: marker && marker.id !== get().inspectedMarkerId ? marker.id : null });
+    if (marker) {
+      set({ cardModal: { kind: 'marker', markerId: marker.id } });
       return;
     }
-    set({ inspectedMarkerId: null });
+    if (selectedHandIndex === null) return;
     const cardId = state.players.find((p) => p.id === viewerId)?.hand[selectedHandIndex];
     if (!cardId) return;
     const err = validatePlacement(state, viewerId, cardId, { x, y });

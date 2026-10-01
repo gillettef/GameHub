@@ -242,3 +242,14 @@
     animation: none;
   }
 }
+
+/* 마커 소유자 좌석 색 점 */
+.owner {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 4px;
+  border-radius: 50%;
+  background: var(--seat-color);
+  vertical-align: -1px;
+}
