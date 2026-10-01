@@ -8,6 +8,7 @@ import {
   canPay,
   ELEMENT_ICON,
   ELEMENT_LABEL,
+  KIND_LABEL,
   LAB_KIND_LABEL,
   STAT_LABEL,
   activityBlockReason,
@@ -145,7 +146,8 @@ function classCardInfo(card: ClassCard): CardInfo {
 function offerCardInfo(card: OfferCardView): CardInfo {
   return {
     name: card.name,
-    badge: card.cost ? (card.cost.kind === "stamina" ? `체력토큰 ${card.cost.amount}개` : `주문서 ${card.cost.amount}개`) : undefined,
+    badge:
+      [card.tags, card.cost ? (card.cost.kind === "stamina" ? `체력토큰 ${card.cost.amount}개` : `주문서 ${card.cost.amount}개`) : undefined].filter(Boolean).join(" · ") || undefined,
     lines: [card.description, ...card.lines],
   };
 }
@@ -161,7 +163,7 @@ function ownedCardInfos(player: PlayerGameState): CardInfo[] {
     })),
     ...player.creatures.map((c) => ({
       name: c.name,
-      badge: `${ELEMENT_LABEL[c.element]} · 필요 주문력 ${c.requiredSpellPower}`,
+      badge: `${ELEMENT_LABEL[c.element]} · ${KIND_LABEL[c.kind]} · 필요 주문력 ${c.requiredSpellPower}`,
       lines: [c.description, describeAbility(c.ability)],
     })),
   ];
@@ -631,7 +633,7 @@ function RollPanel({
 }: {
   game: GameState;
   myId: string;
-  onRoll: () => void;
+  onRoll: (diceCount?: number) => void;
   onReroll: (diceIndexes: number[]) => void;
   onConfirm: () => void;
 }) {
@@ -639,6 +641,8 @@ function RollPanel({
   const [clickedFor, setClickedFor] = useState<string | null>(null);
   // 다시 굴리려고 고른 내 주사위 번호
   const [selected, setSelected] = useState<number[]>([]);
+  // 연구실 실험처럼 지력토큰을 몇 개 낼지 고르는 굴림에서 고른 주사위 수 (null이면 서버가 정한 기본값)
+  const [pickedCount, setPickedCount] = useState<number | null>(null);
   // 버튼을 누른 뒤 응답이 없어도 잠시 뒤 다시 누를 수 있게 풀어 준다
   useEffect(() => {
     if (!clickedFor) return;
@@ -650,6 +654,9 @@ function RollPanel({
   const mine = pending.entries.find((e) => e.playerId === myId);
   const revealed = pending.entries.every((e) => e.dice !== null);
   const canRoll = !!mine && mine.dice === null;
+  // 굴리기 전에 지력토큰을 몇 개 낼지 고르는 굴림 (연구실 실험)
+  const choiceMax = mine?.diceChoiceMax;
+  const chosenCount = choiceMax !== undefined ? Math.min(Math.max(pickedCount ?? mine!.diceCount, 1), choiceMax) : (mine?.diceCount ?? 0);
   const canConfirm = !!mine && revealed && !mine.confirmed;
   const me = game.players[myId];
   // 결과를 확인하기 전에는 지력토큰으로 일부 주사위만 다시 굴릴 수 있다 (선 정하기는 제외)
@@ -684,7 +691,7 @@ function RollPanel({
               {revealed && entry.confirmed && entry.diceCount > 0 && <span className="shrink-0 text-xs text-emerald-600">확인 완료</span>}
             </p>
             {entry.dice === null ? (
-              <p className="text-xs text-purple-400">아직 안 굴렸어요 (주사위 {entry.diceCount}개)</p>
+              <p className="text-xs text-purple-400">아직 안 굴렸어요{entry.diceChoiceMax === undefined ? ` (주사위 ${entry.diceCount}개)` : " (지력토큰을 고르는 중)"}</p>
             ) : entry.dice.length === 0 ? (
               <p className="text-xs text-purple-400">굴릴 주사위가 없어요</p>
             ) : (
@@ -706,19 +713,45 @@ function RollPanel({
         ))}
       </ul>
 
+      {canRoll && mine && choiceMax !== undefined && (
+        <div className="mt-3 rounded-2xl bg-sky-50 px-3 py-2 text-sm text-sky-800">
+          <p>
+            <InlineIcon name="intToken" /> 지력토큰 {choiceMax}개 중 몇 개를 낼까요? 낸 개수만큼 주사위를 굴려요. 안 낸 토큰은 다시 굴리기에 쓸 수 있어요
+          </p>
+          <div className="mt-2 flex items-center justify-center gap-4">
+            <button
+              aria-label="하나 줄이기"
+              disabled={chosenCount <= 1}
+              className="h-12 w-12 rounded-full bg-white text-2xl font-semibold text-sky-700 shadow-sm active:scale-95 transition-transform disabled:opacity-40"
+              onClick={() => setPickedCount(chosenCount - 1)}
+            >
+              −
+            </button>
+            <span className="min-w-20 text-center text-lg font-semibold">{chosenCount}개</span>
+            <button
+              aria-label="하나 늘리기"
+              disabled={chosenCount >= choiceMax}
+              className="h-12 w-12 rounded-full bg-white text-2xl font-semibold text-sky-700 shadow-sm active:scale-95 transition-transform disabled:opacity-40"
+              onClick={() => setPickedCount(chosenCount + 1)}
+            >
+              +
+            </button>
+          </div>
+        </div>
+      )}
       {canRoll && mine ? (
         <button
           disabled={clickedFor === rollKey}
           className="mt-3 flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl bg-pink-500 py-3 text-lg font-semibold text-white active:scale-95 transition-transform disabled:opacity-70 disabled:active:scale-100"
           onClick={() => {
             setClickedFor(rollKey);
-            onRoll();
+            onRoll(choiceMax !== undefined ? chosenCount : undefined);
           }}
         >
           <span className={clickedFor === rollKey ? "dice-wiggle inline-flex" : "inline-flex"}>
             <Icon name="dice" className="h-6 w-6" />
           </span>
-          {clickedFor === rollKey ? "굴리는 중..." : mine.diceCount > 1 ? `주사위 ${mine.diceCount}개 굴리기` : "주사위 굴리기"}
+          {clickedFor === rollKey ? "굴리는 중..." : chosenCount > 1 ? `주사위 ${chosenCount}개 굴리기` : "주사위 굴리기"}
         </button>
       ) : canConfirm ? (
         <>
@@ -917,7 +950,7 @@ export function GameBoard({
   onTakeClassCard: (cardId: string | null) => void;
   onSelectActivity: (activityId: ActivityId, targetPlayerId?: string) => void;
   onPickActivityCard: (cardId: string | null) => void;
-  onRollDice: () => void;
+  onRollDice: (diceCount?: number) => void;
   onRerollDice: (diceIndexes: number[]) => void;
   onConfirmRoll: () => void;
   onKeepToken: (choice: KeepChoice) => void;

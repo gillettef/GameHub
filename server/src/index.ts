@@ -383,7 +383,7 @@ wss.on("connection", (socket) => {
     if (message.type === "roll_dice") {
       if (!room.game) return;
       try {
-        submitRoll(room.game, playerId);
+        submitRoll(room.game, playerId, message.diceCount);
         broadcastGameState(room);
         scheduleBots(room);
       } catch (err) {

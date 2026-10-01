@@ -340,9 +340,9 @@ export function useGameSocket() {
     [ensureSocket, send],
   );
 
-  const rollDice = useCallback(() => {
+  const rollDice = useCallback((diceCount?: number) => {
     const socket = ensureSocket();
-    send(socket, { type: "roll_dice" });
+    send(socket, { type: "roll_dice", diceCount });
   }, [ensureSocket, send]);
 
   const rerollDice = useCallback(

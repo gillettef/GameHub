@@ -119,7 +119,8 @@ export interface PendingRoll {
   kind: "first" | "tournament" | "creature" | "lab" | "duel" | "exploration" | "exam";
   title: string;
   lines: string[];
-  entries: { playerId: string; label: string; diceCount: number; dice: number[] | null; confirmed: boolean; rerolls: number }[];
+  // diceChoiceMax가 있으면 굴리기 전에 지력토큰을 1~max개 내고 낸 개수만큼 굴릴 수 있다 (연구실 실험)
+  entries: { playerId: string; label: string; diceCount: number; diceChoiceMax?: number; dice: number[] | null; confirmed: boolean; rerolls: number }[];
 }
 
 // 3주차 선택 단계에서 각자 고른 활동 (모두에게 공개). 진행 단계에서는 이 순서대로 하나씩 처리한다
@@ -145,6 +146,8 @@ export interface OfferCardView {
   lines: string[];
   // 가져가는 데 드는 비용 (체력토큰 또는 마법 주문서)
   cost?: { kind: "stamina" | "spellbook"; amount: number };
+  // 카드 이름 아래에 붙는 짧은 분류 (마법생물의 속성 · 종류)
+  tags?: string;
 }
 
 export interface ActivityOffer {
@@ -252,7 +255,7 @@ export const ACTIVITY_HINT: Record<ActivityId, string> = {
   creature: "카드 2장 공개, 주문서만큼 주사위 + 생물별 능력치(체력·매력·주문력 섞음)로 조련 판정, 하늘·육지·바다를 1장씩 모으면 세트 점수",
   duel: "아직 안 고른 한 명을 지목해 강제 대결, 주문서를 모두 내고 낸 만큼 주사위를 굴려 이기면 마도서 1장",
   exploration: "카드 2장 중 하나를 골라 카드가 정한 지력 또는 체력토큰을 내고 낸 만큼 주사위 판정! 크게 벌거나 크게 잃어요",
-  lab: "심화학습: 연구 카드 2장 중 1장, 지력토큰을 내고 낸 만큼 주사위를 굴려 안정적으로 성장",
+  lab: "심화학습: 연구 카드 2장 중 1장, 지력토큰을 몇 개 낼지 골라 낸 만큼 주사위를 굴려 안정적으로 성장",
 };
 
 export function effectiveStat(player: PlayerGameState, stat: StatKey): number {
@@ -301,6 +304,7 @@ export function activityBlockReason(game: GameState, playerId: string, activityI
 }
 
 export const ELEMENT_LABEL: Record<CreatureElement, string> = { sky: "하늘", land: "육지", ocean: "바다" };
+export const KIND_LABEL: Record<CreatureCard["kind"], string> = { animal: "동물", plant: "식물" };
 
 export const LAB_KIND_ICON: Record<LabCardKind, IconName> = { study: "book", exam: "note", insight: "crystal", supply: "bag" };
 export const LAB_KIND_LABEL: Record<LabCardKind, string> = {
