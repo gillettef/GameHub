@@ -502,14 +502,22 @@ test("연구실 실험: 카드 2장을 열어 원하는 카드를 체력토큰�
   assert.equal(state.activityOffers.lab?.cards.length, 2);
   chooseActivityCard(state, a, "test-마법 안경");
   assert.equal(state.pendingRoll?.kind, "lab");
+  assert.equal(state.pendingRoll?.entries[0].diceChoiceMax, 3, "카드를 보고 지력토큰을 1~3개 사이에서 고른다");
+  assert.equal(state.pendingRoll?.entries[0].diceCount, BALANCE.labDefaultDice, "굴림 버튼의 기본값");
+  assert.equal(state.players[a].intelligenceTokens, 3, "굴리기 전에는 토큰을 내지 않는다");
+  assert.throws(() => submitRoll(state, a, 4), /지력토큰을 1~3개/);
+  assert.throws(() => submitRoll(state, a, 0), /지력토큰을 1~3개/);
+  submitRoll(state, a, 3);
   assert.equal(state.pendingRoll?.entries[0].diceCount, 3, "지력토큰 3개를 내고 주사위 3개를 굴린다 (체력토큰은 카드 비용에만 쓴다)");
   assert.equal(state.players[a].intelligenceTokens, 0);
   assert.equal(state.players[a].equipment.length, 0, "주사위로 성공해야 효과를 받는다");
   rollWith(state, { [a]: [6] });
   assert.ok(state.players[a].equipment.some((c) => c.name === "마법 안경"), "시험 대비 카드는 다음 시험까지 보관한다");
   advanceResolution(state); // 남은 "든든 도시락"(무료)을 자동으로 가져간다
-  assert.equal(state.pendingRoll?.entries[0].diceCount, 2, "지력토큰 2개만큼 굴린다");
-  rollWith(state, { [b]: [3, 3] });
+  submitRoll(state, b, 1);
+  assert.equal(state.pendingRoll?.entries[0].diceCount, 1, "1개만 내고 굴린다");
+  assert.equal(state.players[b].intelligenceTokens, 1, "안 낸 지력토큰은 다시 굴리기에 쓸 수 있다");
+  rollWith(state, { [b]: [3] });
   assert.equal(state.players[b].pendingStaminaTokens, 2);
   assert.equal(state.activityOffers.lab?.cards.length, 0);
 });
@@ -1269,6 +1277,18 @@ test("비밀의 방: 카드가 정한 체력토큰을 모두 내고 낸 개수�
   assert.equal(state.pendingRoll?.entries[0].diceCount, 4);
   assert.equal(state.players[a].staminaTokens, 0);
   assert.equal(state.players[a].intelligenceTokens, 3);
+});
+
+test("마법생물 조련: 고르는 카드 목록에 속성과 종류가 표시된다", () => {
+  const state = newGame(2);
+  toActivity(state);
+  const [a] = state.activityOrder;
+  state.creatureDeck.push(creature("하늘의 꽃마녀"), creature("대지의 수호자"));
+  selectActivity(state, a, "creature");
+  finishChoosing(state);
+  advanceResolution(state);
+  const tags = state.activityOffers.creature!.cards.map((c) => c.tags).sort();
+  assert.deepEqual(tags, ["육지 · 동물", "하늘 · 식물"]);
 });
 
 console.log(`

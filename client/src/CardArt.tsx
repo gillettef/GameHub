@@ -41,7 +41,7 @@ export function CardThumb({ card, onOpen, dim = false }: { card: CardInfo; onOpe
     >
       <CardArt name={card.name} />
       <span className="mt-1 block truncate px-0.5 text-center font-display text-sm text-purple-700">{card.name}</span>
-      {card.badge && <span className="block truncate px-0.5 text-center text-xs text-purple-500">{card.badge}</span>}
+      {card.badge && <span className="block px-0.5 leading-tight text-center text-xs text-purple-500">{card.badge}</span>}
     </button>
   );
 }

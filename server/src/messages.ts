@@ -20,7 +20,7 @@ export type ClientMessage =
   | { type: "remove_bot"; botId: string }
   // 2주차: 공개된 수업카드 중 1장을 가져간다 (cardId가 null이면 가져가지 않고 넘어간다)
   | { type: "take_class_card"; cardId: string | null }
-  | { type: "roll_dice" }
+  | { type: "roll_dice"; diceCount?: number }
   // 모두 굴린 뒤 결과를 확인하고 다음으로 넘긴다 (모든 참여자가 누르면 결과가 적용된다)
   // 결과 확인 전에 지력토큰 1개당 주사위 1개를 다시 굴린다 (굴린 주사위 중 원하는 것만: 0부터 시작하는 번호)
   | { type: "reroll_dice"; diceIndexes: number[] }

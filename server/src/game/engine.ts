@@ -79,6 +79,8 @@ export function creatureTrainBonus(player: PlayerGameState, card: Pick<CreatureC
   const total = mix.reduce((a, [, w]) => a + w, 0);
   return Math.round(mix.reduce((a, [stat, w]) => a + w * effectiveStat(player, stat), 0) / total);
 }
+const ELEMENT_NAME = { sky: "하늘", land: "육지", ocean: "바다" } as const;
+const creatureTagsOf = (card: Pick<CreatureCard, "element" | "kind">) => `${ELEMENT_NAME[card.element]} · ${card.kind === "animal" ? "동물" : "식물"}`;
 function creatureMixText(card: Pick<CreatureCard, "element" | "kind">): string {
   const mix = creatureTrainMix(card);
   const total = mix.reduce((a, [, w]) => a + w, 0);
@@ -542,15 +544,17 @@ function resolveCreature(state: GameState, ctx: Extract<RollContext, { kind: "cr
   }
 }
 
-// 연구실 실험: 지력토큰을 모두 내고 낸 개수만큼(최소 1개) 주사위를 굴려, 합이 목표값 이상이면 실험 성공 (카드 효과를 받는다)
+// 연구실 실험: 카드를 보고 지력토큰을 몇 개 낼지 골라(굴릴 때 낸다) 낸 개수만큼 주사위를 굴려, 합이 목표값 이상이면 실험 성공 (카드 효과를 받는다)
+// 지력토큰이 없으면 주사위 1개는 공짜로 굴린다. 굴림 버튼 기본값은 목표값을 넘기기 충분한 개수(labDefaultDice)다
 function startLabRoll(state: GameState, player: PlayerGameState, lab: LabCard): void {
-  const diceCount = spendAllTokens(player, "intelligence");
+  const tokens = player.intelligenceTokens;
+  const diceCount = tokens > 0 ? Math.min(tokens, BALANCE.labDefaultDice) : 1;
   state.hidden.roll = { kind: "lab", playerId: player.id, card: lab, target: BALANCE.labTarget };
   state.pendingRoll = {
     kind: "lab",
     title: `연구실 실험 · ${lab.name}`,
-    lines: [`지력토큰을 내고 낸 개수만큼(최소 1개) 주사위 ${diceCount}개를 굴려요`, `합이 ${BALANCE.labTarget} 이상이면 실험 성공! (${lab.summary})`],
-    entries: [{ playerId: player.id, label: player.name, diceCount, dice: null, confirmed: false, rerolls: 0 }],
+    lines: [tokens > 0 ? `지력토큰을 1~${tokens}개 골라 내고, 낸 개수만큼 주사위를 굴려요 (다시 굴리기에 쓸 토큰은 남겨 둘 수 있어요)` : "지력토큰이 없어서 주사위 1개를 굴려요", `합이 ${BALANCE.labTarget} 이상이면 실험 성공! (${lab.summary})`],
+    entries: [{ playerId: player.id, label: player.name, diceCount, ...(tokens > 0 ? { diceChoiceMax: tokens } : {}), dice: null, confirmed: false, rerolls: 0 }],
   };
 }
 
@@ -747,7 +751,7 @@ function offerViewOf(activityId: ActivityId, card: OfferedCard, round: number): 
   switch (activityId) {
     case "creature": {
       const c = card as CreatureCard;
-      return { id: c.id, name: c.name, description: c.description, lines: [describeAbility(c.ability), `조련 판정: 주문서만큼 주사위 합 + ${creatureMixText(c)} 보너스 ≥ ${creatureTarget(c)}`], cost: { kind: "spellbook", amount: c.requiredSpellPower } };
+      return { id: c.id, name: c.name, description: c.description, tags: creatureTagsOf(c), lines: [describeAbility(c.ability), `조련 판정: 주문서만큼 주사위 합 + ${creatureMixText(c)} 보너스 ≥ ${creatureTarget(c)}`], cost: { kind: "spellbook", amount: c.requiredSpellPower } };
     }
     case "lab": {
       const c = card as LabCard;
@@ -1067,12 +1071,20 @@ export function chooseActivityCard(state: GameState, playerId: string, cardId: s
 // 굴려야 하는 사람이 모두 굴리면 결과가 화면에 나오고, 굴린 사람들이 결과를 눈으로 확인한 뒤 "확인"을 눌러야 결과가 적용된다
 
 // 주사위 굴리기 버튼: 서버가 굴려서 결과를 기록한다
-export function submitRoll(state: GameState, playerId: string): void {
+// diceCount는 굴리기 전에 지력토큰을 내고 주사위 수를 고르는 굴림(연구실 실험)에서만 쓴다
+export function submitRoll(state: GameState, playerId: string, diceCount?: number): void {
   const pending = state.pendingRoll;
   if (!pending) throw new Error("지금은 주사위를 굴릴 차례가 아닙니다.");
   const entry = pending.entries.find((e) => e.playerId === playerId);
   if (!entry) throw new Error("이번 굴림에 참여하지 않습니다.");
   if (entry.dice) throw new Error("이미 주사위를 굴렸습니다.");
+  if (entry.diceChoiceMax !== undefined) {
+    const n = diceCount ?? entry.diceCount;
+    if (!Number.isInteger(n) || n < 1 || n > entry.diceChoiceMax) throw new Error(`지력토큰을 1~${entry.diceChoiceMax}개 사이로 골라 주세요.`);
+    pay(state.players[playerId], "intelligence", n);
+    entry.diceCount = n;
+    delete entry.diceChoiceMax;
+  }
   entry.dice = rollDice(entry.diceCount);
 }
 

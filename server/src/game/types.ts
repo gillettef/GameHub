@@ -163,7 +163,8 @@ export interface PendingRoll {
   title: string;
   lines: string[];
   // dice가 null이면 아직 안 굴린 사람, confirmed는 결과를 확인하고 다음으로 넘기기를 누른 사람
-  entries: { playerId: string; label: string; diceCount: number; dice: number[] | null; confirmed: boolean; rerolls: number }[];
+  // diceChoiceMax가 있으면 굴리기 전에 지력토큰을 1~max개 내고 낸 개수만큼 굴릴 수 있다 (연구실 실험)
+  entries: { playerId: string; label: string; diceCount: number; diceChoiceMax?: number; dice: number[] | null; confirmed: boolean; rerolls: number }[];
 }
 
 // 협력 탐험 카드가 함께할 친구를 기다리는 중 (공개 정보)
@@ -216,6 +217,8 @@ export interface OfferCardView {
   lines: string[];
   // 이 카드를 가져가는 데 드는 비용 (체력토큰 또는 마법 주문서)
   cost?: { kind: "stamina" | "spellbook"; amount: number };
+  // 카드 이름 아래에 붙는 짧은 분류 (마법생물의 속성 · 종류)
+  tags?: string;
 }
 
 export interface ActivityOffer {
