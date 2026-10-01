@@ -241,7 +241,7 @@ test("정규수업: 인원수 + 1장이 공개되고 선택 순서가 정해진�
   }
 });
 
-test("정규수업 덱은 학기마다 인원과 무관하게 36장이고, 1학기는 주문력이 소수·2학기는 주문력 위주이며 비용이 다르다", () => {
+test("정규수업 덱은 학기마다 인원과 무관하게 36장이고, 1학기는 주문력이 소수·2학기는 주문력이 더 많고 훨씬 비싸다", () => {
   for (const n of [2, 3, 4, 5]) {
     const state = newGame(n);
     const sem1 = [...state.classDeck, ...state.classMarket];
@@ -251,7 +251,9 @@ test("정규수업 덱은 학기마다 인원과 무관하게 36장이고, 1학�
     assert.ok(sem1.filter((c) => c.statBoost.stat !== "spellPower").every((c) => c.takeCost <= 2));
     const sem2 = createClassDeck(() => Math.random().toString(), 2);
     assert.equal(sem2.length, BALANCE.classDeckSize);
-    assert.ok(count(sem2, "spellPower") > count(sem2, "intelligence") && count(sem2, "spellPower") > count(sem2, "charm"));
+    // 2학기는 주문력이 1학기보다 많고 비용이 훨씬 비싸다 (주문력 습득 체력토큰 = 기본 + spellExtraCost)
+    assert.ok(count(sem2, "spellPower") > count(sem1, "spellPower"));
+    assert.ok(sem2.filter((c) => c.statBoost.stat === "spellPower").every((c) => c.takeCost >= BALANCE.classSemesters[1].spellExtraCost));
   }
 });
 
@@ -509,7 +511,7 @@ test("연구실 실험: 카드 2장을 열어 원하는 카드를 체력토큰�
   submitRoll(state, b, 1);
   assert.equal(state.pendingRoll?.entries[0].diceCount, 1, "1개만 내고 굴린다");
   assert.equal(state.players[b].intelligenceTokens, 1, "안 낸 지력토큰은 다시 굴리기에 쓸 수 있다");
-  rollWith(state, { [b]: [3] });
+  rollWith(state, { [b]: [6] });
   assert.equal(state.players[b].pendingStaminaTokens, 2);
   assert.equal(state.activityOffers.lab?.cards.length, 0);
 });
@@ -787,6 +789,9 @@ test("마법 토너먼트: 주사위는 지력토큰으로 다시 굴릴 수 있
 });
 
 test("주문 대결: 도전자가 건넨 마나토큰 1개를 더한 뒤 양쪽이 마나토큰을 내고 낸 개수만큼 주사위를 굴려 합이 큰 쪽이 이긴다", () => {
+  // 마나토큰 건네기 규칙을 켜 둔 상태(duelManaFee 1)를 검증한다 (기본값은 밸런스 조정으로 0)
+  const savedFee = BALANCE.duelManaFee;
+  BALANCE.duelManaFee = 1;
   const state = newGame(2);
   toActivity(state);
   const [a, b] = state.activityOrder;
@@ -802,6 +807,7 @@ test("주문 대결: 도전자가 건넨 마나토큰 1개를 더한 뒤 양쪽�
   state.players[a].grimoires = [];
   rollWith(state, { [a]: [1, 1], [b]: [6, 6, 6] });
   assert.ok(state.log.some((l) => l.message.includes(`${state.players[b].name} 승리`)), "합이 더 큰 쪽(지목당한 쪽)이 이긴다");
+  BALANCE.duelManaFee = savedFee;
 });
 
 test("주문 대결: 합이 같으면 무승부 — 마도서를 얻는 사람이 없다 (매력이 높아도 이기지 않는다)", () => {
@@ -997,7 +1003,7 @@ test("시험 달(6·12개월)은 1주차(준비) 다음에 곧바로 시험이�
   // 2학기: 수업카드 덱이 주문력 위주의 새 덱으로 교체된다
   const sem2 = [...state.classDeck, ...state.classMarket, ...state.classDiscard];
   assert.equal(sem2.length, BALANCE.classDeckSize);
-  assert.ok(sem2.filter((c) => c.statBoost.stat === "spellPower").length > BALANCE.classDeckSize * 0.3);
+  assert.ok(sem2.filter((c) => c.statBoost.stat === "spellPower").length > BALANCE.classDeckSize * 0.15); // 2학기 주문력 비율(2/10)은 1학기(1/10)보다 높다
   assert.equal(state.players[id].intelligenceTokens, effectiveStat(state.players[id], "intelligence") + 1, `남긴 지력토큰 1개(남은 ${left}개 중)가 다음 달로 간다`);
 });
 
@@ -1253,6 +1259,9 @@ test("마법생물 조련: 생물의 속성·종류가 낼 수 있는 토큰의 
 });
 
 test("주문 대결: 도전자는 마나토큰이 2개 이상(건넬 1개 + 굴릴 1개) 있어야 고를 수 있고, 지목당한 쪽은 건네받은 마나토큰으로 굴린다", () => {
+  // 마나토큰 건네기 규칙을 켜 둔 상태(duelManaFee 1)를 검증한다 (기본값은 밸런스 조정으로 0)
+  const savedFee = BALANCE.duelManaFee;
+  BALANCE.duelManaFee = 1;
   const state = newGame(2);
   toActivity(state);
   const [a, b] = state.activityOrder;
@@ -1272,6 +1281,7 @@ test("주문 대결: 도전자는 마나토큰이 2개 이상(건넬 1개 + 굴�
   submitRoll(state, a, 1);
   assert.equal(state.players[a].manaTokens, 1, "고른 만큼만 마나토큰을 낸다");
   assert.ok(state.log.some((l) => l.message.includes("마나토큰")));
+  BALANCE.duelManaFee = savedFee;
 });
 
 test("마법생물 조련: 고르는 카드 목록에 속성과 종류가 표시된다", () => {
