@@ -24,11 +24,18 @@ const STRATEGIES: BotStrategy[] = [
   { name: "체력 몰빵(정규수업)", classWeights: { intelligence: 0.8, spellPower: 0.8, stamina: 3, charm: 0.3 }, activityBias: even },
   { name: "매력 몰빵(정규수업)", classWeights: { intelligence: 0.8, spellPower: 0.8, stamina: 1, charm: 3 }, activityBias: even },
   {
-    name: "단계 성장(초반 지력·체력 → 후반 주문력)",
+    name: "단계 성장(1학기 지력·체력 → 2학기 주문력)",
     classWeights: { intelligence: 2, spellPower: 0.6, stamina: 2, charm: 0.5 },
     lateClassWeights: { intelligence: 0.8, spellPower: 3, stamina: 0.8, charm: 0.3 },
-    lateFromRound: 5,
-    activityBias: even,
+    lateFromRound: 7,
+    // 1학기에는 지력·체력 주사위를 쓰는 탐험·연구실, 2학기에는 주문서를 쓰는 토너먼트·조련·대결
+    activityBias: { tournament: 0.6, creature: 0.6, duel: 0.6, exploration: 2, lab: 2 },
+    lateActivityBias: { tournament: 2, creature: 1.5, duel: 1.2, exploration: 0.8, lab: 0.5 },
+  },
+  {
+    name: "주문력 우선(처음부터 주문력·주문 활동)",
+    classWeights: { intelligence: 0.8, spellPower: 3, stamina: 1, charm: 0.3 },
+    activityBias: { tournament: 2, creature: 1.5, duel: 1.2, exploration: 0.8, lab: 0.5 },
   },
   { name: "무작위", classWeights: { intelligence: 1, spellPower: 1, stamina: 1, charm: 1 }, activityBias: even, random: true },
 ];

@@ -55,6 +55,35 @@ function rollDice(count: number): number[] {
 
 const sum = (xs: number[]) => xs.reduce((a, b) => a + b, 0);
 
+// 판정 목표값: 주사위 평균(3.5) × 그 달의 기준 능력치 × 난이도. 기준 능력치는 라운드가 갈수록 오른다 (성장이 기준보다 앞서면 쉬워진다)
+export function benchmarkStat(round: number): number {
+  return BALANCE.rollBenchmarkStart + BALANCE.rollBenchmarkPerRound * (round - 1);
+}
+export function rollTarget(round: number, difficulty: number): number {
+  return Math.max(1, Math.round(3.5 * benchmarkStat(round) * difficulty));
+}
+// 탐험 카드의 target은 난이도 × 10, 협력 카드의 pairTarget은 난이도 × 18 (둘이 굴리므로 목표값은 2배)
+const exploreTarget = (round: number, target: number) => rollTarget(round, (target / 10) * BALANCE.exploreDifficultyScale);
+const coopTarget = (round: number, pairTarget: number) => 2 * rollTarget(round, (pairTarget / 18) * BALANCE.exploreDifficultyScale);
+const creatureTarget = (card: CreatureCard) => Math.max(1, Math.round(3.5 * card.requiredSpellPower * BALANCE.creatureDifficulty));
+
+function normalCdf(z: number): number {
+  const t = 1 / (1 + 0.2316419 * Math.abs(z));
+  const d = 0.3989423 * Math.exp((-z * z) / 2);
+  const p = d * t * (0.3193815 + t * (-0.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274))));
+  return z > 0 ? 1 - p : p;
+}
+
+// 탐험 카드 성공 확률 (봇 판단용): 능력치 수치만큼 굴린 주사위 합이 목표값 이상일 확률의 정규 근사
+export function explorationChance(state: GameState, player: PlayerGameState, card: ExplorationCard): number {
+  if (!card.check) return 1;
+  const n = Math.max(1, effectiveStat(player, card.check.stat));
+  const catchUp = growthGap(state, player.id) >= BALANCE.catchUpGap ? BALANCE.catchUpBonus : 0;
+  const mean = 3.5 * n + catchUp;
+  const sd = Math.sqrt((n * 35) / 12);
+  return 1 - normalCdf((exploreTarget(state.round, card.check.target) - 0.5 - mean) / sd);
+}
+
 function shuffle<T>(items: T[]): T[] {
   const arr = [...items];
   for (let i = arr.length - 1; i > 0; i--) {
@@ -141,12 +170,12 @@ function drawClassCard(state: GameState): ClassCard | undefined {
 
 const STAT_NAME: Record<StatKey, string> = { intelligence: "지력", stamina: "체력", charm: "매력", spellPower: "주문력" };
 
-// 탐험 카드의 판정 문구 (엿보기·협력 대기 표시용)
-function checkTextOf(card: ExplorationCard): string | undefined {
-  if (card.coop) return `협력 카드 — 둘의 (주사위 + ${STAT_NAME[card.coop.stat]}) 합 ≥ ${card.coop.pairTarget} (혼자면 무효)`;
+// 탐험 카드의 판정 문구 (엿보기·협력 대기·구역 공개 카드 표시용)
+function checkTextOf(card: ExplorationCard, round: number): string | undefined {
+  if (card.coop) return `협력 카드 — 둘이 각자 ${STAT_NAME[card.coop.stat]} 수치만큼 주사위를 굴려 합이 ${coopTarget(round, card.coop.pairTarget)} 이상이면 성공 (혼자면 무효)`;
   if (!card.check) return undefined;
   const stat = STAT_NAME[card.check.stat];
-  return `${stat} 판정 (주사위 + ${stat} ≥ ${card.check.target})`;
+  return `${stat} 판정 (${stat} 수치만큼 주사위를 굴려 합 ${exploreTarget(round, card.check.target)} 이상)`;
 }
 
 // 탐험 카드/연구 카드 효과를 플레이어에게 적용한다
@@ -165,7 +194,7 @@ function applyCardEffect(state: GameState, player: PlayerGameState, effect: Card
           id: top.id,
           name: top.name,
           description: top.description,
-          checkText: checkTextOf(top),
+          checkText: checkTextOf(top, state.round),
           successText: describeEffect(top.success),
           failureText: describeEffect(top.failure),
         }
@@ -401,6 +430,7 @@ export function activityBlockReason(state: ActivityView, playerId: string, activ
   if (!canPay(player, 0, 0, extra)) return `이미 참여한 친구가 있어서 매력토큰 ${extra}개가 더 필요해요.`;
   const open = activityOpenCost(state, activityId);
   if (!canPay(player, open, 0, extra)) return `카드를 열 지력토큰 ${open}개가 필요해요.`;
+  if (activityId === "tournament" && player.spellbookTokens < 1) return "마법 주문서가 1개 이상 필요해요 (낸 주문서만큼 주사위를 굴려요).";
   if (activityId === "creature" && player.spellbookTokens < MIN_CREATURE_COST) return `마법생물을 데려오려면 마법 주문서가 ${MIN_CREATURE_COST}개 이상 필요해요.`;
   if (activityId === "duel") {
     if (duelTargets(state, playerId).length === 0) return "지목할 수 있는 친구가 없어요.";
@@ -420,9 +450,10 @@ function describeRoll(dice: number[], bonusParts: [string, number][]): string {
 
 // ── 자율활동: 활동별 처리 ──
 
-// 마법 토너먼트: 주문력 수치만큼 주사위를 굴려 합친 칸만큼 트랙을 전진한다
+// 마법 토너먼트: 가진 마법 주문서를 모두 내고, 낸 개수만큼 주사위를 굴려 합친 칸만큼 트랙을 전진한다
 function startTournament(state: GameState, player: PlayerGameState): void {
-  const diceCount = effectiveStat(player, "spellPower");
+  const diceCount = player.spellbookTokens;
+  player.spellbookTokens = 0;
   if (diceCount === 0) {
     advanceTournament(state, player, []);
     return;
@@ -431,9 +462,77 @@ function startTournament(state: GameState, player: PlayerGameState): void {
   state.pendingRoll = {
     kind: "tournament",
     title: `마법 토너먼트 · ${player.name}`,
-    lines: [`주문력 ${diceCount}만큼 주사위를 굴려요. 나온 눈을 모두 더한 만큼 트랙을 전진해요`],
+    lines: [`마법 주문서 ${diceCount}개를 내고 주사위 ${diceCount}개를 굴려요. 나온 눈을 모두 더한 만큼 트랙을 전진해요`],
     entries: [{ playerId: player.id, label: player.name, diceCount, dice: null, confirmed: false, rerolls: 0 }],
   };
+}
+
+// 마법생물 조련: 가진 마법 주문서를 모두 내고 그만큼 주사위를 굴려, (합 + 매력)이 목표값 이상이면 조련에 성공한다. 실패하면 주문서만 잃고 카드는 구역에 돌아간다
+function startCreatureRoll(state: GameState, player: PlayerGameState, creature: CreatureCard): void {
+  const diceCount = player.spellbookTokens;
+  player.spellbookTokens = 0;
+  const target = creatureTarget(creature);
+  const charm = effectiveStat(player, "charm");
+  state.hidden.roll = { kind: "creature", playerId: player.id, card: creature, target };
+  state.pendingRoll = {
+    kind: "creature",
+    title: `마법생물 조련 · ${creature.name}`,
+    lines: [
+      `마법 주문서 ${diceCount}개를 내고 주사위 ${diceCount}개를 굴려요`,
+      `주사위 합 + 매력 ${charm}이(가) ${target} 이상이면 조련 성공! 실패하면 카드는 돌아가요`,
+    ],
+    entries: [{ playerId: player.id, label: player.name, diceCount, dice: null, confirmed: false, rerolls: 0 }],
+  };
+}
+
+function resolveCreature(state: GameState, ctx: Extract<RollContext, { kind: "creature" }>, dice: number[]): void {
+  const player = state.players[ctx.playerId];
+  const creature = ctx.card;
+  const charm = effectiveStat(player, "charm");
+  const total = sum(dice) + charm;
+  const success = total >= ctx.target;
+  const text = `${describeRoll(dice, [["매력", charm]])} = ${total} / 목표 ${ctx.target} ${success ? "성공" : "실패"}`;
+  if (success) {
+    player.creatures.push(creature);
+    if (creature.ability.trigger === "acquire" && creature.ability.effect === "spellPower") player.spellPower += creature.ability.amount;
+    log(state, `${player.name}: 마법생물 "${creature.name}" 조련 성공! (${text}) ${describeAbility(creature.ability)}`);
+  } else {
+    // 실패한 카드는 구역으로 돌아가 두 번째 참가자가 도전할 수 있다 (아무도 가져가지 않으면 3주차 끝에 버림 더미로)
+    state.hidden.offers.creature = [...offerCards(state, "creature"), creature];
+    syncOfferView(state, "creature");
+    log(state, `${player.name}: 마법생물 "${creature.name}" 조련 실패... (${text})`);
+  }
+}
+
+// 연구실 실험: 카드 비용을 내고 남은 체력토큰만큼(최소 1개) 주사위를 굴려, 합이 목표값 이상이면 실험 성공 (카드 효과를 받는다)
+function startLabRoll(state: GameState, player: PlayerGameState, lab: LabCard): void {
+  const diceCount = Math.max(1, player.staminaTokens);
+  player.staminaTokens = 0;
+  state.hidden.roll = { kind: "lab", playerId: player.id, card: lab, target: BALANCE.labTarget };
+  state.pendingRoll = {
+    kind: "lab",
+    title: `연구실 실험 · ${lab.name}`,
+    lines: [`남은 체력토큰만큼(최소 1개) 주사위 ${diceCount}개를 굴려요`, `합이 ${BALANCE.labTarget} 이상이면 실험 성공! (${lab.summary})`],
+    entries: [{ playerId: player.id, label: player.name, diceCount, dice: null, confirmed: false, rerolls: 0 }],
+  };
+}
+
+function resolveLab(state: GameState, ctx: Extract<RollContext, { kind: "lab" }>, dice: number[]): void {
+  const player = state.players[ctx.playerId];
+  const lab = ctx.card;
+  const total = sum(dice);
+  const success = total >= ctx.target;
+  const text = `${describeRoll(dice, [])} = ${total} / 목표 ${ctx.target} ${success ? "성공" : "실패"}`;
+  if (success) {
+    applyCardEffect(state, player, lab.effect);
+    // 시험 카드는 다음 시험까지 보관하고, 나머지는 효과를 받는 즉시 버림 더미로
+    if (lab.kind === "exam") player.equipment.push(lab);
+    else state.labPile.discard.push(lab);
+    log(state, `${player.name}: 연구 카드 "${lab.name}" 실험 성공! (${text}) ${lab.summary}`);
+  } else {
+    state.labPile.discard.push(lab);
+    log(state, `${player.name}: 연구 카드 "${lab.name}" 실험 실패... (${text})`);
+  }
 }
 
 function advanceTournament(state: GameState, player: PlayerGameState, dice: number[]): void {
@@ -525,48 +624,53 @@ function startExplorationRoll(
   playerIds: string[],
   mode: "single" | "pair",
 ): void {
-  const ctx: RollContext = { kind: "exploration", card, playerIds, mode };
-  const rule = explorationRule(card, mode);
+  const rule = explorationRule(card, mode, state.round);
   if (!rule) {
-    resolveExploration(state, ctx, {});
+    resolveExploration(state, { kind: "exploration", card, playerIds, mode, target: 0 }, {});
     return;
   }
   const stat = STAT_NAME[rule.stat];
-  const target = rule.target;
-  state.hidden.roll = ctx;
+  state.hidden.roll = { kind: "exploration", card, playerIds, mode, target: rule.target };
   state.pendingRoll = {
     kind: "exploration",
     title: `비밀의 방 · ${card.name}`,
     lines: [
       card.description,
-      mode === "pair" ? `둘의 (주사위 + ${stat}) 합이 ${target} 이상이면 성공! 보상은 둘 다 받아요` : `주사위 + ${stat} ≥ ${target} 이면 성공`,
+      mode === "pair"
+        ? `각자 ${stat} 수치만큼 주사위를 굴려 둘의 합이 ${rule.target} 이상이면 성공! 보상은 둘 다 받아요`
+        : `${stat} 수치만큼 주사위를 굴려 합이 ${rule.target} 이상이면 성공`,
     ],
-    entries: playerIds.map((id) => ({ playerId: id, label: state.players[id].name, diceCount: 1, dice: null, confirmed: false, rerolls: 0 })),
+    // 주사위 수는 능력치 수치만큼 (0이어도 1개는 굴린다)
+    entries: playerIds.map((id) => ({
+      playerId: id,
+      label: state.players[id].name,
+      diceCount: Math.max(1, effectiveStat(state.players[id], rule.stat)),
+      dice: null,
+      confirmed: false,
+      rerolls: 0,
+    })),
   };
 }
 
-// 탐험 카드의 판정 규칙: 협력 카드는 두 명의 합, 일반 카드는 혼자 판정. 판정이 없는 카드는 null
-function explorationRule(card: ExplorationCard, mode: "single" | "pair"): { stat: StatKey; target: number } | null {
-  if (mode === "pair" && card.coop) return { stat: card.coop.stat, target: card.coop.pairTarget };
-  return card.check ? { stat: card.check.stat, target: card.check.target } : null;
+// 탐험 카드의 판정 규칙: 협력 카드는 두 명의 합, 일반 카드는 혼자 판정. 목표값은 라운드에 맞춰 계산한다. 판정이 없는 카드는 null
+function explorationRule(card: ExplorationCard, mode: "single" | "pair", round: number): { stat: StatKey; target: number } | null {
+  if (mode === "pair" && card.coop) return { stat: card.coop.stat, target: coopTarget(round, card.coop.pairTarget) };
+  return card.check ? { stat: card.check.stat, target: exploreTarget(round, card.check.target) } : null;
 }
 
-function resolveExploration(state: GameState, ctx: Extract<RollContext, { kind: "exploration" }>, dice: Record<string, number>): void {
-  const { card, playerIds, mode } = ctx;
+function resolveExploration(state: GameState, ctx: Extract<RollContext, { kind: "exploration" }>, dice: Record<string, number[]>): void {
+  const { card, playerIds, mode, target } = ctx;
   let success = true;
   let rollText = "";
-  const rule = explorationRule(card, mode);
+  const rule = explorationRule(card, mode, state.round);
   if (rule) {
-    const stat = rule.stat;
     const parts = playerIds.map((id) => {
       const p = state.players[id];
       // 선두와의 격차가 크면 역전 보너스: 뒤처진 플레이어의 한 방을 돕는다
       const catchUp = growthGap(state, id) >= BALANCE.catchUpGap ? BALANCE.catchUpBonus : 0;
-      const statValue = effectiveStat(p, stat);
-      const total = dice[id] + catchUp + statValue;
-      return { p, total, text: `${describeRoll([dice[id]], [[STAT_NAME[stat], statValue], ["역전", catchUp]])} = ${total}` };
+      const total = sum(dice[id] ?? []) + catchUp;
+      return { p, total, text: `${describeRoll(dice[id] ?? [], [["역전", catchUp]])} = ${total}` };
     });
-    const target = rule.target;
     const total = sum(parts.map((x) => x.total));
     success = total >= target;
     rollText =
@@ -581,13 +685,13 @@ function resolveExploration(state: GameState, ctx: Extract<RollContext, { kind: 
   log(state, `${names}: 비밀의 방 "${card.name}"${rollText} → ${describeEffect(effect)}${playerIds.length > 1 ? " (두 명 모두 적용)" : ""}`);
 }
 
-function describeCoop(card: ExplorationCard, playerId: string): CoopWaiting {
+function describeCoop(card: ExplorationCard, playerId: string, round: number): CoopWaiting {
   const stat = STAT_NAME[card.coop!.stat];
   return {
     playerId,
     name: card.name,
     description: card.description,
-    pairText: `둘의 (주사위 + ${stat}) 합이 ${card.coop!.pairTarget} 이상이면 성공`,
+    pairText: `둘이 각자 ${stat} 수치만큼 주사위를 굴려 합이 ${coopTarget(round, card.coop!.pairTarget)} 이상이면 성공`,
     voidText: "함께할 친구가 끝까지 나타나지 않으면 이 카드는 무효가 돼요",
     successText: `${describeEffect(card.success)} (두 명 모두)`,
     failureText: `${describeEffect(card.failure)} (두 명 모두)`,
@@ -600,19 +704,19 @@ function offerCards(state: GameState, activityId: ActivityId): OfferedCard[] {
   return state.hidden.offers[activityId] ?? [];
 }
 
-function offerViewOf(activityId: ActivityId, card: OfferedCard): OfferCardView {
+function offerViewOf(activityId: ActivityId, card: OfferedCard, round: number): OfferCardView {
   switch (activityId) {
     case "creature": {
       const c = card as CreatureCard;
-      return { id: c.id, name: c.name, description: c.description, lines: [describeAbility(c.ability)], cost: { kind: "spellbook", amount: c.requiredSpellPower } };
+      return { id: c.id, name: c.name, description: c.description, lines: [describeAbility(c.ability), `조련 판정: 주문서만큼 주사위 합 + 매력 ≥ ${creatureTarget(c)}`], cost: { kind: "spellbook", amount: c.requiredSpellPower } };
     }
     case "lab": {
       const c = card as LabCard;
-      return { id: c.id, name: c.name, description: c.description, lines: [c.summary], cost: c.cost > 0 ? { kind: "stamina", amount: c.cost } : undefined };
+      return { id: c.id, name: c.name, description: c.description, lines: [c.summary, `실험 판정: 남은 체력토큰만큼 주사위 합 ≥ ${BALANCE.labTarget}`], cost: c.cost > 0 ? { kind: "stamina", amount: c.cost } : undefined };
     }
     case "exploration": {
       const c = card as ExplorationCard;
-      const check = checkTextOf(c);
+      const check = checkTextOf(c, round);
       return {
         id: c.id,
         name: c.name,
@@ -629,7 +733,7 @@ function offerViewOf(activityId: ActivityId, card: OfferedCard): OfferCardView {
 }
 
 function syncOfferView(state: GameState, activityId: ActivityId): void {
-  state.activityOffers[activityId] = { cards: offerCards(state, activityId).map((c) => offerViewOf(activityId, c)) };
+  state.activityOffers[activityId] = { cards: offerCards(state, activityId).map((c) => offerViewOf(activityId, c, state.round)) };
 }
 
 function drawForZone(state: GameState, activityId: ActivityId): OfferedCard | undefined {
@@ -687,21 +791,13 @@ function takeOffered(state: GameState, player: PlayerGameState, activityId: Acti
   syncOfferView(state, activityId);
   switch (activityId) {
     case "creature": {
-      const creature = card as CreatureCard;
-      player.spellbookTokens -= creatureCost(creature);
-      player.creatures.push(creature);
-      if (creature.ability.trigger === "acquire" && creature.ability.effect === "spellPower") player.spellPower += creature.ability.amount;
-      log(state, `${player.name}: 마법생물 "${creature.name}" 획득 (${describeAbility(creature.ability)})`);
+      startCreatureRoll(state, player, card as CreatureCard);
       break;
     }
     case "lab": {
       const lab = card as LabCard;
       pay(player, "stamina", lab.cost);
-      applyCardEffect(state, player, lab.effect);
-      // 시험 카드는 다음 시험까지 보관하고, 나머지는 효과를 받는 즉시 버림 더미로
-      if (lab.kind === "exam") player.equipment.push(lab);
-      else state.labPile.discard.push(lab);
-      log(state, `${player.name}: 연구 카드 "${lab.name}" 선택 (${lab.summary}${lab.cost > 0 ? `, 체력토큰 ${lab.cost}개` : ""})`);
+      startLabRoll(state, player, lab);
       break;
     }
     case "duel": {
@@ -716,7 +812,7 @@ function takeOffered(state: GameState, player: PlayerGameState, activityId: Acti
       if (exploration.coop) {
         // 협력 카드: 함께할 친구가 나타날 때까지 기다린다 (끝까지 없으면 3주차 마지막에 무효)
         state.hidden.coop = { card: exploration, playerId: player.id };
-        state.coopWaiting = describeCoop(exploration, player.id);
+        state.coopWaiting = describeCoop(exploration, player.id, state.round);
         log(state, `${player.name}: 비밀의 방에서 협력 카드 "${exploration.name}"를 골랐어요! 함께할 친구를 기다려요`);
       } else {
         startExplorationRoll(state, exploration, [player.id], "single");
@@ -991,11 +1087,17 @@ function resolveRoll(state: GameState): void {
   } else if (ctx.kind === "tournament") {
     advanceTournament(state, state.players[ctx.playerId], diceOf(ctx.playerId));
     finishResolutionStep(state);
+  } else if (ctx.kind === "creature") {
+    resolveCreature(state, ctx, diceOf(ctx.playerId));
+    if (!state.pendingPick) finishResolutionStep(state);
+  } else if (ctx.kind === "lab") {
+    resolveLab(state, ctx, diceOf(ctx.playerId));
+    finishResolutionStep(state);
   } else if (ctx.kind === "duel") {
     resolveDuel(state, ctx, diceOf(ctx.challengerId), diceOf(ctx.targetId));
     if (!state.pendingPick) finishResolutionStep(state);
   } else if (ctx.kind === "exploration") {
-    resolveExploration(state, ctx, Object.fromEntries(ctx.playerIds.map((id) => [id, diceOf(id)[0]])));
+    resolveExploration(state, ctx, Object.fromEntries(ctx.playerIds.map((id) => [id, diceOf(id)])));
     finishResolutionStep(state);
   } else {
     resolveExam(state, ctx.examType, ctx.card, Object.fromEntries(state.turnOrder.map((id) => [id, diceOf(id)])));

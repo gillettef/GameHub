@@ -113,7 +113,7 @@ export interface ExamResult {
 // 주사위를 굴리는 중 (선 정하기·주문 대결·탐험 판정·시험). dice가 null이면 아직 안 굴린 사람.
 // 모두 굴리면 결과가 보이고, 굴린 사람들이 확인(confirmed)을 눌러야 결과가 적용된다
 export interface PendingRoll {
-  kind: "first" | "tournament" | "duel" | "exploration" | "exam";
+  kind: "first" | "tournament" | "creature" | "lab" | "duel" | "exploration" | "exam";
   title: string;
   lines: string[];
   entries: { playerId: string; label: string; diceCount: number; dice: number[] | null; confirmed: boolean; rerolls: number }[];
@@ -242,11 +242,11 @@ export const ACTIVITY_LABEL: Record<ActivityId, string> = {
 
 // 활동 카드에 함께 보여줄 한 줄 설명
 export const ACTIVITY_HINT: Record<ActivityId, string> = {
-  tournament: "주문력만큼 주사위를 굴려 합친 칸만큼 트랙 전진",
-  creature: "카드 2장 공개, 주문서로 마법생물 획득, 하늘·육지·바다를 1장씩 모으면 세트 점수",
-  duel: "아직 안 고른 한 명을 지목해 강제 대결, 이기면 공개된 마도서 1장 고르기",
-  exploration: "카드 2장 중 하나를 골라 한방 노리기! 크게 벌거나 크게 잃는 판정",
-  lab: "심화학습: 연구 카드 2장 중 1장 고르기, 카드마다 체력토큰이 들어요",
+  tournament: "주문서를 모두 내고, 낸 만큼 주사위를 굴려 합친 칸만큼 트랙 전진 → 학점",
+  creature: "카드 2장 공개, 주문서만큼 주사위 + 매력으로 조련 판정, 하늘·육지·바다를 1장씩 모으면 세트 점수",
+  duel: "아직 안 고른 한 명을 지목해 강제 대결, 주문력만큼 주사위를 굴려 이기면 마도서 1장",
+  exploration: "카드 2장 중 하나를 골라 지력 또는 체력만큼 주사위 판정! 크게 벌거나 크게 잃어요",
+  lab: "심화학습: 연구 카드 2장 중 1장, 남은 체력토큰만큼 주사위를 굴려 안정적으로 성장",
 };
 
 export function effectiveStat(player: PlayerGameState, stat: StatKey): number {
@@ -284,6 +284,7 @@ export function activityBlockReason(game: GameState, playerId: string, activityI
   if (!canPay(player, 0, 0, extra)) return `매력토큰 ${extra}개가 더 필요해요`;
   const open = activityOpenCost(game, activityId);
   if (!canPay(player, open, 0, extra)) return `카드를 열 지력토큰 ${open}개가 필요해요`;
+  if (activityId === "tournament" && player.spellbookTokens < 1) return "마법 주문서가 1개 이상 필요해요";
   if (activityId === "creature" && player.spellbookTokens < game.rules.creatureMinCost) return `마법 주문서가 ${game.rules.creatureMinCost}개 이상 필요해요`;
   if (activityId === "duel") {
     if (duelTargets(game, playerId).length === 0) return "지목할 수 있는 친구가 없어요";
