@@ -114,7 +114,12 @@ export interface PlayerGameState {
   charm: number;
   spellPower: number;
   credit: number;
+  // 임시 능력치: 얻은 달의 다음 달 4주차(정리)에 소멸한다 (시험이 끝나도 사라진다)
   tempBoosts: Partial<Record<StatKey, number>>;
+  // tempBoosts 중 지난달 이전에 얻어 이번 달 4주차(정리)에 소멸할 몫
+  tempAged: Partial<Record<StatKey, number>>;
+  // equipment 중 지난달 이전에 얻어 이번 달 4주차(정리)에 버려질 카드 id
+  equipmentAgedIds: string[];
   // 1주차에 지력만큼 받는 지력토큰: 주사위 다시 굴리기에 쓴다 (정리 때 소멸)
   intelligenceTokens: number;
   staminaTokens: number;
@@ -129,7 +134,7 @@ export interface PlayerGameState {
   tournamentTrack: number;
   classCards: ClassCard[];
   creatures: CreatureCard[];
-  // 다음 시험까지 유지되는 연구 카드 (시험 카드)
+  // 임시 능력치 효과가 남아 있는 연구 카드 (시험 대비 카드)
   equipment: LabCard[];
   peekedExploration: PeekedExploration | null;
   grimoires: GrimoireCard[];
@@ -163,8 +168,8 @@ export interface PendingRoll {
   title: string;
   lines: string[];
   // dice가 null이면 아직 안 굴린 사람, confirmed는 결과를 확인하고 다음으로 넘기기를 누른 사람
-  // diceChoiceMax가 있으면 굴리기 전에 지력토큰을 1~max개 내고 낸 개수만큼 굴릴 수 있다 (연구실 실험)
-  entries: { playerId: string; label: string; diceCount: number; diceChoiceMax?: number; dice: number[] | null; confirmed: boolean; rerolls: number }[];
+  // diceChoiceMax가 있으면 굴리기 전에 diceChoiceStat 토큰(기본 지력)을 1~max개 내고 낸 개수만큼 굴릴 수 있다 (연구실 실험·탐험 판정)
+  entries: { playerId: string; label: string; diceCount: number; diceChoiceMax?: number; diceChoiceStat?: "intelligence" | "stamina" | "spellbook"; dice: number[] | null; confirmed: boolean; rerolls: number }[];
 }
 
 // 협력 탐험 카드가 함께할 친구를 기다리는 중 (공개 정보)

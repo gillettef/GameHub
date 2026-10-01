@@ -87,15 +87,9 @@ function creatureMixText(card: Pick<CreatureCard, "element" | "kind">): string {
   return mix.map(([stat, w]) => (w === total ? STAT_NAME[stat] : `${STAT_NAME[stat]} ${w}/${total}`)).join(" + ");
 }
 
-// 능력치 판정의 주사위 수: 카드가 정한 지력/체력 토큰의 개수 (토큰이 없어도 1개는 굴린다). spendAllTokens는 그 토큰을 모두 낸다
+// 능력치 판정에서 낼 수 있는 최대 주사위 수: 카드가 정한 지력/체력 토큰의 개수 (토큰이 없어도 1개는 굴린다). 실제로는 굴릴 때 1~이 개수 사이에서 골라 낸다
 export function checkDiceCount(player: Pick<PlayerGameState, "intelligenceTokens" | "staminaTokens">, stat: StatKey): number {
   return Math.max(1, stat === "intelligence" ? player.intelligenceTokens : player.staminaTokens);
-}
-function spendAllTokens(player: PlayerGameState, stat: StatKey): number {
-  const n = checkDiceCount(player, stat);
-  if (stat === "intelligence") player.intelligenceTokens = 0;
-  else player.staminaTokens = 0;
-  return n;
 }
 
 function normalCdf(z: number): number {
@@ -245,6 +239,8 @@ function createPlayer(id: string, name: string, isBot = false): PlayerGameState 
     ...BALANCE.initialStats,
     credit: BALANCE.initialCredit,
     tempBoosts: {},
+    tempAged: {},
+    equipmentAgedIds: [],
     intelligenceTokens: 0,
     staminaTokens: 0,
     charmTokens: 0,
@@ -320,7 +316,8 @@ function beginFirstRoll(state: GameState, contenders: string[]): void {
 
 // ── 토큰 지불: 지력토큰·체력토큰·매력토큰은 서로 바꿀 수 없다. 자율활동 구역의 두 번째 참가비는 매력토큰으로만 낸다 ──
 
-type PayKind = "intelligence" | "stamina";
+type PayKind = "intelligence" | "stamina" | "spellbook";
+const PAY_OBJECT: Record<PayKind, string> = { intelligence: "지력토큰을", stamina: "체력토큰을", spellbook: "마법 주문서를" };
 type Payer = Pick<PlayerGameState, "intelligenceTokens" | "staminaTokens" | "charmTokens">;
 
 // 지력토큰 int개 + 체력토큰 stamina개 + 매력토큰 charm개를 낼 수 있는가
@@ -329,7 +326,22 @@ export const canPay = (p: Payer, int: number, stamina: number, charm = 0): boole
 
 function pay(p: PlayerGameState, kind: PayKind, n: number): void {
   if (kind === "intelligence") p.intelligenceTokens -= n;
-  else p.staminaTokens -= n;
+  else if (kind === "stamina") p.staminaTokens -= n;
+  else p.spellbookTokens -= n;
+}
+
+// 굴리기 전에 토큰을 1~보유 개수 사이에서 골라 내고 낸 개수만큼 굴리는 굴림 항목 (토큰이 없으면 주사위 1개를 공짜로 굴린다). 기본값은 보유 토큰 전부
+function choiceEntry(player: PlayerGameState, kind: PayKind, label: string) {
+  const tokens = kind === "intelligence" ? player.intelligenceTokens : kind === "stamina" ? player.staminaTokens : player.spellbookTokens;
+  return {
+    playerId: player.id,
+    label,
+    diceCount: Math.max(1, tokens),
+    ...(tokens > 0 ? { diceChoiceMax: tokens, diceChoiceStat: kind } : {}),
+    dice: null,
+    confirmed: false,
+    rerolls: 0,
+  };
 }
 
 function beginRound(state: GameState): void {
@@ -498,9 +510,7 @@ function describeRoll(dice: number[], bonusParts: [string, number][]): string {
 
 // 마법 토너먼트: 가진 마법 주문서를 모두 내고, 낸 개수만큼 주사위를 굴려 합친 칸만큼 트랙을 전진한다
 function startTournament(state: GameState, player: PlayerGameState): void {
-  const diceCount = player.spellbookTokens;
-  player.spellbookTokens = 0;
-  if (diceCount === 0) {
+  if (player.spellbookTokens === 0) {
     advanceTournament(state, player, []);
     return;
   }
@@ -508,15 +518,13 @@ function startTournament(state: GameState, player: PlayerGameState): void {
   state.pendingRoll = {
     kind: "tournament",
     title: `마법 토너먼트 · ${player.name}`,
-    lines: [`마법 주문서 ${diceCount}개를 내고 주사위 ${diceCount}개를 굴려요. 나온 눈을 모두 더한 만큼 트랙을 전진해요`],
-    entries: [{ playerId: player.id, label: player.name, diceCount, dice: null, confirmed: false, rerolls: 0 }],
+    lines: [`마법 주문서를 1~${player.spellbookTokens}개 골라 내고, 낸 개수만큼 주사위를 굴려요. 나온 눈을 모두 더한 만큼 트랙을 전진해요`],
+    entries: [choiceEntry(player, "spellbook", player.name)],
   };
 }
 
 // 마법생물 조련: 가진 마법 주문서를 모두 내고 그만큼 주사위를 굴려, (합 + 매력)이 목표값 이상이면 조련에 성공한다. 실패하면 주문서만 잃고 카드는 구역에 돌아간다
 function startCreatureRoll(state: GameState, player: PlayerGameState, creature: CreatureCard): void {
-  const diceCount = player.spellbookTokens;
-  player.spellbookTokens = 0;
   const target = creatureTarget(creature);
   const bonus = creatureTrainBonus(player, creature);
   state.hidden.roll = { kind: "creature", playerId: player.id, card: creature, target };
@@ -524,10 +532,10 @@ function startCreatureRoll(state: GameState, player: PlayerGameState, creature: 
     kind: "creature",
     title: `마법생물 조련 · ${creature.name}`,
     lines: [
-      `마법 주문서 ${diceCount}개를 내고 주사위 ${diceCount}개를 굴려요`,
+      `마법 주문서를 1~${player.spellbookTokens}개 골라 내고, 낸 개수만큼 주사위를 굴려요`,
       `주사위 합 + ${creatureMixText(creature)} 보너스 ${bonus}이(가) ${target} 이상이면 조련 성공! 실패하면 카드는 돌아가요`,
     ],
-    entries: [{ playerId: player.id, label: player.name, diceCount, dice: null, confirmed: false, rerolls: 0 }],
+    entries: [choiceEntry(player, "spellbook", player.name)],
   };
 }
 
@@ -598,22 +606,17 @@ function advanceTournament(state: GameState, player: PlayerGameState, dice: numb
 
 function startDuel(state: GameState, player: PlayerGameState, target: PlayerGameState): void {
   state.hidden.roll = { kind: "duel", challengerId: player.id, targetId: target.id };
-  // 양쪽 모두 가진 마법 주문서를 모두 내고 낸 개수만큼 굴린다 (지목당해 주문서가 없어도 주사위 1개는 굴린다)
-  const diceOf = (p: PlayerGameState) => {
-    const n = Math.max(1, p.spellbookTokens);
-    p.spellbookTokens = 0;
-    return n;
-  };
+  // 양쪽 모두 마법 주문서를 1~보유 개수 사이에서 골라 내고 낸 개수만큼 굴린다 (지목당해 주문서가 없어도 주사위 1개는 굴린다)
   state.pendingRoll = {
     kind: "duel",
     title: `주문 대결 · ${player.name} vs ${target.name}`,
     lines: [
       `${player.name}님이 ${target.name}님을 지목했어요`,
-      `각자 마법 주문서를 모두 내고 낸 개수만큼 주사위를 굴려 합이 큰 쪽이 이겨요. 같으면 무승부예요. 도전자는 지목당한 친구에게 매력 ${BALANCE.duelCharmFee}을 건네요`,
+      `각자 마법 주문서를 골라 내고 낸 개수만큼 주사위를 굴려 합이 큰 쪽이 이겨요. 같으면 무승부예요. 도전자는 지목당한 친구에게 매력 ${BALANCE.duelCharmFee}을 건네요`,
     ],
     entries: [
-      { playerId: player.id, label: `${player.name} (도전자)`, diceCount: diceOf(player), dice: null, confirmed: false, rerolls: 0 },
-      { playerId: target.id, label: `${target.name} (지목당함)`, diceCount: diceOf(target), dice: null, confirmed: false, rerolls: 0 },
+      choiceEntry(player, "spellbook", `${player.name} (도전자)`),
+      choiceEntry(target, "spellbook", `${target.name} (지목당함)`),
     ],
   };
 }
@@ -689,15 +692,8 @@ function startExplorationRoll(
         ? `각자 ${stat}토큰을 내고 낸 개수만큼 주사위를 굴려 둘의 합이 ${rule.target} 이상이면 성공! 보상은 둘 다 받아요`
         : `${stat}토큰을 내고 낸 개수만큼 주사위를 굴려 합이 ${rule.target} 이상이면 성공`,
     ],
-    // 주사위 수는 카드가 정한 지력/체력 토큰을 모두 낸 개수 (토큰이 없어도 1개는 굴린다)
-    entries: playerIds.map((id) => ({
-      playerId: id,
-      label: state.players[id].name,
-      diceCount: spendAllTokens(state.players[id], rule.stat),
-      dice: null,
-      confirmed: false,
-      rerolls: 0,
-    })),
+    // 주사위 수는 카드가 정한 지력/체력 토큰을 1~보유 개수 사이에서 골라 굴릴 때 낸다 (토큰이 없어도 1개는 공짜로 굴린다)
+    entries: playerIds.map((id) => choiceEntry(state.players[id], rule.stat as PayKind, state.players[id].name)),
   };
 }
 
@@ -912,10 +908,7 @@ function startZonePick(state: GameState, activityId: ActivityId, player: PlayerG
     log(state, `${player.name}: 비용이 모자라서 ${ACTIVITY_NAME[activityId]}의 카드를 가져오지 못했어요`);
     return;
   }
-  if (cards.length === 1) {
-    takeOffered(state, player, activityId, cards[0]);
-    return;
-  }
+  // 카드가 한 장만 남아도(두 번째 참가자) 자동으로 가져가지 않고 직접 고르게 한다
   state.pendingPick = { playerId: player.id, activityId, mode: "take" };
 }
 
@@ -1086,8 +1079,9 @@ export function submitRoll(state: GameState, playerId: string, diceCount?: numbe
   if (entry.dice) throw new Error("이미 주사위를 굴렸습니다.");
   if (entry.diceChoiceMax !== undefined) {
     const n = diceCount ?? entry.diceCount;
-    if (!Number.isInteger(n) || n < 1 || n > entry.diceChoiceMax) throw new Error(`지력토큰을 1~${entry.diceChoiceMax}개 사이로 골라 주세요.`);
-    pay(state.players[playerId], "intelligence", n);
+    const stat = entry.diceChoiceStat ?? "intelligence";
+    if (!Number.isInteger(n) || n < 1 || n > entry.diceChoiceMax) throw new Error(`${PAY_OBJECT[stat]} 1~${entry.diceChoiceMax}개 사이로 골라 주세요.`);
+    pay(state.players[playerId], stat, n);
     entry.diceCount = n;
     delete entry.diceChoiceMax;
   }
@@ -1220,6 +1214,19 @@ export function chooseKeepToken(state: GameState, playerId: string, choice: Keep
   if (Object.values(state.cleanupKeep).every((c) => c !== null)) finishCleanup(state);
 }
 
+// 4주차(정리): 지난달 이전에 얻은 임시 능력치(와 시험 대비 카드)는 소멸하고, 이번 달에 얻은 몫은 다음 달 정리 때까지 이어진다
+function expireTempBoosts(state: GameState, player: PlayerGameState): void {
+  for (const [stat, amount] of Object.entries(player.tempAged)) {
+    const key = stat as StatKey;
+    player.tempBoosts[key] = (player.tempBoosts[key] ?? 0) - (amount ?? 0);
+    if (player.tempBoosts[key] === 0) delete player.tempBoosts[key];
+  }
+  player.tempAged = { ...player.tempBoosts };
+  state.labPile.discard.push(...player.equipment.filter((c) => player.equipmentAgedIds.includes(c.id)));
+  player.equipment = player.equipment.filter((c) => !player.equipmentAgedIds.includes(c.id));
+  player.equipmentAgedIds = player.equipment.map((c) => c.id);
+}
+
 function finishCleanup(state: GameState): void {
   const keptOf = (id: string): "intelligence" | "stamina" | null => {
     const choice = state.cleanupKeep[id];
@@ -1240,6 +1247,7 @@ function finishCleanup(state: GameState): void {
   for (const playerId of state.turnOrder) {
     const player = state.players[playerId];
     const kept = keptOf(playerId);
+    expireTempBoosts(state, player);
     player.carryTokens = { intelligence: kept === "intelligence" ? 1 : 0, stamina: kept === "stamina" ? 1 : 0 };
     player.intelligenceTokens = 0;
     player.staminaTokens = 0;
@@ -1313,15 +1321,7 @@ function resolveExam(state: GameState, examType: "midterm_exam" | "final_exam", 
   state.examResults.push(result);
   log(state, `${examType === "midterm_exam" ? "중간고사" : "기말고사"} 결과 반영 (학점 지급 완료)`);
 
-  // 연구실 실험으로 얻은 임시 능력치 증가분은 다음 시험까지 유지된 뒤 소멸
-  for (const playerId of state.turnOrder) {
-    const p = state.players[playerId];
-    p.tempBoosts = {};
-    // 효과가 끝난 시험 카드는 버림 더미로
-    state.labPile.discard.push(...p.equipment);
-    p.equipment = [];
-  }
-
+  // 임시 능력치는 시험 점수에 반영된 뒤에도 소멸 시점(얻은 달의 다음 달 정리)까지 유지된다 (expireTempBoosts)
   if (examType === "final_exam") {
     applyTournamentFinalRewards(state);
     finalizeGame(state);

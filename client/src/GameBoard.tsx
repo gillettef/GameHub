@@ -691,7 +691,7 @@ function RollPanel({
               {revealed && entry.confirmed && entry.diceCount > 0 && <span className="shrink-0 text-xs text-emerald-600">확인 완료</span>}
             </p>
             {entry.dice === null ? (
-              <p className="text-xs text-purple-400">아직 안 굴렸어요{entry.diceChoiceMax === undefined ? ` (주사위 ${entry.diceCount}개)` : " (지력토큰을 고르는 중)"}</p>
+              <p className="text-xs text-purple-400">아직 안 굴렸어요{entry.diceChoiceMax === undefined ? ` (주사위 ${entry.diceCount}개)` : ` (${entry.diceChoiceStat === "stamina" ? "체력토큰" : entry.diceChoiceStat === "spellbook" ? "마법 주문서" : "지력토큰"}을 고르는 중)`}</p>
             ) : entry.dice.length === 0 ? (
               <p className="text-xs text-purple-400">굴릴 주사위가 없어요</p>
             ) : (
@@ -716,7 +716,19 @@ function RollPanel({
       {canRoll && mine && choiceMax !== undefined && (
         <div className="mt-3 rounded-2xl bg-sky-50 px-3 py-2 text-sm text-sky-800">
           <p>
-            <InlineIcon name="intToken" /> 지력토큰 {choiceMax}개 중 몇 개를 낼까요? 낸 개수만큼 주사위를 굴려요. 안 낸 토큰은 다시 굴리기에 쓸 수 있어요
+            {mine.diceChoiceStat === "stamina" ? (
+              <>
+                <InlineIcon name="staminaToken" /> 체력토큰 {choiceMax}개 중 몇 개를 낼까요? 낸 개수만큼 주사위를 굴려요. 안 낸 토큰은 지켜 둘 수 있어요
+              </>
+            ) : mine.diceChoiceStat === "spellbook" ? (
+              <>
+                <InlineIcon name="spellbookToken" /> 마법 주문서 {choiceMax}개 중 몇 개를 낼까요? 낸 개수만큼 주사위를 굴려요. 안 낸 주문서는 지켜 둘 수 있어요
+              </>
+            ) : (
+              <>
+                <InlineIcon name="intToken" /> 지력토큰 {choiceMax}개 중 몇 개를 낼까요? 낸 개수만큼 주사위를 굴려요. 안 낸 토큰은 다시 굴리기에 쓸 수 있어요
+              </>
+            )}
           </p>
           <div className="mt-2 flex items-center justify-center gap-4">
             <button
