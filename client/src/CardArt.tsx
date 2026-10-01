@@ -41,8 +41,20 @@ export function CardThumb({ card, onOpen, dim = false }: { card: CardInfo; onOpe
     >
       <CardArt name={card.name} />
       <span className="mt-1 block truncate px-0.5 text-center font-display text-sm text-purple-700">{card.name}</span>
-      {card.badge && <span className="block px-0.5 leading-tight text-center text-xs text-purple-500">{card.badge}</span>}
     </button>
+  );
+}
+
+// 카드 한 장(일러스트+제목)만 보여 주고, 누르면 설명 팝업을 여는 단독 카드. 폭은 className으로 정한다
+export function CardButton({ card, className = "w-32" }: { card: CardInfo; className?: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <div className={className}>
+        <CardThumb card={card} onOpen={() => setOpen(true)} />
+      </div>
+      {open && <CardZoom card={card} onClose={() => setOpen(false)} />}
+    </>
   );
 }
 

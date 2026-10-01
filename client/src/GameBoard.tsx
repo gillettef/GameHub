@@ -26,7 +26,7 @@ import {
   type PlayerGameState,
   type TokenStat,
 } from "./gameTypes";
-import { CardArt, CardGrid, PickGrid, type CardInfo } from "./CardArt";
+import { CardButton, CardGrid, PickGrid, type CardInfo } from "./CardArt";
 import { RulesGuide } from "./Rules";
 import { GameMenu } from "./Leave";
 import { FinalReveal } from "./FinalReveal";
@@ -79,14 +79,21 @@ function PlayerStatCard({ player, isMe, rules }: { player: PlayerGameState; isMe
       </p>
       {player.peekedExploration && (
         <div className="mt-2 rounded-2xl border border-indigo-200 bg-indigo-50 px-2.5 py-2 text-sm text-indigo-800">
-          <CardArt name={player.peekedExploration.name} className="mb-1.5 max-w-52" />
-          <p>
-            <InlineIcon name="crystal" /> 엿본 탐험 카드: <b>{player.peekedExploration.name}</b>
+          <p className="mb-1.5">
+            <InlineIcon name="crystal" /> 엿본 탐험 카드 <span className="text-xs text-indigo-600">(누르면 설명)</span>
           </p>
-          <p className="text-xs text-indigo-600">{player.peekedExploration.description}</p>
-          {player.peekedExploration.checkText && <p className="text-xs"><InlineIcon name="dice" /> {player.peekedExploration.checkText}</p>}
-          <p className="text-xs"><InlineIcon name="check" /> 성공: {player.peekedExploration.successText}</p>
-          <p className="text-xs"><InlineIcon name="warn" /> 실패: {player.peekedExploration.failureText}</p>
+          <CardButton
+            className="w-32"
+            card={{
+              name: player.peekedExploration.name,
+              lines: [
+                player.peekedExploration.description,
+                ...(player.peekedExploration.checkText ? [<><InlineIcon name="dice" /> {player.peekedExploration.checkText}</>] : []),
+                <><InlineIcon name="check" /> 성공: {player.peekedExploration.successText}</>,
+                <><InlineIcon name="warn" /> 실패: {player.peekedExploration.failureText}</>,
+              ],
+            }}
+          />
         </div>
       )}
       {ownedCardInfos(player).length > 0 && (
@@ -252,15 +259,8 @@ function ExamInfoPanel({ game }: { game: GameState }) {
       </p>
       {card ? (
         <div className="mt-1.5 flex items-center gap-3">
-          {/* CardArt 자체가 w-full이라 폭은 감싸는 상자로 고정한다 */}
-          <div className="w-24 shrink-0">
-            <CardArt name={card.name} />
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="font-display text-base text-sky-800">{card.name}</p>
-            <p className="mt-0.5 inline-block rounded-full bg-white px-2 py-0.5 text-xs font-semibold text-sky-700">{describeExam(card)}</p>
-            <p className="mt-1 text-xs leading-snug text-sky-600">{card.description}</p>
-          </div>
+          <CardButton className="w-32 shrink-0" card={{ name: card.name, badge: describeExam(card), lines: [card.description] }} />
+          <p className="text-xs text-sky-600">카드를 누르면 자세한 설명을 볼 수 있어요</p>
         </div>
       ) : (
         <p className="text-xs text-sky-600">시험 과목은 {revealRound}개월이 끝나면 공개돼요. 그때까지는 고르게 키워 두면 안전해요.</p>
@@ -341,20 +341,26 @@ function CoopNotice({ game, myId }: { game: GameState; myId: string }) {
         <InlineIcon name="users" /> <b>협력 카드 &quot;{coop.name}&quot;</b>
         <span className="text-xs text-indigo-700"> — {coop.playerId === myId ? "내가" : `${owner}님이`} 발견했어요</span>
       </p>
-      <CardArt name={coop.name} className="mt-2 max-w-52" />
+      <div className="mt-2">
+        <CardButton
+          className="w-32"
+          card={{
+            name: coop.name,
+            lines: [
+              coop.description,
+              <><InlineIcon name="dice" /> {coop.pairText}</>,
+              <><InlineIcon name="check" /> 성공: {coop.successText}</>,
+              <><InlineIcon name="warn" /> 실패: {coop.failureText}</>,
+              coop.voidText,
+            ],
+          }}
+        />
+      </div>
       {coop.playerId !== myId ? (
         <p className="mt-1 rounded-xl bg-white/70 px-2 py-1 text-sm font-semibold">비밀의 방 탐색을 고르면 함께할 수 있어요! 보상은 둘 다 받아요</p>
       ) : (
         <p className="mt-1 rounded-xl bg-white/70 px-2 py-1 text-sm">함께할 친구를 기다리는 중이에요</p>
       )}
-      <details className="mt-1">
-        <summary className="min-h-9 cursor-pointer py-1 text-xs text-indigo-700">자세히 보기</summary>
-        <p className="text-xs text-indigo-700">{coop.description}</p>
-        <p className="text-xs"><InlineIcon name="dice" /> {coop.pairText}</p>
-        <p className="text-xs"><InlineIcon name="check" /> 성공: {coop.successText}</p>
-        <p className="text-xs"><InlineIcon name="warn" /> 실패: {coop.failureText}</p>
-        <p className="text-xs text-indigo-700">{coop.voidText}</p>
-      </details>
     </div>
   );
 }
