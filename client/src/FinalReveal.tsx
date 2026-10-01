@@ -76,7 +76,7 @@ function TallyCard({ game, player, step }: { game: GameState; player: PlayerGame
 }
 
 // 게임이 끝났을 때: 플레이어별 점수를 하나씩 계산해서 보여 주고, 꼴찌부터 순위를 공개한다 (건너뛰기 가능)
-export function FinalReveal({ game, onLeave }: { game: GameState; onLeave: () => void }) {
+export function FinalReveal({ game, onLeave, isHost, onRematch }: { game: GameState; onLeave: () => void; isHost: boolean; onRematch: () => void }) {
   const players = game.turnOrder.map((id) => game.players[id]);
   const winnerIds = game.winnerIds ?? [];
   const ranked = [...players].sort((a, b) => finalScore(game, b) - finalScore(game, a));
@@ -168,8 +168,18 @@ export function FinalReveal({ game, onLeave }: { game: GameState; onLeave: () =>
             건너뛰기
           </button>
         )}
+        {finished && isHost && (
+          <button className="min-h-12 w-full rounded-2xl bg-purple-500 font-semibold text-white active:scale-95 transition-transform" onClick={onRematch}>
+            <Icon name="sparkle" className="mr-1 h-5 w-5" />
+            같은 친구들과 한 판 더!
+          </button>
+        )}
+        {finished && !isHost && <p className="rounded-2xl bg-purple-50 px-3 py-2 text-center text-sm text-purple-600">방장이 다시 시작하면 대기실로 돌아가요</p>}
         {finished && (
-          <button className="min-h-12 w-full rounded-2xl bg-purple-500 font-semibold text-white active:scale-95 transition-transform" onClick={onLeave}>
+          <button
+            className={`min-h-12 w-full rounded-2xl active:scale-95 transition-transform ${isHost ? "bg-pink-100 text-pink-700" : "bg-purple-500 font-semibold text-white"}`}
+            onClick={onLeave}
+          >
             <Icon name="door" className="mr-1 h-5 w-5" />
             처음 화면으로 나가기
           </button>

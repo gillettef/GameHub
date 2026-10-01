@@ -42,7 +42,8 @@
 
 - `.claude/agents/`: 이 프로젝트 전용 서브에이전트 (게임 규칙 검토, 모바일 UX 검토 등)
 - `notes/플레이테스트_가이드.md`: 플레이테스트 실행 방법, 관찰 항목, 기록 양식, 수치 조정 지점
-- `server/scripts/`: `npm run check`(규칙 단위 검증), `npm run simulate`(봇 밸런스 시뮬레이션), `npm run smoke`/`npm run smoke:bot`/`npm run smoke:rejoin`/`npm run smoke:leave`(WebSocket 스모크 테스트, rejoin은 `AWAY_GRACE_MS=1500` 서버 필요). 봇 AI는 `server/src/game/bot.ts`. 밸런스 수치는 `server/src/game/config.ts`
+- `server/scripts/`: `npm run check`(규칙 단위 검증), `npm run simulate`(봇 밸런스 시뮬레이션), `npm run smoke`/`npm run smoke:bot`/`npm run smoke:rejoin`/`npm run smoke:leave`/`npm run smoke:social`(WebSocket 스모크 테스트, rejoin은 `AWAY_GRACE_MS=1500` 서버, social은 `BOT_SPEED=20 TURN_SPEED=45` 서버 필요). 봇 AI는 `server/src/game/bot.ts`. 밸런스 수치는 `server/src/game/config.ts`
+- 친구들과 플레이하기 위한 편의 기능(2026-10-01, `notes/기획_정리.md` 33절): 행동 제한 시간(방장이 대기실에서 없음/45/90/180초 선택, 시간 초과 시 서버가 대신 선택하고 2번 연속이면 봇이 임시로 이어받음 → `resume_seat`로 되찾기), 같은 멤버로 다시 하기(`rematch`, 방장), 방장 내보내기(`kick_player`), 리액션 이모지(`emoji`). 서버 로직은 `server/src/index.ts`, 화면은 `client/src/Social.tsx`
 - 카드 일러스트: 원본 `cards/`(글자 없는 SVG) → `client/public/cards/`(메타데이터 제거본)로 서빙. 카드 이름→파일 매핑은 `client/src/cardImages.ts`(카드 이름을 바꾸면 여기도 갱신), 작은 카드·확대 팝업·선택 격자는 `client/src/CardArt.tsx`
 - `.claude/skills/commit-and-push/`: 규칙 1·2·3을 실행하는 커밋/푸시 스킬 (`/commit-and-push`)
 - `.claude/skills/dev/`, `.claude/skills/dev-stop/`: 다른 네트워크의 친구들과 플레이하기 위해 서버+Cloudflare 퀵 터널을 띄우고(`/dev`) 종료(`/dev-stop`)하는 스킬. 상태/로그는 `.dev/`(gitignore)

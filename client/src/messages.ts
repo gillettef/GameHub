@@ -18,6 +18,14 @@ export type ClientMessage =
   | { type: "start_game" }
   | { type: "add_bot" }
   | { type: "remove_bot"; botId: string }
+  // 방장 전용: 행동 제한 시간(초, 0이면 없음), 친구 내보내기, 같은 멤버로 다시 하기
+  | { type: "set_turn_seconds"; seconds: number }
+  | { type: "kick_player"; playerId: string }
+  | { type: "rematch" }
+  // 자리를 비워 봇이 대신하던 내 자리를 되찾는다
+  | { type: "resume_seat" }
+  // 리액션 이모지
+  | { type: "emoji"; emoji: string }
   // 2주차: 공개된 수업카드 중 1장을 가져간다 (cardId가 null이면 가져가지 않고 넘어간다)
   | { type: "take_class_card"; cardId: string | null }
   | { type: "roll_dice"; diceCount?: number; tokenCounts?: Partial<Record<"intelligence" | "stamina" | "charm", number>> }
@@ -41,5 +49,11 @@ export type ServerMessage =
   | { type: "player_left"; playerId: string }
   | { type: "host_changed"; hostId: string }
   | { type: "left_room" }
+  | { type: "kicked" }
+  | { type: "room_settings"; turnSeconds: number }
+  | { type: "room_reset"; hostId: string; players: RoomPlayerInfo[]; turnSeconds: number }
+  // 지금 행동을 기다리는 사람들과 남은 시간(ms)
+  | { type: "turn_timer"; turnSeconds: number; waiting: Record<string, number> }
+  | { type: "emoji"; playerId: string; emoji: string }
   | { type: "game_state"; game: GameState }
   | { type: "error"; message: string };

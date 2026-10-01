@@ -12,6 +12,12 @@ export interface Player {
   graceTimer?: ReturnType<typeof setTimeout>;
   // 접속이 끊겨 봇이 대신 맡게 된 사람 (돌아오면 다시 사람에게 돌려준다)
   wasHuman?: boolean;
+  // 방장이 내보냈거나 스스로 나가서 봇이 영구히 이어받은 자리 (다시 하기 때 방에서 뺀다)
+  left?: boolean;
+  // 제한 시간 안에 행동하지 못한 연속 횟수 (직접 행동하면 0으로 돌아간다)
+  strikes?: number;
+  // 이모지를 마지막으로 보낸 시각 (도배 방지)
+  lastEmojiAt?: number;
 }
 
 export interface Room {
@@ -22,7 +28,15 @@ export interface Room {
   botTimer?: ReturnType<typeof setTimeout>;
   // 게임 종료 후 방을 자동 삭제하기 위한 타이머
   expireTimer?: ReturnType<typeof setTimeout>;
+  // 한 번 행동하는 데 주어지는 시간(초), 0이면 제한 없음 (방장이 대기실에서 정한다)
+  turnSeconds: number;
+  // 지금 행동을 기다리는 사람들의 마감 시각 (fp: 어떤 상황에서 기다리는지, 상황이 바뀌면 마감도 새로 시작)
+  waits: Map<string, { fp: string; deadline: number }>;
+  turnTimer?: ReturnType<typeof setTimeout>;
 }
+
+export const DEFAULT_TURN_SECONDS = 90;
+export const TURN_SECONDS_OPTIONS = [0, 45, 90, 180];
 
 const rooms = new Map<string, Room>();
 
@@ -37,7 +51,7 @@ function generateRoomCode(): string {
 
 export function createRoom(host: Player): Room {
   const code = generateRoomCode();
-  const room: Room = { code, hostId: host.id, players: new Map([[host.id, host]]) };
+  const room: Room = { code, hostId: host.id, players: new Map([[host.id, host]]), turnSeconds: DEFAULT_TURN_SECONDS, waits: new Map() };
   rooms.set(code, room);
   return room;
 }
@@ -63,6 +77,7 @@ export function leaveRoomIfNoHumans(room: Room): boolean {
 export function deleteRoom(room: Room): void {
   if (room.botTimer) clearTimeout(room.botTimer);
   if (room.expireTimer) clearTimeout(room.expireTimer);
+  if (room.turnTimer) clearTimeout(room.turnTimer);
   for (const p of room.players.values()) if (p.graceTimer) clearTimeout(p.graceTimer);
   rooms.delete(room.code);
 }

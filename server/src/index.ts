@@ -6,8 +6,8 @@ import express from "express";
 import { randomUUID } from "node:crypto";
 import { WebSocketServer, type WebSocket } from "ws";
 import { BALANCE } from "./game/config.js";
-import { createRoom, getRoom, joinRoom, leaveRoom, leaveRoomIfNoHumans, scheduleRoomExpiry, broadcast, type Player, type Room } from "./rooms.js";
-import { BOT_NAMES, chooseActivityAction, choosePick, pickBotPersonality, playClassTurn, rerollLowDice } from "./game/bot.js";
+import { createRoom, getRoom, joinRoom, leaveRoom, leaveRoomIfNoHumans, scheduleRoomExpiry, broadcast, TURN_SECONDS_OPTIONS, type Player, type Room } from "./rooms.js";
+import { BOT_NAMES, BOT_PERSONALITIES, chooseActivityAction, choosePick, pickBotPersonality, playClassTurn, rerollLowDice, type BotStrategy } from "./game/bot.js";
 import {
   autoKeepChoice,
   availableActivities,
@@ -61,6 +61,23 @@ const MAX_PLAYERS = 5;
 // 접속이 끊긴 사람이 돌아오기를 기다리는 시간 (이후엔 게임 중이면 봇이 자리를 맡고, 대기실이면 퇴장 처리)
 const AWAY_GRACE_MS = Number(process.env.AWAY_GRACE_MS) || 45_000;
 const HEARTBEAT_INTERVAL_MS = 15_000;
+// 제한 시간을 연달아 이만큼 넘기면 자리를 비운 것으로 보고 봇이 이어받는다 (돌아오기 버튼으로 되찾을 수 있다)
+const AFK_STRIKE_LIMIT = 2;
+// 테스트에서는 TURN_SPEED=45 처럼 제한 시간을 배속으로 줄일 수 있다
+const TURN_SPEED = Number(process.env.TURN_SPEED) || 1;
+// 리액션 이모지 목록(이 중에서만 보낼 수 있다)과 도배 방지 간격
+const ALLOWED_EMOJIS = ["👍", "😆", "😭", "😱", "👀", "⏰", "🎉", "❤️"];
+const EMOJI_COOLDOWN_MS = 700;
+// 직접 행동한 것으로 쳐서 연속 시간 초과 횟수를 0으로 되돌리는 메시지
+const ACTION_MESSAGES = new Set<ClientMessage["type"]>([
+  "roll_dice",
+  "reroll_dice",
+  "confirm_roll",
+  "keep_token",
+  "take_class_card",
+  "pick_activity_card",
+  "select_activity",
+]);
 
 // 봇의 평소 판단이 예외를 내더라도 게임이 멈추지 않도록 가장 단순한 행동으로 대신한다
 function runBotFallback(game: GameState, botId: string): void {
@@ -81,6 +98,130 @@ function runBotFallback(game: GameState, botId: string): void {
     const activityId = availableActivities(game, botId)[0];
     if (activityId) selectActivity(game, botId, activityId, activityId === "duel" ? duelTargets(game, botId)[0] : undefined);
   }
+}
+
+// 한 사람이 지금 해야 할 행동을 한 번 대신 한다. 봇은 성향대로 판단하고(주사위 다시 굴리기 포함),
+// 시간 초과된 사람 대신 할 때는 reroll=false로 무난한 선택만 한다. 판단이 예외를 내면 가장 단순한 행동으로 대신하고, 그마저 실패하면 false
+function takeAutoAction(game: GameState, playerId: string, strategy: BotStrategy, reroll: boolean): boolean {
+  try {
+    if (game.pendingRoll) {
+      const entry = game.pendingRoll.entries.find((e) => e.playerId === playerId);
+      if (entry?.dice === null) submitRoll(game, playerId);
+      else {
+        if (reroll) rerollLowDice(game, playerId);
+        confirmRoll(game, playerId);
+      }
+    } else if (game.phase === "cleanup") {
+      chooseKeepToken(game, playerId, autoKeepChoice(game, playerId));
+    } else if (game.phase === "class") {
+      playClassTurn(game, playerId, strategy);
+    } else if (game.phase === "activity" && game.pendingPick) {
+      chooseActivityCard(game, playerId, choosePick(game, strategy));
+    } else if (game.phase === "activity") {
+      const { activityId, targetPlayerId } = chooseActivityAction(game, playerId, strategy);
+      selectActivity(game, playerId, activityId, targetPlayerId);
+    }
+    return true;
+  } catch (err) {
+    console.error("자동 행동 오류:", err);
+    try {
+      runBotFallback(game, playerId);
+      return true;
+    } catch (fallbackErr) {
+      console.error("대체 행동도 실패:", fallbackErr);
+      return false;
+    }
+  }
+}
+
+// ---- 행동 제한 시간 ----
+
+// 지금 게임이 사람의 행동을 기다리는 플레이어들 (봇이 맡은 자리는 제외). scheduleBots와 같은 기준으로 판단한다
+function waitingHumanIds(room: Room): string[] {
+  const game = room.game;
+  if (!game || game.phase === "ended") return [];
+  const ids: string[] = [];
+  if (game.pendingRoll) {
+    const revealed = rollRevealed(game);
+    for (const e of game.pendingRoll.entries) if (revealed ? !e.confirmed : e.dice === null) ids.push(e.playerId);
+  } else if (game.phase === "cleanup") {
+    for (const [id, choice] of Object.entries(game.cleanupKeep)) if (choice === null) ids.push(id);
+  } else if (game.phase === "class") {
+    ids.push(game.classPickOrder[game.classPickPointer]);
+  } else if (game.phase === "activity") {
+    if (game.activityStage === "choose") ids.push(game.activityOrder[game.activityTurnPointer]);
+    else if (game.pendingPick) ids.push(game.pendingPick.playerId);
+  }
+  return ids.filter((id) => id && room.players.get(id) && !room.players.get(id)!.bot);
+}
+
+// "같은 상황에서 계속 기다리는 중인지"를 가리는 표시. 상황이 바뀌면 제한 시간도 새로 시작한다
+function waitFingerprint(game: GameState): string {
+  const roll = game.pendingRoll ? `${game.pendingRoll.kind}${rollRevealed(game) ? "R" : "W"}` : "";
+  const pick = game.pendingPick ? `${game.pendingPick.activityId}${game.pendingPick.mode}` : "";
+  return [game.round, game.phase, game.activityStage, game.classPickPointer, game.activityTurnPointer, game.activityResolvePointer, roll, pick].join("|");
+}
+
+// 게임 상태가 바뀔 때마다 호출해, 기다리는 사람별 마감 시각을 갱신하고 남은 시간을 모두에게 알린다
+function updateTurnTimer(room: Room): void {
+  if (room.turnTimer) {
+    clearTimeout(room.turnTimer);
+    room.turnTimer = undefined;
+  }
+  const now = Date.now();
+  const next = new Map<string, { fp: string; deadline: number }>();
+  if (room.game && room.turnSeconds > 0) {
+    const fp = waitFingerprint(room.game);
+    for (const id of waitingHumanIds(room)) {
+      const prev = room.waits.get(id);
+      next.set(id, prev && prev.fp === fp ? prev : { fp, deadline: now + (room.turnSeconds * 1000) / TURN_SPEED });
+    }
+  }
+  room.waits = next;
+  if (next.size > 0) {
+    const earliest = Math.min(...[...next.values()].map((w) => w.deadline));
+    room.turnTimer = setTimeout(() => handleTurnTimeout(room), Math.max(0, earliest - now) + 50);
+  }
+  broadcast(room, {
+    type: "turn_timer",
+    turnSeconds: room.turnSeconds,
+    waiting: Object.fromEntries([...next].map(([id, w]) => [id, Math.max(0, w.deadline - now)])),
+  } satisfies ServerMessage);
+}
+
+// 제한 시간이 지난 사람 대신 서버가 무난한 선택을 한다. 연달아 넘기면 자리를 비운 것으로 보고 봇에게 맡긴다
+function handleTurnTimeout(room: Room): void {
+  room.turnTimer = undefined;
+  const game = room.game;
+  if (!game || game.phase === "ended") return;
+  const now = Date.now();
+  const expired = [...room.waits].filter(([, w]) => w.deadline <= now).map(([id]) => id);
+  for (const id of expired) {
+    const player = room.players.get(id);
+    if (!player || player.bot) continue;
+    player.strikes = (player.strikes ?? 0) + 1;
+    if (player.strikes >= AFK_STRIKE_LIMIT) {
+      // 자리 비움: 봇이 이어받는다 (본인이 돌아오기를 누르면 되돌려 준다)
+      player.bot = pickBotPersonality();
+      player.wasHuman = true;
+      if (game.players[id]) game.players[id].isBot = true;
+      game.log.push({ round: game.round, message: `${player.name}님이 자리를 비워 봇이 이어받습니다` });
+    } else {
+      game.log.push({ round: game.round, message: `${player.name}님이 시간 안에 고르지 못해 자동으로 진행합니다` });
+      takeAutoAction(game, id, BOT_PERSONALITIES[0], false);
+    }
+  }
+  broadcastGameState(room);
+  scheduleBots(room);
+}
+
+// 봇이 임시로 맡고 있던 사람 자리를 다시 사람에게 돌려준다
+function restoreHuman(room: Room, player: Player): void {
+  player.bot = undefined;
+  player.wasHuman = undefined;
+  player.strikes = 0;
+  if (room.game?.players[player.id]) room.game.players[player.id].isBot = false;
+  room.game?.log.push({ round: room.game.round, message: `${player.name}님이 돌아왔습니다` });
 }
 
 // 봇이 행동해야 하는 상황이면 잠시 생각하는 시간을 두고 한 번 행동한 뒤, 다음 행동을 다시 예약한다
@@ -141,34 +282,12 @@ function scheduleBots(room: Room): void {
       return;
     }
     const bot = botId ? room.players.get(botId) : undefined;
-    if (!botId || !bot?.bot) return;
-    try {
-      if (room.game.pendingRoll) {
-        const entry = room.game.pendingRoll.entries.find((e) => e.playerId === botId);
-        if (entry?.dice === null) submitRoll(room.game, botId);
-        else {
-          rerollLowDice(room.game, botId);
-          confirmRoll(room.game, botId);
-        }
-      } else if (room.game.phase === "cleanup") {
-        chooseKeepToken(room.game, botId, autoKeepChoice(room.game, botId));
-      } else if (room.game.phase === "class") {
-        playClassTurn(room.game, botId, bot.bot);
-      } else if (room.game.phase === "activity" && room.game.pendingPick) {
-        chooseActivityCard(room.game, botId, choosePick(room.game, bot.bot));
-      } else if (room.game.phase === "activity") {
-        const { activityId, targetPlayerId } = chooseActivityAction(room.game, botId, bot.bot);
-        selectActivity(room.game, botId, activityId, targetPlayerId);
-      }
-    } catch (err) {
-      console.error("봇 행동 오류:", err);
-      try {
-        runBotFallback(room.game, botId);
-      } catch (fallbackErr) {
-        console.error("봇 대체 행동도 실패:", fallbackErr);
-        return;
-      }
+    if (!botId || !bot?.bot) {
+      // 그사이 사람이 자리를 되찾았을 수 있으니 상황을 다시 살핀다
+      scheduleBots(room);
+      return;
     }
+    if (!takeAutoAction(room.game, botId, bot.bot, true)) return;
     broadcastGameState(room);
     scheduleBots(room);
   }, delay);
@@ -194,8 +313,9 @@ function broadcastGameState(room: Room): void {
   if (!game) return;
   if (game.phase === "ended") scheduleRoomExpiry(room);
   // 엿본 탐험 카드는 엿본 본인에게만 보여 준다 (공개된 수업카드·구역 카드는 모두에게 공개)
+  // 소켓이 있는 자리에는 봇이 맡은 자리(자리 비움으로 봇이 이어받은 사람)도 보낸다 — 돌아오기 버튼을 보여 줘야 하므로
   for (const player of room.players.values()) {
-    if (player.bot) continue;
+    if (!player.socket) continue;
     const players = Object.fromEntries(
       Object.entries(game.players).map(([id, p]) => [id, id === player.id ? p : { ...p, peekedExploration: null }]),
     );
@@ -206,6 +326,31 @@ function broadcastGameState(room: Room): void {
       game: { ...publicGame, players, classLeft: classCardsLeft(game), rules: PUBLIC_RULES },
     });
   }
+  updateTurnTimer(room);
+}
+
+const sendRoomSettings = (socket: WebSocket, room: Room) => send(socket, { type: "room_settings", turnSeconds: room.turnSeconds });
+
+// 게임을 접고 모두 대기실로 되돌린다 (끝난 게임의 같은 멤버로 다시 하기). 떠난 사람은 빼고 남은 사람과 봇이 그대로 모인다
+function resetRoomToLobby(room: Room): void {
+  if (room.botTimer) clearTimeout(room.botTimer);
+  room.botTimer = undefined;
+  if (room.expireTimer) clearTimeout(room.expireTimer);
+  room.expireTimer = undefined;
+  for (const player of [...room.players.values()]) {
+    if (player.left || (player.bot && player.wasHuman && !player.socket)) {
+      if (player.graceTimer) clearTimeout(player.graceTimer);
+      room.players.delete(player.id);
+    } else if (player.bot && player.wasHuman) {
+      player.bot = undefined;
+      player.wasHuman = undefined;
+    }
+    player.strikes = 0;
+  }
+  room.game = undefined;
+  updateTurnTimer(room);
+  if (!room.players.has(room.hostId)) room.hostId = [...room.players.values()].find((p) => !p.bot)!.id;
+  broadcast(room, { type: "room_reset", hostId: room.hostId, players: playerInfo(room), turnSeconds: room.turnSeconds } satisfies ServerMessage);
 }
 
 wss.on("connection", (socket) => {
@@ -241,13 +386,8 @@ wss.on("connection", (socket) => {
         clearTimeout(player.graceTimer);
         player.graceTimer = undefined;
       }
-      if (player.bot) {
-        // 봇이 임시로 맡고 있던 자리를 다시 사람에게 돌려준다
-        player.bot = undefined;
-        player.wasHuman = undefined;
-        if (room.game?.players[player.id]) room.game.players[player.id].isBot = false;
-        room.game?.log.push({ round: room.game.round, message: `${player.name}님이 돌아왔습니다` });
-      }
+      // 봇이 임시로 맡고 있던 자리를 다시 사람에게 돌려준다
+      if (player.bot) restoreHuman(room, player);
       playerId = player.id;
       currentRoomCode = room.code;
       send(socket, {
@@ -257,7 +397,11 @@ wss.on("connection", (socket) => {
         isHost: room.hostId === player.id,
         players: playerInfo(room),
       });
-      if (room.game) broadcastGameState(room);
+      sendRoomSettings(socket, room);
+      if (room.game) {
+        broadcastGameState(room);
+        scheduleBots(room);
+      }
       return;
     }
 
@@ -272,6 +416,7 @@ wss.on("connection", (socket) => {
         playerId,
         players: playerInfo(room),
       });
+      sendRoomSettings(socket, room);
       return;
     }
 
@@ -299,6 +444,7 @@ wss.on("connection", (socket) => {
         playerId,
         players: playerInfo(room),
       });
+      sendRoomSettings(socket, room);
       broadcast(room, { type: "player_joined", playerId, playerName: message.playerName }, playerId);
       return;
     }
@@ -310,6 +456,80 @@ wss.on("connection", (socket) => {
     }
     const room = getRoom(currentRoomCode);
     if (!room) return;
+    // 내보내졌거나 다른 연결로 갈아탄 옛 연결의 메시지는 무시한다
+    const me = room.players.get(playerId);
+    if (!me || me.socket !== socket) return;
+    if (ACTION_MESSAGES.has(message.type)) me.strikes = 0;
+
+    if (message.type === "emoji") {
+      const now = Date.now();
+      if (!ALLOWED_EMOJIS.includes(message.emoji) || now - (me.lastEmojiAt ?? 0) < EMOJI_COOLDOWN_MS) return;
+      me.lastEmojiAt = now;
+      broadcast(room, { type: "emoji", playerId, emoji: message.emoji } satisfies ServerMessage);
+      return;
+    }
+
+    if (message.type === "set_turn_seconds") {
+      if (room.hostId !== playerId || !TURN_SECONDS_OPTIONS.includes(message.seconds)) {
+        send(socket, { type: "error", message: "방장만 정해진 시간 중에서 고를 수 있습니다." });
+        return;
+      }
+      room.turnSeconds = message.seconds;
+      broadcast(room, { type: "room_settings", turnSeconds: room.turnSeconds } satisfies ServerMessage);
+      // 게임 도중에 바꿔도 지금 기다리는 사람의 마감부터 새 기준으로 다시 잡는다
+      room.waits = new Map();
+      if (room.game) updateTurnTimer(room);
+      return;
+    }
+
+    if (message.type === "kick_player") {
+      const target = room.players.get(message.playerId);
+      if (room.hostId !== playerId || !target || target.id === playerId || (room.game && target.bot && !target.wasHuman && !target.left)) {
+        send(socket, { type: "error", message: "내보낼 수 없는 대상입니다." });
+        return;
+      }
+      const targetSocket = target.socket;
+      target.socket = undefined;
+      if (target.graceTimer) {
+        clearTimeout(target.graceTimer);
+        target.graceTimer = undefined;
+      }
+      send(targetSocket, { type: "kicked" });
+      if (room.game && room.game.phase !== "ended") {
+        // 게임 도중에는 자리를 비워 둘 수 없으니 봇이 영구히 이어받는다
+        target.bot = pickBotPersonality();
+        target.wasHuman = undefined;
+        target.left = true;
+        room.game.players[target.id].isBot = true;
+        room.game.log.push({ round: room.game.round, message: `${target.name}님이 방장에 의해 게임을 떠나 봇이 이어받습니다` });
+        broadcastGameState(room);
+        scheduleBots(room);
+      } else {
+        // 대기실이거나 끝난 게임이면 방에서 뺀다
+        room.players.delete(target.id);
+        broadcast(room, { type: "player_left", playerId: target.id });
+      }
+      targetSocket?.close();
+      return;
+    }
+
+    if (message.type === "rematch") {
+      if (room.hostId !== playerId || room.game?.phase !== "ended") {
+        send(socket, { type: "error", message: "방장만, 게임이 끝난 뒤에 다시 시작할 수 있습니다." });
+        return;
+      }
+      resetRoomToLobby(room);
+      return;
+    }
+
+    if (message.type === "resume_seat") {
+      if (me.bot && me.wasHuman) {
+        restoreHuman(room, me);
+        broadcastGameState(room);
+        scheduleBots(room);
+      }
+      return;
+    }
 
     if (message.type === "leave_room") {
       const leaving = room.players.get(playerId);
@@ -518,6 +738,7 @@ function handleVoluntaryLeave(room: Room, leaving: Player, leavingId: string): v
   if (room.game && room.game.phase !== "ended") {
     leaving.bot = pickBotPersonality();
     leaving.wasHuman = undefined;
+    leaving.left = true;
     if (room.game.players[leavingId]) room.game.players[leavingId].isBot = true;
     room.game.log.push({ round: room.game.round, message: `${leaving.name}님이 게임을 떠나 봇이 이어받습니다` });
     if (leaveRoomIfNoHumans(room)) return;

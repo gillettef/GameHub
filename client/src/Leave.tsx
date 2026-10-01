@@ -73,9 +73,21 @@ export function useBackGuard(onBack: () => void, enabled = true): void {
 }
 
 // 우상단 메뉴 아이콘 → 시트 → "나가기" → 확인 창. 뒤로가기도 같은 확인 창으로 이어진다
-export function GameMenu({ inGame, onLeave }: { inGame: boolean; onLeave: () => void }) {
+export function GameMenu({
+  inGame,
+  onLeave,
+  kickable = [],
+  onKick,
+}: {
+  inGame: boolean;
+  onLeave: () => void;
+  // 방장만 받는 목록: 게임에서 내보낼 수 있는 친구들
+  kickable?: { id: string; name: string }[];
+  onKick?: (playerId: string) => void;
+}) {
   const [sheet, setSheet] = useState(false);
   const [confirming, setConfirming] = useState(false);
+  const [kickTarget, setKickTarget] = useState<{ id: string; name: string } | null>(null);
   useBackGuard(() => {
     setSheet(false);
     setConfirming(true);
@@ -110,6 +122,24 @@ export function GameMenu({ inGame, onLeave }: { inGame: boolean; onLeave: () => 
               <Icon name="door" className="h-5 w-5" />
               게임 나가기
             </button>
+            {kickable.length > 0 && onKick && (
+              <div className="mt-2 rounded-2xl bg-purple-50 p-2">
+                <p className="px-2 pb-1 text-xs text-purple-500">방장 메뉴 · 자리를 오래 비운 친구는 내보내면 봇이 이어받아요</p>
+                {kickable.map((p) => (
+                  <button
+                    key={p.id}
+                    className="flex min-h-11 w-full items-center gap-2 rounded-xl px-3 text-left text-purple-700 active:scale-95 transition-transform"
+                    onClick={() => {
+                      setSheet(false);
+                      setKickTarget(p);
+                    }}
+                  >
+                    <Icon name="x" className="h-4 w-4 text-pink-500" />
+                    <span className="truncate">{p.name} 내보내기</span>
+                  </button>
+                ))}
+              </div>
+            )}
             <button className="mt-2 min-h-12 w-full rounded-2xl bg-purple-100 text-purple-700 active:scale-95 transition-transform" onClick={() => setSheet(false)}>
               닫기
             </button>
@@ -118,6 +148,36 @@ export function GameMenu({ inGame, onLeave }: { inGame: boolean; onLeave: () => 
         </Overlay>
       )}
       {confirming && <LeaveConfirm inGame={inGame} onCancel={() => setConfirming(false)} onLeave={onLeave} />}
+      {kickTarget && onKick && (
+        <Overlay>
+          <div
+            className="fixed inset-0 z-[60] flex items-end justify-center bg-purple-900/40 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:items-center"
+            role="dialog"
+            aria-modal="true"
+            aria-label="내보내기 확인"
+            onClick={() => setKickTarget(null)}
+          >
+            <div className="pop-in w-full max-w-sm rounded-3xl bg-white p-5 text-center shadow-lg" onClick={(e) => e.stopPropagation()}>
+              <p className="font-display text-lg text-purple-700">{kickTarget.name}님을 내보낼까요?</p>
+              <p className="mt-1 text-sm text-purple-600">내보내면 봇이 대신 플레이하고, 이 게임에는 다시 돌아올 수 없어요.</p>
+              <div className="mt-4 flex flex-col gap-2">
+                <button className="min-h-12 rounded-2xl bg-purple-500 font-semibold text-white active:scale-95 transition-transform" onClick={() => setKickTarget(null)} autoFocus>
+                  취소
+                </button>
+                <button
+                  className="min-h-12 rounded-2xl bg-pink-100 text-pink-700 active:scale-95 transition-transform"
+                  onClick={() => {
+                    onKick(kickTarget.id);
+                    setKickTarget(null);
+                  }}
+                >
+                  내보내기
+                </button>
+              </div>
+            </div>
+          </div>
+        </Overlay>
+      )}
     </>
   );
 }
