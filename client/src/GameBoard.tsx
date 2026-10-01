@@ -251,15 +251,17 @@ function ExamInfoPanel({ game }: { game: GameState }) {
         <InlineIcon name="note" /> 다음 시험: {name} ({examRound}개월 2~3주차 대신)
       </p>
       {card ? (
-        <>
-          <div className="flex items-center gap-3">
-            <CardArt name={card.name} className="w-28 shrink-0" />
-            <div className="min-w-0">
-              <p><b>{card.name}</b> — {describeExam(card)}</p>
-              <p className="text-xs text-sky-600">{card.description}</p>
-            </div>
+        <div className="mt-1.5 flex items-center gap-3">
+          {/* CardArt 자체가 w-full이라 폭은 감싸는 상자로 고정한다 */}
+          <div className="w-24 shrink-0">
+            <CardArt name={card.name} />
           </div>
-        </>
+          <div className="min-w-0 flex-1">
+            <p className="font-display text-base text-sky-800">{card.name}</p>
+            <p className="mt-0.5 inline-block rounded-full bg-white px-2 py-0.5 text-xs font-semibold text-sky-700">{describeExam(card)}</p>
+            <p className="mt-1 text-xs leading-snug text-sky-600">{card.description}</p>
+          </div>
+        </div>
       ) : (
         <p className="text-xs text-sky-600">시험 과목은 {revealRound}개월이 끝나면 공개돼요. 그때까지는 고르게 키워 두면 안전해요.</p>
       )}
