@@ -205,3 +205,33 @@ body[data-modal-open] .token-out {
     display: none;
   }
 }
+
+/* 리액션 이모지: 떠올랐다가 사라진다 */
+@keyframes reaction-float {
+  0% {
+    opacity: 0;
+    transform: translateY(8px) scale(0.8);
+  }
+  12% {
+    opacity: 1;
+    transform: translateY(0) scale(1.1);
+  }
+  80% {
+    opacity: 1;
+    transform: translateY(-14px) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-24px) scale(1);
+  }
+}
+
+.reaction-float {
+  animation: reaction-float 3.2s ease-out forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reaction-float {
+    animation: none;
+  }
+}

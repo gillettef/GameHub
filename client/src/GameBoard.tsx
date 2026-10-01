@@ -30,6 +30,8 @@ import { CardButton, CardGrid, PickGrid, type CardInfo } from "./CardArt";
 import { RulesGuide } from "./Rules";
 import { GameMenu } from "./Leave";
 import { FinalReveal } from "./FinalReveal";
+import { AwayBanner, SocialBar } from "./Social";
+import type { Reaction, TurnTimer } from "./useGameSocket";
 import { AnnouncementLayer } from "./Announcements";
 
 const ACTIVITY_IDS: ActivityId[] = ["tournament", "creature", "duel", "exploration", "lab"];
@@ -1004,6 +1006,13 @@ export function GameBoard({
   onConfirmRoll,
   onKeepToken,
   onLeave,
+  isHost,
+  turnTimer,
+  reactions,
+  onEmoji,
+  onResumeSeat,
+  onKick,
+  onRematch,
 }: {
   game: GameState;
   myId: string;
@@ -1017,6 +1026,13 @@ export function GameBoard({
   onConfirmRoll: () => void;
   onKeepToken: (choice: KeepChoice) => void;
   onLeave: () => void;
+  isHost: boolean;
+  turnTimer: TurnTimer;
+  reactions: Reaction[];
+  onEmoji: (emoji: string) => void;
+  onResumeSeat: () => void;
+  onKick: (playerId: string) => void;
+  onRematch: () => void;
 }) {
   const [tab, setTab] = useState<TabId>("game");
   const latestExam = game.examResults[game.examResults.length - 1];
@@ -1063,7 +1079,16 @@ export function GameBoard({
             {myTurn ? "내 차례 · " : ""}
             {phaseText}
           </p>
-          <GameMenu inGame={game.phase !== "ended"} onLeave={onLeave} />
+          <GameMenu
+            inGame={game.phase !== "ended"}
+            onLeave={onLeave}
+            kickable={
+              isHost && game.phase !== "ended"
+                ? game.turnOrder.filter((id) => id !== myId && !game.players[id].isBot).map((id) => ({ id, name: game.players[id].name }))
+                : []
+            }
+            onKick={onKick}
+          />
         </div>
         <div className="mt-1.5 h-1.5 w-full rounded-full bg-purple-100 overflow-hidden" aria-hidden>
           <div className="h-full bg-pink-300 transition-all" style={{ width: `${(game.round / 12) * 100}%` }} />
@@ -1097,7 +1122,7 @@ export function GameBoard({
             {game.phase === "activity" && (
               <ActivityPhasePanel game={game} myId={myId} onSelect={onSelectActivity} onPick={onPickActivityCard} />
             )}
-            {game.phase === "ended" && <FinalReveal game={game} onLeave={onLeave} />}
+            {game.phase === "ended" && <FinalReveal game={game} onLeave={onLeave} isHost={isHost} onRematch={onRematch} />}
 
             <ExamInfoPanel game={game} />
 
@@ -1184,6 +1209,14 @@ export function GameBoard({
         </ul>
       </nav>
 
+      {me.isBot && game.phase !== "ended" && <AwayBanner onResume={onResumeSeat} />}
+      <SocialBar
+        timer={turnTimer}
+        reactions={reactions}
+        names={Object.fromEntries(game.turnOrder.map((id) => [id, game.players[id].name]))}
+        myId={myId}
+        onEmoji={onEmoji}
+      />
       <AnnouncementLayer game={game} myId={myId} />
       <ErrorToast message={errorMessage} seq={errorSeq} />
     </div>

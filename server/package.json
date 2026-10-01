@@ -15,6 +15,7 @@
     "smoke:bot": "tsx scripts/smoke-bot.ts",
     "smoke:rejoin": "tsx scripts/smoke-rejoin.ts",
     "smoke:leave": "tsx scripts/smoke-leave.ts",
+    "smoke:social": "tsx scripts/smoke-social.ts",
     "playtest": "npm --prefix ../client run build && tsx src/index.ts"
   },
   "dependencies": {

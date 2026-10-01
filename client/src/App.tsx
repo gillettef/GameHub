@@ -30,8 +30,11 @@ import { RulesModal } from "./Rules";
 import { Icon } from "./Icons";
 import { LeaveConfirm, useBackGuard } from "./Leave";
 
+// 서버가 받아 주는 행동 제한 시간 선택지(초). 0이면 제한 없음
+const TURN_SECONDS_OPTIONS = [0, 45, 90, 180];
+
 function App() {
-  const { state, game, lastError, errorSeq, reconnecting, createRoom, joinRoom, leaveRoom, startGame, addBot, removeBot, takeClassCard, rollDice, rerollDice, confirmRoll, selectActivity, pickActivityCard, keepToken } =
+  const { state, game, turnTimer, reactions, lastError, errorSeq, reconnecting, createRoom, joinRoom, leaveRoom, startGame, addBot, removeBot, setTurnSeconds, kickPlayer, rematch, resumeSeat, sendEmoji, takeClassCard, rollDice, rerollDice, confirmRoll, selectActivity, pickActivityCard, keepToken } =
     useGameSocket();
   const [playerName, setPlayerName] = useState("");
   const [joinCode, setJoinCode] = useState("");
@@ -96,6 +99,13 @@ ${window.location.href}`;
         onConfirmRoll={confirmRoll}
         onKeepToken={keepToken}
         onLeave={leaveRoom}
+        isHost={!!state.isHost}
+        turnTimer={turnTimer}
+        reactions={reactions}
+        onEmoji={sendEmoji}
+        onResumeSeat={resumeSeat}
+        onKick={kickPlayer}
+        onRematch={rematch}
       />
       </>
     );
@@ -139,11 +149,11 @@ ${window.location.href}`;
                   {p.isBot ? null : <Icon name="user" className="mr-1 h-4 w-4" />}
                   {p.name}
                 </span>
-                {p.isBot && state.isHost && (
+                {state.isHost && p.id !== state.playerId && (
                   <button
                     className="shrink-0 min-h-11 min-w-11 rounded-full text-sm text-pink-500 active:scale-95 transition-transform"
-                    aria-label={`${p.name} 제거`}
-                    onClick={() => removeBot(p.id)}
+                    aria-label={p.isBot ? `${p.name} 제거` : `${p.name} 내보내기`}
+                    onClick={() => (p.isBot ? removeBot(p.id) : kickPlayer(p.id))}
                   >
                     <Icon name="x" className="h-4 w-4" />
                   </button>
@@ -162,6 +172,29 @@ ${window.location.href}`;
             봇 친구 추가하기
           </button>
         )}
+
+        <div className="w-full max-w-sm bg-white rounded-2xl shadow-sm p-4 mb-4">
+          <h2 className="text-sm font-semibold text-purple-500 mb-2">행동 제한 시간</h2>
+          {state.isHost ? (
+            <div className="grid grid-cols-4 gap-2" role="group" aria-label="행동 제한 시간">
+              {TURN_SECONDS_OPTIONS.map((sec) => (
+                <button
+                  key={sec}
+                  className={`min-h-11 rounded-xl text-sm active:scale-95 transition-transform ${
+                    state.turnSeconds === sec ? "bg-purple-500 text-white font-semibold" : "bg-purple-50 text-purple-700"
+                  }`}
+                  aria-pressed={state.turnSeconds === sec}
+                  onClick={() => setTurnSeconds(sec)}
+                >
+                  {sec === 0 ? "없음" : `${sec}초`}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <p className="text-purple-700">{state.turnSeconds === 0 ? "없음" : `${state.turnSeconds}초`}</p>
+          )}
+          <p className="mt-2 text-xs text-purple-500">시간이 지나면 대신 무난하게 골라 주고, 두 번 연속 놓치면 봇이 잠시 이어받아요 (돌아오기로 되찾을 수 있어요)</p>
+        </div>
 
         {state.isHost && (
           <button
