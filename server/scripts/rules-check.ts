@@ -241,16 +241,16 @@ test("정규수업: 인원수 + 1장이 공개되고 선택 순서가 정해진�
   }
 });
 
-test("정규수업 덱은 학기마다 인원 × 7장이고, 1학기는 주문력이 소수·2학기는 주문력 위주이며 비용이 다르다", () => {
+test("정규수업 덱은 학기마다 인원과 무관하게 36장이고, 1학기는 주문력이 소수·2학기는 주문력 위주이며 비용이 다르다", () => {
   for (const n of [2, 3, 4, 5]) {
     const state = newGame(n);
     const sem1 = [...state.classDeck, ...state.classMarket];
-    assert.equal(sem1.length, n * 7);
+    assert.equal(sem1.length, BALANCE.classDeckSize);
     const count = (cards: typeof sem1, stat: string) => cards.filter((c) => c.statBoost.stat === stat).length;
     assert.ok(count(sem1, "spellPower") >= 1 && count(sem1, "spellPower") < count(sem1, "intelligence") + 1);
     assert.ok(sem1.filter((c) => c.statBoost.stat !== "spellPower").every((c) => c.takeCost <= 2));
-    const sem2 = createClassDeck(() => Math.random().toString(), n, 2);
-    assert.equal(sem2.length, n * 7);
+    const sem2 = createClassDeck(() => Math.random().toString(), 2);
+    assert.equal(sem2.length, BALANCE.classDeckSize);
     assert.ok(count(sem2, "spellPower") > count(sem2, "intelligence") && count(sem2, "spellPower") > count(sem2, "charm"));
   }
 });
@@ -1004,8 +1004,8 @@ test("시험 달(6·12개월)은 1주차(준비) 다음에 곧바로 시험이�
   assert.equal(state.round, BALANCE.midtermRound + 1);
   // 2학기: 수업카드 덱이 주문력 위주의 새 덱으로 교체된다
   const sem2 = [...state.classDeck, ...state.classMarket, ...state.classDiscard];
-  assert.ok(sem2.length <= 3 * BALANCE.classDeckPerPlayer + 0 && sem2.length >= 3 * BALANCE.classDeckPerPlayer - 4);
-  assert.ok(sem2.filter((c) => c.statBoost.stat === "spellPower").length > 3 * BALANCE.classDeckPerPlayer * 0.3);
+  assert.equal(sem2.length, BALANCE.classDeckSize);
+  assert.ok(sem2.filter((c) => c.statBoost.stat === "spellPower").length > BALANCE.classDeckSize * 0.3);
   assert.equal(state.players[id].intelligenceTokens, effectiveStat(state.players[id], "intelligence") + 1, `남긴 지력토큰 1개(남은 ${left}개 중)가 다음 달로 간다`);
 });
 
