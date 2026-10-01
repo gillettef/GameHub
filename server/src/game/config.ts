@@ -21,9 +21,9 @@ export const BALANCE = {
   // 시험 순위별 학점 (1위, 2위, 그 이하는 마지막 값)
   examCredits: [3, 2, 1],
   // 2주차(정규수업): 인원수 + classMarketExtra 장을 공개하고, 선부터 시계방향으로 1장씩 가져간다.
-  // 수업카드 덱은 학기마다 하나씩(1학기 덱 → 중간고사 뒤 2학기 덱으로 교체, 남은 카드는 버림) 인원 × classDeckPerPlayer 장
+  // 수업카드 덱은 학기마다 하나씩(1학기 덱 → 중간고사 뒤 2학기 덱으로 교체, 남은 카드는 버림) 인원과 무관하게 classDeckSize 장
   classMarketExtra: 1,
-  classDeckPerPlayer: 7,
+  classDeckSize: 36,
   // 학기별 수업카드 구성: statWeights = 덱 안 능력치별 비율, spellExtraCost = 주문력 카드에 더해지는 습득 체력토큰,
   // nonSpellCostCap = 주문력 외 카드의 습득 체력토큰 상한. 1학기는 싸고 지력·체력·매력 위주(주문력은 소수), 2학기는 주문력 위주
   classSemesters: [

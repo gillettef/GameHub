@@ -99,9 +99,9 @@ function statCounts(total: number, weights: Record<StatKey, number>): Record<Sta
   return counts;
 }
 
-// 그 학기의 덱: 인원 × perPlayer장을 학기 비율대로 능력치별로 나눠, 같은 능력치 안에서는 종류 한 벌씩 섞어 이어 붙인다
-export function createClassDeck(makeId: () => string, playerCount = 4, semester: 1 | 2 = 1, perPlayer = BALANCE.classDeckPerPlayer): ClassCard[] {
-  const counts = statCounts(playerCount * perPlayer, BALANCE.classSemesters[semester - 1].statWeights);
+// 그 학기의 덱: 인원과 무관하게 classDeckSize장을 학기 비율대로 능력치별로 나눠, 같은 능력치 안에서는 종류 한 벌씩 섞어 이어 붙인다
+export function createClassDeck(makeId: () => string, semester: 1 | 2 = 1, size = BALANCE.classDeckSize): ClassCard[] {
+  const counts = statCounts(size, BALANCE.classSemesters[semester - 1].statWeights);
   const deck: ClassCard[] = [];
   for (const stat of STATS) {
     const pool = templates(semester).filter((t) => t.statBoost.stat === stat);

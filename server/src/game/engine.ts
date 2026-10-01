@@ -297,7 +297,7 @@ export function createGame(players: { id: string; name: string; isBot?: boolean 
     labPile: createLabPile(),
     explorationPile: createExplorationPile(),
     grimoirePile: createGrimoirePile(),
-    classDeck: createClassDeck(randomUUID, players.length, 1),
+    classDeck: createClassDeck(randomUUID, 1),
     classDiscard: [],
     creatureDeck: createCreatureDeck(),
     creatureDiscard: [],
@@ -336,7 +336,7 @@ function beginRound(state: GameState): void {
   log(state, `${state.round}라운드 시작`);
   // 중간고사 다음 달부터 2학기: 1학기 수업카드 덱을 버리고 2학기 덱으로 바꾼다
   if (state.round === BALANCE.midtermRound + 1) {
-    state.classDeck = createClassDeck(randomUUID, state.turnOrder.length, 2);
+    state.classDeck = createClassDeck(randomUUID, 2);
     state.classDiscard = [];
     log(state, "2학기 시작: 새 수업카드 덱으로 바뀌었어요 (주문력 카드가 더 많아져요)");
   }
