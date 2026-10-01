@@ -23,6 +23,13 @@ const STRATEGIES: BotStrategy[] = [
   { name: "주문력 몰빵(정규수업)", classWeights: { intelligence: 0.8, spellPower: 3, stamina: 1, charm: 0.3 }, activityBias: even },
   { name: "체력 몰빵(정규수업)", classWeights: { intelligence: 0.8, spellPower: 0.8, stamina: 3, charm: 0.3 }, activityBias: even },
   { name: "매력 몰빵(정규수업)", classWeights: { intelligence: 0.8, spellPower: 0.8, stamina: 1, charm: 3 }, activityBias: even },
+  {
+    name: "단계 성장(초반 지력·체력 → 후반 주문력)",
+    classWeights: { intelligence: 2, spellPower: 0.6, stamina: 2, charm: 0.5 },
+    lateClassWeights: { intelligence: 0.8, spellPower: 3, stamina: 0.8, charm: 0.3 },
+    lateFromRound: 5,
+    activityBias: even,
+  },
   { name: "무작위", classWeights: { intelligence: 1, spellPower: 1, stamina: 1, charm: 1 }, activityBias: even, random: true },
 ];
 

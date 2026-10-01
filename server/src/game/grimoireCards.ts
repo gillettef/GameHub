@@ -10,8 +10,8 @@ const DEFS: Def[] = [
   { name: "속삭이는 지혜서", description: "펼치면 귓가에 답이 속삭여요.", stat: "intelligence" },
   { name: "반짝 연습장", description: "풀수록 별이 늘어나는 연습장.", stat: "intelligence" },
   { name: "튼튼 마법 체조책", description: "따라 하면 몸이 가벼워져요.", stat: "stamina" },
-  { name: "매혹의 화술서", description: "말솜씨가 살랑살랑 좋아져요. 매력토큰이 더 값져져요.", stat: "charm", ability: { trigger: "always", effect: "charmRate", amount: 1 } },
-  { name: "반짝 스타일북", description: "오늘의 머리 모양 백 가지. 매력토큰이 더 값져져요.", stat: "charm", ability: { trigger: "always", effect: "charmRate", amount: 1 } },
+  { name: "매혹의 화술서", description: "말솜씨가 살랑살랑 좋아져요. 매달 매력토큰이 하나 더 생겨요.", stat: "charm", ability: { trigger: "prep", effect: "charmToken", amount: 1 } },
+  { name: "반짝 스타일북", description: "오늘의 머리 모양 백 가지. 매달 매력토큰이 하나 더 생겨요.", stat: "charm", ability: { trigger: "prep", effect: "charmToken", amount: 1 } },
   { name: "초급 주문집", description: "누구나 쓸 수 있는 쉬운 주문 모음.", stat: "spellPower" },
   { name: "별빛 주문집", description: "밤하늘의 마력을 담은 주문집.", stat: "spellPower" },
   // 능력치 + 추가 능력

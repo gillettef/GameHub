@@ -15,8 +15,8 @@ export const BALANCE = {
   initialCredit: 0,
   // 마법 토너먼트: 최종 순위 보상 (1위, 2위 순서). 트랙에는 상한이 없다
   tournamentRewards: [2, 1],
-  // 마법 토너먼트 이정표: 참가해서 트랙이 milestoneStep칸을 넘을 때마다 학점 milestoneCredit을 바로 받는다 (다른 사람과 경쟁하지 않는 보상)
-  tournamentMilestoneStep: 20,
+  // 마법 토너먼트는 주문력 수치만큼 굴린 주사위 합만큼 전진한다. 이정표: 참가해서 트랙이 milestoneStep칸을 넘을 때마다 학점 milestoneCredit을 바로 받는다 (다른 사람과 경쟁하지 않는 보상)
+  tournamentMilestoneStep: 70,
   tournamentMilestoneCredit: 1,
   // 시험 순위별 학점 (1위, 2위, 그 이하는 마지막 값)
   examCredits: [3, 2, 1],
@@ -34,7 +34,7 @@ export const BALANCE = {
   duelLoserTokenLoss: 1,
   // 주문 대결을 건 도전자가 지목당한 플레이어에게 건네는 매력 (결과와 상관없이 지불)
   duelCharmFee: 1,
-  // 자율활동 구역 하나에 들어갈 수 있는 최대 인원, 그리고 이미 한 명이 들어와 있는 구역에 두 번째로 들어갈 때 내는 체력토큰
+  // 자율활동 구역 하나에 들어갈 수 있는 최대 인원, 그리고 이미 한 명이 들어와 있는 구역에 두 번째로 들어갈 때 내는 매력토큰 (1주차에 매력 수치만큼 받는다)
   activityMaxParticipants: 2,
   activitySecondParticipantCost: 1,
   // 카드를 한 장 열 때 드는 지력토큰: 수업카드뿐 아니라 자율활동에서 카드를 열 때(마법생물 조련·비밀의 방 탐색·연구실 실험)도 똑같이 낸다.
@@ -42,10 +42,6 @@ export const BALANCE = {
   openCardCost: 1,
   // 위 지력토큰이 드는 활동. 2026-09-30: 모든 구역에서 카드를 열 때 지력토큰이 들지 않는다 (빈 배열). 지력토큰의 새 역할은 검토 중
   openCardCostActivities: [] as ActivityId[],
-  // 매력토큰: 1주차에 매력 수치만큼 받는다. 언제든 charmExchangeRate개를 지력토큰·체력토큰 1개로 바꿔 낼 수 있고,
-  // 마도서 등 "교환 비율" 능력 카드가 있으면 최소 charmExchangeRateMin개까지 내려간다. 구역 두 번째 참가비는 매력토큰 1개로 낼 수 있다
-  charmExchangeRate: 3,
-  charmExchangeRateMin: 2,
 };
 
 export function examCreditForRank(rank: number): number {
