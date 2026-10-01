@@ -98,10 +98,19 @@ function PlayerStatCard({ player, isMe, rules }: { player: PlayerGameState; isMe
           />
         </div>
       )}
-      {ownedCardInfos(player).length > 0 && (
+      {ownedCardGroups(player).length > 0 && (
         <div className="mt-2">
           <p className="mb-1 text-xs text-purple-500">가진 카드 (누르면 크게 볼 수 있어요)</p>
-          <CardGrid cards={ownedCardInfos(player)} />
+          <div className="flex flex-col gap-2">
+            {ownedCardGroups(player).map((g) => (
+              <div key={g.key}>
+                <p className="mb-1 text-xs font-semibold text-purple-600">
+                  <InlineIcon name={g.icon} /> {g.label} {g.cards.length}장
+                </p>
+                <CardGrid cards={g.cards} />
+              </div>
+            ))}
+          </div>
         </div>
       )}
       {player.creatures.length > 0 && (
@@ -120,21 +129,14 @@ function PlayerStatCard({ player, isMe, rules }: { player: PlayerGameState; isMe
     </>
   );
 
-  // 내 카드는 항상 펼치고, 다른 플레이어는 한 줄 요약으로 접어 세로 길이를 줄인다
-  if (isMe) {
-    return (
-      <div className="rounded-3xl border-2 border-pink-300 bg-pink-50 p-3 shadow-sm">
-        <p className="font-display text-lg text-purple-700 mb-2 truncate">
-          {player.name} <span className="text-sm text-pink-500">(나)</span>
-        </p>
-        {body}
-      </div>
-    );
-  }
+  // 내 카드와 친구 카드 모두 접고 펼 수 있다. 내 카드는 기본으로 펼쳐 두고, 접으면 한 줄 요약만 보인다
   return (
-    <details className="rounded-3xl border-2 border-purple-200 bg-white shadow-sm">
+    <details open={isMe} className={isMe ? "rounded-3xl border-2 border-pink-300 bg-pink-50 shadow-sm" : "rounded-3xl border-2 border-purple-200 bg-white shadow-sm"}>
       <summary className="flex min-h-12 cursor-pointer items-center justify-between gap-2 px-3 py-2 font-display text-purple-700">
-        <span className="truncate">{player.name}</span>
+        <span className="truncate">
+          {player.name}
+          {isMe && <span className="text-sm text-pink-500"> (나)</span>}
+        </span>
         <span className="shrink-0 text-sm text-purple-600">
           <InlineIcon name="cap" /> {player.credit} · <InlineIcon name="sparkle" /> {effectiveStat(player, "spellPower")}
         </span>
@@ -162,21 +164,38 @@ function offerCardInfo(card: OfferCardView): CardInfo {
   };
 }
 
-function ownedCardInfos(player: PlayerGameState): CardInfo[] {
-  return [
-    ...player.classCards.map(classCardInfo),
-    ...player.equipment.map((c) => ({ name: c.name, badge: LAB_KIND_LABEL[c.kind], lines: [c.description, c.summary] })),
-    ...player.grimoires.map((c) => ({
-      name: c.name,
-      badge: `${STAT_LABEL[c.statBoost.stat]} +${c.statBoost.amount}`,
-      lines: [c.description, ...(c.ability ? [describeAbility(c.ability)] : [])],
-    })),
-    ...player.creatures.map((c) => ({
-      name: c.name,
-      badge: `${ELEMENT_LABEL[c.element]} · ${KIND_LABEL[c.kind]} · 기준 ${c.trainTarget}`,
-      lines: [c.description, describeAbility(c.ability)],
-    })),
+// 가진 카드를 어디서 얻었는지(2주차 정규수업 / 3주차 자율활동 구역)별로 묶는다
+function ownedCardGroups(player: PlayerGameState): { key: string; icon: IconName; label: string; cards: CardInfo[] }[] {
+  const groups = [
+    { key: "class", icon: "book" as IconName, label: "정규수업 수업카드", cards: player.classCards.map(classCardInfo) },
+    {
+      key: "lab",
+      icon: "flask" as IconName,
+      label: "연구실 실험 연구카드",
+      cards: player.equipment.map((c) => ({ name: c.name, badge: LAB_KIND_LABEL[c.kind], lines: [c.description, c.summary] })),
+    },
+    {
+      key: "duel",
+      icon: "swords" as IconName,
+      label: "주문 대결 마도서",
+      cards: player.grimoires.map((c) => ({
+        name: c.name,
+        badge: `${STAT_LABEL[c.statBoost.stat]} +${c.statBoost.amount}`,
+        lines: [c.description, ...(c.ability ? [describeAbility(c.ability)] : [])],
+      })),
+    },
+    {
+      key: "creature",
+      icon: "paw" as IconName,
+      label: "마법생물 조련 마법생물",
+      cards: player.creatures.map((c) => ({
+        name: c.name,
+        badge: `${ELEMENT_LABEL[c.element]} · ${KIND_LABEL[c.kind]} · 기준 ${c.trainTarget}`,
+        lines: [c.description, describeAbility(c.ability)],
+      })),
+    },
   ];
+  return groups.filter((g) => g.cards.length > 0);
 }
 
 function ClassPhasePanel({ game, myId, onTake }: { game: GameState; myId: string; onTake: (cardId: string | null) => void }) {
