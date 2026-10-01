@@ -7,7 +7,7 @@
 //   피해를 받을 때   → 주문 대결에서 패배했을 때 (lose)
 //   공격력 +N       → 주문 대결 굴림 +N (rollBonus)
 //   상대에게 피해 N  → 상대의 주문 대결 굴림 -N (enemyRollPenalty)
-//   피해를 받지 않음  → 주문 대결 패배 시 마법 주문서를 잃지 않음 (immune)
+//   피해를 받지 않음  → 주문 대결 패배 시 낸 주문서 1개를 다음 달 준비 때 돌려받음 (immune)
 //   주문력 N 얻기    → acquire: 주문력 영구 +N / prep: 그 달 마법 주문서 토큰 +N (spellbook)
 //   생명력 N 회복/감소 → 체력토큰. prep이면 그 달 즉시 +N, 그 외에는 다음 달 준비 때 +N/-N (stamina / enemyStamina)
 import type { CreatureAbility, CreatureCard, CreatureElement } from "./types.js";
@@ -87,7 +87,7 @@ export function describeAbility(a: CreatureAbility): string {
     rollBonus: `내 굴림 +${a.amount}`,
     enemyRollPenalty: `상대 굴림 -${a.amount}`,
     enemyStamina: `상대 다음 달 체력토큰 -${a.amount}`,
-    immune: "주문서를 잃지 않음",
+    immune: "낸 주문서 1개를 다음 달에 돌려받음",
     charmToken: `매력토큰 +${a.amount}`,
   }[a.effect];
   return `${when}: ${what}`;

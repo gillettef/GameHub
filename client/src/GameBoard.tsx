@@ -849,7 +849,7 @@ function TournamentPanel({ game, myId }: { game: GameState; myId: string }) {
     <div className="flex flex-col gap-3">
       <div className="rounded-3xl border-2 border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
         <p className="font-display text-base text-amber-700 mb-1"><InlineIcon name="trophy" /> 마법 토너먼트</p>
-        <p className="text-xs">토너먼트 참가를 고르면 주문력 수치만큼 주사위를 굴려, 나온 눈을 모두 더한 칸만큼 트랙을 전진해요. 트랙에는 상한이 없어요!</p>
+        <p className="text-xs">토너먼트 참가를 고르면 마법 주문서를 모두 내고 낸 개수만큼 주사위를 굴려, 나온 눈을 모두 더한 칸만큼 트랙을 전진해요. 트랙에는 상한이 없어요!</p>
         <p className="text-xs">
           기말고사가 끝나면 1위 <b>학점 +{rewards[0]}</b>
           {rewards.length > 1 && <>, 2위 <b>학점 +{rewards[1]}</b></>}를 받아요. (0칸은 보상 없음 · 같은 칸이면 공동 순위)

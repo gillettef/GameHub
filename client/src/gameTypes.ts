@@ -249,10 +249,10 @@ export const ACTIVITY_LABEL: Record<ActivityId, string> = {
 // 활동 카드에 함께 보여줄 한 줄 설명
 export const ACTIVITY_HINT: Record<ActivityId, string> = {
   tournament: "주문서를 모두 내고, 낸 만큼 주사위를 굴려 합친 칸만큼 트랙 전진 → 학점",
-  creature: "카드 2장 공개, 주문서만큼 주사위 + 매력으로 조련 판정, 하늘·육지·바다를 1장씩 모으면 세트 점수",
-  duel: "아직 안 고른 한 명을 지목해 강제 대결, 주문력만큼 주사위를 굴려 이기면 마도서 1장",
-  exploration: "카드 2장 중 하나를 골라 지력 또는 체력만큼 주사위 판정! 크게 벌거나 크게 잃어요",
-  lab: "심화학습: 연구 카드 2장 중 1장, 남은 체력토큰만큼 주사위를 굴려 안정적으로 성장",
+  creature: "카드 2장 공개, 주문서만큼 주사위 + 생물별 능력치(체력·매력·주문력 섞음)로 조련 판정, 하늘·육지·바다를 1장씩 모으면 세트 점수",
+  duel: "아직 안 고른 한 명을 지목해 강제 대결, 주문서를 모두 내고 낸 만큼 주사위를 굴려 이기면 마도서 1장",
+  exploration: "카드 2장 중 하나를 골라 카드가 정한 지력 또는 체력토큰을 내고 낸 만큼 주사위 판정! 크게 벌거나 크게 잃어요",
+  lab: "심화학습: 연구 카드 2장 중 1장, 지력토큰을 내고 낸 만큼 주사위를 굴려 안정적으로 성장",
 };
 
 export function effectiveStat(player: PlayerGameState, stat: StatKey): number {
@@ -293,6 +293,7 @@ export function activityBlockReason(game: GameState, playerId: string, activityI
   if (activityId === "tournament" && player.spellbookTokens < 1) return "마법 주문서가 1개 이상 필요해요";
   if (activityId === "creature" && player.spellbookTokens < game.rules.creatureMinCost) return `마법 주문서가 ${game.rules.creatureMinCost}개 이상 필요해요`;
   if (activityId === "duel") {
+    if (player.spellbookTokens < 1) return "마법 주문서가 1개 이상 필요해요";
     if (duelTargets(game, playerId).length === 0) return "지목할 수 있는 친구가 없어요";
     if (player.charm < game.rules.duelCharmFee) return `건넬 매력(${game.rules.duelCharmFee})이 없어요`;
   }
@@ -320,7 +321,7 @@ export function describeAbility(a: CreatureAbility): string {
     rollBonus: `내 굴림 +${a.amount}`,
     enemyRollPenalty: `상대 굴림 -${a.amount}`,
     enemyStamina: `상대 다음 달 체력토큰 -${a.amount}`,
-    immune: "주문서를 잃지 않음",
+    immune: "낸 주문서 1개를 다음 달에 돌려받음",
     charmToken: `매력토큰 +${a.amount}`,
   }[a.effect];
   return `${when}: ${what}`;
