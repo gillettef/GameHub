@@ -28,7 +28,7 @@ const STRATEGIES: BotStrategy[] = [
     classWeights: { intelligence: 2, spellPower: 0.6, stamina: 2, charm: 0.5 },
     lateClassWeights: { intelligence: 0.8, spellPower: 3, stamina: 0.8, charm: 0.3 },
     lateFromRound: 7,
-    // 1학기에는 지력·체력 주사위를 쓰는 탐험·연구실, 2학기에는 주문서를 쓰는 토너먼트·조련·대결
+    // 1학기에는 지력·체력 주사위를 쓰는 탐험·연구실, 2학기에는 마나토큰을 쓰는 토너먼트·조련·대결
     activityBias: { tournament: 0.6, creature: 0.6, duel: 0.6, exploration: 2, lab: 2 },
     lateActivityBias: { tournament: 2, creature: 1.5, duel: 1.2, exploration: 0.8, lab: 0.5 },
   },

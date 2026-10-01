@@ -42,7 +42,7 @@ export function nextAction(game: PublicGameState, playerId: string): SmokeAction
     const card = cards.find((c) => {
       if (!c.cost) return true;
       if (c.cost.kind === "stamina") return canPay(me, 0, c.cost.amount);
-      return me.spellbookTokens >= c.cost.amount;
+      return me.manaTokens >= c.cost.amount;
     });
     return { key: `${base}:pick:${game.activityResolvePointer}:${cards.length}`, message: { type: "pick_activity_card", cardId: card?.id ?? null } };
   }

@@ -56,7 +56,7 @@ const CARD_IMAGE_FILE: Record<string, string> = {
   "장학금 봉투": "lab/lab_exam_scholarship_envelope.svg",
   "예지의 수정구": "lab/lab_insight_crystal_ball.svg",
   "고양이의 귀띔": "lab/lab_insight_cats_whisper.svg",
-  "마법 주문서 꾸러미": "lab/lab_supply_spell_bundle.svg",
+  "마나토큰 꾸러미": "lab/lab_supply_spell_bundle.svg",
   "든든 도시락": "lab/lab_supply_hearty_bento.svg",
   "속삭이는 지혜서": "grimoire/grimoire_whispering_wisdom.svg",
   "반짝 연습장": "grimoire/grimoire_sparkle_workbook.svg",

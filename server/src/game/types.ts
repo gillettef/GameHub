@@ -22,12 +22,12 @@ export interface ClassCard {
 }
 
 // 카드 효과 묶음 (탐험/연구 카드 공용). 영구 능력치, 시험까지 유지되는 임시 능력치, 학점,
-// 다음 달 마법 주문서/체력토큰(그 달의 토큰은 4주차에 소멸하므로 다음 달 준비 때 반영), 탐험 카드 엿보기
+// 다음 달 마나토큰/체력토큰(그 달의 토큰은 4주차에 소멸하므로 다음 달 준비 때 반영), 탐험 카드 엿보기
 export interface CardEffect {
   stats?: Partial<Record<StatKey, number>>;
   tempStats?: Partial<Record<StatKey, number>>;
   credit?: number;
-  nextSpellbook?: number;
+  nextMana?: number;
   nextStamina?: number;
   peekExploration?: boolean;
 }
@@ -62,7 +62,7 @@ export type CreatureElement = "sky" | "land" | "ocean";
 
 export interface CreatureAbility {
   trigger: "acquire" | "prep" | "duel" | "defend" | "lose" | "always";
-  effect: "spellPower" | "spellbook" | "stamina" | "rollBonus" | "enemyRollPenalty" | "enemyStamina" | "immune" | "charmToken";
+  effect: "spellPower" | "mana" | "stamina" | "rollBonus" | "enemyRollPenalty" | "enemyStamina" | "immune" | "charmToken";
   amount: number;
 }
 
@@ -125,10 +125,10 @@ export interface PlayerGameState {
   staminaTokens: number;
   // 1주차에 매력 수치만큼 받는 토큰: 구역 두 번째 참가비로 낸다 (정리 때 소멸)
   charmTokens: number;
-  spellbookTokens: number;
+  manaTokens: number;
   // 마법생물 효과로 다음 달 준비(1주차) 때 체력토큰에 더해지는(또는 빼지는) 값
   pendingStaminaTokens: number;
-  pendingSpellbookTokens: number;
+  pendingManaTokens: number;
   // 4주차(정리)에서 골라 다음 달 준비 때 더해지는 지력토큰·체력토큰 (각 0 또는 1, 둘 중 하나만 1)
   carryTokens: { intelligence: number; stamina: number };
   tournamentTrack: number;
@@ -169,7 +169,7 @@ export interface PendingRoll {
   lines: string[];
   // dice가 null이면 아직 안 굴린 사람, confirmed는 결과를 확인하고 다음으로 넘기기를 누른 사람
   // diceChoiceMax가 있으면 굴리기 전에 diceChoiceStat 토큰(기본 지력)을 1~max개 내고 낸 개수만큼 굴릴 수 있다 (연구실 실험·탐험 판정)
-  entries: { playerId: string; label: string; diceCount: number; diceChoiceMax?: number; diceChoiceStat?: "intelligence" | "stamina" | "spellbook" | "charm"; diceChoices?: { stat: "intelligence" | "stamina" | "charm"; max: number }[]; dice: number[] | null; confirmed: boolean; rerolls: number }[];
+  entries: { playerId: string; label: string; diceCount: number; diceChoiceMax?: number; diceChoiceStat?: "intelligence" | "stamina" | "mana" | "charm"; diceChoices?: { stat: "intelligence" | "stamina" | "charm"; max: number }[]; dice: number[] | null; confirmed: boolean; rerolls: number }[];
 }
 
 // 협력 탐험 카드가 함께할 친구를 기다리는 중 (공개 정보)
@@ -220,8 +220,8 @@ export interface OfferCardView {
   name: string;
   description: string;
   lines: string[];
-  // 이 카드를 가져가는 데 드는 비용 (체력토큰 또는 마법 주문서)
-  cost?: { kind: "stamina" | "spellbook"; amount: number };
+  // 이 카드를 가져가는 데 드는 비용 (체력토큰 또는 마나토큰)
+  cost?: { kind: "stamina" | "mana"; amount: number };
   // 마법생물 조련에 쓸 수 있는 토큰 종류 (이 중 하나라도 있어야 가져갈 수 있다)
   tokenNeeds?: ("intelligence" | "stamina" | "charm")[];
   // 카드 이름 아래에 붙는 짧은 분류 (마법생물의 속성 · 종류)
@@ -283,7 +283,7 @@ export interface GameState {
   examResults: ExamResult[];
   // 가장 최근 4주차(정리)에서 소멸한 토큰 (화면의 정리 연출용)
   // (kept: 이 사람이 다음 달로 남긴 토큰 1개. 소멸 수량은 남긴 것을 뺀 값)
-  cleanupSummary: { playerId: string; intelligenceTokens: number; staminaTokens: number; charmTokens: number; spellbookTokens: number; kept: "intelligence" | "stamina" | null }[];
+  cleanupSummary: { playerId: string; intelligenceTokens: number; staminaTokens: number; charmTokens: number; manaTokens: number; kept: "intelligence" | "stamina" | null }[];
   // 4주차(정리)에서 다음 달로 남길 토큰을 고르는 중: 남길 수 있는 토큰이 있는 사람만 들어 있고, null이면 아직 고르지 않았다
   cleanupKeep: Record<string, KeepChoice | null>;
   // 카드 덱·버림 더미와 주사위 처리 정보 (서버 전용, 클라이언트에는 전송하지 않음)
@@ -319,7 +319,7 @@ export interface PublicRules {
   activityMaxParticipants: number;
   activitySecondParticipantCost: number;
   duelCharmFee: number;
-  duelSpellbookFee: number;
+  duelManaFee: number;
   // 시험이 열리는 라운드와, 시험 카드가 공개되는 라운드 (이 라운드가 끝난 뒤 공개)
   midtermRound: number;
   midtermRevealRound: number;
@@ -328,5 +328,5 @@ export interface PublicRules {
   tournamentRewards: number[];
   // 최종 점수 = 주문력 × 학점 + 마법생물 세트(하늘·육지·바다 1장씩) 수 × creatureSetScore
   creatureSetScore: number;
-  // 마법생물을 가져오는 데 드는 최소 마법 주문서 (이보다 적으면 마법생물 조련을 고를 수 없다)
+  // 마법생물을 가져오는 데 드는 최소 마나토큰 (이보다 적으면 마법생물 조련을 고를 수 없다)
 }

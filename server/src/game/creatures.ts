@@ -7,8 +7,8 @@
 //   피해를 받을 때   → 주문 대결에서 패배했을 때 (lose)
 //   공격력 +N       → 주문 대결 굴림 +N (rollBonus)
 //   상대에게 피해 N  → 상대의 주문 대결 굴림 -N (enemyRollPenalty)
-//   피해를 받지 않음  → 주문 대결 패배 시 낸 주문서 1개를 다음 달 준비 때 돌려받음 (immune)
-//   주문력 N 얻기    → acquire: 주문력 영구 +N / prep: 그 달 마법 주문서 토큰 +N (spellbook)
+//   피해를 받지 않음  → 주문 대결 패배 시 낸 마나토큰 1개를 다음 달 준비 때 돌려받음 (immune)
+//   주문력 N 얻기    → acquire: 주문력 영구 +N / prep: 그 달 마나토큰 +N (mana)
 //   생명력 N 회복/감소 → 체력토큰. prep이면 그 달 즉시 +N, 그 외에는 다음 달 준비 때 +N/-N (stamina / enemyStamina)
 import type { CreatureAbility, CreatureCard, CreatureElement } from "./types.js";
 
@@ -38,7 +38,7 @@ const DEFS: Def[] = [
   ["하늘의 노래꾼", "sky", "plant", 8, A("prep", "stamina"), "노래로 행복을 전하는 식물 생명체."],
   ["신성한 비상", "sky", "animal", 12, A("duel", "enemyRollPenalty"), "성스러운 깃털의 비둘기."],
   ["은하의 수호자", "sky", "animal", 16, A("defend", "stamina"), "별을 품은 날개를 가진 착한 눈의 동물."],
-  ["하늘의 신비", "sky", "plant", 20, A("prep", "spellbook", 2), "신비로운 기운이 빛나는 식물 생명체."],
+  ["하늘의 신비", "sky", "plant", 20, A("prep", "mana", 2), "신비로운 기운이 빛나는 식물 생명체."],
   ["하늘의 수호용", "sky", "animal", 12, A("duel", "rollBonus"), "하늘을 지키는 크고 웅장한 용."],
   // 육지
   ["대지의 수호자", "land", "animal", 12, A("duel", "stamina", 2), "돌 갑옷과 커다란 뿔을 가진 수호자."],
@@ -48,7 +48,7 @@ const DEFS: Def[] = [
   ["대지의 수호정령", "land", "plant", 16, A("defend", "stamina"), "흙과 나무로 이루어진 수호정령."],
   ["지하뿌리 용매", "land", "animal", 12, A("lose", "stamina"), "뿌리와 날개를 가진 지하의 생물."],
   ["바위망치 코끼리", "land", "animal", 20, A("duel", "rollBonus", 2), "바위처럼 단단한 피부의 코끼리."],
-  ["용암 식물", "land", "plant", 8, A("prep", "spellbook"), "뜨거운 용암에서 자라는 식물."],
+  ["용암 식물", "land", "plant", 8, A("prep", "mana"), "뜨거운 용암에서 자라는 식물."],
   ["지하 돌껍질", "land", "animal", 16, A("lose", "immune"), "단단한 돌껍질로 몸을 지키는 생물."],
   ["대지의 수호자 용", "land", "animal", 12, A("duel", "stamina"), "장갑 같은 피부의 대지의 수호용."],
   // 바다
@@ -60,7 +60,7 @@ const DEFS: Def[] = [
   ["푸른 해마", "ocean", "animal", 12, A("defend", "stamina"), "작고 아름다운 푸른 꼬리의 해마."],
   ["심해의 수호요정", "ocean", "plant", 16, A("duel", "stamina", 2), "심해의 꽃을 닮은 치유의 요정."],
   ["바다의 여왕", "ocean", "animal", 20, A("lose", "enemyStamina"), "위엄 있고 아름다운 바다의 여왕."],
-  ["바다의 은인", "ocean", "plant", 12, A("prep", "spellbook"), "푸른 빛을 두른 바다의 마법사."],
+  ["바다의 은인", "ocean", "plant", 12, A("prep", "mana"), "푸른 빛을 두른 바다의 마법사."],
   ["물결 저격수", "ocean", "animal", 8, A("duel", "enemyRollPenalty"), "빠르고 정확한 바다의 저격수."],
 ];
 
@@ -80,12 +80,12 @@ export function describeAbility(a: CreatureAbility): string {
   const when = { acquire: "획득 즉시", prep: "매달 준비 때", duel: "주문 대결 참여 시", defend: "대결 도전받을 때", lose: "대결 패배 시", always: "항상" }[a.trigger];
   const what = {
     spellPower: `주문력 영구 +${a.amount}`,
-    spellbook: `마법 주문서 +${a.amount}`,
+    mana: `마나토큰 +${a.amount}`,
     stamina: a.trigger === "prep" ? `체력토큰 +${a.amount}` : `다음 달 체력토큰 +${a.amount}`,
     rollBonus: `내 굴림 +${a.amount}`,
     enemyRollPenalty: `상대 굴림 -${a.amount}`,
     enemyStamina: `상대 다음 달 체력토큰 -${a.amount}`,
-    immune: "낸 주문서 1개를 다음 달에 돌려받음",
+    immune: "낸 마나토큰 1개를 다음 달에 돌려받음",
     charmToken: `매력토큰 +${a.amount}`,
   }[a.effect];
   return `${when}: ${what}`;

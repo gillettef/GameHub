@@ -210,7 +210,7 @@ function applyCardEffect(state: GameState, player: PlayerGameState, effect: Card
     player.tempBoosts[stat as StatKey] = (player.tempBoosts[stat as StatKey] ?? 0) + amount;
   }
   player.credit += effect.credit ?? 0;
-  player.pendingSpellbookTokens += effect.nextSpellbook ?? 0;
+  player.pendingManaTokens += effect.nextMana ?? 0;
   player.pendingStaminaTokens += effect.nextStamina ?? 0;
   if (effect.peekExploration) {
     const top = peekPile(state.explorationPile);
@@ -244,9 +244,9 @@ function createPlayer(id: string, name: string, isBot = false): PlayerGameState 
     intelligenceTokens: 0,
     staminaTokens: 0,
     charmTokens: 0,
-    spellbookTokens: 0,
+    manaTokens: 0,
     pendingStaminaTokens: 0,
-    pendingSpellbookTokens: 0,
+    pendingManaTokens: 0,
     carryTokens: { intelligence: 0, stamina: 0 },
     peekedExploration: null,
     tournamentTrack: 0,
@@ -316,8 +316,8 @@ function beginFirstRoll(state: GameState, contenders: string[]): void {
 
 // ── 토큰 지불: 지력토큰·체력토큰·매력토큰은 서로 바꿀 수 없다. 자율활동 구역의 두 번째 참가비는 매력토큰으로만 낸다 ──
 
-type PayKind = "intelligence" | "stamina" | "spellbook" | "charm";
-const PAY_OBJECT: Record<PayKind, string> = { intelligence: "지력토큰을", stamina: "체력토큰을", spellbook: "마법 주문서를", charm: "매력토큰을" };
+type PayKind = "intelligence" | "stamina" | "mana" | "charm";
+const PAY_OBJECT: Record<PayKind, string> = { intelligence: "지력토큰을", stamina: "체력토큰을", mana: "마나토큰을", charm: "매력토큰을" };
 type Payer = Pick<PlayerGameState, "intelligenceTokens" | "staminaTokens" | "charmTokens">;
 
 // 지력토큰 int개 + 체력토큰 stamina개 + 매력토큰 charm개를 낼 수 있는가
@@ -328,12 +328,12 @@ function pay(p: PlayerGameState, kind: PayKind, n: number): void {
   if (kind === "intelligence") p.intelligenceTokens -= n;
   else if (kind === "stamina") p.staminaTokens -= n;
   else if (kind === "charm") p.charmTokens -= n;
-  else p.spellbookTokens -= n;
+  else p.manaTokens -= n;
 }
 
 // 굴리기 전에 토큰을 1~보유 개수 사이에서 골라 내고 낸 개수만큼 굴리는 굴림 항목 (토큰이 없으면 주사위 1개를 공짜로 굴린다). 기본값은 보유 토큰 전부
 function choiceEntry(player: PlayerGameState, kind: PayKind, label: string) {
-  const tokens = kind === "intelligence" ? player.intelligenceTokens : kind === "stamina" ? player.staminaTokens : kind === "charm" ? player.charmTokens : player.spellbookTokens;
+  const tokens = kind === "intelligence" ? player.intelligenceTokens : kind === "stamina" ? player.staminaTokens : kind === "charm" ? player.charmTokens : player.manaTokens;
   return {
     playerId: player.id,
     label,
@@ -355,7 +355,7 @@ function beginRound(state: GameState): void {
   }
   for (const playerId of state.turnOrder) {
     const player = state.players[playerId];
-    // 1주차(준비): 지력 수치만큼 지력토큰, 체력 수치만큼 체력토큰, 주문력 수치만큼 마법 주문서 획득
+    // 1주차(준비): 지력 수치만큼 지력토큰, 체력 수치만큼 체력토큰, 주문력 수치만큼 마나토큰 획득
     const prepAbilities = abilitiesOf(player, "prep");
     player.intelligenceTokens = effectiveStat(player, "intelligence");
     player.staminaTokens = Math.max(
@@ -363,11 +363,11 @@ function beginRound(state: GameState): void {
       effectiveStat(player, "stamina") + player.pendingStaminaTokens + sumEffect(prepAbilities, "stamina"),
     );
     player.pendingStaminaTokens = 0;
-    player.spellbookTokens = Math.max(
+    player.manaTokens = Math.max(
       0,
-      effectiveStat(player, "spellPower") + player.pendingSpellbookTokens + sumEffect(prepAbilities, "spellbook"),
+      effectiveStat(player, "spellPower") + player.pendingManaTokens + sumEffect(prepAbilities, "mana"),
     );
-    player.pendingSpellbookTokens = 0;
+    player.pendingManaTokens = 0;
     // 매력 수치만큼 매력토큰: 구역 두 번째 참가비로 쓴다
     player.charmTokens = Math.max(0, effectiveStat(player, "charm") + sumEffect(prepAbilities, "charmToken"));
     // 지난 4주차에 골라 남긴 지력토큰·체력토큰 1개
@@ -488,11 +488,11 @@ export function activityBlockReason(state: ActivityView, playerId: string, activ
   if (!canPay(player, 0, 0, extra)) return `이미 참여한 친구가 있어서 매력토큰 ${extra}개가 더 필요해요.`;
   const open = activityOpenCost(state, activityId);
   if (!canPay(player, open, 0, extra)) return `카드를 열 지력토큰 ${open}개가 필요해요.`;
-  if (activityId === "tournament" && player.spellbookTokens < 1) return "마법 주문서가 1개 이상 필요해요 (낸 주문서만큼 주사위를 굴려요).";
+  if (activityId === "tournament" && player.manaTokens < 1) return "마나토큰이 1개 이상 필요해요 (낸 마나토큰만큼 주사위를 굴려요).";
   if (activityId === "creature" && player.intelligenceTokens + player.staminaTokens + player.charmTokens < 1) return "마법생물을 데려오려면 조련에 낼 지력·체력·매력토큰이 1개 이상 필요해요.";
   if (activityId === "duel") {
-    const need = 1 + BALANCE.duelSpellbookFee;
-    if (player.spellbookTokens < need) return `마법 주문서가 ${need}개 이상 필요해요 (${BALANCE.duelSpellbookFee}개는 지목당한 친구에게 건네고, 낸 주문서만큼 주사위를 굴려요).`;
+    const need = 1 + BALANCE.duelManaFee;
+    if (player.manaTokens < need) return `마나토큰이 ${need}개 이상 필요해요 (${BALANCE.duelManaFee}개는 지목당한 친구에게 건네고, 낸 마나토큰만큼 주사위를 굴려요).`;
     if (duelTargets(state, playerId).length === 0) return "지목할 수 있는 친구가 없어요.";
     if (player.charm < BALANCE.duelCharmFee) return `지목당한 친구에게 건넬 매력(${BALANCE.duelCharmFee})이 없어요.`;
   }
@@ -510,9 +510,9 @@ function describeRoll(dice: number[], bonusParts: [string, number][]): string {
 
 // ── 자율활동: 활동별 처리 ──
 
-// 마법 토너먼트: 가진 마법 주문서를 모두 내고, 낸 개수만큼 주사위를 굴려 합친 칸만큼 트랙을 전진한다
+// 마법 토너먼트: 가진 마나토큰을 모두 내고, 낸 개수만큼 주사위를 굴려 합친 칸만큼 트랙을 전진한다
 function startTournament(state: GameState, player: PlayerGameState): void {
-  if (player.spellbookTokens === 0) {
+  if (player.manaTokens === 0) {
     advanceTournament(state, player, []);
     return;
   }
@@ -520,12 +520,12 @@ function startTournament(state: GameState, player: PlayerGameState): void {
   state.pendingRoll = {
     kind: "tournament",
     title: `마법 토너먼트 · ${player.name}`,
-    lines: [`마법 주문서를 1~${player.spellbookTokens}개 골라 내고, 낸 개수만큼 주사위를 굴려요. 나온 눈을 모두 더한 만큼 트랙을 전진해요`],
-    entries: [choiceEntry(player, "spellbook", player.name)],
+    lines: [`마나토큰을 1~${player.manaTokens}개 골라 내고, 낸 개수만큼 주사위를 굴려요. 나온 눈을 모두 더한 만큼 트랙을 전진해요`],
+    entries: [choiceEntry(player, "mana", player.name)],
   };
 }
 
-// 마법생물 조련: 가진 마법 주문서를 모두 내고 그만큼 주사위를 굴려, (합 + 매력)이 목표값 이상이면 조련에 성공한다. 실패하면 주문서만 잃고 카드는 구역에 돌아간다
+// 마법생물 조련: 가진 마나토큰을 모두 내고 그만큼 주사위를 굴려, (합 + 매력)이 목표값 이상이면 조련에 성공한다. 실패하면 마나토큰만 잃고 카드는 구역에 돌아간다
 function startCreatureRoll(state: GameState, player: PlayerGameState, creature: CreatureCard): void {
   const target = creature.trainTarget;
   const caps = creatureTokenCaps(player, creature);
@@ -607,21 +607,21 @@ function advanceTournament(state: GameState, player: PlayerGameState, dice: numb
 
 function startDuel(state: GameState, player: PlayerGameState, target: PlayerGameState): void {
   state.hidden.roll = { kind: "duel", challengerId: player.id, targetId: target.id };
-  // 도전자는 지목당한 친구에게 마법 주문서 1개를 건네고(매력 참가비와 별도), 양쪽 모두 마법 주문서를 1~보유 개수 사이에서 골라 내고 낸 개수만큼 굴린다
-  const gift = Math.min(BALANCE.duelSpellbookFee, player.spellbookTokens);
-  player.spellbookTokens -= gift;
-  target.spellbookTokens += gift;
-  if (gift > 0) log(state, `${player.name}: ${target.name}님에게 마법 주문서 ${gift}개를 건넸어요`);
+  // 도전자는 지목당한 친구에게 마나토큰 1개를 건네고(매력 참가비와 별도), 양쪽 모두 마나토큰을 1~보유 개수 사이에서 골라 내고 낸 개수만큼 굴린다
+  const gift = Math.min(BALANCE.duelManaFee, player.manaTokens);
+  player.manaTokens -= gift;
+  target.manaTokens += gift;
+  if (gift > 0) log(state, `${player.name}: ${target.name}님에게 마나토큰 ${gift}개를 건넸어요`);
   state.pendingRoll = {
     kind: "duel",
     title: `주문 대결 · ${player.name} vs ${target.name}`,
     lines: [
-      `${player.name}님이 ${target.name}님을 지목했어요 (도전자가 마법 주문서 ${BALANCE.duelSpellbookFee}개를 건넸어요)`,
-      `각자 마법 주문서를 골라 내고 낸 개수만큼 주사위를 굴려 합이 큰 쪽이 이겨요. 같으면 무승부예요. 도전자는 지목당한 친구에게 매력 ${BALANCE.duelCharmFee}을 건네요`,
+      `${player.name}님이 ${target.name}님을 지목했어요 (도전자가 마나토큰 ${BALANCE.duelManaFee}개를 건넸어요)`,
+      `각자 마나토큰을 골라 내고 낸 개수만큼 주사위를 굴려 합이 큰 쪽이 이겨요. 같으면 무승부예요. 도전자는 지목당한 친구에게 매력 ${BALANCE.duelCharmFee}을 건네요`,
     ],
     entries: [
-      choiceEntry(player, "spellbook", `${player.name} (도전자)`),
-      choiceEntry(target, "spellbook", `${target.name} (지목당함)`),
+      choiceEntry(player, "mana", `${player.name} (도전자)`),
+      choiceEntry(target, "mana", `${target.name} (지목당함)`),
     ],
   };
 }
@@ -660,8 +660,8 @@ function resolveDuel(state: GameState, ctx: Extract<RollContext, { kind: "duel" 
   const loserAbilities = [...(loser === player ? challengerAbilities : defenderAbilities), ...abilitiesOf(loser, "lose")];
   loser.pendingStaminaTokens += sumEffect(abilitiesOf(loser, "lose"), "stamina");
   winner.pendingStaminaTokens -= sumEffect(abilitiesOf(loser, "lose"), "enemyStamina");
-  // 낸 주문서는 이미 사라졌다. 방어 능력(immune)이 있으면 졌어도 주문서 1개를 다음 달 준비 때 돌려받는다
-  if (sumEffect(loserAbilities, "immune") > 0) loser.pendingSpellbookTokens += 1;
+  // 낸 마나토큰은 이미 사라졌다. 방어 능력(immune)이 있으면 졌어도 마나토큰 1개를 다음 달 준비 때 돌려받는다
+  if (sumEffect(loserAbilities, "immune") > 0) loser.pendingManaTokens += 1;
   log(
     state,
     `${player.name}(${rollText(challengerDice, challengerBonus, challengerRoll)})이(가) ${target.name}(${rollText(defenderDice, defenderBonus, defenderRoll)})을(를) 지목! ${winner.name} 승리${feeText}`,
@@ -827,7 +827,7 @@ function discardOffers(state: GameState): void {
 }
 
 
-// 이 카드를 지금 가져갈 수 있는가 (비용을 낼 수 있는가). 마법생물은 마법 주문서, 연구 카드는 체력토큰
+// 이 카드를 지금 가져갈 수 있는가 (비용을 낼 수 있는가). 마법생물은 마나토큰, 연구 카드는 체력토큰
 function canTake(player: PlayerGameState, activityId: ActivityId, card: OfferedCard): boolean {
   if (activityId === "creature") return creatureTokenCaps(player, card as CreatureCard).length > 0;
   if (activityId === "lab") return canPay(player, 0, (card as LabCard).cost);
@@ -1256,7 +1256,7 @@ function finishCleanup(state: GameState): void {
       intelligenceTokens: p.intelligenceTokens - (kept === "intelligence" ? 1 : 0),
       staminaTokens: p.staminaTokens - (kept === "stamina" ? 1 : 0),
       charmTokens: p.charmTokens,
-      spellbookTokens: p.spellbookTokens,
+      manaTokens: p.manaTokens,
       kept,
     };
   });
@@ -1268,7 +1268,7 @@ function finishCleanup(state: GameState): void {
     player.intelligenceTokens = 0;
     player.staminaTokens = 0;
     player.charmTokens = 0;
-    player.spellbookTokens = 0;
+    player.manaTokens = 0;
     player.hasActedThisPhase = false;
   }
   state.cleanupKeep = {};

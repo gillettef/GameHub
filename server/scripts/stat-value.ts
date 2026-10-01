@@ -12,7 +12,7 @@ function play(n: number, bump?: StatKey, amount = 2): GameState {
   if (bump) {
     const p = state.players.p0;
     p[bump] += amount;
-    p.intelligenceTokens = p.intelligence; p.staminaTokens = p.stamina; p.charmTokens = p.charm; p.spellbookTokens = p.spellPower;
+    p.intelligenceTokens = p.intelligence; p.staminaTokens = p.stamina; p.charmTokens = p.charm; p.manaTokens = p.spellPower;
   }
   let guard = 0;
   while (state.phase !== "ended" && guard++ < 5000) {
