@@ -123,7 +123,7 @@ export interface PendingRoll {
   title: string;
   lines: string[];
   // diceChoiceMax가 있으면 굴리기 전에 diceChoiceStat 토큰(기본 지력)을 1~max개 내고 낸 개수만큼 굴릴 수 있다 (연구실 실험·탐험 판정)
-  entries: { playerId: string; label: string; diceCount: number; diceChoiceMax?: number; diceChoiceStat?: "intelligence" | "stamina" | "mana" | "charm"; diceChoices?: { stat: "intelligence" | "stamina" | "charm"; max: number }[]; dice: number[] | null; confirmed: boolean; rerolls: number }[];
+  entries: { playerId: string; label: string; diceCount: number; diceChoiceMax?: number; diceChoiceStat?: "intelligence" | "stamina" | "mana" | "charm"; diceChoices?: { stat: "intelligence" | "stamina" | "charm"; max: number }[]; dice: number[] | null; confirmed: boolean; rerolls: number; rerollCounts?: number[] }[];
 }
 
 // 3주차 선택 단계에서 각자 고른 활동 (모두에게 공개). 진행 단계에서는 이 순서대로 하나씩 처리한다

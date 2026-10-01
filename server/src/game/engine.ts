@@ -135,17 +135,33 @@ function orderFromStarter(state: Pick<GameState, "turnOrder" | "startingPlayerIn
 
 const KEEP_LABEL: Record<KeptToken, string> = { intelligence: "지력", stamina: "체력", charm: "매력", mana: "마나" };
 
-// 4주차(정리): 매력이 가장 높은 플레이어가 다음 달 선이 된다.
-// 현재 선과 매력이 같거나 더 높은 사람이 없으면 그대로, 최고 매력이 여럿이면 현재 선에서 시계방향으로 가장 가까운 사람
+// 4주차(정리): 다음 달 선을 정한다 (BALANCE.starterRule). 토큰이 소멸하기 전에 호출해야 한다.
+// 동점이면 현재 선에서 시계방향으로 가장 가까운 사람 (rule이 "charm"이면 현재 선이 최고 매력일 때 그대로 유지)
+function starterScore(state: GameState, id: string): number {
+  const p = state.players[id];
+  switch (BALANCE.starterRule) {
+    case "charmTokens":
+      return p.charmTokens;
+    case "charmPlusTokens":
+      return effectiveStat(p, "charm") + p.charmTokens;
+    case "rotate":
+      return 0;
+    default:
+      return effectiveStat(p, "charm");
+  }
+}
+
 export function nextStarterIndex(state: GameState): number {
   const n = state.turnOrder.length;
-  const charmOf = (id: string) => effectiveStat(state.players[id], "charm");
-  const best = Math.max(...state.turnOrder.map(charmOf));
+  const scoreOf = (id: string) => starterScore(state, id);
+  const best = Math.max(...state.turnOrder.map(scoreOf));
   const current = state.startingPlayerIndex;
-  if (charmOf(state.turnOrder[current]) === best) return current;
-  for (let i = 1; i < n; i++) {
+  const rotate = BALANCE.starterRule === "rotate";
+  // "charm"(기존 규칙)은 현재 선이 최고면 유지, 나머지는 동점이어도 선을 다음 사람에게 넘기는 쪽(현재 선이 가장 마지막 순번)
+  if (!rotate && BALANCE.starterRule === "charm" && scoreOf(state.turnOrder[current]) === best) return current;
+  for (let i = 1; i <= n; i++) {
     const index = (current + i) % n;
-    if (charmOf(state.turnOrder[index]) === best) return index;
+    if (rotate ? i === 1 : scoreOf(state.turnOrder[index]) === best) return index;
   }
   return current;
 }
@@ -1133,6 +1149,9 @@ export function rerollDice(state: GameState, playerId: string, diceIndexes: numb
   const before = indexes.map((i) => entry.dice![i]);
   for (const i of indexes) entry.dice[i] = rollD6();
   entry.rerolls += indexes.length;
+  // 주사위별 재굴림 횟수 — 화면에서 다시 굴린 주사위에만 굴리는 애니메이션을 보여주는 용도
+  const counts = entry.rerollCounts ?? (entry.rerollCounts = entry.dice.map(() => 0));
+  for (const i of indexes) counts[i] = (counts[i] ?? 0) + 1;
   log(state, `${player.name}: 지력토큰 ${indexes.length}개로 주사위를 다시 굴렸어요 (${before.join(", ")} → ${indexes.map((i) => entry.dice![i]).join(", ")})`);
 }
 
@@ -1256,6 +1275,8 @@ function finishCleanup(state: GameState): void {
     const choice = state.cleanupKeep[id];
     return choice === undefined || choice === null || choice === "none" ? null : choice;
   };
+  // 토큰이 소멸하기 전의 매력토큰으로 선을 정한다
+  const nextIndex = nextStarterIndex(state);
   state.cleanupSummary = state.turnOrder.map((id) => {
     const p = state.players[id];
     const kept = keptOf(id);
@@ -1286,7 +1307,6 @@ function finishCleanup(state: GameState): void {
   }
   state.cleanupKeep = {};
   log(state, "4주차(정리): 남은 토큰 소멸 (남기기로 한 토큰은 다음 달로 가요)");
-  const nextIndex = nextStarterIndex(state);
   if (nextIndex !== state.startingPlayerIndex) {
     state.startingPlayerIndex = nextIndex;
     log(state, `4주차(정리): 매력이 가장 높은 ${state.players[state.turnOrder[nextIndex]].name}님이 다음 달 선이 돼요`);
