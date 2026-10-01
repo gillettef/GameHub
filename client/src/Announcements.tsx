@@ -238,12 +238,19 @@ function build(prev: GameState, next: GameState, myId: string): Announcement[] {
     const r = activityResult(prev, next, myId);
     if (r) out.push(r);
   }
-  // 자율활동이 끝나면 4주차 정리 → (시험) → 다음 달 1주차 준비 → 2주차 정규수업 순서
-  // 4주차 정리는 남길 토큰을 모두 고른 뒤에 끝난다 (고를 토큰이 없으면 3주차가 끝나자마자 지나간다)
-  const cleanupDone = (prev.phase === "activity" || prev.phase === "cleanup") && next.phase !== "activity" && next.phase !== "cleanup";
-  if (cleanupDone) out.push(cleanupBanner(prev, next, myId));
-  if (prev.phase !== next.phase && next.pendingRoll?.kind === "exam") out.push(examBanner(next));
+  // 평소: 자율활동 → 4주차 정리 → 다음 달 1주차 준비 → 2주차 정규수업
+  // 시험 달(6·12개월): 1주차 준비 → 시험 → 4주차 정리 (기말고사 뒤에는 게임이 끝난다)
+  // 4주차 정리는 남길 토큰을 모두 고른 뒤에 끝난다 (고를 토큰이 없으면 바로 지나간다)
+  const examStarts = prev.phase !== next.phase && next.pendingRoll?.kind === "exam";
+  const leftExam = prev.phase === "midterm_exam" && next.phase !== "midterm_exam";
+  const cleanupDone = ((prev.phase === "activity" || prev.phase === "cleanup") && next.phase !== "activity" && next.phase !== "cleanup") || (leftExam && next.phase !== "cleanup");
+  if (cleanupDone && !leftExam) out.push(cleanupBanner(prev, next, myId));
+  if (examStarts) {
+    if (roundChanged) out.push(prepBanner(next, myId));
+    out.push(examBanner(next));
+  }
   if (next.examResults.length > prev.examResults.length) out.push(examResult(next, myId));
+  if (cleanupDone && leftExam) out.push(cleanupBanner(prev, next, myId));
   if (!prev.exams.midterm && next.exams.midterm) out.push(examRevealBanner(next, "midterm"));
   if (!prev.exams.final && next.exams.final) out.push(examRevealBanner(next, "final"));
   if (prev.phase === "setup" && next.phase === "class") out.push(firstPlayerBanner(next, myId), prepBanner(next, myId), classBanner(next));

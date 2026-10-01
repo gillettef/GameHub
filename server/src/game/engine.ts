@@ -326,7 +326,9 @@ function beginRound(state: GameState): void {
     player.staminaTokens += player.carryTokens.stamina;
     player.carryTokens = { intelligence: 0, stamina: 0 };
   }
-  beginClassPhase(state);
+  // 중간고사(6개월)·기말고사(12개월) 달에는 2주차(정규수업)·3주차(자율활동) 대신 시험을 치른다
+  if (isExamRound(state.round)) beginExam(state, state.round === BALANCE.midtermRound ? "midterm_exam" : "final_exam");
+  else beginClassPhase(state);
 }
 
 // 2주차(정규수업): 인원수 + 1장을 공개하고, 선 플레이어부터 시계방향으로 원하는 카드 1장을 (체력토큰을 내고) 가져간다
@@ -1127,15 +1129,16 @@ function resolveFirstRoll(state: GameState, contenders: string[], diceOf: (id: s
 
 // ── 4주차(정리): 남은 토큰은 사라지지만, 지력토큰·체력토큰 중 1개는 골라서 다음 달로 남길 수 있다 ──
 
-const examFollowsRound = (round: number) => round === BALANCE.midtermRound || round === BALANCE.totalRounds;
+// 시험을 치르는 달: 1주차(준비) → 시험 → 4주차(정리)
+export const isExamRound = (round: number) => round === BALANCE.midtermRound || round === BALANCE.totalRounds;
 
-// 남길 수 있는 토큰 종류 (남은 개수가 1개 이상인 것). 시험이 이어지는 달의 지력토큰은 시험 다시 굴리기용으로 이미 남아서 따로 남길 수 없다
+// 남길 수 있는 토큰 종류 (남은 개수가 1개 이상인 것). 시험 달에 다시 굴리기에 쓰고 남은 지력토큰도 남길 수 있다
 export function keepOptions(
-  state: Pick<GameState, "round">,
+  _state: Pick<GameState, "round">,
   p: Pick<PlayerGameState, "intelligenceTokens" | "staminaTokens">,
 ): Exclude<KeepChoice, "none">[] {
   const options: Exclude<KeepChoice, "none">[] = [];
-  if (!examFollowsRound(state.round) && p.intelligenceTokens > 0) options.push("intelligence");
+  if (p.intelligenceTokens > 0) options.push("intelligence");
   if (p.staminaTokens > 0) options.push("stamina");
   return options;
 }
@@ -1170,7 +1173,6 @@ export function chooseKeepToken(state: GameState, playerId: string, choice: Keep
 }
 
 function finishCleanup(state: GameState): void {
-  const examFollows = examFollowsRound(state.round);
   const keptOf = (id: string): "intelligence" | "stamina" | null => {
     const choice = state.cleanupKeep[id];
     return choice === "intelligence" || choice === "stamina" ? choice : null;
@@ -1180,7 +1182,7 @@ function finishCleanup(state: GameState): void {
     const kept = keptOf(id);
     return {
       playerId: id,
-      intelligenceTokens: (examFollows ? 0 : p.intelligenceTokens) - (kept === "intelligence" ? 1 : 0),
+      intelligenceTokens: p.intelligenceTokens - (kept === "intelligence" ? 1 : 0),
       staminaTokens: p.staminaTokens - (kept === "stamina" ? 1 : 0),
       charmTokens: p.charmTokens,
       spellbookTokens: p.spellbookTokens,
@@ -1191,15 +1193,14 @@ function finishCleanup(state: GameState): void {
     const player = state.players[playerId];
     const kept = keptOf(playerId);
     player.carryTokens = { intelligence: kept === "intelligence" ? 1 : 0, stamina: kept === "stamina" ? 1 : 0 };
-    // 시험이 이어지는 달에는 남은 지력토큰을 시험 주사위 다시 굴리기에 쓸 수 있도록 시험이 끝날 때까지 남겨 둔다
-    if (!examFollows) player.intelligenceTokens = 0;
+    player.intelligenceTokens = 0;
     player.staminaTokens = 0;
     player.charmTokens = 0;
     player.spellbookTokens = 0;
     player.hasActedThisPhase = false;
   }
   state.cleanupKeep = {};
-  log(state, examFollows ? "4주차(정리): 남은 토큰 소멸 (지력토큰은 시험 주사위 다시 굴리기용으로 남겨 둬요)" : "4주차(정리): 남은 토큰 소멸 (남기기로 한 토큰은 다음 달로 가요)");
+  log(state, "4주차(정리): 남은 토큰 소멸 (남기기로 한 토큰은 다음 달로 가요)");
   const nextIndex = nextStarterIndex(state);
   if (nextIndex !== state.startingPlayerIndex) {
     state.startingPlayerIndex = nextIndex;
@@ -1208,13 +1209,7 @@ function finishCleanup(state: GameState): void {
     log(state, `4주차(정리): 다음 달도 ${state.players[state.turnOrder[nextIndex]].name}님이 선이에요 (매력이 가장 높거나 같아요)`);
   }
 
-  if (state.round === BALANCE.midtermRound) {
-    beginExam(state, "midterm_exam");
-  } else if (state.round === BALANCE.totalRounds) {
-    beginExam(state, "final_exam");
-  } else {
-    advanceRound(state);
-  }
+  advanceRound(state);
 }
 
 function advanceRound(state: GameState): void {
@@ -1273,7 +1268,6 @@ function resolveExam(state: GameState, examType: "midterm_exam" | "final_exam", 
   // 연구실 실험으로 얻은 임시 능력치 증가분은 다음 시험까지 유지된 뒤 소멸
   for (const playerId of state.turnOrder) {
     const p = state.players[playerId];
-    p.intelligenceTokens = 0; // 시험 다시 굴리기에 쓰고 남은 지력토큰도 소멸
     p.tempBoosts = {};
     // 효과가 끝난 시험 카드는 버림 더미로
     state.labPile.discard.push(...p.equipment);
@@ -1284,7 +1278,7 @@ function resolveExam(state: GameState, examType: "midterm_exam" | "final_exam", 
     applyTournamentFinalRewards(state);
     finalizeGame(state);
   } else {
-    advanceRound(state);
+    beginCleanupPhase(state); // 중간고사 달의 4주차(정리): 시험 뒤 남은 지력토큰도 1개 남길 수 있다
   }
 }
 

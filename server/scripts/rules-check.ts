@@ -956,20 +956,36 @@ test("주사위 다시 굴리기: 매력토큰으로는 대신할 수 없다. �
   assert.equal(state.players[a].charmTokens, 9);
 });
 
-test("시험이 이어지는 달에는 남은 지력토큰이 시험 다시 굴리기용으로 남고, 시험이 끝나면 소멸한다", () => {
+test("시험 달(6·12개월)은 1주차(준비) 다음에 곧바로 시험이고, 시험 뒤 4주차(정리)에서 남은 지력토큰도 1개 남길 수 있다", () => {
   const state = newGame(3);
   let guard = 0;
-  while (state.phase !== "midterm_exam" && guard++ < 3000) botStep(state);
+  let sawClassInExamRound = false;
+  while (state.phase !== "midterm_exam" && guard++ < 3000) {
+    if (state.round === BALANCE.midtermRound && (state.phase === "class" || state.phase === "activity")) sawClassInExamRound = true;
+    botStep(state);
+  }
   assert.equal(state.phase, "midterm_exam");
-  // 봇이 자율활동 주사위를 다시 굴리느라 쓴 토큰 외에는 시험 때까지 남아 있다
-  const id = state.turnOrder.find((x) => state.players[x].intelligenceTokens > 0 && state.pendingRoll!.entries.find((e) => e.playerId === x)!.diceCount > 0);
-  assert.ok(id, "지력토큰이 남아 시험 다시 굴리기를 할 수 있는 사람이 있다");
+  assert.equal(state.round, BALANCE.midtermRound);
+  assert.equal(sawClassInExamRound, false, "시험 달에는 정규수업·자율활동이 없다");
+  // 1주차에 받은 지력토큰이 그대로 있어 시험 다시 굴리기에 쓸 수 있다
+  for (const id of state.turnOrder) assert.ok(state.players[id].intelligenceTokens >= effectiveStat(state.players[id], "intelligence"));
+  const id = state.turnOrder.find((x) => state.pendingRoll!.entries.find((e) => e.playerId === x)!.diceCount > 0)!;
   const tokens = state.players[id].intelligenceTokens;
+  assert.ok(tokens > 0);
   for (const e of [...state.pendingRoll!.entries]) if (e.dice === null) submitRoll(state, e.playerId);
   rerollDice(state, id, [0]);
   assert.equal(state.players[id].intelligenceTokens, tokens - 1);
+  for (const x of state.turnOrder) state.players[x].isBot = false; // 4주차 선택을 직접 하도록
   for (const e of [...state.pendingRoll!.entries]) confirmRoll(state, e.playerId);
-  assert.ok(state.turnOrder.every((x) => state.players[x].intelligenceTokens === state.players[x].intelligence), "시험 뒤 새 달의 준비에서 다시 받는다");
+  assert.equal(state.phase, "cleanup", "시험 뒤에 4주차(정리)가 이어진다");
+  assert.equal(state.round, BALANCE.midtermRound);
+  const left = state.players[id].intelligenceTokens;
+  assert.equal(state.cleanupKeep[id], null, "남은 지력토큰이 있으면 고를 수 있다");
+  chooseKeepToken(state, id, "intelligence");
+  for (const x of state.turnOrder) if (state.cleanupKeep[x] === null) chooseKeepToken(state, x, "none");
+  assert.equal(state.phase, "class");
+  assert.equal(state.round, BALANCE.midtermRound + 1);
+  assert.equal(state.players[id].intelligenceTokens, effectiveStat(state.players[id], "intelligence") + 1, `남긴 지력토큰 1개(남은 ${left}개 중)가 다음 달로 간다`);
 });
 
 // ── 시험 ──
@@ -1132,9 +1148,9 @@ test("4주차 정리: 남기지 않기를 고를 수 있고, 남아 있지 않�
   assert.equal(none.round, 2, "남길 토큰이 없으면 정리 단계에서 멈추지 않는다");
 });
 
-test("4주차 정리: 시험이 이어지는 달에는 지력토큰을 따로 남길 수 없다 (시험 다시 굴리기용으로 이미 남는다)", () => {
-  assert.deepEqual(keepOptions({ round: BALANCE.midtermRound }, { intelligenceTokens: 3, staminaTokens: 2 }), ["stamina"]);
-  assert.deepEqual(keepOptions({ round: 5 }, { intelligenceTokens: 3, staminaTokens: 2 }), ["intelligence", "stamina"]);
+test("4주차 정리: 시험 달에도 남은 지력토큰·체력토큰 중에서 고를 수 있다", () => {
+  assert.deepEqual(keepOptions({ round: BALANCE.midtermRound }, { intelligenceTokens: 3, staminaTokens: 2 }), ["intelligence", "stamina"]);
+  assert.deepEqual(keepOptions({ round: 5 }, { intelligenceTokens: 0, staminaTokens: 2 }), ["stamina"]);
   assert.deepEqual(keepOptions({ round: 5 }, { intelligenceTokens: 0, staminaTokens: 0 }), []);
 });
 
