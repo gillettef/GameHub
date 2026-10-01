@@ -28,7 +28,7 @@ import { useGameSocket } from "./useGameSocket";
 import { GameBoard } from "./GameBoard";
 import { RulesModal } from "./Rules";
 import { Icon } from "./Icons";
-import { LeaveConfirm, useBackGuard } from "./Leave";
+import { KickConfirm, LeaveConfirm, useBackGuard } from "./Leave";
 
 // 서버가 받아 주는 행동 제한 시간 선택지(초). 0이면 제한 없음
 const TURN_SECONDS_OPTIONS = [0, 45, 90, 180];
@@ -41,10 +41,15 @@ function App() {
   const [copied, setCopied] = useState(false);
   const [showRules, setShowRules] = useState(false);
   const [leaveAsk, setLeaveAsk] = useState(false);
+  const [kickAsk, setKickAsk] = useState<{ id: string; name: string } | null>(null);
   const inRoom = state.status === "in_room";
   // 대기실에서도 뒤로가기로 실수로 방을 떠나지 않도록 확인을 거친다 (게임 화면은 GameMenu가 따로 맡는다)
   const inLobby = inRoom && !game;
-  useBackGuard(() => setLeaveAsk(true), inLobby);
+  useBackGuard(() => {
+    // 내보내기 확인 창이 떠 있으면 그것부터 닫는다
+    if (kickAsk) setKickAsk(null);
+    else setLeaveAsk(true);
+  }, inLobby);
   const rulesButton = (
     <button
       className="fixed right-3 top-[max(0.75rem,env(safe-area-inset-top))] z-30 min-h-11 rounded-full bg-white/90 px-4 text-sm text-purple-700 shadow-sm active:scale-95 transition-transform"
@@ -155,7 +160,7 @@ ${window.location.href}`;
                     aria-label={p.isBot ? `${p.name} 제거` : `${p.name} 내보내기`}
                     onClick={() => {
                       if (p.isBot) removeBot(p.id);
-                      else if (window.confirm(`${p.name}님을 방에서 내보낼까요?`)) kickPlayer(p.id);
+                      else setKickAsk({ id: p.id, name: p.name });
                     }}
                   >
                     <Icon name="x" className="h-4 w-4" />
@@ -217,6 +222,17 @@ ${window.location.href}`;
           방 나가기
         </button>
       </main>
+      {kickAsk && (
+        <KickConfirm
+          name={kickAsk.name}
+          inGame={false}
+          onCancel={() => setKickAsk(null)}
+          onKick={() => {
+            kickPlayer(kickAsk.id);
+            setKickAsk(null);
+          }}
+        />
+      )}
       {leaveAsk && <LeaveConfirm inGame={false} onCancel={() => setLeaveAsk(false)} onLeave={() => { setLeaveAsk(false); leaveRoom(); }} />}
       </>
     );

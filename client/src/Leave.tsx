@@ -47,6 +47,43 @@ export function LeaveConfirm({ inGame, onCancel, onLeave }: { inGame: boolean; o
   );
 }
 
+// 방장이 친구를 내보낼 때 한 번 더 묻는 창. 게임 중에는 봇이 이어받고 돌아올 수 없다는 것을 알려 준다
+export function KickConfirm({ name, inGame, onCancel, onKick }: { name: string; inGame: boolean; onCancel: () => void; onKick: () => void }) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onCancel();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onCancel]);
+
+  return (
+    <Overlay>
+      <div
+        className="fixed inset-0 z-[60] flex items-end justify-center bg-purple-900/40 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:items-center"
+        role="dialog"
+        aria-modal="true"
+        aria-label="내보내기 확인"
+        onClick={onCancel}
+      >
+        <div className="pop-in w-full max-w-sm rounded-3xl bg-white p-5 text-center shadow-lg" onClick={(e) => e.stopPropagation()}>
+          <Icon name="door" className="mb-1 h-8 w-8 text-pink-400" />
+          <p className="font-display text-lg text-purple-700">{name}님을 내보낼까요?</p>
+          <p className="mt-1 text-sm text-purple-600">
+            {inGame ? "내보내면 봇이 대신 플레이하고, 이 게임에는 다시 돌아올 수 없어요." : "방에서 내보내요. 방 코드로 다시 들어올 수는 있어요."}
+          </p>
+          <div className="mt-4 flex flex-col gap-2">
+            <button className="min-h-12 rounded-2xl bg-purple-500 font-semibold text-white active:scale-95 transition-transform" onClick={onCancel} autoFocus>
+              취소
+            </button>
+            <button className="min-h-12 rounded-2xl bg-pink-100 text-pink-700 active:scale-95 transition-transform" onClick={onKick}>
+              내보내기
+            </button>
+          </div>
+        </div>
+      </div>
+    </Overlay>
+  );
+}
+
 // 뒤로가기(안드로이드 뒤로가기·브라우저 뒤로가기 제스처)를 눌렀을 때 바로 나가지 않고 onBack을 대신 실행한다
 export function useBackGuard(onBack: () => void, enabled = true): void {
   const onBackRef = useRef(onBack);
@@ -89,6 +126,11 @@ export function GameMenu({
   const [confirming, setConfirming] = useState(false);
   const [kickTarget, setKickTarget] = useState<{ id: string; name: string } | null>(null);
   useBackGuard(() => {
+    // 내보내기 확인 창이 떠 있으면 그것부터 닫는다
+    if (kickTarget) {
+      setKickTarget(null);
+      return;
+    }
     setSheet(false);
     setConfirming(true);
   });
@@ -149,35 +191,15 @@ export function GameMenu({
       )}
       {confirming && <LeaveConfirm inGame={inGame} onCancel={() => setConfirming(false)} onLeave={onLeave} />}
       {kickTarget && onKick && (
-        <Overlay>
-          <div
-            className="fixed inset-0 z-[60] flex items-end justify-center bg-purple-900/40 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:items-center"
-            role="dialog"
-            aria-modal="true"
-            aria-label="내보내기 확인"
-            onClick={() => setKickTarget(null)}
-          >
-            <div className="pop-in w-full max-w-sm rounded-3xl bg-white p-5 text-center shadow-lg" onClick={(e) => e.stopPropagation()}>
-              <Icon name="door" className="mb-1 h-8 w-8 text-pink-400" />
-              <p className="font-display text-lg text-purple-700">{kickTarget.name}님을 내보낼까요?</p>
-              <p className="mt-1 text-sm text-purple-600">내보내면 봇이 대신 플레이하고, 이 게임에는 다시 돌아올 수 없어요.</p>
-              <div className="mt-4 flex flex-col gap-2">
-                <button className="min-h-12 rounded-2xl bg-purple-500 font-semibold text-white active:scale-95 transition-transform" onClick={() => setKickTarget(null)} autoFocus>
-                  취소
-                </button>
-                <button
-                  className="min-h-12 rounded-2xl bg-pink-100 text-pink-700 active:scale-95 transition-transform"
-                  onClick={() => {
-                    onKick(kickTarget.id);
-                    setKickTarget(null);
-                  }}
-                >
-                  내보내기
-                </button>
-              </div>
-            </div>
-          </div>
-        </Overlay>
+        <KickConfirm
+          name={kickTarget.name}
+          inGame
+          onCancel={() => setKickTarget(null)}
+          onKick={() => {
+            onKick(kickTarget.id);
+            setKickTarget(null);
+          }}
+        />
       )}
     </>
   );
