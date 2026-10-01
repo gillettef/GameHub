@@ -297,7 +297,7 @@ export function createGame(players: { id: string; name: string; isBot?: boolean 
     labPile: createLabPile(),
     explorationPile: createExplorationPile(),
     grimoirePile: createGrimoirePile(),
-    classDeck: createClassDeck(randomUUID, players.length, BALANCE.classDeckPerPlayer),
+    classDeck: createClassDeck(randomUUID, players.length, 1),
     classDiscard: [],
     creatureDeck: createCreatureDeck(),
     creatureDiscard: [],
@@ -334,6 +334,12 @@ function pay(p: PlayerGameState, kind: PayKind, n: number): void {
 
 function beginRound(state: GameState): void {
   log(state, `${state.round}라운드 시작`);
+  // 중간고사 다음 달부터 2학기: 1학기 수업카드 덱을 버리고 2학기 덱으로 바꾼다
+  if (state.round === BALANCE.midtermRound + 1) {
+    state.classDeck = createClassDeck(randomUUID, state.turnOrder.length, 2);
+    state.classDiscard = [];
+    log(state, "2학기 시작: 새 수업카드 덱으로 바뀌었어요 (주문력 카드가 더 많아져요)");
+  }
   for (const playerId of state.turnOrder) {
     const player = state.players[playerId];
     // 1주차(준비): 지력 수치만큼 지력토큰, 체력 수치만큼 체력토큰, 주문력 수치만큼 마법 주문서 획득

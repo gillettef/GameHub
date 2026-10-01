@@ -1,6 +1,8 @@
-// 수업카드 덱 (48장, 덱은 1개). 원본 기획(notes/마법학교.xlsx Sheet1)의 "수업 카드에는 지력, 체력, 주문력, 매력을
+// 수업카드 덱 (학기마다 1개: 1학기 덱 → 중간고사 뒤 2학기 덱으로 교체). 원본 기획(notes/마법학교.xlsx Sheet1)의 "수업 카드에는 지력, 체력, 주문력, 매력을
 // 직접 증가하는 카드가 있다 (ex. 교과서 +1, 수업 +2)"를 바탕으로 구성한 초안입니다.
-// 능력치별 12장: +1 카드 10장(이름 5종 × 2장), +2 카드 2장(이름 2종 × 1장). 수치/수량은 플레이테스트 후 조정합니다.
+// 능력치별 카드 종류 12장: +1 카드 10장(이름 5종 × 2장), +2 카드 2장(이름 2종 × 1장). 학기 덱은 이 종류를 학기별 비율대로 뽑아 만듭니다.
+// 1학기 덱은 지력·체력·매력 위주에 습득 체력토큰이 낮고(주문력 카드는 소수), 2학기 덱은 주문력 위주에 비용이 높습니다 (BALANCE.classSemesters).
+// 수치/수량은 플레이테스트 후 조정합니다.
 // 카드마다 습득에 필요한 체력토큰(takeCost)이 다릅니다. 카드는 지력토큰을 내고 열어 봐야 비용을 알 수 있고,
 // 싼 카드부터 먼저 소진되므로 덱이 줄어들수록 남는 카드가 비싸져 자연스럽게 성장이 느려집니다.
 import { BALANCE } from "./config.js";
@@ -61,37 +63,52 @@ const RARE: Record<StatKey, Def[]> = {
 
 const STATS = Object.keys(NORMAL) as StatKey[];
 
-// 카드 종류 한 벌 (id 없음). 주문력 카드는 습득 체력토큰이 spellClassExtraCost만큼 더 든다:
-// 초반엔 체력을 키워야 살 수 있어서 "초반 지력·체력 → 후반 주문력·학점" 흐름이 된다
-function templates(): Omit<ClassCard, "id">[] {
+// 학기: 1학기(중간고사 라운드까지) = 1, 2학기 = 2
+export const classSemesterOf = (round: number): 1 | 2 => (round <= BALANCE.midtermRound ? 1 : 2);
+
+// 카드 종류 한 벌 (id 없음). 주문력 카드는 습득 체력토큰이 학기별 spellExtraCost만큼 더 들고,
+// 그 외 카드는 nonSpellCostCap을 넘지 않는다: 초반엔 체력을 키워야 비싼 카드를 살 수 있어서 "초반 지력·체력 → 후반 주문력·학점" 흐름이 된다
+function templates(semester: 1 | 2): Omit<ClassCard, "id">[] {
+  const { spellExtraCost, nonSpellCostCap } = BALANCE.classSemesters[semester - 1];
   const list: Omit<ClassCard, "id">[] = [];
   for (const stat of STATS) {
-    const extra = stat === "spellPower" ? BALANCE.spellClassExtraCost : 0;
+    const cost = (base: number) => (stat === "spellPower" ? base + spellExtraCost : Math.min(base, nonSpellCostCap));
     for (const [name, description, baseCost] of NORMAL[stat]) {
-      const takeCost = baseCost + extra;
-      for (let i = 0; i < 2; i++) list.push({ name, description, takeCost, statBoost: { stat, amount: 1 } });
+      for (let i = 0; i < 2; i++) list.push({ name, description, takeCost: cost(baseCost), statBoost: { stat, amount: 1 } });
     }
-    for (const [name, description, baseCost] of RARE[stat]) list.push({ name, description, takeCost: baseCost + extra, statBoost: { stat, amount: 2 } });
+    for (const [name, description, baseCost] of RARE[stat]) list.push({ name, description, takeCost: cost(baseCost), statBoost: { stat, amount: 2 } });
   }
   return list;
 }
 
-export const CLASS_DECK_SIZE = templates().length;
+export const CLASS_TEMPLATE_COUNT = templates(1).length;
 
-// 덱은 인원 × perPlayer장: 능력치마다 같은 장수가 되도록 능력치별 12장 한 벌을 섞어 필요한 만큼 이어 붙인다
-export function createClassDeck(makeId: () => string, playerCount = 4, perPlayer = 14): ClassCard[] {
-  const perStat = Math.ceil((playerCount * perPlayer) / STATS.length);
+function shuffleInPlace<T>(a: T[]): T[] {
+  for (let k = a.length - 1; k > 0; k--) { const j = Math.floor(Math.random() * (k + 1)); [a[k], a[j]] = [a[j], a[k]]; }
+  return a;
+}
+
+// 능력치별 장수: 학기 비율(weights)대로 나누고 남는 장수는 소수점이 큰 능력치부터 하나씩 준다 (최대잔여법)
+function statCounts(total: number, weights: Record<StatKey, number>): Record<StatKey, number> {
+  const sum = STATS.reduce((a, s) => a + weights[s], 0);
+  const counts = {} as Record<StatKey, number>;
+  let used = 0;
+  for (const s of STATS) { counts[s] = Math.floor((total * weights[s]) / sum); used += counts[s]; }
+  const byRemainder = [...STATS].sort((a, b) => ((total * weights[b]) / sum) % 1 - ((total * weights[a]) / sum) % 1);
+  for (let i = 0; used < total; i++, used++) counts[byRemainder[i % STATS.length]]++;
+  return counts;
+}
+
+// 그 학기의 덱: 인원 × perPlayer장을 학기 비율대로 능력치별로 나눠, 같은 능력치 안에서는 종류 한 벌씩 섞어 이어 붙인다
+export function createClassDeck(makeId: () => string, playerCount = 4, semester: 1 | 2 = 1, perPlayer = BALANCE.classDeckPerPlayer): ClassCard[] {
+  const counts = statCounts(playerCount * perPlayer, BALANCE.classSemesters[semester - 1].statWeights);
   const deck: ClassCard[] = [];
   for (const stat of STATS) {
-    const pool = templates().filter((t) => t.statBoost.stat === stat);
-    for (let i = 0; i < perStat; i++) {
-      if (i % pool.length === 0) for (let k = pool.length - 1; k > 0; k--) { const j = Math.floor(Math.random() * (k + 1)); [pool[k], pool[j]] = [pool[j], pool[k]]; }
+    const pool = templates(semester).filter((t) => t.statBoost.stat === stat);
+    for (let i = 0; i < counts[stat]; i++) {
+      if (i % pool.length === 0) shuffleInPlace(pool);
       deck.push({ ...pool[i % pool.length], id: makeId() });
     }
   }
-  for (let i = deck.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [deck[i], deck[j]] = [deck[j], deck[i]];
-  }
-  return deck;
+  return shuffleInPlace(deck);
 }

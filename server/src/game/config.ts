@@ -20,9 +20,16 @@ export const BALANCE = {
   tournamentMilestoneCredit: 1,
   // 시험 순위별 학점 (1위, 2위, 그 이하는 마지막 값)
   examCredits: [3, 2, 1],
-  // 2주차(정규수업): 인원수 + classMarketExtra 장을 공개하고, 지력 높은 순으로 1장씩 가져간다. 수업카드 덱은 인원 × classDeckPerPlayer 장
+  // 2주차(정규수업): 인원수 + classMarketExtra 장을 공개하고, 선부터 시계방향으로 1장씩 가져간다.
+  // 수업카드 덱은 학기마다 하나씩(1학기 덱 → 중간고사 뒤 2학기 덱으로 교체, 남은 카드는 버림) 인원 × classDeckPerPlayer 장
   classMarketExtra: 1,
-  classDeckPerPlayer: 14,
+  classDeckPerPlayer: 7,
+  // 학기별 수업카드 구성: statWeights = 덱 안 능력치별 비율, spellExtraCost = 주문력 카드에 더해지는 습득 체력토큰,
+  // nonSpellCostCap = 주문력 외 카드의 습득 체력토큰 상한. 1학기는 싸고 지력·체력·매력 위주(주문력은 소수), 2학기는 주문력 위주
+  classSemesters: [
+    { statWeights: { intelligence: 3, stamina: 3, charm: 3, spellPower: 1 } as Record<StatKey, number>, spellExtraCost: 1, nonSpellCostCap: 2 },
+    { statWeights: { intelligence: 2, stamina: 2, charm: 1, spellPower: 4 } as Record<StatKey, number>, spellExtraCost: 2, nonSpellCostCap: 3 },
+  ],
   // 3주차 구역(비밀의 방·마법생물·주문 대결·연구실)에서 처음 들어온 사람이 여는 카드 수 (집중이나 특정 카드로 달라질 수 있다)
   activityOpenCount: 2,
   // 최종 점수 = 주문력 × 학점 + 마법생물 세트(하늘·육지·바다 1장씩) 수 × creatureSetScore (기획 검토 중: 3점 또는 5점)
@@ -39,8 +46,6 @@ export const BALANCE = {
   labDefaultDice: 2,
   // 탐험 카드 목표값 배율 (1이면 카드에 적힌 난이도 그대로)
   exploreDifficultyScale: 1.25,
-  // 주문력 수업카드가 다른 능력치 카드보다 더 드는 습득 체력토큰
-  spellClassExtraCost: 5,
   // 탐험 역전 보너스: 선두와의 성장 점수(능력치 합 + 학점×3) 격차가 이 값 이상이면 판정에 보너스를 더한다
   catchUpGap: 4,
   catchUpBonus: 2,
