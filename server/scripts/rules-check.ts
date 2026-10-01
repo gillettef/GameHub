@@ -188,27 +188,27 @@ test("정규수업·자율활동 선택 순서는 선 플레이어부터 시계�
   assert.ok(checked >= 6);
 });
 
-test("다음 달 선: 매력이 가장 높은 플레이어가 된다 (현재 선과 같거나 최고면 그대로, 최고가 여럿이면 선에서 시계방향으로 가장 가까운 사람)", () => {
-  const make = (starter: number, charms: number[]) => {
-    const players = Object.fromEntries(charms.map((c, i) => [`p${i}`, { charm: c, tempBoosts: {} } as unknown as PlayerGameState]));
-    return { turnOrder: charms.map((_, i) => `p${i}`), startingPlayerIndex: starter, players } as unknown as GameState;
+test("다음 달 선: 매력토큰을 가장 많이 남긴 플레이어가 된다 (동점이면 선에서 시계방향으로 가장 가까운 사람, 현재 선이 가장 마지막)", () => {
+  const make = (starter: number, tokens: number[]) => {
+    const players = Object.fromEntries(tokens.map((t, i) => [`p${i}`, { charm: 2, charmTokens: t, tempBoosts: {} } as unknown as PlayerGameState]));
+    return { turnOrder: tokens.map((_, i) => `p${i}`), startingPlayerIndex: starter, players } as unknown as GameState;
   };
-  assert.equal(nextStarterIndex(make(1, [2, 3, 2, 2])), 1, "현재 선이 가장 높으면 그대로");
-  assert.equal(nextStarterIndex(make(1, [2, 2, 2, 5])), 3, "다른 사람이 가장 높으면 그 사람이 선");
-  assert.equal(nextStarterIndex(make(1, [1, 3, 3, 1])), 1, "현재 선과 최고 매력이 같으면 바뀌지 않는다");
-  assert.equal(nextStarterIndex(make(1, [4, 2, 3, 4])), 3, "선보다 높은 사람이 여럿(최고 동점)이면 선에서 시계방향으로 가까운 사람");
-  assert.equal(nextStarterIndex(make(3, [4, 2, 4, 1])), 0, "시계방향은 좌석 끝에서 처음으로 이어진다");
-  assert.equal(nextStarterIndex(make(0, [2, 2, 2, 2])), 0);
+  assert.equal(nextStarterIndex(make(1, [0, 3, 1, 0])), 1, "현재 선이 가장 많으면 그대로");
+  assert.equal(nextStarterIndex(make(1, [0, 1, 0, 2])), 3, "다른 사람이 가장 많으면 그 사람이 선");
+  assert.equal(nextStarterIndex(make(1, [2, 2, 1, 1])), 0, "최고 동점이면 선에서 시계방향으로 가까운 사람 (선 본인은 마지막 순번)");
+  assert.equal(nextStarterIndex(make(3, [2, 0, 2, 1])), 0, "시계방향은 좌석 끝에서 처음으로 이어진다");
+  assert.equal(nextStarterIndex(make(0, [0, 0, 0, 0])), 1, "모두 0개면 선이 시계방향으로 한 칸 넘어간다");
+  assert.equal(nextStarterIndex(make(2, [0, 0, 0, 0])), 3);
 });
 
 test("4주차(정리)에서 다음 달 선이 정해져 다음 달 진행 순서에 반영된다", () => {
   const state = newGame(3);
   const oldStarter = state.startingPlayerIndex;
-  // 선이 아닌 다른 친구의 매력을 가장 높게 만들어 두고, 3주차를 끝까지 진행한다 (매력이 바뀌지 않도록 토너먼트만 고른다)
+  // 선이 아닌 다른 친구의 매력토큰을 가장 많게 만들어 두고, 3주차를 끝까지 진행한다 (매력이 바뀌지 않도록 토너먼트만 고른다)
   const other = (oldStarter + 1) % 3;
   toActivity(state);
-  Object.assign(state.players[state.turnOrder[other]], { charm: 9 });
   setTokens(state, 3);
+  Object.assign(state.players[state.turnOrder[other]], { charmTokens: 9 });
   finishChoosing(state);
   let guard = 0;
   while (state.round === 1 && guard++ < 100) botStep(state);
