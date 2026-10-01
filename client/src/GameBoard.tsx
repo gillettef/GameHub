@@ -927,7 +927,7 @@ function ErrorToast({ message, seq }: { message: string | null; seq: number }) {
   }, [seq]);
   if (!message || seq === 0 || dismissedSeq === seq) return null;
   return (
-    <div className="pointer-events-none fixed inset-x-0 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-[60] flex justify-center px-4" role="alert">
+    <div className="pointer-events-none fixed inset-x-0 bottom-[calc(8rem+env(safe-area-inset-bottom))] z-[60] flex justify-center px-4" role="alert">
       <p className="pop-in max-w-sm rounded-2xl border-2 border-pink-200 bg-white px-4 py-2 text-sm text-pink-600 shadow-lg">{message}</p>
     </div>
   );
