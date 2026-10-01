@@ -15,7 +15,7 @@ import {
   confirmRoll,
   createGame,
   creatureSets,
-  creatureTrainBonus,
+  creatureTokenCaps,
   creatureTrainMix,
   finalScore,
   nextStarterIndex,
@@ -300,8 +300,8 @@ test("자율활동: 먼저 모두 고르고(선택은 모두에게 공개), 모�
   toActivity(state);
   setTokens(state, 3, 1);
   const [a, b, c] = state.activityOrder;
-  state.creatureDeck.push(creature("바다의 여왕"), creature("하늘의 신비"));
-  state.players[c].spellbookTokens = 2; // 열린 카드가 모두 비싸서 가져갈 수 있는 카드가 없다
+  state.creatureDeck.push(creature("대지의 수호자"), creature("정령 고릴라"));
+  state.players[c].staminaTokens = 0; // 열린 카드가 모두 체력토큰이 필요한 육지 동물이라 가져갈 수 있는 카드가 없다
   const before = Object.fromEntries(state.turnOrder.map((id) => [id, state.players[id].tournamentTrack]));
   selectActivity(state, a, "tournament");
   assert.equal(state.activityStage, "choose");
@@ -344,14 +344,14 @@ test("카드를 여는 구역 중 연구실·주문 대결은 지력토큰이 �
   assert.equal(state.players[a].intelligenceTokens, 0);
 }));
 
-test("마법 주문서가 가장 싼 마법생물 값보다 적으면 마법생물 조련을 고를 수 없다", () => {
+test("조련에 낼 지력·체력·매력토큰이 하나도 없으면 마법생물 조련을 고를 수 없다", () => {
   const state = newGame(3);
-  toActivity(state);
+  toActivity(state, 0);
+  setTokens(state, 0, 0);
   const [a] = state.activityOrder;
-  state.players[a].spellbookTokens = 1;
   assert.ok(!availableActivities(state, a).includes("creature"));
-  assert.throws(() => selectActivity(state, a, "creature"), /마법 주문서/);
-  state.players[a].spellbookTokens = 2;
+  assert.throws(() => selectActivity(state, a, "creature"), /토큰/);
+  state.players[a].charmTokens = 1;
   assert.ok(availableActivities(state, a).includes("creature"));
 });
 
@@ -391,15 +391,12 @@ test("구역에 처음 고른 사람이 지력토큰 1개를 내고 카드 2장�
   assert.equal(state.activityOffers.lab?.cards.length, 2, "공개된 카드는 모두가 볼 수 있다");
 }));
 
-test("마법생물 조련: 먼저 온 사람이 원하는 카드를 주문서를 내고 가져가고, 남는 카드는 두 번째 참가자가 가져간다", () => {
+test("마법생물 조련: 먼저 온 사람이 원하는 카드를 가져가고, 속성·종류가 정한 토큰을 종류별로 골라 내 주사위를 굴린다. 남는 카드는 두 번째 참가자가 고른다", () => {
   const state = newGame(3);
   toActivity(state);
   setTokens(state, 2);
   const [a, b] = state.activityOrder;
-  state.creatureDeck.push(creature("하늘의 신비"), creature("하늘의 꽃마녀")); // 요구 주문서 5개 / 2개
-  state.players[b].charmTokens = 1;
-  state.players[a].spellbookTokens = 2;
-  state.players[b].spellbookTokens = 5;
+  state.creatureDeck.push(creature("하늘의 신비"), creature("하늘의 꽃마녀")); // 하늘·식물 = 지력 최대 2개 + 매력 최대 1개 (기준 13 / 5)
   selectActivity(state, a, "creature");
   selectActivity(state, b, "creature"); // 두 번째 참가자는 매력토큰 1개를 낸다
   finishChoosing(state);
@@ -407,14 +404,16 @@ test("마법생물 조련: 먼저 온 사람이 원하는 카드를 주문서를
   assert.deepEqual(state.pendingPick, { playerId: a, activityId: "creature", mode: "take" });
   assert.equal(canAdvanceResolution(state), false);
   assert.throws(() => chooseActivityCard(state, b, "test-하늘의 꽃마녀"), /고를 수 없습니다/);
-  assert.throws(() => chooseActivityCard(state, a, "test-하늘의 신비"), /비용이 모자라서/);
   chooseActivityCard(state, a, "test-하늘의 꽃마녀");
   assert.equal(state.pendingRoll?.kind, "creature");
-  assert.equal(state.pendingRoll?.entries[0].diceChoiceMax, 2, "주문서를 1~2개 사이에서 골라 낸다");
-  assert.equal(state.players[a].spellbookTokens, 2, "굴리기 전에는 주문서를 내지 않는다");
-  submitRoll(state, a, 2);
-  assert.equal(state.players[a].spellbookTokens, 0, "고른 만큼 주문서를 낸다");
-  assert.equal(state.pendingRoll?.entries[0].diceCount, 2, "낸 주문서만큼 주사위를 굴린다");
+  assert.deepEqual(state.pendingRoll?.entries[0].diceChoices, [{ stat: "intelligence", max: 2 }, { stat: "charm", max: 1 }]);
+  assert.equal(state.players[a].intelligenceTokens, 5, "굴리기 전에는 토큰을 내지 않는다");
+  assert.throws(() => submitRoll(state, a, undefined, { intelligence: 3 }), /지력토큰을 0~2개/);
+  assert.throws(() => submitRoll(state, a, undefined, { intelligence: 0, charm: 0 }), /1개 이상/);
+  submitRoll(state, a, undefined, { intelligence: 2, charm: 0 });
+  assert.equal(state.players[a].intelligenceTokens, 3, "고른 만큼 지력토큰을 낸다");
+  assert.equal(state.players[a].charmTokens, 3, "안 낸 매력토큰은 그대로");
+  assert.equal(state.pendingRoll?.entries[0].diceCount, 2, "낸 토큰 개수만큼 주사위를 굴린다");
   assert.equal(state.players[a].creatures.length, 0, "주사위를 굴려 성공해야 조련된다");
   rollWith(state, { [a]: [6, 6] });
   assert.deepEqual(state.players[a].creatures.map((c) => c.name), ["하늘의 꽃마녀"]);
@@ -423,76 +422,59 @@ test("마법생물 조련: 먼저 온 사람이 원하는 카드를 주문서를
   advanceResolution(state);
   assert.equal(state.pendingPick?.playerId, b, "카드가 한 장 남았어도 두 번째 참가자가 직접 고른다");
   chooseActivityCard(state, b, "test-하늘의 신비");
-  assert.equal(state.pendingRoll?.entries[0].diceCount, 5);
-  rollWith(state, { [b]: [6, 6, 6, 6, 6] });
+  assert.equal(state.pendingRoll?.entries[0].diceCount, 3, "지력 2 + 매력 1 = 최대 주사위 3개 (기본값은 최대)");
+  rollWith(state, { [b]: [6, 6, 6] });
   assert.deepEqual(state.players[b].creatures.map((c) => c.name), ["하늘의 신비"]);
-  assert.equal(state.players[b].spellbookTokens, 0);
+  assert.equal(state.players[b].intelligenceTokens, 3);
+  assert.equal(state.players[b].charmTokens, 1, "참가비 1개 + 조련에 1개를 냈다");
   assert.equal(state.activityOffers.creature?.cards.length, 0);
 });
 
-test("마법생물 조련: 비용을 못 내면 카드를 가져가지 못하고, 남은 카드는 두 번째 참가자가 고른다", () => {
+test("마법생물 조련: 필요한 종류의 토큰이 없으면 카드를 가져가지 못하고, 남은 카드는 두 번째 참가자가 고른다", () => {
   const state = newGame(3);
   toActivity(state);
-  setTokens(state, 2);
+  setTokens(state, 0, 0);
   const [a, b] = state.activityOrder;
-  state.creatureDeck.push(creature("하늘의 신비"), creature("하늘의 감시자")); // 요구 주문서 5개 / 3개
-  state.players[a].spellbookTokens = 2;
-  state.players[b].spellbookTokens = 5;
-  state.players[b].charmTokens = 1;
+  state.creatureDeck.push(creature("대지의 수호자"), creature("정령 고릴라")); // 육지·동물 = 체력토큰만 (기준 8 / 5)
+  Object.assign(state.players[b], { charmTokens: 1, staminaTokens: 2 });
   selectActivity(state, a, "creature");
-  selectActivity(state, b, "creature");
+  selectActivity(state, b, "creature"); // 참가비로 매력토큰 1개
   finishChoosing(state);
   advanceResolution(state);
-  assert.equal(state.pendingPick, null, "가져올 수 있는 카드가 없으면 고를 것도 없다");
+  assert.equal(state.pendingPick, null, "체력토큰이 없어 가져올 수 있는 카드가 없으면 고를 것도 없다");
   assert.equal(state.players[a].creatures.length, 0);
   assert.equal(state.activityResolvePointer, 1);
   advanceResolution(state);
   assert.equal(state.pendingPick?.playerId, b, "두 장이 그대로 남아 있으니 두 번째 참가자가 고른다");
-  chooseActivityCard(state, b, "test-하늘의 신비");
-  rollWith(state, { [b]: [6, 6, 6, 6, 6] });
-  assert.equal(state.players[b].creatures[0].name, "하늘의 신비");
+  chooseActivityCard(state, b, "test-대지의 수호자");
+  assert.deepEqual(state.pendingRoll?.entries[0].diceChoices, [{ stat: "stamina", max: 2 }], "체력토큰 최대 3개 중 가진 2개까지");
+  rollWith(state, { [b]: [6, 6] });
+  assert.equal(state.players[b].creatures[0].name, "대지의 수호자");
 });
 
-test("마법생물 조련: 주사위 합 + 생물별 능력치 보너스(하늘 식물은 주문력 2 : 매력 1)가 목표값(요구 주문서 × 3.5 × 난이도) 이상이어야 성공하고, 실패하면 주문서만 잃고 카드는 구역에 돌아간다", () => {
+test("마법생물 조련: 낸 토큰만큼 굴린 주사위 합이 기준 수치(요구 주문력 × 2.5) 이상이어야 성공하고, 실패하면 토큰만 잃고 카드는 구역에 돌아간다", () => {
   const state = newGame(3);
   toActivity(state);
   setTokens(state, 2);
   const [a, b] = state.activityOrder;
-  state.creatureDeck.push(creature("하늘의 신비"), creature("하늘의 꽃마녀")); // 요구 주문서 5개 / 2개 (꽃마녀 목표 6)
-  Object.assign(state.players[a], { spellbookTokens: 2, spellPower: 0, charm: 0 });
-  state.players[b].spellbookTokens = 2;
-  state.players[b].charmTokens = 1;
+  state.creatureDeck.push(creature("하늘의 신비"), creature("하늘의 꽃마녀")); // 기준 13 / 5
   selectActivity(state, a, "creature");
   selectActivity(state, b, "creature");
   finishChoosing(state);
   advanceResolution(state);
   chooseActivityCard(state, a, "test-하늘의 꽃마녀");
-  rollWith(state, { [a]: [2, 3] }); // 5 + 보너스 0 < 6: 실패
+  submitRoll(state, a, undefined, { intelligence: 1, charm: 0 });
+  rollWith(state, { [a]: [4] }); // 4 < 5: 실패
   assert.equal(state.players[a].creatures.length, 0);
-  assert.equal(state.players[a].spellbookTokens, 0, "실패해도 주문서는 돌려받지 못한다");
+  assert.equal(state.players[a].intelligenceTokens, 4, "실패해도 낸 토큰은 돌려받지 못한다");
   assert.ok(state.log.some((l) => l.message.includes("조련 실패")));
   assert.equal(state.activityOffers.creature?.cards.length, 2, "실패한 카드는 구역으로 돌아간다");
   advanceResolution(state);
   assert.equal(state.pendingPick?.playerId, b, "두 번째 참가자가 돌아온 카드에 도전할 수 있다");
   chooseActivityCard(state, b, "test-하늘의 꽃마녀");
-  Object.assign(state.players[b], { spellPower: 1, charm: 1 });
-  rollWith(state, { [b]: [2, 3] }); // 5 + 보너스 1 = 6: 성공
+  submitRoll(state, b, undefined, { intelligence: 2, charm: 0 });
+  rollWith(state, { [b]: [2, 3] }); // 5 ≥ 5: 성공 (기준과 같아도 성공)
   assert.deepEqual(state.players[b].creatures.map((c) => c.name), ["하늘의 꽃마녀"]);
-});
-
-test("체력토큰으로 집중하는 기능은 없다 (활동 선택에 체력토큰 옵션이 없고 카드 비용도 그대로)", () => {
-  const state = newGame(2);
-  toActivity(state);
-  const [a, b] = state.activityOrder;
-  state.creatureDeck.push(creature("하늘의 신비"), creature("하늘의 감시자"));
-  Object.assign(state.players[a], { staminaTokens: 3, charmTokens: 0, spellbookTokens: 2 });
-  selectActivity(state, a, "creature");
-  selectActivity(state, b, "tournament");
-  advanceResolution(state);
-  // 주문서 2개로는 요구 3개 이상인 카드를 가져갈 수 없다
-  assert.equal(state.pendingPick, null);
-  assert.equal(state.players[a].staminaTokens, 3, "집중으로 체력토큰을 쓰지 않는다");
-  assert.equal(state.players[a].creatures.length, 0);
 });
 
 test("연구실 실험: 카드 2장을 열어 원하는 카드를 체력토큰을 내고 가져가고, 남는 카드는 두 번째 참가자가 가져간다", () => {
@@ -731,9 +713,8 @@ test("자율활동이 끝나면 아무도 가져가지 않은 공개 카드는 �
   toActivity(state);
   const [a, b] = state.activityOrder;
   setTokens(state, 0);
-  state.players[a].spellbookTokens = 2;
-  state.creatureDeck.push(creature("바다의 여왕"), creature("하늘의 신비")); // 둘 다 주문서 5개가 필요해서 가져갈 수 없다
-  selectActivity(state, a, "creature"); // 주문서 2개로는 아무것도 못 가져간다
+  state.creatureDeck.push(creature("대지의 수호자"), creature("정령 고릴라")); // 둘 다 체력토큰이 필요한 육지 동물이라 체력토큰이 0개면 가져갈 수 없다
+  selectActivity(state, a, "creature"); // 체력토큰이 없으면 아무것도 못 가져간다
   selectActivity(state, b, "tournament");
   advanceResolution(state);
   advanceResolution(state);
@@ -805,7 +786,7 @@ test("마법 토너먼트: 주사위는 지력토큰으로 다시 굴릴 수 있
   assert.equal(state.players[a].intelligenceTokens, 0);
 });
 
-test("주문 대결: 양쪽이 마법 주문서를 모두 내고 낸 개수만큼 주사위를 굴려 합이 큰 쪽이 이긴다", () => {
+test("주문 대결: 도전자가 건넨 주문서 1개를 더한 뒤 양쪽이 마법 주문서를 내고 낸 개수만큼 주사위를 굴려 합이 큰 쪽이 이긴다", () => {
   const state = newGame(2);
   toActivity(state);
   const [a, b] = state.activityOrder;
@@ -816,10 +797,10 @@ test("주문 대결: 양쪽이 마법 주문서를 모두 내고 낸 개수만�
   selectActivity(state, a, "duel", b);
   advanceResolution(state);
   const entries = state.pendingRoll!.entries;
-  assert.equal(entries.find((e) => e.playerId === a)!.diceCount, 3);
-  assert.equal(entries.find((e) => e.playerId === b)!.diceCount, 2);
+  assert.equal(entries.find((e) => e.playerId === a)!.diceCount, 2, "도전자는 주문서 1개를 건네고 남은 2개");
+  assert.equal(entries.find((e) => e.playerId === b)!.diceCount, 3, "지목당한 쪽은 건네받은 1개를 더한 3개");
   state.players[a].grimoires = [];
-  rollWith(state, { [a]: [1, 1, 1], [b]: [6, 6] });
+  rollWith(state, { [a]: [1, 1], [b]: [6, 6, 6] });
   assert.ok(state.log.some((l) => l.message.includes(`${state.players[b].name} 승리`)), "합이 더 큰 쪽(지목당한 쪽)이 이긴다");
 });
 
@@ -831,12 +812,12 @@ test("주문 대결: 합이 같으면 무승부 — 마도서를 얻는 사람�
   Object.assign(state.players[b], { spellPower: 1, charm: 1 });
   state.players[a].spellPower = state.players[b].spellPower = 2;
   setTokens(state, 0);
-  Object.assign(state.players[a], { spellbookTokens: 2 });
+  Object.assign(state.players[a], { spellbookTokens: 3 });
   Object.assign(state.players[b], { spellbookTokens: 2 });
   selectActivity(state, a, "duel", b);
   selectActivity(state, c, "tournament");
   advanceResolution(state);
-  rollWith(state, { [a]: [3, 4], [b]: [2, 5] });
+  rollWith(state, { [a]: [3, 4], [b]: [2, 2, 3] });
   assert.equal(state.pendingPick, null, "무승부면 마도서를 고르는 사람이 없다");
   assert.equal(state.players[a].spellbookTokens, 0, "낸 주문서는 무승부여도 돌려받지 못한다");
   assert.ok(state.log.some((l) => l.message.includes("무승부")));
@@ -1249,39 +1230,50 @@ test("최종: 시험·토너먼트·최종 점수가 모두 동점이면 공동 
   assert.deepEqual([...state.winnerIds!].sort(), [a, b].sort(), "최종 점수가 같은 a·b가 공동 승리");
 });
 
-test("마법생물 조련: 생물마다 섞이는 능력치가 다르다 (속성 2 : 종류 1 비율, 반올림)", () => {
-  const state = newGame(2);
-  const p = state.players[state.turnOrder[0]];
-  Object.assign(p, { spellPower: 6, stamina: 3, charm: 0, tempBoosts: {} });
+test("마법생물 조련: 생물마다 낼 수 있는 토큰이 다르다 (속성 2 : 종류 1 비율이 곧 토큰 최대 개수, 하늘=지력)", () => {
   const find = (name: string) => CREATURE_CARDS.find((c) => c.name === name)!;
-  assert.deepEqual(creatureTrainMix(find("하늘의 감시자")), [["spellPower", 2], ["stamina", 1]], "하늘 동물 = 주문력 2 : 체력 1");
-  assert.equal(creatureTrainBonus(p, find("하늘의 감시자")), 5); // (12 + 3) / 3
+  assert.deepEqual(creatureTrainMix(find("하늘의 감시자")), [["intelligence", 2], ["stamina", 1]], "하늘 동물 = 지력 2 : 체력 1");
+  assert.deepEqual(creatureTrainMix(find("하늘의 꽃마녀")), [["intelligence", 2], ["charm", 1]], "하늘 식물 = 지력 2 : 매력 1");
   assert.deepEqual(creatureTrainMix(find("대지의 수호자")), [["stamina", 3]], "육지 동물은 체력만");
-  assert.equal(creatureTrainBonus(p, find("대지의 수호자")), 3);
   assert.deepEqual(creatureTrainMix(find("심해의 마녀")), [["charm", 3]], "바다 식물은 매력만");
-  assert.equal(creatureTrainBonus(p, find("심해의 마녀")), 0);
   assert.deepEqual(creatureTrainMix(find("용암 식물")), [["stamina", 2], ["charm", 1]], "육지 식물 = 체력 2 : 매력 1");
+  const tokens = { intelligenceTokens: 5, staminaTokens: 1, charmTokens: 0 };
+  assert.deepEqual(creatureTokenCaps(tokens, find("용암 식물")), [{ stat: "stamina", max: 1 }], "가진 개수와 비율 상한 중 작은 값, 0개인 종류는 뺀다");
+  assert.deepEqual(creatureTokenCaps(tokens, find("하늘의 감시자")), [{ stat: "intelligence", max: 2 }, { stat: "stamina", max: 1 }]);
 });
 
-test("주문 대결: 도전자는 주문서가 1개 이상 있어야 고를 수 있고, 낸 주문서는 승패와 상관없이 사라진다", () => {
+test("주문 대결: 도전자는 주문서가 2개 이상(건넬 1개 + 굴릴 1개) 있어야 고를 수 있고, 지목당한 쪽은 건네받은 주문서로 굴린다", () => {
   const state = newGame(2);
   toActivity(state);
   const [a, b] = state.activityOrder;
   state.grimoirePile = { draw: [], discard: [] };
-  state.players[a].spellbookTokens = 0;
+  state.players[a].spellbookTokens = 1;
   assert.ok(!availableActivities(state, a).includes("duel"));
   assert.throws(() => selectActivity(state, a, "duel", b), /주문서/);
-  Object.assign(state.players[a], { spellbookTokens: 2 });
+  Object.assign(state.players[a], { spellbookTokens: 3 });
   Object.assign(state.players[b], { spellbookTokens: 0 });
   selectActivity(state, a, "duel", b);
   advanceResolution(state);
   const entries = state.pendingRoll!.entries;
-  assert.equal(entries.find((e) => e.playerId === a)!.diceCount, 2);
-  assert.equal(entries.find((e) => e.playerId === b)!.diceCount, 1, "주문서가 없어도 지목당한 쪽은 주사위 1개를 굴린다");
+  assert.equal(state.players[a].spellbookTokens, 2, "도전자가 주문서 1개를 건넸다");
+  assert.equal(state.players[b].spellbookTokens, 1, "지목당한 쪽은 주문서가 없어도 건네받은 1개가 있다");
   assert.equal(entries.find((e) => e.playerId === a)!.diceChoiceMax, 2, "주문서를 1~2개 사이에서 고른다");
-  assert.equal(entries.find((e) => e.playerId === b)!.diceChoiceMax, undefined, "주문서가 없으면 고를 것도 없다");
+  assert.equal(entries.find((e) => e.playerId === b)!.diceChoiceMax, 1);
   submitRoll(state, a, 1);
   assert.equal(state.players[a].spellbookTokens, 1, "고른 만큼만 주문서를 낸다");
+  assert.ok(state.log.some((l) => l.message.includes("주문서")));
+});
+
+test("마법생물 조련: 고르는 카드 목록에 속성과 종류가 표시된다", () => {
+  const state = newGame(2);
+  toActivity(state);
+  const [a] = state.activityOrder;
+  state.creatureDeck.push(creature("하늘의 꽃마녀"), creature("대지의 수호자"));
+  selectActivity(state, a, "creature");
+  finishChoosing(state);
+  advanceResolution(state);
+  const tags = state.activityOffers.creature!.cards.map((c) => c.tags).sort();
+  assert.deepEqual(tags, ["육지 · 동물", "하늘 · 식물"]);
 });
 
 test("비밀의 방: 카드가 정한 체력토큰을 1~보유 개수 사이에서 골라 내고 낸 개수만큼 주사위를 굴린다 (지력토큰은 그대로)", () => {
@@ -1303,18 +1295,6 @@ test("비밀의 방: 카드가 정한 체력토큰을 1~보유 개수 사이에�
   assert.equal(state.pendingRoll?.entries[0].diceCount, 3);
   assert.equal(state.players[a].staminaTokens, 1, "고른 만큼만 낸다");
   assert.equal(state.players[a].intelligenceTokens, 3);
-});
-
-test("마법생물 조련: 고르는 카드 목록에 속성과 종류가 표시된다", () => {
-  const state = newGame(2);
-  toActivity(state);
-  const [a] = state.activityOrder;
-  state.creatureDeck.push(creature("하늘의 꽃마녀"), creature("대지의 수호자"));
-  selectActivity(state, a, "creature");
-  finishChoosing(state);
-  advanceResolution(state);
-  const tags = state.activityOffers.creature!.cards.map((c) => c.tags).sort();
-  assert.deepEqual(tags, ["육지 · 동물", "하늘 · 식물"]);
 });
 
 test("임시 능력치: 얻은 달의 다음 달 4주차(정리)에 소멸한다 (이번 달 정리에서는 남는다)", () => {

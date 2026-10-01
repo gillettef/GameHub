@@ -68,6 +68,8 @@ export interface GrimoireCard {
   ability?: CreatureAbility;
 }
 
+export type TokenStat = "intelligence" | "stamina" | "charm";
+
 export interface PlayerGameState {
   id: string;
   name: string;
@@ -120,7 +122,7 @@ export interface PendingRoll {
   title: string;
   lines: string[];
   // diceChoiceMax가 있으면 굴리기 전에 diceChoiceStat 토큰(기본 지력)을 1~max개 내고 낸 개수만큼 굴릴 수 있다 (연구실 실험·탐험 판정)
-  entries: { playerId: string; label: string; diceCount: number; diceChoiceMax?: number; diceChoiceStat?: "intelligence" | "stamina" | "spellbook"; dice: number[] | null; confirmed: boolean; rerolls: number }[];
+  entries: { playerId: string; label: string; diceCount: number; diceChoiceMax?: number; diceChoiceStat?: "intelligence" | "stamina" | "spellbook" | "charm"; diceChoices?: { stat: "intelligence" | "stamina" | "charm"; max: number }[]; dice: number[] | null; confirmed: boolean; rerolls: number }[];
 }
 
 // 3주차 선택 단계에서 각자 고른 활동 (모두에게 공개). 진행 단계에서는 이 순서대로 하나씩 처리한다
@@ -146,6 +148,8 @@ export interface OfferCardView {
   lines: string[];
   // 가져가는 데 드는 비용 (체력토큰 또는 마법 주문서)
   cost?: { kind: "stamina" | "spellbook"; amount: number };
+  // 마법생물 조련에 쓸 수 있는 토큰 종류 (이 중 하나라도 있어야 가져갈 수 있다)
+  tokenNeeds?: ("intelligence" | "stamina" | "charm")[];
   // 카드 이름 아래에 붙는 짧은 분류 (마법생물의 속성 · 종류)
   tags?: string;
 }
@@ -178,6 +182,7 @@ export interface PublicRules {
   activityMaxParticipants: number;
   activitySecondParticipantCost: number;
   duelCharmFee: number;
+  duelSpellbookFee: number;
   midtermRound: number;
   midtermRevealRound: number;
   finalRevealRound: number;
@@ -186,7 +191,6 @@ export interface PublicRules {
   // 최종 점수 = 주문력 × 학점 + 마법생물 세트(하늘·육지·바다 1장씩) 수 × creatureSetScore
   creatureSetScore: number;
   // 마법생물을 가져오는 데 드는 최소 마법 주문서 (이보다 적으면 마법생물 조련을 고를 수 없다)
-  creatureMinCost: number;
 }
 
 export interface GameState {
@@ -294,9 +298,10 @@ export function activityBlockReason(game: GameState, playerId: string, activityI
   const open = activityOpenCost(game, activityId);
   if (!canPay(player, open, 0, extra)) return `카드를 열 지력토큰 ${open}개가 필요해요`;
   if (activityId === "tournament" && player.spellbookTokens < 1) return "마법 주문서가 1개 이상 필요해요";
-  if (activityId === "creature" && player.spellbookTokens < game.rules.creatureMinCost) return `마법 주문서가 ${game.rules.creatureMinCost}개 이상 필요해요`;
+  if (activityId === "creature" && player.intelligenceTokens + player.staminaTokens + player.charmTokens < 1) return "조련에 낼 지력·체력·매력토큰이 1개 이상 필요해요";
   if (activityId === "duel") {
-    if (player.spellbookTokens < 1) return "마법 주문서가 1개 이상 필요해요";
+    const need = 1 + game.rules.duelSpellbookFee;
+    if (player.spellbookTokens < need) return `마법 주문서가 ${need}개 이상 필요해요`;
     if (duelTargets(game, playerId).length === 0) return "지목할 수 있는 친구가 없어요";
     if (player.charm < game.rules.duelCharmFee) return `건넬 매력(${game.rules.duelCharmFee})이 없어요`;
   }

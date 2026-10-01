@@ -340,9 +340,9 @@ export function useGameSocket() {
     [ensureSocket, send],
   );
 
-  const rollDice = useCallback((diceCount?: number) => {
+  const rollDice = useCallback((diceCount?: number, tokenCounts?: Partial<Record<"intelligence" | "stamina" | "charm", number>>) => {
     const socket = ensureSocket();
-    send(socket, { type: "roll_dice", diceCount });
+    send(socket, { type: "roll_dice", diceCount, tokenCounts });
   }, [ensureSocket, send]);
 
   const rerollDice = useCallback(

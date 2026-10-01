@@ -24,6 +24,7 @@ import {
   type KeepChoice,
   type OfferCardView,
   type PlayerGameState,
+  type TokenStat,
 } from "./gameTypes";
 import { CardArt, CardGrid, PickGrid, type CardInfo } from "./CardArt";
 import { RulesGuide } from "./Rules";
@@ -163,7 +164,7 @@ function ownedCardInfos(player: PlayerGameState): CardInfo[] {
     })),
     ...player.creatures.map((c) => ({
       name: c.name,
-      badge: `${ELEMENT_LABEL[c.element]} · ${KIND_LABEL[c.kind]} · 필요 주문력 ${c.requiredSpellPower}`,
+      badge: `${ELEMENT_LABEL[c.element]} · ${KIND_LABEL[c.kind]} · 기준 ${c.requiredSpellPower}`,
       lines: [c.description, describeAbility(c.ability)],
     })),
   ];
@@ -284,6 +285,7 @@ function PickPanel({ game, myId, onPick }: { game: GameState; myId: string; onPi
       ? "주문 대결에서 이겼어요! 마도서를 1장 고르세요"
       : `${ACTIVITY_LABEL[pick.activityId]}: 공개된 카드 중 1장을 고르세요`;
   const affordable = (card: OfferCardView): boolean => {
+    if (card.tokenNeeds) return card.tokenNeeds.some((stat) => (stat === "intelligence" ? me.intelligenceTokens : stat === "stamina" ? me.staminaTokens : me.charmTokens) > 0);
     if (!card.cost) return true;
     if (card.cost.kind === "stamina") return canPay(me, 0, card.cost.amount);
     return me.spellbookTokens >= card.cost.amount;
@@ -417,7 +419,7 @@ function ChoosePanel({
       <div className="bg-white rounded-3xl border-2 border-purple-200 shadow-sm p-4">
         <p className="text-sm text-purple-600 mb-1">아직 활동을 고르지 않은 한 명을 지목하세요</p>
         <p className="text-xs text-purple-500 mb-2">
-          지목당한 친구는 이번 달 자율활동으로 주문 대결을 하게 돼요. 결과와 상관없이 지목한 친구에게 <InlineIcon name="heart" /> 매력 {fee}을 건네요.
+          지목당한 친구는 이번 달 자율활동으로 주문 대결을 하게 돼요. 결과와 상관없이 지목한 친구에게 <InlineIcon name="heart" /> 매력 {fee}과 <InlineIcon name="spellbookToken" /> 마법 주문서 {game.rules.duelSpellbookFee}개를 건네요.
         </p>
         <div className="flex flex-col gap-2">
           {targets.map((id) => (
@@ -633,7 +635,7 @@ function RollPanel({
 }: {
   game: GameState;
   myId: string;
-  onRoll: (diceCount?: number) => void;
+  onRoll: (diceCount?: number, tokenCounts?: Partial<Record<TokenStat, number>>) => void;
   onReroll: (diceIndexes: number[]) => void;
   onConfirm: () => void;
 }) {
@@ -643,6 +645,8 @@ function RollPanel({
   const [selected, setSelected] = useState<number[]>([]);
   // 연구실 실험처럼 지력토큰을 몇 개 낼지 고르는 굴림에서 고른 주사위 수 (null이면 서버가 정한 기본값)
   const [pickedCount, setPickedCount] = useState<number | null>(null);
+  // 마법생물 조련처럼 여러 종류의 토큰을 종류별로 몇 개씩 낼지 고르는 굴림에서 고른 개수 (없는 종류는 최대치가 기본값)
+  const [pickedTokens, setPickedTokens] = useState<Partial<Record<TokenStat, number>>>({});
   // 버튼을 누른 뒤 응답이 없어도 잠시 뒤 다시 누를 수 있게 풀어 준다
   useEffect(() => {
     if (!clickedFor) return;
@@ -657,6 +661,9 @@ function RollPanel({
   // 굴리기 전에 지력토큰을 몇 개 낼지 고르는 굴림 (연구실 실험)
   const choiceMax = mine?.diceChoiceMax;
   const chosenCount = choiceMax !== undefined ? Math.min(Math.max(pickedCount ?? mine!.diceCount, 1), choiceMax) : (mine?.diceCount ?? 0);
+  const multi = mine?.diceChoices;
+  const tokenCountOf = (c: { stat: TokenStat; max: number }) => Math.min(Math.max(pickedTokens[c.stat] ?? c.max, 0), c.max);
+  const multiTotal = multi ? multi.reduce((a, c) => a + tokenCountOf(c), 0) : 0;
   const canConfirm = !!mine && revealed && !mine.confirmed;
   const me = game.players[myId];
   // 결과를 확인하기 전에는 지력토큰으로 일부 주사위만 다시 굴릴 수 있다 (선 정하기는 제외)
@@ -691,7 +698,7 @@ function RollPanel({
               {revealed && entry.confirmed && entry.diceCount > 0 && <span className="shrink-0 text-xs text-emerald-600">확인 완료</span>}
             </p>
             {entry.dice === null ? (
-              <p className="text-xs text-purple-400">아직 안 굴렸어요{entry.diceChoiceMax === undefined ? ` (주사위 ${entry.diceCount}개)` : ` (${entry.diceChoiceStat === "stamina" ? "체력토큰" : entry.diceChoiceStat === "spellbook" ? "마법 주문서" : "지력토큰"}을 고르는 중)`}</p>
+              <p className="text-xs text-purple-400">아직 안 굴렸어요{entry.diceChoiceMax === undefined && !entry.diceChoices ? ` (주사위 ${entry.diceCount}개)` : ` (${entry.diceChoiceStat === "stamina" ? "체력토큰" : entry.diceChoiceStat === "spellbook" ? "마법 주문서" : "지력토큰"}을 고르는 중)`}</p>
             ) : entry.dice.length === 0 ? (
               <p className="text-xs text-purple-400">굴릴 주사위가 없어요</p>
             ) : (
@@ -751,19 +758,54 @@ function RollPanel({
           </div>
         </div>
       )}
+      {canRoll && mine && multi && (
+        <div className="mt-3 rounded-2xl bg-sky-50 px-3 py-2 text-sm text-sky-800">
+          <p>토큰 종류별로 몇 개를 낼까요? 낸 토큰 개수만큼 주사위를 굴려요. 안 낸 토큰은 지켜 둘 수 있어요</p>
+          {multi.map((c) => {
+            const n = tokenCountOf(c);
+            return (
+              <div key={c.stat} className="mt-2 flex items-center justify-between gap-2">
+                <span className="flex items-center gap-1">
+                  <InlineIcon name={c.stat === "intelligence" ? "intToken" : c.stat === "stamina" ? "staminaToken" : "charmToken"} /> {STAT_LABEL[c.stat]}토큰 (최대 {c.max}개)
+                </span>
+                <span className="flex items-center gap-3">
+                  <button
+                    aria-label={`${STAT_LABEL[c.stat]}토큰 하나 줄이기`}
+                    disabled={n <= 0}
+                    className="h-12 w-12 rounded-full bg-white text-2xl font-semibold text-sky-700 shadow-sm active:scale-95 transition-transform disabled:opacity-40"
+                    onClick={() => setPickedTokens((cur) => ({ ...cur, [c.stat]: n - 1 }))}
+                  >
+                    −
+                  </button>
+                  <span className="min-w-8 text-center text-lg font-semibold">{n}</span>
+                  <button
+                    aria-label={`${STAT_LABEL[c.stat]}토큰 하나 늘리기`}
+                    disabled={n >= c.max}
+                    className="h-12 w-12 rounded-full bg-white text-2xl font-semibold text-sky-700 shadow-sm active:scale-95 transition-transform disabled:opacity-40"
+                    onClick={() => setPickedTokens((cur) => ({ ...cur, [c.stat]: n + 1 }))}
+                  >
+                    +
+                  </button>
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      )}
       {canRoll && mine ? (
         <button
-          disabled={clickedFor === rollKey}
+          disabled={clickedFor === rollKey || (!!multi && multiTotal < 1)}
           className="mt-3 flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl bg-pink-500 py-3 text-lg font-semibold text-white active:scale-95 transition-transform disabled:opacity-70 disabled:active:scale-100"
           onClick={() => {
             setClickedFor(rollKey);
-            onRoll(choiceMax !== undefined ? chosenCount : undefined);
+            if (multi) onRoll(undefined, Object.fromEntries(multi.map((c) => [c.stat, tokenCountOf(c)])));
+            else onRoll(choiceMax !== undefined ? chosenCount : undefined);
           }}
         >
           <span className={clickedFor === rollKey ? "dice-wiggle inline-flex" : "inline-flex"}>
             <Icon name="dice" className="h-6 w-6" />
           </span>
-          {clickedFor === rollKey ? "굴리는 중..." : chosenCount > 1 ? `주사위 ${chosenCount}개 굴리기` : "주사위 굴리기"}
+          {clickedFor === rollKey ? "굴리는 중..." : (multi ? multiTotal : chosenCount) > 1 ? `주사위 ${multi ? multiTotal : chosenCount}개 굴리기` : "주사위 굴리기"}
         </button>
       ) : canConfirm ? (
         <>
@@ -962,7 +1004,7 @@ export function GameBoard({
   onTakeClassCard: (cardId: string | null) => void;
   onSelectActivity: (activityId: ActivityId, targetPlayerId?: string) => void;
   onPickActivityCard: (cardId: string | null) => void;
-  onRollDice: (diceCount?: number) => void;
+  onRollDice: (diceCount?: number, tokenCounts?: Partial<Record<TokenStat, number>>) => void;
   onRerollDice: (diceIndexes: number[]) => void;
   onConfirmRoll: () => void;
   onKeepToken: (choice: KeepChoice) => void;
