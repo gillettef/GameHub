@@ -151,9 +151,12 @@ ${window.location.href}`;
                 </span>
                 {state.isHost && p.id !== state.playerId && (
                   <button
-                    className="shrink-0 min-h-11 min-w-11 rounded-full text-sm text-pink-500 active:scale-95 transition-transform"
+                    className="shrink-0 min-h-11 min-w-11 rounded-full bg-pink-50 text-sm text-pink-500 active:scale-95 transition-transform"
                     aria-label={p.isBot ? `${p.name} 제거` : `${p.name} 내보내기`}
-                    onClick={() => (p.isBot ? removeBot(p.id) : kickPlayer(p.id))}
+                    onClick={() => {
+                      if (p.isBot) removeBot(p.id);
+                      else if (window.confirm(`${p.name}님을 방에서 내보낼까요?`)) kickPlayer(p.id);
+                    }}
                   >
                     <Icon name="x" className="h-4 w-4" />
                   </button>
@@ -186,14 +189,14 @@ ${window.location.href}`;
                   aria-pressed={state.turnSeconds === sec}
                   onClick={() => setTurnSeconds(sec)}
                 >
-                  {sec === 0 ? "없음" : `${sec}초`}
+                  {sec === 0 ? "없음" : sec === 180 ? "3분" : `${sec}초`}
                 </button>
               ))}
             </div>
           ) : (
-            <p className="text-purple-700">{state.turnSeconds === 0 ? "없음" : `${state.turnSeconds}초`}</p>
+            <p className="text-purple-700">{state.turnSeconds === 0 ? "없음" : state.turnSeconds === 180 ? "3분" : `${state.turnSeconds}초`}</p>
           )}
-          <p className="mt-2 text-xs text-purple-500">시간이 지나면 대신 무난하게 골라 주고, 두 번 연속 놓치면 봇이 잠시 이어받아요 (돌아오기로 되찾을 수 있어요)</p>
+          <p className="mt-2 text-xs text-purple-500">시간이 지나면 대신 골라 주고, 두 번 놓치면 봇이 잠시 이어받아요</p>
         </div>
 
         {state.isHost && (
