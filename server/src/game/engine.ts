@@ -11,7 +11,7 @@ import {
 } from "./cards.js";
 import { randomUUID } from "node:crypto";
 import { BALANCE, examCreditForRank } from "./config.js";
-import { MIN_CREATURE_COST, describeAbility } from "./creatures.js";
+import { describeAbility } from "./creatures.js";
 import { describeExam, pickExamCards } from "./examCards.js";
 import { describeEffect } from "./explorationCards.js";
 import {
@@ -66,25 +66,28 @@ export function rollTarget(round: number, difficulty: number): number {
 // 탐험 카드의 target은 난이도 × 10, 협력 카드의 pairTarget은 난이도 × 18 (둘이 굴리므로 목표값은 2배)
 const exploreTarget = (round: number, target: number) => rollTarget(round, (target / 10) * BALANCE.exploreDifficultyScale);
 const coopTarget = (round: number, pairTarget: number) => 2 * rollTarget(round, (pairTarget / 18) * BALANCE.exploreDifficultyScale);
-const creatureTarget = (card: CreatureCard) => Math.max(1, Math.round(3.5 * card.requiredSpellPower * BALANCE.creatureDifficulty));
+// 마법생물 조련의 기준 수치: 요구 주문력 × creatureTargetPerPower. 굴린 주사위 합이 이 값 이상이면 조련 성공
+const creatureTarget = (card: CreatureCard) => Math.max(1, Math.round(card.requiredSpellPower * BALANCE.creatureTargetPerPower));
 
-// 마법생물마다 조련에 더해지는 능력치 보너스가 다르다: 속성(하늘=주문력·육지=체력·바다=매력) 2 : 종류(동물=체력·식물=매력) 1 비율로 섞어 반올림한다
-export function creatureTrainMix(card: Pick<CreatureCard, "element" | "kind">): [StatKey, number][] {
-  const main: StatKey = { sky: "spellPower", land: "stamina", ocean: "charm" }[card.element] as StatKey;
-  const sub: StatKey = card.kind === "animal" ? "stamina" : "charm";
+// 마법생물마다 조련에 낼 수 있는 토큰이 다르다: 속성(하늘=지력·육지=체력·바다=매력) 2 : 종류(동물=체력·식물=매력) 1 비율이며, 비율이 곧 낼 수 있는 토큰의 최대 개수다
+// (예: 육지·식물이면 체력토큰 최대 2개 + 매력토큰 최대 1개 → 주사위 최대 3개, 속성과 종류가 같은 능력치면 그 토큰 최대 3개)
+export type TokenStat = "intelligence" | "stamina" | "charm";
+export function creatureTrainMix(card: Pick<CreatureCard, "element" | "kind">): [TokenStat, number][] {
+  const main: TokenStat = { sky: "intelligence", land: "stamina", ocean: "charm" }[card.element] as TokenStat;
+  const sub: TokenStat = card.kind === "animal" ? "stamina" : "charm";
   return main === sub ? [[main, 3]] : [[main, 2], [sub, 1]];
 }
-export function creatureTrainBonus(player: PlayerGameState, card: Pick<CreatureCard, "element" | "kind">): number {
-  const mix = creatureTrainMix(card);
-  const total = mix.reduce((a, [, w]) => a + w, 0);
-  return Math.round(mix.reduce((a, [stat, w]) => a + w * effectiveStat(player, stat), 0) / total);
+const TOKEN_OF = { intelligence: "intelligenceTokens", stamina: "staminaTokens", charm: "charmTokens" } as const;
+// 이 플레이어가 지금 조련에 낼 수 있는 토큰 종류와 최대 개수 (비율 상한과 보유 개수 중 작은 값, 0개인 종류는 뺀다)
+export function creatureTokenCaps(player: Pick<PlayerGameState, "intelligenceTokens" | "staminaTokens" | "charmTokens">, card: Pick<CreatureCard, "element" | "kind">): { stat: TokenStat; max: number }[] {
+  return creatureTrainMix(card)
+    .map(([stat, weight]) => ({ stat, max: Math.min(weight, player[TOKEN_OF[stat]]) }))
+    .filter((c) => c.max > 0);
 }
 const ELEMENT_NAME = { sky: "하늘", land: "육지", ocean: "바다" } as const;
 const creatureTagsOf = (card: Pick<CreatureCard, "element" | "kind">) => `${ELEMENT_NAME[card.element]} · ${card.kind === "animal" ? "동물" : "식물"}`;
 function creatureMixText(card: Pick<CreatureCard, "element" | "kind">): string {
-  const mix = creatureTrainMix(card);
-  const total = mix.reduce((a, [, w]) => a + w, 0);
-  return mix.map(([stat, w]) => (w === total ? STAT_NAME[stat] : `${STAT_NAME[stat]} ${w}/${total}`)).join(" + ");
+  return creatureTrainMix(card).map(([stat, w]) => `${STAT_NAME[stat]}토큰 최대 ${w}개`).join(" + ");
 }
 
 // 능력치 판정에서 낼 수 있는 최대 주사위 수: 카드가 정한 지력/체력 토큰의 개수 (토큰이 없어도 1개는 굴린다). 실제로는 굴릴 때 1~이 개수 사이에서 골라 낸다
@@ -316,8 +319,8 @@ function beginFirstRoll(state: GameState, contenders: string[]): void {
 
 // ── 토큰 지불: 지력토큰·체력토큰·매력토큰은 서로 바꿀 수 없다. 자율활동 구역의 두 번째 참가비는 매력토큰으로만 낸다 ──
 
-type PayKind = "intelligence" | "stamina" | "spellbook";
-const PAY_OBJECT: Record<PayKind, string> = { intelligence: "지력토큰을", stamina: "체력토큰을", spellbook: "마법 주문서를" };
+type PayKind = "intelligence" | "stamina" | "spellbook" | "charm";
+const PAY_OBJECT: Record<PayKind, string> = { intelligence: "지력토큰을", stamina: "체력토큰을", spellbook: "마법 주문서를", charm: "매력토큰을" };
 type Payer = Pick<PlayerGameState, "intelligenceTokens" | "staminaTokens" | "charmTokens">;
 
 // 지력토큰 int개 + 체력토큰 stamina개 + 매력토큰 charm개를 낼 수 있는가
@@ -327,12 +330,13 @@ export const canPay = (p: Payer, int: number, stamina: number, charm = 0): boole
 function pay(p: PlayerGameState, kind: PayKind, n: number): void {
   if (kind === "intelligence") p.intelligenceTokens -= n;
   else if (kind === "stamina") p.staminaTokens -= n;
+  else if (kind === "charm") p.charmTokens -= n;
   else p.spellbookTokens -= n;
 }
 
 // 굴리기 전에 토큰을 1~보유 개수 사이에서 골라 내고 낸 개수만큼 굴리는 굴림 항목 (토큰이 없으면 주사위 1개를 공짜로 굴린다). 기본값은 보유 토큰 전부
 function choiceEntry(player: PlayerGameState, kind: PayKind, label: string) {
-  const tokens = kind === "intelligence" ? player.intelligenceTokens : kind === "stamina" ? player.staminaTokens : player.spellbookTokens;
+  const tokens = kind === "intelligence" ? player.intelligenceTokens : kind === "stamina" ? player.staminaTokens : kind === "charm" ? player.charmTokens : player.spellbookTokens;
   return {
     playerId: player.id,
     label,
@@ -488,9 +492,10 @@ export function activityBlockReason(state: ActivityView, playerId: string, activ
   const open = activityOpenCost(state, activityId);
   if (!canPay(player, open, 0, extra)) return `카드를 열 지력토큰 ${open}개가 필요해요.`;
   if (activityId === "tournament" && player.spellbookTokens < 1) return "마법 주문서가 1개 이상 필요해요 (낸 주문서만큼 주사위를 굴려요).";
-  if (activityId === "creature" && player.spellbookTokens < MIN_CREATURE_COST) return `마법생물을 데려오려면 마법 주문서가 ${MIN_CREATURE_COST}개 이상 필요해요.`;
+  if (activityId === "creature" && player.intelligenceTokens + player.staminaTokens + player.charmTokens < 1) return "마법생물을 데려오려면 조련에 낼 지력·체력·매력토큰이 1개 이상 필요해요.";
   if (activityId === "duel") {
-    if (player.spellbookTokens < 1) return "마법 주문서가 1개 이상 필요해요 (낸 주문서만큼 주사위를 굴려요).";
+    const need = 1 + BALANCE.duelSpellbookFee;
+    if (player.spellbookTokens < need) return `마법 주문서가 ${need}개 이상 필요해요 (${BALANCE.duelSpellbookFee}개는 지목당한 친구에게 건네고, 낸 주문서만큼 주사위를 굴려요).`;
     if (duelTargets(state, playerId).length === 0) return "지목할 수 있는 친구가 없어요.";
     if (player.charm < BALANCE.duelCharmFee) return `지목당한 친구에게 건넬 매력(${BALANCE.duelCharmFee})이 없어요.`;
   }
@@ -526,26 +531,25 @@ function startTournament(state: GameState, player: PlayerGameState): void {
 // 마법생물 조련: 가진 마법 주문서를 모두 내고 그만큼 주사위를 굴려, (합 + 매력)이 목표값 이상이면 조련에 성공한다. 실패하면 주문서만 잃고 카드는 구역에 돌아간다
 function startCreatureRoll(state: GameState, player: PlayerGameState, creature: CreatureCard): void {
   const target = creatureTarget(creature);
-  const bonus = creatureTrainBonus(player, creature);
+  const caps = creatureTokenCaps(player, creature);
   state.hidden.roll = { kind: "creature", playerId: player.id, card: creature, target };
   state.pendingRoll = {
     kind: "creature",
     title: `마법생물 조련 · ${creature.name}`,
     lines: [
-      `마법 주문서를 1~${player.spellbookTokens}개 골라 내고, 낸 개수만큼 주사위를 굴려요`,
-      `주사위 합 + ${creatureMixText(creature)} 보너스 ${bonus}이(가) ${target} 이상이면 조련 성공! 실패하면 카드는 돌아가요`,
+      `${creatureMixText(creature)}까지 골라 내고, 낸 토큰 개수만큼 주사위를 굴려요`,
+      `주사위 합이 ${target} 이상이면 조련 성공! 실패하면 카드는 돌아가요`,
     ],
-    entries: [choiceEntry(player, "spellbook", player.name)],
+    entries: [{ playerId: player.id, label: player.name, diceCount: caps.reduce((a, c) => a + c.max, 0), diceChoices: caps, dice: null, confirmed: false, rerolls: 0 }],
   };
 }
 
 function resolveCreature(state: GameState, ctx: Extract<RollContext, { kind: "creature" }>, dice: number[]): void {
   const player = state.players[ctx.playerId];
   const creature = ctx.card;
-  const bonus = creatureTrainBonus(player, creature);
-  const total = sum(dice) + bonus;
+  const total = sum(dice);
   const success = total >= ctx.target;
-  const text = `${describeRoll(dice, [[creatureMixText(creature), bonus]])} = ${total} / 목표 ${ctx.target} ${success ? "성공" : "실패"}`;
+  const text = `${describeRoll(dice, [])} = ${total} / 목표 ${ctx.target} ${success ? "성공" : "실패"}`;
   if (success) {
     player.creatures.push(creature);
     if (creature.ability.trigger === "acquire" && creature.ability.effect === "spellPower") player.spellPower += creature.ability.amount;
@@ -606,12 +610,16 @@ function advanceTournament(state: GameState, player: PlayerGameState, dice: numb
 
 function startDuel(state: GameState, player: PlayerGameState, target: PlayerGameState): void {
   state.hidden.roll = { kind: "duel", challengerId: player.id, targetId: target.id };
-  // 양쪽 모두 마법 주문서를 1~보유 개수 사이에서 골라 내고 낸 개수만큼 굴린다 (지목당해 주문서가 없어도 주사위 1개는 굴린다)
+  // 도전자는 지목당한 친구에게 마법 주문서 1개를 건네고(매력 참가비와 별도), 양쪽 모두 마법 주문서를 1~보유 개수 사이에서 골라 내고 낸 개수만큼 굴린다
+  const gift = Math.min(BALANCE.duelSpellbookFee, player.spellbookTokens);
+  player.spellbookTokens -= gift;
+  target.spellbookTokens += gift;
+  if (gift > 0) log(state, `${player.name}: ${target.name}님에게 마법 주문서 ${gift}개를 건넸어요`);
   state.pendingRoll = {
     kind: "duel",
     title: `주문 대결 · ${player.name} vs ${target.name}`,
     lines: [
-      `${player.name}님이 ${target.name}님을 지목했어요`,
+      `${player.name}님이 ${target.name}님을 지목했어요 (도전자가 마법 주문서 ${BALANCE.duelSpellbookFee}개를 건넸어요)`,
       `각자 마법 주문서를 골라 내고 낸 개수만큼 주사위를 굴려 합이 큰 쪽이 이겨요. 같으면 무승부예요. 도전자는 지목당한 친구에게 매력 ${BALANCE.duelCharmFee}을 건네요`,
     ],
     entries: [
@@ -753,7 +761,7 @@ function offerViewOf(activityId: ActivityId, card: OfferedCard, round: number): 
   switch (activityId) {
     case "creature": {
       const c = card as CreatureCard;
-      return { id: c.id, name: c.name, description: c.description, tags: creatureTagsOf(c), lines: [describeAbility(c.ability), `조련 판정: 주문서만큼 주사위 합 + ${creatureMixText(c)} 보너스 ≥ ${creatureTarget(c)}`], cost: { kind: "spellbook", amount: c.requiredSpellPower } };
+      return { id: c.id, name: c.name, description: c.description, tags: creatureTagsOf(c), lines: [describeAbility(c.ability), `조련 판정: ${creatureMixText(c)}를 내고 굴린 주사위 합 ≥ ${creatureTarget(c)}`], tokenNeeds: creatureTrainMix(c).map(([stat]) => stat) };
     }
     case "lab": {
       const c = card as LabCard;
@@ -821,11 +829,10 @@ function discardOffers(state: GameState): void {
   state.activityOffers = {};
 }
 
-const creatureCost = (card: CreatureCard) => card.requiredSpellPower;
 
 // 이 카드를 지금 가져갈 수 있는가 (비용을 낼 수 있는가). 마법생물은 마법 주문서, 연구 카드는 체력토큰
 function canTake(player: PlayerGameState, activityId: ActivityId, card: OfferedCard): boolean {
-  if (activityId === "creature") return player.spellbookTokens >= creatureCost(card as CreatureCard);
+  if (activityId === "creature") return creatureTokenCaps(player, card as CreatureCard).length > 0;
   if (activityId === "lab") return canPay(player, 0, (card as LabCard).cost);
   return true;
 }
@@ -1071,17 +1078,29 @@ export function chooseActivityCard(state: GameState, playerId: string, cardId: s
 
 // 주사위 굴리기 버튼: 서버가 굴려서 결과를 기록한다
 // diceCount는 굴리기 전에 지력토큰을 내고 주사위 수를 고르는 굴림(연구실 실험)에서만 쓴다
-export function submitRoll(state: GameState, playerId: string, diceCount?: number): void {
+export function submitRoll(state: GameState, playerId: string, diceCount?: number, tokenCounts?: Partial<Record<TokenStat, number>>): void {
   const pending = state.pendingRoll;
   if (!pending) throw new Error("지금은 주사위를 굴릴 차례가 아닙니다.");
   const entry = pending.entries.find((e) => e.playerId === playerId);
   if (!entry) throw new Error("이번 굴림에 참여하지 않습니다.");
   if (entry.dice) throw new Error("이미 주사위를 굴렸습니다.");
-  if (entry.diceChoiceMax !== undefined) {
+  const player = state.players[playerId];
+  if (entry.diceChoices) {
+    // 여러 종류의 토큰을 종류별로 0~max개 골라 내고, 낸 총개수만큼 굴린다 (마법생물 조련)
+    const counts = entry.diceChoices.map((c) => ({ ...c, n: tokenCounts?.[c.stat] ?? c.max }));
+    for (const c of counts) {
+      if (!Number.isInteger(c.n) || c.n < 0 || c.n > c.max) throw new Error(`${PAY_OBJECT[c.stat]} 0~${c.max}개 사이로 골라 주세요.`);
+    }
+    const total = counts.reduce((a, c) => a + c.n, 0);
+    if (total < 1) throw new Error("토큰을 1개 이상 내야 주사위를 굴릴 수 있어요.");
+    for (const c of counts) pay(player, c.stat, c.n);
+    entry.diceCount = total;
+    delete entry.diceChoices;
+  } else if (entry.diceChoiceMax !== undefined) {
     const n = diceCount ?? entry.diceCount;
     const stat = entry.diceChoiceStat ?? "intelligence";
     if (!Number.isInteger(n) || n < 1 || n > entry.diceChoiceMax) throw new Error(`${PAY_OBJECT[stat]} 1~${entry.diceChoiceMax}개 사이로 골라 주세요.`);
-    pay(state.players[playerId], stat, n);
+    pay(player, stat, n);
     entry.diceCount = n;
     delete entry.diceChoiceMax;
   }

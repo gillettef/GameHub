@@ -5,6 +5,7 @@ import { BALANCE } from "./config.js";
 import {
   availableActivities,
   canPay,
+  creatureTokenCaps,
   duelTargets,
   explorationChance,
   rerollDice,
@@ -189,7 +190,7 @@ export function choosePick(state: GameState, strategy: BotStrategy): string | nu
   const player = state.players[pick.playerId];
   const cards = state.hidden.offers[pick.activityId] ?? [];
   const afford = (card: (typeof cards)[number]): boolean => {
-    if (pick.activityId === "creature") return player.spellbookTokens >= (card as CreatureCard).requiredSpellPower;
+    if (pick.activityId === "creature") return creatureTokenCaps(player, card as CreatureCard).length > 0;
     if (pick.activityId === "lab") return canPay(player, 0, (card as LabCard).cost);
     return true;
   };
