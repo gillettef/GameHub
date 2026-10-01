@@ -10,6 +10,7 @@
 }
 
 .panel {
+  animation: result-pop var(--motion-slow) var(--ease-enter);
   width: min(560px, 92vw);
   padding: var(--space-4) var(--space-5);
   border-radius: var(--radius-lg);
@@ -92,5 +93,70 @@
   }
   to {
     opacity: 1;
+  }
+}
+
+/* 결과 연출(2026-10-01): 패널이 튀어나오고 순위가 위에서부터 차례로 들어온다 */
+.row {
+  animation: result-row var(--motion-slow) var(--ease-enter) both;
+}
+
+.row:nth-child(1) {
+  animation-delay: 250ms;
+}
+.row:nth-child(2) {
+  animation-delay: 420ms;
+}
+.row:nth-child(3) {
+  animation-delay: 590ms;
+}
+.row:nth-child(4) {
+  animation-delay: 760ms;
+}
+
+.first {
+  animation-name: result-row, result-glow;
+  animation-duration: var(--motion-slow), 1600ms;
+  animation-iteration-count: 1, 2;
+  animation-delay: 250ms, 700ms;
+}
+
+@keyframes result-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.8) translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes result-row {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes result-glow {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.03);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel,
+  .row,
+  .first {
+    animation: none;
   }
 }

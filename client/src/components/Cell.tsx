@@ -47,6 +47,8 @@ interface CellProps {
   overlay?: CellOverlay;
   /** 후보 칸에 그릴 카드 */
   ghostCardId?: CardId;
+  /** 방금 일어난 마커 연출(배치 팝·피격 흔들림). 끝나면 Board 가 비운다 */
+  fx?: 'place' | 'hit';
   /** Board 가 계산한 육각 위치·크기 (절대 배치) */
   style: CSSProperties;
 }
@@ -56,7 +58,7 @@ interface CellProps {
  * 지형·영토·시야는 data 속성으로 넘기고 색·모양은 Board.module.css 가 정한다.
  * 육각 clip-path 는 `.hex` 레이어 하나에만 건다 — `.cell` 자체에 걸면 자손이 잘린다.
  */
-export const Cell = memo(function Cell({ cell, legal, preview, overlay, ghostCardId, onClick, onPreviewStart, onPreviewEnd, style }: CellProps) {
+export const Cell = memo(function Cell({ cell, legal, preview, overlay, ghostCardId, onClick, onPreviewStart, onPreviewEnd, fx, style }: CellProps) {
   const m = cell.marker;
 
   // 배치 프리뷰(길게 누르기). click 은 pointerup 다음에 발생하므로, 길게 누르기가 발동됐으면
@@ -170,7 +172,7 @@ export const Cell = memo(function Cell({ cell, legal, preview, overlay, ghostCar
         </span>
       ) : null}
       {m && (
-          <div className={styles.marker} data-kind={m.kind} data-seat={m.seat}>
+          <div className={styles.marker} data-kind={m.kind} data-seat={m.seat} data-fx={fx}>
             <CardArt cardId={m.specId} className={styles.art} />
             <span className={styles.hp}>{m.hp}</span>
           </div>

@@ -1,7 +1,6 @@
 import { memo, useMemo } from 'react';
 import type { GameLogEntry, LogKind } from '@astraltab/shared';
 import { nameOf } from '@astraltab/shared';
-import { TurnControls } from '../components/TurnControls';
 import { cx } from '../lib/cx';
 import { selectState, useGameStore } from '../store/gameStore';
 import styles from './ProgressTab.module.css';
@@ -27,7 +26,8 @@ const KIND_LABEL: Record<LogKind, string> = {
 const EMPHASIS: ReadonlySet<LogKind> = new Set<LogKind>(['combat', 'destroy', 'eliminate', 'result', 'surrender']);
 
 /**
- * 진행 탭 (F012, F013): 이벤트 로그(최신 순, 영역 안 스크롤) + 패스/기권.
+ * 진행 탭 (F012): 이벤트 로그(최신 순, 영역 안 스크롤). 턴 컨트롤(패스·교체)은 보드 탭 하단 한 곳에만 두고
+ * 기권·나가기는 상단 ⋯ 메뉴로 옮겨, 같은 버튼이 두 탭에 중복되던 것을 없앴다(2026-10-01).
  */
 export const ProgressTab = memo(function ProgressTab() {
   const state = useGameStore(selectState);
@@ -55,7 +55,6 @@ export const ProgressTab = memo(function ProgressTab() {
             <dd>{alive}명</dd>
           </dl>
         </div>
-        <TurnControls compact />
       </aside>
       <section className={styles.logPanel} aria-label="게임 로그">
         <h2 className={styles.title}>

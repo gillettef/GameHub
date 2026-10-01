@@ -14,7 +14,7 @@
 
 .meta {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: var(--space-2);
   flex-wrap: wrap;
   font-size: var(--text-small);
@@ -40,18 +40,6 @@
   overflow-wrap: anywhere;
 }
 
-.quit {
-  margin-left: auto;
-  /* 다른 화면의 .pill 계열과 같은 34px (2026-09-28 사용자 지시: 모든 버튼 크기를 통일) */
-  height: 34px;
-  padding: 0 var(--space-2);
-  border-radius: var(--radius-full);
-  border: 1px solid var(--color-muted);
-  color: var(--color-muted);
-  font-size: var(--text-micro);
-  font-weight: 600;
-}
-
 /* 2026-09-24 사용자 지시: 3~4인일 때 2열 grid가 2행으로 접혀 PlayerStrip 높이가 늘어나고 그만큼
    보드 영역이 줄어 손패 패널이 맵 하단을 가리던 문제 — 인원수와 무관하게 항상 한 줄로 유지하고,
    카드 폭은 고정한 채 가로로 훑어보게 한다(Hand.module.css 와 같은 패턴) */
@@ -72,7 +60,7 @@
   align-items: center;
   gap: 6px;
   flex: none;
-  width: 208px;
+  width: 176px;
   scroll-snap-align: start;
   padding: 4px var(--space-1) 4px 5px;
   border-radius: var(--radius-md);
@@ -145,20 +133,16 @@
 
 /* 종족 표시 (2026-09-23 사용자 지시): 닉네임 아래 작은 텍스트 한 줄 */
 .race {
-  display: flex;
+  flex: none;
+  display: inline-flex;
   align-items: center;
-  gap: 3px;
   color: var(--color-muted);
-  font-size: var(--text-micro);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .raceIcon {
   flex: none;
-  width: 10px;
-  height: 10px;
+  width: 14px;
+  height: 14px;
 }
 
 /* 2026-09-24: 좁은 카드에서 flex 아이템이 내용보다 줄어들면 안의 텍스트가 줄바꿈되던 문제
@@ -194,14 +178,15 @@
 
 .stateBadge {
   flex: none;
-  align-self: flex-start;
-  padding: 2px 6px;
-  border-radius: var(--radius-full);
+  align-self: center;
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
   background: color-mix(in srgb, var(--color-muted) 25%, transparent);
   color: var(--color-muted);
-  font-size: var(--text-micro);
-  font-weight: 600;
-  white-space: nowrap;
 }
 
 .stateBadgeCurrent {
@@ -212,4 +197,42 @@
 .stateBadgeDead {
   background: transparent;
   border: 1px solid var(--color-muted);
+}
+
+/* 지금 차례인 카드의 번개 배지는 살짝 맥동해 "누구 차례인지" 눈에 띄게 한다 */
+.stateBadgeCurrent {
+  animation: strip-pulse 1600ms var(--ease-standard) infinite;
+}
+
+.card.current {
+  animation: strip-turn-in var(--motion-slow) var(--ease-enter);
+}
+
+@keyframes strip-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.18);
+  }
+}
+
+@keyframes strip-turn-in {
+  0% {
+    transform: scale(0.94);
+  }
+  60% {
+    transform: scale(1.04);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stateBadgeCurrent,
+  .card.current {
+    animation: none;
+  }
 }

@@ -134,12 +134,14 @@ export interface BoardEffect {
   /** React key 등으로 쓰는 유일 키. 같은 칸에서 이벤트가 다시 나도 겹치지 않게 값들을 조합한다 */
   id: string;
   cellKey: string;
-  type: 'destroy' | 'hit';
+  type: 'destroy' | 'hit' | 'place';
   seat: number;
+  /** hit: 깎인 체력. 칸 위에 -N 으로 떠오른다 */
+  amount?: number;
 }
 
 /**
- * 직전 마커 스냅샷과 비교해 파괴·피격 이펙트를 뽑아낸다(2026-09-28, 전투 시각 피드백).
+ * 직전 마커 스냅샷과 비교해 배치·파괴·피격 이펙트를 뽑아낸다(2026-09-28 전투 시각 피드백, 2026-10-01 배치 추가).
  * 룰 엔진 로그(`GameState.log`)는 파괴 위치를 구조화된 필드가 아니라 메시지 문자열에만 담으므로,
  * 엔진·AI 픽스처를 건드리지 않고 클라이언트에서 직접 diff 한다. 마커는 절대 이동하지 않으므로
  * 같은 칸에서 id 가 사라지면 파괴, id 는 같은데 hp 가 줄면 피격으로 본다.
@@ -151,7 +153,14 @@ export function diffMarkerEffects(prev: Map<string, MarkerSnapshot>, next: Map<s
     if (!nextM || nextM.id !== prevM.id) {
       effects.push({ id: `${cellKey}:destroy:${prevM.id}`, cellKey, type: 'destroy', seat: prevM.seat });
     } else if (nextM.hp < prevM.hp) {
-      effects.push({ id: `${cellKey}:hit:${nextM.id}:${nextM.hp}`, cellKey, type: 'hit', seat: nextM.seat });
+      effects.push({ id: `${cellKey}:hit:${nextM.id}:${nextM.hp}`, cellKey, type: 'hit', seat: nextM.seat, amount: prevM.hp - nextM.hp });
+    }
+  }
+  // 새로 놓인 마커(2026-10-01): 이전 스냅샷에 없던 id. 같은 칸 id 교체(파괴 직후 재배치)도 새 마커다
+  for (const [cellKey, nextM] of next) {
+    const prevM = prev.get(cellKey);
+    if (!prevM || prevM.id !== nextM.id) {
+      effects.push({ id: `${cellKey}:place:${nextM.id}`, cellKey, type: 'place', seat: nextM.seat });
     }
   }
   return effects;

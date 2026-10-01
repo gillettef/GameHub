@@ -5,6 +5,7 @@ import type { BoardEffect, CellOverlay, CellView } from '../game/derived';
 import { diffMarkerEffects, snapshotMarkers } from '../game/derived';
 import { markPreviewHintSeen } from '../lib/onboarding';
 import { Cell } from './Cell';
+import { BoomIcon } from './icons';
 import styles from './Board.module.css';
 
 interface BoardProps {
@@ -29,6 +30,9 @@ interface BoardProps {
 const MIN_ZOOM_S = 20;
 const MAX_ZOOM_S = 56;
 const ZOOM_S = MIN_ZOOM_S;
+
+/** 이펙트 지속 시간(ms). Board.module.css 의 astral-* 애니메이션 시간과 같아야 한다 */
+const EFFECT_MS = { place: 650, hit: 800, destroy: 700 } as const;
 
 /** 두 터치 지점 사이 거리 (핀치 확대/축소 판정용) */
 function touchDistance(a: Touch, b: Touch): number {
@@ -64,6 +68,8 @@ export const Board = memo(function Board({ size, cells, legal, viewerSeat, previ
   const [zoomS, setZoomS] = useState(ZOOM_S);
   const zoomSRef = useRef(zoomS);
   const geo = useMemo(() => geometryFromS(size, zoomS), [size, zoomS]);
+  const geoRef = useRef(geo);
+  geoRef.current = geo;
 
   // 처음 열릴 때 내 코어(없으면 보드 중앙)를 화면 가운데로 스크롤한다. 기본 확대 크기 기준으로
   // 한 번만 계산한다 — zoomS(핀치 확대/축소)가 바뀔 때마다 다시 가운데로 돌아가면 안 되므로
@@ -194,12 +200,37 @@ export const Board = memo(function Board({ size, cells, legal, viewerSeat, previ
       for (const e of diffs) m.set(e.id, e);
       return m;
     });
+    // 카메라 따라가기(2026-10-01): 상대가 둔 곳·내 마커가 맞은 곳이 화면 밖이면 그쪽으로 부드럽게 옮긴다.
+    // 내가 방금 놓은 칸은 이미 보고 있으므로 제외한다. 사용자가 핀치 중이면 건드리지 않는다.
+    const focus =
+      [...diffs].reverse().find((e) => e.type === 'place' && e.seat !== viewerSeat) ??
+      diffs.find((e) => e.type !== 'place' && e.seat === viewerSeat) ??
+      diffs.find((e) => e.type === 'destroy');
+    const viewport = viewportRef.current;
+    const target = focus ? cells.find((c) => c.key === focus.cellKey) : undefined;
+    if (focus && target && viewport && !pinch.current) {
+      const g = geoRef.current;
+      const cx = g.hexW / 2 + target.x * g.hexW + (target.y % 2 === 1 ? g.hexW / 2 : 0);
+      const cy = g.hexH / 2 + target.y * g.hexH * 0.75;
+      const marginX = viewport.clientWidth * 0.2;
+      const marginY = viewport.clientHeight * 0.2;
+      const inside =
+        cx > viewport.scrollLeft + marginX &&
+        cx < viewport.scrollLeft + viewport.clientWidth - marginX &&
+        cy > viewport.scrollTop + marginY &&
+        cy < viewport.scrollTop + viewport.clientHeight - marginY;
+      if (!inside) {
+        const reduce = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        viewport.scrollTo({
+          left: Math.max(0, cx - viewport.clientWidth / 2),
+          top: Math.max(0, cy - viewport.clientHeight / 2),
+          behavior: reduce ? 'auto' : 'smooth',
+        });
+      }
+    }
     for (const e of diffs) {
       const { id } = e;
-      // Board.module.css 의 .effectDestroy/.effectHit 애니메이션 시간(var(--motion-slow)/--motion-fast,
-      // tokens.css 340ms/120ms)과 맞춘다 — 어긋나면 애니메이션이 끝난 뒤에도 투명해진 DOM이 남아 있거나
-      // 반대로 끝나기 전에 지워진다. 토큰 값을 바꾸면 여기도 같이 바꾼다.
-      const duration = e.type === 'destroy' ? 340 : 120;
+      const duration = EFFECT_MS[e.type];
       const t = setTimeout(() => {
         effectTimeouts.current.delete(t);
         setEffects((old) => {
@@ -219,6 +250,13 @@ export const Board = memo(function Board({ size, cells, legal, viewerSeat, previ
     },
     [],
   );
+
+  // 칸별 마커 연출(배치 팝·피격 흔들림). 해당 칸의 Cell 만 props 가 바뀌어 다시 그려진다
+  const cellFx = useMemo(() => {
+    const m = new Map<string, 'place' | 'hit'>();
+    for (const e of effects.values()) if (e.type !== 'destroy') m.set(e.cellKey, e.type);
+    return m;
+  }, [effects]);
 
   // 배치 프리뷰(2026-09-28, 길게 누르기): 빈 칸을 길게 누르면 이 카드를 여기 놓았을 때 새로
   // 넓어질 시야를 미리 보여준다. 짧게 탭하면 지금처럼 곧바로 배치되고(Cell.tsx 가 처리), 여기서는
@@ -256,6 +294,7 @@ export const Board = memo(function Board({ size, cells, legal, viewerSeat, previ
               onClick={onCellClick}
               onPreviewStart={handlePreviewStart}
               onPreviewEnd={handlePreviewEnd}
+              fx={cellFx.get(cell.key)}
               style={cellStyles.get(cell.key)!}
             />
           ))}
@@ -269,11 +308,13 @@ export const Board = memo(function Board({ size, cells, legal, viewerSeat, previ
             return (
               <div
                 key={id}
-                className={`${styles.effect} ${e.type === 'destroy' ? styles.effectDestroy : styles.effectHit}`}
+                className={`${styles.effect} ${e.type === 'destroy' ? styles.effectDestroy : e.type === 'place' ? styles.effectPlace : styles.effectHit}`}
                 style={effectStyle}
                 aria-hidden="true"
               >
                 <div className={styles.ring} />
+                {e.type === 'destroy' && <BoomIcon size={28} className={styles.boom} />}
+                {e.type === 'hit' && e.amount ? <span className={styles.damage}>-{e.amount}</span> : null}
               </div>
             );
           })}

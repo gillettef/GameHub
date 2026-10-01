@@ -10,9 +10,9 @@ import { useGameStore, type TabId } from './store/gameStore';
 
 /**
  * 개발·검증용 바로가기: `/hotseat?quick` 은 기본 맵·기본 덱으로 곧장 핫시트를 시작한다.
- * `&map=<id>` 로 맵을, `&tab=status|progress` 로 첫 탭을, `&seed=<n>` 으로 시드를, `&select=<손패 index>` 로 선택 카드를 지정한다.
+ * `&map=<id>` 로 맵을, `&tab=status|progress` 로 첫 탭을, `&seed=<n>` 으로 시드를, `&select=<손패 index>` 로 선택 카드를, `&modal=<손패 index>` 로 카드 확대 모달을 지정한다.
  */
-function readQuickStart(): { mapId: string; seed: number; tab: TabId | null; select: number | null } | null {
+function readQuickStart(): { mapId: string; seed: number; tab: TabId | null; select: number | null; modal: number | null } | null {
   const q = new URLSearchParams(window.location.search);
   if (!q.has('quick')) return null;
   const tab = q.get('tab');
@@ -21,6 +21,7 @@ function readQuickStart(): { mapId: string; seed: number; tab: TabId | null; sel
     seed: Number(q.get('seed') ?? makeSeed()),
     tab: tab === 'status' || tab === 'progress' || tab === 'board' || tab === 'cards' || tab === 'help' ? tab : null,
     select: q.has('select') ? Number(q.get('select')) : null,
+    modal: q.has('modal') ? Number(q.get('modal')) : null,
   };
 }
 
@@ -38,6 +39,7 @@ export function App() {
   const acknowledgeHandoff = useGameStore((s) => s.acknowledgeHandoff);
   const setTab = useGameStore((s) => s.setTab);
   const selectHandCard = useGameStore((s) => s.selectHandCard);
+  const openCardModal = useGameStore((s) => s.openCardModal);
   const reset = useGameStore((s) => s.reset);
 
   useEffect(() => {
@@ -52,8 +54,9 @@ export function App() {
     acknowledgeHandoff();
     if (quick.tab) setTab(quick.tab);
     if (quick.select !== null && Number.isInteger(quick.select)) selectHandCard(quick.select);
+    if (quick.modal !== null && Number.isInteger(quick.modal)) openCardModal({ kind: 'hand', index: quick.modal });
     if (window.location.pathname !== '/hotseat') navigate('/hotseat', true);
-  }, [startHotseat, acknowledgeHandoff, setTab, selectHandCard]);
+  }, [startHotseat, acknowledgeHandoff, setTab, selectHandCard, openCardModal]);
 
   switch (route.name) {
     case 'room':

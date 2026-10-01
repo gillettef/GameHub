@@ -6,6 +6,7 @@ import { DockShell } from '../components/DockShell';
 import { MapPicker } from '../components/MapPicker';
 import { cx } from '../lib/cx';
 import { getNickname, getPlayerToken, getRoomPassword, setNickname, setRoomPassword } from '../lib/identity';
+import { hasQuickStart, takeQuickStart } from '../lib/quickStart';
 import { randomMapId, randomRaceId } from '../lib/randomPicks';
 import { navigate, roomUrl } from '../lib/router';
 import { api, connectSocket, getSocket } from '../socket/client';
@@ -244,6 +245,16 @@ function LobbyView({ roomId, onQuit }: { roomId: string; onQuit: () => void }) {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [me?.id, me?.race]);
+
+  // "AI와 바로 시작"(2026-10-01): 랜딩이 방과 AI 좌석을 만들어 두고 넘어왔으면, 종족이 정해지는 대로 한 번만
+  // 준비 완료까지 대신 눌러 곧바로 대국을 시작한다. 인원이 맵 정원과 안 맞으면(누가 나갔을 때 등) 건드리지 않는다.
+  const quickReady = me?.race && !me.isReady && state?.players.length === (state ? getMap(state.mapId).players : -1);
+  useEffect(() => {
+    if (!quickReady || !viewerId || !hasQuickStart(roomId)) return;
+    takeQuickStart(roomId);
+    dispatch({ type: 'READY', playerId: viewerId });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [quickReady, viewerId, roomId]);
 
   // 맵이 바뀌면(방장이 직접 고르거나, 좌석이 늘어 정원에 안 맞는 맵이 자동으로 더 큰 맵으로
   // 바뀌거나) 전원 준비가 풀린다(changeMap, shared/src/engine/turn.ts) — 특히 자동 전환은

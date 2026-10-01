@@ -110,3 +110,39 @@
   color: var(--color-heading);
   font-weight: 600;
 }
+
+/* AI와 바로 시작: 상대 수 선택(아이콘 + 숫자) + 시작 버튼 */
+.aiRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.aiPick {
+  display: inline-flex;
+  gap: var(--space-1);
+}
+
+.aiOn,
+.aiOff {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 44px;
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-full);
+  font-weight: 700;
+  border: 1.5px solid var(--color-accent);
+  transition: background var(--motion-fast) var(--ease-standard);
+}
+
+.aiOn {
+  background: var(--color-accent);
+  color: var(--color-accent-text);
+}
+
+.aiOff {
+  background: transparent;
+  color: var(--color-accent);
+}

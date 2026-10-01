@@ -44,6 +44,9 @@
 
 .handLabel {
   flex: none;
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
   padding: 6px var(--space-2) 0;
   font-size: var(--text-micro);
   font-weight: 600;
@@ -51,6 +54,18 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.handCount {
+  flex: none;
+  color: var(--color-text);
+}
+
+.discardHint {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--color-accent);
 }
 
 .handBody {
