@@ -26,6 +26,8 @@ export type ClientMessage =
   | { type: "reroll_dice"; diceIndexes: number[] }
   | { type: "confirm_roll" }
   | { type: "select_activity"; activityId: ActivityId; targetPlayerId?: string }
+  // 4주차(정리): 다음 달로 남길 토큰을 고른다 (지력토큰 1개, 체력토큰 1개, 또는 "none"으로 남기지 않기)
+  | { type: "keep_token"; choice: "intelligence" | "stamina" | "none" }
   // 3주차 구역에 공개된 카드 중 1장을 고른다 (마법생물·연구 카드는 cardId가 null이면 가져가지 않고 넘어간다)
   | { type: "pick_activity_card"; cardId: string | null };
 

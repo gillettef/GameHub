@@ -8,6 +8,8 @@ import { explorationTemplates } from "../src/game/explorationCards.js";
 import {
   advanceResolution,
   availableActivities,
+  chooseKeepToken,
+  keepOptions,
   canAdvanceResolution,
   chooseActivityCard,
   confirmRoll,
@@ -49,7 +51,7 @@ function test(name: string, fn: () => void) {
 
 // 게임을 만들고 선 정하기 주사위를 굴려 1라운드 정규수업이 시작된 상태로 돌려준다
 function newGame(count: number): GameState {
-  const state = createGame(Array.from({ length: count }, (_, i) => ({ id: `p${i}`, name: `p${i}` })));
+  const state = createGame(Array.from({ length: count }, (_, i) => ({ id: `p${i}`, name: `p${i}`, isBot: true })));
   let guard = 0;
   while (state.phase === "setup" && guard++ < 100) rollAndConfirm(state);
   assert.equal(state.phase, "class");
@@ -139,7 +141,7 @@ console.log("\n=== 규칙 검증 ===");
 test("게임 시작: 좌석은 참가 순서이고, 주사위를 굴려 가장 높은 친구가 첫 달의 선이 된다 (동점이면 동점자끼리 다시)", () => {
   for (const n of [2, 3, 4, 5]) {
     for (let i = 0; i < 20; i++) {
-      const state = createGame(Array.from({ length: n }, (_, k) => ({ id: `p${k}`, name: `p${k}` })));
+      const state = createGame(Array.from({ length: n }, (_, k) => ({ id: `p${k}`, name: `p${k}`, isBot: true })));
       assert.deepEqual(state.turnOrder, Array.from({ length: n }, (_, k) => `p${k}`), "좌석 순서는 참가 순서");
       assert.equal(state.phase, "setup");
       assert.equal(state.pendingRoll?.kind, "first");
@@ -1061,6 +1063,86 @@ test("게임이 끝나면 최종 점수가 가장 높은 플레이어가 승리�
   const best = Math.max(...state.turnOrder.map((id) => finalScore(state.players[id])));
   assert.ok(state.winnerIds && state.winnerIds.length >= 1);
   for (const id of state.turnOrder) assert.equal(state.winnerIds!.includes(id), finalScore(state.players[id]) === best);
+});
+
+// ── 4주차 정리: 남길 토큰 고르기 ──
+
+// 사람 플레이어만 있는 게임 (봇은 남길 토큰을 자동으로 고르지만 사람은 직접 고른다)
+function newHumanGame(count: number): GameState {
+  const state = createGame(Array.from({ length: count }, (_, i) => ({ id: `p${i}`, name: `p${i}` })));
+  let guard = 0;
+  while (state.phase === "setup" && guard++ < 100) rollAndConfirm(state);
+  return state;
+}
+
+// 2인 게임에서 둘 다 토너먼트(토큰을 거의 안 쓴다)를 하고 3주차를 끝내 4주차 정리에 도착한다
+function toCleanup(): { state: GameState; a: string; b: string } {
+  const state = newHumanGame(2);
+  toActivity(state, 5);
+  setTokens(state, 3, 3);
+  const [a, b] = state.activityOrder;
+  selectActivity(state, a, "tournament");
+  selectActivity(state, b, "tournament");
+  advanceResolution(state);
+  rollWith(state, { [a]: [6, 6] });
+  advanceResolution(state);
+  rollWith(state, { [b]: [6, 6] });
+  return { state, a, b };
+}
+
+test("4주차 정리: 남은 지력토큰·체력토큰이 있는 사람은 1개를 골라 다음 달로 남기고, 모두 고르면 다음 달이 시작된다", () => {
+  const { state, a, b } = toCleanup();
+  assert.equal(state.phase, "cleanup");
+  assert.deepEqual(state.cleanupKeep, { [a]: null, [b]: null });
+  chooseKeepToken(state, a, "intelligence");
+  assert.equal(state.phase, "cleanup", "아직 고르지 않은 사람이 있으면 기다린다");
+  assert.throws(() => chooseKeepToken(state, a, "stamina"), /이미 골랐어요/);
+  chooseKeepToken(state, b, "stamina");
+  assert.equal(state.phase, "class");
+  assert.equal(state.round, 2);
+  const pa = state.players[a];
+  const pb = state.players[b];
+  assert.equal(pa.intelligenceTokens, effectiveStat(pa, "intelligence") + 1, "지력토큰 1개가 남았다");
+  assert.equal(pa.staminaTokens, effectiveStat(pa, "stamina"), "체력토큰은 남기지 않았다");
+  assert.equal(pb.staminaTokens, effectiveStat(pb, "stamina") + 1, "체력토큰 1개가 남았다");
+  assert.equal(pb.intelligenceTokens, effectiveStat(pb, "intelligence"));
+  assert.deepEqual(pa.carryTokens, { intelligence: 0, stamina: 0 }, "남긴 토큰은 한 번만 더해진다");
+  assert.equal(pa.charmTokens, effectiveStat(pa, "charm"), "매력토큰과 주문서는 남길 수 없다");
+});
+
+test("4주차 정리: 남기지 않기를 고를 수 있고, 남아 있지 않은 토큰은 고를 수 없다. 남길 토큰이 없는 사람은 고를 필요가 없다", () => {
+  const { state, a, b } = toCleanup();
+  state.players[b].intelligenceTokens = 0;
+  assert.throws(() => chooseKeepToken(state, b, "intelligence"), /남길 수 없어요/);
+  chooseKeepToken(state, a, "none");
+  chooseKeepToken(state, b, "stamina");
+  assert.equal(state.round, 2);
+  assert.equal(state.players[a].staminaTokens, effectiveStat(state.players[a], "stamina"), "남기지 않으면 새 달 토큰만 받는다");
+  // 남길 토큰이 하나도 없으면 고를 단계 없이 바로 넘어간다
+  const none = newHumanGame(2);
+  toActivity(none, 0);
+  setTokens(none, 0, 3);
+  const [x, y] = none.activityOrder;
+  selectActivity(none, x, "tournament");
+  selectActivity(none, y, "tournament");
+  advanceResolution(none);
+  rollWith(none, { [x]: [6, 6] });
+  advanceResolution(none);
+  rollWith(none, { [y]: [6, 6] });
+  assert.equal(none.round, 2, "남길 토큰이 없으면 정리 단계에서 멈추지 않는다");
+});
+
+test("4주차 정리: 시험이 이어지는 달에는 지력토큰을 따로 남길 수 없다 (시험 다시 굴리기용으로 이미 남는다)", () => {
+  assert.deepEqual(keepOptions({ round: BALANCE.midtermRound }, { intelligenceTokens: 3, staminaTokens: 2 }), ["stamina"]);
+  assert.deepEqual(keepOptions({ round: 5 }, { intelligenceTokens: 3, staminaTokens: 2 }), ["intelligence", "stamina"]);
+  assert.deepEqual(keepOptions({ round: 5 }, { intelligenceTokens: 0, staminaTokens: 0 }), []);
+});
+
+test("4주차 정리: 봇은 남길 토큰을 자동으로 골라서 게임이 멈추지 않는다", () => {
+  const state = newGame(2);
+  let guard = 0;
+  while (state.round < 3 && guard++ < 2000) botStep(state);
+  assert.ok(state.round >= 3);
 });
 
 // ── 동점은 공동 순위 ──

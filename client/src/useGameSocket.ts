@@ -366,6 +366,14 @@ export function useGameSocket() {
     [ensureSocket, send],
   );
 
+  const keepToken = useCallback(
+    (choice: "intelligence" | "stamina" | "none") => {
+      const socket = ensureSocket();
+      send(socket, { type: "keep_token", choice });
+    },
+    [ensureSocket, send],
+  );
+
   const pickActivityCard = useCallback(
     (cardId: string | null) => {
       const socket = ensureSocket();
@@ -374,5 +382,5 @@ export function useGameSocket() {
     [ensureSocket, send],
   );
 
-  return { state, game, lastError, errorSeq, reconnecting, createRoom, joinRoom, leaveRoom, startGame, addBot, removeBot, takeClassCard, rollDice, rerollDice, confirmRoll, selectActivity, pickActivityCard };
+  return { state, game, lastError, errorSeq, reconnecting, createRoom, joinRoom, leaveRoom, startGame, addBot, removeBot, takeClassCard, rollDice, rerollDice, confirmRoll, selectActivity, pickActivityCard, keepToken };
 }

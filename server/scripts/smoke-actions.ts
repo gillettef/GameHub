@@ -22,6 +22,12 @@ export function nextAction(game: PublicGameState, playerId: string): SmokeAction
     return null;
   }
 
+  // 4주차(정리): 남길 수 있는 토큰이 있으면 체력토큰(없으면 지력토큰) 1개를 남긴다
+  if (game.phase === "cleanup" && game.cleanupKeep[playerId] === null) {
+    const choice = me.staminaTokens > 0 ? "stamina" : me.intelligenceTokens > 0 ? "intelligence" : "none";
+    return { key: `${base}:keep`, message: { type: "keep_token", choice } };
+  }
+
   // 정규수업: 선 순서상 내 차례에만 공개된 카드 중 체력토큰으로 살 수 있는 카드 1장을 가져간다 (없으면 넘어감)
   if (game.phase === "class") {
     if (game.classPickOrder[game.classPickPointer] !== playerId) return null;

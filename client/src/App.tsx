@@ -31,7 +31,7 @@ import { Icon } from "./Icons";
 import { LeaveConfirm, useBackGuard } from "./Leave";
 
 function App() {
-  const { state, game, lastError, errorSeq, reconnecting, createRoom, joinRoom, leaveRoom, startGame, addBot, removeBot, takeClassCard, rollDice, rerollDice, confirmRoll, selectActivity, pickActivityCard } =
+  const { state, game, lastError, errorSeq, reconnecting, createRoom, joinRoom, leaveRoom, startGame, addBot, removeBot, takeClassCard, rollDice, rerollDice, confirmRoll, selectActivity, pickActivityCard, keepToken } =
     useGameSocket();
   const [playerName, setPlayerName] = useState("");
   const [joinCode, setJoinCode] = useState("");
@@ -94,6 +94,7 @@ ${window.location.href}`;
         onRollDice={rollDice}
         onRerollDice={rerollDice}
         onConfirmRoll={confirmRoll}
+        onKeepToken={keepToken}
         onLeave={leaveRoom}
       />
       </>

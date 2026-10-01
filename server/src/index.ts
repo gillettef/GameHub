@@ -10,8 +10,10 @@ import { MIN_CREATURE_COST } from "./game/creatures.js";
 import { createRoom, getRoom, joinRoom, leaveRoom, leaveRoomIfNoHumans, scheduleRoomExpiry, broadcast, type Player, type Room } from "./rooms.js";
 import { BOT_NAMES, chooseActivityAction, choosePick, pickBotPersonality, playClassTurn, rerollLowDice } from "./game/bot.js";
 import {
+  autoKeepChoice,
   availableActivities,
   chooseActivityCard,
+  chooseKeepToken,
   classCardsLeft,
   createGame,
   duelTargets,
@@ -69,6 +71,8 @@ function runBotFallback(game: GameState, botId: string): void {
     else confirmRoll(game, botId);
   } else if (game.phase === "class") {
     takeClassCard(game, botId, null);
+  } else if (game.phase === "cleanup") {
+    chooseKeepToken(game, botId, "none");
   } else if (game.pendingPick) {
     // 반드시 골라야 하는 카드(탐험·마도서)는 첫 카드를, 나머지는 넘어간다
     const first = game.activityOffers[game.pendingPick.activityId]?.cards[0]?.id ?? null;
@@ -100,6 +104,9 @@ function scheduleBots(room: Room): void {
     } else {
       actorId = bots.find((e) => e.dice === null)?.playerId;
     }
+  } else if (game.phase === "cleanup") {
+    // 남길 토큰을 아직 고르지 않은 봇(사람 대신 자리를 이어받은 봇 포함)이 고른다
+    actorId = Object.entries(game.cleanupKeep).find(([id, choice]) => choice === null && room.players.get(id)?.bot)?.[0];
   } else if (game.phase === "class") {
     // 선부터 시계방향으로 한 명씩 수업카드를 고른다
     const currentId = game.classPickOrder[game.classPickPointer];
@@ -144,6 +151,8 @@ function scheduleBots(room: Room): void {
           rerollLowDice(room.game, botId);
           confirmRoll(room.game, botId);
         }
+      } else if (room.game.phase === "cleanup") {
+        chooseKeepToken(room.game, botId, autoKeepChoice(room.game, botId));
       } else if (room.game.phase === "class") {
         playClassTurn(room.game, botId, bot.bot);
       } else if (room.game.phase === "activity" && room.game.pendingPick) {
@@ -400,6 +409,19 @@ wss.on("connection", (socket) => {
       if (!room.game) return;
       try {
         confirmRoll(room.game, playerId);
+        broadcastGameState(room);
+        scheduleBots(room);
+      } catch (err) {
+        send(socket, { type: "error", message: err instanceof Error ? err.message : "알 수 없는 오류" });
+        broadcastGameState(room);
+      }
+      return;
+    }
+
+    if (message.type === "keep_token") {
+      if (!room.game) return;
+      try {
+        chooseKeepToken(room.game, playerId, message.choice);
         broadcastGameState(room);
         scheduleBots(room);
       } catch (err) {

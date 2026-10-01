@@ -34,7 +34,7 @@ const STRATS: BotStrategy[] = [
 
 function play(strats: BotStrategy[]): GameState {
   const ids = strats.map((_, i) => `p${i}`);
-  const state = createGame(ids.map((id) => ({ id, name: id })));
+  const state = createGame(ids.map((id) => ({ id, name: id, isBot: true })));
   const by = Object.fromEntries(ids.map((id, i) => [id, strats[i]]));
   let guard = 0;
   while (state.phase !== "ended" && guard++ < 6000) {
