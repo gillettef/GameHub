@@ -5,7 +5,8 @@ export type StatKey = "intelligence" | "stamina" | "charm" | "spellPower";
 export type ActivityId = "tournament" | "creature" | "duel" | "exploration" | "lab";
 
 // 4주차(정리)에서 다음 달로 남기는 토큰: 지력토큰 1개, 체력토큰 1개, 또는 남기지 않기
-export type KeepChoice = "intelligence" | "stamina" | "none";
+export type KeptToken = "intelligence" | "stamina" | "charm" | "mana";
+export type KeepChoice = KeptToken | "none";
 
 export type GamePhase = "setup" | "prep" | "class" | "activity" | "cleanup" | "midterm_exam" | "final_exam" | "ended";
 
@@ -224,7 +225,7 @@ export interface GameState {
   exams: { midterm: ExamCard | null; final: ExamCard | null };
   examResults: ExamResult[];
   // (kept: 이 사람이 다음 달로 남긴 토큰 1개. 소멸 수량은 남긴 것을 뺀 값)
-  cleanupSummary: { playerId: string; intelligenceTokens: number; staminaTokens: number; charmTokens: number; manaTokens: number; kept: "intelligence" | "stamina" | null }[];
+  cleanupSummary: { playerId: string; intelligenceTokens: number; staminaTokens: number; charmTokens: number; manaTokens: number; kept: KeptToken | null }[];
   // 4주차(정리)에서 다음 달로 남길 토큰을 고르는 중: 남길 토큰이 있는 사람만 들어 있고, null이면 아직 고르지 않았다
   cleanupKeep: Record<string, KeepChoice | null>;
   classLeft: number;
