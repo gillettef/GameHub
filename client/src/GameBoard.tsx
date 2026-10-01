@@ -6,7 +6,6 @@ import {
   activityOpenCost,
   describeExam,
   canPay,
-  charmRate,
   ELEMENT_ICON,
   ELEMENT_LABEL,
   LAB_KIND_LABEL,
@@ -17,7 +16,6 @@ import {
   describeAbility,
   duelTargets,
   effectiveStat,
-  finalScore,
   type ActivityId,
   type ClassCard,
   type CreatureElement,
@@ -178,7 +176,7 @@ function ClassPhasePanel({ game, myId, onTake }: { game: GameState; myId: string
     <div className="bg-white rounded-3xl border-2 border-purple-200 shadow-sm p-4">
       <p className="text-sm text-purple-500 mb-1">2주차(정규수업): 공개된 수업카드를 선부터 시계방향으로 1장씩 가져가요</p>
       <p className="text-xs text-purple-500 mb-2">
-        <InlineIcon name="staminaToken" /> 체력토큰 {me.staminaTokens}개 · <InlineIcon name="charmToken" /> 매력토큰 {me.charmTokens}개 (매력토큰 {charmRate(game, me)}개 = 체력토큰 1개)
+        <InlineIcon name="staminaToken" /> 체력토큰 {me.staminaTokens}개
       </p>
       <ol className="mb-3 flex flex-wrap gap-1.5 text-xs" aria-label="진행 순서">
         {game.classPickOrder.map((id, index) => {
@@ -209,7 +207,7 @@ function ClassPhasePanel({ game, myId, onTake }: { game: GameState; myId: string
           <p className="mb-2 text-xs text-purple-500">카드를 누르면 크게 볼 수 있어요</p>
           <PickGrid
             items={game.classMarket.map((card) => {
-              const affordable = canPay(game, me, 0, card.takeCost);
+              const affordable = canPay(me, 0, card.takeCost);
               return {
                 key: card.id,
                 card: classCardInfo(card),
@@ -284,7 +282,7 @@ function PickPanel({ game, myId, onPick }: { game: GameState; myId: string; onPi
       : `${ACTIVITY_LABEL[pick.activityId]}: 공개된 카드 중 1장을 고르세요`;
   const affordable = (card: OfferCardView): boolean => {
     if (!card.cost) return true;
-    if (card.cost.kind === "stamina") return canPay(game, me, 0, card.cost.amount);
+    if (card.cost.kind === "stamina") return canPay(me, 0, card.cost.amount);
     return me.spellbookTokens >= card.cost.amount;
   };
   return (
@@ -451,7 +449,7 @@ function ChoosePanel({
               : "모두 골랐어요"}
       </p>
       <p className="text-xs text-purple-500 mb-2">
-        구역당 최대 {game.rules.activityMaxParticipants}명 · 먼저 고른 친구가 있으면 <InlineIcon name="staminaToken" /> 체력토큰 {game.rules.activitySecondParticipantCost}개 추가 (<InlineIcon name="charmToken" /> 매력토큰 {game.rules.activitySecondParticipantCost}개로 대신 가능). 처음 고른 친구가 카드를 공개하고 원하는 카드를 가져가요. 남은 카드는 두 번째 참가자가 가져가요.
+        구역당 최대 {game.rules.activityMaxParticipants}명 · 먼저 고른 친구가 있으면 <InlineIcon name="charmToken" /> 매력토큰 {game.rules.activitySecondParticipantCost}개 추가 (내 매력토큰 {game.players[myId]?.charmTokens ?? 0}개). 처음 고른 친구가 카드를 공개하고 원하는 카드를 가져가요. 남은 카드는 두 번째 참가자가 가져가요.
       </p>
       <div className="grid grid-cols-1 gap-2">
         {ACTIVITY_IDS.map((activityId) => {
@@ -481,7 +479,7 @@ function ChoosePanel({
               {(who || (isMyTurn && (extra > 0 || openCost > 0))) && (
                 <span className="mt-1 flex flex-wrap gap-1">
                   {who && <span className="rounded-full bg-purple-100 px-2 py-0.5 text-xs text-purple-700">{who} 선택</span>}
-                  {isMyTurn && extra > 0 && !full && <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs text-green-800">체력토큰 +{extra} (또는 매력토큰 {extra}개)</span>}
+                  {isMyTurn && extra > 0 && !full && <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs text-green-800">매력토큰 +{extra}</span>}
                   {isMyTurn && openCost > 0 && !full && (
                     <span className="rounded-full bg-sky-100 px-2 py-0.5 text-xs text-sky-800">지력토큰 {openCost}개 (카드 공개)</span>
                   )}
@@ -656,7 +654,7 @@ function RollPanel({
   // 결과를 확인하기 전에는 지력토큰으로 일부 주사위만 다시 굴릴 수 있다 (선 정하기는 제외)
   const canReroll = canConfirm && pending.kind !== "first" && !!mine && (mine.dice?.length ?? 0) > 0;
   const rerollCost = selected.length;
-  const rerollOk = rerollCost > 0 && canPay(game, me, rerollCost, 0);
+  const rerollOk = rerollCost > 0 && canPay(me, rerollCost, 0);
   const toggle = (i: number) => setSelected((cur) => (cur.includes(i) ? cur.filter((x) => x !== i) : [...cur, i]));
   const rollKey = `roll:${pending.title}`;
   const confirmKey = `confirm:${pending.title}`;
@@ -726,7 +724,7 @@ function RollPanel({
           {canReroll && (
             <div className="mt-3 rounded-2xl bg-sky-50 px-3 py-2 text-sm text-sky-800">
               <p>
-                <InlineIcon name="intToken" /> 지력토큰 {me.intelligenceTokens}개 · 주사위를 눌러 고르면 <b>1개당 주사위 1개</b>를 다시 굴려요 (매력토큰 {charmRate(game, me)}개 = 지력토큰 1개)
+                <InlineIcon name="intToken" /> 지력토큰 {me.intelligenceTokens}개 · 주사위를 눌러 고르면 <b>1개당 주사위 1개</b>를 다시 굴려요
               </p>
               <button
                 disabled={!rerollOk}
@@ -790,26 +788,20 @@ function ErrorToast({ message, seq }: { message: string | null; seq: number }) {
 // 마법 토너먼트 순위 화면: 트랙에는 상한이 없고, 기말고사가 끝났을 때 1위·2위가 학점 보상을 받는다
 function TournamentPanel({ game, myId }: { game: GameState; myId: string }) {
   const rewards = game.rules.tournamentRewards;
-  // 트랙 위치가 높은 순, 같으면 매력이 높은 순 (게임 규칙의 동점 처리). 트랙과 매력이 모두 같으면 공동 순위로 보여 준다
-  const rows = game.turnOrder
-    .map((id) => game.players[id])
-    .sort((a, b) => b.tournamentTrack - a.tournamentTrack || effectiveStat(b, "charm") - effectiveStat(a, "charm"));
+  // 트랙 위치가 높은 순. 같은 칸이면 공동 순위(1, 1, 3, ...)
+  const rows = game.turnOrder.map((id) => game.players[id]).sort((a, b) => b.tournamentTrack - a.tournamentTrack);
   const leader = rows[0]?.tournamentTrack ?? 0;
-  const rankOf = (index: number) => {
-    let rank = index;
-    while (rank > 0 && rows[rank - 1].tournamentTrack === rows[index].tournamentTrack && effectiveStat(rows[rank - 1], "charm") === effectiveStat(rows[index], "charm")) rank -= 1;
-    return rank + 1;
-  };
+  const rankOf = (index: number) => rows.findIndex((p) => p.tournamentTrack === rows[index].tournamentTrack) + 1;
   const scale = Math.max(leader, 10);
 
   return (
     <div className="flex flex-col gap-3">
       <div className="rounded-3xl border-2 border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
         <p className="font-display text-base text-amber-700 mb-1"><InlineIcon name="trophy" /> 마법 토너먼트</p>
-        <p className="text-xs">토너먼트 참가를 고를 때마다 주문력만큼 트랙을 전진해요. 트랙에는 상한이 없어요!</p>
+        <p className="text-xs">토너먼트 참가를 고르면 주문력 수치만큼 주사위를 굴려, 나온 눈을 모두 더한 칸만큼 트랙을 전진해요. 트랙에는 상한이 없어요!</p>
         <p className="text-xs">
           기말고사가 끝나면 1위 <b>학점 +{rewards[0]}</b>
-          {rewards.length > 1 && <>, 2위 <b>학점 +{rewards[1]}</b></>}를 받아요. (0칸은 보상 없음 · 같은 칸이면 매력 → 주사위 순)
+          {rewards.length > 1 && <>, 2위 <b>학점 +{rewards[1]}</b></>}를 받아요. (0칸은 보상 없음 · 같은 칸이면 공동 순위)
         </p>
       </div>
       <ol className="flex flex-col gap-2">
@@ -832,7 +824,7 @@ function TournamentPanel({ game, myId }: { game: GameState; myId: string }) {
               <p className="mt-1 text-xs text-purple-600">
                 {index === 0 || p.tournamentTrack === leader ? "선두예요!" : `선두와 ${leader - p.tournamentTrack}칸 차이`}
                 {" · "}
-                <InlineIcon name="sparkle" /> 주문력 {effectiveStat(p, "spellPower")} (한 번에 +{effectiveStat(p, "spellPower")}칸)
+                <InlineIcon name="sparkle" /> 주문력 {effectiveStat(p, "spellPower")} (한 번에 주사위 {effectiveStat(p, "spellPower")}개)
                 {reward > 0 && <span className="ml-1 rounded-full bg-amber-100 px-2 py-0.5 text-amber-800">지금 끝나면 학점 +{reward}</span>}
               </p>
             </li>

@@ -28,6 +28,9 @@ export const ACTIVITIES: ActivityId[] = ["tournament", "creature", "duel", "expl
 export interface BotStrategy {
   name: string;
   classWeights: Record<StatKey, number>;
+  // 이 라운드부터는 lateClassWeights로 갈아탄다 (초반엔 지력·체력, 후반엔 주문력처럼 단계별로 성장하는 성향)
+  lateClassWeights?: Record<StatKey, number>;
+  lateFromRound?: number;
   activityBias: Record<ActivityId, number>;
   // true면 아무 생각 없이 무작위로 행동 (시뮬레이션 비교용)
   random?: boolean;
@@ -63,6 +66,11 @@ function examWeight(state: GameState, stat: StatKey): number {
   return upcoming.diceStat === stat ? 1.6 : upcoming.bonusStat === stat ? 1.25 : 1;
 }
 
+// 지금 라운드에 적용할 능력치 가중치 (단계별 성향이면 후반에 갈아탄다)
+function weightsOf(state: GameState, strategy: BotStrategy): Record<StatKey, number> {
+  return strategy.lateClassWeights && state.round >= (strategy.lateFromRound ?? 7) ? strategy.lateClassWeights : strategy.classWeights;
+}
+
 const pickOne = <T,>(items: T[]): T => items[Math.floor(Math.random() * items.length)];
 
 // 정규수업: 내 차례에 공개된 수업카드 중 성향에 맞는 능력치를 우선해서, 체력토큰(매력토큰 교환 포함)으로 살 수 있는 카드 1장을 고른다
@@ -70,7 +78,7 @@ export function playClassTurn(state: GameState, playerId: string, strategy: BotS
   const p = state.players[playerId];
   const reserve = isLabLeaning(strategy) ? 2 : 0;
   const value = (c: (typeof state.classMarket)[number]) =>
-    (c.statBoost.amount * strategy.classWeights[c.statBoost.stat] * examWeight(state, c.statBoost.stat)) - c.takeCost * 0.1;
+    (c.statBoost.amount * weightsOf(state, strategy)[c.statBoost.stat] * examWeight(state, c.statBoost.stat)) - c.takeCost * 0.1;
   const affordable = state.classMarket.filter((c) => canPay(p, 0, c.takeCost + reserve) || (strategy.random && canPay(p, 0, c.takeCost)));
   let choice: string | null = null;
   if (affordable.length > 0) {
@@ -119,8 +127,8 @@ export function chooseActivityAction(
 // 카드 효과의 대략적인 가치 (영구 능력치는 성향 가중치로, 임시/토큰/엿보기는 낮게 평가)
 function effectValue(state: GameState, strategy: BotStrategy, e: CardEffect): number {
   let v = 0;
-  for (const [stat, n] of Object.entries(e.stats ?? {})) v += (n ?? 0) * strategy.classWeights[stat as StatKey] * examWeight(state, stat as StatKey) * 1.5;
-  for (const [stat, n] of Object.entries(e.tempStats ?? {})) v += (n ?? 0) * strategy.classWeights[stat as StatKey] * examWeight(state, stat as StatKey) * 0.5;
+  for (const [stat, n] of Object.entries(e.stats ?? {})) v += (n ?? 0) * weightsOf(state, strategy)[stat as StatKey] * examWeight(state, stat as StatKey) * 1.5;
+  for (const [stat, n] of Object.entries(e.tempStats ?? {})) v += (n ?? 0) * weightsOf(state, strategy)[stat as StatKey] * examWeight(state, stat as StatKey) * 0.5;
   v += (e.credit ?? 0) * 3;
   v += (e.peekExploration ? 0.8 : 0) + (e.nextSpellbook ?? 0) * 0.4 + (e.nextStamina ?? 0) * 0.5;
   return v;
@@ -158,7 +166,7 @@ export function rerollLowDice(state: GameState, playerId: string): void {
 // 마법생물: 능력과 세트 모으기(하늘·육지·바다를 1장씩 모으면 최종 점수)를 반영한다
 function creatureValue(state: GameState, strategy: BotStrategy, player: PlayerGameState, card: CreatureCard): number {
   const a = card.ability;
-  let v = 1 + (a.trigger === "acquire" && a.effect === "spellPower" ? a.amount * 1.5 * strategy.classWeights.spellPower : 0.6);
+  let v = 1 + (a.trigger === "acquire" && a.effect === "spellPower" ? a.amount * 1.5 * weightsOf(state, strategy).spellPower : 0.6);
   // 세트(하늘·육지·바다 1장씩)를 완성하는 데 가장 부족한 속성일수록 가치가 높다
   const counts = (["sky", "land", "ocean"] as const).map((el) => player.creatures.filter((c) => c.element === el).length);
   if (player.creatures.filter((c) => c.element === card.element).length === Math.min(...counts)) v += 1;
@@ -166,7 +174,7 @@ function creatureValue(state: GameState, strategy: BotStrategy, player: PlayerGa
 }
 
 function grimoireValue(state: GameState, strategy: BotStrategy, card: GrimoireCard): number {
-  return card.statBoost.amount * strategy.classWeights[card.statBoost.stat] * examWeight(state, card.statBoost.stat) + (card.ability ? 0.4 : 0);
+  return card.statBoost.amount * weightsOf(state, strategy)[card.statBoost.stat] * examWeight(state, card.statBoost.stat) + (card.ability ? 0.4 : 0);
 }
 
 // 구역에 공개된 카드 중 고를 카드의 id (비용을 낼 수 있는 카드만). 마법생물·연구 카드는 살 수 있는 카드가 없으면 null(가져가지 않고 넘어감)

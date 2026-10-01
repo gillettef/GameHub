@@ -88,7 +88,7 @@ export function describeAbility(a: CreatureAbility): string {
     enemyRollPenalty: `상대 굴림 -${a.amount}`,
     enemyStamina: `상대 다음 달 체력토큰 -${a.amount}`,
     immune: "주문서를 잃지 않음",
-    charmRate: `매력토큰 교환 비율 -${a.amount} (매력토큰 ${Math.max(2, 3 - a.amount)}개 = 다른 토큰 1개)`,
+    charmToken: `매력토큰 +${a.amount}`,
   }[a.effect];
   return `${when}: ${what}`;
 }

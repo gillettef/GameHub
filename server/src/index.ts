@@ -176,8 +176,6 @@ const PUBLIC_RULES: PublicRules = {
   midtermRound: BALANCE.midtermRound,
   midtermRevealRound: BALANCE.midtermRevealRound,
   finalRevealRound: BALANCE.finalRevealRound,
-  charmExchangeRate: BALANCE.charmExchangeRate,
-  charmExchangeRateMin: BALANCE.charmExchangeRateMin,
   tournamentRewards: BALANCE.tournamentRewards,
   creatureSetScore: BALANCE.creatureSetScore,
   creatureMinCost: MIN_CREATURE_COST,

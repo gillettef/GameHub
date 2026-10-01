@@ -59,7 +59,7 @@ export type CreatureElement = "sky" | "land" | "ocean";
 
 export interface CreatureAbility {
   trigger: "acquire" | "prep" | "duel" | "defend" | "lose" | "always";
-  effect: "spellPower" | "spellbook" | "stamina" | "rollBonus" | "enemyRollPenalty" | "enemyStamina" | "immune" | "charmRate";
+  effect: "spellPower" | "spellbook" | "stamina" | "rollBonus" | "enemyRollPenalty" | "enemyStamina" | "immune" | "charmToken";
   amount: number;
 }
 
@@ -112,10 +112,10 @@ export interface PlayerGameState {
   spellPower: number;
   credit: number;
   tempBoosts: Partial<Record<StatKey, number>>;
-  // 1주차에 지력만큼 받는 지력토큰: 2주차에 수업카드를 여는 데 쓴다 (정리 때 소멸)
+  // 1주차에 지력만큼 받는 지력토큰: 주사위 다시 굴리기에 쓴다 (정리 때 소멸)
   intelligenceTokens: number;
   staminaTokens: number;
-  // 1주차에 매력 수치만큼 받는 만능 토큰: 지력토큰·체력토큰이 모자랄 때 대신 낸다 (정리 때 소멸)
+  // 1주차에 매력 수치만큼 받는 토큰: 구역 두 번째 참가비로 낸다 (정리 때 소멸)
   charmTokens: number;
   spellbookTokens: number;
   // 마법생물 효과로 다음 달 준비(1주차) 때 체력토큰에 더해지는(또는 빼지는) 값
@@ -154,7 +154,7 @@ export interface ExamResult {
 // 주사위 굴리기 단계: 굴려야 하는 사람이 모두 버튼을 눌러 굴릴 때까지 게임이 기다린다
 // 모두 굴리면 결과를 보여 주고, 굴린 사람들은 (지력토큰으로 일부 주사위를 다시 굴린 뒤) "확인"을 눌러야 결과가 적용된다
 export interface PendingRoll {
-  kind: "first" | "duel" | "exploration" | "exam";
+  kind: "first" | "tournament" | "duel" | "exploration" | "exam";
   title: string;
   lines: string[];
   // dice가 null이면 아직 안 굴린 사람, confirmed는 결과를 확인하고 다음으로 넘기기를 누른 사람
@@ -196,6 +196,7 @@ export interface DuelPair {
 // 주사위 결과가 나온 뒤 처리에 필요한 서버 전용 정보 (클라이언트에는 보내지 않음)
 export type RollContext =
   | { kind: "first"; contenders: string[] }
+  | { kind: "tournament"; playerId: string }
   | { kind: "duel"; challengerId: string; targetId: string }
   | { kind: "exploration"; card: ExplorationCard; playerIds: string[]; mode: "single" | "pair" }
   | { kind: "exam"; examType: "midterm_exam" | "final_exam"; card: ExamCard };
@@ -235,7 +236,7 @@ export interface GameState {
   // 이번 달 선 플레이어(turnOrder의 인덱스). 정규수업·자율활동 모두 선부터 시계방향(turnOrder 순서)으로 진행한다
   startingPlayerIndex: number;
   players: Record<string, PlayerGameState>;
-  // 구역마다 최대 2명까지 참여할 수 있다 (먼저 들어온 사람이 있으면 체력토큰 1개를 더 낸다)
+  // 구역마다 최대 2명까지 참여할 수 있다 (먼저 들어온 사람이 있으면 매력토큰 1개를 더 낸다)
   activitySlots: Record<ActivityId, string[]>;
   // 3주차: 먼저 각자 활동을 고르고("choose", 선부터 시계방향), 모두 고르면 그 순서대로 하나씩 진행한다("resolve")
   activityStage: "choose" | "resolve";
@@ -302,9 +303,6 @@ export interface PublicRules {
   midtermRound: number;
   midtermRevealRound: number;
   finalRevealRound: number;
-  // 매력토큰 교환: 기본 charmExchangeRate개 = 지력·체력토큰 1개 (카드로 최소 charmExchangeRateMin개까지)
-  charmExchangeRate: number;
-  charmExchangeRateMin: number;
   // 마법 토너먼트 최종 순위 보상 (1위, 2위 순서, 학점)
   tournamentRewards: number[];
   // 최종 점수 = 주문력 × 학점 + 마법생물 세트(하늘·육지·바다 1장씩) 수 × creatureSetScore
