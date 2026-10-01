@@ -281,8 +281,8 @@ test("자율활동: 먼저 모두 고르고(선택은 모두에게 공개), 모�
   toActivity(state);
   setTokens(state, 3);
   const [a, b, c] = state.activityOrder;
-  state.creatureDeck.push(creature("하늘의 꽃마녀"), creature("하늘의 신비"));
-  state.players[c].spellbookTokens = 0; // 가져갈 수 있는 카드가 없어 고를 것도 없다
+  state.creatureDeck.push(creature("바다의 여왕"), creature("하늘의 신비"));
+  state.players[c].spellbookTokens = 2; // 열린 카드가 모두 비싸서 가져갈 수 있는 카드가 없다
   const before = Object.fromEntries(state.turnOrder.map((id) => [id, state.players[id].tournamentTrack]));
   selectActivity(state, a, "tournament");
   assert.equal(state.activityStage, "choose");
@@ -321,6 +321,17 @@ test("카드를 여는 구역 중 연구실·주문 대결은 지력토큰이 �
   selectActivity(state, a, "lab");
   assert.equal(state.players[a].intelligenceTokens, 0);
 }));
+
+test("마법 주문서가 가장 싼 마법생물 값보다 적으면 마법생물 조련을 고를 수 없다", () => {
+  const state = newGame(3);
+  toActivity(state);
+  const [a] = state.activityOrder;
+  state.players[a].spellbookTokens = 1;
+  assert.ok(!availableActivities(state, a).includes("creature"));
+  assert.throws(() => selectActivity(state, a, "creature"), /마법 주문서/);
+  state.players[a].spellbookTokens = 2;
+  assert.ok(availableActivities(state, a).includes("creature"));
+});
 
 test("기본 설정에서는 어떤 구역도 카드를 열 때 지력토큰이 들지 않는다", () => {
   assert.deepEqual(BALANCE.openCardCostActivities, []);
@@ -391,7 +402,7 @@ test("마법생물 조련: 비용을 못 내면 카드를 가져가지 못하고
   setTokens(state, 2);
   const [a, b] = state.activityOrder;
   state.creatureDeck.push(creature("하늘의 신비"), creature("하늘의 감시자")); // 요구 주문서 5개 / 3개
-  state.players[a].spellbookTokens = 1;
+  state.players[a].spellbookTokens = 2;
   state.players[b].spellbookTokens = 5;
   selectActivity(state, a, "creature");
   selectActivity(state, b, "creature");
@@ -410,12 +421,12 @@ test("체력토큰으로 집중하는 기능은 없다 (활동 선택에 체력�
   const state = newGame(2);
   toActivity(state);
   const [a, b] = state.activityOrder;
-  state.creatureDeck.push(creature("하늘의 신비"), creature("하늘의 꽃마녀"));
-  Object.assign(state.players[a], { staminaTokens: 3, charmTokens: 0, spellbookTokens: 1 });
+  state.creatureDeck.push(creature("하늘의 신비"), creature("하늘의 감시자"));
+  Object.assign(state.players[a], { staminaTokens: 3, charmTokens: 0, spellbookTokens: 2 });
   selectActivity(state, a, "creature");
   selectActivity(state, b, "tournament");
   advanceResolution(state);
-  // 주문서 1개로는 요구 2개인 카드도 가져갈 수 없다
+  // 주문서 2개로는 요구 3개 이상인 카드를 가져갈 수 없다
   assert.equal(state.pendingPick, null);
   assert.equal(state.players[a].staminaTokens, 3, "집중으로 체력토큰을 쓰지 않는다");
   assert.equal(state.players[a].creatures.length, 0);
@@ -582,14 +593,15 @@ test("자율활동이 끝나면 아무도 가져가지 않은 공개 카드는 �
   toActivity(state);
   const [a, b] = state.activityOrder;
   setTokens(state, 0);
-  state.players[a].spellbookTokens = 0;
-  selectActivity(state, a, "creature"); // 주문서가 없어 아무것도 못 가져간다
+  state.players[a].spellbookTokens = 2;
+  state.creatureDeck.push(creature("바다의 여왕"), creature("하늘의 신비")); // 둘 다 주문서 5개가 필요해서 가져갈 수 없다
+  selectActivity(state, a, "creature"); // 주문서 2개로는 아무것도 못 가져간다
   selectActivity(state, b, "tournament");
   advanceResolution(state);
   advanceResolution(state);
   assert.equal(state.round, 2);
   assert.deepEqual(state.activityOffers, {});
-  assert.equal(state.creatureDeck.length + state.creatureDiscard.length + state.players[a].creatures.length + state.players[b].creatures.length, CREATURE_CARDS.length);
+  assert.equal(state.creatureDeck.length + state.creatureDiscard.length + state.players[a].creatures.length + state.players[b].creatures.length, CREATURE_CARDS.length + 2); // 위에서 덱에 더한 2장 포함
 });
 
 test("자율활동 구역은 최대 2명, 두 번째 참가자는 체력토큰 1개를 더 낸다", () => {

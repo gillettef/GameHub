@@ -181,6 +181,8 @@ export interface PublicRules {
   tournamentRewards: number[];
   // 최종 점수 = 주문력 × 학점 + 마법생물 세트(하늘·육지·바다 1장씩) 수 × creatureSetScore
   creatureSetScore: number;
+  // 마법생물을 가져오는 데 드는 최소 마법 주문서 (이보다 적으면 마법생물 조련을 고를 수 없다)
+  creatureMinCost: number;
 }
 
 export interface GameState {
@@ -296,6 +298,7 @@ export function activityBlockReason(game: GameState, playerId: string, activityI
   if (!canPay(game, player, 0, 0, extra)) return `체력토큰 ${extra}개가 더 필요해요 (매력토큰 ${extra}개로도 낼 수 있어요)`;
   const open = activityOpenCost(game, activityId);
   if (!canPay(game, player, open, 0, extra)) return `카드를 열 지력토큰 ${open}개가 필요해요 (매력토큰 ${charmRate(game, player)}개 = 지력토큰 1개)`;
+  if (activityId === "creature" && player.spellbookTokens < game.rules.creatureMinCost) return `마법 주문서가 ${game.rules.creatureMinCost}개 이상 필요해요`;
   if (activityId === "duel") {
     if (duelTargets(game, playerId).length === 0) return "지목할 수 있는 친구가 없어요";
     if (player.charm < game.rules.duelCharmFee) return `건넬 매력(${game.rules.duelCharmFee})이 없어요`;

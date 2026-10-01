@@ -28,6 +28,7 @@ import {
 import { CardArt, CardGrid, PickGrid, type CardInfo } from "./CardArt";
 import { RulesGuide } from "./Rules";
 import { GameMenu } from "./Leave";
+import { FinalReveal } from "./FinalReveal";
 import { AnnouncementLayer } from "./Announcements";
 
 const ACTIVITY_IDS: ActivityId[] = ["tournament", "creature", "duel", "exploration", "lab"];
@@ -269,40 +270,52 @@ function PickPanel({ game, myId, onPick }: { game: GameState; myId: string; onPi
   const pick = game.pendingPick;
   const me = game.players[myId];
   if (!pick) return null;
+  // 다른 친구가 고르는 중이면 같은 카드를 읽기 전용으로 함께 본다
+  const watching = pick.playerId !== myId;
+  const pickerName = game.players[pick.playerId]?.name ?? "";
   const cards = game.activityOffers[pick.activityId]?.cards ?? [];
   const canSkip = pick.mode === "take" && (pick.activityId === "creature" || pick.activityId === "lab");
-  const title =
-    pick.mode === "reward" ? "주문 대결에서 이겼어요! 마도서를 1장 고르세요" : `${ACTIVITY_LABEL[pick.activityId]}: 공개된 카드 중 1장을 고르세요`;
+  const title = watching
+    ? pick.mode === "reward"
+      ? `${pickerName}님이 주문 대결에서 이겼어요! 마도서를 고르는 중이에요...`
+      : `${pickerName}님이 ${ACTIVITY_LABEL[pick.activityId]}의 카드를 고르는 중이에요...`
+    : pick.mode === "reward"
+      ? "주문 대결에서 이겼어요! 마도서를 1장 고르세요"
+      : `${ACTIVITY_LABEL[pick.activityId]}: 공개된 카드 중 1장을 고르세요`;
   const affordable = (card: OfferCardView): boolean => {
     if (!card.cost) return true;
     if (card.cost.kind === "stamina") return canPay(game, me, 0, card.cost.amount);
     return me.spellbookTokens >= card.cost.amount;
   };
   return (
-    <div className="bg-white rounded-3xl border-2 border-purple-200 shadow-sm p-4">
+    <div className={`bg-white rounded-3xl border-2 shadow-sm p-4 ${watching ? "border-purple-100" : "border-purple-200"}`}>
       <p className="text-sm text-purple-600 mb-1">{title}</p>
-      <p className="text-xs text-purple-500 mb-2">
-        {pick.activityId === "exploration" || pick.mode === "reward"
-          ? "고르지 않은 카드는 다음에 이 구역을 쓰는 친구의 몫이에요."
-          : "고르고 남은 카드는 다음에 이 구역에 들어오는 친구가 가져가요."}
-        {canSkip && " 살 수 있는 카드가 없거나 원하지 않으면 넘어가도 돼요."}{" "}
-        (<InlineIcon name="staminaToken" /> 내 체력토큰 {me.staminaTokens}개 · <InlineIcon name="spellbookToken" /> 주문서 {me.spellbookTokens}개 · <InlineIcon name="charmToken" /> 매력토큰 {me.charmTokens}개)
-      </p>
+      {watching ? (
+        <p className="text-xs text-purple-500 mb-2">공개된 카드를 같이 볼 수 있어요.</p>
+      ) : (
+        <p className="text-xs text-purple-500 mb-2">
+          {pick.activityId === "exploration" || pick.mode === "reward"
+            ? "고르지 않은 카드는 다음에 이 구역을 쓰는 친구의 몫이에요."
+            : "고르고 남은 카드는 다음에 이 구역에 들어오는 친구가 가져가요."}
+          {canSkip && " 살 수 있는 카드가 없거나 원하지 않으면 넘어가도 돼요."}{" "}
+          (<InlineIcon name="staminaToken" /> 내 체력토큰 {me.staminaTokens}개 · <InlineIcon name="spellbookToken" /> 주문서 {me.spellbookTokens}개 · <InlineIcon name="charmToken" /> 매력토큰 {me.charmTokens}개)
+        </p>
+      )}
       <div className="flex flex-col gap-2">
         <p className="text-xs text-purple-500">카드를 누르면 크게 볼 수 있어요</p>
         <PickGrid
           items={cards.map((card) => {
-            const ok = affordable(card);
+            const ok = watching || affordable(card);
             return {
               key: card.id,
               card: offerCardInfo(card),
-              onAction: () => onPick(card.id),
+              onAction: watching ? undefined : () => onPick(card.id),
               actionLabel: ok ? "가져가기" : "부족해요",
               disabled: !ok,
             };
           })}
         />
-        {canSkip && (
+        {canSkip && !watching && (
           <button className="mt-1 min-h-11 w-full rounded-xl text-sm text-purple-600 active:scale-95 transition-transform" onClick={() => onPick(null)}>
             아무것도 가져가지 않고 넘어가기
           </button>
@@ -444,7 +457,8 @@ function ChoosePanel({
         {ACTIVITY_IDS.map((activityId) => {
           const label = ACTIVITY_LABEL[activityId];
           const occupants = game.activitySlots[activityId];
-          const reason = isMyTurn ? activityBlockReason(game, myId, activityId) : null;
+          // 내가 아직 고르기 전이라면 내 차례가 아니어도 지금 고를 수 없는 구역은 미리 회색으로 보여 준다
+          const reason = game.players[myId]?.hasActedThisPhase ? null : activityBlockReason(game, myId, activityId);
           const extra = activityExtraCost(game, activityId);
           const openCost = activityOpenCost(game, activityId);
           const full = occupants.length >= game.rules.activityMaxParticipants;
@@ -477,11 +491,12 @@ function ChoosePanel({
             </>
           );
           if (!isMyTurn || reason) {
+            const gray = Boolean(reason);
             return (
               <div
                 key={activityId}
-                aria-disabled={isMyTurn ? "true" : undefined}
-                className={`rounded-xl border min-h-12 px-3 py-3 ${isMyTurn ? "border-gray-200 bg-gray-100 text-gray-600" : "border-purple-200 bg-purple-50 text-purple-700"}`}
+                aria-disabled={gray ? "true" : undefined}
+                className={`rounded-xl border min-h-12 px-3 py-3 ${gray ? "border-gray-200 bg-gray-100 text-gray-500 opacity-80" : "border-purple-200 bg-purple-50 text-purple-700"}`}
               >
                 {body}
               </div>
@@ -519,7 +534,7 @@ function ResolvePanel({
 
   return (
     <div className="flex flex-col gap-3">
-      {myPick && <PickPanel game={game} myId={myId} onPick={onPick} />}
+      {game.pendingPick && <PickPanel game={game} myId={myId} onPick={onPick} />}
       <div className="bg-white rounded-3xl border-2 border-purple-200 shadow-sm p-4">
         <p className="text-sm text-purple-600 mb-1">3주차(자율활동): 모두 골랐어요! 차례대로 진행해요</p>
         <p className="text-xs text-purple-500 mb-3">
@@ -772,49 +787,6 @@ function ErrorToast({ message, seq }: { message: string | null; seq: number }) {
   );
 }
 
-function EndedPanel({ game, onLeave }: { game: GameState; onLeave: () => void }) {
-  const winnerIds = game.winnerIds ?? [];
-  const ranked = [...game.turnOrder]
-    .map((id) => game.players[id])
-    .sort((a, b) => finalScore(game, b) - finalScore(game, a));
-
-  return (
-    <div className="pop-in bg-white rounded-3xl border-2 border-amber-200 p-4 shadow-sm">
-      <p className="font-display text-xl text-purple-700 mb-3 text-center">
-        <InlineIcon name="sparkle" /> {winnerIds.map((id) => game.players[id].name).join(", ")} 승리! <InlineIcon name="sparkle" />
-      </p>
-      <ol className="flex flex-col gap-2">
-        {ranked.map((p, i) => (
-          <li
-            key={p.id}
-            className={`rounded-2xl px-3 py-2 ${winnerIds.includes(p.id) ? "bg-amber-100" : "bg-purple-50"}`}
-          >
-            <p className="font-display text-purple-800 truncate">
-              {i < 3 ? <Icon name="medal" className={`h-5 w-5 ${MEDAL_COLOR[i]}`} /> : `${i + 1}위`} {p.name}
-            </p>
-            <p className="text-sm text-purple-700">
-              주문력 {p.spellPower} × 학점 {p.credit} = 성취도 {p.spellPower * p.credit}
-            </p>
-            <p className="text-sm text-purple-700">
-              <InlineIcon name="paw" /> 마법생물 세트 {creatureSets(p.creatures)}개 × {game.rules.creatureSetScore}점 = {creatureSets(p.creatures) * game.rules.creatureSetScore}점
-            </p>
-            <p className="text-sm text-purple-800">
-              최종 점수 <b>{finalScore(game, p)}점</b>
-            </p>
-          </li>
-        ))}
-      </ol>
-      <button
-        className="mt-4 min-h-12 w-full rounded-2xl bg-purple-500 font-semibold text-white active:scale-95 transition-transform"
-        onClick={onLeave}
-      >
-        <Icon name="door" className="mr-1 h-5 w-5" />
-        처음 화면으로 나가기
-      </button>
-    </div>
-  );
-}
-
 // 마법 토너먼트 순위 화면: 트랙에는 상한이 없고, 기말고사가 끝났을 때 1위·2위가 학점 보상을 받는다
 function TournamentPanel({ game, myId }: { game: GameState; myId: string }) {
   const rewards = game.rules.tournamentRewards;
@@ -981,7 +953,7 @@ export function GameBoard({
             {game.phase === "activity" && (
               <ActivityPhasePanel game={game} myId={myId} onSelect={onSelectActivity} onPick={onPickActivityCard} />
             )}
-            {game.phase === "ended" && <EndedPanel game={game} onLeave={onLeave} />}
+            {game.phase === "ended" && <FinalReveal game={game} onLeave={onLeave} />}
 
             <ExamInfoPanel game={game} />
 

@@ -309,4 +309,6 @@ export interface PublicRules {
   tournamentRewards: number[];
   // 최종 점수 = 주문력 × 학점 + 마법생물 세트(하늘·육지·바다 1장씩) 수 × creatureSetScore
   creatureSetScore: number;
+  // 마법생물을 가져오는 데 드는 최소 마법 주문서 (이보다 적으면 마법생물 조련을 고를 수 없다)
+  creatureMinCost: number;
 }

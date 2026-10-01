@@ -11,7 +11,7 @@ import {
 } from "./cards.js";
 import { randomUUID } from "node:crypto";
 import { BALANCE, examCreditForRank } from "./config.js";
-import { describeAbility } from "./creatures.js";
+import { MIN_CREATURE_COST, describeAbility } from "./creatures.js";
 import { describeExam, pickExamCards } from "./examCards.js";
 import { describeEffect } from "./explorationCards.js";
 import {
@@ -421,6 +421,7 @@ export function activityBlockReason(state: ActivityView, playerId: string, activ
   if (!canPay(player, 0, 0, extra)) return `이미 참여한 친구가 있어서 체력토큰 ${extra}개가 더 필요해요 (매력토큰 ${extra}개로 낼 수도 있어요).`;
   const open = activityOpenCost(state, activityId);
   if (!canPay(player, open, 0, extra)) return `카드를 열 지력토큰 ${open}개가 필요해요 (매력토큰 ${charmRate(player)}개로 지력토큰 1개를 대신할 수 있어요).`;
+  if (activityId === "creature" && player.spellbookTokens < MIN_CREATURE_COST) return `마법생물을 데려오려면 마법 주문서가 ${MIN_CREATURE_COST}개 이상 필요해요.`;
   if (activityId === "duel") {
     if (duelTargets(state, playerId).length === 0) return "지목할 수 있는 친구가 없어요.";
     if (player.charm < BALANCE.duelCharmFee) return `지목당한 친구에게 건넬 매력(${BALANCE.duelCharmFee})이 없어요.`;
