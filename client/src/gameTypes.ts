@@ -55,7 +55,7 @@ export interface CreatureCard {
   name: string;
   element: CreatureElement;
   kind: "animal" | "plant";
-  requiredSpellPower: number;
+  trainTarget: number;
   ability: CreatureAbility;
   description: string;
 }

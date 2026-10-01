@@ -176,7 +176,7 @@ function creatureValue(state: GameState, strategy: BotStrategy, player: PlayerGa
   // 세트(하늘·육지·바다 1장씩)를 완성하는 데 가장 부족한 속성일수록 가치가 높다
   const counts = (["sky", "land", "ocean"] as const).map((el) => player.creatures.filter((c) => c.element === el).length);
   if (player.creatures.filter((c) => c.element === card.element).length === Math.min(...counts)) v += 1;
-  return v - card.requiredSpellPower * 0.1;
+  return v - card.trainTarget * 0.025;
 }
 
 function grimoireValue(state: GameState, strategy: BotStrategy, card: GrimoireCard): number {

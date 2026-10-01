@@ -38,8 +38,6 @@ export const BALANCE = {
   // (성장이 기준보다 앞서면 쉽고 뒤처지면 어렵다). 탐험·협력 탐험 카드는 카드마다 난이도가 정해져 있다
   rollBenchmarkStart: 2,
   rollBenchmarkPerRound: 0.5,
-  // 마법생물 조련: 생물의 속성·종류가 정한 토큰(최대 합 3개)을 내고 굴린 주사위 합이 요구 주문력 × creatureTargetPerPower 이상이면 성공
-  creatureTargetPerPower: 2.5,
   // 주문 대결 도전자가 지목당한 친구에게 건네는 마법 주문서 개수 (매력 참가비 duelCharmFee와 별도. 지목당해도 주문서가 있어야 굴릴 수 있게 하는 장치)
   duelSpellbookFee: 1,
   // 연구실 실험: 카드를 보고 지력토큰을 몇 개 낼지 골라 낸 개수만큼(최소 1개) 주사위를 굴려 합이 이 값 이상이면 성공 (안정적인 능력치 상향)
