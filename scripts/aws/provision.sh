@@ -13,12 +13,11 @@ sudo dnf install -y nodejs git gcc gcc-c++ make python3.11 python3.11-pip
 node -v
 python3.11 -V
 
-cd ~/AstralTab
-npm install
+bash ~/AstralTab/scripts/aws/swap.sh
 
-cd client
-npx vite build --outDir dist/prod --emptyOutDir
-cd ..
+# 클라이언트 빌드(client/dist/prod)는 EC2 에서 하지 않는다. 로컬/CI 에서 빌드해 전송한다(scripts/deploy-aws.ps1).
+cd ~/AstralTab
+npm install --workspace @astraltab/server --workspace @astraltab/shared --no-audit --no-fund
 
 python3.11 -m venv ai/.venv
 ai/.venv/bin/pip install -q --upgrade pip

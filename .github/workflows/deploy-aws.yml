@@ -4,7 +4,8 @@ name: Deploy to AWS
 # Actions 탭에서 수동 실행(workflow_dispatch)해 재배포할 수도 있다.
 # 저장소가 비공개라 EC2가 직접 clone/pull 하지 못하므로, 이 워크플로가 대신
 # git archive로 워킹트리를 EC2로 전송하고(scp 대신 ssh 파이프), 서버에서
-# scripts/aws/deploy-remote.sh 가 빌드·systemd 재시작을 수행한다.
+# scripts/aws/deploy-remote.sh 가 의존성 설치·systemd 재시작을 수행한다.
+# 클라이언트 빌드(vite)는 EC2(t3.micro, 메모리 1GB)가 아니라 이 러너에서 하고 결과물(client/dist/prod)만 보낸다.
 #
 # SSH(22)는 관리자 PC의 고정 IP로만 열려 있어 GitHub Actions 러너가 그대로는
 # 접속할 수 없다. 그래서 배포 직전에 러너의 공인 IP를 보안 그룹에 임시로 추가하고,
@@ -42,6 +43,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: 클라이언트 빌드 (EC2 메모리 절약을 위해 러너에서)
+        run: |
+          npm ci
+          cd client && npx vite build --outDir dist/prod --emptyOutDir
 
       - name: Configure AWS credentials (보안 그룹 SSH 규칙 전용 최소 권한)
         uses: aws-actions/configure-aws-credentials@v4
@@ -76,7 +86,11 @@ jobs:
           git archive HEAD | ssh -i ~/.ssh/ci_key ec2-user@${{ secrets.EC2_HOST }} \
             "mkdir -p ~/AstralTab && tar -x -C ~/AstralTab"
 
-      - name: 빌드 & systemd 재시작
+      - name: 빌드 결과 전송 (client/dist/prod)
+        run: |
+          tar -c -C client/dist prod | ssh -i ~/.ssh/ci_key ec2-user@${{ secrets.EC2_HOST }}             "rm -rf ~/AstralTab/client/dist/prod && mkdir -p ~/AstralTab/client/dist && tar -x -C ~/AstralTab/client/dist"
+
+      - name: 의존성 설치 & systemd 재시작
         run: |
           ssh -i ~/.ssh/ci_key ec2-user@${{ secrets.EC2_HOST }} \
             "bash ~/AstralTab/scripts/aws/deploy-remote.sh"
