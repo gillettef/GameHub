@@ -72,7 +72,7 @@ function prepBanner(game: GameState, myId: string): Announcement {
     kind: "banner",
     icon: "calendar",
     title: `${game.round}개월 1주차 · 준비`,
-    subtitle: "지력만큼 지력토큰, 체력만큼 체력토큰, 매력만큼 매력토큰, 주문력만큼 주문서를 받아요",
+    subtitle: "지력만큼 지력토큰, 체력만큼 체력토큰, 매력만큼 매력토큰, 주문력만큼 마나토큰을 받아요",
     tokens: {
       mode: "gain",
       rows: tokenRows(
@@ -83,7 +83,7 @@ function prepBanner(game: GameState, myId: string): Announcement {
           int: game.players[id].intelligenceTokens,
           stamina: game.players[id].staminaTokens,
           charm: game.players[id].charmTokens,
-          spell: game.players[id].spellbookTokens,
+          spell: game.players[id].manaTokens,
         })),
       ),
     },
@@ -104,7 +104,7 @@ function cleanupBanner(prev: GameState, next: GameState, myId: string): Announce
       rows: tokenRows(
         next,
         myId,
-        next.cleanupSummary.map((c) => ({ id: c.playerId, int: c.intelligenceTokens, stamina: c.staminaTokens, charm: c.charmTokens, spell: c.spellbookTokens })),
+        next.cleanupSummary.map((c) => ({ id: c.playerId, int: c.intelligenceTokens, stamina: c.staminaTokens, charm: c.charmTokens, spell: c.manaTokens })),
       ),
     },
   });
@@ -264,7 +264,7 @@ function build(prev: GameState, next: GameState, myId: string): Announcement[] {
 
 // 연출이 끝나기까지 걸리는 시간(ms)
 function playDuration(tokens: NonNullable<Announcement["tokens"]>): number {
-  // 한 사람의 세 줄(지력토큰 → 체력토큰 → 주문서)은 차례로 들어오므로 가장 늦게 끝나는 사람 기준으로 계산한다
+  // 한 사람의 세 줄(지력토큰 → 체력토큰 → 마나토큰)은 차례로 들어오므로 가장 늦게 끝나는 사람 기준으로 계산한다
   const finish = Math.max(
     0,
     ...tokens.rows.map(
@@ -367,8 +367,8 @@ function TokenBoard({ tokens, playing }: { tokens: NonNullable<Announcement["tok
             color="text-pink-500"
           />}
           {(tokens.mode === "gain" || row.spell > 0) && <TokenLine
-            icon="spellbookToken"
-            label="주문서"
+            icon="manaToken"
+            label="마나토큰"
             count={row.spell}
             mode={tokens.mode}
             playing={playing}

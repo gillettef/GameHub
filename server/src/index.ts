@@ -181,7 +181,7 @@ const PUBLIC_RULES: PublicRules = {
   activityMaxParticipants: BALANCE.activityMaxParticipants,
   activitySecondParticipantCost: BALANCE.activitySecondParticipantCost,
   duelCharmFee: BALANCE.duelCharmFee,
-  duelSpellbookFee: BALANCE.duelSpellbookFee,
+  duelManaFee: BALANCE.duelManaFee,
   midtermRound: BALANCE.midtermRound,
   midtermRevealRound: BALANCE.midtermRevealRound,
   finalRevealRound: BALANCE.finalRevealRound,

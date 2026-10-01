@@ -75,7 +75,7 @@ function PlayerStatCard({ player, isMe, rules }: { player: PlayerGameState; isMe
         <Chip icon="cap" label="학점" value={player.credit} className="bg-amber-100 text-amber-800" />
       </div>
       <p className="text-sm text-purple-700 leading-7">
-        <InlineIcon name="trophy" /> 토너먼트 {player.tournamentTrack}칸 · <InlineIcon name="intToken" /> 지력토큰 {player.intelligenceTokens} · <InlineIcon name="staminaToken" /> 체력토큰 {player.staminaTokens} · <InlineIcon name="charmToken" /> 매력토큰 {player.charmTokens} · <InlineIcon name="spellbookToken" /> 주문서 {player.spellbookTokens} · <InlineIcon name="book" /> 수업 {player.classCards.length}장
+        <InlineIcon name="trophy" /> 토너먼트 {player.tournamentTrack}칸 · <InlineIcon name="intToken" /> 지력토큰 {player.intelligenceTokens} · <InlineIcon name="staminaToken" /> 체력토큰 {player.staminaTokens} · <InlineIcon name="charmToken" /> 매력토큰 {player.charmTokens} · <InlineIcon name="manaToken" /> 마나토큰 {player.manaTokens} · <InlineIcon name="book" /> 수업 {player.classCards.length}장
       </p>
       {player.peekedExploration && (
         <div className="mt-2 rounded-2xl border border-indigo-200 bg-indigo-50 px-2.5 py-2 text-sm text-indigo-800">
@@ -148,7 +148,7 @@ function offerCardInfo(card: OfferCardView): CardInfo {
   return {
     name: card.name,
     badge:
-      [card.tags, card.cost ? (card.cost.kind === "stamina" ? `체력토큰 ${card.cost.amount}개` : `주문서 ${card.cost.amount}개`) : undefined].filter(Boolean).join(" · ") || undefined,
+      [card.tags, card.cost ? (card.cost.kind === "stamina" ? `체력토큰 ${card.cost.amount}개` : `마나토큰 ${card.cost.amount}개`) : undefined].filter(Boolean).join(" · ") || undefined,
     lines: [card.description, ...card.lines],
   };
 }
@@ -288,7 +288,7 @@ function PickPanel({ game, myId, onPick }: { game: GameState; myId: string; onPi
     if (card.tokenNeeds) return card.tokenNeeds.some((stat) => (stat === "intelligence" ? me.intelligenceTokens : stat === "stamina" ? me.staminaTokens : me.charmTokens) > 0);
     if (!card.cost) return true;
     if (card.cost.kind === "stamina") return canPay(me, 0, card.cost.amount);
-    return me.spellbookTokens >= card.cost.amount;
+    return me.manaTokens >= card.cost.amount;
   };
   return (
     <div className={`bg-white rounded-3xl border-2 shadow-sm p-4 ${watching ? "border-purple-100" : "border-purple-200"}`}>
@@ -301,7 +301,7 @@ function PickPanel({ game, myId, onPick }: { game: GameState; myId: string; onPi
             ? "고르지 않은 카드는 다음에 이 구역을 쓰는 친구의 몫이에요."
             : "고르고 남은 카드는 다음에 이 구역에 들어오는 친구가 가져가요."}
           {canSkip && " 살 수 있는 카드가 없거나 원하지 않으면 넘어가도 돼요."}{" "}
-          (<InlineIcon name="staminaToken" /> 내 체력토큰 {me.staminaTokens}개 · <InlineIcon name="spellbookToken" /> 주문서 {me.spellbookTokens}개 · <InlineIcon name="charmToken" /> 매력토큰 {me.charmTokens}개)
+          (<InlineIcon name="staminaToken" /> 내 체력토큰 {me.staminaTokens}개 · <InlineIcon name="manaToken" /> 마나토큰 {me.manaTokens}개 · <InlineIcon name="charmToken" /> 매력토큰 {me.charmTokens}개)
         </p>
       )}
       <div className="flex flex-col gap-2">
@@ -419,7 +419,7 @@ function ChoosePanel({
       <div className="bg-white rounded-3xl border-2 border-purple-200 shadow-sm p-4">
         <p className="text-sm text-purple-600 mb-1">아직 활동을 고르지 않은 한 명을 지목하세요</p>
         <p className="text-xs text-purple-500 mb-2">
-          지목당한 친구는 이번 달 자율활동으로 주문 대결을 하게 돼요. 결과와 상관없이 지목한 친구에게 <InlineIcon name="heart" /> 매력 {fee}과 <InlineIcon name="spellbookToken" /> 마법 주문서 {game.rules.duelSpellbookFee}개를 건네요.
+          지목당한 친구는 이번 달 자율활동으로 주문 대결을 하게 돼요. 결과와 상관없이 지목한 친구에게 <InlineIcon name="heart" /> 매력 {fee}과 <InlineIcon name="manaToken" /> 마나토큰 {game.rules.duelManaFee}개를 건네요.
         </p>
         <div className="flex flex-col gap-2">
           {targets.map((id) => (
@@ -698,7 +698,7 @@ function RollPanel({
               {revealed && entry.confirmed && entry.diceCount > 0 && <span className="shrink-0 text-xs text-emerald-600">확인 완료</span>}
             </p>
             {entry.dice === null ? (
-              <p className="text-xs text-purple-400">아직 안 굴렸어요{entry.diceChoiceMax === undefined && !entry.diceChoices ? ` (주사위 ${entry.diceCount}개)` : ` (${entry.diceChoiceStat === "stamina" ? "체력토큰" : entry.diceChoiceStat === "spellbook" ? "마법 주문서" : "지력토큰"}을 고르는 중)`}</p>
+              <p className="text-xs text-purple-400">아직 안 굴렸어요{entry.diceChoiceMax === undefined && !entry.diceChoices ? ` (주사위 ${entry.diceCount}개)` : ` (${entry.diceChoiceStat === "stamina" ? "체력토큰" : entry.diceChoiceStat === "mana" ? "마나토큰" : "지력토큰"}을 고르는 중)`}</p>
             ) : entry.dice.length === 0 ? (
               <p className="text-xs text-purple-400">굴릴 주사위가 없어요</p>
             ) : (
@@ -727,9 +727,9 @@ function RollPanel({
               <>
                 <InlineIcon name="staminaToken" /> 체력토큰 {choiceMax}개 중 몇 개를 낼까요? 낸 개수만큼 주사위를 굴려요. 안 낸 토큰은 지켜 둘 수 있어요
               </>
-            ) : mine.diceChoiceStat === "spellbook" ? (
+            ) : mine.diceChoiceStat === "mana" ? (
               <>
-                <InlineIcon name="spellbookToken" /> 마법 주문서 {choiceMax}개 중 몇 개를 낼까요? 낸 개수만큼 주사위를 굴려요. 안 낸 주문서는 지켜 둘 수 있어요
+                <InlineIcon name="manaToken" /> 마나토큰 {choiceMax}개 중 몇 개를 낼까요? 낸 개수만큼 주사위를 굴려요. 안 낸 마나토큰은 지켜 둘 수 있어요
               </>
             ) : (
               <>
@@ -936,7 +936,7 @@ function TournamentPanel({ game, myId }: { game: GameState; myId: string }) {
     <div className="flex flex-col gap-3">
       <div className="rounded-3xl border-2 border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
         <p className="font-display text-base text-amber-700 mb-1"><InlineIcon name="trophy" /> 마법 토너먼트</p>
-        <p className="text-xs">토너먼트 참가를 고르면 마법 주문서를 모두 내고 낸 개수만큼 주사위를 굴려, 나온 눈을 모두 더한 칸만큼 트랙을 전진해요. 트랙에는 상한이 없어요!</p>
+        <p className="text-xs">토너먼트 참가를 고르면 마나토큰을 모두 내고 낸 개수만큼 주사위를 굴려, 나온 눈을 모두 더한 칸만큼 트랙을 전진해요. 트랙에는 상한이 없어요!</p>
         <p className="text-xs">
           기말고사가 끝나면 1위 <b>학점 +{rewards[0]}</b>
           {rewards.length > 1 && <>, 2위 <b>학점 +{rewards[1]}</b></>}를 받아요. (0칸은 보상 없음 · 같은 칸이면 공동 순위)
@@ -1071,7 +1071,7 @@ export function GameBoard({
           <Chip icon="intToken" label="지력토큰" showLabel value={me.intelligenceTokens} className="bg-sky-50 text-sky-700 ring-1 ring-sky-200" />
           <Chip icon="staminaToken" label="체력토큰" showLabel value={me.staminaTokens} className="bg-green-50 text-green-700 ring-1 ring-green-200" />
           <Chip icon="charmToken" label="매력토큰" showLabel value={me.charmTokens} className="bg-pink-50 text-pink-700 ring-1 ring-pink-200" />
-          <Chip icon="spellbookToken" label="주문서" showLabel value={me.spellbookTokens} className="bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200" />
+          <Chip icon="manaToken" label="마나토큰" showLabel value={me.manaTokens} className="bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200" />
         </div>
       </header>
 

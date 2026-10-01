@@ -1,6 +1,6 @@
 // AI 봇 의사결정. 실제 게임(함께 플레이)과 밸런스 시뮬레이션(scripts/simulate.ts)이 함께 사용합니다.
 // 봇은 단순한 휴리스틱으로 움직입니다. 수업카드는 공개된 카드 중 성향에 맞는 능력치를 우선해 체력토큰이 허용하는 카드를 1장 고르고,
-// 자율활동은 상황(주문서 보유량, 토너먼트 진행도 등)과 성향 가중치를 곱해 점수가 높은 구역을 고릅니다.
+// 자율활동은 상황(마나토큰 보유량, 토너먼트 진행도 등)과 성향 가중치를 곱해 점수가 높은 구역을 고릅니다.
 import { BALANCE } from "./config.js";
 import {
   availableActivities,
@@ -107,7 +107,7 @@ export function chooseActivityAction(
   const free = availableActivities(state, playerId);
   const base: Record<ActivityId, number> = {
     tournament: effectiveStat(p, "spellPower") * 0.25,
-    creature: p.spellbookTokens >= 3 ? 2 : 0.5,
+    creature: p.manaTokens >= 3 ? 2 : 0.5,
     duel: 1.5,
     // 선두에게 뒤처졌다면 한 방을 노려볼 만하다 (탐험 역전 보너스)
     exploration: growthGap(state, playerId) >= BALANCE.catchUpGap ? 2.4 : 1.2,
@@ -138,7 +138,7 @@ function effectValue(state: GameState, strategy: BotStrategy, e: CardEffect): nu
   for (const [stat, n] of Object.entries(e.stats ?? {})) v += (n ?? 0) * weightsOf(state, strategy)[stat as StatKey] * examWeight(state, stat as StatKey) * 1.5;
   for (const [stat, n] of Object.entries(e.tempStats ?? {})) v += (n ?? 0) * weightsOf(state, strategy)[stat as StatKey] * examWeight(state, stat as StatKey) * 0.5;
   v += (e.credit ?? 0) * 3;
-  v += (e.peekExploration ? 0.8 : 0) + (e.nextSpellbook ?? 0) * 0.4 + (e.nextStamina ?? 0) * 0.5;
+  v += (e.peekExploration ? 0.8 : 0) + (e.nextMana ?? 0) * 0.4 + (e.nextStamina ?? 0) * 0.5;
   return v;
 }
 

@@ -1,5 +1,5 @@
 // 마도서 카드 (주문 대결 승자 보상). 획득 즉시 능력치가 영구 증가하고, 일부는 마법생물과 같은 추가 능력을 가집니다.
-// "마법 주문서"(1주차에 받는 토큰)와 이름이 겹치지 않도록 보상 카드는 "마도서"로 부릅니다.
+// "마나토큰"(1주차에 받는 토큰)와 이름이 겹치지 않도록 보상 카드는 "마도서"로 부릅니다.
 // 카드 구성과 수치는 초안이며 플레이테스트 후 조정합니다. 17장.
 import type { CreatureAbility, GrimoireCard, StatKey } from "./types.js";
 
@@ -19,7 +19,7 @@ const DEFS: Def[] = [
   { name: "응원 시집", description: "도전받아도 마음이 든든해요.", stat: "charm", ability: { trigger: "defend", effect: "stamina", amount: 1 } },
   { name: "결투자의 수첩", description: "대결 전략이 빼곡히 적혀 있어요.", stat: "spellPower", ability: { trigger: "duel", effect: "rollBonus", amount: 1 } },
   { name: "저주 대백과", description: "상대를 살짝 방해하는 주문 모음.", stat: "intelligence", ability: { trigger: "duel", effect: "enemyRollPenalty", amount: 1 } },
-  { name: "마력 저장서", description: "쓰고 남은 마력을 모아 둬요.", stat: "spellPower", ability: { trigger: "prep", effect: "spellbook", amount: 1 } },
+  { name: "마력 저장서", description: "쓰고 남은 마력을 모아 둬요.", stat: "spellPower", ability: { trigger: "prep", effect: "mana", amount: 1 } },
   { name: "도시락 레시피", description: "맛있는 도시락으로 기운 충전!", stat: "stamina", ability: { trigger: "prep", effect: "stamina", amount: 1 } },
   { name: "반격 교본", description: "도전받으면 더 힘이 나요.", stat: "spellPower", ability: { trigger: "defend", effect: "rollBonus", amount: 1 } },
   { name: "위로의 동화책", description: "져도 마음이 포근해져요.", stat: "charm", ability: { trigger: "lose", effect: "stamina", amount: 1 } },

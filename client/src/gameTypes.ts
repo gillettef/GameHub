@@ -45,7 +45,7 @@ export type CreatureElement = "sky" | "land" | "ocean";
 
 export interface CreatureAbility {
   trigger: "acquire" | "prep" | "duel" | "defend" | "lose" | "always";
-  effect: "spellPower" | "spellbook" | "stamina" | "rollBonus" | "enemyRollPenalty" | "enemyStamina" | "immune" | "charmToken";
+  effect: "spellPower" | "mana" | "stamina" | "rollBonus" | "enemyRollPenalty" | "enemyStamina" | "immune" | "charmToken";
   amount: number;
 }
 
@@ -83,9 +83,9 @@ export interface PlayerGameState {
   intelligenceTokens: number;
   staminaTokens: number;
   charmTokens: number;
-  spellbookTokens: number;
+  manaTokens: number;
   pendingStaminaTokens: number;
-  pendingSpellbookTokens: number;
+  pendingManaTokens: number;
   peekedExploration: PeekedExploration | null;
   tournamentTrack: number;
   classCards: ClassCard[];
@@ -122,7 +122,7 @@ export interface PendingRoll {
   title: string;
   lines: string[];
   // diceChoiceMax가 있으면 굴리기 전에 diceChoiceStat 토큰(기본 지력)을 1~max개 내고 낸 개수만큼 굴릴 수 있다 (연구실 실험·탐험 판정)
-  entries: { playerId: string; label: string; diceCount: number; diceChoiceMax?: number; diceChoiceStat?: "intelligence" | "stamina" | "spellbook" | "charm"; diceChoices?: { stat: "intelligence" | "stamina" | "charm"; max: number }[]; dice: number[] | null; confirmed: boolean; rerolls: number }[];
+  entries: { playerId: string; label: string; diceCount: number; diceChoiceMax?: number; diceChoiceStat?: "intelligence" | "stamina" | "mana" | "charm"; diceChoices?: { stat: "intelligence" | "stamina" | "charm"; max: number }[]; dice: number[] | null; confirmed: boolean; rerolls: number }[];
 }
 
 // 3주차 선택 단계에서 각자 고른 활동 (모두에게 공개). 진행 단계에서는 이 순서대로 하나씩 처리한다
@@ -146,8 +146,8 @@ export interface OfferCardView {
   name: string;
   description: string;
   lines: string[];
-  // 가져가는 데 드는 비용 (체력토큰 또는 마법 주문서)
-  cost?: { kind: "stamina" | "spellbook"; amount: number };
+  // 가져가는 데 드는 비용 (체력토큰 또는 마나토큰)
+  cost?: { kind: "stamina" | "mana"; amount: number };
   // 마법생물 조련에 쓸 수 있는 토큰 종류 (이 중 하나라도 있어야 가져갈 수 있다)
   tokenNeeds?: ("intelligence" | "stamina" | "charm")[];
   // 카드 이름 아래에 붙는 짧은 분류 (마법생물의 속성 · 종류)
@@ -182,7 +182,7 @@ export interface PublicRules {
   activityMaxParticipants: number;
   activitySecondParticipantCost: number;
   duelCharmFee: number;
-  duelSpellbookFee: number;
+  duelManaFee: number;
   midtermRound: number;
   midtermRevealRound: number;
   finalRevealRound: number;
@@ -190,7 +190,7 @@ export interface PublicRules {
   tournamentRewards: number[];
   // 최종 점수 = 주문력 × 학점 + 마법생물 세트(하늘·육지·바다 1장씩) 수 × creatureSetScore
   creatureSetScore: number;
-  // 마법생물을 가져오는 데 드는 최소 마법 주문서 (이보다 적으면 마법생물 조련을 고를 수 없다)
+  // 마법생물을 가져오는 데 드는 최소 마나토큰 (이보다 적으면 마법생물 조련을 고를 수 없다)
 }
 
 export interface GameState {
@@ -224,7 +224,7 @@ export interface GameState {
   exams: { midterm: ExamCard | null; final: ExamCard | null };
   examResults: ExamResult[];
   // (kept: 이 사람이 다음 달로 남긴 토큰 1개. 소멸 수량은 남긴 것을 뺀 값)
-  cleanupSummary: { playerId: string; intelligenceTokens: number; staminaTokens: number; charmTokens: number; spellbookTokens: number; kept: "intelligence" | "stamina" | null }[];
+  cleanupSummary: { playerId: string; intelligenceTokens: number; staminaTokens: number; charmTokens: number; manaTokens: number; kept: "intelligence" | "stamina" | null }[];
   // 4주차(정리)에서 다음 달로 남길 토큰을 고르는 중: 남길 토큰이 있는 사람만 들어 있고, null이면 아직 고르지 않았다
   cleanupKeep: Record<string, KeepChoice | null>;
   classLeft: number;
@@ -255,9 +255,9 @@ export const ACTIVITY_LABEL: Record<ActivityId, string> = {
 
 // 활동 카드에 함께 보여줄 한 줄 설명
 export const ACTIVITY_HINT: Record<ActivityId, string> = {
-  tournament: "주문서를 모두 내고, 낸 만큼 주사위를 굴려 합친 칸만큼 트랙 전진 → 학점",
-  creature: "카드 2장 공개, 주문서만큼 주사위 + 생물별 능력치(체력·매력·주문력 섞음)로 조련 판정, 하늘·육지·바다를 1장씩 모으면 세트 점수",
-  duel: "아직 안 고른 한 명을 지목해 강제 대결, 주문서를 모두 내고 낸 만큼 주사위를 굴려 이기면 마도서 1장",
+  tournament: "마나토큰을 모두 내고, 낸 만큼 주사위를 굴려 합친 칸만큼 트랙 전진 → 학점",
+  creature: "카드 2장 공개, 마나토큰만큼 주사위 + 생물별 능력치(체력·매력·주문력 섞음)로 조련 판정, 하늘·육지·바다를 1장씩 모으면 세트 점수",
+  duel: "아직 안 고른 한 명을 지목해 강제 대결, 마나토큰을 모두 내고 낸 만큼 주사위를 굴려 이기면 마도서 1장",
   exploration: "카드 2장 중 하나를 골라 카드가 정한 지력 또는 체력토큰을 내고 낸 만큼 주사위 판정! 크게 벌거나 크게 잃어요",
   lab: "심화학습: 연구 카드 2장 중 1장, 지력토큰을 몇 개 낼지 골라 낸 만큼 주사위를 굴려 안정적으로 성장",
 };
@@ -297,11 +297,11 @@ export function activityBlockReason(game: GameState, playerId: string, activityI
   if (!canPay(player, 0, 0, extra)) return `매력토큰 ${extra}개가 더 필요해요`;
   const open = activityOpenCost(game, activityId);
   if (!canPay(player, open, 0, extra)) return `카드를 열 지력토큰 ${open}개가 필요해요`;
-  if (activityId === "tournament" && player.spellbookTokens < 1) return "마법 주문서가 1개 이상 필요해요";
+  if (activityId === "tournament" && player.manaTokens < 1) return "마나토큰이 1개 이상 필요해요";
   if (activityId === "creature" && player.intelligenceTokens + player.staminaTokens + player.charmTokens < 1) return "조련에 낼 지력·체력·매력토큰이 1개 이상 필요해요";
   if (activityId === "duel") {
-    const need = 1 + game.rules.duelSpellbookFee;
-    if (player.spellbookTokens < need) return `마법 주문서가 ${need}개 이상 필요해요`;
+    const need = 1 + game.rules.duelManaFee;
+    if (player.manaTokens < need) return `마나토큰이 ${need}개 이상 필요해요`;
     if (duelTargets(game, playerId).length === 0) return "지목할 수 있는 친구가 없어요";
     if (player.charm < game.rules.duelCharmFee) return `건넬 매력(${game.rules.duelCharmFee})이 없어요`;
   }
@@ -325,12 +325,12 @@ export function describeAbility(a: CreatureAbility): string {
   const when = { acquire: "획득 즉시", prep: "매달 준비 때", duel: "주문 대결 참여 시", defend: "대결 도전받을 때", lose: "대결 패배 시", always: "항상" }[a.trigger];
   const what = {
     spellPower: `주문력 영구 +${a.amount}`,
-    spellbook: `마법 주문서 +${a.amount}`,
+    mana: `마나토큰 +${a.amount}`,
     stamina: a.trigger === "prep" ? `체력토큰 +${a.amount}` : `다음 달 체력토큰 +${a.amount}`,
     rollBonus: `내 굴림 +${a.amount}`,
     enemyRollPenalty: `상대 굴림 -${a.amount}`,
     enemyStamina: `상대 다음 달 체력토큰 -${a.amount}`,
-    immune: "낸 주문서 1개를 다음 달에 돌려받음",
+    immune: "낸 마나토큰 1개를 다음 달에 돌려받음",
     charmToken: `매력토큰 +${a.amount}`,
   }[a.effect];
   return `${when}: ${what}`;
