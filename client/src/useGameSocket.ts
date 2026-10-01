@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ClientMessage, ServerMessage } from "./messages";
-import type { ActivityId, GameState } from "./gameTypes";
+import type { ActivityId, GameState, KeepChoice } from "./gameTypes";
 
 export interface RoomPlayer {
   id: string;
@@ -367,7 +367,7 @@ export function useGameSocket() {
   );
 
   const keepToken = useCallback(
-    (choice: "intelligence" | "stamina" | "none") => {
+    (choice: KeepChoice) => {
       const socket = ensureSocket();
       send(socket, { type: "keep_token", choice });
     },

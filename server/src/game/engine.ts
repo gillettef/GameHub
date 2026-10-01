@@ -33,6 +33,7 @@ import {
   type ExamResult,
   type GameState,
   type KeepChoice,
+  type KeptToken,
   type PlayerGameState,
   type RollContext,
 } from "./types.js";
@@ -131,6 +132,8 @@ function orderFromStarter(state: Pick<GameState, "turnOrder" | "startingPlayerIn
   const n = state.turnOrder.length;
   return Array.from({ length: n }, (_, i) => state.turnOrder[(state.startingPlayerIndex + i) % n]);
 }
+
+const KEEP_LABEL: Record<KeptToken, string> = { intelligence: "지력", stamina: "체력", charm: "매력", mana: "마나" };
 
 // 4주차(정리): 매력이 가장 높은 플레이어가 다음 달 선이 된다.
 // 현재 선과 매력이 같거나 더 높은 사람이 없으면 그대로, 최고 매력이 여럿이면 현재 선에서 시계방향으로 가장 가까운 사람
@@ -247,7 +250,7 @@ function createPlayer(id: string, name: string, isBot = false): PlayerGameState 
     manaTokens: 0,
     pendingStaminaTokens: 0,
     pendingManaTokens: 0,
-    carryTokens: { intelligence: 0, stamina: 0 },
+    carryTokens: { intelligence: 0, stamina: 0, charm: 0, mana: 0 },
     peekedExploration: null,
     tournamentTrack: 0,
     classCards: [],
@@ -370,10 +373,12 @@ function beginRound(state: GameState): void {
     player.pendingManaTokens = 0;
     // 매력 수치만큼 매력토큰: 구역 두 번째 참가비로 쓴다
     player.charmTokens = Math.max(0, effectiveStat(player, "charm") + sumEffect(prepAbilities, "charmToken"));
-    // 지난 4주차에 골라 남긴 지력토큰·체력토큰 1개
+    // 지난 4주차에 골라 남긴 토큰 1개
     player.intelligenceTokens += player.carryTokens.intelligence;
     player.staminaTokens += player.carryTokens.stamina;
-    player.carryTokens = { intelligence: 0, stamina: 0 };
+    player.charmTokens += player.carryTokens.charm;
+    player.manaTokens += player.carryTokens.mana;
+    player.carryTokens = { intelligence: 0, stamina: 0, charm: 0, mana: 0 };
   }
   // 중간고사(6개월)·기말고사(12개월) 달에는 2주차(정규수업)·3주차(자율활동) 대신 시험을 치른다
   if (isExamRound(state.round)) beginExam(state, state.round === BALANCE.midtermRound ? "midterm_exam" : "final_exam");
@@ -1185,7 +1190,7 @@ function resolveFirstRoll(state: GameState, contenders: string[], diceOf: (id: s
   beginRound(state);
 }
 
-// ── 4주차(정리): 남은 토큰은 사라지지만, 지력토큰·체력토큰 중 1개는 골라서 다음 달로 남길 수 있다 ──
+// ── 4주차(정리): 남은 토큰은 사라지지만, 네 종류 토큰 중 1개는 골라서 다음 달로 남길 수 있다 ──
 
 // 시험을 치르는 달: 1주차(준비) → 시험 → 4주차(정리)
 export const isExamRound = (round: number) => round === BALANCE.midtermRound || round === BALANCE.totalRounds;
@@ -1193,18 +1198,21 @@ export const isExamRound = (round: number) => round === BALANCE.midtermRound || 
 // 남길 수 있는 토큰 종류 (남은 개수가 1개 이상인 것). 시험 달에 다시 굴리기에 쓰고 남은 지력토큰도 남길 수 있다
 export function keepOptions(
   _state: Pick<GameState, "round">,
-  p: Pick<PlayerGameState, "intelligenceTokens" | "staminaTokens">,
-): Exclude<KeepChoice, "none">[] {
-  const options: Exclude<KeepChoice, "none">[] = [];
+  p: Pick<PlayerGameState, "intelligenceTokens" | "staminaTokens" | "charmTokens" | "manaTokens">,
+): KeptToken[] {
+  const options: KeptToken[] = [];
   if (p.intelligenceTokens > 0) options.push("intelligence");
   if (p.staminaTokens > 0) options.push("stamina");
+  if (p.charmTokens > 0) options.push("charm");
+  if (p.manaTokens > 0) options.push("mana");
   return options;
 }
 
-// 봇이 남길 토큰: 체력토큰(수업카드·주문력 카드 습득에 쓰인다)을 우선하고, 없으면 지력토큰
+// 봇이 남길 토큰: 체력토큰(수업카드·주문력 카드 습득에 쓰인다)을 우선하고, 없으면 지력·마나·매력 순
 export function autoKeepChoice(state: GameState, playerId: string): KeepChoice {
   const options = keepOptions(state, state.players[playerId]);
-  return options.includes("stamina") ? "stamina" : (options[0] ?? "none");
+  for (const kind of ["stamina", "intelligence", "mana", "charm"] as const) if (options.includes(kind)) return kind;
+  return "none";
 }
 
 function beginCleanupPhase(state: GameState): void {
@@ -1216,7 +1224,7 @@ function beginCleanupPhase(state: GameState): void {
     state.cleanupKeep[playerId] = player.isBot ? autoKeepChoice(state, playerId) : null;
   }
   if (Object.values(state.cleanupKeep).every((choice) => choice !== null)) finishCleanup(state);
-  else log(state, "4주차(정리): 다음 달로 남길 토큰을 골라요 (지력토큰 또는 체력토큰 1개)");
+  else log(state, "4주차(정리): 다음 달로 남길 토큰을 골라요 (아무 토큰 1개)");
 }
 
 // 남길 토큰을 고른다 (choice가 "none"이면 남기지 않는다). 남길 토큰이 있는 모두가 고르면 정리를 마친다
@@ -1224,9 +1232,9 @@ export function chooseKeepToken(state: GameState, playerId: string, choice: Keep
   if (state.phase !== "cleanup") throw new Error("지금은 4주차 정리 단계가 아닙니다.");
   if (!(playerId in state.cleanupKeep) || state.cleanupKeep[playerId] !== null) throw new Error("남길 토큰이 없거나 이미 골랐어요.");
   const player = state.players[playerId];
-  if (choice !== "none" && !keepOptions(state, player).includes(choice)) throw new Error("그 토큰은 남길 수 없어요 (남아 있는 지력토큰·체력토큰 중에서 골라 주세요).");
+  if (choice !== "none" && !keepOptions(state, player).includes(choice)) throw new Error("그 토큰은 남길 수 없어요 (남아 있는 토큰 중에서 골라 주세요).");
   state.cleanupKeep[playerId] = choice;
-  log(state, `${player.name}: ${choice === "none" ? "토큰을 남기지 않기로 했어요" : `${choice === "intelligence" ? "지력" : "체력"}토큰 1개를 다음 달로 남기기로 했어요`}`);
+  log(state, `${player.name}: ${choice === "none" ? "토큰을 남기지 않기로 했어요" : `${KEEP_LABEL[choice]}토큰 1개를 다음 달로 남기기로 했어요`}`);
   if (Object.values(state.cleanupKeep).every((c) => c !== null)) finishCleanup(state);
 }
 
@@ -1244,9 +1252,9 @@ function expireTempBoosts(state: GameState, player: PlayerGameState): void {
 }
 
 function finishCleanup(state: GameState): void {
-  const keptOf = (id: string): "intelligence" | "stamina" | null => {
+  const keptOf = (id: string): KeptToken | null => {
     const choice = state.cleanupKeep[id];
-    return choice === "intelligence" || choice === "stamina" ? choice : null;
+    return choice === undefined || choice === null || choice === "none" ? null : choice;
   };
   state.cleanupSummary = state.turnOrder.map((id) => {
     const p = state.players[id];
@@ -1255,8 +1263,8 @@ function finishCleanup(state: GameState): void {
       playerId: id,
       intelligenceTokens: p.intelligenceTokens - (kept === "intelligence" ? 1 : 0),
       staminaTokens: p.staminaTokens - (kept === "stamina" ? 1 : 0),
-      charmTokens: p.charmTokens,
-      manaTokens: p.manaTokens,
+      charmTokens: p.charmTokens - (kept === "charm" ? 1 : 0),
+      manaTokens: p.manaTokens - (kept === "mana" ? 1 : 0),
       kept,
     };
   });
@@ -1264,7 +1272,12 @@ function finishCleanup(state: GameState): void {
     const player = state.players[playerId];
     const kept = keptOf(playerId);
     expireTempBoosts(state, player);
-    player.carryTokens = { intelligence: kept === "intelligence" ? 1 : 0, stamina: kept === "stamina" ? 1 : 0 };
+    player.carryTokens = {
+      intelligence: kept === "intelligence" ? 1 : 0,
+      stamina: kept === "stamina" ? 1 : 0,
+      charm: kept === "charm" ? 1 : 0,
+      mana: kept === "mana" ? 1 : 0,
+    };
     player.intelligenceTokens = 0;
     player.staminaTokens = 0;
     player.charmTokens = 0;

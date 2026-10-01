@@ -90,15 +90,16 @@ function prepBanner(game: GameState, myId: string): Announcement {
   });
 }
 
+const KEEP_NAMES = { intelligence: "지력", stamina: "체력", charm: "매력", mana: "마나" } as const;
+
 function cleanupBanner(prev: GameState, next: GameState, myId: string): Announcement {
   return make({
     kind: "banner",
     icon: "bag",
     title: `${prev.round}개월 4주차 · 정리`,
-    subtitle: "남은 토큰은 사라져요(골라서 남긴 지력·체력토큰 1개는 다음 달로 가요). 능력치와 카드, 학점은 그대로예요",
+    subtitle: "남은 토큰은 사라져요(골라서 남긴 토큰 1개는 다음 달로 가요). 능력치와 카드, 학점은 그대로예요",
     lines: next.cleanupSummary
-      .filter((c) => c.kept)
-      .map((c) => `${next.players[c.playerId].name}${c.playerId === myId ? " (나)" : ""}: ${c.kept === "intelligence" ? "지력" : "체력"}토큰 1개를 다음 달로 남겼어요`),
+      .flatMap((c) => (c.kept ? [`${next.players[c.playerId].name}${c.playerId === myId ? " (나)" : ""}: ${KEEP_NAMES[c.kept]}토큰 1개를 다음 달로 남겼어요`] : [])),
     tokens: {
       mode: "wipe",
       rows: tokenRows(

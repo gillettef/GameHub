@@ -1135,7 +1135,7 @@ test("4주차 정리: 남은 지력토큰·체력토큰이 있는 사람은 1개
   assert.equal(pa.staminaTokens, effectiveStat(pa, "stamina"), "체력토큰은 남기지 않았다");
   assert.equal(pb.staminaTokens, effectiveStat(pb, "stamina") + 1, "체력토큰 1개가 남았다");
   assert.equal(pb.intelligenceTokens, effectiveStat(pb, "intelligence"));
-  assert.deepEqual(pa.carryTokens, { intelligence: 0, stamina: 0 }, "남긴 토큰은 한 번만 더해진다");
+  assert.deepEqual(pa.carryTokens, { intelligence: 0, stamina: 0, charm: 0, mana: 0 }, "남긴 토큰은 한 번만 더해진다");
   assert.equal(pa.charmTokens, effectiveStat(pa, "charm"), "매력토큰과 마나토큰은 남길 수 없다");
 });
 
@@ -1158,13 +1158,22 @@ test("4주차 정리: 남기지 않기를 고를 수 있고, 남아 있지 않�
   rollWith(none, { [x]: [6, 6] });
   advanceResolution(none);
   rollWith(none, { [y]: [6, 6] });
-  assert.equal(none.round, 2, "남길 토큰이 없으면 정리 단계에서 멈추지 않는다");
+  // 지력·체력토큰은 없어도 남은 매력토큰은 남길 수 있다 (모든 종류의 토큰 중 1개)
+  assert.equal(none.phase, "cleanup", "매력토큰이 남아 있으면 남길 토큰을 고른다");
+  const charmBefore = none.players[x].charmTokens;
+  chooseKeepToken(none, x, "charm");
+  chooseKeepToken(none, y, "none");
+  assert.equal(none.round, 2);
+  assert.equal(none.players[x].charmTokens, effectiveStat(none.players[x], "charm") + 1, "남긴 매력토큰 1개가 다음 달에 더해진다");
+  assert.ok(charmBefore > 0);
+  assert.equal(none.players[y].charmTokens, effectiveStat(none.players[y], "charm"));
 });
 
-test("4주차 정리: 시험 달에도 남은 지력토큰·체력토큰 중에서 고를 수 있다", () => {
-  assert.deepEqual(keepOptions({ round: BALANCE.midtermRound }, { intelligenceTokens: 3, staminaTokens: 2 }), ["intelligence", "stamina"]);
-  assert.deepEqual(keepOptions({ round: 5 }, { intelligenceTokens: 0, staminaTokens: 2 }), ["stamina"]);
-  assert.deepEqual(keepOptions({ round: 5 }, { intelligenceTokens: 0, staminaTokens: 0 }), []);
+test("4주차 정리: 시험 달에도 남은 토큰(지력·체력·매력·마나) 중에서 고를 수 있다", () => {
+  const t = (intelligenceTokens: number, staminaTokens: number, charmTokens: number, manaTokens: number) => ({ intelligenceTokens, staminaTokens, charmTokens, manaTokens });
+  assert.deepEqual(keepOptions({ round: BALANCE.midtermRound }, t(3, 2, 0, 0)), ["intelligence", "stamina"]);
+  assert.deepEqual(keepOptions({ round: 5 }, t(0, 2, 1, 4)), ["stamina", "charm", "mana"]);
+  assert.deepEqual(keepOptions({ round: 5 }, t(0, 0, 0, 0)), []);
 });
 
 test("4주차 정리: 봇은 남길 토큰을 자동으로 골라서 게임이 멈추지 않는다", () => {

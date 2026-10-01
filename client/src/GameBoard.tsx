@@ -866,39 +866,39 @@ function RollPanel({
   );
 }
 
-// 4주차(정리): 남은 지력토큰·체력토큰 중 1개를 다음 달로 남길 수 있다
+// 4주차(정리): 남은 토큰(지력·체력·매력·마나) 중 1개를 다음 달로 남길 수 있다
+const KEEP_OPTIONS = [
+  { kind: "intelligence", count: "intelligenceTokens", icon: "intToken", label: "지력", className: "bg-sky-100 text-sky-800" },
+  { kind: "stamina", count: "staminaTokens", icon: "staminaToken", label: "체력", className: "bg-green-100 text-green-800" },
+  { kind: "charm", count: "charmTokens", icon: "charmToken", label: "매력", className: "bg-pink-100 text-pink-800" },
+  { kind: "mana", count: "manaTokens", icon: "manaToken", label: "마나", className: "bg-purple-200 text-purple-900" },
+] as const;
+
 function CleanupPanel({ game, myId, onKeep }: { game: GameState; myId: string; onKeep: (choice: KeepChoice) => void }) {
   const me = game.players[myId];
   const myChoice = game.cleanupKeep[myId]; // undefined: 남길 수 있는 토큰이 없음, null: 고르는 중
   const waiting = Object.entries(game.cleanupKeep)
     .filter(([id, choice]) => choice === null && id !== myId)
     .map(([id]) => game.players[id].name);
-  const label = (choice: KeepChoice) => (choice === "intelligence" ? "지력토큰" : choice === "stamina" ? "체력토큰" : "남기지 않기");
+  const label = (choice: KeepChoice) => KEEP_OPTIONS.find((o) => o.kind === choice)?.label + "토큰" || "남기지 않기";
 
   return (
     <div className="pop-in bg-white rounded-3xl border-2 border-pink-300 shadow-sm p-4">
       <p className="font-display text-lg text-purple-700 text-center">
         <InlineIcon name="bag" /> 4주차 정리
       </p>
-      <p className="mt-1 text-center text-sm text-purple-500">남은 토큰은 사라지지만, 지력토큰이나 체력토큰 중 <b>1개</b>는 다음 달로 남길 수 있어요.</p>
+      <p className="mt-1 text-center text-sm text-purple-500">남은 토큰은 사라지지만, 어떤 토큰이든 <b>1개</b>는 다음 달로 남길 수 있어요.</p>
       {myChoice === null ? (
         <div className="mt-3 flex flex-col gap-2">
-          {me.intelligenceTokens > 0 && (
+          {KEEP_OPTIONS.filter((o) => me[o.count] > 0).map((o) => (
             <button
-              className="min-h-12 rounded-2xl bg-sky-100 px-3 py-2 text-sky-800 font-semibold active:scale-95 transition-transform"
-              onClick={() => onKeep("intelligence")}
+              key={o.kind}
+              className={`min-h-12 rounded-2xl px-3 py-2 font-semibold active:scale-95 transition-transform ${o.className}`}
+              onClick={() => onKeep(o.kind)}
             >
-              <InlineIcon name="intToken" /> 지력토큰 1개 남기기 (남은 {me.intelligenceTokens}개 중)
+              <InlineIcon name={o.icon} /> {o.label}토큰 1개 남기기 (남은 {me[o.count]}개 중)
             </button>
-          )}
-          {me.staminaTokens > 0 && (
-            <button
-              className="min-h-12 rounded-2xl bg-green-100 px-3 py-2 text-green-800 font-semibold active:scale-95 transition-transform"
-              onClick={() => onKeep("stamina")}
-            >
-              <InlineIcon name="staminaToken" /> 체력토큰 1개 남기기 (남은 {me.staminaTokens}개 중)
-            </button>
-          )}
+          ))}
           <button
             className="min-h-12 rounded-2xl bg-purple-100 px-3 py-2 text-purple-700 active:scale-95 transition-transform"
             onClick={() => onKeep("none")}
