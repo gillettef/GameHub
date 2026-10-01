@@ -1072,6 +1072,7 @@ export function GameBoard({
   return (
     <div className="min-h-dvh flex flex-col max-w-md mx-auto">
       <header className="sticky top-0 z-40 border-b-2 border-purple-100 bg-purple-50/95 px-4 pb-2 pt-[max(0.5rem,env(safe-area-inset-top))] backdrop-blur">
+        {me.isBot && game.phase !== "ended" && <AwayBanner onResume={onResumeSeat} />}
         <div className="flex items-center justify-between gap-2">
           <h1 className="text-lg text-purple-700 whitespace-nowrap"><Icon name="school" className="mr-1 h-5 w-5" />{game.round}/12개월</h1>
           <p className={`truncate rounded-full px-3 py-1 text-sm ${myTurn ? "bg-pink-200 text-pink-800" : "bg-purple-100 text-purple-600"}`}>
@@ -1108,7 +1109,7 @@ export function GameBoard({
         </div>
       </header>
 
-      <main className="flex-1 px-4 py-4 pb-24 flex flex-col gap-4">
+      <main className="flex-1 px-4 py-4 pb-[calc(9rem+env(safe-area-inset-bottom))] flex flex-col gap-4">
         {tab === "game" && (
           <>
             {game.phase !== "setup" && game.phase !== "ended" && (
@@ -1209,8 +1210,8 @@ export function GameBoard({
         </ul>
       </nav>
 
-      {me.isBot && game.phase !== "ended" && <AwayBanner onResume={onResumeSeat} />}
       <SocialBar
+        key={tab}
         timer={turnTimer}
         reactions={reactions}
         names={Object.fromEntries(game.turnOrder.map((id) => [id, game.players[id].name]))}

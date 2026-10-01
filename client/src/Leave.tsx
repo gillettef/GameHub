@@ -111,7 +111,7 @@ export function GameMenu({
           aria-label="메뉴"
           onClick={() => setSheet(false)}
         >
-          <div className="pop-in w-full max-w-sm rounded-3xl bg-white p-4 shadow-lg" onClick={(e) => e.stopPropagation()}>
+          <div className="pop-in max-h-[85dvh] w-full max-w-sm overflow-y-auto rounded-3xl bg-white p-4 shadow-lg" onClick={(e) => e.stopPropagation()}>
             <button
               className="flex min-h-12 w-full items-center gap-2 rounded-2xl bg-pink-50 px-4 text-pink-700 active:scale-95 transition-transform"
               onClick={() => {
@@ -123,7 +123,7 @@ export function GameMenu({
               게임 나가기
             </button>
             {kickable.length > 0 && onKick && (
-              <div className="mt-2 rounded-2xl bg-purple-50 p-2">
+              <div className="mt-2 flex flex-col gap-1 rounded-2xl bg-purple-50 p-2">
                 <p className="px-2 pb-1 text-xs text-purple-500">방장 메뉴 · 자리를 오래 비운 친구는 내보내면 봇이 이어받아요</p>
                 {kickable.map((p) => (
                   <button
@@ -135,7 +135,7 @@ export function GameMenu({
                     }}
                   >
                     <Icon name="x" className="h-4 w-4 text-pink-500" />
-                    <span className="truncate">{p.name} 내보내기</span>
+                    <span className="min-w-0 flex-1 truncate">{p.name} 내보내기</span>
                   </button>
                 ))}
               </div>
@@ -158,6 +158,7 @@ export function GameMenu({
             onClick={() => setKickTarget(null)}
           >
             <div className="pop-in w-full max-w-sm rounded-3xl bg-white p-5 text-center shadow-lg" onClick={(e) => e.stopPropagation()}>
+              <Icon name="door" className="mb-1 h-8 w-8 text-pink-400" />
               <p className="font-display text-lg text-purple-700">{kickTarget.name}님을 내보낼까요?</p>
               <p className="mt-1 text-sm text-purple-600">내보내면 봇이 대신 플레이하고, 이 게임에는 다시 돌아올 수 없어요.</p>
               <div className="mt-4 flex flex-col gap-2">

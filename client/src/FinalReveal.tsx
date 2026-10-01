@@ -162,7 +162,7 @@ export function FinalReveal({ game, onLeave, isHost, onRematch }: { game: GameSt
           </ol>
         </>
       )}
-      <div className="mt-4 flex flex-col gap-1">
+      <div className="mt-4 flex flex-col gap-2">
         {!finished && (
           <button className="min-h-11 w-full rounded-xl text-sm text-purple-600 active:scale-95 transition-transform" onClick={() => setStep(lastStep)}>
             건너뛰기
