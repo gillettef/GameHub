@@ -6,6 +6,7 @@ import {
   availableActivities,
   canPay,
   duelTargets,
+  explorationChance,
   rerollDice,
   growthGap,
   takeClassCard,
@@ -31,6 +32,8 @@ export interface BotStrategy {
   // 이 라운드부터는 lateClassWeights로 갈아탄다 (초반엔 지력·체력, 후반엔 주문력처럼 단계별로 성장하는 성향)
   lateClassWeights?: Record<StatKey, number>;
   lateFromRound?: number;
+  // 후반(lateFromRound 이후)의 자율활동 성향. 없으면 activityBias를 계속 쓴다
+  lateActivityBias?: Record<ActivityId, number>;
   activityBias: Record<ActivityId, number>;
   // true면 아무 생각 없이 무작위로 행동 (시뮬레이션 비교용)
   random?: boolean;
@@ -69,6 +72,10 @@ function examWeight(state: GameState, stat: StatKey): number {
 // 지금 라운드에 적용할 능력치 가중치 (단계별 성향이면 후반에 갈아탄다)
 function weightsOf(state: GameState, strategy: BotStrategy): Record<StatKey, number> {
   return strategy.lateClassWeights && state.round >= (strategy.lateFromRound ?? 7) ? strategy.lateClassWeights : strategy.classWeights;
+}
+
+function biasOf(state: GameState, strategy: BotStrategy): Record<ActivityId, number> {
+  return strategy.lateActivityBias && state.round >= (strategy.lateFromRound ?? 7) ? strategy.lateActivityBias : strategy.activityBias;
 }
 
 const pickOne = <T,>(items: T[]): T => items[Math.floor(Math.random() * items.length)];
@@ -111,7 +118,7 @@ export function chooseActivityAction(
     const crowded = state.activitySlots[a].length > 0 ? 0.8 : 1;
     return {
       a,
-      score: (strategy.random ? 1 : base[a] * strategy.activityBias[a] * crowded) * (0.7 + Math.random() * 0.6),
+      score: (strategy.random ? 1 : base[a] * biasOf(state, strategy)[a] * crowded) * (0.7 + Math.random() * 0.6),
     };
   });
   scored.sort((x, y) => y.score - x.score);
@@ -140,9 +147,7 @@ function explorationValue(state: GameState, strategy: BotStrategy, player: Playe
   const failure = effectValue(state, strategy, card.failure);
   if (card.coop) return 0.6 * success;
   if (!card.check) return success;
-  const catchUp = growthGap(state, player.id) >= BALANCE.catchUpGap ? BALANCE.catchUpBonus : 0;
-  const need = card.check.target - effectiveStat(player, card.check.stat) - catchUp;
-  const p = Math.min(1, Math.max(0, (7 - Math.min(7, Math.max(1, need))) / 6));
+  const p = explorationChance(state, player, card);
   return p * success + (1 - p) * failure;
 }
 

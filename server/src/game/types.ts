@@ -87,9 +87,9 @@ export interface ExplorationCard {
   id: string;
   name: string;
   description: string;
-  // 판정: 주사위 1개 + 해당 능력치 >= target 이면 성공. 없으면 무조건 성공
+  // 판정: stat(지력·체력) 수치만큼 주사위를 굴려 합이 목표값 이상이면 성공. target은 난이도 × 10 (10이 표준, 라운드마다 목표값이 기준 능력치에 맞춰 오른다). 없으면 무조건 성공
   check?: { stat: StatKey; target: number };
-  // 협력 카드: 두 명이 함께해야 열린다. 둘의 (주사위 + stat) 합이 pairTarget 이상이면 성공하고 두 명 모두 효과를 받는다.
+  // 협력 카드: 두 명이 함께해야 열린다. 각자 stat 수치만큼 주사위를 굴려 둘의 합이 목표값(pairTarget은 난이도 × 18) 이상이면 성공하고 두 명 모두 효과를 받는다.
   // 끝까지 함께할 친구가 없으면 무효가 된다 (check는 쓰지 않는다)
   coop?: { stat: StatKey; pairTarget: number };
   success: CardEffect;
@@ -154,7 +154,7 @@ export interface ExamResult {
 // 주사위 굴리기 단계: 굴려야 하는 사람이 모두 버튼을 눌러 굴릴 때까지 게임이 기다린다
 // 모두 굴리면 결과를 보여 주고, 굴린 사람들은 (지력토큰으로 일부 주사위를 다시 굴린 뒤) "확인"을 눌러야 결과가 적용된다
 export interface PendingRoll {
-  kind: "first" | "tournament" | "duel" | "exploration" | "exam";
+  kind: "first" | "tournament" | "creature" | "lab" | "duel" | "exploration" | "exam";
   title: string;
   lines: string[];
   // dice가 null이면 아직 안 굴린 사람, confirmed는 결과를 확인하고 다음으로 넘기기를 누른 사람
@@ -197,8 +197,10 @@ export interface DuelPair {
 export type RollContext =
   | { kind: "first"; contenders: string[] }
   | { kind: "tournament"; playerId: string }
+  | { kind: "creature"; playerId: string; card: CreatureCard; target: number }
+  | { kind: "lab"; playerId: string; card: LabCard; target: number }
   | { kind: "duel"; challengerId: string; targetId: string }
-  | { kind: "exploration"; card: ExplorationCard; playerIds: string[]; mode: "single" | "pair" }
+  | { kind: "exploration"; card: ExplorationCard; playerIds: string[]; mode: "single" | "pair"; target: number }
   | { kind: "exam"; examType: "midterm_exam" | "final_exam"; card: ExamCard };
 
 // 구역에 공개된 카드를 화면에 보여 주기 위한 정보 (카드 종류와 상관없이 같은 모양)

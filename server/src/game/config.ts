@@ -16,7 +16,7 @@ export const BALANCE = {
   // 마법 토너먼트: 최종 순위 보상 (1위, 2위 순서). 트랙에는 상한이 없다
   tournamentRewards: [2, 1],
   // 마법 토너먼트는 주문력 수치만큼 굴린 주사위 합만큼 전진한다. 이정표: 참가해서 트랙이 milestoneStep칸을 넘을 때마다 학점 milestoneCredit을 바로 받는다 (다른 사람과 경쟁하지 않는 보상)
-  tournamentMilestoneStep: 70,
+  tournamentMilestoneStep: 100,
   tournamentMilestoneCredit: 1,
   // 시험 순위별 학점 (1위, 2위, 그 이하는 마지막 값)
   examCredits: [3, 2, 1],
@@ -27,6 +27,18 @@ export const BALANCE = {
   activityOpenCount: 2,
   // 최종 점수 = 주문력 × 학점 + 마법생물 세트(하늘·육지·바다 1장씩) 수 × creatureSetScore (기획 검토 중: 3점 또는 5점)
   creatureSetScore: 5,
+  // 판정 목표값 = 주사위 평균(3.5) × 그 달의 기준 능력치 × 난이도. 기준 능력치는 rollBenchmarkStart에서 매달 rollBenchmarkPerRound씩 오른다
+  // (성장이 기준보다 앞서면 쉽고 뒤처지면 어렵다). 탐험·협력 탐험 카드는 카드마다 난이도가 정해져 있다
+  rollBenchmarkStart: 2,
+  rollBenchmarkPerRound: 0.5,
+  // 마법생물 조련: 가진 주문서만큼 주사위를 굴려 (합 + 매력)이 3.5 × 요구 주문서 × creatureDifficulty 이상이면 성공
+  creatureDifficulty: 0.8,
+  // 연구실 실험: 카드 비용을 내고 남은 체력토큰만큼(최소 1개) 주사위를 굴려 합이 이 값 이상이면 성공 (안정적인 능력치 상향)
+  labTarget: 2,
+  // 탐험 카드 목표값 배율 (1이면 카드에 적힌 난이도 그대로)
+  exploreDifficultyScale: 1.25,
+  // 주문력 수업카드가 다른 능력치 카드보다 더 드는 습득 체력토큰
+  spellClassExtraCost: 4,
   // 탐험 역전 보너스: 선두와의 성장 점수(능력치 합 + 학점×3) 격차가 이 값 이상이면 판정에 보너스를 더한다
   catchUpGap: 4,
   catchUpBonus: 2,

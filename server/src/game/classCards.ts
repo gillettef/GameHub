@@ -3,6 +3,7 @@
 // 능력치별 12장: +1 카드 10장(이름 5종 × 2장), +2 카드 2장(이름 2종 × 1장). 수치/수량은 플레이테스트 후 조정합니다.
 // 카드마다 습득에 필요한 체력토큰(takeCost)이 다릅니다. 카드는 지력토큰을 내고 열어 봐야 비용을 알 수 있고,
 // 싼 카드부터 먼저 소진되므로 덱이 줄어들수록 남는 카드가 비싸져 자연스럽게 성장이 느려집니다.
+import { BALANCE } from "./config.js";
 import type { ClassCard, StatKey } from "./types.js";
 
 // [이름, 설명, 습득에 필요한 체력토큰]
@@ -60,14 +61,17 @@ const RARE: Record<StatKey, Def[]> = {
 
 const STATS = Object.keys(NORMAL) as StatKey[];
 
-// 카드 종류 한 벌 (id 없음)
+// 카드 종류 한 벌 (id 없음). 주문력 카드는 습득 체력토큰이 spellClassExtraCost만큼 더 든다:
+// 초반엔 체력을 키워야 살 수 있어서 "초반 지력·체력 → 후반 주문력·학점" 흐름이 된다
 function templates(): Omit<ClassCard, "id">[] {
   const list: Omit<ClassCard, "id">[] = [];
   for (const stat of STATS) {
-    for (const [name, description, takeCost] of NORMAL[stat]) {
+    const extra = stat === "spellPower" ? BALANCE.spellClassExtraCost : 0;
+    for (const [name, description, baseCost] of NORMAL[stat]) {
+      const takeCost = baseCost + extra;
       for (let i = 0; i < 2; i++) list.push({ name, description, takeCost, statBoost: { stat, amount: 1 } });
     }
-    for (const [name, description, takeCost] of RARE[stat]) list.push({ name, description, takeCost, statBoost: { stat, amount: 2 } });
+    for (const [name, description, baseCost] of RARE[stat]) list.push({ name, description, takeCost: baseCost + extra, statBoost: { stat, amount: 2 } });
   }
   return list;
 }

@@ -18,6 +18,18 @@ const STRATS: BotStrategy[] = [
   { name: "주문대결", classWeights: { ...W, spellPower: 1.5 }, activityBias: focus("duel") },
   { name: "탐험", classWeights: W, activityBias: focus("exploration") },
   { name: "연구실", classWeights: W, activityBias: focus("lab") },
+  { name: "지력몰빵", classWeights: { intelligence: 3, spellPower: 0.8, stamina: 1, charm: 0.3 }, activityBias: even },
+  { name: "체력몰빵", classWeights: { intelligence: 0.8, spellPower: 0.8, stamina: 3, charm: 0.3 }, activityBias: even },
+  { name: "주문력몰빵", classWeights: { intelligence: 0.8, spellPower: 3, stamina: 1, charm: 0.3 }, activityBias: even },
+  { name: "주문력+주문활동", classWeights: { intelligence: 0.8, spellPower: 3, stamina: 1, charm: 0.3 }, activityBias: { tournament: 2, creature: 1.5, duel: 1.2, exploration: 0.8, lab: 0.5 } },
+  {
+    name: "단계성장",
+    classWeights: { intelligence: 2, spellPower: 0.6, stamina: 2, charm: 0.5 },
+    lateClassWeights: { intelligence: 0.8, spellPower: 3, stamina: 0.8, charm: 0.3 },
+    lateFromRound: 7,
+    activityBias: { tournament: 0.6, creature: 0.6, duel: 0.6, exploration: 2, lab: 2 },
+    lateActivityBias: { tournament: 2, creature: 1.5, duel: 1.2, exploration: 0.8, lab: 0.5 },
+  },
 ];
 
 function play(strats: BotStrategy[]): GameState {
@@ -38,7 +50,9 @@ function play(strats: BotStrategy[]): GameState {
 const N = Number(process.argv[2]) || 150;
 const n = Number(process.argv[3]) || 4;
 const rows: Record<string, unknown>[] = [];
+const only = process.env.ONLY?.split(",");
 for (const s of STRATS) {
+  if (only && !only.includes(s.name)) continue;
   let wins = 0; const ach: number[] = [], cr: number[] = [], sp: number[] = [];
   for (let g = 0; g < N; g++) {
     const st = play([s, ...Array.from({ length: n - 1 }, () => STRATS[0])]);
