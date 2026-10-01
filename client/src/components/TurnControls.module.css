@@ -36,6 +36,9 @@
 
 .passesBadge {
   flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
   padding: 2px 7px;
   border-radius: var(--radius-full);
   background: color-mix(in srgb, var(--color-muted) 20%, transparent);
@@ -44,30 +47,99 @@
   font-weight: 600;
 }
 
-.confirmText {
-  flex: 1 1 auto;
-  min-width: 120px;
-  font-size: var(--text-small);
-  font-weight: 600;
-  color: var(--color-danger);
-}
-
-/* 버튼 높이는 이제 global.css 의 .pill/.pill--outline 기본값(34px)이 앱 전체와 이미 같다
-   (2026-09-28 사용자 지시: 모든 버튼 크기를 통일). 이 바 안에서는 좁은 자리에 맞춰 좌우 여백과
-   글자 크기만 살짝 줄인다. */
-.row :global(.pill) {
+/* 아이콘 버튼(2026-10-01): 모바일 터치 영역 40px 이상. 라벨 대신 아이콘 + aria-label/title */
+.iconBtn,
+.endBtn {
+  position: relative;
   flex: none;
-  padding: 0 var(--space-3);
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  border-radius: var(--radius-full);
   font-size: var(--text-small);
+  font-weight: 700;
+  transition:
+    background var(--motion-fast) var(--ease-standard),
+    transform var(--motion-fast) var(--ease-standard);
 }
 
-.row :global(.pill--outline) {
+.iconBtn:active:not(:disabled),
+.endBtn:active:not(:disabled) {
+  transform: scale(0.94);
+}
+
+.iconBtn {
+  width: 44px;
+  border: 1px solid var(--color-muted);
+  color: var(--color-text);
+}
+
+.endBtn {
+  min-width: 56px;
   padding: 0 var(--space-2);
+  background: var(--color-accent);
+  color: var(--color-accent-text);
 }
 
-/* 손패 교체 모드가 켜져 있을 때 토글 버튼 강조 */
+.iconBtn:disabled,
+.endBtn:disabled {
+  opacity: 0.4;
+}
+
+/* 손패 교체 모드 */
 .discardActive {
   background: var(--color-accent);
   color: var(--color-accent-text);
   border-color: var(--color-accent);
+}
+
+.count {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-full);
+  background: var(--color-seat-0);
+  color: var(--color-navy);
+  font-size: var(--text-micro);
+  font-weight: 700;
+}
+
+.endSwap {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: var(--text-micro);
+}
+
+/* 낼 수 있는 카드가 남은 채 패스하려는 첫 번째 탭: 눈에 띄게 맥동하며 한 번 더 누르라고 알린다 */
+.armed {
+  animation: end-armed 700ms var(--ease-standard) infinite alternate;
+}
+
+.armedText {
+  font-size: var(--text-micro);
+  white-space: nowrap;
+}
+
+@keyframes end-armed {
+  from {
+    transform: scale(1);
+  }
+  to {
+    transform: scale(1.07);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .armed {
+    animation: none;
+  }
 }

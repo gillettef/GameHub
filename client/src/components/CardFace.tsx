@@ -74,7 +74,7 @@ export function effectLabel(spec: CardSpec): string | null {
 }
 
 /** 아이콘 + 값 한 쌍. 카드 앞면 스탯 줄과 팝오버 스펙 표, 상단 상태 창(PlayerStrip)에서도 쓴다 */
-export function Stat({ icon, value, title }: { icon: ReactNode; value: string; title: string }) {
+export function Stat({ icon, value, title }: { icon: ReactNode; value: ReactNode; title: string }) {
   return (
     <span className={styles.stat} title={title}>
       <span className={styles.statIcon}>{icon}</span>

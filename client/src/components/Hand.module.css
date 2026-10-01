@@ -2,7 +2,8 @@
 .list {
   list-style: none;
   margin: 0;
-  padding: 0 2px 2px 0;
+  /* 고른 카드가 위로 올라올 자리(translateY -8px)를 위로 비워 둔다 */
+  padding: 10px 2px 2px 2px;
   flex: 1;
   min-height: 0;
   min-width: 0;

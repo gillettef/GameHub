@@ -1,6 +1,10 @@
 import { useState } from 'react';
+import { mapsForAtLeast } from '@astraltab/shared';
 import { DockShell } from '../components/DockShell';
+import { BotIcon } from '../components/icons';
+import { randomMapId } from '../lib/randomPicks';
 import { getNickname, getPlayerToken, setNickname, setRoomPassword } from '../lib/identity';
+import { markQuickStart } from '../lib/quickStart';
 import { extractRoomId, navigate } from '../lib/router';
 import { api } from '../socket/client';
 import styles from './LandingPage.module.css';
@@ -18,6 +22,7 @@ export function LandingPage() {
   const [usePassword, setUsePassword] = useState(false);
   const [password, setPassword] = useState('');
   const [invite, setInvite] = useState('');
+  const [aiCount, setAiCount] = useState(1);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -40,6 +45,36 @@ export function LandingPage() {
       return;
     }
     if (usePassword) setRoomPassword(res.roomId, password);
+    navigate(`/room/${res.roomId}`);
+  };
+
+  /** AI와 바로 시작(2026-10-01): 방 만들기 → AI 좌석 채우기 → (로비에서) 준비까지 자동. 맵은 인원수에 딱 맞는 것 중 무작위 */
+  const startWithAi = async () => {
+    if (!nickOk || busy) return;
+    setBusy(true);
+    setError(null);
+    setNickname(nickname);
+    const players = aiCount + 1;
+    const res = await api.createRoom({
+      playerToken: getPlayerToken(),
+      nickname: nickname.trim(),
+      mapId: randomMapId(mapsForAtLeast(players).filter((m) => m.players === players)),
+    });
+    if (!res.ok) {
+      setBusy(false);
+      setError(res.message);
+      return;
+    }
+    for (let i = 0; i < aiCount; i++) {
+      const added = await api.addAi(res.roomId);
+      if (!added.ok) {
+        setBusy(false);
+        setError(added.message);
+        return;
+      }
+    }
+    markQuickStart(res.roomId);
+    setBusy(false);
     navigate(`/room/${res.roomId}`);
   };
 
@@ -69,6 +104,33 @@ export function LandingPage() {
       </section>
 
       <section className={styles.sectionPrimary}>
+        <h2 className={styles.h2}>AI와 바로 시작</h2>
+        <p className={styles.help}>AI 상대 수를 고르면 맵·종족은 무작위로 정해지고 곧바로 대국이 시작됩니다.</p>
+        <div className={styles.aiRow}>
+          <div className={styles.aiPick} role="radiogroup" aria-label="AI 상대 수">
+            {[1, 2, 3].map((n) => (
+              <button
+                key={n}
+                type="button"
+                role="radio"
+                aria-checked={aiCount === n}
+                aria-label={`AI ${n}명`}
+                title={`AI ${n}명`}
+                className={aiCount === n ? styles.aiOn : styles.aiOff}
+                onClick={() => setAiCount(n)}
+              >
+                <BotIcon size={18} />
+                <span>{n}</span>
+              </button>
+            ))}
+          </div>
+          <button type="button" className="pill pill--lg" disabled={!nickOk || busy} onClick={startWithAi}>
+            {busy ? '준비 중' : '시작'}
+          </button>
+        </div>
+      </section>
+
+      <section className={styles.section}>
         <h2 className={styles.h2}>방 만들기</h2>
         <p className={styles.help}>방을 만들면 초대 링크가 생깁니다. 링크를 친구에게 보내거나 빈 좌석에 AI를 넣으세요.</p>
         <label className={styles.check}>
@@ -86,7 +148,7 @@ export function LandingPage() {
             aria-label="방 비밀번호"
           />
         )}
-        <button type="button" className="pill pill--lg" disabled={!nickOk || !pwOk || busy} onClick={createRoom}>
+        <button type="button" className="pill pill--outline" disabled={!nickOk || !pwOk || busy} onClick={createRoom}>
           {busy ? '만드는 중' : '방 만들기'}
         </button>
       </section>

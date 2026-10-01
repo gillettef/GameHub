@@ -1,0 +1,55 @@
+.root {
+  position: relative;
+  display: inline-block;
+}
+
+.bump {
+  display: inline-block;
+  animation: cv-bump var(--motion-slow) var(--ease-enter);
+}
+
+.up,
+.down {
+  position: absolute;
+  left: 50%;
+  top: -2px;
+  font-size: var(--text-micro);
+  font-weight: 700;
+  pointer-events: none;
+  white-space: nowrap;
+  animation: cv-float 1000ms var(--ease-exit) forwards;
+}
+
+.up {
+  color: var(--color-seat-2);
+}
+
+.down {
+  color: var(--color-danger);
+}
+
+@keyframes cv-bump {
+  0% {
+    transform: scale(1);
+  }
+  35% {
+    transform: scale(1.5);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes cv-float {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 4px);
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -16px);
+  }
+}

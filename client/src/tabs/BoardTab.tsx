@@ -1,8 +1,9 @@
-import { memo, useCallback, useEffect, useMemo, useState } from 'react';
+import { memo, useMemo } from 'react';
 import { getSpec } from '@astraltab/shared';
 import { Board } from '../components/Board';
 import { Hand } from '../components/Hand';
-import { CardInfo, MarkerInfo } from '../components/InfoPanel';
+import { MarkerInfo } from '../components/InfoPanel';
+import { SwapIcon } from '../components/icons';
 import { TurnControls } from '../components/TurnControls';
 import { buildCells, buildHand, buildPlacementPreview, legalCellKeys, seatOf } from '../game/derived';
 import { hasSeenPlacementPreview } from '../lib/onboarding';
@@ -32,21 +33,12 @@ export const BoardTab = memo(function BoardTab() {
   const setDiscardCard = useGameStore((s) => s.setDiscardCard);
   const placeAt = useGameStore((s) => s.placeAt);
   const inspectedMarkerId = useGameStore((s) => s.inspectedMarkerId);
-  const selectHandCard = useGameStore((s) => s.selectHandCard);
+  const openCardModal = useGameStore((s) => s.openCardModal);
   const pendingPos = useGameStore((s) => s.pendingPos);
   const confirmPlacement = useGameStore((s) => s.confirmPlacement);
   const cancelPlacement = useGameStore((s) => s.cancelPlacement);
 
-  // 카드 설명은 맵을 가리므로, 보드를 탭하면 닫는다(카드 선택은 유지). 다른 카드를 고르면 다시 뜬다
-  const [cardInfoHidden, setCardInfoHidden] = useState(false);
-  useEffect(() => setCardInfoHidden(false), [selectedHandIndex]);
-  const handleCellClick = useCallback(
-    (x: number, y: number) => {
-      setCardInfoHidden(true);
-      placeAt(x, y);
-    },
-    [placeAt],
-  );
+  const handleCellClick = placeAt;
 
   const cells = useMemo(() => (state ? buildCells(state, viewerId) : []), [state, viewerId]);
   const legal = useMemo(
@@ -88,10 +80,6 @@ export const BoardTab = memo(function BoardTab() {
         <div className={styles.floatingTop}>
           {inspected?.marker ? (
             <MarkerInfo marker={inspected.marker} terrain={inspected.terrain} onClose={() => placeAt(inspected.x, inspected.y)} />
-          ) : selectedCardId && !discardMode && !cardInfoHidden ? (
-            <div className={styles.cardInfo}>
-              <CardInfo cardId={selectedCardId} onClose={() => setCardInfoHidden(true)} />
-            </div>
           ) : null}
         </div>
         <div className={styles.floatingBottom}>
@@ -124,19 +112,23 @@ export const BoardTab = memo(function BoardTab() {
           {state.phase === 'playing' && (
             <div className={styles.handPanel}>
               <div className={styles.handLabel}>
-                손패 {hand.length}장
-                {!isMyTurn
-                  ? ' · 상대 차례(구경만 가능)'
-                  : discardMode
-                    ? ` · 버릴 카드 ${discardCardIds.length}장 선택 중 (패스 시 덱과 섞어 다시 뽑음)`
-                    : ` · ${selectedCardId ? placeHint : '카드를 골라 배치 가능 칸 확인'}`}
+                <span className={styles.handCount}>손패 {hand.length}</span>
+                {!isMyTurn ? (
+                  <span>상대 차례 · 카드를 눌러 살펴보기</span>
+                ) : discardMode ? (
+                  <span className={styles.discardHint}>
+                    <SwapIcon size={14} /> 버릴 카드 {discardCardIds.length}장 · 턴 종료 시 덱과 섞어 다시 뽑기
+                  </span>
+                ) : (
+                  <span>{selectedCardId ? placeHint : '카드를 눌러 확인하고 고르기'}</span>
+                )}
               </div>
               <div className={styles.handBody}>
                 <Hand
                   cards={hand}
                   selectedIndex={selectedHandIndex}
                   interactive={isMyTurn}
-                  onSelect={selectHandCard}
+                  onOpen={(index) => openCardModal({ kind: 'hand', index })}
                   seat={viewerSeat}
                   discardMode={discardMode}
                   discardCardIds={discardCardIds}

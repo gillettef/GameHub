@@ -15,6 +15,8 @@ import { api } from '../socket/client';
 
 export type Mode = 'hotseat' | 'online';
 export type TabId = 'board' | 'status' | 'progress' | 'cards' | 'help';
+/** 확대해서 볼 카드. 손패는 index(같은 카드 여러 장 구분), 카탈로그(카드 탭)는 카드 id */
+export type CardModalTarget = { kind: 'hand'; index: number } | { kind: 'spec'; cardId: CardId };
 export type Connection = 'idle' | 'connecting' | 'connected' | 'disconnected';
 
 /** 순서 = 하단 독 표시 순서. 대국 진행(보드·상태·진행) 다음에 참고 자료(카드·설명)를 둔다
@@ -54,8 +56,8 @@ interface GameStore {
   notice: string | null;
   /** 결과 오버레이를 닫고 보드를 살펴보는 중인지 */
   resultDismissed: boolean;
-  /** 기권 확인 단계 (보드·진행 탭이 공유) */
-  surrenderConfirming: boolean;
+  /** 카드 확대 모달(2026-10-01). 손패 카드를 탭하면 바로 고르지 않고 크게 보여 준 뒤 모달 안에서 고른다 */
+  cardModal: CardModalTarget | null;
   /** 핫시트: 턴이 넘어가 기기를 넘겨야 함. 다음 사람이 '시작'을 누를 때까지 화면을 가린다 */
   handoffPending: boolean;
   /** 온라인: 서버 응답을 기다리는 중 (연타 방지) */
@@ -75,7 +77,8 @@ interface GameStore {
   /** willSelect: 이 카드를 교체 목록에 추가(true)할지 뺄(false)지. Hand.tsx 가 현재 선택 여부로 계산한다 */
   setDiscardCard: (cardId: CardId, willSelect: boolean) => void;
   surrender: () => void;
-  setSurrenderConfirming: (on: boolean) => void;
+  openCardModal: (target: CardModalTarget) => void;
+  closeCardModal: () => void;
   acknowledgeHandoff: () => void;
   setTab: (tab: TabId) => void;
   selectHandCard: (index: number | null) => void;
@@ -100,7 +103,7 @@ const EMPTY = {
   inspectedMarkerId: null as string | null,
   notice: null,
   resultDismissed: false,
-  surrenderConfirming: false,
+  cardModal: null as CardModalTarget | null,
   handoffPending: false,
   sending: false,
 };
@@ -136,7 +139,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       pendingPos: turnChanged || placedNow(prev.state, state, you) ? null : prev.pendingPos,
       discardMode: turnChanged ? false : prev.discardMode,
       discardCardIds: turnChanged ? [] : prev.discardCardIds,
-      surrenderConfirming: turnChanged ? false : prev.surrenderConfirming,
+      cardModal: turnChanged ? null : prev.cardModal,
       sending: false,
     });
   },
@@ -148,7 +151,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     if (!state) return;
     if (mode === 'online') {
       if (!room || sending) return;
-      set({ sending: true, surrenderConfirming: false });
+      set({ sending: true });
       void api.sendAction(room.roomId, action).then((res) => {
         if (!res.ok) set({ notice: res.message, sending: false });
         // 성공하면 room:state 스냅샷이 곧 도착해 sending 을 내린다
@@ -172,7 +175,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       discardMode: turnChanged ? false : get().discardMode,
       discardCardIds: turnChanged ? [] : get().discardCardIds,
       notice: null,
-      surrenderConfirming: false,
+      cardModal: null,
       handoffPending: viewerChanged && next.phase === 'playing',
     });
   },
@@ -243,7 +246,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
     if (viewerId) dispatch({ type: 'SURRENDER', playerId: viewerId });
   },
 
-  setSurrenderConfirming: (on) => set({ surrenderConfirming: on }),
+  openCardModal: (target) => set({ cardModal: target }),
+  closeCardModal: () => set({ cardModal: null }),
   acknowledgeHandoff: () => set({ handoffPending: false }),
 
   setTab: (tab) => {

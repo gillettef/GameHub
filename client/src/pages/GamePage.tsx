@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
-import { OpponentRecap } from '../components/OpponentRecap';
+import { CardModal } from '../components/CardModal';
+import { TurnEvents } from '../components/TurnEvents';
 import { HandoffOverlay } from '../components/HandoffOverlay';
 import { PlayerStrip } from '../components/PlayerStrip';
 import { TabDock } from '../components/TabDock';
@@ -91,7 +92,8 @@ export function GamePage({ onQuit }: GamePageProps) {
 
       <TabDock />
 
-      <OpponentRecap />
+      <TurnEvents />
+      <CardModal />
 
       {notice && (
         <div className={styles.notice} role="status">
