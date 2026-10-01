@@ -164,7 +164,7 @@ function ownedCardInfos(player: PlayerGameState): CardInfo[] {
     })),
     ...player.creatures.map((c) => ({
       name: c.name,
-      badge: `${ELEMENT_LABEL[c.element]} · ${KIND_LABEL[c.kind]} · 기준 ${c.requiredSpellPower}`,
+      badge: `${ELEMENT_LABEL[c.element]} · ${KIND_LABEL[c.kind]} · 기준 ${c.trainTarget}`,
       lines: [c.description, describeAbility(c.ability)],
     })),
   ];

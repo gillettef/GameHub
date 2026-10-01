@@ -66,28 +66,25 @@ export function rollTarget(round: number, difficulty: number): number {
 // 탐험 카드의 target은 난이도 × 10, 협력 카드의 pairTarget은 난이도 × 18 (둘이 굴리므로 목표값은 2배)
 const exploreTarget = (round: number, target: number) => rollTarget(round, (target / 10) * BALANCE.exploreDifficultyScale);
 const coopTarget = (round: number, pairTarget: number) => 2 * rollTarget(round, (pairTarget / 18) * BALANCE.exploreDifficultyScale);
-// 마법생물 조련의 기준 수치: 요구 주문력 × creatureTargetPerPower. 굴린 주사위 합이 이 값 이상이면 조련 성공
-const creatureTarget = (card: CreatureCard) => Math.max(1, Math.round(card.requiredSpellPower * BALANCE.creatureTargetPerPower));
-
-// 마법생물마다 조련에 낼 수 있는 토큰이 다르다: 속성(하늘=지력·육지=체력·바다=매력) 2 : 종류(동물=체력·식물=매력) 1 비율이며, 비율이 곧 낼 수 있는 토큰의 최대 개수다
-// (예: 육지·식물이면 체력토큰 최대 2개 + 매력토큰 최대 1개 → 주사위 최대 3개, 속성과 종류가 같은 능력치면 그 토큰 최대 3개)
+// 마법생물 조련: 생물의 속성(하늘=지력·육지=체력·바다=매력)과 종류(동물=체력·식물=매력)가 낼 수 있는 토큰의 종류를 정한다.
+// 가진 토큰 중 원하는 만큼(종류마다 0개~전부, 합계 1개 이상) 내고 낸 개수만큼 주사위를 굴려, 합이 생물마다 고정된 기준 수치(trainTarget) 이상이면 성공
 export type TokenStat = "intelligence" | "stamina" | "charm";
-export function creatureTrainMix(card: Pick<CreatureCard, "element" | "kind">): [TokenStat, number][] {
+export function creatureTokenTypes(card: Pick<CreatureCard, "element" | "kind">): TokenStat[] {
   const main: TokenStat = { sky: "intelligence", land: "stamina", ocean: "charm" }[card.element] as TokenStat;
   const sub: TokenStat = card.kind === "animal" ? "stamina" : "charm";
-  return main === sub ? [[main, 3]] : [[main, 2], [sub, 1]];
+  return main === sub ? [main] : [main, sub];
 }
 const TOKEN_OF = { intelligence: "intelligenceTokens", stamina: "staminaTokens", charm: "charmTokens" } as const;
-// 이 플레이어가 지금 조련에 낼 수 있는 토큰 종류와 최대 개수 (비율 상한과 보유 개수 중 작은 값, 0개인 종류는 뺀다)
+// 이 플레이어가 지금 조련에 낼 수 있는 토큰 종류와 최대 개수 (그 종류로 가진 토큰 전부, 0개인 종류는 뺀다)
 export function creatureTokenCaps(player: Pick<PlayerGameState, "intelligenceTokens" | "staminaTokens" | "charmTokens">, card: Pick<CreatureCard, "element" | "kind">): { stat: TokenStat; max: number }[] {
-  return creatureTrainMix(card)
-    .map(([stat, weight]) => ({ stat, max: Math.min(weight, player[TOKEN_OF[stat]]) }))
+  return creatureTokenTypes(card)
+    .map((stat) => ({ stat, max: player[TOKEN_OF[stat]] }))
     .filter((c) => c.max > 0);
 }
 const ELEMENT_NAME = { sky: "하늘", land: "육지", ocean: "바다" } as const;
 const creatureTagsOf = (card: Pick<CreatureCard, "element" | "kind">) => `${ELEMENT_NAME[card.element]} · ${card.kind === "animal" ? "동물" : "식물"}`;
 function creatureMixText(card: Pick<CreatureCard, "element" | "kind">): string {
-  return creatureTrainMix(card).map(([stat, w]) => `${STAT_NAME[stat]}토큰 최대 ${w}개`).join(" + ");
+  return creatureTokenTypes(card).map((stat) => `${STAT_NAME[stat]}토큰`).join("·");
 }
 
 // 능력치 판정에서 낼 수 있는 최대 주사위 수: 카드가 정한 지력/체력 토큰의 개수 (토큰이 없어도 1개는 굴린다). 실제로는 굴릴 때 1~이 개수 사이에서 골라 낸다
@@ -530,14 +527,14 @@ function startTournament(state: GameState, player: PlayerGameState): void {
 
 // 마법생물 조련: 가진 마법 주문서를 모두 내고 그만큼 주사위를 굴려, (합 + 매력)이 목표값 이상이면 조련에 성공한다. 실패하면 주문서만 잃고 카드는 구역에 돌아간다
 function startCreatureRoll(state: GameState, player: PlayerGameState, creature: CreatureCard): void {
-  const target = creatureTarget(creature);
+  const target = creature.trainTarget;
   const caps = creatureTokenCaps(player, creature);
   state.hidden.roll = { kind: "creature", playerId: player.id, card: creature, target };
   state.pendingRoll = {
     kind: "creature",
     title: `마법생물 조련 · ${creature.name}`,
     lines: [
-      `${creatureMixText(creature)}까지 골라 내고, 낸 토큰 개수만큼 주사위를 굴려요`,
+      `${creatureMixText(creature)} 중 원하는 만큼 내고, 낸 토큰 개수만큼 주사위를 굴려요`,
       `주사위 합이 ${target} 이상이면 조련 성공! 실패하면 카드는 돌아가요`,
     ],
     entries: [{ playerId: player.id, label: player.name, diceCount: caps.reduce((a, c) => a + c.max, 0), diceChoices: caps, dice: null, confirmed: false, rerolls: 0 }],
@@ -761,7 +758,7 @@ function offerViewOf(activityId: ActivityId, card: OfferedCard, round: number): 
   switch (activityId) {
     case "creature": {
       const c = card as CreatureCard;
-      return { id: c.id, name: c.name, description: c.description, tags: creatureTagsOf(c), lines: [describeAbility(c.ability), `조련 판정: ${creatureMixText(c)}를 내고 굴린 주사위 합 ≥ ${creatureTarget(c)}`], tokenNeeds: creatureTrainMix(c).map(([stat]) => stat) };
+      return { id: c.id, name: c.name, description: c.description, tags: creatureTagsOf(c), lines: [describeAbility(c.ability), `조련 판정: ${creatureMixText(c)}를 내고 굴린 주사위 합 ≥ ${c.trainTarget}`], tokenNeeds: creatureTokenTypes(c) };
     }
     case "lab": {
       const c = card as LabCard;
