@@ -1,9 +1,9 @@
 // 연구 카드 (연구실 실험 = 정규수업의 연장선인 "심화학습"). 지력만큼 펼친 카드 중 1장을 직접 골라 효과를 받습니다.
-//   study   심화 수업: 능력치 영구 증가 (고르는 데 체력토큰이 든다: 하나만 오르면 2, 둘이 오르면 3)
+//   study   심화 수업: 능력치 영구 증가 (고르는 데 체력기운이 든다: 하나만 오르면 2, 둘이 오르면 3)
 //   exam    시험 대비: 다음 시험까지 유지되는 임시 능력치 (학점 카드 포함, 시험 후 버림 더미로)
 //   insight 엿보기: 탐험 카드 덱 맨 위 1장을 미리 확인
-//   supply  보급: 다음 달 마나토큰/체력토큰
-// 카드마다 고르는 데 드는 체력토큰(cost)이 정해져 있습니다. 펼쳐진 카드를 보고 낼 수 있는 카드만 고를 수 있고, 아무것도 고르지 않고 넘어갈 수도 있습니다.
+//   supply  보급: 다음 달 마나기운/체력기운
+// 카드마다 고르는 데 드는 체력기운(cost)이 정해져 있습니다. 펼쳐진 카드를 보고 낼 수 있는 카드만 고를 수 있고, 아무것도 고르지 않고 넘어갈 수도 있습니다.
 // 카드 구성과 수치는 초안이며 플레이테스트 후 조정합니다. 30장.
 import { describeEffect } from "./explorationCards.js";
 import type { CardEffect, LabCard, LabCardKind } from "./types.js";
@@ -35,8 +35,8 @@ const DEFS: Def[] = [
   // 엿보기 — 탐험 카드 맨 위 확인 (4장)
   { name: "예지의 수정구", description: "수정구 속에 비밀의 방이 비쳐요.", cost: 0, kind: "insight", effect: { peekExploration: true }, copies: 2 },
   { name: "고양이의 귀띔", description: "검은 고양이가 살짝 알려 줬어요.", cost: 0, kind: "insight", effect: { peekExploration: true }, copies: 2 },
-  // 보급 — 다음 달 토큰 (4장)
-  { name: "마나토큰 꾸러미", description: "선반에 마나토큰이 한가득!", cost: 0, kind: "supply", effect: { nextMana: 3 }, copies: 2 },
+  // 보급 — 다음 달 기운 (4장)
+  { name: "마나기운 꾸러미", description: "선반에 마나기운이 한가득!", cost: 0, kind: "supply", effect: { nextMana: 3 }, copies: 2 },
   { name: "든든 도시락", description: "급식실 아주머니가 몰래 챙겨 주셨어요.", cost: 0, kind: "supply", effect: { nextStamina: 2 }, copies: 2 },
 ];
 

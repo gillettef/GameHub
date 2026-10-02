@@ -32,7 +32,6 @@ import {
   type ExamCard,
   type ExamResult,
   type GameState,
-  type KeepChoice,
   type KeptToken,
   type PlayerGameState,
   type RollContext,
@@ -69,15 +68,20 @@ const exploreTarget = (round: number, target: number) => rollTarget(round, (targ
 const coopTarget = (round: number, pairTarget: number) => 2 * rollTarget(round, (pairTarget / 18) * BALANCE.exploreDifficultyScale);
 export const labTargetValue = () => BALANCE.labTarget;
 
-// ── 주사위 재료 토큰 (39절): 활동마다 주 능력치의 토큰을 골라 낸 만큼 주사위를 굴린다 (BALANCE.rollFuel).
-// 조련=매력토큰, 탐험=체력토큰, 연구실=지력토큰, 토너먼트·주문 대결=마나토큰. 다시 굴리기는 언제나 마나토큰이다 ──
-export const TOKEN_NAME: Record<KeptToken, string> = { intelligence: "지력토큰", stamina: "체력토큰", charm: "매력토큰", mana: "마나토큰" };
+// ── 주사위 재료 기운 (39절): 활동마다 주 능력치의 기운을 골라 낸 만큼 주사위를 굴린다 (BALANCE.rollFuel).
+// 조련=매력기운, 탐험=체력기운, 연구실=지력기운, 토너먼트·주문 대결=마나기운. 다시 굴리기는 언제나 마나기운이다 ──
+export const TOKEN_NAME: Record<KeptToken, string> = { intelligence: "지력기운", stamina: "체력기운", charm: "매력기운", mana: "마나기운" };
 const TOKEN_FIELD = { intelligence: "intelligenceTokens", stamina: "staminaTokens", charm: "charmTokens", mana: "manaTokens" } as const;
 export const tokensOf = (p: Pick<PlayerGameState, (typeof TOKEN_FIELD)[KeptToken]>, kind: KeptToken): number => p[TOKEN_FIELD[kind]];
-// 시험 카드의 주 능력치가 주사위 재료다 (주문력은 마나토큰)
+// 기운의 종류와 그 기운의 최대치가 되는 능력치 (주문력의 기운이 마나)
+export const ENERGY_KINDS: KeptToken[] = ["intelligence", "stamina", "charm", "mana"];
+export const ENERGY_STAT: Record<KeptToken, StatKey> = { intelligence: "intelligence", stamina: "stamina", charm: "charm", mana: "spellPower" };
+// 모아 둘 수 있는 한도 (능력치 × 배수)
+export const energyCap = (player: PlayerGameState, kind: KeptToken): number => effectiveStat(player, ENERGY_STAT[kind]) * BALANCE.energyCapMultiplier;
+// 시험 카드의 주 능력치가 주사위 재료다 (주문력은 마나기운)
 export const examFuel = (card: Pick<ExamCard, "diceStat">): KeptToken => (card.diceStat === "spellPower" ? "mana" : card.diceStat);
-// 마법생물 조련: 매력토큰을 1~보유 개수 사이에서 골라 내고 낸 개수만큼 주사위를 굴려, 합이 생물마다 정해진 기준 수치(trainTarget × trainTargetScale) 이상이면 성공
-// (매력토큰이 없으면 공짜 주사위 1개). 생물의 속성·종류는 표시용이다
+// 마법생물 조련: 매력기운을 1~보유 개수 사이에서 골라 내고 낸 개수만큼 주사위를 굴려, 합이 생물마다 정해진 기준 수치(trainTarget × trainTargetScale) 이상이면 성공
+// (매력기운이 없으면 공짜 주사위 1개). 생물의 속성·종류는 표시용이다
 export const creatureTarget = (card: Pick<CreatureCard, "trainTarget">) => Math.max(1, Math.round(card.trainTarget * BALANCE.trainTargetScale));
 const ELEMENT_NAME = { sky: "하늘", land: "육지", ocean: "바다" } as const;
 const creatureTagsOf = (card: Pick<CreatureCard, "element" | "kind">) => `${ELEMENT_NAME[card.element]} · ${card.kind === "animal" ? "동물" : "식물"}`;
@@ -97,7 +101,7 @@ export function diceSuccessChance(n: number, target: number): number {
   return dist.slice(target).reduce((x, y) => x + y, 0);
 }
 
-// 굴림 버튼의 기본 주사위 수: 성공 확률이 defaultDiceSuccess 이상이 되는 가장 적은 개수 (그만큼 못 미치면 가진 마나토큰 전부). 남는 마나토큰은 다시 굴리기에 쓴다
+// 굴림 버튼의 기본 주사위 수: 성공 확률이 defaultDiceSuccess 이상이 되는 가장 적은 개수 (그만큼 못 미치면 가진 마나기운 전부). 남는 마나기운은 다시 굴리기에 쓴다
 export function suggestDiceCount(mana: number, target: number): number {
   for (let n = 1; n <= mana; n++) if (diceSuccessChance(n, target) >= BALANCE.defaultDiceSuccess) return n;
   return Math.max(1, mana);
@@ -110,7 +114,7 @@ function normalCdf(z: number): number {
   return z > 0 ? 1 - p : p;
 }
 
-// 탐험 카드 성공 확률 (봇 판단용): 기본 개수만큼 체력토큰을 내고 굴린 주사위 합이 목표값 이상일 확률의 정규 근사
+// 탐험 카드 성공 확률 (봇 판단용): 기본 개수만큼 체력기운을 내고 굴린 주사위 합이 목표값 이상일 확률의 정규 근사
 export function explorationChance(state: GameState, player: PlayerGameState, card: ExplorationCard): number {
   if (!card.check) return 1;
   const n = suggestDiceCount(tokensOf(player, BALANCE.rollFuel.exploration), exploreTarget(state.round, card.check.target));
@@ -143,9 +147,8 @@ function orderFromStarter(state: Pick<GameState, "turnOrder" | "startingPlayerIn
   return Array.from({ length: n }, (_, i) => state.turnOrder[(state.startingPlayerIndex + i) % n]);
 }
 
-const KEEP_LABEL: Record<KeptToken, string> = { intelligence: "지력", stamina: "체력", charm: "매력", mana: "마나" };
 
-// 4주차(정리): 다음 달 선을 정한다 (BALANCE.starterRule). 토큰이 소멸하기 전에 호출해야 한다.
+// 4주차(정리): 다음 달 선을 정한다 (BALANCE.starterRule). 기운이 소멸하기 전에 호출해야 한다.
 // 동점이면 현재 선에서 시계방향으로 가장 가까운 사람 (rule이 "charm"이면 현재 선이 최고 매력일 때 그대로 유지)
 function starterScore(state: GameState, id: string): number {
   const p = state.players[id];
@@ -226,9 +229,9 @@ const STAT_NAME: Record<StatKey, string> = { intelligence: "지력", stamina: "�
 
 // 탐험 카드의 판정 문구 (엿보기·협력 대기·구역 공개 카드 표시용)
 function checkTextOf(card: ExplorationCard, round: number): string | undefined {
-  if (card.coop) return `협력 카드 — 둘이 각자 체력토큰을 내고 낸 개수만큼 주사위를 굴려 둘의 합이 ${coopTarget(round, card.coop.pairTarget)} 이상이면 성공 (혼자면 무효)`;
+  if (card.coop) return `협력 카드 — 둘이 각자 체력기운을 내고 낸 개수만큼 주사위를 굴려 둘의 합이 ${coopTarget(round, card.coop.pairTarget)} 이상이면 성공 (혼자면 무효)`;
   if (!card.check) return undefined;
-  return `판정 (체력토큰 주사위 합 ${exploreTarget(round, card.check.target)} 이상)`;
+  return `판정 (체력기운 주사위 합 ${exploreTarget(round, card.check.target)} 이상)`;
 }
 
 // 탐험 카드/연구 카드 효과를 플레이어에게 적용한다
@@ -275,7 +278,6 @@ function createPlayer(id: string, name: string, isBot = false): PlayerGameState 
     manaTokens: 0,
     pendingStaminaTokens: 0,
     pendingManaTokens: 0,
-    carryTokens: { intelligence: 0, stamina: 0, charm: 0, mana: 0 },
     peekedExploration: null,
     tournamentTrack: 0,
     classCards: [],
@@ -316,7 +318,7 @@ export function createGame(players: { id: string; name: string; isBot?: boolean 
     exams: { midterm: null, final: null },
     examResults: [],
     cleanupSummary: [],
-    cleanupKeep: {},
+    chargeSummary: [],
     hidden: { roll: null, coop: null, offers: {}, examPlan: pickExamCards() },
     labPile: createLabPile(),
     explorationPile: createExplorationPile(),
@@ -342,13 +344,13 @@ function beginFirstRoll(state: GameState, contenders: string[]): void {
   };
 }
 
-// ── 토큰 지불: 지력토큰·체력토큰·매력토큰·마나토큰은 서로 바꿀 수 없다. 자율활동 구역의 두 번째 참가비는 매력토큰으로만 낸다 ──
+// ── 기운 지불: 지력기운·체력기운·매력기운·마나기운은 서로 바꿀 수 없다. 자율활동 구역의 두 번째 참가비는 매력기운으로만 낸다 ──
 
 type PayKind = "intelligence" | "stamina" | "mana" | "charm";
-const PAY_OBJECT: Record<PayKind, string> = { intelligence: "지력토큰을", stamina: "체력토큰을", mana: "마나토큰을", charm: "매력토큰을" };
+const PAY_OBJECT: Record<PayKind, string> = { intelligence: "지력기운을", stamina: "체력기운을", mana: "마나기운을", charm: "매력기운을" };
 type Payer = Pick<PlayerGameState, "intelligenceTokens" | "staminaTokens" | "charmTokens">;
 
-// 지력토큰 int개 + 체력토큰 stamina개 + 매력토큰 charm개를 낼 수 있는가
+// 지력기운 int개 + 체력기운 stamina개 + 매력기운 charm개를 낼 수 있는가
 export const canPay = (p: Payer, int: number, stamina: number, charm = 0): boolean =>
   p.intelligenceTokens >= int && p.staminaTokens >= stamina && p.charmTokens >= charm;
 
@@ -359,13 +361,13 @@ function pay(p: PlayerGameState, kind: PayKind, n: number): void {
   else p.manaTokens -= n;
 }
 
-// 보조 능력치 토큰으로 굴림을 돕는 선택 (38-6절): 굴리기 전에 0~max개를 골라 낸다. max가 0이면 선택지가 없다
+// 보조 능력치 기운으로 굴림을 돕는 선택 (38-6절): 굴리기 전에 0~max개를 골라 낸다. max가 0이면 선택지가 없다
 function withAssist<T extends object>(entry: T, max: number): T & { assistMax?: number } {
   return max > 0 ? { ...entry, assistMax: max } : entry;
 }
 
-// 굴리기 전에 재료 토큰(fuel, 기본 마나토큰)을 1~보유 개수 사이에서 골라 내고 낸 개수만큼 굴리는 굴림 항목 (재료 토큰이 없으면 주사위 1개를 공짜로 굴린다).
-// 목표값(suggestTarget)이 있는 판정은 기본 개수를 "성공 확률이 충분한 가장 적은 개수"로 잡고, 없으면 기본값이 재료 토큰 전부다
+// 굴리기 전에 재료 기운(fuel, 기본 마나기운)을 1~보유 개수 사이에서 골라 내고 낸 개수만큼 굴리는 굴림 항목 (재료 기운이 없으면 주사위 1개를 공짜로 굴린다).
+// 목표값(suggestTarget)이 있는 판정은 기본 개수를 "성공 확률이 충분한 가장 적은 개수"로 잡고, 없으면 기본값이 재료 기운 전부다
 function choiceEntry(player: PlayerGameState, label: string, suggestTarget?: number, fuel: KeptToken = "mana") {
   const tokens = tokensOf(player, fuel);
   return {
@@ -388,36 +390,40 @@ function beginRound(state: GameState): void {
     state.classDiscard = [];
     log(state, "2학기 시작: 새 수업카드 덱으로 바뀌었어요 (주문력 카드가 더 많아져요)");
   }
+  // 1주차(충전, 40절): 지력·체력·매력·주문력 수치(실력)만큼 각 기운이 차오른다. 쓰고 남은 기운은 이어지고, 능력치 × energyCapMultiplier를 넘는 몫은 사라진다.
+  // 마법생물·카드 효과로 받는 몫(다음 달 체력·마나 기운, 마도서의 매력 기운)은 한도와 상관없이 더한다 (다음 달 충전 때 한도에 맞춰진다)
+  state.chargeSummary = [];
   for (const playerId of state.turnOrder) {
     const player = state.players[playerId];
-    // 1주차(준비): 지력 수치만큼 지력토큰, 체력 수치만큼 체력토큰, 주문력 수치만큼 마나토큰 획득
     const prepAbilities = abilitiesOf(player, "prep");
-    player.intelligenceTokens = effectiveStat(player, "intelligence");
-    player.staminaTokens = Math.max(
-      0,
-      effectiveStat(player, "stamina") + player.pendingStaminaTokens + sumEffect(prepAbilities, "stamina"),
-    );
+    const extras: Record<KeptToken, number> = {
+      intelligence: 0,
+      stamina: player.pendingStaminaTokens + sumEffect(prepAbilities, "stamina"),
+      charm: sumEffect(prepAbilities, "charmToken"),
+      mana: player.pendingManaTokens + sumEffect(prepAbilities, "mana"),
+    };
     player.pendingStaminaTokens = 0;
-    player.manaTokens = Math.max(
-      0,
-      effectiveStat(player, "spellPower") + player.pendingManaTokens + sumEffect(prepAbilities, "mana"),
-    );
     player.pendingManaTokens = 0;
-    // 매력 수치만큼 매력토큰: 구역 두 번째 참가비로 쓴다
-    player.charmTokens = Math.max(0, effectiveStat(player, "charm") + sumEffect(prepAbilities, "charmToken"));
-    // 지난 4주차에 골라 남긴 토큰 1개
-    player.intelligenceTokens += player.carryTokens.intelligence;
-    player.staminaTokens += player.carryTokens.stamina;
-    player.charmTokens += player.carryTokens.charm;
-    player.manaTokens += player.carryTokens.mana;
-    player.carryTokens = { intelligence: 0, stamina: 0, charm: 0, mana: 0 };
+    const gained = { intelligence: 0, stamina: 0, charm: 0, mana: 0 } as Record<KeptToken, number>;
+    const lost = { intelligence: 0, stamina: 0, charm: 0, mana: 0 } as Record<KeptToken, number>;
+    for (const kind of ENERGY_KINDS) {
+      const before = tokensOf(player, kind);
+      const base = effectiveStat(player, ENERGY_STAT[kind]);
+      const cap = base * BALANCE.energyCapMultiplier;
+      const filled = Math.min(cap, before + base);
+      const after = Math.max(0, filled + extras[kind]);
+      lost[kind] = Math.max(0, before + base - cap);
+      gained[kind] = Math.max(0, after - before);
+      player[TOKEN_FIELD[kind]] = after;
+    }
+    state.chargeSummary.push({ playerId, gained, lost });
   }
   // 중간고사(6개월)·기말고사(12개월) 달에는 2주차(정규수업)·3주차(자율활동) 대신 시험을 치른다
   if (isExamRound(state.round)) beginExam(state, state.round === BALANCE.midtermRound ? "midterm_exam" : "final_exam");
   else beginClassPhase(state);
 }
 
-// 2주차(정규수업): 인원수 + 1장을 공개하고, 선 플레이어부터 시계방향으로 원하는 카드 1장을 (체력토큰을 내고) 가져간다
+// 2주차(정규수업): 인원수 + 1장을 공개하고, 선 플레이어부터 시계방향으로 원하는 카드 1장을 (체력기운을 내고) 가져간다
 function beginClassPhase(state: GameState): void {
   state.phase = "class";
   for (const playerId of state.turnOrder) state.players[playerId].hasActedThisPhase = false;
@@ -441,7 +447,7 @@ export function classCardsLeft(state: Pick<GameState, "classDeck" | "classDiscar
   return state.classDeck.length + state.classDiscard.length;
 }
 
-// 2주차: 내 차례에 공개된 수업카드 중 1장을 가져간다 (체력토큰 takeCost개 필요). cardId가 null이면 가져가지 않고 넘어간다
+// 2주차: 내 차례에 공개된 수업카드 중 1장을 가져간다 (체력기운 takeCost개 필요). cardId가 null이면 가져가지 않고 넘어간다
 export function takeClassCard(state: GameState, playerId: string, cardId: string | null): void {
   if (state.phase !== "class") throw new Error("지금은 정규수업 단계가 아닙니다.");
   const player = state.players[playerId];
@@ -453,7 +459,7 @@ export function takeClassCard(state: GameState, playerId: string, cardId: string
     const card = state.classMarket.find((c) => c.id === cardId);
     if (!card) throw new Error("공개된 수업카드 중에서만 고를 수 있습니다.");
     if (!canPay(player, 0, card.takeCost)) {
-      throw new Error(`체력토큰이 부족합니다 (이 카드는 체력토큰 ${card.takeCost}개 필요).`);
+      throw new Error(`체력기운이 부족합니다 (이 카드는 체력기운 ${card.takeCost}개 필요).`);
     }
     pay(player, "stamina", card.takeCost);
     player[card.statBoost.stat] += card.statBoost.amount;
@@ -499,14 +505,14 @@ function beginActivityPhase(state: GameState): void {
 
 export type ActivityView = Pick<GameState, "activitySlots" | "players" | "turnOrder" | "coopWaiting" | "activityOffers">;
 
-// 구역에 처음 들어와 카드를 여는 사람이 내는 지력토큰 (BALANCE.openCardCostActivities의 활동: 마법생물·주문 대결·비밀의 방·연구실. 마법 토너먼트는 카드가 없다).
+// 구역에 처음 들어와 카드를 여는 사람이 내는 지력기운 (BALANCE.openCardCostActivities의 활동: 마법생물·주문 대결·비밀의 방·연구실. 마법 토너먼트는 카드가 없다).
 // 이미 다른 친구가 고른 구역이면(두 번째 참가자) 새로 열 필요가 없으니 내지 않는다
 export function activityOpenCost(state: Pick<GameState, "activitySlots">, activityId: ActivityId): number {
   if (!BALANCE.openCardCostActivities.includes(activityId)) return 0;
   return state.activitySlots[activityId].length > 0 ? 0 : BALANCE.openCardCost;
 }
 
-// 이미 다른 플레이어가 있는 구역에 들어갈 때 내야 하는 매력토큰
+// 이미 다른 플레이어가 있는 구역에 들어갈 때 내야 하는 매력기운
 export function activityExtraCost(state: Pick<GameState, "activitySlots">, activityId: ActivityId): number {
   return state.activitySlots[activityId].length >= 1 ? BALANCE.activitySecondParticipantCost : 0;
 }
@@ -522,13 +528,13 @@ export function activityBlockReason(state: ActivityView, playerId: string, activ
   const slots = state.activitySlots[activityId];
   if (slots.length >= BALANCE.activityMaxParticipants) return "이미 두 명이 참여한 구역입니다.";
   const extra = activityExtraCost(state, activityId);
-  if (!canPay(player, 0, 0, extra)) return `이미 참여한 친구가 있어서 매력토큰 ${extra}개가 더 필요해요.`;
+  if (!canPay(player, 0, 0, extra)) return `이미 참여한 친구가 있어서 매력기운 ${extra}개가 더 필요해요.`;
   const open = activityOpenCost(state, activityId);
-  if (!canPay(player, open, 0, extra)) return `카드를 열 지력토큰 ${open}개가 필요해요 (먼저 들어오면 카드를 여는 사람이 지력토큰을 내요).`;
-  if (activityId === "tournament" && player.manaTokens < 1) return "마나토큰이 1개 이상 필요해요 (낸 마나토큰만큼 주사위를 굴려요).";
+  if (!canPay(player, open, 0, extra)) return `카드를 열 지력기운 ${open}개가 필요해요 (먼저 들어오면 카드를 여는 사람이 지력기운을 내요).`;
+  if (activityId === "tournament" && player.manaTokens < 1) return "마나기운이 1개 이상 필요해요 (낸 마나기운만큼 주사위를 굴려요).";
   if (activityId === "duel") {
     const need = 1 + BALANCE.duelManaFee;
-    if (player.manaTokens < need) return `마나토큰이 ${need}개 이상 필요해요 (${BALANCE.duelManaFee}개는 지목당한 친구에게 건네고, 낸 마나토큰만큼 주사위를 굴려요).`;
+    if (player.manaTokens < need) return `마나기운이 ${need}개 이상 필요해요 (${BALANCE.duelManaFee}개는 지목당한 친구에게 건네고, 낸 마나기운만큼 주사위를 굴려요).`;
     if (duelTargets(state, playerId).length === 0) return "지목할 수 있는 친구가 없어요.";
     if (player.charm < BALANCE.duelCharmFee) return `지목당한 친구에게 건넬 매력(${BALANCE.duelCharmFee})이 없어요.`;
   }
@@ -546,7 +552,7 @@ function describeRoll(dice: number[], bonusParts: [string, number][]): string {
 
 // ── 자율활동: 활동별 처리 ──
 
-// 마법 토너먼트: 가진 마나토큰을 모두 내고, 낸 개수만큼 주사위를 굴려 합친 칸만큼 트랙을 전진한다
+// 마법 토너먼트: 가진 마나기운을 모두 내고, 낸 개수만큼 주사위를 굴려 합친 칸만큼 트랙을 전진한다
 function startTournament(state: GameState, player: PlayerGameState): void {
   if (player.manaTokens === 0) {
     advanceTournament(state, player, []);
@@ -556,22 +562,22 @@ function startTournament(state: GameState, player: PlayerGameState): void {
   state.pendingRoll = {
     kind: "tournament",
     title: `마법 토너먼트 · ${player.name}`,
-    lines: [`마나토큰을 1~${player.manaTokens}개 골라 내고, 낸 개수만큼 주사위를 굴려요. 나온 눈을 모두 더한 만큼 트랙을 전진해요`],
-    // 보조 능력치(체력=지구력): 체력토큰을 내면 "끝까지 달려요" — 1개당 고정 칸을 더 전진한다 (주사위가 아니라 고정값)
-    assist: { kind: "stamina", name: "체력토큰", title: "끝까지 달려요", hint: `체력토큰 1개당 +${BALANCE.tournamentStaminaBoost}칸 더 전진해요 (지구력)` },
+    lines: [`마나기운을 1~${player.manaTokens}개 골라 내고, 낸 개수만큼 주사위를 굴려요. 나온 눈을 모두 더한 만큼 트랙을 전진해요`],
+    // 보조 능력치(체력=지구력): 체력기운을 내면 "끝까지 달려요" — 1개당 고정 칸을 더 전진한다 (주사위가 아니라 고정값)
+    assist: { kind: "stamina", name: "체력기운", title: "끝까지 달려요", hint: `체력기운 1개당 +${BALANCE.tournamentStaminaBoost}칸 더 전진해요 (지구력)` },
     entries: [withAssist(choiceEntry(player, player.name), player.staminaTokens)],
   };
 }
 
-// 굴림 안내 문구: 재료 토큰을 골라 내고 낸 개수만큼 굴린다. 재료 토큰이 없으면 공짜 주사위 1개. 다시 굴리기는 마나토큰으로 한다
+// 굴림 안내 문구: 재료 기운을 골라 내고 낸 개수만큼 굴린다. 재료 기운이 없으면 공짜 주사위 1개. 다시 굴리기는 마나기운으로 한다
 function fuelLine(player: PlayerGameState, fuel: KeptToken): string {
   const tokens = tokensOf(player, fuel);
   return tokens > 0
-    ? `${PAY_OBJECT[fuel]} 1~${tokens}개 골라 내고, 낸 개수만큼 주사위를 굴려요 (다시 굴리기는 마나토큰으로 해요)`
+    ? `${PAY_OBJECT[fuel]} 1~${tokens}개 골라 내고, 낸 개수만큼 주사위를 굴려요 (다시 굴리기는 마나기운으로 해요)`
     : `${TOKEN_NAME[fuel]}이 없어서 주사위 1개를 굴려요`;
 }
 
-// 마법생물 조련: 매력토큰을 골라 내고 낸 개수만큼 주사위를 굴려, 합이 목표값 이상이면 조련에 성공한다. 실패하면 낸 매력토큰만 잃고 카드는 구역에 돌아간다
+// 마법생물 조련: 매력기운을 골라 내고 낸 개수만큼 주사위를 굴려, 합이 목표값 이상이면 조련에 성공한다. 실패하면 낸 매력기운만 잃고 카드는 구역에 돌아간다
 function startCreatureRoll(state: GameState, player: PlayerGameState, creature: CreatureCard): void {
   const target = creatureTarget(creature);
   const fuel = BALANCE.rollFuel.creature;
@@ -602,8 +608,8 @@ function resolveCreature(state: GameState, ctx: Extract<RollContext, { kind: "cr
   }
 }
 
-// 연구실 실험: 카드를 보고 지력토큰을 몇 개 낼지 골라(굴릴 때 낸다) 낸 개수만큼 주사위를 굴려, 합이 목표값 이상이면 실험 성공 (카드 효과를 받는다)
-// 지력토큰이 없으면 주사위 1개는 공짜로 굴린다
+// 연구실 실험: 카드를 보고 지력기운을 몇 개 낼지 골라(굴릴 때 낸다) 낸 개수만큼 주사위를 굴려, 합이 목표값 이상이면 실험 성공 (카드 효과를 받는다)
+// 지력기운이 없으면 주사위 1개는 공짜로 굴린다
 function startLabRoll(state: GameState, player: PlayerGameState, lab: LabCard): void {
   const target = labTargetValue();
   const fuel = BALANCE.rollFuel.lab;
@@ -645,23 +651,23 @@ function advanceTournament(state: GameState, player: PlayerGameState, dice: numb
   player.credit += milestoneCredit;
   log(
     state,
-    `${player.name}: 마법 토너먼트 참가 (${describeRoll(dice, [[`끝까지 달려요(체력토큰 ${assist}개)`, boost]])} = ${gain}칸 전진, 트랙 ${player.tournamentTrack}칸)${milestoneCredit > 0 ? ` — 이정표 학점 +${milestoneCredit}` : ""}`,
+    `${player.name}: 마법 토너먼트 참가 (${describeRoll(dice, [[`끝까지 달려요(체력기운 ${assist}개)`, boost]])} = ${gain}칸 전진, 트랙 ${player.tournamentTrack}칸)${milestoneCredit > 0 ? ` — 이정표 학점 +${milestoneCredit}` : ""}`,
   );
 }
 
 function startDuel(state: GameState, player: PlayerGameState, target: PlayerGameState): void {
   state.hidden.roll = { kind: "duel", challengerId: player.id, targetId: target.id };
-  // 도전자는 지목당한 친구에게 마나토큰 1개를 건네고(매력 참가비와 별도), 양쪽 모두 마나토큰을 1~보유 개수 사이에서 골라 내고 낸 개수만큼 굴린다
+  // 도전자는 지목당한 친구에게 마나기운 1개를 건네고(매력 참가비와 별도), 양쪽 모두 마나기운을 1~보유 개수 사이에서 골라 내고 낸 개수만큼 굴린다
   const gift = Math.min(BALANCE.duelManaFee, player.manaTokens);
   player.manaTokens -= gift;
   target.manaTokens += gift;
-  if (gift > 0) log(state, `${player.name}: ${target.name}님에게 마나토큰 ${gift}개를 건넸어요`);
+  if (gift > 0) log(state, `${player.name}: ${target.name}님에게 마나기운 ${gift}개를 건넸어요`);
   state.pendingRoll = {
     kind: "duel",
     title: `주문 대결 · ${player.name} vs ${target.name}`,
     lines: [
-      `${player.name}님이 ${target.name}님을 지목했어요 (도전자가 마나토큰 ${BALANCE.duelManaFee}개를 건넸어요)`,
-      `각자 마나토큰을 골라 내고 낸 개수만큼 주사위를 굴려 합이 큰 쪽이 이겨요. 같으면 무승부예요. 도전자는 지목당한 친구에게 매력 ${BALANCE.duelCharmFee}을 건네요`,
+      `${player.name}님이 ${target.name}님을 지목했어요 (도전자가 마나기운 ${BALANCE.duelManaFee}개를 건넸어요)`,
+      `각자 마나기운을 골라 내고 낸 개수만큼 주사위를 굴려 합이 큰 쪽이 이겨요. 같으면 무승부예요. 도전자는 지목당한 친구에게 매력 ${BALANCE.duelCharmFee}을 건네요`,
     ],
     entries: [
       choiceEntry(player, `${player.name} (도전자)`),
@@ -684,7 +690,7 @@ function resolveDuel(state: GameState, ctx: Extract<RollContext, { kind: "duel" 
   const defenderBonus = sumEffect(defenderAbilities, "rollBonus") - sumEffect(challengerAbilities, "enemyRollPenalty");
   const challengerRoll = Math.max(0, sum(challengerDice) + challengerBonus);
   const defenderRoll = Math.max(0, sum(defenderDice) + defenderBonus);
-  // 체력토큰 효과는 다음 달 준비 때 반영
+  // 체력기운 효과는 다음 달 준비 때 반영
   player.pendingStaminaTokens += sumEffect(challengerAbilities, "stamina");
   target.pendingStaminaTokens += sumEffect(defenderAbilities, "stamina");
   target.pendingStaminaTokens -= sumEffect(challengerAbilities, "enemyStamina");
@@ -704,7 +710,7 @@ function resolveDuel(state: GameState, ctx: Extract<RollContext, { kind: "duel" 
   const loserAbilities = [...(loser === player ? challengerAbilities : defenderAbilities), ...abilitiesOf(loser, "lose")];
   loser.pendingStaminaTokens += sumEffect(abilitiesOf(loser, "lose"), "stamina");
   winner.pendingStaminaTokens -= sumEffect(abilitiesOf(loser, "lose"), "enemyStamina");
-  // 낸 마나토큰은 이미 사라졌다. 방어 능력(immune)이 있으면 졌어도 마나토큰 1개를 다음 달 준비 때 돌려받는다
+  // 낸 마나기운은 이미 사라졌다. 방어 능력(immune)이 있으면 졌어도 마나기운 1개를 다음 달 준비 때 돌려받는다
   if (sumEffect(loserAbilities, "immune") > 0) loser.pendingManaTokens += 1;
   log(
     state,
@@ -737,12 +743,12 @@ function startExplorationRoll(
     lines: [
       card.description,
       mode === "pair"
-        ? `각자 체력토큰을 내고 낸 개수만큼 주사위를 굴려 둘의 합이 ${rule.target} 이상이면 성공! 보상은 둘 다 받아요 (체력토큰이 없으면 공짜 주사위 1개)`
+        ? `각자 체력기운을 내고 낸 개수만큼 주사위를 굴려 둘의 합이 ${rule.target} 이상이면 성공! 보상은 둘 다 받아요 (체력기운이 없으면 공짜 주사위 1개)`
         : `${fuelLine(state.players[playerIds[0]], BALANCE.rollFuel.exploration)} 합이 ${rule.target} 이상이면 성공`,
     ],
-    // 보조 능력치(지력=함정 간파): 지력토큰을 내고 굴리면 실패해도 손해가 없다
-    assist: { kind: "intelligence", name: "지력토큰", title: "함정 간파", hint: `지력토큰 ${BALANCE.explorationShieldCost}개를 내면 실패해도 손해를 받지 않아요 (성공하면 낸 토큰은 그냥 사라져요)` },
-    // 주사위 수는 체력토큰을 1~보유 개수 사이에서 골라 굴릴 때 낸다 (체력토큰이 없어도 1개는 공짜로 굴린다)
+    // 보조 능력치(지력=함정 간파): 지력기운을 내고 굴리면 실패해도 손해가 없다
+    assist: { kind: "intelligence", name: "지력기운", title: "함정 간파", hint: `지력기운 ${BALANCE.explorationShieldCost}개를 내면 실패해도 손해를 받지 않아요 (성공하면 낸 기운은 그냥 사라져요)` },
+    // 주사위 수는 체력기운을 1~보유 개수 사이에서 골라 굴릴 때 낸다 (체력기운이 없어도 1개는 공짜로 굴린다)
     entries: playerIds.map((id) => {
       const p = state.players[id];
       const entry = choiceEntry(p, p.name, mode === "pair" ? Math.ceil(rule.target / 2) : rule.target, BALANCE.rollFuel.exploration);
@@ -778,7 +784,7 @@ function resolveExploration(state: GameState, ctx: Extract<RollContext, { kind: 
         : ` (${parts[0].text} / 목표 ${target} ${success ? "성공" : "실패"})`;
   }
   const effect = success ? card.success : card.failure;
-  // 실패했을 때 함정을 간파한(지력토큰을 낸) 사람은 손해를 받지 않는다
+  // 실패했을 때 함정을 간파한(지력기운을 낸) 사람은 손해를 받지 않는다
   const safe = success ? [] : playerIds.filter((id) => shielded.includes(id));
   for (const id of playerIds) if (!safe.includes(id)) applyCardEffect(state, state.players[id], effect);
   state.explorationPile.discard.push(card);
@@ -792,7 +798,7 @@ function describeCoop(card: ExplorationCard, playerId: string, round: number): C
     playerId,
     name: card.name,
     description: card.description,
-    pairText: `둘이 각자 체력토큰을 내고 낸 개수만큼 주사위를 굴려 둘의 합이 ${coopTarget(round, card.coop!.pairTarget)} 이상이면 성공`,
+    pairText: `둘이 각자 체력기운을 내고 낸 개수만큼 주사위를 굴려 둘의 합이 ${coopTarget(round, card.coop!.pairTarget)} 이상이면 성공`,
     voidText: "함께할 친구가 끝까지 나타나지 않으면 이 카드는 무효가 돼요",
     successText: `${describeEffect(card.success)} (두 명 모두)`,
     failureText: `${describeEffect(card.failure)} (두 명 모두)`,
@@ -809,11 +815,11 @@ function offerViewOf(activityId: ActivityId, card: OfferedCard, round: number): 
   switch (activityId) {
     case "creature": {
       const c = card as CreatureCard;
-      return { id: c.id, name: c.name, description: c.description, tags: creatureTagsOf(c), lines: [describeAbility(c.ability), `조련 판정: 매력토큰 주사위 합 ≥ ${creatureTarget(c)}`] };
+      return { id: c.id, name: c.name, description: c.description, tags: creatureTagsOf(c), lines: [describeAbility(c.ability), `조련 판정: 매력기운 주사위 합 ≥ ${creatureTarget(c)}`] };
     }
     case "lab": {
       const c = card as LabCard;
-      return { id: c.id, name: c.name, description: c.description, lines: [c.summary, `실험 판정: 지력토큰 주사위 합 ≥ ${labTargetValue()}`], cost: c.cost > 0 ? { kind: "stamina", amount: c.cost } : undefined };
+      return { id: c.id, name: c.name, description: c.description, lines: [c.summary, `실험 판정: 지력기운 주사위 합 ≥ ${labTargetValue()}`], cost: c.cost > 0 ? { kind: "stamina", amount: c.cost } : undefined };
     }
     case "exploration": {
       const c = card as ExplorationCard;
@@ -878,7 +884,7 @@ function discardOffers(state: GameState): void {
 }
 
 
-// 이 카드를 지금 가져갈 수 있는가 (비용을 낼 수 있는가). 연구 카드는 체력토큰이 든다. 마법생물은 마나토큰 없이도 공짜 주사위 1개로 도전할 수 있다
+// 이 카드를 지금 가져갈 수 있는가 (비용을 낼 수 있는가). 연구 카드는 체력기운이 든다. 마법생물은 마나기운 없이도 공짜 주사위 1개로 도전할 수 있다
 function canTake(player: PlayerGameState, activityId: ActivityId, card: OfferedCard): boolean {
   if (activityId === "lab") return canPay(player, 0, (card as LabCard).cost);
   return true;
@@ -986,7 +992,7 @@ function startActivity(state: GameState, choice: ActivityChoice): void {
 }
 
 // 선택 단계: 선부터 시계방향으로 각자 활동을 고른다. 고른 활동은 모두에게 공개되고, 모두 고르면 진행 단계에서 하나씩 처리한다.
-// 비용(구역 두 번째 참가비 매력토큰·카드를 여는 지력토큰)은 고르는 순간 낸다
+// 비용(구역 두 번째 참가비 매력기운·카드를 여는 지력기운)은 고르는 순간 낸다
 export function selectActivity(state: GameState, playerId: string, activityId: ActivityId, targetPlayerId?: string): void {
   if (state.phase !== "activity") throw new Error("지금은 자율활동 단계가 아닙니다.");
   if (state.activityStage !== "choose") throw new Error("이미 모두 활동을 골랐어요. 차례대로 진행 중이에요.");
@@ -1003,10 +1009,10 @@ export function selectActivity(state: GameState, playerId: string, activityId: A
     if (!target || target.id === playerId) throw new Error("주문 대결 상대를 지정해야 합니다.");
     if (target.hasActedThisPhase) throw new Error("아직 자율활동을 고르지 않은 플레이어만 지목할 수 있습니다.");
   }
-  // 먼저 온 친구가 있는 구역은 매력토큰 1개를 더 낸다
+  // 먼저 온 친구가 있는 구역은 매력기운 1개를 더 낸다
   const extra = activityExtraCost(state, activityId);
   player.charmTokens -= extra;
-  // 구역에 처음 들어와 카드를 여는 사람이 지력토큰을 낸다
+  // 구역에 처음 들어와 카드를 여는 사람이 지력기운을 낸다
   pay(player, "intelligence", activityOpenCost(state, activityId));
   state.activitySlots[activityId].push(playerId);
   player.hasActedThisPhase = true;
@@ -1024,14 +1030,14 @@ export function selectActivity(state: GameState, playerId: string, activityId: A
 }
 
 // 다음에 고를 사람을 찾는다. 주문 대결에 지목당해 이미 활동이 정해진 플레이어는 건너뛰고,
-// 고를 수 있는 활동이 없는 플레이어는 쉬어 가며 다음 달 체력토큰 +1을 받는다. 모두 골랐으면 진행 단계로 넘어간다
+// 고를 수 있는 활동이 없는 플레이어는 쉬어 가며 다음 달 체력기운 +1을 받는다. 모두 골랐으면 진행 단계로 넘어간다
 function skipUnavailableChoosers(state: GameState): void {
   while (state.activityTurnPointer < state.activityOrder.length) {
     const player = state.players[state.activityOrder[state.activityTurnPointer]];
     if (!player.hasActedThisPhase && availableActivities(state, player.id).length === 0) {
       player.hasActedThisPhase = true;
       player.pendingStaminaTokens += 1;
-      log(state, `${player.name}: 고를 수 있는 구역이 없어 쉬어 갑니다 (다음 달 체력토큰 +1)`);
+      log(state, `${player.name}: 고를 수 있는 구역이 없어 쉬어 갑니다 (다음 달 체력기운 +1)`);
     }
     if (!player.hasActedThisPhase) return;
     state.activityTurnPointer += 1;
@@ -1086,7 +1092,7 @@ function finishResolutionStep(state: GameState): void {
 }
 
 function endActivityPhase(state: GameState): void {
-  // 끝까지 함께할 친구가 나타나지 않은 협력 카드는 무효가 된다 (열었던 지력토큰은 돌려받지 못한다)
+  // 끝까지 함께할 친구가 나타나지 않은 협력 카드는 무효가 된다 (열었던 지력기운은 돌려받지 못한다)
   const hold = state.hidden.coop;
   if (hold) {
     state.hidden.coop = null;
@@ -1120,11 +1126,11 @@ export function chooseActivityCard(state: GameState, playerId: string, cardId: s
   if (!state.pendingRoll && !state.pendingPick) finishResolutionStep(state);
 }
 
-// ── 주사위 굴리기: 모든 주사위는 마나토큰으로 (선 정하기만 공짜 1개, 다시 굴리기 불가) ──
+// ── 주사위 굴리기: 모든 주사위는 마나기운으로 (선 정하기만 공짜 1개, 다시 굴리기 불가) ──
 // 굴려야 하는 사람이 모두 굴리면 결과가 화면에 나오고, 굴린 사람들이 결과를 눈으로 확인한 뒤 "확인"을 눌러야 결과가 적용된다
 
 // 주사위 굴리기 버튼: 서버가 굴려서 결과를 기록한다
-// diceCount는 굴리기 전에 마나토큰을 1~보유 개수 사이에서 골라 내는 굴림에서 쓴다 (생략하면 entry의 기본 개수). 낸 마나토큰은 사라진다
+// diceCount는 굴리기 전에 마나기운을 1~보유 개수 사이에서 골라 내는 굴림에서 쓴다 (생략하면 entry의 기본 개수). 낸 마나기운은 사라진다
 export function submitRoll(state: GameState, playerId: string, diceCount?: number, assist = 0): void {
   const pending = state.pendingRoll;
   if (!pending) throw new Error("지금은 주사위를 굴릴 차례가 아닙니다.");
@@ -1132,9 +1138,9 @@ export function submitRoll(state: GameState, playerId: string, diceCount?: numbe
   if (!entry) throw new Error("이번 굴림에 참여하지 않습니다.");
   if (entry.dice) throw new Error("이미 주사위를 굴렸습니다.");
   const player = state.players[playerId];
-  // 보조 능력치 토큰 (토너먼트 체력토큰 / 탐험 지력토큰): 마나토큰과 함께 내며, 검증을 모두 마친 뒤에 낸다
+  // 보조 능력치 기운 (토너먼트 체력기운 / 탐험 지력기운): 마나기운과 함께 내며, 검증을 모두 마친 뒤에 낸다
   const assistKind = pending.assist?.kind;
-  if (!Number.isInteger(assist) || assist < 0 || assist > (entry.assistMax ?? 0)) throw new Error("낼 수 없는 보조 토큰 개수예요.");
+  if (!Number.isInteger(assist) || assist < 0 || assist > (entry.assistMax ?? 0)) throw new Error("낼 수 없는 보조 기운 개수예요.");
   if (entry.diceChoiceMax !== undefined) {
     const n = diceCount ?? entry.diceCount;
     if (!Number.isInteger(n) || n < 1 || n > entry.diceChoiceMax) throw new Error(`${PAY_OBJECT[entry.diceToken ?? "mana"]} 1~${entry.diceChoiceMax}개 사이로 골라 주세요.`);
@@ -1155,8 +1161,8 @@ export function rollRevealed(state: Pick<GameState, "pendingRoll">): boolean {
   return !!state.pendingRoll && state.pendingRoll.entries.every((e) => e.dice !== null);
 }
 
-// 다시 굴리기: 모두 굴린 뒤 아직 확인하지 않았다면, 마나토큰 1개당 주사위 1개를 원하는 만큼(일부 주사위만) 다시 굴린다.
-// 몇 번이든 남은 마나토큰이 허락하는 만큼 다시 굴릴 수 있다
+// 다시 굴리기: 모두 굴린 뒤 아직 확인하지 않았다면, 마나기운 1개당 주사위 1개를 원하는 만큼(일부 주사위만) 다시 굴린다.
+// 몇 번이든 남은 마나기운이 허락하는 만큼 다시 굴릴 수 있다
 export function rerollDice(state: GameState, playerId: string, diceIndexes: number[]): void {
   const pending = state.pendingRoll;
   if (!pending) throw new Error("지금은 주사위를 다시 굴릴 때가 아닙니다.");
@@ -1169,7 +1175,7 @@ export function rerollDice(state: GameState, playerId: string, diceIndexes: numb
   if (indexes.length === 0) throw new Error("다시 굴릴 주사위를 골라 주세요.");
   if (indexes.some((i) => !Number.isInteger(i) || i < 0 || i >= entry.dice!.length)) throw new Error("없는 주사위입니다.");
   const player = state.players[playerId];
-  if (player.manaTokens < indexes.length) throw new Error(`마나토큰이 부족해요 (주사위 ${indexes.length}개를 다시 굴리려면 마나토큰 ${indexes.length}개가 필요해요).`);
+  if (player.manaTokens < indexes.length) throw new Error(`마나기운이 부족해요 (주사위 ${indexes.length}개를 다시 굴리려면 마나기운 ${indexes.length}개가 필요해요).`);
   pay(player, "mana", indexes.length);
   const before = indexes.map((i) => entry.dice![i]);
   for (const i of indexes) entry.dice[i] = rollD6();
@@ -1177,7 +1183,7 @@ export function rerollDice(state: GameState, playerId: string, diceIndexes: numb
   // 주사위별 재굴림 횟수 — 화면에서 다시 굴린 주사위에만 굴리는 애니메이션을 보여주는 용도
   const counts = entry.rerollCounts ?? (entry.rerollCounts = entry.dice.map(() => 0));
   for (const i of indexes) counts[i] = (counts[i] ?? 0) + 1;
-  log(state, `${player.name}: 마나토큰 ${indexes.length}개로 주사위를 다시 굴렸어요 (${before.join(", ")} → ${indexes.map((i) => entry.dice![i]).join(", ")})`);
+  log(state, `${player.name}: 마나기운 ${indexes.length}개로 주사위를 다시 굴렸어요 (${before.join(", ")} → ${indexes.map((i) => entry.dice![i]).join(", ")})`);
 }
 
 // 결과 확인 버튼: 모든 참여자가 확인하면 결과를 적용한다
@@ -1235,53 +1241,10 @@ function resolveFirstRoll(state: GameState, contenders: string[], diceOf: (id: s
   beginRound(state);
 }
 
-// ── 4주차(정리): 남은 토큰은 사라지지만, 네 종류 토큰 중 1개는 골라서 다음 달로 남길 수 있다 ──
+// ── 4주차(정리): 남은 기운은 사라지지만, 네 종류 기운 중 1개는 골라서 다음 달로 남길 수 있다 ──
 
 // 시험을 치르는 달: 1주차(준비) → 시험 → 4주차(정리)
 export const isExamRound = (round: number) => round === BALANCE.midtermRound || round === BALANCE.totalRounds;
-
-// 남길 수 있는 토큰 종류 (남은 개수가 1개 이상인 것). 시험 달에 다시 굴리기에 쓰고 남은 지력토큰도 남길 수 있다
-export function keepOptions(
-  _state: Pick<GameState, "round">,
-  p: Pick<PlayerGameState, "intelligenceTokens" | "staminaTokens" | "charmTokens" | "manaTokens">,
-): KeptToken[] {
-  const options: KeptToken[] = [];
-  if (p.intelligenceTokens > 0) options.push("intelligence");
-  if (p.staminaTokens > 0) options.push("stamina");
-  if (p.charmTokens > 0) options.push("charm");
-  if (p.manaTokens > 0) options.push("mana");
-  return options;
-}
-
-// 봇이 남길 토큰: 체력토큰(수업카드·주문력 카드 습득에 쓰인다)을 우선하고, 없으면 지력·마나·매력 순
-export function autoKeepChoice(state: GameState, playerId: string): KeepChoice {
-  const options = keepOptions(state, state.players[playerId]);
-  for (const kind of ["stamina", "intelligence", "mana", "charm"] as const) if (options.includes(kind)) return kind;
-  return "none";
-}
-
-function beginCleanupPhase(state: GameState): void {
-  state.phase = "cleanup";
-  state.cleanupKeep = {};
-  for (const playerId of state.turnOrder) {
-    const player = state.players[playerId];
-    if (keepOptions(state, player).length === 0) continue; // 남길 토큰이 없는 사람은 고를 게 없다
-    state.cleanupKeep[playerId] = player.isBot ? autoKeepChoice(state, playerId) : null;
-  }
-  if (Object.values(state.cleanupKeep).every((choice) => choice !== null)) finishCleanup(state);
-  else log(state, "4주차(정리): 다음 달로 남길 토큰을 골라요 (아무 토큰 1개)");
-}
-
-// 남길 토큰을 고른다 (choice가 "none"이면 남기지 않는다). 남길 토큰이 있는 모두가 고르면 정리를 마친다
-export function chooseKeepToken(state: GameState, playerId: string, choice: KeepChoice): void {
-  if (state.phase !== "cleanup") throw new Error("지금은 4주차 정리 단계가 아닙니다.");
-  if (!(playerId in state.cleanupKeep) || state.cleanupKeep[playerId] !== null) throw new Error("남길 토큰이 없거나 이미 골랐어요.");
-  const player = state.players[playerId];
-  if (choice !== "none" && !keepOptions(state, player).includes(choice)) throw new Error("그 토큰은 남길 수 없어요 (남아 있는 토큰 중에서 골라 주세요).");
-  state.cleanupKeep[playerId] = choice;
-  log(state, `${player.name}: ${choice === "none" ? "토큰을 남기지 않기로 했어요" : `${KEEP_LABEL[choice]}토큰 1개를 다음 달로 남기기로 했어요`}`);
-  if (Object.values(state.cleanupKeep).every((c) => c !== null)) finishCleanup(state);
-}
 
 // 4주차(정리): 지난달 이전에 얻은 임시 능력치(와 시험 대비 카드)는 소멸하고, 이번 달에 얻은 몫은 다음 달 정리 때까지 이어진다
 function expireTempBoosts(state: GameState, player: PlayerGameState): void {
@@ -1308,61 +1271,41 @@ export function statDecayOf(round: number, player: Pick<PlayerGameState, StatKey
   return result;
 }
 
+// 4주차(정리, 40절): 쓰고 남은 기운은 사라지지 않고 다음 달로 이어진다. 임시 능력치가 소멸하고, 능력치 감쇠가 일어나고, 다음 달 선이 정해진다.
+// 고를 것이 없으니 기다리지 않고 바로 끝난다
+function beginCleanupPhase(state: GameState): void {
+  state.phase = "cleanup";
+  finishCleanup(state);
+}
+
 function finishCleanup(state: GameState): void {
-  const keptOf = (id: string): KeptToken | null => {
-    const choice = state.cleanupKeep[id];
-    return choice === undefined || choice === null || choice === "none" ? null : choice;
-  };
-  // 토큰이 소멸하기 전의 매력토큰으로 선을 정한다
+  // 남은 매력기운이 가장 많은 친구가 다음 달 선이 된다 (감쇠·충전 전의 값)
   const nextIndex = nextStarterIndex(state);
   const starterName = state.players[state.turnOrder[nextIndex]].name;
   const starterTokens = state.players[state.turnOrder[nextIndex]].charmTokens;
-  state.cleanupSummary = state.turnOrder.map((id) => {
-    const p = state.players[id];
-    const kept = keptOf(id);
-    return {
-      playerId: id,
-      intelligenceTokens: p.intelligenceTokens - (kept === "intelligence" ? 1 : 0),
-      staminaTokens: p.staminaTokens - (kept === "stamina" ? 1 : 0),
-      charmTokens: p.charmTokens - (kept === "charm" ? 1 : 0),
-      manaTokens: p.manaTokens - (kept === "mana" ? 1 : 0),
-      kept,
-      decay: statDecayOf(state.round, p),
-    };
-  });
+  state.cleanupSummary = state.turnOrder.map((id) => ({ playerId: id, decay: statDecayOf(state.round, state.players[id]) }));
   for (const playerId of state.turnOrder) {
     const player = state.players[playerId];
-    const kept = keptOf(playerId);
     expireTempBoosts(state, player);
-    // 능력치 감쇠: 지력·체력·매력이 시간이 지나 줄어든다 (다음 달 준비부터 줄어든 값으로 토큰을 받는다)
+    // 능력치 감쇠: 지력·체력·매력이 시간이 지나 줄어든다 (한도도 같이 줄고, 넘치는 기운은 다음 달 충전 때 정리된다)
     const decay = statDecayOf(state.round, player);
     for (const [stat, loss] of Object.entries(decay)) player[stat as StatKey] -= loss ?? 0;
     if (Object.keys(decay).length > 0) {
       log(state, `${player.name}: 시간이 지나 능력치가 줄었어요 (${Object.entries(decay).map(([stat, loss]) => `${STAT_NAME[stat as StatKey]} -${loss}`).join(", ")})`);
     }
-    player.carryTokens = {
-      intelligence: kept === "intelligence" ? 1 : 0,
-      stamina: kept === "stamina" ? 1 : 0,
-      charm: kept === "charm" ? 1 : 0,
-      mana: kept === "mana" ? 1 : 0,
-    };
-    player.intelligenceTokens = 0;
-    player.staminaTokens = 0;
-    player.charmTokens = 0;
-    player.manaTokens = 0;
     player.hasActedThisPhase = false;
   }
-  state.cleanupKeep = {};
-  log(state, "4주차(정리): 남은 토큰 소멸 (남기기로 한 토큰은 다음 달로 가요)");
+  log(state, "4주차(정리): 쓰고 남은 기운은 다음 달로 이어져요");
   if (nextIndex !== state.startingPlayerIndex) {
     state.startingPlayerIndex = nextIndex;
-    log(state, BALANCE.starterRule === "charmTokens" ? `4주차(정리): 남은 매력토큰이 가장 많은 ${starterName}님(${starterTokens}개)이 다음 달 선이 돼요` : `4주차(정리): ${starterName}님이 다음 달 선이 돼요`);
+    log(state, BALANCE.starterRule === "charmTokens" ? `4주차(정리): 남은 매력기운이 가장 많은 ${starterName}님(${starterTokens}개)이 다음 달 선이 돼요` : `4주차(정리): ${starterName}님이 다음 달 선이 돼요`);
   } else {
     log(state, `4주차(정리): 다음 달도 ${starterName}님이 선이에요`);
   }
 
   advanceRound(state);
 }
+
 
 function advanceRound(state: GameState): void {
   revealExamCard(state);
@@ -1379,7 +1322,7 @@ function revealExamCard(state: GameState): void {
   log(state, `${which === "midterm" ? "중간고사" : "기말고사"} 과목 공개: "${plan[which].name}" (${describeExam(plan[which], STAT_NAME)})`);
 }
 
-// 시험 점수 = 시험 카드의 주 능력치(diceStat) 토큰을 내고 굴린 주사위 합 + 보너스 능력치(bonusStat) 수치(있으면). 보너스 능력치는 고정 보너스다 (39절)
+// 시험 점수 = 시험 카드의 주 능력치(diceStat) 기운을 내고 굴린 주사위 합 + 보너스 능력치(bonusStat) 수치(있으면). 보너스 능력치는 고정 보너스다 (39절)
 function examBonus(state: GameState, playerId: string, card: ExamCard): number {
   const p = state.players[playerId];
   return card.bonusStat ? effectiveStat(p, card.bonusStat) : 0;
@@ -1392,7 +1335,7 @@ function beginExam(state: GameState, examType: "midterm_exam" | "final_exam"): v
   state.pendingRoll = {
     kind: "exam",
     title: `${examType === "midterm_exam" ? "중간고사" : "기말고사"} · ${card.name}`,
-    lines: [`점수 = ${describeExam(card, STAT_NAME)} — 높은 순서로 순위를 매겨요`, `${TOKEN_NAME[examFuel(card)]}을 1~보유 개수만큼 내고 낸 개수만큼 주사위를 굴려요 (없으면 공짜 1개). 마나토큰으로 다시 굴릴 수 있어요`],
+    lines: [`점수 = ${describeExam(card, STAT_NAME)} — 높은 순서로 순위를 매겨요`, `${TOKEN_NAME[examFuel(card)]}을 1~보유 개수만큼 내고 낸 개수만큼 주사위를 굴려요 (없으면 공짜 1개). 마나기운으로 다시 굴릴 수 있어요`],
     entries: state.turnOrder.map((id) => choiceEntry(state.players[id], state.players[id].name, undefined, examFuel(card))),
   };
 }
@@ -1418,7 +1361,7 @@ function resolveExam(state: GameState, examType: "midterm_exam" | "final_exam", 
     applyTournamentFinalRewards(state);
     finalizeGame(state);
   } else {
-    beginCleanupPhase(state); // 중간고사 달의 4주차(정리): 시험 뒤 남은 지력토큰도 1개 남길 수 있다
+    beginCleanupPhase(state); // 중간고사 달의 4주차(정리): 시험 뒤 남은 지력기운도 1개 남길 수 있다
   }
 }
 
@@ -1453,7 +1396,7 @@ function finalizeGame(state: GameState): void {
 
 // ── 게임 도중 플레이어 제거 (방장이 내보냈을 때) ──
 // 봇이 대신하지 않고 그 사람만 게임에서 완전히 빠진다. 그 사람 때문에 멈춰 있던 단계는 즉시 다음으로 넘어간다.
-// 이미 낸 비용(토큰)은 돌려주지 않는다. 그 사람의 카드는 해당 버림 더미로 돌아간다.
+// 이미 낸 비용(기운)은 돌려주지 않는다. 그 사람의 카드는 해당 버림 더미로 돌아간다.
 // 호출하는 쪽은 최소 2명이 남는지 미리 확인해야 한다.
 
 // 진행 중이던 주사위 굴림이 들고 있던 카드를 버림 더미로 돌린다 (조련·실험·탐험 판정)
@@ -1607,11 +1550,6 @@ export function removePlayerFromGame(state: GameState, playerId: string): void {
     case "activity":
       removeFromActivityPhase(state, playerId);
       break;
-    case "cleanup": {
-      delete state.cleanupKeep[playerId];
-      if (Object.values(state.cleanupKeep).every((choice) => choice !== null)) finishCleanup(state);
-      break;
-    }
     default: {
       // 시험: 굴림에서 빠지고, 남은 사람이 모두 확인했으면 바로 결과를 처리한다
       if (roll) {

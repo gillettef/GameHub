@@ -17,10 +17,11 @@ import {
   describeAbility,
   duelTargets,
   effectiveStat,
+  energyCap,
   type ActivityId,
   type CreatureElement,
   type GameState,
-  type KeepChoice,
+  type KeptToken,
   type OfferCardView,
   type PlayerGameState,
 } from "./gameTypes";
@@ -67,6 +68,8 @@ function DiceFace({ value, delay = 0, selected, onToggle }: { value: number; del
 }
 
 function PlayerStatCard({ player, isMe, rules, defaultOpen }: { player: PlayerGameState; isMe: boolean; rules: GameState["rules"]; defaultOpen: boolean }) {
+  // 기운은 "지금 가진 양/모아 둘 수 있는 한도"로 보여 준다
+  const energy = (kind: KeptToken, now: number) => `${now}/${energyCap(player, kind, rules)}`;
   const body = (
     <>
       <div className="flex flex-wrap gap-1.5 mb-1.5">
@@ -77,7 +80,10 @@ function PlayerStatCard({ player, isMe, rules, defaultOpen }: { player: PlayerGa
         <Chip icon="cap" label="학점" value={player.credit} className="bg-amber-100 text-amber-800" />
       </div>
       <p className="text-sm text-purple-700 leading-7">
-        <InlineIcon name="trophy" /> 토너먼트 {player.tournamentTrack}칸 · <InlineIcon name="intToken" /> 지력토큰 {player.intelligenceTokens} · <InlineIcon name="staminaToken" /> 체력토큰 {player.staminaTokens} · <InlineIcon name="charmToken" /> 매력토큰 {player.charmTokens} · <InlineIcon name="manaToken" /> 마나토큰 {player.manaTokens} · <InlineIcon name="book" /> 수업 {player.classCards.length}장
+        <InlineIcon name="trophy" /> 토너먼트 {player.tournamentTrack}칸 · <InlineIcon name="book" /> 수업 {player.classCards.length}장
+      </p>
+      <p className="text-sm text-purple-700 leading-7">
+        <InlineIcon name="intToken" /> 지력기운 {energy("intelligence", player.intelligenceTokens)} · <InlineIcon name="staminaToken" /> 체력기운 {energy("stamina", player.staminaTokens)} · <InlineIcon name="charmToken" /> 매력기운 {energy("charm", player.charmTokens)} · <InlineIcon name="manaToken" /> 마나기운 {energy("mana", player.manaTokens)}
       </p>
       {player.peekedExploration && (
         <div className="mt-2 rounded-2xl border border-indigo-200 bg-indigo-50 px-2.5 py-2 text-sm text-indigo-800">
@@ -150,7 +156,7 @@ function offerCardInfo(card: OfferCardView): CardInfo {
   return {
     name: card.name,
     badge:
-      [card.tags, card.cost ? (card.cost.kind === "stamina" ? `체력토큰 ${card.cost.amount}개` : `마나토큰 ${card.cost.amount}개`) : undefined].filter(Boolean).join(" · ") || undefined,
+      [card.tags, card.cost ? (card.cost.kind === "stamina" ? `체력기운 ${card.cost.amount}개` : `마나기운 ${card.cost.amount}개`) : undefined].filter(Boolean).join(" · ") || undefined,
     lines: [card.description, ...card.lines],
   };
 }
@@ -207,7 +213,7 @@ function ClassPhasePanel({ game, myId, onTake }: { game: GameState; myId: string
     <div className="bg-white rounded-3xl border-2 border-purple-200 shadow-sm p-4">
       <p className="text-sm text-purple-500 mb-1">2주차(정규수업): 공개된 수업카드를 선부터 시계방향으로 1장씩 가져가요</p>
       <p className="text-xs text-purple-500 mb-2">
-        <InlineIcon name="staminaToken" /> 체력토큰 {me.staminaTokens}개
+        <InlineIcon name="staminaToken" /> 체력기운 {me.staminaTokens}개
       </p>
       <ol className="mb-3 flex flex-wrap gap-1.5 text-xs" aria-label="진행 순서">
         {game.classPickOrder.map((id, index) => {
@@ -244,7 +250,7 @@ function ClassPhasePanel({ game, myId, onTake }: { game: GameState; myId: string
                 card: classCardData(card),
                 blockReason: classCardBlockReason(me, card),
                 onAction: isMyTurn ? () => onTake(card.id) : undefined,
-                actionLabel: affordable ? "가져가기" : "체력토큰이 부족해요",
+                actionLabel: affordable ? "가져가기" : "체력기운이 부족해요",
                 disabled: !affordable,
               };
             })}
@@ -323,7 +329,7 @@ function PickPanel({ game, myId, onPick }: { game: GameState; myId: string; onPi
             ? "고르지 않은 카드는 다음에 이 구역을 쓰는 친구의 몫이에요."
             : "고르고 남은 카드는 다음에 이 구역에 들어오는 친구가 가져가요."}
           {canSkip && " 살 수 있는 카드가 없거나 원하지 않으면 넘어가도 돼요."}{" "}
-          (<InlineIcon name="staminaToken" /> 내 체력토큰 {me.staminaTokens}개 · <InlineIcon name="manaToken" /> 마나토큰 {me.manaTokens}개 · <InlineIcon name="charmToken" /> 매력토큰 {me.charmTokens}개)
+          (<InlineIcon name="staminaToken" /> 내 체력기운 {me.staminaTokens}개 · <InlineIcon name="manaToken" /> 마나기운 {me.manaTokens}개 · <InlineIcon name="charmToken" /> 매력기운 {me.charmTokens}개)
         </p>
       )}
       <div className="flex flex-col gap-2">
@@ -447,7 +453,7 @@ function ChoosePanel({
       <div className="bg-white rounded-3xl border-2 border-purple-200 shadow-sm p-4">
         <p className="text-sm text-purple-600 mb-1">아직 활동을 고르지 않은 한 명을 지목하세요</p>
         <p className="text-xs text-purple-500 mb-2">
-          지목당한 친구는 이번 달 자율활동으로 주문 대결을 하게 돼요. 결과와 상관없이 지목한 친구에게 <InlineIcon name="heart" /> 매력 {fee}과 <InlineIcon name="manaToken" /> 마나토큰 {game.rules.duelManaFee}개를 건네요.
+          지목당한 친구는 이번 달 자율활동으로 주문 대결을 하게 돼요. 결과와 상관없이 지목한 친구에게 <InlineIcon name="heart" /> 매력 {fee}과 <InlineIcon name="manaToken" /> 마나기운 {game.rules.duelManaFee}개를 건네요.
         </p>
         <div className="flex flex-col gap-2">
           {targets.map((id) => (
@@ -482,7 +488,7 @@ function ChoosePanel({
               : "모두 골랐어요"}
       </p>
       <p className="text-xs text-purple-500 mb-2">
-        구역당 최대 {game.rules.activityMaxParticipants}명 · 먼저 고른 친구가 있으면 <InlineIcon name="charmToken" /> 매력토큰 {game.rules.activitySecondParticipantCost}개 추가 (내 매력토큰 {game.players[myId]?.charmTokens ?? 0}개). 처음 고른 친구가 카드를 공개하고 원하는 카드를 가져가요. 남은 카드는 두 번째 참가자가 가져가요.
+        구역당 최대 {game.rules.activityMaxParticipants}명 · 먼저 고른 친구가 있으면 <InlineIcon name="charmToken" /> 매력기운 {game.rules.activitySecondParticipantCost}개 추가 (내 매력기운 {game.players[myId]?.charmTokens ?? 0}개). 처음 고른 친구가 카드를 공개하고 원하는 카드를 가져가요. 남은 카드는 두 번째 참가자가 가져가요.
       </p>
       <div className="grid grid-cols-1 gap-2">
         {ACTIVITY_IDS.map((activityId) => {
@@ -512,9 +518,9 @@ function ChoosePanel({
               {(who || (isMyTurn && (extra > 0 || openCost > 0))) && (
                 <span className="mt-1 flex flex-wrap gap-1">
                   {who && <span className="rounded-full bg-purple-100 px-2 py-0.5 text-xs text-purple-700">{who} 선택</span>}
-                  {isMyTurn && extra > 0 && !full && <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs text-green-800">매력토큰 +{extra}</span>}
+                  {isMyTurn && extra > 0 && !full && <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs text-green-800">매력기운 +{extra}</span>}
                   {isMyTurn && openCost > 0 && !full && (
-                    <span className="rounded-full bg-sky-100 px-2 py-0.5 text-xs text-sky-800">지력토큰 {openCost}개 (카드 공개)</span>
+                    <span className="rounded-full bg-sky-100 px-2 py-0.5 text-xs text-sky-800">지력기운 {openCost}개 (카드 공개)</span>
                   )}
                 </span>
               )}
@@ -652,14 +658,14 @@ function ActivityPhasePanel({
   );
 }
 
-// 주사위 굴리기 (선 정하기·토너먼트·조련·연구실·주문 대결·탐험 판정·시험): 마나토큰을 1~보유 개수만큼 골라 내고(없으면 공짜 1개) 버튼을 누르면
-// 서버가 낸 개수만큼 굴려서 결과를 알려 주고, 모두 굴린 뒤에는 결과를 눈으로 확인하고(남은 마나토큰 1개당 주사위 1개를 다시 굴릴 수 있다) "확인" 버튼을 눌러야 결과가 적용된다
-// 주사위 재료 토큰의 이름과 아이콘 (활동마다 주 능력치의 토큰이 재료다. 다시 굴리기는 언제나 마나토큰)
+// 주사위 굴리기 (선 정하기·토너먼트·조련·연구실·주문 대결·탐험 판정·시험): 마나기운을 1~보유 개수만큼 골라 내고(없으면 공짜 1개) 버튼을 누르면
+// 서버가 낸 개수만큼 굴려서 결과를 알려 주고, 모두 굴린 뒤에는 결과를 눈으로 확인하고(남은 마나기운 1개당 주사위 1개를 다시 굴릴 수 있다) "확인" 버튼을 눌러야 결과가 적용된다
+// 주사위 재료 기운의 이름과 아이콘 (활동마다 주 능력치의 기운이 재료다. 다시 굴리기는 언제나 마나기운)
 const FUEL_INFO = {
-  intelligence: { icon: "intToken", name: "지력토큰" },
-  stamina: { icon: "staminaToken", name: "체력토큰" },
-  charm: { icon: "charmToken", name: "매력토큰" },
-  mana: { icon: "manaToken", name: "마나토큰" },
+  intelligence: { icon: "intToken", name: "지력기운" },
+  stamina: { icon: "staminaToken", name: "체력기운" },
+  charm: { icon: "charmToken", name: "매력기운" },
+  mana: { icon: "manaToken", name: "마나기운" },
 } as const;
 
 function RollPanel({
@@ -679,9 +685,9 @@ function RollPanel({
   const [clickedFor, setClickedFor] = useState<string | null>(null);
   // 다시 굴리려고 고른 내 주사위 번호
   const [selected, setSelected] = useState<number[]>([]);
-  // 마나토큰을 몇 개 낼지 고른 주사위 수 (null이면 서버가 정한 기본값)
+  // 마나기운을 몇 개 낼지 고른 주사위 수 (null이면 서버가 정한 기본값)
   const [pickedCount, setPickedCount] = useState<number | null>(null);
-  // 보조 능력치 토큰(체력토큰·지력토큰)을 몇 개 낼지 고른 수. 굴림이 바뀌면 처음(0개)으로 돌아간다
+  // 보조 능력치 기운(체력기운·지력기운)을 몇 개 낼지 고른 수. 굴림이 바뀌면 처음(0개)으로 돌아간다
   const [pickedAssist, setPickedAssist] = useState(0);
   const rollTitle = pending?.title;
   useEffect(() => {
@@ -699,7 +705,7 @@ function RollPanel({
   const mine = pending.entries.find((e) => e.playerId === myId);
   const revealed = pending.entries.every((e) => e.dice !== null);
   const canRoll = !!mine && mine.dice === null;
-  // 굴리기 전에 마나토큰을 몇 개 낼지 고르는 굴림 (마나토큰이 없으면 choiceMax가 없고 공짜 주사위 1개)
+  // 굴리기 전에 마나기운을 몇 개 낼지 고르는 굴림 (마나기운이 없으면 choiceMax가 없고 공짜 주사위 1개)
   const choiceMax = mine?.diceChoiceMax;
   const fuel = FUEL_INFO[mine?.diceToken ?? "mana"];
   const chosenCount = choiceMax !== undefined ? Math.min(Math.max(pickedCount ?? mine!.diceCount, 1), choiceMax) : (mine?.diceCount ?? 0);
@@ -707,7 +713,7 @@ function RollPanel({
   const chosenAssist = Math.min(pickedAssist, assistMax);
   const canConfirm = !!mine && revealed && !mine.confirmed;
   const me = game.players[myId];
-  // 결과를 확인하기 전에는 남은 마나토큰으로 일부 주사위만 다시 굴릴 수 있다 (선 정하기는 제외)
+  // 결과를 확인하기 전에는 남은 마나기운으로 일부 주사위만 다시 굴릴 수 있다 (선 정하기는 제외)
   const canReroll = canConfirm && pending.kind !== "first" && !!mine && (mine.dice?.length ?? 0) > 0;
   const rerollCost = selected.length;
   const rerollOk = rerollCost > 0 && me.manaTokens >= rerollCost;
@@ -770,7 +776,7 @@ function RollPanel({
         <div className="mt-3 rounded-2xl bg-sky-50 px-3 py-2 text-sm text-sky-800">
           <p>
             <InlineIcon name={fuel.icon} /> {fuel.name} {choiceMax}개 중 몇 개를 낼까요? 낸 개수만큼 주사위를 굴려요.{" "}
-            {fuel.name === "마나토큰" ? "안 낸 마나토큰은 다시 굴리기에 쓸 수 있어요" : "다시 굴리기는 마나토큰으로 해요"}
+            {fuel.name === "마나기운" ? "안 낸 마나기운은 다시 굴리기에 쓸 수 있어요" : "다시 굴리기는 마나기운으로 해요"}
           </p>
           <div className="mt-2 flex items-center justify-center gap-4">
             <button
@@ -805,7 +811,7 @@ function RollPanel({
           </p>
           <div className="mt-2 flex items-center justify-center gap-4">
             <button
-              aria-label="보조 토큰 하나 줄이기"
+              aria-label="보조 기운 하나 줄이기"
               disabled={chosenAssist <= 0}
               className="h-12 w-12 rounded-full bg-white text-2xl font-semibold text-emerald-700 shadow-sm active:scale-95 transition-transform disabled:opacity-40"
               onClick={() => setPickedAssist(chosenAssist - 1)}
@@ -814,7 +820,7 @@ function RollPanel({
             </button>
             <span className="min-w-20 text-center text-lg font-semibold">{chosenAssist}개</span>
             <button
-              aria-label="보조 토큰 하나 늘리기"
+              aria-label="보조 기운 하나 늘리기"
               disabled={chosenAssist >= assistMax}
               className="h-12 w-12 rounded-full bg-white text-2xl font-semibold text-emerald-700 shadow-sm active:scale-95 transition-transform disabled:opacity-40"
               onClick={() => setPickedAssist(chosenAssist + 1)}
@@ -843,7 +849,7 @@ function RollPanel({
           {canReroll && (
             <div className="mt-3 rounded-2xl bg-sky-50 px-3 py-2 text-sm text-sky-800">
               <p>
-                <InlineIcon name="manaToken" /> 마나토큰 {me.manaTokens}개 · 주사위를 눌러 고르면 <b>마나토큰 1개당 주사위 1개</b>를 다시 굴려요
+                <InlineIcon name="manaToken" /> 마나기운 {me.manaTokens}개 · 주사위를 눌러 고르면 <b>마나기운 1개당 주사위 1개</b>를 다시 굴려요
               </p>
               <button
                 disabled={!rerollOk}
@@ -854,7 +860,7 @@ function RollPanel({
                 }}
               >
                 <Icon name="dice" className="h-5 w-5" />
-                {rerollCost === 0 ? "다시 굴릴 주사위를 골라요" : rerollOk ? `선택한 ${rerollCost}개 다시 굴리기 (마나토큰 ${rerollCost}개)` : "마나토큰이 부족해요"}
+                {rerollCost === 0 ? "다시 굴릴 주사위를 골라요" : rerollOk ? `선택한 ${rerollCost}개 다시 굴리기 (마나기운 ${rerollCost}개)` : "마나기운이 부족해요"}
               </button>
             </div>
           )}
@@ -889,55 +895,7 @@ function RollPanel({
   );
 }
 
-// 4주차(정리): 남은 토큰(지력·체력·매력·마나) 중 1개를 다음 달로 남길 수 있다
-const KEEP_OPTIONS = [
-  { kind: "intelligence", count: "intelligenceTokens", icon: "intToken", label: "지력", className: "bg-sky-100 text-sky-800" },
-  { kind: "stamina", count: "staminaTokens", icon: "staminaToken", label: "체력", className: "bg-green-100 text-green-800" },
-  { kind: "charm", count: "charmTokens", icon: "charmToken", label: "매력", className: "bg-pink-100 text-pink-800" },
-  { kind: "mana", count: "manaTokens", icon: "manaToken", label: "마나", className: "bg-purple-200 text-purple-900" },
-] as const;
 
-function CleanupPanel({ game, myId, onKeep }: { game: GameState; myId: string; onKeep: (choice: KeepChoice) => void }) {
-  const me = game.players[myId];
-  const myChoice = game.cleanupKeep[myId]; // undefined: 남길 수 있는 토큰이 없음, null: 고르는 중
-  const waiting = Object.entries(game.cleanupKeep)
-    .filter(([id, choice]) => choice === null && id !== myId)
-    .map(([id]) => game.players[id].name);
-  const label = (choice: KeepChoice) => KEEP_OPTIONS.find((o) => o.kind === choice)?.label + "토큰" || "남기지 않기";
-
-  return (
-    <div className="pop-in bg-white rounded-3xl border-2 border-pink-300 shadow-sm p-4">
-      <p className="font-display text-lg text-purple-700 text-center">
-        <InlineIcon name="bag" /> 4주차 정리
-      </p>
-      <p className="mt-1 text-center text-sm text-purple-500">남은 토큰은 사라지지만, 어떤 토큰이든 <b>1개</b>는 다음 달로 남길 수 있어요.</p>
-      {myChoice === null ? (
-        <div className="mt-3 flex flex-col gap-2">
-          {KEEP_OPTIONS.filter((o) => me[o.count] > 0).map((o) => (
-            <button
-              key={o.kind}
-              className={`min-h-12 rounded-2xl px-3 py-2 font-semibold active:scale-95 transition-transform ${o.className}`}
-              onClick={() => onKeep(o.kind)}
-            >
-              <InlineIcon name={o.icon} /> {o.label}토큰 1개 남기기 (남은 {me[o.count]}개 중)
-            </button>
-          ))}
-          <button
-            className="min-h-12 rounded-2xl bg-purple-100 px-3 py-2 text-purple-700 active:scale-95 transition-transform"
-            onClick={() => onKeep("none")}
-          >
-            남기지 않기
-          </button>
-        </div>
-      ) : (
-        <p className="mt-3 rounded-2xl bg-purple-50 px-3 py-2 text-center text-sm text-purple-600">
-          {myChoice === undefined ? "남길 수 있는 토큰이 없어요." : `${label(myChoice)}${myChoice === "none" ? "" : " 1개를 남기기로 했어요."}`}
-        </p>
-      )}
-      {waiting.length > 0 && <p className="mt-2 text-center text-xs text-purple-500">{waiting.join(", ")}님이 고르는 중이에요...</p>}
-    </div>
-  );
-}
 
 function ErrorToast({ message, seq }: { message: string | null; seq: number }) {
   const [dismissedSeq, setDismissedSeq] = useState(0);
@@ -967,7 +925,7 @@ function TournamentPanel({ game, myId }: { game: GameState; myId: string }) {
     <div className="flex flex-col gap-3">
       <div className="rounded-3xl border-2 border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
         <p className="font-display text-base text-amber-700 mb-1"><InlineIcon name="trophy" /> 마법 토너먼트</p>
-        <p className="text-xs">토너먼트 참가를 고르면 마나토큰을 모두 내고 낸 개수만큼 주사위를 굴려, 나온 눈을 모두 더한 칸만큼 트랙을 전진해요. 트랙에는 상한이 없어요!</p>
+        <p className="text-xs">토너먼트 참가를 고르면 마나기운을 모두 내고 낸 개수만큼 주사위를 굴려, 나온 눈을 모두 더한 칸만큼 트랙을 전진해요. 트랙에는 상한이 없어요!</p>
         <p className="text-xs">
           기말고사가 끝나면 1위 <b>학점 +{rewards[0]}</b>
           {rewards.length > 1 && <>, 2위 <b>학점 +{rewards[1]}</b></>}를 받아요. (0칸은 보상 없음 · 같은 칸이면 공동 순위)
@@ -1025,7 +983,6 @@ export function GameBoard({
   onRollDice,
   onRerollDice,
   onConfirmRoll,
-  onKeepToken,
   onLeave,
   isHost,
   offline,
@@ -1046,7 +1003,6 @@ export function GameBoard({
   onRollDice: (diceCount?: number, assist?: number) => void;
   onRerollDice: (diceIndexes: number[]) => void;
   onConfirmRoll: () => void;
-  onKeepToken: (choice: KeepChoice) => void;
   onLeave: () => void;
   isHost: boolean;
   // 접속이 끊긴 친구들의 id, 방장이 누군가를 내보냈을 때의 안내
@@ -1068,7 +1024,6 @@ export function GameBoard({
   // 내가 행동해야 하는 순간에는 게임 탭에 알림 점을 띄운다
   const myTurn =
     myRollPending ||
-    game.cleanupKeep[myId] === null ||
     (!game.pendingRoll &&
       ((game.phase === "class" && game.classPickOrder[game.classPickPointer] === myId) || (game.phase === "activity" && activityTurnId === myId)));
   // 방장은 게임 중에도 누구든(자신 제외) 내보낼 수 있다. 단, 2명 이상이 남아야 한다
@@ -1144,7 +1099,6 @@ export function GameBoard({
             <WaitingBanner game={game} offline={offline} isHost={isHost} myId={myId} onKick={onKick} />
             {game.pendingRoll && <RollPanel game={game} myId={myId} onRoll={onRollDice} onReroll={onRerollDice} onConfirm={onConfirmRoll} />}
             {game.phase === "class" && !game.pendingRoll && <ClassPhasePanel game={game} myId={myId} onTake={onTakeClassCard} />}
-            {game.phase === "cleanup" && <CleanupPanel game={game} myId={myId} onKeep={onKeepToken} />}
             {game.phase === "activity" && (
               <ActivityPhasePanel game={game} myId={myId} onSelect={onSelectActivity} onPick={onPickActivityCard} />
             )}

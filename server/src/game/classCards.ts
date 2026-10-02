@@ -1,14 +1,14 @@
 // 수업카드 덱 (학기마다 1개: 1학기 덱 → 중간고사 뒤 2학기 덱으로 교체). 원본 기획(notes/마법학교.xlsx Sheet1)의 "수업 카드에는 지력, 체력, 주문력, 매력을
 // 직접 증가하는 카드가 있다 (ex. 교과서 +1, 수업 +2)"를 바탕으로 구성한 초안입니다.
 // 능력치별 카드 종류 12장: +1 카드 10장(이름 5종 × 2장), +2 카드 2장(이름 2종 × 1장). 학기 덱은 이 종류를 학기별 비율대로 뽑아 만듭니다.
-// 1학기 덱은 지력·체력·매력 위주에 습득 체력토큰이 낮고(주문력 카드는 소수), 2학기 덱은 주문력 위주에 비용이 높습니다 (BALANCE.classSemesters).
+// 1학기 덱은 지력·체력·매력 위주에 습득 체력기운이 낮고(주문력 카드는 소수), 2학기 덱은 주문력 위주에 비용이 높습니다 (BALANCE.classSemesters).
 // 수치/수량은 플레이테스트 후 조정합니다.
-// 카드마다 습득에 필요한 체력토큰(takeCost)이 다릅니다. 카드는 지력토큰을 내고 열어 봐야 비용을 알 수 있고,
+// 카드마다 습득에 필요한 체력기운(takeCost)이 다릅니다. 카드는 지력기운을 내고 열어 봐야 비용을 알 수 있고,
 // 싼 카드부터 먼저 소진되므로 덱이 줄어들수록 남는 카드가 비싸져 자연스럽게 성장이 느려집니다.
 import { BALANCE } from "./config.js";
 import type { ClassCard, StatKey } from "./types.js";
 
-// [이름, 설명, 습득에 필요한 체력토큰]
+// [이름, 설명, 습득에 필요한 체력기운]
 type Def = [name: string, description: string, takeCost: number];
 
 const NORMAL: Record<StatKey, Def[]> = {
@@ -66,7 +66,7 @@ const STATS = Object.keys(NORMAL) as StatKey[];
 // 학기: 1학기(중간고사 라운드까지) = 1, 2학기 = 2
 export const classSemesterOf = (round: number): 1 | 2 => (round <= BALANCE.midtermRound ? 1 : 2);
 
-// 카드 종류 한 벌 (id 없음). 주문력 카드는 습득 체력토큰이 학기별 spellExtraCost만큼 더 들고,
+// 카드 종류 한 벌 (id 없음). 주문력 카드는 습득 체력기운이 학기별 spellExtraCost만큼 더 들고,
 // 그 외 카드는 nonSpellCostCap을 넘지 않는다: 초반엔 체력을 키워야 비싼 카드를 살 수 있어서 "초반 지력·체력 → 후반 주문력·학점" 흐름이 된다
 function templates(semester: 1 | 2): Omit<ClassCard, "id">[] {
   const { spellExtraCost, nonSpellCostCap } = BALANCE.classSemesters[semester - 1];

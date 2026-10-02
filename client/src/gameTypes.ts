@@ -4,9 +4,8 @@ export type StatKey = "intelligence" | "stamina" | "charm" | "spellPower";
 
 export type ActivityId = "tournament" | "creature" | "duel" | "exploration" | "lab";
 
-// 4주차(정리)에서 다음 달로 남기는 토큰: 지력토큰 1개, 체력토큰 1개, 또는 남기지 않기
+// 4주차(정리)에서 다음 달로 남기는 기운: 지력기운 1개, 체력기운 1개, 또는 남기지 않기
 export type KeptToken = "intelligence" | "stamina" | "charm" | "mana";
-export type KeepChoice = KeptToken | "none";
 
 export type GamePhase = "setup" | "prep" | "class" | "activity" | "cleanup" | "midterm_exam" | "final_exam" | "ended";
 
@@ -14,7 +13,7 @@ export interface ClassCard {
   id: string;
   name: string;
   description: string;
-  // 이 카드를 습득하는 데 드는 체력토큰
+  // 이 카드를 습득하는 데 드는 체력기운
   takeCost: number;
   statBoost: { stat: StatKey; amount: number };
 }
@@ -26,7 +25,7 @@ export interface LabCard {
   id: string;
   name: string;
   description: string;
-  // 이 카드를 고르는 데 드는 체력토큰
+  // 이 카드를 고르는 데 드는 체력기운
   cost: number;
   kind: LabCardKind;
   summary: string;
@@ -99,7 +98,7 @@ export interface GameLogEntry {
   message: string;
 }
 
-// 시험 카드: 시험 점수 = 마나토큰으로 굴린 주사위 합 + diceStat 수치 + bonusStat 수치 (결과의 bonus는 두 능력치 수치의 합)
+// 시험 카드: 시험 점수 = 마나기운으로 굴린 주사위 합 + diceStat 수치 + bonusStat 수치 (결과의 bonus는 두 능력치 수치의 합)
 export interface ExamCard {
   id: string;
   name: string;
@@ -120,12 +119,12 @@ export interface PendingRoll {
   kind: "first" | "tournament" | "creature" | "lab" | "duel" | "exploration" | "exam";
   title: string;
   lines: string[];
-  // diceChoiceMax가 있으면 굴리기 전에 마나토큰을 1~max개 내고 낸 개수만큼 굴릴 수 있다 (diceCount는 기본 개수). 없으면(마나토큰이 없음) 공짜 주사위 diceCount개.
-  // 다시 굴리기는 남은 마나토큰 1개당 주사위 1개
-  // assistMax가 있으면 굴리기 전에 보조 능력치 토큰(assist.kind)을 0~max개 더 낼 수 있다. 낸 개수는 assist에 남는다
-  // diceToken은 이 굴림의 주사위 재료 토큰 (없으면 마나토큰)
+  // diceChoiceMax가 있으면 굴리기 전에 마나기운을 1~max개 내고 낸 개수만큼 굴릴 수 있다 (diceCount는 기본 개수). 없으면(마나기운이 없음) 공짜 주사위 diceCount개.
+  // 다시 굴리기는 남은 마나기운 1개당 주사위 1개
+  // assistMax가 있으면 굴리기 전에 보조 능력치 기운(assist.kind)을 0~max개 더 낼 수 있다. 낸 개수는 assist에 남는다
+  // diceToken은 이 굴림의 주사위 재료 기운 (없으면 마나기운)
   entries: { playerId: string; label: string; diceCount: number; diceToken?: KeptToken; diceChoiceMax?: number; assistMax?: number; assist?: number; dice: number[] | null; confirmed: boolean; rerolls: number; rerollCounts?: number[] }[];
-  // 이 굴림에서 보조 능력치로 쓸 수 있는 토큰 (토너먼트: 체력토큰 "끝까지 달려요", 탐험: 지력토큰 "함정 간파")
+  // 이 굴림에서 보조 능력치로 쓸 수 있는 기운 (토너먼트: 체력기운 "끝까지 달려요", 탐험: 지력기운 "함정 간파")
   assist?: { kind: "stamina" | "intelligence"; name: string; title: string; hint: string };
 }
 
@@ -150,7 +149,7 @@ export interface OfferCardView {
   name: string;
   description: string;
   lines: string[];
-  // 가져가는 데 드는 비용 (체력토큰)
+  // 가져가는 데 드는 비용 (체력기운)
   cost?: { kind: "stamina" | "mana"; amount: number };
   // 카드 이름 아래에 붙는 짧은 분류 (마법생물의 속성 · 종류)
   tags?: string;
@@ -178,11 +177,13 @@ export interface DuelPair {
 
 // 서버가 알려 주는 규칙 수치 (비용 안내용)
 export interface PublicRules {
-  // 3주차 구역에 처음 들어와 카드를 열 때 드는 지력토큰, 그리고 그 지력토큰이 드는 활동 (지금은 없음)
+  // 3주차 구역에 처음 들어와 카드를 열 때 드는 지력기운, 그리고 그 지력기운이 드는 활동 (지금은 없음)
   openCardCost: number;
   openCardCostActivities: ActivityId[];
-  // 활동별 주사위 재료 토큰 (조련=매력, 탐험=체력, 연구실=지력, 토너먼트·주문 대결=마나)
+  // 활동별 주사위 재료 기운 (조련=매력, 탐험=체력, 연구실=지력, 토너먼트·주문 대결=마나)
   rollFuel: Record<ActivityId, KeptToken>;
+  // 기운을 모아 둘 수 있는 한도 = 능력치 × 이 배수
+  energyCapMultiplier: number;
   // 능력치 감쇠: startRound 이후 interval개월마다 stats가 perMonth씩 줄고 floor 아래로는 내려가지 않는다 (4주차 정리 때)
   statDecay: { perMonth: number; interval: number; startRound: number; floor: number; stats: StatKey[] };
   activityMaxParticipants: number;
@@ -196,7 +197,7 @@ export interface PublicRules {
   tournamentRewards: number[];
   // 최종 점수 = 주문력 × 학점 + 마법생물 세트(하늘·육지·바다 1장씩) 수 × creatureSetScore
   creatureSetScore: number;
-  // 마법생물을 가져오는 데 드는 최소 마나토큰 (이보다 적으면 마법생물 조련을 고를 수 없다)
+  // 마법생물을 가져오는 데 드는 최소 마나기운 (이보다 적으면 마법생물 조련을 고를 수 없다)
 }
 
 export interface GameState {
@@ -229,11 +230,10 @@ export interface GameState {
   // 공개된 시험 카드 (공개 전에는 null)
   exams: { midterm: ExamCard | null; final: ExamCard | null };
   examResults: ExamResult[];
-  // (kept: 이 사람이 다음 달로 남긴 토큰 1개. 소멸 수량은 남긴 것을 뺀 값)
-  // (decay: 이번 정리에서 시간이 지나 줄어든 지력·체력·매력, 줄지 않았으면 빈 객체)
-  cleanupSummary: { playerId: string; intelligenceTokens: number; staminaTokens: number; charmTokens: number; manaTokens: number; kept: KeptToken | null; decay: Partial<Record<StatKey, number>> }[];
-  // 4주차(정리)에서 다음 달로 남길 토큰을 고르는 중: 남길 토큰이 있는 사람만 들어 있고, null이면 아직 고르지 않았다
-  cleanupKeep: Record<string, KeepChoice | null>;
+  // 가장 최근 4주차(정리)에서 시간이 지나 줄어든 지력·체력·매력 (decay, 줄지 않았으면 빈 객체)
+  cleanupSummary: { playerId: string; decay: Partial<Record<StatKey, number>> }[];
+  // 가장 최근 1주차(충전)에서 각자 차오른 기운(gained)과 한도를 넘어 사라진 기운(lost)
+  chargeSummary: { playerId: string; gained: Record<KeptToken, number>; lost: Record<KeptToken, number> }[];
   classLeft: number;
   rules: PublicRules;
   log: GameLogEntry[];
@@ -247,9 +247,9 @@ export const STAT_LABEL: Record<StatKey, string> = {
   spellPower: "주문력",
 };
 
-// 시험 카드가 점수를 내는 방식 설명 (예: "매력토큰으로 굴린 주사위 + 지력 수치")
+// 시험 카드가 점수를 내는 방식 설명 (예: "매력기운으로 굴린 주사위 + 지력 수치")
 export function describeExam(card: Pick<ExamCard, "diceStat" | "bonusStat">): string {
-  const fuel = card.diceStat === "spellPower" ? "마나토큰" : `${STAT_LABEL[card.diceStat]}토큰`;
+  const fuel = card.diceStat === "spellPower" ? "마나기운" : `${STAT_LABEL[card.diceStat]}기운`;
   return `${fuel}으로 굴린 주사위${card.bonusStat ? ` + ${STAT_LABEL[card.bonusStat]} 수치` : ""}`;
 }
 
@@ -263,26 +263,33 @@ export const ACTIVITY_LABEL: Record<ActivityId, string> = {
 
 // 활동 카드에 함께 보여줄 한 줄 설명
 export const ACTIVITY_HINT: Record<ActivityId, string> = {
-  tournament: "마나토큰을 골라 낸 만큼 주사위를 굴려 합친 칸만큼 트랙 전진 → 학점 (체력토큰을 내면 칸을 더 전진)",
-  creature: "카드 2장 공개, 매력토큰을 골라 낸 만큼 주사위를 굴려 합이 기준 이상이면 조련, 하늘·육지·바다를 1장씩 모으면 세트 점수",
-  duel: "아직 안 고른 한 명을 지목해 강제 대결, 마나토큰을 골라 낸 만큼 주사위를 굴려 이기면 마도서 1장",
-  exploration: "카드 2장 중 하나를 골라 체력토큰을 낸 만큼 주사위 판정! 크게 벌거나 크게 잃어요 (지력토큰으로 함정을 피할 수 있어요)",
-  lab: "심화학습: 연구 카드 2장 중 1장, 지력토큰을 골라 낸 만큼 주사위를 굴려 실험 판정, 안정적으로 성장",
+  tournament: "마나기운을 골라 낸 만큼 주사위를 굴려 합친 칸만큼 트랙 전진 → 학점 (체력기운을 내면 칸을 더 전진)",
+  creature: "카드 2장 공개, 매력기운을 골라 낸 만큼 주사위를 굴려 합이 기준 이상이면 조련, 하늘·육지·바다를 1장씩 모으면 세트 점수",
+  duel: "아직 안 고른 한 명을 지목해 강제 대결, 마나기운을 골라 낸 만큼 주사위를 굴려 이기면 마도서 1장",
+  exploration: "카드 2장 중 하나를 골라 체력기운을 낸 만큼 주사위 판정! 크게 벌거나 크게 잃어요 (지력기운으로 함정을 피할 수 있어요)",
+  lab: "심화학습: 연구 카드 2장 중 1장, 지력기운을 골라 낸 만큼 주사위를 굴려 실험 판정, 안정적으로 성장",
 };
 
 export function effectiveStat(player: PlayerGameState, stat: StatKey): number {
   return Math.max(0, player[stat] + (player.tempBoosts[stat] ?? 0));
 }
 
+// 기운(현재치)의 종류와, 그 기운의 최대치가 되는 능력치 (주문력의 기운이 마나)
+export const ENERGY_STAT: Record<KeptToken, StatKey> = { intelligence: "intelligence", stamina: "stamina", charm: "charm", mana: "spellPower" };
+// 모아 둘 수 있는 한도 (능력치 × 배수, 서버 energyCap과 같은 규칙)
+export function energyCap(player: PlayerGameState, kind: KeptToken, rules: Pick<PublicRules, "energyCapMultiplier">): number {
+  return effectiveStat(player, ENERGY_STAT[kind]) * rules.energyCapMultiplier;
+}
+
 // ── 자율활동 구역 선택 규칙 (서버 engine.ts와 같은 규칙. 버튼을 미리 막고 이유를 보여 주기 위해 복제) ──
 
-// 구역에 처음 들어와 카드를 여는 사람이 내는 지력토큰 (마법생물·주문 대결·비밀의 방·연구실). 이미 다른 친구가 고른 구역이면(두 번째 참가자) 내지 않는다
+// 구역에 처음 들어와 카드를 여는 사람이 내는 지력기운 (마법생물·주문 대결·비밀의 방·연구실). 이미 다른 친구가 고른 구역이면(두 번째 참가자) 내지 않는다
 export function activityOpenCost(game: GameState, activityId: ActivityId): number {
   if (!game.rules.openCardCostActivities.includes(activityId)) return 0;
   return game.activitySlots[activityId].length > 0 ? 0 : game.rules.openCardCost;
 }
 
-// 이미 다른 플레이어가 있는 구역에 들어갈 때 내야 하는 매력토큰
+// 이미 다른 플레이어가 있는 구역에 들어갈 때 내야 하는 매력기운
 export function activityExtraCost(game: GameState, activityId: ActivityId): number {
   return game.activitySlots[activityId].length >= 1 ? game.rules.activitySecondParticipantCost : 0;
 }
@@ -292,7 +299,7 @@ export function duelTargets(game: GameState, playerId: string): string[] {
   return game.turnOrder.filter((id) => id !== playerId && !game.players[id].hasActedThisPhase);
 }
 
-// 지력토큰 int개 + 체력토큰 stamina개 + 매력토큰 charm개를 낼 수 있는가 (서버 canPay와 같은 규칙. 토큰끼리는 바꿀 수 없다)
+// 지력기운 int개 + 체력기운 stamina개 + 매력기운 charm개를 낼 수 있는가 (서버 canPay와 같은 규칙. 기운끼리는 바꿀 수 없다)
 export function canPay(player: PlayerGameState, int: number, stamina: number, charm = 0): boolean {
   return player.intelligenceTokens >= int && player.staminaTokens >= stamina && player.charmTokens >= charm;
 }
@@ -302,13 +309,13 @@ export function activityBlockReason(game: GameState, playerId: string, activityI
   const player = game.players[playerId];
   if (game.activitySlots[activityId].length >= game.rules.activityMaxParticipants) return "이미 두 명이 참여했어요";
   const extra = activityExtraCost(game, activityId);
-  if (!canPay(player, 0, 0, extra)) return `매력토큰 ${extra}개가 더 필요해요`;
+  if (!canPay(player, 0, 0, extra)) return `매력기운 ${extra}개가 더 필요해요`;
   const open = activityOpenCost(game, activityId);
-  if (!canPay(player, open, 0, extra)) return `카드를 열 지력토큰 ${open}개가 필요해요`;
-  if (activityId === "tournament" && player.manaTokens < 1) return "마나토큰이 1개 이상 필요해요";
+  if (!canPay(player, open, 0, extra)) return `카드를 열 지력기운 ${open}개가 필요해요`;
+  if (activityId === "tournament" && player.manaTokens < 1) return "마나기운이 1개 이상 필요해요";
   if (activityId === "duel") {
     const need = 1 + game.rules.duelManaFee;
-    if (player.manaTokens < need) return `마나토큰이 ${need}개 이상 필요해요`;
+    if (player.manaTokens < need) return `마나기운이 ${need}개 이상 필요해요`;
     if (duelTargets(game, playerId).length === 0) return "지목할 수 있는 친구가 없어요";
     if (player.charm < game.rules.duelCharmFee) return `건넬 매력(${game.rules.duelCharmFee})이 없어요`;
   }
@@ -332,13 +339,13 @@ export function describeAbility(a: CreatureAbility): string {
   const when = { acquire: "획득 즉시", prep: "매달 준비 때", duel: "주문 대결 참여 시", defend: "대결 도전받을 때", lose: "대결 패배 시", always: "항상" }[a.trigger];
   const what = {
     spellPower: `주문력 영구 +${a.amount}`,
-    mana: `마나토큰 +${a.amount}`,
-    stamina: a.trigger === "prep" ? `체력토큰 +${a.amount}` : `다음 달 체력토큰 +${a.amount}`,
+    mana: `마나기운 +${a.amount}`,
+    stamina: a.trigger === "prep" ? `체력기운 +${a.amount}` : `다음 달 체력기운 +${a.amount}`,
     rollBonus: `내 굴림 +${a.amount}`,
     enemyRollPenalty: `상대 굴림 -${a.amount}`,
-    enemyStamina: `상대 다음 달 체력토큰 -${a.amount}`,
-    immune: "낸 마나토큰 1개를 다음 달에 돌려받음",
-    charmToken: `매력토큰 +${a.amount}`,
+    enemyStamina: `상대 다음 달 체력기운 -${a.amount}`,
+    immune: "낸 마나기운 1개를 다음 달에 돌려받음",
+    charmToken: `매력기운 +${a.amount}`,
   }[a.effect];
   return `${when}: ${what}`;
 }

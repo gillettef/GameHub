@@ -7,12 +7,12 @@
 //   피해를 받을 때   → 주문 대결에서 패배했을 때 (lose)
 //   공격력 +N       → 주문 대결 굴림 +N (rollBonus)
 //   상대에게 피해 N  → 상대의 주문 대결 굴림 -N (enemyRollPenalty)
-//   피해를 받지 않음  → 주문 대결 패배 시 낸 마나토큰 1개를 다음 달 준비 때 돌려받음 (immune)
-//   주문력 N 얻기    → acquire: 주문력 영구 +N / prep: 그 달 마나토큰 +N (mana)
-//   생명력 N 회복/감소 → 체력토큰. prep이면 그 달 즉시 +N, 그 외에는 다음 달 준비 때 +N/-N (stamina / enemyStamina)
+//   피해를 받지 않음  → 주문 대결 패배 시 낸 마나기운 1개를 다음 달 준비 때 돌려받음 (immune)
+//   주문력 N 얻기    → acquire: 주문력 영구 +N / prep: 그 달 마나기운 +N (mana)
+//   생명력 N 회복/감소 → 체력기운. prep이면 그 달 즉시 +N, 그 외에는 다음 달 준비 때 +N/-N (stamina / enemyStamina)
 import type { CreatureAbility, CreatureCard, CreatureElement } from "./types.js";
 
-// trainTarget: 조련 기준 수치 (낸 마나토큰만큼 굴린 주사위 합이 이 값 × BALANCE.trainTargetScale 이상이면 조련 성공). 생물마다 고정이며 카드별로 직접 조정한다 (원본 xlsx의 "요구 주문력" × 4를 초안으로 사용)
+// trainTarget: 조련 기준 수치 (낸 마나기운만큼 굴린 주사위 합이 이 값 × BALANCE.trainTargetScale 이상이면 조련 성공). 생물마다 고정이며 카드별로 직접 조정한다 (원본 xlsx의 "요구 주문력" × 4를 초안으로 사용)
 type Def = [
   name: string,
   element: CreatureElement,
@@ -80,13 +80,13 @@ export function describeAbility(a: CreatureAbility): string {
   const when = { acquire: "획득 즉시", prep: "매달 준비 때", duel: "주문 대결 참여 시", defend: "대결 도전받을 때", lose: "대결 패배 시", always: "항상" }[a.trigger];
   const what = {
     spellPower: `주문력 영구 +${a.amount}`,
-    mana: `마나토큰 +${a.amount}`,
-    stamina: a.trigger === "prep" ? `체력토큰 +${a.amount}` : `다음 달 체력토큰 +${a.amount}`,
+    mana: `마나기운 +${a.amount}`,
+    stamina: a.trigger === "prep" ? `체력기운 +${a.amount}` : `다음 달 체력기운 +${a.amount}`,
     rollBonus: `내 굴림 +${a.amount}`,
     enemyRollPenalty: `상대 굴림 -${a.amount}`,
-    enemyStamina: `상대 다음 달 체력토큰 -${a.amount}`,
-    immune: "낸 마나토큰 1개를 다음 달에 돌려받음",
-    charmToken: `매력토큰 +${a.amount}`,
+    enemyStamina: `상대 다음 달 체력기운 -${a.amount}`,
+    immune: "낸 마나기운 1개를 다음 달에 돌려받음",
+    charmToken: `매력기운 +${a.amount}`,
   }[a.effect];
   return `${when}: ${what}`;
 }

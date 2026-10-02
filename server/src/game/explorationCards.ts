@@ -1,6 +1,6 @@
 // 탐험카드 (비밀의 방 탐색, 단독 처리). 지력 또는 체력 수치만큼 주사위를 굴려 합이 목표값 이상이면 성공, 아니면 실패 효과를 받습니다.
 // target은 난이도 × 10 (10이 표준 난이도)이고 실제 목표값은 engine의 rollTarget이 라운드에 맞춰 계산합니다.
-// 판정이 없는 카드는 무조건 성공합니다. 토큰은 그 달 안에 쓸 데가 없어 "다음 달 체력토큰/마나토큰"로 지급/차감합니다.
+// 판정이 없는 카드는 무조건 성공합니다. 기운은 그 달 안에 쓸 데가 없어 "다음 달 체력기운/마나기운"로 지급/차감합니다.
 // 탐험은 가장 하이리스크 하이리턴인 활동입니다 — 한방 카드(6장)는 성공 보상이 크고 실패 손해도 크며, 뒤처진 플레이어의 역전 수단입니다.
 // 협력 카드(5장)는 두 명이 함께해야 열리고 보상/손해가 두 명 모두에게 적용됩니다. 끝까지 함께할 친구가 없으면 무효입니다.
 // 카드 구성과 수치는 초안이며 플레이테스트 후 조정합니다. 25장.
@@ -54,8 +54,8 @@ export function describeEffect(e: CardEffect): string {
   for (const [k, v] of Object.entries(e.stats ?? {})) parts.push(`${STAT_NAME[k as keyof typeof STAT_NAME]} 영구 ${sign(v)}`);
   for (const [k, v] of Object.entries(e.tempStats ?? {})) parts.push(`${STAT_NAME[k as keyof typeof STAT_NAME]} 임시 ${sign(v)}`);
   if (e.credit) parts.push(`학점 ${sign(e.credit)}`);
-  if (e.nextMana) parts.push(`다음 달 마나토큰 ${sign(e.nextMana)}`);
-  if (e.nextStamina) parts.push(`다음 달 체력토큰 ${sign(e.nextStamina)}`);
+  if (e.nextMana) parts.push(`다음 달 마나기운 ${sign(e.nextMana)}`);
+  if (e.nextStamina) parts.push(`다음 달 체력기운 ${sign(e.nextStamina)}`);
   if (e.peekExploration) parts.push("탐험 카드 덱 맨 위 1장 엿보기");
   return parts.length ? parts.join(", ") : "아무 일도 없었어요";
 }
