@@ -242,6 +242,9 @@ notes/    규칙서 원본 및 텍스트 레퍼런스
 
 - **방법 C — AWS EC2 (서버3, 상시 주소)**: `scripts/aws-deploy.ps1`(수동, 이 PC에서 빌드 → scp → 재시작)와 `.github/workflows/deploy-aws.yml`(**`main`에 푸시하면 자동 배포**, 먼저 `npm run check`를 통과해야 함).
   둘 다 산출물을 서버가 살아 있는 채로 임시 폴더 `/opt/eleven/upload`에 올린 뒤 정지 → 교체(`scp -r`를 이미 있는 dist 폴더로 하면 `dist/dist`로 중첩되므로) → `npm ci --omit=dev` → 재시작 → `/health`.
+  **인스턴스는 t4g.nano(ARM, Amazon Linux 2023, 서울, 월 약 $4 — 비용 절감을 위해 t3.micro에서 옮김, 사용자 요청 2026-10-02)**: RAM 0.5GB라 스왑 1GB(`/swapfile`)가 있어야 `dnf`·`npm ci`가 OOM으로 죽지 않는다.
+  Node 22는 `dnf install nodejs22`로 깔면 Node 18이 기본이라 `alternatives --set node /usr/bin/node-22`가 필요. 서비스는 `eleven.service`(systemd, 3001 직접 노출, nginx 없음). Elastic IP가 없어
+  인스턴스를 멈췄다 켜면 IP가 바뀌므로 그때는 `.dev/aws-instance.json`과 GitHub 시크릿 `EC2_HOST`를 함께 갱신할 것. 배포 스크립트는 `/opt/eleven/server`·`client` 폴더가 있다고 가정한다.
   워크플로는 `concurrency` 그룹으로 한 번에 하나만 돈다. 시크릿: EC2_HOST / EC2_USER / EC2_SSH_KEY. **푸시 = 서버3 운영 반영**이라는 점에 주의(서버1·2 슬롯 규칙과 별개). 서버가 교체되므로 진행 중인 판은 유실된다.
 
 ### 멀티플레이 설계 시 주의
