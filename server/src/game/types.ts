@@ -130,6 +130,8 @@ export interface PlayerGameState {
   pendingStaminaTokens: number;
   pendingManaTokens: number;
   tournamentTrack: number;
+  // 졸업식에서 받은 부문상 (게임이 끝날 때 정해진다, 41절): 해당 능력치가 가장 높은 플레이어(동점이면 공동)가 받는다
+  awards: StatKey[];
   classCards: ClassCard[];
   creatures: CreatureCard[];
   // 임시 능력치 효과가 남아 있는 연구 카드 (시험 대비 카드)
@@ -331,6 +333,10 @@ export interface PublicRules {
   finalRevealRound: number;
   // 마법 토너먼트 최종 순위 보상 (1위, 2위 순서, 학점)
   tournamentRewards: number[];
-  // 최종 점수 = 주문력 × 학점 + 마법생물 세트(하늘·육지·바다 1장씩) 수 × creatureSetScore
+  // 최종 점수 = 주문력 × 학점 + 마법생물 세트(하늘·육지·바다 1장씩) 수 × creatureSetScore + 졸업식 부문상 수 × graduationAwardScore
   creatureSetScore: number;
+  // 졸업식 부문상 하나당 점수 (지력 수석상·체력 튼튼상·매력 인기상·주문력 마법상)
+  graduationAwardScore: number;
+  // 부문상을 주는 능력치
+  graduationAwardStats: StatKey[];
 }
