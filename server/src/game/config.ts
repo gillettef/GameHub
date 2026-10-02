@@ -63,11 +63,18 @@ export const BALANCE = {
   // 자율활동 구역 하나에 들어갈 수 있는 최대 인원, 그리고 이미 한 명이 들어와 있는 구역에 두 번째로 들어갈 때 내는 매력토큰 (1주차에 매력 수치만큼 받는다)
   activityMaxParticipants: 2,
   activitySecondParticipantCost: 1,
-  // 카드를 한 장 열 때 드는 지력토큰 (2026-10-02 부활): 구역에 처음 들어온 사람이 카드를 열 때 낸다. 두 번째 참가자는 이미 열린 카드라 내지 않는다.
-  // 정규수업의 공개 시장은 지력토큰이 들지 않는다. 카드를 습득하는 데 드는 체력토큰은 카드마다 정해져 있다 (수업카드 takeCost, 연구 카드 cost)
+  // 카드를 한 장 열 때 드는 지력토큰 (2026-10-02 38절에서 모든 구역 폐지 — 카드를 여는 건 지적 활동이 아니라서. 장치는 남겨 두고 openCardCostActivities만 비움).
+  // 켜면 구역에 처음 들어온 사람이 카드를 열 때 낸다. 카드를 습득하는 데 드는 체력토큰은 카드마다 정해져 있다 (수업카드 takeCost, 연구 카드 cost)
   openCardCost: 1,
-  // 위 지력토큰이 드는 활동 (마법 토너먼트는 카드가 없다)
-  openCardCostActivities: ["creature", "duel", "exploration", "lab"] as ActivityId[],
+  openCardCostActivities: [] as ActivityId[],
+  // 능력치 × 활동 조화 (38절): 활동마다 주 능력치가 있어서 그 수치가 판정의 고정 보너스로 주사위 합에 더해진다 (시험 점수와 같은 방식).
+  // 마법 토너먼트·주문 대결의 주 능력치는 주문력인데, 주문력은 이미 마나토큰(=주사위 수)으로 반영되므로 보너스를 따로 더하지 않는다
+  rollBonusStat: { creature: "charm", exploration: "stamina", lab: "intelligence" } as Partial<Record<ActivityId, StatKey>>,
+  // 보너스가 붙는 판정의 목표값에 더하는 기준 보너스 (시작 능력치 2만큼은 기본으로 깔고 시작해서, 시작 난이도는 그대로 두고 능력치가 오를수록 쉬워지게 한다).
+  // 탐험은 체력 보너스 영향이 커서(봇 시뮬레이션에서 탐험 몰빵 승률 22% → 42%) 기준을 4로 올려 원래 수준(약 22%)으로 맞췄다
+  rollBonusBaseline: { creature: 2, exploration: 4, lab: 2 },
+  // 지력(학습): 수업카드·연구 카드의 체력토큰이 모자라면 지력토큰 이 개수가 체력토큰 1개를 대신한다 (아는 만큼 덜 힘들게 배운다). 체력토큰을 먼저 쓰고 모자란 만큼만 지력토큰으로 메꾼다
+  intelligencePerStamina: 2,
 };
 
 export function examCreditForRank(rank: number): number {

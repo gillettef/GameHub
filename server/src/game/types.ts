@@ -315,8 +315,10 @@ export type PublicGameState = Omit<GameState, "hidden" | "labPile" | "exploratio
 export interface PublicRules {
   // 카드를 한 장 열 때 드는 지력토큰 (구역에 처음 들어온 사람이 낸다. 정규수업 시장은 해당 없음)
   openCardCost: number;
-  // 위 지력토큰이 드는 활동 (마법 토너먼트는 카드가 없다)
+  // 위 지력토큰이 드는 활동 (지금은 없음)
   openCardCostActivities: ActivityId[];
+  // 체력토큰이 모자랄 때 체력토큰 1개를 대신하는 지력토큰 개수 (수업카드·연구 카드 습득)
+  intelligencePerStamina: number;
   // 능력치 감쇠: round >= startRound인 정리 때부터 interval개월마다 stats가 perMonth씩 줄고 floor 아래로는 내려가지 않는다
   statDecay: { perMonth: number; interval: number; startRound: number; floor: number; stats: StatKey[] };
   activityMaxParticipants: number;
