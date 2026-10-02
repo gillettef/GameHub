@@ -18,19 +18,16 @@ export type ClientMessage =
   | { type: "start_game" }
   | { type: "add_bot" }
   | { type: "remove_bot"; botId: string }
-  // 방장 전용: 행동 제한 시간(초, 0이면 없음), 친구 내보내기, 같은 멤버로 다시 하기
-  | { type: "set_turn_seconds"; seconds: number }
+  // 방장 전용: 친구 내보내기(게임 중이면 게임에서 완전히 제외), 같은 멤버로 다시 하기
   | { type: "kick_player"; playerId: string }
   | { type: "rematch" }
-  // 자리를 비워 봇이 대신하던 내 자리를 되찾는다
-  | { type: "resume_seat" }
   // 리액션 이모지
   | { type: "emoji"; emoji: string }
   // 2주차: 공개된 수업카드 중 1장을 가져간다 (cardId가 null이면 가져가지 않고 넘어간다)
   | { type: "take_class_card"; cardId: string | null }
-  | { type: "roll_dice"; diceCount?: number; tokenCounts?: Partial<Record<"intelligence" | "stamina" | "charm", number>> }
+  | { type: "roll_dice"; diceCount?: number }
   // 모두 굴린 뒤 결과를 확인하고 다음으로 넘긴다
-  // 결과 확인 전에 지력토큰 1개당 주사위 1개를 다시 굴린다 (굴린 주사위 중 원하는 것만: 0부터 시작하는 번호)
+  // 결과 확인 전에 마나토큰 1개당 주사위 1개를 다시 굴린다 (굴린 주사위 중 원하는 것만: 0부터 시작하는 번호)
   | { type: "reroll_dice"; diceIndexes: number[] }
   | { type: "confirm_roll" }
   | { type: "select_activity"; activityId: ActivityId; targetPlayerId?: string }
@@ -46,14 +43,14 @@ export type ServerMessage =
   | { type: "rejoin_failed" }
   | { type: "pong" }
   | { type: "player_joined"; playerId: string; playerName: string; isBot?: boolean }
-  | { type: "player_left"; playerId: string }
+  // kicked가 true면 방장이 내보낸 것 (남은 사람들에게 안내를 띄운다)
+  | { type: "player_left"; playerId: string; kicked?: boolean }
   | { type: "host_changed"; hostId: string }
   | { type: "left_room" }
   | { type: "kicked" }
-  | { type: "room_settings"; turnSeconds: number }
-  | { type: "room_reset"; hostId: string; players: RoomPlayerInfo[]; turnSeconds: number }
-  // 지금 행동을 기다리는 사람들과 남은 시간(ms)
-  | { type: "turn_timer"; turnSeconds: number; waiting: Record<string, number> }
+  | { type: "room_reset"; hostId: string; players: RoomPlayerInfo[] }
+  // 접속이 끊긴 사람들의 id (끊겨도 자리는 유지되고, 돌아오면 같은 자리로 복귀한다)
+  | { type: "presence"; offline: string[] }
   | { type: "emoji"; playerId: string; emoji: string }
   | { type: "game_state"; game: GameState }
   | { type: "error"; message: string };

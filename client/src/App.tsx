@@ -26,15 +26,13 @@ async function copyText(text: string): Promise<boolean> {
 }
 import { useGameSocket } from "./useGameSocket";
 import { GameBoard } from "./GameBoard";
+import { ConnectionBadge } from "./Social";
 import { RulesModal } from "./Rules";
 import { Icon } from "./Icons";
-import { KickConfirm, LeaveConfirm, useBackGuard } from "./Leave";
-
-// 서버가 받아 주는 행동 제한 시간 선택지(초). 0이면 제한 없음
-const TURN_SECONDS_OPTIONS = [0, 45, 90, 180];
+import { KickConfirm, LeaveConfirm, isKickConfirmOpen, useBackGuard } from "./Leave";
 
 function App() {
-  const { state, game, turnTimer, reactions, lastError, errorSeq, reconnecting, createRoom, joinRoom, leaveRoom, startGame, addBot, removeBot, setTurnSeconds, kickPlayer, rematch, resumeSeat, sendEmoji, takeClassCard, rollDice, rerollDice, confirmRoll, selectActivity, pickActivityCard, keepToken } =
+  const { state, game, offline, notice, noticeSeq, reactions, lastError, errorSeq, reconnecting, createRoom, joinRoom, leaveRoom, startGame, addBot, removeBot, kickPlayer, rematch, sendEmoji, takeClassCard, rollDice, rerollDice, confirmRoll, selectActivity, pickActivityCard, keepToken } =
     useGameSocket();
   const [playerName, setPlayerName] = useState("");
   const [joinCode, setJoinCode] = useState("");
@@ -46,9 +44,9 @@ function App() {
   // 대기실에서도 뒤로가기로 실수로 방을 떠나지 않도록 확인을 거친다 (게임 화면은 GameMenu가 따로 맡는다)
   const inLobby = inRoom && !game;
   useBackGuard(() => {
-    // 내보내기 확인 창이 떠 있으면 그것부터 닫는다
-    if (kickAsk) setKickAsk(null);
-    else setLeaveAsk(true);
+    // 내보내기 확인 창이 떠 있으면 그 창이 스스로 닫힌다
+    if (isKickConfirmOpen()) return;
+    setLeaveAsk(true);
   }, inLobby);
   const rulesButton = (
     <button
@@ -105,10 +103,11 @@ ${window.location.href}`;
         onKeepToken={keepToken}
         onLeave={leaveRoom}
         isHost={!!state.isHost}
-        turnTimer={turnTimer}
+        offline={offline}
+        notice={notice}
+        noticeSeq={noticeSeq}
         reactions={reactions}
         onEmoji={sendEmoji}
-        onResumeSeat={resumeSeat}
         onKick={kickPlayer}
         onRematch={rematch}
       />
@@ -150,10 +149,11 @@ ${window.location.href}`;
             {state.players.length === 0 && <li className="text-purple-500 text-sm">아직 아무도 없어요</li>}
             {state.players.map((p) => (
               <li key={p.id} className="flex items-center justify-between gap-2 text-purple-700">
-                <span className="truncate">
+                <span className="min-w-0 flex-1 truncate">
                   {p.isBot ? null : <Icon name="user" className="mr-1 h-4 w-4" />}
                   {p.name}
                 </span>
+                <ConnectionBadge offline={offline.includes(p.id)} />
                 {state.isHost && p.id !== state.playerId && (
                   <button
                     className="shrink-0 min-h-11 min-w-11 rounded-full bg-pink-50 text-sm text-pink-500 active:scale-95 transition-transform"
@@ -180,29 +180,6 @@ ${window.location.href}`;
             봇 친구 추가하기
           </button>
         )}
-
-        <div className="w-full max-w-sm bg-white rounded-2xl shadow-sm p-4 mb-4">
-          <h2 className="text-sm font-semibold text-purple-500 mb-2">행동 제한 시간</h2>
-          {state.isHost ? (
-            <div className="grid grid-cols-4 gap-2" role="group" aria-label="행동 제한 시간">
-              {TURN_SECONDS_OPTIONS.map((sec) => (
-                <button
-                  key={sec}
-                  className={`min-h-11 rounded-xl text-sm active:scale-95 transition-transform ${
-                    state.turnSeconds === sec ? "bg-purple-500 text-white font-semibold" : "bg-purple-50 text-purple-700"
-                  }`}
-                  aria-pressed={state.turnSeconds === sec}
-                  onClick={() => setTurnSeconds(sec)}
-                >
-                  {sec === 0 ? "없음" : sec === 180 ? "3분" : `${sec}초`}
-                </button>
-              ))}
-            </div>
-          ) : (
-            <p className="text-purple-700">{state.turnSeconds === 0 ? "없음" : state.turnSeconds === 180 ? "3분" : `${state.turnSeconds}초`}</p>
-          )}
-          <p className="mt-2 text-xs text-purple-500">시간이 지나면 대신 골라 주고, 두 번 놓치면 봇이 잠시 이어받아요</p>
-        </div>
 
         {state.isHost && (
           <button

@@ -69,8 +69,6 @@ export interface GrimoireCard {
   ability?: CreatureAbility;
 }
 
-export type TokenStat = "intelligence" | "stamina" | "charm";
-
 export interface PlayerGameState {
   id: string;
   name: string;
@@ -101,7 +99,7 @@ export interface GameLogEntry {
   message: string;
 }
 
-// 시험 카드: 시험 점수 = diceStat 수치만큼 굴린 주사위 합 + bonusStat 수치
+// 시험 카드: 시험 점수 = 마나토큰으로 굴린 주사위 합 + diceStat 수치 + bonusStat 수치 (결과의 bonus는 두 능력치 수치의 합)
 export interface ExamCard {
   id: string;
   name: string;
@@ -116,14 +114,15 @@ export interface ExamResult {
   scores: { playerId: string; score: number; dice: number[]; bonus: number; rank: number; creditAwarded: number }[];
 }
 
-// 주사위를 굴리는 중 (선 정하기·주문 대결·탐험 판정·시험). dice가 null이면 아직 안 굴린 사람.
+// 주사위를 굴리는 중 (선 정하기·토너먼트·조련·연구실·주문 대결·탐험 판정·시험). dice가 null이면 아직 안 굴린 사람.
 // 모두 굴리면 결과가 보이고, 굴린 사람들이 확인(confirmed)을 눌러야 결과가 적용된다
 export interface PendingRoll {
   kind: "first" | "tournament" | "creature" | "lab" | "duel" | "exploration" | "exam";
   title: string;
   lines: string[];
-  // diceChoiceMax가 있으면 굴리기 전에 diceChoiceStat 토큰(기본 지력)을 1~max개 내고 낸 개수만큼 굴릴 수 있다 (연구실 실험·탐험 판정)
-  entries: { playerId: string; label: string; diceCount: number; diceChoiceMax?: number; diceChoiceStat?: "intelligence" | "stamina" | "mana" | "charm"; diceChoices?: { stat: "intelligence" | "stamina" | "charm"; max: number }[]; dice: number[] | null; confirmed: boolean; rerolls: number; rerollCounts?: number[] }[];
+  // diceChoiceMax가 있으면 굴리기 전에 마나토큰을 1~max개 내고 낸 개수만큼 굴릴 수 있다 (diceCount는 기본 개수). 없으면(마나토큰이 없음) 공짜 주사위 diceCount개.
+  // 다시 굴리기는 남은 마나토큰 1개당 주사위 1개
+  entries: { playerId: string; label: string; diceCount: number; diceChoiceMax?: number; dice: number[] | null; confirmed: boolean; rerolls: number; rerollCounts?: number[] }[];
 }
 
 // 3주차 선택 단계에서 각자 고른 활동 (모두에게 공개). 진행 단계에서는 이 순서대로 하나씩 처리한다
@@ -147,10 +146,8 @@ export interface OfferCardView {
   name: string;
   description: string;
   lines: string[];
-  // 가져가는 데 드는 비용 (체력토큰 또는 마나토큰)
+  // 가져가는 데 드는 비용 (체력토큰)
   cost?: { kind: "stamina" | "mana"; amount: number };
-  // 마법생물 조련에 쓸 수 있는 토큰 종류 (이 중 하나라도 있어야 가져갈 수 있다)
-  tokenNeeds?: ("intelligence" | "stamina" | "charm")[];
   // 카드 이름 아래에 붙는 짧은 분류 (마법생물의 속성 · 종류)
   tags?: string;
 }
@@ -180,6 +177,8 @@ export interface PublicRules {
   // 3주차 구역에 처음 들어와 카드를 열 때 드는 지력토큰, 그리고 그 지력토큰이 드는 활동
   openCardCost: number;
   openCardCostActivities: ActivityId[];
+  // 능력치 감쇠: startRound 이후 interval개월마다 stats가 perMonth씩 줄고 floor 아래로는 내려가지 않는다 (4주차 정리 때)
+  statDecay: { perMonth: number; interval: number; startRound: number; floor: number; stats: StatKey[] };
   activityMaxParticipants: number;
   activitySecondParticipantCost: number;
   duelCharmFee: number;
@@ -225,7 +224,8 @@ export interface GameState {
   exams: { midterm: ExamCard | null; final: ExamCard | null };
   examResults: ExamResult[];
   // (kept: 이 사람이 다음 달로 남긴 토큰 1개. 소멸 수량은 남긴 것을 뺀 값)
-  cleanupSummary: { playerId: string; intelligenceTokens: number; staminaTokens: number; charmTokens: number; manaTokens: number; kept: KeptToken | null }[];
+  // (decay: 이번 정리에서 시간이 지나 줄어든 지력·체력·매력, 줄지 않았으면 빈 객체)
+  cleanupSummary: { playerId: string; intelligenceTokens: number; staminaTokens: number; charmTokens: number; manaTokens: number; kept: KeptToken | null; decay: Partial<Record<StatKey, number>> }[];
   // 4주차(정리)에서 다음 달로 남길 토큰을 고르는 중: 남길 토큰이 있는 사람만 들어 있고, null이면 아직 고르지 않았다
   cleanupKeep: Record<string, KeepChoice | null>;
   classLeft: number;
@@ -243,7 +243,7 @@ export const STAT_LABEL: Record<StatKey, string> = {
 
 // 시험 카드가 점수를 내는 방식 설명 (예: "매력 수치만큼 주사위 + 지력 수치")
 export function describeExam(card: Pick<ExamCard, "diceStat" | "bonusStat">): string {
-  return `${STAT_LABEL[card.diceStat]} 수치만큼 주사위${card.bonusStat ? ` + ${STAT_LABEL[card.bonusStat]} 수치` : ""}`;
+  return `마나토큰으로 굴린 주사위 + ${STAT_LABEL[card.diceStat]} 수치${card.bonusStat ? ` + ${STAT_LABEL[card.bonusStat]} 수치` : ""}`;
 }
 
 export const ACTIVITY_LABEL: Record<ActivityId, string> = {
@@ -256,11 +256,11 @@ export const ACTIVITY_LABEL: Record<ActivityId, string> = {
 
 // 활동 카드에 함께 보여줄 한 줄 설명
 export const ACTIVITY_HINT: Record<ActivityId, string> = {
-  tournament: "마나토큰을 모두 내고, 낸 만큼 주사위를 굴려 합친 칸만큼 트랙 전진 → 학점",
-  creature: "카드 2장 공개, 마나토큰만큼 주사위 + 생물별 능력치(체력·매력·주문력 섞음)로 조련 판정, 하늘·육지·바다를 1장씩 모으면 세트 점수",
-  duel: "아직 안 고른 한 명을 지목해 강제 대결, 마나토큰을 모두 내고 낸 만큼 주사위를 굴려 이기면 마도서 1장",
-  exploration: "카드 2장 중 하나를 골라 카드가 정한 지력 또는 체력토큰을 내고 낸 만큼 주사위 판정! 크게 벌거나 크게 잃어요",
-  lab: "심화학습: 연구 카드 2장 중 1장, 지력토큰을 몇 개 낼지 골라 낸 만큼 주사위를 굴려 안정적으로 성장",
+  tournament: "마나토큰을 골라 낸 만큼 주사위를 굴려 합친 칸만큼 트랙 전진 → 학점",
+  creature: "카드 2장 공개(지력토큰 1개), 마나토큰을 골라 낸 만큼 주사위를 굴려 합이 기준 이상이면 조련, 하늘·육지·바다를 1장씩 모으면 세트 점수",
+  duel: "아직 안 고른 한 명을 지목해 강제 대결, 마나토큰을 골라 낸 만큼 주사위를 굴려 이기면 마도서 1장",
+  exploration: "카드 2장 중 하나를 골라(지력토큰 1개) 마나토큰을 낸 만큼 주사위 판정! 크게 벌거나 크게 잃어요",
+  lab: "심화학습: 연구 카드 2장 중 1장(지력토큰 1개), 마나토큰을 몇 개 낼지 골라 낸 만큼 주사위를 굴려 안정적으로 성장",
 };
 
 export function effectiveStat(player: PlayerGameState, stat: StatKey): number {
@@ -269,7 +269,7 @@ export function effectiveStat(player: PlayerGameState, stat: StatKey): number {
 
 // ── 자율활동 구역 선택 규칙 (서버 engine.ts와 같은 규칙. 버튼을 미리 막고 이유를 보여 주기 위해 복제) ──
 
-// 구역에 처음 들어와 카드를 여는 사람이 내는 지력토큰 (연구실·주문 대결만). 이미 다른 친구가 고른 구역이면(두 번째 참가자) 내지 않는다
+// 구역에 처음 들어와 카드를 여는 사람이 내는 지력토큰 (마법생물·주문 대결·비밀의 방·연구실). 이미 다른 친구가 고른 구역이면(두 번째 참가자) 내지 않는다
 export function activityOpenCost(game: GameState, activityId: ActivityId): number {
   if (!game.rules.openCardCostActivities.includes(activityId)) return 0;
   return game.activitySlots[activityId].length > 0 ? 0 : game.rules.openCardCost;
@@ -299,7 +299,6 @@ export function activityBlockReason(game: GameState, playerId: string, activityI
   const open = activityOpenCost(game, activityId);
   if (!canPay(player, open, 0, extra)) return `카드를 열 지력토큰 ${open}개가 필요해요`;
   if (activityId === "tournament" && player.manaTokens < 1) return "마나토큰이 1개 이상 필요해요";
-  if (activityId === "creature" && player.intelligenceTokens + player.staminaTokens + player.charmTokens < 1) return "조련에 낼 지력·체력·매력토큰이 1개 이상 필요해요";
   if (activityId === "duel") {
     const need = 1 + game.rules.duelManaFee;
     if (player.manaTokens < need) return `마나토큰이 ${need}개 이상 필요해요`;

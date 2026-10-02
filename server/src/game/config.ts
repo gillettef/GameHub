@@ -37,18 +37,24 @@ export const BALANCE = {
   activityOpenCount: 2,
   // 최종 점수 = 주문력 × 학점 + 마법생물 세트(하늘·육지·바다 1장씩) 수 × creatureSetScore (기획 검토 중: 3점 또는 5점)
   creatureSetScore: 5,
-  // 판정 목표값 = 주사위 평균(3.5) × 그 달의 기준 능력치 × 난이도. 기준 능력치는 rollBenchmarkStart에서 매달 rollBenchmarkPerRound씩 오른다
-  // (성장이 기준보다 앞서면 쉽고 뒤처지면 어렵다). 탐험·협력 탐험 카드는 카드마다 난이도가 정해져 있다
+  // 판정 목표값 = 주사위 평균(3.5) × 그 달의 기준 주사위 수 × 난이도. 기준 주사위 수(마나토큰 개수)는 rollBenchmarkStart에서 매달 rollBenchmarkPerRound씩 오른다
+  // (주문력이 기준보다 앞서면 쉽고 뒤처지면 어렵다). 탐험·협력 탐험 카드는 카드마다 난이도가 정해져 있다
   rollBenchmarkStart: 2,
-  rollBenchmarkPerRound: 0.5,
+  rollBenchmarkPerRound: 0.2,
   // 주문 대결 도전자가 지목당한 친구에게 건네는 마나토큰 개수 (매력 참가비 duelCharmFee와 별도. 지목당해도 마나토큰이 있어야 굴릴 수 있게 하는 장치)
   duelManaFee: 0,
-  // 연구실 실험: 카드를 보고 지력토큰을 몇 개 낼지 골라 낸 개수만큼(최소 1개) 주사위를 굴려 합이 이 값 이상이면 성공 (안정적인 능력치 상향)
+  // 연구실 실험: 마나토큰을 몇 개 낼지 골라 낸 개수만큼(마나토큰이 없으면 공짜 1개) 주사위를 굴려 합이 이 값 이상이면 성공 (안정적인 능력치 상향)
   labTarget: 4,
-  // 연구실 실험에서 굴림 버튼의 기본 주사위 수 (지력토큰이 있으면 이 개수까지 미리 골라 둔다. 봇은 기본값 그대로 굴린다)
-  labDefaultDice: 2,
+  // 마법생물 조련 목표값 배율: 생물마다 정해진 trainTarget(creatures.ts)에 곱한다 (주사위가 마나토큰 개수라 능력치 토큰 때와 맞추기 위한 보정)
+  trainTargetScale: 0.7,
+  // 굴림 버튼의 기본 주사위 수 = 목표값 판정(조련·연구실·탐험)에서 성공 확률이 이 값 이상이 되는 가장 적은 마나토큰 개수 (남는 마나토큰은 다시 굴리기용).
+  // 토너먼트·주문 대결·시험은 기본값이 마나토큰 전부. 봇도 기본값 그대로 굴린다
+  defaultDiceSuccess: 0.7,
+  // 능력치 감쇠 (2026-10-02): 지력·체력·매력은 시간이 지나면 줄어든다 (주문력·학점은 그대로). 4주차(정리)가 끝날 때 startRound 라운드부터 매 interval개월마다
+  // stats 각각 perMonth만큼 줄고 floor 아래로는 내려가지 않는다. 그 달에 새로 얻은 능력치도 구분하지 않고 똑같이 깎는다 (유예 없음). 임시 능력치는 영향 없음
+  statDecay: { perMonth: 1, interval: 2, startRound: 4, floor: 2, stats: ["intelligence", "stamina", "charm"] as StatKey[] },
   // 탐험 카드 목표값 배율 (1이면 카드에 적힌 난이도 그대로)
-  exploreDifficultyScale: 1.25,
+  exploreDifficultyScale: 1.1,
   // 탐험 역전 보너스: 선두와의 성장 점수(능력치 합 + 학점×3) 격차가 이 값 이상이면 판정에 보너스를 더한다
   catchUpGap: 4,
   catchUpBonus: 2,
@@ -57,11 +63,11 @@ export const BALANCE = {
   // 자율활동 구역 하나에 들어갈 수 있는 최대 인원, 그리고 이미 한 명이 들어와 있는 구역에 두 번째로 들어갈 때 내는 매력토큰 (1주차에 매력 수치만큼 받는다)
   activityMaxParticipants: 2,
   activitySecondParticipantCost: 1,
-  // 카드를 한 장 열 때 드는 지력토큰: 수업카드뿐 아니라 자율활동에서 카드를 열 때(마법생물 조련·비밀의 방 탐색·연구실 실험)도 똑같이 낸다.
-  // 카드를 습득하는 데 드는 체력토큰은 카드마다 정해져 있다 (수업카드 takeCost, 연구 카드 cost)
+  // 카드를 한 장 열 때 드는 지력토큰 (2026-10-02 부활): 구역에 처음 들어온 사람이 카드를 열 때 낸다. 두 번째 참가자는 이미 열린 카드라 내지 않는다.
+  // 정규수업의 공개 시장은 지력토큰이 들지 않는다. 카드를 습득하는 데 드는 체력토큰은 카드마다 정해져 있다 (수업카드 takeCost, 연구 카드 cost)
   openCardCost: 1,
-  // 위 지력토큰이 드는 활동. 2026-09-30: 모든 구역에서 카드를 열 때 지력토큰이 들지 않는다 (빈 배열). 지력토큰의 새 역할은 검토 중
-  openCardCostActivities: [] as ActivityId[],
+  // 위 지력토큰이 드는 활동 (마법 토너먼트는 카드가 없다)
+  openCardCostActivities: ["creature", "duel", "exploration", "lab"] as ActivityId[],
 };
 
 export function examCreditForRank(rank: number): number {

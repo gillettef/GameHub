@@ -97,9 +97,18 @@ function cleanupBanner(prev: GameState, next: GameState, myId: string): Announce
     kind: "banner",
     icon: "bag",
     title: `${prev.round}개월 4주차 · 정리`,
-    subtitle: "남은 토큰은 사라져요(골라서 남긴 토큰 1개는 다음 달로 가요). 능력치와 카드, 학점은 그대로예요",
-    lines: next.cleanupSummary
-      .flatMap((c) => (c.kept ? [`${next.players[c.playerId].name}${c.playerId === myId ? " (나)" : ""}: ${KEEP_NAMES[c.kept]}토큰 1개를 다음 달로 남겼어요`] : [])),
+    subtitle: "남은 토큰은 사라져요(골라서 남긴 토큰 1개는 다음 달로 가요). 지력·체력·매력은 시간이 지나면 조금씩 줄어요. 주문력과 학점, 카드는 그대로예요",
+    lines: [
+      // 능력치 감쇠: 이번 정리에서 줄어든 지력·체력·매력 (나를 먼저)
+      ...next.cleanupSummary
+        .slice()
+        .sort((a, b) => Number(b.playerId === myId) - Number(a.playerId === myId))
+        .flatMap((c) => {
+          const parts = STAT_KEYS.filter((key) => (c.decay?.[key] ?? 0) > 0).map((key) => `${STAT_LABEL[key]} -${c.decay[key]}`);
+          return parts.length > 0 ? [`${next.players[c.playerId].name}${c.playerId === myId ? " (나)" : ""}: 시간이 지나 ${parts.join(", ")}`] : [];
+        }),
+      ...next.cleanupSummary.flatMap((c) => (c.kept ? [`${next.players[c.playerId].name}${c.playerId === myId ? " (나)" : ""}: ${KEEP_NAMES[c.kept]}토큰 1개를 다음 달로 남겼어요`] : [])),
+    ],
     tokens: {
       mode: "wipe",
       rows: tokenRows(
@@ -167,8 +176,10 @@ function activityResult(prev: GameState, next: GameState, myId: string): Announc
   const examHappened = next.examResults.length > prev.examResults.length;
 
   const tiles: Tile[] = [];
+  // 활동이 끝나고 같은 갱신에서 4주차 정리가 일어났다면 능력치 감쇠분은 활동 결과가 아니므로 되돌려 센다
+  const decayed = next.round > prev.round ? (next.cleanupSummary.find((c) => c.playerId === myId)?.decay ?? {}) : {};
   for (const key of STAT_KEYS) {
-    const d = after[key] - before[key];
+    const d = after[key] - before[key] + (decayed[key] ?? 0);
     if (d !== 0) tiles.push({ text: `${STAT_LABEL[key]} ${d > 0 ? "+" : ""}${d}`, tone: d > 0 ? "good" : "bad" });
   }
   // 시험·토너먼트 최종 보상이 같은 전환에 섞이면 활동 결과와 구분할 수 없어 학점 변화는 생략한다
@@ -213,7 +224,7 @@ function examRevealBanner(next: GameState, which: "midterm" | "final"): Announce
     icon: "note",
     title: `${which === "midterm" ? "중간고사" : "기말고사"} 과목 공개!`,
     subtitle: `"${card.name}" — ${describeExam(card)}`,
-    lines: [card.description, `시험까지 ${STAT_LABEL[card.diceStat]}${card.bonusStat ? `과 ${STAT_LABEL[card.bonusStat]}` : ""}을(를) 키워 두면 유리해요`],
+    lines: [card.description, `${STAT_LABEL[card.diceStat]}${card.bonusStat ? `과 ${STAT_LABEL[card.bonusStat]}` : ""} 수치는 점수에 그대로 더해져요. 마나토큰을 많이 낼수록 주사위가 늘어요`],
   });
 }
 

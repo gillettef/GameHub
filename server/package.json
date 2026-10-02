@@ -11,12 +11,14 @@
     "simulate:stat": "tsx scripts/stat-value.ts",
     "simulate:starter": "tsx scripts/starter-stats.ts",
     "simulate:cards": "tsx scripts/card-usage.ts",
+    "simulate:tokens": "tsx scripts/token-stats.ts",
     "check": "tsx scripts/rules-check.ts",
     "smoke": "tsx scripts/smoke.ts",
     "smoke:bot": "tsx scripts/smoke-bot.ts",
     "smoke:rejoin": "tsx scripts/smoke-rejoin.ts",
     "smoke:leave": "tsx scripts/smoke-leave.ts",
     "smoke:social": "tsx scripts/smoke-social.ts",
+    "smoke:kick": "tsx scripts/smoke-kick.ts",
     "playtest": "npm --prefix ../client run build && tsx src/index.ts"
   },
   "dependencies": {

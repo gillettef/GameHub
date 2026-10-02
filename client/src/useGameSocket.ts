@@ -15,13 +15,6 @@ interface LobbyState {
   isHost?: boolean;
   players: RoomPlayer[];
   errorMessage?: string;
-  // 한 번 행동하는 데 주어지는 시간(초), 0이면 제한 없음
-  turnSeconds: number;
-}
-
-// 지금 행동을 기다리는 사람들의 마감 시각(이 기기의 시계 기준)
-export interface TurnTimer {
-  waiting: Record<string, number>;
 }
 
 export interface Reaction {
@@ -75,11 +68,16 @@ export function useGameSocket() {
   const [state, setState] = useState<LobbyState>({
     status: sessionRef.current ? "connecting" : "idle",
     players: [],
-    turnSeconds: 90,
   });
-  const [turnTimer, setTurnTimer] = useState<TurnTimer>({ waiting: {} });
+  // 접속이 끊긴 친구들의 id (자리는 유지되고 돌아오면 이어서 한다)
+  const [offline, setOffline] = useState<string[]>([]);
+  // 방장이 누군가를 내보냈을 때 남은 사람들에게 보여 주는 안내
+  const [notice, setNotice] = useState<string | null>(null);
+  const [noticeSeq, setNoticeSeq] = useState(0);
+  const playersRef = useRef<RoomPlayer[]>([]);
   const [reactions, setReactions] = useState<Reaction[]>([]);
   const reactionIdRef = useRef(0);
+  playersRef.current = state.players;
   const [game, setGame] = useState<GameState | null>(null);
   const [lastError, setLastError] = useState<string | null>(null);
   // 같은 오류가 연달아 와도 화면에 다시 알릴 수 있도록 오류가 올 때마다 늘어나는 번호
@@ -120,37 +118,34 @@ export function useGameSocket() {
         case "room_created":
           sessionRef.current = { roomCode: message.roomCode, playerId: message.playerId };
           saveSession(sessionRef.current);
-          setState((prev) => ({
+          setState(() => ({
             status: "in_room",
             roomCode: message.roomCode,
             playerId: message.playerId,
             isHost: true,
             players: message.players,
-            turnSeconds: prev.turnSeconds,
           }));
           break;
         case "room_joined":
           sessionRef.current = { roomCode: message.roomCode, playerId: message.playerId };
           saveSession(sessionRef.current);
-          setState((prev) => ({
+          setState(() => ({
             status: "in_room",
             roomCode: message.roomCode,
             playerId: message.playerId,
             isHost: false,
             players: message.players,
-            turnSeconds: prev.turnSeconds,
           }));
           break;
         case "room_rejoined":
           attemptsRef.current = 0;
           setReconnecting(false);
-          setState((prev) => ({
+          setState(() => ({
             status: "in_room",
             roomCode: message.roomCode,
             playerId: message.playerId,
             isHost: message.isHost,
             players: message.players,
-            turnSeconds: prev.turnSeconds,
           }));
           break;
         case "rejoin_failed":
@@ -159,7 +154,7 @@ export function useGameSocket() {
           saveSession(null);
           setReconnecting(false);
           setGame(null);
-          setState((prev) => ({ status: "error", players: [], turnSeconds: prev.turnSeconds, errorMessage: "이전 게임을 찾을 수 없어요. 새로 시작해 주세요." }));
+          setState(() => ({ status: "error", players: [], errorMessage: "이전 게임을 찾을 수 없어요. 새로 시작해 주세요." }));
           break;
         case "player_joined":
           setState((prev) => ({
@@ -168,7 +163,15 @@ export function useGameSocket() {
           }));
           break;
         case "player_left":
+          if (message.kicked) {
+            const name = playersRef.current.find((p) => p.id === message.playerId)?.name;
+            setNotice(`${name ?? "친구"}님이 내보내졌어요`);
+            setNoticeSeq((n) => n + 1);
+          }
           setState((prev) => ({ ...prev, players: prev.players.filter((p) => p.id !== message.playerId) }));
+          break;
+        case "presence":
+          setOffline(message.offline);
           break;
         case "host_changed":
           setState((prev) => ({ ...prev, isHost: prev.playerId === message.hostId }));
@@ -176,25 +179,16 @@ export function useGameSocket() {
         case "game_state":
           setGame(message.game);
           break;
-        case "room_settings":
-          setState((prev) => ({ ...prev, turnSeconds: message.turnSeconds }));
-          break;
         case "room_reset":
           // 다시 하기: 끝난 게임을 접고 같은 방의 대기실로 돌아간다
           setGame(null);
-          setTurnTimer({ waiting: {} });
+          setOffline([]);
           setState((prev) => ({
             ...prev,
             isHost: prev.playerId === message.hostId,
             players: message.players,
-            turnSeconds: message.turnSeconds,
           }));
           break;
-        case "turn_timer": {
-          const now = Date.now();
-          setTurnTimer({ waiting: Object.fromEntries(Object.entries(message.waiting).map(([id, ms]) => [id, now + ms])) });
-          break;
-        }
         case "emoji": {
           const id = ++reactionIdRef.current;
           setReactions((list) => [...list.slice(-5), { id, playerId: message.playerId, emoji: message.emoji }]);
@@ -207,7 +201,7 @@ export function useGameSocket() {
           saveSession(null);
           setReconnecting(false);
           setGame(null);
-          setState((prev) => ({ status: "error", players: [], turnSeconds: prev.turnSeconds, errorMessage: "방장이 방에서 내보냈어요." }));
+          setState(() => ({ status: "error", players: [], errorMessage: "방장이 방에서 내보냈어요." }));
           break;
         case "error":
           setLastError(message.message);
@@ -334,7 +328,7 @@ export function useGameSocket() {
 
   const createRoom = useCallback(
     (playerName: string) => {
-      setState((prev) => ({ status: "connecting", players: [], turnSeconds: prev.turnSeconds }));
+      setState({ status: "connecting", players: [] });
       sessionRef.current = null;
       saveSession(null);
       const socket = ensureSocket();
@@ -345,7 +339,7 @@ export function useGameSocket() {
 
   const joinRoom = useCallback(
     (roomCode: string, playerName: string) => {
-      setState((prev) => ({ status: "connecting", players: [], turnSeconds: prev.turnSeconds }));
+      setState({ status: "connecting", players: [] });
       sessionRef.current = null;
       saveSession(null);
       const socket = ensureSocket();
@@ -368,7 +362,7 @@ export function useGameSocket() {
     setReconnecting(false);
     setGame(null);
     setLastError(null);
-    setState((prev) => ({ status: "idle", players: [], turnSeconds: prev.turnSeconds }));
+    setState({ status: "idle", players: [] });
   }, []);
 
   const startGame = useCallback(() => {
@@ -387,13 +381,6 @@ export function useGameSocket() {
     [ensureSocket, send],
   );
 
-  const setTurnSeconds = useCallback(
-    (seconds: number) => {
-      send(ensureSocket(), { type: "set_turn_seconds", seconds });
-    },
-    [ensureSocket, send],
-  );
-
   const kickPlayer = useCallback(
     (playerId: string) => {
       send(ensureSocket(), { type: "kick_player", playerId });
@@ -403,10 +390,6 @@ export function useGameSocket() {
 
   const rematch = useCallback(() => {
     send(ensureSocket(), { type: "rematch" });
-  }, [ensureSocket, send]);
-
-  const resumeSeat = useCallback(() => {
-    send(ensureSocket(), { type: "resume_seat" });
   }, [ensureSocket, send]);
 
   const sendEmoji = useCallback(
@@ -424,9 +407,9 @@ export function useGameSocket() {
     [ensureSocket, send],
   );
 
-  const rollDice = useCallback((diceCount?: number, tokenCounts?: Partial<Record<"intelligence" | "stamina" | "charm", number>>) => {
+  const rollDice = useCallback((diceCount?: number) => {
     const socket = ensureSocket();
-    send(socket, { type: "roll_dice", diceCount, tokenCounts });
+    send(socket, { type: "roll_dice", diceCount });
   }, [ensureSocket, send]);
 
   const rerollDice = useCallback(
@@ -466,5 +449,5 @@ export function useGameSocket() {
     [ensureSocket, send],
   );
 
-  return { state, game, turnTimer, reactions, lastError, errorSeq, reconnecting, createRoom, joinRoom, leaveRoom, startGame, addBot, removeBot, setTurnSeconds, kickPlayer, rematch, resumeSeat, sendEmoji, takeClassCard, rollDice, rerollDice, confirmRoll, selectActivity, pickActivityCard, keepToken };
+  return { state, game, offline, notice, noticeSeq, reactions, lastError, errorSeq, reconnecting, createRoom, joinRoom, leaveRoom, startGame, addBot, removeBot, kickPlayer, rematch, sendEmoji, takeClassCard, rollDice, rerollDice, confirmRoll, selectActivity, pickActivityCard, keepToken };
 }

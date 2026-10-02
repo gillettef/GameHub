@@ -91,9 +91,9 @@ export interface ExplorationCard {
   id: string;
   name: string;
   description: string;
-  // 판정: stat(지력·체력) 수치만큼 주사위를 굴려 합이 목표값 이상이면 성공. target은 난이도 × 10 (10이 표준, 라운드마다 목표값이 기준 능력치에 맞춰 오른다). 없으면 무조건 성공
+  // 판정: 마나토큰을 내고 굴린 주사위 합이 목표값 이상이면 성공 (2026-10-02부터 stat은 표시·분류용이고 주사위 수와 무관하다). target은 난이도 × 10 (10이 표준, 라운드마다 목표값이 기준 능력치에 맞춰 오른다). 없으면 무조건 성공
   check?: { stat: StatKey; target: number };
-  // 협력 카드: 두 명이 함께해야 열린다. 각자 stat 수치만큼 주사위를 굴려 둘의 합이 목표값(pairTarget은 난이도 × 18) 이상이면 성공하고 두 명 모두 효과를 받는다.
+  // 협력 카드: 두 명이 함께해야 열린다. 각자 마나토큰을 내고 주사위를 굴려 둘의 합이 목표값(pairTarget은 난이도 × 18) 이상이면 성공하고 두 명 모두 효과를 받는다.
   // 끝까지 함께할 친구가 없으면 무효가 된다 (check는 쓰지 않는다)
   coop?: { stat: StatKey; pairTarget: number };
   success: CardEffect;
@@ -147,7 +147,7 @@ export interface GameLogEntry {
   message: string;
 }
 
-// 시험 카드 (examCards.ts): 시험 점수 = diceStat 수치만큼 굴린 주사위 합 + bonusStat 수치
+// 시험 카드 (examCards.ts): 시험 점수 = 마나토큰으로 굴린 주사위 합 + diceStat 수치 + bonusStat 수치 (결과의 bonus는 두 능력치 수치의 합)
 export interface ExamCard {
   id: string;
   name: string;
@@ -163,14 +163,15 @@ export interface ExamResult {
 }
 
 // 주사위 굴리기 단계: 굴려야 하는 사람이 모두 버튼을 눌러 굴릴 때까지 게임이 기다린다
-// 모두 굴리면 결과를 보여 주고, 굴린 사람들은 (지력토큰으로 일부 주사위를 다시 굴린 뒤) "확인"을 눌러야 결과가 적용된다
+// 모두 굴리면 결과를 보여 주고, 굴린 사람들은 (마나토큰으로 일부 주사위를 다시 굴린 뒤) "확인"을 눌러야 결과가 적용된다
+// 선 정하기를 뺀 모든 굴림은 마나토큰을 1~보유 개수 사이에서 골라 내고 낸 개수만큼 굴린다 (마나토큰이 없으면 공짜 주사위 1개, 다시 굴리기는 마나토큰 1개당 주사위 1개)
 export interface PendingRoll {
   kind: "first" | "tournament" | "creature" | "lab" | "duel" | "exploration" | "exam";
   title: string;
   lines: string[];
   // dice가 null이면 아직 안 굴린 사람, confirmed는 결과를 확인하고 다음으로 넘기기를 누른 사람
-  // diceChoiceMax가 있으면 굴리기 전에 diceChoiceStat 토큰(기본 지력)을 1~max개 내고 낸 개수만큼 굴릴 수 있다 (연구실 실험·탐험 판정)
-  entries: { playerId: string; label: string; diceCount: number; diceChoiceMax?: number; diceChoiceStat?: "intelligence" | "stamina" | "mana" | "charm"; diceChoices?: { stat: "intelligence" | "stamina" | "charm"; max: number }[]; dice: number[] | null; confirmed: boolean; rerolls: number; rerollCounts?: number[] }[];
+  // diceChoiceMax가 있으면 굴리기 전에 마나토큰을 1~max개 내고 낸 개수만큼 굴릴 수 있다 (diceCount는 굴림 버튼의 기본 개수)
+  entries: { playerId: string; label: string; diceCount: number; diceChoiceMax?: number; dice: number[] | null; confirmed: boolean; rerolls: number; rerollCounts?: number[] }[];
 }
 
 // 협력 탐험 카드가 함께할 친구를 기다리는 중 (공개 정보)
@@ -221,10 +222,8 @@ export interface OfferCardView {
   name: string;
   description: string;
   lines: string[];
-  // 이 카드를 가져가는 데 드는 비용 (체력토큰 또는 마나토큰)
-  cost?: { kind: "stamina" | "mana"; amount: number };
-  // 마법생물 조련에 쓸 수 있는 토큰 종류 (이 중 하나라도 있어야 가져갈 수 있다)
-  tokenNeeds?: ("intelligence" | "stamina" | "charm")[];
+  // 이 카드를 가져가는 데 드는 비용 (체력토큰)
+  cost?: { kind: "stamina"; amount: number };
   // 카드 이름 아래에 붙는 짧은 분류 (마법생물의 속성 · 종류)
   tags?: string;
 }
@@ -284,7 +283,8 @@ export interface GameState {
   examResults: ExamResult[];
   // 가장 최근 4주차(정리)에서 소멸한 토큰 (화면의 정리 연출용)
   // (kept: 이 사람이 다음 달로 남긴 토큰 1개. 소멸 수량은 남긴 것을 뺀 값)
-  cleanupSummary: { playerId: string; intelligenceTokens: number; staminaTokens: number; charmTokens: number; manaTokens: number; kept: KeptToken | null }[];
+  // (decay: 이번 정리에서 시간이 지나 줄어든 지력·체력·매력 능력치, 줄지 않았으면 빈 객체)
+  cleanupSummary: { playerId: string; intelligenceTokens: number; staminaTokens: number; charmTokens: number; manaTokens: number; kept: KeptToken | null; decay: Partial<Record<StatKey, number>> }[];
   // 4주차(정리)에서 다음 달로 남길 토큰을 고르는 중: 남길 수 있는 토큰이 있는 사람만 들어 있고, null이면 아직 고르지 않았다
   cleanupKeep: Record<string, KeepChoice | null>;
   // 카드 덱·버림 더미와 주사위 처리 정보 (서버 전용, 클라이언트에는 전송하지 않음)
@@ -313,10 +313,12 @@ export type PublicGameState = Omit<GameState, "hidden" | "labPile" | "exploratio
 };
 
 export interface PublicRules {
-  // 카드를 한 장 열 때 드는 지력토큰 (수업카드·마법생물·비밀의 방·연구 카드 공통)
+  // 카드를 한 장 열 때 드는 지력토큰 (구역에 처음 들어온 사람이 낸다. 정규수업 시장은 해당 없음)
   openCardCost: number;
-  // 위 지력토큰이 드는 활동 (나머지 구역은 카드를 열 때 지력토큰이 들지 않는다)
+  // 위 지력토큰이 드는 활동 (마법 토너먼트는 카드가 없다)
   openCardCostActivities: ActivityId[];
+  // 능력치 감쇠: round >= startRound인 정리 때부터 interval개월마다 stats가 perMonth씩 줄고 floor 아래로는 내려가지 않는다
+  statDecay: { perMonth: number; interval: number; startRound: number; floor: number; stats: StatKey[] };
   activityMaxParticipants: number;
   activitySecondParticipantCost: number;
   duelCharmFee: number;
@@ -329,5 +331,4 @@ export interface PublicRules {
   tournamentRewards: number[];
   // 최종 점수 = 주문력 × 학점 + 마법생물 세트(하늘·육지·바다 1장씩) 수 × creatureSetScore
   creatureSetScore: number;
-  // 마법생물을 가져오는 데 드는 최소 마나토큰 (이보다 적으면 마법생물 조련을 고를 수 없다)
 }

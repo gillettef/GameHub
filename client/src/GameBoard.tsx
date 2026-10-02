@@ -24,14 +24,13 @@ import {
   type KeepChoice,
   type OfferCardView,
   type PlayerGameState,
-  type TokenStat,
 } from "./gameTypes";
 import { CardButton, CardGrid, PickGrid, type CardInfo } from "./CardArt";
 import { RulesGuide } from "./Rules";
 import { GameMenu } from "./Leave";
 import { FinalReveal } from "./FinalReveal";
-import { AwayBanner, SocialBar } from "./Social";
-import type { Reaction, TurnTimer } from "./useGameSocket";
+import { NoticeToast, PlayerAdminRow, SocialBar, WaitingBanner } from "./Social";
+import type { Reaction } from "./useGameSocket";
 import { AnnouncementLayer } from "./Announcements";
 
 const ACTIVITY_IDS: ActivityId[] = ["tournament", "creature", "duel", "exploration", "lab"];
@@ -308,7 +307,6 @@ function PickPanel({ game, myId, onPick }: { game: GameState; myId: string; onPi
       ? "주문 대결에서 이겼어요! 마도서를 1장 고르세요"
       : `${ACTIVITY_LABEL[pick.activityId]}: 공개된 카드 중 1장을 고르세요`;
   const affordable = (card: OfferCardView): boolean => {
-    if (card.tokenNeeds) return card.tokenNeeds.some((stat) => (stat === "intelligence" ? me.intelligenceTokens : stat === "stamina" ? me.staminaTokens : me.charmTokens) > 0);
     if (!card.cost) return true;
     if (card.cost.kind === "stamina") return canPay(me, 0, card.cost.amount);
     return me.manaTokens >= card.cost.amount;
@@ -653,8 +651,8 @@ function ActivityPhasePanel({
   );
 }
 
-// 주사위 굴리기 (선 정하기·주문 대결·탐험 판정·시험): 굴려야 하는 사람이 버튼을 누르면 서버가 굴려서 결과를 알려 주고,
-// 모두 굴린 뒤에는 결과를 눈으로 확인하고 "확인" 버튼을 눌러야 결과가 적용된다
+// 주사위 굴리기 (선 정하기·토너먼트·조련·연구실·주문 대결·탐험 판정·시험): 마나토큰을 1~보유 개수만큼 골라 내고(없으면 공짜 1개) 버튼을 누르면
+// 서버가 낸 개수만큼 굴려서 결과를 알려 주고, 모두 굴린 뒤에는 결과를 눈으로 확인하고(남은 마나토큰 1개당 주사위 1개를 다시 굴릴 수 있다) "확인" 버튼을 눌러야 결과가 적용된다
 function RollPanel({
   game,
   myId,
@@ -664,7 +662,7 @@ function RollPanel({
 }: {
   game: GameState;
   myId: string;
-  onRoll: (diceCount?: number, tokenCounts?: Partial<Record<TokenStat, number>>) => void;
+  onRoll: (diceCount?: number) => void;
   onReroll: (diceIndexes: number[]) => void;
   onConfirm: () => void;
 }) {
@@ -672,10 +670,8 @@ function RollPanel({
   const [clickedFor, setClickedFor] = useState<string | null>(null);
   // 다시 굴리려고 고른 내 주사위 번호
   const [selected, setSelected] = useState<number[]>([]);
-  // 연구실 실험처럼 지력토큰을 몇 개 낼지 고르는 굴림에서 고른 주사위 수 (null이면 서버가 정한 기본값)
+  // 마나토큰을 몇 개 낼지 고른 주사위 수 (null이면 서버가 정한 기본값)
   const [pickedCount, setPickedCount] = useState<number | null>(null);
-  // 마법생물 조련처럼 여러 종류의 토큰을 종류별로 몇 개씩 낼지 고르는 굴림에서 고른 개수 (없는 종류는 최대치가 기본값)
-  const [pickedTokens, setPickedTokens] = useState<Partial<Record<TokenStat, number>>>({});
   // 버튼을 누른 뒤 응답이 없어도 잠시 뒤 다시 누를 수 있게 풀어 준다
   useEffect(() => {
     if (!clickedFor) return;
@@ -687,18 +683,15 @@ function RollPanel({
   const mine = pending.entries.find((e) => e.playerId === myId);
   const revealed = pending.entries.every((e) => e.dice !== null);
   const canRoll = !!mine && mine.dice === null;
-  // 굴리기 전에 지력토큰을 몇 개 낼지 고르는 굴림 (연구실 실험)
+  // 굴리기 전에 마나토큰을 몇 개 낼지 고르는 굴림 (마나토큰이 없으면 choiceMax가 없고 공짜 주사위 1개)
   const choiceMax = mine?.diceChoiceMax;
   const chosenCount = choiceMax !== undefined ? Math.min(Math.max(pickedCount ?? mine!.diceCount, 1), choiceMax) : (mine?.diceCount ?? 0);
-  const multi = mine?.diceChoices;
-  const tokenCountOf = (c: { stat: TokenStat; max: number }) => Math.min(Math.max(pickedTokens[c.stat] ?? c.max, 0), c.max);
-  const multiTotal = multi ? multi.reduce((a, c) => a + tokenCountOf(c), 0) : 0;
   const canConfirm = !!mine && revealed && !mine.confirmed;
   const me = game.players[myId];
-  // 결과를 확인하기 전에는 지력토큰으로 일부 주사위만 다시 굴릴 수 있다 (선 정하기는 제외)
+  // 결과를 확인하기 전에는 남은 마나토큰으로 일부 주사위만 다시 굴릴 수 있다 (선 정하기는 제외)
   const canReroll = canConfirm && pending.kind !== "first" && !!mine && (mine.dice?.length ?? 0) > 0;
   const rerollCost = selected.length;
-  const rerollOk = rerollCost > 0 && canPay(me, rerollCost, 0);
+  const rerollOk = rerollCost > 0 && me.manaTokens >= rerollCost;
   const toggle = (i: number) => setSelected((cur) => (cur.includes(i) ? cur.filter((x) => x !== i) : [...cur, i]));
   const rollKey = `roll:${pending.title}`;
   const confirmKey = `confirm:${pending.title}`;
@@ -727,7 +720,7 @@ function RollPanel({
               {revealed && entry.confirmed && entry.diceCount > 0 && <span className="shrink-0 text-xs text-emerald-600">확인 완료</span>}
             </p>
             {entry.dice === null ? (
-              <p className="text-xs text-purple-400">아직 안 굴렸어요{entry.diceChoiceMax === undefined && !entry.diceChoices ? ` (주사위 ${entry.diceCount}개)` : ` (${entry.diceChoiceStat === "stamina" ? "체력토큰" : entry.diceChoiceStat === "mana" ? "마나토큰" : "지력토큰"}을 고르는 중)`}</p>
+              <p className="text-xs text-purple-400">아직 안 굴렸어요{entry.diceChoiceMax === undefined ? ` (주사위 ${entry.diceCount}개)` : " (마나토큰을 고르는 중)"}</p>
             ) : entry.dice.length === 0 ? (
               <p className="text-xs text-purple-400">굴릴 주사위가 없어요</p>
             ) : (
@@ -752,19 +745,7 @@ function RollPanel({
       {canRoll && mine && choiceMax !== undefined && (
         <div className="mt-3 rounded-2xl bg-sky-50 px-3 py-2 text-sm text-sky-800">
           <p>
-            {mine.diceChoiceStat === "stamina" ? (
-              <>
-                <InlineIcon name="staminaToken" /> 체력토큰 {choiceMax}개 중 몇 개를 낼까요? 낸 개수만큼 주사위를 굴려요. 안 낸 토큰은 지켜 둘 수 있어요
-              </>
-            ) : mine.diceChoiceStat === "mana" ? (
-              <>
-                <InlineIcon name="manaToken" /> 마나토큰 {choiceMax}개 중 몇 개를 낼까요? 낸 개수만큼 주사위를 굴려요. 안 낸 마나토큰은 지켜 둘 수 있어요
-              </>
-            ) : (
-              <>
-                <InlineIcon name="intToken" /> 지력토큰 {choiceMax}개 중 몇 개를 낼까요? 낸 개수만큼 주사위를 굴려요. 안 낸 토큰은 다시 굴리기에 쓸 수 있어요
-              </>
-            )}
+            <InlineIcon name="manaToken" /> 마나토큰 {choiceMax}개 중 몇 개를 낼까요? 낸 개수만큼 주사위를 굴려요. 안 낸 마나토큰은 다시 굴리기에 쓸 수 있어요
           </p>
           <div className="mt-2 flex items-center justify-center gap-4">
             <button
@@ -787,61 +768,31 @@ function RollPanel({
           </div>
         </div>
       )}
-      {canRoll && mine && multi && (
-        <div className="mt-3 rounded-2xl bg-sky-50 px-3 py-2 text-sm text-sky-800">
-          <p>토큰 종류별로 몇 개를 낼까요? 낸 토큰 개수만큼 주사위를 굴려요. 안 낸 토큰은 지켜 둘 수 있어요</p>
-          {multi.map((c) => {
-            const n = tokenCountOf(c);
-            return (
-              <div key={c.stat} className="mt-2 flex items-center justify-between gap-2">
-                <span className="flex items-center gap-1">
-                  <InlineIcon name={c.stat === "intelligence" ? "intToken" : c.stat === "stamina" ? "staminaToken" : "charmToken"} /> {STAT_LABEL[c.stat]}토큰 (최대 {c.max}개)
-                </span>
-                <span className="flex items-center gap-3">
-                  <button
-                    aria-label={`${STAT_LABEL[c.stat]}토큰 하나 줄이기`}
-                    disabled={n <= 0}
-                    className="h-12 w-12 rounded-full bg-white text-2xl font-semibold text-sky-700 shadow-sm active:scale-95 transition-transform disabled:opacity-40"
-                    onClick={() => setPickedTokens((cur) => ({ ...cur, [c.stat]: n - 1 }))}
-                  >
-                    −
-                  </button>
-                  <span className="min-w-8 text-center text-lg font-semibold">{n}</span>
-                  <button
-                    aria-label={`${STAT_LABEL[c.stat]}토큰 하나 늘리기`}
-                    disabled={n >= c.max}
-                    className="h-12 w-12 rounded-full bg-white text-2xl font-semibold text-sky-700 shadow-sm active:scale-95 transition-transform disabled:opacity-40"
-                    onClick={() => setPickedTokens((cur) => ({ ...cur, [c.stat]: n + 1 }))}
-                  >
-                    +
-                  </button>
-                </span>
-              </div>
-            );
-          })}
-        </div>
+      {canRoll && mine && choiceMax === undefined && (
+        <p className="mt-3 rounded-2xl bg-sky-50 px-3 py-2 text-center text-sm text-sky-800">
+          <InlineIcon name="manaToken" /> 마나토큰이 없어서 공짜 주사위 {mine.diceCount}개를 굴려요
+        </p>
       )}
       {canRoll && mine ? (
         <button
-          disabled={clickedFor === rollKey || (!!multi && multiTotal < 1)}
+          disabled={clickedFor === rollKey}
           className="mt-3 flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl bg-pink-500 py-3 text-lg font-semibold text-white active:scale-95 transition-transform disabled:opacity-70 disabled:active:scale-100"
           onClick={() => {
             setClickedFor(rollKey);
-            if (multi) onRoll(undefined, Object.fromEntries(multi.map((c) => [c.stat, tokenCountOf(c)])));
-            else onRoll(choiceMax !== undefined ? chosenCount : undefined);
+            onRoll(choiceMax !== undefined ? chosenCount : undefined);
           }}
         >
           <span className={clickedFor === rollKey ? "dice-wiggle inline-flex" : "inline-flex"}>
             <Icon name="dice" className="h-6 w-6" />
           </span>
-          {clickedFor === rollKey ? "굴리는 중..." : (multi ? multiTotal : chosenCount) > 1 ? `주사위 ${multi ? multiTotal : chosenCount}개 굴리기` : "주사위 굴리기"}
+          {clickedFor === rollKey ? "굴리는 중..." : chosenCount > 1 ? `주사위 ${chosenCount}개 굴리기` : "주사위 굴리기"}
         </button>
       ) : canConfirm ? (
         <>
           {canReroll && (
             <div className="mt-3 rounded-2xl bg-sky-50 px-3 py-2 text-sm text-sky-800">
               <p>
-                <InlineIcon name="intToken" /> 지력토큰 {me.intelligenceTokens}개 · 주사위를 눌러 고르면 <b>1개당 주사위 1개</b>를 다시 굴려요
+                <InlineIcon name="manaToken" /> 마나토큰 {me.manaTokens}개 · 주사위를 눌러 고르면 <b>마나토큰 1개당 주사위 1개</b>를 다시 굴려요
               </p>
               <button
                 disabled={!rerollOk}
@@ -852,7 +803,7 @@ function RollPanel({
                 }}
               >
                 <Icon name="dice" className="h-5 w-5" />
-                {rerollCost === 0 ? "다시 굴릴 주사위를 골라요" : rerollOk ? `선택한 ${rerollCost}개 다시 굴리기 (지력토큰 ${rerollCost}개)` : "지력토큰이 부족해요"}
+                {rerollCost === 0 ? "다시 굴릴 주사위를 골라요" : rerollOk ? `선택한 ${rerollCost}개 다시 굴리기 (마나토큰 ${rerollCost}개)` : "마나토큰이 부족해요"}
               </button>
             </div>
           )}
@@ -1026,10 +977,11 @@ export function GameBoard({
   onKeepToken,
   onLeave,
   isHost,
-  turnTimer,
+  offline,
+  notice,
+  noticeSeq,
   reactions,
   onEmoji,
-  onResumeSeat,
   onKick,
   onRematch,
 }: {
@@ -1040,16 +992,18 @@ export function GameBoard({
   onTakeClassCard: (cardId: string | null) => void;
   onSelectActivity: (activityId: ActivityId, targetPlayerId?: string) => void;
   onPickActivityCard: (cardId: string | null) => void;
-  onRollDice: (diceCount?: number, tokenCounts?: Partial<Record<TokenStat, number>>) => void;
+  onRollDice: (diceCount?: number) => void;
   onRerollDice: (diceIndexes: number[]) => void;
   onConfirmRoll: () => void;
   onKeepToken: (choice: KeepChoice) => void;
   onLeave: () => void;
   isHost: boolean;
-  turnTimer: TurnTimer;
+  // 접속이 끊긴 친구들의 id, 방장이 누군가를 내보냈을 때의 안내
+  offline: string[];
+  notice: string | null;
+  noticeSeq: number;
   reactions: Reaction[];
   onEmoji: (emoji: string) => void;
-  onResumeSeat: () => void;
   onKick: (playerId: string) => void;
   onRematch: () => void;
 }) {
@@ -1067,6 +1021,8 @@ export function GameBoard({
     game.cleanupKeep[myId] === null ||
     (!game.pendingRoll &&
       ((game.phase === "class" && game.classPickOrder[game.classPickPointer] === myId) || (game.phase === "activity" && activityTurnId === myId)));
+  // 방장은 게임 중에도 누구든(자신 제외) 내보낼 수 있다. 단, 2명 이상이 남아야 한다
+  const canKickInGame = isHost && game.phase !== "ended" && game.turnOrder.length > 2;
   const starterName = game.players[game.turnOrder[game.startingPlayerIndex]]?.name;
   const phaseText =
     game.phase === "setup"
@@ -1091,7 +1047,6 @@ export function GameBoard({
   return (
     <div className="min-h-dvh flex flex-col max-w-md mx-auto">
       <header className="sticky top-0 z-40 border-b-2 border-purple-100 bg-purple-50/95 px-4 pb-2 pt-[max(0.5rem,env(safe-area-inset-top))] backdrop-blur">
-        {me.isBot && game.phase !== "ended" && <AwayBanner onResume={onResumeSeat} />}
         <div className="flex items-center justify-between gap-2">
           <h1 className="text-lg text-purple-700 whitespace-nowrap"><Icon name="school" className="mr-1 h-5 w-5" />{game.round}/12개월</h1>
           <p className={`truncate rounded-full px-3 py-1 text-sm ${myTurn ? "bg-pink-200 text-pink-800" : "bg-purple-100 text-purple-600"}`}>
@@ -1103,8 +1058,8 @@ export function GameBoard({
             inGame={game.phase !== "ended"}
             onLeave={onLeave}
             kickable={
-              isHost && game.phase !== "ended"
-                ? game.turnOrder.filter((id) => id !== myId && !game.players[id].isBot).map((id) => ({ id, name: game.players[id].name }))
+              canKickInGame
+                ? game.turnOrder.filter((id) => id !== myId).map((id) => ({ id, name: game.players[id].name }))
                 : []
             }
             onKick={onKick}
@@ -1136,6 +1091,7 @@ export function GameBoard({
                 <InlineIcon name="sparkle" /> 이번 달 선: <b>{starterName}</b> (선부터 시계방향으로 진행해요)
               </p>
             )}
+            <WaitingBanner game={game} offline={offline} isHost={isHost} myId={myId} onKick={onKick} />
             {game.pendingRoll && <RollPanel game={game} myId={myId} onRoll={onRollDice} onReroll={onRerollDice} onConfirm={onConfirmRoll} />}
             {game.phase === "class" && !game.pendingRoll && <ClassPhasePanel game={game} myId={myId} onTake={onTakeClassCard} />}
             {game.phase === "cleanup" && <CleanupPanel game={game} myId={myId} onKeep={onKeepToken} />}
@@ -1179,7 +1135,10 @@ export function GameBoard({
         {tab === "players" && (
           <div className="flex flex-col gap-2">
             {game.turnOrder.map((id) => (
-              <PlayerStatCard key={id} player={game.players[id]} isMe={id === myId} rules={game.rules} />
+              <div key={id} className="flex flex-col gap-1">
+                <PlayerStatCard player={game.players[id]} isMe={id === myId} rules={game.rules} />
+                <PlayerAdminRow name={game.players[id].name} offline={offline.includes(id)} canKick={canKickInGame && id !== myId} onKick={() => onKick(id)} />
+              </div>
             ))}
           </div>
         )}
@@ -1231,7 +1190,7 @@ export function GameBoard({
 
       <SocialBar
         key={tab}
-        timer={turnTimer}
+        game={game}
         reactions={reactions}
         names={Object.fromEntries(game.turnOrder.map((id) => [id, game.players[id].name]))}
         myId={myId}
@@ -1239,6 +1198,7 @@ export function GameBoard({
       />
       <AnnouncementLayer game={game} myId={myId} />
       <ErrorToast message={errorMessage} seq={errorSeq} />
+      <NoticeToast message={notice} seq={noticeSeq} />
     </div>
   );
 }
