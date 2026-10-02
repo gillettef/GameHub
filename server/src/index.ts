@@ -205,7 +205,6 @@ const PUBLIC_RULES: PublicRules = {
   creatureSetScore: BALANCE.creatureSetScore,
   graduationAwardScore: BALANCE.graduationAwardScore,
   graduationAwardStats: BALANCE.graduationAwardStats,
-  statDecay: BALANCE.statDecay,
 };
 
 function broadcastGameState(room: Room): void {

@@ -1,6 +1,6 @@
-// 기운 잔여량 점검: 균형형 봇끼리 게임을 돌려 매달 1주차(충전) 때 다음 달로 이어진 기운(이월)과 한도(능력치 × energyCapMultiplier)를 넘어 사라진 기운(소멸)을
-// 전반(1~6)·후반(7~12) 구간별로 출력한다. (사용법: npm run simulate:tokens -- [게임 수] [인원]. 환경변수 BAL='{"energyCapMultiplier":3}'로 BALANCE를 덮어쓸 수 있다)
-// 40절(기운 모아 두기) 이후 "기운이 너무 쌓이거나 버려지지 않는가"를 보는 용도다.
+// 기운 잔여량 점검: 균형형 봇끼리 게임을 돌려 매달 4주차(정리) 뒤 다음 달로 이어진 기운(이월)과 능력치 합을 전반(2~6)·후반(7~12) 구간별로 출력한다.
+// (사용법: npm run simulate:tokens -- [게임 수] [인원]. 환경변수 BAL='{"energyCapMultiplier":3}'로 BALANCE를 덮어쓸 수 있다)
+// 42절(수업이 충전) 이후 "기운이 너무 쌓이거나 모자라지 않는가"를 보는 용도다. 월 시작 시점의 보유량 = 지난달에 쓰고 남은 기운(+예약 효과).
 import { BALANCE } from "../src/game/config.js";
 if (process.env.BAL) Object.assign(BALANCE, JSON.parse(process.env.BAL));
 const { chooseActivityAction, choosePick, playClassTurn } = await import("../src/game/bot.js");
@@ -14,8 +14,8 @@ const balanced: BotStrategy = { name: "균형형", classWeights: { intelligence:
 
 const games = Number(process.argv[2]) || 100;
 const n = Number(process.argv[3]) || 4;
-// 라운드별 누적 (인당·달당 합산): [이월 지력, 체력, 매력, 마나, 소멸 지력, 체력, 매력, 마나, 충전 후 보유 합, 능력치 합(지력+체력+매력+주문력), 관측 수]
-const acc = Array.from({ length: BALANCE.totalRounds + 1 }, () => new Array(11).fill(0));
+// 라운드별 누적 (인당·달당 합산): [이월 지력, 체력, 매력, 마나, 능력치 합(지력+체력+매력+주문력), 관측 수]
+const acc = Array.from({ length: BALANCE.totalRounds + 1 }, () => new Array(6).fill(0));
 const actPick: Record<string, number> = {};
 
 for (let g = 0; g < games; g++) {
@@ -25,17 +25,13 @@ for (let g = 0; g < games; g++) {
   let guard = 0;
   while (state.phase !== "ended" && guard++ < 6000) {
     if (state.round !== lastRound) {
-      // 방금 시작된 달(state.round)의 1주차 충전 결과: 이월 = 충전 후 보유 - 이번에 차오른 양
-      for (const c of state.chargeSummary) {
-        const p = state.players[c.playerId];
+      // 방금 시작된 달(state.round) 시작 시점의 보유 기운 = 지난달에서 이어진 기운
+      for (const id of state.turnOrder) {
+        const p = state.players[id];
         const row = acc[state.round];
-        ENERGY_KINDS.forEach((kind, i) => {
-          row[i] += Math.max(0, tokensOf(p, kind) - c.gained[kind]);
-          row[4 + i] += c.lost[kind];
-        });
-        row[8] += ENERGY_KINDS.reduce((s, kind) => s + tokensOf(p, kind), 0);
-        row[9] += p.intelligence + p.stamina + p.charm + p.spellPower;
-        row[10] += 1;
+        ENERGY_KINDS.forEach((kind, i) => (row[i] += tokensOf(p, kind)));
+        row[4] += p.intelligence + p.stamina + p.charm + p.spellPower;
+        row[5] += 1;
       }
       lastRound = state.round;
     }
@@ -54,20 +50,19 @@ for (let g = 0; g < games; g++) {
 
 const f = (x: number) => Number(x.toFixed(2));
 function band(from: number, to: number) {
-  const sum = new Array(11).fill(0);
+  const sum = new Array(6).fill(0);
   for (let r = from; r <= to; r++) acc[r].forEach((v, i) => (sum[i] += v));
-  const c = sum[10] || 1;
+  const c = sum[5] || 1;
   return {
     "이월 지력": f(sum[0] / c),
     "이월 체력": f(sum[1] / c),
     "이월 매력": f(sum[2] / c),
     "이월 마나": f(sum[3] / c),
-    "소멸(한도 초과) 합계": f((sum[4] + sum[5] + sum[6] + sum[7]) / c),
-    "충전 후 보유 합": f(sum[8] / c),
-    "능력치 합": f(sum[9] / c),
+    "이월 합계": f((sum[0] + sum[1] + sum[2] + sum[3]) / c),
+    "능력치 합": f(sum[4] / c),
   };
 }
-console.log(`BAL=${process.env.BAL ?? "{}"} ${games}판 x ${n}인 (균형형만, 이월·소멸은 1주차 충전 시점의 인당·달당 평균)`);
+console.log(`BAL=${process.env.BAL ?? "{}"} ${games}판 x ${n}인 (균형형만, 월 시작 시점의 인당 평균 보유 기운)`);
 console.table({ "2~6월": band(2, 6), "7~12월": band(7, 12) });
 const tot = Object.values(actPick).reduce((a, b) => a + b, 0) || 1;
 console.log("자율활동 선택 비율:", Object.entries(actPick).map(([k, v]) => `${k} ${((v / tot) * 100).toFixed(0)}%`).join(", "));

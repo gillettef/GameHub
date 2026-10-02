@@ -61,64 +61,15 @@ const make = (a: Omit<Announcement, "id" | "tiles" | "lines"> & { tiles?: Tile[]
   id: nextId++,
 });
 
-// 나를 맨 위에 두고 나머지는 진행 순서대로
-function tokenRows(game: GameState, myId: string, amounts: { id: string; int: number; stamina: number; charm: number; spell: number }[]): TokenRow[] {
-  const rows = amounts.map((a) => ({ ...a, name: game.players[a.id].name, isMe: a.id === myId }));
-  return [...rows.filter((r) => r.isMe), ...rows.filter((r) => !r.isMe)];
-}
-
-function prepBanner(game: GameState, myId: string): Announcement {
-  const summary = game.chargeSummary.filter((c) => game.players[c.playerId]);
-  // 한도(능력치 × 배수)를 넘어서 사라진 기운이 있으면 알려 준다 (나를 먼저)
-  const lostLines = summary
-    .slice()
-    .sort((a, b) => Number(b.playerId === myId) - Number(a.playerId === myId))
-    .flatMap((c) => {
-      const parts = ENERGY_LABELS.filter(([kind]) => c.lost[kind] > 0).map(([kind, label]) => `${label} ${c.lost[kind]}`);
-      return parts.length > 0 ? [`${game.players[c.playerId].name}${c.playerId === myId ? " (나)" : ""}: 한도를 넘어 ${parts.join(", ")}개가 사라졌어요`] : [];
-    });
-  return make({
-    kind: "banner",
-    icon: "calendar",
-    title: `${game.round}개월 1주차 · 충전`,
-    subtitle: `능력치만큼 기운이 차올라요. 쓰고 남은 기운은 다음 달로 이어지고, 모아 둘 수 있는 한도는 능력치의 ${game.rules.energyCapMultiplier}배예요`,
-    lines: lostLines,
-    tokens: {
-      mode: "gain",
-      rows: tokenRows(
-        game,
-        myId,
-        summary.map((c) => ({ id: c.playerId, int: c.gained.intelligence, stamina: c.gained.stamina, charm: c.gained.charm, spell: c.gained.mana })),
-      ),
-    },
-  });
-}
-
-const ENERGY_LABELS = [
-  ["intelligence", "지력기운"],
-  ["stamina", "체력기운"],
-  ["charm", "매력기운"],
-  ["mana", "마나기운"],
-] as const;
-
-function cleanupBanner(prev: GameState, next: GameState, myId: string): Announcement {
+function cleanupBanner(prev: GameState): Announcement {
   return make({
     kind: "banner",
     icon: "bag",
     title: `${prev.round}개월 4주차 · 정리`,
-    subtitle: "쓰고 남은 기운은 다음 달로 이어져요. 지력·체력·매력은 시간이 지나면 조금씩 줄어요. 주문력과 학점, 카드는 그대로예요",
-    lines: [
-      // 능력치 감쇠: 이번 정리에서 줄어든 지력·체력·매력 (나를 먼저)
-      ...next.cleanupSummary
-        .slice()
-        .sort((a, b) => Number(b.playerId === myId) - Number(a.playerId === myId))
-        .flatMap((c) => {
-          const parts = STAT_KEYS.filter((key) => (c.decay?.[key] ?? 0) > 0).map((key) => `${STAT_LABEL[key]} -${c.decay[key]}`);
-          return parts.length > 0 ? [`${next.players[c.playerId].name}${c.playerId === myId ? " (나)" : ""}: 시간이 지나 ${parts.join(", ")}`] : [];
-        }),
-    ],
+    subtitle: "쓰고 남은 기운은 다음 달로 이어져요. 임시 능력치는 사라지고, 남은 매력기운이 가장 많은 친구가 다음 달 선이 돼요",
   });
 }
+
 
 const starterName = (game: GameState): string => game.players[game.turnOrder[game.startingPlayerIndex]].name;
 
@@ -128,8 +79,8 @@ const firstPlayerBanner = (game: GameState, myId: string): Announcement =>
     kind: "banner",
     icon: "dice",
     title: "선이 정해졌어요!",
-    subtitle: `${starterName(game)}님이 첫 달의 선이에요. 선부터 시계방향으로 진행해요`,
-    lines: [`순서: ${game.classPickOrder.map((id) => game.players[id].name).join(" → ")}`, ...(game.turnOrder[game.startingPlayerIndex] === myId ? ["내가 선이에요!"] : [])],
+    subtitle: `${starterName(game)}님이 첫 달의 선이에요. 활동은 선부터 시계방향으로, 수업카드는 선이 마지막으로 골라요`,
+    lines: [`수업 순서: ${game.classPickOrder.map((id) => game.players[id].name).join(" → ")}`, ...(game.turnOrder[game.startingPlayerIndex] === myId ? ["내가 선이에요!"] : [])],
   });
 
 const classBanner = (game: GameState): Announcement =>
@@ -137,7 +88,7 @@ const classBanner = (game: GameState): Announcement =>
     kind: "banner",
     icon: "book",
     title: `${game.round}개월 2주차 · 정규수업`,
-    subtitle: `이번 달 선은 ${starterName(game)}님! 선부터 시계방향으로 공개된 수업카드를 한 장씩 가져가요. 카드마다 드는 체력기운이 달라요`,
+    subtitle: `이번 달 선은 ${starterName(game)}님! 수업카드는 무료예요. 선 다음 사람부터 시계방향으로 한 장씩 가져가고 선이 마지막이에요. 가져가면 그 과목의 기운을 얻어요`,
   });
 
 function activityBanner(game: GameState, myId: string): Announcement {
@@ -176,10 +127,8 @@ function activityResult(prev: GameState, next: GameState, myId: string): Announc
   const examHappened = next.examResults.length > prev.examResults.length;
 
   const tiles: Tile[] = [];
-  // 활동이 끝나고 같은 갱신에서 4주차 정리가 일어났다면 능력치 감쇠분은 활동 결과가 아니므로 되돌려 센다
-  const decayed = next.round > prev.round ? (next.cleanupSummary.find((c) => c.playerId === myId)?.decay ?? {}) : {};
   for (const key of STAT_KEYS) {
-    const d = after[key] - before[key] + (decayed[key] ?? 0);
+    const d = after[key] - before[key];
     if (d !== 0) tiles.push({ text: `${STAT_LABEL[key]} ${d > 0 ? "+" : ""}${d}`, tone: d > 0 ? "good" : "bad" });
   }
   // 시험·토너먼트 최종 보상이 같은 전환에 섞이면 활동 결과와 구분할 수 없어 학점 변화는 생략한다
@@ -256,17 +205,14 @@ function build(prev: GameState, next: GameState, myId: string): Announcement[] {
   const examStarts = prev.phase !== next.phase && next.pendingRoll?.kind === "exam";
   const leftExam = prev.phase === "midterm_exam" && next.phase !== "midterm_exam";
   const cleanupDone = ((prev.phase === "activity" || prev.phase === "cleanup") && next.phase !== "activity" && next.phase !== "cleanup") || (leftExam && next.phase !== "cleanup");
-  if (cleanupDone && !leftExam) out.push(cleanupBanner(prev, next, myId));
-  if (examStarts) {
-    if (roundChanged) out.push(prepBanner(next, myId));
-    out.push(examBanner(next));
-  }
+  if (cleanupDone && !leftExam) out.push(cleanupBanner(prev));
+  if (examStarts) out.push(examBanner(next));
   if (next.examResults.length > prev.examResults.length) out.push(examResult(next, myId));
-  if (cleanupDone && leftExam) out.push(cleanupBanner(prev, next, myId));
+  if (cleanupDone && leftExam) out.push(cleanupBanner(prev));
   if (!prev.exams.midterm && next.exams.midterm) out.push(examRevealBanner(next, "midterm"));
   if (!prev.exams.final && next.exams.final) out.push(examRevealBanner(next, "final"));
-  if (prev.phase === "setup" && next.phase === "class") out.push(firstPlayerBanner(next, myId), prepBanner(next, myId), classBanner(next));
-  else if (roundChanged && next.phase === "class") out.push(prepBanner(next, myId), classBanner(next));
+  if (prev.phase === "setup" && next.phase === "class") out.push(firstPlayerBanner(next, myId), classBanner(next));
+  else if (roundChanged && next.phase === "class") out.push(classBanner(next));
   else if (prev.phase === "class" && next.phase === "activity") out.push(activityBanner(next, myId));
   if (next.phase === "activity" && prev.activityStage === "choose" && next.activityStage === "resolve" && next.activityChoices.length > 0 && prev.phase === "activity") {
     out.push(resolveBanner(next, myId));
@@ -398,7 +344,7 @@ export function AnnouncementLayer({ game, myId }: { game: GameState; myId: strin
   // 렌더 중에 이전 상태와 비교해 큐를 늘린다 (effect 안에서 setState하지 않기 위한 패턴)
   const [prev, setPrev] = useState(game);
   // 게임 시작 직후(선 정하기)에는 아직 1주차가 시작되지 않았으므로 선이 정해진 뒤에 배너를 보여 준다
-  const [queue, setQueue] = useState<Announcement[]>(() => (game.phase === "setup" ? [] : [prepBanner(game, myId), classBanner(game)]));
+  const [queue, setQueue] = useState<Announcement[]>(() => (game.phase === "setup" ? [] : [classBanner(game)]));
   const [playing, setPlaying] = useState(false);
   if (prev !== game) {
     setPrev(game);

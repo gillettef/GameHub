@@ -6,6 +6,8 @@ import {
   activityOpenCost,
   describeExam,
   canPay,
+  canTakeClassCard,
+  classGainApplied,
   ELEMENT_ICON,
   ELEMENT_LABEL,
   KIND_LABEL,
@@ -211,9 +213,9 @@ function ClassPhasePanel({ game, myId, onTake }: { game: GameState; myId: string
 
   return (
     <div className="bg-white rounded-3xl border-2 border-purple-200 shadow-sm p-4">
-      <p className="text-sm text-purple-500 mb-1">2주차(정규수업): 공개된 수업카드를 선부터 시계방향으로 1장씩 가져가요</p>
+      <p className="text-sm text-purple-500 mb-1">2주차(정규수업): 수업카드는 무료예요. 가져가면 그 과목의 기운을 얻어요. 선 다음 사람부터 시계방향으로 하고 선은 마지막이에요</p>
       <p className="text-xs text-purple-500 mb-2">
-        <InlineIcon name="staminaToken" /> 체력기운 {me.staminaTokens}개
+        <InlineIcon name="intToken" /> 지력기운 {me.intelligenceTokens}/{energyCap(me, "intelligence", game.rules)} · <InlineIcon name="staminaToken" /> 체력기운 {me.staminaTokens}/{energyCap(me, "stamina", game.rules)} · <InlineIcon name="charmToken" /> 매력기운 {me.charmTokens}/{energyCap(me, "charm", game.rules)} · <InlineIcon name="manaToken" /> 마나기운 {me.manaTokens}/{energyCap(me, "mana", game.rules)}
       </p>
       <ol className="mb-3 flex flex-wrap gap-1.5 text-xs" aria-label="진행 순서">
         {game.classPickOrder.map((id, index) => {
@@ -228,7 +230,7 @@ function ClassPhasePanel({ game, myId, onTake }: { game: GameState; myId: string
             >
               {index + 1}. {nameOf(id)}
               {id === myId ? " (나)" : ""}
-              {index === 0 ? " · 선" : ""}
+              {id === game.turnOrder[game.startingPlayerIndex] ? " · 선" : ""}
             </li>
           );
         })}
@@ -244,14 +246,15 @@ function ClassPhasePanel({ game, myId, onTake }: { game: GameState; myId: string
           <p className="mb-2 text-xs text-purple-500">카드를 누르면 크게 볼 수 있어요</p>
           <GamePickGrid
             items={game.classMarket.map((card) => {
-              const affordable = canPay(me, 0, card.takeCost);
+              const allowed = canTakeClassCard(me, card);
+              const applied = classGainApplied(me, card, game.rules);
               return {
                 key: card.id,
                 card: classCardData(card),
                 blockReason: classCardBlockReason(me, card),
                 onAction: isMyTurn ? () => onTake(card.id) : undefined,
-                actionLabel: affordable ? "가져가기" : "체력기운이 부족해요",
-                disabled: !affordable,
+                actionLabel: !allowed ? "선수 조건이 모자라요" : applied < card.gain ? `가져가기 (+${applied}, 한도)` : `가져가기 (+${applied})`,
+                disabled: !allowed,
               };
             })}
           />

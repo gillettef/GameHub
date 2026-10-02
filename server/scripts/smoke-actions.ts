@@ -1,6 +1,6 @@
 // 스모크 테스트에서 "사람 플레이어" 역할을 하는 가짜 클라이언트의 행동 규칙 (smoke.ts, smoke-bot.ts 공용).
 // 상태를 받을 때마다 지금 해야 할 일 하나를 골라 돌려준다. key는 같은 상황에서 중복 전송하지 않기 위한 표식이다.
-import { availableActivities, canPay, duelTargets } from "../src/game/engine.js";
+import { availableActivities, canPay, canTakeClassCard, duelTargets } from "../src/game/engine.js";
 import type { PublicGameState } from "../src/game/types.js";
 
 export interface SmokeAction {
@@ -25,7 +25,7 @@ export function nextAction(game: PublicGameState, playerId: string): SmokeAction
   // 정규수업: 선 순서상 내 차례에만 공개된 카드 중 체력기운으로 살 수 있는 카드 1장을 가져간다 (없으면 넘어감)
   if (game.phase === "class") {
     if (game.classPickOrder[game.classPickPointer] !== playerId) return null;
-    const card = game.classMarket.find((c) => canPay(me, 0, c.takeCost));
+    const card = game.classMarket.find((c) => canTakeClassCard(me, c));
     return { key: `${base}:class:${game.classPickPointer}`, message: { type: "take_class_card", cardId: card?.id ?? null } };
   }
 

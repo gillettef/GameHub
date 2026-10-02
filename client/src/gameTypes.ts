@@ -9,13 +9,15 @@ export type KeptToken = "intelligence" | "stamina" | "charm" | "mana";
 
 export type GamePhase = "setup" | "prep" | "class" | "activity" | "cleanup" | "midterm_exam" | "final_exam" | "ended";
 
+// 수업카드 = 과목: 가져가면 그 과목의 기운(주문력 과목은 마나기운)을 gain만큼 무료로 얻는다. 심화는 그 과목 능력치가 minStat 이상이어야 한다
 export interface ClassCard {
   id: string;
   name: string;
   description: string;
-  // 이 카드를 습득하는 데 드는 체력기운
-  takeCost: number;
-  statBoost: { stat: StatKey; amount: number };
+  stat: StatKey;
+  level: "basic" | "advanced";
+  gain: number;
+  minStat?: number;
 }
 
 export type LabCardKind = "study" | "exam" | "insight" | "supply";
@@ -186,8 +188,6 @@ export interface PublicRules {
   rollFuel: Record<ActivityId, KeptToken>;
   // 기운을 모아 둘 수 있는 한도 = 능력치 × 이 배수
   energyCapMultiplier: number;
-  // 능력치 감쇠: startRound 이후 interval개월마다 stats가 perMonth씩 줄고 floor 아래로는 내려가지 않는다 (4주차 정리 때)
-  statDecay: { perMonth: number; interval: number; startRound: number; floor: number; stats: StatKey[] };
   activityMaxParticipants: number;
   activitySecondParticipantCost: number;
   duelCharmFee: number;
@@ -235,10 +235,6 @@ export interface GameState {
   // 공개된 시험 카드 (공개 전에는 null)
   exams: { midterm: ExamCard | null; final: ExamCard | null };
   examResults: ExamResult[];
-  // 가장 최근 4주차(정리)에서 시간이 지나 줄어든 지력·체력·매력 (decay, 줄지 않았으면 빈 객체)
-  cleanupSummary: { playerId: string; decay: Partial<Record<StatKey, number>> }[];
-  // 가장 최근 1주차(충전)에서 각자 차오른 기운(gained)과 한도를 넘어 사라진 기운(lost)
-  chargeSummary: { playerId: string; gained: Record<KeptToken, number>; lost: Record<KeptToken, number> }[];
   classLeft: number;
   rules: PublicRules;
   log: GameLogEntry[];
@@ -284,6 +280,19 @@ export const ENERGY_STAT: Record<KeptToken, StatKey> = { intelligence: "intellig
 // 모아 둘 수 있는 한도 (능력치 × 배수, 서버 energyCap과 같은 규칙)
 export function energyCap(player: PlayerGameState, kind: KeptToken, rules: Pick<PublicRules, "energyCapMultiplier">): number {
   return effectiveStat(player, ENERGY_STAT[kind]) * rules.energyCapMultiplier;
+}
+
+// ── 수업카드 (서버 engine.ts와 같은 규칙) ──
+// 수업카드가 주는 기운의 종류 (주문력 과목은 마나기운)와, 그 기운을 담는 플레이어 필드
+export const classGainKind = (card: Pick<ClassCard, "stat">): KeptToken => (card.stat === "spellPower" ? "mana" : card.stat);
+export const ENERGY_FIELD = { intelligence: "intelligenceTokens", stamina: "staminaTokens", charm: "charmTokens", mana: "manaTokens" } as const;
+// 심화 과목은 그 과목 능력치가 minStat 이상이어야 들을 수 있다 (선수과목)
+export const canTakeClassCard = (player: PlayerGameState, card: Pick<ClassCard, "stat" | "minStat">): boolean =>
+  card.minStat === undefined || effectiveStat(player, card.stat) >= card.minStat;
+// 이 카드를 가져가면 실제로 늘어나는 기운 (한도까지)
+export function classGainApplied(player: PlayerGameState, card: Pick<ClassCard, "stat" | "gain">, rules: Pick<PublicRules, "energyCapMultiplier">): number {
+  const kind = classGainKind(card);
+  return Math.min(card.gain, Math.max(0, energyCap(player, kind, rules) - player[ENERGY_FIELD[kind]]));
 }
 
 // ── 자율활동 구역 선택 규칙 (서버 engine.ts와 같은 규칙. 버튼을 미리 막고 이유를 보여 주기 위해 복제) ──

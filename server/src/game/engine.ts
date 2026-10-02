@@ -118,7 +118,7 @@ function normalCdf(z: number): number {
 export function explorationChance(state: GameState, player: PlayerGameState, card: ExplorationCard): number {
   if (!card.check) return 1;
   const n = suggestDiceCount(tokensOf(player, BALANCE.rollFuel.exploration), exploreTarget(state.round, card.check.target));
-  const catchUp = growthGap(state, player.id) >= BALANCE.catchUpGap ? BALANCE.catchUpBonus : 0;
+  const catchUp = overallGap(state, player.id) >= BALANCE.catchUpGap ? BALANCE.catchUpBonus : 0;
   const mean = 3.5 * n + catchUp;
   const sd = Math.sqrt((n * 35) / 12);
   return 1 - normalCdf((exploreTarget(state.round, card.check.target) - 0.5 - mean) / sd);
@@ -179,15 +179,15 @@ export function nextStarterIndex(state: GameState): number {
   return current;
 }
 
-// 성장 점수: 영구 능력치 합 + 학점 × 3. 선두와의 격차가 크면 탐험에서 역전 보너스를 받는다
-function growthScore(player: PlayerGameState): number {
+// 종합 점수: 영구 능력치 합 + 학점 × 3. 선두와의 격차가 크면 탐험에서 역전 보너스를 받는다
+function overallScore(player: PlayerGameState): number {
   return player.intelligence + player.stamina + player.charm + player.spellPower + player.credit * 3;
 }
 
-// 선두와의 성장 점수 격차 (선두 본인은 0)
-export function growthGap(state: GameState, playerId: string): number {
-  const best = Math.max(...state.turnOrder.map((id) => growthScore(state.players[id])));
-  return best - growthScore(state.players[playerId]);
+// 선두와의 종합 점수 격차 (선두 본인은 0)
+export function overallGap(state: GameState, playerId: string): number {
+  const best = Math.max(...state.turnOrder.map((id) => overallScore(state.players[id])));
+  return best - overallScore(state.players[playerId]);
 }
 
 // 마법생물 세트 수: 하늘·육지·바다를 1장씩 묶은 세트 (가장 적은 속성의 장수)
@@ -258,6 +258,13 @@ function applyCardEffect(state: GameState, player: PlayerGameState, effect: Card
   }
 }
 
+// 성장 (42절): 자율활동에서 성과를 내면 그 활동의 주 능력치가 BALANCE.growthAmount만큼 오른다 (조련·탐험·연구실 성공, 주문 대결 승리)
+function grow(state: GameState, player: PlayerGameState, activityId: ActivityId, stat: StatKey): void {
+  if (!BALANCE.growthActivities[activityId]) return;
+  player[stat] += BALANCE.growthAmount;
+  log(state, `${player.name}: 성장! ${STAT_NAME[stat]} +${BALANCE.growthAmount}`);
+}
+
 function log(state: GameState, message: string): void {
   state.log.push({ round: state.round, message });
 }
@@ -318,8 +325,6 @@ export function createGame(players: { id: string; name: string; isBot?: boolean 
     coopWaiting: null,
     exams: { midterm: null, final: null },
     examResults: [],
-    cleanupSummary: [],
-    chargeSummary: [],
     hidden: { roll: null, coop: null, offers: {}, examPlan: pickExamCards() },
     labPile: createLabPile(),
     explorationPile: createExplorationPile(),
@@ -391,9 +396,7 @@ function beginRound(state: GameState): void {
     state.classDiscard = [];
     log(state, "2학기 시작: 새 수업카드 덱으로 바뀌었어요 (주문력 카드가 더 많아져요)");
   }
-  // 1주차(충전, 40절): 지력·체력·매력·주문력 수치(실력)만큼 각 기운이 차오른다. 쓰고 남은 기운은 이어지고, 능력치 × energyCapMultiplier를 넘는 몫은 사라진다.
-  // 마법생물·카드 효과로 받는 몫(다음 달 체력·마나 기운, 마도서의 매력 기운)은 한도와 상관없이 더한다 (다음 달 충전 때 한도에 맞춰진다)
-  state.chargeSummary = [];
+  // 월 시작(42절): 매달 충전은 없다(1주차 폐지). 기운은 2주차 수업카드로만 얻고, 마법생물·카드 효과로 예약된 몫(다음 달 체력·마나 기운, 마법생물·마도서의 "매달" 효과)만 여기서 더한다
   for (const playerId of state.turnOrder) {
     const player = state.players[playerId];
     const prepAbilities = abilitiesOf(player, "prep");
@@ -405,26 +408,14 @@ function beginRound(state: GameState): void {
     };
     player.pendingStaminaTokens = 0;
     player.pendingManaTokens = 0;
-    const gained = { intelligence: 0, stamina: 0, charm: 0, mana: 0 } as Record<KeptToken, number>;
-    const lost = { intelligence: 0, stamina: 0, charm: 0, mana: 0 } as Record<KeptToken, number>;
-    for (const kind of ENERGY_KINDS) {
-      const before = tokensOf(player, kind);
-      const base = effectiveStat(player, ENERGY_STAT[kind]);
-      const cap = base * BALANCE.energyCapMultiplier;
-      const filled = Math.min(cap, before + base);
-      const after = Math.max(0, filled + extras[kind]);
-      lost[kind] = Math.max(0, before + base - cap);
-      gained[kind] = Math.max(0, after - before);
-      player[TOKEN_FIELD[kind]] = after;
-    }
-    state.chargeSummary.push({ playerId, gained, lost });
+    for (const kind of ENERGY_KINDS) player[TOKEN_FIELD[kind]] = Math.max(0, tokensOf(player, kind) + extras[kind]);
   }
-  // 중간고사(6개월)·기말고사(12개월) 달에는 2주차(정규수업)·3주차(자율활동) 대신 시험을 치른다
+  // 중간고사(6개월)·기말고사(12개월) 달에는 정규수업·자율활동 없이 시험만 친다 (이월된 기운으로 치른다)
   if (isExamRound(state.round)) beginExam(state, state.round === BALANCE.midtermRound ? "midterm_exam" : "final_exam");
   else beginClassPhase(state);
 }
 
-// 2주차(정규수업): 인원수 + 1장을 공개하고, 선 플레이어부터 시계방향으로 원하는 카드 1장을 (체력기운을 내고) 가져간다
+// 2주차(정규수업): 인원수 + 1장을 공개하고, 선 다음 사람부터 시계방향으로 선이 마지막으로 원하는 카드 1장을 (무료로) 가져가 그 과목의 기운을 얻는다
 function beginClassPhase(state: GameState): void {
   state.phase = "class";
   for (const playerId of state.turnOrder) state.players[playerId].hasActedThisPhase = false;
@@ -435,11 +426,13 @@ function beginClassPhase(state: GameState): void {
     if (!card) break;
     state.classMarket.push(card);
   }
-  state.classPickOrder = orderFromStarter(state);
+  // 수업 신청은 선이 마지막이다 (선은 활동을 먼저 고르는 대신)
+  const fromStarter = orderFromStarter(state);
+  state.classPickOrder = [...fromStarter.slice(1), fromStarter[0]];
   state.classPickPointer = 0;
   log(
     state,
-    `2주차(정규수업): 수업카드 ${state.classMarket.length}장 공개 — 선 ${state.players[state.classPickOrder[0]].name}부터: ${state.classPickOrder.map((id) => state.players[id].name).join(" → ")}`,
+    `2주차(정규수업): 수업카드 ${state.classMarket.length}장 공개 — 선 ${state.players[fromStarter[0]].name}은 마지막: ${state.classPickOrder.map((id) => state.players[id].name).join(" → ")}`,
   );
 }
 
@@ -448,7 +441,19 @@ export function classCardsLeft(state: Pick<GameState, "classDeck" | "classDiscar
   return state.classDeck.length + state.classDiscard.length;
 }
 
-// 2주차: 내 차례에 공개된 수업카드 중 1장을 가져간다 (체력기운 takeCost개 필요). cardId가 null이면 가져가지 않고 넘어간다
+// 수업카드가 주는 기운의 종류 (주문력 과목은 마나기운)
+export const classGainKind = (card: Pick<ClassCard, "stat">): KeptToken => (card.stat === "spellPower" ? "mana" : card.stat);
+// 심화 과목은 그 과목 능력치가 minStat 이상이어야 들을 수 있다 (선수과목)
+export const canTakeClassCard = (player: PlayerGameState, card: Pick<ClassCard, "stat" | "minStat">): boolean =>
+  card.minStat === undefined || effectiveStat(player, card.stat) >= card.minStat;
+// 이 카드를 가져가면 실제로 늘어나는 기운 (한도 = 능력치 × energyCapMultiplier까지)
+export function classGainApplied(player: PlayerGameState, card: Pick<ClassCard, "stat" | "gain">): number {
+  const kind = classGainKind(card);
+  const room = Math.max(0, energyCap(player, kind) - tokensOf(player, kind));
+  return Math.min(card.gain, room);
+}
+
+// 2주차: 내 차례에 공개된 수업카드 중 1장을 가져간다 (무료, 그 과목의 기운을 얻는다). cardId가 null이면 가져가지 않고 넘어간다
 export function takeClassCard(state: GameState, playerId: string, cardId: string | null): void {
   if (state.phase !== "class") throw new Error("지금은 정규수업 단계가 아닙니다.");
   const player = state.players[playerId];
@@ -459,14 +464,18 @@ export function takeClassCard(state: GameState, playerId: string, cardId: string
   } else {
     const card = state.classMarket.find((c) => c.id === cardId);
     if (!card) throw new Error("공개된 수업카드 중에서만 고를 수 있습니다.");
-    if (!canPay(player, 0, card.takeCost)) {
-      throw new Error(`체력기운이 부족합니다 (이 카드는 체력기운 ${card.takeCost}개 필요).`);
+    if (!canTakeClassCard(player, card)) {
+      throw new Error(`심화 과목이라 ${STAT_NAME[card.stat]} ${card.minStat} 이상이어야 들을 수 있어요 (지금 ${effectiveStat(player, card.stat)}).`);
     }
-    pay(player, "stamina", card.takeCost);
-    player[card.statBoost.stat] += card.statBoost.amount;
+    const kind = classGainKind(card);
+    const applied = classGainApplied(player, card);
+    player[TOKEN_FIELD[kind]] += applied;
     player.classCards.push(card);
     state.classMarket = state.classMarket.filter((c) => c.id !== cardId);
-    log(state, `${player.name}: 수업카드 "${card.name}" 습득 (${STAT_NAME[card.statBoost.stat]} +${card.statBoost.amount})`);
+    log(
+      state,
+      `${player.name}: 수업카드 "${card.name}" 수강 (${TOKEN_NAME[kind]} +${applied}${applied < card.gain ? `, 한도 ${energyCap(player, kind)}를 넘는 ${card.gain - applied}은 사라졌어요` : ""})`,
+    );
   }
   player.hasActedThisPhase = true;
   state.classPickPointer += 1;
@@ -601,6 +610,7 @@ function resolveCreature(state: GameState, ctx: Extract<RollContext, { kind: "cr
     player.creatures.push(creature);
     if (creature.ability.trigger === "acquire" && creature.ability.effect === "spellPower") player.spellPower += creature.ability.amount;
     log(state, `${player.name}: 마법생물 "${creature.name}" 조련 성공! (${text}) ${describeAbility(creature.ability)}`);
+    grow(state, player, "creature", "charm");
   } else {
     // 실패한 카드는 구역으로 돌아가 두 번째 참가자가 도전할 수 있다 (아무도 가져가지 않으면 3주차 끝에 버림 더미로)
     state.hidden.offers.creature = [...offerCards(state, "creature"), creature];
@@ -635,6 +645,7 @@ function resolveLab(state: GameState, ctx: Extract<RollContext, { kind: "lab" }>
     if (lab.kind === "exam") player.equipment.push(lab);
     else state.labPile.discard.push(lab);
     log(state, `${player.name}: 연구 카드 "${lab.name}" 실험 성공! (${text}) ${lab.summary}`);
+    grow(state, player, "lab", "intelligence");
   } else {
     state.labPile.discard.push(lab);
     log(state, `${player.name}: 연구 카드 "${lab.name}" 실험 실패... (${text})`);
@@ -654,6 +665,8 @@ function advanceTournament(state: GameState, player: PlayerGameState, dice: numb
     state,
     `${player.name}: 마법 토너먼트 참가 (${describeRoll(dice, [[`끝까지 달려요(체력기운 ${assist}개)`, boost]])} = ${gain}칸 전진, 트랙 ${player.tournamentTrack}칸)${milestoneCredit > 0 ? ` — 이정표 학점 +${milestoneCredit}` : ""}`,
   );
+  // 토너먼트 참가는 성장이 없다 (BALANCE.growthActivities.tournament = false: 켜면 토너먼트 몰빵 승률이 44%까지 올랐다)
+  grow(state, player, "tournament", "spellPower");
 }
 
 function startDuel(state: GameState, player: PlayerGameState, target: PlayerGameState): void {
@@ -717,6 +730,8 @@ function resolveDuel(state: GameState, ctx: Extract<RollContext, { kind: "duel" 
     state,
     `${player.name}(${rollText(challengerDice, challengerBonus, challengerRoll)})이(가) ${target.name}(${rollText(defenderDice, defenderBonus, defenderRoll)})을(를) 지목! ${winner.name} 승리${feeText}`,
   );
+  // 이긴 사람은 주문력이 오른다 (성장)
+  grow(state, winner, "duel", "spellPower");
   // 이긴 사람이 구역에 공개된 마도서 중 1장을 가져간다 (한 장만 남았으면 자동으로)
   const rewards = offerCards(state, "duel");
   if (rewards.length === 1) takeOffered(state, winner, "duel", rewards[0]);
@@ -773,7 +788,7 @@ function resolveExploration(state: GameState, ctx: Extract<RollContext, { kind: 
     const parts = playerIds.map((id) => {
       const p = state.players[id];
       // 선두와의 격차가 크면 역전 보너스: 뒤처진 플레이어의 한 방을 돕는다
-      const catchUp = growthGap(state, id) >= BALANCE.catchUpGap ? BALANCE.catchUpBonus : 0;
+      const catchUp = overallGap(state, id) >= BALANCE.catchUpGap ? BALANCE.catchUpBonus : 0;
       const total = sum(dice[id] ?? []) + catchUp;
       return { p, total, text: `${describeRoll(dice[id] ?? [], [["역전", catchUp]])} = ${total}` };
     });
@@ -789,9 +804,12 @@ function resolveExploration(state: GameState, ctx: Extract<RollContext, { kind: 
   const safe = success ? [] : playerIds.filter((id) => shielded.includes(id));
   for (const id of playerIds) if (!safe.includes(id)) applyCardEffect(state, state.players[id], effect);
   state.explorationPile.discard.push(card);
+  const gainsGrowth = !!rule && success;
   const names = playerIds.map((id) => state.players[id].name).join(" · ");
   const shieldText = safe.length > 0 ? ` — ${safe.map((id) => state.players[id].name).join(" · ")}은(는) 함정을 간파해서 손해를 피했어요` : "";
   log(state, `${names}: 비밀의 방 "${card.name}"${rollText} → ${describeEffect(effect)}${playerIds.length > 1 ? " (두 명 모두 적용)" : ""}${shieldText}`);
+  // 판정이 있는 탐험에서 성공하면 모두 체력이 오른다 (성장)
+  if (gainsGrowth) for (const id of playerIds) grow(state, state.players[id], "exploration", "stamina");
 }
 
 function describeCoop(card: ExplorationCard, playerId: string, round: number): CoopWaiting {
@@ -1260,19 +1278,7 @@ function expireTempBoosts(state: GameState, player: PlayerGameState): void {
   player.equipmentAgedIds = player.equipment.map((c) => c.id);
 }
 
-// 능력치 감쇠 (BALANCE.statDecay): 이번 4주차(정리)가 끝날 때 줄어드는 지력·체력·매력의 몫 (floor 아래로는 내려가지 않는다)
-export function statDecayOf(round: number, player: Pick<PlayerGameState, StatKey>): Partial<Record<StatKey, number>> {
-  const rule = BALANCE.statDecay;
-  const result: Partial<Record<StatKey, number>> = {};
-  if (round < rule.startRound || (round - rule.startRound) % rule.interval !== 0) return result;
-  for (const stat of rule.stats) {
-    const loss = Math.min(rule.perMonth, Math.max(0, player[stat] - rule.floor));
-    if (loss > 0) result[stat] = loss;
-  }
-  return result;
-}
-
-// 4주차(정리, 40절): 쓰고 남은 기운은 사라지지 않고 다음 달로 이어진다. 임시 능력치가 소멸하고, 능력치 감쇠가 일어나고, 다음 달 선이 정해진다.
+// 4주차(정리, 40절): 쓰고 남은 기운은 사라지지 않고 다음 달로 이어진다. 임시 능력치가 소멸하고 다음 달 선이 정해진다 (능력치 감쇠는 42절에서 없앴다).
 // 고를 것이 없으니 기다리지 않고 바로 끝난다
 function beginCleanupPhase(state: GameState): void {
   state.phase = "cleanup";
@@ -1284,16 +1290,9 @@ function finishCleanup(state: GameState): void {
   const nextIndex = nextStarterIndex(state);
   const starterName = state.players[state.turnOrder[nextIndex]].name;
   const starterTokens = state.players[state.turnOrder[nextIndex]].charmTokens;
-  state.cleanupSummary = state.turnOrder.map((id) => ({ playerId: id, decay: statDecayOf(state.round, state.players[id]) }));
   for (const playerId of state.turnOrder) {
     const player = state.players[playerId];
     expireTempBoosts(state, player);
-    // 능력치 감쇠: 지력·체력·매력이 시간이 지나 줄어든다 (한도도 같이 줄고, 넘치는 기운은 다음 달 충전 때 정리된다)
-    const decay = statDecayOf(state.round, player);
-    for (const [stat, loss] of Object.entries(decay)) player[stat as StatKey] -= loss ?? 0;
-    if (Object.keys(decay).length > 0) {
-      log(state, `${player.name}: 시간이 지나 능력치가 줄었어요 (${Object.entries(decay).map(([stat, loss]) => `${STAT_NAME[stat as StatKey]} -${loss}`).join(", ")})`);
-    }
     player.hasActedThisPhase = false;
   }
   log(state, "4주차(정리): 쓰고 남은 기운은 다음 달로 이어져요");
@@ -1519,7 +1518,6 @@ export function removePlayerFromGame(state: GameState, playerId: string): void {
   delete state.players[playerId];
 
   // 지난 기록에서도 그 사람의 몫을 뺀다 (화면이 없는 플레이어를 찾지 않도록)
-  state.cleanupSummary = state.cleanupSummary.filter((s) => s.playerId !== playerId);
   for (const result of state.examResults) result.scores = result.scores.filter((s) => s.playerId !== playerId);
 
   // 정규수업 단계가 아닐 때 지난 선택 순서에 그 사람이 남아 있지 않게 한다
