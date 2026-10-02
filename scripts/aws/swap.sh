@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# t3.micro(메모리 1GB)에서 npm install·pip install 이 메모리 부족으로 죽지 않도록 스왑 2GB 를 만든다.
+# t4g.nano(메모리 0.5GB)에서 npm install·pip install 이 메모리 부족으로 죽지 않도록 스왑 2GB 를 만든다.
 # 이미 있으면 아무것도 하지 않는다. 재부팅 후에도 유지되도록 /etc/fstab 에 등록한다.
 set -euo pipefail
 

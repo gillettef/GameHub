@@ -5,7 +5,7 @@ name: Deploy to AWS
 # 저장소가 비공개라 EC2가 직접 clone/pull 하지 못하므로, 이 워크플로가 대신
 # git archive로 워킹트리를 EC2로 전송하고(scp 대신 ssh 파이프), 서버에서
 # scripts/aws/deploy-remote.sh 가 의존성 설치·systemd 재시작을 수행한다.
-# 클라이언트 빌드(vite)는 EC2(t3.micro, 메모리 1GB)가 아니라 이 러너에서 하고 결과물(client/dist/prod)만 보낸다.
+# 클라이언트 빌드(vite)는 EC2(t4g.nano, 메모리 0.5GB)가 아니라 이 러너에서 하고 결과물(client/dist/prod)만 보낸다.
 #
 # SSH(22)는 관리자 PC의 고정 IP로만 열려 있어 GitHub Actions 러너가 그대로는
 # 접속할 수 없다. 그래서 배포 직전에 러너의 공인 IP를 보안 그룹에 임시로 추가하고,
