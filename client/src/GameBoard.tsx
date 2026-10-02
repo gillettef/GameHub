@@ -238,11 +238,11 @@ function ClassPhasePanel({ game, myId, onTake }: { game: GameState; myId: string
           <p className="mb-2 text-xs text-purple-500">카드를 누르면 크게 볼 수 있어요</p>
           <GamePickGrid
             items={game.classMarket.map((card) => {
-              const affordable = canPay(me, 0, card.takeCost, 0, game.rules.intelligencePerStamina);
+              const affordable = canPay(me, 0, card.takeCost);
               return {
                 key: card.id,
                 card: classCardData(card),
-                blockReason: classCardBlockReason(me, card, game.rules.intelligencePerStamina),
+                blockReason: classCardBlockReason(me, card),
                 onAction: isMyTurn ? () => onTake(card.id) : undefined,
                 actionLabel: affordable ? "가져가기" : "체력토큰이 부족해요",
                 disabled: !affordable,
@@ -309,7 +309,7 @@ function PickPanel({ game, myId, onPick }: { game: GameState; myId: string; onPi
       : `${ACTIVITY_LABEL[pick.activityId]}: 공개된 카드 중 1장을 고르세요`;
   const affordable = (card: OfferCardView): boolean => {
     if (!card.cost) return true;
-    if (card.cost.kind === "stamina") return canPay(me, 0, card.cost.amount, 0, game.rules.intelligencePerStamina);
+    if (card.cost.kind === "stamina") return canPay(me, 0, card.cost.amount);
     return me.manaTokens >= card.cost.amount;
   };
   return (
@@ -654,6 +654,14 @@ function ActivityPhasePanel({
 
 // 주사위 굴리기 (선 정하기·토너먼트·조련·연구실·주문 대결·탐험 판정·시험): 마나토큰을 1~보유 개수만큼 골라 내고(없으면 공짜 1개) 버튼을 누르면
 // 서버가 낸 개수만큼 굴려서 결과를 알려 주고, 모두 굴린 뒤에는 결과를 눈으로 확인하고(남은 마나토큰 1개당 주사위 1개를 다시 굴릴 수 있다) "확인" 버튼을 눌러야 결과가 적용된다
+// 주사위 재료 토큰의 이름과 아이콘 (활동마다 주 능력치의 토큰이 재료다. 다시 굴리기는 언제나 마나토큰)
+const FUEL_INFO = {
+  intelligence: { icon: "intToken", name: "지력토큰" },
+  stamina: { icon: "staminaToken", name: "체력토큰" },
+  charm: { icon: "charmToken", name: "매력토큰" },
+  mana: { icon: "manaToken", name: "마나토큰" },
+} as const;
+
 function RollPanel({
   game,
   myId,
@@ -693,6 +701,7 @@ function RollPanel({
   const canRoll = !!mine && mine.dice === null;
   // 굴리기 전에 마나토큰을 몇 개 낼지 고르는 굴림 (마나토큰이 없으면 choiceMax가 없고 공짜 주사위 1개)
   const choiceMax = mine?.diceChoiceMax;
+  const fuel = FUEL_INFO[mine?.diceToken ?? "mana"];
   const chosenCount = choiceMax !== undefined ? Math.min(Math.max(pickedCount ?? mine!.diceCount, 1), choiceMax) : (mine?.diceCount ?? 0);
   const assistMax = mine?.assistMax ?? 0;
   const chosenAssist = Math.min(pickedAssist, assistMax);
@@ -730,7 +739,7 @@ function RollPanel({
               {revealed && entry.confirmed && entry.diceCount > 0 && <span className="shrink-0 text-xs text-emerald-600">확인 완료</span>}
             </p>
             {entry.dice === null ? (
-              <p className="text-xs text-purple-400">아직 안 굴렸어요{entry.diceChoiceMax === undefined ? ` (주사위 ${entry.diceCount}개)` : " (마나토큰을 고르는 중)"}</p>
+              <p className="text-xs text-purple-400">아직 안 굴렸어요{entry.diceChoiceMax === undefined ? ` (주사위 ${entry.diceCount}개)` : ` (${FUEL_INFO[entry.diceToken ?? "mana"].name}을 고르는 중)`}</p>
             ) : entry.dice.length === 0 ? (
               <p className="text-xs text-purple-400">굴릴 주사위가 없어요</p>
             ) : (
@@ -760,7 +769,8 @@ function RollPanel({
       {canRoll && mine && choiceMax !== undefined && (
         <div className="mt-3 rounded-2xl bg-sky-50 px-3 py-2 text-sm text-sky-800">
           <p>
-            <InlineIcon name="manaToken" /> 마나토큰 {choiceMax}개 중 몇 개를 낼까요? 낸 개수만큼 주사위를 굴려요. 안 낸 마나토큰은 다시 굴리기에 쓸 수 있어요
+            <InlineIcon name={fuel.icon} /> {fuel.name} {choiceMax}개 중 몇 개를 낼까요? 낸 개수만큼 주사위를 굴려요.{" "}
+            {fuel.name === "마나토큰" ? "안 낸 마나토큰은 다시 굴리기에 쓸 수 있어요" : "다시 굴리기는 마나토큰으로 해요"}
           </p>
           <div className="mt-2 flex items-center justify-center gap-4">
             <button
@@ -785,7 +795,7 @@ function RollPanel({
       )}
       {canRoll && mine && choiceMax === undefined && (
         <p className="mt-3 rounded-2xl bg-sky-50 px-3 py-2 text-center text-sm text-sky-800">
-          <InlineIcon name="manaToken" /> 마나토큰이 없어서 공짜 주사위 {mine.diceCount}개를 굴려요
+          <InlineIcon name={fuel.icon} /> {fuel.name}이 없어서 공짜 주사위 {mine.diceCount}개를 굴려요
         </p>
       )}
       {canRoll && mine && pending.assist && assistMax > 0 && (
