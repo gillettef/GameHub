@@ -1,17 +1,19 @@
+import { useState } from 'react';
 import { HUMAN } from '../game/engine';
-import type { GameState } from '../game/types';
+import type { GameState, Player } from '../game/types';
+import { CFG } from '../game/engine';
 import { Icon } from './Icon';
 import { TYPE_META } from './meta';
-import { Sheet } from './parts';
+import { Sheet, VisitorChip } from './parts';
 
-export function ReportSheet({ game, onNext }: { game: GameState; onNext: () => void }) {
-  const me = game.players[HUMAN];
-  const r = me.report;
+/** 한 플레이어의 운영 결과 (내 것·상대 것 모두 공개) */
+function PlayerReport({ p, mine }: { p: Player; mine: boolean }) {
+  const r = p.report;
   if (!r) return null;
   const net = r.feeIncome + r.income - r.upkeep;
-  const others = game.players.filter((p) => p.id !== HUMAN);
+  const turnedBack = p.visitors.filter((v) => v.budget < r.fee);
   return (
-    <Sheet title={`${game.round}라운드 운영 결과`} tall>
+    <>
       <div className="rep-stats">
         <div className="rs">
           <Icon name="ticket" size={18} />
@@ -53,7 +55,7 @@ export function ReportSheet({ game, onNext }: { game: GameState; onNext: () => v
         </div>
         <div>
           <span>
-            만족도 +{r.sat}점 <small>(누적 {me.satPool}/4 → 4점마다 VP 1)</small>
+            만족도 +{r.sat}점 <small>(누적 {p.satPool}/{CFG.satPerVp} · {CFG.satPerVp}점마다 VP 1)</small>
           </span>
           <b className="pos">VP +{r.vpGain}</b>
         </div>
@@ -85,12 +87,26 @@ export function ReportSheet({ game, onNext }: { game: GameState; onNext: () => v
         </>
       )}
 
+      {turnedBack.length > 0 && (
+        <div className="callout warn">
+          <Icon name="ticket" size={20} />
+          <div>
+            <b>입구에서 돌아간 관객 {turnedBack.length}명</b>
+            <span>입장료 ${r.fee}가 지불 한도보다 높았어요.</span>
+            <div className="entrance-row">
+              {turnedBack.map((v) => (
+                <VisitorChip key={v.id} v={v} enters={false} />
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
       {r.unserved > 0 && (
         <div className="callout warn">
           <Icon name="info" size={20} />
           <div>
-            <b>돌아간 관객 {r.unserved}명</b>
-            <span>탈 수 있는 시설이 없었어요. 시설을 늘리거나 안내 직원을 고용해 보세요.</span>
+            <b>이용 못 하고 나간 관객 {r.unserved}명</b>
+            <span>{mine ? '탈 수 있는 시설이 없었어요. 시설을 늘리거나 안내 직원을 고용해 보세요.' : '시설이 부족했어요.'}</span>
           </div>
         </div>
       )}
@@ -99,7 +115,10 @@ export function ReportSheet({ game, onNext }: { game: GameState; onNext: () => v
           <Icon name="crack" size={20} />
           <div>
             <b>고장 발생</b>
-            <span>{r.broken.join(', ')} — 관리 단계에서 수리하세요.</span>
+            <span>
+              {r.broken.join(', ')}
+              {mine ? ' — 관리 단계에서 수리하세요.' : ''}
+            </span>
           </div>
         </div>
       )}
@@ -108,7 +127,7 @@ export function ReportSheet({ game, onNext }: { game: GameState; onNext: () => v
           <Icon name="trash" size={20} />
           <div>
             <b>쓰레기 +{r.trashAdded}</b>
-            <span>관리 단계에서 치우지 않으면 2개마다 VP가 깎여요.</span>
+            <span>치우지 않으면 2개마다 VP가 깎여요.</span>
           </div>
         </div>
       )}
@@ -121,21 +140,28 @@ export function ReportSheet({ game, onNext }: { game: GameState; onNext: () => v
           </div>
         </div>
       )}
+    </>
+  );
+}
 
-      {others.length > 0 && (
-        <>
-          <h4 className="rep-h">상대 공원</h4>
-          <ul className="others">
-            {others.map((p) => (
-              <li key={p.id}>
-                <span>{p.name}</span>
-                <span>관객 {p.report?.entered ?? 0}명</span>
-                <span className="pos">VP +{p.report?.vpGain ?? 0}</span>
-              </li>
-            ))}
-          </ul>
-        </>
+export function ReportSheet({ game, onNext }: { game: GameState; onNext: () => void }) {
+  const [who, setWho] = useState(HUMAN);
+  const p = game.players[who];
+  return (
+    <Sheet title={`${game.round}라운드 운영 결과`} tall>
+      {game.players.length > 1 && (
+        <div className="rep-tabs" role="tablist">
+          {game.players.map((x) => (
+            <button key={x.id} role="tab" aria-selected={who === x.id} className={who === x.id ? 'on' : ''} onClick={() => setWho(x.id)}>
+              {x.id === HUMAN ? '내 공원' : x.name}
+              <small>
+                +{x.report?.vpGain ?? 0} VP
+              </small>
+            </button>
+          ))}
+        </div>
       )}
+      <PlayerReport key={who} p={p} mine={who === HUMAN} />
       <div className="sticky-cta">
         <button className="btn primary wide" onClick={onNext}>
           관리 단계로 <Icon name="arrow" size={18} />

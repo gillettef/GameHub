@@ -82,6 +82,8 @@ export interface Player {
   fee: number;
   freeRepairs: number;
   freeCleans: number;
+  /** 이번 라운드에 내 입구로 가져온 관객 (공개 정보) */
+  visitors: Visitor[];
   report: RoundReport | null;
 }
 
@@ -98,6 +100,11 @@ export interface GameState {
   market: number[];
   facilityDeck: number[];
   visitorDeck: Visitor[];
+  /** 관객 트랙: 테이블 중앙에 공개된 관객카드. by = 가져간 플레이어 */
+  visitorRow: { v: Visitor; by: number | null }[];
+  promoteStep: 'pick' | 'fee';
+  pickTurn: number;
+  pickDone: boolean[];
   eventDeck: number[];
   event: EventCard | null;
   nextVisitorId: number;
