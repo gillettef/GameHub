@@ -32,7 +32,7 @@ import { Icon } from "./Icons";
 import { KickConfirm, LeaveConfirm, isKickConfirmOpen, useBackGuard } from "./Leave";
 
 function App() {
-  const { state, game, offline, notice, noticeSeq, reactions, lastError, errorSeq, reconnecting, createRoom, joinRoom, leaveRoom, startGame, addBot, removeBot, kickPlayer, rematch, sendEmoji, takeClassCard, rollDice, rerollDice, confirmRoll, selectActivity, pickActivityCard, keepToken } =
+  const { state, game, offline, notice, noticeSeq, reactions, lastError, errorSeq, reconnecting, createRoom, joinRoom, leaveRoom, startGame, addBot, removeBot, kickPlayer, rematch, sendEmoji, takeClassCard, rollDice, rerollDice, confirmRoll, selectActivity, pickActivityCard } =
     useGameSocket();
   const [playerName, setPlayerName] = useState("");
   const [joinCode, setJoinCode] = useState("");
@@ -100,7 +100,6 @@ ${window.location.href}`;
         onRollDice={rollDice}
         onRerollDice={rerollDice}
         onConfirmRoll={confirmRoll}
-        onKeepToken={keepToken}
         onLeave={leaveRoom}
         isHost={!!state.isHost}
         offline={offline}

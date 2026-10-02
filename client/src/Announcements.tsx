@@ -4,7 +4,7 @@ import { Icon, type IconName } from "./Icons";
 import { ACTIVITY_LABEL, STAT_LABEL, describeExam, type ActivityId, type GameState, type StatKey } from "./gameTypes";
 
 // 주차가 시작될 때 뜨는 "배너"와, 내 활동·시험 결과를 알려 주는 "결과 모달"을 순서대로 보여 준다. 둘 다 버튼을 눌러야 넘어간다.
-// 1주차(토큰 획득)·4주차(토큰 소멸) 배너는 버튼을 누르면 모두의 토큰이 들어오거나 사라지는 연출이 나온 뒤 다음으로 넘어간다.
+// 1주차(충전) 배너는 버튼을 누르면 모두의 기운이 차오르는 연출이 나온 뒤 다음으로 넘어간다 (4주차 정리에는 사라지는 기운이 없다).
 // (봇은 화면이 없으므로 서버가 타이머로 알아서 진행한다)
 // 서버는 상태 스냅샷만 보내므로, 이전 상태와 비교해서 무슨 일이 있었는지 클라이언트가 유추한다.
 
@@ -32,7 +32,7 @@ interface Announcement {
   lines: string[];
   tiles: Tile[];
   track?: { from: number; to: number };
-  // 있으면 버튼을 눌렀을 때 토큰이 들어오거나(gain) 사라지는(wipe) 연출을 보여 준다
+  // 있으면 버튼을 눌렀을 때 기운이 들어오거나(gain) 사라지는(wipe) 연출을 보여 준다
   tokens?: { mode: "gain" | "wipe"; rows: TokenRow[] };
 }
 
@@ -46,7 +46,7 @@ const ACTIVITY_ICON: Record<ActivityId, IconName> = {
 const ACTIVITY_IDS = Object.keys(ACTIVITY_ICON) as ActivityId[];
 const STAT_KEYS: StatKey[] = ["intelligence", "stamina", "charm", "spellPower"];
 
-// 토큰 연출 타이밍(초)과 한 줄에 그릴 토큰 최대 개수
+// 기운 연출 타이밍(초)과 한 줄에 그릴 기운 최대 개수
 const ROW_GAP = 0.2;
 const TOKEN_GAP = 0.07;
 const MAX_ICONS = 12;
@@ -68,36 +68,45 @@ function tokenRows(game: GameState, myId: string, amounts: { id: string; int: nu
 }
 
 function prepBanner(game: GameState, myId: string): Announcement {
+  const summary = game.chargeSummary.filter((c) => game.players[c.playerId]);
+  // 한도(능력치 × 배수)를 넘어서 사라진 기운이 있으면 알려 준다 (나를 먼저)
+  const lostLines = summary
+    .slice()
+    .sort((a, b) => Number(b.playerId === myId) - Number(a.playerId === myId))
+    .flatMap((c) => {
+      const parts = ENERGY_LABELS.filter(([kind]) => c.lost[kind] > 0).map(([kind, label]) => `${label} ${c.lost[kind]}`);
+      return parts.length > 0 ? [`${game.players[c.playerId].name}${c.playerId === myId ? " (나)" : ""}: 한도를 넘어 ${parts.join(", ")}개가 사라졌어요`] : [];
+    });
   return make({
     kind: "banner",
     icon: "calendar",
-    title: `${game.round}개월 1주차 · 준비`,
-    subtitle: "지력만큼 지력토큰, 체력만큼 체력토큰, 매력만큼 매력토큰, 주문력만큼 마나토큰을 받아요",
+    title: `${game.round}개월 1주차 · 충전`,
+    subtitle: `능력치만큼 기운이 차올라요. 쓰고 남은 기운은 다음 달로 이어지고, 모아 둘 수 있는 한도는 능력치의 ${game.rules.energyCapMultiplier}배예요`,
+    lines: lostLines,
     tokens: {
       mode: "gain",
       rows: tokenRows(
         game,
         myId,
-        game.turnOrder.map((id) => ({
-          id,
-          int: game.players[id].intelligenceTokens,
-          stamina: game.players[id].staminaTokens,
-          charm: game.players[id].charmTokens,
-          spell: game.players[id].manaTokens,
-        })),
+        summary.map((c) => ({ id: c.playerId, int: c.gained.intelligence, stamina: c.gained.stamina, charm: c.gained.charm, spell: c.gained.mana })),
       ),
     },
   });
 }
 
-const KEEP_NAMES = { intelligence: "지력", stamina: "체력", charm: "매력", mana: "마나" } as const;
+const ENERGY_LABELS = [
+  ["intelligence", "지력기운"],
+  ["stamina", "체력기운"],
+  ["charm", "매력기운"],
+  ["mana", "마나기운"],
+] as const;
 
 function cleanupBanner(prev: GameState, next: GameState, myId: string): Announcement {
   return make({
     kind: "banner",
     icon: "bag",
     title: `${prev.round}개월 4주차 · 정리`,
-    subtitle: "남은 토큰은 사라져요(골라서 남긴 토큰 1개는 다음 달로 가요). 지력·체력·매력은 시간이 지나면 조금씩 줄어요. 주문력과 학점, 카드는 그대로예요",
+    subtitle: "쓰고 남은 기운은 다음 달로 이어져요. 지력·체력·매력은 시간이 지나면 조금씩 줄어요. 주문력과 학점, 카드는 그대로예요",
     lines: [
       // 능력치 감쇠: 이번 정리에서 줄어든 지력·체력·매력 (나를 먼저)
       ...next.cleanupSummary
@@ -107,16 +116,7 @@ function cleanupBanner(prev: GameState, next: GameState, myId: string): Announce
           const parts = STAT_KEYS.filter((key) => (c.decay?.[key] ?? 0) > 0).map((key) => `${STAT_LABEL[key]} -${c.decay[key]}`);
           return parts.length > 0 ? [`${next.players[c.playerId].name}${c.playerId === myId ? " (나)" : ""}: 시간이 지나 ${parts.join(", ")}`] : [];
         }),
-      ...next.cleanupSummary.flatMap((c) => (c.kept ? [`${next.players[c.playerId].name}${c.playerId === myId ? " (나)" : ""}: ${KEEP_NAMES[c.kept]}토큰 1개를 다음 달로 남겼어요`] : [])),
     ],
-    tokens: {
-      mode: "wipe",
-      rows: tokenRows(
-        next,
-        myId,
-        next.cleanupSummary.map((c) => ({ id: c.playerId, int: c.intelligenceTokens, stamina: c.staminaTokens, charm: c.charmTokens, spell: c.manaTokens })),
-      ),
-    },
   });
 }
 
@@ -137,7 +137,7 @@ const classBanner = (game: GameState): Announcement =>
     kind: "banner",
     icon: "book",
     title: `${game.round}개월 2주차 · 정규수업`,
-    subtitle: `이번 달 선은 ${starterName(game)}님! 선부터 시계방향으로 공개된 수업카드를 한 장씩 가져가요. 카드마다 드는 체력토큰이 달라요`,
+    subtitle: `이번 달 선은 ${starterName(game)}님! 선부터 시계방향으로 공개된 수업카드를 한 장씩 가져가요. 카드마다 드는 체력기운이 달라요`,
   });
 
 function activityBanner(game: GameState, myId: string): Announcement {
@@ -224,7 +224,7 @@ function examRevealBanner(next: GameState, which: "midterm" | "final"): Announce
     icon: "note",
     title: `${which === "midterm" ? "중간고사" : "기말고사"} 과목 공개!`,
     subtitle: `"${card.name}" — ${describeExam(card)}`,
-    lines: [card.description, `${STAT_LABEL[card.diceStat]}${card.bonusStat ? `과 ${STAT_LABEL[card.bonusStat]}` : ""} 수치는 점수에 그대로 더해져요. 마나토큰을 많이 낼수록 주사위가 늘어요`],
+    lines: [card.description, `${card.diceStat === "spellPower" ? "마나" : STAT_LABEL[card.diceStat]}기운을 많이 낼수록 주사위가 늘어요${card.bonusStat ? `. ${STAT_LABEL[card.bonusStat]} 수치는 점수에 그대로 더해져요` : ""}`],
   });
 }
 
@@ -252,7 +252,7 @@ function build(prev: GameState, next: GameState, myId: string): Announcement[] {
   }
   // 평소: 자율활동 → 4주차 정리 → 다음 달 1주차 준비 → 2주차 정규수업
   // 시험 달(6·12개월): 1주차 준비 → 시험 → 4주차 정리 (기말고사 뒤에는 게임이 끝난다)
-  // 4주차 정리는 남길 토큰을 모두 고른 뒤에 끝난다 (고를 토큰이 없으면 바로 지나간다)
+  // 4주차 정리는 남길 기운을 모두 고른 뒤에 끝난다 (고를 기운이 없으면 바로 지나간다)
   const examStarts = prev.phase !== next.phase && next.pendingRoll?.kind === "exam";
   const leftExam = prev.phase === "midterm_exam" && next.phase !== "midterm_exam";
   const cleanupDone = ((prev.phase === "activity" || prev.phase === "cleanup") && next.phase !== "activity" && next.phase !== "cleanup") || (leftExam && next.phase !== "cleanup");
@@ -276,7 +276,7 @@ function build(prev: GameState, next: GameState, myId: string): Announcement[] {
 
 // 연출이 끝나기까지 걸리는 시간(ms)
 function playDuration(tokens: NonNullable<Announcement["tokens"]>): number {
-  // 한 사람의 세 줄(지력토큰 → 체력토큰 → 마나토큰)은 차례로 들어오므로 가장 늦게 끝나는 사람 기준으로 계산한다
+  // 한 사람의 세 줄(지력기운 → 체력기운 → 마나기운)은 차례로 들어오므로 가장 늦게 끝나는 사람 기준으로 계산한다
   const finish = Math.max(
     0,
     ...tokens.rows.map(
@@ -353,7 +353,7 @@ function TokenBoard({ tokens, playing }: { tokens: NonNullable<Announcement["tok
           </p>
           {(tokens.mode === "gain" || row.int > 0) && <TokenLine
             icon="intToken"
-            label="지력토큰"
+            label="지력기운"
             count={row.int}
             mode={tokens.mode}
             playing={playing}
@@ -362,7 +362,7 @@ function TokenBoard({ tokens, playing }: { tokens: NonNullable<Announcement["tok
           />}
           {(tokens.mode === "gain" || row.stamina > 0) && <TokenLine
             icon="staminaToken"
-            label="체력토큰"
+            label="체력기운"
             count={row.stamina}
             mode={tokens.mode}
             playing={playing}
@@ -371,7 +371,7 @@ function TokenBoard({ tokens, playing }: { tokens: NonNullable<Announcement["tok
           />}
           {(tokens.mode === "gain" || row.charm > 0) && <TokenLine
             icon="charmToken"
-            label="매력토큰"
+            label="매력기운"
             count={row.charm}
             mode={tokens.mode}
             playing={playing}
@@ -380,14 +380,14 @@ function TokenBoard({ tokens, playing }: { tokens: NonNullable<Announcement["tok
           />}
           {(tokens.mode === "gain" || row.spell > 0) && <TokenLine
             icon="manaToken"
-            label="마나토큰"
+            label="마나기운"
             count={row.spell}
             mode={tokens.mode}
             playing={playing}
             startDelay={index * ROW_GAP + (Math.min(row.int, MAX_ICONS) + Math.min(row.stamina, MAX_ICONS) + Math.min(row.charm, MAX_ICONS)) * TOKEN_GAP}
             color="text-indigo-500"
           />}
-          {tokens.mode === "wipe" && row.int + row.stamina + row.charm + row.spell === 0 && <p className="mt-1 text-left text-xs text-purple-400">남은 토큰이 없어요</p>}
+          {tokens.mode === "wipe" && row.int + row.stamina + row.charm + row.spell === 0 && <p className="mt-1 text-left text-xs text-purple-400">남은 기운이 없어요</p>}
         </li>
       ))}
     </ul>
@@ -409,7 +409,7 @@ export function AnnouncementLayer({ game, myId }: { game: GameState; myId: strin
   const current = queue[0];
   const dismiss = () => setQueue((q) => q.slice(1));
 
-  // 토큰 연출이 끝나면 저절로 다음 알림으로 넘어간다
+  // 기운 연출이 끝나면 저절로 다음 알림으로 넘어간다
   // 다른 팝업(메뉴·나가기 확인 등)이 떠 있는 동안은 연출과 타이머를 멈추고, 닫히면 남은 시간만큼 이어 간다
   const paused = useModalOpen();
   const leftRef = useRef<{ id: number; ms: number } | null>(null);
@@ -492,7 +492,7 @@ export function AnnouncementLayer({ game, myId }: { game: GameState; myId: strin
         {playing ? (
           <div className="mt-4 flex min-h-12 items-center justify-between gap-2 py-1">
             <p className="text-sm text-purple-600" aria-live="polite">
-              {current.tokens?.mode === "gain" ? "토큰을 받는 중이에요..." : "토큰을 정리하는 중이에요..."}
+              {current.tokens?.mode === "gain" ? "기운을 받는 중이에요..." : "기운을 정리하는 중이에요..."}
             </p>
             <button
               className="min-h-11 shrink-0 rounded-full bg-purple-100 px-4 text-sm text-purple-700 active:scale-95 transition-transform"

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ClientMessage, ServerMessage } from "./messages";
-import type { ActivityId, GameState, KeepChoice } from "./gameTypes";
+import type { ActivityId, GameState } from "./gameTypes";
 
 export interface RoomPlayer {
   id: string;
@@ -433,14 +433,6 @@ export function useGameSocket() {
     [ensureSocket, send],
   );
 
-  const keepToken = useCallback(
-    (choice: KeepChoice) => {
-      const socket = ensureSocket();
-      send(socket, { type: "keep_token", choice });
-    },
-    [ensureSocket, send],
-  );
-
   const pickActivityCard = useCallback(
     (cardId: string | null) => {
       const socket = ensureSocket();
@@ -449,5 +441,5 @@ export function useGameSocket() {
     [ensureSocket, send],
   );
 
-  return { state, game, offline, notice, noticeSeq, reactions, lastError, errorSeq, reconnecting, createRoom, joinRoom, leaveRoom, startGame, addBot, removeBot, kickPlayer, rematch, sendEmoji, takeClassCard, rollDice, rerollDice, confirmRoll, selectActivity, pickActivityCard, keepToken };
+  return { state, game, offline, notice, noticeSeq, reactions, lastError, errorSeq, reconnecting, createRoom, joinRoom, leaveRoom, startGame, addBot, removeBot, kickPlayer, rematch, sendEmoji, takeClassCard, rollDice, rerollDice, confirmRoll, selectActivity, pickActivityCard };
 }

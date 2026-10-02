@@ -4,10 +4,10 @@ import { effectiveStat, type GameState, type PlayerGameState, type StatKey } fro
 import { COLUMN_STYLE, type ColumnKey } from "./statStyle";
 import { waitingOn } from "./Social";
 
-// 상단에 항상 보이는 플레이어 비교표: 행 = 플레이어, 열 = 능력치 5종 + 토큰 4종
+// 상단에 항상 보이는 플레이어 비교표: 행 = 플레이어, 열 = 능력치 5종 + 기운 4종
 const STAT_COLS: ColumnKey[] = ["intelligence", "stamina", "charm", "spellPower", "credit"];
 const TOKEN_COLS: ColumnKey[] = ["intelligenceTokens", "staminaTokens", "charmTokens", "manaTokens"];
-// 이름 | 능력치 5칸 | 구분선 | 토큰 4칸 (360px 폭에서도 가로 스크롤 없이 들어가도록 숫자 칸은 고정 폭)
+// 이름 | 능력치 5칸 | 구분선 | 기운 4칸 (360px 폭에서도 가로 스크롤 없이 들어가도록 숫자 칸은 고정 폭)
 const GRID = "grid grid-cols-[minmax(0,1fr)_repeat(5,1.65rem)_0.4rem_repeat(4,1.65rem)] items-center";
 const COLLAPSE_KEY = "magicacademy.playerTable.collapsed";
 

@@ -1,5 +1,5 @@
 // 마도서 카드 (주문 대결 승자 보상). 획득 즉시 능력치가 영구 증가하고, 일부는 마법생물과 같은 추가 능력을 가집니다.
-// "마나토큰"(1주차에 받는 토큰)와 이름이 겹치지 않도록 보상 카드는 "마도서"로 부릅니다.
+// "마나기운"(1주차에 받는 기운)와 이름이 겹치지 않도록 보상 카드는 "마도서"로 부릅니다.
 // 카드 구성과 수치는 초안이며 플레이테스트 후 조정합니다. 17장.
 import type { CreatureAbility, GrimoireCard, StatKey } from "./types.js";
 
@@ -10,8 +10,8 @@ const DEFS: Def[] = [
   { name: "속삭이는 지혜서", description: "펼치면 귓가에 답이 속삭여요.", stat: "intelligence" },
   { name: "반짝 연습장", description: "풀수록 별이 늘어나는 연습장.", stat: "intelligence" },
   { name: "튼튼 마법 체조책", description: "따라 하면 몸이 가벼워져요.", stat: "stamina" },
-  { name: "매혹의 화술서", description: "말솜씨가 살랑살랑 좋아져요. 매달 매력토큰이 하나 더 생겨요.", stat: "charm", ability: { trigger: "prep", effect: "charmToken", amount: 1 } },
-  { name: "반짝 스타일북", description: "오늘의 머리 모양 백 가지. 매달 매력토큰이 하나 더 생겨요.", stat: "charm", ability: { trigger: "prep", effect: "charmToken", amount: 1 } },
+  { name: "매혹의 화술서", description: "말솜씨가 살랑살랑 좋아져요. 매달 매력기운이 하나 더 생겨요.", stat: "charm", ability: { trigger: "prep", effect: "charmToken", amount: 1 } },
+  { name: "반짝 스타일북", description: "오늘의 머리 모양 백 가지. 매달 매력기운이 하나 더 생겨요.", stat: "charm", ability: { trigger: "prep", effect: "charmToken", amount: 1 } },
   { name: "초급 주문집", description: "누구나 쓸 수 있는 쉬운 주문 모음.", stat: "spellPower" },
   { name: "별빛 주문집", description: "밤하늘의 마력을 담은 주문집.", stat: "spellPower" },
   // 능력치 + 추가 능력

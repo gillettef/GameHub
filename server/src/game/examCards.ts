@@ -1,6 +1,6 @@
 // 시험 카드: 게임마다 중간고사·기말고사에 서로 다른 카드를 뽑는다. 3라운드 종료 후 중간고사 카드, 9라운드 종료 후 기말고사 카드를 공개한다.
-// 시험 점수 = (diceStat 능력치의 토큰을 내고 굴린 주사위 합) + (bonusStat 능력치 수치, 있으면). 2026-10-02 39절부터 시험도 활동처럼 카드의 주 능력치 토큰이
-// 주사위 재료다 (지력→지력토큰, 체력→체력토큰, 매력→매력토큰, 주문력→마나토큰). 4가지 능력치가 2장씩 8장. 수치·구성은 초안이며 플레이테스트 후 조정합니다.
+// 시험 점수 = (diceStat 능력치의 기운을 내고 굴린 주사위 합) + (bonusStat 능력치 수치, 있으면). 2026-10-02 39절부터 시험도 활동처럼 카드의 주 능력치 기운이
+// 주사위 재료다 (지력→지력기운, 체력→체력기운, 매력→매력기운, 주문력→마나기운). 4가지 능력치가 2장씩 8장. 수치·구성은 초안이며 플레이테스트 후 조정합니다.
 import type { ExamCard, StatKey } from "./types.js";
 
 type Def = { name: string; description: string; diceStat: StatKey; bonusStat?: StatKey };
@@ -20,7 +20,7 @@ export function examTemplates(): Omit<ExamCard, "id">[] {
   return DEFS.map((d) => ({ ...d }));
 }
 
-const FUEL_NAME: Record<StatKey, string> = { intelligence: "지력토큰", stamina: "체력토큰", charm: "매력토큰", spellPower: "마나토큰" };
+const FUEL_NAME: Record<StatKey, string> = { intelligence: "지력기운", stamina: "체력기운", charm: "매력기운", spellPower: "마나기운" };
 
 export function describeExam(card: Pick<ExamCard, "diceStat" | "bonusStat">, statName: Record<StatKey, string>): string {
   return `${FUEL_NAME[card.diceStat]}으로 굴린 주사위${card.bonusStat ? ` + ${statName[card.bonusStat]} 수치` : ""}`;

@@ -1,6 +1,6 @@
 import { useEffect, useSyncExternalStore } from "react";
 
-// 모달/팝업이 떠 있는 동안 뒤에서 돌아가는 연출(토큰 애니메이션, 자동 넘김 타이머 등)을 멈추기 위한 전역 카운터.
+// 모달/팝업이 떠 있는 동안 뒤에서 돌아가는 연출(기운 애니메이션, 자동 넘김 타이머 등)을 멈추기 위한 전역 카운터.
 // 팝업이 마운트되어 있는 동안 useModalLock()을 부르면 잠금이 걸리고, <body data-modal-open>으로 CSS 애니메이션도 멈춘다.
 let count = 0;
 const listeners = new Set<() => void>();

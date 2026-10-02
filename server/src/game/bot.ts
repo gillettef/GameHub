@@ -1,6 +1,6 @@
 // AI 봇 의사결정. 실제 게임(함께 플레이)과 밸런스 시뮬레이션(scripts/simulate.ts)이 함께 사용합니다.
-// 봇은 단순한 휴리스틱으로 움직입니다. 수업카드는 공개된 카드 중 성향에 맞는 능력치를 우선해 체력토큰이 허용하는 카드를 1장 고르고,
-// 자율활동은 상황(마나토큰 보유량, 토너먼트 진행도 등)과 성향 가중치를 곱해 점수가 높은 구역을 고릅니다.
+// 봇은 단순한 휴리스틱으로 움직입니다. 수업카드는 공개된 카드 중 성향에 맞는 능력치를 우선해 체력기운이 허용하는 카드를 1장 고르고,
+// 자율활동은 상황(마나기운 보유량, 토너먼트 진행도 등)과 성향 가중치를 곱해 점수가 높은 구역을 고릅니다.
 import { BALANCE } from "./config.js";
 import {
   availableActivities,
@@ -59,7 +59,7 @@ export function pickBotPersonality(): BotStrategy {
   return BOT_PERSONALITIES[Math.floor(Math.random() * BOT_PERSONALITIES.length)];
 }
 
-// 연구실만 파는 성향은 연구 카드 값(체력토큰)을 치를 수 있도록 체력토큰을 조금 남겨 둔다
+// 연구실만 파는 성향은 연구 카드 값(체력기운)을 치를 수 있도록 체력기운을 조금 남겨 둔다
 const isLabLeaning = (strategy: BotStrategy) => strategy.activityBias.lab >= 3;
 
 // 공개된 다음 시험 카드가 겨냥하는 능력치는 더 키운다 (주사위 능력치 ×1.6, 보너스 능력치 ×1.25)
@@ -80,7 +80,7 @@ function biasOf(state: GameState, strategy: BotStrategy): Record<ActivityId, num
 
 const pickOne = <T,>(items: T[]): T => items[Math.floor(Math.random() * items.length)];
 
-// 정규수업: 내 차례에 공개된 수업카드 중 성향에 맞는 능력치를 우선해서, 체력토큰(매력토큰 교환 포함)으로 살 수 있는 카드 1장을 고른다
+// 정규수업: 내 차례에 공개된 수업카드 중 성향에 맞는 능력치를 우선해서, 체력기운(매력기운 교환 포함)으로 살 수 있는 카드 1장을 고른다
 export function playClassTurn(state: GameState, playerId: string, strategy: BotStrategy): void {
   const p = state.players[playerId];
   const reserve = isLabLeaning(strategy) ? 2 : 0;
@@ -106,7 +106,7 @@ export function chooseActivityAction(
   const free = availableActivities(state, playerId);
   const base: Record<ActivityId, number> = {
     tournament: effectiveStat(p, "spellPower") * 0.25,
-    // 조련은 매력토큰으로 주사위를 굴린다 (39절)
+    // 조련은 매력기운으로 주사위를 굴린다 (39절)
     creature: p.charmTokens >= 2 ? 2 : 0.5,
     duel: 1.5,
     // 선두에게 뒤처졌다면 한 방을 노려볼 만하다 (탐험 역전 보너스)
@@ -115,7 +115,7 @@ export function chooseActivityAction(
     lab: 1.6,
   };
   const scored = free.map((a) => {
-    // 이미 친구가 있는 구역은 체력토큰이 더 들어서 조금 덜 끌린다
+    // 이미 친구가 있는 구역은 체력기운이 더 들어서 조금 덜 끌린다
     const crowded = state.activitySlots[a].length > 0 ? 0.8 : 1;
     return {
       a,
@@ -132,7 +132,7 @@ export function chooseActivityAction(
   return { activityId, targetPlayerId };
 }
 
-// 카드 효과의 대략적인 가치 (영구 능력치는 성향 가중치로, 임시/토큰/엿보기는 낮게 평가)
+// 카드 효과의 대략적인 가치 (영구 능력치는 성향 가중치로, 임시/기운/엿보기는 낮게 평가)
 function effectValue(state: GameState, strategy: BotStrategy, e: CardEffect): number {
   let v = 0;
   for (const [stat, n] of Object.entries(e.stats ?? {})) v += (n ?? 0) * weightsOf(state, strategy)[stat as StatKey] * examWeight(state, stat as StatKey) * 1.5;
@@ -152,8 +152,8 @@ function explorationValue(state: GameState, strategy: BotStrategy, player: Playe
   return p * success + (1 - p) * failure;
 }
 
-// 굴리기 전에 쓸 보조 능력치 토큰 개수 (38-6절). 토너먼트: 다음 달로 남길 체력토큰 1개만 빼고 모두 달리는 데 쓴다.
-// 탐험: 실패하면 손해가 있는 카드이고 지력토큰이 있으면 함정을 간파한다
+// 굴리기 전에 쓸 보조 능력치 기운 개수 (38-6절). 토너먼트: 다음 달로 남길 체력기운 1개만 빼고 모두 달리는 데 쓴다.
+// 탐험: 실패하면 손해가 있는 카드이고 지력기운이 있으면 함정을 간파한다
 export function botAssist(state: GameState, playerId: string): number {
   const pending = state.pendingRoll;
   const max = pending?.entries.find((e) => e.playerId === playerId)?.assistMax ?? 0;
@@ -166,7 +166,7 @@ export function botAssist(state: GameState, playerId: string): number {
   return harmful ? 1 : 0;
 }
 
-// 결과 확인 전에 남은 마나토큰으로 낮게 나온 주사위를 다시 굴린다 (선 정하기는 제외). 목표값이 있는 혼자 판정(조련·연구실·탐험)은
+// 결과 확인 전에 남은 마나기운으로 낮게 나온 주사위를 다시 굴린다 (선 정하기는 제외). 목표값이 있는 혼자 판정(조련·연구실·탐험)은
 // 합이 모자랄 때만 가장 낮은 주사위부터 한 개씩 다시 굴리고(3 이하만), 그 밖의 굴림은 1~2가 나온 주사위를 다시 굴린다
 export function rerollLowDice(state: GameState, playerId: string): void {
   const pending = state.pendingRoll;
@@ -196,7 +196,7 @@ export function rerollLowDice(state: GameState, playerId: string): void {
       rerollDice(state, playerId, low.slice(0, n));
       return;
     } catch {
-      // 토큰이 모자라면 더 적은 수로 다시 시도한다
+      // 기운이 모자라면 더 적은 수로 다시 시도한다
     }
   }
 }

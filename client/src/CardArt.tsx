@@ -5,7 +5,7 @@ import { useModalLock } from "./modalLock";
 // 카드 한 장을 화면에 보여 주는 정보 (카드 종류와 상관없이 같은 모양)
 export interface CardInfo {
   name: string;
-  // 이름 아래에 붙는 짧은 배지 (예: "+1 지력", "체력토큰 2")
+  // 이름 아래에 붙는 짧은 배지 (예: "+1 지력", "체력기운 2")
   badge?: string;
   // 확대했을 때 보여 줄 설명 줄들
   lines?: ReactNode[];

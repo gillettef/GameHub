@@ -33,7 +33,7 @@ const PATHS = {
       <path d="M5.5 20.5h13" />
     </>
   ),
-  // 토큰
+  // 기운
   staminaToken: (
     <>
       <circle {...F} cx="12" cy="12" r="9" />
