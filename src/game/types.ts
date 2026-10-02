@@ -73,6 +73,10 @@ export interface Player {
   id: number;
   name: string;
   isAI: boolean;
+  /** AI 성향 (engine.ts AI_PROFILES 키) */
+  ai?: string;
+  /** 게임 종료 시 잔액에서 환산된 VP (UI 표시용) */
+  endBonus?: number;
   money: number;
   vp: number;
   satPool: number;
@@ -95,6 +99,8 @@ export interface GameState {
   phase: Phase;
   players: Player[];
   first: number;
+  /** 1라운드 선 플레이어 (이후 시계 방향 순환). 시작 자금 보정의 기준 */
+  startFirst: number;
   turn: number;
   passed: boolean[];
   market: number[];

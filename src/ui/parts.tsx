@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Icon, type IconName } from './Icon';
 import { Slot } from './Slot';
 import { TYPE_META } from './meta';
-import { incomeOf } from '../game/engine';
+import { baseCapacity, incomeOf } from '../game/engine';
 import type { FacilityCard, Visitor } from '../game/types';
 
 /** 값이 바뀌면 살짝 튀어오르는 숫자 */
@@ -78,6 +78,12 @@ export function FacilityStats({ card }: { card: FacilityCard }) {
       </div>
       <Pair icon="coin" a={incomeOf(card, 'child')} b={incomeOf(card, 'adult')} label="수익(어린이/성인)" />
       <Pair icon="star" a={card.sat[0]} b={card.sat[1]} label="만족도(어린이/성인)" />
+      {baseCapacity(card) > 1 && (
+        <div className="pair cap" title="대형 시설: 한 번에 여러 명 수용">
+          <Icon name="family" size={13} />
+          <span>수용 {baseCapacity(card)}명</span>
+        </div>
+      )}
     </div>
   );
 }

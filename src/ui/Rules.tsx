@@ -15,12 +15,12 @@ const STEPS: { icon: IconName; title: string; body: string }[] = [
   {
     icon: 'operate',
     title: '운영',
-    body: '입장한 관객이 취향(유형)과 만족도가 높은 시설을 최대 2곳 이용해요. 시설은 기본 1명씩만 받을 수 있고, 수익은 이용마다 정해진 돈, 만족도는 점수로 쌓여요. 이용이 끝나면 유지비를 내요.',
+    body: '입장한 관객이 취향(유형)과 만족도가 높은 시설을 최대 2곳 이용해요. 시설은 기본 1명씩만 받을 수 있고(건설비 ${CFG.bigCost} 이상 대형 시설은 2명), 수익은 이용마다 정해진 돈, 만족도는 점수로 쌓여요. 이용이 끝나면 유지비를 내요.',
   },
   {
     icon: 'manage',
     title: '관리',
-    body: `이용한 시설은 고장날 수 있고 관객은 쓰레기를 남겨요. 엔지니어·환경 미화원이 먼저 무료로 처리하고, 나머지는 돈(수리 $${CFG.repairCost}, 청소 $${CFG.cleanCost})으로 해결해요. 쓰레기 2개마다 VP -1!`,
+    body: `이용한 시설은 고장날 수 있고 관객은 쓰레기를 남겨요. 엔지니어·환경 미화원이 먼저 무료로 처리하고, 나머지는 돈(수리 $${CFG.repairCost}, 청소 $${CFG.cleanCost})으로 해결해요. 쓰레기 ${CFG.trashPerVp}개마다 VP -1!`,
   },
 ];
 
@@ -28,7 +28,7 @@ export function RulesBody() {
   return (
     <div className="rules">
       <p className="lead">
-        {CFG.rounds}라운드 동안 공원을 키워 <b>VP(만족도 점수)</b>가 가장 높은 사람이 승리해요. 시작 자금은 ${CFG.startMoney}예요.
+        {CFG.rounds}라운드 동안 공원을 키워 <b>VP(만족도 점수)</b>가 가장 높은 사람이 승리해요. 시작 자금은 ${CFG.startMoney}예요. 1라운드 선 플레이어는 무작위이고, 순서가 늦을수록 시작 자금을 ${CFG.seatBonus}씩 더 받아요. 게임이 끝나면 남은 돈 ${CFG.moneyPerVp}마다 VP 1점이 더해져요.
       </p>
       {STEPS.map((s, i) => (
         <div key={s.title} className="rule-step">

@@ -382,3 +382,8 @@ button.vcard:not(:disabled) { border-color: rgba(255, 255, 255, 0.18); }
 
 .score-wrap { flex: none; padding: 0 14px 8px; }
 .score-wrap .score { padding-bottom: 2px; }
+
+/* 대형 시설(수용 2) 표시 */
+.tile-cap { position: absolute; top: 5px; right: 5px; padding: 1px 6px; border-radius: 8px; background: rgba(21, 17, 58, 0.85); color: var(--accent); font-size: 11px; font-weight: 900; }
+.pair.cap { color: var(--accent); }
+.rank .bonus { color: var(--muted); font-weight: 600; font-size: 11px; }

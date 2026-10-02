@@ -1,3 +1,4 @@
+import { CFG } from '../game/engine';
 import type { FacilityType, Phase, StaffKey } from '../game/types';
 import type { IconName } from './Icon';
 
@@ -14,11 +15,11 @@ export const TYPE_META: Record<FacilityType, { icon: IconName; color: string; sh
 };
 
 export const STAFF_META: Record<StaffKey, { icon: IconName; label: string; desc: string; color: string }> = {
-  marketer: { icon: 'marketer', label: '마케팅', desc: '매 라운드 방문 관객 +1명', color: '#ff7ac8' },
-  guide: { icon: 'guide', label: '안내', desc: '인기 시설 1곳당 동시 수용 +1', color: '#6cc7ff' },
-  engineer: { icon: 'engineer', label: '엔지니어', desc: '고장 확률 -8%, 매 라운드 무료 수리 1건', color: '#ffb347' },
+  marketer: { icon: 'marketer', label: '마케팅', desc: '매 라운드 데려올 수 있는 관객 +1명', color: '#ff7ac8' },
+  guide: { icon: 'guide', label: '안내', desc: '가장 인기 있는 시설 1곳의 수용 인원 +1', color: '#6cc7ff' },
+  engineer: { icon: 'engineer', label: '엔지니어', desc: `고장 확률 -${Math.round(CFG.breakPerEngineer * 100)}%p · 매 라운드 무료 수리 1건`, color: '#ffb347' },
   cleaner: { icon: 'cleaner', label: '미화원', desc: '매 라운드 쓰레기 2개 무료 청소', color: '#5ee0a0' },
-  researcher: { icon: 'researcher', label: '연구원', desc: '시설 건설비 -$1 (최소 $1)', color: '#a58bff' },
+  researcher: { icon: 'researcher', label: '연구원', desc: `건설비 -$1 · 매 라운드 만족도 +${CFG.researchSat}`, color: '#a58bff' },
 };
 
 export const PHASES: { key: Exclude<Phase, 'gameOver'>; label: string; icon: IconName }[] = [
