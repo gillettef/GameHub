@@ -27,12 +27,17 @@ export const BALANCE = {
   // 수업카드 덱은 학기마다 하나씩(1학기 덱 → 중간고사 뒤 2학기 덱으로 교체, 남은 카드는 버림) 인원과 무관하게 classDeckSize 장
   classMarketExtra: 1,
   classDeckSize: 36,
-  // 학기별 수업카드 구성: statWeights = 덱 안 능력치별 비율, spellExtraCost = 주문력 카드에 더해지는 습득 체력기운,
-  // nonSpellCostCap = 주문력 외 카드의 습득 체력기운 상한. 1학기는 싸고 지력·체력·매력 위주(주문력은 소수), 2학기는 주문력 위주
+  // 학기별 수업카드 구성: statWeights = 덱 안 과목(능력치)별 비율. 1학기는 지력·체력·매력 위주(주문력 과목은 소수), 2학기는 주문력 과목이 늘어난다
   classSemesters: [
-    { statWeights: { intelligence: 3, stamina: 3, charm: 3, spellPower: 1 } as Record<StatKey, number>, spellExtraCost: 5, nonSpellCostCap: 2 },
-    { statWeights: { intelligence: 3, stamina: 3, charm: 2, spellPower: 2 } as Record<StatKey, number>, spellExtraCost: 9, nonSpellCostCap: 3 },
+    { statWeights: { intelligence: 3, stamina: 3, charm: 3, spellPower: 1 } as Record<StatKey, number> },
+    { statWeights: { intelligence: 3, stamina: 3, charm: 2, spellPower: 2 } as Record<StatKey, number> },
   ],
+  // 수업카드가 주는 기운 (42절): 기초 과목은 basic, 심화 과목은 advanced. 심화는 그 과목 능력치가 advancedMinStat 이상이어야 들을 수 있다 (선수과목)
+  classGain: { basic: 4, advanced: 6 },
+  advancedMinStat: 4,
+  // 성장 (42절): 자율활동에서 성과를 내면 그 활동의 주 능력치가 growthAmount만큼 오른다 (조련·탐험·연구실은 성공, 주문 대결은 승리, 토너먼트는 성장 없음)
+  growthAmount: 1,
+  growthActivities: { tournament: false, creature: true, duel: true, exploration: true, lab: true } as Record<ActivityId, boolean>,
   // 3주차 구역(비밀의 방·마법생물·주문 대결·연구실)에서 처음 들어온 사람이 여는 카드 수 (집중이나 특정 카드로 달라질 수 있다)
   activityOpenCount: 2,
   // 최종 점수 = 주문력 × 학점 + 마법생물 세트(하늘·육지·바다 1장씩) 수 × creatureSetScore (기획 검토 중: 3점 또는 5점) + 졸업식 부문상 수 × graduationAwardScore (41절)
@@ -54,12 +59,9 @@ export const BALANCE = {
   // 굴림 버튼의 기본 주사위 수 = 목표값 판정(조련·연구실·탐험)에서 성공 확률이 이 값 이상이 되는 가장 적은 마나기운 개수 (남는 마나기운은 다시 굴리기용).
   // 토너먼트·주문 대결·시험은 기본값이 마나기운 전부. 봇도 기본값 그대로 굴린다
   defaultDiceSuccess: 0.7,
-  // 능력치 감쇠 (2026-10-02): 지력·체력·매력은 시간이 지나면 줄어든다 (주문력·학점은 그대로). 4주차(정리)가 끝날 때 startRound 라운드부터 매 interval개월마다
-  // stats 각각 perMonth만큼 줄고 floor 아래로는 내려가지 않는다. 그 달에 새로 얻은 능력치도 구분하지 않고 똑같이 깎는다 (유예 없음). 임시 능력치는 영향 없음
-  statDecay: { perMonth: 1, interval: 2, startRound: 4, floor: 2, stats: ["intelligence", "stamina", "charm"] as StatKey[] },
   // 탐험 카드 목표값 배율 (1이면 카드에 적힌 난이도 그대로)
   exploreDifficultyScale: 1.1,
-  // 탐험 역전 보너스: 선두와의 성장 점수(능력치 합 + 학점×3) 격차가 이 값 이상이면 판정에 보너스를 더한다
+  // 탐험 역전 보너스: 선두와의 종합 점수(능력치 합 + 학점×3) 격차가 이 값 이상이면 판정에 보너스를 더한다
   catchUpGap: 4,
   catchUpBonus: 2,
   // 주문 대결을 건 도전자가 지목당한 플레이어에게 건네는 매력 (결과와 상관없이 지불)

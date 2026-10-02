@@ -8,8 +8,12 @@ import {
   duelTargets,
   explorationChance,
   rerollDice,
-  growthGap,
+  overallGap,
+  canTakeClassCard,
+  classGainApplied,
+  classGainKind,
   takeClassCard,
+  tokensOf,
 } from "./engine.js";
 import {
   effectiveStat,
@@ -19,6 +23,7 @@ import {
   type ExplorationCard,
   type GameState,
   type GrimoireCard,
+  type KeptToken,
   type LabCard,
   type PlayerGameState,
   type StatKey,
@@ -59,9 +64,6 @@ export function pickBotPersonality(): BotStrategy {
   return BOT_PERSONALITIES[Math.floor(Math.random() * BOT_PERSONALITIES.length)];
 }
 
-// 연구실만 파는 성향은 연구 카드 값(체력기운)을 치를 수 있도록 체력기운을 조금 남겨 둔다
-const isLabLeaning = (strategy: BotStrategy) => strategy.activityBias.lab >= 3;
-
 // 공개된 다음 시험 카드가 겨냥하는 능력치는 더 키운다 (주사위 능력치 ×1.6, 보너스 능력치 ×1.25)
 function examWeight(state: GameState, stat: StatKey): number {
   const upcoming = state.round <= BALANCE.midtermRound ? state.exams.midterm : state.exams.final;
@@ -80,16 +82,18 @@ function biasOf(state: GameState, strategy: BotStrategy): Record<ActivityId, num
 
 const pickOne = <T,>(items: T[]): T => items[Math.floor(Math.random() * items.length)];
 
-// 정규수업: 내 차례에 공개된 수업카드 중 성향에 맞는 능력치를 우선해서, 체력기운(매력기운 교환 포함)으로 살 수 있는 카드 1장을 고른다
+// 정규수업 (42절): 공개된 수업카드 중 이번 달 활동에 쓸 기운을 주는 과목을 고른다. 카드의 가치 = 실제로 늘어나는 기운의 양 × (그 기운을 연료로 쓰는 활동에 대한 선호 + 키우려는 능력치 가중치).
+// 심화 과목은 능력치가 모자라면 고를 수 없다
 export function playClassTurn(state: GameState, playerId: string, strategy: BotStrategy): void {
   const p = state.players[playerId];
-  const reserve = isLabLeaning(strategy) ? 2 : 0;
+  const bias = biasOf(state, strategy);
+  const fuelPref = (kind: KeptToken) => ACTIVITIES.filter((a) => BALANCE.rollFuel[a] === kind).reduce((s, a) => s + bias[a], 0);
+  const options = state.classMarket.filter((c) => canTakeClassCard(p, c));
   const value = (c: (typeof state.classMarket)[number]) =>
-    (c.statBoost.amount * weightsOf(state, strategy)[c.statBoost.stat] * examWeight(state, c.statBoost.stat)) - c.takeCost * 0.1;
-  const affordable = state.classMarket.filter((c) => canPay(p, 0, c.takeCost + reserve) || (strategy.random && canPay(p, 0, c.takeCost)));
+    classGainApplied(p, c) * (0.6 * fuelPref(classGainKind(c)) + 0.4 * weightsOf(state, strategy)[c.stat]) * examWeight(state, c.stat);
   let choice: string | null = null;
-  if (affordable.length > 0) {
-    choice = strategy.random ? (Math.random() < 0.2 ? null : pickOne(affordable).id) : [...affordable].sort((a, b) => value(b) - value(a))[0].id;
+  if (options.length > 0) {
+    choice = strategy.random ? (Math.random() < 0.2 ? null : pickOne(options).id) : [...options].sort((a, b) => value(b) - value(a))[0].id;
   }
   takeClassCard(state, playerId, choice);
 }
@@ -106,20 +110,24 @@ export function chooseActivityAction(
   const free = availableActivities(state, playerId);
   const base: Record<ActivityId, number> = {
     tournament: effectiveStat(p, "spellPower") * 0.25,
-    // 조련은 매력기운으로 주사위를 굴린다 (39절)
-    creature: p.charmTokens >= 2 ? 2 : 0.5,
+    creature: 1.6,
     duel: 1.5,
     // 선두에게 뒤처졌다면 한 방을 노려볼 만하다 (탐험 역전 보너스)
-    exploration: growthGap(state, playerId) >= BALANCE.catchUpGap ? 2.4 : 1.2,
+    exploration: overallGap(state, playerId) >= BALANCE.catchUpGap ? 2.4 : 1.2,
     // 연구실은 공개된 연구 카드 중 골라 영구 성장을 얻는다
     lab: 1.6,
   };
+  // 활동의 연료 기운이 넉넉할수록 끌린다 (수업에서 기운을 얻은 활동을 하게 된다. 기운이 없으면 공짜 주사위 1개라 덜 끌린다)
+  const energy = (a: ActivityId) => {
+    const t = tokensOf(p, BALANCE.rollFuel[a]);
+    return t >= 3 ? 1 : t >= 1 ? 0.75 : 0.4;
+  };
   const scored = free.map((a) => {
-    // 이미 친구가 있는 구역은 체력기운이 더 들어서 조금 덜 끌린다
+    // 이미 친구가 있는 구역은 매력기운이 더 들어서 조금 덜 끌린다
     const crowded = state.activitySlots[a].length > 0 ? 0.8 : 1;
     return {
       a,
-      score: (strategy.random ? 1 : base[a] * biasOf(state, strategy)[a] * crowded) * (0.7 + Math.random() * 0.6),
+      score: (strategy.random ? 1 : base[a] * energy(a) * biasOf(state, strategy)[a] * crowded) * (0.7 + Math.random() * 0.6),
     };
   });
   scored.sort((x, y) => y.score - x.score);
@@ -177,7 +185,7 @@ export function rerollLowDice(state: GameState, playerId: string): void {
   const sum = (xs: number[]) => xs.reduce((a, b) => a + b, 0);
   let need: number | null = null;
   if (ctx?.kind === "creature" || ctx?.kind === "lab") need = ctx.target;
-  else if (ctx?.kind === "exploration" && ctx.mode === "single") need = ctx.target - (growthGap(state, playerId) >= BALANCE.catchUpGap ? BALANCE.catchUpBonus : 0);
+  else if (ctx?.kind === "exploration" && ctx.mode === "single") need = ctx.target - (overallGap(state, playerId) >= BALANCE.catchUpGap ? BALANCE.catchUpBonus : 0);
   if (need !== null) {
     while (p.manaTokens > 0 && sum(entry.dice) < need) {
       const lowest = entry.dice.indexOf(Math.min(...entry.dice));

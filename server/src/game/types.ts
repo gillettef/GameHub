@@ -12,13 +12,16 @@ export type KeptToken = "intelligence" | "stamina" | "charm" | "mana";
 
 export type GamePhase = "setup" | "prep" | "class" | "activity" | "cleanup" | "midterm_exam" | "final_exam" | "ended";
 
+// 수업카드 = 과목 (42절). 가져가면 그 과목의 기운(stat이 주문력이면 마나기운)을 gain만큼 무료로 얻는다 (한도까지). 능력치는 올려 주지 않는다.
+// 심화(advanced)는 그 과목 능력치가 minStat 이상이어야 가져갈 수 있다 (선수과목)
 export interface ClassCard {
   id: string;
   name: string;
   description: string;
-  // 이 카드를 습득하는 데 드는 체력기운 (카드마다 다르다. 카드를 열어 봐야 알 수 있다)
-  takeCost: number;
-  statBoost: { stat: StatKey; amount: number };
+  stat: StatKey;
+  level: "basic" | "advanced";
+  gain: number;
+  minStat?: number;
 }
 
 // 카드 효과 묶음 (탐험/연구 카드 공용). 영구 능력치, 시험까지 유지되는 임시 능력치, 학점,
@@ -283,10 +286,6 @@ export interface GameState {
   // 공개된 시험 카드 (3라운드 종료 후 중간고사, 9라운드 종료 후 기말고사 카드가 공개되기 전에는 null)
   exams: { midterm: ExamCard | null; final: ExamCard | null };
   examResults: ExamResult[];
-  // 가장 최근 4주차(정리)에서 시간이 지나 줄어든 지력·체력·매력 능력치 (decay, 줄지 않았으면 빈 객체). 화면의 정리 안내용
-  cleanupSummary: { playerId: string; decay: Partial<Record<StatKey, number>> }[];
-  // 가장 최근 1주차(충전)에서 각자 차오른 기운(gained)과, 한도를 넘어서 사라진 기운(lost). 화면의 충전 연출용
-  chargeSummary: { playerId: string; gained: Record<KeptToken, number>; lost: Record<KeptToken, number> }[];
   // 카드 덱·버림 더미와 주사위 처리 정보 (서버 전용, 클라이언트에는 전송하지 않음)
   hidden: HiddenState;
   labPile: Pile<LabCard>;
@@ -321,8 +320,6 @@ export interface PublicRules {
   rollFuel: Record<ActivityId, KeptToken>;
   // 기운을 모아 둘 수 있는 한도 = 능력치 × 이 배수 (매달 능력치만큼 차오른다)
   energyCapMultiplier: number;
-  // 능력치 감쇠: round >= startRound인 정리 때부터 interval개월마다 stats가 perMonth씩 줄고 floor 아래로는 내려가지 않는다
-  statDecay: { perMonth: number; interval: number; startRound: number; floor: number; stats: StatKey[] };
   activityMaxParticipants: number;
   activitySecondParticipantCost: number;
   duelCharmFee: number;

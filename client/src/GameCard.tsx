@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { CardArt } from "./CardArt";
 import { Icon, type IconName } from "./Icons";
-import { canPay, STAT_LABEL, type ClassCard, type PlayerGameState } from "./gameTypes";
+import { canTakeClassCard, classGainKind, ENERGY_FIELD, STAT_LABEL, effectiveStat, type ClassCard, type PlayerGameState } from "./gameTypes";
 import { COLUMN_STYLE } from "./statStyle";
 import { useModalLock } from "./modalLock";
 
@@ -35,25 +35,29 @@ export interface GameCardData {
 // ── 정규수업 카드 변환 ──
 
 export function classCardData(card: ClassCard): GameCardData {
-  const st = COLUMN_STYLE[card.statBoost.stat];
-  const stamina = COLUMN_STYLE.staminaTokens;
-  const label = STAT_LABEL[card.statBoost.stat];
+  const st = COLUMN_STYLE[card.stat];
+  const kind = classGainKind(card);
+  const energy = COLUMN_STYLE[ENERGY_FIELD[kind]];
+  const label = STAT_LABEL[card.stat];
+  const advanced = card.level === "advanced";
   return {
     name: card.name,
-    rare: card.statBoost.amount >= 2,
+    rare: advanced,
     description: card.description,
-    attrs: [{ icon: st.icon, label, text: st.text, bg: st.bg, detail: `${label} 능력치 수업` }],
-    effects: [{ icon: st.icon, label, value: `+${card.statBoost.amount}`, text: st.text, bg: st.bg, detail: `${label} 능력치가 ${card.statBoost.amount} 올라요` }],
+    attrs: [{ icon: st.icon, label: `${label} ${advanced ? "심화" : "기초"}`, text: st.text, bg: st.bg, detail: `${label} 과목 (${advanced ? "심화" : "기초"})` }],
+    effects: [{ icon: energy.icon, label: energy.label, value: `+${card.gain}`, text: energy.text, bg: energy.bg, detail: `${energy.label}이 ${card.gain} 생겨요 (모아 둘 수 있는 한도까지)` }],
     costs:
-      card.takeCost > 0
-        ? [{ icon: stamina.icon, label: "체력기운", value: card.takeCost, text: stamina.text, bg: stamina.bg, detail: `습득하려면 체력기운 ${card.takeCost}개를 내요` }]
-        : [{ icon: "check", label: "비용", value: "무료", text: "text-emerald-700", bg: "bg-emerald-50", detail: "체력기운 없이 가져갈 수 있어요" }],
+      card.minStat !== undefined
+        ? [{ icon: st.icon, label: `${label} ${card.minStat} 이상`, value: `${card.minStat}↑`, text: st.text, bg: st.bg, detail: `심화 과목이라 ${label} ${card.minStat} 이상이어야 들을 수 있어요` }]
+        : [{ icon: "check", label: "비용", value: "무료", text: "text-emerald-700", bg: "bg-emerald-50", detail: "누구나 무료로 들을 수 있는 기초 과목이에요" }],
   };
 }
 
-// 내가 이 카드를 가져갈 수 있는지, 못 하면 이유
+// 내가 이 카드를 가져갈 수 있는지, 못 하면 이유 (심화 과목의 선수 조건)
 export function classCardBlockReason(player: PlayerGameState, card: ClassCard): string | null {
-  return canPay(player, 0, card.takeCost) ? null : `체력기운이 ${card.takeCost - player.staminaTokens}개 부족해요 (필요 ${card.takeCost}개, 보유 ${player.staminaTokens}개)`;
+  return canTakeClassCard(player, card)
+    ? null
+    : `심화 과목이라 ${STAT_LABEL[card.stat]} ${card.minStat} 이상이어야 해요 (지금 ${effectiveStat(player, card.stat)})`;
 }
 
 function SlotChip({ slot, size = "sm" }: { slot: CardSlot; size?: "sm" | "md" }) {
