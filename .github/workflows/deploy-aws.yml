@@ -1,12 +1,12 @@
-# main 브랜치에 push되면 AWS EC2(서버3)에 자동 배포한다.
-# GitHub 저장소가 비공개라 인스턴스에서 git clone이 안 되므로, 이 워크플로가 직접 빌드한 뒤
-# client/dist·server/dist·package.json류를 scp로 올리고 systemd 서비스(eleven)를 재시작한다.
-# (로컬에서 수동 배포할 때 쓰는 scripts/aws-deploy.ps1과 같은 절차)
+# main 에 push 되면 검사(타입체크·린트·테스트)를 통과했을 때만 AWS EC2(게임 3종 공용 서버, t4g.nano)에 자동 배포한다.
+# 저장소가 비공개라 서버에서 git clone 이 안 되므로, 러너에서 빌드한 산출물만 ssh 로 올리고 systemd 서비스(eleven)를 재시작한다.
+# Actions 탭의 수동 실행(workflow_dispatch)으로 재배포도 가능하다.
 #
-# 필요한 저장소 시크릿 (Settings → Secrets and variables → Actions):
-#   EC2_HOST     인스턴스 공개 IP
-#   EC2_USER     ec2-user
-#   EC2_SSH_KEY  .dev/aws/eleven-debug.pem 파일 내용 그대로
+# SSH(22)는 관리자 IP 로만 열려 있다. 배포 직전에 러너 IP 를 보안 그룹에 임시로 열고, 끝나면(성공·실패 무관) 반드시 닫는다.
+# 이 규칙 추가/삭제만 가능한 최소 권한 IAM 사용자(astraltab-ci)의 키를 쓴다. (Eleven·AstralTab·MagicAcademy 공용)
+#
+# 필요한 저장소 시크릿: AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION, AWS_SECURITY_GROUP_ID,
+#                       EC2_HOST, EC2_HOST_KEY(known_hosts 한 줄), EC2_SSH_PRIVATE_KEY
 
 name: Deploy to AWS EC2
 
@@ -15,7 +15,6 @@ on:
     branches: [main]
   workflow_dispatch: {}
 
-# 배포가 겹쳐 서로의 업로드·재시작을 밟지 않게 한 번에 하나만 돌린다
 concurrency:
   group: deploy-aws
   cancel-in-progress: false
@@ -25,10 +24,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
+          cache: npm
 
       - name: 검사 (타입체크·린트·테스트) — 통과해야 배포한다
         run: |
@@ -38,25 +37,43 @@ jobs:
       - name: 빌드
         run: npm run build
 
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: 이 러너의 IP 를 SSH(22)에 임시 허용
+        run: |
+          RUNNER_IP="$(curl -s https://checkip.amazonaws.com)"
+          echo "RUNNER_IP=${RUNNER_IP}" >> "$GITHUB_ENV"
+          aws ec2 authorize-security-group-ingress \
+            --group-id "${{ secrets.AWS_SECURITY_GROUP_ID }}" \
+            --ip-permissions "IpProtocol=tcp,FromPort=22,ToPort=22,IpRanges=[{CidrIp=${RUNNER_IP}/32,Description=github-actions-eleven}]"
+
       - name: SSH 키 준비
         run: |
           mkdir -p ~/.ssh
-          printf '%s\n' "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/deploy_key
-          chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -H "${{ secrets.EC2_HOST }}" >> ~/.ssh/known_hosts
+          printf '%s\n' "${{ secrets.EC2_SSH_PRIVATE_KEY }}" > ~/.ssh/ci_key
+          chmod 600 ~/.ssh/ci_key
+          echo "${{ secrets.EC2_HOST_KEY }}" >> ~/.ssh/known_hosts
 
-      # 서버를 세운 채로 임시 폴더(upload)에 먼저 올린다. 업로드가 실패하면 서비스는 그대로 산다.
-      # (scp -r 는 대상 폴더가 이미 있으면 그 안에 dist/dist 로 중첩되므로, 항상 새 임시 폴더에 올린 뒤 교체한다)
-      - name: 산출물 업로드 (임시 폴더)
+      - name: 산출물 업로드
         run: |
-          H="${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}"
-          ssh -i ~/.ssh/deploy_key "$H" "rm -rf /opt/eleven/upload && mkdir -p /opt/eleven/upload/server /opt/eleven/upload/client"
-          scp -i ~/.ssh/deploy_key package.json package-lock.json "$H:/opt/eleven/upload/"
-          scp -i ~/.ssh/deploy_key server/package.json "$H:/opt/eleven/upload/server/package.json"
-          scp -i ~/.ssh/deploy_key client/package.json "$H:/opt/eleven/upload/client/package.json"
-          scp -i ~/.ssh/deploy_key -r server/dist "$H:/opt/eleven/upload/server/"
-          scp -i ~/.ssh/deploy_key -r client/dist "$H:/opt/eleven/upload/client/"
+          tar -c package.json package-lock.json server/package.json client/package.json server/dist client/dist \
+            | ssh -i ~/.ssh/ci_key ec2-user@${{ secrets.EC2_HOST }} \
+              "rm -rf ~/eleven/server/dist ~/eleven/client/dist && mkdir -p ~/eleven && tar -x -C ~/eleven"
 
-      - name: 교체 + 의존성 설치 + 재시작 + 헬스체크
+      - name: 의존성 설치 + 재시작 + 헬스체크
         run: |
-          ssh -i ~/.ssh/deploy_key "${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}" "set -e; cd /opt/eleven && sudo systemctl stop eleven && rm -rf server/dist client/dist && mv upload/server/dist server/dist && mv upload/client/dist client/dist && cp upload/package.json upload/package-lock.json . && cp upload/server/package.json server/package.json && cp upload/client/package.json client/package.json && rm -rf upload && npm ci --omit=dev && sudo systemctl restart eleven && sleep 2 && curl -sf http://localhost:3001/health"
+          ssh -i ~/.ssh/ci_key ec2-user@${{ secrets.EC2_HOST }} \
+            "set -e; cd ~/eleven && npm install --omit=dev --workspace server --no-audit --no-fund && sudo systemctl restart eleven && sleep 2 && curl -sf http://localhost:3001/health"
+
+      - name: 임시 SSH 허용 제거
+        if: always()
+        run: |
+          if [ -n "${RUNNER_IP:-}" ]; then
+            aws ec2 revoke-security-group-ingress \
+              --group-id "${{ secrets.AWS_SECURITY_GROUP_ID }}" \
+              --ip-permissions "IpProtocol=tcp,FromPort=22,ToPort=22,IpRanges=[{CidrIp=${RUNNER_IP}/32}]" || true
+          fi
