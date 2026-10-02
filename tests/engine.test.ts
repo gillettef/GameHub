@@ -67,8 +67,17 @@ describe('게임 엔진', () => {
     expect(t.round).toBe(s.round);
   });
 
+  /** 사람이 1라운드 선인 시드를 찾는다 (이때만 AI가 아직 아무 행동도 하지 않은 상태) */
+  const humanFirst = (aiCount: number) => {
+    for (let seed = 1; seed < 500; seed++) {
+      const s = newGame({ aiCount, seed });
+      if (s.startFirst === 0) return s;
+    }
+    throw new Error('사람이 선인 시드를 찾지 못함');
+  };
+
   it('시작 자금: 1라운드 순서가 늦을수록 seatBonus만큼 더 받는다', () => {
-    const s = newGame({ aiCount: 2, seed: 21 });
+    const s = humanFirst(2);
     const n = s.players.length;
     for (const p of s.players) {
       const pos = (p.id - s.startFirst + n) % n;
@@ -79,7 +88,7 @@ describe('게임 엔진', () => {
 
   it('시장 카드 수는 플레이어 수 + marketExtra', () => {
     for (const ai of [1, 2, 3]) {
-      const s = newGame({ aiCount: ai, seed: 4 });
+      const s = humanFirst(ai);
       expect(s.market.length).toBe(ai + 1 + CFG.marketExtra);
     }
   });
