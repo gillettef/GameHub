@@ -1,0 +1,10 @@
+{
+  "name": "스마일 파크",
+  "short_name": "스마일파크",
+  "start_url": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#1b1640",
+  "theme_color": "#1b1640",
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}

@@ -25,3 +25,11 @@
 2. commit 메시지는 가급적 한국어로 작성한다.
 3. 문서·답변·카드 텍스트는 한국어로 작성한다.
 4. 카드 수치를 바꾸면 영향(밸런스, 룰북 서술)을 함께 확인한다.
+
+## 개발 (`src/`)
+- 스택: TypeScript + Vite + React. `npm run dev`(웹 테스트, 모바일 뷰포트로 확인) / `npm run build` / `npm test` / `npm run sim`(AI 대전 밸런스 시뮬).
+- `src/game/` — UI 무관 순수 게임 로직(`engine.ts`의 `dispatch`/`newGame`, 카드 데이터 `data/`). 시설 데이터는 `python tools/gen_facilities.py`로 xlsx에서 생성.
+- `src/ui/` — 모바일 세로 우선 UI. `src/platform/` — 저장/햅틱 등 플랫폼 종속 코드(앱 포장 시 교체).
+- 이모지/시스템 이모티콘은 쓰지 않고 `src/ui/Icon.tsx`의 커스텀 SVG 아이콘만 쓴다.
+- 이미지 에셋: `public/images/<슬롯키>.webp`에 넣으면 자동 적용(없으면 플레이스홀더). 슬롯 정의는 `src/ui/assets.ts`, 목록/크기는 앱 주소 뒤 `#assets`.
+- 현재 구현 룰은 `docs/design-v0.md`(pptx의 빈 부분을 임시로 채운 것).
