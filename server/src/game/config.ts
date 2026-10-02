@@ -35,8 +35,12 @@ export const BALANCE = {
   ],
   // 3주차 구역(비밀의 방·마법생물·주문 대결·연구실)에서 처음 들어온 사람이 여는 카드 수 (집중이나 특정 카드로 달라질 수 있다)
   activityOpenCount: 2,
-  // 최종 점수 = 주문력 × 학점 + 마법생물 세트(하늘·육지·바다 1장씩) 수 × creatureSetScore (기획 검토 중: 3점 또는 5점)
+  // 최종 점수 = 주문력 × 학점 + 마법생물 세트(하늘·육지·바다 1장씩) 수 × creatureSetScore (기획 검토 중: 3점 또는 5점) + 졸업식 부문상 수 × graduationAwardScore (41절)
   creatureSetScore: 5,
+  // 졸업식 부문상: 게임이 끝날 때 지력(수석상)·체력(튼튼상)·매력(인기상)·주문력(마법상)이 가장 높은 플레이어가 하나당 이 점수를 받는다 (동점이면 공동 수상)
+  graduationAwardScore: 8,
+  // 부문상을 주는 능력치 (시험·실험 등 점수에 이미 직접 들어가는 주문력을 뺄 수 있다)
+  graduationAwardStats: ["intelligence", "stamina", "charm", "spellPower"] as StatKey[],
   // 판정 목표값 = 주사위 평균(3.5) × 그 달의 기준 주사위 수 × 난이도. 기준 주사위 수(마나기운 개수)는 rollBenchmarkStart에서 매달 rollBenchmarkPerRound씩 오른다
   // (주문력이 기준보다 앞서면 쉽고 뒤처지면 어렵다). 탐험·협력 탐험 카드는 카드마다 난이도가 정해져 있다
   rollBenchmarkStart: 2,

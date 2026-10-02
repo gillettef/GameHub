@@ -86,6 +86,8 @@ export interface PlayerGameState {
   pendingManaTokens: number;
   peekedExploration: PeekedExploration | null;
   tournamentTrack: number;
+  // 졸업식에서 받은 부문상 (게임이 끝날 때 정해진다)
+  awards: StatKey[];
   classCards: ClassCard[];
   creatures: CreatureCard[];
   equipment: LabCard[];
@@ -197,6 +199,9 @@ export interface PublicRules {
   tournamentRewards: number[];
   // 최종 점수 = 주문력 × 학점 + 마법생물 세트(하늘·육지·바다 1장씩) 수 × creatureSetScore
   creatureSetScore: number;
+  // 졸업식 부문상 하나당 점수, 그리고 부문상을 주는 능력치
+  graduationAwardScore: number;
+  graduationAwardStats: StatKey[];
   // 마법생물을 가져오는 데 드는 최소 마나기운 (이보다 적으면 마법생물 조련을 고를 수 없다)
 }
 
@@ -356,6 +361,13 @@ export function creatureSets(creatures: CreatureCard[]): number {
 }
 
 // 최종 점수: 마법 성취도(주문력 × 학점) + 마법생물 세트 점수
+// 졸업식 부문상 이름 (능력치별 1등에게 준다)
+export const AWARD_NAME: Record<StatKey, string> = { intelligence: "수석상", stamina: "튼튼상", charm: "인기상", spellPower: "마법상" };
+
 export function finalScore(game: Pick<GameState, "rules">, player: PlayerGameState): number {
-  return effectiveStat(player, "spellPower") * player.credit + creatureSets(player.creatures) * game.rules.creatureSetScore;
+  return (
+    effectiveStat(player, "spellPower") * player.credit +
+    creatureSets(player.creatures) * game.rules.creatureSetScore +
+    (player.awards?.length ?? 0) * game.rules.graduationAwardScore
+  );
 }

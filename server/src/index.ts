@@ -203,6 +203,8 @@ const PUBLIC_RULES: PublicRules = {
   finalRevealRound: BALANCE.finalRevealRound,
   tournamentRewards: BALANCE.tournamentRewards,
   creatureSetScore: BALANCE.creatureSetScore,
+  graduationAwardScore: BALANCE.graduationAwardScore,
+  graduationAwardStats: BALANCE.graduationAwardStats,
   statDecay: BALANCE.statDecay,
 };
 

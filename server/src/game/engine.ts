@@ -280,6 +280,7 @@ function createPlayer(id: string, name: string, isBot = false): PlayerGameState 
     pendingManaTokens: 0,
     peekedExploration: null,
     tournamentTrack: 0,
+    awards: [],
     classCards: [],
     creatures: [],
     equipment: [],
@@ -1378,12 +1379,30 @@ function applyTournamentFinalRewards(state: GameState): void {
 }
 
 // 최종 점수: 마법 성취도(주문력 × 학점) + 마법생물 세트(하늘·육지·바다 1장씩) 점수
+// 졸업식 부문상 (41절): 능력치별로 가장 높은 플레이어(동점이면 공동)가 받는다. 값이 0이면 받지 않는다
+export const AWARD_NAME: Record<StatKey, string> = { intelligence: "수석상", stamina: "튼튼상", charm: "인기상", spellPower: "마법상" };
+export function awardWinnersOf(players: PlayerGameState[]): Record<StatKey, string[]> {
+  const result = { intelligence: [], stamina: [], charm: [], spellPower: [] } as Record<StatKey, string[]>;
+  for (const stat of BALANCE.graduationAwardStats) {
+    const top = Math.max(0, ...players.map((p) => effectiveStat(p, stat)));
+    if (top > 0) result[stat] = players.filter((p) => effectiveStat(p, stat) === top).map((p) => p.id);
+  }
+  return result;
+}
+
+// 최종 점수: 마법 성취도(주문력 × 학점) + 마법생물 세트(하늘·육지·바다 1장씩) 점수 + 졸업식 부문상 점수 (부문상은 게임이 끝날 때 정해진다)
 export function finalScore(player: PlayerGameState): number {
-  return effectiveStat(player, "spellPower") * player.credit + creatureSets(player.creatures) * BALANCE.creatureSetScore;
+  return effectiveStat(player, "spellPower") * player.credit + creatureSets(player.creatures) * BALANCE.creatureSetScore + player.awards.length * BALANCE.graduationAwardScore;
 }
 
 function finalizeGame(state: GameState): void {
   state.phase = "ended";
+  // 졸업식: 능력치 부문별 1등에게 부문상을 준다 (점수에 반영)
+  const winners = awardWinnersOf(state.turnOrder.map((id) => state.players[id]));
+  for (const id of state.turnOrder) state.players[id].awards = (Object.keys(winners) as StatKey[]).filter((stat) => winners[stat].includes(id));
+  for (const stat of Object.keys(winners) as StatKey[]) {
+    if (winners[stat].length > 0) log(state, `졸업식 ${AWARD_NAME[stat]}(${STAT_NAME[stat]} 1등): ${winners[stat].map((id) => state.players[id].name).join(", ")} +${BALANCE.graduationAwardScore}점`);
+  }
   const achievements = state.turnOrder.map((id) => ({
     playerId: id,
     achievement: finalScore(state.players[id]),
@@ -1391,7 +1410,7 @@ function finalizeGame(state: GameState): void {
   // 최종 점수 동점이면 공동 승리
   const best = Math.max(...achievements.map((a) => a.achievement));
   state.winnerIds = achievements.filter((a) => a.achievement === best).map((a) => a.playerId);
-  log(state, "게임 종료: 최종 점수(주문력 × 학점 + 마법생물 세트 점수) 최고 플레이어 승리");
+  log(state, "게임 종료: 최종 점수(주문력 × 학점 + 마법생물 세트 점수 + 졸업식 부문상 점수) 최고 플레이어 승리");
 }
 
 // ── 게임 도중 플레이어 제거 (방장이 내보냈을 때) ──
