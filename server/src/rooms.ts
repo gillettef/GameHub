@@ -8,14 +8,11 @@ export interface Player {
   // 봇은 소켓이 없고, 서버가 대신 행동한다
   socket?: WebSocket;
   bot?: BotStrategy;
-  // 접속이 끊긴 사람을 기다리는 유예 타이머 (그 안에 돌아오면 같은 자리로 복귀)
+  // 접속이 끊긴 뒤 도는 타이머: 대기실·끝난 게임에서는 자리 정리용, 게임 중에는 (방장이면) 방장 이양용.
+  // 게임 중에는 접속이 끊겨도 자리가 무기한 유지되고, 돌아오면 같은 자리로 복귀한다 (기획_정리.md 37절)
   graceTimer?: ReturnType<typeof setTimeout>;
-  // 접속이 끊겨 봇이 대신 맡게 된 사람 (돌아오면 다시 사람에게 돌려준다)
-  wasHuman?: boolean;
-  // 방장이 내보냈거나 스스로 나가서 봇이 영구히 이어받은 자리 (다시 하기 때 방에서 뺀다)
+  // 스스로 나가서 봇이 영구히 이어받은 자리 (돌아올 수 없고, 다시 하기 때 방에서 뺀다)
   left?: boolean;
-  // 제한 시간 안에 행동하지 못한 연속 횟수 (직접 행동하면 0으로 돌아간다)
-  strikes?: number;
   // 이모지를 마지막으로 보낸 시각 (도배 방지)
   lastEmojiAt?: number;
 }
@@ -28,15 +25,9 @@ export interface Room {
   botTimer?: ReturnType<typeof setTimeout>;
   // 게임 종료 후 방을 자동 삭제하기 위한 타이머
   expireTimer?: ReturnType<typeof setTimeout>;
-  // 한 번 행동하는 데 주어지는 시간(초), 0이면 제한 없음 (방장이 대기실에서 정한다)
-  turnSeconds: number;
-  // 지금 행동을 기다리는 사람들의 마감 시각 (fp: 어떤 상황에서 기다리는지, 상황이 바뀌면 마감도 새로 시작)
-  waits: Map<string, { fp: string; deadline: number }>;
-  turnTimer?: ReturnType<typeof setTimeout>;
+  // 접속 중인 사람이 한 명도 없을 때 방을 지우기 위한 타이머
+  emptyTimer?: ReturnType<typeof setTimeout>;
 }
-
-export const DEFAULT_TURN_SECONDS = 90;
-export const TURN_SECONDS_OPTIONS = [0, 45, 90, 180];
 
 const rooms = new Map<string, Room>();
 
@@ -51,7 +42,7 @@ function generateRoomCode(): string {
 
 export function createRoom(host: Player): Room {
   const code = generateRoomCode();
-  const room: Room = { code, hostId: host.id, players: new Map([[host.id, host]]), turnSeconds: DEFAULT_TURN_SECONDS, waits: new Map() };
+  const room: Room = { code, hostId: host.id, players: new Map([[host.id, host]]) };
   rooms.set(code, room);
   return room;
 }
@@ -77,7 +68,7 @@ export function leaveRoomIfNoHumans(room: Room): boolean {
 export function deleteRoom(room: Room): void {
   if (room.botTimer) clearTimeout(room.botTimer);
   if (room.expireTimer) clearTimeout(room.expireTimer);
-  if (room.turnTimer) clearTimeout(room.turnTimer);
+  if (room.emptyTimer) clearTimeout(room.emptyTimer);
   for (const p of room.players.values()) if (p.graceTimer) clearTimeout(p.graceTimer);
   rooms.delete(room.code);
 }
@@ -89,6 +80,30 @@ export function scheduleRoomExpiry(room: Room, ttlMs = ENDED_ROOM_TTL_MS): void 
   room.expireTimer = setTimeout(() => deleteRoom(room), ttlMs);
 }
 
+// 전원이 끊긴 채 이 시간이 지나면 방(진행 중인 게임 포함)을 지운다. 한 명이라도 연결돼 있으면 방은 유지된다
+export const ALL_AWAY_ROOM_TTL_MS = 30 * 60 * 1000;
+// 게임 중 방장이 끊긴 채 이 시간이 지나면 접속 중인 사람에게 방장을 넘긴다
+export const HOST_AWAY_HANDOVER_MS = 30 * 1000;
+
+// 접속 중인 사람(소켓이 있는 사람)이 있는가
+export const hasConnectedHuman = (room: Room): boolean => [...room.players.values()].some((p) => !p.bot && p.socket);
+
+// 접속 상태가 바뀔 때마다 호출: 전원이 끊겼으면 정리 타이머를 걸고, 누군가 연결돼 있으면 풀어 준다
+export function syncEmptyRoomExpiry(room: Room, ttlMs = ALL_AWAY_ROOM_TTL_MS): void {
+  if (hasConnectedHuman(room)) {
+    if (room.emptyTimer) clearTimeout(room.emptyTimer);
+    room.emptyTimer = undefined;
+  } else if (!room.emptyTimer) {
+    room.emptyTimer = setTimeout(() => deleteRoom(room), ttlMs);
+  }
+}
+
+// 새 방장 후보: 접속 중인 사람 우선, 없으면 사람 중 첫 번째 (사람이 없으면 undefined)
+export function pickHost(room: Room, excludeId?: string): Player | undefined {
+  const humans = [...room.players.values()].filter((p) => !p.bot && p.id !== excludeId);
+  return humans.find((p) => p.socket) ?? humans[0];
+}
+
 export function leaveRoom(code: string, playerId: string): void {
   const room = getRoom(code);
   if (!room) return;
@@ -96,9 +111,9 @@ export function leaveRoom(code: string, playerId: string): void {
   if (leaving?.graceTimer) clearTimeout(leaving.graceTimer);
   room.players.delete(playerId);
   if (leaveRoomIfNoHumans(room)) return;
-  // 방장이 나가면 남은 사람 중 첫 번째가 방장을 이어받는다
+  // 방장이 나가면 남은 사람 중 접속 중인 첫 번째가 방장을 이어받는다
   if (room.hostId === playerId) {
-    room.hostId = [...room.players.values()].find((p) => !p.bot)!.id;
+    room.hostId = pickHost(room)!.id;
   }
 }
 

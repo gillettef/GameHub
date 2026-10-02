@@ -5,7 +5,6 @@ import { BALANCE } from "./config.js";
 import {
   availableActivities,
   canPay,
-  creatureTokenCaps,
   duelTargets,
   explorationChance,
   rerollDice,
@@ -152,14 +151,32 @@ function explorationValue(state: GameState, strategy: BotStrategy, player: Playe
   return p * success + (1 - p) * failure;
 }
 
-// 결과 확인 전에 낮게 나온 주사위(1~2)를 지력토큰이 허락하는 만큼 다시 굴린다 (선 정하기는 제외)
+// 결과 확인 전에 남은 마나토큰으로 낮게 나온 주사위를 다시 굴린다 (선 정하기는 제외). 목표값이 있는 혼자 판정(조련·연구실·탐험)은
+// 합이 모자랄 때만 가장 낮은 주사위부터 한 개씩 다시 굴리고(3 이하만), 그 밖의 굴림은 1~2가 나온 주사위를 다시 굴린다
 export function rerollLowDice(state: GameState, playerId: string): void {
   const pending = state.pendingRoll;
   const entry = pending?.entries.find((e) => e.playerId === playerId);
   if (!pending || pending.kind === "first" || !entry?.dice) return;
   const p = state.players[playerId];
+  const ctx = state.hidden.roll;
+  const sum = (xs: number[]) => xs.reduce((a, b) => a + b, 0);
+  let need: number | null = null;
+  if (ctx?.kind === "creature" || ctx?.kind === "lab") need = ctx.target;
+  else if (ctx?.kind === "exploration" && ctx.mode === "single") need = ctx.target - (growthGap(state, playerId) >= BALANCE.catchUpGap ? BALANCE.catchUpBonus : 0);
+  if (need !== null) {
+    while (p.manaTokens > 0 && sum(entry.dice) < need) {
+      const lowest = entry.dice.indexOf(Math.min(...entry.dice));
+      if (entry.dice[lowest] > 3) return;
+      try {
+        rerollDice(state, playerId, [lowest]);
+      } catch {
+        return;
+      }
+    }
+    return;
+  }
   const low = entry.dice.map((d, i) => ({ d, i })).filter((x) => x.d <= 2).map((x) => x.i);
-  for (let n = Math.min(low.length, p.intelligenceTokens); n > 0; n--) {
+  for (let n = Math.min(low.length, p.manaTokens); n > 0; n--) {
     try {
       rerollDice(state, playerId, low.slice(0, n));
       return;
@@ -190,7 +207,6 @@ export function choosePick(state: GameState, strategy: BotStrategy): string | nu
   const player = state.players[pick.playerId];
   const cards = state.hidden.offers[pick.activityId] ?? [];
   const afford = (card: (typeof cards)[number]): boolean => {
-    if (pick.activityId === "creature") return creatureTokenCaps(player, card as CreatureCard).length > 0;
     if (pick.activityId === "lab") return canPay(player, 0, (card as LabCard).cost);
     return true;
   };

@@ -12,7 +12,7 @@
 //   생명력 N 회복/감소 → 체력토큰. prep이면 그 달 즉시 +N, 그 외에는 다음 달 준비 때 +N/-N (stamina / enemyStamina)
 import type { CreatureAbility, CreatureCard, CreatureElement } from "./types.js";
 
-// trainTarget: 조련 기준 수치 (낸 토큰만큼 굴린 주사위 합이 이 값 이상이면 조련 성공). 생물마다 고정이며 카드별로 직접 조정한다 (원본 xlsx의 "요구 주문력" × 4를 초안으로 사용)
+// trainTarget: 조련 기준 수치 (낸 마나토큰만큼 굴린 주사위 합이 이 값 × BALANCE.trainTargetScale 이상이면 조련 성공). 생물마다 고정이며 카드별로 직접 조정한다 (원본 xlsx의 "요구 주문력" × 4를 초안으로 사용)
 type Def = [
   name: string,
   element: CreatureElement,

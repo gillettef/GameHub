@@ -47,8 +47,19 @@ export function LeaveConfirm({ inGame, onCancel, onLeave }: { inGame: boolean; o
   );
 }
 
-// 방장이 친구를 내보낼 때 한 번 더 묻는 창. 게임 중에는 봇이 이어받고 돌아올 수 없다는 것을 알려 준다
+// 내보내기 확인 창이 떠 있는 동안에는 뒤로가기가 이 창만 닫도록, 다른 뒤로가기 가드(나가기 확인)가 물러서게 하는 표시
+let openKickConfirms = 0;
+export const isKickConfirmOpen = (): boolean => openKickConfirms > 0;
+
+// 방장이 친구를 내보낼 때 한 번 더 묻는 창. 게임 중에는 그 친구가 게임에서 완전히 빠지고 돌아올 수 없다는 것을 알려 준다
 export function KickConfirm({ name, inGame, onCancel, onKick }: { name: string; inGame: boolean; onCancel: () => void; onKick: () => void }) {
+  useEffect(() => {
+    openKickConfirms += 1;
+    return () => {
+      openKickConfirms -= 1;
+    };
+  }, []);
+  useBackGuard(onCancel);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onCancel();
     window.addEventListener("keydown", onKey);
@@ -68,7 +79,7 @@ export function KickConfirm({ name, inGame, onCancel, onKick }: { name: string; 
           <Icon name="door" className="mb-1 h-8 w-8 text-pink-400" />
           <p className="font-display text-lg text-purple-700">{name}님을 내보낼까요?</p>
           <p className="mt-1 text-sm text-purple-600">
-            {inGame ? "내보내면 봇이 대신 플레이하고, 이 게임에는 다시 돌아올 수 없어요." : "방에서 내보내요. 방 코드로 다시 들어올 수는 있어요."}
+            {inGame ? "내보내면 이 게임에서 완전히 빠지고, 남은 친구들끼리 계속해요. 다시 돌아올 수 없어요." : "방에서 내보내요. 방 코드로 다시 들어올 수는 있어요."}
           </p>
           <div className="mt-4 flex flex-col gap-2">
             <button className="min-h-12 rounded-2xl bg-purple-500 font-semibold text-white active:scale-95 transition-transform" onClick={onCancel} autoFocus>
@@ -126,11 +137,8 @@ export function GameMenu({
   const [confirming, setConfirming] = useState(false);
   const [kickTarget, setKickTarget] = useState<{ id: string; name: string } | null>(null);
   useBackGuard(() => {
-    // 내보내기 확인 창이 떠 있으면 그것부터 닫는다
-    if (kickTarget) {
-      setKickTarget(null);
-      return;
-    }
+    // 내보내기 확인 창이 떠 있으면 그 창이 스스로 닫힌다
+    if (isKickConfirmOpen()) return;
     setSheet(false);
     setConfirming(true);
   });
@@ -166,7 +174,7 @@ export function GameMenu({
             </button>
             {kickable.length > 0 && onKick && (
               <div className="mt-2 flex flex-col gap-1 rounded-2xl bg-purple-50 p-2">
-                <p className="px-2 pb-1 text-xs text-purple-500">방장 메뉴 · 자리를 오래 비운 친구는 내보내면 봇이 이어받아요</p>
+                <p className="px-2 pb-1 text-xs text-purple-500">방장 메뉴 · 내보내면 그 친구는 게임에서 빠지고 남은 친구들끼리 계속해요</p>
                 {kickable.map((p) => (
                   <button
                     key={p.id}

@@ -1,6 +1,7 @@
 // 규칙 단위 검증: 엔진 규칙(게임 시작 선 정하기, 선부터 시계방향 진행과 매달 선 교체, 정규수업 공개 시장, 매력토큰 참가비,
 // 자율활동의 "모두 고르기 → 순서대로 하나씩 진행", 구역의 공개 카드 2장·2인 제한·추가 비용, 주문 대결(주문력만큼 주사위·무승부)과 마도서 선택,
-// 협력 탐험, 주사위 결과 확인 단계, 토너먼트(주문력만큼 주사위·상한 폐지), 시험 카드, 동점 공동 순위, 최종 점수)가 기획대로 동작하는지 서버 없이 확인합니다. (사용법: npm run check)
+// 협력 탐험, 주사위 결과 확인 단계, 마나토큰 주사위 통일(굴리기 전 개수 선택·마나토큰 다시 굴리기·공짜 1개), 지력토큰 카드 열기 비용, 능력치 감쇠,
+// 토너먼트(상한 폐지), 시험 카드(주사위 + 능력치 보너스), 동점 공동 순위, 최종 점수)가 기획대로 동작하는지 서버 없이 확인합니다. (사용법: npm run check)
 import assert from "node:assert/strict";
 import { BOT_PERSONALITIES, chooseActivityAction, choosePick, playClassTurn } from "../src/game/bot.js";
 import { CREATURE_CARDS } from "../src/game/creatures.js";
@@ -15,11 +16,15 @@ import {
   confirmRoll,
   createGame,
   creatureSets,
-  creatureTokenCaps,
-  creatureTokenTypes,
+  creatureTarget,
+  diceSuccessChance,
+  statDecayOf,
+  suggestDiceCount,
   finalScore,
   nextStarterIndex,
   rerollDice,
+  removePlayerFromGame,
+  autoKeepChoice,
   rollRevealed,
   selectActivity,
   submitRoll,
@@ -31,19 +36,6 @@ import { effectiveStat, type ExplorationCard, type GameState, type GrimoireCard,
 import { BALANCE } from "../src/game/config.js";
 import { createClassDeck } from "../src/game/classCards.js";
 import { rollAndConfirm } from "./_drive.js";
-
-// 지력토큰 카드 공개 비용 장치는 남아 있으므로(현재 config는 빈 배열), 비용 규칙을 켜서 검증할 때 쓴다
-function withOpenCost(fn: () => void): () => void {
-  return () => {
-    const saved = BALANCE.openCardCostActivities;
-    BALANCE.openCardCostActivities = ["duel", "lab"];
-    try {
-      fn();
-    } finally {
-      BALANCE.openCardCostActivities = saved;
-    }
-  };
-}
 
 let passed = 0;
 function test(name: string, fn: () => void) {
@@ -303,7 +295,6 @@ test("자율활동: 먼저 모두 고르고(선택은 모두에게 공개), 모�
   setTokens(state, 3, 1);
   const [a, b, c] = state.activityOrder;
   state.creatureDeck.push(creature("대지의 수호자"), creature("정령 고릴라"));
-  state.players[c].staminaTokens = 0; // 열린 카드가 모두 체력토큰이 필요한 육지 동물이라 가져갈 수 있는 카드가 없다
   const before = Object.fromEntries(state.turnOrder.map((id) => [id, state.players[id].tournamentTrack]));
   selectActivity(state, a, "tournament");
   assert.equal(state.activityStage, "choose");
@@ -329,56 +320,49 @@ test("자율활동: 먼저 모두 고르고(선택은 모두에게 공개), 모�
   rollAll(state);
   assert.ok(state.players[b].tournamentTrack > before[b]);
   advanceResolution(state);
+  assert.equal(state.pendingPick?.playerId, c, "카드를 고르거나 넘어갈 때까지 진행이 끝나지 않는다");
+  chooseActivityCard(state, c, null);
   assert.equal(state.activityResults.length, 3);
 });
 
-test("카드를 여는 구역 중 연구실·주문 대결은 지력토큰이 필요하다. 마법생물 조련·비밀의 방은 들지 않는다", withOpenCost(() => {
+test("카드를 여는 구역(마법생물·주문 대결·비밀의 방·연구실)은 지력토큰이 필요하고, 마법 토너먼트는 필요 없다", () => {
+  assert.deepEqual([...BALANCE.openCardCostActivities].sort(), ["creature", "duel", "exploration", "lab"]);
+  assert.equal(BALANCE.openCardCost, 1);
   const state = newGame(3);
   toActivity(state, 0);
   setTokens(state, 0);
   const [a] = state.activityOrder;
   const avail = availableActivities(state, a);
-  assert.ok(avail.includes("tournament") && avail.includes("creature") && avail.includes("exploration"), "지력토큰이 없어도 고를 수 있다");
-  assert.ok(!avail.includes("lab") && !avail.includes("duel"));
-  assert.throws(() => selectActivity(state, a, "lab"), /지력토큰/);
+  assert.deepEqual(avail, ["tournament"], "지력토큰이 없으면 카드를 여는 구역은 고를 수 없다");
+  for (const zone of ["lab", "duel", "creature", "exploration"] as const) assert.throws(() => selectActivity(state, a, zone, zone === "duel" ? state.activityOrder[1] : undefined), /지력토큰/);
   state.players[a].intelligenceTokens = 1;
+  assert.equal(availableActivities(state, a).length, 5);
   selectActivity(state, a, "lab");
   assert.equal(state.players[a].intelligenceTokens, 0);
-}));
+});
 
-test("조련에 낼 지력·체력·매력토큰이 하나도 없으면 마법생물 조련을 고를 수 없다", () => {
-  const state = newGame(3);
+test("지력토큰이 있어도 매력·체력·마나토큰으로는 카드를 열 수 없다 (토큰은 서로 바꿀 수 없다)", () => {
+  const state = newGame(2);
   toActivity(state, 0);
-  setTokens(state, 0, 0);
+  setTokens(state, 99, 99);
+  state.players[state.activityOrder[0]].manaTokens = 99;
   const [a] = state.activityOrder;
+  assert.ok(!availableActivities(state, a).includes("lab"));
   assert.ok(!availableActivities(state, a).includes("creature"));
-  assert.throws(() => selectActivity(state, a, "creature"), /토큰/);
-  state.players[a].charmTokens = 1;
-  assert.ok(availableActivities(state, a).includes("creature"));
 });
 
-test("기본 설정에서는 어떤 구역도 카드를 열 때 지력토큰이 들지 않는다", () => {
-  assert.deepEqual(BALANCE.openCardCostActivities, []);
+test("마나토큰이 없어도 마법생물 조련·비밀의 방·연구실은 고를 수 있다 (공짜 주사위 1개). 토너먼트·주문 대결은 마나토큰이 필요하다", () => {
   const state = newGame(3);
-  toActivity(state, 0);
-  setTokens(state, 3);
+  toActivity(state);
+  setTokens(state, 0);
   const [a] = state.activityOrder;
+  state.players[a].manaTokens = 0;
   const avail = availableActivities(state, a);
-  assert.ok(avail.includes("lab") && avail.includes("duel") && avail.includes("creature") && avail.includes("exploration"));
+  assert.ok(avail.includes("creature") && avail.includes("exploration") && avail.includes("lab"));
+  assert.ok(!avail.includes("tournament") && !avail.includes("duel"));
 });
 
-test("마법생물 조련·비밀의 방은 카드를 열어도 지력토큰이 들지 않는다", () => {
-  const state = newGame(3);
-  toActivity(state, 2);
-  setTokens(state, 3);
-  const [a, b] = state.activityOrder;
-  selectActivity(state, a, "creature");
-  selectActivity(state, b, "exploration");
-  assert.equal(state.players[a].intelligenceTokens, 2);
-  assert.equal(state.players[b].intelligenceTokens, 2);
-});
-
-test("구역에 처음 고른 사람이 지력토큰 1개를 내고 카드 2장을 연다. 두 번째 참가자는 지력토큰을 내지 않는다", withOpenCost(() => {
+test("구역에 처음 고른 사람이 지력토큰 1개를 내고 카드 2장을 연다. 두 번째 참가자는 지력토큰을 내지 않는다", () => {
   const state = newGame(3);
   toActivity(state);
   setTokens(state, 3);
@@ -391,14 +375,29 @@ test("구역에 처음 고른 사람이 지력토큰 1개를 내고 카드 2장�
   finishChoosing(state);
   advanceResolution(state);
   assert.equal(state.activityOffers.lab?.cards.length, 2, "공개된 카드는 모두가 볼 수 있다");
-}));
+});
 
-test("마법생물 조련: 먼저 온 사람이 원하는 카드를 가져가고, 속성·종류가 정한 토큰을 종류별로 원하는 만큼 내 주사위를 굴린다. 남는 카드는 두 번째 참가자가 고른다", () => {
+test("마법생물 조련·비밀의 방도 처음 온 사람만 지력토큰 1개를 내고, 두 번째 참가자는 내지 않는다", () => {
+  const state = newGame(3);
+  toActivity(state, 2);
+  setTokens(state, 3);
+  const [a, b, c] = state.activityOrder;
+  selectActivity(state, a, "creature");
+  selectActivity(state, b, "creature");
+  selectActivity(state, c, "exploration");
+  assert.equal(state.players[a].intelligenceTokens, 1);
+  assert.equal(state.players[b].intelligenceTokens, 2, "두 번째 참가자는 면제");
+  assert.equal(state.players[c].intelligenceTokens, 1);
+});
+
+test("마법생물 조련: 먼저 온 사람이 원하는 카드를 가져가고, 마나토큰을 1~보유 개수 사이에서 골라 낸 만큼 주사위를 굴린다. 남는 카드는 두 번째 참가자가 고른다", () => {
   const state = newGame(3);
   toActivity(state);
   setTokens(state, 2);
   const [a, b] = state.activityOrder;
-  state.creatureDeck.push(creature("하늘의 신비"), creature("하늘의 꽃마녀")); // 하늘·식물 = 지력·매력토큰 (기준 수치 20 / 8)
+  state.creatureDeck.push(creature("하늘의 신비"), creature("하늘의 꽃마녀")); // 기준 수치 20 / 8 (× trainTargetScale)
+  Object.assign(state.players[a], { manaTokens: 5 });
+  Object.assign(state.players[b], { manaTokens: 9 });
   selectActivity(state, a, "creature");
   selectActivity(state, b, "creature"); // 두 번째 참가자는 매력토큰 1개를 낸다
   finishChoosing(state);
@@ -408,13 +407,12 @@ test("마법생물 조련: 먼저 온 사람이 원하는 카드를 가져가고
   assert.throws(() => chooseActivityCard(state, b, "test-하늘의 꽃마녀"), /고를 수 없습니다/);
   chooseActivityCard(state, a, "test-하늘의 꽃마녀");
   assert.equal(state.pendingRoll?.kind, "creature");
-  assert.deepEqual(state.pendingRoll?.entries[0].diceChoices, [{ stat: "intelligence", max: 5 }, { stat: "charm", max: 3 }], "가진 지력·매력토큰 전부까지 낼 수 있다");
-  assert.equal(state.players[a].intelligenceTokens, 5, "굴리기 전에는 토큰을 내지 않는다");
-  assert.throws(() => submitRoll(state, a, undefined, { intelligence: 6 }), /지력토큰을 0~5개/);
-  assert.throws(() => submitRoll(state, a, undefined, { intelligence: 0, charm: 0 }), /1개 이상/);
-  submitRoll(state, a, undefined, { intelligence: 2, charm: 0 });
-  assert.equal(state.players[a].intelligenceTokens, 3, "고른 만큼 지력토큰을 낸다");
-  assert.equal(state.players[a].charmTokens, 3, "안 낸 매력토큰은 그대로");
+  assert.equal(state.pendingRoll?.entries[0].diceChoiceMax, 5, "가진 마나토큰 전부까지 낼 수 있다");
+  assert.equal(state.players[a].manaTokens, 5, "굴리기 전에는 토큰을 내지 않는다");
+  assert.throws(() => submitRoll(state, a, 6), /마나토큰을 1~5개/);
+  assert.throws(() => submitRoll(state, a, 0), /마나토큰을 1~5개/);
+  submitRoll(state, a, 2);
+  assert.equal(state.players[a].manaTokens, 3, "고른 만큼 마나토큰을 낸다");
   assert.equal(state.pendingRoll?.entries[0].diceCount, 2, "낸 토큰 개수만큼 주사위를 굴린다");
   assert.equal(state.players[a].creatures.length, 0, "주사위를 굴려 성공해야 조련된다");
   rollWith(state, { [a]: [6, 6] });
@@ -424,58 +422,57 @@ test("마법생물 조련: 먼저 온 사람이 원하는 카드를 가져가고
   advanceResolution(state);
   assert.equal(state.pendingPick?.playerId, b, "카드가 한 장 남았어도 두 번째 참가자가 직접 고른다");
   chooseActivityCard(state, b, "test-하늘의 신비");
-  assert.equal(state.pendingRoll?.entries[0].diceCount, 7, "지력 5 + 매력 2(참가비 1개를 낸 뒤) = 최대 주사위 7개 (기본값은 최대)");
-  rollWith(state, { [b]: [6, 6, 6, 6, 6, 6, 6] });
+  assert.ok(state.pendingRoll?.entries[0].diceCount! <= 9, "기본 개수는 가진 마나토큰 안에서 정해진다");
+  submitRoll(state, b, 9);
+  rollWith(state, { [b]: [6, 6, 6, 6, 6, 6, 6, 6, 6] });
   assert.deepEqual(state.players[b].creatures.map((c) => c.name), ["하늘의 신비"]);
-  assert.equal(state.players[b].intelligenceTokens, 0);
-  assert.equal(state.players[b].charmTokens, 0, "참가비 1개 + 조련에 2개를 냈다");
+  assert.equal(state.players[b].manaTokens, 0);
   assert.equal(state.activityOffers.creature?.cards.length, 0);
 });
 
-test("마법생물 조련: 필요한 종류의 토큰이 없으면 카드를 가져가지 못하고, 남은 카드는 두 번째 참가자가 고른다", () => {
+test("마법생물 조련: 마나토큰이 없어도 카드를 골라 공짜 주사위 1개로 도전할 수 있다 (속성·종류는 토큰과 무관)", () => {
   const state = newGame(3);
   toActivity(state);
-  setTokens(state, 0, 0);
-  const [a, b] = state.activityOrder;
-  state.creatureDeck.push(creature("대지의 수호자"), creature("정령 고릴라")); // 육지·동물 = 체력토큰만 (기준 수치 12 / 8)
-  Object.assign(state.players[b], { charmTokens: 1, staminaTokens: 2 });
+  setTokens(state, 0, 1);
+  const [a] = state.activityOrder;
+  state.players[a].manaTokens = 0;
+  state.creatureDeck.push(creature("대지의 수호자"), creature("정령 고릴라")); // 육지·동물 (기준 12 / 8)
   selectActivity(state, a, "creature");
-  selectActivity(state, b, "creature"); // 참가비로 매력토큰 1개
   finishChoosing(state);
   advanceResolution(state);
-  assert.equal(state.pendingPick, null, "체력토큰이 없어 가져올 수 있는 카드가 없으면 고를 것도 없다");
-  assert.equal(state.players[a].creatures.length, 0);
-  assert.equal(state.activityResolvePointer, 1);
-  advanceResolution(state);
-  assert.equal(state.pendingPick?.playerId, b, "두 장이 그대로 남아 있으니 두 번째 참가자가 고른다");
-  chooseActivityCard(state, b, "test-대지의 수호자");
-  assert.deepEqual(state.pendingRoll?.entries[0].diceChoices, [{ stat: "stamina", max: 2 }], "체력토큰은 가진 2개까지");
-  rollWith(state, { [b]: [6, 6] });
-  assert.equal(state.players[b].creatures[0].name, "대지의 수호자");
+  assert.equal(state.pendingPick?.playerId, a, "체력·매력토큰이 없어도 카드를 가져올 수 있다");
+  chooseActivityCard(state, a, "test-정령 고릴라");
+  assert.equal(state.pendingRoll?.entries[0].diceCount, 1);
+  assert.equal(state.pendingRoll?.entries[0].diceChoiceMax, undefined, "토큰을 낼 선택은 없다");
+  rollWith(state, { [a]: [1] });
+  assert.equal(state.players[a].creatures.length, 0, "기준 수치에 못 미치면 실패");
 });
 
-test("마법생물 조련: 낸 토큰만큼 굴린 주사위 합이 생물마다 고정된 기준 수치 이상이어야 성공하고, 실패하면 토큰만 잃고 카드는 구역에 돌아간다", () => {
+test("마법생물 조련: 낸 마나토큰만큼 굴린 주사위 합이 생물마다 고정된 기준 수치 이상이어야 성공하고, 실패하면 토큰만 잃고 카드는 구역에 돌아간다", () => {
   const state = newGame(3);
   toActivity(state);
   setTokens(state, 2);
   const [a, b] = state.activityOrder;
-  state.creatureDeck.push(creature("하늘의 신비"), creature("하늘의 꽃마녀")); // 기준 20 / 8
+  state.creatureDeck.push(creature("하늘의 신비"), creature("하늘의 꽃마녀"));
+  const target = creatureTarget(creature("하늘의 꽃마녀"));
+  Object.assign(state.players[a], { manaTokens: 4 });
+  Object.assign(state.players[b], { manaTokens: 4 });
   selectActivity(state, a, "creature");
   selectActivity(state, b, "creature");
   finishChoosing(state);
   advanceResolution(state);
   chooseActivityCard(state, a, "test-하늘의 꽃마녀");
-  submitRoll(state, a, undefined, { intelligence: 1, charm: 0 });
-  rollWith(state, { [a]: [6] }); // 6 < 8: 실패
+  submitRoll(state, a, 1);
+  rollWith(state, { [a]: [Math.max(1, target - 1)] }); // 기준보다 1 모자라 실패
   assert.equal(state.players[a].creatures.length, 0);
-  assert.equal(state.players[a].intelligenceTokens, 4, "실패해도 낸 토큰은 돌려받지 못한다");
+  assert.equal(state.players[a].manaTokens, 3, "실패해도 낸 토큰은 돌려받지 못한다");
   assert.ok(state.log.some((l) => l.message.includes("조련 실패")));
   assert.equal(state.activityOffers.creature?.cards.length, 2, "실패한 카드는 구역으로 돌아간다");
   advanceResolution(state);
   assert.equal(state.pendingPick?.playerId, b, "두 번째 참가자가 돌아온 카드에 도전할 수 있다");
   chooseActivityCard(state, b, "test-하늘의 꽃마녀");
-  submitRoll(state, b, undefined, { intelligence: 2, charm: 0 });
-  rollWith(state, { [b]: [4, 4] }); // 8 ≥ 8: 성공 (기준과 같아도 성공)
+  submitRoll(state, b, 2);
+  rollWith(state, { [b]: [Math.ceil(target / 2), Math.floor(target / 2)] }); // 합이 기준과 같아도 성공
   assert.deepEqual(state.players[b].creatures.map((c) => c.name), ["하늘의 꽃마녀"]);
 });
 
@@ -484,8 +481,8 @@ test("연구실 실험: 카드 2장을 열어 원하는 카드를 체력토큰�
   toActivity(state);
   setTokens(state, 2);
   const [a, b] = state.activityOrder;
-  Object.assign(state.players[a], { intelligenceTokens: 3 });
-  Object.assign(state.players[b], { intelligenceTokens: 2 });
+  Object.assign(state.players[a], { manaTokens: 3 });
+  Object.assign(state.players[b], { manaTokens: 2 });
   state.labPile.draw.push(labCard("든든 도시락"), labCard("마법 안경")); // 체력토큰 0개 / 1개
   selectActivity(state, a, "lab");
   selectActivity(state, b, "lab");
@@ -494,14 +491,14 @@ test("연구실 실험: 카드 2장을 열어 원하는 카드를 체력토큰�
   assert.equal(state.activityOffers.lab?.cards.length, 2);
   chooseActivityCard(state, a, "test-마법 안경");
   assert.equal(state.pendingRoll?.kind, "lab");
-  assert.equal(state.pendingRoll?.entries[0].diceChoiceMax, 3, "카드를 보고 지력토큰을 1~3개 사이에서 고른다");
-  assert.equal(state.pendingRoll?.entries[0].diceCount, BALANCE.labDefaultDice, "굴림 버튼의 기본값");
-  assert.equal(state.players[a].intelligenceTokens, 3, "굴리기 전에는 토큰을 내지 않는다");
-  assert.throws(() => submitRoll(state, a, 4), /지력토큰을 1~3개/);
-  assert.throws(() => submitRoll(state, a, 0), /지력토큰을 1~3개/);
+  assert.equal(state.pendingRoll?.entries[0].diceChoiceMax, 3, "카드를 보고 마나토큰을 1~3개 사이에서 고른다");
+  assert.equal(state.pendingRoll?.entries[0].diceCount, suggestDiceCount(3, BALANCE.labTarget), "굴림 버튼의 기본값은 성공 확률이 충분한 가장 적은 개수");
+  assert.equal(state.players[a].manaTokens, 3, "굴리기 전에는 토큰을 내지 않는다");
+  assert.throws(() => submitRoll(state, a, 4), /마나토큰을 1~3개/);
+  assert.throws(() => submitRoll(state, a, 0), /마나토큰을 1~3개/);
   submitRoll(state, a, 3);
-  assert.equal(state.pendingRoll?.entries[0].diceCount, 3, "지력토큰 3개를 내고 주사위 3개를 굴린다 (체력토큰은 카드 비용에만 쓴다)");
-  assert.equal(state.players[a].intelligenceTokens, 0);
+  assert.equal(state.pendingRoll?.entries[0].diceCount, 3, "마나토큰 3개를 내고 주사위 3개를 굴린다 (체력토큰은 카드 비용에만 쓴다)");
+  assert.equal(state.players[a].manaTokens, 0);
   assert.equal(state.players[a].equipment.length, 0, "주사위로 성공해야 효과를 받는다");
   rollWith(state, { [a]: [6] });
   assert.ok(state.players[a].equipment.some((c) => c.name === "마법 안경"), "시험 대비 카드는 다음 시험까지 보관한다");
@@ -510,7 +507,7 @@ test("연구실 실험: 카드 2장을 열어 원하는 카드를 체력토큰�
   chooseActivityCard(state, b, "test-든든 도시락");
   submitRoll(state, b, 1);
   assert.equal(state.pendingRoll?.entries[0].diceCount, 1, "1개만 내고 굴린다");
-  assert.equal(state.players[b].intelligenceTokens, 1, "안 낸 지력토큰은 다시 굴리기에 쓸 수 있다");
+  assert.equal(state.players[b].manaTokens, 1, "안 낸 마나토큰은 다시 굴리기에 쓸 수 있다");
   rollWith(state, { [b]: [6] });
   assert.equal(state.players[b].pendingStaminaTokens, 2);
   assert.equal(state.activityOffers.lab?.cards.length, 0);
@@ -543,15 +540,15 @@ test("연구실 실험: 합이 목표값(labTarget)에 못 미치면 실험이 �
   const state = newGame(2);
   toActivity(state);
   setTokens(state, 1);
-  state.players[state.activityOrder[0]].intelligenceTokens = 0;
   const [a] = state.activityOrder;
+  state.players[a].manaTokens = 0;
   state.labPile.draw.push(labCard("특별 개인 지도"), labCard("마법 안경"));
   selectActivity(state, a, "lab");
   finishChoosing(state);
   advanceResolution(state);
   const before = state.players[a].intelligence;
-  chooseActivityCard(state, a, "test-특별 개인 지도"); // 지력토큰 0개 → 주사위 1개
-  assert.equal(state.pendingRoll?.entries[0].diceCount, 1, "지력토큰이 없어도 주사위 1개는 굴린다");
+  chooseActivityCard(state, a, "test-특별 개인 지도"); // 마나토큰 0개 → 주사위 1개
+  assert.equal(state.pendingRoll?.entries[0].diceCount, 1, "마나토큰이 없어도 주사위 1개는 굴린다");
   const discardBefore = state.labPile.discard.length;
   rollWith(state, { [a]: [1] });
   assert.equal(state.players[a].intelligence, before, "실패하면 능력치가 오르지 않는다");
@@ -609,19 +606,22 @@ test("협력 탐험: 협력 카드를 고르면 기다리고, 합류하면 둘�
   assert.equal(state.players[b].spellPower, 21);
 });
 
-test("비밀의 방: 카드가 정한 지력 또는 체력토큰을 내고 낸 개수만큼 주사위를 굴려 합이 목표값(난이도 × 기준 능력치) 이상이면 성공한다", () => {
+test("비밀의 방: 마나토큰을 내고 낸 개수만큼 주사위를 굴려 합이 목표값(난이도 × 기준 주사위 수) 이상이면 성공한다", () => {
   const state = newGame(2);
   toActivity(state);
   const [a] = state.activityOrder;
   state.explorationPile.draw.push(explorationByName("잊혀진 교실"), explorationByName("먼지 쌓인 서고")); // 지력 판정
-  Object.assign(state.players[a], { intelligence: 3, intelligenceTokens: 3 });
+  Object.assign(state.players[a], { manaTokens: 3 });
   const credit = state.players[a].credit;
   selectActivity(state, a, "exploration");
   finishChoosing(state);
   advanceResolution(state);
   chooseActivityCard(state, a, "test-잊혀진 교실");
   assert.equal(state.pendingRoll?.kind, "exploration");
-  assert.equal(state.pendingRoll?.entries[0].diceCount, 3, "지력토큰 3개를 내고 주사위 3개를 굴린다");
+  assert.equal(state.pendingRoll?.entries[0].diceChoiceMax, 3);
+  submitRoll(state, a, 3);
+  assert.equal(state.pendingRoll?.entries[0].diceCount, 3, "마나토큰 3개를 내고 주사위 3개를 굴린다");
+  assert.equal(state.players[a].manaTokens, 0);
   rollWith(state, { [a]: [6, 6, 6] });
   assert.equal(state.players[a].credit, credit + 1, "합이 목표값 이상이라 성공 보상(학점 +1)");
 });
@@ -631,7 +631,7 @@ test("비밀의 방: 합이 목표값에 못 미치면 실패 효과를 받는�
   toActivity(state);
   const [a] = state.activityOrder;
   state.explorationPile.draw.push(explorationByName("잊혀진 교실"), explorationByName("먼지 쌓인 서고"));
-  Object.assign(state.players[a], { intelligence: 3, intelligenceTokens: 3 });
+  Object.assign(state.players[a], { manaTokens: 3 });
   const credit = state.players[a].credit;
   selectActivity(state, a, "exploration");
   finishChoosing(state);
@@ -681,7 +681,7 @@ test("협력 탐험: 두 번째 참가자는 협력 카드를 받을 수 없어 
   assert.ok(state.explorationPile.discard.some((c) => c.id === "coop-test"));
 });
 
-test("주문 대결: 이긴 사람이 공개된 마도서 중 1장을 고른다", withOpenCost(() => {
+test("주문 대결: 이긴 사람이 공개된 마도서 중 1장을 고른다", () => {
   const state = newGame(3);
   toActivity(state);
   setTokens(state, 0);
@@ -708,17 +708,19 @@ test("주문 대결: 이긴 사람이 공개된 마도서 중 1장을 고른다"
   assert.equal(state.pendingPick, null);
   assert.equal(state.activityResolvePointer, 1, "보상을 고른 뒤 다음 진행으로 넘어간다");
   assert.equal(state.activityOffers.duel?.cards.length, 1);
-}));
+});
 
 test("자율활동이 끝나면 아무도 가져가지 않은 공개 카드는 버림 더미로 돌아간다", () => {
   const state = newGame(2);
   toActivity(state);
   const [a, b] = state.activityOrder;
   setTokens(state, 0);
-  state.creatureDeck.push(creature("대지의 수호자"), creature("정령 고릴라")); // 둘 다 체력토큰이 필요한 육지 동물이라 체력토큰이 0개면 가져갈 수 없다
-  selectActivity(state, a, "creature"); // 체력토큰이 없으면 아무것도 못 가져간다
+  state.creatureDeck.push(creature("대지의 수호자"), creature("정령 고릴라"));
+  selectActivity(state, a, "creature");
   selectActivity(state, b, "tournament");
   advanceResolution(state);
+  assert.equal(state.pendingPick?.playerId, a);
+  chooseActivityCard(state, a, null); // 아무 카드도 가져가지 않고 넘어간다
   advanceResolution(state);
   rollAll(state); // b의 토너먼트 주사위
   assert.equal(state.round, 2);
@@ -775,17 +777,21 @@ test("마법 토너먼트: 마나토큰이 없으면 고를 수 없다", () => {
   assert.throws(() => selectActivity(state, a, "tournament"), /마나토큰/);
 });
 
-test("마법 토너먼트: 주사위는 지력토큰으로 다시 굴릴 수 있다", () => {
+test("마법 토너먼트: 주사위는 남은 마나토큰으로 다시 굴릴 수 있다 (지력토큰으로는 안 된다)", () => {
   const state = newGame(2);
   toActivity(state);
   const [a] = state.activityOrder;
-  state.players[a].intelligenceTokens = 1;
+  state.players[a].manaTokens = 3;
+  state.players[a].intelligenceTokens = 9;
   selectActivity(state, a, "tournament");
   finishChoosing(state);
   advanceResolution(state);
-  submitRoll(state, a);
+  submitRoll(state, a, 2);
+  assert.equal(state.players[a].manaTokens, 1);
   rerollDice(state, a, [0]);
-  assert.equal(state.players[a].intelligenceTokens, 0);
+  assert.equal(state.players[a].manaTokens, 0, "마나토큰 1개당 주사위 1개");
+  assert.throws(() => rerollDice(state, a, [1]), /마나토큰이 부족/);
+  assert.equal(state.players[a].intelligenceTokens, 9 - 0, "지력토큰은 그대로");
 });
 
 test("주문 대결: 도전자가 건넨 마나토큰 1개를 더한 뒤 양쪽이 마나토큰을 내고 낸 개수만큼 주사위를 굴려 합이 큰 쪽이 이긴다", () => {
@@ -894,14 +900,6 @@ test("구역 두 번째 참가비는 매력토큰 1개로 낸다", () => {
   assert.deepEqual(state.activitySlots.tournament, [a, b]);
 });
 
-test("지력토큰이 모자라면 매력토큰이 아무리 많아도 카드를 열 수 없다 (토큰은 서로 바꿀 수 없다)", withOpenCost(() => {
-  const state = newGame(2);
-  toActivity(state, 0);
-  setTokens(state, 0, 99);
-  const [a] = state.activityOrder;
-  assert.ok(!availableActivities(state, a).includes("lab"));
-}));
-
 test("마도서 '매혹의 화술서'·'반짝 스타일북'은 매달 준비 때 매력토큰을 1개씩 더 준다", () => {
   const state = newGame(2);
   const books = grimoireTemplates().filter((g) => g.ability?.effect === "charmToken");
@@ -918,9 +916,9 @@ test("마도서 '매혹의 화술서'·'반짝 스타일북'은 매달 준비 �
   for (const x of Object.values(state.players)) assert.equal(x.charmTokens, effectiveStat(x, "charm") + bonus(x));
 });
 
-// ── 주사위 다시 굴리기 (지력토큰) ──
+// ── 주사위 다시 굴리기 (마나토큰) ──
 
-test("주사위 다시 굴리기: 모두 굴린 뒤 확인 전에, 지력토큰 1개당 원하는 주사위만 다시 굴린다", () => {
+test("주사위 다시 굴리기: 모두 굴린 뒤 확인 전에, 마나토큰 1개당 원하는 주사위만 다시 굴린다", () => {
   const state = newGame(3);
   toActivity(state);
   const [a, b, c] = state.activityOrder;
@@ -936,25 +934,25 @@ test("주사위 다시 굴리기: 모두 굴린 뒤 확인 전에, 지력토큰 
   const entry = roll.entries.find((e) => e.playerId === a)!;
   // 여러 개 굴리는 상황을 만들어 일부 주사위만 다시 굴리는지 확인한다
   entry.dice = [1, 2, 3];
-  state.players[a].intelligenceTokens = 2;
+  state.players[a].manaTokens = 2;
   assert.throws(() => rerollDice(state, a, []), /골라 주세요/);
   assert.throws(() => rerollDice(state, a, [5]), /없는 주사위/);
   assert.throws(() => rerollDice(state, c, [0]), /참여하지 않습니다/);
-  assert.throws(() => rerollDice(state, a, [0, 1, 2]), /지력토큰이 부족/);
-  assert.equal(state.players[a].intelligenceTokens, 2, "실패하면 토큰이 줄지 않는다");
+  assert.throws(() => rerollDice(state, a, [0, 1, 2]), /마나토큰이 부족/);
+  assert.equal(state.players[a].manaTokens, 2, "실패하면 토큰이 줄지 않는다");
   rerollDice(state, a, [0, 2]);
-  assert.equal(state.players[a].intelligenceTokens, 0);
+  assert.equal(state.players[a].manaTokens, 0);
   assert.equal(entry.dice[1], 2, "고르지 않은 주사위는 그대로");
   assert.ok(entry.dice.every((d) => d >= 1 && d <= 6));
   assert.equal(entry.rerolls, 2);
-  assert.throws(() => rerollDice(state, a, [1]), /지력토큰이 부족/);
-  state.players[a].intelligenceTokens = 1;
+  assert.throws(() => rerollDice(state, a, [1]), /마나토큰이 부족/);
+  state.players[a].manaTokens = 1;
   confirmRoll(state, a);
   assert.throws(() => rerollDice(state, a, [1]), /이미 결과를 확인했어요/);
   assert.throws(() => submitRoll(state, a), /이미 주사위를 굴렸습니다/);
 });
 
-test("주사위 다시 굴리기: 매력토큰으로는 대신할 수 없다. 선 정하기 주사위는 다시 굴릴 수 없다", () => {
+test("주사위 다시 굴리기: 지력·매력토큰으로는 대신할 수 없다. 선 정하기 주사위는 다시 굴릴 수 없다", () => {
   const raw = createGame([{ id: "p0", name: "p0" }, { id: "p1", name: "p1" }]);
   for (const e of [...raw.pendingRoll!.entries]) submitRoll(raw, e.playerId);
   assert.throws(() => rerollDice(raw, "p0", [0]), /선 정하기/);
@@ -965,13 +963,38 @@ test("주사위 다시 굴리기: 매력토큰으로는 대신할 수 없다. �
   selectActivity(state, a, "duel", b);
   advanceResolution(state);
   for (const e of [...state.pendingRoll!.entries]) submitRoll(state, e.playerId);
-  state.players[a].intelligenceTokens = 0;
+  state.players[a].manaTokens = 0;
+  state.players[a].intelligenceTokens = 9;
   state.players[a].charmTokens = 9;
-  assert.throws(() => rerollDice(state, a, [0]), /지력토큰이 부족/);
+  assert.throws(() => rerollDice(state, a, [0]), /마나토큰이 부족/);
   assert.equal(state.players[a].charmTokens, 9);
+  assert.equal(state.players[a].intelligenceTokens, 9);
 });
 
-test("시험 달(6·12개월)은 1주차(준비) 다음에 곧바로 시험이고, 시험 뒤 4주차(정리)에서 남은 지력토큰도 1개 남길 수 있다", () => {
+test("굴림 기본 개수: 목표값 판정은 성공 확률이 충분한 가장 적은 마나토큰 개수(남는 토큰은 다시 굴리기용), 토너먼트·시험은 마나토큰 전부", () => {
+  assert.equal(diceSuccessChance(1, 1), 1);
+  assert.equal(diceSuccessChance(1, 7), 0);
+  assert.ok(Math.abs(diceSuccessChance(2, 7) - 21 / 36) < 1e-9);
+  assert.equal(suggestDiceCount(0, 10), 1, "마나토큰이 없으면 공짜 1개");
+  assert.equal(suggestDiceCount(2, 100), 2, "아무리 해도 못 미치면 가진 만큼 전부");
+  let last = 0;
+  for (let target = 1; target <= 30; target++) {
+    const n = suggestDiceCount(12, target);
+    assert.ok(n >= last, "목표값이 높을수록 기본 개수는 줄지 않는다");
+    last = n;
+  }
+  assert.ok(suggestDiceCount(12, 7) < 12);
+  const state = newGame(2);
+  toActivity(state);
+  const [a] = state.activityOrder;
+  state.players[a].manaTokens = 7;
+  selectActivity(state, a, "tournament");
+  finishChoosing(state);
+  advanceResolution(state);
+  assert.equal(state.pendingRoll?.entries[0].diceCount, 7, "토너먼트 기본값은 마나토큰 전부");
+});
+
+test("시험 달(6·12개월)은 1주차(준비) 다음에 곧바로 시험이고, 시험은 마나토큰으로 굴리며, 시험 뒤 4주차(정리)에서 남은 지력토큰도 1개 남길 수 있다", () => {
   const state = newGame(3);
   let guard = 0;
   let sawClassInExamRound = false;
@@ -982,19 +1005,23 @@ test("시험 달(6·12개월)은 1주차(준비) 다음에 곧바로 시험이�
   assert.equal(state.phase, "midterm_exam");
   assert.equal(state.round, BALANCE.midtermRound);
   assert.equal(sawClassInExamRound, false, "시험 달에는 정규수업·자율활동이 없다");
-  // 1주차에 받은 지력토큰이 그대로 있어 시험 다시 굴리기에 쓸 수 있다
-  for (const id of state.turnOrder) assert.ok(state.players[id].intelligenceTokens >= effectiveStat(state.players[id], "intelligence"));
-  const id = state.turnOrder.find((x) => state.pendingRoll!.entries.find((e) => e.playerId === x)!.diceCount > 0)!;
-  const tokens = state.players[id].intelligenceTokens;
-  assert.ok(tokens > 0);
-  for (const e of [...state.pendingRoll!.entries]) if (e.dice === null) submitRoll(state, e.playerId);
+  // 1주차에 받은 마나토큰으로 주사위를 굴리고, 남긴 마나토큰으로 다시 굴릴 수 있다. 지력토큰은 시험에 쓰이지 않고 그대로 남는다
+  for (const id of state.turnOrder) assert.ok(state.players[id].manaTokens >= effectiveStat(state.players[id], "spellPower"));
+  const id = state.turnOrder.find((x) => state.pendingRoll!.entries.find((e) => e.playerId === x)!.diceChoiceMax! >= 2)!;
+  const intelligenceBefore = state.players[id].intelligenceTokens;
+  const tokens = state.players[id].manaTokens;
+  assert.ok(tokens >= 2);
+  for (const e of [...state.pendingRoll!.entries]) if (e.dice === null) submitRoll(state, e.playerId, e.playerId === id ? tokens - 1 : undefined);
+  assert.equal(state.players[id].manaTokens, 1);
   rerollDice(state, id, [0]);
-  assert.equal(state.players[id].intelligenceTokens, tokens - 1);
+  assert.equal(state.players[id].manaTokens, 0);
+  assert.equal(state.players[id].intelligenceTokens, intelligenceBefore, "지력토큰은 시험에 쓰이지 않는다");
   for (const x of state.turnOrder) state.players[x].isBot = false; // 4주차 선택을 직접 하도록
   for (const e of [...state.pendingRoll!.entries]) confirmRoll(state, e.playerId);
   assert.equal(state.phase, "cleanup", "시험 뒤에 4주차(정리)가 이어진다");
   assert.equal(state.round, BALANCE.midtermRound);
   const left = state.players[id].intelligenceTokens;
+  assert.ok(left > 0);
   assert.equal(state.cleanupKeep[id], null, "남은 지력토큰이 있으면 고를 수 있다");
   chooseKeepToken(state, id, "intelligence");
   for (const x of state.turnOrder) if (state.cleanupKeep[x] === null) chooseKeepToken(state, x, "none");
@@ -1009,7 +1036,7 @@ test("시험 달(6·12개월)은 1주차(준비) 다음에 곧바로 시험이�
 
 // ── 시험 ──
 
-test("시험: 시험 카드가 정한 능력치만큼 주사위를 굴리고 보너스 능력치를 더한다 (굴린 뒤 확인해야 결과가 적용된다)", () => {
+test("시험: 마나토큰을 내고 굴린 주사위 합에 시험 카드의 능력치 둘(주사위 능력치·보너스 능력치)을 고정 보너스로 더한다 (굴린 뒤 확인해야 결과가 적용된다)", () => {
   const state = newGame(3);
   let guard = 0;
   while (state.phase !== "midterm_exam" && guard++ < 3000) botStep(state);
@@ -1018,16 +1045,17 @@ test("시험: 시험 카드가 정한 능력치만큼 주사위를 굴리고 보
   assert.equal(state.examResults.length, 0, "주사위를 굴리기 전에는 결과가 없다");
   const pending = state.pendingRoll;
   assert.ok(pending && pending.kind === "exam");
-  // 주사위 수 = 시험 카드의 주사위 능력치 + 연구 카드로 받은 임시 능력치 (시험이 끝나면 임시분은 사라지므로 미리 저장해 둔다)
+  // 주사위 수 = 낸 마나토큰 (기본값은 가진 마나토큰 전부, 없으면 공짜 1개). 보너스 = 시험 카드의 두 능력치 수치 (연구 카드로 받은 임시 능력치 포함, 시험이 끝나면 임시분은 사라지므로 미리 저장해 둔다)
   const card = state.exams.midterm;
   assert.ok(card, "중간고사 카드는 3라운드 뒤에 공개되어 있다");
   const diceCounts = new Map<string, number>();
   const bonuses = new Map<string, number>();
   for (const entry of pending.entries) {
     const p = state.players[entry.playerId];
-    diceCounts.set(entry.playerId, p[card.diceStat] + (p.tempBoosts[card.diceStat] ?? 0));
-    bonuses.set(entry.playerId, card.bonusStat ? p[card.bonusStat] + (p.tempBoosts[card.bonusStat] ?? 0) : 0);
+    diceCounts.set(entry.playerId, Math.max(1, p.manaTokens));
+    bonuses.set(entry.playerId, p[card.diceStat] + (p.tempBoosts[card.diceStat] ?? 0) + (card.bonusStat ? p[card.bonusStat] + (p.tempBoosts[card.bonusStat] ?? 0) : 0));
     assert.equal(entry.diceCount, diceCounts.get(entry.playerId));
+    assert.equal(entry.diceChoiceMax, p.manaTokens > 0 ? p.manaTokens : undefined);
   }
   for (const entry of [...pending.entries]) if (entry.dice === null) submitRoll(state, entry.playerId);
   assert.equal(state.examResults.length, 0, "모두 굴려도 확인하기 전에는 결과가 반영되지 않는다");
@@ -1198,13 +1226,14 @@ function reachExam(state: GameState, phase: "midterm_exam" | "final_exam"): void
   assert.equal(state.phase, phase);
 }
 
-// 지금 시험의 모든 플레이어 보너스 능력치를 같게 맞추고, 지정한 합계가 나오도록 주사위 눈을 정해 확인한다
+// 지금 시험의 모든 플레이어 고정 보너스(시험 카드의 두 능력치)를 같게 맞추고, 지정한 합계가 나오도록 주사위 눈을 정해 확인한다
 function rollExamWith(state: GameState, sums: Record<string, number>): void {
   const card = state.hidden.roll && state.hidden.roll.kind === "exam" ? state.hidden.roll.card : null;
   assert.ok(card);
   for (const id of state.turnOrder) {
     const p = state.players[id];
     p.tempBoosts = {};
+    p[card.diceStat] = 2;
     if (card.bonusStat) p[card.bonusStat] = 2;
   }
   rollWith(state, Object.fromEntries(state.turnOrder.map((id) => [id, [sums[id]]])));
@@ -1245,17 +1274,11 @@ test("최종: 시험·토너먼트·최종 점수가 모두 동점이면 공동 
   assert.deepEqual([...state.winnerIds!].sort(), [a, b].sort(), "최종 점수가 같은 a·b가 공동 승리");
 });
 
-test("마법생물 조련: 생물의 속성·종류가 낼 수 있는 토큰의 종류를 정하고, 그 종류로 가진 토큰은 전부 낼 수 있다 (하늘=지력)", () => {
-  const find = (name: string) => CREATURE_CARDS.find((c) => c.name === name)!;
-  assert.deepEqual(creatureTokenTypes(find("하늘의 감시자")), ["intelligence", "stamina"], "하늘 동물 = 지력·체력토큰");
-  assert.deepEqual(creatureTokenTypes(find("하늘의 꽃마녀")), ["intelligence", "charm"], "하늘 식물 = 지력·매력토큰");
-  assert.deepEqual(creatureTokenTypes(find("대지의 수호자")), ["stamina"], "육지 동물은 체력토큰만");
-  assert.deepEqual(creatureTokenTypes(find("심해의 마녀")), ["charm"], "바다 식물은 매력토큰만");
-  assert.deepEqual(creatureTokenTypes(find("용암 식물")), ["stamina", "charm"], "육지 식물 = 체력·매력토큰");
-  const tokens = { intelligenceTokens: 5, staminaTokens: 1, charmTokens: 0 };
-  assert.deepEqual(creatureTokenCaps(tokens, find("용암 식물")), [{ stat: "stamina", max: 1 }], "0개인 종류는 뺀다");
-  assert.deepEqual(creatureTokenCaps(tokens, find("하늘의 감시자")), [{ stat: "intelligence", max: 5 }, { stat: "stamina", max: 1 }], "가진 토큰 전부까지 낼 수 있다");
+test("마법생물 조련: 속성·종류는 표시용이고 기준 수치는 생물별 trainTarget × trainTargetScale이다", () => {
   assert.ok(CREATURE_CARDS.every((c) => c.trainTarget > 0), "생물마다 고정된 기준 수치가 있다");
+  for (const c of CREATURE_CARDS) assert.equal(creatureTarget(c), Math.max(1, Math.round(c.trainTarget * BALANCE.trainTargetScale)));
+  const state = newGame(2);
+  assert.ok(!JSON.stringify(state).includes("tokenNeeds"), "조련에 낼 토큰 종류 구분은 없다");
 });
 
 test("주문 대결: 도전자는 마나토큰이 2개 이상(건넬 1개 + 굴릴 1개) 있어야 고를 수 있고, 지목당한 쪽은 건네받은 마나토큰으로 굴린다", () => {
@@ -1296,25 +1319,70 @@ test("마법생물 조련: 고르는 카드 목록에 속성과 종류가 표시
   assert.deepEqual(tags, ["육지 · 동물", "하늘 · 식물"]);
 });
 
-test("비밀의 방: 카드가 정한 체력토큰을 1~보유 개수 사이에서 골라 내고 낸 개수만큼 주사위를 굴린다 (지력토큰은 그대로)", () => {
+test("비밀의 방: 판정 카드의 능력치와 상관없이 마나토큰을 1~보유 개수 사이에서 골라 내고 낸 개수만큼 주사위를 굴린다 (지력·체력토큰은 그대로)", () => {
   const state = newGame(2);
   toActivity(state);
   const [a] = state.activityOrder;
   const card = explorationTemplates().find((c) => c.check?.stat === "stamina")!;
   state.explorationPile.draw.push({ ...card, id: "test-stamina" }, safeExploration(0));
-  Object.assign(state.players[a], { staminaTokens: 4, intelligenceTokens: 3 });
+  Object.assign(state.players[a], { manaTokens: 4, staminaTokens: 4, intelligenceTokens: 3 });
   selectActivity(state, a, "exploration");
   finishChoosing(state);
   advanceResolution(state);
   chooseActivityCard(state, a, "test-stamina");
   assert.equal(state.pendingRoll?.entries[0].diceChoiceMax, 4);
-  assert.equal(state.pendingRoll?.entries[0].diceChoiceStat, "stamina");
-  assert.equal(state.players[a].staminaTokens, 4, "굴리기 전에는 토큰을 내지 않는다");
-  assert.throws(() => submitRoll(state, a, 5), /체력토큰을 1~4개/);
+  assert.equal(state.players[a].manaTokens, 4, "굴리기 전에는 토큰을 내지 않는다");
+  assert.throws(() => submitRoll(state, a, 5), /마나토큰을 1~4개/);
   submitRoll(state, a, 3);
   assert.equal(state.pendingRoll?.entries[0].diceCount, 3);
-  assert.equal(state.players[a].staminaTokens, 1, "고른 만큼만 낸다");
-  assert.equal(state.players[a].intelligenceTokens, 3);
+  assert.equal(state.players[a].manaTokens, 1, "고른 만큼만 낸다");
+  assert.equal(state.players[a].staminaTokens, 4);
+  assert.equal(state.players[a].intelligenceTokens, 2, "카드를 여는 지력토큰 1개만 들었다");
+});
+
+// ── 능력치 감쇠 ──
+
+test("능력치 감쇠: 지침 라운드 이후 interval개월마다 지력·체력·매력이 perMonth씩 줄고 floor 아래로는 내려가지 않는다 (주문력·학점은 그대로)", () => {
+  const rule = BALANCE.statDecay;
+  const p = { intelligence: 5, stamina: 2, charm: 3, spellPower: 9, credit: 7 } as unknown as PlayerGameState;
+  assert.deepEqual(statDecayOf(rule.startRound - 1, p), {}, "시작 라운드 전에는 줄지 않는다");
+  assert.deepEqual(statDecayOf(rule.startRound, p), { intelligence: rule.perMonth, charm: rule.perMonth }, "바닥(floor)에 있는 체력은 줄지 않는다");
+  assert.deepEqual(statDecayOf(rule.startRound + 1, p), rule.interval === 1 ? { intelligence: rule.perMonth, charm: rule.perMonth } : {}, "간격 사이의 달에는 줄지 않는다");
+  assert.deepEqual(statDecayOf(rule.startRound + rule.interval, p), { intelligence: rule.perMonth, charm: rule.perMonth });
+  assert.deepEqual(statDecayOf(rule.startRound, { ...p, intelligence: rule.floor, charm: rule.floor } as PlayerGameState), {}, "모두 바닥이면 줄 것이 없다");
+  const nearFloor = { ...p, intelligence: rule.floor + 1 } as PlayerGameState;
+  assert.equal(statDecayOf(rule.startRound, nearFloor).intelligence, Math.min(rule.perMonth, 1), "바닥 아래로는 내려가지 않는다");
+  assert.ok(rule.stats.every((st) => st !== "spellPower"));
+});
+
+test("능력치 감쇠: 4주차(정리)가 끝날 때 줄어들고, 줄어든 값으로 다음 달 토큰을 받으며, 정리 요약·로그에 남는다 (주문력·학점은 유지)", () => {
+  const state = newGame(2);
+  const rule = BALANCE.statDecay;
+  state.round = rule.startRound; // 감쇠가 일어나는 달로 당겨 온다
+  for (const p of Object.values(state.players)) Object.assign(p, { intelligence: 5, stamina: 5, charm: 5, spellPower: 3, credit: 2 });
+  toActivity(state);
+  setTokens(state, 0);
+  finishChoosing(state); // 둘 다 토너먼트: 능력치는 변하지 않는다
+  let guard = 0;
+  while (state.round === rule.startRound && guard++ < 100) botStep(state);
+  assert.equal(state.round, rule.startRound + 1);
+  for (const p of Object.values(state.players)) {
+    assert.equal(p.intelligence, 5 - rule.perMonth);
+    assert.equal(p.stamina, 5 - rule.perMonth);
+    assert.equal(p.charm, 5 - rule.perMonth);
+    assert.equal(p.spellPower, 3, "주문력은 줄지 않는다");
+    assert.ok(p.credit >= 2, "학점은 줄지 않는다");
+    assert.ok(p.intelligenceTokens >= 5 - rule.perMonth && p.intelligenceTokens <= 5 - rule.perMonth + 1, "다음 달 토큰은 줄어든 능력치로 받는다 (남긴 1개 포함)");
+  }
+  for (const s of state.cleanupSummary) assert.deepEqual(s.decay, { intelligence: rule.perMonth, stamina: rule.perMonth, charm: rule.perMonth });
+  assert.ok(state.log.some((l) => l.message.includes("시간이 지나 능력치가 줄었어요")));
+  // 감쇠가 없는 달에는 요약의 decay가 비어 있다
+  const quiet = newGame(2);
+  toActivity(quiet);
+  finishChoosing(quiet);
+  guard = 0;
+  while (quiet.round === 1 && guard++ < 100) botStep(quiet);
+  for (const s of quiet.cleanupSummary) assert.deepEqual(s.decay, {});
 });
 
 test("임시 능력치: 얻은 달의 다음 달 4주차(정리)에 소멸한다 (이번 달 정리에서는 남는다)", () => {
@@ -1322,12 +1390,64 @@ test("임시 능력치: 얻은 달의 다음 달 4주차(정리)에 소멸한다
   const [a] = state.turnOrder;
   state.players[a].tempBoosts = { intelligence: 2 };
   const round = state.round;
+  // 활동에서 새 임시 능력치를 얻지 않도록 자율활동은 마법 토너먼트만 고른다
+  const step = () => {
+    if (state.phase === "activity" && state.activityStage === "choose" && !state.pendingRoll && !state.pendingPick) {
+      const id = state.activityOrder[state.activityTurnPointer];
+      selectActivity(state, id, availableActivities(state, id).includes("tournament") ? "tournament" : availableActivities(state, id)[0]);
+    } else botStep(state);
+  };
   let guard = 0;
-  while (state.round === round && guard++ < 500) botStep(state);
+  while (state.round === round && guard++ < 500) step();
   assert.equal(state.players[a].tempBoosts.intelligence, 2, "얻은 달의 정리에서는 남는다");
   guard = 0;
-  while (state.round === round + 1 && guard++ < 500) botStep(state);
+  while (state.round === round + 1 && guard++ < 500) step();
   assert.equal(state.players[a].tempBoosts.intelligence, undefined, "다음 달 정리에서 소멸한다");
+});
+
+
+// 한 걸음씩(굴림은 한 사람씩, 정리는 한 사람씩) 진행하는 사람 역할 — 멈춘 상태가 생기도록 잘게 나눈다
+function microStep(state: GameState, strategy = BOT_PERSONALITIES[0]): void {
+  if (state.pendingRoll) {
+    const pending = state.pendingRoll;
+    const unrolled = pending.entries.find((e) => e.dice === null);
+    if (unrolled) submitRoll(state, unrolled.playerId);
+    else confirmRoll(state, pending.entries.find((e) => !e.confirmed)!.playerId);
+  } else if (state.phase === "cleanup") {
+    const id = Object.keys(state.cleanupKeep).find((k) => state.cleanupKeep[k] === null)!;
+    chooseKeepToken(state, id, autoKeepChoice(state, id));
+  } else botStep(state, strategy);
+}
+
+test("게임 도중 플레이어 제거: 어느 단계에서 내보내도 남은 사람끼리 끝까지 진행되고 상태가 일관된다", () => {
+  for (let trial = 0; trial < 400; trial++) {
+    const count = 3 + (trial % 3); // 3~5명 (제거 뒤에도 2명 이상)
+    const state = createGame(Array.from({ length: count }, (_, i) => ({ id: `p${i}`, name: `p${i}`, isBot: false })));
+    const stopAt = Math.floor(Math.random() * 450);
+    let steps = 0;
+    while (state.phase !== "ended" && steps < stopAt) {
+      microStep(state);
+      steps++;
+    }
+    if (state.phase === "ended") continue;
+    const victim = state.turnOrder[Math.floor(Math.random() * state.turnOrder.length)];
+    const where = `trial ${trial} step ${steps} phase ${state.phase}/${state.activityStage} round ${state.round}`;
+    removePlayerFromGame(state, victim);
+    assert.ok(!state.turnOrder.includes(victim) && !state.players[victim], `제거됨 (${where})`);
+    assert.ok(state.startingPlayerIndex >= 0 && state.startingPlayerIndex < state.turnOrder.length, `선 인덱스 유효 (${where})`);
+    const refs = (ids: string[]) => ids.includes(victim);
+    assert.ok(!refs(state.activityOrder) && !refs(state.classPickOrder) && !refs(Object.keys(state.cleanupKeep)), `순서 목록에 없음 (${where})`);
+    assert.ok(!state.activityChoices.some((c) => c.playerId === victim || c.targetPlayerId === victim), `활동 선택에 없음 (${where})`);
+    assert.ok(!state.duels.some((d) => d.challengerId === victim || d.targetId === victim), `대결 목록에 없음 (${where})`);
+    assert.ok(!Object.values(state.activitySlots).some(refs), `구역에 없음 (${where})`);
+    assert.ok(!state.pendingRoll?.entries.some((e) => e.playerId === victim), `굴림에 없음 (${where})`);
+    assert.ok(state.pendingPick?.playerId !== victim && state.coopWaiting?.playerId !== victim, `선택 대기에 없음 (${where})`);
+    // 이어서 끝까지 (멈춤이 없어야 한다)
+    let guard = 0;
+    while (state.phase !== "ended" && guard++ < 3000) microStep(state);
+    assert.equal(state.phase, "ended", `끝까지 진행됨 (${where})`);
+    assert.ok(state.winnerIds?.every((id) => state.turnOrder.includes(id)), `승자는 남은 사람 (${where})`);
+  }
 });
 
 console.log(`
