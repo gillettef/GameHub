@@ -152,6 +152,20 @@ function explorationValue(state: GameState, strategy: BotStrategy, player: Playe
   return p * success + (1 - p) * failure;
 }
 
+// 굴리기 전에 쓸 보조 능력치 토큰 개수 (38-6절). 토너먼트: 다음 달로 남길 체력토큰 1개만 빼고 모두 달리는 데 쓴다.
+// 탐험: 실패하면 손해가 있는 카드이고 지력토큰이 있으면 함정을 간파한다
+export function botAssist(state: GameState, playerId: string): number {
+  const pending = state.pendingRoll;
+  const max = pending?.entries.find((e) => e.playerId === playerId)?.assistMax ?? 0;
+  if (!pending?.assist || max <= 0) return 0;
+  if (pending.assist.kind === "stamina") return Math.min(max, Math.max(0, state.players[playerId].staminaTokens - 1));
+  const ctx = state.hidden.roll;
+  if (ctx?.kind !== "exploration") return 0;
+  const f = ctx.card.failure;
+  const harmful = [...Object.values(f.stats ?? {}), ...Object.values(f.tempStats ?? {}), f.credit ?? 0, f.nextMana ?? 0, f.nextStamina ?? 0].some((n) => (n ?? 0) < 0);
+  return harmful ? 1 : 0;
+}
+
 // 결과 확인 전에 남은 마나토큰으로 낮게 나온 주사위를 다시 굴린다 (선 정하기는 제외). 목표값이 있는 혼자 판정(조련·연구실·탐험)은
 // 합이 모자랄 때만 가장 낮은 주사위부터 한 개씩 다시 굴리고(3 이하만), 그 밖의 굴림은 1~2가 나온 주사위를 다시 굴린다
 export function rerollLowDice(state: GameState, playerId: string): void {

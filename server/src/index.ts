@@ -7,7 +7,7 @@ import { randomUUID } from "node:crypto";
 import { WebSocketServer, type WebSocket } from "ws";
 import { BALANCE } from "./game/config.js";
 import { createRoom, getRoom, joinRoom, leaveRoom, leaveRoomIfNoHumans, scheduleRoomExpiry, broadcast, syncEmptyRoomExpiry, pickHost, HOST_AWAY_HANDOVER_MS, type Player, type Room } from "./rooms.js";
-import { BOT_NAMES, chooseActivityAction, choosePick, pickBotPersonality, playClassTurn, rerollLowDice, type BotStrategy } from "./game/bot.js";
+import { BOT_NAMES, botAssist, chooseActivityAction, choosePick, pickBotPersonality, playClassTurn, rerollLowDice, type BotStrategy } from "./game/bot.js";
 import {
   autoKeepChoice,
   availableActivities,
@@ -100,7 +100,7 @@ function takeAutoAction(game: GameState, playerId: string, strategy: BotStrategy
   try {
     if (game.pendingRoll) {
       const entry = game.pendingRoll.entries.find((e) => e.playerId === playerId);
-      if (entry?.dice === null) submitRoll(game, playerId);
+      if (entry?.dice === null) submitRoll(game, playerId, undefined, botAssist(game, playerId));
       else {
         rerollLowDice(game, playerId);
         confirmRoll(game, playerId);
@@ -484,7 +484,7 @@ wss.on("connection", (socket) => {
     if (message.type === "roll_dice") {
       if (!room.game) return;
       try {
-        submitRoll(room.game, playerId, message.diceCount);
+        submitRoll(room.game, playerId, message.diceCount, message.assist);
         broadcastGameState(room);
         scheduleBots(room);
       } catch (err) {

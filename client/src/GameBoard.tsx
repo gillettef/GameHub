@@ -663,7 +663,7 @@ function RollPanel({
 }: {
   game: GameState;
   myId: string;
-  onRoll: (diceCount?: number) => void;
+  onRoll: (diceCount?: number, assist?: number) => void;
   onReroll: (diceIndexes: number[]) => void;
   onConfirm: () => void;
 }) {
@@ -673,6 +673,13 @@ function RollPanel({
   const [selected, setSelected] = useState<number[]>([]);
   // 마나토큰을 몇 개 낼지 고른 주사위 수 (null이면 서버가 정한 기본값)
   const [pickedCount, setPickedCount] = useState<number | null>(null);
+  // 보조 능력치 토큰(체력토큰·지력토큰)을 몇 개 낼지 고른 수. 굴림이 바뀌면 처음(0개)으로 돌아간다
+  const [pickedAssist, setPickedAssist] = useState(0);
+  const rollTitle = pending?.title;
+  useEffect(() => {
+    setPickedAssist(0);
+    setPickedCount(null);
+  }, [rollTitle]);
   // 버튼을 누른 뒤 응답이 없어도 잠시 뒤 다시 누를 수 있게 풀어 준다
   useEffect(() => {
     if (!clickedFor) return;
@@ -687,6 +694,8 @@ function RollPanel({
   // 굴리기 전에 마나토큰을 몇 개 낼지 고르는 굴림 (마나토큰이 없으면 choiceMax가 없고 공짜 주사위 1개)
   const choiceMax = mine?.diceChoiceMax;
   const chosenCount = choiceMax !== undefined ? Math.min(Math.max(pickedCount ?? mine!.diceCount, 1), choiceMax) : (mine?.diceCount ?? 0);
+  const assistMax = mine?.assistMax ?? 0;
+  const chosenAssist = Math.min(pickedAssist, assistMax);
   const canConfirm = !!mine && revealed && !mine.confirmed;
   const me = game.players[myId];
   // 결과를 확인하기 전에는 남은 마나토큰으로 일부 주사위만 다시 굴릴 수 있다 (선 정하기는 제외)
@@ -739,6 +748,11 @@ function RollPanel({
                 {entry.rerolls > 0 && <span className="ml-1 text-xs text-sky-700">다시 굴림 {entry.rerolls}개</span>}
               </div>
             )}
+            {pending.assist && (entry.assist ?? 0) > 0 && (
+              <p className="mt-1 text-xs text-emerald-700">
+                {pending.assist.title}: {pending.assist.name} {entry.assist}개 사용
+              </p>
+            )}
           </li>
         ))}
       </ul>
@@ -774,13 +788,39 @@ function RollPanel({
           <InlineIcon name="manaToken" /> 마나토큰이 없어서 공짜 주사위 {mine.diceCount}개를 굴려요
         </p>
       )}
+      {canRoll && mine && pending.assist && assistMax > 0 && (
+        <div className="mt-3 rounded-2xl bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+          <p>
+            <b>{pending.assist.title}</b> — {pending.assist.hint}. {pending.assist.name}를 몇 개 낼까요? (안 내도 돼요, 지금 {assistMax}개까지)
+          </p>
+          <div className="mt-2 flex items-center justify-center gap-4">
+            <button
+              aria-label="보조 토큰 하나 줄이기"
+              disabled={chosenAssist <= 0}
+              className="h-12 w-12 rounded-full bg-white text-2xl font-semibold text-emerald-700 shadow-sm active:scale-95 transition-transform disabled:opacity-40"
+              onClick={() => setPickedAssist(chosenAssist - 1)}
+            >
+              −
+            </button>
+            <span className="min-w-20 text-center text-lg font-semibold">{chosenAssist}개</span>
+            <button
+              aria-label="보조 토큰 하나 늘리기"
+              disabled={chosenAssist >= assistMax}
+              className="h-12 w-12 rounded-full bg-white text-2xl font-semibold text-emerald-700 shadow-sm active:scale-95 transition-transform disabled:opacity-40"
+              onClick={() => setPickedAssist(chosenAssist + 1)}
+            >
+              +
+            </button>
+          </div>
+        </div>
+      )}
       {canRoll && mine ? (
         <button
           disabled={clickedFor === rollKey}
           className="mt-3 flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl bg-pink-500 py-3 text-lg font-semibold text-white active:scale-95 transition-transform disabled:opacity-70 disabled:active:scale-100"
           onClick={() => {
             setClickedFor(rollKey);
-            onRoll(choiceMax !== undefined ? chosenCount : undefined);
+            onRoll(choiceMax !== undefined ? chosenCount : undefined, chosenAssist);
           }}
         >
           <span className={clickedFor === rollKey ? "dice-wiggle inline-flex" : "inline-flex"}>
@@ -993,7 +1033,7 @@ export function GameBoard({
   onTakeClassCard: (cardId: string | null) => void;
   onSelectActivity: (activityId: ActivityId, targetPlayerId?: string) => void;
   onPickActivityCard: (cardId: string | null) => void;
-  onRollDice: (diceCount?: number) => void;
+  onRollDice: (diceCount?: number, assist?: number) => void;
   onRerollDice: (diceIndexes: number[]) => void;
   onConfirmRoll: () => void;
   onKeepToken: (choice: KeepChoice) => void;
