@@ -9,7 +9,6 @@ import {
   explorationChance,
   rerollDice,
   growthGap,
-  rollBonus,
   takeClassCard,
 } from "./engine.js";
 import {
@@ -107,7 +106,8 @@ export function chooseActivityAction(
   const free = availableActivities(state, playerId);
   const base: Record<ActivityId, number> = {
     tournament: effectiveStat(p, "spellPower") * 0.25,
-    creature: p.manaTokens >= 3 ? 2 : 0.5,
+    // 조련은 매력토큰으로 주사위를 굴린다 (39절)
+    creature: p.charmTokens >= 2 ? 2 : 0.5,
     duel: 1.5,
     // 선두에게 뒤처졌다면 한 방을 노려볼 만하다 (탐험 역전 보너스)
     exploration: growthGap(state, playerId) >= BALANCE.catchUpGap ? 2.4 : 1.2,
@@ -176,8 +176,8 @@ export function rerollLowDice(state: GameState, playerId: string): void {
   const ctx = state.hidden.roll;
   const sum = (xs: number[]) => xs.reduce((a, b) => a + b, 0);
   let need: number | null = null;
-  if (ctx?.kind === "creature" || ctx?.kind === "lab") need = ctx.target - rollBonus(p, ctx.kind);
-  else if (ctx?.kind === "exploration" && ctx.mode === "single") need = ctx.target - rollBonus(p, "exploration") - (growthGap(state, playerId) >= BALANCE.catchUpGap ? BALANCE.catchUpBonus : 0);
+  if (ctx?.kind === "creature" || ctx?.kind === "lab") need = ctx.target;
+  else if (ctx?.kind === "exploration" && ctx.mode === "single") need = ctx.target - (growthGap(state, playerId) >= BALANCE.catchUpGap ? BALANCE.catchUpBonus : 0);
   if (need !== null) {
     while (p.manaTokens > 0 && sum(entry.dice) < need) {
       const lowest = entry.dice.indexOf(Math.min(...entry.dice));

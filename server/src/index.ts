@@ -201,7 +201,7 @@ function scheduleBots(room: Room): void {
 const PUBLIC_RULES: PublicRules = {
   openCardCost: BALANCE.openCardCost,
   openCardCostActivities: BALANCE.openCardCostActivities,
-  intelligencePerStamina: BALANCE.intelligencePerStamina,
+  rollFuel: BALANCE.rollFuel,
   activityMaxParticipants: BALANCE.activityMaxParticipants,
   activitySecondParticipantCost: BALANCE.activitySecondParticipantCost,
   duelCharmFee: BALANCE.duelCharmFee,

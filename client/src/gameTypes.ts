@@ -123,7 +123,8 @@ export interface PendingRoll {
   // diceChoiceMax가 있으면 굴리기 전에 마나토큰을 1~max개 내고 낸 개수만큼 굴릴 수 있다 (diceCount는 기본 개수). 없으면(마나토큰이 없음) 공짜 주사위 diceCount개.
   // 다시 굴리기는 남은 마나토큰 1개당 주사위 1개
   // assistMax가 있으면 굴리기 전에 보조 능력치 토큰(assist.kind)을 0~max개 더 낼 수 있다. 낸 개수는 assist에 남는다
-  entries: { playerId: string; label: string; diceCount: number; diceChoiceMax?: number; assistMax?: number; assist?: number; dice: number[] | null; confirmed: boolean; rerolls: number; rerollCounts?: number[] }[];
+  // diceToken은 이 굴림의 주사위 재료 토큰 (없으면 마나토큰)
+  entries: { playerId: string; label: string; diceCount: number; diceToken?: KeptToken; diceChoiceMax?: number; assistMax?: number; assist?: number; dice: number[] | null; confirmed: boolean; rerolls: number; rerollCounts?: number[] }[];
   // 이 굴림에서 보조 능력치로 쓸 수 있는 토큰 (토너먼트: 체력토큰 "끝까지 달려요", 탐험: 지력토큰 "함정 간파")
   assist?: { kind: "stamina" | "intelligence"; name: string; title: string; hint: string };
 }
@@ -180,8 +181,8 @@ export interface PublicRules {
   // 3주차 구역에 처음 들어와 카드를 열 때 드는 지력토큰, 그리고 그 지력토큰이 드는 활동 (지금은 없음)
   openCardCost: number;
   openCardCostActivities: ActivityId[];
-  // 체력토큰이 모자랄 때 체력토큰 1개를 대신하는 지력토큰 개수 (수업카드·연구 카드 습득)
-  intelligencePerStamina: number;
+  // 활동별 주사위 재료 토큰 (조련=매력, 탐험=체력, 연구실=지력, 토너먼트·주문 대결=마나)
+  rollFuel: Record<ActivityId, KeptToken>;
   // 능력치 감쇠: startRound 이후 interval개월마다 stats가 perMonth씩 줄고 floor 아래로는 내려가지 않는다 (4주차 정리 때)
   statDecay: { perMonth: number; interval: number; startRound: number; floor: number; stats: StatKey[] };
   activityMaxParticipants: number;
@@ -246,9 +247,10 @@ export const STAT_LABEL: Record<StatKey, string> = {
   spellPower: "주문력",
 };
 
-// 시험 카드가 점수를 내는 방식 설명 (예: "매력 수치만큼 주사위 + 지력 수치")
+// 시험 카드가 점수를 내는 방식 설명 (예: "매력토큰으로 굴린 주사위 + 지력 수치")
 export function describeExam(card: Pick<ExamCard, "diceStat" | "bonusStat">): string {
-  return `마나토큰으로 굴린 주사위 + ${STAT_LABEL[card.diceStat]} 수치${card.bonusStat ? ` + ${STAT_LABEL[card.bonusStat]} 수치` : ""}`;
+  const fuel = card.diceStat === "spellPower" ? "마나토큰" : `${STAT_LABEL[card.diceStat]}토큰`;
+  return `${fuel}으로 굴린 주사위${card.bonusStat ? ` + ${STAT_LABEL[card.bonusStat]} 수치` : ""}`;
 }
 
 export const ACTIVITY_LABEL: Record<ActivityId, string> = {
@@ -262,10 +264,10 @@ export const ACTIVITY_LABEL: Record<ActivityId, string> = {
 // 활동 카드에 함께 보여줄 한 줄 설명
 export const ACTIVITY_HINT: Record<ActivityId, string> = {
   tournament: "마나토큰을 골라 낸 만큼 주사위를 굴려 합친 칸만큼 트랙 전진 → 학점 (체력토큰을 내면 칸을 더 전진)",
-  creature: "카드 2장 공개, 마나토큰 주사위 합 + 매력이 기준 이상이면 조련 (매력이 높을수록 유리), 하늘·육지·바다를 1장씩 모으면 세트 점수",
+  creature: "카드 2장 공개, 매력토큰을 골라 낸 만큼 주사위를 굴려 합이 기준 이상이면 조련, 하늘·육지·바다를 1장씩 모으면 세트 점수",
   duel: "아직 안 고른 한 명을 지목해 강제 대결, 마나토큰을 골라 낸 만큼 주사위를 굴려 이기면 마도서 1장",
-  exploration: "카드 2장 중 하나를 골라 마나토큰 주사위 합 + 체력으로 판정! 크게 벌거나 크게 잃어요 (체력이 높을수록 유리, 지력토큰으로 함정을 피할 수 있어요)",
-  lab: "심화학습: 연구 카드 2장 중 1장, 마나토큰 주사위 합 + 지력으로 실험 판정, 안정적으로 성장 (지력이 높을수록 유리)",
+  exploration: "카드 2장 중 하나를 골라 체력토큰을 낸 만큼 주사위 판정! 크게 벌거나 크게 잃어요 (지력토큰으로 함정을 피할 수 있어요)",
+  lab: "심화학습: 연구 카드 2장 중 1장, 지력토큰을 골라 낸 만큼 주사위를 굴려 실험 판정, 안정적으로 성장",
 };
 
 export function effectiveStat(player: PlayerGameState, stat: StatKey): number {
@@ -290,14 +292,9 @@ export function duelTargets(game: GameState, playerId: string): string[] {
   return game.turnOrder.filter((id) => id !== playerId && !game.players[id].hasActedThisPhase);
 }
 
-// 지력토큰 int개 + 체력토큰 stamina개 + 매력토큰 charm개를 낼 수 있는가 (서버 canPay와 같은 규칙).
-// 체력토큰이 모자라면 남은 지력토큰 perStamina개가 체력토큰 1개를 대신한다 (생략하면 대신하지 않는다). 그 밖의 토큰끼리는 바꿀 수 없다
-export function canPay(player: PlayerGameState, int: number, stamina: number, charm = 0, perStamina = Infinity): boolean {
-  return (
-    player.intelligenceTokens >= int &&
-    player.charmTokens >= charm &&
-    player.staminaTokens + Math.floor((player.intelligenceTokens - int) / perStamina) >= stamina
-  );
+// 지력토큰 int개 + 체력토큰 stamina개 + 매력토큰 charm개를 낼 수 있는가 (서버 canPay와 같은 규칙. 토큰끼리는 바꿀 수 없다)
+export function canPay(player: PlayerGameState, int: number, stamina: number, charm = 0): boolean {
+  return player.intelligenceTokens >= int && player.staminaTokens >= stamina && player.charmTokens >= charm;
 }
 
 // 이 활동을 고를 수 없는 이유 (고를 수 있으면 null)

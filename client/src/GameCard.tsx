@@ -46,16 +46,14 @@ export function classCardData(card: ClassCard): GameCardData {
     effects: [{ icon: st.icon, label, value: `+${card.statBoost.amount}`, text: st.text, bg: st.bg, detail: `${label} 능력치가 ${card.statBoost.amount} 올라요` }],
     costs:
       card.takeCost > 0
-        ? [{ icon: stamina.icon, label: "체력토큰", value: card.takeCost, text: stamina.text, bg: stamina.bg, detail: `습득하려면 체력토큰 ${card.takeCost}개를 내요 (모자라면 지력토큰이 대신해요)` }]
+        ? [{ icon: stamina.icon, label: "체력토큰", value: card.takeCost, text: stamina.text, bg: stamina.bg, detail: `습득하려면 체력토큰 ${card.takeCost}개를 내요` }]
         : [{ icon: "check", label: "비용", value: "무료", text: "text-emerald-700", bg: "bg-emerald-50", detail: "체력토큰 없이 가져갈 수 있어요" }],
   };
 }
 
 // 내가 이 카드를 가져갈 수 있는지, 못 하면 이유
-export function classCardBlockReason(player: PlayerGameState, card: ClassCard, intelligencePerStamina: number): string | null {
-  return canPay(player, 0, card.takeCost, 0, intelligencePerStamina)
-    ? null
-    : `체력토큰이 ${card.takeCost - player.staminaTokens}개 부족해요 (필요 ${card.takeCost}개, 보유 ${player.staminaTokens}개, 지력토큰 ${intelligencePerStamina}개가 체력토큰 1개를 대신해요)`;
+export function classCardBlockReason(player: PlayerGameState, card: ClassCard): string | null {
+  return canPay(player, 0, card.takeCost) ? null : `체력토큰이 ${card.takeCost - player.staminaTokens}개 부족해요 (필요 ${card.takeCost}개, 보유 ${player.staminaTokens}개)`;
 }
 
 function SlotChip({ slot, size = "sm" }: { slot: CardSlot; size?: "sm" | "md" }) {

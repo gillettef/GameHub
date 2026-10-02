@@ -1,7 +1,7 @@
 // 플레이테스트 중 조정할 밸런스 수치 모음 (notes/기획_정리.md 8절의 "플레이테스트 후 조정" 항목).
 // 값을 바꾸면 엔진 전체에 반영되며, 시뮬레이션 스크립트(server/scripts/simulate.ts)가 이 객체를 직접 바꿔 비교합니다.
 // 카드 종류별 수치(수업/장비/탐험/마도서/마법생물)는 각 *Cards.ts / creatures.ts에서 조정합니다.
-import type { ActivityId, StatKey } from "./types.js";
+import type { ActivityId, KeptToken, StatKey } from "./types.js";
 
 export const BALANCE = {
   // 라운드 구조 — 기획 확정값(12라운드, 6라운드 후 중간고사). 바꾸면 클라이언트 표시(12/12)와도 맞춰야 함
@@ -67,14 +67,9 @@ export const BALANCE = {
   // 켜면 구역에 처음 들어온 사람이 카드를 열 때 낸다. 카드를 습득하는 데 드는 체력토큰은 카드마다 정해져 있다 (수업카드 takeCost, 연구 카드 cost)
   openCardCost: 1,
   openCardCostActivities: [] as ActivityId[],
-  // 능력치 × 활동 조화 (38절): 활동마다 주 능력치가 있어서 그 수치가 판정의 고정 보너스로 주사위 합에 더해진다 (시험 점수와 같은 방식).
-  // 마법 토너먼트·주문 대결의 주 능력치는 주문력인데, 주문력은 이미 마나토큰(=주사위 수)으로 반영되므로 보너스를 따로 더하지 않는다
-  rollBonusStat: { creature: "charm", exploration: "stamina", lab: "intelligence" } as Partial<Record<ActivityId, StatKey>>,
-  // 보너스가 붙는 판정의 목표값에 더하는 기준 보너스 (시작 능력치 2만큼은 기본으로 깔고 시작해서, 시작 난이도는 그대로 두고 능력치가 오를수록 쉬워지게 한다).
-  // 탐험은 체력 보너스 영향이 커서(봇 시뮬레이션에서 탐험 몰빵 승률 22% → 42%) 기준을 4로 올려 원래 수준(약 22%)으로 맞췄다
-  rollBonusBaseline: { creature: 2, exploration: 4, lab: 2 },
-  // 지력(학습): 수업카드·연구 카드의 체력토큰이 모자라면 지력토큰 이 개수가 체력토큰 1개를 대신한다 (아는 만큼 덜 힘들게 배운다). 체력토큰을 먼저 쓰고 모자란 만큼만 지력토큰으로 메꾼다
-  intelligencePerStamina: 2,
+  // 능력치 × 활동 조화 (39절): 활동마다 주 능력치의 토큰이 곧 그 활동의 주사위 재료다 ("내 매력만큼 주사위"). 마나토큰(주문력)은 토너먼트·주문 대결과 다시 굴리기에만 쓴다.
+  // 시험은 카드의 주 능력치 토큰(주문력은 마나토큰)으로 굴린다. 재료 토큰이 없으면 어느 활동이든 공짜 주사위 1개
+  rollFuel: { tournament: "mana", creature: "charm", duel: "mana", exploration: "stamina", lab: "intelligence" } as Record<ActivityId, KeptToken>,
   // 보조 능력치 (38-6절): 굴리기 전에 그 능력의 토큰을 내서 주 판정을 돕는다.
   // 마법 토너먼트 — 체력(지구력): 체력토큰 1개당 고정 칸 전진 (주사위가 아니라 고정값)
   tournamentStaminaBoost: 3,
