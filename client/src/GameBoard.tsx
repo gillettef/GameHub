@@ -1,4 +1,4 @@
-import { useEffect, useState, type CSSProperties } from "react";
+import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { Icon, InlineIcon, type IconName } from "./Icons";
 import {
   ACTIVITY_HINT,
@@ -18,7 +18,6 @@ import {
   duelTargets,
   effectiveStat,
   type ActivityId,
-  type ClassCard,
   type CreatureElement,
   type GameState,
   type KeepChoice,
@@ -26,6 +25,8 @@ import {
   type PlayerGameState,
 } from "./gameTypes";
 import { CardButton, CardGrid, PickGrid, type CardInfo } from "./CardArt";
+import { classCardBlockReason, classCardData, GameCardGrid, GamePickGrid, type GameCardData } from "./GameCard";
+import { PlayerTable } from "./PlayerTable";
 import { RulesGuide } from "./Rules";
 import { GameMenu } from "./Leave";
 import { FinalReveal } from "./FinalReveal";
@@ -65,7 +66,7 @@ function DiceFace({ value, delay = 0, selected, onToggle }: { value: number; del
   );
 }
 
-function PlayerStatCard({ player, isMe, rules }: { player: PlayerGameState; isMe: boolean; rules: GameState["rules"] }) {
+function PlayerStatCard({ player, isMe, rules, defaultOpen }: { player: PlayerGameState; isMe: boolean; rules: GameState["rules"]; defaultOpen: boolean }) {
   const body = (
     <>
       <div className="flex flex-wrap gap-1.5 mb-1.5">
@@ -104,9 +105,9 @@ function PlayerStatCard({ player, isMe, rules }: { player: PlayerGameState; isMe
             {ownedCardGroups(player).map((g) => (
               <div key={g.key}>
                 <p className="mb-1 text-xs font-semibold text-purple-600">
-                  <InlineIcon name={g.icon} /> {g.label} {g.cards.length}장
+                  <InlineIcon name={g.icon} /> {g.label} {g.count}장
                 </p>
-                <CardGrid cards={g.cards} />
+                {g.node}
               </div>
             ))}
           </div>
@@ -130,7 +131,7 @@ function PlayerStatCard({ player, isMe, rules }: { player: PlayerGameState; isMe
 
   // 내 카드와 친구 카드 모두 접고 펼 수 있다. 내 카드는 기본으로 펼쳐 두고, 접으면 한 줄 요약만 보인다
   return (
-    <details open={isMe} className={isMe ? "rounded-3xl border-2 border-pink-300 bg-pink-50 shadow-sm" : "rounded-3xl border-2 border-purple-200 bg-white shadow-sm"}>
+    <details id={`player-${player.id}`} open={defaultOpen} className={isMe ? "rounded-3xl border-2 border-pink-300 bg-pink-50 shadow-sm" : "rounded-3xl border-2 border-purple-200 bg-white shadow-sm"}>
       <summary className="flex min-h-12 cursor-pointer items-center justify-between gap-2 px-3 py-2 font-display text-purple-700">
         <span className="truncate">
           {player.name}
@@ -145,15 +146,6 @@ function PlayerStatCard({ player, isMe, rules }: { player: PlayerGameState; isMe
   );
 }
 
-function classCardInfo(card: ClassCard): CardInfo {
-  return {
-    name: card.name,
-    badge: `+${card.statBoost.amount} ${STAT_LABEL[card.statBoost.stat]} · 체력토큰 ${card.takeCost}개`,
-    rare: card.statBoost.amount >= 2,
-    lines: [card.description, <><InlineIcon name="staminaToken" /> 습득 체력토큰 {card.takeCost}개</>],
-  };
-}
-
 function offerCardInfo(card: OfferCardView): CardInfo {
   return {
     name: card.name,
@@ -164,9 +156,9 @@ function offerCardInfo(card: OfferCardView): CardInfo {
 }
 
 // 가진 카드를 어디서 얻었는지(2주차 정규수업 / 3주차 자율활동 구역)별로 묶는다
-function ownedCardGroups(player: PlayerGameState): { key: string; icon: IconName; label: string; cards: CardInfo[] }[] {
+function ownedCardGroups(player: PlayerGameState): { key: string; icon: IconName; label: string; count: number; node: ReactNode }[] {
   const groups = [
-    { key: "class", icon: "book" as IconName, label: "정규수업 수업카드", cards: player.classCards.map(classCardInfo) },
+    { key: "class", icon: "book" as IconName, label: "정규수업 수업카드", cards: player.classCards.map(classCardData) as (GameCardData | CardInfo)[] },
     {
       key: "lab",
       icon: "flask" as IconName,
@@ -194,7 +186,15 @@ function ownedCardGroups(player: PlayerGameState): { key: string; icon: IconName
       })),
     },
   ];
-  return groups.filter((g) => g.cards.length > 0);
+  return groups
+    .filter((g) => g.cards.length > 0)
+    .map((g) => ({
+      key: g.key,
+      icon: g.icon,
+      label: g.label,
+      count: g.cards.length,
+      node: g.key === "class" ? <GameCardGrid cards={g.cards as GameCardData[]} /> : <CardGrid cards={g.cards as CardInfo[]} />,
+    }));
 }
 
 function ClassPhasePanel({ game, myId, onTake }: { game: GameState; myId: string; onTake: (cardId: string | null) => void }) {
@@ -236,12 +236,13 @@ function ClassPhasePanel({ game, myId, onTake }: { game: GameState; myId: string
       ) : (
         <div className="mb-3">
           <p className="mb-2 text-xs text-purple-500">카드를 누르면 크게 볼 수 있어요</p>
-          <PickGrid
+          <GamePickGrid
             items={game.classMarket.map((card) => {
               const affordable = canPay(me, 0, card.takeCost);
               return {
                 key: card.id,
-                card: classCardInfo(card),
+                card: classCardData(card),
+                blockReason: classCardBlockReason(me, card),
                 onAction: isMyTurn ? () => onTake(card.id) : undefined,
                 actionLabel: affordable ? "가져가기" : "체력토큰이 부족해요",
                 disabled: !affordable,
@@ -1009,7 +1010,6 @@ export function GameBoard({
 }) {
   const [tab, setTab] = useState<TabId>("game");
   const latestExam = game.examResults[game.examResults.length - 1];
-  const me = game.players[myId];
   // 3주차: 선택 단계에서는 고를 차례인 사람, 진행 단계에서는 카드를 고르는 사람이 행동한다
   const activityTurnId = game.activityStage === "choose" ? game.activityOrder[game.activityTurnPointer] : game.pendingPick?.playerId;
   const myRollPending = !!game.pendingRoll?.entries.some(
@@ -1038,6 +1038,18 @@ export function GameBoard({
           : game.phase === "final_exam"
             ? "기말고사"
             : "게임 종료";
+
+  // 비교표의 행을 누르면 친구들 탭에서 그 사람의 카드 목록을 펼쳐 보여 준다
+  const [focus, setFocus] = useState<{ id: string; seq: number } | null>(null);
+  const openPlayer = (id: string) => {
+    setFocus((f) => ({ id, seq: (f?.seq ?? 0) + 1 }));
+    setTab("players");
+  };
+  useEffect(() => {
+    if (tab !== "players" || !focus) return;
+    const t = window.setTimeout(() => document.getElementById(`player-${focus.id}`)?.scrollIntoView({ block: "center" }), 50);
+    return () => window.clearTimeout(t);
+  }, [tab, focus]);
 
   const selectTab = (id: TabId) => {
     setTab(id);
@@ -1068,19 +1080,7 @@ export function GameBoard({
         <div className="mt-1.5 h-1.5 w-full rounded-full bg-purple-100 overflow-hidden" aria-hidden>
           <div className="h-full bg-pink-300 transition-all" style={{ width: `${(game.round / 12) * 100}%` }} />
         </div>
-        <div className="mt-1.5 flex flex-wrap gap-1.5" role="group" aria-label="내 능력치">
-          <Chip icon="bulb" label="지력" value={effectiveStat(me, "intelligence")} className="bg-sky-100 text-sky-800" />
-          <Chip icon="bolt" label="체력" value={effectiveStat(me, "stamina")} className="bg-green-100 text-green-800" />
-          <Chip icon="heart" label="매력" value={effectiveStat(me, "charm")} className="bg-pink-100 text-pink-800" />
-          <Chip icon="sparkle" label="주문력" value={effectiveStat(me, "spellPower")} className="bg-purple-100 text-purple-800" />
-          <Chip icon="cap" label="학점" value={me.credit} className="bg-amber-100 text-amber-800" />
-        </div>
-        <div className="mt-1.5 flex flex-wrap gap-1.5" role="group" aria-label="내 토큰">
-          <Chip icon="intToken" label="지력토큰" showLabel value={me.intelligenceTokens} className="bg-sky-50 text-sky-700 ring-1 ring-sky-200" />
-          <Chip icon="staminaToken" label="체력토큰" showLabel value={me.staminaTokens} className="bg-green-50 text-green-700 ring-1 ring-green-200" />
-          <Chip icon="charmToken" label="매력토큰" showLabel value={me.charmTokens} className="bg-pink-50 text-pink-700 ring-1 ring-pink-200" />
-          <Chip icon="manaToken" label="마나토큰" showLabel value={me.manaTokens} className="bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200" />
-        </div>
+        <PlayerTable game={game} myId={myId} offline={offline} onOpenPlayer={openPlayer} />
       </header>
 
       <main className="flex-1 px-4 py-4 pb-[calc(9rem+env(safe-area-inset-bottom))] flex flex-col gap-4">
@@ -1136,7 +1136,7 @@ export function GameBoard({
           <div className="flex flex-col gap-2">
             {game.turnOrder.map((id) => (
               <div key={id} className="flex flex-col gap-1">
-                <PlayerStatCard player={game.players[id]} isMe={id === myId} rules={game.rules} />
+                <PlayerStatCard key={`${id}-${focus?.id === id ? focus.seq : 0}`} player={game.players[id]} isMe={id === myId} rules={game.rules} defaultOpen={id === myId || focus?.id === id} />
                 <PlayerAdminRow name={game.players[id].name} offline={offline.includes(id)} canKick={canKickInGame && id !== myId} onKick={() => onKick(id)} />
               </div>
             ))}
