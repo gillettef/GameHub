@@ -243,7 +243,7 @@ notes/    규칙서 원본 및 텍스트 레퍼런스
 - **방법 C — AWS EC2 (서버3, 상시 주소, 게임 3종 공용 서버)**: `scripts/aws-deploy.ps1`(수동, 이 PC에서 빌드 → ssh로 전송 → 재시작)와 `.github/workflows/deploy-aws.yml`(**`main`에 푸시하면 자동 배포**, 먼저 `npm run check`를 통과해야 함).
   **2026-10-02 사용자 지시로 Eleven·AstralTab·MagicAcademy를 EC2 t4g.nano 1대(ARM, Amazon Linux 2023, 서울, Elastic IP 고정)에 합쳤다.** 기존 Eleven 전용 인스턴스(`eleven-game-server-arm`)와 `eleven-game-sg`는 삭제됐다. 세 게임은 포트로 구분한다(Eleven 3001 / MagicAcademy 8080 / AstralTab 3201) — 셋 다 `/ws` 경로를 쓰므로 경로 접두사로는 못 나눈다. 한 번에 한 게임만 플레이하는 전제다.
   배포는 러너/PC에서 빌드한 `server/dist`·`client/dist`·package.json류를 `ssh + tar`로 `~/eleven`에 풀고 → `npm install --omit=dev --workspace server` → `sudo systemctl restart eleven` → `/health`. RAM 0.5GB라 서버에서 빌드하지 않고, 스왑 2GB(`/swapfile`)가 있어야 `npm`이 OOM으로 안 죽는다.
-  서비스는 `eleven.service`(systemd, 3001 직접 노출, nginx 없음). 서버 설정 스크립트(`provision.sh`·`units.sh`)는 저장소 밖 `Games/lightsail/`에 있다(이름은 옛 Lightsail 계획의 흔적).
+  서비스는 `eleven.service`(systemd, 3001 직접 노출, nginx 없음). 서버 설정 스크립트(`provision.sh`·`units.sh`)는 저장소 밖 `Games/server/`에 있다.
   **SSH(22)는 관리자 IP로만 열려 있고**, 워크플로가 배포 직전에 러너 IP를 보안 그룹에 임시로 열었다 닫는다(최소 권한 IAM 사용자 `astraltab-ci`, 세 저장소 공용). 시크릿: AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY / AWS_REGION / AWS_SECURITY_GROUP_ID / EC2_HOST / EC2_HOST_KEY / EC2_SSH_PRIVATE_KEY.
   워크플로는 `concurrency` 그룹으로 한 번에 하나만 돈다. **푸시 = 서버3 운영 반영**이라는 점에 주의(서버1·2 슬롯 규칙과 별개). 서비스가 재시작되므로 진행 중인 판은 유실된다.
 
