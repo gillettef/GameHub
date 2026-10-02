@@ -26,7 +26,8 @@
 - **프론트엔드**: React + TypeScript + Vite + Tailwind CSS. 별도 백엔드 API 없이 전부 WebSocket으로 통신하므로 Next.js 같은 서버 프레임워크는 불필요, 정적 파일로 빌드
 - **실시간 통신/게임 상태**: Node.js + Express + `ws`(WebSocket). 게임방(room) 상태는 서버 프로세스 메모리에만 보관 — **DB 없음**, 서버 재시작 시 진행 중인 게임은 사라짐. 단, 모바일에서 다른 앱(카톡 등)을 보고 오면 WebSocket이 끊기므로 **같은 방·같은 자리로 자동 재접속**은 지원한다 (나가기 버튼(`leave_room`)은 자발적 퇴장으로, 게임 중이면 즉시 봇이 이어받고 복귀 불가·방장은 남은 사람에게 이양. 클라이언트가 방 코드·playerId를 localStorage에 저장 → `rejoin_room`. **게임 중 접속이 끊겨도 자리는 무기한 유지되고 봇이 대신하지 않으며 게임은 그 사람의 차례를 기다린다**(`presence`로 끊김을 모두에게 표시, 방장이 끊기면 30초 뒤 접속 중인 사람에게 이양, 전원이 30분 넘게 끊기면 방 삭제). 방장은 게임 중에도 누구든 내보낼 수 있고(`kick_player`, 2명 이상 남아야 함) 내보낸 사람은 게임에서 완전히 제거되며 `rejoin_room`도 거부됨. 대기실·끝난 게임에서 끊긴 사람만 45초 뒤 방에서 빠짐. ping/pong 하트비트로 죽은 연결 감지, 상세는 `notes/기획_정리.md` 37절)
 - **계정/로그인**: 없음. 호스트가 방을 만들면 방 코드가 발급되고 다른 플레이어는 코드로 입장(Jackbox 방식)
-- **배포**: AWS EC2 인스턴스 1대에서 Express 서버가 프론트 빌드 결과(정적 파일)와 WebSocket을 함께 서빙
+- **배포**: AWS EC2 t4g.nano 1대(Eleven·AstralTab과 공유, 포트 8080, systemd `magicacademy`)에서 Express 서버가 프론트 빌드 결과(정적 파일)와 WebSocket을 함께 서빙
+- **자동 배포**: `main`에 푸시하면 `.github/workflows/deploy-aws.yml`이 `server`의 `npm run check`(규칙 검증)를 통과했을 때만 빌드해 서버(`~/magicacademy`)에 올리고 재시작한다. SSH(22)는 관리자 IP로만 열려 있어 워크플로가 러너 IP를 임시로 열었다 닫는다. 필요한 시크릿: AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY / AWS_REGION / AWS_SECURITY_GROUP_ID / EC2_HOST / EC2_HOST_KEY / EC2_SSH_PRIVATE_KEY. 서버 설정 스크립트는 저장소 밖 `Games/lightsail/`. 게임 상태가 메모리뿐이라 재시작하면 진행 중인 판은 사라진다.
 - **HTTPS/WSS**: 사용하지 않음, 순수 HTTP+WS로 단순화. 친구들끼리만 사용하는 캐주얼한 개인 프로젝트라 트래픽 암호화나 인증서 관리 부담을 감수할 필요가 없다고 판단(브라우저에 "안전하지 않음" 표시는 뜨지만 차단되지는 않음). 이후 더 넓은 공개 배포나 PWA 기능이 필요해지면 재검토
 
 ### 저장소 구조
