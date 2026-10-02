@@ -5,7 +5,7 @@
 # (scripts/deploy-aws.ps1 참고). 이 스크립트는 그 뒤에 실행한다.
 set -euxo pipefail
 
-sudo dnf update -y
+# 램 0.5GB 라 전체 dnf update 는 하지 않는다(메모리 부족으로 죽을 수 있음).
 
 curl -fsSL https://rpm.nodesource.com/setup_22.x | sudo bash -
 sudo dnf install -y nodejs git gcc gcc-c++ make python3.11 python3.11-pip

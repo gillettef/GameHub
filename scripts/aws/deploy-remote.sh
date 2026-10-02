@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # EC2 인스턴스 위에서 실행된다 (scripts/deploy-aws.ps1 과 GitHub Actions 가 ssh로 호출).
 # git archive 로 ~/AstralTab 에 최신 소스가, 빌드된 client/dist/prod 가 이미 풀린 상태라고 가정한다.
-# 클라이언트 빌드(vite)는 메모리가 작은 EC2(t3.micro, 1GB)에서 하지 않고 CI·로컬에서 미리 해 온다.
+# 클라이언트 빌드(vite)는 메모리가 작은 EC2(t4g.nano, 0.5GB)에서 하지 않고 CI·로컬에서 미리 해 온다.
 # 서버는 단일(운영) 환경이다. systemd 서비스명·디렉터리의 "prod" 는 예전 이름을 그대로 둔 것이다.
 set -euo pipefail
 

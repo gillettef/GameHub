@@ -4,7 +4,7 @@
 # GitHub 저장소가 비공개라 EC2에서 직접 git clone/pull 하지 않는다. 대신 로컬 워킹트리를
 # `git archive`로 패키징해 ssh로 전송한 뒤, 서버에서 scripts/aws/deploy-remote.sh 가
 # npm install → pip install → systemd 서비스 재시작을 수행한다. 클라이언트 빌드(vite)는
-# EC2(t3.micro, 1GB)에서 하지 않고 이 스크립트가 로컬에서 미리 해서 client/dist/prod 만 전송한다.
+# EC2(t4g.nano, 0.5GB)에서 하지 않고 이 스크립트가 로컬에서 미리 해서 client/dist/prod 만 전송한다.
 #
 # 사전 조건: .dev/astraltab-key.pem (SSH 키), .dev/aws-public-ip.txt (Elastic IP) 존재.
 # 인스턴스 자체를 새로 만드는 절차는 scripts/aws/provision.sh, scripts/aws/units.sh 참고.
