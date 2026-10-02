@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { CFG, dispatch, newGame, rankings } from '../src/game/engine';
+import { CFG, baseCapacity, dispatch, newGame, rankings } from '../src/game/engine';
+import { FACILITY_BY_ID } from '../src/game/data/facilities';
 
 describe('게임 엔진', () => {
   it('AI끼리 8라운드를 끝까지 진행하고 순위가 나온다', () => {
@@ -64,5 +65,33 @@ describe('게임 엔진', () => {
     const t = dispatch(s, { type: 'endManage' });
     expect(t.notice).toBeTruthy();
     expect(t.round).toBe(s.round);
+  });
+
+  it('시작 자금: 1라운드 순서가 늦을수록 seatBonus만큼 더 받는다', () => {
+    const s = newGame({ aiCount: 2, seed: 21 });
+    const n = s.players.length;
+    for (const p of s.players) {
+      const pos = (p.id - s.startFirst + n) % n;
+      expect(p.money).toBe(CFG.startMoney + Math.floor(pos * CFG.seatBonus));
+    }
+    expect(s.first).toBe(s.startFirst);
+  });
+
+  it('시장 카드 수는 플레이어 수 + marketExtra', () => {
+    for (const ai of [1, 2, 3]) {
+      const s = newGame({ aiCount: ai, seed: 4 });
+      expect(s.market.length).toBe(ai + 1 + CFG.marketExtra);
+    }
+  });
+
+  it('대형 시설(건설비 bigCost 이상)은 수용 2명, 나머지는 1명', () => {
+    expect(baseCapacity(FACILITY_BY_ID[1])).toBe(2); // 롤러코스터 (10)
+    expect(baseCapacity(FACILITY_BY_ID[5])).toBe(1); // 회전목마 (3)
+  });
+
+  it('게임 종료 시 남은 돈이 moneyPerVp 비율로 VP에 더해진다', () => {
+    const s = newGame({ humans: 0, aiCount: 2, seed: 8 });
+    expect(s.phase).toBe('gameOver');
+    for (const p of s.players) expect(p.endBonus).toBe(Math.floor(p.money / CFG.moneyPerVp));
   });
 });

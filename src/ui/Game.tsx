@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { CFG, HUMAN, incomeOf, isHumanTurn, priceOf, rankings, visitorQuota, type Action } from '../game/engine';
+import { CFG, HUMAN, baseCapacity, incomeOf, isHumanTurn, priceOf, rankings, visitorQuota, type Action } from '../game/engine';
 import { FACILITY_BY_ID } from '../game/data/facilities';
 import { STAFF_KEYS, type FacilityCard, type GameState, type Player } from '../game/types';
 import { haptic } from '../platform/storage';
@@ -186,6 +186,7 @@ export function GameScreen({ game, act, onExit }: Props) {
                       <span className="tile-type" style={{ ['--c' as string]: TYPE_META[c.type].color }}>
                         <Icon name={TYPE_META[c.type].icon} size={12} stroke={2} />
                       </span>
+                      {baseCapacity(c) > 1 && <span className="tile-cap" title="대형 시설: 2명 수용">×{baseCapacity(c)}</span>}
                       {f?.broken && (
                         <div className="tile-broken">
                           <Icon name="crack" size={26} />
@@ -437,7 +438,7 @@ function Dock({ game, me, act, tab, setTab, selected, setSelected, myTurn, broke
             {STAFF_KEYS.map((k) => {
               const lv = me.staff[k];
               const maxed = lv >= CFG.maxStaff;
-              const cost = CFG.hireCost(lv);
+              const cost = CFG.hireCost(k, lv);
               const m = STAFF_META[k];
               return (
                 <div key={k} className="staff-item" style={{ ['--c' as string]: m.color }}>
@@ -461,7 +462,7 @@ function Dock({ game, me, act, tab, setTab, selected, setSelected, myTurn, broke
   if (game.phase === 'promote') return game.promoteStep === 'pick' ? <PickDock game={game} me={me} act={act} /> : <FeeDock me={me} act={act} />;
 
   if (game.phase === 'manage') {
-    const penalty = Math.floor(me.trash / 2);
+    const penalty = Math.floor(me.trash / CFG.trashPerVp);
     const cleanable = Math.min(me.trash, me.money);
     return (
       <footer className="dock">
@@ -481,7 +482,7 @@ function Dock({ game, me, act, tab, setTab, selected, setSelected, myTurn, broke
           </div>
           <div className="m-row">
             <Icon name="trash" size={20} />
-            <div><b>쓰레기 {me.trash}개</b><small>개당 ${CFG.cleanCost} · 2개마다 VP -1</small></div>
+            <div><b>쓰레기 {me.trash}개</b><small>개당 ${CFG.cleanCost} · {CFG.trashPerVp}개마다 VP -1</small></div>
             <div className="m-btns">
               {me.trash === 0 ? <span className="ok"><Icon name="check" size={16} /> 깨끗해요</span> : (
                 <>
@@ -609,12 +610,16 @@ function GameOver({ game, onExit }: { game: GameState; onExit: () => void }) {
           {ranked.map((p, i) => (
             <li key={p.id} className={p.id === HUMAN ? 'me' : ''} style={{ animationDelay: `${i * 90}ms` }}>
               <span className="rk">{i + 1}</span>
-              <span className="nm">{p.name}</span>
+              <span className="nm">
+                {p.name}
+                {!!p.endBonus && <small className="bonus"> (잔액 +{p.endBonus})</small>}
+              </span>
               <Vp value={p.vp} />
               <Money value={p.money} />
             </li>
           ))}
         </ol>
+        {CFG.moneyPerVp > 0 && <p className="muted small">남은 돈 ${CFG.moneyPerVp}마다 VP +1이 이미 더해졌어요.</p>}
         <p className="muted small">VP가 같으면 남은 돈이 많은 쪽이 앞서요.</p>
         <button className="btn primary wide" onClick={onExit}>타이틀로</button>
       </div>

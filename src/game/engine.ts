@@ -21,22 +21,63 @@ export const CFG = {
   rounds: 8,
   startMoney: 10,
   slots: 6,
+  /** 건설비가 이 값 이상인 시설은 기본 수용 2명 (큰 놀이기구) */
+  bigCost: 8,
   marketSize: 4,
-  satPerVp: 4,
+  /** 0 이상이면 시장 카드 수 = 플레이어 수 + 이 값 (marketSize 무시) */
+  marketExtra: 2,
+  satPerVp: 8,
+  /** 시설 건설비 배율 (올림) */
+  costMul: 1,
   maxStaff: 3,
   repairCost: 3,
   cleanCost: 1,
+  /** 쓰레기 N개마다 VP -1 */
+  trashPerVp: 2,
+  /** 적자 $N마다 VP -1 */
+  debtPerVp: 2,
+  /** 게임 종료 시 남은 돈 $N마다 VP +1 (0이면 없음) */
+  moneyPerVp: 6,
   baseVisitors: 2,
   maxFee: 4,
-  breakBase: 0.25,
+  breakBase: 0.2,
   breakPerEngineer: 0.08,
+  /** 연구원 Lv당 라운드마다 추가되는 만족도 (연구 성과) */
+  researchSat: 3,
   breakMin: 0.04,
   trashChance: 0.5,
   visitorDeckSize: 48,
   /** 관객 트랙에 깔리는 카드 = 전원 수용량 합 + 여유분 */
   rowExtra: 2,
-  hireCost: (level: number) => 4 + 2 * level,
+  /** 시설 원본 수익 ÷ incomeDiv (올림) = 방문 1회 수익 */
+  incomeDiv: 2,
+  /** 인력별 고용비 (레벨 0→1, 1→2, 2→3) */
+  hireCosts: {
+    marketer: [4, 6, 8],
+    guide: [4, 6, 8],
+    engineer: [3, 5, 7],
+    cleaner: [3, 5, 7],
+    researcher: [2, 4, 6],
+  } as Record<StaffKey, number[]>,
+  /** 1이면 라운드 선 = VP가 가장 낮은 플레이어(동률은 돈 적은 쪽), 0이면 시계 방향 순환 */
+  catchUpOrder: 0,
+  /** 관객 고르기 시작 순서: 0=선 플레이어부터, 1=선 바로 앞 플레이어부터(건설에서 가장 늦은 쪽이 먼저) */
+  pickOrder: 0,
+  /** 늦은 순서 좌석에 주는 시작 자금 (좌석 i는 +floor(i × 값)) */
+  seatBonus: 2,
+  /** 인원 수별 라운드 수 (없으면 rounds). 선 플레이어 횟수가 균등하도록 인원의 배수로 */
+  roundsByPlayers: {} as Record<number, number>,
+  hireCost: (key: StaffKey, level: number) => CFG.hireCosts[key][level] ?? 99,
 };
+
+/** 밸런스 시뮬레이션용 통계 훅 (게임 진행에는 영향 없음) */
+export const probe: {
+  visit?: (p: Player, cardId: number, income: number, sat: number) => void;
+  buy?: (p: Player, cardId: number, price: number, round: number) => void;
+  hire?: (p: Player, k: StaffKey, round: number) => void;
+  debt?: (p: Player) => void;
+  roundEnd?: (s: GameState) => void;
+} = {};
 
 export const OUTDOOR: FacilityType[] = ['스릴형', '패밀리형', '어드벤처형', '물놀이형', '놀이형'];
 
@@ -80,11 +121,13 @@ function log(s: GameState, msg: string) {
 const matches = (t: EventTarget, type: FacilityType) =>
   t === 'all' ? true : t === 'outdoor' ? OUTDOOR.includes(type) : t === 'indoor' ? !OUTDOOR.includes(type) : t.includes(type);
 
-export const incomeOf = (c: FacilityCard, kind: 'child' | 'adult') => Math.ceil(c.income[kind === 'child' ? 0 : 1] / 2);
-export const priceOf = (p: Player, c: FacilityCard) => Math.max(1, c.cost - p.staff.researcher);
+export const incomeOf = (c: FacilityCard, kind: 'child' | 'adult') => Math.ceil(c.income[kind === 'child' ? 0 : 1] / CFG.incomeDiv);
+export const priceOf = (p: Player, c: FacilityCard) => Math.max(1, Math.ceil(c.cost * CFG.costMul) - p.staff.researcher);
 export function visitorQuota(s: GameState, p: Player): number {
   return Math.max(0, CFG.baseVisitors + p.staff.marketer + (s.event?.visitorDelta ?? 0));
 }
+/** 시설의 기본 수용 인원 */
+export const baseCapacity = (c: FacilityCard) => (c.cost >= CFG.bigCost ? 2 : 1);
 export const hasHuman = (s: GameState) => s.players.some((p) => !p.isAI);
 
 function eventMods(s: GameState, type: FacilityType) {
@@ -114,12 +157,12 @@ function makeVisitors(s: GameState, n: number): Visitor[] {
   return shuffle(s, out);
 }
 
-function drawVisitor(s: GameState): Visitor {
+export function drawVisitor(s: GameState): Visitor {
   if (s.visitorDeck.length === 0) s.visitorDeck = makeVisitors(s, CFG.visitorDeckSize);
   return s.visitorDeck.pop()!;
 }
 
-export function newGame(opts: { aiCount: number; humans?: number; seed?: number; humanName?: string }): GameState {
+export function newGame(opts: { aiCount: number; humans?: number; seed?: number; humanName?: string; profiles?: string[] }): GameState {
   const humans = opts.humans ?? 1;
   const s: GameState = {
     round: 0,
@@ -127,6 +170,7 @@ export function newGame(opts: { aiCount: number; humans?: number; seed?: number;
     phase: 'construct',
     players: [],
     first: 0,
+    startFirst: 0,
     turn: 0,
     passed: [],
     market: [],
@@ -151,6 +195,7 @@ export function newGame(opts: { aiCount: number; humans?: number; seed?: number;
       id: i,
       name: isAI ? `${aiNames[i - humans]} 파크` : (opts.humanName ?? '내 파크'),
       isAI,
+      ai: isAI ? (opts.profiles?.[i] ?? 'balanced') : undefined,
       money: CFG.startMoney,
       vp: 0,
       satPool: 0,
@@ -164,12 +209,25 @@ export function newGame(opts: { aiCount: number; humans?: number; seed?: number;
       report: null,
     });
   }
+  s.maxRounds = CFG.roundsByPlayers[total] ?? CFG.rounds;
+  // 1라운드 선 플레이어는 무작위. 순서가 늦을수록 시작 자금을 더 받는다.
+  s.startFirst = Math.floor(rand(s) * total);
+  for (const p of s.players) p.money += Math.floor(((p.id - s.startFirst + total) % total) * CFG.seatBonus);
   s.facilityDeck = shuffle(s, FACILITIES.map((c) => c.id));
   s.visitorDeck = makeVisitors(s, CFG.visitorDeckSize);
   s.eventDeck = shuffle(s, EVENTS.map((e) => e.id));
   startRound(s);
   settle(s);
   return s;
+}
+
+/** 라운드 선 플레이어: 순환 또는 (catchUpOrder) VP가 가장 낮은 쪽 */
+function nextFirst(s: GameState): number {
+  const n = s.players.length;
+  if (s.round === 1) return s.startFirst;
+  if (!CFG.catchUpOrder) return (s.startFirst + s.round - 1) % n;
+  const dist = (i: number) => (i - (s.first + 1) + n * 2) % n;
+  return [...s.players].sort((a, b) => a.vp - b.vp || a.money - b.money || dist(a.id) - dist(b.id))[0].id;
 }
 
 function startRound(s: GameState) {
@@ -179,12 +237,13 @@ function startRound(s: GameState) {
   const eventId = s.eventDeck.pop()!;
   s.event = EVENTS.find((e) => e.id === eventId)!;
   s.market = [];
-  for (let i = 0; i < CFG.marketSize; i++) {
+  const marketSize = CFG.marketExtra >= 0 ? s.players.length + CFG.marketExtra : CFG.marketSize;
+  for (let i = 0; i < marketSize; i++) {
     if (s.facilityDeck.length === 0) s.facilityDeck = shuffle(s, FACILITIES.map((c) => c.id));
     s.market.push(s.facilityDeck.pop()!);
   }
   s.passed = s.players.map(() => false);
-  s.first = (s.round - 1) % s.players.length;
+  s.first = nextFirst(s);
   s.turn = s.first;
   log(s, `${s.round}라운드 · ${s.event.name}`);
 }
@@ -255,7 +314,7 @@ function startPromote(s: GameState) {
   s.visitorRow = Array.from({ length: total }, () => ({ v: drawVisitor(s), by: null }));
   for (const p of s.players) p.visitors = [];
   s.pickDone = s.players.map((p) => visitorQuota(s, p) === 0);
-  s.pickTurn = s.first;
+  s.pickTurn = CFG.pickOrder ? (s.first + s.players.length - 1) % s.players.length : s.first;
   if (s.pickDone[s.pickTurn]) advancePick(s);
   log(s, `관객 ${total}명이 입구 앞에 모였어요`);
 }
@@ -314,12 +373,19 @@ function startManage(s: GameState) {
 
 function finishRound(s: GameState) {
   for (const p of s.players) {
-    const penalty = Math.floor(p.trash / 2);
+    const penalty = Math.floor(p.trash / CFG.trashPerVp);
     p.vp = Math.max(0, p.vp - penalty);
     if (p.report) p.report.trashPenalty = penalty;
     if (penalty > 0) log(s, `${p.name}: 쓰레기 ${p.trash}개 → VP -${penalty}`);
   }
+  probe.roundEnd?.(s);
   if (s.round >= s.maxRounds) {
+    if (CFG.moneyPerVp > 0) {
+      for (const p of s.players) {
+        p.endBonus = Math.floor(p.money / CFG.moneyPerVp);
+        p.vp += p.endBonus;
+      }
+    }
     s.phase = 'gameOver';
     const ranked = rankings(s);
     log(s, `${ranked[0].name} 승리!`);
@@ -336,7 +402,7 @@ export function rankings(s: GameState): Player[] {
 
 export const facilityValue = (c: FacilityCard) => (c.income[0] + c.income[1]) / 4 + (c.sat[0] + c.sat[1]) / 2 / CFG.satPerVp * 2;
 
-function operatePlayer(s: GameState, p: Player): RoundReport {
+export function operatePlayer(s: GameState, p: Player): RoundReport {
   const ev = s.event!;
   const rep: RoundReport = {
     drawn: 0, entered: 0, fee: p.fee, feeIncome: 0, visits: [], unserved: 0, income: 0, upkeep: 0, sat: 0,
@@ -353,11 +419,11 @@ function operatePlayer(s: GameState, p: Player): RoundReport {
     .filter((x): x is { f: Built; i: number } => !!x.f && !x.f.broken);
   const cap = new Map<number, number>();
   const served = new Map<number, number>();
-  active.forEach((a) => cap.set(a.i, 1));
+  active.forEach((a) => cap.set(a.i, baseCapacity(FACILITY_BY_ID[a.f.id])));
   [...active]
     .sort((a, b) => facilityValue(FACILITY_BY_ID[b.f.id]) - facilityValue(FACILITY_BY_ID[a.f.id]))
     .slice(0, p.staff.guide)
-    .forEach((a) => cap.set(a.i, 2));
+    .forEach((a) => cap.set(a.i, (cap.get(a.i) ?? 1) + 1));
 
   for (const v of entered) {
     const opts = active
@@ -377,6 +443,7 @@ function operatePlayer(s: GameState, p: Player): RoundReport {
       rep.visits.push({ visitor: v, facility: o.c.name, facilityType: o.c.type, income, sat });
       rep.income += income;
       rep.sat += sat;
+      probe.visit?.(p, o.c.id, income, sat);
       cap.set(o.a.i, (cap.get(o.a.i) ?? 0) - 1);
       served.set(o.a.i, (served.get(o.a.i) ?? 0) + 1);
       if (rand(s) < CFG.trashChance) rep.trashAdded++;
@@ -390,10 +457,12 @@ function operatePlayer(s: GameState, p: Player): RoundReport {
   }
   p.money += rep.feeIncome + rep.income - rep.upkeep;
   if (p.money < 0) {
-    rep.debtVp = Math.ceil(-p.money / 2);
+    probe.debt?.(p);
+    rep.debtVp = Math.ceil(-p.money / CFG.debtPerVp);
     p.vp = Math.max(0, p.vp - rep.debtVp);
     p.money = 0;
   }
+  rep.sat += p.staff.researcher * CFG.researchSat;
   p.satPool += rep.sat;
   rep.vpGain = Math.floor(p.satPool / CFG.satPerVp);
   p.satPool -= rep.vpGain * CFG.satPerVp;
@@ -484,26 +553,76 @@ function aiPickTurn(s: GameState, p: Player) {
   log(s, `${p.name}: 관객 선택 (${best.kind === 'child' ? '어린이' : '성인'}·${best.fav}·$${best.budget})`);
 }
 
+/** AI 성향. 밸런스 시뮬레이션에서 "한 전략이 압도하지 않는지" 확인하는 데도 쓴다. */
+export interface AiProfile {
+  label: string;
+  /** 시설 가치 배율 */
+  buyScale: number;
+  /** 구매에 필요한 최소 순이익 */
+  buyMin: number;
+  /** 인력별 라운드당 기대 이득 (고용 판단) */
+  hire: Record<StaffKey, number>;
+  /** 고용 문턱 (높을수록 신중) */
+  hireRatio: number;
+  /** 남겨둘 현금 */
+  reserve: number;
+  /** 실험용: 이 레벨까지 해당 인력을 최우선 고용 */
+  force?: Partial<Record<StaffKey, number>>;
+}
+
+const H = (marketer: number, guide: number, engineer: number, cleaner: number, researcher: number) => ({ marketer, guide, engineer, cleaner, researcher });
+
+export const AI_PROFILES: Record<string, AiProfile> = {
+  balanced: { label: '균형', buyScale: 0.6, buyMin: 2.5, hire: H(6, 5.63, 3.6, 2.5, 4.5), hireRatio: 0.6, reserve: 0 },
+  builder: { label: '건설 중심', buyScale: 1.2, buyMin: 0, hire: H(2, 1, 1, 1, 1), hireRatio: 1.4, reserve: 0 },
+  staff: { label: '인력 중심', buyScale: 0.9, buyMin: 3, hire: H(6, 4, 4, 4, 5), hireRatio: 0.8, reserve: 0 },
+  audience: { label: '관객 중심', buyScale: 1, buyMin: 1, hire: H(12, 5, 1, 1, 1), hireRatio: 0.8, reserve: 0 },
+  frugal: { label: '절약', buyScale: 1, buyMin: 4, hire: H(3, 2, 2, 2, 2), hireRatio: 1.3, reserve: 3 },
+  // 인력 가치 측정용 (균형 AI + 해당 인력 우선 고용)
+  x_marketer: { label: '실험:마케팅', buyScale: 1, buyMin: 1, hire: H(0, 0, 0, 0, 0), hireRatio: 99, reserve: 0, force: { marketer: 2 } },
+  x_guide: { label: '실험:안내', buyScale: 1, buyMin: 1, hire: H(0, 0, 0, 0, 0), hireRatio: 99, reserve: 0, force: { guide: 2 } },
+  x_engineer: { label: '실험:엔지니어', buyScale: 1, buyMin: 1, hire: H(0, 0, 0, 0, 0), hireRatio: 99, reserve: 0, force: { engineer: 2 } },
+  x_cleaner: { label: '실험:미화원', buyScale: 1, buyMin: 1, hire: H(0, 0, 0, 0, 0), hireRatio: 99, reserve: 0, force: { cleaner: 2 } },
+  x_researcher: { label: '실험:연구원', buyScale: 1, buyMin: 1, hire: H(0, 0, 0, 0, 0), hireRatio: 99, reserve: 0, force: { researcher: 2 } },
+  x_none: { label: '실험:인력없음', buyScale: 1, buyMin: 1, hire: H(0, 0, 0, 0, 0), hireRatio: 99, reserve: 0 },
+};
+
+for (const k of STAFF_KEYS) {
+  AI_PROFILES['b_' + k] = { ...AI_PROFILES.balanced, label: '균형+' + k, force: { [k]: 2 } };
+}
+
 function evalCard(c: FacilityCard, left: number) {
   const inc = (incomeOf(c, 'child') + incomeOf(c, 'adult')) / 2;
   const sat = (c.sat[0] + c.sat[1]) / 2;
-  return (inc - c.upkeep + (sat / CFG.satPerVp) * 2.5) * left * 0.9;
+  const cap = baseCapacity(c);
+  return (cap * inc - c.upkeep + cap * (sat / CFG.satPerVp) * 2.5) * left * 0.9;
 }
 
 function aiConstructTurn(s: GameState, p: Player) {
+  const prof = AI_PROFILES[p.ai ?? 'balanced'] ?? AI_PROFILES.balanced;
   const left = s.maxRounds - s.round + 1;
+  // 실험용 강제 고용
+  if (prof.force && p.facilities.filter(Boolean).length >= 2) {
+    for (const k of STAFF_KEYS) {
+      const target = prof.force[k] ?? 0;
+      if (p.staff[k] < target && CFG.hireCost(k, p.staff[k]) <= p.money) {
+        doHire(s, p, k);
+        return;
+      }
+    }
+  }
   let best: { cardId: number; slot: number; net: number } | null = null;
   for (const id of s.market) {
     const c = FACILITY_BY_ID[id];
     const price = priceOf(p, c);
-    if (price > p.money) continue;
-    const v = evalCard(c, left);
+    if (price + prof.reserve > p.money) continue;
+    const v = evalCard(c, left) * prof.buyScale;
     let slot = p.facilities.findIndex((f) => !f);
     let curV = 0;
     if (slot < 0) {
       let worst = Infinity;
       p.facilities.forEach((f, i) => {
-        const fv = evalCard(FACILITY_BY_ID[f!.id], left);
+        const fv = evalCard(FACILITY_BY_ID[f!.id], left) * prof.buyScale;
         if (fv < worst) {
           worst = fv;
           slot = i;
@@ -512,7 +631,7 @@ function aiConstructTurn(s: GameState, p: Player) {
       curV = worst;
     }
     const net = v - curV - price;
-    if (net > 1 && (!best || net > best.net)) best = { cardId: id, slot, net };
+    if (net > prof.buyMin && (!best || net > best.net)) best = { cardId: id, slot, net };
   }
   if (best) {
     doBuy(s, p, best.cardId, best.slot);
@@ -521,20 +640,20 @@ function aiConstructTurn(s: GameState, p: Player) {
   // 인력 고용
   const nFac = p.facilities.filter(Boolean).length;
   const gains: Record<StaffKey, number> = {
-    marketer: 4,
-    guide: nFac >= 3 ? 2.5 : 0,
-    engineer: 2.5,
-    cleaner: 2.5,
-    researcher: left >= 4 ? 3 : 0,
+    marketer: prof.hire.marketer,
+    guide: nFac >= 3 ? prof.hire.guide : 0,
+    engineer: prof.hire.engineer,
+    cleaner: prof.hire.cleaner,
+    researcher: left >= 4 ? prof.hire.researcher : 0,
   };
   let hire: { staff: StaffKey; ratio: number } | null = null;
   for (const k of STAFF_KEYS) {
     const lv = p.staff[k];
     if (lv >= CFG.maxStaff) continue;
-    const cost = CFG.hireCost(lv);
-    if (cost > p.money) continue;
+    const cost = CFG.hireCost(k, lv);
+    if (cost + prof.reserve > p.money) continue;
     const ratio = (gains[k] * left) / (cost * 1.5);
-    if (ratio > 1 && (!hire || ratio > hire.ratio)) hire = { staff: k, ratio };
+    if (ratio > prof.hireRatio && (!hire || ratio > hire.ratio)) hire = { staff: k, ratio };
   }
   if (hire) {
     doHire(s, p, hire.staff);
@@ -547,6 +666,7 @@ function aiConstructTurn(s: GameState, p: Player) {
 
 function doBuy(s: GameState, p: Player, cardId: number, slot: number) {
   const c = FACILITY_BY_ID[cardId];
+  probe.buy?.(p, cardId, priceOf(p, c), s.round);
   p.money -= priceOf(p, c);
   const old = p.facilities[slot];
   p.facilities[slot] = { id: cardId, broken: false };
@@ -555,7 +675,8 @@ function doBuy(s: GameState, p: Player, cardId: number, slot: number) {
 }
 
 function doHire(s: GameState, p: Player, k: StaffKey) {
-  p.money -= CFG.hireCost(p.staff[k]);
+  probe.hire?.(p, k, s.round);
+  p.money -= CFG.hireCost(k, p.staff[k]);
   p.staff[k]++;
   log(s, `${p.name}: ${STAFF_LABEL[k]} 고용 (Lv.${p.staff[k]})`);
 }
@@ -600,7 +721,7 @@ function apply(s: GameState, a: Action): string | null {
       const e = need('construct') ?? (s.turn === HUMAN && !s.passed[HUMAN] ? null : '내 차례가 아니에요');
       if (e) return e;
       if (p.staff[a.staff] >= CFG.maxStaff) return '이미 최고 등급이에요';
-      if (CFG.hireCost(p.staff[a.staff]) > p.money) return '돈이 부족해요';
+      if (CFG.hireCost(a.staff, p.staff[a.staff]) > p.money) return '돈이 부족해요';
       doHire(s, p, a.staff);
       advanceTurn(s);
       return null;

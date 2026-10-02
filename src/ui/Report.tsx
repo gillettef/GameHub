@@ -127,7 +127,7 @@ function PlayerReport({ p, mine }: { p: Player; mine: boolean }) {
           <Icon name="trash" size={20} />
           <div>
             <b>쓰레기 +{r.trashAdded}</b>
-            <span>치우지 않으면 2개마다 VP가 깎여요.</span>
+            <span>치우지 않으면 {CFG.trashPerVp}개마다 VP가 깎여요.</span>
           </div>
         </div>
       )}
