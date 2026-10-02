@@ -65,11 +65,19 @@ export function rollTarget(round: number, difficulty: number): number {
   return Math.max(1, Math.round(3.5 * benchmarkStat(round) * difficulty));
 }
 // 탐험 카드의 target은 난이도 × 10, 협력 카드의 pairTarget은 난이도 × 18 (둘이 굴리므로 목표값은 2배)
-const exploreTarget = (round: number, target: number) => rollTarget(round, (target / 10) * BALANCE.exploreDifficultyScale);
-const coopTarget = (round: number, pairTarget: number) => 2 * rollTarget(round, (pairTarget / 18) * BALANCE.exploreDifficultyScale);
-// 마법생물 조련: 마나토큰을 1~보유 개수 사이에서 골라 내고 낸 개수만큼 주사위를 굴려, 합이 생물마다 정해진 기준 수치(trainTarget × trainTargetScale) 이상이면 성공
+// 목표값에는 주 능력치 보너스의 기준분(rollBonusBaseline)이 더해져 있다: 판정은 (마나토큰 주사위 합 + 주 능력치 수치) ≥ 목표값이다 (38절)
+const exploreTarget = (round: number, target: number) => rollTarget(round, (target / 10) * BALANCE.exploreDifficultyScale) + BALANCE.rollBonusBaseline.exploration;
+const coopTarget = (round: number, pairTarget: number) => 2 * (rollTarget(round, (pairTarget / 18) * BALANCE.exploreDifficultyScale) + BALANCE.rollBonusBaseline.exploration);
+export const labTargetValue = () => BALANCE.labTarget + BALANCE.rollBonusBaseline.lab;
+// 활동의 주 능력치 수치 = 그 활동 판정에 더해지는 고정 보너스 (조련 매력, 탐험 체력, 연구실 지력. 토너먼트·주문 대결은 주문력이 마나토큰으로 반영돼 보너스 없음)
+export function rollBonus(player: PlayerGameState, activityId: ActivityId): number {
+  const stat = BALANCE.rollBonusStat[activityId];
+  return stat ? effectiveStat(player, stat) : 0;
+}
+const BONUS_LABEL: Partial<Record<ActivityId, string>> = { creature: "매력", exploration: "체력", lab: "지력" };
+// 마법생물 조련: 마나토큰을 1~보유 개수 사이에서 골라 내고 낸 개수만큼 주사위를 굴려, 합 + 매력이 생물마다 정해진 기준 수치(trainTarget × trainTargetScale + 기준 보너스) 이상이면 성공
 // (마나토큰이 없으면 공짜 주사위 1개). 생물의 속성·종류는 토큰 구분에 쓰이지 않고 표시용이다
-export const creatureTarget = (card: Pick<CreatureCard, "trainTarget">) => Math.max(1, Math.round(card.trainTarget * BALANCE.trainTargetScale));
+export const creatureTarget = (card: Pick<CreatureCard, "trainTarget">) => Math.max(1, Math.round(card.trainTarget * BALANCE.trainTargetScale)) + BALANCE.rollBonusBaseline.creature;
 const ELEMENT_NAME = { sky: "하늘", land: "육지", ocean: "바다" } as const;
 const creatureTagsOf = (card: Pick<CreatureCard, "element" | "kind">) => `${ELEMENT_NAME[card.element]} · ${card.kind === "animal" ? "동물" : "식물"}`;
 
@@ -104,9 +112,10 @@ function normalCdf(z: number): number {
 // 탐험 카드 성공 확률 (봇 판단용): 기본 개수만큼 마나토큰을 내고 굴린 주사위 합이 목표값 이상일 확률의 정규 근사
 export function explorationChance(state: GameState, player: PlayerGameState, card: ExplorationCard): number {
   if (!card.check) return 1;
-  const n = suggestDiceCount(player.manaTokens, exploreTarget(state.round, card.check.target));
+  const bonus = rollBonus(player, "exploration");
+  const n = suggestDiceCount(player.manaTokens, exploreTarget(state.round, card.check.target) - bonus);
   const catchUp = growthGap(state, player.id) >= BALANCE.catchUpGap ? BALANCE.catchUpBonus : 0;
-  const mean = 3.5 * n + catchUp;
+  const mean = 3.5 * n + catchUp + bonus;
   const sd = Math.sqrt((n * 35) / 12);
   return 1 - normalCdf((exploreTarget(state.round, card.check.target) - 0.5 - mean) / sd);
 }
@@ -217,9 +226,9 @@ const STAT_NAME: Record<StatKey, string> = { intelligence: "지력", stamina: "�
 
 // 탐험 카드의 판정 문구 (엿보기·협력 대기·구역 공개 카드 표시용)
 function checkTextOf(card: ExplorationCard, round: number): string | undefined {
-  if (card.coop) return `협력 카드 — 둘이 각자 마나토큰을 내고 낸 개수만큼 주사위를 굴려 합이 ${coopTarget(round, card.coop.pairTarget)} 이상이면 성공 (혼자면 무효)`;
+  if (card.coop) return `협력 카드 — 둘이 각자 마나토큰을 내고 낸 개수만큼 주사위를 굴려 (주사위 합 + 체력)의 둘 합이 ${coopTarget(round, card.coop.pairTarget)} 이상이면 성공 (혼자면 무효)`;
   if (!card.check) return undefined;
-  return `판정 (마나토큰을 내고 낸 개수만큼 주사위를 굴려 합 ${exploreTarget(round, card.check.target)} 이상)`;
+  return `판정 (마나토큰 주사위 합 + 체력 ${exploreTarget(round, card.check.target)} 이상)`;
 }
 
 // 탐험 카드/연구 카드 효과를 플레이어에게 적용한다
@@ -339,13 +348,20 @@ type PayKind = "intelligence" | "stamina" | "mana" | "charm";
 const PAY_OBJECT: Record<PayKind, string> = { intelligence: "지력토큰을", stamina: "체력토큰을", mana: "마나토큰을", charm: "매력토큰을" };
 type Payer = Pick<PlayerGameState, "intelligenceTokens" | "staminaTokens" | "charmTokens">;
 
-// 지력토큰 int개 + 체력토큰 stamina개 + 매력토큰 charm개를 낼 수 있는가
+// 지력토큰 int개 + 체력토큰 stamina개 + 매력토큰 charm개를 낼 수 있는가. 체력토큰이 모자라면 남은 지력토큰이 대신한다 (intelligencePerStamina개 = 체력토큰 1개, 38절)
 export const canPay = (p: Payer, int: number, stamina: number, charm = 0): boolean =>
-  p.intelligenceTokens >= int && p.staminaTokens >= stamina && p.charmTokens >= charm;
+  p.intelligenceTokens >= int &&
+  p.charmTokens >= charm &&
+  p.staminaTokens + Math.floor((p.intelligenceTokens - int) / BALANCE.intelligencePerStamina) >= stamina;
 
 function pay(p: PlayerGameState, kind: PayKind, n: number): void {
   if (kind === "intelligence") p.intelligenceTokens -= n;
-  else if (kind === "stamina") p.staminaTokens -= n;
+  else if (kind === "stamina") {
+    // 체력토큰을 먼저 쓰고, 모자란 만큼은 지력토큰으로 메꾼다
+    const fromStamina = Math.min(p.staminaTokens, n);
+    p.staminaTokens -= fromStamina;
+    p.intelligenceTokens -= (n - fromStamina) * BALANCE.intelligencePerStamina;
+  }
   else if (kind === "charm") p.charmTokens -= n;
   else p.manaTokens -= n;
 }
@@ -549,24 +565,26 @@ function startTournament(state: GameState, player: PlayerGameState): void {
 // 마법생물 조련: 마나토큰을 골라 내고 낸 개수만큼 주사위를 굴려, 합이 목표값 이상이면 조련에 성공한다. 실패하면 낸 마나토큰만 잃고 카드는 구역에 돌아간다
 function startCreatureRoll(state: GameState, player: PlayerGameState, creature: CreatureCard): void {
   const target = creatureTarget(creature);
+  const bonus = rollBonus(player, "creature");
   state.hidden.roll = { kind: "creature", playerId: player.id, card: creature, target };
   state.pendingRoll = {
     kind: "creature",
     title: `마법생물 조련 · ${creature.name}`,
     lines: [
       player.manaTokens > 0 ? `마나토큰을 1~${player.manaTokens}개 골라 내고, 낸 개수만큼 주사위를 굴려요 (다시 굴리기에 쓸 마나토큰은 남겨 둘 수 있어요)` : "마나토큰이 없어서 주사위 1개를 굴려요",
-      `주사위 합이 ${target} 이상이면 조련 성공! 실패하면 카드는 돌아가요`,
+      `주사위 합 + 매력 ${bonus} ≥ ${target}이면 조련 성공! 실패하면 카드는 돌아가요`,
     ],
-    entries: [choiceEntry(player, player.name, target)],
+    entries: [choiceEntry(player, player.name, target - bonus)],
   };
 }
 
 function resolveCreature(state: GameState, ctx: Extract<RollContext, { kind: "creature" }>, dice: number[]): void {
   const player = state.players[ctx.playerId];
   const creature = ctx.card;
-  const total = sum(dice);
+  const bonus = rollBonus(player, "creature");
+  const total = sum(dice) + bonus;
   const success = total >= ctx.target;
-  const text = `${describeRoll(dice, [])} = ${total} / 목표 ${ctx.target} ${success ? "성공" : "실패"}`;
+  const text = `${describeRoll(dice, [["매력", bonus]])} = ${total} / 목표 ${ctx.target} ${success ? "성공" : "실패"}`;
   if (success) {
     player.creatures.push(creature);
     if (creature.ability.trigger === "acquire" && creature.ability.effect === "spellPower") player.spellPower += creature.ability.amount;
@@ -583,21 +601,24 @@ function resolveCreature(state: GameState, ctx: Extract<RollContext, { kind: "cr
 // 마나토큰이 없으면 주사위 1개는 공짜로 굴린다
 function startLabRoll(state: GameState, player: PlayerGameState, lab: LabCard): void {
   const tokens = player.manaTokens;
-  state.hidden.roll = { kind: "lab", playerId: player.id, card: lab, target: BALANCE.labTarget };
+  const target = labTargetValue();
+  const bonus = rollBonus(player, "lab");
+  state.hidden.roll = { kind: "lab", playerId: player.id, card: lab, target };
   state.pendingRoll = {
     kind: "lab",
     title: `연구실 실험 · ${lab.name}`,
-    lines: [tokens > 0 ? `마나토큰을 1~${tokens}개 골라 내고, 낸 개수만큼 주사위를 굴려요 (다시 굴리기에 쓸 마나토큰은 남겨 둘 수 있어요)` : "마나토큰이 없어서 주사위 1개를 굴려요", `합이 ${BALANCE.labTarget} 이상이면 실험 성공! (${lab.summary})`],
-    entries: [choiceEntry(player, player.name, BALANCE.labTarget)],
+    lines: [tokens > 0 ? `마나토큰을 1~${tokens}개 골라 내고, 낸 개수만큼 주사위를 굴려요 (다시 굴리기에 쓸 마나토큰은 남겨 둘 수 있어요)` : "마나토큰이 없어서 주사위 1개를 굴려요", `주사위 합 + 지력 ${bonus} ≥ ${target}이면 실험 성공! (${lab.summary})`],
+    entries: [choiceEntry(player, player.name, target - bonus)],
   };
 }
 
 function resolveLab(state: GameState, ctx: Extract<RollContext, { kind: "lab" }>, dice: number[]): void {
   const player = state.players[ctx.playerId];
   const lab = ctx.card;
-  const total = sum(dice);
+  const bonus = rollBonus(player, "lab");
+  const total = sum(dice) + bonus;
   const success = total >= ctx.target;
-  const text = `${describeRoll(dice, [])} = ${total} / 목표 ${ctx.target} ${success ? "성공" : "실패"}`;
+  const text = `${describeRoll(dice, [["지력", bonus]])} = ${total} / 목표 ${ctx.target} ${success ? "성공" : "실패"}`;
   if (success) {
     applyCardEffect(state, player, lab.effect);
     // 시험 카드는 다음 시험까지 보관하고, 나머지는 효과를 받는 즉시 버림 더미로
@@ -712,11 +733,14 @@ function startExplorationRoll(
     lines: [
       card.description,
       mode === "pair"
-        ? `각자 마나토큰을 내고 낸 개수만큼 주사위를 굴려 둘의 합이 ${rule.target} 이상이면 성공! 보상은 둘 다 받아요`
-        : `마나토큰을 내고 낸 개수만큼 주사위를 굴려 합이 ${rule.target} 이상이면 성공`,
+        ? `각자 마나토큰을 내고 낸 개수만큼 주사위를 굴려 (주사위 합 + 체력)의 둘 합이 ${rule.target} 이상이면 성공! 보상은 둘 다 받아요`
+        : `마나토큰을 내고 낸 개수만큼 주사위를 굴려 주사위 합 + 체력 ${rollBonus(state.players[playerIds[0]], "exploration")} ≥ ${rule.target}이면 성공`,
     ],
     // 주사위 수는 마나토큰을 1~보유 개수 사이에서 골라 굴릴 때 낸다 (마나토큰이 없어도 1개는 공짜로 굴린다)
-    entries: playerIds.map((id) => choiceEntry(state.players[id], state.players[id].name, mode === "pair" ? Math.ceil(rule.target / 2) : rule.target)),
+    entries: playerIds.map((id) => {
+      const p = state.players[id];
+      return choiceEntry(p, p.name, (mode === "pair" ? Math.ceil(rule.target / 2) : rule.target) - rollBonus(p, "exploration"));
+    }),
   };
 }
 
@@ -736,8 +760,9 @@ function resolveExploration(state: GameState, ctx: Extract<RollContext, { kind: 
       const p = state.players[id];
       // 선두와의 격차가 크면 역전 보너스: 뒤처진 플레이어의 한 방을 돕는다
       const catchUp = growthGap(state, id) >= BALANCE.catchUpGap ? BALANCE.catchUpBonus : 0;
-      const total = sum(dice[id] ?? []) + catchUp;
-      return { p, total, text: `${describeRoll(dice[id] ?? [], [["역전", catchUp]])} = ${total}` };
+      const bonus = rollBonus(p, "exploration");
+      const total = sum(dice[id] ?? []) + bonus + catchUp;
+      return { p, total, text: `${describeRoll(dice[id] ?? [], [["체력", bonus], ["역전", catchUp]])} = ${total}` };
     });
     const total = sum(parts.map((x) => x.total));
     success = total >= target;
@@ -758,7 +783,7 @@ function describeCoop(card: ExplorationCard, playerId: string, round: number): C
     playerId,
     name: card.name,
     description: card.description,
-    pairText: `둘이 각자 마나토큰을 내고 낸 개수만큼 주사위를 굴려 합이 ${coopTarget(round, card.coop!.pairTarget)} 이상이면 성공`,
+    pairText: `둘이 각자 마나토큰을 내고 낸 개수만큼 주사위를 굴려 (주사위 합 + 체력)의 둘 합이 ${coopTarget(round, card.coop!.pairTarget)} 이상이면 성공`,
     voidText: "함께할 친구가 끝까지 나타나지 않으면 이 카드는 무효가 돼요",
     successText: `${describeEffect(card.success)} (두 명 모두)`,
     failureText: `${describeEffect(card.failure)} (두 명 모두)`,
@@ -775,11 +800,11 @@ function offerViewOf(activityId: ActivityId, card: OfferedCard, round: number): 
   switch (activityId) {
     case "creature": {
       const c = card as CreatureCard;
-      return { id: c.id, name: c.name, description: c.description, tags: creatureTagsOf(c), lines: [describeAbility(c.ability), `조련 판정: 마나토큰을 내고 굴린 주사위 합 ≥ ${creatureTarget(c)}`] };
+      return { id: c.id, name: c.name, description: c.description, tags: creatureTagsOf(c), lines: [describeAbility(c.ability), `조련 판정: 마나토큰 주사위 합 + 매력 ≥ ${creatureTarget(c)}`] };
     }
     case "lab": {
       const c = card as LabCard;
-      return { id: c.id, name: c.name, description: c.description, lines: [c.summary, `실험 판정: 마나토큰만큼 주사위 합 ≥ ${BALANCE.labTarget}`], cost: c.cost > 0 ? { kind: "stamina", amount: c.cost } : undefined };
+      return { id: c.id, name: c.name, description: c.description, lines: [c.summary, `실험 판정: 마나토큰 주사위 합 + 지력 ≥ ${labTargetValue()}`], cost: c.cost > 0 ? { kind: "stamina", amount: c.cost } : undefined };
     }
     case "exploration": {
       const c = card as ExplorationCard;

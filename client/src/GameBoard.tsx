@@ -238,11 +238,11 @@ function ClassPhasePanel({ game, myId, onTake }: { game: GameState; myId: string
           <p className="mb-2 text-xs text-purple-500">카드를 누르면 크게 볼 수 있어요</p>
           <GamePickGrid
             items={game.classMarket.map((card) => {
-              const affordable = canPay(me, 0, card.takeCost);
+              const affordable = canPay(me, 0, card.takeCost, 0, game.rules.intelligencePerStamina);
               return {
                 key: card.id,
                 card: classCardData(card),
-                blockReason: classCardBlockReason(me, card),
+                blockReason: classCardBlockReason(me, card, game.rules.intelligencePerStamina),
                 onAction: isMyTurn ? () => onTake(card.id) : undefined,
                 actionLabel: affordable ? "가져가기" : "체력토큰이 부족해요",
                 disabled: !affordable,
@@ -309,7 +309,7 @@ function PickPanel({ game, myId, onPick }: { game: GameState; myId: string; onPi
       : `${ACTIVITY_LABEL[pick.activityId]}: 공개된 카드 중 1장을 고르세요`;
   const affordable = (card: OfferCardView): boolean => {
     if (!card.cost) return true;
-    if (card.cost.kind === "stamina") return canPay(me, 0, card.cost.amount);
+    if (card.cost.kind === "stamina") return canPay(me, 0, card.cost.amount, 0, game.rules.intelligencePerStamina);
     return me.manaTokens >= card.cost.amount;
   };
   return (

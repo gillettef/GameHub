@@ -174,9 +174,11 @@ export interface DuelPair {
 
 // 서버가 알려 주는 규칙 수치 (비용 안내용)
 export interface PublicRules {
-  // 3주차 구역에 처음 들어와 카드를 열 때 드는 지력토큰, 그리고 그 지력토큰이 드는 활동
+  // 3주차 구역에 처음 들어와 카드를 열 때 드는 지력토큰, 그리고 그 지력토큰이 드는 활동 (지금은 없음)
   openCardCost: number;
   openCardCostActivities: ActivityId[];
+  // 체력토큰이 모자랄 때 체력토큰 1개를 대신하는 지력토큰 개수 (수업카드·연구 카드 습득)
+  intelligencePerStamina: number;
   // 능력치 감쇠: startRound 이후 interval개월마다 stats가 perMonth씩 줄고 floor 아래로는 내려가지 않는다 (4주차 정리 때)
   statDecay: { perMonth: number; interval: number; startRound: number; floor: number; stats: StatKey[] };
   activityMaxParticipants: number;
@@ -257,10 +259,10 @@ export const ACTIVITY_LABEL: Record<ActivityId, string> = {
 // 활동 카드에 함께 보여줄 한 줄 설명
 export const ACTIVITY_HINT: Record<ActivityId, string> = {
   tournament: "마나토큰을 골라 낸 만큼 주사위를 굴려 합친 칸만큼 트랙 전진 → 학점",
-  creature: "카드 2장 공개(지력토큰 1개), 마나토큰을 골라 낸 만큼 주사위를 굴려 합이 기준 이상이면 조련, 하늘·육지·바다를 1장씩 모으면 세트 점수",
+  creature: "카드 2장 공개, 마나토큰 주사위 합 + 매력이 기준 이상이면 조련 (매력이 높을수록 유리), 하늘·육지·바다를 1장씩 모으면 세트 점수",
   duel: "아직 안 고른 한 명을 지목해 강제 대결, 마나토큰을 골라 낸 만큼 주사위를 굴려 이기면 마도서 1장",
-  exploration: "카드 2장 중 하나를 골라(지력토큰 1개) 마나토큰을 낸 만큼 주사위 판정! 크게 벌거나 크게 잃어요",
-  lab: "심화학습: 연구 카드 2장 중 1장(지력토큰 1개), 마나토큰을 몇 개 낼지 골라 낸 만큼 주사위를 굴려 안정적으로 성장",
+  exploration: "카드 2장 중 하나를 골라 마나토큰 주사위 합 + 체력으로 판정! 크게 벌거나 크게 잃어요 (체력이 높을수록 유리)",
+  lab: "심화학습: 연구 카드 2장 중 1장, 마나토큰 주사위 합 + 지력으로 실험 판정, 안정적으로 성장 (지력이 높을수록 유리)",
 };
 
 export function effectiveStat(player: PlayerGameState, stat: StatKey): number {
@@ -285,9 +287,14 @@ export function duelTargets(game: GameState, playerId: string): string[] {
   return game.turnOrder.filter((id) => id !== playerId && !game.players[id].hasActedThisPhase);
 }
 
-// 지력토큰 int개 + 체력토큰 stamina개 + 매력토큰 charm개를 낼 수 있는가 (서버 canPay와 같은 규칙. 토큰끼리는 바꿀 수 없다)
-export function canPay(player: PlayerGameState, int: number, stamina: number, charm = 0): boolean {
-  return player.intelligenceTokens >= int && player.staminaTokens >= stamina && player.charmTokens >= charm;
+// 지력토큰 int개 + 체력토큰 stamina개 + 매력토큰 charm개를 낼 수 있는가 (서버 canPay와 같은 규칙).
+// 체력토큰이 모자라면 남은 지력토큰 perStamina개가 체력토큰 1개를 대신한다 (생략하면 대신하지 않는다). 그 밖의 토큰끼리는 바꿀 수 없다
+export function canPay(player: PlayerGameState, int: number, stamina: number, charm = 0, perStamina = Infinity): boolean {
+  return (
+    player.intelligenceTokens >= int &&
+    player.charmTokens >= charm &&
+    player.staminaTokens + Math.floor((player.intelligenceTokens - int) / perStamina) >= stamina
+  );
 }
 
 // 이 활동을 고를 수 없는 이유 (고를 수 있으면 null)
