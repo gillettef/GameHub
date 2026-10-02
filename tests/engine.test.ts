@@ -28,6 +28,11 @@ describe('게임 엔진', () => {
     let s = newGame({ aiCount: 1, seed: 5 });
     s = dispatch(s, { type: 'pass' });
     expect(s.phase).toBe('promote');
+    expect(s.promoteStep).toBe('pick');
+    s = dispatch(s, { type: 'confirmFee' });
+    expect(s.notice).toBeTruthy(); // 관객을 먼저 골라야 한다
+    s = dispatch(s, { type: 'donePicking' });
+    expect(s.promoteStep).toBe('fee');
     s = dispatch(s, { type: 'confirmFee' });
     expect(s.phase).toBe('operate');
     s = dispatch(s, { type: 'continue' });
@@ -35,6 +40,23 @@ describe('게임 엔진', () => {
     s = dispatch(s, { type: 'endManage' });
     expect(s.round).toBe(2);
     expect(s.phase).toBe('construct');
+  });
+
+  it('관객 트랙: 공개된 관객을 차례로 가져가고 수용량을 넘길 수 없다', () => {
+    let s = newGame({ aiCount: 1, seed: 11 });
+    s = dispatch(s, { type: 'pass' });
+    expect(s.visitorRow.length).toBe(CFG.baseVisitors * 2 + CFG.rowExtra);
+    const open = () => s.visitorRow.filter((r) => r.by === null);
+    const first = open()[0].v.id;
+    s = dispatch(s, { type: 'pickVisitor', visitorId: first });
+    expect(s.players[0].visitors.map((v) => v.id)).toContain(first);
+    // 이미 가져간 관객은 다시 가져갈 수 없다
+    const again = dispatch(s, { type: 'pickVisitor', visitorId: first });
+    expect(again.notice).toBeTruthy();
+    // 수용량(2명)을 채우면 입장료 단계로 넘어간다
+    if (s.promoteStep === 'pick') s = dispatch(s, { type: 'pickVisitor', visitorId: open()[0].v.id });
+    expect(s.players[0].visitors.length).toBeLessThanOrEqual(CFG.baseVisitors);
+    expect(s.promoteStep).toBe('fee');
   });
 
   it('잘못된 단계의 행동은 상태를 바꾸지 않고 notice만 남긴다', () => {

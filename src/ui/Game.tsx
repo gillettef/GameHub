@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { CFG, HUMAN, incomeOf, isHumanTurn, priceOf, rankings, type Action } from '../game/engine';
+import { CFG, HUMAN, incomeOf, isHumanTurn, priceOf, rankings, visitorQuota, type Action } from '../game/engine';
 import { FACILITY_BY_ID } from '../game/data/facilities';
 import { STAFF_KEYS, type FacilityCard, type GameState, type Player } from '../game/types';
 import { haptic } from '../platform/storage';
 import { Icon, type IconName } from './Icon';
 import { Slot } from './Slot';
 import { PHASES, STAFF_META, TYPE_META } from './meta';
-import { FacilityArt, FacilityStats, Money, Num, Pips, Sheet, TypeChip, Vp } from './parts';
+import { FacilityArt, FacilityStats, Money, Num, Pips, Sheet, TypeChip, Vp, VisitorCard, VisitorChip } from './parts';
 import { ReportSheet } from './Report';
 import { RulesBody } from './Rules';
 
@@ -16,21 +16,34 @@ interface Props {
   onExit: () => void;
 }
 
-type SheetState = { kind: 'detail'; slot: number } | { kind: 'replace'; cardId: number; slot: number } | { kind: 'rules' } | { kind: 'log' } | { kind: 'menu' } | null;
+type SheetState =
+  | { kind: 'detail'; slot: number }
+  | { kind: 'replace'; cardId: number; slot: number }
+  | { kind: 'rules' }
+  | { kind: 'log' }
+  | { kind: 'menu' }
+  | null;
 
 export function GameScreen({ game, act, onExit }: Props) {
   const me = game.players[HUMAN];
   const [sheet, setSheet] = useState<SheetState>(null);
   const [selected, setSelected] = useState<number | null>(null);
   const [tab, setTab] = useState<'market' | 'staff'>('market');
+  const [viewId, setViewId] = useState(HUMAN);
   const [toast, setToast] = useState<{ msg: string; n: number } | null>(null);
   const slotsRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
-  // 단계/라운드가 바뀌면 선택 초기화
+  const view = game.players[viewId] ?? me;
+  const mine = view.id === HUMAN;
+
+  // 단계/라운드가 바뀌면 선택 초기화, 내 공원으로 복귀
   useEffect(() => {
     setSelected(null);
     setTab('market');
-  }, [game.phase, game.round]);
+    setViewId(HUMAN);
+    scrollRef.current?.scrollTo({ top: 0, behavior: 'auto' });
+  }, [game.phase, game.round, game.promoteStep]);
 
   useEffect(() => {
     if (game.notice) {
@@ -42,9 +55,12 @@ export function GameScreen({ game, act, onExit }: Props) {
     }
   }, [game]);
 
-  // 카드를 고르면 하단 도크에 가려지지 않게 부지를 화면 안으로 스크롤
+  // 카드를 고르면 내 공원으로 돌아와 부지가 보이게 스크롤
   useEffect(() => {
-    if (selected !== null) slotsRef.current?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    if (selected !== null) {
+      setViewId(HUMAN);
+      slotsRef.current?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    }
   }, [selected]);
 
   // 선택한 카드가 팔리거나 사라지면 해제
@@ -55,10 +71,13 @@ export function GameScreen({ game, act, onExit }: Props) {
   const myTurn = isHumanTurn(game);
   const selCard = selected !== null ? FACILITY_BY_ID[selected] : null;
   const brokenSlots = me.facilities.flatMap((f, i) => (f?.broken ? [i] : []));
+  const viewBroken = view.facilities.filter((f) => f?.broken).length;
+  const feeStep = game.phase === 'promote' && game.promoteStep === 'fee';
+  const recent = game.log.filter((l) => !/^\d+라운드 ·/.test(l)).slice(-3);
 
   const tapSlot = (i: number) => {
-    const f = me.facilities[i];
-    if (selCard && myTurn) {
+    const f = view.facilities[i];
+    if (mine && selCard && myTurn) {
       if (!f) {
         haptic();
         act({ type: 'buy', cardId: selCard.id, slot: i });
@@ -109,10 +128,14 @@ export function GameScreen({ game, act, onExit }: Props) {
         })}
       </nav>
 
-      <div className="scroll">
+      <div className="score-wrap">
+        <Scoreboard game={game} viewId={view.id} onView={(id) => { haptic(8); setViewId(id); setSelected(null); }} />
+      </div>
+
+      <div className="scroll" ref={scrollRef}>
         {game.event && (
           <div className="event">
-            <Slot slot={`event/${game.event.id}`} tint="#6a4cff" className="event-art" fallback={<Icon name={game.event.icon as IconName} size={26} />} />
+            <Slot slot={`event/${game.event.id}`} tint="#6a4cff" className="event-art" fallback={<Icon name={game.event.icon as IconName} size={24} />} />
             <div className="event-txt">
               <small>오늘의 운영카드</small>
               <b>{game.event.name}</b>
@@ -121,27 +144,35 @@ export function GameScreen({ game, act, onExit }: Props) {
           </div>
         )}
 
-        <Scoreboard game={game} />
+        {recent.length > 0 && (
+          <ul className="ticker" aria-label="최근 소식">
+            {recent.map((l, i) => (
+              <li key={game.log.length + '-' + i}>{l}</li>
+            ))}
+          </ul>
+        )}
 
-        <section className="board">
+        <section className={`board ${mine ? '' : 'rival'}`}>
           <div className="board-head">
             <div className="board-title">
-              <Slot slot="visitor/adult" tint="#ffd54a" className="avatar" fallback={<Icon name="smile" size={22} />} />
+              <Slot slot="visitor/adult" tint={mine ? '#ffd54a' : `hsl(${view.id * 70} 70% 60%)`} className="avatar" fallback={<Icon name="smile" size={22} />} />
               <div>
-                <b>{me.name}</b>
-                <small>시설 {me.facilities.filter(Boolean).length}/{CFG.slots}</small>
+                <b>{view.name}</b>
+                <small>
+                  {mine ? '내 공원' : '상대 공원 (보기 전용)'} · 시설 {view.facilities.filter(Boolean).length}/{CFG.slots}
+                </small>
               </div>
             </div>
             <div className="board-res">
-              <Money value={me.money} big />
-              <Vp value={me.vp} big />
+              <Money value={view.money} big />
+              <Vp value={view.vp} big />
             </div>
           </div>
 
           <div className="slots" ref={slotsRef}>
-            {me.facilities.map((f, i) => {
+            {view.facilities.map((f, i) => {
               const c = f ? FACILITY_BY_ID[f.id] : null;
-              const target = !!selCard && myTurn;
+              const target = mine && !!selCard && myTurn;
               return (
                 <button key={i} className={`tile ${c ? '' : 'empty'} ${target ? 'target' : ''} ${f?.broken ? 'broken' : ''}`} onClick={() => tapSlot(i)}>
                   {c ? (
@@ -175,37 +206,74 @@ export function GameScreen({ game, act, onExit }: Props) {
           <div className="board-foot">
             <div className="staff-row">
               {STAFF_KEYS.map((k) => (
-                <button key={k} className="staff-chip" style={{ ['--c' as string]: STAFF_META[k].color }} onClick={() => { setSelected(null); setTab('staff'); }} title={STAFF_META[k].desc}>
+                <button
+                  key={k}
+                  className="staff-chip"
+                  style={{ ['--c' as string]: STAFF_META[k].color }}
+                  onClick={() => {
+                    if (mine && game.phase === 'construct') {
+                      setSelected(null);
+                      setTab('staff');
+                    }
+                  }}
+                  title={`${STAFF_META[k].label}: ${STAFF_META[k].desc}`}
+                >
                   <Icon name={STAFF_META[k].icon} size={18} />
-                  <Pips level={me.staff[k]} color={STAFF_META[k].color} />
+                  <Pips level={view.staff[k]} color={STAFF_META[k].color} />
                 </button>
               ))}
             </div>
             <div className="tokens">
-              <span className={`token ${me.trash > 0 ? 'warn' : ''}`} title="쓰레기 토큰">
+              <span className={`token ${view.trash > 0 ? 'warn' : ''}`} title="쓰레기 토큰">
                 <Icon name="trash" size={15} />
-                <Num value={me.trash} />
+                <Num value={view.trash} />
               </span>
-              <span className={`token ${brokenSlots.length > 0 ? 'bad' : ''}`} title="수리 토큰">
+              <span className={`token ${viewBroken > 0 ? 'bad' : ''}`} title="수리 토큰">
                 <Icon name="wrench" size={15} />
-                <Num value={brokenSlots.length} />
+                <Num value={viewBroken} />
               </span>
             </div>
           </div>
+
+          {view.visitors.length > 0 && game.phase !== 'construct' && (
+            <div className="entrance">
+              <span className="entrance-label">
+                <Icon name="ticket" size={14} /> 입구
+                {feeStep || game.phase === 'operate' || game.phase === 'manage' ? ` · 입장료 $${view.fee}` : ''}
+              </span>
+              <div className="entrance-row">
+                {view.visitors.map((v) => (
+                  <VisitorChip key={v.id} v={v} enters={game.phase === 'promote' && game.promoteStep === 'pick' ? undefined : v.budget >= view.fee} />
+                ))}
+              </div>
+            </div>
+          )}
         </section>
       </div>
 
-      <Dock game={game} me={me} act={act} tab={tab} setTab={setTab} selected={selected} setSelected={setSelected} myTurn={myTurn} brokenSlots={brokenSlots} />
+      <Dock
+        game={game}
+        me={me}
+        act={act}
+        tab={tab}
+        setTab={setTab}
+        selected={selected}
+        setSelected={setSelected}
+        myTurn={myTurn}
+        brokenSlots={brokenSlots}
+        viewMine={mine}
+        goMine={() => setViewId(HUMAN)}
+      />
 
       {game.phase === 'operate' && <ReportSheet game={game} onNext={() => act({ type: 'continue' })} />}
       {game.phase === 'gameOver' && <GameOver game={game} onExit={onExit} />}
 
-      {sheet?.kind === 'detail' && me.facilities[sheet.slot] && (
+      {sheet?.kind === 'detail' && view.facilities[sheet.slot] && (
         <DetailSheet
-          card={FACILITY_BY_ID[me.facilities[sheet.slot]!.id]}
-          broken={me.facilities[sheet.slot]!.broken}
-          canRepair={game.phase === 'manage' && me.money >= CFG.repairCost}
-          phaseManage={game.phase === 'manage'}
+          card={FACILITY_BY_ID[view.facilities[sheet.slot]!.id]}
+          broken={view.facilities[sheet.slot]!.broken}
+          canRepair={mine && game.phase === 'manage' && me.money >= CFG.repairCost}
+          phaseManage={mine && game.phase === 'manage'}
           onRepair={() => act({ type: 'repair', slot: sheet.slot })}
           onClose={() => setSheet(null)}
         />
@@ -235,7 +303,7 @@ export function GameScreen({ game, act, onExit }: Props) {
         <Sheet title="진행 기록" onClose={() => setSheet(null)} tall>
           <ul className="log">
             {[...game.log].reverse().map((l, i) => (
-              <li key={i} className={/라운드 ·/.test(l) ? 'head' : ''}>{l}</li>
+              <li key={i} className={/^\d+라운드 ·/.test(l) ? 'head' : ''}>{l}</li>
             ))}
           </ul>
         </Sheet>
@@ -255,19 +323,29 @@ export function GameScreen({ game, act, onExit }: Props) {
   );
 }
 
-function Scoreboard({ game }: { game: GameState }) {
+/** 모든 플레이어를 한눈에 보고, 탭하면 그 공원을 열람한다 */
+function Scoreboard({ game, viewId, onView }: { game: GameState; viewId: number; onView: (id: number) => void }) {
   return (
-    <div className="score">
-      {game.players.map((p) => (
-        <div key={p.id} className={`pl ${p.id === HUMAN ? 'me' : ''} ${game.phase === 'construct' && game.turn === p.id ? 'turn' : ''}`}>
-          <span className="pl-ico" style={{ ['--h' as string]: p.id * 70 }}>
-            <Icon name={p.isAI ? 'smile' : 'smile'} size={16} />
-          </span>
-          <span className="pl-name">{p.name}</span>
-          <Vp value={p.vp} />
-          <Money value={p.money} />
-        </div>
-      ))}
+    <div className="score" role="tablist" aria-label="공원 보기">
+      {game.players.map((p) => {
+        const turn =
+          (game.phase === 'construct' && game.turn === p.id) || (game.phase === 'promote' && game.promoteStep === 'pick' && game.pickTurn === p.id);
+        return (
+          <button key={p.id} role="tab" aria-selected={viewId === p.id} className={`pl ${p.id === HUMAN ? 'me' : ''} ${viewId === p.id ? 'view' : ''} ${turn ? 'turn' : ''}`} onClick={() => onView(p.id)}>
+            <span className="pl-ico" style={{ ['--h' as string]: p.id * 70 }}>
+              <Icon name="smile" size={16} />
+            </span>
+            <span className="pl-name">
+              {p.name}
+              {game.first === p.id && game.phase !== 'gameOver' && <em className="first">선</em>}
+            </span>
+            <span className="pl-res">
+              <Vp value={p.vp} />
+              <Money value={p.money} />
+            </span>
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -323,9 +401,11 @@ interface DockProps {
   setSelected: (id: number | null) => void;
   myTurn: boolean;
   brokenSlots: number[];
+  viewMine: boolean;
+  goMine: () => void;
 }
 
-function Dock({ game, me, act, tab, setTab, selected, setSelected, myTurn, brokenSlots }: DockProps) {
+function Dock({ game, me, act, tab, setTab, selected, setSelected, myTurn, brokenSlots, viewMine, goMine }: DockProps) {
   if (game.phase === 'construct') {
     return (
       <footer className="dock">
@@ -339,8 +419,10 @@ function Dock({ game, me, act, tab, setTab, selected, setSelected, myTurn, broke
             <div className="hint">
               {selected !== null ? (
                 <>건설할 <b>부지를 탭</b>하세요 <button className="link" onClick={() => setSelected(null)}>선택 취소</button></>
+              ) : !viewMine ? (
+                <>상대 공원을 보는 중이에요 <button className="link" onClick={goMine}>내 공원으로</button></>
               ) : (
-                <>카드를 탭해 고른 뒤 부지에 건설해요 · 한 번에 한 가지 행동</>
+                <>카드를 탭해 고른 뒤 부지에 건설해요 · 상대 이름을 탭하면 상대 공원을 볼 수 있어요</>
               )}
             </div>
             <div className="market">
@@ -376,7 +458,7 @@ function Dock({ game, me, act, tab, setTab, selected, setSelected, myTurn, broke
     );
   }
 
-  if (game.phase === 'promote') return <PromoteDock game={game} me={me} act={act} />;
+  if (game.phase === 'promote') return game.promoteStep === 'pick' ? <PickDock game={game} me={me} act={act} /> : <FeeDock me={me} act={act} />;
 
   if (game.phase === 'manage') {
     const penalty = Math.floor(me.trash / 2);
@@ -419,27 +501,73 @@ function Dock({ game, me, act, tab, setTab, selected, setSelected, myTurn, broke
   return null;
 }
 
-function PromoteDock({ game, me, act }: { game: GameState; me: Player; act: (a: Action) => void }) {
-  const ev = game.event!;
-  const visitors = Math.max(0, CFG.baseVisitors + me.staff.marketer + (ev.visitorDelta ?? 0));
-  const pass = (fee: number) => (fee <= 0 ? 1 : Math.max(0, (5 - fee) / 4));
-  const exp = visitors * pass(me.fee);
+/** 홍보 ① 관객 트랙: 공개된 관객카드를 차례로 가져온다 */
+function PickDock({ game, me, act }: { game: GameState; me: Player; act: (a: Action) => void }) {
+  const quota = visitorQuota(game, me);
+  const mineTurn = game.pickTurn === HUMAN && !game.pickDone[HUMAN];
+  const open = game.visitorRow.filter((r) => r.by === null).length;
   return (
     <footer className="dock">
-      <div className="dock-title"><Icon name="promote" size={18} /> 홍보 · 입장료를 정하세요</div>
-      <div className="fees">
-        {Array.from({ length: CFG.maxFee + 1 }, (_, f) => (
-          <button key={f} className={`fee ${me.fee === f ? 'on' : ''}`} onClick={() => { haptic(8); act({ type: 'setFee', fee: f }); }}>
-            <Icon name="ticket" size={20} />
-            <b>${f}</b>
-            <small>{Math.round(pass(f) * 100)}% 입장</small>
-          </button>
+      <div className="dock-title">
+        <Icon name="promote" size={18} /> 홍보 · 관객 트랙
+        <span className="quota">내 입구 {me.visitors.length}/{quota}</span>
+      </div>
+      <div className="hint">
+        {mineTurn ? (
+          <>마음에 드는 <b>관객을 탭</b>해 입구로 데려오세요. 아이콘은 좋아하는 시설 유형, <b>$</b>는 낼 수 있는 최대 입장료예요.</>
+        ) : (
+          <>관객 선택이 끝났어요</>
+        )}
+      </div>
+      <div className="vrow">
+        {game.visitorRow.map(({ v, by }) => (
+          <VisitorCard
+            key={v.id}
+            v={v}
+            state={by === null ? 'open' : 'taken'}
+            owner={by === null ? undefined : by === HUMAN ? '내 입구' : game.players[by].name.replace(' 파크', '')}
+            onTap={by === null ? () => { haptic(10); act({ type: 'pickVisitor', visitorId: v.id }); } : undefined}
+            disabled={!mineTurn}
+          />
         ))}
       </div>
+      <div className="vfoot">
+        <small className="muted">남은 관객 {open}명 · 관객 덱 {game.visitorDeck.length}장</small>
+        <button className="btn small" disabled={!mineTurn} onClick={() => act({ type: 'donePicking' })}>
+          {me.visitors.length === 0 ? '관객 없이 진행' : '이 정도면 됐어요'}
+        </button>
+      </div>
+    </footer>
+  );
+}
+
+/** 홍보 ② 입장료 결정: 내 입구의 관객이 입장 가능한지 바로 보인다 */
+function FeeDock({ me, act }: { me: Player; act: (a: Action) => void }) {
+  const entered = me.visitors.filter((v) => v.budget >= me.fee).length;
+  return (
+    <footer className="dock">
+      <div className="dock-title"><Icon name="ticket" size={18} /> 홍보 · 입장료를 정하세요</div>
+      <div className="vrow mine">
+        {me.visitors.length === 0 && <div className="muted pad">데려온 관객이 없어요</div>}
+        {me.visitors.map((v) => (
+          <VisitorCard key={v.id} v={v} state="mine" enters={v.budget >= me.fee} />
+        ))}
+      </div>
+      <div className="fees">
+        {Array.from({ length: CFG.maxFee + 1 }, (_, f) => {
+          const n = me.visitors.filter((v) => v.budget >= f).length;
+          return (
+            <button key={f} className={`fee ${me.fee === f ? 'on' : ''}`} onClick={() => { haptic(8); act({ type: 'setFee', fee: f }); }}>
+              <Icon name="ticket" size={18} />
+              <b>${f}</b>
+              <small>{n}명 · ${n * f}</small>
+            </button>
+          );
+        })}
+      </div>
       <div className="promo-info">
-        <div><Icon name="adult" size={16} /> 오늘 방문 예정 <b>{visitors}명</b><small> (기본 {CFG.baseVisitors} + 마케팅 {me.staff.marketer}{ev.visitorDelta ? ` + 이벤트 ${ev.visitorDelta}` : ''})</small></div>
-        <div><Icon name="ticket" size={16} /> 예상 입장 <b>{exp.toFixed(1)}명</b> · 입장료 수입 <b>${(exp * me.fee).toFixed(1)}</b></div>
-        <small className="muted">입장료가 높으면 수입은 늘지만 관객이 입구에서 돌아가요. 관객이 줄면 시설 수익·만족도도 줄어요.</small>
+        <div><Icon name="adult" size={16} /> 입장 <b>{entered}/{me.visitors.length}명</b> · 입장료 수입 <b>${entered * me.fee}</b></div>
+        <small className="muted">입장료보다 한도가 낮은 관객은 입구에서 돌아가요. 입장하는 관객이 많을수록 시설 수익·만족도도 늘어요.</small>
       </div>
       <button className="btn primary wide" onClick={() => { haptic(20); act({ type: 'confirmFee' }); }}>
         문 열기 <Icon name="arrow" size={18} />

@@ -1,7 +1,7 @@
 /** 플랫폼 종속 코드 모음. 앱(Capacitor 등)으로 포장할 때 이 파일만 교체하면 된다. */
 import type { GameState } from '../game/types';
 
-const KEY = 'smilepark.save.v1';
+const KEY = 'smilepark.save.v2';
 
 export function loadGame(): GameState | null {
   try {

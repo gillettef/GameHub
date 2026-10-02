@@ -33,6 +33,8 @@ export const CFG = {
   breakMin: 0.04,
   trashChance: 0.5,
   visitorDeckSize: 48,
+  /** 관객 트랙에 깔리는 카드 = 전원 수용량 합 + 여유분 */
+  rowExtra: 2,
   hireCost: (level: number) => 4 + 2 * level,
 };
 
@@ -42,6 +44,8 @@ export type Action =
   | { type: 'buy'; cardId: number; slot: number }
   | { type: 'hire'; staff: StaffKey }
   | { type: 'pass' }
+  | { type: 'pickVisitor'; visitorId: number }
+  | { type: 'donePicking' }
   | { type: 'setFee'; fee: number }
   | { type: 'confirmFee' }
   | { type: 'continue' }
@@ -78,6 +82,9 @@ const matches = (t: EventTarget, type: FacilityType) =>
 
 export const incomeOf = (c: FacilityCard, kind: 'child' | 'adult') => Math.ceil(c.income[kind === 'child' ? 0 : 1] / 2);
 export const priceOf = (p: Player, c: FacilityCard) => Math.max(1, c.cost - p.staff.researcher);
+export function visitorQuota(s: GameState, p: Player): number {
+  return Math.max(0, CFG.baseVisitors + p.staff.marketer + (s.event?.visitorDelta ?? 0));
+}
 export const hasHuman = (s: GameState) => s.players.some((p) => !p.isAI);
 
 function eventMods(s: GameState, type: FacilityType) {
@@ -125,6 +132,10 @@ export function newGame(opts: { aiCount: number; humans?: number; seed?: number;
     market: [],
     facilityDeck: [],
     visitorDeck: [],
+    visitorRow: [],
+    promoteStep: 'pick',
+    pickTurn: 0,
+    pickDone: [],
     eventDeck: [],
     event: null,
     nextVisitorId: 1,
@@ -149,6 +160,7 @@ export function newGame(opts: { aiCount: number; humans?: number; seed?: number;
       fee: 2,
       freeRepairs: 0,
       freeCleans: 0,
+      visitors: [],
       report: null,
     });
   }
@@ -206,10 +218,22 @@ function settle(s: GameState) {
         advanceTurn(s);
         break;
       }
-      case 'promote':
+      case 'promote': {
+        if (s.promoteStep === 'pick') {
+          if (s.pickDone.every(Boolean)) {
+            s.promoteStep = 'fee';
+            for (const p of s.players) if (p.isAI) p.fee = aiFee(p);
+            break;
+          }
+          const p = s.players[s.pickTurn];
+          if (!p.isAI) return;
+          aiPickTurn(s, p);
+          break;
+        }
         if (human) return;
         runOperate(s);
         break;
+      }
       case 'operate':
         if (human) return;
         startManage(s);
@@ -226,7 +250,37 @@ function settle(s: GameState) {
 
 function startPromote(s: GameState) {
   s.phase = 'promote';
-  for (const p of s.players) if (p.isAI) p.fee = aiFee(p);
+  s.promoteStep = 'pick';
+  const total = s.players.reduce((n, p) => n + visitorQuota(s, p), 0) + CFG.rowExtra;
+  s.visitorRow = Array.from({ length: total }, () => ({ v: drawVisitor(s), by: null }));
+  for (const p of s.players) p.visitors = [];
+  s.pickDone = s.players.map((p) => visitorQuota(s, p) === 0);
+  s.pickTurn = s.first;
+  if (s.pickDone[s.pickTurn]) advancePick(s);
+  log(s, `관객 ${total}명이 입구 앞에 모였어요`);
+}
+
+/** 다음으로 관객을 고를 플레이어에게 차례를 넘긴다 */
+function advancePick(s: GameState) {
+  const n = s.players.length;
+  for (let k = 1; k <= n; k++) {
+    const i = (s.pickTurn + k) % n;
+    if (!s.pickDone[i]) {
+      s.pickTurn = i;
+      return;
+    }
+  }
+}
+
+function takeVisitor(s: GameState, p: Player, visitorId: number): boolean {
+  const slot = s.visitorRow.find((r) => r.v.id === visitorId && r.by === null);
+  if (!slot) return false;
+  slot.by = p.id;
+  p.visitors.push(slot.v);
+  if (p.visitors.length >= visitorQuota(s, p) || s.visitorRow.every((r) => r.by !== null)) s.pickDone[p.id] = true;
+  if (s.visitorRow.every((r) => r.by !== null)) s.pickDone = s.pickDone.map(() => true);
+  advancePick(s);
+  return true;
 }
 
 function runOperate(s: GameState) {
@@ -238,7 +292,8 @@ function runOperate(s: GameState) {
   }
   for (const p of s.players) {
     const r = p.report!;
-    log(s, `${p.name}: 관객 ${r.entered}명 · 수익 $${r.income + r.feeIncome - r.upkeep} · VP +${r.vpGain}`);
+    const net = r.income + r.feeIncome - r.upkeep;
+    log(s, `${p.name}: 관객 ${r.entered}명 · 수익 ${net < 0 ? '-' : ''}$${Math.abs(net)} · VP +${r.vpGain}`);
   }
 }
 
@@ -287,9 +342,8 @@ function operatePlayer(s: GameState, p: Player): RoundReport {
     drawn: 0, entered: 0, fee: p.fee, feeIncome: 0, visits: [], unserved: 0, income: 0, upkeep: 0, sat: 0,
     vpGain: 0, broken: [], trashAdded: 0, debtVp: 0, trashPenalty: 0,
   };
-  rep.drawn = Math.max(0, CFG.baseVisitors + p.staff.marketer + (ev.visitorDelta ?? 0));
-  const drawn: Visitor[] = [];
-  for (let i = 0; i < rep.drawn; i++) drawn.push(drawVisitor(s));
+  const drawn: Visitor[] = p.visitors;
+  rep.drawn = drawn.length;
   const entered = drawn.filter((v) => v.budget >= p.fee);
   rep.entered = entered.length;
   rep.feeIncome = entered.length * p.fee;
@@ -391,9 +445,43 @@ function aiManage(s: GameState, p: Player) {
 
 /* ───────── AI ───────── */
 
+/** 내 입구에 모인 관객 기준으로 (입장료 + 관객 가치)가 가장 큰 입장료 */
 function aiFee(p: Player): number {
-  const n = p.facilities.filter((f) => f && !f.broken).length;
-  return n >= 3 ? 2 : 1;
+  let best = 1;
+  let bestScore = -1;
+  for (let f = 0; f <= CFG.maxFee; f++) {
+    const score = p.visitors.filter((v) => v.budget >= f).length * (f + 3);
+    if (score > bestScore) {
+      bestScore = score;
+      best = f;
+    }
+  }
+  return best;
+}
+
+/** 내 시설과 잘 맞고, 입장료를 낼 수 있는 관객일수록 높은 점수 */
+function visitorScore(p: Player, v: Visitor): number {
+  const k = v.kind === 'child' ? 0 : 1;
+  const scores = p.facilities
+    .filter((f): f is Built => !!f && !f.broken)
+    .map((f) => {
+      const c = FACILITY_BY_ID[f.id];
+      return c.sat[k] + (c.type === v.fav ? 3 : 0) + incomeOf(c, v.kind) * 0.3;
+    })
+    .sort((a, b) => b - a);
+  return (scores[0] ?? 0) + 0.5 * (scores[1] ?? 0) + (v.budget >= 2 ? 1.5 : 0) + 0.3 * v.budget;
+}
+
+function aiPickTurn(s: GameState, p: Player) {
+  const open = s.visitorRow.filter((r) => r.by === null).map((r) => r.v);
+  if (open.length === 0) {
+    s.pickDone[p.id] = true;
+    advancePick(s);
+    return;
+  }
+  const best = open.reduce((a, b) => (visitorScore(p, b) > visitorScore(p, a) ? b : a));
+  takeVisitor(s, p, best.id);
+  log(s, `${p.name}: 관객 선택 (${best.kind === 'child' ? '어린이' : '성인'}·${best.fav}·$${best.budget})`);
 }
 
 function evalCard(c: FacilityCard, left: number) {
@@ -524,14 +612,27 @@ function apply(s: GameState, a: Action): string | null {
       advanceTurn(s);
       return null;
     }
+    case 'pickVisitor': {
+      const e = need('promote') ?? (s.promoteStep === 'pick' && s.pickTurn === HUMAN && !s.pickDone[HUMAN] ? null : '내 차례가 아니에요');
+      if (e) return e;
+      if (!takeVisitor(s, p, a.visitorId)) return '이미 다른 공원이 데려갔어요';
+      return null;
+    }
+    case 'donePicking': {
+      const e = need('promote') ?? (s.promoteStep === 'pick' && s.pickTurn === HUMAN && !s.pickDone[HUMAN] ? null : '지금은 할 수 없어요');
+      if (e) return e;
+      s.pickDone[HUMAN] = true;
+      advancePick(s);
+      return null;
+    }
     case 'setFee': {
-      const e = need('promote');
+      const e = need('promote') ?? (s.promoteStep === 'fee' ? null : '먼저 관객을 고르세요');
       if (e) return e;
       p.fee = Math.max(0, Math.min(CFG.maxFee, a.fee));
       return null;
     }
     case 'confirmFee': {
-      const e = need('promote');
+      const e = need('promote') ?? (s.promoteStep === 'fee' ? null : '먼저 관객을 고르세요');
       if (e) return e;
       runOperate(s);
       return null;

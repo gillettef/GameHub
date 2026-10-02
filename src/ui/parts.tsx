@@ -3,7 +3,7 @@ import { Icon, type IconName } from './Icon';
 import { Slot } from './Slot';
 import { TYPE_META } from './meta';
 import { incomeOf } from '../game/engine';
-import type { FacilityCard } from '../game/types';
+import type { FacilityCard, Visitor } from '../game/types';
 
 /** 값이 바뀌면 살짝 튀어오르는 숫자 */
 export function Num({ value, prefix = '', className = '' }: { value: number; prefix?: string; className?: string }) {
@@ -106,6 +106,53 @@ export function Vp({ value, big }: { value: number; big?: boolean }) {
     <span className={`vp ${big ? 'big' : ''}`}>
       <Icon name="star" size={big ? 20 : 15} />
       <Num value={value} />
+    </span>
+  );
+}
+
+/* ───── 관객카드 ───── */
+
+const KIND_LABEL = { child: '어린이', adult: '성인' } as const;
+
+interface VisitorCardProps {
+  v: Visitor;
+  /** open: 가져올 수 있음 / taken: 누군가 가져감 / mine: 내 입구 */
+  state?: 'open' | 'taken' | 'mine';
+  owner?: string;
+  /** 입장료 단계에서 입장 여부 표시 (false면 돌아감) */
+  enters?: boolean;
+  onTap?: () => void;
+  disabled?: boolean;
+}
+
+/** 관객카드 — 종류(어린이/성인), 좋아하는 유형, 지불 한도($)가 한눈에 보이게 */
+export function VisitorCard({ v, state = 'open', owner, enters, onTap, disabled }: VisitorCardProps) {
+  const m = TYPE_META[v.fav];
+  const Tag = onTap ? 'button' : 'div';
+  return (
+    <Tag className={`vcard ${state} ${enters === false ? 'leaves' : ''}`} onClick={onTap} disabled={onTap ? disabled : undefined}>
+      <Slot slot={`visitor/${v.kind}`} tint={v.kind === 'child' ? '#ff9ad0' : '#6cc7ff'} className="vcard-art" fallback={<Icon name={v.kind} size={30} stroke={1.6} />}>
+        <span className="vcard-budget"><Icon name="ticket" size={11} />${v.budget}</span>
+      </Slot>
+      <b>{KIND_LABEL[v.kind]}</b>
+      <span className="vcard-fav" style={{ ['--c' as string]: m.color }}>
+        <Icon name={m.icon} size={12} stroke={2} />
+        {m.short}
+      </span>
+      {state === 'taken' && <span className="vcard-owner">{owner}</span>}
+      {enters === false && <span className="vcard-owner bad">돌아감</span>}
+    </Tag>
+  );
+}
+
+/** 입구에 선 관객을 아주 작게 표시 (상대 공원 열람용) */
+export function VisitorChip({ v, enters }: { v: Visitor; enters?: boolean }) {
+  const m = TYPE_META[v.fav];
+  return (
+    <span className={`vchip ${enters === false ? 'leaves' : ''}`} style={{ ['--c' as string]: m.color }} title={`${KIND_LABEL[v.kind]} · ${v.fav} · 최대 $${v.budget}`}>
+      <Icon name={v.kind} size={14} />
+      <Icon name={m.icon} size={13} stroke={2} />
+      <i>${v.budget}</i>
     </span>
   );
 }
