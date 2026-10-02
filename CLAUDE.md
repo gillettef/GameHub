@@ -33,3 +33,8 @@
 - 이모지/시스템 이모티콘은 쓰지 않고 `src/ui/Icon.tsx`의 커스텀 SVG 아이콘만 쓴다.
 - 이미지 에셋: `public/images/<슬롯키>.webp`에 넣으면 자동 적용(없으면 플레이스홀더). 슬롯 정의는 `src/ui/assets.ts`, 목록/크기는 앱 주소 뒤 `#assets`.
 - 현재 구현 룰은 `docs/design-v0.md`(pptx의 빈 부분을 임시로 채운 것). 룰 상수(`CFG`)를 바꾸면 `npx tsx scripts/balance.ts`로 영향을 확인하고, 카드 원본(xlsx)은 수정하지 않고 룰 상수로 조정한다.
+
+## 배포 (AWS)
+- 다른 게임(Eleven·AstralTab·MagicAcademy)과 같은 EC2(t4g.nano) 1대를 공유한다. SmilePark는 정적 웹앱이라 `main`에 push하면 `.github/workflows/deploy-aws.yml`이 `npm test` → `npm run build`를 통과했을 때만 `dist`와 `scripts/aws/serve.mjs`(의존성 없는 정적 서버)를 `~/smilepark`에 올리고 systemd `smilepark`(포트 **8090**)를 재시작한다. 접속은 `http://<Elastic IP>:8090`.
+- SSH(22)는 관리자 IP만 열려 있어 워크플로가 러너 IP를 임시로 열었다 닫는다. 저장소 시크릿: AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY / AWS_REGION / AWS_SECURITY_GROUP_ID / EC2_HOST / EC2_HOST_KEY / EC2_SSH_PRIVATE_KEY (다른 게임 저장소와 같은 값).
+- 최초 1회: EC2에서 `scripts/aws/provision.sh` → `scripts/aws/units.sh` 실행, 보안 그룹에 TCP 8090 인바운드 추가.
