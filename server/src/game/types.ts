@@ -171,7 +171,10 @@ export interface PendingRoll {
   lines: string[];
   // dice가 null이면 아직 안 굴린 사람, confirmed는 결과를 확인하고 다음으로 넘기기를 누른 사람
   // diceChoiceMax가 있으면 굴리기 전에 마나토큰을 1~max개 내고 낸 개수만큼 굴릴 수 있다 (diceCount는 굴림 버튼의 기본 개수)
-  entries: { playerId: string; label: string; diceCount: number; diceChoiceMax?: number; dice: number[] | null; confirmed: boolean; rerolls: number; rerollCounts?: number[] }[];
+  // assistMax가 있으면 굴리기 전에 보조 능력치 토큰(assist.kind)을 0~max개 더 낼 수 있다. 낸 개수는 assist에 남는다 (38-6절)
+  entries: { playerId: string; label: string; diceCount: number; diceChoiceMax?: number; assistMax?: number; assist?: number; dice: number[] | null; confirmed: boolean; rerolls: number; rerollCounts?: number[] }[];
+  // 이 굴림에서 보조 능력치로 쓸 수 있는 토큰 (토너먼트: 체력토큰 "끝까지 달려요", 탐험: 지력토큰 "함정 간파"). 없으면 해당 없음
+  assist?: { kind: "stamina" | "intelligence"; name: string; title: string; hint: string };
 }
 
 // 협력 탐험 카드가 함께할 친구를 기다리는 중 (공개 정보)

@@ -345,15 +345,16 @@ test("지력(학습): 체력토큰이 모자라면 지력토큰 2개가 체력�
   assert.equal(BALANCE.intelligencePerStamina, 2);
   const state = newGame(2);
   const [first, second] = state.classPickOrder;
-  const card = state.classMarket.find((c) => c.takeCost >= 2);
-  assert.ok(card, "비용 2 이상인 수업카드가 있어야 한다");
+  // 시장에 나온 카드의 비용을 고정한다 (무작위 구성에 기대지 않는다)
+  state.classMarket[0] = { ...state.classMarket[0], takeCost: 2 };
+  state.classMarket[1] = { ...state.classMarket[1], takeCost: 1 };
+  const card = state.classMarket[0];
   const p = state.players[first];
   Object.assign(p, { staminaTokens: card.takeCost - 1, intelligenceTokens: 2 });
   takeClassCard(state, first, card.id);
   assert.equal(p.staminaTokens, 0, "체력토큰을 먼저 모두 쓴다");
   assert.equal(p.intelligenceTokens, 0, "모자란 체력토큰 1개를 지력토큰 2개로 메꾼다");
-  const other = state.classMarket.find((c) => c.takeCost >= 1);
-  assert.ok(other);
+  const other = state.classMarket.find((c) => c.takeCost === 1)!;
   Object.assign(state.players[second], { staminaTokens: other.takeCost - 1, intelligenceTokens: 1 });
   assert.equal(canPay(state.players[second], 0, other.takeCost), false, "지력토큰 1개로는 체력토큰 1개를 메꿀 수 없다");
   assert.throws(() => takeClassCard(state, second, other.id), /체력토큰이 부족/);
@@ -1413,6 +1414,85 @@ test("비밀의 방 탐험: 주사위 합 + 체력이 목표값 이상이면 성
     rollWith(state, { [a]: [1] });
     assert.ok(state.log.some((l) => l.message.includes(expected ? "성공" : "실패") && l.message.includes("체력")), `체력 ${stamina}: 로그에 체력 보너스와 결과가 남는다`);
   }
+});
+
+// ── 보조 능력치 (38-6절): 보조 능력의 토큰을 내서 주 판정을 돕는다 ──
+
+test("마법 토너먼트(보조=체력, 지구력): 체력토큰 1개당 고정 칸을 더 전진한다. 굴리기 전에 마나토큰과 함께 내고, 가진 개수를 넘길 수 없다", () => {
+  assert.equal(BALANCE.tournamentStaminaBoost, 3);
+  const state = newGame(2);
+  toActivity(state);
+  const [a, b] = state.activityOrder;
+  Object.assign(state.players[a], { manaTokens: 2, staminaTokens: 3, tournamentTrack: 0 });
+  Object.assign(state.players[b], { manaTokens: 2, staminaTokens: 0, tournamentTrack: 0 });
+  selectActivity(state, a, "tournament");
+  selectActivity(state, b, "tournament");
+  advanceResolution(state);
+  const pending = state.pendingRoll!;
+  assert.equal(pending.assist?.kind, "stamina");
+  assert.equal(pending.entries[0].assistMax, 3, "체력토큰을 가진 만큼 낼 수 있다");
+  assert.throws(() => submitRoll(state, a, 2, 4), /보조 토큰/);
+  assert.equal(state.players[a].staminaTokens, 3, "검증에 실패하면 아무것도 내지 않는다");
+  assert.equal(state.players[a].manaTokens, 2);
+  submitRoll(state, a, 2, 2);
+  assert.equal(state.players[a].staminaTokens, 1, "체력토큰 2개를 냈다");
+  assert.equal(state.players[a].manaTokens, 0);
+  rollWith(state, { [a]: [3, 4] });
+  assert.equal(state.players[a].tournamentTrack, 7 + 2 * BALANCE.tournamentStaminaBoost, "주사위 합 7 + 체력토큰 2개 × 3칸");
+  assert.ok(state.log.some((l) => l.message.includes("끝까지 달려요(체력토큰 2개)")));
+  advanceResolution(state);
+  assert.equal(state.pendingRoll?.entries[0].assistMax, undefined, "체력토큰이 없으면 선택지가 없다");
+  assert.throws(() => submitRoll(state, b, 2, 1), /보조 토큰/);
+  submitRoll(state, b, 2);
+  rollWith(state, { [b]: [3, 4] });
+  assert.equal(state.players[b].tournamentTrack, 7);
+});
+
+test("비밀의 방 탐험(보조=지력, 함정 간파): 지력토큰을 내고 굴리면 실패해도 손해가 없다. 성공하면 낸 토큰만 사라진다", () => {
+  const base = explorationTemplates().find((c) => c.check && !c.coop)!;
+  const trap = { ...base, id: "test-trap", failure: { nextStamina: -2 }, success: { credit: 1 } };
+  const play = (shield: number, dice: number): { state: GameState; a: string } => {
+    const state = newGame(2);
+    toActivity(state);
+    const [a] = state.activityOrder;
+    state.explorationPile.draw.push(trap, safeExploration(0));
+    Object.assign(state.players[a], { manaTokens: 1, stamina: 2, intelligenceTokens: 2, pendingStaminaTokens: 0, tempBoosts: {} });
+    selectActivity(state, a, "exploration");
+    finishChoosing(state);
+    advanceResolution(state);
+    chooseActivityCard(state, a, "test-trap");
+    assert.equal(state.pendingRoll?.assist?.kind, "intelligence");
+    assert.equal(state.pendingRoll?.entries[0].assistMax, 1, "지력토큰이 있으면 함정 간파를 고를 수 있다");
+    submitRoll(state, a, 1, shield);
+    rollWith(state, { [a]: [dice] });
+    return { state, a };
+  };
+  const unshielded = play(0, 1);
+  assert.equal(unshielded.state.players[unshielded.a].pendingStaminaTokens, -2, "간파하지 않고 실패하면 손해를 받는다");
+  assert.equal(unshielded.state.players[unshielded.a].intelligenceTokens, 2);
+  const shielded = play(1, 1);
+  assert.equal(shielded.state.players[shielded.a].pendingStaminaTokens, 0, "함정을 간파했으면 실패해도 손해가 없다");
+  assert.equal(shielded.state.players[shielded.a].intelligenceTokens, 1, "지력토큰 1개를 냈다");
+  assert.ok(shielded.state.log.some((l) => l.message.includes("함정을 간파")));
+  const won = play(1, 6 * 1 + 20); // 눈이 아주 커서 성공 (테스트용으로 눈 값을 직접 정한다)
+  assert.equal(won.state.players[won.a].credit, 1, "성공하면 보상은 그대로");
+  assert.equal(won.state.players[won.a].intelligenceTokens, 1, "성공해도 낸 지력토큰은 돌려받지 못한다");
+  assert.ok(!won.state.log.some((l) => l.message.includes("함정을 간파")));
+});
+
+test("탐험 함정 간파: 지력토큰이 없으면 선택지가 없고, 판정 없는 카드에는 굴림 자체가 없다", () => {
+  const base = explorationTemplates().find((c) => c.check && !c.coop)!;
+  const state = newGame(2);
+  toActivity(state);
+  const [a] = state.activityOrder;
+  state.explorationPile.draw.push({ ...base, id: "test-trap" }, safeExploration(0));
+  Object.assign(state.players[a], { manaTokens: 1, intelligenceTokens: 0 });
+  selectActivity(state, a, "exploration");
+  finishChoosing(state);
+  advanceResolution(state);
+  chooseActivityCard(state, a, "test-trap");
+  assert.equal(state.pendingRoll?.entries[0].assistMax, undefined);
+  assert.throws(() => submitRoll(state, a, 1, 1), /보조 토큰/);
 });
 
 // ── 능력치 감쇠 ──

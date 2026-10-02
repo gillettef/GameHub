@@ -368,6 +368,11 @@ function pay(p: PlayerGameState, kind: PayKind, n: number): void {
 
 // 굴리기 전에 마나토큰을 1~보유 개수 사이에서 골라 내고 낸 개수만큼 굴리는 굴림 항목 (마나토큰이 없으면 주사위 1개를 공짜로 굴린다).
 // 목표값(suggestTarget)이 있는 판정은 기본 개수를 "성공 확률이 충분한 가장 적은 개수"로 잡아 남는 마나토큰을 다시 굴리기용으로 남기고, 없으면 기본값이 마나토큰 전부다
+// 보조 능력치 토큰으로 굴림을 돕는 선택 (38-6절): 굴리기 전에 0~max개를 골라 낸다. max가 0이면 선택지가 없다
+function withAssist<T extends object>(entry: T, max: number): T & { assistMax?: number } {
+  return max > 0 ? { ...entry, assistMax: max } : entry;
+}
+
 function choiceEntry(player: PlayerGameState, label: string, suggestTarget?: number) {
   const tokens = player.manaTokens;
   return {
@@ -558,7 +563,9 @@ function startTournament(state: GameState, player: PlayerGameState): void {
     kind: "tournament",
     title: `마법 토너먼트 · ${player.name}`,
     lines: [`마나토큰을 1~${player.manaTokens}개 골라 내고, 낸 개수만큼 주사위를 굴려요. 나온 눈을 모두 더한 만큼 트랙을 전진해요`],
-    entries: [choiceEntry(player, player.name)],
+    // 보조 능력치(체력=지구력): 체력토큰을 내면 "끝까지 달려요" — 1개당 고정 칸을 더 전진한다 (주사위가 아니라 고정값)
+    assist: { kind: "stamina", name: "체력토큰", title: "끝까지 달려요", hint: `체력토큰 1개당 +${BALANCE.tournamentStaminaBoost}칸 더 전진해요 (지구력)` },
+    entries: [withAssist(choiceEntry(player, player.name), player.staminaTokens)],
   };
 }
 
@@ -631,8 +638,9 @@ function resolveLab(state: GameState, ctx: Extract<RollContext, { kind: "lab" }>
   }
 }
 
-function advanceTournament(state: GameState, player: PlayerGameState, dice: number[]): void {
-  const gain = sum(dice);
+function advanceTournament(state: GameState, player: PlayerGameState, dice: number[], assist = 0): void {
+  const boost = assist * BALANCE.tournamentStaminaBoost;
+  const gain = sum(dice) + boost;
   const before = player.tournamentTrack;
   player.tournamentTrack += gain;
   const step = BALANCE.tournamentMilestoneStep;
@@ -641,7 +649,7 @@ function advanceTournament(state: GameState, player: PlayerGameState, dice: numb
   player.credit += milestoneCredit;
   log(
     state,
-    `${player.name}: 마법 토너먼트 참가 (${describeRoll(dice, [])} = ${gain}칸 전진, 트랙 ${player.tournamentTrack}칸)${milestoneCredit > 0 ? ` — 이정표 학점 +${milestoneCredit}` : ""}`,
+    `${player.name}: 마법 토너먼트 참가 (${describeRoll(dice, [[`끝까지 달려요(체력토큰 ${assist}개)`, boost]])} = ${gain}칸 전진, 트랙 ${player.tournamentTrack}칸)${milestoneCredit > 0 ? ` — 이정표 학점 +${milestoneCredit}` : ""}`,
   );
 }
 
@@ -736,10 +744,13 @@ function startExplorationRoll(
         ? `각자 마나토큰을 내고 낸 개수만큼 주사위를 굴려 (주사위 합 + 체력)의 둘 합이 ${rule.target} 이상이면 성공! 보상은 둘 다 받아요`
         : `마나토큰을 내고 낸 개수만큼 주사위를 굴려 주사위 합 + 체력 ${rollBonus(state.players[playerIds[0]], "exploration")} ≥ ${rule.target}이면 성공`,
     ],
+    // 보조 능력치(지력=함정 간파): 지력토큰을 내고 굴리면 실패해도 손해가 없다
+    assist: { kind: "intelligence", name: "지력토큰", title: "함정 간파", hint: `지력토큰 ${BALANCE.explorationShieldCost}개를 내면 실패해도 손해를 받지 않아요 (성공하면 낸 토큰은 그냥 사라져요)` },
     // 주사위 수는 마나토큰을 1~보유 개수 사이에서 골라 굴릴 때 낸다 (마나토큰이 없어도 1개는 공짜로 굴린다)
     entries: playerIds.map((id) => {
       const p = state.players[id];
-      return choiceEntry(p, p.name, (mode === "pair" ? Math.ceil(rule.target / 2) : rule.target) - rollBonus(p, "exploration"));
+      const entry = choiceEntry(p, p.name, (mode === "pair" ? Math.ceil(rule.target / 2) : rule.target) - rollBonus(p, "exploration"));
+      return withAssist(entry, p.intelligenceTokens >= BALANCE.explorationShieldCost ? 1 : 0);
     }),
   };
 }
@@ -750,7 +761,7 @@ function explorationRule(card: ExplorationCard, mode: "single" | "pair", round: 
   return card.check ? { stat: card.check.stat, target: exploreTarget(round, card.check.target) } : null;
 }
 
-function resolveExploration(state: GameState, ctx: Extract<RollContext, { kind: "exploration" }>, dice: Record<string, number[]>): void {
+function resolveExploration(state: GameState, ctx: Extract<RollContext, { kind: "exploration" }>, dice: Record<string, number[]>, shielded: string[] = []): void {
   const { card, playerIds, mode, target } = ctx;
   let success = true;
   let rollText = "";
@@ -772,10 +783,13 @@ function resolveExploration(state: GameState, ctx: Extract<RollContext, { kind: 
         : ` (${parts[0].text} / 목표 ${target} ${success ? "성공" : "실패"})`;
   }
   const effect = success ? card.success : card.failure;
-  for (const id of playerIds) applyCardEffect(state, state.players[id], effect);
+  // 실패했을 때 함정을 간파한(지력토큰을 낸) 사람은 손해를 받지 않는다
+  const safe = success ? [] : playerIds.filter((id) => shielded.includes(id));
+  for (const id of playerIds) if (!safe.includes(id)) applyCardEffect(state, state.players[id], effect);
   state.explorationPile.discard.push(card);
   const names = playerIds.map((id) => state.players[id].name).join(" · ");
-  log(state, `${names}: 비밀의 방 "${card.name}"${rollText} → ${describeEffect(effect)}${playerIds.length > 1 ? " (두 명 모두 적용)" : ""}`);
+  const shieldText = safe.length > 0 ? ` — ${safe.map((id) => state.players[id].name).join(" · ")}은(는) 함정을 간파해서 손해를 피했어요` : "";
+  log(state, `${names}: 비밀의 방 "${card.name}"${rollText} → ${describeEffect(effect)}${playerIds.length > 1 ? " (두 명 모두 적용)" : ""}${shieldText}`);
 }
 
 function describeCoop(card: ExplorationCard, playerId: string, round: number): CoopWaiting {
@@ -1116,13 +1130,16 @@ export function chooseActivityCard(state: GameState, playerId: string, cardId: s
 
 // 주사위 굴리기 버튼: 서버가 굴려서 결과를 기록한다
 // diceCount는 굴리기 전에 마나토큰을 1~보유 개수 사이에서 골라 내는 굴림에서 쓴다 (생략하면 entry의 기본 개수). 낸 마나토큰은 사라진다
-export function submitRoll(state: GameState, playerId: string, diceCount?: number): void {
+export function submitRoll(state: GameState, playerId: string, diceCount?: number, assist = 0): void {
   const pending = state.pendingRoll;
   if (!pending) throw new Error("지금은 주사위를 굴릴 차례가 아닙니다.");
   const entry = pending.entries.find((e) => e.playerId === playerId);
   if (!entry) throw new Error("이번 굴림에 참여하지 않습니다.");
   if (entry.dice) throw new Error("이미 주사위를 굴렸습니다.");
   const player = state.players[playerId];
+  // 보조 능력치 토큰 (토너먼트 체력토큰 / 탐험 지력토큰): 마나토큰과 함께 내며, 검증을 모두 마친 뒤에 낸다
+  const assistKind = pending.assist?.kind;
+  if (!Number.isInteger(assist) || assist < 0 || assist > (entry.assistMax ?? 0)) throw new Error("낼 수 없는 보조 토큰 개수예요.");
   if (entry.diceChoiceMax !== undefined) {
     const n = diceCount ?? entry.diceCount;
     if (!Number.isInteger(n) || n < 1 || n > entry.diceChoiceMax) throw new Error(`마나토큰을 1~${entry.diceChoiceMax}개 사이로 골라 주세요.`);
@@ -1130,6 +1147,11 @@ export function submitRoll(state: GameState, playerId: string, diceCount?: numbe
     entry.diceCount = n;
     delete entry.diceChoiceMax;
   }
+  if (assist > 0 && assistKind) {
+    pay(player, assistKind, assistKind === "intelligence" ? assist * BALANCE.explorationShieldCost : assist);
+    entry.assist = assist;
+  }
+  delete entry.assistMax;
   entry.dice = rollDice(entry.diceCount);
 }
 
@@ -1179,12 +1201,13 @@ function resolveRoll(state: GameState): void {
   const ctx = state.hidden.roll;
   if (!pending || !ctx) return;
   const diceOf = (id: string) => pending.entries.find((e) => e.playerId === id)?.dice ?? [];
+  const assistOf = (id: string) => pending.entries.find((e) => e.playerId === id)?.assist ?? 0;
   state.pendingRoll = null;
   state.hidden.roll = null;
   if (ctx.kind === "first") {
     resolveFirstRoll(state, ctx.contenders, diceOf);
   } else if (ctx.kind === "tournament") {
-    advanceTournament(state, state.players[ctx.playerId], diceOf(ctx.playerId));
+    advanceTournament(state, state.players[ctx.playerId], diceOf(ctx.playerId), assistOf(ctx.playerId));
     finishResolutionStep(state);
   } else if (ctx.kind === "creature") {
     resolveCreature(state, ctx, diceOf(ctx.playerId));
@@ -1196,7 +1219,7 @@ function resolveRoll(state: GameState): void {
     resolveDuel(state, ctx, diceOf(ctx.challengerId), diceOf(ctx.targetId));
     if (!state.pendingPick) finishResolutionStep(state);
   } else if (ctx.kind === "exploration") {
-    resolveExploration(state, ctx, Object.fromEntries(ctx.playerIds.map((id) => [id, diceOf(id)])));
+    resolveExploration(state, ctx, Object.fromEntries(ctx.playerIds.map((id) => [id, diceOf(id)])), ctx.playerIds.filter((id) => assistOf(id) > 0));
     finishResolutionStep(state);
   } else {
     resolveExam(state, ctx.examType, ctx.card, Object.fromEntries(state.turnOrder.map((id) => [id, diceOf(id)])));

@@ -75,6 +75,11 @@ export const BALANCE = {
   rollBonusBaseline: { creature: 2, exploration: 4, lab: 2 },
   // 지력(학습): 수업카드·연구 카드의 체력토큰이 모자라면 지력토큰 이 개수가 체력토큰 1개를 대신한다 (아는 만큼 덜 힘들게 배운다). 체력토큰을 먼저 쓰고 모자란 만큼만 지력토큰으로 메꾼다
   intelligencePerStamina: 2,
+  // 보조 능력치 (38-6절): 굴리기 전에 그 능력의 토큰을 내서 주 판정을 돕는다.
+  // 마법 토너먼트 — 체력(지구력): 체력토큰 1개당 고정 칸 전진 (주사위가 아니라 고정값)
+  tournamentStaminaBoost: 3,
+  // 비밀의 방 탐험 — 지력(함정 간파): 지력토큰 이 개수를 내면 실패해도 손해(실패 효과)를 받지 않는다 (성공하면 토큰만 사라짐)
+  explorationShieldCost: 1,
 };
 
 export function examCreditForRank(rank: number): number {
