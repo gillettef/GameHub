@@ -51,6 +51,8 @@ const STAT_NAME = { intelligence: "지력", stamina: "체력", charm: "매력", 
 export function describeEffect(e: CardEffect): string {
   const sign = (n: number) => (n > 0 ? `+${n}` : `${n}`);
   const parts: string[] = [];
+  const TOKEN = { intelligence: "지력기운", stamina: "체력기운", charm: "매력기운", mana: "마나기운" } as const;
+  for (const [k, v] of Object.entries(e.tokens ?? {})) parts.push(`${TOKEN[k as keyof typeof TOKEN]} ${sign(v)}`);
   for (const [k, v] of Object.entries(e.stats ?? {})) parts.push(`${STAT_NAME[k as keyof typeof STAT_NAME]} 영구 ${sign(v)}`);
   for (const [k, v] of Object.entries(e.tempStats ?? {})) parts.push(`${STAT_NAME[k as keyof typeof STAT_NAME]} 임시 ${sign(v)}`);
   if (e.credit) parts.push(`학점 ${sign(e.credit)}`);

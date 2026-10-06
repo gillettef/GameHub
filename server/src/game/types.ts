@@ -67,6 +67,8 @@ export interface ClassCard {
 // 카드 효과 묶음 (탐험/연구 카드 공용). 영구 능력치, 시험까지 유지되는 임시 능력치, 학점,
 // 다음 달 마나기운/체력기운(그 달의 기운은 4주차에 소멸하므로 다음 달 준비 때 반영), 탐험 카드 엿보기
 export interface CardEffect {
+  // 바로 받는 기운 (실패 보상 등)
+  tokens?: Partial<Record<KeptToken, number>>;
   stats?: Partial<Record<StatKey, number>>;
   tempStats?: Partial<Record<StatKey, number>>;
   credit?: number;
@@ -214,7 +216,8 @@ export interface PendingRoll {
   // dice가 null이면 아직 안 굴린 사람, confirmed는 결과를 확인하고 다음으로 넘기기를 누른 사람
   // diceChoiceMax가 있으면 굴리기 전에 마나기운을 1~max개 내고 낸 개수만큼 굴릴 수 있다 (diceCount는 굴림 버튼의 기본 개수)
   // diceToken은 이 굴림의 주사위 재료 기운이다 (없으면 마나기운, 39절). assistMax가 있으면 굴리기 전에 보조 능력치 기운(assist.kind)을 0~max개 더 낼 수 있다. 낸 개수는 assist에 남는다 (38-6절)
-  entries: { playerId: string; label: string; diceCount: number; diceToken?: KeptToken; diceChoiceMax?: number; assistMax?: number; assist?: number; dice: number[] | null; confirmed: boolean; rerolls: number; rerollCounts?: number[] }[];
+  // baseDice가 있으면 낸 기운과 상관없이 그만큼 더 굴린다 (기운은 0개부터 낼 수 있다, 47절)
+  entries: { playerId: string; label: string; diceCount: number; diceToken?: KeptToken; diceChoiceMax?: number; baseDice?: number; assistMax?: number; assist?: number; dice: number[] | null; confirmed: boolean; rerolls: number; rerollCounts?: number[] }[];
   // 이 굴림에서 보조 능력치로 쓸 수 있는 기운 (토너먼트: 체력기운 "끝까지 달려요", 탐험: 지력기운 "함정 간파"). 없으면 해당 없음
   assist?: { kind: "stamina" | "intelligence"; name: string; title: string; hint: string };
 }

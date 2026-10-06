@@ -120,9 +120,11 @@ export function diceSuccessChance(n: number, target: number): number {
 }
 
 // 굴림 버튼의 기본 주사위 수: 성공 확률이 defaultDiceSuccess 이상이 되는 가장 적은 개수 (그만큼 못 미치면 가진 마나기운 전부). 남는 마나기운은 다시 굴리기에 쓴다
+// (기본 주사위가 있으면 기운 0개도 고를 수 있고, 굴리는 주사위는 낸 기운 + 기본 주사위다)
 export function suggestDiceCount(mana: number, target: number): number {
-  for (let n = 1; n <= mana; n++) if (diceSuccessChance(n, target) >= BALANCE.defaultDiceSuccess) return n;
-  return Math.max(1, mana);
+  const base = BALANCE.baseDice;
+  for (let n = base > 0 ? 0 : 1; n <= mana; n++) if (diceSuccessChance(n + base, target) >= BALANCE.defaultDiceSuccess) return n;
+  return base > 0 ? mana : Math.max(1, mana);
 }
 
 function normalCdf(z: number): number {
@@ -137,8 +139,9 @@ export function explorationChance(state: GameState, player: PlayerGameState, car
   if (!card.check) return 1;
   const n = suggestDiceCount(usableFuel(player, BALANCE.rollFuel.exploration), exploreTarget(state.round, card.check.target));
   const catchUp = overallGap(state, player.id) >= BALANCE.catchUpGap ? BALANCE.catchUpBonus : 0;
-  const mean = dieMean() * n + catchUp;
-  const sd = Math.sqrt(n * dieVariance());
+  const dice = n + BALANCE.baseDice;
+  const mean = dieMean() * dice + catchUp;
+  const sd = Math.sqrt(dice * dieVariance());
   return 1 - normalCdf((exploreTarget(state.round, card.check.target) - 0.5 - mean) / sd);
 }
 
@@ -255,6 +258,7 @@ function checkTextOf(card: ExplorationCard, round: number): string | undefined {
 
 // 탐험 카드/연구 카드 효과를 플레이어에게 적용한다
 function applyCardEffect(state: GameState, player: PlayerGameState, effect: CardEffect): void {
+  for (const [kind, amount] of Object.entries(effect.tokens ?? {})) player[TOKEN_FIELD[kind as KeptToken]] += amount;
   for (const [stat, amount] of Object.entries(effect.stats ?? {})) player[stat as StatKey] += amount;
   for (const [stat, amount] of Object.entries(effect.tempStats ?? {})) {
     player.tempBoosts[stat as StatKey] = (player.tempBoosts[stat as StatKey] ?? 0) + amount;
@@ -394,16 +398,32 @@ function withAssist<T extends object>(entry: T, max: number): T & { assistMax?: 
   return max > 0 ? { ...entry, assistMax: max } : entry;
 }
 
+// 실패 보상 (47절 2안): 카드마다 실패했을 때 받는 보상. 그 활동의 재료 기운을 돌려받고, 어려운 카드일수록 많이 받는다
+export function failRewardOf(activityId: "creature" | "lab" | "exploration" | "duel", card?: OfferedCard): CardEffect {
+  if (!BALANCE.failRewards) return {};
+  if (activityId === "creature") return { tokens: { charm: (card as CreatureCard).trainTarget >= 16 ? 2 : 1 } };
+  if (activityId === "lab") return { tokens: { intelligence: 1 } };
+  if (activityId === "exploration") {
+    const c = card as ExplorationCard;
+    return { tokens: { stamina: (c.check?.target ?? 0) >= 10 || c.coop ? 2 : 1 } };
+  }
+  return { tokens: { mana: 1 } };
+}
+const failRewardLine = (e: CardEffect) => (Object.keys(e).length > 0 ? [`실패해도: ${describeEffect(e)}`] : []);
+
 // 굴리기 전에 재료 기운(fuel, 기본 마나기운)을 1~낼 수 있는 개수(보유량과 능력치 중 작은 쪽) 사이에서 골라 내고 낸 개수만큼 굴리는 굴림 항목
 // (재료 기운이 없으면 주사위 1개를 공짜로 굴린다). 목표값(suggestTarget)이 있는 판정은 기본 개수를 "성공 확률이 충분한 가장 적은 개수"로 잡고, 없으면 낼 수 있는 만큼 전부다
 function choiceEntry(player: PlayerGameState, label: string, suggestTarget?: number, fuel: KeptToken = "mana") {
   const tokens = usableFuel(player, fuel);
+  const base = BALANCE.baseDice;
   return {
     playerId: player.id,
     label,
-    diceCount: tokens > 0 ? (suggestTarget === undefined ? tokens : suggestDiceCount(tokens, suggestTarget)) : 1,
+    // 굴리기 전에는 "낼 기운 개수"의 기본값, 굴린 뒤에는 실제로 굴린 주사위 수
+    diceCount: tokens > 0 ? (suggestTarget === undefined ? tokens : suggestDiceCount(tokens, suggestTarget)) : Math.max(1, base),
     diceToken: fuel,
     ...(tokens > 0 ? { diceChoiceMax: tokens } : {}),
+    ...(base > 0 ? { baseDice: base } : {}),
     dice: null,
     confirmed: false,
     rerolls: 0,
@@ -720,7 +740,9 @@ function resolveCreature(state: GameState, ctx: Extract<RollContext, { kind: "cr
     // 실패한 카드는 구역으로 돌아가 두 번째 참가자가 도전할 수 있다 (아무도 가져가지 않으면 3주차 끝에 버림 더미로)
     state.hidden.offers.creature = [...offerCards(state, "creature"), creature];
     syncOfferView(state, "creature");
-    log(state, `${player.name}: 마법생물 "${creature.name}" 조련 실패... (${text})`);
+    const reward = failRewardOf("creature", creature);
+    applyCardEffect(state, player, reward);
+    log(state, `${player.name}: 마법생물 "${creature.name}" 조련 실패... (${text})${Object.keys(reward).length ? ` 실패해도 ${describeEffect(reward)}` : ""}`);
   }
 }
 
@@ -753,7 +775,9 @@ function resolveLab(state: GameState, ctx: Extract<RollContext, { kind: "lab" }>
     grow(state, player, "lab", "intelligence");
   } else {
     state.labPile.discard.push(lab);
-    log(state, `${player.name}: 연구 카드 "${lab.name}" 실험 실패... (${text})`);
+    const reward = failRewardOf("lab", lab);
+    applyCardEffect(state, player, reward);
+    log(state, `${player.name}: 연구 카드 "${lab.name}" 실험 실패... (${text})${Object.keys(reward).length ? ` 실패해도 ${describeEffect(reward)}` : ""}`);
   }
 }
 
@@ -832,6 +856,7 @@ function resolveDuel(state: GameState, ctx: Extract<RollContext, { kind: "duel" 
   winner.pendingStaminaTokens -= sumEffect(abilitiesOf(loser, "lose"), "enemyStamina");
   // 낸 마나기운은 이미 사라졌다. 방어 능력(immune)이 있으면 졌어도 마나기운 1개를 다음 달 준비 때 돌려받는다
   if (sumEffect(loserAbilities, "immune") > 0) loser.pendingManaTokens += 1;
+  applyCardEffect(state, loser, failRewardOf("duel"));
   log(
     state,
     `${player.name}(${rollText(challengerDice, challengerBonus, challengerRoll)})이(가) ${target.name}(${rollText(defenderDice, defenderBonus, defenderRoll)})을(를) 지목! ${winner.name} 승리${feeText}`,
@@ -916,11 +941,13 @@ function resolveExploration(state: GameState, ctx: Extract<RollContext, { kind: 
   // 실패했을 때 함정을 간파한(지력기운을 낸) 사람은 손해를 받지 않는다
   const safe = success ? [] : playerIds.filter((id) => shielded.includes(id));
   for (const id of playerIds) if (!safe.includes(id)) applyCardEffect(state, state.players[id], effect);
+  const reward = !success && rule ? failRewardOf("exploration", card) : {};
+  for (const id of playerIds) applyCardEffect(state, state.players[id], reward);
   state.explorationPile.discard.push(card);
   const gainsGrowth = !!rule && success;
   const names = playerIds.map((id) => state.players[id].name).join(" · ");
   const shieldText = safe.length > 0 ? ` — ${safe.map((id) => state.players[id].name).join(" · ")}은(는) 함정을 간파해서 손해를 피했어요` : "";
-  log(state, `${names}: 비밀의 방 "${card.name}"${rollText} → ${describeEffect(effect)}${playerIds.length > 1 ? " (두 명 모두 적용)" : ""}${shieldText}`);
+  log(state, `${names}: 비밀의 방 "${card.name}"${rollText} → ${describeEffect(effect)}${playerIds.length > 1 ? " (두 명 모두 적용)" : ""}${shieldText}${Object.keys(reward).length ? ` · 실패해도 ${describeEffect(reward)}` : ""}`);
   // 판정이 있는 탐험에서 성공하면 모두 체력이 오른다 (성장)
   if (gainsGrowth) for (const id of playerIds) grow(state, state.players[id], "exploration", "stamina");
 }
@@ -947,11 +974,11 @@ function offerViewOf(activityId: ActivityId, card: OfferedCard, round: number): 
   switch (activityId) {
     case "creature": {
       const c = card as CreatureCard;
-      return { id: c.id, name: c.name, description: c.description, tags: creatureTagsOf(c), lines: [describeAbility(c.ability), `조련 판정: 매력기운 주사위 합 ≥ ${creatureTarget(c)}`] };
+      return { id: c.id, name: c.name, description: c.description, tags: creatureTagsOf(c), lines: [describeAbility(c.ability), `조련 판정: 매력기운 주사위 합 ≥ ${creatureTarget(c)}`, ...failRewardLine(failRewardOf("creature", c))] };
     }
     case "lab": {
       const c = card as LabCard;
-      return { id: c.id, name: c.name, description: c.description, lines: [c.summary, `실험 판정: 지력기운 주사위 합 ≥ ${labTargetValue()}`], cost: c.cost > 0 ? { kind: "stamina", amount: c.cost } : undefined };
+      return { id: c.id, name: c.name, description: c.description, lines: [c.summary, `실험 판정: 지력기운 주사위 합 ≥ ${labTargetValue()}`, ...failRewardLine(failRewardOf("lab", c))], cost: c.cost > 0 ? { kind: "stamina", amount: c.cost } : undefined };
     }
     case "exploration": {
       const c = card as ExplorationCard;
@@ -960,7 +987,7 @@ function offerViewOf(activityId: ActivityId, card: OfferedCard, round: number): 
         id: c.id,
         name: c.name,
         description: c.description,
-        lines: [...(check ? [check] : ["판정 없음"]), `성공: ${describeEffect(c.success)}`, `실패: ${describeEffect(c.failure)}`],
+        lines: [...(check ? [check] : ["판정 없음"]), `성공: ${describeEffect(c.success)}`, `실패: ${describeEffect(c.failure)}`, ...(check ? failRewardLine(failRewardOf("exploration", c)) : [])],
       };
     }
     default: {
@@ -1281,9 +1308,10 @@ export function submitRoll(state: GameState, playerId: string, diceCount?: numbe
   if (!Number.isInteger(assist) || assist < 0 || assist > (entry.assistMax ?? 0)) throw new Error("낼 수 없는 보조 기운 개수예요.");
   if (entry.diceChoiceMax !== undefined) {
     const n = diceCount ?? entry.diceCount;
-    if (!Number.isInteger(n) || n < 1 || n > entry.diceChoiceMax) throw new Error(`${PAY_OBJECT[entry.diceToken ?? "mana"]} 1~${entry.diceChoiceMax}개 사이로 골라 주세요.`);
+    const min = (entry.baseDice ?? 0) > 0 ? 0 : 1;
+    if (!Number.isInteger(n) || n < min || n > entry.diceChoiceMax) throw new Error(`${PAY_OBJECT[entry.diceToken ?? "mana"]} ${min}~${entry.diceChoiceMax}개 사이로 골라 주세요.`);
     pay(player, entry.diceToken ?? "mana", n);
-    entry.diceCount = n;
+    entry.diceCount = n + (entry.baseDice ?? 0);
     delete entry.diceChoiceMax;
   }
   if (assist > 0 && assistKind) {
