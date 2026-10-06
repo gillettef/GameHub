@@ -43,6 +43,19 @@ import { BALANCE } from "../src/game/config.js";
 import { createClassDeck } from "../src/game/classCards.js";
 import { rollAndConfirm } from "./_drive.js";
 
+// 43-5·43-6절의 규칙(한 번에 낼 수 있는 기운 = 능력치, 함께하면 든든)은 전용 검증에서만 켜고 나머지 검증은 그 규칙 없이 본다
+const NEW_RULES = { rollLimitByStat: BALANCE.rollLimitByStat, studyBuddyBonus: BALANCE.studyBuddyBonus, energyCapMultiplier: BALANCE.energyCapMultiplier };
+Object.assign(BALANCE, { rollLimitByStat: false, studyBuddyBonus: 0 });
+function withBalance(overrides: Partial<typeof BALANCE>, fn: () => void): void {
+  const saved = Object.fromEntries(Object.keys(overrides).map((k) => [k, BALANCE[k as keyof typeof BALANCE]]));
+  Object.assign(BALANCE, overrides);
+  try {
+    fn();
+  } finally {
+    Object.assign(BALANCE, saved);
+  }
+}
+
 let passed = 0;
 function test(name: string, fn: () => void) {
   fn();
@@ -244,7 +257,7 @@ test("정규수업: 인원수 + 1장이 공개되고 선택 순서가 정해진�
   }
 });
 
-test("정규수업 덱은 학기마다 인원과 무관하게 36장이고, 1학기는 주문력 과목이 소수·2학기는 더 많다. 기초 과목은 +2, 심화 과목은 +3이고 심화만 선수 조건(능력치 3 이상)이 있다", () => {
+test("정규수업 덱은 학기마다 인원과 무관하게 36장이고, 1학기는 주문력 과목이 소수·2학기는 더 많다. 과목은 입문 +1·기초 +2·중급 +3·심화 +5의 4단계이고 중급·심화만 선수 조건이 있다", () => {
   for (const n of [2, 3, 4, 5]) {
     const state = newGame(n);
     const sem1 = [...state.classDeck, ...state.classMarket];
@@ -255,12 +268,20 @@ test("정규수업 덱은 학기마다 인원과 무관하게 36장이고, 1학�
     assert.equal(sem2.length, BALANCE.classDeckSize);
     assert.ok(count(sem2, "spellPower") > count(sem1, "spellPower"), "2학기에는 주문력 과목이 늘어난다");
     for (const c of [...sem1, ...sem2]) {
-      assert.equal(c.gain, c.level === "basic" ? BALANCE.classGain.basic : BALANCE.classGain.advanced);
-      assert.equal(c.minStat, c.level === "advanced" ? BALANCE.advancedMinStat : undefined, "심화 과목만 선수 조건이 있다");
+      assert.equal(c.gain, BALANCE.classTiers[c.level].gain);
+      assert.equal(c.minStat, BALANCE.classTiers[c.level].minStat, "중급·심화 과목만 선수 조건이 있다");
     }
-    assert.ok(sem1.some((c) => c.level === "advanced") && sem1.some((c) => c.level === "basic"));
     assert.ok(!JSON.stringify(sem1).includes("takeCost") && !JSON.stringify(sem1).includes("statBoost"), "수업카드는 비용도 능력치 증가도 없다");
   }
+  assert.deepEqual(
+    (["intro", "basic", "mid", "advanced"] as const).map((l) => BALANCE.classTiers[l].gain),
+    [1, 2, 3, 5],
+  );
+  // 한 벌(능력치 하나당 12장)의 구성: 입문 4 · 기초 4 · 중급 3 · 심화 1
+  const deck = createClassDeck(() => Math.random().toString(), 1, 120);
+  const intel = deck.filter((c) => c.stat === "intelligence");
+  const levels = Object.fromEntries((["intro", "basic", "mid", "advanced"] as const).map((l) => [l, intel.filter((c) => c.level === l).length]));
+  assert.deepEqual(levels, { intro: 12, basic: 12, mid: 9, advanced: 3 }, "능력치 하나에 3벌(36장)이 들어가면 단계별 장수는 4:4:3:1");
 });
 
 test("정규수업 순서(42절): 선 다음 사람부터 시계방향으로 고르고 선이 마지막이다 (활동은 선이 먼저)", () => {
@@ -275,33 +296,26 @@ test("정규수업 순서(42절): 선 다음 사람부터 시계방향으로 고
 });
 
 // 시장의 카드를 테스트용 카드로 바꾼다
-function classCardOf(stat: "intelligence" | "stamina" | "charm" | "spellPower", level: "basic" | "advanced", id: string) {
-  return {
-    id,
-    name: `테스트 ${stat} ${level}`,
-    description: "",
-    stat,
-    level,
-    gain: level === "basic" ? BALANCE.classGain.basic : BALANCE.classGain.advanced,
-    minStat: level === "advanced" ? BALANCE.advancedMinStat : undefined,
-  };
+function classCardOf(stat: "intelligence" | "stamina" | "charm" | "spellPower", level: "intro" | "basic" | "mid" | "advanced", id: string) {
+  const { gain, minStat } = BALANCE.classTiers[level];
+  return { id, name: `테스트 ${stat} ${level}`, description: "", stat, level, gain, minStat };
 }
 
 test("정규수업: 수업카드는 무료이고 가져가면 그 과목의 기운을 얻는다 (능력치는 오르지 않는다). 주문력 과목의 기운은 마나기운이다", () => {
   const state = newGame(3, false);
   const [first, second, third] = state.classPickOrder;
   for (const p of Object.values(state.players)) assert.deepEqual([p.intelligenceTokens, p.staminaTokens, p.charmTokens, p.manaTokens], [0, 0, 0, 0], "1주차가 없어서 시작 기운은 0이다");
-  state.classMarket = [classCardOf("intelligence", "basic", "c1"), classCardOf("spellPower", "basic", "c2"), classCardOf("charm", "basic", "c3"), classCardOf("stamina", "basic", "c4")];
+  state.classMarket = [classCardOf("intelligence", "basic", "c1"), classCardOf("spellPower", "intro", "c2"), classCardOf("charm", "basic", "c3"), classCardOf("stamina", "basic", "c4")];
   assert.throws(() => takeClassCard(state, second, "c1"), /차례가 아닙니다/);
   takeClassCard(state, first, "c1");
   const p1 = state.players[first];
-  assert.equal(p1.intelligenceTokens, BALANCE.classGain.basic, "지력기운 +2");
+  assert.equal(p1.intelligenceTokens, 2, "기초 과목은 지력기운 +2");
   assert.equal(p1.intelligence, BALANCE.initialStats.intelligence, "능력치(실력)는 오르지 않는다");
   assert.equal(p1.classCards.length, 1);
   assert.deepEqual([p1.staminaTokens, p1.charmTokens, p1.manaTokens], [0, 0, 0]);
   assert.throws(() => takeClassCard(state, second, "c1"), /공개된 수업카드 중에서만/);
   takeClassCard(state, second, "c2");
-  assert.equal(state.players[second].manaTokens, BALANCE.classGain.basic, "주문력 과목은 마나기운을 준다");
+  assert.equal(state.players[second].manaTokens, 1, "주문력 과목은 마나기운을 준다 (입문 +1)");
   takeClassCard(state, third, null); // 가져가지 않고 넘어간다
   assert.equal(state.phase, "activity");
   assert.equal(state.classMarket.length, 0);
@@ -309,41 +323,97 @@ test("정규수업: 수업카드는 무료이고 가져가면 그 과목의 기�
   assert.equal(state.players[third].classCards.length, 0);
 });
 
-test("정규수업: 기운은 한도(능력치 × energyCapMultiplier)까지만 늘어나고 넘치는 몫은 사라진다", () => {
+test("기운 한도는 없다 (43-5절): 수업카드 기운을 모두 받아 계속 모아 둘 수 있다", () => {
+  assert.equal(NEW_RULES.energyCapMultiplier, 0, "기본 규칙은 한도 없음");
   const state = newGame(2, false);
   const [first] = state.classPickOrder;
   const p = state.players[first];
-  const cap = p.intelligence * BALANCE.energyCapMultiplier;
-  p.intelligenceTokens = cap - 1;
-  state.classMarket = [classCardOf("intelligence", "basic", "c1"), classCardOf("stamina", "basic", "c2"), classCardOf("charm", "basic", "c3")];
-  assert.equal(classGainApplied(p, state.classMarket[0]), 1, "한도까지 1만 늘어난다");
+  p.intelligenceTokens = 9;
+  p.intelligence = 3;
+  state.classMarket = [classCardOf("intelligence", "advanced", "c1"), classCardOf("stamina", "basic", "c2"), classCardOf("charm", "basic", "c3")];
+  assert.equal(classGainApplied(p, state.classMarket[0]), 5);
   takeClassCard(state, first, "c1");
-  assert.equal(p.intelligenceTokens, cap);
-  assert.ok(state.log.some((l) => l.message.includes("사라졌어요")), "한도 때문에 사라진 몫을 알려 준다");
-  // 이미 한도를 넘게 가진 사람(카드 효과 등)은 줄어들지 않는다
-  const q = state.players[state.classPickOrder[1]];
-  q.charmTokens = cap + 3;
-  takeClassCard(state, state.classPickOrder[1], "c3");
-  assert.equal(q.charmTokens, cap + 3);
+  assert.equal(p.intelligenceTokens, 14);
 });
 
-test("정규수업: 심화 과목은 그 과목 능력치가 advancedMinStat 이상이어야 들을 수 있다 (선수과목)", () => {
+test("기운 한도 옵션(energyCapMultiplier > 0)을 켜면 한도까지만 늘어나고 넘치는 몫은 사라진다", () => {
+  withBalance({ energyCapMultiplier: 2 }, () => {
+    const state = newGame(2, false);
+    const [first] = state.classPickOrder;
+    const p = state.players[first];
+    const cap = p.intelligence * 2;
+    p.intelligenceTokens = cap - 1;
+    state.classMarket = [classCardOf("intelligence", "basic", "c1"), classCardOf("stamina", "basic", "c2"), classCardOf("charm", "basic", "c3")];
+    assert.equal(classGainApplied(p, state.classMarket[0]), 1, "한도까지 1만 늘어난다");
+    takeClassCard(state, first, "c1");
+    assert.equal(p.intelligenceTokens, cap);
+    assert.ok(state.log.some((l) => l.message.includes("사라졌어요")), "한도 때문에 사라진 몫을 알려 준다");
+  });
+});
+
+test("정규수업: 중급·심화 과목은 그 과목 능력치가 minStat 이상이어야 들을 수 있다 (선수과목)", () => {
   const state = newGame(2, false);
   const [first, second] = state.classPickOrder;
-  state.classMarket = [classCardOf("intelligence", "advanced", "adv"), classCardOf("intelligence", "basic", "bas"), classCardOf("stamina", "basic", "other")];
+  const advMin = BALANCE.classTiers.advanced.minStat!;
+  const midMin = BALANCE.classTiers.mid.minStat!;
+  state.classMarket = [classCardOf("intelligence", "advanced", "adv"), classCardOf("intelligence", "mid", "mid"), classCardOf("intelligence", "intro", "intro")];
   const p = state.players[first];
-  p.intelligence = BALANCE.advancedMinStat - 1;
-  assert.equal(canTakeClassCard(p, state.classMarket[0]), false);
-  assert.throws(() => takeClassCard(state, first, "adv"), new RegExp(`심화 과목이라 지력 ${BALANCE.advancedMinStat} 이상`));
+  p.intelligence = midMin - 1;
+  assert.equal(canTakeClassCard(p, state.classMarket[1]), false);
+  assert.throws(() => takeClassCard(state, first, "mid"), new RegExp(`중급 과목이라 지력 ${midMin} 이상`));
+  assert.equal(canTakeClassCard(p, state.classMarket[2]), true, "입문·기초 과목은 언제나 들을 수 있다");
+  p.intelligence = advMin - 1;
+  assert.equal(canTakeClassCard(p, state.classMarket[1]), true);
+  assert.throws(() => takeClassCard(state, first, "adv"), new RegExp(`심화 과목이라 지력 ${advMin} 이상`));
   assert.equal(p.classCards.length, 0, "못 들으면 아무것도 바뀌지 않는다");
-  assert.equal(canTakeClassCard(p, state.classMarket[1]), true, "기초 과목은 언제나 들을 수 있다");
-  p.intelligence = BALANCE.advancedMinStat;
-  assert.equal(canTakeClassCard(p, state.classMarket[0]), true);
+  p.intelligence = advMin;
   takeClassCard(state, first, "adv");
-  assert.equal(p.intelligenceTokens, BALANCE.classGain.advanced, "심화는 +3 (한도 안)");
+  assert.equal(p.intelligenceTokens, 5, "심화는 +5");
   takeClassCard(state, second, null);
 });
 
+test("실력만큼만 힘을 낸다 (43-5절): 한 번 굴릴 때 낼 수 있는 재료 기운은 그 능력치까지이고, 남은 기운은 그대로 남는다", () => {
+  assert.equal(NEW_RULES.rollLimitByStat, true, "기본 규칙에서 켜져 있다");
+  withBalance({ rollLimitByStat: true }, () => {
+    const state = newGame(3);
+    toActivity(state, 9);
+    const [a] = state.activityOrder;
+    Object.assign(state.players[a], { intelligence: 2, intelligenceTokens: 9 });
+    state.labPile.draw.push(labCard("든든 도시락"), labCard("마법 안경"));
+    selectActivity(state, a, "lab");
+    finishChoosing(state);
+    advanceResolution(state);
+    chooseActivityCard(state, a, "test-마법 안경");
+    const entry = state.pendingRoll!.entries[0];
+    assert.equal(entry.diceChoiceMax, 2, "지력기운이 9개여도 지력 2만큼만 낸다");
+    assert.throws(() => submitRoll(state, a, 3), /지력기운을 1~2개/);
+    assert.ok(state.pendingRoll!.lines.some((l) => l.includes("지력만큼만")), "상한 때문에 덜 내는 걸 알려 준다");
+    submitRoll(state, a, 2);
+    assert.equal(state.players[a].intelligenceTokens, 7, "남은 기운은 그대로 남는다");
+  });
+});
+
+test("함께하면 든든 (43-6절): 두 번째 참가자의 매력기운은 먼저 온 친구에게 건네지고, 마법생물·연구실에 둘이 있으면 둘 다 목표값이 낮아진다", () => {
+  assert.equal(NEW_RULES.studyBuddyBonus, 1);
+  withBalance({ studyBuddyBonus: 1 }, () => {
+    const state = newGame(3);
+    toActivity(state);
+    setTokens(state, 2, 3);
+    const [a, b] = state.activityOrder;
+    selectActivity(state, a, "lab");
+    selectActivity(state, b, "lab");
+    assert.equal(state.players[a].charmTokens, 3 + BALANCE.activitySecondParticipantCost, "먼저 온 친구가 매력기운을 받는다");
+    assert.equal(state.players[b].charmTokens, 3 - BALANCE.activitySecondParticipantCost);
+    state.labPile.draw.push(labCard("든든 도시락"), labCard("마법 안경"));
+    finishChoosing(state);
+    advanceResolution(state);
+    chooseActivityCard(state, a, "test-마법 안경");
+    const ctx = state.hidden.roll;
+    assert.ok(ctx?.kind === "lab");
+    assert.equal(ctx.target, labTargetValue() - 1, "둘이 함께라 목표 -1");
+    assert.ok(state.pendingRoll!.lines.some((l) => l.includes("친구와 함께")));
+  });
+});
 
 // ── 3주차: 자율활동 ──
 
@@ -442,7 +512,7 @@ test("마법생물 조련: 먼저 온 사람이 원하는 카드를 가져가고
   Object.assign(state.players[a], { charmTokens: 5 });
   Object.assign(state.players[b], { charmTokens: 10 });
   selectActivity(state, a, "creature");
-  selectActivity(state, b, "creature"); // 두 번째 참가자는 매력기운 1개를 낸다 (10 → 9)
+  selectActivity(state, b, "creature"); // 두 번째 참가자는 매력기운 1개를 먼저 온 a에게 건넨다 (b 10 → 9, a 5 → 6)
   finishChoosing(state);
   advanceResolution(state);
   assert.deepEqual(state.pendingPick, { playerId: a, activityId: "creature", mode: "take" });
@@ -451,13 +521,13 @@ test("마법생물 조련: 먼저 온 사람이 원하는 카드를 가져가고
   chooseActivityCard(state, a, "test-하늘의 꽃마녀");
   assert.equal(state.pendingRoll?.kind, "creature");
   assert.equal(state.pendingRoll?.entries[0].diceToken, "charm", "조련의 주사위 재료는 매력기운이다");
-  assert.equal(state.pendingRoll?.entries[0].diceChoiceMax, 5, "가진 매력기운 전부까지 낼 수 있다");
-  assert.equal(state.players[a].charmTokens, 5, "굴리기 전에는 기운을 내지 않는다");
-  assert.throws(() => submitRoll(state, a, 6), /매력기운을 1~5개/);
-  assert.throws(() => submitRoll(state, a, 0), /매력기운을 1~5개/);
+  assert.equal(state.pendingRoll?.entries[0].diceChoiceMax, 6, "가진 매력기운 전부까지 낼 수 있다");
+  assert.equal(state.players[a].charmTokens, 6, "굴리기 전에는 기운을 내지 않는다");
+  assert.throws(() => submitRoll(state, a, 7), /매력기운을 1~6개/);
+  assert.throws(() => submitRoll(state, a, 0), /매력기운을 1~6개/);
   const manaBefore = state.players[a].manaTokens;
   submitRoll(state, a, 2);
-  assert.equal(state.players[a].charmTokens, 3, "고른 만큼 매력기운을 낸다");
+  assert.equal(state.players[a].charmTokens, 4, "고른 만큼 매력기운을 낸다");
   assert.equal(state.players[a].manaTokens, manaBefore, "마나기운은 건드리지 않는다");
   assert.equal(state.pendingRoll?.entries[0].diceCount, 2, "낸 기운 개수만큼 주사위를 굴린다");
   assert.equal(state.players[a].creatures.length, 0, "주사위를 굴려 성공해야 조련된다");
@@ -511,7 +581,7 @@ test("마법생물 조련: 낸 매력기운만큼 굴린 주사위 합이 생물
   submitRoll(state, a, 1);
   rollWith(state, { [a]: [Math.max(1, target - 1)] }); // 기준보다 1 모자라 실패
   assert.equal(state.players[a].creatures.length, 0);
-  assert.equal(state.players[a].charmTokens, 3, "실패해도 낸 기운은 돌려받지 못한다");
+  assert.equal(state.players[a].charmTokens, 4, "실패해도 낸 기운은 돌려받지 못한다 (4 + b가 건넨 1 - 낸 1)");
   assert.ok(state.log.some((l) => l.message.includes("조련 실패")));
   assert.equal(state.activityOffers.creature?.cards.length, 2, "실패한 카드는 구역으로 돌아간다");
   advanceResolution(state);
@@ -1216,8 +1286,8 @@ test("4주차 정리: 쓰고 남은 기운은 사라지지도 새로 충전되�
 test("4주차 정리: 선은 남은 매력기운이 가장 많은 친구이고, 다음 달 수업은 선이 마지막·활동은 선이 먼저다", () => {
   const { state, a, b } = playOneMonth({ intelligence: 1, stamina: 1, charm: 3 });
   assert.equal(state.phase, "class");
-  // a는 3개, 두 번째 참가자 b는 참가비 1개를 내서 2개가 남았다
-  assert.equal(state.players[a].charmTokens, 3);
+  // 두 번째 참가자 b는 참가비 1개를 먼저 온 a에게 건네서 a는 4개, b는 2개가 남았다
+  assert.equal(state.players[a].charmTokens, 4);
   assert.equal(state.players[b].charmTokens, 2);
   assert.equal(state.turnOrder[state.startingPlayerIndex], a);
   assert.equal(state.classPickOrder[state.classPickOrder.length - 1], a, "선 a는 수업 신청이 마지막이다");

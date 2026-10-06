@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Icon } from "./Icons";
-import { effectiveStat, type GameState, type PlayerGameState, type StatKey } from "./gameTypes";
+import { effectiveStat, projectedScore, type GameState, type PlayerGameState, type StatKey } from "./gameTypes";
 import { COLUMN_STYLE, type ColumnKey } from "./statStyle";
 import { waitingOn } from "./Social";
 
@@ -62,6 +62,10 @@ export function PlayerTable({
   const showStarter = game.phase !== "setup" && game.phase !== "ended";
   const maxOf = (col: ColumnKey) => Math.max(...players.map((p) => cellValue(p, col).value));
   const maxes = Object.fromEntries([...STAT_COLS, ...TOKEN_COLS].map((c) => [c, maxOf(c)])) as Record<ColumnKey, number>;
+  // 지금 졸업하면 받을 예상 점수 (곱셈 점수라 누가 앞서는지 한눈에 보이도록)
+  const scores = players.map((p) => ({ p, score: projectedScore(game, p) })).sort((x, y) => y.score - x.score);
+  const myRank = 1 + scores.filter((s) => s.score > (scores.find((x) => x.p.id === myId)?.score ?? 0)).length;
+  const showScores = game.phase !== "setup" && game.phase !== "ended";
 
   const headCell = (col: ColumnKey) => {
     const st = COLUMN_STYLE[col];
@@ -129,6 +133,25 @@ export function PlayerTable({
           );
         })}
       </ul>
+      {showScores && (
+        <p className="mx-1 mb-0.5 mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-purple-600" aria-label="예상 점수">
+          <span className="inline-flex items-center gap-0.5 font-semibold text-amber-700">
+            <Icon name="trophy" className="h-3.5 w-3.5" />
+            예상 점수
+          </span>
+          {collapsed ? (
+            <span>
+              나 {scores.find((s) => s.p.id === myId)?.score ?? 0}점 · {myRank}위
+            </span>
+          ) : (
+            scores.map(({ p, score }) => (
+              <span key={p.id} className={p.id === myId ? "font-semibold text-pink-700" : ""}>
+                {p.name} {score}
+              </span>
+            ))
+          )}
+        </p>
+      )}
     </div>
   );
 

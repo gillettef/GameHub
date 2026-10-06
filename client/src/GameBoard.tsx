@@ -19,7 +19,7 @@ import {
   describeAbility,
   duelTargets,
   effectiveStat,
-  energyCap,
+  energyText,
   type ActivityId,
   type CreatureElement,
   type GameState,
@@ -70,8 +70,8 @@ function DiceFace({ value, delay = 0, selected, onToggle }: { value: number; del
 }
 
 function PlayerStatCard({ player, isMe, rules, defaultOpen }: { player: PlayerGameState; isMe: boolean; rules: GameState["rules"]; defaultOpen: boolean }) {
-  // 기운은 "지금 가진 양/모아 둘 수 있는 한도"로 보여 준다
-  const energy = (kind: KeptToken, now: number) => `${now}/${energyCap(player, kind, rules)}`;
+  // 기운은 지금 가진 양으로 보여 준다 (한도 옵션이 켜져 있으면 "가진 양/한도")
+  const energy = (kind: KeptToken, _now: number) => energyText(player, kind, rules);
   const body = (
     <>
       <div className="flex flex-wrap gap-1.5 mb-1.5">
@@ -215,7 +215,7 @@ function ClassPhasePanel({ game, myId, onTake }: { game: GameState; myId: string
     <div className="bg-white rounded-3xl border-2 border-purple-200 shadow-sm p-4">
       <p className="text-sm text-purple-500 mb-1">2주차(정규수업): 수업카드는 무료예요. 가져가면 그 과목의 기운을 얻어요. 선 다음 사람부터 시계방향으로 하고 선은 마지막이에요</p>
       <p className="text-xs text-purple-500 mb-2">
-        <InlineIcon name="intToken" /> 지력기운 {me.intelligenceTokens}/{energyCap(me, "intelligence", game.rules)} · <InlineIcon name="staminaToken" /> 체력기운 {me.staminaTokens}/{energyCap(me, "stamina", game.rules)} · <InlineIcon name="charmToken" /> 매력기운 {me.charmTokens}/{energyCap(me, "charm", game.rules)} · <InlineIcon name="manaToken" /> 마나기운 {me.manaTokens}/{energyCap(me, "mana", game.rules)}
+        <InlineIcon name="intToken" /> 지력기운 {energyText(me, "intelligence", game.rules)} · <InlineIcon name="staminaToken" /> 체력기운 {energyText(me, "stamina", game.rules)} · <InlineIcon name="charmToken" /> 매력기운 {energyText(me, "charm", game.rules)} · <InlineIcon name="manaToken" /> 마나기운 {energyText(me, "mana", game.rules)}
       </p>
       <ol className="mb-3 flex flex-wrap gap-1.5 text-xs" aria-label="진행 순서">
         {game.classPickOrder.map((id, index) => {
@@ -491,7 +491,7 @@ function ChoosePanel({
               : "모두 골랐어요"}
       </p>
       <p className="text-xs text-purple-500 mb-2">
-        구역당 최대 {game.rules.activityMaxParticipants}명 · 먼저 고른 친구가 있으면 <InlineIcon name="charmToken" /> 매력기운 {game.rules.activitySecondParticipantCost}개 추가 (내 매력기운 {game.players[myId]?.charmTokens ?? 0}개). 처음 고른 친구가 카드를 공개하고 원하는 카드를 가져가요. 남은 카드는 두 번째 참가자가 가져가요.
+        구역당 최대 {game.rules.activityMaxParticipants}명 · 먼저 고른 친구가 있으면 <InlineIcon name="charmToken" /> 매력기운 {game.rules.activitySecondParticipantCost}개를 그 친구에게 건네고 함께해요 (내 매력기운 {game.players[myId]?.charmTokens ?? 0}개). 마법생물·연구실은 둘이 함께면 둘 다 목표가 낮아져요. 처음 고른 친구가 카드를 공개하고 원하는 카드를 가져가요. 남은 카드는 두 번째 참가자가 가져가요.
       </p>
       <div className="grid grid-cols-1 gap-2">
         {ACTIVITY_IDS.map((activityId) => {
