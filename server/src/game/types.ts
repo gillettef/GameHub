@@ -271,7 +271,7 @@ export interface GameState {
   activityResults: ActivityResult[];
   // 이번 달 주문 대결 목록 (도전자 → 지목당한 사람). 지목당한 사람은 구역을 차지하지 않고 추가 비용도 내지 않는다
   duels: DuelPair[];
-  // 2주차(정규수업): 이번 달에 공개된 수업카드(인원수+1장, 모두 볼 수 있다)와 선택 순서(지력 높은 순). 순서대로 1장씩 가져간다
+  // 2주차(정규수업): 이번 달에 공개된 수업카드(인원수+1장, 모두 볼 수 있다)와 선택 순서(선 다음 사람부터 시계방향, 선이 마지막). 순서대로 1장씩 가져간다
   classMarket: ClassCard[];
   classPickOrder: string[];
   classPickPointer: number;
