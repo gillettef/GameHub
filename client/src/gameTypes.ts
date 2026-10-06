@@ -9,13 +9,13 @@ export type KeptToken = "intelligence" | "stamina" | "charm" | "mana";
 
 export type GamePhase = "setup" | "prep" | "class" | "activity" | "cleanup" | "midterm_exam" | "final_exam" | "ended";
 
-// 수업카드 = 과목: 가져가면 그 과목의 기운(주문력 과목은 마나기운)을 gain만큼 무료로 얻는다. 심화는 그 과목 능력치가 minStat 이상이어야 한다
+// 수업카드 = 과목: 가져가면 그 과목의 기운(주문력 과목은 마나기운)을 gain만큼 무료로 얻는다. 중급·심화는 그 과목 능력치가 minStat 이상이어야 한다
 export interface ClassCard {
   id: string;
   name: string;
   description: string;
   stat: StatKey;
-  level: "basic" | "advanced";
+  level: "intro" | "basic" | "mid" | "advanced";
   gain: number;
   minStat?: number;
 }
@@ -186,7 +186,7 @@ export interface PublicRules {
   openCardCostActivities: ActivityId[];
   // 활동별 주사위 재료 기운 (조련=매력, 탐험=체력, 연구실=지력, 토너먼트·주문 대결=마나)
   rollFuel: Record<ActivityId, KeptToken>;
-  // 기운을 모아 둘 수 있는 한도 = 능력치 × 이 배수
+  // 기운을 모아 둘 수 있는 한도 = 능력치 × 이 배수 (0이면 한도 없음)
   energyCapMultiplier: number;
   activityMaxParticipants: number;
   activitySecondParticipantCost: number;
@@ -277,16 +277,23 @@ export function effectiveStat(player: PlayerGameState, stat: StatKey): number {
 
 // 기운(현재치)의 종류와, 그 기운의 최대치가 되는 능력치 (주문력의 기운이 마나)
 export const ENERGY_STAT: Record<KeptToken, StatKey> = { intelligence: "intelligence", stamina: "stamina", charm: "charm", mana: "spellPower" };
-// 모아 둘 수 있는 한도 (능력치 × 배수, 서버 energyCap과 같은 규칙)
+// 모아 둘 수 있는 한도 (능력치 × 배수, 배수가 0이면 한도 없음. 서버 energyCap과 같은 규칙)
 export function energyCap(player: PlayerGameState, kind: KeptToken, rules: Pick<PublicRules, "energyCapMultiplier">): number {
-  return effectiveStat(player, ENERGY_STAT[kind]) * rules.energyCapMultiplier;
+  return rules.energyCapMultiplier > 0 ? effectiveStat(player, ENERGY_STAT[kind]) * rules.energyCapMultiplier : Infinity;
+}
+// 기운 표시: 한도가 있으면 "가진 양/한도", 없으면 가진 양만
+export function energyText(player: PlayerGameState, kind: KeptToken, rules: Pick<PublicRules, "energyCapMultiplier">): string {
+  const cap = energyCap(player, kind, rules);
+  const now = player[ENERGY_FIELD[kind]];
+  return Number.isFinite(cap) ? `${now}/${cap}` : `${now}`;
 }
 
 // ── 수업카드 (서버 engine.ts와 같은 규칙) ──
 // 수업카드가 주는 기운의 종류 (주문력 과목은 마나기운)와, 그 기운을 담는 플레이어 필드
 export const classGainKind = (card: Pick<ClassCard, "stat">): KeptToken => (card.stat === "spellPower" ? "mana" : card.stat);
 export const ENERGY_FIELD = { intelligence: "intelligenceTokens", stamina: "staminaTokens", charm: "charmTokens", mana: "manaTokens" } as const;
-// 심화 과목은 그 과목 능력치가 minStat 이상이어야 들을 수 있다 (선수과목)
+// 중급·심화 과목은 그 과목 능력치가 minStat 이상이어야 들을 수 있다 (선수과목)
+export const CLASS_LEVEL_LABEL: Record<ClassCard["level"], string> = { intro: "입문", basic: "기초", mid: "중급", advanced: "심화" };
 export const canTakeClassCard = (player: PlayerGameState, card: Pick<ClassCard, "stat" | "minStat">): boolean =>
   card.minStat === undefined || effectiveStat(player, card.stat) >= card.minStat;
 // 이 카드를 가져가면 실제로 늘어나는 기운 (한도까지)
@@ -372,6 +379,19 @@ export function creatureSets(creatures: CreatureCard[]): number {
 // 최종 점수: 마법 성취도(주문력 × 학점) + 마법생물 세트 점수
 // 졸업식 부문상 이름 (능력치별 1등에게 준다)
 export const AWARD_NAME: Record<StatKey, string> = { intelligence: "수석상", stamina: "튼튼상", charm: "인기상", spellPower: "마법상" };
+
+// 게임 중 예상 점수: 지금 상태로 졸업하면 받을 점수 (부문상은 지금 각 능력치 1등인 사람이 받는다고 보고 계산, 동점이면 공동)
+export function projectedAwards(game: Pick<GameState, "rules" | "players" | "turnOrder">, player: PlayerGameState): StatKey[] {
+  const players = game.turnOrder.map((id) => game.players[id]).filter(Boolean);
+  return game.rules.graduationAwardStats.filter((stat) => effectiveStat(player, stat) === Math.max(...players.map((p) => effectiveStat(p, stat))));
+}
+export function projectedScore(game: Pick<GameState, "rules" | "players" | "turnOrder">, player: PlayerGameState): number {
+  return (
+    effectiveStat(player, "spellPower") * player.credit +
+    creatureSets(player.creatures) * game.rules.creatureSetScore +
+    projectedAwards(game, player).length * game.rules.graduationAwardScore
+  );
+}
 
 export function finalScore(game: Pick<GameState, "rules">, player: PlayerGameState): number {
   return (

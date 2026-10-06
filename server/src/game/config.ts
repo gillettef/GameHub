@@ -32,9 +32,13 @@ export const BALANCE = {
     { statWeights: { intelligence: 3, stamina: 3, charm: 3, spellPower: 1 } as Record<StatKey, number> },
     { statWeights: { intelligence: 3, stamina: 3, charm: 2, spellPower: 2 } as Record<StatKey, number> },
   ],
-  // 수업카드가 주는 기운 (42절): 기초 과목은 basic, 심화 과목은 advanced. 심화는 그 과목 능력치가 advancedMinStat 이상이어야 들을 수 있다 (선수과목)
-  classGain: { basic: 2, advanced: 3 },
-  advancedMinStat: 3,
+  // 수업카드 4단계 (43-4절): 입문 +1 · 기초 +2 · 중급 +3 · 심화 +5. 중급·심화는 그 과목 능력치가 minStat 이상이어야 들을 수 있다 (선수과목).
+  classTiers: {
+    intro: { gain: 1 },
+    basic: { gain: 2 },
+    mid: { gain: 3, minStat: 2 },
+    advanced: { gain: 5, minStat: 3 },
+  } as Record<"intro" | "basic" | "mid" | "advanced", { gain: number; minStat?: number }>,
   // 성장 (42절): 자율활동에서 성과를 내면 그 활동의 주 능력치가 growthAmount만큼 오른다 (조련·탐험·연구실은 성공, 주문 대결은 승리, 토너먼트는 성장 없음)
   growthAmount: 1,
   growthActivities: { tournament: false, creature: true, duel: true, exploration: true, lab: true } as Record<ActivityId, boolean>,
@@ -66,7 +70,7 @@ export const BALANCE = {
   catchUpBonus: 2,
   // 주문 대결을 건 도전자가 지목당한 플레이어에게 건네는 매력 (결과와 상관없이 지불)
   duelCharmFee: 1,
-  // 자율활동 구역 하나에 들어갈 수 있는 최대 인원, 그리고 이미 한 명이 들어와 있는 구역에 두 번째로 들어갈 때 내는 매력기운 (1주차에 매력 수치만큼 받는다)
+  // 자율활동 구역 하나에 들어갈 수 있는 최대 인원, 그리고 이미 한 명이 들어와 있는 구역에 두 번째로 들어갈 때 내는 매력기운 (먼저 들어온 친구에게 건넨다, 43-6절)
   activityMaxParticipants: 2,
   activitySecondParticipantCost: 1,
   // 카드를 한 장 열 때 드는 지력기운 (2026-10-02 38절에서 모든 구역 폐지 — 카드를 여는 건 지적 활동이 아니라서. 장치는 남겨 두고 openCardCostActivities만 비움).
@@ -75,8 +79,12 @@ export const BALANCE = {
   openCardCostActivities: [] as ActivityId[],
   // 능력치 × 활동 조화 (39절): 활동마다 주 능력치의 기운이 곧 그 활동의 주사위 재료다 ("내 매력만큼 주사위"). 마나기운(주문력)은 토너먼트·주문 대결과 다시 굴리기에만 쓴다.
   // 시험은 카드의 주 능력치 기운(주문력은 마나기운)으로 굴린다. 재료 기운이 없으면 어느 활동이든 공짜 주사위 1개
-  // 기운을 모아 둘 수 있는 한도 = 능력치 × 이 배수 (40절). 매달 1주차에 능력치만큼 차오르고, 쓰고 남은 기운은 한도까지 다음 달로 이어진다
-  energyCapMultiplier: 2,
+  // 기운을 모아 둘 수 있는 한도 = 능력치 × 이 배수 (40절). 0이면 한도가 없다 (43-5절, 2026-10-06 폐지: 대신 한 번에 낼 수 있는 기운이 능력치로 제한된다)
+  energyCapMultiplier: 0,
+  // 실력만큼만 힘을 낸다 (43-5절): 한 번 굴릴 때 낼 수 있는 재료 기운은 그 기운의 능력치 개수까지 (주문력 → 마나기운). 기운은 얼마든지 모아 둘 수 있다
+  rollLimitByStat: true,
+  // 함께하면 든든 (43-6절): 마법생물·연구실 구역에 두 명이 함께 들어가면 둘 다 판정 목표값이 이만큼 낮아진다
+  studyBuddyBonus: 1,
   rollFuel: { tournament: "mana", creature: "charm", duel: "mana", exploration: "stamina", lab: "intelligence" } as Record<ActivityId, KeptToken>,
   // 보조 능력치 (38-6절): 굴리기 전에 그 능력의 기운을 내서 주 판정을 돕는다.
   // 마법 토너먼트 — 체력(지구력): 체력기운 1개당 고정 칸 전진 (주사위가 아니라 고정값)

@@ -13,13 +13,13 @@ export type KeptToken = "intelligence" | "stamina" | "charm" | "mana";
 export type GamePhase = "setup" | "prep" | "class" | "activity" | "cleanup" | "midterm_exam" | "final_exam" | "ended";
 
 // 수업카드 = 과목 (42절). 가져가면 그 과목의 기운(stat이 주문력이면 마나기운)을 gain만큼 무료로 얻는다 (한도까지). 능력치는 올려 주지 않는다.
-// 심화(advanced)는 그 과목 능력치가 minStat 이상이어야 가져갈 수 있다 (선수과목)
+// 중급(mid)·심화(advanced)는 그 과목 능력치가 minStat 이상이어야 가져갈 수 있다 (선수과목)
 export interface ClassCard {
   id: string;
   name: string;
   description: string;
   stat: StatKey;
-  level: "basic" | "advanced";
+  level: "intro" | "basic" | "mid" | "advanced";
   gain: number;
   minStat?: number;
 }

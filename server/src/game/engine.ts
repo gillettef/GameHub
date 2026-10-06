@@ -76,8 +76,14 @@ export const tokensOf = (p: Pick<PlayerGameState, (typeof TOKEN_FIELD)[KeptToken
 // 기운의 종류와 그 기운의 최대치가 되는 능력치 (주문력의 기운이 마나)
 export const ENERGY_KINDS: KeptToken[] = ["intelligence", "stamina", "charm", "mana"];
 export const ENERGY_STAT: Record<KeptToken, StatKey> = { intelligence: "intelligence", stamina: "stamina", charm: "charm", mana: "spellPower" };
-// 모아 둘 수 있는 한도 (능력치 × 배수)
-export const energyCap = (player: PlayerGameState, kind: KeptToken): number => effectiveStat(player, ENERGY_STAT[kind]) * BALANCE.energyCapMultiplier;
+// 모아 둘 수 있는 한도 (능력치 × 배수, 배수가 0이면 한도 없음)
+export const energyCap = (player: PlayerGameState, kind: KeptToken): number =>
+  BALANCE.energyCapMultiplier > 0 ? effectiveStat(player, ENERGY_STAT[kind]) * BALANCE.energyCapMultiplier : Infinity;
+// 한 번 굴릴 때 낼 수 있는 재료 기운의 상한 = 그 기운의 능력치 ("실력만큼만 힘을 낸다", 43-5절). 능력치가 0이어도 1개는 낼 수 있다
+export const rollLimit = (player: PlayerGameState, kind: KeptToken): number =>
+  BALANCE.rollLimitByStat ? Math.max(1, effectiveStat(player, ENERGY_STAT[kind])) : Infinity;
+// 이번 굴림에 실제로 낼 수 있는 재료 기운 개수 (보유량과 실력 상한 중 작은 쪽)
+export const usableFuel = (player: PlayerGameState, kind: KeptToken): number => Math.min(tokensOf(player, kind), rollLimit(player, kind));
 // 시험 카드의 주 능력치가 주사위 재료다 (주문력은 마나기운)
 export const examFuel = (card: Pick<ExamCard, "diceStat">): KeptToken => (card.diceStat === "spellPower" ? "mana" : card.diceStat);
 // 마법생물 조련: 매력기운을 1~보유 개수 사이에서 골라 내고 낸 개수만큼 주사위를 굴려, 합이 생물마다 정해진 기준 수치(trainTarget × trainTargetScale) 이상이면 성공
@@ -117,7 +123,7 @@ function normalCdf(z: number): number {
 // 탐험 카드 성공 확률 (봇 판단용): 기본 개수만큼 체력기운을 내고 굴린 주사위 합이 목표값 이상일 확률의 정규 근사
 export function explorationChance(state: GameState, player: PlayerGameState, card: ExplorationCard): number {
   if (!card.check) return 1;
-  const n = suggestDiceCount(tokensOf(player, BALANCE.rollFuel.exploration), exploreTarget(state.round, card.check.target));
+  const n = suggestDiceCount(usableFuel(player, BALANCE.rollFuel.exploration), exploreTarget(state.round, card.check.target));
   const catchUp = overallGap(state, player.id) >= BALANCE.catchUpGap ? BALANCE.catchUpBonus : 0;
   const mean = 3.5 * n + catchUp;
   const sd = Math.sqrt((n * 35) / 12);
@@ -226,6 +232,7 @@ function drawClassCard(state: GameState): ClassCard | undefined {
 }
 
 const STAT_NAME: Record<StatKey, string> = { intelligence: "지력", stamina: "체력", charm: "매력", spellPower: "주문력" };
+const LEVEL_NAME: Record<ClassCard["level"], string> = { intro: "입문", basic: "기초", mid: "중급", advanced: "심화" };
 
 // 탐험 카드의 판정 문구 (엿보기·협력 대기·구역 공개 카드 표시용)
 function checkTextOf(card: ExplorationCard, round: number): string | undefined {
@@ -372,10 +379,10 @@ function withAssist<T extends object>(entry: T, max: number): T & { assistMax?: 
   return max > 0 ? { ...entry, assistMax: max } : entry;
 }
 
-// 굴리기 전에 재료 기운(fuel, 기본 마나기운)을 1~보유 개수 사이에서 골라 내고 낸 개수만큼 굴리는 굴림 항목 (재료 기운이 없으면 주사위 1개를 공짜로 굴린다).
-// 목표값(suggestTarget)이 있는 판정은 기본 개수를 "성공 확률이 충분한 가장 적은 개수"로 잡고, 없으면 기본값이 재료 기운 전부다
+// 굴리기 전에 재료 기운(fuel, 기본 마나기운)을 1~낼 수 있는 개수(보유량과 능력치 중 작은 쪽) 사이에서 골라 내고 낸 개수만큼 굴리는 굴림 항목
+// (재료 기운이 없으면 주사위 1개를 공짜로 굴린다). 목표값(suggestTarget)이 있는 판정은 기본 개수를 "성공 확률이 충분한 가장 적은 개수"로 잡고, 없으면 낼 수 있는 만큼 전부다
 function choiceEntry(player: PlayerGameState, label: string, suggestTarget?: number, fuel: KeptToken = "mana") {
-  const tokens = tokensOf(player, fuel);
+  const tokens = usableFuel(player, fuel);
   return {
     playerId: player.id,
     label,
@@ -443,7 +450,7 @@ export function classCardsLeft(state: Pick<GameState, "classDeck" | "classDiscar
 
 // 수업카드가 주는 기운의 종류 (주문력 과목은 마나기운)
 export const classGainKind = (card: Pick<ClassCard, "stat">): KeptToken => (card.stat === "spellPower" ? "mana" : card.stat);
-// 심화 과목은 그 과목 능력치가 minStat 이상이어야 들을 수 있다 (선수과목)
+// 중급·심화 과목은 그 과목 능력치가 minStat 이상이어야 들을 수 있다 (선수과목)
 export const canTakeClassCard = (player: PlayerGameState, card: Pick<ClassCard, "stat" | "minStat">): boolean =>
   card.minStat === undefined || effectiveStat(player, card.stat) >= card.minStat;
 // 이 카드를 가져가면 실제로 늘어나는 기운 (한도 = 능력치 × energyCapMultiplier까지)
@@ -465,7 +472,7 @@ export function takeClassCard(state: GameState, playerId: string, cardId: string
     const card = state.classMarket.find((c) => c.id === cardId);
     if (!card) throw new Error("공개된 수업카드 중에서만 고를 수 있습니다.");
     if (!canTakeClassCard(player, card)) {
-      throw new Error(`심화 과목이라 ${STAT_NAME[card.stat]} ${card.minStat} 이상이어야 들을 수 있어요 (지금 ${effectiveStat(player, card.stat)}).`);
+      throw new Error(`${LEVEL_NAME[card.level]} 과목이라 ${STAT_NAME[card.stat]} ${card.minStat} 이상이어야 들을 수 있어요 (지금 ${effectiveStat(player, card.stat)}).`);
     }
     const kind = classGainKind(card);
     const applied = classGainApplied(player, card);
@@ -572,7 +579,7 @@ function startTournament(state: GameState, player: PlayerGameState): void {
   state.pendingRoll = {
     kind: "tournament",
     title: `마법 토너먼트 · ${player.name}`,
-    lines: [`마나기운을 1~${player.manaTokens}개 골라 내고, 낸 개수만큼 주사위를 굴려요. 나온 눈을 모두 더한 만큼 트랙을 전진해요`],
+    lines: [`마나기운을 1~${usableFuel(player, "mana")}개 골라 내고(한 번에 주문력만큼), 낸 개수만큼 주사위를 굴려요. 나온 눈을 모두 더한 만큼 트랙을 전진해요`],
     // 보조 능력치(체력=지구력): 체력기운을 내면 "끝까지 달려요" — 1개당 고정 칸을 더 전진한다 (주사위가 아니라 고정값)
     assist: { kind: "stamina", name: "체력기운", title: "끝까지 달려요", hint: `체력기운 1개당 +${BALANCE.tournamentStaminaBoost}칸 더 전진해요 (지구력)` },
     entries: [withAssist(choiceEntry(player, player.name), player.staminaTokens)],
@@ -581,21 +588,29 @@ function startTournament(state: GameState, player: PlayerGameState): void {
 
 // 굴림 안내 문구: 재료 기운을 골라 내고 낸 개수만큼 굴린다. 재료 기운이 없으면 공짜 주사위 1개. 다시 굴리기는 마나기운으로 한다
 function fuelLine(player: PlayerGameState, fuel: KeptToken): string {
-  const tokens = tokensOf(player, fuel);
+  const tokens = usableFuel(player, fuel);
+  const limited = tokens < tokensOf(player, fuel) ? ` (한 번에 ${STAT_NAME[ENERGY_STAT[fuel]]}만큼만 낼 수 있어요)` : "";
   return tokens > 0
-    ? `${PAY_OBJECT[fuel]} 1~${tokens}개 골라 내고, 낸 개수만큼 주사위를 굴려요 (다시 굴리기는 마나기운으로 해요)`
+    ? `${PAY_OBJECT[fuel]} 1~${tokens}개 골라 내고, 낸 개수만큼 주사위를 굴려요${limited} (다시 굴리기는 마나기운으로 해요)`
     : `${TOKEN_NAME[fuel]}이 없어서 주사위 1개를 굴려요`;
 }
 
+// 함께하면 든든 (43-6절): 마법생물·연구실 구역에 두 명이 함께 들어왔으면 둘 다 목표값이 BALANCE.studyBuddyBonus만큼 낮아진다
+const hasBuddy = (state: GameState, activityId: "creature" | "lab") => state.activitySlots[activityId].length >= 2;
+const buddyTarget = (state: GameState, activityId: "creature" | "lab", target: number) =>
+  hasBuddy(state, activityId) ? Math.max(1, target - BALANCE.studyBuddyBonus) : target;
+const buddyNote = (state: GameState, activityId: "creature" | "lab") =>
+  hasBuddy(state, activityId) && BALANCE.studyBuddyBonus > 0 ? ` · 친구와 함께라 목표 -${BALANCE.studyBuddyBonus}` : "";
+
 // 마법생물 조련: 매력기운을 골라 내고 낸 개수만큼 주사위를 굴려, 합이 목표값 이상이면 조련에 성공한다. 실패하면 낸 매력기운만 잃고 카드는 구역에 돌아간다
 function startCreatureRoll(state: GameState, player: PlayerGameState, creature: CreatureCard): void {
-  const target = creatureTarget(creature);
+  const target = buddyTarget(state, "creature", creatureTarget(creature));
   const fuel = BALANCE.rollFuel.creature;
   state.hidden.roll = { kind: "creature", playerId: player.id, card: creature, target };
   state.pendingRoll = {
     kind: "creature",
     title: `마법생물 조련 · ${creature.name}`,
-    lines: [fuelLine(player, fuel), `주사위 합이 ${target} 이상이면 조련 성공! 실패하면 카드는 돌아가요`],
+    lines: [fuelLine(player, fuel), `주사위 합이 ${target} 이상이면 조련 성공! 실패하면 카드는 돌아가요${buddyNote(state, "creature")}`],
     entries: [choiceEntry(player, player.name, target, fuel)],
   };
 }
@@ -622,13 +637,13 @@ function resolveCreature(state: GameState, ctx: Extract<RollContext, { kind: "cr
 // 연구실 실험: 카드를 보고 지력기운을 몇 개 낼지 골라(굴릴 때 낸다) 낸 개수만큼 주사위를 굴려, 합이 목표값 이상이면 실험 성공 (카드 효과를 받는다)
 // 지력기운이 없으면 주사위 1개는 공짜로 굴린다
 function startLabRoll(state: GameState, player: PlayerGameState, lab: LabCard): void {
-  const target = labTargetValue();
+  const target = buddyTarget(state, "lab", labTargetValue());
   const fuel = BALANCE.rollFuel.lab;
   state.hidden.roll = { kind: "lab", playerId: player.id, card: lab, target };
   state.pendingRoll = {
     kind: "lab",
     title: `연구실 실험 · ${lab.name}`,
-    lines: [fuelLine(player, fuel), `주사위 합이 ${target} 이상이면 실험 성공! (${lab.summary})`],
+    lines: [fuelLine(player, fuel), `주사위 합이 ${target} 이상이면 실험 성공! (${lab.summary})${buddyNote(state, "lab")}`],
     entries: [choiceEntry(player, player.name, target, fuel)],
   };
 }
@@ -1028,9 +1043,14 @@ export function selectActivity(state: GameState, playerId: string, activityId: A
     if (!target || target.id === playerId) throw new Error("주문 대결 상대를 지정해야 합니다.");
     if (target.hasActedThisPhase) throw new Error("아직 자율활동을 고르지 않은 플레이어만 지목할 수 있습니다.");
   }
-  // 먼저 온 친구가 있는 구역은 매력기운 1개를 더 낸다
+  // 먼저 온 친구가 있는 구역은 매력기운을 더 내고, 그 매력기운은 먼저 온 친구에게 건넨다 (43-6절)
   const extra = activityExtraCost(state, activityId);
   player.charmTokens -= extra;
+  if (extra > 0) {
+    const host = state.players[state.activitySlots[activityId][0]];
+    host.charmTokens += extra;
+    log(state, `${player.name}님이 ${host.name}님에게 매력기운 ${extra}개를 건네고 함께해요`);
+  }
   // 구역에 처음 들어와 카드를 여는 사람이 지력기운을 낸다
   pay(player, "intelligence", activityOpenCost(state, activityId));
   state.activitySlots[activityId].push(playerId);
