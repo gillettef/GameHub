@@ -5,6 +5,7 @@
 //  - 자율활동 5종 중 봇이 무엇을 선호하고 그 결과는 어떤가
 import { chooseActivityAction, choosePick, playClassTurn, type BotStrategy } from "../src/game/bot.js";
 import { BALANCE } from "../src/game/config.js";
+if (process.env.BAL) Object.assign(BALANCE, JSON.parse(process.env.BAL)); // 예: BAL='{"classGain":{"basic":2,"advanced":3}}' 로 BALANCE를 덮어써 비교
 import { advanceResolution, chooseActivityCard, classCardsLeft, createGame, finalScore, selectActivity } from "../src/game/engine.js";
 import { rollAndConfirm } from "./_drive.js";
 import type { ActivityId, GameState } from "../src/game/types.js";
