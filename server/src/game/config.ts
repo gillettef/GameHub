@@ -57,16 +57,16 @@ export const BALANCE = {
   rollBenchmarkStart: 1.3,
   rollBenchmarkPerRound: 0.12,
   // 주문 대결 도전자가 지목당한 친구에게 건네는 마나기운 개수 (매력 참가비 duelCharmFee와 별도. 지목당해도 마나기운이 있어야 굴릴 수 있게 하는 장치)
-  duelManaFee: 0,
+  duelManaFee: 1,
   // 연구실 실험: 마나기운을 몇 개 낼지 골라 낸 개수만큼(마나기운이 없으면 공짜 1개) 주사위를 굴려 합이 이 값 이상이면 성공 (안정적인 능력치 상향)
-  labTarget: 3,
+  labTarget: 4,
   // 마법생물 조련 목표값 배율: 생물마다 정해진 trainTarget(creatures.ts)에 곱한다 (주사위가 마나기운 개수라 능력치 기운 때와 맞추기 위한 보정)
-  trainTargetScale: 0.5,
+  trainTargetScale: 0.45,
   // 굴림 버튼의 기본 주사위 수 = 목표값 판정(조련·연구실·탐험)에서 성공 확률이 이 값 이상이 되는 가장 적은 마나기운 개수 (남는 마나기운은 다시 굴리기용).
   // 토너먼트·주문 대결·시험은 기본값이 마나기운 전부. 봇도 기본값 그대로 굴린다
   defaultDiceSuccess: 0.7,
   // 탐험 카드 목표값 배율 (1이면 카드에 적힌 난이도 그대로)
-  exploreDifficultyScale: 0.8,
+  exploreDifficultyScale: 1.1,
   // 탐험 역전 보너스: 선두와의 종합 점수(능력치 합 + 학점×3) 격차가 이 값 이상이면 판정에 보너스를 더한다
   catchUpGap: 4,
   catchUpBonus: 2,
@@ -85,6 +85,8 @@ export const BALANCE = {
   energyCapMultiplier: 0,
   // 실력만큼만 힘을 낸다 (43-5절): 한 번 굴릴 때 낼 수 있는 재료 기운은 그 기운의 능력치 개수까지 (주문력 → 마나기운). 기운은 얼마든지 모아 둘 수 있다
   rollLimitByStat: true,
+  // 굴림 상한 = 능력치 + 이 값 (능력치 1인 초반에도 주사위 2개는 굴릴 수 있게 하는 여유)
+  rollLimitBonus: 0,
   // 함께하면 든든 (43-6절): 마법생물·연구실 구역에 두 명이 함께 들어가면 둘 다 판정 목표값이 이만큼 낮아진다
   studyBuddyBonus: 1,
   rollFuel: { tournament: "mana", creature: "charm", duel: "mana", exploration: "stamina", lab: "intelligence" } as Record<ActivityId, KeptToken>,

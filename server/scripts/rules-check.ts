@@ -48,9 +48,10 @@ import { eventTemplates } from "../src/game/newsCards.js";
 import { cramStep, rollAndConfirm } from "./_drive.js";
 
 // 43-5·43-6절의 규칙(한 번에 낼 수 있는 기운 = 능력치, 함께하면 든든)은 전용 검증에서만 켜고 나머지 검증은 그 규칙 없이 본다
-const NEW_RULES = { rollLimitByStat: BALANCE.rollLimitByStat, studyBuddyBonus: BALANCE.studyBuddyBonus, energyCapMultiplier: BALANCE.energyCapMultiplier };
+// (45절에서 기본값이 1이 된 주문 대결 마나기운 건네기도 전용 검증에서만 켠다)
+const NEW_RULES = { rollLimitByStat: BALANCE.rollLimitByStat, studyBuddyBonus: BALANCE.studyBuddyBonus, energyCapMultiplier: BALANCE.energyCapMultiplier, duelManaFee: BALANCE.duelManaFee };
 const NEWS_EVENTS = BALANCE.schoolNewsEvents;
-Object.assign(BALANCE, { rollLimitByStat: false, studyBuddyBonus: 0, schoolNewsEvents: false });
+Object.assign(BALANCE, { rollLimitByStat: false, studyBuddyBonus: 0, schoolNewsEvents: false, duelManaFee: 0 });
 function withBalance(overrides: Partial<typeof BALANCE>, fn: () => void): void {
   const saved = Object.fromEntries(Object.keys(overrides).map((k) => [k, BALANCE[k as keyof typeof BALANCE]]));
   Object.assign(BALANCE, overrides);
@@ -616,7 +617,7 @@ test("연구실 실험: 카드 2장을 열어 원하는 카드를 체력기운�
   const [a, b] = state.activityOrder;
   Object.assign(state.players[a], { intelligenceTokens: 3 });
   Object.assign(state.players[b], { intelligenceTokens: 2 });
-  state.labPile.draw.push(labCard("든든 도시락"), labCard("마법 안경")); // 체력기운 0개 / 1개
+  state.labPile.draw.push(labCard("든든 도시락"), labCard("마법 안경")); // 체력기운 0개 / 0개 (45절에서 1씩 낮춤)
   selectActivity(state, a, "lab");
   selectActivity(state, b, "lab");
   finishChoosing(state);
@@ -652,8 +653,8 @@ test("연구실 실험: 비용이 모자란 카드는 못 고르고, 가져가�
   toActivity(state);
   setTokens(state, 0);
   const [a, b] = state.activityOrder;
-  state.players[b].staminaTokens = 2; // 카드 2개 (참가비는 매력기운)
-  state.labPile.draw.push(labCard("든든 도시락"), labCard("마법약 실험")); // 체력기운 0개 / 2개
+  state.players[b].staminaTokens = 1; // 카드 1개 (참가비는 매력기운)
+  state.labPile.draw.push(labCard("든든 도시락"), labCard("마법약 실험")); // 체력기운 0개 / 1개
   selectActivity(state, a, "lab");
   selectActivity(state, b, "lab");
   finishChoosing(state);
@@ -930,7 +931,7 @@ test("마법 토너먼트: 주사위는 남은 마나기운으로 다시 굴릴 
 });
 
 test("주문 대결: 도전자가 건넨 마나기운 1개를 더한 뒤 양쪽이 마나기운을 내고 낸 개수만큼 주사위를 굴려 합이 큰 쪽이 이긴다", () => {
-  // 마나기운 건네기 규칙을 켜 둔 상태(duelManaFee 1)를 검증한다 (기본값은 밸런스 조정으로 0)
+  // 마나기운 건네기 규칙을 켜 둔 상태(duelManaFee 1, 45절부터 기본값)를 검증한다
   const savedFee = BALANCE.duelManaFee;
   BALANCE.duelManaFee = 1;
   const state = newGame(2);
@@ -1535,7 +1536,7 @@ test("마법생물 조련: 속성·종류는 표시용이고 기준 수치는 �
 });
 
 test("주문 대결: 도전자는 마나기운이 2개 이상(건넬 1개 + 굴릴 1개) 있어야 고를 수 있고, 지목당한 쪽은 건네받은 마나기운으로 굴린다", () => {
-  // 마나기운 건네기 규칙을 켜 둔 상태(duelManaFee 1)를 검증한다 (기본값은 밸런스 조정으로 0)
+  // 마나기운 건네기 규칙을 켜 둔 상태(duelManaFee 1, 45절부터 기본값)를 검증한다
   const savedFee = BALANCE.duelManaFee;
   BALANCE.duelManaFee = 1;
   const state = newGame(2);
@@ -1833,6 +1834,10 @@ test("시험 공고(4·10개월): 시험 카드가 공개되고 그달 수업에
   assert.ok(exam);
   assert.equal(state.classMarket.length, 3 + BALANCE.classMarketExtra + 1);
   assert.ok(state.classMarket.some((c) => c.stat === exam.diceStat), "시험 과목 카드가 있다");
+});
+
+test("기본 규칙 수치 (45절 조정): 주문 대결 도전자는 마나기운 1개를 건넨다", () => {
+  assert.equal(NEW_RULES.duelManaFee, 1);
 });
 
 test("시험 주간 벼락치기(6·12개월): 선부터 한 명씩, 가진 기운 1개를 시험 과목 기운 1개로 바꾸거나 넘어간 뒤 시험을 친다", () => {
