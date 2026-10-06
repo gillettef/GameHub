@@ -244,7 +244,7 @@ test("정규수업: 인원수 + 1장이 공개되고 선택 순서가 정해진�
   }
 });
 
-test("정규수업 덱은 학기마다 인원과 무관하게 36장이고, 1학기는 주문력 과목이 소수·2학기는 더 많다. 기초 과목은 +4, 심화 과목은 +6이고 심화만 선수 조건(능력치 4 이상)이 있다", () => {
+test("정규수업 덱은 학기마다 인원과 무관하게 36장이고, 1학기는 주문력 과목이 소수·2학기는 더 많다. 기초 과목은 +2, 심화 과목은 +3이고 심화만 선수 조건(능력치 3 이상)이 있다", () => {
   for (const n of [2, 3, 4, 5]) {
     const state = newGame(n);
     const sem1 = [...state.classDeck, ...state.classMarket];
@@ -295,8 +295,8 @@ test("정규수업: 수업카드는 무료이고 가져가면 그 과목의 기�
   assert.throws(() => takeClassCard(state, second, "c1"), /차례가 아닙니다/);
   takeClassCard(state, first, "c1");
   const p1 = state.players[first];
-  assert.equal(p1.intelligenceTokens, BALANCE.classGain.basic, "지력기운 +4");
-  assert.equal(p1.intelligence, 2, "능력치(실력)는 오르지 않는다");
+  assert.equal(p1.intelligenceTokens, BALANCE.classGain.basic, "지력기운 +2");
+  assert.equal(p1.intelligence, BALANCE.initialStats.intelligence, "능력치(실력)는 오르지 않는다");
   assert.equal(p1.classCards.length, 1);
   assert.deepEqual([p1.staminaTokens, p1.charmTokens, p1.manaTokens], [0, 0, 0]);
   assert.throws(() => takeClassCard(state, second, "c1"), /공개된 수업카드 중에서만/);
@@ -334,13 +334,13 @@ test("정규수업: 심화 과목은 그 과목 능력치가 advancedMinStat 이
   const p = state.players[first];
   p.intelligence = BALANCE.advancedMinStat - 1;
   assert.equal(canTakeClassCard(p, state.classMarket[0]), false);
-  assert.throws(() => takeClassCard(state, first, "adv"), /심화 과목이라 지력 4 이상/);
+  assert.throws(() => takeClassCard(state, first, "adv"), new RegExp(`심화 과목이라 지력 ${BALANCE.advancedMinStat} 이상`));
   assert.equal(p.classCards.length, 0, "못 들으면 아무것도 바뀌지 않는다");
   assert.equal(canTakeClassCard(p, state.classMarket[1]), true, "기초 과목은 언제나 들을 수 있다");
   p.intelligence = BALANCE.advancedMinStat;
   assert.equal(canTakeClassCard(p, state.classMarket[0]), true);
   takeClassCard(state, first, "adv");
-  assert.equal(p.intelligenceTokens, BALANCE.classGain.advanced, "심화는 +6 (한도 8 안)");
+  assert.equal(p.intelligenceTokens, BALANCE.classGain.advanced, "심화는 +3 (한도 안)");
   takeClassCard(state, second, null);
 });
 

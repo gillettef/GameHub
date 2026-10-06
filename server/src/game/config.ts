@@ -10,8 +10,8 @@ export const BALANCE = {
   // 시험 카드 공개 시점: 이 라운드가 끝난 뒤 다음 시험(중간고사·기말고사)의 카드를 모두에게 공개한다
   midtermRevealRound: 3,
   finalRevealRound: 9,
-  // 게임 시작 능력치 (2026-09-30 변경: 전원 2, 학점 0)
-  initialStats: { intelligence: 2, stamina: 2, charm: 2, spellPower: 2 } as Record<StatKey, number>,
+  // 게임 시작 능력치 (2026-10-06 변경: 전원 1, 학점 0 — 수치 전반을 낮춤, 43절)
+  initialStats: { intelligence: 1, stamina: 1, charm: 1, spellPower: 1 } as Record<StatKey, number>,
   initialCredit: 0,
   // 마법 토너먼트: 최종 순위 보상 (1위, 2위 순서). 트랙에는 상한이 없다
   tournamentRewards: [4, 2],
@@ -33,8 +33,8 @@ export const BALANCE = {
     { statWeights: { intelligence: 3, stamina: 3, charm: 2, spellPower: 2 } as Record<StatKey, number> },
   ],
   // 수업카드가 주는 기운 (42절): 기초 과목은 basic, 심화 과목은 advanced. 심화는 그 과목 능력치가 advancedMinStat 이상이어야 들을 수 있다 (선수과목)
-  classGain: { basic: 4, advanced: 6 },
-  advancedMinStat: 4,
+  classGain: { basic: 2, advanced: 3 },
+  advancedMinStat: 3,
   // 성장 (42절): 자율활동에서 성과를 내면 그 활동의 주 능력치가 growthAmount만큼 오른다 (조련·탐험·연구실은 성공, 주문 대결은 승리, 토너먼트는 성장 없음)
   growthAmount: 1,
   growthActivities: { tournament: false, creature: true, duel: true, exploration: true, lab: true } as Record<ActivityId, boolean>,
@@ -48,19 +48,19 @@ export const BALANCE = {
   graduationAwardStats: ["intelligence", "stamina", "charm", "spellPower"] as StatKey[],
   // 판정 목표값 = 주사위 평균(3.5) × 그 달의 기준 주사위 수 × 난이도. 기준 주사위 수(마나기운 개수)는 rollBenchmarkStart에서 매달 rollBenchmarkPerRound씩 오른다
   // (주문력이 기준보다 앞서면 쉽고 뒤처지면 어렵다). 탐험·협력 탐험 카드는 카드마다 난이도가 정해져 있다
-  rollBenchmarkStart: 2,
-  rollBenchmarkPerRound: 0.2,
+  rollBenchmarkStart: 1.3,
+  rollBenchmarkPerRound: 0.12,
   // 주문 대결 도전자가 지목당한 친구에게 건네는 마나기운 개수 (매력 참가비 duelCharmFee와 별도. 지목당해도 마나기운이 있어야 굴릴 수 있게 하는 장치)
   duelManaFee: 0,
   // 연구실 실험: 마나기운을 몇 개 낼지 골라 낸 개수만큼(마나기운이 없으면 공짜 1개) 주사위를 굴려 합이 이 값 이상이면 성공 (안정적인 능력치 상향)
-  labTarget: 4,
+  labTarget: 3,
   // 마법생물 조련 목표값 배율: 생물마다 정해진 trainTarget(creatures.ts)에 곱한다 (주사위가 마나기운 개수라 능력치 기운 때와 맞추기 위한 보정)
-  trainTargetScale: 0.7,
+  trainTargetScale: 0.5,
   // 굴림 버튼의 기본 주사위 수 = 목표값 판정(조련·연구실·탐험)에서 성공 확률이 이 값 이상이 되는 가장 적은 마나기운 개수 (남는 마나기운은 다시 굴리기용).
   // 토너먼트·주문 대결·시험은 기본값이 마나기운 전부. 봇도 기본값 그대로 굴린다
   defaultDiceSuccess: 0.7,
   // 탐험 카드 목표값 배율 (1이면 카드에 적힌 난이도 그대로)
-  exploreDifficultyScale: 1.1,
+  exploreDifficultyScale: 0.8,
   // 탐험 역전 보너스: 선두와의 종합 점수(능력치 합 + 학점×3) 격차가 이 값 이상이면 판정에 보너스를 더한다
   catchUpGap: 4,
   catchUpBonus: 2,
