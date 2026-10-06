@@ -1,45 +1,29 @@
-import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
+import IMAGE_FILES from 'virtual:image-manifest';
 import { IMAGE_BASE, IMAGE_EXTS } from './assets';
 
-const missing = new Set<string>();
-const found = new Map<string, string>();
+/**
+ * 슬롯키 → 실제 이미지 URL.
+ * public/images 의 파일 목록은 빌드 타임에 정해지므로(vite.config.ts imageManifest),
+ * 파일이 없는 슬롯은 네트워크 요청 없이 바로 플레이스홀더를 그린다.
+ * 같은 슬롯에 여러 확장자가 있으면 IMAGE_EXTS 순서(webp → png → jpg)를 따른다.
+ */
+const SLOT_URLS: Map<string, string> = (() => {
+  const best = new Map<string, { rank: number; file: string }>();
+  for (const file of IMAGE_FILES) {
+    const dot = file.lastIndexOf('.');
+    const key = file.slice(0, dot);
+    const rank = IMAGE_EXTS.indexOf(file.slice(dot + 1).toLowerCase() as (typeof IMAGE_EXTS)[number]);
+    if (rank < 0) continue;
+    const cur = best.get(key);
+    if (!cur || rank < cur.rank) best.set(key, { rank, file });
+  }
+  return new Map([...best].map(([k, v]) => [k, IMAGE_BASE + v.file]));
+})();
 
-/** 슬롯의 실제 이미지 URL을 확장자 순서대로 탐색한다. 없으면 null. */
-function probe(key: string): Promise<string | null> {
-  if (found.has(key)) return Promise.resolve(found.get(key)!);
-  if (missing.has(key)) return Promise.resolve(null);
-  return new Promise((resolve) => {
-    let i = 0;
-    const next = () => {
-      if (i >= IMAGE_EXTS.length) {
-        missing.add(key);
-        resolve(null);
-        return;
-      }
-      const url = `${IMAGE_BASE}${key}.${IMAGE_EXTS[i++]}`;
-      const img = new Image();
-      img.onload = () => {
-        found.set(key, url);
-        resolve(url);
-      };
-      img.onerror = next;
-      img.src = url;
-    };
-    next();
-  });
-}
-
-export function useSlotImage(key: string | null) {
-  const [url, setUrl] = useState<string | null>(key ? (found.get(key) ?? null) : null);
-  useEffect(() => {
-    let alive = true;
-    if (!key) return setUrl(null);
-    probe(key).then((u) => alive && setUrl(u));
-    return () => {
-      alive = false;
-    };
-  }, [key]);
-  return url;
+/** 슬롯의 이미지 URL (없으면 null). 빌드 타임 목록을 동기로 조회한다. */
+export function slotImageUrl(key: string | null): string | null {
+  return key ? (SLOT_URLS.get(key) ?? null) : null;
 }
 
 interface Props {
@@ -57,13 +41,15 @@ interface Props {
 /** 이미지 영역. 이미지가 있으면 cover로 채우고, 없으면 틴트 그라데이션 + fallback 아이콘. */
 export function Slot({ slot, fallback, tint = '#4b3fa8', className = '', style, children }: Props) {
   const keys = Array.isArray(slot) ? slot : [slot];
-  const k0 = useSlotImage(keys[0]);
-  const k1 = useSlotImage(keys[1] ?? null);
-  const url = k0 ?? k1;
+  let url: string | null = null;
+  for (const k of keys) {
+    url = slotImageUrl(k);
+    if (url) break;
+  }
   return (
     <div
       className={`slot ${url ? 'has-img' : 'ph'} ${className}`}
-      style={{ ['--tint' as string]: tint, ...style, backgroundImage: url ? `url(${url})` : undefined }}
+      style={{ ['--tint' as string]: tint, ...style, backgroundImage: url ? `url("${encodeURI(url)}")` : undefined }}
     >
       {!url && <div className="slot-ph">{fallback}</div>}
       {children}

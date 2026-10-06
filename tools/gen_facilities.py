@@ -2,7 +2,9 @@
 import json, openpyxl
 wb = openpyxl.load_workbook('notes/놀이공원_v1.xlsx', data_only=True)
 rows = [r for r in list(wb['시설 카드'].iter_rows(values_only=True))[2:] if r[0] is not None]
-items = [dict(id=int(r[0]), type=r[1], name=r[2], cost=int(r[3]), upkeep=int(r[4]),
+# 원본 xlsx 오탈자 교정 (notes/ 원본은 수정하지 않는다)
+NAME_FIX = {'동물 원주율': '동물원 탐방'}
+items = [dict(id=int(r[0]), type=r[1], name=NAME_FIX.get(r[2], r[2]), cost=int(r[3]), upkeep=int(r[4]),
               income=[int(r[5]), int(r[6])], sat=[int(r[7]), int(r[8])], effect=(r[9] or '').strip()) for r in rows]
 out = "// 자동 생성: tools/gen_facilities.py (원본 notes/놀이공원_v1.xlsx)\nimport type { FacilityCard } from '../types';\n\n"
 out += "export const FACILITIES: FacilityCard[] = " + json.dumps(items, ensure_ascii=False, indent=2) + ";\n\n"

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { CFG } from '../game/engine';
 import { hasSave } from '../platform/storage';
 import { Icon } from './Icon';
 import { Slot } from './Slot';
@@ -7,13 +8,17 @@ import { RulesBody } from './Rules';
 
 interface Props {
   onNew: (aiCount: number) => void;
-  onContinue: () => void;
+  /** 불러오기에 성공하면 true. 실패(버전 불일치·손상)하면 저장이 지워지고 false */
+  onContinue: () => boolean;
 }
+
+/** 상대(AI) 수 선택지: 전체 인원 minPlayers~maxPlayers (사람 1명) */
+const AI_OPTIONS = Array.from({ length: CFG.maxPlayers - CFG.minPlayers + 1 }, (_, i) => CFG.minPlayers - 1 + i);
 
 export function Title({ onNew, onContinue }: Props) {
   const [ai, setAi] = useState(1);
   const [rules, setRules] = useState(false);
-  const save = hasSave();
+  const [save, setSave] = useState(hasSave);
   return (
     <div className="title">
       <Slot slot="ui/title-bg" tint="#2b2370" className="title-bg" />
@@ -30,7 +35,7 @@ export function Title({ onNew, onContinue }: Props) {
       <div className="title-menu">
         <div className="seg" role="group" aria-label="상대 수">
           <span className="seg-label">상대</span>
-          {[1, 2, 3].map((n) => (
+          {AI_OPTIONS.map((n) => (
             <button key={n} className={ai === n ? 'on' : ''} onClick={() => setAi(n)}>
               {n}명
             </button>
@@ -40,7 +45,7 @@ export function Title({ onNew, onContinue }: Props) {
           <Icon name="operate" size={22} /> 새 게임 시작
         </button>
         {save && (
-          <button className="btn ghost wide" onClick={onContinue}>
+          <button className="btn ghost wide" onClick={() => { if (!onContinue()) setSave(false); }}>
             <Icon name="arrow" size={18} /> 이어하기
           </button>
         )}

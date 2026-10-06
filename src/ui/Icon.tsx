@@ -203,6 +203,7 @@ const ICONS = {
   plus: P('M12 5v14M5 12h14'),
   log: P('M5 6.500h14M5 12h14M5 17.500h9'),
   arrow: P('M5 12h14M13 6l6 6-6 6'),
+  chevron: P('M6 9l6 6 6-6'),
   help: (
     <>
       <circle cx="12" cy="12" r="9" />

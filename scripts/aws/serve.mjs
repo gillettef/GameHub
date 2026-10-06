@@ -1,7 +1,7 @@
 // 빌드 결과(dist)를 서빙하는 의존성 없는 정적 서버. EC2 에서 systemd 로 실행한다.
 import { createServer } from 'node:http';
 import { readFile, stat } from 'node:fs/promises';
-import { extname, join, normalize, resolve } from 'node:path';
+import { extname, join, normalize, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = resolve(fileURLToPath(new URL('../../dist', import.meta.url)));
@@ -17,7 +17,7 @@ const TYPES = {
 async function resolveFile(urlPath) {
   const rel = normalize(decodeURIComponent(urlPath)).replace(/^[/\\]+/, '');
   const full = join(ROOT, rel);
-  if (!full.startsWith(ROOT)) return null;
+  if (full !== ROOT && !full.startsWith(ROOT + sep)) return null; // dist 밖(예: dist2) 접근 차단
   try {
     if ((await stat(full)).isFile()) return full;
   } catch { /* 없으면 index.html 로 */ }

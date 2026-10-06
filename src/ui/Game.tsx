@@ -1,14 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { CFG, HUMAN, baseCapacity, incomeOf, isHumanTurn, priceOf, rankings, visitorQuota, type Action } from '../game/engine';
+import { CFG, HUMAN, baseCapacity, basePrice, canFestival, cleanableCount, incomeOf, isHumanTurn, priceOf, rankings, trashPenaltyOf, visitorQuota, willEnter, winners, type Action } from '../game/engine';
+import { effectOf } from '../game/data/effects';
 import { FACILITY_BY_ID } from '../game/data/facilities';
 import { STAFF_KEYS, type FacilityCard, type GameState, type Player } from '../game/types';
-import { haptic } from '../platform/storage';
+import { haptic } from '../platform/haptics';
 import { Icon, type IconName } from './Icon';
 import { Slot } from './Slot';
 import { PHASES, STAFF_META, TYPE_META } from './meta';
 import { FacilityArt, FacilityStats, Money, Num, Pips, Sheet, TypeChip, Vp, VisitorCard, VisitorChip } from './parts';
 import { ReportSheet } from './Report';
 import { RulesBody } from './Rules';
+import { showTip } from './tip';
 
 interface Props {
   game: GameState;
@@ -18,6 +20,7 @@ interface Props {
 
 type SheetState =
   | { kind: 'detail'; slot: number }
+  | { kind: 'card'; cardId: number }
   | { kind: 'replace'; cardId: number; slot: number }
   | { kind: 'rules' }
   | { kind: 'log' }
@@ -31,6 +34,8 @@ export function GameScreen({ game, act, onExit }: Props) {
   const [tab, setTab] = useState<'market' | 'staff'>('market');
   const [viewId, setViewId] = useState(HUMAN);
   const [toast, setToast] = useState<{ msg: string; n: number } | null>(null);
+  const [overOpen, setOverOpen] = useState(true);
+  const [dockFolded, setDockFolded] = useState(false);
   const slotsRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -61,6 +66,8 @@ export function GameScreen({ game, act, onExit }: Props) {
       setViewId(HUMAN);
       slotsRef.current?.scrollIntoView({ block: 'center', behavior: 'smooth' });
     }
+    // 낮은 화면에서는 카드를 고르면 도크를 접어 부지가 보이게, 선택이 끝나면 다시 편다
+    if (window.innerHeight < 720) setDockFolded(selected !== null);
   }, [selected]);
 
   // 선택한 카드가 팔리거나 사라지면 해제
@@ -73,7 +80,11 @@ export function GameScreen({ game, act, onExit }: Props) {
   const brokenSlots = me.facilities.flatMap((f, i) => (f?.broken ? [i] : []));
   const viewBroken = view.facilities.filter((f) => f?.broken).length;
   const feeStep = game.phase === 'promote' && game.promoteStep === 'fee';
-  const recent = game.log.filter((l) => !/^\d+라운드 ·/.test(l)).slice(-3);
+  // 진행 기록은 뒤에만 덧붙으므로 원래 인덱스를 안정 키로 쓴다
+  const recent = game.log
+    .map((text, idx) => ({ text, idx }))
+    .filter((l) => !/^\d+라운드 ·/.test(l.text))
+    .slice(-3);
 
   const tapSlot = (i: number) => {
     const f = view.facilities[i];
@@ -146,8 +157,8 @@ export function GameScreen({ game, act, onExit }: Props) {
 
         {recent.length > 0 && (
           <ul className="ticker" aria-label="최근 소식">
-            {recent.map((l, i) => (
-              <li key={game.log.length + '-' + i}>{l}</li>
+            {recent.map((l) => (
+              <li key={l.idx}>{l.text}</li>
             ))}
           </ul>
         )}
@@ -186,7 +197,7 @@ export function GameScreen({ game, act, onExit }: Props) {
                       <span className="tile-type" style={{ ['--c' as string]: TYPE_META[c.type].color }}>
                         <Icon name={TYPE_META[c.type].icon} size={12} stroke={2} />
                       </span>
-                      {baseCapacity(c) > 1 && <span className="tile-cap" title="대형 시설: 2명 수용">×{baseCapacity(c)}</span>}
+                      {baseCapacity(c) > 1 && <span className="tile-cap" title={`대형 시설: ${baseCapacity(c)}명 수용`} aria-label={`대형 시설 ${baseCapacity(c)}명 수용`}>×{baseCapacity(c)}</span>}
                       {f?.broken && (
                         <div className="tile-broken">
                           <Icon name="crack" size={26} />
@@ -212,12 +223,16 @@ export function GameScreen({ game, act, onExit }: Props) {
                   className="staff-chip"
                   style={{ ['--c' as string]: STAFF_META[k].color }}
                   onClick={() => {
+                    // 어느 단계에서든 탭하면 설명을 보여주고, 내 건설 단계면 인력 탭으로 이동
+                    showTip(`${STAFF_META[k].label} Lv.${view.staff[k]} · ${STAFF_META[k].desc}`);
                     if (mine && game.phase === 'construct') {
                       setSelected(null);
                       setTab('staff');
+                      setDockFolded(false);
                     }
                   }}
                   title={`${STAFF_META[k].label}: ${STAFF_META[k].desc}`}
+                  aria-label={`${STAFF_META[k].label} 레벨 ${view.staff[k]}: ${STAFF_META[k].desc}`}
                 >
                   <Icon name={STAFF_META[k].icon} size={18} />
                   <Pips level={view.staff[k]} color={STAFF_META[k].color} />
@@ -225,14 +240,28 @@ export function GameScreen({ game, act, onExit }: Props) {
               ))}
             </div>
             <div className="tokens">
-              <span className={`token ${view.trash > 0 ? 'warn' : ''}`} title="쓰레기 토큰">
+              <button
+                type="button"
+                className={`token ${view.trash > 0 ? 'warn' : ''}`}
+                title="쓰레기 토큰"
+                aria-label={`쓰레기 토큰 ${view.trash}개`}
+                onClick={() => showTip(`쓰레기 토큰 ${view.trash}개 · 관객이 남긴 쓰레기예요. 관리 단계에서 치우지 않으면 VP가 깎여요.`)}
+              >
                 <Icon name="trash" size={15} />
+                <span className="token-label">쓰레기</span>
                 <Num value={view.trash} />
-              </span>
-              <span className={`token ${viewBroken > 0 ? 'bad' : ''}`} title="수리 토큰">
+              </button>
+              <button
+                type="button"
+                className={`token ${viewBroken > 0 ? 'bad' : ''}`}
+                title="수리 토큰"
+                aria-label={`수리 토큰 ${viewBroken}개`}
+                onClick={() => showTip(`수리 토큰 ${viewBroken}개 · 고장난 시설 수예요. 수리할 때까지 운영하지 못해요.`)}
+              >
                 <Icon name="wrench" size={15} />
+                <span className="token-label">고장</span>
                 <Num value={viewBroken} />
-              </span>
+              </button>
             </div>
           </div>
 
@@ -244,7 +273,7 @@ export function GameScreen({ game, act, onExit }: Props) {
               </span>
               <div className="entrance-row">
                 {view.visitors.map((v) => (
-                  <VisitorChip key={v.id} v={v} enters={game.phase === 'promote' && game.promoteStep === 'pick' ? undefined : v.budget >= view.fee} />
+                  <VisitorChip key={v.id} v={v} enters={game.phase === 'promote' && game.promoteStep === 'pick' ? undefined : willEnter(v, view.fee)} />
                 ))}
               </div>
             </div>
@@ -264,10 +293,15 @@ export function GameScreen({ game, act, onExit }: Props) {
         brokenSlots={brokenSlots}
         viewMine={mine}
         goMine={() => setViewId(HUMAN)}
+        folded={dockFolded}
+        setFolded={setDockFolded}
+        showCard={(cardId) => setSheet({ kind: 'card', cardId })}
+        openResult={() => setOverOpen(true)}
+        onExit={onExit}
       />
 
       {game.phase === 'operate' && <ReportSheet game={game} onNext={() => act({ type: 'continue' })} />}
-      {game.phase === 'gameOver' && <GameOver game={game} onExit={onExit} />}
+      {game.phase === 'gameOver' && overOpen && <GameOver game={game} onExit={onExit} onClose={() => setOverOpen(false)} />}
 
       {sheet?.kind === 'detail' && view.facilities[sheet.slot] && (
         <DetailSheet
@@ -278,6 +312,9 @@ export function GameScreen({ game, act, onExit }: Props) {
           onRepair={() => act({ type: 'repair', slot: sheet.slot })}
           onClose={() => setSheet(null)}
         />
+      )}
+      {sheet?.kind === 'card' && FACILITY_BY_ID[sheet.cardId] && (
+        <DetailSheet card={FACILITY_BY_ID[sheet.cardId]} price={priceOf(me, FACILITY_BY_ID[sheet.cardId])} onClose={() => setSheet(null)} />
       )}
       {sheet?.kind === 'replace' && (
         <Sheet title="철거하고 새로 지을까요?" onClose={() => setSheet(null)}>
@@ -303,9 +340,12 @@ export function GameScreen({ game, act, onExit }: Props) {
       {sheet?.kind === 'log' && (
         <Sheet title="진행 기록" onClose={() => setSheet(null)} tall>
           <ul className="log">
-            {[...game.log].reverse().map((l, i) => (
-              <li key={i} className={/^\d+라운드 ·/.test(l) ? 'head' : ''}>{l}</li>
-            ))}
+            {game.log
+              .map((l, idx) => ({ l, idx }))
+              .reverse()
+              .map(({ l, idx }) => (
+                <li key={idx} className={/^\d+라운드 ·/.test(l) ? 'head' : ''}>{l}</li>
+              ))}
           </ul>
         </Sheet>
       )}
@@ -326,18 +366,20 @@ export function GameScreen({ game, act, onExit }: Props) {
 
 /** 모든 플레이어를 한눈에 보고, 탭하면 그 공원을 열람한다 */
 function Scoreboard({ game, viewId, onView }: { game: GameState; viewId: number; onView: (id: number) => void }) {
+  // 3인 이상이면 압축 레이아웃(이름 위, VP·돈 세로)으로 360px 폭에 5명까지 한 줄에 맞춘다
+  const compact = game.players.length >= 3;
   return (
-    <div className="score" role="tablist" aria-label="공원 보기">
+    <div className={`score ${compact ? 'compact' : ''}`} role="tablist" aria-label="공원 보기">
       {game.players.map((p) => {
         const turn =
           (game.phase === 'construct' && game.turn === p.id) || (game.phase === 'promote' && game.promoteStep === 'pick' && game.pickTurn === p.id);
         return (
-          <button key={p.id} role="tab" aria-selected={viewId === p.id} className={`pl ${p.id === HUMAN ? 'me' : ''} ${viewId === p.id ? 'view' : ''} ${turn ? 'turn' : ''}`} onClick={() => onView(p.id)}>
+          <button key={p.id} role="tab" aria-selected={viewId === p.id} aria-label={`${p.name} VP ${p.vp} 돈 ${p.money}${turn ? ' (차례)' : ''}`} className={`pl ${p.id === HUMAN ? 'me' : ''} ${viewId === p.id ? 'view' : ''} ${turn ? 'turn' : ''}`} onClick={() => onView(p.id)}>
             <span className="pl-ico" style={{ ['--h' as string]: p.id * 70 }}>
               <Icon name="smile" size={16} />
             </span>
             <span className="pl-name">
-              {p.name}
+              <span className="pl-nm">{compact ? p.name.replace(/ 파크$/, '') : p.name}</span>
               {game.first === p.id && game.phase !== 'gameOver' && <em className="first">선</em>}
             </span>
             <span className="pl-res">
@@ -361,16 +403,34 @@ function MiniCard({ card, label }: { card: FacilityCard; label: string }) {
   );
 }
 
-function DetailSheet({ card, broken, canRepair, phaseManage, onRepair, onClose }: { card: FacilityCard; broken: boolean; canRepair: boolean; phaseManage: boolean; onRepair: () => void; onClose: () => void }) {
+interface DetailProps {
+  card: FacilityCard;
+  onClose: () => void;
+  /** 시장 카드 정보로 열 때 현재 내 건설 가격 */
+  price?: number;
+  broken?: boolean;
+  canRepair?: boolean;
+  phaseManage?: boolean;
+  onRepair?: () => void;
+}
+
+function DetailSheet({ card, onClose, price, broken, canRepair, phaseManage, onRepair }: DetailProps) {
   return (
-    <Sheet onClose={onClose}>
+    <Sheet onClose={onClose} label={`${card.name} 정보`}>
       <FacilityArt card={card} className="art-lg" />
       <div className="detail-head">
         <h2>{card.name}</h2>
         <TypeChip type={card.type} />
       </div>
-      <FacilityStats card={card} />
-      {card.effect && <p className="effect"><Icon name="sparkle" size={14} /> {card.effect}</p>}
+      {price !== undefined && (
+        <p className="detail-price">
+          건설비 <b>${price}</b>
+          {price < basePrice(card) && <s>${basePrice(card)}</s>}
+        </p>
+      )}
+      <FacilityStats card={card} labeled />
+      {effectOf(card.id).text && <p className="effect"><Icon name="sparkle" size={14} /> {effectOf(card.id).text}</p>}
+      {card.effect && <p className="muted small">원본 카드 문구: {card.effect}</p>}
       <p className="muted small">수익은 방문 1회당 금액, 만족도는 모아서 {CFG.satPerVp}점마다 VP 1점이 돼요.</p>
       {broken && (
         <div className="callout bad">
@@ -379,7 +439,7 @@ function DetailSheet({ card, broken, canRepair, phaseManage, onRepair, onClose }
             <b>고장났어요</b>
             <span>수리할 때까지 운영하지 못해요. (유지비는 계속 나가요)</span>
           </div>
-          {phaseManage && (
+          {phaseManage && onRepair && (
             <button className="btn small primary" disabled={!canRepair} onClick={() => { onRepair(); onClose(); }}>
               수리 ${CFG.repairCost}
             </button>
@@ -404,36 +464,54 @@ interface DockProps {
   brokenSlots: number[];
   viewMine: boolean;
   goMine: () => void;
+  folded: boolean;
+  setFolded: (f: boolean) => void;
+  showCard: (cardId: number) => void;
+  openResult: () => void;
+  onExit: () => void;
 }
 
-function Dock({ game, me, act, tab, setTab, selected, setSelected, myTurn, brokenSlots, viewMine, goMine }: DockProps) {
+function Dock({ game, me, act, tab, setTab, selected, setSelected, myTurn, brokenSlots, viewMine, goMine, folded, setFolded, showCard, openResult, onExit }: DockProps) {
   if (game.phase === 'construct') {
+    const pickTab = (t: 'market' | 'staff') => {
+      setTab(t);
+      setFolded(false);
+    };
     return (
-      <footer className="dock">
+      <footer className={`dock ${folded ? 'folded' : ''}`}>
+        <button type="button" className="dock-grab" onClick={() => setFolded(!folded)} aria-expanded={!folded} aria-label={folded ? '도크 펼치기' : '도크 접기'}>
+          <Icon name="chevron" size={18} className={folded ? 'up' : ''} />
+        </button>
         <div className="tabs">
-          <button className={tab === 'market' ? 'on' : ''} onClick={() => setTab('market')}><Icon name="build" size={16} /> 시설 시장</button>
-          <button className={tab === 'staff' ? 'on' : ''} onClick={() => setTab('staff')}><Icon name="marketer" size={16} /> 인력 고용</button>
+          <button className={tab === 'market' ? 'on' : ''} onClick={() => pickTab('market')}><Icon name="build" size={16} /> 시설 시장</button>
+          <button className={tab === 'staff' ? 'on' : ''} onClick={() => pickTab('staff')}><Icon name="marketer" size={16} /> 인력·축제</button>
           <button className="end" onClick={() => act({ type: 'pass' })} disabled={!myTurn}>건설 마치기 <Icon name="arrow" size={16} /></button>
         </div>
         {tab === 'market' ? (
           <>
             <div className="hint">
               {selected !== null ? (
-                <>건설할 <b>부지를 탭</b>하세요 <button className="link" onClick={() => setSelected(null)}>선택 취소</button></>
+                <>
+                  건설할 <b>부지를 탭</b>하세요
+                  <span className="hint-links">
+                    <button className="link" onClick={() => showCard(selected)}>카드 정보</button>
+                    <button className="link" onClick={() => setSelected(null)}>선택 취소</button>
+                  </span>
+                </>
               ) : !viewMine ? (
                 <>상대 공원을 보는 중이에요 <button className="link" onClick={goMine}>내 공원으로</button></>
               ) : (
                 <>카드를 탭해 고른 뒤 부지에 건설해요 · 상대 이름을 탭하면 상대 공원을 볼 수 있어요</>
               )}
             </div>
-            <div className="market">
+            {!folded && <div className="market">
               {game.market.length === 0 && <div className="muted pad">시장이 비었어요</div>}
               {game.market.map((id) => (
                 <MarketCard key={id} card={FACILITY_BY_ID[id]} me={me} selected={selected === id} onTap={() => { haptic(8); setSelected(selected === id ? null : id); }} />
               ))}
-            </div>
+            </div>}
           </>
-        ) : (
+        ) : folded ? null : (
           <div className="staff-list">
             {STAFF_KEYS.map((k) => {
               const lv = me.staff[k];
@@ -453,6 +531,16 @@ function Dock({ game, me, act, tab, setTab, selected, setSelected, myTurn, broke
                 </div>
               );
             })}
+            <div className="staff-item" style={{ ['--c' as string]: '#ffd54a' }}>
+              <span className="staff-art festival-art"><Icon name="sparkle" size={22} /></span>
+              <div className="staff-info">
+                <b>축제 개최</b>
+                <small>${CFG.festivalCost}로 VP +{CFG.festivalVp} · 라운드당 1번{me.festival ? ' (이번 라운드 완료)' : ''}</small>
+              </div>
+              <button className="btn small primary" disabled={!myTurn || !canFestival(me)} onClick={() => { haptic(); act({ type: 'festival' }); }}>
+                {me.festival ? '완료' : `$${CFG.festivalCost}`}
+              </button>
+            </div>
           </div>
         )}
       </footer>
@@ -462,8 +550,8 @@ function Dock({ game, me, act, tab, setTab, selected, setSelected, myTurn, broke
   if (game.phase === 'promote') return game.promoteStep === 'pick' ? <PickDock game={game} me={me} act={act} /> : <FeeDock me={me} act={act} />;
 
   if (game.phase === 'manage') {
-    const penalty = Math.floor(me.trash / CFG.trashPerVp);
-    const cleanable = Math.min(me.trash, me.money);
+    const penalty = trashPenaltyOf(me.trash);
+    const cleanable = cleanableCount(me);
     return (
       <footer className="dock">
         <div className="dock-title"><Icon name="manage" size={18} /> 관리 · 남은 문제를 정리하세요</div>
@@ -474,15 +562,15 @@ function Dock({ game, me, act, tab, setTab, selected, setSelected, myTurn, broke
             <div><b>고장 시설 {brokenSlots.length}곳</b><small>시설을 탭하거나 수리 버튼 (${CFG.repairCost})</small></div>
             <div className="m-btns">
               {brokenSlots.length === 0 ? <span className="ok"><Icon name="check" size={16} /> 이상 없음</span> : brokenSlots.map((s) => (
-                <button key={s} className="btn small" disabled={me.money < CFG.repairCost} onClick={() => { haptic(); act({ type: 'repair', slot: s }); }}>
-                  {FACILITY_BY_ID[me.facilities[s]!.id].name} 수리
+                <button key={s} className="btn small repair" disabled={me.money < CFG.repairCost} onClick={() => { haptic(); act({ type: 'repair', slot: s }); }} title={`${FACILITY_BY_ID[me.facilities[s]!.id].name} 수리`}>
+                  <span className="ell">{FACILITY_BY_ID[me.facilities[s]!.id].name}</span> 수리
                 </button>
               ))}
             </div>
           </div>
           <div className="m-row">
             <Icon name="trash" size={20} />
-            <div><b>쓰레기 {me.trash}개</b><small>개당 ${CFG.cleanCost} · {CFG.trashPerVp}개마다 VP -1</small></div>
+            <div><b>쓰레기 {me.trash}개</b><small>개당 ${CFG.cleanCost} · {CFG.trashPerVp}개마다 VP -1 · 남기면 다음 라운드에도 감점</small></div>
             <div className="m-btns">
               {me.trash === 0 ? <span className="ok"><Icon name="check" size={16} /> 깨끗해요</span> : (
                 <>
@@ -496,6 +584,18 @@ function Dock({ game, me, act, tab, setTab, selected, setSelected, myTurn, broke
         <button className="btn primary wide" onClick={() => act({ type: 'endManage' })}>
           라운드 종료{penalty > 0 ? ` (쓰레기 감점 -${penalty})` : ''} <Icon name="arrow" size={18} />
         </button>
+      </footer>
+    );
+  }
+
+  if (game.phase === 'gameOver') {
+    return (
+      <footer className="dock">
+        <div className="dock-title"><Icon name="trophy" size={18} /> 게임이 끝났어요</div>
+        <div className="row">
+          <button className="btn ghost" onClick={onExit}>타이틀로</button>
+          <button className="btn primary" onClick={openResult}><Icon name="trophy" size={18} /> 결과 보기</button>
+        </div>
       </footer>
     );
   }
@@ -544,19 +644,19 @@ function PickDock({ game, me, act }: { game: GameState; me: Player; act: (a: Act
 
 /** 홍보 ② 입장료 결정: 내 입구의 관객이 입장 가능한지 바로 보인다 */
 function FeeDock({ me, act }: { me: Player; act: (a: Action) => void }) {
-  const entered = me.visitors.filter((v) => v.budget >= me.fee).length;
+  const entered = me.visitors.filter((v) => willEnter(v, me.fee)).length;
   return (
     <footer className="dock">
       <div className="dock-title"><Icon name="ticket" size={18} /> 홍보 · 입장료를 정하세요</div>
       <div className="vrow mine">
         {me.visitors.length === 0 && <div className="muted pad">데려온 관객이 없어요</div>}
         {me.visitors.map((v) => (
-          <VisitorCard key={v.id} v={v} state="mine" enters={v.budget >= me.fee} />
+          <VisitorCard key={v.id} v={v} state="mine" enters={willEnter(v, me.fee)} />
         ))}
       </div>
       <div className="fees">
         {Array.from({ length: CFG.maxFee + 1 }, (_, f) => {
-          const n = me.visitors.filter((v) => v.budget >= f).length;
+          const n = me.visitors.filter((v) => willEnter(v, f)).length;
           return (
             <button key={f} className={`fee ${me.fee === f ? 'on' : ''}`} onClick={() => { haptic(8); act({ type: 'setFee', fee: f }); }}>
               <Icon name="ticket" size={18} />
@@ -580,36 +680,42 @@ function FeeDock({ me, act }: { me: Player; act: (a: Action) => void }) {
 function MarketCard({ card, me, selected, onTap }: { card: FacilityCard; me: Player; selected: boolean; onTap: () => void }) {
   const price = priceOf(me, card);
   const afford = price <= me.money;
-  const disc = price < card.cost;
+  const disc = price < basePrice(card);
   return (
     <button className={`mcard ${selected ? 'sel' : ''} ${afford ? '' : 'dim'}`} onClick={onTap}>
       <FacilityArt card={card} />
       <div className="mcard-top">
         <TypeChip type={card.type} />
         <span className={`price ${afford ? '' : 'short'}`}>
-          {disc && <s>${card.cost}</s>}${price}
+          {disc && <s>${basePrice(card)}</s>}${price}
         </span>
       </div>
       <b className="mcard-name">{card.name}</b>
       <FacilityStats card={card} />
-      <p className="mcard-fx">{card.effect || ' '}</p>
+      <p className="mcard-fx">{effectOf(card.id).text || ' '}</p>
     </button>
   );
 }
 
-function GameOver({ game, onExit }: { game: GameState; onExit: () => void }) {
+function GameOver({ game, onExit, onClose }: { game: GameState; onExit: () => void; onClose: () => void }) {
   const ranked = useMemo(() => rankings(game), [game]);
-  const won = ranked[0].id === HUMAN;
+  const top = useMemo(() => winners(game), [game]);
+  const won = top.some((p) => p.id === HUMAN);
+  const tie = top.length > 1;
+  // 공동 순위: VP·잔액이 같으면 같은 등수
+  const rankNo = ranked.map((p) => ranked.findIndex((q) => q.vp === p.vp && q.money === p.money) + 1);
   return (
-    <Sheet tall>
+    <Sheet tall label="게임 결과" onClose={onClose}>
       <div className="over">
         <div className={`trophy ${won ? 'won' : ''}`}><Icon name="trophy" size={46} stroke={1.5} /></div>
-        <h2>{won ? '축하해요! 최고의 놀이공원이에요' : `${ranked[0].name}의 승리`}</h2>
+        <h2>
+          {won ? (tie ? '공동 1위! 최고의 놀이공원이에요' : '축하해요! 최고의 놀이공원이에요') : tie ? `${top.map((p) => p.name).join(' · ')} 공동 승리` : `${ranked[0].name}의 승리`}
+        </h2>
         <p className="muted">{game.maxRounds}라운드가 끝났어요</p>
         <ol className="rank">
           {ranked.map((p, i) => (
             <li key={p.id} className={p.id === HUMAN ? 'me' : ''} style={{ animationDelay: `${i * 90}ms` }}>
-              <span className="rk">{i + 1}</span>
+              <span className="rk">{rankNo[i]}</span>
               <span className="nm">
                 {p.name}
                 {!!p.endBonus && <small className="bonus"> (잔액 +{p.endBonus})</small>}
@@ -620,8 +726,11 @@ function GameOver({ game, onExit }: { game: GameState; onExit: () => void }) {
           ))}
         </ol>
         {CFG.moneyPerVp > 0 && <p className="muted small">남은 돈 ${CFG.moneyPerVp}마다 VP +1이 이미 더해졌어요.</p>}
-        <p className="muted small">VP가 같으면 남은 돈이 많은 쪽이 앞서요.</p>
-        <button className="btn primary wide" onClick={onExit}>타이틀로</button>
+        <p className="muted small">VP가 같으면 남은 돈이 많은 쪽이 앞서고, 그것도 같으면 공동 순위예요.</p>
+        <div className="row over-cta">
+          <button className="btn ghost" onClick={onClose}><Icon name="smile" size={18} /> 공원 보기</button>
+          <button className="btn primary" onClick={onExit}>타이틀로</button>
+        </div>
       </div>
     </Sheet>
   );
