@@ -3,7 +3,7 @@ import { BALANCE } from "../src/game/config.js";
 if (process.env.BAL) Object.assign(BALANCE, JSON.parse(process.env.BAL));
 const { chooseActivityAction, choosePick, playClassTurn } = await import("../src/game/bot.js");
 const { advanceResolution, chooseActivityCard, createGame, finalScore, selectActivity } = await import("../src/game/engine.js");
-const { rollAndConfirm } = await import("./_drive.js");
+const { cramStep, rollAndConfirm } = await import("./_drive.js");
 type BotStrategy = import("../src/game/bot.js").BotStrategy;
 type ActivityId = import("../src/game/types.js").ActivityId;
 type GameState = import("../src/game/types.js").GameState;
@@ -40,6 +40,7 @@ function play(strats: BotStrategy[]): GameState {
   while (state.phase !== "ended" && guard++ < 6000) {
     if (state.pendingRoll) rollAndConfirm(state);
     else if (state.pendingPick) chooseActivityCard(state, state.pendingPick.playerId, choosePick(state, by[state.pendingPick.playerId]));
+    else if (state.phase === "cram") cramStep(state);
     else if (state.phase === "class") { const id = state.classPickOrder[state.classPickPointer]; playClassTurn(state, id, by[id]); }
     else if (state.activityStage === "resolve") advanceResolution(state);
     else { const id = state.activityOrder[state.activityTurnPointer]; const a = chooseActivityAction(state, id, by[id]); selectActivity(state, id, a.activityId, a.targetPlayerId); }

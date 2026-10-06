@@ -2,7 +2,7 @@
 // 수업카드·마법생물·마도서처럼 획득하면 사라지는 덱은 소진 라운드를, 탐험·연구실처럼 버림 더미를 다시 섞는 덱은 재섞기 횟수를 봅니다. (사용법: npm run simulate:cards -- [게임 수])
 import { chooseActivityAction, choosePick, playClassTurn, type BotStrategy } from "../src/game/bot.js";
 import { advanceResolution, chooseActivityCard, classCardsLeft, createGame, selectActivity } from "../src/game/engine.js";
-import { rollAndConfirm } from "./_drive.js";
+import { cramStep, rollAndConfirm } from "./_drive.js";
 import type { ActivityId, GameState } from "../src/game/types.js";
 const even: Record<ActivityId, number> = { tournament: 1, creature: 1, duel: 1, exploration: 1, lab: 1 };
 const S: BotStrategy = { name: "균형형", classWeights: { intelligence: 1.2, spellPower: 1.2, stamina: 1, charm: 0.6 }, activityBias: even };
@@ -19,7 +19,8 @@ for (const n of [2, 3, 4, 5]) {
     while (state.phase !== "ended" && guard++ < 6000) {
       if (state.pendingRoll) rollAndConfirm(state);
       else if (state.pendingPick) chooseActivityCard(state, state.pendingPick.playerId, choosePick(state, S));
-      else if (state.phase === "class") playClassTurn(state, state.classPickOrder[state.classPickPointer], S);
+      else if (state.phase === "cram") cramStep(state);
+    else if (state.phase === "class") playClassTurn(state, state.classPickOrder[state.classPickPointer], S);
       else if (state.phase === "activity") {
         if (state.activityStage === "resolve") advanceResolution(state);
         else {

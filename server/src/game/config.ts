@@ -7,9 +7,11 @@ export const BALANCE = {
   // 라운드 구조 — 기획 확정값(12라운드, 6라운드 후 중간고사). 바꾸면 클라이언트 표시(12/12)와도 맞춰야 함
   totalRounds: 12,
   midtermRound: 6,
-  // 시험 카드 공개 시점: 이 라운드가 끝난 뒤 다음 시험(중간고사·기말고사)의 카드를 모두에게 공개한다
-  midtermRevealRound: 3,
-  finalRevealRound: 9,
+  // 시험 공고(44절): 이 라운드의 1주차 학교 소식으로 다음 시험(중간고사·기말고사)의 카드를 모두에게 공개한다 (예전 "3·9라운드가 끝난 뒤"와 같은 시점)
+  midtermNoticeRound: 4,
+  finalNoticeRound: 10,
+  // 1주차 학교 소식의 행사 카드(44절). false면 행사 대신 효과 없는 "평범한 한 달"이 나온다 (시험 공고·시험 주간은 그대로. 비교·검증용)
+  schoolNewsEvents: true,
   // 게임 시작 능력치 (2026-10-06 변경: 전원 1, 학점 0 — 수치 전반을 낮춤, 43절)
   initialStats: { intelligence: 1, stamina: 1, charm: 1, spellPower: 1 } as Record<StatKey, number>,
   initialCredit: 0,

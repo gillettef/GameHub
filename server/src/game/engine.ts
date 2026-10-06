@@ -14,6 +14,7 @@ import { BALANCE, examCreditForRank } from "./config.js";
 import { describeAbility } from "./creatures.js";
 import { describeExam, pickExamCards } from "./examCards.js";
 import { describeEffect } from "./explorationCards.js";
+import { eventTemplates, examWeekCard, noticeCard, quietMonthCard } from "./newsCards.js";
 import {
   effectiveStat,
   type ActivityChoice,
@@ -33,6 +34,7 @@ import {
   type ExamResult,
   type GameState,
   type KeptToken,
+  type NewsCard,
   type PlayerGameState,
   type RollContext,
 } from "./types.js";
@@ -330,9 +332,12 @@ export function createGame(players: { id: string; name: string; isBot?: boolean 
     pendingPick: null,
     pendingRoll: null,
     coopWaiting: null,
+    news: null,
+    cramOrder: [],
+    cramPointer: 0,
     exams: { midterm: null, final: null },
     examResults: [],
-    hidden: { roll: null, coop: null, offers: {}, examPlan: pickExamCards() },
+    hidden: { roll: null, coop: null, offers: {}, examPlan: pickExamCards(), newsDeck: shuffle(eventTemplates()) },
     labPile: createLabPile(),
     explorationPile: createExplorationPile(),
     grimoirePile: createGrimoirePile(),
@@ -417,9 +422,70 @@ function beginRound(state: GameState): void {
     player.pendingManaTokens = 0;
     for (const kind of ENERGY_KINDS) player[TOKEN_FIELD[kind]] = Math.max(0, tokensOf(player, kind) + extras[kind]);
   }
-  // 중간고사(6개월)·기말고사(12개월) 달에는 정규수업·자율활동 없이 시험만 친다 (이월된 기운으로 치른다)
-  if (isExamRound(state.round)) beginExam(state, state.round === BALANCE.midtermRound ? "midterm_exam" : "final_exam");
+  // 1주차 학교 소식 (44절): 시험 달은 시험 주간, 시험 공고 달은 시험 공고, 나머지 달은 행사 덱에서 1장
+  state.news = drawNews(state);
+  log(state, `1주차(학교 소식): ${state.news.name} — ${state.news.description}`);
+  for (const playerId of state.turnOrder) {
+    const player = state.players[playerId];
+    for (const kind of ENERGY_KINDS) player[TOKEN_FIELD[kind]] += state.news.effect.gift?.[kind] ?? 0;
+  }
+  // 중간고사(6개월)·기말고사(12개월) 달에는 정규수업·자율활동 없이 벼락치기 뒤 시험을 친다 (이월된 기운으로 치른다)
+  if (isExamRound(state.round)) beginCramPhase(state);
   else beginClassPhase(state);
+}
+
+// 이번 달 학교 소식을 정한다 (시험 공고 달이면 그 시험의 카드를 이때 공개한다)
+function drawNews(state: GameState): NewsCard {
+  const plan = state.hidden.examPlan;
+  if (isExamRound(state.round)) {
+    const which = state.round === BALANCE.midtermRound ? "midterm" : "final";
+    const fuel = examFuel(plan[which]);
+    return examWeekCard(which, fuel, TOKEN_NAME[fuel]);
+  }
+  const notice = state.round === BALANCE.midtermNoticeRound ? "midterm" : state.round === BALANCE.finalNoticeRound ? "final" : null;
+  if (notice) {
+    state.exams[notice] = plan[notice];
+    log(state, `${notice === "midterm" ? "중간고사" : "기말고사"} 과목 공개: "${plan[notice].name}" (${describeExam(plan[notice], STAT_NAME)})`);
+    return noticeCard(notice, plan[notice].name);
+  }
+  if (!BALANCE.schoolNewsEvents) return quietMonthCard();
+  if (state.hidden.newsDeck.length === 0) state.hidden.newsDeck = shuffle(eventTemplates());
+  return state.hidden.newsDeck.shift()!;
+}
+
+// 이번 달 소식의 효과 (없으면 빈 효과)
+const newsEffect = (state: Pick<GameState, "news">) => state.news?.effect ?? {};
+
+// ── 시험 달 1주차: 벼락치기 (44절). 선부터 한 명씩, 가진 기운 1개를 시험 과목 기운 1개로 바꿀 수 있다 (안 해도 된다) ──
+function beginCramPhase(state: GameState): void {
+  state.phase = "cram";
+  state.cramOrder = orderFromStarter(state);
+  state.cramPointer = 0;
+}
+
+// 벼락치기로 바꿀 수 있는 기운 종류 (시험 과목 기운이 아닌, 1개 이상 가진 기운)
+export function cramSources(state: Pick<GameState, "news">, player: PlayerGameState): KeptToken[] {
+  const to = newsEffect(state).cramTo;
+  if (!to) return [];
+  return ENERGY_KINDS.filter((k) => k !== to && tokensOf(player, k) > 0);
+}
+
+// 벼락치기: from이 null이면 하지 않고 넘어간다
+export function cramTurn(state: GameState, playerId: string, from: KeptToken | null): void {
+  if (state.phase !== "cram") throw new Error("지금은 벼락치기 시간이 아닙니다.");
+  if (state.cramOrder[state.cramPointer] !== playerId) throw new Error("당신의 차례가 아닙니다.");
+  const player = state.players[playerId];
+  const to = newsEffect(state).cramTo!;
+  if (from !== null) {
+    if (!cramSources(state, player).includes(from)) throw new Error("바꿀 수 없는 기운이에요.");
+    player[TOKEN_FIELD[from]] -= 1;
+    player[TOKEN_FIELD[to]] += 1;
+    log(state, `${player.name}: 벼락치기! ${TOKEN_NAME[from]} 1개를 ${TOKEN_NAME[to]}으로 바꿨어요`);
+  } else {
+    log(state, `${player.name}: 벼락치기 없이 시험을 봐요`);
+  }
+  state.cramPointer += 1;
+  if (state.cramPointer >= state.cramOrder.length) beginExam(state, state.round === BALANCE.midtermRound ? "midterm_exam" : "final_exam");
 }
 
 // 2주차(정규수업): 인원수 + 1장을 공개하고, 선 다음 사람부터 시계방향으로 선이 마지막으로 원하는 카드 1장을 (무료로) 가져가 그 과목의 기운을 얻는다
@@ -427,12 +493,21 @@ function beginClassPhase(state: GameState): void {
   state.phase = "class";
   for (const playerId of state.turnOrder) state.players[playerId].hasActedThisPhase = false;
   state.classMarket = [];
-  const count = state.turnOrder.length + BALANCE.classMarketExtra;
+  const effect = newsEffect(state);
+  const count = state.turnOrder.length + BALANCE.classMarketExtra + (effect.classExtra ?? 0);
   while (state.classMarket.length < count) {
     const card = drawClassCard(state);
     if (!card) break;
     state.classMarket.push(card);
   }
+  // 시험 공고 달: 시험 과목(주 능력치) 카드를 덱에서 찾아 더 공개한다
+  const examCard = state.exams.final ?? state.exams.midterm;
+  for (let i = 0; i < (effect.examSubjectExtra ?? 0) && examCard; i++) {
+    const at = state.classDeck.findIndex((c) => c.stat === examCard.diceStat);
+    if (at >= 0) state.classMarket.push(...state.classDeck.splice(at, 1));
+  }
+  // 행사로 그 과목 수업이 더 알차면 공개된 카드의 기운을 올려 둔다
+  if (effect.classBonus) state.classMarket = state.classMarket.map((c) => (effect.classBonus?.[c.stat] ? { ...c, gain: c.gain + effect.classBonus[c.stat]! } : c));
   // 수업 신청은 선이 마지막이다 (선은 활동을 먼저 고르는 대신)
   const fromStarter = orderFromStarter(state);
   state.classPickOrder = [...fromStarter.slice(1), fromStarter[0]];
@@ -597,10 +672,15 @@ function fuelLine(player: PlayerGameState, fuel: KeptToken): string {
 
 // 함께하면 든든 (43-6절): 마법생물·연구실 구역에 두 명이 함께 들어왔으면 둘 다 목표값이 BALANCE.studyBuddyBonus만큼 낮아진다
 const hasBuddy = (state: GameState, activityId: "creature" | "lab") => state.activitySlots[activityId].length >= 2;
+const buddyBonus = (state: GameState) => BALANCE.studyBuddyBonus + (newsEffect(state).buddyExtra ?? 0);
+// 판정 목표값 = 기본값 + 이달의 소식 조정 − 함께하면 든든 (최소 1)
 const buddyTarget = (state: GameState, activityId: "creature" | "lab", target: number) =>
-  hasBuddy(state, activityId) ? Math.max(1, target - BALANCE.studyBuddyBonus) : target;
-const buddyNote = (state: GameState, activityId: "creature" | "lab") =>
-  hasBuddy(state, activityId) && BALANCE.studyBuddyBonus > 0 ? ` · 친구와 함께라 목표 -${BALANCE.studyBuddyBonus}` : "";
+  Math.max(1, target + (newsEffect(state).targetMod?.[activityId] ?? 0) - (hasBuddy(state, activityId) ? buddyBonus(state) : 0));
+const buddyNote = (state: GameState, activityId: "creature" | "lab") => {
+  const mod = newsEffect(state).targetMod?.[activityId] ?? 0;
+  const news = mod !== 0 ? ` · ${state.news!.name} 목표 ${mod > 0 ? "+" : "-"}${Math.abs(mod)}` : "";
+  return news + (hasBuddy(state, activityId) && buddyBonus(state) > 0 ? ` · 친구와 함께라 목표 -${buddyBonus(state)}` : "");
+};
 
 // 마법생물 조련: 매력기운을 골라 내고 낸 개수만큼 주사위를 굴려, 합이 목표값 이상이면 조련에 성공한다. 실패하면 낸 매력기운만 잃고 카드는 구역에 돌아간다
 function startCreatureRoll(state: GameState, player: PlayerGameState, creature: CreatureCard): void {
@@ -669,7 +749,8 @@ function resolveLab(state: GameState, ctx: Extract<RollContext, { kind: "lab" }>
 
 function advanceTournament(state: GameState, player: PlayerGameState, dice: number[], assist = 0): void {
   const boost = assist * BALANCE.tournamentStaminaBoost;
-  const gain = sum(dice) + boost;
+  const cheer = newsEffect(state).tournamentBonus ?? 0;
+  const gain = sum(dice) + boost + cheer;
   const before = player.tournamentTrack;
   player.tournamentTrack += gain;
   const step = BALANCE.tournamentMilestoneStep;
@@ -678,7 +759,7 @@ function advanceTournament(state: GameState, player: PlayerGameState, dice: numb
   player.credit += milestoneCredit;
   log(
     state,
-    `${player.name}: 마법 토너먼트 참가 (${describeRoll(dice, [[`끝까지 달려요(체력기운 ${assist}개)`, boost]])} = ${gain}칸 전진, 트랙 ${player.tournamentTrack}칸)${milestoneCredit > 0 ? ` — 이정표 학점 +${milestoneCredit}` : ""}`,
+    `${player.name}: 마법 토너먼트 참가 (${describeRoll(dice, [[`끝까지 달려요(체력기운 ${assist}개)`, boost], [state.news?.name ?? "", cheer]])} = ${gain}칸 전진, 트랙 ${player.tournamentTrack}칸)${milestoneCredit > 0 ? ` — 이정표 학점 +${milestoneCredit}` : ""}`,
   );
   // 토너먼트 참가는 성장이 없다 (BALANCE.growthActivities.tournament = false: 켜면 토너먼트 몰빵 승률이 44%까지 올랐다)
   grow(state, player, "tournament", "spellPower");
@@ -747,6 +828,11 @@ function resolveDuel(state: GameState, ctx: Extract<RollContext, { kind: "duel" 
   );
   // 이긴 사람은 주문력이 오른다 (성장)
   grow(state, winner, "duel", "spellPower");
+  const winCredit = newsEffect(state).duelWinCredit ?? 0;
+  if (winCredit > 0) {
+    winner.credit += winCredit;
+    log(state, `${winner.name}: ${state.news!.name} 우승 보너스 학점 +${winCredit}`);
+  }
   // 이긴 사람이 구역에 공개된 마도서 중 1장을 가져간다 (한 장만 남았으면 자동으로)
   const rewards = offerCards(state, "duel");
   if (rewards.length === 1) takeOffered(state, winner, "duel", rewards[0]);
@@ -762,11 +848,13 @@ function startExplorationRoll(
   playerIds: string[],
   mode: "single" | "pair",
 ): void {
-  const rule = explorationRule(card, mode, state.round);
-  if (!rule) {
+  const base = explorationRule(card, mode, state.round);
+  if (!base) {
     resolveExploration(state, { kind: "exploration", card, playerIds, mode, target: 0 }, {});
     return;
   }
+  // 이달의 소식(봄 소풍·장마철 등)이 탐험 목표값을 바꾼다
+  const rule = { ...base, target: Math.max(1, base.target + (newsEffect(state).targetMod?.exploration ?? 0)) };
   state.hidden.roll = { kind: "exploration", card, playerIds, mode, target: rule.target };
   state.pendingRoll = {
     kind: "exploration",
@@ -1176,6 +1264,7 @@ export function submitRoll(state: GameState, playerId: string, diceCount?: numbe
   const entry = pending.entries.find((e) => e.playerId === playerId);
   if (!entry) throw new Error("이번 굴림에 참여하지 않습니다.");
   if (entry.dice) throw new Error("이미 주사위를 굴렸습니다.");
+  if (currentRoller(state) !== playerId) throw new Error("아직 내 차례가 아니에요. 앞사람이 굴리고 확인할 때까지 기다려 주세요.");
   const player = state.players[playerId];
   // 보조 능력치 기운 (토너먼트 체력기운 / 탐험 지력기운): 마나기운과 함께 내며, 검증을 모두 마친 뒤에 낸다
   const assistKind = pending.assist?.kind;
@@ -1195,9 +1284,15 @@ export function submitRoll(state: GameState, playerId: string, diceCount?: numbe
   entry.dice = rollDice(entry.diceCount);
 }
 
-// 모두 굴렸는가 (결과를 확인하는 단계)
+// 지금 굴릴(또는 결과를 확인할) 차례인 사람: 아직 확인하지 않은 첫 번째 참여자 (44-4절: 한 명씩 차례대로)
+export function currentRoller(state: Pick<GameState, "pendingRoll">): string | undefined {
+  return state.pendingRoll?.entries.find((e) => !e.confirmed)?.playerId;
+}
+
+// 차례인 사람이 굴렸는가 (결과를 보고 다시 굴리거나 확인하는 단계)
 export function rollRevealed(state: Pick<GameState, "pendingRoll">): boolean {
-  return !!state.pendingRoll && state.pendingRoll.entries.every((e) => e.dice !== null);
+  const id = currentRoller(state);
+  return !!id && state.pendingRoll!.entries.find((e) => e.playerId === id)!.dice !== null;
 }
 
 // 다시 굴리기: 모두 굴린 뒤 아직 확인하지 않았다면, 마나기운 1개당 주사위 1개를 원하는 만큼(일부 주사위만) 다시 굴린다.
@@ -1208,8 +1303,8 @@ export function rerollDice(state: GameState, playerId: string, diceIndexes: numb
   if (pending.kind === "first") throw new Error("선 정하기 주사위는 다시 굴릴 수 없어요.");
   const entry = pending.entries.find((e) => e.playerId === playerId);
   if (!entry) throw new Error("이번 굴림에 참여하지 않습니다.");
-  if (!rollRevealed(state) || entry.dice === null) throw new Error("모두 주사위를 굴린 뒤에 다시 굴릴 수 있어요.");
   if (entry.confirmed) throw new Error("이미 결과를 확인했어요.");
+  if (entry.dice === null) throw new Error("주사위를 굴린 뒤에 다시 굴릴 수 있어요.");
   const indexes = [...new Set(diceIndexes)];
   if (indexes.length === 0) throw new Error("다시 굴릴 주사위를 골라 주세요.");
   if (indexes.some((i) => !Number.isInteger(i) || i < 0 || i >= entry.dice!.length)) throw new Error("없는 주사위입니다.");
@@ -1231,7 +1326,8 @@ export function confirmRoll(state: GameState, playerId: string): void {
   if (!pending) throw new Error("지금은 주사위 결과를 확인할 때가 아닙니다.");
   const entry = pending.entries.find((e) => e.playerId === playerId);
   if (!entry) throw new Error("이번 굴림에 참여하지 않습니다.");
-  if (!rollRevealed(state)) throw new Error("모두 주사위를 굴린 뒤에 확인할 수 있어요.");
+  if (entry.confirmed) throw new Error("이미 결과를 확인했어요.");
+  if (entry.dice === null) throw new Error("주사위를 굴린 뒤에 확인할 수 있어요.");
   entry.confirmed = true;
   if (pending.entries.every((e) => e.confirmed)) resolveRoll(state);
 }
@@ -1328,18 +1424,8 @@ function finishCleanup(state: GameState): void {
 
 
 function advanceRound(state: GameState): void {
-  revealExamCard(state);
   state.round += 1;
   beginRound(state);
-}
-
-// 3라운드·9라운드가 끝나면 다음 시험(중간고사·기말고사)의 시험 카드를 공개한다
-function revealExamCard(state: GameState): void {
-  const plan = state.hidden.examPlan;
-  const which = state.round === BALANCE.midtermRevealRound ? "midterm" : state.round === BALANCE.finalRevealRound ? "final" : null;
-  if (!which) return;
-  state.exams[which] = plan[which];
-  log(state, `${which === "midterm" ? "중간고사" : "기말고사"} 과목 공개: "${plan[which].name}" (${describeExam(plan[which], STAT_NAME)})`);
 }
 
 // 시험 점수 = 시험 카드의 주 능력치(diceStat) 기운을 내고 굴린 주사위 합 + 보너스 능력치(bonusStat) 수치(있으면). 보너스 능력치는 고정 보너스다 (39절)
@@ -1355,8 +1441,11 @@ function beginExam(state: GameState, examType: "midterm_exam" | "final_exam"): v
   state.pendingRoll = {
     kind: "exam",
     title: `${examType === "midterm_exam" ? "중간고사" : "기말고사"} · ${card.name}`,
-    lines: [`점수 = ${describeExam(card, STAT_NAME)} — 높은 순서로 순위를 매겨요`, `${TOKEN_NAME[examFuel(card)]}을 1~보유 개수만큼 내고 낸 개수만큼 주사위를 굴려요 (없으면 공짜 1개). 마나기운으로 다시 굴릴 수 있어요`],
-    entries: state.turnOrder.map((id) => choiceEntry(state.players[id], state.players[id].name, undefined, examFuel(card))),
+    lines: [
+      `점수 = ${describeExam(card, STAT_NAME)} — 높은 순서로 순위를 매겨요`,
+      `선부터 한 명씩 ${TOKEN_NAME[examFuel(card)]}을 내고(한 번에 그 능력치만큼까지) 낸 개수만큼 주사위를 굴려요 (없으면 공짜 1개). 마나기운으로 다시 굴릴 수 있어요`,
+    ],
+    entries: orderFromStarter(state).map((id) => choiceEntry(state.players[id], state.players[id].name, undefined, examFuel(card))),
   };
 }
 
@@ -1375,6 +1464,7 @@ function resolveExam(state: GameState, examType: "midterm_exam" | "final_exam", 
   });
   state.examResults.push(result);
   log(state, `${examType === "midterm_exam" ? "중간고사" : "기말고사"} 결과 반영 (학점 지급 완료)`);
+  if (examType === "midterm_exam") log(state, "1학기 종업식: 수고했어요! 다음 달부터 2학기예요 (주문력 수업이 늘어나요)");
 
   // 임시 능력치는 시험 점수에 반영된 뒤에도 소멸 시점(얻은 달의 다음 달 정리)까지 유지된다 (expireTempBoosts)
   if (examType === "final_exam") {
@@ -1542,6 +1632,7 @@ export function removePlayerFromGame(state: GameState, playerId: string): void {
 
   // 정규수업 단계가 아닐 때 지난 선택 순서에 그 사람이 남아 있지 않게 한다
   if (state.phase !== "class") state.classPickOrder = state.classPickOrder.filter((id) => id !== playerId);
+  if (state.phase !== "cram") state.cramOrder = state.cramOrder.filter((id) => id !== playerId);
   // 3주차가 아닌 때에도 지난 3주차의 선택·결과 기록에 그 사람이 남아 있지 않게 한다
   if (state.phase !== "activity") {
     state.activityOrder = state.activityOrder.filter((id) => id !== playerId);
@@ -1587,6 +1678,13 @@ export function removePlayerFromGame(state: GameState, playerId: string): void {
     case "activity":
       removeFromActivityPhase(state, playerId);
       break;
+    case "cram": {
+      const order = dropFromOrder(state.cramOrder, state.cramPointer, playerId);
+      state.cramOrder = order.list;
+      state.cramPointer = order.pointer;
+      if (state.cramPointer >= state.cramOrder.length) beginExam(state, state.round === BALANCE.midtermRound ? "midterm_exam" : "final_exam");
+      break;
+    }
     default: {
       // 시험: 굴림에서 빠지고, 남은 사람이 모두 확인했으면 바로 결과를 처리한다
       if (roll) {

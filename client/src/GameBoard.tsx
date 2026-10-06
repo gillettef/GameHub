@@ -26,6 +26,10 @@ import {
   type KeptToken,
   type OfferCardView,
   type PlayerGameState,
+  currentRoller,
+  cramSources,
+  ENERGY_FIELD,
+  type NewsCard,
 } from "./gameTypes";
 import { CardButton, CardGrid, PickGrid, type CardInfo } from "./CardArt";
 import { classCardBlockReason, classCardData, GameCardGrid, GamePickGrid, type GameCardData } from "./GameCard";
@@ -273,19 +277,104 @@ function ClassPhasePanel({ game, myId, onTake }: { game: GameState; myId: string
   );
 }
 
+// 이달의 학교 소식 (1주차): 행사·시험 공고·시험 주간 카드. 그달 내내 보여 준다
+const NEWS_STYLE: Record<NewsCard["kind"], { icon: IconName; label: string; box: string; title: string }> = {
+  event: { icon: "sparkle", label: "이달의 학교 소식", box: "border-amber-200 bg-amber-50 text-amber-900", title: "text-amber-700" },
+  notice: { icon: "note", label: "학교 게시판 · 시험 공고", box: "border-sky-200 bg-sky-50 text-sky-900", title: "text-sky-700" },
+  examWeek: { icon: "dice", label: "시험 주간", box: "border-pink-200 bg-pink-50 text-pink-900", title: "text-pink-700" },
+};
+
+function NewsPanel({ game }: { game: GameState }) {
+  const news = game.news!;
+  const st = NEWS_STYLE[news.kind];
+  return (
+    <div className={`rounded-3xl border-2 px-3 py-2 text-sm ${st.box}`}>
+      <p className={`text-xs ${st.title}`}>
+        <InlineIcon name={st.icon} /> {game.round}개월 1주차 · {st.label}
+      </p>
+      <p className={`font-display text-base ${st.title}`}>{news.name}</p>
+      <p className="text-xs leading-5">{news.description}</p>
+    </div>
+  );
+}
+
+// 시험 달 1주차 벼락치기: 선부터 한 명씩, 가진 기운 1개를 시험 과목 기운 1개로 바꾸거나 넘어간다
+function CramPanel({ game, myId, onCram }: { game: GameState; myId: string; onCram: (from: KeptToken | null) => void }) {
+  const [clicked, setClicked] = useState<string | null>(null);
+  const currentId = game.cramOrder[game.cramPointer];
+  useEffect(() => setClicked(null), [currentId]);
+  const to = game.news?.effect.cramTo;
+  if (!to) return null;
+  const me = game.players[myId];
+  const isMyTurn = currentId === myId;
+  const sources = me ? cramSources(game, me) : [];
+  const toInfo = FUEL_INFO[to];
+  const send = (from: KeptToken | null) => {
+    setClicked(from ?? "skip");
+    onCram(from);
+  };
+  return (
+    <div className="bg-white rounded-3xl border-2 border-pink-200 shadow-sm p-4">
+      <p className="font-display text-lg text-pink-700 text-center">
+        <InlineIcon name="book" /> 벼락치기
+      </p>
+      <p className="mt-1 text-center text-sm text-purple-500">
+        가진 기운 1개를 <InlineIcon name={toInfo.icon} /> {toInfo.name} 1개로 바꿀 수 있어요 (안 해도 돼요). 선부터 한 명씩 골라요
+      </p>
+      <ol className="my-3 flex flex-wrap gap-1.5 text-xs" aria-label="벼락치기 순서">
+        {game.cramOrder.map((id, index) => (
+          <li
+            key={id}
+            className={`rounded-full px-2.5 py-1 ${
+              index === game.cramPointer ? "bg-pink-200 text-pink-800 ring-2 ring-pink-300" : index < game.cramPointer ? "bg-gray-100 text-gray-500 line-through" : "bg-purple-50 text-purple-600"
+            }`}
+          >
+            {index + 1}. {game.players[id]?.name}
+            {id === myId ? " (나)" : ""}
+          </li>
+        ))}
+      </ol>
+      {isMyTurn ? (
+        <div className="flex flex-col gap-2">
+          {sources.map((k) => (
+            <button
+              key={k}
+              disabled={clicked !== null}
+              className="flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-pink-500 px-3 py-2 font-semibold text-white active:scale-95 transition-transform disabled:opacity-60"
+              onClick={() => send(k)}
+            >
+              <InlineIcon name={FUEL_INFO[k].icon} /> {FUEL_INFO[k].name} 1개 ({me[ENERGY_FIELD[k]]}개 있음) → <InlineIcon name={toInfo.icon} /> {toInfo.name}
+            </button>
+          ))}
+          {sources.length === 0 && <p className="text-center text-sm text-purple-500">바꿀 수 있는 기운이 없어요</p>}
+          <button
+            disabled={clicked !== null}
+            className="min-h-12 rounded-2xl bg-purple-100 px-3 py-2 font-semibold text-purple-700 active:scale-95 transition-transform disabled:opacity-60"
+            onClick={() => send(null)}
+          >
+            벼락치기 없이 시험 보기 (지금 {toInfo.name} {me[ENERGY_FIELD[to]]}개)
+          </button>
+        </div>
+      ) : (
+        <p className="text-center text-sm text-purple-600">{game.players[currentId]?.name}님이 벼락치기를 고르는 중이에요...</p>
+      )}
+    </div>
+  );
+}
+
 // 다음 시험의 시험 카드 안내: 공개 전에는 언제 공개되는지, 공개 후에는 어떤 능력치로 점수를 내는지 보여 준다
 function ExamInfoPanel({ game }: { game: GameState }) {
   if (game.phase === "ended") return null;
-  const { midtermRound, midtermRevealRound, finalRevealRound } = game.rules;
+  const { midtermRound, midtermNoticeRound, finalNoticeRound } = game.rules;
   const isMidterm = game.round <= midtermRound && game.examResults.length === 0;
   const card = isMidterm ? game.exams.midterm : game.exams.final;
   const name = isMidterm ? "중간고사" : "기말고사";
   const examRound = isMidterm ? midtermRound : 12;
-  const revealRound = isMidterm ? midtermRevealRound : finalRevealRound;
+  const noticeRound = isMidterm ? midtermNoticeRound : finalNoticeRound;
   return (
     <div className="bg-sky-50 border-2 border-sky-200 rounded-3xl p-3 text-sm text-sky-800">
       <p className="font-display text-base text-sky-700 mb-0.5">
-        <InlineIcon name="note" /> 다음 시험: {name} ({examRound}개월 2~3주차 대신)
+        <InlineIcon name="note" /> 다음 시험: {name} ({examRound}개월, 수업·자율활동 대신)
       </p>
       {card ? (
         <div className="mt-1.5 flex items-center gap-3">
@@ -293,7 +382,7 @@ function ExamInfoPanel({ game }: { game: GameState }) {
           <p className="text-xs text-sky-600">카드를 누르면 자세한 설명을 볼 수 있어요</p>
         </div>
       ) : (
-        <p className="text-xs text-sky-600">시험 과목은 {revealRound}개월이 끝나면 공개돼요. 그때까지는 고르게 키워 두면 안전해요.</p>
+        <p className="text-xs text-sky-600">시험 과목은 {noticeRound}개월 1주차 학교 소식(시험 공고)에 공개돼요. 그때까지는 고르게 키워 두면 안전해요.</p>
       )}
     </div>
   );
@@ -662,7 +751,7 @@ function ActivityPhasePanel({
 }
 
 // 주사위 굴리기 (선 정하기·토너먼트·조련·연구실·주문 대결·탐험 판정·시험): 마나기운을 1~보유 개수만큼 골라 내고(없으면 공짜 1개) 버튼을 누르면
-// 서버가 낸 개수만큼 굴려서 결과를 알려 주고, 모두 굴린 뒤에는 결과를 눈으로 확인하고(남은 마나기운 1개당 주사위 1개를 다시 굴릴 수 있다) "확인" 버튼을 눌러야 결과가 적용된다
+// 서버가 낸 개수만큼 굴려서 결과를 알려 주고, 한 명씩 차례대로 굴린 뒤 결과를 눈으로 확인하고(남은 마나기운 1개당 주사위 1개를 다시 굴릴 수 있다) "확인" 버튼을 눌러야 결과가 적용된다
 // 주사위 재료 기운의 이름과 아이콘 (활동마다 주 능력치의 기운이 재료다. 다시 굴리기는 언제나 마나기운)
 const FUEL_INFO = {
   intelligence: { icon: "intToken", name: "지력기운" },
@@ -706,15 +795,18 @@ function RollPanel({
   if (!pending) return null;
 
   const mine = pending.entries.find((e) => e.playerId === myId);
-  const revealed = pending.entries.every((e) => e.dice !== null);
-  const canRoll = !!mine && mine.dice === null;
+  // 한 명씩 차례대로: 아직 확인하지 않은 첫 참여자가 굴리고 확인한다
+  const currentId = pending.entries.find((e) => !e.confirmed)?.playerId;
+  const current = pending.entries.find((e) => e.playerId === currentId);
+  const myTurnNow = !!mine && currentId === myId;
+  const canRoll = myTurnNow && mine!.dice === null;
   // 굴리기 전에 마나기운을 몇 개 낼지 고르는 굴림 (마나기운이 없으면 choiceMax가 없고 공짜 주사위 1개)
   const choiceMax = mine?.diceChoiceMax;
   const fuel = FUEL_INFO[mine?.diceToken ?? "mana"];
   const chosenCount = choiceMax !== undefined ? Math.min(Math.max(pickedCount ?? mine!.diceCount, 1), choiceMax) : (mine?.diceCount ?? 0);
   const assistMax = mine?.assistMax ?? 0;
   const chosenAssist = Math.min(pickedAssist, assistMax);
-  const canConfirm = !!mine && revealed && !mine.confirmed;
+  const canConfirm = myTurnNow && mine!.dice !== null && !mine!.confirmed;
   const me = game.players[myId];
   // 결과를 확인하기 전에는 남은 마나기운으로 일부 주사위만 다시 굴릴 수 있다 (선 정하기는 제외)
   const canReroll = canConfirm && pending.kind !== "first" && !!mine && (mine.dice?.length ?? 0) > 0;
@@ -723,8 +815,7 @@ function RollPanel({
   const toggle = (i: number) => setSelected((cur) => (cur.includes(i) ? cur.filter((x) => x !== i) : [...cur, i]));
   const rollKey = `roll:${pending.title}`;
   const confirmKey = `confirm:${pending.title}`;
-  const waiting = pending.entries.filter((e) => e.dice === null && e.playerId !== myId);
-  const unconfirmed = pending.entries.filter((e) => !e.confirmed && e.playerId !== myId);
+  const currentName = current?.label.replace(/ \(.*\)$/, "") ?? "";
 
   return (
     <div className="pop-in bg-white rounded-3xl border-2 border-pink-300 shadow-sm p-4">
@@ -739,16 +830,24 @@ function RollPanel({
 
       <ul className="mt-3 flex flex-col gap-2">
         {pending.entries.map((entry) => (
-          <li key={entry.playerId} className={`rounded-2xl px-3 py-2 ${entry.playerId === myId ? "bg-pink-50 ring-2 ring-pink-200" : "bg-purple-50"}`}>
+          <li key={entry.playerId} className={`rounded-2xl px-3 py-2 ${entry.playerId === myId ? "bg-pink-50 ring-2 ring-pink-200" : "bg-purple-50"} ${entry.playerId === currentId ? "outline outline-2 outline-pink-300" : ""}`}>
             <p className="flex items-center justify-between gap-2 text-sm text-purple-700">
               <span className="truncate">
                 {entry.label}
                 {entry.playerId === myId ? " (나)" : ""}
               </span>
-              {revealed && entry.confirmed && entry.diceCount > 0 && <span className="shrink-0 text-xs text-emerald-600">확인 완료</span>}
+              {entry.confirmed ? (
+                <span className="shrink-0 text-xs text-emerald-600">확인 완료</span>
+              ) : entry.playerId === currentId ? (
+                <span className="shrink-0 text-xs font-semibold text-pink-600">지금 차례</span>
+              ) : null}
             </p>
             {entry.dice === null ? (
-              <p className="text-xs text-purple-400">아직 안 굴렸어요{entry.diceChoiceMax === undefined ? ` (주사위 ${entry.diceCount}개)` : ` (${FUEL_INFO[entry.diceToken ?? "mana"].name}을 고르는 중)`}</p>
+              <p className="text-xs text-purple-400">
+                {entry.playerId === currentId
+                  ? `굴리는 중이에요${entry.diceChoiceMax === undefined ? ` (주사위 ${entry.diceCount}개)` : ` (${FUEL_INFO[entry.diceToken ?? "mana"].name}을 고르는 중)`}`
+                  : "앞사람이 끝나면 굴려요"}
+              </p>
             ) : entry.dice.length === 0 ? (
               <p className="text-xs text-purple-400">굴릴 주사위가 없어요</p>
             ) : (
@@ -867,7 +966,7 @@ function RollPanel({
               </button>
             </div>
           )}
-          <p className="mt-3 text-center text-sm text-purple-600">결과를 확인했으면 다음으로 넘어가요. 모두 확인하면 결과가 적용돼요.</p>
+          <p className="mt-3 text-center text-sm text-purple-600">결과를 확인했으면 다음 사람에게 넘겨요. 모두 확인하면 결과가 적용돼요.</p>
           <button
             disabled={clickedFor === confirmKey}
             className="mt-2 flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl bg-purple-500 py-3 text-lg font-semibold text-white active:scale-95 transition-transform disabled:opacity-70 disabled:active:scale-100"
@@ -877,7 +976,7 @@ function RollPanel({
             }}
           >
             <Icon name="check" className="h-6 w-6" />
-            {clickedFor === confirmKey ? "확인 중..." : "결과 확인, 다음으로"}
+            {clickedFor === confirmKey ? "확인 중..." : "결과 확인, 다음 사람에게"}
           </button>
         </>
       ) : (
@@ -885,13 +984,11 @@ function RollPanel({
           <span className="dice-wiggle inline-flex text-pink-400">
             <Icon name="dice" className="h-5 w-5" />
           </span>
-          {!revealed
-            ? waiting.length > 0
-              ? `${waiting.map((e) => e.label.replace(/ \(.*\)$/, "")).join(", ")}님이 굴리기를 기다리는 중...`
-              : "결과를 계산하는 중..."
-            : unconfirmed.length > 0
-              ? `${unconfirmed.map((e) => e.label.replace(/ \(.*\)$/, "")).join(", ")}님이 결과를 확인하는 중...`
-              : "결과를 적용하는 중..."}
+          {!current
+            ? "결과를 적용하는 중..."
+            : current.dice === null
+              ? `${currentName}님 차례예요. 굴리기를 기다리는 중...`
+              : `${currentName}님이 결과를 확인하는 중...`}
         </p>
       )}
     </div>
@@ -971,7 +1068,7 @@ const TABS: { id: TabId; icon: IconName; label: string }[] = [
   { id: "game", icon: "wand", label: "게임" },
   { id: "tournament", icon: "trophy", label: "토너먼트" },
   { id: "players", icon: "users", label: "친구들" },
-  { id: "news", icon: "scroll", label: "소식" },
+  { id: "news", icon: "scroll", label: "기록" },
   { id: "rules", icon: "book", label: "규칙" },
 ];
 
@@ -981,6 +1078,7 @@ export function GameBoard({
   errorMessage,
   errorSeq,
   onTakeClassCard,
+  onCram,
   onSelectActivity,
   onPickActivityCard,
   onRollDice,
@@ -1001,6 +1099,7 @@ export function GameBoard({
   errorMessage: string | null;
   errorSeq: number;
   onTakeClassCard: (cardId: string | null) => void;
+  onCram: (from: KeptToken | null) => void;
   onSelectActivity: (activityId: ActivityId, targetPlayerId?: string) => void;
   onPickActivityCard: (cardId: string | null) => void;
   onRollDice: (diceCount?: number, assist?: number) => void;
@@ -1021,14 +1120,15 @@ export function GameBoard({
   const latestExam = game.examResults[game.examResults.length - 1];
   // 3주차: 선택 단계에서는 고를 차례인 사람, 진행 단계에서는 카드를 고르는 사람이 행동한다
   const activityTurnId = game.activityStage === "choose" ? game.activityOrder[game.activityTurnPointer] : game.pendingPick?.playerId;
-  const myRollPending = !!game.pendingRoll?.entries.some(
-    (e) => e.playerId === myId && (e.dice === null || (!e.confirmed && game.pendingRoll!.entries.every((x) => x.dice !== null))),
-  );
+  // 주사위는 한 명씩 차례대로 굴린다
+  const myRollPending = currentRoller(game) === myId;
   // 내가 행동해야 하는 순간에는 게임 탭에 알림 점을 띄운다
   const myTurn =
     myRollPending ||
     (!game.pendingRoll &&
-      ((game.phase === "class" && game.classPickOrder[game.classPickPointer] === myId) || (game.phase === "activity" && activityTurnId === myId)));
+      ((game.phase === "class" && game.classPickOrder[game.classPickPointer] === myId) ||
+        (game.phase === "cram" && game.cramOrder[game.cramPointer] === myId) ||
+        (game.phase === "activity" && activityTurnId === myId)));
   // 방장은 게임 중에도 누구든(자신 제외) 내보낼 수 있다. 단, 2명 이상이 남아야 한다
   const canKickInGame = isHost && game.phase !== "ended" && game.turnOrder.length > 2;
   const starterName = game.players[game.turnOrder[game.startingPlayerIndex]]?.name;
@@ -1041,6 +1141,8 @@ export function GameBoard({
         ? "3주차 자율활동"
         : game.phase === "cleanup"
           ? "4주차 정리"
+          : game.phase === "cram"
+          ? "1주차 시험 주간 · 벼락치기"
           : game.phase === "midterm_exam"
           ? "중간고사"
           : game.phase === "final_exam"
@@ -1099,7 +1201,9 @@ export function GameBoard({
                 <InlineIcon name="sparkle" /> 이번 달 선: <b>{starterName}</b> (선부터 시계방향으로 진행해요)
               </p>
             )}
+            {game.news && game.phase !== "setup" && game.phase !== "ended" && <NewsPanel game={game} />}
             <WaitingBanner game={game} offline={offline} isHost={isHost} myId={myId} onKick={onKick} />
+            {game.phase === "cram" && <CramPanel game={game} myId={myId} onCram={onCram} />}
             {game.pendingRoll && <RollPanel game={game} myId={myId} onRoll={onRollDice} onReroll={onRerollDice} onConfirm={onConfirmRoll} />}
             {game.phase === "class" && !game.pendingRoll && <ClassPhasePanel game={game} myId={myId} onTake={onTakeClassCard} />}
             {game.phase === "activity" && (
@@ -1130,7 +1234,7 @@ export function GameBoard({
                 className="text-left rounded-3xl border-2 border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 active:scale-95 transition-transform"
                 onClick={() => selectTab("news")}
               >
-                <span className="font-display text-amber-700"><InlineIcon name="scroll" /> 방금 소식</span>
+                <span className="font-display text-amber-700"><InlineIcon name="scroll" /> 방금 일어난 일</span>
                 <span className="block truncate">{game.log[game.log.length - 1].message}</span>
               </button>
             )}

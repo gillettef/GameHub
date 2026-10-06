@@ -165,7 +165,19 @@ function examBanner(next: GameState): Announcement {
   });
 }
 
-// 3라운드·9라운드가 끝나면 다음 시험의 시험 카드가 공개된다
+// 매달 1주차 학교 소식 (행사·시험 공고·시험 주간)
+function newsBanner(next: GameState): Announcement {
+  const news = next.news!;
+  return make({
+    kind: "banner",
+    icon: news.kind === "event" ? "sparkle" : news.kind === "notice" ? "note" : "dice",
+    title: `${next.round}개월 1주차 · 학교 소식`,
+    subtitle: news.name,
+    lines: [news.description],
+  });
+}
+
+// 시험 공고(4·10개월 1주차)로 다음 시험의 시험 카드가 공개된다
 function examRevealBanner(next: GameState, which: "midterm" | "final"): Announcement {
   const card = next.exams[which]!;
   return make({
@@ -199,8 +211,8 @@ function build(prev: GameState, next: GameState, myId: string): Announcement[] {
     const r = activityResult(prev, next, myId);
     if (r) out.push(r);
   }
-  // 평소: 자율활동 → 4주차 정리 → 다음 달 1주차 준비 → 2주차 정규수업
-  // 시험 달(6·12개월): 1주차 준비 → 시험 → 4주차 정리 (기말고사 뒤에는 게임이 끝난다)
+  // 평소: 자율활동 → 4주차 정리 → 다음 달 1주차 학교 소식 → 2주차 정규수업
+  // 시험 달(6·12개월): 1주차 시험 주간(벼락치기) → 시험 → 4주차 정리 (기말고사 뒤에는 게임이 끝난다)
   // 4주차 정리는 남길 기운을 모두 고른 뒤에 끝난다 (고를 기운이 없으면 바로 지나간다)
   const examStarts = prev.phase !== next.phase && next.pendingRoll?.kind === "exam";
   const leftExam = prev.phase === "midterm_exam" && next.phase !== "midterm_exam";
@@ -209,10 +221,13 @@ function build(prev: GameState, next: GameState, myId: string): Announcement[] {
   if (examStarts) out.push(examBanner(next));
   if (next.examResults.length > prev.examResults.length) out.push(examResult(next, myId));
   if (cleanupDone && leftExam) out.push(cleanupBanner(prev));
+  // 새 달이 시작되면(게임 시작 포함) 1주차 학교 소식부터 알린다
+  const monthStarted = (roundChanged || prev.phase === "setup") && next.phase !== "setup" && !!next.news;
+  if (prev.phase === "setup" && next.phase !== "setup") out.push(firstPlayerBanner(next, myId));
+  if (monthStarted) out.push(newsBanner(next));
   if (!prev.exams.midterm && next.exams.midterm) out.push(examRevealBanner(next, "midterm"));
   if (!prev.exams.final && next.exams.final) out.push(examRevealBanner(next, "final"));
-  if (prev.phase === "setup" && next.phase === "class") out.push(firstPlayerBanner(next, myId), classBanner(next));
-  else if (roundChanged && next.phase === "class") out.push(classBanner(next));
+  if (monthStarted && next.phase === "class") out.push(classBanner(next));
   else if (prev.phase === "class" && next.phase === "activity") out.push(activityBanner(next, myId));
   if (next.phase === "activity" && prev.activityStage === "choose" && next.activityStage === "resolve" && next.activityChoices.length > 0 && prev.phase === "activity") {
     out.push(resolveBanner(next, myId));
