@@ -14,6 +14,8 @@ import {
   classGainKind,
   takeClassCard,
   tokensOf,
+  directionFaces,
+  adjustDie,
   cramSources,
   cramTurn,
   rollLimit,
@@ -23,6 +25,7 @@ import {
   type ActivityId,
   type CardEffect,
   type CreatureCard,
+  type DirectionOutcome,
   type ExplorationCard,
   type GameState,
   type GrimoireCard,
@@ -161,8 +164,17 @@ function effectValue(state: GameState, strategy: BotStrategy, e: CardEffect): nu
   for (const [stat, n] of Object.entries(e.tempStats ?? {})) v += (n ?? 0) * weightsOf(state, strategy)[stat as StatKey] * examWeight(state, stat as StatKey) * 0.5;
   v += (e.credit ?? 0) * 3;
   v += (e.peekExploration ? 0.8 : 0) + (e.nextMana ?? 0) * 0.4 + (e.nextStamina ?? 0) * 0.5;
+  for (const n of Object.values(e.tokens ?? {})) v += (n ?? 0) * 0.4;
   return v;
 }
+
+// 방향형 결과(48절)의 눈 하나의 가치
+function outcomeValue(state: GameState, strategy: BotStrategy, player: PlayerGameState, card: CreatureCard | LabCard | ExplorationCard, o: DirectionOutcome, shielded = false): number {
+  if (o.harmful && shielded) return 0;
+  return effectValue(state, strategy, o.effect) + (o.acquire ? 1.5 * creatureValue(state, strategy, player, card as CreatureCard) + 1 : 0);
+}
+const directionalCardValue = (state: GameState, strategy: BotStrategy, player: PlayerGameState, activity: "creature" | "lab" | "exploration", card: CreatureCard | LabCard | ExplorationCard) =>
+  directionFaces(activity, card).reduce((a, o) => a + outcomeValue(state, strategy, player, card, o), 0) / 6;
 
 // 탐험 카드: 성공 확률(주사위 + 능력치 + 집중 + 역전 보너스)로 기대값을 계산한다. 협력 카드는 두 번째 참가자를 기다려야 해서 낮게 본다
 function explorationValue(state: GameState, strategy: BotStrategy, player: PlayerGameState, card: ExplorationCard): number {
@@ -182,18 +194,20 @@ export function botAssist(state: GameState, playerId: string): number {
   if (!pending?.assist || max <= 0) return 0;
   if (pending.assist.kind === "stamina") return Math.min(max, Math.max(0, state.players[playerId].staminaTokens - 1));
   const ctx = state.hidden.roll;
-  if (ctx?.kind !== "exploration") return 0;
-  const f = ctx.card.failure;
+  const card = ctx?.kind === "exploration" ? ctx.card : ctx?.kind === "direction" && ctx.activity === "exploration" ? (ctx.card as ExplorationCard) : null;
+  if (!card) return 0;
+  const f = card.failure;
   const harmful = [...Object.values(f.stats ?? {}), ...Object.values(f.tempStats ?? {}), f.credit ?? 0, f.nextMana ?? 0, f.nextStamina ?? 0].some((n) => (n ?? 0) < 0);
   return harmful ? 1 : 0;
 }
 
 // 결과 확인 전에 남은 마나기운으로 낮게 나온 주사위를 다시 굴린다 (선 정하기는 제외). 목표값이 있는 혼자 판정(조련·연구실·탐험)은
 // 합이 모자랄 때만 가장 낮은 주사위부터 한 개씩 다시 굴리고(3 이하만), 그 밖의 굴림은 1~2가 나온 주사위를 다시 굴린다
-export function rerollLowDice(state: GameState, playerId: string): void {
+export function rerollLowDice(state: GameState, playerId: string, strategy: BotStrategy = BOT_PERSONALITIES[0]): void {
   const pending = state.pendingRoll;
   const entry = pending?.entries.find((e) => e.playerId === playerId);
   if (!pending || pending.kind === "first" || !entry?.dice) return;
+  if (pending.faces) return steerDirectional(state, playerId, strategy);
   const p = state.players[playerId];
   const ctx = state.hidden.roll;
   const sum = (xs: number[]) => xs.reduce((a, b) => a + b, 0);
@@ -220,6 +234,35 @@ export function rerollLowDice(state: GameState, playerId: string): void {
     } catch {
       // 기운이 모자라면 더 적은 수로 다시 시도한다
     }
+  }
+}
+
+// 방향형(48절): 지금 눈이 평균보다 나쁘면 다시 굴리고, 옆 눈이 더 좋으면 조정한다 (기운이 허락하는 만큼)
+function steerDirectional(state: GameState, playerId: string, strategy: BotStrategy): void {
+  const ctx = state.hidden.roll;
+  const pending = state.pendingRoll;
+  if (ctx?.kind !== "direction" || !pending) return;
+  const entry = pending.entries.find((e) => e.playerId === playerId)!;
+  const player = state.players[playerId];
+  const shielded = (entry.assist ?? 0) > 0;
+  const v = ctx.faces.map((o) => outcomeValue(state, strategy, player, ctx.card, o, shielded));
+  const mean = v.reduce((a, b) => a + b, 0) / 6;
+  for (let guard = 0; guard < 8; guard++) {
+    const f = entry.dice![0] - 1;
+    const best = Math.max(v[f - 1] ?? -Infinity, v[f + 1] ?? -Infinity);
+    try {
+      if (BALANCE.dirAdjustCost > 0 && best - v[f] >= 0.4 * BALANCE.dirAdjustCost) {
+        adjustDie(state, playerId, (v[f + 1] ?? -Infinity) >= (v[f - 1] ?? -Infinity) ? 1 : -1);
+        continue;
+      }
+      if (v[f] < mean - 0.05) {
+        rerollDice(state, playerId, [0]);
+        continue;
+      }
+    } catch {
+      return;
+    }
+    return;
   }
 }
 
@@ -251,6 +294,10 @@ export function choosePick(state: GameState, strategy: BotStrategy): string | nu
   if (options.length === 0) return null;
   if (strategy.random) return pickOne(options).id;
   const value = (card: (typeof cards)[number]): number => {
+    if (BALANCE.directionalResults && pick.activityId !== "duel") {
+      const v = directionalCardValue(state, strategy, player, pick.activityId as "creature" | "lab" | "exploration", card as CreatureCard | LabCard | ExplorationCard);
+      return pick.activityId === "lab" ? v - (card as LabCard).cost * 0.3 : v;
+    }
     switch (pick.activityId) {
       case "creature":
         return creatureValue(state, strategy, player, card as CreatureCard);

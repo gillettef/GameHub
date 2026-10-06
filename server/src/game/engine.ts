@@ -34,6 +34,7 @@ import {
   type ExamResult,
   type GameState,
   type GraduationAward,
+  type DirectionOutcome,
   type AwardCategory,
   type KeptToken,
   type NewsCard,
@@ -741,6 +742,7 @@ const buddyNote = (state: GameState, activityId: "creature" | "lab") => {
 
 // 마법생물 조련: 매력기운을 골라 내고 낸 개수만큼 주사위를 굴려, 합이 목표값 이상이면 조련에 성공한다. 실패하면 낸 매력기운만 잃고 카드는 구역에 돌아간다
 function startCreatureRoll(state: GameState, player: PlayerGameState, creature: CreatureCard): void {
+  if (BALANCE.directionalResults) return startDirectionalRoll(state, "creature", creature, [player.id]);
   const target = buddyTarget(state, "creature", creatureTarget(creature));
   const fuel = BALANCE.rollFuel.creature;
   state.hidden.roll = { kind: "creature", playerId: player.id, card: creature, target };
@@ -776,6 +778,7 @@ function resolveCreature(state: GameState, ctx: Extract<RollContext, { kind: "cr
 // 연구실 실험: 카드를 보고 지력기운을 몇 개 낼지 골라(굴릴 때 낸다) 낸 개수만큼 주사위를 굴려, 합이 목표값 이상이면 실험 성공 (카드 효과를 받는다)
 // 지력기운이 없으면 주사위 1개는 공짜로 굴린다
 function startLabRoll(state: GameState, player: PlayerGameState, lab: LabCard): void {
+  if (BALANCE.directionalResults) return startDirectionalRoll(state, "lab", lab, [player.id]);
   const target = buddyTarget(state, "lab", labTargetValue());
   const fuel = BALANCE.rollFuel.lab;
   state.hidden.roll = { kind: "lab", playerId: player.id, card: lab, target };
@@ -916,6 +919,7 @@ function startExplorationRoll(
     resolveExploration(state, { kind: "exploration", card, playerIds, mode, target: 0 }, {});
     return;
   }
+  if (BALANCE.directionalResults) return startDirectionalRoll(state, "exploration", card, playerIds);
   // 이달의 소식(봄 소풍·장마철 등)이 탐험 목표값을 바꾼다
   const rule = { ...base, target: Math.max(1, base.target + (newsEffect(state).targetMod?.exploration ?? 0)) };
   state.hidden.roll = { kind: "exploration", card, playerIds, mode, target: rule.target };
@@ -1320,6 +1324,111 @@ export function chooseActivityCard(state: GameState, playerId: string, cardId: s
   if (!state.pendingRoll && !state.pendingPick) finishResolutionStep(state);
 }
 
+// ── 방향형 결과 (48절 4안): 카드마다 주사위 눈 1~6에 따라 받는 효과가 적혀 있다. 그 활동의 주 능력치를 중심으로, 다른 능력치도 일부 섞인다 ──
+const O = (label: string, effect: CardEffect, extra: Partial<DirectionOutcome> = {}): DirectionOutcome => ({ label, effect, ...extra });
+const statKeysOf = (e: CardEffect) => Object.keys({ ...(e.stats ?? {}), ...(e.tempStats ?? {}) }) as StatKey[];
+const TOKEN_OF_STAT: Record<StatKey, KeptToken> = { intelligence: "intelligence", stamina: "stamina", charm: "charm", spellPower: "mana" };
+
+export function directionFaces(activity: "creature" | "lab" | "exploration", card: CreatureCard | LabCard | ExplorationCard): DirectionOutcome[] {
+  if (activity === "creature") {
+    const c = card as CreatureCard;
+    const bond = O("교감: 매력기운 +2", { tokens: { charm: 2 } });
+    const grow = O("매력 +1", { stats: { charm: 1 } });
+    const tame = O("조련 성공!", {}, { acquire: true });
+    const magic = O("주문력 +1", { stats: { spellPower: 1 } });
+    // 쉬운 생물일수록 조련 칸이 많다 (기준 8 / 12 / 16 / 20)
+    if (c.trainTarget <= 8) return [bond, grow, grow, tame, tame, tame];
+    if (c.trainTarget <= 12) return [bond, bond, grow, grow, tame, tame];
+    if (c.trainTarget <= 16) return [bond, bond, grow, grow, grow, tame];
+    return [bond, bond, grow, grow, magic, tame];
+  }
+  if (activity === "lab") {
+    const l = card as LabCard;
+    const int = O("지력 +1", { stats: { intelligence: 1 } });
+    const lesson = O(`카드 효과: ${l.summary}`, l.effect);
+    // 5~6: 카드가 다루는 능력치의 기운 (없으면 지력기운)
+    const stat = statKeysOf(l.effect)[0];
+    const kind = stat ? TOKEN_OF_STAT[stat] : "intelligence";
+    const energy = O(`${TOKEN_NAME[kind]} +2`, { tokens: { [kind]: 2 } });
+    return [int, int, lesson, lesson, energy, energy];
+  }
+  const x = card as ExplorationCard;
+  const hurt = O(`함정: ${describeEffect(x.failure)}`, x.failure, { harmful: true });
+  const grow = O("체력 +1", { stats: { stamina: 1 } });
+  const energy = O("체력기운 +2", { tokens: { stamina: 2 } });
+  const small = O("체력기운 +1", { tokens: { stamina: 1 } });
+  const treasure = O(`보물: ${describeEffect(x.success)}`, x.success);
+  if (x.coop) return [small, small, grow, grow, treasure, treasure];
+  const target = x.check?.target ?? 0;
+  // 하이리스크 카드일수록 함정 칸과 보물 칸이 함께 크다
+  if (target >= 10) return [hurt, hurt, grow, grow, energy, treasure];
+  if (target >= 8) return [hurt, grow, grow, energy, treasure, treasure];
+  return [small, small, grow, grow, treasure, treasure];
+}
+
+function startDirectionalRoll(state: GameState, activity: "creature" | "lab" | "exploration", card: CreatureCard | LabCard | ExplorationCard, playerIds: string[]): void {
+  const faces = directionFaces(activity, card);
+  const fuel = BALANCE.rollFuel[activity];
+  const buddy = activity !== "exploration" && hasBuddy(state, activity) ? 1 : 0;
+  state.hidden.roll = { kind: "direction", activity, card, playerIds, faces };
+  const title = activity === "creature" ? "마법생물 조련" : activity === "lab" ? "연구실 실험" : "비밀의 방";
+  state.pendingRoll = {
+    kind: activity,
+    title: `${title} · ${card.name}`,
+    lines: [
+      `주사위 1개를 굴려 나온 눈의 효과를 받아요. 굴린 뒤 ${TOKEN_NAME[fuel]} ${BALANCE.dirRerollCost}개로 다시 굴릴 수 있어요${BALANCE.dirAdjustCost > 0 ? ` (${BALANCE.dirAdjustCost}개로 눈 ±1)` : ""} — 한 번에 능력치만큼까지`,
+      ...(playerIds.length > 1 ? ["둘 중 더 좋은 눈 하나로 둘 다 효과를 받아요"] : []),
+      ...(buddy ? ["친구와 함께라 다시 굴리기 1번 공짜"] : []),
+    ],
+    faces: faces.map((f, i) => `${i + 1}: ${f.label}`),
+    ...(activity === "exploration"
+      ? { assist: { kind: "intelligence" as const, name: "지력기운", title: "함정 간파", hint: `지력기운 ${BALANCE.explorationShieldCost}개를 내면 함정 칸이 나와도 손해를 받지 않아요` } }
+      : {}),
+    entries: playerIds.map((id) => {
+      const p = state.players[id];
+      const entry = { playerId: id, label: p.name, diceCount: 1, diceToken: fuel, dice: null, confirmed: false, rerolls: 0, fuelUsed: 0, fuelLimit: rollLimit(p, fuel), freeRerolls: buddy };
+      return activity === "exploration" ? withAssist(entry, p.intelligenceTokens >= BALANCE.explorationShieldCost ? 1 : 0) : entry;
+    }),
+  };
+}
+
+function resolveDirectional(state: GameState, ctx: Extract<RollContext, { kind: "direction" }>, faceOf: Record<string, number>, shielded: string[]): void {
+  // 협력 탐험은 둘 중 더 좋은 눈 (표에서 뒤쪽일수록 좋다) 하나로 둘 다 받는다
+  const face = Math.max(...ctx.playerIds.map((id) => faceOf[id] ?? 1));
+  const outcome = ctx.faces[face - 1];
+  for (const id of ctx.playerIds) {
+    const p = state.players[id];
+    if (outcome.harmful && shielded.includes(id)) {
+      log(state, `${p.name}: 함정을 간파해서 손해를 피했어요`);
+      continue;
+    }
+    applyCardEffect(state, p, outcome.effect);
+  }
+  const names = ctx.playerIds.map((id) => state.players[id].name).join(" · ");
+  if (ctx.activity === "creature") {
+    const creature = ctx.card as CreatureCard;
+    const player = state.players[ctx.playerIds[0]];
+    if (outcome.acquire) {
+      player.creatures.push(creature);
+      if (creature.ability.trigger === "acquire" && creature.ability.effect === "spellPower") player.spellPower += creature.ability.amount;
+      log(state, `${player.name}: 마법생물 "${creature.name}" 주사위 ${face} → 조련 성공! ${describeAbility(creature.ability)}`);
+    } else {
+      state.hidden.offers.creature = [...offerCards(state, "creature"), creature];
+      syncOfferView(state, "creature");
+      log(state, `${player.name}: 마법생물 "${creature.name}" 주사위 ${face} → ${outcome.label}`);
+    }
+  } else if (ctx.activity === "lab") {
+    const lab = ctx.card as LabCard;
+    const player = state.players[ctx.playerIds[0]];
+    if (outcome.effect === lab.effect && lab.kind === "exam") player.equipment.push(lab);
+    else state.labPile.discard.push(lab);
+    log(state, `${player.name}: 연구 카드 "${lab.name}" 주사위 ${face} → ${outcome.label}`);
+  } else {
+    state.explorationPile.discard.push(ctx.card as ExplorationCard);
+    log(state, `${names}: 비밀의 방 "${ctx.card.name}" 주사위 ${face} → ${outcome.label}`);
+  }
+}
+
 // ── 주사위 굴리기: 모든 주사위는 마나기운으로 (선 정하기만 공짜 1개, 다시 굴리기 불가) ──
 // 굴려야 하는 사람이 모두 굴리면 결과가 화면에 나오고, 굴린 사람들이 결과를 눈으로 확인한 뒤 "확인"을 눌러야 결과가 적용된다
 
@@ -1377,6 +1486,25 @@ export function rerollDice(state: GameState, playerId: string, diceIndexes: numb
   if (indexes.length === 0) throw new Error("다시 굴릴 주사위를 골라 주세요.");
   if (indexes.some((i) => !Number.isInteger(i) || i < 0 || i >= entry.dice!.length)) throw new Error("없는 주사위입니다.");
   const player = state.players[playerId];
+  if (pending.faces) {
+    // 방향형(48절): 그 활동의 재료 기운으로 다시 굴린다 (공짜 다시 굴리기가 있으면 먼저 쓴다). 한 번에 쓸 수 있는 기운은 능력치까지
+    const kind = entry.diceToken ?? "mana";
+    if ((entry.freeRerolls ?? 0) > 0) entry.freeRerolls! -= 1;
+    else {
+      const cost = BALANCE.dirRerollCost;
+      if ((entry.fuelUsed ?? 0) + cost > (entry.fuelLimit ?? 0)) throw new Error("이번 굴림에서 쓸 수 있는 기운을 다 썼어요 (능력치만큼까지).");
+      if (tokensOf(player, kind) < cost) throw new Error(`${TOKEN_NAME[kind]}이 부족해요.`);
+      pay(player, kind, cost);
+      entry.fuelUsed = (entry.fuelUsed ?? 0) + cost;
+    }
+    const before = entry.dice[0];
+    entry.dice[0] = rollD6();
+    entry.rerolls += 1;
+    const counts = entry.rerollCounts ?? (entry.rerollCounts = [0]);
+    counts[0] = (counts[0] ?? 0) + 1;
+    log(state, `${player.name}: 다시 굴렸어요 (${before} → ${entry.dice[0]})`);
+    return;
+  }
   if (player.manaTokens < indexes.length) throw new Error(`마나기운이 부족해요 (주사위 ${indexes.length}개를 다시 굴리려면 마나기운 ${indexes.length}개가 필요해요).`);
   pay(player, "mana", indexes.length);
   const before = indexes.map((i) => entry.dice![i]);
@@ -1386,6 +1514,25 @@ export function rerollDice(state: GameState, playerId: string, diceIndexes: numb
   const counts = entry.rerollCounts ?? (entry.rerollCounts = entry.dice.map(() => 0));
   for (const i of indexes) counts[i] = (counts[i] ?? 0) + 1;
   log(state, `${player.name}: 마나기운 ${indexes.length}개로 주사위를 다시 굴렸어요 (${before.join(", ")} → ${indexes.map((i) => entry.dice![i]).join(", ")})`);
+}
+
+// 방향형(48절): 굴린 눈을 재료 기운 dirAdjustCost개로 1 올리거나 내린다 (1~6 안에서, 한 번에 쓸 수 있는 기운은 능력치까지)
+export function adjustDie(state: GameState, playerId: string, delta: 1 | -1): void {
+  const pending = state.pendingRoll;
+  if (!pending?.faces || BALANCE.dirAdjustCost <= 0) throw new Error("지금은 눈을 조정할 수 없어요.");
+  if (currentRoller(state) !== playerId) throw new Error("아직 내 차례가 아니에요.");
+  const entry = pending.entries.find((e) => e.playerId === playerId)!;
+  if (!entry.dice || entry.confirmed) throw new Error("굴린 뒤 확인하기 전에만 조정할 수 있어요.");
+  const next = entry.dice[0] + delta;
+  if (next < 1 || next > 6) throw new Error("1~6 사이로만 조정할 수 있어요.");
+  const kind = entry.diceToken ?? "mana";
+  const cost = BALANCE.dirAdjustCost;
+  if ((entry.fuelUsed ?? 0) + cost > (entry.fuelLimit ?? 0)) throw new Error("이번 굴림에서 쓸 수 있는 기운을 다 썼어요 (능력치만큼까지).");
+  if (tokensOf(state.players[playerId], kind) < cost) throw new Error(`${TOKEN_NAME[kind]}이 부족해요.`);
+  pay(state.players[playerId], kind, cost);
+  entry.fuelUsed = (entry.fuelUsed ?? 0) + cost;
+  entry.dice[0] = next;
+  log(state, `${state.players[playerId].name}: ${TOKEN_NAME[kind]} ${cost}개로 눈을 ${delta > 0 ? "올렸어요" : "내렸어요"} (→ ${next})`);
 }
 
 // 결과 확인 버튼: 모든 참여자가 확인하면 결과를 적용한다
@@ -1421,6 +1568,9 @@ function resolveRoll(state: GameState): void {
     finishResolutionStep(state);
   } else if (ctx.kind === "duel") {
     resolveDuel(state, ctx, diceOf(ctx.challengerId), diceOf(ctx.targetId));
+    if (!state.pendingPick) finishResolutionStep(state);
+  } else if (ctx.kind === "direction") {
+    resolveDirectional(state, ctx, Object.fromEntries(ctx.playerIds.map((id) => [id, diceOf(id)[0] ?? 1])), ctx.playerIds.filter((id) => assistOf(id) > 0));
     if (!state.pendingPick) finishResolutionStep(state);
   } else if (ctx.kind === "exploration") {
     resolveExploration(state, ctx, Object.fromEntries(ctx.playerIds.map((id) => [id, diceOf(id)])), ctx.playerIds.filter((id) => assistOf(id) > 0));
@@ -1637,6 +1787,11 @@ function recoverRollCard(state: GameState): void {
   if (ctx.kind === "creature") state.creatureDiscard.push(ctx.card);
   else if (ctx.kind === "lab") state.labPile.discard.push(ctx.card);
   else if (ctx.kind === "exploration") state.explorationPile.discard.push(ctx.card);
+  else if (ctx.kind === "direction") {
+    if (ctx.activity === "creature") state.creatureDiscard.push(ctx.card as CreatureCard);
+    else if (ctx.activity === "lab") state.labPile.discard.push(ctx.card as LabCard);
+    else state.explorationPile.discard.push(ctx.card as ExplorationCard);
+  }
 }
 
 // 순서 목록에서 한 명을 빼고, 그 사람이 현재 차례 앞쪽에 있었다면 차례 포인터를 한 칸 당긴다

@@ -31,6 +31,8 @@ const m = {
   // 눈덩이: 초반(1~3개월) 성공 횟수 그룹별로, 이후(4~12개월) 혼자 하는 판정(조련·연구실·탐험)의 성공률
   later: {} as Record<string, { ok: number; total: number }>,
   expGrowth: 0,
+  // 눈덩이(실패가 없는 규칙에도 쓰는 기준): 1~3개월에 오른 능력치 합 그룹별 이후(4~12개월) 성장량과 우승률
+  growth: {} as Record<string, { n: number; later: number; w: number }>,
   outcome: {} as Record<string, { ok: number; total: number }>,
   classTier: { intro: 0, basic: 0, mid: 0, advanced: 0, skip: 0 } as Record<string, number>,
   classStat: [0, 0].map(() => ({ intelligence: 0, stamina: 0, charm: 0, spellPower: 0 })) as Record<StatKey, number>[],
@@ -72,6 +74,8 @@ for (let g = 0; g < games; g++) {
   let leaderAt9: string | null = null;
   const earlyOk = new Map<string, number>();
   const laterTry = new Map<string, { ok: number; total: number }>();
+  const sumAt3 = new Map<string, number>();
+  const statSum = (id: string) => STATS.reduce((a, s) => a + state.players[id][s], 0);
   let lastRound = 1;
   let guard = 0;
   while (state.phase !== "ended" && guard++ < 8000) {
@@ -156,6 +160,7 @@ for (let g = 0; g < games; g++) {
     }
     // 달이 바뀌면 예상 점수 1등을 확인한다 (선두 교체·역전)
     if (state.round !== lastRound) {
+      if (lastRound === 3) for (const id of ids) sumAt3.set(id, statSum(id));
       if (lastRound === BALANCE.midtermRound) for (const id of ids) for (const s of STATS) m.statAt[6][s] += state.players[id][s];
       const top = [...ids].sort((a, b) => projected(state, state.players[b]) - projected(state, state.players[a]))[0];
       if (leader !== null && top !== leader) m.leadChanges++;
@@ -185,6 +190,14 @@ for (let g = 0; g < games; g++) {
   m.awardHolders += ids.filter((id) => firsts(id) > 0).length;
   if (ids.some((id) => firsts(id) >= 3)) m.sweep++;
   if (leaderAt9 && !state.winnerIds?.includes(leaderAt9)) m.comeback++;
+  const initial = STATS.reduce((a, s) => a + BALANCE.initialStats[s], 0);
+  for (const id of ids) {
+    const early = (sumAt3.get(id) ?? initial) - initial;
+    const g = (m.growth[`${Math.min(3, early)}${early >= 3 ? "+" : ""}`] ??= { n: 0, later: 0, w: 0 });
+    g.n++;
+    g.later += statSum(id) - (sumAt3.get(id) ?? initial);
+    if (state.winnerIds?.includes(id)) g.w += 1 / state.winnerIds.length;
+  }
   for (const id of ids) {
     const k = `${Math.min(3, earlyOk.get(id) ?? 0)}${(earlyOk.get(id) ?? 0) >= 3 ? "+" : ""}회`;
     const r = (m.early[k] ??= { n: 0, w: 0 });
@@ -219,5 +232,6 @@ console.log("[재미] 1·2등 점수 차", avg(m.margin, games), `(우승 점수
 console.log("[재미] 예상 점수 선두 교체(판당)", avg(m.leadChanges, games), "· 9개월 끝 선두가 우승 못 한 판(역전)", pct(m.comeback, games));
 console.log("[재미] 1~3개월 성공 횟수별 우승률 (초반 운이 판을 정하는가):", Object.fromEntries(Object.entries(m.early).sort().map(([k, v]) => [k, pct(v.w, v.n)])));
 console.log("[재미] 눈덩이: 초반 성공 횟수별 이후(4~12개월) 판정 성공률:", Object.fromEntries(Object.entries(m.later).sort().map(([k, v]) => [k, pct(v.ok, v.total)])), "· 경험치로 성장(판당)", avg(m.expGrowth, games));
+console.log("[재미] 눈덩이(성장): 1~3개월 성장량별 이후 성장량 · 우승률:", Object.fromEntries(Object.entries(m.growth).sort().map(([k, v]) => [`+${k}`, `${avg(v.later, v.n)} · ${pct(v.w, v.n)} (${pct(v.n, P)})`])));
 console.log("[재미] 1위 상을 받은 사람 수(판당)", avg(m.awardHolders, games), "· 한 사람이 1위를 3부문 이상 싹쓸이", pct(m.sweep, games));
 console.log("[재미] 친구와 엮인 활동(같은 구역·주문 대결) 비율", pct(m.shared, m.activities), "· 주문 대결(판당)", avg(m.duels, games), "· 벼락치기 사용률", pct(m.cram, m.cramChances));
