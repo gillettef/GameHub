@@ -1,10 +1,10 @@
 import { useMemo, useState } from 'react';
 import { SLOT_SPECS } from './assets';
 import { Icon, ICON_NAMES } from './Icon';
-import { Slot, useSlotImage } from './Slot';
+import { Slot, slotImageUrl } from './Slot';
 
 function Row({ k, label, size, note }: { k: string; label: string; size: string; note?: string }) {
-  const url = useSlotImage(k);
+  const url = slotImageUrl(k);
   return (
     <div className="as-row">
       <Slot slot={k} className="as-thumb" tint="#4b3fa8" fallback={<Icon name="plus" size={18} />} />
@@ -34,7 +34,7 @@ export function AssetSheet() {
       <header>
         <h1>이미지 슬롯 ({SLOT_SPECS.length})</h1>
         <p>
-          파일을 <code>public/images/&lt;슬롯키&gt;.webp|png|jpg</code> 로 넣으면 자동 적용돼요. 새로고침하면 반영됩니다.
+          파일을 <code>public/images/&lt;슬롯키&gt;.webp|png|jpg</code> 로 넣으면 자동 적용돼요. 개발 서버에서는 파일을 넣거나 지우면 자동으로 새로고침돼요.
         </p>
         <div className="row">
           <a className="btn ghost small" href="#">

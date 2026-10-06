@@ -1,17 +1,16 @@
 import { useState } from 'react';
-import { HUMAN } from '../game/engine';
+import { CFG, HUMAN, willEnter } from '../game/engine';
 import type { GameState, Player } from '../game/types';
-import { CFG } from '../game/engine';
 import { Icon } from './Icon';
 import { TYPE_META } from './meta';
 import { Sheet, VisitorChip } from './parts';
 
 /** 한 플레이어의 운영 결과 (내 것·상대 것 모두 공개) */
-function PlayerReport({ p, mine }: { p: Player; mine: boolean }) {
+function PlayerReport({ game, p, mine }: { game: GameState; p: Player; mine: boolean }) {
   const r = p.report;
   if (!r) return null;
   const net = r.feeIncome + r.income - r.upkeep;
-  const turnedBack = p.visitors.filter((v) => v.budget < r.fee);
+  const turnedBack = p.visitors.filter((v) => !willEnter(v, r.fee));
   return (
     <>
       <div className="rep-stats">
@@ -105,8 +104,8 @@ function PlayerReport({ p, mine }: { p: Player; mine: boolean }) {
         <div className="callout warn">
           <Icon name="info" size={20} />
           <div>
-            <b>이용 못 하고 나간 관객 {r.unserved}명</b>
-            <span>{mine ? '탈 수 있는 시설이 없었어요. 시설을 늘리거나 안내 직원을 고용해 보세요.' : '시설이 부족했어요.'}</span>
+            <b>이용 못 하고 나간 관객 {r.unserved}명 · 만족도 -{r.unservedSat}</b>
+            <span>{mine ? '빈 시설이 없었어요. 시설을 늘리거나 안내 직원을 고용하고, 수용 인원만큼만 데려오세요.' : '시설이 부족했어요.'}</span>
           </div>
         </div>
       )}
@@ -122,12 +121,24 @@ function PlayerReport({ p, mine }: { p: Player; mine: boolean }) {
           </div>
         </div>
       )}
+      {(r.bonusSat > 0 || r.bonusIncome > 0) && (
+        <div className="callout">
+          <Icon name="sparkle" size={20} />
+          <div>
+            <b>
+              보너스{r.bonusSat > 0 ? ` 만족도 +${r.bonusSat}` : ''}
+              {r.bonusIncome > 0 ? ` 수익 +$${r.bonusIncome}` : ''}
+            </b>
+            <span>연구원과 시설 특수효과(패시브)로 얻었어요.</span>
+          </div>
+        </div>
+      )}
       {r.trashAdded > 0 && (
         <div className="callout warn">
           <Icon name="trash" size={20} />
           <div>
             <b>쓰레기 +{r.trashAdded}</b>
-            <span>치우지 않으면 {CFG.trashPerVp}개마다 VP가 깎여요.</span>
+            <span>{game.event?.trashDelta ? `이벤트 쓰레기 ${game.event.trashDelta}개 포함. ` : ''}치우지 않으면 라운드가 끝날 때마다 {CFG.trashPerVp}개당 VP -1이에요.</span>
           </div>
         </div>
       )}
@@ -136,7 +147,7 @@ function PlayerReport({ p, mine }: { p: Player; mine: boolean }) {
           <Icon name="coin" size={20} />
           <div>
             <b>적자! VP -{r.debtVp}</b>
-            <span>돈이 모자라 평판이 떨어졌어요.</span>
+            <span>돈이 모자라 평판이 떨어졌어요. (적자 ${CFG.debtPerVp}마다 VP -1, 돈은 $0으로)</span>
           </div>
         </div>
       )}
@@ -161,7 +172,7 @@ export function ReportSheet({ game, onNext }: { game: GameState; onNext: () => v
           ))}
         </div>
       )}
-      <PlayerReport key={who} p={p} mine={who === HUMAN} />
+      <PlayerReport key={who} game={game} p={p} mine={who === HUMAN} />
       <div className="sticky-cta">
         <button className="btn primary wide" onClick={onNext}>
           관리 단계로 <Icon name="arrow" size={18} />

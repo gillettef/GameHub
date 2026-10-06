@@ -2,11 +2,20 @@
 <html lang="ko">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+    <!-- 확대 금지(user-scalable=no)는 접근성 때문에 쓰지 않는다. 더블탭 줌은 CSS touch-action: manipulation 으로 막는다 -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="description" content="나만의 놀이공원을 키워 최고의 만족도를 얻는 경영 보드게임" />
     <meta name="theme-color" content="#1b1640" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="스마일파크" />
+    <meta name="format-detection" content="telephone=no" />
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./icon.svg" type="image/svg+xml" />
+    <link rel="icon" href="./icon-192.png" type="image/png" sizes="192x192" />
+    <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
     <title>스마일 파크</title>
   </head>
   <body>

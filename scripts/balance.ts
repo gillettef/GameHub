@@ -3,7 +3,7 @@
  *   npx tsx scripts/balance.ts [--n 1500] [--exp mirror,profiles,snowball,economy,staff] [--set satPerVp=5,startMoney=12,rounds3=9]
  * 룰 상수(CFG)를 --set 으로 덮어써서 비교한다. 결과는 표로 출력.
  */
-import { AI_PROFILES, CFG, newGame, probe, rankings } from '../src/game/engine';
+import { AI_PROFILES, CFG, newGame, probe, rankings, winners } from '../src/game/engine';
 import type { GameState, StaffKey } from '../src/game/types';
 import { FACILITY_BY_ID } from '../src/game/data/facilities';
 
@@ -56,7 +56,7 @@ console.log(`CFG: satPerVp=${CFG.satPerVp} startMoney=${CFG.startMoney} incomeDi
 /* ───── 1. 거울 대전: 같은 AI끼리 → 좌석·선 플레이어 편향, VP 규모 ───── */
 if (EXPS.includes('mirror')) {
   console.log('## 거울 대전 (balanced ×N)');
-  for (const pl of [2, 3, 4]) {
+  for (const pl of [2, 3, 4, 5]) {
     const wins = Array(pl).fill(0);
     const vps: number[] = [];
     const money: number[] = [];
@@ -65,7 +65,8 @@ if (EXPS.includes('mirror')) {
     for (let i = 0; i < N; i++) {
       const s = play(pl, Array(pl).fill('balanced'), i * 7919 + 1);
       const r = rankings(s);
-      wins[(r[0].id - s.startFirst + pl) % pl]++; // 1라운드 순서 기준
+      const w = winners(s); // 공동 1위는 나눠 센다
+      for (const p of w) wins[(p.id - s.startFirst + pl) % pl] += 1 / w.length; // 1라운드 순서 기준
       vps.push(...s.players.map((p) => p.vp));
       money.push(...s.players.map((p) => p.money));
       gaps.push(r[0].vp - r[1].vp);

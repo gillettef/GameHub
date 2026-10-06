@@ -293,7 +293,7 @@ export const FACILITIES: FacilityCard[] = [
   {
     "id": 19,
     "type": "교육형",
-    "name": "동물 원주율",
+    "name": "동물원 탐방",
     "cost": 4,
     "upkeep": 1,
     "income": [

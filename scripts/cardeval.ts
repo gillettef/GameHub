@@ -5,7 +5,7 @@
  * Δ$ = 라운드당 순수익 변화(유지비·예상 수리/청소비 포함), ΔVP = 라운드당 만족도→VP 변화.
  * 가치 = Δ$ + λ·ΔVP, 회수 = 건설비 ÷ 가치(라운드). 회수가 짧을수록 효율적.
  */
-import { CFG, drawVisitor, newGame, operatePlayer } from '../src/game/engine';
+import { CFG, basePrice, drawVisitor, newGame, operatePlayer } from '../src/game/engine';
 import { FACILITIES } from '../src/game/data/facilities';
 import type { StaffKey } from '../src/game/types';
 
@@ -14,6 +14,7 @@ const opt = (k: string, d: string) => (a.indexOf('--' + k) >= 0 ? a[a.indexOf('-
 for (const kv of opt('set', '').split(',').filter(Boolean)) {
   const [k, v] = kv.split('=');
   if (k in CFG.hireCosts) CFG.hireCosts[k as StaffKey] = v.split('/').map(Number);
+  else if (k === 'capTiers') CFG.capTiers = v.split('/').map((t) => t.split(':').map(Number) as [number, number]);
   else (CFG as unknown as Record<string, number>)[k] = Number(v);
 }
 const BASE = Number(opt('base', '3'));
@@ -22,7 +23,7 @@ const T = Number(opt('trials', '600'));
 const LAMBDA = Number(opt('lambda', '3'));
 
 const s = newGame({ aiCount: 1, seed: 1 }); // 사람 대기 상태의 빈 상태를 빌려 쓴다
-s.event = { id: 0, name: '평범한 날', desc: '', icon: 'sun' };
+s.event = { id: 0, name: '평범한 날', desc: '', icon: 'sun', tags: [] };
 const p = s.players[0];
 
 function round(base: number[], extra: number | null, seed: number) {
@@ -66,17 +67,17 @@ const rows = FACILITIES.map((c) => {
   dn /= T;
   dv /= T;
   const value = dn + LAMBDA * dv;
-  return { c, dn, dv, value, payback: value > 0 ? c.cost / value : 99 };
+  return { c, dn, dv, value, payback: value > 0 ? basePrice(c) / value : 99 };
 });
 
-const vals = rows.map((r) => r.value / Math.max(1, r.c.cost));
+const vals = rows.map((r) => r.value / basePrice(r.c));
 const m = vals.reduce((x, y) => x + y, 0) / vals.length;
 const sd = Math.sqrt(vals.reduce((x, y) => x + (y - m) ** 2, 0) / vals.length);
 console.log(`# 시설 한계 가치 (기준 공원 ${BASE}곳 · 관객 ${VIS}명 · 입장료 $2 · λ=${LAMBDA} · satPerVp=${CFG.satPerVp})`);
 {
   // 비용 구간별 평균 가치/회수
   const tiers: [string, (c: number) => boolean][] = [['비용 1-2', (c) => c <= 2], ['비용 3-4', (c) => c >= 3 && c <= 4], ['비용 5-6', (c) => c >= 5 && c <= 6], ['비용 7+', (c) => c >= 7]];
-  console.log(tiers.map(([n, f]) => { const r = rows.filter((x) => f(x.c.cost)); return `${n}: 가치/R ${(r.reduce((s2, x) => s2 + x.value, 0) / r.length).toFixed(2)} 회수 ${(r.reduce((s2, x) => s2 + x.c.cost / Math.max(0.1, x.value), 0) / r.length).toFixed(1)}R`; }).join(' | '));
+  console.log(tiers.map(([n, f]) => { const r = rows.filter((x) => f(x.c.cost)); return `${n}: 가치/R ${(r.reduce((s2, x) => s2 + x.value, 0) / r.length).toFixed(2)} 회수 ${(r.reduce((s2, x) => s2 + basePrice(x.c) / Math.max(0.1, x.value), 0) / r.length).toFixed(1)}R`; }).join(' | '));
   const cs = rows.map((r) => r.c.cost);
   const vs2 = rows.map((r) => r.value);
   const mc = cs.reduce((x, y) => x + y, 0) / cs.length, mv = vs2.reduce((x, y) => x + y, 0) / vs2.length;
@@ -85,8 +86,8 @@ console.log(`# 시설 한계 가치 (기준 공원 ${BASE}곳 · 관객 ${VIS}�
   console.log(`비용-가치 상관계수 ${corr.toFixed(2)} (양수·높을수록 비싼 시설이 실제로 더 가치 있음)`);
 }
 console.log('id 시설명        유형    비용 유지 |  Δ$/R   ΔVP/R  가치/R | 회수(R)  효율z');
-for (const r of [...rows].sort((x, y) => y.value / y.c.cost - x.value / x.c.cost)) {
-  const z = (r.value / Math.max(1, r.c.cost) - m) / sd;
+for (const r of [...rows].sort((x, y) => y.value / basePrice(y.c) - x.value / basePrice(x.c))) {
+  const z = (r.value / basePrice(r.c) - m) / sd;
   const flag = z > 1.5 ? ' ▲과강' : z < -1.5 ? ' ▼과약' : '';
   console.log(
     `${String(r.c.id).padStart(2)} ${r.c.name.padEnd(10, '　')} ${r.c.type.padEnd(5, '　')} ${String(r.c.cost).padStart(3)} ${String(r.c.upkeep).padStart(3)} | ${r.dn.toFixed(2).padStart(5)} ${r.dv.toFixed(2).padStart(6)} ${r.value.toFixed(2).padStart(7)} | ${r.payback >= 99 ? '  -' : r.payback.toFixed(1).padStart(5)}  ${z.toFixed(1).padStart(5)}${flag}`,

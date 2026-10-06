@@ -3,8 +3,9 @@
  *
  * - 파일을 `public/images/<슬롯키>.<확장자>` 로 넣으면 자동 적용된다. (확장자 우선순위: webp → png → jpg)
  *   예) public/images/facility/1.webp  (롤러코스터)
- * - 파일이 없으면 <Slot>이 아이콘 + 그라데이션 플레이스홀더를 그린다.
- * - 슬롯 목록과 권장 크기는 앱 주소 뒤에 `#assets` 를 붙이면 확인할 수 있다.
+ * - 실제 파일 목록은 빌드 타임에 vite.config.ts 의 imageManifest 플러그인이 만든다(`virtual:image-manifest`).
+ *   그래서 파일이 없는 슬롯은 요청을 보내지 않고 <Slot>이 아이콘 + 그라데이션 플레이스홀더를 그린다.
+ * - 슬롯 목록과 권장 크기는 개발 서버(npm run dev)에서 앱 주소 뒤에 `#assets` 를 붙이면 확인할 수 있다.
  * - 앱 포장(Capacitor 등) 시에도 public/images 가 그대로 번들된다.
  */
 import { FACILITIES } from '../game/data/facilities';
