@@ -175,6 +175,8 @@ export interface PlayerGameState {
   pendingStaminaTokens: number;
   pendingManaTokens: number;
   tournamentTrack: number;
+  // 경험치 (47절 4안): 아깝게 실패할 때 쌓이고, expPerGrowth만큼 모이면 그 능력치가 성장한다
+  exp?: Partial<Record<StatKey, number>>;
   // 졸업식에서 받은 상 (게임이 끝날 때 정해진다, 46절): 부문마다 순위에 따라 점수를 받는다. 최종 점수 = 받은 점수의 합
   awards: GraduationAward[];
   classCards: ClassCard[];

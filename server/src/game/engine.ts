@@ -281,6 +281,33 @@ function applyCardEffect(state: GameState, player: PlayerGameState, effect: Card
   }
 }
 
+// 결과에 따라 배운다 (47절 4안): 아깝게 실패하면 경험치가 쌓이고, expPerGrowth만큼 모이면 성장한다
+const isNearMiss = (total: number, target: number) => BALANCE.gradedResults && total < target && total >= Math.ceil(target * BALANCE.nearMissRatio);
+function learn(state: GameState, player: PlayerGameState, stat: StatKey): void {
+  const exp = (player.exp ??= {});
+  exp[stat] = (exp[stat] ?? 0) + 1;
+  if (exp[stat]! >= BALANCE.expPerGrowth) {
+    exp[stat] = 0;
+    player[stat] += BALANCE.growthAmount;
+    log(state, `${player.name}: 아까운 경험이 쌓여 성장! ${STAT_NAME[stat]} +${BALANCE.growthAmount}`);
+  } else log(state, `${player.name}: 아깝다! ${STAT_NAME[stat]} 경험치 ${exp[stat]}/${BALANCE.expPerGrowth}`);
+}
+// 서툴렀을 때(4안) 또는 실패 보상(2안): 재료 기운을 돌려받는다
+function failLearning(state: GameState, player: PlayerGameState, activityId: "creature" | "lab" | "exploration" | "duel", stat: StatKey, near: boolean, card?: OfferedCard): string {
+  if (BALANCE.gradedResults) {
+    if (near) {
+      learn(state, player, stat);
+      return "";
+    }
+    const kind = ({ creature: "charm", lab: "intelligence", exploration: "stamina", duel: "mana" } as const)[activityId];
+    applyCardEffect(state, player, { tokens: { [kind]: 1 } });
+    return ` 서툴렀지만 ${TOKEN_NAME[kind]} +1`;
+  }
+  const reward = failRewardOf(activityId, card);
+  applyCardEffect(state, player, reward);
+  return Object.keys(reward).length ? ` 실패해도 ${describeEffect(reward)}` : "";
+}
+
 // 성장 (42절): 자율활동에서 성과를 내면 그 활동의 주 능력치가 BALANCE.growthAmount만큼 오른다 (조련·탐험·연구실 성공, 주문 대결 승리)
 function grow(state: GameState, player: PlayerGameState, activityId: ActivityId, stat: StatKey): void {
   if (!BALANCE.growthActivities[activityId]) return;
@@ -740,9 +767,9 @@ function resolveCreature(state: GameState, ctx: Extract<RollContext, { kind: "cr
     // 실패한 카드는 구역으로 돌아가 두 번째 참가자가 도전할 수 있다 (아무도 가져가지 않으면 3주차 끝에 버림 더미로)
     state.hidden.offers.creature = [...offerCards(state, "creature"), creature];
     syncOfferView(state, "creature");
-    const reward = failRewardOf("creature", creature);
-    applyCardEffect(state, player, reward);
-    log(state, `${player.name}: 마법생물 "${creature.name}" 조련 실패... (${text})${Object.keys(reward).length ? ` 실패해도 ${describeEffect(reward)}` : ""}`);
+    log(state, `${player.name}: 마법생물 "${creature.name}" 조련 실패... (${text})`);
+    const note = failLearning(state, player, "creature", "charm", isNearMiss(total, ctx.target), creature);
+    if (note) log(state, `${player.name}:${note}`);
   }
 }
 
@@ -775,9 +802,9 @@ function resolveLab(state: GameState, ctx: Extract<RollContext, { kind: "lab" }>
     grow(state, player, "lab", "intelligence");
   } else {
     state.labPile.discard.push(lab);
-    const reward = failRewardOf("lab", lab);
-    applyCardEffect(state, player, reward);
-    log(state, `${player.name}: 연구 카드 "${lab.name}" 실험 실패... (${text})${Object.keys(reward).length ? ` 실패해도 ${describeEffect(reward)}` : ""}`);
+    log(state, `${player.name}: 연구 카드 "${lab.name}" 실험 실패... (${text})`);
+    const note = failLearning(state, player, "lab", "intelligence", isNearMiss(total, ctx.target), lab);
+    if (note) log(state, `${player.name}:${note}`);
   }
 }
 
@@ -856,7 +883,8 @@ function resolveDuel(state: GameState, ctx: Extract<RollContext, { kind: "duel" 
   winner.pendingStaminaTokens -= sumEffect(abilitiesOf(loser, "lose"), "enemyStamina");
   // 낸 마나기운은 이미 사라졌다. 방어 능력(immune)이 있으면 졌어도 마나기운 1개를 다음 달 준비 때 돌려받는다
   if (sumEffect(loserAbilities, "immune") > 0) loser.pendingManaTokens += 1;
-  applyCardEffect(state, loser, failRewardOf("duel"));
+  const duelNote = failLearning(state, loser, "duel", "spellPower", BALANCE.gradedResults && Math.abs(challengerRoll - defenderRoll) <= BALANCE.nearMissDuelGap);
+  if (duelNote) log(state, `${loser.name}:${duelNote}`);
   log(
     state,
     `${player.name}(${rollText(challengerDice, challengerBonus, challengerRoll)})이(가) ${target.name}(${rollText(defenderDice, defenderBonus, defenderRoll)})을(를) 지목! ${winner.name} 승리${feeText}`,
@@ -920,6 +948,7 @@ function explorationRule(card: ExplorationCard, mode: "single" | "pair", round: 
 function resolveExploration(state: GameState, ctx: Extract<RollContext, { kind: "exploration" }>, dice: Record<string, number[]>, shielded: string[] = []): void {
   const { card, playerIds, mode, target } = ctx;
   let success = true;
+  let near = false;
   let rollText = "";
   const rule = explorationRule(card, mode, state.round);
   if (rule) {
@@ -932,22 +961,23 @@ function resolveExploration(state: GameState, ctx: Extract<RollContext, { kind: 
     });
     const total = sum(parts.map((x) => x.total));
     success = total >= target;
+    near = isNearMiss(total, target);
     rollText =
       mode === "pair"
         ? ` (${parts.map((x) => `${x.p.name} ${x.text}`).join(", ")} → 합 ${total}/${target} ${success ? "성공" : "실패"})`
         : ` (${parts[0].text} / 목표 ${target} ${success ? "성공" : "실패"})`;
   }
-  const effect = success ? card.success : card.failure;
+  // 4안: 아깝게 실패하면 손해가 없다
+  const effect = success ? card.success : near ? {} : card.failure;
   // 실패했을 때 함정을 간파한(지력기운을 낸) 사람은 손해를 받지 않는다
   const safe = success ? [] : playerIds.filter((id) => shielded.includes(id));
   for (const id of playerIds) if (!safe.includes(id)) applyCardEffect(state, state.players[id], effect);
-  const reward = !success && rule ? failRewardOf("exploration", card) : {};
-  for (const id of playerIds) applyCardEffect(state, state.players[id], reward);
+  const notes = !success && rule ? playerIds.map((id) => failLearning(state, state.players[id], "exploration", "stamina", near, card)).filter(Boolean) : [];
   state.explorationPile.discard.push(card);
   const gainsGrowth = !!rule && success;
   const names = playerIds.map((id) => state.players[id].name).join(" · ");
   const shieldText = safe.length > 0 ? ` — ${safe.map((id) => state.players[id].name).join(" · ")}은(는) 함정을 간파해서 손해를 피했어요` : "";
-  log(state, `${names}: 비밀의 방 "${card.name}"${rollText} → ${describeEffect(effect)}${playerIds.length > 1 ? " (두 명 모두 적용)" : ""}${shieldText}${Object.keys(reward).length ? ` · 실패해도 ${describeEffect(reward)}` : ""}`);
+  log(state, `${names}: 비밀의 방 "${card.name}"${rollText} → ${describeEffect(effect)}${playerIds.length > 1 ? " (두 명 모두 적용)" : ""}${shieldText}${notes.length ? ` ·${notes[0]}` : ""}`);
   // 판정이 있는 탐험에서 성공하면 모두 체력이 오른다 (성장)
   if (gainsGrowth) for (const id of playerIds) grow(state, state.players[id], "exploration", "stamina");
 }
