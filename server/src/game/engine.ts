@@ -83,7 +83,7 @@ export const energyCap = (player: PlayerGameState, kind: KeptToken): number =>
   BALANCE.energyCapMultiplier > 0 ? effectiveStat(player, ENERGY_STAT[kind]) * BALANCE.energyCapMultiplier : Infinity;
 // 한 번 굴릴 때 낼 수 있는 재료 기운의 상한 = 그 기운의 능력치 ("실력만큼만 힘을 낸다", 43-5절). 능력치가 0이어도 1개는 낼 수 있다
 export const rollLimit = (player: PlayerGameState, kind: KeptToken): number =>
-  BALANCE.rollLimitByStat ? Math.max(1, effectiveStat(player, ENERGY_STAT[kind])) : Infinity;
+  BALANCE.rollLimitByStat ? Math.max(1, effectiveStat(player, ENERGY_STAT[kind]) + BALANCE.rollLimitBonus) : Infinity;
 // 이번 굴림에 실제로 낼 수 있는 재료 기운 개수 (보유량과 실력 상한 중 작은 쪽)
 export const usableFuel = (player: PlayerGameState, kind: KeptToken): number => Math.min(tokensOf(player, kind), rollLimit(player, kind));
 // 시험 카드의 주 능력치가 주사위 재료다 (주문력은 마나기운)

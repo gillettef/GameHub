@@ -149,7 +149,7 @@ export function chooseActivityAction(
   // 주문 대결 상대: 아직 활동을 고르지 않은 플레이어 중 주문력이 가장 높은(가장 위협적인) 사람
   const targetPlayerId =
     activityId === "duel"
-      ? [...targets].sort((a, b) => state.players[b].spellPower - state.players[a].spellPower)[0]
+      ? [...targets].sort(() => Math.random() - 0.5).sort((a, b) => state.players[b].spellPower - state.players[a].spellPower)[0] // 동점이면 무작위 (앞자리만 지목하지 않도록)
       : undefined;
   return { activityId, targetPlayerId };
 }

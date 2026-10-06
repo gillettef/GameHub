@@ -1,5 +1,5 @@
 // 연구 카드 (연구실 실험 = 정규수업의 연장선인 "심화학습"). 지력만큼 펼친 카드 중 1장을 직접 골라 효과를 받습니다.
-//   study   심화 수업: 능력치 영구 증가 (고르는 데 체력기운이 든다: 하나만 오르면 2, 둘이 오르면 3)
+//   study   심화 수업: 능력치 영구 증가 (고르는 데 체력기운이 든다: 하나만 오르면 0, 둘이 오르면 1 — 45절에서 기운 수입에 맞춰 1씩 낮춤)
 //   exam    시험 대비: 다음 시험까지 유지되는 임시 능력치 (학점 카드 포함, 시험 후 버림 더미로)
 //   insight 엿보기: 탐험 카드 덱 맨 위 1장을 미리 확인
 //   supply  보급: 다음 달 마나기운/체력기운
@@ -12,26 +12,26 @@ type Def = { name: string; description: string; cost: number; kind: LabCardKind;
 
 const DEFS: Def[] = [
   // 심화 수업 — 능력치 하나 +2 (8장)
-  { name: "특별 개인 지도", description: "교수님이 옆에서 하나하나 알려 주세요.", cost: 1, kind: "study", effect: { stats: { intelligence: 1 } }, copies: 2 },
-  { name: "산악 훈련 캠프", description: "산 정상까지 씩씩하게 올랐어요.", cost: 1, kind: "study", effect: { stats: { stamina: 1 } }, copies: 2 },
-  { name: "사교 무도회 레슨", description: "우아한 인사법을 배웠어요.", cost: 1, kind: "study", effect: { stats: { charm: 1 } }, copies: 2 },
-  { name: "고급 마법 세미나", description: "어려운 주문을 깊이 파고들었어요.", cost: 1, kind: "study", effect: { stats: { spellPower: 1 } }, copies: 2 },
+  { name: "특별 개인 지도", description: "교수님이 옆에서 하나하나 알려 주세요.", cost: 0, kind: "study", effect: { stats: { intelligence: 1 } }, copies: 2 },
+  { name: "산악 훈련 캠프", description: "산 정상까지 씩씩하게 올랐어요.", cost: 0, kind: "study", effect: { stats: { stamina: 1 } }, copies: 2 },
+  { name: "사교 무도회 레슨", description: "우아한 인사법을 배웠어요.", cost: 0, kind: "study", effect: { stats: { charm: 1 } }, copies: 2 },
+  { name: "고급 마법 세미나", description: "어려운 주문을 깊이 파고들었어요.", cost: 0, kind: "study", effect: { stats: { spellPower: 1 } }, copies: 2 },
   // 심화 수업 — 능력치 둘 +1/+1 (6장)
-  { name: "마법약 실험", description: "머리도 쓰고 마력도 쓰는 실험!", cost: 2, kind: "study", effect: { stats: { intelligence: 1, spellPower: 1 } }, copies: 1 },
-  { name: "도서관 야간 자습", description: "밤새 공부하면서 체력도 길렀어요.", cost: 2, kind: "study", effect: { stats: { intelligence: 1, stamina: 1 } }, copies: 1 },
-  { name: "토론 동아리", description: "논리적으로 말하니 다들 귀 기울여요.", cost: 2, kind: "study", effect: { stats: { intelligence: 1, charm: 1 } }, copies: 1 },
-  { name: "빗자루 곡예단", description: "하늘에서 멋지게 묘기를 부려요.", cost: 2, kind: "study", effect: { stats: { stamina: 1, charm: 1 } }, copies: 1 },
-  { name: "마력 호흡법", description: "숨을 고르니 마력이 차올라요.", cost: 2, kind: "study", effect: { stats: { stamina: 1, spellPower: 1 } }, copies: 1 },
-  { name: "무대 마법 공연", description: "반짝이는 마법으로 관객을 사로잡았어요.", cost: 2, kind: "study", effect: { stats: { charm: 1, spellPower: 1 } }, copies: 1 },
+  { name: "마법약 실험", description: "머리도 쓰고 마력도 쓰는 실험!", cost: 1, kind: "study", effect: { stats: { intelligence: 1, spellPower: 1 } }, copies: 1 },
+  { name: "도서관 야간 자습", description: "밤새 공부하면서 체력도 길렀어요.", cost: 1, kind: "study", effect: { stats: { intelligence: 1, stamina: 1 } }, copies: 1 },
+  { name: "토론 동아리", description: "논리적으로 말하니 다들 귀 기울여요.", cost: 1, kind: "study", effect: { stats: { intelligence: 1, charm: 1 } }, copies: 1 },
+  { name: "빗자루 곡예단", description: "하늘에서 멋지게 묘기를 부려요.", cost: 1, kind: "study", effect: { stats: { stamina: 1, charm: 1 } }, copies: 1 },
+  { name: "마력 호흡법", description: "숨을 고르니 마력이 차올라요.", cost: 1, kind: "study", effect: { stats: { stamina: 1, spellPower: 1 } }, copies: 1 },
+  { name: "무대 마법 공연", description: "반짝이는 마법으로 관객을 사로잡았어요.", cost: 1, kind: "study", effect: { stats: { charm: 1, spellPower: 1 } }, copies: 1 },
   // 시험 대비 — 임시 능력치 / 학점 (8장)
-  { name: "마법 안경", description: "글씨가 또렷또렷 보여요.", cost: 1, kind: "exam", effect: { tempStats: { intelligence: 2 } }, copies: 1 },
-  { name: "튼튼 부츠", description: "아무리 걸어도 안 아파요.", cost: 1, kind: "exam", effect: { tempStats: { stamina: 2 } }, copies: 1 },
-  { name: "반짝 브로치", description: "달고 다니면 눈길이 쏙!", cost: 1, kind: "exam", effect: { tempStats: { charm: 2 } }, copies: 1 },
-  { name: "수정 지팡이", description: "끝에서 반짝이는 마력이 나와요.", cost: 1, kind: "exam", effect: { tempStats: { spellPower: 2 } }, copies: 1 },
-  { name: "고대의 두루마리", description: "잊힌 지식이 술술 읽혀요.", cost: 1, kind: "exam", effect: { tempStats: { intelligence: 3 } }, copies: 1 },
-  { name: "용의 심장 조각", description: "손에 쥐면 마력이 넘쳐흘러요.", cost: 1, kind: "exam", effect: { tempStats: { spellPower: 3 } }, copies: 1 },
-  { name: "우등생 배지", description: "선생님이 달아 주신 반짝 배지.", cost: 2, kind: "exam", effect: { credit: 1 }, copies: 1 },
-  { name: "장학금 봉투", description: "열어 보니 학점 도장이 가득!", cost: 2, kind: "exam", effect: { credit: 1 }, copies: 1 },
+  { name: "마법 안경", description: "글씨가 또렷또렷 보여요.", cost: 0, kind: "exam", effect: { tempStats: { intelligence: 2 } }, copies: 1 },
+  { name: "튼튼 부츠", description: "아무리 걸어도 안 아파요.", cost: 0, kind: "exam", effect: { tempStats: { stamina: 2 } }, copies: 1 },
+  { name: "반짝 브로치", description: "달고 다니면 눈길이 쏙!", cost: 0, kind: "exam", effect: { tempStats: { charm: 2 } }, copies: 1 },
+  { name: "수정 지팡이", description: "끝에서 반짝이는 마력이 나와요.", cost: 0, kind: "exam", effect: { tempStats: { spellPower: 2 } }, copies: 1 },
+  { name: "고대의 두루마리", description: "잊힌 지식이 술술 읽혀요.", cost: 0, kind: "exam", effect: { tempStats: { intelligence: 3 } }, copies: 1 },
+  { name: "용의 심장 조각", description: "손에 쥐면 마력이 넘쳐흘러요.", cost: 0, kind: "exam", effect: { tempStats: { spellPower: 3 } }, copies: 1 },
+  { name: "우등생 배지", description: "선생님이 달아 주신 반짝 배지.", cost: 1, kind: "exam", effect: { credit: 1 }, copies: 1 },
+  { name: "장학금 봉투", description: "열어 보니 학점 도장이 가득!", cost: 1, kind: "exam", effect: { credit: 1 }, copies: 1 },
   // 엿보기 — 탐험 카드 맨 위 확인 (4장)
   { name: "예지의 수정구", description: "수정구 속에 비밀의 방이 비쳐요.", cost: 0, kind: "insight", effect: { peekExploration: true }, copies: 2 },
   { name: "고양이의 귀띔", description: "검은 고양이가 살짝 알려 줬어요.", cost: 0, kind: "insight", effect: { peekExploration: true }, copies: 2 },
