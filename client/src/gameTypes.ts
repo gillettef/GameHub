@@ -108,8 +108,8 @@ export interface PlayerGameState {
   pendingManaTokens: number;
   peekedExploration: PeekedExploration | null;
   tournamentTrack: number;
-  // 졸업식에서 받은 부문상 (게임이 끝날 때 정해진다)
-  awards: StatKey[];
+  // 졸업식에서 받은 상 (게임이 끝날 때 정해진다): 부문마다 순위에 따른 점수
+  awards: GraduationAward[];
   classCards: ClassCard[];
   creatures: CreatureCard[];
   equipment: LabCard[];
@@ -218,12 +218,18 @@ export interface PublicRules {
   finalNoticeRound: number;
   // 마법 토너먼트 최종 순위 보상 (1위, 2위 순서, 학점)
   tournamentRewards: number[];
-  // 최종 점수 = 주문력 × 학점 + 마법생물 세트(하늘·육지·바다 1장씩) 수 × creatureSetScore
-  creatureSetScore: number;
-  // 졸업식 부문상 하나당 점수, 그리고 부문상을 주는 능력치
-  graduationAwardScore: number;
-  graduationAwardStats: StatKey[];
-  // 마법생물을 가져오는 데 드는 최소 마나기운 (이보다 적으면 마법생물 조련을 고를 수 없다)
+  // 최종 점수 = 졸업식 시상 점수의 합: 부문마다 순위에 따라 rankPoints[순위-1]점
+  graduationCategories: AwardCategory[];
+  rankPoints: number[];
+}
+
+// 졸업식 시상 부문 (서버 types.ts와 같은 모양): 주문력·학점·지력·체력·매력·마법생물
+export type AwardCategory = StatKey | "credit" | "creature";
+export interface GraduationAward {
+  category: AwardCategory;
+  value: number;
+  rank: number;
+  points: number;
 }
 
 export interface GameState {
@@ -290,7 +296,7 @@ export const ACTIVITY_LABEL: Record<ActivityId, string> = {
 // 활동 카드에 함께 보여줄 한 줄 설명
 export const ACTIVITY_HINT: Record<ActivityId, string> = {
   tournament: "마나기운을 골라 낸 만큼 주사위를 굴려 합친 칸만큼 트랙 전진 → 학점 (체력기운을 내면 칸을 더 전진)",
-  creature: "카드 2장 공개, 매력기운을 골라 낸 만큼 주사위를 굴려 합이 기준 이상이면 조련, 하늘·육지·바다를 1장씩 모으면 세트 점수",
+  creature: "카드 2장 공개, 매력기운을 골라 낸 만큼 주사위를 굴려 합이 기준 이상이면 조련, 마리 수 + 하늘·육지·바다 세트 수로 생물사랑상을 겨뤄요",
   duel: "아직 안 고른 한 명을 지목해 강제 대결, 마나기운을 골라 낸 만큼 주사위를 굴려 이기면 마도서 1장",
   exploration: "카드 2장 중 하나를 골라 체력기운을 낸 만큼 주사위 판정! 크게 벌거나 크게 잃어요 (지력기운으로 함정을 피할 수 있어요)",
   lab: "심화학습: 연구 카드 2장 중 1장, 지력기운을 골라 낸 만큼 주사위를 굴려 실험 판정, 안정적으로 성장",
@@ -401,21 +407,35 @@ export function creatureSets(creatures: CreatureCard[]): number {
   return Math.min(...(["sky", "land", "ocean"] as CreatureElement[]).map((el) => creatures.filter((c) => c.element === el).length));
 }
 
-// 최종 점수: 마법 성취도(주문력 × 학점) + 마법생물 세트 점수
-// 졸업식 부문상 이름 (능력치별 1등에게 준다)
-export const AWARD_NAME: Record<StatKey, string> = { intelligence: "수석상", stamina: "튼튼상", charm: "인기상", spellPower: "마법상" };
+// ── 졸업식 시상 (서버 engine.ts와 같은 규칙): 부문마다 값이 큰 순서로 순위를 매겨 rankPoints점 (동점은 같은 순위, 값 0이면 없음) ──
+export const AWARD_NAME: Record<AwardCategory, string> = { spellPower: "마법상", credit: "우등상", intelligence: "수석상", stamina: "튼튼상", charm: "인기상", creature: "생물사랑상" };
+export const AWARD_SUBJECT: Record<AwardCategory, string> = { ...STAT_LABEL, credit: "학점", creature: "마법생물" };
 
-// 게임 중 예상 점수: 지금 상태로 졸업하면 받을 점수 (부문상은 지금 각 능력치 1등인 사람이 받는다고 보고 계산, 동점이면 공동)
-export function projectedAwards(game: Pick<GameState, "rules" | "players" | "turnOrder">, player: PlayerGameState): StatKey[] {
-  const players = game.turnOrder.map((id) => game.players[id]).filter(Boolean);
-  return game.rules.graduationAwardStats.filter((stat) => effectiveStat(player, stat) === Math.max(...players.map((p) => effectiveStat(p, stat))));
+// 부문의 값: 능력치·학점은 그 수치, 마법생물은 마리 수 + 완성한 세트 수
+export function awardValue(player: PlayerGameState, category: AwardCategory): number {
+  if (category === "credit") return player.credit;
+  if (category === "creature") return player.creatures.length + creatureSets(player.creatures);
+  return effectiveStat(player, category);
 }
+
+export function graduationAwards(game: Pick<GameState, "rules" | "players" | "turnOrder">): Map<string, GraduationAward[]> {
+  const players = game.turnOrder.map((id) => game.players[id]).filter(Boolean);
+  const out = new Map(players.map((p) => [p.id, [] as GraduationAward[]]));
+  for (const category of game.rules.graduationCategories) {
+    for (const p of players) {
+      const value = awardValue(p, category);
+      if (value <= 0) continue;
+      const rank = 1 + players.filter((o) => awardValue(o, category) > value).length;
+      const points = game.rules.rankPoints[rank - 1] ?? 0;
+      if (points > 0) out.get(p.id)!.push({ category, value, rank, points });
+    }
+  }
+  return out;
+}
+
+// 게임 중 예상 점수: 지금 상태로 졸업하면 받을 점수
 export function projectedScore(game: Pick<GameState, "rules" | "players" | "turnOrder">, player: PlayerGameState): number {
-  return (
-    effectiveStat(player, "spellPower") * player.credit +
-    creatureSets(player.creatures) * game.rules.creatureSetScore +
-    projectedAwards(game, player).length * game.rules.graduationAwardScore
-  );
+  return (graduationAwards(game).get(player.id) ?? []).reduce((a, w) => a + w.points, 0);
 }
 
 // 주사위를 굴릴(또는 결과를 확인할) 차례인 사람: 아직 확인하지 않은 첫 참여자 (한 명씩 차례대로, 서버 currentRoller와 같은 규칙)
@@ -430,10 +450,7 @@ export function cramSources(game: Pick<GameState, "news">, player: PlayerGameSta
   return (["intelligence", "stamina", "charm", "mana"] as KeptToken[]).filter((k) => k !== to && player[ENERGY_FIELD[k]] > 0);
 }
 
-export function finalScore(game: Pick<GameState, "rules">, player: PlayerGameState): number {
-  return (
-    effectiveStat(player, "spellPower") * player.credit +
-    creatureSets(player.creatures) * game.rules.creatureSetScore +
-    (player.awards?.length ?? 0) * game.rules.graduationAwardScore
-  );
+// 최종 점수 = 졸업식에서 받은 점수의 합
+export function finalScore(_game: Pick<GameState, "rules">, player: PlayerGameState): number {
+  return (player.awards ?? []).reduce((a, w) => a + w.points, 0);
 }

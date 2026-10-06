@@ -34,6 +34,16 @@ export interface NewsEffect {
   cramTo?: KeptToken;
 }
 
+// 졸업식 시상 부문 (46절): 주문력(마법상)·학점(우등상)·지력(수석상)·체력(튼튼상)·매력(인기상)·마법생물(생물사랑상)
+export type AwardCategory = StatKey | "credit" | "creature";
+export interface GraduationAward {
+  category: AwardCategory;
+  // 그 부문의 값 (마법생물은 마리 수 + 완성한 세트 수), 순위(동점은 같은 순위), 받은 점수
+  value: number;
+  rank: number;
+  points: number;
+}
+
 export interface NewsCard {
   id: string;
   kind: "event" | "notice" | "examWeek";
@@ -163,8 +173,8 @@ export interface PlayerGameState {
   pendingStaminaTokens: number;
   pendingManaTokens: number;
   tournamentTrack: number;
-  // 졸업식에서 받은 부문상 (게임이 끝날 때 정해진다, 41절): 해당 능력치가 가장 높은 플레이어(동점이면 공동)가 받는다
-  awards: StatKey[];
+  // 졸업식에서 받은 상 (게임이 끝날 때 정해진다, 46절): 부문마다 순위에 따라 점수를 받는다. 최종 점수 = 받은 점수의 합
+  awards: GraduationAward[];
   classCards: ClassCard[];
   creatures: CreatureCard[];
   // 임시 능력치 효과가 남아 있는 연구 카드 (시험 대비 카드)
@@ -367,10 +377,7 @@ export interface PublicRules {
   finalNoticeRound: number;
   // 마법 토너먼트 최종 순위 보상 (1위, 2위 순서, 학점)
   tournamentRewards: number[];
-  // 최종 점수 = 주문력 × 학점 + 마법생물 세트(하늘·육지·바다 1장씩) 수 × creatureSetScore + 졸업식 부문상 수 × graduationAwardScore
-  creatureSetScore: number;
-  // 졸업식 부문상 하나당 점수 (지력 수석상·체력 튼튼상·매력 인기상·주문력 마법상)
-  graduationAwardScore: number;
-  // 부문상을 주는 능력치
-  graduationAwardStats: StatKey[];
+  // 최종 점수 = 졸업식 시상 점수의 합 (46절): 부문(graduationCategories)마다 순위에 따라 rankPoints[순위-1]점
+  graduationCategories: AwardCategory[];
+  rankPoints: number[];
 }

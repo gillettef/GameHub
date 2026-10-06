@@ -134,7 +134,7 @@ function PlayerStatCard({ player, isMe, rules, defaultOpen }: { player: PlayerGa
             </span>
           ))}
           <span className="whitespace-nowrap font-semibold text-amber-700">
-            세트 {creatureSets(player.creatures)}개 (+{creatureSets(player.creatures) * rules.creatureSetScore}점)
+            세트 {creatureSets(player.creatures)}개 · 생물사랑상 점수 {player.creatures.length + creatureSets(player.creatures)}
           </span>
         </p>
       )}

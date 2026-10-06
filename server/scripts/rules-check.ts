@@ -19,7 +19,9 @@ import {
   createGame,
   creatureSets,
   creatureTarget,
-  awardWinnersOf,
+  awardValue,
+  graduationAwards,
+  projectedScore,
   AWARD_NAME,
   examFuel,
   tokensOf,
@@ -1248,22 +1250,23 @@ test("시험 카드: 게임마다 서로 다른 능력치를 겨냥하는 두 �
 
 // ── 최종 점수 ──
 
-test("최종 점수 = 주문력 × 학점 + 마법생물 세트(하늘·육지·바다 1장씩) 수 × 세트 점수", () => {
+test("졸업식 생물사랑상의 값 = 마법생물 마리 수 + 완성한 세트(하늘·육지·바다 1장씩) 수", () => {
   const state = newGame(2);
   const p = state.players.p0;
-  Object.assign(p, { spellPower: 3, credit: 4 });
   p.creatures = [];
-  assert.equal(creatureSets(p.creatures), 0);
-  assert.equal(finalScore(p), 12);
+  assert.equal(awardValue(p, "creature"), 0);
   const sky = CREATURE_CARDS.filter((c) => c.element === "sky");
   const land = CREATURE_CARDS.filter((c) => c.element === "land");
   const ocean = CREATURE_CARDS.filter((c) => c.element === "ocean");
   p.creatures = [sky[0], sky[1], land[0], ocean[0]].map((c, i) => ({ ...c, id: `f${i}` }));
   assert.equal(creatureSets(p.creatures), 1, "하늘 2·육지 1·바다 1 = 1세트");
-  assert.equal(finalScore(p), 12 + BALANCE.creatureSetScore);
+  assert.equal(awardValue(p, "creature"), 4 + 1);
   p.creatures.push(...[land[1], ocean[1]].map((c, i) => ({ ...c, id: `g${i}` })));
   assert.equal(creatureSets(p.creatures), 2);
-  assert.equal(finalScore(p), 12 + BALANCE.creatureSetScore * 2);
+  assert.equal(awardValue(p, "creature"), 6 + 2);
+  Object.assign(p, { spellPower: 3, credit: 4 });
+  assert.equal(awardValue(p, "spellPower"), 3);
+  assert.equal(awardValue(p, "credit"), 4);
 });
 
 test("게임이 끝나면 최종 점수가 가장 높은 플레이어가 승리한다 (동점이면 공동 승리)", () => {
@@ -1477,55 +1480,63 @@ test("최종: 시험·토너먼트·최종 점수가 모두 동점이면 공동 
 
 // ── 졸업식 부문상 (41절) ──
 
-test("졸업식 부문상: 지력(수석상)·체력(튼튼상)·매력(인기상)·주문력(마법상)이 가장 높은 플레이어가 받고, 동점이면 공동 수상이다", () => {
-  assert.deepEqual(AWARD_NAME, { intelligence: "수석상", stamina: "튼튼상", charm: "인기상", spellPower: "마법상" });
-  const state = newGame(3);
-  const [a, b, c] = state.turnOrder;
-  Object.assign(state.players[a], { intelligence: 9, stamina: 3, charm: 4, spellPower: 5, tempBoosts: {} });
-  Object.assign(state.players[b], { intelligence: 4, stamina: 7, charm: 4, spellPower: 5, tempBoosts: {} });
-  Object.assign(state.players[c], { intelligence: 4, stamina: 7, charm: 2, spellPower: 8, tempBoosts: {} });
-  const winners = awardWinnersOf(state.turnOrder.map((id) => state.players[id]));
-  assert.deepEqual(winners.intelligence, [a], "지력 1등");
-  assert.deepEqual([...winners.stamina].sort(), [b, c].sort(), "체력 동점은 공동 수상");
-  assert.deepEqual([...winners.charm].sort(), [a, b].sort());
-  assert.deepEqual(winners.spellPower, [c]);
-  // 임시 능력치도 포함해서 비교한다
-  state.players[a].tempBoosts = { spellPower: 4 };
-  assert.deepEqual(awardWinnersOf(state.turnOrder.map((id) => state.players[id])).spellPower, [a]);
+test("졸업식 시상(46절): 6부문마다 순위대로 rankPoints점, 동점은 같은 순위·같은 점수, 값 0은 상 없음, 임시 능력치 포함", () => {
+  assert.deepEqual(BALANCE.graduationCategories, ["spellPower", "credit", "intelligence", "stamina", "charm", "creature"]);
+  assert.equal(AWARD_NAME.credit, "우등상");
+  assert.equal(AWARD_NAME.creature, "생물사랑상");
+  withBalance({ rankPoints: [6, 3, 1] }, () => {
+    const state = newGame(4);
+    const [a, b, c, d] = state.turnOrder;
+    const set = (id: string, v: Partial<PlayerGameState>) => Object.assign(state.players[id], { tempBoosts: {}, creatures: [], ...v });
+    set(a, { intelligence: 9, stamina: 3, charm: 4, spellPower: 5, credit: 6 });
+    set(b, { intelligence: 4, stamina: 7, charm: 4, spellPower: 5, credit: 2 });
+    set(c, { intelligence: 4, stamina: 7, charm: 2, spellPower: 8, credit: 0 });
+    set(d, { intelligence: 1, stamina: 1, charm: 1, spellPower: 1, credit: 1 });
+    const players = state.turnOrder.map((id) => state.players[id]);
+    const awards = graduationAwards(players);
+    const of = (id: string, cat: string) => awards.get(id)!.find((w) => w.category === cat);
+    assert.deepEqual([of(a, "intelligence")?.rank, of(a, "intelligence")?.points], [1, 6], "지력 1위");
+    assert.deepEqual([of(b, "intelligence")?.rank, of(c, "intelligence")?.rank], [2, 2], "같은 값은 같은 순위");
+    assert.equal(of(b, "intelligence")?.points, 3);
+    assert.equal(of(d, "intelligence"), undefined, "공동 2위 둘 다음은 4위라 점수가 없다");
+    assert.deepEqual([of(b, "stamina")?.points, of(c, "stamina")?.points, of(a, "stamina")?.points], [6, 6, 1], "공동 1위 다음은 3위");
+    assert.equal(of(c, "credit"), undefined, "값이 0이면 상이 없다");
+    assert.equal(awards.get(a)!.some((w) => w.category === "creature"), false, "마법생물이 없으면 생물사랑상도 없다");
+    assert.equal(projectedScore(players, state.players[a]), awards.get(a)!.reduce((x, w) => x + w.points, 0));
+    // 임시 능력치도 포함해서 비교한다
+    state.players[d].tempBoosts = { spellPower: 9 };
+    assert.equal(graduationAwards(players).get(d)!.find((w) => w.category === "spellPower")?.rank, 1);
+  });
 });
 
-test("졸업식 부문상: 게임이 끝날 때 정해져 최종 점수에 부문상 하나당 graduationAwardScore가 더해지고 승패를 가른다", () => {
-  assert.equal(BALANCE.graduationAwardScore, 8);
-  assert.deepEqual(BALANCE.graduationAwardStats, ["intelligence", "stamina", "charm", "spellPower"]);
+test("졸업식 시상: 게임이 끝날 때 정해지고 최종 점수 = 받은 점수의 합. 동점이면 1위 상이 많은 사람이 이긴다", () => {
   const state = newGame(3);
   reachExam(state, "final_exam");
   const [a, b, c] = state.turnOrder;
-  // 능력치를 고정한다: a는 지력·주문력, b는 체력, c는 매력이 1등 (학점은 모두 같아지도록 0으로 맞추고 시험 보너스도 같게 한다)
-  Object.assign(state.players[a], { intelligence: 9, stamina: 3, charm: 3, spellPower: 9 });
-  Object.assign(state.players[b], { intelligence: 3, stamina: 9, charm: 3, spellPower: 3 });
-  Object.assign(state.players[c], { intelligence: 3, stamina: 3, charm: 9, spellPower: 3 });
-  for (const id of state.turnOrder) Object.assign(state.players[id], { credit: 0, creatures: [], tournamentTrack: 0, tempBoosts: {}, awards: [] });
-  for (const id of state.turnOrder) assert.equal(finalScore(state.players[id]), 0, "게임이 끝나기 전에는 부문상이 없다");
+  // 능력치를 고정한다: 시험 학점이 순위로 갈리지 않도록 모두 같은 점수를 낸다
   const card = state.hidden.roll && state.hidden.roll.kind === "exam" ? state.hidden.roll.card : null;
   assert.ok(card);
-  // 시험 학점이 순위로 갈리지 않도록 모두 같은 점수를 낸다 (rollExamWith는 능력치를 덮어쓰므로 직접 굴린다)
-  const saved = Object.fromEntries(state.turnOrder.map((id) => [id, { ...state.players[id] }]));
-  for (const id of state.turnOrder) {
-    const p = state.players[id];
-    p.tempBoosts = {};
-    if (card.bonusStat) p[card.bonusStat] = saved[id][card.bonusStat];
-  }
+  Object.assign(state.players[a], { intelligence: 9, stamina: 1, charm: 1, spellPower: 9 });
+  Object.assign(state.players[b], { intelligence: 1, stamina: 9, charm: 9, spellPower: 1 });
+  Object.assign(state.players[c], { intelligence: 2, stamina: 2, charm: 2, spellPower: 2 });
+  for (const id of state.turnOrder) Object.assign(state.players[id], { credit: 0, creatures: [], tournamentTrack: 0, tempBoosts: {}, awards: [] });
+  if (card.bonusStat) for (const id of state.turnOrder) state.players[id][card.bonusStat] = 5;
+  for (const id of state.turnOrder) assert.equal(finalScore(state.players[id]), 0, "게임이 끝나기 전에는 상이 없다");
   const pending = state.pendingRoll!;
   rollWith(state, Object.fromEntries(pending.entries.map((e) => [e.playerId, [6]])));
   assert.equal(state.phase, "ended");
-  assert.deepEqual(state.players[a].awards.sort(), ["intelligence", "spellPower"].sort());
-  assert.deepEqual(state.players[b].awards, ["stamina"]);
-  assert.deepEqual(state.players[c].awards, ["charm"]);
   for (const id of state.turnOrder) {
     const p = state.players[id];
-    assert.equal(finalScore(p), effectiveStat(p, "spellPower") * p.credit + creatureSets(p.creatures) * BALANCE.creatureSetScore + p.awards.length * BALANCE.graduationAwardScore);
+    assert.equal(finalScore(p), p.awards.reduce((x, w) => x + w.points, 0));
   }
   assert.ok(state.log.some((l) => l.message.includes("졸업식 수석상")));
+  const scores = state.turnOrder.map((id) => finalScore(state.players[id]));
+  const best = Math.max(...scores);
+  assert.ok(state.winnerIds!.every((id) => finalScore(state.players[id]) === best), "승자는 최고 점수");
+  const firsts = (id: string) => state.players[id].awards.filter((w) => w.rank === 1).length;
+  const tied = state.turnOrder.filter((id) => finalScore(state.players[id]) === best);
+  const mostFirsts = Math.max(...tied.map(firsts));
+  assert.ok(state.winnerIds!.every((id) => firsts(id) === mostFirsts), "최고 점수 동점이면 1위 상이 많은 사람이 이긴다");
 });
 
 test("마법생물 조련: 속성·종류는 표시용이고 기준 수치는 생물별 trainTarget × trainTargetScale이다", () => {

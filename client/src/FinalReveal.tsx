@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { Icon, InlineIcon } from "./Icons";
-import { AWARD_NAME, creatureSets, effectiveStat, finalScore, STAT_LABEL, type GameState, type PlayerGameState } from "./gameTypes";
+import { AWARD_NAME, AWARD_SUBJECT, finalScore, type GameState, type PlayerGameState } from "./gameTypes";
 
 const MEDAL_COLOR = ["text-amber-500", "text-slate-400", "text-orange-500"];
 
 // 한 걸음이 지나가는 시간(ms). 팝업이 떠 있는 동안에는 시간이 흐르지 않는다
 const STEP_MS = 1100;
-// 플레이어 한 명의 점수 계산 걸음: 0 이름 → 1 성취도 → 2 마법생물 세트 → 3 합계
+// 플레이어 한 명의 점수 계산 걸음: 0 이름 → 1 1위 상 → 2 2위 상 → 3 3위 상 → 4 합계
 const TALLY_STEPS = 5;
 
 function prefersReducedMotion(): boolean {
@@ -51,27 +51,22 @@ function Confetti() {
   );
 }
 
-// 지금 점수를 계산하는 플레이어의 카드: 주문력 × 학점 → 마법생물 세트 → 합계가 차례로 나타난다
+// 지금 점수를 계산하는 플레이어의 카드: 1위 상 → 2위 상 → 3위 상 → 합계가 차례로 나타난다 (졸업식 시상, 46절)
 function TallyCard({ game, player, step }: { game: GameState; player: PlayerGameState; step: number }) {
-  const spell = effectiveStat(player, "spellPower");
-  const achievement = spell * player.credit;
-  const sets = creatureSets(player.creatures);
-  const setScore = sets * game.rules.creatureSetScore;
-  const awardScore = player.awards.length * game.rules.graduationAwardScore;
+  const rows = [1, 2, 3].map((rank) => {
+    const list = player.awards.filter((w) => w.rank === rank);
+    return { rank, list, points: list.reduce((a, w) => a + w.points, 0) };
+  });
   return (
     <div className="pop-in rounded-3xl border-2 border-pink-200 bg-pink-50 p-4 text-center">
       <p className="font-display text-xl text-purple-700 truncate">{player.name}</p>
       <div className="mt-3 flex flex-col gap-2 text-sm text-purple-800">
-        <p className={`rounded-2xl bg-white px-3 py-2 ${step >= 1 ? "pop-in" : "invisible"}`}>
-          <InlineIcon name="sparkle" /> 주문력 {spell} × <InlineIcon name="cap" /> 학점 {player.credit} = 성취도 <b className="text-lg">{step >= 1 ? <CountUp to={achievement} /> : 0}</b>
-        </p>
-        <p className={`rounded-2xl bg-white px-3 py-2 ${step >= 2 ? "pop-in" : "invisible"}`}>
-          <InlineIcon name="paw" /> 마법생물 세트 {sets}개 × {game.rules.creatureSetScore}점 = <b className="text-lg">{step >= 2 ? <CountUp to={setScore} /> : 0}</b>점
-        </p>
-        <p className={`rounded-2xl bg-white px-3 py-2 ${step >= 3 ? "pop-in" : "invisible"}`}>
-          <InlineIcon name="medal" /> 졸업식 부문상{" "}
-          {player.awards.length > 0 ? player.awards.map((stat) => `${AWARD_NAME[stat]}(${STAT_LABEL[stat]} 1등)`).join(", ") : "없음"} = <b className="text-lg">{step >= 3 ? <CountUp to={awardScore} /> : 0}</b>점
-        </p>
+        {rows.map(({ rank, list, points }) => (
+          <p key={rank} className={`rounded-2xl bg-white px-3 py-2 ${step >= rank ? "pop-in" : "invisible"}`}>
+            <Icon name="medal" className={`h-4 w-4 ${MEDAL_COLOR[rank - 1]}`} /> {rank}위{" "}
+            {list.length > 0 ? list.map((w) => `${AWARD_NAME[w.category]}(${AWARD_SUBJECT[w.category]} ${w.value})`).join(", ") : "없음"} = <b className="text-lg">{step >= rank ? <CountUp to={points} /> : 0}</b>점
+          </p>
+        ))}
         <p className={`rounded-2xl bg-amber-100 px-3 py-2 font-display text-lg ${step >= 4 ? "pop-in" : "invisible"}`}>
           최종 점수 <b className="text-2xl text-amber-700">{step >= 4 ? <CountUp to={finalScore(game, player)} ms={900} /> : 0}</b>점
         </p>
@@ -106,7 +101,7 @@ export function FinalReveal({ game, onLeave, isHost, onRematch }: { game: GameSt
   const currentStep = step % TALLY_STEPS;
   const revealedRanks = Math.max(0, step - tallyEnd);
   const rankOf = (p: PlayerGameState) => 1 + ranked.filter((o) => finalScore(game, o) > finalScore(game, p)).length;
-  const tallied = (i: number) => i < currentIndex || (i === currentIndex && currentStep >= 3);
+  const tallied = (i: number) => i < currentIndex || (i === currentIndex && currentStep >= 4);
 
   return (
     <div className="relative bg-white rounded-3xl border-2 border-amber-200 p-4 shadow-sm">
@@ -159,7 +154,7 @@ export function FinalReveal({ game, onLeave, isHost, onRematch }: { game: GameSt
                     <span className="shrink-0 text-lg">{finalScore(game, p)}점</span>
                   </p>
                   <p className="text-xs text-purple-600">
-                    성취도 {effectiveStat(p, "spellPower") * p.credit} (주문력 {effectiveStat(p, "spellPower")} × 학점 {p.credit}) + 마법생물 세트 {creatureSets(p.creatures) * game.rules.creatureSetScore}점{p.awards.length > 0 ? ` + 부문상 ${p.awards.map((stat) => AWARD_NAME[stat]).join("·")} ${p.awards.length * game.rules.graduationAwardScore}점` : ""}
+                    {p.awards.length > 0 ? [...p.awards].sort((a, b) => a.rank - b.rank).map((w) => `${AWARD_NAME[w.category]} ${w.rank}위 +${w.points}`).join(" · ") : "받은 상이 없어요"}
                   </p>
                 </li>
               );

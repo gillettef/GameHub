@@ -1,7 +1,7 @@
 // 플레이테스트 중 조정할 밸런스 수치 모음 (notes/기획_정리.md 8절의 "플레이테스트 후 조정" 항목).
 // 값을 바꾸면 엔진 전체에 반영되며, 시뮬레이션 스크립트(server/scripts/simulate.ts)가 이 객체를 직접 바꿔 비교합니다.
 // 카드 종류별 수치(수업/장비/탐험/마도서/마법생물)는 각 *Cards.ts / creatures.ts에서 조정합니다.
-import type { ActivityId, KeptToken, StatKey } from "./types.js";
+import type { ActivityId, AwardCategory, KeptToken, StatKey } from "./types.js";
 
 export const BALANCE = {
   // 라운드 구조 — 기획 확정값(12라운드, 6라운드 후 중간고사). 바꾸면 클라이언트 표시(12/12)와도 맞춰야 함
@@ -46,12 +46,11 @@ export const BALANCE = {
   growthActivities: { tournament: false, creature: true, duel: true, exploration: true, lab: true } as Record<ActivityId, boolean>,
   // 3주차 구역(비밀의 방·마법생물·주문 대결·연구실)에서 처음 들어온 사람이 여는 카드 수 (집중이나 특정 카드로 달라질 수 있다)
   activityOpenCount: 2,
-  // 최종 점수 = 주문력 × 학점 + 마법생물 세트(하늘·육지·바다 1장씩) 수 × creatureSetScore (기획 검토 중: 3점 또는 5점) + 졸업식 부문상 수 × graduationAwardScore (41절)
-  creatureSetScore: 5,
-  // 졸업식 부문상: 게임이 끝날 때 지력(수석상)·체력(튼튼상)·매력(인기상)·주문력(마법상)이 가장 높은 플레이어가 하나당 이 점수를 받는다 (동점이면 공동 수상)
-  graduationAwardScore: 8,
-  // 부문상을 주는 능력치 (시험·실험 등 점수에 이미 직접 들어가는 주문력을 뺄 수 있다)
-  graduationAwardStats: ["intelligence", "stamina", "charm", "spellPower"] as StatKey[],
+  // 최종 점수 = 졸업식 시상 점수의 합 (46절, 예전 "주문력 × 학점 + 마법생물 세트 + 부문상"을 대신한다).
+  // 부문마다 값이 큰 순서로 순위를 매겨 rankPoints[순위-1]점을 준다 (동점은 같은 순위·같은 점수, 값이 0이면 점수 없음, 순위가 표 밖이면 0점).
+  // 마법생물 부문의 값 = 마리 수 + 완성한 세트(하늘·육지·바다 1장씩) 수
+  graduationCategories: ["spellPower", "credit", "intelligence", "stamina", "charm", "creature"] as AwardCategory[],
+  rankPoints: [6, 3, 1],
   // 판정 목표값 = 주사위 평균(3.5) × 그 달의 기준 주사위 수 × 난이도. 기준 주사위 수(마나기운 개수)는 rollBenchmarkStart에서 매달 rollBenchmarkPerRound씩 오른다
   // (주문력이 기준보다 앞서면 쉽고 뒤처지면 어렵다). 탐험·협력 탐험 카드는 카드마다 난이도가 정해져 있다
   rollBenchmarkStart: 1.3,
@@ -85,6 +84,9 @@ export const BALANCE = {
   energyCapMultiplier: 0,
   // 실력만큼만 힘을 낸다 (43-5절): 한 번 굴릴 때 낼 수 있는 재료 기운은 그 기운의 능력치 개수까지 (주문력 → 마나기운). 기운은 얼마든지 모아 둘 수 있다
   rollLimitByStat: true,
+  // 주사위의 여섯 면 (46절). 기본은 1~6, "1이 세 면·2가 두 면·3이 한 면"([1,1,1,2,2,3])처럼 바꿔 운의 폭을 줄일 수 있다.
+  // 판정 목표값(탐험·조련)은 주사위 평균에 맞춰 자동으로 바뀐다. 연구실 목표·토너먼트 이정표처럼 고정값인 수치는 따로 맞춘다
+  dieFaces: [1, 2, 3, 4, 5, 6],
   // 굴림 상한 = 능력치 + 이 값 (능력치 1인 초반에도 주사위 2개는 굴릴 수 있게 하는 여유)
   rollLimitBonus: 0,
   // 함께하면 든든 (43-6절): 마법생물·연구실 구역에 두 명이 함께 들어가면 둘 다 판정 목표값이 이만큼 낮아진다
