@@ -33,6 +33,8 @@ import {
   type ExamCard,
   type ExamResult,
   type GameState,
+  type GraduationAward,
+  type AwardCategory,
   type KeptToken,
   type NewsCard,
   type PlayerGameState,
@@ -48,9 +50,14 @@ const ACTIVITY_NAME: Record<ActivityId, string> = {
   lab: "연구실 실험",
 };
 
+// 주사위 한 개 굴리기: BALANCE.dieFaces의 여섯 면 중 하나 (46절)
 function rollD6(): number {
-  return 1 + Math.floor(Math.random() * 6);
+  const faces = BALANCE.dieFaces;
+  return faces[Math.floor(Math.random() * faces.length)];
 }
+// 주사위 한 개의 평균·분산 (판정 목표값과 봇의 확률 계산에 쓴다)
+export const dieMean = () => BALANCE.dieFaces.reduce((a, b) => a + b, 0) / BALANCE.dieFaces.length;
+const dieVariance = () => BALANCE.dieFaces.reduce((a, f) => a + (f - dieMean()) ** 2, 0) / BALANCE.dieFaces.length;
 
 function rollDice(count: number): number[] {
   return Array.from({ length: Math.max(0, count) }, rollD6);
@@ -63,7 +70,7 @@ export function benchmarkStat(round: number): number {
   return BALANCE.rollBenchmarkStart + BALANCE.rollBenchmarkPerRound * (round - 1);
 }
 export function rollTarget(round: number, difficulty: number): number {
-  return Math.max(1, Math.round(3.5 * benchmarkStat(round) * difficulty));
+  return Math.max(1, Math.round(dieMean() * benchmarkStat(round) * difficulty));
 }
 // 탐험 카드의 target은 난이도 × 10, 협력 카드의 pairTarget은 난이도 × 18 (둘이 굴리므로 목표값은 2배)
 const exploreTarget = (round: number, target: number) => rollTarget(round, (target / 10) * BALANCE.exploreDifficultyScale);
@@ -90,19 +97,22 @@ export const usableFuel = (player: PlayerGameState, kind: KeptToken): number => 
 export const examFuel = (card: Pick<ExamCard, "diceStat">): KeptToken => (card.diceStat === "spellPower" ? "mana" : card.diceStat);
 // 마법생물 조련: 매력기운을 1~보유 개수 사이에서 골라 내고 낸 개수만큼 주사위를 굴려, 합이 생물마다 정해진 기준 수치(trainTarget × trainTargetScale) 이상이면 성공
 // (매력기운이 없으면 공짜 주사위 1개). 생물의 속성·종류는 표시용이다
-export const creatureTarget = (card: Pick<CreatureCard, "trainTarget">) => Math.max(1, Math.round(card.trainTarget * BALANCE.trainTargetScale));
+// (trainTarget은 1~6 주사위 기준이라 주사위 평균에 맞춰 줄인다)
+export const creatureTarget = (card: Pick<CreatureCard, "trainTarget">) => Math.max(1, Math.round((card.trainTarget * BALANCE.trainTargetScale * dieMean()) / 3.5));
 const ELEMENT_NAME = { sky: "하늘", land: "육지", ocean: "바다" } as const;
 const creatureTagsOf = (card: Pick<CreatureCard, "element" | "kind">) => `${ELEMENT_NAME[card.element]} · ${card.kind === "animal" ? "동물" : "식물"}`;
 
 // 주사위 n개의 합이 target 이상일 확률 (정확한 계산)
 export function diceSuccessChance(n: number, target: number): number {
-  if (target <= n) return 1;
-  if (target > 6 * n) return 0;
+  const faces = BALANCE.dieFaces;
+  const top = Math.max(...faces);
+  if (target <= n * Math.min(...faces)) return 1;
+  if (target > top * n) return 0;
   let dist = [1]; // dist[k] = 합이 k일 확률
   for (let i = 0; i < n; i++) {
-    const next = new Array(dist.length + 6).fill(0);
+    const next = new Array(dist.length + top).fill(0);
     dist.forEach((pr, k) => {
-      for (let f = 1; f <= 6; f++) next[k + f] += pr / 6;
+      for (const f of faces) next[k + f] += pr / faces.length;
     });
     dist = next;
   }
@@ -127,8 +137,8 @@ export function explorationChance(state: GameState, player: PlayerGameState, car
   if (!card.check) return 1;
   const n = suggestDiceCount(usableFuel(player, BALANCE.rollFuel.exploration), exploreTarget(state.round, card.check.target));
   const catchUp = overallGap(state, player.id) >= BALANCE.catchUpGap ? BALANCE.catchUpBonus : 0;
-  const mean = 3.5 * n + catchUp;
-  const sd = Math.sqrt((n * 35) / 12);
+  const mean = dieMean() * n + catchUp;
+  const sd = Math.sqrt(n * dieVariance());
   return 1 - normalCdf((exploreTarget(state.round, card.check.target) - 0.5 - mean) / sd);
 }
 
@@ -1487,39 +1497,74 @@ function applyTournamentFinalRewards(state: GameState): void {
   }
 }
 
-// 최종 점수: 마법 성취도(주문력 × 학점) + 마법생물 세트(하늘·육지·바다 1장씩) 점수
-// 졸업식 부문상 (41절): 능력치별로 가장 높은 플레이어(동점이면 공동)가 받는다. 값이 0이면 받지 않는다
-export const AWARD_NAME: Record<StatKey, string> = { intelligence: "수석상", stamina: "튼튼상", charm: "인기상", spellPower: "마법상" };
-export function awardWinnersOf(players: PlayerGameState[]): Record<StatKey, string[]> {
-  const result = { intelligence: [], stamina: [], charm: [], spellPower: [] } as Record<StatKey, string[]>;
-  for (const stat of BALANCE.graduationAwardStats) {
-    const top = Math.max(0, ...players.map((p) => effectiveStat(p, stat)));
-    if (top > 0) result[stat] = players.filter((p) => effectiveStat(p, stat) === top).map((p) => p.id);
-  }
-  return result;
+// ── 졸업식 시상 (46절): 6부문 순위 점수의 합이 최종 점수다 ──
+export const AWARD_NAME: Record<AwardCategory, string> = {
+  spellPower: "마법상",
+  credit: "우등상",
+  intelligence: "수석상",
+  stamina: "튼튼상",
+  charm: "인기상",
+  creature: "생물사랑상",
+};
+export const AWARD_SUBJECT: Record<AwardCategory, string> = { ...STAT_NAME, credit: "학점", creature: "마법생물" };
+
+// 부문의 값: 능력치·학점은 그 수치, 마법생물은 마리 수 + 완성한 세트 수
+export function awardValue(player: PlayerGameState, category: AwardCategory): number {
+  if (category === "credit") return player.credit;
+  if (category === "creature") return player.creatures.length + creatureSets(player.creatures);
+  return effectiveStat(player, category);
 }
 
-// 최종 점수: 마법 성취도(주문력 × 학점) + 마법생물 세트(하늘·육지·바다 1장씩) 점수 + 졸업식 부문상 점수 (부문상은 게임이 끝날 때 정해진다)
+// 지금 상태로 시상하면 받을 상 (동점은 같은 순위, 값 0이면 없음, rankPoints 밖의 순위는 0점이라 뺀다)
+export function graduationAwards(players: PlayerGameState[]): Map<string, GraduationAward[]> {
+  const out = new Map(players.map((p) => [p.id, [] as GraduationAward[]]));
+  for (const category of BALANCE.graduationCategories) {
+    for (const p of players) {
+      const value = awardValue(p, category);
+      if (value <= 0) continue;
+      const rank = 1 + players.filter((o) => awardValue(o, category) > value).length;
+      const points = BALANCE.rankPoints[rank - 1] ?? 0;
+      if (points > 0) out.get(p.id)!.push({ category, value, rank, points });
+    }
+  }
+  return out;
+}
+
+const awardPoints = (awards: GraduationAward[]) => awards.reduce((a, w) => a + w.points, 0);
+
+// 최종 점수 = 졸업식에서 받은 점수의 합 (게임이 끝날 때 정해진다)
 export function finalScore(player: PlayerGameState): number {
-  return effectiveStat(player, "spellPower") * player.credit + creatureSets(player.creatures) * BALANCE.creatureSetScore + player.awards.length * BALANCE.graduationAwardScore;
+  return awardPoints(player.awards);
+}
+
+// 게임 중 예상 점수: 지금 상태로 졸업하면 받을 점수
+export function projectedScore(players: PlayerGameState[], player: PlayerGameState): number {
+  return awardPoints(graduationAwards(players).get(player.id) ?? []);
 }
 
 function finalizeGame(state: GameState): void {
   state.phase = "ended";
-  // 졸업식: 능력치 부문별 1등에게 부문상을 준다 (점수에 반영)
-  const winners = awardWinnersOf(state.turnOrder.map((id) => state.players[id]));
-  for (const id of state.turnOrder) state.players[id].awards = (Object.keys(winners) as StatKey[]).filter((stat) => winners[stat].includes(id));
-  for (const stat of Object.keys(winners) as StatKey[]) {
-    if (winners[stat].length > 0) log(state, `졸업식 ${AWARD_NAME[stat]}(${STAT_NAME[stat]} 1등): ${winners[stat].map((id) => state.players[id].name).join(", ")} +${BALANCE.graduationAwardScore}점`);
+  // 졸업식: 부문마다 순위에 따라 점수를 준다 (46절)
+  const players = state.turnOrder.map((id) => state.players[id]);
+  const awards = graduationAwards(players);
+  for (const p of players) p.awards = awards.get(p.id) ?? [];
+  for (const category of BALANCE.graduationCategories) {
+    const got = players.flatMap((p) => p.awards.filter((w) => w.category === category).map((w) => ({ p, w }))).sort((a, b) => a.w.rank - b.w.rank);
+    if (got.length > 0) log(state, `졸업식 ${AWARD_NAME[category]}(${AWARD_SUBJECT[category]}): ${got.map(({ p, w }) => `${w.rank}위 ${p.name} ${w.value} +${w.points}점`).join(", ")}`);
   }
   const achievements = state.turnOrder.map((id) => ({
     playerId: id,
     achievement: finalScore(state.players[id]),
   }));
-  // 최종 점수 동점이면 공동 승리
-  const best = Math.max(...achievements.map((a) => a.achievement));
-  state.winnerIds = achievements.filter((a) => a.achievement === best).map((a) => a.playerId);
-  log(state, "게임 종료: 최종 점수(주문력 × 학점 + 마법생물 세트 점수 + 졸업식 부문상 점수) 최고 플레이어 승리");
+  // 최종 점수가 같으면 1위 상을 더 많이 받은 사람, 그것도 같으면 2위 상이 많은 사람이 이긴다 (그래도 같으면 공동 승리, 46절)
+  const key = (id: string) => {
+    const aw = state.players[id].awards;
+    return [finalScore(state.players[id]), aw.filter((w) => w.rank === 1).length, aw.filter((w) => w.rank === 2).length];
+  };
+  const better = (a: number[], b: number[]) => a.findIndex((x, i) => x !== b[i]) >= 0 && a[a.findIndex((x, i) => x !== b[i])] > b[a.findIndex((x, i) => x !== b[i])];
+  const best = state.turnOrder.map(key).reduce((acc, k) => (better(k, acc) ? k : acc));
+  state.winnerIds = achievements.filter((a) => key(a.playerId).every((x, i) => x === best[i])).map((a) => a.playerId);
+  log(state, "게임 종료: 졸업식 시상 점수의 합이 가장 큰 플레이어 승리");
 }
 
 // ── 게임 도중 플레이어 제거 (방장이 내보냈을 때) ──

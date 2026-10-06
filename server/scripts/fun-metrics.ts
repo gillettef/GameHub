@@ -7,7 +7,7 @@
 import { BALANCE } from "../src/game/config.js";
 if (process.env.BAL) Object.assign(BALANCE, JSON.parse(process.env.BAL));
 const { BOT_PERSONALITIES, chooseActivityAction, choosePick, playClassTurn } = await import("../src/game/bot.js");
-const { advanceResolution, chooseActivityCard, createGame, creatureSets, selectActivity, tokensOf, finalScore } = await import("../src/game/engine.js");
+const { advanceResolution, chooseActivityCard, createGame, selectActivity, tokensOf, finalScore, projectedScore } = await import("../src/game/engine.js");
 const { cramStep, rollAndConfirm } = await import("./_drive.js");
 type GameState = import("../src/game/types.js").GameState;
 type PlayerGameState = import("../src/game/types.js").PlayerGameState;
@@ -20,15 +20,14 @@ const STATS: StatKey[] = ["intelligence", "stamina", "charm", "spellPower"];
 const pct = (a: number, b: number) => (b > 0 ? `${((100 * a) / b).toFixed(1)}%` : "-");
 const avg = (a: number, b: number) => (b > 0 ? +(a / b).toFixed(2) : 0);
 
-// 게임 중 예상 점수 (화면의 예상 점수와 같은 규칙: 지금 1등인 능력치의 부문상을 받는다고 본다)
+// 게임 중 예상 점수 (화면의 예상 점수와 같은 규칙: 지금 상태로 졸업식 시상을 한다고 본다)
 function projected(state: GameState, p: PlayerGameState): number {
-  const players = state.turnOrder.map((id) => state.players[id]);
-  const awards = BALANCE.graduationAwardStats.filter((s) => p[s] > 0 && p[s] === Math.max(...players.map((x) => x[s]))).length;
-  return p.spellPower * p.credit + creatureSets(p.creatures) * BALANCE.creatureSetScore + awards * BALANCE.graduationAwardScore;
+  return projectedScore(state.turnOrder.map((id) => state.players[id]), p);
 }
 
 const m = {
-  rolls: {} as Record<string, { total: number; capped: number; free: number; dice: number }>,
+  rolls: {} as Record<string, { total: number; capped: number; free: number; dice: number; noChoice: number }>,
+  early: {} as Record<string, { n: number; w: number }>,
   outcome: {} as Record<string, { ok: number; total: number }>,
   classTier: { intro: 0, basic: 0, mid: 0, advanced: 0, skip: 0 } as Record<string, number>,
   classStat: [0, 0].map(() => ({ intelligence: 0, stamina: 0, charm: 0, spellPower: 0 })) as Record<StatKey, number>[],
@@ -36,6 +35,8 @@ const m = {
   leadChanges: 0,
   comeback: 0, // 9개월이 끝났을 때 예상 점수 1등이 결국 우승하지 못한 판
   margin: 0,
+  marginRatio: 0,
+  coWin: 0,
   lastGap: 0,
   sweep: 0, // 부문상 3개 이상을 한 사람이 가져간 판
   awardHolders: 0,
@@ -65,17 +66,19 @@ for (let g = 0; g < games; g++) {
   let seenRoll: unknown = null;
   let leader: string | null = null;
   let leaderAt9: string | null = null;
+  const earlyOk = new Map<string, number>();
   let lastRound = 1;
   let guard = 0;
   while (state.phase !== "ended" && guard++ < 8000) {
     // 새 굴림이 시작되면 재료 기운·상한을 기록한다
     if (state.pendingRoll && state.pendingRoll !== seenRoll) {
       seenRoll = state.pendingRoll;
-      const r = (m.rolls[state.pendingRoll.kind] ??= { total: 0, capped: 0, free: 0, dice: 0 });
+      const r = (m.rolls[state.pendingRoll.kind] ??= { total: 0, capped: 0, free: 0, dice: 0, noChoice: 0 });
       for (const e of state.pendingRoll.entries) {
         if (state.pendingRoll.kind === "first") continue;
         r.total++;
         const have = tokensOf(state.players[e.playerId], e.diceToken ?? "mana");
+        if ((e.diceChoiceMax ?? 0) <= 1) r.noChoice++;
         if (e.diceChoiceMax === undefined) r.free++;
         else if (have > e.diceChoiceMax) r.capped++;
       }
@@ -87,6 +90,11 @@ for (let g = 0; g < games; g++) {
       rollAndConfirm(state);
       for (const e of entries) if (kind !== "first") m.rolls[kind].dice += e.dice?.length ?? 0;
       const lines = state.log.slice(logStart).map((l) => l.message);
+      if (state.round <= 3)
+        for (const line of lines) {
+          const e = line.match(/^(p\d): .*(조련 성공|실험 성공|목표 \d+ 성공)/) ?? line.match(/지목! (p\d) 승리/);
+          if (e) earlyOk.set(e[1], (earlyOk.get(e[1]) ?? 0) + 1);
+        }
       for (const line of lines) {
         if (line.includes("조련 성공")) bump("조련", true);
         else if (line.includes("조련 실패")) bump("조련", false);
@@ -143,6 +151,8 @@ for (let g = 0; g < games; g++) {
   if (state.phase !== "ended") continue;
   const scores = ids.map((id) => finalScore(state.players[id])).sort((a, b) => b - a);
   m.margin += scores[0] - scores[1];
+  m.marginRatio += scores[0] > 0 ? (scores[0] - scores[1]) / scores[0] : 0;
+  if ((state.winnerIds?.length ?? 0) > 1) m.coWin++;
   m.lastGap += scores[0] - scores[scores.length - 1];
   m.winnerScore += scores[0];
   for (const id of ids) {
@@ -154,10 +164,17 @@ for (let g = 0; g < games; g++) {
     pr.games++;
     if (state.winnerIds?.includes(id)) pr.wins += 1 / state.winnerIds.length;
   }
-  const holders = ids.filter((id) => state.players[id].awards.length > 0).length;
-  m.awardHolders += holders;
-  if (ids.some((id) => state.players[id].awards.length >= 3)) m.sweep++;
+  // 1위 상을 받은 사람 수, 한 사람이 1위를 3부문 이상 가져간 판
+  const firsts = (id: string) => state.players[id].awards.filter((w) => w.rank === 1).length;
+  m.awardHolders += ids.filter((id) => firsts(id) > 0).length;
+  if (ids.some((id) => firsts(id) >= 3)) m.sweep++;
   if (leaderAt9 && !state.winnerIds?.includes(leaderAt9)) m.comeback++;
+  for (const id of ids) {
+    const k = `${Math.min(3, earlyOk.get(id) ?? 0)}${(earlyOk.get(id) ?? 0) >= 3 ? "+" : ""}회`;
+    const r = (m.early[k] ??= { n: 0, w: 0 });
+    r.n++;
+    if (state.winnerIds?.includes(id)) r.w += 1 / state.winnerIds.length;
+  }
   for (const w of state.winnerIds ?? []) {
     m.seatWins[ids.indexOf(w)] += 1 / state.winnerIds!.length;
   }
@@ -166,7 +183,7 @@ for (let g = 0; g < games; g++) {
 const P = games * n;
 console.log(`BAL=${process.env.BAL ?? "{}"} ${games}판 × ${n}인 (여러 성향 봇이 섞인 게임)`);
 console.log("\n[컨셉] 굴림: 실력 상한에 걸린 비율(가진 기운이 능력치보다 많아 다 못 냄), 재료 기운이 없어 공짜 1개로 굴린 비율, 평균 주사위 수");
-console.table(Object.fromEntries(Object.entries(m.rolls).map(([k, r]) => [k, { 굴림: r.total, 상한걸림: pct(r.capped, r.total), 공짜1개: pct(r.free, r.total), 평균주사위: avg(r.dice, r.total) }])));
+console.table(Object.fromEntries(Object.entries(m.rolls).map(([k, r]) => [k, { 굴림: r.total, 상한걸림: pct(r.capped, r.total), 공짜1개: pct(r.free, r.total), 고를여지없음: pct(r.noChoice, r.total), 평균주사위: avg(r.dice, r.total) }])));
 const tierTotal = Object.values(m.classTier).reduce((a, b) => a + b, 0);
 console.log("[컨셉] 수업카드 단계별 선택 비율:", Object.fromEntries(Object.entries(m.classTier).map(([k, v]) => [k, pct(v, tierTotal)])));
 for (const [i, label] of ["1학기", "2학기"].entries()) {
@@ -179,7 +196,8 @@ console.table(Object.fromEntries(Object.entries(m.outcome).map(([k, o]) => [k, {
 console.log("[밸런스] 좌석별 승률(1번 좌석부터):", m.seatWins.map((w) => pct(w, games)).join(" / "));
 console.log("[밸런스] 성향별 승률(기대", pct(1, n), "):", Object.fromEntries(Object.entries(m.persona).map(([k, v]) => [k, pct(v.wins, v.games)])));
 console.log("\n[재미] 평균 최종 점수", avg(m.scoreFinal, P), "· 우승 점수", avg(m.winnerScore, games), "· 학점", avg(m.creditFinal, P));
-console.log("[재미] 1·2등 점수 차", avg(m.margin, games), "· 1등과 꼴찌 차", avg(m.lastGap, games));
+console.log("[재미] 1·2등 점수 차", avg(m.margin, games), `(우승 점수의 ${pct(m.marginRatio, games)})`, "· 1등과 꼴찌 차", avg(m.lastGap, games), "· 공동 우승", pct(m.coWin, games));
 console.log("[재미] 예상 점수 선두 교체(판당)", avg(m.leadChanges, games), "· 9개월 끝 선두가 우승 못 한 판(역전)", pct(m.comeback, games));
-console.log("[재미] 부문상 받은 사람 수(판당)", avg(m.awardHolders, games), "· 한 사람이 부문상 3개 이상 싹쓸이", pct(m.sweep, games));
+console.log("[재미] 1~3개월 성공 횟수별 우승률 (초반 운이 판을 정하는가):", Object.fromEntries(Object.entries(m.early).sort().map(([k, v]) => [k, pct(v.w, v.n)])));
+console.log("[재미] 1위 상을 받은 사람 수(판당)", avg(m.awardHolders, games), "· 한 사람이 1위를 3부문 이상 싹쓸이", pct(m.sweep, games));
 console.log("[재미] 친구와 엮인 활동(같은 구역·주문 대결) 비율", pct(m.shared, m.activities), "· 주문 대결(판당)", avg(m.duels, games), "· 벼락치기 사용률", pct(m.cram, m.cramChances));

@@ -208,9 +208,8 @@ const PUBLIC_RULES: PublicRules = {
   midtermNoticeRound: BALANCE.midtermNoticeRound,
   finalNoticeRound: BALANCE.finalNoticeRound,
   tournamentRewards: BALANCE.tournamentRewards,
-  creatureSetScore: BALANCE.creatureSetScore,
-  graduationAwardScore: BALANCE.graduationAwardScore,
-  graduationAwardStats: BALANCE.graduationAwardStats,
+  graduationCategories: BALANCE.graduationCategories,
+  rankPoints: BALANCE.rankPoints,
 };
 
 function broadcastGameState(room: Room): void {
