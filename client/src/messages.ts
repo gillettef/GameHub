@@ -1,4 +1,4 @@
-import type { ActivityId, GameState } from "./gameTypes";
+import type { ActivityId, KeptToken, GameState } from "./gameTypes";
 
 export interface RoomPlayerInfo {
   id: string;
@@ -27,7 +27,9 @@ export type ClientMessage =
   | { type: "take_class_card"; cardId: string | null }
   // assist: 보조 능력치 기운(토너먼트 체력기운 / 탐험 지력기운)을 낼 개수
   | { type: "roll_dice"; diceCount?: number; assist?: number }
-  // 모두 굴린 뒤 결과를 확인하고 다음으로 넘긴다
+  // 시험 달 1주차 벼락치기: from 기운 1개를 시험 과목 기운 1개로 바꾼다 (null이면 하지 않고 넘어간다). 선부터 한 명씩
+  | { type: "cram"; from: KeptToken | null }
+  // 내 차례에 굴린 결과를 확인하고 다음 사람에게 넘긴다
   // 결과 확인 전에 마나기운 1개당 주사위 1개를 다시 굴린다 (굴린 주사위 중 원하는 것만: 0부터 시작하는 번호)
   | { type: "reroll_dice"; diceIndexes: number[] }
   | { type: "confirm_roll" }

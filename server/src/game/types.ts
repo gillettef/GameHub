@@ -10,7 +10,37 @@ export type ActivityId =
 // 4주차(정리)에서 다음 달로 남기는 기운: 네 종류(지력·체력·매력·마나) 중 1개, 또는 남기지 않기
 export type KeptToken = "intelligence" | "stamina" | "charm" | "mana";
 
-export type GamePhase = "setup" | "prep" | "class" | "activity" | "cleanup" | "midterm_exam" | "final_exam" | "ended";
+export type GamePhase = "setup" | "prep" | "class" | "activity" | "cleanup" | "cram" | "midterm_exam" | "final_exam" | "ended";
+
+// 1주차 학교 소식 (44절): 그달에 적용되는 효과
+export interface NewsEffect {
+  // 정규수업에 수업카드를 더 공개한다
+  classExtra?: number;
+  // 그 과목 수업카드의 기운 +n (공개된 카드의 gain에 더해 보여 준다)
+  classBonus?: Partial<Record<StatKey, number>>;
+  // 판정 목표값 조정 (음수면 쉬워진다)
+  targetMod?: Partial<Record<"creature" | "lab" | "exploration", number>>;
+  // 토너먼트에 참가하면 더 전진하는 칸
+  tournamentBonus?: number;
+  // 모두가 받는 기운
+  gift?: Partial<Record<KeptToken, number>>;
+  // "함께하면 든든"의 목표값 감소에 더하는 값
+  buddyExtra?: number;
+  // 주문 대결 승자가 받는 학점
+  duelWinCredit?: number;
+  // 시험 공고: 그달 수업에 시험 과목(주 능력치) 카드를 더 공개한다
+  examSubjectExtra?: number;
+  // 시험 주간: 벼락치기로 바꿀 수 있는 시험 과목 기운
+  cramTo?: KeptToken;
+}
+
+export interface NewsCard {
+  id: string;
+  kind: "event" | "notice" | "examWeek";
+  name: string;
+  description: string;
+  effect: NewsEffect;
+}
 
 // 수업카드 = 과목 (42절). 가져가면 그 과목의 기운(stat이 주문력이면 마나기운)을 gain만큼 무료로 얻는다 (한도까지). 능력치는 올려 주지 않는다.
 // 중급(mid)·심화(advanced)는 그 과목 능력치가 minStat 이상이어야 가져갈 수 있다 (선수과목)
@@ -164,8 +194,8 @@ export interface ExamResult {
   scores: { playerId: string; score: number; dice: number[]; bonus: number; rank: number; creditAwarded: number }[];
 }
 
-// 주사위 굴리기 단계: 굴려야 하는 사람이 모두 버튼을 눌러 굴릴 때까지 게임이 기다린다
-// 모두 굴리면 결과를 보여 주고, 굴린 사람들은 (마나기운으로 일부 주사위를 다시 굴린 뒤) "확인"을 눌러야 결과가 적용된다
+// 주사위 굴리기 단계 (44-4절: 동시 진행 없음): entries 순서대로 한 명씩 굴린다. 차례인 사람(아직 확인하지 않은 첫 entry)이 굴리고,
+// (마나기운으로 일부 주사위를 다시 굴린 뒤) "확인"을 누르면 다음 사람 차례가 된다. 모두 확인하면 결과가 적용된다
 // 선 정하기를 뺀 모든 굴림은 마나기운을 1~보유 개수 사이에서 골라 내고 낸 개수만큼 굴린다 (마나기운이 없으면 공짜 주사위 1개, 다시 굴리기는 마나기운 1개당 주사위 1개)
 export interface PendingRoll {
   kind: "first" | "tournament" | "creature" | "lab" | "duel" | "exploration" | "exam";
@@ -249,6 +279,8 @@ export interface HiddenState {
   coop: { card: ExplorationCard; playerId: string } | null;
   // 진행 단계에서 지금 처리 중인 활동이 시작될 때의 로그 길이 (활동 결과 문구를 모으는 용도)
   resolveLogStart?: number;
+  // 학교 소식 행사 덱 (뽑을 순서대로, 다 쓰면 다시 섞는다)
+  newsDeck: NewsCard[];
 }
 
 export interface GameState {
@@ -283,7 +315,12 @@ export interface GameState {
   pendingRoll: PendingRoll | null;
   // 함께할 친구를 기다리는 협력 탐험 카드
   coopWaiting: CoopWaiting | null;
-  // 공개된 시험 카드 (3라운드 종료 후 중간고사, 9라운드 종료 후 기말고사 카드가 공개되기 전에는 null)
+  // 이번 달 1주차 학교 소식 (게임 시작 전에는 null)
+  news: NewsCard | null;
+  // 시험 달의 벼락치기: 선부터 한 명씩 고른다 (cramOrder[cramPointer]가 지금 차례)
+  cramOrder: string[];
+  cramPointer: number;
+  // 공개된 시험 카드 (시험 공고 달(4·10개월) 1주차에 공개되기 전에는 null)
   exams: { midterm: ExamCard | null; final: ExamCard | null };
   examResults: ExamResult[];
   // 카드 덱·버림 더미와 주사위 처리 정보 (서버 전용, 클라이언트에는 전송하지 않음)
@@ -324,10 +361,10 @@ export interface PublicRules {
   activitySecondParticipantCost: number;
   duelCharmFee: number;
   duelManaFee: number;
-  // 시험이 열리는 라운드와, 시험 카드가 공개되는 라운드 (이 라운드가 끝난 뒤 공개)
+  // 시험이 열리는 라운드와, 시험 공고(시험 카드 공개)가 나오는 라운드 (그 달 1주차에 공개)
   midtermRound: number;
-  midtermRevealRound: number;
-  finalRevealRound: number;
+  midtermNoticeRound: number;
+  finalNoticeRound: number;
   // 마법 토너먼트 최종 순위 보상 (1위, 2위 순서, 학점)
   tournamentRewards: number[];
   // 최종 점수 = 주문력 × 학점 + 마법생물 세트(하늘·육지·바다 1장씩) 수 × creatureSetScore + 졸업식 부문상 수 × graduationAwardScore

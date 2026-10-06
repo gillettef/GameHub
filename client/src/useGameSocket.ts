@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ClientMessage, ServerMessage } from "./messages";
-import type { ActivityId, GameState } from "./gameTypes";
+import type { ActivityId, GameState, KeptToken } from "./gameTypes";
 
 export interface RoomPlayer {
   id: string;
@@ -407,6 +407,13 @@ export function useGameSocket() {
     [ensureSocket, send],
   );
 
+  const cram = useCallback(
+    (from: KeptToken | null) => {
+      send(ensureSocket(), { type: "cram", from });
+    },
+    [ensureSocket, send],
+  );
+
   const rollDice = useCallback((diceCount?: number, assist?: number) => {
     const socket = ensureSocket();
     send(socket, { type: "roll_dice", diceCount, assist });
@@ -441,5 +448,5 @@ export function useGameSocket() {
     [ensureSocket, send],
   );
 
-  return { state, game, offline, notice, noticeSeq, reactions, lastError, errorSeq, reconnecting, createRoom, joinRoom, leaveRoom, startGame, addBot, removeBot, kickPlayer, rematch, sendEmoji, takeClassCard, rollDice, rerollDice, confirmRoll, selectActivity, pickActivityCard };
+  return { state, game, offline, notice, noticeSeq, reactions, lastError, errorSeq, reconnecting, createRoom, joinRoom, leaveRoom, startGame, addBot, removeBot, kickPlayer, rematch, sendEmoji, takeClassCard, cram, rollDice, rerollDice, confirmRoll, selectActivity, pickActivityCard };
 }

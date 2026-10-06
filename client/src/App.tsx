@@ -32,7 +32,7 @@ import { Icon } from "./Icons";
 import { KickConfirm, LeaveConfirm, isKickConfirmOpen, useBackGuard } from "./Leave";
 
 function App() {
-  const { state, game, offline, notice, noticeSeq, reactions, lastError, errorSeq, reconnecting, createRoom, joinRoom, leaveRoom, startGame, addBot, removeBot, kickPlayer, rematch, sendEmoji, takeClassCard, rollDice, rerollDice, confirmRoll, selectActivity, pickActivityCard } =
+  const { state, game, offline, notice, noticeSeq, reactions, lastError, errorSeq, reconnecting, createRoom, joinRoom, leaveRoom, startGame, addBot, removeBot, kickPlayer, rematch, sendEmoji, takeClassCard, cram, rollDice, rerollDice, confirmRoll, selectActivity, pickActivityCard } =
     useGameSocket();
   const [playerName, setPlayerName] = useState("");
   const [joinCode, setJoinCode] = useState("");
@@ -95,6 +95,7 @@ ${window.location.href}`;
         errorMessage={lastError}
         errorSeq={errorSeq}
         onTakeClassCard={takeClassCard}
+        onCram={cram}
         onSelectActivity={selectActivity}
         onPickActivityCard={pickActivityCard}
         onRollDice={rollDice}

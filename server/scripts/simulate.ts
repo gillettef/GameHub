@@ -7,7 +7,7 @@ import { chooseActivityAction, choosePick, playClassTurn, type BotStrategy } fro
 import { BALANCE } from "../src/game/config.js";
 if (process.env.BAL) Object.assign(BALANCE, JSON.parse(process.env.BAL)); // 예: BAL='{"classGain":{"basic":2,"advanced":3}}' 로 BALANCE를 덮어써 비교
 import { advanceResolution, chooseActivityCard, classCardsLeft, createGame, finalScore, selectActivity } from "../src/game/engine.js";
-import { rollAndConfirm } from "./_drive.js";
+import { cramStep, rollAndConfirm } from "./_drive.js";
 import type { ActivityId, GameState } from "../src/game/types.js";
 
 const even: Record<ActivityId, number> = { tournament: 1, creature: 1, duel: 1, exploration: 1, lab: 1 };
@@ -59,8 +59,11 @@ function playGame(strategies: BotStrategy[]): GameState {
       // 공개된 카드(구역 카드·주문 대결 마도서)를 고른다
       const pickerId = state.pendingPick.playerId;
       chooseActivityCard(state, pickerId, choosePick(state, byId[pickerId]));
+    } else if (state.phase === "cram") {
+      // 시험 달 1주차: 선부터 한 명씩 벼락치기
+      cramStep(state);
     } else if (state.phase === "class") {
-      // 지력이 높은 순서대로 한 명씩 공개된 수업카드 1장을 가져간다
+      // 선 다음 사람부터 한 명씩 공개된 수업카드 1장을 가져간다 (선이 마지막)
       const id = state.classPickOrder[state.classPickPointer];
       playClassTurn(state, id, byId[id]);
       if (lastNormalExhaustRound === 0 && classCardsLeft(state) === 0) lastNormalExhaustRound = state.round;

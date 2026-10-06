@@ -7,7 +7,7 @@ import { randomUUID } from "node:crypto";
 import { WebSocketServer, type WebSocket } from "ws";
 import { BALANCE } from "./game/config.js";
 import { createRoom, getRoom, joinRoom, leaveRoom, leaveRoomIfNoHumans, scheduleRoomExpiry, broadcast, syncEmptyRoomExpiry, pickHost, HOST_AWAY_HANDOVER_MS, type Player, type Room } from "./rooms.js";
-import { BOT_NAMES, botAssist, chooseActivityAction, choosePick, pickBotPersonality, playClassTurn, rerollLowDice, type BotStrategy } from "./game/bot.js";
+import { BOT_NAMES, botAssist, chooseActivityAction, choosePick, pickBotPersonality, playClassTurn, playCramTurn, rerollLowDice, type BotStrategy } from "./game/bot.js";
 import {
   availableActivities,
   chooseActivityCard,
@@ -22,6 +22,8 @@ import {
   advanceResolution,
   canAdvanceResolution,
   rollRevealed,
+  currentRoller,
+  cramTurn,
   removePlayerFromGame,
 } from "./game/engine.js";
 import type { ClientMessage, ServerMessage } from "./messages.js";
@@ -79,6 +81,8 @@ function runBotFallback(game: GameState, botId: string): void {
     else confirmRoll(game, botId);
   } else if (game.phase === "class") {
     takeClassCard(game, botId, null);
+  } else if (game.phase === "cram") {
+    cramTurn(game, botId, null);
   } else if (game.pendingPick) {
     // 반드시 골라야 하는 카드(탐험·마도서)는 첫 카드를, 나머지는 넘어간다
     const first = game.activityOffers[game.pendingPick.activityId]?.cards[0]?.id ?? null;
@@ -103,6 +107,8 @@ function takeAutoAction(game: GameState, playerId: string, strategy: BotStrategy
       }
     } else if (game.phase === "class") {
       playClassTurn(game, playerId, strategy);
+    } else if (game.phase === "cram") {
+      playCramTurn(game, playerId);
     } else if (game.phase === "activity" && game.pendingPick) {
       chooseActivityCard(game, playerId, choosePick(game, strategy));
     } else if (game.phase === "activity") {
@@ -133,18 +139,18 @@ function scheduleBots(room: Room): void {
   let advance = false;
   let delay = BOT_MIN_DELAY_MS + Math.random() * (BOT_MAX_DELAY_MS - BOT_MIN_DELAY_MS);
   if (game.pendingRoll) {
-    // 주사위를 굴려야 하는 봇은 사람처럼 버튼을 누른다 (사람이 굴리는 동안 봇도 자기 몫을 굴림).
-    // 모두 굴린 뒤에는 결과를 볼 시간을 준 다음 봇이 확인을 누른다
-    const bots = game.pendingRoll.entries.filter((e) => room.players.get(e.playerId)?.bot);
-    if (rollRevealed(game)) {
-      actorId = bots.find((e) => !e.confirmed)?.playerId;
-      delay = ROLL_REVEAL_MS;
-    } else {
-      actorId = bots.find((e) => e.dice === null)?.playerId;
+    // 한 명씩 차례대로 굴린다 (44-4절). 차례인 사람이 봇이면 버튼을 누르고, 굴린 뒤에는 결과를 볼 시간을 준 다음 확인을 누른다
+    const currentId = currentRoller(game);
+    if (currentId && room.players.get(currentId)?.bot) {
+      actorId = currentId;
+      if (rollRevealed(game)) delay = ROLL_REVEAL_MS;
     }
   } else if (game.phase === "class") {
     // 선부터 시계방향으로 한 명씩 수업카드를 고른다
     const currentId = game.classPickOrder[game.classPickPointer];
+    if (room.players.get(currentId)?.bot) actorId = currentId;
+  } else if (game.phase === "cram") {
+    const currentId = game.cramOrder[game.cramPointer];
     if (room.players.get(currentId)?.bot) actorId = currentId;
   } else if (game.phase === "activity" && game.activityStage === "choose") {
     const currentId = game.activityOrder[game.activityTurnPointer];
@@ -199,8 +205,8 @@ const PUBLIC_RULES: PublicRules = {
   duelCharmFee: BALANCE.duelCharmFee,
   duelManaFee: BALANCE.duelManaFee,
   midtermRound: BALANCE.midtermRound,
-  midtermRevealRound: BALANCE.midtermRevealRound,
-  finalRevealRound: BALANCE.finalRevealRound,
+  midtermNoticeRound: BALANCE.midtermNoticeRound,
+  finalNoticeRound: BALANCE.finalNoticeRound,
   tournamentRewards: BALANCE.tournamentRewards,
   creatureSetScore: BALANCE.creatureSetScore,
   graduationAwardScore: BALANCE.graduationAwardScore,
@@ -503,6 +509,19 @@ wss.on("connection", (socket) => {
       if (!room.game) return;
       try {
         confirmRoll(room.game, playerId);
+        broadcastGameState(room);
+        scheduleBots(room);
+      } catch (err) {
+        send(socket, { type: "error", message: err instanceof Error ? err.message : "알 수 없는 오류" });
+        broadcastGameState(room);
+      }
+      return;
+    }
+
+    if (message.type === "cram") {
+      if (!room.game) return;
+      try {
+        cramTurn(room.game, playerId, message.from);
         broadcastGameState(room);
         scheduleBots(room);
       } catch (err) {

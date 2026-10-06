@@ -7,7 +7,27 @@ export type ActivityId = "tournament" | "creature" | "duel" | "exploration" | "l
 // 4주차(정리)에서 다음 달로 남기는 기운: 지력기운 1개, 체력기운 1개, 또는 남기지 않기
 export type KeptToken = "intelligence" | "stamina" | "charm" | "mana";
 
-export type GamePhase = "setup" | "prep" | "class" | "activity" | "cleanup" | "midterm_exam" | "final_exam" | "ended";
+export type GamePhase = "setup" | "prep" | "class" | "activity" | "cleanup" | "cram" | "midterm_exam" | "final_exam" | "ended";
+
+// 1주차 학교 소식 (서버 types.ts의 NewsEffect·NewsCard와 같은 모양)
+export interface NewsEffect {
+  classExtra?: number;
+  classBonus?: Partial<Record<StatKey, number>>;
+  targetMod?: Partial<Record<"creature" | "lab" | "exploration", number>>;
+  tournamentBonus?: number;
+  gift?: Partial<Record<KeptToken, number>>;
+  buddyExtra?: number;
+  duelWinCredit?: number;
+  examSubjectExtra?: number;
+  cramTo?: KeptToken;
+}
+export interface NewsCard {
+  id: string;
+  kind: "event" | "notice" | "examWeek";
+  name: string;
+  description: string;
+  effect: NewsEffect;
+}
 
 // 수업카드 = 과목: 가져가면 그 과목의 기운(주문력 과목은 마나기운)을 gain만큼 무료로 얻는다. 중급·심화는 그 과목 능력치가 minStat 이상이어야 한다
 export interface ClassCard {
@@ -193,8 +213,9 @@ export interface PublicRules {
   duelCharmFee: number;
   duelManaFee: number;
   midtermRound: number;
-  midtermRevealRound: number;
-  finalRevealRound: number;
+  // 시험 공고(시험 카드 공개)가 나오는 라운드 (그 달 1주차 학교 소식)
+  midtermNoticeRound: number;
+  finalNoticeRound: number;
   // 마법 토너먼트 최종 순위 보상 (1위, 2위 순서, 학점)
   tournamentRewards: number[];
   // 최종 점수 = 주문력 × 학점 + 마법생물 세트(하늘·육지·바다 1장씩) 수 × creatureSetScore
@@ -232,6 +253,10 @@ export interface GameState {
   pendingPick: { playerId: string; activityId: ActivityId; mode: "take" | "reward" } | null;
   pendingRoll: PendingRoll | null;
   coopWaiting: CoopWaiting | null;
+  // 이번 달 1주차 학교 소식, 시험 달 벼락치기 순서(선부터)와 지금 차례
+  news: NewsCard | null;
+  cramOrder: string[];
+  cramPointer: number;
   // 공개된 시험 카드 (공개 전에는 null)
   exams: { midterm: ExamCard | null; final: ExamCard | null };
   examResults: ExamResult[];
@@ -391,6 +416,18 @@ export function projectedScore(game: Pick<GameState, "rules" | "players" | "turn
     creatureSets(player.creatures) * game.rules.creatureSetScore +
     projectedAwards(game, player).length * game.rules.graduationAwardScore
   );
+}
+
+// 주사위를 굴릴(또는 결과를 확인할) 차례인 사람: 아직 확인하지 않은 첫 참여자 (한 명씩 차례대로, 서버 currentRoller와 같은 규칙)
+export function currentRoller(game: Pick<GameState, "pendingRoll">): string | undefined {
+  return game.pendingRoll?.entries.find((e) => !e.confirmed)?.playerId;
+}
+
+// 벼락치기로 바꿀 수 있는 기운 (시험 과목 기운이 아닌, 1개 이상 가진 기운. 서버 cramSources와 같은 규칙)
+export function cramSources(game: Pick<GameState, "news">, player: PlayerGameState): KeptToken[] {
+  const to = game.news?.effect.cramTo;
+  if (!to) return [];
+  return (["intelligence", "stamina", "charm", "mana"] as KeptToken[]).filter((k) => k !== to && player[ENERGY_FIELD[k]] > 0);
 }
 
 export function finalScore(game: Pick<GameState, "rules">, player: PlayerGameState): number {

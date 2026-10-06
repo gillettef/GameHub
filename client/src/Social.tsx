@@ -9,10 +9,9 @@ export const EMOJIS = ["👍", "😆", "😭", "😱", "👀", "⏰", "🎉", "�
 // 지금 게임이 누구의 행동을 기다리는지 (서버의 진행 규칙과 같은 기준: 주사위 굴림·확인, 4주차 기운 고르기, 정규수업·자율활동 차례, 카드 고르기)
 export function waitingOn(game: GameState): string[] {
   if (game.phase === "ended") return [];
-  if (game.pendingRoll) {
-    const revealed = game.pendingRoll.entries.every((e) => e.dice !== null);
-    return game.pendingRoll.entries.filter((e) => (revealed ? !e.confirmed : e.dice === null)).map((e) => e.playerId);
-  }
+  // 주사위는 한 명씩 차례대로 굴린다: 아직 확인하지 않은 첫 참여자
+  if (game.pendingRoll) return [game.pendingRoll.entries.find((e) => !e.confirmed)?.playerId].filter((id): id is string => !!id);
+  if (game.phase === "cram") return [game.cramOrder[game.cramPointer]].filter(Boolean);
   if (game.phase === "class") return [game.classPickOrder[game.classPickPointer]].filter(Boolean);
   if (game.phase === "activity") {
     if (game.activityStage === "choose") return [game.activityOrder[game.activityTurnPointer]].filter(Boolean);

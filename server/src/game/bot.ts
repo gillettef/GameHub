@@ -14,6 +14,9 @@ import {
   classGainKind,
   takeClassCard,
   tokensOf,
+  cramSources,
+  cramTurn,
+  rollLimit,
 } from "./engine.js";
 import {
   effectiveStat,
@@ -96,6 +99,17 @@ export function playClassTurn(state: GameState, playerId: string, strategy: BotS
     choice = strategy.random ? (Math.random() < 0.2 ? null : pickOne(options).id) : [...options].sort((a, b) => value(b) - value(a))[0].id;
   }
   takeClassCard(state, playerId, choice);
+}
+
+// 시험 달 벼락치기 (44절): 시험 과목 기운이 한 번에 낼 수 있는 개수(능력치)보다 적으면, 가장 많이 남은 다른 기운 1개를 바꾼다.
+// 마나기운은 다시 굴리기에 쓰므로 2개 이하면 건드리지 않는다
+export function playCramTurn(state: GameState, playerId: string): void {
+  const p = state.players[playerId];
+  const to = state.news?.effect.cramTo;
+  const sources = cramSources(state, p).filter((k) => k !== "mana" || p.manaTokens > 2);
+  const wants = !!to && tokensOf(p, to) < rollLimit(p, to);
+  const from = wants && sources.length > 0 ? [...sources].sort((a, b) => tokensOf(p, b) - tokensOf(p, a))[0] : null;
+  cramTurn(state, playerId, from);
 }
 
 // 자율활동 단계: 선택할 구역과 (주문 대결이면) 상대

@@ -15,11 +15,17 @@ export function nextAction(game: PublicGameState, playerId: string): SmokeAction
   // 주사위를 굴려야 하면 버튼을 누른다
   const roll = game.pendingRoll;
   if (roll) {
-    const mine = roll.entries.find((e) => e.playerId === playerId);
-    if (mine && mine.dice === null) return { key: `${base}:roll:${roll.kind}:${roll.title}`, message: { type: "roll_dice" } };
-    // 모두 굴렸으면 결과를 보고 확인을 누른다
-    if (mine && !mine.confirmed && roll.entries.every((e) => e.dice !== null)) return { key: `${base}:confirm:${roll.kind}:${roll.title}`, message: { type: "confirm_roll" } };
-    return null;
+    // 한 명씩 차례대로: 아직 확인하지 않은 첫 참여자가 나일 때만 굴리고, 굴렸으면 확인을 누른다
+    const mine = roll.entries.find((e) => !e.confirmed);
+    if (mine?.playerId !== playerId) return null;
+    if (mine.dice === null) return { key: `${base}:roll:${roll.kind}:${roll.title}`, message: { type: "roll_dice" } };
+    return { key: `${base}:confirm:${roll.kind}:${roll.title}`, message: { type: "confirm_roll" } };
+  }
+
+  // 시험 달 벼락치기: 내 차례면 넘어간다
+  if (game.phase === "cram") {
+    if (game.cramOrder[game.cramPointer] !== playerId) return null;
+    return { key: `${base}:cram:${game.cramPointer}`, message: { type: "cram", from: null } };
   }
 
   // 정규수업: 선 순서상 내 차례에만 공개된 카드 중 체력기운으로 살 수 있는 카드 1장을 가져간다 (없으면 넘어감)
