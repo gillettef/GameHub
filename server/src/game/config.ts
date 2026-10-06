@@ -91,6 +91,12 @@ export const BALANCE = {
   baseDice: 0,
   // 실패 보상 (47절 2안): 마법생물·연구·탐험 카드에 실패했을 때, 주문 대결에서 졌을 때 그 활동의 재료 기운을 돌려받는다 (어려운 카드일수록 많이)
   failRewards: false,
+  // 결과에 따라 배운다 (47절 4안): 성공/실패 대신 주사위 합으로 세 단계. 목표 이상 = 해냈어요(카드 + 성장), 목표 × nearMissRatio 이상 = 아깝다!(그 능력치 경험치 +1, 탐험 손해 없음),
+  // 그 아래 = 서툴렀어요(재료 기운 1개를 돌려받음). 경험치가 expPerGrowth만큼 쌓이면 성장한다. 주문 대결은 nearMissDuelGap점 차 이내로 지면 아깝다!
+  gradedResults: false,
+  nearMissRatio: 2 / 3,
+  expPerGrowth: 2,
+  nearMissDuelGap: 2,
   // 굴림 상한 = 능력치 + 이 값 (능력치 1인 초반에도 주사위 2개는 굴릴 수 있게 하는 여유)
   rollLimitBonus: 0,
   // 함께하면 든든 (43-6절): 마법생물·연구실 구역에 두 명이 함께 들어가면 둘 다 판정 목표값이 이만큼 낮아진다

@@ -28,6 +28,9 @@ function projected(state: GameState, p: PlayerGameState): number {
 const m = {
   rolls: {} as Record<string, { total: number; capped: number; free: number; dice: number; noChoice: number }>,
   early: {} as Record<string, { n: number; w: number }>,
+  // 눈덩이: 초반(1~3개월) 성공 횟수 그룹별로, 이후(4~12개월) 혼자 하는 판정(조련·연구실·탐험)의 성공률
+  later: {} as Record<string, { ok: number; total: number }>,
+  expGrowth: 0,
   outcome: {} as Record<string, { ok: number; total: number }>,
   classTier: { intro: 0, basic: 0, mid: 0, advanced: 0, skip: 0 } as Record<string, number>,
   classStat: [0, 0].map(() => ({ intelligence: 0, stamina: 0, charm: 0, spellPower: 0 })) as Record<StatKey, number>[],
@@ -61,12 +64,14 @@ const bump = (key: string, ok: boolean) => {
 
 for (let g = 0; g < games; g++) {
   const ids = Array.from({ length: n }, (_, i) => `p${i}`);
-  const persona: Record<string, BotStrategy> = Object.fromEntries(ids.map((id) => [id, BOT_PERSONALITIES[Math.floor(Math.random() * BOT_PERSONALITIES.length)]]));
+  // MIRROR=1이면 모두 같은 성향(균형형)이라 실력 차가 없다: 초반 성공 → 우승의 기울기가 순수한 운의 눈덩이가 된다
+  const persona: Record<string, BotStrategy> = Object.fromEntries(ids.map((id) => [id, process.env.MIRROR ? BOT_PERSONALITIES[0] : BOT_PERSONALITIES[Math.floor(Math.random() * BOT_PERSONALITIES.length)]]));
   const state = createGame(ids.map((id) => ({ id, name: id, isBot: true })));
   let seenRoll: unknown = null;
   let leader: string | null = null;
   let leaderAt9: string | null = null;
   const earlyOk = new Map<string, number>();
+  const laterTry = new Map<string, { ok: number; total: number }>();
   let lastRound = 1;
   let guard = 0;
   while (state.phase !== "ended" && guard++ < 8000) {
@@ -90,6 +95,17 @@ for (let g = 0; g < games; g++) {
       rollAndConfirm(state);
       for (const e of entries) if (kind !== "first") m.rolls[kind].dice += e.dice?.length ?? 0;
       const lines = state.log.slice(logStart).map((l) => l.message);
+      for (const line of lines) {
+        if (line.includes("아까운 경험이 쌓여 성장")) m.expGrowth++;
+        if (state.round < 4) continue;
+        const r = line.match(/^(p\d): (?:마법생물 .*조련 (성공|실패)|연구 카드 .*실험 (성공|실패)|비밀의 방 .*목표 \d+ (성공|실패))/);
+        if (r) {
+          const t = laterTry.get(r[1]) ?? { ok: 0, total: 0 };
+          t.total++;
+          if ((r[2] ?? r[3] ?? r[4]) === "성공") t.ok++;
+          laterTry.set(r[1], t);
+        }
+      }
       if (state.round <= 3)
         for (const line of lines) {
           const e = line.match(/^(p\d): .*(조련 성공|실험 성공|목표 \d+ 성공)/) ?? line.match(/지목! (p\d) 승리/);
@@ -173,6 +189,9 @@ for (let g = 0; g < games; g++) {
     const k = `${Math.min(3, earlyOk.get(id) ?? 0)}${(earlyOk.get(id) ?? 0) >= 3 ? "+" : ""}회`;
     const r = (m.early[k] ??= { n: 0, w: 0 });
     r.n++;
+    const lt = (m.later[k] ??= { ok: 0, total: 0 });
+    lt.ok += laterTry.get(id)?.ok ?? 0;
+    lt.total += laterTry.get(id)?.total ?? 0;
     if (state.winnerIds?.includes(id)) r.w += 1 / state.winnerIds.length;
   }
   for (const w of state.winnerIds ?? []) {
@@ -199,5 +218,6 @@ console.log("\n[재미] 평균 최종 점수", avg(m.scoreFinal, P), "· 우승 
 console.log("[재미] 1·2등 점수 차", avg(m.margin, games), `(우승 점수의 ${pct(m.marginRatio, games)})`, "· 1등과 꼴찌 차", avg(m.lastGap, games), "· 공동 우승", pct(m.coWin, games));
 console.log("[재미] 예상 점수 선두 교체(판당)", avg(m.leadChanges, games), "· 9개월 끝 선두가 우승 못 한 판(역전)", pct(m.comeback, games));
 console.log("[재미] 1~3개월 성공 횟수별 우승률 (초반 운이 판을 정하는가):", Object.fromEntries(Object.entries(m.early).sort().map(([k, v]) => [k, pct(v.w, v.n)])));
+console.log("[재미] 눈덩이: 초반 성공 횟수별 이후(4~12개월) 판정 성공률:", Object.fromEntries(Object.entries(m.later).sort().map(([k, v]) => [k, pct(v.ok, v.total)])), "· 경험치로 성장(판당)", avg(m.expGrowth, games));
 console.log("[재미] 1위 상을 받은 사람 수(판당)", avg(m.awardHolders, games), "· 한 사람이 1위를 3부문 이상 싹쓸이", pct(m.sweep, games));
 console.log("[재미] 친구와 엮인 활동(같은 구역·주문 대결) 비율", pct(m.shared, m.activities), "· 주문 대결(판당)", avg(m.duels, games), "· 벼락치기 사용률", pct(m.cram, m.cramChances));
