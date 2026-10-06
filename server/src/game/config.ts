@@ -94,6 +94,11 @@ export const BALANCE = {
   // 결과에 따라 배운다 (47절 4안): 성공/실패 대신 주사위 합으로 세 단계. 목표 이상 = 해냈어요(카드 + 성장), 목표 × nearMissRatio 이상 = 아깝다!(그 능력치 경험치 +1, 탐험 손해 없음),
   // 그 아래 = 서툴렀어요(재료 기운 1개를 돌려받음). 경험치가 expPerGrowth만큼 쌓이면 성장한다. 주문 대결은 nearMissDuelGap점 차 이내로 지면 아깝다!
   gradedResults: false,
+  // 방향형 결과 (48절 4안): 마법생물·연구·탐험 카드는 주사위 1개를 굴려 눈(1~6)에 따라 카드에 적힌 방향의 효과를 받는다 (실패가 없다).
+  // 굴린 뒤 그 활동의 재료 기운으로 다시 굴리거나(dirRerollCost개) 눈을 ±1 조정(dirAdjustCost개, 0이면 조정 없음)할 수 있다. 한 번에 쓸 수 있는 기운은 능력치까지
+  directionalResults: false,
+  dirRerollCost: 1,
+  dirAdjustCost: 0,
   nearMissRatio: 2 / 3,
   expPerGrowth: 2,
   nearMissDuelGap: 2,
