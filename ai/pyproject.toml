@@ -1,7 +1,7 @@
 [project]
 name = "astral-ai"
 version = "0.1.0"
-description = "AstralTab Minimax AI 서비스"
+description = "Rootbound AI 서비스"
 requires-python = ">=3.11"
 
 [tool.pytest.ini_options]

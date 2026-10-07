@@ -1,670 +1,816 @@
 """
-탐색용 규칙 시뮬레이션. shared/src/engine 의 사본이며 반드시 같은 결과를 내야 한다
-(로그는 만들지 않는다. 비교는 log 를 제외하고 한다 — tests/test_fixtures.py).
+Rootbound 규칙 시뮬레이션 (탐색용 사본). 정본은 notes/Rules.md 와 TS 엔진(shared/src/engine)이다.
+TS 와 결과가 어긋나면 AI 가 불법 수를 두므로, 양쪽을 같은 픽스처(shared/fixtures)로 검증한다.
 
-공개 함수는 입력 상태를 변이하지 않는다. `_` 로 시작하는 내부 함수는 작업 사본을 변이한다.
-기준표는 shared/fixtures/specs.json 을 읽어 TS 와 같은 값을 쓴다.
+수치(종 스펙·목표·상수·인원별 규칙)는 shared/fixtures/specs.json 을 읽어 쓴다. 이 파일에 하드코딩하지 않는다.
+모든 함수는 입력을 변이하지 않는 순수 함수다. 로그(GameState.log)는 시뮬레이션에서 기록하지 않는다.
 """
 
 from __future__ import annotations
 
 import json
+import math
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
+from typing import Any, Optional, Sequence, TypeVar
 
 from .models import (
     Action,
-    CardSpec,
+    Board,
+    DiscardAction,
+    DraftAction,
     GameResult,
     GameState,
-    MapDef,
-    Marker,
-    PassAction,
-    PlaceAction,
-    PlacementErrorCode,
+    Plant,
+    PlantAction,
     PlayerState,
     Position,
     Score,
+    Seed,
     SurrenderAction,
 )
 
 _FIXTURES = Path(__file__).resolve().parents[2] / "shared" / "fixtures"
 
+# 방향 0~5 (Rules.md 2절): (+1,0) (+1,−1) (0,−1) (−1,0) (−1,+1) (0,+1)
+DIRECTIONS: tuple[tuple[int, int], ...] = ((1, 0), (1, -1), (0, -1), (-1, 0), (-1, 1), (0, 1))
+
+T = TypeVar("T")
+
+# ---------------------------------------------------------------------------
+# 기준표 (specs.json)
+# ---------------------------------------------------------------------------
+
 
 @dataclass(frozen=True)
 class Specs:
+    # 종 id → 스펙 dict (표 순서 유지)
+    species: dict[str, dict[str, Any]]
+    # 표 순서 = 드래프트 자동 픽 순서
+    species_ids: tuple[str, ...]
+    # 목표 id → 연계 종 (없으면 None)
+    goal_species: dict[str, Optional[str]]
     constants: dict[str, int]
-    cards: dict[str, CardSpec]  # 코어 포함
-    maps: dict[str, MapDef]
-
-    def spec(self, card_id: str) -> CardSpec:
-        return self.cards[card_id]
+    # 인원 → {picks, copies, maxTakers, draftFirstRound, komi}
+    player_count_rules: dict[int, dict[str, Any]]
 
 
 @lru_cache(maxsize=1)
 def load_specs() -> Specs:
     raw = json.loads((_FIXTURES / "specs.json").read_text(encoding="utf-8"))
-    cards = [CardSpec.model_validate(raw["core"])] + [CardSpec.model_validate(c) for c in raw["cards"]]
+    species = {s["id"]: s for s in raw["species"]}
     return Specs(
+        species=species,
+        species_ids=tuple(s["id"] for s in raw["species"]),
+        goal_species={g["id"]: g["species"] for g in raw["goals"]},
         constants=dict(raw["constants"]),
-        cards={c.id: c for c in cards},
-        maps={m.id: m for m in (MapDef.model_validate(x) for x in raw["maps"])},
+        player_count_rules={int(k): v for k, v in raw["playerCountRules"].items()},
     )
 
 
-def spec(card_id: str) -> CardSpec:
-    return load_specs().spec(card_id)
+def species_spec(species_id: str) -> dict[str, Any]:
+    return load_specs().species[species_id]
 
 
-def const(name: str) -> int:
-    return load_specs().constants[name]
+def rules_for(players: int) -> dict[str, Any]:
+    r = load_specs().player_count_rules.get(players)
+    if r is None:
+        raise ValueError(f"{players}인 규칙이 없습니다")
+    return r
 
 
-# --- 시드 RNG (rng.ts, mulberry32) --------------------------------------------
-# 손패 교체(discardCardIds)가 덱을 섞을 때만 쓴다. TS 와 비트 단위로 같은 결과가 나와야 한다 —
-# 부호 없는 32비트 정수로만 다루면(오른쪽 시프트를 항상 `>>>`처럼) JS 의 Math.imul·비트 연산과
-# 값이 일치한다(모듈로 2^32 연산은 부호 해석과 무관하다).
+# ---------------------------------------------------------------------------
+# 시드 RNG (shared/src/engine/rng.ts, mulberry32 를 32비트 정수 연산으로 그대로 옮김)
+# ---------------------------------------------------------------------------
 
-
-def _u32(x: int) -> int:
-    return x & 0xFFFFFFFF
+_U32 = 0xFFFFFFFF
 
 
 def _imul(a: int, b: int) -> int:
-    return _u32(a * b)
+    """Math.imul 의 하위 32비트 (부호 없는 표현)."""
+    return (a * b) & _U32
 
 
 def next_random(seed: int) -> tuple[float, int]:
-    t = _u32(seed + 0x6D2B79F5)
-    x = _imul(t ^ (t >> 15), _u32(1 | t))
-    x = _u32((x + _imul(x ^ (x >> 7), _u32(61 | x))) ^ x)
-    value = _u32(x ^ (x >> 14)) / 4294967296
+    """[0,1) 값과 새 seed 를 돌려준다."""
+    t = (seed + 0x6D2B79F5) & _U32
+    x = _imul(t ^ (t >> 15), 1 | t)
+    x = ((x + _imul(x ^ (x >> 7), 61 | x)) & _U32) ^ x
+    value = ((x ^ (x >> 14)) & _U32) / 4294967296
     return value, t
 
 
-def shuffle(items: list[str], seed: int) -> tuple[list[str], int]:
-    """Fisher-Yates. 입력을 변이하지 않고 새 리스트와 새 seed 를 돌려준다"""
+def shuffle(items: Sequence[T], seed: int) -> tuple[list[T], int]:
+    """Fisher-Yates. 입력을 변이하지 않는다."""
     out = list(items)
     s = seed
     for i in range(len(out) - 1, 0, -1):
         value, s = next_random(s)
-        j = int(value * (i + 1))
+        j = math.floor(value * (i + 1))
         out[i], out[j] = out[j], out[i]
     return out, s
 
 
-# --- 기하 · 시야 · 영토 (sight.ts) -------------------------------------------
-# 보드는 odd-r 오프셋 육각 좌표계다. 거리는 큐브 좌표로 바꿔 계산한다 (Rules.md 3절).
-
-
-def _to_cube(p: Position) -> tuple[int, int, int]:
-    q = p.x - ((p.y - (p.y & 1)) >> 1)
-    r = p.y
-    return q, r, -q - r
+# ---------------------------------------------------------------------------
+# 육각 좌표 · 보드 색인
+# ---------------------------------------------------------------------------
 
 
 def hex_distance(a: Position, b: Position) -> int:
-    aq, ar, as_ = _to_cube(a)
-    bq, br, bs = _to_cube(b)
-    return max(abs(aq - bq), abs(ar - br), abs(as_ - bs))
+    dq = a.q - b.q
+    dr = a.r - b.r
+    return (abs(dq) + abs(dr) + abs(dq + dr)) // 2
 
 
-def in_bounds(state: GameState, p: Position) -> bool:
-    return 0 <= p.x < state.board.width and 0 <= p.y < state.board.height
-
-
-_TERRAIN_ARRAY_FIELDS: list[tuple[str, str]] = [
-    ("asteroids", "asteroid"),
-    ("veins", "vein"),
-    ("nebulas", "nebula"),
-    ("debrisFields", "debrisField"),
-    ("ionStorms", "ionStorm"),
-    ("relicSites", "relicSite"),
-    ("gravityRifts", "gravityRift"),
-    ("gunEmplacements", "gunEmplacement"),
-    ("jammingFields", "jammingField"),
-]
-
-
-def terrain_at(state: GameState, p: Position) -> str:
-    for field, name in _TERRAIN_ARRAY_FIELDS:
-        if any(q.x == p.x and q.y == p.y for q in getattr(state.board, field)):
-            return name
-    return "space"
-
-
-def effective_sight(state: GameState, pos: Position, base_sight: int) -> int:
-    """그 칸의 유효 시야(성운 -1, 최소 1). 배치 가능 범위에만 쓴다 — 영토는 고정 반경을 쓴다"""
-    if base_sight <= 0:
-        return base_sight
-    penalty = const("NEBULA_SIGHT_PENALTY") if terrain_at(state, pos) == "nebula" else 0
-    return max(1, base_sight - penalty)
-
-
-def effective_max_hp(state: GameState, pos: Position, base_hp: int) -> int:
-    """그 칸의 유효 최대 체력(파편지대 -1, 최소 1). 배치 시점에 구해 Marker.maxHp 에 굳힌다"""
-    if base_hp <= 0:
-        return base_hp
-    penalty = const("DEBRIS_FIELD_HP_PENALTY") if terrain_at(state, pos) == "debrisField" else 0
-    return max(1, base_hp - penalty)
-
-
-def effective_attack(state: GameState, pos: Position, base_attack: int) -> int:
-    """그 칸의 유효 공격력(포대 발판 +1)"""
-    if base_attack <= 0:
-        return base_attack
-    bonus = const("GUN_EMPLACEMENT_ATTACK_BONUS") if terrain_at(state, pos) == "gunEmplacement" else 0
-    return base_attack + bonus
-
-
-def effective_range(state: GameState, pos: Position, base_range: int) -> int:
-    """그 칸의 유효 사거리(교란지대 -1, 최소 0)"""
-    if base_range <= 0:
-        return base_range
-    penalty = const("JAMMING_FIELD_RANGE_PENALTY") if terrain_at(state, pos) == "jammingField" else 0
-    return max(0, base_range - penalty)
-
-
-def marker_at(state: GameState, p: Position) -> Marker | None:
-    for m in state.markers:
-        if m.pos.x == p.x and m.pos.y == p.y:
-            return m
-    return None
-
-
-def sort_markers(markers: list[Marker]) -> list[Marker]:
-    """y → x 오름차순 (Rules.md 13절)"""
-    return sorted(markers, key=lambda m: (m.pos.y, m.pos.x))
-
-
-def markers_of(state: GameState, player_id: str) -> list[Marker]:
-    return sort_markers([m for m in state.markers if m.ownerId == player_id])
-
-
-def is_in_sight(state: GameState, player_id: str, p: Position) -> bool:
-    return any(
-        m.ownerId == player_id and hex_distance(m.pos, p) <= effective_sight(state, m.pos, spec(m.specId).sight)
-        for m in state.markers
-    )
-
-
-def cells_in_radius(state: GameState, center: Position, radius: int) -> list[Position]:
-    out: list[Position] = []
-    for y in range(center.y - radius, center.y + radius + 1):
-        for x in range(center.x - radius, center.x + radius + 1):
-            p = Position(x=x, y=y)
-            if in_bounds(state, p) and hex_distance(center, p) <= radius:
-                out.append(p)
-    return out
-
-
-def compute_sight_area(state: GameState, player_id: str) -> list[Position]:
-    seen: set[tuple[int, int]] = set()
-    for m in markers_of(state, player_id):
-        sight = effective_sight(state, m.pos, spec(m.specId).sight)
-        for p in cells_in_radius(state, m.pos, sight):
-            seen.add((p.x, p.y))
-    return [Position(x=x, y=y) for (x, y) in sorted(seen, key=lambda t: (t[1], t[0]))]
+def step(q: int, r: int, d: int, k: int = 1) -> tuple[int, int]:
+    dq, dr = DIRECTIONS[d]
+    return q + dq * k, r + dr * k
 
 
 @dataclass(frozen=True)
-class Territory:
-    owners: list[list[str | None]]  # owners[y][x]
-    counts: dict[str, int]
+class BoardIndex:
+    n: int
+    coords: tuple[tuple[int, int], ...]
+    index_of: dict[tuple[int, int], int]
+    terrain: tuple[str, ...]
+    tile: tuple[int, ...]
+    # 칸별 거리 1 이웃 색인
+    ring1: tuple[tuple[int, ...], ...]
+    # 칸별 별 모양 거리 2 (방향 d 로 두 번 간 칸이 보드 안이면 포함)
+    star2: tuple[tuple[int, ...], ...]
+    # 칸별·방향별 거리 1..3 직선 칸. 보드 밖은 −1 자리표시자로 남겨 거리가 밀리지 않는다
+    line: tuple[tuple[tuple[int, ...], ...], ...]
+    # 칸별 거리 2 이내 칸 (자기 제외, 칸 순서)
+    within2: tuple[tuple[int, ...], ...]
+    edge: tuple[bool, ...]
+    # 연못과 맞닿은 칸인가
+    near_pond: tuple[bool, ...]
+    # 좌석별 입구 칸 색인
+    entrances: tuple[int, ...]
+
+    def at(self, q: int, r: int) -> int:
+        return self.index_of.get((q, r), -1)
 
 
-def compute_territory(state: GameState) -> Territory:
-    """2026-09-28부터 카드 시야가 아니라 고정 반경(TERRITORY_RADIUS)으로 영토를 계산한다.
-    배치 가능 범위(sight)는 그대로 가변이다 — is_in_sight/compute_sight_area 참고"""
-    radius = const("TERRITORY_RADIUS")
-    claims: dict[tuple[int, int], set[str]] = {}
-    for m in state.markers:
-        for p in cells_in_radius(state, m.pos, radius):
-            claims.setdefault((p.x, p.y), set()).add(m.ownerId)
-    asteroid = {(a.x, a.y) for a in state.board.asteroids}
-    marker_owner = {(m.pos.x, m.pos.y): m.ownerId for m in state.markers}
-    counts: dict[str, int] = {p.id: 0 for p in state.players}
-    owners: list[list[str | None]] = []
-    for y in range(state.board.height):
-        row: list[str | None] = []
-        for x in range(state.board.width):
-            owner: str | None = None
-            if (x, y) in asteroid:
-                owner = None
-            elif (x, y) in marker_owner:
-                owner = marker_owner[(x, y)]
-            else:
-                s = claims.get((x, y))
-                if s and len(s) == 1:
-                    owner = next(iter(s))
-            row.append(owner)
-            if owner is not None:
-                counts[owner] = counts.get(owner, 0) + 1
-        owners.append(row)
-    return Territory(owners=owners, counts=counts)
+def _build_index(board: Board) -> BoardIndex:
+    coords = tuple((c.q, c.r) for c in board.cells)
+    index_of = {p: i for i, p in enumerate(coords)}
+    at = lambda q, r: index_of.get((q, r), -1)  # noqa: E731
+    terrain = tuple(c.terrain for c in board.cells)
+    ring1: list[tuple[int, ...]] = []
+    star2: list[tuple[int, ...]] = []
+    line: list[tuple[tuple[int, ...], ...]] = []
+    within2: list[tuple[int, ...]] = []
+    edge: list[bool] = []
+    for i, (q, r) in enumerate(coords):
+        nb = tuple(x for x in (at(*step(q, r, d)) for d in range(6)) if x >= 0)
+        ring1.append(nb)
+        edge.append(len(nb) < 6)
+        star2.append(tuple(x for x in (at(*step(q, r, d, 2)) for d in range(6)) if x >= 0))
+        line.append(
+            tuple(tuple(at(*step(q, r, d, k)) for k in (1, 2, 3)) for d in range(6))
+        )
+        w: list[int] = []
+        for j, (oq, orr) in enumerate(coords):
+            dq, dr = q - oq, r - orr
+            if j != i and (abs(dq) + abs(dr) + abs(dq + dr)) // 2 <= 2:
+                w.append(j)
+        within2.append(tuple(w))
+    near_pond = tuple(any(terrain[x] == "pond" for x in nb) for nb in ring1)
+    return BoardIndex(
+        n=len(coords),
+        coords=coords,
+        index_of=index_of,
+        terrain=terrain,
+        tile=tuple(c.tile for c in board.cells),
+        ring1=tuple(ring1),
+        star2=tuple(star2),
+        line=tuple(line),
+        within2=tuple(within2),
+        edge=tuple(edge),
+        near_pond=near_pond,
+        entrances=tuple(at(e.q, e.r) for e in board.entrances),
+    )
 
 
-# --- 점수 · 순위 · 수입 (scoring.ts) -----------------------------------------
+# 보드 객체 id → (보드, 색인). 보드는 불변으로 다루므로 같은 객체면 색인도 같다.
+_INDEX_CACHE: dict[int, tuple[Board, BoardIndex]] = {}
 
 
-def alive_players(state: GameState) -> list[PlayerState]:
-    return sorted((p for p in state.players if p.alive), key=lambda p: p.seat)
+def board_index(board: Board) -> BoardIndex:
+    hit = _INDEX_CACHE.get(id(board))
+    if hit is not None and hit[0] is board:
+        return hit[1]
+    idx = _build_index(board)
+    if len(_INDEX_CACHE) > 32:
+        _INDEX_CACHE.clear()
+    _INDEX_CACHE[id(board)] = (board, idx)
+    return idx
 
 
-def get_player(state: GameState, player_id: str) -> PlayerState:
-    for p in state.players:
-        if p.id == player_id:
-            return p
-    raise KeyError(player_id)
+def require_board(state: GameState) -> Board:
+    if state.board is None:
+        raise ValueError("보드가 아직 없습니다")
+    return state.board
 
 
-def _marker_score(state: GameState, m: Marker) -> int:
-    """마커 하나의 점수. 유물지대는 +1, 중력 균열은 -1(최소 0)"""
-    base = spec(m.specId).score
-    terrain = terrain_at(state, m.pos)
-    if terrain == "relicSite":
-        return base + const("RELIC_SITE_SCORE_BONUS")
-    if terrain == "gravityRift":
-        return max(0, base - const("GRAVITY_RIFT_SCORE_PENALTY"))
-    return base
+def _seat_map(state: GameState) -> dict[str, int]:
+    return {p.id: p.seat for p in state.players}
 
 
-def compute_scores(state: GameState) -> dict[str, Score]:
-    territory = compute_territory(state)
-    per_cell = const("SCORE_PER_TERRITORY")
-    komi_per_seat = const("KOMI_PER_SEAT")
-    scores: dict[str, Score] = {}
-    for p in state.players:
-        if not p.alive:
-            scores[p.id] = Score(territory=0, markers=0, komi=0, total=0)
+@dataclass(frozen=True)
+class Occupancy:
+    # 식물 주인 좌석 (−1 없음)
+    plant_seat: list[int]
+    plant_species: list[Optional[str]]
+    # 입구 주인 좌석 (−1 없음)
+    entrance_seat: list[int]
+
+
+def occupancy(state: GameState, idx: Optional[BoardIndex] = None) -> Occupancy:
+    idx = idx or board_index(require_board(state))
+    seat_of = _seat_map(state)
+    plant_seat = [-1] * idx.n
+    plant_species: list[Optional[str]] = [None] * idx.n
+    entrance_seat = [-1] * idx.n
+    for p in state.plants:
+        i = idx.at(p.pos.q, p.pos.r)
+        plant_seat[i] = seat_of.get(p.ownerId, -1)
+        plant_species[i] = p.species
+    for seat, e in enumerate(idx.entrances):
+        entrance_seat[e] = seat
+    return Occupancy(plant_seat, plant_species, entrance_seat)
+
+
+# ---------------------------------------------------------------------------
+# 영향력 · 땅 · 심을 수 있는 칸 (Rules.md 6·7절, influence.ts)
+# ---------------------------------------------------------------------------
+
+
+def compute_influence(
+    state: GameState, idx: Optional[BoardIndex] = None, occ: Optional[Occupancy] = None
+) -> list[list[int]]:
+    """좌석별 영향력 [seat][칸]. 입구 → 식물 → 씨앗을 더한 뒤 버섯 빼기를 마지막에 적용한다(0 아래로 안 내려감)."""
+    board = require_board(state)
+    idx = idx or board_index(board)
+    occ = occ or occupancy(state, idx)
+    specs = load_specs()
+    c_ = specs.constants
+    P = len(state.players)
+    n = idx.n
+    inf = [[0] * n for _ in range(P)]
+    wither = [[0] * n for _ in range(P)]
+    seat_of = _seat_map(state)
+    ring1 = idx.ring1
+
+    for seat, e in enumerate(idx.entrances):
+        if seat >= P:
             continue
-        t = territory.counts.get(p.id, 0) * per_cell
-        m = sum(_marker_score(state, mk) for mk in markers_of(state, p.id))
-        komi = p.seat * komi_per_seat
-        scores[p.id] = Score(territory=t, markers=m, komi=komi, total=t + m + komi)
-    return scores
+        row = inf[seat]
+        row[e] += c_["ENTRANCE_SELF"]
+        for x in ring1[e]:
+            row[x] += c_["ENTRANCE_RING"]
+
+    fertile_bonus = c_["FERTILE_BONUS"]
+    for plant in state.plants:
+        seat = seat_of.get(plant.ownerId)
+        if seat is None:
+            continue
+        sp = specs.species[plant.species]
+        row = inf[seat]
+        c = idx.at(plant.pos.q, plant.pos.r)
+        nb = ring1[c]
+        self_v = sp["self"]
+        ring = sp["ring1"]
+        fertile = idx.terrain[c] == "fertile"
+        if fertile:
+            self_v += fertile_bonus
+            if sp["fertileRing"]:
+                ring += sp["fertileRing"]
+        if sp["cluster"]:
+            for x in nb:
+                if occ.plant_species[x] == plant.species and occ.plant_seat[x] == seat:
+                    self_v += sp["cluster"]
+        row[c] += self_v
+        if ring:
+            for x in nb:
+                row[x] += ring
+        if sp["star2"]:
+            for x in idx.star2[c]:
+                row[x] += sp["star2"]
+        if sp["line"] and plant.direction is not None:
+            for x in idx.line[c][plant.direction][: sp["lineLength"]]:
+                if x >= 0:  # 보드 밖 칸은 건너뛴다 (거리 3 으로 밀리지 않음)
+                    row[x] += sp["line"]
+        if sp["ivy"]:
+            for x in nb:
+                if occ.plant_seat[x] >= 0:
+                    row[x] += sp["ivy"]
+        if sp["wither"]:
+            for x in nb:
+                for o in range(P):
+                    if o != seat:
+                        wither[o][x] += sp["wither"]
+
+    seed_value = specs.species["dandelion"]["seed"]
+    for sd in state.seeds:
+        seat = seat_of.get(sd.ownerId)
+        if seat is not None:
+            inf[seat][idx.at(sd.pos.q, sd.pos.r)] += seed_value
+
+    for p in range(P):
+        row = inf[p]
+        w = wither[p]
+        for c in range(n):
+            if w[c]:
+                row[c] = max(0, row[c] - w[c])
+    return inf
 
 
-def compute_ranking(state: GameState, scores: dict[str, Score] | None = None) -> list[str]:
-    sc = scores or compute_scores(state)
-    alive = sorted((p for p in state.players if p.alive), key=lambda p: (-sc[p.id].total, -p.seat))
-    dead = sorted((p for p in state.players if not p.alive), key=lambda p: -(p.eliminatedOrder or 0))
-    return [p.id for p in alive] + [p.id for p in dead]
-
-
-def _overclock_bonus(state: GameState, player_id: str, marker_id: str, pos: Position) -> int:
-    """과부하 키워드(오토마타): 반경 1 이내 자신 소유 다른 건물 수 × 보너스"""
-    radius = const("OVERCLOCK_RADIUS")
-    per_neighbor = const("OVERCLOCK_BONUS_PER_NEIGHBOR")
-    neighbors = sum(
-        1
-        for o in markers_of(state, player_id)
-        if o.id != marker_id and o.kind == "building" and hex_distance(o.pos, pos) <= radius
-    )
-    return neighbors * per_neighbor
-
-
-def compute_income(state: GameState, player_id: str) -> int:
-    total = 0
-    bonus = const("VEIN_PRODUCTION_BONUS")
-    for m in markers_of(state, player_id):
-        sp = spec(m.specId)
-        if m.kind == "core":
-            total += sp.production
-        elif m.kind == "building":
-            overclock = _overclock_bonus(state, player_id, m.id, m.pos) if "overclock" in sp.keywords else 0
-            total += sp.production + (bonus if terrain_at(state, m.pos) == "vein" else 0) + overclock
-    return total
-
-
-# --- 배치 검증 (placement.ts) -------------------------------------------------
-
-
-def validate_card(state: GameState, player_id: str, card_id: str) -> PlacementErrorCode | None:
-    if state.phase != "playing":
-        return "not-playing"
-    if not any(p.id == player_id for p in state.players):
-        return "unknown-player"
-    player = get_player(state, player_id)
-    if state.currentPlayerId != player_id or not player.alive:
-        return "not-your-turn"
-    if player.actedThisTurn:
-        return "already-placed"
-    if card_id not in load_specs().cards or card_id not in player.hand:
-        return "not-in-hand"
-    if player.energy < spec(card_id).cost:
-        return "not-enough-energy"
-    return None
-
-
-def validate_cell(state: GameState, player_id: str, card_id: str, pos: Position) -> PlacementErrorCode | None:
-    if not in_bounds(state, pos):
-        return "out-of-bounds"
-    if terrain_at(state, pos) == "asteroid":
-        return "asteroid"
-    if marker_at(state, pos) is not None:
-        return "occupied"
-    sp = spec(card_id)
-    infiltrate = "infiltrate" in sp.keywords and any(
-        m.ownerId != player_id and hex_distance(m.pos, pos) <= const("INFILTRATE_RANGE") for m in state.markers
-    )
-    if not infiltrate and not is_in_sight(state, player_id, pos):
-        return "out-of-sight"
-    return None
-
-
-def validate_placement(state: GameState, player_id: str, card_id: str, pos: Position) -> PlacementErrorCode | None:
-    return validate_card(state, player_id, card_id) or validate_cell(state, player_id, card_id, pos)
-
-
-def legal_cells(state: GameState, player_id: str, card_id: str) -> list[Position]:
-    out: list[Position] = []
-    for y in range(state.board.height):
-        for x in range(state.board.width):
-            p = Position(x=x, y=y)
-            if validate_cell(state, player_id, card_id, p) is None:
-                out.append(p)
+def compute_owners(
+    state: GameState, inf: Optional[list[list[int]]] = None, idx: Optional[BoardIndex] = None
+) -> list[int]:
+    """칸 주인 좌석 (−1 = 없음). 엄격한 1등 한 명만. 연못·돌밭은 항상 −1."""
+    idx = idx or board_index(require_board(state))
+    if inf is None:
+        inf = compute_influence(state, idx)
+    out = [-1] * idx.n
+    P = len(inf)
+    for c in range(idx.n):
+        t = idx.terrain[c]
+        if t == "pond" or t == "rock":
+            continue
+        best = 0
+        who = -1
+        tie = False
+        for p in range(P):
+            v = inf[p][c]
+            if v > best:
+                best = v
+                who = p
+                tie = False
+            elif v == best and v > 0:
+                tie = True
+        if not tie:
+            out[c] = who
     return out
 
 
-def legal_actions(state: GameState, player_id: str) -> list[Action]:
-    """PLACE 후보(손패 종류별 × 놓을 수 있는 칸) + PASS. 결정적 순서."""
-    actions: list[Action] = []
-    if state.phase != "playing" or state.currentPlayerId != player_id:
-        return actions
-    player = get_player(state, player_id)
-    for card_id in sorted(set(player.hand), key=player.hand.index):
-        if validate_card(state, player_id, card_id) is not None:
-            continue
-        for p in legal_cells(state, player_id, card_id):
-            actions.append(PlaceAction(type="PLACE", playerId=player_id, cardId=card_id, pos=p))
-    actions.append(PassAction(type="PASS", playerId=player_id))
-    return actions
+def is_empty_cell(idx: BoardIndex, occ: Occupancy, c: int) -> bool:
+    """빈 칸: 식물·입구·연못·돌밭이 없다 (씨앗은 있어도 된다)."""
+    t = idx.terrain[c]
+    return t != "pond" and t != "rock" and occ.plant_seat[c] == -1 and occ.entrance_seat[c] == -1
 
 
-# --- 상태 변이 (작업 사본에만) -------------------------------------------------
-
-
-def _player(state: GameState, player_id: str) -> PlayerState:
-    return get_player(state, player_id)
-
-
-def _set_markers(state: GameState, markers: list[Marker]) -> None:
-    state.markers = sort_markers(markers)
-
-
-def _eliminate(state: GameState, player_id: str) -> None:
-    order = sum(1 for p in state.players if not p.alive)
-    p = _player(state, player_id)
-    p.alive = False
-    p.eliminatedOrder = order
-    _set_markers(state, [m for m in state.markers if m.ownerId != player_id])
-
-
-def _remove_destroyed(state: GameState) -> None:
-    destroyed = sort_markers([m for m in state.markers if m.hp <= 0])
-    if not destroyed:
-        return
-    _set_markers(state, [m for m in state.markers if m.hp > 0])
-    owners = sorted((get_player(state, m.ownerId) for m in destroyed if m.kind == "core"), key=lambda p: p.seat)
-    for p in owners:
-        if _player(state, p.id).alive:
-            _eliminate(state, p.id)
-
-
-def _prioritized_targets(attacker_pos: Position, enemies: list[Marker], range_: int) -> list[Marker]:
-    """7.1: 거리 → 체력 → y → x 오름차순으로 정렬하고, `veil`(은신) 마커는 다른 비은신 후보가
-    있으면 뒤로 뺀다. 후보 전부가 은신이면 그 안에서만 위 순서로 고른다 (combat.ts prioritizedTargets)."""
-    in_range = [e for e in enemies if hex_distance(attacker_pos, e.pos) <= range_]
-    ordered = sorted(in_range, key=lambda e: (hex_distance(attacker_pos, e.pos), e.hp, e.pos.y, e.pos.x))
-    non_veiled = [e for e in ordered if "veil" not in spec(e.specId).keywords]
-    return non_veiled if non_veiled else ordered
-
-
-def _resolve_combat(state: GameState, player_id: str) -> None:
-    attackers = [m for m in markers_of(state, player_id) if spec(m.specId).attack > 0]
-    if not attackers:
-        return
-    enemies = [m for m in state.markers if m.ownerId != player_id]
-    damage: dict[str, int] = {}
-    for a in attackers:
-        sp = spec(a.specId)
-        attack = effective_attack(state, a.pos, sp.attack)
-        range_ = effective_range(state, a.pos, sp.range)
-        candidates = _prioritized_targets(a.pos, enemies, range_)
-        targets = candidates[:2] if "barrage" in sp.keywords else candidates[:1]
-        for target in targets:
-            damage[target.id] = damage.get(target.id, 0) + attack
-    if not damage:
-        return
-    for m in state.markers:
-        if m.id in damage:
-            m.hp -= damage[m.id]
-    _remove_destroyed(state)
-
-
-def _apply_repair(state: GameState, player_id: str) -> None:
-    repairers = [m for m in markers_of(state, player_id) if "repair" in spec(m.specId).keywords]
-    if not repairers:
-        return
-    radius, amount = const("REPAIR_RADIUS"), const("REPAIR_AMOUNT")
-    heal: dict[str, int] = {}
-    for r in repairers:
-        for m in markers_of(state, player_id):
-            if hex_distance(r.pos, m.pos) <= radius and m.hp < m.maxHp:
-                heal[m.id] = heal.get(m.id, 0) + amount
-    for m in state.markers:
-        if m.id in heal:
-            m.hp = min(m.maxHp, m.hp + heal[m.id])
-
-
-def _apply_terrain_hazards(state: GameState, player_id: str) -> None:
-    """이온 폭풍: 내 마커 중 이온 폭풍 칸에 있는 것마다 매 턴 피해 1(지속, 만료 없음)"""
-    hit = [m for m in markers_of(state, player_id) if terrain_at(state, m.pos) == "ionStorm"]
-    if not hit:
-        return
-    damage = const("ION_STORM_DAMAGE")
-    ids = {m.id for m in hit}
-    for m in state.markers:
-        if m.id in ids:
-            m.hp -= damage
-    _remove_destroyed(state)
-
-
-def _expire_persistent(state: GameState, player_id: str) -> None:
-    keep: list[Marker] = []
-    for m in state.markers:
-        if m.ownerId != player_id or m.remainingTurns is None:
-            keep.append(m)
-            continue
-        m.remainingTurns -= 1
-        if m.remainingTurns > 0:
-            keep.append(m)
-    _set_markers(state, keep)
-
-
-def _draw(state: GameState, player_id: str) -> None:
-    p = _player(state, player_id)
-    limit = const("HAND_LIMIT")
-    if len(p.hand) >= limit or not p.deck:
-        return
-    n = min(const("DRAW_PER_TURN"), limit - len(p.hand), len(p.deck))
-    p.hand.extend(p.deck[:n])
-    p.deck = p.deck[n:]
-
-
-def _finish(state: GameState, reason: str) -> None:
-    scores = compute_scores(state)
-    state.phase = "finished"
-    state.currentPlayerId = None
-    state.result = GameResult(reason=reason, ranking=compute_ranking(state, scores), scores=scores)  # type: ignore[arg-type]
-
-
-def _resolve_turn_end(state: GameState, player_id: str) -> None:
-    """2026-09-23부터 자동 효과는 다음 사람 턴 시작이 아니라 그 플레이어 자신이 턴을 끝낼 때
-    처리된다 (Rules.md 5.2): 전투 → 정비 → 지형 피해(이온 폭풍) → 지속 마법 만료 → 수입 → 드로우."""
-    _resolve_combat(state, player_id)
-    if len(alive_players(state)) <= 1:
-        _finish(state, "last-survivor")
-        return
-    _apply_repair(state, player_id)
-    _apply_terrain_hazards(state, player_id)
-    if len(alive_players(state)) <= 1:
-        _finish(state, "last-survivor")
-        return
-    _expire_persistent(state, player_id)
-    p = _player(state, player_id)
-    p.energy = min(p.energy + compute_income(state, player_id), const("ENERGY_CAP"))
-    _draw(state, player_id)
-
-
-def _validate_discard(state: GameState, player_id: str, ids: list[str]) -> str | None:
-    if not ids:
-        return None
-    hand = list(_player(state, player_id).hand)
-    for card_id in ids:
-        if card_id not in hand:
-            return "손패에 없는 카드는 버릴 수 없습니다"
-        hand.remove(card_id)
+def _seat_of(state: GameState, player_id: str) -> Optional[int]:
+    for p in state.players:
+        if p.id == player_id:
+            return p.seat
     return None
 
 
-def _apply_discard_exchange(state: GameState, player_id: str, ids: list[str]) -> None:
-    """턴을 끝낼 때 손패를 원하는 만큼 버리고 덱과 섞어 손패 상한까지 다시 뽑는다 (Rules.md 5.2).
-    ids 는 _validate_discard 로 이미 검증된 상태여야 한다."""
-    if not ids:
-        return
-    p = _player(state, player_id)
-    remaining = list(p.hand)
-    for card_id in ids:
-        remaining.remove(card_id)
-    shuffled, seed = shuffle(list(p.deck) + list(ids), state.rngSeed)
-    limit = const("HAND_LIMIT")
-    n = min(limit - len(remaining), len(shuffled))
-    state.rngSeed = seed
-    p.hand = remaining + shuffled[:n]
-    p.deck = shuffled[n:]
+def legal_plant_cell_indices(
+    state: GameState,
+    player_id: str,
+    species: str,
+    inf: Optional[list[list[int]]] = None,
+    idx: Optional[BoardIndex] = None,
+    occ: Optional[Occupancy] = None,
+) -> list[int]:
+    """이 종을 심을 수 있는 칸 색인 (Rules.md 6.1). 칸 순서(r → q)."""
+    idx = idx or board_index(require_board(state))
+    occ = occ or occupancy(state, idx)
+    seat = _seat_of(state, player_id)
+    if seat is None:
+        return []
+    if inf is None:
+        inf = compute_influence(state, idx, occ)
+    row = inf[seat]
+    pond_planting = bool(species_spec(species)["pondPlanting"])
+    out: list[int] = []
+    for c in range(idx.n):
+        if not is_empty_cell(idx, occ, c):
+            continue
+        if row[c] >= 1 or (pond_planting and idx.near_pond[c]):
+            out.append(c)
+    return out
 
 
-def _advance_turn(state: GameState) -> None:
-    """다음 생존자에게 턴을 넘긴다. 자동 효과는 더 이상 여기서 일어나지 않는다 — 그 사람이
-    PLACE 할 수 있도록 actedThisTurn 만 리셋한다."""
-    if state.phase != "playing" or state.currentPlayerId is None:
-        return
-    alive = alive_players(state)
-    if len(alive) <= 1:
-        _finish(state, "last-survivor")
-        return
-    if all(p.passed for p in alive):
-        _finish(state, "all-pass")
-        return
-    current = _player(state, state.currentPlayerId)
-    nxt = next((p for p in alive if p.seat > current.seat), alive[0])
-    if nxt.seat <= current.seat:
-        if state.round >= state.roundLimit:
-            _finish(state, "round-limit")
-            return
-        state.round += 1
-    state.turn += 1
-    state.currentPlayerId = nxt.id
-    _player(state, nxt.id).actedThisTurn = False
+def legal_plant_cells(
+    state: GameState, player_id: str, species: str, inf: Optional[list[list[int]]] = None
+) -> list[Position]:
+    idx = board_index(require_board(state))
+    return [Position(q=idx.coords[c][0], r=idx.coords[c][1]) for c in legal_plant_cell_indices(state, player_id, species, inf, idx)]
 
 
-def _apply_placement(state: GameState, player_id: str, card_id: str, pos: Position) -> None:
-    sp = spec(card_id)
-    p = _player(state, player_id)
-    p.hand.remove(card_id)  # 첫 번째 것 하나만
-    p.discard.append(card_id)
-    p.energy -= sp.cost
-    eff = sp.effect
-    if sp.kind == "magic" and eff is not None and eff.kind != "persistent":
-        if eff.kind == "damage":
-            for m in state.markers:
-                if m.ownerId != player_id and hex_distance(pos, m.pos) <= eff.radius:
-                    m.hp -= eff.amount
-        elif eff.kind == "heal":
-            for m in state.markers:
-                if m.ownerId == player_id and hex_distance(pos, m.pos) <= eff.radius:
-                    m.hp = min(m.maxHp, m.hp + eff.amount)
-        elif eff.kind == "energy":
-            p.energy = min(p.energy + eff.amount, const("ENERGY_CAP"))
-    else:
-        # 파편지대에 놓이면 최대 체력이 배치 시점에 -1 되어 고정된다(Rules.md 3절, 2026-09-28)
-        max_hp = effective_max_hp(state, pos, sp.hp)
-        marker = Marker(
-            id=f"m{state.nextMarkerId}",
-            specId=card_id,
-            kind=sp.kind,
-            ownerId=player_id,
-            pos=pos,
-            hp=max_hp,
-            maxHp=max_hp,
-            remainingTurns=eff.durationTurns if eff is not None and eff.kind == "persistent" else None,
+def legal_seed_cells(state: GameState, plant_pos: Position) -> list[Position]:
+    """민들레 씨앗 칸: 심는 칸에서 거리 2 이내 빈 칸(심는 칸 제외)."""
+    idx = board_index(require_board(state))
+    occ = occupancy(state, idx)
+    c = idx.at(plant_pos.q, plant_pos.r)
+    if c < 0:
+        return []
+    return [Position(q=idx.coords[x][0], r=idx.coords[x][1]) for x in idx.within2[c] if is_empty_cell(idx, occ, x)]
+
+
+def line_directions(idx: BoardIndex, c: int, line_length: int) -> list[int]:
+    """칸 c 에서 거리 1..line_length 에 보드 칸이 하나라도 있는 방향."""
+    return [d for d in range(6) if any(x >= 0 for x in idx.line[c][d][:line_length])]
+
+
+def legal_directions(state: GameState, pos: Position, line_length: Optional[int] = None) -> list[int]:
+    """덩굴이 고를 수 있는 방향 (Rules.md 7절): 거리 1..lineLength 에 보드 칸이 하나라도 있어야 한다."""
+    idx = board_index(require_board(state))
+    c = idx.at(pos.q, pos.r)
+    if c < 0:
+        return []
+    if line_length is None:
+        line_length = int(species_spec("vine")["lineLength"])
+    return line_directions(idx, c, line_length)
+
+
+# ---------------------------------------------------------------------------
+# 점수 · 목표 · 순위 (Rules.md 8·9절, scoring.ts)
+# ---------------------------------------------------------------------------
+
+
+def _rank_award(values: list[int], first: int, second: int) -> list[int]:
+    """1등 A, 2등 B. 동점 1등은 모두 A 이고 그때 2등은 없다. 값 0은 받지 않는다."""
+    out = [0] * len(values)
+    top = max([0, *values])
+    if top <= 0:
+        return out
+    tops = sum(1 for v in values if v == top)
+    for i, v in enumerate(values):
+        if v == top:
+            out[i] = first
+    if tops == 1 and second > 0:
+        rest = [v for v in values if v < top]
+        sec = max(rest) if rest else 0
+        if sec > 0:
+            for i, v in enumerate(values):
+                if v == sec:
+                    out[i] = second
+    return out
+
+
+def _components(cells: list[int], idx: BoardIndex) -> list[list[int]]:
+    cell_set = set(cells)
+    seen: set[int] = set()
+    comps: list[list[int]] = []
+    for c in cells:
+        if c in seen:
+            continue
+        comp: list[int] = []
+        stack = [c]
+        seen.add(c)
+        while stack:
+            x = stack.pop()
+            comp.append(x)
+            for y in idx.ring1[x]:
+                if y in cell_set and y not in seen:
+                    seen.add(y)
+                    stack.append(y)
+        comps.append(comp)
+    return comps
+
+
+def _longest_line(seat: int, cells: list[int], owners: list[int], idx: BoardIndex) -> int:
+    """세 축(방향 0·1·2) 중 하나로 이어진 같은 주인 칸 줄의 최대 길이."""
+    best = 0
+    for d in (0, 1, 2):
+        for c in cells:
+            q, r = idx.coords[c]
+            back = idx.at(*step(q, r, (d + 3) % 6))
+            if back >= 0 and owners[back] == seat:
+                continue  # 줄의 시작 칸에서만 센다
+            length = 1
+            cur = c
+            while True:
+                cq, cr = idx.coords[cur]
+                nx = idx.at(*step(cq, cr, d))
+                if nx < 0 or owners[nx] != seat:
+                    break
+                length += 1
+                cur = nx
+            best = max(best, length)
+    return best
+
+
+def _goal_points(
+    goal: str, state: GameState, idx: BoardIndex, owners: list[int], mine: list[list[int]], occ: Occupancy
+) -> list[int]:
+    P = len(state.players)
+    terrain = idx.terrain
+    if goal == "pond-side":
+        return [sum(1 for c in cs if idx.near_pond[c]) for cs in mine]
+    if goal == "big-garden":
+        return _rank_award([max([0, *(len(k) for k in _components(cs, idx))]) for cs in mine], 6, 3)
+    if goal == "long-path":
+        return _rank_award([_longest_line(seat, cs, owners, idx) for seat, cs in enumerate(mine)], 5, 2)
+    if goal == "fertile-field":
+        return [2 * sum(1 for c in cs if terrain[c] == "fertile") for cs in mine]
+    if goal == "edge-fence":
+        return [sum(1 for c in cs if idx.edge[c]) for cs in mine]
+    if goal == "center-plaza":
+        return _rank_award([sum(1 for c in cs if idx.tile[c] == 0) for cs in mine], 6, 0)
+    if goal == "every-tile":
+        return [len({idx.tile[c] for c in cs}) for cs in mine]
+    if goal == "flower-bed":
+        flowers = ("sunflower", "lotus", "rose")
+        return [2 * sum(1 for c in cs if occ.plant_species[c] in flowers) for cs in mine]
+    if goal == "forest":
+        out: list[int] = []
+        for seat in range(P):
+            trees = [
+                c
+                for c in range(idx.n)
+                if occ.plant_seat[c] == seat and occ.plant_species[c] in ("oak", "bamboo")
+            ]
+            out.append(4 * sum(1 for k in _components(trees, idx) if len(k) >= 3))
+        return out
+    if goal == "connected":
+        out = []
+        for seat in range(P):
+            group = [idx.entrances[seat]] + [c for c in range(idx.n) if occ.plant_seat[c] == seat]
+            out.append(5 if len(group) > 1 and len(_components(group, idx)) == 1 else 0)
+        return out
+    if goal == "border-guard":
+        return [
+            sum(1 for c in cs if any(owners[x] >= 0 and owners[x] != seat for x in idx.ring1[c]))
+            for seat, cs in enumerate(mine)
+        ]
+    if goal == "full-set":
+        out = []
+        for p in state.players:
+            planted = {pl.species for pl in state.plants if pl.ownerId == p.id}
+            out.append(4 if len(p.drafted) > 0 and all(s in planted for s in p.drafted) else 0)
+        return out
+    # 종 연계 보호구역 목표
+    pts = [0] * P
+    species = load_specs().goal_species.get(goal)
+    if not species:
+        return pts
+    bonus = load_specs().constants["RESERVE_BONUS"]
+    for c in range(idx.n):
+        seat = occ.plant_seat[c]
+        if occ.plant_species[c] == species and seat >= 0 and owners[c] == seat:
+            pts[seat] += bonus
+    return pts
+
+
+def compute_scores(state: GameState, idx: Optional[BoardIndex] = None) -> dict[str, Score]:
+    """좌석별 점수 (Rules.md 9절). 언제든 부를 수 있다."""
+    idx = idx or board_index(require_board(state))
+    occ = occupancy(state, idx)
+    inf = compute_influence(state, idx, occ)
+    owners = compute_owners(state, inf, idx)
+    P = len(state.players)
+    mine: list[list[int]] = [[] for _ in range(P)]
+    for c in range(idx.n):
+        if owners[c] >= 0:
+            mine[owners[c]].append(c)
+    breakdown = [_goal_points(g, state, idx, owners, mine, occ) for g in state.goals]
+    specs = load_specs()
+    bloom = [0] * P
+    for c in range(idx.n):
+        sp = occ.plant_species[c]
+        seat = occ.plant_seat[c]
+        if sp and seat >= 0 and owners[c] == seat:
+            bloom[seat] += specs.species[sp]["bloomBonus"]
+    komi = rules_for(P)["komi"]
+    out: dict[str, Score] = {}
+    for p in state.players:
+        land = len(mine[p.seat])
+        goal_breakdown = [b[p.seat] if p.seat < len(b) else 0 for b in breakdown]
+        goals = sum(goal_breakdown)
+        k = komi[p.seat] if p.seat < len(komi) else 0
+        out[p.id] = Score(
+            land=land, goals=goals, goalBreakdown=goal_breakdown, bloom=bloom[p.seat], komi=k,
+            total=land + goals + bloom[p.seat] + k,
         )
-        state.nextMarkerId += 1
-        _set_markers(state, state.markers + [marker])
-    _remove_destroyed(state)
+    return out
 
 
-def _check_turn(state: GameState, player_id: str) -> str | None:
-    if state.phase != "playing":
-        return "not-playing"
-    if not any(p.id == player_id for p in state.players):
-        return "unknown-player"
-    if state.currentPlayerId != player_id or not _player(state, player_id).alive:
-        return "not-your-turn"
+def compute_ranking(state: GameState, scores: Optional[dict[str, Score]] = None) -> list[str]:
+    """순위: 기권 안 함 → 점수 → 땅 → 좌석 큰 쪽. 기권자는 늦게 기권한 쪽이 위."""
+    if scores is None:
+        scores = compute_scores(state)
+    active = [p for p in state.players if p.surrenderedOrder is None]
+    gone = [p for p in state.players if p.surrenderedOrder is not None]
+    active.sort(key=lambda p: (-scores[p.id].total, -scores[p.id].land, -p.seat))
+    gone.sort(key=lambda p: -(p.surrenderedOrder or 0))
+    return [p.id for p in active + gone]
+
+
+# ---------------------------------------------------------------------------
+# 진행 (turn.ts)
+# ---------------------------------------------------------------------------
+
+
+def get_player(state: GameState, player_id: Optional[str]) -> Optional[PlayerState]:
+    for p in state.players:
+        if p.id == player_id:
+            return p
     return None
 
 
-# --- 공개 API ----------------------------------------------------------------
+def _update_player(state: GameState, player_id: str, **patch: Any) -> GameState:
+    players = [p.model_copy(update=patch) if p.id == player_id else p for p in state.players]
+    return state.model_copy(update={"players": players})
 
 
-def apply_action(state: GameState, action: Action) -> GameState:
-    """TS applyAction 과 같은 결과(로그 제외). 불법이면 ValueError."""
-    s = state.model_copy(deep=True)
-    if isinstance(action, PlaceAction):
-        err = validate_placement(s, action.playerId, action.cardId, action.pos)
+def draft_options(state: GameState, player_id: str) -> list[str]:
+    """드래프트에서 지금 고를 수 있는 종 (표 순서)."""
+    if state.phase != "drafting" or state.currentPlayerId != player_id:
+        return []
+    me = get_player(state, player_id)
+    if me is None:
+        return []
+    max_takers = rules_for(len(state.players))["maxTakers"]
+    return [
+        s
+        for s in load_specs().species_ids
+        if s not in me.drafted and sum(1 for p in state.players if s in p.drafted) < max_takers
+    ]
+
+
+def _finish_draft(state: GameState) -> GameState:
+    rule = rules_for(len(state.players))
+    hand_size = load_specs().constants["HAND_SIZE"]
+    seed = state.rngSeed
+    players: list[PlayerState] = []
+    for p in sorted(state.players, key=lambda x: x.seat):
+        cards = [s for s in p.drafted for _ in range(rule["copies"])]
+        items, seed = shuffle(cards, seed)
+        players.append(p.model_copy(update={"hand": items[:hand_size], "deck": items[hand_size:]}))
+    return state.model_copy(
+        update={
+            "phase": "playing",
+            "players": players,
+            "rngSeed": seed,
+            "round": 1,
+            "turn": 1,
+            "currentPlayerId": players[0].id,
+        }
+    )
+
+
+def _can_act(p: PlayerState) -> bool:
+    return p.surrenderedOrder is None and len(p.hand) > 0
+
+
+def has_any_plant(state: GameState, player_id: str) -> bool:
+    """손패의 어떤 카드라도 심을 칸이 있는가."""
+    me = get_player(state, player_id)
+    if me is None or state.board is None:
+        return False
+    idx = board_index(state.board)
+    occ = occupancy(state, idx)
+    inf = compute_influence(state, idx, occ)
+    return any(legal_plant_cell_indices(state, player_id, s, inf, idx, occ) for s in dict.fromkeys(me.hand))
+
+
+def _finish_game(state: GameState, reason: str) -> GameState:
+    scores = compute_scores(state)
+    ranking = compute_ranking(state, scores)
+    return state.model_copy(
+        update={
+            "phase": "finished",
+            "currentPlayerId": None,
+            "result": GameResult(reason=reason, ranking=ranking, scores=scores),  # type: ignore[arg-type]
+        }
+    )
+
+
+def _advance(state: GameState) -> GameState:
+    """다음 차례로 넘긴다. 둘 사람이 없으면 종료."""
+    active = [p for p in state.players if p.surrenderedOrder is None]
+    if len(active) <= 1 and len(state.players) > 1:
+        return _finish_game(state, "last-standing")
+    order = sorted(state.players, key=lambda p: p.seat)
+    cur = get_player(state, state.currentPlayerId)
+    cur_seat = cur.seat if cur is not None else -1
+    for k in range(1, len(order) + 1):
+        nxt = order[(cur_seat + k) % len(order)]
+        if not _can_act(nxt):
+            continue
+        wrapped = nxt.seat <= cur_seat
+        return state.model_copy(
+            update={
+                "currentPlayerId": nxt.id,
+                "turn": state.turn + 1,
+                "round": state.round + (1 if wrapped else 0),
+            }
+        )
+    return _finish_game(state, "complete")
+
+
+def _spend_card(state: GameState, player_id: str, species: str) -> GameState:
+    """손패에서 한 장을 빼고 덱 맨 앞에서 한 장 뽑는다."""
+    me = get_player(state, player_id)
+    assert me is not None
+    hand = list(me.hand)
+    hand.remove(species)
+    deck = list(me.deck)
+    if deck:
+        hand.append(deck.pop(0))
+    return _update_player(state, player_id, hand=hand, deck=deck)
+
+
+def validate_plant(state: GameState, a: PlantAction) -> Optional[str]:
+    if state.phase != "playing":
+        return "진행 중인 게임이 아닙니다"
+    if state.currentPlayerId != a.playerId:
+        return "내 차례가 아닙니다"
+    me = get_player(state, a.playerId)
+    if me is None:
+        return "없는 플레이어입니다"
+    if a.species not in load_specs().species or a.species not in me.hand:
+        return "손패에 없는 카드입니다"
+    sp = species_spec(a.species)
+    idx = board_index(require_board(state))
+    c = idx.at(a.pos.q, a.pos.r)
+    if c < 0 or c not in legal_plant_cell_indices(state, a.playerId, a.species, idx=idx):
+        return "심을 수 없는 칸입니다"
+    if sp["line"]:
+        if a.direction is None or a.direction not in legal_directions(state, a.pos):
+            return "덩굴 방향이 올바르지 않습니다"
+    elif a.direction is not None:
+        return "이 식물은 방향이 없습니다"
+    if a.seed is not None:
+        if not sp["seed"]:
+            return "이 식물은 씨앗을 날리지 않습니다"
+        if hex_distance(a.seed, a.pos) > 2 or not any(
+            p.q == a.seed.q and p.r == a.seed.r for p in legal_seed_cells(state, a.pos)
+        ):
+            return "씨앗은 심는 칸에서 거리 2 이내 빈 칸에만 놓을 수 있습니다"
+    return None
+
+
+def apply_plant_unchecked(state: GameState, a: PlantAction) -> GameState:
+    """검증 없이 심기를 적용한다 (탐색이 이미 합법 수만 만든 경우)."""
+    sp = species_spec(a.species)
+    plant = Plant(
+        id=f"p{len(state.plants) + 1}",
+        species=a.species,
+        ownerId=a.playerId,
+        pos=Position(q=a.pos.q, r=a.pos.r),
+        direction=a.direction if sp["line"] else None,
+    )
+    seeds = state.seeds
+    if a.seed is not None and sp["seed"]:
+        seeds = [*state.seeds, Seed(ownerId=a.playerId, pos=Position(q=a.seed.q, r=a.seed.r))]
+    s = state.model_copy(update={"plants": [*state.plants, plant], "seeds": seeds})
+    s = _spend_card(s, a.playerId, a.species)
+    return _advance(s)
+
+
+def apply_action(state: GameState, action: Action) -> tuple[GameState, Optional[str]]:
+    """TS applyAction 과 같은 상태 전이. (새 상태, 거부 사유) — 거부 시 상태는 입력 그대로."""
+    if isinstance(action, DraftAction):
+        if state.phase != "drafting":
+            return state, "드래프트 중이 아닙니다"
+        if state.currentPlayerId != action.playerId:
+            return state, "내가 고를 차례가 아닙니다"
+        if action.species not in draft_options(state, action.playerId):
+            return state, "고를 수 없는 종입니다"
+        me = get_player(state, action.playerId)
+        assert me is not None
+        s = _update_player(state, action.playerId, drafted=[*me.drafted, action.species])
+        next_index = s.draftIndex + 1
+        if next_index >= len(s.draftOrder):
+            return _finish_draft(s.model_copy(update={"draftIndex": next_index})), None
+        return s.model_copy(update={"draftIndex": next_index, "currentPlayerId": s.draftOrder[next_index]}), None
+    if isinstance(action, PlantAction):
+        err = validate_plant(state, action)
         if err:
-            raise ValueError(err)
-        _apply_placement(s, action.playerId, action.cardId, action.pos)
-        # 누가 배치하든(자기 자신 포함) 전원 연속 패스 판정이 깨진다 (Rules.md 9.2-2)
-        for p in s.players:
-            p.passed = False
-        _player(s, action.playerId).actedThisTurn = True
-        # 즉발 마법으로 마지막 상대 코어가 깨졌으면 배치 중이라도 즉시 승리 (Rules.md 9.2-1)
-        if len(alive_players(s)) <= 1:
-            _finish(s, "last-survivor")
-        # 배치는 턴을 끝내지 않는다 — 같은 플레이어가 이어서 배치하거나 PASS 로 턴을 넘긴다 (Rules.md 5.2)
-    elif isinstance(action, PassAction):
-        err = _check_turn(s, action.playerId)
-        if err:
-            raise ValueError(err)
-        discard_ids = action.discardCardIds or []
-        discard_err = _validate_discard(s, action.playerId, discard_ids)
-        if discard_err:
-            raise ValueError(discard_err)
-        acted = _player(s, action.playerId).actedThisTurn
-        _resolve_turn_end(s, action.playerId)
-        if s.phase == "finished":
-            return s
-        _apply_discard_exchange(s, action.playerId, discard_ids)
-        if not acted:
-            _player(s, action.playerId).passed = True
-        _advance_turn(s)
-    elif isinstance(action, SurrenderAction):
-        err = _check_turn(s, action.playerId)
-        if err:
-            raise ValueError(err)
-        _eliminate(s, action.playerId)
-        _advance_turn(s)
-    else:
-        raise ValueError("로비 액션은 시뮬레이션하지 않습니다")
-    return s
-
-
-def strip_log(state: GameState) -> dict:
-    """비교용: log 를 뺀 JSON 직렬화"""
-    d = state.model_dump(mode="json")
-    d.pop("log", None)
-    return d
+            return state, err
+        return apply_plant_unchecked(state, action), None
+    if isinstance(action, DiscardAction):
+        if state.phase != "playing":
+            return state, "진행 중인 게임이 아닙니다"
+        if state.currentPlayerId != action.playerId:
+            return state, "내 차례가 아닙니다"
+        me = get_player(state, action.playerId)
+        if me is None or action.species not in me.hand:
+            return state, "손패에 없는 카드입니다"
+        if has_any_plant(state, action.playerId):
+            return state, "심을 수 있는 칸이 있으면 버릴 수 없습니다"
+        return _advance(_spend_card(state, action.playerId, action.species)), None
+    if isinstance(action, SurrenderAction):
+        if state.phase != "playing":
+            return state, "진행 중에만 기권할 수 있습니다"
+        me = get_player(state, action.playerId)
+        if me is None or me.surrenderedOrder is not None:
+            return state, "기권할 수 없습니다"
+        order = sum(1 for p in state.players if p.surrenderedOrder is not None)
+        s = _update_player(state, action.playerId, surrenderedOrder=order)
+        if s.currentPlayerId == action.playerId:
+            return _advance(s), None
+        if sum(1 for p in s.players if p.surrenderedOrder is None) <= 1:
+            return _finish_game(s, "last-standing"), None
+        return s, None
+    # READY(로비)는 탐색에서 쓰지 않는다. 보드 조립까지 옮기지 않았으므로 거부한다
+    return state, "시뮬레이션이 지원하지 않는 행동입니다"

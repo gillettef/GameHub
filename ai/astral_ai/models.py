@@ -1,246 +1,183 @@
 """
-shared/src/types/index.ts 와 1:1로 맞추는 Pydantic 모델 (규칙 v2).
-TS 쪽 필드를 추가하면 여기도 함께 갱신한다. 일치 여부는 tests/test_fixtures.py 가 검증한다.
+Rootbound GameState / Action Pydantic 모델. `shared/src/types/index.ts` 와 필드명·타입을 1:1 로 맞춘다.
+서버가 보내는 가려진 상태(타인 손패·덱이 빈 배열, `handCount`/`deckCount` 추가 필드)도 받도록
+추가 필드를 허용한다.
 """
 
-from typing import Annotated, Literal
+from __future__ import annotations
+
+from typing import Annotated, Literal, Optional, Union
 
 from pydantic import BaseModel, ConfigDict, Field
 
+PlayerId = str
+SpeciesId = Literal[
+    "grass",
+    "oak",
+    "cactus",
+    "vine",
+    "fern",
+    "dandelion",
+    "sunflower",
+    "lotus",
+    "ivy",
+    "bamboo",
+    "mushroom",
+    "rose",
+]
+GoalId = str
+Terrain = Literal["empty", "fertile", "pond", "rock"]
+GamePhase = Literal["lobby", "drafting", "playing", "finished"]
+LogKind = Literal["system", "draft", "plant", "discard", "flip", "turn", "surrender", "result"]
 PlayerKind = Literal["human", "ai"]
-GamePhase = Literal["lobby", "playing", "finished"]
-CardType = Literal["building", "unit", "magic"]
-MarkerKind = Literal["core", "building", "unit", "magic"]
-Keyword = Literal["infiltrate", "repair", "overclock", "veil", "barrage"]
-RaceId = Literal["coalition", "swarm", "automata", "shade", "siege"]
-Terrain = Literal[
-    "space", "asteroid", "vein", "nebula", "debrisField", "ionStorm",
-    "relicSite", "gravityRift", "gunEmplacement", "jammingField",
-]
-LogKind = Literal[
-    "system", "turn", "combat", "repair", "expire", "income", "draw",
-    "place", "magic", "destroy", "eliminate", "pass", "surrender", "result",
-]
-GameResultReason = Literal["last-survivor", "all-pass", "round-limit"]
-PlacementErrorCode = Literal[
-    "not-playing", "unknown-player", "not-your-turn", "already-placed", "not-in-hand", "not-enough-energy",
-    "out-of-bounds", "asteroid", "occupied", "out-of-sight",
-]
+GameResultReason = Literal["complete", "last-standing"]
 
 
-class Strict(BaseModel):
-    """TS 타입에 없는 필드가 들어오면 실패시켜 스키마 드리프트를 잡는다."""
+class _Model(BaseModel):
+    """TS 쪽에 필드가 더 붙어도(가린 상태의 handCount 등) 받아들인다."""
 
-    model_config = ConfigDict(extra="forbid")
-
-
-class Position(Strict):
-    x: int
-    y: int
+    model_config = ConfigDict(extra="allow")
 
 
-# --- 카드 기준표 -------------------------------------------------------------
+class Position(_Model):
+    q: int
+    r: int
 
 
-class DamageEffect(Strict):
-    kind: Literal["damage"]
-    amount: int
-    radius: int
+class Cell(_Model):
+    q: int
+    r: int
+    terrain: Terrain
+    # 이 칸이 속한 정원 조각 번호 (0 = 가운데 조각)
+    tile: int
 
 
-class HealEffect(Strict):
-    kind: Literal["heal"]
-    amount: int
-    radius: int
+class Board(_Model):
+    # 칸 목록. 항상 r → q 오름차순
+    cells: list[Cell]
+    # 좌석별 입구 위치
+    entrances: list[Position]
+    tileCount: int
 
 
-class EnergyEffect(Strict):
-    kind: Literal["energy"]
-    amount: int
-
-
-class PersistentEffect(Strict):
-    kind: Literal["persistent"]
-    durationTurns: int
-
-
-MagicEffect = Annotated[
-    DamageEffect | HealEffect | EnergyEffect | PersistentEffect, Field(discriminator="kind")
-]
-
-
-class CardSpec(Strict):
+class Plant(_Model):
     id: str
-    name: str
-    kind: MarkerKind
-    race: RaceId | None
-    special: bool
-    cost: int
-    sight: int
-    hp: int
-    attack: int
-    range: int
-    production: int
-    score: int
-    keywords: list[Keyword]
-    effect: MagicEffect | None
-    copies: int
-    description: str
-
-
-# --- 맵 -----------------------------------------------------------------------
-
-
-class MapDef(Strict):
-    id: str
-    name: str
-    players: int
-    size: int
-    roundLimit: int
-    corePositions: list[Position]
-    asteroids: list[Position]
-    veins: list[Position]
-    nebulas: list[Position]
-    debrisFields: list[Position]
-    ionStorms: list[Position]
-    relicSites: list[Position]
-    gravityRifts: list[Position]
-    gunEmplacements: list[Position]
-    jammingFields: list[Position]
-    description: str
-
-
-class Board(Strict):
-    width: int
-    height: int
-    asteroids: list[Position]
-    veins: list[Position]
-    nebulas: list[Position]
-    debrisFields: list[Position]
-    ionStorms: list[Position]
-    relicSites: list[Position]
-    gravityRifts: list[Position]
-    gunEmplacements: list[Position]
-    jammingFields: list[Position]
-
-
-# --- 마커 · 플레이어 · 상태 ---------------------------------------------------
-
-
-class Marker(Strict):
-    id: str
-    specId: str
-    kind: MarkerKind
-    ownerId: str
+    species: SpeciesId
+    ownerId: PlayerId
     pos: Position
-    hp: int
-    maxHp: int
-    remainingTurns: int | None
+    # 덩굴의 방향. 그 외 None
+    direction: Optional[int] = None
 
 
-class PlayerState(Strict):
-    id: str
+class Seed(_Model):
+    ownerId: PlayerId
+    pos: Position
+
+
+class PlayerState(_Model):
+    id: PlayerId
     nickname: str
     kind: PlayerKind
     seat: int
     isReady: bool
-    race: RaceId | None
-    energy: int
-    deck: list[str]
-    hand: list[str]
-    discard: list[str]
-    alive: bool
-    eliminatedOrder: int | None
-    passed: bool
-    actedThisTurn: bool
+    drafted: list[SpeciesId] = Field(default_factory=list)
+    deck: list[SpeciesId] = Field(default_factory=list)
+    hand: list[SpeciesId] = Field(default_factory=list)
+    surrenderedOrder: Optional[int] = None
 
 
-class GameLogEntry(Strict):
+class GameLogEntry(_Model):
     turn: int
     round: int
-    playerId: str | None
+    playerId: Optional[PlayerId] = None
     kind: LogKind
     message: str
 
 
-class Score(Strict):
-    territory: int
-    markers: int
+class Score(_Model):
+    land: int
+    goals: int
+    goalBreakdown: list[int]
+    bloom: int
     komi: int
     total: int
 
 
-class GameResult(Strict):
+class GameResult(_Model):
     reason: GameResultReason
-    ranking: list[str]
-    scores: dict[str, Score]
+    ranking: list[PlayerId]
+    scores: dict[PlayerId, Score]
 
 
-class GameState(Strict):
+class GameState(_Model):
     roomId: str
     phase: GamePhase
-    mapId: str
-    board: Board
-    roundLimit: int
-    round: int
-    turn: int
-    currentPlayerId: str | None
-    players: list[PlayerState]
-    markers: list[Marker]
-    nextMarkerId: int
-    rngSeed: int
-    result: GameResult | None
-    log: list[GameLogEntry]
+    board: Optional[Board] = None
+    goals: list[GoalId] = Field(default_factory=list)
+    draftOrder: list[PlayerId] = Field(default_factory=list)
+    draftIndex: int = 0
+    round: int = 0
+    turn: int = 0
+    currentPlayerId: Optional[PlayerId] = None
+    players: list[PlayerState] = Field(default_factory=list)
+    plants: list[Plant] = Field(default_factory=list)
+    seeds: list[Seed] = Field(default_factory=list)
+    rngSeed: int = 0
+    result: Optional[GameResult] = None
+    log: list[GameLogEntry] = Field(default_factory=list)
 
 
-# --- 액션 ---------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# 액션 (type 으로 구분)
+# ---------------------------------------------------------------------------
 
 
-class SelectRaceAction(Strict):
-    type: Literal["SELECT_RACE"]
-    playerId: str
-    race: RaceId
+class ReadyAction(_Model):
+    type: Literal["READY"] = "READY"
+    playerId: PlayerId
 
 
-class ReadyAction(Strict):
-    type: Literal["READY"]
-    playerId: str
+class DraftAction(_Model):
+    type: Literal["DRAFT"] = "DRAFT"
+    playerId: PlayerId
+    species: SpeciesId
 
 
-class PlaceAction(Strict):
-    type: Literal["PLACE"]
-    playerId: str
-    cardId: str
+class PlantAction(_Model):
+    """direction 은 덩굴만, seed 는 민들레만(생략 가능). 직렬화할 때 None 은 빼야 TS 검증을 통과한다."""
+
+    type: Literal["PLANT"] = "PLANT"
+    playerId: PlayerId
+    species: SpeciesId
     pos: Position
+    direction: Optional[int] = None
+    seed: Optional[Position] = None
 
 
-class PassAction(Strict):
-    type: Literal["PASS"]
-    playerId: str
-    discardCardIds: list[str] | None = None
+class DiscardAction(_Model):
+    type: Literal["DISCARD"] = "DISCARD"
+    playerId: PlayerId
+    species: SpeciesId
 
 
-class SurrenderAction(Strict):
-    type: Literal["SURRENDER"]
-    playerId: str
+class SurrenderAction(_Model):
+    type: Literal["SURRENDER"] = "SURRENDER"
+    playerId: PlayerId
 
 
 Action = Annotated[
-    SelectRaceAction | ReadyAction | PlaceAction | PassAction | SurrenderAction,
+    Union[ReadyAction, DraftAction, PlantAction, DiscardAction, SurrenderAction],
     Field(discriminator="type"),
 ]
 
 
-# --- HTTP 요청·응답 (CLAUDE.md "AI 서비스") ------------------------------------
-
-
-class DecideRequest(Strict):
+class DecideRequest(BaseModel):
     state: GameState
-    playerId: str
+    playerId: PlayerId
     timeLimitMs: int = 2000
 
 
-class DecideResponse(Strict):
+class DecideResponse(BaseModel):
     action: Action
     depth: int
     elapsedMs: int

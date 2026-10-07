@@ -167,7 +167,7 @@ export interface BoardIndex {
   ring1: number[][];
   /** 칸별 별 모양 거리 2 (6칸 이하) */
   star2: number[][];
-  /** 칸별·방향별 거리 1..3 직선 칸 (보드 밖은 빠짐) */
+  /** 칸별·방향별 거리 1..3 직선 칸. 자리를 지키기 위해 보드 밖 칸은 −1 로 남긴다 (거리 k = 인덱스 k−1) */
   line: number[][][];
   /** 칸별 거리 2 이내 칸 (자기 제외) */
   within2: number[][];
@@ -192,7 +192,7 @@ export function boardIndex(board: Board): BoardIndex {
     ring1.push(nb);
     edge.push(nb.length < 6);
     star2.push(DIRECTIONS.map((_, d) => at(step(c, d, 2))).filter((x) => x >= 0));
-    line.push(DIRECTIONS.map((_, d) => [1, 2, 3].map((k) => at(step(c, d, k))).filter((x) => x >= 0)));
+    line.push(DIRECTIONS.map((_, d) => [1, 2, 3].map((k) => at(step(c, d, k)))));
     const w: number[] = [];
     board.cells.forEach((o, j) => {
       if (j !== i && hexDistance(c, o) <= 2) w.push(j);

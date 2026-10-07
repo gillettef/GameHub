@@ -74,7 +74,8 @@ export function computeInfluence(state: GameState): Int16Array[] {
     I[c]! += self;
     if (ring) for (const x of nb) I[x]! += ring;
     if (sp.star2) for (const x of idx.star2[c] as number[]) I[x]! += sp.star2;
-    if (sp.line && plant.direction !== null) for (const x of (idx.line[c]?.[plant.direction] ?? []).slice(0, sp.lineLength)) I[x]! += sp.line;
+    // 거리 1..lineLength 칸만. 보드 밖 칸은 건너뛰고 그 너머로 밀려나지 않는다 (Rules.md 7절)
+    if (sp.line && plant.direction !== null) for (const x of (idx.line[c]?.[plant.direction] ?? []).slice(0, sp.lineLength)) if (x >= 0) I[x]! += sp.line;
     if (sp.ivy) for (const x of nb) if ((occ.plantSeat[x] as number) >= 0) I[x]! += sp.ivy;
     if (sp.wither) for (const x of nb) for (let o = 0; o < P; o++) if (o !== seat) (wither[o] as Int16Array)[x]! += sp.wither;
   }
@@ -148,10 +149,10 @@ export function legalSeedCells(state: GameState, plantPos: Position): Position[]
   return (idx.within2[c] as number[]).filter((x) => isEmptyCell(state, idx, occ, x)).map((x) => ({ q: board.cells[x]!.q, r: board.cells[x]!.r }));
 }
 
-/** 덩굴이 고를 수 있는 방향 (그 방향에 보드 칸이 하나라도 있어야 한다) */
-export function legalDirections(state: GameState, pos: Position): number[] {
+/** 덩굴이 고를 수 있는 방향: 그 방향 거리 1..lineLength 에 보드 칸이 하나라도 있어야 한다 (Rules.md 7절) */
+export function legalDirections(state: GameState, pos: Position, lineLength = getSpecies('vine').lineLength): number[] {
   const idx = boardIndex(requireBoard(state));
   const c = idx.indexOf(pos);
   if (c < 0) return [];
-  return [0, 1, 2, 3, 4, 5].filter((d) => ((idx.line[c]?.[d] ?? []).length > 0));
+  return [0, 1, 2, 3, 4, 5].filter((d) => (idx.line[c]?.[d] ?? []).slice(0, lineLength).some((x) => x >= 0));
 }
