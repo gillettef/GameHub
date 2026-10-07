@@ -449,3 +449,32 @@ button.vcard:not(:disabled) { border-color: rgba(255, 255, 255, 0.18); }
 .crash h2 { font-size: 22px; }
 .crash p { color: var(--muted); font-size: 14px; line-height: 1.55; max-width: 300px; }
 .crash code { max-width: 100%; padding: 8px 10px; border-radius: 10px; background: rgba(0, 0, 0, 0.3); }
+
+/* ───── v1: 관객 그룹·배치·입찰 ───── */
+.members { display: inline-flex; align-items: center; gap: 5px; font-weight: 900; font-size: 12px; }
+.mem { display: inline-flex; align-items: center; gap: 1px; }
+.mem.kid { color: #ff9ad0; }
+.mem.adult { color: #6cc7ff; }
+.tgt { display: inline-flex; align-items: center; }
+.vcard-size { position: absolute; left: 3px; top: 3px; padding: 1px 6px; border-radius: 99px; background: rgba(21, 17, 58, 0.85); color: var(--text); font-size: 11.5px; font-weight: 900; z-index: 1; }
+.vcard.sel { border-color: var(--accent); transform: translateY(-4px); box-shadow: 0 6px 16px rgba(255, 213, 74, 0.25); }
+.vcard.placed { border-color: var(--good); }
+.vcard-owner.ok { background: #1f7a52; color: #fff; top: 30px; }
+.tile.fit { border-color: var(--good); }
+.tile.nofit { opacity: 0.45; }
+.tile-group { position: absolute; top: 5px; right: 5px; display: inline-flex; align-items: center; gap: 4px; padding: 2px 6px; border-radius: 99px; background: rgba(8, 5, 28, 0.88); font-size: 11.5px; }
+.tile-group b { color: var(--accent); }
+.tile-fit { position: absolute; left: 4px; right: 4px; top: 32px; text-align: center; padding: 2px 4px; border-radius: 8px; background: rgba(31, 122, 82, 0.92); color: #fff; font-size: 12px; font-weight: 900; }
+.event-next { align-self: flex-start; margin-top: 3px; display: inline-flex; align-items: center; gap: 4px; min-height: 26px; padding: 2px 9px; border-radius: 99px; background: rgba(255, 255, 255, 0.1); font-size: 12px; font-weight: 800; color: var(--text); }
+.bid { display: flex; align-items: center; justify-content: center; gap: 18px; margin: 8px 0; }
+.btn.round { width: 52px; min-height: 52px; padding: 0; border-radius: 50%; background: var(--surface2); border: 1px solid var(--line); font-size: 24px; }
+.bid-val { display: inline-flex; align-items: center; gap: 6px; min-width: 84px; justify-content: center; color: var(--accent); }
+.bid-val b { font-size: 30px; }
+.pick-order { display: flex; flex-wrap: wrap; gap: 5px; margin: 0 2px 8px; }
+.po { padding: 3px 9px; border-radius: 99px; background: var(--surface2); color: var(--muted); font-size: 12px; font-weight: 800; }
+.po.me { color: var(--accent); }
+.po.now { background: rgba(255, 213, 74, 0.2); color: var(--accent); outline: 1.5px solid var(--accent); }
+.dock-sub { display: flex; align-items: center; gap: 6px; margin: 10px 2px 6px; font-weight: 900; font-size: 14px; }
+.visits em.warn { color: var(--warn); background: rgba(255, 179, 71, 0.15); }
+.fees.quick { grid-template-columns: repeat(6, 1fr); }
+.fees.quick .fee { min-height: 44px; }

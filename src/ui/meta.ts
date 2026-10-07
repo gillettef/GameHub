@@ -16,11 +16,11 @@ export const TYPE_META: Record<FacilityType, { icon: IconName; color: string; sh
 
 /** 인력 효과 설명 (레벨 1당 효과, 수치는 CFG에서) */
 export const STAFF_META: Record<StaffKey, { icon: IconName; label: string; desc: string; color: string }> = {
-  marketer: { icon: 'marketer', label: '마케팅 전문가', desc: 'Lv당 매 라운드 데려올 수 있는 관객 +1명', color: '#ff7ac8' },
-  guide: { icon: 'guide', label: '안내 직원', desc: 'Lv당 시설 1곳 수용 인원 +1 (원래 수익·만족도가 높은 시설부터)', color: '#6cc7ff' },
-  engineer: { icon: 'engineer', label: '엔지니어', desc: `Lv당 고장 확률 -${Math.round(CFG.breakPerEngineer * 100)}%p(최소 ${Math.round(CFG.breakMin * 100)}%) · 매 라운드 무료 수리 1건`, color: '#ffb347' },
-  cleaner: { icon: 'cleaner', label: '환경 미화원', desc: 'Lv당 매 라운드 쓰레기 2개 무료 청소', color: '#5ee0a0' },
-  researcher: { icon: 'researcher', label: '연구원', desc: `Lv당 건설비 -$1(최소 $${CFG.minPrice}) · 매 라운드 만족도 +${CFG.researchSat}`, color: '#a58bff' },
+  marketer: { icon: 'marketer', label: '마케팅 전문가', desc: 'Lv당 관객 모집 +1그룹', color: '#ff7ac8' },
+  guide: { icon: 'guide', label: '안내 직원', desc: 'Lv당 정원 초과 배치 1회 (정원 +1명까지)', color: '#6cc7ff' },
+  engineer: { icon: 'engineer', label: '엔지니어', desc: 'Lv당 관리 단계에 수리 토큰 1개 무료 제거', color: '#ffb347' },
+  cleaner: { icon: 'cleaner', label: '환경 미화원', desc: `Lv당 관리 단계에 쓰레기 ${CFG.cleanPerCleaner}개 무료 청소`, color: '#5ee0a0' },
+  researcher: { icon: 'researcher', label: '연구원', desc: `Lv당 매 라운드 만족도 +${CFG.researchSat}`, color: '#a58bff' },
 };
 
 export const PHASES: { key: Exclude<Phase, 'gameOver'>; label: string; icon: IconName }[] = [

@@ -27,12 +27,12 @@
 4. 카드 수치를 바꾸면 영향(밸런스, 룰북 서술)을 함께 확인한다.
 
 ## 개발 (`src/`)
-- 스택: TypeScript + Vite + React. `npm run dev`(웹 테스트, 모바일 뷰포트로 확인) / `npm run build` / `npm test` / `npm run sim`(AI 대전 요약). 밸런스 측정·조정 도구는 `scripts/`(simulate·balance·sweep·cardeval·econ·tune-ai·pipeline), 절차와 결과는 `docs/balance-report.md`.
-- `src/game/` — UI 무관 순수 게임 로직(`engine.ts`의 `dispatch`/`newGame`, 카드 데이터 `data/`). 시설 데이터는 `python tools/gen_facilities.py`로 xlsx에서 생성.
+- 스택: TypeScript + Vite + React. `npm run dev`(웹 테스트, 모바일 뷰포트로 확인) / `npm run build` / `npm test` / `npm run sim`(AI 대전 요약). 밸런스 측정 도구는 `scripts/`(simulate·balance·cards-md), 절차와 결과는 `docs/balance-report.md`.
+- `src/game/` — UI 무관 순수 게임 로직(`engine.ts`의 `dispatch`/`newGame`, 카드 데이터 `data/`). 시설 원본은 `python tools/gen_facilities.py`로 xlsx에서 생성(`data/facilities.ts`), 카드 인쇄값 변환·특수효과는 `data/cards.ts`, 관객 그룹은 `data/groups.ts`, 운영카드는 `data/events.ts`. 카드 목록 문서는 `npx tsx scripts/cards-md.ts > docs/cards.md`로 재생성.
 - `src/ui/` — 모바일 세로 우선 UI. `src/platform/` — 저장/햅틱 등 플랫폼 종속 코드(앱 포장 시 교체).
 - 이모지/시스템 이모티콘은 쓰지 않고 `src/ui/Icon.tsx`의 커스텀 SVG 아이콘만 쓴다.
 - 이미지 에셋: `public/images/<슬롯키>.webp`에 넣으면 자동 적용(없으면 플레이스홀더). 슬롯 정의는 `src/ui/assets.ts`, 목록/크기는 개발 서버(`npm run dev`)에서 앱 주소 뒤 `#assets`(운영 빌드에서는 비활성).
-- 현재 구현 룰은 `docs/design-v0.md`(pptx의 빈 부분을 임시로 채운 것). 인원은 사람 0~1 + AI로 전체 2~5인(`CFG.minPlayers`~`maxPlayers`), 한 기기 다인(핫시트) 미지원. 룰 상수(`CFG`)를 바꾸면 `npx tsx scripts/balance.ts`로 영향을 확인하고, 카드 원본(xlsx)은 수정하지 않고 룰 상수로 조정한다.
+- 현재 구현 룰은 `docs/design-v1.md`(pptx의 빈 부분을 채운 것, **오프라인 보드게임 기준**: 카드 인쇄값 그대로, 확률·환산 공식 없음, 손계산 가능). v0은 `docs/archive/`. 인원은 사람 0~1 + AI로 전체 2~5인(`CFG.minPlayers`~`maxPlayers`), 한 기기 다인(핫시트) 미지원. 룰 상수(`CFG`)·인쇄값 변환(`PRINT`)을 바꾸면 `npx tsx scripts/balance.ts`로 영향을 확인하고, 카드 원본(xlsx)은 수정하지 않는다.
 
 ## 배포 (AWS)
 - 다른 게임(Eleven·AstralTab·MagicAcademy)과 같은 EC2(t4g.nano) 1대를 공유한다. SmilePark는 정적 웹앱이라 `main`에 push하면 `.github/workflows/deploy-aws.yml`이 `npm test` → `npm run build`를 통과했을 때만 `dist`와 `scripts/aws/serve.mjs`(의존성 없는 정적 서버)를 `~/smilepark`에 올리고 systemd `smilepark`(포트 **8090**)를 재시작한다. 접속은 `http://<Elastic IP>:8090`.

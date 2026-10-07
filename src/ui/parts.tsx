@@ -2,11 +2,11 @@ import { useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode 
 import { createPortal } from 'react-dom';
 import { useDismissOnBack } from '../platform/backButton';
 import { showTip } from './tip';
-import { Icon, type IconName } from './Icon';
+import { Icon } from './Icon';
 import { Slot } from './Slot';
 import { TYPE_META } from './meta';
-import { baseCapacity, incomeOf } from '../game/engine';
-import type { FacilityCard, Visitor } from '../game/types';
+import { sizeOf } from '../game/data/groups';
+import type { Group, ParkCard } from '../game/types';
 
 /** 값이 바뀌면 살짝 튀어오르는 숫자 */
 export function Num({ value, prefix = '', className = '' }: { value: number; prefix?: string; className?: string }) {
@@ -112,14 +112,14 @@ export function Sheet({ title, label, onClose, children, tall }: SheetProps) {
   return host ? createPortal(node, host) : node;
 }
 
-export function FacilityArt({ card, className = '' }: { card: FacilityCard; className?: string }) {
+export function FacilityArt({ card, className = '' }: { card: ParkCard; className?: string }) {
   const m = TYPE_META[card.type];
   return (
     <Slot slot={[`facility/${card.id}`, `type/${card.type}`]} tint={m.color} className={`art ${className}`} fallback={<Icon name={m.icon} size={34} stroke={1.5} />} />
   );
 }
 
-export function TypeChip({ type }: { type: FacilityCard['type'] }) {
+export function TypeChip({ type }: { type: ParkCard['type'] }) {
   const m = TYPE_META[type];
   return (
     <span className="chip" style={{ ['--c' as string]: m.color }}>
@@ -129,22 +129,37 @@ export function TypeChip({ type }: { type: FacilityCard['type'] }) {
   );
 }
 
-function Pair({ icon, a, b, label }: { icon: IconName; a: number; b: number; label: string }) {
+export const TARGET_LABEL = { child: '어린이', adult: '성인', all: '모두' } as const;
+
+/** 놀이기구 대상 아이콘 */
+export function TargetIcon({ target, size = 12 }: { target: ParkCard['target']; size?: number }) {
+  if (target === 'all') {
+    return (
+      <span className="tgt" aria-label="대상 모두">
+        <Icon name="child" size={size} stroke={2.2} />
+        <Icon name="adult" size={size} stroke={2.2} />
+      </span>
+    );
+  }
   return (
-    <div className="pair" title={label} aria-label={`${label} ${a}/${b}`}>
-      <Icon name={icon} size={13} />
-      <span><Icon name="child" size={11} stroke={2.2} />{a}</span>
-      <span><Icon name="adult" size={11} stroke={2.2} />{b}</span>
-    </div>
+    <span className="tgt" aria-label={`대상 ${TARGET_LABEL[target]}`}>
+      <Icon name={target} size={size} stroke={2.2} />
+    </span>
   );
 }
 
+/** 카드의 핵심 인쇄값 한 줄 요약 */
+export function cardSummary(c: ParkCard): string {
+  if (c.kind === 'ride') return `정원 ${c.cap}명 · ${TARGET_LABEL[c.target]} 1명당 만족도 ${c.sat}`;
+  if (c.kind === 'shop') return `입장 그룹 1개당 $${c.income}`;
+  return c.fx.text;
+}
+
 /**
- * 시설 스탯 (유지비 / 수익 / 만족도).
- * labeled: 상세 시트용 — 아이콘마다 글자 라벨을 함께 보여 터치 기기에서도 의미를 알 수 있게 한다.
+ * 시설 인쇄값 (오프라인 카드에 적힌 그대로).
+ * labeled: 상세 시트용 — 글자 라벨을 함께 보여 터치 기기에서도 의미를 알 수 있게 한다.
  */
-export function FacilityStats({ card, labeled }: { card: FacilityCard; labeled?: boolean }) {
-  const cap = baseCapacity(card);
+export function FacilityStats({ card, labeled }: { card: ParkCard; labeled?: boolean }) {
   if (labeled) {
     return (
       <dl className="stat-list">
@@ -152,24 +167,28 @@ export function FacilityStats({ card, labeled }: { card: FacilityCard; labeled?:
           <dt><Icon name="coin" size={15} /> 유지비</dt>
           <dd className="neg">-${card.upkeep} / 라운드</dd>
         </div>
-        <div>
-          <dt><Icon name="coin" size={15} /> 수익</dt>
-          <dd>
-            <span><Icon name="child" size={13} stroke={2.2} />어린이 ${incomeOf(card, 'child')}</span>
-            <span><Icon name="adult" size={13} stroke={2.2} />성인 ${incomeOf(card, 'adult')}</span>
-          </dd>
-        </div>
-        <div>
-          <dt><Icon name="star" size={15} /> 만족도</dt>
-          <dd>
-            <span><Icon name="child" size={13} stroke={2.2} />어린이 {card.sat[0]}</span>
-            <span><Icon name="adult" size={13} stroke={2.2} />성인 {card.sat[1]}</span>
-          </dd>
-        </div>
-        {cap > 1 && (
-          <div className="cap">
-            <dt><Icon name="family" size={15} /> 수용</dt>
-            <dd>대형 시설 · 한 번에 {cap}명</dd>
+        {card.kind === 'ride' && (
+          <>
+            <div>
+              <dt><Icon name="family" size={15} /> 정원</dt>
+              <dd>{card.cap}명 · 그룹 1개만</dd>
+            </div>
+            <div>
+              <dt><Icon name="star" size={15} /> 만족도</dt>
+              <dd>
+                <TargetIcon target={card.target} size={13} /> {TARGET_LABEL[card.target]} 1명당 {card.sat}
+              </dd>
+            </div>
+            <div>
+              <dt><Icon name={card.outdoor ? 'sun' : 'amenity'} size={15} /> 위치</dt>
+              <dd>{card.outdoor ? '야외' : '실내'}</dd>
+            </div>
+          </>
+        )}
+        {card.kind === 'shop' && (
+          <div>
+            <dt><Icon name="coin" size={15} /> 수익</dt>
+            <dd>입장 그룹 1개당 ${card.income} · 쓰레기 1개</dd>
           </div>
         )}
       </dl>
@@ -181,12 +200,23 @@ export function FacilityStats({ card, labeled }: { card: FacilityCard; labeled?:
         <Icon name="coin" size={13} />
         <span className="neg">-{card.upkeep}</span>
       </div>
-      <Pair icon="coin" a={incomeOf(card, 'child')} b={incomeOf(card, 'adult')} label="수익(어린이/성인)" />
-      <Pair icon="star" a={card.sat[0]} b={card.sat[1]} label="만족도(어린이/성인)" />
-      {cap > 1 && (
-        <div className="pair cap" title="대형 시설: 한 번에 여러 명 수용">
-          <Icon name="family" size={13} />
-          <span>수용 {cap}명</span>
+      {card.kind === 'ride' && (
+        <>
+          <div className="pair" title="정원" aria-label={`정원 ${card.cap}명`}>
+            <Icon name="family" size={13} />
+            <span>{card.cap}</span>
+          </div>
+          <div className="pair" title={`${TARGET_LABEL[card.target]} 1명당 만족도`} aria-label={`${TARGET_LABEL[card.target]} 1명당 만족도 ${card.sat}`}>
+            <TargetIcon target={card.target} size={11} />
+            <Icon name="star" size={13} />
+            <span>{card.sat}</span>
+          </div>
+        </>
+      )}
+      {card.kind === 'shop' && (
+        <div className="pair" title="입장 그룹 1개당 수익" aria-label={`입장 그룹 1개당 ${card.income}달러`}>
+          <Icon name="coin" size={13} />
+          <span>+{card.income}/그룹</span>
         </div>
       )}
     </div>
@@ -221,50 +251,69 @@ export function Vp({ value, big }: { value: number; big?: boolean }) {
   );
 }
 
-/* ───── 관객카드 ───── */
+/* ───── 관객 그룹 카드 ───── */
 
-const KIND_LABEL = { child: '어린이', adult: '성인' } as const;
+/** 그룹 구성: 어린이/성인 아이콘 + 인원 */
+export function Members({ g, size = 13 }: { g: Group; size?: number }) {
+  return (
+    <span className="members" aria-label={`어린이 ${g.kids}명 성인 ${g.adults}명`}>
+      {g.kids > 0 && (
+        <span className="mem kid"><Icon name="child" size={size} stroke={2.2} />{g.kids}</span>
+      )}
+      {g.adults > 0 && (
+        <span className="mem adult"><Icon name="adult" size={size} stroke={2.2} />{g.adults}</span>
+      )}
+    </span>
+  );
+}
 
-interface VisitorCardProps {
-  v: Visitor;
-  /** open: 가져올 수 있음 / taken: 누군가 가져감 / mine: 내 입구 */
+interface GroupCardProps {
+  g: Group;
+  /** open: 가져올 수 있음 / taken: 누군가 가져감 / mine: 내 그룹 */
   state?: 'open' | 'taken' | 'mine';
   owner?: string;
-  /** 입장료 단계에서 입장 여부 표시 (false면 돌아감) */
+  /** 입장 여부 표시 (false면 돌아감) */
   enters?: boolean;
+  /** 배치된 놀이기구 이름 */
+  placedAt?: string;
+  selected?: boolean;
   onTap?: () => void;
   disabled?: boolean;
 }
 
-/** 관객카드 — 종류(어린이/성인), 좋아하는 유형, 지불 한도($)가 한눈에 보이게 */
-export function VisitorCard({ v, state = 'open', owner, enters, onTap, disabled }: VisitorCardProps) {
-  const m = TYPE_META[v.fav];
+/** 관객 그룹 카드 — 이름, 구성(어린이/성인), 좋아하는 유형, 지불 한도($)가 한눈에 보이게 */
+export function GroupCard({ g, state = 'open', owner, enters, placedAt, selected, onTap, disabled }: GroupCardProps) {
+  const m = TYPE_META[g.fav];
   const Tag = onTap ? 'button' : 'div';
+  const lead = g.kids >= g.adults ? 'child' : 'adult';
   return (
-    <Tag className={`vcard ${state} ${enters === false ? 'leaves' : ''}`} onClick={onTap} disabled={onTap ? disabled : undefined}>
-      <Slot slot={`visitor/${v.kind}`} tint={v.kind === 'child' ? '#ff9ad0' : '#6cc7ff'} className="vcard-art" fallback={<Icon name={v.kind} size={30} stroke={1.6} />}>
-        <span className="vcard-budget"><Icon name="ticket" size={11} />${v.budget}</span>
+    <Tag className={`vcard ${state} ${enters === false ? 'leaves' : ''} ${selected ? 'sel' : ''} ${placedAt ? 'placed' : ''}`} onClick={onTap} disabled={onTap ? disabled : undefined}>
+      <Slot slot={`visitor/${lead}`} tint={lead === 'child' ? '#ff9ad0' : '#6cc7ff'} className="vcard-art" fallback={<Icon name={lead} size={28} stroke={1.6} />}>
+        <span className="vcard-budget"><Icon name="ticket" size={11} />${g.budget}</span>
+        <span className="vcard-size">{sizeOf(g)}명</span>
       </Slot>
-      <b>{KIND_LABEL[v.kind]}</b>
+      <b>{g.name}</b>
+      <Members g={g} size={12} />
       <span className="vcard-fav" style={{ ['--c' as string]: m.color }}>
         <Icon name={m.icon} size={12} stroke={2} />
         {m.short}
       </span>
       {state === 'taken' && <span className="vcard-owner">{owner}</span>}
       {enters === false && <span className="vcard-owner bad">돌아감</span>}
+      {placedAt && <span className="vcard-owner ok">{placedAt}</span>}
     </Tag>
   );
 }
 
-/** 입구에 선 관객을 아주 작게 표시 (상대 공원 열람용). 탭하면 상세 설명이 뜬다. */
-export function VisitorChip({ v, enters }: { v: Visitor; enters?: boolean }) {
-  const m = TYPE_META[v.fav];
-  const desc = `${KIND_LABEL[v.kind]} 관객 · 좋아하는 유형 ${v.fav} · 최대 입장료 $${v.budget}${enters === false ? ' · 입구에서 돌아감' : ''}`;
+/** 그룹을 아주 작게 표시 (상대 공원 열람용). 탭하면 상세 설명이 뜬다. */
+export function GroupChip({ g, enters }: { g: Group; enters?: boolean }) {
+  const m = TYPE_META[g.fav];
+  const desc = `${g.name} · 어린이 ${g.kids}명 성인 ${g.adults}명 · 좋아하는 유형 ${g.fav} · 지불 한도 $${g.budget}${enters === false ? ' · 입구에서 돌아감' : ''}`;
   return (
     <button type="button" className={`vchip ${enters === false ? 'leaves' : ''}`} style={{ ['--c' as string]: m.color }} title={desc} aria-label={desc} onClick={() => showTip(desc)}>
-      <Icon name={v.kind} size={14} />
+      <Members g={g} size={12} />
       <Icon name={m.icon} size={13} stroke={2} />
-      <i>${v.budget}</i>
+      <i>${g.budget}</i>
     </button>
   );
 }
