@@ -9,54 +9,59 @@ type Store = ReturnType<typeof useGameStore.getState>;
 interface Step {
   title: string;
   body: string;
+  /** 화면 위쪽에 띄운다 (드래프트 화면처럼 아래가 붐빌 때) */
+  top?: boolean;
   /** 이 조건이 참이 되면 다음 단계로 넘어간다. 없으면 '다음' 버튼으로 넘긴다 */
   done?: (s: Store, startTurn: number) => boolean;
 }
 
-const me = (s: Store) => s.state?.players.find((p) => p.id === s.viewerId);
 
 /**
- * 첫 판 튜토리얼 안내 (2026-10-06). 연습 봇과 두는 핫시트 판(store.tutorial) 위에 떠서
+ * 첫 판 튜토리얼 안내 (2026-10-06, 2026-10-07 Rootbound 로 교체). 연습 봇과 두는 핫시트 판(store.tutorial) 위에 떠서
  * 한 단계씩 할 일을 알려 주고, 플레이어가 실제로 그 조작을 하면 다음 단계로 넘어간다.
- * 보드·손패·턴 바를 가리지 않도록 화면 위쪽(상태 창 아래)에 작은 패널로 둔다.
+ * 보드를 덜 가리도록 손패 위(드래프트 중에는 화면 위쪽)에 작은 패널로 둔다.
  */
+const myPlants = (s: Store) => s.state?.plants.filter((p) => p.ownerId === s.viewerId).length ?? 0;
+
 const STEPS: Step[] = [
   {
     title: '목표',
-    body: '마커를 한 턴에 하나씩 놓아 영토를 넓힙니다. 라운드 제한이 끝날 때 영토 + 마커 점수가 높은 쪽이 이기고, 상대 코어(육각형)를 부수면 그 자리에서 이깁니다.',
+    body: '차례마다 식물 하나를 심어 땅을 넓힙니다. 끝났을 때 내 땅 1칸 = 1점, 여기에 위의 목표 카드 3장 점수를 더해 높은 쪽이 이깁니다.',
+    top: true,
+  },
+  {
+    title: '식물 고르기',
+    body: '먼저 이번 판에 쓸 식물 5종을 연습 봇과 번갈아 고릅니다. 카드를 눌러 크게 보고 "고르기"를 누르세요. 목표 카드에 이름이 나온 종이 유리합니다.',
+    top: true,
+    done: (s) => s.state?.phase === 'playing',
   },
   {
     title: '카드 고르기',
-    body: '아래 손패에서 카드를 누르면 크게 보입니다. 비용(에너지)을 확인하고 "고르기"를 누르세요.',
-    done: (s) => s.selectedHandIndex !== null,
+    body: '아래 손패에서 카드를 눌러 크게 보고 "이 카드 고르기"를 누르세요. 그림의 숫자가 둘레 칸에 주는 영향력입니다.',
+    done: (s) => s.selectedHandIndex !== null || myPlants(s) > 0,
   },
   {
-    title: '놓을 칸 고르기',
-    body: '밝게 빛나는 칸이 내 시야 안, 즉 놓을 수 있는 곳입니다. 한 칸을 누르세요.',
-    done: (s) => s.pendingPos !== null || !!me(s)?.actedThisTurn,
+    title: '심을 칸 고르기',
+    body: '밝게 빛나는 칸이 내 뿌리가 닿는(영향력 1 이상) 빈 칸입니다. 한 칸을 누르세요.',
+    done: (s) => s.pendingPos !== null || myPlants(s) > 0,
   },
   {
-    title: '배치 확정',
-    body: '놓기 전에 예상 결과(공격·피격·점수 변화)가 보입니다. 마음에 들면 "배치 확정", 아니면 "취소"를 누르세요.',
-    done: (s) => !!me(s)?.actedThisTurn,
-  },
-  {
-    title: '턴 끝내기',
-    body: '마커는 턴당 하나입니다. 맨 아래 턴 종료 버튼(✓)을 누르세요. 턴을 끝내는 순간 내 마커의 자동 공격 → 수입 → 카드 1장 드로우가 처리됩니다.',
-    done: (s, startTurn) => (s.state?.turn ?? 0) > startTurn,
+    title: '심기',
+    body: '심기 전에 내 땅·점수가 얼마나 바뀌는지 보입니다. 마음에 들면 "심기", 아니면 "취소"를 누르세요.',
+    done: (s) => myPlants(s) > 0,
   },
   {
     title: '상대 차례',
-    body: '연습 봇이 두는 중입니다. 보드 위 칸을 눌러 마커 정보를 볼 수 있습니다.',
-    done: (s) => s.state?.currentPlayerId === s.viewerId,
+    body: '연습 봇이 두는 중입니다. 칸 색이 그 칸의 주인입니다. 상대가 더 강하게 심으면 내 땅도 넘어갑니다.',
+    done: (s) => s.state?.currentPlayerId === s.viewerId && myPlants(s) > 0,
   },
   {
-    title: '상태 읽기',
-    body: '위 상태 창의 번개는 에너지(카드 비용), +숫자는 턴당 수입, 별은 점수입니다. 건물(둥근 사각)은 수입을 늘리고, 유닛(원)은 사거리 안 적을 자동으로 공격합니다.',
+    title: '영향력 보기',
+    body: '아래 "영향력" 버튼을 켜면 칸마다 내 영향력:상대 최고 영향력이 보입니다. 1등만 그 칸을 가집니다(동점이면 아무도 못 가짐).',
   },
   {
     title: '이제 직접',
-    body: '시야를 넓혀 영토를 차지하세요. 놓을 게 없으면 패스, 손패가 마음에 안 들면 교체 버튼(↻)으로 버리고 다시 뽑을 수 있습니다. 규칙은 ⋯ 메뉴 → 규칙 보기.',
+    body: '손패를 다 쓰면 끝납니다. 점수 탭에서 목표별 점수를, ⋯ 메뉴 → 규칙 보기에서 규칙을 볼 수 있습니다.',
   },
 ];
 
@@ -88,11 +93,11 @@ export const TutorialCoach = memo(function TutorialCoach() {
     });
   }
 
-  if (!tutorial || closed || phase !== 'playing' || step >= STEPS.length) return null;
+  if (!tutorial || closed || (phase !== 'playing' && phase !== 'drafting') || step >= STEPS.length) return null;
   const cur = STEPS[step] as Step;
   const last = step === STEPS.length - 1;
   return (
-    <aside className={styles.coach} role="status" aria-live="polite" aria-label="튜토리얼 안내">
+    <aside className={cur.top ? styles.coachTop : styles.coach} role="status" aria-live="polite" aria-label="튜토리얼 안내">
       <div className={styles.head}>
         <LearnIcon size={18} />
         <strong className={styles.title}>{cur.title}</strong>

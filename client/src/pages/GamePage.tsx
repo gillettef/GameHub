@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { CardModal } from '../components/CardModal';
+import { GameModal } from '../components/GameModal';
 import { TurnEvents } from '../components/TurnEvents';
 import { TutorialCoach } from '../components/TutorialCoach';
 import { HandoffOverlay } from '../components/HandoffOverlay';
@@ -53,10 +53,10 @@ export function GamePage({ onQuit }: GamePageProps) {
   useEffect(() => {
     if (!state || !viewerId) return;
     const isMyTurn = state.phase === 'playing' && state.currentPlayerId === viewerId;
-    document.title = isMyTurn ? '내 차례 · AstralTab' : 'AstralTab';
+    document.title = isMyTurn ? '내 차례 · Rootbound' : 'Rootbound';
   }, [state, viewerId]);
   useEffect(() => () => {
-    document.title = 'AstralTab';
+    document.title = 'Rootbound';
   }, []);
 
   if (!state || !viewerId) return null;
@@ -120,7 +120,7 @@ export function GamePage({ onQuit }: GamePageProps) {
 
       <TurnEvents />
       <TutorialCoach />
-      <CardModal />
+      <GameModal />
 
       {notice && (
         <div className={styles.notice} role="status">

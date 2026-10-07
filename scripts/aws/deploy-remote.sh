@@ -13,7 +13,7 @@ if [ ! -f client/dist/prod/index.html ]; then
 fi
 
 # 서버 실행에 필요한 것(server·shared 와 tsx)만 설치한다. client(React·Vite) 의존성은 받지 않는다.
-npm install --workspace @astraltab/server --workspace @astraltab/shared --no-audit --no-fund
+npm install --workspace @rootbound/server --workspace @rootbound/shared --no-audit --no-fund
 ai/.venv/bin/pip install -q -r ai/requirements.txt
 sudo systemctl restart astraltab-prod-ai astraltab-prod-server
 

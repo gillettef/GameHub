@@ -1,0 +1,41 @@
+import { memo, type CSSProperties } from 'react';
+import type { GoalId, PlayerId, Score } from '@rootbound/shared';
+import { getGoal, getSpecies } from '@rootbound/shared';
+import styles from './GoalList.module.css';
+
+interface GoalListProps {
+  goals: GoalId[];
+  /** 있으면 목표마다 좌석별 지금 점수를 함께 보여 준다 */
+  scores?: Record<PlayerId, Score> | null;
+  players?: { id: PlayerId; nickname: string; seat: number }[];
+  compact?: boolean;
+}
+
+/** 이번 판 공개 목표 3장 (Rules.md 8절). 종 연계 목표는 그 종 이름을 강조한다 */
+export const GoalList = memo(function GoalList({ goals, scores, players, compact }: GoalListProps) {
+  return (
+    <ol className={compact ? styles.compact : styles.list} aria-label="이번 판 목표">
+      {goals.map((id, i) => {
+        const g = getGoal(id);
+        return (
+          <li key={id} className={g.species ? styles.linked : styles.goal}>
+            <span className={styles.name}>
+              {g.name}
+              {g.species && <span className={styles.tag}>{getSpecies(g.species).name}</span>}
+            </span>
+            {!compact && <span className={styles.desc}>{g.description}</span>}
+            {scores && players && (
+              <span className={styles.points}>
+                {players.map((p) => (
+                  <span key={p.id} style={{ '--seat-color': `var(--color-seat-${p.seat})` } as CSSProperties} className={styles.point} title={p.nickname}>
+                    {scores[p.id]?.goalBreakdown[i] ?? 0}
+                  </span>
+                ))}
+              </span>
+            )}
+          </li>
+        );
+      })}
+    </ol>
+  );
+});

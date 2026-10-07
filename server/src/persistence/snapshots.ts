@@ -3,7 +3,7 @@
  * 상태가 바뀔 때마다 저장하고(턴 종료 포함), 서버 시작 시 디렉터리를 읽어 메모리에 복원한다.
  * 쓰기는 임시 파일 → rename 으로 원자적으로 한다. 실패해도 게임은 멈추지 않고 로그만 남긴다.
  */
-import { mkdirSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Room } from '../rooms/manager.js';
 
@@ -28,6 +28,18 @@ export class SnapshotStore {
     } catch (err) {
       const code = (err as NodeJS.ErrnoException).code ?? 'UNKNOWN';
       console.error(`[snapshot] 저장 실패 room=${room.roomId} code=${code}: ${(err as Error).message}`);
+    }
+  }
+
+  /** 이어 갈 수 없는 스냅샷(예전 게임 형식)은 지우지 않고 rooms-legacy/ 로 옮겨 둔다 */
+  quarantine(roomId: string): void {
+    try {
+      const dir = join(this.dir, '..', 'rooms-legacy');
+      mkdirSync(dir, { recursive: true });
+      const from = this.pathOf(roomId);
+      if (existsSync(from)) renameSync(from, join(dir, `${roomId}.json`));
+    } catch (err) {
+      console.error(`[snapshot] 격리 실패 room=${roomId}: ${(err as Error).message}`);
     }
   }
 

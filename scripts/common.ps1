@@ -1,4 +1,4 @@
-# AstralTab 실행 스크립트 공용 함수. dev.ps1 / dev-stop.ps1 이 dot-source 한다.
+# Rootbound(옛 이름 AstralTab) 실행 스크립트 공용 함수. dev.ps1 / dev-stop.ps1 이 dot-source 한다.
 #   . (Join-Path $PSScriptRoot 'common.ps1')
 # $root, $devDir 를 정의하고 포트 확인·의존성 설치·프로세스 시작/종료 헬퍼를 제공한다.
 

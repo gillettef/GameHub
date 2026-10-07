@@ -1,5 +1,5 @@
 {
-  "name": "@astraltab/server",
+  "name": "@rootbound/server",
   "private": true,
   "version": "0.1.0",
   "type": "module",
@@ -10,7 +10,7 @@
     "stats": "tsx scripts/stats.ts"
   },
   "dependencies": {
-    "@astraltab/shared": "*",
+    "@rootbound/shared": "*",
     "cors": "^2.8.5",
     "express": "^4.21.2",
     "socket.io": "^4.8.1"
