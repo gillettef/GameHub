@@ -17,6 +17,7 @@ import {
   hexDistance,
   joinPlayer,
   layoutFor,
+  leaveLobby,
   legalDirections,
   legalPlantCells,
   legalSeedCells,
@@ -265,6 +266,62 @@ describe('로비 → 드래프트 → 진행 (Rules.md 4·5·6절)', () => {
     expect(s.goals).toHaveLength(3);
     expect(s.draftOrder).toEqual(['p1', 'p0', 'p0', 'p1', 'p1', 'p0', 'p0', 'p1', 'p1', 'p0']);
     expect(s.currentPlayerId).toBe('p1');
+  });
+
+  it('인원이 바뀌면 사람의 준비가 풀린다 (AI 를 넣자마자 시작하거나, 전원 준비인데 멈추는 일이 없다)', () => {
+    let s = lobby(1);
+    s = ok(s, { type: 'READY', playerId: 'p0' });
+    expect(s.phase).toBe('lobby'); // 혼자는 시작 안 함
+    s = joinPlayer(s, createPlayer('ai', 'AI', 'ai')).state;
+    expect(s.phase).toBe('lobby');
+    expect(s.players.find((p) => p.id === 'p0')!.isReady).toBe(false);
+    expect(s.players.find((p) => p.id === 'ai')!.isReady).toBe(true);
+    s = ok(s, { type: 'READY', playerId: 'p0' });
+    expect(s.phase).toBe('drafting');
+
+    let t = lobby(3);
+    t = ok(t, { type: 'READY', playerId: 'p0' });
+    t = ok(t, { type: 'READY', playerId: 'p1' });
+    t = leaveLobby(t, 'p2').state;
+    expect(t.phase).toBe('lobby');
+    expect(t.players.every((p) => !p.isReady)).toBe(true);
+  });
+
+  it('드래프트 중 기권: 남은 픽이 빠지고, 남은 사람이 1명이면 끝난다', () => {
+    let s = readyAll(lobby(3));
+    const quitter = s.draftOrder[1]!;
+    s = ok(s, { type: 'SURRENDER', playerId: quitter });
+    expect(s.phase).toBe('drafting');
+    expect(s.draftOrder.slice(s.draftIndex)).not.toContain(quitter);
+    s = autoDraft(s);
+    expect(s.phase).toBe('playing');
+    const q = s.players.find((p) => p.id === quitter)!;
+    expect(q.surrenderedOrder).toBe(0);
+    // 2인은 한 명이 드래프트 중 기권하면 바로 끝
+    let t = readyAll(lobby(2));
+    t = ok(t, { type: 'SURRENDER', playerId: 'p0' });
+    expect(t.phase).toBe('finished');
+    expect(t.result?.ranking).toEqual(['p1', 'p0']);
+  });
+
+  it('PLANT 의 pos·seed 모양이 깨지면 예외가 아니라 거부', () => {
+    const s = autoDraft(readyAll(lobby(2)));
+    const sp = s.players[0]!.hand[0]!;
+    expect(applyAction(s, { type: 'PLANT', playerId: 'p0', species: sp, pos: null as never }).error).toMatch(/잘못된/);
+    expect(applyAction(s, { type: 'PLANT', playerId: 'p0', species: sp, pos: { q: 0, r: 0 }, seed: null as never }).error).toMatch(/잘못된/);
+  });
+
+  it('덱 셔플은 deckSeed 만 쓴다: 보드 시드가 같아도 deckSeed 가 다르면 덱이 다르다', () => {
+    const mk = (deckSeed: number) => {
+      let s = createInitialState('r', 42, deckSeed);
+      for (let i = 0; i < 2; i++) s = joinPlayer(s, createPlayer(`p${i}`, `P${i}`)).state;
+      return autoDraft(readyAll(s));
+    };
+    const a = mk(1);
+    const b = mk(2);
+    expect(a.board).toEqual(b.board);
+    expect(a.goals).toEqual(b.goals);
+    expect(a.players.map((p) => p.deck.join())).not.toEqual(b.players.map((p) => p.deck.join()));
   });
 
   it('3인 뱀 순서: 0 → 2 → 1, 그다음 역순', () => {

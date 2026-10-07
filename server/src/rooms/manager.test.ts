@@ -348,3 +348,50 @@ describe('판 요약 기록', () => {
     expect(pruned?.record).toMatchObject({ outcome: 'abandoned', reason: null });
   });
 });
+
+describe('2026-10-07 리뷰 반영', () => {
+  it('기본 시드는 암호학적 난수: 보드 시드와 덱 시드가 서로 다르다', () => {
+    const m = new RoomManager();
+    const { room } = m.create({ playerToken: 't1', nickname: '갑' });
+    expect(room.state.deckSeed).not.toBe(room.state.rngSeed);
+  });
+
+  it('재접속 토큰은 문자열 1~64자만 받는다', () => {
+    const m = makeManager();
+    expect(() => m.create({ playerToken: 'x'.repeat(65), nickname: '갑' })).toThrow(RoomError);
+    expect(() => m.create({ playerToken: 7 as never, nickname: '갑' })).toThrow(RoomError);
+    m.create({ playerToken: 't1', nickname: '갑' });
+    expect(() => m.join({ roomId: 'room1', playerToken: '', nickname: '을' })).toThrow(RoomError);
+  });
+
+  it('드래프트 중에도 연속 2번 시간 초과하면 AI 대리가 된다', () => {
+    let now = 1000;
+    const m = new RoomManager({ seed: () => 42, now: () => now, roomId: () => 'room1' });
+    m.create({ playerToken: 't1', nickname: '갑' });
+    m.join({ roomId: 'room1', playerToken: 't2', nickname: '을' });
+    readyAll(m, 'room1', ['p1', 'p2']);
+    const room = m.get('room1')!;
+    // 2인 뱀 순서: p2 → p1 → p1 → p2 … p1 이 연달아 두 번 시간 초과
+    autoStep(m, 'room1');
+    expect(room.state.currentPlayerId).toBe('p1');
+    now += 30_000;
+    m.timeoutTurn('room1');
+    now += 30_000;
+    m.timeoutTurn('room1');
+    expect(room.state.phase).toBe('drafting');
+    expect(room.autopilot).toEqual(['p1']);
+  });
+
+  it('드래프트 중 방치된 방은 진행 중인 판처럼 이레를 기다리고 abandoned 로 남는다', () => {
+    let now = 1000;
+    const m = new RoomManager({ seed: () => 42, now: () => now, roomId: () => 'room1' });
+    m.create({ playerToken: 't1', nickname: '갑' });
+    m.join({ roomId: 'room1', playerToken: 't2', nickname: '을' });
+    m.setTurnTime('room1', 'p1', null);
+    readyAll(m, 'room1', ['p1', 'p2']);
+    now += 2 * 24 * 60 * 60 * 1000;
+    expect(m.pruneStale()).toEqual([]);
+    now += 6 * 24 * 60 * 60 * 1000;
+    expect(m.pruneStale()[0]?.record).toMatchObject({ outcome: 'abandoned' });
+  });
+});

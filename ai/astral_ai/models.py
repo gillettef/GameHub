@@ -123,6 +123,8 @@ class GameState(_Model):
     plants: list[Plant] = Field(default_factory=list)
     seeds: list[Seed] = Field(default_factory=list)
     rngSeed: int = 0
+    # 덱 셔플 전용 시드 (TS GameState.deckSeed). 서버가 가려서 보내므로 AI 쪽에서는 보통 0 이다
+    deckSeed: int = 0
     result: Optional[GameResult] = None
     log: list[GameLogEntry] = Field(default_factory=list)
 

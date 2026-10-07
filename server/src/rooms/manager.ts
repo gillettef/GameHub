@@ -3,6 +3,7 @@
  * 단일 진실 공급원은 `rooms` 맵의 GameState 다. 모든 변경은 shared 엔진을 거친다.
  * 오류는 RoomError 로 던지고, index.ts 가 ack { ok:false, message } 로 바꾼다.
  */
+import { randomInt } from 'node:crypto';
 import type { Action, GameState, PlayerId, RoomId, RoomInfo, RoomPeek } from '@rootbound/shared';
 import {
   AFK_STRIKES_FOR_AUTOPILOT,
@@ -150,7 +151,13 @@ export function isCurrentFormat(room: Room): boolean {
   return st.board === null || (typeof st.board === 'object' && Array.isArray(st.board?.cells));
 }
 
+/** 재접속 토큰: 문자열, 1~64자 (스냅샷·메모리에 그대로 들어가므로 길이를 제한한다) */
+export function isValidToken(token: unknown): token is string {
+  return typeof token === 'string' && token.length >= 1 && token.length <= 64;
+}
+
 export function isValidNickname(nickname: string): boolean {
+  if (typeof nickname !== 'string') return false;
   const n = nickname.trim();
   return n.length >= 1 && n.length <= 12;
 }
@@ -161,7 +168,8 @@ export class RoomManager {
 
   constructor(opts: Partial<RoomManagerOptions> = {}) {
     this.opts = {
-      seed: opts.seed ?? (() => (Date.now() ^ Math.floor(Math.random() * 0xffffffff)) >>> 0),
+      // 보드·덱 시드는 암호학적 난수로 (덱 시드를 추측할 수 없어야 손패가 비공개로 남는다)
+      seed: opts.seed ?? (() => randomInt(0, 2 ** 32)),
       now: opts.now ?? (() => Date.now()),
       roomId: opts.roomId ?? randomRoomId,
       hashToken: opts.hashToken ?? (() => null),
@@ -205,11 +213,12 @@ export class RoomManager {
     const removed: { roomId: RoomId; record: GameRecord | null }[] = [];
     for (const room of this.rooms.values()) {
       const idle = now - room.updatedAt;
-      const limit = room.state.phase === 'playing' ? PLAYING_IDLE_MS : IDLE_MS;
+      const inGame = room.state.phase === 'playing' || room.state.phase === 'drafting';
+      const limit = inGame ? PLAYING_IDLE_MS : IDLE_MS;
       if (idle > limit) {
         this.rooms.delete(room.roomId);
         // 진행 중에 방치된 판도 완수율 분모에 들어가야 하므로 'abandoned' 로 남긴다
-        removed.push({ roomId: room.roomId, record: room.state.phase === 'playing' ? this.takeRecord(room, 'abandoned') : null });
+        removed.push({ roomId: room.roomId, record: inGame ? this.takeRecord(room, 'abandoned') : null });
       }
     }
     return removed;
@@ -256,6 +265,7 @@ export class RoomManager {
   // -------------------------------------------------------------------------
 
   create(input: { playerToken: string; nickname: string; password?: string }): { room: Room; playerId: PlayerId } {
+    if (!isValidToken(input.playerToken)) throw new RoomError('잘못된 요청입니다');
     if (!isValidNickname(input.nickname)) throw new RoomError('닉네임은 1~12자로 입력하세요');
     const password = input.password?.trim() || null;
     if (password !== null && !/^\d{4}$/.test(password)) throw new RoomError('비밀번호는 숫자 4자리입니다');
@@ -265,7 +275,7 @@ export class RoomManager {
     while (this.rooms.has(roomId)) roomId = this.opts.roomId();
     const now = this.opts.now();
     const playerId = 'p1';
-    const joined = joinPlayer(createInitialState(roomId, this.opts.seed()), createPlayer(playerId, input.nickname.trim(), 'human'));
+    const joined = joinPlayer(createInitialState(roomId, this.opts.seed(), this.opts.seed()), createPlayer(playerId, input.nickname.trim(), 'human'));
     if (joined.error) throw new RoomError(joined.error);
     const room: Room = {
       roomId,
@@ -296,6 +306,7 @@ export class RoomManager {
    */
   join(input: { roomId: RoomId; playerToken: string; nickname: string; password?: string }): { room: Room; playerId: PlayerId; reconnected: boolean } {
     const room = this.require(input.roomId);
+    if (!isValidToken(input.playerToken)) throw new RoomError('잘못된 요청입니다');
     const existing = room.tokens[input.playerToken];
     if (existing && room.state.players.some((p) => p.id === existing)) {
       // 재접속만으로는 AI 대리를 풀지 않는다: 탭을 켜 둔 채 자리를 비워도 소켓은 자동으로 다시 붙기 때문이다.
@@ -465,7 +476,7 @@ export class RoomManager {
     room.state = { ...r.state, log: [...r.state.log.slice(0, before), note(`${nick}: 제한 시간 ${secLabel(limit)}이 지나 ${TIMEOUT_LOG_MARK}`), ...r.state.log.slice(before)] };
     room.afkStrikes = { ...(room.afkStrikes ?? {}), [pid]: strikes };
     room.timeoutTotals = { ...(room.timeoutTotals ?? {}), [pid]: (room.timeoutTotals?.[pid] ?? 0) + 1 };
-    if (strikes >= AFK_STRIKES_FOR_AUTOPILOT && room.state.phase === 'playing' && !room.autopilot?.includes(pid)) {
+    if (strikes >= AFK_STRIKES_FOR_AUTOPILOT && room.state.phase !== 'finished' && !room.autopilot?.includes(pid)) {
       room.autopilot = [...(room.autopilot ?? []), pid];
       if (!room.everAutopiloted?.includes(pid)) room.everAutopiloted = [...(room.everAutopiloted ?? []), pid];
       room.state = {
