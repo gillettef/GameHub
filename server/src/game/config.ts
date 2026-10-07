@@ -47,6 +47,9 @@ export const BALANCE = {
   growthActivities: { tournament: false, creature: true, duel: true, exploration: true, lab: true } as Record<ActivityId, boolean>,
   // 3주차 구역(비밀의 방·마법생물·주문 대결·연구실)에서 처음 들어온 사람이 여는 카드 수 (집중이나 특정 카드로 달라질 수 있다)
   activityOpenCount: 2,
+  // 이번 달 활동 카드 미리 공개 (50절): 시험 달이 아닌 달의 1주차에 마법생물·연구실·비밀의 방·주문 대결 구역의 카드를 모두 공개한다.
+  // 수업 선택이 이번 달 활동 계획이 되고, 활동 선택이 공개된 카드의 선점 경쟁이 된다 (false면 예전처럼 처음 들어온 사람이 연다)
+  revealOffersAtMonthStart: true,
   // 최종 점수 = 졸업식 시상 점수의 합 (46절, 예전 "주문력 × 학점 + 마법생물 세트 + 부문상"을 대신한다).
   // 부문마다 값이 큰 순서로 순위를 매겨 rankPoints[순위-1]점을 준다 (동점은 같은 순위·같은 점수, 값이 0이면 점수 없음, 순위가 표 밖이면 0점).
   // 마법생물 부문의 값 = 마리 수 + 완성한 세트(하늘·육지·바다 1장씩) 수

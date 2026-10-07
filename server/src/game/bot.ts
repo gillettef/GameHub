@@ -95,8 +95,11 @@ export function playClassTurn(state: GameState, playerId: string, strategy: BotS
   const bias = biasOf(state, strategy);
   const fuelPref = (kind: KeptToken) => ACTIVITIES.filter((a) => BALANCE.rollFuel[a] === kind).reduce((s, a) => s + bias[a], 0);
   const options = state.classMarket.filter((c) => canTakeClassCard(p, c));
+  // 50절: 이번 달 카드가 공개돼 있으면 하려는 활동을 먼저 정하고, 그 활동의 재료 기운을 주는 과목을 더 높이 친다
+  const plan = BALANCE.revealOffersAtMonthStart ? plannedActivity(state, p, strategy) : null;
+  const planBoost = (c: (typeof state.classMarket)[number]) => (plan && BALANCE.rollFuel[plan] === classGainKind(c) ? 1.8 : 1);
   const value = (c: (typeof state.classMarket)[number]) =>
-    classGainApplied(p, c) * (0.6 * fuelPref(classGainKind(c)) + 0.4 * weightsOf(state, strategy)[c.stat]) * examWeight(state, c.stat);
+    classGainApplied(p, c) * (0.6 * fuelPref(classGainKind(c)) + 0.4 * weightsOf(state, strategy)[c.stat]) * examWeight(state, c.stat) * planBoost(c);
   let choice: string | null = null;
   if (options.length > 0) {
     choice = strategy.random ? (Math.random() < 0.2 ? null : pickOne(options).id) : [...options].sort((a, b) => value(b) - value(a))[0].id;
@@ -113,6 +116,30 @@ export function playCramTurn(state: GameState, playerId: string): void {
   const wants = !!to && tokensOf(p, to) < rollLimit(p, to);
   const from = wants && sources.length > 0 ? [...sources].sort((a, b) => tokensOf(p, b) - tokensOf(p, a))[0] : null;
   cramTurn(state, playerId, from);
+}
+
+// 50절: 공개된 구역 카드 중 내가 가져갈 수 있는 카드의 가치. 이미 누가 들어간 구역이면 먼저 온 사람이 가장 좋은 카드를 가져간다고 보고 남는 카드로 계산한다
+function zoneOutlook(state: GameState, strategy: BotStrategy, player: PlayerGameState, activityId: ActivityId): number {
+  if (activityId === "tournament") return 0;
+  const cards = state.hidden.offers[activityId] ?? [];
+  const valueOf = (card: (typeof cards)[number]): number => {
+    if (activityId === "creature") return creatureValue(state, strategy, player, card as CreatureCard);
+    if (activityId === "lab") return canPay(player, 0, (card as LabCard).cost) ? effectValue(state, strategy, (card as LabCard).effect) - (card as LabCard).cost * 0.3 : -1;
+    if (activityId === "duel") return 0.5 * grimoireValue(state, strategy, card as GrimoireCard);
+    return explorationValue(state, strategy, player, card as ExplorationCard);
+  };
+  const values = cards.map(valueOf).sort((a, b) => b - a);
+  const taken = activityId === "duel" ? 0 : state.activitySlots[activityId].length;
+  return Math.max(0, values[taken] ?? 0);
+}
+
+// 이번 달 하려는 활동 (공개된 카드와 성향을 함께 본다)
+function activityAppeal(state: GameState, strategy: BotStrategy, player: PlayerGameState, a: ActivityId): number {
+  const base: Record<ActivityId, number> = { tournament: effectiveStat(player, "spellPower") * 0.25, creature: 1.6, duel: 1.5, exploration: 1.2, lab: 1.6 };
+  return base[a] * biasOf(state, strategy)[a] + (BALANCE.revealOffersAtMonthStart ? 0.8 * zoneOutlook(state, strategy, player, a) : 0);
+}
+function plannedActivity(state: GameState, player: PlayerGameState, strategy: BotStrategy): ActivityId {
+  return ACTIVITIES.map((a) => ({ a, v: activityAppeal(state, strategy, player, a) })).sort((x, y) => y.v - x.v)[0].a;
 }
 
 // 자율활동 단계: 선택할 구역과 (주문 대결이면) 상대
@@ -140,11 +167,12 @@ export function chooseActivityAction(
     return t >= 3 ? 1 : t >= 1 ? 0.75 : 0.4;
   };
   const scored = free.map((a) => {
-    // 이미 친구가 있는 구역은 매력기운이 더 들어서 조금 덜 끌린다
-    const crowded = state.activitySlots[a].length > 0 ? 0.8 : 1;
+    // 이미 친구가 있는 구역은 (참가비가 있으면) 조금 덜 끌린다. 카드가 미리 공개돼 있으면 남는 카드의 가치로 따진다(50절)
+    const crowded = state.activitySlots[a].length > 0 && BALANCE.activitySecondParticipantCost > 0 ? 0.8 : 1;
+    const appeal = BALANCE.revealOffersAtMonthStart ? activityAppeal(state, strategy, p, a) : base[a] * biasOf(state, strategy)[a];
     return {
       a,
-      score: (strategy.random ? 1 : base[a] * energy(a) * biasOf(state, strategy)[a] * crowded) * (0.7 + Math.random() * 0.6),
+      score: (strategy.random ? 1 : appeal * energy(a) * crowded) * (0.7 + Math.random() * 0.6),
     };
   });
   scored.sort((x, y) => y.score - x.score);
