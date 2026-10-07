@@ -489,7 +489,15 @@ function beginRound(state: GameState): void {
   }
   // 중간고사(6개월)·기말고사(12개월) 달에는 정규수업·자율활동 없이 벼락치기 뒤 시험을 친다 (이월된 기운으로 치른다)
   if (isExamRound(state.round)) beginCramPhase(state);
-  else beginClassPhase(state);
+  else {
+    // 50절: 이번 달 활동 카드를 1주차에 모두 공개한다 (수업을 고르기 전에 이번 달 활동을 계획할 수 있다)
+    if (BALANCE.revealOffersAtMonthStart) {
+      state.hidden.offers = {};
+      state.activityOffers = {};
+      for (const activityId of ["creature", "lab", "exploration", "duel"] as ActivityId[]) openOffer(state, activityId);
+    }
+    beginClassPhase(state);
+  }
 }
 
 // 이번 달 학교 소식을 정한다 (시험 공고 달이면 그 시험의 카드를 이때 공개한다)
@@ -638,11 +646,12 @@ function beginActivityPhase(state: GameState): void {
   state.activityResolveStarted = false;
   state.activityResults = [];
   state.duels = [];
-  state.activityOffers = {};
+  // 1주차에 미리 공개한 이번 달 카드(50절)는 그대로 두고, 아니면 구역에 처음 들어온 사람이 연다
+  if (!BALANCE.revealOffersAtMonthStart) state.activityOffers = {};
   state.pendingPick = null;
   state.pendingRoll = null;
   state.coopWaiting = null;
-  state.hidden = { ...state.hidden, roll: null, coop: null, offers: {} }; // 시험 카드 계획(examPlan)은 게임 내내 유지
+  state.hidden = { ...state.hidden, roll: null, coop: null, offers: BALANCE.revealOffersAtMonthStart ? state.hidden.offers : {} }; // 시험 카드 계획(examPlan)은 게임 내내 유지
   for (const playerId of state.turnOrder) {
     state.players[playerId].hasActedThisPhase = false;
   }

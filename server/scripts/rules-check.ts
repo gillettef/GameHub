@@ -64,6 +64,7 @@ const SIMPLIFIED = {
   tournamentMilestoneStep: BALANCE.tournamentMilestoneStep,
   catchUpBonus: BALANCE.catchUpBonus,
   duelTargetRollsFirst: BALANCE.duelTargetRollsFirst,
+  revealOffersAtMonthStart: BALANCE.revealOffersAtMonthStart,
 };
 Object.assign(BALANCE, {
   starterRule: "charmTokens",
@@ -74,6 +75,7 @@ Object.assign(BALANCE, {
   tournamentMilestoneStep: 70,
   catchUpBonus: 2,
   duelTargetRollsFirst: false,
+  revealOffersAtMonthStart: false,
 });
 function withBalance(overrides: Partial<typeof BALANCE>, fn: () => void): void {
   const saved = Object.fromEntries(Object.keys(overrides).map((k) => [k, BALANCE[k as keyof typeof BALANCE]]));
@@ -1804,6 +1806,7 @@ test("49절 단순화 기본값: 선은 매달 시계방향, 정규수업도 선
     tournamentMilestoneStep: 0,
     catchUpBonus: 0,
     duelTargetRollsFirst: true,
+    revealOffersAtMonthStart: true,
   });
   assert.ok(!explorationTemplates().some((c) => c.coop), "협력 카드가 덱에 없다");
   withBalance(SIMPLIFIED as Partial<typeof BALANCE>, () => {
@@ -1821,6 +1824,35 @@ test("49절 단순화 기본값: 선은 매달 시계방향, 정규수업도 선
     let guard = 0;
     while (state.round === 1 && guard++ < 500) botStep(state);
     assert.equal(state.startingPlayerIndex, (before + 1) % n, "다음 달 선은 시계방향으로 한 칸");
+  });
+});
+
+test("이번 달 활동 카드 미리 공개(50절): 1주차에 마법생물·연구실·비밀의 방·주문 대결 카드가 2장씩 공개되고, 3주차에 먼저 온 사람이 고르고 남은 카드는 두 번째 참가자가 가져간다", () => {
+  withBalance({ revealOffersAtMonthStart: true }, () => {
+    const state = newGame(3);
+    assert.equal(state.phase, "class");
+    for (const a of ["creature", "lab", "exploration", "duel"] as const) assert.equal(state.activityOffers[a]?.cards.length, 2, `${a} 카드가 정규수업 전에 보인다`);
+    const labIds = state.activityOffers.lab!.cards.map((c) => c.id);
+    toActivity(state);
+    assert.deepEqual(state.activityOffers.lab!.cards.map((c) => c.id), labIds, "3주차에도 같은 카드");
+    setTokens(state, 3, 3);
+    const [a, b, c] = state.activityOrder;
+    selectActivity(state, a, "lab");
+    selectActivity(state, b, "lab");
+    selectActivity(state, c, "tournament");
+    advanceResolution(state);
+    assert.equal(state.pendingPick?.playerId, a);
+    chooseActivityCard(state, a, labIds[0]);
+    rollWith(state, {});
+    advanceResolution(state);
+    assert.equal(state.pendingPick?.playerId, b);
+    assert.deepEqual(state.activityOffers.lab!.cards.map((x) => x.id), [labIds[1]], "두 번째 참가자는 남은 카드");
+    chooseActivityCard(state, b, null);
+    let guard = 0;
+    while (state.round === 1 && guard++ < 200) botStep(state);
+    assert.equal(state.round, 2);
+    assert.equal(state.activityOffers.lab?.cards.length, 2, "다음 달 1주차에 새 카드가 공개된다");
+    assert.ok(!state.activityOffers.lab!.cards.some((x) => labIds.includes(x.id)));
   });
 });
 

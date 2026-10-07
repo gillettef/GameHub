@@ -483,6 +483,34 @@ function CoopNotice({ game, myId }: { game: GameState; myId: string }) {
   );
 }
 
+// 이번 달 활동 카드 (50절): 1주차에 공개된 구역별 카드를 정규수업·활동 선택 때 함께 본다 (누르면 크게 보기)
+const MONTH_ZONES: ActivityId[] = ["creature", "lab", "exploration", "duel"];
+function MonthOffersPanel({ game }: { game: GameState }) {
+  const zones = MONTH_ZONES.filter((a) => (game.activityOffers[a]?.cards.length ?? 0) > 0);
+  if (zones.length === 0) return null;
+  return (
+    <div className="rounded-3xl border-2 border-amber-200 bg-amber-50 p-3">
+      <p className="font-display text-base text-amber-700">
+        <InlineIcon name="compass" /> 이번 달 활동 카드
+      </p>
+      <p className="mb-2 text-xs text-amber-800">
+        3주차에 그 구역에 먼저 들어온 친구가 원하는 카드를 가져가고, 남은 카드는 두 번째 친구가 가져가요. 어떤 활동을 할지 정하고 그에 맞는 수업을 골라 보세요.
+      </p>
+      <div className="flex flex-col gap-2">
+        {zones.map((a) => (
+          <div key={a}>
+            <p className="mb-1 flex items-center gap-1 text-xs font-semibold text-amber-800">
+              <Icon name={ACTIVITY_ICON[a]} className="h-4 w-4" />
+              {a === "duel" ? "주문 대결 (이긴 친구가 고르는 마도서)" : ACTIVITY_LABEL[a]}
+            </p>
+            <CardGrid cards={(game.activityOffers[a]?.cards ?? []).map(offerCardInfo)} />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // 구역에 공개된 (아직 가져가지 않은) 카드 이름들
 function offerNames(game: GameState, activityId: ActivityId): string {
   return (game.activityOffers[activityId]?.cards ?? []).map((c) => c.name).join(", ");
@@ -606,7 +634,7 @@ function ChoosePanel({
                 {full && <span className="ml-auto rounded-full bg-gray-200 px-2 py-0.5 text-xs text-gray-600">가득 참</span>}
               </span>
               <span className="block text-xs opacity-80">{ACTIVITY_HINT[activityId]}</span>
-              {activityId === "duel" && <span className="block text-xs opacity-80">아직 안 고른 한 명을 지목 · 매력 {fee}을 건네요</span>}
+              {activityId === "duel" && <span className="block text-xs opacity-80">아직 안 고른 한 명을 지목 · {fee > 0 ? `매력 ${fee}과 ` : ""}마나기운 {game.rules.duelManaFee}개를 건네요</span>}
               {(who || (isMyTurn && (extra > 0 || openCost > 0))) && (
                 <span className="mt-1 flex flex-wrap gap-1">
                   {who && <span className="rounded-full bg-purple-100 px-2 py-0.5 text-xs text-purple-700">{who} 선택</span>}
@@ -1206,6 +1234,7 @@ export function GameBoard({
             {game.phase === "cram" && <CramPanel game={game} myId={myId} onCram={onCram} />}
             {game.pendingRoll && <RollPanel game={game} myId={myId} onRoll={onRollDice} onReroll={onRerollDice} onConfirm={onConfirmRoll} />}
             {game.phase === "class" && !game.pendingRoll && <ClassPhasePanel game={game} myId={myId} onTake={onTakeClassCard} />}
+            {((game.phase === "class" && !game.pendingRoll) || (game.phase === "activity" && game.activityStage === "choose")) && <MonthOffersPanel game={game} />}
             {game.phase === "activity" && (
               <ActivityPhasePanel game={game} myId={myId} onSelect={onSelectActivity} onPick={onPickActivityCard} />
             )}
