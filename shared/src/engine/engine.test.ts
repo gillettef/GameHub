@@ -609,11 +609,11 @@ describe('전투 (F023)', () => {
     expect(t.markers.find((m) => m.specId === 'cruiser')!.hp).toBe(4);
     expect(t.markers.find((m) => m.specId === 'scout')!.hp).toBe(2);
 
-    // 같은 거리(d=1): 체력 낮은 쪽. (6,6) hp 7 vs (6,5) hp 4(전투기)
+    // 같은 거리(d=1): 체력 낮은 쪽. (6,6) hp 7 vs (6,5) hp 5(전투기)
     s = setup(2);
     s = addMarkers(s, marker('p0', 'turret', { x: 5, y: 5 }), marker('p1', 'cruiser', { x: 6, y: 6 }), marker('p1', 'fighter', { x: 6, y: 5 }));
     t = ok(readyP0Pass(s), pass('p0'));
-    expect(t.markers.find((m) => m.specId === 'fighter')!.hp).toBe(1);
+    expect(t.markers.find((m) => m.specId === 'fighter')!.hp).toBe(2);
     expect(t.markers.find((m) => m.specId === 'cruiser')!.hp).toBe(7);
 
     // 같은 거리(d=1)·체력: y 작은 쪽, 그다음 x 작은 쪽
@@ -665,11 +665,11 @@ describe('전투 (F023)', () => {
     let s = setup(2);
     s = addMarkers(s, marker('p0', 'fighter', { x: 5, y: 5 }), marker('p1', 'fighter', { x: 6, y: 5 }));
     const t = ok(readyP0Pass(s), pass('p0')); // p0 자신만 공격
-    expect(t.markers.find((m) => m.ownerId === 'p1' && m.specId === 'fighter')!.hp).toBe(2);
-    expect(t.markers.find((m) => m.ownerId === 'p0' && m.specId === 'fighter')!.hp).toBe(4);
+    expect(t.markers.find((m) => m.ownerId === 'p1' && m.specId === 'fighter')!.hp).toBe(3);
+    expect(t.markers.find((m) => m.ownerId === 'p0' && m.specId === 'fighter')!.hp).toBe(5);
     // p1 이 자기 턴을 끝내면 반격
     const u = ok(withHand(t, 'p1', [], 3), pass('p1'));
-    expect(u.markers.find((m) => m.ownerId === 'p0' && m.specId === 'fighter')!.hp).toBe(2);
+    expect(u.markers.find((m) => m.ownerId === 'p0' && m.specId === 'fighter')!.hp).toBe(3);
   });
 
   it('지속 마법 마커도 공격 대상이다', () => {
