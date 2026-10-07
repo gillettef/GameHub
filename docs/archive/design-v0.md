@@ -1,5 +1,8 @@
 # 구현 룰 v0 (프로토타입)
 
+> **보관용(v0)**: 2026-10-07 v1(`docs/design-v1.md`)로 대체됨. 확률·환산 공식이 많아 오프라인 플레이에 맞지 않아 폐기했다.
+
+
 개정 룰(pptx)에 비어 있던 상세 규칙을 임시로 채운 **구현 기준 룰**이다. 규칙의 정의는 이 문서 한 곳에만 둔다(`docs/rules.md`는 pptx 원문 정리, `docs/cards.md`는 카드 목록, `docs/balance-report.md`는 수치 근거).
 
 - 진실의 원천은 코드다. 수치는 `src/game/engine.ts`의 `CFG`, 카드는 `src/game/data/`(`facilities.ts`·`events.ts`·`effects.ts`)에 있다. 아래 괄호 안 영문은 해당 `CFG` 키다.

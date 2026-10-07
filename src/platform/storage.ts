@@ -5,7 +5,7 @@ import type { GameState } from '../game/types';
  * 저장 스키마 버전.
  * GameState 구조 변경 시 올릴 것 — 버전이 다른 저장은 불러오지 않고 버린다.
  */
-export const SAVE_VERSION = 3;
+export const SAVE_VERSION = 4;
 
 const KEY = 'smilepark.save';
 /** 이전 형식(버전 필드 없음)의 키. 발견하면 지운다. */
@@ -33,7 +33,7 @@ function isValidState(s: unknown): s is GameState {
     typeof g.maxRounds === 'number' &&
     Array.isArray(g.market) &&
     Array.isArray(g.log) &&
-    Array.isArray(g.visitorRow)
+    Array.isArray(g.groupRow)
   );
 }
 

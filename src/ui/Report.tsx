@@ -1,26 +1,26 @@
 import { useState } from 'react';
-import { CFG, HUMAN, willEnter } from '../game/engine';
+import { CFG, HUMAN } from '../game/engine';
 import type { GameState, Player } from '../game/types';
 import { Icon } from './Icon';
 import { TYPE_META } from './meta';
-import { Sheet, VisitorChip } from './parts';
+import { GroupChip, Members, Sheet } from './parts';
 
 /** 한 플레이어의 운영 결과 (내 것·상대 것 모두 공개) */
 function PlayerReport({ game, p, mine }: { game: GameState; p: Player; mine: boolean }) {
   const r = p.report;
   if (!r) return null;
-  const net = r.feeIncome + r.income - r.upkeep;
-  const turnedBack = p.visitors.filter((v) => !willEnter(v, r.fee));
+  const net = r.feeIncome + r.shopIncome + r.bonusIncome - r.upkeep;
+  const gained = r.sat - r.debtSat;
   return (
     <>
       <div className="rep-stats">
         <div className="rs">
           <Icon name="ticket" size={18} />
           <b>
-            {r.entered}
-            <small>/{r.drawn}</small>
+            {r.groups}
+            <small>그룹 {r.people}명</small>
           </b>
-          <span>입장 관객</span>
+          <span>입장</span>
         </div>
         <div className="rs">
           <Icon name="coin" size={18} />
@@ -32,53 +32,50 @@ function PlayerReport({ game, p, mine }: { game: GameState; p: Player; mine: boo
         </div>
         <div className="rs">
           <Icon name="star" size={18} />
-          <b className="pos">+{r.vpGain}</b>
-          <span>획득 VP</span>
+          <b className={gained >= 0 ? 'pos' : 'neg'}>{gained >= 0 ? '+' : ''}{gained}</b>
+          <span>만족도</span>
         </div>
       </div>
 
       <div className="rep-ledger">
         <div>
-          <span>
-            입장료 ({r.entered}명 × ${r.fee})
-          </span>
+          <span>입장료 ({r.people}명 × ${r.fee})</span>
           <b className="pos">+${r.feeIncome}</b>
         </div>
-        <div>
-          <span>시설 수익</span>
-          <b className="pos">+${r.income}</b>
-        </div>
+        {r.shopIncome > 0 && (
+          <div>
+            <span>상점 수익</span>
+            <b className="pos">+${r.shopIncome}</b>
+          </div>
+        )}
+        {r.bonusIncome > 0 && (
+          <div>
+            <span>부대시설 수익</span>
+            <b className="pos">+${r.bonusIncome}</b>
+          </div>
+        )}
         <div>
           <span>유지비</span>
           <b className="neg">-${r.upkeep}</b>
         </div>
-        <div>
-          <span>
-            만족도 +{r.sat}점 <small>(누적 {p.satPool}/{CFG.satPerVp} · {CFG.satPerVp}점마다 VP 1)</small>
-          </span>
-          <b className="pos">VP +{r.vpGain}</b>
-        </div>
       </div>
 
-      {r.visits.length > 0 && (
+      {r.places.length > 0 && (
         <>
-          <h4 className="rep-h">관객 동선</h4>
+          <h4 className="rep-h">놀이기구 배치</h4>
           <ul className="visits">
-            {r.visits.map((v, i) => (
+            {r.places.map((l, i) => (
               <li key={i} style={{ animationDelay: `${Math.min(i, 14) * 55}ms` }}>
-                <Icon name={v.visitor.kind === 'child' ? 'child' : 'adult'} size={16} />
-                <Icon name={TYPE_META[v.facilityType].icon} size={16} />
+                <Members g={l.group} size={13} />
+                <Icon name={TYPE_META[l.facilityType].icon} size={16} />
                 <span className="vn">
-                  {v.facility}
-                  {v.facilityType === v.visitor.fav && <em>취향 저격</em>}
-                </span>
-                <span className="vc">
-                  <Icon name="coin" size={12} />
-                  {v.income}
+                  {l.facility}
+                  {l.facilityType === l.group.fav && <em>취향 저격</em>}
+                  {l.wear && <em className="warn">수리 토큰</em>}
                 </span>
                 <span className="vs">
                   <Icon name="star" size={12} />
-                  {v.sat}
+                  {l.sat}
                 </span>
               </li>
             ))}
@@ -86,50 +83,34 @@ function PlayerReport({ game, p, mine }: { game: GameState; p: Player; mine: boo
         </>
       )}
 
-      {turnedBack.length > 0 && (
+      {r.bonusSat > 0 && (
+        <div className="callout">
+          <Icon name="sparkle" size={20} />
+          <div>
+            <b>부대시설·연구원 만족도 +{r.bonusSat}</b>
+          </div>
+        </div>
+      )}
+      {r.turnedBack.length > 0 && (
         <div className="callout warn">
           <Icon name="ticket" size={20} />
           <div>
-            <b>입구에서 돌아간 관객 {turnedBack.length}명</b>
+            <b>입구에서 돌아간 그룹 {r.turnedBack.length}개</b>
             <span>입장료 ${r.fee}가 지불 한도보다 높았어요.</span>
             <div className="entrance-row">
-              {turnedBack.map((v) => (
-                <VisitorChip key={v.id} v={v} enters={false} />
+              {r.turnedBack.map((g) => (
+                <GroupChip key={g.id} g={g} enters={false} />
               ))}
             </div>
           </div>
         </div>
       )}
-      {r.unserved > 0 && (
+      {r.unplaced.length > 0 && (
         <div className="callout warn">
           <Icon name="info" size={20} />
           <div>
-            <b>이용 못 하고 나간 관객 {r.unserved}명 · 만족도 -{r.unservedSat}</b>
-            <span>{mine ? '빈 시설이 없었어요. 시설을 늘리거나 안내 직원을 고용하고, 수용 인원만큼만 데려오세요.' : '시설이 부족했어요.'}</span>
-          </div>
-        </div>
-      )}
-      {r.broken.length > 0 && (
-        <div className="callout bad">
-          <Icon name="crack" size={20} />
-          <div>
-            <b>고장 발생</b>
-            <span>
-              {r.broken.join(', ')}
-              {mine ? ' — 관리 단계에서 수리하세요.' : ''}
-            </span>
-          </div>
-        </div>
-      )}
-      {(r.bonusSat > 0 || r.bonusIncome > 0) && (
-        <div className="callout">
-          <Icon name="sparkle" size={20} />
-          <div>
-            <b>
-              보너스{r.bonusSat > 0 ? ` 만족도 +${r.bonusSat}` : ''}
-              {r.bonusIncome > 0 ? ` 수익 +$${r.bonusIncome}` : ''}
-            </b>
-            <span>연구원과 시설 특수효과(패시브)로 얻었어요.</span>
+            <b>놀이기구를 못 탄 그룹 {r.unplaced.length}개 · 만족도 -{r.unplacedSat}</b>
+            <span>{mine ? '빈 놀이기구가 없거나 정원이 모자랐어요.' : '놀이기구가 부족했어요.'}</span>
           </div>
         </div>
       )}
@@ -138,16 +119,16 @@ function PlayerReport({ game, p, mine }: { game: GameState; p: Player; mine: boo
           <Icon name="trash" size={20} />
           <div>
             <b>쓰레기 +{r.trashAdded}</b>
-            <span>{game.event?.trashDelta ? `이벤트 쓰레기 ${game.event.trashDelta}개 포함. ` : ''}치우지 않으면 라운드가 끝날 때마다 {CFG.trashPerVp}개당 VP -1이에요.</span>
+            <span>{game.event?.trashDelta ? `이벤트 쓰레기 ${game.event.trashDelta}개 포함. ` : ''}라운드가 끝날 때 남은 쓰레기 1개마다 만족도 -1이에요.</span>
           </div>
         </div>
       )}
-      {r.debtVp > 0 && (
+      {r.debtSat > 0 && (
         <div className="callout bad">
           <Icon name="coin" size={20} />
           <div>
-            <b>적자! VP -{r.debtVp}</b>
-            <span>돈이 모자라 평판이 떨어졌어요. (적자 ${CFG.debtPerVp}마다 VP -1, 돈은 $0으로)</span>
+            <b>유지비 부족! 만족도 -{r.debtSat}</b>
+            <span>모자란 $1마다 만족도 -1, 돈은 $0이 돼요.</span>
           </div>
         </div>
       )}
@@ -166,13 +147,15 @@ export function ReportSheet({ game, onNext }: { game: GameState; onNext: () => v
             <button key={x.id} role="tab" aria-selected={who === x.id} className={who === x.id ? 'on' : ''} onClick={() => setWho(x.id)}>
               {x.id === HUMAN ? '내 공원' : x.name}
               <small>
-                +{x.report?.vpGain ?? 0} VP
+                {(x.report?.sat ?? 0) - (x.report?.debtSat ?? 0) >= 0 ? '+' : ''}
+                {(x.report?.sat ?? 0) - (x.report?.debtSat ?? 0)}
               </small>
             </button>
           ))}
         </div>
       )}
       <PlayerReport key={who} game={game} p={p} mine={who === HUMAN} />
+      <p className="muted small">수리 토큰은 그룹 인원이 정원과 같은 놀이기구에 놓여요. 관리 단계에서 ${CFG.repairCost}로 떼거나 엔지니어가 무료로 떼요.</p>
       <div className="sticky-cta">
         <button className="btn primary wide" onClick={onNext}>
           관리 단계로 <Icon name="arrow" size={18} />
