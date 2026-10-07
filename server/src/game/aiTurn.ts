@@ -3,8 +3,8 @@
  * 현재 턴이 AI 인 동안 (또는 시간 초과로 AI 대리 중인 사람 좌석, Rules.md 5.4) Python AI 서비스에 결정을 요청해 룰 엔진으로 검증·적용하고 브로드캐스트한다.
  * 불법 액션·타임아웃·서비스 다운이면 엔진의 자동 수(autoAction)로 폴백한다. 방마다 한 번에 하나만 돈다.
  */
-import type { Action, GameState, PlayerId } from '@astraltab/shared';
-import { autoAction } from '@astraltab/shared';
+import type { Action, GameState, PlayerId } from '@rootbound/shared';
+import { autoAction } from '@rootbound/shared';
 import { requestAiDecision } from '../ai/client.js';
 import type { RoomManager, Room } from '../rooms/manager.js';
 

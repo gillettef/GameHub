@@ -3,7 +3,7 @@
  * 단일 진실 공급원은 `rooms` 맵의 GameState 다. 모든 변경은 shared 엔진을 거친다.
  * 오류는 RoomError 로 던지고, index.ts 가 ack { ok:false, message } 로 바꾼다.
  */
-import type { Action, GameState, PlayerId, RoomId, RoomInfo, RoomPeek } from '@astraltab/shared';
+import type { Action, GameState, PlayerId, RoomId, RoomInfo, RoomPeek } from '@rootbound/shared';
 import {
   AFK_STRIKES_FOR_AUTOPILOT,
   DEFAULT_TURN_TIME_SEC,
@@ -18,7 +18,7 @@ import {
   isSpeciesId,
   joinPlayer,
   leaveLobby,
-} from '@astraltab/shared';
+} from '@rootbound/shared';
 
 export class RoomError extends Error {}
 

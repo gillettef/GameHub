@@ -1,14 +1,11 @@
-import { useEffect, useRef, useState, type CSSProperties } from 'react';
-import type { RaceId, RoomPeek } from '@astraltab/shared';
-import { AFK_STRIKES_FOR_AUTOPILOT, MAX_PLAYERS, TURN_TIME_OPTIONS_SEC, getMap, mapsForAtLeast } from '@astraltab/shared';
-import { DeckPicker } from '../components/DeckPicker';
+import { useEffect, useState, type CSSProperties } from 'react';
+import type { RoomPeek } from '@rootbound/shared';
+import { AFK_STRIKES_FOR_AUTOPILOT, MAX_PLAYERS, MIN_PLAYERS, TURN_TIME_OPTIONS_SEC } from '@rootbound/shared';
 import { DockShell } from '../components/DockShell';
-import { MapPicker } from '../components/MapPicker';
 import { cx } from '../lib/cx';
 import { turnTimeLabel } from '../lib/turnClock';
 import { getNickname, getPlayerToken, getRoomPassword, setNickname, setRoomPassword } from '../lib/identity';
 import { hasQuickStart, takeQuickStart } from '../lib/quickStart';
-import { randomMapId, randomRaceId } from '../lib/randomPicks';
 import { navigate, roomUrl } from '../lib/router';
 import { api, connectSocket, getSocket } from '../socket/client';
 import { selectState, selectViewerId, useGameStore } from '../store/gameStore';
@@ -174,7 +171,7 @@ function Shell({ title, children }: { title: string; children: React.ReactNode }
   return (
     <div className={landing.root}>
       <header className={landing.hero}>
-        <h1 className={landing.title}>AstralTab</h1>
+        <h1 className={landing.title}>Rootbound</h1>
       </header>
       <main className={landing.main}>
         <section className={landing.section}>
@@ -187,34 +184,14 @@ function Shell({ title, children }: { title: string; children: React.ReactNode }
 }
 
 // ---------------------------------------------------------------------------
-// 로비 (F002, F026, F030, F016)
+// 로비 (F002, F026)
 // ---------------------------------------------------------------------------
 
-type LobbyTab = 'room' | 'players' | 'map' | 'race';
+type LobbyTab = 'room' | 'players' | 'settings';
 
-/** 위자드 순서 (2026-09-24 사용자 지시: 자유 탭 전환 대신 방→좌석→맵→종족 순으로 안내하고,
- * 하단 독 대신 각 단계 안의 다음/이전 버튼으로만 이동한다). 좌석 단계는 맵과 무관하게 사람이든
- * AI든 최대 4인까지 채울 수 있고, 맵 단계에서 그 인원수에 맞는 맵을 고른다(F030). */
-const STEP_ORDER: LobbyTab[] = ['room', 'players', 'map', 'race'];
-const STEP_LABEL: Record<LobbyTab, string> = { room: '방', players: '좌석', map: '맵', race: '종족' };
-
-const RANDOM_RACE_KEY = 'astraltab.randomRace.';
-
-function readRandomRace(roomId: string): boolean {
-  try {
-    return window.sessionStorage.getItem(RANDOM_RACE_KEY + roomId) !== '0';
-  } catch {
-    return true;
-  }
-}
-
-function writeRandomRace(roomId: string, on: boolean): void {
-  try {
-    window.sessionStorage.setItem(RANDOM_RACE_KEY + roomId, on ? '1' : '0');
-  } catch {
-    /* 저장 못 해도 화면 상태로는 유지된다 */
-  }
-}
+/** 위자드 순서: 방(초대 링크) → 좌석(사람·AI 2~4명) → 설정(제한 시간)·준비. 보드는 인원수로 정해진다 */
+const STEP_ORDER: LobbyTab[] = ['room', 'players', 'settings'];
+const STEP_LABEL: Record<LobbyTab, string> = { room: '방', players: '좌석', settings: '준비' };
 
 function LobbyView({ roomId, onQuit }: { roomId: string; onQuit: () => void }) {
   const state = useGameStore(selectState);
@@ -226,30 +203,11 @@ function LobbyView({ roomId, onQuit }: { roomId: string; onQuit: () => void }) {
   const setNotice = useGameStore((s) => s.setNotice);
   const [tab, setTab] = useState<LobbyTab>('players');
   const [copied, setCopied] = useState(false);
-  // 랜덤으로 고른 종족은 게임이 시작되기 전까지 화면에 드러내지 않는다(2026-09-29 사용자 지시).
-  // 실제 종족은 엔진 상태에 이미 들어 있고, 이 플래그는 이 화면이 그것을 가리는 용도일 뿐이다
-  // 기본값은 "랜덤" — 종족 단계에 처음 들어가도 랜덤 타일만 선택돼 있다. 종족을 직접 골랐을 때만 해제하고,
-  // 새로고침해도 유지되도록 방별로 sessionStorage 에 남긴다(막혀 있으면 메모리로만)
-  const [randomRace, setRandomRaceState] = useState(() => readRandomRace(roomId));
-  const setRandomRace = (on: boolean) => {
-    setRandomRaceState(on);
-    writeRandomRace(roomId, on);
-  };
 
   const me = state?.players.find((p) => p.id === viewerId);
 
-  // 처음 들어오면 무작위 종족을 한 번 골라 준다 (2026-09-23: 그 뒤로는 종족 탭에서 자유롭게 바꾼다).
-  // 기본값도 "랜덤" 선택으로 취급해 게임 시작 전에는 가려 둔다
-  useEffect(() => {
-    if (viewerId && me && !me.race) {
-      dispatch({ type: 'SELECT_RACE', playerId: viewerId, race: randomRaceId() });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [me?.id, me?.race]);
-
-  // "AI와 바로 시작"(2026-10-01): 랜딩이 방과 AI 좌석을 만들어 두고 넘어왔으면, 종족이 정해지는 대로 한 번만
-  // 준비 완료까지 대신 눌러 곧바로 대국을 시작한다. 인원이 맵 정원과 안 맞으면(누가 나갔을 때 등) 건드리지 않는다.
-  const quickReady = me?.race && !me.isReady && state?.players.length === (state ? getMap(state.mapId).players : -1);
+  // "AI와 바로 시작"(2026-10-01): 랜딩이 방과 AI 좌석을 만들어 두고 넘어왔으면 한 번만 준비 완료를 대신 눌러 곧바로 시작한다
+  const quickReady = !!me && !me.isReady && (state?.players.length ?? 0) >= MIN_PLAYERS;
   useEffect(() => {
     if (!quickReady || !viewerId || !hasQuickStart(roomId)) return;
     takeQuickStart(roomId);
@@ -257,26 +215,11 @@ function LobbyView({ roomId, onQuit }: { roomId: string; onQuit: () => void }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [quickReady, viewerId, roomId]);
 
-  // 맵이 바뀌면(방장이 직접 고르거나, 좌석이 늘어 정원에 안 맞는 맵이 자동으로 더 큰 맵으로
-  // 바뀌거나) 전원 준비가 풀린다(changeMap, shared/src/engine/turn.ts) — 특히 자동 전환은
-  // 원인이 화면에 안 보이므로, 어느 경우든 안내 문구로 알려 준다(2026-09-28, 리뷰 반영).
-  const prevMapIdRef = useRef<string | null>(null);
-  useEffect(() => {
-    if (!state) return;
-    if (prevMapIdRef.current !== null && prevMapIdRef.current !== state.mapId) {
-      setNotice(`맵이 ${getMap(state.mapId).name}(으)로 바뀌어 준비가 초기화됐습니다. 종족을 다시 확인하고 준비해 주세요.`);
-    }
-    prevMapIdRef.current = state.mapId;
-  }, [state?.mapId, setNotice]);
-
   if (!state || !viewerId || !room || !me) return null;
   const isHost = room.hostId === viewerId;
-  const map = getMap(state.mapId);
-  // 좌석 목록·상단 준비 현황은 맵 정원이 아니라 항상 최대 인원(4)만큼 보여준다 — 좌석 단계가
-  // 맵보다 먼저이므로 "몇 명이 참여하는지"가 아직 맵에 매이지 않는다(2026-09-24 사용자 지시).
   const seats = Array.from({ length: MAX_PLAYERS }, (_, i) => state.players.find((p) => p.seat === i) ?? null);
   const readyCount = state.players.filter((p) => p.isReady).length;
-  const full = state.players.length === map.players;
+  const enough = state.players.length >= MIN_PLAYERS;
   const url = roomUrl(roomId);
   const stepIndex = STEP_ORDER.indexOf(tab);
   const goPrev = () => setTab(STEP_ORDER[stepIndex - 1] ?? tab);
@@ -295,7 +238,7 @@ function LobbyView({ roomId, onQuit }: { roomId: string; onQuit: () => void }) {
   const canShare = typeof navigator !== 'undefined' && typeof navigator.share === 'function';
   const share = async () => {
     try {
-      await navigator.share({ title: 'AstralTab 초대', text: `${map.name} 방에 초대합니다`, url });
+      await navigator.share({ title: 'Rootbound 초대', text: '정원 한 판 같이 가꿔요', url });
     } catch {
       /* 취소는 조용히 무시 */
     }
@@ -304,15 +247,6 @@ function LobbyView({ roomId, onQuit }: { roomId: string; onQuit: () => void }) {
   const request = async (p: Promise<{ ok: boolean; message?: string }>) => {
     const res = await p;
     if (!res.ok && res.message) setNotice(res.message);
-  };
-
-  const pickRace = (race: RaceId) => {
-    setRandomRace(false);
-    dispatch({ type: 'SELECT_RACE', playerId: viewerId, race });
-  };
-  const pickRandom = () => {
-    setRandomRace(true);
-    dispatch({ type: 'SELECT_RACE', playerId: viewerId, race: randomRaceId() });
   };
 
   return (
@@ -326,7 +260,7 @@ function LobbyView({ roomId, onQuit }: { roomId: string; onQuit: () => void }) {
               <span key={s} className={cx(styles.stepDot, i <= stepIndex && styles.stepDotDone)} />
             ))}
           </span>
-          방 {roomId} · {map.name} · {stepIndex + 1}/{STEP_ORDER.length}단계 · {STEP_LABEL[tab]}
+          방 {roomId} · {state.players.length}인 · {stepIndex + 1}/{STEP_ORDER.length}단계 · {STEP_LABEL[tab]}
           {connection !== 'connected' && (
             <span className={styles.connecting}>
               <span className={styles.connectingDot} aria-hidden="true" /> 연결 중…
@@ -349,25 +283,14 @@ function LobbyView({ roomId, onQuit }: { roomId: string; onQuit: () => void }) {
       }
       activeTab={tab}
       footer={
-        me.isReady ? (
-          <>
-            <button type="button" className="pill pill--outline" onClick={() => dispatch({ type: 'SELECT_RACE', playerId: viewerId, race: me.race ?? 'coalition' })}>
-              준비 취소
-            </button>
-            <span className={landing.help}>
-              {full
-                ? '다른 플레이어가 준비하면 바로 시작합니다.'
-                : `좌석 ${state.players.length}명, 맵 정원 ${map.players}명이라 시작하지 못합니다. 맵이나 좌석을 맞춰 주세요.`}
-            </span>
-          </>
-        ) : tab === 'race' ? (
-          <>
-            <button type="button" className="pill pill--lg" disabled={!me.race} onClick={() => dispatch({ type: 'READY', playerId: viewerId })}>
-              준비 완료
-            </button>
-            <span className={landing.help}>{me.race ? '종족을 다시 고르면 준비가 풀립니다.' : '종족을 고르세요.'}</span>
-          </>
-        ) : undefined
+        <>
+          <button type="button" className={me.isReady ? 'pill pill--outline' : 'pill pill--lg'} disabled={!enough && !me.isReady} onClick={() => dispatch({ type: 'READY', playerId: viewerId })}>
+            {me.isReady ? '준비 취소' : '준비 완료'}
+          </button>
+          <span className={landing.help}>
+            {!enough ? `${MIN_PLAYERS}명 이상이어야 시작합니다. 친구를 부르거나 AI를 넣으세요.` : me.isReady ? '모두 준비하면 바로 시작합니다.' : '모두 준비하면 식물 고르기부터 시작합니다.'}
+          </span>
+        </>
       }
     >
       {notice && (
@@ -404,7 +327,7 @@ function LobbyView({ roomId, onQuit }: { roomId: string; onQuit: () => void }) {
           <h2 className={landing.h2}>
             좌석 {state.players.length} / {MAX_PLAYERS}
           </h2>
-          <p className={landing.help}>사람 또는 AI로 최대 {MAX_PLAYERS}명까지 채울 수 있습니다. 몇 명인지에 맞는 맵은 다음 단계에서 고릅니다.</p>
+          <p className={landing.help}>사람 또는 AI로 2~4명을 채웁니다. 인원수에 맞는 정원 보드가 자동으로 만들어집니다.</p>
           <ul className={styles.seats}>
             {seats.map((p, i) => (
               <li key={i} className={cx(styles.seat, !p && styles.seatEmpty)}>
@@ -421,7 +344,7 @@ function LobbyView({ roomId, onQuit }: { roomId: string; onQuit: () => void }) {
                       {p.kind === 'ai' && <span className={styles.badge}>AI</span>}
                       {p.kind === 'human' && !room.connected.includes(p.id) && <span className={styles.badgeMuted}>접속 끊김</span>}
                     </span>
-                    <span className={cx(styles.seatState, p.isReady && styles.ready)}>{p.isReady ? '준비 완료' : p.race ? '종족 선택함' : '종족 고르는 중'}</span>
+                    <span className={cx(styles.seatState, p.isReady && styles.ready)}>{p.isReady ? '준비 완료' : '준비 중'}</span>
                     {isHost && p.kind === 'ai' && (
                       <button type="button" className="pill pill--outline" onClick={() => request(api.removeAi(roomId, p.id))}>
                         제거
@@ -449,32 +372,20 @@ function LobbyView({ roomId, onQuit }: { roomId: string; onQuit: () => void }) {
               나가기
             </button>
             <button type="button" className="pill" onClick={goNext}>
-              다음: 맵 정하기
+              다음: 준비
             </button>
           </div>
         </section>
       )}
 
-      {tab === 'map' && (
+      {tab === 'settings' && (
         <section className={landing.section}>
-          <div className={styles.sectionHead}>
-            <h2 className={landing.h2}>맵</h2>
-            {isHost && (
-              <button type="button" className="pill pill--outline" onClick={() => request(api.setMap(roomId, randomMapId(mapsForAtLeast(state.players.length))))}>
-                무작위
-              </button>
-            )}
-          </div>
+          <h2 className={landing.h2}>차례 제한 시간</h2>
           <p className={landing.help}>
-            {isHost ? '방장만 맵을 바꿀 수 있습니다.' : '방장이 맵을 정합니다.'} 지금 좌석 수({state.players.length}명)보다 작은 맵은 보이지 않습니다.
-            {!full && ` 인원이 정원(${map.players}명)과 같아야 시작합니다.`}
+            {isHost ? '방장만 바꿀 수 있습니다. ' : '방장이 정합니다. '}
+            시간이 지나면 자동으로 둡니다. {AFK_STRIKES_FOR_AUTOPILOT}번 연속이면 AI가 대신 두고, &lsquo;직접 두기&rsquo;를 누르면 되찾습니다. 며칠에 걸쳐 두려면 &lsquo;없음&rsquo;을 고르세요.
           </p>
-          <MapPicker value={state.mapId} onChange={(id) => request(api.setMap(roomId, id))} disabled={!isHost} minPlayers={state.players.length} />
-          <h2 className={landing.h2}>턴 제한 시간</h2>
-          <p className={landing.help}>
-            시간이 지나면 자동으로 턴을 넘깁니다. {AFK_STRIKES_FOR_AUTOPILOT}번 연속이면 AI가 대신 두고, 돌아와서 &lsquo;직접 두기&rsquo;를 누르면 되찾습니다. 며칠에 걸쳐 두려면 &lsquo;없음&rsquo;을 고르세요.
-          </p>
-          <div className={landing.aiPick} role="radiogroup" aria-label="턴 제한 시간">
+          <div className={landing.aiPick} role="radiogroup" aria-label="차례 제한 시간">
             {TURN_TIME_OPTIONS_SEC.map((sec) => (
               <button
                 key={String(sec)}
@@ -492,22 +403,6 @@ function LobbyView({ roomId, onQuit }: { roomId: string; onQuit: () => void }) {
           <div className={styles.wizardNav}>
             <button type="button" className="pill pill--outline" onClick={goPrev}>
               이전: 좌석으로
-            </button>
-            <button type="button" className="pill" onClick={goNext}>
-              다음: 종족 정하기
-            </button>
-          </div>
-        </section>
-      )}
-
-      {tab === 'race' && (
-        <section className={landing.section}>
-          <h2 className={landing.h2}>내 종족</h2>
-          <p className={landing.help}>{me.isReady ? '준비를 취소하면 다시 바꿀 수 있습니다.' : '종족을 고르면 그 종족의 고정 덱이 정해집니다. "랜덤"을 고르면 게임이 시작될 때 종족이 공개됩니다.'}</p>
-          <DeckPicker race={me.race} disabled={me.isReady} onPickRace={pickRace} onRandom={pickRandom} randomSelected={randomRace} showDeck={false} />
-          <div className={styles.wizardNav}>
-            <button type="button" className="pill pill--outline" onClick={goPrev}>
-              이전: 맵으로
             </button>
           </div>
         </section>

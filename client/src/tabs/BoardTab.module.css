@@ -1,139 +1,73 @@
-/* 언제나 모바일 폭(전역 폭 제한, global.css)이라 위→아래 한 방향 구성만 쓴다: 맵이 탭을 거의
-   다 채우고, 손패·턴 컨트롤은 그 위에 뜨는 바닥 패널이다(2026-09-24 사용자 지시: 맵 세로 공간을
-   최대로 + 턴 컨트롤을 낮고 떠 있는 모양으로). */
+/* 위→아래 한 방향: 목표 칩 → 보드(남는 높이) → 바닥 패널 */
 .root {
   height: 100%;
   min-height: 0;
   display: flex;
   flex-direction: column;
+  gap: 6px;
+}
+
+.goals {
+  flex: none;
 }
 
 .boardArea {
-  position: relative;
   flex: 1;
   min-height: 0;
   min-width: 0;
-  overflow: hidden;
 }
 
-/* 맵 위에 겹쳐 뜨는 바닥 패널: 손패(내 차례일 때만) + 턴 컨트롤(항상). 화면 가장자리에
-   여백을 둬 "떠 있는" 느낌을 주고, 두 요소는 세로로 쌓이되 각자 자기 모양(둥근 사각·알약)을 가진다 */
-.floatingBottom {
-  position: absolute;
-  left: var(--space-1);
-  right: var(--space-1);
-  bottom: var(--space-1);
-  z-index: 4;
+.bottom {
+  flex: none;
   display: flex;
   flex-direction: column;
-  align-items: stretch;
   gap: 6px;
 }
 
 .handPanel {
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  max-height: 40vh;
   border-radius: var(--radius-md);
-  /* 무대 배경의 성운 그라데이션이 위치마다 밝기가 달라 손패 대비가 흔들리지 않도록 충분히 불투명하게 */
   background: color-mix(in srgb, var(--color-surface) 94%, transparent);
-  -webkit-backdrop-filter: blur(6px);
-  backdrop-filter: blur(6px);
 }
 
-.handLabel {
-  flex: none;
+.turnBar {
   display: flex;
   align-items: center;
   gap: var(--space-1);
-  padding: 6px var(--space-2) 0;
-  font-size: var(--text-micro);
-  font-weight: 600;
-  color: var(--color-muted);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.handCount {
-  flex: none;
-  color: var(--color-text);
-}
-
-.discardHint {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  color: var(--color-accent);
-}
-
-.handBody {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-height: 0;
-  padding: 4px var(--space-1) 6px;
-}
-
-/* 카드·마커 설명 패널: 맵 위쪽에 뜬다(손패는 아래). 모바일엔 호버가 없어 탭·선택으로 띄운다 */
-.floatingTop {
-  position: absolute;
-  left: var(--space-1);
-  right: var(--space-1);
-  top: var(--space-1);
-  z-index: 5;
-}
-
-/* 카드 설명은 안내용이라 탭을 가로채지 않는다: 가려진 칸도 그대로 눌러 배치할 수 있다 */
-.cardInfo {
-  pointer-events: none;
-}
-
-/* 닫기(×) 버튼은 눌러야 하므로 클릭을 받는다 */
-.cardInfo button {
-  pointer-events: auto;
-}
-
-/* 배치 확인 바(2026-09-30): 후보 칸을 고른 뒤 예상 결과를 보고 확정/취소한다 */
-.confirmBar {
-  display: flex;
-  align-items: center;
-  gap: 6px;
   padding: 6px 6px 6px var(--space-2);
-  border-radius: var(--radius-md);
-  background: color-mix(in srgb, var(--color-surface) 96%, transparent);
-  -webkit-backdrop-filter: blur(6px);
-  backdrop-filter: blur(6px);
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--color-surface) 94%, transparent);
 }
 
-.confirmInfo {
-  flex: 1 1 auto;
+.hint,
+.hintMine {
+  flex: 1;
   min-width: 0;
   font-size: var(--text-small);
-  color: var(--color-text);
 }
 
-.confirmStats {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 2px 8px;
-  font-size: var(--text-micro);
+.hint {
   color: var(--color-muted);
 }
 
-.statHit {
-  color: var(--color-danger);
+.hintMine {
+  color: var(--color-accent);
   font-weight: 700;
 }
 
-.statWarn {
-  color: var(--color-energy);
-  font-weight: 700;
-}
-
-.confirmBar :global(.pill) {
+.toggle,
+.toggleOn {
   flex: none;
-  padding: 0 var(--space-3);
-  font-size: var(--text-small);
+  height: 32px;
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-full);
+  border: 1px solid color-mix(in srgb, var(--color-muted) 50%, transparent);
+  font-size: var(--text-micro);
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.toggleOn {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: var(--color-accent-text);
 }

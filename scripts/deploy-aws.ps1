@@ -1,4 +1,4 @@
-# AstralTab AWS(EC2) 재배포 스크립트.
+# Rootbound(옛 이름 AstralTab) AWS(EC2) 재배포 스크립트. EC2 경로·서비스 이름은 옛 이름(AstralTab, astraltab-prod-*)을 그대로 쓴다.
 #   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/deploy-aws.ps1
 #
 # GitHub 저장소가 비공개라 EC2에서 직접 git clone/pull 하지 않는다. 대신 로컬 워킹트리를

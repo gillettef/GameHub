@@ -5,8 +5,8 @@ import { join, resolve } from 'node:path';
 import cors from 'cors';
 import express from 'express';
 import { Server, type Socket } from 'socket.io';
-import type { ClientToServerEvents, PlayerId, RoomId, ServerToClientEvents } from '@astraltab/shared';
-import { maskState } from '@astraltab/shared';
+import type { ClientToServerEvents, PlayerId, RoomId, ServerToClientEvents } from '@rootbound/shared';
+import { maskState } from '@rootbound/shared';
 import { checkAiHealth } from './ai/client.js';
 import { createAiRunner } from './game/aiTurn.js';
 import { SnapshotStore } from './persistence/snapshots.js';
@@ -63,7 +63,7 @@ console.log(`[server] 복원된 방 ${manager.list().length}개`);
 
 app.get('/api/health', async (_req, res) => {
   const ai = await checkAiHealth();
-  res.json({ ok: true, service: 'astraltab-server', env: APP_ENV, ai, rooms: manager.list().length });
+  res.json({ ok: true, service: 'rootbound-server', env: APP_ENV, ai, rooms: manager.list().length });
 });
 
 // 웹 성능 기록 (FCP·LCP·동기화 왕복·FPS). 같은 출처만, 주소당 분당 10건·서버 전체 분당 300건까지만 받는다.

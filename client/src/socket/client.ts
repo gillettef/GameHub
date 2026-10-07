@@ -4,7 +4,7 @@
  * 재연결은 socket.io 가 알아서 하고, 다시 연결되면 RoomPage 가 room:join 을 다시 보낸다.
  */
 import { io, type Socket } from 'socket.io-client';
-import type { Ack, Action, ClientToServerEvents, JoinPayload, MapId, PlayerId, RoomId, ServerToClientEvents } from '@astraltab/shared';
+import type { Ack, Action, ClientToServerEvents, JoinPayload, PlayerId, RoomId, ServerToClientEvents } from '@rootbound/shared';
 import { recordSyncRtt } from '../lib/vitals';
 
 export type AppSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
@@ -44,7 +44,7 @@ function withTimeout<T extends object>(run: (done: (res: Ack<T>) => void) => voi
 }
 
 export const api = {
-  createRoom(payload: { playerToken: string; nickname: string; password?: string; mapId?: MapId }) {
+  createRoom(payload: { playerToken: string; nickname: string; password?: string }) {
     return withTimeout<{ roomId: RoomId; playerId: PlayerId }>((done) => connectSocket().emit('room:create', payload, done));
   },
   joinRoom(payload: JoinPayload) {
@@ -52,9 +52,6 @@ export const api = {
   },
   leaveRoom(roomId: RoomId) {
     return withTimeout((done) => connectSocket().emit('room:leave', { roomId }, done));
-  },
-  setMap(roomId: RoomId, mapId: MapId) {
-    return withTimeout((done) => connectSocket().emit('room:setMap', { roomId, mapId }, done));
   },
   addAi(roomId: RoomId) {
     return withTimeout<{ playerId: PlayerId }>((done) => connectSocket().emit('room:addAi', { roomId }, done));

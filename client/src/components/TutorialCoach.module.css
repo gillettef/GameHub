@@ -67,3 +67,10 @@
     animation: none;
   }
 }
+
+/* 드래프트 화면처럼 아래가 붐빌 때는 상태 창 아래에 띄운다 */
+.coachTop {
+  composes: coach;
+  bottom: auto;
+  top: 112px;
+}

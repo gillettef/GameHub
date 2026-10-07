@@ -2,8 +2,8 @@
  * Python AI 서비스(ai/, 포트 8000) HTTP 클라이언트.
  * AI 응답은 반드시 룰 엔진으로 재검증하고, 타임아웃·오류 시 엔진의 자동 수(autoAction)로 폴백한다.
  */
-import type { Action, GameState, PlayerId } from '@astraltab/shared';
-import { autoAction } from '@astraltab/shared';
+import type { Action, GameState, PlayerId } from '@rootbound/shared';
+import { autoAction } from '@rootbound/shared';
 
 const AI_BASE_URL = process.env.AI_BASE_URL ?? 'http://127.0.0.1:8000';
 /** F027: AI는 2초 이내에 행동을 결정해야 한다 */

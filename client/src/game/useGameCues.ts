@@ -3,19 +3,18 @@
  * 새로 붙은 로그 줄의 종류로 소리를 고르고, 턴이 나에게 넘어오면 알린다. 상태는 읽기만 한다.
  */
 import { useEffect, useRef } from 'react';
-import type { LogKind } from '@astraltab/shared';
+import type { LogKind } from '@rootbound/shared';
 import { announceMyTurn, playCue, type Cue } from '../lib/cues';
 import { sampleFps } from '../lib/vitals';
 import { useGameStore } from '../store/gameStore';
 
 const KIND_CUE: Partial<Record<LogKind, Cue>> = {
-  place: 'place',
-  magic: 'place',
-  combat: 'hit',
-  destroy: 'destroy',
-  eliminate: 'destroy',
+  plant: 'place',
+  draft: 'place',
+  flip: 'hit',
+  surrender: 'destroy',
 };
-/** 같은 묶음 안에서 소리를 이 순서·간격으로 늘어놓는다 (배치 → 피격 → 파괴) */
+/** 같은 묶음 안에서 소리를 이 순서·간격으로 늘어놓는다 (심기 → 뺏기 → 기권) */
 const ORDER: Cue[] = ['place', 'hit', 'destroy'];
 const GAP_SEC = 0.18;
 
@@ -24,12 +23,12 @@ export function useGameCues(): void {
   const viewerId = useGameStore((s) => s.viewerId);
   const mode = useGameStore((s) => s.mode);
   const handoffPending = useGameStore((s) => s.handoffPending);
-  const prev = useRef<{ logLength: number; turn: number; roomId: string } | null>(null);
+  const prev = useRef<{ logLength: number; turn: number; roomId: string; current: string | null } | null>(null);
 
   useEffect(() => {
     if (!state || !viewerId) return;
     const before = prev.current;
-    prev.current = { logLength: state.log.length, turn: state.turn, roomId: state.roomId };
+    prev.current = { logLength: state.log.length, turn: state.turn, roomId: state.roomId, current: state.currentPlayerId };
     // 첫 스냅샷(입장·새로고침)은 이미 지나간 일이라 소리를 내지 않는다
     if (!before || before.roomId !== state.roomId || state.log.length < before.logLength) return;
 
@@ -46,9 +45,9 @@ export function useGameCues(): void {
       playCue(state.result?.ranking[0] === viewerId ? 'win' : 'lose', 0.4);
       return;
     }
-    const myTurnNow = state.phase === 'playing' && state.currentPlayerId === viewerId && state.turn !== before.turn;
+    const myTurnNow = (state.phase === 'playing' || state.phase === 'drafting') && state.currentPlayerId === viewerId && (before.current !== viewerId || state.turn !== before.turn);
     if (!myTurnNow) return;
-    if (mode === 'online') announceMyTurn(`${state.round}라운드 · 마커를 놓거나 턴을 넘기세요`);
+    if (mode === 'online') announceMyTurn(state.phase === 'drafting' ? '식물 종을 고를 차례입니다' : `${state.round}라운드 · 식물을 심을 차례입니다`);
     else if (!handoffPending) playCue('turn');
   }, [state, viewerId, mode, handoffPending]);
 }

@@ -1,154 +1,68 @@
-import { memo, type CSSProperties } from 'react';
-import { TERRITORY_RADIUS } from '@astraltab/shared';
-import { ICONS } from '../components/CardFace';
-import boardStyles from '../components/Board.module.css';
-import { cx } from '../lib/cx';
-import { keywordExplain, keywordLabel } from '../game/derived';
+import { memo } from 'react';
+import { ENTRANCE_RING, ENTRANCE_SELF, FERTILE_BONUS, HAND_SIZE, RESERVE_BONUS } from '@rootbound/shared';
 import styles from './HelpTab.module.css';
 
-const SEATS = [0, 1, 2, 3];
-const KEYWORDS = ['infiltrate', 'repair', 'overclock', 'veil', 'barrage'];
-
-const STATS: { icon: keyof typeof ICONS; label: string; desc: string }[] = [
-  { icon: 'cost', label: '비용', desc: '배치에 필요한 에너지. 손패 카드·팝오버에 항상 보입니다.' },
-  { icon: 'sight', label: '시야', desc: '이 마커를 중심으로 한 육각 거리 반경. 시야가 겹친 영역의 합집합이 배치 가능 범위입니다(성운 위에서는 -1). 영토 점수는 시야와 무관합니다.' },
-  { icon: 'score', label: '점수', desc: '이 마커가 살아 있는 동안 더해지는 마커 점수(유물지대 +1, 중력 균열 -1). 파괴되면 즉시 사라집니다.' },
-  { icon: 'hp', label: '체력', desc: '0 이하가 되면 파괴됩니다. 코어가 파괴되면 탈락합니다.' },
-  { icon: 'attack', label: '공격', desc: '내 턴을 끝낼 때 사거리 안 적 하나를 자동으로 공격합니다. 대상은 거리 → 체력 → y → x 순으로 정해집니다.' },
-  { icon: 'range', label: '사거리', desc: '공격이 닿는 육각 거리.' },
-  { icon: 'production', label: '생산', desc: '내 턴을 끝낼 때 수입 정산에서 코어 수입에 더해지는 양. 광맥 위 건물은 +1 추가됩니다.' },
-];
-
-/** 지형 설명. 수치는 Rules.md 3절과 같다. 장식 클래스는 Cell.tsx 의 TerrainDecorator 와 같은 것을 쓴다 */
-export const TERRAIN_LEGEND: { terrain: string; deco?: string; label: string; desc: string }[] = [
-  { terrain: 'asteroid', label: '소행성', desc: '마커를 놓을 수 없고 영토로 치지 않습니다. 시야·사거리는 통과합니다.' },
-  { terrain: 'vein', deco: 'vein', label: '광맥', desc: '이 칸에 지은 건물은 생산 +1을 더 받습니다. 유닛·마법은 보너스가 없습니다.' },
-  { terrain: 'nebula', deco: 'nebula', label: '성운', desc: '이 칸의 마커는 시야 -1(최소 1). 배치 가능 범위만 줄고 점수에는 영향이 없습니다.' },
-  { terrain: 'debrisField', deco: 'debrisField', label: '파편지대', desc: '이 칸의 마커는 최대 체력 -1(최소 1). 놓는 순간 정해지며 회복해도 이 상한을 넘지 못합니다.' },
-  { terrain: 'ionStorm', deco: 'ionStorm', label: '이온 폭풍', desc: '이 칸의 마커는 소유자가 턴을 끝낼 때마다 피해 1을 받습니다.' },
-  { terrain: 'relicSite', deco: 'relicSite', label: '유물지대', desc: '이 칸의 마커는 점수 +1.' },
-  { terrain: 'gravityRift', deco: 'gravityRift', label: '중력 균열', desc: '이 칸의 마커는 점수 -1(최소 0).' },
-  { terrain: 'gunEmplacement', deco: 'gunEmplacement', label: '포대 발판', desc: '이 칸의 마커는 공격력 +1. 공격력이 없는 마커는 효과가 없습니다.' },
-  { terrain: 'jammingField', deco: 'jammingField', label: '교란지대', desc: '이 칸의 마커는 사거리 -1(최소 0). 사거리 1인 근접 마커는 0이 되어 공격할 수 없습니다.' },
-];
-
-const SHAPES: { kind: 'core' | 'building' | 'unit' | 'magic'; label: string; desc: string }[] = [
-  { kind: 'core', label: '코어 · 육각', desc: '시작 지점. 파괴되면 탈락합니다. 종족과 무관하게 전 좌석 동일합니다.' },
-  { kind: 'building', label: '건물 · 둥근 사각', desc: '이동하지 않는 고정 생산·방어 시설.' },
-  { kind: 'unit', label: '유닛 · 원', desc: '전투·정찰용 마커. 역시 한 번 놓으면 이동하지 않습니다.' },
-  { kind: 'magic', label: '마법 · 마름모', desc: '즉발 효과를 낸 뒤 사라지거나(피해·회복·에너지), 지속 효과를 내는 동안 마커로 남습니다.' },
-];
-
-/**
- * 설명 탭 (2026-09-23 사용자 지시: 하단 독 4번째 탭). 보드·카드에 쓰는 아이콘·모양·색의 뜻을
- * 한곳에 모아 둔다. 실제 렌더링에 쓰는 아이콘·CSS 클래스를 그대로 재사용해 표시가 어긋나지 않게 한다.
- */
+/** 설명 탭: 한 화면 규칙 요약 (정본은 notes/Rules.md). 수치는 shared 상수에서 읽는다 */
 export const HelpTab = memo(function HelpTab() {
   return (
     <div className={styles.root}>
-      <section className={styles.panel}>
-        <h2 className={styles.title}>마커 모양 · 색</h2>
-        <p className={styles.help}>보드 위 마커는 항상 소유자의 좌석 색으로 채워지고, 모양으로 종류를 구분합니다.</p>
-        <ul className={styles.legendList}>
-          {SHAPES.map((s) => (
-            <li key={s.kind} className={styles.legendRow}>
-              <span className={styles.swatch} aria-hidden="true">
-                <span className={boardStyles.marker} data-kind={s.kind} data-seat={0} />
-              </span>
-              <div>
-                <strong className={styles.legendLabel}>{s.label}</strong>
-                <p className={styles.legendDesc}>{s.desc}</p>
-              </div>
-            </li>
-          ))}
-        </ul>
+      <section className={styles.section}>
+        <h2 className={styles.h2}>목표</h2>
+        <p>
+          차례마다 식물 하나를 심어 땅을 넓힙니다. 끝났을 때 <strong>내 땅 1칸 = 1점</strong>에 목표 카드 3장의 점수를 더해 가장 높은 사람이 이깁니다.
+        </p>
       </section>
-
-      <section className={styles.panel}>
-        <h2 className={styles.title}>좌석 색</h2>
-        <p className={styles.help}>좌석 순서가 턴 순서입니다. 네 색 모두 색각 이상에도 구분되도록 골랐습니다.</p>
-        <ul className={styles.seatList}>
-          {SEATS.map((seat) => (
-            <li key={seat} className={styles.seatRow}>
-              <span className={styles.seatDot} data-seat={seat} aria-hidden="true" />
-              좌석 {seat + 1}
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      <section className={styles.panel}>
-        <h2 className={styles.title}>카드 스탯 아이콘</h2>
-        <p className={styles.help}>손패 카드와 보드 마커 툴팁에서 같은 아이콘을 씁니다.</p>
-        <ul className={styles.legendList}>
-          {STATS.map((s) => (
-            <li key={s.icon} className={styles.legendRow}>
-              <span className={styles.iconSwatch} aria-hidden="true">
-                {ICONS[s.icon]}
-              </span>
-              <div>
-                <strong className={styles.legendLabel}>{s.label}</strong>
-                <p className={styles.legendDesc}>{s.desc}</p>
-              </div>
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      <section className={styles.panel}>
-        <h2 className={styles.title}>키워드</h2>
-        <ul className={styles.legendList}>
-          {KEYWORDS.map((k) => (
-            <li key={k} className={styles.legendRow}>
-              <span className={cx(styles.tag)}>{keywordLabel(k)}</span>
-              <p className={styles.legendDesc}>{keywordExplain(k)}</p>
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      <section className={styles.panel}>
-        <h2 className={styles.title}>지형</h2>
-        <p className={styles.help}>효과는 그 칸에 놓인 마커에 붙고, 마커는 움직이지 않으므로 한번 놓으면 계속 갑니다. 카드 수치는 기본값이며 보드 마커 툴팁에는 지형이 반영된 값이 나옵니다.</p>
-        <ul className={styles.legendList}>
-          {TERRAIN_LEGEND.map((t) => (
-            <li key={t.terrain} className={styles.legendRow}>
-              <span className={styles.swatch} aria-hidden="true">
-                <span className={boardStyles.hex} data-terrain={t.terrain}>
-                  {t.deco && <span className={boardStyles[t.deco]} />}
-                </span>
-              </span>
-              <div>
-                <strong className={styles.legendLabel}>{t.label}</strong>
-                <p className={styles.legendDesc}>{t.desc}</p>
-              </div>
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      <section className={styles.panel}>
-        <h2 className={styles.title}>보드 오버레이</h2>
-        <ul className={styles.legendList}>
-          <li className={styles.legendRow}>
-            <span className={styles.swatch} aria-hidden="true">
-              <span className={boardStyles.hex} data-owner={0} />
-            </span>
-            <div>
-              <strong className={styles.legendLabel}>영토 (색 채움)</strong>
-              <p className={styles.legendDesc}>{`정확히 한 플레이어의 마커에서 거리 ${TERRITORY_RADIUS} 이내인 빈 칸과 마커 칸. 1칸 1점이며 마커의 시야 수치와는 무관합니다. 경합·소행성은 무소유(오버레이 없음).`}</p>
-            </div>
+      <section className={styles.section}>
+        <h2 className={styles.h2}>한 판의 흐름</h2>
+        <ol className={styles.steps}>
+          <li>
+            <strong>드래프트</strong>: 공개된 목표 3장을 보고 식물 종을 번갈아 고릅니다. 고른 종으로 내 덱이 만들어집니다.
           </li>
-          <li className={styles.legendRow}>
-            <span className={styles.swatch} style={{ '--sight-color': 'var(--color-seat-0)' } as CSSProperties} aria-hidden="true">
-              <span className={boardStyles.hex} data-sight="" />
-            </span>
-            <div>
-              <strong className={styles.legendLabel}>내 시야 (테두리 링)</strong>
-              <p className={styles.legendDesc}>내 마커들의 시야가 닿는 칸. 카드를 고르면 이 안에서 배치 가능한 칸이 밝게 빛납니다.</p>
-            </div>
+          <li>
+            <strong>심기</strong>: 내 차례에 손패({HAND_SIZE}장) 중 1장을 골라, 내 뿌리가 닿는(영향력 1 이상) 빈 칸에 심고 1장 뽑습니다.
+          </li>
+          <li>
+            <strong>끝</strong>: 모두 덱을 다 쓰면 끝나고 점수를 셉니다. 패스는 없습니다.
+          </li>
+        </ol>
+      </section>
+      <section className={styles.section}>
+        <h2 className={styles.h2}>영향력과 땅</h2>
+        <ul className={styles.list}>
+          <li>식물은 카드 그림의 숫자만큼 둘레 칸에 영향력을 줍니다. 칸마다 사람별로 더합니다.</li>
+          <li>
+            한 칸에서 영향력이 <strong>가장 큰 한 사람</strong>이 그 칸의 주인입니다. 동점이면 아무의 땅도 아닙니다.
+          </li>
+          <li>식물은 사라지지 않지만, 상대가 옆에 더 강하게 심으면 그 칸은 상대 땅이 됩니다.</li>
+          <li>
+            입구는 자기 칸 {ENTRANCE_SELF}, 둘레 {ENTRANCE_RING}의 영향력을 줍니다.
+          </li>
+          <li>보드 아래 "영향력" 버튼을 켜면 칸마다 내 영향력:상대 최고 영향력이 보입니다.</li>
+        </ul>
+      </section>
+      <section className={styles.section}>
+        <h2 className={styles.h2}>지형</h2>
+        <ul className={styles.terrain}>
+          <li>
+            <span className={styles.swatchFertile} /> 비옥토: 심은 식물의 자기 칸 +{FERTILE_BONUS}
+          </li>
+          <li>
+            <span className={styles.swatchPond} /> 연못: 심을 수 없고 누구의 땅도 아님. 연꽃은 연못 옆이면 뿌리 없이도 심음
+          </li>
+          <li>
+            <span className={styles.swatchRock} /> 돌밭: 심을 수 없고 누구의 땅도 아님
           </li>
         </ul>
+      </section>
+      <section className={styles.section}>
+        <h2 className={styles.h2}>목표 카드</h2>
+        <p>
+          판마다 3장이 공개됩니다. "○○ 보호구역"은 끝날 때 내 땅 위에 있는 내 그 종 식물 1개당 +{RESERVE_BONUS}점이라, 드래프트에서 그 종이 인기가 많아집니다.
+        </p>
+      </section>
+      <section className={styles.section}>
+        <h2 className={styles.h2}>순서 보정</h2>
+        <p>늦게 두는 사람이 유리하거나 불리한 만큼 드래프트 순서와 덤 점수로 맞춥니다. 점수 탭에 덤이 표시됩니다.</p>
       </section>
     </div>
   );
