@@ -2,8 +2,8 @@
 // target은 난이도 × 10 (10이 표준 난이도)이고 실제 목표값은 engine의 rollTarget이 라운드에 맞춰 계산합니다.
 // 판정이 없는 카드는 무조건 성공합니다. 기운은 그 달 안에 쓸 데가 없어 "다음 달 체력기운/마나기운"로 지급/차감합니다.
 // 탐험은 가장 하이리스크 하이리턴인 활동입니다 — 한방 카드(6장)는 성공 보상이 크고 실패 손해도 크며, 뒤처진 플레이어의 역전 수단입니다.
-// 협력 카드(5장)는 두 명이 함께해야 열리고 보상/손해가 두 명 모두에게 적용됩니다. 끝까지 함께할 친구가 없으면 무효입니다.
-// 카드 구성과 수치는 초안이며 플레이테스트 후 조정합니다. 25장.
+// 협력 카드는 49절 단순화로 덱에서 뺐습니다 (엔진의 협력 처리 코드는 남아 있지만 쓰이지 않습니다).
+// 카드 구성과 수치는 초안이며 플레이테스트 후 조정합니다. 20장.
 import type { CardEffect, ExplorationCard } from "./types.js";
 
 type Def = Omit<ExplorationCard, "id" | "failure"> & { failure?: CardEffect };
@@ -30,13 +30,6 @@ const DEFS: Def[] = [
   { name: "요정들의 티 파티", description: "작은 요정들이 자리에 초대해 줬어요.", check: { stat: "stamina", target: 7 }, success: { stats: { charm: 1 }, nextStamina: 1 }, failure: {} },
   { name: "비밀 계단", description: "벽 뒤로 좁은 계단이 이어져요.", check: { stat: "stamina", target: 6 }, success: { nextMana: 3 }, failure: {} },
   { name: "꼬마 유령의 부탁", description: "꼬마 유령이 잃어버린 인형을 찾아 달래요.", check: { stat: "stamina", target: 6 }, success: { stats: { intelligence: 1 } }, failure: {} },
-  // ── 협력 카드 (5장): 두 명이 함께해야 열린다. 둘의 (주사위 + 능력치) 합이 목표값 이상이면 둘 다 보상을 받는다.
-  //    함께할 친구가 없으면 무효가 된다 ──
-  { name: "쌍둥이 열쇠 구멍", description: "열쇠 구멍이 두 개! 동시에 돌려야 열려요.", coop: { stat: "intelligence", pairTarget: 13 }, success: { stats: { intelligence: 1 }, nextMana: 2 } },
-  { name: "무거운 돌문", description: "혼자서는 꿈쩍도 안 해요. 함께 밀어 봐요!", coop: { stat: "stamina", pairTarget: 13 }, success: { stats: { stamina: 1 }, nextMana: 2 }, failure: { nextStamina: -1 } },
-  { name: "이중창 합주", description: "두 사람의 목소리가 어우러져야 문이 열려요.", coop: { stat: "stamina", pairTarget: 12 }, success: { stats: { charm: 1 }, nextStamina: 2 } },
-  { name: "쌍둥이 마법진", description: "마주 보는 두 마법진에 동시에 마력을 불어넣어요.", coop: { stat: "intelligence", pairTarget: 14 }, success: { stats: { spellPower: 1 }, nextMana: 1 }, failure: { nextStamina: -1 } },
-  { name: "용의 알 부화", description: "커다란 알이 흔들려요. 둘이 힘을 합쳐 따뜻하게 품어 줘요!", coop: { stat: "stamina", pairTarget: 17 }, success: { credit: 1, stats: { spellPower: 1 } }, failure: { nextStamina: -2 } },
   // ── 안전 카드 (판정 없음) ──
   { name: "몰래 열린 간식 창고", description: "쿠키 향이 솔솔 나요. 살금살금 하나 집어 먹었어요.", success: { nextStamina: 2 } },
   { name: "반짝이는 버섯 숲", description: "발광 버섯이 가득한 포근한 숲이에요.", success: { tempStats: { stamina: 1 }, nextStamina: 1 } },

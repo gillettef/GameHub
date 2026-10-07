@@ -217,7 +217,7 @@ function ClassPhasePanel({ game, myId, onTake }: { game: GameState; myId: string
 
   return (
     <div className="bg-white rounded-3xl border-2 border-purple-200 shadow-sm p-4">
-      <p className="text-sm text-purple-500 mb-1">2주차(정규수업): 수업카드는 무료예요. 가져가면 그 과목의 기운을 얻어요. 선 다음 사람부터 시계방향으로 하고 선은 마지막이에요</p>
+      <p className="text-sm text-purple-500 mb-1">2주차(정규수업): 수업카드는 무료예요. 가져가면 그 과목의 기운을 얻어요. 선부터 시계방향으로 한 장씩 가져가요</p>
       <p className="text-xs text-purple-500 mb-2">
         <InlineIcon name="intToken" /> 지력기운 {energyText(me, "intelligence", game.rules)} · <InlineIcon name="staminaToken" /> 체력기운 {energyText(me, "stamina", game.rules)} · <InlineIcon name="charmToken" /> 매력기운 {energyText(me, "charm", game.rules)} · <InlineIcon name="manaToken" /> 마나기운 {energyText(me, "mana", game.rules)}
       </p>
@@ -545,7 +545,7 @@ function ChoosePanel({
       <div className="bg-white rounded-3xl border-2 border-purple-200 shadow-sm p-4">
         <p className="text-sm text-purple-600 mb-1">아직 활동을 고르지 않은 한 명을 지목하세요</p>
         <p className="text-xs text-purple-500 mb-2">
-          지목당한 친구는 이번 달 자율활동으로 주문 대결을 하게 돼요. 결과와 상관없이 지목한 친구에게 <InlineIcon name="heart" /> 매력 {fee}과 <InlineIcon name="manaToken" /> 마나기운 {game.rules.duelManaFee}개를 건네요.
+          지목당한 친구는 이번 달 자율활동으로 주문 대결을 하게 돼요. 결과와 상관없이 지목한 친구에게 {fee > 0 ? <><InlineIcon name="heart" /> 매력 {fee}과 </> : null}<InlineIcon name="manaToken" /> 마나기운 {game.rules.duelManaFee}개를 건네요. 지목당한 친구가 먼저 굴리고, 나는 그 결과를 보고 굴려요.
         </p>
         <div className="flex flex-col gap-2">
           {targets.map((id) => (
@@ -580,7 +580,7 @@ function ChoosePanel({
               : "모두 골랐어요"}
       </p>
       <p className="text-xs text-purple-500 mb-2">
-        구역당 최대 {game.rules.activityMaxParticipants}명 · 먼저 고른 친구가 있으면 <InlineIcon name="charmToken" /> 매력기운 {game.rules.activitySecondParticipantCost}개를 그 친구에게 건네고 함께해요 (내 매력기운 {game.players[myId]?.charmTokens ?? 0}개). 마법생물·연구실은 둘이 함께면 둘 다 목표가 낮아져요. 처음 고른 친구가 카드를 공개하고 원하는 카드를 가져가요. 남은 카드는 두 번째 참가자가 가져가요.
+        구역당 최대 {game.rules.activityMaxParticipants}명{game.rules.activitySecondParticipantCost > 0 ? <> · 먼저 고른 친구가 있으면 <InlineIcon name="charmToken" /> 매력기운 {game.rules.activitySecondParticipantCost}개를 그 친구에게 건네고 함께해요 (내 매력기운 {game.players[myId]?.charmTokens ?? 0}개)</> : null}. 마법생물·연구실은 둘이 함께면 둘 다 목표가 낮아져요. 처음 고른 친구가 카드를 공개하고 원하는 카드를 가져가요. 남은 카드는 두 번째 참가자가 가져가요.
       </p>
       <div className="grid grid-cols-1 gap-2">
         {ACTIVITY_IDS.map((activityId) => {

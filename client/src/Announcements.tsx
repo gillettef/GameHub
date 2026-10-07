@@ -66,7 +66,7 @@ function cleanupBanner(prev: GameState): Announcement {
     kind: "banner",
     icon: "bag",
     title: `${prev.round}개월 4주차 · 정리`,
-    subtitle: "쓰고 남은 기운은 다음 달로 이어져요. 임시 능력치는 사라지고, 남은 매력기운이 가장 많은 친구가 다음 달 선이 돼요",
+    subtitle: "쓰고 남은 기운은 다음 달로 이어져요. 임시 능력치는 사라지고, 다음 달 선은 시계방향으로 한 칸 넘어가요",
   });
 }
 
@@ -79,7 +79,7 @@ const firstPlayerBanner = (game: GameState, myId: string): Announcement =>
     kind: "banner",
     icon: "dice",
     title: "선이 정해졌어요!",
-    subtitle: `${starterName(game)}님이 첫 달의 선이에요. 활동은 선부터 시계방향으로, 수업카드는 선이 마지막으로 골라요`,
+    subtitle: `${starterName(game)}님이 첫 달의 선이에요. 수업카드도 활동도 선부터 시계방향으로 골라요`,
     lines: [`수업 순서: ${game.classPickOrder.map((id) => game.players[id].name).join(" → ")}`, ...(game.turnOrder[game.startingPlayerIndex] === myId ? ["내가 선이에요!"] : [])],
   });
 
@@ -88,7 +88,7 @@ const classBanner = (game: GameState): Announcement =>
     kind: "banner",
     icon: "book",
     title: `${game.round}개월 2주차 · 정규수업`,
-    subtitle: `이번 달 선은 ${starterName(game)}님! 수업카드는 무료예요. 선 다음 사람부터 시계방향으로 한 장씩 가져가고 선이 마지막이에요. 가져가면 그 과목의 기운을 얻어요`,
+    subtitle: `이번 달 선은 ${starterName(game)}님! 수업카드는 무료예요. 선부터 시계방향으로 한 장씩 가져가요. 가져가면 그 과목의 기운을 얻어요`,
   });
 
 function activityBanner(game: GameState, myId: string): Announcement {

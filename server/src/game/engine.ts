@@ -248,7 +248,7 @@ function drawClassCard(state: GameState): ClassCard | undefined {
 }
 
 const STAT_NAME: Record<StatKey, string> = { intelligence: "지력", stamina: "체력", charm: "매력", spellPower: "주문력" };
-const LEVEL_NAME: Record<ClassCard["level"], string> = { intro: "입문", basic: "기초", mid: "중급", advanced: "심화" };
+const LEVEL_NAME: Record<ClassCard["level"], string> = { basic: "기초", advanced: "심화" };
 
 // 탐험 카드의 판정 문구 (엿보기·협력 대기·구역 공개 카드 표시용)
 function checkTextOf(card: ExplorationCard, round: number): string | undefined {
@@ -568,7 +568,7 @@ function beginClassPhase(state: GameState): void {
   if (effect.classBonus) state.classMarket = state.classMarket.map((c) => (effect.classBonus?.[c.stat] ? { ...c, gain: c.gain + effect.classBonus[c.stat]! } : c));
   // 수업 신청은 선이 마지막이다 (선은 활동을 먼저 고르는 대신)
   const fromStarter = orderFromStarter(state);
-  state.classPickOrder = [...fromStarter.slice(1), fromStarter[0]];
+  state.classPickOrder = BALANCE.classPickStarterLast ? [...fromStarter.slice(1), fromStarter[0]] : fromStarter;
   state.classPickPointer = 0;
   log(
     state,
@@ -583,7 +583,7 @@ export function classCardsLeft(state: Pick<GameState, "classDeck" | "classDiscar
 
 // 수업카드가 주는 기운의 종류 (주문력 과목은 마나기운)
 export const classGainKind = (card: Pick<ClassCard, "stat">): KeptToken => (card.stat === "spellPower" ? "mana" : card.stat);
-// 중급·심화 과목은 그 과목 능력치가 minStat 이상이어야 들을 수 있다 (선수과목)
+// 심화 과목은 그 과목 능력치가 minStat 이상이어야 들을 수 있다 (선수과목)
 export const canTakeClassCard = (player: PlayerGameState, card: Pick<ClassCard, "stat" | "minStat">): boolean =>
   card.minStat === undefined || effectiveStat(player, card.stat) >= card.minStat;
 // 이 카드를 가져가면 실제로 늘어나는 기운 (한도 = 능력치 × energyCapMultiplier까지)
@@ -714,8 +714,8 @@ function startTournament(state: GameState, player: PlayerGameState): void {
     title: `마법 토너먼트 · ${player.name}`,
     lines: [`마나기운을 1~${usableFuel(player, "mana")}개 골라 내고(한 번에 주문력만큼), 낸 개수만큼 주사위를 굴려요. 나온 눈을 모두 더한 만큼 트랙을 전진해요`],
     // 보조 능력치(체력=지구력): 체력기운을 내면 "끝까지 달려요" — 1개당 고정 칸을 더 전진한다 (주사위가 아니라 고정값)
-    assist: { kind: "stamina", name: "체력기운", title: "끝까지 달려요", hint: `체력기운 1개당 +${BALANCE.tournamentStaminaBoost}칸 더 전진해요 (지구력)` },
-    entries: [withAssist(choiceEntry(player, player.name), player.staminaTokens)],
+    ...(BALANCE.tournamentStaminaBoost > 0 ? { assist: { kind: "stamina", name: "체력기운", title: "끝까지 달려요", hint: `체력기운 1개당 +${BALANCE.tournamentStaminaBoost}칸 더 전진해요 (지구력)` } } : {}),
+    entries: [withAssist(choiceEntry(player, player.name), BALANCE.tournamentStaminaBoost > 0 ? player.staminaTokens : 0)],
   };
 }
 
@@ -841,12 +841,9 @@ function startDuel(state: GameState, player: PlayerGameState, target: PlayerGame
     title: `주문 대결 · ${player.name} vs ${target.name}`,
     lines: [
       `${player.name}님이 ${target.name}님을 지목했어요 (도전자가 마나기운 ${BALANCE.duelManaFee}개를 건넸어요)`,
-      `각자 마나기운을 골라 내고 낸 개수만큼 주사위를 굴려 합이 큰 쪽이 이겨요. 같으면 무승부예요. 도전자는 지목당한 친구에게 매력 ${BALANCE.duelCharmFee}을 건네요`,
+      `${BALANCE.duelTargetRollsFirst ? "지목당한 친구가 먼저, 도전자는 그 결과를 보고" : "도전자부터 한 명씩"} 마나기운을 골라 내고 낸 개수만큼 주사위를 굴려 합이 큰 쪽이 이겨요. 같으면 무승부예요${BALANCE.duelCharmFee > 0 ? `. 도전자는 지목당한 친구에게 매력 ${BALANCE.duelCharmFee}을 건네요` : ""}`,
     ],
-    entries: [
-      choiceEntry(player, `${player.name} (도전자)`),
-      choiceEntry(target, `${target.name} (지목당함)`),
-    ],
+    entries: (BALANCE.duelTargetRollsFirst ? [target, player] : [player, target]).map((p) => choiceEntry(p, `${p.name} (${p === player ? "도전자" : "지목당함"})`)),
   };
 }
 

@@ -40,7 +40,7 @@ export function classCardData(card: ClassCard): GameCardData {
   const energy = COLUMN_STYLE[ENERGY_FIELD[kind]];
   const label = STAT_LABEL[card.stat];
   const level = CLASS_LEVEL_LABEL[card.level];
-  const rare = card.level === "mid" || card.level === "advanced";
+  const rare = card.level === "advanced";
   return {
     name: card.name,
     rare,
@@ -54,7 +54,7 @@ export function classCardData(card: ClassCard): GameCardData {
   };
 }
 
-// 내가 이 카드를 가져갈 수 있는지, 못 하면 이유 (중급·심화 과목의 선수 조건)
+// 내가 이 카드를 가져갈 수 있는지, 못 하면 이유 (심화 과목의 선수 조건)
 export function classCardBlockReason(player: PlayerGameState, card: ClassCard): string | null {
   return canTakeClassCard(player, card)
     ? null

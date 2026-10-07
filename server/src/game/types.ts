@@ -69,7 +69,7 @@ export interface ClassCard {
   name: string;
   description: string;
   stat: StatKey;
-  level: "intro" | "basic" | "mid" | "advanced";
+  level: "basic" | "advanced";
   gain: number;
   minStat?: number;
 }
