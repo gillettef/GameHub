@@ -1,99 +1,69 @@
 /**
- * 게임 상수 (Rules.md 12절). 엔진·UI·AI 어디에도 이 값을 하드코딩하지 않는다.
+ * 게임 상수 (Rules.md 4·10절). 엔진·UI·AI 어디에도 이 값을 하드코딩하지 않는다.
  * Python 쪽은 shared/fixtures/specs.json 의 constants 로 같은 값을 읽는다.
  */
 
 export const MIN_PLAYERS = 2;
 export const MAX_PLAYERS = 4;
 
-/** 시작 에너지 (2026-09-22: 3 → 5) */
-export const STARTING_ENERGY = 5;
-/** 코어 기본 수입 (턴당). 건물이 하나도 없어도 굶지 않게 (2026-09-22: 1 → 2, 육각 전환 2 → 1) */
-export const CORE_BASE_INCOME = 1;
-/** 에너지 저장 상한. 초과분은 버려진다 (2026-09-22: 후반 건물 누적 수입으로 무한정 쌓이는 것을 막음) */
-export const ENERGY_CAP = 20;
-export const CORE_HP = 20;
-/** 육각 거리 기준 시야 반경 (2026-09-22: 육각 전환 2 → 1) */
-export const CORE_SIGHT = 1;
+export const HAND_SIZE = 3;
+export const ENTRANCE_SELF = 3;
+export const ENTRANCE_RING = 1;
+export const FERTILE_BONUS = 1;
+export const GOAL_COUNT = 3;
+/** 종 연계 목표: 끝날 때 내 땅 위의 내 그 종 식물 1개당 점수 */
+export const RESERVE_BONUS = 2;
 
-export const INITIAL_HAND_SIZE = 4;
-/** 손패 상한. 상한이면 드로우 생략 */
-export const HAND_LIMIT = 5;
-export const DRAW_PER_TURN = 1;
+/** 인원별 드래프트·덱 구성 (Rules.md 4·5절) */
+export interface PlayerCountRule {
+  /** 각자 고르는 종 수 */
+  picks: number;
+  /** 종마다 덱에 넣는 장수 */
+  copies: number;
+  /** 한 종을 가져갈 수 있는 인원 */
+  maxTakers: number;
+  /** 드래프트 첫 바퀴 좌석 순서 (이후 뱀 순서) */
+  draftFirstRound: number[];
+  /** 좌석별 덤 */
+  komi: number[];
+}
 
-/** 종족별 기본 카드 표(카탈로그 분류)의 copies 합. baseDeckOf 불변식 검증에만 쓴다 */
-export const BASE_DECK_SIZE = 22;
-/** 종족별 고정 덱의 총 장수(기본 22 + 특수 3). 2026-09-24부터 덱 빌딩은 없다 */
-export const DECK_SIZE = 25;
+export const PLAYER_COUNT_RULES: Record<number, PlayerCountRule> = {
+  2: { picks: 5, copies: 3, maxTakers: 1, draftFirstRound: [1, 0], komi: [0, 1] },
+  3: { picks: 4, copies: 4, maxTakers: 1, draftFirstRound: [0, 2, 1], komi: [2, 2, 0] },
+  4: { picks: 4, copies: 4, maxTakers: 2, draftFirstRound: [1, 0, 3, 2], komi: [1, 0, 0, 0] },
+};
 
-/** 광맥 위 건물의 생산 보너스 */
-export const VEIN_PRODUCTION_BONUS = 1;
-/** 영토 1칸 점수 */
-export const SCORE_PER_TERRITORY = 1;
-/** 영토 점수 판정 반경(육각 거리). 2026-09-28부터 마커의 시야 스탯이 아니라 이 고정값을 쓴다 —
- * 배치 가능 범위(시야)는 그대로 두고 "점수만" 마커 주변 이 반경으로 계산한다(Rules.md 8절) */
-export const TERRITORY_RADIUS = 1;
-
-/** 새 지형 7종의 효과 수치(2026-09-28 신설, Rules.md 3절). 전부 "그 칸에 놓인 마커"에 배치
- * 시점 또는 매 턴 적용되는 고정 수정치다 */
-export const NEBULA_SIGHT_PENALTY = 1;
-export const DEBRIS_FIELD_HP_PENALTY = 1;
-export const ION_STORM_DAMAGE = 1;
-export const RELIC_SITE_SCORE_BONUS = 1;
-export const GRAVITY_RIFT_SCORE_PENALTY = 1;
-export const GUN_EMPLACEMENT_ATTACK_BONUS = 1;
-export const JAMMING_FIELD_RANGE_PENALTY = 1;
-/** 덤(komi): 좌석 번호 × 이 값을 최종 점수에 더한다. 선턴(좌석 0)이 유리하므로 나중 좌석일수록
- * 소소한 보너스를 받는다 (2026-09-23 신설, Rules.md 9.1/9.3) */
-export const KOMI_PER_SEAT = 1;
-/** 침투 키워드: 적 마커로부터 이 육각 거리 이내에도 배치 가능 */
-export const INFILTRATE_RANGE = 1;
-/** 정비 키워드: 반경(육각 거리)과 회복량 */
-export const REPAIR_RADIUS = 1;
-export const REPAIR_AMOUNT = 1;
-/** 과부하 키워드(오토마타): 반경과 인접 건물 1개당 생산 보너스 */
-export const OVERCLOCK_RADIUS = 1;
-export const OVERCLOCK_BONUS_PER_NEIGHBOR = 1;
+export function rulesFor(players: number): PlayerCountRule {
+  const r = PLAYER_COUNT_RULES[players];
+  if (!r) throw new Error(`${players}인 규칙이 없습니다`);
+  return r;
+}
 
 export const CONSTANTS = {
   MIN_PLAYERS,
   MAX_PLAYERS,
-  STARTING_ENERGY,
-  CORE_BASE_INCOME,
-  ENERGY_CAP,
-  CORE_HP,
-  CORE_SIGHT,
-  INITIAL_HAND_SIZE,
-  HAND_LIMIT,
-  DRAW_PER_TURN,
-  BASE_DECK_SIZE,
-  DECK_SIZE,
-  VEIN_PRODUCTION_BONUS,
-  SCORE_PER_TERRITORY,
-  TERRITORY_RADIUS,
-  NEBULA_SIGHT_PENALTY,
-  DEBRIS_FIELD_HP_PENALTY,
-  ION_STORM_DAMAGE,
-  RELIC_SITE_SCORE_BONUS,
-  GRAVITY_RIFT_SCORE_PENALTY,
-  GUN_EMPLACEMENT_ATTACK_BONUS,
-  JAMMING_FIELD_RANGE_PENALTY,
-  KOMI_PER_SEAT,
-  INFILTRATE_RANGE,
-  REPAIR_RADIUS,
-  REPAIR_AMOUNT,
-  OVERCLOCK_RADIUS,
-  OVERCLOCK_BONUS_PER_NEIGHBOR,
+  HAND_SIZE,
+  ENTRANCE_SELF,
+  ENTRANCE_RING,
+  FERTILE_BONUS,
+  GOAL_COUNT,
+  RESERVE_BONUS,
 } as const;
 
 // ---------------------------------------------------------------------------
-// 온라인 진행 상수 (Rules.md 5.4, 2026-10-06 신설). 규칙 엔진 밖에서 서버가 쓰는 값이라
-// CONSTANTS(엔진·AI 픽스처용)에는 넣지 않는다
+// 온라인 진행 상수 (Rules.md 6.3). 규칙 엔진 밖에서 서버가 쓰는 값이라 CONSTANTS 에는 넣지 않는다
 // ---------------------------------------------------------------------------
 
-/** 방장이 고를 수 있는 턴 제한 시간(초). null = 제한 없음(비동기 턴, F005) */
+/** 방장이 고를 수 있는 차례 제한 시간(초). null = 제한 없음(비동기) */
 export const TURN_TIME_OPTIONS_SEC: readonly (number | null)[] = [60, 90, 180, null];
-/** 새 방의 기본 턴 제한 시간(초) */
+/** 새 방의 기본 차례 제한 시간(초) */
 export const DEFAULT_TURN_TIME_SEC = 90;
-/** 연속으로 이 횟수만큼 시간 초과하면 AI 가 그 좌석을 대신 둔다(직접 두기로 되찾을 수 있다) */
+/** 드래프트 픽 제한 시간 = 차례 제한의 1/3, 최소값(초) */
+export const MIN_DRAFT_TIME_SEC = 20;
+/** 연속으로 이 횟수만큼 시간 초과하면 AI 가 그 좌석을 대신 둔다 */
 export const AFK_STRIKES_FOR_AUTOPILOT = 2;
+
+export function draftTimeSec(turnTimeSec: number | null): number | null {
+  return turnTimeSec === null ? null : Math.max(MIN_DRAFT_TIME_SEC, Math.round(turnTimeSec / 3));
+}
