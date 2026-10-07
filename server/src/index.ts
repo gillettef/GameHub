@@ -11,7 +11,7 @@ import { checkAiHealth } from './ai/client.js';
 import { createAiRunner } from './game/aiTurn.js';
 import { SnapshotStore } from './persistence/snapshots.js';
 import { StatsLog, parseVitals } from './persistence/stats.js';
-import { RoomError, RoomManager, type Room } from './rooms/manager.js';
+import { RoomError, RoomManager, isCurrentFormat, type Room } from './rooms/manager.js';
 
 /**
  * 환경 변수 (scripts/dev.ps1, scripts/serve.ps1 이 넣는다):
@@ -50,8 +50,15 @@ const joinFailures = new Map<string, { count: number; until: number }>();
 const MAX_JOIN_FAILURES = 5;
 const JOIN_LOCK_MS = 5 * 60 * 1000;
 
-// F007: 서버 시작 시 스냅샷 복원
-for (const room of snapshots.loadAll()) manager.load(room);
+// F007: 서버 시작 시 스냅샷 복원. 예전 게임(우주 전투판) 형식 스냅샷은 이어 갈 수 없어 지운다
+for (const room of snapshots.loadAll()) {
+  if (!isCurrentFormat(room)) {
+    snapshots.delete(room.roomId);
+    console.log(`[server] 예전 형식 스냅샷 삭제 ${room.roomId}`);
+    continue;
+  }
+  manager.load(room);
+}
 console.log(`[server] 복원된 방 ${manager.list().length}개`);
 
 app.get('/api/health', async (_req, res) => {
@@ -269,17 +276,6 @@ io.on('connection', (socket: AppSocket) => {
         clearTurnTimer(roomId);
         snapshots.delete(roomId);
       }
-    } catch (err) {
-      ack(fail(err));
-    }
-  });
-
-  socket.on('room:setMap', ({ roomId, mapId }, ack) => {
-    try {
-      const playerId = requirePlayer(socket, roomId);
-      const room = manager.setMap(roomId, playerId, mapId);
-      ack({ ok: true });
-      commit(room);
     } catch (err) {
       ack(fail(err));
     }

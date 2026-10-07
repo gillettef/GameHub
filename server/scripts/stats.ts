@@ -87,24 +87,27 @@ console.log('== 재플레이 · 재방문 (목표 재방문 30% 이상) ==');
 console.log(`플레이어 ${players.length}명`);
 console.log(`2판 이상 ${pct(players.filter((p) => p.games >= 2).length, players.length)}, 다른 날 다시 옴 ${pct(players.filter((p) => p.days.size >= 2).length, players.length)}\n`);
 
-// --- 종족·좌석 (사람이 낀 판) ---
-console.log('== 실전 종족·좌석 승률 (정상 종료 판, 1위 기준) ==');
-const raceWins = new Map<string, [number, number]>();
-const seatWins = new Map<number, [number, number]>();
+// --- 종·좌석 ---
+console.log('== 실전 종·좌석 승률 (정상 종료 판, 1위 기준) ==');
+const speciesWins = new Map<string, [number, number]>();
+const seatWins = new Map<string, [number, number]>();
 for (const g of finished) {
   for (const s of g.seats) {
-    const r = raceWins.get(s.race ?? '?') ?? [0, 0];
-    r[0]++;
-    if (s.rank === 1) r[1]++;
-    raceWins.set(s.race ?? '?', r);
-    const t = seatWins.get(s.seat) ?? [0, 0];
+    for (const sp of s.drafted ?? []) {
+      const r = speciesWins.get(sp) ?? [0, 0];
+      r[0]++;
+      if (s.rank === 1) r[1]++;
+      speciesWins.set(sp, r);
+    }
+    const key = `${g.players}인 좌석 ${s.seat}`;
+    const t = seatWins.get(key) ?? [0, 0];
     t[0]++;
     if (s.rank === 1) t[1]++;
-    seatWins.set(s.seat, t);
+    seatWins.set(key, t);
   }
 }
-for (const [race, [n, w]] of raceWins) console.log(`${race.padEnd(10)} ${String(n).padStart(4)}판 승률 ${pct(w, n)}`);
-for (const [seat, [n, w]] of [...seatWins].sort((a, b) => a[0] - b[0])) console.log(`좌석 ${seat}      ${String(n).padStart(4)}판 승률 ${pct(w, n)}`);
+for (const [sp, [n, w]] of [...speciesWins].sort((a, b) => b[1][1] / b[1][0] - a[1][1] / a[1][0])) console.log(`${sp.padEnd(10)} ${String(n).padStart(4)}회 승률 ${pct(w, n)}`);
+for (const [key, [n, w]] of [...seatWins].sort()) console.log(`${key.padEnd(10)} ${String(n).padStart(4)}판 승률 ${pct(w, n)}`);
 console.log('');
 
 // --- 웹 성능 ---
