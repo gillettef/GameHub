@@ -121,6 +121,9 @@ export function playCramTurn(state: GameState, playerId: string): void {
 // 50절: 공개된 구역 카드 중 내가 가져갈 수 있는 카드의 가치. 이미 누가 들어간 구역이면 먼저 온 사람이 가장 좋은 카드를 가져간다고 보고 남는 카드로 계산한다
 function zoneOutlook(state: GameState, strategy: BotStrategy, player: PlayerGameState, activityId: ActivityId): number {
   if (activityId === "tournament") return 0;
+  // 마도서가 없는 규칙(51절)에서 주문 대결의 가치 = 이길 확률·지목 부담을 감안한 0.35 × (승리 보상 + 주문력 성장)
+  if (activityId === "duel" && !BALANCE.duelGrimoires)
+    return 0.35 * (effectValue(state, strategy, BALANCE.duelWinReward) + effectValue(state, strategy, { stats: { spellPower: BALANCE.growthAmount } }));
   const cards = state.hidden.offers[activityId] ?? [];
   const valueOf = (card: (typeof cards)[number]): number => {
     if (activityId === "creature") return creatureValue(state, strategy, player, card as CreatureCard);

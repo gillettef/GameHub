@@ -1,7 +1,7 @@
 // 플레이테스트 중 조정할 밸런스 수치 모음 (notes/기획_정리.md 8절의 "플레이테스트 후 조정" 항목).
 // 값을 바꾸면 엔진 전체에 반영되며, 시뮬레이션 스크립트(server/scripts/simulate.ts)가 이 객체를 직접 바꿔 비교합니다.
 // 카드 종류별 수치(수업/장비/탐험/마도서/마법생물)는 각 *Cards.ts / creatures.ts에서 조정합니다.
-import type { ActivityId, AwardCategory, KeptToken, StatKey } from "./types.js";
+import type { ActivityId, AwardCategory, CardEffect, KeptToken, StatKey } from "./types.js";
 
 export const BALANCE = {
   // 라운드 구조 — 기획 확정값(12라운드, 6라운드 후 중간고사). 바꾸면 클라이언트 표시(12/12)와도 맞춰야 함
@@ -26,6 +26,8 @@ export const BALANCE = {
   starterRule: "rotate" as "charm" | "charmTokens" | "charmPlusTokens" | "rotate",
   // 정규수업의 수업카드를 선이 마지막에 고르는가 (false면 정규수업도 선부터 시계방향, 49절)
   classPickStarterLast: false,
+  // 자율활동 선택 순서 (51절 실험): "same" = 수업과 같이 선부터 시계방향 / "reverse" = 수업의 반대(선의 오른쪽부터 반시계방향, 선이 마지막)
+  activityOrder: "same" as "same" | "reverse",
   // 시험 순위별 학점 (1위, 2위, 그 이하는 마지막 값)
   examCredits: [3, 2, 1],
   // 2주차(정규수업): 인원수 + classMarketExtra 장을 공개하고, 선부터 시계방향으로 1장씩 가져간다.
@@ -50,6 +52,9 @@ export const BALANCE = {
   // 이번 달 활동 카드 미리 공개 (50절): 시험 달이 아닌 달의 1주차에 마법생물·연구실·비밀의 방·주문 대결 구역의 카드를 모두 공개한다.
   // 수업 선택이 이번 달 활동 계획이 되고, 활동 선택이 공개된 카드의 선점 경쟁이 된다 (false면 예전처럼 처음 들어온 사람이 연다)
   revealOffersAtMonthStart: true,
+  // 마도서 (51절 단순화로 폐지): false면 주문 대결 승자는 마도서 대신 duelWinReward를 받는다 (주문력 성장 +1은 그대로)
+  duelGrimoires: false,
+  duelWinReward: { credit: 1 } as CardEffect,
   // 최종 점수 = 졸업식 시상 점수의 합 (46절, 예전 "주문력 × 학점 + 마법생물 세트 + 부문상"을 대신한다).
   // 부문마다 값이 큰 순서로 순위를 매겨 rankPoints[순위-1]점을 준다 (동점은 같은 순위·같은 점수, 값이 0이면 점수 없음, 순위가 표 밖이면 0점).
   // 마법생물 부문의 값 = 마리 수 + 완성한 세트(하늘·육지·바다 1장씩) 수
