@@ -87,8 +87,8 @@ export interface PlayerSummary {
   score: Score | null;
 }
 
-export function buildPlayerSummaries(state: MaskedGameState): PlayerSummary[] {
-  const scores = state.board ? computeScores(asState(state)) : null;
+export function buildPlayerSummaries(state: MaskedGameState, precomputed?: Record<PlayerId, Score> | null): PlayerSummary[] {
+  const scores = precomputed !== undefined ? precomputed : state.board ? computeScores(asState(state)) : null;
   return [...state.players]
     .sort((a, b) => a.seat - b.seat)
     .map((p) => ({

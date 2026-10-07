@@ -23,6 +23,13 @@ export function useGameCues(): void {
   const viewerId = useGameStore((s) => s.viewerId);
   const mode = useGameStore((s) => s.mode);
   const handoffPending = useGameStore((s) => s.handoffPending);
+  // 핫시트: 기기 넘김 화면이 닫히는 순간 다음 사람에게 차례 소리를 낸다
+  const wasHandoff = useRef(false);
+  useEffect(() => {
+    if (wasHandoff.current && !handoffPending && mode === 'hotseat') playCue('turn');
+    wasHandoff.current = handoffPending;
+  }, [handoffPending, mode]);
+
   const prev = useRef<{ logLength: number; turn: number; roomId: string; current: string | null } | null>(null);
 
   useEffect(() => {

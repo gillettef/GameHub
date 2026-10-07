@@ -3,8 +3,11 @@ import { selectIsMyTurn, selectState, selectViewerId, useGameStore } from '../st
 import { SpeciesCard } from './SpeciesCard';
 import styles from './Hand.module.css';
 
-/** 내 손패 (최대 3장). 카드를 누르면 확대 모달에서 고른다. 상대 차례에도 보기는 된다 */
-export const Hand = memo(function Hand() {
+/**
+ * 내 손패 (최대 3장). 카드를 누르면 확대 모달에서 고른다. 상대 차례에도 보기는 된다.
+ * plantable: 손패 카드별 심을 칸 수 (BoardTab 이 계산). 0 이면 음영
+ */
+export const Hand = memo(function Hand({ plantable = [] }: { plantable?: number[] }) {
   const state = useGameStore(selectState);
   const viewerId = useGameStore(selectViewerId);
   const selected = useGameStore((s) => s.selectedHandIndex);
@@ -19,9 +22,10 @@ export const Hand = memo(function Hand() {
           <SpeciesCard
             species={species}
             variant="mini"
+            compact
             seat={me.seat}
             selected={selected === index}
-            dimmed={!isMyTurn}
+            dimmed={!isMyTurn || plantable[index] === 0}
             onClick={() => openCardModal({ kind: 'hand', index })}
           />
         </div>

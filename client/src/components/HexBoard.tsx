@@ -1,10 +1,13 @@
-import { memo, useMemo, type CSSProperties } from 'react';
+import { memo, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { getSpecies } from '@rootbound/shared';
 import type { CellView, PlantPreview } from '../game/derived';
 import { cx } from '../lib/cx';
 import styles from './HexBoard.module.css';
 
 const SQRT3 = Math.sqrt(3);
+/** 화면 글자 최소 크기(px, CLAUDE.md 모바일 우선) */
+const MIN_TEXT_PX = 12;
+
 /** 축 좌표 → 픽셀 (pointy-top, 반지름 1) */
 const px = (q: number, r: number) => ({ x: SQRT3 * (q + r / 2), y: 1.5 * r });
 const hexPoints = (scale: number) =>
@@ -40,23 +43,45 @@ interface HexBoardProps {
  * 칸 채움: 지형 → 땅 주인 좌석색(옅게) → 식물(좌석색 원 + 종 첫 글자) / 입구(집 모양) / 씨앗(점).
  */
 export const HexBoard = memo(function HexBoard({ cells, legal, seedLegal, pendingKey, seedKey, preview, viewerSeat, showInfluence, onCellClick }: HexBoardProps) {
-  const viewBox = useMemo(() => {
+  const box = useMemo(() => {
     const pts = cells.map((c) => px(c.q, c.r));
     const xs = pts.map((p) => p.x);
     const ys = pts.map((p) => p.y);
     const minX = Math.min(...xs) - 1;
     const minY = Math.min(...ys) - 1.1;
-    return `${minX.toFixed(2)} ${minY.toFixed(2)} ${(Math.max(...xs) + 1 - minX).toFixed(2)} ${(Math.max(...ys) + 1.1 - minY).toFixed(2)}`;
+    return { minX, minY, w: Math.max(...xs) + 1 - minX, h: Math.max(...ys) + 1.1 - minY };
   }, [cells]);
+  const viewBox = `${box.minX.toFixed(2)} ${box.minY.toFixed(2)} ${box.w.toFixed(2)} ${box.h.toFixed(2)}`;
+
+  // 화면에서 보드 1단위가 몇 픽셀인지 재서, 글자가 12px 밑으로 내려가지 않게 SVG 글자 크기에 하한을 둔다
+  const svgRef = useRef<SVGSVGElement>(null);
+  const [ppu, setPpu] = useState(20);
+  useEffect(() => {
+    const el = svgRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const measure = () => {
+      const r = el.getBoundingClientRect();
+      if (r.width > 0 && r.height > 0) setPpu(Math.min(r.width / box.w, r.height / box.h));
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [box.w, box.h]);
+  const fontFloor = MIN_TEXT_PX / ppu;
+  const plantFont = Math.max(0.62, fontFloor);
+  const inflFont = Math.max(0.7, fontFloor);
+  const smallFont = Math.max(0.5, fontFloor);
 
   return (
-    <svg className={styles.board} viewBox={viewBox} preserveAspectRatio="xMidYMid meet" role="grid" aria-label="정원 보드">
+    <svg ref={svgRef} className={styles.board} viewBox={viewBox} preserveAspectRatio="xMidYMid meet" role="group" aria-label="정원 보드">
       {cells.map((c) => {
         const { x, y } = px(c.q, c.r);
         const flipTo = preview?.flips.get(c.key);
         const touched = preview?.touched.get(c.key);
         const isLegal = legal.has(c.key);
         const isSeedLegal = seedLegal?.has(c.key) ?? false;
+        const interactive = isLegal || isSeedLegal;
         const ownerStyle = c.owner >= 0 ? ({ '--owner': `var(--color-seat-${c.owner})` } as CSSProperties) : undefined;
         const mine = c.influence[viewerSeat] ?? 0;
         const rival = Math.max(0, ...c.influence.filter((_, i) => i !== viewerSeat));
@@ -67,7 +92,19 @@ export const HexBoard = memo(function HexBoard({ cells, legal, seedLegal, pendin
             transform={`translate(${x.toFixed(3)} ${y.toFixed(3)})`}
             className={cx(styles.cell, (isLegal || isSeedLegal) && styles.clickable)}
             onClick={() => onCellClick(c.q, c.r)}
-            role="gridcell"
+            // 심을 수 있는 칸·씨앗 칸만 키보드로 고를 수 있게 한다(탭 정지 수를 줄인다)
+            role={interactive ? 'button' : undefined}
+            tabIndex={interactive ? 0 : undefined}
+            onKeyDown={
+              interactive
+                ? (e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      onCellClick(c.q, c.r);
+                    }
+                  }
+                : undefined
+            }
             aria-label={label}
           >
             <polygon points={HEX} className={cx(styles.ground, styles[c.terrain])} />
@@ -83,7 +120,7 @@ export const HexBoard = memo(function HexBoard({ cells, legal, seedLegal, pendin
             {c.plant && (
               <g key={c.plant.id} className={styles.plant} style={{ '--seat': `var(--color-seat-${c.plantSeat})` } as CSSProperties}>
                 <circle r={0.58} />
-                <text textAnchor="middle" dominantBaseline="central">
+                <text textAnchor="middle" dominantBaseline="central" style={{ fontSize: plantFont }}>
                   {getSpecies(c.plant.species).name.slice(0, 1)}
                 </text>
               </g>
@@ -94,7 +131,7 @@ export const HexBoard = memo(function HexBoard({ cells, legal, seedLegal, pendin
             {pendingKey === c.key && <polygon points={HEX} className={styles.pending} />}
             {seedKey === c.key && <circle r={0.3} className={styles.seedPending} />}
             {touched !== undefined && !c.plant ? (
-              <text className={styles.infl} textAnchor="middle" dominantBaseline="central" y={c.entranceSeat >= 0 ? 0.62 : 0}>
+              <text className={styles.infl} textAnchor="middle" dominantBaseline="central" y={c.entranceSeat >= 0 ? 0.62 : 0} style={{ fontSize: inflFont }}>
                 {touched}
               </text>
             ) : (
@@ -102,7 +139,7 @@ export const HexBoard = memo(function HexBoard({ cells, legal, seedLegal, pendin
               !c.plant &&
               c.entranceSeat < 0 &&
               (mine > 0 || rival > 0) && (
-                <text className={styles.inflSmall} textAnchor="middle" dominantBaseline="central">
+                <text className={styles.inflSmall} textAnchor="middle" dominantBaseline="central" style={{ fontSize: smallFont }}>
                   {mine}:{rival}
                 </text>
               )

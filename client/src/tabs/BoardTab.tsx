@@ -1,5 +1,5 @@
 import { memo, useCallback, useMemo } from 'react';
-import { hasAnyPlant, legalSeedCells, posKey } from '@rootbound/shared';
+import { computeInfluence, legalPlantCells, legalSeedCells, posKey } from '@rootbound/shared';
 import { DraftPanel } from '../components/DraftPanel';
 import { GoalList } from '../components/GoalList';
 import { Hand } from '../components/Hand';
@@ -18,6 +18,7 @@ export const BoardTab = memo(function BoardTab() {
   const viewerId = useGameStore(selectViewerId);
   const isMyTurn = useGameStore(selectIsMyTurn);
   const species = useGameStore(selectSelectedSpecies);
+  const selectedIndex = useGameStore((s) => s.selectedHandIndex);
   const pendingPos = useGameStore((s) => s.pendingPos);
   const pendingDirection = useGameStore((s) => s.pendingDirection);
   const pendingSeed = useGameStore((s) => s.pendingSeed);
@@ -27,7 +28,18 @@ export const BoardTab = memo(function BoardTab() {
   const tapCell = useGameStore((s) => s.tapCell);
 
   const cells = useMemo(() => (state ? buildCells(state) : []), [state]);
-  const legal = useMemo(() => (state && isMyTurn ? legalKeys(state, viewerId, species) : new Set<string>()), [state, isMyTurn, viewerId, species]);
+  const legal = useMemo(
+    () => (state && isMyTurn && !seedPicking ? legalKeys(state, viewerId, species) : new Set<string>()),
+    [state, isMyTurn, viewerId, species, seedPicking],
+  );
+  // 손패 카드마다 심을 칸 수 (0 이면 그 카드는 음영 + 고르기 잠금). 상태가 바뀔 때만 계산한다
+  const plantable = useMemo(() => {
+    if (!state?.board || !viewerId || state.phase !== 'playing') return [] as number[];
+    const s = asState(state);
+    const inf = computeInfluence(s);
+    const hand = state.players.find((p) => p.id === viewerId)?.hand ?? [];
+    return hand.map((sp) => legalPlantCells(s, viewerId, sp, inf).length);
+  }, [state, viewerId]);
   const seedLegal = useMemo(
     () => (state?.board && seedPicking && pendingPos ? new Set(legalSeedCells(asState(state), pendingPos).map(posKey)) : undefined),
     [state, seedPicking, pendingPos],
@@ -44,7 +56,8 @@ export const BoardTab = memo(function BoardTab() {
 
   const me = state.players.find((p) => p.id === viewerId);
   const current = state.players.find((p) => p.id === state.currentPlayerId);
-  const stuck = isMyTurn && state.phase === 'playing' && !hasAnyPlant(asState(state), viewerId);
+  const stuck = isMyTurn && state.phase === 'playing' && plantable.length > 0 && plantable.every((n) => n === 0);
+  const selectedDead = selectedIndex !== null && plantable[selectedIndex] === 0;
   const hint =
     state.phase === 'finished'
       ? '게임이 끝났습니다'
@@ -54,7 +67,9 @@ export const BoardTab = memo(function BoardTab() {
           ? '심을 칸이 없습니다. 카드를 눌러 한 장 버리세요'
           : !species
             ? '손패에서 카드를 고르세요'
-            : !pendingPos
+            : selectedDead
+              ? '이 카드는 지금 심을 칸이 없습니다. 다른 카드를 고르세요'
+              : !pendingPos
               ? '밝게 빛나는 칸에 심을 수 있습니다'
               : '결과를 보고 심기를 누르세요';
 
@@ -80,7 +95,7 @@ export const BoardTab = memo(function BoardTab() {
         {isMyTurn && pendingPos ? <PlantBar preview={preview} /> : null}
         {state.phase === 'playing' && (
           <div className={styles.handPanel}>
-            <Hand />
+            <Hand plantable={plantable} />
           </div>
         )}
         <div className={styles.turnBar}>
