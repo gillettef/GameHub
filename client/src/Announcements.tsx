@@ -66,7 +66,7 @@ function cleanupBanner(prev: GameState): Announcement {
     kind: "banner",
     icon: "bag",
     title: `${prev.round}개월 4주차 · 정리`,
-    subtitle: "쓰고 남은 기운은 다음 달로 이어져요. 임시 능력치는 사라지고, 다음 달 선은 시계방향으로 한 칸 넘어가요",
+    subtitle: "쓰고 남은 기운은 다음 달로 이어져요. 다음 달 선은 시계방향으로 한 칸 넘어가요",
   });
 }
 

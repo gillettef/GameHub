@@ -259,7 +259,8 @@ function checkTextOf(card: ExplorationCard, round: number): string | undefined {
 
 // 탐험 카드/연구 카드 효과를 플레이어에게 적용한다
 function applyCardEffect(state: GameState, player: PlayerGameState, effect: CardEffect): void {
-  for (const [kind, amount] of Object.entries(effect.tokens ?? {})) player[TOKEN_FIELD[kind as KeptToken]] += amount;
+  // 기운은 바로 받거나 잃는다 (0 아래로는 내려가지 않는다, 51절)
+  for (const [kind, amount] of Object.entries(effect.tokens ?? {})) player[TOKEN_FIELD[kind as KeptToken]] = Math.max(0, player[TOKEN_FIELD[kind as KeptToken]] + amount);
   for (const [stat, amount] of Object.entries(effect.stats ?? {})) player[stat as StatKey] += amount;
   for (const [stat, amount] of Object.entries(effect.tempStats ?? {})) {
     player.tempBoosts[stat as StatKey] = (player.tempBoosts[stat as StatKey] ?? 0) + amount;
@@ -494,7 +495,7 @@ function beginRound(state: GameState): void {
     if (BALANCE.revealOffersAtMonthStart) {
       state.hidden.offers = {};
       state.activityOffers = {};
-      for (const activityId of ["creature", "lab", "exploration", "duel"] as ActivityId[]) openOffer(state, activityId);
+      for (const activityId of (BALANCE.duelGrimoires ? ["creature", "lab", "exploration", "duel"] : ["creature", "lab", "exploration"]) as ActivityId[]) openOffer(state, activityId);
     }
     beginClassPhase(state);
   }
@@ -639,7 +640,8 @@ function beginActivityPhase(state: GameState): void {
   state.phase = "activity";
   state.activitySlots = emptySlots();
   state.activityStage = "choose";
-  state.activityOrder = orderFromStarter(state);
+  const fromStarter = orderFromStarter(state);
+  state.activityOrder = BALANCE.activityOrder === "reverse" ? [...fromStarter].reverse() : fromStarter;
   state.activityTurnPointer = 0;
   state.activityChoices = [];
   state.activityResolvePointer = 0;
@@ -808,7 +810,7 @@ function resolveLab(state: GameState, ctx: Extract<RollContext, { kind: "lab" }>
   if (success) {
     applyCardEffect(state, player, lab.effect);
     // 시험 카드는 다음 시험까지 보관하고, 나머지는 효과를 받는 즉시 버림 더미로
-    if (lab.kind === "exam") player.equipment.push(lab);
+    if (lab.kind === "exam" && lab.effect.tempStats) player.equipment.push(lab); // 임시 능력치 카드만 시험까지 보관한다 (51절 이후 기본 카드에는 없다)
     else state.labPile.discard.push(lab);
     log(state, `${player.name}: 연구 카드 "${lab.name}" 실험 성공! (${text}) ${lab.summary}`);
     grow(state, player, "lab", "intelligence");
@@ -904,6 +906,12 @@ function resolveDuel(state: GameState, ctx: Extract<RollContext, { kind: "duel" 
   if (winCredit > 0) {
     winner.credit += winCredit;
     log(state, `${winner.name}: ${state.news!.name} 우승 보너스 학점 +${winCredit}`);
+  }
+  // 마도서를 없앤 규칙(51절)에서는 이긴 사람이 정해진 보상(기본 학점 +1)을 받는다
+  if (!BALANCE.duelGrimoires) {
+    applyCardEffect(state, winner, BALANCE.duelWinReward);
+    log(state, `${winner.name}: 주문 대결 승리 보상 ${describeEffect(BALANCE.duelWinReward)}`);
+    return;
   }
   // 이긴 사람이 구역에 공개된 마도서 중 1장을 가져간다 (한 장만 남았으면 자동으로)
   const rewards = offerCards(state, "duel");
@@ -1181,7 +1189,7 @@ function startActivity(state: GameState, choice: ActivityChoice): void {
     }
     case "duel": {
       // 주문 대결은 이긴 사람이 마도서를 고른다: 처음 도전한 사람이 카드를 열어 둔다
-      if (!state.hidden.offers.duel) openOffer(state, "duel");
+      if (BALANCE.duelGrimoires && !state.hidden.offers.duel) openOffer(state, "duel");
       startDuel(state, player, state.players[choice.targetPlayerId!]);
       break;
     }
@@ -1426,7 +1434,7 @@ function resolveDirectional(state: GameState, ctx: Extract<RollContext, { kind: 
   } else if (ctx.activity === "lab") {
     const lab = ctx.card as LabCard;
     const player = state.players[ctx.playerIds[0]];
-    if (outcome.effect === lab.effect && lab.kind === "exam") player.equipment.push(lab);
+    if (outcome.effect === lab.effect && lab.kind === "exam" && lab.effect.tempStats) player.equipment.push(lab);
     else state.labPile.discard.push(lab);
     log(state, `${player.name}: 연구 카드 "${lab.name}" 주사위 ${face} → ${outcome.label}`);
   } else {
