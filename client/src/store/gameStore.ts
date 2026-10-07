@@ -10,7 +10,8 @@
 import { create } from 'zustand';
 import type { Action, CardId, MaskedGameState, PlayerId, RoomInfo, RoomSnapshot } from '@astraltab/shared';
 import { maskState, validatePlacement } from '@astraltab/shared';
-import { applyHotseatAction, createHotseatGame, type HotseatConfig } from '../game/hotseat';
+import { applyHotseatAction, createHotseatGame, hotseatPlayerId, type HotseatConfig } from '../game/hotseat';
+import { tutorialBotAction } from '../game/tutorialBot';
 import { api } from '../socket/client';
 
 export type Mode = 'hotseat' | 'online';
@@ -34,6 +35,8 @@ interface GameStore {
   state: MaskedGameState | null;
   /** 온라인 방 정보. 핫시트는 null */
   room: RoomInfo | null;
+  /** room 을 받은 내 시계 시각. 턴 제한 시간 표시가 서버 시계와의 차이를 보정한다(lib/turnClock.ts) */
+  roomReceivedAt: number;
   /** 지금 화면을 보는 플레이어. 핫시트는 턴 플레이어, 온라인은 나 */
   viewerId: PlayerId | null;
   connection: Connection;
@@ -60,8 +63,14 @@ interface GameStore {
   handoffPending: boolean;
   /** 온라인: 서버 응답을 기다리는 중 (연타 방지) */
   sending: boolean;
+  /** 핫시트에서 브라우저 봇이 두는 좌석 (튜토리얼). 이 좌석 차례에는 기기 넘김 없이 봇이 자동으로 둔다 */
+  botIds: PlayerId[];
+  /** 튜토리얼 판인가 (TutorialCoach 표시) */
+  tutorial: boolean;
 
   startHotseat: (config: HotseatConfig) => void;
+  /** 튜토리얼: 나(좌석 0) vs 연습 봇(좌석 1), 고정 맵·시드 */
+  startTutorial: (nickname: string) => void;
   /** 온라인: 서버 스냅샷으로 덮어쓰기 */
   applySnapshot: (snapshot: RoomSnapshot) => void;
   setConnection: (connection: Connection) => void;
@@ -91,6 +100,7 @@ const EMPTY = {
   mode: null,
   state: null,
   room: null,
+  roomReceivedAt: 0,
   viewerId: null,
   connection: 'idle' as Connection,
   tab: 'board' as TabId,
@@ -103,7 +113,15 @@ const EMPTY = {
   cardModal: null as CardModalTarget | null,
   handoffPending: false,
   sending: false,
+  botIds: [] as PlayerId[],
+  tutorial: false,
 };
+
+/** 튜토리얼 고정 설정: 2인 기본 맵, 첫 손패가 배치하기 좋은 시드 */
+export const TUTORIAL_MAP_ID = 'binary-star';
+export const TUTORIAL_SEED = 20261006;
+const BOT_DELAY_MS = 900;
+let botTimer: number | null = null;
 
 export const useGameStore = create<GameStore>((set, get) => ({
   ...EMPTY,
@@ -119,12 +137,32 @@ export const useGameStore = create<GameStore>((set, get) => ({
     });
   },
 
+  startTutorial: (nickname) => {
+    const state = createHotseatGame({
+      mapId: TUTORIAL_MAP_ID,
+      seed: TUTORIAL_SEED,
+      players: [
+        { nickname: nickname.trim() || '나', race: 'coalition' },
+        { nickname: '연습 봇', race: 'coalition' },
+      ],
+    });
+    set({
+      ...EMPTY,
+      mode: 'hotseat',
+      state: maskState(state, null),
+      viewerId: hotseatPlayerId(0),
+      botIds: [hotseatPlayerId(1)],
+      tutorial: true,
+    });
+  },
+
   applySnapshot: ({ room, state, you }) => {
     const prev = get();
     const turnChanged = prev.state?.turn !== state.turn || prev.state?.phase !== state.phase;
     set({
       mode: 'online',
       room,
+      roomReceivedAt: Date.now(),
       state,
       viewerId: you,
       connection: 'connected',
@@ -162,11 +200,15 @@ export const useGameStore = create<GameStore>((set, get) => ({
       return;
     }
     const next = result.state;
-    const viewerChanged = next.currentPlayerId !== null && next.currentPlayerId !== get().viewerId;
+    const { botIds } = get();
+    const botTurn = next.phase === 'playing' && next.currentPlayerId !== null && botIds.includes(next.currentPlayerId);
+    // 봇 좌석 차례에는 화면 주인(사람)이 그대로 보고 있는다 — 기기 넘김도 없다
+    const viewerChanged = !botTurn && !botIds.includes(action.playerId) ? next.currentPlayerId !== null && next.currentPlayerId !== get().viewerId : false;
     const turnChanged = next.turn !== state.turn || next.phase !== state.phase;
+    const nextViewer = botIds.length > 0 ? get().viewerId : (next.currentPlayerId ?? get().viewerId);
     set({
       state: maskState(next, null),
-      viewerId: next.currentPlayerId ?? get().viewerId,
+      viewerId: nextViewer,
       selectedHandIndex: turnChanged || action.type === 'PLACE' ? null : get().selectedHandIndex,
       pendingPos: null,
       discardMode: turnChanged ? false : get().discardMode,
@@ -175,6 +217,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       cardModal: null,
       handoffPending: viewerChanged && next.phase === 'playing',
     });
+    if (botTurn) scheduleBot();
   },
 
   placeAt: (x, y) => {
@@ -259,8 +302,24 @@ export const useGameStore = create<GameStore>((set, get) => ({
   setNotice: (message) => set({ notice: message }),
   clearNotice: () => set({ notice: null }),
   dismissResult: () => set({ resultDismissed: true }),
-  reset: () => set({ ...EMPTY }),
+  reset: () => {
+    if (botTimer !== null) window.clearTimeout(botTimer);
+    botTimer = null;
+    set({ ...EMPTY });
+  },
 }));
+
+/** 봇 좌석 차례면 잠시 뒤 한 수를 둔다. 배치 후에도 봇 차례가 이어지면(턴 종료 전) dispatch 가 다시 부른다 */
+function scheduleBot(): void {
+  if (botTimer !== null) window.clearTimeout(botTimer);
+  botTimer = window.setTimeout(() => {
+    botTimer = null;
+    const { state, botIds, dispatch } = useGameStore.getState();
+    const cur = state?.currentPlayerId;
+    if (!state || state.phase !== 'playing' || !cur || !botIds.includes(cur)) return;
+    dispatch(tutorialBotAction(state as unknown as Parameters<typeof tutorialBotAction>[0], cur));
+  }, BOT_DELAY_MS);
+}
 
 // ---------------------------------------------------------------------------
 // 선택자 (컴포넌트는 필요한 조각만 구독한다)

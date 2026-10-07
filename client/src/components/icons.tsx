@@ -79,3 +79,18 @@ export const SkullIcon = ({ size = 16, className }: IconProps) =>
 /** 확대 */
 export const ZoomIcon = ({ size = 18, className }: IconProps) =>
   svg(size, className, <><circle cx="11" cy="11" r="6.5" /><path d="m20 20-4.5-4.5M11 8v6M8 11h6" /></>);
+/** 효과음 켬: 스피커 + 음파 */
+export const SoundIcon = ({ size = 20, className }: IconProps) =>
+  svg(size, className, <><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z" /><path d="M15.5 9a4 4 0 0 1 0 6" /><path d="M18 6.5a7.5 7.5 0 0 1 0 11" /></>);
+/** 효과음 끔: 스피커 + × */
+export const MuteIcon = ({ size = 20, className }: IconProps) =>
+  svg(size, className, <><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z" /><path d="m16 9.5 5 5M21 9.5l-5 5" /></>);
+/** 알림: 종 */
+export const BellIcon = ({ size = 20, className }: IconProps) =>
+  svg(size, className, <><path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 1.5h-15z" /><path d="M10 20.5a2 2 0 0 0 4 0" /></>);
+/** 턴 제한 시간: 스톱워치 */
+export const TimerIcon = ({ size = 16, className }: IconProps) =>
+  svg(size, className, <><circle cx="12" cy="13.5" r="7.5" /><path d="M12 9.5v4l2.5 2" /><path d="M9.5 2.5h5" /></>);
+/** 튜토리얼: 학사모 */
+export const LearnIcon = ({ size = 20, className }: IconProps) =>
+  svg(size, className, <><path d="m2.5 9.5 9.5-5 9.5 5-9.5 5z" /><path d="M6.5 11.5v4.5c3 2.5 8 2.5 11 0v-4.5" /><path d="M21.5 9.5v5" /></>);

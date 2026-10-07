@@ -2,17 +2,19 @@
  * 아주 작은 경로 라우터 (의존성 없음). 경로:
  *  /            랜딩 (방 만들기 · 참여 · 핫시트)
  *  /hotseat     같은 기기에서 번갈아 두기 (Phase 1 설정 화면)
+ *  /tutorial    연습 봇과 두는 첫 판 튜토리얼
  *  /room/:id    온라인 방 (로비 → 게임)
  * 서버(CLIENT_DIST)와 Vite dev 모두 모든 경로를 index.html 로 돌려준다.
  */
 import { useEffect, useState } from 'react';
 
-export type Route = { name: 'landing' } | { name: 'hotseat' } | { name: 'room'; roomId: string } | { name: 'unknown'; path: string };
+export type Route = { name: 'landing' } | { name: 'hotseat' } | { name: 'tutorial' } | { name: 'room'; roomId: string } | { name: 'unknown'; path: string };
 
 export function parseRoute(path: string): Route {
   const clean = path.replace(/\/+$/, '') || '/';
   if (clean === '/') return { name: 'landing' };
   if (clean === '/hotseat') return { name: 'hotseat' };
+  if (clean === '/tutorial') return { name: 'tutorial' };
   const m = clean.match(/^\/room\/([A-Za-z0-9_-]+)$/);
   if (m && m[1]) return { name: 'room', roomId: m[1] };
   return { name: 'unknown', path: clean };

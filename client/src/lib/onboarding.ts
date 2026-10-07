@@ -39,3 +39,14 @@ export function hasSeenPlacementPreview(): boolean {
 export function markPreviewHintSeen(): void {
   write(PLACEMENT_PREVIEW_SEEN_KEY, '1');
 }
+
+const TUTORIAL_SEEN_KEY = 'astraltab.seenTutorial';
+
+/** 튜토리얼을 끝까지 봤거나 닫았는가. 아직이면 랜딩에서 튜토리얼을 맨 위에 권한다 */
+export function hasSeenTutorial(): boolean {
+  return read(TUTORIAL_SEEN_KEY) === '1';
+}
+
+export function markTutorialSeen(): void {
+  write(TUTORIAL_SEEN_KEY, '1');
+}

@@ -43,6 +43,7 @@
 - 화면은 모바일 우선이다: 본문 14px/최소 12px, `max-width:720px` 에서 `BoardTab`·`Hand`·`StatusTab`·`GamePage` 헤더가 레이아웃을 바꾼다. 자세한 내용은 아래 "모바일 우선" 절.
 - **Phase 2 온라인 멀티플레이 + AI 좌석**이 구현됐다 (F001~F007, F026, F027, F030). 서버 `rooms/manager.ts`(방 생성·초대 id·비밀번호·좌석·맵 변경·AI 추가, 순수 로직 + Vitest 9개), `persistence/snapshots.ts`(`server/data/<env>/rooms/<roomId>.json`, 시작 시 복원), `game/aiTurn.ts`(AI 턴마다 Python `/decide` 호출 → 엔진 검증 → PASS 폴백), `index.ts`(Socket.io ack 이벤트, 플레이어별 `maskState` 브로드캐스트). 이벤트 계약은 `shared/src/types/events.ts`, 가림 함수는 `shared/src/mask.ts`.
 - 클라이언트 경로: `/` 랜딩(방 만들기·초대 링크 참여·핫시트), `/hotseat` 핫시트 설정→게임, `/room/:id` 온라인 로비→게임. 소켓 어댑터 `client/src/socket/client.ts`, 스토어는 `mode: hotseat | online` 으로 같은 액션을 쓴다. 재접속은 localStorage `playerToken` (`client/src/lib/identity.ts`).
+- **2026-10-06 완성도 개선**: (1) 온라인 **턴 제한 시간**(Rules.md 5.4, 방장이 로비에서 60초/90초/3분/없음, 기본 90초) — 서버 `RoomManager.deadline/timeoutTurn` + `index.ts` 의 방별 타이머가 시간 초과 시 자동 PASS, 2번 연속이면 **AI 대리**(`Room.autopilot`, AI 실행기는 `manager.isAutoTurn(room)` 로 판단), 받아들여진 직접 행동·`game:resume`("직접 두기")으로만 해제(재접속으로는 안 풀림, 복원 시 턴 시계 재시작). 소켓 요청은 `socket.use` 가 (객체 payload, ack 함수) 모양을 먼저 검사한다. `RoomInfo` 에 `turnTimeLimitSec`·`turnDeadline`·`serverNow`·`autopilot`. 클라이언트는 `TurnTimer`(상단 메타 줄)·대리 배너. (2) **판 요약 로그** `server/data/<env>/stats/games.jsonl`(`RoomManager.takeRecord`, 방치된 판은 `abandoned`)과 웹 성능 `vitals.jsonl`(`POST /api/vitals`, `client/src/lib/vitals.ts`: FCP·LCP·액션 왕복·FPS), 집계는 `server/scripts/stats.ts`. (3) **튜토리얼** `/tutorial`: 연습 봇(`game/tutorialBot.ts`, 스토어 `botIds`/`tutorial`)과 두는 핫시트 판 + 단계 안내 `TutorialCoach`. 랜딩은 처음 온 사람에게 맨 위에 권한다(`onboarding.ts` `hasSeenTutorial`). (4) **효과음·차례 알림** `lib/cues.ts`(Web Audio 합성음, 다른 탭일 때 제목 깜빡임·브라우저 알림·진동, ⋯ 메뉴에서 켜고 끔), 사건→소리는 `game/useGameCues.ts`.
 - AI 탐색은 아직 1수 탐욕(`ai/astral_ai/search.py`). Minimax / max-n, 평가 함수 가중치(F028, F029)는 다음 작업. 로비의 자동 시작(전원 준비 시 엔진 `ready()` 가 시작)은 F002 의 "방장 시작 버튼"과 다르므로 필요하면 엔진에 START 액션을 추가한다.
 
 ---
@@ -102,10 +103,10 @@ AstralTab/
 ├── server/
 │   └── src/
 │       ├── index.ts      # Express + Socket.io 부트스트랩
-│       ├── rooms/        # 방 생성, 초대 링크, 비밀번호, 로비, 맵 선택, 좌석
+│       ├── rooms/        # 방 생성, 초대 링크, 비밀번호, 로비, 맵 선택, 좌석, 턴 제한 시간·AI 대리, 판 요약
 │       ├── game/         # 룸별 게임 루프, 액션 → engine → 손패 가린 브로드캐스트
 │       ├── ai/           # AI 서비스 HTTP 클라이언트 (타임아웃·PASS 폴백)
-│       └── persistence/  # JSON 파일 스냅샷 저장/복구 (DB 아님)
+│       └── persistence/  # JSON 파일 스냅샷 저장/복구, stats.ts(판 요약·성능 JSONL, 집계는 server/scripts/stats.ts) (DB 아님)
 ├── client/
 │   └── src/
 │       ├── pages/        # SetupPage(맵·닉네임·덱 빌딩), GamePage(헤더·탭 바), ResultOverlay
@@ -286,6 +287,7 @@ AstralTab/
 | 종족 밸런스 시뮬레이션 | `npx tsx shared/scripts/balance-sim.ts [판수]` (기본 100판). 휴리스틱 봇끼리 2인전을 자동으로 돌려 종족별 승률·평균 점수를 집계한다. 카드 수치를 바꾼 뒤 1차 스크리닝용, 최종 확정은 실제 플레이테스트로 |
 | 타입 검사 | `npx tsc --noEmit -p server` / `-p client` / `-p shared` |
 | 플레이어용 규칙 설명서 PDF 재생성 | `python scripts/build-rulebook.py` (reportlab 필요, `pip install reportlab`). Rules.md 를 바꾸면 이 스크립트의 값도 손으로 맞춰 다시 실행한다. 출력: `notes/Rule.pdf` |
+| 플레이어 지표 집계 (완수율·세션 시간·재방문·웹 성능) | `npx tsx server/scripts/stats.ts [DATA_DIR]` (기본 `server/data/prod`). 운영은 EC2에서 `cd ~/AstralTab && npx tsx server/scripts/stats.ts server/data/prod` |
 | 커밋 & 푸시 | `/commit-push` |
 
 ## 서브에이전트

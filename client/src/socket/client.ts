@@ -5,6 +5,7 @@
  */
 import { io, type Socket } from 'socket.io-client';
 import type { Ack, Action, ClientToServerEvents, JoinPayload, MapId, PlayerId, RoomId, ServerToClientEvents } from '@astraltab/shared';
+import { recordSyncRtt } from '../lib/vitals';
 
 export type AppSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
 
@@ -61,7 +62,18 @@ export const api = {
   removeAi(roomId: RoomId, playerId: PlayerId) {
     return withTimeout((done) => connectSocket().emit('room:removeAi', { roomId, playerId }, done));
   },
+  setTurnTime(roomId: RoomId, seconds: number | null) {
+    return withTimeout((done) => connectSocket().emit('room:setTurnTime', { roomId, seconds }, done));
+  },
+  resume(roomId: RoomId) {
+    return withTimeout((done) => connectSocket().emit('game:resume', { roomId }, done));
+  },
   sendAction(roomId: RoomId, action: Action) {
-    return withTimeout((done) => connectSocket().emit('game:action', { roomId, action }, done));
+    const started = performance.now();
+    return withTimeout((done) => connectSocket().emit('game:action', { roomId, action }, done)).then((res) => {
+      // 동기화 왕복 시간 표본 (F004, 웹 성능 기록 lib/vitals.ts)
+      if (res.ok) recordSyncRtt(performance.now() - started);
+      return res;
+    });
   },
 };

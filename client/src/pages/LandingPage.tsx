@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { mapsForAtLeast } from '@astraltab/shared';
 import { DockShell } from '../components/DockShell';
-import { BotIcon } from '../components/icons';
+import { BotIcon, LearnIcon } from '../components/icons';
+import { hasSeenTutorial } from '../lib/onboarding';
 import { randomMapId } from '../lib/randomPicks';
 import { getNickname, getPlayerToken, setNickname, setRoomPassword } from '../lib/identity';
 import { markQuickStart } from '../lib/quickStart';
@@ -103,6 +104,8 @@ export function LandingPage() {
         {!nickOk && nickname.length > 0 && <p className={styles.hint}>닉네임은 1~12자입니다.</p>}
       </section>
 
+      {!hasSeenTutorial() && <TutorialSection primary />}
+
       <section className={styles.sectionPrimary}>
         <h2 className={styles.h2}>AI와 바로 시작</h2>
         <p className={styles.help}>AI 상대 수를 고르면 맵·종족은 무작위로 정해지고 곧바로 대국이 시작됩니다.</p>
@@ -177,11 +180,26 @@ export function LandingPage() {
         </button>
       </section>
 
+      {hasSeenTutorial() && <TutorialSection primary={false} />}
+
       {error && (
         <p className={styles.error} role="alert">
           {error}
         </p>
       )}
     </DockShell>
+  );
+}
+
+/** 튜토리얼 입구. 처음 온 사람에게는 맨 위에 강조해서, 이미 본 사람에게는 맨 아래에 다시 보기로 둔다 */
+function TutorialSection({ primary }: { primary: boolean }) {
+  return (
+    <section className={primary ? styles.sectionPrimary : styles.section}>
+      <h2 className={styles.h2}>{primary ? '처음이세요?' : '튜토리얼 다시 보기'}</h2>
+      <p className={styles.help}>연습 봇과 한 판 두면서 카드 고르기 → 배치 → 턴 종료를 한 단계씩 따라 합니다. 5분이면 충분합니다.</p>
+      <button type="button" className={primary ? 'pill pill--lg' : 'pill pill--outline'} onClick={() => navigate('/tutorial')}>
+        <LearnIcon size={18} /> 튜토리얼 시작
+      </button>
+    </section>
   );
 }

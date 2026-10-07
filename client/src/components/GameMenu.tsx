@@ -1,6 +1,7 @@
 import { memo, useEffect, useState } from 'react';
 import { selectIsMyTurn, selectState, selectViewerId, useGameStore } from '../store/gameStore';
-import { CheckIcon, CloseIcon, ExitIcon, HelpIcon, MoreIcon, SurrenderIcon } from './icons';
+import { isNotifyOn, isSoundOn, notifySupported, setNotifyOn, setSoundOn } from '../lib/cues';
+import { BellIcon, CheckIcon, CloseIcon, ExitIcon, HelpIcon, MoreIcon, MuteIcon, SoundIcon, SurrenderIcon } from './icons';
 import styles from './GameMenu.module.css';
 
 type Confirm = 'quit' | 'surrender' | null;
@@ -19,6 +20,9 @@ export const GameMenu = memo(function GameMenu({ onQuit }: { onQuit: () => void 
   const setTab = useGameStore((s) => s.setTab);
   const [open, setOpen] = useState(false);
   const [confirm, setConfirm] = useState<Confirm>(null);
+  const [sound, setSound] = useState(isSoundOn);
+  const [notify, setNotify] = useState(isNotifyOn);
+  const setNotice = useGameStore((s) => s.setNotice);
 
   // 턴이 바뀌면 열려 있던 확인은 풀린다(차례가 넘어간 뒤 기권이 눌리는 사고 방지)
   const turn = state?.turn;
@@ -56,6 +60,37 @@ export const GameMenu = memo(function GameMenu({ onQuit }: { onQuit: () => void 
                   <HelpIcon />
                   <span>규칙 보기</span>
                 </button>
+                <button
+                  type="button"
+                  role="menuitemcheckbox"
+                  aria-checked={sound}
+                  className={styles.item}
+                  onClick={() => {
+                    setSoundOn(!sound);
+                    setSound(!sound);
+                  }}
+                >
+                  {sound ? <SoundIcon /> : <MuteIcon />}
+                  <span>효과음 {sound ? '켜짐' : '꺼짐'}</span>
+                </button>
+                {mode === 'online' && notifySupported() && (
+                  <button
+                    type="button"
+                    role="menuitemcheckbox"
+                    aria-checked={notify}
+                    className={styles.item}
+                    onClick={() => {
+                      void setNotifyOn(!notify).then((on) => {
+                        setNotify(on);
+                        if (!notify && !on) setNotice('브라우저 설정에서 이 사이트의 알림을 허용하세요');
+                      });
+                    }}
+                    title="다른 탭을 보고 있을 때 내 차례가 오면 알려 줍니다"
+                  >
+                    <BellIcon />
+                    <span>차례 알림 {notify ? '켜짐' : '꺼짐'}</span>
+                  </button>
+                )}
                 <button type="button" role="menuitem" className={styles.item} onClick={() => setConfirm('quit')}>
                   <ExitIcon />
                   <span>나가기</span>

@@ -1,9 +1,12 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { CardModal } from '../components/CardModal';
 import { TurnEvents } from '../components/TurnEvents';
+import { TutorialCoach } from '../components/TutorialCoach';
 import { HandoffOverlay } from '../components/HandoffOverlay';
 import { PlayerStrip } from '../components/PlayerStrip';
 import { TabDock } from '../components/TabDock';
+import { useGameCues } from '../game/useGameCues';
+import { api } from '../socket/client';
 import { selectState, selectTab, selectViewerId, useGameStore, type TabId } from '../store/gameStore';
 import { BoardTab } from '../tabs/BoardTab';
 import { CardsTab } from '../tabs/CardsTab';
@@ -33,6 +36,10 @@ export function GamePage({ onQuit }: GamePageProps) {
   const clearNotice = useGameStore((s) => s.clearNotice);
   const resultDismissed = useGameStore((s) => s.resultDismissed);
   const handoffPending = useGameStore((s) => s.handoffPending);
+  const setNotice = useGameStore((s) => s.setNotice);
+  const [resuming, setResuming] = useState(false);
+
+  useGameCues();
 
   // 안내 문구는 잠시 보였다가 사라진다
   useEffect(() => {
@@ -66,6 +73,25 @@ export function GamePage({ onQuit }: GamePageProps) {
           서버와 연결이 끊겼습니다. 다시 연결하는 중입니다. 게임은 서버에 그대로 남아 있습니다.
         </div>
       )}
+      {!offline && room && state.phase === 'playing' && room.autopilot.includes(viewerId) && (
+        <div className={styles.bannerAction} role="alert">
+          <span>시간 초과가 이어져 AI가 대신 두고 있습니다.</span>
+          <button
+            type="button"
+            className="pill"
+            disabled={resuming}
+            onClick={() => {
+              setResuming(true);
+              void api.resume(room.roomId).then((res) => {
+                setResuming(false);
+                if (!res.ok) setNotice(res.message);
+              });
+            }}
+          >
+            직접 두기
+          </button>
+        </div>
+      )}
       {!offline && absent.length > 0 && state.phase === 'playing' && (
         <div className={styles.bannerSoft} role="status">
           접속 끊김: {absent.map((p) => p.nickname).join(', ')}. 돌아오면 이어서 진행됩니다.
@@ -93,6 +119,7 @@ export function GamePage({ onQuit }: GamePageProps) {
       <TabDock />
 
       <TurnEvents />
+      <TutorialCoach />
       <CardModal />
 
       {notice && (
