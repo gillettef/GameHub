@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import type { RaceId, RoomPeek } from '@astraltab/shared';
-import { MAX_PLAYERS, getMap, mapsForAtLeast } from '@astraltab/shared';
+import { AFK_STRIKES_FOR_AUTOPILOT, MAX_PLAYERS, TURN_TIME_OPTIONS_SEC, getMap, mapsForAtLeast } from '@astraltab/shared';
 import { DeckPicker } from '../components/DeckPicker';
 import { DockShell } from '../components/DockShell';
 import { MapPicker } from '../components/MapPicker';
 import { cx } from '../lib/cx';
+import { turnTimeLabel } from '../lib/turnClock';
 import { getNickname, getPlayerToken, getRoomPassword, setNickname, setRoomPassword } from '../lib/identity';
 import { hasQuickStart, takeQuickStart } from '../lib/quickStart';
 import { randomMapId, randomRaceId } from '../lib/randomPicks';
@@ -469,6 +470,25 @@ function LobbyView({ roomId, onQuit }: { roomId: string; onQuit: () => void }) {
             {!full && ` 인원이 정원(${map.players}명)과 같아야 시작합니다.`}
           </p>
           <MapPicker value={state.mapId} onChange={(id) => request(api.setMap(roomId, id))} disabled={!isHost} minPlayers={state.players.length} />
+          <h2 className={landing.h2}>턴 제한 시간</h2>
+          <p className={landing.help}>
+            시간이 지나면 자동으로 턴을 넘깁니다. {AFK_STRIKES_FOR_AUTOPILOT}번 연속이면 AI가 대신 두고, 돌아와서 &lsquo;직접 두기&rsquo;를 누르면 되찾습니다. 며칠에 걸쳐 두려면 &lsquo;없음&rsquo;을 고르세요.
+          </p>
+          <div className={landing.aiPick} role="radiogroup" aria-label="턴 제한 시간">
+            {TURN_TIME_OPTIONS_SEC.map((sec) => (
+              <button
+                key={String(sec)}
+                type="button"
+                role="radio"
+                aria-checked={room.turnTimeLimitSec === sec}
+                disabled={!isHost}
+                className={room.turnTimeLimitSec === sec ? landing.aiOn : landing.aiOff}
+                onClick={() => request(api.setTurnTime(roomId, sec))}
+              >
+                {turnTimeLabel(sec)}
+              </button>
+            ))}
+          </div>
           <div className={styles.wizardNav}>
             <button type="button" className="pill pill--outline" onClick={goPrev}>
               이전: 좌석으로

@@ -4,6 +4,7 @@ import { makeSeed } from './game/hotseat';
 import { navigate, useRoute } from './lib/router';
 import { GamePage } from './pages/GamePage';
 import { LandingPage } from './pages/LandingPage';
+import { getNickname } from './lib/identity';
 import { RoomPage } from './pages/RoomPage';
 import { SetupPage } from './pages/SetupPage';
 import { useGameStore, type TabId } from './store/gameStore';
@@ -30,6 +31,7 @@ function readQuickStart(): { mapId: string; seed: number; tab: TabId | null; sel
  * 경로별 화면. 비게임 세계(랜딩·로비·설정)와 게임 세계(대시보드)는 한 화면에 섞지 않는다.
  *  /            랜딩
  *  /hotseat     핫시트 설정 → 같은 경로에서 게임 (스토어 mode 로 구분)
+ *  /tutorial    연습 봇과 두는 튜토리얼 판
  *  /room/:id    온라인 방 (로비 → 게임)
  */
 export function App() {
@@ -42,6 +44,8 @@ export function App() {
   const selectHandCard = useGameStore((s) => s.selectHandCard);
   const openCardModal = useGameStore((s) => s.openCardModal);
   const reset = useGameStore((s) => s.reset);
+  const startTutorial = useGameStore((s) => s.startTutorial);
+  const tutorial = useGameStore((s) => s.tutorial);
 
   useEffect(() => {
     const quick = readQuickStart();
@@ -60,6 +64,11 @@ export function App() {
     if (window.location.pathname !== '/hotseat') navigate('/hotseat', true);
   }, [startHotseat, acknowledgeHandoff, setTab, selectHandCard, openCardModal]);
 
+  // /tutorial 로 들어오면(새로고침 포함) 연습 판을 새로 시작한다
+  useEffect(() => {
+    if (route.name === 'tutorial' && !(useGameStore.getState().tutorial && useGameStore.getState().state)) startTutorial(getNickname());
+  }, [route.name, startTutorial]);
+
   switch (route.name) {
     case 'room':
       return <RoomPage roomId={route.roomId} />;
@@ -75,6 +84,18 @@ export function App() {
         );
       }
       return <SetupPage onStart={() => undefined} />;
+    case 'tutorial':
+      if (mode === 'hotseat' && tutorial && state) {
+        return (
+          <GamePage
+            onQuit={() => {
+              reset();
+              navigate('/');
+            }}
+          />
+        );
+      }
+      return null;
     case 'landing':
       return <LandingPage />;
     default:

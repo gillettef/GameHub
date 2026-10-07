@@ -4,7 +4,8 @@ import { RaceArt } from '../game/raceArt';
 import { ICONS, Stat } from './CardFace';
 import { ChangeValue } from './ChangeValue';
 import { GameMenu } from './GameMenu';
-import { BoltIcon, HourglassIcon, PassIcon, SkullIcon } from './icons';
+import { BoltIcon, BotIcon, HourglassIcon, PassIcon, SkullIcon } from './icons';
+import { TurnTimer } from './TurnTimer';
 import { buildPlayerSummaries } from '../game/derived';
 import { cx } from '../lib/cx';
 import { selectState, selectViewerId, useGameStore } from '../store/gameStore';
@@ -25,6 +26,7 @@ export const PlayerStrip = memo(function PlayerStrip({ onQuit }: PlayerStripProp
   const state = useGameStore(selectState);
   const viewerId = useGameStore(selectViewerId);
   const rows = useMemo(() => (state ? buildPlayerSummaries(state) : []), [state]);
+  const autopilot = useGameStore((s) => s.room?.autopilot);
 
   if (!state || rows.length === 0) return null;
   const current = state.currentPlayerId ? nameOf(state, state.currentPlayerId) : null;
@@ -41,6 +43,7 @@ export const PlayerStrip = memo(function PlayerStrip({ onQuit }: PlayerStripProp
         <span className={styles.whoTurn}>
           {state.phase === 'finished' ? '게임 종료' : isMyTurn ? '내 차례' : `${current}의 차례`}
         </span>
+        <TurnTimer />
         <GameMenu onQuit={onQuit} />
       </div>
       <div className={styles.players} role="list" aria-label="플레이어 현황 요약">
@@ -70,6 +73,11 @@ export const PlayerStrip = memo(function PlayerStrip({ onQuit }: PlayerStripProp
                 <div className={styles.nameRow}>
                   <span className={styles.name}>{r.nickname}</span>
                   {r.id === viewerId && <span className={styles.meTag}>나</span>}
+                  {autopilot?.includes(r.id) && (
+                    <span className={styles.race} title="시간 초과가 이어져 AI가 대신 두는 중" aria-label="AI 대리 중">
+                      <BotIcon size={14} />
+                    </span>
+                  )}
                   {r.race && (
                     <span className={styles.race} title={RACES.find((race) => race.id === r.race)?.name}>
                       <RaceArt raceId={r.race} className={styles.raceIcon} />
