@@ -22,7 +22,11 @@ const reject = (state: GameState, error: string): ActionResult => ({ state, erro
 // 로비
 // ---------------------------------------------------------------------------
 
-export function createInitialState(roomId: string, rngSeed: number): GameState {
+/**
+ * deckSeed 는 덱 셔플 전용이다(Rules.md 11절). 온라인에서는 서버가 boardSeed 와 독립인 암호학적 난수를 넣어야
+ * 공개 보드·목표로 손패를 역산할 수 없다. 생략하면(핫시트·테스트) boardSeed 에서 만든다
+ */
+export function createInitialState(roomId: string, rngSeed: number, deckSeed: number = (rngSeed ^ 0x9e3779b9) >>> 0): GameState {
   return {
     roomId,
     phase: 'lobby',
@@ -37,6 +41,7 @@ export function createInitialState(roomId: string, rngSeed: number): GameState {
     plants: [],
     seeds: [],
     rngSeed: rngSeed >>> 0,
+    deckSeed: deckSeed >>> 0,
     result: null,
     log: [],
   };
@@ -51,7 +56,9 @@ export function joinPlayer(state: GameState, player: PlayerState): ActionResult 
   if (state.players.length >= MAX_PLAYERS) return reject(state, `정원은 최대 ${MAX_PLAYERS}명입니다`);
   if (state.players.some((p) => p.id === player.id)) return reject(state, '이미 입장한 플레이어입니다');
   const joined = { ...player, seat: state.players.length };
-  let s: GameState = { ...state, players: [...state.players, joined] };
+  // 인원이 바뀌면 사람의 준비를 푼다: 준비해 둔 방장이 AI 를 하나 넣자마자 2인 판이 시작되거나,
+  // "전원 준비"인데 시작되지 않는 상태가 생기지 않게 한다(AI 는 늘 준비 상태)
+  let s: GameState = { ...state, players: [...resetHumanReady(state.players), joined] };
   s = addLog(s, 'system', joined.id, `${joined.nickname} 입장`);
   return { state: s };
 }
@@ -60,9 +67,11 @@ export function leaveLobby(state: GameState, playerId: PlayerId): ActionResult {
   if (state.phase !== 'lobby') return reject(state, '게임 중에는 나갈 수 없습니다. 기권하세요');
   const leaving = state.players.find((p) => p.id === playerId);
   if (!leaving) return reject(state, '방에 없는 플레이어입니다');
-  const players = state.players.filter((p) => p.id !== playerId).map((p, seat) => ({ ...p, seat }));
+  const players = resetHumanReady(state.players.filter((p) => p.id !== playerId)).map((p, seat) => ({ ...p, seat }));
   return { state: addLog({ ...state, players }, 'system', null, `${leaving.nickname} 퇴장`) };
 }
+
+const resetHumanReady = (players: PlayerState[]): PlayerState[] => players.map((p) => (p.kind === 'human' ? { ...p, isReady: false } : p));
 
 // ---------------------------------------------------------------------------
 // 공용 도우미
@@ -116,6 +125,12 @@ export function draftSequence(state: GameState): PlayerId[] {
   return order;
 }
 
+/** 로비에서 2명 이상이 모두 준비했으면 시작한다. 아니면 그대로 */
+export function maybeStart(state: GameState): GameState {
+  if (state.phase !== 'lobby' || state.players.length < MIN_PLAYERS || !state.players.every((p) => p.isReady)) return state;
+  return startGame(state);
+}
+
 export function startGame(state: GameState): GameState {
   const P = state.players.length;
   const built = buildBoard(P, state.rngSeed);
@@ -151,7 +166,7 @@ export function draftOptions(state: GameState, playerId: PlayerId): SpeciesId[] 
 
 function finishDraft(state: GameState): GameState {
   const rule = rulesFor(state.players.length);
-  let seed = state.rngSeed;
+  let seed = state.deckSeed;
   const players = [...state.players]
     .sort((a, b) => a.seat - b.seat)
     .map((p) => {
@@ -160,7 +175,7 @@ function finishDraft(state: GameState): GameState {
       return { ...p, hand: r.items.slice(0, HAND_SIZE), deck: r.items.slice(HAND_SIZE) };
     });
   const first = players[0] as PlayerState;
-  let s: GameState = { ...state, phase: 'playing', players, rngSeed: seed, round: 1, turn: 1, currentPlayerId: first.id };
+  let s: GameState = { ...state, phase: 'playing', players, deckSeed: seed, round: 1, turn: 1, currentPlayerId: first.id };
   s = addLog(s, 'turn', first.id, `${first.nickname}의 차례`);
   return s;
 }
@@ -217,7 +232,13 @@ function spendCard(state: GameState, playerId: PlayerId, species: SpeciesId): Ga
   return updatePlayer(state, playerId, { hand, deck });
 }
 
+const isPos = (p: unknown): p is Position => {
+  const v = p as Record<string, unknown> | null;
+  return !!v && typeof v === 'object' && Number.isInteger(v.q) && Number.isInteger(v.r);
+};
+
 export function validatePlant(state: GameState, a: Extract<Action, { type: 'PLANT' }>): string | null {
+  if (!isPos(a.pos) || (a.seed !== undefined && !isPos(a.seed))) return '잘못된 심기 요청입니다';
   if (state.phase !== 'playing') return '진행 중인 게임이 아닙니다';
   if (state.currentPlayerId !== a.playerId) return '내 차례가 아닙니다';
   const me = getPlayer(state, a.playerId);
@@ -246,9 +267,7 @@ export function applyAction(state: GameState, action: Action): ActionResult {
       if (state.phase !== 'lobby') return reject(state, '이미 시작된 게임입니다');
       const me = getPlayer(state, action.playerId);
       if (!me) return reject(state, '없는 플레이어입니다');
-      let s = updatePlayer(state, action.playerId, { isReady: !me.isReady });
-      if (s.players.length >= MIN_PLAYERS && s.players.every((p) => p.isReady)) s = startGame(s);
-      return { state: s };
+      return { state: maybeStart(updatePlayer(state, action.playerId, { isReady: !me.isReady })) };
     }
     case 'DRAFT': {
       if (state.phase !== 'drafting') return reject(state, '드래프트 중이 아닙니다');
@@ -297,12 +316,19 @@ export function applyAction(state: GameState, action: Action): ActionResult {
       return { state: advance(s) };
     }
     case 'SURRENDER': {
-      if (state.phase !== 'playing') return reject(state, '진행 중에만 기권할 수 있습니다');
+      if (state.phase !== 'playing' && state.phase !== 'drafting') return reject(state, '게임 중에만 기권할 수 있습니다');
       const me = getPlayer(state, action.playerId);
       if (!me || me.surrenderedOrder !== null) return reject(state, '기권할 수 없습니다');
       const order = state.players.filter((p) => p.surrenderedOrder !== null).length;
       let s = updatePlayer(state, action.playerId, { surrenderedOrder: order });
       s = addLog(s, 'surrender', action.playerId, `${me.nickname} 기권`);
+      if (s.phase === 'drafting') {
+        // 드래프트 중 기권: 남은 사람이 1명이면 끝, 아니면 기권자의 남은 픽을 순서에서 뺀다
+        if (s.players.filter((p) => p.surrenderedOrder === null).length <= 1) return { state: finishGame(s, 'last-standing') };
+        const draftOrder = [...s.draftOrder.slice(0, s.draftIndex), ...s.draftOrder.slice(s.draftIndex).filter((id) => id !== action.playerId)];
+        s = { ...s, draftOrder, currentPlayerId: draftOrder[s.draftIndex] ?? null };
+        return { state: s.draftIndex >= draftOrder.length ? finishDraft(s) : s };
+      }
       if (s.currentPlayerId === action.playerId) return { state: advance(s) };
       const active = s.players.filter((p) => p.surrenderedOrder === null);
       if (active.length <= 1) return { state: finishGame(s, 'last-standing') };

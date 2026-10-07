@@ -34,7 +34,7 @@ export const GameMenu = memo(function GameMenu({ onQuit }: { onQuit: () => void 
     setConfirm(null);
   };
 
-  const canSurrender = state?.phase === 'playing' && state.players.find((p) => p.id === viewerId)?.surrenderedOrder === null;
+  const canSurrender = (state?.phase === 'playing' || state?.phase === 'drafting') && state.players.find((p) => p.id === viewerId)?.surrenderedOrder === null;
 
   return (
     <div className={styles.root}>
@@ -94,7 +94,7 @@ export const GameMenu = memo(function GameMenu({ onQuit }: { onQuit: () => void 
                   <ExitIcon />
                   <span>나가기</span>
                 </button>
-                <button type="button" role="menuitem" className={styles.item} disabled={!canSurrender} onClick={() => setConfirm('surrender')} title={canSurrender ? undefined : '진행 중에만 기권할 수 있습니다'}>
+                <button type="button" role="menuitem" className={styles.item} disabled={!canSurrender} onClick={() => setConfirm('surrender')} title={canSurrender ? undefined : '게임 중에만 기권할 수 있습니다'}>
                   <SurrenderIcon />
                   <span>기권</span>
                 </button>

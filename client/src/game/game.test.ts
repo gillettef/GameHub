@@ -112,3 +112,15 @@ describe('제한 시간 표시 (Rules.md 6.3)', () => {
     expect(formatRemaining(9)).toBe('9초');
   });
 });
+
+describe('핫시트 상태 보존 (2026-10-07 리뷰)', () => {
+  it('maskState(null) 을 거쳐 다시 엔진에 넣어도 덱이 남아 끝까지 15번씩 둔다', () => {
+    let s = maskState(twoPlayers(), null) as unknown as GameState;
+    for (let i = 0; i < 300 && s.phase !== 'finished'; i++) {
+      const a = autoAction(s, s.currentPlayerId!)!;
+      s = maskState(applyAction(s, a).state, null) as unknown as GameState;
+    }
+    expect(s.phase).toBe('finished');
+    expect(s.plants.length + s.log.filter((e) => e.kind === 'discard').length).toBe(30);
+  });
+});

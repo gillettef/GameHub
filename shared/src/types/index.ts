@@ -205,8 +205,11 @@ export interface GameState {
   /** 심은 순서대로 */
   plants: Plant[];
   seeds: Seed[];
-  /** 시드 기반 RNG 상태. 엔진은 Math.random 을 쓰지 않는다 */
+  /** 보드·목표용 시드 RNG 상태. 엔진은 Math.random 을 쓰지 않는다 */
   rngSeed: number;
+  /** 덱 셔플 전용 시드. 공개되는 보드·목표에서 역산할 수 없도록 rngSeed 와 따로 둔다(서버가 암호학적 난수로 만든다).
+   * 손패·덱 비공개를 지키기 위해 누구에게도 보내지 않는다 */
+  deckSeed: number;
   result: GameResult | null;
   /** 진행 탭 로그 (최신이 뒤) */
   log: GameLogEntry[];

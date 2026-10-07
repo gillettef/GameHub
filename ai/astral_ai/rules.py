@@ -639,7 +639,7 @@ def draft_options(state: GameState, player_id: str) -> list[str]:
 def _finish_draft(state: GameState) -> GameState:
     rule = rules_for(len(state.players))
     hand_size = load_specs().constants["HAND_SIZE"]
-    seed = state.rngSeed
+    seed = state.deckSeed  # 덱 셔플은 보드 시드와 따로 (Rules.md 11절)
     players: list[PlayerState] = []
     for p in sorted(state.players, key=lambda x: x.seat):
         cards = [s for s in p.drafted for _ in range(rule["copies"])]
@@ -649,7 +649,7 @@ def _finish_draft(state: GameState) -> GameState:
         update={
             "phase": "playing",
             "players": players,
-            "rngSeed": seed,
+            "deckSeed": seed,
             "round": 1,
             "turn": 1,
             "currentPlayerId": players[0].id,

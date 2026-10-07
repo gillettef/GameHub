@@ -5,6 +5,7 @@
  */
 import type { Action, GameState, PlayerId } from '@rootbound/shared';
 import { autoAction } from '@rootbound/shared';
+import { actionShapeError } from '../rooms/manager.js';
 import { requestAiDecision } from '../ai/client.js';
 import type { RoomManager, Room } from '../rooms/manager.js';
 
@@ -24,13 +25,24 @@ export function createAiRunner(opts: AiRunnerOptions) {
   const thinkDelayMs = opts.thinkDelayMs ?? 600;
   const running = new Set<string>();
 
+  /** 적용 중 예외가 나도 run 을 끊지 않고 오류로 돌려준다 */
+  function safeApply(roomId: string, action: Action, room: Room): { room: Room; error?: string } {
+    try {
+      return opts.manager.tryApply(roomId, action);
+    } catch (err) {
+      return { room, error: `적용 중 예외: ${(err as Error).message}` };
+    }
+  }
+
   async function run(roomId: string): Promise<void> {
     for (;;) {
       const room = opts.manager.get(roomId);
       if (!room || !opts.manager.isAutoTurn(room)) return;
       const state = room.state;
       const aiId = state.currentPlayerId as PlayerId;
-      const turnBefore = state.turn;
+      // 드래프트 중에는 turn 이 0 이고 뱀 순서로 같은 좌석이 연달아 고르므로 단계·차례·픽 번호를 함께 본다
+      const keyOf = (st: GameState) => `${st.phase}:${st.turn}:${st.draftIndex}`;
+      const keyBefore = keyOf(state);
 
       if (thinkDelayMs > 0) await delay(thinkDelayMs);
       const action = await decide(state, aiId);
@@ -40,14 +52,15 @@ export function createAiRunner(opts: AiRunnerOptions) {
       // (이 run 이 도는 동안 commit 의 maybeRun 은 무시되었기 때문)
       const latest = opts.manager.get(roomId);
       if (!latest) return;
-      if (latest.state.turn !== turnBefore || latest.state.currentPlayerId !== aiId || !opts.manager.isAutoTurn(latest)) continue;
+      if (keyOf(latest.state) !== keyBefore || latest.state.currentPlayerId !== aiId || !opts.manager.isAutoTurn(latest)) continue;
 
       const fallback = () => autoAction(opts.manager.get(roomId)!.state, aiId);
-      let result = action && action.playerId === aiId ? opts.manager.tryApply(roomId, action) : { room: latest, error: 'AI 응답 없음' };
+      // AI 응답도 사람 액션처럼 모양부터 검사한다(모양이 깨진 액션이 엔진에서 예외를 내면 이 좌석이 멈춘다)
+      let result = action && action.playerId === aiId && !actionShapeError(action) ? safeApply(roomId, action, latest) : { room: latest, error: 'AI 응답이 없거나 모양이 잘못됨' };
       if (result.error) {
         console.warn(`[ai] room=${roomId} ${aiId} 불법 액션 (${result.error}) → 자동 수 폴백`);
         const auto = fallback();
-        result = auto ? opts.manager.tryApply(roomId, auto) : { room: latest, error: '자동 수 없음' };
+        result = auto ? safeApply(roomId, auto, latest) : { room: latest, error: '자동 수 없음' };
         if (result.error) {
           console.error(`[ai] room=${roomId} ${aiId} 자동 수도 거부됨: ${result.error}`);
           return;

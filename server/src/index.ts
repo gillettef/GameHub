@@ -45,16 +45,20 @@ const manager = new RoomManager({ hashToken });
 const snapshots = new SnapshotStore(DATA_DIR);
 const stats = new StatsLog(DATA_DIR);
 
+/** 방 만들기 기록(주소별 최근 시각)과 방을 만든 주소 (남용 방지) */
+const createHits = new Map<string, number[]>();
+const roomOwnerIp = new Map<RoomId, string>();
+
 /** 비밀번호 오입력 기록(주소별). 5번 틀리면 5분간 입장 시도를 막는다 */
 const joinFailures = new Map<string, { count: number; until: number }>();
 const MAX_JOIN_FAILURES = 5;
 const JOIN_LOCK_MS = 5 * 60 * 1000;
 
-// F007: 서버 시작 시 스냅샷 복원. 예전 게임(우주 전투판) 형식 스냅샷은 이어 갈 수 없어 지운다
+// F007: 서버 시작 시 스냅샷 복원. 예전 게임(우주 전투판) 형식 스냅샷은 이어 갈 수 없어 rooms-legacy/ 로 격리한다
 for (const room of snapshots.loadAll()) {
   if (!isCurrentFormat(room)) {
-    snapshots.delete(room.roomId);
-    console.log(`[server] 예전 형식 스냅샷 삭제 ${room.roomId}`);
+    snapshots.quarantine(room.roomId);
+    console.log(`[server] 예전 형식 스냅샷을 rooms-legacy/ 로 옮김 ${room.roomId}`);
     continue;
   }
   manager.load(room);
@@ -223,7 +227,16 @@ io.on('connection', (socket: AppSocket) => {
 
   socket.on('room:create', (payload, ack) => {
     try {
+      // 방 만들기 남용 방지: 주소당 분당 5개, 주소당 열린 로비 3개까지
+      const ip = socket.handshake.address;
+      const now = Date.now();
+      const hits = (createHits.get(ip) ?? []).filter((t) => now - t < 60_000);
+      if (hits.length >= 5) throw new RoomError('방을 너무 자주 만들었습니다. 잠시 후 다시 시도하세요');
+      const open = [...roomOwnerIp].filter(([id, owner]) => owner === ip && manager.get(id)?.state.phase === 'lobby').length;
+      if (open >= 3) throw new RoomError('이미 열어 둔 대기실이 많습니다. 쓰지 않는 방에서 나가 주세요');
+      createHits.set(ip, [...hits, now]);
       const { room, playerId } = manager.create(payload);
+      roomOwnerIp.set(room.roomId, ip);
       attach(socket, room.roomId, playerId);
       ack({ ok: true, roomId: room.roomId, playerId });
       commit(room);
@@ -371,6 +384,8 @@ httpServer.listen(PORT, HOST, () => {
       console.log(`[room] 방치된 방 정리 ${id}`);
     }
     for (const [ip, h] of vitalsHits) if (now >= h.resetAt) vitalsHits.delete(ip);
+    for (const [ip, ts] of createHits) if (ts.every((t) => now - t >= 60_000)) createHits.delete(ip);
+    for (const id of roomOwnerIp.keys()) if (!manager.get(id)) roomOwnerIp.delete(id);
     for (const [ip, f] of joinFailures) if (now >= f.until) joinFailures.delete(ip);
   }, 60 * 60 * 1000).unref();
 });
