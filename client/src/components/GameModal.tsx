@@ -1,7 +1,7 @@
 import { memo, useEffect, useMemo } from 'react';
 import type { SpeciesId } from '@rootbound/shared';
-import { getSpecies, hasAnyPlant, samePos } from '@rootbound/shared';
-import { asState, buildCells } from '../game/derived';
+import { getSpecies, hasAnyPlant, legalPlantCells, samePos } from '@rootbound/shared';
+import { DIRECTION_LABELS, asState, buildCells } from '../game/derived';
 import { selectIsMyTurn, selectState, selectViewerId, useGameStore } from '../store/gameStore';
 import { CloseIcon } from './icons';
 import { SpeciesCard } from './SpeciesCard';
@@ -41,6 +41,7 @@ export const GameModal = memo(function GameModal() {
     const species: SpeciesId | undefined = target.kind === 'hand' ? me?.hand[target.index] : target.species;
     if (!species) return null;
     const canPlantAny = target.kind === 'hand' && isMyTurn && state.phase === 'playing' && viewerId ? hasAnyPlant(asState(state), viewerId) : true;
+    const canPlantThis = target.kind === 'hand' && isMyTurn && state.phase === 'playing' && viewerId ? legalPlantCells(asState(state), viewerId, species).length > 0 : true;
     body = (
       <>
         <SpeciesCard species={species} variant="full" seat={target.kind === 'hand' ? me?.seat : null} />
@@ -48,6 +49,8 @@ export const GameModal = memo(function GameModal() {
           <div className={styles.actions}>
             {!isMyTurn ? (
               <p className={styles.hint}>상대 차례입니다. 내 차례에 고를 수 있습니다.</p>
+            ) : canPlantAny && !canPlantThis ? (
+              <p className={styles.hint}>이 카드는 지금 심을 칸이 없습니다. 다른 카드를 고르세요.</p>
             ) : canPlantAny ? (
               <button
                 type="button"
@@ -93,7 +96,7 @@ export const GameModal = memo(function GameModal() {
           <>
             <p className={styles.line}>
               {players[cell.plantSeat]?.nickname}의 {getSpecies(cell.plant.species).name}
-              {cell.plant.direction !== null && ` · 방향 ${cell.plant.direction}`}
+              {cell.plant.direction !== null && ` · 방향 ${DIRECTION_LABELS[cell.plant.direction]}`}
             </p>
             <SpeciesCard species={cell.plant.species} variant="full" seat={cell.plantSeat} />
           </>
@@ -117,8 +120,8 @@ export const GameModal = memo(function GameModal() {
   }
 
   return (
-    <div className={styles.backdrop} onClick={close} role="dialog" aria-modal="true">
-      <div className={styles.panel} onClick={(e) => e.stopPropagation()}>
+    <div className={styles.backdrop} onClick={close} role="dialog" aria-modal="true" aria-label={target.kind === 'cell' ? '칸 정보' : '카드 보기'}>
+      <div className={styles.panel} onClick={(e) => e.stopPropagation()} ref={(el) => el?.focus()} tabIndex={-1}>
         <button type="button" className={styles.close} onClick={close} aria-label="닫기" title="닫기">
           <CloseIcon />
         </button>

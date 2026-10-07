@@ -130,17 +130,31 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   applySnapshot: ({ room, state, you }) => {
     const prev = get();
-    const moved = prev.state?.turn !== state.turn || prev.state?.phase !== state.phase || prev.state?.draftIndex !== state.draftIndex;
+    const p = prev.state;
+    const moved = p?.turn !== state.turn || p?.phase !== state.phase || p?.draftIndex !== state.draftIndex;
+    // 접속·끊김처럼 게임 상태는 그대로인 브로드캐스트면 state 참조를 지켜 파생값 재계산과 보드 재그리기를 피한다
+    const same =
+      p !== null &&
+      prev.mode === 'online' &&
+      !moved &&
+      p.log.length === state.log.length &&
+      p.plants.length === state.plants.length &&
+      p.players.every((x, i) => x.isReady === state.players[i]?.isReady && x.surrenderedOrder === state.players[i]?.surrenderedOrder) &&
+      p.players.length === state.players.length;
     set({
       mode: 'online',
       room,
       roomReceivedAt: Date.now(),
-      state,
+      ...(same ? {} : { state }),
       viewerId: you,
       connection: 'connected',
+      tutorial: false,
+      botIds: [],
+      handoffPending: false,
       ...(moved ? CLEAR_SELECTION : {}),
       cardModal: moved && prev.cardModal?.kind === 'hand' ? null : prev.cardModal,
-      sending: false,
+      // 내가 보낸 수가 반영된 스냅샷(상태가 바뀐 것)이 와야 연타 잠금을 푼다. 실패는 dispatch 가 푼다
+      sending: same ? prev.sending : false,
     });
   },
 

@@ -89,16 +89,16 @@ export const TabDock = memo(function TabDock() {
           role="tab"
           aria-selected={tab === t.id}
           aria-controls={`panel-${t.id}`}
-          aria-label={t.label}
+          aria-label={[t.label, t.id === 'board' && myTurnElsewhere ? '내 차례' : null, t.id === 'progress' && unread > 0 ? `새 사건 ${unread}건` : null, t.id === 'help' && !helpSeen ? '새 안내' : null].filter(Boolean).join(', ')}
           title={t.label}
           className={cx(styles.item, tab === t.id && styles.active, t.id === 'board' && myTurnElsewhere && styles.alert)}
           onClick={() => setTab(t.id)}
         >
           {ICONS[t.id]}
-          {t.id === 'help' && !helpSeen && <span className={styles.badge} aria-label="새 안내" />}
-          {t.id === 'board' && myTurnElsewhere && <span className={styles.badge} aria-label="내 차례" />}
+          {t.id === 'help' && !helpSeen && <span className={styles.badge} aria-hidden="true" />}
+          {t.id === 'board' && myTurnElsewhere && <span className={styles.badge} aria-hidden="true" />}
           {t.id === 'progress' && unread > 0 && (
-            <span className={styles.countBadge} aria-label={`새 사건 ${unread}건`}>
+            <span className={styles.countBadge} aria-hidden="true">
               {unread > 9 ? '9+' : unread}
             </span>
           )}

@@ -16,6 +16,8 @@ interface SpeciesCardProps {
   onClick?: () => void;
   /** 카드 아래 덧붙일 표시(드래프트: 가져간 사람 등) */
   footer?: React.ReactNode;
+  /** 손패용 납작한 미니 카드: 특수 효과 줄을 빼고(확대 모달에서 본다) 그림을 줄여 보드 높이를 남긴다 */
+  compact?: boolean;
 }
 
 /** 특수 효과 한 줄 요약 (Rules.md 7절 "특수" 열) */
@@ -37,7 +39,7 @@ export function specialText(species: SpeciesId): string | null {
  * 식물 카드. 그림 칸은 비워 두고(사용자가 나중에 일러스트를 넣는다, game/cardImages.ts),
  * 규칙 정보는 뿌리 모양 다이어그램으로 보여 준다.
  */
-export const SpeciesCard = memo(function SpeciesCard({ species, variant, seat, selected, dimmed, onClick, footer }: SpeciesCardProps) {
+export const SpeciesCard = memo(function SpeciesCard({ species, variant, seat, selected, dimmed, onClick, footer, compact }: SpeciesCardProps) {
   const sp = getSpecies(species);
   const img = cardImageUrl(species);
   const special = specialText(species);
@@ -45,7 +47,7 @@ export const SpeciesCard = memo(function SpeciesCard({ species, variant, seat, s
   return (
     <Tag
       type={onClick ? 'button' : undefined}
-      className={cx(styles.card, styles[variant], selected && styles.selected, dimmed && styles.dimmed)}
+      className={cx(styles.card, styles[variant], compact && styles.compact, selected && styles.selected, dimmed && styles.dimmed)}
       style={seat !== undefined && seat !== null ? ({ '--seat-color': `var(--color-seat-${seat})` } as CSSProperties) : undefined}
       onClick={onClick}
       aria-pressed={onClick ? !!selected : undefined}
@@ -54,7 +56,7 @@ export const SpeciesCard = memo(function SpeciesCard({ species, variant, seat, s
       <span className={styles.name}>{sp.name}</span>
       {variant === 'full' && <span className={styles.art}>{img && <img src={img} alt="" />}</span>}
       <span className={styles.diagram}>
-        <RootDiagram species={species} size={variant === 'mini' ? 58 : 96} />
+        <RootDiagram species={species} size={variant === 'mini' ? (compact ? 44 : 58) : 96} />
       </span>
       {variant === 'full' ? (
         <>
@@ -62,7 +64,7 @@ export const SpeciesCard = memo(function SpeciesCard({ species, variant, seat, s
           <span className={styles.desc}>{sp.description}</span>
         </>
       ) : (
-        special && <span className={styles.specialMini}>{special}</span>
+        special && !compact && <span className={styles.specialMini}>{special}</span>
       )}
       {footer}
     </Tag>

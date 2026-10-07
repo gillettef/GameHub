@@ -89,3 +89,10 @@ button.card:active {
   line-height: 1.45;
   color: var(--color-muted);
 }
+
+/* 손패용 납작한 카드 */
+.compact {
+  width: 76px;
+  padding: 4px 3px;
+  gap: 2px;
+}

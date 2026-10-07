@@ -13,6 +13,12 @@
 
 .clickable {
   cursor: pointer;
+  outline: none;
+}
+
+.clickable:focus-visible .ground {
+  stroke: var(--color-accent);
+  stroke-width: 0.18;
 }
 
 .ground {

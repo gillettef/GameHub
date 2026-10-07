@@ -79,7 +79,7 @@ export function App() {
     case 'room':
       return <RoomPage roomId={route.roomId} />;
     case 'hotseat':
-      if (mode === 'hotseat' && state) {
+      if (mode === 'hotseat' && state && !tutorial) {
         return (
           <GamePage
             onQuit={() => {

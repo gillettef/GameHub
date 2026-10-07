@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { MAX_PLAYERS, MIN_PLAYERS } from '@rootbound/shared';
 import { DockShell } from '../components/DockShell';
 import { makeSeed } from '../game/hotseat';
@@ -14,6 +14,12 @@ import styles from './SetupPage.module.css';
  */
 export function SetupPage() {
   const startHotseat = useGameStore((s) => s.startHotseat);
+  const reset = useGameStore((s) => s.reset);
+  // 뒤로 가기로 튜토리얼·온라인 판에서 넘어왔으면 그 판(봇·안내 포함)을 비운다
+  useEffect(() => {
+    const st = useGameStore.getState();
+    if (st.tutorial || st.mode === 'online') reset();
+  }, [reset]);
   const [names, setNames] = useState<string[]>(() => [getNickname() || '플레이어 1', '플레이어 2']);
   const [error, setError] = useState<string | null>(null);
 

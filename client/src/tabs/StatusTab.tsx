@@ -12,8 +12,8 @@ import styles from './StatusTab.module.css';
 export const StatusTab = memo(function StatusTab() {
   const state = useGameStore(selectState);
   const viewerId = useGameStore(selectViewerId);
-  const rows = useMemo(() => (state ? buildPlayerSummaries(state) : []), [state]);
   const scores = useMemo(() => (state?.board ? computeScores(asState(state)) : null), [state]);
+  const rows = useMemo(() => (state ? buildPlayerSummaries(state, scores) : []), [state, scores]);
   if (!state) return null;
 
   return (
