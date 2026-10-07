@@ -1,7 +1,7 @@
 // 수업카드 덱 (학기마다 1개: 1학기 덱 → 중간고사 뒤 2학기 덱으로 교체). 42절: 수업은 기운을 얻는 단계다.
 // 카드 = 과목: 지력·체력·매력·주문력 중 하나의 기운을 무료로 준다 (주문력 과목의 기운은 마나기운). 능력치(실력)는 올려 주지 않는다 (성장은 자율활동으로).
-// 4단계 (BALANCE.classTiers): 입문 +1 · 기초 +2 · 중급 +3 · 심화 +5. 중급·심화는 그 과목 능력치가 minStat 이상이어야 들을 수 있다
-// (선수과목: 기초를 쌓아야 높은 단계를 듣는다 — "숙련"). 한 능력치당 카드 12장: 입문 4(이름 2종 × 2장) · 기초 4(2종 × 2장) · 중급 3(2종: 2장 + 1장) · 심화 1(1종).
+// 2단계 (BALANCE.classTiers, 49절): 기초 +2 · 심화 +4. 심화는 그 과목 능력치가 minStat 이상이어야 들을 수 있다
+// (선수과목: 기초를 쌓아야 심화를 듣는다 — "숙련"). 한 능력치당 카드 12장: 기초 10(이름 5종 × 2장) · 심화 2(이름 2종 × 1장).
 // 학기 덱은 이 종류를 학기별 비율대로 뽑아 만든다 (BALANCE.classSemesters): 1학기는 지력·체력·매력 위주(주문력 과목은 소수), 2학기는 주문력 과목이 늘어난다.
 // 수치·수량은 플레이테스트와 시뮬레이션으로 조정한다.
 import { BALANCE } from "./config.js";
@@ -64,12 +64,12 @@ const STATS = Object.keys(BASIC) as StatKey[];
 
 // 능력치 하나의 카드 12장 구성: [단계, 이름이 들어 있는 목록, 목록 안 순번, 장수]
 const LAYOUT: [level: ClassCard["level"], from: "basic" | "advanced", index: number, copies: number][] = [
-  ["intro", "basic", 0, 2],
-  ["intro", "basic", 1, 2],
+  ["basic", "basic", 0, 2],
+  ["basic", "basic", 1, 2],
   ["basic", "basic", 2, 2],
   ["basic", "basic", 3, 2],
-  ["mid", "basic", 4, 2],
-  ["mid", "advanced", 0, 1],
+  ["basic", "basic", 4, 2],
+  ["advanced", "advanced", 0, 1],
   ["advanced", "advanced", 1, 1],
 ];
 

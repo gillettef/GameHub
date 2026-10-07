@@ -16,13 +16,16 @@ export const BALANCE = {
   initialStats: { intelligence: 1, stamina: 1, charm: 1, spellPower: 1 } as Record<StatKey, number>,
   initialCredit: 0,
   // 마법 토너먼트: 최종 순위 보상 (1위, 2위 순서). 트랙에는 상한이 없다
-  tournamentRewards: [4, 2],
-  // 마법 토너먼트는 주문력 수치만큼 굴린 주사위 합만큼 전진한다. 이정표: 참가해서 트랙이 milestoneStep칸을 넘을 때마다 학점 milestoneCredit을 바로 받는다 (다른 사람과 경쟁하지 않는 보상)
-  tournamentMilestoneStep: 70,
+  tournamentRewards: [3, 1], // 49절: 이정표 폐지와 함께 [4, 2] → [3, 1]
+  // 마법 토너먼트 이정표: 트랙이 milestoneStep칸을 넘을 때마다 학점 milestoneCredit (49절 단순화로 폐지: 0이면 없음. 토너먼트 보상은 최종 순위 학점만)
+  tournamentMilestoneStep: 0,
   tournamentMilestoneCredit: 1,
   // 다음 달 선 결정 규칙 (4주차에 판정, 2026-10-01 기본값을 charmTokens로 변경): "charm" 매력 수치가 가장 높은 친구(현재 선이 최고면 유지) / "charmTokens" 남은 매력기운이 가장 많은 친구 /
   // "charmPlusTokens" 매력 + 남은 매력기운 / "rotate" 단순 시계방향 (비교용). 동점이면 현재 선에서 시계방향으로 가까운 친구
-  starterRule: "charmTokens" as "charm" | "charmTokens" | "charmPlusTokens" | "rotate",
+  // 49절 단순화: 매달 시계방향으로 한 칸씩 넘긴다 ("rotate"). 첫 달의 선은 주사위로 정한다
+  starterRule: "rotate" as "charm" | "charmTokens" | "charmPlusTokens" | "rotate",
+  // 정규수업의 수업카드를 선이 마지막에 고르는가 (false면 정규수업도 선부터 시계방향, 49절)
+  classPickStarterLast: false,
   // 시험 순위별 학점 (1위, 2위, 그 이하는 마지막 값)
   examCredits: [3, 2, 1],
   // 2주차(정규수업): 인원수 + classMarketExtra 장을 공개하고, 선부터 시계방향으로 1장씩 가져간다.
@@ -34,13 +37,11 @@ export const BALANCE = {
     { statWeights: { intelligence: 3, stamina: 3, charm: 3, spellPower: 1 } as Record<StatKey, number> },
     { statWeights: { intelligence: 3, stamina: 3, charm: 2, spellPower: 2 } as Record<StatKey, number> },
   ],
-  // 수업카드 4단계 (43-4절): 입문 +1 · 기초 +2 · 중급 +3 · 심화 +5. 중급·심화는 그 과목 능력치가 minStat 이상이어야 들을 수 있다 (선수과목).
+  // 수업카드 2단계 (49절 단순화): 기초 +2 · 심화 +4. 심화는 그 과목 능력치가 minStat 이상이어야 들을 수 있다 (선수과목).
   classTiers: {
-    intro: { gain: 1 },
     basic: { gain: 2 },
-    mid: { gain: 3, minStat: 2 },
-    advanced: { gain: 5, minStat: 3 },
-  } as Record<"intro" | "basic" | "mid" | "advanced", { gain: number; minStat?: number }>,
+    advanced: { gain: 4, minStat: 3 },
+  } as Record<"basic" | "advanced", { gain: number; minStat?: number }>,
   // 성장 (42절): 자율활동에서 성과를 내면 그 활동의 주 능력치가 growthAmount만큼 오른다 (조련·탐험·연구실은 성공, 주문 대결은 승리, 토너먼트는 성장 없음)
   growthAmount: 1,
   growthActivities: { tournament: false, creature: true, duel: true, exploration: true, lab: true } as Record<ActivityId, boolean>,
@@ -57,6 +58,8 @@ export const BALANCE = {
   rollBenchmarkPerRound: 0.12,
   // 주문 대결 도전자가 지목당한 친구에게 건네는 마나기운 개수 (매력 참가비 duelCharmFee와 별도. 지목당해도 마나기운이 있어야 굴릴 수 있게 하는 장치)
   duelManaFee: 1,
+  // 주문 대결 굴림 순서: true면 지목당한 친구가 먼저 굴리고 도전자가 그 결과를 보고 굴린다 (49절, 뒤에 굴리는 쪽이 유리해서 도전자에게 준다)
+  duelTargetRollsFirst: true,
   // 연구실 실험: 마나기운을 몇 개 낼지 골라 낸 개수만큼(마나기운이 없으면 공짜 1개) 주사위를 굴려 합이 이 값 이상이면 성공 (안정적인 능력치 상향)
   labTarget: 4,
   // 마법생물 조련 목표값 배율: 생물마다 정해진 trainTarget(creatures.ts)에 곱한다 (주사위가 마나기운 개수라 능력치 기운 때와 맞추기 위한 보정)
@@ -65,15 +68,15 @@ export const BALANCE = {
   // 토너먼트·주문 대결·시험은 기본값이 마나기운 전부. 봇도 기본값 그대로 굴린다
   defaultDiceSuccess: 0.7,
   // 탐험 카드 목표값 배율 (1이면 카드에 적힌 난이도 그대로)
-  exploreDifficultyScale: 1.1,
+  exploreDifficultyScale: 0.95, // 49절: 역전 보너스·협력 카드를 뺀 뒤 성공률을 약 68%로 맞춤
   // 탐험 역전 보너스: 선두와의 종합 점수(능력치 합 + 학점×3) 격차가 이 값 이상이면 판정에 보너스를 더한다
   catchUpGap: 4,
-  catchUpBonus: 2,
-  // 주문 대결을 건 도전자가 지목당한 플레이어에게 건네는 매력 (결과와 상관없이 지불)
-  duelCharmFee: 1,
+  catchUpBonus: 0, // 49절 단순화로 폐지 (0이면 없음)
+  // 주문 대결을 건 도전자가 지목당한 플레이어에게 건네는 매력 (49절 단순화로 폐지: 대결 비용은 마나기운 duelManaFee 하나)
+  duelCharmFee: 0,
   // 자율활동 구역 하나에 들어갈 수 있는 최대 인원, 그리고 이미 한 명이 들어와 있는 구역에 두 번째로 들어갈 때 내는 매력기운 (먼저 들어온 친구에게 건넨다, 43-6절)
   activityMaxParticipants: 2,
-  activitySecondParticipantCost: 1,
+  activitySecondParticipantCost: 0, // 49절 단순화로 폐지: 함께 들어가면 둘 다 목표 -1(studyBuddyBonus)만 남는다
   // 카드를 한 장 열 때 드는 지력기운 (2026-10-02 38절에서 모든 구역 폐지 — 카드를 여는 건 지적 활동이 아니라서. 장치는 남겨 두고 openCardCostActivities만 비움).
   // 켜면 구역에 처음 들어온 사람이 카드를 열 때 낸다. 카드를 습득하는 데 드는 체력기운은 카드마다 정해져 있다 (수업카드 takeCost, 연구 카드 cost)
   openCardCost: 1,
@@ -109,7 +112,7 @@ export const BALANCE = {
   rollFuel: { tournament: "mana", creature: "charm", duel: "mana", exploration: "stamina", lab: "intelligence" } as Record<ActivityId, KeptToken>,
   // 보조 능력치 (38-6절): 굴리기 전에 그 능력의 기운을 내서 주 판정을 돕는다.
   // 마법 토너먼트 — 체력(지구력): 체력기운 1개당 고정 칸 전진 (주사위가 아니라 고정값)
-  tournamentStaminaBoost: 3,
+  tournamentStaminaBoost: 0, // 49절 단순화로 폐지 (0이면 체력기운 보조 없음)
   // 비밀의 방 탐험 — 지력(함정 간파): 지력기운 이 개수를 내면 실패해도 손해(실패 효과)를 받지 않는다 (성공하면 기운만 사라짐)
   explorationShieldCost: 1,
 };

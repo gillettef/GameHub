@@ -35,7 +35,7 @@ export interface ClassCard {
   name: string;
   description: string;
   stat: StatKey;
-  level: "intro" | "basic" | "mid" | "advanced";
+  level: "basic" | "advanced";
   gain: number;
   minStat?: number;
 }
@@ -295,7 +295,7 @@ export const ACTIVITY_LABEL: Record<ActivityId, string> = {
 
 // 활동 카드에 함께 보여줄 한 줄 설명
 export const ACTIVITY_HINT: Record<ActivityId, string> = {
-  tournament: "마나기운을 골라 낸 만큼 주사위를 굴려 합친 칸만큼 트랙 전진 → 학점 (체력기운을 내면 칸을 더 전진)",
+  tournament: "마나기운을 골라 낸 만큼 주사위를 굴려 합친 칸만큼 트랙 전진 → 기말고사 뒤 순위로 학점",
   creature: "카드 2장 공개, 매력기운을 골라 낸 만큼 주사위를 굴려 합이 기준 이상이면 조련, 마리 수 + 하늘·육지·바다 세트 수로 생물사랑상을 겨뤄요",
   duel: "아직 안 고른 한 명을 지목해 강제 대결, 마나기운을 골라 낸 만큼 주사위를 굴려 이기면 마도서 1장",
   exploration: "카드 2장 중 하나를 골라 체력기운을 낸 만큼 주사위 판정! 크게 벌거나 크게 잃어요 (지력기운으로 함정을 피할 수 있어요)",
@@ -323,8 +323,8 @@ export function energyText(player: PlayerGameState, kind: KeptToken, rules: Pick
 // 수업카드가 주는 기운의 종류 (주문력 과목은 마나기운)와, 그 기운을 담는 플레이어 필드
 export const classGainKind = (card: Pick<ClassCard, "stat">): KeptToken => (card.stat === "spellPower" ? "mana" : card.stat);
 export const ENERGY_FIELD = { intelligence: "intelligenceTokens", stamina: "staminaTokens", charm: "charmTokens", mana: "manaTokens" } as const;
-// 중급·심화 과목은 그 과목 능력치가 minStat 이상이어야 들을 수 있다 (선수과목)
-export const CLASS_LEVEL_LABEL: Record<ClassCard["level"], string> = { intro: "입문", basic: "기초", mid: "중급", advanced: "심화" };
+// 심화 과목은 그 과목 능력치가 minStat 이상이어야 들을 수 있다 (선수과목)
+export const CLASS_LEVEL_LABEL: Record<ClassCard["level"], string> = { basic: "기초", advanced: "심화" };
 export const canTakeClassCard = (player: PlayerGameState, card: Pick<ClassCard, "stat" | "minStat">): boolean =>
   card.minStat === undefined || effectiveStat(player, card.stat) >= card.minStat;
 // 이 카드를 가져가면 실제로 늘어나는 기운 (한도까지)
