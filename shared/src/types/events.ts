@@ -1,5 +1,5 @@
 /**
- * Socket.io 이벤트 이름과 페이로드 타입의 단일 정의 (F001~F005, F030).
+ * Socket.io 이벤트 이름과 페이로드 타입의 단일 정의.
  * 서버·클라이언트 모두 이 파일만 참조한다. 문자열 리터럴 하드코딩 금지.
  *
  * 흐름:
@@ -7,7 +7,7 @@
  *  - 방 상태가 바뀌면 서버가 방의 모든 소켓에 `room:state` 를 **플레이어별로 가려서** 보낸다
  *    (본인 손패만 내용 포함, 타인은 장수만. 덱 순서는 누구에게도 안 보냄. MaskedGameState 참고).
  */
-import type { Action, GameState, MapId, PlayerId, PlayerState, RoomId } from './index.js';
+import type { Action, GameState, PlayerId, PlayerState, RoomId } from './index.js';
 
 // ---------------------------------------------------------------------------
 // 방 메타 (GameState 밖에서 서버가 관리)
@@ -15,7 +15,7 @@ import type { Action, GameState, MapId, PlayerId, PlayerState, RoomId } from './
 
 export interface RoomInfo {
   roomId: RoomId;
-  /** 방장. 맵 변경·AI 추가 권한 */
+  /** 방장. AI 추가·제한 시간 변경 권한 */
   hostId: PlayerId;
   hasPassword: boolean;
   createdAt: number;
@@ -71,15 +71,13 @@ export interface JoinPayload {
 export interface ClientToServerEvents {
   /** 방 생성 후 방장으로 입장 (F001, F003) */
   'room:create': (
-    payload: { playerToken: string; nickname: string; password?: string; mapId?: MapId },
+    payload: { playerToken: string; nickname: string; password?: string },
     ack: (res: Ack<{ roomId: RoomId; playerId: PlayerId }>) => void,
   ) => void;
   /** 초대 링크로 입장 또는 재접속 (F002, F007) */
   'room:join': (payload: JoinPayload, ack: (res: Ack<{ playerId: PlayerId }>) => void) => void;
   /** 로비에서 나가기 (게임 중엔 기권을 써야 한다) */
   'room:leave': (payload: { roomId: RoomId }, ack: (res: Ack) => void) => void;
-  /** 방장이 맵 변경 (F030) */
-  'room:setMap': (payload: { roomId: RoomId; mapId: MapId }, ack: (res: Ack) => void) => void;
   /** 방장이 빈 좌석에 AI 추가 / 제거 (F026) */
   'room:addAi': (payload: { roomId: RoomId }, ack: (res: Ack<{ playerId: PlayerId }>) => void) => void;
   'room:removeAi': (payload: { roomId: RoomId; playerId: PlayerId }, ack: (res: Ack) => void) => void;
@@ -87,7 +85,7 @@ export interface ClientToServerEvents {
   'room:setTurnTime': (payload: { roomId: RoomId; seconds: number | null }, ack: (res: Ack) => void) => void;
   /** AI 대리(자동 진행) 중인 내 좌석을 되찾는다 (Rules.md 5.4) */
   'game:resume': (payload: { roomId: RoomId }, ack: (res: Ack) => void) => void;
-  /** 덱 선택·준비·배치·패스·기권. 서버가 룰 엔진으로 검증한다 */
+  /** 준비·드래프트·심기·버리기·기권. 서버가 룰 엔진으로 검증한다 */
   'game:action': (payload: { roomId: RoomId; action: Action }, ack: (res: Ack) => void) => void;
 }
 
@@ -108,7 +106,6 @@ export interface RoomPeek {
   roomId: RoomId;
   hasPassword: boolean;
   phase: GameState['phase'];
-  mapId: MapId;
   players: number;
   capacity: number;
 }

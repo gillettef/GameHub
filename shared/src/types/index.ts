@@ -1,159 +1,132 @@
 /**
- * 서버·클라이언트·AI 서비스가 공유하는 게임 도메인 타입 (규칙 v2, notes/Rules.md).
- * ai/astral_ai/models.py 의 Pydantic 모델과 필드명·타입을 1:1로 맞춘다.
- * 필드를 추가·변경하면 반드시 models.py 와 shared/fixtures 도 함께 갱신한다.
+ * Rootbound 공용 타입 (notes/Rules.md). 서버·클라이언트·AI(Pydantic models.py)가 같은 모양을 쓴다.
+ * 이름을 바꾸면 ai/astral_ai/models.py 도 함께 바꾼다.
  */
 
 export type PlayerId = string;
 export type RoomId = string;
-export type MarkerId = string;
-export type CardId = string;
-export type MapId = string;
 
-/** odd-r 오프셋 육각 좌표. x는 열, y는 행이며 홀수 행은 반 칸 오른쪽으로 밀린다 (Rules.md 3절) */
+// ---------------------------------------------------------------------------
+// 보드 (Rules.md 2·3절)
+// ---------------------------------------------------------------------------
+
+/** 육각 축 좌표 */
 export interface Position {
-  x: number;
-  y: number;
+  q: number;
+  r: number;
 }
 
-// ---------------------------------------------------------------------------
-// 카드 기준표 (Rules.md 10절). 실제 값은 shared/src/data/cards.ts 에만 둔다.
-// ---------------------------------------------------------------------------
+/** 방향 0~5: (+1,0) (+1,−1) (0,−1) (−1,0) (−1,+1) (0,+1) */
+export type Direction = 0 | 1 | 2 | 3 | 4 | 5;
 
-/** 손패 카드 종류 */
-export type CardType = 'building' | 'unit' | 'magic';
-/** 보드 위 마커 종류. 코어는 덱에 없지만 마커다 */
-export type MarkerKind = 'core' | CardType;
+export type Terrain = 'empty' | 'fertile' | 'pond' | 'rock';
 
-/** 침투: 적 마커 거리 1 이내에도 배치 가능. 정비: 내 턴을 끝낼 때 반경 1 아군 체력 +1.
- * 과부하: 내 턴을 끝낼 때의 수입 계산 시 반경 1 이내 자신 소유 건물 수만큼 생산 추가(오토마타 종족).
- * 은신: 전투 대상 선택 시 다른 적 마커가 남아 있으면 표적에서 제외(그림자 결사 종족, Rules.md 7.1).
- * 다중 포격: 주 표적 외에 다음 순위 적 마커에도 같은 공격력으로 동시에 피해(노바 포병단 종족, Rules.md 7.1) */
-export type Keyword = 'infiltrate' | 'repair' | 'overclock' | 'veil' | 'barrage';
-
-/** 종족 (완전 비대칭 카드 세트, notes/Rules.md 10절) */
-export type RaceId = 'coalition' | 'swarm' | 'automata' | 'shade' | 'siege';
-
-export interface RaceDef {
-  id: RaceId;
-  name: string;
-  concept: string;
+export interface Cell {
+  q: number;
+  r: number;
+  terrain: Terrain;
+  /** 이 칸이 속한 정원 조각 번호 (0 = 가운데 조각) */
+  tile: number;
 }
 
-/** 마법 효과. 즉발형은 배치 즉시 적용 후 사라지고, 지속형은 마커로 남는다 (Rules.md 7.2) */
-export type MagicEffect =
-  | { kind: 'damage'; amount: number; radius: number }
-  | { kind: 'heal'; amount: number; radius: number }
-  | { kind: 'energy'; amount: number }
-  | { kind: 'persistent'; durationTurns: number };
-
-export interface CardSpec {
-  id: CardId;
-  name: string;
-  kind: MarkerKind;
-  /** 소속 종족. 코어만 null(종족 공통) */
-  race: RaceId | null;
-  /** 예전 "기본/특수" 카드 구분의 흔적(카탈로그 표시용). 2026-09-23부터 덱 빌딩에서는
-   * 쓰지 않는다 — 기본이든 특수든 같은 방식으로 자유롭게 고른다(copies 가 상한을 정한다) */
-  special: boolean;
-  /** 배치 비용(에너지). 코어는 0 */
-  cost: number;
-  /** 시야 반경(육각 거리). 즉발 마법은 0 */
-  sight: number;
-  /** 최대 체력. 즉발 마법은 0 */
-  hp: number;
-  attack: number;
-  /** 사거리(육각 거리). 공격력이 없으면 0 */
-  range: number;
-  /** 턴당 생산 에너지. 건물·코어만 > 0 */
-  production: number;
-  /** 마커 점수 (Rules.md 9.1) */
-  score: number;
-  keywords: Keyword[];
-  /** 마법 카드만. 그 외 null */
-  effect: MagicEffect | null;
-  /** 덱에 넣을 수 있는 이 카드의 최대 장수(덱 빌딩 상한). 코어는 0(덱에 없음) */
-  copies: number;
-  description: string;
-}
-
-// ---------------------------------------------------------------------------
-// 맵 (Rules.md 11절). 실제 값은 shared/src/data/maps.ts 에만 둔다.
-// ---------------------------------------------------------------------------
-
-/**
- * 지형 (Rules.md 3절, 2026-09-28 확장). 소행성·광맥 외 7종을 추가했다 — 전부 "그 칸에 놓인
- * 마커"에 붙는 고정 수정치이고, 마커는 이동하지 않으므로 한번 놓이면 그 효과가 계속 간다.
- *  - nebula(성운): 시야 -1        - debrisField(파편지대): 최대 체력 -1
- *  - ionStorm(이온 폭풍): 수입 정산마다 피해 1(지속)     - relicSite(유물지대): 점수 +1
- *  - gravityRift(중력 균열): 점수 -1                      - gunEmplacement(포대 발판): 공격력 +1
- *  - jammingField(교란지대): 사거리 -1
- */
-export type Terrain =
-  | 'space'
-  | 'asteroid'
-  | 'vein'
-  | 'nebula'
-  | 'debrisField'
-  | 'ionStorm'
-  | 'relicSite'
-  | 'gravityRift'
-  | 'gunEmplacement'
-  | 'jammingField';
-
-export interface MapDef {
-  id: MapId;
-  name: string;
-  /** 이 맵의 정원. 로비 인원과 같아야 시작할 수 있다 */
-  players: number;
-  /** 한 변의 길이. 보드는 width=height=size 인 직사각 육각 판(odd-r 오프셋) */
-  size: number;
-  roundLimit: number;
-  /** 좌석 순서대로 코어 좌표 */
-  corePositions: Position[];
-  asteroids: Position[];
-  veins: Position[];
-  nebulas: Position[];
-  debrisFields: Position[];
-  ionStorms: Position[];
-  relicSites: Position[];
-  gravityRifts: Position[];
-  gunEmplacements: Position[];
-  jammingFields: Position[];
-  description: string;
-}
-
-/** GameState 에 실리는 보드 지형. 맵 정의에서 복사한다 */
 export interface Board {
-  width: number;
-  height: number;
-  asteroids: Position[];
-  veins: Position[];
-  nebulas: Position[];
-  debrisFields: Position[];
-  ionStorms: Position[];
-  relicSites: Position[];
-  gravityRifts: Position[];
-  gunEmplacements: Position[];
-  jammingFields: Position[];
+  /** 칸 목록. 항상 r → q 오름차순 (Rules.md 11절) */
+  cells: Cell[];
+  /** 좌석별 입구 위치 */
+  entrances: Position[];
+  /** 조각 수 */
+  tileCount: number;
 }
 
 // ---------------------------------------------------------------------------
-// 보드 위 마커
+// 식물 · 목표 (Rules.md 7·8절)
 // ---------------------------------------------------------------------------
 
-export interface Marker {
-  id: MarkerId;
-  specId: CardId;
-  kind: MarkerKind;
+export type SpeciesId =
+  | 'grass'
+  | 'oak'
+  | 'cactus'
+  | 'vine'
+  | 'fern'
+  | 'dandelion'
+  | 'sunflower'
+  | 'lotus'
+  | 'ivy'
+  | 'bamboo'
+  | 'mushroom'
+  | 'rose';
+
+/** 종의 뿌리 모양. 0 이면 효과 없음 */
+export interface SpeciesSpec {
+  id: SpeciesId;
+  name: string;
+  /** 짧은 설명 (카드에 표시) */
+  description: string;
+  self: number;
+  ring1: number;
+  /** 별 모양 거리 2 (6방향 직선 위 6칸) */
+  star2: number;
+  /** 심을 때 고른 방향 직선 거리 1..lineLength 칸에 주는 영향력 */
+  line: number;
+  lineLength: number;
+  /** 심은 뒤 거리 2 이내 빈 칸에 놓을 수 있는 씨앗의 영향력 */
+  seed: number;
+  /** 연못과 맞닿은 빈 칸이면 영향력 없이도 심을 수 있다 */
+  pondPlanting: boolean;
+  /** 거리 1에 다른 식물이 있는 칸마다 그 칸에 추가 */
+  ivy: number;
+  /** 거리 1의 내 같은 종 1개당 자기 칸 추가 */
+  cluster: number;
+  /** 거리 1의 다른 플레이어 영향력 빼기 */
+  wither: number;
+  /** 비옥토에 심으면 거리 1 추가 */
+  fertileRing: number;
+  /** 끝날 때 이 칸이 심은 사람의 땅이면 점수 */
+  bloomBonus: number;
+}
+
+export type GoalId =
+  | 'pond-side'
+  | 'big-garden'
+  | 'long-path'
+  | 'fertile-field'
+  | 'edge-fence'
+  | 'center-plaza'
+  | 'every-tile'
+  | 'flower-bed'
+  | 'forest'
+  | 'connected'
+  | 'border-guard'
+  | 'full-set'
+  | 'cactus-reserve'
+  | 'vine-reserve'
+  | 'fern-reserve'
+  | 'grass-reserve'
+  | 'mushroom-reserve'
+  | 'dandelion-reserve';
+
+export interface GoalSpec {
+  id: GoalId;
+  name: string;
+  description: string;
+  /** 종 연계 목표면 그 종 */
+  species: SpeciesId | null;
+}
+
+/** 보드 위 식물 */
+export interface Plant {
+  /** 심은 순서 번호 (p1, p2, …) */
+  id: string;
+  species: SpeciesId;
   ownerId: PlayerId;
   pos: Position;
-  hp: number;
-  /** 이 마커의 체력 상한. 보통 카드 기본 체력과 같지만, 파편지대(debrisField)에 놓이면
-   * 배치 시점에 -1 되어 고정된다(Rules.md 3절). 회복·정비는 이 값을 넘지 못한다 */
-  maxHp: number;
-  /** 지속 마법의 남은 턴. 소유자가 자기 턴을 끝낼 때마다 1 줄고 0이면 제거. 그 외 null */
-  remainingTurns: number | null;
+  /** 덩굴의 방향. 그 외 null */
+  direction: Direction | null;
+}
+
+export interface Seed {
+  ownerId: PlayerId;
+  pos: Position;
 }
 
 // ---------------------------------------------------------------------------
@@ -166,46 +139,23 @@ export interface PlayerState {
   id: PlayerId;
   nickname: string;
   kind: PlayerKind;
-  /** 좌석 번호 = 턴 순서. 0부터 */
+  /** 좌석 번호 = 차례 순서. 0부터 */
   seat: number;
-  /** 로비에서 준비 완료 여부 */
   isReady: boolean;
-  /** 고른 종족. 고르면 그 종족의 고정 덱(cards.ts fixedDeckOf)이 정해진다. 고르기 전엔 null */
-  race: RaceId | null;
-  energy: number;
-  /** 뽑을 카드 더미 (맨 앞이 다음 카드). 서버는 타인에게 보내지 않는다 */
-  deck: CardId[];
+  /** 드래프트로 고른 종 (공개) */
+  drafted: SpeciesId[];
+  /** 뽑을 카드 더미 (맨 앞이 다음 카드). 서버는 아무에게도 보내지 않는다 */
+  deck: SpeciesId[];
   /** 손패. 서버는 타인에게 장수만 보낸다 */
-  hand: CardId[];
-  /** 사용 완료 카드 (F011) */
-  discard: CardId[];
-  alive: boolean;
-  /** 탈락 순서 (0부터). 생존 중이면 null. 순위 정렬에 쓴다 */
-  eliminatedOrder: number | null;
-  /** 현재 연속 패스 구간에서 패스했는지. 누군가 배치하면 전원 false (Rules.md 9.2-2) */
-  passed: boolean;
-  /** 이번 턴에 배치를 한 번이라도 했는지. advanceTurn 이 다음 사람 턴으로 넘길 때 false 로 리셋 (Rules.md 5.2) */
-  actedThisTurn: boolean;
+  hand: SpeciesId[];
+  /** 기권 순서(0부터). 기권 안 했으면 null */
+  surrenderedOrder: number | null;
 }
 
-/** 덱 빌딩은 lobby 단계 안에서 이뤄진다 (별도 phase 없음) */
-export type GamePhase = 'lobby' | 'playing' | 'finished';
+/** lobby → drafting → playing → finished */
+export type GamePhase = 'lobby' | 'drafting' | 'playing' | 'finished';
 
-export type LogKind =
-  | 'system'
-  | 'turn'
-  | 'combat'
-  | 'repair'
-  | 'expire'
-  | 'income'
-  | 'draw'
-  | 'place'
-  | 'magic'
-  | 'destroy'
-  | 'eliminate'
-  | 'pass'
-  | 'surrender'
-  | 'result';
+export type LogKind = 'system' | 'draft' | 'plant' | 'discard' | 'flip' | 'turn' | 'surrender' | 'result';
 
 export interface GameLogEntry {
   turn: number;
@@ -217,18 +167,20 @@ export interface GameLogEntry {
 }
 
 export interface Score {
-  territory: number;
-  markers: number;
-  /** 덤(komi): 좌석 번호 × KOMI_PER_SEAT. 선턴(좌석 0) 유리함을 보정한다 (Rules.md 9.1) */
+  land: number;
+  goals: number;
+  /** 목표별 점수 (공개 목표 순서) */
+  goalBreakdown: number[];
+  bloom: number;
   komi: number;
   total: number;
 }
 
-export type GameResultReason = 'last-survivor' | 'all-pass' | 'round-limit';
+export type GameResultReason = 'complete' | 'last-standing';
 
 export interface GameResult {
   reason: GameResultReason;
-  /** 순위 순 플레이어 id (Rules.md 9.3). 첫 번째가 승자 */
+  /** 순위 순 플레이어 id (Rules.md 9절). 첫 번째가 승자 */
   ranking: PlayerId[];
   scores: Record<PlayerId, Score>;
 }
@@ -236,54 +188,41 @@ export interface GameResult {
 export interface GameState {
   roomId: RoomId;
   phase: GamePhase;
-  mapId: MapId;
-  board: Board;
-  roundLimit: number;
-  /** 라운드 = 생존자 전원이 한 번씩 턴을 마친 것. 1부터 */
+  /** 로비에서는 null, 시작하면 조립된 보드 */
+  board: Board | null;
+  /** 공개 목표 3장 */
+  goals: GoalId[];
+  /** 드래프트 픽 순서(좌석 id 목록 전체)와 다음 픽 위치 */
+  draftOrder: PlayerId[];
+  draftIndex: number;
+  /** 라운드 = 모두 한 번씩 둔 것. 1부터 */
   round: number;
-  /** 전체 턴 번호. 1부터, 플레이어 턴마다 1씩 */
+  /** 전체 차례 번호. 1부터, 드래프트 중에는 0 */
   turn: number;
+  /** 드래프트 중에는 다음에 고를 사람, 진행 중에는 차례인 사람 */
   currentPlayerId: PlayerId | null;
   players: PlayerState[];
-  /** 항상 y → x 오름차순으로 정렬 (Rules.md 13절) */
-  markers: Marker[];
-  /** 다음 마커 id 번호 */
-  nextMarkerId: number;
+  /** 심은 순서대로 */
+  plants: Plant[];
+  seeds: Seed[];
   /** 시드 기반 RNG 상태. 엔진은 Math.random 을 쓰지 않는다 */
   rngSeed: number;
   result: GameResult | null;
-  /** 진행 탭에 표시되는 이벤트 로그 (최신이 뒤) */
+  /** 진행 탭 로그 (최신이 뒤) */
   log: GameLogEntry[];
 }
 
 // ---------------------------------------------------------------------------
-// 액션. 서버 룰 엔진이 검증한다. 클라이언트는 상태를 직접 계산하지 않는다.
+// 액션. 서버 룰 엔진이 검증한다
 // ---------------------------------------------------------------------------
 
 export type Action =
-  | { type: 'SELECT_RACE'; playerId: PlayerId; race: RaceId }
   | { type: 'READY'; playerId: PlayerId }
-  | { type: 'PLACE'; playerId: PlayerId; cardId: CardId; pos: Position }
-  /** discardCardIds: 턴을 끝내며 함께 버리고 다시 뽑을 손패 카드(0장 이상, 없으면 생략). Rules.md 5.2 */
-  | { type: 'PASS'; playerId: PlayerId; discardCardIds?: CardId[] }
+  | { type: 'DRAFT'; playerId: PlayerId; species: SpeciesId }
+  /** direction: 덩굴만. seed: 민들레만(생략 가능) */
+  | { type: 'PLANT'; playerId: PlayerId; species: SpeciesId; pos: Position; direction?: Direction; seed?: Position }
+  /** 손패의 어떤 카드도 심을 칸이 없을 때만 */
+  | { type: 'DISCARD'; playerId: PlayerId; species: SpeciesId }
   | { type: 'SURRENDER'; playerId: PlayerId };
 
 export type ActionType = Action['type'];
-
-/** 배치 거부 사유 코드 (F022). 메시지는 엔진이 만든다 */
-export type PlacementErrorCode =
-  | 'not-playing'
-  | 'unknown-player'
-  | 'not-your-turn'
-  | 'already-placed'
-  | 'not-in-hand'
-  | 'not-enough-energy'
-  | 'out-of-bounds'
-  | 'asteroid'
-  | 'occupied'
-  | 'out-of-sight';
-
-export interface PlacementError {
-  code: PlacementErrorCode;
-  message: string;
-}
