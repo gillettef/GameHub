@@ -22,22 +22,17 @@
   --color-white: #ffffff;
   --color-navy: #1a2352;
   /* 앱 바깥 여백(letterbox) 색. 두 세계 어느 쪽에도 속하지 않는 외곽 크롬이라 공통으로 하나만 쓴다 */
-  --color-app-frame: #0b1224;
+  --color-app-frame: #0e1a14;
 
   /* 모바일 우선(2026-09-22): 넓은 화면에서도 화면 폭을 모바일 크기로 고정한다 */
   --app-max-width: 480px;
 
-  /* 게임 도메인 색 (두 세계 공통 의미) */
-  --color-energy: #fdd484;
-  --color-building: #fdd484;
-  --color-vein: #fdd484;
-  --color-magic: #777cdc;
-  /* 마법 카드 이름 텍스트 전용(2026-09-22). --color-magic 원색은 액센트 스트라이프용이라 본문 대비가
-     약하다(흰 서피스 기준 ~2:1). 헤딩 네이비 쪽으로 어둡혀 밝은 서피스에서 읽히게 한다.
-     게임 세계(어두운 좌석색 서피스)는 아래 [data-world='game'] 에서 반대로 흰색 쪽으로 밝힌다 */
-  --color-magic-text: color-mix(in srgb, var(--color-magic) 55%, var(--color-heading) 45%);
-  --color-asteroid: #36597d;
-  --color-grid: #36597d;
+  /* 게임 도메인 색 (두 세계 공통 의미, 2026-10-07 Rootbound 정원 테마) */
+  --color-pond: #1f4466;
+  --color-rock: #6b7078;
+  --color-fertile: #fdd484;
+  --color-soil: #213a2d;
+  --color-grid: #0e1a14;
   /* 좌석 4색: 색각 이상 안전 조합(Okabe-Ito 계열). 마커는 이 색으로 채우고 종류는 모양(육각·사각·원·마름모)으로 구분한다 */
   --color-seat-0: #419eff;
   --color-seat-1: #e69f00;
@@ -92,18 +87,17 @@
   --ease-standard: cubic-bezier(0.25, 0.1, 0.25, 1);
 }
 
-/* 게임 화면 무대: 심우주 네이비(별·성운은 GamePage.module.css 배경 그라데이션). 보라색 계열은 쓰지 않는다 */
+/* 게임 화면 무대: 밤 정원 녹색(2026-10-07 Rootbound 전환, 사용자 지시로 우주 테마를 걷어냄).
+   무대 배경 그라데이션은 GamePage.module.css. 보라색 계열은 쓰지 않는다 */
 [data-world='game'] {
-  --color-canvas: #0b1224;
-  --color-surface: #1c2947;
+  --color-canvas: #0e1a14;
+  --color-surface: #1d3328;
   --color-heading: #ffffff;
   --color-text: #ffffff;
-  --color-muted: #bbbbbb;
+  --color-muted: #b8c4bc;
   --color-accent: #fff3b7;
   --color-accent-text: #1a2352;
   --color-outline: #ffffff;
-  /* 카드 배경이 어두운 좌석색 서피스라 원색 대비가 낮다(ui-tab-reviewer 지적, 좌석 4색 전부 ~2.2~2.4:1) — 흰색 쪽으로 밝힌다 */
-  --color-magic-text: color-mix(in srgb, var(--color-magic) 65%, white 35%);
 }
 
 @media (prefers-reduced-motion: reduce) {

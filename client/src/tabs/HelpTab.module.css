@@ -1,143 +1,67 @@
-/* 설명 탭 (2026-09-23): 다른 탭과 같은 패널·스크롤 패턴(StatusTab.module.css 참고) */
 .root {
   height: 100%;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
   overflow-y: auto;
-}
-
-.panel {
-  flex: none;
-  padding: var(--space-2);
-  border-radius: var(--radius-sm);
-  background: var(--color-surface);
-}
-
-.title {
-  font-size: var(--text-nav);
-  margin-bottom: 4px;
-}
-
-.help {
-  margin: 0 0 var(--space-2);
-  font-size: var(--text-small);
-  color: var(--color-muted);
-}
-
-.legendList {
-  list-style: none;
-  margin: 0;
-  padding: 0;
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-}
-
-.legendRow {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-2);
-}
-
-.legendLabel {
-  display: block;
+  padding: var(--space-1) 2px var(--space-3);
   font-size: var(--text-small);
+  line-height: 1.55;
+}
+
+.section p {
+  margin: 0;
+}
+
+.h2 {
+  margin: 0 0 4px;
+  font-family: var(--font-display);
+  font-size: var(--text-nav);
   color: var(--color-heading);
 }
 
-.legendDesc {
-  margin: 2px 0 0;
-  font-size: var(--text-micro);
-  color: var(--color-muted);
-  line-height: 1.4;
-}
-
-/* 마커·지형·오버레이 미리보기. Board.module.css 클래스를 그대로 재사용하므로 이 칸 자체가
-   실제 보드 칸처럼 position:relative + 고정 크기를 준다(.hex 는 absolute+inset:0 로 채운다) */
-.swatch {
-  position: relative;
-  flex: none;
-  width: 36px;
-  height: 36px;
-  background: var(--color-grid);
-  border-radius: 4px;
-  overflow: hidden;
-}
-
-.iconSwatch {
+.steps,
+.list,
+.terrain {
+  margin: 0;
+  padding-left: 1.2em;
   display: flex;
-  flex: none;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 4px;
-  background: color-mix(in srgb, var(--color-canvas) 55%, transparent);
-  color: var(--color-accent);
+  flex-direction: column;
+  gap: 4px;
 }
 
-.iconSwatch svg {
+.terrain {
+  list-style: none;
+  padding-left: 0;
+}
+
+.terrain li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.swatchFertile,
+.swatchPond,
+.swatchRock {
+  flex: none;
   width: 18px;
   height: 18px;
+  border-radius: 4px;
 }
 
-.seatList {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
+.swatchFertile {
+  background: var(--color-soil);
+  box-sizing: border-box;
+  border: 4px solid var(--color-soil);
+  outline: 2px solid var(--color-fertile);
+  outline-offset: -8px;
 }
 
-.seatRow {
-  display: flex;
-  align-items: center;
-  gap: var(--space-1);
-  font-size: var(--text-small);
+.swatchPond {
+  background: var(--color-pond);
 }
 
-.seatDot {
-  display: inline-block;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-}
-
-.seatDot[data-seat='0'] {
-  background: var(--color-seat-0);
-}
-
-.seatDot[data-seat='1'] {
-  background: var(--color-seat-1);
-}
-
-.seatDot[data-seat='2'] {
-  background: var(--color-seat-2);
-}
-
-.seatDot[data-seat='3'] {
-  background: var(--color-seat-3);
-}
-
-.tag {
-  flex: none;
-  display: inline-flex;
-  align-items: center;
-  height: 24px;
-  padding: 0 var(--space-1);
-  border-radius: var(--radius-full);
-  border: 1px solid color-mix(in srgb, var(--color-muted) 55%, transparent);
-  font-size: var(--text-micro);
-  font-weight: 600;
-  color: var(--color-heading);
-}
-
-/* 견본 안의 육각은 보드 셀과 달리 flex 가 아니라, 크기 지정 장식(광맥·유물지대·포대 발판)이 모서리에 붙는다 */
-.swatch > * {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.swatchRock {
+  background: var(--color-rock);
 }

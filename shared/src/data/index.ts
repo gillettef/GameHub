@@ -1,3 +1,3 @@
 export * from './constants.js';
-export * from './cards.js';
-export * from './maps.js';
+export * from './species.js';
+export * from './tiles.js';

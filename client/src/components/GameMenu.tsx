@@ -1,5 +1,5 @@
 import { memo, useEffect, useState } from 'react';
-import { selectIsMyTurn, selectState, selectViewerId, useGameStore } from '../store/gameStore';
+import { selectState, selectViewerId, useGameStore } from '../store/gameStore';
 import { isNotifyOn, isSoundOn, notifySupported, setNotifyOn, setSoundOn } from '../lib/cues';
 import { BellIcon, CheckIcon, CloseIcon, ExitIcon, HelpIcon, MoreIcon, MuteIcon, SoundIcon, SurrenderIcon } from './icons';
 import styles from './GameMenu.module.css';
@@ -14,7 +14,6 @@ type Confirm = 'quit' | 'surrender' | null;
 export const GameMenu = memo(function GameMenu({ onQuit }: { onQuit: () => void }) {
   const state = useGameStore(selectState);
   const viewerId = useGameStore(selectViewerId);
-  const isMyTurn = useGameStore(selectIsMyTurn);
   const mode = useGameStore((s) => s.mode);
   const surrender = useGameStore((s) => s.surrender);
   const setTab = useGameStore((s) => s.setTab);
@@ -35,7 +34,7 @@ export const GameMenu = memo(function GameMenu({ onQuit }: { onQuit: () => void 
     setConfirm(null);
   };
 
-  const canSurrender = isMyTurn && state?.phase === 'playing' && !!state.players.find((p) => p.id === viewerId)?.alive;
+  const canSurrender = (state?.phase === 'playing' || state?.phase === 'drafting') && state.players.find((p) => p.id === viewerId)?.surrenderedOrder === null;
 
   return (
     <div className={styles.root}>
@@ -95,7 +94,7 @@ export const GameMenu = memo(function GameMenu({ onQuit }: { onQuit: () => void 
                   <ExitIcon />
                   <span>나가기</span>
                 </button>
-                <button type="button" role="menuitem" className={styles.item} disabled={!canSurrender} onClick={() => setConfirm('surrender')} title={canSurrender ? undefined : '내 차례에만 기권할 수 있습니다'}>
+                <button type="button" role="menuitem" className={styles.item} disabled={!canSurrender} onClick={() => setConfirm('surrender')} title={canSurrender ? undefined : '게임 중에만 기권할 수 있습니다'}>
                   <SurrenderIcon />
                   <span>기권</span>
                 </button>
@@ -108,7 +107,7 @@ export const GameMenu = memo(function GameMenu({ onQuit }: { onQuit: () => void 
                     ? mode === 'hotseat'
                       ? '나가면 진행 중인 판이 사라집니다.'
                       : '나가도 게임은 서버에 남고, 다시 들어올 수 있습니다.'
-                    : '기권하면 즉시 탈락하고 마커가 모두 사라집니다.'}
+                    : '기권하면 순위 맨 아래로 확정됩니다. 심어 둔 식물은 보드에 남습니다.'}
                 </p>
                 <div className={styles.confirmRow}>
                   <button type="button" className={styles.cancel} onClick={() => setConfirm(null)} aria-label="취소" title="취소">

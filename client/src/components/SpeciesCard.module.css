@@ -1,0 +1,98 @@
+/* 식물 카드. 플랫(그림자 없음), 라운드 16px(카드). 좌석 색은 --seat-color 로 테두리에만 */
+.card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  border: 2px solid color-mix(in srgb, var(--seat-color, var(--color-muted)) 55%, transparent);
+  color: var(--color-text);
+  text-align: center;
+  transition:
+    transform var(--motion-fast) var(--ease-standard),
+    border-color var(--motion-fast) var(--ease-standard);
+}
+
+button.card:active {
+  transform: scale(0.97);
+}
+
+.mini {
+  flex: none;
+  width: 92px;
+  padding: 6px 4px;
+}
+
+.full {
+  width: 100%;
+  max-width: 260px;
+  padding: var(--space-2) var(--space-3);
+}
+
+.selected {
+  border-color: var(--color-accent);
+  transform: translateY(-4px);
+}
+
+.dimmed {
+  opacity: 0.45;
+}
+
+.name {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: var(--text-body);
+  color: var(--color-heading);
+}
+
+.full .name {
+  font-size: var(--text-sub);
+}
+
+/* 그림 칸: 사용자가 일러스트를 넣기 전까지 빈 칸으로 둔다 */
+.art {
+  width: 100%;
+  aspect-ratio: 1;
+  max-height: 160px;
+  border-radius: var(--radius-sm);
+  border: 1.5px dashed color-mix(in srgb, var(--color-muted) 50%, transparent);
+  overflow: hidden;
+  display: flex;
+}
+
+.art img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.diagram {
+  display: flex;
+  justify-content: center;
+}
+
+.special,
+.specialMini {
+  font-size: var(--text-micro);
+  font-weight: 700;
+  color: var(--color-accent);
+  line-height: 1.3;
+}
+
+.specialMini {
+  min-height: 2.6em;
+}
+
+.desc {
+  font-size: var(--text-small);
+  line-height: 1.45;
+  color: var(--color-muted);
+}
+
+/* 손패용 납작한 카드 */
+.compact {
+  width: 76px;
+  padding: 4px 3px;
+  gap: 2px;
+}

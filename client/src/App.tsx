@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
-import { DEFAULT_MAP_ID, getMap } from '@astraltab/shared';
+import { autoAction } from '@rootbound/shared';
+import { asState } from './game/derived';
 import { makeSeed } from './game/hotseat';
 import { navigate, useRoute } from './lib/router';
 import { GamePage } from './pages/GamePage';
@@ -10,20 +11,22 @@ import { SetupPage } from './pages/SetupPage';
 import { useGameStore, type TabId } from './store/gameStore';
 
 /**
- * 개발·검증용 바로가기: `/hotseat?quick` 은 기본 맵·기본 덱으로 곧장 핫시트를 시작한다.
- * `&map=<id>` 로 맵을, `&tab=status|progress` 로 첫 탭을, `&seed=<n>` 으로 시드를, `&select=<손패 index>` 로 선택 카드를, `&modal=<손패 index>` 로 카드 확대 모달을, `&marker=<마커 id>` 로 마커 모달을 지정한다.
+ * 개발·검증용 바로가기: `/hotseat?quick` 은 곧장 핫시트를 시작한다.
+ * `&players=<2~4>` 인원, `&seed=<n>` 시드, `&play` 드래프트를 자동 픽으로 끝내고 심기 단계부터,
+ * `&tab=<board|status|progress|cards|help>` 첫 탭, `&select=<손패 index>` 선택 카드, `&modal=<손패 index>` 카드 확대 모달.
  */
-function readQuickStart(): { mapId: string; seed: number; tab: TabId | null; select: number | null; modal: number | null; marker: string | null } | null {
+function readQuickStart(): { players: number; seed: number; play: boolean; tab: TabId | null; select: number | null; modal: number | null } | null {
   const q = new URLSearchParams(window.location.search);
   if (!q.has('quick')) return null;
   const tab = q.get('tab');
+  const players = Number(q.get('players') ?? 2);
   return {
-    mapId: q.get('map') ?? DEFAULT_MAP_ID,
+    players: players >= 2 && players <= 4 ? players : 2,
     seed: Number(q.get('seed') ?? makeSeed()),
+    play: q.has('play'),
     tab: tab === 'status' || tab === 'progress' || tab === 'board' || tab === 'cards' || tab === 'help' ? tab : null,
     select: q.has('select') ? Number(q.get('select')) : null,
     modal: q.has('modal') ? Number(q.get('modal')) : null,
-    marker: q.get('marker'),
   };
 }
 
@@ -50,17 +53,20 @@ export function App() {
   useEffect(() => {
     const quick = readQuickStart();
     if (!quick || useGameStore.getState().state) return;
-    const map = getMap(quick.mapId);
-    startHotseat({
-      mapId: map.id,
-      seed: quick.seed,
-      players: Array.from({ length: map.players }, (_, i) => ({ nickname: `플레이어 ${i + 1}`, race: 'coalition' as const })),
-    });
+    startHotseat({ seed: quick.seed, nicknames: Array.from({ length: quick.players }, (_, i) => `플레이어 ${i + 1}`) });
+    if (quick.play) {
+      for (let i = 0; i < 40; i++) {
+        const st = useGameStore.getState().state;
+        if (!st || st.phase !== 'drafting' || !st.currentPlayerId) break;
+        const a = autoAction(asState(st), st.currentPlayerId);
+        if (!a) break;
+        useGameStore.getState().dispatch(a);
+      }
+    }
     acknowledgeHandoff();
     if (quick.tab) setTab(quick.tab);
     if (quick.select !== null && Number.isInteger(quick.select)) selectHandCard(quick.select);
     if (quick.modal !== null && Number.isInteger(quick.modal)) openCardModal({ kind: 'hand', index: quick.modal });
-    if (quick.marker) openCardModal({ kind: 'marker', markerId: quick.marker });
     if (window.location.pathname !== '/hotseat') navigate('/hotseat', true);
   }, [startHotseat, acknowledgeHandoff, setTab, selectHandCard, openCardModal]);
 
@@ -73,7 +79,7 @@ export function App() {
     case 'room':
       return <RoomPage roomId={route.roomId} />;
     case 'hotseat':
-      if (mode === 'hotseat' && state) {
+      if (mode === 'hotseat' && state && !tutorial) {
         return (
           <GamePage
             onQuit={() => {
@@ -83,7 +89,7 @@ export function App() {
           />
         );
       }
-      return <SetupPage onStart={() => undefined} />;
+      return <SetupPage />;
     case 'tutorial':
       if (mode === 'hotseat' && tutorial && state) {
         return (

@@ -25,15 +25,6 @@
   color: var(--color-heading);
 }
 
-.limit {
-  font-weight: 400;
-  color: var(--color-muted);
-}
-
-.turnNum {
-  color: var(--color-muted);
-}
-
 .whoTurn {
   font-weight: 600;
   color: var(--color-accent);
@@ -139,12 +130,6 @@
   color: var(--color-muted);
 }
 
-.raceIcon {
-  flex: none;
-  width: 14px;
-  height: 14px;
-}
-
 /* 2026-09-24: 좁은 카드에서 flex 아이템이 내용보다 줄어들면 안의 텍스트가 줄바꿈되던 문제
    (예: "+1/턴" 이 "+1" / "턴" 두 줄로) — 아이콘 표기로 바꾸면서 각 항목을 한 줄로 고정한다 */
 .statsRow {
@@ -157,19 +142,14 @@
 }
 
 .energy,
-.income,
 .score {
   flex: none;
   white-space: nowrap;
 }
 
 .energy {
-  color: var(--color-energy);
+  color: var(--color-accent);
   font-weight: 700;
-}
-
-.income {
-  color: var(--color-muted);
 }
 
 .score {

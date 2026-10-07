@@ -44,7 +44,7 @@ const ICONS: Record<TabId, ReactNode> = {
  * 보고 있으면 보드 아이콘이 맥동하고, 진행 탭에는 안 읽은 사건 수가 뜬다.
  */
 /** 안 읽은 사건으로 세는 로그 종류(수입·드로우 같은 정산은 뺀다) */
-const NEWS_KINDS = new Set(['place', 'magic', 'combat', 'destroy', 'eliminate', 'pass', 'surrender']);
+const NEWS_KINDS = new Set(['plant', 'flip', 'discard', 'surrender']);
 
 export const TabDock = memo(function TabDock() {
   const tab = useGameStore(selectTab);
@@ -89,16 +89,16 @@ export const TabDock = memo(function TabDock() {
           role="tab"
           aria-selected={tab === t.id}
           aria-controls={`panel-${t.id}`}
-          aria-label={t.label}
+          aria-label={[t.label, t.id === 'board' && myTurnElsewhere ? '내 차례' : null, t.id === 'progress' && unread > 0 ? `새 사건 ${unread}건` : null, t.id === 'help' && !helpSeen ? '새 안내' : null].filter(Boolean).join(', ')}
           title={t.label}
           className={cx(styles.item, tab === t.id && styles.active, t.id === 'board' && myTurnElsewhere && styles.alert)}
           onClick={() => setTab(t.id)}
         >
           {ICONS[t.id]}
-          {t.id === 'help' && !helpSeen && <span className={styles.badge} aria-label="새 안내" />}
-          {t.id === 'board' && myTurnElsewhere && <span className={styles.badge} aria-label="내 차례" />}
+          {t.id === 'help' && !helpSeen && <span className={styles.badge} aria-hidden="true" />}
+          {t.id === 'board' && myTurnElsewhere && <span className={styles.badge} aria-hidden="true" />}
           {t.id === 'progress' && unread > 0 && (
-            <span className={styles.countBadge} aria-label={`새 사건 ${unread}건`}>
+            <span className={styles.countBadge} aria-hidden="true">
               {unread > 9 ? '9+' : unread}
             </span>
           )}

@@ -1,19 +1,20 @@
-"""FastAPI 앱. Node 서버가 AI 턴마다 POST /decide 를 호출한다. 상태를 저장하지 않는다."""
+"""FastAPI 앱. Node 서버가 AI 차례마다 POST /decide 를 호출한다. 상태를 저장하지 않는다."""
 
 from fastapi import FastAPI
 
-from .search import decide
 from .models import DecideRequest, DecideResponse
+from .search import decide
 
-app = FastAPI(title="AstralTab AI", version="0.1.0")
+app = FastAPI(title="Rootbound AI", version="0.2.0")
 
 
 @app.get("/health")
 def health() -> dict[str, str]:
-    return {"status": "ok", "service": "astraltab-ai"}
+    return {"status": "ok", "service": "rootbound-ai"}
 
 
-@app.post("/decide", response_model=DecideResponse)
+# None 필드(덩굴 아닌 식물의 direction, 씨앗 없는 seed)는 빼고 보낸다. TS 검증은 undefined 만 "없음"으로 본다
+@app.post("/decide", response_model=DecideResponse, response_model_exclude_none=True)
 def decide_endpoint(req: DecideRequest) -> DecideResponse:
     action, depth, elapsed_ms = decide(req.state, req.playerId, req.timeLimitMs)
     return DecideResponse(action=action, depth=depth, elapsedMs=elapsed_ms)

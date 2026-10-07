@@ -162,10 +162,10 @@ export function announceMyTurn(body: string): void {
     /* 진동 미지원 */
   }
   if (document.visibilityState === 'visible') return;
-  flashTitle('● 내 차례 · AstralTab');
+  flashTitle('● 내 차례 · Rootbound');
   if (isNotifyOn()) {
     try {
-      const n = new Notification('AstralTab · 내 차례', { body, tag: 'astraltab-turn' });
+      const n = new Notification('Rootbound · 내 차례', { body, tag: 'rootbound-turn' });
       n.onclick = () => {
         window.focus();
         n.close();
