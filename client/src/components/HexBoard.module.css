@@ -1,0 +1,167 @@
+/* 정원 보드 (SVG). 좌표 단위는 육각 반지름 1. 그림자 없음(플랫) */
+.board {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: manipulation;
+  user-select: none;
+}
+
+.cell {
+  cursor: default;
+}
+
+.clickable {
+  cursor: pointer;
+}
+
+.ground {
+  stroke: var(--color-grid);
+  stroke-width: 0.06;
+}
+
+.empty,
+.fertile {
+  fill: var(--color-soil);
+}
+
+.pond {
+  fill: var(--color-pond);
+}
+
+.rock {
+  fill: var(--color-rock);
+}
+
+/* 땅 주인: 좌석색을 옅게 덮는다 */
+.owned {
+  fill: color-mix(in srgb, var(--owner) 38%, transparent);
+  pointer-events: none;
+}
+
+.fertileDot {
+  fill: var(--color-fertile);
+  pointer-events: none;
+}
+
+.legal {
+  fill: color-mix(in srgb, var(--color-accent) 18%, transparent);
+  stroke: var(--color-accent);
+  stroke-width: 0.08;
+  pointer-events: none;
+  animation: legal-pulse 1.6s var(--ease-standard) infinite;
+}
+
+.seedLegal {
+  fill: none;
+  stroke: var(--color-accent);
+  stroke-width: 0.06;
+  stroke-dasharray: 0.18 0.12;
+  pointer-events: none;
+}
+
+@keyframes legal-pulse {
+  50% {
+    stroke-opacity: 0.45;
+  }
+}
+
+/* 미리보기: 주인이 바뀔 칸 */
+.flip {
+  fill: none;
+  stroke: var(--owner, var(--color-muted));
+  stroke-width: 0.14;
+  stroke-dasharray: 0.22 0.12;
+  pointer-events: none;
+}
+
+.pending {
+  fill: none;
+  stroke: var(--color-accent);
+  stroke-width: 0.16;
+  pointer-events: none;
+}
+
+.entrance {
+  fill: var(--seat);
+  stroke: var(--color-canvas);
+  stroke-width: 0.06;
+  pointer-events: none;
+}
+
+.plant {
+  pointer-events: none;
+  animation: plant-pop var(--motion-slow) var(--ease-enter);
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.plant circle {
+  fill: var(--seat);
+  stroke: var(--color-canvas);
+  stroke-width: 0.07;
+}
+
+.plant text {
+  font-size: 0.62px;
+  font-weight: 800;
+  fill: var(--color-canvas);
+}
+
+@keyframes plant-pop {
+  from {
+    transform: scale(0.2);
+    opacity: 0;
+  }
+  70% {
+    transform: scale(1.15);
+  }
+}
+
+.seed {
+  fill: var(--seat);
+  stroke: var(--color-canvas);
+  stroke-width: 0.04;
+  pointer-events: none;
+}
+
+.seedPending {
+  fill: none;
+  stroke: var(--color-accent);
+  stroke-width: 0.1;
+  pointer-events: none;
+}
+
+.infl {
+  font-size: 0.7px;
+  font-weight: 800;
+  fill: var(--color-accent);
+  pointer-events: none;
+}
+
+.inflSmall {
+  font-size: 0.5px;
+  font-weight: 700;
+  fill: color-mix(in srgb, var(--color-text) 80%, transparent);
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .legal,
+  .plant {
+    animation: none;
+  }
+}
+
+.waves {
+  fill: none;
+  stroke: color-mix(in srgb, var(--color-white) 55%, transparent);
+  stroke-width: 0.07;
+  stroke-linecap: round;
+  pointer-events: none;
+}
+
+.stones {
+  fill: color-mix(in srgb, var(--color-white) 22%, transparent);
+  pointer-events: none;
+}

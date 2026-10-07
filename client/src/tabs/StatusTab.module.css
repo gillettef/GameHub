@@ -1,160 +1,93 @@
-/* 언제나 모바일 폭이므로 패널을 세로로 쌓고, 넓은 표는 좌석별 카드 목록으로 접는다 */
 .root {
   height: 100%;
-  min-height: 0;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-  overflow-y: auto;
+  padding: var(--space-1) 2px var(--space-3);
 }
 
-.panel {
-  flex: none;
-  padding: var(--space-2);
-  border-radius: var(--radius-sm);
-  background: var(--color-surface);
-}
-
-.title {
-  font-size: var(--text-nav);
-  margin-bottom: var(--space-1);
-}
-
-.subtitle {
-  font-size: var(--text-small);
-  margin-top: var(--space-2);
-  margin-bottom: 4px;
-}
-
-.sub {
-  font-weight: 400;
-  font-size: var(--text-small);
-  color: var(--color-muted);
-  margin-left: var(--space-1);
-}
-
-.table,
-.table thead,
-.table tbody,
-.table tr,
-.table th,
-.table td {
-  display: block;
-}
-
-.table {
-  width: 100%;
-  font-size: var(--text-small);
-}
-
-.table thead {
-  display: none;
-}
-
-.table tr {
-  margin-bottom: var(--space-1);
-  padding: var(--space-1);
-  border-radius: var(--radius-sm);
-  background: color-mix(in srgb, var(--color-canvas) 40%, transparent);
-}
-
-.table td {
+.section {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  text-align: right;
-  padding: 3px 2px;
-  white-space: normal;
+  flex-direction: column;
+  gap: 6px;
 }
 
-.table td.name {
-  text-align: right;
-  font-weight: 600;
+.h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--text-nav);
+  color: var(--color-heading);
 }
 
-.energy {
-  color: var(--color-energy);
-  font-weight: 700;
-}
-
-.total {
-  font-weight: 700;
-  color: var(--color-accent);
-}
-
-:global(.is-disabled) .energy,
-:global(.is-disabled) .total {
-  color: var(--color-muted);
-  font-weight: 400;
-}
-
-.current td {
-  background: color-mix(in srgb, var(--color-accent) 12%, transparent);
-}
-
-.me td.name::after {
-  content: ' (나)';
-  color: var(--color-muted);
-  font-weight: 400;
-}
-
-.hand {
+.players {
   list-style: none;
   margin: 0;
-  padding: var(--space-1);
-  border-radius: var(--radius-sm);
-  background: color-mix(in srgb, var(--color-canvas) 55%, transparent);
+  padding: 0;
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.player {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--seat-color) 14%, var(--color-surface));
+  border-left: 4px solid var(--seat-color);
+}
+
+.head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
   gap: var(--space-1);
 }
 
-.discard {
-  margin: 0;
-  padding-left: 18px;
-  font-size: var(--text-small);
-  line-height: 1.5;
-}
-
-.muted {
-  margin: 0;
-  color: var(--color-muted);
-  font-size: var(--text-small);
-}
-
-.cellValue {
-  display: inline-flex;
+.name {
+  display: flex;
   align-items: center;
   gap: 4px;
+  font-weight: 700;
 }
 
-.cellLabel {
-  display: inline;
+.me,
+.gone {
+  padding: 0 6px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--color-outline);
+  font-size: var(--text-micro);
+  font-weight: 600;
+}
+
+.gone {
+  border-color: var(--color-danger);
+  color: var(--color-danger);
+}
+
+.total {
+  font-family: var(--font-display);
+  font-size: var(--text-sub);
+  color: var(--color-accent);
+}
+
+.breakdown {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  font-size: var(--text-small);
+}
+
+.meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: var(--text-micro);
   color: var(--color-muted);
-  font-weight: 500;
-  text-align: left;
 }
 
-.seatDot {
-  display: inline-block;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-.seatDot[data-seat='0'] {
-  background: var(--color-seat-0);
-}
-
-.seatDot[data-seat='1'] {
-  background: var(--color-seat-1);
-}
-
-.seatDot[data-seat='2'] {
-  background: var(--color-seat-2);
-}
-
-.seatDot[data-seat='3'] {
-  background: var(--color-seat-3);
+.drafted {
+  color: var(--color-text);
 }

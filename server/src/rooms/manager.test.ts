@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import type { Action, GameState, PlayerId } from '@astraltab/shared';
-import { autoAction, legalPlantCells, maskState } from '@astraltab/shared';
+import type { Action, GameState, PlayerId } from '@rootbound/shared';
+import { autoAction, legalPlantCells, maskState } from '@rootbound/shared';
 import { createAiRunner } from '../game/aiTurn.js';
 import { RoomError, RoomManager, isCurrentFormat } from './manager.js';
 

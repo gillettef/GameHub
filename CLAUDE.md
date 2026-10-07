@@ -1,50 +1,41 @@
-# AstralTab
+# Rootbound
 
-웹 브라우저에서 친구 2~4명과 즐기는, **바둑처럼 마커를 놓아 영토를 넓히는** 카드 기반 우주 전략 보드게임 플랫폼. 마커는 한 번 놓으면 이동하지 않고, 한 턴에 하나만 놓을 수 있다(2026-09-22 다중 배치 허용 → 2026-09-23 사용자 지시로 되돌림). 선턴 유리함은 덤(좌석 번호 비례 점수 보너스, 2026-09-23 신설)으로 보정한다. 전투·수입·드로우 같은 마커 효과는 다음 사람 턴이 시작할 때가 아니라 **내 턴을 끝내는 그 순간** 즉시 처리된다(2026-09-23 사용자 지시). 패스/턴 종료 시 손패를 원하는 만큼 버리고 덱과 섞어 5장까지 다시 뽑는 손패 교체도 같은 날 추가됐다.
-보드 / 상태 / 진행 세 개의 탭으로 화면을 나누고, 스크롤 없이 한 화면에서 대국을 진행한다.
+웹 브라우저에서 친구 2~4명(또는 AI)과 즐기는 **정원 땅따먹기 보드게임**. 차례마다 식물 카드 한 장을 심고, 식물의 뿌리 모양대로 둘레 칸에 영향력이 쌓인다. 칸마다 영향력이 가장 큰 사람이 그 칸의 주인이고, 끝났을 때 땅 + 목표 카드 점수가 높은 쪽이 이긴다. 전투·체력·에너지는 없다. 게임 전에 공개 목표 3장을 보고 식물 12종을 **뱀 순서로 드래프트**해 이번 판 덱을 만들고, 판마다 목표와 정원 조각 배치가 바뀌어 리플레이성을 만든다.
+정원 / 점수 / 진행 / 카드 / 설명 다섯 탭으로 화면을 나누고, 스크롤 없이 한 화면에서 대국을 진행한다.
 
-**게임 규칙의 정본은 `notes/Rules.md` 다.** 룰 엔진·AI·UI·명세서 어디든 규칙이 어긋나면 Rules.md가 맞다. 규칙을 바꿀 때는 Rules.md를 먼저 고친다.
+> 2026-10-07 사용자 지시로 이전 게임(AstralTab, 카드 기반 우주 전투 보드게임)을 전부 걷어내고 Rootbound 로 교체했다. 예전 규칙·코드는 git 기록에만 있다. 저장소·EC2 경로·systemd 서비스 이름에는 옛 이름(AstralTab, astraltab-*)이 남아 있다(아래 "실행 환경").
 
-기획 문서는 `notes/`에 있다. 기능을 구현하기 전에 반드시 해당 F-ID의 수락 기준과 Rules.md의 해당 절을 확인한다.
+**게임 규칙의 정본은 `notes/Rules.md` 다.** 룰 엔진·AI·UI 어디든 규칙이 어긋나면 Rules.md가 맞다. 규칙을 바꿀 때는 Rules.md를 먼저 고친다.
 
 | 문서 | 내용 |
 |---|---|
-| `notes/Rules.md` | **규칙 정본**. 용어, 턴 진행, 배치·시야·전투·점수, 종족 5개(카드 95종 + 공용 코어), 맵 6개, 상수, 결정성 규칙 |
-| `notes/Rule.pdf` | Rules.md를 플레이어에게 쉬운 말로 풀어 쓴 규칙 설명서(PDF, 표지·차례·카드 표·맵 그림 포함). `scripts/build-rulebook.py`로 생성. 정본이 아니라 파생 문서이므로 Rules.md를 고치면 이 문서도 다시 만든다 |
-| `notes/PRD_AstralTab_*.md` | 제품 목표, 타겟, 시나리오, KPI, 리스크 |
-| `notes/기능명세서_AstralTab_*.md` | F001~F031 기능 ID, 설명, 수락 기준, 중요도 |
-| `notes/구현방법_AstralTab_*.md` | 실시간 동기화, 탭 전환 성능, 시야·전투·점수 판정, 다인전 AI 탐색 |
-| `notes/추진로드맵_AstralTab_*.md` | Phase 1~3 범위 |
-| `notes/유저플로우_AstralTab_*.md` | v1 유저 플로우 다이어그램 (base64 PNG). "로그인"은 닉네임 입력, "유닛 이동"은 없어졌다 |
-| `notes/image/Rules/` | v1 규칙 초안 메모 이미지. Rules.md와 어긋나면 Rules.md 우선 |
+| `notes/Rules.md` | **규칙 정본**. 보드 조립(대칭 조각 배치), 드래프트, 차례, 영향력·땅, 식물 12종, 목표 18장, 점수·순위, 온라인 제한 시간(6.3), 상수, 결정성, 밸런스 근거 |
 
 ---
 
 ## 필수 작업 규칙
 
 1. **작업이 완료되면 반드시 `git commit` & `git push`를 진행한다.** 기능 하나, 버그 수정 하나 등 의미 있는 단위가 끝날 때마다 커밋하고 푸시한다. `/commit-push` 스킬을 사용한다.
-2. **commit 메시지는 가급적 한국어로 작성한다.** 제목은 `<타입>: <요약>` 형식 (예: `기능: 로비 초대 링크 생성 (F001)`, `수정: 전투 대상 선택 순서 오류 (F023)`). 관련 F-ID가 있으면 괄호로 덧붙인다.
-3. **push 대상 repo는 `https://github.com/gillettef/AstralTab.git` 이다.** 브랜치는 `main`을 기본으로 사용한다.
-4. **이 서비스는 DB를 사용하지 않는다.** notes/ 문서에 "데이터베이스", "Redis" 등이 남아 있어도 DB·Redis·ORM을 도입하지 않는다. 아래 "DB 없는 상태 관리" 참고.
+2. **commit 메시지는 가급적 한국어로 작성한다.** 제목은 `<타입>: <요약>` 형식 (예: `기능: 드래프트 화면 (F008)`, `수정: 덩굴 거리 계산`). 관련 F-ID가 있으면 괄호로 덧붙인다.
+3. **push 대상 repo는 `https://github.com/gillettef/AstralTab.git` 이다**(저장소 이름 변경 예정. 바뀌면 이 줄과 `git remote` 를 고친다). 브랜치는 `main`을 기본으로 사용한다.
+4. **이 서비스는 DB를 사용하지 않는다.** DB·Redis·ORM을 도입하지 않는다. 아래 "DB 없는 상태 관리" 참고.
 5. 로컬 테스트 시 서버를 포그라운드로 직접 띄우지 않는다(터미널이 블로킹됨). 반드시 `/dev`로 시작하고 `/dev-stop`으로 종료한다. `scripts/dev.ps1` 출력을 `| grep` 등 다른 프로세스로 파이프하지 않는다.
-6. 포트 3001은 이 PC에서 사용자의 다른 프로젝트(Eleven)가 쓴다. AstralTab 서버는 3101을 쓰며, 3001을 점유한 프로세스는 절대 종료하지 않는다.
-7. **규칙 변경은 세 곳을 함께 고친다**: `notes/Rules.md` → `shared/src/engine` + `shared/src/data` (Vitest) → `ai/astral_ai/rules.py` (pytest, 공용 픽스처). 기능명세서의 수락 기준도 맞춘다.
+6. 포트 3001은 이 PC에서 사용자의 다른 프로젝트(Eleven)가 쓴다. Rootbound 서버는 3101을 쓰며, 3001을 점유한 프로세스는 절대 종료하지 않는다.
+7. **규칙 변경은 세 곳을 함께 고친다**: `notes/Rules.md` → `shared/src/engine` + `shared/src/data` (Vitest, `data.test.ts` 가 Rules.md 표와 데이터를 대조한다) → `npm run fixtures` → `ai/astral_ai/rules.py` (pytest, 픽스처 재생으로 TS·Python 일치 검증).
 8. **Claude Code는 사용자에게 보이는 답변(채팅 응답)을 한국어로 작성한다.** 코드 식별자는 영어로 쓰되(코딩 규칙 참고), 설명·요약·질문 등 대화 텍스트는 한국어를 쓴다.
+9. **수치를 바꿀 때는 먼저 시뮬레이터로 잰다**: `npx tsx shared/scripts/garden-sim.ts [2인] [3인] [4인]` (`SIM_OVERRIDES=<json>` 으로 파일 수정 없이 시험). 종 승률·좌석 승률·목표 영향·뒤집기·버림을 출력한다. 결과와 결정 이유는 Rules.md 12절에 남긴다.
 
 ---
 
-## 코드 현황 (2026-09-22)
+## 코드 현황 (2026-10-07)
 
-- `shared/src`(types·data·engine), `ai/astral_ai`(models·rules·search), `shared/fixtures` 는 **v2 규칙(Rules.md)** 으로 재작성됐다. 2026-09-22 육각 전환(odd-r 오프셋, `hexDistance`/`hex_distance`, 코어 시야·수입 1)에 이어 2026-09-23 종족 3개(인류 연합·크릴 군락·오토마타 집정체, `Keyword`에 `overclock` 추가, `computeIncome`/`compute_income` 에 과부하 계산)까지 반영. Vitest 119개(shared, 맵 6개 좌석 공정성 테스트 포함) + 18개(client) + 13개(server), pytest 26개(픽스처 시나리오 재생으로 TS·Python 규칙 일치 검증)가 통과한다.
-- `ai/astral_ai/search.py` 는 1수 탐욕 자리표시자다. Minimax / max-n 은 Phase 3.
-- `client/` 는 **Phase 1 탭 UI 핫시트**가 구현됐다 (F008~F017). 설정 화면(참가 인원 → 맵(인원수로 필터) → 닉네임 → 덱 빌딩) → 게임 대시보드(보드·상태·진행 탭) → 결과 오버레이. 규칙 계산은 `client/src/game/hotseat.ts` 가 `shared/src/engine` 의 `applyAction` 을 직접 호출하는 로컬 어댑터로 처리하며, Phase 2 에서 Socket.io 어댑터(`client/src/socket`)로 교체한다. 개발용 바로가기 `/?quick&map=<id>&seed=<n>&tab=<board|status|progress>&select=<손패 index>`. Vitest 10개(client).
-- 보드는 `Board.tsx`/`Board.module.css` 가 육각(odd-r, pointy-top)으로 렌더링한다. 컨테이너 가로·세로에 맞춰 육각 크기를 계산해 무스크롤(F015)·모바일을 함께 만족한다. 마커는 좌석 색으로 채우고 모양(코어=육각·건물=둥근 사각·유닛=원·마법=마름모)으로 종류를 구분한다(좌석 1·2·3 색 확정, 흰색 패턴 구분은 폐기). 경고색은 2026-09-28에 Danger Red `#e5484d`로 확정했다(연결 끊김·기권 확정처럼 돌이킬 수 없는 경고 전용, 아래 디자인 표 참고).
-- **2026-10-01 UX 개편(사용자 지시: 모바일 최적화, 아이콘 위주, 연출 강화)**: 버튼·탭·카드를 아이콘 위주로 바꿨다(`components/icons.tsx`). 기권·나가기·규칙 보기는 상단 ⋯ 메뉴(`GameMenu`)로 옮겼고 바닥 턴 바(`TurnControls`)에는 교체·패스/턴 종료만 남았다. 손패는 작은 아이콘 카드(`CardMini`)이고 탭하면 확대 모달(`CardModal`, 스토어 `cardModal`)에서 고른다(카드 탭도 같은 모달, 보기 전용). 하단 탭 독은 글자 없이 아이콘만이며 내 차례/안 읽은 사건 배지가 있다. 연출: 마커 배치 팝·피격 흔들림·파괴 폭발·데미지 숫자·카메라 이동(`Board.tsx`, `diffMarkerEffects` 에 `place` 추가), 턴 전환 스플래시+사건 칩(`TurnEvents`, 예전 `OpponentRecap` 대체), 에너지·점수 증감 표시(`ChangeValue`), 드로우 카드 슬라이드, 결과 화면 순위 등장. 랜딩에 "AI와 바로 시작"(`lib/quickStart.ts`, 방 생성→AI 추가→로비가 준비까지 자동)이 생겼다. 개발용 바로가기에 `&modal=<손패 index>`, `&marker=<마커 id>` 추가. 보드의 마커를 탭하면 예전 설명 패널 대신 같은 확대 모달(실제 체력·지형 보정 수치, 보기 전용)이 열린다(`InfoPanel` 삭제).
-- 화면은 모바일 우선이다: 본문 14px/최소 12px, `max-width:720px` 에서 `BoardTab`·`Hand`·`StatusTab`·`GamePage` 헤더가 레이아웃을 바꾼다. 자세한 내용은 아래 "모바일 우선" 절.
-- **Phase 2 온라인 멀티플레이 + AI 좌석**이 구현됐다 (F001~F007, F026, F027, F030). 서버 `rooms/manager.ts`(방 생성·초대 id·비밀번호·좌석·맵 변경·AI 추가, 순수 로직 + Vitest 9개), `persistence/snapshots.ts`(`server/data/<env>/rooms/<roomId>.json`, 시작 시 복원), `game/aiTurn.ts`(AI 턴마다 Python `/decide` 호출 → 엔진 검증 → PASS 폴백), `index.ts`(Socket.io ack 이벤트, 플레이어별 `maskState` 브로드캐스트). 이벤트 계약은 `shared/src/types/events.ts`, 가림 함수는 `shared/src/mask.ts`.
-- 클라이언트 경로: `/` 랜딩(방 만들기·초대 링크 참여·핫시트), `/hotseat` 핫시트 설정→게임, `/room/:id` 온라인 로비→게임. 소켓 어댑터 `client/src/socket/client.ts`, 스토어는 `mode: hotseat | online` 으로 같은 액션을 쓴다. 재접속은 localStorage `playerToken` (`client/src/lib/identity.ts`).
-- **2026-10-06 완성도 개선**: (1) 온라인 **턴 제한 시간**(Rules.md 5.4, 방장이 로비에서 60초/90초/3분/없음, 기본 90초) — 서버 `RoomManager.deadline/timeoutTurn` + `index.ts` 의 방별 타이머가 시간 초과 시 자동 PASS, 2번 연속이면 **AI 대리**(`Room.autopilot`, AI 실행기는 `manager.isAutoTurn(room)` 로 판단), 받아들여진 직접 행동·`game:resume`("직접 두기")으로만 해제(재접속으로는 안 풀림, 복원 시 턴 시계 재시작). 소켓 요청은 `socket.use` 가 (객체 payload, ack 함수) 모양을 먼저 검사한다. `RoomInfo` 에 `turnTimeLimitSec`·`turnDeadline`·`serverNow`·`autopilot`. 클라이언트는 `TurnTimer`(상단 메타 줄)·대리 배너. (2) **판 요약 로그** `server/data/<env>/stats/games.jsonl`(`RoomManager.takeRecord`, 방치된 판은 `abandoned`)과 웹 성능 `vitals.jsonl`(`POST /api/vitals`, `client/src/lib/vitals.ts`: FCP·LCP·액션 왕복·FPS), 집계는 `server/scripts/stats.ts`. (3) **튜토리얼** `/tutorial`: 연습 봇(`game/tutorialBot.ts`, 스토어 `botIds`/`tutorial`)과 두는 핫시트 판 + 단계 안내 `TutorialCoach`. 랜딩은 처음 온 사람에게 맨 위에 권한다(`onboarding.ts` `hasSeenTutorial`). (4) **효과음·차례 알림** `lib/cues.ts`(Web Audio 합성음, 다른 탭일 때 제목 깜빡임·브라우저 알림·진동, ⋯ 메뉴에서 켜고 끔), 사건→소리는 `game/useGameCues.ts`.
-- AI 탐색은 아직 1수 탐욕(`ai/astral_ai/search.py`). Minimax / max-n, 평가 함수 가중치(F028, F029)는 다음 작업. 로비의 자동 시작(전원 준비 시 엔진 `ready()` 가 시작)은 F002 의 "방장 시작 버튼"과 다르므로 필요하면 엔진에 START 액션을 추가한다.
+- **shared** (`shared/src`): 타입(`types/index.ts`, 이벤트 `types/events.ts`), 데이터(`data/constants.ts` 인원별 규칙·덤·드래프트 순서, `data/species.ts` 식물 12종·목표 18장, `data/tiles.ts` 정원 조각), 엔진(`engine/board.ts` 대칭 보드 조립·축 좌표·보드 색인, `influence.ts` 영향력·땅·합법 칸·씨앗·덩굴 방향, `scoring.ts` 목표·점수·순위, `turn.ts` 로비→드래프트→차례→종료 `applyAction`, 시간 초과 자동 수 `autoAction`), 가림 `mask.ts`. Vitest 55개.
+- **server**: `rooms/manager.ts`(방·초대 id·비밀번호·좌석·AI 추가, 차례/드래프트 제한 시간·자동 수·AI 대리, 판 요약 `takeRecord`, 옛 형식 스냅샷 판별 `isCurrentFormat`), `game/aiTurn.ts`(AI·대리 좌석 차례마다 Python `/decide` → 엔진 검증 → 실패 시 `autoAction` 폴백), `persistence/snapshots.ts`(JSON 스냅샷), `persistence/stats.ts`(판 요약·웹 성능 JSONL), `index.ts`(Socket.io, `socket.use` 로 요청 모양 검사, 방별 타이머, `POST /api/vitals`). 서버 시작 시 예전 우주 전투판 스냅샷은 지운다. Vitest 20개.
+- **AI** (`ai/astral_ai`, 패키지 이름은 옛 이름 그대로): `models.py`(Pydantic, TS 타입 1:1), `rules.py`(TS 엔진 시뮬레이션 사본, 수치는 `shared/fixtures/specs.json`), `search.py`(드래프트는 목표 연계 가치표, 차례는 1수 탐욕: 내 총점 − 최고 상대 총점, 시간 제한 안에 최선 수), `main.py`(`GET /health` → `rootbound-ai`, `POST /decide`, None 필드 제외). pytest 12개.
+- **client**: 경로 `/` 랜딩(AI와 바로 시작·방 만들기·초대 참여·핫시트·튜토리얼), `/hotseat` 같은 기기(인원·닉네임 → 드래프트), `/tutorial` 연습 봇(`game/tutorialBot.ts`)과 단계 안내(`TutorialCoach`), `/room/:id` 온라인 로비(방 → 좌석 → 준비·제한 시간) → 게임. 게임 화면: `PlayerStrip`(단계·차례·남은 시간·좌석별 땅/점수) → 탭(정원 `BoardTab`: 드래프트 중 `DraftPanel`, 진행 중 목표 칩 + `HexBoard`(SVG 육각 보드) + `Hand` + `PlantBar`(미리보기·덩굴 방향·민들레 씨앗) / 점수 `StatusTab` / 진행 `ProgressTab` / 카드 `CardsTab` / 설명 `HelpTab`) → `TabDock`. 카드는 `SpeciesCard`(이름 + 빈 그림 칸 + 뿌리 모양 `RootDiagram`), 확대·칸 정보는 `GameModal`. 화면용 파생값은 `game/derived.ts`(엔진 호출만). 효과음·차례 알림 `lib/cues.ts`, 웹 성능 `lib/vitals.ts`, 제한 시간 표시 `lib/turnClock.ts`. Vitest 10개.
+- **카드 그림은 비어 있다**(사용자가 나중에 넣는다). 파일은 `client/public/cards/`, 등록은 `client/src/game/cardImages.ts` (`client/public/cards/README.md`).
+- 개발용 바로가기: `/hotseat?quick&players=<2~4>&seed=<n>&play&tab=<board|status|progress|cards|help>&select=<손패 index>&modal=<손패 index>` (`play` = 드래프트를 자동 픽으로 끝내고 심기부터).
+- localStorage 키 접두어는 옛 이름 `astraltab.` 을 그대로 쓴다(닉네임·재접속 토큰·튜토리얼 표시 유지).
 
 ---
 
@@ -55,13 +46,12 @@
 | dev | 로컬 PC, `/dev` · `/dev-stop` | 3101 (tsx watch) | 5173 (Vite, proxy) | 8000 (`--reload`) | 로컬 개발. 핫리로드 |
 | 운영 | **AWS EC2 상시 서버** | 3201 (systemd `astraltab-prod-server`) | `client/dist/prod` 를 3201에서 정적 서빙 | 8001 (systemd `astraltab-prod-ai`) | 친구들이 접속하는 **유일한 서버**. `main` push 시 자동 배포 |
 
-- **2026-09-28 사용자 지시로 서버를 로컬 PC + Cloudflare 빠른 터널 방식에서 AWS EC2 상시 서버로 완전히 옮겼다.** 로컬 PC를 켜 둘 필요 없이 항상 접속 가능하다. **2026-09-29 사용자 지시로 test/prod 구분을 없애고 단일 운영 서버로 통일했다** — GitHub에 올리면(`main` push) AWS로 자동 배포되며 이것이 곧 운영이다. systemd 서비스명·`dist/prod`·`data/prod` 의 "prod" 는 예전 이름을 그대로 둔 것이다(EC2의 실제 방 스냅샷 경로 유지). `/prod-server` 스킬은 push 없이 수동 재배포할 때만 쓴다.
-- **AWS 인프라**: 리전 서울(`ap-northeast-2`), EC2 **t4g.nano** (ARM, 메모리 0.5GB, 스왑 2GB — `scripts/aws/swap.sh`; 2026-10-02 사용자 지시로 t3.micro 단독 서버를 없애고 **Eleven·MagicAcademy와 인스턴스 1대를 공유**하도록 옮김. 포트: Eleven 3001 / MagicAcademy 8080 / AstralTab 3201, 한 번에 한 게임만 플레이하는 전제) Amazon Linux 2023, Elastic IP(고정 공인 IP, `.dev/aws-public-ip.txt` 에 저장 — git에 커밋하지 않음). 도메인은 아직 없어 `http://<Elastic IP>:3201` 로 접속한다. 보안 그룹은 22(SSH, 관리자 IP만)·3201 만 인바운드로 연다. SSH 키(`.dev/astraltab-key.pem`)와 인스턴스 id(`.dev/aws-instance-id.txt`)도 `.dev/`(gitignore)에 있다.
-- GitHub 저장소가 비공개라 EC2에서 직접 `git clone`/`pull` 하지 않는다. 로컬에서 `git archive`로 워킹트리를 패키징해 ssh로 전송하는 방식(`scripts/deploy-aws.ps1`)을 쓴다. 클라이언트 빌드(vite)는 메모리가 작은 EC2가 아니라 CI 러너(수동 배포는 로컬)에서 하고 `client/dist/prod` 결과물만 같이 전송한다. EC2에서는 server·shared 의존성 설치와 systemd 재시작만 한다.
-- **수동 배포**: `powershell -File scripts/deploy-aws.ps1`. 로컬 커밋 여부와 무관하게 현재 워킹트리를 전송한다. 인스턴스를 새로 만드는 절차(최초 1회)는 `scripts/aws/provision.sh`(Node·Python·의존성 설치) → `scripts/aws/units.sh`(systemd 서비스 2개 등록) 참고.
-- **`main`에 push되면 GitHub Actions(`.github/workflows/deploy-aws.yml`)가 먼저 테스트·타입 검사·pytest(`verify` job)를 돌리고, 통과하면 EC2에 자동 배포한다(운영 단일 서버).** push 자체가 운영 반영이므로 검증 전 변경은 별도 브랜치에 둔다. Actions 탭의 `Deploy to AWS` 수동 실행(workflow_dispatch)으로 재배포도 가능하다. Secret `EC2_HOST_KEY`(known_hosts 한 줄)를 넣으면 배포 시 호스트 키를 고정한다. 이 워크플로는 SSH(22)를 관리자 IP로만 열어 둔 보안 그룹에 러너의 IP를 배포 직전에 임시로 추가했다가 끝나면 반드시 제거한다(그 권한만 있는 최소 권한 IAM 사용자 `astraltab-ci` 사용). GitHub 저장소 Secrets(`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`, `AWS_SECURITY_GROUP_ID`, `EC2_HOST`, `EC2_SSH_PRIVATE_KEY`)가 설정돼 있어야 동작한다. 수동 배포(`scripts/deploy-aws.ps1`)는 관리자 개인키(`astraltab-key.pem`)를 그대로 쓰고, CI는 별도 키(`astraltab-github-actions`, EC2 `authorized_keys`에 추가)를 쓴다.
-- 서버는 환경 변수 `APP_ENV`, `PORT`, `HOST`, `CLIENT_DIST`, `DATA_DIR`, `AI_BASE_URL` 로 설정한다 (`server/src/index.ts` 주석, EC2에서는 systemd unit 파일에 박혀 있다). JSON 스냅샷 디렉터리는 EC2의 `~/AstralTab/server/data/prod`.
-- dev는 여전히 로컬 PC에서 `/dev`·`/dev-stop`으로 돌린다. 공용 함수는 `scripts/common.ps1`.
+- 2026-09-28 사용자 지시로 서버를 AWS EC2 상시 서버로 옮겼고, 2026-09-29 test/prod 구분을 없애 단일 운영 서버로 통일했다 — GitHub `main` push 가 곧 운영 배포다. systemd 서비스명·`~/AstralTab` 경로·`dist/prod`·`data/prod` 는 예전 이름을 그대로 둔 것이다. `/prod-server` 스킬은 push 없이 수동 재배포할 때만 쓴다.
+- **AWS 인프라**: 리전 서울(`ap-northeast-2`), EC2 **t4g.nano** (ARM, 메모리 0.5GB, 스왑 2GB — `scripts/aws/swap.sh`; 2026-10-02 사용자 지시로 **Eleven·MagicAcademy와 인스턴스 1대를 공유**. 포트: Eleven 3001 / MagicAcademy 8080 / Rootbound 3201, 한 번에 한 게임만 플레이하는 전제) Amazon Linux 2023, Elastic IP(`.dev/aws-public-ip.txt`, git 제외). 도메인 없이 `http://<Elastic IP>:3201`. 보안 그룹은 22(SSH, 관리자 IP만)·3201 만 연다. SSH 키(`.dev/astraltab-key.pem`)와 인스턴스 id(`.dev/aws-instance-id.txt`)도 `.dev/`(gitignore)에 있다.
+- GitHub 저장소가 비공개라 EC2에서 `git clone`/`pull` 하지 않는다. 로컬에서 `git archive`로 패키징해 ssh로 전송한다(`scripts/deploy-aws.ps1`). 클라이언트 빌드(vite)는 CI 러너(수동 배포는 로컬)에서 하고 `client/dist/prod` 만 전송한다. EC2에서는 server·shared 의존성 설치와 systemd 재시작만 한다.
+- **수동 배포**: `powershell -File scripts/deploy-aws.ps1`. 최초 1회 인스턴스 준비는 `scripts/aws/provision.sh` → `scripts/aws/units.sh`.
+- **`main`에 push되면 GitHub Actions(`.github/workflows/deploy-aws.yml`)가 테스트·타입 검사·pytest(`verify` job) 통과 후 EC2에 자동 배포한다.** 검증 전 변경은 별도 브랜치에 둔다. 워크플로는 SSH(22)에 러너 IP를 배포 직전에 임시로 추가했다가 제거한다(최소 권한 IAM 사용자 `astraltab-ci`). 필요한 Secrets: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`, `AWS_SECURITY_GROUP_ID`, `EC2_HOST`, `EC2_SSH_PRIVATE_KEY`(선택 `EC2_HOST_KEY`). 수동 배포는 `astraltab-key.pem`, CI는 별도 키(`astraltab-github-actions`)를 쓴다.
+- 서버 환경 변수: `APP_ENV`, `PORT`, `HOST`, `CLIENT_DIST`, `DATA_DIR`, `AI_BASE_URL` (`server/src/index.ts` 주석, EC2는 systemd unit 에 박혀 있다). 스냅샷은 EC2 `~/AstralTab/server/data/prod/rooms`, 판 요약·웹 성능은 `.../prod/stats`.
 
 ---
 
@@ -72,116 +62,89 @@
 | 언어 | TypeScript + Python | 서버·클라이언트·공용 타입은 TS, AI 서비스는 Python |
 | 백엔드 | Node.js 22 + Express + Socket.io | 포트 `3101` |
 | 프론트엔드 | React 18 + Vite + Zustand | 포트 `5173`, `/api`·`/socket.io`는 Vite proxy로 3101에 연결 |
-| 스타일 | CSS Modules | 탭 전환 시 언마운트 대신 `display:none`/`visibility` 전환 |
-| 테스트 | Vitest | 룰 엔진은 순수 함수로 작성하고 단위 테스트 필수 |
-| AI | Python 3.11 + FastAPI + Minimax / max-n | 포트 `8000`. Node 서버가 AI 턴마다 HTTP로 호출 |
+| 스타일 | CSS Modules | 탭 전환 시 언마운트 대신 `hidden` 전환 |
+| 보드 렌더 | SVG | 축 좌표 육각, viewBox 로 컨테이너에 맞춤 |
+| 테스트 | Vitest | 룰 엔진은 순수 함수, 단위 테스트 필수 |
+| AI | Python 3.11 + FastAPI | 포트 `8000`. Node 서버가 AI 차례마다 HTTP로 호출 |
 | Python 실행 | `ai/.venv` | PC의 Python 3.11.7은 PATH에 없다. `scripts/dev.ps1`이 `C:\Users\User\AppData\Local\Programs\Python\Python311\python.exe`로 venv를 만든다 |
-| 저장소 | **없음** | 인메모리 + JSON 파일 스냅샷 |
-| 패키지 관리 | npm workspaces | `npm install`은 루트에서 한 번 |
+| 저장소 | **없음** | 인메모리 + JSON 파일 스냅샷 + JSONL 통계 |
+| 패키지 관리 | npm workspaces (`@rootbound/shared`·`server`·`client`) | `npm install`은 루트에서 한 번. `node_modules/@rootbound/*` 가 링크가 아니라 복사본이 되면 예전 코드로 테스트가 돈다 — 이상하면 `rm -rf node_modules/@rootbound && npm install` |
 
-## 디렉터리 구조 (목표)
+## 디렉터리 구조
 
 ```
-AstralTab/
+AstralTab/                 # 저장소 폴더 이름은 아직 옛 이름
 ├── CLAUDE.md
 ├── DESIGN.md
-├── package.json          # npm workspaces: server, client, shared
-├── notes/                # 기획 문서. Rules.md가 규칙 정본
-├── scripts/              # common.ps1, dev.ps1, dev-stop.ps1, deploy-aws.ps1, aws/(provision.sh, units.sh, deploy-remote.sh)
-├── shared/               # 서버·클라이언트 공용 타입, 카드·맵 데이터, 룰 엔진
-│   ├── fixtures/         # TS 엔진 출력 JSON. Python 테스트가 같은 파일을 읽는다
+├── package.json          # npm workspaces: shared, server, client (이름 rootbound)
+├── notes/Rules.md        # 규칙 정본
+├── scripts/              # common.ps1, dev.ps1, dev-stop.ps1, deploy-aws.ps1, aws/(provision.sh, units.sh, deploy-remote.sh, swap.sh)
+├── shared/
+│   ├── fixtures/         # specs.json, scenario.json (TS 엔진 출력, Python 테스트가 읽는다)
+│   ├── scripts/          # garden-sim.ts(밸런스 시뮬레이터), write-fixtures.ts
 │   └── src/
-│       ├── types/        # GameState, Player, Marker, Card, Map, Action, events
-│       ├── data/         # cards.ts (기본 22 + 특수 9), maps.ts (6개), constants.ts
-│       └── engine/       # 순수 함수 룰 엔진
-│           ├── sight.ts      # 시야 영역, 영토 소유자
-│           ├── placement.ts  # 배치 검증·적용, 즉발 마법
-│           ├── combat.ts     # 턴 시작 자동 공격, 파괴·탈락
-│           ├── scoring.ts    # 점수, 순위, 종료 조건
-│           ├── turn.ts       # 시작 단계 → 행동 → 종료 단계, applyAction
-│           └── rng.ts        # 시드 RNG, 셔플
+│       ├── types/        # GameState, PlayerState, Plant, Board, Action, events
+│       ├── data/         # constants.ts, species.ts(식물·목표), tiles.ts(정원 조각)
+│       ├── engine/       # board, influence, scoring, turn, rng (순수 함수)
+│       └── mask.ts       # 손패·덱 가림
 ├── server/
+│   ├── scripts/stats.ts  # 판 요약·웹 성능 집계
 │   └── src/
-│       ├── index.ts      # Express + Socket.io 부트스트랩
-│       ├── rooms/        # 방 생성, 초대 링크, 비밀번호, 로비, 맵 선택, 좌석, 턴 제한 시간·AI 대리, 판 요약
-│       ├── game/         # 룸별 게임 루프, 액션 → engine → 손패 가린 브로드캐스트
-│       ├── ai/           # AI 서비스 HTTP 클라이언트 (타임아웃·PASS 폴백)
-│       └── persistence/  # JSON 파일 스냅샷 저장/복구, stats.ts(판 요약·성능 JSONL, 집계는 server/scripts/stats.ts) (DB 아님)
+│       ├── index.ts      # Express + Socket.io, 방별 타이머, /api/vitals
+│       ├── rooms/        # 방·로비·좌석·제한 시간·AI 대리·판 요약
+│       ├── game/         # AI 차례 실행기
+│       ├── ai/           # AI 서비스 HTTP 클라이언트 (타임아웃·자동 수 폴백)
+│       └── persistence/  # JSON 스냅샷, 통계 JSONL (DB 아님)
 ├── client/
+│   ├── public/cards/     # 카드 일러스트 자리 (비어 있음)
 │   └── src/
-│       ├── pages/        # SetupPage(맵·닉네임·덱 빌딩), GamePage(헤더·탭 바), ResultOverlay
-│       ├── tabs/         # BoardTab(격자+손패+패스), StatusTab, ProgressTab
-│       ├── components/   # Board, Cell, Hand, CardFace, TurnControls
-│       ├── game/         # hotseat.ts(로컬 어댑터), derived.ts(화면용 파생값, 엔진 호출만)
-│       ├── store/        # Zustand 전역 상태 (모든 탭 데이터 선로드)
-│       ├── lib/          # cx 등 작은 유틸
-│       ├── socket/       # Socket.io 클라이언트, 재연결 처리 (Phase 2)
+│       ├── pages/        # LandingPage, SetupPage(핫시트), RoomPage(로비), GamePage, ResultOverlay
+│       ├── tabs/         # BoardTab, StatusTab, ProgressTab, CardsTab, HelpTab
+│       ├── components/   # HexBoard, SpeciesCard, RootDiagram, Hand, PlantBar, DraftPanel, GoalList, GameModal, PlayerStrip, TabDock, TurnTimer, TurnEvents, TutorialCoach, GameMenu …
+│       ├── game/         # hotseat.ts, derived.ts, tutorialBot.ts, useGameCues.ts, cardImages.ts
+│       ├── store/        # Zustand 전역 상태
+│       ├── lib/          # cues, vitals, turnClock, identity, router, onboarding …
+│       ├── socket/       # Socket.io 클라이언트
 │       └── styles/       # tokens.css, global.css
-└── ai/                   # Python AI 서비스 (FastAPI, 포트 8000)
-    ├── pyproject.toml
-    ├── requirements.txt
-    ├── astral_ai/
-    │   ├── main.py       # FastAPI 앱, POST /decide
-    │   ├── models.py     # GameState/Action Pydantic 모델 (shared/src/types 와 1:1)
-    │   ├── rules.py      # 탐색용 규칙 시뮬레이션 (legal_actions, apply)
-    │   ├── evaluate.py   # 보드 평가 함수 (점수, 에너지·수입, 코어 위협, 사거리 내 적)
-    │   └── search.py     # 2인 알파베타 Minimax, 3~4인 max-n, 반복 심화, 시간 제한
-    └── tests/            # pytest
+└── ai/                   # Python AI 서비스 (패키지 astral_ai)
+    └── astral_ai/        # main.py, models.py, rules.py, search.py
 ```
-
-디렉터리가 아직 없다면 위 구조로 생성한다. 구조를 바꿀 경우 이 문서도 함께 갱신한다.
 
 ---
 
 ## DB 없는 상태 관리
 
-- **단일 진실 공급원은 서버 메모리**의 `Map<roomId, GameState>` 이다.
-- 클라이언트는 절대 게임 상태를 직접 계산하지 않는다. 액션(`PLACE`, `PASS`, `SURRENDER`)을 보내고 서버가 브로드캐스트한 전체 상태로 덮어쓴다. 배치 가능 칸 하이라이트처럼 UI 편의를 위한 계산은 `shared/src/engine` 의 순수 함수를 그대로 가져다 쓴다(중복 구현 금지).
-- **손패는 비공개다.** 서버는 플레이어별로 상태를 가려서 보낸다. 본인 손패만 내용을 포함하고, 타인은 장수만 보낸다. 덱 순서는 누구에게도 보내지 않는다.
-- **자동 저장(F006)·복구(F007)** 는 `server/data/rooms/<roomId>.json` 에 턴 종료 시점마다 `GameState`를 통째로 직렬화하여 구현한다. 서버 재시작 시 이 디렉터리를 읽어 메모리에 복원한다.
-- **비동기 턴 모드(F005)** 도 같은 JSON 스냅샷으로 유지한다. 별도 큐·DB 없음.
-- **로그인/회원가입은 없다.** 닉네임과 재접속용 `playerToken`은 브라우저 `localStorage`에 보관하고, 서버는 `roomId + playerToken` 으로 재접속 플레이어를 식별한다.
-- `server/data/` 는 git에 커밋하지 않는다(`.gitignore`).
+- **단일 진실 공급원은 서버 메모리**의 방 맵이다(`RoomManager`).
+- 클라이언트는 게임 상태를 직접 계산하지 않는다. 액션(`READY`, `DRAFT`, `PLANT`, `DISCARD`, `SURRENDER`)을 보내고 서버가 브로드캐스트한 상태로 덮어쓴다. 합법 칸 하이라이트·심기 미리보기처럼 UI 편의를 위한 계산은 `shared/src/engine` 의 순수 함수를 그대로 쓴다(중복 구현 금지).
+- **손패는 비공개다.** 본인 손패만 내용을 보내고 타인은 장수만. 덱 순서·RNG 시드는 누구에게도 보내지 않는다. 드래프트로 고른 종은 공개다.
+- **자동 저장·복구**: 상태가 바뀔 때마다 `server/data/<env>/rooms/<roomId>.json` 에 방을 통째로 쓰고, 서버 시작 시 복원한다(진행 중 차례는 시계를 새로 잰다). 예전 게임 형식 스냅샷은 지운다.
+- **판 요약·웹 성능**: `server/data/<env>/stats/games.jsonl`·`vitals.jsonl` (파일 크기 상한 있음). `npx tsx server/scripts/stats.ts [DATA_DIR]` 로 완수율·세션 시간·재방문·종/좌석 승률·FCP/LCP·동기화 지연·FPS를 집계한다.
+- **로그인/회원가입은 없다.** 닉네임과 재접속용 `playerToken`은 브라우저 `localStorage`, 서버는 `roomId + playerToken` 으로 재접속을 식별한다.
+- `server/data/` 는 git에 커밋하지 않는다.
 
 ---
 
 ## AI 서비스 (Python)
 
-- `ai/` 는 독립 FastAPI 프로세스다. Node 서버는 AI 플레이어의 턴이 오면 `POST http://localhost:8000/decide` 에 현재 `GameState`(AI 본인 손패 포함, 1차 구현에서는 전체 상태)와 AI 플레이어 id를 보내고, 응답으로 받은 `Action` 하나를 **일반 플레이어 액션과 동일하게 룰 엔진으로 검증**한 뒤 적용한다.
-- 권위는 항상 TS 룰 엔진(`shared/src/engine`)에 있다. AI 응답이 불법 액션이거나 타임아웃(2초, F027)이면 서버는 `PASS` 로 폴백하고 로그에 남긴다. AI 서비스가 죽어 있어도 게임이 멈추면 안 된다.
-- `ai/astral_ai/rules.py` 는 탐색을 위한 **시뮬레이션 사본**이다. `shared/src/engine` 과 규칙이 어긋나면 AI가 불법 수를 두게 되므로, 룰 엔진을 바꾸면 반드시 `rules.py` 도 함께 고치고 양쪽에 같은 JSON 픽스처(`shared/fixtures/*.json`)로 테스트한다.
-- `ai/astral_ai/models.py` 의 Pydantic 모델은 `shared/src/types` 와 필드명·타입을 1:1로 맞춘다.
-- 탐색: 2인전은 알파베타 Minimax, 3~4인전은 max-n(각 노드의 턴 플레이어가 자기 평가값을 최대화). 둘 다 반복 심화로 `timeLimitMs` 안에 마지막 완료 깊이의 수를 돌려준다. 배치 후보는 시야 영역 안 칸으로 한정하고, 카드 종류별로 상위 몇 칸만 확장해 분기를 줄인다.
-- 요청·응답 스키마:
-  - 요청: `{ "state": GameState, "playerId": string, "timeLimitMs": number }`
-  - 응답: `{ "action": Action, "depth": number, "elapsedMs": number }`
-- 상태 없음(stateless). AI 서비스는 아무것도 저장하지 않는다.
+- `ai/` 는 독립 FastAPI 프로세스다. Node 서버는 AI 좌석(또는 시간 초과로 AI 대리 중인 사람 좌석)의 차례가 오면 — 드래프트 픽 포함 — `POST /decide` 에 상태와 플레이어 id를 보내고, 받은 `Action` 을 **일반 액션과 똑같이 룰 엔진으로 검증**한 뒤 적용한다.
+- 권위는 항상 TS 룰 엔진에 있다. 불법 응답·타임아웃(2초, F027)·서비스 다운이면 서버는 엔진의 `autoAction`(드래프트 첫 종 / 맨 앞 카드를 첫 합법 칸에)으로 폴백한다. AI 서비스가 죽어도 게임은 멈추지 않는다.
+- `ai/astral_ai/rules.py` 는 탐색용 **시뮬레이션 사본**이다. 엔진을 바꾸면 `npm run fixtures` 후 rules.py 를 함께 고치고 pytest 로 맞춘다.
+- 요청 `{ "state", "playerId", "timeLimitMs" }` → 응답 `{ "action", "depth", "elapsedMs" }`. 상태 없음(stateless).
 - 의존성은 `ai/requirements.txt` 에 고정하고 `ai/.venv` 에 설치한다.
-- 행동 우선순위(F028, F029)는 `evaluate.py` 가중치로 표현한다: 점수(영토+마커) 차이, 에너지·수입, 코어 위협도(코어 반경 3 안 적 공격력 합), 사거리 안 적 마커 수, 광맥 점유. 초반 라운드는 수입 가중치를 높인다.
+- 다음 과제: 1수 탐욕을 넘어서는 탐색(2인 알파베타, 3~4인 max-n)과 평가 가중치.
 
 ---
 
 ## 게임 규칙 요약 (자세한 내용은 notes/Rules.md)
 
-- **플레이어** 2~4명, 좌석 순서대로 턴. **맵** 6개(2인 2 / 3인 2 / 4인 2), 전부 10×10 육각 타일(odd-r 오프셋). 지형은 빈 우주·소행성(배치 불가)·광맥(건물 생산 +1)에 성운·파편지대·이온 폭풍·유물지대·중력 균열·포대 발판·교란지대(Rules.md 3절).
-- **시작**: 코어가 맵 지정 좌표에 자동 배치(F018). 덱 = 종족별 고정 25장(기본 22 + 특수 3, F016), 시드 셔플, 손패 4, 에너지 5(F019).
-- **턴을 끝낼 때(자동, 2026-09-23부터 "시작"이 아니라 "종료" 시점)**: 전투 → 정비 → 지속 마법 만료 → 수입(코어 1 + 건물 생산) → 드로우 1(손패 상한 5) → (선택) 손패 교체. (F020, F023)
-- **행동**: 손패 카드로 마커 배치(턴당 1회) / 패스·턴 종료(원하는 만큼 손패를 버리고 덱과 섞어 5장까지 다시 뽑을 수 있다) / 기권. 이번 턴에 하나도 안 놓고 턴을 넘기면 패스로 기록된다. (F013, F022)
-- **배치 조건**: 손패 보유, 에너지 ≥ 비용, 빈 칸, 소행성 아님, **내 시야 영역 안**(침투 카드는 적 인접도 가능). (F022)
-- **시야**: 마커별 육각 거리 반경(코어는 1). 시야 영역의 합집합이 배치 범위. 영토·점수는 시야와 별개로 마커 주변 고정 반경 `TERRITORY_RADIUS`(1)로 계산한다. (F031)
-- **영토**: 정확히 한 플레이어의 마커 반경 1 안인 빈 칸 + 마커 칸. 경합·소행성은 무소유. 1칸 1점.
-- **전투**: 턴 플레이어의 공격력 있는 마커가 사거리 안 적 하나를 자동 공격. 대상은 거리→체력→y→x 순. 동시 피해, 한꺼번에 제거. 마커는 이동하지 않는다. (F023)
-- **파괴**: 체력 0 이하 → 제거, 시야·생산·점수 즉시 소멸(F021). 코어 파괴 → 탈락, 마커 전부 제거. 생존자 1명 → 즉시 승리(F024).
-- **종료·점수**: 전원 연속 패스 또는 맵 라운드 제한 → 점수(영토 + 마커 + 덤) 순위. 덤은 좌석 번호 × 상수(선턴 유리함 보정). 그래도 동점이면 좌석 번호 큰 쪽. 탈락자는 하위. (F025)
-- **탭 UI**(보드·상태·진행·카드·설명 5탭): 보드(F008, F009: 격자·시야·영토·손패·패스, 카드 선택·마커 탭 시 설명 패널) / 상태(F010, F011: 에너지·비용·시야·점수) / 진행(F012, F013). 탭 전환 100ms 이내(F014), 데스크톱에서 수직 스크롤 없음(F015).
-- **멀티플레이**: 초대 링크(F001), 로비·좌석(F002), 비밀번호(F003), 맵 선택(F030), Socket.io 0.5초 이내(F004).
-- **AI**: AI 좌석(F026), 2초 이내 결정(F027), 경제 우선(F028), 공격·방어 전환(F029).
-
-## 로드맵 순서
-
-1. **Phase 1**: 룰 엔진 재작업 + 카드·맵 데이터 + 탭 UI 핫시트 (F008~F025, F031)
-2. **Phase 2**: 로비·맵 선택·초대, Socket.io 동기화, JSON 스냅샷 저장·복구, 비동기 턴 (F001~F007, F030)
-3. **Phase 3**: AI 대전(2인 Minimax, 3~4인 max-n), 밸런스 조정 (F026~F029)
+- **인원** 2~4명. **보드**는 칸 7개짜리 정원 조각을 대칭으로 이어 붙인다(2인 7조각 49칸 / 3인 13조각 91칸 / 4인 15조각 105칸). 조각 배치·회전은 판마다 시드로 바뀌고 입구 위치는 인원별 고정. 지형: 빈 땅·비옥토(심은 식물 자기 칸 +1)·연못·돌밭(심기 불가, 무소유).
+- **준비**: 목표 3장 공개(종 보호구역 1장 이상) → **드래프트**(뱀 순서, 2인 5종 / 3·4인 4종, 4인은 한 종 2명까지) → 덱(2인 종마다 3장 / 3·4인 4장) → 손패 3장.
+- **좌석 보정**: 인원별 드래프트 첫 바퀴 순서와 덤(2인 [0,1], 3인 [2,2,0], 4인 [1,0,0,0]).
+- **차례**: 손패 1장을 **내 영향력 1 이상인 빈 칸**(연꽃은 연못 옆이면 영향 없이도)에 심고 1장 뽑는다. 심을 칸이 하나도 없을 때만 1장 버린다. 패스 없음. 기권 가능.
+- **영향력**: 입구(자기 3, 둘레 1) + 식물 뿌리 모양 + 씨앗을 더하고, 버섯 빼기(−2, 0 하한)를 마지막에. **엄격한 1등**만 그 칸의 주인.
+- **식물 12종**: 잔디, 참나무, 선인장, 덩굴(방향 직선 2칸), 고사리(별 모양 거리 2), 민들레(씨앗), 해바라기(비옥토), 연꽃(연못), 담쟁이(식물 칸 +1), 대나무(군집), 버섯(상대 −2), 장미(+1점).
+- **종료·점수**: 모두 덱·손패를 다 쓰면 끝(또는 기권 안 한 사람이 1명). 점수 = 땅 + 목표 3장 + 장미 + 덤. 순위: 기권 안 함 → 점수 → 땅 → 좌석 큰 쪽.
+- **온라인 제한 시간**(Rules.md 6.3): 방장이 60초/90초/3분/없음. 드래프트 픽은 1/3(최소 20초). 넘으면 자동 수, 2번 연속이면 AI 대리, "직접 두기"로 되찾음.
 
 ---
 
@@ -193,82 +156,56 @@ AstralTab/
 
 - **플랫**: `box-shadow` 사용 금지. 구분은 배경색 블록과 여백으로 한다.
 - **필 CTA**: 주요 버튼은 50px 라운드 필, 저강조 버튼은 999px 아웃라인 필. 각진 버튼 금지.
-- **헤딩은 네이비** `#1a2352`, 순수 검정 금지(검정은 얇은 아웃라인에만).
-- **타이포**: 본문·UI는 Pretendard(CDN), 본문 15~17px. 헤딩용 디스플레이 폰트는 2026-09-28에 Gothic A1 굵기 900(구글 폰트, `client/index.html`에서 로드)으로 확정했다. 처음 고른 Black Han Sans 는 "플" 같은 획 많은 글자가 앱 실제 헤딩 크기(15px 대)에서 뭉개져 되돌렸다. 폰트 패밀리는 CSS 변수 하나(`--font-display`)로만 참조하고, 로드 실패 시 본문 폰트(Pretendard)로 자연스럽게 대체된다.
-- **간격**: 8px 리듬. 라운드는 10px(패널) / 16px(카드) / 24px(큰 컨테이너) / 50px·999px(필).
-- **모션**: `motion-fast` 120ms, `motion-standard` 220ms, `motion-slow` 340ms와 DESIGN.md의 easing 토큰. `prefers-reduced-motion` 존중. 탭 전환은 100ms 예산(F014) 때문에 `motion-fast` 이하로만.
-- **상태 문구**: 오류는 "오류"가 아니라 다음에 할 일을 적는다("에너지가 2 부족합니다", "시야 밖입니다"). 성공에 이모지 없음. 비활성은 회색 `#bbbbbb` 텍스트 + 투명도.
-- **보이스**: 선언형·현재형, 짧고 직접적인 CTA("방 만들기", "패스", "기권").
+- **헤딩은 네이비** `#1a2352`(비게임 화면), 순수 검정 금지.
+- **타이포**: 본문·UI는 Pretendard(CDN), 디스플레이는 Gothic A1 900(`--font-display`, 로드 실패 시 Pretendard).
+- **간격**: 8px 리듬. 라운드 10px(패널) / 16px(카드) / 24px(큰 컨테이너) / 50px·999px(필).
+- **모션**: `motion-fast` 120ms, `motion-standard` 220ms, `motion-slow` 340ms. `prefers-reduced-motion` 존중. 탭 전환은 100ms 예산(F014).
+- **상태 문구**: 오류 대신 다음에 할 일을 적는다("내 뿌리가 닿는 빈 칸에만 심을 수 있습니다"). 성공에 이모지 없음. 비활성은 회색 + 투명도.
+- **보이스**: 선언형·현재형, 짧고 직접적인 CTA("방 만들기", "심기", "기권").
 
-### AstralTab 컬러 월드 (DESIGN.md "A world per product" 적용)
+### 컬러 월드
 
-화면을 두 세계로 나눈다. 값은 모두 DESIGN.md 팔레트에서 가져온다.
+**비게임 화면** (랜딩, 로비, 핫시트 설정): Corca 기업 프레임 — 캔버스 `#ffffff`, 서피스 `#f1f5f9`, 헤딩 `#1a2352`, 본문 `#324158`, 보조 `#bbbbbb`, 주요 CTA `#777cdc`.
 
-**비게임 화면** (랜딩, 로비, 덱 빌딩, 결과): Corca 기업 프레임 그대로.
-
-| 역할 | 값 |
-|---|---|
-| 캔버스 | `#ffffff` |
-| 서피스·패널 | `#f1f5f9` |
-| 헤딩 | `#1a2352` |
-| 본문 | `#324158` |
-| 보조·비활성 | `#bbbbbb` |
-| 주요 CTA | 흰 필 + 네이비 라벨(어두운 밴드 위) 또는 `#777cdc` 필 + 흰 라벨 |
-| 강조 밴드 | `#faeeff`, `#d9e5f5`, `#fdd484` |
-
-**게임 플레이 대시보드** (탭 UI): 심우주 네이비 무대. 2026-09-22 사용자 지시로 Moonlight 팔레트의 진보라 무대·패널(`#402060`/`#605070`)을 걷어내고 우주 공간에 어울리는 네이비로 바꿨다 — DESIGN.md 우선순위(사용자 지시 > 저장소 사실 > DESIGN.md > 레퍼런스)에 따라 이 두 값만 DESIGN.md 팔레트 밖에서 가져온 예외다. 무대 배경은 단색이 아니라 별·성운이 있는 그라데이션 "이미지"(`GamePage.module.css` 의 `background-image`, 청록·파랑 톤만 쓰고 보라 계열은 없음)다.
+**게임 대시보드** (2026-10-07 Rootbound 전환, 사용자 지시로 우주 테마를 걷어내고 밤 정원으로): 값은 `client/src/styles/tokens.css` 의 `[data-world='game']` 과 도메인 색.
 
 | 역할 | 값 |
 |---|---|
-| 무대 배경 | 짙은 네이비 `#0b1224` + 별·성운 그라데이션(청록·파랑, `GamePage.module.css`) |
-| 패널·탭 바·카드 | 슬레이트 네이비 `#1c2947` |
-| 활성 탭·주요 버튼·선택 하이라이트·배치 가능 칸 | Moonlight Cream `#fff3b7` |
-| 에너지 수치·건물 마커·광맥 칸 | Amber `#fdd484` |
-| 마법 카드 액센트 | Card Violet `#777cdc`. 2026-09-22부터 손패 카드의 왼쪽 스트라이프가 아니라 **카드 이름 텍스트 색**으로 쓴다(건물=Amber, 유닛=헤딩색, 마법=Violet). 보라는 이 용도로만 쓰고 배경에는 쓰지 않는다 |
-| 좌석 0 | Bright Blue `#419eff` |
-| 좌석 1 | 주황 `#e69f00` |
-| 좌석 2 | 청록 `#00c58e` |
-| 좌석 3 | 분홍 `#f178b6` |
-| 마커(보드 위) | 종류(코어=육각·건물=둥근 사각·유닛=원·마법=마름모)와 무관하게 **좌석 색으로 채운다**. 예전의 흰색 패턴(빗금·점·격자)·테두리 선 모양(dashed·dotted·double) 구분은 좌석색이 생기면서 없앴다 |
-| 손패 카드(보드·상태 탭) | 배경을 소유자 **좌석 색**으로 물들인다(표면색과 섞어 텍스트 대비 유지, `CardFace.module.css`). 종류 구분은 위 "마법 카드 액센트" 처럼 이름 텍스트 색으로 한다(2026-09-22 사용자 지시) |
-| 시야 영역 / 영토 오버레이 | 좌석 색을 낮은 투명도로. 경합 칸은 오버레이 없음. 네 좌석 모두 같은 방식(패턴 없음) |
-| 위험·경고(돌이킬 수 없는 동작) | Danger Red `#e5484d` (2026-09-28 확정, DESIGN.md에 없던 값이라 좌석 1·3 색과 안 겹치게 새로 골랐다). 연결 끊김 배너(`GamePage.module.css`), 기권 확정 문구(`TurnControls.module.css`)에 쓴다. "카드를 낼 수 없음" 같은 비활성 상태는 여전히 회색(`--color-muted`) — 돌이킬 수 없는 경고와 단순 비활성을 색으로 구분한다. 코어 위협도 같은 새 지표는 아직 없음 |
-| 소행성 칸 | Steel Blue `#36597d` 채움 |
-| 텍스트 | `#ffffff`, 보조 `#bbbbbb` |
-| 격자선 | Steel Blue `#36597d` (육각 셀을 살짝 축소해 그 틈으로 비친다) |
-
-경고색은 2026-09-28에 확정해 위 표와 `client/src/styles/tokens.css`(`--color-danger`)에 반영했다. 더 미정으로 남은 값은 없다.
+| 무대 배경 | 밤 정원 녹색 `#0e1a14` + 반딧불·이끼빛 그라데이션(`GamePage.module.css`) |
+| 패널·탭 바·카드 | `#1d3328` |
+| 활성·주요 버튼·합법 칸·선택 | Moonlight Cream `#fff3b7` |
+| 흙(빈 땅) | `#213a2d`, 격자선 `#0e1a14` |
+| 비옥토 표시 | Amber `#fdd484` 점 |
+| 연못 | `#1f4466` + 물결 무늬(좌석 0 파랑 땅과 헷갈리지 않게 어둡게) |
+| 돌밭 | `#6b7078` + 돌 무늬 |
+| 좌석 0~3 | `#419eff` / `#e69f00` / `#00c58e` / `#f178b6` (땅은 좌석색 38% 덮기, 식물은 좌석색 원 + 종 첫 글자, 입구는 좌석색 집 모양) |
+| 위험·경고(돌이킬 수 없는 동작) | Danger Red `#e5484d` (연결 끊김, 기권, 10초 이하 남은 시간) |
+| 텍스트 | `#ffffff`, 보조 `#b8c4bc` |
 
 ### 구현 방식
 
-- 모든 색·간격·라운드·모션 값은 `client/src/styles/tokens.css` 의 CSS 변수로만 쓴다. 컴포넌트 CSS에 HEX 직접 기입 금지.
-- 게임 화면 루트에 `data-world="game"` 을 두고 변수 값을 덮어써서 두 세계를 전환한다.
-- 두 세계를 한 화면에 섞지 않는다(DESIGN.md Don't).
+- 모든 색·간격·라운드·모션 값은 `tokens.css` 의 CSS 변수로만 쓴다. 컴포넌트 CSS에 HEX 직접 기입 금지.
+- 게임 화면 루트에 `data-world="game"` 을 두고 변수 값을 덮어써서 두 세계를 전환한다. 두 세계를 한 화면에 섞지 않는다.
 
-### 모바일 우선 (2026-09-22 사용자 지시, 같은 날 폭 고정으로 확장)
+### 모바일 우선 (2026-09-22 사용자 지시)
 
-웹 배포지만 화면 구성은 모바일을 기준으로 한다. DESIGN.md의 데스크톱향 본문 15~17px 규정보다 이 지시가 우선한다.
-
-- **화면 폭 고정**: 2026-09-22 사용자 지시로 뷰포트가 넓어도 화면 좌우 폭을 모바일 크기로 고정한다. `global.css` 에서 `body`가 `display:flex; justify-content:center`, `#root`가 `max-width: var(--app-max-width)`(480px, `tokens.css`)로 가운데 정렬되고, 바깥은 `--color-app-frame`(`#0b1224`, 게임 무대와 같은 값이라 게임 화면에서는 경계가 거의 안 보인다) 로 채운다. **미디어 쿼리는 실제 브라우저 뷰포트 폭을 보지 `#root`의 잘린 폭을 보지 않으므로**, 데스크톱에서도 `#root`는 이미 항상 480px 이하다 — 그래서 예전에 `@media (max-width: 720px)`/`900px` 로 나뉘던 "모바일 전용" 레이아웃(아래 항목들)을 전부 **기본값으로 접어** 미디어 쿼리 자체를 없앴다. 새 레이아웃 컴포넌트를 추가할 때도 폭 분기를 만들지 말고 처음부터 좁은 폭 하나로 설계한다.
-- **폰트**: 기본(`--text-body`) 14px, 그 아래로는 `--text-micro` 12px 밑으로 내려가지 않는다. 보드 마커 라벨·hp·좌석 배지도 12px 이상(`Board.module.css`).
-- **줄바꿈**: `body { overflow-wrap: anywhere }` (전역), 닉네임·카드 이름·툴팁이 좁은 폭에서 레이아웃을 깨지 않는다.
-- **게임 대시보드 레이아웃**: `GamePage` 헤더(세로 스택, 탭 바는 가로 스크롤) 아래 `PlayerStrip`(상태 창)이 `position: sticky; top: 0` 로 항상 화면 위에 붙는다(F015 무스크롤 설계상 지금도 스크롤되지 않지만, 명시적으로 고정한다). `BoardTab`은 내 턴일 때만 `Hand`(가로 스크롤 카드 목록)를 상태 창과 맵 사이에 보여주고, 그 아래 맵, 맨 아래 `TurnControls`(패스/턴 종료·기권) 순서로 쌓는다(2026-09-22 사용자 지시). `StatusTab`은 표를 좌석별 카드 목록으로 접어서 보여준다(`<Cell label>` 컴포넌트가 `라벨: 값` 줄로 렌더).
-- **손패 카드 색**: `CardFace`가 소유자 좌석 색으로 배경을 물들이고, 카드 종류(건물·유닛·마법)는 이름 텍스트 색으로 구분한다(위 디자인 표 참고).
-- **보드**: `Board.tsx` 가 컨테이너 가로·세로 모두에 맞춰 육각 크기를 계산하므로(F015 무스크롤) 별도 모바일 분기 없이 좁은 화면에서도 자동으로 맞는다.
-- 헤드리스 스크린샷으로 확인할 때 Chrome 헤드리스는 `--window-size` 를 요청해도 뷰포트 폭을 최소 ~504px 로 강제한다. 그보다 좁게 요청하면 실제 레이아웃 폭(504px)이 스크린샷 크롭 폭보다 커져 오른쪽 정렬된 값이 잘려 보이는 착시가 생긴다 — 모바일 확인은 `--window-size` 를 522 이상으로 준다. 넓은 화면에서 폭 고정 자체를 확인할 때는 랜딩 페이지처럼 흰 캔버스인 화면으로 스크린샷을 떠야 letterbox 경계가 보인다(게임 화면은 letterbox 색과 무대 배경색이 같아 경계가 거의 안 보인다).
+- **화면 폭 고정**: `#root` 가 `max-width: var(--app-max-width)`(480px)로 가운데 정렬. 미디어 쿼리로 폭 분기를 만들지 말고 처음부터 좁은 폭 하나로 설계한다.
+- **폰트**: 기본 14px, 최소 12px(`--text-micro`).
+- **줄바꿈**: `body { overflow-wrap: anywhere }`.
+- **게임 레이아웃**: 위→아래 한 방향. `PlayerStrip` → 탭 내용(정원 탭: 목표 칩 → 보드(남는 높이 전부) → 심기 확인 바 · 손패 · 차례 안내) → `TabDock`.
+- 헤드리스 스크린샷 확인 시 `--window-size` 는 522 이상(Chrome 헤드리스 최소 뷰포트 ~504px).
 
 ## 코딩 규칙
 
-- 룰 엔진(`shared/src/engine`)은 **부수효과 없는 순수 함수**로 작성한다. `(state, action) => newState` 형태. 난수는 상태 안의 시드 RNG만 쓴다. 순회 순서는 Rules.md 13절대로 고정한다(`y` → `x`, Map/Object 키 순서 의존 금지).
-- 시야·영토·점수는 파생값이다. 계산 함수가 정본이고, 상태에 캐시하더라도 함수 결과와 반드시 같아야 한다(테스트).
-- 카드·맵 수치는 `shared/src/data` 한 곳에만 둔다. 엔진·UI·AI 어디에도 수치를 하드코딩하지 않는다. Rules.md 표와 데이터 파일이 일치하는지 테스트한다.
-- 서버와 클라이언트가 같이 쓰는 타입·상수는 반드시 `shared/`에 둔다. 중복 정의 금지.
-- Socket 이벤트 이름과 페이로드 타입은 `shared/src/types/events.ts` 한 곳에서 정의한다.
-- 클라이언트 탭 컴포넌트는 `React.memo`를 적용하고, 탭 전환으로 언마운트되지 않도록 한다.
-- 게임 내 주요 사건(수입 정산, 배치, 전투 결과, 파괴, 탈락, 패스, 턴 전환, 종료)은 모두 `GameState.log`에 기록해 진행 탭에서 보이게 한다(F012).
-- 새 기능은 해당 F-ID의 수락 기준을 만족하는지 확인한 뒤 완료로 간주한다. 룰 엔진 변경은 Vitest 테스트를 함께 추가하고 `npm run fixtures` 후 pytest를 돌린다.
-- 주석과 UI 문구는 한국어, 식별자는 영어. 카드·맵 id는 Rules.md의 영문 id를 그대로 쓴다.
-- Python 코드는 타입 힌트를 필수로 하고, `rules.py`·`search.py` 는 순수 함수로 작성한다. 테스트는 pytest.
+- 룰 엔진(`shared/src/engine`)은 **부수효과 없는 순수 함수**로 작성한다. `(state, action) => { state, error? }`. 난수는 상태 안의 시드 RNG만, Rules.md 11절 순서대로. 칸 순서는 `r` → `q`.
+- 영향력·땅·점수는 파생값이다. 계산 함수가 정본이고, 상태에 캐시하지 않는다.
+- 수치는 `shared/src/data` 한 곳에만 둔다. 엔진·UI·AI 어디에도 하드코딩하지 않는다. Rules.md 표와 데이터 일치는 `data.test.ts` 가 검사한다.
+- 서버·클라이언트 공용 타입·상수는 `shared/`에만. Socket 이벤트 이름·페이로드는 `shared/src/types/events.ts` 한 곳.
+- 탭 컴포넌트는 `React.memo`, 탭 전환으로 언마운트하지 않는다.
+- 주요 사건(드래프트 픽, 심기, 땅 뺏기, 버리기, 기권, 차례 전환, 시간 초과, 종료)은 `GameState.log` 에 기록한다.
+- 룰 엔진 변경은 Vitest 테스트를 함께 추가하고 `npm run fixtures` 후 pytest를 돌린다.
+- 주석과 UI 문구는 한국어, 식별자는 영어. 종·목표 id는 Rules.md의 영문 id를 그대로 쓴다.
+- Python 코드는 타입 힌트 필수, `rules.py`·`search.py` 는 순수 함수. 테스트는 pytest.
 
 ## 자주 쓰는 명령
 
@@ -276,28 +213,27 @@ AstralTab/
 |---|---|
 | 서버·클라이언트·AI 백그라운드 실행 (개발) | `/dev` |
 | 백그라운드 프로세스 종료 (개발) | `/dev-stop` |
-| AWS 서버에 배포 | `main` push 시 자동. 수동은 `powershell -File scripts/deploy-aws.ps1`. `git archive`로 워킹트리를 EC2로 전송 후 systemd 재시작(클라이언트는 로컬 빌드 결과 전송) |
-| AWS 서버 로그 확인 | `ssh -i .dev/astraltab-key.pem ec2-user@$(cat .dev/aws-public-ip.txt) "sudo journalctl -u astraltab-prod-server -n 100"` (서비스명은 astraltab-\<prod\|test\>-\<server\|ai\>) |
+| AWS 서버에 배포 | `main` push 시 자동. 수동은 `powershell -File scripts/deploy-aws.ps1` |
+| AWS 서버 로그 확인 | `ssh -i .dev/astraltab-key.pem ec2-user@$(cat .dev/aws-public-ip.txt) "sudo journalctl -u astraltab-prod-server -n 100"` |
 | 로그 확인 (dev) | `tail -n 50 .dev/server.log`, `.dev/client.log`, `.dev/ai.log` |
 | 의존성 설치 (JS) | `npm install` (루트) |
-| 의존성 설치 (Python) | `ai\.venv\Scripts\pip install -r ai\requirements.txt` (`/dev`가 venv 없으면 자동 생성) |
+| 의존성 설치 (Python) | `ai\.venv\Scripts\pip install -r ai\requirements.txt` |
 | 테스트 (JS) | `npm test` (루트, 전 워크스페이스) |
 | 테스트 (Python) | `ai\.venv\Scripts\python -m pytest ai/tests` |
-| 공용 픽스처 재생성 | `npm run fixtures` (TS 엔진 출력 → `shared/fixtures/*.json`. 타입·데이터·엔진을 바꾸면 반드시 실행 후 pytest) |
-| 종족 밸런스 시뮬레이션 | `npx tsx shared/scripts/balance-sim.ts [판수]` (기본 100판). 휴리스틱 봇끼리 2인전을 자동으로 돌려 종족별 승률·평균 점수를 집계한다. 카드 수치를 바꾼 뒤 1차 스크리닝용, 최종 확정은 실제 플레이테스트로 |
-| 타입 검사 | `npx tsc --noEmit -p server` / `-p client` / `-p shared` |
-| 플레이어용 규칙 설명서 PDF 재생성 | `python scripts/build-rulebook.py` (reportlab 필요, `pip install reportlab`). Rules.md 를 바꾸면 이 스크립트의 값도 손으로 맞춰 다시 실행한다. 출력: `notes/Rule.pdf` |
-| 플레이어 지표 집계 (완수율·세션 시간·재방문·웹 성능) | `npx tsx server/scripts/stats.ts [DATA_DIR]` (기본 `server/data/prod`). 운영은 EC2에서 `cd ~/AstralTab && npx tsx server/scripts/stats.ts server/data/prod` |
+| 공용 픽스처 재생성 | `npm run fixtures` (엔진·데이터·타입을 바꾸면 반드시 실행 후 pytest) |
+| 밸런스 시뮬레이션 | `npx tsx shared/scripts/garden-sim.ts [2인] [3인] [4인]`. `SIM_OVERRIDES=<json>`, `SIM_PHASE=A`(종 승률만), `SEAT_SEARCH=1 SEAT_ORDERS=… SEAT_KOMIS=…`(좌석 보정 탐색) |
+| 타입 검사 | `npm run typecheck` |
+| 플레이어 지표 집계 | `npx tsx server/scripts/stats.ts [DATA_DIR]` (기본 `server/data/prod`). 운영은 EC2에서 `cd ~/AstralTab && npx tsx server/scripts/stats.ts server/data/prod` |
 | 커밋 & 푸시 | `/commit-push` |
 
 ## 서브에이전트
 
 | 에이전트 | 용도 |
 |---|---|
-| `spec-checker` | 구현 결과를 `notes/기능명세서`의 F-ID 수락 기준과 `notes/Rules.md`에 대조 |
-| `rules-engine-reviewer` | 룰 엔진(시야·배치·전투·점수·턴)의 순수성·결정성·Rules.md 일치·엣지 케이스 검토 |
-| `realtime-sync-reviewer` | Socket.io 이벤트, 손패 비공개, 재접속, 상태 브로드캐스트, JSON 스냅샷 복구 검토 |
-| `ui-tab-reviewer` | 탭 UI 성능(100ms), 무스크롤 레이아웃, 보드·손패 렌더, 불필요한 리렌더 검토 |
-| `ai-reviewer` | Python AI 서비스의 탐색(Minimax/max-n), 평가 함수, 시간 제한, TS 룰 엔진과의 규칙 일치 검토 |
+| `spec-checker` | 구현 결과를 Rules.md·CLAUDE.md 요구에 대조 |
+| `rules-engine-reviewer` | 룰 엔진(보드·영향력·드래프트·차례·점수)의 순수성·결정성·Rules.md 일치·엣지 케이스 검토 |
+| `realtime-sync-reviewer` | Socket.io 이벤트, 손패 비공개, 재접속, 제한 시간·AI 대리, 스냅샷 복구 검토 |
+| `ui-tab-reviewer` | 탭 UI 성능(100ms), 무스크롤 레이아웃, 보드·손패·드래프트 렌더, 리렌더 검토 |
+| `ai-reviewer` | Python AI 서비스의 규칙 일치, 합법성, 시간 제한, 스키마 검토 |
 
-기능 구현을 마치면 `spec-checker`로 수락 기준을 확인하고, 영역에 맞는 리뷰어를 거친 뒤 `/commit-push`한다.
+기능 구현을 마치면 `spec-checker`로 확인하고, 영역에 맞는 리뷰어를 거친 뒤 `/commit-push`한다.

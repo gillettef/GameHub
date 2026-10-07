@@ -1,4 +1,4 @@
-import { nameOf } from '@astraltab/shared';
+import { nameOf } from '@rootbound/shared';
 import { selectState, selectViewerId, useGameStore } from '../store/gameStore';
 import styles from './HandoffOverlay.module.css';
 

@@ -3,7 +3,7 @@
  * 내 시계의 차이로 보정해 남은 시간을 센다. 판정은 항상 서버가 한다 — 여기는 표시만.
  */
 import { useEffect, useState } from 'react';
-import type { RoomInfo } from '@astraltab/shared';
+import type { RoomInfo } from '@rootbound/shared';
 
 export function turnTimeLabel(sec: number | null): string {
   if (sec === null) return '없음';

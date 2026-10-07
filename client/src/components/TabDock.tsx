@@ -44,7 +44,7 @@ const ICONS: Record<TabId, ReactNode> = {
  * 보고 있으면 보드 아이콘이 맥동하고, 진행 탭에는 안 읽은 사건 수가 뜬다.
  */
 /** 안 읽은 사건으로 세는 로그 종류(수입·드로우 같은 정산은 뺀다) */
-const NEWS_KINDS = new Set(['place', 'magic', 'combat', 'destroy', 'eliminate', 'pass', 'surrender']);
+const NEWS_KINDS = new Set(['plant', 'flip', 'discard', 'surrender']);
 
 export const TabDock = memo(function TabDock() {
   const tab = useGameStore(selectTab);

@@ -1,47 +1,36 @@
 import { memo, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
-import type { GameLogEntry, LogKind } from '@astraltab/shared';
-import { nameOf } from '@astraltab/shared';
+import type { GameLogEntry, LogKind } from '@rootbound/shared';
+import { nameOf } from '@rootbound/shared';
 import { selectState, selectViewerId, useGameStore } from '../store/gameStore';
-import { BoltIcon, BoomIcon, PassIcon, PlaceIcon, SkullIcon, SparkIcon, SurrenderIcon, SwordIcon } from './icons';
+import { BoltIcon, PassIcon, PlaceIcon, SurrenderIcon, SwordIcon } from './icons';
 import styles from './TurnEvents.module.css';
 
-/** 연출에 올리는 사건 종류. 수입·드로우 같은 정산은 뺀다 */
-const SHOWN_KINDS: ReadonlySet<LogKind> = new Set<LogKind>(['place', 'magic', 'combat', 'destroy', 'eliminate', 'pass', 'surrender']);
+/** 연출에 올리는 사건 종류 */
+const SHOWN_KINDS: ReadonlySet<LogKind> = new Set<LogKind>(['plant', 'flip', 'discard', 'surrender']);
 const MAX_ITEMS = 6;
 const SPLASH_MS = 1100;
 const ITEM_MS = 450;
 
 const KIND_ICON: Partial<Record<LogKind, ReactNode>> = {
-  place: <PlaceIcon size={18} />,
-  magic: <SparkIcon size={18} />,
-  combat: <SwordIcon size={18} />,
-  destroy: <BoomIcon size={18} />,
-  eliminate: <SkullIcon size={18} />,
-  pass: <PassIcon size={18} />,
+  plant: <PlaceIcon size={18} />,
+  flip: <SwordIcon size={18} />,
+  discard: <PassIcon size={18} />,
   surrender: <SurrenderIcon size={18} />,
 };
 
 /** 로그 문장을 칩에 들어가는 짧은 문구로 줄인다. 형식을 못 알아보면 원문을 그대로 쓴다 */
 function shorten(e: GameLogEntry): string {
   switch (e.kind) {
-    case 'place': {
-      const m = e.message.match(/에 (.+?) 배치/);
-      return m ? `${m[1]} 배치` : e.message;
+    case 'plant': {
+      const m = e.message.match(/\)에 ([^,]+)/);
+      return m ? `${m[1]} 심음` : e.message;
     }
-    case 'combat': {
-      const m = e.message.match(/^(.+?)\(\d+,\d+\) → .+?의 (.+?)\(\d+,\d+\) 피해 (\d+)/);
-      return m ? `${m[1]} → ${m[2]} −${m[3]}` : e.message;
+    case 'flip': {
+      const m = e.message.match(/(.+?)의 땅 (\d+)칸을 가져갔습니다/);
+      return m ? `${m[1]!.split('이(가) ')[1] ?? ''} 땅 ${m[2]}칸 뺏음` : e.message;
     }
-    case 'destroy': {
-      const m = e.message.match(/의 (.+?)\(\d+,\d+\) 파괴/);
-      return m ? `${m[1]} 파괴` : e.message;
-    }
-    case 'eliminate': {
-      const m = e.message.match(/^(.+?) 탈락/);
-      return m ? `${m[1]} 탈락` : e.message;
-    }
-    case 'pass':
-      return '패스';
+    case 'discard':
+      return '버림';
     case 'surrender':
       return '기권';
     default:
@@ -66,7 +55,7 @@ interface Batch {
 
 /**
  * 턴 전환 연출 (2026-10-01 사용자 지시: 턴과 턴 사이에 무슨 일이 있었는지 눈으로 보이게).
- * 턴이 넘어갈 때마다 "누구 차례" 스플래시와, 방금 끝난 턴에 일어난 사건(배치·마법·전투·파괴·패스)을
+ * 차례가 넘어갈 때마다 "누구 차례" 스플래시와, 방금 끝난 차례에 일어난 사건(심기·뺏기·버리기·기권)을
  * 아이콘 칩으로 차례차례 보여 준다. 예전 OpponentRecap(텍스트 목록)을 대체한다.
  * 새 규칙 계산은 없다 — 로그 필터와 문구 줄이기뿐이다. 핫시트는 기기 넘김 화면이 닫힌 뒤에 보여 준다.
  */

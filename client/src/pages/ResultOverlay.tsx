@@ -1,15 +1,14 @@
-import { nameOf } from '@astraltab/shared';
+import { nameOf } from '@rootbound/shared';
 import { cx } from '../lib/cx';
 import { selectState, useGameStore } from '../store/gameStore';
 import styles from './ResultOverlay.module.css';
 
 const REASON: Record<string, string> = {
-  'last-survivor': '최후 생존',
-  'all-pass': '전원 패스',
-  'round-limit': '라운드 제한',
+  complete: '모든 카드를 심음',
+  'last-standing': '남은 사람 1명',
 };
 
-/** 게임 종료 화면 (F024, F025): 순위·점수 분해·종료 사유. 보드를 다시 볼 수도 있다 */
+/** 게임 종료 화면 (F025): 순위·점수 분해(땅 + 목표 + 장미 + 덤)·종료 사유. 보드를 다시 볼 수도 있다 */
 export function ResultOverlay({ onNewGame }: { onNewGame: () => void }) {
   const state = useGameStore(selectState);
   const dismissResult = useGameStore((s) => s.dismissResult);
@@ -29,14 +28,14 @@ export function ResultOverlay({ onNewGame }: { onNewGame: () => void }) {
             const p = state.players.find((x) => x.id === id);
             const s = scores[id];
             return (
-              <li key={id} className={cx(styles.row, i === 0 && styles.first, p && !p.alive && 'is-disabled')}>
+              <li key={id} className={cx(styles.row, i === 0 && styles.first, p && p.surrenderedOrder !== null && 'is-disabled')}>
                 <span className={styles.rank}>{i + 1}위</span>
                 <span className={styles.name}>
                   {p?.nickname ?? id}
                   <span className={styles.seat}> 좌석 {(p?.seat ?? -1) + 1}</span>
                 </span>
                 <span className={styles.breakdown}>
-                  {p && !p.alive ? '탈락' : `영토 ${s?.territory ?? 0} + 마커 ${s?.markers ?? 0} + 덤 ${s?.komi ?? 0}`}
+                  {p && p.surrenderedOrder !== null ? '기권' : `땅 ${s?.land ?? 0} + 목표 ${s?.goals ?? 0}${s?.bloom ? ` + 장미 ${s.bloom}` : ''}${s?.komi ? ` + 덤 ${s.komi}` : ''}`}
                 </span>
                 <span className={styles.total}>{s?.total ?? 0}점</span>
               </li>

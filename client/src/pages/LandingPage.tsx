@@ -1,9 +1,7 @@
 import { useState } from 'react';
-import { mapsForAtLeast } from '@astraltab/shared';
 import { DockShell } from '../components/DockShell';
 import { BotIcon, LearnIcon } from '../components/icons';
 import { hasSeenTutorial } from '../lib/onboarding';
-import { randomMapId } from '../lib/randomPicks';
 import { getNickname, getPlayerToken, setNickname, setRoomPassword } from '../lib/identity';
 import { markQuickStart } from '../lib/quickStart';
 import { extractRoomId, navigate } from '../lib/router';
@@ -49,18 +47,13 @@ export function LandingPage() {
     navigate(`/room/${res.roomId}`);
   };
 
-  /** AI와 바로 시작(2026-10-01): 방 만들기 → AI 좌석 채우기 → (로비에서) 준비까지 자동. 맵은 인원수에 딱 맞는 것 중 무작위 */
+  /** AI와 바로 시작(2026-10-01): 방 만들기 → AI 좌석 채우기 → (로비에서) 준비까지 자동. 보드는 인원수로 정해진다 */
   const startWithAi = async () => {
     if (!nickOk || busy) return;
     setBusy(true);
     setError(null);
     setNickname(nickname);
-    const players = aiCount + 1;
-    const res = await api.createRoom({
-      playerToken: getPlayerToken(),
-      nickname: nickname.trim(),
-      mapId: randomMapId(mapsForAtLeast(players).filter((m) => m.players === players)),
-    });
+    const res = await api.createRoom({ playerToken: getPlayerToken(), nickname: nickname.trim() });
     if (!res.ok) {
       setBusy(false);
       setError(res.message);
@@ -90,7 +83,7 @@ export function LandingPage() {
   };
 
   return (
-    <DockShell id="landing" heroTitle="AstralTab" heroSubtitle="마커를 하나씩 놓아 영토를 넓히는 우주 전략 보드게임. 친구 2~4명, 또는 AI와 함께." activeTab="room">
+    <DockShell id="landing" heroTitle="Rootbound" heroSubtitle="식물을 하나씩 심어 뿌리로 땅을 넓히는 정원 땅따먹기. 친구 2~4명, 또는 AI와 함께." activeTab="room">
       <section className={styles.section}>
         <h2 className={styles.h2}>닉네임</h2>
         <input
@@ -108,7 +101,7 @@ export function LandingPage() {
 
       <section className={styles.sectionPrimary}>
         <h2 className={styles.h2}>AI와 바로 시작</h2>
-        <p className={styles.help}>AI 상대 수를 고르면 맵·종족은 무작위로 정해지고 곧바로 대국이 시작됩니다.</p>
+        <p className={styles.help}>AI 상대 수를 고르면 곧바로 식물 고르기(드래프트)부터 시작합니다.</p>
         <div className={styles.aiRow}>
           <div className={styles.aiPick} role="radiogroup" aria-label="AI 상대 수">
             {[1, 2, 3].map((n) => (

@@ -1,8 +1,8 @@
 {
-  "name": "astraltab",
+  "name": "rootbound",
   "private": true,
   "version": "0.1.0",
-  "description": "웹 브라우저에서 친구 2~4명과 즐기는, 바둑처럼 마커를 놓아 영토를 넓히는 카드 기반 우주 전략 보드게임",
+  "description": "식물을 심어 뿌리로 땅을 넓히는 웹 정원 땅따먹기 보드게임 (2~4인, 드래프트)",
   "workspaces": [
     "shared",
     "server",
