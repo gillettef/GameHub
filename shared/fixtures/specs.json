@@ -130,7 +130,7 @@
       "kind": "unit",
       "cost": 3,
       "sight": 1,
-      "hp": 4,
+      "hp": 5,
       "attack": 2,
       "range": 1,
       "production": 0,
@@ -509,7 +509,7 @@
       "range": 0,
       "production": 0,
       "score": 1,
-      "copies": 4,
+      "copies": 3,
       "description": "공격력이 없는 순수 정찰용. 군락과 달리 초반 공세 수단이 없다."
     },
     {
@@ -563,7 +563,7 @@
       "range": 2,
       "production": 0,
       "score": 3,
-      "copies": 1,
+      "copies": 2,
       "description": "기본 덱에서 가장 강한 유닛."
     },
     {
@@ -700,12 +700,12 @@
       "cost": 1,
       "sight": 2,
       "hp": 2,
-      "attack": 1,
-      "range": 1,
+      "attack": 0,
+      "range": 0,
       "production": 0,
       "score": 1,
       "copies": 3,
-      "description": "가장 싼 유닛. 은신: 다른 표적이 있으면 안 맞는다."
+      "description": "가장 싼 유닛. 공격력 없이 은신으로 버티는 정찰용: 다른 표적이 있으면 안 맞는다."
     },
     {
       "race": "shade",
@@ -720,7 +720,7 @@
       "kind": "unit",
       "cost": 2,
       "sight": 1,
-      "hp": 3,
+      "hp": 4,
       "attack": 2,
       "range": 1,
       "production": 0,
@@ -740,7 +740,7 @@
       "kind": "unit",
       "cost": 3,
       "sight": 1,
-      "hp": 3,
+      "hp": 4,
       "attack": 3,
       "range": 2,
       "production": 0,
@@ -877,7 +877,7 @@
       "id": "flak-tower",
       "name": "대공 포탑",
       "kind": "building",
-      "cost": 4,
+      "cost": 3,
       "sight": 1,
       "hp": 6,
       "attack": 3,
@@ -933,7 +933,7 @@
       "id": "howitzer",
       "name": "곡사포",
       "kind": "unit",
-      "cost": 5,
+      "cost": 4,
       "sight": 1,
       "hp": 4,
       "attack": 2,
