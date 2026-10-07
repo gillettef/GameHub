@@ -1,9 +1,10 @@
 /**
  * AI 턴 실행기 (F026, F027). 방 상태가 바뀔 때마다 `maybeRun(roomId)` 를 부르면,
  * 현재 턴이 AI 인 동안 (또는 시간 초과로 AI 대리 중인 사람 좌석, Rules.md 5.4) Python AI 서비스에 결정을 요청해 룰 엔진으로 검증·적용하고 브로드캐스트한다.
- * 불법 액션·타임아웃·서비스 다운이면 PASS 로 폴백한다. 방마다 한 번에 하나만 돈다.
+ * 불법 액션·타임아웃·서비스 다운이면 엔진의 자동 수(autoAction)로 폴백한다. 방마다 한 번에 하나만 돈다.
  */
 import type { Action, GameState, PlayerId } from '@astraltab/shared';
+import { autoAction } from '@astraltab/shared';
 import { requestAiDecision } from '../ai/client.js';
 import type { RoomManager, Room } from '../rooms/manager.js';
 
@@ -11,7 +12,7 @@ export interface AiRunnerOptions {
   manager: RoomManager;
   /** 적용 후 저장·브로드캐스트 */
   onChange: (room: Room) => void;
-  decide?: (state: GameState, playerId: PlayerId) => Promise<Action>;
+  decide?: (state: GameState, playerId: PlayerId) => Promise<Action | null>;
   /** 사람이 AI 수를 눈으로 따라올 수 있게 두는 최소 지연 */
   thinkDelayMs?: number;
 }
@@ -41,12 +42,14 @@ export function createAiRunner(opts: AiRunnerOptions) {
       if (!latest) return;
       if (latest.state.turn !== turnBefore || latest.state.currentPlayerId !== aiId || !opts.manager.isAutoTurn(latest)) continue;
 
-      let result = opts.manager.tryApply(roomId, action.playerId === aiId ? action : { type: 'PASS', playerId: aiId });
+      const fallback = () => autoAction(opts.manager.get(roomId)!.state, aiId);
+      let result = action && action.playerId === aiId ? opts.manager.tryApply(roomId, action) : { room: latest, error: 'AI 응답 없음' };
       if (result.error) {
-        console.warn(`[ai] room=${roomId} ${aiId} 불법 액션 (${result.error}) → PASS 폴백`);
-        result = opts.manager.tryApply(roomId, { type: 'PASS', playerId: aiId });
+        console.warn(`[ai] room=${roomId} ${aiId} 불법 액션 (${result.error}) → 자동 수 폴백`);
+        const auto = fallback();
+        result = auto ? opts.manager.tryApply(roomId, auto) : { room: latest, error: '자동 수 없음' };
         if (result.error) {
-          console.error(`[ai] room=${roomId} ${aiId} PASS 도 거부됨: ${result.error}`);
+          console.error(`[ai] room=${roomId} ${aiId} 자동 수도 거부됨: ${result.error}`);
           return;
         }
       }
