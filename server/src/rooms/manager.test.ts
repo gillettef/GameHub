@@ -214,7 +214,7 @@ describe('입력 검증 · 방 정리', () => {
     const a = m.create({ playerToken: 't1', nickname: '갑' }).room;
     now += 2 * 24 * 60 * 60 * 1000;
     const b = m.create({ playerToken: 't2', nickname: '을' }).room;
-    expect(m.pruneStale()).toEqual([a.roomId]);
+    expect(m.pruneStale().map((r) => r.roomId)).toEqual([a.roomId]);
     expect(m.get(b.roomId)).toBeDefined();
   });
 
@@ -226,5 +226,191 @@ describe('입력 검증 · 방 정리', () => {
     delete old.state.board.ionStorms;
     m.load(old);
     expect(m.get(room.roomId)?.state.board.nebulas).toBeDefined();
+  });
+});
+
+describe('턴 제한 시간 · AI 대리 (Rules.md 5.4)', () => {
+  function setup() {
+    let now = 1000;
+    const m = new RoomManager({ seed: () => 42, now: () => now, roomId: () => 'room1', hashToken: (t) => `h:${t}` });
+    m.create({ playerToken: 't1', nickname: '갑' });
+    m.join({ roomId: 'room1', playerToken: 't2', nickname: '을' });
+    return { m, advance: (ms: number) => (now += ms), at: () => now };
+  }
+
+  it('새 방은 기본 90초, 방장만 로비에서 정해진 선택지로 바꿀 수 있다', () => {
+    const { m } = setup();
+    expect(m.get('room1')?.turnTimeLimitSec).toBe(90);
+    expect(() => m.setTurnTime('room1', 'p2', 60)).toThrow(/방장만/);
+    expect(() => m.setTurnTime('room1', 'p1', 45)).toThrow(RoomError);
+    m.setTurnTime('room1', 'p1', null);
+    expect(m.info(m.get('room1')!, []).turnTimeLimitSec).toBeNull();
+    m.setTurnTime('room1', 'p1', 60);
+    readyAll(m, 'room1', ['p1', 'p2']);
+    expect(() => m.setTurnTime('room1', 'p1', 90)).toThrow(/시작 전에만/);
+  });
+
+  it('마감 전에는 아무 일도 없고, 지나면 자동 패스 후 다음 사람 시계가 새로 시작한다', () => {
+    const { m, advance, at } = setup();
+    readyAll(m, 'room1', ['p1', 'p2']);
+    const room = m.get('room1')!;
+    const first = room.state.currentPlayerId as string;
+    expect(m.deadline(room)).toBe(at() + 90_000);
+    advance(89_000);
+    expect(m.timeoutTurn('room1')).toBeNull();
+    advance(1_000);
+    expect(m.timeoutTurn('room1')).not.toBeNull();
+    expect(room.state.currentPlayerId).not.toBe(first);
+    expect(room.state.log.some((e) => e.kind === 'system' && e.playerId === first && /제한 시간 1분 30초|자동으로 턴을 넘깁니다/.test(e.message))).toBe(true);
+    expect(room.afkStrikes?.[first]).toBe(1);
+    expect(m.deadline(room)).toBe(at() + 90_000);
+  });
+
+  it('연속 2번 시간 초과하면 AI 대리, 직접 두기·받아들여진 행동으로만 되찾는다', () => {
+    const { m, advance } = setup();
+    readyAll(m, 'room1', ['p1', 'p2']);
+    const room = m.get('room1')!;
+    const afk = room.state.currentPlayerId as string;
+    const other = afk === 'p1' ? 'p2' : 'p1';
+    // afk 시간 초과 → other 는 배치 후 턴 종료(둘 다 패스면 전원 연속 패스로 끝나 버린다) → afk 다시 시간 초과
+    advance(90_000);
+    m.timeoutTurn('room1');
+    placeFirst(m, 'room1', other);
+    expect(room.autopilot).toEqual([]);
+    advance(90_000);
+    m.timeoutTurn('room1');
+    expect(room.autopilot).toEqual([afk]);
+    expect(room.state.log.some((e) => e.message.includes('AI가 대신 둡니다'))).toBe(true);
+
+    // 상대 턴 뒤 afk 턴이 오면 서버가 대신 두는 턴이고 마감이 없다
+    placeFirst(m, 'room1', other);
+    expect(m.isAutoTurn(room)).toBe(true);
+    expect(m.deadline(room)).toBeNull();
+    expect(m.info(room, []).autopilot).toEqual([afk]);
+
+    // 재접속(소켓 자동 재연결 포함)만으로는 풀리지 않는다
+    m.join({ roomId: 'room1', playerToken: afk === 'p1' ? 't1' : 't2', nickname: 'x' });
+    expect(room.autopilot).toEqual([afk]);
+
+    // 거부된 액션은 대리를 풀지 않는다 (풀리면 아무도 그 턴을 진행하지 않아 방이 멈춘다)
+    expect(() => m.act('room1', afk, { type: 'PLACE', playerId: afk, cardId: 'nope', pos: { x: 0, y: 0 } })).toThrow(RoomError);
+    expect(room.autopilot).toEqual([afk]);
+
+    // 직접 두기로 되찾으면 시계가 지금부터 다시 시작한다
+    m.resume('room1', afk);
+    expect(room.autopilot).toEqual([]);
+    expect(m.isAutoTurn(room)).toBe(false);
+    expect(room.afkStrikes?.[afk]).toBe(0);
+    expect(m.deadline(room)).not.toBeNull();
+
+    // 받아들여진 직접 행동도 대리를 푼다
+    room.autopilot = [afk];
+    m.act('room1', afk, { type: 'PASS', playerId: afk });
+    expect(room.autopilot).toEqual([]);
+  });
+
+  it('스냅샷 복원 시 진행 중인 턴은 시계를 새로 잰다 (서버가 내려가 있던 시간은 플레이어 책임이 아니다)', () => {
+    const { m, advance, at } = setup();
+    readyAll(m, 'room1', ['p1', 'p2']);
+    const saved = JSON.parse(JSON.stringify(m.get('room1')));
+    advance(10 * 60_000); // 10분 동안 서버가 꺼져 있었다
+    m.load(saved);
+    expect(m.deadline(m.get('room1')!)).toBe(at() + 90_000);
+    expect(m.timeoutTurn('room1')).toBeNull();
+  });
+
+  it('제한 없음(비동기 턴)이면 마감이 없다', () => {
+    const { m, advance } = setup();
+    m.setTurnTime('room1', 'p1', null);
+    readyAll(m, 'room1', ['p1', 'p2']);
+    advance(10 * 24 * 60 * 60 * 1000);
+    expect(m.deadline(m.get('room1')!)).toBeNull();
+    expect(m.timeoutTurn('room1')).toBeNull();
+  });
+
+  it('타이머가 생기기 전 스냅샷은 제한 없음으로 이어 간다', () => {
+    const { m } = setup();
+    const old = JSON.parse(JSON.stringify(m.get('room1')));
+    delete old.turnTimeLimitSec;
+    delete old.autopilot;
+    delete old.afkStrikes;
+    m.load(old);
+    expect(m.get('room1')?.turnTimeLimitSec).toBeNull();
+    expect(m.get('room1')?.autopilot).toEqual([]);
+  });
+});
+
+describe('판 요약 기록', () => {
+  it('끝난 판은 한 번만 기록되고, 기권·시간 초과·순위·해시된 토큰을 담는다', () => {
+    let now = 1000;
+    const m = new RoomManager({ seed: () => 42, now: () => now, roomId: () => 'room1', hashToken: (t) => `h:${t}` });
+    m.create({ playerToken: 't1', nickname: '갑' });
+    m.join({ roomId: 'room1', playerToken: 't2', nickname: '을' });
+    readyAll(m, 'room1', ['p1', 'p2']);
+    const room = m.get('room1')!;
+    expect(m.takeRecord(room)).toBeNull(); // 아직 진행 중
+    const first = room.state.currentPlayerId as string;
+    now += 90_000;
+    m.timeoutTurn('room1');
+    const loser = room.state.currentPlayerId as string;
+    now += 30_000;
+    m.act('room1', loser, { type: 'SURRENDER', playerId: loser });
+    expect(room.state.phase).toBe('finished');
+    const rec = m.takeRecord(room)!;
+    expect(rec).toMatchObject({ outcome: 'finished', reason: 'last-survivor', durationMs: 120_000, players: 2, turnTimeLimitSec: 90 });
+    const seatOf = (id: string) => rec.seats.find((s) => s.seat === room.state.players.find((p) => p.id === id)!.seat)!;
+    expect(seatOf(loser)).toMatchObject({ surrendered: true, rank: 2 });
+    expect(seatOf(first)).toMatchObject({ timeouts: 1, rank: 1, playerHash: first === 'p1' ? 'h:t1' : 'h:t2' });
+    expect(m.takeRecord(room)).toBeNull();
+  });
+
+  it('진행 중에 방치되어 정리된 판은 abandoned 로 남는다', () => {
+    let now = 1000;
+    const m = new RoomManager({ seed: () => 42, now: () => now, roomId: () => 'room1' });
+    m.create({ playerToken: 't1', nickname: '갑' });
+    m.join({ roomId: 'room1', playerToken: 't2', nickname: '을' });
+    m.setTurnTime('room1', 'p1', null);
+    readyAll(m, 'room1', ['p1', 'p2']);
+    now += 8 * 24 * 60 * 60 * 1000;
+    const [pruned] = m.pruneStale();
+    expect(pruned?.record).toMatchObject({ outcome: 'abandoned', reason: null });
+  });
+});
+
+describe('AI 실행기 · AI 대리 경합', () => {
+  it('대리 좌석 사람이 AI 결정 도중 직접 PASS 해도 다음 AI 좌석 턴은 멈추지 않는다', async () => {
+    const m = new RoomManager({ seed: () => 42, now: () => 1000, roomId: () => 'room1' });
+    m.create({ playerToken: 't1', nickname: '갑' });
+    m.addAi('room1', 'p1');
+    readyAll(m, 'room1', ['p1']);
+    const room = m.get('room1')!;
+    const human = 'p1';
+    // 사람 차례로 맞추고 대리 상태로 만든다
+    if (room.state.currentPlayerId !== human) {
+      const ai = room.state.currentPlayerId as string;
+      m.tryApply('room1', { type: 'PASS', playerId: ai });
+    }
+    room.autopilot = [human];
+    let release: () => void = () => undefined;
+    const decided: string[] = [];
+    const runner = createAiRunner({
+      manager: m,
+      thinkDelayMs: 0,
+      onChange: () => runner.maybeRun('room1'),
+      decide: async (state, playerId): Promise<Action> => {
+        decided.push(playerId);
+        if (playerId === human) await new Promise<void>((r) => (release = r)); // 사람 좌석 결정은 느리다
+        return { type: 'PASS', playerId };
+      },
+    });
+    runner.maybeRun('room1');
+    await new Promise((r) => setTimeout(r, 5));
+    // 결정 도중 사람이 직접 PASS → 턴이 AI 좌석으로 넘어감. commit 의 maybeRun 은 run 중이라 무시된다
+    m.act('room1', human, { type: 'PASS', playerId: human });
+    runner.maybeRun('room1');
+    release();
+    await new Promise((r) => setTimeout(r, 20));
+    // 같은 run 이 다시 확인해 AI 좌석 턴을 진행했어야 한다
+    expect(decided.filter((id) => id !== human).length).toBeGreaterThan(0);
   });
 });

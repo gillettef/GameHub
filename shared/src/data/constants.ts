@@ -85,3 +85,15 @@ export const CONSTANTS = {
   OVERCLOCK_RADIUS,
   OVERCLOCK_BONUS_PER_NEIGHBOR,
 } as const;
+
+// ---------------------------------------------------------------------------
+// 온라인 진행 상수 (Rules.md 5.4, 2026-10-06 신설). 규칙 엔진 밖에서 서버가 쓰는 값이라
+// CONSTANTS(엔진·AI 픽스처용)에는 넣지 않는다
+// ---------------------------------------------------------------------------
+
+/** 방장이 고를 수 있는 턴 제한 시간(초). null = 제한 없음(비동기 턴, F005) */
+export const TURN_TIME_OPTIONS_SEC: readonly (number | null)[] = [60, 90, 180, null];
+/** 새 방의 기본 턴 제한 시간(초) */
+export const DEFAULT_TURN_TIME_SEC = 90;
+/** 연속으로 이 횟수만큼 시간 초과하면 AI 가 그 좌석을 대신 둔다(직접 두기로 되찾을 수 있다) */
+export const AFK_STRIKES_FOR_AUTOPILOT = 2;

@@ -1,11 +1,11 @@
 /**
  * AI 턴 실행기 (F026, F027). 방 상태가 바뀔 때마다 `maybeRun(roomId)` 를 부르면,
- * 현재 턴이 AI 인 동안 Python AI 서비스에 결정을 요청해 룰 엔진으로 검증·적용하고 브로드캐스트한다.
+ * 현재 턴이 AI 인 동안 (또는 시간 초과로 AI 대리 중인 사람 좌석, Rules.md 5.4) Python AI 서비스에 결정을 요청해 룰 엔진으로 검증·적용하고 브로드캐스트한다.
  * 불법 액션·타임아웃·서비스 다운이면 PASS 로 폴백한다. 방마다 한 번에 하나만 돈다.
  */
 import type { Action, GameState, PlayerId } from '@astraltab/shared';
 import { requestAiDecision } from '../ai/client.js';
-import { RoomManager, type Room } from '../rooms/manager.js';
+import type { RoomManager, Room } from '../rooms/manager.js';
 
 export interface AiRunnerOptions {
   manager: RoomManager;
@@ -26,7 +26,7 @@ export function createAiRunner(opts: AiRunnerOptions) {
   async function run(roomId: string): Promise<void> {
     for (;;) {
       const room = opts.manager.get(roomId);
-      if (!room || !RoomManager.isAiTurn(room.state)) return;
+      if (!room || !opts.manager.isAutoTurn(room)) return;
       const state = room.state;
       const aiId = state.currentPlayerId as PlayerId;
       const turnBefore = state.turn;
@@ -34,9 +34,12 @@ export function createAiRunner(opts: AiRunnerOptions) {
       if (thinkDelayMs > 0) await delay(thinkDelayMs);
       const action = await decide(state, aiId);
 
-      // 기다리는 사이 방이 사라졌거나 턴이 바뀌었으면(기권 등) 버린다
+      // 기다리는 사이 방이 사라졌거나 턴이 바뀌었거나(기권, 대리 좌석 사람이 직접 PASS 등) 사람이 좌석을
+      // 되찾았으면 이 결정은 버린다. 그래도 지금 턴이 다른 AI 좌석일 수 있으므로 멈추지 않고 처음부터 다시 본다
+      // (이 run 이 도는 동안 commit 의 maybeRun 은 무시되었기 때문)
       const latest = opts.manager.get(roomId);
-      if (!latest || latest.state.turn !== turnBefore || latest.state.currentPlayerId !== aiId) return;
+      if (!latest) return;
+      if (latest.state.turn !== turnBefore || latest.state.currentPlayerId !== aiId || !opts.manager.isAutoTurn(latest)) continue;
 
       let result = opts.manager.tryApply(roomId, action.playerId === aiId ? action : { type: 'PASS', playerId: aiId });
       if (result.error) {
@@ -56,7 +59,7 @@ export function createAiRunner(opts: AiRunnerOptions) {
     maybeRun(roomId: string): void {
       if (running.has(roomId)) return;
       const room = opts.manager.get(roomId);
-      if (!room || !RoomManager.isAiTurn(room.state)) return;
+      if (!room || !opts.manager.isAutoTurn(room)) return;
       running.add(roomId);
       run(roomId)
         .catch((err) => console.error(`[ai] room=${roomId} 실행 오류: ${(err as Error).message}`))
