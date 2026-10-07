@@ -17,6 +17,7 @@ import {
   hexDistance,
   joinPlayer,
   layoutFor,
+  legalDirections,
   legalPlantCells,
   legalSeedCells,
   nextRandom,
@@ -155,6 +156,15 @@ describe('영향력 (Rules.md 6.2·7절)', () => {
     expect(infAt(s, 0, { q: 2, r: -3 })).toBe(2);
     expect(infAt(s, 0, { q: 3, r: -3 })).toBe(0);
     expect(infAt(s, 0, { q: -1, r: -3 })).toBe(0);
+  });
+
+  it('덩굴: 거리 1·2 가 보드 밖이면 건너뛰고 거리 3 으로 밀려나지 않는다, 그런 방향은 고를 수 없다', () => {
+    // flatState 는 q ∈ [−4, 10]. (9,0) 에서 방향 0 → (10,0) 보드 안, (11,0) 보드 밖, (12,0) 보드 밖
+    const s = flatState([plant('vine', 'p0', 9, 0, 0)]);
+    expect(infAt(s, 0, { q: 10, r: 0 })).toBe(2);
+    // (10,0) 에서 방향 0 은 거리 1·2 모두 보드 밖 → 고를 수 없다
+    expect(legalDirections(s, { q: 10, r: 0 })).not.toContain(0);
+    expect(legalDirections(s, { q: 9, r: 0 })).toContain(0);
   });
 
   it('고사리: 자기 1, 거리 1 은 0, 별 모양 거리 2 에 1', () => {
