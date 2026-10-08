@@ -299,7 +299,7 @@ interface SeatPolicy {
 /** 2026-10-07 시뮬레이션으로 정한 좌석 보정 (Rules.md 4절) */
 const SEAT: Record<number, SeatPolicy> = {
   2: { draftFirst: 'last', draftOrder: [1, 0], komi: [0, 1], lastRoundReverse: false },
-  3: { draftFirst: 'first', draftOrder: [0, 2, 1], komi: [2, 2, 0], lastRoundReverse: false },
+  3: { draftFirst: 'first', draftOrder: [0, 2, 1], komi: [3, 4, 0], lastRoundReverse: false },
   4: { draftFirst: 'first', draftOrder: [1, 0, 3, 2], komi: [1, 0, 0, 0], lastRoundReverse: false },
 };
 

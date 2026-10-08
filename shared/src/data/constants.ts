@@ -30,7 +30,7 @@ export interface PlayerCountRule {
 
 export const PLAYER_COUNT_RULES: Record<number, PlayerCountRule> = {
   2: { picks: 5, copies: 3, maxTakers: 1, draftFirstRound: [1, 0], komi: [0, 1] },
-  3: { picks: 4, copies: 4, maxTakers: 1, draftFirstRound: [0, 2, 1], komi: [2, 2, 0] },
+  3: { picks: 4, copies: 4, maxTakers: 1, draftFirstRound: [0, 2, 1], komi: [3, 4, 0] },
   4: { picks: 4, copies: 4, maxTakers: 2, draftFirstRound: [1, 0, 3, 2], komi: [1, 0, 0, 0] },
 };
 
