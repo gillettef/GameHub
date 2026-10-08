@@ -14,24 +14,24 @@ export const GOAL_COUNT = 3;
 /** 종 연계 목표: 끝날 때 내 땅 위의 내 그 종 식물 1개당 점수 */
 export const RESERVE_BONUS = 2;
 
-/** 인원별 드래프트·덱 구성 (Rules.md 4·5절) */
+/** 목표 '여러 가지 심기': 서로 다른 식물을 이만큼 이상 심으면 */
+export const VARIETY_SPECIES = 5;
+export const VARIETY_BONUS = 4;
+
+/** 인원별 이번 판 식물·카드 더미 구성 (Rules.md 4·5절) */
 export interface PlayerCountRule {
-  /** 각자 고르는 종 수 */
-  picks: number;
-  /** 종마다 덱에 넣는 장수 */
+  /** 이번 판에 쓰는 식물 수 */
+  gardenSize: number;
+  /** 식물마다 카드 더미에 넣는 장수 (식물 수 × 장수 = 인원 × 각자 두는 횟수) */
   copies: number;
-  /** 한 종을 가져갈 수 있는 인원 */
-  maxTakers: number;
-  /** 드래프트 첫 바퀴 좌석 순서 (이후 뱀 순서) */
-  draftFirstRound: number[];
-  /** 좌석별 덤 */
+  /** 자리별 순서 보너스(덤) */
   komi: number[];
 }
 
 export const PLAYER_COUNT_RULES: Record<number, PlayerCountRule> = {
-  2: { picks: 5, copies: 3, maxTakers: 1, draftFirstRound: [1, 0], komi: [0, 1] },
-  3: { picks: 4, copies: 4, maxTakers: 1, draftFirstRound: [0, 2, 1], komi: [3, 4, 0] },
-  4: { picks: 4, copies: 4, maxTakers: 2, draftFirstRound: [1, 0, 3, 2], komi: [1, 0, 0, 0] },
+  2: { gardenSize: 6, copies: 5, komi: [0, 0] },
+  3: { gardenSize: 8, copies: 6, komi: [1, 2, 0] },
+  4: { gardenSize: 8, copies: 8, komi: [0, 1, 0, 0] },
 };
 
 export function rulesFor(players: number): PlayerCountRule {
@@ -49,6 +49,8 @@ export const CONSTANTS = {
   FERTILE_BONUS,
   GOAL_COUNT,
   RESERVE_BONUS,
+  VARIETY_SPECIES,
+  VARIETY_BONUS,
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -59,11 +61,6 @@ export const CONSTANTS = {
 export const TURN_TIME_OPTIONS_SEC: readonly (number | null)[] = [60, 90, 180, null];
 /** 새 방의 기본 차례 제한 시간(초) */
 export const DEFAULT_TURN_TIME_SEC = 90;
-/** 드래프트 픽 제한 시간 = 차례 제한의 1/3, 최소값(초) */
-export const MIN_DRAFT_TIME_SEC = 20;
 /** 연속으로 이 횟수만큼 시간 초과하면 AI 가 그 좌석을 대신 둔다 */
 export const AFK_STRIKES_FOR_AUTOPILOT = 2;
 
-export function draftTimeSec(turnTimeSec: number | null): number | null {
-  return turnTimeSec === null ? null : Math.max(MIN_DRAFT_TIME_SEC, Math.round(turnTimeSec / 3));
-}

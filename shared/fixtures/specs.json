@@ -69,7 +69,7 @@
       "description": "한 방향을 골라 직선 두 칸에 2씩 뻗는다."
     },
     {
-      "self": 1,
+      "self": 2,
       "ring1": 0,
       "star2": 1,
       "line": 0,
@@ -120,7 +120,7 @@
       "description": "기름진 땅에 심으면 맞닿은 칸에 3씩 준다. 다른 곳에서는 잔디보다 약하다."
     },
     {
-      "self": 1,
+      "self": 2,
       "ring1": 1,
       "star2": 0,
       "line": 0,
@@ -273,9 +273,9 @@
       "species": null
     },
     {
-      "id": "full-set",
-      "name": "고른 식물 다 쓰기",
-      "description": "고른 식물을 모두 한 번 이상 심었으면 +4",
+      "id": "variety",
+      "name": "여러 가지 심기",
+      "description": "서로 다른 식물을 5종 이상 심었으면 +4",
       "species": null
     },
     {
@@ -323,50 +323,34 @@
     "ENTRANCE_RING": 1,
     "FERTILE_BONUS": 1,
     "GOAL_COUNT": 3,
-    "RESERVE_BONUS": 2
+    "RESERVE_BONUS": 2,
+    "VARIETY_SPECIES": 5,
+    "VARIETY_BONUS": 4
   },
   "playerCountRules": {
     "2": {
-      "picks": 5,
-      "copies": 3,
-      "maxTakers": 1,
-      "draftFirstRound": [
-        1,
-        0
-      ],
+      "gardenSize": 6,
+      "copies": 5,
       "komi": [
         0,
-        1
+        0
       ]
     },
     "3": {
-      "picks": 4,
-      "copies": 4,
-      "maxTakers": 1,
-      "draftFirstRound": [
-        0,
-        2,
-        1
-      ],
+      "gardenSize": 8,
+      "copies": 6,
       "komi": [
-        3,
-        4,
+        1,
+        2,
         0
       ]
     },
     "4": {
-      "picks": 4,
-      "copies": 4,
-      "maxTakers": 2,
-      "draftFirstRound": [
-        1,
-        0,
-        3,
-        2
-      ],
+      "gardenSize": 8,
+      "copies": 8,
       "komi": [
-        1,
         0,
+        1,
         0,
         0
       ]

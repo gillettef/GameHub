@@ -338,10 +338,10 @@ io.on('connection', (socket: AppSocket) => {
     }
   });
 
-  socket.on('game:action', ({ roomId, action }, ack) => {
+  socket.on('game:action', ({ roomId, action, turn }, ack) => {
     try {
       const playerId = requirePlayer(socket, roomId);
-      const room = manager.act(roomId, playerId, action);
+      const room = manager.act(roomId, playerId, action, typeof turn === 'number' ? turn : undefined);
       ack({ ok: true });
       commit(room);
     } catch (err) {

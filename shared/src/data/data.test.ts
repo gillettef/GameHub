@@ -64,21 +64,20 @@ describe('Rules.md 8절 목표 표와 데이터 일치', () => {
   });
 });
 
-describe('Rules.md 4절 좌석 보정 표와 데이터 일치', () => {
+describe('Rules.md 4절 자리 보정 표와 데이터 일치', () => {
   const rows = tableRows('### 좌석 보정').filter((r) => /인$/.test(r[0] ?? ''));
-  it('인원별 드래프트 첫 바퀴·덤', () => {
+  it('인원별 덤', () => {
     for (const r of rows) {
       const n = Number(r[0]!.replace('인', ''));
-      const rule = PLAYER_COUNT_RULES[n]!;
-      expect(r[1]!.match(/\d/g)!.map(Number)).toEqual(rule.draftFirstRound);
-      expect(r[2]!.split(',').map((x) => Number(x.trim()))).toEqual(rule.komi);
+      expect(r[1]!.split(',').map((x) => Number(x.trim()))).toEqual(PLAYER_COUNT_RULES[n]!.komi);
     }
     expect(rows).toHaveLength(3);
   });
-  it('인원별 드래프트 종 수·장수 (Rules.md 10절)', () => {
-    expect(PLAYER_COUNT_RULES[2]).toMatchObject({ picks: 5, copies: 3, maxTakers: 1 });
-    expect(PLAYER_COUNT_RULES[3]).toMatchObject({ picks: 4, copies: 4, maxTakers: 1 });
-    expect(PLAYER_COUNT_RULES[4]).toMatchObject({ picks: 4, copies: 4, maxTakers: 2 });
+  it('인원별 이번 판 식물 수·장수 (Rules.md 10절): 식물 수 × 장수 = 인원 × 각자 두는 횟수', () => {
+    expect(PLAYER_COUNT_RULES[2]).toMatchObject({ gardenSize: 6, copies: 5 });
+    expect(PLAYER_COUNT_RULES[3]).toMatchObject({ gardenSize: 8, copies: 6 });
+    expect(PLAYER_COUNT_RULES[4]).toMatchObject({ gardenSize: 8, copies: 8 });
+    for (const [n, turns] of [[2, 15], [3, 16], [4, 16]] as const) expect(PLAYER_COUNT_RULES[n]!.gardenSize * PLAYER_COUNT_RULES[n]!.copies).toBe(n * turns);
   });
 });
 

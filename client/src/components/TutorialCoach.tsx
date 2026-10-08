@@ -1,6 +1,6 @@
 import { memo, useEffect, useRef, useState } from 'react';
 import { markTutorialSeen } from '../lib/onboarding';
-import { useGameStore } from '../store/gameStore';
+import { selectTake, useGameStore } from '../store/gameStore';
 import { CloseIcon, LearnIcon } from './icons';
 import styles from './TutorialCoach.module.css';
 
@@ -9,7 +9,7 @@ type Store = ReturnType<typeof useGameStore.getState>;
 interface Step {
   title: string;
   body: string;
-  /** 화면 위쪽에 띄운다 (드래프트 화면처럼 아래가 붐빌 때) */
+  /** 화면 위쪽에 띄운다 (아래 내 카드·마켓을 가리지 않게) */
   top?: boolean;
   /** 이 조건이 참이 되면 다음 단계로 넘어간다. 없으면 '다음' 버튼으로 넘긴다 */
   done?: (s: Store, startTurn: number) => boolean;
@@ -19,7 +19,7 @@ interface Step {
 /**
  * 첫 판 튜토리얼 안내 (2026-10-06, 2026-10-07 Rootbound 로 교체). 연습 봇과 두는 핫시트 판(store.tutorial) 위에 떠서
  * 한 단계씩 할 일을 알려 주고, 플레이어가 실제로 그 조작을 하면 다음 단계로 넘어간다.
- * 보드를 덜 가리도록 손패 위(드래프트 중에는 화면 위쪽)에 작은 패널로 둔다.
+ * 보드를 덜 가리도록 내 카드 위(첫 안내는 화면 위쪽)에 작은 패널로 둔다.
  */
 const myPlants = (s: Store) => s.state?.plants.filter((p) => p.ownerId === s.viewerId).length ?? 0;
 
@@ -30,12 +30,6 @@ const STEPS: Step[] = [
     top: true,
   },
   {
-    title: '식물 고르기',
-    body: '먼저 이번 판에 쓸 식물 5가지를 연습 봇과 번갈아 고릅니다. 카드를 눌러 크게 보고 "고르기"를 누르세요. 목표 카드에 이름이 나온 식물이 유리합니다.',
-    top: true,
-    done: (s) => s.state?.phase === 'playing',
-  },
-  {
     title: '카드 고르기',
     body: '아래 내 카드에서 한 장을 눌러 크게 보고 "이 카드 고르기"를 누르세요. 그림의 숫자가 옆 칸에 주는 영향력입니다.',
     done: (s) => s.selectedHandIndex !== null || myPlants(s) > 0,
@@ -44,6 +38,11 @@ const STEPS: Step[] = [
     title: '심을 칸 고르기',
     body: '밝게 빛나는 칸이 내 뿌리가 닿는(영향력 1 이상) 빈 칸입니다. 한 칸을 누르세요.',
     done: (s) => s.pendingPos !== null || myPlants(s) > 0,
+  },
+  {
+    title: '마켓에서 가져오기',
+    body: '보드 아래 마켓에 이번 라운드 카드가 펼쳐져 있습니다. 심을 때 한 장을 가져와 내 카드에 더합니다. 가져올 카드를 누르세요.',
+    done: (s) => selectTake(s) !== null || myPlants(s) > 0,
   },
   {
     title: '심기',
@@ -93,7 +92,7 @@ export const TutorialCoach = memo(function TutorialCoach() {
     });
   }
 
-  if (!tutorial || closed || (phase !== 'playing' && phase !== 'drafting') || step >= STEPS.length) return null;
+  if (!tutorial || closed || phase !== 'playing' || step >= STEPS.length) return null;
   const cur = STEPS[step] as Step;
   const last = step === STEPS.length - 1;
   return (

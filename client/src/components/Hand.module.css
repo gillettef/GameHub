@@ -16,14 +16,3 @@
   font-size: var(--text-small);
   color: var(--color-muted);
 }
-
-.deck {
-  margin-left: auto;
-  align-self: center;
-  flex: none;
-  padding: 2px 8px;
-  border-radius: var(--radius-full);
-  border: 1px solid color-mix(in srgb, var(--color-muted) 50%, transparent);
-  font-size: var(--text-micro);
-  color: var(--color-muted);
-}

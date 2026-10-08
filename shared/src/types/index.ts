@@ -97,7 +97,7 @@ export type GoalId =
   | 'forest'
   | 'connected'
   | 'border-guard'
-  | 'full-set'
+  | 'variety'
   | 'pine-reserve'
   | 'kudzu-reserve'
   | 'fern-reserve'
@@ -142,20 +142,16 @@ export interface PlayerState {
   /** 좌석 번호 = 차례 순서. 0부터 */
   seat: number;
   isReady: boolean;
-  /** 드래프트로 고른 종 (공개) */
-  drafted: SpeciesId[];
-  /** 뽑을 카드 더미 (맨 앞이 다음 카드). 서버는 아무에게도 보내지 않는다 */
-  deck: SpeciesId[];
-  /** 손패. 서버는 타인에게 장수만 보낸다 */
+  /** 손에 든 카드. 서버는 타인에게 장수만 보낸다 */
   hand: SpeciesId[];
   /** 기권 순서(0부터). 기권 안 했으면 null */
   surrenderedOrder: number | null;
 }
 
-/** lobby → drafting → playing → finished */
-export type GamePhase = 'lobby' | 'drafting' | 'playing' | 'finished';
+/** lobby → playing → finished */
+export type GamePhase = 'lobby' | 'playing' | 'finished';
 
-export type LogKind = 'system' | 'draft' | 'plant' | 'discard' | 'flip' | 'turn' | 'surrender' | 'result';
+export type LogKind = 'system' | 'take' | 'plant' | 'discard' | 'flip' | 'turn' | 'surrender' | 'result';
 
 export interface GameLogEntry {
   turn: number;
@@ -192,14 +188,19 @@ export interface GameState {
   board: Board | null;
   /** 공개 목표 3장 */
   goals: GoalId[];
-  /** 드래프트 픽 순서(좌석 id 목록 전체)와 다음 픽 위치 */
-  draftOrder: PlayerId[];
-  draftIndex: number;
+  /** 이번 판에 쓰는 식물 (표 순서, 공개). Rules.md 4절 */
+  species: SpeciesId[];
+  /** 이번 라운드에 펼쳐 둔 카드 (공개). 차례마다 1장씩 가져간다. Rules.md 5절 */
+  market: SpeciesId[];
+  /** 카드 더미 (맨 앞이 다음 카드). 서버는 아무에게도 보내지 않는다 */
+  pile: SpeciesId[];
+  /** 이번 라운드의 첫 자리 (선 돌리기, Rules.md 5절). 공개 */
+  roundStart: number;
   /** 라운드 = 모두 한 번씩 둔 것. 1부터 */
   round: number;
-  /** 전체 차례 번호. 1부터, 드래프트 중에는 0 */
+  /** 전체 차례 번호. 1부터 */
   turn: number;
-  /** 드래프트 중에는 다음에 고를 사람, 진행 중에는 차례인 사람 */
+  /** 차례인 사람 */
   currentPlayerId: PlayerId | null;
   players: PlayerState[];
   /** 심은 순서대로 */
@@ -209,7 +210,7 @@ export interface GameState {
   rngSeed: number;
   /** 덱 셔플 전용 시드. 공개되는 보드·목표에서 역산할 수 없도록 rngSeed 와 따로 둔다(서버가 암호학적 난수로 만든다).
    * 손패·덱 비공개를 지키기 위해 누구에게도 보내지 않는다 */
-  deckSeed: number;
+  deckSeed: number[];
   result: GameResult | null;
   /** 진행 탭 로그 (최신이 뒤) */
   log: GameLogEntry[];
@@ -221,11 +222,10 @@ export interface GameState {
 
 export type Action =
   | { type: 'READY'; playerId: PlayerId }
-  | { type: 'DRAFT'; playerId: PlayerId; species: SpeciesId }
-  /** direction: 칡만. seed: 민들레만(생략 가능) */
-  | { type: 'PLANT'; playerId: PlayerId; species: SpeciesId; pos: Position; direction?: Direction; seed?: Position }
-  /** 손패의 어떤 카드도 심을 칸이 없을 때만 */
-  | { type: 'DISCARD'; playerId: PlayerId; species: SpeciesId }
+  /** direction: 칡만. seed: 민들레만(생략 가능). take: 가져올 마켓 자리 번호(마켓이 비었으면 생략) */
+  | { type: 'PLANT'; playerId: PlayerId; species: SpeciesId; pos: Position; direction?: Direction; seed?: Position; take?: number }
+  /** 손의 어떤 카드도 심을 칸이 없을 때만 */
+  | { type: 'DISCARD'; playerId: PlayerId; species: SpeciesId; take?: number }
   | { type: 'SURRENDER'; playerId: PlayerId };
 
 export type ActionType = Action['type'];

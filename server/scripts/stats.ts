@@ -93,13 +93,15 @@ const speciesWins = new Map<string, [number, number]>();
 const seatWins = new Map<string, [number, number]>();
 for (const g of finished) {
   for (const s of g.seats) {
-    for (const sp of s.drafted ?? []) {
+    // 2026-10-08 부터는 마켓 규칙(심은 식물 planted), 그 전은 드래프트(고른 종 drafted). 규칙이 달라 따로 센다
+    const era = s.planted ? '' : '[드래프트] ';
+    for (const sp of (s.planted ?? (s as { drafted?: string[] }).drafted ?? []).map((x) => era + x)) {
       const r = speciesWins.get(sp) ?? [0, 0];
       r[0]++;
       if (s.rank === 1) r[1]++;
       speciesWins.set(sp, r);
     }
-    const key = `${g.players}인 좌석 ${s.seat}`;
+    const key = `${era}${g.players}인 좌석 ${s.seat}`;
     const t = seatWins.get(key) ?? [0, 0];
     t[0]++;
     if (s.rank === 1) t[1]++;

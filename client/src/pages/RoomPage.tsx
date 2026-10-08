@@ -288,7 +288,7 @@ function LobbyView({ roomId, onQuit }: { roomId: string; onQuit: () => void }) {
             {me.isReady ? '준비 취소' : '준비 완료'}
           </button>
           <span className={landing.help}>
-            {!enough ? `${MIN_PLAYERS}명 이상이어야 시작합니다. 친구를 부르거나 AI를 넣으세요.` : me.isReady ? '모두 준비하면 바로 시작합니다.' : '모두 준비하면 식물 고르기부터 시작합니다.'}
+            {!enough ? `${MIN_PLAYERS}명 이상이어야 시작합니다. 친구를 부르거나 AI를 넣으세요.` : '모두 준비하면 바로 시작합니다.'}
           </span>
         </>
       }

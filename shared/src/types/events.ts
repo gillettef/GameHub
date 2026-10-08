@@ -31,15 +31,15 @@ export interface RoomInfo {
   autopilot: PlayerId[];
 }
 
-/** 손패·덱을 가린 플레이어 상태. 타인은 hand·deck 이 빈 배열이고 장수만 남는다 */
+/** 손을 가린 플레이어 상태. 타인은 hand 가 빈 배열이고 장수만 남는다 */
 export interface MaskedPlayerState extends PlayerState {
   handCount: number;
-  deckCount: number;
 }
 
-/** 클라이언트가 받는 게임 상태. 엔진 함수에 그대로 넣을 수 있다(GameState 와 구조 호환) */
+/** 클라이언트가 받는 게임 상태. 엔진 함수에 그대로 넣을 수 있다(GameState 와 구조 호환). 카드 더미는 장수만 */
 export interface MaskedGameState extends Omit<GameState, 'players'> {
   players: MaskedPlayerState[];
+  pileCount: number;
 }
 
 export interface RoomSnapshot {
@@ -85,8 +85,12 @@ export interface ClientToServerEvents {
   'room:setTurnTime': (payload: { roomId: RoomId; seconds: number | null }, ack: (res: Ack) => void) => void;
   /** AI 대리(자동 진행) 중인 내 좌석을 되찾는다 (Rules.md 5.4) */
   'game:resume': (payload: { roomId: RoomId }, ack: (res: Ack) => void) => void;
-  /** 준비·드래프트·심기·버리기·기권. 서버가 룰 엔진으로 검증한다 */
-  'game:action': (payload: { roomId: RoomId; action: Action }, ack: (res: Ack) => void) => void;
+  /**
+   * 준비·심기·버리기·기권. 서버가 룰 엔진으로 검증한다.
+   * turn: 보낸 사람이 본 차례 번호. 심기·버리기는 서버의 지금 차례와 다르면 거부한다
+   * (선 돌리기로 같은 자리가 연달아 둘 때 늦게 도착한 수가 다음 차례에 적용되지 않게)
+   */
+  'game:action': (payload: { roomId: RoomId; action: Action; turn?: number }, ack: (res: Ack) => void) => void;
 }
 
 // ---------------------------------------------------------------------------

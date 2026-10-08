@@ -65,9 +65,9 @@ export const api = {
   resume(roomId: RoomId) {
     return withTimeout((done) => connectSocket().emit('game:resume', { roomId }, done));
   },
-  sendAction(roomId: RoomId, action: Action) {
+  sendAction(roomId: RoomId, action: Action, turn?: number) {
     const started = performance.now();
-    return withTimeout((done) => connectSocket().emit('game:action', { roomId, action }, done)).then((res) => {
+    return withTimeout((done) => connectSocket().emit('game:action', { roomId, action, turn }, done)).then((res) => {
       // 동기화 왕복 시간 표본 (F004, 웹 성능 기록 lib/vitals.ts)
       if (res.ok) recordSyncRtt(performance.now() - started);
       return res;

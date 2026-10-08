@@ -9,7 +9,7 @@ import landing from './LandingPage.module.css';
 import styles from './SetupPage.module.css';
 
 /**
- * 핫시트 설정 (같은 기기에서 번갈아 두기): 인원 2~4명과 닉네임만 정하면 바로 드래프트부터 시작한다.
+ * 핫시트 설정 (같은 기기에서 번갈아 두기): 인원 2~4명과 닉네임만 정하면 바로 첫 차례부터 시작한다.
  * 보드는 인원수로 정해지고 조각 배치는 시드로 매번 달라진다(Rules.md 3절).
  */
 export function SetupPage() {

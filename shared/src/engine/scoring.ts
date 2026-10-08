@@ -1,9 +1,9 @@
 /**
  * 점수·목표·순위 (Rules.md 8·9절). 보드의 순수 함수.
  */
-import { RESERVE_BONUS, rulesFor } from '../data/constants.js';
-import { getGoal, getSpecies } from '../data/species.js';
-import type { GameState, GoalId, PlayerId, Score } from '../types/index.js';
+import { RESERVE_BONUS, VARIETY_BONUS, VARIETY_SPECIES, rulesFor } from '../data/constants.js';
+import { FLOWER_SPECIES, FOREST_SPECIES, getGoal, getSpecies } from '../data/species.js';
+import type { GameState, GoalId, PlayerId, Score, SpeciesId } from '../types/index.js';
 import { boardIndex, step, type BoardIndex } from './board.js';
 import { computeInfluence, computeOwners, occupancy, requireBoard, type Occupancy } from './influence.js';
 
@@ -91,11 +91,11 @@ function goalPoints(goal: GoalId, state: GameState, idx: BoardIndex, owners: Int
     case 'every-tile':
       return mine.map((cs) => new Set(cs.map((c) => cells[c]?.tile)).size);
     case 'flower-bed':
-      return mine.map((cs) => 2 * cs.filter((c) => occ.plantSpecies[c] === 'rapeseed' || occ.plantSpecies[c] === 'lotus' || occ.plantSpecies[c] === 'mugunghwa').length);
+      return mine.map((cs) => 2 * cs.filter((c) => FLOWER_SPECIES.includes(occ.plantSpecies[c] as SpeciesId)).length);
     case 'forest':
       return Array.from({ length: P }, (_, seat) => {
         const trees: number[] = [];
-        for (let c = 0; c < idx.n; c++) if (occ.plantSeat[c] === seat && (occ.plantSpecies[c] === 'oak' || occ.plantSpecies[c] === 'bamboo')) trees.push(c);
+        for (let c = 0; c < idx.n; c++) if (occ.plantSeat[c] === seat && FOREST_SPECIES.includes(occ.plantSpecies[c] as SpeciesId)) trees.push(c);
         return 4 * components(trees, idx).filter((k) => k.length >= 3).length;
       });
     case 'connected':
@@ -106,10 +106,11 @@ function goalPoints(goal: GoalId, state: GameState, idx: BoardIndex, owners: Int
       });
     case 'border-guard':
       return mine.map((cs, seat) => cs.filter((c) => (idx.ring1[c] as number[]).some((x) => (owners[x] as number) >= 0 && owners[x] !== seat)).length);
-    case 'full-set':
-      return state.players.map((p) => {
-        const planted = new Set(state.plants.filter((pl) => pl.ownerId === p.id).map((pl) => pl.species));
-        return p.drafted.length > 0 && p.drafted.every((s) => planted.has(s)) ? 4 : 0;
+    case 'variety':
+      return Array.from({ length: P }, (_, seat) => {
+        const id = state.players.find((p) => p.seat === seat)?.id;
+        const kinds = new Set(state.plants.filter((pl) => pl.ownerId === id).map((pl) => pl.species));
+        return kinds.size >= VARIETY_SPECIES ? VARIETY_BONUS : 0;
       });
     default: {
       const species = getGoal(goal).species;

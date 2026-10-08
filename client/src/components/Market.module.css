@@ -1,0 +1,55 @@
+/* 마켓 줄: (마켓 · 더미 장수) · 펼친 카드(가로 칩). 한 줄로 낮게 두어 보드 높이를 지킨다 */
+.row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px 4px var(--space-1);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--color-surface) 94%, transparent);
+}
+
+.meta {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  line-height: 1.2;
+}
+
+.label {
+  font-size: var(--text-micro);
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.pile {
+  font-size: var(--text-micro);
+  color: var(--color-muted);
+  white-space: nowrap;
+}
+
+.cards {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  gap: 4px;
+}
+
+.slot {
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: 108px;
+  display: flex;
+}
+
+.slot > * {
+  width: 100%;
+}
+
+.empty {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--text-micro);
+  color: var(--color-muted);
+}

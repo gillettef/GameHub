@@ -5,7 +5,7 @@
  *  - hotseat : 한 기기에서 번갈아 둔다. 규칙은 shared 엔진이 계산하고, 진행 중 차례가 넘어가면
  *              '기기 넘김' 오버레이(handoffPending)가 다음 사람 손패를 가린다. 튜토리얼은 봇 좌석(botIds)이 있다.
  *  - online  : 서버가 정본이다. 액션은 소켓으로 보내고, 상태는 서버가 보낸 스냅샷(가려진 상태)으로만 덮어쓴다.
- * 컴포넌트는 어느 모드든 같은 액션(draft·tapCell·confirmPlant·discard·surrender)만 쓴다.
+ * 컴포넌트는 어느 모드든 같은 액션(selectHandCard·tapCell·pickTake·confirmPlant·discard·surrender)만 쓴다.
  */
 import { create } from 'zustand';
 import type { Action, Direction, MaskedGameState, PlayerId, Position, RoomInfo, RoomSnapshot, SpeciesId } from '@rootbound/shared';
@@ -49,6 +49,8 @@ interface GameStore {
   pendingDirection: Direction | null;
   /** 민들레 씨앗 칸 */
   pendingSeed: Position | null;
+  /** 마켓에서 가져올 카드 자리 번호. 안 골랐으면 null (마켓이 1장뿐이면 selectTake 가 0으로 본다) */
+  pendingTake: number | null;
   /** 보드 탭이 씨앗 칸 고르기 모드인가 */
   seedPicking: boolean;
   /** 영향력 숫자 표시 */
@@ -67,7 +69,6 @@ interface GameStore {
   applySnapshot: (snapshot: RoomSnapshot) => void;
   setConnection: (connection: Connection) => void;
   dispatch: (action: Action) => void;
-  draft: (species: SpeciesId) => void;
   selectHandCard: (index: number | null) => void;
   tapCell: (pos: Position) => void;
   setDirection: (d: Direction) => void;
@@ -75,6 +76,8 @@ interface GameStore {
   clearSeed: () => void;
   confirmPlant: () => void;
   cancelPlant: () => void;
+  /** 마켓 카드 고르기 (고른 카드를 다시 누르면 해제) */
+  pickTake: (index: number) => void;
   discard: (species: SpeciesId) => void;
   surrender: () => void;
   openCardModal: (target: CardModalTarget) => void;
@@ -88,7 +91,7 @@ interface GameStore {
   reset: () => void;
 }
 
-const CLEAR_SELECTION = { selectedHandIndex: null, pendingPos: null, pendingDirection: null, pendingSeed: null, seedPicking: false } as const;
+const CLEAR_SELECTION = { selectedHandIndex: null, pendingPos: null, pendingDirection: null, pendingSeed: null, seedPicking: false, pendingTake: null } as const;
 
 const EMPTY = {
   mode: null,
@@ -131,8 +134,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
   applySnapshot: ({ room, state, you }) => {
     const prev = get();
     const p = prev.state;
-    const moved = p?.turn !== state.turn || p?.phase !== state.phase || p?.draftIndex !== state.draftIndex;
-    const playStarted = p?.phase === 'drafting' && state.phase === 'playing';
+    const moved = p?.turn !== state.turn || p?.phase !== state.phase;
+    const playStarted = p?.phase === 'lobby' && state.phase === 'playing';
     // 접속·끊김처럼 게임 상태는 그대로인 브로드캐스트면 state 참조를 지켜 파생값 재계산과 보드 재그리기를 피한다
     const same =
       p !== null &&
@@ -140,6 +143,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       !moved &&
       p.log.length === state.log.length &&
       p.plants.length === state.plants.length &&
+      p.market.length === state.market.length &&
       p.players.every((x, i) => x.isReady === state.players[i]?.isReady && x.surrenderedOrder === state.players[i]?.surrenderedOrder) &&
       p.players.length === state.players.length;
     set({
@@ -153,7 +157,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       botIds: [],
       handoffPending: false,
       ...(moved ? CLEAR_SELECTION : {}),
-      // 드래프트가 끝나 심기가 시작되면 정원 탭으로 데려간다. 드래프트 중 카드 탭을 보던 사람이 첫 차례를 놓치지 않게(2026-10-08 운영 기록)
+      // 대기실에서 판이 시작되면 정원 탭으로 데려간다. 다른 탭을 보던 사람이 첫 차례를 놓치지 않게(2026-10-08 운영 기록)
       ...(playStarted ? { tab: 'board' as TabId, cardModal: null } : { cardModal: moved && prev.cardModal?.kind === 'hand' ? null : prev.cardModal }),
       // 내가 보낸 수가 반영된 스냅샷(상태가 바뀐 것)이 와야 연타 잠금을 푼다. 실패는 dispatch 가 푼다
       sending: same ? prev.sending : false,
@@ -168,7 +172,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     if (mode === 'online') {
       if (!room || sending) return;
       set({ sending: true });
-      void api.sendAction(room.roomId, action).then((res) => {
+      void api.sendAction(room.roomId, action, state.turn).then((res) => {
         if (!res.ok) set({ notice: res.message, sending: false });
       });
       return;
@@ -183,20 +187,16 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const botTurn = next.currentPlayerId !== null && botIds.includes(next.currentPlayerId) && next.phase !== 'finished';
     // 봇이 있으면(튜토리얼) 화면 주인은 그대로. 없으면 차례인 사람이 화면을 본다
     const nextViewer = botIds.length > 0 ? viewerId : (next.currentPlayerId ?? viewerId);
-    // 진행 중에 보는 사람이 바뀌면 손패를 가려야 하므로 기기 넘김. 드래프트는 공개 정보라 넘김 없이 이어 둔다
+    // 진행 중에 보는 사람이 바뀌면 손패를 가려야 하므로 기기 넘김
     const handoff = botIds.length === 0 && next.phase === 'playing' && nextViewer !== viewerId;
     set({ state: maskState(next, null), viewerId: nextViewer, ...CLEAR_SELECTION, notice: null, cardModal: null, handoffPending: handoff });
     if (botTurn) scheduleBot();
   },
 
-  draft: (species) => {
-    const { viewerId, dispatch } = get();
-    if (viewerId) dispatch({ type: 'DRAFT', playerId: viewerId, species });
-  },
-
   selectHandCard: (index) => {
     if (!selectIsMyTurn(get())) return;
-    set({ ...CLEAR_SELECTION, selectedHandIndex: index, notice: null });
+    // 마켓에서 고른 카드는 손 카드를 바꿔도 그대로 둔다
+    set({ ...CLEAR_SELECTION, pendingTake: get().pendingTake, selectedHandIndex: index, notice: null });
   },
 
   tapCell: (pos) => {
@@ -246,6 +246,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
     if (!state || !viewerId || selectedHandIndex === null || !pendingPos) return;
     const species = state.players.find((p) => p.id === viewerId)?.hand[selectedHandIndex];
     if (!species) return;
+    const take = selectTake(get());
+    if (state.market.length > 0 && take === null) {
+      set({ notice: '마켓에서 가져올 카드를 고르세요' });
+      return;
+    }
     const sp = getSpecies(species);
     dispatch({
       type: 'PLANT',
@@ -254,14 +259,27 @@ export const useGameStore = create<GameStore>((set, get) => ({
       pos: pendingPos,
       ...(sp.line && pendingDirection !== null ? { direction: pendingDirection } : {}),
       ...(sp.seed && pendingSeed ? { seed: pendingSeed } : {}),
+      ...(take !== null ? { take } : {}),
     });
   },
 
   cancelPlant: () => set({ pendingPos: null, pendingDirection: null, pendingSeed: null, seedPicking: false }),
 
+  pickTake: (index) => {
+    const { state, pendingTake } = get();
+    if (!state || !selectIsMyTurn(get()) || index < 0 || index >= state.market.length) return;
+    set({ pendingTake: pendingTake === index ? null : index, notice: null });
+  },
+
   discard: (species) => {
-    const { viewerId, dispatch } = get();
-    if (viewerId) dispatch({ type: 'DISCARD', playerId: viewerId, species });
+    const { state, viewerId, dispatch } = get();
+    if (!state || !viewerId) return;
+    const take = selectTake(get());
+    if (state.market.length > 0 && take === null) {
+      set({ notice: '마켓에서 가져올 카드를 먼저 고르세요' });
+      return;
+    }
+    dispatch({ type: 'DISCARD', playerId: viewerId, species, ...(take !== null ? { take } : {}) });
   },
 
   surrender: () => {
@@ -286,7 +304,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
 }));
 
-/** 봇 좌석 차례면 잠시 뒤 한 수를 둔다 (드래프트 포함) */
+/** 봇 좌석 차례면 잠시 뒤 한 수를 둔다 */
 function scheduleBot(): void {
   if (botTimer !== null) window.clearTimeout(botTimer);
   botTimer = window.setTimeout(() => {
@@ -307,10 +325,24 @@ export const selectState = (s: GameStore): MaskedGameState | null => s.state;
 export const selectViewerId = (s: GameStore): PlayerId | null => s.viewerId;
 export const selectTab = (s: GameStore): TabId => s.tab;
 export const selectIsMyTurn = (s: GameStore): boolean =>
-  s.state !== null && (s.state.phase === 'playing' || s.state.phase === 'drafting') && s.state.currentPlayerId === s.viewerId && !s.handoffPending && !s.sending;
+  s.state !== null && s.state.phase === 'playing' && s.state.currentPlayerId === s.viewerId && !s.handoffPending && !s.sending;
 
 /** 고른 손패 카드의 종 */
 export const selectSelectedSpecies = (s: GameStore): SpeciesId | null => {
   if (s.selectedHandIndex === null || !s.state || !s.viewerId) return null;
   return s.state.players.find((p) => p.id === s.viewerId)?.hand[s.selectedHandIndex] ?? null;
 };
+
+/**
+ * 이번 차례에 가져올 마켓 자리 번호. 고른 것이 있으면 그것, 마켓에 1장뿐이면 0(자동), 비었거나 아직 안 골랐으면 null.
+ * 마켓 장수·순서는 가정하지 않는다(state.market.length 만 본다)
+ */
+export const selectTake = (s: GameStore): number | null => {
+  const n = s.state?.market.length ?? 0;
+  if (n === 0) return null;
+  if (s.pendingTake !== null && s.pendingTake < n) return s.pendingTake;
+  return n === 1 ? 0 : null;
+};
+
+/** 마켓에 카드가 있는데 아직 가져올 카드를 고르지 않았다 */
+export const selectNeedsTake = (s: GameStore): boolean => (s.state?.market.length ?? 0) > 0 && selectTake(s) === null;

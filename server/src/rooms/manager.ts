@@ -14,7 +14,6 @@ import {
   autoAction,
   createInitialState,
   createPlayer,
-  draftTimeSec,
   isDirection,
   GOALS,
   isSpeciesId,
@@ -71,8 +70,8 @@ export interface GameRecord {
   seats: {
     seat: number;
     kind: 'human' | 'ai';
-    /** 드래프트로 고른 종 */
-    drafted: string[];
+    /** 이 자리가 심은 식물 종류 (2026-10-08 드래프트 → 마켓. 예전 기록에는 drafted 가 있다) */
+    planted: string[];
     /** 재접속 토큰의 해시 일부 (재방문 집계용, 원본 토큰은 남기지 않는다) */
     playerHash: string | null;
     rank: number | null;
@@ -100,9 +99,9 @@ export const MAX_ROOMS = 300;
 const IDLE_MS = 24 * 60 * 60 * 1000;
 const PLAYING_IDLE_MS = 7 * IDLE_MS;
 
-/** 시계 대상 키: 단계 + 차례 번호 + 드래프트 픽 번호 */
+/** 시계 대상 키: 단계 + 차례 번호 */
 function clockKey(state: GameState): string {
-  return `${state.phase}:${state.turn}:${state.draftIndex}`;
+  return `${state.phase}:${state.turn}`;
 }
 
 /** 사람이 읽기 쉬운 짧은 시간 표기 */
@@ -132,11 +131,12 @@ export function actionShapeError(action: unknown): string | null {
     case 'READY':
     case 'SURRENDER':
       return null;
-    case 'DRAFT':
     case 'DISCARD':
+      if (a.take !== undefined && !Number.isInteger(a.take)) return '잘못된 가져오기입니다';
       return isSpeciesId(a.species) ? null : '없는 식물입니다';
     case 'PLANT':
       if (!isSpeciesId(a.species) || !isPos(a.pos)) return '잘못된 심기 요청입니다';
+      if (a.take !== undefined && !Number.isInteger(a.take)) return '잘못된 가져오기입니다';
       if (a.direction !== undefined && !isDirection(a.direction)) return '잘못된 방향입니다';
       if (a.seed !== undefined && !isPos(a.seed)) return '잘못된 씨앗 위치입니다';
       return null;
@@ -150,8 +150,10 @@ export function isCurrentFormat(room: Room): boolean {
   const st = room.state as Partial<GameState> | undefined;
   if (!st || !Array.isArray(st.players) || !Array.isArray(st.plants) || !Array.isArray(st.seeds)) return false;
   if (!(st.board === null || (typeof st.board === 'object' && Array.isArray(st.board?.cells)))) return false;
+  // 드래프트 시절 판(2026-10-08 마켓으로 바뀜)은 market·pile 이 없다
+  if (!Array.isArray(st.market) || !Array.isArray(st.pile) || !Array.isArray(st.species)) return false;
   // 종·목표 id 가 바뀐 예전 판(2026-10-08 선인장·덩굴·해바라기·장미 → 소나무·칡·유채·무궁화)은 복원하지 않는다
-  const species = [...st.plants.map((p) => p.species), ...st.players.flatMap((p) => [...(p.drafted ?? []), ...(p.deck ?? []), ...(p.hand ?? [])])];
+  const species = [...st.plants.map((p) => p.species), ...st.market, ...st.pile, ...st.species, ...st.players.flatMap((p) => p.hand ?? [])];
   return species.every((sp) => isSpeciesId(sp)) && (st.goals ?? []).every((g) => GOALS.some((x) => x.id === g));
 }
 
@@ -201,7 +203,7 @@ export class RoomManager {
     room.timeoutTotals ??= {};
     room.everAutopiloted ??= [];
     // 서버가 내려가 있던 시간을 플레이어 책임으로 돌리지 않는다: 진행 중인 턴은 복원 시점부터 시계를 새로 잰다
-    if (room.state.phase === 'playing' || room.state.phase === 'drafting') {
+    if (room.state.phase === 'playing') {
       room.turnClockFor = clockKey(room.state);
       room.turnStartedAt = this.opts.now();
     }
@@ -217,7 +219,7 @@ export class RoomManager {
     const removed: { roomId: RoomId; record: GameRecord | null }[] = [];
     for (const room of this.rooms.values()) {
       const idle = now - room.updatedAt;
-      const inGame = room.state.phase === 'playing' || room.state.phase === 'drafting';
+      const inGame = room.state.phase === 'playing';
       const limit = inGame ? PLAYING_IDLE_MS : IDLE_MS;
       if (idle > limit) {
         this.rooms.delete(room.roomId);
@@ -279,7 +281,7 @@ export class RoomManager {
     while (this.rooms.has(roomId)) roomId = this.opts.roomId();
     const now = this.opts.now();
     const playerId = 'p1';
-    const joined = joinPlayer(createInitialState(roomId, this.opts.seed(), this.opts.seed()), createPlayer(playerId, input.nickname.trim(), 'human'));
+    const joined = joinPlayer(createInitialState(roomId, this.opts.seed(), [this.opts.seed(), this.opts.seed(), this.opts.seed(), this.opts.seed()]), createPlayer(playerId, input.nickname.trim(), 'human'));
     if (joined.error) throw new RoomError(joined.error);
     const room: Room = {
       roomId,
@@ -408,14 +410,20 @@ export class RoomManager {
   // 게임 액션
   // -------------------------------------------------------------------------
 
-  /** 사람 플레이어의 액션. 본인 id 로만 보낼 수 있다 */
-  act(roomId: RoomId, byPlayerId: PlayerId, action: Action): Room {
+  /**
+   * 사람 플레이어의 액션. 본인 id 로만 보낼 수 있다.
+   * seenTurn: 보낸 사람이 본 차례 번호. 심기·버리기가 지금 차례와 다르면 거부한다(늦게 도착한 수가 다음 차례에 적용되지 않게)
+   */
+  act(roomId: RoomId, byPlayerId: PlayerId, action: Action, seenTurn?: number): Room {
     const shapeError = actionShapeError(action);
     if (shapeError) throw new RoomError(shapeError);
     if (action.playerId !== byPlayerId) throw new RoomError('다른 플레이어의 행동은 보낼 수 없습니다');
     const room = this.require(roomId);
     const player = room.state.players.find((p) => p.id === byPlayerId);
     if (player?.kind === 'ai') throw new RoomError('AI 자리는 서버가 대신 둡니다');
+    if (seenTurn !== undefined && (action.type === 'PLANT' || action.type === 'DISCARD') && seenTurn !== room.state.turn) {
+      throw new RoomError('차례가 이미 넘어갔습니다. 바뀐 정원을 보고 다시 두세요');
+    }
     const applied = this.apply(roomId, action);
     // 받아들여진 행동을 했으면 자리에 있는 것이다: 시간 초과 기록과 AI 대리를 푼다.
     // 거부된 액션으로는 풀지 않는다(풀리고 commit 이 없으면 아무도 그 턴을 진행하지 않는다)
@@ -451,7 +459,7 @@ export class RoomManager {
     // 기권 안 한 사람이 1명뿐이면(나머지는 AI) 기다리는 사람이 없으니 시계를 재지 않는다 (Rules.md 6.3)
     if (state.players.filter((p) => p.kind !== 'ai' && p.surrenderedOrder === null).length <= 1) return null;
     const turnLimit = room.turnTimeLimitSec ?? null;
-    const limit = state.phase === 'drafting' ? draftTimeSec(turnLimit) : state.phase === 'playing' ? turnLimit : null;
+    const limit = state.phase === 'playing' ? turnLimit : null;
     if (limit === null || !state.currentPlayerId || room.turnStartedAt == null) return null;
     if (this.isAutoTurn(room)) return null;
     return room.turnStartedAt + limit * 1000;
@@ -469,7 +477,7 @@ export class RoomManager {
     const pid = room.state.currentPlayerId as PlayerId;
     const nick = room.state.players.find((p) => p.id === pid)?.nickname ?? pid;
     const strikes = (room.afkStrikes?.[pid] ?? 0) + 1;
-    const limit = (room.state.phase === 'drafting' ? draftTimeSec(room.turnTimeLimitSec ?? null) : room.turnTimeLimitSec) as number;
+    const limit = room.turnTimeLimitSec as number;
     const note = (message: string) => ({ turn: room.state.turn, round: room.state.round, playerId: pid, kind: 'system' as const, message });
     const auto = autoAction(room.state, pid);
     const r = auto ? applyAction(room.state, auto) : { state: room.state, error: '둘 수 있는 수가 없습니다' };
@@ -548,7 +556,7 @@ export class RoomManager {
         return {
           seat: p.seat,
           kind: p.kind,
-          drafted: [...p.drafted],
+          planted: [...new Set(state.plants.filter((pl) => pl.ownerId === p.id).map((pl) => pl.species))],
           playerHash: p.kind === 'human' && token ? this.opts.hashToken(token) : null,
           rank: rank === -1 ? null : rank + 1,
           score: state.result?.scores[p.id]?.total ?? null,
@@ -583,7 +591,7 @@ export class RoomManager {
 
   /** 현재 턴이 AI 좌석인가 */
   static isAiTurn(state: GameState): boolean {
-    if ((state.phase !== 'playing' && state.phase !== 'drafting') || !state.currentPlayerId) return false;
+    if (state.phase !== 'playing' || !state.currentPlayerId) return false;
     return state.players.find((p) => p.id === state.currentPlayerId)?.kind === 'ai';
   }
 
@@ -591,7 +599,7 @@ export class RoomManager {
   isAutoTurn(room: Room): boolean {
     if (RoomManager.isAiTurn(room.state)) return true;
     const cur = room.state.currentPlayerId;
-    return (room.state.phase === 'playing' || room.state.phase === 'drafting') && !!cur && (room.autopilot ?? []).includes(cur);
+    return (room.state.phase === 'playing') && !!cur && (room.autopilot ?? []).includes(cur);
   }
 }
 

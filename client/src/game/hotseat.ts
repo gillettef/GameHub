@@ -1,6 +1,6 @@
 /**
  * 핫시트(한 브라우저에서 번갈아 두기) 어댑터. 규칙 계산은 전부 shared 엔진에 맡기고,
- * 이 파일은 로비 절차(입장 → 준비)를 서버 대신 흉내 낸다. 반환 상태는 드래프트가 시작된 상태다.
+ * 이 파일은 로비 절차(입장 → 준비)를 서버 대신 흉내 낸다. 반환 상태는 첫 차례가 시작된 상태다(첫 라운드 마켓이 펼쳐져 있다).
  */
 import type { Action, GameState, PlayerId } from '@rootbound/shared';
 import { MAX_PLAYERS, MIN_PLAYERS, applyAction, createInitialState, createPlayer, joinPlayer } from '@rootbound/shared';
@@ -8,7 +8,7 @@ import { MAX_PLAYERS, MIN_PLAYERS, applyAction, createInitialState, createPlayer
 export interface HotseatConfig {
   /** 좌석 순서대로 닉네임 (2~4명) */
   nicknames: string[];
-  /** 보드·목표·덱 시드 (엔진은 난수를 만들지 않는다) */
+  /** 보드·목표·카드 더미 시드 (엔진은 난수를 만들지 않는다) */
   seed: number;
 }
 
@@ -32,7 +32,7 @@ export function createHotseatGame(config: HotseatConfig): GameState {
     if (r.error) throw new Error(r.error);
     state = r.state;
   }
-  if (state.phase !== 'drafting') throw new Error('게임을 시작하지 못했습니다');
+  if (state.phase !== 'playing') throw new Error('게임을 시작하지 못했습니다');
   return state;
 }
 

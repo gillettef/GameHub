@@ -2,17 +2,18 @@ import { memo, useEffect, useRef, useState, type CSSProperties, type ReactNode }
 import type { GameLogEntry, LogKind } from '@rootbound/shared';
 import { nameOf } from '@rootbound/shared';
 import { selectState, selectViewerId, useGameStore } from '../store/gameStore';
-import { BoltIcon, PassIcon, PlaceIcon, SurrenderIcon, SwordIcon } from './icons';
+import { BoltIcon, PassIcon, PlaceIcon, SurrenderIcon, SwapIcon, SwordIcon } from './icons';
 import styles from './TurnEvents.module.css';
 
 /** 연출에 올리는 사건 종류 */
-const SHOWN_KINDS: ReadonlySet<LogKind> = new Set<LogKind>(['plant', 'flip', 'discard', 'surrender']);
+const SHOWN_KINDS: ReadonlySet<LogKind> = new Set<LogKind>(['plant', 'take', 'flip', 'discard', 'surrender']);
 const MAX_ITEMS = 6;
 const SPLASH_MS = 1100;
 const ITEM_MS = 450;
 
 const KIND_ICON: Partial<Record<LogKind, ReactNode>> = {
   plant: <PlaceIcon size={18} />,
+  take: <SwapIcon size={18} />,
   flip: <SwordIcon size={18} />,
   discard: <PassIcon size={18} />,
   surrender: <SurrenderIcon size={18} />,
@@ -25,6 +26,11 @@ function shorten(e: GameLogEntry): string {
       // turn.ts 심기 로그: "닉네임: 참나무 심음" / "닉네임: 민들레 심음, 씨앗 놓음"
       const m = e.message.match(/: ([^:,]+) 심음(?:, 씨앗 놓음)?$/);
       return m ? `${m[1]} 심음` : e.message;
+    }
+    case 'take': {
+      // turn.ts 가져오기 로그: "닉네임: 소나무 가져옴"
+      const m = e.message.match(/: ([^:]+) 가져옴$/);
+      return m ? `${m[1]} 가져옴` : e.message;
     }
     case 'flip': {
       const m = e.message.match(/^.*?: (.+)의 땅 (\d+)칸을 가져갔습니다$/);
@@ -56,7 +62,7 @@ interface Batch {
 
 /**
  * 턴 전환 연출 (2026-10-01 사용자 지시: 턴과 턴 사이에 무슨 일이 있었는지 눈으로 보이게).
- * 차례가 넘어갈 때마다 "누구 차례" 스플래시와, 방금 끝난 차례에 일어난 사건(심기·뺏기·버리기·기권)을
+ * 차례가 넘어갈 때마다 "누구 차례" 스플래시와, 방금 끝난 차례에 일어난 사건(심기·가져오기·뺏기·버리기·기권)을
  * 아이콘 칩으로 차례차례 보여 준다. 예전 OpponentRecap(텍스트 목록)을 대체한다.
  * 새 규칙 계산은 없다 — 로그 필터와 문구 줄이기뿐이다. 핫시트는 기기 넘김 화면이 닫힌 뒤에 보여 준다.
  */

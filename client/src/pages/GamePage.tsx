@@ -75,7 +75,7 @@ export function GamePage({ onQuit }: GamePageProps) {
             서버와 연결이 끊겼습니다. 다시 연결하는 중입니다. 게임은 서버에 그대로 남아 있습니다.
           </div>
         )}
-        {!offline && room && (state.phase === 'playing' || state.phase === 'drafting') && room.autopilot.includes(viewerId) && (
+        {!offline && room && state.phase === 'playing' && room.autopilot.includes(viewerId) && (
           <div className={styles.bannerAction} role="alert">
             <span>시간 초과가 이어져 AI가 대신 두고 있습니다.</span>
             <button

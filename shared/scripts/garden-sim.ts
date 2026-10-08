@@ -1,12 +1,24 @@
 /**
  * Rootbound(정원 컨셉) 수치 시뮬레이터. 규칙 엔진과 무관한 독립 스크립트로, 수치를 데이터로 받아 빠르게 시험한다.
  *   npx tsx shared/scripts/garden-sim.ts [2인 판수] [3인 판수] [4인 판수]
- *   SIM_OVERRIDES=<json> 으로 종 수치·좌석 보정을 파일 수정 없이 덮어쓴다:
- *     { "species": { "<id>": { "self": 3 } }, "seat": { "3": { "draftFirst": "first", "komi": [1,0,0], "lastRoundReverse": false } } }
+ *   SIM_OVERRIDES=<json 파일 경로> 로 종 수치·덤을 파일 수정 없이 덮어쓴다:
+ *     { "species": { "<id>": { "self": 3 } }, "seat": { "3": { "komi": [1,0,0] } }, "linkedBonus": 2 }
+ *   SIM_PHASE=A  : A 단계(종 가치)만
+ *   MARKET_MODE=base|R|P|RP : 마켓 규칙 대안 비교 (R 선 돌리기, P 인원+1장, RP 둘 다 — MARKET_MODE 선언부 주석)
+ *   A_GAMES=<n>  : A 단계 판 수 (기본 = 인원별 판 수)
+ *   SEAT_SEARCH=1 SEAT_KOMIS='[[0,0],[0,1]]' : 덤 후보마다 B 단계 좌석 승률만 재서 편차 작은 순으로 출력
+ *
+ * 규칙(2026-10-08 공용 마켓, 드래프트 대체):
+ *  - 판마다 식물 2인 6종 / 3·4인 8종(보호구역 목표 종 필수, 꽃밭·숲 목표면 관련 종 1개 이상)을 고르고,
+ *    종마다 2인 5 / 3인 6 / 4인 8장을 한 더미로 섞어 각자 3장씩 손에 든다.
+ *  - 라운드 시작마다 더미에서 (기권 안 한) 인원 수만큼 마켓에 펼친다. 각자 차례에 손에서 1장 심고(심을 칸이 없으면 버리고)
+ *    남은 마켓 카드 중 1장을 가져간다. 라운드 마지막 사람은 남은 1장을 가져간다. 더미가 떨어지면 손만 쓴다.
+ *  - 좌석 보정은 덤만 있다.
  *
  * 두 단계로 잰다.
- *  A. 무작위 드래프트: 종을 무작위로 나눠 주고 둔다 → 종별 승률, 목표 카드가 있을 때의 종별 승률(목표 영향)
- *  B. 똑똑한 드래프트: A 에서 배운 "목표 조건부 종 가치"로 뱀 순서 드래프트 → 좌석 승률·첫 픽 쏠림·덱 다양성
+ *  A. 무작위 가져오기: 봇이 마켓에서 무작위로 가져간다 → 종 가치(심은 장수 가중 승률, 가장 많이 심은 사람 승률), 목표가 있을 때의 종 가치
+ *  B. 똑똑한 가져오기: 마켓 카드마다 "지금 보드에서 가장 좋은 칸에 심었을 때 1수 가치" + A 에서 배운 목표 연계 가치
+ *     (+ 여러 가지 심기 목표면 안 심은 새 종 보너스)가 가장 큰 카드, 15% 확률로 무작위 → 좌석 승률·종 승률·점수 구성 등
  * 두기 봇은 1수 탐욕(심은 직후의 "내 점수 − 가장 높은 상대 점수"가 최대인 수, 15% 확률로 상위 3수 중 무작위)이다.
  * 사람의 수읽기·장기 계획은 반영하지 못한다 — 1차 스크리닝용이다.
  */
@@ -174,6 +186,21 @@ function layout(players: number): { centers: [number, number][]; entranceTiles: 
   return out;
 }
 
+interface Board {
+  n: number;
+  q: number[];
+  r: number[];
+  tile: number[];
+  terrain: number[];
+  nb: number[][];
+  ring2: number[][];
+  line: number[][][];
+  edge: boolean[];
+  centerTile: number;
+  tileCount: number;
+  entrances: number[];
+}
+
 function buildBoard(players: number, rand: Rand): Board {
   const { centers, entranceTiles } = layout(players);
   const q: number[] = [];
@@ -276,10 +303,10 @@ const SPEC: SpeciesSpec[] = [
   { ...ZERO, self: 2, ring1: 2 }, // oak
   { ...ZERO, self: 5, ring1: 1 }, // pine
   { ...ZERO, self: 2, line: 2, lineLen: 2 }, // kudzu
-  { ...ZERO, self: 1, star2: 1 }, // fern
+  { ...ZERO, self: 2, star2: 1 }, // fern
   { ...ZERO, self: 1, ring1: 1, seed: 2 }, // dandelion
   { ...ZERO, self: 2, ring1: 1, fertileRing: 2 }, // rapeseed
-  { ...ZERO, self: 1, ring1: 1, pondOnly: true }, // lotus
+  { ...ZERO, self: 2, ring1: 1, pondOnly: true }, // lotus
   { ...ZERO, self: 1, ring1: 1, ivy: 1 }, // ivy
   { ...ZERO, self: 1, ring1: 2, bamboo: 2 }, // bamboo
   { ...ZERO, self: 1, mushroom: 2 }, // mushroom
@@ -287,21 +314,35 @@ const SPEC: SpeciesSpec[] = [
 ];
 
 interface SeatPolicy {
-  /** 드래프트 첫 픽: last = 늦게 두는 좌석부터(턴 역순), first = 좌석 0부터 */
-  draftFirst: 'last' | 'first';
   /** 좌석별 덤 */
   komi: number[];
-  /** 마지막 라운드는 역순으로 둔다 */
-  lastRoundReverse: boolean;
-  /** 드래프트 첫 바퀴 순서를 직접 지정 (있으면 draftFirst 보다 우선). 이후 뱀 순서 */
-  draftOrder?: number[];
 }
-/** 2026-10-07 시뮬레이션으로 정한 좌석 보정 (Rules.md 4절) */
+/** 좌석 보정 = 덤만 (Rules.md 4절). 2026-10-08 선 돌리기 마켓(R)에서 조합당 2000판으로 정함 */
 const SEAT: Record<number, SeatPolicy> = {
-  2: { draftFirst: 'last', draftOrder: [1, 0], komi: [0, 1], lastRoundReverse: false },
-  3: { draftFirst: 'first', draftOrder: [0, 2, 1], komi: [3, 4, 0], lastRoundReverse: false },
-  4: { draftFirst: 'first', draftOrder: [1, 0, 3, 2], komi: [1, 0, 0, 0], lastRoundReverse: false },
+  2: { komi: [0, 0] },
+  3: { komi: [1, 2, 0] },
+  4: { komi: [0, 1, 0, 0] },
 };
+/** 인원별 이번 판 식물 수 · 종마다 장수 */
+const GARDEN_SIZE: Record<number, number> = { 2: 6, 3: 8, 4: 8 };
+const COPIES: Record<number, number> = { 2: 5, 3: 6, 4: 8 };
+
+/**
+ * 마켓 규칙 대안 (MARKET_MODE 환경 변수, 비교용):
+ *  base : 라운드마다 인원 수만큼 펼치고 좌석 0부터 고정 순서 (명세 그대로)
+ *  R    : 선 돌리기 — 라운드 k(0부터)는 좌석 k mod P 부터 좌석 순서로 둔다(심기·가져오기 모두)
+ *  P    : 인원+1장 — 마켓을 인원+1장 펼치고 남은 1장은 다음 라운드 시작 때 버린다
+ *  RP   : 선 돌리기 + 인원+1장
+ * 인원+1장일 때 판 길이(2인 15 / 3·4인 16 차례)를 지키려면 마켓 라운드(2인 12 / 3·4인 13) × (인원+1)장이 더미에 있어야 한다.
+ * 그래서 종마다 장수를 늘리고(COPIES_PLUS) 남는 카드는 준비 때 상자에 넣는다(더미 = 정확히 마켓 라운드 × (인원+1)).
+ *  2인 6종×7=42 = 손 6 + 12×3 (남는 것 0) / 3인 8종×8=64 = 손 9 + 13×4 + 3장 제외 / 4인 8종×10=80 = 손 12 + 13×5 + 3장 제외
+ */
+const MARKET_MODE = (process.env.MARKET_MODE ?? 'R') as 'base' | 'R' | 'P' | 'RP';
+const MARKET_ROTATE = MARKET_MODE === 'R' || MARKET_MODE === 'RP';
+const MARKET_PLUS = MARKET_MODE === 'P' || MARKET_MODE === 'RP';
+const COPIES_PLUS: Record<number, number> = { 2: 7, 3: 8, 4: 10 };
+/** 손 3장 이후 마켓이 열리는 라운드 수 (기준 규칙의 더미 장수 / 인원) */
+const MARKET_ROUNDS: Record<number, number> = { 2: 12, 3: 13, 4: 13 };
 
 let pendingLinkedBonus: number | null = null;
 const overridePath = process.env.SIM_OVERRIDES;
@@ -327,7 +368,7 @@ const HAND_SIZE = 3;
 // ---------------------------------------------------------------------------
 
 const GOALS = [
-  '연못가', '큰정원', '오솔길', '비옥한밭', '가장자리', '중앙광장', '조각마다', '꽃밭', '숲', '이어진정원', '경계', '종다쓰기',
+  '연못가', '큰정원', '오솔길', '비옥한밭', '가장자리', '중앙광장', '조각마다', '꽃밭', '숲', '이어진정원', '경계', '여러가지',
   // 12~17: 종 연계 목표 "X 보호구역: 끝날 때 내 땅 위에 있는 내 X 1개당 +3"
   '소나무보호', '칡보호', '고사리보호', '잔디보호', '버섯보호', '민들레보호',
 ] as const;
@@ -352,6 +393,27 @@ function pickGoals(rand: Rand): number[] {
   }
 }
 
+/** 이번 판 식물: 보호구역 종 필수, 꽃밭·숲이면 관련 종 1개 이상, 나머지는 시드로 섞어 채운다. 표 순서로 정렬 */
+function pickGarden(P: number, goals: number[], rand: Rand): number[] {
+  const chosen: number[] = [];
+  for (const gi of goals) {
+    const linked = LINKED_GOALS.find(([gid]) => gid === gi);
+    if (linked && !chosen.includes(linked[1])) chosen.push(linked[1]);
+  }
+  const needOne = (cands: number[]) => {
+    if (cands.some((s) => chosen.includes(s))) return;
+    chosen.push(shuffle(cands, rand)[0]!);
+  };
+  if (goals.includes(7)) needOne([S.rapeseed, S.lotus, S.mugunghwa]);
+  if (goals.includes(8)) needOne([S.oak, S.bamboo]);
+  const rest = shuffle(
+    SPECIES.map((_, s) => s).filter((s) => !chosen.includes(s)),
+    rand,
+  );
+  while (chosen.length < GARDEN_SIZE[P]!) chosen.push(rest.shift()!);
+  return chosen.sort((a, b) => a - b);
+}
+
 // ---------------------------------------------------------------------------
 // 게임 상태
 // ---------------------------------------------------------------------------
@@ -365,15 +427,16 @@ interface Game {
   dir: Int8Array; // 칡 방향
   entranceOf: Int8Array; // 입구 주인 (-1 아님)
   seeds: { cell: number; owner: number }[];
-  drafted: number[][]; // 좌석별 고른 종
+  garden: number[]; // 이번 판 식물 (공개)
   planted: Set<number>[]; // 좌석별 심은 종
+  plantedCount: number[][]; // 좌석별 종마다 심은 장수
   hands: number[][];
-  decks: number[][];
+  pile: number[]; // 더미 (비공개)
+  market: number[]; // 이번 라운드 마켓 (공개)
   discards: number;
 }
 
-function newGame(P: number, b: Board, goals: number[], drafted: number[][], rand: Rand): Game {
-  const copies = P === 2 ? 3 : 4;
+function newGame(P: number, b: Board, goals: number[], garden: number[], rand: Rand): Game {
   const g: Game = {
     P,
     b,
@@ -383,18 +446,20 @@ function newGame(P: number, b: Board, goals: number[], drafted: number[][], rand
     dir: new Int8Array(b.n).fill(-1),
     entranceOf: new Int8Array(b.n).fill(-1),
     seeds: [],
-    drafted,
-    planted: drafted.map(() => new Set<number>()),
+    garden,
+    planted: Array.from({ length: P }, () => new Set<number>()),
+    plantedCount: Array.from({ length: P }, () => new Array<number>(SPECIES.length).fill(0)),
     hands: [],
-    decks: [],
+    pile: [],
+    market: [],
     discards: 0,
   };
   b.entrances.forEach((c, seat) => (g.entranceOf[c] = seat));
-  for (let p = 0; p < P; p++) {
-    const deck = shuffle(drafted[p]!.flatMap((s) => new Array<number>(copies).fill(s)), rand);
-    g.hands.push(deck.splice(0, HAND_SIZE));
-    g.decks.push(deck);
-  }
+  const copies = MARKET_PLUS ? COPIES_PLUS[P]! : COPIES[P]!;
+  const pile = shuffle(garden.flatMap((s) => new Array<number>(copies).fill(s)), rand);
+  for (let p = 0; p < P; p++) g.hands.push(pile.splice(0, HAND_SIZE));
+  // 인원+1장: 더미는 정확히 마켓 라운드 × (인원+1)장, 나머지는 상자에 넣는다
+  g.pile = MARKET_PLUS ? pile.slice(0, MARKET_ROUNDS[P]! * (P + 1)) : pile;
   return g;
 }
 
@@ -595,8 +660,8 @@ function score(g: Game, own?: Int8Array): ScoreDetail {
       case 10: // 경계
         add(mine.map((cs, p) => cs.filter((c) => b.nb[c]!.some((x) => (o[x] as number) >= 0 && o[x] !== p)).length));
         break;
-      case 11: // 고른 종 다 쓰기
-        add(g.drafted.map((ds, p) => (ds.every((s) => g.planted[p]!.has(s)) ? 4 : 0)));
+      case 11: // 여러 가지 심기: 서로 다른 식물 5종 이상 심었으면 +4
+        add(g.planted.map((set) => (set.size >= 5 ? 4 : 0)));
         break;
       default: {
         const linked = LINKED_GOALS.find(([gid]) => gid === gi);
@@ -689,6 +754,61 @@ function chooseMove(g: Game, p: number, rand: Rand): Move | null {
   return top[0] as Move;
 }
 
+
+// ---------------------------------------------------------------------------
+// 마켓 가져오기 봇
+// ---------------------------------------------------------------------------
+
+/** A 단계에서 배운 종 가치: 기본(장수 가중) 승률 + 목표가 있을 때 승률 */
+interface ValueModel {
+  base: number[];
+  byGoal: number[][];
+}
+
+/** 목표 연계 가치 가중치: 승률 1.0(100%p) 당 점수. +10%p → +1점 */
+const TAKE_GOAL_W = Number(process.env.TAKE_GOAL_W ?? 10);
+/** 여러 가지 심기 목표가 있을 때, 아직 심지도 손에 들지도 않은 종에 주는 가산(5종 미만일 때) */
+const TAKE_VARIETY_BONUS = 1;
+
+/** 종 s 를 지금 보드에서 가장 좋은 칸에 심었을 때 1수 가치 (민들레 씨앗은 생략하는 근사). 심을 칸이 없으면 -Infinity */
+function bestPlantValue(g: Game, inf: Int16Array[], p: number, s: number): number {
+  let best = -Infinity;
+  for (const cell of legalCells(g, inf, p, s)) {
+    if (SPEC[s]!.line) {
+      for (let d = 0; d < 6; d++) if (g.b.line[cell]![d]!.length) best = Math.max(best, evalMove(g, p, s, cell, d, -1));
+    } else best = Math.max(best, evalMove(g, p, s, cell, -1, -1));
+  }
+  return best;
+}
+
+type TakeMode = 'random' | 'smart';
+
+/** 마켓에서 가져올 자리 번호 */
+function chooseTake(g: Game, p: number, rand: Rand, mode: TakeMode, model?: ValueModel): number {
+  const m = g.market;
+  if (m.length <= 1) return 0;
+  if (mode === 'random' || !model || rand() < 0.15) return Math.floor(rand() * m.length);
+  const inf = influence(g);
+  const cache = new Map<number, number>();
+  let best = 0;
+  let bestV = -Infinity;
+  m.forEach((s, i) => {
+    let v = cache.get(s);
+    if (v === undefined) {
+      const pv = bestPlantValue(g, inf, p, s);
+      v = Number.isFinite(pv) ? pv : -100;
+      for (const gi of g.goals) v += TAKE_GOAL_W * (model.byGoal[gi]![s]! - model.base[s]!);
+      if (g.goals.includes(11) && g.planted[p]!.size < 5 && !g.planted[p]!.has(s) && !g.hands[p]!.includes(s)) v += TAKE_VARIETY_BONUS;
+      cache.set(s, v);
+    }
+    if (v > bestV) {
+      bestV = v;
+      best = i;
+    }
+  });
+  return best;
+}
+
 // ---------------------------------------------------------------------------
 // 한 판
 // ---------------------------------------------------------------------------
@@ -696,7 +816,8 @@ function chooseMove(g: Game, p: number, rand: Rand): Move | null {
 interface Result {
   P: number;
   goals: number[];
-  drafted: number[][];
+  garden: number[];
+  plantedCount: number[][];
   scores: ScoreDetail;
   winner: number;
   /** 다른 사람에게 넘어간(또는 무소유가 된) 땅 칸 수 누적 — 뒤집기 */
@@ -706,31 +827,42 @@ interface Result {
   totalPlants: number;
   discards: number;
   turns: number;
+  /** 좌석별 둔 횟수 (모두 같아야 한다) */
+  seatTurns: number[];
+  /** 종별: 고를 수 있을 때(마켓 2장 이상) 마켓에 있던 횟수 / 가져간 횟수 */
+  offered: number[];
+  taken: number[];
   /** 좌석별 입구 거리 3 이내 비옥토·막힌 칸 */
   nearFertile: number[];
   nearBlocked: number[];
 }
 
-function playGame(P: number, drafted: number[][], seed: number, goalsOverride?: number[]): Result {
+function playGame(P: number, seed: number, mode: TakeMode, model?: ValueModel): Result {
   const rand = mulberry32(seed);
   const b = buildBoard(P, rand);
-  const goals = goalsOverride ?? pickGoals(rand);
-  const g = newGame(P, b, goals, drafted, rand);
+  const goals = pickGoals(rand);
+  const garden = pickGarden(P, goals, rand);
+  const g = newGame(P, b, goals, garden, rand);
   let prevOwn = owners(g, influence(g));
   let flips = 0;
   let turns = 0;
-  const rounds = g.decks[0]!.length + HAND_SIZE;
+  const offered = new Array<number>(SPECIES.length).fill(0);
+  const taken = new Array<number>(SPECIES.length).fill(0);
+  const seatTurns = new Array<number>(P).fill(0);
   for (let round = 0; ; round++) {
+    // 라운드 시작: 남은 마켓은 버리고 더미에서 인원 수(인원+1장 안이면 +1)만큼 펼친다 (시뮬레이터에는 기권이 없다)
+    g.market = g.pile.splice(0, P + (MARKET_PLUS ? 1 : 0));
     let anyPlayed = false;
-    const seatOrder = [...Array(P).keys()];
-    if (SEAT[P]!.lastRoundReverse && round === rounds - 1) seatOrder.reverse();
-    for (const p of seatOrder) {
+    const start = MARKET_ROTATE ? round % P : 0;
+    for (let k = 0; k < P; k++) {
+      const p = (start + k) % P;
       if (g.hands[p]!.length === 0) continue;
       anyPlayed = true;
       turns++;
+      seatTurns[p]!++;
       const m = chooseMove(g, p, rand);
       if (!m) {
-        // 심을 곳이 없으면 1장 버린다 (초안 6절)
+        // 심을 곳이 없으면 1장 버린다
         g.hands[p]!.splice(0, 1);
         g.discards++;
       } else {
@@ -741,9 +873,15 @@ function playGame(P: number, drafted: number[][], seed: number, goalsOverride?: 
         g.dir[m.cell] = m.dir;
         if (m.seed >= 0) g.seeds.push({ cell: m.seed, owner: p });
         g.planted[p]!.add(s);
+        g.plantedCount[p]![s]!++;
       }
-      const d = g.decks[p]!.shift();
-      if (d !== undefined) g.hands[p]!.push(d);
+      if (g.market.length) {
+        if (g.market.length > 1) for (const s of new Set(g.market)) offered[s]!++;
+        const k = chooseTake(g, p, rand, mode, model);
+        const s = g.market.splice(k, 1)[0]!;
+        if (g.market.length >= 1) taken[s]!++; // 고를 수 있었던 가져오기만 센다
+        g.hands[p]!.push(s);
+      }
       const own = owners(g, influence(g));
       for (let c = 0; c < b.n; c++) if ((prevOwn[c] as number) >= 0 && own[c] !== prevOwn[c]) flips++;
       prevOwn = own;
@@ -758,12 +896,12 @@ function playGame(P: number, drafted: number[][], seed: number, goalsOverride?: 
       totalPlants++;
       if (prevOwn[c] !== g.owner[c]) lostPlants++;
     }
-  // 승자: 점수 → 땅 → 늦은 좌석 (초안 9절)
+  // 승자: 점수 → 땅 → 늦은 좌석
   let winner = 0;
   for (let p = 1; p < P; p++) {
     const a = scores.total[p]!;
     const w = scores.total[winner]!;
-    if (a > w || (a === w && scores.land[p]! > scores.land[winner]!) || (a === w && scores.land[p] === scores.land[winner])) winner = p;
+    if (a > w || (a === w && scores.land[p]! >= scores.land[winner]!)) winner = p;
   }
   const near = (p: number, pred: (t: number) => boolean) => {
     const e = b.entrances[p] as number;
@@ -774,76 +912,97 @@ function playGame(P: number, drafted: number[][], seed: number, goalsOverride?: 
   return {
     P,
     goals,
-    drafted,
+    garden,
+    plantedCount: g.plantedCount,
     scores,
     winner,
     flips,
     lostPlants,
     totalPlants,
     discards: g.discards,
+    seatTurns,
     turns,
+    offered,
+    taken,
     nearFertile: Array.from({ length: P }, (_, p) => near(p, (t) => t === FERTILE)),
     nearBlocked: Array.from({ length: P }, (_, p) => near(p, (t) => t === POND || t === ROCK)),
   };
 }
 
 // ---------------------------------------------------------------------------
-// 드래프트
+// 종 통계
 // ---------------------------------------------------------------------------
 
-const PICKS: Record<number, number> = { 2: 5, 3: 4, 4: 4 };
-const MAX_TAKERS: Record<number, number> = { 2: 1, 3: 1, 4: 2 };
+class SpeciesStats {
+  /** 판에 나온 횟수 */
+  inGarden = new Array<number>(SPECIES.length).fill(0);
+  /** 심은 장수 가중: 심은 장수 합 / 이긴 사람이 심은 장수 합 */
+  cards = new Array<number>(SPECIES.length).fill(0);
+  winCards = new Array<number>(SPECIES.length).fill(0);
+  /** 1장 이상 심은 사람 수 / 그중 이긴 수 */
+  have = new Array<number>(SPECIES.length).fill(0);
+  haveWins = new Array<number>(SPECIES.length).fill(0);
+  /** 그 종을 가장 많이 심은 사람(단독)이 있던 판 / 그 사람이 이긴 판 */
+  top = new Array<number>(SPECIES.length).fill(0);
+  topWins = new Array<number>(SPECIES.length).fill(0);
+  goalCards = GOALS.map(() => new Array<number>(SPECIES.length).fill(0));
+  goalWinCards = GOALS.map(() => new Array<number>(SPECIES.length).fill(0));
+  offered = new Array<number>(SPECIES.length).fill(0);
+  taken = new Array<number>(SPECIES.length).fill(0);
 
-function randomDraft(P: number, rand: Rand): number[][] {
-  const out: number[][] = Array.from({ length: P }, () => []);
-  const taken = new Array<number>(SPECIES.length).fill(0);
-  const order = snakeOrder(P, [...Array(P).keys()].reverse());
-  for (const p of order) {
-    const opts = SPECIES.map((_, s) => s).filter((s) => taken[s]! < MAX_TAKERS[P]! && !out[p]!.includes(s));
-    const s = opts[Math.floor(rand() * opts.length)] as number;
-    out[p]!.push(s);
-    taken[s]!++;
-  }
-  return out;
-}
-
-function snakeOrder(P: number, first: number[]): number[] {
-  const order: number[] = [];
-  for (let round = 0; round < PICKS[P]!; round++) order.push(...(round % 2 === 0 ? first : [...first].reverse()));
-  return order;
-}
-
-/** A 단계에서 배운 종 가치: 기본 승률 + 공개된 목표마다 (목표 있을 때 승률 − 기본 승률) */
-interface ValueModel {
-  base: number[];
-  byGoal: number[][];
-}
-
-function smartDraft(P: number, goals: number[], model: ValueModel, rand: Rand, firstPickSeat: 'last' | 'first' = SEAT[P]!.draftFirst): { drafted: number[][]; order: { seat: number; species: number }[] } {
-  const out: number[][] = Array.from({ length: P }, () => []);
-  const taken = new Array<number>(SPECIES.length).fill(0);
-  const seats = [...Array(P).keys()];
-  const custom = SEAT[P]!.draftOrder;
-  const order = snakeOrder(P, custom ?? (firstPickSeat === 'last' ? seats.reverse() : seats));
-  const log: { seat: number; species: number }[] = [];
-  for (const p of order) {
-    let best = -1;
-    let bestV = -Infinity;
-    for (let s = 0; s < SPECIES.length; s++) {
-      if (taken[s]! >= MAX_TAKERS[P]! || out[p]!.includes(s)) continue;
-      let v = model.base[s]!;
-      for (const gi of goals) v += model.byGoal[gi]![s]! - model.base[s]!;
-      v += (rand() - 0.5) * 0.04; // 사람마다 다른 취향(±2%p)
-      if (v > bestV) {
-        bestV = v;
-        best = s;
+  add(res: Result): void {
+    for (const s of res.garden) {
+      this.inGarden[s]!++;
+      this.offered[s]! += res.offered[s]!;
+      this.taken[s]! += res.taken[s]!;
+      let topN = 0;
+      let topP = -1;
+      let topTie = false;
+      for (let p = 0; p < res.P; p++) {
+        const n = res.plantedCount[p]![s]!;
+        const win = res.winner === p ? 1 : 0;
+        this.cards[s]! += n;
+        this.winCards[s]! += n * win;
+        for (const gi of res.goals) {
+          this.goalCards[gi]![s]! += n;
+          this.goalWinCards[gi]![s]! += n * win;
+        }
+        if (n > 0) {
+          this.have[s]!++;
+          this.haveWins[s]! += win;
+        }
+        if (n > topN) {
+          topN = n;
+          topP = p;
+          topTie = false;
+        } else if (n === topN && n > 0) topTie = true;
+      }
+      if (topP >= 0 && !topTie) {
+        this.top[s]!++;
+        if (res.winner === topP) this.topWins[s]!++;
       }
     }
-    out[p]!.push(best);
-    taken[best]!++;
-    log.push({ seat: p, species: best });
   }
-  return { drafted: out, order: log };
+
+  model(): ValueModel {
+    const base = this.cards.map((c, s) => (c ? this.winCards[s]! / c : 0));
+    const byGoal = GOALS.map((_, gi) => this.goalCards[gi]!.map((c, s) => (c >= 60 ? this.goalWinCards[gi]![s]! / c : base[s]!)));
+    return { base, byGoal };
+  }
+
+  print(N: number, showTake: boolean): void {
+    const wr = this.cards.map((c, s) => (c ? this.winCards[s]! / c : 0));
+    console.log(`  종      출현   장수가중 승률  1장↑ 심은 사람  가장 많이 심은 사람${showTake ? '  고를 때 가져간 비율' : ''}`);
+    SPECIES.map((s, i) => ({ s, i }))
+      .sort((a, b) => wr[b.i]! - wr[a.i]!)
+      .forEach(({ s, i }) =>
+        console.log(
+          `  ${NAME_KO[s].padEnd(4)} ${pct(this.inGarden[i]!, N)}   ${pct(this.winCards[i]!, this.cards[i]!)}        ${pct(this.haveWins[i]!, this.have[i]!)}         ${pct(this.topWins[i]!, this.top[i]!)}${showTake ? `             ${pct(this.taken[i]!, this.offered[i]!)}` : ''}`,
+        ),
+      );
+    const vals = wr.filter((_, i) => this.cards[i]! > 0);
+    console.log(`  장수가중 승률 폭: ${(100 * (Math.max(...vals) - Math.min(...vals))).toFixed(1)}%p`);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -871,45 +1030,30 @@ function spearman(a: number[], b: number[]): number {
 for (const P of [2, 3, 4]) {
   const N = games[P]!;
   if (!N) continue;
+  const NA = Number(process.env.A_GAMES ?? N);
   console.log(`\n================ ${P}인 ================`);
 
-  // ---- A. 무작위 드래프트 ----
-  const spWins = new Array<number>(SPECIES.length).fill(0);
-  const spGames = new Array<number>(SPECIES.length).fill(0);
-  const spGoalWins = GOALS.map(() => new Array<number>(SPECIES.length).fill(0));
-  const spGoalGames = GOALS.map(() => new Array<number>(SPECIES.length).fill(0));
+  // ---- A. 무작위 가져오기 ----
+  const tA = Date.now();
+  const statA = new SpeciesStats();
   const seatWinsA = new Array<number>(P).fill(0);
-  const rA = mulberry32(1000 + P);
-  for (let i = 0; i < N; i++) {
-    const drafted = randomDraft(P, rA);
-    const res = playGame(P, drafted, 50_000 + P * 10_000 + i);
+  for (let i = 0; i < NA; i++) {
+    const res = playGame(P, 50_000 + P * 10_000 + i, 'random');
     seatWinsA[res.winner]!++;
-    for (let p = 0; p < P; p++)
-      for (const s of drafted[p]!) {
-        spGames[s]!++;
-        if (res.winner === p) spWins[s]!++;
-        for (const gi of res.goals) {
-          spGoalGames[gi]![s]!++;
-          if (res.winner === p) spGoalWins[gi]![s]!++;
-        }
-      }
+    statA.add(res);
   }
-  const base = spGames.map((g, s) => (g ? spWins[s]! / g : 0));
-  const byGoal = GOALS.map((_, gi) => spGoalGames[gi]!.map((g, s) => (g >= 20 ? spGoalWins[gi]![s]! / g : base[s]!)));
-  const model: ValueModel = { base, byGoal };
+  const model = statA.model();
   const fair = 1 / P;
-  console.log(`\n[A] 무작위 드래프트 ${N}판 — 종을 가졌을 때 승률 (공정 기준 ${(100 * fair).toFixed(0)}%)`);
-  SPECIES.map((s, i) => ({ s, i, wr: base[i]! }))
-    .sort((a, b) => b.wr - a.wr)
-    .forEach(({ s, i }) => console.log(`  ${NAME_KO[s].padEnd(5)} ${pct(spWins[i]!, spGames[i]!)}  (${spGames[i]}회)`));
-  console.log(`  좌석 승률(무작위 드래프트): ${seatWinsA.map((w, p) => `좌석${p} ${pct(w, N).trim()}`).join(' / ')}`);
+  console.log(`\n[A] 무작위 가져오기 ${NA}판 (${((Date.now() - tA) / NA).toFixed(0)}ms/판) — 종 가치 (공정 기준 ${(100 * fair).toFixed(0)}%)`);
+  statA.print(NA, false);
+  console.log(`  좌석 승률(무작위 가져오기, 덤 [${SEAT[P]!.komi.join(',')}]): ${seatWinsA.map((w, p) => `좌석${p} ${pct(w, NA).trim()}`).join(' / ')}`);
 
   console.log(`\n[A] 목표 카드가 종 가치를 바꾸는 정도 (전체 순위와 목표 있을 때 순위의 상관, 1=그대로·0=무관)`);
   const rhos: number[] = [];
   GOALS.forEach((name, gi) => {
-    const rho = spearman(base, byGoal[gi]!);
+    const rho = spearman(model.base, model.byGoal[gi]!);
     rhos.push(rho);
-    const top = SPECIES.map((s, i) => ({ s, v: byGoal[gi]![i]! - base[i]! }))
+    const top = SPECIES.map((s, i) => ({ s, v: model.byGoal[gi]![i]! - model.base[i]! }))
       .sort((a, b) => b.v - a.v)
       .slice(0, 2)
       .map(({ s, v }) => `${NAME_KO[s]} ${v >= 0 ? '+' : ''}${(100 * v).toFixed(1)}`)
@@ -920,145 +1064,91 @@ for (const P of [2, 3, 4]) {
 
   if (process.env.SIM_PHASE === 'A') continue;
   if (process.env.SEAT_SEARCH) {
-    // 드래프트 첫 바퀴 순서 × 덤 후보를 모두 돌려 좌석 승률 편차가 가장 작은 조합을 찾는다
-    const perms = (arr: number[]): number[][] => (arr.length <= 1 ? [arr] : arr.flatMap((x, i) => perms([...arr.slice(0, i), ...arr.slice(i + 1)]).map((r) => [x, ...r])));
-    const komis: number[][] = JSON.parse(process.env.SEAT_KOMIS ?? 'null') ?? [new Array<number>(P).fill(0)];
-    const rows: { order: number[]; komi: number[]; rates: number[]; spread: number }[] = [];
-    const orders: number[][] = JSON.parse(process.env.SEAT_ORDERS ?? 'null') ?? perms([...Array(P).keys()]);
-    for (const order of orders)
-      for (const komi of komis) {
-        SEAT[P]!.draftOrder = order;
-        SEAT[P]!.komi = komi;
-        const wins = new Array<number>(P).fill(0);
-        const rS = mulberry32(3000 + P);
-        for (let i = 0; i < N; i++) {
-          const gameSeed = 90_000 + P * 10_000 + i;
-          const pre = mulberry32(gameSeed);
-          buildBoard(P, pre);
-          const goals = pickGoals(pre);
-          const { drafted } = smartDraft(P, goals, model, rS);
-          wins[playGame(P, drafted, gameSeed, goals).winner]!++;
-        }
-        const rates = wins.map((w) => w / N);
-        rows.push({ order, komi, rates, spread: Math.max(...rates.map((r) => Math.abs(r - fair))) });
-      }
-    rows.sort((a, b) => a.spread - b.spread);
-    console.log(`
-[좌석 탐색] ${P}인, 조합당 ${N}판 — 편차 작은 순`);
-    for (const r of rows.slice(0, 8)) console.log(`  드래프트 첫 바퀴 [${r.order.join(',')}] 덤 [${r.komi.join(',')}]: ${r.rates.map((x) => (100 * x).toFixed(1)).join(' / ')}  최대 편차 ${(100 * r.spread).toFixed(1)}%p`);
+    // 덤 후보마다 똑똑한 가져오기로 좌석 승률을 재서 편차가 가장 작은 덤을 찾는다 (같은 판 시드를 공유)
+    const komis: number[][] = JSON.parse(process.env.SEAT_KOMIS ?? 'null') ?? [SEAT[P]!.komi];
+    const rows: { komi: number[]; rates: number[]; spread: number; sd: number }[] = [];
+    for (const komi of komis) {
+      SEAT[P]!.komi = komi;
+      const wins = new Array<number>(P).fill(0);
+      for (let i = 0; i < N; i++) wins[playGame(P, 90_000 + P * 10_000 + i, 'smart', model).winner]!++;
+      const rates = wins.map((w) => w / N);
+      const spread = Math.max(...rates.map((r) => Math.abs(r - fair)));
+      const sd = Math.sqrt(rates.reduce((a, r) => a + (r - fair) ** 2, 0) / P);
+      rows.push({ komi, rates, spread, sd });
+      console.log(`  (측정) 덤 [${komi.join(',')}]: ${rates.map((x) => (100 * x).toFixed(1)).join(' / ')}`);
+    }
+    rows.sort((a, b) => a.spread - b.spread || a.sd - b.sd);
+    const se = 100 * Math.sqrt((fair * (1 - fair)) / N);
+    console.log(`\n[좌석 탐색] ${P}인, 조합당 ${N}판 — 편차 작은 순 (좌석 승률 표준오차 약 ±${se.toFixed(1)}%p)`);
+    for (const r of rows) console.log(`  덤 [${r.komi.join(',')}]: ${r.rates.map((x) => (100 * x).toFixed(1)).join(' / ')}  최대 편차 ${(100 * r.spread).toFixed(1)}%p · RMS ${(100 * r.sd).toFixed(1)}%p`);
     continue;
   }
-  // ---- B. 똑똑한 드래프트 ----
-  // 첫 바퀴 순서를 표로 정한 인원은 draftFirst 가 무시되므로 비교 줄을 돌리지 않는다(같은 숫자만 나온다). 순서 비교는 SEAT_SEARCH 로 한다
-  const firstPickRuns = SEAT[P]!.draftOrder ? [SEAT[P]!.draftFirst] : ([SEAT[P]!.draftFirst, SEAT[P]!.draftFirst === 'last' ? 'first' : 'last'] as const);
-  for (const firstPick of firstPickRuns) {
-    const seatWins = new Array<number>(P).fill(0);
-    const pickPos = new Array<number>(SPECIES.length).fill(0);
-    const pickCount = new Array<number>(SPECIES.length).fill(0);
-    const firstPicks = new Array<number>(SPECIES.length).fill(0);
-    let flips = 0;
-    let lost = 0;
-    let plants = 0;
-    let discards = 0;
-    let discardGames = 0;
-    let turns = 0;
-    let landSum = 0;
-    let goalSum = 0;
-    let roseSum = 0;
-    let margin = 0;
-    let fertileAdvWins = 0;
-    let fertileAdvGames = 0;
-    let blockedAdvWins = 0;
-    let blockedAdvGames = 0;
-    const deckKeys = new Map<string, number>();
-    const winnerDecks: number[][] = [];
-    const rB = mulberry32(2000 + P);
-    for (let i = 0; i < N; i++) {
-      const gameSeed = 90_000 + P * 10_000 + i;
-      // 목표·보드는 게임 시드로 정해지므로 드래프트 전에 같은 시드로 목표만 미리 뽑는다
-      const pre = mulberry32(gameSeed);
-      buildBoard(P, pre);
-      const goals = pickGoals(pre);
-      const { drafted, order } = smartDraft(P, goals, model, rB, firstPick);
-      order.forEach(({ species }, k) => {
-        pickPos[species]! += k + 1;
-        pickCount[species]!++;
-      });
-      firstPicks[order[0]!.species]!++;
-      const res = playGame(P, drafted, gameSeed, goals);
-      seatWins[res.winner]!++;
-      flips += res.flips;
-      lost += res.lostPlants;
-      plants += res.totalPlants;
-      discards += res.discards;
-      if (res.discards > 0) discardGames++;
-      turns += res.turns;
-      for (let p = 0; p < P; p++) {
-        landSum += res.scores.land[p]!;
-        goalSum += res.scores.goal[p]!;
-        roseSum += res.scores.mugunghwa[p]!;
-      }
-      const sorted = [...res.scores.total].sort((a, b) => b - a);
-      margin += sorted[0]! - sorted[1]!;
-      for (const d of drafted) {
-        const key = [...d].sort((a, b) => a - b).join(',');
-        deckKeys.set(key, (deckKeys.get(key) ?? 0) + 1);
-      }
-      winnerDecks.push(drafted[res.winner]!);
-      if (P === 2) {
-        const [f0, f1] = res.nearFertile;
-        if (f0 !== f1) {
-          fertileAdvGames++;
-          if (res.winner === (f0! > f1! ? 0 : 1)) fertileAdvWins++;
-        }
-        const [b0, b1] = res.nearBlocked;
-        if (b0 !== b1) {
-          blockedAdvGames++;
-          if (res.winner === (b0! < b1! ? 0 : 1)) blockedAdvWins++;
-        }
-      }
+
+  // ---- B. 똑똑한 가져오기 ----
+  const tB = Date.now();
+  const statB = new SpeciesStats();
+  const seatWins = new Array<number>(P).fill(0);
+  let flips = 0;
+  let lost = 0;
+  let plants = 0;
+  let discards = 0;
+  let discardGames = 0;
+  let turns = 0;
+  let landSum = 0;
+  let goalSum = 0;
+  let roseSum = 0;
+  let margin = 0;
+  let distinctSum = 0;
+  let unequalTurns = 0;
+  let fertileAdvWins = 0;
+  let fertileAdvGames = 0;
+  let blockedAdvWins = 0;
+  let blockedAdvGames = 0;
+  const seatScore = new Array<number>(P).fill(0);
+  for (let i = 0; i < N; i++) {
+    const res = playGame(P, 90_000 + P * 10_000 + i, 'smart', model);
+    statB.add(res);
+    seatWins[res.winner]!++;
+    flips += res.flips;
+    lost += res.lostPlants;
+    plants += res.totalPlants;
+    discards += res.discards;
+    if (res.discards > 0) discardGames++;
+    turns += res.turns;
+    if (new Set(res.seatTurns).size > 1) unequalTurns++;
+    for (let p = 0; p < P; p++) {
+      landSum += res.scores.land[p]!;
+      goalSum += res.scores.goal[p]!;
+      roseSum += res.scores.mugunghwa[p]!;
+      seatScore[p]! += res.scores.total[p]!;
+      distinctSum += res.plantedCount[p]!.filter((n) => n > 0).length;
     }
-    const pol = SEAT[P]!;
-    const label = `${firstPick === 'last' ? '늦게 두는 좌석이 첫 픽' : '좌석 0이 첫 픽'}${firstPick === pol.draftFirst ? ' (채택)' : ' (비교)'} · 덤 [${pol.komi.join(',')}]${pol.lastRoundReverse ? ' · 마지막 라운드 역순' : ''}`;
-    console.log(`\n[B] 똑똑한 드래프트 ${N}판 — ${label}`);
-    console.log(`  좌석 승률: ${seatWins.map((w, p) => `좌석${p} ${pct(w, N).trim()}`).join(' / ')}  (목표 ${(100 * fair).toFixed(0)}% ±5)`);
-    if (firstPick !== pol.draftFirst) continue;
-    console.log(`  첫 픽 분포: ${SPECIES.map((s, i) => ({ s, k: firstPicks[i]! }))
-      .filter((x) => x.k > 0)
-      .sort((a, b) => b.k - a.k)
-      .map(({ s, k }) => `${NAME_KO[s]} ${pct(k, N).trim()}`)
-      .join(', ')}`);
-    console.log(`  평균 픽 순번(작을수록 먼저 가져감, 안 뽑히면 제외):`);
-    console.log(
-      '   ' +
-        SPECIES.map((s, i) => ({ s, avg: pickCount[i] ? pickPos[i]! / pickCount[i]! : 99, rate: pickCount[i]! / N }))
-          .sort((a, b) => a.avg - b.avg)
-          .map(({ s, avg, rate }) => `${NAME_KO[s]} ${avg === 99 ? '-' : avg.toFixed(1)}${P === 2 ? `(${(100 * rate).toFixed(0)}%)` : ''}`)
-          .join(' · '),
-    );
-    // 덱 다양성: 서로 다른 덱 구성 수, 가장 흔한 덱 비율
-    const decks = [...deckKeys.values()].sort((a, b) => b - a);
-    console.log(`  덱 다양성: 서로 다른 덱 ${deckKeys.size}가지 / ${N * P}개, 가장 흔한 덱 ${pct(decks[0]!, N * P).trim()}`);
-    // 이긴 덱끼리 얼마나 겹치나 (평균 자카드 유사도, 표본 300쌍)
-    let jac = 0;
-    let pairs = 0;
-    const rj = mulberry32(7);
-    for (let k = 0; k < 300 && winnerDecks.length > 1; k++) {
-      const a = winnerDecks[Math.floor(rj() * winnerDecks.length)]!;
-      const c = winnerDecks[Math.floor(rj() * winnerDecks.length)]!;
-      if (a === c) continue;
-      const inter = a.filter((x) => c.includes(x)).length;
-      jac += inter / new Set([...a, ...c]).size;
-      pairs++;
-    }
-    console.log(`  이긴 덱끼리 평균 겹침(자카드) ${(jac / Math.max(1, pairs)).toFixed(2)}  (1=늘 같은 덱, 낮을수록 판마다 다름)`);
-    console.log(`  뒤집기: 판당 ${(flips / N).toFixed(1)}칸이 주인을 바꿈, 끝날 때 남의 땅 위 식물 ${pct(lost, plants).trim()}`);
-    console.log(`  점수 구성(1인 평균): 땅 ${(landSum / N / P).toFixed(1)} + 목표 ${(goalSum / N / P).toFixed(1)} + 무궁화 ${(roseSum / N / P).toFixed(1)}, 1·2등 점수 차 평균 ${(margin / N).toFixed(1)}`);
-    console.log(`  심을 곳 없어 버림: 판당 ${(discards / N).toFixed(2)}장, 버림이 있던 판 ${pct(discardGames, N).trim()}`);
-    console.log(`  판당 턴 ${(turns / N).toFixed(0)}`);
+    const sorted = [...res.scores.total].sort((a, b) => b - a);
+    margin += sorted[0]! - sorted[1]!;
     if (P === 2) {
-      console.log(`  보드 운: 입구 근처(거리 3) 비옥토가 더 많은 쪽 승률 ${pct(fertileAdvWins, fertileAdvGames).trim()} (n=${fertileAdvGames}), 막힌 칸이 더 적은 쪽 ${pct(blockedAdvWins, blockedAdvGames).trim()} (n=${blockedAdvGames})`);
+      const [f0, f1] = res.nearFertile;
+      if (f0 !== f1) {
+        fertileAdvGames++;
+        if (res.winner === (f0! > f1! ? 0 : 1)) fertileAdvWins++;
+      }
+      const [b0, b1] = res.nearBlocked;
+      if (b0 !== b1) {
+        blockedAdvGames++;
+        if (res.winner === (b0! < b1! ? 0 : 1)) blockedAdvWins++;
+      }
     }
+  }
+  console.log(`\n[B] 똑똑한 가져오기 ${N}판 (${((Date.now() - tB) / N).toFixed(0)}ms/판) — 마켓 ${MARKET_MODE} · 덤 [${SEAT[P]!.komi.join(',')}]`);
+  console.log(`  좌석 승률: ${seatWins.map((w, p) => `좌석${p} ${pct(w, N).trim()}`).join(' / ')}  (목표 ${(100 * fair).toFixed(0)}% ±5)`);
+  console.log(`  좌석 평균 점수(덤 포함): ${seatScore.map((v) => (v / N).toFixed(1)).join(' / ')}  ${MARKET_MODE === 'base' ? ` (라운드 마지막 좌석${P - 1}은 늘 남은 1장)` : ''}`);
+  statB.print(N, true);
+  console.log(`  뒤집기: 판당 ${(flips / N).toFixed(1)}칸이 주인을 바꿈, 끝날 때 남의 땅 위 식물 ${pct(lost, plants).trim()}`);
+  console.log(`  점수 구성(1인 평균): 땅 ${(landSum / N / P).toFixed(1)} + 목표 ${(goalSum / N / P).toFixed(1)} + 무궁화 ${(roseSum / N / P).toFixed(1)}, 1·2등 점수 차 평균 ${(margin / N).toFixed(1)}`);
+  console.log(`  1인당 심은 서로 다른 종 평균 ${(distinctSum / N / P).toFixed(1)}`);
+  console.log(`  심을 곳 없어 버림: 판당 ${(discards / N).toFixed(2)}장, 버림이 있던 판 ${pct(discardGames, N).trim()}`);
+  console.log(`  판당 턴 ${(turns / N).toFixed(0)}, 좌석마다 둔 횟수가 다른 판 ${unequalTurns}`);
+  if (P === 2) {
+    console.log(`  보드 운: 입구 근처(거리 3) 비옥토가 더 많은 쪽 승률 ${pct(fertileAdvWins, fertileAdvGames).trim()} (n=${fertileAdvGames}), 막힌 칸이 더 적은 쪽 ${pct(blockedAdvWins, blockedAdvGames).trim()} (n=${blockedAdvGames})`);
   }
 }
 console.log(`\n소요 ${((Date.now() - t0) / 1000).toFixed(0)}초`);

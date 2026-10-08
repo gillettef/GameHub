@@ -96,3 +96,26 @@ button.card:active {
   padding: 4px 3px;
   gap: 2px;
 }
+
+/* 마켓용 가로 칩: 뿌리 모양 왼쪽, 이름 오른쪽. 보드 높이를 덜 먹도록 낮게 */
+.chip {
+  flex-direction: row;
+  justify-content: center;
+  gap: 2px;
+  min-width: 0;
+  height: 40px;
+  padding: 2px 6px 2px 2px;
+}
+
+.chip .name {
+  font-size: var(--text-small);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.chip.selected {
+  transform: translateY(-2px);
+  background: color-mix(in srgb, var(--color-accent) 18%, var(--color-surface));
+}

@@ -7,7 +7,7 @@ import styles from './ProgressTab.module.css';
 
 const KIND_LABEL: Record<LogKind, string> = {
   system: '안내',
-  draft: '고르기',
+  take: '가져옴',
   turn: '차례',
   plant: '심기',
   discard: '버림',
@@ -28,7 +28,7 @@ export const ProgressTab = memo(function ProgressTab() {
 
   if (!state) return null;
   const active = state.players.filter((p) => p.surrenderedOrder === null).length;
-  const cardsLeft = state.players.reduce((n, p) => n + p.handCount + p.deckCount, 0);
+  const cardsLeft = state.players.reduce((n, p) => n + p.handCount, 0) + state.market.length + state.pileCount;
   const current = state.currentPlayerId ? nameOf(state, state.currentPlayerId) : null;
 
   return (
@@ -38,13 +38,15 @@ export const ProgressTab = memo(function ProgressTab() {
           <h2 className={styles.title}>현재</h2>
           <dl className={styles.facts}>
             <dt>단계</dt>
-            <dd>{state.phase === 'drafting' ? '식물 고르기' : state.phase === 'playing' ? `${state.round}라운드` : state.phase === 'finished' ? '종료' : '대기실'}</dd>
+            <dd>{state.phase === 'playing' ? `${state.round}라운드` : state.phase === 'finished' ? '종료' : '대기실'}</dd>
             <dt>차례</dt>
             <dd>{state.turn}</dd>
             <dt>지금</dt>
             <dd>{state.phase === 'finished' ? '종료' : current}</dd>
             <dt>남은 카드</dt>
             <dd>{cardsLeft}장 · {active}명</dd>
+            <dt>카드 더미</dt>
+            <dd>{state.pileCount}장 · 마켓 {state.market.length}장</dd>
           </dl>
         </div>
       </aside>

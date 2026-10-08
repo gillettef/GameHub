@@ -22,13 +22,7 @@ export const PlayerStrip = memo(function PlayerStrip({ onQuit }: { onQuit: () =>
   const current = state.currentPlayerId ? nameOf(state, state.currentPlayerId) : null;
   const isMyTurn = state.currentPlayerId === viewerId;
   const stage =
-    state.phase === 'drafting'
-      ? `식물 고르기 ${state.draftIndex + 1}/${state.draftOrder.length}`
-      : state.phase === 'playing'
-        ? `${state.round}라운드`
-        : state.phase === 'finished'
-          ? '게임 종료'
-          : '대기실';
+    state.phase === 'playing' ? `${state.round}라운드` : state.phase === 'finished' ? '게임 종료' : '대기실';
 
   return (
     <div className={styles.root}>

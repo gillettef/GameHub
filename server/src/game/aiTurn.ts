@@ -40,8 +40,8 @@ export function createAiRunner(opts: AiRunnerOptions) {
       if (!room || !opts.manager.isAutoTurn(room)) return;
       const state = room.state;
       const aiId = state.currentPlayerId as PlayerId;
-      // 드래프트 중에는 turn 이 0 이고 뱀 순서로 같은 좌석이 연달아 고르므로 단계·차례·픽 번호를 함께 본다
-      const keyOf = (st: GameState) => `${st.phase}:${st.turn}:${st.draftIndex}`;
+      // 단계·차례 번호가 바뀌었으면 그사이 다른 수가 들어온 것이다
+      const keyOf = (st: GameState) => `${st.phase}:${st.turn}`;
       const keyBefore = keyOf(state);
 
       if (thinkDelayMs > 0) await delay(thinkDelayMs);
