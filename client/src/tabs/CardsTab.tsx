@@ -6,7 +6,7 @@ import styles from './CardsTab.module.css';
 
 /**
  * 카드 탭: 식물 12종과 목표 18장 전체 카탈로그. 이번 판 식물(state.species)을 위에, 나머지는 '이번 판에 없음'으로 흐리게.
- * 카드를 누르면 크게 본다(보기 전용)
+ * 식물·목표 카드를 누르면 카드 디자인을 크게 본다(보기 전용)
  */
 export const CardsTab = memo(function CardsTab() {
   const openCardModal = useGameStore((s) => s.openCardModal);
@@ -41,9 +41,11 @@ export const CardsTab = memo(function CardsTab() {
         <p className={styles.help}>판마다 3장이 공개되고, 그중 1장 이상은 식물 보호구역 목표입니다.</p>
         <ul className={styles.goals}>
           {GOALS.map((g) => (
-            <li key={g.id} className={g.species ? styles.linked : undefined}>
-              <strong>{g.name}</strong>
-              <span>{g.description}</span>
+            <li key={g.id}>
+              <button type="button" className={g.species ? styles.linked : undefined} onClick={() => openCardModal({ kind: 'goal', goal: g.id })}>
+                <strong>{g.name}</strong>
+                <span>{g.description}</span>
+              </button>
             </li>
           ))}
         </ul>

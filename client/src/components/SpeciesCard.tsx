@@ -1,7 +1,7 @@
 import { memo, type CSSProperties } from 'react';
 import type { SpeciesId } from '@rootbound/shared';
 import { getSpecies } from '@rootbound/shared';
-import { cardImageUrl } from '../game/cardImages';
+import { plantArtUrl, plantCardUrl } from '../game/cardImages';
 import { cx } from '../lib/cx';
 import { RootDiagram } from './RootDiagram';
 import styles from './SpeciesCard.module.css';
@@ -37,12 +37,13 @@ export function specialText(species: SpeciesId): string | null {
 }
 
 /**
- * 식물 카드. 그림 칸은 비워 두고(사용자가 나중에 일러스트를 넣는다, game/cardImages.ts),
- * 규칙 정보는 뿌리 모양 다이어그램으로 보여 준다.
+ * 식물 카드.
+ *  - full(확대 모달): 카드 디자인 앞면(public/cards/plants) 을 그대로 보여 준다. 이름·뿌리 모양·문구가 그림 안에 있다.
+ *  - mini·chip(손패·마켓·카드 탭): 작아서 카드 글자를 읽을 수 없으니 카드 그림 썸네일(plants/art)을 배경으로 깔고
+ *    이름·뿌리 모양 다이어그램을 그 위에 그린다.
  */
 export const SpeciesCard = memo(function SpeciesCard({ species, variant, seat, selected, dimmed, onClick, footer, compact }: SpeciesCardProps) {
   const sp = getSpecies(species);
-  const img = cardImageUrl(species);
   const special = specialText(species);
   const Tag = onClick ? 'button' : 'div';
   return (
@@ -54,18 +55,17 @@ export const SpeciesCard = memo(function SpeciesCard({ species, variant, seat, s
       aria-pressed={onClick ? !!selected : undefined}
       aria-label={onClick ? `${sp.name}: ${sp.description}` : undefined}
     >
-      <span className={styles.name}>{sp.name}</span>
-      {variant === 'full' && <span className={styles.art}>{img && <img src={img} alt="" />}</span>}
-      <span className={styles.diagram}>
-        <RootDiagram species={species} size={variant === 'chip' ? 26 : variant === 'mini' ? (compact ? 44 : 58) : 96} />
-      </span>
       {variant === 'full' ? (
-        <>
-          {special && <span className={styles.special}>{special}</span>}
-          <span className={styles.desc}>{sp.description}</span>
-        </>
+        <img className={styles.face} src={plantCardUrl(species)} alt={`${sp.name} 카드. ${sp.description}${special ? ` ${special}.` : ''}`} decoding="async" />
       ) : (
-        variant === 'mini' && special && !compact && <span className={styles.specialMini}>{special}</span>
+        <>
+          <span className={styles.art} style={{ backgroundImage: `url(${plantArtUrl(species)})` }} aria-hidden="true" />
+          <span className={styles.name}>{sp.name}</span>
+          <span className={styles.diagram}>
+            <RootDiagram species={species} size={variant === 'chip' ? 26 : compact ? 44 : 58} />
+          </span>
+          {variant === 'mini' && special && !compact && <span className={styles.specialMini}>{special}</span>}
+        </>
       )}
       {footer}
     </Tag>

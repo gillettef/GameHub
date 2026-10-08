@@ -1,5 +1,8 @@
 /* 식물 카드. 플랫(그림자 없음), 라운드 16px(카드). 좌석 색은 --seat-color 로 테두리에만 */
 .card {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -24,10 +27,20 @@ button.card:active {
   padding: 6px 4px;
 }
 
+/* 확대 모달: 카드 디자인 앞면(630×880). 모달 폭과 화면 높이 중 좁은 쪽에 맞춘다 */
+/* 260px = 모달 위아래 여백(닫기 버튼 자리 포함) + 손패일 때 아래 버튼·안내문 */
 .full {
+  width: min(100%, 300px, calc((100dvh - 260px) * 630 / 880));
+  aspect-ratio: 630 / 880;
+  padding: 0;
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.face {
+  display: block;
   width: 100%;
-  max-width: 260px;
-  padding: var(--space-2) var(--space-3);
+  height: 100%;
 }
 
 .selected {
@@ -46,25 +59,33 @@ button.card:active {
   color: var(--color-heading);
 }
 
-.full .name {
-  font-size: var(--text-sub);
-}
-
-/* 그림 칸: 사용자가 일러스트를 넣기 전까지 빈 칸으로 둔다 */
+/* 작은 카드 배경: 카드 그림 썸네일(plants/art, 가로로 긴 그림 부분)을 꽉 채워 깔고, 글자가 읽히도록 판 색으로 덮는다 */
 .art {
-  width: 100%;
-  aspect-ratio: 1;
-  max-height: 160px;
-  border-radius: var(--radius-sm);
-  border: 1.5px dashed color-mix(in srgb, var(--color-muted) 50%, transparent);
-  overflow: hidden;
-  display: flex;
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: center;
 }
 
-.art img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+.art::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--color-surface) 35%, transparent),
+    color-mix(in srgb, var(--color-surface) 82%, transparent) 70%
+  );
+}
+
+.chip .art::after {
+  background: linear-gradient(
+    to right,
+    color-mix(in srgb, var(--color-surface) 45%, transparent),
+    color-mix(in srgb, var(--color-surface) 85%, transparent) 60%
+  );
 }
 
 .diagram {
@@ -72,7 +93,6 @@ button.card:active {
   justify-content: center;
 }
 
-.special,
 .specialMini {
   font-size: var(--text-micro);
   font-weight: 700;
@@ -82,12 +102,6 @@ button.card:active {
 
 .specialMini {
   min-height: 2.6em;
-}
-
-.desc {
-  font-size: var(--text-small);
-  line-height: 1.45;
-  color: var(--color-muted);
 }
 
 /* 손패용 납작한 카드 */
@@ -117,5 +131,9 @@ button.card:active {
 
 .chip.selected {
   transform: translateY(-2px);
-  background: color-mix(in srgb, var(--color-accent) 18%, var(--color-surface));
+}
+
+/* 고른 카드는 배경 덮개를 강조색으로 물들인다 */
+.selected .art::after {
+  background: color-mix(in srgb, var(--color-accent) 30%, color-mix(in srgb, var(--color-surface) 70%, transparent));
 }

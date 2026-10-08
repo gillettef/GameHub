@@ -26,6 +26,23 @@
   border: 1px solid color-mix(in srgb, var(--color-muted) 30%, transparent);
 }
 
+/* 목표 카드는 가로형(880×630)이라 패널을 넓히고 카드를 패널 폭에 맞춘다 */
+.backdrop[data-kind='goal'] .panel {
+  max-width: 440px;
+}
+
+.goalFace {
+  display: block;
+  width: 100%;
+  aspect-ratio: 880 / 630;
+  border-radius: var(--radius-md);
+}
+
+/* 카드를 볼 때는 닫기 버튼이 카드 모서리를 가리지 않게 위를 띄운다 */
+.backdrop:not([data-kind='cell']) .panel {
+  padding-top: 46px;
+}
+
 .close {
   position: absolute;
   top: 8px;

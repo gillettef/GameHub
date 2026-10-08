@@ -15,8 +15,19 @@
   flex-wrap: wrap;
 }
 
+.item {
+  display: flex;
+  min-width: 0;
+}
+
+/* 목표 한 장 = 버튼(누르면 목표 카드 확대) */
 .goal,
 .linked {
+  width: 100%;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -30,10 +41,12 @@
   border-color: color-mix(in srgb, var(--color-accent) 60%, transparent);
 }
 
+.compact .item {
+  flex: 1 1 0;
+}
+
 .compact .goal,
 .compact .linked {
-  flex: 1 1 0;
-  min-width: 0;
   padding: 4px 6px;
 }
 
