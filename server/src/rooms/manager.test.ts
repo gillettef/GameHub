@@ -257,6 +257,20 @@ describe('제한 시간 · AI 대리 (Rules.md 6.3)', () => {
     expect(m.deadline(room)).toBe(at() + 90_000);
   });
 
+  it('사람이 1명뿐인 판(나머지 AI)은 제한 시간이 흐르지 않는다', () => {
+    let now = 1000;
+    const m = new RoomManager({ seed: () => 42, now: () => now, roomId: () => 'solo', hashToken: (t) => `h:${t}` });
+    m.create({ playerToken: 't1', nickname: '갑' });
+    m.addAi('solo', 'p1');
+    readyAll(m, 'solo', ['p1']);
+    const room = m.get('solo')!;
+    expect(room.turnTimeLimitSec).toBe(90);
+    expect(room.state.phase).toBe('drafting');
+    expect(m.deadline(room)).toBeNull();
+    now += 10 * 60_000;
+    expect(m.timeoutTurn('solo')).toBeNull();
+  });
+
   it('연속 2번 시간 초과하면 AI 대리, 직접 두기·받아들여진 행동으로만 되찾는다', () => {
     const { m, advance } = setup();
     readyAll(m, 'room1', ['p1', 'p2']);

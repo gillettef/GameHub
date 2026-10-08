@@ -441,9 +441,11 @@ export class RoomManager {
   // 턴 제한 시간 (Rules.md 5.4)
   // -------------------------------------------------------------------------
 
-  /** 지금 턴이 시간 초과되는 시각. 제한 없음·진행 중 아님·AI 턴·AI 대리 중이면 null */
+  /** 지금 턴이 시간 초과되는 시각. 제한 없음·진행 중 아님·AI 턴·AI 대리 중·기다리는 사람이 없는 판이면 null */
   deadline(room: Room): number | null {
     const state = room.state;
+    // 기권 안 한 사람이 1명뿐이면(나머지는 AI) 기다리는 사람이 없으니 시계를 재지 않는다 (Rules.md 6.3)
+    if (state.players.filter((p) => p.kind !== 'ai' && p.surrenderedOrder === null).length <= 1) return null;
     const turnLimit = room.turnTimeLimitSec ?? null;
     const limit = state.phase === 'drafting' ? draftTimeSec(turnLimit) : state.phase === 'playing' ? turnLimit : null;
     if (limit === null || !state.currentPlayerId || room.turnStartedAt == null) return null;
@@ -473,7 +475,7 @@ export class RoomManager {
     }
     // 안내는 자동 수 로그 바로 앞에 끼운다(진행 탭에서 "왜 그렇게 뒀는지"가 그 줄 위에 보인다)
     const before = room.state.log.length;
-    room.state = { ...r.state, log: [...r.state.log.slice(0, before), note(`${nick}: 제한 시간 ${secLabel(limit)}이 지나 ${TIMEOUT_LOG_MARK}`), ...r.state.log.slice(before)] };
+    room.state = { ...r.state, log: [...r.state.log.slice(0, before), note(`${nick}: 시간 초과(${secLabel(limit)})로 ${TIMEOUT_LOG_MARK}`), ...r.state.log.slice(before)] };
     room.afkStrikes = { ...(room.afkStrikes ?? {}), [pid]: strikes };
     room.timeoutTotals = { ...(room.timeoutTotals ?? {}), [pid]: (room.timeoutTotals?.[pid] ?? 0) + 1 };
     if (strikes >= AFK_STRIKES_FOR_AUTOPILOT && room.state.phase !== 'finished' && !room.autopilot?.includes(pid)) {

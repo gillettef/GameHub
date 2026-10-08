@@ -301,7 +301,7 @@ export function applyAction(state: GameState, action: Action): ActionResult {
       const mySeat = me.seat;
       s.players.forEach((p) => {
         const lost = (before[p.seat] ?? 0) - (after[p.seat] ?? 0);
-        if (p.seat !== mySeat && lost > 0) s = addLog(s, 'flip', action.playerId, `${me.nickname}이(가) ${p.nickname}의 땅 ${lost}칸을 가져갔습니다`);
+        if (p.seat !== mySeat && lost > 0) s = addLog(s, 'flip', action.playerId, `${me.nickname}: ${p.nickname}의 땅 ${lost}칸을 가져갔습니다`);
       });
       return { state: advance(s) };
     }

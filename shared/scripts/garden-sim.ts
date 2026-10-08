@@ -949,7 +949,9 @@ for (const P of [2, 3, 4]) {
     continue;
   }
   // ---- B. 똑똑한 드래프트 ----
-  for (const firstPick of [SEAT[P]!.draftFirst, SEAT[P]!.draftFirst === 'last' ? 'first' : 'last'] as const) {
+  // 첫 바퀴 순서를 표로 정한 인원은 draftFirst 가 무시되므로 비교 줄을 돌리지 않는다(같은 숫자만 나온다). 순서 비교는 SEAT_SEARCH 로 한다
+  const firstPickRuns = SEAT[P]!.draftOrder ? [SEAT[P]!.draftFirst] : ([SEAT[P]!.draftFirst, SEAT[P]!.draftFirst === 'last' ? 'first' : 'last'] as const);
+  for (const firstPick of firstPickRuns) {
     const seatWins = new Array<number>(P).fill(0);
     const pickPos = new Array<number>(SPECIES.length).fill(0);
     const pickCount = new Array<number>(SPECIES.length).fill(0);

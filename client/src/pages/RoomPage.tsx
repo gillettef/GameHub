@@ -385,6 +385,9 @@ function LobbyView({ roomId, onQuit }: { roomId: string; onQuit: () => void }) {
             {isHost ? '방장만 바꿀 수 있습니다. ' : '방장이 정합니다. '}
             시간이 지나면 자동으로 둡니다. {AFK_STRIKES_FOR_AUTOPILOT}번 연속이면 AI가 대신 두고, &lsquo;직접 두기&rsquo;를 누르면 되찾습니다. 며칠에 걸쳐 두려면 &lsquo;없음&rsquo;을 고르세요.
           </p>
+          {seats.filter((p) => p?.kind === 'human').length <= 1 && (
+            <p className={landing.help}>지금처럼 사람이 혼자고 나머지가 AI면 시계가 흐르지 않습니다. 사람이 2명 이상일 때만 적용됩니다.</p>
+          )}
           <div className={landing.aiPick} role="radiogroup" aria-label="차례 제한 시간">
             {TURN_TIME_OPTIONS_SEC.map((sec) => (
               <button
