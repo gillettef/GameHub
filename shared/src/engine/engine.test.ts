@@ -177,11 +177,13 @@ describe('영향력 (Rules.md 6.2·7절)', () => {
     expect(infAt(s, 0, { q: 5, r: -1 })).toBe(0);
   });
 
-  it('비옥토: 자기 칸 +1, 해바라기는 비옥토에서 둘레 3', () => {
+  it('비옥토: 자기 칸 +1, 해바라기는 비옥토에서 둘레 3 (밖에서는 2/1)', () => {
     const s0 = flatState([plant('sunflower', 'p0', 0, 3)]);
+    expect(infAt(s0, 0, { q: 0, r: 3 })).toBe(2);
+    expect(infAt(s0, 0, { q: 1, r: 3 })).toBe(1);
     const cells = s0.board!.cells.map((c) => (c.q === 0 && c.r === 3 ? { ...c, terrain: 'fertile' as const } : c));
     const s = { ...s0, board: { ...s0.board!, cells } };
-    expect(infAt(s, 0, { q: 0, r: 3 })).toBe(4);
+    expect(infAt(s, 0, { q: 0, r: 3 })).toBe(3);
     expect(infAt(s, 0, { q: 1, r: 3 })).toBe(3);
   });
 

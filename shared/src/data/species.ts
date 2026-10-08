@@ -27,7 +27,7 @@ export const SPECIES: readonly SpeciesSpec[] = [
   { ...BASE, id: 'vine', name: '덩굴', description: '한 방향을 골라 직선 두 칸에 2씩 뻗는다.', self: 2, line: 2, lineLength: 2 },
   { ...BASE, id: 'fern', name: '고사리', description: '가까운 곳을 비우고 별 모양으로 두 칸 떨어진 6칸에 퍼진다.', self: 1, star2: 1 },
   { ...BASE, id: 'dandelion', name: '민들레', description: '심은 뒤 거리 2 이내 빈 칸에 씨앗(영향력 2)을 날린다.', self: 1, ring1: 1, seed: 2 },
-  { ...BASE, id: 'sunflower', name: '해바라기', description: '비옥토에 심으면 둘레가 3이 된다.', self: 3, ring1: 1, fertileRing: 2 },
+  { ...BASE, id: 'sunflower', name: '해바라기', description: '비옥토에 심으면 둘레가 3이 된다. 다른 곳에서는 잔디보다 약하다.', self: 2, ring1: 1, fertileRing: 2 },
   { ...BASE, id: 'lotus', name: '연꽃', description: '연못과 맞닿은 빈 칸이면 뿌리가 닿지 않아도 심을 수 있다.', self: 1, ring1: 1, pondPlanting: true },
   { ...BASE, id: 'ivy', name: '담쟁이', description: '둘레에 식물이 있는 칸마다 1을 더 준다.', self: 1, ring1: 1, ivy: 1 },
   { ...BASE, id: 'bamboo', name: '대나무', description: '이웃한 내 대나무 1개당 자기 칸 +2.', self: 1, ring1: 2, cluster: 2 },
