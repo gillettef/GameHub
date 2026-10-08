@@ -25,10 +25,10 @@ export const SPECIES: readonly SpeciesSpec[] = [
   { ...BASE, id: 'oak', name: '참나무', description: '맞닿은 6칸을 한꺼번에 굳힌다.', self: 2, ring1: 2 },
   { ...BASE, id: 'pine', name: '소나무', description: '심은 칸은 거의 뺏기지 않는다.', self: 5, ring1: 1 },
   { ...BASE, id: 'kudzu', name: '칡', description: '한 방향을 골라 직선 두 칸에 2씩 뻗는다.', self: 2, line: 2, lineLength: 2 },
-  { ...BASE, id: 'fern', name: '고사리', description: '바로 옆은 비우고 한 칸 건너뛴 6칸에 퍼진다.', self: 1, star2: 1 },
+  { ...BASE, id: 'fern', name: '고사리', description: '바로 옆은 비우고 한 칸 건너뛴 6칸에 퍼진다.', self: 2, star2: 1 },
   { ...BASE, id: 'dandelion', name: '민들레', description: '심은 뒤 두 칸 안 빈 칸에 씨앗(영향력 2)을 날린다.', self: 1, ring1: 1, seed: 2 },
   { ...BASE, id: 'rapeseed', name: '유채', description: '기름진 땅에 심으면 맞닿은 칸에 3씩 준다. 다른 곳에서는 잔디보다 약하다.', self: 2, ring1: 1, fertileRing: 2 },
-  { ...BASE, id: 'lotus', name: '연꽃', description: '연못과 맞닿은 빈 칸이면 뿌리가 닿지 않아도 심을 수 있다.', self: 1, ring1: 1, pondPlanting: true },
+  { ...BASE, id: 'lotus', name: '연꽃', description: '연못과 맞닿은 빈 칸이면 뿌리가 닿지 않아도 심을 수 있다.', self: 2, ring1: 1, pondPlanting: true },
   { ...BASE, id: 'ivy', name: '담쟁이', description: '옆 칸 중 식물이 있는 칸에 1을 더 준다.', self: 1, ring1: 1, ivy: 1 },
   { ...BASE, id: 'bamboo', name: '대나무', description: '맞닿은 내 대나무 1개당 심은 칸 +2.', self: 1, ring1: 2, cluster: 2 },
   { ...BASE, id: 'mushroom', name: '버섯', description: '맞닿은 6칸에서 다른 모든 사람의 영향력을 2씩 줄인다.', self: 1, wither: 2 },
@@ -36,6 +36,10 @@ export const SPECIES: readonly SpeciesSpec[] = [
 ];
 
 export const SPECIES_IDS: readonly SpeciesId[] = SPECIES.map((s) => s.id);
+
+/** 목표 '꽃밭'이 세는 꽃, '숲'이 세는 나무. 이번 판 식물을 고를 때 이 목표가 나오면 하나 이상 넣는다 (Rules.md 4·8절) */
+export const FLOWER_SPECIES: readonly SpeciesId[] = ['rapeseed', 'lotus', 'mugunghwa'];
+export const FOREST_SPECIES: readonly SpeciesId[] = ['oak', 'bamboo'];
 
 const SPECIES_BY_ID = new Map(SPECIES.map((s) => [s.id, s]));
 
@@ -61,7 +65,7 @@ export const GOALS: readonly GoalSpec[] = [
   { id: 'forest', name: '숲', description: '이어진 내 참나무·대나무 3개 이상 무리 1개당 +4', species: null },
   { id: 'connected', name: '이어진 정원', description: '내 입구와 식물이 모두 이어져 있으면 +5', species: null },
   { id: 'border-guard', name: '경계 지키기', description: '다른 사람 땅과 맞닿은 내 땅 1칸당 +1', species: null },
-  { id: 'full-set', name: '고른 식물 다 쓰기', description: '고른 식물을 모두 한 번 이상 심었으면 +4', species: null },
+  { id: 'variety', name: '여러 가지 심기', description: '서로 다른 식물을 5종 이상 심었으면 +4', species: null },
   { id: 'pine-reserve', name: '소나무 보호구역', description: '내 땅 위의 내 소나무 1개당 +2', species: 'pine' },
   { id: 'kudzu-reserve', name: '칡 보호구역', description: '내 땅 위의 내 칡 1개당 +2', species: 'kudzu' },
   { id: 'fern-reserve', name: '고사리 보호구역', description: '내 땅 위의 내 고사리 1개당 +2', species: 'fern' },

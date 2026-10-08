@@ -3,7 +3,7 @@
  * AI 응답은 반드시 룰 엔진으로 재검증하고, 타임아웃·오류 시 엔진의 자동 수(autoAction)로 폴백한다.
  */
 import type { Action, GameState, PlayerId } from '@rootbound/shared';
-import { autoAction } from '@rootbound/shared';
+import { autoAction, maskState } from '@rootbound/shared';
 
 const AI_BASE_URL = process.env.AI_BASE_URL ?? 'http://127.0.0.1:8000';
 /** F027: AI는 2초 이내에 행동을 결정해야 한다 */
@@ -30,7 +30,8 @@ export async function requestAiDecision(state: GameState, playerId: PlayerId): P
     const res = await fetch(`${AI_BASE_URL}/decide`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ state, playerId, timeLimitMs: AI_TIMEOUT_MS }),
+      // AI 도 사람과 같은 정보만 본다: 자기 손만, 카드 더미·시드는 가린다
+      body: JSON.stringify({ state: maskState(state, playerId), playerId, timeLimitMs: AI_TIMEOUT_MS }),
       signal: AbortSignal.timeout(AI_TIMEOUT_MS + 200),
     });
     if (!res.ok) {

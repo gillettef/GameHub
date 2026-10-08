@@ -3,7 +3,7 @@
   position: absolute;
   left: var(--space-2);
   right: var(--space-2);
-  /* 보드를 가리지 않게 손패 패널 바로 위(보드와 손패 사이 빈 공간)에 띄운다 */
+  /* 보드를 덜 가리게 마켓 줄 바로 위(보드와 바닥 패널 사이)에 띄운다 */
   bottom: 278px;
   z-index: 12;
   display: flex;
@@ -68,7 +68,7 @@
   }
 }
 
-/* 드래프트 화면처럼 아래가 붐빌 때는 상태 창 아래에 띄운다 */
+/* 첫 안내처럼 아래 카드·마켓을 가리지 않아야 할 때는 상태 창 아래에 띄운다 */
 .coachTop {
   composes: coach;
   bottom: auto;

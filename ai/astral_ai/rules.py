@@ -19,7 +19,6 @@ from .models import (
     Action,
     Board,
     DiscardAction,
-    DraftAction,
     GameResult,
     GameState,
     Plant,
@@ -38,6 +37,10 @@ DIRECTIONS: tuple[tuple[int, int], ...] = ((1, 0), (1, -1), (0, -1), (-1, 0), (-
 
 T = TypeVar("T")
 
+# 꽃밭·숲 목표가 세는 종 (TS data/species.ts FLOWER_SPECIES / FOREST_SPECIES. specs.json 에 없어 여기 둔다)
+FLOWER_SPECIES: tuple[str, ...] = ("rapeseed", "lotus", "mugunghwa")
+FOREST_SPECIES: tuple[str, ...] = ("oak", "bamboo")
+
 # ---------------------------------------------------------------------------
 # 기준표 (specs.json)
 # ---------------------------------------------------------------------------
@@ -47,12 +50,12 @@ T = TypeVar("T")
 class Specs:
     # 종 id → 스펙 dict (표 순서 유지)
     species: dict[str, dict[str, Any]]
-    # 표 순서 = 드래프트 자동 픽 순서
+    # 표 순서 (이번 판 식물 state.species 도 이 순서)
     species_ids: tuple[str, ...]
     # 목표 id → 연계 종 (없으면 None)
     goal_species: dict[str, Optional[str]]
     constants: dict[str, int]
-    # 인원 → {picks, copies, maxTakers, draftFirstRound, komi}
+    # 인원 → {gardenSize, copies, komi}
     player_count_rules: dict[int, dict[str, Any]]
 
 
@@ -518,15 +521,14 @@ def _goal_points(
     if goal == "every-tile":
         return [len({idx.tile[c] for c in cs}) for cs in mine]
     if goal == "flower-bed":
-        flowers = ("rapeseed", "lotus", "mugunghwa")
-        return [2 * sum(1 for c in cs if occ.plant_species[c] in flowers) for cs in mine]
+        return [2 * sum(1 for c in cs if occ.plant_species[c] in FLOWER_SPECIES) for cs in mine]
     if goal == "forest":
         out: list[int] = []
         for seat in range(P):
             trees = [
                 c
                 for c in range(idx.n)
-                if occ.plant_seat[c] == seat and occ.plant_species[c] in ("oak", "bamboo")
+                if occ.plant_seat[c] == seat and occ.plant_species[c] in FOREST_SPECIES
             ]
             out.append(4 * sum(1 for k in _components(trees, idx) if len(k) >= 3))
         return out
@@ -541,11 +543,14 @@ def _goal_points(
             sum(1 for c in cs if any(owners[x] >= 0 and owners[x] != seat for x in idx.ring1[c]))
             for seat, cs in enumerate(mine)
         ]
-    if goal == "full-set":
+    if goal == "variety":
+        # 내가 심은 서로 다른 식물이 VARIETY_SPECIES 종 이상이면 VARIETY_BONUS
+        c_ = load_specs().constants
+        id_of = {p.seat: p.id for p in state.players}
         out = []
-        for p in state.players:
-            planted = {pl.species for pl in state.plants if pl.ownerId == p.id}
-            out.append(4 if len(p.drafted) > 0 and all(s in planted for s in p.drafted) else 0)
+        for seat in range(P):
+            kinds = {pl.species for pl in state.plants if pl.ownerId == id_of.get(seat)}
+            out.append(c_["VARIETY_BONUS"] if len(kinds) >= c_["VARIETY_SPECIES"] else 0)
         return out
     # 종 연계 보호구역 목표
     pts = [0] * P
@@ -621,40 +626,27 @@ def _update_player(state: GameState, player_id: str, **patch: Any) -> GameState:
     return state.model_copy(update={"players": players})
 
 
-def draft_options(state: GameState, player_id: str) -> list[str]:
-    """드래프트에서 지금 고를 수 있는 종 (표 순서)."""
-    if state.phase != "drafting" or state.currentPlayerId != player_id:
-        return []
-    me = get_player(state, player_id)
-    if me is None:
-        return []
-    max_takers = rules_for(len(state.players))["maxTakers"]
-    return [
-        s
-        for s in load_specs().species_ids
-        if s not in me.drafted and sum(1 for p in state.players if s in p.drafted) < max_takers
-    ]
+def market_size(state: GameState) -> int:
+    """라운드마다 펼칠 마켓 장수 (Rules.md 5절): 기권 안 한 인원 수. 장수 규칙이 바뀌면 여기만 고친다."""
+    return sum(1 for p in state.players if p.surrenderedOrder is None)
 
 
-def _finish_draft(state: GameState) -> GameState:
-    rule = rules_for(len(state.players))
-    hand_size = load_specs().constants["HAND_SIZE"]
-    seed = state.deckSeed  # 덱 셔플은 보드 시드와 따로 (Rules.md 11절)
-    players: list[PlayerState] = []
-    for p in sorted(state.players, key=lambda x: x.seat):
-        cards = [s for s in p.drafted for _ in range(rule["copies"])]
-        items, seed = shuffle(cards, seed)
-        players.append(p.model_copy(update={"hand": items[:hand_size], "deck": items[hand_size:]}))
-    return state.model_copy(
-        update={
-            "phase": "playing",
-            "players": players,
-            "deckSeed": seed,
-            "round": 1,
-            "turn": 1,
-            "currentPlayerId": players[0].id,
-        }
-    )
+def reveal_market(state: GameState) -> GameState:
+    """라운드 시작 (TS revealMarket): 지난 마켓 잔여는 버리고 더미 맨 앞에서 market_size 장을 펼친다(모자라면 남은 만큼)."""
+    n = market_size(state)
+    return state.model_copy(update={"market": list(state.pile[:n]), "pile": list(state.pile[n:])})
+
+
+def next_round_start(state: GameState) -> int:
+    """다음 라운드의 첫 자리 (TS nextRoundStart): roundStart 다음 자리부터 자리 순서로 기권하지 않은 첫 사람.
+    손이 빈 것과는 무관하다. 선 돌리기 규칙이 바뀌면 여기만 고친다."""
+    P = len(state.players)
+    by_seat = sorted(state.players, key=lambda p: p.seat)
+    for k in range(1, P + 1):
+        p = by_seat[(state.roundStart + k) % P]
+        if p.surrenderedOrder is None:
+            return p.seat
+    return state.roundStart
 
 
 def _can_act(p: PlayerState) -> bool:
@@ -684,39 +676,73 @@ def _finish_game(state: GameState, reason: str) -> GameState:
     )
 
 
+def next_turn(state: GameState) -> Optional[tuple[PlayerState, Optional[int]]]:
+    """다음 차례인 사람과, 새 라운드로 넘어가면 그 라운드의 첫 자리(아니면 None). 둘 사람이 없으면 None.
+    라운드 안에서는 roundStart 부터 자리 순서로 지금 자리 뒤에 남은 사람 중 둘 수 있는 첫 사람,
+    없으면 next_round_start 자리부터 둘 수 있는 첫 사람 (TS advance)."""
+    P = len(state.players)
+    by_seat = sorted(state.players, key=lambda p: p.seat)
+    cur = get_player(state, state.currentPlayerId)
+    cur_seat = cur.seat if cur is not None else 0
+    start = state.roundStart
+    for k in range((cur_seat - start + P) % P + 1, P):
+        nxt = by_seat[(start + k) % P]
+        if _can_act(nxt):
+            return nxt, None
+    next_start = next_round_start(state)
+    for k in range(P):
+        nxt = by_seat[(next_start + k) % P]
+        if _can_act(nxt):
+            return nxt, next_start
+    return None
+
+
 def _advance(state: GameState) -> GameState:
-    """다음 차례로 넘긴다. 둘 사람이 없으면 종료."""
+    """다음 차례로 넘긴다 (TS advance). 새 라운드면 마켓을 펼치고, 둘 사람이 없으면 종료."""
     active = [p for p in state.players if p.surrenderedOrder is None]
     if len(active) <= 1 and len(state.players) > 1:
         return _finish_game(state, "last-standing")
-    order = sorted(state.players, key=lambda p: p.seat)
-    cur = get_player(state, state.currentPlayerId)
-    cur_seat = cur.seat if cur is not None else -1
-    for k in range(1, len(order) + 1):
-        nxt = order[(cur_seat + k) % len(order)]
-        if not _can_act(nxt):
-            continue
-        wrapped = nxt.seat <= cur_seat
-        return state.model_copy(
-            update={
-                "currentPlayerId": nxt.id,
-                "turn": state.turn + 1,
-                "round": state.round + (1 if wrapped else 0),
-            }
-        )
-    return _finish_game(state, "complete")
+    nt = next_turn(state)
+    if nt is None:
+        return _finish_game(state, "complete")
+    nxt, new_start = nt
+    if new_start is None:
+        return state.model_copy(update={"currentPlayerId": nxt.id, "turn": state.turn + 1})
+    s = state.model_copy(
+        update={"currentPlayerId": nxt.id, "turn": state.turn + 1, "round": state.round + 1, "roundStart": new_start}
+    )
+    return reveal_market(s)
 
 
 def _spend_card(state: GameState, player_id: str, species: str) -> GameState:
-    """손패에서 한 장을 빼고 덱 맨 앞에서 한 장 뽑는다."""
+    """손에서 카드 한 장을 뺀다 (뽑기 없음. 새 카드는 마켓에서 가져온다)."""
     me = get_player(state, player_id)
     assert me is not None
     hand = list(me.hand)
     hand.remove(species)
-    deck = list(me.deck)
-    if deck:
-        hand.append(deck.pop(0))
-    return _update_player(state, player_id, hand=hand, deck=deck)
+    return _update_player(state, player_id, hand=hand)
+
+
+def validate_take(state: GameState, take: Optional[int]) -> Optional[str]:
+    """가져오기 검사 (TS validateTake): 마켓에 카드가 있으면 자리 번호가 꼭 있어야 하고, 비었으면 없어야 한다."""
+    if not state.market:
+        return None if take is None else "가져올 카드가 없습니다"
+    if take is None:
+        return "가져올 카드를 고르세요"
+    if isinstance(take, bool) or not isinstance(take, int) or take < 0 or take >= len(state.market):
+        return "없는 카드입니다"
+    return None
+
+
+def _take_card(state: GameState, player_id: str, take: Optional[int]) -> GameState:
+    """마켓 take 번 카드를 손에 넣는다. 그 자리는 채우지 않는다(순서 유지)."""
+    if take is None:
+        return state
+    card = state.market[take]
+    me = get_player(state, player_id)
+    assert me is not None
+    s = state.model_copy(update={"market": [x for i, x in enumerate(state.market) if i != take]})
+    return _update_player(s, player_id, hand=[*me.hand, card])
 
 
 def validate_plant(state: GameState, a: PlantAction) -> Optional[str]:
@@ -728,7 +754,7 @@ def validate_plant(state: GameState, a: PlantAction) -> Optional[str]:
     if me is None:
         return "없는 플레이어입니다"
     if a.species not in load_specs().species or a.species not in me.hand:
-        return "손패에 없는 카드입니다"
+        return "손에 없는 카드입니다"
     sp = species_spec(a.species)
     idx = board_index(require_board(state))
     c = idx.at(a.pos.q, a.pos.r)
@@ -739,6 +765,9 @@ def validate_plant(state: GameState, a: PlantAction) -> Optional[str]:
             return "칡 방향이 올바르지 않습니다"
     elif a.direction is not None:
         return "이 식물은 방향이 없습니다"
+    take_err = validate_take(state, a.take)
+    if take_err:
+        return take_err
     if a.seed is not None:
         if not sp["seed"]:
             return "이 식물은 씨앗을 날리지 않습니다"
@@ -764,25 +793,12 @@ def apply_plant_unchecked(state: GameState, a: PlantAction) -> GameState:
         seeds = [*state.seeds, Seed(ownerId=a.playerId, pos=Position(q=a.seed.q, r=a.seed.r))]
     s = state.model_copy(update={"plants": [*state.plants, plant], "seeds": seeds})
     s = _spend_card(s, a.playerId, a.species)
+    s = _take_card(s, a.playerId, a.take)
     return _advance(s)
 
 
 def apply_action(state: GameState, action: Action) -> tuple[GameState, Optional[str]]:
     """TS applyAction 과 같은 상태 전이. (새 상태, 거부 사유) — 거부 시 상태는 입력 그대로."""
-    if isinstance(action, DraftAction):
-        if state.phase != "drafting":
-            return state, "드래프트 중이 아닙니다"
-        if state.currentPlayerId != action.playerId:
-            return state, "내가 고를 차례가 아닙니다"
-        if action.species not in draft_options(state, action.playerId):
-            return state, "고를 수 없는 종입니다"
-        me = get_player(state, action.playerId)
-        assert me is not None
-        s = _update_player(state, action.playerId, drafted=[*me.drafted, action.species])
-        next_index = s.draftIndex + 1
-        if next_index >= len(s.draftOrder):
-            return _finish_draft(s.model_copy(update={"draftIndex": next_index})), None
-        return s.model_copy(update={"draftIndex": next_index, "currentPlayerId": s.draftOrder[next_index]}), None
     if isinstance(action, PlantAction):
         err = validate_plant(state, action)
         if err:
@@ -795,10 +811,14 @@ def apply_action(state: GameState, action: Action) -> tuple[GameState, Optional[
             return state, "내 차례가 아닙니다"
         me = get_player(state, action.playerId)
         if me is None or action.species not in me.hand:
-            return state, "손패에 없는 카드입니다"
+            return state, "손에 없는 카드입니다"
         if has_any_plant(state, action.playerId):
             return state, "심을 수 있는 칸이 있으면 버릴 수 없습니다"
-        return _advance(_spend_card(state, action.playerId, action.species)), None
+        take_err = validate_take(state, action.take)
+        if take_err:
+            return state, take_err
+        s = _spend_card(state, action.playerId, action.species)
+        return _advance(_take_card(s, action.playerId, action.take)), None
     if isinstance(action, SurrenderAction):
         if state.phase != "playing":
             return state, "진행 중에만 기권할 수 있습니다"
@@ -806,7 +826,8 @@ def apply_action(state: GameState, action: Action) -> tuple[GameState, Optional[
         if me is None or me.surrenderedOrder is not None:
             return state, "기권할 수 없습니다"
         order = sum(1 for p in state.players if p.surrenderedOrder is not None)
-        s = _update_player(state, action.playerId, surrenderedOrder=order)
+        # 기권자의 손 카드는 버린다(보드에는 남는다). 마켓은 그대로 두고 다음 라운드 시작 때 버려진다
+        s = _update_player(state, action.playerId, surrenderedOrder=order, hand=[])
         if s.currentPlayerId == action.playerId:
             return _advance(s), None
         if sum(1 for p in s.players if p.surrenderedOrder is None) <= 1:

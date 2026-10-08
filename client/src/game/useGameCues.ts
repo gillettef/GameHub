@@ -10,7 +10,7 @@ import { useGameStore } from '../store/gameStore';
 
 const KIND_CUE: Partial<Record<LogKind, Cue>> = {
   plant: 'place',
-  draft: 'place',
+  take: 'place',
   flip: 'hit',
   surrender: 'destroy',
 };
@@ -56,9 +56,9 @@ export function useGameCues(): void {
       playCue(state.result?.ranking[0] === viewerId ? 'win' : 'lose', 0.4);
       return;
     }
-    const myTurnNow = (state.phase === 'playing' || state.phase === 'drafting') && state.currentPlayerId === viewerId && (before.current !== viewerId || state.turn !== before.turn);
+    const myTurnNow = state.phase === 'playing' && state.currentPlayerId === viewerId && (before.current !== viewerId || state.turn !== before.turn);
     if (!myTurnNow) return;
-    if (mode === 'online') announceMyTurn(state.phase === 'drafting' ? '식물을 고를 차례입니다' : `${state.round}라운드 · 식물을 심을 차례입니다`);
+    if (mode === 'online') announceMyTurn(`${state.round}라운드 · 식물을 심을 차례입니다`);
     else if (!handoffPending) playCue('turn');
   }, [state, viewerId, mode, handoffPending]);
 }

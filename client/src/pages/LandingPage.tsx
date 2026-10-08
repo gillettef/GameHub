@@ -101,7 +101,7 @@ export function LandingPage() {
 
       <section className={styles.sectionPrimary}>
         <h2 className={styles.h2}>AI와 바로 시작</h2>
-        <p className={styles.help}>AI 상대 수를 고르면 곧바로 식물 고르기부터 시작합니다.</p>
+        <p className={styles.help}>AI 상대 수를 고르면 곧바로 첫 차례부터 시작합니다.</p>
         <div className={styles.aiRow}>
           <div className={styles.aiPick} role="radiogroup" aria-label="AI 상대 수">
             {[1, 2, 3].map((n) => (
@@ -189,7 +189,7 @@ function TutorialSection({ primary }: { primary: boolean }) {
   return (
     <section className={primary ? styles.sectionPrimary : styles.section}>
       <h2 className={styles.h2}>{primary ? '처음이세요?' : '튜토리얼 다시 보기'}</h2>
-      <p className={styles.help}>연습 봇과 한 판 두면서 카드 고르기 → 칸 고르기 → 심기를 한 단계씩 따라 합니다. 5분이면 충분합니다.</p>
+      <p className={styles.help}>연습 봇과 한 판 두면서 카드 고르기 → 칸 고르기 → 마켓에서 가져오기 → 심기를 한 단계씩 따라 합니다. 5분이면 충분합니다.</p>
       <button type="button" className={primary ? 'pill pill--lg' : 'pill pill--outline'} onClick={() => navigate('/tutorial')}>
         <LearnIcon size={18} /> 튜토리얼 시작
       </button>

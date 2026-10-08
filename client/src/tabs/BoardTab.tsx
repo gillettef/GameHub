@@ -1,17 +1,17 @@
 import { memo, useCallback, useMemo } from 'react';
 import { computeInfluence, legalPlantCells, legalSeedCells, posKey } from '@rootbound/shared';
-import { DraftPanel } from '../components/DraftPanel';
 import { GoalList } from '../components/GoalList';
 import { Hand } from '../components/Hand';
 import { HexBoard } from '../components/HexBoard';
+import { Market } from '../components/Market';
 import { PlantBar } from '../components/PlantBar';
 import { asState, buildCells, legalKeys, previewPlant } from '../game/derived';
-import { selectIsMyTurn, selectSelectedSpecies, selectState, selectViewerId, useGameStore } from '../store/gameStore';
+import { selectIsMyTurn, selectNeedsTake, selectSelectedSpecies, selectState, selectViewerId, useGameStore } from '../store/gameStore';
 import styles from './BoardTab.module.css';
 
 /**
- * 정원 탭 (F008, F009). 드래프트 중에는 드래프트 화면, 진행 중에는 보드 + 손패 + 심기 확인 바.
- * 위→아래 한 방향: 목표 칩 → 보드(남는 높이 전부) → 바닥 패널(확인 바 · 손패 · 차례 안내).
+ * 정원 탭 (F008, F009). 보드 + 마켓 + 내 카드 + 심기 확인 바.
+ * 위→아래 한 방향: 목표 칩 → 보드(남는 높이 전부) → 바닥 패널(확인 바 · 마켓 · 내 카드 · 차례 안내).
  */
 export const BoardTab = memo(function BoardTab() {
   const state = useGameStore(selectState);
@@ -26,6 +26,7 @@ export const BoardTab = memo(function BoardTab() {
   const showInfluence = useGameStore((s) => s.showInfluence);
   const toggleInfluence = useGameStore((s) => s.toggleInfluence);
   const tapCell = useGameStore((s) => s.tapCell);
+  const needsTake = useGameStore(selectNeedsTake);
 
   const cells = useMemo(() => (state ? buildCells(state) : []), [state]);
   // 손패 카드마다 심을 칸 수 (0 이면 그 카드는 음영 + 고르기 잠금)와, 손패 어느 카드로든 심을 수 있는 칸. 상태가 바뀔 때만 계산한다
@@ -58,7 +59,6 @@ export const BoardTab = memo(function BoardTab() {
   const onCellClick = useCallback((q: number, r: number) => tapCell({ q, r }), [tapCell]);
 
   if (!state || !viewerId) return null;
-  if (state.phase === 'drafting') return <DraftPanel />;
   if (!state.board) return null;
 
   const me = state.players.find((p) => p.id === viewerId);
@@ -71,14 +71,18 @@ export const BoardTab = memo(function BoardTab() {
       : !isMyTurn
         ? `${current?.nickname ?? ''}의 차례`
         : stuck
-          ? '심을 칸이 없습니다. 카드를 눌러 한 장 버리세요'
+          ? needsTake
+            ? '심을 칸이 없습니다. 마켓에서 가져올 카드를 고른 뒤 한 장 버리세요'
+            : '심을 칸이 없습니다. 카드를 눌러 한 장 버리세요'
           : !species
             ? '빛나는 칸에 심을 수 있습니다. 먼저 내 카드에서 한 장을 고르세요'
             : selectedDead
               ? '이 카드는 지금 심을 칸이 없습니다. 다른 카드를 고르세요'
               : !pendingPos
-              ? '밝게 빛나는 칸에 심을 수 있습니다'
-              : '결과를 보고 심기를 누르세요';
+                ? '밝게 빛나는 칸에 심을 수 있습니다'
+                : needsTake
+                  ? '마켓에서 가져올 카드를 고르세요'
+                  : '결과를 보고 심기를 누르세요';
 
   return (
     <div className={styles.root}>
@@ -101,6 +105,7 @@ export const BoardTab = memo(function BoardTab() {
       </div>
       <div className={styles.bottom}>
         {isMyTurn && pendingPos ? <PlantBar preview={preview} /> : null}
+        <Market />
         {state.phase === 'playing' && (
           <div className={styles.handPanel}>
             <Hand plantable={plantable} />

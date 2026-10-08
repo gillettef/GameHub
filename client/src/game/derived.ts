@@ -11,6 +11,7 @@ import {
   legalDirections,
   legalPlantCells,
   posKey,
+  SPECIES_IDS,
 } from '@rootbound/shared';
 
 /** 가려진 상태도 엔진 함수에 그대로 넣을 수 있다(모양 호환) */
@@ -82,8 +83,8 @@ export interface PlayerSummary {
   isCurrent: boolean;
   surrendered: boolean;
   handCount: number;
-  deckCount: number;
-  drafted: SpeciesId[];
+  /** 이 사람이 심은 식물 종류 (표 순서, 중복 없음) */
+  plantedSpecies: SpeciesId[];
   score: Score | null;
 }
 
@@ -99,8 +100,7 @@ export function buildPlayerSummaries(state: MaskedGameState, precomputed?: Recor
       isCurrent: state.currentPlayerId === p.id,
       surrendered: p.surrenderedOrder !== null,
       handCount: p.handCount,
-      deckCount: p.deckCount,
-      drafted: p.drafted,
+      plantedSpecies: SPECIES_IDS.filter((sp) => state.plants.some((pl) => pl.ownerId === p.id && pl.species === sp)),
       score: scores?.[p.id] ?? null,
     }));
 }
@@ -132,7 +132,6 @@ export function previewPlant(
     ...s,
     plants: [...s.plants, { id: 'preview', species, ownerId: viewerId, pos, direction: sp.line ? (direction ?? 0) : null }],
     seeds: seed && sp.seed ? [...s.seeds, { ownerId: viewerId, pos: seed }] : s.seeds,
-    players: s.players.map((p) => (p.id === viewerId && !p.drafted.includes(species) ? { ...p, drafted: [...p.drafted, species] } : p)),
   };
   const before = computeScores(s);
   const next = computeScores(after);

@@ -6,7 +6,7 @@ import { selectState, selectViewerId, useGameStore } from '../store/gameStore';
 import styles from './StatusTab.module.css';
 
 /**
- * 점수 탭 (F010, F011): 지금 끝난다면 몇 점인가. 좌석별 땅·목표·무궁화·덤·합계와 고른 종, 남은 카드.
+ * 점수 탭 (F010, F011): 지금 끝난다면 몇 점인가. 좌석별 땅·목표·무궁화·덤·합계와 손 장수, 심은 식물 종류(목표 '여러 가지 심기').
  * 점수는 언제나 보드에서 다시 계산한 예상값이다(Rules.md 9절).
  */
 export const StatusTab = memo(function StatusTab() {
@@ -41,8 +41,8 @@ export const StatusTab = memo(function StatusTab() {
                 </div>
               )}
               <div className={styles.meta}>
-                <span>손에 {r.handCount}장 · 남은 {r.deckCount}장</span>
-                <span className={styles.drafted}>{r.drafted.map((s) => getSpecies(s).name).join(' · ') || '고른 식물 없음'}</span>
+                <span>손에 {r.handCount}장 · 심은 식물 {r.plantedSpecies.length}가지</span>
+                <span className={styles.planted}>{r.plantedSpecies.map((s) => getSpecies(s).name).join(' · ') || '아직 심은 식물 없음'}</span>
               </div>
             </li>
           ))}

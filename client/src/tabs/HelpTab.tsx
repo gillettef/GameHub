@@ -16,13 +16,16 @@ export const HelpTab = memo(function HelpTab() {
         <h2 className={styles.h2}>한 판의 흐름</h2>
         <ol className={styles.steps}>
           <li>
-            <strong>식물 고르기</strong>: 공개된 목표 3장을 보고 식물을 번갈아 고릅니다. 고른 식물로 이번 판에 쓸 내 카드가 만들어집니다.
+            <strong>준비</strong>: 목표 3장과 이번 판 식물이 공개됩니다(카드 탭 위쪽). 이 식물들로 카드 더미를 섞고 각자 {HAND_SIZE}장씩 받습니다.
           </li>
           <li>
-            <strong>심기</strong>: 내 차례에 손에 든 카드({HAND_SIZE}장) 중 1장을 골라, 내 뿌리가 닿는(영향력 1 이상) 빈 칸에 심고 1장 뽑습니다.
+            <strong>마켓</strong>: 라운드가 시작될 때마다 카드 더미에서 카드를 앞면으로 펼칩니다. 이것이 마켓이고, 모두가 볼 수 있습니다.
           </li>
           <li>
-            <strong>끝</strong>: 모두 남은 카드를 다 쓰면 끝나고 점수를 셉니다. 패스는 없습니다.
+            <strong>심기</strong>: 내 차례에 내 카드 1장을 골라 내 뿌리가 닿는(영향력 1 이상) 빈 칸에 심고, 마켓에서 1장을 골라 가져옵니다. 심을 칸이 하나도 없을 때만 1장을 버리고 가져옵니다.
+          </li>
+          <li>
+            <strong>끝</strong>: 카드 더미와 마켓이 떨어지면 남은 내 카드만 씁니다. 모두 카드를 다 쓰면 끝나고 점수를 셉니다. 패스는 없습니다.
           </li>
         </ol>
       </section>
@@ -57,12 +60,12 @@ export const HelpTab = memo(function HelpTab() {
       <section className={styles.section}>
         <h2 className={styles.h2}>목표 카드</h2>
         <p>
-          판마다 3장이 공개됩니다. "○○ 보호구역"은 끝날 때 내 땅 위에 있는 내 ○○ 1개당 +{RESERVE_BONUS}점이라, 식물 고르기에서 그 식물이 인기가 많아집니다.
+          판마다 3장이 공개됩니다. "○○ 보호구역"은 끝날 때 내 땅 위에 있는 내 ○○ 1개당 +{RESERVE_BONUS}점이라, 마켓에 그 식물이 나오면 서로 가져가려 합니다.
         </p>
       </section>
       <section className={styles.section}>
         <h2 className={styles.h2}>순서 보정</h2>
-        <p>두는 순서에 따른 유불리는 식물 고르는 순서와 순서 보너스 점수로 맞춥니다. 점수 탭에 순서 보너스가 표시됩니다.</p>
+        <p>두는 순서에 따른 유불리는 순서 보너스 점수로 맞춥니다. 점수 탭에 순서 보너스가 표시됩니다.</p>
       </section>
     </div>
   );

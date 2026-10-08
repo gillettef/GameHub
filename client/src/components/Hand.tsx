@@ -4,7 +4,7 @@ import { SpeciesCard } from './SpeciesCard';
 import styles from './Hand.module.css';
 
 /**
- * 내 손패 (최대 3장). 카드를 누르면 확대 모달에서 고른다. 상대 차례에도 보기는 된다.
+ * 내 카드. 카드를 누르면 확대 모달에서 고른다. 상대 차례에도 보기는 된다.
  * plantable: 손패 카드별 심을 칸 수 (BoardTab 이 계산). 0 이면 음영
  */
 export const Hand = memo(function Hand({ plantable = [] }: { plantable?: number[] }) {
@@ -31,9 +31,6 @@ export const Hand = memo(function Hand({ plantable = [] }: { plantable?: number[
         </div>
       ))}
       {me.hand.length === 0 && <p className={styles.empty}>카드를 모두 썼습니다</p>}
-      <span className={styles.deck} title="카드 더미에 남은 카드">
-        남은 {me.deckCount}장
-      </span>
     </div>
   );
 });

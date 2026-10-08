@@ -53,7 +53,10 @@ function variedAction(s: GameState, rnd: { seed: number }): Action {
   const options = [...new Set(me.hand)].flatMap((sp) => legalPlantCells(s, pid, sp, inf).map((pos) => ({ sp, pos })));
   if (options.length === 0) return autoAction(s, pid) as Action;
   const { sp, pos } = pick(options);
-  const base = autoAction({ ...s, players: s.players.map((p) => (p.id === pid ? { ...p, hand: [sp, ...p.hand.filter((_, i) => i !== p.hand.indexOf(sp))] } : p)) }, pid) as Action;
+  // 가져오기도 시드로 고른다(마켓이 비었으면 autoAction 이 take 를 빼 둔다)
+  const take = s.market.length > 0 ? { take: pick(s.market.map((_, i) => i)) } : {};
+  const base0 = autoAction({ ...s, players: s.players.map((p) => (p.id === pid ? { ...p, hand: [sp, ...p.hand.filter((_, i) => i !== p.hand.indexOf(sp))] } : p)) }, pid) as Action;
+  const base = { ...base0, ...take } as Action;
   if (base.type !== 'PLANT') return base;
   const action: Action = { ...base, species: sp, pos };
   if (sp === 'kudzu') {
@@ -75,12 +78,13 @@ function scenario(players: number, seed: number) {
   let s = createInitialState(`fixture-${players}`, seed);
   for (let i = 0; i < players; i++) s = joinPlayer(s, createPlayer(`p${i}`, `P${i}`, i === 0 ? 'human' : 'ai')).state;
   s = applyAction(s, { type: 'READY', playerId: 'p0' }).state; // AI 는 처음부터 준비 완료
-  if (s.phase !== 'drafting') throw new Error('픽스처: 드래프트가 시작되지 않았습니다');
+  if (s.phase !== 'playing') throw new Error('픽스처: 게임이 시작되지 않았습니다');
   const steps: unknown[] = [];
   const initial = { ...s, log: [] };
   const rnd = { seed: seed * 7 + 1 };
   for (let i = 0; i < 400 && s.phase !== 'finished'; i++) {
-    const action = variedAction(s, rnd);
+    // 3·4인은 중간에 지금 차례인 사람이 기권한다(기권 뒤 선 돌리기·마켓 장수를 TS·Python 이 같게 하는지)
+    const action: Action = players >= 3 && i === 20 ? { type: 'SURRENDER', playerId: s.currentPlayerId as PlayerId } : variedAction(s, rnd);
     const r = applyAction(s, action);
     if (r.error) throw new Error(`픽스처: ${r.error}`);
     s = r.state;
