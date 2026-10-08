@@ -7,6 +7,13 @@ export const HelpTab = memo(function HelpTab() {
   return (
     <div className={styles.root}>
       <section className={styles.section}>
+        <h2 className={styles.h2}>이야기</h2>
+        <p>
+          반딧골 한가운데 오래 버려진 빈터가 시민 정원으로 열렸습니다. 울타리는 없고, 가을 심사의 밤에 <strong>뿌리가 가장 깊게 닿은 사람</strong>이 그 땅을 맡습니다.
+          이웃들은 해가 진 뒤 각자의 쪽문(입구)에서 모종을 심어 나가고, 밤마다 관리소 앞 나눔 장터(마켓)에서 한 포기씩 가져갑니다. 정원이 초록으로 덮일수록 반딧불이가 돌아옵니다.
+        </p>
+      </section>
+      <section className={styles.section}>
         <h2 className={styles.h2}>목표</h2>
         <p>
           차례마다 식물 하나를 심어 땅을 넓힙니다. 끝났을 때 <strong>내 땅 1칸 = 1점</strong>에 목표 카드 3장의 점수를 더해 가장 높은 사람이 이깁니다.
