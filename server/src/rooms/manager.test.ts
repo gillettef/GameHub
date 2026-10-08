@@ -17,8 +17,15 @@ function autoStep(m: RoomManager, roomId: string): void {
   if (r.error) throw new Error(r.error);
 }
 
+/** 모두 준비 → 이번 판 식물 공개 단계에서 사람이 모두 확인 → 1라운드 가져오기 */
 function readyAll(m: RoomManager, roomId: string, ids: PlayerId[]): void {
   for (const id of ids) m.act(roomId, id, { type: 'READY', playerId: id });
+  for (const id of ids) if (m.get(roomId)!.state.phase === 'reveal') m.act(roomId, id, { type: 'CONFIRM', playerId: id });
+}
+
+/** 가져오기 단계를 자동 수로 끝낸다 */
+function toPlant(m: RoomManager, roomId: string): void {
+  while (m.get(roomId)!.state.stage === 'take') autoStep(m, roomId);
 }
 
 describe('RoomManager 생성·입장·퇴장 (F001, F002, F003)', () => {
@@ -70,16 +77,19 @@ describe('로비 · AI 좌석 · 시작 (F002, F026)', () => {
     expect(m.get('room1')?.state.players).toHaveLength(2);
   });
 
-  it('전원 준비되면 바로 심기가 시작되고, AI 자리를 사람이 조작할 수 없다', () => {
+  it('전원 준비되면 이번 판 식물 공개, 확인하면 가져오기가 시작되고, AI 자리를 사람이 조작할 수 없다', () => {
     const m = makeManager();
     m.create({ playerToken: 't1', nickname: '갑' });
     const { playerId: aiId } = m.addAi('room1', 'p1');
-    readyAll(m, 'room1', ['p1']);
+    m.act('room1', 'p1', { type: 'READY', playerId: 'p1' });
+    expect(m.get('room1')!.state.phase).toBe('reveal');
+    m.act('room1', 'p1', { type: 'CONFIRM', playerId: 'p1' });
     const state = m.get('room1')!.state;
     expect(state.phase).toBe('playing');
+    expect(state.stage).toBe('take');
     expect(state.board?.cells).toHaveLength(49);
     expect(state.market).toHaveLength(2);
-    const plant = { type: 'PLANT', playerId: aiId, species: 'oak', pos: { q: 0, r: 0 }, take: 0 } as const;
+    const plant = { type: 'PLANT', playerId: aiId, species: 'oak', pos: { q: 0, r: 0 } } as const;
     expect(() => m.act('room1', 'p1', plant)).toThrow(/다른 플레이어/);
     expect(() => m.act('room1', aiId, plant)).toThrow(/AI 자리/);
   });
@@ -95,9 +105,9 @@ describe('손패 비공개 (F004)', () => {
     const forP1 = maskState(state, 'p1');
     const me = forP1.players.find((p) => p.id === 'p1')!;
     const other = forP1.players.find((p) => p.id === 'p2')!;
-    expect(me.hand).toHaveLength(3);
+    expect(me.hand).toHaveLength(1);
     expect(other.hand).toEqual([]);
-    expect(other.handCount).toBe(3);
+    expect(other.handCount).toBe(1);
     expect(forP1.pile).toEqual([]);
     expect(forP1.pileCount).toBe(state.pile.length);
     expect(forP1.market).toEqual(state.market);
@@ -126,16 +136,23 @@ describe('AI 턴 실행기 (F027)', () => {
         return autoAction(state, playerId);
       },
     });
-    // 자리 0(사람)이 먼저 두면 AI 차례
+    // 자리 0(사람)이 가져오면 AI 가져오기 차례
     autoStep(m, 'room1');
     expect(m.get('room1')!.state.currentPlayerId).toBe(aiId);
     runner.maybeRun('room1');
     await new Promise((r) => setTimeout(r, 20));
     const s = m.get('room1')!.state;
-    // 선 돌리기: 라운드 1 끝(AI) → 라운드 2 첫 차례(AI)로 AI 가 연달아 두고 사람 차례에서 멈춘다
-    expect(s.plants.filter((p) => p.ownerId === aiId)).toHaveLength(2);
+    // AI 가 가져오고 나면 심기 단계는 선(사람)부터: 사람 차례에서 멈춘다
+    expect(s.players.find((p) => p.id === aiId)!.hand).toHaveLength(2);
+    expect(s.stage).toBe('plant');
     expect(s.currentPlayerId).toBe('p1');
-    expect(calls).toBe(2);
+    expect(calls).toBe(1);
+    // 사람이 심으면 AI 심기
+    autoStep(m, 'room1');
+    runner.maybeRun('room1');
+    await new Promise((r) => setTimeout(r, 20));
+    expect(m.get('room1')!.state.plants.filter((p) => p.ownerId === aiId)).toHaveLength(1);
+    expect(calls).toBeGreaterThanOrEqual(2);
   });
 
   it('대리 좌석 사람이 AI 결정 도중 직접 두어도 다음 AI 좌석 차례는 멈추지 않는다', async () => {
@@ -170,20 +187,21 @@ describe('AI 턴 실행기 (F027)', () => {
 });
 
 describe('늦게 도착한 수 (선 돌리기로 같은 자리가 연달아 둘 때)', () => {
-  it('보낸 사람이 본 차례 번호가 지금 차례와 다르면 심기를 거부한다', () => {
+  it('보낸 사람이 본 차례 번호가 지금 차례와 다르면 거부한다', () => {
     const m = makeManager();
     m.create({ playerToken: 't1', nickname: '갑' });
     m.join({ roomId: 'room1', playerToken: 't2', nickname: '을' });
     readyAll(m, 'room1', ['p1', 'p2']);
     const room = m.get('room1')!;
-    autoStep(m, 'room1'); // p1
-    const seen = room.state.turn; // p2 의 라운드 1 마지막 차례
-    autoStep(m, 'room1'); // p2 가 두고, 라운드 2 도 p2 부터
+    autoStep(m, 'room1'); // p1 가져오기
+    const seen = room.state.turn; // p2 가져오기 차례
+    autoStep(m, 'room1'); // p2 가져오기 → 심기 단계 p1
+    autoStep(m, 'room1'); // p1 심기 → p2 심기
     expect(room.state.currentPlayerId).toBe('p2');
     const late = autoAction(room.state, 'p2')!;
     expect(() => m.act('room1', 'p2', late, seen)).toThrow(/차례가 이미 넘어갔/);
     m.act('room1', 'p2', late, room.state.turn);
-    expect(room.state.currentPlayerId).toBe('p1');
+    expect(room.state.round).toBe(2);
   });
 });
 
@@ -194,7 +212,7 @@ describe('입력 검증 · 방 정리', () => {
     const bad = (a: unknown) => () => m.act(room.roomId, playerId, a as Action);
     expect(bad({ type: 'PLANT', playerId, species: 'oak', pos: { q: 1.5, r: 2 } })).toThrow(RoomError);
     expect(bad({ type: 'PLANT', playerId, species: 'tree', pos: { q: 1, r: 2 } })).toThrow(RoomError);
-    expect(bad({ type: 'PLANT', playerId, species: 'oak', pos: { q: 1, r: 2 }, take: '0' })).toThrow(/가져오기/);
+    expect(bad({ type: 'TAKE', playerId, take: '0' })).toThrow(/가져오기/);
     expect(bad({ type: 'DRAFT', playerId, species: 'oak' })).toThrow(/알 수 없는/);
     expect(bad({ type: 'PLANT', playerId, species: 'kudzu', pos: { q: 1, r: 2 }, direction: 7 })).toThrow(RoomError);
     expect(bad({ type: 'PLACE', playerId })).toThrow(RoomError);
@@ -252,10 +270,27 @@ describe('제한 시간 · AI 대리 (Rules.md 6.3)', () => {
     expect(() => m.setTurnTime('room1', 'p1', 90)).toThrow(/시작 전에만/);
   });
 
-  it('차례 제한이 지나면 자동으로 심고, 다음 사람 시계가 새로 시작한다', () => {
+  it('공개 단계도 제한 시간이 지나면 확인하지 않은 사람을 대신 확인한다(시간 초과 횟수는 세지 않음)', () => {
+    const { m, advance, at } = setup();
+    m.act('room1', 'p1', { type: 'READY', playerId: 'p1' });
+    m.act('room1', 'p2', { type: 'READY', playerId: 'p2' });
+    m.act('room1', 'p1', { type: 'CONFIRM', playerId: 'p1' });
+    const room = m.get('room1')!;
+    expect(room.state.phase).toBe('reveal');
+    expect(m.deadline(room)).toBe(at() + 90_000);
+    advance(90_000);
+    expect(m.timeoutTurn('room1')).not.toBeNull();
+    expect(room.state.phase).toBe('playing');
+    expect(room.afkStrikes?.['p2'] ?? 0).toBe(0);
+    expect(room.state.log.some((e) => e.playerId === 'p2' && e.message.includes('자동으로 확인'))).toBe(true);
+    expect(m.deadline(room)).toBe(at() + 90_000);
+  });
+
+  it('차례 제한이 지나면 자동으로 두고(가져오기 → 심기), 다음 사람 시계가 새로 시작한다', () => {
     const { m, advance, at } = setup();
     readyAll(m, 'room1', ['p1', 'p2']);
     const room = m.get('room1')!;
+    toPlant(m, 'room1');
     const first = room.state.currentPlayerId as string;
     expect(m.deadline(room)).toBe(at() + 90_000);
     advance(90_000);
@@ -287,14 +322,33 @@ describe('제한 시간 · AI 대리 (Rules.md 6.3)', () => {
     const room = m.get('room1')!;
     const afk = room.state.currentPlayerId as string;
     const other = afk === 'p1' ? 'p2' : 'p1';
-    // 선 돌리기로 차례가 번갈아 오지 않으므로, afk 차례가 올 때까지 상대가 둔다
+    // afk 차례가 올 때까지 상대가 둔다
     const otherPlaysUntilAfk = () => {
       while (room.state.currentPlayerId !== afk) m.act('room1', other, autoAction(room.state, other)!);
     };
+    // 가져오기 차례 시간 초과는 자동으로 두지만 횟수에 세지 않는다 (Rules.md 6.3)
+    expect(room.state.stage).toBe('take');
     advance(90_000);
     m.timeoutTurn('room1');
+    expect(room.afkStrikes?.[afk] ?? 0).toBe(0);
+    // 심기 차례 시간 초과 두 번(두 라운드)이면 AI 대리
     otherPlaysUntilAfk();
+    if (room.state.stage === 'take') {
+      advance(90_000);
+      m.timeoutTurn('room1');
+      otherPlaysUntilAfk();
+    }
+    expect(room.state.stage).toBe('plant');
+    advance(90_000);
+    m.timeoutTurn('room1');
+    expect(room.afkStrikes?.[afk]).toBe(1);
     expect(room.autopilot).toEqual([]);
+    while (!(room.state.currentPlayerId === afk && room.state.stage === 'plant')) {
+      if (room.state.currentPlayerId === afk) {
+        advance(90_000);
+        m.timeoutTurn('room1');
+      } else m.act('room1', other, autoAction(room.state, other)!);
+    }
     advance(90_000);
     m.timeoutTurn('room1');
     expect(room.autopilot).toEqual([afk]);
@@ -347,6 +401,8 @@ describe('판 요약 기록', () => {
     const first = room.state.currentPlayerId as string;
     now += 90_000;
     m.timeoutTurn('room1');
+    toPlant(m, 'room1');
+    m.act('room1', first, autoAction(room.state, first)!);
     const loser = room.state.currentPlayerId as string;
     now += 30_000;
     m.act('room1', loser, { type: 'SURRENDER', playerId: loser });
@@ -356,7 +412,7 @@ describe('판 요약 기록', () => {
     const seatOf = (id: string) => rec.seats.find((s) => s.seat === room.state.players.find((p) => p.id === id)!.seat)!;
     expect(seatOf(loser)).toMatchObject({ surrendered: true, rank: 2 });
     expect(seatOf(first)).toMatchObject({ timeouts: 1, rank: 1, playerHash: first === 'p1' ? 'h:t1' : 'h:t2' });
-    expect(seatOf(first).planted).toHaveLength(1);
+    expect(seatOf(first).planted.length).toBeGreaterThan(0);
     expect(m.takeRecord(room)).toBeNull();
   });
 

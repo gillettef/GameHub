@@ -1,6 +1,7 @@
 /**
  * 핫시트(한 브라우저에서 번갈아 두기) 어댑터. 규칙 계산은 전부 shared 엔진에 맡기고,
- * 이 파일은 로비 절차(입장 → 준비)를 서버 대신 흉내 낸다. 반환 상태는 첫 차례가 시작된 상태다(첫 라운드 마켓이 펼쳐져 있다).
+ * 이 파일은 로비 절차(입장 → 준비)를 서버 대신 흉내 낸다. 반환 상태는 이번 판 식물 공개 단계다(Rules.md 4절 7).
+ * 한 기기에서는 "확인" 한 번으로 모두를 확인 처리한다(confirmAllHotseat).
  */
 import type { Action, GameState, PlayerId } from '@rootbound/shared';
 import { MAX_PLAYERS, MIN_PLAYERS, applyAction, createInitialState, createPlayer, joinPlayer } from '@rootbound/shared';
@@ -32,8 +33,21 @@ export function createHotseatGame(config: HotseatConfig): GameState {
     if (r.error) throw new Error(r.error);
     state = r.state;
   }
-  if (state.phase !== 'playing') throw new Error('게임을 시작하지 못했습니다');
+  if (state.phase !== 'reveal' && state.phase !== 'playing') throw new Error('게임을 시작하지 못했습니다');
   return state;
+}
+
+/** 공개 단계에서 아직 확인하지 않은(기권 안 한) 사람을 자리 순서로 모두 확인한다. 공개 단계가 아니면 그대로 */
+export function confirmAllHotseat(state: GameState): { state: GameState; error?: string } {
+  let s = state;
+  for (const p of [...state.players].sort((a, b) => a.seat - b.seat)) {
+    if (s.phase !== 'reveal') break;
+    if (p.isReady || p.surrenderedOrder !== null) continue;
+    const r = applyAction(s, { type: 'CONFIRM', playerId: p.id });
+    if (r.error) return { state, error: r.error };
+    s = r.state;
+  }
+  return { state: s };
 }
 
 /** 핫시트에서는 서버 검증 = 엔진 검증. 거부되면 error 만 채워지고 state 는 그대로다 */

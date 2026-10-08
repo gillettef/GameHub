@@ -1,7 +1,8 @@
-/* 마켓 줄: (마켓 · 더미 장수) · 펼친 카드(가로 칩). 한 줄로 낮게 두어 보드 높이를 지킨다 */
+/* 마켓 줄: (마켓 · 더미 장수) · 펼친 카드(손패와 같은 미니 카드) */
 .row {
   display: flex;
   align-items: center;
+  min-height: 48px;
   gap: 6px;
   padding: 4px 6px 4px var(--space-1);
   border-radius: var(--radius-md);
@@ -44,18 +45,13 @@
   flex: 1;
   min-width: 0;
   display: flex;
-  gap: 4px;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 2px 0;
 }
 
 .slot {
-  flex: 1 1 0;
-  min-width: 0;
-  max-width: 108px;
-  display: flex;
-}
-
-.slot > * {
-  width: 100%;
+  flex: none;
 }
 
 .empty {
@@ -63,4 +59,10 @@
   min-width: 0;
   font-size: var(--text-micro);
   color: var(--color-muted);
+}
+
+/* 내 가져오기 차례: 마켓 줄을 테두리로 강조한다 (그림자 없이) */
+.rowActive {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -2px;
 }

@@ -1,6 +1,7 @@
 """
-AI 수 결정. 차례마다 1수 탐욕(내 총점 − 가장 높은 상대 총점)으로 심을 수를 고르고,
-그 수를 둔 뒤의 보드에서 마켓 카드마다 "가장 좋은 칸에 심었을 때의 1수 가치 + 공개 목표 연계 가산"을 매겨 가져올 카드를 고른다.
+AI 수 결정. 라운드는 가져오기 단계 → 심기 단계로 나뉜다(Rules.md 5절).
+가져오기: 마켓 카드마다 "지금 보드에서 손 카드 + 그 카드 중 최선 1수 가치 + 공개 목표 연계 가산"을 매겨 고른다.
+심기: 손 카드 전부에 대해 1수 탐욕(내 총점 − 가장 높은 상대 총점)으로 고른다. 공개 단계면 확인한다.
 Minimax / max-n 은 다음 단계(F028, F029). 항상 시간 제한(F027, 기본 2초) 안에 합법 수를 돌려준다.
 순수 함수: 입력 상태를 변이하지 않고, 같은 입력이면 (시간이 충분할 때) 같은 수를 고른다.
 """
@@ -19,9 +20,11 @@ from .models import (
     Position,
     ReadyAction,
     Seed,
+    TakeAction,
 )
 from .rules import (
     FLOWER_SPECIES,
+    auto_action,
     FOREST_SPECIES,
     BoardIndex,
     board_index,
@@ -39,8 +42,6 @@ from .rules import (
 # 시간 제한 중 응답 직렬화·네트워크 몫으로 남겨 두는 비율과 여유(ms)
 _TIME_FRACTION = 0.6
 _TIME_MARGIN_MS = 150
-# 심기 탐색이 쓸 수 있는 몫 (나머지는 가져오기 평가)
-_PLANT_SHARE = 0.6
 # 민들레 씨앗 칸을 따로 펼쳐 볼 상위 칸 수
 _SEED_TOP_CELLS = 3
 
@@ -133,12 +134,12 @@ def _candidates(state: GameState, player_id: str, species_list: list[str], idx: 
 
 
 # ---------------------------------------------------------------------------
-# 차례: 심기 1수 탐욕
+# 심기 단계: 1수 탐욕
 # ---------------------------------------------------------------------------
 
 
 def choose_plant(state: GameState, player_id: str, deadline: float) -> tuple[Action, GameState, int]:
-    """(take 없는 심기·버리기 행동, 그 수를 둔 뒤의 보드, 탐색 깊이). 심을 칸이 없으면 첫 손 카드를 버린다."""
+    """(심기·버리기 행동, 그 수를 둔 뒤의 보드, 탐색 깊이). 심을 칸이 없으면 첫 손 카드를 버린다."""
     me = get_player(state, player_id)
     assert me is not None and state.board is not None
     idx = board_index(state.board)
@@ -189,68 +190,77 @@ def choose_plant(state: GameState, player_id: str, deadline: float) -> tuple[Act
 
 
 # ---------------------------------------------------------------------------
-# 차례: 가져오기
+# 가져오기 단계
 # ---------------------------------------------------------------------------
 
 
-def choose_take(state: GameState, after: GameState, player_id: str, deadline: float) -> Optional[int]:
-    """가져올 마켓 자리. 마켓이 비었으면 None. 시간 안에 다 평가하지 못하면 0번.
-    after = 이번 차례 심기를 둔 뒤의 보드. 카드마다 그 보드에서 가장 좋은 칸에 심었을 때의 1수 가치 + 목표 연계 가산."""
-    if not state.market:
-        return None
-    if after.board is None:
-        return 0
-    idx = board_index(after.board)
-    best_i = 0
-    best_value: Optional[int] = None
-    seen: set[str] = set()
-    for i, sp in enumerate(state.market):
-        # 같은 종이 여러 장이면 앞 자리 하나만 본다
-        if sp in seen:
-            continue
-        seen.add(sp)
-        if time.perf_counter() >= deadline:
-            return 0
-        card_value: Optional[int] = None
-        for c_sp, c, dirs in _candidates(after, player_id, [sp], idx):
-            for d in dirs:
-                if time.perf_counter() >= deadline:
-                    return 0
-                v = _evaluate(_with_plant(after, player_id, c_sp, c, idx, d, None), idx, player_id)
-                if card_value is None or v > card_value:
-                    card_value = v
-        if card_value is None:
+class _OutOfTime(Exception):
+    pass
+
+
+def _best_value(
+    state: GameState, player_id: str, species_list: list[str], idx: BoardIndex, deadline: float
+) -> Optional[int]:
+    """지금 보드에서 이 종들 중 하나를 가장 좋은 칸에 심었을 때의 1수 가치 (씨앗 제외). 심을 칸이 없으면 None."""
+    best: Optional[int] = None
+    for sp, c, dirs in _candidates(state, player_id, species_list, idx):
+        for d in dirs:
+            if time.perf_counter() >= deadline:
+                raise _OutOfTime
+            v = _evaluate(_with_plant(state, player_id, sp, c, idx, d, None), idx, player_id)
+            if best is None or v > best:
+                best = v
+    return best
+
+
+def choose_take(state: GameState, player_id: str, deadline: float) -> tuple[int, int]:
+    """(가져올 마켓 자리, 탐색 깊이). 시간 안에 다 평가하지 못하면 0번.
+    후보 카드마다 "지금 보드에서 손 카드 + 그 카드 중 최선 1수 가치 + 공개 목표 연계 가산"을 매긴다.
+    동점이면 그 카드 자체의 1수 가치가 큰 쪽(다음 라운드에도 쓸모), 그래도 같으면 앞 자리."""
+    me = get_player(state, player_id)
+    if not state.market or me is None or state.board is None:
+        return 0, 0
+    idx = board_index(state.board)
+    try:
+        hand_value = _best_value(state, player_id, list(dict.fromkeys(me.hand)), idx, deadline)
+        no_move = _evaluate(state, idx, player_id) - 100
+        best_i = 0
+        best_key: Optional[tuple[int, int]] = None
+        seen: set[str] = set()
+        for i, sp in enumerate(state.market):
+            # 같은 종이 여러 장이면 앞 자리 하나만 본다
+            if sp in seen:
+                continue
+            seen.add(sp)
+            own = _best_value(state, player_id, [sp], idx, deadline)
             # 심을 칸이 없는 카드: 지금 보드 가치에서 크게 깎는다
-            card_value = _evaluate(after, idx, player_id) - 100
-        total = card_value + take_goal_bonus(after, player_id, sp)
-        # 동점이면 앞 자리 (앞에서부터 보므로 더 클 때만 바꾼다)
-        if best_value is None or total > best_value:
-            best_value = total
-            best_i = i
-    return best_i
+            own_v = own if own is not None else no_move
+            card_value = max(own_v, hand_value) if hand_value is not None else own_v
+            key = (card_value + take_goal_bonus(state, player_id, sp), own_v)
+            if best_key is None or key > best_key:
+                best_key = key
+                best_i = i
+    except _OutOfTime:
+        return 0, 0
+    return best_i, 1
 
 
-def choose_play(state: GameState, player_id: str, deadline: float) -> tuple[Action, int]:
-    """(행동, 탐색 깊이). 마켓에 카드가 있으면 take 를 꼭 넣고, 비었으면 뺀다."""
-    now = time.perf_counter()
-    plant_deadline = now + max(0.0, deadline - now) * (_PLANT_SHARE if state.market else 1.0)
-    action, after, depth = choose_plant(state, player_id, plant_deadline)
-    take = choose_take(state, after, player_id, deadline)
-    if take is not None:
-        action = action.model_copy(update={"take": take})
-    return action, depth
+# ---------------------------------------------------------------------------
+# 결정
+# ---------------------------------------------------------------------------
 
 
 def _fallback(state: GameState, player_id: str) -> Action:
-    """내 차례가 아니거나 둘 수 없는 상태. 엔진이 거부해도 해가 없는 행동을 돌려준다."""
-    me = get_player(state, player_id)
-    if me is not None and me.hand:
-        return DiscardAction(playerId=player_id, species=me.hand[0], take=0 if state.market else None)  # type: ignore[arg-type]
+    """내 차례가 아니거나 둘 수 없는 상태. 엔진 자동 수와 같은 수, 그것도 없으면 엔진이 거부해도 해가 없는 행동."""
+    auto = auto_action(state, player_id)
+    if auto is not None:
+        return auto
     return ReadyAction(playerId=player_id)
 
 
 def decide(state: GameState, player_id: str, time_limit_ms: int) -> tuple[Action, int, int]:
-    """(행동, 깊이, 걸린 시간 ms). 항상 시간 제한 안에 돌려준다."""
+    """(행동, 깊이, 걸린 시간 ms). 항상 시간 제한 안에 돌려준다.
+    공개 단계 → 확인, 가져오기 단계 → 마켓 카드 고르기, 심기 단계 → 1수 탐욕 심기(못 심으면 버리기)."""
     start = time.perf_counter()
     budget_ms = max(50.0, time_limit_ms * _TIME_FRACTION - _TIME_MARGIN_MS)
     deadline = start + budget_ms / 1000.0
@@ -258,14 +268,18 @@ def decide(state: GameState, player_id: str, time_limit_ms: int) -> tuple[Action
     action: Action
     depth = 0
     me = get_player(state, player_id)
-    if (
+    my_turn = (
         state.currentPlayerId == player_id
         and state.phase == "playing"
         and state.board is not None
         and me is not None
-        and me.hand
-    ):
-        action, depth = choose_play(state, player_id, deadline)
+        and me.surrenderedOrder is None
+    )
+    if my_turn and state.stage == "take" and state.market:
+        take, depth = choose_take(state, player_id, deadline)
+        action = TakeAction(playerId=player_id, take=take)
+    elif my_turn and state.stage == "plant" and me is not None and me.hand:
+        action, _, depth = choose_plant(state, player_id, deadline)
     else:
         action = _fallback(state, player_id)
     elapsed_ms = int((time.perf_counter() - start) * 1000)

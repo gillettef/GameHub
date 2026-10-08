@@ -5,13 +5,16 @@ import { Hand } from '../components/Hand';
 import { HexBoard } from '../components/HexBoard';
 import { Market } from '../components/Market';
 import { PlantBar } from '../components/PlantBar';
+import { RevealPanel } from '../components/RevealPanel';
 import { asState, buildCells, legalKeys, previewPlant } from '../game/derived';
-import { selectIsMyTurn, selectNeedsTake, selectSelectedSpecies, selectState, selectViewerId, useGameStore } from '../store/gameStore';
+import { selectCanPlant, selectCanTake, selectIsMyTurn, selectSelectedSpecies, selectState, selectViewerId, useGameStore } from '../store/gameStore';
 import styles from './BoardTab.module.css';
 
 /**
  * 정원 탭 (F008, F009). 보드 + 마켓 + 내 카드 + 심기 확인 바.
  * 위→아래 한 방향: 목표 칩 → 보드(남는 높이 전부) → 바닥 패널(확인 바 · 마켓 · 내 카드 · 차례 안내).
+ * 이번 판 식물 공개 단계에는 보드 대신 공개 화면(RevealPanel)을 보여 준다.
+ * 가져오기 차례에는 마켓만, 심기 차례에는 내 카드·보드만 누를 수 있다(Rules.md 5절).
  */
 export const BoardTab = memo(function BoardTab() {
   const state = useGameStore(selectState);
@@ -26,7 +29,8 @@ export const BoardTab = memo(function BoardTab() {
   const showInfluence = useGameStore((s) => s.showInfluence);
   const toggleInfluence = useGameStore((s) => s.toggleInfluence);
   const tapCell = useGameStore((s) => s.tapCell);
-  const needsTake = useGameStore(selectNeedsTake);
+  const canTake = useGameStore(selectCanTake);
+  const canPlant = useGameStore(selectCanPlant);
 
   const cells = useMemo(() => (state ? buildCells(state) : []), [state]);
   // 손패 카드마다 심을 칸 수 (0 이면 그 카드는 음영 + 고르기 잠금)와, 손패 어느 카드로든 심을 수 있는 칸. 상태가 바뀔 때만 계산한다
@@ -45,8 +49,8 @@ export const BoardTab = memo(function BoardTab() {
   }, [state, viewerId]);
   // 카드를 고르기 전에는 손패 전체로 심을 수 있는 칸을 옅게 보여 준다(첫 차례에 어디를 눌러야 할지 바로 보이게)
   const legal = useMemo(
-    () => (!state || !isMyTurn || seedPicking ? new Set<string>() : species ? legalKeys(state, viewerId, species) : anyLegal),
-    [state, isMyTurn, viewerId, species, seedPicking, anyLegal],
+    () => (!state || !canPlant || seedPicking ? new Set<string>() : species ? legalKeys(state, viewerId, species) : anyLegal),
+    [state, canPlant, viewerId, species, seedPicking, anyLegal],
   );
   const seedLegal = useMemo(
     () => (state?.board && seedPicking && pendingPos ? new Set(legalSeedCells(asState(state), pendingPos).map(posKey)) : undefined),
@@ -59,29 +63,28 @@ export const BoardTab = memo(function BoardTab() {
   const onCellClick = useCallback((q: number, r: number) => tapCell({ q, r }), [tapCell]);
 
   if (!state || !viewerId) return null;
+  if (state.phase === 'reveal') return <RevealPanel />;
   if (!state.board) return null;
 
   const me = state.players.find((p) => p.id === viewerId);
   const current = state.players.find((p) => p.id === state.currentPlayerId);
-  const stuck = isMyTurn && state.phase === 'playing' && plantable.length > 0 && plantable.every((n) => n === 0);
+  const stuck = canPlant && plantable.length > 0 && plantable.every((n) => n === 0);
   const selectedDead = selectedIndex !== null && plantable[selectedIndex] === 0;
   const hint =
     state.phase === 'finished'
       ? '게임이 끝났습니다'
       : !isMyTurn
-        ? `${current?.nickname ?? ''}의 차례`
-        : stuck
-          ? needsTake
-            ? '심을 칸이 없습니다. 마켓에서 가져올 카드를 고른 뒤 한 장 버리세요'
-            : '심을 칸이 없습니다. 카드를 눌러 한 장 버리세요'
-          : !species
-            ? '빛나는 칸에 심을 수 있습니다. 먼저 내 카드에서 한 장을 고르세요'
-            : selectedDead
-              ? '이 카드는 지금 심을 칸이 없습니다. 다른 카드를 고르세요'
-              : !pendingPos
-                ? '밝게 빛나는 칸에 심을 수 있습니다'
-                : needsTake
-                  ? '마켓에서 가져올 카드를 고르세요'
+        ? `${current?.nickname ?? ''}의 차례 · ${state.stage === 'take' ? '마켓에서 가져오는 중' : '심는 중'}`
+        : canTake
+          ? '마켓에서 카드 1장을 가져오세요'
+          : stuck
+            ? '심을 칸이 없습니다. 카드를 눌러 한 장 버리세요'
+            : !species
+              ? '심을 카드를 고르세요. 빛나는 칸에 심을 수 있습니다'
+              : selectedDead
+                ? '이 카드는 지금 심을 칸이 없습니다. 다른 카드를 고르세요'
+                : !pendingPos
+                  ? '밝게 빛나는 칸에 심을 수 있습니다'
                   : '결과를 보고 심기를 누르세요';
 
   return (
@@ -104,13 +107,13 @@ export const BoardTab = memo(function BoardTab() {
         />
       </div>
       <div className={styles.bottom}>
-        {isMyTurn && pendingPos ? <PlantBar preview={preview} /> : null}
         <Market />
         {state.phase === 'playing' && (
           <div className={styles.handPanel}>
-            <Hand plantable={plantable} />
+            <Hand plantable={plantable} canPlant={canPlant} />
           </div>
         )}
+        {canPlant && pendingPos ? <PlantBar preview={preview} /> : null}
         <div className={styles.turnBar}>
           <span className={isMyTurn ? styles.hintMine : styles.hint}>{hint}</span>
           <button type="button" className={showInfluence ? styles.toggleOn : styles.toggle} onClick={toggleInfluence} aria-pressed={showInfluence} title="칸마다 내 영향력 : 가장 센 상대 영향력 보기">

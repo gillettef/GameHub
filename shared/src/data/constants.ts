@@ -6,7 +6,8 @@
 export const MIN_PLAYERS = 2;
 export const MAX_PLAYERS = 4;
 
-export const HAND_SIZE = 3;
+/** 처음 손에 드는 카드 (Rules.md 4절 6). 가져오기 단계 뒤 2장이 된다 */
+export const START_HAND = 1;
 export const ENTRANCE_SELF = 3;
 export const ENTRANCE_RING = 1;
 export const FERTILE_BONUS = 1;
@@ -43,7 +44,7 @@ export function rulesFor(players: number): PlayerCountRule {
 export const CONSTANTS = {
   MIN_PLAYERS,
   MAX_PLAYERS,
-  HAND_SIZE,
+  START_HAND,
   ENTRANCE_SELF,
   ENTRANCE_RING,
   FERTILE_BONUS,

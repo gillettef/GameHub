@@ -33,6 +33,42 @@
   --color-fertile: #fdd484;
   --color-soil: #213a2d;
   --color-grid: #0e1a14;
+  /* 보드 질감 (2026-10-08 사용자 시안 notes/design/board-2p.svg). 풀밭·흙·자갈 무늬, 연못·돌 그라데이션, 테두리 */
+  --board-grass: #6b7a3f;
+  --board-grass-1: #8fa457;
+  --board-grass-2: #55682e;
+  --board-grass-3: #a9b86a;
+  --board-grass-4: #46562a;
+  --board-loam: #4b3320;
+  --board-loam-1: #2a1a0e;
+  --board-loam-2: #6e4c2c;
+  --board-loam-3: #8a6238;
+  --board-loam-4: #1c120a;
+  --board-gravel: #868a8d;
+  --board-gravel-1: #a3a6a8;
+  --board-gravel-2: #6f7377;
+  --board-gravel-3: #c2c4c5;
+  --board-gravel-4: #5c6064;
+  --board-water-hi: #5d93ad;
+  --board-water-mid: #2f5f80;
+  --board-stone-hi: #d9dbdc;
+  --board-stone-mid: #9a9ea1;
+  --board-stone-low: #55595f;
+  --board-sprout: #9cc25a;
+  --board-sprout-hi: #a9d064;
+  --board-sprout-lo: #86b44a;
+  /* 칸 사이 줄눈, 보드 바깥 테두리, 구역 경계선, 입구·썸네일 외곽선 */
+  --board-grout: #2a2a1c;
+  --board-frame: #2c455d;
+  --board-zone-line: #94bce3;
+  --board-ink: #1f2a1c;
+  /* 목표 카드 축소판 (카드 디자인 client/public/cards/goals 의 종이·남색 띠·선 색) */
+  --goal-card-paper: #f4f5f6;
+  --goal-card-edge: #b5c7d9;
+  --goal-card-ink: #1f2430;
+  --goal-card-kicker: #6b7c93;
+  --goal-card-band: #1d2d3d;
+  --goal-card-line: #94bce3;
   /* 좌석 4색: 색각 이상 안전 조합(Okabe-Ito 계열). 마커는 이 색으로 채우고 종류는 모양(육각·사각·원·마름모)으로 구분한다 */
   --color-seat-0: #419eff;
   --color-seat-1: #e69f00;
@@ -63,6 +99,8 @@
   --text-hero: 44px;
 
   /* 간격 (8px 리듬) */
+  /* 8px 리듬의 반 칸: 작은 칩·배지 안쪽 간격 */
+  --space-half: 4px;
   --space-1: 8px;
   --space-2: 15px;
   --space-3: 16px;

@@ -318,7 +318,7 @@
   "constants": {
     "MIN_PLAYERS": 2,
     "MAX_PLAYERS": 4,
-    "HAND_SIZE": 3,
+    "START_HAND": 1,
     "ENTRANCE_SELF": 3,
     "ENTRANCE_RING": 1,
     "FERTILE_BONUS": 1,

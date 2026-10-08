@@ -51,6 +51,11 @@ export function useGameCues(): void {
       useGameStore.getState().setNotice('시간이 지나 자동으로 두었습니다. 한 번 더 지나면 AI가 대신 둡니다');
     }
     if (cues.size > 0) sampleFps(); // 연출이 도는 동안의 프레임률 표본
+    // 대기실에서 판이 시작되어 이번 판 식물이 공개되면 확인하라고 알린다 (Rules.md 4절 7)
+    if (mode === 'online' && state.phase === 'reveal' && before.turn === state.turn && fresh.some((e) => e.kind === 'system' && e.message.startsWith('게임 시작'))) {
+      announceMyTurn('이번 판 식물이 공개되었습니다. 확인을 누르세요');
+      return;
+    }
 
     if (state.phase === 'finished' && fresh.some((e) => e.kind === 'result')) {
       playCue(state.result?.ranking[0] === viewerId ? 'win' : 'lose', 0.4);
@@ -58,7 +63,7 @@ export function useGameCues(): void {
     }
     const myTurnNow = state.phase === 'playing' && state.currentPlayerId === viewerId && (before.current !== viewerId || state.turn !== before.turn);
     if (!myTurnNow) return;
-    if (mode === 'online') announceMyTurn(`${state.round}라운드 · 식물을 심을 차례입니다`);
+    if (mode === 'online') announceMyTurn(`${state.round}라운드 · ${state.stage === 'take' ? '마켓에서 카드를 가져올' : '식물을 심을'} 차례입니다`);
     else if (!handoffPending) playCue('turn');
   }, [state, viewerId, mode, handoffPending]);
 }

@@ -1,4 +1,5 @@
-/* 정원 보드 (SVG). 좌표 단위는 육각 반지름 1. 그림자 없음(플랫) */
+/* 정원 보드 (SVG). 좌표 단위는 육각 반지름 1. 그림자 없음(플랫).
+   질감·테두리는 사용자 시안 notes/design/board-2p.svg 를 따른다(값은 tokens.css 의 --board-*) */
 .board {
   display: block;
   width: 100%;
@@ -7,6 +8,97 @@
   user-select: none;
 }
 
+/* ---- 바닥: 바깥 테두리 → 줄눈 → 지형 타일 → 구역 경계선 ---- */
+.frame {
+  fill: var(--board-frame);
+  stroke: var(--board-frame);
+  stroke-width: 0.32;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+
+.grout {
+  fill: var(--board-grout);
+  pointer-events: none;
+}
+
+.zoneLine {
+  fill: none;
+  stroke: var(--board-zone-line);
+  stroke-width: 0.035;
+  stroke-linecap: round;
+  pointer-events: none;
+}
+
+/* 지형 무늬 (BoardTextures.tsx). 무늬마다 색 4단 */
+.grassBase {
+  fill: var(--board-grass);
+}
+.grassPattern .tone1 {
+  stroke: var(--board-grass-1);
+}
+.grassPattern .tone2 {
+  stroke: var(--board-grass-2);
+}
+.grassPattern .tone3 {
+  stroke: var(--board-grass-3);
+}
+.grassPattern .tone4 {
+  stroke: var(--board-grass-4);
+}
+
+.loamBase {
+  fill: var(--board-loam);
+}
+.loamPattern .tone1 {
+  fill: var(--board-loam-1);
+}
+.loamPattern .tone2 {
+  fill: var(--board-loam-2);
+}
+.loamPattern .tone3 {
+  fill: var(--board-loam-3);
+}
+.loamPattern .tone4 {
+  fill: var(--board-loam-4);
+}
+
+.gravelBase {
+  fill: var(--board-gravel);
+}
+.gravelPattern .tone1 {
+  fill: var(--board-gravel-1);
+}
+.gravelPattern .tone2 {
+  fill: var(--board-gravel-2);
+}
+.gravelPattern .tone3 {
+  fill: var(--board-gravel-3);
+}
+.gravelPattern .tone4 {
+  fill: var(--board-gravel-4);
+}
+
+.waterHi {
+  stop-color: var(--board-water-hi);
+}
+.waterMid {
+  stop-color: var(--board-water-mid);
+}
+.waterLow {
+  stop-color: var(--color-pond);
+}
+.stoneHi {
+  stop-color: var(--board-stone-hi);
+}
+.stoneMid {
+  stop-color: var(--board-stone-mid);
+}
+.stoneLow {
+  stop-color: var(--board-stone-low);
+}
+
+/* ---- 칸 ---- */
 .cell {
   cursor: default;
 }
@@ -16,51 +108,71 @@
   outline: none;
 }
 
-.clickable:focus-visible .ground {
+/* 칸을 누르는 영역(바닥 타일 위에 투명하게) */
+.hit {
+  fill: transparent;
+}
+
+.clickable:focus-visible .hit {
   stroke: var(--color-accent);
   stroke-width: 0.18;
 }
 
-.ground {
-  stroke: var(--color-grid);
-  stroke-width: 0.06;
-}
-
-.empty,
-.fertile {
-  fill: var(--color-soil);
-}
-
-.pond {
-  fill: var(--color-pond);
-}
-
-.rock {
-  fill: var(--color-rock);
-}
-
-/* 땅 주인: 좌석색을 옅게 덮는다 */
+/* 땅 주인: 좌석색을 옅게 덮고 안쪽에 좌석색 테를 둘러 질감 위에서도 구분되게 한다 */
 .owned {
   fill: color-mix(in srgb, var(--owner) 38%, transparent);
+  stroke: var(--owner);
+  stroke-width: 0.1;
+  stroke-opacity: 0.9;
   pointer-events: none;
 }
 
-.fertileDot {
-  fill: var(--color-fertile);
+/* 기름진 땅 새싹 · 연못 물결 · 바위 돌 (시안 그대로, 1/68 로 줄여 그린다) */
+.sprout,
+.pondArt,
+.rockArt {
   pointer-events: none;
+}
+.sproutStem {
+  fill: none;
+  stroke: var(--board-sprout);
+  stroke-width: 4.1;
+}
+.sproutLeafHi {
+  fill: var(--board-sprout-hi);
+}
+.sproutLeafLo {
+  fill: var(--board-sprout-lo);
+}
+
+.waves {
+  fill: none;
+  stroke: color-mix(in srgb, var(--color-white) 55%, transparent);
+  stroke-width: 4.1;
+  stroke-linecap: round;
+}
+.glint {
+  fill: color-mix(in srgb, var(--color-white) 35%, transparent);
+}
+
+.rockArt ellipse {
+  fill: url(#rb-stone);
+  stroke: var(--board-stone-low);
+  stroke-width: 2.7;
 }
 
 .legal {
-  fill: color-mix(in srgb, var(--color-accent) 18%, transparent);
+  fill: color-mix(in srgb, var(--color-accent) 22%, transparent);
   stroke: var(--color-accent);
-  stroke-width: 0.08;
+  stroke-width: 0.09;
   pointer-events: none;
-  animation: legal-pulse 1.6s var(--ease-standard) infinite;
+  /* 질감 위 다시 그리기 비용 때문에 무한 반복하지 않고 세 번만 깜빡인다 */
+  animation: legal-pulse 1.6s var(--ease-standard) 3;
 }
 
 .legalFaint {
-  fill: color-mix(in srgb, var(--color-accent) 8%, transparent);
-  stroke: color-mix(in srgb, var(--color-accent) 55%, transparent);
+  fill: color-mix(in srgb, var(--color-accent) 10%, transparent);
+  stroke: color-mix(in srgb, var(--color-accent) 60%, transparent);
   stroke-width: 0.05;
   pointer-events: none;
 }
@@ -95,13 +207,23 @@
   pointer-events: none;
 }
 
+/* 입구: 좌석색 집 모양 + 자리 번호 */
 .entrance {
-  fill: var(--seat);
-  stroke: var(--color-canvas);
-  stroke-width: 0.06;
   pointer-events: none;
 }
+.entrance polygon {
+  fill: var(--seat);
+  stroke: var(--board-ink);
+  stroke-width: 0.06;
+  stroke-linejoin: round;
+}
+.entrance text {
+  font-family: var(--font-display);
+  font-weight: 900;
+  fill: var(--board-ink);
+}
 
+/* 식물: 카드 그림 썸네일을 둥글게 잘라 좌석색 고리로 두른다 */
 .plant {
   pointer-events: none;
   animation: plant-pop var(--motion-slow) var(--ease-enter);
@@ -109,16 +231,16 @@
   transform-origin: center;
 }
 
-.plant circle {
+.thumbRing {
   fill: var(--seat);
-  stroke: var(--color-canvas);
-  stroke-width: 0.07;
+  stroke: var(--board-ink);
+  stroke-width: 0.05;
 }
 
-.plant text {
-  font-size: 0.62px;
-  font-weight: 800;
-  fill: var(--color-canvas);
+.thumbEdge {
+  fill: none;
+  stroke: var(--board-ink);
+  stroke-width: 0.04;
 }
 
 @keyframes plant-pop {
@@ -133,7 +255,7 @@
 
 .seed {
   fill: var(--seat);
-  stroke: var(--color-canvas);
+  stroke: var(--board-ink);
   stroke-width: 0.04;
   pointer-events: none;
 }
@@ -145,17 +267,24 @@
   pointer-events: none;
 }
 
+/* 숫자는 질감 위에서 읽히게 어두운 테두리를 먼저 칠한다 */
 .infl {
   font-size: 0.7px;
   font-weight: 800;
   fill: var(--color-accent);
+  stroke: var(--board-ink);
+  stroke-width: 0.1;
+  paint-order: stroke;
   pointer-events: none;
 }
 
 .inflSmall {
   font-size: 0.5px;
   font-weight: 700;
-  fill: color-mix(in srgb, var(--color-text) 80%, transparent);
+  fill: var(--color-white);
+  stroke: var(--board-ink);
+  stroke-width: 0.09;
+  paint-order: stroke;
   pointer-events: none;
 }
 
@@ -164,17 +293,4 @@
   .plant {
     animation: none;
   }
-}
-
-.waves {
-  fill: none;
-  stroke: color-mix(in srgb, var(--color-white) 55%, transparent);
-  stroke-width: 0.07;
-  stroke-linecap: round;
-  pointer-events: none;
-}
-
-.stones {
-  fill: color-mix(in srgb, var(--color-white) 22%, transparent);
-  pointer-events: none;
 }

@@ -129,14 +129,15 @@ export function actionShapeError(action: unknown): string | null {
   if (!a || typeof a !== 'object' || typeof a.type !== 'string' || typeof a.playerId !== 'string') return '잘못된 요청입니다';
   switch (a.type) {
     case 'READY':
+    case 'CONFIRM':
     case 'SURRENDER':
       return null;
+    case 'TAKE':
+      return Number.isInteger(a.take) ? null : '잘못된 가져오기입니다';
     case 'DISCARD':
-      if (a.take !== undefined && !Number.isInteger(a.take)) return '잘못된 가져오기입니다';
       return isSpeciesId(a.species) ? null : '없는 식물입니다';
     case 'PLANT':
       if (!isSpeciesId(a.species) || !isPos(a.pos)) return '잘못된 심기 요청입니다';
-      if (a.take !== undefined && !Number.isInteger(a.take)) return '잘못된 가져오기입니다';
       if (a.direction !== undefined && !isDirection(a.direction)) return '잘못된 방향입니다';
       if (a.seed !== undefined && !isPos(a.seed)) return '잘못된 씨앗 위치입니다';
       return null;
@@ -152,6 +153,8 @@ export function isCurrentFormat(room: Room): boolean {
   if (!(st.board === null || (typeof st.board === 'object' && Array.isArray(st.board?.cells)))) return false;
   // 드래프트 시절 판(2026-10-08 마켓으로 바뀜)은 market·pile 이 없다
   if (!Array.isArray(st.market) || !Array.isArray(st.pile) || !Array.isArray(st.species)) return false;
+  // 가져오기 → 심기 단계로 바뀌기 전 판(2026-10-08)은 stage 가 없다. 로비는 이어 가도 된다
+  if (st.phase !== 'lobby' && st.stage !== 'take' && st.stage !== 'plant') return false;
   // 종·목표 id 가 바뀐 예전 판(2026-10-08 선인장·덩굴·해바라기·장미 → 소나무·칡·유채·무궁화)은 복원하지 않는다
   const species = [...st.plants.map((p) => p.species), ...st.market, ...st.pile, ...st.species, ...st.players.flatMap((p) => p.hand ?? [])];
   return species.every((sp) => isSpeciesId(sp)) && (st.goals ?? []).every((g) => GOALS.some((x) => x.id === g));
@@ -203,7 +206,7 @@ export class RoomManager {
     room.timeoutTotals ??= {};
     room.everAutopiloted ??= [];
     // 서버가 내려가 있던 시간을 플레이어 책임으로 돌리지 않는다: 진행 중인 턴은 복원 시점부터 시계를 새로 잰다
-    if (room.state.phase === 'playing') {
+    if (room.state.phase === 'playing' || room.state.phase === 'reveal') {
       room.turnClockFor = clockKey(room.state);
       room.turnStartedAt = this.opts.now();
     }
@@ -219,7 +222,7 @@ export class RoomManager {
     const removed: { roomId: RoomId; record: GameRecord | null }[] = [];
     for (const room of this.rooms.values()) {
       const idle = now - room.updatedAt;
-      const inGame = room.state.phase === 'playing';
+      const inGame = room.state.phase === 'playing' || room.state.phase === 'reveal';
       const limit = inGame ? PLAYING_IDLE_MS : IDLE_MS;
       if (idle > limit) {
         this.rooms.delete(room.roomId);
@@ -412,7 +415,7 @@ export class RoomManager {
 
   /**
    * 사람 플레이어의 액션. 본인 id 로만 보낼 수 있다.
-   * seenTurn: 보낸 사람이 본 차례 번호. 심기·버리기가 지금 차례와 다르면 거부한다(늦게 도착한 수가 다음 차례에 적용되지 않게)
+   * seenTurn: 보낸 사람이 본 차례 번호. 가져오기·심기·버리기가 지금 차례와 다르면 거부한다(늦게 도착한 수가 다음 차례에 적용되지 않게)
    */
   act(roomId: RoomId, byPlayerId: PlayerId, action: Action, seenTurn?: number): Room {
     const shapeError = actionShapeError(action);
@@ -421,7 +424,7 @@ export class RoomManager {
     const room = this.require(roomId);
     const player = room.state.players.find((p) => p.id === byPlayerId);
     if (player?.kind === 'ai') throw new RoomError('AI 자리는 서버가 대신 둡니다');
-    if (seenTurn !== undefined && (action.type === 'PLANT' || action.type === 'DISCARD') && seenTurn !== room.state.turn) {
+    if (seenTurn !== undefined && (action.type === 'TAKE' || action.type === 'PLANT' || action.type === 'DISCARD') && seenTurn !== room.state.turn) {
       throw new RoomError('차례가 이미 넘어갔습니다. 바뀐 정원을 보고 다시 두세요');
     }
     const applied = this.apply(roomId, action);
@@ -459,8 +462,11 @@ export class RoomManager {
     // 기권 안 한 사람이 1명뿐이면(나머지는 AI) 기다리는 사람이 없으니 시계를 재지 않는다 (Rules.md 6.3)
     if (state.players.filter((p) => p.kind !== 'ai' && p.surrenderedOrder === null).length <= 1) return null;
     const turnLimit = room.turnTimeLimitSec ?? null;
-    const limit = state.phase === 'playing' ? turnLimit : null;
-    if (limit === null || !state.currentPlayerId || room.turnStartedAt == null) return null;
+    const limit = state.phase === 'playing' || state.phase === 'reveal' ? turnLimit : null;
+    if (limit === null || room.turnStartedAt == null) return null;
+    // 이번 판 식물 공개 단계: 차례가 없고 모두에게 같은 시계 (Rules.md 6.3)
+    if (state.phase === 'reveal') return room.turnStartedAt + limit * 1000;
+    if (!state.currentPlayerId) return null;
     if (this.isAutoTurn(room)) return null;
     return room.turnStartedAt + limit * 1000;
   }
@@ -474,9 +480,12 @@ export class RoomManager {
     if (!room) return null;
     const deadline = this.deadline(room);
     if (deadline === null || this.opts.now() < deadline) return null;
+    if (room.state.phase === 'reveal') return this.confirmPending(room) ? room : null;
     const pid = room.state.currentPlayerId as PlayerId;
     const nick = room.state.players.find((p) => p.id === pid)?.nickname ?? pid;
-    const strikes = (room.afkStrikes?.[pid] ?? 0) + 1;
+    // 연속 시간 초과는 라운드 단위로 센다: 한 라운드에 가져오기·심기 두 차례가 있으므로 심기 차례만 센다 (Rules.md 6.3)
+    const counts = room.state.stage === 'plant';
+    const strikes = (room.afkStrikes?.[pid] ?? 0) + (counts ? 1 : 0);
     const limit = room.turnTimeLimitSec as number;
     const note = (message: string) => ({ turn: room.state.turn, round: room.state.round, playerId: pid, kind: 'system' as const, message });
     const auto = autoAction(room.state, pid);
@@ -500,6 +509,26 @@ export class RoomManager {
     }
     this.touch(room);
     return room;
+  }
+
+  /**
+   * 이번 판 식물 공개 단계에서 아직 확인하지 않은 사람을 대신 확인한다(시간 초과 횟수에는 세지 않는다, Rules.md 6.3).
+   * 하나라도 처리했으면 true
+   */
+  confirmPending(room: Room): boolean {
+    let changed = false;
+    for (const p of room.state.players) {
+      if (room.state.phase !== 'reveal') break;
+      if (p.isReady || p.surrenderedOrder !== null) continue;
+      const r = applyAction(room.state, { type: 'CONFIRM', playerId: p.id });
+      if (r.error) continue;
+      const before = room.state.log.length;
+      const note = { turn: room.state.turn, round: room.state.round, playerId: p.id, kind: 'system' as const, message: `${p.nickname}: 시간이 지나 자동으로 확인` };
+      room.state = { ...r.state, log: [...r.state.log.slice(0, before), note, ...r.state.log.slice(before)] };
+      changed = true;
+    }
+    if (changed) this.touch(room);
+    return changed;
   }
 
   /** 차례(또는 드래프트 픽)가 바뀌었으면 시계를 다시 잰다. 게임 시작 시각도 여기서 남긴다 */

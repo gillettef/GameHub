@@ -75,17 +75,3 @@
   gap: 6px;
   margin-left: auto;
 }
-
-.take,
-.takeNeeded {
-  font-size: var(--text-micro);
-  font-weight: 700;
-}
-
-.take {
-  color: var(--color-text);
-}
-
-.takeNeeded {
-  color: var(--color-accent);
-}
