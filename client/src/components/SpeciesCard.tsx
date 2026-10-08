@@ -24,13 +24,13 @@ interface SpeciesCardProps {
 export function specialText(species: SpeciesId): string | null {
   const sp = getSpecies(species);
   if (sp.line) return `한 방향 직선 ${sp.lineLength}칸에 ${sp.line}`;
-  if (sp.star2) return `두 칸 떨어진 별 모양 6칸에 ${sp.star2}`;
-  if (sp.seed) return `거리 2 이내 빈 칸에 씨앗(${sp.seed})`;
-  if (sp.fertileRing) return `비옥토에 심으면 둘레 ${sp.ring1 + sp.fertileRing}`;
+  if (sp.star2) return `한 칸 건너뛴 6칸에 ${sp.star2}`;
+  if (sp.seed) return `두 칸 안 빈 칸에 씨앗(${sp.seed})`;
+  if (sp.fertileRing) return `기름진 땅이면 맞닿은 칸에 ${sp.ring1 + sp.fertileRing}씩`;
   if (sp.pondPlanting) return '연못 옆이면 뿌리 없이도 심기';
-  if (sp.ivy) return `둘레의 식물 칸마다 +${sp.ivy}`;
-  if (sp.cluster) return `이웃한 내 대나무마다 자기 칸 +${sp.cluster}`;
-  if (sp.wither) return `둘레 6칸의 다른 사람 영향력 −${sp.wither}`;
+  if (sp.ivy) return `옆 칸 중 식물 칸에 +${sp.ivy}`;
+  if (sp.cluster) return `맞닿은 내 대나무마다 심은 칸 +${sp.cluster}`;
+  if (sp.wither) return `맞닿은 6칸의 다른 사람 영향력 −${sp.wither}`;
   if (sp.bloomBonus) return `끝날 때 이 칸이 내 땅이면 +${sp.bloomBonus}점`;
   return null;
 }

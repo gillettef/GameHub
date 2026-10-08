@@ -49,7 +49,7 @@ describe('RoomManager 생성·입장·퇴장 (F001, F002, F003)', () => {
     const m = makeManager();
     m.create({ playerToken: 't1', nickname: '갑' });
     for (const t of ['t2', 't3', 't4']) m.join({ roomId: 'room1', playerToken: t, nickname: t });
-    expect(() => m.join({ roomId: 'room1', playerToken: 't5', nickname: '무' })).toThrow(/정원/);
+    expect(() => m.join({ roomId: 'room1', playerToken: 't5', nickname: '무' })).toThrow(/최대 4명/);
     expect(m.join({ roomId: 'room1', playerToken: 't2', nickname: 'x' })).toMatchObject({ playerId: 'p2', reconnected: true });
   });
 
@@ -84,7 +84,7 @@ describe('로비 · AI 좌석 · 시작 (F002, F026)', () => {
     expect(state.phase).toBe('drafting');
     expect(state.board?.cells).toHaveLength(49);
     expect(() => m.act('room1', 'p1', { type: 'DRAFT', playerId: aiId, species: 'oak' })).toThrow(/다른 플레이어/);
-    expect(() => m.act('room1', aiId, { type: 'DRAFT', playerId: aiId, species: 'oak' })).toThrow(/AI 좌석/);
+    expect(() => m.act('room1', aiId, { type: 'DRAFT', playerId: aiId, species: 'oak' })).toThrow(/AI 자리/);
   });
 });
 

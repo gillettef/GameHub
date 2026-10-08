@@ -388,7 +388,7 @@ describe('로비 → 드래프트 → 진행 (Rules.md 4·5·6절)', () => {
     const sp = s.players[0]!.hand[0]!;
     expect(applyAction(s, { type: 'PLANT', playerId: 'p1', species: s.players[1]!.hand[0]!, pos: { q: 0, r: 0 } }).error).toMatch(/차례/);
     const notInHand = (['grass', 'oak', 'pine', 'kudzu', 'fern', 'dandelion', 'rapeseed', 'lotus', 'ivy', 'bamboo', 'mushroom', 'mugunghwa'] as SpeciesId[]).find((x) => !s.players[0]!.hand.includes(x))!;
-    expect(applyAction(s, { type: 'PLANT', playerId: 'p0', species: notInHand, pos: { q: 0, r: 0 } }).error).toMatch(/손패/);
+    expect(applyAction(s, { type: 'PLANT', playerId: 'p0', species: notInHand, pos: { q: 0, r: 0 } }).error).toMatch(/손에 없는/);
     const far = s.board!.entrances[1]!;
     expect(applyAction(s, { type: 'PLANT', playerId: 'p0', species: sp, pos: far }).error).toBeDefined();
   });

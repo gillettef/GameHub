@@ -323,7 +323,7 @@ export class RoomManager {
     if (room.state.phase !== 'lobby') throw new RoomError('이미 시작된 게임입니다');
     if (!isValidNickname(input.nickname)) throw new RoomError('닉네임은 1~12자로 입력하세요');
     if (room.state.players.length >= MAX_PLAYERS) {
-      throw new RoomError(`정원은 최대 ${MAX_PLAYERS}명입니다`);
+      throw new RoomError(`방에는 최대 ${MAX_PLAYERS}명까지 들어올 수 있습니다`);
     }
     const playerId = `p${room.nextPlayerNo}`;
     const joined = joinPlayer(room.state, createPlayer(playerId, input.nickname.trim(), 'human'));
@@ -381,7 +381,7 @@ export class RoomManager {
     const room = this.require(roomId);
     this.requireHost(room, byPlayerId);
     if (room.state.phase !== 'lobby') throw new RoomError('이미 시작된 게임입니다');
-    if (room.state.players.length >= MAX_PLAYERS) throw new RoomError(`정원은 최대 ${MAX_PLAYERS}명입니다`);
+    if (room.state.players.length >= MAX_PLAYERS) throw new RoomError(`방에는 최대 ${MAX_PLAYERS}명까지 들어올 수 있습니다`);
     const aiCount = room.state.players.filter((p) => p.kind === 'ai').length;
     const playerId = `p${room.nextPlayerNo}`;
     const joined = joinPlayer(room.state, createPlayer(playerId, `AI ${aiCount + 1}`, 'ai'));
@@ -396,7 +396,7 @@ export class RoomManager {
     const room = this.require(roomId);
     this.requireHost(room, byPlayerId);
     const target = room.state.players.find((p) => p.id === aiId);
-    if (!target || target.kind !== 'ai') throw new RoomError('AI 좌석이 아닙니다');
+    if (!target || target.kind !== 'ai') throw new RoomError('AI 자리가 아닙니다');
     const r = leaveLobby(room.state, aiId);
     if (r.error) throw new RoomError(r.error);
     room.state = r.state;
@@ -412,10 +412,10 @@ export class RoomManager {
   act(roomId: RoomId, byPlayerId: PlayerId, action: Action): Room {
     const shapeError = actionShapeError(action);
     if (shapeError) throw new RoomError(shapeError);
-    if (action.playerId !== byPlayerId) throw new RoomError('다른 플레이어의 액션은 보낼 수 없습니다');
+    if (action.playerId !== byPlayerId) throw new RoomError('다른 플레이어의 행동은 보낼 수 없습니다');
     const room = this.require(roomId);
     const player = room.state.players.find((p) => p.id === byPlayerId);
-    if (player?.kind === 'ai') throw new RoomError('AI 좌석은 서버가 조작합니다');
+    if (player?.kind === 'ai') throw new RoomError('AI 자리는 서버가 대신 둡니다');
     const applied = this.apply(roomId, action);
     // 받아들여진 행동을 했으면 자리에 있는 것이다: 시간 초과 기록과 AI 대리를 푼다.
     // 거부된 액션으로는 풀지 않는다(풀리고 commit 이 없으면 아무도 그 턴을 진행하지 않는다)
@@ -487,7 +487,7 @@ export class RoomManager {
       if (!room.everAutopiloted?.includes(pid)) room.everAutopiloted = [...(room.everAutopiloted ?? []), pid];
       room.state = {
         ...room.state,
-        log: [...room.state.log, note(`${nick}: ${strikes}번 연속 시간 초과로 ${AUTOPILOT_LOG_MARK}. '직접 두기'를 누르면 되찾습니다`)],
+        log: [...room.state.log, note(`${nick}: ${strikes}번 연속 시간 초과로 ${AUTOPILOT_LOG_MARK}. '다시 내가 두기'를 누르면 되찾습니다`)],
       };
     }
     this.touch(room);

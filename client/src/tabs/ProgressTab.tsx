@@ -6,8 +6,8 @@ import { selectState, useGameStore } from '../store/gameStore';
 import styles from './ProgressTab.module.css';
 
 const KIND_LABEL: Record<LogKind, string> = {
-  system: '시스템',
-  draft: '드래프트',
+  system: '안내',
+  draft: '고르기',
   turn: '차례',
   plant: '심기',
   discard: '버림',
@@ -38,7 +38,7 @@ export const ProgressTab = memo(function ProgressTab() {
           <h2 className={styles.title}>현재</h2>
           <dl className={styles.facts}>
             <dt>단계</dt>
-            <dd>{state.phase === 'drafting' ? '드래프트' : state.phase === 'playing' ? `${state.round}라운드` : state.phase === 'finished' ? '종료' : '로비'}</dd>
+            <dd>{state.phase === 'drafting' ? '식물 고르기' : state.phase === 'playing' ? `${state.round}라운드` : state.phase === 'finished' ? '종료' : '대기실'}</dd>
             <dt>차례</dt>
             <dd>{state.turn}</dd>
             <dt>지금</dt>
@@ -48,7 +48,7 @@ export const ProgressTab = memo(function ProgressTab() {
           </dl>
         </div>
       </aside>
-      <section className={styles.logPanel} aria-label="게임 로그">
+      <section className={styles.logPanel} aria-label="진행 기록">
         <h2 className={styles.title}>
           진행 기록 <span className={styles.sub}>{entries.length}건 · 최신 순</span>
         </h2>
@@ -65,7 +65,7 @@ export const ProgressTab = memo(function ProgressTab() {
 const LogRow = memo(function LogRow({ entry, playerName }: { entry: GameLogEntry; playerName: string | null }) {
   return (
     <li className={cx(styles.row, EMPHASIS.has(entry.kind) && styles.emphasis)} data-kind={entry.kind}>
-      <span className={styles.turn}>{entry.turn}턴</span>
+      <span className={styles.turn}>차례 {entry.turn}</span>
       <span className={styles.kind}>{KIND_LABEL[entry.kind]}</span>
       <span className={styles.who}>{playerName ?? '—'}</span>
       <span className={styles.message}>{entry.message}</span>

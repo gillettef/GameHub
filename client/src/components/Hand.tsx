@@ -16,7 +16,7 @@ export const Hand = memo(function Hand({ plantable = [] }: { plantable?: number[
   const me = state?.players.find((p) => p.id === viewerId);
   if (!me) return null;
   return (
-    <div className={styles.row} role="list" aria-label="손패">
+    <div className={styles.row} role="list" aria-label="내 카드">
       {me.hand.map((species, index) => (
         <div role="listitem" key={`${index}-${species}`} className={styles.slot}>
           <SpeciesCard
@@ -30,9 +30,9 @@ export const Hand = memo(function Hand({ plantable = [] }: { plantable?: number[
           />
         </div>
       ))}
-      {me.hand.length === 0 && <p className={styles.empty}>손패를 모두 썼습니다</p>}
-      <span className={styles.deck} title="남은 덱">
-        덱 {me.deckCount}
+      {me.hand.length === 0 && <p className={styles.empty}>카드를 모두 썼습니다</p>}
+      <span className={styles.deck} title="카드 더미에 남은 카드">
+        남은 {me.deckCount}장
       </span>
     </div>
   );

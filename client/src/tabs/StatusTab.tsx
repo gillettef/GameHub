@@ -36,13 +36,13 @@ export const StatusTab = memo(function StatusTab() {
                 <div className={styles.breakdown}>
                   <span>땅 {r.score.land}</span>
                   <span>목표 {r.score.goals}</span>
-                  {r.score.bloom > 0 && <span>무궁화 {r.score.bloom}</span>}
-                  {r.score.komi > 0 && <span>덤 {r.score.komi}</span>}
+                  {r.score.bloom > 0 && <span>무궁화 보너스 {r.score.bloom}</span>}
+                  {r.score.komi > 0 && <span>순서 보너스 {r.score.komi}</span>}
                 </div>
               )}
               <div className={styles.meta}>
-                <span>손패 {r.handCount} · 덱 {r.deckCount}</span>
-                <span className={styles.drafted}>{r.drafted.map((s) => getSpecies(s).name).join(' · ') || '고른 종 없음'}</span>
+                <span>손에 {r.handCount}장 · 남은 {r.deckCount}장</span>
+                <span className={styles.drafted}>{r.drafted.map((s) => getSpecies(s).name).join(' · ') || '고른 식물 없음'}</span>
               </div>
             </li>
           ))}

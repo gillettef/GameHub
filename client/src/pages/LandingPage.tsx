@@ -101,7 +101,7 @@ export function LandingPage() {
 
       <section className={styles.sectionPrimary}>
         <h2 className={styles.h2}>AI와 바로 시작</h2>
-        <p className={styles.help}>AI 상대 수를 고르면 곧바로 식물 고르기(드래프트)부터 시작합니다.</p>
+        <p className={styles.help}>AI 상대 수를 고르면 곧바로 식물 고르기부터 시작합니다.</p>
         <div className={styles.aiRow}>
           <div className={styles.aiPick} role="radiogroup" aria-label="AI 상대 수">
             {[1, 2, 3].map((n) => (
@@ -128,7 +128,7 @@ export function LandingPage() {
 
       <section className={styles.section}>
         <h2 className={styles.h2}>방 만들기</h2>
-        <p className={styles.help}>방을 만들면 초대 링크가 생깁니다. 링크를 친구에게 보내거나 빈 좌석에 AI를 넣으세요.</p>
+        <p className={styles.help}>방을 만들면 초대 링크가 생깁니다. 링크를 친구에게 보내거나 빈 자리에 AI를 넣으세요.</p>
         <label className={styles.check}>
           <input type="checkbox" checked={usePassword} onChange={(e) => setUsePassword(e.target.checked)} />
           비밀번호 설정 (숫자 4자리)
@@ -169,7 +169,7 @@ export function LandingPage() {
         <h2 className={styles.h2}>같은 기기에서</h2>
         <p className={styles.help}>한 브라우저에서 번갈아 둡니다. 서버 연결이 필요 없습니다.</p>
         <button type="button" className="pill pill--outline" onClick={() => navigate('/hotseat')}>
-          핫시트 시작
+          한 기기로 시작
         </button>
       </section>
 
@@ -189,7 +189,7 @@ function TutorialSection({ primary }: { primary: boolean }) {
   return (
     <section className={primary ? styles.sectionPrimary : styles.section}>
       <h2 className={styles.h2}>{primary ? '처음이세요?' : '튜토리얼 다시 보기'}</h2>
-      <p className={styles.help}>연습 봇과 한 판 두면서 카드 고르기 → 배치 → 턴 종료를 한 단계씩 따라 합니다. 5분이면 충분합니다.</p>
+      <p className={styles.help}>연습 봇과 한 판 두면서 카드 고르기 → 칸 고르기 → 심기를 한 단계씩 따라 합니다. 5분이면 충분합니다.</p>
       <button type="button" className={primary ? 'pill pill--lg' : 'pill pill--outline'} onClick={() => navigate('/tutorial')}>
         <LearnIcon size={18} /> 튜토리얼 시작
       </button>

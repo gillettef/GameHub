@@ -58,7 +58,7 @@ export function useGameCues(): void {
     }
     const myTurnNow = (state.phase === 'playing' || state.phase === 'drafting') && state.currentPlayerId === viewerId && (before.current !== viewerId || state.turn !== before.turn);
     if (!myTurnNow) return;
-    if (mode === 'online') announceMyTurn(state.phase === 'drafting' ? '식물 종을 고를 차례입니다' : `${state.round}라운드 · 식물을 심을 차례입니다`);
+    if (mode === 'online') announceMyTurn(state.phase === 'drafting' ? '식물을 고를 차례입니다' : `${state.round}라운드 · 식물을 심을 차례입니다`);
     else if (!handoffPending) playCue('turn');
   }, [state, viewerId, mode, handoffPending]);
 }

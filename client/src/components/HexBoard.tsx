@@ -87,7 +87,7 @@ export const HexBoard = memo(function HexBoard({ cells, legal, legalFaint, seedL
         const ownerStyle = c.owner >= 0 ? ({ '--owner': `var(--color-seat-${c.owner})` } as CSSProperties) : undefined;
         const mine = c.influence[viewerSeat] ?? 0;
         const rival = Math.max(0, ...c.influence.filter((_, i) => i !== viewerSeat));
-        const label = `(${c.q},${c.r}) ${terrainName(c.terrain)}${c.plant ? ` · ${getSpecies(c.plant.species).name}` : ''}${c.owner >= 0 ? ` · 좌석 ${c.owner + 1} 땅` : ''}`;
+        const label = `(${c.q},${c.r}) ${terrainName(c.terrain)}${c.plant ? ` · ${getSpecies(c.plant.species).name}` : ''}${c.owner >= 0 ? ` · ${c.owner + 1}번 자리 땅` : ''}`;
         return (
           <g
             key={c.key}
@@ -154,5 +154,5 @@ export const HexBoard = memo(function HexBoard({ cells, legal, legalFaint, seedL
 });
 
 function terrainName(t: CellView['terrain']): string {
-  return t === 'pond' ? '연못' : t === 'rock' ? '돌밭' : t === 'fertile' ? '비옥토' : '빈 땅';
+  return t === 'pond' ? '연못' : t === 'rock' ? '바위' : t === 'fertile' ? '기름진 땅' : '빈 땅';
 }

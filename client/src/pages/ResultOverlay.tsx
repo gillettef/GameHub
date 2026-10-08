@@ -32,10 +32,10 @@ export function ResultOverlay({ onNewGame }: { onNewGame: () => void }) {
                 <span className={styles.rank}>{i + 1}위</span>
                 <span className={styles.name}>
                   {p?.nickname ?? id}
-                  <span className={styles.seat}> 좌석 {(p?.seat ?? -1) + 1}</span>
+                  <span className={styles.seat}> {(p?.seat ?? -1) + 1}번 자리</span>
                 </span>
                 <span className={styles.breakdown}>
-                  {p && p.surrenderedOrder !== null ? '기권' : `땅 ${s?.land ?? 0} + 목표 ${s?.goals ?? 0}${s?.bloom ? ` + 무궁화 ${s.bloom}` : ''}${s?.komi ? ` + 덤 ${s.komi}` : ''}`}
+                  {p && p.surrenderedOrder !== null ? '기권' : `땅 ${s?.land ?? 0} + 목표 ${s?.goals ?? 0}${s?.bloom ? ` + 무궁화 보너스 ${s.bloom}` : ''}${s?.komi ? ` + 순서 보너스 ${s.komi}` : ''}`}
                 </span>
                 <span className={styles.total}>{s?.total ?? 0}점</span>
               </li>

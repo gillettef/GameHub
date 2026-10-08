@@ -56,7 +56,7 @@ export function SetupPage() {
                 className={landing.input}
                 value={n}
                 maxLength={12}
-                aria-label={`좌석 ${i + 1} 닉네임`}
+                aria-label={`${i + 1}번 자리 닉네임`}
                 onChange={(e) => setNames((cur) => cur.map((x, j) => (j === i ? e.target.value : x)))}
               />
             </li>
