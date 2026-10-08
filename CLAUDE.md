@@ -10,9 +10,10 @@
 | 문서 | 내용 |
 |---|---|
 | `notes/Rules.md` | **규칙 정본**. 보드 조립(대칭 조각 배치), 이번 판 식물·라운드 마켓(선 돌리기), 차례, 영향력·땅, 식물 12종, 목표 18장, 점수·순위, 온라인 제한 시간(6.3), 상수, 결정성, 밸런스 근거 |
-| `notes/cards.md` | 식물 카드 12종·목표 카드 18장·카드 구성 정리(정본 아님, 수치 바꾸면 함께 고침) |
+| `notes/Cards.md` | 식물 카드 12종·목표 카드 18장·카드 구성 정리(정본 아님, 수치 바꾸면 함께 고침) |
 | `notes/Story.md` | 배경 이야기(달빛 정원 박람회). **규칙 아님**. 설명 탭 "이야기" 문단의 원문 |
 | `notes/Expansions.md` | 확장판 아이디어 메모(지역별 식물·지형, 구조 준비 사항). **규칙 아님, 구현하지 않음** |
+| `notes/Board.md` | 보드 디자인 참고(육각 좌표, 지형 4종·현재 색/무늬, 정원 조각 12+입구, 인원별 윤곽·입구 위치·ASCII 그림, 보드 위 요소 표시 방식, 디자인 제약). **규칙 아님**, Rules.md 2·3절 요약 |
 
 ---
 
@@ -36,7 +37,7 @@
 - **server**: `rooms/manager.ts`(방·초대 id·비밀번호·좌석·AI 추가, 차례 제한 시간·자동 수·AI 대리, 판 요약 `takeRecord`, 옛 형식 스냅샷 판별 `isCurrentFormat`), `game/aiTurn.ts`(AI·대리 좌석 차례마다 Python `/decide` → 엔진 검증 → 실패 시 `autoAction` 폴백), `persistence/snapshots.ts`(JSON 스냅샷), `persistence/stats.ts`(판 요약·웹 성능 JSONL), `index.ts`(Socket.io, `socket.use` 로 요청 모양 검사, 방별 타이머, `POST /api/vitals`). 서버 시작 시 예전 우주 전투판 스냅샷은 지운다. Vitest 20개.
 - **AI** (`ai/astral_ai`, 패키지 이름은 옛 이름 그대로): `models.py`(Pydantic, TS 타입 1:1), `rules.py`(TS 엔진 시뮬레이션 사본, 수치는 `shared/fixtures/specs.json`), `search.py`(차례는 1수 탐욕: 심기 = 내 총점 − 최고 상대 총점, 가져오기 = 심은 뒤 보드에서 그 카드의 1수 가치 + 목표 연계 가산, 시간 제한 안에 최선 수), `main.py`(`GET /health` → `rootbound-ai`, `POST /decide`, None 필드 제외). pytest 12개.
 - **client**: 경로 `/` 랜딩(AI와 바로 시작·방 만들기·초대 참여·핫시트·튜토리얼), `/hotseat` 같은 기기(인원·닉네임 → 바로 시작), `/tutorial` 연습 봇(`game/tutorialBot.ts`)과 단계 안내(`TutorialCoach`), `/room/:id` 온라인 로비(방 → 좌석 → 준비·제한 시간) → 게임. 게임 화면: `PlayerStrip`(단계·차례·남은 시간·좌석별 땅/점수) → 탭(정원 `BoardTab`: 목표 칩 + `HexBoard`(SVG 육각 보드) + `PlantBar`(미리보기·칡 방향·민들레 씨앗·가져올 카드) + `Market`(이번 라운드 마켓·더미 장수) + `Hand` / 점수 `StatusTab` / 진행 `ProgressTab` / 카드 `CardsTab` / 설명 `HelpTab`) → `TabDock`. 카드는 `SpeciesCard`(작은 카드 = 카드 그림 배경 + 이름 + 뿌리 모양 `RootDiagram`, 확대 = 카드 디자인 앞면), 확대(식물·목표 카드)·칸 정보는 `GameModal`. 화면용 파생값은 `game/derived.ts`(엔진 호출만). 효과음·차례 알림 `lib/cues.ts`, 웹 성능 `lib/vitals.ts`, 제한 시간 표시 `lib/turnClock.ts`. Vitest 15개.
-- **카드 디자인**(2026-10-08 사용자 제공, SVG): 식물 `client/public/cards/plants/<종 id>.svg`(630×880)·목표 `goals/<목표 id>.svg`(880×630)·각 `back.svg`. 작은 카드 배경은 그림 부분만 자른 `plants/art/<종 id>.webp`(`node scripts/card-thumbs.mjs` 로 생성). 경로는 `client/src/game/cardImages.ts`, 파일 누락은 `cardImages.test.ts`. 카드 안 글자는 `notes/cards.md` 와 맞춘다(`client/public/cards/README.md`).
+- **카드 디자인**(2026-10-08 사용자 제공, SVG): 식물 `client/public/cards/plants/<종 id>.svg`(630×880)·목표 `goals/<목표 id>.svg`(880×630)·각 `back.svg`. 작은 카드 배경은 그림 부분만 자른 `plants/art/<종 id>.webp`(`node scripts/card-thumbs.mjs` 로 생성). 경로는 `client/src/game/cardImages.ts`, 파일 누락은 `cardImages.test.ts`. 카드 안 글자는 `notes/Cards.md` 와 맞춘다(`client/public/cards/README.md`).
 - 개발용 바로가기: `/hotseat?quick&players=<2~4>&seed=<n>&play=<n>&tab=<board|status|progress|cards|help>&select=<손 카드 index>&cell=<합법 칸 index>&take=<마켓 index>&modal=<손 카드 index>` (`play=<n>` = 자동 수로 n번 둔 뒤 시작, 중반·마켓 빈 화면 확인용).
 - localStorage 키 접두어는 옛 이름 `astraltab.` 을 그대로 쓴다(닉네임·재접속 토큰·튜토리얼 표시 유지).
 

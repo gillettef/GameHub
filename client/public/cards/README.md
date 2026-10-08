@@ -11,7 +11,7 @@
 | `goals/` | `<목표 id>.svg` 18장 (pond-side … dandelion-reserve) | 880×630 가로 | 목표 칩·점수 탭·카드 탭에서 누르면 확대 모달 |
 | `goals/` | `back.svg` | 880×630 | (아직 쓰는 곳 없음) |
 
-- 카드 안의 글자(이름·문구·이야기·점수)는 `notes/cards.md` 와 같아야 한다. 수치·문구를 바꾸면 SVG 의 `<text>` 도 함께 고친다.
+- 카드 안의 글자(이름·문구·이야기·점수)는 `notes/Cards.md` 와 같아야 한다. 수치·문구를 바꾸면 SVG 의 `<text>` 도 함께 고친다.
 - SVG 는 `<img>` 로 띄우므로 안의 Google Fonts `@import` 는 불러오지 않고 시스템 글꼴로 대신 그린다.
 - 식물 카드 SVG 를 바꾸면 `node scripts/card-thumbs.mjs` 로 `plants/art/` 썸네일을 다시 만든다(Chrome 헤드리스로 자른다). 그림 구도가 바뀌면 스크립트의 `CROP` 을 함께 고친다.
 - 원본 SVG 는 필터가 들어 있고 장당 최대 600KB 라서 작은 카드에는 쓰지 않는다. 운영 서버는 `compression` 으로 gzip 해서 보낸다.
