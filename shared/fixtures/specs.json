@@ -103,7 +103,7 @@
       "description": "심은 뒤 거리 2 이내 빈 칸에 씨앗(영향력 2)을 날린다."
     },
     {
-      "self": 3,
+      "self": 2,
       "ring1": 1,
       "star2": 0,
       "line": 0,
@@ -117,7 +117,7 @@
       "bloomBonus": 0,
       "id": "sunflower",
       "name": "해바라기",
-      "description": "비옥토에 심으면 둘레가 3이 된다."
+      "description": "비옥토에 심으면 둘레가 3이 된다. 다른 곳에서는 잔디보다 약하다."
     },
     {
       "self": 1,

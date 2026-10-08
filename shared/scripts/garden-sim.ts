@@ -278,7 +278,7 @@ const SPEC: SpeciesSpec[] = [
   { ...ZERO, self: 2, line: 2, lineLen: 2 }, // vine
   { ...ZERO, self: 1, star2: 1 }, // fern
   { ...ZERO, self: 1, ring1: 1, seed: 2 }, // dandelion
-  { ...ZERO, self: 3, ring1: 1, fertileRing: 2 }, // sunflower
+  { ...ZERO, self: 2, ring1: 1, fertileRing: 2 }, // sunflower
   { ...ZERO, self: 1, ring1: 1, pondOnly: true }, // lotus
   { ...ZERO, self: 1, ring1: 1, ivy: 1 }, // ivy
   { ...ZERO, self: 1, ring1: 2, bamboo: 2 }, // bamboo
