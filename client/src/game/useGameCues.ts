@@ -46,6 +46,10 @@ export function useGameCues(): void {
       if (cue) cues.add(cue);
     }
     ORDER.filter((c) => cues.has(c)).forEach((c, i) => playCue(c, i * GAP_SEC));
+    // 내 첫 시간 초과는 자동 수가 내가 둔 수처럼 지나가기 쉬워 바로 알린다(서버 로그 문구 '자동으로 둡니다', server/src/rooms/manager.ts)
+    if (fresh.some((e) => e.kind === 'system' && e.playerId === viewerId && e.message.includes('자동으로 둡니다')) && !useGameStore.getState().room?.autopilot.includes(viewerId)) {
+      useGameStore.getState().setNotice('시간이 지나 자동으로 두었습니다. 한 번 더 지나면 AI가 대신 둡니다');
+    }
     if (cues.size > 0) sampleFps(); // 연출이 도는 동안의 프레임률 표본
 
     if (state.phase === 'finished' && fresh.some((e) => e.kind === 'result')) {

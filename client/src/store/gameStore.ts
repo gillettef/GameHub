@@ -132,6 +132,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const prev = get();
     const p = prev.state;
     const moved = p?.turn !== state.turn || p?.phase !== state.phase || p?.draftIndex !== state.draftIndex;
+    const playStarted = p?.phase === 'drafting' && state.phase === 'playing';
     // 접속·끊김처럼 게임 상태는 그대로인 브로드캐스트면 state 참조를 지켜 파생값 재계산과 보드 재그리기를 피한다
     const same =
       p !== null &&
@@ -152,7 +153,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
       botIds: [],
       handoffPending: false,
       ...(moved ? CLEAR_SELECTION : {}),
-      cardModal: moved && prev.cardModal?.kind === 'hand' ? null : prev.cardModal,
+      // 드래프트가 끝나 심기가 시작되면 정원 탭으로 데려간다. 드래프트 중 카드 탭을 보던 사람이 첫 차례를 놓치지 않게(2026-10-08 운영 기록)
+      ...(playStarted ? { tab: 'board' as TabId, cardModal: null } : { cardModal: moved && prev.cardModal?.kind === 'hand' ? null : prev.cardModal }),
       // 내가 보낸 수가 반영된 스냅샷(상태가 바뀐 것)이 와야 연타 잠금을 푼다. 실패는 dispatch 가 푼다
       sending: same ? prev.sending : false,
     });
@@ -211,6 +213,13 @@ export const useGameStore = create<GameStore>((set, get) => ({
     }
     const species = selectedHandIndex !== null ? state.players.find((p) => p.id === viewerId)?.hand[selectedHandIndex] : undefined;
     const occupied = s.plants.some((p) => samePos(p.pos, pos)) || s.board!.entrances.some((e) => samePos(e, pos));
+    if (!species && !occupied && selectIsMyTurn(get())) {
+      const hand = state.players.find((p) => p.id === viewerId)?.hand ?? [];
+      if (hand.some((sp) => legalPlantCells(s, viewerId, sp).some((p) => samePos(p, pos)))) {
+        set({ notice: '먼저 아래 손패에서 심을 카드를 고르세요' });
+        return;
+      }
+    }
     if (!species || occupied) {
       // 카드를 안 골랐거나 식물·입구 칸이면 그 칸을 크게 보여 준다
       set({ cardModal: { kind: 'cell', pos } });

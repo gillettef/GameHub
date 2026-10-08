@@ -28,6 +28,8 @@ interface HexBoardProps {
   cells: CellView[];
   /** 지금 고른 카드로 심을 수 있는 칸 */
   legal: Set<string>;
+  /** 카드를 고르기 전: legal 은 손패 어느 카드로든 심을 수 있는 칸이고, 옅게 그린다 */
+  legalFaint?: boolean;
   /** 씨앗 고르기 중이면 씨앗을 놓을 수 있는 칸 */
   seedLegal?: Set<string>;
   pendingKey?: string | null;
@@ -42,7 +44,7 @@ interface HexBoardProps {
  * 정원 보드 (Rules.md 3절, 축 좌표 육각). SVG 라 컨테이너 크기에 맞춰 늘고 줄어든다(무스크롤, F015).
  * 칸 채움: 지형 → 땅 주인 좌석색(옅게) → 식물(좌석색 원 + 종 첫 글자) / 입구(집 모양) / 씨앗(점).
  */
-export const HexBoard = memo(function HexBoard({ cells, legal, seedLegal, pendingKey, seedKey, preview, viewerSeat, showInfluence, onCellClick }: HexBoardProps) {
+export const HexBoard = memo(function HexBoard({ cells, legal, legalFaint, seedLegal, pendingKey, seedKey, preview, viewerSeat, showInfluence, onCellClick }: HexBoardProps) {
   const box = useMemo(() => {
     const pts = cells.map((c) => px(c.q, c.r));
     const xs = pts.map((p) => p.x);
@@ -115,7 +117,7 @@ export const HexBoard = memo(function HexBoard({ cells, legal, seedLegal, pendin
             {flipTo !== undefined && (
               <polygon points={HEX_INNER} className={styles.flip} style={flipTo >= 0 ? ({ '--owner': `var(--color-seat-${flipTo})` } as CSSProperties) : undefined} />
             )}
-            {(isLegal || isSeedLegal) && <polygon points={HEX_INNER} className={isSeedLegal ? styles.seedLegal : styles.legal} />}
+            {(isLegal || isSeedLegal) && <polygon points={HEX_INNER} className={isSeedLegal ? styles.seedLegal : legalFaint ? styles.legalFaint : styles.legal} />}
             {c.entranceSeat >= 0 && <path d={HOUSE} className={styles.entrance} style={{ '--seat': `var(--color-seat-${c.entranceSeat})` } as CSSProperties} />}
             {c.plant && (
               <g key={c.plant.id} className={styles.plant} style={{ '--seat': `var(--color-seat-${c.plantSeat})` } as CSSProperties}>

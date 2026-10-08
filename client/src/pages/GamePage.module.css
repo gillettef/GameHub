@@ -5,7 +5,8 @@
      한 줄로 안 줄어드는 내용이 있으면 이 그리드가 #root(480px)보다 넓어져 overflow:hidden 을
      무시하고 화면 밖으로 삐져나간다("그리드 블로우아웃"). minmax(0, 1fr) 로 폭을 못박는다. */
   grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: auto minmax(0, 1fr) auto;
+  /* 상태 창 / 배너 칸(없으면 높이 0) / 탭 내용 / 독. 배너가 1fr 행을 빼앗지 않도록 칸을 따로 둔다 */
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
   color: var(--color-text);
   position: relative;
   overflow: hidden;

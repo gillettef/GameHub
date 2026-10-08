@@ -68,35 +68,38 @@ export function GamePage({ onQuit }: GamePageProps) {
     <div className={styles.root} data-world="game">
       <PlayerStrip onQuit={onQuit} />
 
-      {offline && (
-        <div className={styles.banner} role="alert">
-          서버와 연결이 끊겼습니다. 다시 연결하는 중입니다. 게임은 서버에 그대로 남아 있습니다.
-        </div>
-      )}
-      {!offline && room && state.phase === 'playing' && room.autopilot.includes(viewerId) && (
-        <div className={styles.bannerAction} role="alert">
-          <span>시간 초과가 이어져 AI가 대신 두고 있습니다.</span>
-          <button
-            type="button"
-            className="pill"
-            disabled={resuming}
-            onClick={() => {
-              setResuming(true);
-              void api.resume(room.roomId).then((res) => {
-                setResuming(false);
-                if (!res.ok) setNotice(res.message);
-              });
-            }}
-          >
-            직접 두기
-          </button>
-        </div>
-      )}
-      {!offline && absent.length > 0 && state.phase === 'playing' && (
-        <div className={styles.bannerSoft} role="status">
-          접속 끊김: {absent.map((p) => p.nickname).join(', ')}. 돌아오면 이어서 진행됩니다.
-        </div>
-      )}
+      {/* 배너는 한 칸(그리드 2행)에 모은다. 없으면 높이 0 */}
+      <div>
+        {offline && (
+          <div className={styles.banner} role="alert">
+            서버와 연결이 끊겼습니다. 다시 연결하는 중입니다. 게임은 서버에 그대로 남아 있습니다.
+          </div>
+        )}
+        {!offline && room && (state.phase === 'playing' || state.phase === 'drafting') && room.autopilot.includes(viewerId) && (
+          <div className={styles.bannerAction} role="alert">
+            <span>시간 초과가 이어져 AI가 대신 두고 있습니다.</span>
+            <button
+              type="button"
+              className="pill"
+              disabled={resuming}
+              onClick={() => {
+                setResuming(true);
+                void api.resume(room.roomId).then((res) => {
+                  setResuming(false);
+                  if (!res.ok) setNotice(res.message);
+                });
+              }}
+            >
+              직접 두기
+            </button>
+          </div>
+        )}
+        {!offline && absent.length > 0 && state.phase === 'playing' && (
+          <div className={styles.bannerSoft} role="status">
+            접속 끊김: {absent.map((p) => p.nickname).join(', ')}. 돌아오면 이어서 진행됩니다.
+          </div>
+        )}
+      </div>
 
       <main className={styles.main}>
         <TabPanel id="board" active={tab}>

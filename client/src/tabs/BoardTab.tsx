@@ -28,18 +28,25 @@ export const BoardTab = memo(function BoardTab() {
   const tapCell = useGameStore((s) => s.tapCell);
 
   const cells = useMemo(() => (state ? buildCells(state) : []), [state]);
-  const legal = useMemo(
-    () => (state && isMyTurn && !seedPicking ? legalKeys(state, viewerId, species) : new Set<string>()),
-    [state, isMyTurn, viewerId, species, seedPicking],
-  );
-  // 손패 카드마다 심을 칸 수 (0 이면 그 카드는 음영 + 고르기 잠금). 상태가 바뀔 때만 계산한다
-  const plantable = useMemo(() => {
-    if (!state?.board || !viewerId || state.phase !== 'playing') return [] as number[];
+  // 손패 카드마다 심을 칸 수 (0 이면 그 카드는 음영 + 고르기 잠금)와, 손패 어느 카드로든 심을 수 있는 칸. 상태가 바뀔 때만 계산한다
+  const { plantable, anyLegal } = useMemo(() => {
+    const anyLegal = new Set<string>();
+    if (!state?.board || !viewerId || state.phase !== 'playing') return { plantable: [] as number[], anyLegal };
     const s = asState(state);
     const inf = computeInfluence(s);
     const hand = state.players.find((p) => p.id === viewerId)?.hand ?? [];
-    return hand.map((sp) => legalPlantCells(s, viewerId, sp, inf).length);
+    const plantable = hand.map((sp) => {
+      const cells = legalPlantCells(s, viewerId, sp, inf);
+      for (const c of cells) anyLegal.add(posKey(c));
+      return cells.length;
+    });
+    return { plantable, anyLegal };
   }, [state, viewerId]);
+  // 카드를 고르기 전에는 손패 전체로 심을 수 있는 칸을 옅게 보여 준다(첫 차례에 어디를 눌러야 할지 바로 보이게)
+  const legal = useMemo(
+    () => (!state || !isMyTurn || seedPicking ? new Set<string>() : species ? legalKeys(state, viewerId, species) : anyLegal),
+    [state, isMyTurn, viewerId, species, seedPicking, anyLegal],
+  );
   const seedLegal = useMemo(
     () => (state?.board && seedPicking && pendingPos ? new Set(legalSeedCells(asState(state), pendingPos).map(posKey)) : undefined),
     [state, seedPicking, pendingPos],
@@ -66,7 +73,7 @@ export const BoardTab = memo(function BoardTab() {
         : stuck
           ? '심을 칸이 없습니다. 카드를 눌러 한 장 버리세요'
           : !species
-            ? '손패에서 카드를 고르세요'
+            ? '빛나는 칸에 심을 수 있습니다. 먼저 손패에서 카드를 고르세요'
             : selectedDead
               ? '이 카드는 지금 심을 칸이 없습니다. 다른 카드를 고르세요'
               : !pendingPos
@@ -82,6 +89,7 @@ export const BoardTab = memo(function BoardTab() {
         <HexBoard
           cells={cells}
           legal={legal}
+          legalFaint={!species}
           seedLegal={seedLegal}
           pendingKey={pendingPos ? posKey(pendingPos) : null}
           seedKey={pendingSeed ? posKey(pendingSeed) : null}
