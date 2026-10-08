@@ -58,6 +58,13 @@
   animation: legal-pulse 1.6s var(--ease-standard) infinite;
 }
 
+.legalFaint {
+  fill: color-mix(in srgb, var(--color-accent) 8%, transparent);
+  stroke: color-mix(in srgb, var(--color-accent) 55%, transparent);
+  stroke-width: 0.05;
+  pointer-events: none;
+}
+
 .seedLegal {
   fill: none;
   stroke: var(--color-accent);
