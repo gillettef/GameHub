@@ -180,7 +180,7 @@ function scheduleTurnTimer(room: Room): void {
     turnTimers.delete(roomId);
     const timedOut = manager.timeoutTurn(roomId);
     if (timedOut) {
-      console.log(`[timer] room=${roomId} 시간 초과 → 자동 패스`);
+      console.log(`[timer] room=${roomId} 시간 초과 → ${timedOut.state.phase === 'playing' || timedOut.state.round > 0 ? '자동 수' : '자동 확인'}`);
       commit(timedOut);
     } else {
       const latest = manager.get(roomId);

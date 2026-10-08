@@ -16,7 +16,13 @@ const WARN_SEC = 10;
 export const TurnTimer = memo(function TurnTimer() {
   const room = useGameStore((s) => s.room);
   const receivedAt = useGameStore((s) => s.roomReceivedAt);
-  const isMine = useGameStore((s) => s.state?.currentPlayerId === s.viewerId);
+  // 공개 단계(Rules.md 6.3)에는 아직 확인하지 않았으면 내 시계다
+  const isMine = useGameStore(
+    (s) =>
+      s.state?.phase === 'reveal'
+        ? s.state.players.some((p) => p.id === s.viewerId && !p.isReady && p.surrenderedOrder === null)
+        : s.state?.currentPlayerId === s.viewerId,
+  );
   const remaining = useTurnRemaining(room, receivedAt);
 
   useEffect(() => {

@@ -57,6 +57,8 @@ interface Batch {
   mine: boolean;
   name: string;
   seat: number;
+  /** 이번 차례가 가져오기인지 심기인지 */
+  stage: string;
   items: Item[];
 }
 
@@ -101,6 +103,7 @@ export const TurnEvents = memo(function TurnEvents() {
       mine: state.currentPlayerId === viewerId,
       name: nameOf(state, state.currentPlayerId),
       seat: current?.seat ?? 0,
+      stage: state.stage === 'take' ? '가져오기' : '심기',
       items,
     });
     // 상태 객체 전체가 아니라 턴이 바뀌었을 때만 다시 계산한다
@@ -121,7 +124,9 @@ export const TurnEvents = memo(function TurnEvents() {
         <span className={styles.avatar} aria-hidden="true">
           {batch.mine ? <BoltIcon size={16} /> : batch.name.slice(0, 1)}
         </span>
-        <strong>{batch.mine ? '내 차례' : `${batch.name} 차례`}</strong>
+        <strong>
+          {batch.mine ? '내 차례' : `${batch.name} 차례`} · {batch.stage}
+        </strong>
       </div>
       <ul className={styles.items}>
         {batch.items.map((it, i) => (

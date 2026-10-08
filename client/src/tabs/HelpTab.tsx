@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { ENTRANCE_RING, ENTRANCE_SELF, FERTILE_BONUS, HAND_SIZE, RESERVE_BONUS } from '@rootbound/shared';
+import { ENTRANCE_RING, ENTRANCE_SELF, FERTILE_BONUS, RESERVE_BONUS, START_HAND } from '@rootbound/shared';
 import styles from './HelpTab.module.css';
 
 /** 설명 탭: 한 화면 규칙 요약 (정본은 notes/Rules.md). 수치는 shared 상수에서 읽는다 */
@@ -16,23 +16,29 @@ export const HelpTab = memo(function HelpTab() {
       <section className={styles.section}>
         <h2 className={styles.h2}>목표</h2>
         <p>
-          차례마다 식물 하나를 심어 땅을 넓힙니다. 끝났을 때 <strong>내 땅 1칸 = 1점</strong>에 목표 카드 3장의 점수를 더해 가장 높은 사람이 이깁니다.
+          라운드마다 마켓에서 카드 1장을 가져오고, 내 카드 2장 중 1장을 심어 땅을 넓힙니다. 끝났을 때 <strong>내 땅 1칸 = 1점</strong>에 목표 카드 3장의 점수를 더해 가장 높은 사람이 이깁니다.
         </p>
       </section>
       <section className={styles.section}>
         <h2 className={styles.h2}>한 판의 흐름</h2>
         <ol className={styles.steps}>
           <li>
-            <strong>준비</strong>: 목표 3장과 이번 판 식물이 공개됩니다(카드 탭 위쪽). 이 식물들로 카드 더미를 섞고 각자 {HAND_SIZE}장씩 받습니다.
+            <strong>준비</strong>: 이 식물들로 카드 더미를 섞고 각자 {START_HAND}장씩 받습니다. 목표 3장과 이번 판 식물을 모두에게 보여 주고(카드 탭 위쪽에도 있음), 모두 확인하면 시작합니다.
           </li>
           <li>
-            <strong>마켓</strong>: 라운드가 시작될 때마다 카드 더미에서 카드를 앞면으로 펼칩니다. 이것이 마켓이고, 모두가 볼 수 있습니다.
+            <strong>마켓</strong>: 라운드가 시작될 때마다 카드 더미에서 남은 사람 수만큼 카드를 앞면으로 펼칩니다. 이것이 마켓이고, 모두가 볼 수 있습니다.
           </li>
           <li>
-            <strong>심기</strong>: 내 차례에 내 카드 1장을 골라 내 뿌리가 닿는(영향력 1 이상) 빈 칸에 심고, 마켓에서 1장을 골라 가져옵니다. 심을 칸이 하나도 없을 때만 1장을 버리고 가져옵니다.
+            <strong>가져오기</strong>: 그 라운드의 선부터 한 사람씩 마켓에서 원하는 카드 1장을 가져옵니다. 내 카드가 2장이 됩니다.
           </li>
           <li>
-            <strong>끝</strong>: 카드 더미와 마켓이 떨어지면 남은 내 카드만 씁니다. 모두 카드를 다 쓰면 끝나고 점수를 셉니다. 패스는 없습니다.
+            <strong>심기</strong>: 모두 가져가면 다시 선부터 한 사람씩 내 카드 1장을 골라 내 뿌리가 닿는(영향력 1 이상) 빈 칸에 심습니다. 심을 칸이 하나도 없을 때만 1장을 버립니다.
+          </li>
+          <li>
+            <strong>다음 선</strong>: 라운드가 끝나면 점수가 가장 낮은 사람이 다음 라운드의 선이 됩니다. 동점이면 이번 선의 다음 자리부터 시계방향으로 처음 만나는 동점자가 선입니다.
+          </li>
+          <li>
+            <strong>끝</strong>: 카드 더미가 떨어지면 마켓 없이 남은 내 카드만 심습니다. 모두 카드를 다 쓰면 끝나고 점수를 셉니다. 패스는 없습니다.
           </li>
         </ol>
       </section>
@@ -72,7 +78,7 @@ export const HelpTab = memo(function HelpTab() {
       </section>
       <section className={styles.section}>
         <h2 className={styles.h2}>순서 보정</h2>
-        <p>두는 순서에 따른 유불리는 순서 보너스 점수로 맞춥니다. 점수 탭에 순서 보너스가 표시됩니다.</p>
+        <p>점수가 낮은 사람이 선을 잡아 먼저 가져오고, 남은 유불리는 순서 보너스 점수로 맞춥니다. 점수 탭에 순서 보너스가 표시됩니다.</p>
       </section>
     </div>
   );

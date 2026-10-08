@@ -27,7 +27,10 @@ SpeciesId = Literal[
 ]
 GoalId = str
 Terrain = Literal["empty", "fertile", "pond", "rock"]
-GamePhase = Literal["lobby", "playing", "finished"]
+# lobby → reveal(이번 판 식물 공개) → playing → finished
+GamePhase = Literal["lobby", "reveal", "playing", "finished"]
+# 라운드 안의 단계: 모두 가져온 뒤 모두 심는다
+RoundStage = Literal["take", "plant"]
 LogKind = Literal["system", "take", "plant", "discard", "flip", "turn", "surrender", "result"]
 PlayerKind = Literal["human", "ai"]
 GameResultReason = Literal["complete", "last-standing"]
@@ -79,6 +82,7 @@ class PlayerState(_Model):
     nickname: str
     kind: PlayerKind
     seat: int
+    # 로비: 준비 완료. 공개 단계: 확인함
     isReady: bool
     hand: list[SpeciesId] = Field(default_factory=list)
     surrenderedOrder: Optional[int] = None
@@ -114,15 +118,18 @@ class GameState(_Model):
     goals: list[GoalId] = Field(default_factory=list)
     # 이번 판에 쓰는 식물 (표 순서, 공개)
     species: list[SpeciesId] = Field(default_factory=list)
-    # 이번 라운드에 펼쳐 둔 카드 (공개). 차례마다 1장씩 가져간다
+    # 이번 라운드에 펼쳐 둔 카드 (공개). 가져오기 단계에서 1장씩 가져간다
     market: list[SpeciesId] = Field(default_factory=list)
     # 카드 더미 (맨 앞이 다음 카드). 서버가 가린 상태에서는 빈 배열이고 pileCount 만 있다
     pile: list[SpeciesId] = Field(default_factory=list)
     # 가린 상태(MaskedGameState)의 더미 장수. 원본 상태에는 없다. 직렬화에서는 뺀다
     pileCount: Optional[int] = Field(default=None, exclude=True)
-    # 이번 라운드의 첫 자리 (공개). 라운드 안 순서는 여기서부터 자리 순서
+    # 이번 라운드의 선(첫 자리, 공개). 라운드 안 순서는 여기서부터 자리 순서. 라운드가 끝나면 점수 최저인 사람
     roundStart: int = 0
+    # 1부터 (공개 단계는 0)
     round: int = 0
+    # 라운드 안의 단계 (공개 단계·종료에서는 의미 없음)
+    stage: RoundStage = "take"
     turn: int = 0
     currentPlayerId: Optional[PlayerId] = None
     players: list[PlayerState] = Field(default_factory=list)
@@ -152,8 +159,23 @@ class ReadyAction(_Model):
     playerId: PlayerId
 
 
+class ConfirmAction(_Model):
+    """이번 판 식물 공개 단계에서 확인."""
+
+    type: Literal["CONFIRM"] = "CONFIRM"
+    playerId: PlayerId
+
+
+class TakeAction(_Model):
+    """가져오기 단계: 마켓 take 번 카드를 손에 든다."""
+
+    type: Literal["TAKE"] = "TAKE"
+    playerId: PlayerId
+    take: int
+
+
 class PlantAction(_Model):
-    """direction 은 칡만, seed 는 민들레만(생략 가능), take 는 가져올 마켓 자리 번호(마켓이 비었으면 생략).
+    """심기 단계. direction 은 칡만, seed 는 민들레만(생략 가능).
     직렬화할 때 None 은 빼야 TS 검증을 통과한다."""
 
     type: Literal["PLANT"] = "PLANT"
@@ -162,16 +184,14 @@ class PlantAction(_Model):
     pos: Position
     direction: Optional[int] = None
     seed: Optional[Position] = None
-    take: Optional[int] = None
 
 
 class DiscardAction(_Model):
-    """손의 어떤 카드도 심을 칸이 없을 때만. take 규칙은 심기와 같다."""
+    """심기 단계. 손의 어떤 카드도 심을 칸이 없을 때만."""
 
     type: Literal["DISCARD"] = "DISCARD"
     playerId: PlayerId
     species: SpeciesId
-    take: Optional[int] = None
 
 
 class SurrenderAction(_Model):
@@ -180,7 +200,7 @@ class SurrenderAction(_Model):
 
 
 Action = Annotated[
-    Union[ReadyAction, PlantAction, DiscardAction, SurrenderAction],
+    Union[ReadyAction, ConfirmAction, TakeAction, PlantAction, DiscardAction, SurrenderAction],
     Field(discriminator="type"),
 ]
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { HAND_SIZE, rulesFor } from '../data/index.js';
+import { START_HAND, rulesFor } from '../data/index.js';
 import type { Action, Board, GameState, Plant, PlayerId, Position, SpeciesId } from '../types/index.js';
 import {
   applyAction,
@@ -21,6 +21,7 @@ import {
   legalPlantCells,
   legalSeedCells,
   nextRandom,
+  nextRoundStart,
   pickGarden,
   pickGoals,
   step,
@@ -42,8 +43,21 @@ function ok(state: GameState, action: Action): GameState {
   return r.state;
 }
 
+/** 모두 준비 → 이번 판 식물 공개 단계에서 모두 확인 → 1라운드 가져오기 */
 function readyAll(s: GameState): GameState {
+  s = revealAll(s);
+  for (const p of s.players) if (s.phase === 'reveal' && !p.isReady) s = ok(s, { type: 'CONFIRM', playerId: p.id });
+  return s;
+}
+
+function revealAll(s: GameState): GameState {
   for (const p of s.players) s = ok(s, { type: 'READY', playerId: p.id });
+  return s;
+}
+
+/** 1라운드 가져오기를 자동 수로 끝내고 심기 단계로 */
+function toPlant(s: GameState): GameState {
+  while (s.stage === 'take') s = ok(s, autoAction(s, s.currentPlayerId as PlayerId)!);
   return s;
 }
 
@@ -60,6 +74,8 @@ function flatState(plants: Omit<Plant, 'id'>[] = [], seeds: GameState['seeds'] =
     board,
     goals: [],
     round: 1,
+    stage: 'plant',
+    roundStart: 0,
     turn: 1,
     currentPlayerId: 'p0',
     plants: plants.map((p, i) => ({ ...p, id: `t${i}` })),
@@ -255,14 +271,25 @@ describe('심을 수 있는 칸 (Rules.md 6.1)', () => {
 });
 
 describe('로비 → 진행, 라운드 마켓 (Rules.md 4·5·6절)', () => {
-  it('모두 준비하면 보드·목표·이번 판 식물이 정해지고, 손 3장씩 + 인원 수만큼 마켓을 펼친다', () => {
-    const s = readyAll(lobby(2));
+  it('모두 준비하면 이번 판 식물 공개 단계: 손 1장씩, 마켓·차례 없음, 모두 확인하면 1라운드', () => {
+    const r = revealAll(lobby(2));
+    expect(r.phase).toBe('reveal');
+    expect(r.currentPlayerId).toBeNull();
+    expect(r.market).toHaveLength(0);
+    expect(applyAction(r, { type: 'TAKE', playerId: 'p0', take: 0 }).error).toBeDefined();
+    const r1 = ok(r, { type: 'CONFIRM', playerId: 'p1' });
+    expect(r1.phase).toBe('reveal');
+    expect(applyAction(r1, { type: 'CONFIRM', playerId: 'p1' }).error).toMatch(/이미/);
+    expect(autoAction(r1, 'p0')).toEqual({ type: 'CONFIRM', playerId: 'p0' });
+    const s = ok(r1, { type: 'CONFIRM', playerId: 'p0' });
     expect(s.phase).toBe('playing');
+    expect(s.round).toBe(1);
+    expect(s.stage).toBe('take');
     expect(s.board?.cells).toHaveLength(49);
     expect(s.goals).toHaveLength(3);
     expect(s.species).toHaveLength(rulesFor(2).gardenSize);
     expect(s.market).toHaveLength(2);
-    for (const p of s.players) expect(p.hand).toHaveLength(HAND_SIZE);
+    for (const p of s.players) expect(p.hand).toHaveLength(START_HAND);
     const total = s.players.reduce((n, p) => n + p.hand.length, 0) + s.market.length + s.pile.length;
     expect(total).toBe(rulesFor(2).gardenSize * rulesFor(2).copies);
     expect([...s.pile, ...s.market, ...s.players.flatMap((p) => p.hand)].every((x) => s.species.includes(x))).toBe(true);
@@ -278,6 +305,9 @@ describe('로비 → 진행, 라운드 마켓 (Rules.md 4·5·6절)', () => {
     expect(s.players.find((p) => p.id === 'p0')!.isReady).toBe(false);
     expect(s.players.find((p) => p.id === 'ai')!.isReady).toBe(true);
     s = ok(s, { type: 'READY', playerId: 'p0' });
+    expect(s.phase).toBe('reveal');
+    expect(s.players.find((p) => p.id === 'ai')!.isReady).toBe(true); // AI 는 바로 확인
+    s = ok(s, { type: 'CONFIRM', playerId: 'p0' });
     expect(s.phase).toBe('playing');
 
     let t = lobby(3);
@@ -338,111 +368,144 @@ describe('로비 → 진행, 라운드 마켓 (Rules.md 4·5·6절)', () => {
     }
   });
 
-  it('가져오기: 마켓에 카드가 있으면 자리 번호가 꼭 있어야 하고, 고른 카드가 손으로 온다', () => {
+  it('가져오기: 내 차례에 마켓의 고른 카드가 손으로 오고, 모두 가져가면 선부터 심기 단계', () => {
     const s = readyAll(lobby(2));
-    const auto = autoAction(s, 'p0') as Extract<Action, { type: 'PLANT' }>;
-    const { take: _t, ...noTake } = auto;
-    expect(applyAction(s, noTake).error).toMatch(/가져올/);
-    expect(applyAction(s, { ...auto, take: 5 }).error).toMatch(/없는 카드/);
+    expect(s.stage).toBe('take');
+    expect(applyAction(s, { type: 'TAKE', playerId: 'p1', take: 0 }).error).toMatch(/차례/);
+    expect(applyAction(s, { type: 'TAKE', playerId: 'p0', take: 5 }).error).toMatch(/없는 카드/);
+    expect(applyAction(s, { type: 'PLANT', playerId: 'p0', species: s.players[0]!.hand[0]!, pos: { q: 0, r: 0 } }).error).toMatch(/가져오세요/);
     const picked = s.market[1]!;
-    const t = ok(s, { ...auto, take: 1 });
-    expect(t.players[0]!.hand).toHaveLength(HAND_SIZE);
-    expect(t.players[0]!.hand[HAND_SIZE - 1]).toBe(picked);
+    const t = ok(s, { type: 'TAKE', playerId: 'p0', take: 1 });
+    expect(t.players[0]!.hand).toHaveLength(START_HAND + 1);
+    expect(t.players[0]!.hand[START_HAND]).toBe(picked);
     expect(t.market).toEqual([s.market[0]]);
     expect(t.log.some((e) => e.kind === 'take' && e.playerId === 'p0')).toBe(true);
     expect(t.currentPlayerId).toBe('p1');
-    expect(t.turn).toBe(2);
+    expect(t.stage).toBe('take');
+    const u = ok(t, { type: 'TAKE', playerId: 'p1', take: 0 });
+    expect(u.market).toHaveLength(0);
+    expect(u.stage).toBe('plant');
+    expect(u.currentPlayerId).toBe('p0');
+    expect(applyAction(u, { type: 'TAKE', playerId: 'p0', take: 0 }).error).toMatch(/심을 차례/);
   });
 
-  it('라운드 마지막 사람은 남은 1장을 가져가고, 다음 라운드에 인원 수만큼 새로 펼친다', () => {
+  it('라운드: 가져오기(선부터) → 심기(선부터) 뒤 다음 라운드에 인원 수만큼 새로 펼친다', () => {
     let s = readyAll(lobby(3));
     const pileBefore = s.pile.length;
-    s = ok(s, autoAction(s, 'p0')!);
-    s = ok(s, autoAction(s, 'p1')!);
-    expect(s.market).toHaveLength(1);
-    s = ok(s, autoAction(s, 'p2')!);
+    const seen: string[] = [];
+    for (let i = 0; i < 6; i++) {
+      seen.push(`${s.stage}:${s.currentPlayerId}`);
+      s = ok(s, autoAction(s, s.currentPlayerId as PlayerId)!);
+    }
+    expect(seen).toEqual(['take:p0', 'take:p1', 'take:p2', 'plant:p0', 'plant:p1', 'plant:p2']);
     expect(s.round).toBe(2);
-    expect(s.currentPlayerId).toBe('p1');
+    expect(s.stage).toBe('take');
     expect(s.market).toHaveLength(3);
     expect(s.pile).toHaveLength(pileBefore - 3);
+    for (const p of s.players) expect(p.hand).toHaveLength(START_HAND);
   });
 
-  it('선 돌리기: 라운드마다 첫 차례가 한 자리씩 돈다 (3인 0·1·2 → 1·2·0 → 2·0·1)', () => {
-    let s = readyAll(lobby(3));
-    const order: string[] = [];
-    for (let i = 0; i < 9; i++) {
-      order.push(s.currentPlayerId as string);
+  it('다음 선: 점수가 가장 낮은 사람, 동점이면 이번 선 다음 자리부터 시계방향 첫 동점자', () => {
+    // flatState: 입구만 있는 2인 보드. p0 이 앞서면 p1 이 선
+    const base = { ...flatState(), roundStart: 0 };
+    const ahead = flatState([plant('oak', 'p0', 1, 0)]);
+    expect(nextRoundStart({ ...ahead, roundStart: 0 })).toBe(1);
+    expect(nextRoundStart({ ...ahead, roundStart: 1 })).toBe(1);
+    // 동점: 이번 선 다음 자리
+    expect(computeScores(base)['p0']!.total).toBe(computeScores(base)['p1']!.total);
+    expect(nextRoundStart({ ...base, roundStart: 0 })).toBe(1);
+    expect(nextRoundStart({ ...base, roundStart: 1 })).toBe(0);
+  });
+
+  it('라운드가 넘어갈 때 선은 직전 상태의 nextRoundStart 와 같고, 가져오기·심기 모두 그 자리부터 (4인 끝까지)', () => {
+    let s = readyAll(lobby(4, 9));
+    for (let i = 0; i < 400 && s.phase === 'playing'; i++) {
+      const before = s;
       s = ok(s, autoAction(s, s.currentPlayerId as PlayerId)!);
-    }
-    expect(order).toEqual(['p0', 'p1', 'p2', 'p1', 'p2', 'p0', 'p2', 'p0', 'p1']);
-    expect(s.round).toBe(4);
-  });
-
-  it('선 돌리기는 기권하지 않은 사람 사이에서 고르게 돈다 (3인, 2번 자리 기권)', () => {
-    let s = readyAll(lobby(3));
-    s = ok(s, { type: 'SURRENDER', playerId: 'p2' });
-    const starts: number[] = [];
-    let lastRound = 0;
-    for (let i = 0; i < 12; i++) {
-      if (s.round !== lastRound) {
-        starts.push(s.players.find((p) => p.id === s.currentPlayerId)!.seat);
-        lastRound = s.round;
+      if (s.phase === 'playing' && s.round !== before.round) {
+        // 마켓 펼치기는 점수를 바꾸지 않으므로, 새 라운드 보드에 직전 선을 넣어 고른 결과와 같아야 한다
+        expect(s.roundStart).toBe(nextRoundStart({ ...s, roundStart: before.roundStart }));
+        expect(s.players.find((p) => p.id === s.currentPlayerId)!.seat).toBe(s.roundStart);
       }
-      s = ok(s, autoAction(s, s.currentPlayerId as PlayerId)!);
     }
-    // 라운드 1: 0, 라운드 2: 1, 라운드 3: (2 기권) → 0, 라운드 4: 1 …
-    expect(starts.slice(0, 5)).toEqual([0, 1, 0, 1, 0]);
+    expect(s.phase).toBe('finished');
   });
 
-  it('지금 차례인 사람이 라운드 마지막에 기권하면 다음 라운드로 넘어가고 마켓은 남은 인원 수만큼', () => {
+  it('기권으로 마켓이 인원보다 적게 펼쳐져도 손이 남지 않고 정상 종료한다 (4인, 둘째 라운드 심기 중 차례 아닌 사람 기권)', () => {
+    let s = readyAll(lobby(4, 3));
+    while (s.round < 2 || s.stage !== 'plant') s = ok(s, autoAction(s, s.currentPlayerId as PlayerId)!);
+    const notCurrent = s.players.find((p) => p.id !== s.currentPlayerId)!.id;
+    const cur = s.currentPlayerId;
+    s = ok(s, { type: 'SURRENDER', playerId: notCurrent });
+    expect(s.currentPlayerId).toBe(cur);
+    for (let i = 0; i < 400 && s.phase === 'playing'; i++) {
+      expect(s.players.find((p) => p.seat === s.roundStart)!.surrenderedOrder).toBeNull();
+      s = ok(s, autoAction(s, s.currentPlayerId as PlayerId)!);
+    }
+    expect(s.result?.reason).toBe('complete');
+    for (const p of s.players) expect(p.hand).toHaveLength(0);
+  });
+
+  it('다음 선은 기권하지 않은 사람 중에서 고른다 (3인)', () => {
+    let s = readyAll(lobby(3));
+    s = ok(s, { type: 'SURRENDER', playerId: 'p1' });
+    for (let i = 0; i < 40 && s.phase === 'playing'; i++) {
+      expect(s.players.find((p) => p.seat === s.roundStart)!.surrenderedOrder).toBeNull();
+      s = ok(s, autoAction(s, s.currentPlayerId as PlayerId)!);
+    }
+  });
+
+  it('가져오기 차례인 사람이 기권하면 다음 사람이 가져오고, 다음 라운드 마켓은 남은 인원 수만큼', () => {
     let s = readyAll(lobby(3));
     s = ok(s, autoAction(s, 'p0')!);
-    s = ok(s, autoAction(s, 'p1')!);
-    expect(s.currentPlayerId).toBe('p2');
-    const pileBefore = s.pile.length;
-    s = ok(s, { type: 'SURRENDER', playerId: 'p2' });
-    expect(s.round).toBe(2);
     expect(s.currentPlayerId).toBe('p1');
+    s = ok(s, { type: 'SURRENDER', playerId: 'p1' });
+    expect(s.players[1]!.hand).toHaveLength(0);
+    expect(s.currentPlayerId).toBe('p2');
+    expect(s.stage).toBe('take');
+    s = ok(s, autoAction(s, 'p2')!);
+    expect(s.stage).toBe('plant');
+    expect(s.market).toHaveLength(1); // 남은 1장은 라운드가 바뀌면 버려진다
+    const pileBefore = s.pile.length;
+    s = ok(s, autoAction(s, s.currentPlayerId as PlayerId)!);
+    s = ok(s, autoAction(s, s.currentPlayerId as PlayerId)!);
+    expect(s.round).toBe(2);
     expect(s.market).toHaveLength(2);
-    expect(s.pile).toHaveLength(pileBefore - 2); // 남은 1장은 버려지고 더미로 돌아가지 않는다
+    expect(s.pile).toHaveLength(pileBefore - 2);
   });
 
-  it('버리기도 마켓에서 1장 가져온다', () => {
-    const s0 = readyAll(lobby(2));
+  it('버리기: 어떤 카드도 심을 칸이 없을 때만, 심기 단계에서', () => {
+    let s0 = readyAll(lobby(2));
+    s0 = ok(s0, autoAction(s0, 'p0')!);
+    s0 = ok(s0, autoAction(s0, 'p1')!);
+    expect(s0.stage).toBe('plant');
     // 심을 칸이 없게: 모든 빈 칸을 바위로 만든다
     const cells = s0.board!.cells.map((c) => (s0.board!.entrances.some((e) => e.q === c.q && e.r === c.r) ? c : { ...c, terrain: 'rock' as const }));
     const s = { ...s0, board: { ...s0.board!, cells } };
     expect(hasAnyPlant(s, 'p0')).toBe(false);
     const sp = s.players[0]!.hand[0]!;
-    expect(applyAction(s, { type: 'DISCARD', playerId: 'p0', species: sp }).error).toMatch(/가져올/);
-    const t = ok(s, { type: 'DISCARD', playerId: 'p0', species: sp, take: 0 });
-    expect(t.players[0]!.hand).toHaveLength(HAND_SIZE);
-    expect(t.market).toHaveLength(1);
+    expect(autoAction(s, 'p0')).toEqual({ type: 'DISCARD', playerId: 'p0', species: sp });
+    const t = ok(s, { type: 'DISCARD', playerId: 'p0', species: sp });
+    expect(t.players[0]!.hand).toHaveLength(START_HAND);
     expect(t.log.some((e) => e.kind === 'discard')).toBe(true);
+    expect(t.currentPlayerId).toBe('p1');
   });
 
-  it('마켓이 비면 가져오기 없이 둔다(있으면 거부)', () => {
-    const s = { ...readyAll(lobby(2)), market: [], pile: [] };
-    const auto = autoAction(s, 'p0') as Extract<Action, { type: 'PLANT' }>;
-    expect(auto.take).toBeUndefined();
-    expect(applyAction(s, { ...auto, take: 0 }).error).toMatch(/가져올 카드가 없/);
-    const t = ok(s, auto);
-    expect(t.players[0]!.hand).toHaveLength(HAND_SIZE - 1);
-  });
-
-  it('기권하면 손 카드는 버려지고, 다음 라운드 마켓은 남은 인원 수만큼', () => {
-    let s = readyAll(lobby(3));
-    s = ok(s, { type: 'SURRENDER', playerId: 'p2' });
-    expect(s.players[2]!.hand).toHaveLength(0);
+  it('더미가 떨어지면 마켓 없이 바로 심기 단계', () => {
+    let s = readyAll(lobby(2));
+    s = ok(s, autoAction(s, 'p0')!);
+    s = ok(s, autoAction(s, 'p1')!);
+    s = { ...s, pile: [] };
     s = ok(s, autoAction(s, 'p0')!);
     s = ok(s, autoAction(s, 'p1')!);
     expect(s.round).toBe(2);
-    expect(s.currentPlayerId).toBe('p1'); // 라운드 2 의 첫 자리는 1번
-    expect(s.market).toHaveLength(2);
+    expect(s.market).toHaveLength(0);
+    expect(s.stage).toBe('plant');
+    expect(autoAction(s, s.currentPlayerId as PlayerId)!.type).toBe('PLANT');
   });
 
   it('남의 차례·손패에 없는 카드·뿌리가 안 닿는 칸은 거부', () => {
-    const s = readyAll(lobby(2));
+    const s = toPlant(readyAll(lobby(2)));
     const sp = s.players[0]!.hand[0]!;
     expect(applyAction(s, { type: 'PLANT', playerId: 'p1', species: s.players[1]!.hand[0]!, pos: { q: 0, r: 0 } }).error).toMatch(/차례/);
     const notInHand = (['grass', 'oak', 'pine', 'kudzu', 'fern', 'dandelion', 'rapeseed', 'lotus', 'ivy', 'bamboo', 'mushroom', 'mugunghwa'] as SpeciesId[]).find((x) => !s.players[0]!.hand.includes(x))!;
@@ -468,7 +531,7 @@ describe('로비 → 진행, 라운드 마켓 (Rules.md 4·5·6절)', () => {
   });
 
   it('버리기: 심을 칸이 있으면 거부', () => {
-    const s = readyAll(lobby(2));
+    const s = toPlant(readyAll(lobby(2)));
     expect(hasAnyPlant(s, 'p0')).toBe(true);
     expect(applyAction(s, { type: 'DISCARD', playerId: 'p0', species: s.players[0]!.hand[0]! }).error).toMatch(/버릴 수 없/);
   });
@@ -527,6 +590,18 @@ describe('종료·점수·순위 (Rules.md 8·9절)', () => {
     const s = playOut(2, 8);
     const owners = computeOwners(s);
     for (const p of s.players) expect(s.result!.scores[p.id]!.land).toBe([...owners].filter((o) => o === p.seat).length);
+  });
+
+  it('공개 단계에서 기권하면 남은 사람이 모두 확인했을 때 시작, 1명만 남으면 종료', () => {
+    let r = revealAll(lobby(3));
+    r = ok(r, { type: 'CONFIRM', playerId: 'p0' });
+    r = ok(r, { type: 'CONFIRM', playerId: 'p1' });
+    r = ok(r, { type: 'SURRENDER', playerId: 'p2' });
+    expect(r.phase).toBe('playing');
+    expect(r.market).toHaveLength(2);
+    let t = revealAll(lobby(2));
+    t = ok(t, { type: 'SURRENDER', playerId: 'p1' });
+    expect(t.phase).toBe('finished');
   });
 
   it('기권: 차례를 건너뛰고 순위 맨 아래, 1명만 남으면 종료', () => {

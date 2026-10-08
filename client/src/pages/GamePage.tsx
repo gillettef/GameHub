@@ -53,7 +53,8 @@ export function GamePage({ onQuit }: GamePageProps) {
   useEffect(() => {
     if (!state || !viewerId) return;
     const isMyTurn = state.phase === 'playing' && state.currentPlayerId === viewerId;
-    document.title = isMyTurn ? '내 차례 · Rootbound' : 'Rootbound';
+    const toConfirm = state.phase === 'reveal' && state.players.some((p) => p.id === viewerId && !p.isReady && p.surrenderedOrder === null);
+    document.title = isMyTurn ? '내 차례 · Rootbound' : toConfirm ? '확인 대기 · Rootbound' : 'Rootbound';
   }, [state, viewerId]);
   useEffect(() => () => {
     document.title = 'Rootbound';
@@ -94,7 +95,7 @@ export function GamePage({ onQuit }: GamePageProps) {
             </button>
           </div>
         )}
-        {!offline && absent.length > 0 && state.phase === 'playing' && (
+        {!offline && absent.length > 0 && (state.phase === 'playing' || state.phase === 'reveal') && (
           <div className={styles.bannerSoft} role="status">
             접속 끊김: {absent.map((p) => p.nickname).join(', ')}. 돌아오면 이어서 진행됩니다.
           </div>

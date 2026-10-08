@@ -11,10 +11,11 @@ import { SetupPage } from './pages/SetupPage';
 import { useGameStore, type TabId } from './store/gameStore';
 
 /**
- * 개발·검증용 바로가기: `/hotseat?quick` 은 곧장 핫시트를 시작한다.
- * `&players=<2~4>` 인원, `&seed=<n>` 시드, `&play=<n>` 자동 수로 n번 두고 시작(중반·마켓 빈 화면 확인용, 숫자 없으면 0),
- * `&tab=<board|status|progress|cards|help>` 첫 탭, `&select=<손패 index>` 선택 카드, `&cell=<합법 칸 index>` 고른 카드로 심을 후보 칸(미리보기),
- * `&take=<마켓 index>` 가져올 마켓 카드, `&modal=<손패 index>` 카드 확대 모달.
+ * 개발·검증용 바로가기: `/hotseat?quick` 은 곧장 핫시트를 시작한다(이번 판 식물 공개 화면).
+ * `&players=<2~4>` 인원, `&seed=<n>` 시드, `&play=<n>` 공개 단계를 확인한 뒤 자동 수로 n번 두고 시작(가져오기·심기 각각 1번, 중반·마켓 빈 화면 확인용),
+ * `&tab=<board|status|progress|cards|help>` 첫 탭, `&take=<마켓 index>` 가져오기 차례면 그 카드를 가져온다(TAKE),
+ * `&select=<손패 index>` 선택 카드, `&cell=<합법 칸 index>` 고른 카드로 심을 후보 칸(미리보기), `&modal=<손패 index>` 카드 확대 모달.
+ * play·take·select·cell·modal 중 하나라도 있으면 공개 단계를 자동으로 확인한다.
  */
 function readQuickStart(): { players: number; seed: number; play: number; tab: TabId | null; select: number | null; cell: number | null; take: number | null; modal: number | null } | null {
   const q = new URLSearchParams(window.location.search);
@@ -49,7 +50,8 @@ export function App() {
   const setTab = useGameStore((s) => s.setTab);
   const selectHandCard = useGameStore((s) => s.selectHandCard);
   const tapCell = useGameStore((s) => s.tapCell);
-  const pickTake = useGameStore((s) => s.pickTake);
+  const takeCard = useGameStore((s) => s.takeCard);
+  const confirmReveal = useGameStore((s) => s.confirmReveal);
   const openCardModal = useGameStore((s) => s.openCardModal);
   const reset = useGameStore((s) => s.reset);
   const startTutorial = useGameStore((s) => s.startTutorial);
@@ -59,6 +61,8 @@ export function App() {
     const quick = readQuickStart();
     if (!quick || useGameStore.getState().state) return;
     startHotseat({ seed: quick.seed, nicknames: Array.from({ length: quick.players }, (_, i) => `플레이어 ${i + 1}`) });
+    const skipReveal = new URLSearchParams(window.location.search).has('play') || quick.take !== null || quick.select !== null || quick.cell !== null || quick.modal !== null;
+    if (skipReveal) confirmReveal();
     if (quick.play > 0) {
       for (let i = 0; i < quick.play; i++) {
         const st = useGameStore.getState().state;
@@ -70,6 +74,10 @@ export function App() {
     }
     acknowledgeHandoff();
     if (quick.tab) setTab(quick.tab);
+    if (quick.take !== null && Number.isInteger(quick.take)) {
+      takeCard(quick.take);
+      acknowledgeHandoff();
+    }
     if (quick.select !== null && Number.isInteger(quick.select)) selectHandCard(quick.select);
     if (quick.cell !== null && Number.isInteger(quick.cell)) {
       const { state: st, viewerId } = useGameStore.getState();
@@ -77,10 +85,9 @@ export function App() {
       const pos = st && viewerId && sp ? legalPlantCells(asState(st), viewerId, sp)[quick.cell] : undefined;
       if (pos) tapCell(pos);
     }
-    if (quick.take !== null && Number.isInteger(quick.take)) pickTake(quick.take);
     if (quick.modal !== null && Number.isInteger(quick.modal)) openCardModal({ kind: 'hand', index: quick.modal });
     if (window.location.pathname !== '/hotseat') navigate('/hotseat', true);
-  }, [startHotseat, acknowledgeHandoff, setTab, selectHandCard, tapCell, pickTake, openCardModal]);
+  }, [startHotseat, confirmReveal, acknowledgeHandoff, setTab, selectHandCard, tapCell, takeCard, openCardModal]);
 
   // /tutorial 로 들어오면(새로고침 포함) 연습 판을 새로 시작한다
   useEffect(() => {

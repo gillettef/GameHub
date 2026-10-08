@@ -5,10 +5,10 @@
  *   npm run fixtures   (= npx tsx shared/scripts/write-fixtures.ts)
  *
  *  specs.json     종·목표·상수·인원별 규칙 기준표
- *  scenario.json  2·3·4인 판을 시드로 고른 합법 수로 끝까지 둔 기록(용량 때문에 한 줄 JSON).
- *                 각 단계 { action, influence, owners, scores, legal } 와, 8단계마다·마지막에 state(log 제외).
+ *  scenario.json  2·3·4인 판을 이번 판 식물 공개 단계(initial)부터 시드로 고른 합법 수로 끝까지 둔 기록(용량 때문에 한 줄 JSON).
+ *                 각 단계 { action, influence, owners, scores, legal(심기 단계만), auto(자동 수) } 와, 8단계마다·마지막에 state(log 제외).
  *                 Python 은 initial 에 action 을 차례로 적용하며 state 가 있는 단계에서 상태 일치를,
- *                 매 단계에서 영향력·땅·점수·심을 수 있는 칸 일치를 확인한다.
+ *                 매 단계에서 영향력·땅·점수·심을 수 있는 칸·자동 수 일치를 확인한다.
  */
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -39,26 +39,27 @@ const write = (name: string, data: unknown) => {
 
 write('specs.json', { species: SPECIES, goals: GOALS, constants: CONSTANTS, playerCountRules: PLAYER_COUNT_RULES });
 
-/** 다양한 수가 나오게 자동 수 대신 시드로 고른 합법 수를 둔다 (방향·씨앗 포함) */
+/** 다양한 수가 나오게 자동 수 대신 시드로 고른 합법 수를 둔다 (가져오기 자리·방향·씨앗 포함) */
 function variedAction(s: GameState, rnd: { seed: number }): Action {
-  const pid = s.currentPlayerId as PlayerId;
   const pick = <T>(arr: T[]): T => {
     const r = nextRandom(rnd.seed);
     rnd.seed = r.seed;
     return arr[Math.floor(r.value * arr.length)] as T;
   };
+  // 이번 판 식물 공개 단계: 아직 확인하지 않은 첫 사람이 확인
+  if (s.phase === 'reveal') {
+    const p = s.players.find((x) => x.surrenderedOrder === null && !x.isReady)!;
+    return autoAction(s, p.id) as Action;
+  }
+  const pid = s.currentPlayerId as PlayerId;
   if (s.phase !== 'playing') return autoAction(s, pid) as Action;
+  if (s.stage === 'take') return { type: 'TAKE', playerId: pid, take: pick(s.market.map((_, i) => i)) };
   const me = s.players.find((p) => p.id === pid)!;
   const inf = computeInfluence(s);
   const options = [...new Set(me.hand)].flatMap((sp) => legalPlantCells(s, pid, sp, inf).map((pos) => ({ sp, pos })));
   if (options.length === 0) return autoAction(s, pid) as Action;
   const { sp, pos } = pick(options);
-  // 가져오기도 시드로 고른다(마켓이 비었으면 autoAction 이 take 를 빼 둔다)
-  const take = s.market.length > 0 ? { take: pick(s.market.map((_, i) => i)) } : {};
-  const base0 = autoAction({ ...s, players: s.players.map((p) => (p.id === pid ? { ...p, hand: [sp, ...p.hand.filter((_, i) => i !== p.hand.indexOf(sp))] } : p)) }, pid) as Action;
-  const base = { ...base0, ...take } as Action;
-  if (base.type !== 'PLANT') return base;
-  const action: Action = { ...base, species: sp, pos };
+  const action: Extract<Action, { type: 'PLANT' }> = { type: 'PLANT', playerId: pid, species: sp, pos };
   if (sp === 'kudzu') {
     const dirs = [0, 1, 2, 3, 4, 5] as const;
     for (const d of [pick([...dirs]), ...dirs]) if (!applyAction(s, { ...action, direction: d }).error) return { ...action, direction: d };
@@ -70,21 +71,24 @@ function variedAction(s: GameState, rnd: { seed: number }): Action {
       if (!applyAction(s, a).error) return a;
     }
   }
-  const { direction: _d, ...rest } = action as Extract<Action, { type: 'PLANT' }>;
-  return sp === 'kudzu' ? action : rest;
+  return action;
 }
 
 function scenario(players: number, seed: number) {
   let s = createInitialState(`fixture-${players}`, seed);
-  for (let i = 0; i < players; i++) s = joinPlayer(s, createPlayer(`p${i}`, `P${i}`, i === 0 ? 'human' : 'ai')).state;
-  s = applyAction(s, { type: 'READY', playerId: 'p0' }).state; // AI 는 처음부터 준비 완료
-  if (s.phase !== 'playing') throw new Error('픽스처: 게임이 시작되지 않았습니다');
+  for (let i = 0; i < players; i++) s = joinPlayer(s, createPlayer(`p${i}`, `P${i}`, i <= 1 ? 'human' : 'ai')).state;
+  // 자리 0·1 은 사람(공개 단계에서 둘 다 확인해야 시작), 나머지 AI 는 처음부터 준비 완료
+  for (const pid of ['p0', 'p1']) s = applyAction(s, { type: 'READY', playerId: pid }).state;
+  if (s.phase !== 'reveal') throw new Error('픽스처: 이번 판 식물 공개 단계가 아닙니다');
   const steps: unknown[] = [];
   const initial = { ...s, log: [] };
   const rnd = { seed: seed * 7 + 1 };
-  for (let i = 0; i < 400 && s.phase !== 'finished'; i++) {
-    // 3·4인은 중간에 지금 차례인 사람이 기권한다(기권 뒤 선 돌리기·마켓 장수를 TS·Python 이 같게 하는지)
-    const action: Action = players >= 3 && i === 20 ? { type: 'SURRENDER', playerId: s.currentPlayerId as PlayerId } : variedAction(s, rnd);
+  let surrendered = false;
+  for (let i = 0; i < 800 && s.phase !== 'finished'; i++) {
+    // 3인은 가져오기 단계, 4인은 심기 단계에서 지금 차례인 사람이 기권한다(기권 뒤 선·마켓 장수·단계 진행을 TS·Python 이 같게 하는지)
+    const surrender = s.phase === 'playing' && !surrendered && i >= 20 && ((players === 3 && s.stage === 'take') || (players === 4 && s.stage === 'plant'));
+    if (surrender) surrendered = true;
+    const action: Action = surrender ? { type: 'SURRENDER', playerId: s.currentPlayerId as PlayerId } : variedAction(s, rnd);
     const r = applyAction(s, action);
     if (r.error) throw new Error(`픽스처: ${r.error}`);
     s = r.state;
@@ -98,9 +102,11 @@ function scenario(players: number, seed: number) {
       owners: s.board ? [...computeOwners(s)] : null,
       scores: s.board ? computeScores(s) : null,
       legal:
-        s.phase === 'playing' && me
+        s.phase === 'playing' && s.stage === 'plant' && me
           ? Object.fromEntries([...new Set(me.hand)].map((sp) => [sp, legalPlantCells(s, pid as PlayerId, sp)]))
           : null,
+      // 지금 차례인 사람의 시간 초과 자동 수 (Python auto_action 과 대조)
+      auto: s.phase === 'playing' && pid ? autoAction(s, pid) : null,
     });
   }
   if (s.phase !== 'finished') throw new Error('픽스처: 판이 끝나지 않았습니다');

@@ -34,7 +34,7 @@ export const GameMenu = memo(function GameMenu({ onQuit }: { onQuit: () => void 
     setConfirm(null);
   };
 
-  const canSurrender = state?.phase === 'playing' && state.players.find((p) => p.id === viewerId)?.surrenderedOrder === null;
+  const canSurrender = (state?.phase === 'playing' || state?.phase === 'reveal') && state.players.find((p) => p.id === viewerId)?.surrenderedOrder === null;
 
   return (
     <div className={styles.root}>

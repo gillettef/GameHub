@@ -216,3 +216,15 @@
     animation: none;
   }
 }
+
+/* 이번 라운드 선 (Rules.md 5절): 먼저 가져오고 먼저 심는 사람 */
+.leadTag {
+  flex: none;
+  padding: 0 var(--space-half);
+  border-radius: var(--radius-full);
+  background: var(--color-accent);
+  color: var(--color-accent-text);
+  font-size: var(--text-micro);
+  font-weight: 700;
+  line-height: 1.5;
+}

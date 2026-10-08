@@ -141,6 +141,7 @@ export interface PlayerState {
   kind: PlayerKind;
   /** 좌석 번호 = 차례 순서. 0부터 */
   seat: number;
+  /** 로비: 준비 완료. 공개 단계: 확인함 (Rules.md 4절 7) */
   isReady: boolean;
   /** 손에 든 카드. 서버는 타인에게 장수만 보낸다 */
   hand: SpeciesId[];
@@ -148,8 +149,11 @@ export interface PlayerState {
   surrenderedOrder: number | null;
 }
 
-/** lobby → playing → finished */
-export type GamePhase = 'lobby' | 'playing' | 'finished';
+/** lobby → reveal(이번 판 식물 공개, Rules.md 4절 7) → playing → finished */
+export type GamePhase = 'lobby' | 'reveal' | 'playing' | 'finished';
+
+/** 라운드 안의 단계 (Rules.md 5절): 모두 가져온 뒤 모두 심는다 */
+export type RoundStage = 'take' | 'plant';
 
 export type LogKind = 'system' | 'take' | 'plant' | 'discard' | 'flip' | 'turn' | 'surrender' | 'result';
 
@@ -190,14 +194,16 @@ export interface GameState {
   goals: GoalId[];
   /** 이번 판에 쓰는 식물 (표 순서, 공개). Rules.md 4절 */
   species: SpeciesId[];
-  /** 이번 라운드에 펼쳐 둔 카드 (공개). 차례마다 1장씩 가져간다. Rules.md 5절 */
+  /** 이번 라운드에 펼쳐 둔 카드 (공개). 가져오기 단계에서 1장씩 가져간다. Rules.md 5절 */
   market: SpeciesId[];
   /** 카드 더미 (맨 앞이 다음 카드). 서버는 아무에게도 보내지 않는다 */
   pile: SpeciesId[];
-  /** 이번 라운드의 첫 자리 (선 돌리기, Rules.md 5절). 공개 */
+  /** 이번 라운드의 선(첫 자리). 라운드가 끝날 때 점수가 가장 낮은 사람 (Rules.md 5절). 공개 */
   roundStart: number;
-  /** 라운드 = 모두 한 번씩 둔 것. 1부터 */
+  /** 라운드 = 모두 한 장씩 가져오고 한 장씩 심은 것. 1부터 (공개 단계는 0) */
   round: number;
+  /** 라운드 안의 단계 (공개 단계·종료에서는 의미 없음) */
+  stage: RoundStage;
   /** 전체 차례 번호. 1부터 */
   turn: number;
   /** 차례인 사람 */
@@ -222,10 +228,14 @@ export interface GameState {
 
 export type Action =
   | { type: 'READY'; playerId: PlayerId }
-  /** direction: 칡만. seed: 민들레만(생략 가능). take: 가져올 마켓 자리 번호(마켓이 비었으면 생략) */
-  | { type: 'PLANT'; playerId: PlayerId; species: SpeciesId; pos: Position; direction?: Direction; seed?: Position; take?: number }
-  /** 손의 어떤 카드도 심을 칸이 없을 때만 */
-  | { type: 'DISCARD'; playerId: PlayerId; species: SpeciesId; take?: number }
+  /** 이번 판 식물 공개 단계에서 확인 (Rules.md 4절 7) */
+  | { type: 'CONFIRM'; playerId: PlayerId }
+  /** 가져오기 단계: 마켓 take 번 카드를 손에 든다 (Rules.md 5절) */
+  | { type: 'TAKE'; playerId: PlayerId; take: number }
+  /** 심기 단계. direction: 칡만. seed: 민들레만(생략 가능) */
+  | { type: 'PLANT'; playerId: PlayerId; species: SpeciesId; pos: Position; direction?: Direction; seed?: Position }
+  /** 심기 단계. 손의 어떤 카드도 심을 칸이 없을 때만 */
+  | { type: 'DISCARD'; playerId: PlayerId; species: SpeciesId }
   | { type: 'SURRENDER'; playerId: PlayerId };
 
 export type ActionType = Action['type'];

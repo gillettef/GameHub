@@ -3,7 +3,7 @@ import type { SpeciesId } from '@rootbound/shared';
 import { ENTRANCE_RING, ENTRANCE_SELF, FERTILE_BONUS, getGoal, getSpecies, hasAnyPlant, legalPlantCells, samePos } from '@rootbound/shared';
 import { goalCardUrl } from '../game/cardImages';
 import { DIRECTION_LABELS, asState, buildCells } from '../game/derived';
-import { selectIsMyTurn, selectState, selectTake, selectViewerId, useGameStore } from '../store/gameStore';
+import { selectCanPlant, selectCanTake, selectIsMyTurn, selectState, selectViewerId, useGameStore } from '../store/gameStore';
 import { CloseIcon } from './icons';
 import { SpeciesCard } from './SpeciesCard';
 import styles from './GameModal.module.css';
@@ -11,8 +11,9 @@ import styles from './GameModal.module.css';
 const TERRAIN: Record<string, string> = { empty: '빈 땅', fertile: `기름진 땅 (여기 심은 식물은 이 칸에 +${FERTILE_BONUS})`, pond: '연못 (심을 수 없고, 누구의 땅도 아님)', rock: '바위 (심을 수 없고, 누구의 땅도 아님)' };
 
 /**
- * 확대 모달 하나로 네 가지를 본다 (스토어 cardModal):
- *  - 손패 카드: 크게 보고 "이 카드 고르기". 심을 칸이 하나도 없으면 "버리기"(마켓에서 고른 카드를 함께 가져온다, Rules.md 5·6절)
+ * 확대 모달 하나로 다섯 가지를 본다 (스토어 cardModal):
+ *  - 손패 카드: 심기 차례에 크게 보고 "이 카드 고르기". 심을 칸이 하나도 없으면 "버리기"(Rules.md 6절)
+ *  - 마켓 카드: 가져오기 차례에 크게 보고 "이 카드 가져오기"(Rules.md 5절 2)
  *  - 식물 카드: 보기 전용 (카드 탭·마켓)
  *  - 목표 카드: 보기 전용 (목표 칩·점수 탭·카드 탭)
  *  - 보드 칸: 지형·식물·좌석별 영향력·주인
@@ -26,7 +27,9 @@ export const GameModal = memo(function GameModal() {
   const selected = useGameStore((s) => s.selectedHandIndex);
   const selectHandCard = useGameStore((s) => s.selectHandCard);
   const discard = useGameStore((s) => s.discard);
-  const take = useGameStore(selectTake);
+  const canPlant = useGameStore(selectCanPlant);
+  const canTake = useGameStore(selectCanTake);
+  const takeCard = useGameStore((s) => s.takeCard);
   const cells = useMemo(() => (state && target?.kind === 'cell' ? buildCells(state) : []), [state, target]);
 
   useEffect(() => {
@@ -38,25 +41,49 @@ export const GameModal = memo(function GameModal() {
 
   if (!target || !state) return null;
   const me = state.players.find((p) => p.id === viewerId);
-  const needsTake = state.market.length > 0 && take === null;
-  const takeSpecies = take !== null ? state.market[take] : undefined;
 
   let body: React.ReactNode = null;
   if (target.kind === 'goal') {
     const g = getGoal(target.goal);
     body = <img className={styles.goalFace} src={goalCardUrl(g.id)} alt={`목표 ${g.name}. ${g.description}`} decoding="async" />;
+  } else if (target.kind === 'market') {
+    const species = state.market[target.index];
+    if (!species) return null;
+    body = (
+      <>
+        <SpeciesCard species={species} variant="full" />
+        <div className={styles.actions}>
+          {canTake ? (
+            <button
+              type="button"
+              className="pill pill--lg"
+              onClick={() => {
+                close();
+                takeCard(target.index);
+              }}
+            >
+              이 카드 가져오기
+            </button>
+          ) : (
+            <p className={styles.hint}>내 가져오기 차례에 가져올 수 있습니다.</p>
+          )}
+        </div>
+      </>
+    );
   } else if (target.kind === 'hand' || target.kind === 'species') {
     const species: SpeciesId | undefined = target.kind === 'hand' ? me?.hand[target.index] : target.species;
     if (!species) return null;
-    const canPlantAny = target.kind === 'hand' && isMyTurn && state.phase === 'playing' && viewerId ? hasAnyPlant(asState(state), viewerId) : true;
-    const canPlantThis = target.kind === 'hand' && isMyTurn && state.phase === 'playing' && viewerId ? legalPlantCells(asState(state), viewerId, species).length > 0 : true;
+    const canPlantAny = target.kind === 'hand' && canPlant && viewerId ? hasAnyPlant(asState(state), viewerId) : true;
+    const canPlantThis = target.kind === 'hand' && canPlant && viewerId ? legalPlantCells(asState(state), viewerId, species).length > 0 : true;
     body = (
       <>
         <SpeciesCard species={species} variant="full" seat={target.kind === 'hand' ? me?.seat : null} />
         {target.kind === 'hand' && state.phase === 'playing' && (
           <div className={styles.actions}>
             {!isMyTurn ? (
-              <p className={styles.hint}>상대 차례입니다. 내 차례에 고를 수 있습니다.</p>
+              <p className={styles.hint}>상대 차례입니다. 내 심기 차례에 고를 수 있습니다.</p>
+            ) : !canPlant ? (
+              <p className={styles.hint}>먼저 마켓에서 카드 1장을 가져오세요. 그다음 심을 카드를 고릅니다.</p>
             ) : canPlantAny && !canPlantThis ? (
               <p className={styles.hint}>이 카드는 지금 심을 칸이 없습니다. 다른 카드를 고르세요.</p>
             ) : canPlantAny ? (
@@ -72,15 +99,10 @@ export const GameModal = memo(function GameModal() {
               </button>
             ) : (
               <>
-                <p className={styles.hint}>
-                  {needsTake
-                    ? '손에 든 어떤 카드도 심을 칸이 없습니다. 먼저 마켓에서 가져올 카드를 고른 뒤 버리세요.'
-                    : `손에 든 어떤 카드도 심을 칸이 없습니다. 이 카드를 버립니다.${takeSpecies ? ` 가져올 카드: ${getSpecies(takeSpecies).name}` : ''}`}
-                </p>
+                <p className={styles.hint}>손에 든 어떤 카드도 심을 칸이 없습니다. 이 카드를 버립니다.</p>
                 <button
                   type="button"
                   className="pill pill--lg"
-                  disabled={needsTake}
                   onClick={() => {
                     close();
                     discard(species);

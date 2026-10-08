@@ -3,12 +3,12 @@ import type { Direction } from '@rootbound/shared';
 import { getSpecies } from '@rootbound/shared';
 import { DIRECTION_LABELS, directionsFor, type PlantPreview } from '../game/derived';
 import { cx } from '../lib/cx';
-import { selectSelectedSpecies, selectState, selectTake, selectViewerId, useGameStore } from '../store/gameStore';
+import { selectSelectedSpecies, selectState, selectViewerId, useGameStore } from '../store/gameStore';
 import styles from './PlantBar.module.css';
 
 /**
  * 심기 확인 바: 후보 칸을 고르면 곧바로 심지 않고 예상 결과(내 땅·점수 변화, 뺏는 칸)를 보여 준다.
- * 칡은 방향을, 민들레는 씨앗 칸(선택)을 여기서 정한다. 마켓에 카드가 있으면 가져올 카드를 골라야 "심기"가 켜진다.
+ * 칡은 방향을, 민들레는 씨앗 칸(선택)을 여기서 정한다. 마켓 가져오기는 심기 전에 따로 한다(Rules.md 5절).
  */
 export const PlantBar = memo(function PlantBar({ preview }: { preview: PlantPreview | null }) {
   const state = useGameStore(selectState);
@@ -24,10 +24,7 @@ export const PlantBar = memo(function PlantBar({ preview }: { preview: PlantPrev
   const confirm = useGameStore((s) => s.confirmPlant);
   const cancel = useGameStore((s) => s.cancelPlant);
   const sending = useGameStore((s) => s.sending);
-  const take = useGameStore(selectTake);
   if (!state || !species || !pendingPos || !viewerId) return null;
-  const needsTake = state.market.length > 0 && take === null;
-  const takeSpecies = take !== null ? state.market[take] : undefined;
   const sp = getSpecies(species);
   const mySeat = state.players.find((p) => p.id === viewerId)?.seat ?? 0;
   const myLand = preview?.landDelta[mySeat] ?? 0;
@@ -50,11 +47,6 @@ export const PlantBar = memo(function PlantBar({ preview }: { preview: PlantPrev
           </span>
           {taken > 0 && <span className={styles.up}>뺏는 칸 {taken}</span>}
         </span>
-        {state.market.length > 0 && (
-          <span className={needsTake ? styles.takeNeeded : styles.take}>
-            {takeSpecies ? `가져올 카드: ${getSpecies(takeSpecies).name}` : '마켓에서 가져올 카드를 고르세요'}
-          </span>
-        )}
       </div>
       {sp.line > 0 && (
         <div className={styles.dirs} role="radiogroup" aria-label="칡 방향">
@@ -100,7 +92,7 @@ export const PlantBar = memo(function PlantBar({ preview }: { preview: PlantPrev
         <button type="button" className="pill pill--outline" onClick={cancel}>
           취소
         </button>
-        <button type="button" className="pill" onClick={confirm} disabled={sending || seedPicking || needsTake}>
+        <button type="button" className="pill" onClick={confirm} disabled={sending || seedPicking}>
           심기
         </button>
       </div>

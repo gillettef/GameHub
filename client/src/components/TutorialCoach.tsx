@@ -1,6 +1,6 @@
 import { memo, useEffect, useRef, useState } from 'react';
 import { markTutorialSeen } from '../lib/onboarding';
-import { selectTake, useGameStore } from '../store/gameStore';
+import { useGameStore } from '../store/gameStore';
 import { CloseIcon, LearnIcon } from './icons';
 import styles from './TutorialCoach.module.css';
 
@@ -17,21 +17,29 @@ interface Step {
 
 
 /**
- * 첫 판 튜토리얼 안내 (2026-10-06, 2026-10-07 Rootbound 로 교체). 연습 봇과 두는 핫시트 판(store.tutorial) 위에 떠서
+ * 첫 판 튜토리얼 안내 (2026-10-06, 2026-10-07 Rootbound 로 교체, 2026-10-08 가져오기 → 심기 순서).
+ * 이번 판 식물 공개 단계에는 공개 화면(RevealPanel)이 설명을 맡고, 1라운드가 시작되면 안내가 뜬다. 연습 봇과 두는 핫시트 판(store.tutorial) 위에 떠서
  * 한 단계씩 할 일을 알려 주고, 플레이어가 실제로 그 조작을 하면 다음 단계로 넘어간다.
  * 보드를 덜 가리도록 내 카드 위(첫 안내는 화면 위쪽)에 작은 패널로 둔다.
  */
 const myPlants = (s: Store) => s.state?.plants.filter((p) => p.ownerId === s.viewerId).length ?? 0;
 
+const tookCard = (s: Store) => s.state?.log.some((e) => e.kind === 'take' && e.playerId === s.viewerId) ?? false;
+
 const STEPS: Step[] = [
   {
     title: '목표',
-    body: '차례마다 식물 하나를 심어 땅을 넓힙니다. 끝났을 때 내 땅 1칸 = 1점, 여기에 위의 목표 카드 3장 점수를 더해 높은 쪽이 이깁니다.',
+    body: '라운드마다 마켓에서 카드 1장을 가져온 뒤, 내 카드 2장 중 1장을 심어 땅을 넓힙니다. 끝났을 때 내 땅 1칸 = 1점, 여기에 위의 목표 카드 3장 점수를 더해 높은 쪽이 이깁니다.',
     top: true,
   },
   {
+    title: '마켓에서 가져오기',
+    body: '보드 아래 마켓에 이번 라운드 카드가 펼쳐져 있습니다. 한 장을 눌러 크게 보고 "이 카드 가져오기"를 누르세요.',
+    done: (s) => tookCard(s) || myPlants(s) > 0,
+  },
+  {
     title: '카드 고르기',
-    body: '아래 내 카드에서 한 장을 눌러 크게 보고 "이 카드 고르기"를 누르세요. 그림의 숫자가 옆 칸에 주는 영향력입니다.',
+    body: '모두 가져가면 심을 차례입니다. 아래 내 카드 2장 중 한 장을 눌러 크게 보고 "이 카드 고르기"를 누르세요. 그림의 숫자가 옆 칸에 주는 영향력입니다.',
     done: (s) => s.selectedHandIndex !== null || myPlants(s) > 0,
   },
   {
@@ -40,23 +48,18 @@ const STEPS: Step[] = [
     done: (s) => s.pendingPos !== null || myPlants(s) > 0,
   },
   {
-    title: '마켓에서 가져오기',
-    body: '보드 아래 마켓에 이번 라운드 카드가 펼쳐져 있습니다. 심을 때 한 장을 가져와 내 카드에 더합니다. 가져올 카드를 누르세요.',
-    done: (s) => selectTake(s) !== null || myPlants(s) > 0,
-  },
-  {
     title: '심기',
     body: '심기 전에 내 땅·점수가 얼마나 바뀌는지 보입니다. 마음에 들면 "심기", 아니면 "취소"를 누르세요.',
     done: (s) => myPlants(s) > 0,
   },
   {
     title: '상대 차례',
-    body: '연습 봇이 두는 중입니다. 칸 색이 그 칸의 주인입니다. 상대가 더 강하게 심으면 내 땅도 넘어갑니다.',
+    body: '연습 봇이 두는 중입니다. 칸 색이 그 칸의 주인입니다. 라운드가 끝나면 점수가 가장 낮은 사람이 다음 라운드의 선(먼저 가져오는 사람)이 됩니다.',
     done: (s) => s.state?.currentPlayerId === s.viewerId && myPlants(s) > 0,
   },
   {
     title: '영향력 보기',
-    body: '아래 "영향력" 버튼을 켜면 칸마다 "내 영향력 : 가장 센 상대"가 보입니다. 1등만 그 칸을 가집니다(동점이면 아무도 못 가짐).',
+    body: '아래 "영향력" 버튼을 켜면 칸마다 "내 영향력 : 가장 센 상대"가 보입니다. 1등만 그 칸을 가집니다(동점이면 아무도 못 가짐). 상대가 더 강하게 심으면 내 땅도 넘어갑니다.',
   },
   {
     title: '이제 직접',
