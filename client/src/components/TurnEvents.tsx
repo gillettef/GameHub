@@ -26,8 +26,8 @@ function shorten(e: GameLogEntry): string {
       return m ? `${m[1]} 심음` : e.message;
     }
     case 'flip': {
-      const m = e.message.match(/(.+?)의 땅 (\d+)칸을 가져갔습니다/);
-      return m ? `${m[1]!.split('이(가) ')[1] ?? ''} 땅 ${m[2]}칸 뺏음` : e.message;
+      const m = e.message.match(/^.*?: (.+)의 땅 (\d+)칸을 가져갔습니다$/);
+      return m ? `${m[1]} 땅 ${m[2]}칸 뺏음` : e.message;
     }
     case 'discard':
       return '버림';
