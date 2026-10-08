@@ -22,7 +22,8 @@ const KIND_ICON: Partial<Record<LogKind, ReactNode>> = {
 function shorten(e: GameLogEntry): string {
   switch (e.kind) {
     case 'plant': {
-      const m = e.message.match(/\)에 ([^,]+)/);
+      // turn.ts 심기 로그: "닉네임: 참나무 심음" / "닉네임: 민들레 심음, 씨앗 놓음"
+      const m = e.message.match(/: ([^:,]+) 심음(?:, 씨앗 놓음)?$/);
       return m ? `${m[1]} 심음` : e.message;
     }
     case 'flip': {

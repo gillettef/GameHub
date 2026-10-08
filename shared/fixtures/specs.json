@@ -32,7 +32,7 @@
       "bloomBonus": 0,
       "id": "oak",
       "name": "참나무",
-      "description": "둘레 6칸을 한꺼번에 굳힌다."
+      "description": "맞닿은 6칸을 한꺼번에 굳힌다."
     },
     {
       "self": 5,
@@ -49,7 +49,7 @@
       "bloomBonus": 0,
       "id": "pine",
       "name": "소나무",
-      "description": "자기 칸은 거의 뺏기지 않는다."
+      "description": "심은 칸은 거의 뺏기지 않는다."
     },
     {
       "self": 2,
@@ -83,7 +83,7 @@
       "bloomBonus": 0,
       "id": "fern",
       "name": "고사리",
-      "description": "가까운 곳을 비우고 별 모양으로 두 칸 떨어진 6칸에 퍼진다."
+      "description": "바로 옆은 비우고 한 칸 건너뛴 6칸에 퍼진다."
     },
     {
       "self": 1,
@@ -100,7 +100,7 @@
       "bloomBonus": 0,
       "id": "dandelion",
       "name": "민들레",
-      "description": "심은 뒤 거리 2 이내 빈 칸에 씨앗(영향력 2)을 날린다."
+      "description": "심은 뒤 두 칸 안 빈 칸에 씨앗(영향력 2)을 날린다."
     },
     {
       "self": 2,
@@ -117,7 +117,7 @@
       "bloomBonus": 0,
       "id": "rapeseed",
       "name": "유채",
-      "description": "비옥토에 심으면 둘레가 3이 된다. 다른 곳에서는 잔디보다 약하다."
+      "description": "기름진 땅에 심으면 맞닿은 칸에 3씩 준다. 다른 곳에서는 잔디보다 약하다."
     },
     {
       "self": 1,
@@ -151,7 +151,7 @@
       "bloomBonus": 0,
       "id": "ivy",
       "name": "담쟁이",
-      "description": "둘레에 식물이 있는 칸마다 1을 더 준다."
+      "description": "옆 칸 중 식물이 있는 칸에 1을 더 준다."
     },
     {
       "self": 1,
@@ -168,7 +168,7 @@
       "bloomBonus": 0,
       "id": "bamboo",
       "name": "대나무",
-      "description": "이웃한 내 대나무 1개당 자기 칸 +2."
+      "description": "맞닿은 내 대나무 1개당 심은 칸 +2."
     },
     {
       "self": 1,
@@ -185,7 +185,7 @@
       "bloomBonus": 0,
       "id": "mushroom",
       "name": "버섯",
-      "description": "둘레 6칸에서 다른 모든 사람의 영향력을 2씩 줄인다."
+      "description": "맞닿은 6칸에서 다른 모든 사람의 영향력을 2씩 줄인다."
     },
     {
       "self": 2,
@@ -227,7 +227,7 @@
     {
       "id": "fertile-field",
       "name": "비옥한 밭",
-      "description": "비옥토인 내 땅 1칸당 +2",
+      "description": "기름진 땅인 내 땅 1칸당 +2",
       "species": null
     },
     {
@@ -239,13 +239,13 @@
     {
       "id": "center-plaza",
       "name": "중앙 광장",
-      "description": "가운데 조각에서 내 땅이 가장 많으면 +6",
+      "description": "가운데 구역(7칸 묶음)에서 내 땅이 가장 많으면 +6",
       "species": null
     },
     {
       "id": "every-tile",
-      "name": "조각마다 한 뼘",
-      "description": "내 땅이 있는 정원 조각 1개당 +1",
+      "name": "구역마다 한 뼘",
+      "description": "내 땅이 있는 구역(7칸 묶음) 1개당 +1",
       "species": null
     },
     {
@@ -274,8 +274,8 @@
     },
     {
       "id": "full-set",
-      "name": "고른 종 다 쓰기",
-      "description": "고른 종을 모두 한 번 이상 심었으면 +4",
+      "name": "고른 식물 다 쓰기",
+      "description": "고른 식물을 모두 한 번 이상 심었으면 +4",
       "species": null
     },
     {

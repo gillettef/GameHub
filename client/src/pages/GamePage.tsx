@@ -90,7 +90,7 @@ export function GamePage({ onQuit }: GamePageProps) {
                 });
               }}
             >
-              직접 두기
+              다시 내가 두기
             </button>
           </div>
         )}

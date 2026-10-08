@@ -1,13 +1,13 @@
 import { memo, useEffect, useMemo } from 'react';
 import type { SpeciesId } from '@rootbound/shared';
-import { getSpecies, hasAnyPlant, legalPlantCells, samePos } from '@rootbound/shared';
+import { ENTRANCE_RING, ENTRANCE_SELF, FERTILE_BONUS, getSpecies, hasAnyPlant, legalPlantCells, samePos } from '@rootbound/shared';
 import { DIRECTION_LABELS, asState, buildCells } from '../game/derived';
 import { selectIsMyTurn, selectState, selectViewerId, useGameStore } from '../store/gameStore';
 import { CloseIcon } from './icons';
 import { SpeciesCard } from './SpeciesCard';
 import styles from './GameModal.module.css';
 
-const TERRAIN: Record<string, string> = { empty: '빈 땅', fertile: '비옥토 (심은 식물 자기 칸 +1)', pond: '연못 (심기 불가, 누구의 땅도 아님)', rock: '돌밭 (심기 불가, 누구의 땅도 아님)' };
+const TERRAIN: Record<string, string> = { empty: '빈 땅', fertile: `기름진 땅 (여기 심은 식물은 이 칸에 +${FERTILE_BONUS})`, pond: '연못 (심을 수 없고, 누구의 땅도 아님)', rock: '바위 (심을 수 없고, 누구의 땅도 아님)' };
 
 /**
  * 확대 모달 하나로 세 가지를 본다 (스토어 cardModal):
@@ -64,7 +64,7 @@ export const GameModal = memo(function GameModal() {
               </button>
             ) : (
               <>
-                <p className={styles.hint}>손패의 어떤 카드도 심을 칸이 없습니다. 한 장을 버리고 새로 뽑습니다.</p>
+                <p className={styles.hint}>손에 든 어떤 카드도 심을 칸이 없습니다. 한 장을 버리고 새로 뽑습니다.</p>
                 <button
                   type="button"
                   className="pill pill--lg"
@@ -88,10 +88,10 @@ export const GameModal = memo(function GameModal() {
     body = (
       <div className={styles.cellInfo}>
         <h2 className={styles.title}>
-          칸 ({cell.q},{cell.r})
+          칸 정보
         </h2>
         <p className={styles.line}>{TERRAIN[cell.terrain]}</p>
-        {cell.entranceSeat >= 0 && <p className={styles.line}>{players[cell.entranceSeat]?.nickname}의 입구 (자기 칸 3, 둘레 1)</p>}
+        {cell.entranceSeat >= 0 && <p className={styles.line}>{players[cell.entranceSeat]?.nickname}의 입구 (입구 칸 {ENTRANCE_SELF}, 옆 칸 {ENTRANCE_RING})</p>}
         {cell.plant && (
           <>
             <p className={styles.line}>

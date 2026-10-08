@@ -20,7 +20,7 @@ export const CardsTab = memo(function CardsTab() {
       </section>
       <section className={styles.section}>
         <h2 className={styles.h2}>목표 18장</h2>
-        <p className={styles.help}>판마다 3장이 공개되고, 그중 1장 이상은 종 보호구역 목표입니다.</p>
+        <p className={styles.help}>판마다 3장이 공개되고, 그중 1장 이상은 식물 보호구역 목표입니다.</p>
         <ul className={styles.goals}>
           {GOALS.map((g) => (
             <li key={g.id} className={g.species ? styles.linked : undefined}>

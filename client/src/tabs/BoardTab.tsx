@@ -73,7 +73,7 @@ export const BoardTab = memo(function BoardTab() {
         : stuck
           ? '심을 칸이 없습니다. 카드를 눌러 한 장 버리세요'
           : !species
-            ? '빛나는 칸에 심을 수 있습니다. 먼저 손패에서 카드를 고르세요'
+            ? '빛나는 칸에 심을 수 있습니다. 먼저 내 카드에서 한 장을 고르세요'
             : selectedDead
               ? '이 카드는 지금 심을 칸이 없습니다. 다른 카드를 고르세요'
               : !pendingPos
@@ -108,7 +108,7 @@ export const BoardTab = memo(function BoardTab() {
         )}
         <div className={styles.turnBar}>
           <span className={isMyTurn ? styles.hintMine : styles.hint}>{hint}</span>
-          <button type="button" className={showInfluence ? styles.toggleOn : styles.toggle} onClick={toggleInfluence} aria-pressed={showInfluence} title="칸마다 내 영향력:상대 최고 영향력 보기">
+          <button type="button" className={showInfluence ? styles.toggleOn : styles.toggle} onClick={toggleInfluence} aria-pressed={showInfluence} title="칸마다 내 영향력 : 가장 센 상대 영향력 보기">
             영향력
           </button>
         </div>

@@ -40,8 +40,8 @@ export const DraftPanel = memo(function DraftPanel() {
           </span>
         </div>
         <p className={styles.help}>
-          각자 {rule.picks}종을 골라 이번 판 덱(종마다 {rule.copies}장)을 만듭니다.
-          {rule.maxTakers > 1 ? ` 한 종은 ${rule.maxTakers}명까지 가져갈 수 있습니다.` : ' 남이 가져간 종은 고를 수 없습니다.'}
+          각자 식물 {rule.picks}가지를 골라 이번 판에 쓸 카드(식물마다 {rule.copies}장)를 만듭니다.
+          {rule.maxTakers > 1 ? ` 한 식물은 ${rule.maxTakers}명까지 가져갈 수 있습니다.` : ' 남이 가져간 식물은 고를 수 없습니다.'}
         </p>
         <div className={styles.grid}>
           {SPECIES_IDS.map((s) => {
@@ -94,7 +94,7 @@ export const DraftPanel = memo(function DraftPanel() {
       )}
 
       <section className={styles.section}>
-        <h2 className={styles.h2}>고른 종</h2>
+        <h2 className={styles.h2}>고른 식물</h2>
         <ul className={styles.picks}>
           {players.map((p) => (
             <li key={p.id} style={{ '--seat-color': `var(--color-seat-${p.seat})` } as CSSProperties}>

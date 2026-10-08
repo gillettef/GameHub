@@ -26,7 +26,7 @@ export const TurnTimer = memo(function TurnTimer() {
   if (remaining === null) return null;
   const warn = remaining <= WARN_SEC;
   return (
-    <span className={cx(styles.timer, warn && styles.warn, warn && isMine && styles.pulse)} role="timer" aria-live={warn && isMine ? 'assertive' : 'off'} title="이 턴의 남은 시간. 지나면 자동으로 턴을 넘깁니다">
+    <span className={cx(styles.timer, warn && styles.warn, warn && isMine && styles.pulse)} role="timer" aria-live={warn && isMine ? 'assertive' : 'off'} title="이 차례의 남은 시간. 지나면 자동으로 둡니다">
       <TimerIcon size={14} />
       {formatRemaining(remaining)}
     </span>

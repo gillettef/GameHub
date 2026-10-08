@@ -205,7 +205,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const s = asState(state);
     if (seedPicking && pendingPos) {
       if (!legalSeedCells(s, pendingPos).some((p) => samePos(p, pos))) {
-        set({ notice: '씨앗은 심을 칸에서 두 칸 이내 빈 칸에만 놓을 수 있습니다' });
+        set({ notice: '씨앗은 심을 칸에서 두 칸 안 빈 칸에만 놓을 수 있습니다' });
         return;
       }
       set({ pendingSeed: pos, seedPicking: false, notice: null });
@@ -216,7 +216,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     if (!species && !occupied && selectIsMyTurn(get())) {
       const hand = state.players.find((p) => p.id === viewerId)?.hand ?? [];
       if (hand.some((sp) => legalPlantCells(s, viewerId, sp).some((p) => samePos(p, pos)))) {
-        set({ notice: '먼저 아래 손패에서 심을 카드를 고르세요' });
+        set({ notice: '먼저 아래 내 카드에서 심을 카드를 고르세요' });
         return;
       }
     }

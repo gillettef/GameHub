@@ -191,7 +191,7 @@ type LobbyTab = 'room' | 'players' | 'settings';
 
 /** 위자드 순서: 방(초대 링크) → 좌석(사람·AI 2~4명) → 설정(제한 시간)·준비. 보드는 인원수로 정해진다 */
 const STEP_ORDER: LobbyTab[] = ['room', 'players', 'settings'];
-const STEP_LABEL: Record<LobbyTab, string> = { room: '방', players: '좌석', settings: '준비' };
+const STEP_LABEL: Record<LobbyTab, string> = { room: '방', players: '자리', settings: '준비' };
 
 function LobbyView({ roomId, onQuit }: { roomId: string; onQuit: () => void }) {
   const state = useGameStore(selectState);
@@ -272,7 +272,7 @@ function LobbyView({ roomId, onQuit }: { roomId: string; onQuit: () => void }) {
                 key={i}
                 className={cx(styles.readyDot, p?.isReady && styles.readyDotDone, !p && styles.readyDotEmpty)}
                 style={{ '--seat-color': `var(--color-seat-${i})` } as CSSProperties}
-                title={p ? `${p.nickname} · ${p.isReady ? '준비 완료' : '준비 중'}` : '빈 좌석'}
+                title={p ? `${p.nickname} · ${p.isReady ? '준비 완료' : '준비 중'}` : '빈 자리'}
               />
             ))}
             <span className={styles.readyCount}>
@@ -316,7 +316,7 @@ function LobbyView({ roomId, onQuit }: { roomId: string; onQuit: () => void }) {
           <p className={landing.help}>{room.hasPassword ? '비밀번호가 걸린 방입니다. 친구에게 비밀번호도 알려 주세요.' : '링크를 아는 사람은 누구나 들어올 수 있습니다.'}</p>
           <div className={styles.wizardNav}>
             <button type="button" className="pill" onClick={goNext}>
-              다음: 좌석 정하기
+              다음: 자리 정하기
             </button>
           </div>
         </section>
@@ -325,7 +325,7 @@ function LobbyView({ roomId, onQuit }: { roomId: string; onQuit: () => void }) {
       {tab === 'players' && (
         <section className={landing.section}>
           <h2 className={landing.h2}>
-            좌석 {state.players.length} / {MAX_PLAYERS}
+            자리 {state.players.length} / {MAX_PLAYERS}
           </h2>
           <p className={landing.help}>사람 또는 AI로 2~4명을 채웁니다. 인원수에 맞는 정원 보드가 자동으로 만들어집니다.</p>
           <ul className={styles.seats}>
@@ -333,7 +333,7 @@ function LobbyView({ roomId, onQuit }: { roomId: string; onQuit: () => void }) {
               <li key={i} className={cx(styles.seat, !p && styles.seatEmpty)}>
                 <span className={styles.seatNo}>
                   <span className={styles.seatDot} style={{ '--seat-color': `var(--color-seat-${i})` } as CSSProperties} aria-hidden="true" />
-                  좌석 {i + 1}
+                  {i + 1}번 자리
                 </span>
                 {p ? (
                   <>
@@ -353,7 +353,7 @@ function LobbyView({ roomId, onQuit }: { roomId: string; onQuit: () => void }) {
                   </>
                 ) : (
                   <>
-                    <span className={styles.seatName}>빈 좌석</span>
+                    <span className={styles.seatName}>빈 자리</span>
                     {isHost && (
                       <button type="button" className="pill pill--outline" onClick={() => request(api.addAi(roomId))}>
                         AI 추가
@@ -383,7 +383,7 @@ function LobbyView({ roomId, onQuit }: { roomId: string; onQuit: () => void }) {
           <h2 className={landing.h2}>차례 제한 시간</h2>
           <p className={landing.help}>
             {isHost ? '방장만 바꿀 수 있습니다. ' : '방장이 정합니다. '}
-            시간이 지나면 자동으로 둡니다. {AFK_STRIKES_FOR_AUTOPILOT}번 연속이면 AI가 대신 두고, &lsquo;직접 두기&rsquo;를 누르면 되찾습니다. 며칠에 걸쳐 두려면 &lsquo;없음&rsquo;을 고르세요.
+            시간이 지나면 자동으로 둡니다. {AFK_STRIKES_FOR_AUTOPILOT}번 연속이면 AI가 대신 두고, &lsquo;다시 내가 두기&rsquo;를 누르면 되찾습니다. 며칠에 걸쳐 두려면 &lsquo;없음&rsquo;을 고르세요.
           </p>
           {seats.filter((p) => p?.kind === 'human').length <= 1 && (
             <p className={landing.help}>지금처럼 사람이 혼자고 나머지가 AI면 시계가 흐르지 않습니다. 사람이 2명 이상일 때만 적용됩니다.</p>
@@ -405,7 +405,7 @@ function LobbyView({ roomId, onQuit }: { roomId: string; onQuit: () => void }) {
           </div>
           <div className={styles.wizardNav}>
             <button type="button" className="pill pill--outline" onClick={goPrev}>
-              이전: 좌석으로
+              이전: 자리로
             </button>
           </div>
         </section>

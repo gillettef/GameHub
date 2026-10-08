@@ -72,10 +72,10 @@ export const PlantBar = memo(function PlantBar({ preview }: { preview: PlantPrev
             <span className={styles.hint}>보드에서 씨앗 칸(점선)을 누르세요</span>
           ) : seed ? (
             <span className={styles.hint}>
-              씨앗 ({seed.q},{seed.r})
+              씨앗 칸을 골랐습니다
             </span>
           ) : (
-            <span className={styles.hint}>씨앗은 선택입니다</span>
+            <span className={styles.hint}>씨앗은 안 놓아도 됩니다</span>
           )}
           {seed || seedPicking ? (
             <button type="button" className="pill pill--outline" onClick={clearSeed}>

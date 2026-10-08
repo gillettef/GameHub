@@ -53,7 +53,7 @@ export function createPlayer(id: PlayerId, nickname: string, kind: PlayerKind = 
 
 export function joinPlayer(state: GameState, player: PlayerState): ActionResult {
   if (state.phase !== 'lobby') return reject(state, '이미 시작된 게임입니다');
-  if (state.players.length >= MAX_PLAYERS) return reject(state, `정원은 최대 ${MAX_PLAYERS}명입니다`);
+  if (state.players.length >= MAX_PLAYERS) return reject(state, `방에는 최대 ${MAX_PLAYERS}명까지 들어올 수 있습니다`);
   if (state.players.some((p) => p.id === player.id)) return reject(state, '이미 입장한 플레이어입니다');
   const joined = { ...player, seat: state.players.length };
   // 인원이 바뀌면 사람의 준비를 푼다: 준비해 둔 방장이 AI 를 하나 넣자마자 2인 판이 시작되거나,
@@ -93,8 +93,6 @@ export function getPlayer(state: GameState, playerId: PlayerId): PlayerState | u
 function updatePlayer(state: GameState, playerId: PlayerId, patch: Partial<PlayerState>): GameState {
   return { ...state, players: state.players.map((p) => (p.id === playerId ? { ...p, ...patch } : p)) };
 }
-
-const posText = (p: Position) => `(${p.q},${p.r})`;
 
 // ---------------------------------------------------------------------------
 // 시작: 보드 → 목표 → 드래프트 순서 (Rules.md 4절, 11절 난수 순서)
@@ -243,7 +241,7 @@ export function validatePlant(state: GameState, a: Extract<Action, { type: 'PLAN
   if (state.currentPlayerId !== a.playerId) return '내 차례가 아닙니다';
   const me = getPlayer(state, a.playerId);
   if (!me) return '없는 플레이어입니다';
-  if (!isSpeciesId(a.species) || !me.hand.includes(a.species)) return '손패에 없는 카드입니다';
+  if (!isSpeciesId(a.species) || !me.hand.includes(a.species)) return '손에 없는 카드입니다';
   const sp = getSpecies(a.species);
   if (!legalPlantCells(state, a.playerId, a.species).some((p) => samePos(p, a.pos))) {
     return sp.pondPlanting ? '뿌리가 닿는 칸이나 연못 옆 빈 칸에만 심을 수 있습니다' : '내 뿌리가 닿는 빈 칸에만 심을 수 있습니다';
@@ -255,7 +253,7 @@ export function validatePlant(state: GameState, a: Extract<Action, { type: 'PLAN
   if (a.seed !== undefined) {
     if (!sp.seed) return '이 식물은 씨앗을 날리지 않습니다';
     if (hexDistance(a.seed, a.pos) > 2 || samePos(a.seed, a.pos) || !legalSeedCells(state, a.pos).some((p) => samePos(p, a.seed as Position))) {
-      return '씨앗은 심는 칸에서 거리 2 이내 빈 칸에만 놓을 수 있습니다';
+      return '씨앗은 심는 칸에서 두 칸 안 빈 칸에만 놓을 수 있습니다';
     }
   }
   return null;
@@ -270,9 +268,9 @@ export function applyAction(state: GameState, action: Action): ActionResult {
       return { state: maybeStart(updatePlayer(state, action.playerId, { isReady: !me.isReady })) };
     }
     case 'DRAFT': {
-      if (state.phase !== 'drafting') return reject(state, '드래프트 중이 아닙니다');
+      if (state.phase !== 'drafting') return reject(state, '지금은 식물을 고르는 때가 아닙니다');
       if (state.currentPlayerId !== action.playerId) return reject(state, '내가 고를 차례가 아닙니다');
-      if (!draftOptions(state, action.playerId).includes(action.species)) return reject(state, '고를 수 없는 종입니다');
+      if (!draftOptions(state, action.playerId).includes(action.species)) return reject(state, '고를 수 없는 식물입니다');
       const me = getPlayer(state, action.playerId) as PlayerState;
       let s = updatePlayer(state, action.playerId, { drafted: [...me.drafted, action.species] });
       s = addLog(s, 'draft', action.playerId, `${me.nickname}: ${getSpecies(action.species).name} 선택`);
@@ -295,7 +293,7 @@ export function applyAction(state: GameState, action: Action): ActionResult {
         seeds: action.seed && sp.seed ? [...state.seeds, { ownerId: action.playerId, pos: { q: action.seed.q, r: action.seed.r } }] : state.seeds,
       };
       s = spendCard(s, action.playerId, action.species);
-      s = addLog(s, 'plant', action.playerId, `${me.nickname}: ${posText(action.pos)}에 ${sp.name}${action.seed ? `, 씨앗 ${posText(action.seed)}` : ''}`);
+      s = addLog(s, 'plant', action.playerId, `${me.nickname}: ${sp.name} 심음${action.seed ? ', 씨앗 놓음' : ''}`);
       const after = landCounts(s);
       // 다른 사람 땅이 줄었으면 뺏긴 것으로 기록한다 (진행 탭·연출용)
       const mySeat = me.seat;
@@ -309,7 +307,7 @@ export function applyAction(state: GameState, action: Action): ActionResult {
       if (state.phase !== 'playing') return reject(state, '진행 중인 게임이 아닙니다');
       if (state.currentPlayerId !== action.playerId) return reject(state, '내 차례가 아닙니다');
       const me = getPlayer(state, action.playerId);
-      if (!me || !me.hand.includes(action.species)) return reject(state, '손패에 없는 카드입니다');
+      if (!me || !me.hand.includes(action.species)) return reject(state, '손에 없는 카드입니다');
       if (hasAnyPlant(state, action.playerId)) return reject(state, '심을 수 있는 칸이 있으면 버릴 수 없습니다');
       let s = spendCard(state, action.playerId, action.species);
       s = addLog(s, 'discard', action.playerId, `${me.nickname}: 심을 곳이 없어 ${getSpecies(action.species).name} 버림`);
