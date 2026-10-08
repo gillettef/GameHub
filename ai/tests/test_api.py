@@ -73,7 +73,7 @@ def test_decide_play_is_legal_and_omits_none_fields() -> None:
             # TS 검증은 null 을 "값 있음"으로 보므로 None 필드는 빠져 있어야 한다
             assert action.get("direction", 0) is not None
             assert action.get("seed", {}) is not None
-            if action["species"] != "vine":
+            if action["species"] != "kudzu":
                 assert "direction" not in action
         _, err = apply_action(GameState.model_validate(state), ACTION.validate_python(action))
         assert err is None, err

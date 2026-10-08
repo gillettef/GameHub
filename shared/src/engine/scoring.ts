@@ -91,7 +91,7 @@ function goalPoints(goal: GoalId, state: GameState, idx: BoardIndex, owners: Int
     case 'every-tile':
       return mine.map((cs) => new Set(cs.map((c) => cells[c]?.tile)).size);
     case 'flower-bed':
-      return mine.map((cs) => 2 * cs.filter((c) => occ.plantSpecies[c] === 'sunflower' || occ.plantSpecies[c] === 'lotus' || occ.plantSpecies[c] === 'rose').length);
+      return mine.map((cs) => 2 * cs.filter((c) => occ.plantSpecies[c] === 'rapeseed' || occ.plantSpecies[c] === 'lotus' || occ.plantSpecies[c] === 'mugunghwa').length);
     case 'forest':
       return Array.from({ length: P }, (_, seat) => {
         const trees: number[] = [];

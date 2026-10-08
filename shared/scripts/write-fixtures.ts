@@ -56,7 +56,7 @@ function variedAction(s: GameState, rnd: { seed: number }): Action {
   const base = autoAction({ ...s, players: s.players.map((p) => (p.id === pid ? { ...p, hand: [sp, ...p.hand.filter((_, i) => i !== p.hand.indexOf(sp))] } : p)) }, pid) as Action;
   if (base.type !== 'PLANT') return base;
   const action: Action = { ...base, species: sp, pos };
-  if (sp === 'vine') {
+  if (sp === 'kudzu') {
     const dirs = [0, 1, 2, 3, 4, 5] as const;
     for (const d of [pick([...dirs]), ...dirs]) if (!applyAction(s, { ...action, direction: d }).error) return { ...action, direction: d };
   }
@@ -68,7 +68,7 @@ function variedAction(s: GameState, rnd: { seed: number }): Action {
     }
   }
   const { direction: _d, ...rest } = action as Extract<Action, { type: 'PLANT' }>;
-  return sp === 'vine' ? action : rest;
+  return sp === 'kudzu' ? action : rest;
 }
 
 function scenario(players: number, seed: number) {

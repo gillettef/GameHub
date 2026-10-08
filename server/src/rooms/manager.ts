@@ -16,6 +16,7 @@ import {
   createPlayer,
   draftTimeSec,
   isDirection,
+  GOALS,
   isSpeciesId,
   joinPlayer,
   leaveLobby,
@@ -148,7 +149,10 @@ export function actionShapeError(action: unknown): string | null {
 export function isCurrentFormat(room: Room): boolean {
   const st = room.state as Partial<GameState> | undefined;
   if (!st || !Array.isArray(st.players) || !Array.isArray(st.plants) || !Array.isArray(st.seeds)) return false;
-  return st.board === null || (typeof st.board === 'object' && Array.isArray(st.board?.cells));
+  if (!(st.board === null || (typeof st.board === 'object' && Array.isArray(st.board?.cells)))) return false;
+  // 종·목표 id 가 바뀐 예전 판(2026-10-08 선인장·덩굴·해바라기·장미 → 소나무·칡·유채·무궁화)은 복원하지 않는다
+  const species = [...st.plants.map((p) => p.species), ...st.players.flatMap((p) => [...(p.drafted ?? []), ...(p.deck ?? []), ...(p.hand ?? [])])];
+  return species.every((sp) => isSpeciesId(sp)) && (st.goals ?? []).every((g) => GOALS.some((x) => x.id === g));
 }
 
 /** 재접속 토큰: 문자열, 1~64자 (스냅샷·메모리에 그대로 들어가므로 길이를 제한한다) */

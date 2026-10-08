@@ -16,7 +16,7 @@ model: inherit
 - DB·Redis 없음. 서버 메모리 `Map<roomId, GameState>` 가 단일 진실 공급원.
 - 자동 저장·복구는 `server/data/rooms/<roomId>.json` 파일 스냅샷.
 - 로그인 없음. `roomId + playerToken` 으로 재접속 식별.
-- 플레이어 2~4명. 로비 → 드래프트(뱀 순서 픽, 공개 정보) → 진행(좌석 순 차례) → 종료. 액션은 `READY` / `DRAFT` / `PLANT`(덩굴 direction, 민들레 seed 선택) / `DISCARD`(심을 칸이 없을 때만) / `SURRENDER`. 차례마다 반드시 심거나 버린다(패스 없음).
+- 플레이어 2~4명. 로비 → 드래프트(뱀 순서 픽, 공개 정보) → 진행(좌석 순 차례) → 종료. 액션은 `READY` / `DRAFT` / `PLANT`(칡 direction, 민들레 seed 선택) / `DISCARD`(심을 칸이 없을 때만) / `SURRENDER`. 차례마다 반드시 심거나 버린다(패스 없음).
 - **손패는 비공개.** 본인에게만 내용, 타인에게는 장수만. 덱 순서는 아무에게도 보내지 않는다.
 
 ## 검토 항목

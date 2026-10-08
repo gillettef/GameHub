@@ -149,8 +149,8 @@ export function legalSeedCells(state: GameState, plantPos: Position): Position[]
   return (idx.within2[c] as number[]).filter((x) => isEmptyCell(state, idx, occ, x)).map((x) => ({ q: board.cells[x]!.q, r: board.cells[x]!.r }));
 }
 
-/** 덩굴이 고를 수 있는 방향: 그 방향 거리 1..lineLength 에 보드 칸이 하나라도 있어야 한다 (Rules.md 7절) */
-export function legalDirections(state: GameState, pos: Position, lineLength = getSpecies('vine').lineLength): number[] {
+/** 칡이 고를 수 있는 방향: 그 방향 거리 1..lineLength 에 보드 칸이 하나라도 있어야 한다 (Rules.md 7절) */
+export function legalDirections(state: GameState, pos: Position, lineLength = getSpecies('kudzu').lineLength): number[] {
   const idx = boardIndex(requireBoard(state));
   const c = idx.indexOf(pos);
   if (c < 0) return [];

@@ -45,7 +45,7 @@ interface GameStore {
   selectedHandIndex: number | null;
   /** 심을 후보 칸. 고르면 곧바로 심지 않고 미리보기를 보여 준다 */
   pendingPos: Position | null;
-  /** 덩굴 방향 */
+  /** 칡 방향 */
   pendingDirection: Direction | null;
   /** 민들레 씨앗 칸 */
   pendingSeed: Position | null;

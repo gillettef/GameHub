@@ -420,13 +420,13 @@ def line_directions(idx: BoardIndex, c: int, line_length: int) -> list[int]:
 
 
 def legal_directions(state: GameState, pos: Position, line_length: Optional[int] = None) -> list[int]:
-    """덩굴이 고를 수 있는 방향 (Rules.md 7절): 거리 1..lineLength 에 보드 칸이 하나라도 있어야 한다."""
+    """칡이 고를 수 있는 방향 (Rules.md 7절): 거리 1..lineLength 에 보드 칸이 하나라도 있어야 한다."""
     idx = board_index(require_board(state))
     c = idx.at(pos.q, pos.r)
     if c < 0:
         return []
     if line_length is None:
-        line_length = int(species_spec("vine")["lineLength"])
+        line_length = int(species_spec("kudzu")["lineLength"])
     return line_directions(idx, c, line_length)
 
 
@@ -518,7 +518,7 @@ def _goal_points(
     if goal == "every-tile":
         return [len({idx.tile[c] for c in cs}) for cs in mine]
     if goal == "flower-bed":
-        flowers = ("sunflower", "lotus", "rose")
+        flowers = ("rapeseed", "lotus", "mugunghwa")
         return [2 * sum(1 for c in cs if occ.plant_species[c] in flowers) for cs in mine]
     if goal == "forest":
         out: list[int] = []
@@ -736,7 +736,7 @@ def validate_plant(state: GameState, a: PlantAction) -> Optional[str]:
         return "심을 수 없는 칸입니다"
     if sp["line"]:
         if a.direction is None or a.direction not in legal_directions(state, a.pos):
-            return "덩굴 방향이 올바르지 않습니다"
+            return "칡 방향이 올바르지 않습니다"
     elif a.direction is not None:
         return "이 식물은 방향이 없습니다"
     if a.seed is not None:

@@ -49,23 +49,23 @@ _SEED_TOP_CELLS = 3
 _DRAFT_BASE: dict[str, int] = {
     "grass": 5,
     "oak": 6,
-    "cactus": 5,
-    "vine": 5,
+    "pine": 5,
+    "kudzu": 5,
     "fern": 4,
     "dandelion": 5,
-    "sunflower": 5,
+    "rapeseed": 5,
     "lotus": 5,
     "ivy": 6,
     "bamboo": 5,
     "mushroom": 4,
-    "rose": 5,
+    "mugunghwa": 5,
 }
 
 # 공개 목표가 특정 종에 유리할 때 더하는 가치 (보호구역 목표는 specs 의 연계 종으로 따로 처리)
 _GOAL_FAVORS: dict[str, dict[str, int]] = {
-    "flower-bed": {"sunflower": 3, "lotus": 3, "rose": 3},
+    "flower-bed": {"rapeseed": 3, "lotus": 3, "mugunghwa": 3},
     "forest": {"oak": 3, "bamboo": 3},
-    "fertile-field": {"sunflower": 2},
+    "fertile-field": {"rapeseed": 2},
     "pond-side": {"lotus": 2},
 }
 _RESERVE_GOAL_BONUS = 5

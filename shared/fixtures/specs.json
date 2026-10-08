@@ -47,8 +47,8 @@
       "wither": 0,
       "fertileRing": 0,
       "bloomBonus": 0,
-      "id": "cactus",
-      "name": "선인장",
+      "id": "pine",
+      "name": "소나무",
       "description": "자기 칸은 거의 뺏기지 않는다."
     },
     {
@@ -64,8 +64,8 @@
       "wither": 0,
       "fertileRing": 0,
       "bloomBonus": 0,
-      "id": "vine",
-      "name": "덩굴",
+      "id": "kudzu",
+      "name": "칡",
       "description": "한 방향을 골라 직선 두 칸에 2씩 뻗는다."
     },
     {
@@ -115,8 +115,8 @@
       "wither": 0,
       "fertileRing": 2,
       "bloomBonus": 0,
-      "id": "sunflower",
-      "name": "해바라기",
+      "id": "rapeseed",
+      "name": "유채",
       "description": "비옥토에 심으면 둘레가 3이 된다. 다른 곳에서는 잔디보다 약하다."
     },
     {
@@ -200,8 +200,8 @@
       "wither": 0,
       "fertileRing": 0,
       "bloomBonus": 1,
-      "id": "rose",
-      "name": "장미",
+      "id": "mugunghwa",
+      "name": "무궁화",
       "description": "끝날 때 이 칸이 내 땅이면 +1점."
     }
   ],
@@ -251,7 +251,7 @@
     {
       "id": "flower-bed",
       "name": "꽃밭",
-      "description": "내 땅 위의 해바라기·연꽃·장미 1개당 +2 (누가 심었든)",
+      "description": "내 땅 위의 유채·연꽃·무궁화 1개당 +2 (누가 심었든)",
       "species": null
     },
     {
@@ -279,16 +279,16 @@
       "species": null
     },
     {
-      "id": "cactus-reserve",
-      "name": "선인장 보호구역",
-      "description": "내 땅 위의 내 선인장 1개당 +2",
-      "species": "cactus"
+      "id": "pine-reserve",
+      "name": "소나무 보호구역",
+      "description": "내 땅 위의 내 소나무 1개당 +2",
+      "species": "pine"
     },
     {
-      "id": "vine-reserve",
-      "name": "덩굴 보호구역",
-      "description": "내 땅 위의 내 덩굴 1개당 +2",
-      "species": "vine"
+      "id": "kudzu-reserve",
+      "name": "칡 보호구역",
+      "description": "내 땅 위의 내 칡 1개당 +2",
+      "species": "kudzu"
     },
     {
       "id": "fern-reserve",

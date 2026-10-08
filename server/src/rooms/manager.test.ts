@@ -178,7 +178,7 @@ describe('입력 검증 · 방 정리', () => {
     const bad = (a: unknown) => () => m.act(room.roomId, playerId, a as Action);
     expect(bad({ type: 'PLANT', playerId, species: 'oak', pos: { q: 1.5, r: 2 } })).toThrow(RoomError);
     expect(bad({ type: 'PLANT', playerId, species: 'tree', pos: { q: 1, r: 2 } })).toThrow(RoomError);
-    expect(bad({ type: 'PLANT', playerId, species: 'vine', pos: { q: 1, r: 2 }, direction: 7 })).toThrow(RoomError);
+    expect(bad({ type: 'PLANT', playerId, species: 'kudzu', pos: { q: 1, r: 2 }, direction: 7 })).toThrow(RoomError);
     expect(bad({ type: 'PLACE', playerId })).toThrow(RoomError);
     expect(bad(null)).toThrow(RoomError);
   });
@@ -202,6 +202,14 @@ describe('입력 검증 · 방 정리', () => {
     old.state.markers = [];
     old.state.board = { width: 10, height: 10, asteroids: [] };
     expect(isCurrentFormat(old)).toBe(false);
+  });
+
+  it('바뀐 종 id 를 쓰는 예전 판은 복원하지 않는다', () => {
+    const m = makeManager();
+    const room = JSON.parse(JSON.stringify(m.create({ playerToken: 't1', nickname: '갑' }).room));
+    expect(isCurrentFormat(room)).toBe(true);
+    room.state.players[0].hand = ['cactus'];
+    expect(isCurrentFormat(room)).toBe(false);
   });
 });
 

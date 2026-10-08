@@ -140,8 +140,8 @@ describe('영향력 (Rules.md 6.2·7절)', () => {
     expect(infAt(s, 0, { q: 2, r: 0 })).toBe(0);
   });
 
-  it('잔디 3/1, 참나무 2/2, 선인장 5/1', () => {
-    const s = flatState([plant('grass', 'p0', 0, 3), plant('oak', 'p0', 4, 3), plant('cactus', 'p1', 8, 3)]);
+  it('잔디 3/1, 참나무 2/2, 소나무 5/1', () => {
+    const s = flatState([plant('grass', 'p0', 0, 3), plant('oak', 'p0', 4, 3), plant('pine', 'p1', 8, 3)]);
     expect(infAt(s, 0, { q: 0, r: 3 })).toBe(3);
     expect(infAt(s, 0, { q: 1, r: 3 })).toBe(1);
     expect(infAt(s, 0, { q: 4, r: 3 })).toBe(2);
@@ -150,8 +150,8 @@ describe('영향력 (Rules.md 6.2·7절)', () => {
     expect(infAt(s, 1, { q: 9, r: 3 })).toBe(1);
   });
 
-  it('덩굴: 자기 2, 고른 방향 직선 거리 1·2 에 각 2, 거리 3 은 없음', () => {
-    const s = flatState([plant('vine', 'p0', 0, -3, 0)]);
+  it('칡: 자기 2, 고른 방향 직선 거리 1·2 에 각 2, 거리 3 은 없음', () => {
+    const s = flatState([plant('kudzu', 'p0', 0, -3, 0)]);
     expect(infAt(s, 0, { q: 0, r: -3 })).toBe(2);
     expect(infAt(s, 0, { q: 1, r: -3 })).toBe(2);
     expect(infAt(s, 0, { q: 2, r: -3 })).toBe(2);
@@ -159,9 +159,9 @@ describe('영향력 (Rules.md 6.2·7절)', () => {
     expect(infAt(s, 0, { q: -1, r: -3 })).toBe(0);
   });
 
-  it('덩굴: 거리 1·2 가 보드 밖이면 건너뛰고 거리 3 으로 밀려나지 않는다, 그런 방향은 고를 수 없다', () => {
+  it('칡: 거리 1·2 가 보드 밖이면 건너뛰고 거리 3 으로 밀려나지 않는다, 그런 방향은 고를 수 없다', () => {
     // flatState 는 q ∈ [−4, 10]. (9,0) 에서 방향 0 → (10,0) 보드 안, (11,0) 보드 밖, (12,0) 보드 밖
-    const s = flatState([plant('vine', 'p0', 9, 0, 0)]);
+    const s = flatState([plant('kudzu', 'p0', 9, 0, 0)]);
     expect(infAt(s, 0, { q: 10, r: 0 })).toBe(2);
     // (10,0) 에서 방향 0 은 거리 1·2 모두 보드 밖 → 고를 수 없다
     expect(legalDirections(s, { q: 10, r: 0 })).not.toContain(0);
@@ -177,8 +177,8 @@ describe('영향력 (Rules.md 6.2·7절)', () => {
     expect(infAt(s, 0, { q: 5, r: -1 })).toBe(0);
   });
 
-  it('비옥토: 자기 칸 +1, 해바라기는 비옥토에서 둘레 3 (밖에서는 2/1)', () => {
-    const s0 = flatState([plant('sunflower', 'p0', 0, 3)]);
+  it('비옥토: 자기 칸 +1, 유채는 비옥토에서 둘레 3 (밖에서는 2/1)', () => {
+    const s0 = flatState([plant('rapeseed', 'p0', 0, 3)]);
     expect(infAt(s0, 0, { q: 0, r: 3 })).toBe(2);
     expect(infAt(s0, 0, { q: 1, r: 3 })).toBe(1);
     const cells = s0.board!.cells.map((c) => (c.q === 0 && c.r === 3 ? { ...c, terrain: 'fertile' as const } : c));
@@ -238,7 +238,7 @@ describe('심을 수 있는 칸 (Rules.md 6.1)', () => {
   });
 
   it('상대 땅이어도 내 뿌리가 닿으면 심을 수 있다', () => {
-    const s = flatState([plant('cactus', 'p1', 4, 0), plant('grass', 'p0', 2, 0)]);
+    const s = flatState([plant('pine', 'p1', 4, 0), plant('grass', 'p0', 2, 0)]);
     expect(legalPlantCells(s, 'p0', 'grass').some((p) => p.q === 3 && p.r === 0)).toBe(true);
   });
 
@@ -387,18 +387,18 @@ describe('로비 → 드래프트 → 진행 (Rules.md 4·5·6절)', () => {
     const s = autoDraft(readyAll(lobby(2)));
     const sp = s.players[0]!.hand[0]!;
     expect(applyAction(s, { type: 'PLANT', playerId: 'p1', species: s.players[1]!.hand[0]!, pos: { q: 0, r: 0 } }).error).toMatch(/차례/);
-    const notInHand = (['grass', 'oak', 'cactus', 'vine', 'fern', 'dandelion', 'sunflower', 'lotus', 'ivy', 'bamboo', 'mushroom', 'rose'] as SpeciesId[]).find((x) => !s.players[0]!.hand.includes(x))!;
+    const notInHand = (['grass', 'oak', 'pine', 'kudzu', 'fern', 'dandelion', 'rapeseed', 'lotus', 'ivy', 'bamboo', 'mushroom', 'mugunghwa'] as SpeciesId[]).find((x) => !s.players[0]!.hand.includes(x))!;
     expect(applyAction(s, { type: 'PLANT', playerId: 'p0', species: notInHand, pos: { q: 0, r: 0 } }).error).toMatch(/손패/);
     const far = s.board!.entrances[1]!;
     expect(applyAction(s, { type: 'PLANT', playerId: 'p0', species: sp, pos: far }).error).toBeDefined();
   });
 
-  it('덩굴은 방향이 필요하고, 다른 종은 방향을 받지 않는다', () => {
+  it('칡은 방향이 필요하고, 다른 종은 방향을 받지 않는다', () => {
     const s = flatState();
-    const withHand = { ...s, players: s.players.map((p) => (p.id === 'p0' ? { ...p, hand: ['vine', 'grass', 'grass'] as SpeciesId[] } : p)) };
-    expect(applyAction(withHand, { type: 'PLANT', playerId: 'p0', species: 'vine', pos: { q: 1, r: 0 } }).error).toMatch(/방향/);
+    const withHand = { ...s, players: s.players.map((p) => (p.id === 'p0' ? { ...p, hand: ['kudzu', 'grass', 'grass'] as SpeciesId[] } : p)) };
+    expect(applyAction(withHand, { type: 'PLANT', playerId: 'p0', species: 'kudzu', pos: { q: 1, r: 0 } }).error).toMatch(/방향/);
     expect(applyAction(withHand, { type: 'PLANT', playerId: 'p0', species: 'grass', pos: { q: 1, r: 0 }, direction: 0 }).error).toMatch(/방향/);
-    expect(applyAction(withHand, { type: 'PLANT', playerId: 'p0', species: 'vine', pos: { q: 1, r: 0 }, direction: 0 }).error).toBeUndefined();
+    expect(applyAction(withHand, { type: 'PLANT', playerId: 'p0', species: 'kudzu', pos: { q: 1, r: 0 }, direction: 0 }).error).toBeUndefined();
   });
 
   it('민들레 씨앗: 거리 2 이내 빈 칸만', () => {
@@ -448,7 +448,7 @@ describe('종료·점수·순위 (Rules.md 8·9절)', () => {
     expect(s.result!.ranking).toHaveLength(n);
   });
 
-  it('점수 = 땅 + 목표 + 장미 + 덤, 순위는 점수 → 땅 → 좌석 큰 쪽', () => {
+  it('점수 = 땅 + 목표 + 무궁화 + 덤, 순위는 점수 → 땅 → 좌석 큰 쪽', () => {
     const s = playOut(3, 5);
     const scores = s.result!.scores;
     for (const p of s.players) {
@@ -499,10 +499,10 @@ describe('목표 점수 (Rules.md 8절)', () => {
   const withGoals = (s: GameState, goals: GameState['goals']) => ({ ...s, goals });
 
   it('종 연계: 내 땅 위의 내 그 종 식물 1개당 +2, 뺏긴 칸은 0', () => {
-    const s = withGoals(flatState([plant('cactus', 'p0', 2, 2), plant('cactus', 'p1', 8, 2), plant('grass', 'p0', 7, 2), plant('oak', 'p0', 8, 1), plant('oak', 'p0', 9, 1)]), ['cactus-reserve']);
+    const s = withGoals(flatState([plant('pine', 'p0', 2, 2), plant('pine', 'p1', 8, 2), plant('grass', 'p0', 7, 2), plant('oak', 'p0', 8, 1), plant('oak', 'p0', 9, 1)]), ['pine-reserve']);
     const sc = computeScores(s);
     expect(sc['p0']!.goalBreakdown[0]).toBe(2);
-    // p1 선인장(8,2): p1 5 vs p0 잔디 1 + 참나무 2 + 2 = 5 → 동점이라 p1 땅 아님 → 0
+    // p1 소나무(8,2): p1 5 vs p0 잔디 1 + 참나무 2 + 2 = 5 → 동점이라 p1 땅 아님 → 0
     expect(sc['p1']!.goalBreakdown[0]).toBe(0);
   });
 
@@ -519,8 +519,8 @@ describe('목표 점수 (Rules.md 8절)', () => {
     expect(computeScores(s0)['p1']!.goalBreakdown[0]).toBe(0);
   });
 
-  it('장미: 끝날 때 그 칸이 내 땅이면 +1', () => {
-    const s = flatState([plant('rose', 'p0', 2, 2)]);
+  it('무궁화: 끝날 때 그 칸이 내 땅이면 +1', () => {
+    const s = flatState([plant('mugunghwa', 'p0', 2, 2)]);
     expect(computeScores(s)['p0']!.bloom).toBe(1);
   });
 });
