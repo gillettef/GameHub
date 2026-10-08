@@ -16,7 +16,7 @@
 ## 필수 작업 규칙
 
 1. **작업이 완료되면 반드시 `git commit` & `git push`를 진행한다.** 기능 하나, 버그 수정 하나 등 의미 있는 단위가 끝날 때마다 커밋하고 푸시한다. `/commit-push` 스킬을 사용한다.
-2. **commit 메시지는 가급적 한국어로 작성한다.** 제목은 `<타입>: <요약>` 형식 (예: `기능: 드래프트 화면 (F008)`, `수정: 덩굴 거리 계산`). 관련 F-ID가 있으면 괄호로 덧붙인다.
+2. **commit 메시지는 가급적 한국어로 작성한다.** 제목은 `<타입>: <요약>` 형식 (예: `기능: 드래프트 화면 (F008)`, `수정: 칡 거리 계산`). 관련 F-ID가 있으면 괄호로 덧붙인다.
 3. **push 대상 repo는 `https://github.com/gillettef/Rootbound.git` 이다**(2026-10-07 AstralTab 에서 이름 변경). 브랜치는 `main`을 기본으로 사용한다.
 4. **이 서비스는 DB를 사용하지 않는다.** DB·Redis·ORM을 도입하지 않는다. 아래 "DB 없는 상태 관리" 참고.
 5. 로컬 테스트 시 서버를 포그라운드로 직접 띄우지 않는다(터미널이 블로킹됨). 반드시 `/dev`로 시작하고 `/dev-stop`으로 종료한다. `scripts/dev.ps1` 출력을 `| grep` 등 다른 프로세스로 파이프하지 않는다.
@@ -29,10 +29,10 @@
 
 ## 코드 현황 (2026-10-07)
 
-- **shared** (`shared/src`): 타입(`types/index.ts`, 이벤트 `types/events.ts`), 데이터(`data/constants.ts` 인원별 규칙·덤·드래프트 순서, `data/species.ts` 식물 12종·목표 18장, `data/tiles.ts` 정원 조각), 엔진(`engine/board.ts` 대칭 보드 조립·축 좌표·보드 색인, `influence.ts` 영향력·땅·합법 칸·씨앗·덩굴 방향, `scoring.ts` 목표·점수·순위, `turn.ts` 로비→드래프트→차례→종료 `applyAction`, 시간 초과 자동 수 `autoAction`), 가림 `mask.ts`. Vitest 55개.
+- **shared** (`shared/src`): 타입(`types/index.ts`, 이벤트 `types/events.ts`), 데이터(`data/constants.ts` 인원별 규칙·덤·드래프트 순서, `data/species.ts` 식물 12종·목표 18장, `data/tiles.ts` 정원 조각), 엔진(`engine/board.ts` 대칭 보드 조립·축 좌표·보드 색인, `influence.ts` 영향력·땅·합법 칸·씨앗·칡 방향, `scoring.ts` 목표·점수·순위, `turn.ts` 로비→드래프트→차례→종료 `applyAction`, 시간 초과 자동 수 `autoAction`), 가림 `mask.ts`. Vitest 55개.
 - **server**: `rooms/manager.ts`(방·초대 id·비밀번호·좌석·AI 추가, 차례/드래프트 제한 시간·자동 수·AI 대리, 판 요약 `takeRecord`, 옛 형식 스냅샷 판별 `isCurrentFormat`), `game/aiTurn.ts`(AI·대리 좌석 차례마다 Python `/decide` → 엔진 검증 → 실패 시 `autoAction` 폴백), `persistence/snapshots.ts`(JSON 스냅샷), `persistence/stats.ts`(판 요약·웹 성능 JSONL), `index.ts`(Socket.io, `socket.use` 로 요청 모양 검사, 방별 타이머, `POST /api/vitals`). 서버 시작 시 예전 우주 전투판 스냅샷은 지운다. Vitest 20개.
 - **AI** (`ai/astral_ai`, 패키지 이름은 옛 이름 그대로): `models.py`(Pydantic, TS 타입 1:1), `rules.py`(TS 엔진 시뮬레이션 사본, 수치는 `shared/fixtures/specs.json`), `search.py`(드래프트는 목표 연계 가치표, 차례는 1수 탐욕: 내 총점 − 최고 상대 총점, 시간 제한 안에 최선 수), `main.py`(`GET /health` → `rootbound-ai`, `POST /decide`, None 필드 제외). pytest 12개.
-- **client**: 경로 `/` 랜딩(AI와 바로 시작·방 만들기·초대 참여·핫시트·튜토리얼), `/hotseat` 같은 기기(인원·닉네임 → 드래프트), `/tutorial` 연습 봇(`game/tutorialBot.ts`)과 단계 안내(`TutorialCoach`), `/room/:id` 온라인 로비(방 → 좌석 → 준비·제한 시간) → 게임. 게임 화면: `PlayerStrip`(단계·차례·남은 시간·좌석별 땅/점수) → 탭(정원 `BoardTab`: 드래프트 중 `DraftPanel`, 진행 중 목표 칩 + `HexBoard`(SVG 육각 보드) + `Hand` + `PlantBar`(미리보기·덩굴 방향·민들레 씨앗) / 점수 `StatusTab` / 진행 `ProgressTab` / 카드 `CardsTab` / 설명 `HelpTab`) → `TabDock`. 카드는 `SpeciesCard`(이름 + 빈 그림 칸 + 뿌리 모양 `RootDiagram`), 확대·칸 정보는 `GameModal`. 화면용 파생값은 `game/derived.ts`(엔진 호출만). 효과음·차례 알림 `lib/cues.ts`, 웹 성능 `lib/vitals.ts`, 제한 시간 표시 `lib/turnClock.ts`. Vitest 10개.
+- **client**: 경로 `/` 랜딩(AI와 바로 시작·방 만들기·초대 참여·핫시트·튜토리얼), `/hotseat` 같은 기기(인원·닉네임 → 드래프트), `/tutorial` 연습 봇(`game/tutorialBot.ts`)과 단계 안내(`TutorialCoach`), `/room/:id` 온라인 로비(방 → 좌석 → 준비·제한 시간) → 게임. 게임 화면: `PlayerStrip`(단계·차례·남은 시간·좌석별 땅/점수) → 탭(정원 `BoardTab`: 드래프트 중 `DraftPanel`, 진행 중 목표 칩 + `HexBoard`(SVG 육각 보드) + `Hand` + `PlantBar`(미리보기·칡 방향·민들레 씨앗) / 점수 `StatusTab` / 진행 `ProgressTab` / 카드 `CardsTab` / 설명 `HelpTab`) → `TabDock`. 카드는 `SpeciesCard`(이름 + 빈 그림 칸 + 뿌리 모양 `RootDiagram`), 확대·칸 정보는 `GameModal`. 화면용 파생값은 `game/derived.ts`(엔진 호출만). 효과음·차례 알림 `lib/cues.ts`, 웹 성능 `lib/vitals.ts`, 제한 시간 표시 `lib/turnClock.ts`. Vitest 10개.
 - **카드 그림은 비어 있다**(사용자가 나중에 넣는다). 파일은 `client/public/cards/`, 등록은 `client/src/game/cardImages.ts` (`client/public/cards/README.md`).
 - 개발용 바로가기: `/hotseat?quick&players=<2~4>&seed=<n>&play&tab=<board|status|progress|cards|help>&select=<손패 index>&modal=<손패 index>` (`play` = 드래프트를 자동 픽으로 끝내고 심기부터).
 - localStorage 키 접두어는 옛 이름 `astraltab.` 을 그대로 쓴다(닉네임·재접속 토큰·튜토리얼 표시 유지).
@@ -142,8 +142,8 @@ AstralTab/                 # 저장소 폴더 이름은 아직 옛 이름
 - **좌석 보정**: 인원별 드래프트 첫 바퀴 순서와 덤(2인 [0,1], 3인 [3,4,0], 4인 [1,0,0,0]).
 - **차례**: 손패 1장을 **내 영향력 1 이상인 빈 칸**(연꽃은 연못 옆이면 영향 없이도)에 심고 1장 뽑는다. 심을 칸이 하나도 없을 때만 1장 버린다. 패스 없음. 기권 가능.
 - **영향력**: 입구(자기 3, 둘레 1) + 식물 뿌리 모양 + 씨앗을 더하고, 버섯 빼기(−2, 0 하한)를 마지막에. **엄격한 1등**만 그 칸의 주인.
-- **식물 12종**: 잔디, 참나무, 선인장, 덩굴(방향 직선 2칸), 고사리(별 모양 거리 2), 민들레(씨앗), 해바라기(비옥토), 연꽃(연못), 담쟁이(식물 칸 +1), 대나무(군집), 버섯(상대 −2), 장미(+1점).
-- **종료·점수**: 모두 덱·손패를 다 쓰면 끝(또는 기권 안 한 사람이 1명). 점수 = 땅 + 목표 3장 + 장미 + 덤. 순위: 기권 안 함 → 점수 → 땅 → 좌석 큰 쪽.
+- **식물 12종**: 잔디, 참나무, 소나무, 칡(방향 직선 2칸), 고사리(별 모양 거리 2), 민들레(씨앗), 유채(비옥토), 연꽃(연못), 담쟁이(식물 칸 +1), 대나무(군집), 버섯(상대 −2), 무궁화(+1점).
+- **종료·점수**: 모두 덱·손패를 다 쓰면 끝(또는 기권 안 한 사람이 1명). 점수 = 땅 + 목표 3장 + 무궁화 + 덤. 순위: 기권 안 함 → 점수 → 땅 → 좌석 큰 쪽.
 - **온라인 제한 시간**(Rules.md 6.3): 방장이 60초/90초/3분/없음. 드래프트 픽은 1/3(최소 20초). 넘으면 자동 수, 2번 연속이면 AI 대리, "직접 두기"로 되찾음.
 
 ---

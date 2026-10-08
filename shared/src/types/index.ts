@@ -45,16 +45,16 @@ export interface Board {
 export type SpeciesId =
   | 'grass'
   | 'oak'
-  | 'cactus'
-  | 'vine'
+  | 'pine'
+  | 'kudzu'
   | 'fern'
   | 'dandelion'
-  | 'sunflower'
+  | 'rapeseed'
   | 'lotus'
   | 'ivy'
   | 'bamboo'
   | 'mushroom'
-  | 'rose';
+  | 'mugunghwa';
 
 /** 종의 뿌리 모양. 0 이면 효과 없음 */
 export interface SpeciesSpec {
@@ -98,8 +98,8 @@ export type GoalId =
   | 'connected'
   | 'border-guard'
   | 'full-set'
-  | 'cactus-reserve'
-  | 'vine-reserve'
+  | 'pine-reserve'
+  | 'kudzu-reserve'
   | 'fern-reserve'
   | 'grass-reserve'
   | 'mushroom-reserve'
@@ -120,7 +120,7 @@ export interface Plant {
   species: SpeciesId;
   ownerId: PlayerId;
   pos: Position;
-  /** 덩굴의 방향. 그 외 null */
+  /** 칡의 방향. 그 외 null */
   direction: Direction | null;
 }
 
@@ -222,7 +222,7 @@ export interface GameState {
 export type Action =
   | { type: 'READY'; playerId: PlayerId }
   | { type: 'DRAFT'; playerId: PlayerId; species: SpeciesId }
-  /** direction: 덩굴만. seed: 민들레만(생략 가능) */
+  /** direction: 칡만. seed: 민들레만(생략 가능) */
   | { type: 'PLANT'; playerId: PlayerId; species: SpeciesId; pos: Position; direction?: Direction; seed?: Position }
   /** 손패의 어떤 카드도 심을 칸이 없을 때만 */
   | { type: 'DISCARD'; playerId: PlayerId; species: SpeciesId }

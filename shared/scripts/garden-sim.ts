@@ -225,22 +225,22 @@ function buildBoard(players: number, rand: Rand): Board {
 // 식물 12종 — 데이터 기반 (v0.2)
 // ---------------------------------------------------------------------------
 
-const SPECIES = ['grass', 'oak', 'cactus', 'vine', 'fern', 'dandelion', 'sunflower', 'lotus', 'ivy', 'bamboo', 'mushroom', 'rose'] as const;
+const SPECIES = ['grass', 'oak', 'pine', 'kudzu', 'fern', 'dandelion', 'rapeseed', 'lotus', 'ivy', 'bamboo', 'mushroom', 'mugunghwa'] as const;
 type SpeciesId = (typeof SPECIES)[number];
 const S = Object.fromEntries(SPECIES.map((s, i) => [s, i])) as Record<SpeciesId, number>;
 const NAME_KO: Record<SpeciesId, string> = {
   grass: '잔디',
   oak: '참나무',
-  cactus: '선인장',
-  vine: '덩굴',
+  pine: '소나무',
+  kudzu: '칡',
   fern: '고사리',
   dandelion: '민들레',
-  sunflower: '해바라기',
+  rapeseed: '유채',
   lotus: '연꽃',
   ivy: '담쟁이',
   bamboo: '대나무',
   mushroom: '버섯',
-  rose: '장미',
+  mugunghwa: '무궁화',
 };
 
 /** 뿌리 모양. 0 은 효과 없음 */
@@ -267,23 +267,23 @@ interface SpeciesSpec {
   /** 비옥토에 심으면 거리 1 추가 */
   fertileRing: number;
   /** 끝날 때 이 칸이 내 땅이면 점수 */
-  rose: number;
+  mugunghwa: number;
 }
 
-const ZERO: SpeciesSpec = { self: 0, ring1: 0, ring2: 0, star2: 0, line: 0, lineLen: 0, seed: 0, pondOnly: false, ivy: 0, bamboo: 0, mushroom: 0, fertileRing: 0, rose: 0 };
+const ZERO: SpeciesSpec = { self: 0, ring1: 0, ring2: 0, star2: 0, line: 0, lineLen: 0, seed: 0, pondOnly: false, ivy: 0, bamboo: 0, mushroom: 0, fertileRing: 0, mugunghwa: 0 };
 const SPEC: SpeciesSpec[] = [
   { ...ZERO, self: 3, ring1: 1 }, // grass
   { ...ZERO, self: 2, ring1: 2 }, // oak
-  { ...ZERO, self: 5, ring1: 1 }, // cactus
-  { ...ZERO, self: 2, line: 2, lineLen: 2 }, // vine
+  { ...ZERO, self: 5, ring1: 1 }, // pine
+  { ...ZERO, self: 2, line: 2, lineLen: 2 }, // kudzu
   { ...ZERO, self: 1, star2: 1 }, // fern
   { ...ZERO, self: 1, ring1: 1, seed: 2 }, // dandelion
-  { ...ZERO, self: 2, ring1: 1, fertileRing: 2 }, // sunflower
+  { ...ZERO, self: 2, ring1: 1, fertileRing: 2 }, // rapeseed
   { ...ZERO, self: 1, ring1: 1, pondOnly: true }, // lotus
   { ...ZERO, self: 1, ring1: 1, ivy: 1 }, // ivy
   { ...ZERO, self: 1, ring1: 2, bamboo: 2 }, // bamboo
   { ...ZERO, self: 1, mushroom: 2 }, // mushroom
-  { ...ZERO, self: 2, ring1: 1, rose: 1 }, // rose
+  { ...ZERO, self: 2, ring1: 1, mugunghwa: 1 }, // mugunghwa
 ];
 
 interface SeatPolicy {
@@ -329,11 +329,11 @@ const HAND_SIZE = 3;
 const GOALS = [
   '연못가', '큰정원', '오솔길', '비옥한밭', '가장자리', '중앙광장', '조각마다', '꽃밭', '숲', '이어진정원', '경계', '종다쓰기',
   // 12~17: 종 연계 목표 "X 보호구역: 끝날 때 내 땅 위에 있는 내 X 1개당 +3"
-  '선인장보호', '덩굴보호', '고사리보호', '잔디보호', '버섯보호', '민들레보호',
+  '소나무보호', '칡보호', '고사리보호', '잔디보호', '버섯보호', '민들레보호',
 ] as const;
 const LINKED_GOALS: [number, number][] = [
-  [12, 2], // cactus
-  [13, 3], // vine
+  [12, 2], // pine
+  [13, 3], // kudzu
   [14, 4], // fern
   [15, 0], // grass
   [16, 10], // mushroom
@@ -362,7 +362,7 @@ interface Game {
   goals: number[];
   species: Int8Array; // 칸별 식물 종 (-1 없음)
   owner: Int8Array; // 칸별 식물 주인 (-1 없음)
-  dir: Int8Array; // 덩굴 방향
+  dir: Int8Array; // 칡 방향
   entranceOf: Int8Array; // 입구 주인 (-1 아님)
   seeds: { cell: number; owner: number }[];
   drafted: number[][]; // 좌석별 고른 종
@@ -511,7 +511,7 @@ interface ScoreDetail {
   total: number[];
   land: number[];
   goal: number[];
-  rose: number[];
+  mugunghwa: number[];
 }
 
 function score(g: Game, own?: Int8Array): ScoreDetail {
@@ -568,7 +568,7 @@ function score(g: Game, own?: Int8Array): ScoreDetail {
         add(mine.map((cs) => new Set(cs.map((c) => b.tile[c])).size));
         break;
       case 7: // 꽃밭
-        add(mine.map((cs) => 2 * cs.filter((c) => g.species[c] === S.sunflower || g.species[c] === S.lotus || g.species[c] === S.rose).length));
+        add(mine.map((cs) => 2 * cs.filter((c) => g.species[c] === S.rapeseed || g.species[c] === S.lotus || g.species[c] === S.mugunghwa).length));
         break;
       case 8: {
         // 숲
@@ -608,13 +608,13 @@ function score(g: Game, own?: Int8Array): ScoreDetail {
       }
     }
   }
-  const rose = new Array<number>(P).fill(0);
+  const mugunghwa = new Array<number>(P).fill(0);
   for (let c = 0; c < b.n; c++) {
     const s = g.species[c] as number;
-    if (s >= 0 && SPEC[s]!.rose && o[c] === g.owner[c]) rose[g.owner[c] as number]! += SPEC[s]!.rose;
+    if (s >= 0 && SPEC[s]!.mugunghwa && o[c] === g.owner[c]) mugunghwa[g.owner[c] as number]! += SPEC[s]!.mugunghwa;
   }
   const komi = SEAT[P]!.komi;
-  return { total: land.map((v, i) => v + goal[i]! + rose[i]! + (komi[i] ?? 0)), land, goal, rose };
+  return { total: land.map((v, i) => v + goal[i]! + mugunghwa[i]! + (komi[i] ?? 0)), land, goal, mugunghwa };
 }
 
 // ---------------------------------------------------------------------------
@@ -996,7 +996,7 @@ for (const P of [2, 3, 4]) {
       for (let p = 0; p < P; p++) {
         landSum += res.scores.land[p]!;
         goalSum += res.scores.goal[p]!;
-        roseSum += res.scores.rose[p]!;
+        roseSum += res.scores.mugunghwa[p]!;
       }
       const sorted = [...res.scores.total].sort((a, b) => b - a);
       margin += sorted[0]! - sorted[1]!;
@@ -1053,7 +1053,7 @@ for (const P of [2, 3, 4]) {
     }
     console.log(`  이긴 덱끼리 평균 겹침(자카드) ${(jac / Math.max(1, pairs)).toFixed(2)}  (1=늘 같은 덱, 낮을수록 판마다 다름)`);
     console.log(`  뒤집기: 판당 ${(flips / N).toFixed(1)}칸이 주인을 바꿈, 끝날 때 남의 땅 위 식물 ${pct(lost, plants).trim()}`);
-    console.log(`  점수 구성(1인 평균): 땅 ${(landSum / N / P).toFixed(1)} + 목표 ${(goalSum / N / P).toFixed(1)} + 장미 ${(roseSum / N / P).toFixed(1)}, 1·2등 점수 차 평균 ${(margin / N).toFixed(1)}`);
+    console.log(`  점수 구성(1인 평균): 땅 ${(landSum / N / P).toFixed(1)} + 목표 ${(goalSum / N / P).toFixed(1)} + 무궁화 ${(roseSum / N / P).toFixed(1)}, 1·2등 점수 차 평균 ${(margin / N).toFixed(1)}`);
     console.log(`  심을 곳 없어 버림: 판당 ${(discards / N).toFixed(2)}장, 버림이 있던 판 ${pct(discardGames, N).trim()}`);
     console.log(`  판당 턴 ${(turns / N).toFixed(0)}`);
     if (P === 2) {

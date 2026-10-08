@@ -1115,7 +1115,7 @@
         "action": {
           "type": "DRAFT",
           "playerId": "p0",
-          "species": "cactus"
+          "species": "pine"
         },
         "state": null,
         "influence": [
@@ -1305,7 +1305,7 @@
         "action": {
           "type": "DRAFT",
           "playerId": "p1",
-          "species": "vine"
+          "species": "kudzu"
         },
         "state": null,
         "influence": [
@@ -1875,7 +1875,7 @@
         "action": {
           "type": "DRAFT",
           "playerId": "p0",
-          "species": "sunflower"
+          "species": "rapeseed"
         },
         "state": null,
         "influence": [
@@ -2599,9 +2599,9 @@
               "isReady": true,
               "drafted": [
                 "oak",
-                "cactus",
+                "pine",
                 "dandelion",
-                "sunflower"
+                "rapeseed"
               ],
               "deck": [],
               "hand": [],
@@ -2615,7 +2615,7 @@
               "isReady": true,
               "drafted": [
                 "grass",
-                "vine",
+                "kudzu",
                 "fern",
                 "lotus",
                 "ivy"
@@ -3030,7 +3030,7 @@
               "r": 0
             }
           ],
-          "sunflower": [
+          "rapeseed": [
             {
               "q": -2,
               "r": -2
@@ -3056,7 +3056,7 @@
               "r": 0
             }
           ],
-          "cactus": [
+          "pine": [
             {
               "q": -2,
               "r": -2
@@ -3606,7 +3606,7 @@
           }
         },
         "legal": {
-          "sunflower": [
+          "rapeseed": [
             {
               "q": 0,
               "r": -3
@@ -3632,7 +3632,7 @@
               "r": 0
             }
           ],
-          "cactus": [
+          "pine": [
             {
               "q": 0,
               "r": -3
@@ -3664,7 +3664,7 @@
         "action": {
           "type": "PLANT",
           "playerId": "p0",
-          "species": "sunflower",
+          "species": "rapeseed",
           "pos": {
             "q": -2,
             "r": 0
@@ -4116,7 +4116,7 @@
           }
         },
         "legal": {
-          "cactus": [
+          "pine": [
             {
               "q": 0,
               "r": -3
@@ -4732,7 +4732,7 @@
           }
         },
         "legal": {
-          "cactus": [
+          "pine": [
             {
               "q": 0,
               "r": -3
@@ -4814,7 +4814,7 @@
         "action": {
           "type": "PLANT",
           "playerId": "p0",
-          "species": "cactus",
+          "species": "pine",
           "pos": {
             "q": -3,
             "r": -1
@@ -5162,23 +5162,23 @@
               "isReady": true,
               "drafted": [
                 "oak",
-                "cactus",
+                "pine",
                 "dandelion",
-                "sunflower",
+                "rapeseed",
                 "bamboo"
               ],
               "deck": [
                 "bamboo",
                 "oak",
                 "bamboo",
-                "cactus",
-                "sunflower",
+                "pine",
+                "rapeseed",
                 "oak",
                 "dandelion",
-                "sunflower"
+                "rapeseed"
               ],
               "hand": [
-                "cactus",
+                "pine",
                 "bamboo",
                 "oak"
               ],
@@ -5192,21 +5192,21 @@
               "isReady": true,
               "drafted": [
                 "grass",
-                "vine",
+                "kudzu",
                 "fern",
                 "lotus",
                 "ivy"
               ],
               "deck": [
-                "vine",
+                "kudzu",
                 "fern",
                 "fern",
                 "ivy",
                 "lotus",
                 "fern",
                 "grass",
-                "vine",
-                "vine"
+                "kudzu",
+                "kudzu"
               ],
               "hand": [
                 "ivy",
@@ -5239,7 +5239,7 @@
             },
             {
               "id": "p3",
-              "species": "sunflower",
+              "species": "rapeseed",
               "ownerId": "p0",
               "pos": {
                 "q": -2,
@@ -5279,7 +5279,7 @@
             },
             {
               "id": "p7",
-              "species": "cactus",
+              "species": "pine",
               "ownerId": "p0",
               "pos": {
                 "q": -3,
@@ -5786,7 +5786,7 @@
           }
         },
         "legal": {
-          "cactus": [
+          "pine": [
             {
               "q": 0,
               "r": -3
@@ -5894,7 +5894,7 @@
         "action": {
           "type": "PLANT",
           "playerId": "p0",
-          "species": "cactus",
+          "species": "pine",
           "pos": {
             "q": -3,
             "r": 0
@@ -6175,7 +6175,7 @@
               "r": 3
             }
           ],
-          "vine": [
+          "kudzu": [
             {
               "q": 1,
               "r": -1
@@ -6721,7 +6721,7 @@
               "r": 3
             }
           ],
-          "vine": [
+          "kudzu": [
             {
               "q": 1,
               "r": -1
@@ -7329,7 +7329,7 @@
               "r": 3
             }
           ],
-          "vine": [
+          "kudzu": [
             {
               "q": 1,
               "r": -1
@@ -8046,21 +8046,21 @@
               "isReady": true,
               "drafted": [
                 "oak",
-                "cactus",
+                "pine",
                 "dandelion",
-                "sunflower",
+                "rapeseed",
                 "bamboo"
               ],
               "deck": [
-                "sunflower",
+                "rapeseed",
                 "oak",
                 "dandelion",
-                "sunflower"
+                "rapeseed"
               ],
               "hand": [
                 "oak",
                 "bamboo",
-                "cactus"
+                "pine"
               ],
               "surrenderedOrder": null
             },
@@ -8072,7 +8072,7 @@
               "isReady": true,
               "drafted": [
                 "grass",
-                "vine",
+                "kudzu",
                 "fern",
                 "lotus",
                 "ivy"
@@ -8081,12 +8081,12 @@
                 "lotus",
                 "fern",
                 "grass",
-                "vine",
-                "vine"
+                "kudzu",
+                "kudzu"
               ],
               "hand": [
                 "ivy",
-                "vine",
+                "kudzu",
                 "ivy"
               ],
               "surrenderedOrder": null
@@ -8115,7 +8115,7 @@
             },
             {
               "id": "p3",
-              "species": "sunflower",
+              "species": "rapeseed",
               "ownerId": "p0",
               "pos": {
                 "q": -2,
@@ -8155,7 +8155,7 @@
             },
             {
               "id": "p7",
-              "species": "cactus",
+              "species": "pine",
               "ownerId": "p0",
               "pos": {
                 "q": -3,
@@ -8175,7 +8175,7 @@
             },
             {
               "id": "p9",
-              "species": "cactus",
+              "species": "pine",
               "ownerId": "p0",
               "pos": {
                 "q": -3,
@@ -8489,7 +8489,7 @@
               "r": 4
             }
           ],
-          "vine": [
+          "kudzu": [
             {
               "q": 1,
               "r": -1
@@ -8818,7 +8818,7 @@
               "r": 2
             }
           ],
-          "cactus": [
+          "pine": [
             {
               "q": 1,
               "r": -4
@@ -9059,7 +9059,7 @@
           }
         },
         "legal": {
-          "vine": [
+          "kudzu": [
             {
               "q": 2,
               "r": -1
@@ -9199,7 +9199,7 @@
         "action": {
           "type": "PLANT",
           "playerId": "p1",
-          "species": "vine",
+          "species": "kudzu",
           "pos": {
             "q": 0,
             "r": 2
@@ -9431,7 +9431,7 @@
               "r": 2
             }
           ],
-          "cactus": [
+          "pine": [
             {
               "q": 1,
               "r": -4
@@ -9473,7 +9473,7 @@
               "r": 2
             }
           ],
-          "sunflower": [
+          "rapeseed": [
             {
               "q": 1,
               "r": -4
@@ -9521,7 +9521,7 @@
         "action": {
           "type": "PLANT",
           "playerId": "p0",
-          "species": "sunflower",
+          "species": "rapeseed",
           "pos": {
             "q": 0,
             "r": 0
@@ -10065,7 +10065,7 @@
               "r": 2
             }
           ],
-          "cactus": [
+          "pine": [
             {
               "q": 1,
               "r": -4
@@ -10621,7 +10621,7 @@
           }
         },
         "legal": {
-          "cactus": [
+          "pine": [
             {
               "q": 1,
               "r": -4
@@ -11101,16 +11101,16 @@
               "isReady": true,
               "drafted": [
                 "oak",
-                "cactus",
+                "pine",
                 "dandelion",
-                "sunflower",
+                "rapeseed",
                 "bamboo"
               ],
               "deck": [],
               "hand": [
-                "cactus",
+                "pine",
                 "dandelion",
-                "sunflower"
+                "rapeseed"
               ],
               "surrenderedOrder": null
             },
@@ -11122,18 +11122,18 @@
               "isReady": true,
               "drafted": [
                 "grass",
-                "vine",
+                "kudzu",
                 "fern",
                 "lotus",
                 "ivy"
               ],
               "deck": [
-                "vine"
+                "kudzu"
               ],
               "hand": [
                 "ivy",
                 "fern",
-                "vine"
+                "kudzu"
               ],
               "surrenderedOrder": null
             }
@@ -11161,7 +11161,7 @@
             },
             {
               "id": "p3",
-              "species": "sunflower",
+              "species": "rapeseed",
               "ownerId": "p0",
               "pos": {
                 "q": -2,
@@ -11201,7 +11201,7 @@
             },
             {
               "id": "p7",
-              "species": "cactus",
+              "species": "pine",
               "ownerId": "p0",
               "pos": {
                 "q": -3,
@@ -11221,7 +11221,7 @@
             },
             {
               "id": "p9",
-              "species": "cactus",
+              "species": "pine",
               "ownerId": "p0",
               "pos": {
                 "q": -3,
@@ -11311,7 +11311,7 @@
             },
             {
               "id": "p18",
-              "species": "vine",
+              "species": "kudzu",
               "ownerId": "p1",
               "pos": {
                 "q": 0,
@@ -11321,7 +11321,7 @@
             },
             {
               "id": "p19",
-              "species": "sunflower",
+              "species": "rapeseed",
               "ownerId": "p0",
               "pos": {
                 "q": 0,
@@ -11625,7 +11625,7 @@
               "r": 4
             }
           ],
-          "vine": [
+          "kudzu": [
             {
               "q": 3,
               "r": -2
@@ -11846,7 +11846,7 @@
           }
         },
         "legal": {
-          "cactus": [
+          "pine": [
             {
               "q": 1,
               "r": -4
@@ -11930,7 +11930,7 @@
               "r": 3
             }
           ],
-          "sunflower": [
+          "rapeseed": [
             {
               "q": 1,
               "r": -4
@@ -11978,7 +11978,7 @@
         "action": {
           "type": "PLANT",
           "playerId": "p0",
-          "species": "cactus",
+          "species": "pine",
           "pos": {
             "q": 2,
             "r": -3
@@ -12189,7 +12189,7 @@
               "r": 4
             }
           ],
-          "vine": [
+          "kudzu": [
             {
               "q": 3,
               "r": -1
@@ -12448,7 +12448,7 @@
               "r": 3
             }
           ],
-          "sunflower": [
+          "rapeseed": [
             {
               "q": 1,
               "r": -4
@@ -12496,7 +12496,7 @@
         "action": {
           "type": "PLANT",
           "playerId": "p0",
-          "species": "sunflower",
+          "species": "rapeseed",
           "pos": {
             "q": -3,
             "r": 3
@@ -12685,7 +12685,7 @@
           }
         },
         "legal": {
-          "vine": [
+          "kudzu": [
             {
               "q": 3,
               "r": -1
@@ -12709,7 +12709,7 @@
         "action": {
           "type": "PLANT",
           "playerId": "p1",
-          "species": "vine",
+          "species": "kudzu",
           "pos": {
             "q": -4,
             "r": 3
@@ -13136,7 +13136,7 @@
           }
         },
         "legal": {
-          "vine": [
+          "kudzu": [
             {
               "q": 3,
               "r": -1
@@ -13160,7 +13160,7 @@
         "action": {
           "type": "PLANT",
           "playerId": "p1",
-          "species": "vine",
+          "species": "kudzu",
           "pos": {
             "q": 3,
             "r": -1
@@ -13509,9 +13509,9 @@
               "isReady": true,
               "drafted": [
                 "oak",
-                "cactus",
+                "pine",
                 "dandelion",
-                "sunflower",
+                "rapeseed",
                 "bamboo"
               ],
               "deck": [],
@@ -13526,7 +13526,7 @@
               "isReady": true,
               "drafted": [
                 "grass",
-                "vine",
+                "kudzu",
                 "fern",
                 "lotus",
                 "ivy"
@@ -13559,7 +13559,7 @@
             },
             {
               "id": "p3",
-              "species": "sunflower",
+              "species": "rapeseed",
               "ownerId": "p0",
               "pos": {
                 "q": -2,
@@ -13599,7 +13599,7 @@
             },
             {
               "id": "p7",
-              "species": "cactus",
+              "species": "pine",
               "ownerId": "p0",
               "pos": {
                 "q": -3,
@@ -13619,7 +13619,7 @@
             },
             {
               "id": "p9",
-              "species": "cactus",
+              "species": "pine",
               "ownerId": "p0",
               "pos": {
                 "q": -3,
@@ -13709,7 +13709,7 @@
             },
             {
               "id": "p18",
-              "species": "vine",
+              "species": "kudzu",
               "ownerId": "p1",
               "pos": {
                 "q": 0,
@@ -13719,7 +13719,7 @@
             },
             {
               "id": "p19",
-              "species": "sunflower",
+              "species": "rapeseed",
               "ownerId": "p0",
               "pos": {
                 "q": 0,
@@ -13779,7 +13779,7 @@
             },
             {
               "id": "p25",
-              "species": "cactus",
+              "species": "pine",
               "ownerId": "p0",
               "pos": {
                 "q": 2,
@@ -13799,7 +13799,7 @@
             },
             {
               "id": "p27",
-              "species": "sunflower",
+              "species": "rapeseed",
               "ownerId": "p0",
               "pos": {
                 "q": -3,
@@ -13809,7 +13809,7 @@
             },
             {
               "id": "p28",
-              "species": "vine",
+              "species": "kudzu",
               "ownerId": "p1",
               "pos": {
                 "q": -4,
@@ -13829,7 +13829,7 @@
             },
             {
               "id": "p30",
-              "species": "vine",
+              "species": "kudzu",
               "ownerId": "p1",
               "pos": {
                 "q": 3,
@@ -16199,7 +16199,7 @@
         "action": {
           "type": "DRAFT",
           "playerId": "p1",
-          "species": "cactus"
+          "species": "pine"
         },
         "state": null,
         "influence": [
@@ -16620,7 +16620,7 @@
         "action": {
           "type": "DRAFT",
           "playerId": "p1",
-          "species": "vine"
+          "species": "kudzu"
         },
         "state": null,
         "influence": [
@@ -17883,7 +17883,7 @@
         "action": {
           "type": "DRAFT",
           "playerId": "p0",
-          "species": "sunflower"
+          "species": "rapeseed"
         },
         "state": null,
         "influence": [
@@ -19328,7 +19328,7 @@
               "drafted": [
                 "grass",
                 "dandelion",
-                "sunflower"
+                "rapeseed"
               ],
               "deck": [],
               "hand": [],
@@ -19341,8 +19341,8 @@
               "seat": 1,
               "isReady": true,
               "drafted": [
-                "cactus",
-                "vine",
+                "pine",
+                "kudzu",
                 "ivy"
               ],
               "deck": [],
@@ -20632,7 +20632,7 @@
         "action": {
           "type": "DRAFT",
           "playerId": "p0",
-          "species": "rose"
+          "species": "mugunghwa"
         },
         "state": null,
         "influence": [
@@ -21074,7 +21074,7 @@
               "r": -3
             }
           ],
-          "sunflower": [
+          "rapeseed": [
             {
               "q": -1,
               "r": -5
@@ -21106,7 +21106,7 @@
         "action": {
           "type": "PLANT",
           "playerId": "p0",
-          "species": "sunflower",
+          "species": "rapeseed",
           "pos": {
             "q": -2,
             "r": -4
@@ -21552,7 +21552,7 @@
               "r": 0
             }
           ],
-          "cactus": [
+          "pine": [
             {
               "q": 5,
               "r": -2
@@ -21584,7 +21584,7 @@
         "action": {
           "type": "PLANT",
           "playerId": "p1",
-          "species": "cactus",
+          "species": "pine",
           "pos": {
             "q": 4,
             "r": 0
@@ -23695,26 +23695,26 @@
               "drafted": [
                 "grass",
                 "dandelion",
-                "sunflower",
-                "rose"
+                "rapeseed",
+                "mugunghwa"
               ],
               "deck": [
-                "rose",
-                "sunflower",
+                "mugunghwa",
+                "rapeseed",
                 "grass",
                 "grass",
-                "rose",
-                "sunflower",
+                "mugunghwa",
+                "rapeseed",
                 "grass",
-                "rose",
+                "mugunghwa",
                 "grass",
-                "sunflower",
+                "rapeseed",
                 "dandelion"
               ],
               "hand": [
                 "dandelion",
                 "dandelion",
-                "rose"
+                "mugunghwa"
               ],
               "surrenderedOrder": null
             },
@@ -23725,28 +23725,28 @@
               "seat": 1,
               "isReady": true,
               "drafted": [
-                "cactus",
-                "vine",
+                "pine",
+                "kudzu",
                 "ivy",
                 "bamboo"
               ],
               "deck": [
-                "vine",
+                "kudzu",
                 "bamboo",
                 "ivy",
-                "vine",
+                "kudzu",
                 "bamboo",
-                "vine",
+                "kudzu",
                 "bamboo",
-                "cactus",
+                "pine",
                 "bamboo",
-                "vine",
-                "cactus"
+                "kudzu",
+                "pine"
               ],
               "hand": [
                 "ivy",
                 "ivy",
-                "cactus"
+                "pine"
               ],
               "surrenderedOrder": null
             },
@@ -23787,7 +23787,7 @@
           "plants": [
             {
               "id": "p1",
-              "species": "sunflower",
+              "species": "rapeseed",
               "ownerId": "p0",
               "pos": {
                 "q": -2,
@@ -23797,7 +23797,7 @@
             },
             {
               "id": "p2",
-              "species": "cactus",
+              "species": "pine",
               "ownerId": "p1",
               "pos": {
                 "q": 4,
@@ -24799,7 +24799,7 @@
               "r": -3
             }
           ],
-          "rose": [
+          "mugunghwa": [
             {
               "q": 0,
               "r": -5
@@ -25277,7 +25277,7 @@
               "r": 1
             }
           ],
-          "cactus": [
+          "pine": [
             {
               "q": 4,
               "r": -2
@@ -26337,7 +26337,7 @@
               "r": -2
             }
           ],
-          "rose": [
+          "mugunghwa": [
             {
               "q": 0,
               "r": -5
@@ -26827,7 +26827,7 @@
               "r": 1
             }
           ],
-          "cactus": [
+          "pine": [
             {
               "q": 3,
               "r": -2
@@ -26861,7 +26861,7 @@
               "r": 1
             }
           ],
-          "vine": [
+          "kudzu": [
             {
               "q": 3,
               "r": -2
@@ -27929,7 +27929,7 @@
           }
         },
         "legal": {
-          "rose": [
+          "mugunghwa": [
             {
               "q": 0,
               "r": -4
@@ -27955,7 +27955,7 @@
               "r": -2
             }
           ],
-          "sunflower": [
+          "rapeseed": [
             {
               "q": 0,
               "r": -4
@@ -27987,7 +27987,7 @@
         "action": {
           "type": "PLANT",
           "playerId": "p0",
-          "species": "sunflower",
+          "species": "rapeseed",
           "pos": {
             "q": -2,
             "r": -2
@@ -28594,22 +28594,22 @@
               "drafted": [
                 "grass",
                 "dandelion",
-                "sunflower",
-                "rose"
+                "rapeseed",
+                "mugunghwa"
               ],
               "deck": [
                 "grass",
-                "rose",
-                "sunflower",
+                "mugunghwa",
+                "rapeseed",
                 "grass",
-                "rose",
+                "mugunghwa",
                 "grass",
-                "sunflower",
+                "rapeseed",
                 "dandelion"
               ],
               "hand": [
-                "rose",
-                "rose",
+                "mugunghwa",
+                "mugunghwa",
                 "grass"
               ],
               "surrenderedOrder": null
@@ -28621,25 +28621,25 @@
               "seat": 1,
               "isReady": true,
               "drafted": [
-                "cactus",
-                "vine",
+                "pine",
+                "kudzu",
                 "ivy",
                 "bamboo"
               ],
               "deck": [
                 "ivy",
-                "vine",
+                "kudzu",
                 "bamboo",
-                "vine",
+                "kudzu",
                 "bamboo",
-                "cactus",
+                "pine",
                 "bamboo",
-                "vine",
-                "cactus"
+                "kudzu",
+                "pine"
               ],
               "hand": [
-                "cactus",
-                "vine",
+                "pine",
+                "kudzu",
                 "bamboo"
               ],
               "surrenderedOrder": null
@@ -28678,7 +28678,7 @@
           "plants": [
             {
               "id": "p1",
-              "species": "sunflower",
+              "species": "rapeseed",
               "ownerId": "p0",
               "pos": {
                 "q": -2,
@@ -28688,7 +28688,7 @@
             },
             {
               "id": "p2",
-              "species": "cactus",
+              "species": "pine",
               "ownerId": "p1",
               "pos": {
                 "q": 4,
@@ -28798,7 +28798,7 @@
             },
             {
               "id": "p13",
-              "species": "sunflower",
+              "species": "rapeseed",
               "ownerId": "p0",
               "pos": {
                 "q": -2,
@@ -29248,7 +29248,7 @@
           }
         },
         "legal": {
-          "cactus": [
+          "pine": [
             {
               "q": 3,
               "r": -2
@@ -29286,7 +29286,7 @@
               "r": 1
             }
           ],
-          "vine": [
+          "kudzu": [
             {
               "q": 3,
               "r": -2
@@ -29368,7 +29368,7 @@
         "action": {
           "type": "PLANT",
           "playerId": "p1",
-          "species": "cactus",
+          "species": "pine",
           "pos": {
             "q": 3,
             "r": -1
@@ -30350,7 +30350,7 @@
           }
         },
         "legal": {
-          "rose": [
+          "mugunghwa": [
             {
               "q": 0,
               "r": -4
@@ -30416,7 +30416,7 @@
         "action": {
           "type": "PLANT",
           "playerId": "p0",
-          "species": "rose",
+          "species": "mugunghwa",
           "pos": {
             "q": 0,
             "r": -3
@@ -30836,7 +30836,7 @@
           }
         },
         "legal": {
-          "vine": [
+          "kudzu": [
             {
               "q": 3,
               "r": -2
@@ -30956,7 +30956,7 @@
         "action": {
           "type": "PLANT",
           "playerId": "p1",
-          "species": "vine",
+          "species": "kudzu",
           "pos": {
             "q": 3,
             "r": -2
@@ -31927,7 +31927,7 @@
           }
         },
         "legal": {
-          "rose": [
+          "mugunghwa": [
             {
               "q": 0,
               "r": -4
@@ -32473,7 +32473,7 @@
               "r": 1
             }
           ],
-          "vine": [
+          "kudzu": [
             {
               "q": 6,
               "r": -2
@@ -32513,7 +32513,7 @@
         "action": {
           "type": "PLANT",
           "playerId": "p1",
-          "species": "vine",
+          "species": "kudzu",
           "pos": {
             "q": 6,
             "r": -2
@@ -33679,21 +33679,21 @@
               "drafted": [
                 "grass",
                 "dandelion",
-                "sunflower",
-                "rose"
+                "rapeseed",
+                "mugunghwa"
               ],
               "deck": [
-                "sunflower",
+                "rapeseed",
                 "grass",
-                "rose",
+                "mugunghwa",
                 "grass",
-                "sunflower",
+                "rapeseed",
                 "dandelion"
               ],
               "hand": [
-                "rose",
+                "mugunghwa",
                 "grass",
-                "rose"
+                "mugunghwa"
               ],
               "surrenderedOrder": null
             },
@@ -33704,18 +33704,18 @@
               "seat": 1,
               "isReady": true,
               "drafted": [
-                "cactus",
-                "vine",
+                "pine",
+                "kudzu",
                 "ivy",
                 "bamboo"
               ],
               "deck": [
-                "vine",
+                "kudzu",
                 "bamboo",
-                "cactus",
+                "pine",
                 "bamboo",
-                "vine",
-                "cactus"
+                "kudzu",
+                "pine"
               ],
               "hand": [
                 "bamboo",
@@ -33755,7 +33755,7 @@
           "plants": [
             {
               "id": "p1",
-              "species": "sunflower",
+              "species": "rapeseed",
               "ownerId": "p0",
               "pos": {
                 "q": -2,
@@ -33765,7 +33765,7 @@
             },
             {
               "id": "p2",
-              "species": "cactus",
+              "species": "pine",
               "ownerId": "p1",
               "pos": {
                 "q": 4,
@@ -33875,7 +33875,7 @@
             },
             {
               "id": "p13",
-              "species": "sunflower",
+              "species": "rapeseed",
               "ownerId": "p0",
               "pos": {
                 "q": -2,
@@ -33885,7 +33885,7 @@
             },
             {
               "id": "p14",
-              "species": "cactus",
+              "species": "pine",
               "ownerId": "p1",
               "pos": {
                 "q": 3,
@@ -33905,7 +33905,7 @@
             },
             {
               "id": "p16",
-              "species": "rose",
+              "species": "mugunghwa",
               "ownerId": "p0",
               "pos": {
                 "q": 0,
@@ -33915,7 +33915,7 @@
             },
             {
               "id": "p17",
-              "species": "vine",
+              "species": "kudzu",
               "ownerId": "p1",
               "pos": {
                 "q": 3,
@@ -33945,7 +33945,7 @@
             },
             {
               "id": "p20",
-              "species": "vine",
+              "species": "kudzu",
               "ownerId": "p1",
               "pos": {
                 "q": 6,
@@ -34405,7 +34405,7 @@
           }
         },
         "legal": {
-          "rose": [
+          "mugunghwa": [
             {
               "q": 0,
               "r": -4
@@ -35939,7 +35939,7 @@
           }
         },
         "legal": {
-          "rose": [
+          "mugunghwa": [
             {
               "q": 1,
               "r": -4
@@ -35961,7 +35961,7 @@
               "r": -1
             }
           ],
-          "sunflower": [
+          "rapeseed": [
             {
               "q": 1,
               "r": -4
@@ -35989,7 +35989,7 @@
         "action": {
           "type": "PLANT",
           "playerId": "p0",
-          "species": "sunflower",
+          "species": "rapeseed",
           "pos": {
             "q": -2,
             "r": -1
@@ -36439,7 +36439,7 @@
               "r": 1
             }
           ],
-          "vine": [
+          "kudzu": [
             {
               "q": 4,
               "r": -1
@@ -37531,7 +37531,7 @@
           }
         },
         "legal": {
-          "rose": [
+          "mugunghwa": [
             {
               "q": 1,
               "r": -4
@@ -37581,7 +37581,7 @@
         "action": {
           "type": "PLANT",
           "playerId": "p0",
-          "species": "rose",
+          "species": "mugunghwa",
           "pos": {
             "q": -2,
             "r": -3
@@ -38027,7 +38027,7 @@
               "r": 1
             }
           ],
-          "vine": [
+          "kudzu": [
             {
               "q": 6,
               "r": -1
@@ -38059,7 +38059,7 @@
         "action": {
           "type": "PLANT",
           "playerId": "p1",
-          "species": "vine",
+          "species": "kudzu",
           "pos": {
             "q": 6,
             "r": -1
@@ -38667,18 +38667,18 @@
               "drafted": [
                 "grass",
                 "dandelion",
-                "sunflower",
-                "rose"
+                "rapeseed",
+                "mugunghwa"
               ],
               "deck": [
                 "grass",
-                "sunflower",
+                "rapeseed",
                 "dandelion"
               ],
               "hand": [
-                "rose",
+                "mugunghwa",
                 "grass",
-                "rose"
+                "mugunghwa"
               ],
               "surrenderedOrder": null
             },
@@ -38689,20 +38689,20 @@
               "seat": 1,
               "isReady": true,
               "drafted": [
-                "cactus",
-                "vine",
+                "pine",
+                "kudzu",
                 "ivy",
                 "bamboo"
               ],
               "deck": [
                 "bamboo",
-                "vine",
-                "cactus"
+                "kudzu",
+                "pine"
               ],
               "hand": [
                 "bamboo",
                 "bamboo",
-                "cactus"
+                "pine"
               ],
               "surrenderedOrder": null
             },
@@ -38735,7 +38735,7 @@
           "plants": [
             {
               "id": "p1",
-              "species": "sunflower",
+              "species": "rapeseed",
               "ownerId": "p0",
               "pos": {
                 "q": -2,
@@ -38745,7 +38745,7 @@
             },
             {
               "id": "p2",
-              "species": "cactus",
+              "species": "pine",
               "ownerId": "p1",
               "pos": {
                 "q": 4,
@@ -38855,7 +38855,7 @@
             },
             {
               "id": "p13",
-              "species": "sunflower",
+              "species": "rapeseed",
               "ownerId": "p0",
               "pos": {
                 "q": -2,
@@ -38865,7 +38865,7 @@
             },
             {
               "id": "p14",
-              "species": "cactus",
+              "species": "pine",
               "ownerId": "p1",
               "pos": {
                 "q": 3,
@@ -38885,7 +38885,7 @@
             },
             {
               "id": "p16",
-              "species": "rose",
+              "species": "mugunghwa",
               "ownerId": "p0",
               "pos": {
                 "q": 0,
@@ -38895,7 +38895,7 @@
             },
             {
               "id": "p17",
-              "species": "vine",
+              "species": "kudzu",
               "ownerId": "p1",
               "pos": {
                 "q": 3,
@@ -38925,7 +38925,7 @@
             },
             {
               "id": "p20",
-              "species": "vine",
+              "species": "kudzu",
               "ownerId": "p1",
               "pos": {
                 "q": 6,
@@ -38975,7 +38975,7 @@
             },
             {
               "id": "p25",
-              "species": "sunflower",
+              "species": "rapeseed",
               "ownerId": "p0",
               "pos": {
                 "q": -2,
@@ -39005,7 +39005,7 @@
             },
             {
               "id": "p28",
-              "species": "rose",
+              "species": "mugunghwa",
               "ownerId": "p0",
               "pos": {
                 "q": -2,
@@ -39015,7 +39015,7 @@
             },
             {
               "id": "p29",
-              "species": "vine",
+              "species": "kudzu",
               "ownerId": "p1",
               "pos": {
                 "q": 6,
@@ -40125,7 +40125,7 @@
           }
         },
         "legal": {
-          "rose": [
+          "mugunghwa": [
             {
               "q": 1,
               "r": -4
@@ -40167,7 +40167,7 @@
         "action": {
           "type": "PLANT",
           "playerId": "p0",
-          "species": "rose",
+          "species": "mugunghwa",
           "pos": {
             "q": -1,
             "r": -1
@@ -40609,7 +40609,7 @@
               "r": 1
             }
           ],
-          "cactus": [
+          "pine": [
             {
               "q": 1,
               "r": 0
@@ -41645,7 +41645,7 @@
               "r": 0
             }
           ],
-          "rose": [
+          "mugunghwa": [
             {
               "q": 1,
               "r": -4
@@ -41665,7 +41665,7 @@
         "action": {
           "type": "PLANT",
           "playerId": "p0",
-          "species": "rose",
+          "species": "mugunghwa",
           "pos": {
             "q": -3,
             "r": 0
@@ -42115,7 +42115,7 @@
               "r": 2
             }
           ],
-          "cactus": [
+          "pine": [
             {
               "q": 1,
               "r": 0
@@ -43159,7 +43159,7 @@
               "r": 1
             }
           ],
-          "sunflower": [
+          "rapeseed": [
             {
               "q": 1,
               "r": -4
@@ -43187,7 +43187,7 @@
         "action": {
           "type": "PLANT",
           "playerId": "p0",
-          "species": "sunflower",
+          "species": "rapeseed",
           "pos": {
             "q": -4,
             "r": 0
@@ -43794,8 +43794,8 @@
               "drafted": [
                 "grass",
                 "dandelion",
-                "sunflower",
-                "rose"
+                "rapeseed",
+                "mugunghwa"
               ],
               "deck": [],
               "hand": [
@@ -43812,18 +43812,18 @@
               "seat": 1,
               "isReady": true,
               "drafted": [
-                "cactus",
-                "vine",
+                "pine",
+                "kudzu",
                 "ivy",
                 "bamboo"
               ],
               "deck": [
-                "cactus"
+                "pine"
               ],
               "hand": [
-                "cactus",
+                "pine",
                 "bamboo",
-                "vine"
+                "kudzu"
               ],
               "surrenderedOrder": null
             },
@@ -43853,7 +43853,7 @@
           "plants": [
             {
               "id": "p1",
-              "species": "sunflower",
+              "species": "rapeseed",
               "ownerId": "p0",
               "pos": {
                 "q": -2,
@@ -43863,7 +43863,7 @@
             },
             {
               "id": "p2",
-              "species": "cactus",
+              "species": "pine",
               "ownerId": "p1",
               "pos": {
                 "q": 4,
@@ -43973,7 +43973,7 @@
             },
             {
               "id": "p13",
-              "species": "sunflower",
+              "species": "rapeseed",
               "ownerId": "p0",
               "pos": {
                 "q": -2,
@@ -43983,7 +43983,7 @@
             },
             {
               "id": "p14",
-              "species": "cactus",
+              "species": "pine",
               "ownerId": "p1",
               "pos": {
                 "q": 3,
@@ -44003,7 +44003,7 @@
             },
             {
               "id": "p16",
-              "species": "rose",
+              "species": "mugunghwa",
               "ownerId": "p0",
               "pos": {
                 "q": 0,
@@ -44013,7 +44013,7 @@
             },
             {
               "id": "p17",
-              "species": "vine",
+              "species": "kudzu",
               "ownerId": "p1",
               "pos": {
                 "q": 3,
@@ -44043,7 +44043,7 @@
             },
             {
               "id": "p20",
-              "species": "vine",
+              "species": "kudzu",
               "ownerId": "p1",
               "pos": {
                 "q": 6,
@@ -44093,7 +44093,7 @@
             },
             {
               "id": "p25",
-              "species": "sunflower",
+              "species": "rapeseed",
               "ownerId": "p0",
               "pos": {
                 "q": -2,
@@ -44123,7 +44123,7 @@
             },
             {
               "id": "p28",
-              "species": "rose",
+              "species": "mugunghwa",
               "ownerId": "p0",
               "pos": {
                 "q": -2,
@@ -44133,7 +44133,7 @@
             },
             {
               "id": "p29",
-              "species": "vine",
+              "species": "kudzu",
               "ownerId": "p1",
               "pos": {
                 "q": 6,
@@ -44153,7 +44153,7 @@
             },
             {
               "id": "p31",
-              "species": "rose",
+              "species": "mugunghwa",
               "ownerId": "p0",
               "pos": {
                 "q": -1,
@@ -44183,7 +44183,7 @@
             },
             {
               "id": "p34",
-              "species": "rose",
+              "species": "mugunghwa",
               "ownerId": "p0",
               "pos": {
                 "q": -3,
@@ -44213,7 +44213,7 @@
             },
             {
               "id": "p37",
-              "species": "sunflower",
+              "species": "rapeseed",
               "ownerId": "p0",
               "pos": {
                 "q": -4,
@@ -44663,7 +44663,7 @@
           }
         },
         "legal": {
-          "cactus": [
+          "pine": [
             {
               "q": 1,
               "r": 0
@@ -44715,7 +44715,7 @@
               "r": 2
             }
           ],
-          "vine": [
+          "kudzu": [
             {
               "q": 1,
               "r": 0
@@ -44747,7 +44747,7 @@
         "action": {
           "type": "PLANT",
           "playerId": "p1",
-          "species": "cactus",
+          "species": "pine",
           "pos": {
             "q": 1,
             "r": 2
@@ -46225,7 +46225,7 @@
               "r": 3
             }
           ],
-          "vine": [
+          "kudzu": [
             {
               "q": 1,
               "r": 0
@@ -46255,7 +46255,7 @@
               "r": 3
             }
           ],
-          "cactus": [
+          "pine": [
             {
               "q": 1,
               "r": 0
@@ -47755,7 +47755,7 @@
           }
         },
         "legal": {
-          "vine": [
+          "kudzu": [
             {
               "q": 1,
               "r": 0
@@ -47785,7 +47785,7 @@
               "r": 3
             }
           ],
-          "cactus": [
+          "pine": [
             {
               "q": 1,
               "r": 0
@@ -47821,7 +47821,7 @@
         "action": {
           "type": "PLANT",
           "playerId": "p1",
-          "species": "cactus",
+          "species": "pine",
           "pos": {
             "q": 1,
             "r": 1
@@ -48924,8 +48924,8 @@
               "drafted": [
                 "grass",
                 "dandelion",
-                "sunflower",
-                "rose"
+                "rapeseed",
+                "mugunghwa"
               ],
               "deck": [],
               "hand": [
@@ -48940,14 +48940,14 @@
               "seat": 1,
               "isReady": true,
               "drafted": [
-                "cactus",
-                "vine",
+                "pine",
+                "kudzu",
                 "ivy",
                 "bamboo"
               ],
               "deck": [],
               "hand": [
-                "vine"
+                "kudzu"
               ],
               "surrenderedOrder": null
             },
@@ -48973,7 +48973,7 @@
           "plants": [
             {
               "id": "p1",
-              "species": "sunflower",
+              "species": "rapeseed",
               "ownerId": "p0",
               "pos": {
                 "q": -2,
@@ -48983,7 +48983,7 @@
             },
             {
               "id": "p2",
-              "species": "cactus",
+              "species": "pine",
               "ownerId": "p1",
               "pos": {
                 "q": 4,
@@ -49093,7 +49093,7 @@
             },
             {
               "id": "p13",
-              "species": "sunflower",
+              "species": "rapeseed",
               "ownerId": "p0",
               "pos": {
                 "q": -2,
@@ -49103,7 +49103,7 @@
             },
             {
               "id": "p14",
-              "species": "cactus",
+              "species": "pine",
               "ownerId": "p1",
               "pos": {
                 "q": 3,
@@ -49123,7 +49123,7 @@
             },
             {
               "id": "p16",
-              "species": "rose",
+              "species": "mugunghwa",
               "ownerId": "p0",
               "pos": {
                 "q": 0,
@@ -49133,7 +49133,7 @@
             },
             {
               "id": "p17",
-              "species": "vine",
+              "species": "kudzu",
               "ownerId": "p1",
               "pos": {
                 "q": 3,
@@ -49163,7 +49163,7 @@
             },
             {
               "id": "p20",
-              "species": "vine",
+              "species": "kudzu",
               "ownerId": "p1",
               "pos": {
                 "q": 6,
@@ -49213,7 +49213,7 @@
             },
             {
               "id": "p25",
-              "species": "sunflower",
+              "species": "rapeseed",
               "ownerId": "p0",
               "pos": {
                 "q": -2,
@@ -49243,7 +49243,7 @@
             },
             {
               "id": "p28",
-              "species": "rose",
+              "species": "mugunghwa",
               "ownerId": "p0",
               "pos": {
                 "q": -2,
@@ -49253,7 +49253,7 @@
             },
             {
               "id": "p29",
-              "species": "vine",
+              "species": "kudzu",
               "ownerId": "p1",
               "pos": {
                 "q": 6,
@@ -49273,7 +49273,7 @@
             },
             {
               "id": "p31",
-              "species": "rose",
+              "species": "mugunghwa",
               "ownerId": "p0",
               "pos": {
                 "q": -1,
@@ -49303,7 +49303,7 @@
             },
             {
               "id": "p34",
-              "species": "rose",
+              "species": "mugunghwa",
               "ownerId": "p0",
               "pos": {
                 "q": -3,
@@ -49333,7 +49333,7 @@
             },
             {
               "id": "p37",
-              "species": "sunflower",
+              "species": "rapeseed",
               "ownerId": "p0",
               "pos": {
                 "q": -4,
@@ -49343,7 +49343,7 @@
             },
             {
               "id": "p38",
-              "species": "cactus",
+              "species": "pine",
               "ownerId": "p1",
               "pos": {
                 "q": 1,
@@ -49403,7 +49403,7 @@
             },
             {
               "id": "p44",
-              "species": "cactus",
+              "species": "pine",
               "ownerId": "p1",
               "pos": {
                 "q": 1,
@@ -50315,7 +50315,7 @@
           }
         },
         "legal": {
-          "vine": [
+          "kudzu": [
             {
               "q": 2,
               "r": 0
@@ -50343,7 +50343,7 @@
         "action": {
           "type": "PLANT",
           "playerId": "p1",
-          "species": "vine",
+          "species": "kudzu",
           "pos": {
             "q": 0,
             "r": 2
@@ -51439,8 +51439,8 @@
               "drafted": [
                 "grass",
                 "dandelion",
-                "sunflower",
-                "rose"
+                "rapeseed",
+                "mugunghwa"
               ],
               "deck": [],
               "hand": [],
@@ -51453,8 +51453,8 @@
               "seat": 1,
               "isReady": true,
               "drafted": [
-                "cactus",
-                "vine",
+                "pine",
+                "kudzu",
                 "ivy",
                 "bamboo"
               ],
@@ -51482,7 +51482,7 @@
           "plants": [
             {
               "id": "p1",
-              "species": "sunflower",
+              "species": "rapeseed",
               "ownerId": "p0",
               "pos": {
                 "q": -2,
@@ -51492,7 +51492,7 @@
             },
             {
               "id": "p2",
-              "species": "cactus",
+              "species": "pine",
               "ownerId": "p1",
               "pos": {
                 "q": 4,
@@ -51602,7 +51602,7 @@
             },
             {
               "id": "p13",
-              "species": "sunflower",
+              "species": "rapeseed",
               "ownerId": "p0",
               "pos": {
                 "q": -2,
@@ -51612,7 +51612,7 @@
             },
             {
               "id": "p14",
-              "species": "cactus",
+              "species": "pine",
               "ownerId": "p1",
               "pos": {
                 "q": 3,
@@ -51632,7 +51632,7 @@
             },
             {
               "id": "p16",
-              "species": "rose",
+              "species": "mugunghwa",
               "ownerId": "p0",
               "pos": {
                 "q": 0,
@@ -51642,7 +51642,7 @@
             },
             {
               "id": "p17",
-              "species": "vine",
+              "species": "kudzu",
               "ownerId": "p1",
               "pos": {
                 "q": 3,
@@ -51672,7 +51672,7 @@
             },
             {
               "id": "p20",
-              "species": "vine",
+              "species": "kudzu",
               "ownerId": "p1",
               "pos": {
                 "q": 6,
@@ -51722,7 +51722,7 @@
             },
             {
               "id": "p25",
-              "species": "sunflower",
+              "species": "rapeseed",
               "ownerId": "p0",
               "pos": {
                 "q": -2,
@@ -51752,7 +51752,7 @@
             },
             {
               "id": "p28",
-              "species": "rose",
+              "species": "mugunghwa",
               "ownerId": "p0",
               "pos": {
                 "q": -2,
@@ -51762,7 +51762,7 @@
             },
             {
               "id": "p29",
-              "species": "vine",
+              "species": "kudzu",
               "ownerId": "p1",
               "pos": {
                 "q": 6,
@@ -51782,7 +51782,7 @@
             },
             {
               "id": "p31",
-              "species": "rose",
+              "species": "mugunghwa",
               "ownerId": "p0",
               "pos": {
                 "q": -1,
@@ -51812,7 +51812,7 @@
             },
             {
               "id": "p34",
-              "species": "rose",
+              "species": "mugunghwa",
               "ownerId": "p0",
               "pos": {
                 "q": -3,
@@ -51842,7 +51842,7 @@
             },
             {
               "id": "p37",
-              "species": "sunflower",
+              "species": "rapeseed",
               "ownerId": "p0",
               "pos": {
                 "q": -4,
@@ -51852,7 +51852,7 @@
             },
             {
               "id": "p38",
-              "species": "cactus",
+              "species": "pine",
               "ownerId": "p1",
               "pos": {
                 "q": 1,
@@ -51912,7 +51912,7 @@
             },
             {
               "id": "p44",
-              "species": "cactus",
+              "species": "pine",
               "ownerId": "p1",
               "pos": {
                 "q": 1,
@@ -51942,7 +51942,7 @@
             },
             {
               "id": "p47",
-              "species": "vine",
+              "species": "kudzu",
               "ownerId": "p1",
               "pos": {
                 "q": 0,
@@ -53118,7 +53118,7 @@
       "goals": [
         "dandelion-reserve",
         "long-path",
-        "cactus-reserve"
+        "pine-reserve"
       ],
       "draftOrder": [
         "p1",
@@ -53861,7 +53861,7 @@
           "goals": [
             "dandelion-reserve",
             "long-path",
-            "cactus-reserve"
+            "pine-reserve"
           ],
           "draftOrder": [
             "p1",
@@ -56321,7 +56321,7 @@
         "action": {
           "type": "DRAFT",
           "playerId": "p2",
-          "species": "cactus"
+          "species": "pine"
         },
         "state": null,
         "influence": [
@@ -56917,7 +56917,7 @@
         "action": {
           "type": "DRAFT",
           "playerId": "p3",
-          "species": "cactus"
+          "species": "pine"
         },
         "state": null,
         "influence": [
@@ -57513,7 +57513,7 @@
         "action": {
           "type": "DRAFT",
           "playerId": "p0",
-          "species": "vine"
+          "species": "kudzu"
         },
         "state": null,
         "influence": [
@@ -58109,7 +58109,7 @@
         "action": {
           "type": "DRAFT",
           "playerId": "p1",
-          "species": "vine"
+          "species": "kudzu"
         },
         "state": null,
         "influence": [
@@ -59366,7 +59366,7 @@
           "goals": [
             "dandelion-reserve",
             "long-path",
-            "cactus-reserve"
+            "pine-reserve"
           ],
           "draftOrder": [
             "p1",
@@ -59399,7 +59399,7 @@
               "isReady": true,
               "drafted": [
                 "grass",
-                "vine"
+                "kudzu"
               ],
               "deck": [],
               "hand": [],
@@ -59413,7 +59413,7 @@
               "isReady": true,
               "drafted": [
                 "grass",
-                "vine",
+                "kudzu",
                 "fern"
               ],
               "deck": [],
@@ -59428,7 +59428,7 @@
               "isReady": true,
               "drafted": [
                 "oak",
-                "cactus"
+                "pine"
               ],
               "deck": [],
               "hand": [],
@@ -59442,7 +59442,7 @@
               "isReady": true,
               "drafted": [
                 "oak",
-                "cactus"
+                "pine"
               ],
               "deck": [],
               "hand": [],
@@ -61837,7 +61837,7 @@
         "action": {
           "type": "DRAFT",
           "playerId": "p2",
-          "species": "sunflower"
+          "species": "rapeseed"
         },
         "state": null,
         "influence": [
@@ -62433,7 +62433,7 @@
         "action": {
           "type": "DRAFT",
           "playerId": "p3",
-          "species": "sunflower"
+          "species": "rapeseed"
         },
         "state": null,
         "influence": [
@@ -64242,7 +64242,7 @@
               "r": -3
             }
           ],
-          "vine": [
+          "kudzu": [
             {
               "q": -1,
               "r": -5
@@ -64939,7 +64939,7 @@
           "goals": [
             "dandelion-reserve",
             "long-path",
-            "cactus-reserve"
+            "pine-reserve"
           ],
           "draftOrder": [
             "p1",
@@ -64972,7 +64972,7 @@
               "isReady": true,
               "drafted": [
                 "grass",
-                "vine",
+                "kudzu",
                 "fern",
                 "lotus"
               ],
@@ -64981,17 +64981,17 @@
                 "lotus",
                 "fern",
                 "grass",
-                "vine",
-                "vine",
+                "kudzu",
+                "kudzu",
                 "fern",
                 "fern",
                 "grass",
-                "vine",
+                "kudzu",
                 "lotus",
                 "lotus"
               ],
               "hand": [
-                "vine",
+                "kudzu",
                 "grass",
                 "lotus"
               ],
@@ -65005,23 +65005,23 @@
               "isReady": true,
               "drafted": [
                 "grass",
-                "vine",
+                "kudzu",
                 "fern",
                 "lotus"
               ],
               "deck": [
                 "fern",
-                "vine",
+                "kudzu",
                 "lotus",
                 "grass",
                 "fern",
                 "fern",
-                "vine",
+                "kudzu",
                 "lotus",
-                "vine",
+                "kudzu",
                 "lotus",
                 "grass",
-                "vine",
+                "kudzu",
                 "fern"
               ],
               "hand": [
@@ -65039,28 +65039,28 @@
               "isReady": true,
               "drafted": [
                 "oak",
-                "cactus",
+                "pine",
                 "dandelion",
-                "sunflower"
+                "rapeseed"
               ],
               "deck": [
-                "cactus",
+                "pine",
                 "oak",
                 "dandelion",
                 "oak",
-                "sunflower",
-                "sunflower",
+                "rapeseed",
+                "rapeseed",
                 "dandelion",
                 "oak",
-                "cactus",
+                "pine",
                 "oak",
-                "sunflower",
+                "rapeseed",
                 "dandelion",
-                "sunflower"
+                "rapeseed"
               ],
               "hand": [
-                "cactus",
-                "cactus",
+                "pine",
+                "pine",
                 "dandelion"
               ],
               "surrenderedOrder": null
@@ -65073,29 +65073,29 @@
               "isReady": true,
               "drafted": [
                 "oak",
-                "cactus",
+                "pine",
                 "dandelion",
-                "sunflower"
+                "rapeseed"
               ],
               "deck": [
-                "sunflower",
+                "rapeseed",
                 "oak",
-                "sunflower",
-                "cactus",
-                "cactus",
+                "rapeseed",
+                "pine",
+                "pine",
                 "dandelion",
-                "cactus",
+                "pine",
                 "oak",
-                "cactus",
+                "pine",
                 "dandelion",
                 "oak",
                 "oak",
-                "sunflower"
+                "rapeseed"
               ],
               "hand": [
                 "dandelion",
                 "dandelion",
-                "sunflower"
+                "rapeseed"
               ],
               "surrenderedOrder": null
             }
@@ -66479,7 +66479,7 @@
           }
         },
         "legal": {
-          "cactus": [
+          "pine": [
             {
               "q": 2,
               "r": 3
@@ -66529,7 +66529,7 @@
         "action": {
           "type": "PLANT",
           "playerId": "p2",
-          "species": "cactus",
+          "species": "pine",
           "pos": {
             "q": 1,
             "r": 5
@@ -67150,7 +67150,7 @@
               "r": 2
             }
           ],
-          "sunflower": [
+          "rapeseed": [
             {
               "q": -5,
               "r": 0
@@ -67182,7 +67182,7 @@
         "action": {
           "type": "PLANT",
           "playerId": "p3",
-          "species": "sunflower",
+          "species": "rapeseed",
           "pos": {
             "q": -6,
             "r": 1
@@ -67777,7 +67777,7 @@
           }
         },
         "legal": {
-          "vine": [
+          "kudzu": [
             {
               "q": -1,
               "r": -5
@@ -69277,7 +69277,7 @@
           }
         },
         "legal": {
-          "cactus": [
+          "pine": [
             {
               "q": 2,
               "r": 3
@@ -69319,7 +69319,7 @@
         "action": {
           "type": "PLANT",
           "playerId": "p2",
-          "species": "cactus",
+          "species": "pine",
           "pos": {
             "q": 2,
             "r": 4
@@ -69936,7 +69936,7 @@
               "r": 2
             }
           ],
-          "sunflower": [
+          "rapeseed": [
             {
               "q": -5,
               "r": 0
@@ -70563,7 +70563,7 @@
           }
         },
         "legal": {
-          "vine": [
+          "kudzu": [
             {
               "q": -1,
               "r": -5
@@ -71396,7 +71396,7 @@
           "goals": [
             "dandelion-reserve",
             "long-path",
-            "cactus-reserve"
+            "pine-reserve"
           ],
           "draftOrder": [
             "p1",
@@ -71429,24 +71429,24 @@
               "isReady": true,
               "drafted": [
                 "grass",
-                "vine",
+                "kudzu",
                 "fern",
                 "lotus"
               ],
               "deck": [
                 "fern",
                 "grass",
-                "vine",
-                "vine",
+                "kudzu",
+                "kudzu",
                 "fern",
                 "fern",
                 "grass",
-                "vine",
+                "kudzu",
                 "lotus",
                 "lotus"
               ],
               "hand": [
-                "vine",
+                "kudzu",
                 "grass",
                 "lotus"
               ],
@@ -71460,7 +71460,7 @@
               "isReady": true,
               "drafted": [
                 "grass",
-                "vine",
+                "kudzu",
                 "fern",
                 "lotus"
               ],
@@ -71469,18 +71469,18 @@
                 "grass",
                 "fern",
                 "fern",
-                "vine",
+                "kudzu",
                 "lotus",
-                "vine",
+                "kudzu",
                 "lotus",
                 "grass",
-                "vine",
+                "kudzu",
                 "fern"
               ],
               "hand": [
                 "grass",
                 "grass",
-                "vine"
+                "kudzu"
               ],
               "surrenderedOrder": null
             },
@@ -71492,26 +71492,26 @@
               "isReady": true,
               "drafted": [
                 "oak",
-                "cactus",
+                "pine",
                 "dandelion",
-                "sunflower"
+                "rapeseed"
               ],
               "deck": [
                 "dandelion",
                 "oak",
-                "sunflower",
-                "sunflower",
+                "rapeseed",
+                "rapeseed",
                 "dandelion",
                 "oak",
-                "cactus",
+                "pine",
                 "oak",
-                "sunflower",
+                "rapeseed",
                 "dandelion",
-                "sunflower"
+                "rapeseed"
               ],
               "hand": [
                 "dandelion",
-                "cactus",
+                "pine",
                 "oak"
               ],
               "surrenderedOrder": null
@@ -71524,26 +71524,26 @@
               "isReady": true,
               "drafted": [
                 "oak",
-                "cactus",
+                "pine",
                 "dandelion",
-                "sunflower"
+                "rapeseed"
               ],
               "deck": [
-                "sunflower",
-                "cactus",
-                "cactus",
+                "rapeseed",
+                "pine",
+                "pine",
                 "dandelion",
-                "cactus",
+                "pine",
                 "oak",
-                "cactus",
+                "pine",
                 "dandelion",
                 "oak",
                 "oak",
-                "sunflower"
+                "rapeseed"
               ],
               "hand": [
                 "dandelion",
-                "sunflower",
+                "rapeseed",
                 "oak"
               ],
               "surrenderedOrder": null
@@ -71572,7 +71572,7 @@
             },
             {
               "id": "p3",
-              "species": "cactus",
+              "species": "pine",
               "ownerId": "p2",
               "pos": {
                 "q": 1,
@@ -71582,7 +71582,7 @@
             },
             {
               "id": "p4",
-              "species": "sunflower",
+              "species": "rapeseed",
               "ownerId": "p3",
               "pos": {
                 "q": -6,
@@ -71612,7 +71612,7 @@
             },
             {
               "id": "p7",
-              "species": "cactus",
+              "species": "pine",
               "ownerId": "p2",
               "pos": {
                 "q": 2,
@@ -72289,7 +72289,7 @@
               "r": 4
             }
           ],
-          "vine": [
+          "kudzu": [
             {
               "q": 3,
               "r": -2
@@ -72954,7 +72954,7 @@
               "r": 5
             }
           ],
-          "cactus": [
+          "pine": [
             {
               "q": 2,
               "r": 3
@@ -73617,7 +73617,7 @@
               "r": 2
             }
           ],
-          "sunflower": [
+          "rapeseed": [
             {
               "q": -4,
               "r": -1
@@ -74270,7 +74270,7 @@
           }
         },
         "legal": {
-          "vine": [
+          "kudzu": [
             {
               "q": -1,
               "r": -5
@@ -75171,7 +75171,7 @@
               "r": 4
             }
           ],
-          "vine": [
+          "kudzu": [
             {
               "q": 3,
               "r": -2
@@ -75966,7 +75966,7 @@
               "r": 5
             }
           ],
-          "cactus": [
+          "pine": [
             {
               "q": 2,
               "r": 3
@@ -75990,7 +75990,7 @@
         "action": {
           "type": "PLANT",
           "playerId": "p2",
-          "species": "cactus",
+          "species": "pine",
           "pos": {
             "q": 0,
             "r": 4
@@ -76615,7 +76615,7 @@
               "r": 2
             }
           ],
-          "sunflower": [
+          "rapeseed": [
             {
               "q": -4,
               "r": -1
@@ -77250,7 +77250,7 @@
           }
         },
         "legal": {
-          "vine": [
+          "kudzu": [
             {
               "q": -1,
               "r": -5
@@ -77442,7 +77442,7 @@
         "action": {
           "type": "PLANT",
           "playerId": "p0",
-          "species": "vine",
+          "species": "kudzu",
           "pos": {
             "q": -1,
             "r": -5
@@ -78108,7 +78108,7 @@
           "goals": [
             "dandelion-reserve",
             "long-path",
-            "cactus-reserve"
+            "pine-reserve"
           ],
           "draftOrder": [
             "p1",
@@ -78141,17 +78141,17 @@
               "isReady": true,
               "drafted": [
                 "grass",
-                "vine",
+                "kudzu",
                 "fern",
                 "lotus"
               ],
               "deck": [
-                "vine",
-                "vine",
+                "kudzu",
+                "kudzu",
                 "fern",
                 "fern",
                 "grass",
-                "vine",
+                "kudzu",
                 "lotus",
                 "lotus"
               ],
@@ -78170,24 +78170,24 @@
               "isReady": true,
               "drafted": [
                 "grass",
-                "vine",
+                "kudzu",
                 "fern",
                 "lotus"
               ],
               "deck": [
                 "fern",
                 "fern",
-                "vine",
+                "kudzu",
                 "lotus",
-                "vine",
+                "kudzu",
                 "lotus",
                 "grass",
-                "vine",
+                "kudzu",
                 "fern"
               ],
               "hand": [
                 "grass",
-                "vine",
+                "kudzu",
                 "grass"
               ],
               "surrenderedOrder": null
@@ -78200,20 +78200,20 @@
               "isReady": true,
               "drafted": [
                 "oak",
-                "cactus",
+                "pine",
                 "dandelion",
-                "sunflower"
+                "rapeseed"
               ],
               "deck": [
-                "sunflower",
-                "sunflower",
+                "rapeseed",
+                "rapeseed",
                 "dandelion",
                 "oak",
-                "cactus",
+                "pine",
                 "oak",
-                "sunflower",
+                "rapeseed",
                 "dandelion",
-                "sunflower"
+                "rapeseed"
               ],
               "hand": [
                 "dandelion",
@@ -78230,25 +78230,25 @@
               "isReady": true,
               "drafted": [
                 "oak",
-                "cactus",
+                "pine",
                 "dandelion",
-                "sunflower"
+                "rapeseed"
               ],
               "deck": [
-                "cactus",
+                "pine",
                 "dandelion",
-                "cactus",
+                "pine",
                 "oak",
-                "cactus",
+                "pine",
                 "dandelion",
                 "oak",
                 "oak",
-                "sunflower"
+                "rapeseed"
               ],
               "hand": [
-                "sunflower",
-                "sunflower",
-                "cactus"
+                "rapeseed",
+                "rapeseed",
+                "pine"
               ],
               "surrenderedOrder": null
             }
@@ -78276,7 +78276,7 @@
             },
             {
               "id": "p3",
-              "species": "cactus",
+              "species": "pine",
               "ownerId": "p2",
               "pos": {
                 "q": 1,
@@ -78286,7 +78286,7 @@
             },
             {
               "id": "p4",
-              "species": "sunflower",
+              "species": "rapeseed",
               "ownerId": "p3",
               "pos": {
                 "q": -6,
@@ -78316,7 +78316,7 @@
             },
             {
               "id": "p7",
-              "species": "cactus",
+              "species": "pine",
               "ownerId": "p2",
               "pos": {
                 "q": 2,
@@ -78396,7 +78396,7 @@
             },
             {
               "id": "p15",
-              "species": "cactus",
+              "species": "pine",
               "ownerId": "p2",
               "pos": {
                 "q": 0,
@@ -78416,7 +78416,7 @@
             },
             {
               "id": "p17",
-              "species": "vine",
+              "species": "kudzu",
               "ownerId": "p0",
               "pos": {
                 "q": -1,
@@ -79080,7 +79080,7 @@
               "r": 3
             }
           ],
-          "vine": [
+          "kudzu": [
             {
               "q": 3,
               "r": -2
@@ -80368,7 +80368,7 @@
           }
         },
         "legal": {
-          "sunflower": [
+          "rapeseed": [
             {
               "q": -4,
               "r": -1
@@ -80406,7 +80406,7 @@
               "r": 2
             }
           ],
-          "cactus": [
+          "pine": [
             {
               "q": -4,
               "r": -1
@@ -80450,7 +80450,7 @@
         "action": {
           "type": "PLANT",
           "playerId": "p3",
-          "species": "sunflower",
+          "species": "rapeseed",
           "pos": {
             "q": -4,
             "r": -1
@@ -81746,7 +81746,7 @@
           }
         },
         "legal": {
-          "vine": [
+          "kudzu": [
             {
               "q": 3,
               "r": -2
@@ -82513,7 +82513,7 @@
               "r": 5
             }
           ],
-          "sunflower": [
+          "rapeseed": [
             {
               "q": 4,
               "r": 3
@@ -83128,7 +83128,7 @@
           }
         },
         "legal": {
-          "sunflower": [
+          "rapeseed": [
             {
               "q": -5,
               "r": -1
@@ -83166,7 +83166,7 @@
               "r": 2
             }
           ],
-          "cactus": [
+          "pine": [
             {
               "q": -5,
               "r": -1
@@ -83210,7 +83210,7 @@
         "action": {
           "type": "PLANT",
           "playerId": "p3",
-          "species": "sunflower",
+          "species": "rapeseed",
           "pos": {
             "q": -5,
             "r": 2
@@ -83867,7 +83867,7 @@
               "r": 1
             }
           ],
-          "vine": [
+          "kudzu": [
             {
               "q": 0,
               "r": -5
@@ -83935,7 +83935,7 @@
         "action": {
           "type": "PLANT",
           "playerId": "p0",
-          "species": "vine",
+          "species": "kudzu",
           "pos": {
             "q": 0,
             "r": -3
@@ -84601,7 +84601,7 @@
           "goals": [
             "dandelion-reserve",
             "long-path",
-            "cactus-reserve"
+            "pine-reserve"
           ],
           "draftOrder": [
             "p1",
@@ -84634,7 +84634,7 @@
               "isReady": true,
               "drafted": [
                 "grass",
-                "vine",
+                "kudzu",
                 "fern",
                 "lotus"
               ],
@@ -84642,14 +84642,14 @@
                 "fern",
                 "fern",
                 "grass",
-                "vine",
+                "kudzu",
                 "lotus",
                 "lotus"
               ],
               "hand": [
                 "grass",
                 "grass",
-                "vine"
+                "kudzu"
               ],
               "surrenderedOrder": null
             },
@@ -84661,21 +84661,21 @@
               "isReady": true,
               "drafted": [
                 "grass",
-                "vine",
+                "kudzu",
                 "fern",
                 "lotus"
               ],
               "deck": [
-                "vine",
+                "kudzu",
                 "lotus",
-                "vine",
+                "kudzu",
                 "lotus",
                 "grass",
-                "vine",
+                "kudzu",
                 "fern"
               ],
               "hand": [
-                "vine",
+                "kudzu",
                 "fern",
                 "fern"
               ],
@@ -84689,23 +84689,23 @@
               "isReady": true,
               "drafted": [
                 "oak",
-                "cactus",
+                "pine",
                 "dandelion",
-                "sunflower"
+                "rapeseed"
               ],
               "deck": [
                 "dandelion",
                 "oak",
-                "cactus",
+                "pine",
                 "oak",
-                "sunflower",
+                "rapeseed",
                 "dandelion",
-                "sunflower"
+                "rapeseed"
               ],
               "hand": [
                 "oak",
-                "sunflower",
-                "sunflower"
+                "rapeseed",
+                "rapeseed"
               ],
               "surrenderedOrder": null
             },
@@ -84717,22 +84717,22 @@
               "isReady": true,
               "drafted": [
                 "oak",
-                "cactus",
+                "pine",
                 "dandelion",
-                "sunflower"
+                "rapeseed"
               ],
               "deck": [
-                "cactus",
+                "pine",
                 "oak",
-                "cactus",
+                "pine",
                 "dandelion",
                 "oak",
                 "oak",
-                "sunflower"
+                "rapeseed"
               ],
               "hand": [
-                "cactus",
-                "cactus",
+                "pine",
+                "pine",
                 "dandelion"
               ],
               "surrenderedOrder": null
@@ -84761,7 +84761,7 @@
             },
             {
               "id": "p3",
-              "species": "cactus",
+              "species": "pine",
               "ownerId": "p2",
               "pos": {
                 "q": 1,
@@ -84771,7 +84771,7 @@
             },
             {
               "id": "p4",
-              "species": "sunflower",
+              "species": "rapeseed",
               "ownerId": "p3",
               "pos": {
                 "q": -6,
@@ -84801,7 +84801,7 @@
             },
             {
               "id": "p7",
-              "species": "cactus",
+              "species": "pine",
               "ownerId": "p2",
               "pos": {
                 "q": 2,
@@ -84881,7 +84881,7 @@
             },
             {
               "id": "p15",
-              "species": "cactus",
+              "species": "pine",
               "ownerId": "p2",
               "pos": {
                 "q": 0,
@@ -84901,7 +84901,7 @@
             },
             {
               "id": "p17",
-              "species": "vine",
+              "species": "kudzu",
               "ownerId": "p0",
               "pos": {
                 "q": -1,
@@ -84931,7 +84931,7 @@
             },
             {
               "id": "p20",
-              "species": "sunflower",
+              "species": "rapeseed",
               "ownerId": "p3",
               "pos": {
                 "q": -4,
@@ -84971,7 +84971,7 @@
             },
             {
               "id": "p24",
-              "species": "sunflower",
+              "species": "rapeseed",
               "ownerId": "p3",
               "pos": {
                 "q": -5,
@@ -84981,7 +84981,7 @@
             },
             {
               "id": "p25",
-              "species": "vine",
+              "species": "kudzu",
               "ownerId": "p0",
               "pos": {
                 "q": 0,
@@ -85606,7 +85606,7 @@
           }
         },
         "legal": {
-          "vine": [
+          "kudzu": [
             {
               "q": 3,
               "r": -2
@@ -85688,7 +85688,7 @@
         "action": {
           "type": "PLANT",
           "playerId": "p1",
-          "species": "vine",
+          "species": "kudzu",
           "pos": {
             "q": 3,
             "r": 1
@@ -86294,7 +86294,7 @@
               "r": 5
             }
           ],
-          "sunflower": [
+          "rapeseed": [
             {
               "q": -1,
               "r": 4
@@ -86310,7 +86310,7 @@
         "action": {
           "type": "PLANT",
           "playerId": "p2",
-          "species": "sunflower",
+          "species": "rapeseed",
           "pos": {
             "q": -1,
             "r": 4
@@ -86905,7 +86905,7 @@
           }
         },
         "legal": {
-          "cactus": [
+          "pine": [
             {
               "q": -5,
               "r": -1
@@ -86979,7 +86979,7 @@
         "action": {
           "type": "PLANT",
           "playerId": "p3",
-          "species": "cactus",
+          "species": "pine",
           "pos": {
             "q": -5,
             "r": -1
@@ -87628,7 +87628,7 @@
               "r": 0
             }
           ],
-          "vine": [
+          "kudzu": [
             {
               "q": 0,
               "r": -5
@@ -87688,7 +87688,7 @@
         "action": {
           "type": "PLANT",
           "playerId": "p0",
-          "species": "vine",
+          "species": "kudzu",
           "pos": {
             "q": 2,
             "r": -4
@@ -88318,7 +88318,7 @@
               "r": 2
             }
           ],
-          "vine": [
+          "kudzu": [
             {
               "q": 3,
               "r": -2
@@ -88967,7 +88967,7 @@
               "r": 5
             }
           ],
-          "sunflower": [
+          "rapeseed": [
             {
               "q": -1,
               "r": 3
@@ -89600,7 +89600,7 @@
           }
         },
         "legal": {
-          "cactus": [
+          "pine": [
             {
               "q": -5,
               "r": -2
@@ -91044,7 +91044,7 @@
           "goals": [
             "dandelion-reserve",
             "long-path",
-            "cactus-reserve"
+            "pine-reserve"
           ],
           "draftOrder": [
             "p1",
@@ -91077,13 +91077,13 @@
               "isReady": true,
               "drafted": [
                 "grass",
-                "vine",
+                "kudzu",
                 "fern",
                 "lotus"
               ],
               "deck": [
                 "grass",
-                "vine",
+                "kudzu",
                 "lotus",
                 "lotus"
               ],
@@ -91102,20 +91102,20 @@
               "isReady": true,
               "drafted": [
                 "grass",
-                "vine",
+                "kudzu",
                 "fern",
                 "lotus"
               ],
               "deck": [
-                "vine",
+                "kudzu",
                 "lotus",
                 "grass",
-                "vine",
+                "kudzu",
                 "fern"
               ],
               "hand": [
                 "fern",
-                "vine",
+                "kudzu",
                 "lotus"
               ],
               "surrenderedOrder": null
@@ -91128,20 +91128,20 @@
               "isReady": true,
               "drafted": [
                 "oak",
-                "cactus",
+                "pine",
                 "dandelion",
-                "sunflower"
+                "rapeseed"
               ],
               "deck": [
-                "cactus",
+                "pine",
                 "oak",
-                "sunflower",
+                "rapeseed",
                 "dandelion",
-                "sunflower"
+                "rapeseed"
               ],
               "hand": [
                 "oak",
-                "sunflower",
+                "rapeseed",
                 "oak"
               ],
               "surrenderedOrder": null
@@ -91154,20 +91154,20 @@
               "isReady": true,
               "drafted": [
                 "oak",
-                "cactus",
+                "pine",
                 "dandelion",
-                "sunflower"
+                "rapeseed"
               ],
               "deck": [
-                "cactus",
+                "pine",
                 "dandelion",
                 "oak",
                 "oak",
-                "sunflower"
+                "rapeseed"
               ],
               "hand": [
-                "cactus",
-                "cactus",
+                "pine",
+                "pine",
                 "oak"
               ],
               "surrenderedOrder": null
@@ -91196,7 +91196,7 @@
             },
             {
               "id": "p3",
-              "species": "cactus",
+              "species": "pine",
               "ownerId": "p2",
               "pos": {
                 "q": 1,
@@ -91206,7 +91206,7 @@
             },
             {
               "id": "p4",
-              "species": "sunflower",
+              "species": "rapeseed",
               "ownerId": "p3",
               "pos": {
                 "q": -6,
@@ -91236,7 +91236,7 @@
             },
             {
               "id": "p7",
-              "species": "cactus",
+              "species": "pine",
               "ownerId": "p2",
               "pos": {
                 "q": 2,
@@ -91316,7 +91316,7 @@
             },
             {
               "id": "p15",
-              "species": "cactus",
+              "species": "pine",
               "ownerId": "p2",
               "pos": {
                 "q": 0,
@@ -91336,7 +91336,7 @@
             },
             {
               "id": "p17",
-              "species": "vine",
+              "species": "kudzu",
               "ownerId": "p0",
               "pos": {
                 "q": -1,
@@ -91366,7 +91366,7 @@
             },
             {
               "id": "p20",
-              "species": "sunflower",
+              "species": "rapeseed",
               "ownerId": "p3",
               "pos": {
                 "q": -4,
@@ -91406,7 +91406,7 @@
             },
             {
               "id": "p24",
-              "species": "sunflower",
+              "species": "rapeseed",
               "ownerId": "p3",
               "pos": {
                 "q": -5,
@@ -91416,7 +91416,7 @@
             },
             {
               "id": "p25",
-              "species": "vine",
+              "species": "kudzu",
               "ownerId": "p0",
               "pos": {
                 "q": 0,
@@ -91426,7 +91426,7 @@
             },
             {
               "id": "p26",
-              "species": "vine",
+              "species": "kudzu",
               "ownerId": "p1",
               "pos": {
                 "q": 3,
@@ -91436,7 +91436,7 @@
             },
             {
               "id": "p27",
-              "species": "sunflower",
+              "species": "rapeseed",
               "ownerId": "p2",
               "pos": {
                 "q": -1,
@@ -91446,7 +91446,7 @@
             },
             {
               "id": "p28",
-              "species": "cactus",
+              "species": "pine",
               "ownerId": "p3",
               "pos": {
                 "q": -5,
@@ -91456,7 +91456,7 @@
             },
             {
               "id": "p29",
-              "species": "vine",
+              "species": "kudzu",
               "ownerId": "p0",
               "pos": {
                 "q": 2,
@@ -92173,7 +92173,7 @@
               "r": 2
             }
           ],
-          "vine": [
+          "kudzu": [
             {
               "q": 3,
               "r": -2
@@ -92303,7 +92303,7 @@
         "action": {
           "type": "PLANT",
           "playerId": "p1",
-          "species": "vine",
+          "species": "kudzu",
           "pos": {
             "q": 5,
             "r": 0
@@ -92921,7 +92921,7 @@
               "r": 5
             }
           ],
-          "sunflower": [
+          "rapeseed": [
             {
               "q": -1,
               "r": 2
@@ -92949,7 +92949,7 @@
         "action": {
           "type": "PLANT",
           "playerId": "p2",
-          "species": "sunflower",
+          "species": "rapeseed",
           "pos": {
             "q": -1,
             "r": 2
@@ -93544,7 +93544,7 @@
           }
         },
         "legal": {
-          "cactus": [
+          "pine": [
             {
               "q": -5,
               "r": -2
@@ -95042,7 +95042,7 @@
               "r": 4
             }
           ],
-          "vine": [
+          "kudzu": [
             {
               "q": 3,
               "r": -2
@@ -95082,7 +95082,7 @@
         "action": {
           "type": "PLANT",
           "playerId": "p1",
-          "species": "vine",
+          "species": "kudzu",
           "pos": {
             "q": 4,
             "r": 0
@@ -95704,7 +95704,7 @@
               "r": 5
             }
           ],
-          "cactus": [
+          "pine": [
             {
               "q": 0,
               "r": 1
@@ -96331,7 +96331,7 @@
           }
         },
         "legal": {
-          "cactus": [
+          "pine": [
             {
               "q": -5,
               "r": -2
@@ -96371,7 +96371,7 @@
         "action": {
           "type": "PLANT",
           "playerId": "p3",
-          "species": "cactus",
+          "species": "pine",
           "pos": {
             "q": -2,
             "r": -1
@@ -97761,7 +97761,7 @@
           "goals": [
             "dandelion-reserve",
             "long-path",
-            "cactus-reserve"
+            "pine-reserve"
           ],
           "draftOrder": [
             "p1",
@@ -97794,7 +97794,7 @@
               "isReady": true,
               "drafted": [
                 "grass",
-                "vine",
+                "kudzu",
                 "fern",
                 "lotus"
               ],
@@ -97805,7 +97805,7 @@
               "hand": [
                 "fern",
                 "grass",
-                "vine"
+                "kudzu"
               ],
               "surrenderedOrder": null
             },
@@ -97817,13 +97817,13 @@
               "isReady": true,
               "drafted": [
                 "grass",
-                "vine",
+                "kudzu",
                 "fern",
                 "lotus"
               ],
               "deck": [
                 "grass",
-                "vine",
+                "kudzu",
                 "fern"
               ],
               "hand": [
@@ -97841,18 +97841,18 @@
               "isReady": true,
               "drafted": [
                 "oak",
-                "cactus",
+                "pine",
                 "dandelion",
-                "sunflower"
+                "rapeseed"
               ],
               "deck": [
-                "sunflower",
+                "rapeseed",
                 "dandelion",
-                "sunflower"
+                "rapeseed"
               ],
               "hand": [
                 "oak",
-                "cactus",
+                "pine",
                 "oak"
               ],
               "surrenderedOrder": null
@@ -97865,18 +97865,18 @@
               "isReady": true,
               "drafted": [
                 "oak",
-                "cactus",
+                "pine",
                 "dandelion",
-                "sunflower"
+                "rapeseed"
               ],
               "deck": [
                 "oak",
                 "oak",
-                "sunflower"
+                "rapeseed"
               ],
               "hand": [
-                "cactus",
-                "cactus",
+                "pine",
+                "pine",
                 "dandelion"
               ],
               "surrenderedOrder": null
@@ -97905,7 +97905,7 @@
             },
             {
               "id": "p3",
-              "species": "cactus",
+              "species": "pine",
               "ownerId": "p2",
               "pos": {
                 "q": 1,
@@ -97915,7 +97915,7 @@
             },
             {
               "id": "p4",
-              "species": "sunflower",
+              "species": "rapeseed",
               "ownerId": "p3",
               "pos": {
                 "q": -6,
@@ -97945,7 +97945,7 @@
             },
             {
               "id": "p7",
-              "species": "cactus",
+              "species": "pine",
               "ownerId": "p2",
               "pos": {
                 "q": 2,
@@ -98025,7 +98025,7 @@
             },
             {
               "id": "p15",
-              "species": "cactus",
+              "species": "pine",
               "ownerId": "p2",
               "pos": {
                 "q": 0,
@@ -98045,7 +98045,7 @@
             },
             {
               "id": "p17",
-              "species": "vine",
+              "species": "kudzu",
               "ownerId": "p0",
               "pos": {
                 "q": -1,
@@ -98075,7 +98075,7 @@
             },
             {
               "id": "p20",
-              "species": "sunflower",
+              "species": "rapeseed",
               "ownerId": "p3",
               "pos": {
                 "q": -4,
@@ -98115,7 +98115,7 @@
             },
             {
               "id": "p24",
-              "species": "sunflower",
+              "species": "rapeseed",
               "ownerId": "p3",
               "pos": {
                 "q": -5,
@@ -98125,7 +98125,7 @@
             },
             {
               "id": "p25",
-              "species": "vine",
+              "species": "kudzu",
               "ownerId": "p0",
               "pos": {
                 "q": 0,
@@ -98135,7 +98135,7 @@
             },
             {
               "id": "p26",
-              "species": "vine",
+              "species": "kudzu",
               "ownerId": "p1",
               "pos": {
                 "q": 3,
@@ -98145,7 +98145,7 @@
             },
             {
               "id": "p27",
-              "species": "sunflower",
+              "species": "rapeseed",
               "ownerId": "p2",
               "pos": {
                 "q": -1,
@@ -98155,7 +98155,7 @@
             },
             {
               "id": "p28",
-              "species": "cactus",
+              "species": "pine",
               "ownerId": "p3",
               "pos": {
                 "q": -5,
@@ -98165,7 +98165,7 @@
             },
             {
               "id": "p29",
-              "species": "vine",
+              "species": "kudzu",
               "ownerId": "p0",
               "pos": {
                 "q": 2,
@@ -98215,7 +98215,7 @@
             },
             {
               "id": "p34",
-              "species": "vine",
+              "species": "kudzu",
               "ownerId": "p1",
               "pos": {
                 "q": 5,
@@ -98225,7 +98225,7 @@
             },
             {
               "id": "p35",
-              "species": "sunflower",
+              "species": "rapeseed",
               "ownerId": "p2",
               "pos": {
                 "q": -1,
@@ -98255,7 +98255,7 @@
             },
             {
               "id": "p38",
-              "species": "vine",
+              "species": "kudzu",
               "ownerId": "p1",
               "pos": {
                 "q": 4,
@@ -98275,7 +98275,7 @@
             },
             {
               "id": "p40",
-              "species": "cactus",
+              "species": "pine",
               "ownerId": "p3",
               "pos": {
                 "q": -2,
@@ -99643,7 +99643,7 @@
               "r": 4
             }
           ],
-          "cactus": [
+          "pine": [
             {
               "q": -2,
               "r": 2
@@ -99667,7 +99667,7 @@
         "action": {
           "type": "PLANT",
           "playerId": "p2",
-          "species": "cactus",
+          "species": "pine",
           "pos": {
             "q": -2,
             "r": 2
@@ -100262,7 +100262,7 @@
           }
         },
         "legal": {
-          "cactus": [
+          "pine": [
             {
               "q": -5,
               "r": -2
@@ -101067,7 +101067,7 @@
               "r": 0
             }
           ],
-          "vine": [
+          "kudzu": [
             {
               "q": 0,
               "r": -5
@@ -102507,7 +102507,7 @@
               "r": 4
             }
           ],
-          "sunflower": [
+          "rapeseed": [
             {
               "q": -3,
               "r": 2
@@ -103130,7 +103130,7 @@
           }
         },
         "legal": {
-          "cactus": [
+          "pine": [
             {
               "q": -5,
               "r": -2
@@ -103869,7 +103869,7 @@
               "r": 0
             }
           ],
-          "vine": [
+          "kudzu": [
             {
               "q": 0,
               "r": -5
@@ -104672,7 +104672,7 @@
           "goals": [
             "dandelion-reserve",
             "long-path",
-            "cactus-reserve"
+            "pine-reserve"
           ],
           "draftOrder": [
             "p1",
@@ -104705,13 +104705,13 @@
               "isReady": true,
               "drafted": [
                 "grass",
-                "vine",
+                "kudzu",
                 "fern",
                 "lotus"
               ],
               "deck": [],
               "hand": [
-                "vine",
+                "kudzu",
                 "lotus",
                 "lotus"
               ],
@@ -104725,7 +104725,7 @@
               "isReady": true,
               "drafted": [
                 "grass",
-                "vine",
+                "kudzu",
                 "fern",
                 "lotus"
               ],
@@ -104735,7 +104735,7 @@
               "hand": [
                 "fern",
                 "lotus",
-                "vine"
+                "kudzu"
               ],
               "surrenderedOrder": null
             },
@@ -104747,16 +104747,16 @@
               "isReady": true,
               "drafted": [
                 "oak",
-                "cactus",
+                "pine",
                 "dandelion",
-                "sunflower"
+                "rapeseed"
               ],
               "deck": [
-                "sunflower"
+                "rapeseed"
               ],
               "hand": [
                 "oak",
-                "sunflower",
+                "rapeseed",
                 "dandelion"
               ],
               "surrenderedOrder": null
@@ -104769,16 +104769,16 @@
               "isReady": true,
               "drafted": [
                 "oak",
-                "cactus",
+                "pine",
                 "dandelion",
-                "sunflower"
+                "rapeseed"
               ],
               "deck": [
-                "sunflower"
+                "rapeseed"
               ],
               "hand": [
-                "cactus",
-                "cactus",
+                "pine",
+                "pine",
                 "oak"
               ],
               "surrenderedOrder": null
@@ -104807,7 +104807,7 @@
             },
             {
               "id": "p3",
-              "species": "cactus",
+              "species": "pine",
               "ownerId": "p2",
               "pos": {
                 "q": 1,
@@ -104817,7 +104817,7 @@
             },
             {
               "id": "p4",
-              "species": "sunflower",
+              "species": "rapeseed",
               "ownerId": "p3",
               "pos": {
                 "q": -6,
@@ -104847,7 +104847,7 @@
             },
             {
               "id": "p7",
-              "species": "cactus",
+              "species": "pine",
               "ownerId": "p2",
               "pos": {
                 "q": 2,
@@ -104927,7 +104927,7 @@
             },
             {
               "id": "p15",
-              "species": "cactus",
+              "species": "pine",
               "ownerId": "p2",
               "pos": {
                 "q": 0,
@@ -104947,7 +104947,7 @@
             },
             {
               "id": "p17",
-              "species": "vine",
+              "species": "kudzu",
               "ownerId": "p0",
               "pos": {
                 "q": -1,
@@ -104977,7 +104977,7 @@
             },
             {
               "id": "p20",
-              "species": "sunflower",
+              "species": "rapeseed",
               "ownerId": "p3",
               "pos": {
                 "q": -4,
@@ -105017,7 +105017,7 @@
             },
             {
               "id": "p24",
-              "species": "sunflower",
+              "species": "rapeseed",
               "ownerId": "p3",
               "pos": {
                 "q": -5,
@@ -105027,7 +105027,7 @@
             },
             {
               "id": "p25",
-              "species": "vine",
+              "species": "kudzu",
               "ownerId": "p0",
               "pos": {
                 "q": 0,
@@ -105037,7 +105037,7 @@
             },
             {
               "id": "p26",
-              "species": "vine",
+              "species": "kudzu",
               "ownerId": "p1",
               "pos": {
                 "q": 3,
@@ -105047,7 +105047,7 @@
             },
             {
               "id": "p27",
-              "species": "sunflower",
+              "species": "rapeseed",
               "ownerId": "p2",
               "pos": {
                 "q": -1,
@@ -105057,7 +105057,7 @@
             },
             {
               "id": "p28",
-              "species": "cactus",
+              "species": "pine",
               "ownerId": "p3",
               "pos": {
                 "q": -5,
@@ -105067,7 +105067,7 @@
             },
             {
               "id": "p29",
-              "species": "vine",
+              "species": "kudzu",
               "ownerId": "p0",
               "pos": {
                 "q": 2,
@@ -105117,7 +105117,7 @@
             },
             {
               "id": "p34",
-              "species": "vine",
+              "species": "kudzu",
               "ownerId": "p1",
               "pos": {
                 "q": 5,
@@ -105127,7 +105127,7 @@
             },
             {
               "id": "p35",
-              "species": "sunflower",
+              "species": "rapeseed",
               "ownerId": "p2",
               "pos": {
                 "q": -1,
@@ -105157,7 +105157,7 @@
             },
             {
               "id": "p38",
-              "species": "vine",
+              "species": "kudzu",
               "ownerId": "p1",
               "pos": {
                 "q": 4,
@@ -105177,7 +105177,7 @@
             },
             {
               "id": "p40",
-              "species": "cactus",
+              "species": "pine",
               "ownerId": "p3",
               "pos": {
                 "q": -2,
@@ -105207,7 +105207,7 @@
             },
             {
               "id": "p43",
-              "species": "cactus",
+              "species": "pine",
               "ownerId": "p2",
               "pos": {
                 "q": -2,
@@ -106009,7 +106009,7 @@
               "r": 4
             }
           ],
-          "vine": [
+          "kudzu": [
             {
               "q": 3,
               "r": -2
@@ -106666,7 +106666,7 @@
               "r": 4
             }
           ],
-          "sunflower": [
+          "rapeseed": [
             {
               "q": 1,
               "r": 1
@@ -106716,7 +106716,7 @@
         "action": {
           "type": "PLANT",
           "playerId": "p2",
-          "species": "sunflower",
+          "species": "rapeseed",
           "pos": {
             "q": 1,
             "r": 1
@@ -107311,7 +107311,7 @@
           }
         },
         "legal": {
-          "cactus": [
+          "pine": [
             {
               "q": -5,
               "r": -2
@@ -108004,7 +108004,7 @@
           }
         },
         "legal": {
-          "vine": [
+          "kudzu": [
             {
               "q": 0,
               "r": -5
@@ -108783,7 +108783,7 @@
               "r": 4
             }
           ],
-          "vine": [
+          "kudzu": [
             {
               "q": 4,
               "r": -4
@@ -109512,7 +109512,7 @@
               "r": 4
             }
           ],
-          "sunflower": [
+          "rapeseed": [
             {
               "q": 1,
               "r": 0
@@ -110139,7 +110139,7 @@
           }
         },
         "legal": {
-          "cactus": [
+          "pine": [
             {
               "q": -5,
               "r": -2
@@ -110181,7 +110181,7 @@
               "r": 2
             }
           ],
-          "sunflower": [
+          "rapeseed": [
             {
               "q": -5,
               "r": -2
@@ -110229,7 +110229,7 @@
         "action": {
           "type": "PLANT",
           "playerId": "p3",
-          "species": "cactus",
+          "species": "pine",
           "pos": {
             "q": 0,
             "r": -1
@@ -110824,7 +110824,7 @@
           }
         },
         "legal": {
-          "vine": [
+          "kudzu": [
             {
               "q": 0,
               "r": -5
@@ -111619,7 +111619,7 @@
           "goals": [
             "dandelion-reserve",
             "long-path",
-            "cactus-reserve"
+            "pine-reserve"
           ],
           "draftOrder": [
             "p1",
@@ -111652,13 +111652,13 @@
               "isReady": true,
               "drafted": [
                 "grass",
-                "vine",
+                "kudzu",
                 "fern",
                 "lotus"
               ],
               "deck": [],
               "hand": [
-                "vine"
+                "kudzu"
               ],
               "surrenderedOrder": null
             },
@@ -111670,13 +111670,13 @@
               "isReady": true,
               "drafted": [
                 "grass",
-                "vine",
+                "kudzu",
                 "fern",
                 "lotus"
               ],
               "deck": [],
               "hand": [
-                "vine",
+                "kudzu",
                 "fern"
               ],
               "surrenderedOrder": null
@@ -111689,14 +111689,14 @@
               "isReady": true,
               "drafted": [
                 "oak",
-                "cactus",
+                "pine",
                 "dandelion",
-                "sunflower"
+                "rapeseed"
               ],
               "deck": [],
               "hand": [
                 "oak",
-                "sunflower"
+                "rapeseed"
               ],
               "surrenderedOrder": null
             },
@@ -111708,14 +111708,14 @@
               "isReady": true,
               "drafted": [
                 "oak",
-                "cactus",
+                "pine",
                 "dandelion",
-                "sunflower"
+                "rapeseed"
               ],
               "deck": [],
               "hand": [
-                "cactus",
-                "sunflower"
+                "pine",
+                "rapeseed"
               ],
               "surrenderedOrder": null
             }
@@ -111743,7 +111743,7 @@
             },
             {
               "id": "p3",
-              "species": "cactus",
+              "species": "pine",
               "ownerId": "p2",
               "pos": {
                 "q": 1,
@@ -111753,7 +111753,7 @@
             },
             {
               "id": "p4",
-              "species": "sunflower",
+              "species": "rapeseed",
               "ownerId": "p3",
               "pos": {
                 "q": -6,
@@ -111783,7 +111783,7 @@
             },
             {
               "id": "p7",
-              "species": "cactus",
+              "species": "pine",
               "ownerId": "p2",
               "pos": {
                 "q": 2,
@@ -111863,7 +111863,7 @@
             },
             {
               "id": "p15",
-              "species": "cactus",
+              "species": "pine",
               "ownerId": "p2",
               "pos": {
                 "q": 0,
@@ -111883,7 +111883,7 @@
             },
             {
               "id": "p17",
-              "species": "vine",
+              "species": "kudzu",
               "ownerId": "p0",
               "pos": {
                 "q": -1,
@@ -111913,7 +111913,7 @@
             },
             {
               "id": "p20",
-              "species": "sunflower",
+              "species": "rapeseed",
               "ownerId": "p3",
               "pos": {
                 "q": -4,
@@ -111953,7 +111953,7 @@
             },
             {
               "id": "p24",
-              "species": "sunflower",
+              "species": "rapeseed",
               "ownerId": "p3",
               "pos": {
                 "q": -5,
@@ -111963,7 +111963,7 @@
             },
             {
               "id": "p25",
-              "species": "vine",
+              "species": "kudzu",
               "ownerId": "p0",
               "pos": {
                 "q": 0,
@@ -111973,7 +111973,7 @@
             },
             {
               "id": "p26",
-              "species": "vine",
+              "species": "kudzu",
               "ownerId": "p1",
               "pos": {
                 "q": 3,
@@ -111983,7 +111983,7 @@
             },
             {
               "id": "p27",
-              "species": "sunflower",
+              "species": "rapeseed",
               "ownerId": "p2",
               "pos": {
                 "q": -1,
@@ -111993,7 +111993,7 @@
             },
             {
               "id": "p28",
-              "species": "cactus",
+              "species": "pine",
               "ownerId": "p3",
               "pos": {
                 "q": -5,
@@ -112003,7 +112003,7 @@
             },
             {
               "id": "p29",
-              "species": "vine",
+              "species": "kudzu",
               "ownerId": "p0",
               "pos": {
                 "q": 2,
@@ -112053,7 +112053,7 @@
             },
             {
               "id": "p34",
-              "species": "vine",
+              "species": "kudzu",
               "ownerId": "p1",
               "pos": {
                 "q": 5,
@@ -112063,7 +112063,7 @@
             },
             {
               "id": "p35",
-              "species": "sunflower",
+              "species": "rapeseed",
               "ownerId": "p2",
               "pos": {
                 "q": -1,
@@ -112093,7 +112093,7 @@
             },
             {
               "id": "p38",
-              "species": "vine",
+              "species": "kudzu",
               "ownerId": "p1",
               "pos": {
                 "q": 4,
@@ -112113,7 +112113,7 @@
             },
             {
               "id": "p40",
-              "species": "cactus",
+              "species": "pine",
               "ownerId": "p3",
               "pos": {
                 "q": -2,
@@ -112143,7 +112143,7 @@
             },
             {
               "id": "p43",
-              "species": "cactus",
+              "species": "pine",
               "ownerId": "p2",
               "pos": {
                 "q": -2,
@@ -112223,7 +112223,7 @@
             },
             {
               "id": "p51",
-              "species": "sunflower",
+              "species": "rapeseed",
               "ownerId": "p2",
               "pos": {
                 "q": 1,
@@ -112273,7 +112273,7 @@
             },
             {
               "id": "p56",
-              "species": "cactus",
+              "species": "pine",
               "ownerId": "p3",
               "pos": {
                 "q": 0,
@@ -112929,7 +112929,7 @@
           }
         },
         "legal": {
-          "vine": [
+          "kudzu": [
             {
               "q": 4,
               "r": -4
@@ -113003,7 +113003,7 @@
         "action": {
           "type": "PLANT",
           "playerId": "p1",
-          "species": "vine",
+          "species": "kudzu",
           "pos": {
             "q": 4,
             "r": -4
@@ -113629,7 +113629,7 @@
               "r": 5
             }
           ],
-          "sunflower": [
+          "rapeseed": [
             {
               "q": 1,
               "r": 0
@@ -113665,7 +113665,7 @@
         "action": {
           "type": "PLANT",
           "playerId": "p2",
-          "species": "sunflower",
+          "species": "rapeseed",
           "pos": {
             "q": -2,
             "r": 3
@@ -114260,7 +114260,7 @@
           }
         },
         "legal": {
-          "cactus": [
+          "pine": [
             {
               "q": -5,
               "r": -2
@@ -114294,7 +114294,7 @@
               "r": 2
             }
           ],
-          "sunflower": [
+          "rapeseed": [
             {
               "q": -5,
               "r": -2
@@ -114334,7 +114334,7 @@
         "action": {
           "type": "PLANT",
           "playerId": "p3",
-          "species": "sunflower",
+          "species": "rapeseed",
           "pos": {
             "q": -6,
             "r": 2
@@ -114929,7 +114929,7 @@
           }
         },
         "legal": {
-          "vine": [
+          "kudzu": [
             {
               "q": 0,
               "r": -5
@@ -114981,7 +114981,7 @@
         "action": {
           "type": "PLANT",
           "playerId": "p0",
-          "species": "vine",
+          "species": "kudzu",
           "pos": {
             "q": -5,
             "r": 0
@@ -116835,7 +116835,7 @@
           }
         },
         "legal": {
-          "cactus": [
+          "pine": [
             {
               "q": -5,
               "r": -2
@@ -116863,7 +116863,7 @@
         "action": {
           "type": "PLANT",
           "playerId": "p3",
-          "species": "cactus",
+          "species": "pine",
           "pos": {
             "q": -1,
             "r": -2
@@ -117528,7 +117528,7 @@
           "goals": [
             "dandelion-reserve",
             "long-path",
-            "cactus-reserve"
+            "pine-reserve"
           ],
           "draftOrder": [
             "p1",
@@ -117561,7 +117561,7 @@
               "isReady": true,
               "drafted": [
                 "grass",
-                "vine",
+                "kudzu",
                 "fern",
                 "lotus"
               ],
@@ -117577,7 +117577,7 @@
               "isReady": true,
               "drafted": [
                 "grass",
-                "vine",
+                "kudzu",
                 "fern",
                 "lotus"
               ],
@@ -117593,9 +117593,9 @@
               "isReady": true,
               "drafted": [
                 "oak",
-                "cactus",
+                "pine",
                 "dandelion",
-                "sunflower"
+                "rapeseed"
               ],
               "deck": [],
               "hand": [],
@@ -117609,9 +117609,9 @@
               "isReady": true,
               "drafted": [
                 "oak",
-                "cactus",
+                "pine",
                 "dandelion",
-                "sunflower"
+                "rapeseed"
               ],
               "deck": [],
               "hand": [],
@@ -117641,7 +117641,7 @@
             },
             {
               "id": "p3",
-              "species": "cactus",
+              "species": "pine",
               "ownerId": "p2",
               "pos": {
                 "q": 1,
@@ -117651,7 +117651,7 @@
             },
             {
               "id": "p4",
-              "species": "sunflower",
+              "species": "rapeseed",
               "ownerId": "p3",
               "pos": {
                 "q": -6,
@@ -117681,7 +117681,7 @@
             },
             {
               "id": "p7",
-              "species": "cactus",
+              "species": "pine",
               "ownerId": "p2",
               "pos": {
                 "q": 2,
@@ -117761,7 +117761,7 @@
             },
             {
               "id": "p15",
-              "species": "cactus",
+              "species": "pine",
               "ownerId": "p2",
               "pos": {
                 "q": 0,
@@ -117781,7 +117781,7 @@
             },
             {
               "id": "p17",
-              "species": "vine",
+              "species": "kudzu",
               "ownerId": "p0",
               "pos": {
                 "q": -1,
@@ -117811,7 +117811,7 @@
             },
             {
               "id": "p20",
-              "species": "sunflower",
+              "species": "rapeseed",
               "ownerId": "p3",
               "pos": {
                 "q": -4,
@@ -117851,7 +117851,7 @@
             },
             {
               "id": "p24",
-              "species": "sunflower",
+              "species": "rapeseed",
               "ownerId": "p3",
               "pos": {
                 "q": -5,
@@ -117861,7 +117861,7 @@
             },
             {
               "id": "p25",
-              "species": "vine",
+              "species": "kudzu",
               "ownerId": "p0",
               "pos": {
                 "q": 0,
@@ -117871,7 +117871,7 @@
             },
             {
               "id": "p26",
-              "species": "vine",
+              "species": "kudzu",
               "ownerId": "p1",
               "pos": {
                 "q": 3,
@@ -117881,7 +117881,7 @@
             },
             {
               "id": "p27",
-              "species": "sunflower",
+              "species": "rapeseed",
               "ownerId": "p2",
               "pos": {
                 "q": -1,
@@ -117891,7 +117891,7 @@
             },
             {
               "id": "p28",
-              "species": "cactus",
+              "species": "pine",
               "ownerId": "p3",
               "pos": {
                 "q": -5,
@@ -117901,7 +117901,7 @@
             },
             {
               "id": "p29",
-              "species": "vine",
+              "species": "kudzu",
               "ownerId": "p0",
               "pos": {
                 "q": 2,
@@ -117951,7 +117951,7 @@
             },
             {
               "id": "p34",
-              "species": "vine",
+              "species": "kudzu",
               "ownerId": "p1",
               "pos": {
                 "q": 5,
@@ -117961,7 +117961,7 @@
             },
             {
               "id": "p35",
-              "species": "sunflower",
+              "species": "rapeseed",
               "ownerId": "p2",
               "pos": {
                 "q": -1,
@@ -117991,7 +117991,7 @@
             },
             {
               "id": "p38",
-              "species": "vine",
+              "species": "kudzu",
               "ownerId": "p1",
               "pos": {
                 "q": 4,
@@ -118011,7 +118011,7 @@
             },
             {
               "id": "p40",
-              "species": "cactus",
+              "species": "pine",
               "ownerId": "p3",
               "pos": {
                 "q": -2,
@@ -118041,7 +118041,7 @@
             },
             {
               "id": "p43",
-              "species": "cactus",
+              "species": "pine",
               "ownerId": "p2",
               "pos": {
                 "q": -2,
@@ -118121,7 +118121,7 @@
             },
             {
               "id": "p51",
-              "species": "sunflower",
+              "species": "rapeseed",
               "ownerId": "p2",
               "pos": {
                 "q": 1,
@@ -118171,7 +118171,7 @@
             },
             {
               "id": "p56",
-              "species": "cactus",
+              "species": "pine",
               "ownerId": "p3",
               "pos": {
                 "q": 0,
@@ -118191,7 +118191,7 @@
             },
             {
               "id": "p58",
-              "species": "vine",
+              "species": "kudzu",
               "ownerId": "p1",
               "pos": {
                 "q": 4,
@@ -118201,7 +118201,7 @@
             },
             {
               "id": "p59",
-              "species": "sunflower",
+              "species": "rapeseed",
               "ownerId": "p2",
               "pos": {
                 "q": -2,
@@ -118211,7 +118211,7 @@
             },
             {
               "id": "p60",
-              "species": "sunflower",
+              "species": "rapeseed",
               "ownerId": "p3",
               "pos": {
                 "q": -6,
@@ -118221,7 +118221,7 @@
             },
             {
               "id": "p61",
-              "species": "vine",
+              "species": "kudzu",
               "ownerId": "p0",
               "pos": {
                 "q": -5,
@@ -118251,7 +118251,7 @@
             },
             {
               "id": "p64",
-              "species": "cactus",
+              "species": "pine",
               "ownerId": "p3",
               "pos": {
                 "q": -1,

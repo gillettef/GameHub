@@ -8,7 +8,7 @@ const REASON: Record<string, string> = {
   'last-standing': '남은 사람 1명',
 };
 
-/** 게임 종료 화면 (F025): 순위·점수 분해(땅 + 목표 + 장미 + 덤)·종료 사유. 보드를 다시 볼 수도 있다 */
+/** 게임 종료 화면 (F025): 순위·점수 분해(땅 + 목표 + 무궁화 + 덤)·종료 사유. 보드를 다시 볼 수도 있다 */
 export function ResultOverlay({ onNewGame }: { onNewGame: () => void }) {
   const state = useGameStore(selectState);
   const dismissResult = useGameStore((s) => s.dismissResult);
@@ -35,7 +35,7 @@ export function ResultOverlay({ onNewGame }: { onNewGame: () => void }) {
                   <span className={styles.seat}> 좌석 {(p?.seat ?? -1) + 1}</span>
                 </span>
                 <span className={styles.breakdown}>
-                  {p && p.surrenderedOrder !== null ? '기권' : `땅 ${s?.land ?? 0} + 목표 ${s?.goals ?? 0}${s?.bloom ? ` + 장미 ${s.bloom}` : ''}${s?.komi ? ` + 덤 ${s.komi}` : ''}`}
+                  {p && p.surrenderedOrder !== null ? '기권' : `땅 ${s?.land ?? 0} + 목표 ${s?.goals ?? 0}${s?.bloom ? ` + 무궁화 ${s.bloom}` : ''}${s?.komi ? ` + 덤 ${s.komi}` : ''}`}
                 </span>
                 <span className={styles.total}>{s?.total ?? 0}점</span>
               </li>

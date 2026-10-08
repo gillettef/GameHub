@@ -41,15 +41,15 @@ describe('Rules.md 7절 식물 표와 데이터 일치', () => {
   });
 
   it('특수 효과 수치', () => {
-    expect(getSpecies('vine')).toMatchObject({ line: 2, lineLength: 2 });
+    expect(getSpecies('kudzu')).toMatchObject({ line: 2, lineLength: 2 });
     expect(getSpecies('fern')).toMatchObject({ star2: 1 });
     expect(getSpecies('dandelion')).toMatchObject({ seed: 2 });
-    expect(getSpecies('sunflower')).toMatchObject({ fertileRing: 2 }); // 거리 1이 1+2 = 3
+    expect(getSpecies('rapeseed')).toMatchObject({ fertileRing: 2 }); // 거리 1이 1+2 = 3
     expect(getSpecies('lotus')).toMatchObject({ pondPlanting: true });
     expect(getSpecies('ivy')).toMatchObject({ ivy: 1 });
     expect(getSpecies('bamboo')).toMatchObject({ cluster: 2 });
     expect(getSpecies('mushroom')).toMatchObject({ wither: 2 });
-    expect(getSpecies('rose')).toMatchObject({ bloomBonus: 1 });
+    expect(getSpecies('mugunghwa')).toMatchObject({ bloomBonus: 1 });
   });
 });
 
@@ -60,7 +60,7 @@ describe('Rules.md 8절 목표 표와 데이터 일치', () => {
     expect(rows.map((r) => r[2])).toEqual(GOALS.map((g) => g.name));
   });
   it('종 연계 목표는 6장', () => {
-    expect(GOALS.filter((g) => g.species).map((g) => g.species)).toEqual(['cactus', 'vine', 'fern', 'grass', 'mushroom', 'dandelion']);
+    expect(GOALS.filter((g) => g.species).map((g) => g.species)).toEqual(['pine', 'kudzu', 'fern', 'grass', 'mushroom', 'dandelion']);
   });
 });
 

@@ -48,7 +48,7 @@ function cellsFor(species: SpeciesId): DiagramCell[] {
 /**
  * 카드에 그리는 뿌리 모양 미니 다이어그램. 가운데가 심는 칸, 숫자는 그 칸에 주는 영향력(확대 카드에서만).
  * 미니 카드에서는 색으로만 보여 준다: 노랑 = 심는 칸, 초록 = 영향을 주는 칸, 빨강 = 상대 영향력을 깎는 칸.
- * 덩굴은 오른쪽(방향 0)을 예로 그린다(실제로는 심을 때 방향을 고른다).
+ * 칡은 오른쪽(방향 0)을 예로 그린다(실제로는 심을 때 방향을 고른다).
  */
 export const RootDiagram = memo(function RootDiagram({ species, size = 72 }: { species: SpeciesId; size?: number }) {
   const cells = cellsFor(species);

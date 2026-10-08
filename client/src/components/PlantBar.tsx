@@ -8,7 +8,7 @@ import styles from './PlantBar.module.css';
 
 /**
  * 심기 확인 바: 후보 칸을 고르면 곧바로 심지 않고 예상 결과(내 땅·점수 변화, 뺏는 칸)를 보여 준다.
- * 덩굴은 방향을, 민들레는 씨앗 칸(선택)을 여기서 정한다.
+ * 칡은 방향을, 민들레는 씨앗 칸(선택)을 여기서 정한다.
  */
 export const PlantBar = memo(function PlantBar({ preview }: { preview: PlantPreview | null }) {
   const state = useGameStore(selectState);
@@ -49,7 +49,7 @@ export const PlantBar = memo(function PlantBar({ preview }: { preview: PlantPrev
         </span>
       </div>
       {sp.line > 0 && (
-        <div className={styles.dirs} role="radiogroup" aria-label="덩굴 방향">
+        <div className={styles.dirs} role="radiogroup" aria-label="칡 방향">
           {DIRECTION_LABELS.map((label, d) => (
             <button
               key={d}

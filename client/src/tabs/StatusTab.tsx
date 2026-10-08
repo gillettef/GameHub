@@ -6,7 +6,7 @@ import { selectState, selectViewerId, useGameStore } from '../store/gameStore';
 import styles from './StatusTab.module.css';
 
 /**
- * 점수 탭 (F010, F011): 지금 끝난다면 몇 점인가. 좌석별 땅·목표·장미·덤·합계와 고른 종, 남은 카드.
+ * 점수 탭 (F010, F011): 지금 끝난다면 몇 점인가. 좌석별 땅·목표·무궁화·덤·합계와 고른 종, 남은 카드.
  * 점수는 언제나 보드에서 다시 계산한 예상값이다(Rules.md 9절).
  */
 export const StatusTab = memo(function StatusTab() {
@@ -36,7 +36,7 @@ export const StatusTab = memo(function StatusTab() {
                 <div className={styles.breakdown}>
                   <span>땅 {r.score.land}</span>
                   <span>목표 {r.score.goals}</span>
-                  {r.score.bloom > 0 && <span>장미 {r.score.bloom}</span>}
+                  {r.score.bloom > 0 && <span>무궁화 {r.score.bloom}</span>}
                   {r.score.komi > 0 && <span>덤 {r.score.komi}</span>}
                 </div>
               )}

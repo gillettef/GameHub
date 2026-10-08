@@ -249,7 +249,7 @@ export function validatePlant(state: GameState, a: Extract<Action, { type: 'PLAN
     return sp.pondPlanting ? '뿌리가 닿는 칸이나 연못 옆 빈 칸에만 심을 수 있습니다' : '내 뿌리가 닿는 빈 칸에만 심을 수 있습니다';
   }
   if (sp.line) {
-    if (!isDirection(a.direction)) return '덩굴을 뻗을 방향을 고르세요';
+    if (!isDirection(a.direction)) return '칡을 뻗을 방향을 고르세요';
     if (!legalDirections(state, a.pos).includes(a.direction)) return '그 방향으로는 보드가 없습니다';
   } else if (a.direction !== undefined) return '이 식물은 방향이 없습니다';
   if (a.seed !== undefined) {

@@ -14,16 +14,16 @@ PlayerId = str
 SpeciesId = Literal[
     "grass",
     "oak",
-    "cactus",
-    "vine",
+    "pine",
+    "kudzu",
     "fern",
     "dandelion",
-    "sunflower",
+    "rapeseed",
     "lotus",
     "ivy",
     "bamboo",
     "mushroom",
-    "rose",
+    "mugunghwa",
 ]
 GoalId = str
 Terrain = Literal["empty", "fertile", "pond", "rock"]
@@ -65,7 +65,7 @@ class Plant(_Model):
     species: SpeciesId
     ownerId: PlayerId
     pos: Position
-    # 덩굴의 방향. 그 외 None
+    # 칡의 방향. 그 외 None
     direction: Optional[int] = None
 
 
@@ -146,7 +146,7 @@ class DraftAction(_Model):
 
 
 class PlantAction(_Model):
-    """direction 은 덩굴만, seed 는 민들레만(생략 가능). 직렬화할 때 None 은 빼야 TS 검증을 통과한다."""
+    """direction 은 칡만, seed 는 민들레만(생략 가능). 직렬화할 때 None 은 빼야 TS 검증을 통과한다."""
 
     type: Literal["PLANT"] = "PLANT"
     playerId: PlayerId
