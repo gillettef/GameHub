@@ -150,4 +150,5 @@
 
 ## 4. 카드 그림
 
-식물 카드 그림은 아직 없다(12종 모두 빈 칸). 파일은 `client/public/cards/` 에 두고 `client/src/game/cardImages.ts` 에 `종 id: '파일명'` 으로 등록한다(`client/public/cards/README.md`). 목표 카드는 그림 칸이 없다.
+카드 디자인(SVG, 2026-10-08)은 `client/public/cards/` 에 있다. 식물은 `plants/<종 id>.svg`(630×880 세로), 목표는 `goals/<목표 id>.svg`(880×630 가로), 뒷면은 각 폴더의 `back.svg` 다(`client/public/cards/README.md`).
+카드 안에 이름·카드 문구·이야기·점수가 글자로 들어 있으니, 이 문서의 수치·문구를 바꾸면 SVG 의 `<text>` 도 함께 고친다.

@@ -24,9 +24,20 @@
 }
 
 .pile {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
   font-size: var(--text-micro);
   color: var(--color-muted);
   white-space: nowrap;
+}
+
+/* 카드 더미 = 식물 카드 뒷면 */
+.back {
+  width: 14px;
+  aspect-ratio: 630 / 880;
+  border-radius: 2px;
+  outline: 1px solid color-mix(in srgb, var(--color-muted) 60%, transparent);
 }
 
 .cards {

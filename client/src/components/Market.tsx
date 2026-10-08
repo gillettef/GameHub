@@ -1,4 +1,5 @@
 import { memo } from 'react';
+import { PLANT_BACK_URL } from '../game/cardImages';
 import { selectIsMyTurn, selectState, selectTake, useGameStore } from '../store/gameStore';
 import { SpeciesCard } from './SpeciesCard';
 import styles from './Market.module.css';
@@ -23,6 +24,7 @@ export const Market = memo(function Market() {
       <span className={styles.meta}>
         <span className={styles.label}>마켓</span>
         <span className={styles.pile} title="카드 더미에 남은 카드" aria-label={`카드 더미 ${pileCount}장`}>
+          <img className={styles.back} src={PLANT_BACK_URL} alt="" />
           더미 {pileCount}장
         </span>
       </span>

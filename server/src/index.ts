@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import http from 'node:http';
 import { existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
+import compression from 'compression';
 import cors from 'cors';
 import express from 'express';
 import { Server, type Socket } from 'socket.io';
@@ -107,6 +108,8 @@ if (CLIENT_DIST) {
     console.error(`[server] CLIENT_DIST 에 index.html 이 없습니다: ${CLIENT_DIST}. 먼저 클라이언트를 빌드하세요.`);
     process.exit(1);
   }
+  // 카드 디자인 SVG(장당 최대 600KB)·JS 번들을 gzip 으로 보낸다. 소켓 연결(socket.io)은 express 를 거치지 않는다
+  app.use(compression());
   app.use(express.static(CLIENT_DIST));
   app.get('*', (req, res, next) => {
     if (req.path.startsWith('/api') || req.path.startsWith('/socket.io')) return next();

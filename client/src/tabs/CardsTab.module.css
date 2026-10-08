@@ -42,7 +42,12 @@
   gap: 4px;
 }
 
-.goals li {
+.goals button {
+  width: 100%;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -52,11 +57,11 @@
   font-size: var(--text-small);
 }
 
-.goals li span {
+.goals button span {
   font-size: var(--text-micro);
   color: var(--color-muted);
 }
 
-.goals li.linked {
+.goals button.linked {
   border-left: 3px solid var(--color-accent);
 }

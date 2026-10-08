@@ -8,7 +8,7 @@
  * 컴포넌트는 어느 모드든 같은 액션(selectHandCard·tapCell·pickTake·confirmPlant·discard·surrender)만 쓴다.
  */
 import { create } from 'zustand';
-import type { Action, Direction, MaskedGameState, PlayerId, Position, RoomInfo, RoomSnapshot, SpeciesId } from '@rootbound/shared';
+import type { Action, Direction, GoalId, MaskedGameState, PlayerId, Position, RoomInfo, RoomSnapshot, SpeciesId } from '@rootbound/shared';
 import { getSpecies, legalPlantCells, legalSeedCells, maskState, posKey, samePos } from '@rootbound/shared';
 import { asState, directionsFor } from '../game/derived';
 import { applyHotseatAction, createHotseatGame, hotseatPlayerId, type HotseatConfig } from '../game/hotseat';
@@ -17,8 +17,12 @@ import { api } from '../socket/client';
 
 export type Mode = 'hotseat' | 'online';
 export type TabId = 'board' | 'status' | 'progress' | 'cards' | 'help';
-/** 확대해서 볼 것: 손패 카드(index), 카탈로그의 종, 보드의 칸 */
-export type CardModalTarget = { kind: 'hand'; index: number } | { kind: 'species'; species: SpeciesId } | { kind: 'cell'; pos: Position };
+/** 확대해서 볼 것: 손패 카드(index), 카탈로그의 종, 목표 카드, 보드의 칸 */
+export type CardModalTarget =
+  | { kind: 'hand'; index: number }
+  | { kind: 'species'; species: SpeciesId }
+  | { kind: 'goal'; goal: GoalId }
+  | { kind: 'cell'; pos: Position };
 export type Connection = 'idle' | 'connecting' | 'connected' | 'disconnected';
 
 /** 순서 = 하단 독 표시 순서 */

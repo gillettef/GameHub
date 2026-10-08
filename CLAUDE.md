@@ -35,8 +35,8 @@
 - **shared** (`shared/src`): 타입(`types/index.ts`, 이벤트 `types/events.ts`), 데이터(`data/constants.ts` 인원별 이번 판 식물 수·장수·덤, `data/species.ts` 식물 12종·목표 18장, `data/tiles.ts` 정원 조각), 엔진(`engine/board.ts` 대칭 보드 조립·축 좌표·보드 색인, `influence.ts` 영향력·땅·합법 칸·씨앗·칡 방향, `scoring.ts` 목표·점수·순위, `turn.ts` 로비→차례(이번 판 식물 `pickGarden`, 라운드 마켓 `revealMarket`·선 돌리기 `nextRoundStart`, 가져오기 `validateTake`)→종료 `applyAction`, 시간 초과 자동 수 `autoAction`), 가림 `mask.ts`. Vitest 55개.
 - **server**: `rooms/manager.ts`(방·초대 id·비밀번호·좌석·AI 추가, 차례 제한 시간·자동 수·AI 대리, 판 요약 `takeRecord`, 옛 형식 스냅샷 판별 `isCurrentFormat`), `game/aiTurn.ts`(AI·대리 좌석 차례마다 Python `/decide` → 엔진 검증 → 실패 시 `autoAction` 폴백), `persistence/snapshots.ts`(JSON 스냅샷), `persistence/stats.ts`(판 요약·웹 성능 JSONL), `index.ts`(Socket.io, `socket.use` 로 요청 모양 검사, 방별 타이머, `POST /api/vitals`). 서버 시작 시 예전 우주 전투판 스냅샷은 지운다. Vitest 20개.
 - **AI** (`ai/astral_ai`, 패키지 이름은 옛 이름 그대로): `models.py`(Pydantic, TS 타입 1:1), `rules.py`(TS 엔진 시뮬레이션 사본, 수치는 `shared/fixtures/specs.json`), `search.py`(차례는 1수 탐욕: 심기 = 내 총점 − 최고 상대 총점, 가져오기 = 심은 뒤 보드에서 그 카드의 1수 가치 + 목표 연계 가산, 시간 제한 안에 최선 수), `main.py`(`GET /health` → `rootbound-ai`, `POST /decide`, None 필드 제외). pytest 12개.
-- **client**: 경로 `/` 랜딩(AI와 바로 시작·방 만들기·초대 참여·핫시트·튜토리얼), `/hotseat` 같은 기기(인원·닉네임 → 바로 시작), `/tutorial` 연습 봇(`game/tutorialBot.ts`)과 단계 안내(`TutorialCoach`), `/room/:id` 온라인 로비(방 → 좌석 → 준비·제한 시간) → 게임. 게임 화면: `PlayerStrip`(단계·차례·남은 시간·좌석별 땅/점수) → 탭(정원 `BoardTab`: 목표 칩 + `HexBoard`(SVG 육각 보드) + `PlantBar`(미리보기·칡 방향·민들레 씨앗·가져올 카드) + `Market`(이번 라운드 마켓·더미 장수) + `Hand` / 점수 `StatusTab` / 진행 `ProgressTab` / 카드 `CardsTab` / 설명 `HelpTab`) → `TabDock`. 카드는 `SpeciesCard`(이름 + 빈 그림 칸 + 뿌리 모양 `RootDiagram`), 확대·칸 정보는 `GameModal`. 화면용 파생값은 `game/derived.ts`(엔진 호출만). 효과음·차례 알림 `lib/cues.ts`, 웹 성능 `lib/vitals.ts`, 제한 시간 표시 `lib/turnClock.ts`. Vitest 10개.
-- **카드 그림은 비어 있다**(사용자가 나중에 넣는다). 파일은 `client/public/cards/`, 등록은 `client/src/game/cardImages.ts` (`client/public/cards/README.md`).
+- **client**: 경로 `/` 랜딩(AI와 바로 시작·방 만들기·초대 참여·핫시트·튜토리얼), `/hotseat` 같은 기기(인원·닉네임 → 바로 시작), `/tutorial` 연습 봇(`game/tutorialBot.ts`)과 단계 안내(`TutorialCoach`), `/room/:id` 온라인 로비(방 → 좌석 → 준비·제한 시간) → 게임. 게임 화면: `PlayerStrip`(단계·차례·남은 시간·좌석별 땅/점수) → 탭(정원 `BoardTab`: 목표 칩 + `HexBoard`(SVG 육각 보드) + `PlantBar`(미리보기·칡 방향·민들레 씨앗·가져올 카드) + `Market`(이번 라운드 마켓·더미 장수) + `Hand` / 점수 `StatusTab` / 진행 `ProgressTab` / 카드 `CardsTab` / 설명 `HelpTab`) → `TabDock`. 카드는 `SpeciesCard`(작은 카드 = 카드 그림 배경 + 이름 + 뿌리 모양 `RootDiagram`, 확대 = 카드 디자인 앞면), 확대(식물·목표 카드)·칸 정보는 `GameModal`. 화면용 파생값은 `game/derived.ts`(엔진 호출만). 효과음·차례 알림 `lib/cues.ts`, 웹 성능 `lib/vitals.ts`, 제한 시간 표시 `lib/turnClock.ts`. Vitest 15개.
+- **카드 디자인**(2026-10-08 사용자 제공, SVG): 식물 `client/public/cards/plants/<종 id>.svg`(630×880)·목표 `goals/<목표 id>.svg`(880×630)·각 `back.svg`. 작은 카드 배경은 그림 부분만 자른 `plants/art/<종 id>.webp`(`node scripts/card-thumbs.mjs` 로 생성). 경로는 `client/src/game/cardImages.ts`, 파일 누락은 `cardImages.test.ts`. 카드 안 글자는 `notes/cards.md` 와 맞춘다(`client/public/cards/README.md`).
 - 개발용 바로가기: `/hotseat?quick&players=<2~4>&seed=<n>&play=<n>&tab=<board|status|progress|cards|help>&select=<손 카드 index>&cell=<합법 칸 index>&take=<마켓 index>&modal=<손 카드 index>` (`play=<n>` = 자동 수로 n번 둔 뒤 시작, 중반·마켓 빈 화면 확인용).
 - localStorage 키 접두어는 옛 이름 `astraltab.` 을 그대로 쓴다(닉네임·재접속 토큰·튜토리얼 표시 유지).
 
@@ -81,7 +81,7 @@ AstralTab/                 # 저장소 폴더 이름은 아직 옛 이름
 ├── DESIGN.md
 ├── package.json          # npm workspaces: shared, server, client (이름 rootbound)
 ├── notes/Rules.md        # 규칙 정본
-├── scripts/              # common.ps1, dev.ps1, dev-stop.ps1, deploy-aws.ps1, aws/(provision.sh, units.sh, deploy-remote.sh, swap.sh)
+├── scripts/              # common.ps1, dev.ps1, dev-stop.ps1, deploy-aws.ps1, card-thumbs.mjs(카드 그림 썸네일), aws/(provision.sh, units.sh, deploy-remote.sh, swap.sh)
 ├── shared/
 │   ├── fixtures/         # specs.json, scenario.json (TS 엔진 출력, Python 테스트가 읽는다)
 │   ├── scripts/          # garden-sim.ts(밸런스 시뮬레이터), write-fixtures.ts
@@ -99,7 +99,7 @@ AstralTab/                 # 저장소 폴더 이름은 아직 옛 이름
 │       ├── ai/           # AI 서비스 HTTP 클라이언트 (타임아웃·자동 수 폴백)
 │       └── persistence/  # JSON 스냅샷, 통계 JSONL (DB 아님)
 ├── client/
-│   ├── public/cards/     # 카드 일러스트 자리 (비어 있음)
+│   ├── public/cards/     # 카드 디자인 SVG: plants/(식물 12 + back, art/ 썸네일), goals/(목표 18 + back)
 │   └── src/
 │       ├── pages/        # LandingPage, SetupPage(핫시트), RoomPage(로비), GamePage, ResultOverlay
 │       ├── tabs/         # BoardTab, StatusTab, ProgressTab, CardsTab, HelpTab

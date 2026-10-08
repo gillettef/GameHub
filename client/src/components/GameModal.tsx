@@ -1,6 +1,7 @@
 import { memo, useEffect, useMemo } from 'react';
 import type { SpeciesId } from '@rootbound/shared';
-import { ENTRANCE_RING, ENTRANCE_SELF, FERTILE_BONUS, getSpecies, hasAnyPlant, legalPlantCells, samePos } from '@rootbound/shared';
+import { ENTRANCE_RING, ENTRANCE_SELF, FERTILE_BONUS, getGoal, getSpecies, hasAnyPlant, legalPlantCells, samePos } from '@rootbound/shared';
+import { goalCardUrl } from '../game/cardImages';
 import { DIRECTION_LABELS, asState, buildCells } from '../game/derived';
 import { selectIsMyTurn, selectState, selectTake, selectViewerId, useGameStore } from '../store/gameStore';
 import { CloseIcon } from './icons';
@@ -10,9 +11,10 @@ import styles from './GameModal.module.css';
 const TERRAIN: Record<string, string> = { empty: '빈 땅', fertile: `기름진 땅 (여기 심은 식물은 이 칸에 +${FERTILE_BONUS})`, pond: '연못 (심을 수 없고, 누구의 땅도 아님)', rock: '바위 (심을 수 없고, 누구의 땅도 아님)' };
 
 /**
- * 확대 모달 하나로 세 가지를 본다 (스토어 cardModal):
+ * 확대 모달 하나로 네 가지를 본다 (스토어 cardModal):
  *  - 손패 카드: 크게 보고 "이 카드 고르기". 심을 칸이 하나도 없으면 "버리기"(마켓에서 고른 카드를 함께 가져온다, Rules.md 5·6절)
  *  - 식물 카드: 보기 전용 (카드 탭·마켓)
+ *  - 목표 카드: 보기 전용 (목표 칩·점수 탭·카드 탭)
  *  - 보드 칸: 지형·식물·좌석별 영향력·주인
  */
 export const GameModal = memo(function GameModal() {
@@ -40,7 +42,10 @@ export const GameModal = memo(function GameModal() {
   const takeSpecies = take !== null ? state.market[take] : undefined;
 
   let body: React.ReactNode = null;
-  if (target.kind === 'hand' || target.kind === 'species') {
+  if (target.kind === 'goal') {
+    const g = getGoal(target.goal);
+    body = <img className={styles.goalFace} src={goalCardUrl(g.id)} alt={`목표 ${g.name}. ${g.description}`} decoding="async" />;
+  } else if (target.kind === 'hand' || target.kind === 'species') {
     const species: SpeciesId | undefined = target.kind === 'hand' ? me?.hand[target.index] : target.species;
     if (!species) return null;
     const canPlantAny = target.kind === 'hand' && isMyTurn && state.phase === 'playing' && viewerId ? hasAnyPlant(asState(state), viewerId) : true;
@@ -128,7 +133,14 @@ export const GameModal = memo(function GameModal() {
   }
 
   return (
-    <div className={styles.backdrop} onClick={close} role="dialog" aria-modal="true" aria-label={target.kind === 'cell' ? '칸 정보' : '카드 보기'}>
+    <div
+      className={styles.backdrop}
+      onClick={close}
+      role="dialog"
+      aria-modal="true"
+      aria-label={target.kind === 'cell' ? '칸 정보' : '카드 보기'}
+      data-kind={target.kind}
+    >
       <div className={styles.panel} onClick={(e) => e.stopPropagation()} ref={(el) => el?.focus()} tabIndex={-1}>
         <button type="button" className={styles.close} onClick={close} aria-label="닫기" title="닫기">
           <CloseIcon />
