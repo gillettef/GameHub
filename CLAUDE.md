@@ -43,6 +43,7 @@
 
 - `.claude/agents/`: 이 프로젝트 전용 서브에이전트 (게임 규칙 검토, 모바일 UX 검토 등)
 - `notes/플레이테스트_가이드.md`: 플레이테스트 실행 방법, 관찰 항목, 기록 양식, 수치 조정 지점
+- `notes/공모전_검토.md`: 2027 코리아보드게임즈 공모전 검토(2026-10-14, 마감 2026-12-31). 평가, 복잡도 문제, 라이트 버전 방향 체크리스트. 규칙 아님
 - `server/scripts/`: `npm run check`(규칙 단위 검증), `npm run simulate`(봇 밸런스 시뮬레이션), `npm run simulate:fun`(컨셉·밸런스·재미 지표: 성공률·선두 교체·역전·부문상 분산 등, `notes/기획_정리.md` 45절), `npm run smoke`/`npm run smoke:bot`/`npm run smoke:rejoin`/`npm run smoke:leave`/`npm run smoke:social`/`npm run smoke:kick`(WebSocket 스모크 테스트, rejoin·leave·social·kick은 `BOT_SPEED=20` 서버 필요). 봇 AI는 `server/src/game/bot.ts`. 밸런스 수치는 `server/src/game/config.ts`
 - 친구들과 플레이하기 위한 편의 기능(2026-10-01, `notes/기획_정리.md` 33절, 2026-10-02 37절로 일부 변경): 같은 멤버로 다시 하기(`rematch`, 방장), 방장 내보내기(`kick_player`, 게임 중에도 가능 — 게임에서 완전히 제거되고 남은 사람끼리 진행), 리액션 이모지(`emoji`), 접속 끊김 표시·기다림(`presence`). 행동 제한 시간과 봇 자동 대행은 삭제됨(37절). 서버 로직은 `server/src/index.ts`, 화면은 `client/src/Social.tsx`
 - 카드 일러스트: 원본 `cards/`(글자 없는 SVG) → `client/public/cards/`(메타데이터 제거본)로 서빙. 카드 이름→파일 매핑은 `client/src/cardImages.ts`(카드 이름을 바꾸면 여기도 갱신), 작은 카드·확대 팝업·선택 격자는 `client/src/CardArt.tsx`
