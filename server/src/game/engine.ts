@@ -14,6 +14,7 @@ import { describeAbility } from "./creatures.js";
 import { describeExam, pickExamCards } from "./examCards.js";
 import { describeEffect } from "./explorationCards.js";
 import { eventTemplates, examWeekCard, noticeCard, quietMonthCard } from "./newsCards.js";
+import { DREAM_CARDS, SPECIAL_AWARDS, SPECIAL_AWARD_NAME, SPECIAL_AWARD_SUBJECT, TOURNAMENT_CARDS } from "./goalCards.js";
 import {
   effectiveStat,
   type ActivityChoice,
@@ -23,6 +24,8 @@ import {
   type CreatureAbility,
   type CreatureCard,
   type ExplorationCard,
+  type FeatKey,
+  type TournamentCard,
   type LabCard,
   type OfferCardView,
   type OfferedCard,
@@ -153,9 +156,12 @@ function rankByScore(ids: string[], scoreOf: (id: string) => number): { playerId
 }
 
 // 이번 달 선 플레이어부터 시계방향(turnOrder 순서)으로 한 바퀴 — 정규수업과 자율활동 선택 순서
-function orderFromStarter(state: Pick<GameState, "turnOrder" | "startingPlayerIndex">): string[] {
+// 56절 B1(turnOrderRule "creditAsc"): 학점이 낮은 사람부터 (같으면 선부터 시계방향)
+function orderFromStarter(state: Pick<GameState, "turnOrder" | "startingPlayerIndex" | "players">): string[] {
   const n = state.turnOrder.length;
-  return Array.from({ length: n }, (_, i) => state.turnOrder[(state.startingPlayerIndex + i) % n]);
+  const seats = Array.from({ length: n }, (_, i) => state.turnOrder[(state.startingPlayerIndex + i) % n]);
+  if (BALANCE.turnOrderRule !== "creditAsc") return seats;
+  return [...seats].sort((a, b) => state.players[a].credit - state.players[b].credit);
 }
 
 
@@ -294,6 +300,12 @@ function failLearning(state: GameState, player: PlayerGameState, activityId: "cr
   return Object.keys(reward).length ? ` 실패해도 ${describeEffect(reward)}` : "";
 }
 
+// 성과 횟수 (56절 B3 특별상)
+function addFeat(player: PlayerGameState, key: FeatKey, n = 1): void {
+  const feats = (player.feats ??= {});
+  feats[key] = (feats[key] ?? 0) + n;
+}
+
 // 성장 (42절): 자율활동에서 성과를 내면 그 활동의 주 능력치가 BALANCE.growthAmount만큼 오른다 (조련·탐험·연구실 성공, 주문 대결 승리, 토너먼트 참가 — 54절)
 function grow(state: GameState, player: PlayerGameState, activityId: ActivityId, stat: StatKey): void {
   if (!BALANCE.growthActivities[activityId]) return;
@@ -325,6 +337,7 @@ function createPlayer(id: string, name: string, isBot = false): PlayerGameState 
     peekedExploration: null,
     tournamentTrack: 0,
     awards: [],
+    feats: {},
     classCards: [],
     creatures: [],
     equipment: [],
@@ -363,7 +376,14 @@ export function createGame(players: { id: string; name: string; isBot?: boolean 
     cramPointer: 0,
     exams: { midterm: null, final: null },
     examResults: [],
-    hidden: { roll: null, offers: {}, examPlan: pickExamCards(), newsDeck: shuffle(eventTemplates()) },
+    hidden: {
+      roll: null,
+      offers: {},
+      examPlan: pickExamCards(),
+      newsDeck: shuffle(eventTemplates()),
+      ...(BALANCE.tournamentCards ? { tournamentPile: { draw: shuffle(TOURNAMENT_CARDS.map((c) => ({ ...c, id: randomUUID() }))), discard: [] } } : {}),
+    },
+    ...(BALANCE.specialAwards > 0 ? { specialAwards: shuffle(SPECIAL_AWARDS.filter((a) => BALANCE.tournamentCards || a !== "champion")).slice(0, BALANCE.specialAwards) } : {}),
     labPile: createLabPile(),
     explorationPile: createExplorationPile(),
     classDeck: createClassDeck(randomUUID, 1),
@@ -372,9 +392,31 @@ export function createGame(players: { id: string; name: string; isBot?: boolean 
     creatureDiscard: [],
     log: [],
   };
+  if (BALANCE.dreams) dealDreams(state);
   beginFirstRoll(state, turnOrder);
   return state;
 }
+
+// 장래희망 (56절 B2): dreamDeal장씩 나눠 주고, 각자 1장을 고른다. 지금은 실험이라 첫 장을 바로 정한다 (봇은 chooseDream으로 다시 고를 수 있다)
+function dealDreams(state: GameState): void {
+  // 같은 꿈 카드가 2장씩 들어 있다 (6종 × 2 = 12장, 5인이 2장씩 받아도 남는다)
+  const deck = shuffle([...DREAM_CARDS, ...DREAM_CARDS].map((d) => ({ ...d, id: randomUUID() })));
+  for (const id of state.turnOrder) {
+    const hand = deck.splice(0, BALANCE.dreamDeal);
+    state.players[id].dream = hand[0] ?? null;
+    state.players[id].dreamOptions = hand;
+  }
+}
+
+// 받은 장래희망 카드 중 1장을 고른다
+export function chooseDream(state: GameState, playerId: string, dreamId: string): void {
+  const p = state.players[playerId];
+  const pick = p.dreamOptions?.find((d) => d.id === dreamId);
+  if (!pick) throw new Error("받은 장래희망 카드 중에서만 고를 수 있어요.");
+  p.dream = pick;
+}
+
+export const dreamFulfilled = (p: PlayerGameState): boolean => !!p.dream && p.dream.stats.every((s) => effectiveStat(p, s) >= BALANCE.dreamThreshold);
 
 // 게임 시작: 주사위를 굴려 가장 높은 사람이 첫 달의 선 (동점이면 동점자끼리 다시 굴린다)
 function beginFirstRoll(state: GameState, contenders: string[]): void {
@@ -477,7 +519,7 @@ function beginRound(state: GameState): void {
     if (BALANCE.revealOffersAtMonthStart) {
       state.hidden.offers = {};
       state.activityOffers = {};
-      for (const activityId of ["creature", "lab", "exploration"] as ActivityId[]) openOffer(state, activityId);
+      for (const activityId of ["creature", "lab", "exploration", ...(BALANCE.tournamentCards ? ["tournament"] : [])] as ActivityId[]) openOffer(state, activityId);
     }
     beginClassPhase(state);
   }
@@ -667,7 +709,7 @@ export function activityBlockReason(state: ActivityView, playerId: string, activ
   if (!canPay(player, 0, 0, extra)) return `이미 참여한 친구가 있어서 매력기운 ${extra}개가 더 필요해요.`;
   const open = activityOpenCost(state, activityId);
   if (!canPay(player, open, 0, extra)) return `카드를 열 지력기운 ${open}개가 필요해요 (먼저 들어오면 카드를 여는 사람이 지력기운을 내요).`;
-  if (activityId === "tournament" && player.manaTokens < 1) return "마나기운이 1개 이상 필요해요 (낸 마나기운만큼 주사위를 굴려요).";
+  if (activityId === "tournament" && !BALANCE.tournamentCards && player.manaTokens < 1) return "마나기운이 1개 이상 필요해요 (낸 마나기운만큼 주사위를 굴려요).";
   if (activityId === "duel") {
     const need = 1 + BALANCE.duelManaFee;
     if (player.manaTokens < need) return `마나기운이 ${need}개 이상 필요해요 (${BALANCE.duelManaFee}개는 지목당한 친구에게 건네고, 낸 마나기운만큼 주사위를 굴려요).`;
@@ -735,7 +777,16 @@ function resolveCreature(state: GameState, ctx: Extract<RollContext, { kind: "cr
   const success = total >= ctx.target;
   const text = `${describeRoll(dice, [])} = ${total} / 목표 ${ctx.target} ${success ? "성공" : "실패"}`;
   if (success) {
+    const setsBefore = creatureSets(player.creatures);
     player.creatures.push(creature);
+    addFeat(player, "creature");
+    // 56절 A1: 어려운 생물·세트 완성 보너스 학점
+    const rare = creature.trainTarget >= 16 ? BALANCE.creatureRareCredit : 0;
+    const set = creatureSets(player.creatures) > setsBefore ? BALANCE.creatureSetCredit : 0;
+    if (rare + set > 0) {
+      player.credit += rare + set;
+      log(state, `${player.name}: ${rare > 0 ? "귀한 마법생물" : ""}${rare > 0 && set > 0 ? " · " : ""}${set > 0 ? "하늘·육지·바다 세트 완성" : ""} 학점 +${rare + set}`);
+    }
     if (creature.ability.trigger === "acquire" && creature.ability.effect === "spellPower") player.spellPower += creature.ability.amount;
     log(state, `${player.name}: 마법생물 "${creature.name}" 조련 성공! (${text}) ${describeAbility(creature.ability)}`);
     grow(state, player, "creature", "charm");
@@ -774,6 +825,7 @@ function resolveLab(state: GameState, ctx: Extract<RollContext, { kind: "lab" }>
     // 시험 카드는 다음 시험까지 보관하고, 나머지는 효과를 받는 즉시 버림 더미로
     if (lab.kind === "exam" && lab.effect.tempStats) player.equipment.push(lab); // 임시 능력치 카드만 시험까지 보관한다 (51절 이후 기본 카드에는 없다)
     else state.labPile.discard.push(lab);
+    addFeat(player, "lab");
     log(state, `${player.name}: 연구 카드 "${lab.name}" 실험 성공! (${text}) ${lab.summary}`);
     grow(state, player, "lab", "intelligence");
   } else {
@@ -797,8 +849,36 @@ function advanceTournament(state: GameState, player: PlayerGameState, dice: numb
     state,
     `${player.name}: 마법 토너먼트 참가 (${describeRoll(dice, [[`끝까지 달려요(체력기운 ${assist}개)`, boost]])} = ${gain}칸 전진, 트랙 ${player.tournamentTrack}칸)${milestoneCredit > 0 ? ` — 이정표 학점 +${milestoneCredit}` : ""}`,
   );
+  addFeat(player, "tournament", gain);
   // 토너먼트는 참가만 해도 주문력이 성장한다 (54절: 예전엔 성장이 없어 매달 토너먼트만 고르면 승률 4%였다. 마나기운이 귀해 자주 못 나가서 지나치게 강하지 않다)
   grow(state, player, "tournament", "spellPower");
+}
+
+// 대회 카드 (56절 C1): 마나기운을 골라 내고 낸 개수만큼 굴려, 합이 카드의 목표값 이상이면 성공 (성장 + 카드 보상). 실패한 카드는 버린다
+function startTournamentCardRoll(state: GameState, player: PlayerGameState, card: TournamentCard): void {
+  const fuel = BALANCE.rollFuel.tournament;
+  const target = Math.max(1, card.target + BALANCE.tournamentTargetMod);
+  state.hidden.roll = { kind: "tournamentCard", playerId: player.id, card, target };
+  state.pendingRoll = {
+    kind: "tournament",
+    title: `마법 토너먼트 · ${card.name}`,
+    lines: [fuelLine(player, fuel), `주사위 합이 ${target} 이상이면 입상!`],
+    entries: [choiceEntry(player, player.name, card.target, fuel)],
+  };
+}
+
+function resolveTournamentCard(state: GameState, ctx: Extract<RollContext, { kind: "tournamentCard" }>, dice: number[]): void {
+  const player = state.players[ctx.playerId];
+  const total = sum(dice);
+  const success = total >= ctx.target;
+  const text = `${describeRoll(dice, [])} = ${total} / 목표 ${ctx.target} ${success ? "성공" : "실패"}`;
+  state.hidden.tournamentPile?.discard.push(ctx.card);
+  if (success) {
+    applyCardEffect(state, player, ctx.card.reward);
+    addFeat(player, "tournament");
+    log(state, `${player.name}: 대회 "${ctx.card.name}" 입상! (${text}) ${describeEffect(ctx.card.reward)}`);
+    grow(state, player, "tournament", "spellPower");
+  } else log(state, `${player.name}: 대회 "${ctx.card.name}" 아쉽게 탈락... (${text})`);
 }
 
 function startDuel(state: GameState, player: PlayerGameState, target: PlayerGameState): void {
@@ -829,7 +909,7 @@ function resolveDuel(state: GameState, ctx: Extract<RollContext, { kind: "duel" 
   // 마법생물 능력: 참여 시(duel)는 양쪽, 도전받았을 때(defend)는 도전받은 쪽만 적용
   const challengerAbilities = abilitiesOf(player, "duel");
   const defenderAbilities = [...abilitiesOf(target, "duel"), ...abilitiesOf(target, "defend")];
-  const challengerBonus = sumEffect(challengerAbilities, "rollBonus") - sumEffect(defenderAbilities, "enemyRollPenalty");
+  const challengerBonus = sumEffect(challengerAbilities, "rollBonus") - sumEffect(defenderAbilities, "enemyRollPenalty") + BALANCE.duelChallengerBonus;
   const defenderBonus = sumEffect(defenderAbilities, "rollBonus") - sumEffect(challengerAbilities, "enemyRollPenalty");
   const challengerRoll = Math.max(0, sum(challengerDice) + challengerBonus);
   const defenderRoll = Math.max(0, sum(defenderDice) + defenderBonus);
@@ -862,6 +942,7 @@ function resolveDuel(state: GameState, ctx: Extract<RollContext, { kind: "duel" 
     `${player.name}(${rollText(challengerDice, challengerBonus, challengerRoll)})이(가) ${target.name}(${rollText(defenderDice, defenderBonus, defenderRoll)})을(를) 지목! ${winner.name} 승리${feeText}`,
   );
   // 이긴 사람은 주문력이 오른다 (성장)
+  addFeat(winner, "duel");
   grow(state, winner, "duel", "spellPower");
   // 이긴 사람은 정해진 보상(기본 학점 +1)을 받는다 (51절에서 마도서를 없앴다)
   applyCardEffect(state, winner, BALANCE.duelWinReward);
@@ -927,7 +1008,10 @@ function resolveExploration(state: GameState, ctx: Extract<RollContext, { kind: 
   const names = playerIds.map((id) => state.players[id].name).join(" · ");
   log(state, `${names}: 비밀의 방 "${card.name}"${rollText} → ${describeEffect(effect)}${playerIds.length > 1 ? " (두 명 모두 적용)" : ""}${notes.length ? ` ·${notes[0]}` : ""}`);
   // 판정이 있는 탐험에서 성공하면 모두 체력이 오른다 (성장)
-  if (gainsGrowth) for (const id of playerIds) grow(state, state.players[id], "exploration", "stamina");
+  if (gainsGrowth) for (const id of playerIds) {
+    addFeat(state.players[id], "exploration");
+    grow(state, state.players[id], "exploration", "stamina");
+  }
 }
 
 // ── 3주차 구역에 공개된 카드: 처음 들어온 사람이 2장을 열고, 먼저 온 사람이 원하는 카드를 가져가고 남는 카드는 두 번째 참가자가 가져간다 ──
@@ -945,6 +1029,10 @@ function offerViewOf(activityId: ActivityId, card: OfferedCard, round: number): 
     case "lab": {
       const c = card as LabCard;
       return { id: c.id, name: c.name, description: c.description, lines: [c.summary, `실험 판정: 지력기운 주사위 합 ≥ ${labTargetValue()}`, ...failRewardLine(failRewardOf("lab", c))], cost: c.cost > 0 ? { kind: "stamina", amount: c.cost } : undefined };
+    }
+    case "tournament": {
+      const c = card as TournamentCard;
+      return { id: c.id, name: c.name, description: c.description, lines: [`대회 판정: 마나기운 주사위 합 ≥ ${Math.max(1, c.target + BALANCE.tournamentTargetMod)}`, `성공: 주문력 +1 · 학점 +1${Object.keys(c.reward).length ? `, ${describeEffect(c.reward)}` : ""}`] };
     }
     default: {
       const c = card as ExplorationCard;
@@ -966,12 +1054,14 @@ function syncOfferView(state: GameState, activityId: ActivityId): void {
 function drawForZone(state: GameState, activityId: ActivityId): OfferedCard | undefined {
   if (activityId === "creature") return drawCreature(state);
   if (activityId === "lab") return drawFromPile(state.labPile);
+  if (activityId === "tournament") return state.hidden.tournamentPile ? drawFromPile(state.hidden.tournamentPile) : undefined;
   return drawFromPile(state.explorationPile);
 }
 
 function discardToZone(state: GameState, activityId: ActivityId, cards: OfferedCard[]): void {
   if (activityId === "creature") state.creatureDiscard.push(...(cards as CreatureCard[]));
   else if (activityId === "lab") state.labPile.discard.push(...(cards as LabCard[]));
+  else if (activityId === "tournament") state.hidden.tournamentPile?.discard.push(...(cards as TournamentCard[]));
   else state.explorationPile.discard.push(...(cards as ExplorationCard[]));
 }
 
@@ -1023,6 +1113,9 @@ function takeOffered(state: GameState, player: PlayerGameState, activityId: Acti
       startLabRoll(state, player, lab);
       break;
     }
+    case "tournament":
+      startTournamentCardRoll(state, player, card as TournamentCard);
+      break;
     default:
       startExplorationRoll(state, card as ExplorationCard, [player.id]);
   }
@@ -1051,7 +1144,8 @@ function startActivity(state: GameState, choice: ActivityChoice): void {
   const player = state.players[choice.playerId];
   switch (choice.activityId) {
     case "tournament": {
-      startTournament(state, player);
+      if (BALANCE.tournamentCards) startZonePick(state, "tournament", player);
+      else startTournament(state, player);
       break;
     }
     case "duel": {
@@ -1413,6 +1507,9 @@ function resolveRoll(state: GameState): void {
   } else if (ctx.kind === "tournament") {
     advanceTournament(state, state.players[ctx.playerId], diceOf(ctx.playerId), assistOf(ctx.playerId));
     finishResolutionStep(state);
+  } else if (ctx.kind === "tournamentCard") {
+    resolveTournamentCard(state, ctx, diceOf(ctx.playerId));
+    finishResolutionStep(state);
   } else if (ctx.kind === "creature") {
     resolveCreature(state, ctx, diceOf(ctx.playerId));
     if (!state.pendingPick) finishResolutionStep(state);
@@ -1531,6 +1628,7 @@ function resolveExam(state: GameState, examType: "midterm_exam" | "final_exam", 
     const rank = entry.rank;
     const creditAwarded = examCreditForRank(rank);
     state.players[entry.playerId].credit += creditAwarded;
+    addFeat(state.players[entry.playerId], "exam", entry.score);
     result.scores.push({ playerId: entry.playerId, score: entry.score, dice: diceByPlayer[entry.playerId] ?? [], bonus: bonusOf[entry.playerId], rank, creditAwarded });
   });
   state.examResults.push(result);
@@ -1564,19 +1662,36 @@ export const AWARD_NAME: Record<AwardCategory, string> = {
   intelligence: "수석상",
   stamina: "튼튼상",
   creature: "생물사랑상",
+  ...SPECIAL_AWARD_NAME,
 };
-export const AWARD_SUBJECT: Record<AwardCategory, string> = { spellPower: STAT_NAME.spellPower, intelligence: STAT_NAME.intelligence, stamina: STAT_NAME.stamina, creature: "마법생물" };
+export const AWARD_SUBJECT: Record<AwardCategory, string> = { spellPower: STAT_NAME.spellPower, intelligence: STAT_NAME.intelligence, stamina: STAT_NAME.stamina, creature: "마법생물", ...SPECIAL_AWARD_SUBJECT };
 
-// 부문의 값: 능력치는 그 수치, 마법생물은 마리 수 + 완성한 세트 수
+// 부문의 값: 능력치는 그 수치, 마법생물은 마리 수 + 완성한 세트 수. 특별상(56절 B3)은 매력·가장 낮은 능력치·성과 횟수
 export function awardValue(player: PlayerGameState, category: AwardCategory): number {
   if (category === "creature") return player.creatures.length + creatureSets(player.creatures);
-  return effectiveStat(player, category);
+  const feat = (k: FeatKey) => player.feats?.[k] ?? 0;
+  switch (category) {
+    case "allround":
+      return Math.min(...(["intelligence", "stamina", "charm", "spellPower"] as StatKey[]).map((s) => effectiveStat(player, s)));
+    case "explorer":
+      return feat("exploration");
+    case "researcher":
+      return feat("lab");
+    case "duelist":
+      return feat("duel");
+    case "scholar":
+      return feat("exam");
+    case "champion":
+      return BALANCE.tournamentCards ? feat("tournament") : player.tournamentTrack;
+    default:
+      return effectiveStat(player, category);
+  }
 }
 
-// 지금 상태로 시상하면 받을 상 (동점은 같은 순위, 값 0이면 없음, rankPoints 밖의 순위는 0점이라 뺀다)
-export function graduationAwards(players: PlayerGameState[]): Map<string, GraduationAward[]> {
+// 지금 상태로 시상하면 받을 상 (동점은 같은 순위, 값 0이면 없음, rankPoints 밖의 순위는 0점이라 뺀다). special = 올해의 특별상(56절 B3)
+export function graduationAwards(players: PlayerGameState[], special: AwardCategory[] = []): Map<string, GraduationAward[]> {
   const out = new Map(players.map((p) => [p.id, [] as GraduationAward[]]));
-  for (const category of BALANCE.graduationCategories) {
+  for (const category of [...BALANCE.graduationCategories, ...special]) {
     for (const p of players) {
       const value = awardValue(p, category);
       if (value <= 0) continue;
@@ -1595,21 +1710,32 @@ export function finalScore(player: PlayerGameState): number {
   return player.credit;
 }
 
+// 장래희망 학점 (56절 B2)
+const dreamPoints = (p: PlayerGameState) => (dreamFulfilled(p) ? BALANCE.dreamCredit : 0);
+
 // 게임 중 예상 점수: 지금 상태로 졸업하면 받을 학점 (이미 졸업식을 했으면 받은 상이 학점에 들어 있어 그 몫을 뺀 뒤 다시 더한다)
-export function projectedScore(players: PlayerGameState[], player: PlayerGameState): number {
-  return player.credit - awardPoints(player.awards) + awardPoints(graduationAwards(players).get(player.id) ?? []);
+export function projectedScore(players: PlayerGameState[], player: PlayerGameState, special: AwardCategory[] = []): number {
+  const done = player.awards.length > 0 || player.dreamFulfilled !== undefined;
+  const already = done ? awardPoints(player.awards) + (player.dreamFulfilled ? BALANCE.dreamCredit : 0) : 0;
+  return player.credit - already + awardPoints(graduationAwards(players, special).get(player.id) ?? []) + dreamPoints(player);
 }
 
 function finalizeGame(state: GameState): void {
   state.phase = "ended";
   // 졸업식: 부문마다 순위에 따라 학점을 준다 (46절, 52절)
   const players = state.turnOrder.map((id) => state.players[id]);
-  const awards = graduationAwards(players);
+  const awards = graduationAwards(players, state.specialAwards ?? []);
   for (const p of players) {
     p.awards = awards.get(p.id) ?? [];
     p.credit += awardPoints(p.awards);
+    // 장래희망 (56절 B2): 두 능력치가 모두 기준 이상이면 학점
+    if (p.dream) {
+      p.dreamFulfilled = dreamFulfilled(p);
+      p.credit += dreamPoints(p);
+      log(state, `${p.name}: 장래희망 "${p.dream.name}" ${p.dreamFulfilled ? `이뤘어요! 학점 +${BALANCE.dreamCredit}` : "다음 기회에..."}`);
+    }
   }
-  for (const category of BALANCE.graduationCategories) {
+  for (const category of [...BALANCE.graduationCategories, ...(state.specialAwards ?? [])]) {
     const got = players.flatMap((p) => p.awards.filter((w) => w.category === category).map((w) => ({ p, w }))).sort((a, b) => a.w.rank - b.w.rank);
     if (got.length > 0) log(state, `졸업식 ${AWARD_NAME[category]}(${AWARD_SUBJECT[category]}): ${got.map(({ p, w }) => `${w.rank}위 ${p.name} ${w.value} 학점 +${w.points}`).join(", ")}`);
   }
@@ -1640,6 +1766,7 @@ function recoverRollCard(state: GameState): void {
   if (ctx.kind === "creature") state.creatureDiscard.push(ctx.card);
   else if (ctx.kind === "lab") state.labPile.discard.push(ctx.card);
   else if (ctx.kind === "exploration") state.explorationPile.discard.push(ctx.card);
+  else if (ctx.kind === "tournamentCard") state.hidden.tournamentPile?.discard.push(ctx.card);
   else if (ctx.kind === "direction") {
     if (ctx.activity === "creature") state.creatureDiscard.push(ctx.card as CreatureCard);
     else if (ctx.activity === "lab") state.labPile.discard.push(ctx.card as LabCard);

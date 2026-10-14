@@ -1420,7 +1420,7 @@ test("최종: 시험·토너먼트·최종 점수가 모두 동점이면 공동 
 test("졸업식 시상(46절·52절·55절): 4부문(학점·매력은 부문이 아님)마다 순위대로 학점 rankPoints, 동점은 같은 순위·같은 학점, 값 0은 상 없음, 임시 능력치 포함", () => {
   assert.deepEqual(BALANCE.graduationCategories, ["spellPower", "intelligence", "stamina", "creature"]);
   assert.ok(!("credit" in AWARD_NAME), "우등상은 없다");
-  assert.ok(!("charm" in AWARD_NAME), "인기상은 없다 (55절)");
+  assert.ok(!BALANCE.graduationCategories.includes("charm"), "기본 부문에 인기상은 없다 (55절, 56절 특별상 후보로만 남는다)");
   assert.equal(AWARD_NAME.creature, "생물사랑상");
   withBalance({ rankPoints: [6, 3, 1] }, () => {
     const state = newGame(4);

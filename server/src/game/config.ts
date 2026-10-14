@@ -114,6 +114,26 @@ export const BALANCE = {
   // 보조 능력치 (38-6절): 굴리기 전에 그 능력의 기운을 내서 주 판정을 돕는다.
   // 마법 토너먼트 — 체력(지구력): 체력기운 1개당 고정 칸 전진 (주사위가 아니라 고정값)
   tournamentStaminaBoost: 0, // 49절 단순화로 폐지 (0이면 체력기운 보조 없음)
+
+  // ── 공모전 4.5점 개선 실험 (56절). 기본값은 모두 꺼짐 ──
+  // A1 마법생물 보강: 어려운 생물(조련 기준 16 이상)을 조련하면 학점을 더 받는다 / 세트(하늘·육지·바다 1장씩)를 완성하는 순간 학점
+  creatureRareCredit: 0,
+  creatureSetCredit: 0,
+  // A2 주문 대결 보강: 도전자의 굴림에 더하는 값 (도전한 용기)
+  duelChallengerBonus: 0,
+  // B1 순서 규칙: "seat" = 선부터 시계방향 / "creditAsc" = 학점이 낮은 사람부터 (같으면 선부터 시계방향). 정규수업·자율활동·시험·벼락치기 순서에 모두 쓴다
+  turnOrderRule: "seat" as "seat" | "creditAsc",
+  // B2 장래희망 카드: 게임을 시작할 때 dreamDeal장을 받아 1장을 고른다(비공개). 졸업할 때 카드의 두 능력치가 모두 dreamThreshold 이상이면 학점 dreamCredit
+  dreams: false,
+  dreamDeal: 2,
+  dreamThreshold: 4,
+  dreamCredit: 4,
+  // B3 올해의 특별상: 게임을 시작할 때 특별상 카드를 이 장수만큼 공개한다. 졸업식에서 다른 부문과 똑같이 순위 학점(rankPoints)을 준다
+  specialAwards: 0,
+  // C1 대회 카드: 마법 토너먼트를 다른 구역처럼 카드 판정으로 바꾼다 (트랙·최종 순위 보상 없음, 성공하면 성장)
+  tournamentCards: false,
+  // 대회 카드 목표값 보정 (실험용, 카드에 인쇄된 목표에 더한다)
+  tournamentTargetMod: 0,
 };
 
 export function examCreditForRank(rank: number): number {
