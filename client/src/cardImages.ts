@@ -58,23 +58,6 @@ const CARD_IMAGE_FILE: Record<string, string> = {
   "고양이의 귀띔": "lab/lab_insight_cats_whisper.svg",
   "마나기운 꾸러미": "lab/lab_supply_spell_bundle.svg",
   "든든 도시락": "lab/lab_supply_hearty_bento.svg",
-  "속삭이는 지혜서": "grimoire/grimoire_whispering_wisdom.svg",
-  "반짝 연습장": "grimoire/grimoire_sparkle_workbook.svg",
-  "튼튼 마법 체조책": "grimoire/grimoire_gymnastics_book.svg",
-  "매혹의 화술서": "grimoire/grimoire_charm_speech.svg",
-  "반짝 스타일북": "grimoire/grimoire_style_book.svg",
-  "초급 주문집": "grimoire/grimoire_beginner_spells.svg",
-  "별빛 주문집": "grimoire/grimoire_starlight_spells.svg",
-  "방어 마법서": "grimoire/grimoire_defense_magic.svg",
-  "응원 시집": "grimoire/grimoire_cheer_poems.svg",
-  "결투자의 수첩": "grimoire/grimoire_duelist_notes.svg",
-  "저주 대백과": "grimoire/grimoire_curse_encyclopedia.svg",
-  "마력 저장서": "grimoire/grimoire_mana_storage.svg",
-  "도시락 레시피": "grimoire/grimoire_lunch_recipes.svg",
-  "반격 교본": "grimoire/grimoire_counter_manual.svg",
-  "위로의 동화책": "grimoire/grimoire_comfort_storybook.svg",
-  "대마법사의 비전서": "grimoire/grimoire_archmage_arcana.svg",
-  "만능 학습서": "grimoire/grimoire_all_round_study.svg",
   "용의 보물창고": "exploration/exploration_dragon_hoard.svg",
   "전설의 도서관": "exploration/exploration_legendary_library.svg",
   "거인의 씨름장": "exploration/exploration_giants_arena.svg",
@@ -132,7 +115,7 @@ const CARD_IMAGE_FILE: Record<string, string> = {
   "물결 저격수": "creature/creature_ocean_30.svg",
 };
 
-export type CardBackKind = "class" | "creature" | "exam" | "exploration" | "grimoire" | "lab";
+export type CardBackKind = "class" | "creature" | "exam" | "exploration" | "lab";
 
 const BASE = import.meta.env.BASE_URL;
 

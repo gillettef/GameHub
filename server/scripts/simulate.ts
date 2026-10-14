@@ -110,7 +110,6 @@ for (let n = 2; n <= 5; n++) {
     exhausted: [] as number[],
     exhaustRound: [] as number[],
     creatures: [] as number[],
-    grimoires: [] as number[],
   };
   for (let g = 0; g < Math.ceil(games / 2); g++) {
     const state = playGame(Array.from({ length: n }, () => STRATEGIES[0]));
@@ -123,7 +122,6 @@ for (let n = 2; n <= 5; n++) {
       rows.credit.push(p.credit);
       rows.achievement.push(finalScore(p));
       rows.creatures.push(p.creatures.length);
-      rows.grimoires.push(p.grimoires.length);
     }
     rows.top.push(Math.max(...players.map((p) => finalScore(p))));
     rows.exhausted.push(lastNormalExhaustRound > 0 ? 1 : 0);
@@ -139,7 +137,6 @@ for (let n = 2; n <= 5; n++) {
     평균성취도: fixed(mean(rows.achievement)),
     "1위 성취도": fixed(mean(rows.top)),
     마법생물: fixed(mean(rows.creatures)),
-    마도서: fixed(mean(rows.grimoires)),
     "수업카드 소진율": pct(mean(rows.exhausted)),
     "소진 라운드": rows.exhaustRound.length ? fixed(mean(rows.exhaustRound)) : "-",
   });

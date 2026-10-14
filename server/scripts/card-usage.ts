@@ -10,10 +10,10 @@ const mean = (x: number[]) => (x.length ? x.reduce((a, b) => a + b, 0) / x.lengt
 const N = Number(process.argv[2]) || 60;
 const rows: Record<string, unknown>[] = [];
 for (const n of [2, 3, 4, 5]) {
-  const m = { classTaken: [] as number[], classOut: [] as number[], creatures: [] as number[], creatureOut: [] as number[], grimoire: [] as number[], grimOut: [] as number[], expl: [] as number[], lab: [] as number[], cls: [] as number[] };
+  const m = { classTaken: [] as number[], classOut: [] as number[], creatures: [] as number[], creatureOut: [] as number[], expl: [] as number[], lab: [] as number[], cls: [] as number[] };
   for (let g = 0; g < N; g++) {
     const state: GameState = createGame(Array.from({ length: n }, (_, i) => ({ id: `p${i}`, name: `p${i}`, isBot: true })));
-    let classOut = 0, creatureOut = 0, grimOut = 0, explRe = 0, labRe = 0, clsRe = 0;
+    let classOut = 0, creatureOut = 0, explRe = 0, labRe = 0, clsRe = 0;
     let pe = state.explorationPile.draw.length, pl = state.labPile.draw.length, pc = state.classDeck.length;
     let guard = 0;
     while (state.phase !== "ended" && guard++ < 6000) {
@@ -35,15 +35,12 @@ for (const n of [2, 3, 4, 5]) {
       pe = state.explorationPile.draw.length; pl = state.labPile.draw.length; pc = state.classDeck.length;
       if (!classOut && classCardsLeft(state) === 0) classOut = state.round;
       if (!creatureOut && state.creatureDeck.length + state.creatureDiscard.length === 0) creatureOut = state.round;
-      if (!grimOut && state.grimoirePile.draw.length + state.grimoirePile.discard.length === 0) grimOut = state.round;
     }
     const ps = Object.values(state.players);
     m.classTaken.push(ps.reduce((a, p) => a + p.classCards.length, 0));
     m.creatures.push(ps.reduce((a, p) => a + p.creatures.length, 0));
-    m.grimoire.push(ps.reduce((a, p) => a + p.grimoires.length, 0));
     if (classOut) m.classOut.push(classOut);
     if (creatureOut) m.creatureOut.push(creatureOut);
-    if (grimOut) m.grimOut.push(grimOut);
     m.expl.push(explRe); m.lab.push(labRe); m.cls.push(clsRe);
   }
   const f = (x: number) => +x.toFixed(1);
@@ -51,7 +48,6 @@ for (const n of [2, 3, 4, 5]) {
     인원: n,
     "수업카드 획득/48": f(mean(m.classTaken)), "수업 소진 게임": `${m.classOut.length}/${N}`, "소진 라운드": f(mean(m.classOut)),
     "마법생물 획득/30": f(mean(m.creatures)), "생물 소진 게임": `${m.creatureOut.length}/${N}`, "생물 소진 라운드": f(mean(m.creatureOut)),
-    "마도서 획득/17": f(mean(m.grimoire)), "마도서 소진 게임": `${m.grimOut.length}/${N}`, "마도서 소진 라운드": f(mean(m.grimOut)),
     "탐험(25) 재섞기": f(mean(m.expl)), "연구실 재섞기": f(mean(m.lab)), "수업덱 재섞기": f(mean(m.cls)),
   });
 }

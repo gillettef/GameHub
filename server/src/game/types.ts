@@ -34,8 +34,8 @@ export interface NewsEffect {
   cramTo?: KeptToken;
 }
 
-// 졸업식 시상 부문 (46절): 주문력(마법상)·학점(우등상)·지력(수석상)·체력(튼튼상)·매력(인기상)·마법생물(생물사랑상)
-export type AwardCategory = StatKey | "credit" | "creature";
+// 졸업식 시상 부문 (46절, 52절): 주문력(마법상)·지력(수석상)·체력(튼튼상)·매력(인기상)·마법생물(생물사랑상). 학점은 부문이 아니라 승점이다
+export type AwardCategory = StatKey | "creature";
 export interface GraduationAward {
   category: AwardCategory;
   // 그 부문의 값 (마법생물은 마리 수 + 완성한 세트 수), 순위(동점은 같은 순위), 받은 점수
@@ -132,24 +132,12 @@ export interface CreatureCard {
   description: string;
 }
 
-export interface GrimoireCard {
-  id: string;
-  name: string;
-  description: string;
-  statBoost: { stat: StatKey; amount: number };
-  // 마법생물과 같은 방식으로 동작하는 추가 능력 (선택)
-  ability?: CreatureAbility;
-}
-
 export interface ExplorationCard {
   id: string;
   name: string;
   description: string;
   // 판정: 마나기운을 내고 굴린 주사위 합이 목표값 이상이면 성공 (2026-10-02부터 stat은 표시·분류용이고 주사위 수와 무관하다). target은 난이도 × 10 (10이 표준, 라운드마다 목표값이 기준 능력치에 맞춰 오른다). 없으면 무조건 성공
   check?: { stat: StatKey; target: number };
-  // 협력 카드: 두 명이 함께해야 열린다. 각자 마나기운을 내고 주사위를 굴려 둘의 합이 목표값(pairTarget은 난이도 × 18) 이상이면 성공하고 두 명 모두 효과를 받는다.
-  // 끝까지 함께할 친구가 없으면 무효가 된다 (check는 쓰지 않는다)
-  coop?: { stat: StatKey; pairTarget: number };
   success: CardEffect;
   failure: CardEffect;
 }
@@ -187,14 +175,13 @@ export interface PlayerGameState {
   tournamentTrack: number;
   // 경험치 (47절 4안): 아깝게 실패할 때 쌓이고, expPerGrowth만큼 모이면 그 능력치가 성장한다
   exp?: Partial<Record<StatKey, number>>;
-  // 졸업식에서 받은 상 (게임이 끝날 때 정해진다, 46절): 부문마다 순위에 따라 점수를 받는다. 최종 점수 = 받은 점수의 합
+  // 졸업식에서 받은 상 (게임이 끝날 때 정해진다, 46절): 부문마다 순위에 따라 학점을 받아 학점에 더한다. 최종 점수 = 학점
   awards: GraduationAward[];
   classCards: ClassCard[];
   creatures: CreatureCard[];
   // 임시 능력치 효과가 남아 있는 연구 카드 (시험 대비 카드)
   equipment: LabCard[];
   peekedExploration: PeekedExploration | null;
-  grimoires: GrimoireCard[];
   hasActedThisPhase: boolean;
 }
 
@@ -237,17 +224,6 @@ export interface PendingRoll {
   faces?: string[];
 }
 
-// 협력 탐험 카드가 함께할 친구를 기다리는 중 (공개 정보)
-export interface CoopWaiting {
-  playerId: string;
-  name: string;
-  description: string;
-  pairText: string;
-  voidText: string;
-  successText: string;
-  failureText: string;
-}
-
 // 3주차 선택 단계에서 각자 고른 활동 (모두에게 공개). 진행 단계에서는 이 순서대로 하나씩 처리한다
 export interface ActivityChoice {
   playerId: string;
@@ -276,7 +252,7 @@ export type RollContext =
   | { kind: "creature"; playerId: string; card: CreatureCard; target: number }
   | { kind: "lab"; playerId: string; card: LabCard; target: number }
   | { kind: "duel"; challengerId: string; targetId: string }
-  | { kind: "exploration"; card: ExplorationCard; playerIds: string[]; mode: "single" | "pair"; target: number }
+  | { kind: "exploration"; card: ExplorationCard; playerIds: string[]; target: number }
   | { kind: "exam"; examType: "midterm_exam" | "final_exam"; card: ExamCard }
   | { kind: "direction"; activity: "creature" | "lab" | "exploration"; card: CreatureCard | LabCard | ExplorationCard; playerIds: string[]; faces: DirectionOutcome[] };
 
@@ -296,7 +272,7 @@ export interface ActivityOffer {
   cards: OfferCardView[];
 }
 
-export type OfferedCard = CreatureCard | LabCard | ExplorationCard | GrimoireCard;
+export type OfferedCard = CreatureCard | LabCard | ExplorationCard;
 
 export interface HiddenState {
   roll: RollContext | null;
@@ -304,8 +280,6 @@ export interface HiddenState {
   offers: Partial<Record<ActivityId, OfferedCard[]>>;
   // 이번 게임의 시험 카드 (공개 시점 전에는 서버만 안다)
   examPlan: { midterm: ExamCard; final: ExamCard };
-  // 협력 카드를 뽑았지만 아직 함께할 친구가 없는 상태
-  coop: { card: ExplorationCard; playerId: string } | null;
   // 진행 단계에서 지금 처리 중인 활동이 시작될 때의 로그 길이 (활동 결과 문구를 모으는 용도)
   resolveLogStart?: number;
   // 학교 소식 행사 덱 (뽑을 순서대로, 다 쓰면 다시 섞는다)
@@ -339,11 +313,9 @@ export interface GameState {
   // 3주차(자율활동): 구역에 처음 들어온 사람이 열어 둔 카드(모두 볼 수 있다). 먼저 온 사람이 원하는 카드를 가져가고 남는 카드는 두 번째 참가자가 가져간다
   activityOffers: Partial<Record<ActivityId, ActivityOffer>>;
   // 공개된 카드 중 하나를 고르는 중 (take: 구역에서 카드 가져가기, reward: 주문 대결 승자의 마도서 선택)
-  pendingPick: { playerId: string; activityId: ActivityId; mode: "take" | "reward" } | null;
+  pendingPick: { playerId: string; activityId: ActivityId } | null;
   // 주사위를 굴리는 중 (주문 대결·탐험 판정·시험)
   pendingRoll: PendingRoll | null;
-  // 함께할 친구를 기다리는 협력 탐험 카드
-  coopWaiting: CoopWaiting | null;
   // 이번 달 1주차 학교 소식 (게임 시작 전에는 null)
   news: NewsCard | null;
   // 시험 달의 벼락치기: 선부터 한 명씩 고른다 (cramOrder[cramPointer]가 지금 차례)
@@ -356,7 +328,6 @@ export interface GameState {
   hidden: HiddenState;
   labPile: Pile<LabCard>;
   explorationPile: Pile<ExplorationCard>;
-  grimoirePile: Pile<GrimoireCard>;
   classDeck: ClassCard[];
   classDiscard: ClassCard[];
   creatureDeck: CreatureCard[];
@@ -370,7 +341,7 @@ export function effectiveStat(player: PlayerGameState, stat: StatKey): number {
 }
 
 // 클라이언트에 전송되는 게임 상태 (서버 전용 덱 정보 제외)
-export type PublicGameState = Omit<GameState, "hidden" | "labPile" | "explorationPile" | "grimoirePile" | "classDeck" | "classDiscard" | "creatureDeck" | "creatureDiscard"> & {
+export type PublicGameState = Omit<GameState, "hidden" | "labPile" | "explorationPile" | "classDeck" | "classDiscard" | "creatureDeck" | "creatureDiscard"> & {
   // 아직 열 수 있는 수업카드 수. 덱 구성은 비공개지만 남은 장수는 알려 준다
   classLeft: number;
   // 화면 표시용 규칙 수치 (config.ts의 BALANCE에서 가져옴)
@@ -396,7 +367,7 @@ export interface PublicRules {
   finalNoticeRound: number;
   // 마법 토너먼트 최종 순위 보상 (1위, 2위 순서, 학점)
   tournamentRewards: number[];
-  // 최종 점수 = 졸업식 시상 점수의 합 (46절): 부문(graduationCategories)마다 순위에 따라 rankPoints[순위-1]점
+  // 최종 점수 = 학점 (52절): 졸업식에서 부문(graduationCategories)마다 순위에 따라 학점 rankPoints[순위-1]을 더 받는다
   graduationCategories: AwardCategory[];
   rankPoints: number[];
 }

@@ -82,7 +82,7 @@ async function main() {
 
   // 비공개 정보가 클라이언트로 새지 않는지 확인
   const raw = JSON.stringify(game);
-  for (const key of ["classDecks", "creatureDeck", "labPile", "explorationPile", "grimoirePile", "hidden"]) {
+  for (const key of ["classDecks", "creatureDeck", "labPile", "explorationPile", "hidden"]) {
     if (raw.includes(`"${key}"`)) throw new Error(`비공개 필드가 전송되었습니다: ${key}`);
   }
   for (const c of clients) {
