@@ -1558,15 +1558,14 @@ function applyTournamentFinalRewards(state: GameState): void {
   }
 }
 
-// ── 졸업식 시상 (46절, 52절): 학점이 곧 승점이다. 졸업식에서는 5부문 순위에 따라 학점을 더 받고, 최종 학점이 가장 높은 사람이 이긴다 ──
+// ── 졸업식 시상 (46절, 52절, 55절): 학점이 곧 승점이다. 졸업식에서는 4부문(능력치 하나에 부문 하나) 순위에 따라 학점을 더 받고, 최종 학점이 가장 높은 사람이 이긴다 ──
 export const AWARD_NAME: Record<AwardCategory, string> = {
   spellPower: "마법상",
   intelligence: "수석상",
   stamina: "튼튼상",
-  charm: "인기상",
   creature: "생물사랑상",
 };
-export const AWARD_SUBJECT: Record<AwardCategory, string> = { ...STAT_NAME, creature: "마법생물" };
+export const AWARD_SUBJECT: Record<AwardCategory, string> = { spellPower: STAT_NAME.spellPower, intelligence: STAT_NAME.intelligence, stamina: STAT_NAME.stamina, creature: "마법생물" };
 
 // 부문의 값: 능력치는 그 수치, 마법생물은 마리 수 + 완성한 세트 수
 export function awardValue(player: PlayerGameState, category: AwardCategory): number {

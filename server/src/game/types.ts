@@ -24,8 +24,8 @@ export interface NewsEffect {
   cramTo?: KeptToken;
 }
 
-// 졸업식 시상 부문 (46절, 52절): 주문력(마법상)·지력(수석상)·체력(튼튼상)·매력(인기상)·마법생물(생물사랑상). 학점은 부문이 아니라 승점이다
-export type AwardCategory = StatKey | "creature";
+// 졸업식 시상 부문 (46절, 52절, 55절): 주문력(마법상)·지력(수석상)·체력(튼튼상)·마법생물(생물사랑상, 매력의 부문). 인기상은 55절에서 없앴다(매력이 두 부문을 받치던 문제). 학점은 부문이 아니라 승점이다
+export type AwardCategory = Exclude<StatKey, "charm"> | "creature";
 export interface GraduationAward {
   category: AwardCategory;
   // 그 부문의 값 (마법생물은 마리 수 + 완성한 세트 수), 순위(동점은 같은 순위), 받은 점수

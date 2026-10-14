@@ -16,7 +16,7 @@ export const BALANCE = {
   initialStats: { intelligence: 1, stamina: 1, charm: 1, spellPower: 1 } as Record<StatKey, number>,
   initialCredit: 0,
   // 마법 토너먼트: 최종 순위 보상 (1위, 2위 순서). 트랙에는 상한이 없다
-  tournamentRewards: [3, 1], // 49절: 이정표 폐지와 함께 [4, 2] → [3, 1]
+  tournamentRewards: [2, 1], // 55절: 참가하면 성장(54절)이 생겨 [3, 1] → [2, 1] (49절에서 [4, 2] → [3, 1])
   // 마법 토너먼트 이정표: 트랙이 milestoneStep칸을 넘을 때마다 학점 milestoneCredit (49절 단순화로 폐지: 0이면 없음. 토너먼트 보상은 최종 순위 학점만)
   tournamentMilestoneStep: 0,
   tournamentMilestoneCredit: 1,
@@ -59,7 +59,7 @@ export const BALANCE = {
   // 최종 점수 = 학점 (52절: 학점은 능력치가 아니라 승점이다. 시험·토너먼트·주문 대결·카드로 모으고, 졸업식 시상 학점이 더해진다).
   // 졸업식은 부문마다 값이 큰 순서로 순위를 매겨 학점 rankPoints[순위-1]을 준다 (동점은 같은 순위·같은 학점, 값이 0이면 없음, 순위가 표 밖이면 0).
   // 마법생물 부문의 값 = 마리 수 + 완성한 세트(하늘·육지·바다 1장씩) 수. 예전 우등상(학점 부문)은 학점이 승점이 되면서 없앴다
-  graduationCategories: ["spellPower", "intelligence", "stamina", "charm", "creature"] as AwardCategory[],
+  graduationCategories: ["spellPower", "intelligence", "stamina", "creature"] as AwardCategory[], // 55절: 인기상 폐지 (매력 = 마법생물과 교감하는 힘 → 생물사랑상)
   rankPoints: [4, 2, 1], // 52-11절: 6/3/1 → 4/2/1 (1년 동안 모은 학점과 졸업식 학점이 반반이 되도록)
   // 주문 대결 도전자가 지목당한 친구에게 건네는 마나기운 개수 (매력 참가비 duelCharmFee와 별도. 지목당해도 마나기운이 있어야 굴릴 수 있게 하는 장치)
   duelManaFee: 1,
