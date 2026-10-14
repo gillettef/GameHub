@@ -298,7 +298,8 @@ function failLearning(state: GameState, player: PlayerGameState, activityId: "cr
 function grow(state: GameState, player: PlayerGameState, activityId: ActivityId, stat: StatKey): void {
   if (!BALANCE.growthActivities[activityId]) return;
   player[stat] += BALANCE.growthAmount;
-  log(state, `${player.name}: 성장! ${STAT_NAME[stat]} +${BALANCE.growthAmount}`);
+  player.credit += BALANCE.growthCredit;
+  log(state, `${player.name}: 성장! ${STAT_NAME[stat]} +${BALANCE.growthAmount}${BALANCE.growthCredit > 0 ? ` · 학점 +${BALANCE.growthCredit}` : ""}`);
 }
 
 function log(state: GameState, message: string): void {

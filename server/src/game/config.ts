@@ -46,6 +46,8 @@ export const BALANCE = {
   } as Record<"basic" | "advanced", { gain: number; minStat?: number }>,
   // 성장 (42절): 자율활동에서 성과를 내면 그 활동의 주 능력치가 growthAmount만큼 오른다 (조련·탐험·연구실은 성공, 주문 대결은 승리, 토너먼트는 성장 없음)
   growthAmount: 1,
+  // 성장할 때 함께 받는 학점 (52-11절: 활동에서 성과를 내면 학점도 오른다. 학점 트랙이 1년 내내 움직여 판세가 보인다)
+  growthCredit: 1,
   growthActivities: { tournament: false, creature: true, duel: true, exploration: true, lab: true } as Record<ActivityId, boolean>,
   // 3주차 구역(비밀의 방·마법생물·주문 대결·연구실)에서 처음 들어온 사람이 여는 카드 수 (집중이나 특정 카드로 달라질 수 있다)
   activityOpenCount: 2,
@@ -58,7 +60,7 @@ export const BALANCE = {
   // 졸업식은 부문마다 값이 큰 순서로 순위를 매겨 학점 rankPoints[순위-1]을 준다 (동점은 같은 순위·같은 학점, 값이 0이면 없음, 순위가 표 밖이면 0).
   // 마법생물 부문의 값 = 마리 수 + 완성한 세트(하늘·육지·바다 1장씩) 수. 예전 우등상(학점 부문)은 학점이 승점이 되면서 없앴다
   graduationCategories: ["spellPower", "intelligence", "stamina", "charm", "creature"] as AwardCategory[],
-  rankPoints: [6, 3, 1],
+  rankPoints: [4, 2, 1], // 52-11절: 6/3/1 → 4/2/1 (1년 동안 모은 학점과 졸업식 학점이 반반이 되도록)
   // 주문 대결 도전자가 지목당한 친구에게 건네는 마나기운 개수 (매력 참가비 duelCharmFee와 별도. 지목당해도 마나기운이 있어야 굴릴 수 있게 하는 장치)
   duelManaFee: 1,
   // 주문 대결 굴림 순서: true면 지목당한 친구가 먼저 굴리고 도전자가 그 결과를 보고 굴린다 (49절, 뒤에 굴리는 쪽이 유리해서 도전자에게 준다)
