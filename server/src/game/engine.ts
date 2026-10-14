@@ -728,7 +728,7 @@ const newsNote = (state: GameState, activityId: "creature" | "lab") => {
   return mod !== 0 ? ` · ${state.news!.name} 목표 ${mod > 0 ? "+" : "-"}${Math.abs(mod)}` : "";
 };
 
-// 마법생물 조련: 매력기운을 골라 내고 낸 개수만큼 주사위를 굴려, 합이 목표값 이상이면 조련에 성공한다. 실패하면 낸 매력기운만 잃고 카드는 구역에 돌아간다
+// 마법생물 조련: 매력기운을 골라 내고 낸 개수만큼 주사위를 굴려, 합이 목표값 이상이면 조련에 성공한다. 실패하면 낸 매력기운을 잃고 카드는 버린다 (52-7절, 연구실·비밀의 방과 같다)
 function startCreatureRoll(state: GameState, player: PlayerGameState, creature: CreatureCard): void {
   if (BALANCE.directionalResults) return startDirectionalRoll(state, "creature", creature, [player.id]);
   const target = newsTarget(state, "creature", creatureTarget(creature));
@@ -737,7 +737,7 @@ function startCreatureRoll(state: GameState, player: PlayerGameState, creature: 
   state.pendingRoll = {
     kind: "creature",
     title: `마법생물 조련 · ${creature.name}`,
-    lines: [fuelLine(player, fuel), `주사위 합이 ${target} 이상이면 조련 성공! 실패하면 카드는 돌아가요${newsNote(state, "creature")}`],
+    lines: [fuelLine(player, fuel), `주사위 합이 ${target} 이상이면 조련 성공! 실패하면 카드는 버려져요${newsNote(state, "creature")}`],
     entries: [choiceEntry(player, player.name, target, fuel)],
   };
 }
@@ -754,9 +754,8 @@ function resolveCreature(state: GameState, ctx: Extract<RollContext, { kind: "cr
     log(state, `${player.name}: 마법생물 "${creature.name}" 조련 성공! (${text}) ${describeAbility(creature.ability)}`);
     grow(state, player, "creature", "charm");
   } else {
-    // 실패한 카드는 구역으로 돌아가 두 번째 참가자가 도전할 수 있다 (아무도 가져가지 않으면 3주차 끝에 버림 더미로)
-    state.hidden.offers.creature = [...offerCards(state, "creature"), creature];
-    syncOfferView(state, "creature");
+    // 실패한 카드는 버린다 (52-7절, 예전에는 구역으로 돌아가 두 번째 참가자가 도전할 수 있었다)
+    state.creatureDiscard.push(creature);
     log(state, `${player.name}: 마법생물 "${creature.name}" 조련 실패... (${text})`);
     const note = failLearning(state, player, "creature", "charm", isNearMiss(total, ctx.target), creature);
     if (note) log(state, `${player.name}:${note}`);
@@ -1292,8 +1291,7 @@ function resolveDirectional(state: GameState, ctx: Extract<RollContext, { kind: 
       if (creature.ability.trigger === "acquire" && creature.ability.effect === "spellPower") player.spellPower += creature.ability.amount;
       log(state, `${player.name}: 마법생물 "${creature.name}" 주사위 ${face} → 조련 성공! ${describeAbility(creature.ability)}`);
     } else {
-      state.hidden.offers.creature = [...offerCards(state, "creature"), creature];
-      syncOfferView(state, "creature");
+      state.creatureDiscard.push(creature);
       log(state, `${player.name}: 마법생물 "${creature.name}" 주사위 ${face} → ${outcome.label}`);
     }
   } else if (ctx.activity === "lab") {

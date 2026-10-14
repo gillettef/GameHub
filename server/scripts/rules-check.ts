@@ -583,7 +583,7 @@ test("마법생물 조련: 매력기운이 없어도 카드를 골라 공짜 주
   assert.equal(state.players[a].creatures.length, 0, "기준 수치에 못 미치면 실패");
 });
 
-test("마법생물 조련: 낸 매력기운만큼 굴린 주사위 합이 생물마다 고정된 기준 수치 이상이어야 성공하고, 실패하면 기운만 잃고 카드는 구역에 돌아간다", () => {
+test("마법생물 조련: 낸 매력기운만큼 굴린 주사위 합이 생물마다 고정된 기준 수치 이상이어야 성공하고, 실패하면 기운을 잃고 카드는 버려진다 (52-7절)", () => {
   const state = newGame(3);
   toActivity(state);
   setTokens(state, 2);
@@ -602,13 +602,15 @@ test("마법생물 조련: 낸 매력기운만큼 굴린 주사위 합이 생물
   assert.equal(state.players[a].creatures.length, 0);
   assert.equal(state.players[a].charmTokens, 4, "실패해도 낸 기운은 돌려받지 못한다 (4 + b가 건넨 1 - 낸 1)");
   assert.ok(state.log.some((l) => l.message.includes("조련 실패")));
-  assert.equal(state.activityOffers.creature?.cards.length, 2, "실패한 카드는 구역으로 돌아간다");
+  assert.deepEqual(state.activityOffers.creature?.cards.map((c) => c.name), ["하늘의 신비"], "실패한 카드는 구역에 돌아가지 않는다");
+  assert.ok(state.creatureDiscard.some((c) => c.name === "하늘의 꽃마녀"), "실패한 카드는 버림 더미로");
   advanceResolution(state);
-  assert.equal(state.pendingPick?.playerId, b, "두 번째 참가자가 돌아온 카드에 도전할 수 있다");
-  chooseActivityCard(state, b, "test-하늘의 꽃마녀");
+  assert.equal(state.pendingPick?.playerId, b, "두 번째 참가자는 남은 카드에 도전한다");
+  chooseActivityCard(state, b, "test-하늘의 신비");
+  const other = creatureTarget(creature("하늘의 신비"));
   submitRoll(state, b, 2);
-  rollWith(state, { [b]: [Math.ceil(target / 2), Math.floor(target / 2)] }); // 합이 기준과 같아도 성공
-  assert.deepEqual(state.players[b].creatures.map((c) => c.name), ["하늘의 꽃마녀"]);
+  rollWith(state, { [b]: [Math.ceil(other / 2), Math.floor(other / 2)] }); // 합이 기준과 같아도 성공
+  assert.deepEqual(state.players[b].creatures.map((c) => c.name), ["하늘의 신비"]);
 });
 
 test("연구실 실험: 카드 2장을 열어 원하는 카드를 체력기운을 내고 가져가고, 남는 카드는 두 번째 참가자가 가져간다", () => {
