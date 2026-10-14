@@ -1695,7 +1695,7 @@ test("학교 소식: 마법생물 번식기는 조련 목표 -1, 응원단 결�
   assert.equal(duel.players[x].credit, before + 1 + (BALANCE.duelWinReward.credit ?? 0), "결투 대회 +1에 승리 보상이 더해진다");
 });
 
-test("시험 공고(4·10개월): 시험 카드가 공개되고 그달 수업에 시험 과목 카드가 1장 더 나온다", () => {
+test("시험 공고(4·10개월): 시험 카드가 공개되고, 그달 수업카드 수는 평소와 같다 (52-6절)", () => {
   const state = newGame(3);
   let guard = 0;
   while (!(state.round === BALANCE.midtermNoticeRound && state.phase === "class") && guard++ < 3000) botStep(state);
@@ -1703,8 +1703,7 @@ test("시험 공고(4·10개월): 시험 카드가 공개되고 그달 수업에
   assert.equal(state.news?.name, "중간고사 공고");
   const exam = state.exams.midterm;
   assert.ok(exam);
-  assert.equal(state.classMarket.length, 3 + BALANCE.classMarketExtra + 1);
-  assert.ok(state.classMarket.some((c) => c.stat === exam.diceStat), "시험 과목 카드가 있다");
+  assert.equal(state.classMarket.length, 3 + BALANCE.classMarketExtra, "시험 과목 카드가 더 나오지 않는다");
 });
 
 test("49절 단순화 기본값: 선은 매달 시계방향, 정규수업도 선부터, 대결 비용은 마나기운만, 구역 참가비·토너먼트 체력 보조·이정표·탐험 역전 보너스 없음", () => {

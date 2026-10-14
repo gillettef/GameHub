@@ -17,7 +17,6 @@ export interface NewsEffect {
   tournamentBonus?: number;
   gift?: Partial<Record<KeptToken, number>>;
   duelWinCredit?: number;
-  examSubjectExtra?: number;
   cramTo?: KeptToken;
 }
 export interface NewsCard {

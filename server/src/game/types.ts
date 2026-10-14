@@ -26,8 +26,6 @@ export interface NewsEffect {
   gift?: Partial<Record<KeptToken, number>>;
   // 주문 대결 승자가 받는 학점
   duelWinCredit?: number;
-  // 시험 공고: 그달 수업에 시험 과목(주 능력치) 카드를 더 공개한다
-  examSubjectExtra?: number;
   // 시험 주간: 벼락치기로 바꿀 수 있는 시험 과목 기운
   cramTo?: KeptToken;
 }
