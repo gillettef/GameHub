@@ -48,8 +48,6 @@ export interface DirectionOutcome {
   effect: CardEffect;
   // 마법생물을 데려온다 (조련 성공)
   acquire?: boolean;
-  // 탐험의 손해 칸 (함정 간파로 피할 수 있다)
-  harmful?: boolean;
 }
 
 export interface NewsCard {
@@ -216,8 +214,8 @@ export interface PendingRoll {
   // baseDice가 있으면 낸 기운과 상관없이 그만큼 더 굴린다 (기운은 0개부터 낼 수 있다, 47절)
   // 방향형: fuelUsed/fuelLimit = 다시 굴리기·조정에 쓴 재료 기운과 한도(능력치)
   entries: { playerId: string; label: string; diceCount: number; diceToken?: KeptToken; diceChoiceMax?: number; baseDice?: number; fuelUsed?: number; fuelLimit?: number; assistMax?: number; assist?: number; dice: number[] | null; confirmed: boolean; rerolls: number; rerollCounts?: number[] }[];
-  // 이 굴림에서 보조 능력치로 쓸 수 있는 기운 (토너먼트: 체력기운 "끝까지 달려요", 탐험: 지력기운 "함정 간파"). 없으면 해당 없음
-  assist?: { kind: "stamina" | "intelligence"; name: string; title: string; hint: string };
+  // 이 굴림에서 보조 능력치로 쓸 수 있는 기운 (토너먼트: 체력기운 "끝까지 달려요", 설정으로 켰을 때만). 없으면 해당 없음
+  assist?: { kind: "stamina"; name: string; title: string; hint: string };
   // 방향형 결과(48절)의 눈별 효과 (1~6) — 있으면 다시 굴리기·조정은 그 활동의 재료 기운으로 한다
   faces?: string[];
 }

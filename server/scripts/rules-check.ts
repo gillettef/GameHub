@@ -1591,51 +1591,21 @@ test("마법 토너먼트(보조=체력, 지구력): 체력기운 1개당 고정
   assert.equal(state.players[b].tournamentTrack, 7);
 });
 
-test("비밀의 방 탐험(보조=지력, 함정 간파): 지력기운을 내고 굴리면 실패해도 손해가 없다. 성공하면 낸 기운만 사라진다", () => {
-  const base = explorationTemplates().find((c) => c.check)!;
-  const trap = { ...base, id: "test-trap", failure: { nextStamina: -2 }, success: { credit: 1 } };
-  const play = (shield: number, dice: number): { state: GameState; a: string } => {
-    const state = newGame(2);
-    toActivity(state);
-    const [a] = state.activityOrder;
-    state.explorationPile.draw.push(trap, safeExploration(0));
-    Object.assign(state.players[a], { manaTokens: 1, stamina: 2, intelligenceTokens: 2, pendingStaminaTokens: 0, tempBoosts: {} });
-    selectActivity(state, a, "exploration");
-    finishChoosing(state);
-    advanceResolution(state);
-    chooseActivityCard(state, a, "test-trap");
-    assert.equal(state.pendingRoll?.assist?.kind, "intelligence");
-    assert.equal(state.pendingRoll?.entries[0].assistMax, 1, "지력기운이 있으면 함정 간파를 고를 수 있다");
-    submitRoll(state, a, 1, shield);
-    rollWith(state, { [a]: [dice] });
-    return { state, a };
-  };
-  const unshielded = play(0, 1);
-  assert.equal(unshielded.state.players[unshielded.a].pendingStaminaTokens, -2, "간파하지 않고 실패하면 손해를 받는다");
-  assert.equal(unshielded.state.players[unshielded.a].intelligenceTokens, 2);
-  const shielded = play(1, 1);
-  assert.equal(shielded.state.players[shielded.a].pendingStaminaTokens, 0, "함정을 간파했으면 실패해도 손해가 없다");
-  assert.equal(shielded.state.players[shielded.a].intelligenceTokens, 1, "지력기운 1개를 냈다");
-  assert.ok(shielded.state.log.some((l) => l.message.includes("함정을 간파")));
-  const won = play(1, 6 * 1 + 20); // 눈이 아주 커서 성공 (테스트용으로 눈 값을 직접 정한다)
-  assert.equal(won.state.players[won.a].credit, 1, "성공하면 보상은 그대로");
-  assert.equal(won.state.players[won.a].intelligenceTokens, 1, "성공해도 낸 지력기운은 돌려받지 못한다");
-  assert.ok(!won.state.log.some((l) => l.message.includes("함정을 간파")));
-});
-
-test("탐험 함정 간파: 지력기운이 없으면 선택지가 없고, 판정 없는 카드에는 굴림 자체가 없다", () => {
+test("52-5절: 함정 간파는 없다 — 지력기운이 있어도 탐험에 보조 선택지가 없고, 보조 기운을 내려 하면 거절된다", () => {
   const base = explorationTemplates().find((c) => c.check)!;
   const state = newGame(2);
   toActivity(state);
   const [a] = state.activityOrder;
   state.explorationPile.draw.push({ ...base, id: "test-trap" }, safeExploration(0));
-  Object.assign(state.players[a], { manaTokens: 1, intelligenceTokens: 0 });
+  Object.assign(state.players[a], { manaTokens: 1, intelligenceTokens: 5 });
   selectActivity(state, a, "exploration");
   finishChoosing(state);
   advanceResolution(state);
   chooseActivityCard(state, a, "test-trap");
+  assert.equal(state.pendingRoll?.assist, undefined);
   assert.equal(state.pendingRoll?.entries[0].assistMax, undefined);
   assert.throws(() => submitRoll(state, a, 1, 1), /보조 기운/);
+  assert.equal(state.players[a].intelligenceTokens, 5, "지력기운은 그대로");
 });
 
 

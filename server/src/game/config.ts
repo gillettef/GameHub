@@ -118,8 +118,6 @@ export const BALANCE = {
   // 보조 능력치 (38-6절): 굴리기 전에 그 능력의 기운을 내서 주 판정을 돕는다.
   // 마법 토너먼트 — 체력(지구력): 체력기운 1개당 고정 칸 전진 (주사위가 아니라 고정값)
   tournamentStaminaBoost: 0, // 49절 단순화로 폐지 (0이면 체력기운 보조 없음)
-  // 비밀의 방 탐험 — 지력(함정 간파): 지력기운 이 개수를 내면 실패해도 손해(실패 효과)를 받지 않는다 (성공하면 기운만 사라짐)
-  explorationShieldCost: 1,
 };
 
 export function examCreditForRank(rank: number): number {

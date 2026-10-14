@@ -917,14 +917,8 @@ function startExplorationRoll(
       card.description,
       `${fuelLine(state.players[playerIds[0]], BALANCE.rollFuel.exploration)} 합이 ${rule.target} 이상이면 성공`,
     ],
-    // 보조 능력치(지력=함정 간파): 지력기운을 내고 굴리면 실패해도 손해가 없다
-    assist: { kind: "intelligence", name: "지력기운", title: "함정 간파", hint: `지력기운 ${BALANCE.explorationShieldCost}개를 내면 실패해도 손해를 받지 않아요 (성공하면 낸 기운은 그냥 사라져요)` },
     // 주사위 수는 체력기운을 1~보유 개수 사이에서 골라 굴릴 때 낸다 (체력기운이 없어도 1개는 공짜로 굴린다)
-    entries: playerIds.map((id) => {
-      const p = state.players[id];
-      const entry = choiceEntry(p, p.name, rule.target, BALANCE.rollFuel.exploration);
-      return withAssist(entry, p.intelligenceTokens >= BALANCE.explorationShieldCost ? 1 : 0);
-    }),
+    entries: playerIds.map((id) => choiceEntry(state.players[id], state.players[id].name, rule.target, BALANCE.rollFuel.exploration)),
   };
 }
 
@@ -933,7 +927,7 @@ function explorationRule(card: ExplorationCard, round: number): { stat: StatKey;
   return card.check ? { stat: card.check.stat, target: exploreTarget(round, card.check.target) } : null;
 }
 
-function resolveExploration(state: GameState, ctx: Extract<RollContext, { kind: "exploration" }>, dice: Record<string, number[]>, shielded: string[] = []): void {
+function resolveExploration(state: GameState, ctx: Extract<RollContext, { kind: "exploration" }>, dice: Record<string, number[]>): void {
   const { card, playerIds, target } = ctx;
   let success = true;
   let near = false;
@@ -954,15 +948,12 @@ function resolveExploration(state: GameState, ctx: Extract<RollContext, { kind: 
   }
   // 4안: 아깝게 실패하면 손해가 없다
   const effect = success ? card.success : near ? {} : card.failure;
-  // 실패했을 때 함정을 간파한(지력기운을 낸) 사람은 손해를 받지 않는다
-  const safe = success ? [] : playerIds.filter((id) => shielded.includes(id));
-  for (const id of playerIds) if (!safe.includes(id)) applyCardEffect(state, state.players[id], effect);
+  for (const id of playerIds) applyCardEffect(state, state.players[id], effect);
   const notes = !success && rule ? playerIds.map((id) => failLearning(state, state.players[id], "exploration", "stamina", near, card)).filter(Boolean) : [];
   state.explorationPile.discard.push(card);
   const gainsGrowth = !!rule && success;
   const names = playerIds.map((id) => state.players[id].name).join(" · ");
-  const shieldText = safe.length > 0 ? ` — ${safe.map((id) => state.players[id].name).join(" · ")}은(는) 함정을 간파해서 손해를 피했어요` : "";
-  log(state, `${names}: 비밀의 방 "${card.name}"${rollText} → ${describeEffect(effect)}${playerIds.length > 1 ? " (두 명 모두 적용)" : ""}${shieldText}${notes.length ? ` ·${notes[0]}` : ""}`);
+  log(state, `${names}: 비밀의 방 "${card.name}"${rollText} → ${describeEffect(effect)}${playerIds.length > 1 ? " (두 명 모두 적용)" : ""}${notes.length ? ` ·${notes[0]}` : ""}`);
   // 판정이 있는 탐험에서 성공하면 모두 체력이 오른다 (성장)
   if (gainsGrowth) for (const id of playerIds) grow(state, state.players[id], "exploration", "stamina");
 }
@@ -1261,7 +1252,7 @@ export function directionFaces(activity: "creature" | "lab" | "exploration", car
     return [int, int, lesson, lesson, energy, energy];
   }
   const x = card as ExplorationCard;
-  const hurt = O(`함정: ${describeEffect(x.failure)}`, x.failure, { harmful: true });
+  const hurt = O(`함정: ${describeEffect(x.failure)}`, x.failure);
   const grow = O("체력 +1", { stats: { stamina: 1 } });
   const energy = O("체력기운 +2", { tokens: { stamina: 2 } });
   const small = O("체력기운 +1", { tokens: { stamina: 1 } });
@@ -1286,29 +1277,18 @@ function startDirectionalRoll(state: GameState, activity: "creature" | "lab" | "
       ...(playerIds.length > 1 ? ["둘 중 더 좋은 눈 하나로 둘 다 효과를 받아요"] : []),
     ],
     faces: faces.map((f, i) => `${i + 1}: ${f.label}`),
-    ...(activity === "exploration"
-      ? { assist: { kind: "intelligence" as const, name: "지력기운", title: "함정 간파", hint: `지력기운 ${BALANCE.explorationShieldCost}개를 내면 함정 칸이 나와도 손해를 받지 않아요` } }
-      : {}),
     entries: playerIds.map((id) => {
       const p = state.players[id];
-      const entry = { playerId: id, label: p.name, diceCount: 1, diceToken: fuel, dice: null, confirmed: false, rerolls: 0, fuelUsed: 0, fuelLimit: rollLimit(p, fuel) };
-      return activity === "exploration" ? withAssist(entry, p.intelligenceTokens >= BALANCE.explorationShieldCost ? 1 : 0) : entry;
+      return { playerId: id, label: p.name, diceCount: 1, diceToken: fuel, dice: null, confirmed: false, rerolls: 0, fuelUsed: 0, fuelLimit: rollLimit(p, fuel) };
     }),
   };
 }
 
-function resolveDirectional(state: GameState, ctx: Extract<RollContext, { kind: "direction" }>, faceOf: Record<string, number>, shielded: string[]): void {
+function resolveDirectional(state: GameState, ctx: Extract<RollContext, { kind: "direction" }>, faceOf: Record<string, number>): void {
   // 협력 탐험은 둘 중 더 좋은 눈 (표에서 뒤쪽일수록 좋다) 하나로 둘 다 받는다
   const face = Math.max(...ctx.playerIds.map((id) => faceOf[id] ?? 1));
   const outcome = ctx.faces[face - 1];
-  for (const id of ctx.playerIds) {
-    const p = state.players[id];
-    if (outcome.harmful && shielded.includes(id)) {
-      log(state, `${p.name}: 함정을 간파해서 손해를 피했어요`);
-      continue;
-    }
-    applyCardEffect(state, p, outcome.effect);
-  }
+  for (const id of ctx.playerIds) applyCardEffect(state, state.players[id], outcome.effect);
   const names = ctx.playerIds.map((id) => state.players[id].name).join(" · ");
   if (ctx.activity === "creature") {
     const creature = ctx.card as CreatureCard;
@@ -1359,7 +1339,7 @@ export function submitRoll(state: GameState, playerId: string, diceCount?: numbe
     delete entry.diceChoiceMax;
   }
   if (assist > 0 && assistKind) {
-    pay(player, assistKind, assistKind === "intelligence" ? assist * BALANCE.explorationShieldCost : assist);
+    pay(player, assistKind, assist);
     entry.assist = assist;
   }
   delete entry.assistMax;
@@ -1472,10 +1452,10 @@ function resolveRoll(state: GameState): void {
     resolveDuel(state, ctx, diceOf(ctx.challengerId), diceOf(ctx.targetId));
     if (!state.pendingPick) finishResolutionStep(state);
   } else if (ctx.kind === "direction") {
-    resolveDirectional(state, ctx, Object.fromEntries(ctx.playerIds.map((id) => [id, diceOf(id)[0] ?? 1])), ctx.playerIds.filter((id) => assistOf(id) > 0));
+    resolveDirectional(state, ctx, Object.fromEntries(ctx.playerIds.map((id) => [id, diceOf(id)[0] ?? 1])));
     if (!state.pendingPick) finishResolutionStep(state);
   } else if (ctx.kind === "exploration") {
-    resolveExploration(state, ctx, Object.fromEntries(ctx.playerIds.map((id) => [id, diceOf(id)])), ctx.playerIds.filter((id) => assistOf(id) > 0));
+    resolveExploration(state, ctx, Object.fromEntries(ctx.playerIds.map((id) => [id, diceOf(id)])));
     finishResolutionStep(state);
   } else {
     resolveExam(state, ctx.examType, ctx.card, Object.fromEntries(state.turnOrder.map((id) => [id, diceOf(id)])));

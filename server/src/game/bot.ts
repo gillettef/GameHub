@@ -198,8 +198,7 @@ function effectValue(state: GameState, strategy: BotStrategy, e: CardEffect): nu
 }
 
 // 방향형 결과(48절)의 눈 하나의 가치
-function outcomeValue(state: GameState, strategy: BotStrategy, player: PlayerGameState, card: CreatureCard | LabCard | ExplorationCard, o: DirectionOutcome, shielded = false): number {
-  if (o.harmful && shielded) return 0;
+function outcomeValue(state: GameState, strategy: BotStrategy, player: PlayerGameState, card: CreatureCard | LabCard | ExplorationCard, o: DirectionOutcome): number {
   return effectValue(state, strategy, o.effect) + (o.acquire ? 1.5 * creatureValue(state, strategy, player, card as CreatureCard) + 1 : 0);
 }
 const directionalCardValue = (state: GameState, strategy: BotStrategy, player: PlayerGameState, activity: "creature" | "lab" | "exploration", card: CreatureCard | LabCard | ExplorationCard) =>
@@ -214,19 +213,12 @@ function explorationValue(state: GameState, strategy: BotStrategy, player: Playe
   return p * success + (1 - p) * failure;
 }
 
-// 굴리기 전에 쓸 보조 능력치 기운 개수 (38-6절). 토너먼트: 다음 달로 남길 체력기운 1개만 빼고 모두 달리는 데 쓴다.
-// 탐험: 실패하면 손해가 있는 카드이고 지력기운이 있으면 함정을 간파한다
+// 굴리기 전에 쓸 보조 능력치 기운 개수 (38-6절). 토너먼트(설정으로 켰을 때): 다음 달로 남길 체력기운 1개만 빼고 모두 달리는 데 쓴다
 export function botAssist(state: GameState, playerId: string): number {
   const pending = state.pendingRoll;
   const max = pending?.entries.find((e) => e.playerId === playerId)?.assistMax ?? 0;
   if (!pending?.assist || max <= 0) return 0;
-  if (pending.assist.kind === "stamina") return Math.min(max, Math.max(0, state.players[playerId].staminaTokens - 1));
-  const ctx = state.hidden.roll;
-  const card = ctx?.kind === "exploration" ? ctx.card : ctx?.kind === "direction" && ctx.activity === "exploration" ? (ctx.card as ExplorationCard) : null;
-  if (!card) return 0;
-  const f = card.failure;
-  const harmful = [...Object.values(f.stats ?? {}), ...Object.values(f.tempStats ?? {}), f.credit ?? 0, f.nextMana ?? 0, f.nextStamina ?? 0].some((n) => (n ?? 0) < 0);
-  return harmful ? 1 : 0;
+  return Math.min(max, Math.max(0, state.players[playerId].staminaTokens - 1));
 }
 
 // 결과 확인 전에 남은 마나기운으로 낮게 나온 주사위를 다시 굴린다 (선 정하기는 제외). 목표값이 있는 혼자 판정(조련·연구실·탐험)은
@@ -272,8 +264,7 @@ function steerDirectional(state: GameState, playerId: string, strategy: BotStrat
   if (ctx?.kind !== "direction" || !pending) return;
   const entry = pending.entries.find((e) => e.playerId === playerId)!;
   const player = state.players[playerId];
-  const shielded = (entry.assist ?? 0) > 0;
-  const v = ctx.faces.map((o) => outcomeValue(state, strategy, player, ctx.card, o, shielded));
+  const v = ctx.faces.map((o) => outcomeValue(state, strategy, player, ctx.card, o));
   const mean = v.reduce((a, b) => a + b, 0) / 6;
   for (let guard = 0; guard < 8; guard++) {
     const f = entry.dice![0] - 1;
