@@ -28,7 +28,6 @@ import {
   type DirectionOutcome,
   type ExplorationCard,
   type GameState,
-  type GrimoireCard,
   type KeptToken,
   type LabCard,
   type PlayerGameState,
@@ -121,18 +120,17 @@ export function playCramTurn(state: GameState, playerId: string): void {
 // 50절: 공개된 구역 카드 중 내가 가져갈 수 있는 카드의 가치. 이미 누가 들어간 구역이면 먼저 온 사람이 가장 좋은 카드를 가져간다고 보고 남는 카드로 계산한다
 function zoneOutlook(state: GameState, strategy: BotStrategy, player: PlayerGameState, activityId: ActivityId): number {
   if (activityId === "tournament") return 0;
-  // 마도서가 없는 규칙(51절)에서 주문 대결의 가치 = 이길 확률·지목 부담을 감안한 0.35 × (승리 보상 + 주문력 성장)
-  if (activityId === "duel" && !BALANCE.duelGrimoires)
+  // 주문 대결의 가치 = 이길 확률·지목 부담을 감안한 0.35 × (승리 보상 + 주문력 성장)
+  if (activityId === "duel")
     return 0.35 * (effectValue(state, strategy, BALANCE.duelWinReward) + effectValue(state, strategy, { stats: { spellPower: BALANCE.growthAmount } }));
   const cards = state.hidden.offers[activityId] ?? [];
   const valueOf = (card: (typeof cards)[number]): number => {
     if (activityId === "creature") return creatureValue(state, strategy, player, card as CreatureCard);
     if (activityId === "lab") return canPay(player, 0, (card as LabCard).cost) ? effectValue(state, strategy, (card as LabCard).effect) - (card as LabCard).cost * 0.3 : -1;
-    if (activityId === "duel") return 0.5 * grimoireValue(state, strategy, card as GrimoireCard);
     return explorationValue(state, strategy, player, card as ExplorationCard);
   };
   const values = cards.map(valueOf).sort((a, b) => b - a);
-  const taken = activityId === "duel" ? 0 : state.activitySlots[activityId].length;
+  const taken = state.activitySlots[activityId].length;
   return Math.max(0, values[taken] ?? 0);
 }
 
@@ -207,11 +205,10 @@ function outcomeValue(state: GameState, strategy: BotStrategy, player: PlayerGam
 const directionalCardValue = (state: GameState, strategy: BotStrategy, player: PlayerGameState, activity: "creature" | "lab" | "exploration", card: CreatureCard | LabCard | ExplorationCard) =>
   directionFaces(activity, card).reduce((a, o) => a + outcomeValue(state, strategy, player, card, o), 0) / 6;
 
-// 탐험 카드: 성공 확률(주사위 + 능력치 + 집중 + 역전 보너스)로 기대값을 계산한다. 협력 카드는 두 번째 참가자를 기다려야 해서 낮게 본다
+// 탐험 카드: 성공 확률(주사위 + 능력치 + 집중 + 역전 보너스)로 기대값을 계산한다
 function explorationValue(state: GameState, strategy: BotStrategy, player: PlayerGameState, card: ExplorationCard): number {
   const success = effectValue(state, strategy, card.success);
   const failure = effectValue(state, strategy, card.failure);
-  if (card.coop) return 0.6 * success;
   if (!card.check) return success;
   const p = explorationChance(state, player, card);
   return p * success + (1 - p) * failure;
@@ -244,7 +241,7 @@ export function rerollLowDice(state: GameState, playerId: string, strategy: BotS
   const sum = (xs: number[]) => xs.reduce((a, b) => a + b, 0);
   let need: number | null = null;
   if (ctx?.kind === "creature" || ctx?.kind === "lab") need = ctx.target;
-  else if (ctx?.kind === "exploration" && ctx.mode === "single") need = ctx.target - (overallGap(state, playerId) >= BALANCE.catchUpGap ? BALANCE.catchUpBonus : 0);
+  else if (ctx?.kind === "exploration") need = ctx.target - (overallGap(state, playerId) >= BALANCE.catchUpGap ? BALANCE.catchUpBonus : 0);
   if (need !== null) {
     while (p.manaTokens > 0 && sum(entry.dice) < need) {
       const lowest = entry.dice.indexOf(Math.min(...entry.dice));
@@ -307,10 +304,6 @@ function creatureValue(state: GameState, strategy: BotStrategy, player: PlayerGa
   return v - card.trainTarget * 0.025;
 }
 
-function grimoireValue(state: GameState, strategy: BotStrategy, card: GrimoireCard): number {
-  return card.statBoost.amount * weightsOf(state, strategy)[card.statBoost.stat] * examWeight(state, card.statBoost.stat) + (card.ability ? 0.4 : 0);
-}
-
 // 구역에 공개된 카드 중 고를 카드의 id (비용을 낼 수 있는 카드만). 마법생물·연구 카드는 살 수 있는 카드가 없으면 null(가져가지 않고 넘어감)
 export function choosePick(state: GameState, strategy: BotStrategy): string | null {
   const pick = state.pendingPick;
@@ -325,7 +318,7 @@ export function choosePick(state: GameState, strategy: BotStrategy): string | nu
   if (options.length === 0) return null;
   if (strategy.random) return pickOne(options).id;
   const value = (card: (typeof cards)[number]): number => {
-    if (BALANCE.directionalResults && pick.activityId !== "duel") {
+    if (BALANCE.directionalResults) {
       const v = directionalCardValue(state, strategy, player, pick.activityId as "creature" | "lab" | "exploration", card as CreatureCard | LabCard | ExplorationCard);
       return pick.activityId === "lab" ? v - (card as LabCard).cost * 0.3 : v;
     }
@@ -336,10 +329,8 @@ export function choosePick(state: GameState, strategy: BotStrategy): string | nu
         const lab = card as LabCard;
         return effectValue(state, strategy, lab.effect) - lab.cost * 0.3; // 같은 효과라면 싼 카드가 좋다
       }
-      case "exploration":
-        return explorationValue(state, strategy, player, card as ExplorationCard);
       default:
-        return grimoireValue(state, strategy, card as GrimoireCard);
+        return explorationValue(state, strategy, player, card as ExplorationCard);
     }
   };
   return [...options].sort((a, b) => value(b) - value(a))[0].id;

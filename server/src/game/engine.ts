@@ -4,7 +4,6 @@ import {
   createClassDeck,
   createCreatureDeck,
   createExplorationPile,
-  createGrimoirePile,
   createLabPile,
   drawFromPile,
   peekPile,
@@ -21,11 +20,9 @@ import {
   type ActivityId,
   type CardEffect,
   type ClassCard,
-  type CoopWaiting,
   type CreatureAbility,
   type CreatureCard,
   type ExplorationCard,
-  type GrimoireCard,
   type LabCard,
   type OfferCardView,
   type OfferedCard,
@@ -73,9 +70,8 @@ export function benchmarkStat(round: number): number {
 export function rollTarget(round: number, difficulty: number): number {
   return Math.max(1, Math.round(dieMean() * benchmarkStat(round) * difficulty));
 }
-// 탐험 카드의 target은 난이도 × 10, 협력 카드의 pairTarget은 난이도 × 18 (둘이 굴리므로 목표값은 2배)
+// 탐험 카드의 target은 난이도 × 10
 const exploreTarget = (round: number, target: number) => rollTarget(round, (target / 10) * BALANCE.exploreDifficultyScale);
-const coopTarget = (round: number, pairTarget: number) => 2 * rollTarget(round, (pairTarget / 18) * BALANCE.exploreDifficultyScale);
 export const labTargetValue = () => BALANCE.labTarget;
 
 // ── 주사위 재료 기운 (39절): 활동마다 주 능력치의 기운을 골라 낸 만큼 주사위를 굴린다 (BALANCE.rollFuel).
@@ -219,11 +215,7 @@ export function creatureSets(creatures: CreatureCard[]): number {
 
 // 플레이어가 가진 마법생물 중 해당 트리거의 능력만 모은다
 function abilitiesOf(player: PlayerGameState, trigger: CreatureAbility["trigger"]): CreatureAbility[] {
-  const abilities = [
-    ...player.creatures.map((c) => c.ability),
-    ...player.grimoires.flatMap((g) => (g.ability ? [g.ability] : [])),
-  ];
-  return abilities.filter((a) => a.trigger === trigger);
+  return player.creatures.map((c) => c.ability).filter((a) => a.trigger === trigger);
 }
 
 function sumEffect(abilities: CreatureAbility[], effect: CreatureAbility["effect"]): number {
@@ -250,9 +242,8 @@ function drawClassCard(state: GameState): ClassCard | undefined {
 const STAT_NAME: Record<StatKey, string> = { intelligence: "지력", stamina: "체력", charm: "매력", spellPower: "주문력" };
 const LEVEL_NAME: Record<ClassCard["level"], string> = { basic: "기초", advanced: "심화" };
 
-// 탐험 카드의 판정 문구 (엿보기·협력 대기·구역 공개 카드 표시용)
+// 탐험 카드의 판정 문구 (엿보기·구역 공개 카드 표시용)
 function checkTextOf(card: ExplorationCard, round: number): string | undefined {
-  if (card.coop) return `협력 카드 — 둘이 각자 체력기운을 내고 낸 개수만큼 주사위를 굴려 둘의 합이 ${coopTarget(round, card.coop.pairTarget)} 이상이면 성공 (혼자면 무효)`;
   if (!card.check) return undefined;
   return `판정 (체력기운 주사위 합 ${exploreTarget(round, card.check.target)} 이상)`;
 }
@@ -343,7 +334,6 @@ function createPlayer(id: string, name: string, isBot = false): PlayerGameState 
     classCards: [],
     creatures: [],
     equipment: [],
-    grimoires: [],
     hasActedThisPhase: false,
   };
 }
@@ -374,16 +364,14 @@ export function createGame(players: { id: string; name: string; isBot?: boolean 
     activityOffers: {},
     pendingPick: null,
     pendingRoll: null,
-    coopWaiting: null,
     news: null,
     cramOrder: [],
     cramPointer: 0,
     exams: { midterm: null, final: null },
     examResults: [],
-    hidden: { roll: null, coop: null, offers: {}, examPlan: pickExamCards(), newsDeck: shuffle(eventTemplates()) },
+    hidden: { roll: null, offers: {}, examPlan: pickExamCards(), newsDeck: shuffle(eventTemplates()) },
     labPile: createLabPile(),
     explorationPile: createExplorationPile(),
-    grimoirePile: createGrimoirePile(),
     classDeck: createClassDeck(randomUUID, 1),
     classDiscard: [],
     creatureDeck: createCreatureDeck(),
@@ -434,7 +422,7 @@ export function failRewardOf(activityId: "creature" | "lab" | "exploration" | "d
   if (activityId === "lab") return { tokens: { intelligence: 1 } };
   if (activityId === "exploration") {
     const c = card as ExplorationCard;
-    return { tokens: { stamina: (c.check?.target ?? 0) >= 10 || c.coop ? 2 : 1 } };
+    return { tokens: { stamina: (c.check?.target ?? 0) >= 10 ? 2 : 1 } };
   }
   return { tokens: { mana: 1 } };
 }
@@ -495,7 +483,7 @@ function beginRound(state: GameState): void {
     if (BALANCE.revealOffersAtMonthStart) {
       state.hidden.offers = {};
       state.activityOffers = {};
-      for (const activityId of (BALANCE.duelGrimoires ? ["creature", "lab", "exploration", "duel"] : ["creature", "lab", "exploration"]) as ActivityId[]) openOffer(state, activityId);
+      for (const activityId of ["creature", "lab", "exploration"] as ActivityId[]) openOffer(state, activityId);
     }
     beginClassPhase(state);
   }
@@ -652,8 +640,7 @@ function beginActivityPhase(state: GameState): void {
   if (!BALANCE.revealOffersAtMonthStart) state.activityOffers = {};
   state.pendingPick = null;
   state.pendingRoll = null;
-  state.coopWaiting = null;
-  state.hidden = { ...state.hidden, roll: null, coop: null, offers: BALANCE.revealOffersAtMonthStart ? state.hidden.offers : {} }; // 시험 카드 계획(examPlan)은 게임 내내 유지
+  state.hidden = { ...state.hidden, roll: null, offers: BALANCE.revealOffersAtMonthStart ? state.hidden.offers : {} }; // 시험 카드 계획(examPlan)은 게임 내내 유지
   for (const playerId of state.turnOrder) {
     state.players[playerId].hasActedThisPhase = false;
   }
@@ -664,7 +651,7 @@ function beginActivityPhase(state: GameState): void {
 
 // ── 자율활동: 구역 선택 규칙 ──
 
-export type ActivityView = Pick<GameState, "activitySlots" | "players" | "turnOrder" | "coopWaiting" | "activityOffers">;
+export type ActivityView = Pick<GameState, "activitySlots" | "players" | "turnOrder" | "activityOffers">;
 
 // 구역에 처음 들어와 카드를 여는 사람이 내는 지력기운 (BALANCE.openCardCostActivities의 활동: 마법생물·주문 대결·비밀의 방·연구실. 마법 토너먼트는 카드가 없다).
 // 이미 다른 친구가 고른 구역이면(두 번째 참가자) 새로 열 필요가 없으니 내지 않는다
@@ -907,18 +894,9 @@ function resolveDuel(state: GameState, ctx: Extract<RollContext, { kind: "duel" 
     winner.credit += winCredit;
     log(state, `${winner.name}: ${state.news!.name} 우승 보너스 학점 +${winCredit}`);
   }
-  // 마도서를 없앤 규칙(51절)에서는 이긴 사람이 정해진 보상(기본 학점 +1)을 받는다
-  if (!BALANCE.duelGrimoires) {
-    applyCardEffect(state, winner, BALANCE.duelWinReward);
-    log(state, `${winner.name}: 주문 대결 승리 보상 ${describeEffect(BALANCE.duelWinReward)}`);
-    return;
-  }
-  // 이긴 사람이 구역에 공개된 마도서 중 1장을 가져간다 (한 장만 남았으면 자동으로)
-  const rewards = offerCards(state, "duel");
-  if (rewards.length === 1) takeOffered(state, winner, "duel", rewards[0]);
-  else if (rewards.length > 1) {
-    state.pendingPick = { playerId: winner.id, activityId: "duel", mode: "reward" };
-  }
+  // 이긴 사람은 정해진 보상(기본 학점 +1)을 받는다 (51절에서 마도서를 없앴다)
+  applyCardEffect(state, winner, BALANCE.duelWinReward);
+  log(state, `${winner.name}: 주문 대결 승리 보상 ${describeEffect(BALANCE.duelWinReward)}`);
 }
 
 // 탐험 판정 주사위 굴리기 시작 (판정 없는 카드는 바로 처리)
@@ -926,49 +904,45 @@ function startExplorationRoll(
   state: GameState,
   card: ExplorationCard,
   playerIds: string[],
-  mode: "single" | "pair",
 ): void {
-  const base = explorationRule(card, mode, state.round);
+  const base = explorationRule(card, state.round);
   if (!base) {
-    resolveExploration(state, { kind: "exploration", card, playerIds, mode, target: 0 }, {});
+    resolveExploration(state, { kind: "exploration", card, playerIds, target: 0 }, {});
     return;
   }
   if (BALANCE.directionalResults) return startDirectionalRoll(state, "exploration", card, playerIds);
   // 이달의 소식(봄 소풍·장마철 등)이 탐험 목표값을 바꾼다
   const rule = { ...base, target: Math.max(1, base.target + (newsEffect(state).targetMod?.exploration ?? 0)) };
-  state.hidden.roll = { kind: "exploration", card, playerIds, mode, target: rule.target };
+  state.hidden.roll = { kind: "exploration", card, playerIds, target: rule.target };
   state.pendingRoll = {
     kind: "exploration",
     title: `비밀의 방 · ${card.name}`,
     lines: [
       card.description,
-      mode === "pair"
-        ? `각자 체력기운을 내고 낸 개수만큼 주사위를 굴려 둘의 합이 ${rule.target} 이상이면 성공! 보상은 둘 다 받아요 (체력기운이 없으면 공짜 주사위 1개)`
-        : `${fuelLine(state.players[playerIds[0]], BALANCE.rollFuel.exploration)} 합이 ${rule.target} 이상이면 성공`,
+      `${fuelLine(state.players[playerIds[0]], BALANCE.rollFuel.exploration)} 합이 ${rule.target} 이상이면 성공`,
     ],
     // 보조 능력치(지력=함정 간파): 지력기운을 내고 굴리면 실패해도 손해가 없다
     assist: { kind: "intelligence", name: "지력기운", title: "함정 간파", hint: `지력기운 ${BALANCE.explorationShieldCost}개를 내면 실패해도 손해를 받지 않아요 (성공하면 낸 기운은 그냥 사라져요)` },
     // 주사위 수는 체력기운을 1~보유 개수 사이에서 골라 굴릴 때 낸다 (체력기운이 없어도 1개는 공짜로 굴린다)
     entries: playerIds.map((id) => {
       const p = state.players[id];
-      const entry = choiceEntry(p, p.name, mode === "pair" ? Math.ceil(rule.target / 2) : rule.target, BALANCE.rollFuel.exploration);
+      const entry = choiceEntry(p, p.name, rule.target, BALANCE.rollFuel.exploration);
       return withAssist(entry, p.intelligenceTokens >= BALANCE.explorationShieldCost ? 1 : 0);
     }),
   };
 }
 
-// 탐험 카드의 판정 규칙: 협력 카드는 두 명의 합, 일반 카드는 혼자 판정. 목표값은 라운드에 맞춰 계산한다. 판정이 없는 카드는 null
-function explorationRule(card: ExplorationCard, mode: "single" | "pair", round: number): { stat: StatKey; target: number } | null {
-  if (mode === "pair" && card.coop) return { stat: card.coop.stat, target: coopTarget(round, card.coop.pairTarget) };
+// 탐험 카드의 판정 규칙: 혼자 판정하고 목표값은 라운드에 맞춰 계산한다. 판정이 없는 카드는 null
+function explorationRule(card: ExplorationCard, round: number): { stat: StatKey; target: number } | null {
   return card.check ? { stat: card.check.stat, target: exploreTarget(round, card.check.target) } : null;
 }
 
 function resolveExploration(state: GameState, ctx: Extract<RollContext, { kind: "exploration" }>, dice: Record<string, number[]>, shielded: string[] = []): void {
-  const { card, playerIds, mode, target } = ctx;
+  const { card, playerIds, target } = ctx;
   let success = true;
   let near = false;
   let rollText = "";
-  const rule = explorationRule(card, mode, state.round);
+  const rule = explorationRule(card, state.round);
   if (rule) {
     const parts = playerIds.map((id) => {
       const p = state.players[id];
@@ -980,10 +954,7 @@ function resolveExploration(state: GameState, ctx: Extract<RollContext, { kind: 
     const total = sum(parts.map((x) => x.total));
     success = total >= target;
     near = isNearMiss(total, target);
-    rollText =
-      mode === "pair"
-        ? ` (${parts.map((x) => `${x.p.name} ${x.text}`).join(", ")} → 합 ${total}/${target} ${success ? "성공" : "실패"})`
-        : ` (${parts[0].text} / 목표 ${target} ${success ? "성공" : "실패"})`;
+    rollText = ` (${parts[0].text} / 목표 ${target} ${success ? "성공" : "실패"})`;
   }
   // 4안: 아깝게 실패하면 손해가 없다
   const effect = success ? card.success : near ? {} : card.failure;
@@ -998,18 +969,6 @@ function resolveExploration(state: GameState, ctx: Extract<RollContext, { kind: 
   log(state, `${names}: 비밀의 방 "${card.name}"${rollText} → ${describeEffect(effect)}${playerIds.length > 1 ? " (두 명 모두 적용)" : ""}${shieldText}${notes.length ? ` ·${notes[0]}` : ""}`);
   // 판정이 있는 탐험에서 성공하면 모두 체력이 오른다 (성장)
   if (gainsGrowth) for (const id of playerIds) grow(state, state.players[id], "exploration", "stamina");
-}
-
-function describeCoop(card: ExplorationCard, playerId: string, round: number): CoopWaiting {
-  return {
-    playerId,
-    name: card.name,
-    description: card.description,
-    pairText: `둘이 각자 체력기운을 내고 낸 개수만큼 주사위를 굴려 둘의 합이 ${coopTarget(round, card.coop!.pairTarget)} 이상이면 성공`,
-    voidText: "함께할 친구가 끝까지 나타나지 않으면 이 카드는 무효가 돼요",
-    successText: `${describeEffect(card.success)} (두 명 모두)`,
-    failureText: `${describeEffect(card.failure)} (두 명 모두)`,
-  };
 }
 
 // ── 3주차 구역에 공개된 카드: 처음 들어온 사람이 2장을 열고, 먼저 온 사람이 원하는 카드를 가져가고 남는 카드는 두 번째 참가자가 가져간다 ──
@@ -1028,7 +987,7 @@ function offerViewOf(activityId: ActivityId, card: OfferedCard, round: number): 
       const c = card as LabCard;
       return { id: c.id, name: c.name, description: c.description, lines: [c.summary, `실험 판정: 지력기운 주사위 합 ≥ ${labTargetValue()}`, ...failRewardLine(failRewardOf("lab", c))], cost: c.cost > 0 ? { kind: "stamina", amount: c.cost } : undefined };
     }
-    case "exploration": {
+    default: {
       const c = card as ExplorationCard;
       const check = checkTextOf(c, round);
       return {
@@ -1037,11 +996,6 @@ function offerViewOf(activityId: ActivityId, card: OfferedCard, round: number): 
         description: c.description,
         lines: [...(check ? [check] : ["판정 없음"]), `성공: ${describeEffect(c.success)}`, `실패: ${describeEffect(c.failure)}`, ...(check ? failRewardLine(failRewardOf("exploration", c)) : [])],
       };
-    }
-    default: {
-      const c = card as GrimoireCard;
-      const ability = c.ability ? describeAbility(c.ability) : "";
-      return { id: c.id, name: c.name, description: c.description, lines: [`${STAT_NAME[c.statBoost.stat]} +${c.statBoost.amount}`, ...(ability ? [ability] : [])] };
     }
   }
 }
@@ -1053,14 +1007,12 @@ function syncOfferView(state: GameState, activityId: ActivityId): void {
 function drawForZone(state: GameState, activityId: ActivityId): OfferedCard | undefined {
   if (activityId === "creature") return drawCreature(state);
   if (activityId === "lab") return drawFromPile(state.labPile);
-  if (activityId === "duel") return drawFromPile(state.grimoirePile);
   return drawFromPile(state.explorationPile);
 }
 
 function discardToZone(state: GameState, activityId: ActivityId, cards: OfferedCard[]): void {
   if (activityId === "creature") state.creatureDiscard.push(...(cards as CreatureCard[]));
   else if (activityId === "lab") state.labPile.discard.push(...(cards as LabCard[]));
-  else if (activityId === "duel") state.grimoirePile.discard.push(...(cards as GrimoireCard[]));
   else state.explorationPile.discard.push(...(cards as ExplorationCard[]));
 }
 
@@ -1112,59 +1064,15 @@ function takeOffered(state: GameState, player: PlayerGameState, activityId: Acti
       startLabRoll(state, player, lab);
       break;
     }
-    case "duel": {
-      const grimoire = card as GrimoireCard;
-      player.grimoires.push(grimoire);
-      player[grimoire.statBoost.stat] += grimoire.statBoost.amount;
-      log(state, `${player.name}: 마도서 "${grimoire.name}" 획득`);
-      break;
-    }
-    default: {
-      const exploration = card as ExplorationCard;
-      if (exploration.coop) {
-        // 협력 카드: 함께할 친구가 나타날 때까지 기다린다 (끝까지 없으면 3주차 마지막에 무효)
-        state.hidden.coop = { card: exploration, playerId: player.id };
-        state.coopWaiting = describeCoop(exploration, player.id, state.round);
-        log(state, `${player.name}: 비밀의 방에서 협력 카드 "${exploration.name}"를 골랐어요! 함께할 친구를 기다려요`);
-      } else {
-        startExplorationRoll(state, exploration, [player.id], "single");
-      }
-    }
+    default:
+      startExplorationRoll(state, card as ExplorationCard, [player.id]);
   }
 }
 
 // 구역에 들어온 사람의 카드 처리: 처음 온 사람은 카드를 열고 원하는 카드를 고르고, 두 번째 참가자는 남은 카드를 가져간다
 function startZonePick(state: GameState, activityId: ActivityId, player: PlayerGameState): void {
   const isFirst = !state.hidden.offers[activityId];
-  if (activityId === "exploration" && state.hidden.coop) {
-    // 함께할 친구를 기다리는 협력 카드가 있으면 그 카드에 합류한다 (남은 카드는 버려진다)
-    const hold = state.hidden.coop;
-    state.hidden.coop = null;
-    state.coopWaiting = null;
-    discardToZone(state, "exploration", offerCards(state, "exploration"));
-    state.hidden.offers.exploration = [];
-    syncOfferView(state, "exploration");
-    startExplorationRoll(state, hold.card, [hold.playerId, player.id], "pair");
-    return;
-  }
   if (isFirst) openOffer(state, activityId);
-  // 협력 카드는 함께할 자리가 있을 때만 의미가 있다: 두 번째 참가자는 협력 카드를 고를 수 없으니 남은 카드가 협력 카드면 새로 뽑는다
-  if (!isFirst && activityId === "exploration") {
-    const rest = offerCards(state, "exploration");
-    const skipped = rest.filter((c) => (c as ExplorationCard).coop);
-    if (skipped.length > 0) {
-      discardToZone(state, "exploration", skipped);
-      let kept = rest.filter((c) => !(c as ExplorationCard).coop);
-      while (kept.length < rest.length) {
-        const drawn = drawFromPile(state.explorationPile) as ExplorationCard | undefined;
-        if (!drawn) break;
-        if (drawn.coop) discardToZone(state, "exploration", [drawn]);
-        else kept = [...kept, drawn];
-      }
-      state.hidden.offers.exploration = kept;
-      syncOfferView(state, "exploration");
-    }
-  }
   const cards = offerCards(state, activityId);
   if (cards.length === 0) {
     log(state, `${player.name}: ${ACTIVITY_NAME[activityId]}에 남은 카드가 없어요`);
@@ -1176,7 +1084,7 @@ function startZonePick(state: GameState, activityId: ActivityId, player: PlayerG
     return;
   }
   // 카드가 한 장만 남아도(두 번째 참가자) 자동으로 가져가지 않고 직접 고르게 한다
-  state.pendingPick = { playerId: player.id, activityId, mode: "take" };
+  state.pendingPick = { playerId: player.id, activityId };
 }
 
 // 활동 하나를 실제로 진행한다 (진행 단계에서 선택한 순서대로 하나씩 호출된다)
@@ -1188,8 +1096,6 @@ function startActivity(state: GameState, choice: ActivityChoice): void {
       break;
     }
     case "duel": {
-      // 주문 대결은 이긴 사람이 마도서를 고른다: 처음 도전한 사람이 카드를 열어 둔다
-      if (BALANCE.duelGrimoires && !state.hidden.offers.duel) openOffer(state, "duel");
       startDuel(state, player, state.players[choice.targetPlayerId!]);
       break;
     }
@@ -1304,26 +1210,18 @@ function finishResolutionStep(state: GameState): void {
 }
 
 function endActivityPhase(state: GameState): void {
-  // 끝까지 함께할 친구가 나타나지 않은 협력 카드는 무효가 된다 (열었던 지력기운은 돌려받지 못한다)
-  const hold = state.hidden.coop;
-  if (hold) {
-    state.hidden.coop = null;
-    state.coopWaiting = null;
-    state.explorationPile.discard.push(hold.card);
-    log(state, `${state.players[hold.playerId].name}: 함께할 친구가 없어 협력 카드 "${hold.card.name}"이(가) 무효가 되었어요`);
-  }
   discardOffers(state);
   beginCleanupPhase(state);
 }
 
 // 구역에 공개된 카드 중 1장을 고른다 (마법생물·연구 카드는 비용을 낼 수 있어야 하고, cardId가 null이면 가져가지 않고 넘어간다.
-// 비밀의 방 카드와 주문 대결 마도서는 반드시 골라야 한다)
+// 비밀의 방 카드는 반드시 골라야 한다)
 export function chooseActivityCard(state: GameState, playerId: string, cardId: string | null): void {
   const pick = state.pendingPick;
   if (!pick || pick.playerId !== playerId) throw new Error("지금은 카드를 고를 수 없습니다.");
   const player = state.players[playerId];
   if (cardId === null) {
-    if (pick.mode === "reward" || pick.activityId === "exploration") throw new Error("공개된 카드 중 하나를 골라야 해요.");
+    if (pick.activityId === "exploration") throw new Error("공개된 카드 중 하나를 골라야 해요.");
     state.pendingPick = null;
     log(state, `${player.name}: ${ACTIVITY_NAME[pick.activityId]}의 카드를 가져가지 않고 넘어갔어요`);
     finishResolutionStep(state);
@@ -1372,7 +1270,6 @@ export function directionFaces(activity: "creature" | "lab" | "exploration", car
   const energy = O("체력기운 +2", { tokens: { stamina: 2 } });
   const small = O("체력기운 +1", { tokens: { stamina: 1 } });
   const treasure = O(`보물: ${describeEffect(x.success)}`, x.success);
-  if (x.coop) return [small, small, grow, grow, treasure, treasure];
   const target = x.check?.target ?? 0;
   // 하이리스크 카드일수록 함정 칸과 보물 칸이 함께 크다
   if (target >= 10) return [hurt, hurt, grow, grow, energy, treasure];
@@ -1719,20 +1616,18 @@ function applyTournamentFinalRewards(state: GameState): void {
   }
 }
 
-// ── 졸업식 시상 (46절): 6부문 순위 점수의 합이 최종 점수다 ──
+// ── 졸업식 시상 (46절, 52절): 학점이 곧 승점이다. 졸업식에서는 5부문 순위에 따라 학점을 더 받고, 최종 학점이 가장 높은 사람이 이긴다 ──
 export const AWARD_NAME: Record<AwardCategory, string> = {
   spellPower: "마법상",
-  credit: "우등상",
   intelligence: "수석상",
   stamina: "튼튼상",
   charm: "인기상",
   creature: "생물사랑상",
 };
-export const AWARD_SUBJECT: Record<AwardCategory, string> = { ...STAT_NAME, credit: "학점", creature: "마법생물" };
+export const AWARD_SUBJECT: Record<AwardCategory, string> = { ...STAT_NAME, creature: "마법생물" };
 
-// 부문의 값: 능력치·학점은 그 수치, 마법생물은 마리 수 + 완성한 세트 수
+// 부문의 값: 능력치는 그 수치, 마법생물은 마리 수 + 완성한 세트 수
 export function awardValue(player: PlayerGameState, category: AwardCategory): number {
-  if (category === "credit") return player.credit;
   if (category === "creature") return player.creatures.length + creatureSets(player.creatures);
   return effectiveStat(player, category);
 }
@@ -1754,31 +1649,34 @@ export function graduationAwards(players: PlayerGameState[]): Map<string, Gradua
 
 const awardPoints = (awards: GraduationAward[]) => awards.reduce((a, w) => a + w.points, 0);
 
-// 최종 점수 = 졸업식에서 받은 점수의 합 (게임이 끝날 때 정해진다)
+// 최종 점수 = 학점 (졸업식 시상 학점은 게임이 끝날 때 학점에 더해진다)
 export function finalScore(player: PlayerGameState): number {
-  return awardPoints(player.awards);
+  return player.credit;
 }
 
-// 게임 중 예상 점수: 지금 상태로 졸업하면 받을 점수
+// 게임 중 예상 점수: 지금 상태로 졸업하면 받을 학점 (이미 졸업식을 했으면 받은 상이 학점에 들어 있어 그 몫을 뺀 뒤 다시 더한다)
 export function projectedScore(players: PlayerGameState[], player: PlayerGameState): number {
-  return awardPoints(graduationAwards(players).get(player.id) ?? []);
+  return player.credit - awardPoints(player.awards) + awardPoints(graduationAwards(players).get(player.id) ?? []);
 }
 
 function finalizeGame(state: GameState): void {
   state.phase = "ended";
-  // 졸업식: 부문마다 순위에 따라 점수를 준다 (46절)
+  // 졸업식: 부문마다 순위에 따라 학점을 준다 (46절, 52절)
   const players = state.turnOrder.map((id) => state.players[id]);
   const awards = graduationAwards(players);
-  for (const p of players) p.awards = awards.get(p.id) ?? [];
+  for (const p of players) {
+    p.awards = awards.get(p.id) ?? [];
+    p.credit += awardPoints(p.awards);
+  }
   for (const category of BALANCE.graduationCategories) {
     const got = players.flatMap((p) => p.awards.filter((w) => w.category === category).map((w) => ({ p, w }))).sort((a, b) => a.w.rank - b.w.rank);
-    if (got.length > 0) log(state, `졸업식 ${AWARD_NAME[category]}(${AWARD_SUBJECT[category]}): ${got.map(({ p, w }) => `${w.rank}위 ${p.name} ${w.value} +${w.points}점`).join(", ")}`);
+    if (got.length > 0) log(state, `졸업식 ${AWARD_NAME[category]}(${AWARD_SUBJECT[category]}): ${got.map(({ p, w }) => `${w.rank}위 ${p.name} ${w.value} 학점 +${w.points}`).join(", ")}`);
   }
   const achievements = state.turnOrder.map((id) => ({
     playerId: id,
     achievement: finalScore(state.players[id]),
   }));
-  // 최종 점수가 같으면 1위 상을 더 많이 받은 사람, 그것도 같으면 2위 상이 많은 사람이 이긴다 (그래도 같으면 공동 승리, 46절)
+  // 최종 학점이 같으면 1위 상을 더 많이 받은 사람, 그것도 같으면 2위 상이 많은 사람이 이긴다 (그래도 같으면 공동 승리, 46절)
   const key = (id: string) => {
     const aw = state.players[id].awards;
     return [finalScore(state.players[id]), aw.filter((w) => w.rank === 1).length, aw.filter((w) => w.rank === 2).length];
@@ -1786,7 +1684,7 @@ function finalizeGame(state: GameState): void {
   const better = (a: number[], b: number[]) => a.findIndex((x, i) => x !== b[i]) >= 0 && a[a.findIndex((x, i) => x !== b[i])] > b[a.findIndex((x, i) => x !== b[i])];
   const best = state.turnOrder.map(key).reduce((acc, k) => (better(k, acc) ? k : acc));
   state.winnerIds = achievements.filter((a) => key(a.playerId).every((x, i) => x === best[i])).map((a) => a.playerId);
-  log(state, "게임 종료: 졸업식 시상 점수의 합이 가장 큰 플레이어 승리");
+  log(state, "게임 종료: 최종 학점이 가장 높은 플레이어 승리");
 }
 
 // ── 게임 도중 플레이어 제거 (방장이 내보냈을 때) ──
@@ -1850,13 +1748,6 @@ function removeFromActivityPhase(state: GameState, playerId: string): void {
     state.activityChoices = choices.filter((c) => !isGone(c));
   }
 
-  // 함께할 친구를 기다리던 협력 카드의 주인이 사라지면 카드는 버려진다
-  if (state.hidden.coop?.playerId === playerId) {
-    state.explorationPile.discard.push(state.hidden.coop.card);
-    state.hidden.coop = null;
-    state.coopWaiting = null;
-  }
-
   // 그 사람이 걸린 주사위 굴림·카드 고르기는 취소한다
   const currentGone = !!current && isGone(current);
   const cancel =
@@ -1890,7 +1781,6 @@ export function removePlayerFromGame(state: GameState, playerId: string): void {
   state.classDiscard.push(...removed.classCards);
   state.creatureDiscard.push(...removed.creatures);
   state.labPile.discard.push(...removed.equipment);
-  state.grimoirePile.discard.push(...removed.grimoires);
 
   // 좌석과 선: 선이 빠지면 시계방향 다음 사람이 선이 된다
   const oldIndex = state.turnOrder.indexOf(playerId);

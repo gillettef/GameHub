@@ -12,7 +12,6 @@ import {
   ELEMENT_LABEL,
   KIND_LABEL,
   LAB_KIND_LABEL,
-  STAT_LABEL,
   activityBlockReason,
   activityExtraCost,
   creatureSets,
@@ -176,16 +175,6 @@ function ownedCardGroups(player: PlayerGameState): { key: string; icon: IconName
       icon: "flask" as IconName,
       label: "연구실 실험 연구카드",
       cards: player.equipment.map((c) => ({ name: c.name, badge: LAB_KIND_LABEL[c.kind], lines: [c.description, c.summary] })),
-    },
-    {
-      key: "duel",
-      icon: "swords" as IconName,
-      label: "주문 대결 마도서",
-      cards: player.grimoires.map((c) => ({
-        name: c.name,
-        badge: `${STAT_LABEL[c.statBoost.stat]} +${c.statBoost.amount}`,
-        lines: [c.description, ...(c.ability ? [describeAbility(c.ability)] : [])],
-      })),
     },
     {
       key: "creature",
@@ -388,7 +377,7 @@ function ExamInfoPanel({ game }: { game: GameState }) {
   );
 }
 
-// 구역에 공개된 카드 중 하나를 고르는 패널 (마법생물·연구 카드·비밀의 방 카드·주문 대결 마도서 공통)
+// 구역에 공개된 카드 중 하나를 고르는 패널 (마법생물·연구 카드·비밀의 방 카드 공통)
 function PickPanel({ game, myId, onPick }: { game: GameState; myId: string; onPick: (cardId: string | null) => void }) {
   const pick = game.pendingPick;
   const me = game.players[myId];
@@ -397,14 +386,10 @@ function PickPanel({ game, myId, onPick }: { game: GameState; myId: string; onPi
   const watching = pick.playerId !== myId;
   const pickerName = game.players[pick.playerId]?.name ?? "";
   const cards = game.activityOffers[pick.activityId]?.cards ?? [];
-  const canSkip = pick.mode === "take" && (pick.activityId === "creature" || pick.activityId === "lab");
+  const canSkip = pick.activityId === "creature" || pick.activityId === "lab";
   const title = watching
-    ? pick.mode === "reward"
-      ? `${pickerName}님이 주문 대결에서 이겼어요! 마도서를 고르는 중이에요...`
-      : `${pickerName}님이 ${ACTIVITY_LABEL[pick.activityId]}의 카드를 고르는 중이에요...`
-    : pick.mode === "reward"
-      ? "주문 대결에서 이겼어요! 마도서를 1장 고르세요"
-      : `${ACTIVITY_LABEL[pick.activityId]}: 공개된 카드 중 1장을 고르세요`;
+    ? `${pickerName}님이 ${ACTIVITY_LABEL[pick.activityId]}의 카드를 고르는 중이에요...`
+    : `${ACTIVITY_LABEL[pick.activityId]}: 공개된 카드 중 1장을 고르세요`;
   const affordable = (card: OfferCardView): boolean => {
     if (!card.cost) return true;
     if (card.cost.kind === "stamina") return canPay(me, 0, card.cost.amount);
@@ -417,7 +402,7 @@ function PickPanel({ game, myId, onPick }: { game: GameState; myId: string; onPi
         <p className="text-xs text-purple-500 mb-2">공개된 카드를 같이 볼 수 있어요.</p>
       ) : (
         <p className="text-xs text-purple-500 mb-2">
-          {pick.activityId === "exploration" || pick.mode === "reward"
+          {pick.activityId === "exploration"
             ? "고르지 않은 카드는 다음에 이 구역을 쓰는 친구의 몫이에요."
             : "고르고 남은 카드는 다음에 이 구역에 들어오는 친구가 가져가요."}
           {canSkip && " 살 수 있는 카드가 없거나 원하지 않으면 넘어가도 돼요."}{" "}
@@ -448,43 +433,8 @@ function PickPanel({ game, myId, onPick }: { game: GameState; myId: string; onPi
   );
 }
 
-// 함께할 친구를 기다리는 협력 탐험 카드 안내 (모두에게 공개)
-function CoopNotice({ game, myId }: { game: GameState; myId: string }) {
-  const coop = game.coopWaiting;
-  if (!coop) return null;
-  const owner = game.players[coop.playerId]?.name ?? "";
-  return (
-    <div className="mb-3 rounded-2xl border-2 border-indigo-200 bg-indigo-50 px-3 py-2 text-sm text-indigo-800">
-      <p>
-        <InlineIcon name="users" /> <b>협력 카드 &quot;{coop.name}&quot;</b>
-        <span className="text-xs text-indigo-700"> — {coop.playerId === myId ? "내가" : `${owner}님이`} 발견했어요</span>
-      </p>
-      <div className="mt-2">
-        <CardButton
-          className="w-32"
-          card={{
-            name: coop.name,
-            lines: [
-              coop.description,
-              <><InlineIcon name="dice" /> {coop.pairText}</>,
-              <><InlineIcon name="check" /> 성공: {coop.successText}</>,
-              <><InlineIcon name="warn" /> 실패: {coop.failureText}</>,
-              coop.voidText,
-            ],
-          }}
-        />
-      </div>
-      {coop.playerId !== myId ? (
-        <p className="mt-1 rounded-xl bg-white/70 px-2 py-1 text-sm font-semibold">비밀의 방 탐색을 고르면 함께할 수 있어요! 보상은 둘 다 받아요</p>
-      ) : (
-        <p className="mt-1 rounded-xl bg-white/70 px-2 py-1 text-sm">함께할 친구를 기다리는 중이에요</p>
-      )}
-    </div>
-  );
-}
-
 // 이번 달 활동 카드 (50절): 1주차에 공개된 구역별 카드를 정규수업·활동 선택 때 함께 본다 (누르면 크게 보기)
-const MONTH_ZONES: ActivityId[] = ["creature", "lab", "exploration", "duel"];
+const MONTH_ZONES: ActivityId[] = ["creature", "lab", "exploration"];
 function MonthOffersPanel({ game }: { game: GameState }) {
   const zones = MONTH_ZONES.filter((a) => (game.activityOffers[a]?.cards.length ?? 0) > 0);
   if (zones.length === 0) return null;
@@ -705,7 +655,6 @@ function ResolvePanel({
                   : `${nameOf(current.playerId)}님의 ${ACTIVITY_LABEL[current.activityId]}이(가) 곧 시작돼요...`
             : "모든 활동이 끝났어요"}
         </p>
-        <CoopNotice game={game} myId={myId} />
         <ol className="flex flex-col gap-2">
           {game.activityChoices.map((choice, index) => {
             const done = index < currentIndex;

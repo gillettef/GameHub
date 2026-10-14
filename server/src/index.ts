@@ -84,9 +84,9 @@ function runBotFallback(game: GameState, botId: string): void {
   } else if (game.phase === "cram") {
     cramTurn(game, botId, null);
   } else if (game.pendingPick) {
-    // 반드시 골라야 하는 카드(탐험·마도서)는 첫 카드를, 나머지는 넘어간다
+    // 반드시 골라야 하는 카드(탐험)는 첫 카드를, 나머지는 넘어간다
     const first = game.activityOffers[game.pendingPick.activityId]?.cards[0]?.id ?? null;
-    const mustPick = game.pendingPick.mode === "reward" || game.pendingPick.activityId === "exploration";
+    const mustPick = game.pendingPick.activityId === "exploration";
     chooseActivityCard(game, botId, mustPick ? first : null);
   } else if (game.phase === "activity" && game.activityStage === "choose") {
     const activityId = availableActivities(game, botId)[0];
@@ -223,7 +223,7 @@ function broadcastGameState(room: Room): void {
       Object.entries(game.players).map(([id, p]) => [id, id === player.id ? p : { ...p, peekedExploration: null }]),
     );
     // 카드 덱 구성과 주사위 처리 정보는 비공개이므로 전송하지 않는다
-    const { hidden: _h, labPile: _lp, explorationPile: _xp, grimoirePile: _gp, classDeck: _cd, classDiscard: _cdd, creatureDeck: _deck, creatureDiscard: _discard, ...publicGame } = game;
+    const { hidden: _h, labPile: _lp, explorationPile: _xp, classDeck: _cd, classDiscard: _cdd, creatureDeck: _deck, creatureDiscard: _discard, ...publicGame } = game;
     send(player.socket, {
       type: "game_state",
       game: { ...publicGame, players, classLeft: classCardsLeft(game), rules: PUBLIC_RULES },

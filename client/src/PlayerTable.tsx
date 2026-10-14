@@ -62,7 +62,7 @@ export function PlayerTable({
   const showStarter = game.phase !== "setup" && game.phase !== "ended";
   const maxOf = (col: ColumnKey) => Math.max(...players.map((p) => cellValue(p, col).value));
   const maxes = Object.fromEntries([...STAT_COLS, ...TOKEN_COLS].map((c) => [c, maxOf(c)])) as Record<ColumnKey, number>;
-  // 지금 졸업하면 받을 예상 점수 (곱셈 점수라 누가 앞서는지 한눈에 보이도록)
+  // 예상 점수 = 지금 학점 + 지금 졸업하면 받을 학점 (누가 앞서는지 한눈에 보이도록)
   const scores = players.map((p) => ({ p, score: projectedScore(game, p) })).sort((x, y) => y.score - x.score);
   const myRank = 1 + scores.filter((s) => s.score > (scores.find((x) => x.p.id === myId)?.score ?? 0)).length;
   const showScores = game.phase !== "setup" && game.phase !== "ended";

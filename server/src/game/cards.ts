@@ -4,7 +4,6 @@ import { randomUUID } from "node:crypto";
 import { CREATURE_CARDS } from "./creatures.js";
 import { labTemplates } from "./labCards.js";
 import { explorationTemplates } from "./explorationCards.js";
-import { grimoireTemplates } from "./grimoireCards.js";
 import type { CreatureCard, Pile } from "./types.js";
 
 export { createClassDeck } from "./classCards.js";
@@ -28,7 +27,6 @@ function createPile<T>(templates: Omit<T, "id">[]): Pile<T> {
 
 export const createLabPile = () => createPile(labTemplates());
 export const createExplorationPile = () => createPile(explorationTemplates());
-export const createGrimoirePile = () => createPile(grimoireTemplates());
 
 // 더미에서 1장 뽑는다. 뽑을 더미가 비면 버림 더미를 섞어 다시 쓰고, 둘 다 비면 undefined
 // 더미 맨 위 카드를 뽑지 않고 확인한다 (뽑을 더미가 비면 버림 더미를 섞어 준비)

@@ -52,13 +52,12 @@ export const BALANCE = {
   // 이번 달 활동 카드 미리 공개 (50절): 시험 달이 아닌 달의 1주차에 마법생물·연구실·비밀의 방·주문 대결 구역의 카드를 모두 공개한다.
   // 수업 선택이 이번 달 활동 계획이 되고, 활동 선택이 공개된 카드의 선점 경쟁이 된다 (false면 예전처럼 처음 들어온 사람이 연다)
   revealOffersAtMonthStart: true,
-  // 마도서 (51절 단순화로 폐지): false면 주문 대결 승자는 마도서 대신 duelWinReward를 받는다 (주문력 성장 +1은 그대로)
-  duelGrimoires: false,
+  // 주문 대결 승자의 보상 (51절에서 마도서를 없앴다. 주문력 성장 +1은 따로 받는다)
   duelWinReward: { credit: 1 } as CardEffect,
-  // 최종 점수 = 졸업식 시상 점수의 합 (46절, 예전 "주문력 × 학점 + 마법생물 세트 + 부문상"을 대신한다).
-  // 부문마다 값이 큰 순서로 순위를 매겨 rankPoints[순위-1]점을 준다 (동점은 같은 순위·같은 점수, 값이 0이면 점수 없음, 순위가 표 밖이면 0점).
-  // 마법생물 부문의 값 = 마리 수 + 완성한 세트(하늘·육지·바다 1장씩) 수
-  graduationCategories: ["spellPower", "credit", "intelligence", "stamina", "charm", "creature"] as AwardCategory[],
+  // 최종 점수 = 학점 (52절: 학점은 능력치가 아니라 승점이다. 시험·토너먼트·주문 대결·카드로 모으고, 졸업식 시상 학점이 더해진다).
+  // 졸업식은 부문마다 값이 큰 순서로 순위를 매겨 학점 rankPoints[순위-1]을 준다 (동점은 같은 순위·같은 학점, 값이 0이면 없음, 순위가 표 밖이면 0).
+  // 마법생물 부문의 값 = 마리 수 + 완성한 세트(하늘·육지·바다 1장씩) 수. 예전 우등상(학점 부문)은 학점이 승점이 되면서 없앴다
+  graduationCategories: ["spellPower", "intelligence", "stamina", "charm", "creature"] as AwardCategory[],
   rankPoints: [6, 3, 1],
   // 판정 목표값 = 주사위 평균(3.5) × 그 달의 기준 주사위 수 × 난이도. 기준 주사위 수(마나기운 개수)는 rollBenchmarkStart에서 매달 rollBenchmarkPerRound씩 오른다
   // (주문력이 기준보다 앞서면 쉽고 뒤처지면 어렵다). 탐험·협력 탐험 카드는 카드마다 난이도가 정해져 있다

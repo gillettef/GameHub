@@ -134,7 +134,7 @@ function activityResult(prev: GameState, next: GameState, myId: string): Announc
   // 시험·토너먼트 최종 보상이 같은 전환에 섞이면 활동 결과와 구분할 수 없어 학점 변화는 생략한다
   const creditDiff = after.credit - before.credit;
   if (!examHappened && creditDiff !== 0) tiles.push({ text: `학점 ${creditDiff > 0 ? "+" : ""}${creditDiff}`, tone: creditDiff > 0 ? "good" : "bad" });
-  for (const [label, list] of [["마법생물", "creatures"], ["마도서", "grimoires"], ["연구 카드", "equipment"]] as const) {
+  for (const [label, list] of [["마법생물", "creatures"], ["연구 카드", "equipment"]] as const) {
     const known = new Set(before[list].map((c) => c.id));
     for (const c of after[list]) if (!known.has(c.id)) tiles.push({ text: `${label} "${c.name}" 획득`, tone: "good" });
   }
