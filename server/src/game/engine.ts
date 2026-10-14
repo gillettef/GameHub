@@ -63,15 +63,8 @@ function rollDice(count: number): number[] {
 
 const sum = (xs: number[]) => xs.reduce((a, b) => a + b, 0);
 
-// 판정 목표값: 주사위 평균(3.5) × 그 달의 기준 능력치 × 난이도. 기준 능력치는 라운드가 갈수록 오른다 (성장이 기준보다 앞서면 쉬워진다)
-export function benchmarkStat(round: number): number {
-  return BALANCE.rollBenchmarkStart + BALANCE.rollBenchmarkPerRound * (round - 1);
-}
-export function rollTarget(round: number, difficulty: number): number {
-  return Math.max(1, Math.round(dieMean() * benchmarkStat(round) * difficulty));
-}
-// 탐험 카드의 target은 난이도 × 10
-const exploreTarget = (round: number, target: number) => rollTarget(round, (target / 10) * BALANCE.exploreDifficultyScale);
+// 탐험 목표값은 카드에 인쇄된 값 그대로다 (52-9절, 예전에는 달마다 올랐다). 주사위 면을 바꾸면(dieFaces) 평균에 맞춰 바뀐다
+const exploreTarget = (target: number) => Math.max(1, Math.round((target * dieMean()) / 3.5));
 export const labTargetValue = () => BALANCE.labTarget;
 
 // ── 주사위 재료 기운 (39절): 활동마다 주 능력치의 기운을 골라 낸 만큼 주사위를 굴린다 (BALANCE.rollFuel).
@@ -134,12 +127,12 @@ function normalCdf(z: number): number {
 // 탐험 카드 성공 확률 (봇 판단용): 기본 개수만큼 체력기운을 내고 굴린 주사위 합이 목표값 이상일 확률의 정규 근사
 export function explorationChance(state: GameState, player: PlayerGameState, card: ExplorationCard): number {
   if (!card.check) return 1;
-  const n = suggestDiceCount(usableFuel(player, BALANCE.rollFuel.exploration), exploreTarget(state.round, card.check.target));
+  const n = suggestDiceCount(usableFuel(player, BALANCE.rollFuel.exploration), exploreTarget(card.check.target));
   const catchUp = overallGap(state, player.id) >= BALANCE.catchUpGap ? BALANCE.catchUpBonus : 0;
   const dice = n + BALANCE.baseDice;
   const mean = dieMean() * dice + catchUp;
   const sd = Math.sqrt(dice * dieVariance());
-  return 1 - normalCdf((exploreTarget(state.round, card.check.target) - 0.5 - mean) / sd);
+  return 1 - normalCdf((exploreTarget(card.check.target) - 0.5 - mean) / sd);
 }
 
 function shuffle<T>(items: T[]): T[] {
@@ -245,7 +238,7 @@ const LEVEL_NAME: Record<ClassCard["level"], string> = { basic: "기초", advanc
 // 탐험 카드의 판정 문구 (엿보기·구역 공개 카드 표시용)
 function checkTextOf(card: ExplorationCard, round: number): string | undefined {
   if (!card.check) return undefined;
-  return `판정 (체력기운 주사위 합 ${exploreTarget(round, card.check.target)} 이상)`;
+  return `판정 (체력기운 주사위 합 ${exploreTarget(card.check.target)} 이상)`;
 }
 
 // 탐험 카드/연구 카드 효과를 플레이어에게 적용한다
@@ -422,7 +415,7 @@ export function failRewardOf(activityId: "creature" | "lab" | "exploration" | "d
   if (activityId === "lab") return { tokens: { intelligence: 1 } };
   if (activityId === "exploration") {
     const c = card as ExplorationCard;
-    return { tokens: { stamina: (c.check?.target ?? 0) >= 10 ? 2 : 1 } };
+    return { tokens: { stamina: (c.check?.target ?? 0) >= 6 ? 2 : 1 } };
   }
   return { tokens: { mana: 1 } };
 }
@@ -902,7 +895,7 @@ function startExplorationRoll(
 
 // 탐험 카드의 판정 규칙: 혼자 판정하고 목표값은 라운드에 맞춰 계산한다. 판정이 없는 카드는 null
 function explorationRule(card: ExplorationCard, round: number): { stat: StatKey; target: number } | null {
-  return card.check ? { stat: card.check.stat, target: exploreTarget(round, card.check.target) } : null;
+  return card.check ? { stat: card.check.stat, target: exploreTarget(card.check.target) } : null;
 }
 
 function resolveExploration(state: GameState, ctx: Extract<RollContext, { kind: "exploration" }>, dice: Record<string, number[]>): void {
@@ -1237,8 +1230,8 @@ export function directionFaces(activity: "creature" | "lab" | "exploration", car
   const treasure = O(`보물: ${describeEffect(x.success)}`, x.success);
   const target = x.check?.target ?? 0;
   // 하이리스크 카드일수록 함정 칸과 보물 칸이 함께 크다
-  if (target >= 10) return [hurt, hurt, grow, grow, energy, treasure];
-  if (target >= 8) return [hurt, grow, grow, energy, treasure, treasure];
+  if (target >= 6) return [hurt, hurt, grow, grow, energy, treasure];
+  if (target >= 5) return [hurt, grow, grow, energy, treasure, treasure];
   return [small, small, grow, grow, treasure, treasure];
 }
 

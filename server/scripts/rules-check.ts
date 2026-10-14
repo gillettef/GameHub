@@ -716,7 +716,7 @@ test("비밀의 방: 먼저 온 사람이 겪을 카드를 고르고(반드시 �
   assert.equal(state.activityOffers.exploration?.cards.length, 0, "남은 카드를 두 번째 참가자가 가져갔다");
 });
 
-test("비밀의 방: 체력기운을 내고 낸 개수만큼 주사위를 굴려 합이 목표값(난이도 × 기준 주사위 수) 이상이면 성공한다", () => {
+test("비밀의 방: 체력기운을 내고 낸 개수만큼 주사위를 굴려 합이 카드에 인쇄된 목표값 이상이면 성공하고, 목표값은 달이 바뀌어도 그대로다 (52-9절)", () => {
   const state = newGame(2);
   toActivity(state);
   const [a] = state.activityOrder;
@@ -728,6 +728,9 @@ test("비밀의 방: 체력기운을 내고 낸 개수만큼 주사위를 굴려
   advanceResolution(state);
   chooseActivityCard(state, a, "test-잊혀진 교실");
   assert.equal(state.pendingRoll?.kind, "exploration");
+  const ctx = state.hidden.roll;
+  assert.ok(ctx?.kind === "exploration");
+  assert.equal(ctx.target, explorationByName("잊혀진 교실").check!.target, "목표값은 카드에 적힌 값");
   assert.equal(state.pendingRoll?.entries[0].diceToken, "stamina", "탐험의 주사위 재료는 체력기운이다");
   assert.equal(state.pendingRoll?.entries[0].diceChoiceMax, 3);
   submitRoll(state, a, 3);

@@ -124,7 +124,7 @@ export interface ExplorationCard {
   id: string;
   name: string;
   description: string;
-  // 판정: 마나기운을 내고 굴린 주사위 합이 목표값 이상이면 성공 (2026-10-02부터 stat은 표시·분류용이고 주사위 수와 무관하다). target은 난이도 × 10 (10이 표준, 라운드마다 목표값이 기준 능력치에 맞춰 오른다). 없으면 무조건 성공
+  // 판정: 마나기운을 내고 굴린 주사위 합이 목표값 이상이면 성공 (2026-10-02부터 stat은 표시·분류용이고 주사위 수와 무관하다). target은 카드에 인쇄된 목표값 (52-9절에서 달마다 오르는 목표를 없앴다). 없으면 무조건 성공
   check?: { stat: StatKey; target: number };
   success: CardEffect;
   failure: CardEffect;
