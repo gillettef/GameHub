@@ -16,7 +16,6 @@ export interface NewsEffect {
   targetMod?: Partial<Record<"creature" | "lab" | "exploration", number>>;
   tournamentBonus?: number;
   gift?: Partial<Record<KeptToken, number>>;
-  buddyExtra?: number;
   duelWinCredit?: number;
   examSubjectExtra?: number;
   cramTo?: KeptToken;

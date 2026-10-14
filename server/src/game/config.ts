@@ -68,9 +68,9 @@ export const BALANCE = {
   // 주문 대결 굴림 순서: true면 지목당한 친구가 먼저 굴리고 도전자가 그 결과를 보고 굴린다 (49절, 뒤에 굴리는 쪽이 유리해서 도전자에게 준다)
   duelTargetRollsFirst: true,
   // 연구실 실험: 마나기운을 몇 개 낼지 골라 낸 개수만큼(마나기운이 없으면 공짜 1개) 주사위를 굴려 합이 이 값 이상이면 성공 (안정적인 능력치 상향)
-  labTarget: 5, // 49-4절: 함께하면 든든이 흔해져 쉬워진 판정을 되돌림 (성공률 약 70%)
+  labTarget: 5, // 52-4절: 함께하면 든든을 없앤 뒤에도 5 유지 (성공률 약 63%, 4면 79%로 지력이 쏠린다)
   // 마법생물 조련 목표값 배율: 생물마다 정해진 trainTarget(creatures.ts)에 곱한다 (주사위가 마나기운 개수라 능력치 기운 때와 맞추기 위한 보정)
-  trainTargetScale: 0.5, // 50-4절
+  trainTargetScale: 0.44, // 52-4절: 함께하면 든든을 없애고 성공률 약 61%로 되돌림 (예전 0.5)
   // 굴림 버튼의 기본 주사위 수 = 목표값 판정(조련·연구실·탐험)에서 성공 확률이 이 값 이상이 되는 가장 적은 마나기운 개수 (남는 마나기운은 다시 굴리기용).
   // 토너먼트·주문 대결·시험은 기본값이 마나기운 전부. 봇도 기본값 그대로 굴린다
   defaultDiceSuccess: 0.7,
@@ -83,7 +83,7 @@ export const BALANCE = {
   duelCharmFee: 0,
   // 자율활동 구역 하나에 들어갈 수 있는 최대 인원, 그리고 이미 한 명이 들어와 있는 구역에 두 번째로 들어갈 때 내는 매력기운 (먼저 들어온 친구에게 건넨다, 43-6절)
   activityMaxParticipants: 2,
-  activitySecondParticipantCost: 0, // 49절 단순화로 폐지: 함께 들어가면 둘 다 목표 -1(studyBuddyBonus)만 남는다
+  activitySecondParticipantCost: 0, // 49절 단순화로 폐지: 함께 들어가도 추가 비용이 없다 (52-4절에서 함께하면 든든도 없앴다)
   // 카드를 한 장 열 때 드는 지력기운 (2026-10-02 38절에서 모든 구역 폐지 — 카드를 여는 건 지적 활동이 아니라서. 장치는 남겨 두고 openCardCostActivities만 비움).
   // 켜면 구역에 처음 들어온 사람이 카드를 열 때 낸다. 카드를 습득하는 데 드는 체력기운은 카드마다 정해져 있다 (수업카드 takeCost, 연구 카드 cost)
   openCardCost: 1,
@@ -114,8 +114,6 @@ export const BALANCE = {
   nearMissDuelGap: 2,
   // 굴림 상한 = 능력치 + 이 값 (능력치 1인 초반에도 주사위 2개는 굴릴 수 있게 하는 여유)
   rollLimitBonus: 0,
-  // 함께하면 든든 (43-6절): 마법생물·연구실 구역에 두 명이 함께 들어가면 둘 다 판정 목표값이 이만큼 낮아진다
-  studyBuddyBonus: 1,
   rollFuel: { tournament: "mana", creature: "charm", duel: "mana", exploration: "stamina", lab: "intelligence" } as Record<ActivityId, KeptToken>,
   // 보조 능력치 (38-6절): 굴리기 전에 그 능력의 기운을 내서 주 판정을 돕는다.
   // 마법 토너먼트 — 체력(지구력): 체력기운 1개당 고정 칸 전진 (주사위가 아니라 고정값)

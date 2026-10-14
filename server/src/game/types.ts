@@ -24,8 +24,6 @@ export interface NewsEffect {
   tournamentBonus?: number;
   // 모두가 받는 기운
   gift?: Partial<Record<KeptToken, number>>;
-  // "함께하면 든든"의 목표값 감소에 더하는 값
-  buddyExtra?: number;
   // 주문 대결 승자가 받는 학점
   duelWinCredit?: number;
   // 시험 공고: 그달 수업에 시험 과목(주 능력치) 카드를 더 공개한다
@@ -216,8 +214,8 @@ export interface PendingRoll {
   // diceChoiceMax가 있으면 굴리기 전에 마나기운을 1~max개 내고 낸 개수만큼 굴릴 수 있다 (diceCount는 굴림 버튼의 기본 개수)
   // diceToken은 이 굴림의 주사위 재료 기운이다 (없으면 마나기운, 39절). assistMax가 있으면 굴리기 전에 보조 능력치 기운(assist.kind)을 0~max개 더 낼 수 있다. 낸 개수는 assist에 남는다 (38-6절)
   // baseDice가 있으면 낸 기운과 상관없이 그만큼 더 굴린다 (기운은 0개부터 낼 수 있다, 47절)
-  // 방향형: fuelUsed/fuelLimit = 다시 굴리기·조정에 쓴 재료 기운과 한도(능력치), freeRerolls = 공짜 다시 굴리기(함께하면 든든)
-  entries: { playerId: string; label: string; diceCount: number; diceToken?: KeptToken; diceChoiceMax?: number; baseDice?: number; fuelUsed?: number; fuelLimit?: number; freeRerolls?: number; assistMax?: number; assist?: number; dice: number[] | null; confirmed: boolean; rerolls: number; rerollCounts?: number[] }[];
+  // 방향형: fuelUsed/fuelLimit = 다시 굴리기·조정에 쓴 재료 기운과 한도(능력치)
+  entries: { playerId: string; label: string; diceCount: number; diceToken?: KeptToken; diceChoiceMax?: number; baseDice?: number; fuelUsed?: number; fuelLimit?: number; assistMax?: number; assist?: number; dice: number[] | null; confirmed: boolean; rerolls: number; rerollCounts?: number[] }[];
   // 이 굴림에서 보조 능력치로 쓸 수 있는 기운 (토너먼트: 체력기운 "끝까지 달려요", 탐험: 지력기운 "함정 간파"). 없으면 해당 없음
   assist?: { kind: "stamina" | "intelligence"; name: string; title: string; hint: string };
   // 방향형 결과(48절)의 눈별 효과 (1~6) — 있으면 다시 굴리기·조정은 그 활동의 재료 기운으로 한다
