@@ -25,7 +25,29 @@ export interface NewsEffect {
 }
 
 // 졸업식 시상 부문 (46절, 52절, 55절): 주문력(마법상)·지력(수석상)·체력(튼튼상)·마법생물(생물사랑상, 매력의 부문). 인기상은 55절에서 없앴다(매력이 두 부문을 받치던 문제). 학점은 부문이 아니라 승점이다
-export type AwardCategory = Exclude<StatKey, "charm"> | "creature";
+export type AwardCategory = Exclude<StatKey, "charm"> | "creature" | SpecialAwardId;
+// 올해의 특별상 (56절 B3 실험): 판마다 공개되는 추가 부문. 인기상(매력)·만능상(가장 낮은 능력치)·탐험왕·연구왕·결투왕·시험왕·대회왕(성공·승리 횟수, 시험 점수 합)
+export type SpecialAwardId = "charm" | "allround" | "explorer" | "researcher" | "duelist" | "scholar" | "champion";
+
+// 장래희망 카드 (56절 B2 실험): 졸업할 때 두 능력치가 모두 기준 이상이면 학점을 더 받는다
+export interface DreamCard {
+  id: string;
+  name: string;
+  description: string;
+  stats: [StatKey, StatKey];
+}
+
+// 대회 카드 (56절 C1 실험): 마나기운 주사위 합이 목표값 이상이면 성공 (성장 + 카드 보상)
+export interface TournamentCard {
+  id: string;
+  name: string;
+  description: string;
+  target: number;
+  reward: CardEffect;
+}
+
+// 활동에서 거둔 성과 횟수 (특별상 계산용): 조련·탐험·연구·대회 성공, 주문 대결 승리, 시험 점수 합
+export type FeatKey = "creature" | "exploration" | "lab" | "tournament" | "duel" | "exam";
 export interface GraduationAward {
   category: AwardCategory;
   // 그 부문의 값 (마법생물은 마리 수 + 완성한 세트 수), 순위(동점은 같은 순위), 받은 점수
@@ -165,6 +187,12 @@ export interface PlayerGameState {
   exp?: Partial<Record<StatKey, number>>;
   // 졸업식에서 받은 상 (게임이 끝날 때 정해진다, 46절): 부문마다 순위에 따라 학점을 받아 학점에 더한다. 최종 점수 = 학점
   awards: GraduationAward[];
+  // 장래희망 (56절 B2, 꺼져 있으면 없음)과 졸업할 때 이뤘는지
+  dream?: DreamCard | null;
+  dreamOptions?: DreamCard[];
+  dreamFulfilled?: boolean;
+  // 성과 횟수 (56절 B3 특별상)
+  feats?: Partial<Record<FeatKey, number>>;
   classCards: ClassCard[];
   creatures: CreatureCard[];
   // 임시 능력치 효과가 남아 있는 연구 카드 (시험 대비 카드)
@@ -237,6 +265,7 @@ export interface DuelPair {
 export type RollContext =
   | { kind: "first"; contenders: string[] }
   | { kind: "tournament"; playerId: string }
+  | { kind: "tournamentCard"; playerId: string; card: TournamentCard; target: number }
   | { kind: "creature"; playerId: string; card: CreatureCard; target: number }
   | { kind: "lab"; playerId: string; card: LabCard; target: number }
   | { kind: "duel"; challengerId: string; targetId: string }
@@ -260,7 +289,7 @@ export interface ActivityOffer {
   cards: OfferCardView[];
 }
 
-export type OfferedCard = CreatureCard | LabCard | ExplorationCard;
+export type OfferedCard = CreatureCard | LabCard | ExplorationCard | TournamentCard;
 
 export interface HiddenState {
   roll: RollContext | null;
@@ -272,6 +301,8 @@ export interface HiddenState {
   resolveLogStart?: number;
   // 학교 소식 행사 덱 (뽑을 순서대로, 다 쓰면 다시 섞는다)
   newsDeck: NewsCard[];
+  // 대회 카드 더미 (56절 C1, 켰을 때만)
+  tournamentPile?: Pile<TournamentCard>;
 }
 
 export interface GameState {
@@ -312,6 +343,8 @@ export interface GameState {
   // 공개된 시험 카드 (시험 공고 달(4·10개월) 1주차에 공개되기 전에는 null)
   exams: { midterm: ExamCard | null; final: ExamCard | null };
   examResults: ExamResult[];
+  // 올해의 특별상 (56절 B3): 게임을 시작할 때 공개된 추가 부문
+  specialAwards?: AwardCategory[];
   // 카드 덱·버림 더미와 주사위 처리 정보 (서버 전용, 클라이언트에는 전송하지 않음)
   hidden: HiddenState;
   labPile: Pile<LabCard>;

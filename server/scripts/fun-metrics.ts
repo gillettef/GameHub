@@ -6,7 +6,7 @@
 // 봇은 단순한 휴리스틱이라 절대값보다 설정을 바꿨을 때의 상대적 변화를 본다.
 import { BALANCE } from "../src/game/config.js";
 if (process.env.BAL) Object.assign(BALANCE, JSON.parse(process.env.BAL));
-const { BOT_PERSONALITIES, chooseActivityAction, choosePick, playClassTurn } = await import("../src/game/bot.js");
+const { BOT_PERSONALITIES, botChooseDream, chooseActivityAction, choosePick, playClassTurn } = await import("../src/game/bot.js");
 const { advanceResolution, chooseActivityCard, createGame, selectActivity, tokensOf, finalScore, projectedScore } = await import("../src/game/engine.js");
 const { cramStep, rollAndConfirm } = await import("./_drive.js");
 type GameState = import("../src/game/types.js").GameState;
@@ -22,7 +22,7 @@ const avg = (a: number, b: number) => (b > 0 ? +(a / b).toFixed(2) : 0);
 
 // 게임 중 예상 점수 (화면의 예상 점수와 같은 규칙: 지금 상태로 졸업식 시상을 한다고 본다)
 function projected(state: GameState, p: PlayerGameState): number {
-  return projectedScore(state.turnOrder.map((id) => state.players[id]), p);
+  return projectedScore(state.turnOrder.map((id) => state.players[id]), p, state.specialAwards ?? []);
 }
 
 const m = {
@@ -56,6 +56,9 @@ const m = {
   scoreFinal: 0,
   winnerScore: 0,
   persona: {} as Record<string, { games: number; wins: number }>,
+  // 56절: 장래희망 달성(전체·우승자), 우승자의 가장 높은 능력치(판마다 우승 경로가 다양한가)
+  dream: { n: 0, ok: 0, winN: 0, winOk: 0 },
+  winnerTop: {} as Record<string, number>,
 };
 
 const bump = (key: string, ok: boolean) => {
@@ -69,6 +72,7 @@ for (let g = 0; g < games; g++) {
   // MIRROR=1이면 모두 같은 성향(균형형)이라 실력 차가 없다: 초반 성공 → 우승의 기울기가 순수한 운의 눈덩이가 된다
   const persona: Record<string, BotStrategy> = Object.fromEntries(ids.map((id) => [id, process.env.MIRROR ? BOT_PERSONALITIES[0] : BOT_PERSONALITIES[Math.floor(Math.random() * BOT_PERSONALITIES.length)]]));
   const state = createGame(ids.map((id) => ({ id, name: id, isBot: true })));
+  for (const id of ids) botChooseDream(state, id, persona[id]);
   let seenRoll: unknown = null;
   let leader: string | null = null;
   let leaderAt9: string | null = null;
@@ -118,6 +122,8 @@ for (let g = 0; g < games; g++) {
       for (const line of lines) {
         if (line.includes("조련 성공")) bump("조련", true);
         else if (line.includes("조련 실패")) bump("조련", false);
+        else if (line.includes("입상!")) bump("대회", true);
+        else if (line.includes("아쉽게 탈락")) bump("대회", false);
         else if (line.includes("실험 성공")) bump("연구실", true);
         else if (line.includes("실험 실패")) bump("연구실", false);
         else if (/비밀의 방 .*(목표 \d+|합 \d+\/\d+) 성공/.test(line)) bump("탐험", true);
@@ -209,6 +215,19 @@ for (let g = 0; g < games; g++) {
   }
   for (const w of state.winnerIds ?? []) {
     m.seatWins[ids.indexOf(w)] += 1 / state.winnerIds!.length;
+    const p = state.players[w];
+    const top = Math.max(...STATS.map((s) => p[s]));
+    for (const s of STATS) if (p[s] === top) m.winnerTop[s] = (m.winnerTop[s] ?? 0) + 1 / STATS.filter((x) => p[x] === top).length / state.winnerIds!.length;
+  }
+  for (const id of ids) {
+    const p = state.players[id];
+    if (!p.dream) continue;
+    m.dream.n++;
+    if (p.dreamFulfilled) m.dream.ok++;
+    if (state.winnerIds?.includes(id)) {
+      m.dream.winN++;
+      if (p.dreamFulfilled) m.dream.winOk++;
+    }
   }
 }
 
@@ -234,4 +253,8 @@ console.log("[재미] 1~3개월 성공 횟수별 우승률 (초반 운이 판을
 console.log("[재미] 눈덩이: 초반 성공 횟수별 이후(4~12개월) 판정 성공률:", Object.fromEntries(Object.entries(m.later).sort().map(([k, v]) => [k, pct(v.ok, v.total)])), "· 경험치로 성장(판당)", avg(m.expGrowth, games));
 console.log("[재미] 눈덩이(성장): 1~3개월 성장량별 이후 성장량 · 우승률:", Object.fromEntries(Object.entries(m.growth).sort().map(([k, v]) => [`+${k}`, `${avg(v.later, v.n)} · ${pct(v.w, v.n)} (${pct(v.n, P)})`])));
 console.log("[재미] 1위 상을 받은 사람 수(판당)", avg(m.awardHolders, games), "· 한 사람이 1위를 3부문 이상 싹쓸이", pct(m.sweep, games));
+const tops = Object.values(m.winnerTop);
+const entropy = -tops.reduce((a, v) => a + (v / games) * Math.log(v / games || 1), 0) / Math.log(STATS.length);
+console.log("[재미] 우승자의 가장 높은 능력치:", Object.fromEntries(STATS.map((s) => [s, pct(m.winnerTop[s] ?? 0, games)])), `· 다양성 ${(100 * entropy).toFixed(0)}점(100 = 네 능력치가 고르게 우승)`);
+if (m.dream.n > 0) console.log("[재미] 장래희망 달성률", pct(m.dream.ok, m.dream.n), "· 우승자의 달성률", pct(m.dream.winOk, m.dream.winN));
 console.log("[재미] 친구와 엮인 활동(같은 구역·주문 대결) 비율", pct(m.shared, m.activities), "· 주문 대결(판당)", avg(m.duels, games), "· 벼락치기 사용률", pct(m.cram, m.cramChances));

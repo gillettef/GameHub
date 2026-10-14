@@ -3,7 +3,7 @@
 //  - 어떤 전략(토너먼트 몰빵, 마법생물 몰빵 등)이 지나치게 강하거나 약한가
 //  - 최종 능력치/학점/성취도가 어느 범위에 분포하는가
 //  - 자율활동 5종 중 봇이 무엇을 선호하고 그 결과는 어떤가
-import { chooseActivityAction, choosePick, playClassTurn, type BotStrategy } from "../src/game/bot.js";
+import { botChooseDream, chooseActivityAction, choosePick, playClassTurn, type BotStrategy } from "../src/game/bot.js";
 import { BALANCE } from "../src/game/config.js";
 if (process.env.BAL) Object.assign(BALANCE, JSON.parse(process.env.BAL)); // 예: BAL='{"classGain":{"basic":2,"advanced":3}}' 로 BALANCE를 덮어써 비교
 import { advanceResolution, chooseActivityCard, classCardsLeft, createGame, finalScore, selectActivity } from "../src/game/engine.js";
@@ -49,6 +49,7 @@ function playGame(strategies: BotStrategy[]): GameState {
   const ids = strategies.map((_, i) => `p${i}`);
   const state = createGame(ids.map((id) => ({ id, name: id, isBot: true })));
   const byId = Object.fromEntries(ids.map((id, i) => [id, strategies[i]]));
+  for (const id of ids) botChooseDream(state, id, byId[id]);
   let guard = 0;
   lastNormalExhaustRound = 0;
   while (state.phase !== "ended" && guard++ < 5000) {
