@@ -1304,8 +1304,8 @@ test("성장: 조련 성공은 매력, 연구실 성공은 지력이 +1 되고 �
   }
 });
 
-test("성장: 탐험 성공은 체력이 +1, 주문 대결은 이긴 사람의 주문력이 +1 (무승부는 없음), 토너먼트는 성장이 없다", () => {
-  assert.deepEqual(BALANCE.growthActivities, { tournament: false, creature: true, duel: true, exploration: true, lab: true });
+test("성장: 탐험 성공은 체력이 +1, 주문 대결은 이긴 사람의 주문력이 +1 (무승부는 없음), 토너먼트는 참가만 해도 주문력 +1 (54절)", () => {
+  assert.deepEqual(BALANCE.growthActivities, { tournament: true, creature: true, duel: true, exploration: true, lab: true });
   // 탐험(혼자)
   {
     const state = newGame(2);
@@ -1345,8 +1345,9 @@ test("성장: 탐험 성공은 체력이 +1, 주문 대결은 이긴 사람의 �
     selectActivity(state, b, "tournament");
     const before = { ...state.players[a] };
     advanceResolution(state);
-    rollWith(state, { [a]: [6, 6, 6] });
-    for (const stat of ["intelligence", "stamina", "charm", "spellPower"] as const) assert.equal(state.players[a][stat], before[stat], "토너먼트는 능력치가 오르지 않는다");
+    rollWith(state, { [a]: [1] });
+    for (const stat of ["intelligence", "stamina", "charm"] as const) assert.equal(state.players[a][stat], before[stat], "다른 능력치는 그대로");
+    assert.equal(state.players[a].spellPower, before.spellPower + 1, "주사위가 1이어도 참가하면 주문력 +1");
   }
 });
 

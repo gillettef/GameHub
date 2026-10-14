@@ -119,7 +119,10 @@ export function playCramTurn(state: GameState, playerId: string): void {
 
 // 50절: 공개된 구역 카드 중 내가 가져갈 수 있는 카드의 가치. 이미 누가 들어간 구역이면 먼저 온 사람이 가장 좋은 카드를 가져간다고 보고 남는 카드로 계산한다
 function zoneOutlook(state: GameState, strategy: BotStrategy, player: PlayerGameState, activityId: ActivityId): number {
-  if (activityId === "tournament") return 0;
+  // 토너먼트(54절): 참가하면 언제나 주문력 성장과 학점을 받는다. 다른 구역의 가치(카드 효과)에는 성장 몫이 들어 있지 않아 같은 눈높이가 되도록 절반으로 본다
+  // (1이면 봇이 토너먼트에 몰려 주문 대결이 판당 1.2회로 줄고 전략 범위가 7~39%로 벌어졌다)
+  if (activityId === "tournament")
+    return BALANCE.growthActivities.tournament ? 0.5 * effectValue(state, strategy, { stats: { spellPower: BALANCE.growthAmount }, credit: BALANCE.growthCredit }) : 0;
   // 주문 대결의 가치 = 이길 확률·지목 부담을 감안한 0.35 × (승리 보상 + 주문력 성장)
   if (activityId === "duel")
     return 0.35 * (effectValue(state, strategy, BALANCE.duelWinReward) + effectValue(state, strategy, { stats: { spellPower: BALANCE.growthAmount } }));
