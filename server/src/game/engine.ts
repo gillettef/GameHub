@@ -555,12 +555,6 @@ function beginClassPhase(state: GameState): void {
     if (!card) break;
     state.classMarket.push(card);
   }
-  // 시험 공고 달: 시험 과목(주 능력치) 카드를 덱에서 찾아 더 공개한다
-  const examCard = state.exams.final ?? state.exams.midterm;
-  for (let i = 0; i < (effect.examSubjectExtra ?? 0) && examCard; i++) {
-    const at = state.classDeck.findIndex((c) => c.stat === examCard.diceStat);
-    if (at >= 0) state.classMarket.push(...state.classDeck.splice(at, 1));
-  }
   // 행사로 그 과목 수업이 더 알차면 공개된 카드의 기운을 올려 둔다
   if (effect.classBonus) state.classMarket = state.classMarket.map((c) => (effect.classBonus?.[c.stat] ? { ...c, gain: c.gain + effect.classBonus[c.stat]! } : c));
   // 수업 신청은 선이 마지막이다 (선은 활동을 먼저 고르는 대신)

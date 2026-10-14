@@ -1,6 +1,6 @@
 // 1주차 "학교 소식" (44절): 매달 처음에 소식 카드 1장이 공개되어 그달의 분위기를 바꾼다.
 // - 행사(event): 시험과 상관없는 달에 행사 덱에서 1장을 뽑는다. 고를 것이 없고 바로 적용된다 (한 판에 8번, 덱 12장이라 매 판 조합이 다르다)
-// - 시험 공고(notice): 시험 2개월 전 달(BALANCE.midtermNoticeRound·finalNoticeRound, 4·10개월)에 시험 카드를 공개하고, 그달 수업에 시험 과목 카드를 1장 더 공개한다
+// - 시험 공고(notice): 시험 2개월 전 달(BALANCE.midtermNoticeRound·finalNoticeRound, 4·10개월)에 시험 카드를 공개한다 (52-6절에서 시험 과목 수업카드 1장 추가를 없앴다)
 // - 시험 주간(examWeek): 시험 달에 나온다. 선부터 한 명씩 벼락치기(기운 1개를 시험 과목 기운으로 바꾸기)를 하고 시험을 친다
 // 수치는 플레이테스트와 시뮬레이션으로 조정한다.
 import type { KeptToken, NewsCard, NewsEffect } from "./types.js";
@@ -35,10 +35,10 @@ export function quietMonthCard(): NewsCard {
   return make(["평범한 한 달", "특별한 행사 없이 차분하게 공부하는 한 달이에요.", {}], "event");
 }
 
-// 시험 공고: 시험 카드를 공개하고, 그달 수업에 시험 과목(주 능력치) 카드를 1장 더 공개한다
+// 시험 공고: 시험 카드를 공개한다
 export function noticeCard(exam: "midterm" | "final", examName: string): NewsCard {
   const title = exam === "midterm" ? "중간고사" : "기말고사";
-  return make([`${title} 공고`, `게시판에 ${title} 공고가 붙었어요: "${examName}". 이번 달 수업에 시험 과목 카드가 1장 더 나와요.`, { examSubjectExtra: 1 }], "notice");
+  return make([`${title} 공고`, `게시판에 ${title} 공고가 붙었어요: "${examName}". 시험 과목에 맞는 기운을 미리 모아 두세요.`, {}], "notice");
 }
 
 // 시험 주간: 선부터 한 명씩 벼락치기를 고른 뒤 시험을 친다
