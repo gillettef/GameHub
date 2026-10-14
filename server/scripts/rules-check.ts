@@ -1404,9 +1404,9 @@ test("최종: 시험·토너먼트·최종 점수가 모두 동점이면 공동 
   state.players[c].tournamentTrack = 5;
   rollExamWith(state, { [a]: 6, [b]: 6, [c]: 6 }); // 시험은 모두 공동 1위 (+3)
   assert.equal(state.phase, "ended");
-  // 졸업식 학점은 네 능력치 부문 모두 공동 1위라 셋이 같다
+  // 졸업식 학점은 능력치 부문(마법상·수석상·튼튼상) 모두 공동 1위라 셋이 같다 (마법생물은 없어 생물사랑상은 없음)
   const graduation = (id: string) => state.players[id].awards.reduce((x, w) => x + w.points, 0);
-  assert.equal(graduation(a), 4 * BALANCE.rankPoints[0]);
+  assert.equal(graduation(a), 3 * BALANCE.rankPoints[0]);
   assert.equal(graduation(b), graduation(a));
   assert.equal(graduation(c), graduation(a));
   assert.equal(state.players[a].credit, 3 + BALANCE.tournamentRewards[0] + graduation(a));
@@ -1417,9 +1417,10 @@ test("최종: 시험·토너먼트·최종 점수가 모두 동점이면 공동 
 
 // ── 졸업식 부문상 (41절) ──
 
-test("졸업식 시상(46절·52절): 5부문(학점은 부문이 아님)마다 순위대로 학점 rankPoints, 동점은 같은 순위·같은 학점, 값 0은 상 없음, 임시 능력치 포함", () => {
-  assert.deepEqual(BALANCE.graduationCategories, ["spellPower", "intelligence", "stamina", "charm", "creature"]);
+test("졸업식 시상(46절·52절·55절): 4부문(학점·매력은 부문이 아님)마다 순위대로 학점 rankPoints, 동점은 같은 순위·같은 학점, 값 0은 상 없음, 임시 능력치 포함", () => {
+  assert.deepEqual(BALANCE.graduationCategories, ["spellPower", "intelligence", "stamina", "creature"]);
   assert.ok(!("credit" in AWARD_NAME), "우등상은 없다");
+  assert.ok(!("charm" in AWARD_NAME), "인기상은 없다 (55절)");
   assert.equal(AWARD_NAME.creature, "생물사랑상");
   withBalance({ rankPoints: [6, 3, 1] }, () => {
     const state = newGame(4);
@@ -1427,7 +1428,7 @@ test("졸업식 시상(46절·52절): 5부문(학점은 부문이 아님)마다 
     const set = (id: string, v: Partial<PlayerGameState>) => Object.assign(state.players[id], { tempBoosts: {}, creatures: [], ...v });
     set(a, { intelligence: 9, stamina: 3, charm: 4, spellPower: 5, credit: 6 });
     set(b, { intelligence: 4, stamina: 7, charm: 4, spellPower: 5, credit: 2 });
-    set(c, { intelligence: 4, stamina: 7, charm: 0, spellPower: 8, credit: 0 });
+    set(c, { intelligence: 4, stamina: 7, charm: 9, spellPower: 0, credit: 0 });
     set(d, { intelligence: 1, stamina: 1, charm: 1, spellPower: 1, credit: 1 });
     const players = state.turnOrder.map((id) => state.players[id]);
     const awards = graduationAwards(players);
@@ -1437,7 +1438,8 @@ test("졸업식 시상(46절·52절): 5부문(학점은 부문이 아님)마다 
     assert.equal(of(b, "intelligence")?.points, 3);
     assert.equal(of(d, "intelligence"), undefined, "공동 2위 둘 다음은 4위라 점수가 없다");
     assert.deepEqual([of(b, "stamina")?.points, of(c, "stamina")?.points, of(a, "stamina")?.points], [6, 6, 1], "공동 1위 다음은 3위");
-    assert.equal(of(c, "charm"), undefined, "값이 0이면 상이 없다");
+    assert.equal(of(c, "spellPower"), undefined, "값이 0이면 상이 없다");
+    assert.ok(!awards.get(c)!.some((w) => (w.category as string) === "charm"), "매력이 가장 높아도 매력 부문 상은 없다");
     assert.equal(awards.get(a)!.some((w) => w.category === "creature"), false, "마법생물이 없으면 생물사랑상도 없다");
     assert.equal(projectedScore(players, state.players[a]), 6 + awards.get(a)!.reduce((x, w) => x + w.points, 0), "예상 점수 = 지금 학점 + 졸업식 예상 학점");
     // 임시 능력치도 포함해서 비교한다

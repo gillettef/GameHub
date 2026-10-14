@@ -199,7 +199,7 @@ export interface PublicRules {
 }
 
 // 졸업식 시상 부문 (서버 types.ts와 같은 모양): 주문력·학점·지력·체력·매력·마법생물
-export type AwardCategory = StatKey | "creature";
+export type AwardCategory = Exclude<StatKey, "charm"> | "creature";
 export interface GraduationAward {
   category: AwardCategory;
   value: number;
@@ -382,8 +382,8 @@ export function creatureSets(creatures: CreatureCard[]): number {
 }
 
 // ── 졸업식 시상 (서버 engine.ts와 같은 규칙): 부문마다 값이 큰 순서로 순위를 매겨 학점 rankPoints (동점은 같은 순위, 값 0이면 없음). 학점이 곧 승점이다 ──
-export const AWARD_NAME: Record<AwardCategory, string> = { spellPower: "마법상", intelligence: "수석상", stamina: "튼튼상", charm: "인기상", creature: "생물사랑상" };
-export const AWARD_SUBJECT: Record<AwardCategory, string> = { ...STAT_LABEL, creature: "마법생물" };
+export const AWARD_NAME: Record<AwardCategory, string> = { spellPower: "마법상", intelligence: "수석상", stamina: "튼튼상", creature: "생물사랑상" };
+export const AWARD_SUBJECT: Record<AwardCategory, string> = { spellPower: STAT_LABEL.spellPower, intelligence: STAT_LABEL.intelligence, stamina: STAT_LABEL.stamina, creature: "마법생물" };
 
 // 부문의 값: 능력치는 그 수치, 마법생물은 마리 수 + 완성한 세트 수
 export function awardValue(player: PlayerGameState, category: AwardCategory): number {
