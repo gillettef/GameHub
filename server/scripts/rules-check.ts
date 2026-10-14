@@ -1660,41 +1660,25 @@ test("학교 소식: 급식 특식 데이는 모두에게 체력기운 +1, 수�
   for (const c of festival.classMarket) assert.equal(c.gain, BALANCE.classTiers[c.level].gain + (c.stat === "charm" ? 1 : 0), c.name);
 });
 
-test("학교 소식: 마법생물 번식기는 조련 목표 -1, 응원단 결성은 토너먼트 +3칸, 마법 결투 대회는 대결 승자 학점 +1", () => {
-  const breed = newGameWithNews(3, "마법생물 번식기");
-  toActivity(breed);
-  const [a] = breed.activityOrder;
-  breed.creatureDeck.push(creature("대지의 수호자"), creature("정령 고릴라"));
-  selectActivity(breed, a, "creature");
-  finishChoosing(breed);
-  advanceResolution(breed);
-  chooseActivityCard(breed, a, "test-정령 고릴라");
-  const ctx = breed.hidden.roll;
+test("52-8절: 행사 효과는 그 자리에서 끝난다 — 기운 선물·과목 수업 +1·수업카드 1장 더 세 종류뿐이고, 판정 목표값·토너먼트·대결은 바꾸지 않는다", () => {
+  const kinds = new Set(eventTemplates().flatMap((c) => Object.keys(c.effect)));
+  assert.deepEqual([...kinds].sort(), ["classBonus", "classExtra", "gift"]);
+  const picnic = newGameWithNews(3, "봄 소풍");
+  for (const p of Object.values(picnic.players)) assert.equal(p.charmTokens, 1, "봄 소풍은 매력기운 +1");
+  const rain = newGameWithNews(3, "장마철");
+  assert.equal(rain.classMarket.length, 3 + BALANCE.classMarketExtra + 1, "장마철은 수업카드 1장 더");
+  const show = newGameWithNews(3, "마법 시범 공연");
+  for (const p of Object.values(show.players)) assert.equal(p.manaTokens, 1, "마법 시범 공연은 마나기운 +1");
+  toActivity(show);
+  const [a] = show.activityOrder;
+  show.creatureDeck.push(creature("대지의 수호자"), creature("정령 고릴라"));
+  selectActivity(show, a, "creature");
+  finishChoosing(show);
+  advanceResolution(show);
+  chooseActivityCard(show, a, "test-정령 고릴라");
+  const ctx = show.hidden.roll;
   assert.ok(ctx?.kind === "creature");
-  assert.equal(ctx.target, creatureTarget(creature("정령 고릴라")) - 1);
-  assert.ok(breed.pendingRoll!.lines.some((l) => l.includes("마법생물 번식기")));
-
-  const cheer = newGameWithNews(2, "응원단 결성");
-  toActivity(cheer);
-  const [t] = cheer.activityOrder;
-  cheer.players[t].manaTokens = 1;
-  selectActivity(cheer, t, "tournament");
-  finishChoosing(cheer);
-  advanceResolution(cheer);
-  rollWith(cheer, { [t]: [4] });
-  assert.equal(cheer.players[t].tournamentTrack, 4 + 3);
-
-  const duel = newGameWithNews(3, "마법 결투 대회");
-  toActivity(duel);
-  const [x, y, z] = duel.activityOrder;
-  setTokens(duel, 0);
-  duel.players[x].manaTokens = 1;
-  selectActivity(duel, x, "duel", y);
-  selectActivity(duel, z, "lab");
-  advanceResolution(duel);
-  const before = duel.players[x].credit;
-  rollWith(duel, { [x]: [6], [y]: [1] });
-  assert.equal(duel.players[x].credit, before + 1 + (BALANCE.duelWinReward.credit ?? 0), "결투 대회 +1에 승리 보상이 더해진다");
+  assert.equal(ctx.target, creatureTarget(creature("정령 고릴라")), "행사가 목표값을 바꾸지 않는다");
 });
 
 test("시험 공고(4·10개월): 시험 카드가 공개되고, 그달 수업카드 수는 평소와 같다 (52-6절)", () => {

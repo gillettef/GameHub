@@ -18,14 +18,8 @@ export interface NewsEffect {
   classExtra?: number;
   // 그 과목 수업카드의 기운 +n (공개된 카드의 gain에 더해 보여 준다)
   classBonus?: Partial<Record<StatKey, number>>;
-  // 판정 목표값 조정 (음수면 쉬워진다)
-  targetMod?: Partial<Record<"creature" | "lab" | "exploration", number>>;
-  // 토너먼트에 참가하면 더 전진하는 칸
-  tournamentBonus?: number;
   // 모두가 받는 기운
   gift?: Partial<Record<KeptToken, number>>;
-  // 주문 대결 승자가 받는 학점
-  duelWinCredit?: number;
   // 시험 주간: 벼락치기로 바꿀 수 있는 시험 과목 기운
   cramTo?: KeptToken;
 }

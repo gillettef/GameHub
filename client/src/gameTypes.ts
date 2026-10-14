@@ -13,10 +13,7 @@ export type GamePhase = "setup" | "prep" | "class" | "activity" | "cleanup" | "c
 export interface NewsEffect {
   classExtra?: number;
   classBonus?: Partial<Record<StatKey, number>>;
-  targetMod?: Partial<Record<"creature" | "lab" | "exploration", number>>;
-  tournamentBonus?: number;
   gift?: Partial<Record<KeptToken, number>>;
-  duelWinCredit?: number;
   cramTo?: KeptToken;
 }
 export interface NewsCard {

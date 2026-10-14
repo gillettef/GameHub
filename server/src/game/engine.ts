@@ -720,24 +720,16 @@ function fuelLine(player: PlayerGameState, fuel: KeptToken): string {
     : `${TOKEN_NAME[fuel]}이 없어서 주사위 1개를 굴려요`;
 }
 
-// 판정 목표값 = 기본값 + 이달의 소식 조정 (최소 1). 예전 "함께하면 든든"(둘이면 목표 -1)은 52-4절에서 없앴다
-const newsTarget = (state: GameState, activityId: "creature" | "lab", target: number) =>
-  Math.max(1, target + (newsEffect(state).targetMod?.[activityId] ?? 0));
-const newsNote = (state: GameState, activityId: "creature" | "lab") => {
-  const mod = newsEffect(state).targetMod?.[activityId] ?? 0;
-  return mod !== 0 ? ` · ${state.news!.name} 목표 ${mod > 0 ? "+" : "-"}${Math.abs(mod)}` : "";
-};
-
 // 마법생물 조련: 매력기운을 골라 내고 낸 개수만큼 주사위를 굴려, 합이 목표값 이상이면 조련에 성공한다. 실패하면 낸 매력기운을 잃고 카드는 버린다 (52-7절, 연구실·비밀의 방과 같다)
 function startCreatureRoll(state: GameState, player: PlayerGameState, creature: CreatureCard): void {
   if (BALANCE.directionalResults) return startDirectionalRoll(state, "creature", creature, [player.id]);
-  const target = newsTarget(state, "creature", creatureTarget(creature));
+  const target = creatureTarget(creature);
   const fuel = BALANCE.rollFuel.creature;
   state.hidden.roll = { kind: "creature", playerId: player.id, card: creature, target };
   state.pendingRoll = {
     kind: "creature",
     title: `마법생물 조련 · ${creature.name}`,
-    lines: [fuelLine(player, fuel), `주사위 합이 ${target} 이상이면 조련 성공! 실패하면 카드는 버려져요${newsNote(state, "creature")}`],
+    lines: [fuelLine(player, fuel), `주사위 합이 ${target} 이상이면 조련 성공! 실패하면 카드는 버려져요`],
     entries: [choiceEntry(player, player.name, target, fuel)],
   };
 }
@@ -766,13 +758,13 @@ function resolveCreature(state: GameState, ctx: Extract<RollContext, { kind: "cr
 // 지력기운이 없으면 주사위 1개는 공짜로 굴린다
 function startLabRoll(state: GameState, player: PlayerGameState, lab: LabCard): void {
   if (BALANCE.directionalResults) return startDirectionalRoll(state, "lab", lab, [player.id]);
-  const target = newsTarget(state, "lab", labTargetValue());
+  const target = labTargetValue();
   const fuel = BALANCE.rollFuel.lab;
   state.hidden.roll = { kind: "lab", playerId: player.id, card: lab, target };
   state.pendingRoll = {
     kind: "lab",
     title: `연구실 실험 · ${lab.name}`,
-    lines: [fuelLine(player, fuel), `주사위 합이 ${target} 이상이면 실험 성공! (${lab.summary})${newsNote(state, "lab")}`],
+    lines: [fuelLine(player, fuel), `주사위 합이 ${target} 이상이면 실험 성공! (${lab.summary})`],
     entries: [choiceEntry(player, player.name, target, fuel)],
   };
 }
@@ -800,8 +792,7 @@ function resolveLab(state: GameState, ctx: Extract<RollContext, { kind: "lab" }>
 
 function advanceTournament(state: GameState, player: PlayerGameState, dice: number[], assist = 0): void {
   const boost = assist * BALANCE.tournamentStaminaBoost;
-  const cheer = newsEffect(state).tournamentBonus ?? 0;
-  const gain = sum(dice) + boost + cheer;
+  const gain = sum(dice) + boost;
   const before = player.tournamentTrack;
   player.tournamentTrack += gain;
   const step = BALANCE.tournamentMilestoneStep;
@@ -810,7 +801,7 @@ function advanceTournament(state: GameState, player: PlayerGameState, dice: numb
   player.credit += milestoneCredit;
   log(
     state,
-    `${player.name}: 마법 토너먼트 참가 (${describeRoll(dice, [[`끝까지 달려요(체력기운 ${assist}개)`, boost], [state.news?.name ?? "", cheer]])} = ${gain}칸 전진, 트랙 ${player.tournamentTrack}칸)${milestoneCredit > 0 ? ` — 이정표 학점 +${milestoneCredit}` : ""}`,
+    `${player.name}: 마법 토너먼트 참가 (${describeRoll(dice, [[`끝까지 달려요(체력기운 ${assist}개)`, boost]])} = ${gain}칸 전진, 트랙 ${player.tournamentTrack}칸)${milestoneCredit > 0 ? ` — 이정표 학점 +${milestoneCredit}` : ""}`,
   );
   // 토너먼트 참가는 성장이 없다 (BALANCE.growthActivities.tournament = false: 켜면 토너먼트 몰빵 승률이 44%까지 올랐다)
   grow(state, player, "tournament", "spellPower");
@@ -878,11 +869,6 @@ function resolveDuel(state: GameState, ctx: Extract<RollContext, { kind: "duel" 
   );
   // 이긴 사람은 주문력이 오른다 (성장)
   grow(state, winner, "duel", "spellPower");
-  const winCredit = newsEffect(state).duelWinCredit ?? 0;
-  if (winCredit > 0) {
-    winner.credit += winCredit;
-    log(state, `${winner.name}: ${state.news!.name} 우승 보너스 학점 +${winCredit}`);
-  }
   // 이긴 사람은 정해진 보상(기본 학점 +1)을 받는다 (51절에서 마도서를 없앴다)
   applyCardEffect(state, winner, BALANCE.duelWinReward);
   log(state, `${winner.name}: 주문 대결 승리 보상 ${describeEffect(BALANCE.duelWinReward)}`);
@@ -900,8 +886,7 @@ function startExplorationRoll(
     return;
   }
   if (BALANCE.directionalResults) return startDirectionalRoll(state, "exploration", card, playerIds);
-  // 이달의 소식(봄 소풍·장마철 등)이 탐험 목표값을 바꾼다
-  const rule = { ...base, target: Math.max(1, base.target + (newsEffect(state).targetMod?.exploration ?? 0)) };
+  const rule = base;
   state.hidden.roll = { kind: "exploration", card, playerIds, target: rule.target };
   state.pendingRoll = {
     kind: "exploration",
