@@ -59,10 +59,6 @@ export const BALANCE = {
   // 마법생물 부문의 값 = 마리 수 + 완성한 세트(하늘·육지·바다 1장씩) 수. 예전 우등상(학점 부문)은 학점이 승점이 되면서 없앴다
   graduationCategories: ["spellPower", "intelligence", "stamina", "charm", "creature"] as AwardCategory[],
   rankPoints: [6, 3, 1],
-  // 판정 목표값 = 주사위 평균(3.5) × 그 달의 기준 주사위 수 × 난이도. 기준 주사위 수(마나기운 개수)는 rollBenchmarkStart에서 매달 rollBenchmarkPerRound씩 오른다
-  // (주문력이 기준보다 앞서면 쉽고 뒤처지면 어렵다). 탐험·협력 탐험 카드는 카드마다 난이도가 정해져 있다
-  rollBenchmarkStart: 1.3,
-  rollBenchmarkPerRound: 0.12,
   // 주문 대결 도전자가 지목당한 친구에게 건네는 마나기운 개수 (매력 참가비 duelCharmFee와 별도. 지목당해도 마나기운이 있어야 굴릴 수 있게 하는 장치)
   duelManaFee: 1,
   // 주문 대결 굴림 순서: true면 지목당한 친구가 먼저 굴리고 도전자가 그 결과를 보고 굴린다 (49절, 뒤에 굴리는 쪽이 유리해서 도전자에게 준다)
@@ -74,8 +70,6 @@ export const BALANCE = {
   // 굴림 버튼의 기본 주사위 수 = 목표값 판정(조련·연구실·탐험)에서 성공 확률이 이 값 이상이 되는 가장 적은 마나기운 개수 (남는 마나기운은 다시 굴리기용).
   // 토너먼트·주문 대결·시험은 기본값이 마나기운 전부. 봇도 기본값 그대로 굴린다
   defaultDiceSuccess: 0.7,
-  // 탐험 카드 목표값 배율 (1이면 카드에 적힌 난이도 그대로)
-  exploreDifficultyScale: 1.15, // 50-4절: 카드 미리 공개로 쉬운 카드를 골라 오른 성공률을 약 68%로 맞춤
   // 탐험 역전 보너스: 선두와의 종합 점수(능력치 합 + 학점×3) 격차가 이 값 이상이면 판정에 보너스를 더한다
   catchUpGap: 4,
   catchUpBonus: 0, // 49절 단순화로 폐지 (0이면 없음)
