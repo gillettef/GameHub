@@ -294,7 +294,7 @@ function failLearning(state: GameState, player: PlayerGameState, activityId: "cr
   return Object.keys(reward).length ? ` 실패해도 ${describeEffect(reward)}` : "";
 }
 
-// 성장 (42절): 자율활동에서 성과를 내면 그 활동의 주 능력치가 BALANCE.growthAmount만큼 오른다 (조련·탐험·연구실 성공, 주문 대결 승리)
+// 성장 (42절): 자율활동에서 성과를 내면 그 활동의 주 능력치가 BALANCE.growthAmount만큼 오른다 (조련·탐험·연구실 성공, 주문 대결 승리, 토너먼트 참가 — 54절)
 function grow(state: GameState, player: PlayerGameState, activityId: ActivityId, stat: StatKey): void {
   if (!BALANCE.growthActivities[activityId]) return;
   player[stat] += BALANCE.growthAmount;
@@ -797,7 +797,7 @@ function advanceTournament(state: GameState, player: PlayerGameState, dice: numb
     state,
     `${player.name}: 마법 토너먼트 참가 (${describeRoll(dice, [[`끝까지 달려요(체력기운 ${assist}개)`, boost]])} = ${gain}칸 전진, 트랙 ${player.tournamentTrack}칸)${milestoneCredit > 0 ? ` — 이정표 학점 +${milestoneCredit}` : ""}`,
   );
-  // 토너먼트 참가는 성장이 없다 (BALANCE.growthActivities.tournament = false: 켜면 토너먼트 몰빵 승률이 44%까지 올랐다)
+  // 토너먼트는 참가만 해도 주문력이 성장한다 (54절: 예전엔 성장이 없어 매달 토너먼트만 고르면 승률 4%였다. 마나기운이 귀해 자주 못 나가서 지나치게 강하지 않다)
   grow(state, player, "tournament", "spellPower");
 }
 

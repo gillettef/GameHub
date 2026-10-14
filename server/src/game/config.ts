@@ -44,11 +44,11 @@ export const BALANCE = {
     basic: { gain: 2 },
     advanced: { gain: 4, minStat: 3 },
   } as Record<"basic" | "advanced", { gain: number; minStat?: number }>,
-  // 성장 (42절): 자율활동에서 성과를 내면 그 활동의 주 능력치가 growthAmount만큼 오른다 (조련·탐험·연구실은 성공, 주문 대결은 승리, 토너먼트는 성장 없음)
+  // 성장 (42절): 자율활동에서 성과를 내면 그 활동의 주 능력치가 growthAmount만큼 오른다 (조련·탐험·연구실은 성공, 주문 대결은 승리, 토너먼트는 참가만 해도 — 54절)
   growthAmount: 1,
   // 성장할 때 함께 받는 학점 (52-11절: 활동에서 성과를 내면 학점도 오른다. 학점 트랙이 1년 내내 움직여 판세가 보인다)
   growthCredit: 1,
-  growthActivities: { tournament: false, creature: true, duel: true, exploration: true, lab: true } as Record<ActivityId, boolean>,
+  growthActivities: { tournament: true, creature: true, duel: true, exploration: true, lab: true } as Record<ActivityId, boolean>, // 54절: 토너먼트도 참가하면 성장 (예전 false)
   // 3주차 구역(비밀의 방·마법생물·주문 대결·연구실)에서 처음 들어온 사람이 여는 카드 수 (집중이나 특정 카드로 달라질 수 있다)
   activityOpenCount: 2,
   // 이번 달 활동 카드 미리 공개 (50절): 시험 달이 아닌 달의 1주차에 마법생물·연구실·비밀의 방·주문 대결 구역의 카드를 모두 공개한다.
