@@ -52,6 +52,9 @@ import { cramStep, rollAndConfirm } from "./_drive.js";
 // (45절에서 기본값이 1이 된 주문 대결 마나기운 건네기도 전용 검증에서만 켠다)
 const NEW_RULES = { rollLimitByStat: BALANCE.rollLimitByStat, energyCapMultiplier: BALANCE.energyCapMultiplier, duelManaFee: BALANCE.duelManaFee };
 const NEWS_EVENTS = BALANCE.schoolNewsEvents;
+// 52-11절의 "성장하면 학점 +1"은 전용 검증에서만 켜고, 나머지 검증은 카드·시험·대결로 받는 학점만 본다
+const GROWTH_CREDIT = BALANCE.growthCredit;
+BALANCE.growthCredit = 0;
 Object.assign(BALANCE, { rollLimitByStat: false, schoolNewsEvents: false, duelManaFee: 0 });
 // 49절 단순화로 기본값에서 꺼진 규칙들(코드는 설정으로 남아 있다)은 예전 값으로 계속 검증하고, 새 기본값은 전용 검증에서 확인한다
 const SIMPLIFIED = {
@@ -432,6 +435,25 @@ test("52-4절: 함께하면 든든은 없다 — 연구실에 둘이 함께 들�
   assert.ok(ctx?.kind === "lab");
   assert.equal(ctx.target, labTargetValue(), "둘이어도 목표는 그대로");
   assert.ok(!state.pendingRoll!.lines.some((l) => l.includes("친구와 함께")));
+});
+
+test("52-11절: 성장하면 학점도 +1 (조련·탐험·연구실 성공, 주문 대결 승리), 졸업식 학점은 4/2/1", () => {
+  assert.equal(GROWTH_CREDIT, 1);
+  assert.deepEqual(BALANCE.rankPoints, [4, 2, 1]);
+  withBalance({ growthCredit: GROWTH_CREDIT }, () => {
+    const state = newGame(3);
+    toActivity(state);
+    setTokens(state, 0);
+    const [a, b, c] = state.activityOrder;
+    selectActivity(state, a, "duel", b);
+    selectActivity(state, c, "tournament");
+    advanceResolution(state);
+    const before = { spellPower: state.players[a].spellPower, credit: state.players[a].credit };
+    rollWith(state, { [a]: [6, 6], [b]: [1, 1] });
+    assert.equal(state.players[a].spellPower, before.spellPower + 1, "주문력 성장");
+    assert.equal(state.players[a].credit, before.credit + GROWTH_CREDIT + (BALANCE.duelWinReward.credit ?? 0), "성장 학점 + 대결 승리 학점");
+    assert.ok(state.log.some((l) => l.message.includes("성장!") && l.message.includes("학점 +1")));
+  });
 });
 
 // ── 3주차: 자율활동 ──
