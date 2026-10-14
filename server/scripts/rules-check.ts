@@ -48,11 +48,11 @@ import { createClassDeck } from "../src/game/classCards.js";
 import { eventTemplates } from "../src/game/newsCards.js";
 import { cramStep, rollAndConfirm } from "./_drive.js";
 
-// 43-5·43-6절의 규칙(한 번에 낼 수 있는 기운 = 능력치, 함께하면 든든)은 전용 검증에서만 켜고 나머지 검증은 그 규칙 없이 본다
+// 43-5절의 규칙(한 번에 낼 수 있는 기운 = 능력치)은 전용 검증에서만 켜고 나머지 검증은 그 규칙 없이 본다
 // (45절에서 기본값이 1이 된 주문 대결 마나기운 건네기도 전용 검증에서만 켠다)
-const NEW_RULES = { rollLimitByStat: BALANCE.rollLimitByStat, studyBuddyBonus: BALANCE.studyBuddyBonus, energyCapMultiplier: BALANCE.energyCapMultiplier, duelManaFee: BALANCE.duelManaFee };
+const NEW_RULES = { rollLimitByStat: BALANCE.rollLimitByStat, energyCapMultiplier: BALANCE.energyCapMultiplier, duelManaFee: BALANCE.duelManaFee };
 const NEWS_EVENTS = BALANCE.schoolNewsEvents;
-Object.assign(BALANCE, { rollLimitByStat: false, studyBuddyBonus: 0, schoolNewsEvents: false, duelManaFee: 0 });
+Object.assign(BALANCE, { rollLimitByStat: false, schoolNewsEvents: false, duelManaFee: 0 });
 // 49절 단순화로 기본값에서 꺼진 규칙들(코드는 설정으로 남아 있다)은 예전 값으로 계속 검증하고, 새 기본값은 전용 검증에서 확인한다
 const SIMPLIFIED = {
   starterRule: BALANCE.starterRule,
@@ -417,26 +417,21 @@ test("실력만큼만 힘을 낸다 (43-5절): 한 번 굴릴 때 낼 수 있는
   });
 });
 
-test("함께하면 든든 (43-6절): 두 번째 참가자의 매력기운은 먼저 온 친구에게 건네지고, 마법생물·연구실에 둘이 있으면 둘 다 목표값이 낮아진다", () => {
-  assert.equal(NEW_RULES.studyBuddyBonus, 1);
-  withBalance({ studyBuddyBonus: 1 }, () => {
-    const state = newGame(3);
-    toActivity(state);
-    setTokens(state, 2, 3);
-    const [a, b] = state.activityOrder;
-    selectActivity(state, a, "lab");
-    selectActivity(state, b, "lab");
-    assert.equal(state.players[a].charmTokens, 3 + BALANCE.activitySecondParticipantCost, "먼저 온 친구가 매력기운을 받는다");
-    assert.equal(state.players[b].charmTokens, 3 - BALANCE.activitySecondParticipantCost);
-    state.labPile.draw.push(labCard("든든 도시락"), labCard("마법 안경"));
-    finishChoosing(state);
-    advanceResolution(state);
-    chooseActivityCard(state, a, "test-마법 안경");
-    const ctx = state.hidden.roll;
-    assert.ok(ctx?.kind === "lab");
-    assert.equal(ctx.target, labTargetValue() - 1, "둘이 함께라 목표 -1");
-    assert.ok(state.pendingRoll!.lines.some((l) => l.includes("친구와 함께")));
-  });
+test("52-4절: 함께하면 든든은 없다 — 연구실에 둘이 함께 들어가도 목표값은 그대로", () => {
+  const state = newGame(3);
+  toActivity(state);
+  setTokens(state, 2, 3);
+  const [a, b] = state.activityOrder;
+  selectActivity(state, a, "lab");
+  selectActivity(state, b, "lab");
+  state.labPile.draw.push(labCard("든든 도시락"), labCard("마법 안경"));
+  finishChoosing(state);
+  advanceResolution(state);
+  chooseActivityCard(state, a, "test-마법 안경");
+  const ctx = state.hidden.roll;
+  assert.ok(ctx?.kind === "lab");
+  assert.equal(ctx.target, labTargetValue(), "둘이어도 목표는 그대로");
+  assert.ok(!state.pendingRoll!.lines.some((l) => l.includes("친구와 함께")));
 });
 
 // ── 3주차: 자율활동 ──

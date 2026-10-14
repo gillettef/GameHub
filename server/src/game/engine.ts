@@ -726,28 +726,24 @@ function fuelLine(player: PlayerGameState, fuel: KeptToken): string {
     : `${TOKEN_NAME[fuel]}이 없어서 주사위 1개를 굴려요`;
 }
 
-// 함께하면 든든 (43-6절): 마법생물·연구실 구역에 두 명이 함께 들어왔으면 둘 다 목표값이 BALANCE.studyBuddyBonus만큼 낮아진다
-const hasBuddy = (state: GameState, activityId: "creature" | "lab") => state.activitySlots[activityId].length >= 2;
-const buddyBonus = (state: GameState) => BALANCE.studyBuddyBonus + (newsEffect(state).buddyExtra ?? 0);
-// 판정 목표값 = 기본값 + 이달의 소식 조정 − 함께하면 든든 (최소 1)
-const buddyTarget = (state: GameState, activityId: "creature" | "lab", target: number) =>
-  Math.max(1, target + (newsEffect(state).targetMod?.[activityId] ?? 0) - (hasBuddy(state, activityId) ? buddyBonus(state) : 0));
-const buddyNote = (state: GameState, activityId: "creature" | "lab") => {
+// 판정 목표값 = 기본값 + 이달의 소식 조정 (최소 1). 예전 "함께하면 든든"(둘이면 목표 -1)은 52-4절에서 없앴다
+const newsTarget = (state: GameState, activityId: "creature" | "lab", target: number) =>
+  Math.max(1, target + (newsEffect(state).targetMod?.[activityId] ?? 0));
+const newsNote = (state: GameState, activityId: "creature" | "lab") => {
   const mod = newsEffect(state).targetMod?.[activityId] ?? 0;
-  const news = mod !== 0 ? ` · ${state.news!.name} 목표 ${mod > 0 ? "+" : "-"}${Math.abs(mod)}` : "";
-  return news + (hasBuddy(state, activityId) && buddyBonus(state) > 0 ? ` · 친구와 함께라 목표 -${buddyBonus(state)}` : "");
+  return mod !== 0 ? ` · ${state.news!.name} 목표 ${mod > 0 ? "+" : "-"}${Math.abs(mod)}` : "";
 };
 
 // 마법생물 조련: 매력기운을 골라 내고 낸 개수만큼 주사위를 굴려, 합이 목표값 이상이면 조련에 성공한다. 실패하면 낸 매력기운만 잃고 카드는 구역에 돌아간다
 function startCreatureRoll(state: GameState, player: PlayerGameState, creature: CreatureCard): void {
   if (BALANCE.directionalResults) return startDirectionalRoll(state, "creature", creature, [player.id]);
-  const target = buddyTarget(state, "creature", creatureTarget(creature));
+  const target = newsTarget(state, "creature", creatureTarget(creature));
   const fuel = BALANCE.rollFuel.creature;
   state.hidden.roll = { kind: "creature", playerId: player.id, card: creature, target };
   state.pendingRoll = {
     kind: "creature",
     title: `마법생물 조련 · ${creature.name}`,
-    lines: [fuelLine(player, fuel), `주사위 합이 ${target} 이상이면 조련 성공! 실패하면 카드는 돌아가요${buddyNote(state, "creature")}`],
+    lines: [fuelLine(player, fuel), `주사위 합이 ${target} 이상이면 조련 성공! 실패하면 카드는 돌아가요${newsNote(state, "creature")}`],
     entries: [choiceEntry(player, player.name, target, fuel)],
   };
 }
@@ -777,13 +773,13 @@ function resolveCreature(state: GameState, ctx: Extract<RollContext, { kind: "cr
 // 지력기운이 없으면 주사위 1개는 공짜로 굴린다
 function startLabRoll(state: GameState, player: PlayerGameState, lab: LabCard): void {
   if (BALANCE.directionalResults) return startDirectionalRoll(state, "lab", lab, [player.id]);
-  const target = buddyTarget(state, "lab", labTargetValue());
+  const target = newsTarget(state, "lab", labTargetValue());
   const fuel = BALANCE.rollFuel.lab;
   state.hidden.roll = { kind: "lab", playerId: player.id, card: lab, target };
   state.pendingRoll = {
     kind: "lab",
     title: `연구실 실험 · ${lab.name}`,
-    lines: [fuelLine(player, fuel), `주사위 합이 ${target} 이상이면 실험 성공! (${lab.summary})${buddyNote(state, "lab")}`],
+    lines: [fuelLine(player, fuel), `주사위 합이 ${target} 이상이면 실험 성공! (${lab.summary})${newsNote(state, "lab")}`],
     entries: [choiceEntry(player, player.name, target, fuel)],
   };
 }
@@ -1280,7 +1276,6 @@ export function directionFaces(activity: "creature" | "lab" | "exploration", car
 function startDirectionalRoll(state: GameState, activity: "creature" | "lab" | "exploration", card: CreatureCard | LabCard | ExplorationCard, playerIds: string[]): void {
   const faces = directionFaces(activity, card);
   const fuel = BALANCE.rollFuel[activity];
-  const buddy = activity !== "exploration" && hasBuddy(state, activity) ? 1 : 0;
   state.hidden.roll = { kind: "direction", activity, card, playerIds, faces };
   const title = activity === "creature" ? "마법생물 조련" : activity === "lab" ? "연구실 실험" : "비밀의 방";
   state.pendingRoll = {
@@ -1289,7 +1284,6 @@ function startDirectionalRoll(state: GameState, activity: "creature" | "lab" | "
     lines: [
       `주사위 1개를 굴려 나온 눈의 효과를 받아요. 굴린 뒤 ${TOKEN_NAME[fuel]} ${BALANCE.dirRerollCost}개로 다시 굴릴 수 있어요${BALANCE.dirAdjustCost > 0 ? ` (${BALANCE.dirAdjustCost}개로 눈 ±1)` : ""} — 한 번에 능력치만큼까지`,
       ...(playerIds.length > 1 ? ["둘 중 더 좋은 눈 하나로 둘 다 효과를 받아요"] : []),
-      ...(buddy ? ["친구와 함께라 다시 굴리기 1번 공짜"] : []),
     ],
     faces: faces.map((f, i) => `${i + 1}: ${f.label}`),
     ...(activity === "exploration"
@@ -1297,7 +1291,7 @@ function startDirectionalRoll(state: GameState, activity: "creature" | "lab" | "
       : {}),
     entries: playerIds.map((id) => {
       const p = state.players[id];
-      const entry = { playerId: id, label: p.name, diceCount: 1, diceToken: fuel, dice: null, confirmed: false, rerolls: 0, fuelUsed: 0, fuelLimit: rollLimit(p, fuel), freeRerolls: buddy };
+      const entry = { playerId: id, label: p.name, diceCount: 1, diceToken: fuel, dice: null, confirmed: false, rerolls: 0, fuelUsed: 0, fuelLimit: rollLimit(p, fuel) };
       return activity === "exploration" ? withAssist(entry, p.intelligenceTokens >= BALANCE.explorationShieldCost ? 1 : 0) : entry;
     }),
   };
@@ -1398,16 +1392,13 @@ export function rerollDice(state: GameState, playerId: string, diceIndexes: numb
   if (indexes.some((i) => !Number.isInteger(i) || i < 0 || i >= entry.dice!.length)) throw new Error("없는 주사위입니다.");
   const player = state.players[playerId];
   if (pending.faces) {
-    // 방향형(48절): 그 활동의 재료 기운으로 다시 굴린다 (공짜 다시 굴리기가 있으면 먼저 쓴다). 한 번에 쓸 수 있는 기운은 능력치까지
+    // 방향형(48절): 그 활동의 재료 기운으로 다시 굴린다. 한 번에 쓸 수 있는 기운은 능력치까지
     const kind = entry.diceToken ?? "mana";
-    if ((entry.freeRerolls ?? 0) > 0) entry.freeRerolls! -= 1;
-    else {
-      const cost = BALANCE.dirRerollCost;
-      if ((entry.fuelUsed ?? 0) + cost > (entry.fuelLimit ?? 0)) throw new Error("이번 굴림에서 쓸 수 있는 기운을 다 썼어요 (능력치만큼까지).");
-      if (tokensOf(player, kind) < cost) throw new Error(`${TOKEN_NAME[kind]}이 부족해요.`);
-      pay(player, kind, cost);
-      entry.fuelUsed = (entry.fuelUsed ?? 0) + cost;
-    }
+    const cost = BALANCE.dirRerollCost;
+    if ((entry.fuelUsed ?? 0) + cost > (entry.fuelLimit ?? 0)) throw new Error("이번 굴림에서 쓸 수 있는 기운을 다 썼어요 (능력치만큼까지).");
+    if (tokensOf(player, kind) < cost) throw new Error(`${TOKEN_NAME[kind]}이 부족해요.`);
+    pay(player, kind, cost);
+    entry.fuelUsed = (entry.fuelUsed ?? 0) + cost;
     const before = entry.dice[0];
     entry.dice[0] = rollD6();
     entry.rerolls += 1;
