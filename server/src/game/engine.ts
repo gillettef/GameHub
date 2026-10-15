@@ -81,7 +81,7 @@ export const ENERGY_STAT: Record<KeptToken, StatKey> = { intelligence: "intellig
 // 모아 둘 수 있는 한도 (능력치 × 배수, 배수가 0이면 한도 없음)
 export const energyCap = (player: PlayerGameState, kind: KeptToken): number =>
   BALANCE.energyCapMultiplier > 0 ? effectiveStat(player, ENERGY_STAT[kind]) * BALANCE.energyCapMultiplier : Infinity;
-// 한 번 굴릴 때 낼 수 있는 재료 기운의 상한 = 그 기운의 능력치 ("실력만큼만 힘을 낸다", 43-5절). 능력치가 0이어도 1개는 낼 수 있다
+// 한 번 굴릴 때 낼 수 있는 재료 기운의 상한 = 그 기운의 능력치 + rollLimitBonus ("실력만큼만 힘을 낸다" 43-5절, 59절 L4에서 +1). 능력치가 0이어도 1개는 낼 수 있다
 export const rollLimit = (player: PlayerGameState, kind: KeptToken): number =>
   BALANCE.rollLimitByStat ? Math.max(1, effectiveStat(player, ENERGY_STAT[kind]) + BALANCE.rollLimitBonus) : Infinity;
 // 이번 굴림에 실제로 낼 수 있는 재료 기운 개수 (보유량과 실력 상한 중 작은 쪽)
@@ -754,7 +754,7 @@ function startTournament(state: GameState, player: PlayerGameState): void {
 // 굴림 안내 문구: 재료 기운을 골라 내고 낸 개수만큼 굴린다. 재료 기운이 없으면 공짜 주사위 1개. 다시 굴리기는 마나기운으로 한다
 function fuelLine(player: PlayerGameState, fuel: KeptToken): string {
   const tokens = usableFuel(player, fuel);
-  const limited = tokens < tokensOf(player, fuel) ? ` (한 번에 ${STAT_NAME[ENERGY_STAT[fuel]]}만큼만 낼 수 있어요)` : "";
+  const limited = tokens < tokensOf(player, fuel) ? ` (한 번에 ${STAT_NAME[ENERGY_STAT[fuel]]}${BALANCE.rollLimitBonus > 0 ? ` + ${BALANCE.rollLimitBonus}개까지만` : "만큼만"} 낼 수 있어요)` : "";
   return tokens > 0
     ? `${PAY_OBJECT[fuel]} 1~${tokens}개 골라 내고, 낸 개수만큼 주사위를 굴려요${limited} (다시 굴리기는 마나기운으로 해요)`
     : `${TOKEN_NAME[fuel]}이 없어서 주사위 1개를 굴려요`;
@@ -1617,7 +1617,7 @@ function beginExam(state: GameState, examType: "midterm_exam" | "final_exam"): v
     title: `${examType === "midterm_exam" ? "중간고사" : "기말고사"} · ${card.name}`,
     lines: [
       `점수 = ${describeExam(card, STAT_NAME)} — 높은 순서로 순위를 매겨요`,
-      `선부터 한 명씩 ${TOKEN_NAME[examFuel(card)]}을 내고(한 번에 그 능력치만큼까지) 낸 개수만큼 주사위를 굴려요 (없으면 공짜 1개). 마나기운으로 다시 굴릴 수 있어요`,
+      `${BALANCE.turnOrderRule === "creditAsc" ? "학점이 낮은 친구부터" : "선부터"} 한 명씩 ${TOKEN_NAME[examFuel(card)]}을 내고(한 번에 그 능력치${BALANCE.rollLimitBonus > 0 ? ` + ${BALANCE.rollLimitBonus}개까지` : "만큼까지"}) 낸 개수만큼 주사위를 굴려요 (없으면 공짜 1개). 마나기운으로 다시 굴릴 수 있어요`,
     ],
     entries: orderFromStarter(state).map((id) => choiceEntry(state.players[id], state.players[id].name, undefined, examFuel(card))),
   };

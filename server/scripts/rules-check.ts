@@ -95,6 +95,9 @@ const P5 = {
   creatureBond: BALANCE.creatureBond,
   dreamThreshold: BALANCE.dreamThreshold,
 };
+// 59절 L4(굴림 상한 +1, 연구실 6, 조련 배율 0.46, 탐험 카드 +2, 대회 카드 +1)도 전용 검증에서만 켠다. 카드에 인쇄한 값은 보정값으로 예전 숫자로 되돌려 본다
+const L4 = { rollLimitBonus: BALANCE.rollLimitBonus, labTarget: BALANCE.labTarget, trainTargetScale: BALANCE.trainTargetScale, exploreTargetMod: BALANCE.exploreTargetMod, tournamentTargetMod: BALANCE.tournamentTargetMod };
+Object.assign(BALANCE, { rollLimitBonus: 0, labTarget: 5, trainTargetScale: 0.42, exploreTargetMod: -2, tournamentTargetMod: -1 });
 Object.assign(BALANCE, {
   creatureBond: false,
   creatureRareCredit: 0,
@@ -424,6 +427,25 @@ test("정규수업: 심화 과목은 그 과목 능력치가 minStat 이상이�
   takeClassCard(state, first, "adv");
   assert.equal(p.intelligenceTokens, 4, "심화는 +4");
   takeClassCard(state, second, null);
+});
+
+test("59절 L4 기본값: 굴림 상한 = 능력치 + 1, 연구실 목표 6, 조련 배율 0.46, 탐험·대회 카드 목표는 카드에 인쇄(보정 0)", () => {
+  assert.deepEqual(L4, { rollLimitBonus: 1, labTarget: 6, trainTargetScale: 0.46, exploreTargetMod: 0, tournamentTargetMod: 0 });
+  assert.ok(explorationTemplates().filter((c) => c.check).every((c) => c.check!.target >= 6), "탐험 목표는 예전보다 2씩 높다(가장 쉬운 카드 6)");
+  withBalance({ ...L4, rollLimitByStat: true }, () => {
+    const state = newGame(3);
+    toActivity(state, 9);
+    const [a] = state.activityOrder;
+    Object.assign(state.players[a], { intelligence: 1, intelligenceTokens: 9 });
+    state.labPile.draw.push(labCard("든든 도시락"), labCard("마법 안경"));
+    selectActivity(state, a, "lab");
+    finishChoosing(state);
+    advanceResolution(state);
+    chooseActivityCard(state, a, "test-마법 안경");
+    assert.equal(state.pendingRoll!.entries[0].diceChoiceMax, 2, "지력 1이어도 주사위 2개까지 (실력 + 1)");
+    assert.equal(labTargetValue(), 6);
+    assert.ok(state.pendingRoll!.lines.some((l) => l.includes("지력 + 1개까지만")), "상한 안내 문구");
+  });
 });
 
 test("실력만큼만 힘을 낸다 (43-5절): 한 번 굴릴 때 낼 수 있는 재료 기운은 그 능력치까지이고, 남은 기운은 그대로 남는다", () => {
@@ -779,7 +801,7 @@ test("별빛 다락방: 체력기운을 내고 낸 개수만큼 주사위를 굴
   assert.equal(state.pendingRoll?.kind, "exploration");
   const ctx = state.hidden.roll;
   assert.ok(ctx?.kind === "exploration");
-  assert.equal(ctx.target, explorationByName("잊혀진 교실").check!.target, "목표값은 카드에 적힌 값");
+  assert.equal(ctx.target, explorationByName("잊혀진 교실").check!.target + BALANCE.exploreTargetMod, "목표값은 카드에 적힌 값 (예전 숫자로 보는 검증이라 보정값을 더한다)");
   assert.equal(state.pendingRoll?.entries[0].diceToken, "stamina", "탐험의 주사위 재료는 체력기운이다");
   assert.equal(state.pendingRoll?.entries[0].diceChoiceMax, 3);
   submitRoll(state, a, 3);
@@ -1874,7 +1896,6 @@ test("56·57절 기본값: 어려운 생물 학점 +1(세트 학점 없음), 도
     creatureBond: true,
     dreamThreshold: 4,
   });
-  assert.equal(BALANCE.tournamentTargetMod, 0, "대회 목표값은 카드에 인쇄된 값 그대로");
 });
 
 test("56절 B1: 정규수업·자율활동·시험 순서는 학점이 낮은 사람부터 (같으면 선부터 시계방향)", () => {
