@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run dev:*)",
+      "Bash(npm run build:*)",
+      "Bash(npm run test:*)",
+      "Bash(npm run typecheck:*)",
+      "Bash(npx vitest:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npx tsx scripts/simulate.ts:*)"
+    ],
+    "deny": [
+      "Edit(notes/**)",
+      "Write(notes/**)"
+    ]
+  }
+}
