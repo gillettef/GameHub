@@ -1,10 +1,11 @@
 import { CLUBS, EVENTS, INVALID_TEXT, TACTICS, club, player, round2 } from '../core';
-import type { AgentKind, AgentState, FeeRate, GameState, Offer, RoundEntry, TacticKey } from '../core';
+import type { AgentKind, AgentState, AiLevel, FeeRate, GameState, Offer, RoundEntry, TacticKey } from '../core';
 import type { Profile, Session } from '../store/storage';
 
 export interface Seat {
   name: string;
   kind: AgentKind;
+  level?: AiLevel;
 }
 
 export interface Draft {
@@ -29,6 +30,8 @@ export interface UiState {
 
 export const esc = (s: unknown): string =>
   String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
+
+export const LEVEL_TEXT: Record<AiLevel, string> = { easy: '쉬움', normal: '보통' };
 
 export const money = (x: number): string => `${round2(x)}억`;
 

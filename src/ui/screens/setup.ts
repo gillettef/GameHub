@@ -1,5 +1,5 @@
 import { MAX_AGENTS, MIN_AGENTS } from '../../core';
-import { esc, header, type UiState } from '../view';
+import { LEVEL_TEXT, esc, header, type UiState } from '../view';
 
 export function setupScreen(ui: UiState): string {
   const seats = ui.seats;
@@ -7,14 +7,14 @@ export function setupScreen(ui: UiState): string {
   const humans = seats.filter((s) => s.kind === 'human').length;
   return `${header()}<main class="content">
     <h2 class="title">새 게임</h2>
-    <p class="mu">사람이 2명 이상이면 한 기기를 돌려가며 플레이합니다. 차례마다 가림 화면이 나와요.</p>
+    <p class="mu">사람이 2명 이상이면 한 기기를 돌려가며 플레이합니다. 차례마다 가림 화면이 나와요. AI 난이도는 버튼을 눌러 바꿀 수 있어요.</p>
     <section class="card seats">${seats
       .map(
         (s, i) => `<div class="seat">
           <span class="seat-ic">${s.kind === 'ai' ? '🤖' : '🧑‍💼'}</span>
           ${
             s.kind === 'ai'
-              ? `<span class="seat-nm">${esc(s.name)}</span>`
+              ? `<span class="seat-nm">${esc(s.name)}</span><button class="lv ${s.level ?? 'easy'}" data-act="seat-level" data-arg="${i}" aria-label="${esc(s.name)} 난이도: ${LEVEL_TEXT[s.level ?? 'easy']} (눌러서 변경)">${LEVEL_TEXT[s.level ?? 'easy']}</button>`
               : `<input data-seat="${i}" maxlength="12" value="${esc(s.name)}" ${i === 0 ? 'readonly' : ''} aria-label="플레이어 ${i + 1} 이름">`
           }
           ${i === 0 ? '<span class="pill">나</span>' : `<button class="icon" data-act="seat-del" data-arg="${i}" aria-label="삭제">✕</button>`}
