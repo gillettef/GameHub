@@ -2,22 +2,24 @@ export type Position = 'FW' | 'MF' | 'DF' | 'GK';
 export type Trait = '스타' | '플레이메이커' | '베테랑' | '유망주' | '클린시트' | '멀티플레이어';
 export type EventKey = 'normal' | 'fw' | 'budget' | 'young' | 'deadline';
 export type TacticKey = 'charm' | 'leak' | 'fast' | 'low' | 'hijack';
-export type FeeRate = 5 | 10 | 15 | 20;
+/** 요구 수수료 카드 (억, 정수) */
+export type Demand = 1 | 2 | 3 | 4;
 
 export interface PlayerCard {
   id: number;
   name: string;
   pos: Position;
-  /** 카드 표시용 가치. 계산에는 쓰이지 않는다. */
-  value: number;
-  minSalary: number;
+  /** 몸값: 구단 제시액이 이 값 이상이어야 계약 가능 */
+  cost: number;
   trait: Trait;
-  bonus: number;
+  /** 기본 수수료: 계약 성공 시 요구 수수료에 더해 받는 값 */
+  base: number;
 }
 
 export interface Club {
   id: number;
   name: string;
+  /** 제시액 */
   budget: number;
   pos: Position;
   pref: Trait;
@@ -35,9 +37,10 @@ export interface Tactic {
   name: string;
   desc: string;
   attract: number;
+  /** 계약 성공 시 수수료 보정 */
   feeAdj: number;
-  successBonus: number;
-  salaryAdj: number;
+  /** 몸값 조건 보정 (실속 협상 −2) */
+  costAdj: number;
   /** 2차 협상에서만 낼 수 있는 카드 (하이재킹) */
   secondOnly?: boolean;
 }
@@ -52,8 +55,8 @@ export interface AgentState {
   level?: AiLevel;
   score: number;
   deals: number;
-  /** 지금까지 사용한 수수료율 카드 */
-  feeUsed: FeeRate[];
+  /** 지금까지 사용한 요구 수수료 카드 */
+  demandUsed: Demand[];
   /** 아직 쓰지 않은 전략 카드 */
   tactics: TacticKey[];
 }
@@ -61,9 +64,7 @@ export interface AgentState {
 export interface Offer {
   playerId: number;
   clubId: number;
-  /** 제시 연봉 (전략 카드 보정 전) */
-  salary: number;
-  fee: FeeRate;
+  demand: Demand;
   tactic: TacticKey | null;
 }
 
@@ -82,8 +83,8 @@ export interface RoundSubmission {
 export type InvalidReason =
   | 'not-in-market'
   | 'card-not-owned'
-  | 'salary-below-min'
-  | 'over-budget'
+  /** 제시액 < 몸값 */
+  | 'under-cost'
   /** 하이재킹 카드를 1차에 냄 */
   | 'second-only'
   /** 1차와 같은 선수/구단을 2차에 냄 */
@@ -100,8 +101,6 @@ export interface RoundEntry {
   stage: Stage;
   status: EntryStatus;
   offer?: Offer;
-  /** 유효 연봉 s */
-  salary?: number;
   attract?: number;
   /** 성공 시 받은 수수료 (빅딜 보너스 포함) */
   fee?: number;
@@ -112,6 +111,8 @@ export interface RoundEntry {
   /** 패배 시 승자의 매력도 */
   winnerAttract?: number;
   winner?: number;
+  /** 매력도·요구 수수료가 같은 최고 제안끼리 서로 상쇄되어 탈락 */
+  tied?: boolean;
   /** 2차 하이재킹이 1차 계약을 넘지 못해 패배 */
   hijackFailed?: boolean;
   /** hijacked 일 때 하이재커 */
@@ -127,7 +128,7 @@ export interface RoundResult {
 export type Phase = 'bid' | 'result' | 'done';
 
 export interface GameState {
-  v: 2;
+  v: 3;
   rng: number;
   round: number;
   phase: Phase;
@@ -140,7 +141,7 @@ export interface GameState {
 }
 
 export interface Evaluation {
-  salary: number;
   attract: number;
+  /** 성공 시 수수료 (빅딜 제외) */
   fee: number;
 }

@@ -1,50 +1,50 @@
-import type { Club, EventKey, FeeRate, MarketEvent, PlayerCard, Position, Tactic, TacticKey, Trait } from './types';
+import type { Club, Demand, EventKey, MarketEvent, PlayerCard, Position, Tactic, TacticKey, Trait } from './types';
 
-type PlayerRow = [string, Position, number, number, Trait, number];
+/** [이름, 포지션, 몸값, 특성, 기본 수수료] */
+type PlayerRow = [string, Position, number, Trait, number];
 
 const PLAYER_ROWS: PlayerRow[] = [
-  ['강태오', 'FW', 10, 8, '스타', 1],
-  ['윤시후', 'MF', 8, 6, '플레이메이커', 0],
-  ['박도윤', 'DF', 7, 4, '베테랑', 0.3],
-  ['최준서', 'FW', 6, 3, '유망주', 1],
-  ['김민재', 'GK', 7, 4, '클린시트', 0.5],
-  ['이하준', 'MF', 6, 3, '유망주', 1],
-  ['정우진', 'DF', 5, 2, '멀티플레이어', 0.3],
-  ['한승우', 'FW', 9, 7, '스타', 1],
-  ['오지환', 'MF', 7, 5, '플레이메이커', 0.3],
-  ['문현수', 'DF', 6, 3, '베테랑', 0.3],
-  ['임재원', 'FW', 5, 2, '유망주', 1],
-  ['백승민', 'GK', 5, 2, '클린시트', 0.5],
-  ['서강민', 'MF', 8, 6, '스타', 1],
-  ['조현우', 'DF', 4, 2, '멀티플레이어', 0.3],
-  ['장민호', 'FW', 7, 5, '베테랑', 0.5],
-  ['남기훈', 'MF', 5, 2, '유망주', 1],
-  ['유태양', 'DF', 8, 6, '스타', 1],
-  ['신도현', 'GK', 6, 3, '클린시트', 0.5],
-  ['차은결', 'MF', 4, 2, '플레이메이커', 0.3],
-  ['배준혁', 'FW', 8, 6, '스타', 1],
-  ['송지호', 'FW', 7, 5, '베테랑', 0.5],
-  ['권태민', 'MF', 6, 4, '멀티플레이어', 0.3],
-  ['홍석진', 'DF', 9, 7, '스타', 1],
-  ['류건우', 'GK', 8, 6, '스타', 1],
-  ['안재현', 'FW', 4, 2, '멀티플레이어', 0.3],
-  ['고민성', 'MF', 9, 7, '스타', 1],
-  ['황보람', 'DF', 5, 3, '유망주', 1],
-  ['전하늘', 'GK', 4, 2, '유망주', 1],
-  ['노승현', 'MF', 6, 4, '베테랑', 0.5],
-  ['마동훈', 'DF', 6, 4, '클린시트', 0.5],
-  ['표준영', 'FW', 6, 4, '플레이메이커', 0.3],
-  ['엄태웅', 'MF', 5, 3, '멀티플레이어', 0.3],
-  ['하지원', 'FW', 5, 3, '유망주', 1],
-  ['구본철', 'GK', 7, 5, '베테랑', 0.5],
-  ['진우석', 'DF', 7, 5, '플레이메이커', 0.3],
-  ['석현준', 'MF', 7, 5, '유망주', 1],
+  ['강태오', 'FW', 8, '스타', 4],
+  ['윤시후', 'MF', 6, '플레이메이커', 3],
+  ['박도윤', 'DF', 4, '베테랑', 2],
+  ['최준서', 'FW', 3, '유망주', 2],
+  ['김민재', 'GK', 4, '클린시트', 2],
+  ['이하준', 'MF', 3, '유망주', 2],
+  ['정우진', 'DF', 2, '멀티플레이어', 2],
+  ['한승우', 'FW', 7, '스타', 4],
+  ['오지환', 'MF', 5, '플레이메이커', 3],
+  ['문현수', 'DF', 3, '베테랑', 2],
+  ['임재원', 'FW', 2, '유망주', 2],
+  ['백승민', 'GK', 2, '클린시트', 2],
+  ['서강민', 'MF', 6, '스타', 3],
+  ['조현우', 'DF', 2, '멀티플레이어', 2],
+  ['장민호', 'FW', 5, '베테랑', 3],
+  ['남기훈', 'MF', 2, '유망주', 2],
+  ['유태양', 'DF', 6, '스타', 3],
+  ['신도현', 'GK', 3, '클린시트', 2],
+  ['차은결', 'MF', 2, '플레이메이커', 2],
+  ['배준혁', 'FW', 6, '스타', 3],
+  ['송지호', 'FW', 5, '베테랑', 3],
+  ['권태민', 'MF', 4, '멀티플레이어', 2],
+  ['홍석진', 'DF', 7, '스타', 4],
+  ['류건우', 'GK', 6, '스타', 3],
+  ['안재현', 'FW', 2, '멀티플레이어', 2],
+  ['고민성', 'MF', 7, '스타', 4],
+  ['황보람', 'DF', 3, '유망주', 2],
+  ['전하늘', 'GK', 2, '유망주', 2],
+  ['노승현', 'MF', 4, '베테랑', 2],
+  ['마동훈', 'DF', 4, '클린시트', 2],
+  ['표준영', 'FW', 4, '플레이메이커', 2],
+  ['엄태웅', 'MF', 3, '멀티플레이어', 2],
+  ['하지원', 'FW', 3, '유망주', 2],
+  ['구본철', 'GK', 5, '베테랑', 3],
+  ['진우석', 'DF', 5, '플레이메이커', 3],
+  ['석현준', 'MF', 5, '유망주', 3],
 ];
 
-export const PLAYERS: readonly PlayerCard[] = PLAYER_ROWS.map(([name, pos, value, minSalary, trait, bonus], id) => ({
-  id, name, pos, value, minSalary, trait, bonus,
-}));
+export const PLAYERS: readonly PlayerCard[] = PLAYER_ROWS.map(([name, pos, cost, trait, base], id) => ({ id, name, pos, cost, trait, base }));
 
+/** [이름, 제시액, 필요 포지션, 선호 특성] */
 type ClubRow = [string, number, Position, Trait];
 
 const CLUB_ROWS: ClubRow[] = [
@@ -66,27 +66,26 @@ export const CLUBS: readonly Club[] = CLUB_ROWS.map(([name, budget, pos, pref], 
 
 export const EVENTS: Readonly<Record<EventKey, MarketEvent>> = {
   normal: { key: 'normal', name: '이적시장 개장', icon: '📰', desc: '기본 협상 라운드입니다.' },
-  fw: { key: 'fw', name: '공격수 품귀 현상', icon: '🔥', desc: 'FW 선수의 계약 매력도 +1' },
-  budget: { key: 'budget', name: '구단 긴축 경영', icon: '📉', desc: '모든 구단의 유효 예산 -1억' },
-  young: { key: 'young', name: '유망주 열풍', icon: '🌱', desc: '유망주 선수 수수료 +0.3억' },
-  deadline: { key: 'deadline', name: '빅딜 시즌', icon: '💰', desc: '이번 라운드 연봉이 가장 높은 계약에 +0.5억 (동률이면 모두)' },
+  fw: { key: 'fw', name: '공격수 품귀 현상', icon: '🔥', desc: 'FW 선수 계약 수수료 +1억' },
+  budget: { key: 'budget', name: '구단 긴축 경영', icon: '📉', desc: '모든 구단 제시액 −1억' },
+  young: { key: 'young', name: '유망주 열풍', icon: '🌱', desc: '유망주 선수 계약 수수료 +1억' },
+  deadline: { key: 'deadline', name: '빅딜 시즌', icon: '💰', desc: '이번 라운드 수수료가 가장 큰 계약에 +2억 (동률이면 모두)' },
 };
 
 export const EVENT_KEYS: readonly EventKey[] = ['normal', 'fw', 'budget', 'young', 'deadline'];
 
 export const TACTICS: Readonly<Record<TacticKey, Tactic>> = {
-  charm: { key: 'charm', name: '관계 구축', desc: '매력도 +2', attract: 2, feeAdj: 0, successBonus: 0, salaryAdj: 0 },
-  leak: { key: 'leak', name: '이적설 흘리기', desc: '매력도 +3, 수수료 -0.2억', attract: 3, feeAdj: -0.2, successBonus: 0, salaryAdj: 0 },
-  fast: { key: 'fast', name: '신속한 결단', desc: '매력도 +1, 성공 시 +0.3억', attract: 1, feeAdj: 0, successBonus: 0.3, salaryAdj: 0 },
-  low: { key: 'low', name: '실속 협상', desc: '연봉 -1억, 매력도 +1', attract: 1, feeAdj: 0, successBonus: 0, salaryAdj: -1 },
+  charm: { key: 'charm', name: '관계 구축', desc: '매력도 +2', attract: 2, feeAdj: 0, costAdj: 0 },
+  leak: { key: 'leak', name: '이적설 흘리기', desc: '매력도 +3, 수수료 −1억', attract: 3, feeAdj: -1, costAdj: 0 },
+  fast: { key: 'fast', name: '신속한 결단', desc: '매력도 +1, 수수료 +1억', attract: 1, feeAdj: 1, costAdj: 0 },
+  low: { key: 'low', name: '실속 협상', desc: '매력도 +1, 제시액이 몸값보다 2억 낮아도 계약 가능', attract: 1, feeAdj: 0, costAdj: -2 },
   hijack: {
     key: 'hijack',
     name: '하이재킹',
-    desc: '2차 전용 · 매력도 +1, 1차 계약 선수도 더 높은 매력도로 빼앗기',
-    attract: 1,
+    desc: '2차 전용 · 매력도 +2, 1차 계약 선수도 더 높은 매력도로 빼앗기',
+    attract: 2,
     feeAdj: 0,
-    successBonus: 0,
-    salaryAdj: 0,
+    costAdj: 0,
     secondOnly: true,
   },
 };
@@ -96,11 +95,12 @@ export const TACTIC_KEYS: readonly TacticKey[] = ['charm', 'leak', 'fast', 'low'
 /** 모든 에이전트가 1장씩 받는 카드 */
 export const HIJACK: TacticKey = 'hijack';
 
-export const FEE_RATES: readonly FeeRate[] = [5, 10, 15, 20];
-export const FEE_CARDS_EACH = 3;
+export const DEMANDS: readonly Demand[] = [1, 2, 3, 4];
+export const DEMAND_CARDS_EACH = 3;
 export const TACTICS_PER_AGENT = 3;
 export const TOTAL_ROUNDS = 5;
-export const MAX_SALARY = 10;
+/** 빅딜 시즌 보너스 (억) */
+export const BIG_DEAL_BONUS = 2;
 export const MIN_AGENTS = 2;
 export const MAX_AGENTS = 4;
 /** 라운드당 협상 횟수 */

@@ -1,5 +1,5 @@
-import { FEE_RATES, MAX_AGENTS, MAX_SALARY, PLAYERS, createGame, feeRemaining, isFeeRate, nextRound, rankings, resolveRound } from '../core';
-import type { FeeRate, GameState, RoundSubmission, TacticKey } from '../core';
+import { MAX_AGENTS, PLAYERS, createGame, demandRemaining, isDemand, nextRound, rankings, resolveRound } from '../core';
+import type { Demand, GameState, RoundSubmission, TacticKey } from '../core';
 import { loadProfile, loadSession, newProfile, saveProfile, saveSession, type Session } from '../store/storage';
 import { homeScreen, registerScreen } from './screens/home';
 import { bidScreen, finalScreen, handoffScreen, resultScreen } from './screens/game';
@@ -62,11 +62,11 @@ export function render(): void {
 function ensureDraft(s: Session): Draft {
   const key = `${s.game.round}:${s.turn}`;
   if (ui.draft?.key === key) return ui.draft;
-  const fr = feeRemaining(s.game.agents[s.turn]!);
-  const pickFee = (reserved?: FeeRate) => ([10, 5, 15, 20] as const).find((f) => fr[f] - (f === reserved ? 1 : 0) > 0) ?? 5;
-  const slot = (fee: FeeRate): Slot => ({ playerId: null, clubId: null, salary: 0, fee, tactic: null, pass: false });
-  const fee1 = pickFee();
-  ui.draft = { key, stage: 1, slots: [slot(fee1), slot(pickFee(fee1))] };
+  const left = demandRemaining(s.game.agents[s.turn]!);
+  const pickDemand = (reserved?: Demand) => ([2, 1, 3, 4] as const).find((d) => left[d] - (d === reserved ? 1 : 0) > 0) ?? 1;
+  const slot = (demand: Demand): Slot => ({ playerId: null, clubId: null, demand, tactic: null, pass: false });
+  const d1 = pickDemand();
+  ui.draft = { key, stage: 1, slots: [slot(d1), slot(pickDemand(d1))] };
   return ui.draft;
 }
 
@@ -215,23 +215,14 @@ const actions: Record<string, (arg: string) => void> = {
     if (ui.draft) ui.draft.stage = k === '2' ? 2 : 1;
   },
   pick: (id) => {
-    const sl = cur();
-    const p = PLAYERS[Number(id)]!;
-    sl.playerId = p.id;
-    sl.salary = p.minSalary;
+    cur().playerId = PLAYERS[Number(id)]!.id;
   },
   club: (id) => {
     cur().clubId = Number(id);
   },
-  sal: (delta) => {
-    const sl = cur();
-    if (sl.playerId === null) return;
-    const min = PLAYERS[sl.playerId]!.minSalary;
-    sl.salary = Math.min(MAX_SALARY, Math.max(min, sl.salary + Number(delta)));
-  },
-  fee: (f) => {
-    const n = Number(f);
-    if (isFeeRate(n) && FEE_RATES.includes(n)) cur().fee = n;
+  demand: (v) => {
+    const n = Number(v);
+    if (isDemand(n)) cur().demand = n;
   },
   tactic: (k) => {
     cur().tactic = (k || null) as TacticKey | null;
