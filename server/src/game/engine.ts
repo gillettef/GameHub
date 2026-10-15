@@ -396,6 +396,11 @@ export function createGame(players: { id: string; name: string; isBot?: boolean 
     log: [],
   };
   if (BALANCE.dreams) dealDreams(state);
+  // 60절 실험: 시험 카드를 처음부터 공개한다
+  if (BALANCE.examsAtStart) {
+    state.exams = { ...state.hidden.examPlan };
+    log(state, `시험 과목 공개: 중간고사 "${state.exams.midterm!.name}" · 기말고사 "${state.exams.final!.name}"`);
+  }
   beginFirstRoll(state, turnOrder);
   return state;
 }
@@ -537,7 +542,7 @@ function drawNews(state: GameState): NewsCard {
     const fuel = examFuel(plan[which]);
     return examWeekCard(which, fuel, TOKEN_NAME[fuel]);
   }
-  const notice = state.round === BALANCE.midtermNoticeRound ? "midterm" : state.round === BALANCE.finalNoticeRound ? "final" : null;
+  const notice = BALANCE.examsAtStart ? null : state.round === BALANCE.midtermNoticeRound ? "midterm" : state.round === BALANCE.finalNoticeRound ? "final" : null;
   if (notice) {
     state.exams[notice] = plan[notice];
     log(state, `${notice === "midterm" ? "중간고사" : "기말고사"} 과목 공개: "${plan[notice].name}" (${describeExam(plan[notice], STAT_NAME)})`);
@@ -553,6 +558,7 @@ const newsEffect = (state: Pick<GameState, "news">) => state.news?.effect ?? {};
 
 // ── 시험 달 1주차: 벼락치기 (44절). 선부터 한 명씩, 가진 기운 1개를 시험 과목 기운 1개로 바꿀 수 있다 (안 해도 된다) ──
 function beginCramPhase(state: GameState): void {
+  if (!BALANCE.cram) return beginExam(state, state.round === BALANCE.midtermRound ? "midterm_exam" : "final_exam");
   state.phase = "cram";
   state.cramOrder = orderFromStarter(state);
   state.cramPointer = 0;
@@ -926,14 +932,14 @@ function resolveDuel(state: GameState, ctx: Extract<RollContext, { kind: "duel" 
   const rollText = (dice: number[], bonus: number, total: number) => `${describeRoll(dice, [["능력", bonus]])} = ${total}`;
   const feeText = fee > 0 ? ` — ${player.name}이(가) ${target.name}에게 매력 ${fee}을 건넸어요` : "";
   // 동점이면 무승부: 이긴 사람도 진 사람도 없고, 마도서 보상도 없다
-  if (challengerRoll === defenderRoll) {
+  if (challengerRoll === defenderRoll && BALANCE.duelTieWinner === "none") {
     log(
       state,
       `${player.name}(${rollText(challengerDice, challengerBonus, challengerRoll)})이(가) ${target.name}(${rollText(defenderDice, defenderBonus, defenderRoll)})을(를) 지목! 무승부${feeText}`,
     );
     return;
   }
-  const winner = challengerRoll > defenderRoll ? player : target;
+  const winner = challengerRoll > defenderRoll || (challengerRoll === defenderRoll && BALANCE.duelTieWinner === "challenger") ? player : target;
   const loser = winner === player ? target : player;
   const loserAbilities = [...(loser === player ? challengerAbilities : defenderAbilities), ...abilitiesOf(loser, "lose")];
   loser.pendingStaminaTokens += sumEffect(abilitiesOf(loser, "lose"), "stamina");
@@ -1033,7 +1039,7 @@ function offerViewOf(activityId: ActivityId, card: OfferedCard, round: number): 
     }
     case "lab": {
       const c = card as LabCard;
-      return { id: c.id, name: c.name, description: c.description, lines: [c.summary, `실험 판정: 지력기운 주사위 합 ≥ ${labTargetValue()}`, ...failRewardLine(failRewardOf("lab", c))], cost: c.cost > 0 ? { kind: "stamina", amount: c.cost } : undefined };
+      return { id: c.id, name: c.name, description: c.description, lines: [c.summary, `실험 판정: 지력기운 주사위 합 ≥ ${labTargetValue()}`, ...failRewardLine(failRewardOf("lab", c))], cost: labCost(c) > 0 ? { kind: "stamina", amount: labCost(c) } : undefined };
     }
     case "tournament": {
       const c = card as TournamentCard;
@@ -1099,8 +1105,11 @@ function discardOffers(state: GameState): void {
 
 
 // 이 카드를 지금 가져갈 수 있는가 (비용을 낼 수 있는가). 연구 카드는 체력기운이 든다. 마법생물은 마나기운 없이도 공짜 주사위 1개로 도전할 수 있다
+// 연구 카드를 가져올 때 내는 체력기운 (60절 실험 배수 labCostScale)
+export const labCost = (c: Pick<LabCard, "cost">): number => Math.round(c.cost * BALANCE.labCostScale);
+
 function canTake(player: PlayerGameState, activityId: ActivityId, card: OfferedCard): boolean {
-  if (activityId === "lab") return canPay(player, 0, (card as LabCard).cost);
+  if (activityId === "lab") return canPay(player, 0, labCost(card as LabCard));
   return true;
 }
 
@@ -1115,7 +1124,7 @@ function takeOffered(state: GameState, player: PlayerGameState, activityId: Acti
     }
     case "lab": {
       const lab = card as LabCard;
-      pay(player, "stamina", lab.cost);
+      pay(player, "stamina", labCost(lab));
       startLabRoll(state, player, lab);
       break;
     }

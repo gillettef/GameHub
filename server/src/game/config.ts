@@ -136,6 +136,12 @@ export const BALANCE = {
   // 57절 마법생물과의 교감: 데려오면 속성 능력치 +1(하늘 주문력·육지 체력·바다 지력, 성장이 아니라 학점은 없다). 매달 기운·대결 굴림 같은 생물 능력은 없다
   creatureBond: true,
   creatureBondStats: { sky: "spellPower", land: "stamina", ocean: "intelligence" } as Record<"sky" | "land" | "ocean", StatKey>,
+  // ── 60절 복잡도 줄이기 실험 스위치 (기본값은 지금 규칙) ──
+  classAdvanced: true, // false면 심화 수업이 없다 (모든 수업카드가 기초, 선수조건 없음)
+  examsAtStart: false, // true면 중간·기말고사 카드를 게임 시작 때 공개한다 (시험 공고 달이 없고 그 달은 행사)
+  cram: true, // false면 시험 주간 벼락치기가 없다 (바로 시험)
+  duelTieWinner: "none" as "none" | "challenger", // 마법 겨루기 합이 같을 때: none = 무승부, challenger = 도전자 승
+  labCostScale: 1, // 연구 카드를 가져올 때 내는 체력기운 배수 (0이면 비용 없음)
   // 탐험 카드 목표값 보정 (실험용, 카드에 인쇄된 목표에 더한다)
   exploreTargetMod: 0,
   // 대회 카드 목표값 보정 (실험용, 카드에 인쇄된 목표에 더한다)
