@@ -87,6 +87,8 @@ export type InvalidReason =
   | 'under-cost'
   /** 하이재킹 카드를 1차에 냄 */
   | 'second-only'
+  /** 1차에 대어가 아닌 선수를 냄 */
+  | 'not-star'
   /** 1차와 같은 선수/구단을 2차에 냄 */
   | 'duplicate';
 

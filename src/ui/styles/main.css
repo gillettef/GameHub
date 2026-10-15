@@ -246,3 +246,4 @@ input[readonly] { color: var(--mu); }
 .chip.t.hj b { color: #ff9f8a; }
 .stage-t { margin: 10px 0 6px; font-size: 13px; color: var(--mu); }
 .entry.hijacked { border-color: #6b2f3a; }
+.pc.big { border-color: #6c5730; background: linear-gradient(145deg, #3a301c, #121b2a); }

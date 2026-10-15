@@ -1,4 +1,4 @@
-import { DEMANDS, DEMAND_CARDS_EACH, TACTICS, club, player } from './data';
+import { DEMANDS, DEMAND_CARDS_EACH, TACTICS, club, player, starSlots } from './data';
 import type { AgentState, Club, Demand, EventKey, Evaluation, GameState, InvalidReason, Offer, Stage, Submission } from './types';
 
 /** 구단 제시액 (긴축 이벤트 시 −1) */
@@ -19,6 +19,14 @@ export const isDemand = (n: number): n is Demand => (DEMANDS as readonly number[
 export function ownsCards(agent: AgentState, offer: Offer): boolean {
   if (!isDemand(offer.demand) || demandRemaining(agent)[offer.demand] <= 0) return false;
   return offer.tactic === null || agent.tactics.includes(offer.tactic);
+}
+
+/** 이번 라운드 대어: 시장 선수 중 몸값 상위 starSlots(N)명 (같으면 카드 번호 순). 1차는 대어만 노릴 수 있다 */
+export function stars(state: Pick<GameState, 'market' | 'agents' | 'sold'>): number[] {
+  return state.market
+    .filter((id) => !state.sold.includes(id))
+    .sort((a, b) => player(b).cost - player(a).cost || a - b)
+    .slice(0, starSlots(state.agents.length));
 }
 
 export const inMarket = (state: GameState, offer: Offer): boolean =>
@@ -61,6 +69,7 @@ export function precheck(state: GameState, agentIdx: number, offer: Offer, stage
   if (!agent) throw new Error(`unknown agent ${agentIdx}`);
   if (!inMarket(state, offer)) return 'not-in-market';
   if (stage === 1) {
+    if (!stars(state).includes(offer.playerId)) return 'not-star';
     if (offer.tactic && TACTICS[offer.tactic].secondOnly) return 'second-only';
     return ownsCards(agent, offer) ? null : 'card-not-owned';
   }
@@ -79,5 +88,6 @@ export const INVALID_TEXT: Record<InvalidReason, string> = {
   'card-not-owned': '보유하지 않은 카드',
   'under-cost': '몸값 미달',
   'second-only': '2차 전용 카드',
+  'not-star': '1차는 대어만',
   duplicate: '1차와 같은 선수/구단',
 };

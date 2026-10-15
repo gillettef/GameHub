@@ -60,6 +60,9 @@ const playerStat = PLAYERS.map(() => ({ deals: 0, fee: 0, bids: 0 }));
 const clubPick = CLUBS.map(() => 0);
 const eventStat = Object.fromEntries(EVENT_KEYS.map((k) => [k, { rounds: 0, fee: 0 }])) as Record<EventKey, { rounds: number; fee: number }>;
 let contested = 0;
+/** 경쟁(같은 차수·같은 선수에 2건 이상)에 들어간 제안 수 */
+let offersContested = 0;
+let offersCompeting = 0;
 let ties = 0;
 let groups = 0;
 let noOffer = 0;
@@ -140,8 +143,10 @@ for (let gi = 0; gi < GAMES; gi++) {
     }
     for (const atts of byPlayer.values()) {
       groups++;
+      offersCompeting += atts.length;
       if (atts.length > 1) {
         contested++;
+        offersContested += atts.length;
         const top = Math.max(...atts);
         if (atts.filter((a) => a === top).length > 1) ties++;
       }
@@ -178,6 +183,7 @@ const report = {
   events: EVENT_KEYS.map((k) => ({ event: EVENTS[k].name, rounds: eventStat[k].rounds, avgRoundFee: r2(eventStat[k].fee / (eventStat[k].rounds || 1)) })),
   rates: {
     contested: pct(contested, groups),
+    offersFacingRival: pct(offersContested, offersCompeting),
     tieAmongContested: pct(ties, contested),
     noOfferRate: pct(noOffer, noOffer + offers),
     invalidRate: pct(invalid, offers),
