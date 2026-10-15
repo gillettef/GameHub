@@ -82,8 +82,10 @@ function templates(): Omit<ClassCard, "id">[] {
   for (const stat of STATS) {
     for (const [level, from, index, copies] of LAYOUT) {
       const [name, description] = (from === "basic" ? BASIC : ADVANCED)[stat][index];
-      const { gain, minStat } = BALANCE.classTiers[level];
-      for (let i = 0; i < copies; i++) list.push({ name, description, stat, level, gain, ...(minStat !== undefined ? { minStat } : {}) });
+      // 60절 실험: 심화 수업을 없애면 그 자리의 카드도 기초 수업이 된다
+      const lv = BALANCE.classAdvanced ? level : "basic";
+      const { gain, minStat } = BALANCE.classTiers[lv];
+      for (let i = 0; i < copies; i++) list.push({ name, description, stat, level: lv, gain, ...(minStat !== undefined ? { minStat } : {}) });
     }
   }
   return list;

@@ -20,6 +20,7 @@ import {
   cramTurn,
   rollLimit,
   chooseDream,
+  labCost,
   creatureSets,
   diceSuccessChance,
   suggestDiceCount,
@@ -367,7 +368,7 @@ export function choosePick(state: GameState, strategy: BotStrategy): string | nu
         return creatureValue(state, strategy, player, card as CreatureCard);
       case "lab": {
         const lab = card as LabCard;
-        return effectValue(state, strategy, lab.effect, player) - lab.cost * 0.3; // 같은 효과라면 싼 카드가 좋다
+        return effectValue(state, strategy, lab.effect, player) - labCost(lab) * 0.3; // 같은 효과라면 싼 카드가 좋다
       }
       case "tournament":
         return tournamentCardValue(state, strategy, player, card as TournamentCard);

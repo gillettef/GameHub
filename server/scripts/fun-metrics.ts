@@ -59,6 +59,8 @@ const m = {
   // 56절: 장래희망 달성(전체·우승자), 우승자의 가장 높은 능력치(판마다 우승 경로가 다양한가)
   dream: { n: 0, ok: 0, winN: 0, winOk: 0 },
   winnerTop: {} as Record<string, number>,
+  // 60절: 플레이 시간의 대용 지표 — 사람이 내리는 결정 수(수업·활동·카드 고르기·굴림·다시 굴리기·벼락치기)
+  decisions: 0,
 };
 
 const bump = (key: string, ok: boolean) => {
@@ -102,6 +104,7 @@ for (let g = 0; g < games; g++) {
       const entries = state.pendingRoll.entries;
       rollAndConfirm(state);
       for (const e of entries) if (kind !== "first") m.rolls[kind].dice += e.dice?.length ?? 0;
+      for (const e of entries) m.decisions += 1 + (e.rerolls ?? 0);
       const lines = state.log.slice(logStart).map((l) => l.message);
       for (const line of lines) {
         if (line.includes("아까운 경험이 쌓여 성장")) m.expGrowth++;
@@ -133,13 +136,17 @@ for (let g = 0; g < games; g++) {
           if (d) bump("마법 겨루기(도전자 승리)", d[2] === d[1]);
         }
       }
-    } else if (state.pendingPick) chooseActivityCard(state, state.pendingPick.playerId, choosePick(state, persona[state.pendingPick.playerId]));
-    else if (state.phase === "cram") {
+    } else if (state.pendingPick) {
+      m.decisions++;
+      chooseActivityCard(state, state.pendingPick.playerId, choosePick(state, persona[state.pendingPick.playerId]));
+    } else if (state.phase === "cram") {
+      m.decisions++;
       const id = state.cramOrder[state.cramPointer];
       m.cramChances++;
       cramStep(state);
       if (state.log.slice(logStart).some((l) => l.message.includes(`${state.players[id].name}: 벼락치기!`))) m.cram++;
     } else if (state.phase === "class") {
+      m.decisions++;
       const id = state.classPickOrder[state.classPickPointer];
       const had = state.players[id].classCards.length;
       playClassTurn(state, id, persona[id]);
@@ -151,6 +158,7 @@ for (let g = 0; g < games; g++) {
       } else m.classTier.skip++;
     } else if (state.activityStage === "resolve") advanceResolution(state);
     else {
+      m.decisions++;
       const id = state.activityOrder[state.activityTurnPointer];
       const pick = chooseActivityAction(state, id, persona[id]);
       selectActivity(state, id, pick.activityId, pick.targetPlayerId);
@@ -246,7 +254,8 @@ console.log("\n[밸런스] 활동 결과:");
 console.table(Object.fromEntries(Object.entries(m.outcome).map(([k, o]) => [k, { 횟수: o.total, 성공률: pct(o.ok, o.total) }])));
 console.log("[밸런스] 좌석별 승률(1번 좌석부터):", m.seatWins.map((w) => pct(w, games)).join(" / "));
 console.log("[밸런스] 성향별 승률(기대", pct(1, n), "):", Object.fromEntries(Object.entries(m.persona).map(([k, v]) => [k, pct(v.wins, v.games)])));
-console.log("\n[재미] 평균 최종 점수", avg(m.scoreFinal, P), "· 우승 점수", avg(m.winnerScore, games), "· 학점", avg(m.creditFinal, P));
+console.log("\n[복잡도] 1인당 판당 결정 수", avg(m.decisions, P), "· 판당 전체 결정 수", avg(m.decisions, games));
+console.log("[재미] 평균 최종 점수", avg(m.scoreFinal, P), "· 우승 점수", avg(m.winnerScore, games), "· 학점", avg(m.creditFinal, P));
 console.log("[재미] 1·2등 점수 차", avg(m.margin, games), `(우승 점수의 ${pct(m.marginRatio, games)})`, "· 1등과 꼴찌 차", avg(m.lastGap, games), "· 공동 우승", pct(m.coWin, games));
 console.log("[재미] 예상 점수 선두 교체(판당)", avg(m.leadChanges, games), "· 9개월 끝 선두가 우승 못 한 판(역전)", pct(m.comeback, games));
 console.log("[재미] 1~3개월 성공 횟수별 우승률 (초반 운이 판을 정하는가):", Object.fromEntries(Object.entries(m.early).sort().map(([k, v]) => [k, pct(v.w, v.n)])));
