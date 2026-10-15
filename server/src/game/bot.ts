@@ -1,6 +1,6 @@
 // AI 봇 의사결정. 실제 게임(함께 플레이)과 밸런스 시뮬레이션(scripts/simulate.ts)이 함께 사용합니다.
 // 봇은 단순한 휴리스틱으로 움직입니다. 수업카드는 공개된 카드 중 성향에 맞는 능력치를 우선해 체력기운이 허용하는 카드를 1장 고르고,
-// 자율활동은 상황(마나기운 보유량, 토너먼트 진행도 등)과 성향 가중치를 곱해 점수가 높은 구역을 고릅니다.
+// 자율활동은 상황(마나기운 보유량, 마법 경연 진행도 등)과 성향 가중치를 곱해 점수가 높은 구역을 고릅니다.
 import { BALANCE } from "./config.js";
 import {
   availableActivities,
@@ -63,7 +63,7 @@ const BALANCED_WEIGHTS: Record<StatKey, number> = { intelligence: 1.2, spellPowe
 // 함께 플레이할 때 봇에게 무작위로 부여되는 성향 (한 활동만 고집하면 약해지므로 가중치는 약하게)
 export const BOT_PERSONALITIES: BotStrategy[] = [
   { name: "균형형", classWeights: BALANCED_WEIGHTS, activityBias: even },
-  { name: "토너먼트형", classWeights: { ...BALANCED_WEIGHTS, spellPower: 1.5 }, activityBias: leaning("tournament", 2.5) },
+  { name: "마법 경연형", classWeights: { ...BALANCED_WEIGHTS, spellPower: 1.5 }, activityBias: leaning("tournament", 2.5) },
   { name: "조련사형", classWeights: BALANCED_WEIGHTS, activityBias: leaning("creature", 2.5) },
   { name: "결투가형", classWeights: { ...BALANCED_WEIGHTS, spellPower: 1.5 }, activityBias: leaning("duel", 2.5) },
   { name: "탐험가형", classWeights: BALANCED_WEIGHTS, activityBias: leaning("exploration", 2.5) },
@@ -158,11 +158,11 @@ export function playCramTurn(state: GameState, playerId: string): void {
 
 // 50절: 공개된 구역 카드 중 내가 가져갈 수 있는 카드의 가치. 이미 누가 들어간 구역이면 먼저 온 사람이 가장 좋은 카드를 가져간다고 보고 남는 카드로 계산한다
 function zoneOutlook(state: GameState, strategy: BotStrategy, player: PlayerGameState, activityId: ActivityId): number {
-  // 토너먼트(54절): 참가하면 언제나 주문력 성장과 학점을 받는다. 다른 구역의 가치(카드 효과)에는 성장 몫이 들어 있지 않아 같은 눈높이가 되도록 절반으로 본다
-  // (1이면 봇이 토너먼트에 몰려 주문 대결이 판당 1.2회로 줄고 전략 범위가 7~39%로 벌어졌다)
+  // 마법 경연(54절): 참가하면 언제나 주문력 성장과 학점을 받는다. 다른 구역의 가치(카드 효과)에는 성장 몫이 들어 있지 않아 같은 눈높이가 되도록 절반으로 본다
+  // (1이면 봇이 마법 경연에 몰려 마법 겨루기가 판당 1.2회로 줄고 전략 범위가 7~39%로 벌어졌다)
   if (activityId === "tournament" && !BALANCE.tournamentCards)
     return BALANCE.growthActivities.tournament ? 0.5 * effectValue(state, strategy, { stats: { spellPower: BALANCE.growthAmount }, credit: BALANCE.growthCredit }) : 0;
-  // 주문 대결의 가치 = 이길 확률·지목 부담을 감안한 0.35 × (승리 보상 + 주문력 성장)
+  // 마법 겨루기의 가치 = 이길 확률·지목 부담을 감안한 0.35 × (승리 보상 + 주문력 성장)
   if (activityId === "duel")
     return 0.35 * (effectValue(state, strategy, BALANCE.duelWinReward) + effectValue(state, strategy, { stats: { spellPower: BALANCE.growthAmount } }));
   const cards = state.hidden.offers[activityId] ?? [];
@@ -186,14 +186,14 @@ function plannedActivity(state: GameState, player: PlayerGameState, strategy: Bo
   return ACTIVITIES.map((a) => ({ a, v: activityAppeal(state, strategy, player, a) })).sort((x, y) => y.v - x.v)[0].a;
 }
 
-// 자율활동 단계: 선택할 구역과 (주문 대결이면) 상대
+// 자율활동 단계: 선택할 구역과 (마법 겨루기가면) 상대
 export function chooseActivityAction(
   state: GameState,
   playerId: string,
   strategy: BotStrategy,
 ): { activityId: ActivityId; targetPlayerId?: string } {
   const p = state.players[playerId];
-  // 주문 대결은 아직 활동을 고르지 않은 플레이어가 있어야만 고를 수 있다 (그중 한 명을 강제로 지목)
+  // 마법 겨루기는 아직 활동을 고르지 않은 플레이어가 있어야만 고를 수 있다 (그중 한 명을 강제로 지목)
   const targets = duelTargets(state, playerId);
   const free = availableActivities(state, playerId);
   const base: Record<ActivityId, number> = {
@@ -221,7 +221,7 @@ export function chooseActivityAction(
   });
   scored.sort((x, y) => y.score - x.score);
   const activityId = scored[0].a;
-  // 주문 대결 상대: 아직 활동을 고르지 않은 플레이어 중 주문력이 가장 높은(가장 위협적인) 사람
+  // 마법 겨루기 상대: 아직 활동을 고르지 않은 플레이어 중 주문력이 가장 높은(가장 위협적인) 사람
   const targetPlayerId =
     activityId === "duel"
       ? [...targets].sort(() => Math.random() - 0.5).sort((a, b) => state.players[b].spellPower - state.players[a].spellPower)[0] // 동점이면 무작위 (앞자리만 지목하지 않도록)
@@ -257,7 +257,7 @@ function explorationValue(state: GameState, strategy: BotStrategy, player: Playe
   return p * success + (1 - p) * failure;
 }
 
-// 굴리기 전에 쓸 보조 능력치 기운 개수 (38-6절). 토너먼트(설정으로 켰을 때): 다음 달로 남길 체력기운 1개만 빼고 모두 달리는 데 쓴다
+// 굴리기 전에 쓸 보조 능력치 기운 개수 (38-6절). 마법 경연(설정으로 켰을 때): 다음 달로 남길 체력기운 1개만 빼고 모두 달리는 데 쓴다
 export function botAssist(state: GameState, playerId: string): number {
   const pending = state.pendingRoll;
   const max = pending?.entries.find((e) => e.playerId === playerId)?.assistMax ?? 0;

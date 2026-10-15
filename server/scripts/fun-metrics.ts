@@ -106,7 +106,7 @@ for (let g = 0; g < games; g++) {
       for (const line of lines) {
         if (line.includes("아까운 경험이 쌓여 성장")) m.expGrowth++;
         if (state.round < 4) continue;
-        const r = line.match(/^(p\d): (?:마법생물 .*조련 (성공|실패)|연구 카드 .*실험 (성공|실패)|비밀의 방 .*목표 \d+ (성공|실패))/);
+        const r = line.match(/^(p\d): (?:마법생물 .*조련 (성공|실패)|연구 카드 .*실험 (성공|실패)|별빛 다락방 .*목표 \d+ (성공|실패))/);
         if (r) {
           const t = laterTry.get(r[1]) ?? { ok: 0, total: 0 };
           t.total++;
@@ -126,11 +126,11 @@ for (let g = 0; g < games; g++) {
         else if (line.includes("아쉽게 탈락")) bump("대회", false);
         else if (line.includes("실험 성공")) bump("연구실", true);
         else if (line.includes("실험 실패")) bump("연구실", false);
-        else if (/비밀의 방 .*(목표 \d+|합 \d+\/\d+) 성공/.test(line)) bump("탐험", true);
-        else if (/비밀의 방 .*(목표 \d+|합 \d+\/\d+) 실패/.test(line)) bump("탐험", false);
+        else if (/별빛 다락방 .*(목표 \d+|합 \d+\/\d+) 성공/.test(line)) bump("탐험", true);
+        else if (/별빛 다락방 .*(목표 \d+|합 \d+\/\d+) 실패/.test(line)) bump("탐험", false);
         else {
           const d = line.match(/^(.+?)\(.*지목! (?:(\S+) 승리|무승부)/);
-          if (d) bump("주문 대결(도전자 승리)", d[2] === d[1]);
+          if (d) bump("마법 겨루기(도전자 승리)", d[2] === d[1]);
         }
       }
     } else if (state.pendingPick) chooseActivityCard(state, state.pendingPick.playerId, choosePick(state, persona[state.pendingPick.playerId]));
@@ -257,4 +257,4 @@ const tops = Object.values(m.winnerTop);
 const entropy = -tops.reduce((a, v) => a + (v / games) * Math.log(v / games || 1), 0) / Math.log(STATS.length);
 console.log("[재미] 우승자의 가장 높은 능력치:", Object.fromEntries(STATS.map((s) => [s, pct(m.winnerTop[s] ?? 0, games)])), `· 다양성 ${(100 * entropy).toFixed(0)}점(100 = 네 능력치가 고르게 우승)`);
 if (m.dream.n > 0) console.log("[재미] 장래희망 달성률", pct(m.dream.ok, m.dream.n), "· 우승자의 달성률", pct(m.dream.winOk, m.dream.winN));
-console.log("[재미] 친구와 엮인 활동(같은 구역·주문 대결) 비율", pct(m.shared, m.activities), "· 주문 대결(판당)", avg(m.duels, games), "· 벼락치기 사용률", pct(m.cram, m.cramChances));
+console.log("[재미] 친구와 엮인 활동(같은 구역·마법 겨루기) 비율", pct(m.shared, m.activities), "· 마법 겨루기(판당)", avg(m.duels, games), "· 벼락치기 사용률", pct(m.cram, m.cramChances));

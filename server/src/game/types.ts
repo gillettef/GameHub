@@ -1,10 +1,10 @@
 export type StatKey = "intelligence" | "stamina" | "charm" | "spellPower";
 
 export type ActivityId =
-  | "tournament" // 마법 토너먼트 참가
+  | "tournament" // 반짝 마법 경연 참가
   | "creature" // 마법생물 조련
-  | "duel" // 주문 대결
-  | "exploration" // 비밀의 방 탐색
+  | "duel" // 마법 겨루기
+  | "exploration" // 별빛 다락방 탐험
   | "lab"; // 연구실 실험
 
 // 4주차(정리)에서 다음 달로 남기는 기운: 네 종류(지력·체력·매력·마나) 중 1개, 또는 남기지 않기
@@ -46,7 +46,7 @@ export interface TournamentCard {
   reward: CardEffect;
 }
 
-// 활동에서 거둔 성과 횟수 (특별상 계산용): 조련·탐험·연구·대회 성공, 주문 대결 승리, 시험 점수 합
+// 활동에서 거둔 성과 횟수 (특별상 계산용): 조련·탐험·연구·대회 성공, 마법 겨루기 승리, 시험 점수 합
 export type FeatKey = "creature" | "exploration" | "lab" | "tournament" | "duel" | "exam";
 export interface GraduationAward {
   category: AwardCategory;
@@ -234,7 +234,7 @@ export interface PendingRoll {
   // baseDice가 있으면 낸 기운과 상관없이 그만큼 더 굴린다 (기운은 0개부터 낼 수 있다, 47절)
   // 방향형: fuelUsed/fuelLimit = 다시 굴리기·조정에 쓴 재료 기운과 한도(능력치)
   entries: { playerId: string; label: string; diceCount: number; diceToken?: KeptToken; diceChoiceMax?: number; baseDice?: number; fuelUsed?: number; fuelLimit?: number; assistMax?: number; assist?: number; dice: number[] | null; confirmed: boolean; rerolls: number; rerollCounts?: number[] }[];
-  // 이 굴림에서 보조 능력치로 쓸 수 있는 기운 (토너먼트: 체력기운 "끝까지 달려요", 설정으로 켰을 때만). 없으면 해당 없음
+  // 이 굴림에서 보조 능력치로 쓸 수 있는 기운 (마법 경연: 체력기운 "끝까지 달려요", 설정으로 켰을 때만). 없으면 해당 없음
   assist?: { kind: "stamina"; name: string; title: string; hint: string };
   // 방향형 결과(48절)의 눈별 효과 (1~6) — 있으면 다시 굴리기·조정은 그 활동의 재료 기운으로 한다
   faces?: string[];
@@ -244,7 +244,7 @@ export interface PendingRoll {
 export interface ActivityChoice {
   playerId: string;
   activityId: ActivityId;
-  // 주문 대결이면 지목한 친구
+  // 마법 겨루기가면 지목한 친구
   targetPlayerId?: string;
 }
 
@@ -255,7 +255,7 @@ export interface ActivityResult {
   lines: string[];
 }
 
-// 주문 대결 한 건: 도전자가 상대를 지목했다
+// 마법 겨루기 한 건: 도전자가 상대를 지목했다
 export interface DuelPair {
   challengerId: string;
   targetId: string;
@@ -323,7 +323,7 @@ export interface GameState {
   activityResolvePointer: number;
   activityResolveStarted: boolean;
   activityResults: ActivityResult[];
-  // 이번 달 주문 대결 목록 (도전자 → 지목당한 사람). 지목당한 사람은 구역을 차지하지 않고 추가 비용도 내지 않는다
+  // 이번 달 마법 겨루기 목록 (도전자 → 지목당한 사람). 지목당한 사람은 구역을 차지하지 않고 추가 비용도 내지 않는다
   duels: DuelPair[];
   // 2주차(정규수업): 이번 달에 공개된 수업카드(인원수+1장, 모두 볼 수 있다)와 선택 순서(선 다음 사람부터 시계방향, 선이 마지막). 순서대로 1장씩 가져간다
   classMarket: ClassCard[];
@@ -331,9 +331,9 @@ export interface GameState {
   classPickPointer: number;
   // 3주차(자율활동): 구역에 처음 들어온 사람이 열어 둔 카드(모두 볼 수 있다). 먼저 온 사람이 원하는 카드를 가져가고 남는 카드는 두 번째 참가자가 가져간다
   activityOffers: Partial<Record<ActivityId, ActivityOffer>>;
-  // 공개된 카드 중 하나를 고르는 중 (take: 구역에서 카드 가져가기, reward: 주문 대결 승자의 마도서 선택)
+  // 공개된 카드 중 하나를 고르는 중 (take: 구역에서 카드 가져가기, reward: 마법 겨루기 승자의 마도서 선택)
   pendingPick: { playerId: string; activityId: ActivityId } | null;
-  // 주사위를 굴리는 중 (주문 대결·탐험 판정·시험)
+  // 주사위를 굴리는 중 (마법 겨루기·탐험 판정·시험)
   pendingRoll: PendingRoll | null;
   // 이번 달 1주차 학교 소식 (게임 시작 전에는 null)
   news: NewsCard | null;
@@ -374,7 +374,7 @@ export interface PublicRules {
   openCardCost: number;
   // 위 지력기운이 드는 활동 (지금은 없음)
   openCardCostActivities: ActivityId[];
-  // 활동별 주사위 재료 기운 (조련=매력, 탐험=체력, 연구실=지력, 토너먼트·주문 대결=마나)
+  // 활동별 주사위 재료 기운 (조련=매력, 탐험=체력, 연구실=지력, 마법 경연·마법 겨루기=마나)
   rollFuel: Record<ActivityId, KeptToken>;
   // 기운을 모아 둘 수 있는 한도 = 능력치 × 이 배수 (매달 능력치만큼 차오른다)
   energyCapMultiplier: number;
@@ -386,9 +386,21 @@ export interface PublicRules {
   midtermRound: number;
   midtermNoticeRound: number;
   finalNoticeRound: number;
-  // 마법 토너먼트 최종 순위 보상 (1위, 2위 순서, 학점)
+  // 반짝 마법 경연 최종 순위 보상 (1위, 2위 순서, 학점)
   tournamentRewards: number[];
   // 최종 점수 = 학점 (52절): 졸업식에서 부문(graduationCategories)마다 순위에 따라 학점 rankPoints[순위-1]을 더 받는다
   graduationCategories: AwardCategory[];
   rankPoints: number[];
+  // 56절 P5: 순서 규칙(학점 낮은 순), 대회 카드 사용 여부, 장래희망 기준·학점(0이면 장래희망 없음)과 고를 수 있는 개월,
+  // 마법생물 보너스 학점(어려운 생물·세트 완성), 겨루기 도전자 굴림 보너스·승리 학점, 성장 학점
+  turnOrderRule: "seat" | "creditAsc";
+  tournamentCards: boolean;
+  dreamThreshold: number;
+  dreamCredit: number;
+  dreamChooseRounds: number;
+  creatureRareCredit: number;
+  creatureSetCredit: number;
+  duelChallengerBonus: number;
+  duelWinCredit: number;
+  growthCredit: number;
 }

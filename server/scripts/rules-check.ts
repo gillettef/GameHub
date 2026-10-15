@@ -1,7 +1,7 @@
 // 규칙 단위 검증: 엔진 규칙(게임 시작 선 정하기, 선부터 시계방향 진행과 매달 선 교체, 정규수업 공개 시장, 매력기운 참가비,
-// 자율활동의 "모두 고르기 → 순서대로 하나씩 진행", 구역의 공개 카드 2장·2인 제한·추가 비용, 주문 대결(주문력만큼 주사위·무승부)과 마도서 선택,
+// 자율활동의 "모두 고르기 → 순서대로 하나씩 진행", 구역의 공개 카드 2장·2인 제한·추가 비용, 마법 겨루기(주문력만큼 주사위·무승부)과 마도서 선택,
 // 협력 탐험, 주사위 결과 확인 단계, 마나기운 주사위 통일(굴리기 전 개수 선택·마나기운 다시 굴리기·공짜 1개), 지력기운 카드 열기 비용, 능력치 감쇠,
-// 토너먼트(상한 폐지), 시험 카드(주사위 + 능력치 보너스), 동점 공동 순위, 최종 점수)가 기획대로 동작하는지 서버 없이 확인합니다. (사용법: npm run check)
+// 마법 경연(상한 폐지), 시험 카드(주사위 + 능력치 보너스), 동점 공동 순위, 최종 점수)가 기획대로 동작하는지 서버 없이 확인합니다. (사용법: npm run check)
 import assert from "node:assert/strict";
 import { BOT_PERSONALITIES, chooseActivityAction, choosePick, playClassTurn } from "../src/game/bot.js";
 import { CREATURE_CARDS } from "../src/game/creatures.js";
@@ -27,6 +27,8 @@ import {
   tokensOf,
   diceSuccessChance,
   canTakeClassCard,
+  chooseDream,
+  dreamFulfilled,
   classGainApplied,
   currentRoller,
   cramSources,
@@ -49,7 +51,7 @@ import { eventTemplates } from "../src/game/newsCards.js";
 import { cramStep, rollAndConfirm } from "./_drive.js";
 
 // 43-5절의 규칙(한 번에 낼 수 있는 기운 = 능력치)은 전용 검증에서만 켜고 나머지 검증은 그 규칙 없이 본다
-// (45절에서 기본값이 1이 된 주문 대결 마나기운 건네기도 전용 검증에서만 켠다)
+// (45절에서 기본값이 1이 된 마법 겨루기 마나기운 건네기도 전용 검증에서만 켠다)
 const NEW_RULES = { rollLimitByStat: BALANCE.rollLimitByStat, energyCapMultiplier: BALANCE.energyCapMultiplier, duelManaFee: BALANCE.duelManaFee };
 const NEWS_EVENTS = BALANCE.schoolNewsEvents;
 // 52-11절의 "성장하면 학점 +1"은 전용 검증에서만 켜고, 나머지 검증은 카드·시험·대결로 받는 학점만 본다
@@ -78,6 +80,27 @@ Object.assign(BALANCE, {
   catchUpBonus: 2,
   duelTargetRollsFirst: false,
   revealOffersAtMonthStart: false,
+});
+// 56절 P5(공모전 개선) 규칙도 전용 검증에서만 켜고, 나머지 검증은 55절 규칙(좌석 순서·장래희망/특별상/대회 카드 없음·대결 승리 학점 1)으로 본다
+const P5 = {
+  creatureRareCredit: BALANCE.creatureRareCredit,
+  creatureSetCredit: BALANCE.creatureSetCredit,
+  duelChallengerBonus: BALANCE.duelChallengerBonus,
+  turnOrderRule: BALANCE.turnOrderRule,
+  dreams: BALANCE.dreams,
+  specialAwards: BALANCE.specialAwards,
+  tournamentCards: BALANCE.tournamentCards,
+  duelWinReward: BALANCE.duelWinReward,
+};
+Object.assign(BALANCE, {
+  creatureRareCredit: 0,
+  creatureSetCredit: 0,
+  duelChallengerBonus: 0,
+  turnOrderRule: "seat",
+  dreams: false,
+  specialAwards: 0,
+  tournamentCards: false,
+  duelWinReward: { credit: 1 },
 });
 function withBalance(overrides: Partial<typeof BALANCE>, fn: () => void): void {
   const saved = Object.fromEntries(Object.keys(overrides).map((k) => [k, BALANCE[k as keyof typeof BALANCE]]));
@@ -252,7 +275,7 @@ test("다음 달 선: 매력기운을 가장 많이 남긴 플레이어가 된�
 test("4주차(정리)에서 다음 달 선이 정해져 다음 달 진행 순서에 반영된다", () => {
   const state = newGame(3);
   const oldStarter = state.startingPlayerIndex;
-  // 선이 아닌 다른 친구의 매력기운을 가장 많게 만들어 두고, 3주차를 끝까지 진행한다 (매력이 바뀌지 않도록 토너먼트만 고른다)
+  // 선이 아닌 다른 친구의 매력기운을 가장 많게 만들어 두고, 3주차를 끝까지 진행한다 (매력이 바뀌지 않도록 마법 경연만 고른다)
   const other = (oldStarter + 1) % 3;
   toActivity(state);
   setTokens(state, 3);
@@ -437,7 +460,7 @@ test("52-4절: 함께하면 든든은 없다 — 연구실에 둘이 함께 들�
   assert.ok(!state.pendingRoll!.lines.some((l) => l.includes("친구와 함께")));
 });
 
-test("52-11절: 성장하면 학점도 +1 (조련·탐험·연구실 성공, 주문 대결 승리), 졸업식 학점은 4/2/1", () => {
+test("52-11절: 성장하면 학점도 +1 (조련·탐험·연구실 성공, 마법 겨루기 승리), 졸업식 학점은 4/2/1", () => {
   assert.equal(GROWTH_CREDIT, 1);
   assert.deepEqual(BALANCE.rankPoints, [4, 2, 1]);
   withBalance({ growthCredit: GROWTH_CREDIT }, () => {
@@ -478,7 +501,7 @@ test("자율활동: 먼저 모두 고르고(선택은 모두에게 공개), 모�
   assert.throws(() => selectActivity(state, a, "lab"), /이미 모두 활동을 골랐어요/);
   assert.equal(canAdvanceResolution(state), true);
   advanceResolution(state);
-  assert.equal(state.pendingRoll?.kind, "tournament", "토너먼트는 주문력만큼 주사위를 굴린다");
+  assert.equal(state.pendingRoll?.kind, "tournament", "마법 경연은 주문력만큼 주사위를 굴린다");
   rollAll(state);
   assert.ok(state.players[a].tournamentTrack > before[a]);
   assert.equal(state.players[b].tournamentTrack, before[b], "한 번에 한 명씩 진행한다");
@@ -507,7 +530,7 @@ test("카드를 여는 데 지력기운은 들지 않는다 (38절: 카드 열�
 
 
 
-test("마나기운이 없어도 마법생물 조련·비밀의 방·연구실은 고를 수 있다 (공짜 주사위 1개). 토너먼트·주문 대결은 마나기운이 필요하다", () => {
+test("마나기운이 없어도 마법생물 조련·별빛 다락방·연구실은 고를 수 있다 (공짜 주사위 1개). 마법 경연·마법 겨루기는 마나기운이 필요하다", () => {
   const state = newGame(3);
   toActivity(state);
   setTokens(state, 0);
@@ -533,7 +556,7 @@ test("구역에 처음 고른 사람이 카드 2장을 연다 (지력기운은 �
   assert.equal(state.activityOffers.lab?.cards.length, 2, "공개된 카드는 모두가 볼 수 있다");
 });
 
-test("마법생물 조련·비밀의 방도 카드를 열 때 지력기운이 들지 않는다", () => {
+test("마법생물 조련·별빛 다락방도 카드를 열 때 지력기운이 들지 않는다", () => {
   const state = newGame(3);
   toActivity(state, 2);
   setTokens(state, 3);
@@ -716,7 +739,7 @@ test("연구실 실험: 합이 목표값(labTarget)에 못 미치면 실험이 �
   assert.ok(state.log.some((l) => l.message.includes("실험 실패")));
 });
 
-test("비밀의 방: 먼저 온 사람이 겪을 카드를 고르고(반드시 골라야 함), 남는 카드는 두 번째 참가자가 겪는다", () => {
+test("별빛 다락방: 먼저 온 사람이 겪을 카드를 고르고(반드시 골라야 함), 남는 카드는 두 번째 참가자가 겪는다", () => {
   const state = newGame(3);
   toActivity(state);
   setTokens(state, 2);
@@ -730,7 +753,7 @@ test("비밀의 방: 먼저 온 사람이 겪을 카드를 고르고(반드시 �
   assert.throws(() => chooseActivityCard(state, a, null), /골라야 해요/);
   chooseActivityCard(state, a, "test-safe-0");
   assert.equal(state.pendingPick, null);
-  assert.ok(state.log.some((l) => l.message.includes("비밀의 방") && l.message.startsWith(state.players[a].name)));
+  assert.ok(state.log.some((l) => l.message.includes("별빛 다락방") && l.message.startsWith(state.players[a].name)));
   assert.equal(state.activityOffers.exploration?.cards.length, 1);
   advanceResolution(state);
   assert.equal(state.pendingPick?.playerId, b, "남은 카드가 한 장이어도 두 번째 참가자가 직접 고른다");
@@ -738,7 +761,7 @@ test("비밀의 방: 먼저 온 사람이 겪을 카드를 고르고(반드시 �
   assert.equal(state.activityOffers.exploration?.cards.length, 0, "남은 카드를 두 번째 참가자가 가져갔다");
 });
 
-test("비밀의 방: 체력기운을 내고 낸 개수만큼 주사위를 굴려 합이 카드에 인쇄된 목표값 이상이면 성공하고, 목표값은 달이 바뀌어도 그대로다 (52-9절)", () => {
+test("별빛 다락방: 체력기운을 내고 낸 개수만큼 주사위를 굴려 합이 카드에 인쇄된 목표값 이상이면 성공하고, 목표값은 달이 바뀌어도 그대로다 (52-9절)", () => {
   const state = newGame(2);
   toActivity(state);
   const [a] = state.activityOrder;
@@ -762,7 +785,7 @@ test("비밀의 방: 체력기운을 내고 낸 개수만큼 주사위를 굴려
   assert.equal(state.players[a].credit, credit + 1, "합이 목표값 이상이라 성공 보상(학점 +1)");
 });
 
-test("비밀의 방: 합이 목표값에 못 미치면 실패 효과를 받는다", () => {
+test("별빛 다락방: 합이 목표값에 못 미치면 실패 효과를 받는다", () => {
   const state = newGame(2);
   toActivity(state);
   const [a] = state.activityOrder;
@@ -779,19 +802,19 @@ test("비밀의 방: 합이 목표값에 못 미치면 실패 효과를 받는�
   assert.ok(state.log.some((l) => l.message.includes("잊혀진 교실") && l.message.includes("체력기운 -1")), "실패하면 체력기운 -1을 바로 잃는다");
 });
 
-test("주문 대결: 이긴 사람은 주문력 +1(성장)과 승리 보상(duelWinReward, 학점 +1)을 받고 고를 카드는 없다", () => {
+test("마법 겨루기: 이긴 사람은 주문력 +1(성장)과 승리 보상(duelWinReward, 학점 +1)을 받고 고를 카드는 없다", () => {
   const state = newGame(3);
   toActivity(state);
   setTokens(state, 0);
   const [a, b, c] = state.activityOrder;
   selectActivity(state, a, "duel", b);
-  assert.equal(state.players[a].intelligenceTokens, 5, "주문 대결에는 지력기운이 들지 않는다");
+  assert.equal(state.players[a].intelligenceTokens, 5, "마법 겨루기에는 지력기운이 들지 않는다");
   assert.equal(state.activityOrder[state.activityTurnPointer], c, "지목당한 b는 차례를 건너뛴다");
   selectActivity(state, c, "tournament");
   assert.equal(state.activityStage, "resolve");
   assert.deepEqual(state.activityChoices.map((x) => x.playerId), [a, c], "지목당한 사람은 따로 진행하지 않는다");
   advanceResolution(state);
-  assert.equal(state.activityOffers.duel, undefined, "주문 대결 구역에는 카드가 없다");
+  assert.equal(state.activityOffers.duel, undefined, "마법 겨루기 구역에는 카드가 없다");
   const winner = state.players[a];
   const before = { spellPower: winner.spellPower, credit: winner.credit };
   rollWith(state, { [a]: [6, 6], [b]: [1, 1] });
@@ -813,7 +836,7 @@ test("자율활동이 끝나면 아무도 가져가지 않은 공개 카드는 �
   assert.equal(state.pendingPick?.playerId, a);
   chooseActivityCard(state, a, null); // 아무 카드도 가져가지 않고 넘어간다
   advanceResolution(state);
-  rollAll(state); // b의 토너먼트 주사위
+  rollAll(state); // b의 마법 경연 주사위
   assert.equal(state.round, 2);
   assert.deepEqual(state.activityOffers, {});
   assert.equal(state.creatureDeck.length + state.creatureDiscard.length + state.players[a].creatures.length + state.players[b].creatures.length, CREATURE_CARDS.length + 2); // 위에서 덱에 더한 2장 포함
@@ -838,7 +861,7 @@ test("자율활동 구역은 최대 2명, 두 번째 참가자는 매력기운 1
   assert.ok(!availableActivities(state, c).includes("tournament"));
 });
 
-test("마법 토너먼트: 주문력 수치만큼 주사위를 굴려 합친 칸만큼 전진하고, 트랙에는 상한이 없다", () => {
+test("반짝 마법 경연: 주문력 수치만큼 주사위를 굴려 합친 칸만큼 전진하고, 트랙에는 상한이 없다", () => {
   const state = newGame(2);
   toActivity(state);
   const [a] = state.activityOrder;
@@ -859,7 +882,7 @@ test("마법 토너먼트: 주문력 수치만큼 주사위를 굴려 합친 칸
   assert.equal(state.players[a].tournamentTrack, 9 + 48);
 });
 
-test("마법 토너먼트: 마나기운이 없으면 고를 수 없다", () => {
+test("반짝 마법 경연: 마나기운이 없으면 고를 수 없다", () => {
   const state = newGame(2);
   toActivity(state);
   const [a] = state.activityOrder;
@@ -868,7 +891,7 @@ test("마법 토너먼트: 마나기운이 없으면 고를 수 없다", () => {
   assert.throws(() => selectActivity(state, a, "tournament"), /마나기운/);
 });
 
-test("마법 토너먼트: 주사위는 남은 마나기운으로 다시 굴릴 수 있다 (지력기운으로는 안 된다)", () => {
+test("반짝 마법 경연: 주사위는 남은 마나기운으로 다시 굴릴 수 있다 (지력기운으로는 안 된다)", () => {
   const state = newGame(2);
   toActivity(state);
   const [a] = state.activityOrder;
@@ -885,7 +908,7 @@ test("마법 토너먼트: 주사위는 남은 마나기운으로 다시 굴릴 
   assert.equal(state.players[a].intelligenceTokens, 9 - 0, "지력기운은 그대로");
 });
 
-test("주문 대결: 도전자가 건넨 마나기운 1개를 더한 뒤 양쪽이 마나기운을 내고 낸 개수만큼 주사위를 굴려 합이 큰 쪽이 이긴다", () => {
+test("마법 겨루기: 도전자가 건넨 마나기운 1개를 더한 뒤 양쪽이 마나기운을 내고 낸 개수만큼 주사위를 굴려 합이 큰 쪽이 이긴다", () => {
   // 마나기운 건네기 규칙을 켜 둔 상태(duelManaFee 1, 45절부터 기본값)를 검증한다
   const savedFee = BALANCE.duelManaFee;
   BALANCE.duelManaFee = 1;
@@ -905,7 +928,7 @@ test("주문 대결: 도전자가 건넨 마나기운 1개를 더한 뒤 양쪽�
   BALANCE.duelManaFee = savedFee;
 });
 
-test("주문 대결: 합이 같으면 무승부 — 보상을 받는 사람이 없다 (매력이 높아도 이기지 않는다)", () => {
+test("마법 겨루기: 합이 같으면 무승부 — 보상을 받는 사람이 없다 (매력이 높아도 이기지 않는다)", () => {
   const state = newGame(3);
   toActivity(state);
   const [a, b, c] = state.activityOrder;
@@ -926,7 +949,7 @@ test("주문 대결: 합이 같으면 무승부 — 보상을 받는 사람이 �
   assert.equal(state.activityResolvePointer >= 1, true);
 });
 
-test("주문 대결: 도전자가 지목당한 친구에게 매력 1을 건네고, 지목당한 친구는 비용이 없다", () => {
+test("마법 겨루기: 도전자가 지목당한 친구에게 매력 1을 건네고, 지목당한 친구는 비용이 없다", () => {
   const state = newGame(3);
   toActivity(state);
   const [a, b, c] = state.activityOrder;
@@ -964,7 +987,7 @@ test("주문 대결: 도전자가 지목당한 친구에게 매력 1을 건네�
   assert.equal(state.activityResolvePointer, 1, "다음 활동 진행으로 넘어간다");
 });
 
-test("주문 대결은 건넬 매력이 없으면 고를 수 없다", () => {
+test("마법 겨루기는 건넬 매력이 없으면 고를 수 없다", () => {
   const state = newGame(2);
   toActivity(state);
   const [a, b] = state.activityOrder;
@@ -1041,7 +1064,7 @@ test("주사위 다시 굴리기: 지력·매력기운으로는 대신할 수 �
   assert.equal(state.players[a].intelligenceTokens, 9);
 });
 
-test("굴림 기본 개수: 목표값 판정은 성공 확률이 충분한 가장 적은 마나기운 개수(남는 기운은 다시 굴리기용), 토너먼트·시험은 마나기운 전부", () => {
+test("굴림 기본 개수: 목표값 판정은 성공 확률이 충분한 가장 적은 마나기운 개수(남는 기운은 다시 굴리기용), 마법 경연·시험은 마나기운 전부", () => {
   assert.equal(diceSuccessChance(1, 1), 1);
   assert.equal(diceSuccessChance(1, 7), 0);
   assert.ok(Math.abs(diceSuccessChance(2, 7) - 21 / 36) < 1e-9);
@@ -1061,7 +1084,7 @@ test("굴림 기본 개수: 목표값 판정은 성공 확률이 충분한 가�
   selectActivity(state, a, "tournament");
   finishChoosing(state);
   advanceResolution(state);
-  assert.equal(state.pendingRoll?.entries[0].diceCount, 7, "토너먼트 기본값은 마나기운 전부");
+  assert.equal(state.pendingRoll?.entries[0].diceCount, 7, "마법 경연 기본값은 마나기운 전부");
 });
 
 test("시험 달(6·12개월)은 정규수업·자율활동 없이 곧바로 시험이고, 시험은 이월된 기운 중 카드의 주 능력치 기운으로 굴리며, 시험 뒤 정리에서 남은 지력기운은 다음 달로 이어진다", () => {
@@ -1213,7 +1236,7 @@ test("게임이 끝나면 최종 점수(학점)가 가장 높은 플레이어가
 
 // ── 4주차 정리: 남은 기운 이월 (40·42절) ──
 
-// 2인 게임에서 둘 다 토너먼트를 하고 3주차를 끝내 다음 달 정규수업까지 간다. 쓰고 남은 기운이 이어지는지 본다
+// 2인 게임에서 둘 다 마법 경연을 하고 3주차를 끝내 다음 달 정규수업까지 간다. 쓰고 남은 기운이 이어지는지 본다
 function playOneMonth(stock: { intelligence: number; stamina: number; charm: number }): { state: GameState; a: string; b: string; before: Record<string, Record<string, number>> } {
   const state = newGame(2);
   toActivity(state, 0);
@@ -1242,7 +1265,7 @@ test("4주차 정리: 쓰고 남은 기운은 사라지지도 새로 충전되�
     assert.equal(p.intelligenceTokens, before[id].intelligence, "지력기운은 쓰지 않았으니 그대로");
     assert.equal(p.staminaTokens, before[id].stamina, "체력기운도 그대로 (매달 충전이 없다)");
     assert.equal(p.charmTokens, before[id].charm);
-    assert.equal(p.manaTokens, 0, "마나기운은 토너먼트에서 전부 썼으니 0 — 새로 차오르지 않는다");
+    assert.equal(p.manaTokens, 0, "마나기운은 마법 경연에서 전부 썼으니 0 — 새로 차오르지 않는다");
   }
 });
 
@@ -1304,7 +1327,7 @@ test("성장: 조련 성공은 매력, 연구실 성공은 지력이 +1 되고 �
   }
 });
 
-test("성장: 탐험 성공은 체력이 +1, 주문 대결은 이긴 사람의 주문력이 +1 (무승부는 없음), 토너먼트는 참가만 해도 주문력 +1 (54절)", () => {
+test("성장: 탐험 성공은 체력이 +1, 마법 겨루기는 이긴 사람의 주문력이 +1 (무승부는 없음), 마법 경연은 참가만 해도 주문력 +1 (54절)", () => {
   assert.deepEqual(BALANCE.growthActivities, { tournament: true, creature: true, duel: true, exploration: true, lab: true });
   // 탐험(혼자)
   {
@@ -1322,7 +1345,7 @@ test("성장: 탐험 성공은 체력이 +1, 주문 대결은 이긴 사람의 �
     rollWith(state, { [a]: [60] });
     assert.equal(state.players[a].stamina, before + 1, "탐험 성공은 체력 +1");
   }
-  // 주문 대결: 이긴 사람만 +1, 무승부는 아무도 아니다
+  // 마법 겨루기: 이긴 사람만 +1, 무승부는 아무도 아니다
   for (const [dA, dB, winner] of [[[6, 6], [1, 1], "a"], [[1, 1], [6, 6], "b"], [[3, 3], [3, 3], null]] as const) {
     const state = newGame(3);
     toActivity(state);
@@ -1336,7 +1359,7 @@ test("성장: 탐험 성공은 체력이 +1, 주문 대결은 이긴 사람의 �
     assert.equal(state.players[a].spellPower, before.a + (winner === "a" ? 1 : 0));
     assert.equal(state.players[b].spellPower, before.b + (winner === "b" ? 1 : 0));
   }
-  // 토너먼트
+  // 마법 경연
   {
     const state = newGame(2);
     toActivity(state);
@@ -1390,7 +1413,7 @@ test("시험: 점수가 같으면 공동 순위 — 같은 순위의 학점을 �
   assert.equal(state.players[c].credit - before[c], 1);
 });
 
-test("최종: 시험·토너먼트·최종 점수가 모두 동점이면 공동 순위와 공동 승리로 처리한다", () => {
+test("최종: 시험·마법 경연·최종 점수가 모두 동점이면 공동 순위와 공동 승리로 처리한다", () => {
   const state = newGame(3);
   reachExam(state, "final_exam");
   for (const id of state.turnOrder) {
@@ -1398,7 +1421,7 @@ test("최종: 시험·토너먼트·최종 점수가 모두 동점이면 공동 
     Object.assign(state.players[id], { intelligence: 2, stamina: 2, charm: 2, spellPower: 2, credit: 0, creatures: [], tournamentTrack: 0, tempBoosts: {} });
   }
   const [a, b, c] = state.turnOrder;
-  // 토너먼트: a·b가 공동 1위(+2), c는 3위라 보상 없음
+  // 마법 경연: a·b가 공동 1위(+2), c는 3위라 보상 없음
   state.players[a].tournamentTrack = 10;
   state.players[b].tournamentTrack = 10;
   state.players[c].tournamentTrack = 5;
@@ -1411,7 +1434,7 @@ test("최종: 시험·토너먼트·최종 점수가 모두 동점이면 공동 
   assert.equal(graduation(c), graduation(a));
   assert.equal(state.players[a].credit, 3 + BALANCE.tournamentRewards[0] + graduation(a));
   assert.equal(state.players[b].credit, 3 + BALANCE.tournamentRewards[0] + graduation(b));
-  assert.equal(state.players[c].credit, 3 + graduation(c), "3위는 토너먼트 보상이 없다");
+  assert.equal(state.players[c].credit, 3 + graduation(c), "3위는 마법 경연 보상이 없다");
   assert.deepEqual([...state.winnerIds!].sort(), [a, b].sort(), "최종 점수가 같은 a·b가 공동 승리");
 });
 
@@ -1487,7 +1510,7 @@ test("마법생물 조련: 속성·종류는 표시용이고 기준 수치는 �
   assert.ok(!JSON.stringify(state).includes("tokenNeeds"), "조련에 낼 기운 종류 구분은 없다");
 });
 
-test("주문 대결: 도전자는 마나기운이 2개 이상(건넬 1개 + 굴릴 1개) 있어야 고를 수 있고, 지목당한 쪽은 건네받은 마나기운으로 굴린다", () => {
+test("마법 겨루기: 도전자는 마나기운이 2개 이상(건넬 1개 + 굴릴 1개) 있어야 고를 수 있고, 지목당한 쪽은 건네받은 마나기운으로 굴린다", () => {
   // 마나기운 건네기 규칙을 켜 둔 상태(duelManaFee 1, 45절부터 기본값)를 검증한다
   const savedFee = BALANCE.duelManaFee;
   BALANCE.duelManaFee = 1;
@@ -1524,7 +1547,7 @@ test("마법생물 조련: 고르는 카드 목록에 속성과 종류가 표시
   assert.deepEqual(tags, ["육지 · 동물", "하늘 · 식물"]);
 });
 
-test("비밀의 방: 판정 카드의 능력치와 상관없이 체력기운을 1~보유 개수 사이에서 골라 내고 낸 개수만큼 주사위를 굴린다 (마나·지력·매력기운은 그대로)", () => {
+test("별빛 다락방: 판정 카드의 능력치와 상관없이 체력기운을 1~보유 개수 사이에서 골라 내고 낸 개수만큼 주사위를 굴린다 (마나·지력·매력기운은 그대로)", () => {
   const state = newGame(2);
   toActivity(state);
   const [a] = state.activityOrder;
@@ -1549,7 +1572,7 @@ test("비밀의 방: 판정 카드의 능력치와 상관없이 체력기운을 
 
 // ── 능력치 × 활동 조화 (39절): 주 능력치의 기운이 곧 주사위 재료 ──
 
-test("활동마다 주사위 재료 기운이 정해져 있다: 조련 매력, 탐험 체력, 연구실 지력, 토너먼트·주문 대결 마나", () => {
+test("활동마다 주사위 재료 기운이 정해져 있다: 조련 매력, 탐험 체력, 연구실 지력, 마법 경연·마법 겨루기 마나", () => {
   assert.deepEqual(BALANCE.rollFuel, { tournament: "mana", creature: "charm", duel: "mana", exploration: "stamina", lab: "intelligence" });
   const state = newGame(2);
   const p = state.players.p0;
@@ -1591,7 +1614,7 @@ test("시험 카드: 4가지 능력치가 2장씩 주 능력치(주사위 재료
 
 // ── 보조 능력치 (38-6절): 보조 능력의 기운을 내서 주 판정을 돕는다 ──
 
-test("마법 토너먼트(보조=체력, 지구력): 체력기운 1개당 고정 칸을 더 전진한다. 굴리기 전에 마나기운과 함께 내고, 가진 개수를 넘길 수 없다", () => {
+test("반짝 마법 경연(보조=체력, 지구력): 체력기운 1개당 고정 칸을 더 전진한다. 굴리기 전에 마나기운과 함께 내고, 가진 개수를 넘길 수 없다", () => {
   assert.equal(BALANCE.tournamentStaminaBoost, 3);
   const state = newGame(2);
   toActivity(state);
@@ -1688,7 +1711,7 @@ test("학교 소식: 급식 특식 데이는 모두에게 체력기운 +1, 수�
   for (const c of festival.classMarket) assert.equal(c.gain, BALANCE.classTiers[c.level].gain + (c.stat === "charm" ? 1 : 0), c.name);
 });
 
-test("52-8절: 행사 효과는 그 자리에서 끝난다 — 기운 선물·과목 수업 +1·수업카드 1장 더 세 종류뿐이고, 판정 목표값·토너먼트·대결은 바꾸지 않는다", () => {
+test("52-8절: 행사 효과는 그 자리에서 끝난다 — 기운 선물·과목 수업 +1·수업카드 1장 더 세 종류뿐이고, 판정 목표값·마법 경연·대결은 바꾸지 않는다", () => {
   const kinds = new Set(eventTemplates().flatMap((c) => Object.keys(c.effect)));
   assert.deepEqual([...kinds].sort(), ["classBonus", "classExtra", "gift"]);
   const picnic = newGameWithNews(3, "봄 소풍");
@@ -1720,7 +1743,7 @@ test("시험 공고(4·10개월): 시험 카드가 공개되고, 그달 수업�
   assert.equal(state.classMarket.length, 3 + BALANCE.classMarketExtra, "시험 과목 카드가 더 나오지 않는다");
 });
 
-test("49절 단순화 기본값: 선은 매달 시계방향, 정규수업도 선부터, 대결 비용은 마나기운만, 구역 참가비·토너먼트 체력 보조·이정표·탐험 역전 보너스 없음", () => {
+test("49절 단순화 기본값: 선은 매달 시계방향, 정규수업도 선부터, 대결 비용은 마나기운만, 구역 참가비·마법 경연 체력 보조·이정표·탐험 역전 보너스 없음", () => {
   assert.deepEqual(SIMPLIFIED, {
     starterRule: "rotate",
     classPickStarterLast: false,
@@ -1750,7 +1773,7 @@ test("49절 단순화 기본값: 선은 매달 시계방향, 정규수업도 선
   });
 });
 
-test("이번 달 활동 카드 미리 공개(50절): 1주차에 마법생물·연구실·비밀의 방 카드가 2장씩 공개되고, 3주차에 먼저 온 사람이 고르고 남은 카드는 두 번째 참가자가 가져간다", () => {
+test("이번 달 활동 카드 미리 공개(50절): 1주차에 마법생물·연구실·별빛 다락방 카드가 2장씩 공개되고, 3주차에 먼저 온 사람이 고르고 남은 카드는 두 번째 참가자가 가져간다", () => {
   withBalance({ revealOffersAtMonthStart: true }, () => {
     const state = newGame(3);
     assert.equal(state.phase, "class");
@@ -1779,7 +1802,7 @@ test("이번 달 활동 카드 미리 공개(50절): 1주차에 마법생물·�
   });
 });
 
-test("51절 빼기: 카드에 임시 능력치·다음 달 기운·엿보기가 없고, 마법생물 능력은 속성별 3종류, 주문 대결 승자는 학점 +1", () => {
+test("51절 빼기: 카드에 임시 능력치·다음 달 기운·엿보기가 없고, 마법생물 능력은 속성별 3종류, 마법 겨루기 승자는 학점 +1", () => {
   const effects = [...labTemplates().map((c) => c.effect), ...explorationTemplates().flatMap((c) => [c.success, c.failure])];
   for (const e of effects) assert.ok(!e.tempStats && !e.nextMana && !e.nextStamina && !e.peekExploration, JSON.stringify(e));
   const kinds = new Set(CREATURE_CARDS.map((c) => `${c.element}:${c.ability.trigger}:${c.ability.effect}`));
@@ -1802,7 +1825,7 @@ test("51절 빼기: 카드에 임시 능력치·다음 달 기운·엿보기가 
   });
 });
 
-test("기본 규칙 수치 (45절 조정): 주문 대결 도전자는 마나기운 1개를 건넨다", () => {
+test("기본 규칙 수치 (45절 조정): 마법 겨루기 도전자는 마나기운 1개를 건넨다", () => {
   assert.equal(NEW_RULES.duelManaFee, 1);
 });
 
@@ -1832,6 +1855,168 @@ test("시험 주간 벼락치기(6·12개월): 선부터 한 명씩, 가진 기�
   cramTurn(state, c, null);
   assert.equal(state.phase, "midterm_exam", "모두 고르면 시험");
   assert.equal(currentRoller(state), a, "시험도 선부터 굴린다");
+});
+
+test("56절 P5 기본값: 어려운 생물 학점 +1·세트 +2, 도전자 굴림 +1, 학점 낮은 순, 장래희망, 특별상 1장, 대회 카드, 대결 승리 학점 2", () => {
+  assert.deepEqual(P5, {
+    creatureRareCredit: 1,
+    creatureSetCredit: 2,
+    duelChallengerBonus: 1,
+    turnOrderRule: "creditAsc",
+    dreams: true,
+    specialAwards: 1,
+    tournamentCards: true,
+    duelWinReward: { credit: 2 },
+  });
+  assert.equal(BALANCE.tournamentTargetMod, 0, "대회 목표값은 카드에 인쇄된 값 그대로");
+});
+
+test("56절 B1: 정규수업·자율활동·시험 순서는 학점이 낮은 사람부터 (같으면 선부터 시계방향)", () => {
+  withBalance({ ...SIMPLIFIED, ...P5, tournamentCards: false } as Partial<typeof BALANCE>, () => {
+    const state = newGame(4);
+    const strategy = BOT_PERSONALITIES[0];
+    let guard = 0;
+    let checked = 0;
+    let unequal = 0;
+    while (state.phase !== "ended" && guard++ < 5000) {
+      const n = state.turnOrder.length;
+      const seats = Array.from({ length: n }, (_, i) => state.turnOrder[(state.startingPlayerIndex + i) % n]);
+      const expected = [...seats].sort((x, y) => state.players[x].credit - state.players[y].credit);
+      if (state.phase === "class" && state.classPickPointer === 0) {
+        assert.deepEqual(state.classPickOrder, expected);
+        checked += 1;
+        if (expected.join() !== seats.join()) unequal += 1;
+      }
+      if (state.phase === "activity" && state.activityTurnPointer === 0 && state.activityStage === "choose") {
+        assert.deepEqual(state.activityOrder, expected);
+        checked += 1;
+      }
+      if (state.pendingRoll?.kind === "exam" && state.pendingRoll.entries.every((e) => e.dice === null)) {
+        assert.deepEqual(state.pendingRoll.entries.map((e) => e.playerId), expected, "시험도 학점 낮은 순");
+        checked += 1;
+      }
+      botStep(state, strategy);
+    }
+    assert.ok(checked >= 20 && unequal > 0, `${checked}회 확인, 좌석과 다른 순서 ${unequal}회`);
+  });
+});
+
+test("56절 B2 장래희망: 2장을 받아 1장을 고르고(1개월까지 바꿀 수 있음), 졸업할 때 두 능력치가 모두 3 이상이면 학점 +3", () => {
+  withBalance(P5 as Partial<typeof BALANCE>, () => {
+    const state = newGame(3);
+    for (const id of state.turnOrder) {
+      const p = state.players[id];
+      assert.equal(p.dreamOptions?.length, BALANCE.dreamDeal);
+      assert.equal(p.dream?.id, p.dreamOptions![0].id, "고르기 전에는 첫 장");
+    }
+    const [a] = state.turnOrder;
+    const pa = state.players[a];
+    chooseDream(state, a, pa.dreamOptions![1].id);
+    assert.equal(pa.dream?.id, pa.dreamOptions![1].id);
+    assert.throws(() => chooseDream(state, a, state.players[state.turnOrder[1]].dreamOptions![0].id), /받은 장래희망/);
+    const [s1, s2] = pa.dream!.stats;
+    Object.assign(pa, { intelligence: 1, stamina: 1, charm: 1, spellPower: 1, [s1]: 3, [s2]: 2 });
+    assert.equal(dreamFulfilled(pa), false, "하나라도 3 미만이면 못 이룬다");
+    const players = state.turnOrder.map((id) => state.players[id]);
+    const before = projectedScore(players, pa, state.specialAwards);
+    Object.assign(pa, { [s2]: 3 });
+    assert.equal(dreamFulfilled(pa), true);
+    assert.ok(projectedScore(players, pa, state.specialAwards) >= before + BALANCE.dreamCredit, "예상 점수에 장래희망 학점이 들어간다");
+    let guard = 0;
+    while (state.round === 1 && guard++ < 500) botStep(state);
+    assert.throws(() => chooseDream(state, a, pa.dreamOptions![0].id), /동안만/);
+  });
+});
+
+test("56절 B3 특별상: 게임마다 1장 공개되고, 졸업식에서 다른 부문처럼 순위 학점을 준다", () => {
+  withBalance(P5 as Partial<typeof BALANCE>, () => {
+    const state = newGame(3);
+    assert.equal(state.specialAwards?.length, 1);
+    const [special] = state.specialAwards!;
+    assert.ok(!BALANCE.graduationCategories.includes(special), "기본 4부문과 겹치지 않는다");
+    const players = state.turnOrder.map((id) => state.players[id]);
+    Object.assign(players[0], { intelligence: 4, stamina: 4, charm: 5, spellPower: 4, feats: { exploration: 3, lab: 3, duel: 3, exam: 30, tournament: 3, creature: 0 } });
+    const got = graduationAwards(players, [special]).get(players[0].id)!.find((w) => w.category === special);
+    assert.ok(got && got.rank === 1 && got.points === BALANCE.rankPoints[0], `${special} 1위`);
+    let guard = 0;
+    while (state.phase !== "ended" && guard++ < 5000) botStep(state);
+    assert.equal(state.phase, "ended");
+    assert.ok(state.log.some((l) => l.message.startsWith(`졸업식 ${AWARD_NAME[special]}`)) || players.every((p) => awardValue(p, special) <= 0));
+  });
+});
+
+test("56절 C1 대회 카드: 반짝 마법 경연도 1주차에 카드 2장이 공개되고, 마나기운 주사위 합이 목표 이상이면 입상(주문력 +1 성장 + 카드 보상)", () => {
+  withBalance({ ...SIMPLIFIED, ...P5 } as Partial<typeof BALANCE>, () => {
+    const state = newGame(3);
+    assert.equal(state.activityOffers.tournament?.cards.length, 2, "대회 카드 2장 공개");
+    toActivity(state);
+    setTokens(state, 0, 0);
+    const [a, b] = state.activityOrder;
+    state.players[a].manaTokens = 0;
+    assert.ok(availableActivities(state, a).includes("tournament"), "마나기운이 없어도 공짜 주사위 1개로 참가할 수 있다");
+    state.players[a].manaTokens = 3;
+    selectActivity(state, a, "tournament");
+    selectActivity(state, b, "tournament");
+    finishChoosing(state);
+    advanceResolution(state);
+    assert.equal(state.pendingPick?.playerId, a);
+    const card = state.hidden.offers.tournament![0] as { id: string; target: number; reward: { credit?: number } };
+    chooseActivityCard(state, a, card.id);
+    assert.equal(state.hidden.roll?.kind, "tournamentCard");
+    const before = { sp: state.players[a].spellPower, credit: state.players[a].credit };
+    rollWith(state, { [a]: [6, 6] });
+    assert.equal(state.players[a].spellPower, before.sp + 1, "입상하면 주문력 성장");
+    assert.equal(state.players[a].credit, before.credit + BALANCE.growthCredit + (card.reward.credit ?? 0));
+    assert.equal(state.players[a].feats?.tournament, 1);
+    advanceResolution(state);
+    assert.equal(state.pendingPick?.playerId, b, "두 번째 참가자는 남은 카드");
+    assert.equal(state.activityOffers.tournament?.cards.length, 1);
+    chooseActivityCard(state, b, state.activityOffers.tournament!.cards[0].id);
+    const sp = state.players[b].spellPower;
+    rollWith(state, { [b]: [1] });
+    assert.equal(state.players[b].spellPower, sp, "탈락하면 성장 없음");
+    assert.equal(state.players[b].tournamentTrack, 0, "트랙을 쓰지 않는다");
+  });
+});
+
+test("56절 A1: 어려운 마법생물(기준 16 이상)을 조련하면 학점 +1, 하늘·육지·바다 세트를 완성하면 학점 +2", () => {
+  withBalance(P5 as Partial<typeof BALANCE>, () => {
+    const run = (name: string, owned: string[]) => {
+      const state = newGame(2);
+      toActivity(state);
+      setTokens(state, 2, 8);
+      const [a] = state.activityOrder;
+      state.players[a].creatures = owned.map(creature);
+      state.creatureDeck.push(creature(name), creature("정령 고릴라"));
+      selectActivity(state, a, "creature");
+      finishChoosing(state);
+      advanceResolution(state);
+      chooseActivityCard(state, a, `test-${name}`);
+      const credit = state.players[a].credit;
+      rollWith(state, { [a]: [6, 6, 6, 6, 6, 6] });
+      return state.players[a].credit - credit - BALANCE.growthCredit;
+    };
+    assert.equal(run("정령 고릴라", []), 0, "쉬운 생물은 보너스 없음");
+    assert.equal(run("해양 정령", []), 1, "어려운 생물 +1");
+    assert.equal(run("감각 물고기", ["하늘의 꽃마녀", "땅굴 잠수꾼"]), 2, "세트 완성 +2");
+    assert.equal(run("심해의 수호요정", ["하늘의 꽃마녀", "땅굴 잠수꾼"]), 3, "둘 다 +3");
+  });
+});
+
+test("56절 A2·대결 보강: 도전자의 굴림에 +1 — 같은 눈이면 도전자가 이기고, 이기면 학점 +2", () => {
+  withBalance({ ...P5, tournamentCards: false } as Partial<typeof BALANCE>, () => {
+    const state = newGame(3);
+    toActivity(state);
+    setTokens(state, 0);
+    const [x, y, z] = state.activityOrder;
+    state.players[x].manaTokens = 3;
+    selectActivity(state, x, "duel", y);
+    selectActivity(state, z, "lab");
+    advanceResolution(state);
+    const credit = state.players[x].credit;
+    rollWith(state, { [x]: [3], [y]: [3] });
+    assert.equal(state.players[x].credit, credit + 2, "도전자 승리 학점 +2");
+  });
 });
 
 // 한 걸음씩(굴림은 한 사람씩, 정리는 한 사람씩) 진행하는 사람 역할 — 멈춘 상태가 생기도록 잘게 나눈다

@@ -13,7 +13,7 @@ const W = { intelligence: 1.2, spellPower: 1.2, stamina: 1, charm: 0.6 };
 const focus = (a: ActivityId): Record<ActivityId, number> => ({ ...even, [a]: 6 });
 const STRATS: BotStrategy[] = [
   { name: "균형형", classWeights: W, activityBias: even },
-  { name: "토너먼트", classWeights: { ...W, spellPower: 1.5 }, activityBias: focus("tournament") },
+  { name: "마법 경연", classWeights: { ...W, spellPower: 1.5 }, activityBias: focus("tournament") },
   { name: "마법생물", classWeights: W, activityBias: focus("creature") },
   { name: "주문대결", classWeights: { ...W, spellPower: 1.5 }, activityBias: focus("duel") },
   { name: "탐험", classWeights: W, activityBias: focus("exploration") },

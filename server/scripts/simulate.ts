@@ -1,6 +1,6 @@
 // 밸런스 시뮬레이션: 봇끼리 게임을 대량으로 돌려 통계를 출력합니다. (사용법: npm run simulate -- [게임 수] [인원])
 // 봇은 단순한 휴리스틱이라 사람의 플레이를 대신하진 못하지만, 다음을 빠르게 점검할 수 있습니다.
-//  - 어떤 전략(토너먼트 몰빵, 마법생물 몰빵 등)이 지나치게 강하거나 약한가
+//  - 어떤 전략(마법 경연 몰빵, 마법생물 몰빵 등)이 지나치게 강하거나 약한가
 //  - 최종 능력치/학점/성취도가 어느 범위에 분포하는가
 //  - 자율활동 5종 중 봇이 무엇을 선호하고 그 결과는 어떤가
 import { botChooseDream, chooseActivityAction, choosePick, playClassTurn, type BotStrategy } from "../src/game/bot.js";
@@ -15,9 +15,9 @@ const focus = (a: ActivityId): Record<ActivityId, number> => ({ ...even, [a]: 6 
 
 const STRATEGIES: BotStrategy[] = [
   { name: "균형형", classWeights: { intelligence: 1.2, spellPower: 1.2, stamina: 1, charm: 0.6 }, activityBias: even },
-  { name: "토너먼트 몰빵", classWeights: { intelligence: 1, spellPower: 1.5, stamina: 1, charm: 0.5 }, activityBias: focus("tournament") },
+  { name: "마법 경연 몰빵", classWeights: { intelligence: 1, spellPower: 1.5, stamina: 1, charm: 0.5 }, activityBias: focus("tournament") },
   { name: "마법생물 몰빵", classWeights: { intelligence: 1, spellPower: 1.2, stamina: 1, charm: 0.5 }, activityBias: focus("creature") },
-  { name: "주문 대결 몰빵", classWeights: { intelligence: 1, spellPower: 1.5, stamina: 1, charm: 0.5 }, activityBias: focus("duel") },
+  { name: "마법 겨루기 몰빵", classWeights: { intelligence: 1, spellPower: 1.5, stamina: 1, charm: 0.5 }, activityBias: focus("duel") },
   { name: "탐험 몰빵", classWeights: { intelligence: 1.2, spellPower: 1.2, stamina: 1, charm: 0.6 }, activityBias: focus("exploration") },
   { name: "연구실 몰빵", classWeights: { intelligence: 1.2, spellPower: 1.2, stamina: 1, charm: 0.6 }, activityBias: focus("lab") },
   { name: "지력 몰빵(정규수업)", classWeights: { intelligence: 3, spellPower: 0.8, stamina: 1, charm: 0.3 }, activityBias: even },
@@ -29,7 +29,7 @@ const STRATEGIES: BotStrategy[] = [
     classWeights: { intelligence: 2, spellPower: 0.6, stamina: 2, charm: 0.5 },
     lateClassWeights: { intelligence: 0.8, spellPower: 3, stamina: 0.8, charm: 0.3 },
     lateFromRound: 7,
-    // 1학기에는 마나기운이 적어도 해볼 만한 탐험·연구실, 2학기에는 마나기운이 넉넉해지는 토너먼트·조련·대결 (모든 주사위는 마나기운으로 굴린다)
+    // 1학기에는 마나기운이 적어도 해볼 만한 탐험·연구실, 2학기에는 마나기운이 넉넉해지는 마법 경연·조련·대결 (모든 주사위는 마나기운으로 굴린다)
     activityBias: { tournament: 0.6, creature: 0.6, duel: 0.6, exploration: 2, lab: 2 },
     lateActivityBias: { tournament: 2, creature: 1.5, duel: 1.2, exploration: 0.8, lab: 0.5 },
   },
@@ -57,7 +57,7 @@ function playGame(strategies: BotStrategy[]): GameState {
       // 주사위를 굴려야 하는 사람이 모두 버튼을 누르고 결과를 확인한다
       rollAndConfirm(state);
     } else if (state.pendingPick) {
-      // 공개된 카드(구역 카드·주문 대결 마도서)를 고른다
+      // 공개된 카드(구역 카드·마법 겨루기 마도서)를 고른다
       const pickerId = state.pendingPick.playerId;
       chooseActivityCard(state, pickerId, choosePick(state, byId[pickerId]));
     } else if (state.phase === "cram") {
@@ -168,7 +168,7 @@ console.table(
     const total = Object.values(picks).reduce((a, b) => a + b, 0) || 1;
     return {
       전략: name,
-      토너먼트: pct(picks.tournament / total),
+      마법 경연: pct(picks.tournament / total),
       마법생물: pct(picks.creature / total),
       주문대결: pct(picks.duel / total),
       탐험: pct(picks.exploration / total),

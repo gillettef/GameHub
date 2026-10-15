@@ -35,7 +35,7 @@ export function nextAction(game: PublicGameState, playerId: string): SmokeAction
     return { key: `${base}:class:${game.classPickPointer}`, message: { type: "take_class_card", cardId: card?.id ?? null } };
   }
 
-  // 공개된 카드(구역 카드·주문 대결 마도서) 중 비용을 낼 수 있는 카드를 고른다 (없으면 넘어감)
+  // 공개된 카드(구역 카드·마법 겨루기 마도서) 중 비용을 낼 수 있는 카드를 고른다 (없으면 넘어감)
   if (game.phase === "activity" && game.pendingPick?.playerId === playerId) {
     const pick = game.pendingPick;
     const cards = game.activityOffers[pick.activityId]?.cards ?? [];

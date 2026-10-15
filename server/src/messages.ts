@@ -25,7 +25,7 @@ export type ClientMessage =
   | { type: "emoji"; emoji: string }
   // 2주차: 공개된 수업카드 중 1장을 가져간다 (cardId가 null이면 가져가지 않고 넘어간다)
   | { type: "take_class_card"; cardId: string | null }
-  // assist: 보조 능력치 기운(토너먼트 체력기운, 설정으로 켰을 때만)을 낼 개수
+  // assist: 보조 능력치 기운(마법 경연 체력기운, 설정으로 켰을 때만)을 낼 개수
   | { type: "roll_dice"; diceCount?: number; assist?: number }
   // 시험 달 1주차 벼락치기: from 기운 1개를 시험 과목 기운 1개로 바꾼다 (null이면 하지 않고 넘어간다). 선부터 한 명씩
   | { type: "cram"; from: KeptToken | null }
@@ -35,7 +35,9 @@ export type ClientMessage =
   | { type: "confirm_roll" }
   | { type: "select_activity"; activityId: ActivityId; targetPlayerId?: string }
   // 3주차 구역에 공개된 카드 중 1장을 고른다 (마법생물·연구 카드는 cardId가 null이면 가져가지 않고 넘어간다)
-  | { type: "pick_activity_card"; cardId: string | null };
+  | { type: "pick_activity_card"; cardId: string | null }
+  // 장래희망(56절 B2): 받은 카드 중 1장을 고른다 (dreamChooseRounds개월까지 바꿀 수 있다, 다른 사람에게는 보이지 않는다)
+  | { type: "choose_dream"; dreamId: string };
 
 export type ServerMessage =
   | { type: "room_created"; roomCode: string; playerId: string; players: RoomPlayerInfo[] }

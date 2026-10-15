@@ -7,7 +7,7 @@ import { randomUUID } from "node:crypto";
 import { WebSocketServer, type WebSocket } from "ws";
 import { BALANCE } from "./game/config.js";
 import { createRoom, getRoom, joinRoom, leaveRoom, leaveRoomIfNoHumans, scheduleRoomExpiry, broadcast, syncEmptyRoomExpiry, pickHost, HOST_AWAY_HANDOVER_MS, type Player, type Room } from "./rooms.js";
-import { BOT_NAMES, botAssist, chooseActivityAction, choosePick, pickBotPersonality, playClassTurn, playCramTurn, rerollLowDice, type BotStrategy } from "./game/bot.js";
+import { BOT_NAMES, botAssist, botChooseDream, chooseActivityAction, choosePick, pickBotPersonality, playClassTurn, playCramTurn, rerollLowDice, type BotStrategy } from "./game/bot.js";
 import {
   availableActivities,
   chooseActivityCard,
@@ -24,6 +24,7 @@ import {
   rollRevealed,
   currentRoller,
   cramTurn,
+  chooseDream,
   removePlayerFromGame,
 } from "./game/engine.js";
 import type { ClientMessage, ServerMessage } from "./messages.js";
@@ -210,17 +211,31 @@ const PUBLIC_RULES: PublicRules = {
   tournamentRewards: BALANCE.tournamentRewards,
   graduationCategories: BALANCE.graduationCategories,
   rankPoints: BALANCE.rankPoints,
+  turnOrderRule: BALANCE.turnOrderRule,
+  tournamentCards: BALANCE.tournamentCards,
+  dreamThreshold: BALANCE.dreams ? BALANCE.dreamThreshold : 0,
+  dreamCredit: BALANCE.dreams ? BALANCE.dreamCredit : 0,
+  dreamChooseRounds: BALANCE.dreamChooseRounds,
+  creatureRareCredit: BALANCE.creatureRareCredit,
+  creatureSetCredit: BALANCE.creatureSetCredit,
+  duelChallengerBonus: BALANCE.duelChallengerBonus,
+  duelWinCredit: BALANCE.duelWinReward.credit ?? 0,
+  growthCredit: BALANCE.growthCredit,
 };
 
 function broadcastGameState(room: Room): void {
   const game = room.game;
   if (!game) return;
   if (game.phase === "ended") scheduleRoomExpiry(room);
-  // 엿본 탐험 카드는 엿본 본인에게만 보여 준다 (공개된 수업카드·구역 카드는 모두에게 공개)
+  // 엿본 탐험 카드와 장래희망(56절 B2)은 본인에게만 보여 준다 (공개된 수업카드·구역 카드는 모두에게 공개). 끝난 게임은 장래희망을 모두 공개한다
+  const ended = game.phase === "ended";
   for (const player of room.players.values()) {
     if (!player.socket) continue;
     const players = Object.fromEntries(
-      Object.entries(game.players).map(([id, p]) => [id, id === player.id ? p : { ...p, peekedExploration: null }]),
+      Object.entries(game.players).map(([id, p]) => [
+        id,
+        id === player.id ? p : { ...p, peekedExploration: null, ...(ended ? {} : { dream: null, dreamOptions: undefined }) },
+      ]),
     );
     // 카드 덱 구성과 주사위 처리 정보는 비공개이므로 전송하지 않는다
     const { hidden: _h, labPile: _lp, explorationPile: _xp, classDeck: _cd, classDiscard: _cdd, creatureDeck: _deck, creatureDiscard: _discard, ...publicGame } = game;
@@ -474,6 +489,8 @@ wss.on("connection", (socket) => {
         room.expireTimer = undefined;
       }
       room.game = createGame([...room.players.values()].map((p) => ({ id: p.id, name: p.name, isBot: !!p.bot })));
+      // 봇은 받은 장래희망 카드 중 성향에 맞는 꿈을 바로 고른다
+      for (const p of room.players.values()) if (p.bot && room.game.players[p.id]?.dreamOptions?.length) botChooseDream(room.game, p.id, p.bot);
       broadcastGameState(room);
       scheduleBots(room);
       return;
@@ -540,6 +557,17 @@ wss.on("connection", (socket) => {
         send(socket, { type: "error", message: err instanceof Error ? err.message : "알 수 없는 오류" });
         // 화면이 낡았을 수 있으니 최신 상태를 다시 보낸다
         broadcastGameState(room);
+      }
+      return;
+    }
+
+    if (message.type === "choose_dream") {
+      if (!room.game) return;
+      try {
+        chooseDream(room.game, playerId, message.dreamId);
+        broadcastGameState(room);
+      } catch (err) {
+        send(socket, { type: "error", message: err instanceof Error ? err.message : "알 수 없는 오류" });
       }
       return;
     }
