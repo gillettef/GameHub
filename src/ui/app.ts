@@ -66,7 +66,7 @@ function ensureDraft(s: Session): Draft {
   const pickDemand = (reserved?: Demand) => ([2, 1, 3, 4] as const).find((d) => left[d] - (d === reserved ? 1 : 0) > 0) ?? 1;
   const slot = (demand: Demand): Slot => ({ playerId: null, clubId: null, demand, tactic: null, pass: false });
   const d1 = pickDemand();
-  ui.draft = { key, stage: 1, slots: [slot(d1), slot(pickDemand(d1))] };
+  ui.draft = { key, stage: 1, slots: [slot(d1), slot(pickDemand(d1))], client: s.game.agents[s.turn]!.hand[0] ?? null };
   return ui.draft;
 }
 
@@ -224,6 +224,9 @@ const actions: Record<string, (arg: string) => void> = {
     const n = Number(v);
     if (isDemand(n)) cur().demand = n;
   },
+  client: (id) => {
+    ui.draft!.client = Number(id);
+  },
   tactic: (k) => {
     cur().tactic = (k || null) as TacticKey | null;
   },
@@ -240,7 +243,7 @@ const actions: Record<string, (arg: string) => void> = {
     const second = slotOffer(s2);
     if ((!s1.pass && !first) || (!s2.pass && !second)) return;
     if (!first && !second && !confirm('1차·2차 모두 패스할까요? 카드는 소모되지 않습니다.')) return;
-    submit({ first, second });
+    submit({ first, second, client: ui.draft!.client });
   },
   next: () => advance(),
 };

@@ -1,4 +1,4 @@
-import { BIG_DEAL_BONUS, CLUBS, EVENTS, INVALID_TEXT, TACTICS, club, isEvaluation, player, validateOffer } from '../core';
+import { BIG_DEAL_BONUS, CLUBS, EVENTS, INVALID_TEXT, TACTICS, TOTAL_ROUNDS, club, isEvaluation, player, validateOffer } from '../core';
 import type { AgentKind, AgentState, AiLevel, Demand, Evaluation, GameState, InvalidReason, Offer, RoundEntry, RoundResult, Stage, TacticKey } from '../core';
 import type { Profile, Session } from '../store/storage';
 
@@ -24,6 +24,8 @@ export interface Draft {
   stage: Stage;
   /** [1차, 2차] */
   slots: [Slot, Slot];
+  /** 다음 라운드에 등록할 의뢰 선수 (손패 중) */
+  client: number | null;
 }
 
 export const slotOffer = (sl: Slot): Offer | null =>
@@ -74,7 +76,9 @@ export function header(right = ''): string {
 
 export function eventBanner(g: GameState): string {
   const e = EVENTS[g.event];
-  return `<div class="event"><span class="ev-ic">${e.icon}</span><div><b>${e.name}</b><p>${e.desc}</p></div></div>`;
+  const n = EVENTS[g.nextEvent];
+  const forecast = g.round < TOTAL_ROUNDS ? `<p class="next">다음 라운드 예고: ${n.icon} ${n.name}</p>` : '';
+  return `<div class="event"><span class="ev-ic">${e.icon}</span><div><b>${e.name}</b><p>${e.desc}</p>${forecast}</div></div>`;
 }
 
 export function scoreboard(g: GameState, me = -1): string {

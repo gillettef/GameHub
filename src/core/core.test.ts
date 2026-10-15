@@ -10,6 +10,9 @@ import {
   makeAiOffer,
   makeAiOffers,
   stars,
+  clientOutcomes,
+  dealRound,
+  marketSize,
   nextRound,
   rankings,
   resolveRound,
@@ -21,11 +24,11 @@ import type { AgentState, EventKey, GameState, Offer, RoundSubmission, Submissio
 // 구단: 0 블루 드래곤즈 10 FW 스타 / 1 실버 호크스 8 MF 플메 / 5 노바 크루저스 6 DF 베테랑 / 6 썬더 울브스 5 FW 유망주
 
 const agent = (over: Partial<AgentState> = {}): AgentState => ({
-  name: 'A', kind: 'human', score: 0, deals: 0, demandUsed: [], tactics: ['charm', 'leak', 'fast', 'low', 'hijack'], ...over,
+  name: 'A', kind: 'human', score: 0, deals: 0, demandUsed: [], tactics: ['charm', 'leak', 'fast', 'low', 'hijack'], hand: [], clients: [], pending: null, ...over,
 });
 
 const state = (over: Partial<GameState> = {}): GameState => ({
-  v: 3, rng: 1, round: 1, phase: 'bid', event: 'normal',
+  v: 4, rng: 1, round: 1, phase: 'bid', event: 'normal', nextEvent: 'normal',
   // 2~3인은 대어 2명 → 기본 시장의 두 선수 모두 대어
   market: [3, 6], clubs: [0, 1, 5, 6], sold: [],
   agents: [agent({ name: 'A' }), agent({ name: 'B' })],
@@ -497,5 +500,73 @@ describe('게임 진행', () => {
       expect(p.cost).toBeLessThanOrEqual(maxBudget);
       expect(p.base).toBe(Math.max(2, Math.ceil(p.cost / 2)));
     }
+  });
+});
+
+describe('의뢰 선수 등록', () => {
+  const setup = (n: number) => Array.from({ length: n }, (_, i) => ({ name: `P${i}`, kind: 'ai' as const }));
+
+  it('시장 = 등록한 의뢰 선수 N장 + 덱 N+1장, 손패는 2장으로 보충', () => {
+    for (const n of [2, 3, 4]) {
+      const g = createGame(setup(n), 7);
+      expect(g.market).toHaveLength(marketSize(n).players);
+      for (const a of g.agents) {
+        expect(a.clients).toEqual([{ playerId: expect.any(Number), round: 1 }]);
+        expect(g.market).toContain(a.clients[0]!.playerId);
+        expect(a.hand).toHaveLength(2);
+        for (const id of a.hand) expect(g.market).not.toContain(id);
+      }
+      const hands = g.agents.flatMap((a) => a.hand);
+      expect(new Set(hands).size).toBe(hands.length);
+    }
+  });
+
+  it('제출한 다음 라운드 의뢰를 등록하고, 예고된 이벤트를 적용', () => {
+    const g = createGame(setup(2), 3);
+    const pick = g.agents[0]!.hand[1]!;
+    const s = state({
+      ...g,
+      phase: 'result',
+      agents: g.agents.map((a, i) => (i === 0 ? { ...a, pending: pick } : a)),
+      nextEvent: 'young',
+    });
+    const next = dealRound({ ...s, round: 2 });
+    expect(next.event).toBe('young');
+    expect(next.agents[0]!.clients.at(-1)).toEqual({ playerId: pick, round: 2 });
+    expect(next.agents[0]!.hand).not.toContain(pick);
+    expect(next.market).toContain(pick);
+  });
+
+  it('resolveRound: 손패에 없는 카드는 등록 예약하지 않음', () => {
+    const s = state({ agents: [agent({ hand: [10, 11] }), agent({ hand: [12, 13] })] });
+    const r = resolveRound(s, { 0: { first: null, second: null, client: 11 }, 1: { first: null, second: null, client: 99 } });
+    expect(r.agents[0]!.pending).toBe(11);
+    expect(r.agents[1]!.pending).toBeNull();
+  });
+
+  it('보너스: 다른 에이전트가 계약하면 기본 수수료, 직접 계약·미계약은 0, 등록 라운드만 인정', () => {
+    // 0번이 최준서(기본 2)를 1라운드에 등록, 1번이 계약 / 1번이 정우진을 등록하고 직접 계약
+    const s = state({
+      agents: [agent({ clients: [{ playerId: 3, round: 1 }, { playerId: 0, round: 2 }] }), agent({ clients: [{ playerId: 6, round: 1 }] })],
+    });
+    const r = resolveRound(s, { 0: { first: null, second: null }, 1: { first: offer(), second: df } });
+    expect(clientOutcomes(r, 0)).toEqual([
+      { playerId: 3, round: 1, result: 'other', by: 1, bonus: 2 },
+      { playerId: 0, round: 2, result: 'unsigned', bonus: 0 },
+    ]);
+    expect(clientOutcomes(r, 1)).toEqual([{ playerId: 6, round: 1, result: 'self', by: 1, bonus: 0 }]);
+  });
+
+  it('게임 종료 시 의뢰 보너스를 점수에 더함', () => {
+    const s = state({
+      round: TOTAL_ROUNDS,
+      agents: [agent({ clients: [{ playerId: 3, round: 1 }] }), agent()],
+    });
+    const r = resolveRound({ ...s, round: 1 }, { 0: { first: null, second: null }, 1: { first: offer(), second: null } });
+    const done = nextRound({ ...r, round: TOTAL_ROUNDS });
+    expect(done.phase).toBe('done');
+    expect(done.agents[0]!.clientBonus).toBe(2);
+    expect(done.agents[0]!.score).toBe(2);
+    expect(done.agents[1]!.score).toBe(r.agents[1]!.score);
   });
 });

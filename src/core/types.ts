@@ -61,6 +61,14 @@ export interface AgentState {
   demandUsed: Demand[];
   /** 아직 쓰지 않은 전략 카드 */
   tactics: TacticKey[];
+  /** 손패: 아직 등록하지 않은 고객 선수 카드 */
+  hand: number[];
+  /** 지금까지 시장에 등록한 의뢰 선수 (비공개, 게임 종료 시 공개) */
+  clients: ClientRegistration[];
+  /** 다음 라운드에 등록할 손패 카드 (없으면 무작위) */
+  pending: number | null;
+  /** 게임 종료 시 받은 고객 보너스 (score 에 이미 포함) */
+  clientBonus?: number;
 }
 
 export interface Offer {
@@ -80,6 +88,8 @@ export type Stage = 1 | 2;
 export interface RoundSubmission {
   first: Submission;
   second: Submission;
+  /** 다음 라운드에 등록할 손패 카드 (없거나 잘못되면 무작위) */
+  client?: number | null;
 }
 
 export type InvalidReason =
@@ -132,16 +142,33 @@ export interface RoundResult {
 export type Phase = 'bid' | 'result' | 'done';
 
 export interface GameState {
-  v: 3;
+  v: 4;
   rng: number;
   round: number;
   phase: Phase;
   event: EventKey;
+  /** 다음 라운드 이벤트 예고 */
+  nextEvent: EventKey;
   market: number[];
   clubs: number[];
   sold: number[];
   agents: AgentState[];
   results: RoundResult[];
+}
+
+export interface ClientRegistration {
+  playerId: number;
+  round: number;
+}
+
+/** 고객 선수 결과: self = 직접 계약, other = 다른 에이전트가 계약, unsigned = 미계약 */
+export interface ClientOutcome {
+  playerId: number;
+  round: number;
+  result: 'self' | 'other' | 'unsigned';
+  /** 계약한 에이전트 */
+  by?: number;
+  bonus: number;
 }
 
 export interface Evaluation {

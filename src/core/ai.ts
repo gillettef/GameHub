@@ -31,9 +31,28 @@ export function makeAiOffers(state: GameState, agentIdx: number, rng: Rng): Roun
   // 1차가 없으면 2차는 1차 제약 없이 고르되 차수는 2차 (하이재킹 사용 가능)
   const ctx2 = first ? ctxFor(state, agentIdx, first) : { ...ctxFor(state, agentIdx, null), stage: 2 as const };
   const second = make(state, rng, ctx2);
+  const client = chooseClient(state, agentIdx, rng);
   const ok = (o: Offer | null, stage: Stage) => o !== null && isEvaluation(validateOffer(state, agentIdx, o, stage, stage === 2 ? first : null));
-  return { first: ok(first, 1) ? first : null, second: ok(second, 2) ? second : null };
+  return { first: ok(first, 1) ? first : null, second: ok(second, 2) ? second : null, client };
 }
+
+/** 다음 라운드 의뢰 등록: 쉬움은 무작위, 보통은 기본 수수료 + 맞는 구단 수가 큰 카드 */
+export function chooseClient(state: GameState, agentIdx: number, rng: Rng): number | null {
+  const agent = state.agents[agentIdx]!;
+  if (!agent.hand.length) return null;
+  if ((agent.level ?? 'easy') !== 'normal') return agent.hand[rng.int(agent.hand.length)]!;
+  const worth = (id: number) => {
+    const p = player(id);
+    return p.base + CLUBS.filter((c) => c.budget >= p.cost && c.pos === p.pos).length / 2;
+  };
+  return [...agent.hand].sort((a, b) => worth(b) - worth(a))[0]!;
+}
+
+/** 이번 라운드에 내가 등록한 의뢰 선수 */
+const myClient = (state: GameState, agent: AgentState): number | null => {
+  const last = agent.clients.at(-1);
+  return last && last.round === state.round ? last.playerId : null;
+};
 
 /** 하위 호환: 1차 제안만 */
 export const makeAiOffer = (state: GameState, agentIdx: number, rng: Rng): Offer | null => makeAiOffers(state, agentIdx, rng).first;
@@ -101,7 +120,9 @@ export function makeNormalOffer(state: GameState, rng: Rng, ctx: Ctx): Offer | n
           if (!isEvaluation(ev)) continue;
           const win = Math.min(1, Math.max(0.05, 0.5 + 0.15 * (ev.attract - threat)));
           const survive = tactic === 'hijack' ? 1 : 1 - q;
-          scored.push({ offer, value: ev.fee * win * survive - (tactic ? tacticCost : 0) });
+          // 내 의뢰 선수를 직접 계약하면 남이 계약했을 때 받을 의뢰 보너스(기본 수수료)를 포기한다
+          const client = pid === myClient(state, agent) ? -p.base : 0;
+          scored.push({ offer, value: (ev.fee + client) * win * survive - (tactic ? tacticCost : 0) });
         }
       }
     }

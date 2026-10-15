@@ -247,3 +247,10 @@ input[readonly] { color: var(--mu); }
 .stage-t { margin: 10px 0 6px; font-size: 13px; color: var(--mu); }
 .entry.hijacked { border-color: #6b2f3a; }
 .pc.big { border-color: #6c5730; background: linear-gradient(145deg, #3a301c, #121b2a); }
+.event .next { margin-top: 4px; color: #c3d0e2; font-size: 12px; }
+.client p { margin: 0 0 8px; font-size: 14px; line-height: 1.5; }
+.client h4 { margin: 10px 0 6px; font-size: 13px; color: var(--mu); }
+.hand { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.hand .chip { min-height: 56px; align-items: flex-start; text-align: left; padding: 8px 10px; }
+.reveal h4 { margin: 12px 0 4px; font-size: 14px; }
+.reveal ul { margin: 0; padding-left: 18px; font-size: 13px; line-height: 1.6; }
