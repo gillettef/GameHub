@@ -27,11 +27,11 @@ export function createGame(setup: readonly AgentSetup[], seed: number): GameStat
     ...(a.kind === 'ai' ? { level: a.level ?? 'easy' } : {}),
     score: 0,
     deals: 0,
-    feeUsed: [],
+    demandUsed: [],
     tactics: [...rng.shuffle(TACTIC_KEYS).slice(0, TACTICS_PER_AGENT), HIJACK],
   }));
   return dealRound({
-    v: 2,
+    v: 3,
     rng: rng.state,
     round: 1,
     phase: 'bid',

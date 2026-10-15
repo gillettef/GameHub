@@ -1,15 +1,15 @@
 import {
-  FEE_RATES,
-  MAX_SALARY,
+  DEMANDS,
   PLAYERS,
   TACTICS,
   TOTAL_ROUNDS,
   INVALID_TEXT,
-  effectiveBudget,
-  feeRemaining,
+  demandRemaining,
+  fitScore,
+  offerValue,
   rankings,
 } from '../../core';
-import type { FeeRate, GameState, TacticKey } from '../../core';
+import type { Demand, GameState, TacticKey } from '../../core';
 import type { Session } from '../../store/storage';
 import { agentName, checkSlots, clubById, esc, eventBanner, header, money, roundEntries, scoreboard, slotReady, type Draft } from '../view';
 
@@ -30,7 +30,7 @@ export function handoffScreen(s: Session): string {
 export function bidScreen(s: Session, d: Draft): string {
   const g = s.game;
   const me = g.agents[s.turn]!;
-  const fr = feeRemaining(me);
+  const left = demandRemaining(me);
   const st = d.stage;
   const sl = d.slots[st - 1]!;
   const otherSt = st === 1 ? 2 : 1;
@@ -57,10 +57,10 @@ export function bidScreen(s: Session, d: Draft): string {
       const sold = g.sold.includes(id);
       const taken = otherOn && other.playerId === id;
       return `<button class="pc ${sl.playerId === id ? 'sel' : ''}" data-act="pick" data-arg="${id}" ${sold || taken ? 'disabled' : ''} aria-pressed="${sl.playerId === id}">
-        <span class="pos ${q.pos}">${q.pos}</span><span class="val">${q.value}</span>
+        <span class="pos ${q.pos}">${q.pos}</span><span class="val" aria-label="기본 수수료 ${q.base}억">${q.base}</span>
         <b>${esc(q.name)}</b>
         <span class="tag ${q.trait === '스타' ? 'star' : ''}">${q.trait}</span>
-        <small>${taken ? `${otherSt}차에서 선택함` : `최소 ${q.minSalary}억 · 보너스 +${q.bonus}억`}</small>
+        <small>${taken ? `${otherSt}차에서 선택함` : `몸값 ${q.cost}억 · 기본 수수료 ${q.base}억`}</small>
       </button>`;
     })
     .join('');
@@ -68,21 +68,21 @@ export function bidScreen(s: Session, d: Draft): string {
   const clubs = g.clubs
     .map((id) => {
       const c = clubById(id);
-      const bud = effectiveBudget(c, g.event);
+      const bud = offerValue(c, g.event);
       const posFit = p && p.pos === c.pos;
       const prefFit = p && p.trait === c.pref;
-      const tooPoor = p && bud < p.minSalary;
+      const tooPoor = p && bud < p.cost;
       const taken = otherOn && other.clubId === id;
       return `<button class="club ${sl.clubId === id ? 'sel' : ''} ${tooPoor ? 'dim' : ''}" data-act="club" data-arg="${id}" ${taken ? 'disabled' : ''} aria-pressed="${sl.clubId === id}">
-        <b>${esc(c.name)}</b><span class="bud">${taken ? `${otherSt}차에서 선택함` : `예산 ${bud}억`}</span>
+        <b>${esc(c.name)}</b><span class="bud">${taken ? `${otherSt}차에서 선택함` : `제시액 ${bud}억${tooPoor ? ' · 몸값 미달' : ''}`}</span>
         <span class="needs"><span class="${posFit ? 'fit' : ''}">${c.pos} 필요${posFit ? ' +2' : ''}</span><span class="${prefFit ? 'fit' : ''}">${c.pref} 선호${prefFit ? ' +1' : ''}</span></span>
       </button>`;
     })
     .join('');
 
-  const minS = p?.minSalary ?? 1;
   /** 다른 차수에 예약된 카드를 뺀 남은 장수 */
-  const feeLeft = (f: FeeRate) => fr[f] - (otherOn && other.fee === f ? 1 : 0);
+  const demandLeft = (d: Demand) => left[d] - (otherOn && other.demand === d ? 1 : 0);
+  const fit = p && sl.clubId !== null ? fitScore(p, clubById(sl.clubId)) : null;
   const tacticChip = (k: TacticKey) => {
     const firstOnly = st === 1 && TACTICS[k].secondOnly;
     const used = otherOn && other.tactic === k;
@@ -97,7 +97,7 @@ export function bidScreen(s: Session, d: Draft): string {
       : sl.clubId === null
         ? '<span class="mu">구단을 선택하세요</span>'
         : typeof ck === 'object'
-          ? `<span>매력도 <b>${ck.attract}</b>${ck.salary !== sl.salary ? ` · 유효 연봉 ${ck.salary}억` : ''}</span><span class="fee">+${money(ck.fee)}</span>`
+          ? `<span>매력도 <b>${ck.attract}</b> <small class="mu">(적합 ${fit}${sl.tactic ? ` + 전략 ${TACTICS[sl.tactic].attract}` : ''} − 요구 ${sl.demand})</small></span><span class="fee">+${money(ck.fee)}</span>`
           : `<span class="err">${INVALID_TEXT[ck as keyof typeof INVALID_TEXT]}</span>`;
 
   const editor = sl.pass
@@ -105,25 +105,19 @@ export function bidScreen(s: Session, d: Draft): string {
         <button data-act="slot-pass">다시 협상하기</button></section>`
     : `${
         st === 2
-          ? '<p class="hint">💡 다른 에이전트가 <b>1차에서 계약한 선수</b>에게 낸 2차 제안은 무산됩니다(카드 반환). <b>하이재킹</b> 카드를 쓰면 1차 계약의 매력도보다 높을 때 그 계약을 빼앗아 옵니다.</p>'
+          ? '<p class="hint">💡 다른 에이전트가 <b>1차에서 계약한 선수</b>에게 낸 2차 제안은 무산되고 카드는 버려집니다. <b>하이재킹</b> 카드를 쓰면 1차 계약의 매력도 이상일 때 그 계약을 빼앗아 옵니다.</p>'
           : ''
       }
     <h3 class="sec-t">1. 선수 <small class="mu">· 1차·2차 중복 불가</small></h3>
     <div class="market">${market}</div>
     <h3 class="sec-t">2. 구단 <small class="mu">· 1차·2차 중복 불가</small></h3>
     <div class="clubs">${clubs}</div>
-    <h3 class="sec-t">3. 연봉</h3>
-    <div class="stepper ${p ? '' : 'off'}">
-      <button class="icon big" data-act="sal" data-arg="-1" ${!p || sl.salary <= minS ? 'disabled' : ''} aria-label="연봉 내리기">−</button>
-      <output>${p ? `${sl.salary}억` : '—'}</output>
-      <button class="icon big" data-act="sal" data-arg="1" ${!p || sl.salary >= MAX_SALARY ? 'disabled' : ''} aria-label="연봉 올리기">＋</button>
-    </div>
-    <h3 class="sec-t">4. 수수료율 카드 <small class="mu">제출하면 소모</small></h3>
-    <div class="chips">${FEE_RATES.map(
-      (f) =>
-        `<button class="chip ${sl.fee === f ? 'sel' : ''}" data-act="fee" data-arg="${f}" ${feeLeft(f) <= 0 && sl.fee !== f ? 'disabled' : ''}>${f}%<small>×${Math.max(0, feeLeft(f))}</small></button>`,
+    <h3 class="sec-t">3. 요구 수수료 <small class="mu">높을수록 수수료↑ 매력도↓ · 공개되면 소모</small></h3>
+    <div class="chips">${DEMANDS.map(
+      (d) =>
+        `<button class="chip ${sl.demand === d ? 'sel' : ''}" data-act="demand" data-arg="${d}" ${demandLeft(d) <= 0 && sl.demand !== d ? 'disabled' : ''}>${d}억<small>×${Math.max(0, demandLeft(d))}</small></button>`,
     ).join('')}</div>
-    <h3 class="sec-t">5. 전략 카드 <small class="mu">선택 · 제출하면 소모</small></h3>
+    <h3 class="sec-t">4. 전략 카드 <small class="mu">선택 · 공개되면 소모</small></h3>
     <div class="tactics">
       <button class="chip ${sl.tactic === null ? 'sel' : ''}" data-act="tactic" data-arg="">사용 안 함</button>
       ${me.tactics.map(tacticChip).join('')}

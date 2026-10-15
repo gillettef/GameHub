@@ -7,7 +7,7 @@ import {
   CLUBS,
   EVENTS,
   EVENT_KEYS,
-  FEE_RATES,
+  DEMANDS,
   PLAYERS,
   TACTICS,
   TACTIC_KEYS,
@@ -55,7 +55,7 @@ const levelStat: Record<AiLevel, { seats: number; wins: number; score: number }>
 const finals: number[] = [];
 const gaps: number[] = [];
 const tactic = Object.fromEntries([...TACTIC_KEYS, HIJACK, 'none'].map((k) => [k, tally()]));
-const feeCard = Object.fromEntries(FEE_RATES.map((f) => [f, tally()]));
+const feeCard = Object.fromEntries(DEMANDS.map((f) => [f, tally()]));
 const playerStat = PLAYERS.map(() => ({ deals: 0, fee: 0, bids: 0 }));
 const clubPick = CLUBS.map(() => 0);
 const eventStat = Object.fromEntries(EVENT_KEYS.map((k) => [k, { rounds: 0, fee: 0 }])) as Record<EventKey, { rounds: number; fee: number }>;
@@ -123,7 +123,7 @@ for (let gi = 0; gi < GAMES; gi++) {
       const won = e.status === 'won';
       const fee = won ? e.fee! : 0;
       es.fee += fee;
-      for (const t of [tactic[e.offer.tactic ?? 'none']!, feeCard[e.offer.fee]!]) {
+      for (const t of [tactic[e.offer.tactic ?? 'none']!, feeCard[e.offer.demand]!]) {
         t.n++;
         t.won += won ? 1 : 0;
         t.fee += fee;
@@ -167,9 +167,9 @@ const report = {
     successRate: pct(t.won, t.n),
     avgFeePerUse: r2(t.fee / (t.n || 1)),
   })),
-  feeCards: Object.entries(feeCard).map(([f, t]) => ({ fee: `${f}%`, uses: t.n, successRate: pct(t.won, t.n), avgFeePerUse: r2(t.fee / (t.n || 1)) })),
+  demandCards: Object.entries(feeCard).map(([f, t]) => ({ demand: `요구 ${f}`, uses: t.n, successRate: pct(t.won, t.n), avgFeePerUse: r2(t.fee / (t.n || 1)) })),
   players: PLAYERS.map((p, i) => ({
-    player: `${p.name}(${p.pos},최소${p.minSalary})`,
+    player: `${p.name}(${p.pos},몸값${p.cost},기본${p.base})`,
     bids: playerStat[i]!.bids,
     deals: playerStat[i]!.deals,
     avgFee: r2(playerStat[i]!.fee / (playerStat[i]!.deals || 1)),
