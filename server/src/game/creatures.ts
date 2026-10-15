@@ -2,12 +2,12 @@
 // 원본 능력 텍스트는 카드 배틀 용어(전장/전투/생명력/피해)로 쓰여 있어, 현재 게임 규칙에 맞게 아래처럼 변환했습니다.
 //   전장에 들어올 때 → 획득 즉시 (acquire)
 //   턴 시작 시      → 매 라운드 1주차(준비) (prep)
-//   전투에 참여할 때 → 주문 대결 참여 시, 도전자/도전받은 쪽 모두 (duel)
-//   공격을 받을 때   → 주문 대결에서 도전받았을 때 (defend)
-//   피해를 받을 때   → 주문 대결에서 패배했을 때 (lose)
-//   공격력 +N       → 주문 대결 굴림 +N (rollBonus)
-//   상대에게 피해 N  → 상대의 주문 대결 굴림 -N (enemyRollPenalty)
-//   피해를 받지 않음  → 주문 대결 패배 시 낸 마나기운 1개를 다음 달 준비 때 돌려받음 (immune)
+//   전투에 참여할 때 → 마법 겨루기 참여 시, 도전자/도전받은 쪽 모두 (duel)
+//   공격을 받을 때   → 마법 겨루기에서 도전받았을 때 (defend)
+//   피해를 받을 때   → 마법 겨루기에서 패배했을 때 (lose)
+//   공격력 +N       → 마법 겨루기 굴림 +N (rollBonus)
+//   상대에게 피해 N  → 상대의 마법 겨루기 굴림 -N (enemyRollPenalty)
+//   피해를 받지 않음  → 마법 겨루기 패배 시 낸 마나기운 1개를 다음 달 준비 때 돌려받음 (immune)
 //   주문력 N 얻기    → acquire: 주문력 영구 +N / prep: 그 달 마나기운 +N (mana)
 //   생명력 N 회복/감소 → 체력기운. prep이면 그 달 즉시 +N, 그 외에는 다음 달 준비 때 +N/-N (stamina / enemyStamina)
 import type { CreatureAbility, CreatureCard, CreatureElement } from "./types.js";
@@ -15,7 +15,7 @@ import type { CreatureAbility, CreatureCard, CreatureElement } from "./types.js"
 // trainTarget: 조련 기준 수치 (낸 마나기운만큼 굴린 주사위 합이 이 값 × BALANCE.trainTargetScale 이상이면 조련 성공). 생물마다 고정이며 카드별로 직접 조정한다 (원본 xlsx의 "요구 주문력" × 4를 초안으로 사용)
 type Def = [name: string, element: CreatureElement, kind: "animal" | "plant", trainTarget: number, description: string];
 
-// 능력은 속성별 세 가지로 통일한다 (51절 단순화): 하늘 = 주문 대결 굴림 +, 육지 = 매달 체력기운 +, 바다 = 매달 마나기운 +.
+// 능력은 속성별 세 가지로 통일한다 (51절 단순화): 하늘 = 마법 겨루기 굴림 +, 육지 = 매달 체력기운 +, 바다 = 매달 마나기운 +.
 // 조련하기 어려운 생물(기준 16 이상)은 +2, 나머지는 +1
 export function creatureAbilityOf(element: CreatureElement, trainTarget: number): CreatureAbility {
   const amount = trainTarget >= 16 ? 2 : 1;
@@ -73,7 +73,7 @@ export const CREATURE_CARDS: readonly Omit<CreatureCard, "id">[] = DEFS.map(
 );
 
 export function describeAbility(a: CreatureAbility): string {
-  const when = { acquire: "획득 즉시", prep: "매달 준비 때", duel: "주문 대결 참여 시", defend: "대결 도전받을 때", lose: "대결 패배 시", always: "항상" }[a.trigger];
+  const when = { acquire: "획득 즉시", prep: "매달 준비 때", duel: "마법 겨루기 참여 시", defend: "대결 도전받을 때", lose: "대결 패배 시", always: "항상" }[a.trigger];
   const what = {
     spellPower: `주문력 영구 +${a.amount}`,
     mana: `마나기운 +${a.amount}`,

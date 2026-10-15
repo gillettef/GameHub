@@ -72,6 +72,25 @@ async function main() {
 
   send(host, { type: "start_game" });
 
+  // 장래희망(56절 B2)은 본인에게만 보이고, 받은 카드 중에서 바꿀 수 있다
+  let checkedDream = false;
+  const dreamDeadline = Date.now() + 5_000;
+  while (Date.now() < dreamDeadline && !host.game) await wait(20);
+  const first = host.game?.players[host.playerId!];
+  if (first?.dreamOptions && first.dreamOptions.length > 1) {
+    for (const c of clients) {
+      for (const [id, p] of Object.entries(c.game?.players ?? {})) {
+        if (id !== c.playerId && (p.dream || p.dreamOptions)) throw new Error("다른 플레이어의 장래희망이 노출되었습니다");
+      }
+    }
+    const pick = first.dreamOptions[1];
+    send(host, { type: "choose_dream", dreamId: pick.id });
+    const until = Date.now() + 3_000;
+    while (Date.now() < until && host.game?.players[host.playerId!].dream?.id !== pick.id) await wait(20);
+    if (host.game?.players[host.playerId!].dream?.id !== pick.id) throw new Error("장래희망을 바꾸지 못했습니다");
+    checkedDream = true;
+  }
+
   const deadline = Date.now() + 30_000;
   while (Date.now() < deadline && host.game?.phase !== "ended") await wait(100);
 
@@ -90,8 +109,9 @@ async function main() {
       if (id !== c.playerId && p.peekedExploration) throw new Error("다른 플레이어가 엿본 탐험 카드가 노출되었습니다");
     }
   }
+  if (checkedDream && Object.values(game.players).some((p) => !p.dream)) throw new Error("게임이 끝나면 장래희망이 모두 공개되어야 합니다");
 
-  console.log(`스모크 테스트 통과: ${count}인 ${game.round}라운드 종료, 승자 ${game.winnerIds?.map((id) => game.players[id].name).join(", ")}`);
+  console.log(`스모크 테스트 통과: ${count}인 ${game.round}라운드 종료, 승자 ${game.winnerIds?.map((id) => game.players[id].name).join(", ")}${checkedDream ? " (장래희망 비공개·바꾸기 확인)" : ""}`);
   for (const c of clients) c.socket.close();
 }
 

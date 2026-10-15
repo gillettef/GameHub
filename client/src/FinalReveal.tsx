@@ -1,13 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import { Icon, InlineIcon } from "./Icons";
-import { AWARD_NAME, AWARD_SUBJECT, creditBeforeGraduation, finalScore, type GameState, type PlayerGameState } from "./gameTypes";
+import { AWARD_NAME, AWARD_SUBJECT, STAT_LABEL, creditBeforeGraduation, finalScore, type GameState, type PlayerGameState } from "./gameTypes";
 
 const MEDAL_COLOR = ["text-amber-500", "text-slate-400", "text-orange-500"];
 
 // 한 걸음이 지나가는 시간(ms). 팝업이 떠 있는 동안에는 시간이 흐르지 않는다
 const STEP_MS = 1100;
-// 플레이어 한 명의 점수 계산 걸음: 0 이름·모은 학점 → 1 1위 상 → 2 2위 상 → 3 3위 상 → 4 최종 학점
-const TALLY_STEPS = 5;
+// 플레이어 한 명의 점수 계산 걸음: 0 이름·모은 학점 → 1 1위 상 → 2 2위 상 → 3 3위 상 → 4 장래희망 → 5 최종 학점
+const DREAM_STEP = 4;
+const FINAL_STEP = 5;
+const TALLY_STEPS = 6;
 
 function prefersReducedMotion(): boolean {
   return typeof window !== "undefined" && !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
@@ -51,7 +53,7 @@ function Confetti() {
   );
 }
 
-// 지금 점수를 계산하는 플레이어의 카드: 모은 학점 → 1위 상 → 2위 상 → 3위 상 → 최종 학점이 차례로 나타난다 (졸업식 시상, 46절·52절)
+// 지금 점수를 계산하는 플레이어의 카드: 모은 학점 → 1위 상 → 2위 상 → 3위 상 → 장래희망 → 최종 학점이 차례로 나타난다 (졸업식 시상, 46절·52절·56절)
 function TallyCard({ game, player, step }: { game: GameState; player: PlayerGameState; step: number }) {
   const rows = [1, 2, 3].map((rank) => {
     const list = player.awards.filter((w) => w.rank === rank);
@@ -62,7 +64,7 @@ function TallyCard({ game, player, step }: { game: GameState; player: PlayerGame
       <p className="font-display text-xl text-purple-700 truncate">{player.name}</p>
       <div className="mt-3 flex flex-col gap-2 text-sm text-purple-800">
         <p className="pop-in rounded-2xl bg-white px-3 py-2">
-          <Icon name="cap" className="h-4 w-4 text-amber-500" /> 그동안 모은 학점 <b className="text-lg"><CountUp to={creditBeforeGraduation(player)} /></b>
+          <Icon name="cap" className="h-4 w-4 text-amber-500" /> 그동안 모은 학점 <b className="text-lg"><CountUp to={creditBeforeGraduation(player, game.rules)} /></b>
         </p>
         {rows.map(({ rank, list, points }) => (
           <p key={rank} className={`rounded-2xl bg-white px-3 py-2 ${step >= rank ? "pop-in" : "invisible"}`}>
@@ -70,8 +72,20 @@ function TallyCard({ game, player, step }: { game: GameState; player: PlayerGame
             {list.length > 0 ? list.map((w) => `${AWARD_NAME[w.category]}(${AWARD_SUBJECT[w.category]} ${w.value})`).join(", ") : "없음"} = 학점 +<b className="text-lg">{step >= rank ? <CountUp to={points} /> : 0}</b>
           </p>
         ))}
-        <p className={`rounded-2xl bg-amber-100 px-3 py-2 font-display text-lg ${step >= 4 ? "pop-in" : "invisible"}`}>
-          최종 학점 <b className="text-2xl text-amber-700">{step >= 4 ? <CountUp to={finalScore(game, player)} ms={900} /> : 0}</b>
+        {player.dream && game.rules.dreamCredit > 0 && (
+          <p className={`rounded-2xl px-3 py-2 ${player.dreamFulfilled ? "bg-sky-50 text-sky-800" : "bg-white text-purple-500"} ${step >= DREAM_STEP ? "pop-in" : "invisible"}`}>
+            <Icon name="compass" className="h-4 w-4 text-sky-500" /> 장래희망 <b>{player.dream.name}</b> ({player.dream.stats.map((s) => STAT_LABEL[s]).join("·")}){" "}
+            {player.dreamFulfilled ? (
+              <>
+                이뤘어요! = 학점 +<b className="text-lg">{step >= DREAM_STEP ? <CountUp to={game.rules.dreamCredit} /> : 0}</b>
+              </>
+            ) : (
+              "다음 기회에..."
+            )}
+          </p>
+        )}
+        <p className={`rounded-2xl bg-amber-100 px-3 py-2 font-display text-lg ${step >= FINAL_STEP ? "pop-in" : "invisible"}`}>
+          최종 학점 <b className="text-2xl text-amber-700">{step >= FINAL_STEP ? <CountUp to={finalScore(game, player)} ms={900} /> : 0}</b>
         </p>
       </div>
     </div>
@@ -104,7 +118,7 @@ export function FinalReveal({ game, onLeave, isHost, onRematch }: { game: GameSt
   const currentStep = step % TALLY_STEPS;
   const revealedRanks = Math.max(0, step - tallyEnd);
   const rankOf = (p: PlayerGameState) => 1 + ranked.filter((o) => finalScore(game, o) > finalScore(game, p)).length;
-  const tallied = (i: number) => i < currentIndex || (i === currentIndex && currentStep >= 4);
+  const tallied = (i: number) => i < currentIndex || (i === currentIndex && currentStep >= FINAL_STEP);
 
   return (
     <div className="relative bg-white rounded-3xl border-2 border-amber-200 p-4 shadow-sm">
@@ -157,7 +171,8 @@ export function FinalReveal({ game, onLeave, isHost, onRematch }: { game: GameSt
                     <span className="shrink-0 text-lg">{finalScore(game, p)}점</span>
                   </p>
                   <p className="text-xs text-purple-600">
-                    모은 학점 {creditBeforeGraduation(p)} · {p.awards.length > 0 ? [...p.awards].sort((a, b) => a.rank - b.rank).map((w) => `${AWARD_NAME[w.category]} ${w.rank}위 +${w.points}`).join(" · ") : "받은 상이 없어요"}
+                    모은 학점 {creditBeforeGraduation(p, game.rules)} · {p.awards.length > 0 ? [...p.awards].sort((a, b) => a.rank - b.rank).map((w) => `${AWARD_NAME[w.category]} ${w.rank}위 +${w.points}`).join(" · ") : "받은 상이 없어요"}
+                    {p.dream && game.rules.dreamCredit > 0 && ` · 장래희망 ${p.dream.name} ${p.dreamFulfilled ? `+${game.rules.dreamCredit}` : "다음 기회에"}`}
                   </p>
                 </li>
               );

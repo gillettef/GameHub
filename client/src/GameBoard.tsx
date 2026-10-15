@@ -19,6 +19,8 @@ import {
   duelTargets,
   effectiveStat,
   energyText,
+  orderText,
+  canChangeDream,
   type ActivityId,
   type CreatureElement,
   type GameState,
@@ -39,6 +41,7 @@ import { FinalReveal } from "./FinalReveal";
 import { NoticeToast, PlayerAdminRow, SocialBar, WaitingBanner } from "./Social";
 import type { Reaction } from "./useGameSocket";
 import { AnnouncementLayer } from "./Announcements";
+import { GoalsPanel } from "./Goals";
 
 const ACTIVITY_IDS: ActivityId[] = ["tournament", "creature", "duel", "exploration", "lab"];
 
@@ -85,7 +88,12 @@ function PlayerStatCard({ player, isMe, rules, defaultOpen }: { player: PlayerGa
         <Chip icon="cap" label="학점" value={player.credit} className="bg-amber-100 text-amber-800" />
       </div>
       <p className="text-sm text-purple-700 leading-7">
-        <InlineIcon name="trophy" /> 토너먼트 {player.tournamentTrack}칸 · <InlineIcon name="book" /> 수업 {player.classCards.length}장
+        <span className="whitespace-nowrap"><InlineIcon name="trophy" /> {rules.tournamentCards ? `대회 입상 ${player.feats?.tournament ?? 0}번` : `마법 경연 ${player.tournamentTrack}칸`}</span> · <span className="whitespace-nowrap"><InlineIcon name="book" /> 수업 {player.classCards.length}장</span>
+        {isMe && player.dream && rules.dreamCredit > 0 && (
+          <>
+            {" "}· <span className="whitespace-nowrap"><InlineIcon name="compass" /> 장래희망 {player.dream.name}</span>
+          </>
+        )}
       </p>
       <p className="text-sm text-purple-700 leading-7">
         <InlineIcon name="intToken" /> 지력기운 {energy("intelligence", player.intelligenceTokens)} · <InlineIcon name="staminaToken" /> 체력기운 {energy("stamina", player.staminaTokens)} · <InlineIcon name="charmToken" /> 매력기운 {energy("charm", player.charmTokens)} · <InlineIcon name="manaToken" /> 마나기운 {energy("mana", player.manaTokens)}
@@ -206,7 +214,7 @@ function ClassPhasePanel({ game, myId, onTake }: { game: GameState; myId: string
 
   return (
     <div className="bg-white rounded-3xl border-2 border-purple-200 shadow-sm p-4">
-      <p className="text-sm text-purple-500 mb-1">2주차(정규수업): 수업카드는 무료예요. 가져가면 그 과목의 기운을 얻어요. 선부터 시계방향으로 한 장씩 가져가요</p>
+      <p className="text-sm text-purple-500 mb-1">2주차(정규수업): 수업카드는 무료예요. 가져가면 그 과목의 기운을 얻어요. {orderText(game.rules)} 한 장씩 가져가요</p>
       <p className="text-xs text-purple-500 mb-2">
         <InlineIcon name="intToken" /> 지력기운 {energyText(me, "intelligence", game.rules)} · <InlineIcon name="staminaToken" /> 체력기운 {energyText(me, "stamina", game.rules)} · <InlineIcon name="charmToken" /> 매력기운 {energyText(me, "charm", game.rules)} · <InlineIcon name="manaToken" /> 마나기운 {energyText(me, "mana", game.rules)}
       </p>
@@ -308,7 +316,7 @@ function CramPanel({ game, myId, onCram }: { game: GameState; myId: string; onCr
         <InlineIcon name="book" /> 벼락치기
       </p>
       <p className="mt-1 text-center text-sm text-purple-500">
-        가진 기운 1개를 <InlineIcon name={toInfo.icon} /> {toInfo.name} 1개로 바꿀 수 있어요 (안 해도 돼요). 선부터 한 명씩 골라요
+        가진 기운 1개를 <InlineIcon name={toInfo.icon} /> {toInfo.name} 1개로 바꿀 수 있어요 (안 해도 돼요). {orderText(game.rules)} 한 명씩 골라요
       </p>
       <ol className="my-3 flex flex-wrap gap-1.5 text-xs" aria-label="벼락치기 순서">
         {game.cramOrder.map((id, index) => (
@@ -377,7 +385,7 @@ function ExamInfoPanel({ game }: { game: GameState }) {
   );
 }
 
-// 구역에 공개된 카드 중 하나를 고르는 패널 (마법생물·연구 카드·비밀의 방 카드 공통)
+// 구역에 공개된 카드 중 하나를 고르는 패널 (마법생물·연구 카드·별빛 다락방 카드 공통)
 function PickPanel({ game, myId, onPick }: { game: GameState; myId: string; onPick: (cardId: string | null) => void }) {
   const pick = game.pendingPick;
   const me = game.players[myId];
@@ -434,7 +442,7 @@ function PickPanel({ game, myId, onPick }: { game: GameState; myId: string; onPi
 }
 
 // 이번 달 활동 카드 (50절): 1주차에 공개된 구역별 카드를 정규수업·활동 선택 때 함께 본다 (누르면 크게 보기)
-const MONTH_ZONES: ActivityId[] = ["creature", "lab", "exploration"];
+const MONTH_ZONES: ActivityId[] = ["tournament", "creature", "lab", "exploration"];
 function MonthOffersPanel({ game }: { game: GameState }) {
   const zones = MONTH_ZONES.filter((a) => (game.activityOffers[a]?.cards.length ?? 0) > 0);
   if (zones.length === 0) return null;
@@ -451,7 +459,7 @@ function MonthOffersPanel({ game }: { game: GameState }) {
           <div key={a}>
             <p className="mb-1 flex items-center gap-1 text-xs font-semibold text-amber-800">
               <Icon name={ACTIVITY_ICON[a]} className="h-4 w-4" />
-              {a === "duel" ? "주문 대결 (이긴 친구가 고르는 마도서)" : ACTIVITY_LABEL[a]}
+              {a === "duel" ? "마법 겨루기 (이긴 친구가 고르는 마도서)" : ACTIVITY_LABEL[a]}
             </p>
             <CardGrid cards={(game.activityOffers[a]?.cards ?? []).map(offerCardInfo)} />
           </div>
@@ -491,7 +499,7 @@ function ChooseOrder({ game, myId, currentId }: { game: GameState; myId: string;
           >
             {index + 1}. {game.players[id].name}
             {id === myId ? " (나)" : ""}
-            {index === 0 ? " · 선" : ""}
+            {id === game.turnOrder[game.startingPlayerIndex] ? " · 선" : ""}
             {choice && <Icon name={ACTIVITY_ICON[choice.activityId]} className="h-3.5 w-3.5" />}
             {forced && <Icon name="swords" className="h-3.5 w-3.5" />}
           </li>
@@ -523,7 +531,7 @@ function ChoosePanel({
       <div className="bg-white rounded-3xl border-2 border-purple-200 shadow-sm p-4">
         <p className="text-sm text-purple-600 mb-1">아직 활동을 고르지 않은 한 명을 지목하세요</p>
         <p className="text-xs text-purple-500 mb-2">
-          지목당한 친구는 이번 달 자율활동으로 주문 대결을 하게 돼요. 결과와 상관없이 지목한 친구에게 {fee > 0 ? <><InlineIcon name="heart" /> 매력 {fee}과 </> : null}<InlineIcon name="manaToken" /> 마나기운 {game.rules.duelManaFee}개를 건네요. 지목당한 친구가 먼저 굴리고, 나는 그 결과를 보고 굴려요.
+          지목당한 친구는 이번 달 자율활동으로 마법 겨루기를 하게 돼요. 결과와 상관없이 지목한 친구에게 {fee > 0 ? <><InlineIcon name="heart" /> 매력 {fee}과 </> : null}<InlineIcon name="manaToken" /> 마나기운 {game.rules.duelManaFee}개를 건네요. 지목당한 친구가 먼저 굴리고, 나는 그 결과를 보고 굴려요.
         </p>
         <div className="flex flex-col gap-2">
           {targets.map((id) => (
@@ -545,14 +553,14 @@ function ChoosePanel({
 
   return (
     <div className="bg-white rounded-3xl border-2 border-purple-200 shadow-sm p-4">
-      <p className="text-sm text-purple-600 mb-1">3주차(자율활동): 선부터 시계방향으로 활동을 골라요</p>
+      <p className="text-sm text-purple-600 mb-1">3주차(자율활동): {orderText(game.rules)} 활동을 골라요</p>
       <p className="text-xs text-purple-500 mb-2">모두 고르고 나면 고른 순서대로 한 명씩 차례로 진행돼요. 다른 친구가 고른 활동도 여기서 볼 수 있어요.</p>
       <ChooseOrder game={game} myId={myId} currentId={currentTurnPlayerId} />
       <p className={`mb-3 rounded-2xl px-3 py-2 text-sm ${isMyTurn ? "bg-pink-50 text-pink-700" : "bg-purple-50 text-purple-600"}`}>
         {isMyTurn
           ? "내 차례예요! 하고 싶은 활동을 골라요"
           : forcedBy
-            ? `${game.players[forcedBy.challengerId].name}님이 나를 지목했어요! 이번 달 활동은 주문 대결이에요`
+            ? `${game.players[forcedBy.challengerId].name}님이 나를 지목했어요! 이번 달 활동은 마법 겨루기예요`
             : currentTurnPlayerId
               ? `${game.players[currentTurnPlayerId]?.name}님이 활동을 고르는 중이에요...`
               : "모두 골랐어요"}
@@ -569,7 +577,7 @@ function ChoosePanel({
           const extra = activityExtraCost(game, activityId);
           const openCost = activityOpenCost(game, activityId);
           const full = occupants.length >= game.rules.activityMaxParticipants;
-          // 이미 이 구역을 고른 친구들 (주문 대결은 누구를 지목했는지도 함께)
+          // 이미 이 구역을 고른 친구들 (마법 겨루기는 누구를 지목했는지도 함께)
           const who = occupants
             .map((id) => {
               const duel = activityId === "duel" ? game.duels.find((d) => d.challengerId === id) : undefined;
@@ -701,7 +709,7 @@ function ResolvePanel({
         </ol>
         {game.duels.length > 0 && (
           <p className="mt-2 text-xs text-purple-500">
-            <InlineIcon name="swords" /> 주문 대결에 지목당한 친구는 도전자의 차례에 함께 대결해요.
+            <InlineIcon name="swords" /> 마법 겨루기에 지목당한 친구는 도전자의 차례에 함께 대결해요.
           </p>
         )}
       </div>
@@ -727,7 +735,7 @@ function ActivityPhasePanel({
   );
 }
 
-// 주사위 굴리기 (선 정하기·토너먼트·조련·연구실·주문 대결·탐험 판정·시험): 마나기운을 1~보유 개수만큼 골라 내고(없으면 공짜 1개) 버튼을 누르면
+// 주사위 굴리기 (선 정하기·마법 경연·조련·연구실·마법 겨루기·탐험 판정·시험): 마나기운을 1~보유 개수만큼 골라 내고(없으면 공짜 1개) 버튼을 누르면
 // 서버가 낸 개수만큼 굴려서 결과를 알려 주고, 한 명씩 차례대로 굴린 뒤 결과를 눈으로 확인하고(남은 마나기운 1개당 주사위 1개를 다시 굴릴 수 있다) "확인" 버튼을 눌러야 결과가 적용된다
 // 주사위 재료 기운의 이름과 아이콘 (활동마다 주 능력치의 기운이 재료다. 다시 굴리기는 언제나 마나기운)
 const FUEL_INFO = {
@@ -989,7 +997,7 @@ function ErrorToast({ message, seq }: { message: string | null; seq: number }) {
   );
 }
 
-// 마법 토너먼트 순위 화면: 트랙에는 상한이 없고, 기말고사가 끝났을 때 1위·2위가 학점 보상을 받는다
+// 반짝 마법 경연 순위 화면: 트랙에는 상한이 없고, 기말고사가 끝났을 때 1위·2위가 학점 보상을 받는다
 function TournamentPanel({ game, myId }: { game: GameState; myId: string }) {
   const rewards = game.rules.tournamentRewards;
   // 트랙 위치가 높은 순. 같은 칸이면 공동 순위(1, 1, 3, ...)
@@ -1001,8 +1009,8 @@ function TournamentPanel({ game, myId }: { game: GameState; myId: string }) {
   return (
     <div className="flex flex-col gap-3">
       <div className="rounded-3xl border-2 border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
-        <p className="font-display text-base text-amber-700 mb-1"><InlineIcon name="trophy" /> 마법 토너먼트</p>
-        <p className="text-xs">토너먼트 참가를 고르면 마나기운을 모두 내고 낸 개수만큼 주사위를 굴려, 나온 눈을 모두 더한 칸만큼 트랙을 전진해요. 트랙에는 상한이 없어요!</p>
+        <p className="font-display text-base text-amber-700 mb-1"><InlineIcon name="trophy" /> 반짝 마법 경연</p>
+        <p className="text-xs">마법 경연 참가를 고르면 마나기운을 모두 내고 낸 개수만큼 주사위를 굴려, 나온 눈을 모두 더한 칸만큼 트랙을 전진해요. 트랙에는 상한이 없어요!</p>
         <p className="text-xs">
           기말고사가 끝나면 1위 <b>학점 +{rewards[0]}</b>
           {rewards.length > 1 && <>, 2위 <b>학점 +{rewards[1]}</b></>}를 받아요. (0칸은 보상 없음 · 같은 칸이면 공동 순위)
@@ -1039,11 +1047,11 @@ function TournamentPanel({ game, myId }: { game: GameState; myId: string }) {
   );
 }
 
-type TabId = "game" | "tournament" | "players" | "news" | "rules";
+type TabId = "game" | "goals" | "players" | "news" | "rules";
 
 const TABS: { id: TabId; icon: IconName; label: string }[] = [
   { id: "game", icon: "wand", label: "게임" },
-  { id: "tournament", icon: "trophy", label: "토너먼트" },
+  { id: "goals", icon: "medal", label: "졸업 목표" },
   { id: "players", icon: "users", label: "친구들" },
   { id: "news", icon: "scroll", label: "기록" },
   { id: "rules", icon: "book", label: "규칙" },
@@ -1056,6 +1064,7 @@ export function GameBoard({
   errorSeq,
   onTakeClassCard,
   onCram,
+  onChooseDream,
   onSelectActivity,
   onPickActivityCard,
   onRollDice,
@@ -1077,6 +1086,7 @@ export function GameBoard({
   errorSeq: number;
   onTakeClassCard: (cardId: string | null) => void;
   onCram: (from: KeptToken | null) => void;
+  onChooseDream: (dreamId: string) => void;
   onSelectActivity: (activityId: ActivityId, targetPlayerId?: string) => void;
   onPickActivityCard: (cardId: string | null) => void;
   onRollDice: (diceCount?: number, assist?: number) => void;
@@ -1094,6 +1104,7 @@ export function GameBoard({
   onRematch: () => void;
 }) {
   const [tab, setTab] = useState<TabId>("game");
+  const dreamOpen = canChangeDream(game, game.players[myId]);
   const latestExam = game.examResults[game.examResults.length - 1];
   // 3주차: 선택 단계에서는 고를 차례인 사람, 진행 단계에서는 카드를 고르는 사람이 행동한다
   const activityTurnId = game.activityStage === "choose" ? game.activityOrder[game.activityTurnPointer] : game.pendingPick?.playerId;
@@ -1175,8 +1186,24 @@ export function GameBoard({
           <>
             {game.phase !== "setup" && game.phase !== "ended" && (
               <p className="rounded-2xl bg-white/70 px-3 py-1.5 text-center text-xs text-purple-600">
-                <InlineIcon name="sparkle" /> 이번 달 선: <b>{starterName}</b> (선부터 시계방향으로 진행해요)
+                {game.rules.turnOrderRule === "creditAsc" ? (
+                  <>
+                    <InlineIcon name="sparkle" /> 차례: 학점 낮은 친구부터 · 같으면 선(<b>{starterName}</b>)부터
+                  </>
+                ) : (
+                  <>
+                    <InlineIcon name="sparkle" /> 이번 달 선: <b>{starterName}</b> ({orderText(game.rules)} 진행해요)
+                  </>
+                )}
               </p>
+            )}
+            {dreamOpen && (
+              <button
+                className="min-h-11 w-full rounded-2xl border-2 border-sky-200 bg-sky-50 px-3 py-2 text-left text-sm text-sky-800 active:scale-95 transition-transform"
+                onClick={() => selectTab("goals")}
+              >
+                <InlineIcon name="compass" /> 장래희망 카드를 골라 보세요! ({game.rules.dreamChooseRounds}개월까지) <b>졸업 목표 →</b>
+              </button>
             )}
             {game.news && game.phase !== "setup" && game.phase !== "ended" && <NewsPanel game={game} />}
             <WaitingBanner game={game} offline={offline} isHost={isHost} myId={myId} onKick={onKick} />
@@ -1219,7 +1246,11 @@ export function GameBoard({
           </>
         )}
 
-        {tab === "tournament" && <TournamentPanel game={game} myId={myId} />}
+        {tab === "goals" && (
+          <GoalsPanel game={game} myId={myId} onChooseDream={onChooseDream}>
+            {!game.rules.tournamentCards && <TournamentPanel game={game} myId={myId} />}
+          </GoalsPanel>
+        )}
 
         {tab === "players" && (
           <div className="flex flex-col gap-2">
@@ -1267,9 +1298,12 @@ export function GameBoard({
                 <span className={`rounded-full px-4 py-0.5 ${tab === t.id ? "bg-purple-100" : ""}`}>
                   <Icon name={t.icon} className="h-6 w-6" />
                 </span>
-                {t.label}
+                <span className="whitespace-nowrap leading-tight">{t.label}</span>
                 {t.id === "game" && myTurn && tab !== "game" && (
                   <span className="absolute right-[28%] top-1.5 h-2.5 w-2.5 rounded-full bg-pink-400" aria-label="내 차례" />
+                )}
+                {t.id === "goals" && dreamOpen && tab !== "goals" && (
+                  <span className="absolute right-[28%] top-1.5 h-2.5 w-2.5 rounded-full bg-sky-400" aria-label="장래희망을 고를 수 있어요" />
                 )}
               </button>
             </li>

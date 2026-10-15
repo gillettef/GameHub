@@ -414,6 +414,13 @@ export function useGameSocket() {
     [ensureSocket, send],
   );
 
+  const chooseDream = useCallback(
+    (dreamId: string) => {
+      send(ensureSocket(), { type: "choose_dream", dreamId });
+    },
+    [ensureSocket, send],
+  );
+
   const rollDice = useCallback((diceCount?: number, assist?: number) => {
     const socket = ensureSocket();
     send(socket, { type: "roll_dice", diceCount, assist });
@@ -448,5 +455,5 @@ export function useGameSocket() {
     [ensureSocket, send],
   );
 
-  return { state, game, offline, notice, noticeSeq, reactions, lastError, errorSeq, reconnecting, createRoom, joinRoom, leaveRoom, startGame, addBot, removeBot, kickPlayer, rematch, sendEmoji, takeClassCard, cram, rollDice, rerollDice, confirmRoll, selectActivity, pickActivityCard };
+  return { state, game, offline, notice, noticeSeq, reactions, lastError, errorSeq, reconnecting, createRoom, joinRoom, leaveRoom, startGame, addBot, removeBot, kickPlayer, rematch, sendEmoji, takeClassCard, cram, chooseDream, rollDice, rerollDice, confirmRoll, selectActivity, pickActivityCard };
 }

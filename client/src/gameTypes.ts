@@ -77,6 +77,17 @@ export interface CreatureCard {
   description: string;
 }
 
+// 장래희망 카드 (56절 B2): 졸업할 때 두 능력치가 모두 기준(rules.dreamThreshold) 이상이면 학점 rules.dreamCredit. 본인 것만 보인다(끝난 게임은 모두 공개)
+export interface DreamCard {
+  id: string;
+  name: string;
+  description: string;
+  stats: [StatKey, StatKey];
+}
+
+// 활동에서 거둔 성과 횟수 (특별상 계산용): 조련·탐험·연구·대회 성공, 마법 겨루기 승리, 시험 점수 합
+export type FeatKey = "creature" | "exploration" | "lab" | "tournament" | "duel" | "exam";
+
 export interface PlayerGameState {
   id: string;
   name: string;
@@ -101,6 +112,11 @@ export interface PlayerGameState {
   creatures: CreatureCard[];
   equipment: LabCard[];
   hasActedThisPhase: boolean;
+  // 장래희망: 고른 꿈(다른 사람의 것은 null), 받은 카드(본인만), 졸업식에서 이뤘는지
+  dream?: DreamCard | null;
+  dreamOptions?: DreamCard[];
+  dreamFulfilled?: boolean;
+  feats?: Partial<Record<FeatKey, number>>;
 }
 
 export interface GameLogEntry {
@@ -123,7 +139,7 @@ export interface ExamResult {
   scores: { playerId: string; score: number; dice: number[]; bonus: number; rank: number; creditAwarded: number }[];
 }
 
-// 주사위를 굴리는 중 (선 정하기·토너먼트·조련·연구실·주문 대결·탐험 판정·시험). dice가 null이면 아직 안 굴린 사람.
+// 주사위를 굴리는 중 (선 정하기·마법 경연·조련·연구실·마법 겨루기·탐험 판정·시험). dice가 null이면 아직 안 굴린 사람.
 // 모두 굴리면 결과가 보이고, 굴린 사람들이 확인(confirmed)을 눌러야 결과가 적용된다
 export interface PendingRoll {
   kind: "first" | "tournament" | "creature" | "lab" | "duel" | "exploration" | "exam";
@@ -134,7 +150,7 @@ export interface PendingRoll {
   // assistMax가 있으면 굴리기 전에 보조 능력치 기운(assist.kind)을 0~max개 더 낼 수 있다. 낸 개수는 assist에 남는다
   // diceToken은 이 굴림의 주사위 재료 기운 (없으면 마나기운)
   entries: { playerId: string; label: string; diceCount: number; diceToken?: KeptToken; diceChoiceMax?: number; assistMax?: number; assist?: number; dice: number[] | null; confirmed: boolean; rerolls: number; rerollCounts?: number[] }[];
-  // 이 굴림에서 보조 능력치로 쓸 수 있는 기운 (토너먼트: 체력기운 "끝까지 달려요", 서버 설정으로 켰을 때만)
+  // 이 굴림에서 보조 능력치로 쓸 수 있는 기운 (마법 경연: 체력기운 "끝까지 달려요", 서버 설정으로 켰을 때만)
   assist?: { kind: "stamina"; name: string; title: string; hint: string };
 }
 
@@ -142,7 +158,7 @@ export interface PendingRoll {
 export interface ActivityChoice {
   playerId: string;
   activityId: ActivityId;
-  // 주문 대결이면 지목한 친구
+  // 마법 겨루기면 지목한 친구
   targetPlayerId?: string;
 }
 
@@ -179,7 +195,7 @@ export interface PublicRules {
   // 3주차 구역에 처음 들어와 카드를 열 때 드는 지력기운, 그리고 그 지력기운이 드는 활동 (지금은 없음)
   openCardCost: number;
   openCardCostActivities: ActivityId[];
-  // 활동별 주사위 재료 기운 (조련=매력, 탐험=체력, 연구실=지력, 토너먼트·주문 대결=마나)
+  // 활동별 주사위 재료 기운 (조련=매력, 탐험=체력, 연구실=지력, 마법 경연·마법 겨루기=마나)
   rollFuel: Record<ActivityId, KeptToken>;
   // 기운을 모아 둘 수 있는 한도 = 능력치 × 이 배수 (0이면 한도 없음)
   energyCapMultiplier: number;
@@ -191,15 +207,29 @@ export interface PublicRules {
   // 시험 공고(시험 카드 공개)가 나오는 라운드 (그 달 1주차 학교 소식)
   midtermNoticeRound: number;
   finalNoticeRound: number;
-  // 마법 토너먼트 최종 순위 보상 (1위, 2위 순서, 학점)
+  // 반짝 마법 경연 최종 순위 보상 (1위, 2위 순서, 학점)
   tournamentRewards: number[];
   // 최종 점수 = 졸업식 시상 점수의 합: 부문마다 순위에 따라 rankPoints[순위-1]점
   graduationCategories: AwardCategory[];
   rankPoints: number[];
+  // 56절 P5: 순서 규칙(학점 낮은 순), 대회 카드 사용 여부, 장래희망 기준·학점(0이면 장래희망 없음)과 고를 수 있는 개월,
+  // 마법생물 보너스 학점(어려운 생물·세트 완성), 겨루기 도전자 굴림 보너스·승리 학점, 성장 학점
+  turnOrderRule: "seat" | "creditAsc";
+  tournamentCards: boolean;
+  dreamThreshold: number;
+  dreamCredit: number;
+  dreamChooseRounds: number;
+  creatureRareCredit: number;
+  creatureSetCredit: number;
+  duelChallengerBonus: number;
+  duelWinCredit: number;
+  growthCredit: number;
 }
 
-// 졸업식 시상 부문 (서버 types.ts와 같은 모양): 주문력·학점·지력·체력·매력·마법생물
-export type AwardCategory = Exclude<StatKey, "charm"> | "creature";
+// 올해의 특별상 (56절 B3): 판마다 공개되는 추가 졸업식 부문
+export type SpecialAwardId = "charm" | "allround" | "explorer" | "researcher" | "duelist" | "scholar" | "champion";
+// 졸업식 시상 부문 (서버 types.ts와 같은 모양): 주문력·지력·체력·마법생물 + 올해의 특별상
+export type AwardCategory = Exclude<StatKey, "charm"> | "creature" | SpecialAwardId;
 export interface GraduationAward {
   category: AwardCategory;
   value: number;
@@ -230,7 +260,7 @@ export interface GameState {
   classPickPointer: number;
   // 3주차 구역에 공개된 카드 (처음 들어온 사람이 열고, 먼저 온 사람이 고르고 남은 카드는 두 번째 참가자가 가져간다)
   activityOffers: Partial<Record<ActivityId, ActivityOffer>>;
-  // 공개된 카드 중 하나를 고르는 중 (take: 구역에서 가져가기, reward: 주문 대결 승자의 마도서 선택)
+  // 공개된 카드 중 하나를 고르는 중 (take: 구역에서 가져가기, reward: 마법 겨루기 승자의 마도서 선택)
   pendingPick: { playerId: string; activityId: ActivityId } | null;
   pendingRoll: PendingRoll | null;
   // 이번 달 1주차 학교 소식, 시험 달 벼락치기 순서(선부터)와 지금 차례
@@ -242,9 +272,18 @@ export interface GameState {
   examResults: ExamResult[];
   classLeft: number;
   rules: PublicRules;
+  // 올해의 특별상 (게임을 시작할 때 공개)
+  specialAwards?: AwardCategory[];
   log: GameLogEntry[];
   winnerIds?: string[];
 }
+
+// 차례 순서 안내 문구 (56절 B1: 학점이 낮은 친구부터, 같으면 선부터 시계방향 — 같을 때는 화면 위쪽과 규칙 탭에서 설명한다)
+export const orderText = (rules: Pick<PublicRules, "turnOrderRule">): string => (rules.turnOrderRule === "creditAsc" ? "학점 낮은 친구부터" : "선부터 시계방향으로");
+
+// 장래희망을 아직 바꿀 수 있는가 (받은 카드가 2장 이상이고 정해진 개월 안)
+export const canChangeDream = (game: Pick<GameState, "round" | "phase" | "rules">, player: PlayerGameState | undefined): boolean =>
+  !!player?.dreamOptions && player.dreamOptions.length > 1 && game.rules.dreamCredit > 0 && game.round <= game.rules.dreamChooseRounds && game.phase !== "ended";
 
 export const STAT_LABEL: Record<StatKey, string> = {
   intelligence: "지력",
@@ -260,19 +299,19 @@ export function describeExam(card: Pick<ExamCard, "diceStat" | "bonusStat">): st
 }
 
 export const ACTIVITY_LABEL: Record<ActivityId, string> = {
-  tournament: "마법 토너먼트 참가",
+  tournament: "반짝 마법 경연 참가",
   creature: "마법생물 조련",
-  duel: "주문 대결",
-  exploration: "비밀의 방 탐색",
+  duel: "마법 겨루기",
+  exploration: "별빛 다락방 탐험",
   lab: "연구실 실험",
 };
 
 // 활동 카드에 함께 보여줄 한 줄 설명
 export const ACTIVITY_HINT: Record<ActivityId, string> = {
-  tournament: "마나기운을 골라 낸 만큼 주사위를 굴려 합친 칸만큼 트랙 전진 → 기말고사 뒤 순위로 학점",
+  tournament: "대회 카드 2장 중 하나를 골라 마나기운을 낸 만큼 주사위를 굴려 합이 목표 이상이면 입상! 주문력 +1·학점 +1과 카드 보상",
   creature: "카드 2장 공개, 매력기운을 골라 낸 만큼 주사위를 굴려 합이 기준 이상이면 조련, 마리 수 + 하늘·육지·바다 세트 수로 생물사랑상을 겨뤄요",
-  duel: "아직 안 고른 한 명을 지목해 강제 대결, 마나기운을 골라 낸 만큼 주사위를 굴려 이기면 주문력 +1·학점 +1",
-  exploration: "카드 2장 중 하나를 골라 체력기운을 낸 만큼 주사위 판정! 크게 벌거나 크게 잃어요 (지력기운으로 함정을 피할 수 있어요)",
+  duel: "아직 안 고른 한 명을 지목해 강제 대결, 마나기운을 골라 낸 만큼 주사위를 굴려(도전자 +1) 이기면 주문력 +1·학점 +3",
+  exploration: "카드 2장 중 하나를 골라 체력기운을 낸 만큼 주사위 판정! 크게 벌거나 크게 잃어요",
   lab: "심화학습: 연구 카드 2장 중 1장, 지력기운을 골라 낸 만큼 주사위를 굴려 실험 판정, 안정적으로 성장",
 };
 
@@ -309,7 +348,7 @@ export function classGainApplied(player: PlayerGameState, card: Pick<ClassCard, 
 
 // ── 자율활동 구역 선택 규칙 (서버 engine.ts와 같은 규칙. 버튼을 미리 막고 이유를 보여 주기 위해 복제) ──
 
-// 구역에 처음 들어와 카드를 여는 사람이 내는 지력기운 (마법생물·주문 대결·비밀의 방·연구실). 이미 다른 친구가 고른 구역이면(두 번째 참가자) 내지 않는다
+// 구역에 처음 들어와 카드를 여는 사람이 내는 지력기운 (마법생물·마법 겨루기·별빛 다락방·연구실). 이미 다른 친구가 고른 구역이면(두 번째 참가자) 내지 않는다
 export function activityOpenCost(game: GameState, activityId: ActivityId): number {
   if (!game.rules.openCardCostActivities.includes(activityId)) return 0;
   return game.activitySlots[activityId].length > 0 ? 0 : game.rules.openCardCost;
@@ -320,7 +359,7 @@ export function activityExtraCost(game: GameState, activityId: ActivityId): numb
   return game.activitySlots[activityId].length >= 1 ? game.rules.activitySecondParticipantCost : 0;
 }
 
-// 주문 대결에서 지목할 수 있는 플레이어 (아직 자율활동을 고르지 않은 사람)
+// 마법 겨루기에서 지목할 수 있는 플레이어 (아직 자율활동을 고르지 않은 사람)
 export function duelTargets(game: GameState, playerId: string): string[] {
   return game.turnOrder.filter((id) => id !== playerId && !game.players[id].hasActedThisPhase);
 }
@@ -338,7 +377,7 @@ export function activityBlockReason(game: GameState, playerId: string, activityI
   if (!canPay(player, 0, 0, extra)) return `매력기운 ${extra}개가 더 필요해요`;
   const open = activityOpenCost(game, activityId);
   if (!canPay(player, open, 0, extra)) return `카드를 열 지력기운 ${open}개가 필요해요`;
-  if (activityId === "tournament" && player.manaTokens < 1) return "마나기운이 1개 이상 필요해요";
+  if (activityId === "tournament" && !game.rules.tournamentCards && player.manaTokens < 1) return "마나기운이 1개 이상 필요해요";
   if (activityId === "duel") {
     const need = 1 + game.rules.duelManaFee;
     if (player.manaTokens < need) return `마나기운이 ${need}개 이상 필요해요`;
@@ -362,7 +401,7 @@ export const LAB_KIND_LABEL: Record<LabCardKind, string> = {
 export const ELEMENT_ICON: Record<CreatureElement, IconName> = { sky: "cloud", land: "sprout", ocean: "wave" };
 
 export function describeAbility(a: CreatureAbility): string {
-  const when = { acquire: "획득 즉시", prep: "매달 준비 때", duel: "주문 대결 참여 시", defend: "대결 도전받을 때", lose: "대결 패배 시", always: "항상" }[a.trigger];
+  const when = { acquire: "획득 즉시", prep: "매달 준비 때", duel: "마법 겨루기 참여 시", defend: "대결 도전받을 때", lose: "대결 패배 시", always: "항상" }[a.trigger];
   const what = {
     spellPower: `주문력 영구 +${a.amount}`,
     mana: `마나기운 +${a.amount}`,
@@ -382,25 +421,80 @@ export function creatureSets(creatures: CreatureCard[]): number {
 }
 
 // ── 졸업식 시상 (서버 engine.ts와 같은 규칙): 부문마다 값이 큰 순서로 순위를 매겨 학점 rankPoints (동점은 같은 순위, 값 0이면 없음). 학점이 곧 승점이다 ──
-export const AWARD_NAME: Record<AwardCategory, string> = { spellPower: "마법상", intelligence: "수석상", stamina: "튼튼상", creature: "생물사랑상" };
-export const AWARD_SUBJECT: Record<AwardCategory, string> = { spellPower: STAT_LABEL.spellPower, intelligence: STAT_LABEL.intelligence, stamina: STAT_LABEL.stamina, creature: "마법생물" };
+export const AWARD_NAME: Record<AwardCategory, string> = {
+  spellPower: "마법상",
+  intelligence: "수석상",
+  stamina: "튼튼상",
+  creature: "생물사랑상",
+  charm: "인기상",
+  allround: "만능상",
+  explorer: "탐험왕",
+  researcher: "연구왕",
+  duelist: "겨루기왕",
+  scholar: "시험왕",
+  champion: "대회왕",
+};
+export const AWARD_SUBJECT: Record<AwardCategory, string> = {
+  spellPower: STAT_LABEL.spellPower,
+  intelligence: STAT_LABEL.intelligence,
+  stamina: STAT_LABEL.stamina,
+  creature: "마법생물",
+  charm: STAT_LABEL.charm,
+  allround: "가장 낮은 능력치",
+  explorer: "탐험 성공",
+  researcher: "연구 성공",
+  duelist: "마법 겨루기 승리",
+  scholar: "시험 점수 합",
+  champion: "대회 입상",
+};
+// 특별상 카드에 적는 한 줄 설명
+export const SPECIAL_AWARD_HINT: Record<SpecialAwardId, string> = {
+  charm: "매력이 가장 높은 친구",
+  allround: "네 능력치 중 가장 낮은 능력치가 가장 높은 친구 (골고루 키운 친구)",
+  explorer: "별빛 다락방 탐험에 가장 많이 성공한 친구",
+  researcher: "연구실 실험에 가장 많이 성공한 친구",
+  duelist: "마법 겨루기에서 가장 많이 이긴 친구",
+  scholar: "중간·기말고사 점수 합이 가장 높은 친구",
+  champion: "반짝 마법 경연 대회에 가장 많이 입상한 친구",
+};
+export const isSpecialAward = (c: AwardCategory): c is SpecialAwardId => !["spellPower", "intelligence", "stamina", "creature"].includes(c);
 
-// 부문의 값: 능력치는 그 수치, 마법생물은 마리 수 + 완성한 세트 수
-export function awardValue(player: PlayerGameState, category: AwardCategory): number {
+// 부문의 값: 능력치는 그 수치, 마법생물은 마리 수 + 완성한 세트 수, 특별상은 성과 횟수 등 (서버 awardValue와 같은 규칙)
+export function awardValue(player: PlayerGameState, category: AwardCategory, rules?: Pick<PublicRules, "tournamentCards">): number {
   if (category === "creature") return player.creatures.length + creatureSets(player.creatures);
-  return effectiveStat(player, category);
+  const feat = (k: FeatKey) => player.feats?.[k] ?? 0;
+  switch (category) {
+    case "allround":
+      return Math.min(...(["intelligence", "stamina", "charm", "spellPower"] as StatKey[]).map((s) => effectiveStat(player, s)));
+    case "explorer":
+      return feat("exploration");
+    case "researcher":
+      return feat("lab");
+    case "duelist":
+      return feat("duel");
+    case "scholar":
+      return feat("exam");
+    case "champion":
+      return rules?.tournamentCards === false ? player.tournamentTrack : feat("tournament");
+    default:
+      return effectiveStat(player, category);
+  }
 }
 
-export function graduationAwards(game: Pick<GameState, "rules" | "players" | "turnOrder">): Map<string, GraduationAward[]> {
+// 졸업식에서 겨루는 모든 부문 (기본 4부문 + 올해의 특별상)
+export const awardCategoriesOf = (game: Pick<GameState, "rules" | "specialAwards">): AwardCategory[] => [...game.rules.graduationCategories, ...(game.specialAwards ?? [])];
+
+export function graduationAwards(game: Pick<GameState, "rules" | "players" | "turnOrder" | "specialAwards">): Map<string, GraduationAward[]> {
   const players = game.turnOrder.map((id) => game.players[id]).filter(Boolean);
   const out = new Map(players.map((p) => [p.id, [] as GraduationAward[]]));
-  for (const category of game.rules.graduationCategories) {
+  const value = (p: PlayerGameState, c: AwardCategory) => awardValue(p, c, game.rules);
+  for (const category of awardCategoriesOf(game)) {
     for (const p of players) {
-      const value = awardValue(p, category);
-      if (value <= 0) continue;
-      const rank = 1 + players.filter((o) => awardValue(o, category) > value).length;
+      const v = value(p, category);
+      if (v <= 0) continue;
+      const rank = 1 + players.filter((o) => value(o, category) > v).length;
       const points = game.rules.rankPoints[rank - 1] ?? 0;
-      if (points > 0) out.get(p.id)!.push({ category, value, rank, points });
+      if (points > 0) out.get(p.id)!.push({ category, value: v, rank, points });
     }
   }
   return out;
@@ -408,14 +502,23 @@ export function graduationAwards(game: Pick<GameState, "rules" | "players" | "tu
 
 const awardPoints = (awards: GraduationAward[]) => awards.reduce((a, w) => a + w.points, 0);
 
-// 게임 중 예상 점수: 지금 학점 + 지금 상태로 졸업하면 받을 학점 (졸업식이 끝났으면 받은 상이 이미 학점에 들어 있다)
-export function projectedScore(game: Pick<GameState, "rules" | "players" | "turnOrder">, player: PlayerGameState): number {
-  return player.credit - awardPoints(player.awards ?? []) + awardPoints(graduationAwards(game).get(player.id) ?? []);
+// 장래희망을 이뤘는가: 두 능력치가 모두 기준 이상 (서버 dreamFulfilled와 같은 규칙. 다른 사람의 꿈은 게임이 끝나기 전까지 보이지 않는다)
+export function dreamReached(player: PlayerGameState, rules: Pick<PublicRules, "dreamThreshold">): boolean {
+  return !!player.dream && rules.dreamThreshold > 0 && player.dream.stats.every((s) => effectiveStat(player, s) >= rules.dreamThreshold);
+}
+// 졸업식에서 받은 장래희망 학점 (졸업식 전이면 0)
+const dreamPointsGot = (player: PlayerGameState, rules: Pick<PublicRules, "dreamCredit">) => (player.dreamFulfilled ? rules.dreamCredit : 0);
+
+// 게임 중 예상 점수: 지금 학점 + 지금 상태로 졸업하면 받을 학점 (졸업식이 끝났으면 받은 상·장래희망 학점이 이미 학점에 들어 있다).
+// 다른 사람의 장래희망은 보이지 않아서 내 화면의 예상 점수에는 내 꿈만 들어간다
+export function projectedScore(game: Pick<GameState, "rules" | "players" | "turnOrder" | "specialAwards">, player: PlayerGameState): number {
+  const dream = dreamReached(player, game.rules) ? game.rules.dreamCredit : 0;
+  return creditBeforeGraduation(player, game.rules) + awardPoints(graduationAwards(game).get(player.id) ?? []) + dream;
 }
 
-// 졸업식 전까지 모은 학점 (시험·토너먼트·주문 대결·카드)
-export function creditBeforeGraduation(player: PlayerGameState): number {
-  return player.credit - awardPoints(player.awards ?? []);
+// 졸업식 전까지 모은 학점 (시험·마법 경연·마법 겨루기·카드)
+export function creditBeforeGraduation(player: PlayerGameState, rules: Pick<PublicRules, "dreamCredit">): number {
+  return player.credit - awardPoints(player.awards ?? []) - dreamPointsGot(player, rules);
 }
 
 // 주사위를 굴릴(또는 결과를 확인할) 차례인 사람: 아직 확인하지 않은 첫 참여자 (한 명씩 차례대로, 서버 currentRoller와 같은 규칙)

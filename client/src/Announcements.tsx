@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { useModalOpen } from "./modalLock";
 import { Icon, type IconName } from "./Icons";
-import { ACTIVITY_LABEL, STAT_LABEL, describeExam, type ActivityId, type GameState, type StatKey } from "./gameTypes";
+import { ACTIVITY_LABEL, STAT_LABEL, describeExam, orderText, type ActivityId, type GameState, type StatKey } from "./gameTypes";
 
 // 주차가 시작될 때 뜨는 "배너"와, 내 활동·시험 결과를 알려 주는 "결과 모달"을 순서대로 보여 준다. 둘 다 버튼을 눌러야 넘어간다.
 // 1주차(충전) 배너는 버튼을 누르면 모두의 기운이 차오르는 연출이 나온 뒤 다음으로 넘어간다 (4주차 정리에는 사라지는 기운이 없다).
@@ -66,7 +66,7 @@ function cleanupBanner(prev: GameState): Announcement {
     kind: "banner",
     icon: "bag",
     title: `${prev.round}개월 4주차 · 정리`,
-    subtitle: "쓰고 남은 기운은 다음 달로 이어져요. 다음 달 선은 시계방향으로 한 칸 넘어가요",
+    subtitle: `쓰고 남은 기운은 다음 달로 이어져요. 다음 달 선은 시계방향으로 한 칸 넘어가요${prev.rules.turnOrderRule === "creditAsc" ? " (차례는 학점이 낮은 친구부터)" : ""}`,
   });
 }
 
@@ -79,7 +79,7 @@ const firstPlayerBanner = (game: GameState, myId: string): Announcement =>
     kind: "banner",
     icon: "dice",
     title: "선이 정해졌어요!",
-    subtitle: `${starterName(game)}님이 첫 달의 선이에요. 수업카드도 활동도 선부터 시계방향으로 골라요`,
+    subtitle: `${starterName(game)}님이 첫 달의 선이에요. 수업카드도 활동도 ${orderText(game.rules)} 골라요`,
     lines: [`수업 순서: ${game.classPickOrder.map((id) => game.players[id].name).join(" → ")}`, ...(game.turnOrder[game.startingPlayerIndex] === myId ? ["내가 선이에요!"] : [])],
   });
 
@@ -88,7 +88,7 @@ const classBanner = (game: GameState): Announcement =>
     kind: "banner",
     icon: "book",
     title: `${game.round}개월 2주차 · 정규수업`,
-    subtitle: `이번 달 선은 ${starterName(game)}님! 수업카드는 무료예요. 선부터 시계방향으로 한 장씩 가져가요. 가져가면 그 과목의 기운을 얻어요`,
+    subtitle: `이번 달 선은 ${starterName(game)}님! 수업카드는 무료예요. ${orderText(game.rules)} 한 장씩 가져가요. 가져가면 그 과목의 기운을 얻어요`,
   });
 
 function activityBanner(game: GameState, myId: string): Announcement {
@@ -97,7 +97,7 @@ function activityBanner(game: GameState, myId: string): Announcement {
     kind: "banner",
     icon: "compass",
     title: `${game.round}개월 3주차 · 자율활동`,
-    subtitle: `선 ${starterName(game)}님부터 시계방향으로 활동을 골라요: ${game.activityOrder.map((id) => game.players[id].name).join(" → ")}`,
+    subtitle: `${orderText(game.rules)} 활동을 골라요: ${game.activityOrder.map((id) => game.players[id].name).join(" → ")}`,
     lines: myOrder > 0 ? [`내 순서는 ${myOrder}번째예요`] : [],
   });
 }
@@ -131,7 +131,7 @@ function activityResult(prev: GameState, next: GameState, myId: string): Announc
     const d = after[key] - before[key];
     if (d !== 0) tiles.push({ text: `${STAT_LABEL[key]} ${d > 0 ? "+" : ""}${d}`, tone: d > 0 ? "good" : "bad" });
   }
-  // 시험·토너먼트 최종 보상이 같은 전환에 섞이면 활동 결과와 구분할 수 없어 학점 변화는 생략한다
+  // 시험·마법 경연 최종 보상이 같은 전환에 섞이면 활동 결과와 구분할 수 없어 학점 변화는 생략한다
   const creditDiff = after.credit - before.credit;
   if (!examHappened && creditDiff !== 0) tiles.push({ text: `학점 ${creditDiff > 0 ? "+" : ""}${creditDiff}`, tone: creditDiff > 0 ? "good" : "bad" });
   for (const [label, list] of [["마법생물", "creatures"], ["연구 카드", "equipment"]] as const) {
@@ -148,7 +148,7 @@ function activityResult(prev: GameState, next: GameState, myId: string): Announc
     kind: "result",
     icon: activity ? ACTIVITY_ICON[activity] : "scroll",
     title: activity ? ACTIVITY_LABEL[activity] : "자율활동 소식",
-    subtitle: forcedDuel ? "지목당해서 이번 달 활동은 주문 대결이에요" : `${prev.round}개월 3주차 결과`,
+    subtitle: forcedDuel ? "지목당해서 이번 달 활동은 마법 겨루기예요" : `${prev.round}개월 3주차 결과`,
     lines,
     tiles,
     track,
@@ -415,7 +415,7 @@ export function AnnouncementLayer({ game, myId }: { game: GameState; myId: strin
         {current.tokens && <TokenBoard tokens={current.tokens} playing={playing} />}
 
         {current.track && (
-          <div className="mt-3" role="img" aria-label={`토너먼트 트랙 ${current.track.from}칸에서 ${current.track.to}칸`}>
+          <div className="mt-3" role="img" aria-label={`마법 경연 트랙 ${current.track.from}칸에서 ${current.track.to}칸`}>
             {/* 트랙에는 상한이 없으므로 막대의 길이는 max(도착 칸, 10)을 기준으로 잡는다 */}
             <div className="relative h-3 w-full overflow-hidden rounded-full bg-purple-100">
               <div className="absolute inset-y-0 left-0 rounded-full bg-pink-400" style={{ width: `${(current.track.to / Math.max(current.track.to, 10)) * 100}%` }} />
