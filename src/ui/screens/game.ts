@@ -194,7 +194,7 @@ export function finalScreen(s: Session): string {
   const g = s.game;
   const rk = rankings(g);
   return `${gameHeader(g)}<main class="content">
-    <div class="center"><span class="eb">TRANSFER WINDOW CLOSED</span><h2 class="title">스토브리그 종료</h2><p class="mu">최종 점수 = 계약 수수료 + 의뢰 보너스</p></div>
+    <div class="center"><span class="eb">TRANSFER WINDOW CLOSED</span><h2 class="title">이적시장 마감</h2><p class="mu">최종 점수 = 계약 수수료 + 의뢰 보너스</p></div>
     <section class="card podium">${rk
       .map((r) => {
         const a = g.agents[r.agent]!;
