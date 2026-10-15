@@ -67,7 +67,7 @@ function rollDice(count: number): number[] {
 const sum = (xs: number[]) => xs.reduce((a, b) => a + b, 0);
 
 // 탐험 목표값은 카드에 인쇄된 값 그대로다 (52-9절, 예전에는 달마다 올랐다). 주사위 면을 바꾸면(dieFaces) 평균에 맞춰 바뀐다
-const exploreTarget = (target: number) => Math.max(1, Math.round((target * dieMean()) / 3.5));
+const exploreTarget = (target: number) => Math.max(1, Math.round((target * dieMean()) / 3.5) + BALANCE.exploreTargetMod);
 export const labTargetValue = () => BALANCE.labTarget;
 
 // ── 주사위 재료 기운 (39절): 활동마다 주 능력치의 기운을 골라 낸 만큼 주사위를 굴린다 (BALANCE.rollFuel).

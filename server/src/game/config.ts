@@ -136,6 +136,8 @@ export const BALANCE = {
   // 57절 마법생물과의 교감: 데려오면 속성 능력치 +1(하늘 주문력·육지 체력·바다 지력, 성장이 아니라 학점은 없다). 매달 기운·대결 굴림 같은 생물 능력은 없다
   creatureBond: true,
   creatureBondStats: { sky: "spellPower", land: "stamina", ocean: "intelligence" } as Record<"sky" | "land" | "ocean", StatKey>,
+  // 탐험 카드 목표값 보정 (실험용, 카드에 인쇄된 목표에 더한다)
+  exploreTargetMod: 0,
   // 대회 카드 목표값 보정 (실험용, 카드에 인쇄된 목표에 더한다)
   tournamentTargetMod: 0,
 };
