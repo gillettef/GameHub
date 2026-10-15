@@ -91,8 +91,12 @@ const P5 = {
   specialAwards: BALANCE.specialAwards,
   tournamentCards: BALANCE.tournamentCards,
   duelWinReward: BALANCE.duelWinReward,
+  // 57절: 마법생물과의 교감, 장래희망 기준 4
+  creatureBond: BALANCE.creatureBond,
+  dreamThreshold: BALANCE.dreamThreshold,
 };
 Object.assign(BALANCE, {
+  creatureBond: false,
   creatureRareCredit: 0,
   creatureSetCredit: 0,
   duelChallengerBonus: 0,
@@ -1857,16 +1861,18 @@ test("시험 주간 벼락치기(6·12개월): 선부터 한 명씩, 가진 기�
   assert.equal(currentRoller(state), a, "시험도 선부터 굴린다");
 });
 
-test("56절 P5 기본값: 어려운 생물 학점 +1·세트 +2, 도전자 굴림 +1, 학점 낮은 순, 장래희망, 특별상 1장, 대회 카드, 대결 승리 학점 2", () => {
+test("56·57절 기본값: 어려운 생물 학점 +1(세트 학점 없음), 도전자 굴림 +1, 학점 낮은 순, 장래희망(기준 4), 특별상 1장, 대회 카드, 대결 승리 학점 2, 마법생물 교감", () => {
   assert.deepEqual(P5, {
     creatureRareCredit: 1,
-    creatureSetCredit: 2,
+    creatureSetCredit: 0,
     duelChallengerBonus: 1,
     turnOrderRule: "creditAsc",
     dreams: true,
     specialAwards: 1,
     tournamentCards: true,
     duelWinReward: { credit: 2 },
+    creatureBond: true,
+    dreamThreshold: 4,
   });
   assert.equal(BALANCE.tournamentTargetMod, 0, "대회 목표값은 카드에 인쇄된 값 그대로");
 });
@@ -1901,7 +1907,7 @@ test("56절 B1: 정규수업·자율활동·시험 순서는 학점이 낮은 �
   });
 });
 
-test("56절 B2 장래희망: 2장을 받아 1장을 고르고(1개월까지 바꿀 수 있음), 졸업할 때 두 능력치가 모두 3 이상이면 학점 +3", () => {
+test("56절 B2 장래희망: 2장을 받아 1장을 고르고(1개월까지 바꿀 수 있음), 졸업할 때 두 능력치가 모두 기준(4) 이상이면 학점 +3", () => {
   withBalance(P5 as Partial<typeof BALANCE>, () => {
     const state = newGame(3);
     for (const id of state.turnOrder) {
@@ -1915,11 +1921,12 @@ test("56절 B2 장래희망: 2장을 받아 1장을 고르고(1개월까지 바�
     assert.equal(pa.dream?.id, pa.dreamOptions![1].id);
     assert.throws(() => chooseDream(state, a, state.players[state.turnOrder[1]].dreamOptions![0].id), /받은 장래희망/);
     const [s1, s2] = pa.dream!.stats;
-    Object.assign(pa, { intelligence: 1, stamina: 1, charm: 1, spellPower: 1, [s1]: 3, [s2]: 2 });
-    assert.equal(dreamFulfilled(pa), false, "하나라도 3 미만이면 못 이룬다");
+    const T = BALANCE.dreamThreshold;
+    Object.assign(pa, { intelligence: 1, stamina: 1, charm: 1, spellPower: 1, [s1]: T, [s2]: T - 1 });
+    assert.equal(dreamFulfilled(pa), false, "하나라도 기준 미만이면 못 이룬다");
     const players = state.turnOrder.map((id) => state.players[id]);
     const before = projectedScore(players, pa, state.specialAwards);
-    Object.assign(pa, { [s2]: 3 });
+    Object.assign(pa, { [s2]: T });
     assert.equal(dreamFulfilled(pa), true);
     assert.ok(projectedScore(players, pa, state.specialAwards) >= before + BALANCE.dreamCredit, "예상 점수에 장래희망 학점이 들어간다");
     let guard = 0;
@@ -1979,7 +1986,7 @@ test("56절 C1 대회 카드: 반짝 마법 경연도 1주차에 카드 2장이 
   });
 });
 
-test("56절 A1: 어려운 마법생물(기준 16 이상)을 조련하면 학점 +1, 하늘·육지·바다 세트를 완성하면 학점 +2", () => {
+test("56·57절: 어려운 마법생물(기준 16 이상)을 조련하면 학점 +1 (세트 완성 학점은 없다), 데려오면 교감으로 속성 능력치 +1", () => {
   withBalance(P5 as Partial<typeof BALANCE>, () => {
     const run = (name: string, owned: string[]) => {
       const state = newGame(2);
@@ -1992,14 +1999,33 @@ test("56절 A1: 어려운 마법생물(기준 16 이상)을 조련하면 학점 
       finishChoosing(state);
       advanceResolution(state);
       chooseActivityCard(state, a, `test-${name}`);
-      const credit = state.players[a].credit;
+      const p = state.players[a];
+      const before = { credit: p.credit, intelligence: p.intelligence, stamina: p.stamina, charm: p.charm, spellPower: p.spellPower };
+      const staminaTokens = p.staminaTokens;
       rollWith(state, { [a]: [6, 6, 6, 6, 6, 6] });
-      return state.players[a].credit - credit - BALANCE.growthCredit;
+      const gained = Object.fromEntries((["intelligence", "stamina", "charm", "spellPower"] as const).map((s) => [s, p[s] - before[s]]));
+      return { credit: p.credit - before.credit - BALANCE.growthCredit, gained, staminaTokens, state, a };
     };
-    assert.equal(run("정령 고릴라", []), 0, "쉬운 생물은 보너스 없음");
-    assert.equal(run("해양 정령", []), 1, "어려운 생물 +1");
-    assert.equal(run("감각 물고기", ["하늘의 꽃마녀", "땅굴 잠수꾼"]), 2, "세트 완성 +2");
-    assert.equal(run("심해의 수호요정", ["하늘의 꽃마녀", "땅굴 잠수꾼"]), 3, "둘 다 +3");
+    assert.equal(run("정령 고릴라", []).credit, 0, "쉬운 생물은 보너스 없음");
+    assert.equal(run("해양 정령", []).credit, 1, "어려운 생물 +1");
+    assert.equal(run("감각 물고기", ["하늘의 꽃마녀", "땅굴 잠수꾼"]).credit, 0, "세트 완성 학점은 없다");
+    assert.deepEqual(run("정령 고릴라", []).gained, { intelligence: 0, stamina: 1, charm: 1, spellPower: 0 }, "육지 → 체력 +1 (매력은 조련 성장)");
+    assert.deepEqual(run("감각 물고기", []).gained, { intelligence: 1, stamina: 0, charm: 1, spellPower: 0 }, "바다 → 지력 +1");
+    assert.deepEqual(run("하늘의 꽃마녀", []).gained, { intelligence: 0, stamina: 0, charm: 1, spellPower: 1 }, "하늘 → 주문력 +1");
+    // 교감이면 매달 체력기운 같은 생물 능력이 없다 (끄면 육지 생물이 다음 달에 체력기운을 준다)
+    const prepGift = () => {
+      const r = run("대지의 수호정령", []);
+      const p = r.state.players[r.a];
+      let last = 0;
+      let guard = 0;
+      while (r.state.round === 1 && guard++ < 500) {
+        last = p.staminaTokens + p.pendingStaminaTokens;
+        botStep(r.state);
+      }
+      return p.staminaTokens - last;
+    };
+    assert.equal(prepGift(), 0, "교감: 매달 받는 기운이 없다");
+    withBalance({ creatureBond: false }, () => assert.equal(prepGift(), 2, "교감을 끄면 어려운 육지 생물이 체력기운 +2"));
   });
 });
 

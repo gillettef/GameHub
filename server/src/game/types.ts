@@ -403,4 +403,6 @@ export interface PublicRules {
   duelChallengerBonus: number;
   duelWinCredit: number;
   growthCredit: number;
+  // 57절 교감: 데려온 마법생물의 속성별로 오르는 능력치 (null이면 예전 생물 능력)
+  creatureBondStats: Record<CreatureElement, StatKey> | null;
 }

@@ -168,9 +168,9 @@ console.table(
     const total = Object.values(picks).reduce((a, b) => a + b, 0) || 1;
     return {
       전략: name,
-      마법 경연: pct(picks.tournament / total),
+      마법경연: pct(picks.tournament / total),
       마법생물: pct(picks.creature / total),
-      주문대결: pct(picks.duel / total),
+      겨루기: pct(picks.duel / total),
       탐험: pct(picks.exploration / total),
       연구실: pct(picks.lab / total),
     };

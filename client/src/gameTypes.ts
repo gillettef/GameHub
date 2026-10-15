@@ -224,6 +224,8 @@ export interface PublicRules {
   duelChallengerBonus: number;
   duelWinCredit: number;
   growthCredit: number;
+  // 57절 교감: 데려온 마법생물의 속성별로 오르는 능력치 (null이면 예전 생물 능력)
+  creatureBondStats: Record<CreatureElement, StatKey> | null;
 }
 
 // 올해의 특별상 (56절 B3): 판마다 공개되는 추가 졸업식 부문
@@ -309,7 +311,7 @@ export const ACTIVITY_LABEL: Record<ActivityId, string> = {
 // 활동 카드에 함께 보여줄 한 줄 설명
 export const ACTIVITY_HINT: Record<ActivityId, string> = {
   tournament: "대회 카드 2장 중 하나를 골라 마나기운을 낸 만큼 주사위를 굴려 합이 목표 이상이면 입상! 주문력 +1·학점 +1과 카드 보상",
-  creature: "카드 2장 공개, 매력기운을 골라 낸 만큼 주사위를 굴려 합이 기준 이상이면 조련, 마리 수 + 하늘·육지·바다 세트 수로 생물사랑상을 겨뤄요",
+  creature: "카드 2장 공개, 매력기운을 골라 낸 만큼 주사위를 굴려 합이 기준 이상이면 조련! 교감으로 속성 능력치 +1, 마리 수 + 하늘·육지·바다 세트 수로 생물사랑상을 겨뤄요",
   duel: "아직 안 고른 한 명을 지목해 강제 대결, 마나기운을 골라 낸 만큼 주사위를 굴려(도전자 +1) 이기면 주문력 +1·학점 +3",
   exploration: "카드 2장 중 하나를 골라 체력기운을 낸 만큼 주사위 판정! 크게 벌거나 크게 잃어요",
   lab: "심화학습: 연구 카드 2장 중 1장, 지력기운을 골라 낸 만큼 주사위를 굴려 실험 판정, 안정적으로 성장",
@@ -413,6 +415,11 @@ export function describeAbility(a: CreatureAbility): string {
     charmToken: `매력기운 +${a.amount}`,
   }[a.effect];
   return `${when}: ${what}`;
+}
+
+// 마법생물이 주는 것 (57절 교감이면 "데려오면 체력 +1", 아니면 생물 능력)
+export function creatureGiftText(c: CreatureCard, rules: Pick<PublicRules, "creatureBondStats">): string {
+  return rules.creatureBondStats ? `교감: 데려오면 ${STAT_LABEL[rules.creatureBondStats[c.element]]} +1` : describeAbility(c.ability);
 }
 
 // 마법생물 세트 수: 하늘·육지·바다를 1장씩 묶은 세트 (가장 적은 속성의 장수)

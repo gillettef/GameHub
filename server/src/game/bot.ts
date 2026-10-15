@@ -332,7 +332,9 @@ function steerDirectional(state: GameState, playerId: string, strategy: BotStrat
 // 마법생물: 능력과 세트 모으기(하늘·육지·바다를 1장씩 모으면 최종 점수)를 반영한다
 function creatureValue(state: GameState, strategy: BotStrategy, player: PlayerGameState, card: CreatureCard): number {
   const a = card.ability;
-  let v = 1 + (a.trigger === "acquire" && a.effect === "spellPower" ? a.amount * 1.5 * weightsOf(state, strategy).spellPower : 0.6);
+  // 57절 교감: 데려오면 그 속성의 능력치가 1 오른다 (생물 능력은 없다)
+  const bond = BALANCE.creatureBond ? 1.5 * weightsOf(state, strategy, player)[BALANCE.creatureBondStats[card.element]] : 0;
+  let v = 1 + (BALANCE.creatureBond ? bond : a.trigger === "acquire" && a.effect === "spellPower" ? a.amount * 1.5 * weightsOf(state, strategy).spellPower : 0.6);
   // 세트(하늘·육지·바다 1장씩)를 완성하는 데 가장 부족한 속성일수록 가치가 높다
   const counts = (["sky", "land", "ocean"] as const).map((el) => player.creatures.filter((c) => c.element === el).length);
   if (player.creatures.filter((c) => c.element === card.element).length === Math.min(...counts)) v += 1;

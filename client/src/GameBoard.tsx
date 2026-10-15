@@ -15,7 +15,7 @@ import {
   activityBlockReason,
   activityExtraCost,
   creatureSets,
-  describeAbility,
+  creatureGiftText,
   duelTargets,
   effectiveStat,
   energyText,
@@ -117,11 +117,11 @@ function PlayerStatCard({ player, isMe, rules, defaultOpen }: { player: PlayerGa
           />
         </div>
       )}
-      {ownedCardGroups(player).length > 0 && (
+      {ownedCardGroups(player, rules).length > 0 && (
         <div className="mt-2">
           <p className="mb-1 text-xs text-purple-500">가진 카드 (누르면 크게 볼 수 있어요)</p>
           <div className="flex flex-col gap-2">
-            {ownedCardGroups(player).map((g) => (
+            {ownedCardGroups(player, rules).map((g) => (
               <div key={g.key}>
                 <p className="mb-1 text-xs font-semibold text-purple-600">
                   <InlineIcon name={g.icon} /> {g.label} {g.count}장
@@ -175,7 +175,7 @@ function offerCardInfo(card: OfferCardView): CardInfo {
 }
 
 // 가진 카드를 어디서 얻었는지(2주차 정규수업 / 3주차 자율활동 구역)별로 묶는다
-function ownedCardGroups(player: PlayerGameState): { key: string; icon: IconName; label: string; count: number; node: ReactNode }[] {
+function ownedCardGroups(player: PlayerGameState, rules: GameState["rules"]): { key: string; icon: IconName; label: string; count: number; node: ReactNode }[] {
   const groups = [
     { key: "class", icon: "book" as IconName, label: "정규수업 수업카드", cards: player.classCards.map(classCardData) as (GameCardData | CardInfo)[] },
     {
@@ -191,7 +191,7 @@ function ownedCardGroups(player: PlayerGameState): { key: string; icon: IconName
       cards: player.creatures.map((c) => ({
         name: c.name,
         badge: `${ELEMENT_LABEL[c.element]} · ${KIND_LABEL[c.kind]} · 기준 ${c.trainTarget}`,
-        lines: [c.description, describeAbility(c.ability)],
+        lines: [c.description, creatureGiftText(c, rules)],
       })),
     },
   ];

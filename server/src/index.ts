@@ -221,6 +221,7 @@ const PUBLIC_RULES: PublicRules = {
   duelChallengerBonus: BALANCE.duelChallengerBonus,
   duelWinCredit: BALANCE.duelWinReward.credit ?? 0,
   growthCredit: BALANCE.growthCredit,
+  creatureBondStats: BALANCE.creatureBond ? BALANCE.creatureBondStats : null,
 };
 
 function broadcastGameState(room: Room): void {
