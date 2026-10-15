@@ -98,6 +98,8 @@ export const HIJACK: TacticKey = 'hijack';
 export const DEMANDS: readonly Demand[] = [1, 2, 3, 4];
 export const DEMAND_CARDS_EACH = 3;
 export const TACTICS_PER_AGENT = 3;
+/** 고객 손패 크기 */
+export const HAND_SIZE = 2;
 export const TOTAL_ROUNDS = 5;
 /** 빅딜 시즌 보너스 (억) */
 export const BIG_DEAL_BONUS = 2;

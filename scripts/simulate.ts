@@ -18,6 +18,7 @@ import {
   nextRound,
   resolveRound,
   winners,
+  clientOutcomes,
 } from '../src/core';
 import type { AiLevel, EventKey, GameState } from '../src/core';
 
@@ -74,6 +75,10 @@ let hijackOk = 0;
 let shortMarket = 0;
 let rounds = 0;
 const stageWon = { 1: 0, 2: 0 };
+const clientRes = { self: 0, other: 0, unsigned: 0 };
+const clientBonuses: number[] = [];
+/** 고객 보너스를 빼면 우승자가 달라지는 판 */
+let clientFlips = 0;
 
 const master = createRng(SEED);
 for (let gi = 0; gi < GAMES; gi++) {
@@ -87,6 +92,15 @@ for (let gi = 0; gi < GAMES; gi++) {
   }
 
   const scores = g.agents.map((a) => a.score);
+  g.agents.forEach((a, i) => {
+    for (const o of clientOutcomes(g, i)) clientRes[o.result]++;
+    clientBonuses.push(a.clientBonus ?? 0);
+  });
+  {
+    const pre = g.agents.map((a) => a.score - (a.clientBonus ?? 0));
+    const top = (xs: number[]) => xs.map((x, i) => [x, i] as const).filter(([x]) => x === Math.max(...xs)).map(([, i]) => i).join(',');
+    if (top(pre) !== top(scores)) clientFlips++;
+  }
   const win = winners(g);
   win.forEach((i) => {
     seatWins[i]! += 1 / win.length;
@@ -181,6 +195,14 @@ const report = {
   })),
   clubs: CLUBS.map((c, i) => ({ club: c.name, picks: clubPick[i]! })),
   events: EVENT_KEYS.map((k) => ({ event: EVENTS[k].name, rounds: eventStat[k].rounds, avgRoundFee: r2(eventStat[k].fee / (eventStat[k].rounds || 1)) })),
+  clients: {
+    self: pct(clientRes.self, clientRes.self + clientRes.other + clientRes.unsigned),
+    other: pct(clientRes.other, clientRes.self + clientRes.other + clientRes.unsigned),
+    unsigned: pct(clientRes.unsigned, clientRes.self + clientRes.other + clientRes.unsigned),
+    avgBonus: r2(mean(clientBonuses)),
+    sdBonus: r2(sd(clientBonuses)),
+    winnerFlippedByClients: pct(clientFlips, GAMES),
+  },
   rates: {
     contested: pct(contested, groups),
     offersFacingRival: pct(offersContested, offersCompeting),

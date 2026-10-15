@@ -4,6 +4,7 @@ import {
   TACTICS,
   TOTAL_ROUNDS,
   INVALID_TEXT,
+  clientOutcomes,
   demandRemaining,
   fitScore,
   offerValue,
@@ -43,6 +44,27 @@ export function bidScreen(s: Session, d: Draft): string {
   const otherCk = checks[otherSt - 1]!;
   const last = g.results.at(-1);
   const p = sl.playerId !== null ? PLAYERS[sl.playerId]! : null;
+  const reg = me.clients.at(-1);
+  const myClient = reg && reg.round === g.round ? reg.playerId : null;
+
+  const clientCard = `<section class="card client">
+    <h3>📋 의뢰 선수 <small class="mu">· 나만 볼 수 있음</small></h3>
+    ${
+      myClient !== null
+        ? `<p>이번 라운드 시장에 내가 등록한 선수: <b>${esc(PLAYERS[myClient]!.name)}</b><br><span class="mu">다른 에이전트가 계약하면 게임 종료 시 <b>+${money(PLAYERS[myClient]!.base)}</b>(기본 수수료). 직접 계약하면 의뢰 보너스는 없습니다(이해충돌).</span></p>`
+        : '<p class="mu">이번 라운드에 등록한 선수가 없습니다.</p>'
+    }
+    ${
+      g.round < TOTAL_ROUNDS && me.hand.length
+        ? `<h4>다음 라운드에 등록할 선수</h4><div class="hand">${me.hand
+            .map((id) => {
+              const q = PLAYERS[id]!;
+              return `<button class="chip ${d.client === id ? 'sel' : ''}" data-act="client" data-arg="${id}" aria-pressed="${d.client === id}"><b>${q.pos} ${esc(q.name)}</b><small>몸값 ${q.cost}억 · 기본 ${q.base}억 · ${q.trait}</small></button>`;
+            })
+            .join('')}</div>`
+        : ''
+    }
+  </section>`;
 
   const tabs = `<div class="tabs" role="tablist">${([1, 2] as const)
     .map((k) => {
@@ -61,7 +83,8 @@ export function bidScreen(s: Session, d: Draft): string {
       const taken = otherOn && other.playerId === id;
       const star = bigFish.includes(id);
       const locked = st === 1 && !star;
-      const note = taken ? `${otherSt}차에서 선택함` : locked ? '2차에서 협상 가능' : `몸값 ${q.cost}억 · 기본 수수료 ${q.base}억`;
+      const mine = id === myClient ? '📋 내 의뢰 · ' : '';
+      const note = mine + (taken ? `${otherSt}차에서 선택함` : locked ? '2차에서 협상 가능' : `몸값 ${q.cost}억 · 기본 수수료 ${q.base}억`);
       return `<button class="pc ${star ? 'big' : ''} ${sl.playerId === id ? 'sel' : ''}" data-act="pick" data-arg="${id}" ${sold || taken || locked ? 'disabled' : ''} aria-pressed="${sl.playerId === id}">
         <span class="pos ${q.pos}">${q.pos}</span><span class="val" aria-label="기본 수수료 ${q.base}억">${q.base}</span>
         <b>${star ? '🐟 ' : ''}${esc(q.name)}</b>
@@ -142,6 +165,7 @@ export function bidScreen(s: Session, d: Draft): string {
     ${eventBanner(g)}
     ${scoreboard(g, s.turn)}
     ${last ? `<details class="card last"><summary>지난 라운드 결과</summary>${roundEntries(g, last)}</details>` : ''}
+    ${clientCard}
     <h3 class="sec-t">${agentName(me)}의 협상 <small class="mu">· 1차·2차를 모두 정하고 제출</small></h3>
     ${tabs}
     ${editor}
@@ -170,11 +194,24 @@ export function finalScreen(s: Session): string {
   const g = s.game;
   const rk = rankings(g);
   return `${gameHeader(g)}<main class="content">
-    <div class="center"><span class="eb">TRANSFER WINDOW CLOSED</span><h2 class="title">스토브리그 종료</h2></div>
+    <div class="center"><span class="eb">TRANSFER WINDOW CLOSED</span><h2 class="title">스토브리그 종료</h2><p class="mu">최종 점수 = 계약 수수료 + 의뢰 보너스</p></div>
     <section class="card podium">${rk
       .map((r) => {
         const a = g.agents[r.agent]!;
-        return `<div class="row rank-${r.rank}"><span class="rk">${r.rank === 1 ? '🏆' : `${r.rank}위`}</span><span class="nm">${agentName(a)}<small class="mu"> · ${a.deals}건</small></span><b>${money(a.score)}</b></div>`;
+        const bonus = a.clientBonus ?? 0;
+        return `<div class="row rank-${r.rank}"><span class="rk">${r.rank === 1 ? '🏆' : `${r.rank}위`}</span><span class="nm">${agentName(a)}<small class="mu"> · ${a.deals}건 · 수수료 ${money(a.score - bonus)} + 의뢰 ${money(bonus)}</small></span><b>${money(a.score)}</b></div>`;
+      })
+      .join('')}</section>
+    <section class="card reveal"><h3>📋 의뢰 선수 공개</h3>${g.agents
+      .map((a, i) => {
+        const items = clientOutcomes(g, i)
+          .map((o) => {
+            const q = PLAYERS[o.playerId]!;
+            const how = o.result === 'other' ? `${esc(g.agents[o.by!]!.name)} 계약 → <b>+${money(o.bonus)}</b>` : o.result === 'self' ? '직접 계약 (보너스 없음)' : '미계약';
+            return `<li>R${o.round} ${esc(q.name)} <small class="mu">${q.pos} · 기본 ${q.base}억</small> — ${how}</li>`;
+          })
+          .join('');
+        return `<h4>${agentName(a)} <small class="mu">+${money(a.clientBonus ?? 0)}</small></h4><ul>${items}</ul>`;
       })
       .join('')}</section>
     <details class="card last"><summary>라운드별 기록</summary>${g.results

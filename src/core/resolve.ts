@@ -159,6 +159,12 @@ export function resolveRound(state: GameState, humanSubs: Readonly<Record<number
   }
   entries.sort((a, b) => a.stage - b.stage || a.agent - b.agent);
 
+  // 다음 라운드 의뢰 등록 (손패에 있는 카드만)
+  agents = agents.map((a, i) => {
+    const c = subs[i]!.client;
+    return { ...a, pending: c !== undefined && c !== null && a.hand.includes(c) ? c : null };
+  });
+
   return {
     ...state,
     rng: rng.state,
