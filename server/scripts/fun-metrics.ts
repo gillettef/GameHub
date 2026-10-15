@@ -106,17 +106,17 @@ for (let g = 0; g < games; g++) {
       for (const line of lines) {
         if (line.includes("아까운 경험이 쌓여 성장")) m.expGrowth++;
         if (state.round < 4) continue;
-        const r = line.match(/^(p\d): (?:마법생물 .*조련 (성공|실패)|연구 카드 .*실험 (성공|실패)|별빛 다락방 .*목표 \d+ (성공|실패))/);
+        const r = line.match(/^(p\d): (?:마법생물 .*조련 (성공|실패)|연구 카드 .*실험 (성공|실패)|별빛 다락방 .*목표 \d+ (성공|실패)|대회 .*(입상|탈락))/);
         if (r) {
           const t = laterTry.get(r[1]) ?? { ok: 0, total: 0 };
           t.total++;
-          if ((r[2] ?? r[3] ?? r[4]) === "성공") t.ok++;
+          if ((r[2] ?? r[3] ?? r[4]) === "성공" || r[5] === "입상") t.ok++;
           laterTry.set(r[1], t);
         }
       }
       if (state.round <= 3)
         for (const line of lines) {
-          const e = line.match(/^(p\d): .*(조련 성공|실험 성공|목표 \d+ 성공)/) ?? line.match(/지목! (p\d) 승리/);
+          const e = line.match(/^(p\d): .*(조련 성공|실험 성공|목표 \d+ 성공|입상!)/) ?? line.match(/지목! (p\d) 승리/);
           if (e) earlyOk.set(e[1], (earlyOk.get(e[1]) ?? 0) + 1);
         }
       for (const line of lines) {
