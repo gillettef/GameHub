@@ -171,15 +171,46 @@ describe('resolveRound', () => {
 });
 
 describe('AI', () => {
-  it('항상 유효한 제안 또는 null', () => {
+  it.each(['easy', 'normal'] as const)('항상 유효한 제안 또는 null (%s)', (level) => {
     for (let seed = 0; seed < 300; seed++) {
-      const g = createGame([{ name: 'A', kind: 'ai' }, { name: 'B', kind: 'ai' }, { name: 'C', kind: 'ai' }], seed);
+      const g = createGame([{ name: 'A', kind: 'ai', level }, { name: 'B', kind: 'ai', level }, { name: 'C', kind: 'ai', level }], seed);
       const rng = createRng(seed);
       for (let i = 0; i < 3; i++) {
         const o = makeAiOffer(g, i, rng);
         if (o) expect(typeof validateOffer(g, i, o)).toBe('object');
       }
     }
+  });
+
+  it('난이도 미지정 AI는 easy, 사람에게는 난이도 없음', () => {
+    const g = createGame([{ name: 'A', kind: 'human' }, { name: 'B', kind: 'ai' }, { name: 'C', kind: 'ai', level: 'normal' }], 1);
+    expect(g.agents.map((a) => a.level)).toEqual([undefined, 'easy', 'normal']);
+  });
+
+  it('보통 AI: 남은 카드·판매된 선수를 지키고, 시장이 비면 null', () => {
+    const s = state({
+      agents: [agent({ kind: 'ai', level: 'normal', feeUsed: [5, 5, 10, 10, 15, 15], tactics: ['charm'] }), agent()],
+      sold: [0, 1],
+    });
+    for (let seed = 0; seed < 50; seed++) {
+      const o = makeAiOffer(s, 0, createRng(seed))!;
+      expect(o.fee).toBe(20);
+      expect([3, 6]).toContain(o.playerId);
+      expect(typeof validateOffer(s, 0, o)).toBe('object');
+    }
+    expect(makeAiOffer(state({ sold: [0, 1, 3, 6], agents: [agent({ kind: 'ai', level: 'normal' })] }), 0, createRng(1))).toBeNull();
+  });
+
+  it('보통 AI가 쉬움 AI보다 평균 수수료가 높다', () => {
+    let normal = 0;
+    let easy = 0;
+    for (let seed = 0; seed < 200; seed++) {
+      const lv = seed % 2 === 0 ? (['normal', 'easy'] as const) : (['easy', 'normal'] as const);
+      let g = createGame(lv.map((level, i) => ({ name: `AI${i}`, kind: 'ai' as const, level })), seed);
+      while (g.phase !== 'done') g = nextRound(resolveRound(g, {}));
+      g.agents.forEach((a) => (a.level === 'normal' ? (normal += a.score) : (easy += a.score)));
+    }
+    expect(normal).toBeGreaterThan(easy * 1.2);
   });
 });
 

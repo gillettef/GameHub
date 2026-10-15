@@ -1,10 +1,11 @@
 import { CLUBS, EVENT_KEYS, MAX_AGENTS, MIN_AGENTS, PLAYERS, TACTICS_PER_AGENT, TACTIC_KEYS, TOTAL_ROUNDS } from './data';
 import { createRng } from './rng';
-import type { AgentKind, GameState } from './types';
+import type { AgentKind, AiLevel, GameState } from './types';
 
 export interface AgentSetup {
   name: string;
   kind: AgentKind;
+  level?: AiLevel;
 }
 
 /** 이벤트·선수 시장·구단을 새로 뽑아 입찰 단계로 */
@@ -23,6 +24,7 @@ export function createGame(setup: readonly AgentSetup[], seed: number): GameStat
   const agents = setup.map((a) => ({
     name: a.name,
     kind: a.kind,
+    ...(a.kind === 'ai' ? { level: a.level ?? 'easy' } : {}),
     score: 0,
     deals: 0,
     feeUsed: [],

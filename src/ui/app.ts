@@ -171,21 +171,25 @@ const actions: Record<string, (arg: string) => void> = {
     if (ui.session && ui.session.game.phase !== 'done' && !confirm('진행 중인 게임이 있습니다. 새로 시작할까요?')) return;
     ui.seats = [
       { name: ui.profile!.nick, kind: 'human' },
-      { name: AI_NAMES[0]!, kind: 'ai' },
+      { name: AI_NAMES[0]!, kind: 'ai', level: 'easy' },
     ];
     ui.error = '';
     ui.view = 'setup';
   },
-  again: () => startGame(ui.session!.game.agents.map((a) => ({ name: a.name, kind: a.kind }))),
+  again: () => startGame(ui.session!.game.agents.map((a) => ({ name: a.name, kind: a.kind, ...(a.level ? { level: a.level } : {}) }))),
 
   'seat-add': (kind) => {
     if (ui.seats.length >= MAX_AGENTS) return;
     if (kind === 'ai') {
       const used = new Set(ui.seats.map((s) => s.name));
-      ui.seats.push({ name: AI_NAMES.find((n) => !used.has(n)) ?? 'AI', kind: 'ai' });
+      ui.seats.push({ name: AI_NAMES.find((n) => !used.has(n)) ?? 'AI', kind: 'ai', level: 'easy' });
     } else {
       ui.seats.push({ name: `플레이어 ${ui.seats.filter((s) => s.kind === 'human').length + 1}`, kind: 'human' });
     }
+  },
+  'seat-level': (i) => {
+    const s = ui.seats[Number(i)];
+    if (s?.kind === 'ai') s.level = s.level === 'normal' ? 'easy' : 'normal';
   },
   'seat-del': (i) => {
     ui.seats.splice(Number(i), 1);

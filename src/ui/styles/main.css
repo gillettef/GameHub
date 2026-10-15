@@ -134,6 +134,9 @@ input[readonly] { color: var(--mu); }
 .seat-ic { font-size: 22px; width: 28px; text-align: center; }
 .seat-nm { flex: 1; min-height: 48px; display: flex; align-items: center; }
 .seat input { flex: 1; min-width: 0; }
+.lv { min-width: 64px; padding: 0 10px; font-size: 13px; font-weight: 800; border-radius: 999px; }
+.lv.easy { color: var(--gr); border-color: #2f6b58; background: #13302a; }
+.lv.normal { color: var(--gd); border-color: #6c5730; background: #332b1d; }
 
 /* 핸드오프 */
 .handoff { padding-top: 15vh; }

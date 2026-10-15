@@ -41,10 +41,13 @@ export interface Tactic {
 }
 
 export type AgentKind = 'human' | 'ai';
+export type AiLevel = 'easy' | 'normal';
 
 export interface AgentState {
   name: string;
   kind: AgentKind;
+  /** AI 난이도. 없으면 easy (구버전 저장 데이터 호환) */
+  level?: AiLevel;
   score: number;
   deals: number;
   /** 지금까지 사용한 수수료율 카드 */
