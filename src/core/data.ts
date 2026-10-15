@@ -106,6 +106,9 @@ export const MAX_AGENTS = 4;
 /** 라운드당 협상 횟수 */
 export const STAGES = [1, 2] as const;
 
+/** 1차(대어 쟁탈전)에서 노릴 수 있는 대어 수: 2인 2명, 3인 2명, 4인 3명 */
+export const starSlots = (agents: number): number => Math.max(2, agents - 1);
+
 /** 인원별 라운드 시장 크기: 선수 2N+1, 구단 N+2 */
 export const marketSize = (agents: number): { players: number; clubs: number } => ({
   players: agents * 2 + 1,

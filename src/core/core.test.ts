@@ -9,6 +9,7 @@ import {
   evaluateOffer,
   makeAiOffer,
   makeAiOffers,
+  stars,
   nextRound,
   rankings,
   resolveRound,
@@ -25,7 +26,8 @@ const agent = (over: Partial<AgentState> = {}): AgentState => ({
 
 const state = (over: Partial<GameState> = {}): GameState => ({
   v: 3, rng: 1, round: 1, phase: 'bid', event: 'normal',
-  market: [0, 1, 3, 6], clubs: [0, 1, 5, 6], sold: [],
+  // 2~3인은 대어 2명 → 기본 시장의 두 선수 모두 대어
+  market: [3, 6], clubs: [0, 1, 5, 6], sold: [],
   agents: [agent({ name: 'A' }), agent({ name: 'B' })],
   results: [],
   ...over,
@@ -151,7 +153,7 @@ describe('resolveRound (1차)', () => {
   });
 
   it('카드 소모: 몸값 미달도 소모, 패스와 미보유 카드는 미소모', () => {
-    const r = resolve(state(), { 0: offer({ playerId: 0, tactic: 'fast' }), 1: null });
+    const r = resolve(state({ market: [0, 3, 6] }), { 0: offer({ playerId: 0, tactic: 'fast' }), 1: null });
     expect(entry(r, 0)).toMatchObject({ status: 'invalid', reason: 'under-cost' });
     expect(r.agents[0]!.demandUsed).toEqual([2]);
     expect(r.agents[0]!.tactics).not.toContain('fast');
@@ -183,6 +185,38 @@ describe('resolveRound (1차)', () => {
     const snapshot = JSON.stringify(s);
     resolve(s, { 0: offer({ tactic: 'charm' }), 1: offer() });
     expect(JSON.stringify(s)).toBe(snapshot);
+  });
+});
+
+describe('대어 쟁탈전 (1차는 대어만)', () => {
+  it('대어 = 시장 몸값 상위 max(2, N − 1)명, 같으면 카드 번호 순, 판매된 선수 제외', () => {
+    const s = state({ market: [6, 3, 1, 0] });
+    expect(stars(s)).toEqual([0, 1]); // 2인: 2명 (몸값 8, 6)
+    expect(stars({ ...s, agents: [agent(), agent(), agent(), agent()] })).toEqual([0, 1, 3]); // 4인: 3명
+    expect(stars({ ...s, sold: [0] })).toEqual([1, 3]);
+    // 몸값 2로 같은 정우진(6)·임재원(10) → 번호 작은 쪽
+    expect(stars(state({ market: [10, 6, 13] }))).toEqual([6, 10]);
+  });
+
+  it('1차에 대어가 아닌 선수는 무효(카드 미소모), 2차에는 낼 수 있다', () => {
+    const s = state({ market: [0, 1, 3, 6] }); // 대어: 강태오·윤시후
+    expect(validateOffer(s, 0, offer())).toBe('not-star');
+    expect(validateOffer(s, 0, offer(), 2)).toEqual({ attract: 1, fee: 4 });
+    const r = resolveRound(s, { 0: { first: offer(), second: df }, 1: { first: null, second: null } });
+    const es = r.results.at(-1)!.entries.filter((e) => e.agent === 0);
+    expect(es.map((e) => [e.stage, e.status, e.reason])).toEqual([[1, 'invalid', 'not-star'], [2, 'won', undefined]]);
+    expect(r.agents[0]!.demandUsed).toEqual([2]);
+  });
+
+  it('AI의 1차 제안은 항상 대어', () => {
+    for (let seed = 0; seed < 100; seed++) {
+      const g = createGame(Array.from({ length: 4 }, (_, i) => ({ name: `AI${i}`, kind: 'ai' as const, level: i % 2 ? ('easy' as const) : ('normal' as const) })), seed);
+      const rng = createRng(seed);
+      for (let i = 0; i < 4; i++) {
+        const { first } = makeAiOffers(g, i, rng);
+        if (first) expect(stars(g)).toContain(first.playerId);
+      }
+    }
   });
 });
 
@@ -300,12 +334,14 @@ describe('1차·2차 협상과 하이재킹', () => {
     expect(one(r, 0, 1).bigDeal).toBeUndefined();
     expect(one(r, 0, 2)).toMatchObject({ bigDeal: true, fee: 8 });
 
-    // A 1차 윤시후 요구 4 (수수료 7, 최고) → B가 하이재킹 요구 3 (수수료 6)으로 탈취 → B 계약이 최고
+    // A 1차 윤시후 요구 4 (수수료 7, 최고) → B가 하이재킹 요구 3 (수수료 6)으로 탈취 → 빼앗긴 7은 빠지고 B의 6이 최고
     const mf = offer({ playerId: 1, clubId: 1, demand: 4 });
-    const r2 = run(s, { 0: { first: mf, second: null }, 1: { first: df, second: { ...mf, demand: 3, tactic: 'hijack' } } });
+    const s2 = state({ event: 'deadline', market: [1, 3, 6] }); // 대어: 윤시후·최준서
+    const r2 = run(s2, { 0: { first: mf, second: df }, 1: { first: null, second: { ...mf, demand: 3, tactic: 'hijack' } } });
     expect(one(r2, 0, 1).status).toBe('hijacked');
     expect(one(r2, 1, 2)).toMatchObject({ status: 'won', bigDeal: true, fee: 8 });
-    expect(one(r2, 1, 1).bigDeal).toBeUndefined();
+    expect(one(r2, 0, 2)).toMatchObject({ status: 'won', fee: 4 });
+    expect(one(r2, 0, 2).bigDeal).toBeUndefined();
   });
 
   it('보통 AI는 하이재킹을 시도하고, 실제로 성공하는 경우가 있다', () => {
@@ -353,6 +389,7 @@ describe('AI', () => {
   it('보통 AI: 남은 카드·판매된 선수를 지키고, 시장이 비면 null', () => {
     const s = state({
       agents: [agent({ kind: 'ai', level: 'normal', demandUsed: [1, 1, 1, 2, 2, 2, 3, 3, 3], tactics: ['charm'] }), agent()],
+      market: [0, 1, 3, 6],
       sold: [0, 1],
     });
     for (let seed = 0; seed < 50; seed++) {

@@ -1,6 +1,6 @@
 import { CLUBS, DEMANDS, TACTICS, TOTAL_ROUNDS, player } from './data';
 import type { Rng } from './rng';
-import { consumeCards, demandRemaining, evaluateOffer, fitScore, isEvaluation, offerValue, validateOffer } from './rules';
+import { consumeCards, demandRemaining, evaluateOffer, fitScore, isEvaluation, offerValue, stars, validateOffer } from './rules';
 import type { AgentState, GameState, Offer, RoundSubmission, Stage, TacticKey } from './types';
 
 /** 차수별 제안 조건: 2차는 1차에서 고른 선수·구단 제외, 1차 카드 소모 반영 */
@@ -38,7 +38,8 @@ export function makeAiOffers(state: GameState, agentIdx: number, rng: Rng): Roun
 /** 하위 호환: 1차 제안만 */
 export const makeAiOffer = (state: GameState, agentIdx: number, rng: Rng): Offer | null => makeAiOffers(state, agentIdx, rng).first;
 
-const availablePlayers = (state: GameState, ctx: Ctx) => state.market.filter((id) => !state.sold.includes(id) && id !== ctx.excludePlayer);
+const availablePlayers = (state: GameState, ctx: Ctx) =>
+  (ctx.stage === 1 ? stars(state) : state.market).filter((id) => !state.sold.includes(id) && id !== ctx.excludePlayer);
 const roundClubs = (state: GameState, ctx: Ctx) => state.clubs.filter((id) => id !== ctx.excludeClub).map((id) => CLUBS[id]!);
 
 /** 쉬움 AI: 무작위 선수 → 계약 가능한 구단 중 적합도 상위 3곳 → 요구 수수료 무작위 */

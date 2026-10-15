@@ -8,6 +8,7 @@ import {
   fitScore,
   offerValue,
   rankings,
+  stars,
 } from '../../core';
 import type { Demand, GameState, TacticKey } from '../../core';
 import type { Session } from '../../store/storage';
@@ -51,16 +52,21 @@ export function bidScreen(s: Session, d: Draft): string {
     })
     .join('')}</div>`;
 
-  const market = g.market
+  const bigFish = stars(g);
+  // 대어를 앞에 배치
+  const market = [...bigFish, ...g.market.filter((id) => !bigFish.includes(id))]
     .map((id) => {
       const q = PLAYERS[id]!;
       const sold = g.sold.includes(id);
       const taken = otherOn && other.playerId === id;
-      return `<button class="pc ${sl.playerId === id ? 'sel' : ''}" data-act="pick" data-arg="${id}" ${sold || taken ? 'disabled' : ''} aria-pressed="${sl.playerId === id}">
+      const star = bigFish.includes(id);
+      const locked = st === 1 && !star;
+      const note = taken ? `${otherSt}차에서 선택함` : locked ? '2차에서 협상 가능' : `몸값 ${q.cost}억 · 기본 수수료 ${q.base}억`;
+      return `<button class="pc ${star ? 'big' : ''} ${sl.playerId === id ? 'sel' : ''}" data-act="pick" data-arg="${id}" ${sold || taken || locked ? 'disabled' : ''} aria-pressed="${sl.playerId === id}">
         <span class="pos ${q.pos}">${q.pos}</span><span class="val" aria-label="기본 수수료 ${q.base}억">${q.base}</span>
-        <b>${esc(q.name)}</b>
+        <b>${star ? '🐟 ' : ''}${esc(q.name)}</b>
         <span class="tag ${q.trait === '스타' ? 'star' : ''}">${q.trait}</span>
-        <small>${taken ? `${otherSt}차에서 선택함` : `몸값 ${q.cost}억 · 기본 수수료 ${q.base}억`}</small>
+        <small>${note}</small>
       </button>`;
     })
     .join('');
@@ -104,11 +110,15 @@ export function bidScreen(s: Session, d: Draft): string {
     ? `<section class="card center pass-card"><p>${st}차 협상을 패스합니다.<br><span class="mu">카드는 소모되지 않습니다.</span></p>
         <button data-act="slot-pass">다시 협상하기</button></section>`
     : `${
+        st === 1
+          ? `<p class="hint">🐟 <b>1차는 대어 쟁탈전</b> — 몸값 상위 <b>${bigFish.length}명(대어)</b>만 노릴 수 있습니다. 나머지 선수는 2차에서 협상하세요.</p>`
+          : ''
+      }${
         st === 2
           ? '<p class="hint">💡 다른 에이전트가 <b>1차에서 계약한 선수</b>에게 낸 2차 제안은 무산되고 카드는 버려집니다. <b>하이재킹</b> 카드를 쓰면 1차 계약의 매력도 이상일 때 그 계약을 빼앗아 옵니다.</p>'
           : ''
       }
-    <h3 class="sec-t">1. 선수 <small class="mu">· 1차·2차 중복 불가</small></h3>
+    <h3 class="sec-t">1. 선수 <small class="mu">· ${st === 1 ? '대어만 · ' : ''}1차·2차 중복 불가</small></h3>
     <div class="market">${market}</div>
     <h3 class="sec-t">2. 구단 <small class="mu">· 1차·2차 중복 불가</small></h3>
     <div class="clubs">${clubs}</div>
