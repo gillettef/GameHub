@@ -1,4 +1,6 @@
-# 스토브리그 — 에이전트의 전쟁 (모바일 웹)
+# 더블 에이전트 — 에이전트의 전쟁 (모바일 웹)
+
+(구 명칭 '스토브리그'. 야구 용어·드라마 제목과 겹쳐 2026-10-15 변경. 공모전 원본 노트의 파일명은 그대로 둔다)
 
 축구 선수 에이전트가 되어 5라운드 동안 구단과 계약을 중개하고, 수수료(억 원)를 가장 많이 번 사람이 이기는 카드/보드게임.
 **모바일 웹 전용**, **서버·DB 없이** 브라우저 하나에서 완결되는 정적 웹앱으로 만든다.
@@ -81,7 +83,7 @@ npm run typecheck  # tsc --noEmit
 - 밸런스 수치 조정은 `balance-analyst` 에이전트로 시뮬레이션 근거를 남긴 뒤 진행
 
 ## Git
-- 저장소: https://github.com/gillettef/StoveLeague.git (`origin`, 기본 브랜치 `main`)
+- 저장소: https://github.com/gillettef/DoubleAgent.git (`origin`, 기본 브랜치 `main`)
 - 모든 작업이 끝나면 git commit 후 push까지 진행한다
 - 커밋 메시지는 가급적 한국어로 작성한다 (예: `규칙 엔진: 빅딜 시즌 동률 보너스 처리`)
 - 커밋 전 `npm run typecheck && npm run test`가 통과해야 한다 (스크립트가 생긴 뒤부터)

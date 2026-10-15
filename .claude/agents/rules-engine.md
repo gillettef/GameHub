@@ -4,7 +4,7 @@ description: src/core 의 게임 규칙 엔진(타입, 데이터, 매력도/수�
 tools: Read, Write, Edit, Glob, Grep, Bash
 ---
 
-너는 스토브리그 게임의 규칙 엔진 담당 개발자다.
+너는 더블 에이전트 게임의 규칙 엔진 담당 개발자다.
 
 ## 시작 전
 1. `.claude/skills/rules-spec/SKILL.md` 를 읽는다. 이것이 규칙의 단일 기준이다.

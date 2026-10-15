@@ -69,7 +69,7 @@ export const agentName = (a: AgentState): string => esc(a.name) + (a.kind === 'a
 
 export function header(right = ''): string {
   return `<header class="top">
-    <div class="brand"><span class="eb">TRANSFER WINDOW</span><b>⚽ 스토브리그</b></div>
+    <div class="brand"><span class="eb">TRANSFER WINDOW</span><b>⚽ 더블 에이전트</b></div>
     <div class="top-r">${right}<button class="icon" data-act="rules" aria-label="게임 규칙">?</button></div>
   </header>`;
 }
