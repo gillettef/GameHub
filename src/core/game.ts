@@ -1,4 +1,4 @@
-import { CLUBS, EVENT_KEYS, MAX_AGENTS, MIN_AGENTS, PLAYERS, TACTICS_PER_AGENT, TACTIC_KEYS, TOTAL_ROUNDS } from './data';
+import { CLUBS, EVENT_KEYS, HIJACK, MAX_AGENTS, MIN_AGENTS, PLAYERS, TACTICS_PER_AGENT, TACTIC_KEYS, TOTAL_ROUNDS, marketSize } from './data';
 import { createRng } from './rng';
 import type { AgentKind, AiLevel, GameState } from './types';
 
@@ -11,10 +11,10 @@ export interface AgentSetup {
 /** 이벤트·선수 시장·구단을 새로 뽑아 입찰 단계로 */
 export function dealRound(state: GameState): GameState {
   const rng = createRng(state.rng);
-  const n = state.agents.length + 1;
+  const size = marketSize(state.agents.length);
   const event = EVENT_KEYS[rng.int(EVENT_KEYS.length)]!;
-  const market = rng.shuffle(PLAYERS.map((p) => p.id).filter((id) => !state.sold.includes(id))).slice(0, n);
-  const clubs = rng.shuffle(CLUBS.map((c) => c.id)).slice(0, n);
+  const market = rng.shuffle(PLAYERS.map((p) => p.id).filter((id) => !state.sold.includes(id))).slice(0, size.players);
+  const clubs = rng.shuffle(CLUBS.map((c) => c.id)).slice(0, size.clubs);
   return { ...state, rng: rng.state, event, market, clubs, phase: 'bid' };
 }
 
@@ -28,10 +28,10 @@ export function createGame(setup: readonly AgentSetup[], seed: number): GameStat
     score: 0,
     deals: 0,
     feeUsed: [],
-    tactics: rng.shuffle(TACTIC_KEYS).slice(0, TACTICS_PER_AGENT),
+    tactics: [...rng.shuffle(TACTIC_KEYS).slice(0, TACTICS_PER_AGENT), HIJACK],
   }));
   return dealRound({
-    v: 1,
+    v: 2,
     rng: rng.state,
     round: 1,
     phase: 'bid',

@@ -11,7 +11,9 @@ import {
   PLAYERS,
   TACTICS,
   TACTIC_KEYS,
+  HIJACK,
   createGame,
+  marketSize,
   createRng,
   nextRound,
   resolveRound,
@@ -52,7 +54,7 @@ const levelStat: Record<AiLevel, { seats: number; wins: number; score: number }>
 };
 const finals: number[] = [];
 const gaps: number[] = [];
-const tactic = Object.fromEntries([...TACTIC_KEYS, 'none'].map((k) => [k, tally()]));
+const tactic = Object.fromEntries([...TACTIC_KEYS, HIJACK, 'none'].map((k) => [k, tally()]));
 const feeCard = Object.fromEntries(FEE_RATES.map((f) => [f, tally()]));
 const playerStat = PLAYERS.map(() => ({ deals: 0, fee: 0, bids: 0 }));
 const clubPick = CLUBS.map(() => 0);
@@ -63,6 +65,12 @@ let groups = 0;
 let noOffer = 0;
 let offers = 0;
 let invalid = 0;
+let voided = 0;
+let hijackTry = 0;
+let hijackOk = 0;
+let shortMarket = 0;
+let rounds = 0;
+const stageWon = { 1: 0, 2: 0 };
 
 const master = createRng(SEED);
 for (let gi = 0; gi < GAMES; gi++) {
@@ -70,7 +78,10 @@ for (let gi = 0; gi < GAMES; gi++) {
     AI === 'mixed' ? ((i + gi) % N < Math.floor(N / 2) ? 'normal' : 'easy') : AI,
   );
   let g: GameState = createGame(levels.map((level, i) => ({ name: `AI${i}`, kind: 'ai' as const, level })), master.int(0x7fffffff));
-  while (g.phase !== 'done') g = nextRound(resolveRound(g, {}));
+  while (g.phase !== 'done') {
+    if (g.market.length < marketSize(N).players) shortMarket++;
+    g = nextRound(resolveRound(g, {}));
+  }
 
   const scores = g.agents.map((a) => a.score);
   const win = winners(g);
@@ -90,7 +101,8 @@ for (let gi = 0; gi < GAMES; gi++) {
   for (const r of g.results) {
     const es = eventStat[r.event];
     es.rounds++;
-    const byPlayer = new Map<number, number[]>();
+    rounds++;
+    const byPlayer = new Map<string, number[]>();
     for (const e of r.entries) {
       if (e.status === 'none') noOffer++;
       if (!e.offer) continue;
@@ -99,6 +111,15 @@ for (let gi = 0; gi < GAMES; gi++) {
         invalid++;
         continue;
       }
+      if (e.status === 'void') {
+        voided++;
+        continue;
+      }
+      if (e.stage === 2 && e.offer.tactic === HIJACK && (e.status === 'won' ? e.hijack : e.hijackFailed)) {
+        hijackTry++;
+        if (e.status === 'won') hijackOk++;
+      }
+      if (e.status === 'won') stageWon[e.stage]++;
       const won = e.status === 'won';
       const fee = won ? e.fee! : 0;
       es.fee += fee;
@@ -114,7 +135,8 @@ for (let gi = 0; gi < GAMES; gi++) {
         ps.fee += fee;
       }
       clubPick[e.offer.clubId]!++;
-      byPlayer.set(e.offer.playerId, [...(byPlayer.get(e.offer.playerId) ?? []), e.attract!]);
+      const gk = `${e.stage}:${e.offer.playerId}`;
+      byPlayer.set(gk, [...(byPlayer.get(gk) ?? []), e.attract!]);
     }
     for (const atts of byPlayer.values()) {
       groups++;
@@ -159,6 +181,13 @@ const report = {
     tieAmongContested: pct(ties, contested),
     noOfferRate: pct(noOffer, noOffer + offers),
     invalidRate: pct(invalid, offers),
+    voidRate: pct(voided, offers),
+    dealsPerRound: r2((stageWon[1] + stageWon[2]) / (rounds || 1)),
+    stage1Deals: stageWon[1],
+    stage2Deals: stageWon[2],
+    hijackVsContract: hijackTry,
+    hijackSuccess: pct(hijackOk, hijackTry),
+    shortMarketRounds: pct(shortMarket, rounds),
   },
 };
 

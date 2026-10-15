@@ -1,5 +1,5 @@
-import { CLUBS, EVENTS, INVALID_TEXT, TACTICS, club, player, round2 } from '../core';
-import type { AgentKind, AgentState, AiLevel, FeeRate, GameState, Offer, RoundEntry, TacticKey } from '../core';
+import { CLUBS, EVENTS, INVALID_TEXT, TACTICS, club, isEvaluation, player, round2, validateOffer } from '../core';
+import type { AgentKind, AgentState, AiLevel, Evaluation, FeeRate, GameState, InvalidReason, Offer, RoundEntry, RoundResult, Stage, TacticKey } from '../core';
 import type { Profile, Session } from '../store/storage';
 
 export interface Seat {
@@ -8,14 +8,43 @@ export interface Seat {
   level?: AiLevel;
 }
 
-export interface Draft {
-  key: string;
+/** 협상 1건의 작성 중 상태 */
+export interface Slot {
   playerId: number | null;
   clubId: number | null;
   salary: number;
   fee: FeeRate;
   tactic: TacticKey | null;
+  /** 이 차수 패스 */
+  pass: boolean;
 }
+
+export interface Draft {
+  key: string;
+  /** 지금 편집 중인 차수 */
+  stage: Stage;
+  /** [1차, 2차] */
+  slots: [Slot, Slot];
+}
+
+export const slotOffer = (sl: Slot): Offer | null =>
+  !sl.pass && sl.playerId !== null && sl.clubId !== null
+    ? { playerId: sl.playerId, clubId: sl.clubId, salary: sl.salary, fee: sl.fee, tactic: sl.tactic }
+    : null;
+
+/** 차수별 판정: pass / incomplete / 평가 결과 또는 무효 사유 */
+export type SlotCheck = 'pass' | 'incomplete' | Evaluation | InvalidReason;
+
+export function checkSlots(g: GameState, agent: number, d: Draft): [SlotCheck, SlotCheck] {
+  const [s1, s2] = d.slots;
+  const o1 = slotOffer(s1);
+  const o2 = slotOffer(s2);
+  const c1: SlotCheck = s1.pass ? 'pass' : o1 ? validateOffer(g, agent, o1, 1) : 'incomplete';
+  const c2: SlotCheck = s2.pass ? 'pass' : o2 ? validateOffer(g, agent, o2, 2, o1) : 'incomplete';
+  return [c1, c2];
+}
+
+export const slotReady = (c: SlotCheck): boolean => c === 'pass' || (typeof c === 'object' && isEvaluation(c));
 
 export interface UiState {
   profile: Profile | null;
@@ -68,12 +97,20 @@ export function entryCard(g: GameState, e: RoundEntry): string {
   let body = '';
   switch (e.status) {
     case 'won':
-      badge = `<span class="badge ok">계약 성공 +${money(e.fee!)}</span>`;
+      badge = `<span class="badge ok">${e.hijack ? '🏴‍☠️ 하이재킹 성공' : '계약 성공'} +${money(e.fee!)}</span>`;
       body = `${offerText(e.offer!, e.salary)} · 매력도 ${e.attract}${e.bigDeal ? ' · 💰 빅딜 +0.5억' : ''}`;
       break;
     case 'lost':
-      badge = '<span class="badge no">영입전 패배</span>';
-      body = `${offerText(e.offer!, e.salary)} · 매력도 ${e.attract} (승자 ${esc(g.agents[e.winner!]!.name)} ${e.winnerAttract})`;
+      badge = `<span class="badge no">${e.hijackFailed ? '하이재킹 실패' : '영입전 패배'}</span>`;
+      body = `${offerText(e.offer!, e.salary)} · 매력도 ${e.attract} (${e.hijackFailed ? '기존 계약' : '승자'} ${esc(g.agents[e.winner!]!.name)} ${e.winnerAttract})`;
+      break;
+    case 'hijacked':
+      badge = '<span class="badge no">하이재킹 당함</span>';
+      body = `${offerText(e.offer!, e.salary)} · 매력도 ${e.attract} → ${esc(g.agents[e.by!]!.name)}에게 계약을 빼앗김`;
+      break;
+    case 'void':
+      badge = '<span class="badge">협상 무산</span>';
+      body = `${offerText(e.offer!)} · 1차에서 이미 계약된 선수 (카드 반환)`;
       break;
     case 'invalid':
       badge = `<span class="badge no">무효 · ${INVALID_TEXT[e.reason!]}</span>`;
@@ -90,3 +127,10 @@ export function entryCard(g: GameState, e: RoundEntry): string {
 }
 
 export const clubById = (id: number) => CLUBS[id]!;
+
+/** 라운드 결과를 1차·2차로 나눠 표시 */
+export function roundEntries(g: GameState, r: RoundResult): string {
+  return ([1, 2] as const)
+    .map((st) => `<h4 class="stage-t">${st}차 협상</h4>${r.entries.filter((e) => e.stage === st).map((e) => entryCard(g, e)).join('')}`)
+    .join('');
+}

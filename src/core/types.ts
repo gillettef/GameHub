@@ -1,7 +1,7 @@
 export type Position = 'FW' | 'MF' | 'DF' | 'GK';
 export type Trait = '스타' | '플레이메이커' | '베테랑' | '유망주' | '클린시트' | '멀티플레이어';
 export type EventKey = 'normal' | 'fw' | 'budget' | 'young' | 'deadline';
-export type TacticKey = 'charm' | 'leak' | 'fast' | 'low';
+export type TacticKey = 'charm' | 'leak' | 'fast' | 'low' | 'hijack';
 export type FeeRate = 5 | 10 | 15 | 20;
 
 export interface PlayerCard {
@@ -38,6 +38,8 @@ export interface Tactic {
   feeAdj: number;
   successBonus: number;
   salaryAdj: number;
+  /** 2차 협상에서만 낼 수 있는 카드 (하이재킹) */
+  secondOnly?: boolean;
 }
 
 export type AgentKind = 'human' | 'ai';
@@ -68,16 +70,34 @@ export interface Offer {
 /** null = 패스 */
 export type Submission = Offer | null;
 
+/** 협상 차수: 1차 / 2차 */
+export type Stage = 1 | 2;
+
+/** 한 라운드의 제출 (1차·2차 동시 비공개) */
+export interface RoundSubmission {
+  first: Submission;
+  second: Submission;
+}
+
 export type InvalidReason =
   | 'not-in-market'
   | 'card-not-owned'
   | 'salary-below-min'
-  | 'over-budget';
+  | 'over-budget'
+  /** 하이재킹 카드를 1차에 냄 */
+  | 'second-only'
+  /** 1차와 같은 선수/구단을 2차에 냄 */
+  | 'duplicate';
 
-export type EntryStatus = 'won' | 'lost' | 'pass' | 'none' | 'invalid';
+/**
+ * void: 2차 협상 무산 (1차에서 이미 계약된 선수, 카드 반환)
+ * hijacked: 1차 계약이 2차 하이재킹으로 파기됨
+ */
+export type EntryStatus = 'won' | 'lost' | 'pass' | 'none' | 'invalid' | 'void' | 'hijacked';
 
 export interface RoundEntry {
   agent: number;
+  stage: Stage;
   status: EntryStatus;
   offer?: Offer;
   /** 유효 연봉 s */
@@ -86,10 +106,16 @@ export interface RoundEntry {
   /** 성공 시 받은 수수료 (빅딜 보너스 포함) */
   fee?: number;
   bigDeal?: boolean;
+  /** 하이재킹으로 성사된 계약 */
+  hijack?: boolean;
   reason?: InvalidReason;
   /** 패배 시 승자의 매력도 */
   winnerAttract?: number;
   winner?: number;
+  /** 2차 하이재킹이 1차 계약을 넘지 못해 패배 */
+  hijackFailed?: boolean;
+  /** hijacked 일 때 하이재커 */
+  by?: number;
 }
 
 export interface RoundResult {
@@ -101,7 +127,7 @@ export interface RoundResult {
 export type Phase = 'bid' | 'result' | 'done';
 
 export interface GameState {
-  v: 1;
+  v: 2;
   rng: number;
   round: number;
   phase: Phase;
