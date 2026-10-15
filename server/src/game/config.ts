@@ -118,7 +118,7 @@ export const BALANCE = {
   // ── 공모전 4.5점 개선 (56절, 2026-10-14 P5 채택). 끄면 55절 규칙으로 돌아간다 ──
   // A1 마법생물 보강: 어려운 생물(조련 기준 16 이상)을 조련하면 학점을 더 받는다 / 세트(하늘·육지·바다 1장씩)를 완성하는 순간 학점
   creatureRareCredit: 1,
-  creatureSetCredit: 2,
+  creatureSetCredit: 0, // 57절: 교감(creatureBond)을 켜면서 2 → 0 (세트는 생물사랑상 값에만 들어간다)
   // A2 마법 겨루기 보강: 도전자의 굴림에 더하는 값 (도전한 용기)
   duelChallengerBonus: 1,
   // B1 순서 규칙: "seat" = 선부터 시계방향 / "creditAsc" = 학점이 낮은 사람부터 (같으면 선부터 시계방향). 정규수업·자율활동·시험·벼락치기 순서에 모두 쓴다
@@ -126,15 +126,16 @@ export const BALANCE = {
   // B2 장래희망 카드: 게임을 시작할 때 dreamDeal장을 받아 1장을 고른다(비공개). 졸업할 때 카드의 두 능력치가 모두 dreamThreshold 이상이면 학점 dreamCredit
   dreams: true,
   dreamDeal: 2,
-  dreamThreshold: 3,
+  dreamThreshold: 4, // 57절: 교감으로 능력치가 넓게 올라 3 → 4 (달성률 약 32% 유지)
   dreamCredit: 3,
   dreamChooseRounds: 1, // 이 개월까지는 받은 카드 중에서 바꿀 수 있다 (그 뒤로는 고정)
   // B3 올해의 특별상: 게임을 시작할 때 특별상 카드를 이 장수만큼 공개한다. 졸업식에서 다른 부문과 똑같이 순위 학점(rankPoints)을 준다
   specialAwards: 1,
   // C1 대회 카드: 반짝 마법 경연을 다른 구역처럼 카드 판정으로 바꾼다 (트랙·최종 순위 보상 없음, 성공하면 성장)
   tournamentCards: true,
-  // 실험(57절): 마법생물과의 교감 — 데려오면 속성 능력치 +1(하늘 주문력·육지 체력·바다 지력), 매달 기운·대결 능력은 없앤다
-  creatureBond: false,
+  // 57절 마법생물과의 교감: 데려오면 속성 능력치 +1(하늘 주문력·육지 체력·바다 지력, 성장이 아니라 학점은 없다). 매달 기운·대결 굴림 같은 생물 능력은 없다
+  creatureBond: true,
+  creatureBondStats: { sky: "spellPower", land: "stamina", ocean: "intelligence" } as Record<"sky" | "land" | "ocean", StatKey>,
   // 대회 카드 목표값 보정 (실험용, 카드에 인쇄된 목표에 더한다)
   tournamentTargetMod: 0,
 };

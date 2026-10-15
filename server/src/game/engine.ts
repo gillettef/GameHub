@@ -240,6 +240,8 @@ function drawClassCard(state: GameState): ClassCard | undefined {
 }
 
 const STAT_NAME: Record<StatKey, string> = { intelligence: "지력", stamina: "체력", charm: "매력", spellPower: "주문력" };
+// 마법생물이 주는 것 (57절 교감이면 "데려오면 체력 +1", 아니면 생물 능력)
+export const creatureGiftText = (c: CreatureCard): string => (BALANCE.creatureBond ? `교감: 데려오면 ${STAT_NAME[BALANCE.creatureBondStats[c.element]]} +1` : describeAbility(c.ability));
 const LEVEL_NAME: Record<ClassCard["level"], string> = { basic: "기초", advanced: "심화" };
 
 // 탐험 카드의 판정 문구 (엿보기·구역 공개 카드 표시용)
@@ -790,8 +792,8 @@ function resolveCreature(state: GameState, ctx: Extract<RollContext, { kind: "cr
       log(state, `${player.name}: ${rare > 0 ? "귀한 마법생물" : ""}${rare > 0 && set > 0 ? " · " : ""}${set > 0 ? "하늘·육지·바다 세트 완성" : ""} 학점 +${rare + set}`);
     }
     if (creature.ability.trigger === "acquire" && creature.ability.effect === "spellPower") player.spellPower += creature.ability.amount;
-    if (BALANCE.creatureBond) player[({ sky: "spellPower", land: "stamina", ocean: "intelligence" } as const)[creature.element]] += 1;
-    log(state, `${player.name}: 마법생물 "${creature.name}" 조련 성공! (${text}) ${describeAbility(creature.ability)}`);
+    if (BALANCE.creatureBond) player[BALANCE.creatureBondStats[creature.element]] += 1;
+    log(state, `${player.name}: 마법생물 "${creature.name}" 조련 성공! (${text}) ${creatureGiftText(creature)}`);
     grow(state, player, "creature", "charm");
   } else {
     // 실패한 카드는 버린다 (52-7절, 예전에는 구역으로 돌아가 두 번째 참가자가 도전할 수 있었다)
@@ -1027,7 +1029,7 @@ function offerViewOf(activityId: ActivityId, card: OfferedCard, round: number): 
   switch (activityId) {
     case "creature": {
       const c = card as CreatureCard;
-      return { id: c.id, name: c.name, description: c.description, tags: creatureTagsOf(c), lines: [describeAbility(c.ability), `조련 판정: 매력기운 주사위 합 ≥ ${creatureTarget(c)}`, ...failRewardLine(failRewardOf("creature", c))] };
+      return { id: c.id, name: c.name, description: c.description, tags: creatureTagsOf(c), lines: [creatureGiftText(c), `조련 판정: 매력기운 주사위 합 ≥ ${creatureTarget(c)}`, ...failRewardLine(failRewardOf("creature", c))] };
     }
     case "lab": {
       const c = card as LabCard;
@@ -1366,7 +1368,7 @@ function resolveDirectional(state: GameState, ctx: Extract<RollContext, { kind: 
     if (outcome.acquire) {
       player.creatures.push(creature);
       if (creature.ability.trigger === "acquire" && creature.ability.effect === "spellPower") player.spellPower += creature.ability.amount;
-      log(state, `${player.name}: 마법생물 "${creature.name}" 주사위 ${face} → 조련 성공! ${describeAbility(creature.ability)}`);
+      log(state, `${player.name}: 마법생물 "${creature.name}" 주사위 ${face} → 조련 성공! ${creatureGiftText(creature)}`);
     } else {
       state.creatureDiscard.push(creature);
       log(state, `${player.name}: 마법생물 "${creature.name}" 주사위 ${face} → ${outcome.label}`);
