@@ -1,5 +1,5 @@
 import { FEE_CARDS_EACH, FEE_RATES, TACTICS, club, player } from './data';
-import type { AgentState, Club, EventKey, Evaluation, FeeRate, GameState, InvalidReason, Offer } from './types';
+import type { AgentState, Club, EventKey, Evaluation, FeeRate, GameState, InvalidReason, Offer, Stage, Submission } from './types';
 
 /** 소수 둘째 자리 반올림 (억 단위 금액) */
 export const round2 = (x: number): number => Math.round(x * 100) / 100;
@@ -50,13 +50,33 @@ export function evaluateOffer(offer: Offer, event: EventKey): Evaluation | Inval
 
 export const isEvaluation = (r: Evaluation | InvalidReason): r is Evaluation => typeof r === 'object';
 
-/** 시장·카드·연봉을 모두 검사한 최종 판정 */
-export function validateOffer(state: GameState, agentIdx: number, offer: Offer): Evaluation | InvalidReason {
+/** 카드를 소모한 새 에이전트 상태 */
+export function consumeCards(agent: AgentState, offer: Offer): AgentState {
+  const tactics = [...agent.tactics];
+  if (offer.tactic) tactics.splice(tactics.indexOf(offer.tactic), 1);
+  return { ...agent, feeUsed: [...agent.feeUsed, offer.fee], tactics };
+}
+
+/**
+ * 제출 단계 검사 (연봉 조건 제외). 통과하면 카드가 소모된다.
+ * 2차는 1차와의 중복을 보고, 카드 보유는 1차에서 소모될 카드를 뺀 뒤 판정한다.
+ */
+export function precheck(state: GameState, agentIdx: number, offer: Offer, stage: Stage = 1, first: Submission = null): InvalidReason | null {
   const agent = state.agents[agentIdx];
   if (!agent) throw new Error(`unknown agent ${agentIdx}`);
   if (!inMarket(state, offer)) return 'not-in-market';
-  if (!ownsCards(agent, offer)) return 'card-not-owned';
-  return evaluateOffer(offer, state.event);
+  if (stage === 1) {
+    if (offer.tactic && TACTICS[offer.tactic].secondOnly) return 'second-only';
+    return ownsCards(agent, offer) ? null : 'card-not-owned';
+  }
+  if (first && (first.playerId === offer.playerId || first.clubId === offer.clubId)) return 'duplicate';
+  const after = first && precheck(state, agentIdx, first, 1) === null ? consumeCards(agent, first) : agent;
+  return ownsCards(after, offer) ? null : 'card-not-owned';
+}
+
+/** 시장·카드·연봉을 모두 검사한 최종 판정 */
+export function validateOffer(state: GameState, agentIdx: number, offer: Offer, stage: Stage = 1, first: Submission = null): Evaluation | InvalidReason {
+  return precheck(state, agentIdx, offer, stage, first) ?? evaluateOffer(offer, state.event);
 }
 
 export const INVALID_TEXT: Record<InvalidReason, string> = {
@@ -64,4 +84,6 @@ export const INVALID_TEXT: Record<InvalidReason, string> = {
   'card-not-owned': '보유하지 않은 카드',
   'salary-below-min': '최소 연봉 미달',
   'over-budget': '구단 예산 초과',
+  'second-only': '2차 전용 카드',
+  duplicate: '1차와 같은 선수/구단',
 };

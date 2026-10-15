@@ -1,11 +1,11 @@
 import { FEE_RATES, MAX_AGENTS, MAX_SALARY, PLAYERS, createGame, feeRemaining, isFeeRate, nextRound, rankings, resolveRound } from '../core';
-import type { GameState, Submission, TacticKey } from '../core';
+import type { FeeRate, GameState, RoundSubmission, TacticKey } from '../core';
 import { loadProfile, loadSession, newProfile, saveProfile, saveSession, type Session } from '../store/storage';
 import { homeScreen, registerScreen } from './screens/home';
 import { bidScreen, finalScreen, handoffScreen, resultScreen } from './screens/game';
 import { rulesSheet } from './screens/rules';
 import { setupScreen } from './screens/setup';
-import type { Draft, Seat, UiState } from './view';
+import { slotOffer, type Draft, type Seat, type Slot, type UiState } from './view';
 
 const AI_NAMES = ['AI 알파', 'AI 브라보', 'AI 찰리'];
 const NICK_RE = /[<>&"'\s]/g;
@@ -50,7 +50,7 @@ let lastScreenKey = '';
 
 export function render(): void {
   const s = ui.session;
-  const key = `${ui.view}:${s?.screen}:${s?.game.round}:${s?.turn}:${ui.renaming}`;
+  const key = `${ui.view}:${s?.screen}:${s?.game.round}:${s?.turn}:${ui.draft?.stage}:${ui.renaming}`;
   root().innerHTML = screenHtml() + (ui.rulesOpen ? rulesSheet() : '');
   document.body.classList.toggle('locked', ui.rulesOpen);
   if (key !== lastScreenKey) {
@@ -63,10 +63,15 @@ function ensureDraft(s: Session): Draft {
   const key = `${s.game.round}:${s.turn}`;
   if (ui.draft?.key === key) return ui.draft;
   const fr = feeRemaining(s.game.agents[s.turn]!);
-  const fee = ([10, 5, 15, 20] as const).find((f) => fr[f] > 0) ?? 5;
-  ui.draft = { key, playerId: null, clubId: null, salary: 0, fee, tactic: null };
+  const pickFee = (reserved?: FeeRate) => ([10, 5, 15, 20] as const).find((f) => fr[f] - (f === reserved ? 1 : 0) > 0) ?? 5;
+  const slot = (fee: FeeRate): Slot => ({ playerId: null, clubId: null, salary: 0, fee, tactic: null, pass: false });
+  const fee1 = pickFee();
+  ui.draft = { key, stage: 1, slots: [slot(fee1), slot(pickFee(fee1))] };
   return ui.draft;
 }
+
+/** 지금 편집 중인 차수의 슬롯 */
+const cur = (): Slot => ui.draft!.slots[ui.draft!.stage - 1]!;
 
 // ── 게임 흐름 ──────────────────────────────────────────
 
@@ -89,7 +94,7 @@ function startGame(seats: Seat[]) {
   persist();
 }
 
-function submit(sub: Submission) {
+function submit(sub: RoundSubmission) {
   const s = ui.session!;
   const subs = { ...s.subs, [s.turn]: sub };
   const nextHuman = humansOf(s.game).find((i) => !(i in subs));
@@ -206,35 +211,45 @@ const actions: Record<string, (arg: string) => void> = {
     ui.session = { ...ui.session!, screen: 'bid' };
     persist();
   },
+  stage: (k) => {
+    if (ui.draft) ui.draft.stage = k === '2' ? 2 : 1;
+  },
   pick: (id) => {
-    const d = ui.draft!;
+    const sl = cur();
     const p = PLAYERS[Number(id)]!;
-    d.playerId = p.id;
-    d.salary = p.minSalary;
+    sl.playerId = p.id;
+    sl.salary = p.minSalary;
   },
   club: (id) => {
-    ui.draft!.clubId = Number(id);
+    cur().clubId = Number(id);
   },
   sal: (delta) => {
-    const d = ui.draft!;
-    if (d.playerId === null) return;
-    const min = PLAYERS[d.playerId]!.minSalary;
-    d.salary = Math.min(MAX_SALARY, Math.max(min, d.salary + Number(delta)));
+    const sl = cur();
+    if (sl.playerId === null) return;
+    const min = PLAYERS[sl.playerId]!.minSalary;
+    sl.salary = Math.min(MAX_SALARY, Math.max(min, sl.salary + Number(delta)));
   },
   fee: (f) => {
     const n = Number(f);
-    if (isFeeRate(n) && FEE_RATES.includes(n)) ui.draft!.fee = n;
+    if (isFeeRate(n) && FEE_RATES.includes(n)) cur().fee = n;
   },
   tactic: (k) => {
-    ui.draft!.tactic = (k || null) as TacticKey | null;
+    cur().tactic = (k || null) as TacticKey | null;
   },
-  pass: () => {
-    if (confirm('이번 라운드를 패스할까요? 카드는 소모되지 않습니다.')) submit(null);
+  'slot-pass': () => {
+    const d = ui.draft!;
+    const sl = cur();
+    sl.pass = !sl.pass;
+    // 1차를 패스하면 바로 2차로
+    if (sl.pass && d.stage === 1) d.stage = 2;
   },
   submit: () => {
-    const d = ui.draft!;
-    if (d.playerId === null || d.clubId === null) return;
-    submit({ playerId: d.playerId, clubId: d.clubId, salary: d.salary, fee: d.fee, tactic: d.tactic });
+    const [s1, s2] = ui.draft!.slots;
+    const first = slotOffer(s1);
+    const second = slotOffer(s2);
+    if ((!s1.pass && !first) || (!s2.pass && !second)) return;
+    if (!first && !second && !confirm('1차·2차 모두 패스할까요? 카드는 소모되지 않습니다.')) return;
+    submit({ first, second });
   },
   next: () => advance(),
 };
