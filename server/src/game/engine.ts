@@ -214,6 +214,7 @@ export function creatureSets(creatures: CreatureCard[]): number {
 
 // 플레이어가 가진 마법생물 중 해당 트리거의 능력만 모은다
 function abilitiesOf(player: PlayerGameState, trigger: CreatureAbility["trigger"]): CreatureAbility[] {
+  if (BALANCE.creatureBond) return [];
   return player.creatures.map((c) => c.ability).filter((a) => a.trigger === trigger);
 }
 
@@ -789,6 +790,7 @@ function resolveCreature(state: GameState, ctx: Extract<RollContext, { kind: "cr
       log(state, `${player.name}: ${rare > 0 ? "귀한 마법생물" : ""}${rare > 0 && set > 0 ? " · " : ""}${set > 0 ? "하늘·육지·바다 세트 완성" : ""} 학점 +${rare + set}`);
     }
     if (creature.ability.trigger === "acquire" && creature.ability.effect === "spellPower") player.spellPower += creature.ability.amount;
+    if (BALANCE.creatureBond) player[({ sky: "spellPower", land: "stamina", ocean: "intelligence" } as const)[creature.element]] += 1;
     log(state, `${player.name}: 마법생물 "${creature.name}" 조련 성공! (${text}) ${describeAbility(creature.ability)}`);
     grow(state, player, "creature", "charm");
   } else {

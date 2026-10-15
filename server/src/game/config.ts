@@ -133,6 +133,8 @@ export const BALANCE = {
   specialAwards: 1,
   // C1 대회 카드: 반짝 마법 경연을 다른 구역처럼 카드 판정으로 바꾼다 (트랙·최종 순위 보상 없음, 성공하면 성장)
   tournamentCards: true,
+  // 실험(57절): 마법생물과의 교감 — 데려오면 속성 능력치 +1(하늘 주문력·육지 체력·바다 지력), 매달 기운·대결 능력은 없앤다
+  creatureBond: false,
   // 대회 카드 목표값 보정 (실험용, 카드에 인쇄된 목표에 더한다)
   tournamentTargetMod: 0,
 };
