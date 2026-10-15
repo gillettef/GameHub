@@ -1036,7 +1036,7 @@ function TournamentPanel({ game, myId }: { game: GameState; myId: string }) {
               <p className="mt-1 text-xs text-purple-600">
                 {index === 0 || p.tournamentTrack === leader ? "선두예요!" : `선두와 ${leader - p.tournamentTrack}칸 차이`}
                 {" · "}
-                <InlineIcon name="sparkle" /> 주문력 {effectiveStat(p, "spellPower")} (한 번에 주사위 {effectiveStat(p, "spellPower")}개)
+                <InlineIcon name="sparkle" /> 주문력 {effectiveStat(p, "spellPower")} (한 번에 주사위 {effectiveStat(p, "spellPower") + 1}개)
                 {reward > 0 && <span className="ml-1 rounded-full bg-amber-100 px-2 py-0.5 text-amber-800">지금 끝나면 학점 +{reward}</span>}
               </p>
             </li>
