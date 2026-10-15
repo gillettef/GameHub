@@ -50,6 +50,7 @@ tests/         # 또는 *.test.ts 를 src/core 옆에 배치
 ```
 npm install
 npm run dev        # 개발 서버 (모바일 확인은 --host 로 같은 Wi-Fi 기기에서 접속)
+npm run share      # 빌드 후 Cloudflare 퀵 터널로 임시 공개 주소(+QR) 발급 → 다른 네트워크(LTE 등)에서 접속. 종료하면 주소 소멸
 npm run build      # tsc --noEmit + vite build
 npm run test       # vitest run
 npm run typecheck  # tsc --noEmit
