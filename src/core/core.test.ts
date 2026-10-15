@@ -55,10 +55,10 @@ describe('evaluateOffer (정수 계산)', () => {
 
   it('전략 카드 효과', () => {
     expect(ev(offer({ tactic: 'charm' }))).toEqual({ attract: 3, fee: 4 });
-    expect(ev(offer({ tactic: 'leak' }))).toEqual({ attract: 4, fee: 3 });
+    expect(ev(offer({ tactic: 'leak' }))).toEqual({ attract: 5, fee: 3 });
     expect(ev(offer({ tactic: 'fast' }))).toEqual({ attract: 2, fee: 5 });
-    expect(ev(offer({ tactic: 'low' }))).toEqual({ attract: 2, fee: 4 });
-    expect(ev(offer({ tactic: 'hijack' }))).toEqual({ attract: 3, fee: 4 });
+    expect(ev(offer({ tactic: 'low' }))).toEqual({ attract: 3, fee: 4 });
+    expect(ev(offer({ tactic: 'hijack' }))).toEqual({ attract: 4, fee: 4 });
   });
 
   it('이벤트 효과', () => {
@@ -68,14 +68,14 @@ describe('evaluateOffer (정수 계산)', () => {
     expect(ev(df, 'young')).toEqual({ attract: 0, fee: 4 });
   });
 
-  it('몸값 조건: 제시액 ≥ 몸값 (실속 협상 −2, 긴축 −1)', () => {
+  it('몸값 조건: 제시액 ≥ 몸값 (실속 협상 −3, 긴축 −1)', () => {
     const star = offer({ playerId: 0, clubId: 1 }); // 강태오 몸값 8, 실버 호크스 8
     expect(ev(star)).toEqual({ attract: -2, fee: 6 }); // 적합도 0 − 요구 2
     expect(ev(star, 'budget')).toBe('under-cost'); // 제시액 7
-    expect(ev({ ...star, tactic: 'low' }, 'budget')).toMatchObject({ fee: 6 }); // 7 ≥ 8 − 2
+    expect(ev({ ...star, tactic: 'low' }, 'budget')).toMatchObject({ fee: 6 }); // 7 ≥ 8 − 3
     expect(ev(offer({ playerId: 0 }))).toBe('under-cost'); // 썬더 5 < 8
-    expect(ev(offer({ playerId: 0, tactic: 'low' }))).toBe('under-cost'); // 5 < 6
-    expect(ev(offer({ playerId: 1, tactic: 'low' }))).toMatchObject({ fee: 5 }); // 윤시후 6: 5 ≥ 4
+    expect(ev(offer({ playerId: 0, tactic: 'low' }))).toMatchObject({ fee: 6 }); // 5 ≥ 8 − 3
+    expect(ev(offer({ playerId: 0, tactic: 'low' }), 'budget')).toBe('under-cost'); // 4 < 5
   });
 
   it('모든 결과는 정수', () => {
@@ -150,6 +150,17 @@ describe('resolveRound (1차)', () => {
     const r3 = resolve(s3, { 0: offer(), 1: offer(), 2: offer({ demand: 3 }) });
     expect(entry(r3, 2)).toMatchObject({ status: 'won', attract: 0, fee: 5 });
     expect(entry(r3, 0).tied).toBe(true);
+  });
+
+  it('관계 구축: 매력도·요구 수수료가 같으면 관계 구축을 낸 쪽이 이김, 둘 다 냈으면 상쇄', () => {
+    // A 관계 구축 3 + 2 − 2 = 3 / B 실속 협상 3 + 2 − 2 = 3
+    const r = resolve(state(), { 0: offer({ tactic: 'charm' }), 1: offer({ tactic: 'low' }) });
+    expect(entry(r, 0)).toMatchObject({ status: 'won', attract: 3 });
+    expect(entry(r, 1)).toMatchObject({ status: 'lost', winner: 0 });
+    expect(entry(r, 1).tied).toBeUndefined();
+
+    const r2 = resolve(state(), { 0: offer({ tactic: 'charm' }), 1: offer({ tactic: 'charm' }) });
+    expect([entry(r2, 0).tied, entry(r2, 1).tied]).toEqual([true, true]);
   });
 
   it('카드 소모: 몸값 미달도 소모, 패스와 미보유 카드는 미소모', () => {
@@ -272,10 +283,10 @@ describe('1차·2차 협상과 하이재킹', () => {
   });
 
   it('하이재킹 성공: 1차 계약 매력도 이상이면 계약을 빼앗는다', () => {
-    // 1차: A 매력도 1. 2차: B 하이재킹 요구 2 → 3 + 2 − 2 = 3
+    // 1차: A 매력도 1. 2차: B 하이재킹 요구 2 → 3 + 3 − 2 = 4
     const r = run(state(), { 0: { first: offer(), second: null }, 1: { first: df, second: offer({ tactic: 'hijack' }) } });
     expect(one(r, 0, 1)).toMatchObject({ status: 'hijacked', by: 1, attract: 1 });
-    expect(one(r, 1, 2)).toMatchObject({ status: 'won', hijack: true, attract: 3, fee: 4 });
+    expect(one(r, 1, 2)).toMatchObject({ status: 'won', hijack: true, attract: 4, fee: 4 });
     expect(r.agents[0]).toMatchObject({ score: 0, deals: 0, demandUsed: [2] });
     expect(r.agents[1]).toMatchObject({ score: 8, deals: 2 });
     expect(r.agents[1]!.tactics).not.toContain('hijack');
@@ -283,20 +294,20 @@ describe('1차·2차 협상과 하이재킹', () => {
   });
 
   it('하이재킹은 매력도가 같아도 성공', () => {
-    // 2차: B 하이재킹 요구 4 → 3 + 2 − 4 = 1 (동률)
-    const r = run(state(), { 0: { first: offer(), second: null }, 1: { first: null, second: offer({ demand: 4, tactic: 'hijack' }) } });
+    // 1차: A 요구 1 → 매력도 2. 2차: B 하이재킹 요구 4 → 3 + 3 − 4 = 2 (동률)
+    const r = run(state(), { 0: { first: offer({ demand: 1 }), second: null }, 1: { first: null, second: offer({ demand: 4, tactic: 'hijack' }) } });
     expect(one(r, 0, 1).status).toBe('hijacked');
     expect(one(r, 1, 2)).toMatchObject({ status: 'won', hijack: true, fee: 6 });
   });
 
   it('하이재킹 실패: 매력도가 낮으면 1차 계약 유지, 카드 소모', () => {
-    // 1차: A 이적설 흘리기 요구 1 → 3 + 3 − 1 = 5. 2차: B 하이재킹 요구 1 → 4
+    // 1차: A 이적설 흘리기 요구 1 → 3 + 4 − 1 = 6. 2차: B 하이재킹 요구 1 → 5
     const r = run(state(), {
       0: { first: offer({ demand: 1, tactic: 'leak' }), second: null },
       1: { first: null, second: offer({ demand: 1, tactic: 'hijack' }) },
     });
     expect(one(r, 0, 1)).toMatchObject({ status: 'won', fee: 2 });
-    expect(one(r, 1, 2)).toMatchObject({ status: 'lost', winner: 0, winnerAttract: 5, hijackFailed: true });
+    expect(one(r, 1, 2)).toMatchObject({ status: 'lost', winner: 0, winnerAttract: 6, hijackFailed: true });
     expect(r.agents[1]).toMatchObject({ score: 0, demandUsed: [1] });
     expect(r.agents[1]!.tactics).not.toContain('hijack');
   });
@@ -305,12 +316,12 @@ describe('1차·2차 협상과 하이재킹', () => {
     const s = state({ agents: [agent(), agent(), agent()] });
     const r = run(s, {
       0: { first: offer(), second: null },
-      1: { first: null, second: offer({ demand: 1, tactic: 'hijack' }) }, // 4
-      2: { first: null, second: offer({ tactic: 'hijack' }) }, // 3
+      1: { first: null, second: offer({ demand: 1, tactic: 'hijack' }) }, // 5
+      2: { first: null, second: offer({ tactic: 'hijack' }) }, // 4
     });
     expect(one(r, 0, 1)).toMatchObject({ status: 'hijacked', by: 1 });
     expect(one(r, 1, 2)).toMatchObject({ status: 'won', hijack: true });
-    expect(one(r, 2, 2)).toMatchObject({ status: 'lost', winner: 1, winnerAttract: 4 });
+    expect(one(r, 2, 2)).toMatchObject({ status: 'lost', winner: 1, winnerAttract: 5 });
 
     const r2 = run(s, {
       0: { first: offer(), second: null },
@@ -321,9 +332,9 @@ describe('1차·2차 협상과 하이재킹', () => {
     expect([one(r2, 1, 2).tied, one(r2, 2, 2).tied]).toEqual([true, true]);
   });
 
-  it('1차에 계약되지 않은 선수에게 쓴 하이재킹은 일반 2차 제안 (+2)', () => {
+  it('1차에 계약되지 않은 선수에게 쓴 하이재킹은 일반 2차 제안 (+3)', () => {
     const r = run(state(), { 0: { first: null, second: offer({ tactic: 'hijack' }) }, 1: { first: null, second: offer({ tactic: 'leak' }) } });
-    expect(one(r, 1, 2)).toMatchObject({ status: 'won', attract: 4 });
+    expect(one(r, 1, 2)).toMatchObject({ status: 'won', attract: 5 });
     expect(one(r, 0, 2)).toMatchObject({ status: 'lost', winner: 1 });
     expect(one(r, 1, 2).hijack).toBeUndefined();
   });

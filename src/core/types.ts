@@ -41,6 +41,8 @@ export interface Tactic {
   feeAdj: number;
   /** 몸값 조건 보정 (실속 협상 −2) */
   costAdj: number;
+  /** 동률 상쇄 대신 이 카드를 낸 제안이 이긴다 (같은 동률 안에 1장일 때) */
+  tieWin?: boolean;
   /** 2차 협상에서만 낼 수 있는 카드 (하이재킹) */
   secondOnly?: boolean;
 }

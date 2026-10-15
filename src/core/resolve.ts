@@ -1,6 +1,6 @@
 import { makeAiOffers } from './ai';
 import { createRng } from './rng';
-import { BIG_DEAL_BONUS } from './data';
+import { BIG_DEAL_BONUS, TACTICS } from './data';
 import { consumeCards, evaluateOffer, isEvaluation, precheck } from './rules';
 import type { AgentState, GameState, Offer, RoundEntry, RoundSubmission, Stage } from './types';
 
@@ -14,7 +14,8 @@ interface Candidate {
 
 /**
  * 같은 선수 제안끼리 경쟁: 매력도 높은 쪽 → 요구 수수료 낮은 쪽.
- * 그래도 같은 제안들은 서로 상쇄되어 탈락하고 다음 순위가 계약한다 (무작위·좌석 우선 없음).
+ * 그래도 같으면: 그중 관계 구축(tieWin)을 낸 제안이 딱 하나면 그 제안이 이기고,
+ * 아니면 서로 상쇄되어 탈락하고 다음 순위가 계약한다 (무작위·좌석 우선 없음).
  */
 function contest(group: Candidate[]): { winner: Candidate | null; beaten: Candidate[]; cancelled: Candidate[] } {
   const sorted = [...group].sort((x, y) => y.attract - x.attract || x.offer.demand - y.offer.demand);
@@ -24,6 +25,11 @@ function contest(group: Candidate[]): { winner: Candidate | null; beaten: Candid
     const head = sorted[i]!;
     const tier = sorted.filter((c) => c.attract === head.attract && c.offer.demand === head.offer.demand);
     if (tier.length === 1) return { winner: head, beaten: sorted.slice(i + 1), cancelled };
+    const tieWinners = tier.filter((c) => c.offer.tactic && TACTICS[c.offer.tactic].tieWin);
+    if (tieWinners.length === 1) {
+      const w = tieWinners[0]!;
+      return { winner: w, beaten: [...tier.filter((c) => c !== w), ...sorted.slice(i + tier.length)], cancelled };
+    }
     cancelled.push(...tier);
     i += tier.length;
   }

@@ -75,15 +75,15 @@ export const EVENTS: Readonly<Record<EventKey, MarketEvent>> = {
 export const EVENT_KEYS: readonly EventKey[] = ['normal', 'fw', 'budget', 'young', 'deadline'];
 
 export const TACTICS: Readonly<Record<TacticKey, Tactic>> = {
-  charm: { key: 'charm', name: '관계 구축', desc: '매력도 +2', attract: 2, feeAdj: 0, costAdj: 0 },
-  leak: { key: 'leak', name: '이적설 흘리기', desc: '매력도 +3, 수수료 −1억', attract: 3, feeAdj: -1, costAdj: 0 },
+  charm: { key: 'charm', name: '관계 구축', desc: '매력도 +2, 동률이면 이 제안이 이김', attract: 2, feeAdj: 0, costAdj: 0, tieWin: true },
+  leak: { key: 'leak', name: '이적설 흘리기', desc: '매력도 +4, 수수료 −1억', attract: 4, feeAdj: -1, costAdj: 0 },
   fast: { key: 'fast', name: '신속한 결단', desc: '매력도 +1, 수수료 +1억', attract: 1, feeAdj: 1, costAdj: 0 },
-  low: { key: 'low', name: '실속 협상', desc: '매력도 +1, 제시액이 몸값보다 2억 낮아도 계약 가능', attract: 1, feeAdj: 0, costAdj: -2 },
+  low: { key: 'low', name: '실속 협상', desc: '매력도 +2, 제시액이 몸값보다 3억 낮아도 계약 가능', attract: 2, feeAdj: 0, costAdj: -3 },
   hijack: {
     key: 'hijack',
     name: '하이재킹',
-    desc: '2차 전용 · 매력도 +2, 1차 계약 선수도 더 높은 매력도로 빼앗기',
-    attract: 2,
+    desc: '2차 전용 · 매력도 +3, 1차 계약 선수도 그 계약 매력도 이상이면 빼앗기',
+    attract: 3,
     feeAdj: 0,
     costAdj: 0,
     secondOnly: true,
