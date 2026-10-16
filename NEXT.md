@@ -63,6 +63,12 @@ v3 점수 근거: `docs/balance/2026-10-16-v3.md` (AI 플레이테스터 리그,
 - [ ] 규칙서: `docs/rulebook.md`를 pdf로 (그림 추가)
 - [ ] 실물 프로토타입: 선수 36, 구단 12, 비밀 구단 12, 이벤트 9, 플레이어별(4색) 요구 수수료 4·큐브 8·선수 지목 8·구단 지목 6, 시장 칸 보드, 지목 기록지
 
+### 5. 웹 배포 (보류, 2026-10-16)
+- DB·서버 없이 `dist/` 정적 파일만 올린다 (사용자 결정)
+- 현재 AWS 자격 증명(`nemo-partner`, ap-northeast-2)은 `AmazonEC2FullAccess`·`IAMFullAccess`뿐이라 S3·CloudFront·Amplify 권한이 없다
+- 선택지: ① 계정 주인 승인 후 S3·CloudFront 최소 권한 추가 → S3 + CloudFront(HTTPS) ② EC2 t4g.nano + Caddy(sslip.io 주소로 HTTPS, 월 몇천 원) ③ 다른 계정
+- 임시 공개는 `npm run share`(Cloudflare 퀵 터널)로 가능
+
 ## 작업 규칙 메모
 - 순서: 규칙 명세(`rules-spec`)를 먼저 고치고 → 엔진·테스트 → UI
 - 수치 조정은 시뮬레이션 근거를 변경 이력에 남긴다 (`scripts/simulate.ts`, seed 42·7)
