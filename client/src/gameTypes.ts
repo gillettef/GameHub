@@ -149,7 +149,7 @@ export interface PendingRoll {
   // 다시 굴리기는 남은 마나기운 1개당 주사위 1개
   // assistMax가 있으면 굴리기 전에 보조 능력치 기운(assist.kind)을 0~max개 더 낼 수 있다. 낸 개수는 assist에 남는다
   // diceToken은 이 굴림의 주사위 재료 기운 (없으면 마나기운)
-  entries: { playerId: string; label: string; diceCount: number; diceToken?: KeptToken; diceChoiceMax?: number; baseDice?: number; assistMax?: number; assist?: number; dice: number[] | null; confirmed: boolean; rerolls: number; rerollCounts?: number[] }[];
+  entries: { playerId: string; label: string; diceCount: number; diceToken?: KeptToken; diceChoiceMax?: number; baseDice?: number; bonus?: number; assistMax?: number; assist?: number; dice: number[] | null; confirmed: boolean; rerolls: number; rerollCounts?: number[] }[];
   // 이 굴림에서 보조 능력치로 쓸 수 있는 기운 (마법 경연: 체력기운 "끝까지 달려요", 서버 설정으로 켰을 때만)
   assist?: { kind: "stamina"; name: string; title: string; hint: string };
 }

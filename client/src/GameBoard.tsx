@@ -30,6 +30,7 @@ import {
   currentRoller,
   cramSources,
   ENERGY_FIELD,
+  STAT_LABEL,
   type NewsCard,
 } from "./gameTypes";
 import { CardButton, CardGrid, PickGrid, type CardInfo } from "./CardArt";
@@ -572,7 +573,7 @@ function ChoosePanel({
           ? "내 차례예요! 하고 싶은 활동을 골라요"
           : forcedBy
             ? game.rules.duelTargetKeepsTurn
-              ? `${game.players[forcedBy.challengerId].name}님이 나에게 마법 겨루기를 걸었어요! 내 활동은 내 차례에 그대로 골라요`
+              ? `${game.players[forcedBy.challengerId].name}님이 나에게 마법 겨루기를 걸었어요! ${game.players[myId]?.hasActedThisPhase ? "내 활동은 그대로 해요" : "내 활동은 내 차례에 그대로 골라요"}${game.rules.duelDefenderStatDice === "flat" ? " (막기는 주사위 1개 + 주문력으로 자동)" : ""}`
               : `${game.players[forcedBy.challengerId].name}님이 나를 지목했어요! 이번 달 활동은 마법 겨루기예요`
             : currentTurnPlayerId
               ? `${game.players[currentTurnPlayerId]?.name}님이 활동을 고르는 중이에요...`
@@ -722,7 +723,7 @@ function ResolvePanel({
         </ol>
         {game.duels.length > 0 && (
           <p className="mt-2 text-xs text-purple-500">
-            <InlineIcon name="swords" /> 마법 겨루기에 지목당한 친구는 도전자의 차례에 함께 대결해요.
+            <InlineIcon name="swords" /> {game.rules.duelDefenderStatDice === "flat" ? "마법 겨루기에 지목당한 친구는 도전자의 차례에 주사위 1개 + 주문력으로 자동으로 막아요." : "마법 겨루기에 지목당한 친구는 도전자의 차례에 함께 대결해요."}
           </p>
         )}
       </div>
@@ -809,6 +810,13 @@ function RollPanel({
   const chosenAssist = Math.min(pickedAssist, assistMax);
   const canConfirm = myTurnNow && mine!.dice !== null && !mine!.confirmed;
   const me = game.players[myId];
+  // 61절 핵심 한 줄: 기운은 얼마든지 모을 수 있지만 한 번에 낼 수 있는 건 능력치 + 1개까지 — 가진 개수와 상한을 따로 보여 준다
+  const fuelKind: KeptToken = mine?.diceToken ?? "mana";
+  const fuelStat = fuelKind === "mana" ? "spellPower" : fuelKind;
+  const fuelHave = me[ENERGY_FIELD[fuelKind]];
+  // 자동 막기(61절): 지목당한 친구의 막기 점수 = 주사위 + 주문력. 도전자는 이것보다 높아야 이긴다
+  const defense = pending.kind === "duel" ? pending.entries.find((e) => e.bonus !== undefined && e.dice) : undefined;
+  const defenseTotal = defense ? defense.dice!.reduce((a, b) => a + b, 0) + defense.bonus! : 0;
   // 결과를 확인하기 전에는 남은 마나기운으로 일부 주사위만 다시 굴릴 수 있다 (선 정하기는 제외)
   const canReroll = game.rules.reroll && canConfirm && pending.kind !== "first" && !!mine && (mine.dice?.length ?? 0) > 0;
   const rerollCost = selected.length;
@@ -862,7 +870,13 @@ function RollPanel({
                     onToggle={entry.playerId === myId && canReroll ? () => toggle(i) : undefined}
                   />
                 ))}
-                {entry.dice.length > 1 && <b className="ml-1 text-purple-700">합계 {entry.dice.reduce((a, b) => a + b, 0)}</b>}
+                {entry.bonus !== undefined ? (
+                  <b className="ml-1 text-purple-700">
+                    + 주문력 {entry.bonus} = 막기 {entry.dice.reduce((a, b) => a + b, 0) + entry.bonus}
+                  </b>
+                ) : (
+                  entry.dice.length > 1 && <b className="ml-1 text-purple-700">합계 {entry.dice.reduce((a, b) => a + b, 0)}</b>
+                )}
                 {entry.rerolls > 0 && <span className="ml-1 text-xs text-sky-700">다시 굴림 {entry.rerolls}개</span>}
               </div>
             )}
@@ -877,9 +891,13 @@ function RollPanel({
 
       {canRoll && mine && choiceMax !== undefined && (
         <div className="mt-3 rounded-2xl bg-sky-50 px-3 py-2 text-sm text-sky-800">
+          {defense && <p className="mb-1 text-center font-semibold text-pink-600">{defenseTotal + 1} 이상이면 승리!</p>}
           <p>
-            <InlineIcon name={fuel.icon} /> {fuel.name} {choiceMax}개 중 몇 개를 낼까요?{" "}
-            {base > 0 ? `낸 개수 + 공짜 주사위 ${base}개를 굴려요. 안 낸 기운은 다음에 써요` : "낸 개수만큼 주사위를 굴려요."}{" "}
+            <InlineIcon name={fuel.icon} /> {fuel.name} {fuelHave}개 있어요 · {STAT_LABEL[fuelStat]} {effectiveStat(me, fuelStat)}이라 한 번에 <b>{choiceMax}개까지</b> 낼 수 있어요
+            {fuelHave > choiceMax ? ". 실력이 오르면 더 많이 쓸 수 있어요!" : ""}
+          </p>
+          <p className="mt-0.5 text-xs text-sky-700">
+            {base > 0 ? `낸 개수 + 공짜 주사위 ${base}개를 굴려요. 안 낸 기운은 남아요` : "낸 개수만큼 주사위를 굴려요."}{" "}
             {!game.rules.reroll ? "" : fuel.name === "마나기운" ? "안 낸 마나기운은 다시 굴리기에 쓸 수 있어요" : "다시 굴리기는 마나기운으로 해요"}
           </p>
           <div className="mt-2 flex items-center justify-center gap-4">
@@ -891,7 +909,10 @@ function RollPanel({
             >
               −
             </button>
-            <span className="min-w-20 text-center text-lg font-semibold">{chosenCount}개</span>
+            <span className="min-w-24 text-center">
+              <span className="block text-lg font-semibold">기운 {chosenCount}개</span>
+              {base > 0 && <span className="block text-xs text-sky-600">주사위 {chosenCount + base}개 (공짜 {base})</span>}
+            </span>
             <button
               aria-label="하나 늘리기"
               disabled={chosenCount >= choiceMax}

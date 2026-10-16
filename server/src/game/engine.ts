@@ -910,7 +910,7 @@ function startDuel(state: GameState, player: PlayerGameState, target: PlayerGame
     title: `마법 겨루기 · ${player.name} vs ${target.name}`,
     lines: [
       `${player.name}님이 ${target.name}님을 지목했어요${BALANCE.duelManaFee > 0 ? ` (도전자가 마나기운 ${BALANCE.duelManaFee}개를 건넸어요)` : ""}`,
-      `${BALANCE.duelTargetRollsFirst ? "지목당한 친구가 먼저, 도전자는 그 결과를 보고" : "도전자부터 한 명씩"} 마나기운을 골라 내고 ${BALANCE.baseDice > 0 ? `낸 개수 + 공짜 ${BALANCE.baseDice}개` : "낸 개수만큼"} 주사위를 굴려요. ${
+      `${BALANCE.duelDefenderStatDice === "flat" ? "지목당한 친구는 주사위 1개 + 주문력으로 자동으로 막아요. 도전자는 그 점수를 보고" : BALANCE.duelTargetRollsFirst ? "지목당한 친구가 먼저, 도전자는 그 결과를 보고" : "도전자부터 한 명씩"} 마나기운을 골라 내고 ${BALANCE.baseDice > 0 ? `낸 개수 + 공짜 ${BALANCE.baseDice}개` : "낸 개수만큼"} 주사위를 굴려요. ${
         BALANCE.duelTieWinner === "defender" ? "도전자가 더 높아야 이겨요 (같으면 막아 낸 거예요)" : BALANCE.duelTieWinner === "challenger" ? "합이 같거나 높으면 도전자가 이겨요" : "합이 큰 쪽이 이기고, 같으면 무승부예요"
       }${BALANCE.duelDefenderReward ? "" : ". 막아 내도 보상은 없어요"}${BALANCE.duelCharmFee > 0 ? `. 도전자는 지목당한 친구에게 매력 ${BALANCE.duelCharmFee}을 건네요` : ""}`,
     ],
@@ -921,9 +921,12 @@ function startDuel(state: GameState, player: PlayerGameState, target: PlayerGame
 }
 
 // 61절: 지목당한 친구는 기운을 내지 않고 주문력만큼 주사위를 굴린다 (고를 것이 없다)
+// "flat"(자동 막기)이면 서버가 주사위 1개를 바로 굴려 확정한다 — 고를 것도 기다릴 것도 없고, 도전자는 그 막기 점수(주사위 + 주문력)를 보고 기운을 고른다
 function defenderStatEntry(p: PlayerGameState) {
   const flat = BALANCE.duelDefenderStatDice === "flat";
-  return { playerId: p.id, label: `${p.name} (지목당함 · 주문력 ${p.spellPower})`, diceCount: flat ? 1 : Math.max(1, effectiveStat(p, "spellPower")), dice: null, confirmed: false, rerolls: 0 };
+  const spell = effectiveStat(p, "spellPower");
+  if (flat) return { playerId: p.id, label: `${p.name} (막기 · 주문력 ${spell})`, diceCount: 1, bonus: spell, dice: rollDice(1), confirmed: true, rerolls: 0 };
+  return { playerId: p.id, label: `${p.name} (지목당함 · 주문력 ${spell})`, diceCount: Math.max(1, spell), dice: null, confirmed: false, rerolls: 0 };
 }
 
 function resolveDuel(state: GameState, ctx: Extract<RollContext, { kind: "duel" }>, challengerDice: number[], defenderDice: number[]): void {

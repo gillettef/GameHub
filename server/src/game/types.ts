@@ -235,7 +235,7 @@ export interface PendingRoll {
   // diceToken은 이 굴림의 주사위 재료 기운이다 (없으면 마나기운, 39절). assistMax가 있으면 굴리기 전에 보조 능력치 기운(assist.kind)을 0~max개 더 낼 수 있다. 낸 개수는 assist에 남는다 (38-6절)
   // baseDice가 있으면 낸 기운과 상관없이 그만큼 더 굴린다 (기운은 0개부터 낼 수 있다, 47절)
   // 방향형: fuelUsed/fuelLimit = 다시 굴리기·조정에 쓴 재료 기운과 한도(능력치)
-  entries: { playerId: string; label: string; diceCount: number; diceToken?: KeptToken; diceChoiceMax?: number; baseDice?: number; fuelUsed?: number; fuelLimit?: number; assistMax?: number; assist?: number; dice: number[] | null; confirmed: boolean; rerolls: number; rerollCounts?: number[] }[];
+  entries: { playerId: string; label: string; diceCount: number; diceToken?: KeptToken; diceChoiceMax?: number; baseDice?: number; bonus?: number; fuelUsed?: number; fuelLimit?: number; assistMax?: number; assist?: number; dice: number[] | null; confirmed: boolean; rerolls: number; rerollCounts?: number[] }[];
   // 이 굴림에서 보조 능력치로 쓸 수 있는 기운 (마법 경연: 체력기운 "끝까지 달려요", 설정으로 켰을 때만). 없으면 해당 없음
   assist?: { kind: "stamina"; name: string; title: string; hint: string };
   // 방향형 결과(48절)의 눈별 효과 (1~6) — 있으면 다시 굴리기·조정은 그 활동의 재료 기운으로 한다
