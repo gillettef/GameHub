@@ -47,8 +47,8 @@
 
 ## 다음에 이어서 할 일 (2026-10-16 기준)
 
-- **작업 브랜치 `offline-v3`** 에 오프라인판(v3) 전체가 있다(규칙·엔진·AI·UI·카드 SVG·시뮬레이터). 테스트는 모두 통과했지만 **화면을 눈으로 확인하지 않았다** — 확인 후 main 에 병합한다(main push = 운영 배포).
-- 할 일 목록과 중단된 실험은 `notes/Contest.md` 4절. 요약: 2인 재미 최적화(2인 큐브 16 후보), 화면 확인·리뷰어, 종이 프로토타입, 규칙서 그림, 기획안.
+- **작업 브랜치 `offline-v3`** 에 오프라인판(v3) 전체가 있다(규칙·엔진·AI·UI·카드 SVG·시뮬레이터). 2026-10-16 화면 확인·룰 엔진 리뷰를 마쳤고 2인 큐브 16(v5)을 채택했다. **UI 리뷰에서 나온 뿌리 수 배지 문제 2가지를 고친 뒤** main 에 병합한다(main push = 운영 배포). 자세한 내용은 `notes/Contest.md` 4절.
+- 할 일 목록과 중단된 실험은 `notes/Contest.md` 4절. 요약: 배지 수정 → main 병합, 종이 프로토타입, 규칙서 그림, 기획안.
 - 밸런스 시뮬레이터는 `shared/scripts/lab`(옛 `garden-sim.ts` 와 브랜치 `wip/garden-sim-new-flow` 는 v2 용이라 더 쓰지 않는다).
 - 리뷰에서 남은 낮은 항목: 바닥 층(테두리·줄눈·질감)을 미리 구운 이미지로 바꿔 모바일 다시 그리기 비용 줄이기(HexBoard), RevealPanel 의 px 간격 일부 토큰화.
 
@@ -154,7 +154,7 @@ AstralTab/                 # 저장소 폴더 이름은 아직 옛 이름
 - **준비**: 목표 3장(보호구역 1장 이상) → 이번 판 식물(2·3인 6종, 4인 8종) → 카드 더미(종마다 2인 4 / 3·4인 5장) → 손 1장 + 마켓(2인 3 / 3인 4 / 4인 5장) → 입구 둘레 6칸에 큐브 1개씩 → 공개 단계 확인.
 - **차례**: 마켓에서 1장 `TAKE`(빈자리는 바로 채움) → 손 2장 중 1장 `PLANT`(회전 `rotation` 0~5, 민들레는 `seed`) 또는 심을 칸이 없을 때만 `DISCARD`. 라운드 = 모두 한 차례. 다음 선 = 공급처 큐브 최다(동점이면 이번 선 다음 자리부터).
 - **심을 칸**: 내 땅, 또는 내 땅·입구와 맞닿은 큐브 없는 빈 칸. 연꽃은 연못 옆 빈 칸이면 어디든.
-- **큐브**: 상태 `rootSeat`·`rootCount`(칸별 한 색). 남의 큐브는 1:1로 밀어냄. 1인 큐브 2인 20 / 3인 18 / 4인 16, 모자라면 가장 높은 내 칸(같으면 식물 없는 칸 → 칸 순서)에서 옮김. 버섯은 맞닿은 6칸 남의 큐브 −2.
+- **큐브**: 상태 `rootSeat`·`rootCount`(칸별 한 색). 남의 큐브는 1:1로 밀어냄. 1인 큐브 2인 16 / 3인 18 / 4인 16, 모자라면 가장 높은 내 칸(같으면 식물 없는 칸 → 칸 순서)에서 옮김. 버섯은 맞닿은 6칸 남의 큐브 −2.
 - **식물 9종**: 잔디, 참나무, 소나무, 칡, 고사리, 민들레(씨앗), 연꽃(연못), 버섯(걷어내기), 무궁화(+1점). 담쟁이·대나무·유채는 확장 후보.
 - **종료·점수**: 더미·마켓·손이 모두 비면 끝. 점수 = 땅 + 목표 3장 + 무궁화 + 덤(4인만 0,1,1,1). 순위: 기권 안 함 → 점수 → 땅 → 내 땅 위 식물 → 좌석 큰 쪽.
 - **온라인 제한 시간**(Rules.md 6.3): 방장이 60초/90초/3분/없음. 넘으면 자동 수, 심기 시간 초과 2번 연속이면 AI 대리.
@@ -235,7 +235,7 @@ AstralTab/                 # 저장소 폴더 이름은 아직 옛 이름
 | 테스트 (Python) | `ai\.venv\Scripts\python -m pytest ai/tests` |
 | 공용 픽스처 재생성 | `npm run fixtures` (엔진·데이터·타입을 바꾸면 반드시 실행 후 pytest) |
 | 카드 SVG 문구·뿌리 그림 다시 그리기 | `node scripts/card-text.mjs` (fixtures 를 먼저 만든 뒤) |
-| 밸런스 시뮬레이션 (v3) | `npx tsx shared/scripts/lab/run.ts <변형> [인원=2,3,4] [배율]` (5개 지표 점수표), 여러 변형 비교 `lab/sweep.ts`, 정본 엔진 일치 `lab/parity.ts`, 저장 결과 재채점 `lab/rescore.ts`. 변형은 `lab/registry.ts`, 지금 규칙 = `v4` |
+| 밸런스 시뮬레이션 (v3) | `npx tsx shared/scripts/lab/run.ts <변형> [인원=2,3,4] [배율]` (5개 지표 점수표), 여러 변형 비교 `lab/sweep.ts`, 정본 엔진 일치 `lab/parity.ts`, 저장 결과 재채점 `lab/rescore.ts`. 변형은 `lab/registry.ts`, 지금 규칙 = `v5`(v4 + 2인 큐브 16) |
 | (옛) v2 시뮬레이터 | `npx tsx shared/scripts/garden-sim.ts [2인] [3인] [4인]`. `SIM_OVERRIDES=<json>`, `SIM_PHASE=A`(종 승률만), `SEAT_SEARCH=1 SEAT_KOMIS=…`(덤 탐색), `MARKET_MODE=R|base|P|RP`(마켓 규칙 비교, 기본 R = 선 돌리기), `A_GAMES=<n>` |
 | 타입 검사 | `npm run typecheck` |
 | 플레이어 지표 집계 | `npx tsx server/scripts/stats.ts [DATA_DIR]` (기본 `server/data/prod`). 운영은 EC2에서 `cd ~/AstralTab && npx tsx server/scripts/stats.ts server/data/prod` |

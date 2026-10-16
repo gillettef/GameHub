@@ -91,3 +91,6 @@ VARIANTS.p2s16e2 = variant('p2s16e2', { supply: { 2: 16, 3: 18, 4: 16 }, entranc
 VARIANTS.p2s16m2 = variant('p2s16m2', { supply: { 2: 16, 3: 18, 4: 16 }, market: { 2: 2, 3: 4, 4: 5 } }, V4);
 VARIANTS.p2s16long = variant('p2s16long', { supply: { 2: 16, 3: 18, 4: 16 }, gardenSize: { 2: 7, 3: 6, 4: 8 } }, V4);
 VARIANTS.p2s16h0 = variant('p2s16h0', { supply: { 2: 16, 3: 18, 4: 16 }, startHand: 0 }, V4);
+
+// v5 (2026-10-16 채택, 지금 규칙): v4 + 2인 큐브 16
+VARIANTS.v5 = variant('v5', { supply: { 2: 16, 3: 18, 4: 16 } }, V4);

@@ -1,6 +1,6 @@
 /**
  * 실험실 엔진(lab/engine.ts) 과 정본 엔진(shared/src/engine) 이 같은 수에서 같은 결과를 내는지 대조한다.
- *   npx tsx shared/scripts/lab/parity.ts [판수=30] [변형=v4]
+ *   npx tsx shared/scripts/lab/parity.ts [판수=30] [변형=v5]
  * 실험실 판의 보드·목표·식물·카드 순서를 정본 상태에 그대로 옮기고, 실험실 봇의 수를 양쪽에 둔 뒤
  * 매 수마다 칸별 큐브·점수·차례·라운드 선을 비교한다.
  */
@@ -125,4 +125,4 @@ function run(games: number, name: string): void {
   console.log(`일치: ${games}판 ${moves}수 (실험실 = 정본)`);
 }
 
-run(Number(process.argv[2] ?? 30), process.argv[3] ?? 'v4');
+run(Number(process.argv[2] ?? 30), process.argv[3] ?? 'v5');
