@@ -2,7 +2,7 @@
 
 (구 명칭 '스토브리그'. 야구 용어·드라마 제목과 겹쳐 2026-10-15 변경. 공모전 원본 노트의 파일명은 그대로 둔다)
 
-축구 선수 에이전트가 되어 5라운드 동안 구단과 계약을 중개하고, 수수료(억 원)를 가장 많이 번 사람이 이기는 카드/보드게임.
+축구 선수 에이전트가 되어 8라운드 동안 구단과 계약을 중개하면서, 몰래 한 구단의 이중 첩자로서 그 구단에 선수를 몰아 주는 카드/보드게임. 수수료 + 들키지 않은 비밀 구단 보너스 + 지목 보너스(억 원)가 가장 큰 사람이 이긴다.
 **모바일 웹 전용**, **서버·DB 없이** 브라우저 하나에서 완결되는 정적 웹앱으로 만든다.
 
 - 원본 기획/프로토타입: `notes/stoveleague_README.md`, `notes/stoveleague_source.html` (참고용, 수정하지 않음)
@@ -32,16 +32,16 @@
 ```
 src/
   core/        # 순수 게임 로직 — DOM·localStorage·Math.random 직접 사용 금지
-    types.ts   # GameState, Offer, Player, Club, Event, Card 타입
-    data.ts    # 선수/구단/이벤트/전략카드 정적 데이터
+    types.ts   # GameState, Offer, Player, Club, Event 타입
+    data.ts    # 선수/구단/이벤트 정적 데이터
     rng.ts     # 시드 기반 난수 (mulberry32 등)
     rules.ts   # evaluateOffer(매력도·수수료 계산), 유효성 검사
     resolve.ts # resolveRound: 경쟁 판정·점수 반영·로그 생성
     ai.ts      # AI 에이전트 제안 생성
-    game.ts    # createGame / dealRound / nextRound / isFinished
+    game.ts    # createGame / dealRound / nextRound / finishGame(비밀 구단 지목)
   store/       # localStorage 래퍼(프로필·전적·진행 중 게임 저장), 버전 키 포함
   ui/
-    screens/   # home, setup, handoff, bid, result, final, rules
+    screens/   # home, setup, handoff, bid, result, guess, final, rules
     components/
     styles/    # CSS 변수·모바일 레이아웃
   main.ts

@@ -254,3 +254,14 @@ input[readonly] { color: var(--mu); }
 .hand .chip { min-height: 56px; align-items: flex-start; text-align: left; padding: 8px 10px; }
 .reveal h4 { margin: 12px 0 4px; font-size: 14px; }
 .reveal ul { margin: 0; padding-left: 18px; font-size: 13px; line-height: 1.6; }
+
+/* v2: 비밀 구단 · 공개 기록 */
+.dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: var(--c); margin-right: 4px; vertical-align: 0; flex: none; }
+.marks { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 2px; min-height: 14px; align-items: center; }
+.marks .dot { margin-right: 0; }
+.club.mine { border-color: #6c5730; }
+.secret { border-color: #6c5730; background: linear-gradient(120deg, #2b2418, #121d30 70%); }
+.secret p { margin: 0 0 6px; font-size: 14px; }
+.secret p.mu { font-size: 13px; }
+.secret b { color: var(--gd); }
+.sc .nm { display: flex; align-items: center; justify-content: center; }
