@@ -1,8 +1,8 @@
-import type { GameState, RoundSubmission } from '../core';
+import type { GameState, Guesses, Submission } from '../core';
 
 const KEY_PROFILE = 'sl:v1:profile';
-/** v4: 비밀 고객 선수 (GameState v4) */
-const KEY_SESSION = 'sl:v4:session';
+/** v5: 비밀 구단 규칙 (GameState v5) */
+const KEY_SESSION = 'sl:v5:session';
 
 export interface HistoryItem {
   at: number;
@@ -19,13 +19,15 @@ export interface Profile {
   history: HistoryItem[];
 }
 
-export type Screen = 'handoff' | 'bid' | 'result' | 'final';
+export type Screen = 'handoff' | 'bid' | 'result' | 'guess' | 'final';
 
 /** 진행 중인 게임 한 판 */
 export interface Session {
   game: GameState;
-  /** 이번 라운드 사람 제출 (에이전트 인덱스 → 1차·2차 제출) */
-  subs: Record<number, RoundSubmission>;
+  /** 이번 라운드 사람 제출 (에이전트 인덱스 → 제안, null = 패스) */
+  subs: Record<number, Submission>;
+  /** 종료 지목 단계의 사람 지목 */
+  guesses: Record<number, Guesses>;
   /** 지금 입찰 중인 사람 에이전트 */
   turn: number;
   screen: Screen;
@@ -62,7 +64,7 @@ export const newProfile = (nick: string): Profile => ({ nick, games: 0, wins: 0,
 
 export function loadSession(): Session | null {
   const s = read<Session>(KEY_SESSION);
-  return s && s.game?.v === 4 ? s : null;
+  return s && s.game?.v === 5 ? s : null;
 }
 
 export const saveSession = (s: Session | null): void => write(KEY_SESSION, s);

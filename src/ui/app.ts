@@ -1,11 +1,11 @@
-import { MAX_AGENTS, PLAYERS, createGame, demandRemaining, isDemand, nextRound, rankings, resolveRound } from '../core';
-import type { Demand, GameState, RoundSubmission, TacticKey } from '../core';
+import { MAX_AGENTS, PLAYERS, createGame, finishGame, isDemand, nextRound, rankings, resolveRound } from '../core';
+import type { GameState, Submission } from '../core';
 import { loadProfile, loadSession, newProfile, saveProfile, saveSession, type Session } from '../store/storage';
 import { homeScreen, registerScreen } from './screens/home';
-import { bidScreen, finalScreen, handoffScreen, resultScreen } from './screens/game';
+import { bidScreen, finalScreen, guessScreen, handoffScreen, resultScreen } from './screens/game';
 import { rulesSheet } from './screens/rules';
 import { setupScreen } from './screens/setup';
-import { slotOffer, type Draft, type Seat, type Slot, type UiState } from './view';
+import { draftOffer, type Draft, type GuessDraft, type Seat, type UiState } from './view';
 
 const AI_NAMES = ['AI 알파', 'AI 브라보', 'AI 찰리'];
 const NICK_RE = /[<>&"'\s]/g;
@@ -18,6 +18,7 @@ const ui: UiState = {
   view: 'home',
   seats: [],
   draft: null,
+  guess: null,
   rulesOpen: false,
   renaming: false,
   error: '',
@@ -41,6 +42,8 @@ function screenHtml(): string {
       return bidScreen(s, ensureDraft(s));
     case 'result':
       return resultScreen(s);
+    case 'guess':
+      return guessScreen(s, ensureGuess(s));
     case 'final':
       return finalScreen(s);
   }
@@ -50,7 +53,7 @@ let lastScreenKey = '';
 
 export function render(): void {
   const s = ui.session;
-  const key = `${ui.view}:${s?.screen}:${s?.game.round}:${s?.turn}:${ui.draft?.stage}:${ui.renaming}`;
+  const key = `${ui.view}:${s?.screen}:${s?.game.round}:${s?.turn}:${ui.renaming}`;
   root().innerHTML = screenHtml() + (ui.rulesOpen ? rulesSheet() : '');
   document.body.classList.toggle('locked', ui.rulesOpen);
   if (key !== lastScreenKey) {
@@ -62,16 +65,17 @@ export function render(): void {
 function ensureDraft(s: Session): Draft {
   const key = `${s.game.round}:${s.turn}`;
   if (ui.draft?.key === key) return ui.draft;
-  const left = demandRemaining(s.game.agents[s.turn]!);
-  const pickDemand = (reserved?: Demand) => ([2, 1, 3, 4] as const).find((d) => left[d] - (d === reserved ? 1 : 0) > 0) ?? 1;
-  const slot = (demand: Demand): Slot => ({ playerId: null, clubId: null, demand, tactic: null, pass: false });
-  const d1 = pickDemand();
-  ui.draft = { key, stage: 1, slots: [slot(d1), slot(pickDemand(d1))], client: s.game.agents[s.turn]!.hand[0] ?? null };
+  const hand = s.game.agents[s.turn]!.hand;
+  ui.draft = { key, playerId: null, clubId: null, demand: hand.includes(2) ? 2 : hand[0]! };
   return ui.draft;
 }
 
-/** 지금 편집 중인 차수의 슬롯 */
-const cur = (): Slot => ui.draft!.slots[ui.draft!.stage - 1]!;
+function ensureGuess(s: Session): GuessDraft {
+  const key = `guess:${s.turn}`;
+  if (ui.guess?.key === key) return ui.guess;
+  ui.guess = { key, picks: {} };
+  return ui.guess;
+}
 
 // ── 게임 흐름 ──────────────────────────────────────────
 
@@ -80,6 +84,7 @@ function beginBidding(game: GameState, base?: Session): Session {
   return {
     game,
     subs: {},
+    guesses: {},
     turn: humans[0] ?? 0,
     screen: humans.length > 1 ? 'handoff' : 'bid',
     recorded: base?.recorded ?? false,
@@ -94,7 +99,7 @@ function startGame(seats: Seat[]) {
   persist();
 }
 
-function submit(sub: RoundSubmission) {
+function submit(sub: Submission) {
   const s = ui.session!;
   const subs = { ...s.subs, [s.turn]: sub };
   const nextHuman = humansOf(s.game).find((i) => !(i in subs));
@@ -110,13 +115,34 @@ function submit(sub: RoundSubmission) {
 function advance() {
   const s = ui.session!;
   const game = nextRound(s.game);
-  if (game.phase === 'done') {
-    ui.session = { ...s, game, screen: 'final' };
-    record();
+  if (game.phase === 'guess') {
+    const humans = humansOf(game);
+    if (!humans.length) return finish({ ...s, game });
+    ui.session = { ...s, game, guesses: {}, turn: humans[0]!, screen: humans.length > 1 ? 'handoff' : 'guess' };
   } else {
     ui.session = beginBidding(game, s);
   }
   persist();
+}
+
+function finish(s: Session) {
+  ui.session = { ...s, game: finishGame(s.game, s.guesses), screen: 'final' };
+  ui.guess = null;
+  record();
+  persist();
+}
+
+function submitGuesses(picks: Record<number, number>) {
+  const s = ui.session!;
+  const guesses = { ...s.guesses, [s.turn]: picks };
+  const nextHuman = humansOf(s.game).find((i) => !(i in guesses));
+  ui.guess = null;
+  if (nextHuman !== undefined) {
+    ui.session = { ...s, guesses, turn: nextHuman, screen: 'handoff' };
+    persist();
+  } else {
+    finish({ ...s, guesses });
+  }
 }
 
 /** 기기 주인(0번 자리)의 전적 기록 */
@@ -124,7 +150,7 @@ function record() {
   const s = ui.session!;
   const p = ui.profile;
   if (s.recorded || !p) return;
-  const me = rankings(s.game).find((r) => r.agent === 0)!;
+  const me = rankings(ui.session!.game).find((r) => r.agent === 0)!;
   p.games++;
   if (me.rank === 1) p.wins++;
   p.total = Math.round((p.total + me.score) * 100) / 100;
@@ -165,7 +191,7 @@ const actions: Record<string, (arg: string) => void> = {
     const s = ui.session;
     if (!s) return;
     // 이어하기 시 다른 사람의 화면이 노출되지 않도록 핫시트면 가림 화면부터
-    if (s.screen === 'bid' && humansOf(s.game).length > 1) ui.session = { ...s, screen: 'handoff' };
+    if ((s.screen === 'bid' || s.screen === 'guess') && humansOf(s.game).length > 1) ui.session = { ...s, screen: 'handoff' };
     ui.view = 'game';
   },
   quit: () => {
@@ -208,42 +234,37 @@ const actions: Record<string, (arg: string) => void> = {
   },
 
   ready: () => {
-    ui.session = { ...ui.session!, screen: 'bid' };
+    const s = ui.session!;
+    ui.session = { ...s, screen: s.game.phase === 'guess' ? 'guess' : 'bid' };
     persist();
   },
-  stage: (k) => {
-    if (ui.draft) ui.draft.stage = k === '2' ? 2 : 1;
-  },
   pick: (id) => {
-    cur().playerId = PLAYERS[Number(id)]!.id;
+    ui.draft!.playerId = PLAYERS[Number(id)]!.id;
   },
   club: (id) => {
-    cur().clubId = Number(id);
+    ui.draft!.clubId = Number(id);
   },
   demand: (v) => {
     const n = Number(v);
-    if (isDemand(n)) cur().demand = n;
+    if (isDemand(n) && ui.session!.game.agents[ui.session!.turn]!.hand.includes(n)) ui.draft!.demand = n;
   },
-  client: (id) => {
-    ui.draft!.client = Number(id);
-  },
-  tactic: (k) => {
-    cur().tactic = (k || null) as TacticKey | null;
-  },
-  'slot-pass': () => {
-    const d = ui.draft!;
-    const sl = cur();
-    sl.pass = !sl.pass;
-    // 1차를 패스하면 바로 2차로
-    if (sl.pass && d.stage === 1) d.stage = 2;
+  pass: () => {
+    if (!confirm('이번 라운드를 패스할까요? 요구 수수료 카드는 소모되지 않습니다.')) return;
+    submit(null);
   },
   submit: () => {
-    const [s1, s2] = ui.draft!.slots;
-    const first = slotOffer(s1);
-    const second = slotOffer(s2);
-    if ((!s1.pass && !first) || (!s2.pass && !second)) return;
-    if (!first && !second && !confirm('1차·2차 모두 패스할까요? 카드는 소모되지 않습니다.')) return;
-    submit({ first, second, client: ui.draft!.client });
+    const o = draftOffer(ui.draft!);
+    if (o) submit(o);
+  },
+  guess: (arg) => {
+    const [who, clubId] = arg.split(':').map(Number);
+    ui.guess!.picks[who!] = clubId!;
+  },
+  'guess-submit': () => {
+    const s = ui.session!;
+    const picks = ui.guess!.picks;
+    if (s.game.agents.some((_, i) => i !== s.turn && picks[i] === undefined)) return;
+    submitGuesses({ ...picks });
   },
   next: () => advance(),
 };

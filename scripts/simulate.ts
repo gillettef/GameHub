@@ -1,28 +1,11 @@
 /**
- * AI 대 AI 밸런스 시뮬레이션.
- *   npx tsx scripts/simulate.ts --games 2000 --players 3 --seed 42 [--ai easy|normal|mixed] [--json]
+ * AI 대 AI 밸런스 시뮬레이션 (v2 규칙 엔진).
+ *   npx tsx scripts/simulate.ts --games 2000 --players 3 --seed 42 [--ai easy|normal|mixed]
  * mixed: floor(N/2)명은 normal, 나머지 easy. 게임마다 normal 좌석을 회전시켜 좌석 편향 상쇄
  */
-import {
-  CLUBS,
-  EVENTS,
-  EVENT_KEYS,
-  DEMANDS,
-  PLAYERS,
-  TACTICS,
-  TACTIC_KEYS,
-  HIJACK,
-  createGame,
-  marketSize,
-  createRng,
-  nextRound,
-  resolveRound,
-  winners,
-  clientOutcomes,
-} from '../src/core';
+import { AI_TUNING, DEMANDS, EVENT_KEYS, TOTAL_ROUNDS, createGame, createRng, finishGame, nextRound, resolveRound, winners } from '../src/core';
 import type { AiLevel, EventKey, GameState } from '../src/core';
 
-// 브라우저용 tsconfig에 Node 타입을 섞지 않기 위한 최소 선언
 declare const process: { argv: string[] };
 
 const args = process.argv.slice(2);
@@ -33,200 +16,104 @@ const arg = (k: string, d: string) => {
 const GAMES = Number(arg('games', '2000'));
 const N = Number(arg('players', '3'));
 const SEED = Number(arg('seed', '42'));
-const AI = arg('ai', 'easy') as AiLevel | 'mixed';
-const JSON_OUT = args.includes('--json');
+const AI = arg('ai', 'normal') as AiLevel | 'mixed';
+/** mixed 에서 normal 자리 수 (기본 floor(N/2)) */
+const NORMALS = Number(arg('normals', String(Math.floor(N / 2))));
 if (!(N >= 2 && N <= 4)) throw new Error('--players must be 2~4');
-if (!['easy', 'normal', 'mixed'].includes(AI)) throw new Error('--ai must be easy|normal|mixed');
+// --tune save=0.3,deny=0 처럼 보통 AI 조정값 실험
+for (const kv of arg('tune', '').split(',').filter(Boolean)) {
+  const [k, v] = kv.split('=');
+  if (!(k! in AI_TUNING)) throw new Error(`unknown tune ${k}`);
+  (AI_TUNING as Record<string, number>)[k!] = Number(v);
+}
 
-const r2 = (x: number) => Math.round(x * 100) / 100;
-const pct = (a: number, b: number) => (b ? `${r2((a / b) * 100)}%` : '-');
+const r1 = (x: number) => Math.round(x * 10) / 10;
+const pct = (a: number, b: number) => (b ? `${r1((a / b) * 100)}%` : '-');
 const mean = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0);
-const sd = (xs: number[]) => {
-  const m = mean(xs);
-  return Math.sqrt(mean(xs.map((x) => (x - m) ** 2)));
-};
-const tally = () => ({ n: 0, won: 0, fee: 0 });
 
 const seatWins = Array<number>(N).fill(0);
-const seatScore = Array<number>(N).fill(0);
-const levelStat: Record<AiLevel, { seats: number; wins: number; score: number }> = {
-  easy: { seats: 0, wins: 0, score: 0 },
-  normal: { seats: 0, wins: 0, score: 0 },
-};
-const finals: number[] = [];
+const level = { easy: { seats: 0, wins: 0, score: 0 }, normal: { seats: 0, wins: 0, score: 0 } };
+const totals: number[] = [];
 const gaps: number[] = [];
-const tactic = Object.fromEntries([...TACTIC_KEYS, HIJACK, 'none'].map((k) => [k, tally()]));
-const feeCard = Object.fromEntries(DEMANDS.map((f) => [f, tally()]));
-const playerStat = PLAYERS.map(() => ({ deals: 0, fee: 0, bids: 0 }));
-const clubPick = CLUBS.map(() => 0);
-const eventStat = Object.fromEntries(EVENT_KEYS.map((k) => [k, { rounds: 0, fee: 0 }])) as Record<EventKey, { rounds: number; fee: number }>;
+const demandUse = Object.fromEntries(DEMANDS.map((d) => [d, { n: 0, won: 0 }]));
+const eventFee = Object.fromEntries(EVENT_KEYS.map((k) => [k, { rounds: 0, fee: 0 }])) as Record<EventKey, { rounds: number; fee: number }>;
+let bids = 0;
 let contested = 0;
-/** 경쟁(같은 차수·같은 선수에 2건 이상)에 들어간 제안 수 */
-let offersContested = 0;
-let offersCompeting = 0;
-let ties = 0;
-let groups = 0;
-let noOffer = 0;
-let offers = 0;
+let tieGroups = 0;
+let deals = 0;
+let passes = 0;
 let invalid = 0;
-let voided = 0;
-let hijackTry = 0;
-let hijackOk = 0;
-let shortMarket = 0;
-let rounds = 0;
-const stageWon = { 1: 0, 2: 0 };
-const clientRes = { self: 0, other: 0, unsigned: 0 };
-const clientBonuses: number[] = [];
-/** 고객 보너스를 빼면 우승자가 달라지는 판 */
-let clientFlips = 0;
+let exposed = 0;
+let clubPts = 0;
+let guessPts = 0;
+let feePts = 0;
+let changed = 0;
+let sharedWin = 0;
+let marketMax = 0;
 
-const master = createRng(SEED);
-for (let gi = 0; gi < GAMES; gi++) {
-  const levels: AiLevel[] = Array.from({ length: N }, (_, i) =>
-    AI === 'mixed' ? ((i + gi) % N < Math.floor(N / 2) ? 'normal' : 'easy') : AI,
+const seedRng = createRng(SEED);
+for (let g = 0; g < GAMES; g++) {
+  const levels: AiLevel[] = Array.from({ length: N }, (_, i) => (AI === 'mixed' ? ((i + g) % N < NORMALS ? 'normal' : 'easy') : AI));
+  let s: GameState = createGame(
+    levels.map((lv, i) => ({ name: `AI${i}`, kind: 'ai' as const, level: lv })),
+    seedRng.int(2 ** 31),
   );
-  let g: GameState = createGame(levels.map((level, i) => ({ name: `AI${i}`, kind: 'ai' as const, level })), master.int(0x7fffffff));
-  while (g.phase !== 'done') {
-    if (g.market.length < marketSize(N).players) shortMarket++;
-    g = nextRound(resolveRound(g, {}));
-  }
-
-  const scores = g.agents.map((a) => a.score);
-  g.agents.forEach((a, i) => {
-    for (const o of clientOutcomes(g, i)) clientRes[o.result]++;
-    clientBonuses.push(a.clientBonus ?? 0);
-  });
-  {
-    const pre = g.agents.map((a) => a.score - (a.clientBonus ?? 0));
-    const top = (xs: number[]) => xs.map((x, i) => [x, i] as const).filter(([x]) => x === Math.max(...xs)).map(([, i]) => i).join(',');
-    if (top(pre) !== top(scores)) clientFlips++;
-  }
-  const win = winners(g);
-  win.forEach((i) => {
-    seatWins[i]! += 1 / win.length;
-    levelStat[levels[i]!].wins += 1 / win.length;
-  });
-  scores.forEach((s, i) => {
-    seatScore[i]! += s;
-    finals.push(s);
-    levelStat[levels[i]!].seats++;
-    levelStat[levels[i]!].score += s;
-  });
-  const sorted = [...scores].sort((a, b) => b - a);
-  gaps.push(sorted[0]! - sorted[1]!);
-
-  for (const r of g.results) {
-    const es = eventStat[r.event];
-    es.rounds++;
-    rounds++;
-    const byPlayer = new Map<string, number[]>();
+  while (s.phase !== 'guess') {
+    marketMax = Math.max(marketMax, s.market.length);
+    s = resolveRound(s, {});
+    const r = s.results.at(-1)!;
+    const byPlayer = new Map<number, number>();
+    let roundFee = 0;
     for (const e of r.entries) {
-      if (e.status === 'none') noOffer++;
-      if (!e.offer) continue;
-      offers++;
-      if (e.status === 'invalid') {
-        invalid++;
-        continue;
-      }
-      if (e.status === 'void') {
-        voided++;
-        continue;
-      }
-      if (e.stage === 2 && e.offer.tactic === HIJACK && (e.status === 'won' ? e.hijack : e.hijackFailed)) {
-        hijackTry++;
-        if (e.status === 'won') hijackOk++;
-      }
-      if (e.status === 'won') stageWon[e.stage]++;
-      const won = e.status === 'won';
-      const fee = won ? e.fee! : 0;
-      es.fee += fee;
-      for (const t of [tactic[e.offer.tactic ?? 'none']!, feeCard[e.offer.demand]!]) {
-        t.n++;
-        t.won += won ? 1 : 0;
-        t.fee += fee;
-      }
-      const ps = playerStat[e.offer.playerId]!;
-      ps.bids++;
-      if (won) {
-        ps.deals++;
-        ps.fee += fee;
-      }
-      clubPick[e.offer.clubId]!++;
-      const gk = `${e.stage}:${e.offer.playerId}`;
-      byPlayer.set(gk, [...(byPlayer.get(gk) ?? []), e.attract!]);
-    }
-    for (const atts of byPlayer.values()) {
-      groups++;
-      offersCompeting += atts.length;
-      if (atts.length > 1) {
-        contested++;
-        offersContested += atts.length;
-        const top = Math.max(...atts);
-        if (atts.filter((a) => a === top).length > 1) ties++;
+      if (e.status === 'pass') passes++;
+      if (e.status === 'invalid') invalid++;
+      if (!e.offer || e.status === 'invalid') continue;
+      bids++;
+      demandUse[e.offer.demand]!.n++;
+      byPlayer.set(e.offer.playerId, (byPlayer.get(e.offer.playerId) ?? 0) + 1);
+      if (e.status === 'won') {
+        deals++;
+        demandUse[e.offer.demand]!.won++;
+        roundFee += e.fee!;
       }
     }
+    for (const c of byPlayer.values()) if (c > 1) contested += c;
+    const tiedPlayers = new Set(r.entries.filter((e) => e.tied).map((e) => e.offer!.playerId));
+    tieGroups += tiedPlayers.size;
+    eventFee[r.event].rounds++;
+    eventFee[r.event].fee += roundFee;
+    s = nextRound(s);
   }
+  s = finishGame(s, {});
+  const totalsG = s.agents.map((a) => a.final!.total);
+  const visible = s.agents.map((a) => a.score);
+  const ws = winners(s);
+  const visTop = Math.max(...visible);
+  if (!ws.some((w) => visible[w] === visTop)) changed++;
+  if (ws.length > 1) sharedWin++;
+  for (const w of ws) seatWins[w]! += 1 / ws.length;
+  s.agents.forEach((a, i) => {
+    const lv = levels[i]!;
+    level[lv].seats++;
+    level[lv].score += a.final!.total;
+    if (ws.includes(i)) level[lv].wins += 1 / ws.length;
+    if (a.final!.exposed) exposed++;
+    clubPts += a.final!.clubPoints;
+    guessPts += a.final!.guessPoints;
+    feePts += a.score;
+  });
+  totals.push(...totalsG);
+  const sorted = [...totalsG].sort((a, b) => b - a);
+  gaps.push(sorted[0]! - sorted[1]!);
 }
 
-const report = {
-  config: { games: GAMES, players: N, seed: SEED, ai: AI },
-  seats: seatWins.map((w, i) => ({ seat: i + 1, winRate: pct(w, GAMES), avgScore: r2(seatScore[i]! / GAMES) })),
-  levels:
-    AI === 'mixed'
-      ? (['easy', 'normal'] as const).map((l) => ({
-          level: l,
-          winRatePerSeat: pct(levelStat[l].wins, levelStat[l].seats),
-          avgScore: r2(levelStat[l].score / levelStat[l].seats),
-        }))
-      : undefined,
-  score: { mean: r2(mean(finals)), sd: r2(sd(finals)), avgGap12: r2(mean(gaps)) },
-  tactics: Object.entries(tactic).map(([k, t]) => ({
-    tactic: k === 'none' ? '(없음)' : TACTICS[k as keyof typeof TACTICS].name,
-    uses: t.n,
-    successRate: pct(t.won, t.n),
-    avgFeePerUse: r2(t.fee / (t.n || 1)),
-  })),
-  demandCards: Object.entries(feeCard).map(([f, t]) => ({ demand: `요구 ${f}`, uses: t.n, successRate: pct(t.won, t.n), avgFeePerUse: r2(t.fee / (t.n || 1)) })),
-  players: PLAYERS.map((p, i) => ({
-    player: `${p.name}(${p.pos},몸값${p.cost},기본${p.base})`,
-    bids: playerStat[i]!.bids,
-    deals: playerStat[i]!.deals,
-    avgFee: r2(playerStat[i]!.fee / (playerStat[i]!.deals || 1)),
-  })),
-  clubs: CLUBS.map((c, i) => ({ club: c.name, picks: clubPick[i]! })),
-  events: EVENT_KEYS.map((k) => ({ event: EVENTS[k].name, rounds: eventStat[k].rounds, avgRoundFee: r2(eventStat[k].fee / (eventStat[k].rounds || 1)) })),
-  clients: {
-    self: pct(clientRes.self, clientRes.self + clientRes.other + clientRes.unsigned),
-    other: pct(clientRes.other, clientRes.self + clientRes.other + clientRes.unsigned),
-    unsigned: pct(clientRes.unsigned, clientRes.self + clientRes.other + clientRes.unsigned),
-    avgBonus: r2(mean(clientBonuses)),
-    sdBonus: r2(sd(clientBonuses)),
-    winnerFlippedByClients: pct(clientFlips, GAMES),
-  },
-  rates: {
-    contested: pct(contested, groups),
-    offersFacingRival: pct(offersContested, offersCompeting),
-    tieAmongContested: pct(ties, contested),
-    noOfferRate: pct(noOffer, noOffer + offers),
-    invalidRate: pct(invalid, offers),
-    voidRate: pct(voided, offers),
-    dealsPerRound: r2((stageWon[1] + stageWon[2]) / (rounds || 1)),
-    stage1Deals: stageWon[1],
-    stage2Deals: stageWon[2],
-    hijackVsContract: hijackTry,
-    hijackSuccess: pct(hijackOk, hijackTry),
-    shortMarketRounds: pct(shortMarket, rounds),
-  },
-};
-
-if (JSON_OUT) {
-  console.log(JSON.stringify(report, null, 2));
-} else {
-  console.log(`# 시뮬레이션 ${GAMES}판 · ${N}인 · AI ${AI} · seed ${SEED}`);
-  for (const [k, v] of Object.entries(report)) {
-    if (k === 'config' || v === undefined) continue;
-    console.log(`\n## ${k}`);
-    if (Array.isArray(v)) console.table(v);
-    else console.table([v]);
-  }
-}
+const seats = GAMES * N;
+console.log(`# 시뮬레이션 N=${N} games=${GAMES} seed=${SEED} ai=${AI} (라운드 ${TOTAL_ROUNDS})`);
+console.log(`좌석별 승률: ${seatWins.map((w) => pct(w, GAMES)).join(' / ')}`);
+console.log(`평균 최종 점수 ${r1(mean(totals))} (수수료 ${r1(feePts / seats)} + 비밀 구단 ${r1(clubPts / seats)} + 지목 ${r1(guessPts / seats)})`);
+console.log(`1·2위 격차 평균 ${r1(mean(gaps))}, 공동 우승 ${pct(sharedWin, GAMES)}, 숨은 점수로 우승자가 바뀐 판 ${pct(changed, GAMES)}`);
+console.log(`라운드당 계약 ${r1(deals / GAMES / TOTAL_ROUNDS)}건, 경쟁 제안 비율 ${pct(contested, bids)}, 동률 상쇄 ${r1(tieGroups / GAMES)}회/판, 패스 ${pct(passes, seats * TOTAL_ROUNDS)}, 몸값 미달 ${pct(invalid, seats * TOTAL_ROUNDS)}, 시장 최대 ${marketMax}명`);
+console.log(`비밀 구단 노출률 ${pct(exposed, seats)}`);
+console.log(`요구 수수료 카드 (사용 / 계약률): ${DEMANDS.map((d) => `${d}억 ${demandUse[d]!.n} / ${pct(demandUse[d]!.won, demandUse[d]!.n)}`).join(' · ')}`);
+console.log(`이벤트별 라운드 수수료: ${EVENT_KEYS.map((k) => `${k} ${r1(eventFee[k].fee / Math.max(1, eventFee[k].rounds))}`).join(' · ')}`);
+if (AI === 'mixed') for (const lv of ['easy', 'normal'] as const) console.log(`  ${lv}: 1석당 승률 ${pct(level[lv].wins, level[lv].seats)}, 평균 ${r1(level[lv].score / Math.max(1, level[lv].seats))}`);
