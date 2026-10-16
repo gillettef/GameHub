@@ -1,12 +1,13 @@
 /**
  * 튜토리얼 연습 상대. 서버 AI 없이 브라우저에서 도는 약한 봇이다.
- * 규칙 판단은 전부 shared 엔진에 맡긴다. 심기는 손 맨 앞 카드만 보고, 심을 수 있는 칸 중
- * "내 땅이 가장 많이 늘어나는" 칸에 심는다(배우는 사람이 일찍 크게 지지 않도록 일부러 한 장만 본다).
- * 가져오기 단계에서는 공개 목표(보호구역)에 나온 식물을 먼저, 없으면 마켓 맨 앞 카드를 가져온다(Rules.md 5절).
+ * 규칙 판단은 전부 shared 엔진에 맡긴다. 심기는 손 맨 앞 카드만 보고, 심을 수 있는 칸·방향 중
+ * "내 땅이 가장 많이 늘어나는" 수를 둔다(배우는 사람이 일찍 크게 지지 않도록 일부러 한 장만 보고 씨앗은 안 쓴다).
+ * 가져오기에서는 공개 목표(보호구역)에 나온 식물을 먼저, 없으면 마켓 맨 앞 카드를 가져온다(Rules.md 5절).
  * 공개 단계에서는 바로 확인한다.
  */
 import type { Action, Direction, GameState, PlayerId } from '@rootbound/shared';
-import { autoAction, computeScores, getGoal, getSpecies, legalDirections, legalPlantCells } from '@rootbound/shared';
+import { autoAction, computeScores, getGoal, legalPlantCells, plantRoots } from '@rootbound/shared';
+import { distinctRotations } from './derived';
 
 /** 가져올 마켓 자리 (마켓에 카드가 있을 때만 부른다) */
 function pickTake(state: GameState): number {
@@ -24,19 +25,17 @@ export function tutorialBotAction(state: GameState, playerId: PlayerId): Action 
   if (!me || !species) return null;
   const cells = legalPlantCells(state, playerId, species);
   if (cells.length === 0) return autoAction(state, playerId);
-  const sp = getSpecies(species);
   let best: Action | null = null;
   let bestLand = -Infinity;
   for (const pos of cells) {
-    const direction = sp.line ? (legalDirections(state, pos)[0] as Direction | undefined) : undefined;
-    const trial: GameState = {
-      ...state,
-      plants: [...state.plants, { id: 'bot', species, ownerId: playerId, pos, direction: sp.line ? (direction ?? 0) : null }],
-    };
-    const land = computeScores(trial)[playerId]?.land ?? 0;
-    if (land > bestLand) {
-      bestLand = land;
-      best = { type: 'PLANT', playerId, species, pos, ...(direction !== undefined ? { direction } : {}) };
+    for (const rotation of distinctRotations(species)) {
+      const withPlant: GameState = { ...state, plants: [...state.plants, { id: 'bot', species, ownerId: playerId, pos, rotation: rotation as Direction }] };
+      const trial: GameState = { ...withPlant, ...plantRoots(withPlant, playerId, species, pos, rotation) };
+      const land = computeScores(trial)[playerId]?.land ?? 0;
+      if (land > bestLand) {
+        bestLand = land;
+        best = { type: 'PLANT', playerId, species, pos, rotation };
+      }
     }
   }
   return best;

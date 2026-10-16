@@ -18,7 +18,7 @@ export const CardsTab = memo(function CardsTab() {
       <section className={styles.section}>
         <h2 className={styles.h2}>{current ? `이번 판 식물 ${current.length}가지` : `식물 ${SPECIES_IDS.length}종`}</h2>
         <p className={styles.help}>
-          그림의 가운데가 심는 칸, 숫자는 그 칸에 주는 영향력입니다.{current ? ' 카드 더미와 마켓에는 이 식물만 나옵니다.' : ''}
+          그림의 가운데가 심는 칸, 숫자는 그 칸에 놓는 뿌리 수입니다. 심을 때 방향을 돌릴 수 있습니다.{current ? ' 카드 더미와 마켓에는 이 식물만 나옵니다.' : ''}
         </p>
         <div className={styles.grid}>
           {(current ?? SPECIES_IDS).map((s) => (

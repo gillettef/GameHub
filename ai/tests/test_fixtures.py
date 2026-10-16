@@ -17,14 +17,14 @@ from astral_ai.models import Action, ConfirmAction, GameState, SurrenderAction, 
 from astral_ai.rules import (
     apply_action,
     auto_action,
-    compute_influence,
     compute_owners,
     compute_ranking,
     compute_scores,
     legal_plant_cells,
     load_specs,
-    market_size,
     next_round_start,
+    rules_for,
+    supply_left,
     next_random,
     shuffle,
 )
@@ -44,8 +44,9 @@ def _strip_log(d: dict[str, Any]) -> dict[str, Any]:
 
 def test_specs_load() -> None:
     specs = load_specs()
-    assert len(specs.species_ids) == 12
-    assert len(specs.goal_species) == 18
+    assert len(specs.species_ids) == 9
+    assert len(specs.goal_species) == 16
+    assert all(s["roots"][0]["dq"] == 0 and s["roots"][0]["dr"] == 0 for s in specs.species.values())
     assert specs.constants["START_HAND"] == 1
     assert "HAND_SIZE" not in specs.constants
     assert set(specs.player_count_rules) == {2, 3, 4}
@@ -76,10 +77,10 @@ def test_scenario_replay_matches_ts(which: int) -> None:
             assert mine == _strip_log(step["state"]), f"{sc['players']}인 {i}단계 상태 불일치"
             checked_states += 1
 
-        if step["influence"] is not None:
-            inf = compute_influence(state)
-            assert inf == step["influence"], f"{sc['players']}인 {i}단계 영향력 불일치"
-            assert compute_owners(state, inf) == step["owners"], f"{sc['players']}인 {i}단계 땅 불일치"
+        if step["rootSeat"] is not None:
+            assert state.rootSeat == step["rootSeat"], f"{sc['players']}인 {i}단계 큐브 색 불일치"
+            assert state.rootCount == step["rootCount"], f"{sc['players']}인 {i}단계 큐브 수 불일치"
+            assert compute_owners(state) == step["owners"], f"{sc['players']}인 {i}단계 땅 불일치"
             scores = {pid: s.model_dump() for pid, s in compute_scores(state).items()}
             assert scores == step["scores"], f"{sc['players']}인 {i}단계 점수 불일치"
 
@@ -136,7 +137,8 @@ def test_reveal_waits_for_every_confirm() -> None:
         assert err is None
         assert both.phase == "playing" and both.stage == "take" and both.round == 1
         assert both.roundStart == 0 and both.currentPlayerId == "p0"
-        assert both.market == state.pile[: len(state.players)]
+        # 마켓은 준비 때 이미 펼쳐 둔다 (Rules.md 4절 7)
+        assert both.market == state.market and len(state.market) == rules_for(len(state.players))["market"]
 
 
 def test_surrender_in_reveal_starts_when_rest_confirmed() -> None:
@@ -144,10 +146,10 @@ def test_surrender_in_reveal_starts_when_rest_confirmed() -> None:
     state = GameState.model_validate(sc["initial"])
     state, err = apply_action(state, ConfirmAction(playerId="p0"))
     assert err is None
-    # 확인하지 않은 사람이 기권하면 남은 사람이 모두 확인했으므로 시작한다 (마켓은 기권 안 한 3명 몫)
+    # 확인하지 않은 사람이 기권하면 남은 사람이 모두 확인했으므로 시작한다 (마켓은 그대로)
     state, err = apply_action(state, SurrenderAction(playerId="p1"))
     assert err is None
-    assert state.phase == "playing" and len(state.market) == 3
+    assert state.phase == "playing" and len(state.market) == rules_for(4)["market"]
 
 
 def test_rejects_illegal_actions() -> None:
@@ -180,32 +182,32 @@ def test_rejects_illegal_actions() -> None:
         ACTION.validate_python({"type": "DRAFT", "playerId": pid, "species": "grass"})
 
 
-def test_take_moves_card_then_everyone_plants() -> None:
+def test_take_refills_market_then_same_player_plants() -> None:
     sc = _scenarios()[0]
     state = _confirmed(sc)
-    order: list[str] = []
-    while state.stage == "take":
-        pid = state.currentPlayerId
-        assert pid is not None
-        order.append(pid)
-        me = next(p for p in state.players if p.id == pid)
-        take = len(state.market) - 1
-        card = state.market[take]
-        after, err = apply_action(state, TakeAction(playerId=pid, take=take))
-        assert err is None
-        # 가져간 자리는 채우지 않는다
-        assert after.market == state.market[:take]
-        assert next(p for p in after.players if p.id == pid).hand == [*me.hand, card]
-        state = after
-    # 모두 가져온 뒤 같은 순서(선부터)로 심기 단계
-    assert order == [p.id for p in sorted(state.players, key=lambda p: p.seat)]
-    assert state.stage == "plant" and state.currentPlayerId == order[0] and state.round == 1
-    # 심기 단계에서는 가져올 수 없다
-    _, err = apply_action(state, TakeAction(playerId=order[0], take=0))
+    pid = state.currentPlayerId
+    assert pid is not None
+    me = next(p for p in state.players if p.id == pid)
+    take = len(state.market) - 1
+    card = state.market[take]
+    after, err = apply_action(state, TakeAction(playerId=pid, take=take))
+    assert err is None
+    # 가져간 자리는 더미 맨 위 카드로 채운다
+    assert after.market == [*state.market[:take], state.pile[0]]
+    assert after.pile == state.pile[1:]
+    assert next(p for p in after.players if p.id == pid).hand == [*me.hand, card]
+    # 같은 사람이 이어서 심는다. 다시 가져올 수는 없다
+    assert after.stage == "plant" and after.currentPlayerId == pid
+    _, err = apply_action(after, TakeAction(playerId=pid, take=0))
     assert err is not None
+    planted = auto_action(after, pid)
+    assert planted is not None
+    nxt, err = apply_action(after, planted)
+    assert err is None
+    assert nxt.currentPlayerId != pid and nxt.stage == "take"
 
 
-def test_new_round_reveals_market_and_lowest_score_leads() -> None:
+def test_new_round_lead_has_most_supply_left() -> None:
     for sc in _scenarios():
         state = GameState.model_validate(sc["initial"])
         P = len(state.players)
@@ -216,37 +218,39 @@ def test_new_round_reveals_market_and_lowest_score_leads() -> None:
             assert err is None
             if state.phase == "playing" and state.round == prev.round + 1 and prev.phase == "playing":
                 rounds += 1
-                # 새 선 = 마지막 수를 둔 뒤 점수(덤 포함) 최저, 동점이면 지난 선 다음 자리부터 첫 동점자
+                # 새 선 = 마지막 수를 둔 뒤 공급처에 큐브가 가장 많이 남은 사람, 동점이면 지난 선 다음 자리부터
                 ended = state.model_copy(update={"roundStart": prev.roundStart})
                 assert state.roundStart == next_round_start(ended)
-                scores = compute_scores(state)
+                left = supply_left(state)
                 active = [p for p in state.players if p.surrenderedOrder is None]
-                low = min(scores[p.id].total for p in active)
+                most = max(left[p.seat] for p in active)
                 lead = next(p for p in state.players if p.seat == state.roundStart)
-                assert lead.surrenderedOrder is None and scores[lead.id].total == low
-                assert state.market == prev.pile[: market_size(state)]
+                assert lead.surrenderedOrder is None and left[lead.seat] == most
                 by_seat = sorted(state.players, key=lambda p: p.seat)
                 order = [by_seat[(state.roundStart + k) % P] for k in range(P)]
-                if state.market:
-                    first = next(p for p in order if p.surrenderedOrder is None)
-                    assert state.stage == "take"
-                else:
-                    first = next(p for p in order if p.surrenderedOrder is None and p.hand)
-                    assert state.stage == "plant"
+                first = next(p for p in order if p.surrenderedOrder is None and (p.hand or state.market))
                 assert state.currentPlayerId == first.id
+                assert state.stage == ("take" if state.market else "plant")
         assert rounds >= 5
 
 
+def test_cubes_never_exceed_supply() -> None:
+    for sc in _scenarios():
+        state = GameState.model_validate(sc["initial"])
+        for step in sc["steps"]:
+            state, err = apply_action(state, ACTION.validate_python(step["action"]))
+            assert err is None
+            assert all(v >= 0 for v in supply_left(state))
+            # 한 칸에는 한 색만: 큐브가 없으면 색도 없다
+            assert all((n > 0) == (s >= 0) for s, n in zip(state.rootSeat, state.rootCount))
+
+
 def test_next_round_start_tie_breaks_clockwise() -> None:
-    # 점수가 모두 같으면 지난 선 다음 자리부터 시계방향 첫 사람, 지난 선은 마지막 후보
+    # 공급처가 모두 같으면(시작 직후) 지난 선 다음 자리부터 시계방향 첫 사람, 지난 선은 마지막 후보
     sc = _scenarios()[2]
     state = _confirmed(sc)
-    scores = compute_scores(state)
-    totals = {scores[p.id].total for p in state.players}
-    if len(totals) == 1:
-        assert next_round_start(state) == 1
+    assert len(set(supply_left(state))) == 1
+    assert next_round_start(state) == 1
     # 기권자는 선이 될 수 없다
-    sur = state.model_copy(
-        update={"players": [p.model_copy(update={"surrenderedOrder": 0}) if p.seat == next_round_start(state) else p for p in state.players]}
-    )
-    assert next_round_start(sur) != next_round_start(state)
+    sur = state.model_copy(update={"players": [p.model_copy(update={"surrenderedOrder": 0}) if p.seat == 1 else p for p in state.players]})
+    assert next_round_start(sur) == 2

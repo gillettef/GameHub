@@ -253,13 +253,6 @@
   }
 }
 
-.seed {
-  fill: var(--seat);
-  stroke: var(--board-ink);
-  stroke-width: 0.04;
-  pointer-events: none;
-}
-
 .seedPending {
   fill: none;
   stroke: var(--color-accent);
@@ -267,25 +260,37 @@
   pointer-events: none;
 }
 
-/* 숫자는 질감 위에서 읽히게 어두운 테두리를 먼저 칠한다 */
-.infl {
-  font-size: 0.7px;
-  font-weight: 800;
-  fill: var(--color-accent);
-  stroke: var(--board-ink);
-  stroke-width: 0.1;
-  paint-order: stroke;
+/* 땅 주인이 없는(큐브가 없는) 칸의 식물: 고리를 무채색으로 */
+.plantWild .thumbRing {
+  fill: var(--board-grout);
+}
+
+/* 뿌리 큐브 수: 주인 색 원 + 숫자. 식물 칸은 오른쪽 아래에 작게 (실물의 큐브 더미) */
+.cubes {
   pointer-events: none;
 }
 
-.inflSmall {
-  font-size: 0.5px;
-  font-weight: 700;
-  fill: var(--color-white);
+.cubeDot {
+  fill: var(--owner);
   stroke: var(--board-ink);
-  stroke-width: 0.09;
-  paint-order: stroke;
-  pointer-events: none;
+  stroke-width: 0.06;
+}
+
+.cubeEmpty {
+  fill: var(--board-grout);
+  stroke: var(--board-ink);
+  stroke-width: 0.06;
+}
+
+.cubes text {
+  font-weight: 800;
+  fill: var(--board-ink);
+}
+
+/* 심기 미리보기: 바뀌는 칸은 강조색 테 */
+.cubesChanged circle {
+  stroke: var(--color-accent);
+  stroke-width: 0.1;
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -42,46 +42,30 @@ export interface Board {
 // 식물 · 목표 (Rules.md 7·8절)
 // ---------------------------------------------------------------------------
 
-export type SpeciesId =
-  | 'grass'
-  | 'oak'
-  | 'pine'
-  | 'kudzu'
-  | 'fern'
-  | 'dandelion'
-  | 'rapeseed'
-  | 'lotus'
-  | 'ivy'
-  | 'bamboo'
-  | 'mushroom'
-  | 'mugunghwa';
+export type SpeciesId = 'grass' | 'oak' | 'pine' | 'kudzu' | 'fern' | 'dandelion' | 'lotus' | 'mushroom' | 'mugunghwa';
 
-/** 종의 뿌리 모양. 0 이면 효과 없음 */
+/** 뿌리 모양의 한 칸: 심은 칸 기준 축 좌표 차이와 놓을 큐브 수. (0,0) 이 심은 칸 (Rules.md 7절) */
+export interface RootSpot {
+  dq: number;
+  dr: number;
+  n: number;
+}
+
+/** 식물 카드. 뿌리 모양은 카드에 그림으로 그려지고, 능력은 많아야 한 줄이다 */
 export interface SpeciesSpec {
   id: SpeciesId;
   name: string;
   /** 짧은 설명 (카드에 표시) */
   description: string;
-  self: number;
-  ring1: number;
-  /** 별 모양 거리 2 (6방향 직선 위 6칸) */
-  star2: number;
-  /** 심을 때 고른 방향 직선 거리 1..lineLength 칸에 주는 영향력 */
-  line: number;
-  lineLength: number;
-  /** 심은 뒤 거리 2 이내 빈 칸에 놓을 수 있는 씨앗의 영향력 */
+  /** 회전 0 기준 뿌리 모양 (심은 칸 먼저, 놓는 순서) */
+  roots: RootSpot[];
+  /** 심은 뒤 두 칸 안 아무 칸에 더 놓는 큐브 수 (민들레). 0 이면 없음 */
   seed: number;
-  /** 연못과 맞닿은 빈 칸이면 영향력 없이도 심을 수 있다 */
+  /** 연못과 맞닿은 빈 칸이면 내 땅이 아니어도 심을 수 있다 (연꽃) */
   pondPlanting: boolean;
-  /** 거리 1에 다른 식물이 있는 칸마다 그 칸에 추가 */
-  ivy: number;
-  /** 거리 1의 내 같은 종 1개당 자기 칸 추가 */
-  cluster: number;
-  /** 거리 1의 다른 플레이어 영향력 빼기 */
+  /** 맞닿은 6칸에서 남의 큐브를 이만큼씩 걷어낸다 (버섯) */
   wither: number;
-  /** 비옥토에 심으면 거리 1 추가 */
-  fertileRing: number;
-  /** 끝날 때 이 칸이 심은 사람의 땅이면 점수 */
+  /** 끝날 때 이 식물이 내 땅 위에 있으면 점수 (무궁화) */
   bloomBonus: number;
 }
 
@@ -95,8 +79,6 @@ export type GoalId =
   | 'every-tile'
   | 'flower-bed'
   | 'forest'
-  | 'connected'
-  | 'border-guard'
   | 'variety'
   | 'pine-reserve'
   | 'kudzu-reserve'
@@ -113,20 +95,16 @@ export interface GoalSpec {
   species: SpeciesId | null;
 }
 
-/** 보드 위 식물 */
+/** 보드 위 식물. 식물은 누구의 것도 아니다 — 점수는 그 칸을 뿌리로 차지한 사람이 받는다 (Rules.md 1절) */
 export interface Plant {
   /** 심은 순서 번호 (p1, p2, …) */
   id: string;
   species: SpeciesId;
+  /** 심은 사람 (기록용. 점수와 무관) */
   ownerId: PlayerId;
   pos: Position;
-  /** 칡의 방향. 그 외 null */
-  direction: Direction | null;
-}
-
-export interface Seed {
-  ownerId: PlayerId;
-  pos: Position;
+  /** 뿌리 모양 회전 0~5 (60°씩) */
+  rotation: Direction;
 }
 
 // ---------------------------------------------------------------------------
@@ -152,10 +130,10 @@ export interface PlayerState {
 /** lobby → reveal(이번 판 식물 공개, Rules.md 4절 7) → playing → finished */
 export type GamePhase = 'lobby' | 'reveal' | 'playing' | 'finished';
 
-/** 라운드 안의 단계 (Rules.md 5절): 모두 가져온 뒤 모두 심는다 */
+/** 차례 안의 단계 (Rules.md 5절): 마켓에서 가져온 뒤 심는다 */
 export type RoundStage = 'take' | 'plant';
 
-export type LogKind = 'system' | 'take' | 'plant' | 'discard' | 'flip' | 'turn' | 'surrender' | 'result';
+export type LogKind = 'system' | 'take' | 'plant' | 'discard' | 'flip' | 'uproot' | 'turn' | 'surrender' | 'result';
 
 export interface GameLogEntry {
   turn: number;
@@ -168,6 +146,8 @@ export interface GameLogEntry {
 
 export interface Score {
   land: number;
+  /** 내 땅 위에 서 있는 식물 수 (동점 깨기, Rules.md 9절) */
+  plantsOnLand: number;
   goals: number;
   /** 목표별 점수 (공개 목표 순서) */
   goalBreakdown: number[];
@@ -194,15 +174,15 @@ export interface GameState {
   goals: GoalId[];
   /** 이번 판에 쓰는 식물 (표 순서, 공개). Rules.md 4절 */
   species: SpeciesId[];
-  /** 이번 라운드에 펼쳐 둔 카드 (공개). 가져오기 단계에서 1장씩 가져간다. Rules.md 5절 */
+  /** 펼쳐 둔 마켓 카드 (공개). 1장 가져가면 더미에서 바로 채운다. Rules.md 5절 */
   market: SpeciesId[];
   /** 카드 더미 (맨 앞이 다음 카드). 서버는 아무에게도 보내지 않는다 */
   pile: SpeciesId[];
-  /** 이번 라운드의 선(첫 자리). 라운드가 끝날 때 점수가 가장 낮은 사람 (Rules.md 5절). 공개 */
+  /** 이번 라운드의 선(첫 자리). 라운드가 끝날 때 공급처에 큐브가 가장 많이 남은 사람 (Rules.md 5절). 공개 */
   roundStart: number;
-  /** 라운드 = 모두 한 장씩 가져오고 한 장씩 심은 것. 1부터 (공개 단계는 0) */
+  /** 라운드 = 모두 한 차례씩 둔 것. 1부터 (공개 단계는 0) */
   round: number;
-  /** 라운드 안의 단계 (공개 단계·종료에서는 의미 없음) */
+  /** 차례 안의 단계 (공개 단계·종료에서는 의미 없음) */
   stage: RoundStage;
   /** 전체 차례 번호. 1부터 */
   turn: number;
@@ -211,7 +191,10 @@ export interface GameState {
   players: PlayerState[];
   /** 심은 순서대로 */
   plants: Plant[];
-  seeds: Seed[];
+  /** 칸별 뿌리 큐브 색(좌석, −1 없음). board.cells 와 같은 순서. 한 칸에는 한 색만 (줄다리기, Rules.md 6.2) */
+  rootSeat: number[];
+  /** 칸별 뿌리 큐브 수 */
+  rootCount: number[];
   /** 보드·목표용 시드 RNG 상태. 엔진은 Math.random 을 쓰지 않는다 */
   rngSeed: number;
   /** 덱 셔플 전용 시드. 공개되는 보드·목표에서 역산할 수 없도록 rngSeed 와 따로 둔다(서버가 암호학적 난수로 만든다).
@@ -230,10 +213,10 @@ export type Action =
   | { type: 'READY'; playerId: PlayerId }
   /** 이번 판 식물 공개 단계에서 확인 (Rules.md 4절 7) */
   | { type: 'CONFIRM'; playerId: PlayerId }
-  /** 가져오기 단계: 마켓 take 번 카드를 손에 든다 (Rules.md 5절) */
+  /** 차례 앞부분: 마켓 take 번 카드를 손에 든다 (Rules.md 5절) */
   | { type: 'TAKE'; playerId: PlayerId; take: number }
-  /** 심기 단계. direction: 칡만. seed: 민들레만(생략 가능) */
-  | { type: 'PLANT'; playerId: PlayerId; species: SpeciesId; pos: Position; direction?: Direction; seed?: Position }
+  /** 심기. rotation: 뿌리 모양 회전(생략 0). seed: 민들레만(생략 가능) */
+  | { type: 'PLANT'; playerId: PlayerId; species: SpeciesId; pos: Position; rotation?: Direction; seed?: Position }
   /** 심기 단계. 손의 어떤 카드도 심을 칸이 없을 때만 */
   | { type: 'DISCARD'; playerId: PlayerId; species: SpeciesId }
   | { type: 'SURRENDER'; playerId: PlayerId };

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { GameState, RoomInfo } from '@rootbound/shared';
-import { START_HAND, applyAction, autoAction, computeScores, legalPlantCells, maskState } from '@rootbound/shared';
+import { START_HAND, applyAction, autoAction, computeScores, legalPlantCells, maskState, rulesFor } from '@rootbound/shared';
 import { formatRemaining, localDeadline, turnTimeLabel } from '../lib/turnClock';
 import { buildCells, buildPlayerSummaries, legalKeys, previewPlant } from './derived';
 import { confirmAllHotseat, createHotseatGame, hotseatPlayerId } from './hotseat';
@@ -30,7 +30,7 @@ describe('핫시트 어댑터', () => {
       expect(r.state.phase).toBe('playing');
       expect(r.state.stage).toBe('take');
       expect(r.state.currentPlayerId).toBe(hotseatPlayerId(0));
-      expect(r.state.market).toHaveLength(n);
+      expect(r.state.market).toHaveLength(rulesFor(n).market);
     }
     expect(() => createHotseatGame({ nicknames: ['혼자'], seed: 1 })).toThrow();
   });
@@ -92,7 +92,7 @@ describe('화면용 파생값', () => {
     const s = toPlantStage(twoPlayers());
     const action = autoAction(s, 'p0')!;
     if (action.type !== 'PLANT') throw new Error('심기가 아님');
-    const pv = previewPlant(s, 'p0', action.species, action.pos, action.direction ?? null, null)!;
+    const pv = previewPlant(s, 'p0', action.species, action.pos, action.rotation ?? 0, null)!;
     const before = computeScores(s);
     const after = computeScores(applyAction(s, action).state);
     expect(pv.scoreDelta[0]).toBe(after['p0']!.total - before['p0']!.total);
@@ -138,13 +138,13 @@ describe('제한 시간 표시 (Rules.md 6.3)', () => {
 });
 
 describe('핫시트 상태 보존 (2026-10-07 리뷰)', () => {
-  it('maskState(null) 을 거쳐 다시 엔진에 넣어도 카드 더미가 남아 끝까지 15번씩 둔다', () => {
+  it('maskState(null) 을 거쳐 다시 엔진에 넣어도 카드 더미가 남아 끝까지 12번씩 둔다', () => {
     let s = maskState(twoPlayers(), null) as unknown as GameState;
     for (let i = 0; i < 300 && s.phase !== 'finished'; i++) {
       const a = autoAction(s, s.currentPlayerId!)!;
       s = maskState(applyAction(s, a).state, null) as unknown as GameState;
     }
     expect(s.phase).toBe('finished');
-    expect(s.plants.length + s.log.filter((e) => e.kind === 'discard').length).toBe(30);
+    expect(s.plants.length + s.log.filter((e) => e.kind === 'discard').length).toBe(24);
   });
 });

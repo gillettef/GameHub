@@ -11,7 +11,7 @@
 import { create } from 'zustand';
 import type { Action, Direction, GameState, GoalId, MaskedGameState, PlayerId, Position, RoomInfo, RoomSnapshot, SpeciesId } from '@rootbound/shared';
 import { getSpecies, legalPlantCells, legalSeedCells, maskState, posKey, samePos } from '@rootbound/shared';
-import { asState, directionsFor } from '../game/derived';
+import { asState } from '../game/derived';
 import { applyHotseatAction, confirmAllHotseat, createHotseatGame, hotseatPlayerId, type HotseatConfig } from '../game/hotseat';
 import { tutorialBotAction } from '../game/tutorialBot';
 import { api } from '../socket/client';
@@ -51,13 +51,13 @@ interface GameStore {
   selectedHandIndex: number | null;
   /** 심을 후보 칸. 고르면 곧바로 심지 않고 미리보기를 보여 준다 */
   pendingPos: Position | null;
-  /** 칡 방향 */
-  pendingDirection: Direction | null;
+  /** 뿌리 모양 회전 (0~5) */
+  pendingRotation: Direction;
   /** 민들레 씨앗 칸 */
   pendingSeed: Position | null;
   /** 보드 탭이 씨앗 칸 고르기 모드인가 */
   seedPicking: boolean;
-  /** 영향력 숫자 표시 */
+  /** 칸마다 뿌리(큐브) 수 표시 */
   showInfluence: boolean;
   notice: string | null;
   resultDismissed: boolean;
@@ -75,7 +75,7 @@ interface GameStore {
   dispatch: (action: Action) => void;
   selectHandCard: (index: number | null) => void;
   tapCell: (pos: Position) => void;
-  setDirection: (d: Direction) => void;
+  setRotation: (d: Direction) => void;
   startSeedPick: () => void;
   clearSeed: () => void;
   confirmPlant: () => void;
@@ -97,7 +97,7 @@ interface GameStore {
   reset: () => void;
 }
 
-const CLEAR_SELECTION = { selectedHandIndex: null, pendingPos: null, pendingDirection: null, pendingSeed: null, seedPicking: false } as const;
+const CLEAR_SELECTION = { selectedHandIndex: null, pendingPos: null, pendingRotation: 0 as Direction, pendingSeed: null, seedPicking: false } as const;
 
 const EMPTY = {
   mode: null,
@@ -108,7 +108,7 @@ const EMPTY = {
   connection: 'idle' as Connection,
   tab: 'board' as TabId,
   ...CLEAR_SELECTION,
-  showInfluence: false,
+  showInfluence: true,
   notice: null,
   resultDismissed: false,
   cardModal: null as CardModalTarget | null,
@@ -199,7 +199,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const s = asState(state);
     if (seedPicking && pendingPos) {
       if (!legalSeedCells(s, pendingPos).some((p) => samePos(p, pos))) {
-        set({ notice: '씨앗은 심을 칸에서 두 칸 안 빈 칸에만 놓을 수 있습니다' });
+        set({ notice: '씨앗은 심을 칸에서 두 칸 안, 연못·바위·입구가 아닌 칸에만 놓을 수 있습니다' });
         return;
       }
       set({ pendingSeed: pos, seedPicking: false, notice: null });
@@ -220,23 +220,23 @@ export const useGameStore = create<GameStore>((set, get) => ({
       return;
     }
     if (!legalPlantCells(s, viewerId, species).some((p) => samePos(p, pos))) {
-      set({ notice: getSpecies(species).pondPlanting ? '뿌리가 닿는 칸이나 연못 옆 빈 칸에만 심을 수 있습니다' : '내 뿌리가 닿는 빈 칸에만 심을 수 있습니다' });
+      set({ notice: getSpecies(species).pondPlanting ? '내 땅, 내 땅과 맞닿은 빈 칸, 연못 옆 빈 칸에만 심을 수 있습니다' : '내 땅이나 내 땅과 맞닿은 빈 칸에만 심을 수 있습니다' });
       return;
     }
     if (pendingPos && posKey(pendingPos) === posKey(pos)) {
-      set({ pendingPos: null, pendingDirection: null, pendingSeed: null });
+      set({ pendingPos: null, pendingSeed: null });
       return;
     }
-    const sp = getSpecies(species);
-    set({ pendingPos: pos, pendingDirection: sp.line ? (directionsFor(state, pos)[0] ?? null) : null, pendingSeed: null, notice: null });
+    // 회전은 칸을 옮겨도 그대로 둔다(같은 모양으로 여러 칸을 비교할 수 있게)
+    set({ pendingPos: pos, pendingSeed: null, notice: null });
   },
 
-  setDirection: (d) => set({ pendingDirection: d }),
+  setRotation: (d) => set({ pendingRotation: d }),
   startSeedPick: () => set({ seedPicking: true, pendingSeed: null }),
   clearSeed: () => set({ seedPicking: false, pendingSeed: null }),
 
   confirmPlant: () => {
-    const { state, viewerId, selectedHandIndex, pendingPos, pendingDirection, pendingSeed, dispatch } = get();
+    const { state, viewerId, selectedHandIndex, pendingPos, pendingRotation, pendingSeed, dispatch } = get();
     if (!state || !viewerId || selectedHandIndex === null || !pendingPos) return;
     const species = state.players.find((p) => p.id === viewerId)?.hand[selectedHandIndex];
     if (!species) return;
@@ -246,12 +246,12 @@ export const useGameStore = create<GameStore>((set, get) => ({
       playerId: viewerId,
       species,
       pos: pendingPos,
-      ...(sp.line && pendingDirection !== null ? { direction: pendingDirection } : {}),
+      rotation: pendingRotation,
       ...(sp.seed && pendingSeed ? { seed: pendingSeed } : {}),
     });
   },
 
-  cancelPlant: () => set({ pendingPos: null, pendingDirection: null, pendingSeed: null, seedPicking: false }),
+  cancelPlant: () => set({ pendingPos: null, pendingSeed: null, seedPicking: false }),
 
   confirmReveal: () => {
     const { mode, state, viewerId, dispatch } = get();

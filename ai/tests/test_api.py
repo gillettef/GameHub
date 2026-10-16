@@ -116,10 +116,10 @@ def test_decide_plant_stage_is_legal_and_omits_none_fields() -> None:
         # 심기 단계에는 take 가 없다. TS 검증은 null 을 "값 있음"으로 보므로 None 필드는 빠져 있어야 한다
         assert "take" not in action
         if action["type"] == "PLANT":
-            assert action.get("direction", 0) is not None
+            assert action.get("rotation", 0) in range(6)
             assert action.get("seed", {}) is not None
-            if action["species"] != "kudzu":
-                assert "direction" not in action
+            if action["species"] != "dandelion":
+                assert "seed" not in action
         _assert_legal(state, action)
 
 
@@ -136,7 +136,7 @@ def test_take_prefers_reserve_species() -> None:
 
 
 def test_take_counts_hand_and_candidate() -> None:
-    # 가져오기 평가는 "지금 보드에서 손 카드 + 후보 카드 중 최선 1수". 같은 종 두 장이면 앞 자리만 본다
+    # 가져오기 평가는 "손 카드 + 후보 카드 중 최선 1수". 같은 종 두 장이면 앞 자리만 본다
     from astral_ai.search import choose_take
 
     state = GameState.model_validate(_stage("take")[0])

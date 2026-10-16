@@ -21,18 +21,13 @@ interface SpeciesCardProps {
   compact?: boolean;
 }
 
-/** 특수 효과 한 줄 요약 (Rules.md 7절 "특수" 열) */
+/** 능력 한 줄 요약 (Rules.md 7절 "능력" 열). 뿌리 모양만 있는 식물은 null */
 export function specialText(species: SpeciesId): string | null {
   const sp = getSpecies(species);
-  if (sp.line) return `한 방향 직선 ${sp.lineLength}칸에 ${sp.line}`;
-  if (sp.star2) return `한 칸 건너뛴 6칸에 ${sp.star2}`;
-  if (sp.seed) return `두 칸 안 빈 칸에 씨앗(${sp.seed})`;
-  if (sp.fertileRing) return `기름진 땅이면 맞닿은 칸에 ${sp.ring1 + sp.fertileRing}씩`;
-  if (sp.pondPlanting) return '연못 옆이면 뿌리 없이도 심기';
-  if (sp.ivy) return `옆 칸 중 식물 칸에 +${sp.ivy}`;
-  if (sp.cluster) return `맞닿은 내 대나무마다 심은 칸 +${sp.cluster}`;
-  if (sp.wither) return `맞닿은 6칸의 다른 사람 영향력 −${sp.wither}`;
-  if (sp.bloomBonus) return `끝날 때 이 칸이 내 땅이면 +${sp.bloomBonus}점`;
+  if (sp.seed) return `두 칸 안 아무 칸에 큐브 ${sp.seed}`;
+  if (sp.pondPlanting) return '연못 옆 빈 칸이면 어디든 심기';
+  if (sp.wither) return `맞닿은 6칸의 남의 큐브 −${sp.wither}`;
+  if (sp.bloomBonus) return `끝날 때 내 땅 위면 +${sp.bloomBonus}점`;
   return null;
 }
 

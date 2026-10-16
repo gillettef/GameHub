@@ -138,7 +138,7 @@ export function actionShapeError(action: unknown): string | null {
       return isSpeciesId(a.species) ? null : '없는 식물입니다';
     case 'PLANT':
       if (!isSpeciesId(a.species) || !isPos(a.pos)) return '잘못된 심기 요청입니다';
-      if (a.direction !== undefined && !isDirection(a.direction)) return '잘못된 방향입니다';
+      if (a.rotation !== undefined && !isDirection(a.rotation)) return '잘못된 방향입니다';
       if (a.seed !== undefined && !isPos(a.seed)) return '잘못된 씨앗 위치입니다';
       return null;
     default:
@@ -146,10 +146,11 @@ export function actionShapeError(action: unknown): string | null {
   }
 }
 
-/** 지금 규칙(Rootbound) 형식의 방인가. 예전 우주 전투판 스냅샷은 board·plants 모양이 다르다 */
+/** 지금 규칙(Rootbound 오프라인판) 형식의 방인가. 예전 우주 전투판·영향력 합산판 스냅샷은 모양이 다르다 */
 export function isCurrentFormat(room: Room): boolean {
   const st = room.state as Partial<GameState> | undefined;
-  if (!st || !Array.isArray(st.players) || !Array.isArray(st.plants) || !Array.isArray(st.seeds)) return false;
+  // 2026-10-16 오프라인판(뿌리 큐브)부터 rootSeat·rootCount 가 있다. 영향력 합산 시절 판(seeds)은 복원하지 않는다
+  if (!st || !Array.isArray(st.players) || !Array.isArray(st.plants) || !Array.isArray(st.rootSeat) || !Array.isArray(st.rootCount)) return false;
   if (!(st.board === null || (typeof st.board === 'object' && Array.isArray(st.board?.cells)))) return false;
   // 드래프트 시절 판(2026-10-08 마켓으로 바뀜)은 market·pile 이 없다
   if (!Array.isArray(st.market) || !Array.isArray(st.pile) || !Array.isArray(st.species)) return false;

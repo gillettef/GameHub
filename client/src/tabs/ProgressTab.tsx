@@ -11,7 +11,8 @@ const KIND_LABEL: Record<LogKind, string> = {
   turn: '차례',
   plant: '심기',
   discard: '버림',
-  flip: '뺏음',
+  flip: '밀어냄',
+  uproot: '옮김',
   surrender: '기권',
   result: '결과',
 };
@@ -51,7 +52,7 @@ export const ProgressTab = memo(function ProgressTab() {
             {lead && (
               <>
                 <dt>선</dt>
-                <dd title="이번 라운드에 먼저 가져오고 먼저 심는 사람. 라운드가 끝나면 점수가 가장 낮은 사람이 다음 선입니다">{lead.nickname}</dd>
+                <dd title="이번 라운드에 먼저 두는 사람. 라운드가 끝나면 남은 뿌리가 가장 많은 사람이 다음 선입니다">{lead.nickname}</dd>
               </>
             )}
             <dt>차례</dt>

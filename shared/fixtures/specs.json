@@ -1,208 +1,238 @@
 {
   "species": [
     {
-      "self": 3,
-      "ring1": 1,
-      "star2": 0,
-      "line": 0,
-      "lineLength": 0,
       "seed": 0,
       "pondPlanting": false,
-      "ivy": 0,
-      "cluster": 0,
       "wither": 0,
-      "fertileRing": 0,
       "bloomBonus": 0,
       "id": "grass",
       "name": "잔디",
-      "description": "넓게 깔고 무난하게 버틴다."
+      "description": "이어진 세 칸에 넓게 깐다.",
+      "roots": [
+        {
+          "dq": 0,
+          "dr": 0,
+          "n": 2
+        },
+        {
+          "dq": 1,
+          "dr": 0,
+          "n": 1
+        },
+        {
+          "dq": 1,
+          "dr": -1,
+          "n": 1
+        },
+        {
+          "dq": 0,
+          "dr": -1,
+          "n": 1
+        }
+      ]
     },
     {
-      "self": 2,
-      "ring1": 2,
-      "star2": 0,
-      "line": 0,
-      "lineLength": 0,
       "seed": 0,
       "pondPlanting": false,
-      "ivy": 0,
-      "cluster": 0,
       "wither": 0,
-      "fertileRing": 0,
       "bloomBonus": 0,
       "id": "oak",
       "name": "참나무",
-      "description": "맞닿은 6칸을 한꺼번에 굳힌다."
+      "description": "양옆 두 칸을 두껍게 굳힌다.",
+      "roots": [
+        {
+          "dq": 0,
+          "dr": 0,
+          "n": 2
+        },
+        {
+          "dq": 1,
+          "dr": 0,
+          "n": 2
+        },
+        {
+          "dq": -1,
+          "dr": 0,
+          "n": 2
+        }
+      ]
     },
     {
-      "self": 5,
-      "ring1": 1,
-      "star2": 0,
-      "line": 0,
-      "lineLength": 0,
       "seed": 0,
       "pondPlanting": false,
-      "ivy": 0,
-      "cluster": 0,
       "wither": 0,
-      "fertileRing": 0,
       "bloomBonus": 0,
       "id": "pine",
       "name": "소나무",
-      "description": "심은 칸은 거의 뺏기지 않는다."
+      "description": "심은 칸은 거의 뺏기지 않는다.",
+      "roots": [
+        {
+          "dq": 0,
+          "dr": 0,
+          "n": 3
+        },
+        {
+          "dq": 1,
+          "dr": 0,
+          "n": 1
+        },
+        {
+          "dq": -1,
+          "dr": 0,
+          "n": 1
+        }
+      ]
     },
     {
-      "self": 2,
-      "ring1": 0,
-      "star2": 0,
-      "line": 2,
-      "lineLength": 2,
       "seed": 0,
       "pondPlanting": false,
-      "ivy": 0,
-      "cluster": 0,
       "wither": 0,
-      "fertileRing": 0,
       "bloomBonus": 0,
       "id": "kudzu",
       "name": "칡",
-      "description": "한 방향을 골라 직선 두 칸에 2씩 뻗는다."
+      "description": "한 줄로 두 칸 앞까지 파고든다.",
+      "roots": [
+        {
+          "dq": 0,
+          "dr": 0,
+          "n": 1
+        },
+        {
+          "dq": 1,
+          "dr": 0,
+          "n": 1
+        },
+        {
+          "dq": 2,
+          "dr": 0,
+          "n": 2
+        }
+      ]
     },
     {
-      "self": 2,
-      "ring1": 0,
-      "star2": 1,
-      "line": 0,
-      "lineLength": 0,
       "seed": 0,
       "pondPlanting": false,
-      "ivy": 0,
-      "cluster": 0,
       "wither": 0,
-      "fertileRing": 0,
       "bloomBonus": 0,
       "id": "fern",
       "name": "고사리",
-      "description": "바로 옆은 비우고 한 칸 건너뛴 6칸에 퍼진다."
+      "description": "바로 옆은 건너뛰고 멀리 세 칸에 퍼진다.",
+      "roots": [
+        {
+          "dq": 0,
+          "dr": 0,
+          "n": 2
+        },
+        {
+          "dq": 2,
+          "dr": 0,
+          "n": 1
+        },
+        {
+          "dq": 0,
+          "dr": -2,
+          "n": 1
+        },
+        {
+          "dq": -2,
+          "dr": 2,
+          "n": 1
+        }
+      ]
     },
     {
-      "self": 1,
-      "ring1": 1,
-      "star2": 0,
-      "line": 0,
-      "lineLength": 0,
-      "seed": 2,
+      "seed": 1,
       "pondPlanting": false,
-      "ivy": 0,
-      "cluster": 0,
       "wither": 0,
-      "fertileRing": 0,
       "bloomBonus": 0,
       "id": "dandelion",
       "name": "민들레",
-      "description": "심은 뒤 두 칸 안 빈 칸에 씨앗(영향력 2)을 날린다."
+      "description": "심은 뒤 두 칸 안 아무 칸에 큐브 1개를 날린다.",
+      "roots": [
+        {
+          "dq": 0,
+          "dr": 0,
+          "n": 1
+        },
+        {
+          "dq": 1,
+          "dr": 0,
+          "n": 1
+        },
+        {
+          "dq": -1,
+          "dr": 0,
+          "n": 1
+        }
+      ]
     },
     {
-      "self": 2,
-      "ring1": 1,
-      "star2": 0,
-      "line": 0,
-      "lineLength": 0,
-      "seed": 0,
-      "pondPlanting": false,
-      "ivy": 0,
-      "cluster": 0,
-      "wither": 0,
-      "fertileRing": 2,
-      "bloomBonus": 0,
-      "id": "rapeseed",
-      "name": "유채",
-      "description": "기름진 땅에 심으면 맞닿은 칸에 3씩 준다. 다른 곳에서는 잔디보다 약하다."
-    },
-    {
-      "self": 2,
-      "ring1": 1,
-      "star2": 0,
-      "line": 0,
-      "lineLength": 0,
       "seed": 0,
       "pondPlanting": true,
-      "ivy": 0,
-      "cluster": 0,
       "wither": 0,
-      "fertileRing": 0,
       "bloomBonus": 0,
       "id": "lotus",
       "name": "연꽃",
-      "description": "연못과 맞닿은 빈 칸이면 뿌리가 닿지 않아도 심을 수 있다."
+      "description": "연못과 맞닿은 빈 칸이면 어디든 심을 수 있다.",
+      "roots": [
+        {
+          "dq": 0,
+          "dr": 0,
+          "n": 2
+        },
+        {
+          "dq": 1,
+          "dr": 0,
+          "n": 1
+        },
+        {
+          "dq": -1,
+          "dr": 0,
+          "n": 1
+        }
+      ]
     },
     {
-      "self": 1,
-      "ring1": 1,
-      "star2": 0,
-      "line": 0,
-      "lineLength": 0,
       "seed": 0,
       "pondPlanting": false,
-      "ivy": 1,
-      "cluster": 0,
-      "wither": 0,
-      "fertileRing": 0,
-      "bloomBonus": 0,
-      "id": "ivy",
-      "name": "담쟁이",
-      "description": "옆 칸 중 식물이 있는 칸에 1을 더 준다."
-    },
-    {
-      "self": 1,
-      "ring1": 2,
-      "star2": 0,
-      "line": 0,
-      "lineLength": 0,
-      "seed": 0,
-      "pondPlanting": false,
-      "ivy": 0,
-      "cluster": 2,
-      "wither": 0,
-      "fertileRing": 0,
-      "bloomBonus": 0,
-      "id": "bamboo",
-      "name": "대나무",
-      "description": "맞닿은 내 대나무 1개당 심은 칸 +2."
-    },
-    {
-      "self": 1,
-      "ring1": 0,
-      "star2": 0,
-      "line": 0,
-      "lineLength": 0,
-      "seed": 0,
-      "pondPlanting": false,
-      "ivy": 0,
-      "cluster": 0,
       "wither": 2,
-      "fertileRing": 0,
       "bloomBonus": 0,
       "id": "mushroom",
       "name": "버섯",
-      "description": "맞닿은 6칸에서 다른 모든 사람의 영향력을 2씩 줄인다."
+      "description": "맞닿은 6칸에서 남의 큐브를 2개씩 걷어낸다.",
+      "roots": [
+        {
+          "dq": 0,
+          "dr": 0,
+          "n": 2
+        }
+      ]
     },
     {
-      "self": 2,
-      "ring1": 1,
-      "star2": 0,
-      "line": 0,
-      "lineLength": 0,
       "seed": 0,
       "pondPlanting": false,
-      "ivy": 0,
-      "cluster": 0,
       "wither": 0,
-      "fertileRing": 0,
       "bloomBonus": 1,
       "id": "mugunghwa",
       "name": "무궁화",
-      "description": "끝날 때 이 칸이 내 땅이면 +1점."
+      "description": "끝날 때 내 땅 위에 있으면 +1점.",
+      "roots": [
+        {
+          "dq": 0,
+          "dr": 0,
+          "n": 2
+        },
+        {
+          "dq": 1,
+          "dr": 0,
+          "n": 1
+        },
+        {
+          "dq": 1,
+          "dr": -1,
+          "n": 1
+        }
+      ]
     }
   ],
   "goals": [
@@ -215,13 +245,13 @@
     {
       "id": "big-garden",
       "name": "큰 정원",
-      "description": "이어진 내 땅의 가장 큰 덩어리: 1등 +6, 2등 +3",
+      "description": "이어진 내 땅의 가장 큰 덩어리: 1등 +4, 2등 +2",
       "species": null
     },
     {
       "id": "long-path",
       "name": "오솔길",
-      "description": "한 직선으로 이어진 내 땅의 최대 길이: 1등 +5, 2등 +2",
+      "description": "한 직선으로 이어진 내 땅의 최대 길이: 1등 +4, 2등 +2",
       "species": null
     },
     {
@@ -239,7 +269,7 @@
     {
       "id": "center-plaza",
       "name": "중앙 광장",
-      "description": "가운데 구역(7칸 묶음)에서 내 땅이 가장 많으면 +6",
+      "description": "가운데 구역(7칸 묶음)에서 내 땅이 가장 많으면 +4",
       "species": null
     },
     {
@@ -251,67 +281,55 @@
     {
       "id": "flower-bed",
       "name": "꽃밭",
-      "description": "내 땅 위의 유채·연꽃·무궁화 1개당 +2 (누가 심었든)",
+      "description": "내 땅 위의 민들레·연꽃·무궁화 1개당 +2",
       "species": null
     },
     {
       "id": "forest",
       "name": "숲",
-      "description": "이어진 내 참나무·대나무 3개 이상 무리 1개당 +4",
-      "species": null
-    },
-    {
-      "id": "connected",
-      "name": "이어진 정원",
-      "description": "내 입구와 식물이 모두 이어져 있으면 +5",
-      "species": null
-    },
-    {
-      "id": "border-guard",
-      "name": "경계 지키기",
-      "description": "다른 사람 땅과 맞닿은 내 땅 1칸당 +1",
+      "description": "서로 맞닿은 내 땅 위 참나무·소나무 3개 이상 무리 1개당 +4",
       "species": null
     },
     {
       "id": "variety",
       "name": "여러 가지 심기",
-      "description": "서로 다른 식물을 5종 이상 심었으면 +4",
+      "description": "내 땅 위에 서로 다른 식물이 5종 이상이면 +4",
       "species": null
     },
     {
       "id": "pine-reserve",
       "name": "소나무 보호구역",
-      "description": "내 땅 위의 내 소나무 1개당 +2",
+      "description": "내 땅 위의 소나무 1개당 +2",
       "species": "pine"
     },
     {
       "id": "kudzu-reserve",
       "name": "칡 보호구역",
-      "description": "내 땅 위의 내 칡 1개당 +2",
+      "description": "내 땅 위의 칡 1개당 +2",
       "species": "kudzu"
     },
     {
       "id": "fern-reserve",
       "name": "고사리 보호구역",
-      "description": "내 땅 위의 내 고사리 1개당 +2",
+      "description": "내 땅 위의 고사리 1개당 +2",
       "species": "fern"
     },
     {
       "id": "grass-reserve",
       "name": "잔디 보호구역",
-      "description": "내 땅 위의 내 잔디 1개당 +2",
+      "description": "내 땅 위의 잔디 1개당 +2",
       "species": "grass"
     },
     {
       "id": "mushroom-reserve",
       "name": "버섯 보호구역",
-      "description": "내 땅 위의 내 버섯 1개당 +2",
+      "description": "내 땅 위의 버섯 1개당 +2",
       "species": "mushroom"
     },
     {
       "id": "dandelion-reserve",
       "name": "민들레 보호구역",
-      "description": "내 땅 위의 내 민들레 1개당 +2",
+      "description": "내 땅 위의 민들레 1개당 +2",
       "species": "dandelion"
     }
   ],
@@ -319,40 +337,45 @@
     "MIN_PLAYERS": 2,
     "MAX_PLAYERS": 4,
     "START_HAND": 1,
-    "ENTRANCE_SELF": 3,
-    "ENTRANCE_RING": 1,
-    "FERTILE_BONUS": 1,
+    "ENTRANCE_ROOTS": 1,
     "GOAL_COUNT": 3,
     "RESERVE_BONUS": 2,
+    "SEED_RANGE": 2,
     "VARIETY_SPECIES": 5,
     "VARIETY_BONUS": 4
   },
   "playerCountRules": {
     "2": {
       "gardenSize": 6,
-      "copies": 5,
+      "copies": 4,
+      "market": 3,
+      "supply": 20,
       "komi": [
         0,
         0
       ]
     },
     "3": {
-      "gardenSize": 8,
-      "copies": 6,
+      "gardenSize": 6,
+      "copies": 5,
+      "market": 4,
+      "supply": 18,
       "komi": [
-        1,
-        2,
+        0,
+        0,
         0
       ]
     },
     "4": {
       "gardenSize": 8,
-      "copies": 8,
+      "copies": 5,
+      "market": 5,
+      "supply": 16,
       "komi": [
         0,
         1,
-        0,
-        0
+        1,
+        1
       ]
     }
   }

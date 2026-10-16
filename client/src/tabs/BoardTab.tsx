@@ -1,5 +1,5 @@
 import { memo, useCallback, useMemo } from 'react';
-import { computeInfluence, legalPlantCells, legalSeedCells, posKey } from '@rootbound/shared';
+import { legalPlantCells, legalSeedCells, posKey } from '@rootbound/shared';
 import { GoalList } from '../components/GoalList';
 import { Hand } from '../components/Hand';
 import { HexBoard } from '../components/HexBoard';
@@ -23,7 +23,7 @@ export const BoardTab = memo(function BoardTab() {
   const species = useGameStore(selectSelectedSpecies);
   const selectedIndex = useGameStore((s) => s.selectedHandIndex);
   const pendingPos = useGameStore((s) => s.pendingPos);
-  const pendingDirection = useGameStore((s) => s.pendingDirection);
+  const pendingRotation = useGameStore((s) => s.pendingRotation);
   const pendingSeed = useGameStore((s) => s.pendingSeed);
   const seedPicking = useGameStore((s) => s.seedPicking);
   const showInfluence = useGameStore((s) => s.showInfluence);
@@ -38,10 +38,9 @@ export const BoardTab = memo(function BoardTab() {
     const anyLegal = new Set<string>();
     if (!state?.board || !viewerId || state.phase !== 'playing') return { plantable: [] as number[], anyLegal };
     const s = asState(state);
-    const inf = computeInfluence(s);
     const hand = state.players.find((p) => p.id === viewerId)?.hand ?? [];
     const plantable = hand.map((sp) => {
-      const cells = legalPlantCells(s, viewerId, sp, inf);
+      const cells = legalPlantCells(s, viewerId, sp);
       for (const c of cells) anyLegal.add(posKey(c));
       return cells.length;
     });
@@ -57,8 +56,8 @@ export const BoardTab = memo(function BoardTab() {
     [state, seedPicking, pendingPos],
   );
   const preview = useMemo(
-    () => (state && viewerId && species && pendingPos ? previewPlant(state, viewerId, species, pendingPos, pendingDirection, pendingSeed) : null),
-    [state, viewerId, species, pendingPos, pendingDirection, pendingSeed],
+    () => (state && viewerId && species && pendingPos ? previewPlant(state, viewerId, species, pendingPos, pendingRotation, pendingSeed) : null),
+    [state, viewerId, species, pendingPos, pendingRotation, pendingSeed],
   );
   const onCellClick = useCallback((q: number, r: number) => tapCell({ q, r }), [tapCell]);
 
@@ -85,7 +84,7 @@ export const BoardTab = memo(function BoardTab() {
                 ? '이 카드는 지금 심을 칸이 없습니다. 다른 카드를 고르세요'
                 : !pendingPos
                   ? '밝게 빛나는 칸에 심을 수 있습니다'
-                  : '결과를 보고 심기를 누르세요';
+                  : '방향을 고르고 결과를 본 뒤 심기를 누르세요';
 
   return (
     <div className={styles.root}>
@@ -101,7 +100,6 @@ export const BoardTab = memo(function BoardTab() {
           pendingKey={pendingPos ? posKey(pendingPos) : null}
           seedKey={pendingSeed ? posKey(pendingSeed) : null}
           preview={preview}
-          viewerSeat={me?.seat ?? 0}
           showInfluence={showInfluence}
           onCellClick={onCellClick}
         />
@@ -116,8 +114,8 @@ export const BoardTab = memo(function BoardTab() {
         {canPlant && pendingPos ? <PlantBar preview={preview} /> : null}
         <div className={styles.turnBar}>
           <span className={isMyTurn ? styles.hintMine : styles.hint}>{hint}</span>
-          <button type="button" className={showInfluence ? styles.toggleOn : styles.toggle} onClick={toggleInfluence} aria-pressed={showInfluence} title="칸마다 내 영향력 : 가장 센 상대 영향력 보기">
-            영향력
+          <button type="button" className={showInfluence ? styles.toggleOn : styles.toggle} onClick={toggleInfluence} aria-pressed={showInfluence} title="칸마다 뿌리(큐브) 수 보기">
+            뿌리 수
           </button>
         </div>
       </div>

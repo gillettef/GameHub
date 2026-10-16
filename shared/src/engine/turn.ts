@@ -1,12 +1,12 @@
 /**
- * 로비 → 이번 판 식물 공개 → 라운드(가져오기 → 심기) → 종료 (Rules.md 4·5·6·9절).
+ * 로비 → 이번 판 식물 공개 → 라운드(차례마다 가져오기 → 심기) → 종료 (Rules.md 4·5·6·9절).
  * 순수 함수. `applyAction(state, action) => { state, error? }`. 입력 state 를 변이하지 않는다.
  */
 import { GOAL_COUNT, START_HAND, MAX_PLAYERS, MIN_PLAYERS, rulesFor } from '../data/constants.js';
 import { FLOWER_SPECIES, FOREST_SPECIES, GOALS, GOAL_EXCLUSIONS, SPECIES_IDS, getGoal, getSpecies, isSpeciesId } from '../data/species.js';
 import type { Action, Direction, GameLogEntry, GameResultReason, GameState, GoalId, LogKind, PlayerId, PlayerKind, PlayerState, Position, RoundStage, SpeciesId } from '../types/index.js';
-import { buildBoard, hexDistance, isDirection, samePos } from './board.js';
-import { computeInfluence, legalDirections, legalPlantCells, legalSeedCells } from './influence.js';
+import { buildBoard, isDirection, samePos } from './board.js';
+import { entranceRoots, legalPlantCells, legalSeedCells, plantRoots, supplyLeft } from './influence.js';
 import { deckKeyFrom, shuffle, shuffleDeck } from './rng.js';
 import { computeRanking, computeScores, landCounts } from './scoring.js';
 
@@ -42,7 +42,8 @@ export function createInitialState(roomId: string, rngSeed: number, deckSeed: nu
     currentPlayerId: null,
     players: [],
     plants: [],
-    seeds: [],
+    rootSeat: [],
+    rootCount: [],
     rngSeed: rngSeed >>> 0,
     deckSeed: deckKeyFrom(deckSeed),
     result: null,
@@ -167,6 +168,8 @@ export function startGame(state: GameState): GameState {
   const players = [...state.players]
     .sort((a, b) => a.seat - b.seat)
     .map((p) => ({ ...p, hand: pile.splice(0, START_HAND), surrenderedOrder: null, isReady: p.kind === 'ai' }));
+  const market = pile.splice(0, rule.market);
+  const n = built.board.cells.length;
   let s: GameState = {
     ...state,
     phase: 'reveal',
@@ -175,7 +178,7 @@ export function startGame(state: GameState): GameState {
     species: garden.species,
     rngSeed: garden.seed,
     deckSeed: dealt.key,
-    market: [],
+    market,
     pile,
     round: 0,
     stage: 'take',
@@ -183,10 +186,12 @@ export function startGame(state: GameState): GameState {
     turn: 0,
     currentPlayerId: null,
     plants: [],
-    seeds: [],
+    rootSeat: new Array<number>(n).fill(-1),
+    rootCount: new Array<number>(n).fill(0),
     result: null,
     players,
   };
+  s = { ...s, ...entranceRoots(s) };
   s = addLog(s, 'system', null, `게임 시작: 목표 ${goals.goals.map((g) => getGoal(g).name).join(' · ')} / 식물 ${garden.species.map((x) => getSpecies(x).name).join(' · ')}`);
   return maybeBeginPlay(s);
 }
@@ -200,25 +205,20 @@ function maybeBeginPlay(state: GameState): GameState {
   return beginRound({ ...state, phase: 'playing' }, 1, first.seat);
 }
 
-/** 라운드 시작: 남은 마켓 카드는 버리고, 기권 안 한 인원 수만큼 더미에서 펼친다 (Rules.md 5절 1) */
-function revealMarket(state: GameState): GameState {
-  const n = state.players.filter(isActive).length;
-  return { ...state, market: state.pile.slice(0, n), pile: state.pile.slice(n) };
-}
 
 // ---------------------------------------------------------------------------
 // 진행
 // ---------------------------------------------------------------------------
 
 const isActive = (p: PlayerState) => p.surrenderedOrder === null;
-const canPlant = (p: PlayerState) => isActive(p) && p.hand.length > 0;
+/** 이번 라운드에 둘 수 있는가: 기권 안 했고 손이나 마켓에 카드가 있다 */
+const canAct = (state: GameState) => (p: PlayerState) => isActive(p) && (p.hand.length > 0 || state.market.length > 0);
 
 /** 손패의 어떤 카드라도 심을 칸이 있는가 */
 export function hasAnyPlant(state: GameState, playerId: PlayerId): boolean {
   const me = getPlayer(state, playerId);
   if (!me || !state.board) return false;
-  const inf = computeInfluence(state);
-  return [...new Set(me.hand)].some((s) => legalPlantCells(state, playerId, s, inf).length > 0);
+  return [...new Set(me.hand)].some((s) => legalPlantCells(state, playerId, s).length > 0);
 }
 
 function finishGame(state: GameState, reason: GameResultReason): GameState {
@@ -235,19 +235,19 @@ function finishGame(state: GameState, reason: GameResultReason): GameState {
 const bySeat = (state: GameState): PlayerState[] => [...state.players].sort((a, b) => a.seat - b.seat);
 
 /**
- * 다음 라운드의 선: 지금 점수(덤 포함)가 가장 낮은 기권 안 한 사람. 동점이면 이번 선의 다음 자리부터 시계방향으로
- * 처음 만나는 동점자(이번 선은 마지막 후보) (Rules.md 5절 4)
+ * 다음 라운드의 선: 공급처에 큐브가 가장 많이 남은 기권 안 한 사람. 동점이면 이번 선의 다음 자리부터 시계방향으로
+ * 처음 만나는 동점자(이번 선은 마지막 후보) (Rules.md 5절)
  */
 export function nextRoundStart(state: GameState): number {
   const P = state.players.length;
   const seats = bySeat(state);
-  const scores = computeScores(state);
+  const left = supplyLeft(state);
   const active = seats.filter(isActive);
   if (active.length === 0) return state.roundStart;
-  const low = Math.min(...active.map((p) => scores[p.id]?.total ?? 0));
+  const most = Math.max(...active.map((p) => left[p.seat] ?? 0));
   for (let k = 1; k <= P; k++) {
     const p = seats[(state.roundStart + k) % P] as PlayerState;
-    if (isActive(p) && (scores[p.id]?.total ?? 0) === low) return p.seat;
+    if (isActive(p) && (left[p.seat] ?? 0) === most) return p.seat;
   }
   return state.roundStart;
 }
@@ -265,42 +265,35 @@ function nextInRound(state: GameState, after: number | null, ok: (p: PlayerState
   return null;
 }
 
-function enterTurn(state: GameState, next: PlayerState, stage: RoundStage): GameState {
+/** 차례를 연다: 마켓에 카드가 있으면 가져오기부터, 없으면 바로 심기 */
+function enterTurn(state: GameState, next: PlayerState): GameState {
+  const stage = state.market.length > 0 ? 'take' : 'plant';
   const s: GameState = { ...state, stage, currentPlayerId: next.id, turn: state.turn + 1 };
-  return addLog(s, 'turn', next.id, `${next.nickname}의 차례 (${stage === 'take' ? '가져오기' : '심기'})`);
+  return addLog(s, 'turn', next.id, `${next.nickname}의 차례`);
 }
 
-/** 라운드를 연다: 마켓을 펼치고 선부터 가져오기. 마켓이 없으면 바로 심기 단계 (Rules.md 5절) */
+/** 라운드를 연다: 선부터 차례대로 (Rules.md 5절) */
 function beginRound(state: GameState, round: number, start: number): GameState {
-  let s = revealMarket({ ...state, round, roundStart: start });
+  let s: GameState = { ...state, round, roundStart: start };
   const lead = s.players.find((p) => p.seat === start) as PlayerState;
   s = addLog(s, 'system', lead.id, `${round}라운드: ${lead.nickname} 선`);
-  const first = s.market.length > 0 ? nextInRound(s, null, isActive) : null;
-  return first ? enterTurn(s, first, 'take') : beginPlantStage(s);
+  const first = nextInRound(s, null, canAct(s));
+  return first ? enterTurn(s, first) : finishGame(s, 'complete');
 }
 
-function beginPlantStage(state: GameState): GameState {
-  const first = nextInRound(state, null, canPlant);
-  return first ? enterTurn(state, first, 'plant') : endRound(state);
-}
-
-/** 라운드 끝: 더미가 비고 모두 손을 다 썼으면 종료, 아니면 점수가 가장 낮은 사람이 선인 다음 라운드 */
+/** 라운드 끝: 더미·마켓·손이 모두 비면 종료, 아니면 공급처에 큐브가 가장 많이 남은 사람이 선인 다음 라운드 */
 function endRound(state: GameState): GameState {
-  if (state.pile.length === 0 && !state.players.some(canPlant)) return finishGame(state, 'complete');
+  if (state.pile.length === 0 && !state.players.some(canAct(state))) return finishGame(state, 'complete');
   return beginRound(state, state.round + 1, nextRoundStart(state));
 }
 
-/** 지금 사람의 차례가 끝났다: 같은 단계의 다음 사람, 없으면 다음 단계·라운드로 */
+/** 지금 사람의 차례가 끝났다: 이번 라운드의 다음 사람, 없으면 다음 라운드로 */
 function advance(state: GameState): GameState {
   const active = state.players.filter(isActive);
   if (active.length <= 1 && state.players.length > 1) return finishGame(state, 'last-standing');
   const curSeat = getPlayer(state, state.currentPlayerId as PlayerId)?.seat ?? state.roundStart;
-  if (state.stage === 'take') {
-    const next = state.market.length > 0 ? nextInRound(state, curSeat, isActive) : null;
-    return next ? enterTurn(state, next, 'take') : beginPlantStage(state);
-  }
-  const next = nextInRound(state, curSeat, canPlant);
-  return next ? enterTurn(state, next, 'plant') : endRound(state);
+  const next = nextInRound(state, curSeat, canAct(state));
+  return next ? enterTurn(state, next) : endRound(state);
 }
 
 /** 손에서 카드 한 장을 뺀다 */
@@ -315,7 +308,7 @@ function spendCard(state: GameState, playerId: PlayerId, species: SpeciesId): Ga
 function turnError(state: GameState, playerId: PlayerId, stage: RoundStage): string | null {
   if (state.phase !== 'playing') return '진행 중인 게임이 아닙니다';
   if (state.currentPlayerId !== playerId) return '내 차례가 아닙니다';
-  if (state.stage !== stage) return stage === 'take' ? '지금은 심을 차례입니다' : '먼저 마켓에서 카드를 가져오세요';
+  if (state.stage !== stage) return stage === 'take' ? '이미 가져왔습니다. 손의 카드 중 하나를 심으세요' : '먼저 마켓에서 카드를 가져오세요';
   return null;
 }
 
@@ -334,6 +327,7 @@ const isPos = (p: unknown): p is Position => {
 
 export function validatePlant(state: GameState, a: Extract<Action, { type: 'PLANT' }>): string | null {
   if (!isPos(a.pos) || (a.seed !== undefined && !isPos(a.seed))) return '잘못된 심기 요청입니다';
+  if (a.rotation !== undefined && !isDirection(a.rotation)) return '잘못된 회전입니다';
   const err = turnError(state, a.playerId, 'plant');
   if (err) return err;
   const me = getPlayer(state, a.playerId);
@@ -341,17 +335,11 @@ export function validatePlant(state: GameState, a: Extract<Action, { type: 'PLAN
   if (!isSpeciesId(a.species) || !me.hand.includes(a.species)) return '손에 없는 카드입니다';
   const sp = getSpecies(a.species);
   if (!legalPlantCells(state, a.playerId, a.species).some((p) => samePos(p, a.pos))) {
-    return sp.pondPlanting ? '뿌리가 닿는 칸이나 연못 옆 빈 칸에만 심을 수 있습니다' : '내 뿌리가 닿는 빈 칸에만 심을 수 있습니다';
+    return sp.pondPlanting ? '내 땅, 내 땅과 맞닿은 빈 칸, 연못 옆 빈 칸에만 심을 수 있습니다' : '내 땅이나 내 땅과 맞닿은 빈 칸에만 심을 수 있습니다';
   }
-  if (sp.line) {
-    if (!isDirection(a.direction)) return '칡을 뻗을 방향을 고르세요';
-    if (!legalDirections(state, a.pos).includes(a.direction)) return '그 방향으로는 보드가 없습니다';
-  } else if (a.direction !== undefined) return '이 식물은 방향이 없습니다';
   if (a.seed !== undefined) {
     if (!sp.seed) return '이 식물은 씨앗을 날리지 않습니다';
-    if (hexDistance(a.seed, a.pos) > 2 || samePos(a.seed, a.pos) || !legalSeedCells(state, a.pos).some((p) => samePos(p, a.seed as Position))) {
-      return '씨앗은 심는 칸에서 두 칸 안 빈 칸에만 놓을 수 있습니다';
-    }
+    if (!legalSeedCells(state, a.pos).some((p) => samePos(p, a.seed as Position))) return '씨앗은 심는 칸에서 두 칸 안, 큐브를 놓을 수 있는 칸에만 놓을 수 있습니다';
   }
   return null;
 }
@@ -378,33 +366,37 @@ export function applyAction(state: GameState, action: Action): ActionResult {
       if (err) return reject(state, err);
       const card = state.market[action.take] as SpeciesId;
       const me = getPlayer(state, action.playerId) as PlayerState;
-      let s: GameState = { ...state, market: state.market.filter((_, i) => i !== action.take) };
+      // 가져간 자리는 더미 맨 위 카드로 바로 채운다 (Rules.md 5절)
+      const market = state.market.filter((_, i) => i !== action.take);
+      const pile = [...state.pile];
+      if (pile.length) market.push(pile.shift() as SpeciesId);
+      let s: GameState = { ...state, market, pile, stage: 'plant' };
       s = updatePlayer(s, action.playerId, { hand: [...me.hand, card] });
       s = addLog(s, 'take', action.playerId, `${me.nickname}: ${getSpecies(card).name} 가져옴`);
-      return { state: advance(s) };
+      return { state: s };
     }
     case 'PLANT': {
       const err = validatePlant(state, action);
       if (err) return reject(state, err);
       const me = getPlayer(state, action.playerId) as PlayerState;
       const sp = getSpecies(action.species);
+      const rotation = (action.rotation ?? 0) as Direction;
       const before = landCounts(state);
       let s: GameState = {
         ...state,
-        plants: [
-          ...state.plants,
-          { id: `p${state.plants.length + 1}`, species: action.species, ownerId: action.playerId, pos: { q: action.pos.q, r: action.pos.r }, direction: sp.line ? (action.direction as Direction) : null },
-        ],
-        seeds: action.seed && sp.seed ? [...state.seeds, { ownerId: action.playerId, pos: { q: action.seed.q, r: action.seed.r } }] : state.seeds,
+        plants: [...state.plants, { id: `p${state.plants.length + 1}`, species: action.species, ownerId: action.playerId, pos: { q: action.pos.q, r: action.pos.r }, rotation }],
       };
+      const seed = action.seed && sp.seed ? { q: action.seed.q, r: action.seed.r } : null;
+      const res = plantRoots(s, action.playerId, action.species, action.pos, rotation, seed);
+      s = { ...s, rootSeat: res.rootSeat, rootCount: res.rootCount };
       s = spendCard(s, action.playerId, action.species);
-      s = addLog(s, 'plant', action.playerId, `${me.nickname}: ${sp.name} 심음${action.seed ? ', 씨앗 놓음' : ''}`);
+      s = addLog(s, 'plant', action.playerId, `${me.nickname}: ${sp.name} 심음${seed ? ', 씨앗 날림' : ''}`);
+      if (res.uprooted.length) s = addLog(s, 'uproot', action.playerId, `${me.nickname}: 뿌리가 모자라 내 땅에서 큐브 ${res.uprooted.length}개를 옮겨 옴`);
       const after = landCounts(s);
-      // 다른 사람 땅이 줄었으면 뺏긴 것으로 기록한다 (진행 탭·연출용)
-      const mySeat = me.seat;
+      // 다른 사람 땅이 줄었으면 밀어낸 것으로 기록한다 (진행 탭·연출용)
       s.players.forEach((p) => {
         const lost = (before[p.seat] ?? 0) - (after[p.seat] ?? 0);
-        if (p.seat !== mySeat && lost > 0) s = addLog(s, 'flip', action.playerId, `${me.nickname}: ${p.nickname}의 땅 ${lost}칸을 가져갔습니다`);
+        if (p.seat !== me.seat && lost > 0) s = addLog(s, 'flip', action.playerId, `${me.nickname}: ${p.nickname}의 땅 ${lost}칸을 밀어냄`);
       });
       return { state: advance(s) };
     }
@@ -449,14 +441,10 @@ export function autoAction(state: GameState, playerId: PlayerId): Action | null 
   // 가져오기는 마켓 맨 앞 카드
   if (state.stage === 'take') return state.market.length > 0 ? { type: 'TAKE', playerId, take: 0 } : null;
   if (me.hand.length === 0) return null;
-  const inf = computeInfluence(state);
-  // 맨 앞 카드부터, 심을 수 있는 첫 카드를 첫 칸에
+  // 맨 앞 카드부터, 심을 수 있는 첫 카드를 첫 칸에 회전 0으로 (씨앗은 놓지 않는다)
   for (const s of me.hand) {
-    const c = legalPlantCells(state, playerId, s, inf)[0];
-    if (!c) continue;
-    const sp = getSpecies(s);
-    const direction = sp.line ? (legalDirections(state, c)[0] as Direction | undefined) : undefined;
-    return { type: 'PLANT', playerId, species: s, pos: c, ...(direction !== undefined ? { direction } : {}) };
+    const c = legalPlantCells(state, playerId, s)[0];
+    if (c) return { type: 'PLANT', playerId, species: s, pos: c, rotation: 0 };
   }
   return { type: 'DISCARD', playerId, species: me.hand[0] as SpeciesId };
 }
