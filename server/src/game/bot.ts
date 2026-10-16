@@ -212,7 +212,7 @@ function zoneOutlook(state: GameState, strategy: BotStrategy, player: PlayerGame
     return BALANCE.growthActivities.tournament ? 0.5 * effectValue(state, strategy, { stats: { spellPower: BALANCE.growthAmount }, credit: BALANCE.growthCredit }) : 0;
   // 마법 겨루기의 가치 = 이길 확률·지목 부담을 감안한 0.35 × (승리 보상 + 주문력 성장)
   if (activityId === "duel")
-    return 0.35 * (effectValue(state, strategy, BALANCE.duelWinReward) + effectValue(state, strategy, { stats: { spellPower: BALANCE.growthAmount } }));
+    return 0.35 * (effectValue(state, strategy, BALANCE.duelWinReward) + effectValue(state, strategy, { stats: { spellPower: BALANCE.growthAmount } }) + duelLearnValue(state, strategy, player));
   const cards = state.hidden.offers[activityId] ?? [];
   const valueOf = (card: (typeof cards)[number]): number => {
     if (activityId === "creature") return creatureValue(state, strategy, player, card as CreatureCard);
@@ -223,6 +223,19 @@ function zoneOutlook(state: GameState, strategy: BotStrategy, player: PlayerGame
   const values = cards.map(valueOf).sort((a, b) => b - a);
   const taken = state.activitySlots[activityId].length;
   return Math.max(0, values[taken] ?? 0);
+}
+
+// 61절 겨루며 배운다: 지목할 수 있는 친구 중 가장 크게 배울 수 있는 능력치 +1의 가치 (BOT_DUEL_LEARN=0이면 끔)
+function duelLearnValue(state: GameState, strategy: BotStrategy, player: PlayerGameState): number {
+  if (!BALANCE.duelLearn || process.env.BOT_DUEL_LEARN === "0") return 0;
+  const stats: StatKey[] = ["intelligence", "stamina", "charm", "spellPower"];
+  let best = 0;
+  for (const id of duelTargets(state, player.id)) {
+    const other = state.players[id];
+    const top = stats.filter((s) => other[s] > player[s]).sort((a, b) => other[b] - player[b] - (other[a] - player[a]))[0];
+    if (top) best = Math.max(best, effectValue(state, strategy, { stats: { [top]: 1 } }));
+  }
+  return best;
 }
 
 // 이번 달 하려는 활동 (공개된 카드와 성향을 함께 본다)

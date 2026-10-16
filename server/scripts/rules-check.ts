@@ -176,7 +176,11 @@ const rollAll = rollAndConfirm;
 function rollWith(state: GameState, dice: Record<string, number[]>): void {
   const pending = state.pendingRoll!;
   for (const entry of [...pending.entries]) {
-    if (entry.confirmed) continue;
+    // 자동 막기(61절)처럼 서버가 미리 굴려 확정한 칸도 결과가 적용되기 전이라 눈을 정해 둘 수 있다
+    if (entry.confirmed) {
+      if (dice[entry.playerId]) entry.dice = dice[entry.playerId];
+      continue;
+    }
     if (entry.dice === null) submitRoll(state, entry.playerId);
     if (dice[entry.playerId]) entry.dice = dice[entry.playerId];
     confirmRoll(state, entry.playerId);
@@ -2296,6 +2300,8 @@ test("61절 마법 겨루기: 아무 친구나 지목(한 달에 한 번만 지�
     const defender = state.pendingRoll!.entries.find((e) => e.playerId === y)!;
     assert.equal(defender.diceChoiceMax, undefined, "막는 쪽은 고를 것이 없다 (일부러 질 수 없다)");
     assert.equal(defender.diceCount, 1);
+    assert.ok(defender.confirmed && defender.dice?.length === 1, "막기는 서버가 바로 굴려 확정한다 (기다릴 것이 없다)");
+    assert.equal(defender.bonus, 2, "화면에 보일 막기 보너스 = 주문력");
     const before = { x: state.players[x].credit, y: state.players[y].credit, yMana: state.players[y].manaTokens };
     rollWith(state, { [y]: [2], [x]: [4] });
     assert.equal(state.players[x].credit, before.x, "주사위 2 + 주문력 2 = 4, 같으면 도전 실패");
