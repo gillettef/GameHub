@@ -1,7 +1,7 @@
 """
 Rootbound GameState / Action Pydantic 모델. `shared/src/types/index.ts` 와 필드명·타입을 1:1 로 맞춘다.
 서버가 보내는 가려진 상태(타인 손 카드·카드 더미가 빈 배열, `handCount`/`pileCount` 추가 필드)와
-가리지 않은 원본 상태를 모두 받는다. 모르는 필드(예전 드래프트 형식의 drafted/deck/draftOrder 등)는 버린다.
+가리지 않은 원본 상태를 모두 받는다. 모르는 필드(예전 형식의 drafted/deck/draftOrder/seeds 등)는 버린다.
 """
 
 from __future__ import annotations
@@ -18,10 +18,7 @@ SpeciesId = Literal[
     "kudzu",
     "fern",
     "dandelion",
-    "rapeseed",
     "lotus",
-    "ivy",
-    "bamboo",
     "mushroom",
     "mugunghwa",
 ]
@@ -29,9 +26,9 @@ GoalId = str
 Terrain = Literal["empty", "fertile", "pond", "rock"]
 # lobby → reveal(이번 판 식물 공개) → playing → finished
 GamePhase = Literal["lobby", "reveal", "playing", "finished"]
-# 라운드 안의 단계: 모두 가져온 뒤 모두 심는다
+# 차례 안의 단계: 마켓에서 가져온 뒤 심는다
 RoundStage = Literal["take", "plant"]
-LogKind = Literal["system", "take", "plant", "discard", "flip", "turn", "surrender", "result"]
+LogKind = Literal["system", "take", "plant", "discard", "flip", "uproot", "turn", "surrender", "result"]
 PlayerKind = Literal["human", "ai"]
 GameResultReason = Literal["complete", "last-standing"]
 
@@ -66,15 +63,11 @@ class Board(_Model):
 class Plant(_Model):
     id: str
     species: SpeciesId
+    # 심은 사람 (기록용. 점수는 그 칸의 땅 주인이 받는다)
     ownerId: PlayerId
     pos: Position
-    # 칡의 방향. 그 외 None
-    direction: Optional[int] = None
-
-
-class Seed(_Model):
-    ownerId: PlayerId
-    pos: Position
+    # 뿌리 모양 회전 0~5
+    rotation: int = 0
 
 
 class PlayerState(_Model):
@@ -98,6 +91,8 @@ class GameLogEntry(_Model):
 
 class Score(_Model):
     land: int
+    # 내 땅 위에 서 있는 식물 수 (동점 깨기)
+    plantsOnLand: int
     goals: int
     goalBreakdown: list[int]
     bloom: int
@@ -118,13 +113,13 @@ class GameState(_Model):
     goals: list[GoalId] = Field(default_factory=list)
     # 이번 판에 쓰는 식물 (표 순서, 공개)
     species: list[SpeciesId] = Field(default_factory=list)
-    # 이번 라운드에 펼쳐 둔 카드 (공개). 가져오기 단계에서 1장씩 가져간다
+    # 펼쳐 둔 마켓 카드 (공개). 1장 가져가면 더미 맨 위로 바로 채운다
     market: list[SpeciesId] = Field(default_factory=list)
     # 카드 더미 (맨 앞이 다음 카드). 서버가 가린 상태에서는 빈 배열이고 pileCount 만 있다
     pile: list[SpeciesId] = Field(default_factory=list)
     # 가린 상태(MaskedGameState)의 더미 장수. 원본 상태에는 없다. 직렬화에서는 뺀다
     pileCount: Optional[int] = Field(default=None, exclude=True)
-    # 이번 라운드의 선(첫 자리, 공개). 라운드 안 순서는 여기서부터 자리 순서. 라운드가 끝나면 점수 최저인 사람
+    # 이번 라운드의 선(첫 자리, 공개). 라운드가 끝나면 공급처에 큐브가 가장 많이 남은 사람
     roundStart: int = 0
     # 1부터 (공개 단계는 0)
     round: int = 0
@@ -134,7 +129,9 @@ class GameState(_Model):
     currentPlayerId: Optional[PlayerId] = None
     players: list[PlayerState] = Field(default_factory=list)
     plants: list[Plant] = Field(default_factory=list)
-    seeds: list[Seed] = Field(default_factory=list)
+    # 칸별 뿌리 큐브 색(좌석, −1 없음)과 수. board.cells 순서. 한 칸에는 한 색만
+    rootSeat: list[int] = Field(default_factory=list)
+    rootCount: list[int] = Field(default_factory=list)
     rngSeed: int = 0
     # 카드 더미 셔플 전용 시드 (TS GameState.deckSeed, 32비트 정수 4개). 서버가 가려서 보내면 [] 이다.
     # Python 은 셔플하지 않으므로 값만 통과시킨다
@@ -167,7 +164,7 @@ class ConfirmAction(_Model):
 
 
 class TakeAction(_Model):
-    """가져오기 단계: 마켓 take 번 카드를 손에 든다."""
+    """차례 앞부분: 마켓 take 번 카드를 손에 든다."""
 
     type: Literal["TAKE"] = "TAKE"
     playerId: PlayerId
@@ -175,14 +172,14 @@ class TakeAction(_Model):
 
 
 class PlantAction(_Model):
-    """심기 단계. direction 은 칡만, seed 는 민들레만(생략 가능).
+    """심기. rotation 은 뿌리 모양 회전(생략 0), seed 는 민들레만(생략 가능).
     직렬화할 때 None 은 빼야 TS 검증을 통과한다."""
 
     type: Literal["PLANT"] = "PLANT"
     playerId: PlayerId
     species: SpeciesId
     pos: Position
-    direction: Optional[int] = None
+    rotation: Optional[int] = None
     seed: Optional[Position] = None
 
 

@@ -59,7 +59,7 @@ interface HexBoardProps {
   pendingKey?: string | null;
   seedKey?: string | null;
   preview?: PlantPreview | null;
-  viewerSeat: number;
+  /** 칸마다 뿌리(큐브) 수를 보여 준다 */
   showInfluence: boolean;
   onCellClick: (q: number, r: number) => void;
 }
@@ -74,9 +74,10 @@ const terrainFill: Record<CellView['terrain'], string> = {
 /**
  * 정원 보드 (Rules.md 3절, 축 좌표 육각). SVG 라 컨테이너 크기에 맞춰 늘고 줄어든다(무스크롤, F015).
  * 바닥(테두리·줄눈·지형 질감·구역 경계)은 보드 좌표 그대로 한 번에 그려 질감이 칸마다 이어지고,
- * 칸마다 땅 주인 좌석색(옅게) → 지형 장식 → 입구(집 모양·번호) / 식물(카드 그림 썸네일 + 좌석색 고리) / 씨앗(점)을 올린다.
+ * 칸마다 땅 주인 좌석색(옅게) → 지형 장식 → 입구(집 모양·번호) / 식물(카드 그림 썸네일 + 땅 주인 색 고리) → 뿌리 큐브 수(주인 색 배지)를 올린다.
+ * 식물은 누구의 것도 아니므로 고리 색은 심은 사람이 아니라 그 칸의 땅 주인 색이다(Rules.md 1절).
  */
-export const HexBoard = memo(function HexBoard({ cells, legal, legalFaint, seedLegal, pendingKey, seedKey, preview, viewerSeat, showInfluence, onCellClick }: HexBoardProps) {
+export const HexBoard = memo(function HexBoard({ cells, legal, legalFaint, seedLegal, pendingKey, seedKey, preview, showInfluence, onCellClick }: HexBoardProps) {
   const box = useMemo(() => {
     const pts = cells.map((c) => px(c.q, c.r));
     const xs = pts.map((p) => p.x);
@@ -157,9 +158,8 @@ export const HexBoard = memo(function HexBoard({ cells, legal, legalFaint, seedL
         const isSeedLegal = seedLegal?.has(c.key) ?? false;
         const interactive = isLegal || isSeedLegal;
         const ownerStyle = c.owner >= 0 ? ({ '--owner': `var(--color-seat-${c.owner})` } as CSSProperties) : undefined;
-        const mine = c.influence[viewerSeat] ?? 0;
-        const rival = Math.max(0, ...c.influence.filter((_, i) => i !== viewerSeat));
-        const label = `(${c.q},${c.r}) ${terrainName(c.terrain)}${c.plant ? ` · ${getSpecies(c.plant.species).name}` : ''}${c.owner >= 0 ? ` · ${c.owner + 1}번 자리 땅` : ''}`;
+        const shown: [number, number] = touched ?? [c.owner, c.cubes];
+        const label = `(${c.q},${c.r}) ${terrainName(c.terrain)}${c.plant ? ` · ${getSpecies(c.plant.species).name}` : ''}${c.owner >= 0 ? ` · ${c.owner + 1}번 자리 땅, 뿌리 ${c.cubes}` : ''}`;
         const bare = !c.plant && c.entranceSeat < 0;
         return (
           <g
@@ -216,7 +216,7 @@ export const HexBoard = memo(function HexBoard({ cells, legal, legalFaint, seedL
               </g>
             )}
             {c.plant && (
-              <g key={c.plant.id} className={styles.plant} style={{ '--seat': `var(--color-seat-${c.plantSeat})` } as CSSProperties}>
+              <g key={c.plant.id} className={cx(styles.plant, c.owner < 0 && styles.plantWild)} style={c.owner >= 0 ? ({ '--seat': `var(--color-seat-${c.owner})` } as CSSProperties) : undefined}>
                 <circle r={THUMB_RING} className={styles.thumbRing} />
                 <image
                   href={plantArtUrl(c.plant.species)}
@@ -230,23 +230,19 @@ export const HexBoard = memo(function HexBoard({ cells, legal, legalFaint, seedL
                 <circle r={THUMB_ART} className={styles.thumbEdge} />
               </g>
             )}
-            {c.seedSeats.map((seat, i) => (
-              <circle key={i} r={0.12} cx={-0.35 + i * 0.25} cy={0.62} className={styles.seed} style={{ '--seat': `var(--color-seat-${seat})` } as CSSProperties} />
-            ))}
             {pendingKey === c.key && <polygon points={HEX} className={styles.pending} />}
             {seedKey === c.key && <circle r={0.3} className={styles.seedPending} />}
-            {touched !== undefined && !c.plant ? (
-              <text className={styles.infl} textAnchor="middle" dominantBaseline="central" y={c.entranceSeat >= 0 ? 0.62 : 0} style={{ fontSize: inflFont }}>
-                {touched}
-              </text>
-            ) : (
-              showInfluence &&
-              bare &&
-              (mine > 0 || rival > 0) && (
-                <text className={styles.inflSmall} textAnchor="middle" dominantBaseline="central" style={{ fontSize: smallFont }}>
-                  {mine}:{rival}
+            {(showInfluence || touched !== undefined) && (shown[1] > 0 || touched !== undefined) && (
+              <g
+                className={cx(styles.cubes, touched !== undefined && styles.cubesChanged)}
+                transform={c.plant ? `translate(0.48 0.5)` : undefined}
+                style={shown[0] >= 0 ? ({ '--owner': `var(--color-seat-${shown[0]})` } as CSSProperties) : undefined}
+              >
+                <circle r={c.plant ? 0.3 : 0.36} className={shown[0] >= 0 ? styles.cubeDot : styles.cubeEmpty} />
+                <text textAnchor="middle" dominantBaseline="central" style={{ fontSize: c.plant ? smallFont : inflFont }}>
+                  {shown[1]}
                 </text>
-              )
+              </g>
             )}
           </g>
         );

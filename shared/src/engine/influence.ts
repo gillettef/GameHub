@@ -1,158 +1,254 @@
 /**
- * 영향력·땅·심을 수 있는 칸 (Rules.md 6.1·6.2·7절). 전부 보드의 순수 함수다(상태에 캐시하지 않는다).
+ * 뿌리 큐브·땅·심을 수 있는 칸 (Rules.md 6·7절). 순수 함수. 상태는 칸마다 큐브 색과 수(rootSeat/rootCount)뿐이다.
+ *
+ * 줄다리기: 한 칸에는 한 색의 큐브만 있다. 남의 큐브가 있는 칸에 뿌리를 놓으면 내 큐브 1개가 남의 큐브 1개를
+ * 밀어낸다(둘 다 각자 공급처로). 다 밀어내고 남은 만큼 내 큐브를 놓는다.
+ * 공급처: 한 사람의 큐브 수는 정해져 있다(인원별 supply). 놓을 큐브가 모자라면 가장 높이 쌓인 내 다른 칸에서 옮겨 온다.
  */
-import { ENTRANCE_RING, ENTRANCE_SELF, FERTILE_BONUS } from '../data/constants.js';
+import { ENTRANCE_ROOTS, SEED_RANGE, rulesFor } from '../data/constants.js';
 import { getSpecies } from '../data/species.js';
-import type { GameState, PlayerId, Position, SpeciesId } from '../types/index.js';
-import { boardIndex, type BoardIndex } from './board.js';
+import type { Direction, GameState, PlayerId, Position, RootSpot, SpeciesId } from '../types/index.js';
+import { boardIndex, hexDistance, type BoardIndex } from './board.js';
 
 /** 칸별로 무엇이 있는가. 칸 색인 기준 */
 export interface Occupancy {
-  /** 식물 주인 좌석 (−1 없음) */
-  plantSeat: Int8Array;
-  /** 식물 종 */
+  /** 식물 종 (없으면 null) */
   plantSpecies: (SpeciesId | null)[];
+  /** state.plants 의 번호 (없으면 −1) */
+  plantIndex: Int16Array;
   /** 입구 주인 좌석 (−1 없음) */
   entranceSeat: Int8Array;
 }
 
-export function occupancy(state: GameState): Occupancy {
-  const idx = boardIndex(requireBoard(state));
-  const plantSeat = new Int8Array(idx.n).fill(-1);
-  const plantSpecies: (SpeciesId | null)[] = new Array(idx.n).fill(null);
-  const entranceSeat = new Int8Array(idx.n).fill(-1);
-  const seatOf = seatMap(state);
-  for (const p of state.plants) {
-    const i = idx.indexOf(p.pos);
-    plantSeat[i] = seatOf.get(p.ownerId) ?? -1;
-    plantSpecies[i] = p.species;
-  }
-  idx.board.entrances.forEach((e, seat) => (entranceSeat[idx.indexOf(e)] = seat));
-  return { plantSeat, plantSpecies, entranceSeat };
-}
-
-export function requireBoard(state: GameState) {
+export function requireBoard(state: Pick<GameState, 'board'>) {
   if (!state.board) throw new Error('보드가 아직 없습니다');
   return state.board;
 }
 
-function seatMap(state: GameState): Map<PlayerId, number> {
-  return new Map(state.players.map((p) => [p.id, p.seat]));
-}
-
-/**
- * 좌석별 영향력 [seat][칸]. 입구 → 식물(심은 순서와 무관한 합) → 씨앗을 더한 뒤 버섯 빼기를 마지막에 적용한다.
- */
-export function computeInfluence(state: GameState): Int16Array[] {
-  const board = requireBoard(state);
-  const idx = boardIndex(board);
-  const P = state.players.length;
-  const inf = Array.from({ length: P }, () => new Int16Array(idx.n));
-  const wither = Array.from({ length: P }, () => new Int16Array(idx.n));
-  const occ = occupancy(state);
-  const seatOf = seatMap(state);
-
-  board.entrances.forEach((e, seat) => {
-    const i = idx.indexOf(e);
-    (inf[seat] as Int16Array)[i]! += ENTRANCE_SELF;
-    for (const x of idx.ring1[i] as number[]) (inf[seat] as Int16Array)[x]! += ENTRANCE_RING;
+export function occupancy(state: Pick<GameState, 'board' | 'plants'>): Occupancy {
+  const idx = boardIndex(requireBoard(state));
+  const plantSpecies: (SpeciesId | null)[] = new Array(idx.n).fill(null);
+  const plantIndex = new Int16Array(idx.n).fill(-1);
+  const entranceSeat = new Int8Array(idx.n).fill(-1);
+  state.plants.forEach((p, i) => {
+    const c = idx.indexOf(p.pos);
+    plantSpecies[c] = p.species;
+    plantIndex[c] = i;
   });
-
-  for (const plant of state.plants) {
-    const seat = seatOf.get(plant.ownerId);
-    if (seat === undefined) continue;
-    const sp = getSpecies(plant.species);
-    const I = inf[seat] as Int16Array;
-    const c = idx.indexOf(plant.pos);
-    const nb = idx.ring1[c] as number[];
-    let self = sp.self;
-    let ring = sp.ring1;
-    const fertile = board.cells[c]?.terrain === 'fertile';
-    if (fertile) self += FERTILE_BONUS;
-    if (fertile && sp.fertileRing) ring += sp.fertileRing;
-    if (sp.cluster) for (const x of nb) if (occ.plantSpecies[x] === plant.species && occ.plantSeat[x] === seat) self += sp.cluster;
-    I[c]! += self;
-    if (ring) for (const x of nb) I[x]! += ring;
-    if (sp.star2) for (const x of idx.star2[c] as number[]) I[x]! += sp.star2;
-    // 거리 1..lineLength 칸만. 보드 밖 칸은 건너뛰고 그 너머로 밀려나지 않는다 (Rules.md 7절)
-    if (sp.line && plant.direction !== null) for (const x of (idx.line[c]?.[plant.direction] ?? []).slice(0, sp.lineLength)) if (x >= 0) I[x]! += sp.line;
-    if (sp.ivy) for (const x of nb) if ((occ.plantSeat[x] as number) >= 0) I[x]! += sp.ivy;
-    if (sp.wither) for (const x of nb) for (let o = 0; o < P; o++) if (o !== seat) (wither[o] as Int16Array)[x]! += sp.wither;
-  }
-
-  const seedValue = getSpecies('dandelion').seed;
-  for (const sd of state.seeds) {
-    const seat = seatOf.get(sd.ownerId);
-    if (seat !== undefined) (inf[seat] as Int16Array)[idx.indexOf(sd.pos)]! += seedValue;
-  }
-
-  for (let p = 0; p < P; p++) {
-    const I = inf[p] as Int16Array;
-    const W = wither[p] as Int16Array;
-    for (let c = 0; c < idx.n; c++) if (W[c]) I[c] = Math.max(0, (I[c] as number) - (W[c] as number));
-  }
-  return inf;
+  idx.board.entrances.forEach((e, seat) => (entranceSeat[idx.indexOf(e)] = seat));
+  return { plantSpecies, plantIndex, entranceSeat };
 }
 
-/** 칸 주인 좌석 (−1 = 없음). 엄격한 1등 한 명만. 연못·돌밭은 항상 −1 */
-export function computeOwners(state: GameState, inf: Int16Array[] = computeInfluence(state)): Int8Array {
-  const board = requireBoard(state);
-  const out = new Int8Array(board.cells.length).fill(-1);
-  board.cells.forEach((cell, c) => {
-    if (cell.terrain === 'pond' || cell.terrain === 'rock') return;
-    let best = 0;
-    let who = -1;
-    let tie = false;
-    for (let p = 0; p < inf.length; p++) {
-      const v = (inf[p] as Int16Array)[c] as number;
-      if (v > best) {
-        best = v;
-        who = p;
-        tie = false;
-      } else if (v === best && v > 0) tie = true;
-    }
-    if (!tie) out[c] = who;
+const seatOf = (state: Pick<GameState, 'players'>, playerId: PlayerId): number | undefined => state.players.find((p) => p.id === playerId)?.seat;
+
+/** 큐브를 놓을 수 있는 칸: 빈 땅·기름진 땅이고 입구가 아니다 (식물이 있어도 된다) */
+export function canHoldRoots(idx: BoardIndex, occ: Occupancy, c: number): boolean {
+  const t = idx.board.cells[c]?.terrain;
+  return (t === 'empty' || t === 'fertile') && occ.entranceSeat[c] === -1;
+}
+
+/** 빈 칸: 큐브를 놓을 수 있고 식물이 없다 */
+export function isEmptyCell(idx: BoardIndex, occ: Occupancy, c: number): boolean {
+  return canHoldRoots(idx, occ, c) && occ.plantIndex[c] === -1;
+}
+
+/** 칸 주인 좌석 (−1 = 없음). 큐브가 있는 색이 주인이다 */
+export function computeOwners(state: Pick<GameState, 'board' | 'rootSeat' | 'rootCount'>): Int8Array {
+  const n = requireBoard(state).cells.length;
+  const out = new Int8Array(n).fill(-1);
+  for (let c = 0; c < n; c++) if ((state.rootCount[c] ?? 0) > 0) out[c] = state.rootSeat[c] ?? -1;
+  return out;
+}
+
+/** 좌석별 보드 위 큐브 수 */
+export function cubesOnBoard(state: Pick<GameState, 'players' | 'rootSeat' | 'rootCount'>): number[] {
+  const out = new Array<number>(state.players.length).fill(0);
+  state.rootCount.forEach((k, c) => {
+    const s = state.rootSeat[c] ?? -1;
+    if (k > 0 && s >= 0) out[s]! += k;
   });
   return out;
 }
 
-/** 빈 칸: 식물·입구·연못·돌밭이 없다 (씨앗은 있어도 된다) */
-export function isEmptyCell(state: GameState, idx: BoardIndex, occ: Occupancy, c: number): boolean {
-  const t = idx.board.cells[c]?.terrain;
-  return t !== undefined && t !== 'pond' && t !== 'rock' && occ.plantSeat[c] === -1 && occ.entranceSeat[c] === -1;
+/** 좌석별 공급처에 남은 큐브 (Rules.md 5절 다음 선) */
+export function supplyLeft(state: Pick<GameState, 'players' | 'rootSeat' | 'rootCount'>): number[] {
+  const lim = rulesFor(state.players.length).supply;
+  return cubesOnBoard(state).map((v) => lim - v);
+}
+
+/** 회전 1번 = 60°: (q, r) → (−r, q + r) */
+export function rotateSpot(spot: RootSpot, rotation: number): RootSpot {
+  let { dq, dr } = spot;
+  for (let k = 0; k < ((rotation % 6) + 6) % 6; k++) [dq, dr] = [0 - dr, dq + dr];
+  return { dq, dr, n: spot.n };
+}
+
+/** 이 식물을 이 칸에 이 회전으로 심을 때 큐브를 놓을 칸 (놓는 순서). 보드 밖·연못·바위·입구는 건너뛴다 */
+export function rootTargets(state: Pick<GameState, 'board' | 'plants'>, species: SpeciesId, pos: Position, rotation: number): { cell: number; n: number }[] {
+  const idx = boardIndex(requireBoard(state));
+  const occ = occupancy(state);
+  const out: { cell: number; n: number }[] = [];
+  for (const spot of getSpecies(species).roots) {
+    const s = rotateSpot(spot, rotation);
+    const c = idx.indexOf({ q: pos.q + s.dq, r: pos.r + s.dr });
+    if (c >= 0 && canHoldRoots(idx, occ, c)) out.push({ cell: c, n: s.n });
+  }
+  return out;
 }
 
 /** 이 종을 심을 수 있는 칸 (Rules.md 6.1). 칸 순서(r → q) */
-export function legalPlantCells(state: GameState, playerId: PlayerId, species: SpeciesId, inf: Int16Array[] = computeInfluence(state)): Position[] {
+export function legalPlantCells(state: Pick<GameState, 'board' | 'plants' | 'players' | 'rootSeat' | 'rootCount'>, playerId: PlayerId, species: SpeciesId): Position[] {
   const board = requireBoard(state);
   const idx = boardIndex(board);
   const occ = occupancy(state);
-  const seat = state.players.find((p) => p.id === playerId)?.seat;
+  const seat = seatOf(state, playerId);
   if (seat === undefined) return [];
+  const owners = computeOwners(state);
   const sp = getSpecies(species);
   const out: Position[] = [];
   board.cells.forEach((cell, c) => {
-    if (!isEmptyCell(state, idx, occ, c)) return;
-    if (((inf[seat] as Int16Array)[c] as number) >= 1) out.push({ q: cell.q, r: cell.r });
-    else if (sp.pondPlanting && (idx.ring1[c] as number[]).some((x) => board.cells[x]?.terrain === 'pond')) out.push({ q: cell.q, r: cell.r });
+    if (!isEmptyCell(idx, occ, c)) return;
+    const nb = idx.ring1[c] as number[];
+    let ok = owners[c] === seat || (owners[c] === -1 && nb.some((x) => owners[x] === seat || occ.entranceSeat[x] === seat));
+    if (!ok && sp.pondPlanting) ok = nb.some((x) => board.cells[x]?.terrain === 'pond');
+    if (ok) out.push({ q: cell.q, r: cell.r });
   });
   return out;
 }
 
-/** 민들레 씨앗을 놓을 수 있는 칸: 심는 칸에서 거리 2 이내 빈 칸(심는 칸 제외) */
-export function legalSeedCells(state: GameState, plantPos: Position): Position[] {
+/** 민들레 씨앗 칸: 심는 칸에서 두 칸 안, 큐브를 놓을 수 있는 칸 (심는 칸 제외) */
+export function legalSeedCells(state: Pick<GameState, 'board' | 'plants'>, plantPos: Position): Position[] {
   const board = requireBoard(state);
   const idx = boardIndex(board);
   const occ = occupancy(state);
   const c = idx.indexOf(plantPos);
   if (c < 0) return [];
-  return (idx.within2[c] as number[]).filter((x) => isEmptyCell(state, idx, occ, x)).map((x) => ({ q: board.cells[x]!.q, r: board.cells[x]!.r }));
+  return board.cells
+    .map((cell, x) => ({ cell, x }))
+    .filter(({ cell, x }) => x !== c && hexDistance(cell, plantPos) <= SEED_RANGE && canHoldRoots(idx, occ, x))
+    .map(({ cell }) => ({ q: cell.q, r: cell.r }));
 }
 
-/** 칡이 고를 수 있는 방향: 그 방향 거리 1..lineLength 에 보드 칸이 하나라도 있어야 한다 (Rules.md 7절) */
-export function legalDirections(state: GameState, pos: Position, lineLength = getSpecies('kudzu').lineLength): number[] {
-  const idx = boardIndex(requireBoard(state));
+// ---------------------------------------------------------------------------
+// 큐브 놓기 (가변 작업 버퍼 — 결과는 새 배열로 돌려준다)
+// ---------------------------------------------------------------------------
+
+export interface RootBuffer {
+  seat: number[];
+  count: number[];
+  /** 좌석별 보드 위 큐브 */
+  onBoard: number[];
+  /** 공급처가 모자라 옮겨 온 칸 (기록용, 옮긴 횟수만큼) */
+  uprooted: number[];
+}
+
+function buffer(state: Pick<GameState, 'players' | 'rootSeat' | 'rootCount'>): RootBuffer {
+  return { seat: [...state.rootSeat], count: [...state.rootCount], onBoard: cubesOnBoard(state), uprooted: [] };
+}
+
+function setCount(b: RootBuffer, c: number, seat: number, v: number): void {
+  const old = b.seat[c] === seat ? (b.count[c] as number) : 0;
+  b.onBoard[seat]! += v - old;
+  b.count[c] = v;
+  b.seat[c] = v > 0 ? seat : -1;
+}
+
+/**
+ * 공급처에서 k 개를 쓸 수 있게 한다. 모자라면 가장 높이 쌓인 내 다른 칸(except 제외)에서 하나씩 옮겨 온다.
+ * 높이가 같으면 식물이 없는 칸 → 칸 순서. 실제로 쓸 수 있는 개수를 돌려준다
+ */
+function reserve(b: RootBuffer, seat: number, k: number, except: number, limit: number, occ: Occupancy): number {
+  let avail = limit - (b.onBoard[seat] as number);
+  while (avail < k) {
+    let best = -1;
+    let bv = 0;
+    for (let x = 0; x < b.count.length; x++) {
+      if (x === except || b.seat[x] !== seat) continue;
+      const v = b.count[x] as number;
+      if (v > bv || (v === bv && v > 0 && best >= 0 && occ.plantIndex[best] !== -1 && occ.plantIndex[x] === -1)) {
+        bv = v;
+        best = x;
+      }
+    }
+    if (best < 0) break;
+    setCount(b, best, seat, bv - 1);
+    b.uprooted.push(best);
+    avail++;
+  }
+  return Math.max(0, Math.min(k, avail));
+}
+
+function addRoots(b: RootBuffer, c: number, seat: number, k: number, limit: number, occ: Occupancy): void {
+  if (k <= 0) return;
+  const h = (b.count[c] as number) > 0 ? (b.seat[c] as number) : -1;
+  if (h === -1 || h === seat) {
+    const cur = h === seat ? (b.count[c] as number) : 0;
+    const add = reserve(b, seat, k, c, limit, occ);
+    if (add > 0) setCount(b, c, seat, cur + add);
+    return;
+  }
+  const m = b.count[c] as number;
+  if (k < m) {
+    setCount(b, c, h, m - k);
+    return;
+  }
+  setCount(b, c, h, 0);
+  const rem = k - m;
+  const add = rem > 0 ? reserve(b, seat, rem, c, limit, occ) : 0;
+  if (add > 0) setCount(b, c, seat, add);
+}
+
+function wither(b: RootBuffer, c: number, seat: number, k: number): void {
+  const h = (b.count[c] as number) > 0 ? (b.seat[c] as number) : -1;
+  if (h >= 0 && h !== seat) setCount(b, c, h, Math.max(0, (b.count[c] as number) - k));
+}
+
+/** 처음 입구 둘레 큐브 (Rules.md 4절) */
+export function entranceRoots(state: Pick<GameState, 'board' | 'plants' | 'players' | 'rootSeat' | 'rootCount'>): { rootSeat: number[]; rootCount: number[] } {
+  const board = requireBoard(state);
+  const idx = boardIndex(board);
+  const occ = occupancy(state);
+  const b = buffer(state);
+  const limit = rulesFor(state.players.length).supply;
+  board.entrances.forEach((e, seat) => {
+    for (const x of idx.ring1[idx.indexOf(e)] as number[]) if (canHoldRoots(idx, occ, x)) addRoots(b, x, seat, ENTRANCE_ROOTS, limit, occ);
+  });
+  return { rootSeat: b.seat, rootCount: b.count };
+}
+
+export interface PlantResult {
+  rootSeat: number[];
+  rootCount: number[];
+  /** 공급처가 모자라 큐브를 옮겨 온 칸 */
+  uprooted: number[];
+}
+
+/**
+ * 심기의 큐브 결과 (Rules.md 6.2·7절). state.plants 에는 이미 이 식물이 들어 있어야 한다(옮겨 올 칸 고르기에 쓴다).
+ * 순서: 뿌리 모양(심은 칸 먼저, 카드 순서) → 버섯 걷어내기 → 민들레 씨앗.
+ */
+export function plantRoots(
+  state: Pick<GameState, 'board' | 'plants' | 'players' | 'rootSeat' | 'rootCount'>,
+  playerId: PlayerId,
+  species: SpeciesId,
+  pos: Position,
+  rotation: Direction | number,
+  seed?: Position | null,
+): PlantResult {
+  const board = requireBoard(state);
+  const idx = boardIndex(board);
+  const occ = occupancy(state);
+  const seat = seatOf(state, playerId);
+  if (seat === undefined) throw new Error('없는 플레이어입니다');
+  const sp = getSpecies(species);
+  const limit = rulesFor(state.players.length).supply;
+  const b = buffer(state);
+  for (const t of rootTargets(state, species, pos, rotation)) addRoots(b, t.cell, seat, t.n, limit, occ);
   const c = idx.indexOf(pos);
-  if (c < 0) return [];
-  return [0, 1, 2, 3, 4, 5].filter((d) => (idx.line[c]?.[d] ?? []).slice(0, lineLength).some((x) => x >= 0));
+  if (sp.wither) for (const x of idx.ring1[c] as number[]) if (canHoldRoots(idx, occ, x)) wither(b, x, seat, sp.wither);
+  if (sp.seed && seed) {
+    const x = idx.indexOf(seed);
+    if (x >= 0 && canHoldRoots(idx, occ, x)) addRoots(b, x, seat, sp.seed, limit, occ);
+  }
+  return { rootSeat: b.seat, rootCount: b.count, uprooted: b.uprooted };
 }

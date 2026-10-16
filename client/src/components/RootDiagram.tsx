@@ -1,6 +1,6 @@
 import { memo } from 'react';
 import type { SpeciesId } from '@rootbound/shared';
-import { getSpecies } from '@rootbound/shared';
+import { getSpecies, rotateSpot } from '@rootbound/shared';
 import styles from './RootDiagram.module.css';
 
 /** 축 좌표 → 픽셀 (pointy-top, 반지름 1) */
@@ -22,36 +22,36 @@ interface DiagramCell {
   q: number;
   r: number;
   label: string;
-  tone: 'self' | 'plus' | 'minus' | 'none';
+  tone: 'self' | 'plus' | 'minus' | 'seed' | 'none';
 }
 
-/** 종의 뿌리 모양을 거리 2 이내 19칸 그림으로 (Rules.md 7절 표를 그림으로) */
-function cellsFor(species: SpeciesId): DiagramCell[] {
+/** 종의 뿌리 모양을 거리 2 이내 19칸 그림으로 (Rules.md 7절 표를 그림으로). 숫자는 놓는 큐브 수 */
+function cellsFor(species: SpeciesId, rotation: number): DiagramCell[] {
   const sp = getSpecies(species);
   const map = new Map<string, DiagramCell>();
   for (let q = -2; q <= 2; q++)
     for (let r = -2; r <= 2; r++) if (Math.abs(q + r) <= 2) map.set(`${q},${r}`, { q, r, label: '', tone: 'none' });
-  const put = (q: number, r: number, v: number, tone: DiagramCell['tone'], text?: string) => {
+  const put = (q: number, r: number, tone: DiagramCell['tone'], text: string) => {
     const c = map.get(`${q},${r}`);
-    if (c && v !== 0) Object.assign(c, { label: text ?? String(v), tone });
+    if (c) Object.assign(c, { label: text, tone });
   };
-  put(0, 0, sp.self, 'self');
-  DIRS.forEach(([dq, dr]) => {
-    if (sp.ring1) put(dq, dr, sp.ring1, 'plus', sp.fertileRing ? `${sp.ring1}+` : undefined);
-    if (sp.wither) put(dq, dr, -sp.wither, 'minus', `−${sp.wither}`);
-    if (sp.star2) put(dq * 2, dr * 2, sp.star2, 'plus');
-  });
-  if (sp.line) for (let k = 1; k <= sp.lineLength; k++) put(k, 0, sp.line, 'plus');
+  // 민들레 씨앗: 두 칸 안 어디든 → 빈 칸을 옅게 표시
+  if (sp.seed) for (const c of map.values()) if (c.q !== 0 || c.r !== 0) c.tone = 'seed';
+  if (sp.wither) DIRS.forEach(([dq, dr]) => put(dq, dr, 'minus', `−${sp.wither}`));
+  for (const spot of sp.roots) {
+    const { dq, dr, n } = rotateSpot(spot, rotation);
+    put(dq, dr, dq === 0 && dr === 0 ? 'self' : 'plus', String(n));
+  }
   return [...map.values()];
 }
 
 /**
- * 카드에 그리는 뿌리 모양 미니 다이어그램. 가운데가 심는 칸, 숫자는 그 칸에 주는 영향력(확대 카드에서만).
- * 미니 카드에서는 색으로만 보여 준다: 노랑 = 심는 칸, 초록 = 영향을 주는 칸, 빨강 = 상대 영향력을 깎는 칸.
- * 칡은 오른쪽(방향 0)을 예로 그린다(실제로는 심을 때 방향을 고른다).
+ * 카드에 그리는 뿌리 모양 미니 다이어그램. 가운데가 심는 칸, 숫자는 그 칸에 놓는 큐브 수(확대 카드에서만).
+ * 미니 카드에서는 색으로만 보여 준다: 노랑 = 심는 칸, 초록 = 큐브를 놓는 칸, 빨강 = 남의 큐브를 걷어내는 칸(버섯),
+ * 옅은 초록 = 씨앗을 날릴 수 있는 칸(민들레). rotation 은 심을 때 고르는 방향(0 = 카드에 그린 그대로).
  */
-export const RootDiagram = memo(function RootDiagram({ species, size = 72 }: { species: SpeciesId; size?: number }) {
-  const cells = cellsFor(species);
+export const RootDiagram = memo(function RootDiagram({ species, size = 72, rotation = 0 }: { species: SpeciesId; size?: number; rotation?: number }) {
+  const cells = cellsFor(species, rotation);
   const showLabels = size >= 80;
   // 12px 하한: viewBox 폭 8.8 단위가 size px 로 그려진다
   const labelSize = Math.max(1, 12 / (size / 8.8));

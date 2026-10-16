@@ -2,13 +2,14 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { GOALS, PLAYER_COUNT_RULES, SPECIES, TILE_LIBRARY, getSpecies } from './index.js';
+import { FLOWER_SPECIES, FOREST_SPECIES, GOALS, PLAYER_COUNT_RULES, SPECIES, TILE_LIBRARY, getSpecies } from './index.js';
 
 const RULES = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', 'notes', 'Rules.md'), 'utf8');
 
 /** Rules.md 의 표 행을 `|` 로 나눠 셀 목록으로 */
 function tableRows(startHeading: string): string[][] {
   const start = RULES.indexOf(startHeading);
+  expect(start).toBeGreaterThanOrEqual(0);
   const rest = RULES.slice(start);
   const end = rest.indexOf('\n## ', 5);
   return rest
@@ -23,40 +24,52 @@ function tableRows(startHeading: string): string[][] {
     );
 }
 
-describe('Rules.md 7절 식물 표와 데이터 일치', () => {
-  const rows = tableRows('## 7. 식물 12종').filter((r) => /^\d+$/.test(r[0] ?? ''));
+const strip = (s: string | undefined) => (s ?? '').replace(/`/g, '');
 
-  it('12종, 표 순서 = 데이터 순서', () => {
-    expect(rows).toHaveLength(12);
-    expect(rows.map((r) => r[2]?.replace(/`/g, ''))).toEqual(SPECIES.map((s) => s.id));
+describe('Rules.md 7절 식물 표와 데이터 일치', () => {
+  const rows = tableRows('## 7. 식물 9종').filter((r) => /^\d+$/.test(r[0] ?? ''));
+
+  it('9종, 표 순서 = 데이터 순서', () => {
+    expect(rows).toHaveLength(9);
+    expect(rows.map((r) => strip(r[2]))).toEqual(SPECIES.map((s) => s.id));
   });
 
-  it('이름·자기·거리 1 수치', () => {
+  it('이름·뿌리 모양·큐브 합', () => {
     for (const r of rows) {
-      const sp = getSpecies(r[2]!.replace(/`/g, '') as never);
+      const sp = getSpecies(strip(r[2]) as never);
       expect(r[1]).toBe(sp.name);
-      expect(Number(r[3])).toBe(sp.self);
-      expect(Number(r[4])).toBe(sp.ring1);
+      const roots = strip(r[3])
+        .split(' ')
+        .map((t) => {
+          const [xy, n] = t.split('×');
+          const [dq, dr] = xy!.split(',').map(Number);
+          return { dq, dr, n: Number(n) };
+        });
+      expect(roots).toEqual(sp.roots);
+      expect(Number(r[4])).toBe(sp.roots.reduce((a, x) => a + x.n, 0));
+      expect(sp.roots[0]).toMatchObject({ dq: 0, dr: 0 }); // 심은 칸 먼저
     }
   });
 
-  it('특수 효과 수치', () => {
-    expect(getSpecies('kudzu')).toMatchObject({ line: 2, lineLength: 2 });
-    expect(getSpecies('fern')).toMatchObject({ star2: 1 });
-    expect(getSpecies('dandelion')).toMatchObject({ seed: 2 });
-    expect(getSpecies('rapeseed')).toMatchObject({ fertileRing: 2 }); // 거리 1이 1+2 = 3
+  it('능력 수치', () => {
+    expect(getSpecies('dandelion')).toMatchObject({ seed: 1 });
     expect(getSpecies('lotus')).toMatchObject({ pondPlanting: true });
-    expect(getSpecies('ivy')).toMatchObject({ ivy: 1 });
-    expect(getSpecies('bamboo')).toMatchObject({ cluster: 2 });
     expect(getSpecies('mushroom')).toMatchObject({ wither: 2 });
     expect(getSpecies('mugunghwa')).toMatchObject({ bloomBonus: 1 });
+    const withAbility = SPECIES.filter((s) => s.seed || s.pondPlanting || s.wither || s.bloomBonus).map((s) => s.id);
+    expect(withAbility).toEqual(['dandelion', 'lotus', 'mushroom', 'mugunghwa']);
+  });
+
+  it('꽃·나무', () => {
+    expect(FLOWER_SPECIES).toEqual(['dandelion', 'lotus', 'mugunghwa']);
+    expect(FOREST_SPECIES).toEqual(['oak', 'pine']);
   });
 });
 
 describe('Rules.md 8절 목표 표와 데이터 일치', () => {
-  const rows = tableRows('## 8. 목표 카드 18장').filter((r) => /^\d+$/.test(r[0] ?? ''));
-  it('18장, id·이름·순서', () => {
-    expect(rows.map((r) => r[1]?.replace(/`/g, ''))).toEqual(GOALS.map((g) => g.id));
+  const rows = tableRows('## 8. 목표 카드 16장').filter((r) => /^\d+$/.test(r[0] ?? ''));
+  it('16장, id·이름·순서', () => {
+    expect(rows.map((r) => strip(r[1]))).toEqual(GOALS.map((g) => g.id));
     expect(rows.map((r) => r[2])).toEqual(GOALS.map((g) => g.name));
   });
   it('종 연계 목표는 6장', () => {
@@ -73,11 +86,12 @@ describe('Rules.md 4절 자리 보정 표와 데이터 일치', () => {
     }
     expect(rows).toHaveLength(3);
   });
-  it('인원별 이번 판 식물 수·장수 (Rules.md 10절): 식물 수 × 장수 = 인원 × 각자 두는 횟수', () => {
-    expect(PLAYER_COUNT_RULES[2]).toMatchObject({ gardenSize: 6, copies: 5 });
-    expect(PLAYER_COUNT_RULES[3]).toMatchObject({ gardenSize: 8, copies: 6 });
-    expect(PLAYER_COUNT_RULES[4]).toMatchObject({ gardenSize: 8, copies: 8 });
-    for (const [n, turns] of [[2, 15], [3, 16], [4, 16]] as const) expect(PLAYER_COUNT_RULES[n]!.gardenSize * PLAYER_COUNT_RULES[n]!.copies).toBe(n * turns);
+  it('인원별 구성 (Rules.md 4·10절): 식물 수 × 장수 = 인원 × 각자 심는 횟수', () => {
+    expect(PLAYER_COUNT_RULES[2]).toMatchObject({ gardenSize: 6, copies: 4, market: 3, supply: 20 });
+    expect(PLAYER_COUNT_RULES[3]).toMatchObject({ gardenSize: 6, copies: 5, market: 4, supply: 18 });
+    expect(PLAYER_COUNT_RULES[4]).toMatchObject({ gardenSize: 8, copies: 5, market: 5, supply: 16 });
+    for (const [n, turns] of [[2, 12], [3, 10], [4, 10]] as const) expect(PLAYER_COUNT_RULES[n]!.gardenSize * PLAYER_COUNT_RULES[n]!.copies).toBe(n * turns);
+    expect(RULES).toContain('2인 20 / 3인 18 / 4인 16');
   });
 });
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Action, GameState, PlayerId } from '@rootbound/shared';
-import { autoAction, legalPlantCells, maskState } from '@rootbound/shared';
+import { autoAction, legalPlantCells, maskState, rulesFor } from '@rootbound/shared';
 import { createAiRunner } from '../game/aiTurn.js';
 import { RoomError, RoomManager, isCurrentFormat } from './manager.js';
 
@@ -88,7 +88,7 @@ describe('로비 · AI 좌석 · 시작 (F002, F026)', () => {
     expect(state.phase).toBe('playing');
     expect(state.stage).toBe('take');
     expect(state.board?.cells).toHaveLength(49);
-    expect(state.market).toHaveLength(2);
+    expect(state.market).toHaveLength(rulesFor(2).market);
     const plant = { type: 'PLANT', playerId: aiId, species: 'oak', pos: { q: 0, r: 0 } } as const;
     expect(() => m.act('room1', 'p1', plant)).toThrow(/다른 플레이어/);
     expect(() => m.act('room1', aiId, plant)).toThrow(/AI 자리/);
@@ -136,22 +136,20 @@ describe('AI 턴 실행기 (F027)', () => {
         return autoAction(state, playerId);
       },
     });
-    // 자리 0(사람)이 가져오면 AI 가져오기 차례
+    // 자리 0(사람)이 가져오면 같은 사람이 심고, 그다음 AI 차례
+    autoStep(m, 'room1');
+    expect(m.get('room1')!.state.currentPlayerId).toBe('p1');
+    expect(m.get('room1')!.state.stage).toBe('plant');
     autoStep(m, 'room1');
     expect(m.get('room1')!.state.currentPlayerId).toBe(aiId);
     runner.maybeRun('room1');
     await new Promise((r) => setTimeout(r, 20));
     const s = m.get('room1')!.state;
-    // AI 가 가져오고 나면 심기 단계는 선(사람)부터: 사람 차례에서 멈춘다
-    expect(s.players.find((p) => p.id === aiId)!.hand).toHaveLength(2);
-    expect(s.stage).toBe('plant');
+    // AI 는 가져오기(첫 응답은 불법 → 자동 수) → 심기까지 두고, 사람 차례에서 멈춘다
+    expect(s.plants.filter((p) => p.ownerId === aiId)).toHaveLength(1);
+    expect(s.players.find((p) => p.id === aiId)!.hand).toHaveLength(1);
     expect(s.currentPlayerId).toBe('p1');
-    expect(calls).toBe(1);
-    // 사람이 심으면 AI 심기
-    autoStep(m, 'room1');
-    runner.maybeRun('room1');
-    await new Promise((r) => setTimeout(r, 20));
-    expect(m.get('room1')!.state.plants.filter((p) => p.ownerId === aiId)).toHaveLength(1);
+    expect(s.stage).toBe('take');
     expect(calls).toBeGreaterThanOrEqual(2);
   });
 
@@ -178,7 +176,8 @@ describe('AI 턴 실행기 (F027)', () => {
     });
     runner.maybeRun('room1');
     await new Promise((r) => setTimeout(r, 5));
-    m.act('room1', 'p1', autoAction(room.state, 'p1')!); // 사람이 직접 둠 → 대리 해제, 다음은 AI
+    m.act('room1', 'p1', autoAction(m.get('room1')!.state, 'p1')!); // 사람이 직접 가져옴 → 대리 해제
+    m.act('room1', 'p1', autoAction(m.get('room1')!.state, 'p1')!); // 이어서 심음 → 다음은 AI
     runner.maybeRun('room1'); // run 중이라 무시된다
     release();
     await new Promise((r) => setTimeout(r, 20));
@@ -238,6 +237,15 @@ describe('입력 검증 · 방 정리', () => {
     old.state.markers = [];
     old.state.board = { width: 10, height: 10, asteroids: [] };
     expect(isCurrentFormat(old)).toBe(false);
+  });
+
+  it('영향력 합산 시절(seeds, 2026-10-16 이전) 판은 지금 형식이 아니다', () => {
+    const m = makeManager();
+    const room = JSON.parse(JSON.stringify(m.create({ playerToken: 't1', nickname: '갑' }).room));
+    delete room.state.rootSeat;
+    delete room.state.rootCount;
+    room.state.seeds = [];
+    expect(isCurrentFormat(room)).toBe(false);
   });
 
   it('바뀐 종 id 를 쓰는 예전 판은 복원하지 않는다', () => {

@@ -6,25 +6,26 @@ import {
   autoAction,
   boardIndex,
   buildBoard,
-  computeInfluence,
   computeOwners,
   computeRanking,
   computeScores,
   createInitialState,
   createPlayer,
+  cubesOnBoard,
   hasAnyPlant,
   hexDistance,
   joinPlayer,
   layoutFor,
   leaveLobby,
-  legalDirections,
   legalPlantCells,
   legalSeedCells,
   nextRandom,
   nextRoundStart,
   pickGarden,
   pickGoals,
-  step,
+  plantRoots,
+  rotateSpot,
+  supplyLeft,
 } from './index.js';
 
 // ---------------------------------------------------------------------------
@@ -43,7 +44,7 @@ function ok(state: GameState, action: Action): GameState {
   return r.state;
 }
 
-/** 모두 준비 → 이번 판 식물 공개 단계에서 모두 확인 → 1라운드 가져오기 */
+/** 모두 준비 → 이번 판 식물 공개 단계에서 모두 확인 → 1라운드 */
 function readyAll(s: GameState): GameState {
   s = revealAll(s);
   for (const p of s.players) if (s.phase === 'reveal' && !p.isReady) s = ok(s, { type: 'CONFIRM', playerId: p.id });
@@ -55,41 +56,67 @@ function revealAll(s: GameState): GameState {
   return s;
 }
 
-/** 1라운드 가져오기를 자동 수로 끝내고 심기 단계로 */
-function toPlant(s: GameState): GameState {
-  while (s.stage === 'take') s = ok(s, autoAction(s, s.currentPlayerId as PlayerId)!);
+/** 자동 수로 끝까지 둔다 */
+function playOut(n: number, seed: number): GameState {
+  let s = readyAll(lobby(n, seed));
+  for (let i = 0; i < 1000 && s.phase === 'playing'; i++) s = ok(s, autoAction(s, s.currentPlayerId as PlayerId)!);
   return s;
 }
 
-/** 빈 보드(모두 빈 땅) 위에 테스트용 상태를 만든다. 입구는 좌석 0 (0,0), 좌석 1 (6,0) */
-function flatState(plants: Omit<Plant, 'id'>[] = [], seeds: GameState['seeds'] = []): GameState {
+type RootSpec = [q: number, r: number, seat: number, n: number];
+
+/**
+ * 테스트용 평평한 보드(모두 빈 땅, 15×9). 입구는 좌석 0 (0,0), 좌석 1 (6,0). 큐브는 roots 로만 놓는다(입구 둘레 큐브 없음).
+ * terrain 으로 일부 칸 지형을 바꾼다
+ */
+function flatState(plants: Omit<Plant, 'id'>[] = [], roots: RootSpec[] = [], terrain: [number, number, Board['cells'][number]['terrain']][] = []): GameState {
   const cells: Board['cells'] = [];
   for (let r = -4; r <= 4; r++) for (let q = -4; q <= 10; q++) cells.push({ q, r, terrain: 'empty', tile: q < 3 ? 0 : 1 });
   cells.sort((a, b) => a.r - b.r || a.q - b.q);
+  for (const [q, r, t] of terrain) cells.find((c) => c.q === q && c.r === r)!.terrain = t;
   const board: Board = { cells, entrances: [{ q: 0, r: 0 }, { q: 6, r: 0 }], tileCount: 2 };
   const s = lobby(2);
+  const idx = boardIndex(board);
+  const rootSeat = new Array<number>(cells.length).fill(-1);
+  const rootCount = new Array<number>(cells.length).fill(0);
+  for (const [q, r, seat, n] of roots) {
+    const c = idx.indexOf({ q, r });
+    rootSeat[c] = seat;
+    rootCount[c] = n;
+  }
   return {
     ...s,
     phase: 'playing',
     board,
     goals: [],
+    market: ['grass', 'oak', 'pine'],
+    pile: ['kudzu', 'fern', 'lotus', 'mushroom'],
     round: 1,
     stage: 'plant',
     roundStart: 0,
     turn: 1,
     currentPlayerId: 'p0',
     plants: plants.map((p, i) => ({ ...p, id: `t${i}` })),
-    seeds,
-    players: s.players.map((p) => ({ ...p, hand: ['grass', 'grass', 'grass'] })),
+    rootSeat,
+    rootCount,
+    players: s.players.map((p) => ({ ...p, hand: ['grass', 'oak'] })),
   };
 }
 
-function infAt(s: GameState, seat: number, pos: Position): number {
-  const idx = boardIndex(s.board!);
-  return computeInfluence(s)[seat]![idx.indexOf(pos)]!;
+/** 칸의 [좌석, 큐브 수] (없으면 [−1, 0]) */
+function at(s: Pick<GameState, 'board' | 'rootSeat' | 'rootCount'>, q: number, r: number): [number, number] {
+  const c = boardIndex(s.board!).indexOf({ q, r });
+  const n = s.rootCount[c] ?? 0;
+  return n > 0 ? [s.rootSeat[c]!, n] : [-1, 0];
 }
 
-const plant = (species: SpeciesId, ownerId: PlayerId, q: number, r: number, direction: Plant['direction'] = null): Omit<Plant, 'id'> => ({ species, ownerId, pos: { q, r }, direction });
+const plant = (species: SpeciesId, ownerId: PlayerId, q: number, r: number, rotation: Plant['rotation'] = 0): Omit<Plant, 'id'> => ({ species, ownerId, pos: { q, r }, rotation });
+
+/** 심기를 큐브까지 적용한 상태 (테스트용 — 차례 검사 없이) */
+function grow(s: GameState, playerId: PlayerId, species: SpeciesId, q: number, r: number, rotation = 0, seed?: Position): GameState {
+  const withPlant = { ...s, plants: [...s.plants, { id: `g${s.plants.length}`, species, ownerId: playerId, pos: { q, r }, rotation: rotation as Plant['rotation'] }] };
+  return { ...withPlant, ...plantRoots(withPlant, playerId, species, { q, r }, rotation, seed) };
+}
 
 // ---------------------------------------------------------------------------
 
@@ -142,141 +169,194 @@ describe('보드 조립 (Rules.md 3.3)', () => {
   });
 });
 
-describe('영향력 (Rules.md 6.2·7절)', () => {
-  it('입구: 자기 3, 거리 1에 1', () => {
-    const s = flatState();
-    expect(infAt(s, 0, { q: 0, r: 0 })).toBe(3);
-    expect(infAt(s, 0, { q: 1, r: 0 })).toBe(1);
-    expect(infAt(s, 0, { q: 2, r: 0 })).toBe(0);
+describe('뿌리 큐브 (Rules.md 6.2·7절)', () => {
+  it('회전: 1번에 (dq, dr) → (−dr, dq+dr), 6번이면 제자리', () => {
+    expect(rotateSpot({ dq: 1, dr: 0, n: 2 }, 1)).toEqual({ dq: 0, dr: 1, n: 2 });
+    expect(rotateSpot({ dq: 2, dr: 0, n: 1 }, 3)).toEqual({ dq: -2, dr: 0, n: 1 });
+    expect(rotateSpot({ dq: 1, dr: -1, n: 1 }, 6)).toEqual({ dq: 1, dr: -1, n: 1 });
   });
 
-  it('잔디 3/1, 참나무 2/2, 소나무 5/1', () => {
-    const s = flatState([plant('grass', 'p0', 0, 3), plant('oak', 'p0', 4, 3), plant('pine', 'p1', 8, 3)]);
-    expect(infAt(s, 0, { q: 0, r: 3 })).toBe(3);
-    expect(infAt(s, 0, { q: 1, r: 3 })).toBe(1);
-    expect(infAt(s, 0, { q: 4, r: 3 })).toBe(2);
-    expect(infAt(s, 0, { q: 5, r: 3 })).toBe(2);
-    expect(infAt(s, 1, { q: 8, r: 3 })).toBe(5);
-    expect(infAt(s, 1, { q: 9, r: 3 })).toBe(1);
+  it('잔디: 심은 칸 2, 이어진 세 칸에 1. 회전하면 모양이 돈다', () => {
+    const s = grow(flatState(), 'p0', 'grass', 2, 2);
+    expect(at(s, 2, 2)).toEqual([0, 2]);
+    expect(at(s, 3, 2)).toEqual([0, 1]);
+    expect(at(s, 3, 1)).toEqual([0, 1]);
+    expect(at(s, 2, 1)).toEqual([0, 1]);
+    expect(at(s, 1, 2)).toEqual([-1, 0]);
+    const t = grow(flatState(), 'p0', 'grass', 2, 2, 3);
+    expect(at(t, 1, 2)).toEqual([0, 1]);
+    expect(at(t, 1, 3)).toEqual([0, 1]);
+    expect(at(t, 2, 3)).toEqual([0, 1]);
+    expect(at(t, 3, 2)).toEqual([-1, 0]);
   });
 
-  it('칡: 자기 2, 고른 방향 직선 거리 1·2 에 각 2, 거리 3 은 없음', () => {
-    const s = flatState([plant('kudzu', 'p0', 0, -3, 0)]);
-    expect(infAt(s, 0, { q: 0, r: -3 })).toBe(2);
-    expect(infAt(s, 0, { q: 1, r: -3 })).toBe(2);
-    expect(infAt(s, 0, { q: 2, r: -3 })).toBe(2);
-    expect(infAt(s, 0, { q: 3, r: -3 })).toBe(0);
-    expect(infAt(s, 0, { q: -1, r: -3 })).toBe(0);
-  });
-
-  it('칡: 거리 1·2 가 보드 밖이면 건너뛰고 거리 3 으로 밀려나지 않는다, 그런 방향은 고를 수 없다', () => {
-    // flatState 는 q ∈ [−4, 10]. (9,0) 에서 방향 0 → (10,0) 보드 안, (11,0) 보드 밖, (12,0) 보드 밖
-    const s = flatState([plant('kudzu', 'p0', 9, 0, 0)]);
-    expect(infAt(s, 0, { q: 10, r: 0 })).toBe(2);
-    // (10,0) 에서 방향 0 은 거리 1·2 모두 보드 밖 → 고를 수 없다
-    expect(legalDirections(s, { q: 10, r: 0 })).not.toContain(0);
-    expect(legalDirections(s, { q: 9, r: 0 })).toContain(0);
-  });
-
-  it('고사리: 자기 2, 거리 1 은 0, 별 모양 거리 2 에 1', () => {
-    const s = flatState([plant('fern', 'p0', 4, -2)]);
-    expect(infAt(s, 0, { q: 4, r: -2 })).toBe(2);
-    expect(infAt(s, 0, step({ q: 4, r: -2 }, 0))).toBe(0);
-    for (let d = 0; d < 6; d++) expect(infAt(s, 0, step({ q: 4, r: -2 }, d, 2))).toBe(1);
-    // 거리 2 이지만 직선이 아닌 칸은 0
-    expect(infAt(s, 0, { q: 5, r: -1 })).toBe(0);
-  });
-
-  it('비옥토: 자기 칸 +1, 유채는 비옥토에서 둘레 3 (밖에서는 2/1)', () => {
-    const s0 = flatState([plant('rapeseed', 'p0', 0, 3)]);
-    expect(infAt(s0, 0, { q: 0, r: 3 })).toBe(2);
-    expect(infAt(s0, 0, { q: 1, r: 3 })).toBe(1);
-    const cells = s0.board!.cells.map((c) => (c.q === 0 && c.r === 3 ? { ...c, terrain: 'fertile' as const } : c));
-    const s = { ...s0, board: { ...s0.board!, cells } };
-    expect(infAt(s, 0, { q: 0, r: 3 })).toBe(3);
-    expect(infAt(s, 0, { q: 1, r: 3 })).toBe(3);
-  });
-
-  it('담쟁이: 둘레에 식물이 있는 칸에만 +1 더', () => {
-    const s = flatState([plant('ivy', 'p0', 4, 3), plant('grass', 'p1', 5, 3)]);
-    expect(infAt(s, 0, { q: 5, r: 3 })).toBe(2);
-    expect(infAt(s, 0, { q: 3, r: 3 })).toBe(1);
-  });
-
-  it('대나무: 이웃한 내 대나무 1개당 자기 칸 +2 (상대 대나무는 무관)', () => {
-    const s = flatState([plant('bamboo', 'p0', 4, 3), plant('bamboo', 'p0', 5, 3), plant('bamboo', 'p1', 4, 2)]);
-    // (4,3): 자기 1 + 이웃 내 대나무 1개 ×2 = 3, 거기에 (5,3) 대나무의 둘레 2 → 5
-    expect(infAt(s, 0, { q: 4, r: 3 })).toBe(5);
-  });
-
-  it('버섯: 둘레 6칸의 다른 사람 영향력 −2, 0 밑으로 안 내려감, 내 영향력은 그대로', () => {
-    const s = flatState([plant('oak', 'p1', 2, 2), plant('mushroom', 'p0', 2, 3), plant('grass', 'p0', 1, 3)]);
-    // (3,2): p1 참나무 둘레 2 − 2 = 0
-    expect(infAt(s, 1, { q: 3, r: 2 })).toBe(0);
-    // (1,3): 내 잔디 3 은 그대로
-    expect(infAt(s, 0, { q: 1, r: 3 })).toBeGreaterThanOrEqual(3);
-    // 참나무 자기 칸(2,2)은 버섯 둘레: 2 − 2 = 0
-    expect(infAt(s, 1, { q: 2, r: 2 })).toBe(0);
-  });
-
-  it('씨앗: 그 칸에 2, 여러 개면 더한다', () => {
-    const s = flatState([], [
-      { ownerId: 'p0', pos: { q: 3, r: 3 } },
-      { ownerId: 'p0', pos: { q: 3, r: 3 } },
+  it('칡: 한 줄로 첫 칸 1, 둘째 칸 2. 고사리: 바로 옆은 비우고 하나 걸러 두 칸 앞', () => {
+    const k = grow(flatState(), 'p0', 'kudzu', 0, 2);
+    expect([at(k, 0, 2), at(k, 1, 2), at(k, 2, 2), at(k, 3, 2)]).toEqual([
+      [0, 1],
+      [0, 1],
+      [0, 2],
+      [-1, 0],
     ]);
-    expect(infAt(s, 0, { q: 3, r: 3 })).toBe(4);
+    const f = grow(flatState(), 'p0', 'fern', 2, 2);
+    expect([at(f, 2, 2), at(f, 4, 2), at(f, 2, 0), at(f, 0, 4), at(f, 3, 2)]).toEqual([
+      [0, 2],
+      [0, 1],
+      [0, 1],
+      [0, 1],
+      [-1, 0],
+    ]);
   });
 
-  it('땅: 엄격한 1등만. 동점·0·연못은 주인 없음', () => {
-    const s = flatState([plant('grass', 'p0', 2, 0), plant('grass', 'p1', 4, 0)]);
-    const idx = boardIndex(s.board!);
+  it('줄다리기: 남의 큐브 2개 칸에 뿌리 3 → 내 1, 뿌리 2 → 빈 칸, 뿌리 1 → 남 1', () => {
+    const base = flatState([], [
+      [3, 2, 1, 2],
+      [2, 2, 1, 2],
+    ]);
+    // 참나무: 심은 칸 2, 양옆 2. (1,2)에 심으면 (2,2)에 2 → 남 2와 맞서 빈 칸
+    const oak = grow(base, 'p0', 'oak', 1, 2);
+    expect(at(oak, 2, 2)).toEqual([-1, 0]);
+    // 소나무 회전 0 을 (2,2)... 심을 칸이 남 땅이라 직접 시험: 잔디 (2,3) 회전 1 → (2,3)2, (2,4)? 대신 칡으로 둘째 칸 2
+    const kudzu = grow(base, 'p0', 'kudzu', 1, 2); // (2,2)에 1 → 남 1 남음, (3,2)에 2 → 빈 칸
+    expect(at(kudzu, 2, 2)).toEqual([1, 1]);
+    expect(at(kudzu, 3, 2)).toEqual([-1, 0]);
+    const pine = grow(flatState([], [[4, 2, 1, 2]]), 'p0', 'pine', 3, 2, 0); // (4,2)에 1 → 남 1
+    expect(at(pine, 4, 2)).toEqual([1, 1]);
+    const three = grow(flatState([], [[2, 2, 1, 2]]), 'p0', 'pine', 2, 1, 5); // 회전 5: (1,0)→(1,−1)... 심은 칸만 3
+    expect(at(three, 2, 1)).toEqual([0, 3]);
+    // 큐브 3 이 남 2 위로: 소나무 심은 칸 3 을 남 큐브 칸에 직접 놓는 경우는 없으므로 plantRoots 로 맞섬을 확인
+    const push = { ...flatState([], [[2, 2, 1, 2]]) };
+    const r = plantRoots({ ...push, plants: [{ id: 'x', species: 'pine', ownerId: 'p0', pos: { q: 2, r: 2 }, rotation: 0 }] }, 'p0', 'pine', { q: 2, r: 2 }, 0);
+    expect(at({ ...push, ...r }, 2, 2)).toEqual([0, 1]);
+  });
+
+  it('밀어낸 큐브는 주인 공급처로, 밀어내는 데 쓴 내 큐브도 내 공급처에 남는다', () => {
+    const s = flatState([], [[2, 2, 1, 2]]);
+    const t = grow(s, 'p0', 'kudzu', 1, 2); // (1,2)1, (2,2)1 → 남 1 남음, (3,2)2
+    expect(cubesOnBoard(t)).toEqual([1 + 2, 1]);
+    expect(supplyLeft(t)).toEqual([rulesFor(2).supply - 3, rulesFor(2).supply - 1]);
+  });
+
+  it('보드 밖·연못·바위·입구로 가는 뿌리는 버린다', () => {
+    const s = grow(flatState([], [], [[1, 0, 'pond']]), 'p0', 'oak', 0, 1, 0); // (1,1)2, (−1,1)2, 심은 칸 2
+    expect(at(s, 0, 1)).toEqual([0, 2]);
+    const t = grow(flatState([], [], [[2, 1, 'rock']]), 'p0', 'oak', 1, 1); // (2,1) 바위, (0,1)
+    expect(at(t, 2, 1)).toEqual([-1, 0]);
+    expect(cubesOnBoard(t)[0]).toBe(4);
+    const e = grow(flatState(), 'p0', 'oak', 1, 0); // (0,0) 입구 칸
+    expect(at(e, 0, 0)).toEqual([-1, 0]);
+    const edge = grow(flatState(), 'p0', 'kudzu', 9, 0); // (10,0)1, (11,0) 보드 밖
+    expect(cubesOnBoard(edge)[0]).toBe(2);
+  });
+
+  it('공급처가 모자라면 가장 높이 쌓인 내 다른 칸에서 옮겨 온다 (같으면 식물 없는 칸 → 칸 순서)', () => {
+    const lim = rulesFor(2).supply;
+    // 공급처 0: (−3,−3)에 5, (−2,−3)에 5(식물), (−3,3)에 5, (4,−4)에 lim−15
+    const s = flatState([plant('grass', 'p1', -2, -3)], [
+      [-3, -3, 0, 5],
+      [-2, -3, 0, 5],
+      [-3, 3, 0, 5],
+      [4, -4, 0, lim - 15],
+    ]);
+    expect(supplyLeft(s)[0]).toBe(0);
+    const t = grow(s, 'p0', 'mushroom', 2, 2); // 심은 칸 2 → 큐브 2개를 옮겨 와야 한다
+    expect(at(t, 2, 2)).toEqual([0, 2]);
+    // 가장 높은 칸 = lim−15 (=5) 와 5짜리들. 칸 순서: (−3,−3) r=−3 먼저, (−2,−3) 은 식물 → 식물 없는 (−3,−3) 에서 1개
+    // 그다음 가장 높은 칸은 (−2,−3) 5(식물)·(−3,3) 5 ·(4,−4) 5 → 식물 없는 칸 순서상 (4,−4)
+    expect(at(t, -3, -3)).toEqual([0, 4]);
+    expect(at(t, 4, -4)).toEqual([0, lim - 16]);
+    expect(at(t, -2, -3)).toEqual([0, 5]);
+    expect(cubesOnBoard(t)[0]).toBe(lim);
+  });
+
+  it('옮겨 올 칸도 없으면 그만큼은 놓지 않는다', () => {
+    const lim = rulesFor(2).supply;
+    const s = flatState([], [[-3, -3, 0, lim]]);
+    // 잔디: 심은 칸 2 + 3칸. 공급처 0 → (−3,−3) 에서 하나씩 옮겨 오며 모두 놓는다
+    const t = grow(s, 'p0', 'grass', 2, 2);
+    expect(cubesOnBoard(t)[0]).toBe(lim);
+    expect(at(t, -3, -3)).toEqual([0, lim - 5]);
+    // 내 큐브가 전부 지금 놓는 칸에 있으면 더 못 놓는다
+    const u = flatState([], [[2, 2, 0, lim]]);
+    const v = plantRoots({ ...u, plants: [{ id: 'x', species: 'oak', ownerId: 'p0', pos: { q: 2, r: 2 }, rotation: 0 }] }, 'p0', 'oak', { q: 2, r: 2 }, 0);
+    // 심은 칸 2 → 공급처 0, 옮길 다른 칸 없음 → 그대로. 양옆 2 → (2,2) 에서 옮겨 온다
+    expect(cubesOnBoard({ ...u, ...v })[0]).toBe(lim);
+    expect(at({ ...u, ...v }, 3, 2)).toEqual([0, 2]);
+  });
+
+  it('버섯: 맞닿은 6칸의 남의 큐브 2개씩 걷어낸다, 내 큐브는 그대로', () => {
+    const s = flatState([], [
+      [3, 2, 1, 3],
+      [1, 2, 1, 1],
+      [2, 1, 0, 2],
+    ]);
+    const t = grow(s, 'p0', 'mushroom', 2, 2);
+    expect(at(t, 3, 2)).toEqual([1, 1]);
+    expect(at(t, 1, 2)).toEqual([-1, 0]);
+    expect(at(t, 2, 1)).toEqual([0, 2]);
+    expect(at(t, 2, 2)).toEqual([0, 2]);
+  });
+
+  it('민들레 씨앗: 두 칸 안 큐브를 놓을 수 있는 칸에 1 (식물 칸도 된다)', () => {
+    const s = flatState([plant('oak', 'p1', 4, 2)]);
+    const cells = legalSeedCells(s, { q: 2, r: 2 });
+    expect(cells.every((p) => hexDistance(p, { q: 2, r: 2 }) <= 2)).toBe(true);
+    expect(cells).toContainEqual({ q: 4, r: 2 });
+    expect(cells).not.toContainEqual({ q: 2, r: 2 });
+    const t = grow(s, 'p0', 'dandelion', 2, 2, 0, { q: 4, r: 2 });
+    expect(at(t, 4, 2)).toEqual([0, 1]);
+  });
+
+  it('땅 = 큐브가 있는 칸의 색 (computeOwners)', () => {
+    const s = flatState([], [
+      [1, 1, 0, 1],
+      [2, 1, 1, 3],
+    ]);
     const owners = computeOwners(s);
-    expect(owners[idx.indexOf({ q: 3, r: 0 })]).toBe(-1); // 1 : 1 동점
-    expect(owners[idx.indexOf({ q: 2, r: 0 })]).toBe(0);
-    expect(owners[idx.indexOf({ q: -4, r: 4 })]).toBe(-1); // 아무도 안 닿음
+    const idx = boardIndex(s.board!);
+    expect(owners[idx.indexOf({ q: 1, r: 1 })]).toBe(0);
+    expect(owners[idx.indexOf({ q: 2, r: 1 })]).toBe(1);
+    expect(owners[idx.indexOf({ q: 3, r: 1 })]).toBe(-1);
   });
 });
 
 describe('심을 수 있는 칸 (Rules.md 6.1)', () => {
-  it('내 영향력 1 이상인 빈 칸. 입구·식물 칸은 안 됨. 씨앗 칸은 됨', () => {
-    const s = flatState([plant('grass', 'p0', 1, 0)], [{ ownerId: 'p1', pos: { q: 2, r: 0 } }]);
-    const cells = legalPlantCells(s, 'p0', 'grass').map((p) => `${p.q},${p.r}`);
-    expect(cells).not.toContain('0,0');
-    expect(cells).not.toContain('1,0');
-    expect(cells).toContain('2,0');
-    expect(cells).not.toContain('5,0'); // 상대 입구 옆이지만 내 영향력 0
+  it('내 땅, 또는 내 땅·입구와 맞닿은 큐브 없는 칸. 남의 땅·식물·입구 칸은 안 된다', () => {
+    const s = flatState([plant('grass', 'p1', -2, 0)], [
+      [-2, 0, 0, 1],
+      [3, 3, 0, 1],
+      [1, 0, 1, 1],
+    ]);
+    const cells = legalPlantCells(s, 'p0', 'grass');
+    expect(cells).toContainEqual({ q: 3, r: 3 }); // 내 땅
+    expect(cells).toContainEqual({ q: 4, r: 3 }); // 내 땅과 맞닿은 빈 칸
+    expect(cells).toContainEqual({ q: 0, r: 1 }); // 입구와 맞닿은 빈 칸
+    expect(cells).not.toContainEqual({ q: 1, r: 0 }); // 남의 땅
+    expect(cells).not.toContainEqual({ q: -2, r: 0 }); // 식물 칸
+    expect(cells).not.toContainEqual({ q: 0, r: 0 }); // 입구
+    expect(cells).not.toContainEqual({ q: 5, r: 5 }); // 멀리 떨어진 칸
   });
 
-  it('상대 땅이어도 내 뿌리가 닿으면 심을 수 있다', () => {
-    const s = flatState([plant('pine', 'p1', 4, 0), plant('grass', 'p0', 2, 0)]);
-    expect(legalPlantCells(s, 'p0', 'grass').some((p) => p.q === 3 && p.r === 0)).toBe(true);
-  });
-
-  it('연꽃: 연못 옆 빈 칸이면 영향력 없이도', () => {
-    const s0 = flatState();
-    const cells = s0.board!.cells.map((c) => (c.q === -3 && c.r === 4 ? { ...c, terrain: 'pond' as const } : c));
-    const s = { ...s0, board: { ...s0.board!, cells } };
-    expect(legalPlantCells(s, 'p0', 'lotus').some((p) => p.q === -2 && p.r === 4)).toBe(true);
-    expect(legalPlantCells(s, 'p0', 'grass').some((p) => p.q === -2 && p.r === 4)).toBe(false);
-    expect(legalPlantCells(s, 'p0', 'lotus').some((p) => p.q === -3 && p.r === 4)).toBe(false); // 연못 자체는 불가
-  });
-
-  it('씨앗 자리: 심는 칸에서 거리 2 이내 빈 칸', () => {
-    const s = flatState();
-    const seeds = legalSeedCells(s, { q: 1, r: 0 });
-    expect(seeds.every((p) => hexDistance(p, { q: 1, r: 0 }) <= 2)).toBe(true);
-    expect(seeds.some((p) => p.q === 0 && p.r === 0)).toBe(false); // 입구
-    expect(seeds.some((p) => p.q === 1 && p.r === 0)).toBe(false); // 심는 칸 자신
+  it('연꽃: 연못과 맞닿은 빈 칸이면 남의 땅이어도', () => {
+    const s = flatState([], [[8, 3, 1, 2]], [[8, 2, 'pond']]);
+    expect(legalPlantCells(s, 'p0', 'grass')).not.toContainEqual({ q: 8, r: 3 });
+    expect(legalPlantCells(s, 'p0', 'lotus')).toContainEqual({ q: 8, r: 3 });
+    expect(legalPlantCells(s, 'p0', 'lotus')).not.toContainEqual({ q: 8, r: 2 }); // 연못 자체는 안 됨
   });
 });
 
-describe('로비 → 진행, 라운드 마켓 (Rules.md 4·5·6절)', () => {
-  it('모두 준비하면 이번 판 식물 공개 단계: 손 1장씩, 마켓·차례 없음, 모두 확인하면 1라운드', () => {
+describe('진행 (Rules.md 4·5절)', () => {
+  it('모두 준비하면 공개 단계: 손 1장씩, 마켓 펼침, 입구 둘레 큐브. 모두 확인하면 1라운드 자리 0 가져오기', () => {
     const r = revealAll(lobby(2));
     expect(r.phase).toBe('reveal');
     expect(r.currentPlayerId).toBeNull();
-    expect(r.market).toHaveLength(0);
-    expect(applyAction(r, { type: 'TAKE', playerId: 'p0', take: 0 }).error).toBeDefined();
+    for (const p of r.players) expect(p.hand).toHaveLength(START_HAND);
+    expect(r.market).toHaveLength(rulesFor(2).market);
+    expect(cubesOnBoard(r)).toEqual([6, 6]);
+    for (const [seat, e] of r.board!.entrances.entries()) {
+      const idx = boardIndex(r.board!);
+      for (const x of idx.ring1[idx.indexOf(e)]!) expect([r.rootSeat[x], r.rootCount[x]]).toEqual([seat, 1]);
+    }
     const r1 = ok(r, { type: 'CONFIRM', playerId: 'p1' });
     expect(r1.phase).toBe('reveal');
     expect(applyAction(r1, { type: 'CONFIRM', playerId: 'p1' }).error).toMatch(/이미/);
@@ -285,31 +365,22 @@ describe('로비 → 진행, 라운드 마켓 (Rules.md 4·5·6절)', () => {
     expect(s.phase).toBe('playing');
     expect(s.round).toBe(1);
     expect(s.stage).toBe('take');
-    expect(s.board?.cells).toHaveLength(49);
-    expect(s.goals).toHaveLength(3);
+    expect(s.currentPlayerId).toBe('p0');
     expect(s.species).toHaveLength(rulesFor(2).gardenSize);
-    expect(s.market).toHaveLength(2);
-    for (const p of s.players) expect(p.hand).toHaveLength(START_HAND);
     const total = s.players.reduce((n, p) => n + p.hand.length, 0) + s.market.length + s.pile.length;
     expect(total).toBe(rulesFor(2).gardenSize * rulesFor(2).copies);
-    expect([...s.pile, ...s.market, ...s.players.flatMap((p) => p.hand)].every((x) => s.species.includes(x))).toBe(true);
-    expect(s.currentPlayerId).toBe('p0');
   });
 
-  it('인원이 바뀌면 사람의 준비가 풀린다 (AI 를 넣자마자 시작하거나, 전원 준비인데 멈추는 일이 없다)', () => {
+  it('인원이 바뀌면 사람의 준비가 풀린다', () => {
     let s = lobby(1);
     s = ok(s, { type: 'READY', playerId: 'p0' });
-    expect(s.phase).toBe('lobby'); // 혼자는 시작 안 함
-    s = joinPlayer(s, createPlayer('ai', 'AI', 'ai')).state;
     expect(s.phase).toBe('lobby');
+    s = joinPlayer(s, createPlayer('ai', 'AI', 'ai')).state;
     expect(s.players.find((p) => p.id === 'p0')!.isReady).toBe(false);
-    expect(s.players.find((p) => p.id === 'ai')!.isReady).toBe(true);
     s = ok(s, { type: 'READY', playerId: 'p0' });
     expect(s.phase).toBe('reveal');
-    expect(s.players.find((p) => p.id === 'ai')!.isReady).toBe(true); // AI 는 바로 확인
     s = ok(s, { type: 'CONFIRM', playerId: 'p0' });
     expect(s.phase).toBe('playing');
-
     let t = lobby(3);
     t = ok(t, { type: 'READY', playerId: 'p0' });
     t = ok(t, { type: 'READY', playerId: 'p1' });
@@ -318,32 +389,126 @@ describe('로비 → 진행, 라운드 마켓 (Rules.md 4·5·6절)', () => {
     expect(t.players.every((p) => !p.isReady)).toBe(true);
   });
 
-  it('이번 판 식물: 인원별 수, 보호구역 식물 필수, 꽃밭·숲이면 꽃·나무 하나 이상, 표 순서', () => {
-    let seed = 7;
-    for (let i = 0; i < 300; i++) {
-      seed = nextRandom(seed).seed;
-      const { goals, seed: next } = pickGoals(seed);
-      for (const n of [2, 3, 4]) {
-        const { species } = pickGarden(n, goals, next);
-        expect(species).toHaveLength(rulesFor(n).gardenSize);
-        expect(new Set(species).size).toBe(species.length);
-        for (const g of goals) if (g.endsWith('-reserve')) expect(species).toContain(g.replace('-reserve', ''));
-        if (goals.includes('flower-bed')) expect(species.some((x) => ['rapeseed', 'lotus', 'mugunghwa'].includes(x))).toBe(true);
-        if (goals.includes('forest')) expect(species.some((x) => ['oak', 'bamboo'].includes(x))).toBe(true);
-        const order = ['grass', 'oak', 'pine', 'kudzu', 'fern', 'dandelion', 'rapeseed', 'lotus', 'ivy', 'bamboo', 'mushroom', 'mugunghwa'];
-        expect([...species].sort((a, b) => order.indexOf(a) - order.indexOf(b))).toEqual(species);
+  it('차례: 가져오면 손 2장, 마켓은 더미 맨 위로 채워지고, 같은 사람이 심는다. 심으면 다음 사람 가져오기', () => {
+    const s = readyAll(lobby(2));
+    const top = s.pile[0]!;
+    const card = s.market[1]!;
+    const t = ok(s, { type: 'TAKE', playerId: 'p0', take: 1 });
+    expect(t.players[0]!.hand).toEqual([...s.players[0]!.hand, card]);
+    expect(t.market).toHaveLength(rulesFor(2).market);
+    expect(t.market[t.market.length - 1]).toBe(top);
+    expect(t.pile).toHaveLength(s.pile.length - 1);
+    expect(t.stage).toBe('plant');
+    expect(t.currentPlayerId).toBe('p0');
+    expect(applyAction(t, { type: 'TAKE', playerId: 'p0', take: 0 }).error).toMatch(/이미 가져왔/);
+    const u = ok(t, autoAction(t, 'p0')!);
+    expect(u.players[0]!.hand).toHaveLength(1);
+    expect(u.currentPlayerId).toBe('p1');
+    expect(u.stage).toBe('take');
+    expect(applyAction(t, { type: 'PLANT', playerId: 'p1', species: u.players[1]!.hand[0]!, pos: { q: 0, r: 0 } }).error).toMatch(/내 차례가 아닙니다/);
+  });
+
+  it('다음 선: 공급처에 큐브가 가장 많이 남은 사람, 동점이면 이번 선 다음 자리부터', () => {
+    const s = flatState([], [
+      [1, 1, 0, 3],
+      [5, 1, 1, 1],
+    ]);
+    expect(nextRoundStart(s)).toBe(1);
+    const t = flatState([], [
+      [1, 1, 0, 2],
+      [5, 1, 1, 2],
+    ]);
+    expect(nextRoundStart(t)).toBe(1); // 동점 → 이번 선(0) 다음 자리
+    expect(nextRoundStart({ ...t, roundStart: 1 })).toBe(0);
+  });
+
+  it('라운드가 넘어갈 때 선은 직전 상태의 nextRoundStart 와 같다 (4인 끝까지)', () => {
+    let s = readyAll(lobby(4, 9));
+    let rounds = 0;
+    for (let i = 0; i < 1000 && s.phase === 'playing'; i++) {
+      const round = s.round;
+      const prevStart = s.roundStart;
+      s = ok(s, autoAction(s, s.currentPlayerId as PlayerId)!);
+      if (s.phase === 'playing' && s.round !== round) {
+        rounds++;
+        // 라운드 사이에는 큐브가 움직이지 않으므로 새 상태의 공급처로 직전 선 기준 예측과 같아야 한다
+        const predicted = nextRoundStart({ ...s, roundStart: prevStart });
+        expect(s.roundStart).toBe(predicted);
+        expect(s.currentPlayerId).toBe(s.players.find((p) => p.seat === predicted)!.id);
       }
     }
+    expect(rounds).toBe(9);
   });
 
-  it('PLANT 의 pos·seed 모양이 깨지면 예외가 아니라 거부', () => {
-    const s = readyAll(lobby(2));
-    const sp = s.players[0]!.hand[0]!;
-    expect(applyAction(s, { type: 'PLANT', playerId: 'p0', species: sp, pos: null as never }).error).toMatch(/잘못된/);
-    expect(applyAction(s, { type: 'PLANT', playerId: 'p0', species: sp, pos: { q: 0, r: 0 }, seed: null as never }).error).toMatch(/잘못된/);
+  it.each([
+    [2, 12],
+    [3, 10],
+    [4, 10],
+  ])('%i인: 끝까지 두면 각자 %i번 심고 정상 종료', (n, plays) => {
+    const s = playOut(n, 11 + n);
+    expect(s.phase).toBe('finished');
+    expect(s.result?.reason).toBe('complete');
+    for (const p of s.players) {
+      const acted = s.log.filter((e) => e.playerId === p.id && (e.kind === 'plant' || e.kind === 'discard')).length;
+      expect(acted).toBe(plays);
+      expect(p.hand).toHaveLength(0);
+    }
+    expect(s.market).toHaveLength(0);
+    expect(s.pile).toHaveLength(0);
+    for (const c of cubesOnBoard(s)) expect(c).toBeLessThanOrEqual(rulesFor(n).supply);
   });
 
-  it('카드 더미 셔플은 deckSeed 만 쓴다: 보드 시드가 같아도 deckSeed 가 다르면 손·더미가 다르다', () => {
+  it('마켓이 비면 차례는 바로 심기부터', () => {
+    let s = readyAll(lobby(2, 3));
+    for (let i = 0; i < 1000 && s.phase === 'playing' && s.market.length > 0; i++) s = ok(s, autoAction(s, s.currentPlayerId as PlayerId)!);
+    expect(s.phase).toBe('playing');
+    expect(s.stage).toBe('plant');
+    expect(autoAction(s, s.currentPlayerId as PlayerId)!.type).not.toBe('TAKE');
+  });
+
+  it('거부: 남의 차례·손에 없는 카드·심을 수 없는 칸·잘못된 회전·민들레가 아닌 씨앗·두 칸 밖 씨앗', () => {
+    const s = flatState();
+    expect(applyAction(s, { type: 'PLANT', playerId: 'p1', species: 'grass', pos: { q: 0, r: 1 } }).error).toMatch(/내 차례/);
+    expect(applyAction(s, { type: 'PLANT', playerId: 'p0', species: 'pine', pos: { q: 0, r: 1 } }).error).toMatch(/손에 없는/);
+    expect(applyAction(s, { type: 'PLANT', playerId: 'p0', species: 'grass', pos: { q: 4, r: 4 } }).error).toMatch(/내 땅/);
+    expect(applyAction(s, { type: 'PLANT', playerId: 'p0', species: 'grass', pos: { q: 0, r: 1 }, rotation: 7 as never }).error).toMatch(/회전/);
+    expect(applyAction(s, { type: 'PLANT', playerId: 'p0', species: 'grass', pos: { q: 0, r: 1 }, seed: { q: 1, r: 1 } }).error).toMatch(/씨앗을 날리지/);
+    const d = { ...s, players: s.players.map((p) => ({ ...p, hand: ['dandelion' as SpeciesId] })) };
+    expect(applyAction(d, { type: 'PLANT', playerId: 'p0', species: 'dandelion', pos: { q: 0, r: 1 }, seed: { q: 4, r: 1 } }).error).toMatch(/두 칸 안/);
+    expect(applyAction(d, { type: 'PLANT', playerId: 'p0', species: 'dandelion', pos: null as never }).error).toMatch(/잘못된/);
+    expect(applyAction(d, { type: 'PLANT', playerId: 'p0', species: 'dandelion', pos: { q: 0, r: 1 }, seed: { q: 2, r: 1 } }).error).toBeUndefined();
+  });
+
+  it('버리기: 어떤 카드도 심을 칸이 없을 때만', () => {
+    const s = flatState();
+    expect(hasAnyPlant(s, 'p0')).toBe(true);
+    expect(applyAction(s, { type: 'DISCARD', playerId: 'p0', species: 'grass' }).error).toMatch(/버릴 수 없/);
+    // 입구 둘레를 모두 막고 내 큐브가 하나도 없으면 심을 칸이 없다
+    const blocked = flatState(
+      [plant('grass', 'p1', 1, 0), plant('grass', 'p1', 1, -1), plant('grass', 'p1', 0, -1), plant('grass', 'p1', -1, 0), plant('grass', 'p1', -1, 1), plant('grass', 'p1', 0, 1)],
+      [],
+    );
+    expect(hasAnyPlant(blocked, 'p0')).toBe(false);
+    expect(autoAction(blocked, 'p0')).toEqual({ type: 'DISCARD', playerId: 'p0', species: 'grass' });
+    const t = ok(blocked, { type: 'DISCARD', playerId: 'p0', species: 'grass' });
+    expect(t.players[0]!.hand).toEqual(['oak']);
+    expect(t.log.at(-2)?.kind).toBe('discard');
+  });
+
+  it('남의 땅을 밀어내면 flip, 큐브를 옮겨 오면 uproot 로그', () => {
+    const lim = rulesFor(2).supply;
+    const s = flatState([], [
+      [1, 1, 0, 1],
+      [2, 1, 1, 1],
+      [-4, -4, 0, lim - 1],
+    ]);
+    const t = ok(s, { type: 'PLANT', playerId: 'p0', species: 'oak', pos: { q: 1, r: 1 } }); // (2,1) 에 2 → 남 1 밀어내고 내 1
+    expect(at(t, 2, 1)).toEqual([0, 1]);
+    expect(t.log.some((e) => e.kind === 'flip')).toBe(true);
+    expect(t.log.some((e) => e.kind === 'uproot')).toBe(true);
+  });
+
+  it('카드 더미 셔플은 deckSeed 만 쓴다', () => {
     const mk = (deckSeed: number) => {
       let s = createInitialState('r', 42, deckSeed);
       for (let i = 0; i < 2; i++) s = joinPlayer(s, createPlayer(`p${i}`, `P${i}`)).state;
@@ -357,236 +522,61 @@ describe('로비 → 진행, 라운드 마켓 (Rules.md 4·5·6절)', () => {
     expect([...a.players.flatMap((p) => p.hand), ...a.market, ...a.pile].join()).not.toEqual([...b.players.flatMap((p) => p.hand), ...b.market, ...b.pile].join());
   });
 
-  it('목표 3장에는 종 연계가 1장 이상, 큰 정원과 이어진 정원은 함께 안 나온다', () => {
-    let seed = 1;
+  it('목표 3장에는 종 연계가 1장 이상. 이번 판 식물은 인원별 수, 보호구역 식물 필수, 꽃밭·숲이면 꽃·나무', () => {
+    let seed = 7;
     for (let i = 0; i < 300; i++) {
       seed = nextRandom(seed).seed;
-      const { goals } = pickGoals(seed);
+      const { goals, seed: next } = pickGoals(seed);
       expect(goals).toHaveLength(3);
       expect(goals.some((g) => g.endsWith('-reserve'))).toBe(true);
-      expect(goals.includes('big-garden') && goals.includes('connected')).toBe(false);
-    }
-  });
-
-  it('가져오기: 내 차례에 마켓의 고른 카드가 손으로 오고, 모두 가져가면 선부터 심기 단계', () => {
-    const s = readyAll(lobby(2));
-    expect(s.stage).toBe('take');
-    expect(applyAction(s, { type: 'TAKE', playerId: 'p1', take: 0 }).error).toMatch(/차례/);
-    expect(applyAction(s, { type: 'TAKE', playerId: 'p0', take: 5 }).error).toMatch(/없는 카드/);
-    expect(applyAction(s, { type: 'PLANT', playerId: 'p0', species: s.players[0]!.hand[0]!, pos: { q: 0, r: 0 } }).error).toMatch(/가져오세요/);
-    const picked = s.market[1]!;
-    const t = ok(s, { type: 'TAKE', playerId: 'p0', take: 1 });
-    expect(t.players[0]!.hand).toHaveLength(START_HAND + 1);
-    expect(t.players[0]!.hand[START_HAND]).toBe(picked);
-    expect(t.market).toEqual([s.market[0]]);
-    expect(t.log.some((e) => e.kind === 'take' && e.playerId === 'p0')).toBe(true);
-    expect(t.currentPlayerId).toBe('p1');
-    expect(t.stage).toBe('take');
-    const u = ok(t, { type: 'TAKE', playerId: 'p1', take: 0 });
-    expect(u.market).toHaveLength(0);
-    expect(u.stage).toBe('plant');
-    expect(u.currentPlayerId).toBe('p0');
-    expect(applyAction(u, { type: 'TAKE', playerId: 'p0', take: 0 }).error).toMatch(/심을 차례/);
-  });
-
-  it('라운드: 가져오기(선부터) → 심기(선부터) 뒤 다음 라운드에 인원 수만큼 새로 펼친다', () => {
-    let s = readyAll(lobby(3));
-    const pileBefore = s.pile.length;
-    const seen: string[] = [];
-    for (let i = 0; i < 6; i++) {
-      seen.push(`${s.stage}:${s.currentPlayerId}`);
-      s = ok(s, autoAction(s, s.currentPlayerId as PlayerId)!);
-    }
-    expect(seen).toEqual(['take:p0', 'take:p1', 'take:p2', 'plant:p0', 'plant:p1', 'plant:p2']);
-    expect(s.round).toBe(2);
-    expect(s.stage).toBe('take');
-    expect(s.market).toHaveLength(3);
-    expect(s.pile).toHaveLength(pileBefore - 3);
-    for (const p of s.players) expect(p.hand).toHaveLength(START_HAND);
-  });
-
-  it('다음 선: 점수가 가장 낮은 사람, 동점이면 이번 선 다음 자리부터 시계방향 첫 동점자', () => {
-    // flatState: 입구만 있는 2인 보드. p0 이 앞서면 p1 이 선
-    const base = { ...flatState(), roundStart: 0 };
-    const ahead = flatState([plant('oak', 'p0', 1, 0)]);
-    expect(nextRoundStart({ ...ahead, roundStart: 0 })).toBe(1);
-    expect(nextRoundStart({ ...ahead, roundStart: 1 })).toBe(1);
-    // 동점: 이번 선 다음 자리
-    expect(computeScores(base)['p0']!.total).toBe(computeScores(base)['p1']!.total);
-    expect(nextRoundStart({ ...base, roundStart: 0 })).toBe(1);
-    expect(nextRoundStart({ ...base, roundStart: 1 })).toBe(0);
-  });
-
-  it('라운드가 넘어갈 때 선은 직전 상태의 nextRoundStart 와 같고, 가져오기·심기 모두 그 자리부터 (4인 끝까지)', () => {
-    let s = readyAll(lobby(4, 9));
-    for (let i = 0; i < 400 && s.phase === 'playing'; i++) {
-      const before = s;
-      s = ok(s, autoAction(s, s.currentPlayerId as PlayerId)!);
-      if (s.phase === 'playing' && s.round !== before.round) {
-        // 마켓 펼치기는 점수를 바꾸지 않으므로, 새 라운드 보드에 직전 선을 넣어 고른 결과와 같아야 한다
-        expect(s.roundStart).toBe(nextRoundStart({ ...s, roundStart: before.roundStart }));
-        expect(s.players.find((p) => p.id === s.currentPlayerId)!.seat).toBe(s.roundStart);
+      for (const n of [2, 3, 4]) {
+        const { species } = pickGarden(n, goals, next);
+        expect(species).toHaveLength(rulesFor(n).gardenSize);
+        expect(new Set(species).size).toBe(species.length);
+        for (const g of goals) if (g.endsWith('-reserve')) expect(species).toContain(g.replace('-reserve', ''));
+        if (goals.includes('flower-bed')) expect(species.some((x) => ['dandelion', 'lotus', 'mugunghwa'].includes(x))).toBe(true);
+        if (goals.includes('forest')) expect(species.some((x) => ['oak', 'pine'].includes(x))).toBe(true);
       }
     }
-    expect(s.phase).toBe('finished');
-  });
-
-  it('기권으로 마켓이 인원보다 적게 펼쳐져도 손이 남지 않고 정상 종료한다 (4인, 둘째 라운드 심기 중 차례 아닌 사람 기권)', () => {
-    let s = readyAll(lobby(4, 3));
-    while (s.round < 2 || s.stage !== 'plant') s = ok(s, autoAction(s, s.currentPlayerId as PlayerId)!);
-    const notCurrent = s.players.find((p) => p.id !== s.currentPlayerId)!.id;
-    const cur = s.currentPlayerId;
-    s = ok(s, { type: 'SURRENDER', playerId: notCurrent });
-    expect(s.currentPlayerId).toBe(cur);
-    for (let i = 0; i < 400 && s.phase === 'playing'; i++) {
-      expect(s.players.find((p) => p.seat === s.roundStart)!.surrenderedOrder).toBeNull();
-      s = ok(s, autoAction(s, s.currentPlayerId as PlayerId)!);
-    }
-    expect(s.result?.reason).toBe('complete');
-    for (const p of s.players) expect(p.hand).toHaveLength(0);
-  });
-
-  it('다음 선은 기권하지 않은 사람 중에서 고른다 (3인)', () => {
-    let s = readyAll(lobby(3));
-    s = ok(s, { type: 'SURRENDER', playerId: 'p1' });
-    for (let i = 0; i < 40 && s.phase === 'playing'; i++) {
-      expect(s.players.find((p) => p.seat === s.roundStart)!.surrenderedOrder).toBeNull();
-      s = ok(s, autoAction(s, s.currentPlayerId as PlayerId)!);
-    }
-  });
-
-  it('가져오기 차례인 사람이 기권하면 다음 사람이 가져오고, 다음 라운드 마켓은 남은 인원 수만큼', () => {
-    let s = readyAll(lobby(3));
-    s = ok(s, autoAction(s, 'p0')!);
-    expect(s.currentPlayerId).toBe('p1');
-    s = ok(s, { type: 'SURRENDER', playerId: 'p1' });
-    expect(s.players[1]!.hand).toHaveLength(0);
-    expect(s.currentPlayerId).toBe('p2');
-    expect(s.stage).toBe('take');
-    s = ok(s, autoAction(s, 'p2')!);
-    expect(s.stage).toBe('plant');
-    expect(s.market).toHaveLength(1); // 남은 1장은 라운드가 바뀌면 버려진다
-    const pileBefore = s.pile.length;
-    s = ok(s, autoAction(s, s.currentPlayerId as PlayerId)!);
-    s = ok(s, autoAction(s, s.currentPlayerId as PlayerId)!);
-    expect(s.round).toBe(2);
-    expect(s.market).toHaveLength(2);
-    expect(s.pile).toHaveLength(pileBefore - 2);
-  });
-
-  it('버리기: 어떤 카드도 심을 칸이 없을 때만, 심기 단계에서', () => {
-    let s0 = readyAll(lobby(2));
-    s0 = ok(s0, autoAction(s0, 'p0')!);
-    s0 = ok(s0, autoAction(s0, 'p1')!);
-    expect(s0.stage).toBe('plant');
-    // 심을 칸이 없게: 모든 빈 칸을 바위로 만든다
-    const cells = s0.board!.cells.map((c) => (s0.board!.entrances.some((e) => e.q === c.q && e.r === c.r) ? c : { ...c, terrain: 'rock' as const }));
-    const s = { ...s0, board: { ...s0.board!, cells } };
-    expect(hasAnyPlant(s, 'p0')).toBe(false);
-    const sp = s.players[0]!.hand[0]!;
-    expect(autoAction(s, 'p0')).toEqual({ type: 'DISCARD', playerId: 'p0', species: sp });
-    const t = ok(s, { type: 'DISCARD', playerId: 'p0', species: sp });
-    expect(t.players[0]!.hand).toHaveLength(START_HAND);
-    expect(t.log.some((e) => e.kind === 'discard')).toBe(true);
-    expect(t.currentPlayerId).toBe('p1');
-  });
-
-  it('더미가 떨어지면 마켓 없이 바로 심기 단계', () => {
-    let s = readyAll(lobby(2));
-    s = ok(s, autoAction(s, 'p0')!);
-    s = ok(s, autoAction(s, 'p1')!);
-    s = { ...s, pile: [] };
-    s = ok(s, autoAction(s, 'p0')!);
-    s = ok(s, autoAction(s, 'p1')!);
-    expect(s.round).toBe(2);
-    expect(s.market).toHaveLength(0);
-    expect(s.stage).toBe('plant');
-    expect(autoAction(s, s.currentPlayerId as PlayerId)!.type).toBe('PLANT');
-  });
-
-  it('남의 차례·손패에 없는 카드·뿌리가 안 닿는 칸은 거부', () => {
-    const s = toPlant(readyAll(lobby(2)));
-    const sp = s.players[0]!.hand[0]!;
-    expect(applyAction(s, { type: 'PLANT', playerId: 'p1', species: s.players[1]!.hand[0]!, pos: { q: 0, r: 0 } }).error).toMatch(/차례/);
-    const notInHand = (['grass', 'oak', 'pine', 'kudzu', 'fern', 'dandelion', 'rapeseed', 'lotus', 'ivy', 'bamboo', 'mushroom', 'mugunghwa'] as SpeciesId[]).find((x) => !s.players[0]!.hand.includes(x))!;
-    expect(applyAction(s, { type: 'PLANT', playerId: 'p0', species: notInHand, pos: { q: 0, r: 0 } }).error).toMatch(/손에 없는/);
-    const far = s.board!.entrances[1]!;
-    expect(applyAction(s, { type: 'PLANT', playerId: 'p0', species: sp, pos: far }).error).toBeDefined();
-  });
-
-  it('칡은 방향이 필요하고, 다른 종은 방향을 받지 않는다', () => {
-    const s = flatState();
-    const withHand = { ...s, players: s.players.map((p) => (p.id === 'p0' ? { ...p, hand: ['kudzu', 'grass', 'grass'] as SpeciesId[] } : p)) };
-    expect(applyAction(withHand, { type: 'PLANT', playerId: 'p0', species: 'kudzu', pos: { q: 1, r: 0 } }).error).toMatch(/방향/);
-    expect(applyAction(withHand, { type: 'PLANT', playerId: 'p0', species: 'grass', pos: { q: 1, r: 0 }, direction: 0 }).error).toMatch(/방향/);
-    expect(applyAction(withHand, { type: 'PLANT', playerId: 'p0', species: 'kudzu', pos: { q: 1, r: 0 }, direction: 0 }).error).toBeUndefined();
-  });
-
-  it('민들레 씨앗: 거리 2 이내 빈 칸만', () => {
-    const s = flatState();
-    const withHand = { ...s, players: s.players.map((p) => (p.id === 'p0' ? { ...p, hand: ['dandelion', 'grass', 'grass'] as SpeciesId[] } : p)) };
-    expect(applyAction(withHand, { type: 'PLANT', playerId: 'p0', species: 'dandelion', pos: { q: 1, r: 0 }, seed: { q: 5, r: 0 } }).error).toMatch(/씨앗/);
-    const t = ok(withHand, { type: 'PLANT', playerId: 'p0', species: 'dandelion', pos: { q: 1, r: 0 }, seed: { q: 3, r: 0 } });
-    expect(t.seeds).toEqual([{ ownerId: 'p0', pos: { q: 3, r: 0 } }]);
-  });
-
-  it('버리기: 심을 칸이 있으면 거부', () => {
-    const s = toPlant(readyAll(lobby(2)));
-    expect(hasAnyPlant(s, 'p0')).toBe(true);
-    expect(applyAction(s, { type: 'DISCARD', playerId: 'p0', species: s.players[0]!.hand[0]! }).error).toMatch(/버릴 수 없/);
-  });
-
-  it('상대 땅을 뺏으면 flip 로그가 남는다', () => {
-    const s = flatState([plant('grass', 'p1', 3, 0)]);
-    // p0 가 (1,0) 에 참나무: (2,0) 은 p1 잔디 둘레 1 → p0 참나무 둘레 2 로 뒤집힌다
-    const withHand = { ...s, players: s.players.map((p) => (p.id === 'p0' ? { ...p, hand: ['oak', 'grass', 'grass'] as SpeciesId[] } : p)) };
-    const before = computeScores(withHand);
-    const t = ok(withHand, { type: 'PLANT', playerId: 'p0', species: 'oak', pos: { q: 1, r: 0 } });
-    expect(computeScores(t)['p1']!.land).toBeLessThan(before['p1']!.land);
-    expect(t.log.some((e) => e.kind === 'flip')).toBe(true);
   });
 });
 
 describe('종료·점수·순위 (Rules.md 8·9절)', () => {
-  /** 자동 수로 끝까지 둔다 */
-  function playOut(n: number, seed: number): GameState {
-    let s = readyAll(lobby(n, seed));
-    for (let i = 0; i < 500 && s.phase === 'playing'; i++) s = ok(s, autoAction(s, s.currentPlayerId as PlayerId)!);
-    return s;
-  }
-
-  it.each([2, 3, 4])('%i인: 덱을 다 쓰면 끝나고, 모두 같은 횟수(15/16번)를 둔다', (n) => {
-    const s = playOut(n, 11 + n);
-    expect(s.phase).toBe('finished');
-    expect(s.result?.reason).toBe('complete');
-    const turns = n === 2 ? 15 : 16;
-    for (const p of s.players) {
-      const acted = s.log.filter((e) => e.playerId === p.id && (e.kind === 'plant' || e.kind === 'discard')).length;
-      expect(acted).toBe(turns);
-      expect(p.hand).toHaveLength(0);
-    }
-    expect(s.plants.length).toBeGreaterThan(0);
-    expect(s.result!.ranking).toHaveLength(n);
-  });
-
-  it('점수 = 땅 + 목표 + 무궁화 + 덤, 순위는 점수 → 땅 → 좌석 큰 쪽', () => {
-    const s = playOut(3, 5);
+  it('점수 = 땅 + 목표 + 무궁화 + 덤, 순위는 점수 → 땅 → 내 땅 위 식물 → 좌석 큰 쪽', () => {
+    const s = playOut(4, 5);
     const scores = s.result!.scores;
     for (const p of s.players) {
       const sc = scores[p.id]!;
       expect(sc.total).toBe(sc.land + sc.goals + sc.bloom + sc.komi);
       expect(sc.goalBreakdown).toHaveLength(3);
-      expect(sc.komi).toBe(rulesFor(3).komi[p.seat]);
+      expect(sc.komi).toBe(rulesFor(4).komi[p.seat]);
     }
     const ranking = s.result!.ranking;
     for (let i = 1; i < ranking.length; i++) {
       const a = scores[ranking[i - 1]!]!;
       const b = scores[ranking[i]!]!;
-      expect(a.total > b.total || (a.total === b.total && a.land >= b.land)).toBe(true);
+      expect(a.total > b.total || (a.total === b.total && (a.land > b.land || (a.land === b.land && a.plantsOnLand >= b.plantsOnLand)))).toBe(true);
     }
   });
 
-  it('땅 점수는 computeOwners 와 같다 (파생값 일치)', () => {
+  it('동점 깨기: 점수·땅이 같으면 내 땅 위 식물이 많은 쪽', () => {
+    const s = flatState([plant('grass', 'p0', 1, 1)], [
+      [1, 1, 0, 1],
+      [2, 1, 0, 1],
+      [5, 1, 1, 1],
+      [6, 1, 1, 1],
+    ]);
+    expect(computeRanking(s)).toEqual(['p0', 'p1']);
+    const t = flatState([], s.rootSeat.map(() => 0).length ? [
+      [1, 1, 0, 1],
+      [2, 1, 0, 1],
+      [5, 1, 1, 1],
+      [6, 1, 1, 1],
+    ] : []);
+    expect(computeRanking(t)).toEqual(['p1', 'p0']); // 모두 같으면 좌석 큰 쪽
+  });
+
+  it('땅 점수는 computeOwners 와 같다', () => {
     const s = playOut(2, 8);
     const owners = computeOwners(s);
     for (const p of s.players) expect(s.result!.scores[p.id]!.land).toBe([...owners].filter((o) => o === p.seat).length);
@@ -598,22 +588,25 @@ describe('종료·점수·순위 (Rules.md 8·9절)', () => {
     r = ok(r, { type: 'CONFIRM', playerId: 'p1' });
     r = ok(r, { type: 'SURRENDER', playerId: 'p2' });
     expect(r.phase).toBe('playing');
-    expect(r.market).toHaveLength(2);
     let t = revealAll(lobby(2));
     t = ok(t, { type: 'SURRENDER', playerId: 'p1' });
     expect(t.phase).toBe('finished');
   });
 
-  it('기권: 차례를 건너뛰고 순위 맨 아래, 1명만 남으면 종료', () => {
+  it('기권: 차례를 건너뛰고 순위 맨 아래, 1명만 남으면 종료. 남은 사람으로 끝까지 진행된다', () => {
     let s = readyAll(lobby(3));
     s = ok(s, { type: 'SURRENDER', playerId: 'p1' });
     s = ok(s, autoAction(s, 'p0')!);
+    s = ok(s, autoAction(s, 'p0')!);
     expect(s.currentPlayerId).toBe('p2');
+    let u = s;
+    for (let i = 0; i < 1000 && u.phase === 'playing'; i++) u = ok(u, autoAction(u, u.currentPlayerId as PlayerId)!);
+    expect(u.result?.reason).toBe('complete');
+    expect(u.result?.ranking.at(-1)).toBe('p1');
     s = ok(s, { type: 'SURRENDER', playerId: 'p2' });
     expect(s.phase).toBe('finished');
     expect(s.result?.reason).toBe('last-standing');
     expect(s.result?.ranking).toEqual(['p0', 'p2', 'p1']);
-    expect(computeRanking(s)).toEqual(['p0', 'p2', 'p1']);
   });
 
   it('같은 시드·같은 수 → 같은 결과 (결정성)', () => {
@@ -623,7 +616,8 @@ describe('종료·점수·순위 (Rules.md 8·9절)', () => {
   it('입력 상태를 바꾸지 않는다 (순수 함수)', () => {
     const s = readyAll(lobby(2));
     const snapshot = JSON.stringify(s);
-    applyAction(s, autoAction(s, 'p0')!);
+    const t = applyAction(s, autoAction(s, 'p0')!).state;
+    applyAction(t, autoAction(t, 'p0')!);
     expect(JSON.stringify(s)).toBe(snapshot);
   });
 });
@@ -631,32 +625,52 @@ describe('종료·점수·순위 (Rules.md 8·9절)', () => {
 describe('목표 점수 (Rules.md 8절)', () => {
   const withGoals = (s: GameState, goals: GameState['goals']) => ({ ...s, goals });
 
-  it('종 연계: 내 땅 위의 내 그 종 식물 1개당 +2, 뺏긴 칸은 0', () => {
-    const s = withGoals(flatState([plant('pine', 'p0', 2, 2), plant('pine', 'p1', 8, 2), plant('grass', 'p0', 7, 2), plant('oak', 'p0', 8, 1), plant('oak', 'p0', 9, 1)]), ['pine-reserve']);
+  it('종 연계: 누가 심었든 내 땅 위의 그 식물 1개당 +2', () => {
+    const s = withGoals(flatState([plant('pine', 'p1', 2, 2), plant('pine', 'p1', 8, 2)], [
+      [2, 2, 0, 1],
+      [8, 2, 1, 3],
+    ]), ['pine-reserve']);
     const sc = computeScores(s);
     expect(sc['p0']!.goalBreakdown[0]).toBe(2);
-    // p1 소나무(8,2): p1 5 vs p0 잔디 1 + 참나무 2 + 2 = 5 → 동점이라 p1 땅 아님 → 0
-    expect(sc['p1']!.goalBreakdown[0]).toBe(0);
+    expect(sc['p1']!.goalBreakdown[0]).toBe(2);
   });
 
-  it('큰 정원: 동점 1등은 모두 1등 점수, 2등 없음', () => {
-    const s = withGoals(flatState(), ['big-garden']);
-    const sc = computeScores(s);
-    expect(sc['p0']!.goalBreakdown[0]).toBe(6);
-    expect(sc['p1']!.goalBreakdown[0]).toBe(6);
+  it('큰 정원: 1등 +4 2등 +2, 동점 1등은 모두 4이고 2등 없음', () => {
+    const s = withGoals(flatState([], [
+      [1, 1, 0, 1],
+      [2, 1, 0, 1],
+      [6, 2, 1, 1],
+    ]), ['big-garden']);
+    expect(computeScores(s)['p0']!.goalBreakdown[0]).toBe(4);
+    expect(computeScores(s)['p1']!.goalBreakdown[0]).toBe(2);
+    const t = withGoals(flatState([], [
+      [1, 1, 0, 1],
+      [6, 2, 1, 1],
+    ]), ['big-garden']);
+    expect(computeScores(t)['p0']!.goalBreakdown[0]).toBe(4);
+    expect(computeScores(t)['p1']!.goalBreakdown[0]).toBe(4);
   });
 
-  it('여러 가지 심기: 서로 다른 식물 5종 이상이면 +4', () => {
-    const four = ['grass', 'oak', 'pine', 'bamboo'] as const;
-    const s4 = withGoals(flatState(four.map((sp, i) => plant(sp, 'p0', i - 2, 2))), ['variety']);
-    expect(computeScores(s4)['p0']!.goalBreakdown[0]).toBe(0);
-    const s5 = withGoals(flatState([...four, 'ivy' as const].map((sp, i) => plant(sp, 'p0', i - 2, 2))), ['variety']);
-    expect(computeScores(s5)['p0']!.goalBreakdown[0]).toBe(4);
-    expect(computeScores(s5)['p1']!.goalBreakdown[0]).toBe(0);
+  it('여러 가지 심기: 내 땅 위 서로 다른 식물 5종 이상이면 +4', () => {
+    const kinds = ['grass', 'oak', 'pine', 'kudzu', 'fern'] as const;
+    const plants = kinds.map((sp, i) => plant(sp, 'p1', i - 2, 2));
+    const roots: RootSpec[] = kinds.map((_, i) => [i - 2, 2, 0, 1]);
+    expect(computeScores(withGoals(flatState(plants.slice(0, 4), roots.slice(0, 4)), ['variety']))['p0']!.goalBreakdown[0]).toBe(0);
+    expect(computeScores(withGoals(flatState(plants, roots), ['variety']))['p0']!.goalBreakdown[0]).toBe(4);
   });
 
-  it('무궁화: 끝날 때 그 칸이 내 땅이면 +1', () => {
-    const s = flatState([plant('mugunghwa', 'p0', 2, 2)]);
+  it('숲: 서로 맞닿은 내 땅 위 나무 3개 무리마다 +4', () => {
+    const s = withGoals(flatState([plant('oak', 'p0', 1, 2), plant('pine', 'p1', 2, 2), plant('oak', 'p0', 3, 2)], [
+      [1, 2, 0, 1],
+      [2, 2, 0, 1],
+      [3, 2, 0, 1],
+    ]), ['forest']);
+    expect(computeScores(s)['p0']!.goalBreakdown[0]).toBe(4);
+  });
+
+  it('무궁화: 끝날 때 그 칸이 내 땅이면 +1 (누가 심었든)', () => {
+    const s = flatState([plant('mugunghwa', 'p1', 2, 2)], [[2, 2, 0, 1]]);
     expect(computeScores(s)['p0']!.bloom).toBe(1);
+    expect(computeScores(s)['p1']!.bloom).toBe(0);
   });
 });

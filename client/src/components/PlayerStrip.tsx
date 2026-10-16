@@ -60,7 +60,7 @@ export const PlayerStrip = memo(function PlayerStrip({ onQuit }: { onQuit: () =>
               role="listitem"
               className={cx(styles.card, r.isCurrent && styles.current, r.surrendered && styles.dead)}
               style={{ '--seat-color': `var(--color-seat-${r.seat})` } as React.CSSProperties}
-              title={`${r.nickname} · 땅 ${r.score?.land ?? 0} · 점수 ${r.score?.total ?? 0}`}
+              title={`${r.nickname} · 땅 ${r.score?.land ?? 0} · 점수 ${r.score?.total ?? 0} · 남은 뿌리 ${r.rootsLeft ?? 0}`}
             >
               <span className={styles.avatar} aria-hidden="true">
                 {r.nickname.slice(0, 1)}
@@ -70,7 +70,7 @@ export const PlayerStrip = memo(function PlayerStrip({ onQuit }: { onQuit: () =>
                   <span className={styles.name}>{r.nickname}</span>
                   {r.id === viewerId && <span className={styles.meTag}>나</span>}
                   {lead && (
-                    <span className={styles.leadTag} title="이번 라운드 선: 먼저 가져오고 먼저 심습니다">
+                    <span className={styles.leadTag} title="이번 라운드 선: 가장 먼저 둡니다">
                       선
                     </span>
                   )}
@@ -87,6 +87,11 @@ export const PlayerStrip = memo(function PlayerStrip({ onQuit }: { onQuit: () =>
                   <span className={styles.energy}>
                     <ChangeValue value={r.score?.total ?? 0} />점
                   </span>
+                  {r.rootsLeft !== null && (
+                    <span className={styles.score} title="남은 뿌리: 라운드가 끝나면 가장 많이 남은 사람이 다음 선">
+                      뿌리 {r.rootsLeft}
+                    </span>
+                  )}
                 </div>
               </div>
               <span className={cx(styles.stateBadge, (r.isCurrent || ready) && styles.stateBadgeCurrent, r.surrendered && styles.stateBadgeDead)} title={label} aria-label={label}>

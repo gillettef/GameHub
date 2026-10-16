@@ -6,9 +6,9 @@
  *
  *  specs.json     종·목표·상수·인원별 규칙 기준표
  *  scenario.json  2·3·4인 판을 이번 판 식물 공개 단계(initial)부터 시드로 고른 합법 수로 끝까지 둔 기록(용량 때문에 한 줄 JSON).
- *                 각 단계 { action, influence, owners, scores, legal(심기 단계만), auto(자동 수) } 와, 8단계마다·마지막에 state(log 제외).
+ *                 각 단계 { action, rootSeat, rootCount, owners, scores, legal(심기 단계만), auto(자동 수) } 와, 8단계마다·마지막에 state(log 제외).
  *                 Python 은 initial 에 action 을 차례로 적용하며 state 가 있는 단계에서 상태 일치를,
- *                 매 단계에서 영향력·땅·점수·심을 수 있는 칸·자동 수 일치를 확인한다.
+ *                 매 단계에서 큐브·땅·점수·심을 수 있는 칸·자동 수 일치를 확인한다.
  */
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -17,13 +17,13 @@ import { CONSTANTS, GOALS, PLAYER_COUNT_RULES, SPECIES } from '../src/data/index
 import {
   applyAction,
   autoAction,
-  computeInfluence,
   computeOwners,
   computeScores,
   createInitialState,
   createPlayer,
   joinPlayer,
   legalPlantCells,
+  legalSeedCells,
   nextRandom,
 } from '../src/engine/index.js';
 import type { Action, GameState, PlayerId } from '../src/types/index.js';
@@ -39,7 +39,7 @@ const write = (name: string, data: unknown) => {
 
 write('specs.json', { species: SPECIES, goals: GOALS, constants: CONSTANTS, playerCountRules: PLAYER_COUNT_RULES });
 
-/** 다양한 수가 나오게 자동 수 대신 시드로 고른 합법 수를 둔다 (가져오기 자리·방향·씨앗 포함) */
+/** 다양한 수가 나오게 자동 수 대신 시드로 고른 합법 수를 둔다 (가져오기 자리·회전·씨앗 포함) */
 function variedAction(s: GameState, rnd: { seed: number }): Action {
   const pick = <T>(arr: T[]): T => {
     const r = nextRandom(rnd.seed);
@@ -55,21 +55,14 @@ function variedAction(s: GameState, rnd: { seed: number }): Action {
   if (s.phase !== 'playing') return autoAction(s, pid) as Action;
   if (s.stage === 'take') return { type: 'TAKE', playerId: pid, take: pick(s.market.map((_, i) => i)) };
   const me = s.players.find((p) => p.id === pid)!;
-  const inf = computeInfluence(s);
-  const options = [...new Set(me.hand)].flatMap((sp) => legalPlantCells(s, pid, sp, inf).map((pos) => ({ sp, pos })));
+  const options = [...new Set(me.hand)].flatMap((sp) => legalPlantCells(s, pid, sp).map((pos) => ({ sp, pos })));
   if (options.length === 0) return autoAction(s, pid) as Action;
   const { sp, pos } = pick(options);
-  const action: Extract<Action, { type: 'PLANT' }> = { type: 'PLANT', playerId: pid, species: sp, pos };
-  if (sp === 'kudzu') {
-    const dirs = [0, 1, 2, 3, 4, 5] as const;
-    for (const d of [pick([...dirs]), ...dirs]) if (!applyAction(s, { ...action, direction: d }).error) return { ...action, direction: d };
-  }
+  const rotation = pick([0, 1, 2, 3, 4, 5] as const);
+  const action: Extract<Action, { type: 'PLANT' }> = { type: 'PLANT', playerId: pid, species: sp, pos, rotation };
   if (sp === 'dandelion') {
-    for (let k = 0; k < 6; k++) {
-      const seed = { q: pos.q + pick([-2, -1, 0, 1, 2]), r: pos.r + pick([-2, -1, 0, 1, 2]) };
-      const a = { ...action, seed };
-      if (!applyAction(s, a).error) return a;
-    }
+    const seeds = legalSeedCells(s, pos);
+    if (seeds.length && pick([true, true, false])) return { ...action, seed: pick(seeds) };
   }
   return action;
 }
@@ -85,7 +78,7 @@ function scenario(players: number, seed: number) {
   const rnd = { seed: seed * 7 + 1 };
   let surrendered = false;
   for (let i = 0; i < 800 && s.phase !== 'finished'; i++) {
-    // 3인은 가져오기 단계, 4인은 심기 단계에서 지금 차례인 사람이 기권한다(기권 뒤 선·마켓 장수·단계 진행을 TS·Python 이 같게 하는지)
+    // 3인은 가져오기 단계, 4인은 심기 단계에서 지금 차례인 사람이 기권한다(기권 뒤 선·단계 진행을 TS·Python 이 같게 하는지)
     const surrender = s.phase === 'playing' && !surrendered && i >= 20 && ((players === 3 && s.stage === 'take') || (players === 4 && s.stage === 'plant'));
     if (surrender) surrendered = true;
     const action: Action = surrender ? { type: 'SURRENDER', playerId: s.currentPlayerId as PlayerId } : variedAction(s, rnd);
@@ -98,7 +91,8 @@ function scenario(players: number, seed: number) {
     steps.push({
       action,
       state: checkpoint ? { ...s, log: [] } : null,
-      influence: s.board ? computeInfluence(s).map((row) => [...row]) : null,
+      rootSeat: s.board ? [...s.rootSeat] : null,
+      rootCount: s.board ? [...s.rootCount] : null,
       owners: s.board ? [...computeOwners(s)] : null,
       scores: s.board ? computeScores(s) : null,
       legal:

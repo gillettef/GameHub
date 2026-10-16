@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { ENTRANCE_RING, ENTRANCE_SELF, FERTILE_BONUS, RESERVE_BONUS, START_HAND } from '@rootbound/shared';
+import { ENTRANCE_ROOTS, RESERVE_BONUS, START_HAND, rulesFor } from '@rootbound/shared';
 import styles from './HelpTab.module.css';
 
 /** 설명 탭: 한 화면 규칙 요약 (정본은 notes/Rules.md). 수치는 shared 상수에서 읽는다 */
@@ -9,61 +9,60 @@ export const HelpTab = memo(function HelpTab() {
       <section className={styles.section}>
         <h2 className={styles.h2}>이야기</h2>
         <p>
-          해마다 도시를 돌며 열리는 달빛 정원 박람회. 주최 측이 조립식 화단 블록(구역)을 이어 붙여 부지를 만들어서, 기름진 땅·연못·바위의 자리가 매번 다릅니다. 부지에 칸막이는 없고, 폐막 심사 때 칸마다 <strong>뿌리가 가장 깊게 닿은 정원사</strong>의 화단으로 칩니다.
-          개막 날 올해의 심사 주제(목표 카드)가 발표되면 종묘원이 이번에 공급할 품종(이번 판 식물)을 정합니다. 정원사들은 각자의 출입문(입구)에서 밤마다 묘목을 한 그루씩 심고, 종묘 트럭이 내려놓은 상자(마켓)에서 하나씩 챙겨 갑니다.
+          해마다 도시를 돌며 열리는 달빛 정원 박람회. 주최 측이 조립식 화단 블록(구역)을 이어 붙여 부지를 만들어서, 기름진 땅·연못·바위의 자리가 매번 다릅니다. 부지에 칸막이는 없고, 폐막 심사 때 칸마다 <strong>뿌리를 내리고 있는 정원사</strong>의 화단으로 칩니다. 땅속에서는 뿌리끼리 서로 밀어내, 한 칸에는 한 정원사의 뿌리만 남습니다.
+          개막 날 올해의 심사 주제(목표 카드)가 발표되면 종묘원이 이번에 공급할 품종(이번 판 식물)을 정합니다. 정원사들은 각자의 출입문(입구)에서 밤마다 묘목을 한 그루씩 심고, 종묘 트럭이 내려놓은 상자(마켓)에서 하나씩 챙겨 갑니다. 묘목은 누가 심었든 그 자리에 뿌리를 둔 정원사의 화단에 속합니다.
         </p>
       </section>
       <section className={styles.section}>
         <h2 className={styles.h2}>목표</h2>
         <p>
-          라운드마다 마켓에서 카드 1장을 가져오고, 내 카드 2장 중 1장을 심어 땅을 넓힙니다. 끝났을 때 <strong>내 땅 1칸 = 1점</strong>에 목표 카드 3장의 점수를 더해 가장 높은 사람이 이깁니다.
+          차례마다 마켓에서 카드 1장을 가져오고, 내 카드 2장 중 1장을 심어 뿌리를 뻗습니다. 끝났을 때 <strong>내 뿌리가 있는 칸 1칸 = 1점</strong>에 목표 카드 3장의 점수를 더해 가장 높은 사람이 이깁니다.
         </p>
       </section>
       <section className={styles.section}>
         <h2 className={styles.h2}>한 판의 흐름</h2>
         <ol className={styles.steps}>
           <li>
-            <strong>준비</strong>: 이 식물들로 카드 더미를 섞고 각자 {START_HAND}장씩 받습니다. 목표 3장과 이번 판 식물을 모두에게 보여 주고(카드 탭 위쪽에도 있음), 모두 확인하면 시작합니다.
+            <strong>준비</strong>: 이번 판 식물로 카드 더미를 섞어 각자 {START_HAND}장씩 받고, 마켓에 카드를 펼칩니다. 각자 입구와 맞닿은 6칸에 뿌리 {ENTRANCE_ROOTS}개씩을 놓고 시작합니다.
           </li>
           <li>
-            <strong>마켓</strong>: 라운드가 시작될 때마다 카드 더미에서 남은 사람 수만큼 카드를 앞면으로 펼칩니다. 이것이 마켓이고, 모두가 볼 수 있습니다.
+            <strong>가져오기</strong>: 내 차례에 마켓에서 원하는 카드 1장을 가져옵니다(내 카드 2장). 빈자리는 카드 더미에서 바로 채웁니다.
           </li>
           <li>
-            <strong>가져오기</strong>: 그 라운드의 선부터 한 사람씩 마켓에서 원하는 카드 1장을 가져옵니다. 내 카드가 2장이 됩니다.
+            <strong>심기</strong>: 내 카드 1장을 <strong>내 땅</strong>이나 <strong>내 땅과 맞닿은 빈 칸</strong>에 심고, 카드의 뿌리 모양을 원하는 방향으로 돌려 숫자만큼 뿌리를 놓습니다. 심을 칸이 하나도 없을 때만 1장을 버립니다.
           </li>
           <li>
-            <strong>심기</strong>: 모두 가져가면 다시 선부터 한 사람씩 내 카드 1장을 골라 내 뿌리가 닿는(영향력 1 이상) 빈 칸에 심습니다. 심을 칸이 하나도 없을 때만 1장을 버립니다.
+            <strong>다음 선</strong>: 모두 한 번씩 두면 라운드가 끝납니다. <strong>남은 뿌리가 가장 많은 사람</strong>(가장 적게 퍼진 사람)이 다음 라운드의 선입니다. 같으면 이번 선 다음 자리부터 시계방향으로 처음 만나는 사람입니다.
           </li>
           <li>
-            <strong>다음 선</strong>: 라운드가 끝나면 점수가 가장 낮은 사람이 다음 라운드의 선이 됩니다. 동점이면 이번 선의 다음 자리부터 시계방향으로 처음 만나는 동점자가 선입니다.
-          </li>
-          <li>
-            <strong>끝</strong>: 카드 더미가 떨어지면 마켓 없이 남은 내 카드만 심습니다. 모두 카드를 다 쓰면 끝나고 점수를 셉니다. 패스는 없습니다.
+            <strong>끝</strong>: 카드를 모두 쓰면 끝납니다(2인 12번, 3·4인 10번 심기). 패스는 없습니다.
           </li>
         </ol>
       </section>
       <section className={styles.section}>
-        <h2 className={styles.h2}>영향력과 땅</h2>
+        <h2 className={styles.h2}>뿌리 줄다리기</h2>
         <ul className={styles.list}>
-          <li>식물은 카드 그림에 숫자가 적힌 칸마다 그 숫자만큼 영향력을 줍니다. 칸마다 사람별로 더합니다.</li>
           <li>
-            한 칸에서 영향력이 <strong>가장 큰 한 사람</strong>이 그 칸의 주인입니다. 동점이면 아무의 땅도 아닙니다.
+            한 칸에는 <strong>한 사람의 뿌리만</strong> 있습니다. 남의 뿌리가 있는 칸에 뿌리를 뻗으면 내 뿌리 1개가 남의 뿌리 1개를 밀어냅니다. 다 밀어내고 남은 만큼 내 뿌리를 놓습니다.
           </li>
-          <li>식물은 사라지지 않지만, 상대가 옆에 더 강하게 심으면 그 칸은 상대 땅이 됩니다.</li>
           <li>
-            입구는 입구 칸에 {ENTRANCE_SELF}, 맞닿은 6칸에 {ENTRANCE_RING}의 영향력을 줍니다.
+            <strong>식물은 누구의 것도 아닙니다.</strong> 그 칸에 뿌리를 둔 사람의 땅이고, 그 위 식물도 그 사람 점수에 셉니다.
           </li>
-          <li>보드 아래 "영향력" 버튼을 켜면 칸마다 "내 영향력 : 가장 센 상대"가 보입니다.</li>
+          <li>
+            뿌리는 1인 2인 {rulesFor(2).supply} / 3인 {rulesFor(3).supply} / 4인 {rulesFor(4).supply}개뿐입니다. 남은 뿌리가 모자라면 <strong>가장 높이 쌓인 내 칸</strong>에서 옮겨 옵니다. 밀려난 뿌리는 주인에게 돌아갑니다.
+          </li>
+          <li>버섯은 맞닿은 6칸의 남의 뿌리를 걷어내고, 민들레는 두 칸 안 아무 칸에 씨앗 뿌리 1개를 날립니다.</li>
+          <li>보드의 원 숫자가 그 칸의 뿌리 수이고, 원 색이 땅 주인입니다. 아래 "뿌리 수" 버튼으로 끄고 켭니다.</li>
         </ul>
       </section>
       <section className={styles.section}>
         <h2 className={styles.h2}>지형</h2>
         <ul className={styles.terrain}>
           <li>
-            <span className={styles.swatchFertile} /> 기름진 땅: 여기 심은 식물은 이 칸에 +{FERTILE_BONUS}
+            <span className={styles.swatchFertile} /> 기름진 땅: 보통 땅과 같고, 목표 "비옥한 밭"이 셉니다
           </li>
           <li>
-            <span className={styles.swatchPond} /> 연못: 심을 수 없고 누구의 땅도 아님. 연꽃은 연못 옆이면 뿌리 없이도 심음
+            <span className={styles.swatchPond} /> 연못: 심을 수 없고 누구의 땅도 아님. 연꽃은 연못 옆 빈 칸이면 어디든 심음
           </li>
           <li>
             <span className={styles.swatchRock} /> 바위: 심을 수 없고 누구의 땅도 아님
@@ -73,12 +72,12 @@ export const HelpTab = memo(function HelpTab() {
       <section className={styles.section}>
         <h2 className={styles.h2}>목표 카드</h2>
         <p>
-          판마다 3장이 공개됩니다. "○○ 보호구역"은 끝날 때 내 땅 위에 있는 내 ○○ 1개당 +{RESERVE_BONUS}점이라, 마켓에 그 식물이 나오면 서로 가져가려 합니다.
+          판마다 3장이 공개됩니다. "○○ 보호구역"은 끝날 때 내 땅 위에 있는 ○○ 1개당 +{RESERVE_BONUS}점입니다. 누가 심었든 상관없어서, 남이 심은 식물을 뿌리로 감싸 빼앗을 수 있습니다.
         </p>
       </section>
       <section className={styles.section}>
         <h2 className={styles.h2}>순서 보정</h2>
-        <p>점수가 낮은 사람이 선을 잡아 먼저 가져오고, 남은 유불리는 순서 보너스 점수로 맞춥니다. 점수 탭에 순서 보너스가 표시됩니다.</p>
+        <p>남은 뿌리가 많은 사람이 선을 잡아 앞선 사람을 따라잡을 기회를 줍니다. 4인만 2~4번 자리가 순서 보너스 1점을 받고 시작합니다.</p>
       </section>
     </div>
   );

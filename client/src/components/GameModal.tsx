@@ -1,14 +1,14 @@
 import { memo, useEffect, useMemo } from 'react';
 import type { SpeciesId } from '@rootbound/shared';
-import { ENTRANCE_RING, ENTRANCE_SELF, FERTILE_BONUS, getGoal, getSpecies, hasAnyPlant, legalPlantCells, samePos } from '@rootbound/shared';
+import { ENTRANCE_ROOTS, getGoal, getSpecies, hasAnyPlant, legalPlantCells, samePos } from '@rootbound/shared';
 import { goalCardUrl } from '../game/cardImages';
-import { DIRECTION_LABELS, asState, buildCells } from '../game/derived';
+import { asState, buildCells, rotationLabel } from '../game/derived';
 import { selectCanPlant, selectCanTake, selectIsMyTurn, selectState, selectViewerId, useGameStore } from '../store/gameStore';
 import { CloseIcon } from './icons';
 import { SpeciesCard } from './SpeciesCard';
 import styles from './GameModal.module.css';
 
-const TERRAIN: Record<string, string> = { empty: '빈 땅', fertile: `기름진 땅 (여기 심은 식물은 이 칸에 +${FERTILE_BONUS})`, pond: '연못 (심을 수 없고, 누구의 땅도 아님)', rock: '바위 (심을 수 없고, 누구의 땅도 아님)' };
+const TERRAIN: Record<string, string> = { empty: '빈 땅', fertile: "기름진 땅 (목표 '비옥한 밭'이 센다)", pond: '연못 (심을 수 없고, 누구의 땅도 아님)', rock: '바위 (심을 수 없고, 누구의 땅도 아님)' };
 
 /**
  * 확대 모달 하나로 다섯 가지를 본다 (스토어 cardModal):
@@ -16,7 +16,7 @@ const TERRAIN: Record<string, string> = { empty: '빈 땅', fertile: `기름진 
  *  - 마켓 카드: 가져오기 차례에 크게 보고 "이 카드 가져오기"(Rules.md 5절 2)
  *  - 식물 카드: 보기 전용 (카드 탭·마켓)
  *  - 목표 카드: 보기 전용 (목표 칩·점수 탭·카드 탭)
- *  - 보드 칸: 지형·식물·좌석별 영향력·주인
+ *  - 보드 칸: 지형·식물·뿌리 수·주인
  */
 export const GameModal = memo(function GameModal() {
   const target = useGameStore((s) => s.cardModal);
@@ -126,29 +126,21 @@ export const GameModal = memo(function GameModal() {
           칸 정보
         </h2>
         <p className={styles.line}>{TERRAIN[cell.terrain]}</p>
-        {cell.entranceSeat >= 0 && <p className={styles.line}>{players[cell.entranceSeat]?.nickname}의 입구 (입구 칸 {ENTRANCE_SELF}, 옆 칸 {ENTRANCE_RING})</p>}
+        {cell.entranceSeat >= 0 && <p className={styles.line}>{players[cell.entranceSeat]?.nickname}의 입구 (처음에 맞닿은 6칸에 뿌리 {ENTRANCE_ROOTS}씩)</p>}
         {cell.plant && (
           <>
             <p className={styles.line}>
-              {players[cell.plantSeat]?.nickname}의 {getSpecies(cell.plant.species).name}
-              {cell.plant.direction !== null && ` · 방향 ${DIRECTION_LABELS[cell.plant.direction]}`}
+              {getSpecies(cell.plant.species).name} · {players[cell.plantedBy]?.nickname}이(가) 방향 {rotationLabel(cell.plant.rotation)}으로 심음
             </p>
-            <SpeciesCard species={cell.plant.species} variant="full" seat={cell.plantSeat} />
+            <SpeciesCard species={cell.plant.species} variant="full" seat={cell.owner >= 0 ? cell.owner : null} />
           </>
         )}
-        <ul className={styles.influence}>
-          {players.map((p) => (
-            <li key={p.id} style={{ color: `var(--color-seat-${p.seat})` }}>
-              {p.nickname}: 영향력 {cell.influence[p.seat] ?? 0}
-            </li>
-          ))}
-        </ul>
-        <p className={styles.line}>
-          {cell.terrain === 'pond' || cell.terrain === 'rock'
+        <p className={styles.line} style={cell.owner >= 0 ? { color: `var(--color-seat-${cell.owner})` } : undefined}>
+          {cell.terrain === 'pond' || cell.terrain === 'rock' || cell.entranceSeat >= 0
             ? '누구의 땅도 될 수 없습니다'
             : cell.owner >= 0
-              ? `${players[cell.owner]?.nickname}의 땅`
-              : '주인 없음 (동점이거나 아무도 닿지 않음)'}
+              ? `${players[cell.owner]?.nickname}의 땅 · 뿌리 ${cell.cubes}${cell.plant ? ' (이 칸의 식물도 이 사람 것)' : ''}`
+              : '주인 없음 (뿌리가 없음)'}
         </p>
       </div>
     );

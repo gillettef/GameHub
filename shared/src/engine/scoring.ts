@@ -1,11 +1,13 @@
 /**
- * 점수·목표·순위 (Rules.md 8·9절). 보드의 순수 함수.
+ * 점수·목표·순위 (Rules.md 8·9절). 보드의 순수 함수. 식물은 누구의 것도 아니고, 그 칸의 주인(큐브 색)이 점수를 받는다.
  */
 import { RESERVE_BONUS, VARIETY_BONUS, VARIETY_SPECIES, rulesFor } from '../data/constants.js';
 import { FLOWER_SPECIES, FOREST_SPECIES, getGoal, getSpecies } from '../data/species.js';
 import type { GameState, GoalId, PlayerId, Score, SpeciesId } from '../types/index.js';
 import { boardIndex, step, type BoardIndex } from './board.js';
-import { computeInfluence, computeOwners, occupancy, requireBoard, type Occupancy } from './influence.js';
+import { computeOwners, occupancy, requireBoard, type Occupancy } from './influence.js';
+
+type ScoreState = Pick<GameState, 'board' | 'plants' | 'players' | 'rootSeat' | 'rootCount' | 'goals'>;
 
 /** 1등 A, 2등 B. 동점 1등은 모두 A 이고 그때 2등은 없다. 값 0은 받지 않는다 */
 function rankAward(values: number[], first: number, second: number): number[] {
@@ -72,106 +74,86 @@ function longestLine(seat: number, cells: number[], owners: Int8Array, idx: Boar
   return best;
 }
 
-function goalPoints(goal: GoalId, state: GameState, idx: BoardIndex, owners: Int8Array, mine: number[][], occ: Occupancy): number[] {
-  const P = state.players.length;
+function goalPoints(goal: GoalId, idx: BoardIndex, mine: number[][], occ: Occupancy, owners: Int8Array): number[] {
   const cells = idx.board.cells;
+  const has = (c: number, list: readonly SpeciesId[]) => list.includes(occ.plantSpecies[c] as SpeciesId);
   switch (goal) {
     case 'pond-side':
       return mine.map((cs) => cs.filter((c) => (idx.ring1[c] as number[]).some((x) => cells[x]?.terrain === 'pond')).length);
     case 'big-garden':
-      return rankAward(mine.map((cs) => Math.max(0, ...components(cs, idx).map((k) => k.length))), 6, 3);
+      return rankAward(mine.map((cs) => Math.max(0, ...components(cs, idx).map((k) => k.length))), 4, 2);
     case 'long-path':
-      return rankAward(mine.map((cs, seat) => longestLine(seat, cs, owners, idx)), 5, 2);
+      return rankAward(mine.map((cs, seat) => longestLine(seat, cs, owners, idx)), 4, 2);
     case 'fertile-field':
       return mine.map((cs) => 2 * cs.filter((c) => cells[c]?.terrain === 'fertile').length);
     case 'edge-fence':
       return mine.map((cs) => cs.filter((c) => idx.edge[c]).length);
     case 'center-plaza':
-      return rankAward(mine.map((cs) => cs.filter((c) => cells[c]?.tile === 0).length), 6, 0);
+      return rankAward(mine.map((cs) => cs.filter((c) => cells[c]?.tile === 0).length), 4, 0);
     case 'every-tile':
       return mine.map((cs) => new Set(cs.map((c) => cells[c]?.tile)).size);
     case 'flower-bed':
-      return mine.map((cs) => 2 * cs.filter((c) => FLOWER_SPECIES.includes(occ.plantSpecies[c] as SpeciesId)).length);
+      return mine.map((cs) => 2 * cs.filter((c) => has(c, FLOWER_SPECIES)).length);
     case 'forest':
-      return Array.from({ length: P }, (_, seat) => {
-        const trees: number[] = [];
-        for (let c = 0; c < idx.n; c++) if (occ.plantSeat[c] === seat && FOREST_SPECIES.includes(occ.plantSpecies[c] as SpeciesId)) trees.push(c);
-        return 4 * components(trees, idx).filter((k) => k.length >= 3).length;
-      });
-    case 'connected':
-      return Array.from({ length: P }, (_, seat) => {
-        const group: number[] = [idx.indexOf(idx.board.entrances[seat]!)];
-        for (let c = 0; c < idx.n; c++) if (occ.plantSeat[c] === seat) group.push(c);
-        return group.length > 1 && components(group, idx).length === 1 ? 5 : 0;
-      });
-    case 'border-guard':
-      return mine.map((cs, seat) => cs.filter((c) => (idx.ring1[c] as number[]).some((x) => (owners[x] as number) >= 0 && owners[x] !== seat)).length);
+      return mine.map((cs) => 4 * components(cs.filter((c) => has(c, FOREST_SPECIES)), idx).filter((k) => k.length >= 3).length);
     case 'variety':
-      return Array.from({ length: P }, (_, seat) => {
-        const id = state.players.find((p) => p.seat === seat)?.id;
-        const kinds = new Set(state.plants.filter((pl) => pl.ownerId === id).map((pl) => pl.species));
-        return kinds.size >= VARIETY_SPECIES ? VARIETY_BONUS : 0;
-      });
+      return mine.map((cs) => (new Set(cs.map((c) => occ.plantSpecies[c]).filter((x) => x !== null)).size >= VARIETY_SPECIES ? VARIETY_BONUS : 0));
     default: {
       const species = getGoal(goal).species;
-      const pts = new Array<number>(P).fill(0);
-      if (!species) return pts;
-      for (let c = 0; c < idx.n; c++) {
-        const seat = occ.plantSeat[c] as number;
-        if (occ.plantSpecies[c] === species && seat >= 0 && owners[c] === seat) pts[seat]! += RESERVE_BONUS;
-      }
-      return pts;
+      if (!species) return mine.map(() => 0);
+      return mine.map((cs) => RESERVE_BONUS * cs.filter((c) => occ.plantSpecies[c] === species).length);
     }
   }
 }
 
+/** 좌석별 내 땅 칸 목록 */
+function landCells(state: ScoreState, owners: Int8Array): number[][] {
+  const mine: number[][] = Array.from({ length: state.players.length }, () => []);
+  owners.forEach((o, c) => {
+    if (o >= 0) mine[o]!.push(c);
+  });
+  return mine;
+}
+
 /** 좌석별 점수 (Rules.md 9절). 언제든 부를 수 있다(진행 중 예상 점수 표시용) */
-export function computeScores(state: GameState): Record<PlayerId, Score> {
-  const board = requireBoard(state);
-  const idx = boardIndex(board);
-  const inf = computeInfluence(state);
-  const owners = computeOwners(state, inf);
+export function computeScores(state: ScoreState): Record<PlayerId, Score> {
+  const idx = boardIndex(requireBoard(state));
+  const owners = computeOwners(state);
   const occ = occupancy(state);
-  const P = state.players.length;
-  const mine: number[][] = Array.from({ length: P }, () => []);
-  for (let c = 0; c < idx.n; c++) if ((owners[c] as number) >= 0) mine[owners[c] as number]!.push(c);
-  const breakdown = state.goals.map((g) => goalPoints(g, state, idx, owners, mine, occ));
-  const bloom = new Array<number>(P).fill(0);
-  for (let c = 0; c < idx.n; c++) {
-    const sp = occ.plantSpecies[c];
-    const seat = occ.plantSeat[c] as number;
-    if (sp && seat >= 0 && owners[c] === seat) bloom[seat]! += getSpecies(sp).bloomBonus;
-  }
-  const komi = rulesFor(P).komi;
+  const mine = landCells(state, owners);
+  const breakdown = state.goals.map((g) => goalPoints(g, idx, mine, occ, owners));
+  const komi = rulesFor(state.players.length).komi;
   const out: Record<PlayerId, Score> = {};
   for (const p of state.players) {
-    const land = mine[p.seat]!.length;
+    const cs = mine[p.seat] ?? [];
+    const land = cs.length;
+    const plantsOnLand = cs.filter((c) => occ.plantSpecies[c] !== null).length;
+    const bloom = cs.reduce((a, c) => a + (occ.plantSpecies[c] ? getSpecies(occ.plantSpecies[c] as SpeciesId).bloomBonus : 0), 0);
     const goalBreakdown = breakdown.map((b) => b[p.seat] ?? 0);
     const goals = goalBreakdown.reduce((a, b) => a + b, 0);
     const k = komi[p.seat] ?? 0;
-    out[p.id] = { land, goals, goalBreakdown, bloom: bloom[p.seat]!, komi: k, total: land + goals + bloom[p.seat]! + k };
+    out[p.id] = { land, plantsOnLand, goals, goalBreakdown, bloom, komi: k, total: land + goals + bloom + k };
   }
   return out;
 }
 
-/** 순위 (Rules.md 9절): 기권 안 함 → 점수 → 땅 → 좌석 큰 쪽. 기권자는 늦게 기권한 쪽이 위 */
+/** 순위 (Rules.md 9절): 기권 안 함 → 점수 → 땅 → 내 땅 위 식물 → 좌석 큰 쪽. 기권자는 늦게 기권한 쪽이 위 */
 export function computeRanking(state: GameState, scores: Record<PlayerId, Score> = computeScores(state)): PlayerId[] {
   const active = state.players.filter((p) => p.surrenderedOrder === null);
   const gone = state.players.filter((p) => p.surrenderedOrder !== null);
   active.sort((a, b) => {
     const sa = scores[a.id]!;
     const sb = scores[b.id]!;
-    return sb.total - sa.total || sb.land - sa.land || b.seat - a.seat;
+    return sb.total - sa.total || sb.land - sa.land || sb.plantsOnLand - sa.plantsOnLand || b.seat - a.seat;
   });
   gone.sort((a, b) => (b.surrenderedOrder as number) - (a.surrenderedOrder as number));
   return [...active, ...gone].map((p) => p.id);
 }
 
 /** 좌석별 땅 칸 수 (주인 바뀜 기록용) */
-export function landCounts(state: GameState): number[] {
+export function landCounts(state: Pick<GameState, 'board' | 'players' | 'rootSeat' | 'rootCount'>): number[] {
   const owners = computeOwners(state);
   const counts = new Array<number>(state.players.length).fill(0);
   for (const o of owners) if (o >= 0) counts[o]!++;
   return counts;
 }
-
