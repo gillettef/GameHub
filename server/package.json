@@ -13,6 +13,7 @@
     "simulate:cards": "tsx scripts/card-usage.ts",
     "simulate:tokens": "tsx scripts/token-stats.ts",
     "simulate:fun": "tsx scripts/fun-metrics.ts",
+    "league": "tsx scripts/ai-league.ts",
     "check": "tsx scripts/rules-check.ts",
     "smoke": "tsx scripts/smoke.ts",
     "smoke:bot": "tsx scripts/smoke-bot.ts",

@@ -6,7 +6,7 @@
 // 봇은 단순한 휴리스틱이라 절대값보다 설정을 바꿨을 때의 상대적 변화를 본다.
 import { BALANCE } from "../src/game/config.js";
 if (process.env.BAL) Object.assign(BALANCE, JSON.parse(process.env.BAL));
-const { BOT_PERSONALITIES, botChooseDream, chooseActivityAction, choosePick, playClassTurn } = await import("../src/game/bot.js");
+const { BOT_PERSONALITIES, activePersonalities, botChooseDream, chooseActivityAction, choosePick, playClassTurn } = await import("../src/game/bot.js");
 const { advanceResolution, chooseActivityCard, createGame, selectActivity, tokensOf, finalScore, projectedScore } = await import("../src/game/engine.js");
 const { cramStep, rollAndConfirm } = await import("./_drive.js");
 type GameState = import("../src/game/types.js").GameState;
@@ -72,7 +72,7 @@ const bump = (key: string, ok: boolean) => {
 for (let g = 0; g < games; g++) {
   const ids = Array.from({ length: n }, (_, i) => `p${i}`);
   // MIRROR=1이면 모두 같은 성향(균형형)이라 실력 차가 없다: 초반 성공 → 우승의 기울기가 순수한 운의 눈덩이가 된다
-  const persona: Record<string, BotStrategy> = Object.fromEntries(ids.map((id) => [id, process.env.MIRROR ? BOT_PERSONALITIES[0] : BOT_PERSONALITIES[Math.floor(Math.random() * BOT_PERSONALITIES.length)]]));
+  const persona: Record<string, BotStrategy> = Object.fromEntries(ids.map((id) => [id, process.env.MIRROR ? BOT_PERSONALITIES[0] : activePersonalities()[Math.floor(Math.random() * activePersonalities().length)]]));
   const state = createGame(ids.map((id) => ({ id, name: id, isBot: true })));
   for (const id of ids) botChooseDream(state, id, persona[id]);
   let seenRoll: unknown = null;
@@ -91,9 +91,11 @@ for (let g = 0; g < games; g++) {
       const r = (m.rolls[state.pendingRoll.kind] ??= { total: 0, capped: 0, free: 0, dice: 0, noChoice: 0 });
       for (const e of state.pendingRoll.entries) {
         if (state.pendingRoll.kind === "first") continue;
+        if (e.diceToken === undefined && e.diceChoiceMax === undefined && state.pendingRoll.kind === "duel") continue; // 61절: 주문력만큼 굴리는 방어 굴림은 고를 것이 없는 자동 굴림
         r.total++;
         const have = tokensOf(state.players[e.playerId], e.diceToken ?? "mana");
-        if ((e.diceChoiceMax ?? 0) <= 1) r.noChoice++;
+        // 고를 수 있는 개수 = 0(기본 주사위가 있으면)~낼 수 있는 최대. 선택지가 하나뿐이면 고를 여지가 없다
+        if ((e.diceChoiceMax ?? 0) - ((e.baseDice ?? 0) > 0 ? 0 : 1) + 1 <= 1) r.noChoice++;
         if (e.diceChoiceMax === undefined) r.free++;
         else if (have > e.diceChoiceMax) r.capped++;
       }
@@ -104,7 +106,7 @@ for (let g = 0; g < games; g++) {
       const entries = state.pendingRoll.entries;
       rollAndConfirm(state);
       for (const e of entries) if (kind !== "first") m.rolls[kind].dice += e.dice?.length ?? 0;
-      for (const e of entries) m.decisions += 1 + (e.rerolls ?? 0);
+      for (const e of entries) m.decisions += (e.diceToken === undefined && kind === "duel" ? 0 : 1) + (e.rerolls ?? 0);
       const lines = state.log.slice(logStart).map((l) => l.message);
       for (const line of lines) {
         if (line.includes("아까운 경험이 쌓여 성장")) m.expGrowth++;

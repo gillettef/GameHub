@@ -4,7 +4,7 @@
 // 마법 경연(상한 폐지), 시험 카드(주사위 + 능력치 보너스), 동점 공동 순위, 최종 점수)가 기획대로 동작하는지 서버 없이 확인합니다. (사용법: npm run check)
 import assert from "node:assert/strict";
 import { BOT_PERSONALITIES, chooseActivityAction, choosePick, playClassTurn } from "../src/game/bot.js";
-import { CREATURE_CARDS } from "../src/game/creatures.js";
+import { CREATURE_CARDS, creatureAbilityOf } from "../src/game/creatures.js";
 import { examTemplates } from "../src/game/examCards.js";
 import { explorationTemplates } from "../src/game/explorationCards.js";
 import {
@@ -31,6 +31,7 @@ import {
   dreamFulfilled,
   classGainApplied,
   currentRoller,
+  duelTargets,
   cramSources,
   cramTurn,
   suggestDiceCount,
@@ -49,6 +50,23 @@ import { BALANCE } from "../src/game/config.js";
 import { createClassDeck } from "../src/game/classCards.js";
 import { eventTemplates } from "../src/game/newsCards.js";
 import { cramStep, rollAndConfirm } from "./_drive.js";
+
+// 61절 라이트 규칙(2026-10-16)은 전용 검증에서만 켜고, 그 앞의 검증은 60절까지의 기본값으로 본다.
+// 아래 값을 먼저 되돌려 두어야 뒤의 NEW_RULES·P5·L4 같은 묶음이 60절 시점의 기본값을 기억한다
+const LIGHT_KEYS = [
+  "classAdvanced", "examsAtStart", "cram", "specialAwards", "duelTieWinner", "duelChallengerBonus", "creatureRareCredit", "creatureRareMin",
+  "labCostScale", "baseDice", "duelManaFee", "labTarget", "exploreTargetMod", "trainTargetScale", "graduationCategories", "dreamThreshold",
+  "dreamCredit", "classDeckSize", "explorationPenalty", "reroll", "disabledActivities", "fixedExams", "duelDefenderReward",
+  "duelTargetKeepsTurn", "duelDefenderStatDice", "labPrintedTargets", "labTargetMod", "duelTargetOnce", "duelWinReward", "duelLearn",
+] as const;
+const LIGHT = JSON.parse(JSON.stringify(Object.fromEntries(LIGHT_KEYS.map((k) => [k, BALANCE[k]])))) as Partial<typeof BALANCE>;
+Object.assign(BALANCE, {
+  classAdvanced: true, examsAtStart: false, cram: true, specialAwards: 1, duelTieWinner: "none", duelChallengerBonus: 1, creatureRareCredit: 1,
+  creatureRareMin: 16, labCostScale: 1, baseDice: 0, duelManaFee: 1, labTarget: 6, exploreTargetMod: 0, trainTargetScale: 0.46,
+  graduationCategories: ["spellPower", "intelligence", "stamina", "creature"], dreamThreshold: 4, dreamCredit: 3, classDeckSize: 36,
+  explorationPenalty: true, reroll: true, disabledActivities: [], fixedExams: null, duelDefenderReward: true, duelTargetKeepsTurn: false,
+  duelDefenderStatDice: false, labPrintedTargets: false, labTargetMod: 0, duelTargetOnce: false, duelWinReward: { credit: 2 }, duelLearn: false,
+} as Partial<typeof BALANCE>);
 
 // 43-5절의 규칙(한 번에 낼 수 있는 기운 = 능력치)은 전용 검증에서만 켜고 나머지 검증은 그 규칙 없이 본다
 // (45절에서 기본값이 1이 된 마법 겨루기 마나기운 건네기도 전용 검증에서만 켠다)
@@ -169,7 +187,9 @@ function rollWith(state: GameState, dice: Record<string, number[]>): void {
 function finishChoosing(state: GameState): void {
   while (state.phase === "activity" && state.activityStage === "choose") {
     const id = state.activityOrder[state.activityTurnPointer];
-    selectActivity(state, id, availableActivities(state, id)[0]);
+    const options = availableActivities(state, id);
+    const pick = options.find((a) => a !== "duel") ?? options[0];
+    selectActivity(state, id, pick, pick === "duel" ? duelTargets(state, id)[0] : undefined);
   }
 }
 
@@ -188,18 +208,38 @@ function botStep(state: GameState, strategy = BOT_PERSONALITIES[0]): void {
 }
 
 // 카드 만들기 (이름으로 원본 카드를 찾아 테스트용 id를 붙인다)
+// 61절에서 덱에서 빼거나 효과를 바꾼 카드는 60절 시점의 내용을 검증용으로 남겨 둔다 (그 앞의 검증이 쓰는 카드)
+const LEGACY_LAB: Record<string, Omit<LabCard, "id">> = {
+  "든든 도시락": { name: "든든 도시락", description: "", cost: 0, kind: "supply", effect: { tokens: { stamina: 2 } }, summary: "체력기운 +2" },
+  "마법 안경": { name: "마법 안경", description: "", cost: 0, kind: "exam", effect: { tokens: { intelligence: 2 } }, summary: "지력기운 +2" },
+  "특별 개인 지도": { name: "특별 개인 지도", description: "", cost: 0, kind: "study", effect: { stats: { intelligence: 1 } }, summary: "지력 영구 +1" },
+  "마법약 실험": { name: "마법약 실험", description: "", cost: 1, kind: "study", effect: { stats: { intelligence: 1, spellPower: 1 } }, summary: "지력 영구 +1, 주문력 영구 +1" },
+};
+const LEGACY_CREATURE: Record<string, (typeof CREATURE_CARDS)[number]> = {
+  "하늘의 신비": { cardNo: 9, name: "하늘의 신비", element: "sky", kind: "plant", trainTarget: 20, ability: creatureAbilityOf("sky", 20), description: "" },
+};
+const LEGACY_SAFE: Omit<ExplorationCard, "id">[] = [
+  { name: "몰래 열린 간식 창고", description: "", success: { tokens: { stamina: 2 } }, failure: {} },
+  { name: "반짝이는 버섯 숲", description: "", success: { tokens: { stamina: 2 } }, failure: {} },
+];
 function creature(name: string) {
-  const t = CREATURE_CARDS.find((c) => c.name === name);
+  const t = LEGACY_CREATURE[name] ?? CREATURE_CARDS.find((c) => c.name === name);
   assert.ok(t, name);
   return { ...t, id: `test-${name}` };
 }
 function labCard(name: string): LabCard {
-  const t = labTemplates().find((c) => c.name === name);
+  const t = LEGACY_LAB[name] ?? labTemplates().find((c) => c.name === name);
   assert.ok(t, name);
   return { ...t, id: `test-${name}` };
 }
+// 61절 카드 (지금 덱의 내용 그대로)
+function labCardNow(name: string): LabCard {
+  const t = labTemplates().find((c) => c.name === name);
+  assert.ok(t, name);
+  return { ...t, id: `test-now-${name}` };
+}
 function safeExploration(index: number): ExplorationCard {
-  const t = explorationTemplates().filter((c) => !c.check)[index];
+  const t = LEGACY_SAFE[index];
   assert.ok(t);
   return { ...t, id: `test-safe-${index}` };
 }
@@ -1470,7 +1510,8 @@ test("졸업식 시상(46절·52절·55절): 4부문(학점·매력은 부문이
   assert.deepEqual(BALANCE.graduationCategories, ["spellPower", "intelligence", "stamina", "creature"]);
   assert.ok(!("credit" in AWARD_NAME), "우등상은 없다");
   assert.ok(!BALANCE.graduationCategories.includes("charm"), "기본 부문에 인기상은 없다 (55절, 56절 특별상 후보로만 남는다)");
-  assert.equal(AWARD_NAME.creature, "생물사랑상");
+  assert.equal(AWARD_NAME.creature, "마법생물상", "61절: 마리 수 부문은 마법생물상, 생물사랑상은 매력 부문의 이름이 됐다");
+  assert.equal(AWARD_NAME.charm, "생물사랑상");
   withBalance({ rankPoints: [6, 3, 1] }, () => {
     const state = newGame(4);
     const [a, b, c, d] = state.turnOrder;
@@ -2104,6 +2145,217 @@ test("게임 도중 플레이어 제거: 어느 단계에서 내보내도 남은
     assert.equal(state.phase, "ended", `끝까지 진행됨 (${where})`);
     assert.ok(state.winnerIds?.every((id) => state.turnOrder.includes(id)), `승자는 남은 사람 (${where})`);
   }
+});
+
+// ── 61절 라이트 규칙 (2026-10-16): 전략 AI 리그로 검증한 기본값 ──
+// 지금 기본값 전체 = 각 절의 묶음을 차례로 덮은 것 (61절 값이 마지막)
+const CURRENT = { ...NEW_RULES, schoolNewsEvents: NEWS_EVENTS, growthCredit: GROWTH_CREDIT, ...SIMPLIFIED, ...P5, ...L4, ...LIGHT } as Partial<typeof BALANCE>;
+
+test("61절 기본값: 4구역(반짝 마법 경연 없음)·공짜 주사위 1개·다시 굴리기 없음·시험 과목 고정 공개·벼락치기 없음·심화 수업 없음·특별상 없음 등", () => {
+  assert.deepEqual(LIGHT, {
+    classAdvanced: false, examsAtStart: true, cram: false, specialAwards: 0, duelTieWinner: "defender", duelChallengerBonus: 0, creatureRareCredit: 1,
+    creatureRareMin: 0, labCostScale: 0, baseDice: 1, duelManaFee: 0, labTarget: 8, exploreTargetMod: LIGHT.exploreTargetMod, trainTargetScale: LIGHT.trainTargetScale,
+    graduationCategories: ["spellPower", "intelligence", "stamina", "charm"], dreamThreshold: 5, dreamCredit: 2, classDeckSize: 26,
+    explorationPenalty: false, reroll: false, disabledActivities: ["tournament"], fixedExams: { midterm: "마법 마라톤", final: "주문 실기" },
+    duelDefenderReward: false, duelTargetKeepsTurn: true, duelDefenderStatDice: "flat", labPrintedTargets: true, labTargetMod: 0,
+    duelTargetOnce: true, duelWinReward: { credit: 1 }, duelLearn: true,
+  });
+  // 카드 6종 약 130장: 수업 26×2 · 마법생물 21 · 연구 16 · 탐험 16 · 장래희망 12 · 행사 12
+  assert.equal(CREATURE_CARDS.length, 21);
+  assert.equal(labTemplates().length, 16);
+  assert.equal(explorationTemplates().length, 16);
+  assert.ok(explorationTemplates().every((c) => c.check), "탐험 카드는 모두 판정이 있다");
+  assert.ok(labTemplates().every((c) => c.target !== undefined && !c.effect.stats?.intelligence), "연구 카드는 목표값이 인쇄돼 있고, 지력이 아닌 능력치를 준다(지력은 성장으로 오른다)");
+  assert.equal(eventTemplates().length, 12);
+});
+
+test("61절: 반짝 마법 경연 구역이 없고 1주차에 마법생물·연구실·별빛 다락방 카드만 공개된다", () => {
+  withBalance(CURRENT, () => {
+    const state = newGame(4);
+    assert.deepEqual(Object.keys(state.activityOffers).sort(), ["creature", "exploration", "lab"]);
+    toActivity(state);
+    const id = state.activityOrder[0];
+    assert.ok(!availableActivities(state, id).includes("tournament"));
+    assert.throws(() => selectActivity(state, id, "tournament"));
+  });
+});
+
+test("61절: 시험 과목은 보드에 인쇄된 고정 과목(중간 마법 마라톤·기말 주문 실기)이고 처음부터 공개되며, 시험 달에는 벼락치기 없이 바로 시험", () => {
+  withBalance(CURRENT, () => {
+    const state = newGame(3);
+    assert.equal(state.exams.midterm?.name, "마법 마라톤");
+    assert.equal(state.exams.final?.name, "주문 실기");
+    let guard = 0;
+    while (state.phase !== "midterm_exam" && guard++ < 5000) {
+      assert.notEqual(state.phase, "cram", "벼락치기 단계가 없다");
+      botStep(state);
+    }
+    assert.equal(state.phase, "midterm_exam");
+    assert.equal(state.round, BALANCE.midtermRound);
+  });
+});
+
+test("61절: 굴릴 때 주사위 1개는 언제나 공짜 — 기운을 0개 내도 되고, 다시 굴리기는 없다", () => {
+  withBalance({ ...CURRENT, revealOffersAtMonthStart: false }, () => {
+    const state = newGame(3);
+    toActivity(state, 0);
+    const [a] = state.activityOrder;
+    Object.assign(state.players[a], { intelligence: 1, intelligenceTokens: 3, manaTokens: 3 });
+    state.labPile.draw.push(labCardNow("사교 무도회 레슨"), labCardNow("특별 개인 지도"));
+    selectActivity(state, a, "lab");
+    finishChoosing(state);
+    advanceResolution(state);
+    chooseActivityCard(state, a, "test-now-특별 개인 지도");
+    const entry = state.pendingRoll!.entries[0];
+    assert.equal(entry.baseDice, 1);
+    assert.equal(entry.diceChoiceMax, 2, "낼 수 있는 지력기운은 지력 + 1개까지");
+    submitRoll(state, a, 0);
+    assert.equal(entry.dice!.length, 1, "0개를 내도 공짜 주사위 1개");
+    assert.equal(state.players[a].intelligenceTokens, 3, "기운은 그대로");
+    assert.throws(() => rerollDice(state, a, [0]), /다시 굴리기가 없어요/);
+  });
+});
+
+test("61절: 연구 카드마다 인쇄된 목표값으로 판정하고, 성공하면 카드 보상 + 지력 성장", () => {
+  withBalance({ ...CURRENT, revealOffersAtMonthStart: false }, () => {
+    const state = newGame(3);
+    toActivity(state, 0);
+    const [a] = state.activityOrder;
+    const card = labCardNow("특별 개인 지도");
+    assert.equal(card.target, 6);
+    state.labPile.draw.push(labCardNow("사교 무도회 레슨"), card);
+    selectActivity(state, a, "lab");
+    finishChoosing(state);
+    advanceResolution(state);
+    chooseActivityCard(state, a, card.id);
+    assert.equal(labTargetValue(card), 6);
+    assert.equal((state.hidden.roll as { target: number }).target, 6);
+    const before = { ...state.players[a] };
+    rollWith(state, { [a]: [6] });
+    assert.equal(state.players[a].charm, before.charm + 1, "카드 보상: 매력 +1");
+    assert.equal(state.players[a].intelligence, before.intelligence + 1, "성장: 지력 +1");
+    assert.equal(state.players[a].credit, before.credit + 2, "카드 학점 +1 · 성장 학점 +1");
+  });
+});
+
+test("61절: 탐험에 실패해도 손해가 없다 (카드만 버린다)", () => {
+  withBalance({ ...CURRENT, revealOffersAtMonthStart: false }, () => {
+    const state = newGame(3);
+    toActivity(state);
+    const [a] = state.activityOrder;
+    const card = explorationByName("그림자 미로");
+    state.explorationPile.draw.push(explorationByName("먼지 쌓인 서고"), card);
+    Object.assign(state.players[a], { staminaTokens: 3, manaTokens: 3 });
+    selectActivity(state, a, "exploration");
+    finishChoosing(state);
+    advanceResolution(state);
+    if (state.pendingPick) chooseActivityCard(state, a, card.id);
+    const before = { ...state.players[a] };
+    rollWith(state, { [a]: [1] });
+    const p = state.players[a];
+    assert.equal(p.manaTokens, before.manaTokens, "마나기운을 잃지 않는다");
+    assert.ok(p.staminaTokens <= before.staminaTokens, "낸 체력기운만 쓴다");
+    assert.equal(p.stamina, before.stamina, "실패하면 성장도 없다");
+  });
+});
+
+test("61절: 마법생물을 데려오면 카드에 적힌 학점 +1 (성장 학점과 별도)", () => {
+  withBalance({ ...CURRENT, revealOffersAtMonthStart: false }, () => {
+    const state = newGame(3);
+    toActivity(state);
+    const [a] = state.activityOrder;
+    state.creatureDeck.push(creature("정령 고릴라"), creature("대지의 수호자"));
+    Object.assign(state.players[a], { charmTokens: 3 });
+    selectActivity(state, a, "creature");
+    finishChoosing(state);
+    advanceResolution(state);
+    if (state.pendingPick) chooseActivityCard(state, a, "test-대지의 수호자");
+    const before = state.players[a].credit;
+    rollWith(state, { [a]: [6, 6, 6] });
+    assert.equal(state.players[a].creatures.length, 1);
+    assert.equal(state.players[a].credit, before + 2, "생물 카드 학점 +1 · 성장 학점 +1");
+  });
+});
+
+test("61절 마법 겨루기: 아무 친구나 지목(한 달에 한 번만 지목받음), 지목당한 친구도 자기 활동을 한다. 막기는 자동(주사위 1개 + 주문력), 도전자가 더 높아야 이기고 막아 내도 보상은 없다", () => {
+  const win = (LIGHT.duelWinReward as { credit?: number }).credit ?? 0;
+  withBalance(CURRENT, () => {
+    const state = newGame(3);
+    toActivity(state);
+    const [x, y, z] = state.activityOrder;
+    Object.assign(state.players[x], { manaTokens: 2, spellPower: 2 });
+    Object.assign(state.players[y], { spellPower: 2, manaTokens: 5 });
+    selectActivity(state, x, "duel", y);
+    assert.equal(state.players[y].hasActedThisPhase, false, "지목당해도 자기 차례에 활동을 고른다");
+    selectActivity(state, y, "lab");
+    assert.ok(!duelTargets(state, z).includes(y), "이미 지목받은 친구는 이번 달 다시 지목할 수 없다");
+    assert.ok(duelTargets(state, z).includes(x), "이미 활동을 고른 친구도 지목할 수 있다");
+    selectActivity(state, z, "exploration");
+    advanceResolution(state);
+    assert.equal(state.pendingRoll!.kind, "duel");
+    const defender = state.pendingRoll!.entries.find((e) => e.playerId === y)!;
+    assert.equal(defender.diceChoiceMax, undefined, "막는 쪽은 고를 것이 없다 (일부러 질 수 없다)");
+    assert.equal(defender.diceCount, 1);
+    const before = { x: state.players[x].credit, y: state.players[y].credit, yMana: state.players[y].manaTokens };
+    rollWith(state, { [y]: [2], [x]: [4] });
+    assert.equal(state.players[x].credit, before.x, "주사위 2 + 주문력 2 = 4, 같으면 도전 실패");
+    assert.equal(state.players[y].credit, before.y, "막아 낸 친구도 보상 없음");
+    assert.equal(state.players[y].manaTokens, before.yMana, "막을 때 기운을 쓰지 않는다");
+  });
+  withBalance(CURRENT, () => {
+    const state = newGame(3);
+    toActivity(state);
+    const [x, y, z] = state.activityOrder;
+    selectActivity(state, x, "duel", y);
+    selectActivity(state, y, "lab");
+    selectActivity(state, z, "exploration");
+    advanceResolution(state);
+    const before = { credit: state.players[x].credit, sp: state.players[x].spellPower };
+    rollWith(state, { [y]: [1], [x]: [5] });
+    assert.equal(state.players[x].spellPower, before.sp + 1, "이기면 주문력 성장");
+    assert.equal(state.players[x].credit, before.credit + win + 1, "승리 학점 + 성장 학점 1");
+  });
+  // 겨루며 배운다: 이긴 사람은 상대가 나보다 높은 능력치 중 차이가 가장 큰 것 하나 +1
+  withBalance(CURRENT, () => {
+    const state = newGame(3);
+    toActivity(state);
+    const [x, y, z] = state.activityOrder;
+    Object.assign(state.players[y], { stamina: 4, charm: 3, spellPower: 1 });
+    selectActivity(state, x, "duel", y);
+    selectActivity(state, y, "lab");
+    selectActivity(state, z, "exploration");
+    advanceResolution(state);
+    const before = { ...state.players[x] };
+    rollWith(state, { [y]: [1], [x]: [6] });
+    assert.equal(state.players[x].stamina, before.stamina + 1, "체력 차이(3)가 가장 커서 체력을 배운다");
+    assert.equal(state.players[x].charm, before.charm);
+  });
+});
+
+test("61절 졸업식: 4부문 = 네 능력치(마법상·수석상·튼튼상·매력상), 마법생물 마리 수 부문은 없다", () => {
+  withBalance(CURRENT, () => {
+    const state = newGame(3);
+    const players = state.turnOrder.map((id) => state.players[id]);
+    Object.assign(players[0], { charm: 9 });
+    const awards = graduationAwards(players);
+    const cats = new Set([...awards.values()].flat().map((w) => w.category));
+    assert.ok(cats.has("charm") && !cats.has("creature"));
+    assert.equal(awards.get(players[0].id)!.find((w) => w.category === "charm")?.rank, 1);
+  });
+});
+
+test("61절: 12개월 게임이 봇끼리 끝까지 진행된다 (2~5인, 전략 AI 10종)", () => {
+  withBalance(CURRENT, () => {
+    for (const n of [2, 3, 4, 5]) {
+      for (let i = 0; i < 6; i++) {
+        const state = createGame(Array.from({ length: n }, (_, k) => ({ id: `p${k}`, name: `p${k}`, isBot: true })));
+        const strategy = BOT_PERSONALITIES[(n + i) % BOT_PERSONALITIES.length];
+        let guard = 0;
+        while (state.phase !== "ended" && guard++ < 8000) botStep(state, strategy);
+        assert.equal(state.phase, "ended");
+      }
+    }
+  });
 });
 
 console.log(`

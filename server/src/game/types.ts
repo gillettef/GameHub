@@ -107,6 +107,8 @@ export interface LabCard {
   description: string;
   // 이 카드를 고르는 데 드는 체력기운
   cost: number;
+  // 카드에 인쇄된 실험 목표값 (61절, BALANCE.labPrintedTargets가 켜져 있을 때 쓴다)
+  target?: number;
   kind: LabCardKind;
   effect: CardEffect;
   // 효과를 한 줄로 풀어 쓴 문구 (클라이언트 표시용)
@@ -402,6 +404,16 @@ export interface PublicRules {
   creatureSetCredit: number;
   duelChallengerBonus: number;
   duelWinCredit: number;
+  // 61절 라이트 규칙: 없는 구역, 공짜 주사위 수, 다시 굴리기 여부, 마법 겨루기(지목당해도 자기 활동·막아 내면 보상 없음·같으면 누가 이기나), 탐험 실패 손해 여부
+  disabledActivities: ActivityId[];
+  baseDice: number;
+  reroll: boolean;
+  duelTargetKeepsTurn: boolean;
+  duelDefenderReward: boolean;
+  duelTieWinner: "none" | "challenger" | "defender";
+  duelTargetOnce: boolean;
+  duelDefenderStatDice: boolean | "flat";
+  explorationPenalty: boolean;
   growthCredit: number;
   // 57절 교감: 데려온 마법생물의 속성별로 오르는 능력치 (null이면 예전 생물 능력)
   creatureBondStats: Record<CreatureElement, StatKey> | null;

@@ -68,7 +68,7 @@ const sum = (xs: number[]) => xs.reduce((a, b) => a + b, 0);
 
 // 탐험 목표값은 카드에 인쇄된 값 그대로다 (52-9절, 예전에는 달마다 올랐다). 주사위 면을 바꾸면(dieFaces) 평균에 맞춰 바뀐다
 const exploreTarget = (target: number) => Math.max(1, Math.round((target * dieMean()) / 3.5) + BALANCE.exploreTargetMod);
-export const labTargetValue = () => BALANCE.labTarget;
+export const labTargetValue = (card?: Pick<LabCard, "target">) => (BALANCE.labPrintedTargets && card?.target !== undefined ? card.target + BALANCE.labTargetMod : BALANCE.labTarget);
 
 // ── 주사위 재료 기운 (39절): 활동마다 주 능력치의 기운을 골라 낸 만큼 주사위를 굴린다 (BALANCE.rollFuel).
 // 조련=매력기운, 탐험=체력기운, 연구실=지력기운, 마법 경연·마법 겨루기=마나기운. 다시 굴리기는 언제나 마나기운이다 ──
@@ -528,7 +528,7 @@ function beginRound(state: GameState): void {
     if (BALANCE.revealOffersAtMonthStart) {
       state.hidden.offers = {};
       state.activityOffers = {};
-      for (const activityId of ["creature", "lab", "exploration", ...(BALANCE.tournamentCards ? ["tournament"] : [])] as ActivityId[]) openOffer(state, activityId);
+      for (const activityId of ["creature", "lab", "exploration", ...(BALANCE.tournamentCards ? ["tournament"] : [])].filter((a) => !BALANCE.disabledActivities.includes(a as ActivityId)) as ActivityId[]) openOffer(state, activityId);
     }
     beginClassPhase(state);
   }
@@ -706,14 +706,17 @@ export function activityExtraCost(state: Pick<GameState, "activitySlots">, activ
 }
 
 // 마법 겨루기에서 지목할 수 있는 플레이어 (아직 자율활동을 고르지 않은 사람)
-export function duelTargets(state: Pick<GameState, "players" | "turnOrder">, playerId: string): string[] {
-  return state.turnOrder.filter((id) => id !== playerId && !state.players[id].hasActedThisPhase);
+export function duelTargets(state: Pick<GameState, "players" | "turnOrder"> & Partial<Pick<GameState, "duels">>, playerId: string): string[] {
+  return state.turnOrder.filter(
+    (id) => id !== playerId && (BALANCE.duelTargetKeepsTurn || !state.players[id].hasActedThisPhase) && !(BALANCE.duelTargetOnce && (state.duels ?? []).some((d) => d.targetId === id)),
+  );
 }
 
 // 이 활동을 고를 수 없는 이유 (고를 수 있으면 null)
 export function activityBlockReason(state: ActivityView, playerId: string, activityId: ActivityId): string | null {
   const player = state.players[playerId];
   const slots = state.activitySlots[activityId];
+  if (BALANCE.disabledActivities.includes(activityId)) return "이번 규칙에서는 없는 활동이에요.";
   if (slots.length >= BALANCE.activityMaxParticipants) return "이미 두 명이 참여한 구역입니다.";
   const extra = activityExtraCost(state, activityId);
   if (!canPay(player, 0, 0, extra)) return `이미 참여한 친구가 있어서 매력기운 ${extra}개가 더 필요해요.`;
@@ -721,8 +724,8 @@ export function activityBlockReason(state: ActivityView, playerId: string, activ
   if (!canPay(player, open, 0, extra)) return `카드를 열 지력기운 ${open}개가 필요해요 (먼저 들어오면 카드를 여는 사람이 지력기운을 내요).`;
   if (activityId === "tournament" && !BALANCE.tournamentCards && player.manaTokens < 1) return "마나기운이 1개 이상 필요해요 (낸 마나기운만큼 주사위를 굴려요).";
   if (activityId === "duel") {
-    const need = 1 + BALANCE.duelManaFee;
-    if (player.manaTokens < need) return `마나기운이 ${need}개 이상 필요해요 (${BALANCE.duelManaFee}개는 지목당한 친구에게 건네고, 낸 마나기운만큼 주사위를 굴려요).`;
+    const need = (BALANCE.baseDice > 0 ? 0 : 1) + BALANCE.duelManaFee;
+    if (need > 0 && player.manaTokens < need) return `마나기운이 ${need}개 이상 필요해요 (${BALANCE.duelManaFee}개는 지목당한 친구에게 건네고, 낸 마나기운만큼 주사위를 굴려요).`;
     if (duelTargets(state, playerId).length === 0) return "지목할 수 있는 친구가 없어요.";
     if (player.charm < BALANCE.duelCharmFee) return `지목당한 친구에게 건넬 매력(${BALANCE.duelCharmFee})이 없어요.`;
   }
@@ -761,8 +764,11 @@ function startTournament(state: GameState, player: PlayerGameState): void {
 function fuelLine(player: PlayerGameState, fuel: KeptToken): string {
   const tokens = usableFuel(player, fuel);
   const limited = tokens < tokensOf(player, fuel) ? ` (한 번에 ${STAT_NAME[ENERGY_STAT[fuel]]}${BALANCE.rollLimitBonus > 0 ? ` + ${BALANCE.rollLimitBonus}개까지만` : "만큼만"} 낼 수 있어요)` : "";
+  const base = BALANCE.baseDice;
+  const rerollNote = BALANCE.reroll ? " (다시 굴리기는 마나기운으로 해요)" : "";
+  if (base > 0) return tokens > 0 ? `${PAY_OBJECT[fuel]} 0~${tokens}개 골라 내고, 낸 개수 + 공짜 주사위 ${base}개를 굴려요${limited}${rerollNote}` : `${TOKEN_NAME[fuel]}이 없어서 공짜 주사위 ${base}개를 굴려요`;
   return tokens > 0
-    ? `${PAY_OBJECT[fuel]} 1~${tokens}개 골라 내고, 낸 개수만큼 주사위를 굴려요${limited} (다시 굴리기는 마나기운으로 해요)`
+    ? `${PAY_OBJECT[fuel]} 1~${tokens}개 골라 내고, 낸 개수만큼 주사위를 굴려요${limited}${rerollNote}`
     : `${TOKEN_NAME[fuel]}이 없어서 주사위 1개를 굴려요`;
 }
 
@@ -791,7 +797,7 @@ function resolveCreature(state: GameState, ctx: Extract<RollContext, { kind: "cr
     player.creatures.push(creature);
     addFeat(player, "creature");
     // 56절 A1: 어려운 생물·세트 완성 보너스 학점
-    const rare = creature.trainTarget >= 16 ? BALANCE.creatureRareCredit : 0;
+    const rare = creature.trainTarget >= BALANCE.creatureRareMin ? BALANCE.creatureRareCredit : 0;
     const set = creatureSets(player.creatures) > setsBefore ? BALANCE.creatureSetCredit : 0;
     if (rare + set > 0) {
       player.credit += rare + set;
@@ -814,7 +820,7 @@ function resolveCreature(state: GameState, ctx: Extract<RollContext, { kind: "cr
 // 지력기운이 없으면 주사위 1개는 공짜로 굴린다
 function startLabRoll(state: GameState, player: PlayerGameState, lab: LabCard): void {
   if (BALANCE.directionalResults) return startDirectionalRoll(state, "lab", lab, [player.id]);
-  const target = labTargetValue();
+  const target = labTargetValue(lab);
   const fuel = BALANCE.rollFuel.lab;
   state.hidden.roll = { kind: "lab", playerId: player.id, card: lab, target };
   state.pendingRoll = {
@@ -903,11 +909,21 @@ function startDuel(state: GameState, player: PlayerGameState, target: PlayerGame
     kind: "duel",
     title: `마법 겨루기 · ${player.name} vs ${target.name}`,
     lines: [
-      `${player.name}님이 ${target.name}님을 지목했어요 (도전자가 마나기운 ${BALANCE.duelManaFee}개를 건넸어요)`,
-      `${BALANCE.duelTargetRollsFirst ? "지목당한 친구가 먼저, 도전자는 그 결과를 보고" : "도전자부터 한 명씩"} 마나기운을 골라 내고 낸 개수만큼 주사위를 굴려 합이 큰 쪽이 이겨요. 같으면 무승부예요${BALANCE.duelCharmFee > 0 ? `. 도전자는 지목당한 친구에게 매력 ${BALANCE.duelCharmFee}을 건네요` : ""}`,
+      `${player.name}님이 ${target.name}님을 지목했어요${BALANCE.duelManaFee > 0 ? ` (도전자가 마나기운 ${BALANCE.duelManaFee}개를 건넸어요)` : ""}`,
+      `${BALANCE.duelTargetRollsFirst ? "지목당한 친구가 먼저, 도전자는 그 결과를 보고" : "도전자부터 한 명씩"} 마나기운을 골라 내고 ${BALANCE.baseDice > 0 ? `낸 개수 + 공짜 ${BALANCE.baseDice}개` : "낸 개수만큼"} 주사위를 굴려요. ${
+        BALANCE.duelTieWinner === "defender" ? "도전자가 더 높아야 이겨요 (같으면 막아 낸 거예요)" : BALANCE.duelTieWinner === "challenger" ? "합이 같거나 높으면 도전자가 이겨요" : "합이 큰 쪽이 이기고, 같으면 무승부예요"
+      }${BALANCE.duelDefenderReward ? "" : ". 막아 내도 보상은 없어요"}${BALANCE.duelCharmFee > 0 ? `. 도전자는 지목당한 친구에게 매력 ${BALANCE.duelCharmFee}을 건네요` : ""}`,
     ],
-    entries: (BALANCE.duelTargetRollsFirst ? [target, player] : [player, target]).map((p) => choiceEntry(p, `${p.name} (${p === player ? "도전자" : "지목당함"})`)),
+    entries: (BALANCE.duelTargetRollsFirst ? [target, player] : [player, target]).map((p) =>
+      p === target && BALANCE.duelDefenderStatDice ? defenderStatEntry(p) : choiceEntry(p, `${p.name} (${p === player ? "도전자" : "지목당함"})`),
+    ),
   };
+}
+
+// 61절: 지목당한 친구는 기운을 내지 않고 주문력만큼 주사위를 굴린다 (고를 것이 없다)
+function defenderStatEntry(p: PlayerGameState) {
+  const flat = BALANCE.duelDefenderStatDice === "flat";
+  return { playerId: p.id, label: `${p.name} (지목당함 · 주문력 ${p.spellPower})`, diceCount: flat ? 1 : Math.max(1, effectiveStat(p, "spellPower")), dice: null, confirmed: false, rerolls: 0 };
 }
 
 function resolveDuel(state: GameState, ctx: Extract<RollContext, { kind: "duel" }>, challengerDice: number[], defenderDice: number[]): void {
@@ -921,7 +937,7 @@ function resolveDuel(state: GameState, ctx: Extract<RollContext, { kind: "duel" 
   const challengerAbilities = abilitiesOf(player, "duel");
   const defenderAbilities = [...abilitiesOf(target, "duel"), ...abilitiesOf(target, "defend")];
   const challengerBonus = sumEffect(challengerAbilities, "rollBonus") - sumEffect(defenderAbilities, "enemyRollPenalty") + BALANCE.duelChallengerBonus;
-  const defenderBonus = sumEffect(defenderAbilities, "rollBonus") - sumEffect(challengerAbilities, "enemyRollPenalty");
+  const defenderBonus = sumEffect(defenderAbilities, "rollBonus") - sumEffect(challengerAbilities, "enemyRollPenalty") + (BALANCE.duelDefenderStatDice === "flat" ? effectiveStat(target, "spellPower") : 0);
   const challengerRoll = Math.max(0, sum(challengerDice) + challengerBonus);
   const defenderRoll = Math.max(0, sum(defenderDice) + defenderBonus);
   // 체력기운 효과는 다음 달 준비 때 반영
@@ -952,12 +968,26 @@ function resolveDuel(state: GameState, ctx: Extract<RollContext, { kind: "duel" 
     state,
     `${player.name}(${rollText(challengerDice, challengerBonus, challengerRoll)})이(가) ${target.name}(${rollText(defenderDice, defenderBonus, defenderRoll)})을(를) 지목! ${winner.name} 승리${feeText}`,
   );
+  // 61절: 지목당한 친구가 막아 내면 보상 없이 끝난다 (도전 실패)
+  if (winner === target && !BALANCE.duelDefenderReward) {
+    log(state, `${target.name}: 도전을 막아 냈어요`);
+    return;
+  }
   // 이긴 사람은 주문력이 오른다 (성장)
   addFeat(winner, "duel");
   grow(state, winner, "duel", "spellPower");
   // 이긴 사람은 정해진 보상(기본 학점 +1)을 받는다 (51절에서 마도서를 없앴다)
   applyCardEffect(state, winner, BALANCE.duelWinReward);
   log(state, `${winner.name}: 마법 겨루기 승리 보상 ${describeEffect(BALANCE.duelWinReward)}`);
+  // 61절 실험: 겨루며 배운다 — 상대가 나보다 높은 능력치 중 차이가 가장 큰 것 하나 +1
+  if (BALANCE.duelLearn) {
+    const stats: StatKey[] = ["intelligence", "stamina", "charm", "spellPower"];
+    const gaps = stats.map((s) => ({ s, gap: loser[s] - winner[s] })).filter((x) => x.gap > 0).sort((a, b) => b.gap - a.gap);
+    if (gaps.length > 0) {
+      winner[gaps[0].s] += 1;
+      log(state, `${winner.name}: ${loser.name}에게서 배웠어요! ${STAT_NAME[gaps[0].s]} +1`);
+    }
+  }
 }
 
 // 탐험 판정 주사위 굴리기 시작 (판정 없는 카드는 바로 처리)
@@ -1011,7 +1041,7 @@ function resolveExploration(state: GameState, ctx: Extract<RollContext, { kind: 
     rollText = ` (${parts[0].text} / 목표 ${target} ${success ? "성공" : "실패"})`;
   }
   // 4안: 아깝게 실패하면 손해가 없다
-  const effect = success ? card.success : near ? {} : card.failure;
+  const effect = success ? card.success : near || !BALANCE.explorationPenalty ? {} : card.failure;
   for (const id of playerIds) applyCardEffect(state, state.players[id], effect);
   const notes = !success && rule ? playerIds.map((id) => failLearning(state, state.players[id], "exploration", "stamina", near, card)).filter(Boolean) : [];
   state.explorationPile.discard.push(card);
@@ -1039,7 +1069,7 @@ function offerViewOf(activityId: ActivityId, card: OfferedCard, round: number): 
     }
     case "lab": {
       const c = card as LabCard;
-      return { id: c.id, name: c.name, description: c.description, lines: [c.summary, `실험 판정: 지력기운 주사위 합 ≥ ${labTargetValue()}`, ...failRewardLine(failRewardOf("lab", c))], cost: labCost(c) > 0 ? { kind: "stamina", amount: labCost(c) } : undefined };
+      return { id: c.id, name: c.name, description: c.description, lines: [c.summary, `실험 판정: 지력기운 주사위 합 ≥ ${labTargetValue(c)}`, ...failRewardLine(failRewardOf("lab", c))], cost: labCost(c) > 0 ? { kind: "stamina", amount: labCost(c) } : undefined };
     }
     case "tournament": {
       const c = card as TournamentCard;
@@ -1053,7 +1083,7 @@ function offerViewOf(activityId: ActivityId, card: OfferedCard, round: number): 
         id: c.id,
         name: c.name,
         description: c.description,
-        lines: [...(check ? [check] : ["판정 없음"]), `성공: ${describeEffect(c.success)}`, `실패: ${describeEffect(c.failure)}`, ...(check ? failRewardLine(failRewardOf("exploration", c)) : [])],
+        lines: [...(check ? [check] : ["판정 없음"]), `성공: ${describeEffect(c.success)}`, ...(BALANCE.explorationPenalty ? [`실패: ${describeEffect(c.failure)}`] : []), ...(check ? failRewardLine(failRewardOf("exploration", c)) : [])],
       };
     }
   }
@@ -1188,7 +1218,7 @@ export function selectActivity(state: GameState, playerId: string, activityId: A
   if (activityId === "duel") {
     target = targetPlayerId ? state.players[targetPlayerId] : undefined;
     if (!target || target.id === playerId) throw new Error("마법 겨루기 상대를 지정해야 합니다.");
-    if (target.hasActedThisPhase) throw new Error("아직 자율활동을 고르지 않은 플레이어만 지목할 수 있습니다.");
+    if (target.hasActedThisPhase && !BALANCE.duelTargetKeepsTurn) throw new Error("아직 자율활동을 고르지 않은 플레이어만 지목할 수 있습니다.");
   }
   // 먼저 온 친구가 있는 구역은 매력기운을 더 내고, 그 매력기운은 먼저 온 친구에게 건넨다 (43-6절)
   const extra = activityExtraCost(state, activityId);
@@ -1205,7 +1235,7 @@ export function selectActivity(state: GameState, playerId: string, activityId: A
   state.activityChoices.push({ playerId, activityId, targetPlayerId: target?.id });
   if (target) {
     // 지목당한 플레이어는 이번 달 자율활동으로 마법 겨루기를 강제로 하게 된다 (자기 차례는 건너뜀)
-    target.hasActedThisPhase = true;
+    if (!BALANCE.duelTargetKeepsTurn) target.hasActedThisPhase = true;
     state.duels.push({ challengerId: playerId, targetId: target.id });
     log(state, `${player.name}: ${ACTIVITY_NAME[activityId]} 선택 — ${target.name}님을 지목했어요`);
   } else {
@@ -1443,6 +1473,7 @@ export function rerollDice(state: GameState, playerId: string, diceIndexes: numb
   const pending = state.pendingRoll;
   if (!pending) throw new Error("지금은 주사위를 다시 굴릴 때가 아닙니다.");
   if (pending.kind === "first") throw new Error("선 정하기 주사위는 다시 굴릴 수 없어요.");
+  if (!BALANCE.reroll) throw new Error("이번 규칙에서는 다시 굴리기가 없어요.");
   const entry = pending.entries.find((e) => e.playerId === playerId);
   if (!entry) throw new Error("이번 굴림에 참여하지 않습니다.");
   if (entry.confirmed) throw new Error("이미 결과를 확인했어요.");
@@ -1626,7 +1657,7 @@ function beginExam(state: GameState, examType: "midterm_exam" | "final_exam"): v
     title: `${examType === "midterm_exam" ? "중간고사" : "기말고사"} · ${card.name}`,
     lines: [
       `점수 = ${describeExam(card, STAT_NAME)} — 높은 순서로 순위를 매겨요`,
-      `${BALANCE.turnOrderRule === "creditAsc" ? "학점이 낮은 친구부터" : "선부터"} 한 명씩 ${TOKEN_NAME[examFuel(card)]}을 내고(한 번에 그 능력치${BALANCE.rollLimitBonus > 0 ? ` + ${BALANCE.rollLimitBonus}개까지` : "만큼까지"}) 낸 개수만큼 주사위를 굴려요 (없으면 공짜 1개). 마나기운으로 다시 굴릴 수 있어요`,
+      `${BALANCE.turnOrderRule === "creditAsc" ? "학점이 낮은 친구부터" : "선부터"} 한 명씩 ${TOKEN_NAME[examFuel(card)]}을 내고(한 번에 그 능력치${BALANCE.rollLimitBonus > 0 ? ` + ${BALANCE.rollLimitBonus}개까지` : "만큼까지"}) ${BALANCE.baseDice > 0 ? `낸 개수 + 공짜 ${BALANCE.baseDice}개` : "낸 개수만큼(없으면 공짜 1개)"} 주사위를 굴려요${BALANCE.reroll ? ". 마나기운으로 다시 굴릴 수 있어요" : ""}`,
     ],
     entries: orderFromStarter(state).map((id) => choiceEntry(state.players[id], state.players[id].name, undefined, examFuel(card))),
   };
@@ -1676,7 +1707,7 @@ export const AWARD_NAME: Record<AwardCategory, string> = {
   spellPower: "마법상",
   intelligence: "수석상",
   stamina: "튼튼상",
-  creature: "생물사랑상",
+  creature: "마법생물상",
   ...SPECIAL_AWARD_NAME,
 };
 export const AWARD_SUBJECT: Record<AwardCategory, string> = { spellPower: STAT_NAME.spellPower, intelligence: STAT_NAME.intelligence, stamina: STAT_NAME.stamina, creature: "마법생물", ...SPECIAL_AWARD_SUBJECT };
