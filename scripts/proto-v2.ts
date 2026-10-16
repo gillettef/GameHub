@@ -24,6 +24,8 @@ const ROUTE = arg('route', '').split(',').filter(Boolean).map(Number);
 const DENY = Number(arg('deny', '1'));
 const GUESS = arg('guess', 'smart'); // smart | none (상대가 추리하지 않음)
 const EXPOSE = arg('expose', 'lose'); // lose: 한 명이라도 맞히면 비밀 구단 보너스 몰수 | keep
+const ACCUSE = Number(arg('accuse', '0')); // >0: 종료 지목 대신 게임 중 고발 (1인당 횟수)
+const ACCUSE_FROM = Number(arg('accuseFrom', '2'));
 const CARRY = arg('carry', '1') === '1'; // 미계약 선수는 시장에 남고 빈자리만 채운다
 
 type Ev = 'normal' | 'fw' | 'budget' | 'young' | 'big' | 'spotlight' | 'deadline';
@@ -35,6 +37,9 @@ interface Agent {
   hand: number[]; // 남은 요구 수수료 카드
   secret: number; // 비밀 구단 id
   route: number;
+  tokens: number;
+  exposed: boolean;
+  accused: number[];
   bids: { club: number; fitLoss: number }[];
 }
 interface Bid {
@@ -97,13 +102,16 @@ const stats = {
   tieCancelSteal: 0,
   pass: 0,
   roundFee: new Map<Ev, { n: number; fee: number }>(),
+  acc: 0,
+  accHit: 0,
+  accRound: 0,
 };
 
 function play(seed: number, routes: number[]) {
   const rng = createRng(seed);
   const clubs = rng.shuffle(CLUBS.map((c) => c.id)).slice(0, NCLUBS);
   const secrets = rng.shuffle(clubs).slice(0, N);
-  const agents: Agent[] = routes.map((route, i) => ({ score: 0, fees: 0, hand: [1, 2, 3, 4], secret: secrets[i]!, route, bids: [] }));
+  const agents: Agent[] = routes.map((route, i) => ({ score: 0, fees: 0, hand: [1, 2, 3, 4], secret: secrets[i]!, route, tokens: ACCUSE, exposed: false, accused: [], bids: [] }));
   const deck = rng.shuffle(PLAYERS.map((p) => p.id));
   const under = new Map<number, number>(clubs.map((c) => [c, 0])); // 구단 아래 계약 수 (보너스 가중)
   const evDeck = rng.shuffle([...EVENTS, ...EVENTS]).slice(0, R - 1);
@@ -115,6 +123,7 @@ function play(seed: number, routes: number[]) {
     market = CARRY ? [...market, ...deck.splice(0, MARKET - market.length)] : deck.splice(0, MARKET);
     const leader = agents.reduce((m, a, i) => (a.score > agents[m]!.score ? i : m), 0);
     const bids: Bid[] = [];
+    const accusations: { a: number; t: number; c: number }[] = [];
     agents.forEach((ag, i) => {
       const lastOfCycle = ag.hand.length === 1;
       const opts: { v: number; b: Bid }[] = [];
@@ -133,7 +142,9 @@ function play(seed: number, routes: number[]) {
             const att = f - d;
             const win = Math.min(0.95, Math.max(0.03, 0.5 + 0.18 * (att - threat)));
             let v = feeOf(p, d, ev) * win;
-            if (ag.route >= 0) {
+            if (ag.exposed) {
+              // 들킨 뒤에는 비밀 구단 가치 없음
+            } else if (ag.route >= 0) {
               if (c === ag.secret) v += ag.route * clubBonus(ev) * win;
             } else {
               // 위장형: 공개 기록에서 내 비밀 구단이 '가장 의심스러운 구단'이 되지 않는 선에서만 밀어 준다
@@ -146,7 +157,7 @@ function play(seed: number, routes: number[]) {
               } else if (ev0.get(c)! >= maxOther) v += 0.3; // 미끼 구단을 계속 1위로 유지
             }
             // 상대 비밀 구단으로 보내면 그 상대에게 보너스
-            if (DENY) for (let k = 0; k < N; k++) if (k !== i) v -= DENY * clubBonus(ev) * win * (sus[k]!.get(c) ?? 0) * (k === leader ? 1.3 : 0.7);
+            if (DENY) for (let k = 0; k < N; k++) if (k !== i && !agents[k]!.exposed) v -= DENY * clubBonus(ev) * win * (sus[k]!.get(c) ?? 0) * (k === leader ? 1.3 : 0.7);
             if (!lastOfCycle) v -= 0.55 * d; // 높은 카드를 아끼는 비용
             opts.push({ v, b: { a: i, p: pid, c, d, att } });
           }
@@ -170,8 +181,42 @@ function play(seed: number, routes: number[]) {
           break;
         }
       }
+      if (ACCUSE && ag.tokens > 0 && r + 1 >= ACCUSE_FROM) {
+        let best: { v: number; t: number; c: number } | null = null;
+        agents.forEach((o, k) => {
+          if (k === i || o.exposed || ag.accused.includes(k)) return;
+          const e = rawEvidence(o, clubs);
+          const order = [...clubs].filter((c) => c !== ag.secret).sort((x, y) => e.get(y)! - e.get(x)!);
+          const tot = order.reduce((s2, c) => s2 + e.get(c)! + 0.5, 0);
+          const pick2 = GUESS === 'second' || (GUESS === 'mix' && rng.next() < 0.5) ? order[1]! : order[0]!;
+          const pr = (e.get(pick2)! + 0.5) / tot;
+          const lead = o.score >= Math.max(...agents.map((x) => x.score)) ? 1 : 0.6;
+          const v = pr * (G + B * (under.get(pick2)! + 1.5) * lead);
+          if (!best || v > best.v) best = { v, t: k, c: pick2 };
+        });
+        const b2 = best as { v: number; t: number; c: number } | null;
+        if (b2 && b2.v > pick.v) {
+          accusations.push({ a: i, t: b2.t, c: b2.c });
+          return;
+        }
+      }
       bids.push(pick.b);
     });
+    for (const ac of accusations) {
+      const ag = agents[ac.a]!;
+      ag.tokens--;
+      ag.accused.push(ac.t);
+      stats.detectTries++;
+      if (agents[ac.t]!.secret === ac.c) {
+        ag.score += G;
+        stats.guessTot += G;
+        stats.detected++;
+        stats.accHit++;
+        agents[ac.t]!.exposed = true;
+      }
+      stats.acc++;
+      stats.accRound += r + 1;
+    }
 
     // 공개·정산
     for (const b of bids) {
@@ -228,7 +273,13 @@ function play(seed: number, routes: number[]) {
   const exposed = agents.map(() => false);
   const detBy = agents.map(() => 0);
   const bonusOf = agents.map(() => 0);
-  agents.forEach((ag, i) => {
+  if (ACCUSE) agents.forEach((ag, i) => {
+    if (ag.exposed) {
+      exposed[i] = true;
+      detBy[i]!++;
+    }
+  });
+  if (!ACCUSE) agents.forEach((ag, i) => {
     agents.forEach((o, k) => {
       if (k === i) return;
       stats.detectTries++;
@@ -285,6 +336,7 @@ console.log(`평균 점수 ${r1(mean(stats.scores))}, 1·2위 격차 평균 ${r1
 console.log(`라운드당 계약 ${r1(stats.deals / GAMES / R)}건, 경쟁 제안 비율 ${pct(stats.contested, stats.bids)}, 동률 상쇄 그룹 ${r1(stats.ties / GAMES)}/판, 패스 ${pct(stats.pass, GAMES * R * N)}`);
 console.log(`자기 비밀 구단 제안 ${pct(stats.ownRoute, stats.bids)}, 그중 계약 ${stats.ownRouteDeals}`);
 console.log(`비밀 구단 보너스 평균 ${r1(stats.clubBonusTot / GAMES / N)}, 지목 적중률 ${pct(stats.detected, stats.detectTries)}, 지목 점수 평균 ${r1(stats.guessTot / GAMES / N)}, 수수료 평균 ${r1(stats.feeTot / GAMES / N)}`);
+if (ACCUSE) console.log(`고발 ${r1(stats.acc / GAMES)}회/판, 적중 ${pct(stats.accHit, stats.acc)}, 평균 라운드 ${r1(stats.accRound / Math.max(1, stats.acc))}`);
 console.log(`숨은 점수로 우승자가 바뀐 판 ${pct(stats.winnerChangedByHidden, GAMES)}`);
 console.log(`요구 카드 사용/계약: ${[1, 2, 3, 4].map((d) => `${d}:${stats.demandUse[d]}/${pct(stats.demandWin[d]!, stats.demandUse[d]!)}`).join(' ')}`);
 console.log(`이벤트별 라운드 수수료: ${[...stats.roundFee].map(([k, v]) => `${k} ${r1(v.fee / v.n)}`).join(' · ')}`);
