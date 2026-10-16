@@ -25,6 +25,8 @@ import {
   diceSuccessChance,
   suggestDiceCount,
   usableFuel,
+  projectedScore,
+  labTargetValue,
 } from "./engine.js";
 import {
   effectiveStat,
@@ -38,6 +40,7 @@ import {
   type LabCard,
   type PlayerGameState,
   type StatKey,
+  type AwardCategory,
   type TournamentCard,
 } from "./types.js";
 
@@ -54,6 +57,15 @@ export interface BotStrategy {
   activityBias: Record<ActivityId, number>;
   // true면 아무 생각 없이 무작위로 행동 (시뮬레이션 비교용)
   random?: boolean;
+  // ── 61절 전략 AI: 성향(가중치)만이 아니라 판단 방식이 다른 AI ──
+  // 장래희망 능력치를 얼마나 더 키우나 (기본 1.6)
+  dreamWeight?: number;
+  // 졸업식 순위를 본다: 1위가 확실한 능력치는 덜, 한 칸 차이로 순위를 올릴 수 있는 능력치는 더 키운다
+  awardAware?: boolean;
+  // 뒤처지면 선두에게 마법 겨루기를 더 걸고, 앞서면 안전한 구역을 고른다
+  chaser?: boolean;
+  // 성향 없이 이번 달 공개된 카드의 기대값만 보고 구역을 고른다
+  greedy?: boolean;
 }
 
 const even: Record<ActivityId, number> = { tournament: 1, creature: 1, duel: 1, exploration: 1, lab: 1 };
@@ -62,18 +74,31 @@ const leaning = (a: ActivityId, weight: number): Record<ActivityId, number> => (
 const BALANCED_WEIGHTS: Record<StatKey, number> = { intelligence: 1.2, spellPower: 1.2, stamina: 1, charm: 0.6 };
 
 // 함께 플레이할 때 봇에게 무작위로 부여되는 성향 (한 활동만 고집하면 약해지므로 가중치는 약하게)
+// 61절: 구역 성향 4종(조련·겨루기·탐험·연구) + 판단 방식이 다른 전략 AI 4종(꿈 우선·상 노리기·추격·기대값)
+const EVEN_WEIGHTS: Record<StatKey, number> = { intelligence: 1, spellPower: 1, stamina: 1, charm: 1 };
 export const BOT_PERSONALITIES: BotStrategy[] = [
   { name: "균형형", classWeights: BALANCED_WEIGHTS, activityBias: even },
   { name: "마법 경연형", classWeights: { ...BALANCED_WEIGHTS, spellPower: 1.5 }, activityBias: leaning("tournament", 2.5) },
   { name: "조련사형", classWeights: BALANCED_WEIGHTS, activityBias: leaning("creature", 2.5) },
   { name: "결투가형", classWeights: { ...BALANCED_WEIGHTS, spellPower: 1.5 }, activityBias: leaning("duel", 2.5) },
   { name: "탐험가형", classWeights: BALANCED_WEIGHTS, activityBias: leaning("exploration", 2.5) },
+  { name: "연구가형", classWeights: BALANCED_WEIGHTS, activityBias: leaning("lab", 2.5) },
+  { name: "꿈 우선형", classWeights: EVEN_WEIGHTS, activityBias: even, dreamWeight: 3 },
+  { name: "상 노리기형", classWeights: EVEN_WEIGHTS, activityBias: even, awardAware: true },
+  { name: "추격형", classWeights: BALANCED_WEIGHTS, activityBias: even, chaser: true },
+  { name: "기대값형", classWeights: EVEN_WEIGHTS, activityBias: even, greedy: true },
 ];
 
 export const BOT_NAMES = ["마루", "별이", "모찌", "구름이", "하늘이", "보라", "달이", "솜이", "콩이", "루나"];
 
+// 61절: 없는 활동(disabledActivities)에 기운 성향은 빼고 고른다
+export function activePersonalities(): BotStrategy[] {
+  return BOT_PERSONALITIES.filter((s) => !BALANCE.disabledActivities.some((a) => s.activityBias[a] > 1));
+}
+
 export function pickBotPersonality(): BotStrategy {
-  return BOT_PERSONALITIES[Math.floor(Math.random() * BOT_PERSONALITIES.length)];
+  const list = activePersonalities();
+  return list[Math.floor(Math.random() * list.length)];
 }
 
 // 공개된 다음 시험 카드가 겨냥하는 능력치는 더 키운다 (주사위 능력치 ×1.6, 보너스 능력치 ×1.25)
@@ -89,10 +114,24 @@ function weightsOf(state: GameState, strategy: BotStrategy, player?: PlayerGameS
   const base = strategy.lateClassWeights && state.round >= (strategy.lateFromRound ?? 7) ? strategy.lateClassWeights : strategy.classWeights;
   const dream = player?.dream;
   const special = state.specialAwards ?? [];
-  if (!dream && !special.includes("charm")) return base;
+  if (!dream && !special.includes("charm") && !player) return base;
   const w = { ...base };
-  if (dream) for (const s of dream.stats) if (effectiveStat(player!, s) < BALANCE.dreamThreshold) w[s] *= DREAM_WEIGHT;
+  if (dream) for (const s of dream.stats) if (effectiveStat(player!, s) < BALANCE.dreamThreshold) w[s] *= strategy.dreamWeight ?? DREAM_WEIGHT;
   if (special.includes("charm")) w.charm *= 1.4;
+  if (player) {
+    // 졸업식 부문(능력치)마다 내 순위를 본다: 1위를 2칸 이상 앞서면 덜 키운다(모든 AI).
+    // 상 노리기형은 더 세게 줄이고, 한 칸 차이로 위 순위를 따라잡을 수 있는 능력치는 더 키운다
+    const others = state.turnOrder.filter((id) => id !== player.id).map((id) => state.players[id]);
+    for (const stat of Object.keys(w) as StatKey[]) {
+      if (!BALANCE.graduationCategories.includes(stat as AwardCategory) || others.length === 0) continue;
+      const mine = effectiveStat(player, stat);
+      const above = others.map((o) => effectiveStat(o, stat)).filter((v) => v >= mine);
+      if (above.length === 0) {
+        const second = Math.max(0, ...others.map((o) => effectiveStat(o, stat)));
+        if (mine - second >= 2) w[stat] *= strategy.awardAware ? 0.4 : 0.6;
+      } else if (strategy.awardAware && above.length <= 2 && Math.min(...above) - mine <= 1) w[stat] *= 1.6;
+    }
+  }
   return w;
 }
 const DREAM_WEIGHT = 1.6;
@@ -111,6 +150,14 @@ export function botChooseDream(state: GameState, playerId: string, strategy: Bot
 const SPECIAL_ACTIVITY: Partial<Record<string, ActivityId>> = { explorer: "exploration", researcher: "lab", duelist: "duel", champion: "tournament" };
 function specialPull(state: GameState, a: ActivityId): number {
   return (state.specialAwards ?? []).some((c) => SPECIAL_ACTIVITY[c] === a) ? 1.3 : 1;
+}
+
+// 연구 카드 성공 확률 (61절: 카드마다 목표값이 인쇄돼 있다)
+function labChance(player: PlayerGameState, card: LabCard): number {
+  const target = labTargetValue(card);
+  const fuel = usableFuel(player, BALANCE.rollFuel.lab);
+  const n = suggestDiceCount(fuel, target);
+  return diceSuccessChance(n + BALANCE.baseDice, target);
 }
 
 // 대회 카드 (56절 C1): 성공 확률 × (카드 보상). 다른 구역처럼 성장 몫은 넣지 않는다
@@ -132,7 +179,7 @@ const pickOne = <T,>(items: T[]): T => items[Math.floor(Math.random() * items.le
 export function playClassTurn(state: GameState, playerId: string, strategy: BotStrategy): void {
   const p = state.players[playerId];
   const bias = biasOf(state, strategy);
-  const fuelPref = (kind: KeptToken) => ACTIVITIES.filter((a) => BALANCE.rollFuel[a] === kind).reduce((s, a) => s + bias[a], 0);
+  const fuelPref = (kind: KeptToken) => ACTIVITIES.filter((a) => BALANCE.rollFuel[a] === kind && !BALANCE.disabledActivities.includes(a)).reduce((s, a) => s + bias[a], 0);
   const options = state.classMarket.filter((c) => canTakeClassCard(p, c));
   // 50절: 이번 달 카드가 공개돼 있으면 하려는 활동을 먼저 정하고, 그 활동의 재료 기운을 주는 과목을 더 높이 친다
   const plan = BALANCE.revealOffersAtMonthStart ? plannedActivity(state, p, strategy) : null;
@@ -169,7 +216,7 @@ function zoneOutlook(state: GameState, strategy: BotStrategy, player: PlayerGame
   const cards = state.hidden.offers[activityId] ?? [];
   const valueOf = (card: (typeof cards)[number]): number => {
     if (activityId === "creature") return creatureValue(state, strategy, player, card as CreatureCard);
-    if (activityId === "lab") return canPay(player, 0, (card as LabCard).cost) ? effectValue(state, strategy, (card as LabCard).effect, player) - (card as LabCard).cost * 0.3 : -1;
+    if (activityId === "lab") return canPay(player, 0, labCost(card as LabCard)) ? labChance(player, card as LabCard) * (effectValue(state, strategy, (card as LabCard).effect, player) + 1) - labCost(card as LabCard) * 0.3 : -1;
     if (activityId === "tournament") return tournamentCardValue(state, strategy, player, card as TournamentCard);
     return explorationValue(state, strategy, player, card as ExplorationCard);
   };
@@ -181,10 +228,17 @@ function zoneOutlook(state: GameState, strategy: BotStrategy, player: PlayerGame
 // 이번 달 하려는 활동 (공개된 카드와 성향을 함께 본다)
 function activityAppeal(state: GameState, strategy: BotStrategy, player: PlayerGameState, a: ActivityId): number {
   const base: Record<ActivityId, number> = { tournament: BALANCE.tournamentCards ? 1.4 : effectiveStat(player, "spellPower") * 0.25, creature: 1.6, duel: 1.5, exploration: 1.2, lab: 1.6 };
-  return (base[a] * biasOf(state, strategy)[a] + (BALANCE.revealOffersAtMonthStart ? 0.8 * zoneOutlook(state, strategy, player, a) : 0)) * specialPull(state, a);
+  // 기대값형: 성향 없이 공개된 카드의 가치만 본다
+  if (strategy.greedy) return (0.3 + zoneOutlook(state, strategy, player, a)) * specialPull(state, a);
+  let chase = 1;
+  if (strategy.chaser && a === "duel") {
+    const gap = leaderGap(state, player);
+    chase = gap >= 3 ? 2.2 : gap <= 0 ? 0.4 : 1;
+  }
+  return (base[a] * biasOf(state, strategy)[a] * chase + (BALANCE.revealOffersAtMonthStart ? 0.8 * zoneOutlook(state, strategy, player, a) : 0)) * specialPull(state, a);
 }
 function plannedActivity(state: GameState, player: PlayerGameState, strategy: BotStrategy): ActivityId {
-  return ACTIVITIES.map((a) => ({ a, v: activityAppeal(state, strategy, player, a) })).sort((x, y) => y.v - x.v)[0].a;
+  return ACTIVITIES.filter((a) => !BALANCE.disabledActivities.includes(a)).map((a) => ({ a, v: activityAppeal(state, strategy, player, a) })).sort((x, y) => y.v - x.v)[0].a;
 }
 
 // 자율활동 단계: 선택할 구역과 (마법 겨루기가면) 상대
@@ -225,9 +279,35 @@ export function chooseActivityAction(
   // 마법 겨루기 상대: 아직 활동을 고르지 않은 플레이어 중 주문력이 가장 높은(가장 위협적인) 사람
   const targetPlayerId =
     activityId === "duel"
-      ? [...targets].sort(() => Math.random() - 0.5).sort((a, b) => state.players[b].spellPower - state.players[a].spellPower)[0] // 동점이면 무작위 (앞자리만 지목하지 않도록)
+      ? [...targets].sort(() => Math.random() - 0.5).sort((a, b) => duelPreference(state, strategy, b) - duelPreference(state, strategy, a))[0] // 동점이면 무작위 (앞자리만 지목하지 않도록)
       : undefined;
   return { activityId, targetPlayerId };
+}
+
+// 예상 점수 1위와의 차이 (내가 1위면 0 이하)
+function leaderGap(state: GameState, player: PlayerGameState): number {
+  const players = state.turnOrder.map((id) => state.players[id]);
+  const mine = projectedScore(players, player, state.specialAwards ?? []);
+  const best = Math.max(...players.filter((p) => p.id !== player.id).map((p) => projectedScore(players, p, state.specialAwards ?? [])));
+  return best - mine;
+}
+
+// 61절: 지목당한 친구는 막아 내도 보상이 없고 자기 활동도 그대로 하므로, 이기기 쉬운 상대(막을 주사위가 적은 친구)를 고른다.
+// 같으면 예상 점수가 높은 친구. 추격형은 언제나 선두를 노린다
+function duelPreference(state: GameState, strategy: BotStrategy, id: string): number {
+  if (strategy.chaser || process.env.DUEL_TARGET === "leader" || process.env.DUEL_TARGET === "spell") return duelThreat(state, id);
+  const p = state.players[id];
+  const defenseDice = (BALANCE.duelDefenderStatDice ? (BALANCE.duelDefenderStatDice === "flat" ? 1 + effectiveStat(p, "spellPower") / 3.5 : effectiveStat(p, "spellPower")) : usableFuel(p, "mana")) + BALANCE.baseDice;
+  return -defenseDice * 100 + duelThreat(state, id) * 0.01;
+}
+
+// 마법 겨루기 상대를 고르는 기준: 기본은 예상 점수가 가장 높은 친구(사람이 흔히 하는 선택, 61절), DUEL_TARGET=spell이면 주문력이 가장 높은 친구(예전)
+function duelThreat(state: GameState, id: string): number {
+  if (process.env.DUEL_TARGET !== "spell") {
+    const players = state.turnOrder.map((pid) => state.players[pid]);
+    return projectedScore(players, state.players[id], state.specialAwards ?? []);
+  }
+  return state.players[id].spellPower;
 }
 
 // 카드 효과의 대략적인 가치 (영구 능력치는 성향 가중치로, 임시/기운/엿보기는 낮게 평가)
@@ -252,7 +332,7 @@ const directionalCardValue = (state: GameState, strategy: BotStrategy, player: P
 // 탐험 카드: 성공 확률(주사위 + 능력치 + 집중 + 역전 보너스)로 기대값을 계산한다
 function explorationValue(state: GameState, strategy: BotStrategy, player: PlayerGameState, card: ExplorationCard): number {
   const success = effectValue(state, strategy, card.success);
-  const failure = effectValue(state, strategy, card.failure);
+  const failure = BALANCE.explorationPenalty ? effectValue(state, strategy, card.failure) : 0;
   if (!card.check) return success;
   const p = explorationChance(state, player, card);
   return p * success + (1 - p) * failure;
@@ -271,7 +351,7 @@ export function botAssist(state: GameState, playerId: string): number {
 export function rerollLowDice(state: GameState, playerId: string, strategy: BotStrategy = BOT_PERSONALITIES[0]): void {
   const pending = state.pendingRoll;
   const entry = pending?.entries.find((e) => e.playerId === playerId);
-  if (!pending || pending.kind === "first" || !entry?.dice) return;
+  if (!pending || pending.kind === "first" || !entry?.dice || !BALANCE.reroll) return;
   if (pending.faces) return steerDirectional(state, playerId, strategy);
   const p = state.players[playerId];
   const ctx = state.hidden.roll;
@@ -340,7 +420,7 @@ function creatureValue(state: GameState, strategy: BotStrategy, player: PlayerGa
   const counts = (["sky", "land", "ocean"] as const).map((el) => player.creatures.filter((c) => c.element === el).length);
   if (player.creatures.filter((c) => c.element === card.element).length === Math.min(...counts)) v += 1;
   // 56절 A1: 어려운 생물·세트 완성 보너스 학점
-  if (card.trainTarget >= 16) v += BALANCE.creatureRareCredit * 2;
+  if (card.trainTarget >= BALANCE.creatureRareMin) v += BALANCE.creatureRareCredit * 2;
   if (creatureSets([...player.creatures, card]) > creatureSets(player.creatures)) v += BALANCE.creatureSetCredit * 2.5;
   return v - card.trainTarget * 0.025;
 }
@@ -368,7 +448,7 @@ export function choosePick(state: GameState, strategy: BotStrategy): string | nu
         return creatureValue(state, strategy, player, card as CreatureCard);
       case "lab": {
         const lab = card as LabCard;
-        return effectValue(state, strategy, lab.effect, player) - labCost(lab) * 0.3; // 같은 효과라면 싼 카드가 좋다
+        return labChance(player, lab) * (effectValue(state, strategy, lab.effect, player) + 1) - labCost(lab) * 0.3; // 61절: 목표값이 카드마다 달라 성공 확률을 곱한다
       }
       case "tournament":
         return tournamentCardValue(state, strategy, player, card as TournamentCard);

@@ -149,7 +149,7 @@ export interface PendingRoll {
   // 다시 굴리기는 남은 마나기운 1개당 주사위 1개
   // assistMax가 있으면 굴리기 전에 보조 능력치 기운(assist.kind)을 0~max개 더 낼 수 있다. 낸 개수는 assist에 남는다
   // diceToken은 이 굴림의 주사위 재료 기운 (없으면 마나기운)
-  entries: { playerId: string; label: string; diceCount: number; diceToken?: KeptToken; diceChoiceMax?: number; assistMax?: number; assist?: number; dice: number[] | null; confirmed: boolean; rerolls: number; rerollCounts?: number[] }[];
+  entries: { playerId: string; label: string; diceCount: number; diceToken?: KeptToken; diceChoiceMax?: number; baseDice?: number; assistMax?: number; assist?: number; dice: number[] | null; confirmed: boolean; rerolls: number; rerollCounts?: number[] }[];
   // 이 굴림에서 보조 능력치로 쓸 수 있는 기운 (마법 경연: 체력기운 "끝까지 달려요", 서버 설정으로 켰을 때만)
   assist?: { kind: "stamina"; name: string; title: string; hint: string };
 }
@@ -223,6 +223,16 @@ export interface PublicRules {
   creatureSetCredit: number;
   duelChallengerBonus: number;
   duelWinCredit: number;
+  // 61절 라이트 규칙: 없는 구역, 공짜 주사위 수, 다시 굴리기 여부, 마법 겨루기(지목당해도 자기 활동·막아 내면 보상 없음·같으면 누가 이기나), 탐험 실패 손해 여부
+  disabledActivities: ActivityId[];
+  baseDice: number;
+  reroll: boolean;
+  duelTargetKeepsTurn: boolean;
+  duelDefenderReward: boolean;
+  duelTieWinner: "none" | "challenger" | "defender";
+  duelTargetOnce: boolean;
+  duelDefenderStatDice: boolean | "flat";
+  explorationPenalty: boolean;
   growthCredit: number;
   // 57절 교감: 데려온 마법생물의 속성별로 오르는 능력치 (null이면 예전 생물 능력)
   creatureBondStats: Record<CreatureElement, StatKey> | null;
@@ -311,10 +321,10 @@ export const ACTIVITY_LABEL: Record<ActivityId, string> = {
 // 활동 카드에 함께 보여줄 한 줄 설명
 export const ACTIVITY_HINT: Record<ActivityId, string> = {
   tournament: "대회 카드 2장 중 하나를 골라 마나기운을 낸 만큼 주사위를 굴려 합이 목표 이상이면 입상! 주문력 +1·학점 +1과 카드 보상",
-  creature: "카드 2장 공개, 매력기운을 골라 낸 만큼 주사위를 굴려 합이 기준 이상이면 조련! 교감으로 속성 능력치 +1, 마리 수 + 하늘·육지·바다 세트 수로 생물사랑상을 겨뤄요",
-  duel: "아직 안 고른 한 명을 지목해 강제 대결, 마나기운을 골라 낸 만큼 주사위를 굴려(도전자 +1) 이기면 주문력 +1·학점 +3",
-  exploration: "카드 2장 중 하나를 골라 체력기운을 낸 만큼 주사위 판정! 크게 벌거나 크게 잃어요",
-  lab: "심화학습: 연구 카드 2장 중 1장, 지력기운을 골라 낸 만큼 주사위를 굴려 실험 판정, 안정적으로 성장",
+  creature: "카드 2장 중 하나, 매력기운 주사위 합이 카드의 기준 이상이면 데려와요! 매력 +1 · 학점 +2 · 속성 능력치 +1",
+  duel: "친구 한 명을 지목해요. 친구는 주사위 1개 + 주문력으로 막고, 내 마나기운 주사위 합이 더 높으면 주문력 +1 · 학점 +2, 그리고 친구가 나보다 높은 능력치 하나를 배워 +1. 친구도 자기 활동은 그대로 해요",
+  exploration: "카드 2장 중 하나, 체력기운 주사위 합이 카드의 목표 이상이면 성공! 체력 +1 · 학점 +1과 카드 보상 (실패해도 손해 없음)",
+  lab: "연구 카드 2장 중 하나, 지력기운 주사위 합이 카드의 목표 이상이면 성공! 지력 +1 · 학점 +1과 다른 능력치 카드 보상",
 };
 
 export function effectiveStat(player: PlayerGameState, stat: StatKey): number {
@@ -363,7 +373,9 @@ export function activityExtraCost(game: GameState, activityId: ActivityId): numb
 
 // 마법 겨루기에서 지목할 수 있는 플레이어 (아직 자율활동을 고르지 않은 사람)
 export function duelTargets(game: GameState, playerId: string): string[] {
-  return game.turnOrder.filter((id) => id !== playerId && !game.players[id].hasActedThisPhase);
+  return game.turnOrder.filter(
+    (id) => id !== playerId && (game.rules.duelTargetKeepsTurn || !game.players[id].hasActedThisPhase) && !(game.rules.duelTargetOnce && game.duels.some((d) => d.targetId === id)),
+  );
 }
 
 // 지력기운 int개 + 체력기운 stamina개 + 매력기운 charm개를 낼 수 있는가 (서버 canPay와 같은 규칙. 기운끼리는 바꿀 수 없다)
@@ -374,6 +386,7 @@ export function canPay(player: PlayerGameState, int: number, stamina: number, ch
 // 이 활동을 고를 수 없는 이유 (고를 수 있으면 null)
 export function activityBlockReason(game: GameState, playerId: string, activityId: ActivityId): string | null {
   const player = game.players[playerId];
+  if (game.rules.disabledActivities.includes(activityId)) return "이번 규칙에는 없는 활동이에요";
   if (game.activitySlots[activityId].length >= game.rules.activityMaxParticipants) return "이미 두 명이 참여했어요";
   const extra = activityExtraCost(game, activityId);
   if (!canPay(player, 0, 0, extra)) return `매력기운 ${extra}개가 더 필요해요`;
@@ -381,8 +394,8 @@ export function activityBlockReason(game: GameState, playerId: string, activityI
   if (!canPay(player, open, 0, extra)) return `카드를 열 지력기운 ${open}개가 필요해요`;
   if (activityId === "tournament" && !game.rules.tournamentCards && player.manaTokens < 1) return "마나기운이 1개 이상 필요해요";
   if (activityId === "duel") {
-    const need = 1 + game.rules.duelManaFee;
-    if (player.manaTokens < need) return `마나기운이 ${need}개 이상 필요해요`;
+    const need = (game.rules.baseDice > 0 ? 0 : 1) + game.rules.duelManaFee;
+    if (need > 0 && player.manaTokens < need) return `마나기운이 ${need}개 이상 필요해요`;
     if (duelTargets(game, playerId).length === 0) return "지목할 수 있는 친구가 없어요";
     if (player.charm < game.rules.duelCharmFee) return `건넬 매력(${game.rules.duelCharmFee})이 없어요`;
   }
@@ -432,8 +445,8 @@ export const AWARD_NAME: Record<AwardCategory, string> = {
   spellPower: "마법상",
   intelligence: "수석상",
   stamina: "튼튼상",
-  creature: "생물사랑상",
-  charm: "인기상",
+  creature: "마법생물상",
+  charm: "생물사랑상",
   allround: "만능상",
   explorer: "탐험왕",
   researcher: "연구왕",

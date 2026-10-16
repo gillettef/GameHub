@@ -88,7 +88,12 @@ function PlayerStatCard({ player, isMe, rules, defaultOpen }: { player: PlayerGa
         <Chip icon="cap" label="학점" value={player.credit} className="bg-amber-100 text-amber-800" />
       </div>
       <p className="text-sm text-purple-700 leading-7">
-        <span className="whitespace-nowrap"><InlineIcon name="trophy" /> {rules.tournamentCards ? `대회 입상 ${player.feats?.tournament ?? 0}번` : `마법 경연 ${player.tournamentTrack}칸`}</span> · <span className="whitespace-nowrap"><InlineIcon name="book" /> 수업 {player.classCards.length}장</span>
+        {!rules.disabledActivities.includes("tournament") && (
+          <>
+            <span className="whitespace-nowrap"><InlineIcon name="trophy" /> {rules.tournamentCards ? `대회 입상 ${player.feats?.tournament ?? 0}번` : `마법 경연 ${player.tournamentTrack}칸`}</span> ·{" "}
+          </>
+        )}
+        <span className="whitespace-nowrap"><InlineIcon name="book" /> 수업 {player.classCards.length}장</span>
         {isMe && player.dream && rules.dreamCredit > 0 && (
           <>
             {" "}· <span className="whitespace-nowrap"><InlineIcon name="compass" /> 장래희망 {player.dream.name}</span>
@@ -140,9 +145,11 @@ function PlayerStatCard({ player, isMe, rules, defaultOpen }: { player: PlayerGa
               <InlineIcon name={ELEMENT_ICON[el]} /> {ELEMENT_LABEL[el]} {player.creatures.filter((c) => c.element === el).length}
             </span>
           ))}
-          <span className="whitespace-nowrap font-semibold text-amber-700">
-            세트 {creatureSets(player.creatures)}개 · 생물사랑상 점수 {player.creatures.length + creatureSets(player.creatures)}
-          </span>
+          {rules.graduationCategories.includes("creature") && (
+            <span className="whitespace-nowrap font-semibold text-amber-700">
+              세트 {creatureSets(player.creatures)}개 · 마법생물상 점수 {player.creatures.length + creatureSets(player.creatures)}
+            </span>
+          )}
         </p>
       )}
     </>
@@ -529,9 +536,13 @@ function ChoosePanel({
   if (isMyTurn && pendingActivity === "duel") {
     return (
       <div className="bg-white rounded-3xl border-2 border-purple-200 shadow-sm p-4">
-        <p className="text-sm text-purple-600 mb-1">아직 활동을 고르지 않은 한 명을 지목하세요</p>
+        <p className="text-sm text-purple-600 mb-1">{game.rules.duelTargetKeepsTurn ? "겨룰 친구 한 명을 지목하세요" : "아직 활동을 고르지 않은 한 명을 지목하세요"}</p>
         <p className="text-xs text-purple-500 mb-2">
-          지목당한 친구는 이번 달 자율활동으로 마법 겨루기를 하게 돼요. 결과와 상관없이 지목한 친구에게 {fee > 0 ? <><InlineIcon name="heart" /> 매력 {fee}과 </> : null}<InlineIcon name="manaToken" /> 마나기운 {game.rules.duelManaFee}개를 건네요. 지목당한 친구가 먼저 굴리고, 나는 그 결과를 보고 굴려요.
+          {game.rules.duelTargetKeepsTurn ? "지목당한 친구도 이번 달 자기 활동은 그대로 해요. " : "지목당한 친구는 이번 달 자율활동으로 마법 겨루기를 하게 돼요. "}
+          {fee > 0 || game.rules.duelManaFee > 0 ? <>결과와 상관없이 지목한 친구에게 {fee > 0 ? <><InlineIcon name="heart" /> 매력 {fee} </> : null}{game.rules.duelManaFee > 0 ? <><InlineIcon name="manaToken" /> 마나기운 {game.rules.duelManaFee}개</> : null}를 건네요. </> : null}
+          {game.rules.duelDefenderStatDice === "flat" ? "지목당한 친구는 주사위 1개 + 주문력으로 막고, 나는 그 결과를 보고 굴려요." : "지목당한 친구가 먼저 굴리고, 나는 그 결과를 보고 굴려요."}
+          {game.rules.duelTieWinner === "defender" ? " 더 높아야 이겨요." : ""}
+          {game.rules.duelTargetOnce ? " 한 친구는 한 달에 한 번만 지목받아요." : ""}
         </p>
         <div className="flex flex-col gap-2">
           {targets.map((id) => (
@@ -560,16 +571,18 @@ function ChoosePanel({
         {isMyTurn
           ? "내 차례예요! 하고 싶은 활동을 골라요"
           : forcedBy
-            ? `${game.players[forcedBy.challengerId].name}님이 나를 지목했어요! 이번 달 활동은 마법 겨루기예요`
+            ? game.rules.duelTargetKeepsTurn
+              ? `${game.players[forcedBy.challengerId].name}님이 나에게 마법 겨루기를 걸었어요! 내 활동은 내 차례에 그대로 골라요`
+              : `${game.players[forcedBy.challengerId].name}님이 나를 지목했어요! 이번 달 활동은 마법 겨루기예요`
             : currentTurnPlayerId
               ? `${game.players[currentTurnPlayerId]?.name}님이 활동을 고르는 중이에요...`
               : "모두 골랐어요"}
       </p>
       <p className="text-xs text-purple-500 mb-2">
-        구역당 최대 {game.rules.activityMaxParticipants}명{game.rules.activitySecondParticipantCost > 0 ? <> · 먼저 고른 친구가 있으면 <InlineIcon name="charmToken" /> 매력기운 {game.rules.activitySecondParticipantCost}개를 그 친구에게 건네고 함께해요 (내 매력기운 {game.players[myId]?.charmTokens ?? 0}개)</> : null}. 마법생물·연구실은 둘이 함께면 둘 다 목표가 낮아져요. 처음 고른 친구가 카드를 공개하고 원하는 카드를 가져가요. 남은 카드는 두 번째 참가자가 가져가요.
+        구역당 최대 {game.rules.activityMaxParticipants}명{game.rules.activitySecondParticipantCost > 0 ? <> · 먼저 고른 친구가 있으면 <InlineIcon name="charmToken" /> 매력기운 {game.rules.activitySecondParticipantCost}개를 그 친구에게 건네고 함께해요 (내 매력기운 {game.players[myId]?.charmTokens ?? 0}개)</> : null}. 먼저 고른 친구가 원하는 카드를 가져가요. 남은 카드는 두 번째 참가자가 가져가요.
       </p>
       <div className="grid grid-cols-1 gap-2">
-        {ACTIVITY_IDS.map((activityId) => {
+        {ACTIVITY_IDS.filter((a) => !game.rules.disabledActivities.includes(a)).map((activityId) => {
           const label = ACTIVITY_LABEL[activityId];
           const occupants = game.activitySlots[activityId];
           // 내가 아직 고르기 전이라면 내 차례가 아니어도 지금 고를 수 없는 구역은 미리 회색으로 보여 준다
@@ -592,7 +605,7 @@ function ChoosePanel({
                 {full && <span className="ml-auto rounded-full bg-gray-200 px-2 py-0.5 text-xs text-gray-600">가득 참</span>}
               </span>
               <span className="block text-xs opacity-80">{ACTIVITY_HINT[activityId]}</span>
-              {activityId === "duel" && <span className="block text-xs opacity-80">아직 안 고른 한 명을 지목 · {fee > 0 ? `매력 ${fee}과 ` : ""}마나기운 {game.rules.duelManaFee}개를 건네요</span>}
+              {activityId === "duel" && !game.rules.duelTargetKeepsTurn && <span className="block text-xs opacity-80">아직 안 고른 한 명을 지목 · {fee > 0 ? `매력 ${fee}과 ` : ""}마나기운 {game.rules.duelManaFee}개를 건네요</span>}
               {(who || (isMyTurn && (extra > 0 || openCost > 0))) && (
                 <span className="mt-1 flex flex-wrap gap-1">
                   {who && <span className="rounded-full bg-purple-100 px-2 py-0.5 text-xs text-purple-700">{who} 선택</span>}
@@ -788,13 +801,16 @@ function RollPanel({
   // 굴리기 전에 마나기운을 몇 개 낼지 고르는 굴림 (마나기운이 없으면 choiceMax가 없고 공짜 주사위 1개)
   const choiceMax = mine?.diceChoiceMax;
   const fuel = FUEL_INFO[mine?.diceToken ?? "mana"];
-  const chosenCount = choiceMax !== undefined ? Math.min(Math.max(pickedCount ?? mine!.diceCount, 1), choiceMax) : (mine?.diceCount ?? 0);
+  // 61절: 공짜 주사위(baseDice)가 있으면 기운을 0개 내도 된다
+  const base = mine?.baseDice ?? 0;
+  const minCount = base > 0 ? 0 : 1;
+  const chosenCount = choiceMax !== undefined ? Math.min(Math.max(pickedCount ?? mine!.diceCount, minCount), choiceMax) : (mine?.diceCount ?? 0);
   const assistMax = mine?.assistMax ?? 0;
   const chosenAssist = Math.min(pickedAssist, assistMax);
   const canConfirm = myTurnNow && mine!.dice !== null && !mine!.confirmed;
   const me = game.players[myId];
   // 결과를 확인하기 전에는 남은 마나기운으로 일부 주사위만 다시 굴릴 수 있다 (선 정하기는 제외)
-  const canReroll = canConfirm && pending.kind !== "first" && !!mine && (mine.dice?.length ?? 0) > 0;
+  const canReroll = game.rules.reroll && canConfirm && pending.kind !== "first" && !!mine && (mine.dice?.length ?? 0) > 0;
   const rerollCost = selected.length;
   const rerollOk = rerollCost > 0 && me.manaTokens >= rerollCost;
   const toggle = (i: number) => setSelected((cur) => (cur.includes(i) ? cur.filter((x) => x !== i) : [...cur, i]));
@@ -862,13 +878,14 @@ function RollPanel({
       {canRoll && mine && choiceMax !== undefined && (
         <div className="mt-3 rounded-2xl bg-sky-50 px-3 py-2 text-sm text-sky-800">
           <p>
-            <InlineIcon name={fuel.icon} /> {fuel.name} {choiceMax}개 중 몇 개를 낼까요? 낸 개수만큼 주사위를 굴려요.{" "}
-            {fuel.name === "마나기운" ? "안 낸 마나기운은 다시 굴리기에 쓸 수 있어요" : "다시 굴리기는 마나기운으로 해요"}
+            <InlineIcon name={fuel.icon} /> {fuel.name} {choiceMax}개 중 몇 개를 낼까요?{" "}
+            {base > 0 ? `낸 개수 + 공짜 주사위 ${base}개를 굴려요. 안 낸 기운은 다음에 써요` : "낸 개수만큼 주사위를 굴려요."}{" "}
+            {!game.rules.reroll ? "" : fuel.name === "마나기운" ? "안 낸 마나기운은 다시 굴리기에 쓸 수 있어요" : "다시 굴리기는 마나기운으로 해요"}
           </p>
           <div className="mt-2 flex items-center justify-center gap-4">
             <button
               aria-label="하나 줄이기"
-              disabled={chosenCount <= 1}
+              disabled={chosenCount <= minCount}
               className="h-12 w-12 rounded-full bg-white text-2xl font-semibold text-sky-700 shadow-sm active:scale-95 transition-transform disabled:opacity-40"
               onClick={() => setPickedCount(chosenCount - 1)}
             >
@@ -888,7 +905,7 @@ function RollPanel({
       )}
       {canRoll && mine && choiceMax === undefined && (
         <p className="mt-3 rounded-2xl bg-sky-50 px-3 py-2 text-center text-sm text-sky-800">
-          <InlineIcon name={fuel.icon} /> {fuel.name}이 없어서 공짜 주사위 {mine.diceCount}개를 굴려요
+          <InlineIcon name={fuel.icon} /> {mine.diceToken === undefined ? `주사위 ${mine.diceCount}개를 굴려요` : `${fuel.name}이 없어서 공짜 주사위 ${mine.diceCount}개를 굴려요`}
         </p>
       )}
       {canRoll && mine && pending.assist && assistMax > 0 && (
@@ -929,7 +946,7 @@ function RollPanel({
           <span className={clickedFor === rollKey ? "dice-wiggle inline-flex" : "inline-flex"}>
             <Icon name="dice" className="h-6 w-6" />
           </span>
-          {clickedFor === rollKey ? "굴리는 중..." : chosenCount > 1 ? `주사위 ${chosenCount}개 굴리기` : "주사위 굴리기"}
+          {clickedFor === rollKey ? "굴리는 중..." : chosenCount + (choiceMax !== undefined ? base : 0) > 1 ? `주사위 ${chosenCount + (choiceMax !== undefined ? base : 0)}개 굴리기` : "주사위 굴리기"}
         </button>
       ) : canConfirm ? (
         <>

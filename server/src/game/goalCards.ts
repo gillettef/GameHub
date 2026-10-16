@@ -17,7 +17,7 @@ export const DREAM_CARDS: Omit<DreamCard, "id">[] = [
 export const SPECIAL_AWARDS: SpecialAwardId[] = ["charm", "allround", "explorer", "researcher", "duelist", "scholar", "champion"];
 
 export const SPECIAL_AWARD_NAME: Record<SpecialAwardId, string> = {
-  charm: "인기상",
+  charm: "생물사랑상", // 61절: 매력 = 마법생물과 교감하는 힘. 졸업식 매력 부문의 이름 (예전 특별상 인기상)
   allround: "만능상",
   explorer: "탐험왕",
   researcher: "연구왕",
