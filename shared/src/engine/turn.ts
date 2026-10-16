@@ -102,7 +102,7 @@ function updatePlayer(state: GameState, playerId: PlayerId, patch: Partial<Playe
 // 시작: 보드 → 목표 → 이번 판 식물 → 카드 더미·손 → 첫 마켓 (Rules.md 4·5절, 11절 난수 순서)
 // ---------------------------------------------------------------------------
 
-/** 18장을 섞고 앞에서부터 3장씩 끊어 조건(종 연계 1장 이상, 배제 쌍 없음)을 만족하는 첫 묶음 */
+/** 16장을 섞고 앞에서부터 3장씩 끊어 조건(종 연계 1장 이상, 배제 쌍 없음)을 만족하는 첫 묶음 */
 export function pickGoals(seed: number): { goals: GoalId[]; seed: number } {
   let s = seed;
   for (;;) {

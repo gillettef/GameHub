@@ -49,7 +49,7 @@ export const HelpTab = memo(function HelpTab() {
             <strong>식물은 누구의 것도 아닙니다.</strong> 그 칸에 뿌리를 둔 사람의 땅이고, 그 위 식물도 그 사람 점수에 셉니다.
           </li>
           <li>
-            뿌리는 1인 2인 {rulesFor(2).supply} / 3인 {rulesFor(3).supply} / 4인 {rulesFor(4).supply}개뿐입니다. 남은 뿌리가 모자라면 <strong>가장 높이 쌓인 내 칸</strong>에서 옮겨 옵니다. 밀려난 뿌리는 주인에게 돌아갑니다.
+            한 사람의 뿌리는 2인 {rulesFor(2).supply} / 3인 {rulesFor(3).supply} / 4인 {rulesFor(4).supply}개뿐입니다. 남은 뿌리가 모자라면 <strong>가장 높이 쌓인 내 칸</strong>에서 옮겨 옵니다. 밀려난 뿌리는 주인에게 돌아갑니다.
           </li>
           <li>버섯은 맞닿은 6칸의 남의 뿌리를 걷어내고, 민들레는 두 칸 안 아무 칸에 씨앗 뿌리 1개를 날립니다.</li>
           <li>보드의 원 숫자가 그 칸의 뿌리 수이고, 원 색이 땅 주인입니다. 아래 "뿌리 수" 버튼으로 끄고 켭니다.</li>

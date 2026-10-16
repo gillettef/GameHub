@@ -87,11 +87,11 @@ describe('Rules.md 4절 자리 보정 표와 데이터 일치', () => {
     expect(rows).toHaveLength(3);
   });
   it('인원별 구성 (Rules.md 4·10절): 식물 수 × 장수 = 인원 × 각자 심는 횟수', () => {
-    expect(PLAYER_COUNT_RULES[2]).toMatchObject({ gardenSize: 6, copies: 4, market: 3, supply: 20 });
+    expect(PLAYER_COUNT_RULES[2]).toMatchObject({ gardenSize: 6, copies: 4, market: 3, supply: 16 });
     expect(PLAYER_COUNT_RULES[3]).toMatchObject({ gardenSize: 6, copies: 5, market: 4, supply: 18 });
     expect(PLAYER_COUNT_RULES[4]).toMatchObject({ gardenSize: 8, copies: 5, market: 5, supply: 16 });
     for (const [n, turns] of [[2, 12], [3, 10], [4, 10]] as const) expect(PLAYER_COUNT_RULES[n]!.gardenSize * PLAYER_COUNT_RULES[n]!.copies).toBe(n * turns);
-    expect(RULES).toContain('2인 20 / 3인 18 / 4인 16');
+    expect(RULES).toContain('2인 16 / 3인 18 / 4인 16');
   });
 });
 

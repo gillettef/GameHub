@@ -61,6 +61,12 @@
   border-color: var(--color-accent);
 }
 
+/* 크림 버튼 위에서는 빈 칸·심는 칸이 배경에 묻히므로 어두운 글자색으로 그린다 */
+.dirOn > svg {
+  --color-text: var(--color-accent-text);
+  --color-accent: var(--color-accent-text);
+}
+
 .seedRow {
   flex: 1 1 100%;
   display: flex;
