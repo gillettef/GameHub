@@ -1,4 +1,5 @@
 import { makeAiOffer } from './ai';
+import { RULES, club } from './data';
 import { createRng } from './rng';
 import { currentEvent, evaluateOffer, isEvaluation, playCard, precheck } from './rules';
 import type { AgentState, GameState, Offer, RoundEntry, Signing, Submission } from './types';
@@ -21,6 +22,12 @@ export function contest(group: readonly Candidate[]): { winner: Candidate | null
   while (i < sorted.length) {
     const tier = sorted.filter((c) => c.attract === sorted[i]!.attract);
     if (tier.length === 1) return { winner: tier[0]!, beaten: sorted.slice(i + 1), cancelled };
+    if (RULES.tieBudget) {
+      // 제시액이 가장 큰 구단 쪽이 단독이면 그 제안이 계약
+      const top = Math.max(...tier.map((c) => club(c.offer.clubId).budget));
+      const rich = tier.filter((c) => club(c.offer.clubId).budget === top);
+      if (rich.length === 1) return { winner: rich[0]!, beaten: [...tier.filter((c) => c !== rich[0]), ...sorted.slice(i + tier.length)], cancelled };
+    }
     cancelled.push(...tier);
     i += tier.length;
   }

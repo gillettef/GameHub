@@ -69,7 +69,7 @@ export function scoreboard(g: GameState, me = -1): string {
   return `<div class="scores" style="--n:${g.agents.length}">${g.agents
     .map(
       (a, i) =>
-        `<div class="sc ${i === me ? 'me' : ''}"><span class="nm">${dot(i)}${esc(a.name)}</span><b>${money(a.score)}</b><small>${a.deals}건 · 손 ${a.hand.join('·')}</small></div>`,
+        `<div class="sc ${i === me ? 'me' : ''}"><span class="nm">${dot(i)}${esc(a.name)}</span><b>${money(a.score)}</b><small>${a.deals}건</small></div>`,
     )
     .join('')}</div>`;
 }

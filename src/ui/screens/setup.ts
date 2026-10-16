@@ -17,7 +17,7 @@ export function setupScreen(ui: UiState): string {
               ? `<span class="seat-nm">${esc(s.name)}</span><button class="lv ${s.level ?? 'easy'}" data-act="seat-level" data-arg="${i}" aria-label="${esc(s.name)} 난이도: ${LEVEL_TEXT[s.level ?? 'easy']} (눌러서 변경)">${LEVEL_TEXT[s.level ?? 'easy']}</button>`
               : `<input data-seat="${i}" maxlength="12" value="${esc(s.name)}" ${i === 0 ? 'readonly' : ''} aria-label="플레이어 ${i + 1} 이름">`
           }
-          ${i === 0 ? '<span class="pill">나</span>' : `<button class="icon" data-act="seat-del" data-arg="${i}" aria-label="삭제">✕</button>`}
+          ${i === 0 ? '<span class="pill">나</span>' : `<button class="icon" data-act="seat-del" data-arg="${i}" aria-label="삭제" ${seats.length <= MIN_AGENTS ? 'disabled' : ''}>✕</button>`}
         </div>`,
       )
       .join('')}
@@ -26,7 +26,7 @@ export function setupScreen(ui: UiState): string {
       <button data-act="seat-add" data-arg="human" ${full ? 'disabled' : ''}>＋ 사람</button>
       <button data-act="seat-add" data-arg="ai" ${full ? 'disabled' : ''}>＋ AI</button>
     </div>
-    <p class="mu">${seats.length}/${MAX_AGENTS}명 · 사람 ${humans} · AI ${seats.length - humans}</p>
+    <p class="mu">${seats.length}/${MAX_AGENTS}명 (${MIN_AGENTS}~${MAX_AGENTS}인) · 사람 ${humans} · AI ${seats.length - humans}</p>
     <p class="err">${esc(ui.error)}</p>
   </main>
   <nav class="bar"><button data-act="home">취소</button><button class="pri" data-act="start" ${seats.length < MIN_AGENTS ? 'disabled' : ''}>게임 시작</button></nav>`;

@@ -19,12 +19,12 @@ const SEED = Number(arg('seed', '42'));
 const AI = arg('ai', 'normal') as AiLevel | 'mixed';
 /** mixed 에서 normal 자리 수 (기본 floor(N/2)) */
 const NORMALS = Number(arg('normals', String(Math.floor(N / 2))));
-if (!(N >= 2 && N <= 4)) throw new Error('--players must be 2~4');
+if (!(N >= 3 && N <= 4)) throw new Error('--players must be 3~4');
 // --tune save=0.3,deny=0 처럼 보통 AI 조정값 실험
 for (const kv of arg('tune', '').split(',').filter(Boolean)) {
   const [k, v] = kv.split('=');
   if (!(k! in AI_TUNING)) throw new Error(`unknown tune ${k}`);
-  (AI_TUNING as Record<string, number>)[k!] = Number(v);
+  (AI_TUNING as unknown as Record<string, number>)[k!] = Number(v);
 }
 
 const r1 = (x: number) => Math.round(x * 10) / 10;
