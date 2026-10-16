@@ -1,13 +1,14 @@
 import { makeAiGuesses } from './ai';
-import { CLUBS, CLUBS_IN_GAME, CLUB_BONUS, DEMANDS, EVENT_POOL, GUESS_BONUS, MAX_AGENTS, MIN_AGENTS, OVERSEAS_EXTRA, PLAYERS, TOTAL_ROUNDS, marketSize } from './data';
+import { CLUBS, CLUBS_IN_GAME, DEMANDS, EVENT_POOL, MAX_AGENTS, RULES, MIN_AGENTS, OVERSEAS_EXTRA, PLAYERS, TOTAL_ROUNDS, marketSize } from './data';
 import { createRng } from './rng';
 import { currentEvent } from './rules';
-import type { AgentKind, AiLevel, FinalScore, GameState, Guesses } from './types';
+import type { AgentKind, AiLevel, FinalScore, GameState, Guesses, PersonaKey } from './types';
 
 export interface AgentSetup {
   name: string;
   kind: AgentKind;
   level?: AiLevel;
+  persona?: PersonaKey;
 }
 
 /** 시장을 N+1명으로 채운다 (해외파 귀국은 +2). 지난 라운드에 계약되지 않은 선수는 그대로 남는다. */
@@ -30,6 +31,7 @@ export function createGame(setup: readonly AgentSetup[], seed: number): GameStat
     name: a.name,
     kind: a.kind,
     ...(a.kind === 'ai' ? { level: a.level ?? 'easy' } : {}),
+    ...(a.kind === 'ai' && a.persona ? { persona: a.persona } : {}),
     score: 0,
     deals: 0,
     hand: [...DEMANDS],
@@ -53,8 +55,8 @@ export function clubMarks(state: Pick<GameState, 'results' | 'agents' | 'clubs'>
 }
 
 /** 구단 아래 놓인 선수 수 (스폰서 데이 계약은 2명으로 셈) */
-export const clubWeight = (state: Pick<GameState, 'signings'>, clubId: number): number =>
-  state.signings.filter((s) => s.clubId === clubId).reduce((n, s) => n + s.weight, 0);
+export const clubWeight = (state: Pick<GameState, 'signings'>, clubId: number, agent?: number): number =>
+  state.signings.filter((s) => s.clubId === clubId && (agent === undefined || s.agent === agent)).reduce((n, s) => n + s.weight, 0);
 
 /**
  * 게임 종료: 모든 에이전트가 다른 에이전트의 비밀 구단을 하나씩 지목한다.
@@ -68,18 +70,24 @@ export function finishGame(state: GameState, humanGuesses: Readonly<Record<numbe
     if (a.kind === 'ai') return makeAiGuesses(state, i, rng);
     const g = humanGuesses[i];
     if (!g) throw new Error(`missing guesses for agent ${i}`);
+    // 한 명만 지목하는 규칙이면 첫 지목만 인정
+    if (RULES.guessOne) {
+      const first = Object.entries(g)[0];
+      return first ? { [Number(first[0])]: first[1] } : {};
+    }
     return g;
   });
   const exposed = state.agents.map((_, i) => guesses.some((g, k) => k !== i && g[i] === state.agents[i]!.secret));
   const agents = state.agents.map((a, i) => {
     const hits = state.agents.filter((o, k) => k !== i && guesses[i]![k] === o.secret).length;
-    const clubDeals = clubWeight(state, a.secret);
+    const misses = state.agents.filter((o, k) => k !== i && guesses[i]![k] !== undefined && guesses[i]![k] !== o.secret).length;
+    const clubDeals = clubWeight(state, a.secret, RULES.clubOwnOnly ? i : undefined);
     const final: FinalScore = {
       guesses: guesses[i]!,
-      guessPoints: hits * GUESS_BONUS,
+      guessPoints: hits * RULES.guessBonus - misses * RULES.wrongGuess,
       exposed: exposed[i]!,
       clubDeals,
-      clubPoints: exposed[i] ? 0 : clubDeals * CLUB_BONUS,
+      clubPoints: exposed[i] ? 0 : clubDeals * RULES.clubBonus,
       total: 0,
     };
     final.total = a.score + final.guessPoints + final.clubPoints;

@@ -1,8 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   CLUBS_IN_GAME,
-  CLUB_BONUS,
-  GUESS_BONUS,
+  RULES,
   PLAYERS,
   TOTAL_ROUNDS,
   clubMarks,
@@ -53,7 +52,7 @@ const ev = (o: Offer, e: EventKey = 'normal') => evaluateOffer(o, e);
 const withEvent = (e: EventKey) => state({ events: [e, 'normal', 'normal', 'normal', 'normal', 'normal', 'normal', 'deadline'] });
 
 describe('evaluateOffer (정수 계산)', () => {
-  it('매력도 = 적합도 − 요구 수수료, 수수료 = 기본 + 요구 수수료', () => {
+  it('매력도 = 적합도 − 카드의 매력도 감점, 수수료 = 기본 + 요구 수수료', () => {
     expect(ev(offer())).toEqual({ attract: 1, fee: 4 });
     expect(ev(offer({ demand: 4 }))).toEqual({ attract: -1, fee: 6 });
     // 정우진(DF 멀티) → 실버 호크스(MF 플메): 적합 0
@@ -65,14 +64,14 @@ describe('evaluateOffer (정수 계산)', () => {
     expect(ev(offer({ playerId: 0, clubId: 6 }))).toBe('under-cost');
   });
 
-  it('이벤트: 수수료 +2 (공격수 품귀·유망주 열풍·수비 보강·빅딜 시즌·데드라인 데이)', () => {
+  it('이벤트: 수수료 +2 (공격수 품귀·유망주 열풍·수비 보강·빅딜 시즌), 데드라인 데이 +4', () => {
     expect(ev(offer(), 'fw')).toEqual({ attract: 1, fee: 6 });
     expect(ev(offer(), 'young')).toEqual({ attract: 1, fee: 6 });
     expect(ev(offer(), 'defense')).toEqual({ attract: 1, fee: 4 });
     expect(ev(offer({ playerId: 6, clubId: 5 }), 'defense')).toEqual({ attract: 0, fee: 6 });
     expect(ev(offer(), 'big')).toEqual({ attract: 1, fee: 4 });
     expect(ev(offer({ playerId: 0, clubId: 0 }), 'big')).toEqual({ attract: 1, fee: 8 });
-    expect(ev(offer(), 'deadline')).toEqual({ attract: 1, fee: 6 });
+    expect(ev(offer(), 'deadline')).toEqual({ attract: 1, fee: 4 + RULES.deadlineBonus });
   });
 
   it('구단 긴축: 제시액 −2', () => {
@@ -82,10 +81,18 @@ describe('evaluateOffer (정수 계산)', () => {
   });
 });
 
-describe('요구 수수료 카드 순환', () => {
-  it('낸 카드는 손에서 빠지고, 4장을 모두 쓰면 1~4를 다시 가져온다', () => {
-    expect(playCard([1, 2, 3, 4], 3)).toEqual([1, 2, 4]);
-    expect(playCard([4], 4)).toEqual([1, 2, 3, 4]);
+describe('요구 수수료 카드', () => {
+  it('낸 카드는 다시 손으로 가져온다 (매 라운드 1~4 중 자유)', () => {
+    expect(playCard([1, 2, 3, 4], 3)).toEqual([1, 2, 3, 4]);
+  });
+  it('실험용 순환 규칙(cycle=1): 낸 카드는 빠지고 4장을 다 쓰면 돌아온다', () => {
+    RULES.cycle = 1;
+    try {
+      expect(playCard([1, 2, 3, 4], 3)).toEqual([1, 2, 4]);
+      expect(playCard([4], 4)).toEqual([1, 2, 3, 4]);
+    } finally {
+      RULES.cycle = 0;
+    }
   });
   it('손에 없는 카드는 낼 수 없다', () => {
     const s = state({ agents: [agent({ hand: [1, 3] }), agent()] });
@@ -120,14 +127,13 @@ describe('resolveRound', () => {
       [3, 6, 0],
       [6, 5, 1],
     ]);
-    expect(s.agents[0]!.hand).toEqual([1, 3, 4]);
+    expect(s.agents[0]!.hand).toEqual([1, 2, 3, 4]);
   });
 
-  it('같은 선수: 매력도 높은 쪽이 계약, 진 쪽도 카드는 소모', () => {
+  it('같은 선수: 매력도 높은 쪽이 계약', () => {
     const s = resolveRound(state(), { 0: offer({ demand: 1 }), 1: offer({ demand: 3 }) });
     expect(s.agents[0]!.score).toBe(3);
     expect(s.agents[1]!.score).toBe(0);
-    expect(s.agents[1]!.hand).toEqual([1, 2, 4]);
     const lost = s.results[0]!.entries.find((e) => e.agent === 1)!;
     expect(lost).toMatchObject({ status: 'lost', winner: 0, winnerAttract: 2 });
   });
@@ -139,11 +145,10 @@ describe('resolveRound', () => {
     expect(s.market).toContain(3);
   });
 
-  it('몸값 미달은 실패하지만 공개된 카드는 소모, 패스는 소모 없음', () => {
+  it('몸값 미달은 실패, 패스는 패스로 기록', () => {
     const s = resolveRound(state(), { 0: offer({ playerId: 0, clubId: 6, demand: 4 }), 1: null });
     expect(s.results[0]!.entries.map((e) => e.status)).toEqual(['invalid', 'pass']);
-    expect(s.agents[0]!.hand).toEqual([1, 2, 3]);
-    expect(s.agents[1]!.hand).toEqual([1, 2, 3, 4]);
+    expect(s.agents.every((a) => a.deals === 0)).toBe(true);
   });
 
   it('스폰서 데이 계약은 비밀 구단 보너스 2배로 센다', () => {
@@ -203,13 +208,14 @@ describe('게임 진행', () => {
     const done = finishGame(g, { 0: { 1: g.agents[1]!.secret, 2: g.clubs.find((c) => c !== g.agents[2]!.secret && c !== g.agents[0]!.secret)! } });
     expect(done.phase).toBe('done');
     const me = done.agents[0]!.final!;
-    expect(me.guessPoints).toBe(GUESS_BONUS);
+    // 1명 적중 +3, 1명 오답 −2
+    expect(me.guessPoints).toBe(RULES.guessBonus - RULES.wrongGuess);
     expect(done.agents[1]!.final!.exposed).toBe(true);
     expect(done.agents[1]!.final!.clubPoints).toBe(0);
     expect(winners(done).length).toBeGreaterThan(0);
   });
 
-  it('비밀 구단 보너스: 들키지 않으면 구단 아래 선수 1명당 +2, 누가 계약했든 센다', () => {
+  it('비밀 구단 보너스: 들키지 않으면 내가 직접 계약시킨 선수 1명당 +clubBonus (스폰서 데이 2배), 지목은 맞으면 +3 틀리면 −2', () => {
     const base = state({
       phase: 'guess',
       round: TOTAL_ROUNDS,
@@ -218,13 +224,17 @@ describe('게임 진행', () => {
         { playerId: 6, clubId: 0, agent: 0, round: 2, weight: 2 },
       ],
     });
-    // A 비밀 0, B 비밀 1. B가 5를 지목(오답), A는 B를 5로 지목(오답)
-    const done = finishGame(base, { 0: { 1: 5 }, 1: { 0: 5 } });
-    expect(done.agents[0]!.final).toMatchObject({ exposed: false, clubDeals: 3, clubPoints: 3 * CLUB_BONUS, guessPoints: 0 });
-    // B가 A를 맞히면 A는 보너스 몰수, B +3
-    const caught = finishGame(base, { 0: { 1: 5 }, 1: { 0: 0 } });
+    // A 비밀 0, B 비밀 1. 0번 구단 아래: B가 계약 1명, A가 스폰서 데이에 계약 1명(2명으로 셈)
+    // 서로 지목하지 않으면 A 는 자기 계약분만: 2 × clubBonus
+    const quiet = finishGame(base, { 0: {}, 1: {} });
+    expect(quiet.agents[0]!.final).toMatchObject({ exposed: false, clubDeals: 2, clubPoints: 2 * RULES.clubBonus, guessPoints: 0 });
+    // 둘 다 틀리게 지목하면 각자 −wrongGuess
+    const wrong = finishGame(base, { 0: { 1: 5 }, 1: { 0: 5 } });
+    expect(wrong.agents[0]!.final!.guessPoints).toBe(-RULES.wrongGuess);
+    // B가 A를 맞히면 A는 보너스 몰수, B +guessBonus
+    const caught = finishGame(base, { 0: {}, 1: { 0: 0 } });
     expect(caught.agents[0]!.final).toMatchObject({ exposed: true, clubPoints: 0 });
-    expect(caught.agents[1]!.final!.guessPoints).toBe(GUESS_BONUS);
+    expect(caught.agents[1]!.final!.guessPoints).toBe(RULES.guessBonus);
     expect(rankings(caught)[0]!.agent).toBe(1);
   });
 
@@ -255,6 +265,7 @@ describe('공개 기록과 AI', () => {
         [
           { name: 'A', kind: 'ai', level },
           { name: 'B', kind: 'ai', level },
+          { name: 'C', kind: 'ai', level },
         ],
         11,
       );
@@ -264,25 +275,27 @@ describe('공개 기록과 AI', () => {
     }
   });
 
-  it('AI 지목은 자기 비밀 구단을 제외한 이번 게임 구단', () => {
-    const g = { ...createGame([{ name: 'A', kind: 'ai', level: 'normal' }, { name: 'B', kind: 'ai' }, { name: 'C', kind: 'ai' }], 9), phase: 'guess' as const };
+  it('AI 지목은 다른 에이전트에 대해서만, 자기 비밀 구단을 제외한 이번 게임 구단 (확신 없으면 생략)', () => {
+    let g = createGame([{ name: 'A', kind: 'ai', level: 'normal' }, { name: 'B', kind: 'ai' }, { name: 'C', kind: 'ai' }], 9);
+    while (g.phase !== 'guess') g = nextRound(resolveRound(g, {}));
     const gs = makeAiGuesses(g, 0, createRng(1));
-    expect(Object.keys(gs).map(Number).sort()).toEqual([1, 2]);
+    for (const k of Object.keys(gs).map(Number)) expect([1, 2]).toContain(k);
     for (const c of Object.values(gs)) {
       expect(g.clubs).toContain(c);
       expect(c).not.toBe(g.agents[0]!.secret);
     }
   });
 
-  it('AI끼리 끝까지 진행해도 오류 없이 종료 (2~4인)', () => {
-    for (const n of [2, 3, 4]) {
+  it('AI끼리 끝까지 진행해도 오류 없이 종료 (3~4인), 2인은 만들 수 없다', () => {
+    expect(() => createGame([{ name: 'A', kind: 'human' }, { name: 'B', kind: 'ai' }], 1)).toThrow();
+    for (const n of [3, 4]) {
       let g = createGame(
         Array.from({ length: n }, (_, i) => ({ name: `AI${i}`, kind: 'ai' as const, level: i % 2 ? ('normal' as const) : ('easy' as const) })),
         100 + n,
       );
       while (g.phase !== 'guess') g = nextRound(resolveRound(g, {}));
       g = finishGame(g, {});
-      expect(g.agents.every((a) => a.final && a.final.total >= a.score)).toBe(true);
+      expect(g.agents.every((a) => a.final && a.final.total === a.score + a.final.clubPoints + a.final.guessPoints)).toBe(true);
       expect(PLAYERS.length).toBeGreaterThanOrEqual(g.signings.length + g.market.length);
     }
   });

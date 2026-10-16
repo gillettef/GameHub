@@ -71,9 +71,9 @@ export const EVENTS: Readonly<Record<EventKey, MarketEvent>> = {
   young: { key: 'young', name: '유망주 열풍', icon: '🌱', desc: '유망주 선수 계약 수수료 +2억' },
   budget: { key: 'budget', name: '구단 긴축', icon: '📉', desc: '모든 구단 제시액 −2억' },
   big: { key: 'big', name: '빅딜 시즌', icon: '💰', desc: '몸값 6억 이상 선수 계약 수수료 +2억' },
-  sponsor: { key: 'sponsor', name: '스폰서 데이', icon: '🎙', desc: '이번 라운드 계약은 비밀 구단 보너스를 2배로 셉니다' },
+  sponsor: { key: 'sponsor', name: '스폰서 데이', icon: '🎙', desc: '이번 라운드에 직접 계약시킨 선수는 비밀 구단 보너스를 2배로 셉니다' },
   overseas: { key: 'overseas', name: '해외파 귀국', icon: '✈️', desc: '시장에 선수 2명을 더 깝니다' },
-  deadline: { key: 'deadline', name: '데드라인 데이', icon: '⏰', desc: '마지막 라운드 · 모든 계약 수수료 +2억' },
+  deadline: { key: 'deadline', name: '데드라인 데이', icon: '⏰', desc: '마지막 라운드 · 모든 계약 수수료 +4억' },
 };
 
 /** 무작위로 섞어 7장을 쓰는 이벤트 (마지막 라운드는 항상 데드라인 데이) */
@@ -90,15 +90,43 @@ export const EVENT_BONUS = 2;
 export const BUDGET_CUT = 2;
 /** 해외파 귀국 시 추가 선수 */
 export const OVERSEAS_EXTRA = 2;
-/** 비밀 구단에 계약된 선수 1명당 보너스 (노출되지 않았을 때) */
-export const CLUB_BONUS = 2;
-/** 다른 에이전트의 비밀 구단을 맞혔을 때 보너스 */
-export const GUESS_BONUS = 3;
-export const MIN_AGENTS = 2;
+/**
+ * 밸런스 조정 대상 규칙 수치. 기본값이 공식 규칙이며, 시뮬레이션(--rules k=v)에서만 바꾼다.
+ */
+export const RULES = {
+  /** 비밀 구단에 계약된 선수 1명당 보너스 (들키지 않았을 때) */
+  clubBonus: 10,
+  /** 다른 에이전트의 비밀 구단을 맞혔을 때 보너스 */
+  guessBonus: 3,
+  /** 데드라인 데이 수수료 보너스 */
+  deadlineBonus: 4,
+  /** 이 값보다 매력도가 낮은 제안은 구단이 거절한다 (null = 제한 없음) */
+  minAttract: null as number | null,
+  /** 최고 매력도 동률일 때: 0 = 모두 상쇄, 1 = 제시액이 큰 구단 쪽이 계약 (그것도 같으면 상쇄) */
+  tieBudget: 0,
+  /** 게임 종료 지목: 0 = 다른 에이전트 전원을 하나씩, 1 = 한 명만 골라 지목 */
+  guessOne: 0,
+  /** 비밀 구단 보너스: 0 = 누가 계약했든 센다, 1 = 내가 직접 계약시킨 선수만 센다 */
+  clubOwnOnly: 1,
+  /** 틀린 지목 1개당 감점 (0 = 감점 없음). 감점이 있으면 지목은 선택이다 */
+  wrongGuess: 2,
+  /** 요구 수수료 카드: 1 = 낸 카드는 4장을 다 쓸 때까지 못 씀(순환), 0 = 매 라운드 1~4 중 자유 */
+  cycle: 0,
+  /** 요구 수수료 카드 1·2·3·4 의 매력도 감점 (카드에 인쇄) */
+  penalty: [1, 2, 3, 4] as number[],
+  /** 시장 선수 수 = 인원 + marketExtra */
+  marketExtra: 1,
+};
+/** @deprecated RULES.clubBonus */
+export const CLUB_BONUS = RULES.clubBonus;
+/** @deprecated RULES.guessBonus */
+export const GUESS_BONUS = RULES.guessBonus;
+/** 3~4인 전용 (2026-10-16 사용자 결정: 2인은 지원하지 않음) */
+export const MIN_AGENTS = 3;
 export const MAX_AGENTS = 4;
 
 /** 라운드 시장 선수 수 N + 1 (남은 선수는 다음 라운드에도 남고 빈자리만 채운다) */
-export const marketSize = (agents: number): number => agents + 1;
+export const marketSize = (agents: number): number => agents + RULES.marketExtra;
 
 export const player = (id: number): PlayerCard => {
   const p = PLAYERS[id];

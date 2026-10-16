@@ -3,7 +3,9 @@
  *   npx tsx scripts/print-kit.ts > docs/print/kit.html   (브라우저에서 열어 인쇄)
  * 데이터는 src/core/data.ts 에서 직접 읽으므로 규칙 수치와 항상 일치한다.
  */
-import { CLUBS, CLUB_BONUS, EVENTS, EVENT_POOL, GUESS_BONUS, PLAYERS, TOTAL_ROUNDS } from '../src/core';
+import { CLUBS, EVENTS, EVENT_POOL, PLAYERS, RULES, TOTAL_ROUNDS } from '../src/core';
+const CLUB_BONUS = RULES.clubBonus;
+const GUESS_BONUS = RULES.guessBonus;
 
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
@@ -27,7 +29,7 @@ const clubCards = CLUBS.map(
 );
 const secretCards = CLUBS.map(
   (c) => `<div class="card sc"><div class="hd"><b>🕵️ 비밀 구단</b></div><div class="nm">${esc(c.name)}</div>
-  <div class="ft">들키지 않으면 이 구단 아래 선수 1명당 +${CLUB_BONUS}억<br>(누가 계약했든)</div></div>`,
+  <div class="ft">들키지 않으면 내가 직접 이 구단에<br>계약시킨 선수 1명당 +${CLUB_BONUS}억</div></div>`,
 );
 const eventCards = [...EVENT_POOL, 'deadline' as const].map((k) => {
   const e = EVENTS[k];
@@ -35,7 +37,7 @@ const eventCards = [...EVENT_POOL, 'deadline' as const].map((k) => {
   <div class="nm">${esc(e.name)}</div><div class="ft">${esc(e.desc)}</div></div>`;
 });
 const agentCards = COLORS.flatMap(([name, color]) => [
-  ...[1, 2, 3, 4].map((d) => `<div class="card dm" style="--c:${color}"><div class="hd"><b>${name}</b></div><div class="big">${d}억</div><div class="ft">요구 수수료 · 매력도 −${d}</div></div>`),
+  ...[1, 2, 3, 4].map((d) => `<div class="card dm" style="--c:${color}"><div class="hd"><b>${name}</b></div><div class="big">+${d}억</div><div class="ft">요구 수수료 · 매력도 −${RULES.penalty[d - 1]}</div></div>`),
   ...Array.from({ length: 8 }, (_, i) => `<div class="card sm" style="--c:${color}"><div class="hd"><b>${name}</b></div><div class="big">${i + 1}</div><div class="ft">선수 지목 (시장 칸)</div></div>`),
   ...Array.from({ length: 6 }, (_, i) => `<div class="card sm" style="--c:${color}"><div class="hd"><b>${name}</b></div><div class="big">${LETTERS[i]}</div><div class="ft">구단 지목 (구단 자리)</div></div>`),
 ]);
@@ -44,10 +46,10 @@ const record = `<section class="sheet"><h2>점수 · 지목 기록지</h2>
 <table><tr><th>라운드</th>${COLORS.map(([n]) => `<th>${n}</th>`).join('')}<th>이벤트</th></tr>
 ${Array.from({ length: TOTAL_ROUNDS }, (_, i) => `<tr><td>${i + 1}${i === TOTAL_ROUNDS - 1 ? ' (데드라인)' : ''}</td>${COLORS.map(() => '<td></td>').join('')}<td></td></tr>`).join('')}
 <tr><td>수수료 합</td>${COLORS.map(() => '<td></td>').join('')}<td></td></tr>
-<tr><td>비밀 구단 (+${CLUB_BONUS}×명, 들키면 0)</td>${COLORS.map(() => '<td></td>').join('')}<td></td></tr>
-<tr><td>지목 (+${GUESS_BONUS}×적중)</td>${COLORS.map(() => '<td></td>').join('')}<td></td></tr>
+<tr><td>비밀 구단 (+${CLUB_BONUS}×직접 계약, 들키면 0)</td>${COLORS.map(() => '<td></td>').join('')}<td></td></tr>
+<tr><td>지목 (+${GUESS_BONUS}×적중 −${RULES.wrongGuess}×오답)</td>${COLORS.map(() => '<td></td>').join('')}<td></td></tr>
 <tr><td><b>최종</b></td>${COLORS.map(() => '<td></td>').join('')}<td></td></tr></table>
-<h3>지목 (게임 종료 때 각자 적고 동시에 공개)</h3>
+<h3>지목 (게임 종료 때 각자 적고 동시에 공개 · 선택)</h3>
 <table><tr><th>지목하는 사람 →<br>대상 ↓</th>${COLORS.map(([n]) => `<th>${n}</th>`).join('')}</tr>
 ${COLORS.map(([n]) => `<tr><td>${n}의 비밀 구단</td>${COLORS.map(() => '<td></td>').join('')}</tr>`).join('')}</table>
 <h3>플레이테스트 메모</h3>
@@ -56,7 +58,7 @@ ${COLORS.map(([n]) => `<tr><td>${n}의 비밀 구단</td>${COLORS.map(() => '<td
 
 const market = `<section class="sheet"><h2>시장 칸 보드</h2><div class="slots">${Array.from({ length: 8 }, (_, i) => `<div class="slot">${i + 1}</div>`).join('')}</div>
 <h2>구단 자리</h2><div class="slots six">${Array.from({ length: 6 }, (_, i) => `<div class="slot">${LETTERS[i]}</div>`).join('')}</div>
-<p>준비물 추가: 4색 큐브 각 8개 (또는 색 클립·바둑돌)</p></section>`;
+<p>준비물 추가: 4색 큐브 각 16개 (공개 기록 8 + 계약 표시 8, 또는 색 클립·바둑돌)</p></section>`;
 
 const group = (title: string, cards: string[]) => `<h2 class="gt">${title} (${cards.length}장)</h2><div class="grid">${cards.join('')}</div>`;
 

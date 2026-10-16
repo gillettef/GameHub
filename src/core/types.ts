@@ -33,12 +33,16 @@ export interface MarketEvent {
 
 export type AgentKind = 'human' | 'ai';
 export type AiLevel = 'easy' | 'normal';
+/** AI 성향 (시뮬레이션용. 앱은 level 로 random/balanced 를 쓴다) */
+export type PersonaKey = 'random' | 'balanced' | 'greedy' | 'cautious' | 'blatant' | 'stealth' | 'ignore' | 'deducer' | 'spoiler' | 'pass' | 'low' | 'high';
 
 export interface AgentState {
   name: string;
   kind: AgentKind;
   /** AI 난이도. 없으면 easy */
   level?: AiLevel;
+  /** AI 성향 (지정하면 level 대신 사용) */
+  persona?: PersonaKey;
   /** 계약 수수료 합계 (비밀 구단·지목 점수는 게임 종료 때 final 에 따로) */
   score: number;
   deals: number;
@@ -76,7 +80,9 @@ export type InvalidReason =
   | 'not-in-market'
   | 'card-not-owned'
   /** 제시액 < 몸값 */
-  | 'under-cost';
+  | 'under-cost'
+  /** 매력도가 최소치 미만이라 구단이 거절 */
+  | 'rejected';
 
 export type EntryStatus = 'won' | 'lost' | 'pass' | 'invalid';
 

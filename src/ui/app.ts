@@ -1,4 +1,4 @@
-import { MAX_AGENTS, PLAYERS, createGame, finishGame, isDemand, nextRound, rankings, resolveRound } from '../core';
+import { MAX_AGENTS, MIN_AGENTS, PLAYERS, createGame, finishGame, isDemand, nextRound, rankings, resolveRound } from '../core';
 import type { GameState, Submission } from '../core';
 import { loadProfile, loadSession, newProfile, saveProfile, saveSession, type Session } from '../store/storage';
 import { homeScreen, registerScreen } from './screens/home';
@@ -202,7 +202,8 @@ const actions: Record<string, (arg: string) => void> = {
     if (ui.session && ui.session.game.phase !== 'done' && !confirm('진행 중인 게임이 있습니다. 새로 시작할까요?')) return;
     ui.seats = [
       { name: ui.profile!.nick, kind: 'human' },
-      { name: AI_NAMES[0]!, kind: 'ai', level: 'easy' },
+      { name: AI_NAMES[0]!, kind: 'ai', level: 'normal' },
+      { name: AI_NAMES[1]!, kind: 'ai', level: 'normal' },
     ];
     ui.error = '';
     ui.view = 'setup';
@@ -223,6 +224,7 @@ const actions: Record<string, (arg: string) => void> = {
     if (s?.kind === 'ai') s.level = s.level === 'normal' ? 'easy' : 'normal';
   },
   'seat-del': (i) => {
+    if (ui.seats.length <= MIN_AGENTS) return;
     ui.seats.splice(Number(i), 1);
   },
   start: () => {
@@ -257,14 +259,13 @@ const actions: Record<string, (arg: string) => void> = {
     if (o) submit(o);
   },
   guess: (arg) => {
-    const [who, clubId] = arg.split(':').map(Number);
-    ui.guess!.picks[who!] = clubId!;
+    const [who, club] = arg.split(':');
+    // 'none' = 이 에이전트는 지목하지 않음 (틀리면 감점이라 지목은 선택)
+    if (club === 'none') delete ui.guess!.picks[Number(who)];
+    else ui.guess!.picks[Number(who)] = Number(club);
   },
   'guess-submit': () => {
-    const s = ui.session!;
-    const picks = ui.guess!.picks;
-    if (s.game.agents.some((_, i) => i !== s.turn && picks[i] === undefined)) return;
-    submitGuesses({ ...picks });
+    submitGuesses({ ...ui.guess!.picks });
   },
   next: () => advance(),
 };

@@ -1,4 +1,4 @@
-import { BUDGET_CUT, DEMANDS, EVENT_BONUS, club, player } from './data';
+import { BUDGET_CUT, DEMANDS, EVENT_BONUS, RULES, club, player } from './data';
 import type { AgentState, Club, Demand, EventKey, Evaluation, GameState, InvalidReason, Offer, PlayerCard } from './types';
 
 /** 이번 라운드 이벤트 */
@@ -12,14 +12,17 @@ export const offerValue = (c: Club, event: EventKey): number => c.budget - (even
 /** 포지션 일치 +2, 선호 특성 일치 +1 */
 export const fitScore = (p: { pos: string; trait: string }, c: Club): number => (p.pos === c.pos ? 2 : 0) + (p.trait === c.pref ? 1 : 0);
 
+/** 요구 수수료 카드의 매력도 감점 */
+export const demandPenalty = (d: Demand): number => RULES.penalty[d - 1] ?? d;
+
 /** 이벤트로 붙는 수수료 */
 export function eventFee(p: PlayerCard, event: EventKey): number {
   const hit =
     (event === 'fw' && p.pos === 'FW') ||
     (event === 'defense' && (p.pos === 'DF' || p.pos === 'GK')) ||
     (event === 'young' && p.trait === '유망주') ||
-    (event === 'big' && p.cost >= 6) ||
-    event === 'deadline';
+    (event === 'big' && p.cost >= 6);
+  if (event === 'deadline') return RULES.deadlineBonus;
   return hit ? EVENT_BONUS : 0;
 }
 
@@ -35,7 +38,9 @@ export function evaluateOffer(offer: Offer, event: EventKey): Evaluation | Inval
   const p = player(offer.playerId);
   const c = club(offer.clubId);
   if (offerValue(c, event) < p.cost) return 'under-cost';
-  return { attract: fitScore(p, c) - offer.demand, fee: p.base + offer.demand + eventFee(p, event) };
+  const attract = fitScore(p, c) - demandPenalty(offer.demand);
+  if (RULES.minAttract !== null && attract < RULES.minAttract) return 'rejected';
+  return { attract, fee: p.base + offer.demand + eventFee(p, event) };
 }
 
 export const isEvaluation = (r: Evaluation | InvalidReason): r is Evaluation => typeof r === 'object';
@@ -55,6 +60,7 @@ export function validateOffer(state: GameState, agentIdx: number, offer: Offer):
 
 /** 요구 수수료 카드를 낸 뒤의 손패. 4장을 모두 쓰면 1~4를 다시 가져온다 */
 export function playCard(hand: readonly Demand[], demand: Demand): Demand[] {
+  if (!RULES.cycle) return [...DEMANDS];
   const i = hand.indexOf(demand);
   if (i < 0) return [...hand];
   const rest = [...hand.slice(0, i), ...hand.slice(i + 1)];
@@ -65,4 +71,5 @@ export const INVALID_TEXT: Record<InvalidReason, string> = {
   'not-in-market': '시장에 없는 선수/구단',
   'card-not-owned': '손에 없는 카드',
   'under-cost': '몸값 미달',
+  rejected: '매력도 부족 (구단 거절)',
 };

@@ -20,7 +20,7 @@ export function homeScreen(ui: UiState): string {
   const resume = s && s.game.phase !== 'done';
   const rate = p.games ? Math.round((p.wins / p.games) * 100) : 0;
   return `${header(`<span class="pill">${esc(p.nick)}</span>`)}<main class="content">
-    <section class="hero small"><h1>에이전트의 전쟁</h1><p class="mu">AI 또는 친구와 한 기기로 최대 ${MAX_AGENTS}명</p></section>
+    <section class="hero small"><h1>에이전트의 전쟁</h1><p class="mu">AI 또는 친구와 한 기기로 3~${MAX_AGENTS}명</p></section>
     ${resume ? `<button class="card resume" data-act="resume"><span>진행 중인 게임</span><b>라운드 ${s.game.round}/${TOTAL_ROUNDS} 이어하기 →</b></button>` : ''}
     <section class="card"><h3>📊 내 전적</h3>
       <div class="stats"><div><small>플레이</small><b>${p.games}</b></div><div><small>승리</small><b>${p.wins}</b></div><div><small>승률</small><b>${rate}%</b></div><div><small>누적 수수료</small><b>${money(p.total)}</b></div></div>
