@@ -9,7 +9,7 @@ import {
   peekPile,
 } from "./cards.js";
 import { randomUUID } from "node:crypto";
-import { BALANCE, examCreditForRank } from "./config.js";
+import { BALANCE, activityBaseDice, examCreditForRank } from "./config.js";
 import { describeAbility } from "./creatures.js";
 import { createDuelPile } from "./duelCards.js";
 import { describeExam, pickExamCards } from "./examCards.js";
@@ -116,8 +116,7 @@ export function diceSuccessChance(n: number, target: number): number {
 
 // 굴림 버튼의 기본 주사위 수: 성공 확률이 defaultDiceSuccess 이상이 되는 가장 적은 개수 (그만큼 못 미치면 가진 마나기운 전부). 남는 마나기운은 다시 굴리기에 쓴다
 // (기본 주사위가 있으면 기운 0개도 고를 수 있고, 굴리는 주사위는 낸 기운 + 기본 주사위다)
-export function suggestDiceCount(mana: number, target: number): number {
-  const base = BALANCE.baseDice;
+export function suggestDiceCount(mana: number, target: number, base = activityBaseDice()): number {
   for (let n = base > 0 ? 0 : 1; n <= mana; n++) if (diceSuccessChance(n + base, target) >= BALANCE.defaultDiceSuccess) return n;
   return base > 0 ? mana : Math.max(1, mana);
 }
@@ -134,7 +133,7 @@ export function explorationChance(state: GameState, player: PlayerGameState, car
   if (!card.check) return 1;
   const n = suggestDiceCount(usableFuel(player, BALANCE.rollFuel.exploration), exploreTarget(card.check.target));
   const catchUp = overallGap(state, player.id) >= BALANCE.catchUpGap ? BALANCE.catchUpBonus : 0;
-  const dice = n + BALANCE.baseDice;
+  const dice = Math.max(1, n + activityBaseDice());
   const mean = dieMean() * dice + catchUp;
   const sd = Math.sqrt(dice * dieVariance());
   return 1 - normalCdf((exploreTarget(card.check.target) - 0.5 - mean) / sd);
@@ -301,9 +300,18 @@ function failLearning(state: GameState, player: PlayerGameState, activityId: "cr
     return ` 서툴렀지만 ${TOKEN_NAME[kind]} +1`;
   }
   const reward = failRewardOf(activityId, card);
+  // 62-7절: 낸 재료 기운 중 failKeepFuel개는 잃지 않고 이월한다 (낸 것이 없으면 돌려받을 것도 없다)
+  const keep = Math.min(BALANCE.failKeepFuel, rollFuelPaid[player.id] ?? 0);
+  if (keep > 0) {
+    const kind = FAIL_FUEL[activityId];
+    reward.tokens = { ...reward.tokens, [kind]: (reward.tokens?.[kind] ?? 0) + keep };
+  }
   applyCardEffect(state, player, reward);
   return Object.keys(reward).length ? ` 실패해도 ${describeEffect(reward)}` : "";
 }
+const FAIL_FUEL = { creature: "charm", lab: "intelligence", exploration: "stamina", duel: "mana" } as const;
+// 지금 결과를 적용하는 굴림에서 사람마다 실제로 낸 재료 기운 개수 (resolveRoll이 채운다, 실패해도 이월 62-7절)
+let rollFuelPaid: Record<string, number> = {};
 
 // 성과 횟수 (56절 B3 특별상)
 function addFeat(player: PlayerGameState, key: FeatKey, n = 1): void {
@@ -478,14 +486,13 @@ const failRewardLine = (e: CardEffect) => (Object.keys(e).length > 0 ? [`실패�
 
 // 굴리기 전에 재료 기운(fuel, 기본 마나기운)을 1~낼 수 있는 개수(보유량과 능력치 중 작은 쪽) 사이에서 골라 내고 낸 개수만큼 굴리는 굴림 항목
 // (재료 기운이 없으면 주사위 1개를 공짜로 굴린다). 목표값(suggestTarget)이 있는 판정은 기본 개수를 "성공 확률이 충분한 가장 적은 개수"로 잡고, 없으면 낼 수 있는 만큼 전부다
-function choiceEntry(player: PlayerGameState, label: string, suggestTarget?: number, fuel: KeptToken = "mana") {
+function choiceEntry(player: PlayerGameState, label: string, suggestTarget?: number, fuel: KeptToken = "mana", base = activityBaseDice()) {
   const tokens = usableFuel(player, fuel);
-  const base = BALANCE.baseDice;
   return {
     playerId: player.id,
     label,
     // 굴리기 전에는 "낼 기운 개수"의 기본값, 굴린 뒤에는 실제로 굴린 주사위 수
-    diceCount: tokens > 0 ? (suggestTarget === undefined ? tokens : suggestDiceCount(tokens, suggestTarget)) : Math.max(1, base),
+    diceCount: tokens > 0 ? (suggestTarget === undefined ? tokens : suggestDiceCount(tokens, suggestTarget, base)) : Math.max(1, base),
     diceToken: fuel,
     ...(tokens > 0 ? { diceChoiceMax: tokens } : {}),
     ...(base > 0 ? { baseDice: base } : {}),
@@ -731,7 +738,7 @@ export function activityBlockReason(state: ActivityView, playerId: string, activ
   if (!canPay(player, open, 0, extra)) return `카드를 열 지력기운 ${open}개가 필요해요 (먼저 들어오면 카드를 여는 사람이 지력기운을 내요).`;
   if (activityId === "tournament" && !BALANCE.tournamentCards && player.manaTokens < 1) return "마나기운이 1개 이상 필요해요 (낸 마나기운만큼 주사위를 굴려요).";
   if (activityId === "duel") {
-    const need = (BALANCE.baseDice > 0 ? 0 : 1) + BALANCE.duelManaFee;
+    const need = (activityBaseDice() > 0 ? 0 : 1) + BALANCE.duelManaFee;
     if (need > 0 && player.manaTokens < need) return `마나기운이 ${need}개 이상 필요해요 (${BALANCE.duelManaFee}개는 지목당한 친구에게 건네고, 낸 마나기운만큼 주사위를 굴려요).`;
     if (duelTargets(state, playerId).length === 0) return "지목할 수 있는 친구가 없어요.";
     if (player.charm < BALANCE.duelCharmFee) return `지목당한 친구에게 건넬 매력(${BALANCE.duelCharmFee})이 없어요.`;
@@ -771,7 +778,7 @@ function startTournament(state: GameState, player: PlayerGameState): void {
 function fuelLine(player: PlayerGameState, fuel: KeptToken): string {
   const tokens = usableFuel(player, fuel);
   const limited = tokens < tokensOf(player, fuel) ? ` (한 번에 ${STAT_NAME[ENERGY_STAT[fuel]]}${BALANCE.rollLimitBonus > 0 ? ` + ${BALANCE.rollLimitBonus}개까지만` : "만큼만"} 낼 수 있어요)` : "";
-  const base = BALANCE.baseDice;
+  const base = activityBaseDice();
   const rerollNote = BALANCE.reroll ? " (다시 굴리기는 마나기운으로 해요)" : "";
   if (base > 0) return tokens > 0 ? `${PAY_OBJECT[fuel]} 0~${tokens}개 골라 내고, 낸 개수 + 공짜 주사위 ${base}개를 굴려요${limited}${rerollNote}` : `${TOKEN_NAME[fuel]}이 없어서 공짜 주사위 ${base}개를 굴려요`;
   return tokens > 0
@@ -917,7 +924,7 @@ function startDuel(state: GameState, player: PlayerGameState, target: PlayerGame
     title: `마법 겨루기 · ${player.name} vs ${target.name}`,
     lines: [
       `${player.name}님이 ${target.name}님을 지목했어요${BALANCE.duelManaFee > 0 ? ` (도전자가 마나기운 ${BALANCE.duelManaFee}개를 건넸어요)` : ""}`,
-      `${BALANCE.duelDefenderStatDice === "flat" ? "지목당한 친구는 주사위 1개 + 주문력으로 자동으로 막아요. 도전자는 그 점수를 보고" : BALANCE.duelTargetRollsFirst ? "지목당한 친구가 먼저, 도전자는 그 결과를 보고" : "도전자부터 한 명씩"} 마나기운을 골라 내고 ${BALANCE.baseDice > 0 ? `낸 개수 + 공짜 ${BALANCE.baseDice}개` : "낸 개수만큼"} 주사위를 굴려요. ${
+      `${BALANCE.duelDefenderStatDice === "flat" ? "지목당한 친구는 주사위 1개 + 주문력으로 자동으로 막아요. 도전자는 그 점수를 보고" : BALANCE.duelTargetRollsFirst ? "지목당한 친구가 먼저, 도전자는 그 결과를 보고" : "도전자부터 한 명씩"} 마나기운을 골라 내고 ${activityBaseDice() > 0 ? `낸 개수 + 공짜 ${activityBaseDice()}개` : "낸 개수만큼"} 주사위를 굴려요. ${
         BALANCE.duelTieWinner === "defender" ? "도전자가 더 높아야 이겨요 (같으면 막아 낸 거예요)" : BALANCE.duelTieWinner === "challenger" ? "합이 같거나 높으면 도전자가 이겨요" : "합이 큰 쪽이 이기고, 같으면 무승부예요"
       }${BALANCE.duelDefenderReward ? "" : ". 막아 내도 보상은 없어요"}${BALANCE.duelCharmFee > 0 ? `. 도전자는 지목당한 친구에게 매력 ${BALANCE.duelCharmFee}을 건네요` : ""}`,
     ],
@@ -1518,6 +1525,7 @@ export function submitRoll(state: GameState, playerId: string, diceCount?: numbe
     const min = (entry.baseDice ?? 0) > 0 ? 0 : 1;
     if (!Number.isInteger(n) || n < min || n > entry.diceChoiceMax) throw new Error(`${PAY_OBJECT[entry.diceToken ?? "mana"]} ${min}~${entry.diceChoiceMax}개 사이로 골라 주세요.`);
     pay(player, entry.diceToken ?? "mana", n);
+    entry.fuelPaid = n;
     entry.diceCount = n + (entry.baseDice ?? 0);
     delete entry.diceChoiceMax;
   }
@@ -1619,6 +1627,7 @@ function resolveRoll(state: GameState): void {
   if (!pending || !ctx) return;
   const diceOf = (id: string) => pending.entries.find((e) => e.playerId === id)?.dice ?? [];
   const assistOf = (id: string) => pending.entries.find((e) => e.playerId === id)?.assist ?? 0;
+  rollFuelPaid = Object.fromEntries(pending.entries.map((e) => [e.playerId, e.fuelPaid ?? 0]));
   state.pendingRoll = null;
   state.hidden.roll = null;
   if (ctx.kind === "first") {
@@ -1732,7 +1741,7 @@ function beginExam(state: GameState, examType: "midterm_exam" | "final_exam"): v
       `점수 = ${describeExam(card, STAT_NAME)} — 높은 순서로 순위를 매겨요`,
       `${BALANCE.turnOrderRule === "creditAsc" ? "학점이 낮은 친구부터" : "선부터"} 한 명씩 ${TOKEN_NAME[examFuel(card)]}을 내고(한 번에 그 능력치${BALANCE.rollLimitBonus > 0 ? ` + ${BALANCE.rollLimitBonus}개까지` : "만큼까지"}) ${BALANCE.baseDice > 0 ? `낸 개수 + 공짜 ${BALANCE.baseDice}개` : "낸 개수만큼(없으면 공짜 1개)"} 주사위를 굴려요${BALANCE.reroll ? ". 마나기운으로 다시 굴릴 수 있어요" : ""}`,
     ],
-    entries: orderFromStarter(state).map((id) => choiceEntry(state.players[id], state.players[id].name, undefined, examFuel(card))),
+    entries: orderFromStarter(state).map((id) => choiceEntry(state.players[id], state.players[id].name, undefined, examFuel(card), BALANCE.baseDice)),
   };
 }
 

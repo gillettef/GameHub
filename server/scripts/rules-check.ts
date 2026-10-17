@@ -51,6 +51,10 @@ import { createClassDeck } from "../src/game/classCards.js";
 import { eventTemplates } from "../src/game/newsCards.js";
 import { cramStep, rollAndConfirm } from "./_drive.js";
 
+// 62-7절(2026-10-17) 공개 장수 = 인원·자율활동 공짜 주사위 없음·실패해도 기운 1개 이월과 그에 맞춘 목표값도 전용 검증에서만 켠다 (MARKET62보다 먼저 되돌린다)
+const P627_KEYS = ["classMarketExtra", "activityMarketExtra", "activityBaseDice", "failKeepFuel", "trainTargetScale", "exploreTargetMod", "duelCardCount"] as const;
+const P627 = JSON.parse(JSON.stringify(Object.fromEntries(P627_KEYS.map((k) => [k, BALANCE[k]])))) as Partial<typeof BALANCE>;
+Object.assign(BALANCE, { classMarketExtra: 1, activityMarketExtra: 1, activityBaseDice: null, failKeepFuel: 0, trainTargetScale: 0.56, exploreTargetMod: 1, duelCardCount: 12 } as Partial<typeof BALANCE>);
 // 62절(2026-10-17) 활동 카드 한 덱·시험 공고도 전용 검증에서만 켜고, 그 앞의 검증은 61절 기본값으로 본다 (LIGHT보다 먼저 되돌린다)
 const MARKET_KEYS = ["activityMarket", "examsAtStart", "fixedExams", "labTargetMod", "duelCardCount"] as const;
 const MARKET62 = JSON.parse(JSON.stringify(Object.fromEntries(MARKET_KEYS.map((k) => [k, BALANCE[k]])))) as Partial<typeof BALANCE>;
@@ -2371,7 +2375,7 @@ test("61절: 12개월 게임이 봇끼리 끝까지 진행된다 (2~5인, 전략
 // ── 62절 실험 (2026-10-17): 활동 카드 한 덱 · 시험 공고 (스위치, 기본값은 61절) ──
 const MARKET = { ...CURRENT, ...MARKET62 } as Partial<typeof BALANCE>;
 
-test("62절 기본값(2026-10-17 채택): 활동 카드 한 덱(겨루기 카드 12장)·시험 공고(무작위 과목)·연구 목표 -1", () => {
+test("62절 기본값(2026-10-17 채택, 겨루기 카드 장수는 62-7절에서 14장): 활동 카드 한 덱(겨루기 카드 12장)·시험 공고(무작위 과목)·연구 목표 -1", () => {
   assert.deepEqual(MARKET62, { activityMarket: true, examsAtStart: false, fixedExams: null, labTargetMod: -1, duelCardCount: 12 });
 });
 
@@ -2456,6 +2460,110 @@ test("62절 시험 공고: 시험 과목은 시험 카드 8장 중 무작위(중
 
 test("62절: 한 덱 + 시험 공고로 12개월 게임이 봇끼리 끝까지 진행된다 (2~5인)", () => {
   withBalance(MARKET, () => {
+    for (const n of [2, 3, 4, 5]) {
+      for (let i = 0; i < 4; i++) {
+        const state = createGame(Array.from({ length: n }, (_, k) => ({ id: `p${k}`, name: `p${k}`, isBot: true })));
+        let guard = 0;
+        while (state.phase !== "ended" && guard++ < 8000) botStep(state, BOT_PERSONALITIES[(n + i) % BOT_PERSONALITIES.length]);
+        assert.equal(state.phase, "ended");
+      }
+    }
+  });
+});
+
+// ── 62-7절 (2026-10-17): 공개 장수 = 인원, 자율활동 공짜 주사위 없음, 실패해도 기운 1개 이월 ──
+const ROLL627 = { ...MARKET, ...P627 } as Partial<typeof BALANCE>;
+
+test("62-7절 기본값: 수업·활동 카드 인원만큼, 자율활동 공짜 주사위 0, 실패하면 기운 1개 이월, 조련 0.42·탐험 -2·겨루기 카드 14장", () => {
+  assert.deepEqual(P627, { classMarketExtra: 0, activityMarketExtra: 0, activityBaseDice: 0, failKeepFuel: 1, trainTargetScale: 0.42, exploreTargetMod: -2, duelCardCount: 14 });
+});
+
+test("62-7절: 수업카드와 활동 카드를 인원만큼 공개한다", () => {
+  withBalance({ ...ROLL627, schoolNewsEvents: false }, () => {
+    for (const n of [2, 3, 4, 5]) {
+      const state = newGame(n);
+      assert.equal(state.classMarket.length, n, `${n}인 수업카드`);
+      assert.equal(Object.values(state.activityOffers).reduce((s, o) => s + (o?.cards.length ?? 0), 0), n, `${n}인 활동 카드`);
+    }
+  });
+});
+
+// 마법생물·연구·탐험 중 하나를 고르고 굴림 직전까지 진행한다 (나머지 친구는 아무거나 고른다). 판정 없는 탐험 카드라 굴림이 없으면 null
+function toActivityRoll(state: GameState): { id: string; kind: ActivityId } | null {
+  toActivity(state);
+  const id = state.activityOrder[0];
+  const kind = availableActivities(state, id).find((a) => a !== "duel");
+  assert.ok(kind, "판정 활동 카드가 있다");
+  selectActivity(state, id, kind);
+  for (const other of state.activityOrder.slice(1)) {
+    const a = availableActivities(state, other).find((k) => k !== "duel");
+    if (a) selectActivity(state, other, a);
+  }
+  let guard = 0;
+  while (!state.pendingRoll && guard++ < 10) {
+    if (state.pendingPick) chooseActivityCard(state, state.pendingPick.playerId, choosePick(state, BOT_PERSONALITIES[0]));
+    else advanceResolution(state);
+  }
+  if (currentRoller(state) !== id) return null;
+  return { id, kind };
+}
+
+test("62-7절: 자율활동은 낸 기운만큼만 굴리고(공짜 주사위 없음, 1개 이상), 시험은 공짜 주사위 1개 그대로", () => {
+  withBalance(ROLL627, () => {
+    let state!: GameState;
+    let found: { id: string } | null = null;
+    for (let i = 0; i < 50 && !found; i++) {
+      state = newGame(3);
+      for (const p of Object.values(state.players)) Object.assign(p, { charmTokens: 3, staminaTokens: 3, intelligenceTokens: 3 });
+      if ((["creature", "lab", "exploration"] as ActivityId[]).some((a) => (state.activityOffers[a]?.cards.length ?? 0) > 0)) found = toActivityRoll(state);
+    }
+    assert.ok(found, "판정 굴림이 있는 판을 찾는다");
+    const { id } = found;
+    const entry = state.pendingRoll!.entries.find((e) => e.playerId === id)!;
+    assert.equal(entry.baseDice, undefined, "공짜 주사위 없음");
+    assert.throws(() => submitRoll(state, id, 0), /1~/);
+    submitRoll(state, id, 2);
+    assert.equal(entry.dice!.length, 2, "낸 2개만큼 굴린다");
+  });
+  withBalance({ ...ROLL627, examsAtStart: true, fixedExams: { midterm: "마법 마라톤", final: "주문 실기" } }, () => {
+    const state = newGame(3);
+    let guard = 0;
+    while (state.phase !== "exam" && guard++ < 20000) {
+      if (state.pendingRoll && state.pendingRoll.kind === "exam") break;
+      botStep(state);
+    }
+    const exam = state.pendingRoll;
+    assert.equal(exam?.kind, "exam");
+    assert.ok(exam!.entries.every((e) => e.baseDice === BALANCE.baseDice && BALANCE.baseDice === 1), "시험은 공짜 주사위 1개");
+  });
+});
+
+test("62-7절: 자율활동에 실패하면 낸 기운 중 1개는 남아 다음 달로 이월된다 (성공하면 모두 쓴다)", () => {
+  const seen = new Set<string>();
+  for (let round = 0; round < 60 && seen.size < 2; round++) {
+    withBalance(ROLL627, () => {
+      const state = newGame(3);
+      for (const p of Object.values(state.players)) Object.assign(p, { charmTokens: 3, staminaTokens: 3, intelligenceTokens: 3 });
+      if (!(["creature", "lab", "exploration"] as ActivityId[]).some((a) => (state.activityOffers[a]?.cards.length ?? 0) > 0)) return;
+      const found = toActivityRoll(state);
+      if (!found) return;
+      const { id } = found;
+      const entry = state.pendingRoll!.entries.find((e) => e.playerId === id)!;
+      const fuel = entry.diceToken!;
+      const target = (state.hidden.roll as { target: number }).target;
+      const before = tokensOf(state.players[id], fuel);
+      submitRoll(state, id, 2);
+      const failed = entry.dice!.reduce((x, y) => x + y, 0) < target;
+      confirmRoll(state, id);
+      seen.add(failed ? "실패" : "성공");
+      assert.equal(tokensOf(state.players[id], fuel), before - 2 + (failed ? 1 : 0), `${failed ? "실패하면 1개 남는다" : "성공하면 모두 쓴다"} (${fuel})`);
+    });
+  }
+  assert.equal(seen.size, 2, "실패와 성공을 모두 확인했다");
+});
+
+test("62-7절: 12개월 게임이 봇끼리 끝까지 진행된다 (2~5인)", () => {
+  withBalance(ROLL627, () => {
     for (const n of [2, 3, 4, 5]) {
       for (let i = 0; i < 4; i++) {
         const state = createGame(Array.from({ length: n }, (_, k) => ({ id: `p${k}`, name: `p${k}`, isBot: true })));

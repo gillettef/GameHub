@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import express from "express";
 import { randomUUID } from "node:crypto";
 import { WebSocketServer, type WebSocket } from "ws";
-import { BALANCE } from "./game/config.js";
+import { BALANCE, activityBaseDice } from "./game/config.js";
 import { createRoom, getRoom, joinRoom, leaveRoom, leaveRoomIfNoHumans, scheduleRoomExpiry, broadcast, syncEmptyRoomExpiry, pickHost, HOST_AWAY_HANDOVER_MS, type Player, type Room } from "./rooms.js";
 import { BOT_NAMES, botAssist, botChooseDream, chooseActivityAction, choosePick, pickBotPersonality, playClassTurn, playCramTurn, rerollLowDice, type BotStrategy } from "./game/bot.js";
 import {
@@ -222,7 +222,7 @@ const PUBLIC_RULES: PublicRules = {
   duelChallengerBonus: BALANCE.duelChallengerBonus,
   duelWinCredit: BALANCE.duelWinReward.credit ?? 0,
   disabledActivities: BALANCE.disabledActivities,
-  baseDice: BALANCE.baseDice,
+  baseDice: activityBaseDice(), // 62-7절: 자율활동의 공짜 주사위 (시험은 굴림 항목의 baseDice로 따로 보인다)
   reroll: BALANCE.reroll,
   duelTargetKeepsTurn: BALANCE.duelTargetKeepsTurn,
   duelDefenderReward: BALANCE.duelDefenderReward,
@@ -230,6 +230,7 @@ const PUBLIC_RULES: PublicRules = {
   duelTargetOnce: BALANCE.duelTargetOnce,
   activityMarket: BALANCE.activityMarket,
   rollLimitBonus: BALANCE.rollLimitByStat ? BALANCE.rollLimitBonus : null,
+  failKeepFuel: BALANCE.failKeepFuel,
   duelDefenderStatDice: BALANCE.duelDefenderStatDice,
   explorationPenalty: BALANCE.explorationPenalty,
   growthCredit: BALANCE.growthCredit,

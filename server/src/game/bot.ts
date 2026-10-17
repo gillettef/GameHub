@@ -1,7 +1,7 @@
 // AI 봇 의사결정. 실제 게임(함께 플레이)과 밸런스 시뮬레이션(scripts/simulate.ts)이 함께 사용합니다.
 // 봇은 단순한 휴리스틱으로 움직입니다. 수업카드는 공개된 카드 중 성향에 맞는 능력치를 우선해 체력기운이 허용하는 카드를 1장 고르고,
 // 자율활동은 상황(마나기운 보유량, 마법 경연 진행도 등)과 성향 가중치를 곱해 점수가 높은 구역을 고릅니다.
-import { BALANCE } from "./config.js";
+import { BALANCE, activityBaseDice } from "./config.js";
 import {
   availableActivities,
   canPay,
@@ -158,7 +158,7 @@ function labChance(player: PlayerGameState, card: LabCard): number {
   const target = labTargetValue(card);
   const fuel = usableFuel(player, BALANCE.rollFuel.lab);
   const n = suggestDiceCount(fuel, target);
-  return diceSuccessChance(n + BALANCE.baseDice, target);
+  return diceSuccessChance(Math.max(1, n + activityBaseDice()), target);
 }
 
 // 대회 카드 (56절 C1): 성공 확률 × (카드 보상). 다른 구역처럼 성장 몫은 넣지 않는다
