@@ -94,3 +94,7 @@ VARIANTS.p2s16h0 = variant('p2s16h0', { supply: { 2: 16, 3: 18, 4: 16 }, startHa
 
 // v5 (2026-10-16 채택, 지금 규칙): v4 + 2인 큐브 16
 VARIANTS.v5 = variant('v5', { supply: { 2: 16, 3: 18, 4: 16 } }, V4);
+
+// 2026-10-17 선 규칙 재검토: 2인 ABAB(선 고정) vs ABBA(선 교대) vs 지금(공급처 큐브 최다 선)
+VARIANTS.v5fixed = variant('v5fixed', { firstPlayer: 'fixed' }, VARIANTS.v5!);
+VARIANTS.v5rotate = variant('v5rotate', { firstPlayer: 'rotate' }, VARIANTS.v5!);
