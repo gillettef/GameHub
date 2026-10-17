@@ -322,7 +322,7 @@ export const ACTIVITY_LABEL: Record<ActivityId, string> = {
 export const ACTIVITY_HINT: Record<ActivityId, string> = {
   tournament: "대회 카드 2장 중 하나를 골라 마나기운을 낸 만큼 주사위를 굴려 합이 목표 이상이면 입상! 주문력 +1·학점 +1과 카드 보상",
   creature: "카드 2장 중 하나, 매력기운 주사위 합이 카드의 기준 이상이면 데려와요! 매력 +1 · 학점 +2 · 속성 능력치 +1",
-  duel: "친구 한 명을 지목해요. 친구는 주사위 1개 + 주문력으로 막고, 내 마나기운 주사위 합이 더 높으면 주문력 +1 · 학점 +2, 그리고 친구가 나보다 높은 능력치 하나를 배워 +1. 친구도 자기 활동은 그대로 해요",
+  duel: "친구를 지목해 마나기운 주사위로 막기(주사위 1개 + 주문력)보다 높으면 승리! 주문력 +1 · 학점 +2 · 친구에게 배워 능력치 +1",
   exploration: "카드 2장 중 하나, 체력기운 주사위 합이 카드의 목표 이상이면 성공! 체력 +1 · 학점 +1과 카드 보상 (실패해도 손해 없음)",
   lab: "연구 카드 2장 중 하나, 지력기운 주사위 합이 카드의 목표 이상이면 성공! 지력 +1 · 학점 +1과 다른 능력치 카드 보상",
 };
@@ -396,7 +396,8 @@ export function activityBlockReason(game: GameState, playerId: string, activityI
   if (activityId === "duel") {
     const need = (game.rules.baseDice > 0 ? 0 : 1) + game.rules.duelManaFee;
     if (need > 0 && player.manaTokens < need) return `마나기운이 ${need}개 이상 필요해요`;
-    if (duelTargets(game, playerId).length === 0) return "지목할 수 있는 친구가 없어요";
+    if (duelTargets(game, playerId).length === 0)
+      return game.rules.duelTargetOnce && game.duels.length > 0 ? "이번 달은 친구들이 모두 이미 지목받았어요 (한 친구는 한 달에 한 번)" : "지목할 수 있는 친구가 없어요";
     if (player.charm < game.rules.duelCharmFee) return `건넬 매력(${game.rules.duelCharmFee})이 없어요`;
   }
   return null;
