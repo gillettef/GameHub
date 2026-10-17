@@ -149,7 +149,7 @@ export function makeNormalOffer(state: GameState, agentIdx: number, rng: Rng, ps
   const chosen = weightedPick(picks, rng, ps.sharp).offer;
   if (AI_TRACE.on) {
     const ev = evaluateOffer(chosen, currentEvent(state));
-    if (isEvaluation(ev)) AI_TRACE.items.push({ round: state.round, agent: agentIdx, playerId: chosen.playerId, predicted: winChance(rivals, chosen.playerId, ev.attract) });
+    if (isEvaluation(ev)) AI_TRACE.items.push({ round: state.round, agent: agentIdx, playerId: chosen.playerId, predicted: winChance(rivals, chosen.playerId, ev.attract, chosen.demand) });
   }
   return chosen;
 }
@@ -185,7 +185,7 @@ function scoreOffers(state: GameState, agentIdx: number, ps: Persona, rivals: Ri
         const offer = { playerId: pid, clubId, demand } as Offer;
         const ev = evaluateOffer(offer, event);
         if (!isEvaluation(ev)) continue;
-        const win = winChance(rivals, pid, ev.attract) ** ps.risk;
+        const win = winChance(rivals, pid, ev.attract, demand) ** ps.risk;
         let value = ev.fee * win + ps.greed * demandFee(demand) * win;
         const fit = ev.attract + demandPenalty(demand);
         if (clubId === agent.secret && ps.push > 0) {
@@ -227,17 +227,17 @@ function beliefRivals(state: GameState, agentIdx: number): RivalModel[] {
       const sus = suspicion(state, k);
       sus.delete(mine);
       const total = [...sus.values()].reduce((a, b) => a + b, 0) || 1;
-      const combos: { pid: number; attract: number; w: number }[] = [];
+      const combos: Combo[] = [];
       for (const [c, q] of sus) {
         const agents = state.agents.map((a, i) => (i === k ? { ...a, secret: c } : a));
         const m = policyModel({ ...state, agents }, k);
         for (const [pid, t] of m.target)
-          for (const [a, qa] of m.attract.get(pid) ?? []) combos.push({ pid, attract: a, w: (q / total) * t * qa });
+          for (const [key, qa] of m.attract.get(pid) ?? []) combos.push({ pid, attract: attractOf(key), demand: demandOf(key), w: (q / total) * t * qa });
       }
       // mix < 1: 단순 예측(1단계)을 섞어 상대도 나처럼 생각할 가능성에 대비한다 (과신 완화)
       const simple = predictRivals(state, agentIdx).find((r) => r.agent === k)!;
       for (const [pid, t] of simple.target)
-        for (const [a, qa] of simple.attract.get(pid) ?? []) combos.push({ pid, attract: a, w: ((1 - AI_MODEL.mix) / AI_MODEL.mix) * t * qa });
+        for (const [key, qa] of simple.attract.get(pid) ?? []) combos.push({ pid, attract: attractOf(key), demand: demandOf(key), w: ((1 - AI_MODEL.mix) / AI_MODEL.mix) * t * qa });
       return [toModel(k, combos)];
     });
   });
@@ -251,7 +251,7 @@ function policyModel(state: GameState, k: number): RivalModel {
     k,
     picks.flatMap((p) => {
       const ev = evaluateOffer(p.offer, event);
-      return isEvaluation(ev) ? [{ pid: p.offer.playerId, attract: ev.attract, w: Math.max(0.05, p.value) ** ps.sharp }] : [];
+      return isEvaluation(ev) ? [{ pid: p.offer.playerId, attract: ev.attract, demand: p.offer.demand, w: Math.max(0.05, p.value) ** ps.sharp }] : [];
     }),
   );
 }
@@ -274,7 +274,9 @@ function makeSpoilerOffer(state: GameState, agentIdx: number, rng: Rng): Offer |
   if (!model) return null;
   const [pid] = [...model.target].sort((a, b) => b[1] - a[1])[0] ?? [];
   if (pid === undefined) return null;
-  const dist = [...(model.attract.get(pid) ?? [])].sort((a, b) => b[1] - a[1]);
+  const byAttract = new Map<number, number>();
+  for (const [key, q] of model.attract.get(pid) ?? []) byAttract.set(attractOf(key), (byAttract.get(attractOf(key)) ?? 0) + q);
+  const dist = [...byAttract].sort((a, b) => b[1] - a[1]);
   const want = dist[0]?.[0];
   if (want === undefined) return null;
   const event = currentEvent(state);
@@ -289,12 +291,25 @@ function makeSpoilerOffer(state: GameState, agentIdx: number, rng: Rng): Offer |
   return options.length ? options[rng.int(options.length)]! : null;
 }
 
-/** 상대 한 명의 예상 제안: 선수별 노릴 확률과 그때의 매력도 분포 */
+/** 상대 한 명의 예상 제안: 선수별 노릴 확률과 그때의 (매력도, 요구 수수료 카드) 분포 */
 interface RivalModel {
   agent: number;
   target: Map<number, number>;
+  /** 선수 → attractKey(매력도, 카드) → 조건부 확률 */
   attract: Map<number, Map<number, number>>;
 }
+
+interface Combo {
+  pid: number;
+  attract: number;
+  demand: Demand;
+  w: number;
+}
+
+/** (매력도, 카드)를 하나의 수로 묶는다. 카드는 1~4라 한 자리 */
+const attractKey = (attract: number, demand: number): number => attract * 10 + demand;
+const demandOf = (key: number): Demand => (((key % 10) + 10) % 10) as Demand;
+const attractOf = (key: number): number => (key - demandOf(key)) / 10;
 
 /**
  * 상대의 수 예측 (한 단계 추론): 상대는 모든 (선수, 구단, 카드) 조합 중
@@ -318,7 +333,7 @@ function predictRivals1(state: GameState, agentIdx: number): RivalModel[] {
   const event = currentEvent(state);
   return state.agents.flatMap((o, k) => {
     if (k === agentIdx) return [];
-    const combos: { pid: number; attract: number; w: number }[] = [];
+    const combos: Combo[] = [];
     for (const pid of state.market) {
       const best = bestFit(state, pid, event);
       for (const clubId of state.clubs)
@@ -326,25 +341,10 @@ function predictRivals1(state: GameState, agentIdx: number): RivalModel[] {
           const ev = evaluateOffer({ playerId: pid, clubId, demand } as Offer, event);
           if (!isEvaluation(ev)) continue;
           const w0 = Math.min(0.95, Math.max(0.05, 0.5 + 0.2 * (ev.attract - (best - 2.5))));
-          combos.push({ pid, attract: ev.attract, w: Math.exp(ev.fee * w0 * AI_MODEL.beta1) });
+          combos.push({ pid, attract: ev.attract, demand, w: Math.exp(ev.fee * w0 * AI_MODEL.beta1) });
         }
     }
-    const sum = combos.reduce((a, c) => a + c.w, 0);
-    const target = new Map<number, number>();
-    const attract = new Map<number, Map<number, number>>();
-    for (const c of combos) {
-      const q = c.w / sum;
-      target.set(c.pid, (target.get(c.pid) ?? 0) + q);
-      const d = attract.get(c.pid) ?? new Map<number, number>();
-      d.set(c.attract, (d.get(c.attract) ?? 0) + q);
-      attract.set(c.pid, d);
-    }
-    // 매력도 분포는 그 선수를 노린다는 조건부 확률로 정규화
-    for (const [pid, d] of attract) {
-      const t = target.get(pid)!;
-      for (const [a, q] of d) d.set(a, q / t);
-    }
-    return [{ agent: k, target, attract }];
+    return [toModel(k, combos)];
   });
 }
 
@@ -360,18 +360,18 @@ function predictRivals2(state: GameState, agentIdx: number): RivalModel[] {
 function level2Model(state: GameState, k: number): RivalModel {
   const event = currentEvent(state);
   const others = predictRivals(state, k);
-  const combos: { pid: number; attract: number; w: number }[] = [];
+  const combos: Combo[] = [];
   for (const pid of state.market)
     for (const clubId of state.clubs)
       for (const demand of state.agents[k]!.hand) {
         const ev = evaluateOffer({ playerId: pid, clubId, demand } as Offer, event);
         if (!isEvaluation(ev)) continue;
-        combos.push({ pid, attract: ev.attract, w: Math.exp(ev.fee * winChance(others, pid, ev.attract) * AI_MODEL.beta2) });
+        combos.push({ pid, attract: ev.attract, demand, w: Math.exp(ev.fee * winChance(others, pid, ev.attract, demand) * AI_MODEL.beta2) });
       }
   return toModel(k, combos);
 }
 
-function toModel(agent: number, combos: { pid: number; attract: number; w: number }[]): RivalModel {
+function toModel(agent: number, combos: Combo[]): RivalModel {
   const sum = combos.reduce((a, c) => a + c.w, 0) || 1;
   const target = new Map<number, number>();
   const attract = new Map<number, Map<number, number>>();
@@ -379,7 +379,8 @@ function toModel(agent: number, combos: { pid: number; attract: number; w: numbe
     const q = c.w / sum;
     target.set(c.pid, (target.get(c.pid) ?? 0) + q);
     const d = attract.get(c.pid) ?? new Map<number, number>();
-    d.set(c.attract, (d.get(c.attract) ?? 0) + q);
+    const key = attractKey(c.attract, c.demand);
+    d.set(key, (d.get(key) ?? 0) + q);
     attract.set(c.pid, d);
   }
   for (const [pid, d] of attract) {
@@ -390,12 +391,17 @@ function toModel(agent: number, combos: { pid: number; attract: number; w: numbe
 }
 
 /** 내 매력도로 이 선수를 계약할 확률: 모든 상대가 안 노리거나 더 낮은 매력도로 노려야 이긴다 (같으면 상쇄) */
-function winChance(rivals: RivalModel[], playerId: number, attract: number): number {
+function winChance(rivals: RivalModel[], playerId: number, attract: number, demand: Demand): number {
+  // 동률이면 높은 카드가 이기는 규칙(tieBudget 2)에서는 같은 매력도의 낮은 카드도 이긴다
+  const tieByCard = RULES.tieBudget === 2;
   let p = 1;
   for (const r of rivals) {
     const t = r.target.get(playerId) ?? 0;
     let lower = 0;
-    for (const [a, q] of r.attract.get(playerId) ?? []) if (a < attract) lower += q;
+    for (const [key, q] of r.attract.get(playerId) ?? []) {
+      const a = attractOf(key);
+      if (a < attract || (tieByCard && a === attract && demandOf(key) < demand)) lower += q;
+    }
     p *= 1 - t + t * lower;
   }
   return Math.min(0.97, Math.max(0.03, p));
