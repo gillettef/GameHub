@@ -6,7 +6,7 @@ import { HexBoard } from '../components/HexBoard';
 import { Market } from '../components/Market';
 import { PlantBar } from '../components/PlantBar';
 import { RevealPanel } from '../components/RevealPanel';
-import { asState, buildCells, legalKeys, previewPlant } from '../game/derived';
+import { asState, buildCells, distinctRotations, legalKeys, previewPlant } from '../game/derived';
 import { selectCanPlant, selectCanTake, selectIsMyTurn, selectSelectedSpecies, selectState, selectViewerId, useGameStore } from '../store/gameStore';
 import styles from './BoardTab.module.css';
 
@@ -84,7 +84,9 @@ export const BoardTab = memo(function BoardTab() {
                 ? '이 카드는 지금 심을 칸이 없습니다. 다른 카드를 고르세요'
                 : !pendingPos
                   ? '밝게 빛나는 칸에 심을 수 있습니다'
-                  : '방향을 고르고 결과를 본 뒤 심기를 누르세요';
+                  : distinctRotations(species).length > 1
+                    ? '방향을 고르고 결과를 본 뒤 심기를 누르세요'
+                    : '결과를 본 뒤 심기를 누르세요';
 
   return (
     <div className={styles.root}>
@@ -105,7 +107,8 @@ export const BoardTab = memo(function BoardTab() {
         />
       </div>
       <div className={styles.bottom}>
-        <Market />
+        {/* 심을 칸을 고른 뒤에는 마켓을 접어 짧은 화면에서도 보드 높이를 지킨다(가져오기는 이미 끝났다) */}
+        {!(canPlant && pendingPos) && <Market />}
         {state.phase === 'playing' && (
           <div className={styles.handPanel}>
             <Hand plantable={plantable} canPlant={canPlant} />

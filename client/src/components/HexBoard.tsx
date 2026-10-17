@@ -136,8 +136,12 @@ export const HexBoard = memo(function HexBoard({ cells, legal, legalFaint, seedL
   }, [box.w, box.h]);
   const fontFloor = MIN_TEXT_PX / ppu;
   const seatFont = Math.max(0.56, fontFloor);
-  const inflFont = Math.max(0.7, fontFloor);
-  const smallFont = Math.max(0.5, fontFloor);
+  // 뿌리 수 배지가 칸을 덮지 않게 상한을 둔다. 보드가 아주 작으면(ppu<15·17) 12px 하한보다 칸 크기를 우선한다(의도된 예외).
+  // 식물 칸 배지는 별도 층이라 이웃 칸에 조금 걸쳐도 되므로 상한을 넉넉히 둔다
+  const inflFont = Math.min(Math.max(0.7, fontFloor), 0.8);
+  const smallFont = Math.min(Math.max(0.5, fontFloor), 0.7);
+  const inflR = Math.max(0.36, inflFont * 0.5);
+  const smallR = Math.max(0.3, smallFont * 0.56);
 
   return (
     <svg ref={svgRef} className={styles.board} viewBox={viewBox} preserveAspectRatio="xMidYMid meet" role="group" aria-label="정원 보드">
@@ -153,12 +157,10 @@ export const HexBoard = memo(function HexBoard({ cells, legal, legalFaint, seedL
       {cells.map((c) => {
         const { x, y } = px(c.q, c.r);
         const flipTo = preview?.flips.get(c.key);
-        const touched = preview?.touched.get(c.key);
         const isLegal = legal.has(c.key);
         const isSeedLegal = seedLegal?.has(c.key) ?? false;
         const interactive = isLegal || isSeedLegal;
         const ownerStyle = c.owner >= 0 ? ({ '--owner': `var(--color-seat-${c.owner})` } as CSSProperties) : undefined;
-        const shown: [number, number] = touched ?? [c.owner, c.cubes];
         const label = `(${c.q},${c.r}) ${terrainName(c.terrain)}${c.plant ? ` · ${getSpecies(c.plant.species).name}` : ''}${c.owner >= 0 ? ` · ${c.owner + 1}번 자리 땅, 뿌리 ${c.cubes}` : ''}`;
         const bare = !c.plant && c.entranceSeat < 0;
         return (
@@ -232,21 +234,33 @@ export const HexBoard = memo(function HexBoard({ cells, legal, legalFaint, seedL
             )}
             {pendingKey === c.key && <polygon points={HEX} className={styles.pending} />}
             {seedKey === c.key && <circle r={0.3} className={styles.seedPending} />}
-            {(showInfluence || touched !== undefined) && (shown[1] > 0 || touched !== undefined) && (
-              <g
-                className={cx(styles.cubes, touched !== undefined && styles.cubesChanged)}
-                transform={c.plant ? `translate(0.48 0.5)` : undefined}
-                style={shown[0] >= 0 ? ({ '--owner': `var(--color-seat-${shown[0]})` } as CSSProperties) : undefined}
-              >
-                <circle r={c.plant ? 0.3 : 0.36} className={shown[0] >= 0 ? styles.cubeDot : styles.cubeEmpty} />
-                <text textAnchor="middle" dominantBaseline="central" style={{ fontSize: c.plant ? smallFont : inflFont }}>
-                  {shown[1]}
-                </text>
-              </g>
-            )}
           </g>
         );
       })}
+      {/* 뿌리 수 배지는 칸 반복 뒤 별도 층에 그려, 식물 칸 배지가 아래 줄 칸에 가려지지 않게 한다 */}
+      <g aria-hidden="true">
+        {cells.map((c) => {
+          const touched = preview?.touched.get(c.key);
+          if (!(showInfluence || touched !== undefined) || !(c.cubes > 0 || touched !== undefined)) return null;
+          const shown: [number, number] = touched ?? [c.owner, c.cubes];
+          const { x, y } = px(c.q, c.r);
+          const tx = c.plant ? x + 0.46 : x;
+          const ty = c.plant ? y + 0.46 : y;
+          return (
+            <g
+              key={c.key}
+              className={cx(styles.cubes, touched !== undefined && styles.cubesChanged)}
+              transform={`translate(${tx.toFixed(3)} ${ty.toFixed(3)})`}
+              style={shown[0] >= 0 ? ({ '--owner': `var(--color-seat-${shown[0]})` } as CSSProperties) : undefined}
+            >
+              <circle r={c.plant ? smallR : inflR} className={shown[0] >= 0 ? styles.cubeDot : styles.cubeEmpty} />
+              <text textAnchor="middle" dominantBaseline="central" style={{ fontSize: c.plant ? smallFont : inflFont }}>
+                {shown[1]}
+              </text>
+            </g>
+          );
+        })}
+      </g>
     </svg>
   );
 });

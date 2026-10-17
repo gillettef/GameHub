@@ -32,14 +32,17 @@
   color: var(--color-muted);
 }
 
+/* 방향 버튼은 취소·심기 버튼과 한 줄에 둬서 짧은 화면에서 보드 높이를 아낀다 */
 .dirs {
-  flex: 1 1 100%;
+  flex: 1 1 200px;
+  min-width: 0;
   display: flex;
   gap: 4px;
 }
 
 .dir {
   flex: 1;
+  min-width: 0;
   height: 34px;
   display: flex;
   align-items: center;
@@ -84,4 +87,9 @@
   display: flex;
   gap: 6px;
   margin-left: auto;
+}
+
+/* 버튼이 좁아지면 뿌리 그림도 함께 줄인다 */
+.dir > svg {
+  max-width: 100%;
 }
