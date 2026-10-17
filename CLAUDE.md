@@ -78,6 +78,7 @@ npm run typecheck  # tsc --noEmit
 - 다크 테마 기본 (프로토타입 색상 토큰 계승: `--bg #0b1220`, `--gd #f5c86b`, `--gr #68d6b0`)
 
 ## 작업 흐름
+- 세션 내 대화는 가급적 한국어로 한다
 - 규칙 변경 시: `rules-spec` 스킬 문서를 먼저 고치고 → 엔진/테스트 → UI 순서로 반영
 - 로직 변경 후 `npm run test`, UI 변경 후 `/mobile-check` 스킬로 확인
 - 밸런스 수치 조정은 `balance-analyst` 에이전트로 시뮬레이션 근거를 남긴 뒤 진행
