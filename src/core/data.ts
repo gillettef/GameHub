@@ -114,6 +114,8 @@ export const RULES = {
   cycle: 0,
   /** 요구 수수료 카드 1·2·3·4 의 매력도 감점 (카드에 인쇄) */
   penalty: [1, 2, 3, 4] as number[],
+  /** 요구 수수료 카드 1·2·3·4 로 받는 수수료 (카드에 인쇄) */
+  fee: [1, 2, 3, 4] as number[],
   /** 시장 선수 수 = 인원 + marketExtra */
   marketExtra: 1,
 };

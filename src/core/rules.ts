@@ -14,6 +14,7 @@ export const fitScore = (p: { pos: string; trait: string }, c: Club): number => 
 
 /** 요구 수수료 카드의 매력도 감점 */
 export const demandPenalty = (d: Demand): number => RULES.penalty[d - 1] ?? d;
+export const demandFee = (d: Demand): number => RULES.fee[d - 1] ?? d;
 
 /** 이벤트로 붙는 수수료 */
 export function eventFee(p: PlayerCard, event: EventKey): number {
@@ -40,7 +41,7 @@ export function evaluateOffer(offer: Offer, event: EventKey): Evaluation | Inval
   if (offerValue(c, event) < p.cost) return 'under-cost';
   const attract = fitScore(p, c) - demandPenalty(offer.demand);
   if (RULES.minAttract !== null && attract < RULES.minAttract) return 'rejected';
-  return { attract, fee: p.base + offer.demand + eventFee(p, event) };
+  return { attract, fee: p.base + demandFee(offer.demand) + eventFee(p, event) };
 }
 
 export const isEvaluation = (r: Evaluation | InvalidReason): r is Evaluation => typeof r === 'object';

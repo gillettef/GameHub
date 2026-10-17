@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   CLUBS_IN_GAME,
+  NORMAL_FIELD,
   RULES,
   PLAYERS,
   TOTAL_ROUNDS,
@@ -284,6 +285,21 @@ describe('공개 기록과 AI', () => {
       expect(g.clubs).toContain(c);
       expect(c).not.toBe(g.agents[0]!.secret);
     }
+  });
+
+  it('보통 AI는 자리 순서대로 서로 다른 성향을 받는다 (쉬움·사람·지정 성향은 그대로)', () => {
+    const g = createGame(
+      [
+        { name: 'H', kind: 'human' },
+        { name: 'A', kind: 'ai', level: 'normal' },
+        { name: 'B', kind: 'ai', level: 'normal' },
+        { name: 'C', kind: 'ai', level: 'normal' },
+      ],
+      3,
+    );
+    expect(g.agents.map((a) => a.persona)).toEqual([undefined, ...NORMAL_FIELD]);
+    const h = createGame([{ name: 'A', kind: 'ai' }, { name: 'B', kind: 'ai', level: 'normal', persona: 'greedy' }, { name: 'C', kind: 'ai', level: 'normal' }], 3);
+    expect(h.agents.map((a) => a.persona)).toEqual([undefined, 'greedy', 'balanced']);
   });
 
   it('AI끼리 끝까지 진행해도 오류 없이 종료 (3~4인), 2인은 만들 수 없다', () => {

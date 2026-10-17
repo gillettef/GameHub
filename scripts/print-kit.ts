@@ -37,7 +37,7 @@ const eventCards = [...EVENT_POOL, 'deadline' as const].map((k) => {
   <div class="nm">${esc(e.name)}</div><div class="ft">${esc(e.desc)}</div></div>`;
 });
 const agentCards = COLORS.flatMap(([name, color]) => [
-  ...[1, 2, 3, 4].map((d) => `<div class="card dm" style="--c:${color}"><div class="hd"><b>${name}</b></div><div class="big">+${d}억</div><div class="ft">요구 수수료 · 매력도 −${RULES.penalty[d - 1]}</div></div>`),
+  ...[1, 2, 3, 4].map((d) => `<div class="card dm" style="--c:${color}"><div class="hd"><b>${name}</b></div><div class="big">+${RULES.fee[d - 1]}억</div><div class="ft">요구 수수료 · 매력도 −${RULES.penalty[d - 1]}</div></div>`),
   ...Array.from({ length: 8 }, (_, i) => `<div class="card sm" style="--c:${color}"><div class="hd"><b>${name}</b></div><div class="big">${i + 1}</div><div class="ft">선수 지목 (시장 칸)</div></div>`),
   ...Array.from({ length: 6 }, (_, i) => `<div class="card sm" style="--c:${color}"><div class="hd"><b>${name}</b></div><div class="big">${LETTERS[i]}</div><div class="ft">구단 지목 (구단 자리)</div></div>`),
 ]);

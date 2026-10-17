@@ -1,6 +1,6 @@
 import { RULES, player, club } from './data';
 import type { Rng } from './rng';
-import { currentEvent, demandPenalty, evaluateOffer, fitScore, isEvaluation, offerValue, validateOffer } from './rules';
+import { currentEvent, demandFee, demandPenalty, evaluateOffer, fitScore, isEvaluation, offerValue, validateOffer } from './rules';
 import type { AgentState, Demand, EventKey, GameState, Guesses, Offer, PersonaKey } from './types';
 
 /** 게임 구단 중 이 선수와 계약할 수 있는 구단의 최고 적합도 */
@@ -68,15 +68,20 @@ export interface Persona {
   tell: number;
   /** 요구 수수료를 강제로 고른다 (퇴화 전략 검사용) */
   demand?: 'min' | 'max';
-  /** 상대 예측: 1 = 단순 기대값 softmax, 2 = 상대도 나를 1단계로 예측, 3 = 상대의 실제 선택 방식(상위 후보 가중 선택) 모방 */
-  depth: 1 | 2 | 3;
+  /**
+   * 상대 예측: 1 = 단순 기대값 softmax, 2 = 상대도 나를 1단계로 예측, 3 = 상대의 실제 선택 방식(상위 후보 가중 선택) 모방 (상대 비밀 구단을 앎 — 진단용),
+   * 4 = 3과 같되 상대 비밀 구단은 공개 기록으로 추정한 확률로 가중 (정보 누출 없음)
+   */
+  depth: 1 | 2 | 3 | 4;
 }
 
 const base: Persona = { name: '균형형', kind: 'value', push: 2, stealth: true, deny: 1, save: 0, greed: 0, risk: 1, spread: 5, sharp: 1.5, guess: 'mix', tell: 1, depth: 1 };
+/** 앱의 '보통' = 균형형. 상대 예측만 믿음 기반 정책 모방(depth 4)을 쓴다 */
+const balanced: Persona = { ...base, depth: 4 };
 
 export const PERSONAS: Record<PersonaKey, Persona> = {
   random: { ...base, name: '무작위', kind: 'random', guess: 'top' },
-  balanced: base,
+  balanced,
   greedy: { ...base, name: '욕심형', greed: 1.5 },
   cautious: { ...base, name: '신중형', risk: 2, greed: 0 },
   blatant: { ...base, name: '노골형', push: 3, stealth: false, guess: 'top' },
@@ -90,8 +95,11 @@ export const PERSONAS: Record<PersonaKey, Persona> = {
   high: { ...base, name: '항상 최고 카드', demand: 'max' },
 };
 
+/** 보통 AI 자리에 차례로 주는 성향 (같은 AI 복제끼리 같은 수로 몰리지 않게) */
+export const NORMAL_FIELD: readonly PersonaKey[] = ['balanced', 'stealth', 'cautious'];
+
 /** 상대 예측 모델의 집중도 (클수록 상대가 좋은 수에 몰린다고 본다). 보정: scripts/calibrate.ts */
-export const AI_MODEL = { beta1: 1 / 1.2, beta2: 1 };
+export const AI_MODEL = { beta1: 1 / 1.2, beta2: 1, mix: 1 };
 
 /** 시뮬레이션 진단용: 켜면 가치형 AI가 고른 수의 예측 승률을 기록한다 */
 export const AI_TRACE = { on: false, items: [] as { round: number; agent: number; playerId: number; predicted: number }[] };
@@ -147,7 +155,13 @@ export function makeNormalOffer(state: GameState, agentIdx: number, rng: Rng, ps
 }
 
 const rivalsFor = (state: GameState, agentIdx: number, depth: Persona['depth']): RivalModel[] =>
-  depth === 3 ? policyRivals(state, agentIdx) : depth === 2 ? predictRivals2(state, agentIdx) : predictRivals(state, agentIdx);
+  depth === 4
+    ? beliefRivals(state, agentIdx)
+    : depth === 3
+      ? policyRivals(state, agentIdx)
+      : depth === 2
+        ? predictRivals2(state, agentIdx)
+        : predictRivals(state, agentIdx);
 
 /** 가치형 AI의 후보: 선수별 최선안 상위 spread 개 (가치 내림차순) */
 function scoreOffers(state: GameState, agentIdx: number, ps: Persona, rivals: RivalModel[]): { offer: Offer; value: number }[] {
@@ -172,7 +186,7 @@ function scoreOffers(state: GameState, agentIdx: number, ps: Persona, rivals: Ri
         const ev = evaluateOffer(offer, event);
         if (!isEvaluation(ev)) continue;
         const win = winChance(rivals, pid, ev.attract) ** ps.risk;
-        let value = ev.fee * win + ps.greed * demand * win;
+        let value = ev.fee * win + ps.greed * demandFee(demand) * win;
         const fit = ev.attract + demandPenalty(demand);
         if (clubId === agent.secret && ps.push > 0) {
           if (!ps.stealth || own.get(clubId)! + 1 + (best - fit) < maxOther) value += ps.push * clubBonus * win;
@@ -199,6 +213,34 @@ function scoreOffers(state: GameState, agentIdx: number, ps: Persona, rivals: Ri
  */
 function policyRivals(state: GameState, agentIdx: number): RivalModel[] {
   return state.agents.flatMap((_, k) => (k === agentIdx ? [] : cached(state, `3:${k}`, () => [policyModel(state, k)])));
+}
+
+/**
+ * 믿음 기반 정책 모방 (depth 4): 상대 k 의 비밀 구단을 모르므로, 공개 기록으로 본 의심 확률
+ * (내 비밀 구단은 제외)로 '비밀 구단이 c 라면 k 가 둘 수'의 선택 확률을 가중 평균한다.
+ */
+function beliefRivals(state: GameState, agentIdx: number): RivalModel[] {
+  const mine = state.agents[agentIdx]!.secret;
+  return state.agents.flatMap((_, k) => {
+    if (k === agentIdx) return [];
+    return cached(state, `4:${agentIdx}:${k}`, () => {
+      const sus = suspicion(state, k);
+      sus.delete(mine);
+      const total = [...sus.values()].reduce((a, b) => a + b, 0) || 1;
+      const combos: { pid: number; attract: number; w: number }[] = [];
+      for (const [c, q] of sus) {
+        const agents = state.agents.map((a, i) => (i === k ? { ...a, secret: c } : a));
+        const m = policyModel({ ...state, agents }, k);
+        for (const [pid, t] of m.target)
+          for (const [a, qa] of m.attract.get(pid) ?? []) combos.push({ pid, attract: a, w: (q / total) * t * qa });
+      }
+      // mix < 1: 단순 예측(1단계)을 섞어 상대도 나처럼 생각할 가능성에 대비한다 (과신 완화)
+      const simple = predictRivals(state, agentIdx).find((r) => r.agent === k)!;
+      for (const [pid, t] of simple.target)
+        for (const [a, qa] of simple.attract.get(pid) ?? []) combos.push({ pid, attract: a, w: ((1 - AI_MODEL.mix) / AI_MODEL.mix) * t * qa });
+      return [toModel(k, combos)];
+    });
+  });
 }
 
 function policyModel(state: GameState, k: number): RivalModel {

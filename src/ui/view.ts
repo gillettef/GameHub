@@ -1,4 +1,4 @@
-import { CLUBS, EVENTS, INVALID_TEXT, club, clubMarks, currentEvent, player, upcomingEvent } from '../core';
+import { CLUBS, EVENTS, INVALID_TEXT, club, clubMarks, currentEvent, demandFee, player, upcomingEvent } from '../core';
 import type { AgentKind, AgentState, AiLevel, Demand, GameState, Offer, RoundEntry, RoundResult } from '../core';
 import type { Profile, Session } from '../store/storage';
 
@@ -80,7 +80,7 @@ export function marksOf(g: GameState, clubId: number): string {
   return g.agents.map((_, i) => dot(i).repeat(marks[i]![clubId] ?? 0)).join('');
 }
 
-export const offerText = (o: Offer): string => `${esc(player(o.playerId).name)} → ${esc(club(o.clubId).name)} · 요구 ${o.demand}억`;
+export const offerText = (o: Offer): string => `${esc(player(o.playerId).name)} → ${esc(club(o.clubId).name)} · 요구 ${demandFee(o.demand)}억`;
 
 export function entryCard(g: GameState, e: RoundEntry): string {
   const a = g.agents[e.agent]!;

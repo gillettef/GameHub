@@ -4,7 +4,7 @@
  *   npx tsx scripts/league.ts [--games 600] [--seed 42] [--players 2,3,4]
  */
 import { AI_MODEL, PERSONAS, RULES, TOTAL_ROUNDS, createGame, createRng, finishGame, nextRound, resolveRound, winners } from '../src/core';
-import type { GameState, PersonaKey } from '../src/core';
+import type { GameState, Persona, PersonaKey } from '../src/core';
 
 declare const process: { argv: string[] };
 const args = process.argv.slice(2);
@@ -24,6 +24,11 @@ for (const kv of arg('persona', '').split(',').filter(Boolean)) {
   const [k, v] = kv.split('=');
   (PERSONAS.balanced as unknown as Record<string, number>)[k!] = Number(v);
 }
+// --all depth=3 처럼 무작위를 뺀 모든 페르소나에 같은 값 실험
+for (const kv of arg('all', '').split(',').filter(Boolean)) {
+  const [k, v] = kv.split('=');
+  for (const ps of Object.values(PERSONAS)) if (ps.kind !== 'random') (ps as unknown as Record<string, number>)[k!] = Number(v);
+}
 // --model beta1=0.7 처럼 상대 예측 모델 실험
 for (const kv of arg('model', '').split(',').filter(Boolean)) {
   const [k, v] = kv.split('=');
@@ -37,6 +42,14 @@ for (const kv of arg('rules', '').split(',').filter(Boolean)) {
   // 배열 값은 1/2/4/6 처럼 슬래시로
   (RULES as unknown as Record<string, unknown>)[k!] = v === 'null' ? null : v!.includes('/') ? v!.split('/').map(Number) : Number(v);
 }
+
+/**
+ * --depths 1/4: 게임마다 페르소나별 상대 예측 모델(depth)을 이 중에서 무작위로 정한다.
+ * 같은 모델 복제끼리는 같은 수로 몰려 고정 카드 전략에 공략당하고, 한 페르소나만 좋은 모델을 쓰면
+ * 전략이 아니라 정보 품질로 지배하므로, 모델 수준을 고르게 섞어 전략 차이만 비교한다.
+ */
+const DEPTHS = arg('depths', '').split('/').filter(Boolean).map(Number) as Persona['depth'][];
+const depthRng = createRng(SEED + 1);
 
 const THINKERS: PersonaKey[] = ['balanced', 'greedy', 'cautious', 'blatant', 'stealth', 'ignore', 'deducer', 'spoiler'];
 const POOL: PersonaKey[] = ['random', ...THINKERS];
@@ -57,6 +70,8 @@ interface GameOut {
 }
 
 function play(seats: PersonaKey[]): GameOut {
+  if (DEPTHS.length)
+    for (const ps of Object.values(PERSONAS)) if (ps.kind !== 'random' && ps.kind !== 'pass') ps.depth = DEPTHS[depthRng.int(DEPTHS.length)]!;
   let s: GameState = createGame(
     seats.map((p, i) => ({ name: `${p}${i}`, kind: 'ai' as const, persona: p })),
     rng.int(2 ** 31),
@@ -115,7 +130,7 @@ const log = (s: string) => {
   console.log(s);
 };
 
-log(`# AI 플레이테스터 리그 (seed ${SEED}, 대진당 ${GAMES}판, 규칙 ${JSON.stringify(RULES)})`);
+log(`# AI 플레이테스터 리그 (seed ${SEED}, depth ${DEPTHS.join("/") || "페르소나 기본값"}, 대진당 ${GAMES}판, 규칙 ${JSON.stringify(RULES)})`);
 for (const N of COUNTS) {
   const fair = 1 / N;
   log(`\n## ${N}인 (공정값 ${pct(fair)})`);

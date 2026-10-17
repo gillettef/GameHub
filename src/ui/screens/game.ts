@@ -1,4 +1,4 @@
-import { RULES, DEMANDS, demandPenalty, PLAYERS, TOTAL_ROUNDS, INVALID_TEXT, clubWeight, currentEvent, fitScore, offerValue, rankings, validateOffer } from '../../core';
+import { RULES, DEMANDS, demandFee, demandPenalty, PLAYERS, TOTAL_ROUNDS, INVALID_TEXT, clubWeight, currentEvent, fitScore, offerValue, rankings, validateOffer } from '../../core';
 import type { GameState } from '../../core';
 import type { Session } from '../../store/storage';
 import { agentName, clubById, dot, draftOffer, esc, eventBanner, header, marksOf, money, roundEntries, scoreboard, type Draft, type GuessDraft } from '../view';
@@ -88,7 +88,7 @@ export function bidScreen(s: Session, d: Draft): string {
     <h3 class="sec-t">3. 요구 수수료 <small class="mu">높을수록 수수료↑ 매력도↓</small></h3>
     <div class="chips">${DEMANDS.map((v) => {
       const has = me.hand.includes(v);
-      return `<button class="chip ${d.demand === v ? 'sel' : ''}" data-act="demand" data-arg="${v}" ${has ? '' : 'disabled'} aria-pressed="${d.demand === v}">+${v}억<small>매력도 −${demandPenalty(v)}</small></button>`;
+      return `<button class="chip ${d.demand === v ? 'sel' : ''}" data-act="demand" data-arg="${v}" ${has ? '' : 'disabled'} aria-pressed="${d.demand === v}">+${demandFee(v)}억<small>매력도 −${demandPenalty(v)}</small></button>`;
     }).join('')}</div>
   </main>
   <nav class="bar col">

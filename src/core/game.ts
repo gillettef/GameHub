@@ -1,4 +1,4 @@
-import { makeAiGuesses } from './ai';
+import { NORMAL_FIELD, makeAiGuesses } from './ai';
 import { CLUBS, CLUBS_IN_GAME, DEMANDS, EVENT_POOL, MAX_AGENTS, RULES, MIN_AGENTS, OVERSEAS_EXTRA, PLAYERS, TOTAL_ROUNDS, marketSize } from './data';
 import { createRng } from './rng';
 import { currentEvent } from './rules';
@@ -27,16 +27,21 @@ export function createGame(setup: readonly AgentSetup[], seed: number): GameStat
   const clubs = rng.shuffle(CLUBS.map((c) => c.id)).slice(0, CLUBS_IN_GAME);
   const secrets = rng.shuffle(clubs);
   const events = [...rng.shuffle(EVENT_POOL).slice(0, TOTAL_ROUNDS - 1), 'deadline' as const];
-  const agents = setup.map((a, i) => ({
-    name: a.name,
-    kind: a.kind,
-    ...(a.kind === 'ai' ? { level: a.level ?? 'easy' } : {}),
-    ...(a.kind === 'ai' && a.persona ? { persona: a.persona } : {}),
-    score: 0,
-    deals: 0,
-    hand: [...DEMANDS],
-    secret: secrets[i]!,
-  }));
+  let normals = 0;
+  const agents = setup.map((a, i) => {
+    // 보통 AI는 자리 순서대로 서로 다른 성향 (rules-spec 8)
+    const persona = a.kind !== 'ai' ? undefined : (a.persona ?? (a.level === 'normal' ? NORMAL_FIELD[normals++ % NORMAL_FIELD.length] : undefined));
+    return {
+      name: a.name,
+      kind: a.kind,
+      ...(a.kind === 'ai' ? { level: a.level ?? 'easy' } : {}),
+      ...(persona ? { persona } : {}),
+      score: 0,
+      deals: 0,
+      hand: [...DEMANDS],
+      secret: secrets[i]!,
+    };
+  });
   return dealRound({ v: 5, rng: rng.state, round: 1, phase: 'bid', events, market: [], clubs, signings: [], agents, results: [] });
 }
 
