@@ -3,7 +3,7 @@
  * ①·③·④ AI 리그 항목을 판정한다.
  *   npx tsx scripts/league.ts [--games 600] [--seed 42] [--players 2,3,4]
  */
-import { PERSONAS, RULES, TOTAL_ROUNDS, createGame, createRng, finishGame, nextRound, resolveRound, winners } from '../src/core';
+import { AI_MODEL, PERSONAS, RULES, TOTAL_ROUNDS, createGame, createRng, finishGame, nextRound, resolveRound, winners } from '../src/core';
 import type { GameState, PersonaKey } from '../src/core';
 
 declare const process: { argv: string[] };
@@ -23,6 +23,12 @@ const rng = createRng(SEED);
 for (const kv of arg('persona', '').split(',').filter(Boolean)) {
   const [k, v] = kv.split('=');
   (PERSONAS.balanced as unknown as Record<string, number>)[k!] = Number(v);
+}
+// --model beta1=0.7 처럼 상대 예측 모델 실험
+for (const kv of arg('model', '').split(',').filter(Boolean)) {
+  const [k, v] = kv.split('=');
+  if (!(k! in AI_MODEL)) throw new Error(`unknown model ${k}`);
+  (AI_MODEL as unknown as Record<string, number>)[k!] = Number(v);
 }
 // --rules clubBonus=3,minAttract=0 처럼 규칙 수치 실험 (null 은 'null')
 for (const kv of arg('rules', '').split(',').filter(Boolean)) {
