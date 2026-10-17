@@ -92,10 +92,10 @@ export function entryCard(g: GameState, e: RoundEntry): string {
       body = `${offerText(e.offer!)} · 매력도 ${e.attract}`;
       break;
     case 'lost':
-      badge = `<span class="badge no">${e.tied ? '동률 상쇄' : '영입전 패배'}</span>`;
+      badge = `<span class="badge no">${e.tied ? '동률 상쇄' : e.attract === e.winnerAttract ? '동률 · 카드 낮음' : '영입전 패배'}</span>`;
       body = e.tied
         ? `${offerText(e.offer!)} · 매력도 ${e.attract} (같은 매력도끼리 상쇄${e.winner !== undefined ? ` → ${esc(g.agents[e.winner]!.name)} 계약` : ''})`
-        : `${offerText(e.offer!)} · 매력도 ${e.attract} (승자 ${esc(g.agents[e.winner!]!.name)} ${e.winnerAttract})`;
+        : `${offerText(e.offer!)} · 매력도 ${e.attract} (승자 ${esc(g.agents[e.winner!]!.name)} ${e.winnerAttract}${e.attract === e.winnerAttract ? ', 더 높은 카드' : ''})`;
       break;
     case 'invalid':
       badge = `<span class="badge no">무효 · ${INVALID_TEXT[e.reason!]}</span>`;

@@ -13,7 +13,8 @@ interface Candidate {
 
 /**
  * 같은 선수 제안끼리 경쟁: 매력도가 가장 높은 제안이 계약한다.
- * 최고 매력도가 같은 제안끼리는 서로 상쇄되어 탈락하고 그다음 매력도가 계약한다 (무작위·좌석 우선 없음).
+ * 최고 매력도가 같으면 요구 수수료 카드가 가장 높은 제안이 계약한다. 그 카드가 여럿이면 그 매력도의 제안은
+ * 모두 상쇄되어 탈락하고 그다음 매력도가 계약한다 (무작위·좌석 우선 없음).
  */
 export function contest(group: readonly Candidate[]): { winner: Candidate | null; beaten: Candidate[]; cancelled: Candidate[] } {
   const sorted = [...group].sort((x, y) => y.attract - x.attract);
@@ -23,7 +24,7 @@ export function contest(group: readonly Candidate[]): { winner: Candidate | null
     const tier = sorted.filter((c) => c.attract === sorted[i]!.attract);
     if (tier.length === 1) return { winner: tier[0]!, beaten: sorted.slice(i + 1), cancelled };
     if (RULES.tieBudget === 2) {
-      // 실험: 요구 수수료 카드가 가장 높은 쪽이 단독이면 그 제안이 계약
+      // 요구 수수료 카드가 가장 높은 쪽이 단독이면 그 제안이 계약
       const top = Math.max(...tier.map((c) => c.offer.demand));
       const bold = tier.filter((c) => c.offer.demand === top);
       if (bold.length === 1) return { winner: bold[0]!, beaten: [...tier.filter((c) => c !== bold[0]), ...sorted.slice(i + tier.length)], cancelled };
