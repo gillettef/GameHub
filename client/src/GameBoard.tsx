@@ -453,6 +453,20 @@ function PickPanel({ game, myId, onPick }: { game: GameState; myId: string; onPi
 const MONTH_ZONES: ActivityId[] = ["tournament", "creature", "lab", "exploration"];
 function MonthOffersPanel({ game }: { game: GameState }) {
   const zones = MONTH_ZONES.filter((a) => (game.activityOffers[a]?.cards.length ?? 0) > 0);
+  // 62절 한 덱: 종류를 섞어 인원 + 1장을 한 줄로 보여 준다 (카드마다 종류·쓰는 기운 배지)
+  if (game.rules.activityMarket) {
+    const cards = MARKET_ZONES.flatMap((a) => (game.activityOffers[a]?.cards ?? []).map((card) => marketCardInfo(a, card)));
+    if (cards.length === 0) return null;
+    return (
+      <div className="rounded-3xl border-2 border-amber-200 bg-amber-50 p-3">
+        <p className="font-display text-base text-amber-700">
+          <InlineIcon name="compass" /> 이번 달 활동 카드 {cards.length}장
+        </p>
+        <p className="mb-2 text-xs text-amber-800">3주차에 학점이 낮은 친구부터 1장씩 골라요. 하고 싶은 카드의 기운을 주는 수업을 골라 두세요.</p>
+        <CardGrid cards={cards} />
+      </div>
+    );
+  }
   if (zones.length === 0) return null;
   return (
     <div className="rounded-3xl border-2 border-amber-200 bg-amber-50 p-3">
@@ -475,6 +489,30 @@ function MonthOffersPanel({ game }: { game: GameState }) {
       </div>
     </div>
   );
+}
+
+// 62절 한 덱: 활동 카드의 종류와 굴릴 때 쓰는 기운
+const MARKET_ZONES: ActivityId[] = ["creature", "exploration", "lab", "duel"];
+const MARKET_KIND: Partial<Record<ActivityId, string>> = { creature: "조련 · 매력기운", exploration: "탐험 · 체력기운", lab: "연구 · 지력기운", duel: "겨루기 · 마나기운" };
+function marketCardInfo(a: ActivityId, card: OfferCardView, note?: string): CardInfo {
+  const info = offerCardInfo(card);
+  const tags = a === "duel" ? undefined : info.badge;
+  return { ...info, badge: [note, MARKET_KIND[a], tags].filter(Boolean).join(" · "), chip: note ?? MARKET_KIND[a] };
+}
+
+// 62절 한 덱: 공개된 카드마다 누가 골랐는지 (카드를 정해 고른 친구는 그 카드, 종류만 고른 친구(봇)와 겨루기는 그 종류의 남은 카드를 앞에서부터 채운다).
+// 진행 단계에서는 이미 끝난 활동의 카드가 공개 목록에서 빠져 있으므로 아직 진행하지 않은 선택만 본다
+function marketTakenBy(game: GameState): Map<string, string> {
+  const from = game.activityStage === "resolve" ? game.activityResolvePointer : 0;
+  const pending = game.activityChoices.slice(from);
+  const takenBy = new Map<string, string>();
+  for (const c of pending) if (c.cardId) takenBy.set(c.cardId, c.playerId);
+  for (const c of pending) {
+    if (c.cardId) continue;
+    const free = (game.activityOffers[c.activityId]?.cards ?? []).find((card) => !takenBy.has(card.id));
+    if (free) takenBy.set(free.id, c.playerId);
+  }
+  return takenBy;
 }
 
 // 구역에 공개된 (아직 가져가지 않은) 카드 이름들
@@ -525,7 +563,7 @@ function ChoosePanel({
 }: {
   game: GameState;
   myId: string;
-  onSelect: (activityId: ActivityId, targetPlayerId?: string) => void;
+  onSelect: (activityId: ActivityId, targetPlayerId?: string, cardId?: string) => void;
 }) {
   const currentTurnPlayerId = game.activityOrder[game.activityTurnPointer];
   const isMyTurn = currentTurnPlayerId === myId;
@@ -577,22 +615,72 @@ function ChoosePanel({
     );
   }
 
+  const turnText = isMyTurn
+    ? game.rules.activityMarket
+      ? "내 차례예요! 하고 싶은 카드를 1장 골라요"
+      : "내 차례예요! 하고 싶은 활동을 골라요"
+    : forcedBy
+      ? game.rules.duelTargetKeepsTurn
+        ? `${game.players[forcedBy.challengerId].name}님이 나에게 마법 겨루기를 걸었어요! ${game.players[myId]?.hasActedThisPhase ? "내 활동은 그대로 해요" : "내 활동은 내 차례에 그대로 골라요"}${game.rules.duelDefenderStatDice === "flat" ? " (막기는 주사위 1개 + 주문력으로 자동)" : ""}`
+        : `${game.players[forcedBy.challengerId].name}님이 나를 지목했어요! 이번 달 활동은 마법 겨루기예요`
+      : currentTurnPlayerId
+        ? `${game.players[currentTurnPlayerId]?.name}님이 ${game.rules.activityMarket ? "카드" : "활동"}를 고르는 중이에요...`
+        : "모두 골랐어요";
+
+  // 62절 한 덱: 공개된 활동 카드 중 1장을 고른다 (겨루기 카드는 이어서 친구를 지목)
+  if (game.rules.activityMarket) {
+    const me = game.players[myId];
+    const nameOf = (id: string) => game.players[id]?.name ?? "";
+    // 이미 고른 카드: 카드를 정해 고른 친구는 그 카드, 종류만 고른 친구(봇)와 겨루기는 그 종류의 남은 카드를 앞에서부터
+    const takenBy = marketTakenBy(game);
+    const duelBlocked = activityBlockReason(game, myId, "duel");
+    const items = MARKET_ZONES.flatMap((a) =>
+      (game.activityOffers[a]?.cards ?? []).map((card) => {
+        const owner = takenBy.get(card.id);
+        const blocked = !owner && a === "duel" ? duelBlocked : null;
+        return {
+          key: card.id,
+          card: marketCardInfo(a, card, owner ? `${nameOf(owner)} 선택` : blocked ? "지목할 친구 없음" : undefined),
+          onAction: isMyTurn ? () => (a === "duel" ? setPendingActivity("duel") : onSelect(a, undefined, card.id)) : undefined,
+          actionLabel: owner ? `${nameOf(owner)} 선택` : blocked ? "지목할 친구 없음" : a === "duel" ? "친구 지목하기" : "이 카드 고르기",
+          disabled: Boolean(owner || blocked),
+        };
+      }),
+    );
+    return (
+      <div className="bg-white rounded-3xl border-2 border-purple-200 shadow-sm p-4">
+        <p className="text-sm text-purple-600 mb-1">3주차(자율활동): {orderText(game.rules)} 활동 카드를 1장씩 골라요</p>
+        <p className="text-xs text-purple-500 mb-2">모두 고르면 고른 순서대로 굴려요(카드의 기운 + 공짜 주사위 1개). 카드를 누르면 크게 볼 수 있어요.</p>
+        <ChooseOrder game={game} myId={myId} currentId={currentTurnPlayerId} />
+        <p className={`mb-2 rounded-2xl px-3 py-2 text-sm ${isMyTurn ? "bg-pink-50 text-pink-700" : "bg-purple-50 text-purple-600"}`}>{turnText}</p>
+        {me && (
+          <div className="mb-2 flex flex-wrap gap-1.5 text-xs" aria-label="내 기운 (한 번에 낼 수 있는 개수)">
+            {(
+              [
+                ["charmToken", "매력", me.charmTokens, "charm"],
+                ["staminaToken", "체력", me.staminaTokens, "stamina"],
+                ["intToken", "지력", me.intelligenceTokens, "intelligence"],
+                ["manaToken", "마나", me.manaTokens, "spellPower"],
+              ] as const
+            ).map(([icon, label, have, stat]) => (
+              <span key={label} className="rounded-full bg-purple-50 px-2 py-0.5 text-purple-700">
+                <InlineIcon name={icon} /> {label} {have}
+                {game.rules.rollLimitBonus !== null ? <span className="text-purple-500"> (한 번에 {Math.min(have, effectiveStat(me, stat) + game.rules.rollLimitBonus)})</span> : null}
+              </span>
+            ))}
+          </div>
+        )}
+        <PickGrid items={items} />
+      </div>
+    );
+  }
+
   return (
     <div className="bg-white rounded-3xl border-2 border-purple-200 shadow-sm p-4">
       <p className="text-sm text-purple-600 mb-1">3주차(자율활동): {orderText(game.rules)} 활동을 골라요</p>
       <p className="text-xs text-purple-500 mb-2">모두 고르고 나면 고른 순서대로 한 명씩 차례로 진행돼요. 다른 친구가 고른 활동도 여기서 볼 수 있어요.</p>
       <ChooseOrder game={game} myId={myId} currentId={currentTurnPlayerId} />
-      <p className={`mb-3 rounded-2xl px-3 py-2 text-sm ${isMyTurn ? "bg-pink-50 text-pink-700" : "bg-purple-50 text-purple-600"}`}>
-        {isMyTurn
-          ? "내 차례예요! 하고 싶은 활동을 골라요"
-          : forcedBy
-            ? game.rules.duelTargetKeepsTurn
-              ? `${game.players[forcedBy.challengerId].name}님이 나에게 마법 겨루기를 걸었어요! ${game.players[myId]?.hasActedThisPhase ? "내 활동은 그대로 해요" : "내 활동은 내 차례에 그대로 골라요"}${game.rules.duelDefenderStatDice === "flat" ? " (막기는 주사위 1개 + 주문력으로 자동)" : ""}`
-              : `${game.players[forcedBy.challengerId].name}님이 나를 지목했어요! 이번 달 활동은 마법 겨루기예요`
-            : currentTurnPlayerId
-              ? `${game.players[currentTurnPlayerId]?.name}님이 활동을 고르는 중이에요...`
-              : "모두 골랐어요"}
-      </p>
+      <p className={`mb-3 rounded-2xl px-3 py-2 text-sm ${isMyTurn ? "bg-pink-50 text-pink-700" : "bg-purple-50 text-purple-600"}`}>{turnText}</p>
       <p className="text-xs text-purple-500 mb-2">
         구역당 최대 {game.rules.activityMaxParticipants}명{game.rules.activitySecondParticipantCost > 0 ? <> · 먼저 고른 친구가 있으면 <InlineIcon name="charmToken" /> 매력기운 {game.rules.activitySecondParticipantCost}개를 그 친구에게 건네고 함께해요 (내 매력기운 {game.players[myId]?.charmTokens ?? 0}개)</> : null}. 먼저 고른 친구가 원하는 카드를 가져가요. 남은 카드는 두 번째 참가자가 가져가요.
       </p>
@@ -717,11 +805,22 @@ function ResolvePanel({
                   </span>
                   <span className="ml-auto shrink-0 text-xs">{done ? "완료" : now ? (game.activityResolveStarted ? "진행 중" : "곧 시작") : "대기"}</span>
                 </p>
-                {now && offerNames(game, choice.activityId) && (
-                  <p className="mt-1 rounded-xl bg-white/70 px-2 py-1 text-xs text-purple-700">
-                    <InlineIcon name="scroll" /> 공개된 카드: {offerNames(game, choice.activityId)}
-                  </p>
-                )}
+                {now && game.rules.activityMarket
+                  ? (() => {
+                      const id = choice.cardId ?? [...marketTakenBy(game)].find(([, pid]) => pid === choice.playerId)?.[0];
+                      const card = id ? game.activityOffers[choice.activityId]?.cards.find((c) => c.id === id) : undefined;
+                      return card ? (
+                        <p className="mt-1 rounded-xl bg-white/70 px-2 py-1 text-xs text-purple-700">
+                          <InlineIcon name="scroll" /> {choice.cardId || choice.activityId === "duel" ? "고른 카드" : "가져갈 카드"}: {card.name}
+                        </p>
+                      ) : null;
+                    })()
+                  : now &&
+                    offerNames(game, choice.activityId) && (
+                      <p className="mt-1 rounded-xl bg-white/70 px-2 py-1 text-xs text-purple-700">
+                        <InlineIcon name="scroll" /> 공개된 카드: {offerNames(game, choice.activityId)}
+                      </p>
+                    )}
                 {result && result.lines.length > 0 && (
                   <ul className="pop-in mt-1 flex flex-col gap-0.5 text-xs text-purple-700">
                     {result.lines.map((line, i) => (
@@ -753,7 +852,7 @@ function ActivityPhasePanel({
 }: {
   game: GameState;
   myId: string;
-  onSelect: (activityId: ActivityId, targetPlayerId?: string) => void;
+  onSelect: (activityId: ActivityId, targetPlayerId?: string, cardId?: string) => void;
   onPick: (cardId: string | null) => void;
 }) {
   return game.activityStage === "resolve" ? (
@@ -1139,7 +1238,7 @@ export function GameBoard({
   onTakeClassCard: (cardId: string | null) => void;
   onCram: (from: KeptToken | null) => void;
   onChooseDream: (dreamId: string) => void;
-  onSelectActivity: (activityId: ActivityId, targetPlayerId?: string) => void;
+  onSelectActivity: (activityId: ActivityId, targetPlayerId?: string, cardId?: string) => void;
   onPickActivityCard: (cardId: string | null) => void;
   onRollDice: (diceCount?: number, assist?: number) => void;
   onRerollDice: (diceIndexes: number[]) => void;
@@ -1262,7 +1361,7 @@ export function GameBoard({
             {game.phase === "cram" && <CramPanel game={game} myId={myId} onCram={onCram} />}
             {game.pendingRoll && <RollPanel game={game} myId={myId} onRoll={onRollDice} onReroll={onRerollDice} onConfirm={onConfirmRoll} />}
             {game.phase === "class" && !game.pendingRoll && <ClassPhasePanel game={game} myId={myId} onTake={onTakeClassCard} />}
-            {((game.phase === "class" && !game.pendingRoll) || (game.phase === "activity" && game.activityStage === "choose")) && <MonthOffersPanel game={game} />}
+            {((game.phase === "class" && !game.pendingRoll) || (game.phase === "activity" && game.activityStage === "choose" && !game.rules.activityMarket)) && <MonthOffersPanel game={game} />}
             {game.phase === "activity" && (
               <ActivityPhasePanel game={game} myId={myId} onSelect={onSelectActivity} onPick={onPickActivityCard} />
             )}

@@ -1208,11 +1208,27 @@ function takeOffered(state: GameState, player: PlayerGameState, activityId: Acti
   }
 }
 
+// 62절 한 덱: 다른 친구가 고를 때 정해 둔(아직 진행하지 않은) 카드는 남은 카드에서 뺀다
+function reservedCardIds(state: GameState): Set<string> {
+  return new Set(state.activityChoices.slice(state.activityResolvePointer + 1).flatMap((c) => (c.cardId ? [c.cardId] : [])));
+}
+export function pickableCards(state: GameState, activityId: ActivityId): OfferedCard[] {
+  const reserved = reservedCardIds(state);
+  return offerCards(state, activityId).filter((c) => !reserved.has(c.id));
+}
+
 // 구역에 들어온 사람의 카드 처리: 처음 온 사람은 카드를 열고 원하는 카드를 고르고, 두 번째 참가자는 남은 카드를 가져간다
 function startZonePick(state: GameState, activityId: ActivityId, player: PlayerGameState): void {
   const isFirst = !state.hidden.offers[activityId];
   if (isFirst) openOffer(state, activityId);
-  const cards = offerCards(state, activityId);
+  // 62절 한 덱: 고를 때 카드를 정해 두었으면 그 카드로 바로 진행한다
+  const chosen = state.activityChoices[state.activityResolvePointer]?.cardId;
+  const card = chosen ? offerCards(state, activityId).find((c) => c.id === chosen) : undefined;
+  if (card && canTake(player, activityId, card)) {
+    takeOffered(state, player, activityId, card);
+    return;
+  }
+  const cards = pickableCards(state, activityId);
   if (cards.length === 0) {
     log(state, `${player.name}: ${ACTIVITY_NAME[activityId]}에 남은 카드가 없어요`);
     return;
@@ -1253,7 +1269,7 @@ function startActivity(state: GameState, choice: ActivityChoice): void {
 
 // 선택 단계: 선부터 시계방향으로 각자 활동을 고른다. 고른 활동은 모두에게 공개되고, 모두 고르면 진행 단계에서 하나씩 처리한다.
 // 비용(구역 두 번째 참가비 매력기운·카드를 여는 지력기운)은 고르는 순간 낸다
-export function selectActivity(state: GameState, playerId: string, activityId: ActivityId, targetPlayerId?: string): void {
+export function selectActivity(state: GameState, playerId: string, activityId: ActivityId, targetPlayerId?: string, cardId?: string): void {
   if (state.phase !== "activity") throw new Error("지금은 자율활동 단계가 아닙니다.");
   if (state.activityStage !== "choose") throw new Error("이미 모두 활동을 골랐어요. 차례대로 진행 중이에요.");
   const currentTurnPlayerId = state.activityOrder[state.activityTurnPointer];
@@ -1269,6 +1285,14 @@ export function selectActivity(state: GameState, playerId: string, activityId: A
     if (!target || target.id === playerId) throw new Error("마법 겨루기 상대를 지정해야 합니다.");
     if (target.hasActedThisPhase && !BALANCE.duelTargetKeepsTurn) throw new Error("아직 자율활동을 고르지 않은 플레이어만 지목할 수 있습니다.");
   }
+  // 62절 한 덱: 고를 카드를 정했으면 공개된 카드이고 다른 친구가 정해 두지 않은 카드여야 한다
+  if (cardId && BALANCE.activityMarket && activityId !== "duel") {
+    if (!offerCards(state, activityId).some((c) => c.id === cardId)) throw new Error("이번 달 공개된 카드 중에서만 고를 수 있어요.");
+    if (state.activityChoices.some((c) => c.cardId === cardId)) throw new Error("이미 다른 친구가 고른 카드예요.");
+    // 종류만 고른 친구(카드를 정하지 않음)의 몫도 남아 있어야 한다
+    const sameKind = state.activityChoices.filter((c) => c.activityId === activityId).length;
+    if (sameKind + 1 > offerCards(state, activityId).length) throw new Error("남은 카드가 없어요.");
+  }
   // 먼저 온 친구가 있는 구역은 매력기운을 더 내고, 그 매력기운은 먼저 온 친구에게 건넨다 (43-6절)
   const extra = activityExtraCost(state, activityId);
   player.charmTokens -= extra;
@@ -1281,7 +1305,7 @@ export function selectActivity(state: GameState, playerId: string, activityId: A
   pay(player, "intelligence", activityOpenCost(state, activityId));
   state.activitySlots[activityId].push(playerId);
   player.hasActedThisPhase = true;
-  state.activityChoices.push({ playerId, activityId, targetPlayerId: target?.id });
+  state.activityChoices.push({ playerId, activityId, targetPlayerId: target?.id, ...(cardId && BALANCE.activityMarket && activityId !== "duel" ? { cardId } : {}) });
   if (target) {
     // 지목당한 플레이어는 이번 달 자율활동으로 마법 겨루기를 강제로 하게 된다 (자기 차례는 건너뜀)
     if (!BALANCE.duelTargetKeepsTurn) target.hasActedThisPhase = true;
@@ -1374,7 +1398,7 @@ export function chooseActivityCard(state: GameState, playerId: string, cardId: s
     finishResolutionStep(state);
     return;
   }
-  const card = offerCards(state, pick.activityId).find((c) => c.id === cardId);
+  const card = pickableCards(state, pick.activityId).find((c) => c.id === cardId);
   if (!card) throw new Error("공개된 카드 중에서만 고를 수 있습니다.");
   if (!canTake(player, pick.activityId, card)) throw new Error("비용이 모자라서 이 카드는 가져갈 수 없어요.");
   state.pendingPick = null;

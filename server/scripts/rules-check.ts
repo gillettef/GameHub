@@ -51,6 +51,10 @@ import { createClassDeck } from "../src/game/classCards.js";
 import { eventTemplates } from "../src/game/newsCards.js";
 import { cramStep, rollAndConfirm } from "./_drive.js";
 
+// 62절(2026-10-17) 활동 카드 한 덱·시험 공고도 전용 검증에서만 켜고, 그 앞의 검증은 61절 기본값으로 본다 (LIGHT보다 먼저 되돌린다)
+const MARKET_KEYS = ["activityMarket", "examsAtStart", "fixedExams", "labTargetMod", "duelCardCount"] as const;
+const MARKET62 = JSON.parse(JSON.stringify(Object.fromEntries(MARKET_KEYS.map((k) => [k, BALANCE[k]])))) as Partial<typeof BALANCE>;
+Object.assign(BALANCE, { activityMarket: false, examsAtStart: true, fixedExams: { midterm: "마법 마라톤", final: "주문 실기" }, labTargetMod: 0, duelCardCount: 16 } as Partial<typeof BALANCE>);
 // 61절 라이트 규칙(2026-10-16)은 전용 검증에서만 켜고, 그 앞의 검증은 60절까지의 기본값으로 본다.
 // 아래 값을 먼저 되돌려 두어야 뒤의 NEW_RULES·P5·L4 같은 묶음이 60절 시점의 기본값을 기억한다
 const LIGHT_KEYS = [
@@ -2365,7 +2369,37 @@ test("61절: 12개월 게임이 봇끼리 끝까지 진행된다 (2~5인, 전략
 });
 
 // ── 62절 실험 (2026-10-17): 활동 카드 한 덱 · 시험 공고 (스위치, 기본값은 61절) ──
-const MARKET = { ...CURRENT, activityMarket: true, examsAtStart: false, fixedExams: null, labTargetMod: -1, duelCardCount: 12 } as Partial<typeof BALANCE>;
+const MARKET = { ...CURRENT, ...MARKET62 } as Partial<typeof BALANCE>;
+
+test("62절 기본값(2026-10-17 채택): 활동 카드 한 덱(겨루기 카드 12장)·시험 공고(무작위 과목)·연구 목표 -1", () => {
+  assert.deepEqual(MARKET62, { activityMarket: true, examsAtStart: false, fixedExams: null, labTargetMod: -1, duelCardCount: 12 });
+});
+
+test("62절 한 덱: 고를 때 카드를 정하면 그 카드로 진행하고, 다른 친구가 정한 카드는 고를 수 없다", () => {
+  withBalance(MARKET, () => {
+    let state = newGame(4);
+    const two = () => (["creature", "lab", "exploration"] as ActivityId[]).find((a) => (state.activityOffers[a]?.cards.length ?? 0) >= 2);
+    for (let i = 0; i < 80 && !two(); i++) state = newGame(4);
+    const kind = two()!;
+    assert.ok(kind, "같은 종류 카드가 2장 이상 공개된 판을 찾는다");
+    toActivity(state);
+    const [a, b] = state.activityOrder;
+    const [c1, c2] = state.activityOffers[kind]!.cards;
+    selectActivity(state, a, kind, undefined, c2.id);
+    assert.throws(() => selectActivity(state, b, kind, undefined, c2.id), /이미 다른 친구가 고른 카드/);
+    selectActivity(state, b, kind, undefined, c1.id);
+    assert.deepEqual(state.activityChoices.map((c) => c.cardId), [c2.id, c1.id]);
+    for (const id of state.activityOrder.slice(2)) {
+      const k = availableActivities(state, id).find((x) => x !== "duel");
+      if (k) selectActivity(state, id, k);
+    }
+    advanceResolution(state);
+    assert.equal(state.pendingPick, null, "정해 둔 카드는 다시 고르지 않는다");
+    assert.ok(state.pendingRoll, "바로 굴림");
+    assert.ok(!state.activityOffers[kind]!.cards.some((c) => c.id === c2.id), "a가 정한 카드를 가져갔다");
+    assert.ok(state.activityOffers[kind]!.cards.some((c) => c.id === c1.id), "b가 정한 카드는 b 차례까지 남아 있다");
+  });
+});
 
 test("62절 한 덱: 1주차에 활동 카드(마법생물·연구·탐험·겨루기)를 섞어 인원 + 1장 공개하고, 그 종류의 카드 수만큼만 고를 수 있다", () => {
   withBalance(MARKET, () => {

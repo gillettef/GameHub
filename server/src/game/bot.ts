@@ -27,6 +27,7 @@ import {
   usableFuel,
   projectedScore,
   labTargetValue,
+  pickableCards,
 } from "./engine.js";
 import {
   effectiveStat,
@@ -448,7 +449,7 @@ export function choosePick(state: GameState, strategy: BotStrategy): string | nu
   const pick = state.pendingPick;
   if (!pick) return null;
   const player = state.players[pick.playerId];
-  const cards = state.hidden.offers[pick.activityId] ?? [];
+  const cards = pickableCards(state, pick.activityId);
   const afford = (card: (typeof cards)[number]): boolean => {
     if (pick.activityId === "lab") return canPay(player, 0, (card as LabCard).cost);
     return true;

@@ -11,6 +11,7 @@ import { BOT_NAMES, botAssist, botChooseDream, chooseActivityAction, choosePick,
 import {
   availableActivities,
   chooseActivityCard,
+  pickableCards,
   classCardsLeft,
   createGame,
   duelTargets,
@@ -86,7 +87,7 @@ function runBotFallback(game: GameState, botId: string): void {
     cramTurn(game, botId, null);
   } else if (game.pendingPick) {
     // 반드시 골라야 하는 카드(탐험)는 첫 카드를, 나머지는 넘어간다
-    const first = game.activityOffers[game.pendingPick.activityId]?.cards[0]?.id ?? null;
+    const first = pickableCards(game, game.pendingPick.activityId)[0]?.id ?? null;
     const mustPick = game.pendingPick.activityId === "exploration";
     chooseActivityCard(game, botId, mustPick ? first : null);
   } else if (game.phase === "activity" && game.activityStage === "choose") {
@@ -227,6 +228,8 @@ const PUBLIC_RULES: PublicRules = {
   duelDefenderReward: BALANCE.duelDefenderReward,
   duelTieWinner: BALANCE.duelTieWinner,
   duelTargetOnce: BALANCE.duelTargetOnce,
+  activityMarket: BALANCE.activityMarket,
+  rollLimitBonus: BALANCE.rollLimitByStat ? BALANCE.rollLimitBonus : null,
   duelDefenderStatDice: BALANCE.duelDefenderStatDice,
   explorationPenalty: BALANCE.explorationPenalty,
   growthCredit: BALANCE.growthCredit,
@@ -598,7 +601,7 @@ wss.on("connection", (socket) => {
     if (message.type === "select_activity") {
       if (!room.game) return;
       try {
-        selectActivity(room.game, playerId, message.activityId, message.targetPlayerId);
+        selectActivity(room.game, playerId, message.activityId, message.targetPlayerId, message.cardId);
         broadcastGameState(room);
         scheduleBots(room);
       } catch (err) {

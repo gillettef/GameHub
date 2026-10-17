@@ -160,6 +160,8 @@ export interface ActivityChoice {
   activityId: ActivityId;
   // 마법 겨루기면 지목한 친구
   targetPlayerId?: string;
+  // 62절 한 덱: 고를 때 정한 카드 (마법 겨루기 카드는 없음)
+  cardId?: string;
 }
 
 // 진행이 끝난 활동의 결과
@@ -231,6 +233,9 @@ export interface PublicRules {
   duelDefenderReward: boolean;
   duelTieWinner: "none" | "challenger" | "defender";
   duelTargetOnce: boolean;
+  activityMarket: boolean;
+  // 한 번에 낼 수 있는 기운 = 능력치 + 이 값 (null이면 상한 없음)
+  rollLimitBonus: number | null;
   duelDefenderStatDice: boolean | "flat";
   explorationPenalty: boolean;
   growthCredit: number;
@@ -387,7 +392,9 @@ export function canPay(player: PlayerGameState, int: number, stamina: number, ch
 export function activityBlockReason(game: GameState, playerId: string, activityId: ActivityId): string | null {
   const player = game.players[playerId];
   if (game.rules.disabledActivities.includes(activityId)) return "이번 규칙에는 없는 활동이에요";
-  if (game.activitySlots[activityId].length >= game.rules.activityMaxParticipants) return "이미 두 명이 참여했어요";
+  if (game.rules.activityMarket) {
+    if (game.activitySlots[activityId].length >= (game.activityOffers[activityId]?.cards.length ?? 0)) return "남은 카드가 없어요";
+  } else if (game.activitySlots[activityId].length >= game.rules.activityMaxParticipants) return "이미 두 명이 참여했어요";
   const extra = activityExtraCost(game, activityId);
   if (!canPay(player, 0, 0, extra)) return `매력기운 ${extra}개가 더 필요해요`;
   const open = activityOpenCost(game, activityId);
