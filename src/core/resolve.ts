@@ -22,7 +22,12 @@ export function contest(group: readonly Candidate[]): { winner: Candidate | null
   while (i < sorted.length) {
     const tier = sorted.filter((c) => c.attract === sorted[i]!.attract);
     if (tier.length === 1) return { winner: tier[0]!, beaten: sorted.slice(i + 1), cancelled };
-    if (RULES.tieBudget) {
+    if (RULES.tieBudget === 2) {
+      // 실험: 요구 수수료 카드가 가장 높은 쪽이 단독이면 그 제안이 계약
+      const top = Math.max(...tier.map((c) => c.offer.demand));
+      const bold = tier.filter((c) => c.offer.demand === top);
+      if (bold.length === 1) return { winner: bold[0]!, beaten: [...tier.filter((c) => c !== bold[0]), ...sorted.slice(i + tier.length)], cancelled };
+    } else if (RULES.tieBudget) {
       // 제시액이 가장 큰 구단 쪽이 단독이면 그 제안이 계약
       const top = Math.max(...tier.map((c) => club(c.offer.clubId).budget));
       const rich = tier.filter((c) => club(c.offer.clubId).budget === top);
