@@ -23,6 +23,24 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
+      - name: 시크릿 확인 — 값은 출력하지 않고 비어 있는 이름만 알린다
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+          AWS_SECURITY_GROUP_ID: ${{ secrets.AWS_SECURITY_GROUP_ID }}
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          EC2_HOST_KEY: ${{ secrets.EC2_HOST_KEY }}
+          EC2_SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
+        run: |
+          echo "repo=${{ github.repository }} event=${{ github.event_name }} actor=${{ github.actor }}"
+          missing=0
+          for n in AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_REGION AWS_SECURITY_GROUP_ID EC2_HOST EC2_HOST_KEY EC2_SSH_PRIVATE_KEY; do
+            v="${!n}"
+            if [ -n "$v" ]; then echo "OK    $n (값 길이 ${#v})"; else echo "::error::비어 있음: $n"; missing=1; fi
+          done
+          exit $missing
+
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
