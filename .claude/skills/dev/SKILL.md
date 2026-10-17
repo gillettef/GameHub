@@ -1,11 +1,12 @@
 ---
 name: dev
-description: 로컬 테스트용으로 백엔드(server, 3101), 프론트엔드(client, 5173), Python AI 서비스(ai, 8000)를 현재 터미널의 백그라운드에서 함께 실행한다. "서버 켜줘", "dev 서버 실행", "로컬에서 띄워줘", "같은 와이파이 휴대폰으로 해 보고 싶어" 요청 시 사용. 같은 네트워크의 다른 기기도 http://<이 PC IP>:5173 으로 접속할 수 있다. 종료는 /dev-stop.
+description: 로컬 테스트용으로 백엔드(server, 3101), 프론트엔드(client, 5173), Python AI 서비스(ai, 8000)를 현재 터미널의 백그라운드에서 함께 실행한다. "서버 켜줘", "dev 서버 실행", "로컬에서 띄워줘", "휴대폰·친구 기기에서 해 보고 싶어" 요청 시 사용. Cloudflare 빠른 터널로 다른 기기에서 열 수 있는 공개 주소(*.trycloudflare.com)도 만든다. 종료는 /dev-stop.
 ---
 
 # /dev — 백엔드·프론트엔드·AI 백그라운드 실행
 
 서버(`server/`, 3101), 클라이언트(`client/`, 5173), Python AI 서비스(`ai/`, 8000)를 분리된 백그라운드 프로세스로 띄운다.
+이어서 Cloudflare 빠른 터널(`.dev/bin/cloudflared.exe`, 계정 불필요, 없으면 내려받는다)로 Vite(5173)를 인터넷에 공개한다. 휴대폰·다른 PC·친구는 같은 와이파이가 아니어도 공개 주소로 접속한다. `/api`·`/socket.io` 는 Vite 프록시가 이 PC 안에서 3101 로 넘기므로 공개되는 포트는 하나다. 방화벽 설정은 필요 없다.
 프로세스는 터미널을 블로킹하지 않으며, PID는 `.dev/*.pid`, 로그는 `.dev/*.log`에 기록된다.
 AI 서비스는 `ai/.venv` 가 없으면 자동으로 만들고 `ai/requirements.txt` 를 설치한다 (이 PC의 Python 3.11은 PATH에 없어 스크립트가 절대 경로로 찾는다).
 
@@ -16,6 +17,8 @@ AI 서비스는 `ai/.venv` 가 없으면 자동으로 만들고 `ai/requirements
    ```
    powershell -NoProfile -ExecutionPolicy Bypass -File scripts/dev.ps1
    ```
+
+   터널 없이 이 PC에서만 쓰려면 끝에 `-NoTunnel` 을 붙인다.
 
 2. 출력에서 각 프로세스의 상태를 확인한다.
    - `started PID ... -> http://localhost:PORT` : 정상
@@ -29,13 +32,9 @@ AI 서비스는 `ai/.venv` 가 없으면 자동으로 만들고 `ai/requirements
    - 클라이언트: http://localhost:5173
    - 서버: http://localhost:3101
    - AI: http://localhost:8000
-   - **같은 네트워크의 다른 기기**(휴대폰·다른 PC): 출력의 `LAN    : http://<IP>:5173` 주소. 여러 줄이면 다른 기기와 같은 와이파이에 붙은 어댑터의 주소를 쓴다. 온라인 방 초대 링크도 이 주소로 연 화면에서 복사해야 한다(localhost 링크는 다른 기기에서 열리지 않는다).
-
-4. 다른 기기에서 접속이 안 될 때
-   - 출력에 `Firewall: no inbound rule for TCP 5173` 이 있으면 Windows 방화벽이 막는다. 사용자에게 **관리자 PowerShell**에서 출력된 `New-NetFirewallRule ...` 명령을 한 번 실행하라고 안내한다(Claude 는 관리자 권한이 없어 직접 못 한다). 규칙은 개인(Private) 네트워크에만 연다.
-   - 출력에 `Network: '...' is Public` 이 있으면, 즉 와이파이가 **공용(Public) 네트워크**로 잡혀 있으면 위 규칙이 적용되지 않는다. Windows 설정 → 네트워크 및 인터넷 → 해당 와이파이 → "개인 네트워크"로 바꾸라고 안내한다.
-   - 게스트 와이파이처럼 기기끼리 통신을 막는 네트워크(AP 격리)에서는 안 된다. 그때는 휴대폰 핫스팟에 PC 와 기기를 함께 붙인다.
-   - 열어야 하는 포트는 Vite(5173)뿐이다. 서버(3101)·AI(8000)는 이 PC 안에서 Vite 프록시가 부른다.
+   - **다른 기기·친구**: 출력의 `Public : https://….trycloudflare.com` 주소. 터널을 다시 띄울 때마다 주소가 바뀐다(`/dev` 를 다시 실행해도 터널이 떠 있으면 같은 주소, 주소는 `.dev/tunnel-url.txt`). 온라인 방 초대 링크는 이 공개 주소로 연 화면에서 복사해야 다른 기기에서 열린다.
+   - `Public : (none)` 이면 `.dev/tunnel.err.log` 를 본다. 주소가 나온 직후 몇 초는 접속이 안 될 수 있다(DNS 전파).
+   - 공개 주소는 아는 사람 누구나 열 수 있다. 다 쓰면 `/dev-stop` 으로 터널까지 끈다.
 
 ## 로그 확인
 

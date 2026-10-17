@@ -1,11 +1,11 @@
 ---
 name: dev-stop
-description: /dev 로 띄운 백엔드·프론트엔드·Python AI 백그라운드 프로세스를 모두 종료한다. "서버 꺼줘", "dev 서버 종료", "포트 3101/5173/8000 정리" 요청 시 사용.
+description: /dev 로 띄운 백엔드·프론트엔드·Python AI 백그라운드 프로세스와 Cloudflare 터널을 모두 종료한다. "서버 꺼줘", "dev 서버 종료", "포트 3101/5173/8000 정리" 요청 시 사용.
 ---
 
 # /dev-stop — 백그라운드 개발 서버 종료
 
-`.dev/server.pid`, `.dev/client.pid`, `.dev/ai.pid`에 기록된 프로세스 트리를 종료한다. 그래도 3101/5173/8000 포트를 점유한 프로세스가 남아 있으면, 이 프로젝트 경로에서 실행된 node/python 프로세스에 한해 함께 종료한다.
+`.dev/server.pid`, `.dev/client.pid`, `.dev/ai.pid`, `.dev/tunnel.pid`에 기록된 프로세스 트리를 종료한다. 그래도 3101/5173/8000 포트를 점유한 프로세스가 남아 있으면, 이 프로젝트 경로에서 실행된 node/python 프로세스에 한해 함께 종료한다.
 
 ## 실행 절차
 
