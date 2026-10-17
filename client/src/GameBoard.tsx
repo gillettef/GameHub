@@ -538,23 +538,37 @@ function ChoosePanel({
     return (
       <div className="bg-white rounded-3xl border-2 border-purple-200 shadow-sm p-4">
         <p className="text-sm text-purple-600 mb-1">{game.rules.duelTargetKeepsTurn ? "겨룰 친구 한 명을 지목하세요" : "아직 활동을 고르지 않은 한 명을 지목하세요"}</p>
-        <p className="text-xs text-purple-500 mb-2">
-          {game.rules.duelTargetKeepsTurn ? "지목당한 친구도 이번 달 자기 활동은 그대로 해요. " : "지목당한 친구는 이번 달 자율활동으로 마법 겨루기를 하게 돼요. "}
-          {fee > 0 || game.rules.duelManaFee > 0 ? <>결과와 상관없이 지목한 친구에게 {fee > 0 ? <><InlineIcon name="heart" /> 매력 {fee} </> : null}{game.rules.duelManaFee > 0 ? <><InlineIcon name="manaToken" /> 마나기운 {game.rules.duelManaFee}개</> : null}를 건네요. </> : null}
-          {game.rules.duelDefenderStatDice === "flat" ? "지목당한 친구는 주사위 1개 + 주문력으로 막고, 나는 그 결과를 보고 굴려요." : "지목당한 친구가 먼저 굴리고, 나는 그 결과를 보고 굴려요."}
-          {game.rules.duelTieWinner === "defender" ? " 더 높아야 이겨요." : ""}
-          {game.rules.duelTargetOnce ? " 한 친구는 한 달에 한 번만 지목받아요." : ""}
-        </p>
+        <ul className="text-xs text-purple-500 mb-2 list-disc pl-4 space-y-0.5">
+          <li>
+            {game.rules.duelDefenderStatDice === "flat" ? "친구는 주사위 1개 + 주문력으로 자동으로 막고, 나는 그 결과를 보고 굴려요" : "친구가 먼저 굴리고, 나는 그 결과를 보고 굴려요"}
+            {game.rules.duelTieWinner === "defender" ? " (더 높아야 이겨요)" : ""}
+          </li>
+          <li>{game.rules.duelTargetKeepsTurn ? "지목당한 친구도 이번 달 자기 활동은 그대로 해요" : "지목당한 친구는 이번 달 자율활동으로 마법 겨루기를 하게 돼요"}</li>
+          {game.rules.duelTargetOnce && <li>한 친구는 한 달에 한 번만 지목받아요</li>}
+          {(fee > 0 || game.rules.duelManaFee > 0) && (
+            <li>
+              결과와 상관없이 지목한 친구에게 {fee > 0 ? <><InlineIcon name="heart" /> 매력 {fee} </> : null}
+              {game.rules.duelManaFee > 0 ? <><InlineIcon name="manaToken" /> 마나기운 {game.rules.duelManaFee}개</> : null}를 건네요
+            </li>
+          )}
+        </ul>
         <div className="flex flex-col gap-2">
-          {targets.map((id) => (
-            <button
-              key={id}
-              className="rounded-xl border border-purple-200 min-h-12 px-3 py-3 text-purple-700 bg-purple-50 active:scale-95 transition-transform"
-              onClick={() => onSelect("duel", id)}
-            >
-              {game.players[id].name}
-            </button>
-          ))}
+          {targets.map((id) => {
+            const spell = effectiveStat(game.players[id], "spellPower");
+            return (
+              <button
+                key={id}
+                className="flex items-center gap-2 rounded-xl border border-purple-200 min-h-12 px-3 py-3 text-left text-purple-700 bg-purple-50 active:scale-95 transition-transform"
+                onClick={() => onSelect("duel", id)}
+              >
+                <span className="truncate">{game.players[id].name}</span>
+                <span className="ml-auto shrink-0 rounded-full bg-purple-100 px-2 py-0.5 text-xs text-purple-800">
+                  <InlineIcon name="sparkle" /> 주문력 {spell}
+                  {game.rules.duelDefenderStatDice === "flat" ? ` · 막기 ${spell + 1}~${spell + 6}` : ""}
+                </span>
+              </button>
+            );
+          })}
           <button className="mt-2 text-sm text-purple-600 min-h-11 w-full" onClick={() => setPendingActivity(null)}>
             취소
           </button>
