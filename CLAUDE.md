@@ -56,7 +56,7 @@
 
 | 환경 | 위치 | 서버 | 클라이언트 | AI | 용도 |
 |---|---|---|---|---|---|
-| dev | 로컬 PC, `/dev` · `/dev-stop` | 3101 (tsx watch) | 5173 (Vite, proxy) | 8000 (`--reload`) | 로컬 개발. 핫리로드 |
+| dev | 로컬 PC, `/dev` · `/dev-stop` | 3101 (tsx watch) | 5173 (Vite, proxy, 모든 주소에 열림) | 8000 (`--reload`) | 로컬 개발. 핫리로드. 같은 와이파이의 휴대폰·PC는 `http://<이 PC IP>:5173`(`/dev` 출력의 `LAN` 줄, 방화벽 5173 규칙 필요) |
 | 운영 | **AWS EC2 상시 서버** | 3201 (systemd `astraltab-prod-server`) | `client/dist/prod` 를 3201에서 정적 서빙 | 8001 (systemd `astraltab-prod-ai`) | 친구들이 접속하는 **유일한 서버**. `main` push 시 자동 배포 |
 
 - 2026-09-28 사용자 지시로 서버를 AWS EC2 상시 서버로 옮겼고, 2026-09-29 test/prod 구분을 없애 단일 운영 서버로 통일했다 — GitHub `main` push 가 곧 운영 배포다. systemd 서비스명·`~/AstralTab` 경로·`dist/prod`·`data/prod` 는 예전 이름을 그대로 둔 것이다. `/prod-server` 스킬은 push 없이 수동 재배포할 때만 쓴다.
