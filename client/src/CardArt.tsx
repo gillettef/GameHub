@@ -11,6 +11,8 @@ export interface CardInfo {
   lines?: ReactNode[];
   // 강조(희귀) 카드
   rare?: boolean;
+  // 작은 카드 이름 아래에도 보이는 짧은 표시 (예: 활동 카드의 종류·쓰는 기운, 고른 친구)
+  chip?: string;
 }
 
 // 일러스트만 (글자 없음). 이미지가 없는 카드는 이름만 있는 예쁜 상자로 대신한다
@@ -41,6 +43,7 @@ export function CardThumb({ card, onOpen, dim = false }: { card: CardInfo; onOpe
     >
       <CardArt name={card.name} />
       <span className="mt-1 block truncate px-0.5 text-center font-display text-sm text-purple-700">{card.name}</span>
+      {card.chip && <span className="mt-0.5 block truncate rounded-full bg-purple-50 px-1.5 py-0.5 text-center text-[11px] text-purple-700">{card.chip}</span>}
     </button>
   );
 }

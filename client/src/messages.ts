@@ -35,7 +35,7 @@ export type ClientMessage =
   // 결과 확인 전에 마나기운 1개당 주사위 1개를 다시 굴린다 (굴린 주사위 중 원하는 것만: 0부터 시작하는 번호)
   | { type: "reroll_dice"; diceIndexes: number[] }
   | { type: "confirm_roll" }
-  | { type: "select_activity"; activityId: ActivityId; targetPlayerId?: string }
+  | { type: "select_activity"; activityId: ActivityId; targetPlayerId?: string; cardId?: string }
   // 3주차 구역에 공개된 카드 중 1장을 고른다 (마법생물·연구 카드는 cardId가 null이면 가져가지 않고 넘어간다)
   | { type: "pick_activity_card"; cardId: string | null };
 

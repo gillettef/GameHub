@@ -248,6 +248,8 @@ export interface ActivityChoice {
   activityId: ActivityId;
   // 마법 겨루기가면 지목한 친구
   targetPlayerId?: string;
+  // 62절 한 덱: 고를 때 정한 카드 (없으면 진행할 때 그 종류의 남은 카드 중에서 고른다)
+  cardId?: string;
 }
 
 // 진행이 끝난 활동의 결과 (진행 단계에서 화면에 보여 줌)
@@ -421,6 +423,9 @@ export interface PublicRules {
   duelDefenderReward: boolean;
   duelTieWinner: "none" | "challenger" | "defender";
   duelTargetOnce: boolean;
+  activityMarket: boolean;
+  // 한 번에 낼 수 있는 기운 = 능력치 + 이 값 (null이면 상한 없음)
+  rollLimitBonus: number | null;
   duelDefenderStatDice: boolean | "flat";
   explorationPenalty: boolean;
   growthCredit: number;

@@ -67,7 +67,7 @@ export const BALANCE = {
   duelTargetRollsFirst: true,
   // 연구실 실험: 마나기운을 몇 개 낼지 골라 낸 개수만큼(마나기운이 없으면 공짜 1개) 주사위를 굴려 합이 이 값 이상이면 성공 (안정적인 능력치 상향)
   labPrintedTargets: true, // 61절: 연구 카드마다 인쇄된 목표값(5~8)을 쓴다 (false면 모든 카드가 labTarget)
-  labTargetMod: 0, // 인쇄된 연구 카드 목표값 보정 (실험용)
+  labTargetMod: -1, // 62절: 한 덱에서는 연구 카드가 매달 보장되지 않아 인쇄 목표 6~8 → 5~7 // 인쇄된 연구 카드 목표값 보정 (실험용)
   labTarget: 8, // 59절 L4: 굴림 상한 +1과 함께 5 → 6 // 52-4절: 함께하면 든든을 없앤 뒤에도 5 유지 (성공률 약 63%, 4면 79%로 지력이 쏠린다)
   // 마법생물 조련 목표값 배율: 생물마다 정해진 trainTarget(creatures.ts)에 곱한다 (주사위가 마나기운 개수라 능력치 기운 때와 맞추기 위한 보정)
   trainTargetScale: 0.56, // 61절 라이트: 기본 주사위 1개와 함께 0.46 → 0.56 (전략 AI 리그 격자 탐색) // 59절 L4: 굴림 상한 +1과 함께 0.42 → 0.46 // 52-7절: 함께하면 든든·실패 카드 되돌리기를 없애고 성공률 약 61%로 되돌림 (52-4절 0.44, 예전 0.5)
@@ -141,7 +141,7 @@ export const BALANCE = {
   creatureBondStats: { sky: "spellPower", land: "stamina", ocean: "intelligence" } as Record<"sky" | "land" | "ocean", StatKey>,
   // ── 60절 복잡도 줄이기 실험 스위치 (기본값은 지금 규칙) ──
   classAdvanced: false, // false면 심화 수업이 없다 (모든 수업카드가 기초, 선수조건 없음)
-  examsAtStart: true, // true면 중간·기말고사 카드를 게임 시작 때 공개한다 (시험 공고 달이 없고 그 달은 행사)
+  examsAtStart: false, // 62절: 4·10개월 학교 소식에 시험 공고 (61절 true) // true면 중간·기말고사 카드를 게임 시작 때 공개한다 (시험 공고 달이 없고 그 달은 행사)
   cram: false, // false면 시험 주간 벼락치기가 없다 (바로 시험)
   duelTieWinner: "defender" as "none" | "challenger" | "defender", // 마법 겨루기 합이 같을 때: none = 무승부, challenger = 도전자 승, defender = 지목당한 친구 승
   labCostScale: 0, // 연구 카드를 가져올 때 내는 체력기운 배수 (0이면 비용 없음)
@@ -154,11 +154,11 @@ export const BALANCE = {
   duelLearn: true, // 61절: 겨루기만 하는 전략도 능력치를 넓힐 수 있게 (몰빵 하한 6 → 9%) // true면 겨루기에서 이긴 사람이 상대가 나보다 높은 능력치 중 가장 차이가 큰 것 하나 +1 (겨루며 배운다)
   reroll: false, // false면 마나기운으로 다시 굴리기가 없다
   disabledActivities: ["tournament"] as ActivityId[], // 이 활동(구역)은 없다 (예: ["duel"]이면 마법 겨루기 없이 4구역)
-  fixedExams: { midterm: "마법 마라톤", final: "주문 실기" } as null | { midterm: string; final: string }, // 시험 과목 고정(카드 이름). null이면 시험 카드 8장 중 무작위
+  fixedExams: null as null | { midterm: string; final: string }, // 62절: 시험 카드 8장 중 무작위 (61절 마법 마라톤·주문 실기 고정) // 시험 과목 고정(카드 이름). null이면 시험 카드 8장 중 무작위
   // ── 2026-10-17 실험: 활동 카드 한 덱 (기획 62절) ──
-  activityMarket: false, // true면 구역 없이 마법생물·연구·탐험·겨루기 카드를 한 덱으로 섞어 매달 1주차에 인원 + activityMarketExtra 장을 공개하고, 3주차에 그중 1장씩 고른다
+  activityMarket: true, // 62절 채택(2026-10-17) // true면 구역 없이 마법생물·연구·탐험·겨루기 카드를 한 덱으로 섞어 매달 1주차에 인원 + activityMarketExtra 장을 공개하고, 3주차에 그중 1장씩 고른다
   activityMarketExtra: 1,
-  duelCardCount: 16, // 한 덱에 넣는 마법 겨루기 카드 수
+  duelCardCount: 12, // 한 덱에 넣는 마법 겨루기 카드 수 (62절: 16장이면 4인 판당 겨루기 8.3회로 잦아 12장)
   // 탐험 카드 목표값 보정 (실험용, 카드에 인쇄된 목표에 더한다)
   exploreTargetMod: 1, // 61절: 전략 AI 리그 격자 탐색으로 +1 (인쇄된 탐험 목표에 더한다)
   // 대회 카드 목표값 보정 (실험용, 카드에 인쇄된 목표에 더한다)
