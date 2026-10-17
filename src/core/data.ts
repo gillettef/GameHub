@@ -73,7 +73,7 @@ export const EVENTS: Readonly<Record<EventKey, MarketEvent>> = {
   big: { key: 'big', name: '빅딜 시즌', icon: '💰', desc: '몸값 6억 이상 선수 계약 수수료 +2억' },
   sponsor: { key: 'sponsor', name: '스폰서 데이', icon: '🎙', desc: '이번 라운드에 직접 계약시킨 선수는 비밀 구단 보너스를 2배로 셉니다' },
   overseas: { key: 'overseas', name: '해외파 귀국', icon: '✈️', desc: '시장에 선수 2명을 더 깝니다' },
-  deadline: { key: 'deadline', name: '데드라인 데이', icon: '⏰', desc: '마지막 라운드 · 모든 계약 수수료 +4억' },
+  deadline: { key: 'deadline', name: '데드라인 데이', icon: '⏰', desc: '마지막 라운드 · 모든 계약 수수료 +5억' },
 };
 
 /** 무작위로 섞어 7장을 쓰는 이벤트 (마지막 라운드는 항상 데드라인 데이) */
@@ -95,11 +95,11 @@ export const OVERSEAS_EXTRA = 2;
  */
 export const RULES = {
   /** 비밀 구단에 계약된 선수 1명당 보너스 (들키지 않았을 때) */
-  clubBonus: 10,
+  clubBonus: 12,
   /** 다른 에이전트의 비밀 구단을 맞혔을 때 보너스 */
   guessBonus: 3,
   /** 데드라인 데이 수수료 보너스 */
-  deadlineBonus: 4,
+  deadlineBonus: 5,
   /** 이 값보다 매력도가 낮은 제안은 구단이 거절한다 (null = 제한 없음) */
   minAttract: null as number | null,
   /** 최고 매력도 동률일 때: 0 = 모두 상쇄, 1 = 제시액이 큰 구단 쪽이 계약, 2 = 요구 수수료 카드가 높은 쪽이 계약 (그것도 같으면 상쇄) */
@@ -115,7 +115,7 @@ export const RULES = {
   /** 요구 수수료 카드 1·2·3·4 의 매력도 감점 (카드에 인쇄) */
   penalty: [1, 2, 3, 4] as number[],
   /** 요구 수수료 카드 1·2·3·4 로 받는 수수료 (카드에 인쇄) */
-  fee: [1, 3, 4, 5] as number[],
+  fee: [1, 3, 5, 6] as number[],
   /** 시장 선수 수 = 인원 + marketExtra */
   marketExtra: 1,
 };
