@@ -236,6 +236,8 @@ export interface PublicRules {
   activityMarket: boolean;
   // 한 번에 낼 수 있는 기운 = 능력치 + 이 값 (null이면 상한 없음)
   rollLimitBonus: number | null;
+  // 62-7절: 자율활동에 실패하면 낸 기운 중 이만큼은 남는다
+  failKeepFuel: number;
   duelDefenderStatDice: boolean | "flat";
   explorationPenalty: boolean;
   growthCredit: number;
@@ -271,7 +273,7 @@ export interface GameState {
   activityResolveStarted: boolean;
   activityResults: ActivityResult[];
   duels: DuelPair[];
-  // 2주차(정규수업): 공개된 수업카드(인원수+1장)와 선택 순서(선부터 시계방향)
+  // 2주차(정규수업): 공개된 수업카드(인원수만큼, 62-7절)와 선택 순서(선부터 시계방향)
   classMarket: ClassCard[];
   classPickOrder: string[];
   classPickPointer: number;

@@ -453,7 +453,7 @@ function PickPanel({ game, myId, onPick }: { game: GameState; myId: string; onPi
 const MONTH_ZONES: ActivityId[] = ["tournament", "creature", "lab", "exploration"];
 function MonthOffersPanel({ game }: { game: GameState }) {
   const zones = MONTH_ZONES.filter((a) => (game.activityOffers[a]?.cards.length ?? 0) > 0);
-  // 62절 한 덱: 종류를 섞어 인원 + 1장을 한 줄로 보여 준다 (카드마다 종류·쓰는 기운 배지)
+  // 62절 한 덱: 종류를 섞어 인원만큼(62-7절) 한 줄로 보여 준다 (카드마다 종류·쓰는 기운 배지)
   if (game.rules.activityMarket) {
     const cards = MARKET_ZONES.flatMap((a) => (game.activityOffers[a]?.cards ?? []).map((card) => marketCardInfo(a, card)));
     if (cards.length === 0) return null;
@@ -650,7 +650,7 @@ function ChoosePanel({
     return (
       <div className="bg-white rounded-3xl border-2 border-purple-200 shadow-sm p-4">
         <p className="text-sm text-purple-600 mb-1">3주차(자율활동): {orderText(game.rules)} 활동 카드를 1장씩 골라요</p>
-        <p className="text-xs text-purple-500 mb-2">모두 고르면 고른 순서대로 굴려요(카드의 기운 + 공짜 주사위 1개). 카드를 누르면 크게 볼 수 있어요.</p>
+        <p className="text-xs text-purple-500 mb-2">모두 고르면 고른 순서대로 굴려요(카드의 기운을 낸 만큼, 실패해도 1개는 남아요). 카드를 누르면 크게 볼 수 있어요.</p>
         <ChooseOrder game={game} myId={myId} currentId={currentTurnPlayerId} />
         <p className={`mb-2 rounded-2xl px-3 py-2 text-sm ${isMyTurn ? "bg-pink-50 text-pink-700" : "bg-purple-50 text-purple-600"}`}>{turnText}</p>
         {me && (
@@ -929,6 +929,8 @@ function RollPanel({
   const fuelHave = me[ENERGY_FIELD[fuelKind]];
   // 자동 막기(61절): 지목당한 친구의 막기 점수 = 주사위 + 주문력. 도전자는 이것보다 높아야 이긴다
   const defense = pending.kind === "duel" ? pending.entries.find((e) => e.bonus !== undefined && e.dice) : undefined;
+  // 62-7절: 자율활동(조련·연구·탐험·겨루기 도전)은 실패해도 낸 기운 중 일부가 남는다 (시험은 아님)
+  const keepOnFail = ["creature", "lab", "exploration", "duel"].includes(pending.kind) ? Math.min(game.rules.failKeepFuel ?? 0, chosenCount) : 0;
   const defenseTotal = defense ? defense.dice!.reduce((a, b) => a + b, 0) + defense.bonus! : 0;
   // 결과를 확인하기 전에는 남은 마나기운으로 일부 주사위만 다시 굴릴 수 있다 (선 정하기는 제외)
   const canReroll = game.rules.reroll && canConfirm && pending.kind !== "first" && !!mine && (mine.dice?.length ?? 0) > 0;
@@ -1011,6 +1013,7 @@ function RollPanel({
           </p>
           <p className="mt-0.5 text-xs text-sky-700">
             {base > 0 ? `낸 개수 + 공짜 주사위 ${base}개를 굴려요. 안 낸 기운은 남아요` : "낸 개수만큼 주사위를 굴려요."}{" "}
+            {keepOnFail > 0 ? `실패해도 ${keepOnFail}개는 남아요. ` : ""}
             {!game.rules.reroll ? "" : fuel.name === "마나기운" ? "안 낸 마나기운은 다시 굴리기에 쓸 수 있어요" : "다시 굴리기는 마나기운으로 해요"}
           </p>
           <div className="mt-2 flex items-center justify-center gap-4">
