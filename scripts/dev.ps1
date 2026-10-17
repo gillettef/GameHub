@@ -2,7 +2,12 @@
 # Starts server (3101), client (5173, Vite) and the Python AI service (8000) as
 # detached background processes, writes PIDs to .dev/*.pid and logs to
 # .dev/*.log. Stop them with scripts/dev-stop.ps1.
+# 다른 기기(휴대폰·친구 PC)에서도 열 수 있게 Vite(5173)를 Cloudflare 빠른 터널로 공개한다
+# (.dev/bin/cloudflared.exe, 계정 불필요, 터널을 새로 띄울 때마다 *.trycloudflare.com 주소가 바뀐다).
+# 터널 없이 띄우려면 -NoTunnel.
 # 운영 서버는 AWS EC2 에서 상시 실행된다(main push 시 GitHub Actions 자동 배포).
+
+param([switch]$NoTunnel)
 
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'common.ps1')
@@ -26,34 +31,52 @@ function Start-PythonAI([string]$name, [string]$dir, [int]$port) {
     Start-Detached $name $venvPy @('-m', 'uvicorn', 'astral_ai.main:app', '--host', '127.0.0.1', '--port', "$port", '--reload') $dir $port | Out-Null
 }
 
+# Cloudflare 빠른 터널 -> Vite(5173). /api·/socket.io 는 Vite 프록시가 이 PC 안에서 3101 로 넘긴다.
+# 공개 주소는 .dev/tunnel-url.txt 에 남긴다(이미 떠 있으면 그 주소를 다시 보여 준다).
+function Start-Tunnel([int]$port) {
+    $urlFile = Join-Path $devDir 'tunnel-url.txt'
+    $cf = Join-Path $devDir 'bin\cloudflared.exe'
+    if (-not (Test-Path $cf)) {
+        Write-Host "[tunnel] downloading cloudflared (portable, .dev\bin) ..."
+        New-Item -ItemType Directory -Force (Split-Path $cf) | Out-Null
+        $src = 'https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe'
+        try { Invoke-WebRequest -Uri $src -OutFile $cf -UseBasicParsing }
+        catch { Write-Host "[tunnel] cloudflared download failed: $($_.Exception.Message). Local only."; return $null }
+    }
+    $pidFile = Pre-Start 'tunnel' 0
+    if (-not $pidFile) {
+        if (Test-Path $urlFile) { return (Get-Content $urlFile -First 1) }
+        return $null
+    }
+    if (Test-Path $urlFile) { Remove-Item $urlFile -Force }
+    $started = Start-Detached 'tunnel' $cf @('tunnel', '--no-autoupdate', '--url', "http://localhost:$port") $root 0
+    if (-not $started) { return $null }
+    $errLog = Join-Path $devDir 'tunnel.err.log'
+    $deadline = (Get-Date).AddSeconds(45)
+    while ((Get-Date) -lt $deadline) {
+        Start-Sleep -Milliseconds 800
+        if (Test-Path $errLog) {
+            $m = Select-String -Path $errLog -Pattern 'https://[a-z0-9-]+\.trycloudflare\.com' | Select-Object -First 1
+            if ($m) {
+                $url = $m.Matches[0].Value
+                $url | Set-Content $urlFile
+                return $url
+            }
+        }
+    }
+    Write-Host "[tunnel] URL not found yet. Check .dev\tunnel.err.log"
+    return $null
+}
+
 Start-Node     'server' (Join-Path $root 'server') 3101
 Start-Node     'client' (Join-Path $root 'client') 5173
 Start-PythonAI 'ai'     (Join-Path $root 'ai')     8000
+$publicUrl = if ($NoTunnel) { $null } else { Start-Tunnel 5173 }
 
 Write-Host ""
 Write-Host "Client : http://localhost:5173"
 Write-Host "Server : http://localhost:3101"
 Write-Host "AI     : http://localhost:8000"
-
-# 같은 네트워크의 다른 기기(휴대폰·다른 PC)용 주소: 기본 게이트웨이가 있는 어댑터의 IPv4.
-# Vite(5173)만 열면 된다 - /api·/socket.io 는 Vite 가 이 PC 안에서 3101 로 넘긴다.
-$lanIps = @(Get-NetIPConfiguration -ErrorAction SilentlyContinue |
-    Where-Object { $_.IPv4DefaultGateway -and $_.NetAdapter.Status -eq 'Up' } |
-    ForEach-Object { $_.IPv4Address.IPAddress })
-foreach ($ip in $lanIps) { Write-Host "LAN    : http://${ip}:5173  (same Wi-Fi / network)" }
-if ($lanIps.Count -eq 0) { Write-Host "LAN    : no network adapter with a gateway found" }
-
-# Windows 방화벽: 5173 인바운드 허용 규칙이 없으면 다른 기기에서 접속이 막힌다(규칙 추가는 관리자 권한)
-$fwRule = Get-NetFirewallPortFilter -Protocol TCP -ErrorAction SilentlyContinue |
-    Where-Object { $_.LocalPort -eq '5173' } |
-    Get-NetFirewallRule -ErrorAction SilentlyContinue |
-    Where-Object { $_.Enabled -eq 'True' -and $_.Direction -eq 'Inbound' -and $_.Action -eq 'Allow' }
-if (-not $fwRule) {
-    Write-Host "Firewall: no inbound rule for TCP 5173. Run once in an admin PowerShell:"
-    Write-Host "  New-NetFirewallRule -DisplayName 'Rootbound dev 5173' -Direction Inbound -Protocol TCP -LocalPort 5173 -Action Allow -Profile Private"
-}
-# 공용(Public) 네트워크로 잡힌 와이파이에는 Private 규칙이 적용되지 않는다
-foreach ($prof in @(Get-NetConnectionProfile -ErrorAction SilentlyContinue | Where-Object { $_.NetworkCategory -eq 'Public' })) {
-    Write-Host "Network: '$($prof.Name)' ($($prof.InterfaceAlias)) is Public - set it to Private in Windows Settings > Network so the firewall rule applies"
-}
+if ($publicUrl) { Write-Host "Public : $publicUrl   (other devices / friends; changes each time the tunnel restarts)" }
+elseif (-not $NoTunnel) { Write-Host "Public : (none) - check .dev\tunnel.err.log" }
 Write-Host "Stop   : scripts/dev-stop.ps1"
