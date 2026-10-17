@@ -45,7 +45,7 @@ import {
   takeClassCard,
 } from "../src/game/engine.js";
 import { labTemplates } from "../src/game/labCards.js";
-import { effectiveStat, type ExplorationCard, type GameState, type LabCard, type PlayerGameState } from "../src/game/types.js";
+import { effectiveStat, type ActivityId, type ExplorationCard, type GameState, type LabCard, type PlayerGameState } from "../src/game/types.js";
 import { BALANCE } from "../src/game/config.js";
 import { createClassDeck } from "../src/game/classCards.js";
 import { eventTemplates } from "../src/game/newsCards.js";
@@ -2358,6 +2358,75 @@ test("61절: 12개월 게임이 봇끼리 끝까지 진행된다 (2~5인, 전략
         const strategy = BOT_PERSONALITIES[(n + i) % BOT_PERSONALITIES.length];
         let guard = 0;
         while (state.phase !== "ended" && guard++ < 8000) botStep(state, strategy);
+        assert.equal(state.phase, "ended");
+      }
+    }
+  });
+});
+
+// ── 62절 실험 (2026-10-17): 활동 카드 한 덱 · 시험 공고 (스위치, 기본값은 61절) ──
+const MARKET = { ...CURRENT, activityMarket: true, examsAtStart: false, fixedExams: null, labTargetMod: -1, duelCardCount: 12 } as Partial<typeof BALANCE>;
+
+test("62절 한 덱: 1주차에 활동 카드(마법생물·연구·탐험·겨루기)를 섞어 인원 + 1장 공개하고, 그 종류의 카드 수만큼만 고를 수 있다", () => {
+  withBalance(MARKET, () => {
+    for (const n of [3, 4]) {
+      const state = newGame(n);
+      const counts = Object.fromEntries(Object.entries(state.activityOffers).map(([a, o]) => [a, o!.cards.length]));
+      assert.equal(Object.values(counts).reduce((s, c) => s + c, 0), n + 1, `${n}인: 인원 + 1장`);
+      assert.deepEqual(Object.keys(counts).sort(), ["creature", "duel", "exploration", "lab"]);
+      toActivity(state);
+      const empty = (Object.keys(counts) as ActivityId[]).find((a) => counts[a] === 0);
+      if (empty) assert.ok(!availableActivities(state, state.activityOrder[0]).includes(empty), "공개되지 않은 종류는 고를 수 없다");
+    }
+  });
+});
+
+test("62절 한 덱: 겨루기 카드를 고르면 그 카드를 써서 버리고 겨루기를 한다", () => {
+  withBalance(MARKET, () => {
+    let state = newGame(3);
+    for (let i = 0; i < 50 && !(state.activityOffers.duel?.cards.length ?? 0); i++) state = newGame(3);
+    assert.ok((state.activityOffers.duel?.cards.length ?? 0) > 0, "겨루기 카드가 공개된 판을 찾는다");
+    toActivity(state);
+    const duels = state.activityOffers.duel!.cards.length;
+    const [x, y] = state.activityOrder;
+    selectActivity(state, x, "duel", y);
+    for (const id of state.activityOrder.slice(1)) {
+      const a = availableActivities(state, id).find((k) => k !== "duel");
+      if (a) selectActivity(state, id, a);
+    }
+    advanceResolution(state);
+    assert.equal(state.activityOffers.duel!.cards.length, duels - 1, "겨루기 카드 1장을 썼다");
+    assert.equal(state.pendingRoll?.kind, "duel");
+  });
+});
+
+test("62절 시험 공고: 시험 과목은 시험 카드 8장 중 무작위(중간·기말은 다른 기운)이고, 4·10개월 학교 소식이 행사 대신 시험 공고다", () => {
+  withBalance(MARKET, () => {
+    const state = newGame(3);
+    assert.equal(state.exams.midterm, null, "처음에는 공개되지 않는다");
+    let guard = 0;
+    while (state.round < BALANCE.midtermNoticeRound && guard++ < 5000) botStep(state);
+    assert.ok(state.exams.midterm, "4개월 1주차에 중간고사 공개");
+    assert.match(state.news!.name, /중간고사/);
+    assert.equal(state.exams.final, null);
+    while (state.round < BALANCE.finalNoticeRound && guard++ < 10000) botStep(state);
+    assert.ok(state.exams.final);
+    assert.notEqual(state.exams.final!.diceStat, state.exams.midterm!.diceStat);
+  });
+  const stats = ["intelligence", "stamina", "charm", "spellPower"] as const;
+  for (const s of stats) {
+    assert.equal(examTemplates().filter((c) => c.diceStat === s).length, 2, `${s} 주사위 시험 2장`);
+    assert.equal(examTemplates().filter((c) => c.bonusStat === s).length, 2, `${s} 보너스 시험 2장`);
+  }
+});
+
+test("62절: 한 덱 + 시험 공고로 12개월 게임이 봇끼리 끝까지 진행된다 (2~5인)", () => {
+  withBalance(MARKET, () => {
+    for (const n of [2, 3, 4, 5]) {
+      for (let i = 0; i < 4; i++) {
+        const state = createGame(Array.from({ length: n }, (_, k) => ({ id: `p${k}`, name: `p${k}`, isBot: true })));
+        let guard = 0;
+        while (state.phase !== "ended" && guard++ < 8000) botStep(state, BOT_PERSONALITIES[(n + i) % BOT_PERSONALITIES.length]);
         assert.equal(state.phase, "ended");
       }
     }

@@ -212,7 +212,7 @@ function zoneOutlook(state: GameState, strategy: BotStrategy, player: PlayerGame
     return BALANCE.growthActivities.tournament ? 0.5 * effectValue(state, strategy, { stats: { spellPower: BALANCE.growthAmount }, credit: BALANCE.growthCredit }) : 0;
   // 마법 겨루기의 가치 = 이길 확률·지목 부담을 감안한 0.35 × (승리 보상 + 주문력 성장)
   if (activityId === "duel")
-    return 0.35 * (effectValue(state, strategy, BALANCE.duelWinReward) + effectValue(state, strategy, { stats: { spellPower: BALANCE.growthAmount } }) + duelLearnValue(state, strategy, player));
+    return BALANCE.activityMarket && (state.hidden.offers.duel?.length ?? 0) <= takenNow(state, "duel") ? 0 : 0.35 * (effectValue(state, strategy, BALANCE.duelWinReward) + effectValue(state, strategy, { stats: { spellPower: BALANCE.growthAmount } }) + duelLearnValue(state, strategy, player));
   const cards = state.hidden.offers[activityId] ?? [];
   const valueOf = (card: (typeof cards)[number]): number => {
     if (activityId === "creature") return creatureValue(state, strategy, player, card as CreatureCard);
@@ -221,9 +221,12 @@ function zoneOutlook(state: GameState, strategy: BotStrategy, player: PlayerGame
     return explorationValue(state, strategy, player, card as ExplorationCard);
   };
   const values = cards.map(valueOf).sort((a, b) => b - a);
-  const taken = state.activitySlots[activityId].length;
+  const taken = takenNow(state, activityId);
   return Math.max(0, values[taken] ?? 0);
 }
+
+// 이번 달 그 구역을 이미 고른 사람 수 (정규수업 단계에서는 activitySlots가 지난달 값이라 0으로 본다)
+const takenNow = (state: GameState, a: ActivityId) => (state.phase === "activity" ? state.activitySlots[a].length : 0);
 
 // 61절 겨루며 배운다: 지목할 수 있는 친구 중 가장 크게 배울 수 있는 능력치 +1의 가치 (BOT_DUEL_LEARN=0이면 끔)
 function duelLearnValue(state: GameState, strategy: BotStrategy, player: PlayerGameState): number {
@@ -241,6 +244,8 @@ function duelLearnValue(state: GameState, strategy: BotStrategy, player: PlayerG
 // 이번 달 하려는 활동 (공개된 카드와 성향을 함께 본다)
 function activityAppeal(state: GameState, strategy: BotStrategy, player: PlayerGameState, a: ActivityId): number {
   const base: Record<ActivityId, number> = { tournament: BALANCE.tournamentCards ? 1.4 : effectiveStat(player, "spellPower") * 0.25, creature: 1.6, duel: 1.5, exploration: 1.2, lab: 1.6 };
+  // 62절 한 덱: 이번 달 그 종류의 카드가 (남아) 있지 않으면 할 수 없다
+  if (BALANCE.activityMarket && (state.hidden.offers[a]?.length ?? 0) <= takenNow(state, a)) return 0;
   // 기대값형: 성향 없이 공개된 카드의 가치만 본다
   if (strategy.greedy) return (0.3 + zoneOutlook(state, strategy, player, a)) * specialPull(state, a);
   let chase = 1;

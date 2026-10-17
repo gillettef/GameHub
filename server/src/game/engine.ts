@@ -11,6 +11,7 @@ import {
 import { randomUUID } from "node:crypto";
 import { BALANCE, examCreditForRank } from "./config.js";
 import { describeAbility } from "./creatures.js";
+import { createDuelPile } from "./duelCards.js";
 import { describeExam, pickExamCards } from "./examCards.js";
 import { describeEffect } from "./explorationCards.js";
 import { eventTemplates, examWeekCard, noticeCard, quietMonthCard } from "./newsCards.js";
@@ -23,6 +24,7 @@ import {
   type ClassCard,
   type CreatureAbility,
   type CreatureCard,
+  type DuelCard,
   type ExplorationCard,
   type FeatKey,
   type TournamentCard,
@@ -384,6 +386,7 @@ export function createGame(players: { id: string; name: string; isBot?: boolean 
       offers: {},
       examPlan: pickExamCards(),
       newsDeck: shuffle(eventTemplates()),
+      ...(BALANCE.activityMarket ? { duelPile: createDuelPile() } : {}),
       ...(BALANCE.tournamentCards ? { tournamentPile: { draw: shuffle(TOURNAMENT_CARDS.map((c) => ({ ...c, id: randomUUID() }))), discard: [] } } : {}),
     },
     ...(BALANCE.specialAwards > 0 ? { specialAwards: shuffle(SPECIAL_AWARDS.filter((a) => BALANCE.tournamentCards || a !== "champion")).slice(0, BALANCE.specialAwards) } : {}),
@@ -528,7 +531,8 @@ function beginRound(state: GameState): void {
     if (BALANCE.revealOffersAtMonthStart) {
       state.hidden.offers = {};
       state.activityOffers = {};
-      for (const activityId of ["creature", "lab", "exploration", ...(BALANCE.tournamentCards ? ["tournament"] : [])].filter((a) => !BALANCE.disabledActivities.includes(a as ActivityId)) as ActivityId[]) openOffer(state, activityId);
+      if (BALANCE.activityMarket) openMarket(state);
+      else for (const activityId of ["creature", "lab", "exploration", ...(BALANCE.tournamentCards ? ["tournament"] : [])].filter((a) => !BALANCE.disabledActivities.includes(a as ActivityId)) as ActivityId[]) openOffer(state, activityId);
     }
     beginClassPhase(state);
   }
@@ -717,7 +721,10 @@ export function activityBlockReason(state: ActivityView, playerId: string, activ
   const player = state.players[playerId];
   const slots = state.activitySlots[activityId];
   if (BALANCE.disabledActivities.includes(activityId)) return "이번 규칙에서는 없는 활동이에요.";
-  if (slots.length >= BALANCE.activityMaxParticipants) return "이미 두 명이 참여한 구역입니다.";
+  // 62절 한 덱: 그 종류의 공개 카드 수만큼만 고를 수 있다 (구역 인원 제한 대신)
+  if (BALANCE.activityMarket) {
+    if (slots.length >= (state.activityOffers[activityId]?.cards.length ?? 0)) return "이번 달 공개된 카드 중 남은 카드가 없어요.";
+  } else if (slots.length >= BALANCE.activityMaxParticipants) return "이미 두 명이 참여한 구역입니다.";
   const extra = activityExtraCost(state, activityId);
   if (!canPay(player, 0, 0, extra)) return `이미 참여한 친구가 있어서 매력기운 ${extra}개가 더 필요해요.`;
   const open = activityOpenCost(state, activityId);
@@ -1074,6 +1081,10 @@ function offerViewOf(activityId: ActivityId, card: OfferedCard, round: number): 
       const c = card as LabCard;
       return { id: c.id, name: c.name, description: c.description, lines: [c.summary, `실험 판정: 지력기운 주사위 합 ≥ ${labTargetValue(c)}`, ...failRewardLine(failRewardOf("lab", c))], cost: labCost(c) > 0 ? { kind: "stamina", amount: labCost(c) } : undefined };
     }
+    case "duel": {
+      const c = card as DuelCard;
+      return { id: c.id, name: c.name, description: c.description, tags: "마법 겨루기", lines: ["친구 한 명을 지목해 마나기운 주사위로 겨뤄요", "막기(주사위 1개 + 주문력)보다 높으면 승리"] };
+    }
     case "tournament": {
       const c = card as TournamentCard;
       const target = Math.max(1, c.target + BALANCE.tournamentTargetMod);
@@ -1100,6 +1111,7 @@ function drawForZone(state: GameState, activityId: ActivityId): OfferedCard | un
   if (activityId === "creature") return drawCreature(state);
   if (activityId === "lab") return drawFromPile(state.labPile);
   if (activityId === "tournament") return state.hidden.tournamentPile ? drawFromPile(state.hidden.tournamentPile) : undefined;
+  if (activityId === "duel") return state.hidden.duelPile ? drawFromPile(state.hidden.duelPile) : undefined;
   return drawFromPile(state.explorationPile);
 }
 
@@ -1107,6 +1119,7 @@ function discardToZone(state: GameState, activityId: ActivityId, cards: OfferedC
   if (activityId === "creature") state.creatureDiscard.push(...(cards as CreatureCard[]));
   else if (activityId === "lab") state.labPile.discard.push(...(cards as LabCard[]));
   else if (activityId === "tournament") state.hidden.tournamentPile?.discard.push(...(cards as TournamentCard[]));
+  else if (activityId === "duel") state.hidden.duelPile?.discard.push(...(cards as DuelCard[]));
   else state.explorationPile.discard.push(...(cards as ExplorationCard[]));
 }
 
@@ -1127,6 +1140,32 @@ function openOffer(state: GameState, activityId: ActivityId): void {
     for (const p of Object.values(state.players)) if (p.peekedExploration && usedIds.has(p.peekedExploration.id)) p.peekedExploration = null;
   }
   log(state, `${ACTIVITY_NAME[activityId]}: 카드 ${cards.length}장이 공개됐어요 — ${cards.map((c) => `"${c.name}"`).join(", ")}`);
+}
+
+// 62절 한 덱: 마법생물·연구·탐험·겨루기 카드를 한 덱으로 섞은 것처럼, 남은 장수에 비례해 종류를 정하며 인원 + activityMarketExtra 장을 공개한다
+// (종류별 더미를 그대로 두고 뽑는 확률만 한 덱과 같게 한다)
+const MARKET_ZONES: ActivityId[] = ["creature", "lab", "exploration", "duel"];
+function zoneRemaining(state: GameState, activityId: ActivityId): number {
+  if (activityId === "creature") return state.creatureDeck.length + state.creatureDiscard.length;
+  if (activityId === "lab") return state.labPile.draw.length + state.labPile.discard.length;
+  if (activityId === "duel") return (state.hidden.duelPile?.draw.length ?? 0) + (state.hidden.duelPile?.discard.length ?? 0);
+  return state.explorationPile.draw.length + state.explorationPile.discard.length;
+}
+function openMarket(state: GameState): void {
+  const zones = MARKET_ZONES.filter((a) => !BALANCE.disabledActivities.includes(a));
+  for (const a of zones) state.hidden.offers[a] = [];
+  const count = state.turnOrder.length + BALANCE.activityMarketExtra;
+  for (let i = 0; i < count; i++) {
+    const weights = zones.map((a) => Math.max(0, zoneRemaining(state, a)));
+    const total = weights.reduce((s, w) => s + w, 0);
+    if (total <= 0) break;
+    let r = Math.random() * total;
+    const zone = zones.find((_, k) => (r -= weights[k]) < 0) ?? zones[zones.length - 1];
+    const card = drawForZone(state, zone);
+    if (card) state.hidden.offers[zone]!.push(card);
+  }
+  for (const a of zones) syncOfferView(state, a);
+  log(state, `이번 달 활동 카드 ${count}장 공개: ${zones.flatMap((a) => offerCards(state, a).map((c) => `"${c.name}"(${ACTIVITY_NAME[a]})`)).join(", ")}`);
 }
 
 // 3주차가 끝나면 아무도 가져가지 않은 공개 카드는 버림 더미로 돌아간다
@@ -1197,6 +1236,13 @@ function startActivity(state: GameState, choice: ActivityChoice): void {
       break;
     }
     case "duel": {
+      // 62절 한 덱: 겨루기 카드 1장을 써서 버린다
+      if (BALANCE.activityMarket) {
+        const [used, ...rest] = offerCards(state, "duel");
+        state.hidden.offers.duel = rest;
+        syncOfferView(state, "duel");
+        if (used) discardToZone(state, "duel", [used]);
+      }
       startDuel(state, player, state.players[choice.targetPlayerId!]);
       break;
     }

@@ -155,6 +155,10 @@ export const BALANCE = {
   reroll: false, // false면 마나기운으로 다시 굴리기가 없다
   disabledActivities: ["tournament"] as ActivityId[], // 이 활동(구역)은 없다 (예: ["duel"]이면 마법 겨루기 없이 4구역)
   fixedExams: { midterm: "마법 마라톤", final: "주문 실기" } as null | { midterm: string; final: string }, // 시험 과목 고정(카드 이름). null이면 시험 카드 8장 중 무작위
+  // ── 2026-10-17 실험: 활동 카드 한 덱 (기획 62절) ──
+  activityMarket: false, // true면 구역 없이 마법생물·연구·탐험·겨루기 카드를 한 덱으로 섞어 매달 1주차에 인원 + activityMarketExtra 장을 공개하고, 3주차에 그중 1장씩 고른다
+  activityMarketExtra: 1,
+  duelCardCount: 16, // 한 덱에 넣는 마법 겨루기 카드 수
   // 탐험 카드 목표값 보정 (실험용, 카드에 인쇄된 목표에 더한다)
   exploreTargetMod: 1, // 61절: 전략 AI 리그 격자 탐색으로 +1 (인쇄된 탐험 목표에 더한다)
   // 대회 카드 목표값 보정 (실험용, 카드에 인쇄된 목표에 더한다)
