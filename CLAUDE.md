@@ -12,7 +12,7 @@
 - Vite + TypeScript (strict), 프레임워크 없이 바닐라 DOM
 - 테스트: Vitest (규칙 엔진은 반드시 단위 테스트)
 - 백엔드 없음. 영속 데이터는 `localStorage`만 사용
-- 배포: `vite build` 결과물(`dist/`)을 정적 호스팅
+- 배포: `vite build` 결과물(`dist/`)을 AWS EC2 공용 서버에서 정적 서빙 (아래 "배포 (AWS)")
 
 ## 프로토타입과 달라지는 점
 | 프로토타입 | 이 프로젝트 |
@@ -82,6 +82,11 @@ npm run typecheck  # tsc --noEmit
 - 규칙 변경 시: `rules-spec` 스킬 문서를 먼저 고치고 → 엔진/테스트 → UI 순서로 반영
 - 로직 변경 후 `npm run test`, UI 변경 후 `/mobile-check` 스킬로 확인
 - 밸런스 수치 조정은 `balance-analyst` 에이전트로 시뮬레이션 근거를 남긴 뒤 진행
+
+## 배포 (AWS)
+- 다른 게임(Eleven·MagicAcademy·Rootbound·SmilePark)과 같은 EC2(t4g.nano, 서울) 1대를 공유한다. `main`에 push하면 `.github/workflows/deploy-aws.yml`이 `npm test` → `npm run build`를 통과했을 때만 `dist`와 `scripts/aws/serve.mjs`(의존성 없는 정적 서버)를 `~/doubleagent`에 올리고 systemd `doubleagent`(포트 **8091**)를 재시작한다. 접속은 `http://54.116.67.196:8091`.
+- SSH(22)는 관리자 IP만 열려 있어 워크플로가 러너 IP를 임시로 열었다 닫는다. 저장소 시크릿: AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY / AWS_REGION / AWS_SECURITY_GROUP_ID / EC2_HOST / EC2_HOST_KEY / EC2_SSH_PRIVATE_KEY (다른 게임 저장소와 같은 값).
+- 서버 준비(완료, 2026-10-17): `scripts/aws/provision.sh` → `scripts/aws/units.sh`, 보안 그룹 TCP 8091 인바운드 추가.
 
 ## Git
 - 저장소: https://github.com/gillettef/DoubleAgent.git (`origin`, 기본 브랜치 `main`)
