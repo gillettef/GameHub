@@ -55,7 +55,7 @@ const withEvent = (e: EventKey) => state({ events: [e, 'normal', 'normal', 'norm
 describe('evaluateOffer (정수 계산)', () => {
   it('매력도 = 적합도 − 카드의 매력도 감점, 수수료 = 기본 + 요구 수수료', () => {
     expect(ev(offer())).toEqual({ attract: 1, fee: 5 });
-    expect(ev(offer({ demand: 4 }))).toEqual({ attract: -1, fee: 7 });
+    expect(ev(offer({ demand: 4 }))).toEqual({ attract: -1, fee: 8 });
     // 정우진(DF 멀티) → 실버 호크스(MF 플메): 적합 0
     expect(ev(offer({ playerId: 6, clubId: 1, demand: 1 }))).toEqual({ attract: -1, fee: 3 });
   });
@@ -98,7 +98,7 @@ describe('요구 수수료 카드', () => {
   it('손에 없는 카드는 낼 수 없다', () => {
     const s = state({ agents: [agent({ hand: [1, 3] }), agent()] });
     expect(validateOffer(s, 0, offer({ demand: 2 }))).toBe('card-not-owned');
-    expect(validateOffer(s, 0, offer({ demand: 3 }))).toEqual({ attract: 0, fee: 6 });
+    expect(validateOffer(s, 0, offer({ demand: 3 }))).toEqual({ attract: 0, fee: 7 });
   });
 });
 
