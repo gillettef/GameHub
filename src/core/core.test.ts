@@ -26,7 +26,7 @@ import {
   validateOffer,
   winners,
 } from './index';
-import type { AgentState, EventKey, GameState, Offer } from './types';
+import type { AgentState, Demand, EventKey, GameState, Offer } from './types';
 
 // 선수: 0 강태오 FW 몸값8 스타 기본4 / 1 윤시후 MF 몸값6 플메 기본3 / 3 최준서 FW 몸값3 유망주 기본2 / 6 정우진 DF 몸값2 멀티 기본2
 // 구단: 0 블루 드래곤즈 10 FW 스타 / 1 실버 호크스 8 MF 플메 / 5 노바 크루저스 6 DF 베테랑 / 6 썬더 울브스 5 FW 유망주
@@ -47,15 +47,15 @@ const state = (over: Partial<GameState> = {}): GameState => ({
   ...over,
 });
 
-/** 최준서 → 썬더 울브스, 요구 2: 매력도 3 − 2 = 1, 수수료 2 + 2 = 4 */
+/** 최준서 → 썬더 울브스, 요구 2: 매력도 3 − 2 = 1, 수수료 2 + 3 = 5 (카드 2 = +3억) */
 const offer = (over: Partial<Offer> = {}): Offer => ({ playerId: 3, clubId: 6, demand: 2, ...over });
 const ev = (o: Offer, e: EventKey = 'normal') => evaluateOffer(o, e);
 const withEvent = (e: EventKey) => state({ events: [e, 'normal', 'normal', 'normal', 'normal', 'normal', 'normal', 'deadline'] });
 
 describe('evaluateOffer (정수 계산)', () => {
   it('매력도 = 적합도 − 카드의 매력도 감점, 수수료 = 기본 + 요구 수수료', () => {
-    expect(ev(offer())).toEqual({ attract: 1, fee: 4 });
-    expect(ev(offer({ demand: 4 }))).toEqual({ attract: -1, fee: 6 });
+    expect(ev(offer())).toEqual({ attract: 1, fee: 5 });
+    expect(ev(offer({ demand: 4 }))).toEqual({ attract: -1, fee: 7 });
     // 정우진(DF 멀티) → 실버 호크스(MF 플메): 적합 0
     expect(ev(offer({ playerId: 6, clubId: 1, demand: 1 }))).toEqual({ attract: -1, fee: 3 });
   });
@@ -66,18 +66,18 @@ describe('evaluateOffer (정수 계산)', () => {
   });
 
   it('이벤트: 수수료 +2 (공격수 품귀·유망주 열풍·수비 보강·빅딜 시즌), 데드라인 데이 +4', () => {
-    expect(ev(offer(), 'fw')).toEqual({ attract: 1, fee: 6 });
-    expect(ev(offer(), 'young')).toEqual({ attract: 1, fee: 6 });
-    expect(ev(offer(), 'defense')).toEqual({ attract: 1, fee: 4 });
-    expect(ev(offer({ playerId: 6, clubId: 5 }), 'defense')).toEqual({ attract: 0, fee: 6 });
-    expect(ev(offer(), 'big')).toEqual({ attract: 1, fee: 4 });
-    expect(ev(offer({ playerId: 0, clubId: 0 }), 'big')).toEqual({ attract: 1, fee: 8 });
-    expect(ev(offer(), 'deadline')).toEqual({ attract: 1, fee: 4 + RULES.deadlineBonus });
+    expect(ev(offer(), 'fw')).toEqual({ attract: 1, fee: 7 });
+    expect(ev(offer(), 'young')).toEqual({ attract: 1, fee: 7 });
+    expect(ev(offer(), 'defense')).toEqual({ attract: 1, fee: 5 });
+    expect(ev(offer({ playerId: 6, clubId: 5 }), 'defense')).toEqual({ attract: 0, fee: 7 });
+    expect(ev(offer(), 'big')).toEqual({ attract: 1, fee: 5 });
+    expect(ev(offer({ playerId: 0, clubId: 0 }), 'big')).toEqual({ attract: 1, fee: 9 });
+    expect(ev(offer(), 'deadline')).toEqual({ attract: 1, fee: 5 + RULES.deadlineBonus });
   });
 
   it('구단 긴축: 제시액 −2', () => {
     // 최준서 몸값 3 → 썬더 울브스 5 − 2 = 3 (가능), 강태오 8 → 블루 드래곤즈 10 − 2 = 8 (가능)
-    expect(ev(offer(), 'budget')).toEqual({ attract: 1, fee: 4 });
+    expect(ev(offer(), 'budget')).toEqual({ attract: 1, fee: 5 });
     expect(ev(offer({ playerId: 1, clubId: 6 }), 'budget')).toBe('under-cost');
   });
 });
@@ -98,7 +98,7 @@ describe('요구 수수료 카드', () => {
   it('손에 없는 카드는 낼 수 없다', () => {
     const s = state({ agents: [agent({ hand: [1, 3] }), agent()] });
     expect(validateOffer(s, 0, offer({ demand: 2 }))).toBe('card-not-owned');
-    expect(validateOffer(s, 0, offer({ demand: 3 }))).toEqual({ attract: 0, fee: 5 });
+    expect(validateOffer(s, 0, offer({ demand: 3 }))).toEqual({ attract: 0, fee: 6 });
   });
 });
 
@@ -117,12 +117,21 @@ describe('contest (경쟁 판정)', () => {
   it('모두 동률이면 계약 없음', () => {
     expect(contest([c(0, 1), c(1, 1)]).winner).toBeNull();
   });
+  it('최고 매력도가 같으면 요구 수수료 카드가 높은 쪽이 계약 (카드까지 같으면 상쇄)', () => {
+    const d = (agent: number, attract: number, demand: Demand) => ({ agent, offer: offer({ demand }), attract, fee: 4 });
+    const r = contest([d(0, 1, 2), d(1, 1, 3), d(2, 0, 1)]);
+    expect(r.winner?.agent).toBe(1);
+    expect(r.beaten.map((x) => x.agent)).toEqual([0, 2]);
+    const t = contest([d(0, 1, 3), d(1, 1, 3), d(2, 1, 2), d(3, 0, 1)]);
+    expect(t.winner?.agent).toBe(3);
+    expect(t.cancelled.map((x) => x.agent)).toEqual([0, 1, 2]);
+  });
 });
 
 describe('resolveRound', () => {
   it('서로 다른 선수 제안은 모두 성사, 계약 선수는 시장에서 빠지고 구단 아래 놓인다', () => {
     const s = resolveRound(state(), { 0: offer(), 1: offer({ playerId: 6, clubId: 5, demand: 1 }) });
-    expect(s.agents.map((a) => a.score)).toEqual([4, 3]);
+    expect(s.agents.map((a) => a.score)).toEqual([5, 3]);
     expect(s.market).toEqual([0]);
     expect(s.signings.map((x) => [x.playerId, x.clubId, x.agent])).toEqual([
       [3, 6, 0],

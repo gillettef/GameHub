@@ -390,7 +390,7 @@ function toModel(agent: number, combos: Combo[]): RivalModel {
   return { agent, target, attract };
 }
 
-/** 내 매력도로 이 선수를 계약할 확률: 모든 상대가 안 노리거나 더 낮은 매력도로 노려야 이긴다 (같으면 상쇄) */
+/** 내 매력도로 이 선수를 계약할 확률: 모든 상대가 안 노리거나 더 낮은 매력도로 노려야 이긴다 (같으면 카드 비교, 그것도 같으면 상쇄) */
 function winChance(rivals: RivalModel[], playerId: number, attract: number, demand: Demand): number {
   // 동률이면 높은 카드가 이기는 규칙(tieBudget 2)에서는 같은 매력도의 낮은 카드도 이긴다
   const tieByCard = RULES.tieBudget === 2;
