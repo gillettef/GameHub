@@ -291,7 +291,14 @@ export interface ActivityOffer {
   cards: OfferCardView[];
 }
 
-export type OfferedCard = CreatureCard | LabCard | ExplorationCard | TournamentCard;
+// 마법 겨루기 카드 (2026-10-17 실험 activityMarket: 활동 카드를 한 덱으로 섞을 때 겨루기도 카드로 들어간다)
+export interface DuelCard {
+  id: string;
+  name: string;
+  description: string;
+}
+
+export type OfferedCard = CreatureCard | LabCard | ExplorationCard | TournamentCard | DuelCard;
 
 export interface HiddenState {
   roll: RollContext | null;
@@ -305,6 +312,8 @@ export interface HiddenState {
   newsDeck: NewsCard[];
   // 대회 카드 더미 (56절 C1, 켰을 때만)
   tournamentPile?: Pile<TournamentCard>;
+  // 마법 겨루기 카드 더미 (activityMarket을 켰을 때만)
+  duelPile?: Pile<DuelCard>;
 }
 
 export interface GameState {

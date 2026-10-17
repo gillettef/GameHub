@@ -7,14 +7,15 @@ import type { ExamCard, StatKey } from "./types.js";
 type Def = { name: string; description: string; diceStat: StatKey; bonusStat?: StatKey };
 
 const DEFS: Def[] = [
-  { name: "필기 시험", description: "조용한 교실에서 연필 소리만 사각사각.", diceStat: "intelligence" },
-  { name: "마법 이론 논술", description: "배운 이론을 주문으로 풀어 써 봐요.", diceStat: "intelligence", bonusStat: "spellPower" },
+  // 2026-10-17: 네 능력치가 주사위 기운으로 2번, 보너스로 2번씩 나오게 맞췄다 (보너스가 지력에 몰려 무작위 시험에서 탐험·조련 성향이 손해를 봤다)
+  { name: "필기 시험", description: "조용한 교실에서 끝까지 버티며 연필 소리만 사각사각.", diceStat: "intelligence", bonusStat: "stamina" },
+  { name: "마법 이론 논술", description: "배운 이론을 친구들이 알기 쉽게 풀어 써 봐요.", diceStat: "intelligence", bonusStat: "charm" },
   { name: "비행 실기", description: "빗자루를 타고 학교 한 바퀴!", diceStat: "stamina", bonusStat: "spellPower" },
   { name: "마법 마라톤", description: "끝까지 뛰며 문제도 풀어야 해요.", diceStat: "stamina", bonusStat: "intelligence" },
   { name: "마법 발표회", description: "친구들 앞에서 또박또박 발표해요.", diceStat: "charm", bonusStat: "intelligence" },
-  { name: "무대 오디션", description: "반짝반짝 무대 위에서 마법 쇼!", diceStat: "charm", bonusStat: "stamina" },
+  { name: "무대 오디션", description: "반짝반짝 무대 위에서 마법 쇼!", diceStat: "charm", bonusStat: "spellPower" },
   { name: "주문 실기", description: "선생님 앞에서 주문을 직접 보여 줘요.", diceStat: "spellPower", bonusStat: "charm" },
-  { name: "고급 마법진", description: "복잡한 마법진을 정확하게 그려요.", diceStat: "spellPower", bonusStat: "intelligence" },
+  { name: "고급 마법진", description: "운동장 가득 커다란 마법진을 정확하게 그려요.", diceStat: "spellPower", bonusStat: "stamina" },
 ];
 
 export function examTemplates(): Omit<ExamCard, "id">[] {
