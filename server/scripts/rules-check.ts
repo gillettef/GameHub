@@ -51,6 +51,9 @@ import { createClassDeck } from "../src/game/classCards.js";
 import { eventTemplates } from "../src/game/newsCards.js";
 import { cramStep, rollAndConfirm } from "./_drive.js";
 
+// 63절(2026-10-18) 장래희망은 1장을 무작위로 받는다(고르기 없음). 앞의 검증은 2장 중 1장 고르기로 본다
+const DREAM63 = { dreamDeal: BALANCE.dreamDeal, dreamChooseRounds: BALANCE.dreamChooseRounds } as Partial<typeof BALANCE>;
+Object.assign(BALANCE, { dreamDeal: 2, dreamChooseRounds: 1 } as Partial<typeof BALANCE>);
 // 62-7절(2026-10-17) 공개 장수 = 인원·자율활동 공짜 주사위 없음·실패해도 기운 1개 이월과 그에 맞춘 목표값도 전용 검증에서만 켠다 (MARKET62보다 먼저 되돌린다)
 const P627_KEYS = ["classMarketExtra", "activityMarketExtra", "activityBaseDice", "failKeepFuel", "trainTargetScale", "exploreTargetMod", "duelCardCount"] as const;
 const P627 = JSON.parse(JSON.stringify(Object.fromEntries(P627_KEYS.map((k) => [k, BALANCE[k]])))) as Partial<typeof BALANCE>;
@@ -2572,6 +2575,21 @@ test("62-7절: 12개월 게임이 봇끼리 끝까지 진행된다 (2~5인)", ()
         assert.equal(state.phase, "ended");
       }
     }
+  });
+});
+
+// ── 63절 (2026-10-18): 장래희망 1장 무작위 ──
+test("63절: 장래희망은 1장을 무작위로 받고 바꿀 수 없다", () => {
+  assert.deepEqual(DREAM63, { dreamDeal: 1, dreamChooseRounds: 0 });
+  withBalance({ ...ROLL627, ...DREAM63 }, () => {
+    const state = newGame(4);
+    for (const id of state.turnOrder) {
+      const p = state.players[id];
+      assert.equal(p.dreamOptions?.length, 1);
+      assert.equal(p.dream?.id, p.dreamOptions![0].id);
+    }
+    const a = state.turnOrder[0];
+    assert.throws(() => chooseDream(state, a, state.players[a].dreamOptions![0].id), /동안만/);
   });
 });
 

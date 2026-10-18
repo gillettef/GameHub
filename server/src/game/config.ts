@@ -130,12 +130,12 @@ export const BALANCE = {
   duelChallengerBonus: 0,
   // B1 순서 규칙: "seat" = 선부터 시계방향 / "creditAsc" = 학점이 낮은 사람부터 (같으면 선부터 시계방향). 정규수업·자율활동·시험·벼락치기 순서에 모두 쓴다
   turnOrderRule: "creditAsc" as "seat" | "creditAsc",
-  // B2 장래희망 카드: 게임을 시작할 때 dreamDeal장을 받아 1장을 고른다(비공개). 졸업할 때 카드의 두 능력치가 모두 dreamThreshold 이상이면 학점 dreamCredit
+  // B2 장래희망 카드: 게임을 시작할 때 dreamDeal장을 받아 1장을 고른다(비공개, 63절: 1장을 무작위로 받고 고르지 않는다). 졸업할 때 카드의 두 능력치가 모두 dreamThreshold 이상이면 학점 dreamCredit
   dreams: true,
-  dreamDeal: 2,
+  dreamDeal: 1, // 63절: 2 → 1 (무작위 1장)
   dreamThreshold: 5, // 61절: 기본 주사위로 능력치가 더 올라 4 → 5 (달성률 약 34%) // 57절: 교감으로 능력치가 넓게 올라 3 → 4 (달성률 약 32% 유지)
   dreamCredit: 2, // 61절: 꿈 우선형 AI가 너무 강해 3 → 2
-  dreamChooseRounds: 1, // 이 개월까지는 받은 카드 중에서 바꿀 수 있다 (그 뒤로는 고정)
+  dreamChooseRounds: 0, // 63절: 1 → 0 // 이 개월까지는 받은 카드 중에서 바꿀 수 있다 (그 뒤로는 고정)
   // B3 올해의 특별상: 게임을 시작할 때 특별상 카드를 이 장수만큼 공개한다. 졸업식에서 다른 부문과 똑같이 순위 학점(rankPoints)을 준다
   specialAwards: 0,
   // C1 대회 카드: 반짝 마법 경연을 다른 구역처럼 카드 판정으로 바꾼다 (트랙·최종 순위 보상 없음, 성공하면 성장)
