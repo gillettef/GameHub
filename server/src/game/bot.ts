@@ -141,7 +141,7 @@ const DREAM_WEIGHT = 1.6;
 export function botChooseDream(state: GameState, playerId: string, strategy: BotStrategy): void {
   const p = state.players[playerId];
   const options = p.dreamOptions ?? [];
-  if (options.length === 0) return;
+  if (options.length <= 1) return; // 63절: 1장만 받으면 고를 것이 없다
   const w = weightsOf(state, strategy);
   const best = [...options].sort((a, b) => w[b.stats[0]] + w[b.stats[1]] - (w[a.stats[0]] + w[a.stats[1]]))[0];
   chooseDream(state, playerId, best.id);
