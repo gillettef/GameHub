@@ -1,7 +1,7 @@
 import { memo, useEffect, useMemo } from 'react';
 import type { SpeciesId } from '@rootbound/shared';
-import { ENTRANCE_ROOTS, getGoal, getSpecies, hasAnyPlant, legalPlantCells, samePos } from '@rootbound/shared';
-import { goalCardUrl } from '../game/cardImages';
+import { ENTRANCE_ROOTS, cellLabel, getGoal, getSpecies, hasAnyPlant, legalPlantCells, samePos } from '@rootbound/shared';
+import { PLANT_BACK_URL, goalCardUrl } from '../game/cardImages';
 import { asState, buildCells, rotationLabel } from '../game/derived';
 import { selectCanPlant, selectCanTake, selectIsMyTurn, selectState, selectViewerId, useGameStore } from '../store/gameStore';
 import { CloseIcon } from './icons';
@@ -13,10 +13,11 @@ const TERRAIN: Record<string, string> = { empty: '빈 땅', fertile: "기름진 
 /**
  * 확대 모달 하나로 다섯 가지를 본다 (스토어 cardModal):
  *  - 손패 카드: 심기 차례에 크게 보고 "이 카드 고르기". 심을 칸이 하나도 없으면 "버리기"(Rules.md 6절)
- *  - 마켓 카드: 가져오기 차례에 크게 보고 "이 카드 가져오기"(Rules.md 5절 2)
+ *  - 마켓 카드: 가져오기 차례에 크게 보고 "이 카드 가져오기"(Rules.md 5절 1)
+ *  - 카드 더미 뒷면: 가져오기 차례에 "더미에서 1장 가져오기"(Rules.md 5절 1)
  *  - 식물 카드: 보기 전용 (카드 탭·마켓)
  *  - 목표 카드: 보기 전용 (목표 칩·점수 탭·카드 탭)
- *  - 보드 칸: 지형·식물·뿌리 수·주인
+ *  - 보드 칸: 칸 이름·지형·식물·뿌리 수·주인
  */
 export const GameModal = memo(function GameModal() {
   const target = useGameStore((s) => s.cardModal);
@@ -70,6 +71,31 @@ export const GameModal = memo(function GameModal() {
         </div>
       </>
     );
+  } else if (target.kind === 'pile') {
+    body = (
+      <>
+        <img className={styles.pileFace} src={PLANT_BACK_URL} alt={`카드 더미 뒷면. 남은 ${state.pileCount}장`} decoding="async" />
+        <div className={styles.actions}>
+          {canTake && state.pileCount > 0 ? (
+            <>
+              <p className={styles.hint}>무엇이 나올지 모릅니다. 가져온 카드는 나만 보고, 마켓은 그대로 남습니다.</p>
+              <button
+                type="button"
+                className="pill pill--lg"
+                onClick={() => {
+                  close();
+                  takeCard('pile');
+                }}
+              >
+                더미에서 1장 가져오기
+              </button>
+            </>
+          ) : (
+            <p className={styles.hint}>내 가져오기 차례에 카드 더미에서 1장을 가져올 수 있습니다.</p>
+          )}
+        </div>
+      </>
+    );
   } else if (target.kind === 'hand' || target.kind === 'species') {
     const species: SpeciesId | undefined = target.kind === 'hand' ? me?.hand[target.index] : target.species;
     if (!species) return null;
@@ -83,7 +109,7 @@ export const GameModal = memo(function GameModal() {
             {!isMyTurn ? (
               <p className={styles.hint}>상대 차례입니다. 내 심기 차례에 고를 수 있습니다.</p>
             ) : !canPlant ? (
-              <p className={styles.hint}>먼저 마켓에서 카드 1장을 가져오세요. 그다음 심을 카드를 고릅니다.</p>
+              <p className={styles.hint}>먼저 마켓이나 카드 더미에서 카드 1장을 가져오세요. 그다음 심을 카드를 고릅니다.</p>
             ) : canPlantAny && !canPlantThis ? (
               <p className={styles.hint}>이 카드는 지금 심을 칸이 없습니다. 다른 카드를 고르세요.</p>
             ) : canPlantAny ? (
@@ -123,7 +149,7 @@ export const GameModal = memo(function GameModal() {
     body = (
       <div className={styles.cellInfo}>
         <h2 className={styles.title}>
-          칸 정보
+          칸 {state.board ? cellLabel(state.board, cell) : ''}
         </h2>
         <p className={styles.line}>{TERRAIN[cell.terrain]}</p>
         {cell.entranceSeat >= 0 && <p className={styles.line}>{players[cell.entranceSeat]?.nickname}의 입구 (처음에 맞닿은 6칸에 뿌리 {ENTRANCE_ROOTS}씩)</p>}

@@ -734,17 +734,26 @@ def validate_take(state: GameState, a: TakeAction) -> Optional[str]:
     if err:
         return err
     take = a.take
+    if take == "pile":
+        return None if state.pile else "카드 더미가 비었습니다. 마켓에서 가져오세요"
     if isinstance(take, bool) or not isinstance(take, int) or take < 0 or take >= len(state.market):
         return "없는 카드입니다"
     return None
 
 
 def apply_take_unchecked(state: GameState, a: TakeAction) -> GameState:
-    """마켓 take 번 카드를 손에 넣고, 빈자리는 더미 맨 위 카드로 채운다. 같은 사람이 이어서 심는다."""
-    card = state.market[a.take]
+    """마켓 take 번 카드를 손에 넣고, 빈자리는 더미 맨 위 카드로 채운다. "pile" 이면 더미 맨 위 카드를 손에 넣고
+    마켓은 그대로. 같은 사람이 이어서 심는다."""
     me = get_player(state, a.playerId)
     assert me is not None
-    market = [x for i, x in enumerate(state.market) if i != a.take]
+    if a.take == "pile":
+        top, *rest = state.pile
+        s = state.model_copy(update={"pile": rest, "stage": "plant"})
+        return _update_player(s, a.playerId, hand=[*me.hand, top])
+    take = a.take
+    assert isinstance(take, int)
+    card = state.market[take]
+    market = [x for i, x in enumerate(state.market) if i != take]
     pile = list(state.pile)
     if pile:
         market.append(pile.pop(0))

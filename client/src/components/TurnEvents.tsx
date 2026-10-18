@@ -23,17 +23,19 @@ const KIND_ICON: Partial<Record<LogKind, ReactNode>> = {
 function shorten(e: GameLogEntry): string {
   switch (e.kind) {
     case 'plant': {
-      // turn.ts 심기 로그: "닉네임: 참나무 심음" / "닉네임: 민들레 심음, 씨앗 놓음"
-      const m = e.message.match(/: ([^:,]+) 심음(?:, 씨앗 놓음)?$/);
-      return m ? `${m[1]} 심음` : e.message;
+      // turn.ts 심기 로그: "닉네임: C4에 참나무 심음" / "닉네임: C4에 민들레 심음, 씨앗 D6"
+      const m = e.message.match(/: ([A-Z]\d+)에 ([^:,]+) 심음(?:, 씨앗 [A-Z]\d+)?$/);
+      return m ? `${m[1]} ${m[2]} 심음` : e.message;
     }
     case 'take': {
-      // turn.ts 가져오기 로그: "닉네임: 소나무 가져옴"
-      const m = e.message.match(/: ([^:]+) 가져옴$/);
+      // turn.ts 가져오기 로그: "닉네임: 마켓에서 소나무 가져옴" / "닉네임: 카드 더미에서 1장 가져옴"
+      if (/: 카드 더미에서 1장 가져옴$/.test(e.message)) return '더미에서 1장';
+      const m = e.message.match(/: 마켓에서 ([^:]+) 가져옴$/);
       return m ? `${m[1]} 가져옴` : e.message;
     }
     case 'flip': {
-      const m = e.message.match(/^.*?: (.+)의 땅 (\d+)칸을 가져갔습니다$/);
+      // turn.ts 밀어내기 로그: "닉네임: 상대의 땅 2칸을 밀어냄 (C5, D4)"
+      const m = e.message.match(/^.*?: (.+)의 땅 (\d+)칸을 밀어냄/);
       return m ? `${m[1]} 땅 ${m[2]}칸 뺏음` : e.message;
     }
     case 'discard':

@@ -348,7 +348,7 @@
     "2": {
       "gardenSize": 6,
       "copies": 4,
-      "market": 3,
+      "market": 2,
       "supply": 16,
       "komi": [
         0,
@@ -358,7 +358,7 @@
     "3": {
       "gardenSize": 6,
       "copies": 5,
-      "market": 4,
+      "market": 2,
       "supply": 18,
       "komi": [
         0,
@@ -369,7 +369,7 @@
     "4": {
       "gardenSize": 8,
       "copies": 5,
-      "market": 5,
+      "market": 2,
       "supply": 16,
       "komi": [
         0,

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { Action, GameState, PlayerId } from '@rootbound/shared';
 import { autoAction, legalPlantCells, maskState, rulesFor } from '@rootbound/shared';
 import { createAiRunner } from '../game/aiTurn.js';
-import { RoomError, RoomManager, isCurrentFormat } from './manager.js';
+import { RoomError, RoomManager, actionShapeError, isCurrentFormat } from './manager.js';
 
 function makeManager(): RoomManager {
   let n = 0;
@@ -212,6 +212,9 @@ describe('입력 검증 · 방 정리', () => {
     expect(bad({ type: 'PLANT', playerId, species: 'oak', pos: { q: 1.5, r: 2 } })).toThrow(RoomError);
     expect(bad({ type: 'PLANT', playerId, species: 'tree', pos: { q: 1, r: 2 } })).toThrow(RoomError);
     expect(bad({ type: 'TAKE', playerId, take: '0' })).toThrow(/가져오기/);
+    expect(bad({ type: 'TAKE', playerId, take: 'deck' })).toThrow(/가져오기/);
+    // 카드 더미 맨 위 1장 (Rules.md 5절 1)은 모양 검사를 통과해 엔진이 판단한다
+    expect(actionShapeError({ type: 'TAKE', playerId, take: 'pile' })).toBeNull();
     expect(bad({ type: 'DRAFT', playerId, species: 'oak' })).toThrow(/알 수 없는/);
     expect(bad({ type: 'PLANT', playerId, species: 'kudzu', pos: { q: 1, r: 2 }, direction: 7 })).toThrow(RoomError);
     expect(bad({ type: 'PLACE', playerId })).toThrow(RoomError);

@@ -2,7 +2,7 @@
  * 화면용 파생값. 규칙 계산은 전부 shared 엔진 함수를 부르고(중복 구현 금지), 여기서는 화면 모양으로만 바꾼다.
  */
 import type { Direction, GameState, MaskedGameState, PlayerId, Plant, Position, Score, SpeciesId, Terrain } from '@rootbound/shared';
-import { boardIndex, computeOwners, computeScores, getSpecies, legalPlantCells, plantRoots, posKey, rotateSpot, SPECIES_IDS, supplyLeft } from '@rootbound/shared';
+import { boardIndex, cellLabels, computeOwners, computeScores, getSpecies, legalPlantCells, plantRoots, posKey, rotateSpot, SPECIES_IDS, supplyLeft } from '@rootbound/shared';
 
 /** 가려진 상태도 엔진 함수에 그대로 넣을 수 있다(모양 호환) */
 export const asState = (s: MaskedGameState | GameState): GameState => s as unknown as GameState;
@@ -13,6 +13,8 @@ export interface CellView {
   r: number;
   terrain: Terrain;
   tile: number;
+  /** 칸 이름 (예: "C4", Rules.md 2절) */
+  label: string;
   /** 땅 주인 좌석 = 큐브 색 (−1 없음) */
   owner: number;
   /** 큐브 수 */
@@ -31,6 +33,7 @@ export function buildCells(state: MaskedGameState | GameState): CellView[] {
   const seatOf = new Map(s.players.map((p) => [p.id, p.seat]));
   const plantAt = new Map(s.plants.map((p) => [posKey(p.pos), p]));
   const entranceAt = new Map(s.board.entrances.map((e, seat) => [posKey(e), seat]));
+  const labels = cellLabels(s.board);
   return s.board.cells.map((c, i) => {
     const key = posKey(c);
     const plant = plantAt.get(key) ?? null;
@@ -40,6 +43,7 @@ export function buildCells(state: MaskedGameState | GameState): CellView[] {
       r: c.r,
       terrain: c.terrain,
       tile: c.tile,
+      label: labels[i] as string,
       owner: owners[i] as number,
       cubes: s.rootCount[i] ?? 0,
       plant,

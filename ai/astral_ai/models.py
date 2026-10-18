@@ -164,11 +164,11 @@ class ConfirmAction(_Model):
 
 
 class TakeAction(_Model):
-    """차례 앞부분: 마켓 take 번 카드를 손에 든다."""
+    """차례 앞부분: 마켓 take 번 카드, 또는 "pile" = 카드 더미 맨 위 1장(뒷면)을 손에 든다."""
 
     type: Literal["TAKE"] = "TAKE"
     playerId: PlayerId
-    take: int
+    take: Union[Literal["pile"], int]
 
 
 class PlantAction(_Model):

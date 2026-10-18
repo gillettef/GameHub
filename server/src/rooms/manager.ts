@@ -133,7 +133,7 @@ export function actionShapeError(action: unknown): string | null {
     case 'SURRENDER':
       return null;
     case 'TAKE':
-      return Number.isInteger(a.take) ? null : '잘못된 가져오기입니다';
+      return Number.isInteger(a.take) || a.take === 'pile' ? null : '잘못된 가져오기입니다';
     case 'DISCARD':
       return isSpeciesId(a.species) ? null : '없는 식물입니다';
     case 'PLANT':

@@ -13,11 +13,11 @@ import { useGameStore, type TabId } from './store/gameStore';
 /**
  * 개발·검증용 바로가기: `/hotseat?quick` 은 곧장 핫시트를 시작한다(이번 판 식물 공개 화면).
  * `&players=<2~4>` 인원, `&seed=<n>` 시드, `&play=<n>` 공개 단계를 확인한 뒤 자동 수로 n번 두고 시작(가져오기·심기 각각 1번, 중반·마켓 빈 화면 확인용),
- * `&tab=<board|status|progress|cards|help>` 첫 탭, `&take=<마켓 index>` 가져오기 차례면 그 카드를 가져온다(TAKE),
+ * `&tab=<board|status|progress|cards|help>` 첫 탭, `&take=<마켓 index | pile>` 가져오기 차례면 그 카드(pile = 카드 더미 맨 위)를 가져온다(TAKE),
  * `&select=<손패 index>` 선택 카드, `&cell=<합법 칸 index>` 고른 카드로 심을 후보 칸(미리보기), `&modal=<손패 index>` 카드 확대 모달.
  * play·take·select·cell·modal 중 하나라도 있으면 공개 단계를 자동으로 확인한다.
  */
-function readQuickStart(): { players: number; seed: number; play: number; tab: TabId | null; select: number | null; cell: number | null; take: number | null; modal: number | null } | null {
+function readQuickStart(): { players: number; seed: number; play: number; tab: TabId | null; select: number | null; cell: number | null; take: number | 'pile' | null; modal: number | null } | null {
   const q = new URLSearchParams(window.location.search);
   if (!q.has('quick')) return null;
   const tab = q.get('tab');
@@ -29,7 +29,7 @@ function readQuickStart(): { players: number; seed: number; play: number; tab: T
     tab: tab === 'status' || tab === 'progress' || tab === 'board' || tab === 'cards' || tab === 'help' ? tab : null,
     select: q.has('select') ? Number(q.get('select')) : null,
     cell: q.has('cell') ? Number(q.get('cell')) : null,
-    take: q.has('take') ? Number(q.get('take')) : null,
+    take: q.get('take') === 'pile' ? 'pile' : q.has('take') ? Number(q.get('take')) : null,
     modal: q.has('modal') ? Number(q.get('modal')) : null,
   };
 }
@@ -74,7 +74,7 @@ export function App() {
     }
     acknowledgeHandoff();
     if (quick.tab) setTab(quick.tab);
-    if (quick.take !== null && Number.isInteger(quick.take)) {
+    if (quick.take === 'pile' || (quick.take !== null && Number.isInteger(quick.take))) {
       takeCard(quick.take);
       acknowledgeHandoff();
     }

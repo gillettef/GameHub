@@ -61,6 +61,8 @@ interface HexBoardProps {
   preview?: PlantPreview | null;
   /** 칸마다 뿌리(큐브) 수를 보여 준다 */
   showInfluence: boolean;
+  /** 칸마다 칸 이름(C4)을 보여 준다 */
+  showLabels?: boolean;
   onCellClick: (q: number, r: number) => void;
 }
 
@@ -77,7 +79,7 @@ const terrainFill: Record<CellView['terrain'], string> = {
  * 칸마다 땅 주인 좌석색(옅게) → 지형 장식 → 입구(집 모양·번호) / 식물(카드 그림 썸네일 + 땅 주인 색 고리) → 뿌리 큐브 수(주인 색 배지)를 올린다.
  * 식물은 누구의 것도 아니므로 고리 색은 심은 사람이 아니라 그 칸의 땅 주인 색이다(Rules.md 1절).
  */
-export const HexBoard = memo(function HexBoard({ cells, legal, legalFaint, seedLegal, pendingKey, seedKey, preview, showInfluence, onCellClick }: HexBoardProps) {
+export const HexBoard = memo(function HexBoard({ cells, legal, legalFaint, seedLegal, pendingKey, seedKey, preview, showInfluence, showLabels = false, onCellClick }: HexBoardProps) {
   const box = useMemo(() => {
     const pts = cells.map((c) => px(c.q, c.r));
     const xs = pts.map((p) => p.x);
@@ -141,6 +143,9 @@ export const HexBoard = memo(function HexBoard({ cells, legal, legalFaint, seedL
   const inflFont = Math.min(Math.max(0.7, fontFloor), 0.8);
   const smallFont = Math.min(Math.max(0.5, fontFloor), 0.7);
   const inflR = Math.max(0.36, inflFont * 0.5);
+  // 칸 이름은 칸 위쪽 끝에 작게, 12px 하한을 지킨다. 별도 층이라 4인 보드(ppu≈18 → 0.67)에서 칸 위로 조금 넘쳐도 된다.
+  // 상한 0.8 은 "E10" 이 칸 폭(√3)을 넘지 않는 크기다
+  const labelFont = Math.min(Math.max(0.36, fontFloor), 0.8);
   const smallR = Math.max(0.3, smallFont * 0.56);
 
   return (
@@ -161,7 +166,7 @@ export const HexBoard = memo(function HexBoard({ cells, legal, legalFaint, seedL
         const isSeedLegal = seedLegal?.has(c.key) ?? false;
         const interactive = isLegal || isSeedLegal;
         const ownerStyle = c.owner >= 0 ? ({ '--owner': `var(--color-seat-${c.owner})` } as CSSProperties) : undefined;
-        const label = `(${c.q},${c.r}) ${terrainName(c.terrain)}${c.plant ? ` · ${getSpecies(c.plant.species).name}` : ''}${c.owner >= 0 ? ` · ${c.owner + 1}번 자리 땅, 뿌리 ${c.cubes}` : ''}`;
+        const label = `${c.label} ${terrainName(c.terrain)}${c.plant ? ` · ${getSpecies(c.plant.species).name}` : ''}${c.owner >= 0 ? ` · ${c.owner + 1}번 자리 땅, 뿌리 ${c.cubes}` : ''}`;
         const bare = !c.plant && c.entranceSeat < 0;
         return (
           <g
@@ -261,6 +266,18 @@ export const HexBoard = memo(function HexBoard({ cells, legal, legalFaint, seedL
           );
         })}
       </g>
+      {showLabels && (
+        <g aria-hidden="true" className={styles.labels} style={{ fontSize: labelFont }}>
+          {cells.map((c) => {
+            const { x, y } = px(c.q, c.r);
+            return (
+              <text key={c.key} x={x.toFixed(3)} y={(y - 0.62).toFixed(3)} textAnchor="middle" dominantBaseline="central">
+                {c.label}
+              </text>
+            );
+          })}
+        </g>
+      )}
     </svg>
   );
 });

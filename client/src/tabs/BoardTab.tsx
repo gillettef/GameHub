@@ -28,6 +28,8 @@ export const BoardTab = memo(function BoardTab() {
   const seedPicking = useGameStore((s) => s.seedPicking);
   const showInfluence = useGameStore((s) => s.showInfluence);
   const toggleInfluence = useGameStore((s) => s.toggleInfluence);
+  const showLabels = useGameStore((s) => s.showLabels);
+  const toggleLabels = useGameStore((s) => s.toggleLabels);
   const tapCell = useGameStore((s) => s.tapCell);
   const canTake = useGameStore(selectCanTake);
   const canPlant = useGameStore(selectCanPlant);
@@ -73,9 +75,9 @@ export const BoardTab = memo(function BoardTab() {
     state.phase === 'finished'
       ? '게임이 끝났습니다'
       : !isMyTurn
-        ? `${current?.nickname ?? ''}의 차례 · ${state.stage === 'take' ? '마켓에서 가져오는 중' : '심는 중'}`
+        ? `${current?.nickname ?? ''}의 차례 · ${state.stage === 'take' ? '가져오는 중' : '심는 중'}`
         : canTake
-          ? '마켓에서 카드 1장을 가져오세요'
+          ? '마켓이나 카드 더미에서 카드 1장을 가져오세요'
           : stuck
             ? '심을 칸이 없습니다. 카드를 눌러 한 장 버리세요'
             : !species
@@ -103,6 +105,7 @@ export const BoardTab = memo(function BoardTab() {
           seedKey={pendingSeed ? posKey(pendingSeed) : null}
           preview={preview}
           showInfluence={showInfluence}
+          showLabels={showLabels}
           onCellClick={onCellClick}
         />
       </div>
@@ -119,6 +122,9 @@ export const BoardTab = memo(function BoardTab() {
           <span className={isMyTurn ? styles.hintMine : styles.hint}>{hint}</span>
           <button type="button" className={showInfluence ? styles.toggleOn : styles.toggle} onClick={toggleInfluence} aria-pressed={showInfluence} title="칸마다 뿌리(큐브) 수 보기">
             뿌리 수
+          </button>
+          <button type="button" className={showLabels ? styles.toggleOn : styles.toggle} onClick={toggleLabels} aria-pressed={showLabels} title="칸마다 칸 이름(C4) 보기 — 진행 탭 기록의 칸을 찾을 때">
+            칸 이름
           </button>
         </div>
       </div>

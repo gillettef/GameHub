@@ -105,3 +105,12 @@
     opacity: 0;
   }
 }
+
+/* 카드 더미 뒷면 (식물 카드 확대와 같은 크기) */
+.pileFace {
+  display: block;
+  width: min(100%, 300px, calc((100dvh - 260px) * 630 / 880));
+  aspect-ratio: 630 / 880;
+  margin: 0 auto;
+  border-radius: var(--radius-md);
+}

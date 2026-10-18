@@ -90,9 +90,9 @@ function run(games: number, name: string): void {
       const pid = `p${seat}`;
       if (g.needs() === 'take') {
         const t = bots[seat]!.take(g, seat, rand);
-        const idx = Math.max(0, Math.min(g.market.length - 1, t));
+        const idx = t === -1 && g.rules.blindDraw && g.bag.length ? -1 : Math.max(0, Math.min(g.market.length - 1, t));
         g.doTake(idx);
-        const r = applyAction(s, { type: 'TAKE', playerId: pid, take: idx });
+        const r = applyAction(s, { type: 'TAKE', playerId: pid, take: idx === -1 ? 'pile' : idx });
         if (r.error) throw new Error(`판 ${i} 가져오기 거부: ${r.error}`);
         s = r.state;
       } else {
@@ -125,4 +125,4 @@ function run(games: number, name: string): void {
   console.log(`일치: ${games}판 ${moves}수 (실험실 = 정본)`);
 }
 
-run(Number(process.argv[2] ?? 30), process.argv[3] ?? 'v5');
+run(Number(process.argv[2] ?? 30), process.argv[3] ?? 'v6');
