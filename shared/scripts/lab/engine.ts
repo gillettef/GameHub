@@ -96,6 +96,8 @@ export interface LabRules {
   noCell: 'discard' | 'entrance';
   /** 마켓 리필: 'refill' 가져가면 바로 채움, 'round' 라운드마다 새로 */
   refill: 'refill' | 'round';
+  /** 가져오기에서 마켓 대신 카드 더미 맨 위 1장(뒷면)을 가져올 수 있나 (take = -1) */
+  blindDraw?: boolean;
   /** 끝날 때 남은 큐브 1개당 점수 등 추가 규칙 */
   bonusPerTileMajority?: number;
   /** 인원별 1인 뿌리 큐브 수 (0/없음 = 무제한). 모자라면 가장 높이 쌓인 내 칸에서 옮겨 온다 */
@@ -803,9 +805,11 @@ export class Game {
     return (this.roundStart + k) % this.P;
   }
 
+  /** idx = -1: 카드 더미 맨 위 1장 (blindDraw) */
   doTake(idx: number): void {
     const s = this.current;
-    if (this.market.length) {
+    if (idx === -1 && this.rules.blindDraw && this.bag.length) this.hands[s]!.push(this.bag.pop() as number);
+    else if (this.market.length) {
       const i = Math.max(0, Math.min(this.market.length - 1, idx));
       const card = this.market.splice(i, 1)[0] as number;
       this.hands[s]!.push(card);
@@ -873,6 +877,30 @@ export class Game {
     this.stageCount++;
     if (this.rules.flow === 'turn') this.nextTurn();
     else this.nextPlanter();
+  }
+
+  /** s 가 볼 때 아직 보지 못한 카드(더미 + 남의 손) 종별 장수: 전체 − 심거나 버린 카드 − 마켓 − 내 손 */
+  unseen(s: number): Map<number, number> {
+    const copies = this.rules.copies[this.P] ?? 4;
+    const m = new Map<number, number>(this.speciesIds.map((x) => [x, copies]));
+    const dec = (x: number) => m.set(x, (m.get(x) ?? 0) - 1);
+    for (const r of this.records) if (r.species >= 0) dec(r.species);
+    for (const x of this.market) dec(x);
+    for (const x of this.hands[s] as number[]) dec(x);
+    for (const [k, v] of m) if (v <= 0) m.delete(k);
+    return m;
+  }
+
+  /** s 가 볼 때 아직 보지 못한 카드(더미 + 남의 손) 종별 장수: 전체 − 심거나 버린 카드 − 마켓 − 내 손 */
+  unseen(s: number): Map<number, number> {
+    const copies = this.rules.copies[this.P] ?? 4;
+    const m = new Map<number, number>(this.speciesIds.map((x) => [x, copies]));
+    const dec = (x: number) => m.set(x, (m.get(x) ?? 0) - 1);
+    for (const r of this.records) if (r.species >= 0) dec(r.species);
+    for (const x of this.market) dec(x);
+    for (const x of this.hands[s] as number[]) dec(x);
+    for (const [k, v] of m) if (v <= 0) m.delete(k);
+    return m;
   }
 
   /** 다음 라운드 선 */

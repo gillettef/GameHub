@@ -204,6 +204,34 @@ export function boardIndex(board: Board): BoardIndex {
   return idx;
 }
 
+// ---------------------------------------------------------------------------
+// 칸 이름 (Rules.md 2절 "칸 이름"). 게임 기록·화면에 쓰는 사람용 좌표
+// ---------------------------------------------------------------------------
+
+const ROW_LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+const labelCache = new WeakMap<Board, readonly string[]>();
+
+/**
+ * 칸별 이름(board.cells 순서). 줄 = 위에서부터 A, B, C …(r 오름차순), 칸 번호 = 보드 왼쪽 끝부터 반 칸 단위
+ * 가로 위치 `2q + r` 를 2로 나눈 열 번호(1부터). 줄마다 반 칸 엇갈리므로 위·아래 줄의 같은 번호는 오른쪽 아래/위로 맞닿는다.
+ * 보드 윤곽이 인원마다 고정이라 이름도 인원마다 고정이다(지형 배치와 무관)
+ */
+export function cellLabels(board: Board): readonly string[] {
+  const cached = labelCache.get(board);
+  if (cached) return cached;
+  const minR = Math.min(...board.cells.map((c) => c.r));
+  const minX = Math.min(...board.cells.map((c) => 2 * c.q + c.r));
+  const labels = board.cells.map((c) => `${ROW_LETTERS[c.r - minR] ?? '?'}${Math.floor((2 * c.q + c.r - minX) / 2) + 1}`);
+  labelCache.set(board, labels);
+  return labels;
+}
+
+/** 칸 이름 (예: "C4"). 보드 밖이면 "?" */
+export function cellLabel(board: Board, p: Position): string {
+  const i = boardIndex(board).indexOf(p);
+  return i >= 0 ? (cellLabels(board)[i] as string) : '?';
+}
+
 export function isDirection(d: unknown): d is Direction {
   return d === 0 || d === 1 || d === 2 || d === 3 || d === 4 || d === 5;
 }

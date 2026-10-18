@@ -213,8 +213,8 @@ export type Action =
   | { type: 'READY'; playerId: PlayerId }
   /** 이번 판 식물 공개 단계에서 확인 (Rules.md 4절 7) */
   | { type: 'CONFIRM'; playerId: PlayerId }
-  /** 차례 앞부분: 마켓 take 번 카드를 손에 든다 (Rules.md 5절) */
-  | { type: 'TAKE'; playerId: PlayerId; take: number }
+  /** 차례 앞부분: 마켓 take 번 카드, 또는 'pile' = 카드 더미 맨 위 1장(뒷면)을 손에 든다 (Rules.md 5절) */
+  | { type: 'TAKE'; playerId: PlayerId; take: number | 'pile' }
   /** 심기. rotation: 뿌리 모양 회전(생략 0). seed: 민들레만(생략 가능) */
   | { type: 'PLANT'; playerId: PlayerId; species: SpeciesId; pos: Position; rotation?: Direction; seed?: Position }
   /** 심기 단계. 손의 어떤 카드도 심을 칸이 없을 때만 */

@@ -98,3 +98,8 @@ VARIANTS.v5 = variant('v5', { supply: { 2: 16, 3: 18, 4: 16 } }, V4);
 // 2026-10-17 선 규칙 재검토: 2인 ABAB(선 고정) vs ABBA(선 교대) vs 지금(공급처 큐브 최다 선)
 VARIANTS.v5fixed = variant('v5fixed', { firstPlayer: 'fixed' }, VARIANTS.v5!);
 VARIANTS.v5rotate = variant('v5rotate', { firstPlayer: 'rotate' }, VARIANTS.v5!);
+
+// 2026-10-18 사용자 지시: 마켓 2장 + 카드 더미 뒷면 1장 가져오기
+VARIANTS.v6 = variant('v6', { market: { 2: 2, 3: 2, 4: 2 }, blindDraw: true }, VARIANTS.v5!);
+VARIANTS.v6m = variant('v6m', { market: { 2: 2, 3: 3, 4: 4 }, blindDraw: true }, VARIANTS.v5!);
+VARIANTS.v5m2 = variant('v5m2', { market: { 2: 2, 3: 2, 4: 2 } }, VARIANTS.v5!);

@@ -52,6 +52,7 @@
 
 .slot {
   flex: none;
+  display: flex;
 }
 
 .empty {
@@ -65,4 +66,37 @@
 .rowActive {
   outline: 2px solid var(--color-accent);
   outline-offset: -2px;
+}
+
+/* 내 가져오기 차례: 마켓 카드 옆의 카드 더미 뒷면 (뒷면만 보고 1장) */
+.pileCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  width: 52px;
+  /* 미니 카드(.compact, padding 4px 3px)와 같은 안쪽 여백·높이 */
+  padding: 4px 3px;
+  border: 2px dashed color-mix(in srgb, var(--color-accent) 70%, transparent);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+  cursor: pointer;
+  transition: transform var(--motion-fast);
+}
+
+.pileCard:active {
+  transform: scale(0.97);
+}
+
+.pileBack {
+  width: 36px;
+  aspect-ratio: 630 / 880;
+  border-radius: 3px; /* 카드 뒷면 그림 모서리 (.back 과 같은 작은 예외) */
+}
+
+.pileName {
+  font-size: var(--text-micro);
+  font-weight: 700;
+  white-space: nowrap;
 }

@@ -299,3 +299,16 @@
     animation: none;
   }
 }
+
+/* 칸 이름 (C4): 칸 위쪽 끝, 어떤 지형 위에서도 읽히게 테두리를 두른다 */
+.labels {
+  pointer-events: none;
+}
+
+.labels text {
+  font-weight: 700;
+  fill: var(--color-text);
+  stroke: var(--board-ink);
+  stroke-width: 0.12;
+  paint-order: stroke;
+}

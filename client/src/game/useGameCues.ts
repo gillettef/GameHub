@@ -63,7 +63,7 @@ export function useGameCues(): void {
     }
     const myTurnNow = state.phase === 'playing' && state.currentPlayerId === viewerId && (before.current !== viewerId || state.turn !== before.turn);
     if (!myTurnNow) return;
-    if (mode === 'online') announceMyTurn(`${state.round}라운드 · ${state.stage === 'take' ? '마켓에서 카드를 가져올' : '식물을 심을'} 차례입니다`);
+    if (mode === 'online') announceMyTurn(`${state.round}라운드 · ${state.stage === 'take' ? '카드를 가져올' : '식물을 심을'} 차례입니다`);
     else if (!handoffPending) playCue('turn');
   }, [state, viewerId, mode, handoffPending]);
 }

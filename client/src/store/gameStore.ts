@@ -18,10 +18,11 @@ import { api } from '../socket/client';
 
 export type Mode = 'hotseat' | 'online';
 export type TabId = 'board' | 'status' | 'progress' | 'cards' | 'help';
-/** 확대해서 볼 것: 손패 카드(index), 마켓 카드(index, 내 가져오기 차례), 카탈로그의 종, 목표 카드, 보드의 칸 */
+/** 확대해서 볼 것: 손패 카드(index), 마켓 카드(index, 내 가져오기 차례), 카드 더미 뒷면(내 가져오기 차례), 카탈로그의 종, 목표 카드, 보드의 칸 */
 export type CardModalTarget =
   | { kind: 'hand'; index: number }
   | { kind: 'market'; index: number }
+  | { kind: 'pile' }
   | { kind: 'species'; species: SpeciesId }
   | { kind: 'goal'; goal: GoalId }
   | { kind: 'cell'; pos: Position };
@@ -59,6 +60,8 @@ interface GameStore {
   seedPicking: boolean;
   /** 칸마다 뿌리(큐브) 수 표시 */
   showInfluence: boolean;
+  /** 칸마다 칸 이름(C4) 표시. 게임 기록의 칸을 찾을 때 켠다 */
+  showLabels: boolean;
   notice: string | null;
   resultDismissed: boolean;
   cardModal: CardModalTarget | null;
@@ -82,8 +85,8 @@ interface GameStore {
   cancelPlant: () => void;
   /** 이번 판 식물 공개 단계의 "확인". 한 기기는 모두를 한 번에 확인한다 */
   confirmReveal: () => void;
-  /** 가져오기 차례에 마켓 index 번 카드를 가져온다 (TAKE) */
-  takeCard: (index: number) => void;
+  /** 가져오기 차례에 마켓 index 번 카드, 또는 'pile' = 카드 더미 맨 위 1장을 가져온다 (TAKE) */
+  takeCard: (index: number | 'pile') => void;
   discard: (species: SpeciesId) => void;
   surrender: () => void;
   openCardModal: (target: CardModalTarget) => void;
@@ -91,6 +94,7 @@ interface GameStore {
   acknowledgeHandoff: () => void;
   setTab: (tab: TabId) => void;
   toggleInfluence: () => void;
+  toggleLabels: () => void;
   setNotice: (message: string) => void;
   clearNotice: () => void;
   dismissResult: () => void;
@@ -109,6 +113,7 @@ const EMPTY = {
   tab: 'board' as TabId,
   ...CLEAR_SELECTION,
   showInfluence: true,
+  showLabels: false,
   notice: null,
   resultDismissed: false,
   cardModal: null as CardModalTarget | null,
@@ -166,7 +171,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       handoffPending: false,
       ...(moved ? CLEAR_SELECTION : {}),
       // 대기실에서 판이 시작되면 정원 탭으로 데려간다. 다른 탭을 보던 사람이 첫 차례를 놓치지 않게(2026-10-08 운영 기록)
-      ...(playStarted ? { tab: 'board' as TabId, cardModal: null } : { cardModal: moved && (prev.cardModal?.kind === 'hand' || prev.cardModal?.kind === 'market') ? null : prev.cardModal }),
+      ...(playStarted ? { tab: 'board' as TabId, cardModal: null } : { cardModal: moved && (prev.cardModal?.kind === 'hand' || prev.cardModal?.kind === 'market' || prev.cardModal?.kind === 'pile') ? null : prev.cardModal }),
       // 내가 보낸 수가 반영된 스냅샷(상태가 바뀐 것)이 와야 연타 잠금을 푼다. 실패는 dispatch 가 푼다
       sending: same ? prev.sending : false,
     });
@@ -265,7 +270,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   takeCard: (index) => {
     const { state, viewerId, dispatch } = get();
-    if (!state || !viewerId || !selectCanTake(get()) || index < 0 || index >= state.market.length) return;
+    if (!state || !viewerId || !selectCanTake(get())) return;
+    if (index === 'pile' ? state.pileCount === 0 : index < 0 || index >= state.market.length) return;
     dispatch({ type: 'TAKE', playerId: viewerId, take: index });
   },
 
@@ -287,6 +293,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     if (get().tab !== tab) set({ tab });
   },
   toggleInfluence: () => set((s) => ({ showInfluence: !s.showInfluence })),
+  toggleLabels: () => set((s) => ({ showLabels: !s.showLabels })),
   setNotice: (message) => set({ notice: message }),
   clearNotice: () => set({ notice: null }),
   dismissResult: () => set({ resultDismissed: true }),

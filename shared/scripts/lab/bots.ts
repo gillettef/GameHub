@@ -106,6 +106,26 @@ function marketValues(g: Game, s: number, ev: Eval): { idx: number; value: numbe
     seen.set(card, { value: b.value, move: b.move });
     out.push({ idx, value: b.value, move: b.move });
   });
+  // 카드 더미 뒷면 1장 (blindDraw): 아직 못 본 카드 분포로 낸 기댓값. idx = -1
+  if (g.rules.blindDraw && g.bag.length) {
+    const unseen = g.unseen(s);
+    let total = 0;
+    let sum = 0;
+    let move: Move = { hand: -1, cell: -1, rot: 0, extra: -1 };
+    for (const [card, n] of unseen) {
+      let v = seen.get(card)?.value;
+      if (v === undefined) {
+        hand.push(card);
+        const b = bestMove(g, s, ev);
+        hand.pop();
+        v = b.value;
+        move = b.move;
+      }
+      sum += n * v;
+      total += n;
+    }
+    if (total) out.push({ idx: -1, value: sum / total, move });
+  }
   return out;
 }
 
@@ -138,7 +158,9 @@ class EvalBot implements Bot {
 export class RandomBot implements Bot {
   name = 'random';
   take(g: Game, _s: number, rand: Rand): number {
-    return Math.floor(rand() * Math.max(1, g.market.length));
+    const pile = g.rules.blindDraw && g.bag.length ? 1 : 0;
+    const k = Math.floor(rand() * Math.max(1, g.market.length + pile));
+    return k >= g.market.length && pile ? -1 : k;
   }
   plant(g: Game, s: number, rand: Rand): Move {
     const m = g.moves(s);
@@ -155,7 +177,10 @@ export class LookaheadBot implements Bot {
   constructor(private k = 6) {}
   take(g: Game, s: number, _rand: Rand): number {
     if (!g.market.length) return 0;
-    const vals = marketValues(g, s, evalBalanced).sort((a, b) => b.value - a.value);
+    const all = marketValues(g, s, evalBalanced).sort((a, b) => b.value - a.value);
+    // 더미 뒷면은 기댓값이라 앞보기를 하지 않는다: 1수 값이 가장 높을 때만 고른다
+    if (all[0]!.idx === -1) return -1;
+    const vals = all.filter((v) => v.idx >= 0);
     let best = vals[0]!;
     let bestV = -Infinity;
     const seen = new Set<number>();

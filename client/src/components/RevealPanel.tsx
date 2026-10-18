@@ -54,7 +54,7 @@ export const RevealPanel = memo(function RevealPanel() {
           <div className={styles.mineCard}>
             <SpeciesCard species={myCard} variant="chip" seat={me?.seat} onClick={() => openCardModal({ kind: 'species', species: myCard })} />
           </div>
-          <p className={styles.help}>내 첫 카드입니다. 라운드마다 마켓에서 1장을 가져와 2장 중 1장을 심습니다.</p>
+          <p className={styles.help}>내 첫 카드입니다. 차례마다 마켓 2장 중 1장이나 카드 더미 맨 위 1장을 가져와 2장 중 1장을 심습니다.</p>
         </section>
       )}
 

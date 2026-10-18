@@ -102,7 +102,8 @@ def test_decide_take_stage_returns_take() -> None:
         pid = state["currentPlayerId"]
         action = _post(state, pid)["action"]
         assert action["type"] == "TAKE" and action["playerId"] == pid
-        assert isinstance(action["take"], int) and 0 <= action["take"] < len(state["market"])
+        take = action["take"]
+        assert (take == "pile" and bool(state["pile"])) or (isinstance(take, int) and 0 <= take < len(state["market"]))
         _assert_legal(state, action)
 
 
@@ -142,9 +143,29 @@ def test_take_counts_hand_and_candidate() -> None:
     state = GameState.model_validate(_stage("take")[0])
     pid = state.currentPlayerId
     assert pid is not None
-    dup = state.model_copy(update={"market": [state.market[0], state.market[0]]})
+    # 카드 더미가 비면 더미 뒷면은 후보가 아니다
+    dup = state.model_copy(update={"market": [state.market[0], state.market[0]], "pile": []})
     take, depth = choose_take(dup, pid, time.perf_counter() + 1.0)
     assert take == 0 and depth == 1
+
+
+def test_take_pile_uses_unseen_distribution_not_pile_order() -> None:
+    # 더미 뒷면 평가는 못 본 카드 분포만 쓴다: 더미 순서를 바꿔도, 가려서 pileCount 만 남겨도 고르는 수가 같다
+    from astral_ai.search import choose_take, unseen_cards
+
+    for raw in _sample(_stage("take"), 6):
+        state = GameState.model_validate(raw)
+        pid = state.currentPlayerId
+        assert pid is not None
+        me = next(p for p in state.players if p.id == pid)
+        unseen = unseen_cards(state, pid)
+        assert sum(unseen.values()) >= len(state.pile)
+        assert all(n > 0 for n in unseen.values()) and set(unseen) <= set(state.species)
+        assert all(sp in state.species for sp in me.hand)
+        a, _ = choose_take(state, pid, time.perf_counter() + 1.0)
+        b, _ = choose_take(state.model_copy(update={"pile": list(reversed(state.pile))}), pid, time.perf_counter() + 1.0)
+        c, _ = choose_take(state.model_copy(update={"pile": [], "pileCount": len(state.pile)}), pid, time.perf_counter() + 1.0)
+        assert a == b == c
 
 
 def test_decide_with_server_masked_states() -> None:

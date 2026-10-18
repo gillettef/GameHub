@@ -16,17 +16,17 @@ export const HelpTab = memo(function HelpTab() {
       <section className={styles.section}>
         <h2 className={styles.h2}>목표</h2>
         <p>
-          차례마다 마켓에서 카드 1장을 가져오고, 내 카드 2장 중 1장을 심어 뿌리를 뻗습니다. 끝났을 때 <strong>내 뿌리가 있는 칸 1칸 = 1점</strong>에 목표 카드 3장의 점수를 더해 가장 높은 사람이 이깁니다.
+          차례마다 마켓이나 카드 더미에서 카드 1장을 가져오고, 내 카드 2장 중 1장을 심어 뿌리를 뻗습니다. 끝났을 때 <strong>내 뿌리가 있는 칸 1칸 = 1점</strong>에 목표 카드 3장의 점수를 더해 가장 높은 사람이 이깁니다.
         </p>
       </section>
       <section className={styles.section}>
         <h2 className={styles.h2}>한 판의 흐름</h2>
         <ol className={styles.steps}>
           <li>
-            <strong>준비</strong>: 이번 판 식물로 카드 더미를 섞어 각자 {START_HAND}장씩 받고, 마켓에 카드를 펼칩니다. 각자 입구와 맞닿은 6칸에 뿌리 {ENTRANCE_ROOTS}개씩을 놓고 시작합니다.
+            <strong>준비</strong>: 이번 판 식물로 카드 더미를 섞어 각자 {START_HAND}장씩 받고, 마켓에 카드 2장을 펼칩니다. 각자 입구와 맞닿은 6칸에 뿌리 {ENTRANCE_ROOTS}개씩을 놓고 시작합니다.
           </li>
           <li>
-            <strong>가져오기</strong>: 내 차례에 마켓에서 원하는 카드 1장을 가져옵니다(내 카드 2장). 빈자리는 카드 더미에서 바로 채웁니다.
+            <strong>가져오기</strong>: 내 차례에 마켓 2장 중 원하는 카드 1장을 가져오거나(빈자리는 카드 더미에서 바로 채움), 카드 더미 맨 위 1장을 뒷면만 보고 가져옵니다(내 카드 2장). 더미에서 가져온 카드는 나만 봅니다.
           </li>
           <li>
             <strong>심기</strong>: 내 카드 1장을 <strong>내 땅</strong>이나 <strong>내 땅과 맞닿은 빈 칸</strong>에 심고, 카드의 뿌리 모양을 원하는 방향으로 돌려 숫자만큼 뿌리를 놓습니다. 심을 칸이 하나도 없을 때만 1장을 버립니다.

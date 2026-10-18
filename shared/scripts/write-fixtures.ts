@@ -53,7 +53,7 @@ function variedAction(s: GameState, rnd: { seed: number }): Action {
   }
   const pid = s.currentPlayerId as PlayerId;
   if (s.phase !== 'playing') return autoAction(s, pid) as Action;
-  if (s.stage === 'take') return { type: 'TAKE', playerId: pid, take: pick(s.market.map((_, i) => i)) };
+  if (s.stage === 'take') return { type: 'TAKE', playerId: pid, take: pick<number | 'pile'>([...s.market.map((_, i) => i), ...(s.pile.length ? ['pile' as const] : [])]) };
   const me = s.players.find((p) => p.id === pid)!;
   const options = [...new Set(me.hand)].flatMap((sp) => legalPlantCells(s, pid, sp).map((pos) => ({ sp, pos })));
   if (options.length === 0) return autoAction(s, pid) as Action;
