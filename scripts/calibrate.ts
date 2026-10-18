@@ -38,7 +38,8 @@ for (let g = 0; g < GAMES; g++) {
     s = resolveRound(s, {});
     const r = s.results.at(-1)!;
     for (const t of AI_TRACE.items) {
-      const e = r.entries.find((x) => x.agent === t.agent);
+      // v6: 라운드마다 1·2차 두 건. 같은 에이전트의 1·2차는 선수가 달라 (agent, 선수)로 짝짓는다
+      const e = r.entries.find((x) => x.agent === t.agent && x.offer?.playerId === t.playerId);
       if (!e || e.status === 'pass' || e.status === 'invalid') continue;
       const b = bins[Math.min(9, Math.floor(t.predicted * 10))]!;
       b.n++;

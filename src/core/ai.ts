@@ -1,7 +1,7 @@
-import { RULES, player, club } from './data';
+import { RULES, STAGES, TOTAL_ROUNDS, player, club } from './data';
 import type { Rng } from './rng';
-import { currentEvent, demandFee, demandPenalty, evaluateOffer, fitScore, isEvaluation, offerValue, validateOffer } from './rules';
-import type { AgentState, Demand, EventKey, GameState, Guesses, Offer, PersonaKey } from './types';
+import { currentEvent, demandFee, demandPenalty, evaluateOffer, fitScore, handAfter, isEvaluation, offerValue, validateOffer, validateSecond } from './rules';
+import type { AgentState, Demand, EventKey, GameState, Guesses, Offer, PersonaKey, RoundBid, Submission } from './types';
 
 /** 게임 구단 중 이 선수와 계약할 수 있는 구단의 최고 적합도 */
 const bestFit = (state: Pick<GameState, 'clubs'>, playerId: number, event: EventKey): number => {
@@ -99,7 +99,8 @@ export const PERSONAS: Record<PersonaKey, Persona> = {
 export const NORMAL_FIELD: readonly PersonaKey[] = ['balanced', 'stealth', 'cautious'];
 
 /** 상대 예측 모델의 집중도 (클수록 상대가 좋은 수에 몰린다고 본다). 보정: scripts/calibrate.ts */
-export const AI_MODEL = { beta1: 1 / 1.2, beta2: 1, mix: 1 };
+/** cardValue: 카드가 모자랄 때 카드 1장을 지금 쓰는 기회비용(억)의 기준값 */
+export const AI_MODEL = { beta1: 1 / 1.2, beta2: 1, mix: 1, cardValue: 5 };
 
 /** 시뮬레이션 진단용: 켜면 가치형 AI가 고른 수의 예측 승률을 기록한다 */
 export const AI_TRACE = { on: false, items: [] as { round: number; agent: number; playerId: number; predicted: number }[] };
@@ -109,31 +110,64 @@ export const AI_TUNING = PERSONAS.balanced;
 
 export const personaOf = (a: AgentState): Persona => PERSONAS[a.persona ?? ((a.level ?? 'easy') === 'normal' ? 'balanced' : 'random')];
 
-/** AI 제안 생성 (라운드 시작 상태 기준). 유효한 제안이 없으면 null (패스) */
-export function makeAiOffer(state: GameState, agentIdx: number, rng: Rng): Offer | null {
+/** 한 협상의 AI 상황: 손패와, 2차라면 1차 제안(같은 선수·구단 불가) */
+interface Turn {
+  hand: Demand[];
+  /** 2차일 때 1차 제안 (패스면 null). 1차면 undefined */
+  first?: Submission;
+}
+
+const turnOf = (state: GameState, agentIdx: number, first?: Submission): Turn =>
+  first === undefined ? { hand: [...state.agents[agentIdx]!.hand] } : { hand: handAfter(state, agentIdx, first), first };
+
+const blocked = (t: Turn, playerId: number, clubId: number): boolean => !!t.first && (t.first.playerId === playerId || t.first.clubId === clubId);
+
+/** 남은 협상 수보다 카드가 적을 때 카드 1장을 지금 쓰는 비용 비율 (0 = 넉넉함) */
+export function scarcity(state: Pick<GameState, 'round'>, cards: number, stage: 1 | 2): number {
+  const left = (TOTAL_ROUNDS - state.round) * STAGES + (stage === 1 ? STAGES : 1);
+  return RULES.copies && cards < left ? 1 - cards / left : 0;
+}
+
+/** 카드 1장을 지금 쓰는 기회비용: 남은 협상보다 카드가 적은 만큼 + 데드라인 데이 1·2차에 쓸 카드를 남기지 못하게 되면 그 보너스만큼 */
+export function cardCost(state: Pick<GameState, 'round'>, cards: number, stage: 1 | 2): number {
+  const reserve = RULES.copies && state.round < TOTAL_ROUNDS && cards - 1 < STAGES ? AI_MODEL.cardValue + RULES.deadlineBonus : 0;
+  return scarcity(state, cards, stage) * AI_MODEL.cardValue + reserve;
+}
+
+/** AI 1·2차 제출 (라운드 시작 상태 기준). 2차는 1차를 낸 뒤의 손패로, 1차와 다른 선수·구단 중에서 고른다 */
+export function makeAiBid(state: GameState, agentIdx: number, rng: Rng): RoundBid {
+  const first = makeAiOffer(state, agentIdx, rng);
+  return { first, second: makeAiOffer(state, agentIdx, rng, first) };
+}
+
+/** AI 제안 생성 (라운드 시작 상태 기준). first 를 주면 2차 협상. 유효한 제안이 없으면 null (패스) */
+export function makeAiOffer(state: GameState, agentIdx: number, rng: Rng, first?: Submission): Offer | null {
   const agent = state.agents[agentIdx];
   if (!agent) throw new Error(`unknown agent ${agentIdx}`);
   const ps = personaOf(agent);
+  const t = turnOf(state, agentIdx, first);
   let offer: Offer | null = null;
-  if (ps.kind === 'random') offer = makeEasyOffer(state, agentIdx, rng);
-  else if (ps.kind === 'spoiler') offer = makeSpoilerOffer(state, agentIdx, rng) ?? makeNormalOffer(state, agentIdx, rng, ps);
-  else if (ps.kind === 'value') offer = makeNormalOffer(state, agentIdx, rng, ps);
-  return offer && isEvaluation(validateOffer(state, agentIdx, offer)) ? offer : null;
+  if (ps.kind === 'random') offer = makeEasyOffer(state, agentIdx, rng, t);
+  else if (ps.kind === 'spoiler') offer = (t.first === undefined ? makeSpoilerOffer(state, agentIdx, rng) : null) ?? makeNormalOffer(state, agentIdx, rng, ps, t);
+  else if (ps.kind === 'value') offer = makeNormalOffer(state, agentIdx, rng, ps, t);
+  if (!offer) return null;
+  const check = t.first === undefined ? validateOffer(state, agentIdx, offer) : validateSecond(state, agentIdx, t.first, offer);
+  return isEvaluation(check) ? offer : null;
 }
 
-/** 쉬움: 무작위 선수 → 계약 가능한 구단 중 적합도 상위 3곳 중 하나 → 손의 카드 중 무작위 */
-export function makeEasyOffer(state: GameState, agentIdx: number, rng: Rng): Offer | null {
-  const agent = state.agents[agentIdx]!;
+/** 쉬움: (카드가 모자란 만큼 가끔 패스) 무작위 선수 → 계약 가능한 구단 중 적합도 상위 3곳 중 하나 → 손의 카드 중 무작위 */
+export function makeEasyOffer(state: GameState, agentIdx: number, rng: Rng, t: Turn = turnOf(state, agentIdx)): Offer | null {
   const event = currentEvent(state);
-  const options = state.market.filter((id) => state.clubs.some((c) => offerValue(club(c), event) >= player(id).cost));
-  if (!options.length || !agent.hand.length) return null;
+  if (!t.hand.length || rng.next() < scarcity(state, t.hand.length, t.first === undefined ? 1 : 2)) return null;
+  const options = state.market.filter((id) => state.clubs.some((c) => offerValue(club(c), event) >= player(id).cost && !blocked(t, id, c)));
+  if (!options.length) return null;
   const p = player(options[rng.int(options.length)]!);
   const eligible = state.clubs
     .map(club)
-    .filter((c) => offerValue(c, event) >= p.cost)
+    .filter((c) => offerValue(c, event) >= p.cost && !blocked(t, p.id, c.id))
     .sort((a, b) => fitScore(p, b) - fitScore(p, a));
   const c = eligible[rng.int(Math.min(3, eligible.length))]!;
-  return { playerId: p.id, clubId: c.id, demand: agent.hand[rng.int(agent.hand.length)]! };
+  return { playerId: p.id, clubId: c.id, demand: t.hand[rng.int(t.hand.length)]! };
 }
 
 /**
@@ -142,10 +176,11 @@ export function makeEasyOffer(state: GameState, agentIdx: number, rng: Rng): Off
  * - 승률은 상대들의 수를 한 단계 예측해서 구한다 (predictRivals)
  * - 같은 수에 여러 AI가 몰려 서로 상쇄되지 않도록 선수별 최선안 상위 spread 개 중 가치^sharp 에 비례해 고른다
  */
-export function makeNormalOffer(state: GameState, agentIdx: number, rng: Rng, ps: Persona = PERSONAS.balanced): Offer | null {
+export function makeNormalOffer(state: GameState, agentIdx: number, rng: Rng, ps: Persona = PERSONAS.balanced, t: Turn = turnOf(state, agentIdx)): Offer | null {
   const rivals = rivalsFor(state, agentIdx, ps.depth);
-  const picks = scoreOffers(state, agentIdx, ps, rivals);
-  if (!picks.length) return null;
+  const picks = scoreOffers(state, agentIdx, ps, rivals, t);
+  // 카드를 아끼는 비용까지 빼고도 이득인 수가 없으면 패스
+  if (!picks.length || picks[0]!.value <= 0) return null;
   const chosen = weightedPick(picks, rng, ps.sharp).offer;
   if (AI_TRACE.on) {
     const ev = evaluateOffer(chosen, currentEvent(state));
@@ -163,8 +198,12 @@ const rivalsFor = (state: GameState, agentIdx: number, depth: Persona['depth']):
         ? predictRivals2(state, agentIdx)
         : predictRivals(state, agentIdx);
 
-/** 가치형 AI의 후보: 선수별 최선안 상위 spread 개 (가치 내림차순) */
-function scoreOffers(state: GameState, agentIdx: number, ps: Persona, rivals: RivalModel[]): { offer: Offer; value: number }[] {
+/**
+ * 가치형 AI의 후보: 선수별 최선안 상위 spread 개 (가치 내림차순).
+ * 2차는 1차에서 다른 에이전트가 그 선수를 노릴 확률만큼 승률을 깎는다 (협상 무산).
+ * 카드를 아끼는 비용(cardCost)을 뺀다.
+ */
+function scoreOffers(state: GameState, agentIdx: number, ps: Persona, rivals: RivalModel[], t: Turn = turnOf(state, agentIdx)): { offer: Offer; value: number }[] {
   const agent = state.agents[agentIdx]!;
   const n = state.agents.length;
   const event = currentEvent(state);
@@ -174,18 +213,25 @@ function scoreOffers(state: GameState, agentIdx: number, ps: Persona, rivals: Ri
   const own = evidence(state, agentIdx);
   const maxOther = Math.max(0, ...state.clubs.filter((c) => c !== agent.secret).map((c) => own.get(c)!));
   const ownDeals = state.signings.filter((s) => s.clubId === agent.secret && (!RULES.clubOwnOnly || s.agent === agentIdx)).reduce((x, s) => x + s.weight, 0);
-  const lastCard = agent.hand.length === 1;
-  const hand: Demand[] = ps.demand === 'min' ? [Math.min(...agent.hand) as Demand] : ps.demand === 'max' ? [Math.max(...agent.hand) as Demand] : agent.hand;
+  if (!t.hand.length) return [];
+  const lastCard = t.hand.length === 1;
+  const kinds = [...new Set(t.hand)];
+  const hand: Demand[] = ps.demand === 'min' ? [Math.min(...kinds) as Demand] : ps.demand === 'max' ? [Math.max(...kinds) as Demand] : kinds;
+  const stage2 = t.first !== undefined;
+  const spend = cardCost(state, t.hand.length, stage2 ? 2 : 1);
+  const free = (pid: number) => (stage2 ? rivals.reduce((p, r) => p * (1 - (r.target.get(pid) ?? 0)), 1) : 1);
 
   const scored: { offer: Offer; value: number }[] = [];
   for (const pid of state.market) {
     const best = bestFit(state, pid, event);
+    const open = free(pid);
     for (const clubId of state.clubs) {
+      if (blocked(t, pid, clubId)) continue;
       for (const demand of hand) {
         const offer = { playerId: pid, clubId, demand } as Offer;
         const ev = evaluateOffer(offer, event);
         if (!isEvaluation(ev)) continue;
-        const win = winChance(rivals, pid, ev.attract, demand) ** ps.risk;
+        const win = (open * winChance(rivals, pid, ev.attract, demand)) ** ps.risk;
         let value = ev.fee * win + ps.greed * demandFee(demand) * win;
         const fit = ev.attract + demandPenalty(demand);
         if (clubId === agent.secret && ps.push > 0) {
@@ -198,6 +244,7 @@ function scoreOffers(state: GameState, agentIdx: number, ps: Persona, rivals: Ri
           if (k !== agentIdx && !RULES.clubOwnOnly) value -= ps.deny * clubBonus * win * sus[k]!.get(clubId)! * (k === leader ? 1.3 : 0.7);
         }
         if (!lastCard) value -= ps.save * demand;
+        value -= spend;
         scored.push({ offer, value });
       }
     }
@@ -283,7 +330,7 @@ function makeSpoilerOffer(state: GameState, agentIdx: number, rng: Rng): Offer |
   const agent = state.agents[agentIdx]!;
   const options: Offer[] = [];
   for (const clubId of state.clubs)
-    for (const demand of agent.hand) {
+    for (const demand of new Set(agent.hand)) {
       const o = { playerId: pid, clubId, demand } as Offer;
       const ev = evaluateOffer(o, event);
       if (isEvaluation(ev) && ev.attract === want) options.push(o);
@@ -337,7 +384,7 @@ function predictRivals1(state: GameState, agentIdx: number): RivalModel[] {
     for (const pid of state.market) {
       const best = bestFit(state, pid, event);
       for (const clubId of state.clubs)
-        for (const demand of o.hand) {
+        for (const demand of new Set(o.hand)) {
           const ev = evaluateOffer({ playerId: pid, clubId, demand } as Offer, event);
           if (!isEvaluation(ev)) continue;
           const w0 = Math.min(0.95, Math.max(0.05, 0.5 + 0.2 * (ev.attract - (best - 2.5))));
@@ -363,7 +410,7 @@ function level2Model(state: GameState, k: number): RivalModel {
   const combos: Combo[] = [];
   for (const pid of state.market)
     for (const clubId of state.clubs)
-      for (const demand of state.agents[k]!.hand) {
+      for (const demand of new Set(state.agents[k]!.hand)) {
         const ev = evaluateOffer({ playerId: pid, clubId, demand } as Offer, event);
         if (!isEvaluation(ev)) continue;
         combos.push({ pid, attract: ev.attract, demand, w: Math.exp(ev.fee * winChance(others, pid, ev.attract, demand) * AI_MODEL.beta2) });
@@ -392,15 +439,15 @@ function toModel(agent: number, combos: Combo[]): RivalModel {
 
 /** 내 매력도로 이 선수를 계약할 확률: 모든 상대가 안 노리거나 더 낮은 매력도로 노려야 이긴다 (같으면 카드 비교, 그것도 같으면 상쇄) */
 function winChance(rivals: RivalModel[], playerId: number, attract: number, demand: Demand): number {
-  // 동률이면 높은 카드가 이기는 규칙(tieBudget 2)에서는 같은 매력도의 낮은 카드도 이긴다
-  const tieByCard = RULES.tieBudget === 2;
+  // 동률 시 카드 비교: 낮은 카드 승(tieBudget 3)이면 같은 매력도의 더 높은 카드를, 높은 카드 승(2)이면 더 낮은 카드를 이긴다
+  const beats = (d: number) => (RULES.tieBudget === 3 ? d > demand : RULES.tieBudget === 2 ? d < demand : false);
   let p = 1;
   for (const r of rivals) {
     const t = r.target.get(playerId) ?? 0;
     let lower = 0;
     for (const [key, q] of r.attract.get(playerId) ?? []) {
       const a = attractOf(key);
-      if (a < attract || (tieByCard && a === attract && demandOf(key) < demand)) lower += q;
+      if (a < attract || (a === attract && beats(demandOf(key)))) lower += q;
     }
     p *= 1 - t + t * lower;
   }

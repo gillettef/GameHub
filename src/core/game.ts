@@ -1,5 +1,5 @@
 import { NORMAL_FIELD, makeAiGuesses } from './ai';
-import { CLUBS, CLUBS_IN_GAME, DEMANDS, EVENT_POOL, MAX_AGENTS, RULES, MIN_AGENTS, OVERSEAS_EXTRA, PLAYERS, TOTAL_ROUNDS, marketSize } from './data';
+import { CLUBS, CLUBS_IN_GAME, EVENT_POOL, MAX_AGENTS, RULES, MIN_AGENTS, OVERSEAS_EXTRA, PLAYERS, TOTAL_ROUNDS, initialHand, marketSize } from './data';
 import { createRng } from './rng';
 import { currentEvent } from './rules';
 import type { AgentKind, AiLevel, FinalScore, GameState, Guesses, PersonaKey } from './types';
@@ -11,7 +11,7 @@ export interface AgentSetup {
   persona?: PersonaKey;
 }
 
-/** 시장을 N+1명으로 채운다 (해외파 귀국은 +2). 지난 라운드에 계약되지 않은 선수는 그대로 남는다. */
+/** 시장을 2N+1명으로 채운다 (해외파 귀국은 +2). 지난 라운드에 계약되지 않은 선수는 그대로 남는다. */
 export function dealRound(state: GameState): GameState {
   const rng = createRng(state.rng);
   const want = marketSize(state.agents.length) + (currentEvent(state) === 'overseas' ? OVERSEAS_EXTRA : 0);
@@ -38,11 +38,11 @@ export function createGame(setup: readonly AgentSetup[], seed: number): GameStat
       ...(persona ? { persona } : {}),
       score: 0,
       deals: 0,
-      hand: [...DEMANDS],
+      hand: initialHand(),
       secret: secrets[i]!,
     };
   });
-  return dealRound({ v: 5, rng: rng.state, round: 1, phase: 'bid', events, market: [], clubs, signings: [], agents, results: [] });
+  return dealRound({ v: 6, rng: rng.state, round: 1, phase: 'bid', events, market: [], clubs, signings: [], agents, results: [] });
 }
 
 /** 다음 라운드로. 마지막 라운드 뒤에는 비밀 구단 지목 단계로 넘어간다. */

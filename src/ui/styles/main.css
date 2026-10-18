@@ -107,6 +107,8 @@ input[readonly] { color: var(--mu); }
 .split > * { flex: 1; }
 .bar .split > button { min-height: 52px; font-size: 16px; }
 .bar .split > .pri { flex: 2; }
+.bar .split.three > button { font-size: 15px; padding: 0 6px; }
+.bar .split.three > .pri { flex: 1.4; }
 
 .card { display: block; width: 100%; text-align: left; background: rgba(18, 29, 48, .93); border: 1px solid var(--ln); border-radius: 16px; padding: 14px; margin-bottom: 12px; }
 .card h3 { margin: 0 0 10px; font-size: 15px; }
@@ -265,3 +267,14 @@ input[readonly] { color: var(--mu); }
 .secret p.mu { font-size: 13px; }
 .secret b { color: var(--gd); }
 .sc .nm { display: flex; align-items: center; justify-content: center; }
+
+/* 1·2차 협상 탭 */
+.stages { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 4px 0 6px; }
+.stage { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-height: 56px; padding: 8px 12px; text-align: left; background: var(--pn2); border: 1px solid var(--ln); border-radius: 12px; }
+.stage small { color: var(--mu); font-size: 12px; line-height: 1.35; }
+.stage.ok small { color: var(--gr); }
+.stage.sel { border: 2px solid var(--gd); box-shadow: 0 0 0 3px #f5c86b22; }
+.note { font-size: 12px; margin: 0 0 4px; }
+.stage-t { margin: 10px 0 6px; font-size: 13px; color: var(--gd); }
+.stage-t:first-child { margin-top: 0; }
+.pc.dim { opacity: .45; }

@@ -1,11 +1,11 @@
 import { MAX_AGENTS, MIN_AGENTS, PLAYERS, createGame, finishGame, isDemand, nextRound, rankings, resolveRound } from '../core';
-import type { GameState, Submission } from '../core';
+import type { Demand, GameState, RoundBid } from '../core';
 import { loadProfile, loadSession, newProfile, saveProfile, saveSession, type Session } from '../store/storage';
 import { homeScreen, registerScreen } from './screens/home';
-import { bidScreen, finalScreen, guessScreen, handoffScreen, resultScreen } from './screens/game';
+import { bidScreen, finalScreen, guessScreen, handoffScreen, resultScreen, slotHand, slotReady, slotCheck } from './screens/game';
 import { rulesSheet } from './screens/rules';
 import { setupScreen } from './screens/setup';
-import { draftOffer, type Draft, type GuessDraft, type Seat, type UiState } from './view';
+import { slotOffer, type Draft, type GuessDraft, type Seat, type Slot, type UiState } from './view';
 
 const AI_NAMES = ['AI 알파', 'AI 브라보', 'AI 찰리'];
 const NICK_RE = /[<>&"'\s]/g;
@@ -53,7 +53,7 @@ let lastScreenKey = '';
 
 export function render(): void {
   const s = ui.session;
-  const key = `${ui.view}:${s?.screen}:${s?.game.round}:${s?.turn}:${ui.renaming}`;
+  const key = `${ui.view}:${s?.screen}:${s?.game.round}:${s?.turn}:${ui.draft?.stage}:${ui.renaming}`;
   root().innerHTML = screenHtml() + (ui.rulesOpen ? rulesSheet() : '');
   document.body.classList.toggle('locked', ui.rulesOpen);
   if (key !== lastScreenKey) {
@@ -62,13 +62,27 @@ export function render(): void {
   }
 }
 
+/** 기본 카드: +3억 카드가 있으면 그것, 없으면 가장 낮은 카드 (카드가 없으면 null) */
+const defaultDemand = (hand: readonly Demand[]): Demand | null => (hand.includes(2) ? 2 : hand.length ? (Math.min(...hand) as Demand) : null);
+
 function ensureDraft(s: Session): Draft {
   const key = `${s.game.round}:${s.turn}`;
-  if (ui.draft?.key === key) return ui.draft;
-  const hand = s.game.agents[s.turn]!.hand;
-  ui.draft = { key, playerId: null, clubId: null, demand: hand.includes(2) ? 2 : hand[0]! };
-  return ui.draft;
+  if (ui.draft?.key !== key) {
+    const hand = s.game.agents[s.turn]!.hand;
+    const empty = (): Slot => ({ playerId: null, clubId: null, demand: defaultDemand(hand), pass: !hand.length });
+    ui.draft = { key, stage: 1, slots: [empty(), empty()] };
+  }
+  // 2차 카드는 1차를 뺀 손에 있어야 한다
+  const d = ui.draft;
+  const second = d.slots[1];
+  const hand2 = slotHand(s, d, 2);
+  if (second.demand === null || !hand2.includes(second.demand)) second.demand = defaultDemand(hand2);
+  if (!hand2.length) second.pass = true;
+  return d;
 }
+
+/** 지금 작성 중인 협상 */
+const curSlot = (): Slot => ui.draft!.slots[ui.draft!.stage - 1]!;
 
 function ensureGuess(s: Session): GuessDraft {
   const key = `guess:${s.turn}`;
@@ -99,7 +113,7 @@ function startGame(seats: Seat[]) {
   persist();
 }
 
-function submit(sub: Submission) {
+function submit(sub: RoundBid) {
   const s = ui.session!;
   const subs = { ...s.subs, [s.turn]: sub };
   const nextHuman = humansOf(s.game).find((i) => !(i in subs));
@@ -241,22 +255,35 @@ const actions: Record<string, (arg: string) => void> = {
     persist();
   },
   pick: (id) => {
-    ui.draft!.playerId = PLAYERS[Number(id)]!.id;
+    Object.assign(curSlot(), { playerId: PLAYERS[Number(id)]!.id, pass: false });
   },
   club: (id) => {
-    ui.draft!.clubId = Number(id);
+    Object.assign(curSlot(), { clubId: Number(id), pass: false });
   },
   demand: (v) => {
     const n = Number(v);
-    if (isDemand(n) && ui.session!.game.agents[ui.session!.turn]!.hand.includes(n)) ui.draft!.demand = n;
+    const d = ui.draft!;
+    if (isDemand(n) && slotHand(ui.session!, d, d.stage).includes(n)) Object.assign(curSlot(), { demand: n, pass: false });
+  },
+  stage: (v) => {
+    ui.draft!.stage = v === '2' ? 2 : 1;
   },
   pass: () => {
-    if (!confirm('이번 라운드를 패스할까요? 요구 수수료 카드는 소모되지 않습니다.')) return;
-    submit(null);
+    const d = ui.draft!;
+    curSlot().pass = true;
+    if (d.stage === 1) return void (d.stage = 2);
+    if (!slotReady(slotCheck(ui.session!, d, 1))) return void (d.stage = 1);
+    const both = d.slots[0].pass;
+    if (!confirm(both ? '1차·2차 모두 패스할까요? 요구 수수료 카드는 소모되지 않습니다.' : '2차는 패스하고 제출할까요?')) return void (curSlot().pass = false);
+    submit({ first: slotOffer(d.slots[0]), second: null });
   },
   submit: () => {
-    const o = draftOffer(ui.draft!);
-    if (o) submit(o);
+    const d = ui.draft!;
+    const s = ui.session!;
+    if (!slotReady(slotCheck(s, d, 1)) || !slotReady(slotCheck(s, d, 2))) return;
+    const bid = { first: slotOffer(d.slots[0]), second: slotOffer(d.slots[1]) };
+    if (!bid.first && !bid.second && !confirm('1차·2차 모두 패스할까요? 요구 수수료 카드는 소모되지 않습니다.')) return;
+    submit(bid);
   },
   guess: (arg) => {
     const [who, club] = arg.split(':');

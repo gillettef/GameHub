@@ -1,5 +1,5 @@
 import { CLUBS, EVENTS, INVALID_TEXT, club, clubMarks, currentEvent, demandFee, player, upcomingEvent } from '../core';
-import type { AgentKind, AgentState, AiLevel, Demand, GameState, Offer, RoundEntry, RoundResult } from '../core';
+import type { AgentKind, AgentState, AiLevel, Demand, GameState, Offer, RoundEntry, RoundResult, Stage } from '../core';
 import type { Profile, Session } from '../store/storage';
 
 export interface Seat {
@@ -8,12 +8,19 @@ export interface Seat {
   level?: AiLevel;
 }
 
-/** 제안 작성 중 상태 */
-export interface Draft {
-  key: string;
+/** 협상 1건 작성 중 상태 (demand null = 낼 카드가 없음) */
+export interface Slot {
   playerId: number | null;
   clubId: number | null;
-  demand: Demand;
+  demand: Demand | null;
+  pass: boolean;
+}
+
+/** 라운드 제안 작성 중 상태: 1차·2차를 한꺼번에 작성한다 */
+export interface Draft {
+  key: string;
+  stage: Stage;
+  slots: [Slot, Slot];
 }
 
 /** 지목 작성 중 상태: 다른 에이전트 → 구단 */
@@ -22,8 +29,8 @@ export interface GuessDraft {
   picks: Record<number, number>;
 }
 
-export const draftOffer = (d: Draft): Offer | null =>
-  d.playerId !== null && d.clubId !== null ? { playerId: d.playerId, clubId: d.clubId, demand: d.demand } : null;
+export const slotOffer = (d: Slot): Offer | null =>
+  !d.pass && d.playerId !== null && d.clubId !== null && d.demand !== null ? { playerId: d.playerId, clubId: d.clubId, demand: d.demand } : null;
 
 export interface UiState {
   profile: Profile | null;
@@ -64,12 +71,12 @@ export function eventBanner(g: GameState): string {
   return `<div class="event"><span class="ev-ic">${e.icon}</span><div><b>${e.name}</b><p>${e.desc}</p>${forecast}</div></div>`;
 }
 
-/** 점수판: 공개 수수료와 남은 요구 수수료 카드 (카드는 공개 정보) */
+/** 점수판: 공개 수수료와 남은 요구 수수료 카드 수 (카드는 공개 정보) */
 export function scoreboard(g: GameState, me = -1): string {
   return `<div class="scores" style="--n:${g.agents.length}">${g.agents
     .map(
       (a, i) =>
-        `<div class="sc ${i === me ? 'me' : ''}"><span class="nm">${dot(i)}${esc(a.name)}</span><b>${money(a.score)}</b><small>${a.deals}건</small></div>`,
+        `<div class="sc ${i === me ? 'me' : ''}"><span class="nm">${dot(i)}${esc(a.name)}</span><b>${money(a.score)}</b><small>${a.deals}건 · 카드 ${a.hand.length}</small></div>`,
     )
     .join('')}</div>`;
 }
@@ -92,10 +99,10 @@ export function entryCard(g: GameState, e: RoundEntry): string {
       body = `${offerText(e.offer!)} · 매력도 ${e.attract}`;
       break;
     case 'lost':
-      badge = `<span class="badge no">${e.tied ? '동률 상쇄' : e.attract === e.winnerAttract ? '동률 · 카드 낮음' : '영입전 패배'}</span>`;
+      badge = `<span class="badge no">${e.tied ? '동률 상쇄' : e.attract === e.winnerAttract ? '동률 · 카드 높음' : '영입전 패배'}</span>`;
       body = e.tied
         ? `${offerText(e.offer!)} · 매력도 ${e.attract} (같은 매력도끼리 상쇄${e.winner !== undefined ? ` → ${esc(g.agents[e.winner]!.name)} 계약` : ''})`
-        : `${offerText(e.offer!)} · 매력도 ${e.attract} (승자 ${esc(g.agents[e.winner!]!.name)} ${e.winnerAttract}${e.attract === e.winnerAttract ? ', 더 높은 카드' : ''})`;
+        : `${offerText(e.offer!)} · 매력도 ${e.attract} (승자 ${esc(g.agents[e.winner!]!.name)} ${e.winnerAttract}${e.attract === e.winnerAttract ? ', 더 낮은 카드' : ''})`;
       break;
     case 'invalid':
       badge = `<span class="badge no">무효 · ${INVALID_TEXT[e.reason!]}</span>`;
@@ -110,4 +117,8 @@ export function entryCard(g: GameState, e: RoundEntry): string {
 
 export const clubById = (id: number) => CLUBS[id]!;
 
-export const roundEntries = (g: GameState, r: RoundResult): string => r.entries.map((e) => entryCard(g, e)).join('');
+/** 라운드 결과: 1차 → 2차 순서로 */
+export const roundEntries = (g: GameState, r: RoundResult): string =>
+  ([1, 2] as const)
+    .map((st) => `<h4 class="stage-t">${st}차 협상</h4>${r.entries.filter((e) => (e.stage ?? 1) === st).map((e) => entryCard(g, e)).join('')}`)
+    .join('');

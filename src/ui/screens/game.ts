@@ -1,14 +1,14 @@
-import { RULES, DEMANDS, demandFee, demandPenalty, PLAYERS, TOTAL_ROUNDS, INVALID_TEXT, clubWeight, currentEvent, fitScore, offerValue, rankings, validateOffer } from '../../core';
-import type { GameState } from '../../core';
+import { RULES, DEMANDS, demandFee, demandPenalty, PLAYERS, TOTAL_ROUNDS, INVALID_TEXT, clubWeight, currentEvent, fitScore, handAfter, offerValue, rankings, validateOffer, validateSecond } from '../../core';
+import type { Demand, Evaluation, GameState, InvalidReason, Stage } from '../../core';
 import type { Session } from '../../store/storage';
-import { agentName, clubById, dot, draftOffer, esc, eventBanner, header, marksOf, money, roundEntries, scoreboard, type Draft, type GuessDraft } from '../view';
+import { agentName, clubById, dot, esc, eventBanner, header, marksOf, money, roundEntries, scoreboard, slotOffer, type Draft, type GuessDraft } from '../view';
 
 const gameHeader = (g: GameState) =>
   header(`<span class="pill">R <b>${Math.min(g.round, TOTAL_ROUNDS)}/${TOTAL_ROUNDS}</b></span><button class="icon" data-act="quit" aria-label="나가기">⌂</button>`);
 
 export function handoffScreen(s: Session): string {
   const a = s.game.agents[s.turn]!;
-  const what = s.game.phase === 'guess' ? '비밀 구단 지목' : `라운드 ${s.game.round} 협상`;
+  const what = s.game.phase === 'guess' ? '비밀 구단 지목' : `라운드 ${s.game.round} · 1·2차 협상`;
   return `${gameHeader(s.game)}<main class="content center handoff">
     <div class="hand-ic">🕵️</div>
     <p class="mu">${what}</p>
@@ -29,23 +29,54 @@ function secretCard(g: GameState, turn: number): string {
   </section>`;
 }
 
+/** 이 협상에서 낼 수 있는 손패 (2차는 1차 카드를 뺀 손) */
+export function slotHand(s: Session, d: Draft, stage: Stage): Demand[] {
+  return stage === 1 ? [...s.game.agents[s.turn]!.hand] : handAfter(s.game, s.turn, slotOffer(d.slots[0]));
+}
+
+/** 협상 1건의 판정: null = 미완성, 'pass' = 패스 */
+export function slotCheck(s: Session, d: Draft, stage: Stage): Evaluation | InvalidReason | 'pass' | null {
+  const sl = d.slots[stage - 1]!;
+  if (sl.pass) return 'pass';
+  const offer = slotOffer(sl);
+  if (!offer) return null;
+  return stage === 1 ? validateOffer(s.game, s.turn, offer) : validateSecond(s.game, s.turn, slotOffer(d.slots[0]), offer);
+}
+
+export const slotReady = (c: ReturnType<typeof slotCheck>): boolean => c === 'pass' || (c !== null && typeof c === 'object');
+
+function slotSummary(s: Session, d: Draft, stage: Stage): string {
+  const c = slotCheck(s, d, stage);
+  const sl = d.slots[stage - 1]!;
+  if (c === 'pass') return '패스';
+  if (c === null) return sl.playerId === null && sl.clubId === null ? '작성 전' : '작성 중';
+  if (typeof c !== 'object') return `⚠ ${INVALID_TEXT[c]}`;
+  return `${esc(PLAYERS[sl.playerId!]!.name)} → ${esc(clubById(sl.clubId!).name)} · +${money(c.fee)}`;
+}
+
 export function bidScreen(s: Session, d: Draft): string {
   const g = s.game;
   const me = g.agents[s.turn]!;
   const event = currentEvent(g);
   const last = g.results.at(-1);
-  const p = d.playerId !== null ? PLAYERS[d.playerId]! : null;
-  const offer = draftOffer(d);
-  const check = offer ? validateOffer(g, s.turn, offer) : null;
+  const st = d.stage;
+  const sl = d.slots[st - 1]!;
+  // 2차 작성 중이면 1차에 고른 선수·구단은 고를 수 없다
+  const first = st === 2 ? slotOffer(d.slots[0]) : null;
+  const p = sl.playerId !== null ? PLAYERS[sl.playerId]! : null;
+  const hand = slotHand(s, d, st);
+  const check = slotCheck(s, d, st);
 
   const market = g.market
     .map((id) => {
       const q = PLAYERS[id]!;
-      return `<button class="pc ${d.playerId === id ? 'sel' : ''}" data-act="pick" data-arg="${id}" aria-pressed="${d.playerId === id}">
+      const taken = first?.playerId === id;
+      const sel = sl.playerId === id && !sl.pass;
+      return `<button class="pc ${sel ? 'sel' : ''} ${taken ? 'dim' : ''}" data-act="pick" data-arg="${id}" aria-pressed="${sel}" ${taken ? 'disabled' : ''}>
         <span class="pos ${q.pos}">${q.pos}</span><span class="val" aria-label="기본 수수료 ${q.base}억">${q.base}</span>
         <b>${esc(q.name)}</b>
         <span class="tag ${q.trait === '스타' ? 'star' : ''}">${q.trait}</span>
-        <small>몸값 ${q.cost}억 · 기본 수수료 ${q.base}억</small>
+        <small>${taken ? '1차에서 제안함' : `몸값 ${q.cost}억 · 기본 수수료 ${q.base}억`}</small>
       </button>`;
     })
     .join('');
@@ -58,42 +89,65 @@ export function bidScreen(s: Session, d: Draft): string {
       const prefFit = p && p.trait === c.pref;
       const tooPoor = p && bud < p.cost;
       const mine = id === me.secret;
-      return `<button class="club ${d.clubId === id ? 'sel' : ''} ${tooPoor ? 'dim' : ''} ${mine ? 'mine' : ''}" data-act="club" data-arg="${id}" aria-pressed="${d.clubId === id}">
-        <b>${mine ? '🕵️ ' : ''}${esc(c.name)}</b><span class="bud">제시액 ${bud}억${tooPoor ? ' · 몸값 미달' : ''}</span>
+      const taken = first?.clubId === id;
+      const sel = sl.clubId === id && !sl.pass;
+      return `<button class="club ${sel ? 'sel' : ''} ${tooPoor || taken ? 'dim' : ''} ${mine ? 'mine' : ''}" data-act="club" data-arg="${id}" aria-pressed="${sel}" ${taken ? 'disabled' : ''}>
+        <b>${mine ? '🕵️ ' : ''}${esc(c.name)}</b><span class="bud">${taken ? '1차에서 제안함' : `제시액 ${bud}억${tooPoor ? ' · 몸값 미달' : ''}`}</span>
         <span class="needs"><span class="${posFit ? 'fit' : ''}">${c.pos} 필요${posFit ? ' +2' : ''}</span><span class="${prefFit ? 'fit' : ''}">${c.pref} 선호${prefFit ? ' +1' : ''}</span><span>계약 ${clubWeight(g, id)}명</span></span>
         <span class="marks" aria-label="이 구단에 낸 제안 기록">${marksOf(g, id) || '<small class="mu">제안 기록 없음</small>'}</span>
       </button>`;
     })
     .join('');
 
-  const fit = p && d.clubId !== null ? fitScore(p, clubById(d.clubId)) : null;
-  const est = !p
-    ? '<span class="mu">선수를 선택하세요</span>'
-    : d.clubId === null
-      ? '<span class="mu">구단을 선택하세요</span>'
-      : check && typeof check === 'object'
-        ? `<span>매력도 <b>${check.attract}</b> <small class="mu">(적합 ${fit} − ${demandPenalty(d.demand)})</small></span><span class="fee">+${money(check.fee)}</span>`
-        : `<span class="err">${check ? INVALID_TEXT[check] : ''}</span>`;
-  const ready = check !== null && typeof check === 'object';
+  const fit = p && sl.clubId !== null ? fitScore(p, clubById(sl.clubId)) : null;
+  const est =
+    check === 'pass'
+      ? `<span class="mu">${st}차 협상 패스 · 카드 소모 없음</span>`
+      : !hand.length
+        ? '<span class="err">남은 요구 수수료 카드가 없습니다 · 패스만 가능</span>'
+        : !p
+          ? '<span class="mu">선수를 선택하세요</span>'
+          : sl.clubId === null
+            ? '<span class="mu">구단을 선택하세요</span>'
+            : check && typeof check === 'object'
+              ? `<span>매력도 <b>${check.attract}</b> <small class="mu">(적합 ${fit} − ${demandPenalty(sl.demand!)})</small></span><span class="fee">+${money(check.fee)}</span>`
+              : `<span class="err">${check ? INVALID_TEXT[check] : '카드를 고르세요'}</span>`;
+
+  const tabs = ([1, 2] as const)
+    .map(
+      (k) => `<button class="stage ${st === k ? 'sel' : ''} ${slotReady(slotCheck(s, d, k)) ? 'ok' : ''}" data-act="stage" data-arg="${k}" role="tab" aria-selected="${st === k}">
+        <b>${k}차 협상</b><small>${slotSummary(s, d, k)}</small></button>`,
+    )
+    .join('');
+
+  const allReady = slotReady(slotCheck(s, d, 1)) && slotReady(slotCheck(s, d, 2));
+  const count = (v: Demand) => hand.filter((x) => x === v).length;
+  const bar =
+    st === 1
+      ? `<div class="split"><button data-act="pass">1차 패스</button><button class="pri" data-act="stage" data-arg="2" ${slotReady(check) ? '' : 'disabled'}>2차 협상 작성 →</button></div>`
+      : `<div class="split three"><button data-act="stage" data-arg="1">← 1차</button><button data-act="pass">2차 패스</button><button class="pri" data-act="submit" ${allReady ? '' : 'disabled'}>🤝 제출</button></div>`;
 
   return `${gameHeader(g)}<main class="content tall">
     ${eventBanner(g)}
     ${scoreboard(g, s.turn)}
     ${last ? `<details class="card last"><summary>지난 라운드 결과</summary>${roundEntries(g, last)}</details>` : ''}
     ${secretCard(g, s.turn)}
-    <h3 class="sec-t">1. 선수</h3>
+    <div class="stages" role="tablist" aria-label="협상 차수">${tabs}</div>
+    <p class="mu note">1차를 모두 정산한 뒤 2차를 정산합니다. 2차는 1차와 다른 선수·구단만 고를 수 있고, 2차에 고른 선수가 1차에서 계약되면 협상이 무산됩니다(카드는 소모).</p>
+    <h3 class="sec-t">1. 선수 <small class="mu">· ${st}차 협상</small></h3>
     <div class="market">${market}</div>
     <h3 class="sec-t">2. 구단 <small class="mu">· 색 점 = 그 에이전트가 이 구단으로 낸 제안</small></h3>
     <div class="clubs">${clubs}</div>
-    <h3 class="sec-t">3. 요구 수수료 <small class="mu">높을수록 수수료↑ 매력도↓</small></h3>
+    <h3 class="sec-t">3. 요구 수수료 <small class="mu">높을수록 수수료↑ 매력도↓ · 낸 카드는 버립니다</small></h3>
     <div class="chips">${DEMANDS.map((v) => {
-      const has = me.hand.includes(v);
-      return `<button class="chip ${d.demand === v ? 'sel' : ''}" data-act="demand" data-arg="${v}" ${has ? '' : 'disabled'} aria-pressed="${d.demand === v}">+${demandFee(v)}억<small>매력도 −${demandPenalty(v)}</small></button>`;
+      const n = count(v);
+      const sel = sl.demand === v && !sl.pass;
+      return `<button class="chip ${sel ? 'sel' : ''}" data-act="demand" data-arg="${v}" ${n ? '' : 'disabled'} aria-pressed="${sel}">+${demandFee(v)}억<small>매력도 −${demandPenalty(v)}</small><small>${n ? `${n}장` : '없음'}</small></button>`;
     }).join('')}</div>
   </main>
   <nav class="bar col">
     <div class="est">${est}</div>
-    <div class="split"><button data-act="pass">패스</button><button class="pri" data-act="submit" ${ready ? '' : 'disabled'}>🤝 제안 제출</button></div>
+    ${bar}
   </nav>`;
 }
 
@@ -135,7 +189,7 @@ export function guessScreen(s: Session, d: GuessDraft): string {
     .join('');
   return `${gameHeader(g)}<main class="content">
     <h2 class="title">🔍 비밀 구단 지목</h2>
-    <p class="mu">8라운드 동안의 제안 기록을 보고 다른 에이전트의 비밀 구단을 지목하세요. 맞히면 <b>+${money(RULES.guessBonus)}</b>, 틀리면 <b>−${money(RULES.wrongGuess)}</b>. 자신 없으면 지목하지 않아도 됩니다. 한 명에게라도 들킨 에이전트는 비밀 구단 보너스를 잃습니다.</p>
+    <p class="mu">${TOTAL_ROUNDS}라운드 동안의 제안 기록을 보고 다른 에이전트의 비밀 구단을 지목하세요. 맞히면 <b>+${money(RULES.guessBonus)}</b>, 틀리면 <b>−${money(RULES.wrongGuess)}</b>. 자신 없으면 지목하지 않아도 됩니다. 한 명에게라도 들킨 에이전트는 비밀 구단 보너스를 잃습니다.</p>
     ${secretCard(g, s.turn)}
     ${blocks}
   </main>

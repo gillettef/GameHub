@@ -46,7 +46,7 @@ export interface AgentState {
   /** 계약 수수료 합계 (비밀 구단·지목 점수는 게임 종료 때 final 에 따로) */
   score: number;
   deals: number;
-  /** 손에 남은 요구 수수료 카드. 4장을 다 쓰면 다시 1~4를 가져온다 */
+  /** 손에 남은 요구 수수료 카드 (종류별 RULES.copies 장으로 시작, 공개된 카드는 버린다) */
   hand: Demand[];
   /** 비밀 구단 (이번 게임 구단 중 하나, 본인만 앎) */
   secret: number;
@@ -76,9 +76,22 @@ export interface Offer {
 /** null = 패스 */
 export type Submission = Offer | null;
 
+/** 협상 차수 (라운드마다 1차 → 2차) */
+export type Stage = 1 | 2;
+
+/** 한 라운드 제출: 1차·2차 협상을 한꺼번에 비공개로 낸다 */
+export interface RoundBid {
+  first: Submission;
+  second: Submission;
+}
+
 export type InvalidReason =
   | 'not-in-market'
   | 'card-not-owned'
+  /** 1차와 같은 선수 또는 같은 구단을 2차에 냄 */
+  | 'duplicate'
+  /** 2차에 고른 선수가 이번 1차에서 이미 계약됨 (협상 무산) */
+  | 'signed'
   /** 제시액 < 몸값 */
   | 'under-cost'
   /** 매력도가 최소치 미만이라 구단이 거절 */
@@ -88,6 +101,7 @@ export type EntryStatus = 'won' | 'lost' | 'pass' | 'invalid';
 
 export interface RoundEntry {
   agent: number;
+  stage: Stage;
   status: EntryStatus;
   offer?: Offer;
   attract?: number;
@@ -121,7 +135,7 @@ export interface Signing {
 export type Phase = 'bid' | 'result' | 'guess' | 'done';
 
 export interface GameState {
-  v: 5;
+  v: 6;
   rng: number;
   round: number;
   phase: Phase;

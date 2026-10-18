@@ -36,9 +36,11 @@ const eventCards = [...EVENT_POOL, 'deadline' as const].map((k) => {
   return `<div class="card ev ${k === 'deadline' ? 'dl' : ''}"><div class="hd"><b>이벤트</b><span class="base">${e.icon}</span></div>
   <div class="nm">${esc(e.name)}</div><div class="ft">${esc(e.desc)}</div></div>`;
 });
+/** 시장 최대: 4인 2N+1 = 9명 + 해외파 귀국 2명 + 여유 1 */
+const MARKET_SLOTS = 12;
 const agentCards = COLORS.flatMap(([name, color]) => [
-  ...[1, 2, 3, 4].map((d) => `<div class="card dm" style="--c:${color}"><div class="hd"><b>${name}</b></div><div class="big">+${RULES.fee[d - 1]}억</div><div class="ft">요구 수수료 · 매력도 −${RULES.penalty[d - 1]}</div></div>`),
-  ...Array.from({ length: 8 }, (_, i) => `<div class="card sm" style="--c:${color}"><div class="hd"><b>${name}</b></div><div class="big">${i + 1}</div><div class="ft">선수 지목 (시장 칸)</div></div>`),
+  ...[1, 2, 3, 4].flatMap((d) => Array.from({ length: RULES.copies }, () => d)).map((d) => `<div class="card dm" style="--c:${color}"><div class="hd"><b>${name}</b></div><div class="big">+${RULES.fee[d - 1]}억</div><div class="ft">요구 수수료 · 매력도 −${RULES.penalty[d - 1]}</div></div>`),
+  ...Array.from({ length: MARKET_SLOTS }, (_, i) => `<div class="card sm" style="--c:${color}"><div class="hd"><b>${name}</b></div><div class="big">${i + 1}</div><div class="ft">선수 지목 (시장 칸)</div></div>`),
   ...Array.from({ length: 6 }, (_, i) => `<div class="card sm" style="--c:${color}"><div class="hd"><b>${name}</b></div><div class="big">${LETTERS[i]}</div><div class="ft">구단 지목 (구단 자리)</div></div>`),
 ]);
 
@@ -56,9 +58,10 @@ ${COLORS.map(([n]) => `<tr><td>${n}의 비밀 구단</td>${COLORS.map(() => '<td
 <table class="memo"><tr><td>인원 / 날짜</td><td></td></tr><tr><td>첫 판 설명 시간</td><td></td></tr><tr><td>라운드당 시간</td><td></td></tr>
 <tr><td>헷갈린 규칙</td><td></td></tr><tr><td>위장·지목 읽기가 있었나</td><td></td></tr><tr><td>일부러 동률을 만든 플레이</td><td></td></tr><tr><td>"한 판 더"?</td><td></td></tr></table></section>`;
 
-const market = `<section class="sheet"><h2>시장 칸 보드</h2><div class="slots">${Array.from({ length: 8 }, (_, i) => `<div class="slot">${i + 1}</div>`).join('')}</div>
+const market = `<section class="sheet"><h2>시장 칸 보드</h2><div class="slots">${Array.from({ length: MARKET_SLOTS }, (_, i) => `<div class="slot">${i + 1}</div>`).join('')}</div>
 <h2>구단 자리</h2><div class="slots six">${Array.from({ length: 6 }, (_, i) => `<div class="slot">${LETTERS[i]}</div>`).join('')}</div>
-<p>준비물 추가: 4색 큐브 각 16개 (공개 기록 8 + 계약 표시 8, 또는 색 클립·바둑돌)</p></section>`;
+<h2>1·2차 제안 자리판 (색마다 1장)</h2><div class="slots"><div class="slot">1차</div><div class="slot">2차</div></div>
+<p>준비물 추가: 4색 큐브 각 20개 (공개 기록 최대 10 + 계약 표시 최대 10, 또는 색 클립·바둑돌)</p></section>`;
 
 const group = (title: string, cards: string[]) => `<h2 class="gt">${title} (${cards.length}장)</h2><div class="grid">${cards.join('')}</div>`;
 
@@ -93,7 +96,7 @@ ${group('선수 카드', playerCards)}
 ${group('구단 카드', clubCards)}
 ${group('비밀 구단 카드', secretCards)}
 ${group('이벤트 카드', eventCards)}
-${group('플레이어 카드 (요구 수수료 4 · 선수 지목 8 · 구단 지목 6 × 4색)', agentCards)}
+${group(`플레이어 카드 (요구 수수료 ${4 * RULES.copies} · 선수 지목 ${MARKET_SLOTS} · 구단 지목 6 × 4색)`, agentCards)}
 ${market}
 ${record}
 </body></html>`;

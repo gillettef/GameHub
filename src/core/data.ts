@@ -76,12 +76,14 @@ export const EVENTS: Readonly<Record<EventKey, MarketEvent>> = {
   deadline: { key: 'deadline', name: '데드라인 데이', icon: '⏰', desc: '마지막 라운드 · 모든 계약 수수료 +5억' },
 };
 
-/** 무작위로 섞어 7장을 쓰는 이벤트 (마지막 라운드는 항상 데드라인 데이) */
+/** 무작위로 섞어 4장을 쓰는 이벤트 (마지막 라운드는 항상 데드라인 데이) */
 export const EVENT_POOL: readonly EventKey[] = ['normal', 'fw', 'defense', 'young', 'budget', 'big', 'sponsor', 'overseas'];
 export const EVENT_KEYS: readonly EventKey[] = [...EVENT_POOL, 'deadline'];
 
 export const DEMANDS: readonly Demand[] = [1, 2, 3, 4];
-export const TOTAL_ROUNDS = 8;
+/** 라운드 수. 라운드마다 1차·2차 협상 */
+export const TOTAL_ROUNDS = 5;
+export const STAGES = 2;
 /** 게임에 쓰는 구단 수 (12곳 중 무작위) */
 export const CLUBS_IN_GAME = 6;
 /** 이벤트 수수료 보너스 (억) */
@@ -102,21 +104,25 @@ export const RULES = {
   deadlineBonus: 5,
   /** 이 값보다 매력도가 낮은 제안은 구단이 거절한다 (null = 제한 없음) */
   minAttract: null as number | null,
-  /** 최고 매력도 동률일 때: 0 = 모두 상쇄, 1 = 제시액이 큰 구단 쪽이 계약, 2 = 요구 수수료 카드가 높은 쪽이 계약 (그것도 같으면 상쇄) */
-  tieBudget: 2,
+  /**
+   * 최고 매력도 동률일 때: 0 = 모두 상쇄, 1 = 제시액이 큰 구단 쪽이 계약, 2 = 요구 수수료 카드가 높은 쪽이 계약,
+   * 3 = 요구 수수료 카드가 낮은(수수료가 적은) 쪽이 계약 (1~3 모두 그것도 같으면 상쇄)
+   */
+  tieBudget: 3,
   /** 게임 종료 지목: 0 = 다른 에이전트 전원을 하나씩, 1 = 한 명만 골라 지목 */
   guessOne: 0,
   /** 비밀 구단 보너스: 0 = 누가 계약했든 센다, 1 = 내가 직접 계약시킨 선수만 센다 */
   clubOwnOnly: 1,
   /** 틀린 지목 1개당 감점 (0 = 감점 없음). 감점이 있으면 지목은 선택이다 */
   wrongGuess: 2,
-  /** 요구 수수료 카드: 1 = 낸 카드는 4장을 다 쓸 때까지 못 씀(순환), 0 = 매 라운드 1~4 중 자유 */
-  cycle: 0,
+  /** 요구 수수료 카드 종류별 장수. 공개된 카드는 버린다 (0 = 소진 없이 매번 1~4 중 자유, 비교 실험용) */
+  copies: 2,
   /** 요구 수수료 카드 1·2·3·4 의 매력도 감점 (카드에 인쇄) */
   penalty: [1, 2, 3, 4] as number[],
   /** 요구 수수료 카드 1·2·3·4 로 받는 수수료 (카드에 인쇄) */
   fee: [1, 3, 5, 6] as number[],
-  /** 시장 선수 수 = 인원 + marketExtra */
+  /** 시장 선수 수 = 인원 × marketPer + marketExtra */
+  marketPer: 2,
   marketExtra: 1,
 };
 /** @deprecated RULES.clubBonus */
@@ -127,8 +133,11 @@ export const GUESS_BONUS = RULES.guessBonus;
 export const MIN_AGENTS = 3;
 export const MAX_AGENTS = 4;
 
-/** 라운드 시장 선수 수 N + 1 (남은 선수는 다음 라운드에도 남고 빈자리만 채운다) */
-export const marketSize = (agents: number): number => agents + RULES.marketExtra;
+/** 라운드 시장 선수 수 2N + 1 (남은 선수는 다음 라운드에도 남고 빈자리만 채운다) */
+export const marketSize = (agents: number): number => agents * RULES.marketPer + RULES.marketExtra;
+
+/** 게임 시작 손패: 종류별 RULES.copies 장 */
+export const initialHand = (): Demand[] => DEMANDS.flatMap((d) => Array.from({ length: Math.max(1, RULES.copies) }, () => d));
 
 export const player = (id: number): PlayerCard => {
   const p = PLAYERS[id];
