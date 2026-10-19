@@ -1,6 +1,7 @@
 # main 에 push 되면 테스트·타입체크·빌드를 통과했을 때만 AWS EC2(게임 공용 서버, t4g.nano)에 자동 배포한다.
-# DoubleAgent 는 정적 웹앱이라 러너에서 빌드한 dist 와 정적 서버(scripts/aws/serve.mjs)만 ssh 로 올리고
-# systemd 서비스(doubleagent, 포트 8091)를 재시작한다. Actions 탭의 수동 실행(workflow_dispatch)으로 재배포도 가능하다.
+# DoubleAgent 는 정적 웹앱이라 러너에서 빌드한 dist 와 scripts/aws(정적 서버 serve.mjs 등)만 ssh 로 올리고
+# 서버에서 scripts/aws/deploy-remote.sh 가 systemd 서비스(doubleagent, 포트 8091)를 재시작·헬스체크한다.
+# push 없이 수동 재배포할 때는 scripts/deploy-aws.ps1 을 쓴다. Actions 탭의 수동 실행(workflow_dispatch)으로 재배포도 가능하다.
 #
 # SSH(22)는 관리자 IP 로만 열려 있다. 배포 직전에 러너 IP 를 보안 그룹에 임시로 열고, 끝나면(성공·실패 무관) 반드시 닫는다.
 # 이 규칙 추가/삭제만 가능한 최소 권한 IAM 사용자(astraltab-ci)의 키를 쓴다. (다른 게임 저장소와 공용)
@@ -79,14 +80,14 @@ jobs:
 
       - name: 산출물 업로드
         run: |
-          tar -c dist scripts/aws/serve.mjs \
+          tar -c dist scripts/aws \
             | ssh -i ~/.ssh/ci_key ec2-user@${{ secrets.EC2_HOST }} \
               "rm -rf ~/doubleagent/dist && mkdir -p ~/doubleagent && tar -x -C ~/doubleagent"
 
       - name: 재시작 + 헬스체크
         run: |
           ssh -i ~/.ssh/ci_key ec2-user@${{ secrets.EC2_HOST }} \
-            "set -e; sudo systemctl restart doubleagent && sleep 2 && curl -sf -o /dev/null http://localhost:8091/"
+            "bash ~/doubleagent/scripts/aws/deploy-remote.sh"
 
       - name: 임시 SSH 허용 제거
         if: always()

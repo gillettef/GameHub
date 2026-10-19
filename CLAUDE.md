@@ -84,7 +84,9 @@ npm run typecheck  # tsc --noEmit
 - 밸런스 수치 조정은 `balance-analyst` 에이전트로 시뮬레이션 근거를 남긴 뒤 진행
 
 ## 배포 (AWS)
-- 다른 게임(Eleven·MagicAcademy·Rootbound·SmilePark)과 같은 EC2(t4g.nano, 서울) 1대를 공유한다. `main`에 push하면 `.github/workflows/deploy-aws.yml`이 `npm test` → `npm run build`를 통과했을 때만 `dist`와 `scripts/aws/serve.mjs`(의존성 없는 정적 서버)를 `~/doubleagent`에 올리고 systemd `doubleagent`(포트 **8091**)를 재시작한다. 접속은 `http://54.116.67.196:8091`.
+- 다른 게임(Eleven·MagicAcademy·Rootbound·SmilePark)과 같은 EC2(t4g.nano, 서울) 1대를 공유한다. `main`에 push하면 `.github/workflows/deploy-aws.yml`이 `npm test` → `npm run build`를 통과했을 때만 `dist`와 `scripts/aws/`(의존성 없는 정적 서버 `serve.mjs` 등)를 `~/doubleagent`에 올리고, 서버에서 `scripts/aws/deploy-remote.sh`가 systemd `doubleagent`(포트 **8091**)를 재시작·헬스체크한다. 접속은 `http://54.116.67.196:8091`.
+- **수동 배포**(push 없이 재배포): `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/deploy-aws.ps1` — 로컬에서 테스트·빌드 후 같은 방식으로 전송한다. SSH 키·IP는 Rootbound와 공용인 `.dev/astraltab-key.pem`, `.dev/aws-public-ip.txt`(git 제외)를 쓰고, 없으면 `../Rootbound/.dev/`의 것을 쓴다.
+- 서버 로그: `ssh -i ../Rootbound/.dev/astraltab-key.pem ec2-user@54.116.67.196 "sudo journalctl -u doubleagent -n 100"`
 - SSH(22)는 관리자 IP만 열려 있어 워크플로가 러너 IP를 임시로 열었다 닫는다. 저장소 시크릿: AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY / AWS_REGION / AWS_SECURITY_GROUP_ID / EC2_HOST / EC2_HOST_KEY / EC2_SSH_PRIVATE_KEY (다른 게임 저장소와 같은 값).
 - 서버 준비(완료, 2026-10-17): `scripts/aws/provision.sh` → `scripts/aws/units.sh`, 보안 그룹 TCP 8091 인바운드 추가.
 
