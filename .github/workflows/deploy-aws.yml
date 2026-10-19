@@ -1,5 +1,5 @@
 # main 에 push 되면 테스트·타입체크·빌드를 통과했을 때만 AWS EC2(게임 공용 서버, t4g.nano)에 자동 배포한다.
-# DoubleAgent 는 정적 웹앱이라 러너에서 빌드한 dist 와 scripts/aws(정적 서버 serve.mjs 등)만 ssh 로 올리고
+# 러너에서 빌드한 dist(프론트)·server-dist(정적 + 온라인 대전 WebSocket 서버 번들)·scripts/aws 만 ssh 로 올리고
 # 서버에서 scripts/aws/deploy-remote.sh 가 systemd 서비스(doubleagent, 포트 8091)를 재시작·헬스체크한다.
 # push 없이 수동 재배포할 때는 scripts/deploy-aws.ps1 을 쓴다. Actions 탭의 수동 실행(workflow_dispatch)으로 재배포도 가능하다.
 #
@@ -80,9 +80,9 @@ jobs:
 
       - name: 산출물 업로드
         run: |
-          tar -c dist scripts/aws \
+          tar -c dist server-dist scripts/aws \
             | ssh -i ~/.ssh/ci_key ec2-user@${{ secrets.EC2_HOST }} \
-              "rm -rf ~/doubleagent/dist && mkdir -p ~/doubleagent && tar -x -C ~/doubleagent"
+              "rm -rf ~/doubleagent/dist ~/doubleagent/server-dist && mkdir -p ~/doubleagent && tar -x -C ~/doubleagent"
 
       - name: 재시작 + 헬스체크
         run: |

@@ -3,7 +3,7 @@ import type { Demand, Evaluation, GameState, InvalidReason, Stage } from '../../
 import type { Session } from '../../store/storage';
 import { agentName, clubById, dot, esc, eventBanner, header, marksOf, money, roundEntries, scoreboard, slotOffer, type Draft, type GuessDraft } from '../view';
 
-const gameHeader = (g: GameState) =>
+export const gameHeader = (g: GameState): string =>
   header(`<span class="pill">R <b>${Math.min(g.round, TOTAL_ROUNDS)}/${TOTAL_ROUNDS}</b></span><button class="icon" data-act="quit" aria-label="나가기">⌂</button>`);
 
 export function handoffScreen(s: Session): string {
@@ -151,7 +151,7 @@ export function bidScreen(s: Session, d: Draft): string {
   </nav>`;
 }
 
-export function resultScreen(s: Session): string {
+export function resultScreen(s: Session, bar?: string): string {
   const g = s.game;
   const r = g.results.at(-1)!;
   const lastRound = g.round >= TOTAL_ROUNDS;
@@ -162,7 +162,7 @@ export function resultScreen(s: Session): string {
     <h3 class="sec-t">순위 <small class="mu">· 공개 수수료만 (비밀 구단·지목 점수는 종료 때)</small></h3>
     ${scoreboard(g)}
   </main>
-  <nav class="bar"><button class="pri" data-act="next">${lastRound ? '비밀 구단 지목 →' : '다음 라운드 →'}</button></nav>`;
+  <nav class="bar">${bar ?? `<button class="pri" data-act="next">${lastRound ? '비밀 구단 지목 →' : '다음 라운드 →'}</button>`}</nav>`;
 }
 
 export function guessScreen(s: Session, d: GuessDraft): string {
@@ -196,7 +196,7 @@ export function guessScreen(s: Session, d: GuessDraft): string {
   <nav class="bar"><button class="pri" data-act="guess-submit">지목 제출</button></nav>`;
 }
 
-export function finalScreen(s: Session): string {
+export function finalScreen(s: Session, bar?: string): string {
   const g = s.game;
   const rk = rankings(g);
   return `${gameHeader(g)}<main class="content">
@@ -227,5 +227,5 @@ export function finalScreen(s: Session): string {
       .join('')}</section>
     <details class="card last"><summary>라운드별 기록</summary>${g.results.map((r) => `<h4>라운드 ${r.round}</h4>${roundEntries(g, r)}`).join('')}</details>
   </main>
-  <nav class="bar"><button data-act="home">홈으로</button><button class="pri" data-act="again">다시 하기</button></nav>`;
+  <nav class="bar">${bar ?? '<button data-act="home">홈으로</button><button class="pri" data-act="again">다시 하기</button>'}</nav>`;
 }

@@ -278,3 +278,17 @@ input[readonly] { color: var(--mu); }
 .stage-t { margin: 10px 0 6px; font-size: 13px; color: var(--gd); }
 .stage-t:first-child { margin-top: 0; }
 .pc.dim { opacity: .45; }
+
+/* 온라인 대전 */
+.wide { width: 100%; min-height: 48px; }
+.notice { border-color: #6c5730; color: var(--gd); }
+.invite { text-align: center; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.invite .code { font-size: 40px; letter-spacing: 8px; color: var(--gd); font-weight: 900; line-height: 1.1; padding-left: 8px; }
+.invite .link-t { word-break: break-all; }
+.ok-t { color: var(--gr); font-size: 13px; margin: 0; }
+#room-code { min-width: 0; text-transform: uppercase; letter-spacing: 4px; font-weight: 800; }
+.seat-nm .off { margin: 0 0 0 6px; min-height: 0; font-size: 11px; }
+.mini { min-height: 44px; padding: 0 10px; font-size: 12px; }
+.conn { margin: 8px 0 0; }
+.toast { position: fixed; left: 50%; transform: translateX(-50%); top: calc(env(safe-area-inset-top, 0px) + 64px); width: min(448px, calc(100% - 32px)); z-index: 30; background: #1b2638f2; border: 1px solid var(--ln); border-radius: 12px; padding: 8px 12px; text-align: center; }
+.toast p { margin: 0; }

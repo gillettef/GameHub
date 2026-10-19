@@ -68,3 +68,18 @@ export function loadSession(): Session | null {
 }
 
 export const saveSession = (s: Session | null): void => write(KEY_SESSION, s);
+
+const KEY_ONLINE = 'sl:v1:online';
+
+/** 온라인 방 재접속 정보 (방 코드 + 서버가 준 비밀 토큰) */
+export interface OnlineSeat {
+  code: string;
+  token: string;
+}
+
+export function loadOnline(): OnlineSeat | null {
+  const s = read<OnlineSeat>(KEY_ONLINE);
+  return s && typeof s.code === 'string' && typeof s.token === 'string' ? s : null;
+}
+
+export const saveOnline = (s: OnlineSeat | null): void => write(KEY_ONLINE, s);

@@ -5,18 +5,25 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc --noEmit && vite build",
+    "server": "tsx watch server/index.ts",
+    "build": "tsc --noEmit && vite build && npm run build:server",
+    "build:server": "esbuild server/index.ts --bundle --platform=node --format=cjs --target=node20 --outfile=server-dist/server.cjs --external:bufferutil --external:utf-8-validate --log-level=warning",
     "preview": "vite preview",
+    "start": "node scripts/aws/serve.mjs",
     "share": "node scripts/share.mjs",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
+    "@types/node": "^26.6.5",
+    "@types/ws": "^8.18.2",
     "cloudflared": "^0.7.3",
+    "esbuild": "^0.28.2",
     "qrcode-terminal": "^0.12.0",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2",
     "vite": "^8.3.4",
-    "vitest": "^5.0.4"
+    "vitest": "^5.0.4",
+    "ws": "^8.22.0"
   }
 }
