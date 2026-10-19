@@ -1,10 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
+  AI_MODEL,
   CLUBS_IN_GAME,
   NORMAL_FIELD,
   RULES,
   PLAYERS,
   TOTAL_ROUNDS,
+  cardCost,
+  cardStyle,
   clubMarks,
   clubWeight,
   contest,
@@ -317,6 +320,26 @@ describe('게임 진행', () => {
 });
 
 describe('공개 기록과 AI', () => {
+  it('cardCost: 시즌 중에는 높은 카드일수록 비싸고, 마지막 협상에는 카드 종류와 무관하다', () => {
+    const hand: Demand[] = [1, 1, 2, 2, 3, 3, 4, 4];
+    const early = state({ round: 1 });
+    expect(cardCost(early, hand, 1, 4)).toBeGreaterThan(cardCost(early, hand, 1, 1));
+    // 성향 배율이 0이면 종류 차이가 사라진다
+    expect(cardCost(early, hand, 1, 4, 0)).toBeCloseTo(cardCost(early, hand, 1, 1, 0));
+    const last = state({ round: TOTAL_ROUNDS });
+    expect(cardCost(last, [1, 4], 2, 4)).toBeCloseTo(cardCost(last, [1, 4], 2, 1));
+  });
+
+  it('cardStyle: 같은 게임·자리면 같고, 1 ± cardMix 범위다', () => {
+    const s = state();
+    expect(cardStyle(s, 1)).toBe(cardStyle(s, 1));
+    for (let i = 0; i < 4; i++) {
+      const v = cardStyle(s, i);
+      expect(v).toBeGreaterThanOrEqual(1 - AI_MODEL.cardMix);
+      expect(v).toBeLessThanOrEqual(1 + AI_MODEL.cardMix);
+    }
+  });
+
   it('clubMarks: 에이전트별 구단 제안 횟수 (실패 포함, 몸값 미달 제외)', () => {
     const s = resolveRound(state(), { 0: bid(offer()), 1: bid(offer({ demand: 1 })) });
     const m = clubMarks(s);

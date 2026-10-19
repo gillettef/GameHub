@@ -98,9 +98,24 @@ export const PERSONAS: Record<PersonaKey, Persona> = {
 /** 보통 AI 자리에 차례로 주는 성향 (같은 AI 복제끼리 같은 수로 몰리지 않게) */
 export const NORMAL_FIELD: readonly PersonaKey[] = ['balanced', 'stealth', 'cautious'];
 
-/** 상대 예측 모델의 집중도 (클수록 상대가 좋은 수에 몰린다고 본다). 보정: scripts/calibrate.ts */
-/** cardValue: 카드가 모자랄 때 카드 1장을 지금 쓰는 기회비용(억)의 기준값 */
-export const AI_MODEL = { beta1: 1 / 1.2, beta2: 1, mix: 1, cardValue: 5 };
+/**
+ * beta1·beta2·mix: 상대 예측 모델의 집중도 (클수록 상대가 좋은 수에 몰린다고 본다). 보정: scripts/calibrate.ts
+ * cardValue: 카드가 모자랄 때 카드 1장을 지금 쓰는 기회비용(억)의 평균
+ * cardRel: 카드 종류 선택 비용 = (그 카드 수수료 − 남은 카드 평균 수수료) × cardRel. 카드는 결국 다 쓰게 되므로
+ *   지금 높은 카드를 내도 그 수수료는 '나중에 받을 수 있던 돈'이다 → 높은 카드는 경쟁이 없을 때, 낮은 카드는 경쟁할 때 쓴다
+ */
+export const AI_MODEL = { beta1: 1 / 1.2, beta2: 1, mix: 1, cardValue: 5, cardRel: 0.5, cardMix: 1 };
+
+/**
+ * 게임마다 에이전트별로 고정되는 카드 운용 성향 배율 (1 ± cardMix). 모든 AI가 같은 순서로 카드를 쓰면
+ * 반대 순서의 고정 전략에 공략당하므로 혼합 전략처럼 섞는다. 이번 게임 구단·자리로 정해져 재현 가능하다.
+ */
+export function cardStyle(state: Pick<GameState, 'clubs'>, agentIdx: number): number {
+  let h = 2166136261 ^ agentIdx;
+  for (const c of state.clubs) h = Math.imul(h ^ c, 16777619);
+  h = Math.imul(h ^ (h >>> 15), 2246822507) >>> 0;
+  return 1 + AI_MODEL.cardMix * (2 * (h / 4294967296) - 1);
+}
 
 /** 시뮬레이션 진단용: 켜면 가치형 AI가 고른 수의 예측 승률을 기록한다 */
 export const AI_TRACE = { on: false, items: [] as { round: number; agent: number; playerId: number; predicted: number }[] };
@@ -128,10 +143,17 @@ export function scarcity(state: Pick<GameState, 'round'>, cards: number, stage: 
   return RULES.copies && cards < left ? 1 - cards / left : 0;
 }
 
-/** 카드 1장을 지금 쓰는 기회비용: 남은 협상보다 카드가 적은 만큼 + 데드라인 데이 1·2차에 쓸 카드를 남기지 못하게 되면 그 보너스만큼 */
-export function cardCost(state: Pick<GameState, 'round'>, cards: number, stage: 1 | 2): number {
-  const reserve = RULES.copies && state.round < TOTAL_ROUNDS && cards - 1 < STAGES ? AI_MODEL.cardValue + RULES.deadlineBonus : 0;
-  return scarcity(state, cards, stage) * AI_MODEL.cardValue + reserve;
+/**
+ * 카드 demand 1장을 지금 쓰는 기회비용 =
+ *   낼지 말지: 남은 협상보다 카드가 적은 만큼 (scarcity × cardValue) + 데드라인 데이 1·2차에 쓸 카드를 남기지 못하게 되면 그 보너스만큼
+ *   어떤 카드를: (그 카드 수수료 − 손패 평균 수수료) × cardRel. 마지막 라운드에는 남길 이유가 없으므로 0
+ */
+export function cardCost(state: Pick<GameState, 'round'>, hand: readonly Demand[], stage: 1 | 2, demand: Demand, style = 1): number {
+  if (!RULES.copies) return 0;
+  const cards = hand.length;
+  const reserve = state.round < TOTAL_ROUNDS && cards - 1 < STAGES ? AI_MODEL.cardValue + RULES.deadlineBonus : 0;
+  const rel = state.round < TOTAL_ROUNDS || stage === 1 ? (demandFee(demand) - hand.reduce((a, d) => a + demandFee(d), 0) / cards) * AI_MODEL.cardRel * style : 0;
+  return scarcity(state, cards, stage) * AI_MODEL.cardValue + reserve + rel;
 }
 
 /** AI 1·2차 제출 (라운드 시작 상태 기준). 2차는 1차를 낸 뒤의 손패로, 1차와 다른 선수·구단 중에서 고른다 */
@@ -218,7 +240,7 @@ function scoreOffers(state: GameState, agentIdx: number, ps: Persona, rivals: Ri
   const kinds = [...new Set(t.hand)];
   const hand: Demand[] = ps.demand === 'min' ? [Math.min(...kinds) as Demand] : ps.demand === 'max' ? [Math.max(...kinds) as Demand] : kinds;
   const stage2 = t.first !== undefined;
-  const spend = cardCost(state, t.hand.length, stage2 ? 2 : 1);
+  const style = cardStyle(state, agentIdx);
   const free = (pid: number) => (stage2 ? rivals.reduce((p, r) => p * (1 - (r.target.get(pid) ?? 0)), 1) : 1);
 
   const scored: { offer: Offer; value: number }[] = [];
@@ -244,7 +266,7 @@ function scoreOffers(state: GameState, agentIdx: number, ps: Persona, rivals: Ri
           if (k !== agentIdx && !RULES.clubOwnOnly) value -= ps.deny * clubBonus * win * sus[k]!.get(clubId)! * (k === leader ? 1.3 : 0.7);
         }
         if (!lastCard) value -= ps.save * demand;
-        value -= spend;
+        value -= cardCost(state, t.hand, stage2 ? 2 : 1, demand, style);
         scored.push({ offer, value });
       }
     }
