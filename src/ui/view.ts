@@ -35,7 +35,11 @@ export const slotOffer = (d: Slot): Offer | null =>
 export interface UiState {
   profile: Profile | null;
   session: Session | null;
-  view: 'home' | 'setup' | 'game';
+  view: 'home' | 'setup' | 'game' | 'online';
+  /** 온라인 참가 코드 입력값 */
+  joinCode: string;
+  /** 잠깐 보여 줄 안내 (링크 복사 등) */
+  flash: string;
   seats: Seat[];
   draft: Draft | null;
   guess: GuessDraft | null;

@@ -1,11 +1,14 @@
-import { MAX_AGENTS, MIN_AGENTS, PLAYERS, createGame, finishGame, isDemand, nextRound, rankings, resolveRound } from '../core';
+import { MAX_AGENTS, MIN_AGENTS, PLAYERS, TOTAL_ROUNDS, createGame, finishGame, isDemand, nextRound, rankings, resolveRound } from '../core';
 import type { Demand, GameState, RoundBid } from '../core';
+import { Net } from '../online/client';
+import { ROOM_CODE_RE, type RoomView } from '../online/protocol';
 import { loadProfile, loadSession, newProfile, saveProfile, saveSession, type Session } from '../store/storage';
 import { homeScreen, registerScreen } from './screens/home';
-import { bidScreen, finalScreen, guessScreen, handoffScreen, resultScreen, slotHand, slotReady, slotCheck } from './screens/game';
+import { bidScreen, finalScreen, gameHeader, guessScreen, handoffScreen, resultScreen, slotHand, slotReady, slotCheck } from './screens/game';
+import { connLine, inviteLink, onlineEntryScreen, roomLobbyScreen, waitScreen } from './screens/online';
 import { rulesSheet } from './screens/rules';
 import { setupScreen } from './screens/setup';
-import { slotOffer, type Draft, type GuessDraft, type Seat, type Slot, type UiState } from './view';
+import { esc, slotOffer, type Draft, type GuessDraft, type Seat, type Slot, type UiState } from './view';
 
 const AI_NAMES = ['AI 알파', 'AI 브라보', 'AI 찰리'];
 const NICK_RE = /[<>&"'\s]/g;
@@ -22,9 +25,64 @@ const ui: UiState = {
   rulesOpen: false,
   renaming: false,
   error: '',
+  joinCode: '',
+  flash: '',
 };
 
 const root = () => document.getElementById('app')!;
+
+// ── 온라인 ─────────────────────────────────────────────
+
+/** 서버가 정산하는 온라인 방. 상태가 바뀔 때마다 다시 그린다 */
+const net = new Net(() => onNet());
+let lastOnlinePhase = '';
+
+function onNet() {
+  const r = net.state.room;
+  if (r && ui.view === 'home') ui.view = 'online';
+  // 게임이 끝나는 순간을 이 기기에서 봤으면 전적에 남긴다
+  const phase = r?.game ? `${r.code}:${r.game.phase}` : '';
+  if (r?.game?.phase === 'done' && r.mySeat !== null && lastOnlinePhase && lastOnlinePhase !== phase) recordResult(r.game, r.mySeat);
+  if (!r?.game) ui.guess = null;
+  lastOnlinePhase = phase;
+  render();
+}
+
+const isOnline = () => ui.view === 'online' && !!net.state.room?.game;
+/** 지금 화면의 게임 (온라인이면 서버가 보낸 내 자리 상태) */
+const curSession = (): Session => (isOnline() ? onlineSession(net.state.room!) : ui.session!);
+
+/** 서버가 보낸 내 자리 게임을 화면 함수가 받는 모양으로 */
+const onlineSession = (r: RoomView): Session => ({ game: r.game!, subs: {}, guesses: {}, turn: r.mySeat!, screen: 'bid', recorded: true });
+
+function onlineHtml(): string {
+  const n = net.state;
+  const r = n.room;
+  if (!r) return onlineEntryScreen(ui, n);
+  if (!r.game || r.mySeat === null) return roomLobbyScreen(r, n, ui.flash);
+  const s = onlineSession(r);
+  const g = r.game;
+  const done = r.done.includes(r.mySeat);
+  const status = n.status !== 'open' || n.error ? `<div class="toast" role="status">${connLine(n) || `<p class="err">${esc(n.error)}</p>`}</div>` : '';
+  switch (g.phase) {
+    case 'bid':
+      return (done ? waitScreen(r, n, gameHeader(g)) : bidScreen(s, ensureDraft(s))) + status;
+    case 'guess':
+      return (done ? waitScreen(r, n, gameHeader(g)) : guessScreen(s, ensureGuess(s))) + status;
+    case 'result': {
+      const waiting = r.seats.filter((x) => x.kind === 'human' && x.online).length;
+      const label = g.round >= TOTAL_ROUNDS ? '비밀 구단 지목 →' : '다음 라운드 →';
+      return resultScreen(s, done ? `<button class="pri" disabled>다른 사람 기다리는 중 (${r.done.length}/${waiting})</button>` : `<button class="pri" data-act="next">${label}</button>`) + status;
+    }
+    case 'done':
+      return (
+        finalScreen(
+          s,
+          `<button data-act="on-leave-home">나가기</button>${r.me === r.host ? '<button class="pri" data-act="on-rematch">같은 멤버로 다시 하기</button>' : '<button class="pri" disabled>방장의 다시 하기를 기다리는 중</button>'}`,
+        ) + status
+      );
+  }
+}
 const humansOf = (g: GameState) => g.agents.flatMap((a, i) => (a.kind === 'human' ? [i] : []));
 const persist = () => saveSession(ui.session);
 
@@ -33,6 +91,7 @@ const persist = () => saveSession(ui.session);
 function screenHtml(): string {
   if (!ui.profile || ui.renaming) return registerScreen(ui);
   if (ui.view === 'setup') return setupScreen(ui);
+  if (ui.view === 'online') return onlineHtml();
   const s = ui.session;
   if (ui.view !== 'game' || !s) return homeScreen(ui);
   switch (s.screen) {
@@ -50,11 +109,20 @@ function screenHtml(): string {
 }
 
 let lastScreenKey = '';
+let lastHtml = '';
 
 export function render(): void {
   const s = ui.session;
-  const key = `${ui.view}:${s?.screen}:${s?.game.round}:${s?.turn}:${ui.draft?.stage}:${ui.renaming}`;
-  root().innerHTML = screenHtml() + (ui.rulesOpen ? rulesSheet() : '');
+  const r = net.state.room;
+  const key =
+    ui.view === 'online'
+      ? `online:${r?.code}:${r?.game?.phase}:${r?.game?.round}:${r?.mySeat !== null && r?.done.includes(r.mySeat)}:${ui.draft?.stage}`
+      : `${ui.view}:${s?.screen}:${s?.game.round}:${s?.turn}:${ui.draft?.stage}:${ui.renaming}`;
+  const html = screenHtml() + (ui.rulesOpen ? rulesSheet() : '');
+  // 다른 사람의 진행 상황만 바뀐 경우 등 화면이 같으면 다시 그리지 않는다 (열어 둔 접기·입력 유지)
+  if (html === lastHtml && key === lastScreenKey) return;
+  lastHtml = html;
+  root().innerHTML = html;
   document.body.classList.toggle('locked', ui.rulesOpen);
   if (key !== lastScreenKey) {
     window.scrollTo(0, 0);
@@ -114,6 +182,11 @@ function startGame(seats: Seat[]) {
 }
 
 function submit(sub: RoundBid) {
+  if (isOnline()) {
+    net.send({ t: 'bid', round: net.state.room!.game!.round, bid: sub });
+    ui.draft = null;
+    return;
+  }
   const s = ui.session!;
   const subs = { ...s.subs, [s.turn]: sub };
   const nextHuman = humansOf(s.game).find((i) => !(i in subs));
@@ -127,6 +200,7 @@ function submit(sub: RoundBid) {
 }
 
 function advance() {
+  if (isOnline()) return net.send({ t: 'ready', round: net.state.room!.game!.round });
   const s = ui.session!;
   const game = nextRound(s.game);
   if (game.phase === 'guess') {
@@ -147,6 +221,10 @@ function finish(s: Session) {
 }
 
 function submitGuesses(picks: Record<number, number>) {
+  if (isOnline()) {
+    ui.guess = null;
+    return net.send({ t: 'guess', picks });
+  }
   const s = ui.session!;
   const guesses = { ...s.guesses, [s.turn]: picks };
   const nextHuman = humansOf(s.game).find((i) => !(i in guesses));
@@ -162,15 +240,20 @@ function submitGuesses(picks: Record<number, number>) {
 /** 기기 주인(0번 자리)의 전적 기록 */
 function record() {
   const s = ui.session!;
+  if (s.recorded || !ui.profile) return;
+  recordResult(s.game, 0);
+  s.recorded = true;
+}
+
+function recordResult(game: GameState, seat: number) {
   const p = ui.profile;
-  if (s.recorded || !p) return;
-  const me = rankings(ui.session!.game).find((r) => r.agent === 0)!;
+  const me = rankings(game).find((r) => r.agent === seat);
+  if (!p || !me) return;
   p.games++;
   if (me.rank === 1) p.wins++;
   p.total = Math.round((p.total + me.score) * 100) / 100;
-  p.history = [{ at: Date.now(), score: me.score, rank: me.rank, agents: s.game.agents.length }, ...p.history].slice(0, 10);
+  p.history = [{ at: Date.now(), score: me.score, rank: me.rank, agents: game.agents.length }, ...p.history].slice(0, 10);
   saveProfile(p);
-  s.recorded = true;
 }
 
 // ── 액션 ───────────────────────────────────────────────
@@ -209,8 +292,56 @@ const actions: Record<string, (arg: string) => void> = {
     ui.view = 'game';
   },
   quit: () => {
+    if (isOnline()) {
+      if (net.state.room!.game!.phase !== 'done' && !confirm('온라인 게임에서 나갈까요? 내 자리는 AI가 이어받고 다시 돌아올 수 없습니다.')) return;
+      net.leave();
+      ui.view = 'home';
+      return;
+    }
     if (ui.session?.game.phase !== 'done' && !confirm('게임을 나갈까요? 홈에서 이어할 수 있습니다.')) return;
     ui.view = 'home';
+  },
+
+  online: () => {
+    net.clearNotice();
+    ui.view = 'online';
+  },
+  'on-create': () => net.send({ t: 'create', name: ui.profile!.nick }),
+  'on-join': () => {
+    const code = ui.joinCode.trim().toUpperCase();
+    if (!ROOM_CODE_RE.test(code)) return void (net.state.error = '초대 코드 4자리를 입력하세요.');
+    net.send({ t: 'join', code, name: ui.profile!.nick });
+  },
+  'on-leave': () => {
+    if (!confirm('방에서 나갈까요?')) return;
+    net.leave();
+  },
+  'on-leave-home': () => {
+    net.leave();
+    ui.view = 'home';
+  },
+  'on-add-ai': () => net.send({ t: 'add-ai' }),
+  'on-level': (i) => net.send({ t: 'ai-level', seat: Number(i) }),
+  'on-remove': (i) => net.send({ t: 'remove-seat', seat: Number(i) }),
+  'on-kick': (pid) => {
+    const r = net.state.room;
+    const name = r?.seats.find((s) => s.pid === pid)?.name ?? '';
+    const msg = r?.game ? `${name} 님의 자리를 AI에게 넘길까요? ${name} 님은 다시 돌아올 수 없습니다.` : `${name} 님을 내보낼까요?`;
+    if (confirm(msg)) net.send({ t: 'kick', pid });
+  },
+  'on-start': () => net.send({ t: 'start' }),
+  'on-rematch': () => net.send({ t: 'rematch' }),
+  'on-share': () => {
+    const url = inviteLink(net.state.room!.code);
+    const done = (text: string) => {
+      ui.flash = text;
+      render();
+    };
+    if (navigator.share) {
+      navigator.share({ title: '더블 에이전트 초대', text: `더블 에이전트 방 코드 ${net.state.room!.code}`, url }).catch(() => undefined);
+    } else if (navigator.clipboard) {
+      navigator.clipboard.writeText(url).then(() => done('초대 링크를 복사했습니다.'), () => done('복사하지 못했습니다. 코드를 직접 알려 주세요.'));
+    } else done('코드를 직접 알려 주세요.');
   },
   new: () => {
     if (ui.session && ui.session.game.phase !== 'done' && !confirm('진행 중인 게임이 있습니다. 새로 시작할까요?')) return;
@@ -263,7 +394,7 @@ const actions: Record<string, (arg: string) => void> = {
   demand: (v) => {
     const n = Number(v);
     const d = ui.draft!;
-    if (isDemand(n) && slotHand(ui.session!, d, d.stage).includes(n)) Object.assign(curSlot(), { demand: n, pass: false });
+    if (isDemand(n) && slotHand(curSession(), d, d.stage).includes(n)) Object.assign(curSlot(), { demand: n, pass: false });
   },
   stage: (v) => {
     ui.draft!.stage = v === '2' ? 2 : 1;
@@ -272,14 +403,14 @@ const actions: Record<string, (arg: string) => void> = {
     const d = ui.draft!;
     curSlot().pass = true;
     if (d.stage === 1) return void (d.stage = 2);
-    if (!slotReady(slotCheck(ui.session!, d, 1))) return void (d.stage = 1);
+    if (!slotReady(slotCheck(curSession(), d, 1))) return void (d.stage = 1);
     const both = d.slots[0].pass;
     if (!confirm(both ? '1차·2차 모두 패스할까요? 요구 수수료 카드는 소모되지 않습니다.' : '2차는 패스하고 제출할까요?')) return void (curSlot().pass = false);
     submit({ first: slotOffer(d.slots[0]), second: null });
   },
   submit: () => {
     const d = ui.draft!;
-    const s = ui.session!;
+    const s = curSession();
     if (!slotReady(slotCheck(s, d, 1)) || !slotReady(slotCheck(s, d, 2))) return;
     const bid = { first: slotOffer(d.slots[0]), second: slotOffer(d.slots[1]) };
     if (!bid.first && !bid.second && !confirm('1차·2차 모두 패스할까요? 요구 수수료 카드는 소모되지 않습니다.')) return;
@@ -310,10 +441,19 @@ export function mount(): void {
   document.addEventListener('input', (e) => {
     const el = e.target as HTMLInputElement;
     if (el.dataset.seat !== undefined) ui.seats[Number(el.dataset.seat)]!.name = el.value;
+    if (el.id === 'room-code') {
+      const v = el.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 4);
+      if (el.value !== v) el.value = v;
+      ui.joinCode = v;
+    }
   });
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && (e.target as HTMLElement).id === 'nick') {
       actions.register!('');
+      render();
+    }
+    if (e.key === 'Enter' && (e.target as HTMLElement).id === 'room-code') {
+      actions['on-join']!('');
       render();
     }
     if (e.key === 'Escape' && ui.rulesOpen) {
@@ -321,5 +461,17 @@ export function mount(): void {
       render();
     }
   });
+  // 초대 링크(?room=CODE)로 들어오면 참가 화면에 코드를 채워 둔다
+  const invited = new URLSearchParams(location.search).get('room')?.toUpperCase() ?? '';
+  if (ROOM_CODE_RE.test(invited)) {
+    ui.joinCode = invited;
+    ui.view = 'online';
+    history.replaceState(null, '', location.pathname);
+  }
+  // 들어가 있던 온라인 방이 있으면 같은 자리로 다시 접속
+  if (net.saved) {
+    ui.view = 'online';
+    net.resume();
+  }
   render();
 }

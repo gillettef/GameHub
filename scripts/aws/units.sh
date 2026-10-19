@@ -6,7 +6,7 @@ NODE_BIN=$(command -v node)
 
 sudo tee /etc/systemd/system/doubleagent.service >/dev/null <<UNIT
 [Unit]
-Description=DoubleAgent static web server
+Description=DoubleAgent web server (static + online WebSocket)
 After=network.target
 
 [Service]
