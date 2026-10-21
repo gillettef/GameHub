@@ -10,7 +10,9 @@ import {
   type GameConfig,
   type GameState,
   type PlayerState,
+  type Market,
   type RolledDie,
+  type Round,
   type StartRoll,
 } from './types'
 
@@ -19,11 +21,43 @@ export const MAX_PLAYERS = 4
 export const DICE_PER_COLOR = 24
 export const BOARD_ROWS = 3
 export const BOARD_COLS = 5
-export const MARKET_SLOTS = 6
+/** 시장 보드에 인쇄된 칸 수 (4인 + 풍요의 우주) */
+export const MARKET_BOARD_SLOTS = 5
 
-/** 시장에 놓는 주사위 수: 플레이어 수 + 2 (§5) */
-export function marketSize(playerCount: number): number {
-  return playerCount + 2
+/** 쓰는 시장 칸 수: 플레이어 수 (§5) */
+export function marketSlotCount(playerCount: number): number {
+  return playerCount
+}
+
+/** 칸마다 넣는 주사위 수: 라운드 번호 (§5 시장 채우기). 4라운드에는 시장을 쓰지 않는다. */
+export function dicePerSlot(round: Round): number {
+  if (round === 4) throw new Error('4라운드에는 시장을 쓰지 않습니다.')
+  return round
+}
+
+/**
+ * 시장 채우기 (§5): 주머니에서 뽑아 굴린 뒤 1번 칸부터 순서대로, 칸마다 perSlot개.
+ * 주머니가 모자라면 남은 만큼만 채운다.
+ */
+export function fillMarket(
+  rng: RngState,
+  bag: readonly Die[],
+  slotCount: number,
+  perSlot: number,
+): [Market, Die[], RngState] {
+  let r = rng
+  let rest = bag.slice()
+  const market: Market = []
+  for (let s = 0; s < slotCount; s++) {
+    const slot: RolledDie[] = []
+    for (let i = 0; i < perSlot; i++) {
+      let rolled: RolledDie | null
+      ;[rolled, rest, r] = drawAndRoll(r, rest)
+      if (rolled) slot.push(rolled)
+    }
+    market.push(slot)
+  }
+  return [market, rest, r]
 }
 
 /** 굴리기: 24가지 방향 중 하나가 균등하게 나온다 */
@@ -88,24 +122,20 @@ export function createGame(config: GameConfig): GameState {
     throw new Error(`플레이어 수는 ${MIN_PLAYERS}~${MAX_PLAYERS}명이어야 합니다 (${playerCount})`)
   }
 
-  let rng = createRng(seed)
-  let bag = createDice()
-
-  const market: (RolledDie | null)[] = []
-  for (let i = 0; i < marketSize(playerCount); i++) {
-    let rolled: RolledDie | null
-    ;[rolled, bag, rng] = drawAndRoll(rng, bag)
-    market.push(rolled)
-  }
-
   const players: PlayerState[] = Array.from({ length: playerCount }, (_, id) => ({
     id,
     board: createBoard(),
     debris: [],
   }))
 
-  const [startPlayer, startRolls, rngAfterStart] = rollForStartPlayer(rng, playerCount)
-  rng = rngAfterStart
+  // §5-6 시작 플레이어 → §5 라운드 시작: 1라운드 시장 채우기
+  const [startPlayer, startRolls, rngAfterStart] = rollForStartPlayer(createRng(seed), playerCount)
+  const [market, bag, rng] = fillMarket(
+    rngAfterStart,
+    createDice(),
+    marketSlotCount(playerCount),
+    dicePerSlot(1),
+  )
 
   return {
     schema: 1,
@@ -117,6 +147,7 @@ export function createGame(config: GameConfig): GameState {
     players,
     startRolls,
     startPlayer,
+    leadPlayer: startPlayer,
     currentPlayer: startPlayer,
   }
 }

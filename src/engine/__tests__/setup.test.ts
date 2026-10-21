@@ -8,7 +8,9 @@ import {
   createGame,
   DICE_PER_COLOR,
   drawAndRoll,
-  marketSize,
+  dicePerSlot,
+  fillMarket,
+  marketSlotCount,
   roll,
   rollForStartPlayer,
 } from '../setup'
@@ -113,18 +115,48 @@ describe('§5-6 시작 플레이어 굴림', () => {
   })
 })
 
+describe('§5 시장 채우기', () => {
+  it('쓰는 칸 수는 플레이어 수, 칸마다 라운드 번호만큼', () => {
+    expect(marketSlotCount(3)).toBe(3)
+    expect(dicePerSlot(1)).toBe(1)
+    expect(dicePerSlot(2)).toBe(2)
+    expect(dicePerSlot(3)).toBe(3)
+    expect(() => dicePerSlot(4)).toThrow()
+  })
+
+  it('규칙서 예: 3인 1라운드 = 3칸 × 1개, 4인 2라운드 = 4칸 × 2개 = 8개', () => {
+    const [m1] = fillMarket(createRng(1), createDice(), marketSlotCount(3), dicePerSlot(1))
+    expect(m1.map((s) => s.length)).toEqual([1, 1, 1])
+    const [m2, bag2] = fillMarket(createRng(1), createDice(), marketSlotCount(4), dicePerSlot(2))
+    expect(m2.map((s) => s.length)).toEqual([2, 2, 2, 2])
+    expect(bag2).toHaveLength(112)
+  })
+
+  it('4인 3라운드 = 4칸 × 3개 = 12개, 모두 굴려져 유효한 방향', () => {
+    const [m] = fillMarket(createRng(2), createDice(), 4, 3)
+    expect(m.flat()).toHaveLength(12)
+    expect(m.flat().every((d) => isValidOrientation(d.orientation))).toBe(true)
+  })
+
+  it('주머니가 모자라면 남은 만큼만 채운다', () => {
+    const [m, bag] = fillMarket(createRng(3), createDice().slice(0, 5), 4, 2)
+    expect(m.map((s) => s.length)).toEqual([2, 2, 1, 0])
+    expect(bag).toEqual([])
+  })
+})
+
 describe('§5 게임 준비', () => {
-  it.each([2, 3, 4])('%i인: 시장에 플레이어 수 + 2개, 나머지는 주머니', (playerCount) => {
+  it.each([2, 3, 4])('%i인 1라운드: 시장 칸 = 플레이어 수, 칸마다 1개', (playerCount) => {
     const game = createGame({ playerCount, seed: 1 })
-    expect(game.market).toHaveLength(marketSize(playerCount))
-    expect(game.market.every((d) => d !== null)).toBe(true)
-    expect(game.bag).toHaveLength(120 - marketSize(playerCount))
+    expect(game.market).toHaveLength(playerCount)
+    expect(game.market.every((slot) => slot.length === 1)).toBe(true)
+    expect(game.bag).toHaveLength(120 - playerCount)
     expect(game.players).toHaveLength(playerCount)
   })
 
   it('시장과 주머니의 주사위를 합치면 120개이고 중복이 없다', () => {
     const game = createGame({ playerCount: 4, seed: 3 })
-    const ids = [...game.bag.map((d) => d.id), ...game.market.map((d) => d?.id)]
+    const ids = [...game.bag.map((d) => d.id), ...game.market.flat().map((d) => d.id)]
     expect(new Set(ids).size).toBe(120)
   })
 
@@ -144,6 +176,7 @@ describe('§5 게임 준비', () => {
     const game = createGame({ playerCount: 3, seed: 1 })
     expect(game.phase).toEqual({ kind: 'round', round: 1 })
     expect(game.currentPlayer).toBe(game.startPlayer)
+    expect(game.leadPlayer).toBe(game.startPlayer)
   })
 
   it('플레이어 수는 2~4명만 허용한다', () => {
