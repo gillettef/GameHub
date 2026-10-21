@@ -1,7 +1,7 @@
 /**
  * 게임 상태 타입. 모든 상태는 직렬화 가능한 JSON이어야 한다 (CLAUDE.md 아키텍처 원칙).
  */
-import type { Orientation } from './dice'
+import type { Face, Orientation } from './dice'
 import type { RngState } from './rng'
 
 export type Color = 'red' | 'blue' | 'green' | 'yellow' | 'black'
@@ -48,6 +48,9 @@ export interface GameConfig {
   seed: number
 }
 
+/** 시작 플레이어 결정 굴림 한 번 (§5-6). 동점이면 동점자끼리 다음 굴림 */
+export type StartRoll = { player: number; face: Face }[]
+
 export interface GameState {
   /** 상태 스키마 버전 (저장/동기화 호환성용) */
   schema: 1
@@ -58,6 +61,9 @@ export interface GameState {
   /** 시장 칸. null = 빈 칸 */
   market: (RolledDie | null)[]
   players: PlayerState[]
+  /** 시작 플레이어를 정한 굴림 기록 (화면 연출용) */
+  startRolls: StartRoll[]
+  /** 차례는 startPlayer부터 시계 방향(id 오름차순, 순환) */
   startPlayer: number
   currentPlayer: number
 }

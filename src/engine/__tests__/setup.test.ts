@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { isValidOrientation } from '../dice'
+import { faceValue, isValidOrientation } from '../dice'
 import { createRng } from '../rng'
 import {
   BOARD_COLS,
@@ -10,6 +10,7 @@ import {
   drawAndRoll,
   marketSize,
   roll,
+  rollForStartPlayer,
 } from '../setup'
 import { COLORS, type RolledDie } from '../types'
 
@@ -64,6 +65,54 @@ describe('굴리기', () => {
   })
 })
 
+describe('§5-6 시작 플레이어 굴림', () => {
+  const seeds = Array.from({ length: 200 }, (_, i) => i)
+
+  it('마지막 굴림에서 가장 높은 숫자(⧗ = 0)를 낸 단 한 사람이 시작한다', () => {
+    for (const seed of seeds) {
+      const [start, history] = rollForStartPlayer(createRng(seed), 4)
+      const last = history[history.length - 1] ?? []
+      const best = Math.max(...last.map((x) => faceValue(x.face)))
+      const winners = last.filter((x) => faceValue(x.face) === best)
+      expect(winners).toHaveLength(1)
+      expect(winners[0]?.player).toBe(start)
+    }
+  })
+
+  it('첫 굴림은 모두가, 다시 굴림은 직전 최고 동점자만 굴린다', () => {
+    for (const seed of seeds) {
+      const [, history] = rollForStartPlayer(createRng(seed), 4)
+      expect(history[0]?.map((x) => x.player)).toEqual([0, 1, 2, 3])
+      for (let i = 1; i < history.length; i++) {
+        const prev = history[i - 1] ?? []
+        const best = Math.max(...prev.map((x) => faceValue(x.face)))
+        const tied = prev.filter((x) => faceValue(x.face) === best).map((x) => x.player)
+        expect(tied.length).toBeGreaterThan(1)
+        expect(history[i]?.map((x) => x.player)).toEqual(tied)
+      }
+    }
+  })
+
+  it('동점 다시 굴림이 실제로 일어나는 경우가 있다', () => {
+    expect(seeds.some((seed) => rollForStartPlayer(createRng(seed), 4)[1].length > 1)).toBe(true)
+  })
+
+  it('시작 플레이어가 여러 사람에게 고르게 돌아간다', () => {
+    const starts = new Set(seeds.map((seed) => rollForStartPlayer(createRng(seed), 4)[0]))
+    expect(starts).toEqual(new Set([0, 1, 2, 3]))
+  })
+
+  it('게임 상태에 굴림 기록과 시작 플레이어가 남는다', () => {
+    const game = createGame({ playerCount: 4, seed: 9 })
+    const last = game.startRolls[game.startRolls.length - 1] ?? []
+    const best = Math.max(...last.map((x) => faceValue(x.face)))
+    expect(last.filter((x) => faceValue(x.face) === best).map((x) => x.player)).toEqual([
+      game.startPlayer,
+    ])
+    expect(game.currentPlayer).toBe(game.startPlayer)
+  })
+})
+
 describe('§5 게임 준비', () => {
   it.each([2, 3, 4])('%i인: 시장에 플레이어 수 + 2개, 나머지는 주머니', (playerCount) => {
     const game = createGame({ playerCount, seed: 1 })
@@ -91,11 +140,10 @@ describe('§5 게임 준비', () => {
     }
   })
 
-  it('1라운드, 0번 플레이어부터 시작한다', () => {
+  it('1라운드, 시작 플레이어의 차례로 시작한다', () => {
     const game = createGame({ playerCount: 3, seed: 1 })
     expect(game.phase).toEqual({ kind: 'round', round: 1 })
-    expect(game.currentPlayer).toBe(0)
-    expect(game.startPlayer).toBe(0)
+    expect(game.currentPlayer).toBe(game.startPlayer)
   })
 
   it('플레이어 수는 2~4명만 허용한다', () => {
