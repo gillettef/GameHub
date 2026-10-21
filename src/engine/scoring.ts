@@ -125,7 +125,10 @@ export interface PlaneScore {
   total: number
 }
 
-/** §7 2차원 기본 점수: 크기 3 이상 영역 + 이웃 계단(윗면 1 차이) 쌍 */
+/**
+ * §7 2차원 기본 점수: 크기 3 이상 영역 + 이웃 계단(윗면 1 차이) 쌍.
+ * 이웃 계단은 선(1행) 안의 가로 쌍을 빼고, 2·3행 주사위가 들어간 쌍만 센다.
+ */
 export function scorePlane(board: Board): PlaneScore {
   const regions = colorRegions((c) => planeDie(board, c)?.color)
     .filter((size) => size >= 3)
@@ -141,6 +144,7 @@ export function scorePlane(board: Board): PlaneScore {
       { row: cell.row, col: cell.col + 1 },
     ]) {
       if (n.row >= BOARD_ROWS || n.col >= BOARD_COLS) continue
+      if (cell.row === 0 && n.row === 0) continue
       const b = planeDie(board, n)
       if (!b) continue
       const x = numberOf(a.orientation.top)
