@@ -48,6 +48,12 @@ export interface GameConfig {
   seed: number
 }
 
+/**
+ * 시장 (§5 시장 채우기). 칸 하나 = 주사위 묶음 하나 (라운드 번호만큼).
+ * 쓰는 칸 수 = 플레이어 수. 빈 배열 = 이번 바퀴에 이미 가져간 칸.
+ */
+export type Market = RolledDie[][]
+
 /** 시작 플레이어 결정 굴림 한 번 (§5-6). 동점이면 동점자끼리 다음 굴림 */
 export type StartRoll = { player: number; face: Face }[]
 
@@ -58,12 +64,13 @@ export interface GameState {
   rng: RngState
   phase: Phase
   bag: Die[]
-  /** 시장 칸. null = 빈 칸 */
-  market: (RolledDie | null)[]
+  market: Market
   players: PlayerState[]
   /** 시작 플레이어를 정한 굴림 기록 (화면 연출용) */
   startRolls: StartRoll[]
-  /** 차례는 startPlayer부터 시계 방향(id 오름차순, 순환) */
+  /** 게임 시작 플레이어 (첫 선) */
   startPlayer: number
+  /** 이번 바퀴의 선. 바퀴가 끝나면 왼쪽(id + 1, 순환)으로 넘어간다 (§5 바퀴 끝) */
+  leadPlayer: number
   currentPlayer: number
 }
