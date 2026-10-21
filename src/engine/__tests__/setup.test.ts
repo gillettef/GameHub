@@ -149,14 +149,14 @@ describe('§5 게임 준비', () => {
   it.each([2, 3, 4])('%i인 1라운드: 시장 칸 = 플레이어 수, 칸마다 1개', (playerCount) => {
     const game = createGame({ playerCount, seed: 1 })
     expect(game.market).toHaveLength(playerCount)
-    expect(game.market.every((slot) => slot.length === 1)).toBe(true)
+    expect(game.market.every((slot) => slot?.length === 1)).toBe(true)
     expect(game.bag).toHaveLength(120 - playerCount)
     expect(game.players).toHaveLength(playerCount)
   })
 
   it('시장과 주머니의 주사위를 합치면 120개이고 중복이 없다', () => {
     const game = createGame({ playerCount: 4, seed: 3 })
-    const ids = [...game.bag.map((d) => d.id), ...game.market.flat().map((d) => d.id)]
+    const ids = [...game.bag.map((d) => d.id), ...game.market.flatMap((s) => s ?? []).map((d) => d.id)]
     expect(new Set(ids).size).toBe(120)
   })
 
