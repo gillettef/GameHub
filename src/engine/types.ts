@@ -35,8 +35,10 @@ export interface Board {
 export interface PlayerState {
   id: number
   board: Board
-  /** 버리거나 무너진 주사위. 게임 끝에 1개당 -1점 (§2) */
+  /** 버리거나 못 놓거나 무너진 주사위. 게임 끝에 1개당 -1점 (§2) */
   debris: Die[]
+  /** 2라운드 끝에 확정한 평면 점수 (§7). 확정 전에는 null */
+  planeScore: number | null
 }
 
 export type Round = 1 | 2 | 3 | 4
@@ -50,9 +52,22 @@ export interface GameConfig {
 
 /**
  * 시장 (§5 시장 채우기). 칸 하나 = 주사위 묶음 하나 (라운드 번호만큼).
- * 쓰는 칸 수 = 플레이어 수. 빈 배열 = 이번 바퀴에 이미 가져간 칸.
+ * 쓰는 칸 수 = 플레이어 수. null = 이번 바퀴에 이미 가져간 칸.
+ * (빈 배열은 주머니가 떨어져 채우지 못한 칸)
  */
-export type Market = RolledDie[][]
+export type Market = (RolledDie[] | null)[]
+
+/** 1~3라운드 턴 진행 상태 */
+export interface TurnState {
+  /** 라운드 안에서 몇 번째 바퀴인지 (0부터) */
+  circuit: number
+  /** 이번 바퀴에 턴을 마친 사람 수 */
+  picks: number
+  /** 현재 플레이어가 가져와서 아직 놓지 않은 주사위. 비어 있으면 칸을 고를 차례 */
+  hand: RolledDie[]
+  /** 이번 턴에 칸을 이미 가져갔는지 */
+  taken: boolean
+}
 
 /** 시작 플레이어 결정 굴림 한 번 (§5-6). 동점이면 동점자끼리 다음 굴림 */
 export type StartRoll = { player: number; face: Face }[]
@@ -73,4 +88,5 @@ export interface GameState {
   /** 이번 바퀴의 선. 바퀴가 끝나면 왼쪽(id + 1, 순환)으로 넘어간다 (§5 바퀴 끝) */
   leadPlayer: number
   currentPlayer: number
+  turn: TurnState
 }

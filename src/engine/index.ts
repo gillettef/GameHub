@@ -1,4 +1,7 @@
 export * from './dice'
+export * from './game'
+export * from './placement'
 export * from './rng'
+export * from './scoring'
 export * from './setup'
 export * from './types'

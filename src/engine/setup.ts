@@ -10,7 +10,6 @@ import {
   type GameConfig,
   type GameState,
   type PlayerState,
-  type Market,
   type RolledDie,
   type Round,
   type StartRoll,
@@ -44,10 +43,10 @@ export function fillMarket(
   bag: readonly Die[],
   slotCount: number,
   perSlot: number,
-): [Market, Die[], RngState] {
+): [RolledDie[][], Die[], RngState] {
   let r = rng
   let rest = bag.slice()
-  const market: Market = []
+  const market: RolledDie[][] = []
   for (let s = 0; s < slotCount; s++) {
     const slot: RolledDie[] = []
     for (let i = 0; i < perSlot; i++) {
@@ -126,6 +125,7 @@ export function createGame(config: GameConfig): GameState {
     id,
     board: createBoard(),
     debris: [],
+    planeScore: null,
   }))
 
   // §5-6 시작 플레이어 → §5 라운드 시작: 1라운드 시장 채우기
@@ -149,5 +149,6 @@ export function createGame(config: GameConfig): GameState {
     startPlayer,
     leadPlayer: startPlayer,
     currentPlayer: startPlayer,
+    turn: { circuit: 0, picks: 0, hand: [], taken: false },
   }
 }
