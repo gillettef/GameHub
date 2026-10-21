@@ -21,10 +21,11 @@
 
 | 영역 | 선택 |
 |---|---|
-| 언어 | TypeScript (strict) |
-| 클라이언트 | React + Vite, 모바일 우선 반응형, PWA 고려 |
-| 규칙 엔진 | 프레임워크 의존 없는 순수 TS (`src/engine/`) |
-| 테스트 | Vitest |
+| 언어 | TypeScript 6 (strict, `noUncheckedIndexedAccess`) |
+| 클라이언트 | React 19 + Vite 8, 모바일 우선 반응형, PWA 매니페스트 |
+| 규칙 엔진 | 프레임워크 의존 없는 순수 TS (`src/engine/`). ESLint가 엔진 안의 React import, `Math.random`, `Date.now`, `window`/`document`를 에러로 막음 |
+| 테스트 | Vitest 5 (`src/**/*.test.ts(x)`) |
+| 린트 | ESLint 10 flat config + typescript-eslint |
 | 멀티플레이 | 1단계는 로컬(한 기기 돌려 쓰기 + 봇), 2단계에서 온라인 동기화 방식 결정 |
 
 ## 아키텍처 원칙
@@ -57,7 +58,7 @@ public/          아이콘, 매니페스트
 
 ## 개발 단계 (로드맵)
 
-1. 프로젝트 초기화 (Vite + React + TS + Vitest, 린트)
+1. ~~프로젝트 초기화 (Vite + React + TS + Vitest, 린트)~~ ✅
 2. 엔진: 주사위 모델·RNG·상태 타입
 3. 엔진: 1~3라운드 (시장, 배치, 쌓기, 기본 점수)
 4. 엔진: 4라운드 (시간 세기, 돌리기, 인과 역류) + 최종 점수
@@ -69,7 +70,7 @@ public/          아이콘, 매니페스트
 
 각 단계가 끝날 때마다 commit & push 한다.
 
-## 명령어 (1단계 이후)
+## 명령어
 
 ```
 npm run dev        # 개발 서버
