@@ -1,7 +1,7 @@
 /**
  * 게임 생성과 주사위 수급 (§4 구성물, §5 게임 준비)
  */
-import { ALL_ORIENTATIONS } from './dice'
+import { ALL_ORIENTATIONS, FACES, faceValue, type Face } from './dice'
 import { createRng, drawOne, nextInt, type RngState } from './rng'
 import {
   COLORS,
@@ -11,6 +11,7 @@ import {
   type GameState,
   type PlayerState,
   type RolledDie,
+  type StartRoll,
 } from './types'
 
 export const MIN_PLAYERS = 2
@@ -56,6 +57,31 @@ export function createBoard(): Board {
   }
 }
 
+/**
+ * 시작 플레이어 정하기 (§5-6): 모두 1개씩 굴려 가장 높은 숫자(⧗ = 0)가 시작.
+ * 가장 높은 사람이 여럿이면 그 사람들끼리 다시 굴린다.
+ */
+export function rollForStartPlayer(
+  rng: RngState,
+  playerCount: number,
+): [number, StartRoll[], RngState] {
+  let contenders = Array.from({ length: playerCount }, (_, i) => i)
+  const history: StartRoll[] = []
+  let r = rng
+  while (contenders.length > 1) {
+    const round: StartRoll = []
+    for (const player of contenders) {
+      let i: number
+      ;[i, r] = nextInt(r, FACES.length)
+      round.push({ player, face: FACES[i] as Face })
+    }
+    history.push(round)
+    const best = Math.max(...round.map((x) => faceValue(x.face)))
+    contenders = round.filter((x) => faceValue(x.face) === best).map((x) => x.player)
+  }
+  return [contenders[0] as number, history, r]
+}
+
 export function createGame(config: GameConfig): GameState {
   const { playerCount, seed } = config
   if (!Number.isInteger(playerCount) || playerCount < MIN_PLAYERS || playerCount > MAX_PLAYERS) {
@@ -78,6 +104,9 @@ export function createGame(config: GameConfig): GameState {
     debris: [],
   }))
 
+  const [startPlayer, startRolls, rngAfterStart] = rollForStartPlayer(rng, playerCount)
+  rng = rngAfterStart
+
   return {
     schema: 1,
     config: { playerCount, seed },
@@ -86,7 +115,8 @@ export function createGame(config: GameConfig): GameState {
     bag,
     market,
     players,
-    startPlayer: 0,
-    currentPlayer: 0,
+    startRolls,
+    startPlayer,
+    currentPlayer: startPlayer,
   }
 }
