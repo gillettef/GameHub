@@ -65,12 +65,20 @@ describe('§7 2차원 기본 점수', () => {
       '1,1': [die('yellow', 5)],
       '0,2': [die('black', TIME)],
     })
-    // (0,0)-(0,1): 2-3 ○, (0,0)-(1,0): 2-3 ○, (0,1)-(1,1): 3-5 ×, (1,0)-(1,1): 3-5 ×
-    expect(scorePlane(b).neighborSteps).toBe(2)
+    // (0,0)-(0,1): 선 안의 쌍이라 제외, (0,0)-(1,0): 2-3 ○, (0,1)-(1,1): 3-5 ×, (1,0)-(1,1): 3-5 ×
+    expect(scorePlane(b).neighborSteps).toBe(1)
+  })
+
+  it('이웃 계단: 선(1행) 안의 가로 쌍은 세지 않고, 선과 2행 사이 쌍은 센다', () => {
+    const b = board({
+      ...line(die('red', 1), die('red', 2), die('red', 3), die('red', 4), die('red', 5)),
+      '1,0': [die('blue', 2)],
+    })
+    expect(scorePlane(b).neighborSteps).toBe(1)
   })
 
   it('평면 점수는 1층 주사위만 본다', () => {
-    const b = board({ '0,0': [die('red', 2), die('red', 5)], '0,1': [die('blue', 3)] })
+    const b = board({ '0,0': [die('red', 2), die('red', 5)], '1,0': [die('blue', 3)] })
     expect(scorePlane(b).neighborSteps).toBe(1)
   })
 })
