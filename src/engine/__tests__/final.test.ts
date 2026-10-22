@@ -6,7 +6,7 @@ import type { Board, GameState } from '../types'
 import { board, die, line } from './helpers'
 
 function ended(players: { board: Board; planeScore: number; debris: number }[]): GameState {
-  const base = createGame({ playerCount: players.length, seed: 1 })
+  const base = createGame({ playerCount: players.length, seed: 1, law: 'standard' })
   return {
     ...base,
     phase: { kind: 'ended' },

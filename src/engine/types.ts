@@ -1,6 +1,7 @@
 /**
  * 게임 상태 타입. 모든 상태는 직렬화 가능한 JSON이어야 한다 (CLAUDE.md 아키텍처 원칙).
  */
+import type { LawId, PersonalGoalId, RoundGoalId } from './cards'
 import type { DieLayout, Face, Orientation } from './dice'
 import type { RngState } from './rng'
 
@@ -40,15 +41,22 @@ export interface PlayerState {
   debris: Die[]
   /** 2라운드 끝에 확정한 평면 점수 (§7). 확정 전에는 null */
   planeScore: number | null
+  /** 게임 준비 때 받은 개인 목표 카드 2장 (§5-3) */
+  personalOffer: PersonalGoalId[]
+  /** 고른 개인 목표 (비공개). 고르기 전에는 null */
+  personalGoal: PersonalGoalId | null
 }
 
 export type Round = 1 | 2 | 3 | 4
 
-export type Phase = { kind: 'round'; round: Round } | { kind: 'ended' }
+/** setup = 게임 준비 중 개인 목표 고르기 (§5-3) */
+export type Phase = { kind: 'setup' } | { kind: 'round'; round: Round } | { kind: 'ended' }
 
 export interface GameConfig {
   playerCount: number
   seed: number
+  /** 우주 법칙을 정해서 시작 (없으면 덱에서 무작위로 1장, §5-1) */
+  law?: LawId
 }
 
 /**
@@ -68,6 +76,18 @@ export interface TurnState {
   hand: RolledDie[]
   /** 이번 턴에 칸을 이미 가져갔는지 */
   taken: boolean
+  /** 흔들리는 시장: 이번 턴에 이미 다시 굴렸는지 */
+  rerolled: boolean
+}
+
+/** 공개된 라운드 목표 카드와 달성 마커 (§5 라운드 목표 카드) */
+export interface RoundGoalCard {
+  id: RoundGoalId
+  round: Round
+  /** 선착 칸 (4점) */
+  first: number | null
+  /** 달성 칸 (2점). 선착한 사람은 넣지 않는다 */
+  achieved: number[]
 }
 
 /** 시작 플레이어 결정 굴림 한 번 (§5-6). 동점이면 동점자끼리 다음 굴림 */
@@ -111,4 +131,10 @@ export interface GameState {
   turn: TurnState
   /** 4라운드 진행 상태. 4라운드 전에는 null */
   time: TimeState | null
+  /** 이번 게임의 우주 법칙 (§5-1) */
+  law: LawId
+  /** 라운드별 남은 목표 카드 더미 (index 0 = 1라운드) */
+  goalDecks: RoundGoalId[][]
+  /** 지금까지 공개된 라운드 목표 카드 */
+  roundGoals: RoundGoalCard[]
 }

@@ -1,6 +1,7 @@
 /**
  * 1~3라운드 배치 규칙 (§6, §7, §8)
  */
+import type { LawId } from './cards'
 import { faceValue, isTime, type Face } from './dice'
 import { BOARD_COLS, BOARD_ROWS } from './setup'
 import type { Board, Pillar, RolledDie, Round } from './types'
@@ -40,9 +41,13 @@ export function neighbors({ row, col }: Cell): Cell[] {
  * §8 쌓기 규칙: 올리는 윗면이 아래 윗면보다 큰 숫자.
  * ⧗은 어디 위에든 올릴 수 있고, ⧗ 위에는 아무것도 올릴 수 없다 (⧗ 위는 끝).
  */
-export function canStackOn(below: Face, top: Face): boolean {
+export function canStackOn(below: Face, top: Face, law: LawId = 'standard'): boolean {
   if (isTime(below)) return false
   if (isTime(top)) return true
+  // §11-1 평평한 우주: 같은 숫자도 / 뒤집힌 우주: 작은 숫자만
+  // 해석: ⧗은 숫자가 아니므로 법칙과 상관없이 '⧗은 언제나', '⧗ 위는 끝'이 그대로 남는다
+  if (law === 'flat') return faceValue(top) >= faceValue(below)
+  if (law === 'inverted') return faceValue(top) < faceValue(below)
   return faceValue(top) > faceValue(below)
 }
 
@@ -72,31 +77,31 @@ function planeCells(board: Board): Cell[] {
 }
 
 /** §8 3라운드: 기둥 꼭대기에 쌓기 규칙을 지켜 올릴 수 있는 칸 (진공 제외) */
-function towerCells(board: Board, top: Face): Cell[] {
+function towerCells(board: Board, top: Face, law: LawId): Cell[] {
   const out: Cell[] = []
   for (let row = 0; row < BOARD_ROWS; row++) {
     for (let col = 0; col < BOARD_COLS; col++) {
       const below = topOf(pillarAt(board, { row, col }))
-      if (below && canStackOn(below.orientation.top, top)) out.push({ row, col })
+      if (below && canStackOn(below.orientation.top, top, law)) out.push({ row, col })
     }
   }
   return out
 }
 
 /** 이 주사위를 지금 놓을 수 있는 칸 목록 */
-export function legalCells(board: Board, round: Round, die: RolledDie): Cell[] {
+export function legalCells(board: Board, round: Round, die: RolledDie, law: LawId = 'standard'): Cell[] {
   switch (round) {
     case 1:
       return lineCells(board)
     case 2:
       return planeCells(board)
     case 3:
-      return towerCells(board, die.orientation.top)
+      return towerCells(board, die.orientation.top, law)
     case 4:
       return []
   }
 }
 
-export function isLegalCell(board: Board, round: Round, die: RolledDie, cell: Cell): boolean {
-  return legalCells(board, round, die).some((c) => c.row === cell.row && c.col === cell.col)
+export function isLegalCell(board: Board, round: Round, die: RolledDie, cell: Cell, law: LawId = 'standard'): boolean {
+  return legalCells(board, round, die, law).some((c) => c.row === cell.row && c.col === cell.col)
 }

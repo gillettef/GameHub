@@ -234,9 +234,9 @@ describe('§5 게임 준비', () => {
     }
   })
 
-  it('1라운드, 시작 플레이어의 차례로 시작한다', () => {
+  it('§5-3 개인 목표를 고르는 준비 단계(setup)로 시작하고, 시작 플레이어의 차례다', () => {
     const game = createGame({ playerCount: 3, seed: 1 })
-    expect(game.phase).toEqual({ kind: 'round', round: 1 })
+    expect(game.phase).toEqual({ kind: 'setup' })
     expect(game.currentPlayer).toBe(game.startPlayer)
     expect(game.leadPlayer).toBe(game.startPlayer)
   })

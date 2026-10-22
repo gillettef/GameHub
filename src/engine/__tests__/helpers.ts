@@ -1,6 +1,7 @@
 import { allOrientations, facesOf, FACES, sideFaces, STANDARD_LAYOUT, type DieLayout, type Face } from '../dice'
-import { createBoard } from '../setup'
-import type { Board, Color, RolledDie } from '../types'
+import { applyAction } from '../game'
+import { createBoard, createGame } from '../setup'
+import type { Board, Color, GameConfig, GameState, RolledDie } from '../types'
 
 let nextId = 1000
 
@@ -51,4 +52,16 @@ export function allLayouts(): DieLayout[] {
   }
   walk([], [...FACES])
   return out
+}
+
+/**
+ * 게임을 만들고 모두 개인 목표를 골라(받은 2장 중 첫 장) 1라운드로 넘긴 상태 (§5-3).
+ * 법칙을 주지 않으면 표준 우주로 고정한다 (법칙에 따라 결과가 달라지는 테스트를 막기 위해).
+ */
+export function startGame(config: GameConfig): GameState {
+  let s = createGame({ law: 'standard', ...config })
+  for (const p of s.players) {
+    s = applyAction(s, { type: 'choosePersonalGoal', player: p.id, goal: p.personalOffer[0] as NonNullable<typeof p.personalGoal> })
+  }
+  return s
 }

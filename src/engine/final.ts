@@ -1,6 +1,7 @@
 /**
  * 게임 종료와 최종 점수 (§10)
  */
+import { goalPoints, personalGoalPoints } from './goals'
 import { scoreLine, scorePlane, scoreTower } from './scoring'
 import type { GameState, PlayerState } from './types'
 
@@ -12,9 +13,9 @@ export interface FinalScore {
   plane: number
   /** 최종 탑으로 계산 (§8) */
   tower: number
-  /** 라운드 목표 카드 점수. TODO(5단계): 카드 구현 후 채움 */
+  /** 라운드 목표 카드 점수 (선착 4 / 달성 2) */
   goals: number
-  /** 개인 목표 달성 시 6점. TODO(5단계): 카드 구현 후 채움 */
+  /** 개인 목표 달성 시 6점 */
   personalGoal: number
   /** 잔해 1개당 -1점 (음수로 기록) */
   debris: number
@@ -29,13 +30,13 @@ function tallest(player: PlayerState): number {
   return Math.max(0, ...player.board.cells.flat().map((pillar) => pillar.length))
 }
 
-function scorePlayer(player: PlayerState): Omit<FinalScore, 'rank'> {
-  const line = scoreLine(player.board).total
+function scorePlayer(state: GameState, player: PlayerState): Omit<FinalScore, 'rank'> {
+  const line = scoreLine(player.board, state.law).total
   // 2라운드 점수는 확정분을 쓴다. 확정 전(테스트 등)이면 현재 평면으로 계산
-  const plane = player.planeScore ?? scorePlane(player.board).total
+  const plane = player.planeScore ?? scorePlane(player.board, state.law).total
   const tower = scoreTower(player.board).total
-  const goals = 0
-  const personalGoal = 0
+  const goals = goalPoints(state, player.id)
+  const personalGoal = personalGoalPoints(player)
   const debris = -player.debris.length
   return {
     player: player.id,
@@ -57,7 +58,7 @@ function compare(a: Omit<FinalScore, 'rank'>, b: Omit<FinalScore, 'rank'>): numb
 
 /** 모든 플레이어의 최종 점수를 순위순으로 */
 export function finalScores(state: GameState): FinalScore[] {
-  const sorted = state.players.map(scorePlayer).sort((a, b) => compare(a, b) || a.player - b.player)
+  const sorted = state.players.map((p) => scorePlayer(state, p)).sort((a, b) => compare(a, b) || a.player - b.player)
   return sorted.map((s, i) => {
     const firstEqual = sorted.findIndex((o) => compare(o, s) === 0)
     return { ...s, rank: (firstEqual === -1 ? i : firstEqual) + 1 }

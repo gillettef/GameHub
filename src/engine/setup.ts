@@ -1,7 +1,16 @@
 /**
  * 게임 생성과 주사위 수급 (§4 구성물, §5 게임 준비)
  */
+import {
+  LAW_DECK,
+  PERSONAL_GOAL_DECK,
+  PERSONAL_GOAL_DRAW,
+  roundGoalDeck,
+  type LawId,
+  type RoundGoalId,
+} from './cards'
 import { allOrientations, FACES, faceValue, type DieLayout, type Face } from './dice'
+import { revealRoundGoals } from './goals'
 import { createRng, drawOne, nextInt, shuffle, type RngState } from './rng'
 import {
   COLORS,
@@ -23,9 +32,9 @@ export const BOARD_COLS = 5
 /** 시장 보드에 인쇄된 칸 수 (4인 + 풍요의 우주) */
 export const MARKET_BOARD_SLOTS = 5
 
-/** 쓰는 시장 칸 수: 플레이어 수 (§5) */
-export function marketSlotCount(playerCount: number): number {
-  return playerCount
+/** 쓰는 시장 칸 수: 플레이어 수 (§5). 풍요의 우주는 +1 (§11-1) */
+export function marketSlotCount(playerCount: number, law: LawId = 'standard'): number {
+  return law === 'abundance' ? playerCount + 1 : playerCount
 }
 
 /** 칸마다 넣는 주사위 수: 라운드 번호 (§5 시장 채우기). 4라운드에는 시장을 쓰지 않는다. */
@@ -135,29 +144,43 @@ export function createGame(config: GameConfig): GameState {
   if (!Number.isInteger(playerCount) || playerCount < MIN_PLAYERS || playerCount > MAX_PLAYERS) {
     throw new Error(`플레이어 수는 ${MIN_PLAYERS}~${MAX_PLAYERS}명이어야 합니다 (${playerCount})`)
   }
+  if (config.law !== undefined && !LAW_DECK.includes(config.law)) throw new Error(`쓸 수 없는 우주 법칙입니다 (${config.law})`)
+
+  // §5-6 시작 플레이어
+  const [startPlayer, startRolls, r1] = rollForStartPlayer(createRng(seed), playerCount)
+  const [dice, r2] = createDice(r1)
+  // §5-1 우주 법칙 1장
+  let law: LawId
+  let r3 = r2
+  if (config.law !== undefined) law = config.law
+  else [law, , r3] = drawOne(r2, LAW_DECK)
+  // §5-3 개인 목표 2장씩
+  const [personalDeck, r4] = shuffle(r3, PERSONAL_GOAL_DECK)
+  // §5-4 라운드 목표를 라운드별로 섞어 더미로
+  let r5 = r4
+  const goalDecks: RoundGoalId[][] = []
+  for (const round of [1, 2, 3, 4] as const) {
+    let deck: RoundGoalId[]
+    ;[deck, r5] = shuffle(r5, roundGoalDeck(round))
+    goalDecks.push(deck)
+  }
+  // §5 라운드 시작: 1라운드 시장 채우기
+  const [market, bag, rng] = fillMarket(r5, dice, marketSlotCount(playerCount, law), dicePerSlot(1))
 
   const players: PlayerState[] = Array.from({ length: playerCount }, (_, id) => ({
     id,
     board: createBoard(),
     debris: [],
     planeScore: null,
+    personalOffer: personalDeck.slice(id * PERSONAL_GOAL_DRAW, (id + 1) * PERSONAL_GOAL_DRAW),
+    personalGoal: null,
   }))
 
-  // §5-6 시작 플레이어 → §5 라운드 시작: 1라운드 시장 채우기
-  const [startPlayer, startRolls, rngAfterStart] = rollForStartPlayer(createRng(seed), playerCount)
-  const [dice, rngAfterDice] = createDice(rngAfterStart)
-  const [market, bag, rng] = fillMarket(
-    rngAfterDice,
-    dice,
-    marketSlotCount(playerCount),
-    dicePerSlot(1),
-  )
-
-  return {
+  const state: GameState = {
     schema: 1,
-    config: { playerCount, seed },
+    config: { playerCount, seed, ...(config.law !== undefined ? { law: config.law } : {}) },
     rng,
-    phase: { kind: 'round', round: 1 },
+    phase: { kind: 'setup' },
     bag,
     market,
     players,
@@ -165,7 +188,11 @@ export function createGame(config: GameConfig): GameState {
     startPlayer,
     leadPlayer: startPlayer,
     currentPlayer: startPlayer,
-    turn: { circuit: 0, picks: 0, hand: [], taken: false },
+    turn: { circuit: 0, picks: 0, hand: [], taken: false, rerolled: false },
     time: null,
+    law,
+    goalDecks,
+    roundGoals: [],
   }
+  return revealRoundGoals(state, 1)
 }
