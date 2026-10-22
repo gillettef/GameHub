@@ -111,6 +111,11 @@ describe('온라인 방', () => {
     expect(gb.agents[0]!.secret).toBe(-1);
     expect(ga.rng).toBe(0);
     expect(ga.events).toHaveLength(2);
+    // 구단 요구 카드는 공개된 것만, 더미 순서는 가린다
+    for (const c of ga.clubs) {
+      expect(ga.needs[c]).toBeGreaterThanOrEqual(0);
+      expect(ga.needDecks[c]!.every((x) => x === -1)).toBe(true);
+    }
   });
 
   it('모두 제출하면 정산하고, 끝까지 진행하면 비밀 구단이 공개된다', () => {

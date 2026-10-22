@@ -20,6 +20,12 @@ export interface Club {
   name: string;
   /** 제시액 */
   budget: number;
+}
+
+/** 구단 요구 카드 (구단마다 3장). 공개된 1장이 그 구단의 현재 필요 포지션·선호 특성 */
+export interface ClubNeed {
+  id: number;
+  club: number;
   pos: Position;
   pref: Trait;
 }
@@ -118,6 +124,8 @@ export interface RoundEntry {
 export interface RoundResult {
   round: number;
   event: EventKey;
+  /** 이 라운드에 공개돼 있던 구단 요구 카드 (구단 id → 요구 카드 id) */
+  needs: Record<number, number>;
   entries: RoundEntry[];
 }
 
@@ -135,7 +143,7 @@ export interface Signing {
 export type Phase = 'bid' | 'result' | 'guess' | 'done';
 
 export interface GameState {
-  v: 6;
+  v: 7;
   rng: number;
   round: number;
   phase: Phase;
@@ -144,6 +152,10 @@ export interface GameState {
   market: number[];
   /** 이번 게임 구단 (게임 내내 고정) */
   clubs: number[];
+  /** 구단별 공개된 요구 카드 (구단 id → 요구 카드 id) */
+  needs: Record<number, number>;
+  /** 구단별 요구 카드 더미 (맨 앞이 다음에 공개될 카드, 비공개). 계약된 구단은 라운드가 끝나면 공개 카드를 맨 뒤로 넣고 맨 앞을 연다 */
+  needDecks: Record<number, number[]>;
   signings: Signing[];
   agents: AgentState[];
   results: RoundResult[];

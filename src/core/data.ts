@@ -1,4 +1,4 @@
-import type { Club, Demand, EventKey, MarketEvent, PlayerCard, Position, Trait } from './types';
+import type { Club, ClubNeed, Demand, EventKey, MarketEvent, PlayerCard, Position, Trait } from './types';
 
 /** [이름, 포지션, 몸값, 특성, 기본 수수료] */
 type PlayerRow = [string, Position, number, Trait, number];
@@ -44,25 +44,33 @@ const PLAYER_ROWS: PlayerRow[] = [
 
 export const PLAYERS: readonly PlayerCard[] = PLAYER_ROWS.map(([name, pos, cost, trait, base], id) => ({ id, name, pos, cost, trait, base }));
 
-/** [이름, 제시액, 필요 포지션, 선호 특성] */
-type ClubRow = [string, number, Position, Trait];
+/** [필요 포지션, 선호 특성] */
+type NeedRow = [Position, Trait];
+/** [이름, 제시액, 요구 카드 3장] */
+type ClubRow = [string, number, NeedRow[]];
 
 const CLUB_ROWS: ClubRow[] = [
-  ['블루 드래곤즈', 10, 'FW', '스타'],
-  ['실버 호크스', 8, 'MF', '플레이메이커'],
-  ['아이언 가디언즈', 7, 'GK', '클린시트'],
-  ['에메랄드 타이거즈', 9, 'DF', '스타'],
-  ['오로라 FC', 6, 'MF', '유망주'],
-  ['노바 크루저스', 6, 'DF', '베테랑'],
-  ['썬더 울브스', 5, 'FW', '유망주'],
-  ['스톰 파이오니어', 9, 'MF', '플레이메이커'],
-  ['레드 피닉스', 8, 'GK', '베테랑'],
-  ['골든 이글스', 7, 'FW', '멀티플레이어'],
-  ['퍼플 나이츠', 7, 'DF', '유망주'],
-  ['화이트 샤크스', 10, 'MF', '스타'],
+  ['블루 드래곤즈', 10, [['FW', '스타'], ['MF', '스타'], ['DF', '스타']]],
+  ['실버 호크스', 8, [['MF', '플레이메이커'], ['FW', '플레이메이커'], ['DF', '플레이메이커']]],
+  ['아이언 가디언즈', 7, [['GK', '클린시트'], ['DF', '클린시트'], ['GK', '베테랑']]],
+  ['에메랄드 타이거즈', 9, [['DF', '스타'], ['GK', '스타'], ['FW', '스타']]],
+  ['오로라 FC', 6, [['MF', '유망주'], ['FW', '유망주'], ['DF', '유망주']]],
+  ['노바 크루저스', 6, [['DF', '베테랑'], ['MF', '베테랑'], ['FW', '베테랑']]],
+  ['썬더 울브스', 5, [['FW', '유망주'], ['GK', '유망주'], ['MF', '멀티플레이어']]],
+  ['스톰 파이오니어', 9, [['MF', '플레이메이커'], ['MF', '스타'], ['FW', '베테랑']]],
+  ['레드 피닉스', 8, [['GK', '베테랑'], ['DF', '베테랑'], ['GK', '클린시트']]],
+  ['골든 이글스', 7, [['FW', '멀티플레이어'], ['DF', '멀티플레이어'], ['MF', '멀티플레이어']]],
+  ['퍼플 나이츠', 7, [['DF', '유망주'], ['MF', '유망주'], ['FW', '유망주']]],
+  ['화이트 샤크스', 10, [['MF', '스타'], ['FW', '스타'], ['GK', '스타']]],
 ];
 
-export const CLUBS: readonly Club[] = CLUB_ROWS.map(([name, budget, pos, pref], id) => ({ id, name, budget, pos, pref }));
+export const CLUBS: readonly Club[] = CLUB_ROWS.map(([name, budget], id) => ({ id, name, budget }));
+
+/** 구단 요구 카드 36장 (구단 id 순, 구단마다 3장) */
+export const NEEDS: readonly ClubNeed[] = CLUB_ROWS.flatMap(([, , rows], club) => rows.map(([pos, pref]) => ({ club, pos, pref }))).map((n, id) => ({ id, ...n }));
+
+/** 이 구단의 요구 카드 id 들 */
+export const needsOf = (clubId: number): number[] => NEEDS.filter((n) => n.club === clubId).map((n) => n.id);
 
 export const EVENTS: Readonly<Record<EventKey, MarketEvent>> = {
   normal: { key: 'normal', name: '이적시장 개장', icon: '📰', desc: '특별한 효과가 없습니다.' },
@@ -116,7 +124,9 @@ export const RULES = {
   /** 틀린 지목 1개당 감점 (0 = 감점 없음). 감점이 있으면 지목은 선택이다 */
   wrongGuess: 2,
   /** 요구 수수료 카드 종류별 장수. 공개된 카드는 버린다 (0 = 소진 없이 매번 1~4 중 자유, 비교 실험용) */
-  copies: 2,
+  copies: 3,
+  /** 1 = 계약된 구단은 라운드가 끝나면 요구 카드를 교체한다, 0 = 첫 요구 카드 고정 (v6 비교 실험용) */
+  needRotate: 1,
   /** 요구 수수료 카드 1·2·3·4 의 매력도 감점 (카드에 인쇄) */
   penalty: [1, 2, 3, 4] as number[],
   /** 요구 수수료 카드 1·2·3·4 로 받는 수수료 (카드에 인쇄) */
@@ -149,4 +159,10 @@ export const club = (id: number): Club => {
   const c = CLUBS[id];
   if (!c) throw new Error(`unknown club ${id}`);
   return c;
+};
+
+export const need = (id: number): ClubNeed => {
+  const n = NEEDS[id];
+  if (!n) throw new Error(`unknown need ${id}`);
+  return n;
 };
