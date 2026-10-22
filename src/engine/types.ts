@@ -72,6 +72,35 @@ export interface TurnState {
 /** 시작 플레이어 결정 굴림 한 번 (§5-6). 동점이면 동점자끼리 다음 굴림 */
 export type StartRoll = { player: number; face: Face }[]
 
+/** 사건 카드 (§11-4) */
+export type EventId =
+  | 'rotation'
+  | 'erosion'
+  | 'proliferation'
+  | 'gravityWave'
+  | 'flood'
+  | 'regression'
+  | 'earthquake'
+  | 'crownCurse'
+  | 'bigBang'
+  | 'timeRift'
+
+/** 4라운드 시간 진행 상태 (§9). 플레이어별 배열은 플레이어 id 순서 */
+export interface TimeState {
+  /** 시간축 t1~t3의 사건 카드 */
+  timeline: EventId[]
+  /** 현재 시점 (0 = t1) */
+  step: number
+  /** 공개된 사건 카드 수 (앞에서부터) */
+  revealed: number
+  /** ② 시간 세기로 정해진 이번 시점의 돌리기 횟수 */
+  counted: number[]
+  /** 이번 시점에 남은 돌리기 횟수 */
+  remaining: number[]
+  /** 이번 시점의 돌리기를 마쳤는지 */
+  done: boolean[]
+}
+
 export interface GameState {
   /** 상태 스키마 버전 (저장/동기화 호환성용) */
   schema: 1
@@ -89,4 +118,6 @@ export interface GameState {
   leadPlayer: number
   currentPlayer: number
   turn: TurnState
+  /** 4라운드 진행 상태. 4라운드 전에는 null */
+  time: TimeState | null
 }

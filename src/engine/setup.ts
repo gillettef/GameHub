@@ -150,5 +150,6 @@ export function createGame(config: GameConfig): GameState {
     leadPlayer: startPlayer,
     currentPlayer: startPlayer,
     turn: { circuit: 0, picks: 0, hand: [], taken: false },
+    time: null,
   }
 }

@@ -194,9 +194,11 @@ describe('§8 3라운드', () => {
 
   it('2바퀴가 끝나면 4라운드로 넘어가고 시장은 비운다', () => {
     const states = playRandomly(17, 4)
+    const first4 = states.find((s) => s.time !== null) as GameState
+    expect(first4.market).toEqual([])
+    expect(first4.time?.timeline).toHaveLength(3)
     const last = states[states.length - 1] as GameState
-    expect(last.phase).toEqual({ kind: 'round', round: 4 })
-    expect(last.market).toEqual([])
+    expect(last.phase).toEqual({ kind: 'ended' })
     expect(getLegalActions(last)).toEqual([])
     expect(() => applyAction(last, { type: 'takeSlot', player: last.currentPlayer, slot: 0 })).toThrow(
       IllegalActionError,
