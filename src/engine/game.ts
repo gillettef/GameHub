@@ -5,29 +5,24 @@
  * 손에 든 주사위가 없어지면 턴이 끝나고, 모두 한 턴씩 하면 바퀴가 끝난다.
  */
 import { withFront, type Face } from './dice'
+import { fail } from './errors'
 import { isLegalCell, legalCells, pillarAt, type Cell } from './placement'
 import { scorePlane } from './scoring'
 import { dicePerSlot, fillMarket, marketSlotCount } from './setup'
+import { applyTimeAction, legalTimeActions, startRound4, type TimeAction } from './time'
 import type { GameState, PlayerState, RolledDie, Round } from './types'
 
 /** 라운드별 1인 턴 수 = 바퀴 수 (§1) */
 export const TURNS_PER_ROUND: Record<1 | 2 | 3, number> = { 1: 5, 2: 3, 3: 2 }
 
-export type Action =
+export { IllegalActionError } from './errors'
+
+export type DraftAction =
   | { type: 'takeSlot'; player: number; slot: number }
   | { type: 'place'; player: number; dieId: number; row: number; col: number; front?: Face }
   | { type: 'discard'; player: number; dieId: number }
 
-export class IllegalActionError extends Error {
-  constructor(message: string) {
-    super(message)
-    this.name = 'IllegalActionError'
-  }
-}
-
-function fail(message: string): never {
-  throw new IllegalActionError(message)
-}
+export type Action = DraftAction | TimeAction
 
 export function currentRound(state: GameState): Round | null {
   return state.phase.kind === 'round' ? state.phase.round : null
@@ -111,11 +106,16 @@ function endRound(state: GameState, round: 1 | 2 | 3): GameState {
     phase: { kind: 'round', round: next },
     turn: { circuit: 0, picks: 0, hand: [], taken: false },
   }
-  if (next === 4) return { ...base, market: [] }
+  if (next === 4) return startRound4({ ...base, market: [] })
   return refillMarket(base, next)
 }
 
 export function applyAction(state: GameState, action: Action): GameState {
+  if (state.phase.kind === 'ended') fail('게임이 끝났습니다.')
+  if (action.type === 'rotate' || action.type === 'endStep') {
+    if (currentRound(state) !== 4) fail('4라운드에만 할 수 있는 행동입니다.')
+    return applyTimeAction(state, action)
+  }
   const round = draftRound(state)
   if (round === null) fail('1~3라운드에만 할 수 있는 행동입니다.')
   if (action.player !== state.currentPlayer) fail(`지금은 ${state.currentPlayer}번 플레이어의 차례입니다.`)
@@ -172,8 +172,12 @@ export function legalPlacements(state: GameState, dieId: number): Cell[] {
   return legalCells(player.board, round, die)
 }
 
-/** 현재 플레이어가 할 수 있는 행동 목록. 놓기는 앞면을 바꾸지 않은 형태로만 나열한다. */
+/**
+ * 할 수 있는 행동 목록. 1~3라운드는 현재 플레이어의 행동(놓기는 앞면을 바꾸지 않은 형태로만),
+ * 4라운드는 동시 진행이므로 아직 마치지 않은 모든 플레이어의 행동을 나열한다.
+ */
 export function getLegalActions(state: GameState): Action[] {
+  if (currentRound(state) === 4) return state.players.flatMap((p) => legalTimeActions(state, p.id))
   const round = draftRound(state)
   if (round === null) return []
   const player = state.currentPlayer
