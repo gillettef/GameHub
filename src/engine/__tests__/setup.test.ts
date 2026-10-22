@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { faceValue, isValidOrientation } from '../dice'
+import { faceValue, isValidLayout, isValidOrientation, opposite, STANDARD_LAYOUT, TIME, type DieLayout } from '../dice'
 import { createRng } from '../rng'
 import {
   BOARD_COLS,
@@ -12,27 +12,89 @@ import {
   fillMarket,
   marketSlotCount,
   roll,
+  randomLayout,
   rollForStartPlayer,
 } from '../setup'
-import { COLORS, type RolledDie } from '../types'
+import { COLORS, type Die, type RolledDie } from '../types'
+import { layoutKey } from './helpers'
+
+const dice = (seed = 1): Die[] => createDice(createRng(seed))[0]
 
 describe('§4 구성물', () => {
   it('주사위 120개 = 5색 × 24개, id가 모두 다르다', () => {
-    const dice = createDice()
-    expect(dice).toHaveLength(120)
-    expect(new Set(dice.map((d) => d.id)).size).toBe(120)
+    const all = dice()
+    expect(all).toHaveLength(120)
+    expect(new Set(all.map((d) => d.id)).size).toBe(120)
     for (const color of COLORS) {
-      expect(dice.filter((d) => d.color === color)).toHaveLength(DICE_PER_COLOR)
+      expect(all.filter((d) => d.color === color)).toHaveLength(DICE_PER_COLOR)
     }
+  })
+
+  it('§2 모든 주사위의 면 배치가 유효하다 (여섯 면이 한 번씩)', () => {
+    for (const seed of [1, 2, 3]) expect(dice(seed).every((d) => isValidLayout(d.layout))).toBe(true)
+  })
+
+  it('같은 시드면 같은 배치, 다른 시드면 다른 배치', () => {
+    expect(dice(7)).toEqual(dice(7))
+    expect(dice(7).map((d) => d.layout)).not.toEqual(dice(8).map((d) => d.layout))
+  })
+
+  it('createDice는 다음 RNG 상태를 돌려준다', () => {
+    const r0 = createRng(5)
+    const [, r1] = createDice(r0)
+    expect(r1).not.toEqual(r0)
+  })
+
+  it('§2 면 배치가 다양하다: 120개에 30종 중 여러 종류가 나오고 1↔⧗ 고정이 아니다', () => {
+    const all = dice(11)
+    const kinds = new Set(all.map((d) => layoutKey(d.layout)))
+    expect(kinds.size).toBeGreaterThanOrEqual(20)
+    expect(kinds.size).toBeLessThanOrEqual(30)
+    expect(all.some((d) => opposite(d.layout, 1) !== TIME)).toBe(true)
+  })
+
+  it('randomLayout은 30종을 모두 낼 수 있다 (고정 시드 3000회)', () => {
+    let r = createRng(99)
+    const kinds = new Set<string>()
+    for (let i = 0; i < 3000; i++) {
+      let layout: DieLayout
+      ;[layout, r] = randomLayout(r)
+      expect(isValidLayout(layout)).toBe(true)
+      kinds.add(layoutKey(layout))
+    }
+    expect(kinds.size).toBe(30)
   })
 })
 
 describe('굴리기', () => {
   it('굴린 주사위는 유효한 방향을 가지고 id와 색을 유지한다', () => {
-    const [rolled] = roll(createRng(1), { id: 7, color: 'green' })
+    const [rolled] = roll(createRng(1), { id: 7, color: 'green', layout: STANDARD_LAYOUT })
     expect(rolled.id).toBe(7)
     expect(rolled.color).toBe('green')
-    expect(isValidOrientation(rolled.orientation)).toBe(true)
+    expect(rolled.layout).toEqual(STANDARD_LAYOUT)
+    expect(isValidOrientation(rolled.layout, rolled.orientation)).toBe(true)
+  })
+
+  it('굴린 방향은 그 주사위 자신의 배치에서 유효하다 (배치 유지)', () => {
+    let r = createRng(3)
+    for (const d of dice(3)) {
+      let rolled: RolledDie
+      ;[rolled, r] = roll(r, d)
+      expect(rolled.layout).toEqual(d.layout)
+      expect(isValidOrientation(d.layout, rolled.orientation)).toBe(true)
+    }
+  })
+
+  it('한 주사위를 여러 번 굴리면 24방향이 모두 나온다', () => {
+    const d = dice(4)[0] as Die
+    let r = createRng(4)
+    const seen = new Set<string>()
+    for (let i = 0; i < 2000; i++) {
+      let rolled: RolledDie
+      ;[rolled, r] = roll(r, d)
+      seen.add(`${String(rolled.orientation.top)}/${String(rolled.orientation.front)}`)
+    }
+    expect(seen.size).toBe(24)
   })
 
   it('윗면 6가지가 대략 1/6씩 나온다 (⧗ 포함)', () => {
@@ -40,7 +102,7 @@ describe('굴리기', () => {
     let rng = createRng(2024)
     for (let i = 0; i < 6000; i++) {
       let rolled: RolledDie
-      ;[rolled, rng] = roll(rng, { id: 0, color: 'red' })
+      ;[rolled, rng] = roll(rng, { id: 0, color: 'red', layout: [3, TIME, 5, 1, 2, 4] })
       const k = String(rolled.orientation.top)
       counts.set(k, (counts.get(k) ?? 0) + 1)
     }
@@ -52,7 +114,7 @@ describe('굴리기', () => {
   })
 
   it('주머니에서 1개를 뽑아 굴리고, 나머지 주머니를 돌려준다', () => {
-    const bag = createDice().slice(0, 10)
+    const bag = dice().slice(0, 10)
     const [rolled, rest] = drawAndRoll(createRng(4), bag)
     expect(rolled).not.toBeNull()
     expect(rest).toHaveLength(9)
@@ -125,21 +187,21 @@ describe('§5 시장 채우기', () => {
   })
 
   it('규칙서 예: 3인 1라운드 = 3칸 × 1개, 4인 2라운드 = 4칸 × 2개 = 8개', () => {
-    const [m1] = fillMarket(createRng(1), createDice(), marketSlotCount(3), dicePerSlot(1))
+    const [m1] = fillMarket(createRng(1), dice(), marketSlotCount(3), dicePerSlot(1))
     expect(m1.map((s) => s.length)).toEqual([1, 1, 1])
-    const [m2, bag2] = fillMarket(createRng(1), createDice(), marketSlotCount(4), dicePerSlot(2))
+    const [m2, bag2] = fillMarket(createRng(1), dice(), marketSlotCount(4), dicePerSlot(2))
     expect(m2.map((s) => s.length)).toEqual([2, 2, 2, 2])
     expect(bag2).toHaveLength(112)
   })
 
   it('4인 3라운드 = 4칸 × 3개 = 12개, 모두 굴려져 유효한 방향', () => {
-    const [m] = fillMarket(createRng(2), createDice(), 4, 3)
+    const [m] = fillMarket(createRng(2), dice(), 4, 3)
     expect(m.flat()).toHaveLength(12)
-    expect(m.flat().every((d) => isValidOrientation(d.orientation))).toBe(true)
+    expect(m.flat().every((d) => isValidOrientation(d.layout, d.orientation))).toBe(true)
   })
 
   it('주머니가 모자라면 남은 만큼만 채운다', () => {
-    const [m, bag] = fillMarket(createRng(3), createDice().slice(0, 5), 4, 2)
+    const [m, bag] = fillMarket(createRng(3), dice().slice(0, 5), 4, 2)
     expect(m.map((s) => s.length)).toEqual([2, 2, 1, 0])
     expect(bag).toEqual([])
   })

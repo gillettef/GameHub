@@ -1,56 +1,82 @@
 /**
- * 4라운드 — 시간의 세계 (§9)
+ * 4라운드 — 시간의 세계 (§9, v0.6)
  *
- * 시점마다: ① 미래 엿보기 → ② 시간 세기(시점 시작에 고정) → ③ 돌리기(모두 동시에) + ④ 인과 역류
- * → 모두 마치면 ⑤ 사건 해결. t3 사건을 해결하면 게임이 끝난다 (§10).
+ * 준비: 각자 윗면이 ⧗인 꼭대기 주사위(⧗ 주사위)를 정한다.
+ * 진행: 선부터 시계 방향으로, 자기 차례에 ⧗ 주사위 1개를 옆 칸으로 1칸 굴린다(필수).
+ * 굴릴 수 없는 주사위를 고르면 잔해가 된다. 모두 다 굴리면 게임이 끝난다 (§10).
  */
-import { isTime, tip, TIP_DIRECTIONS, type TipDirection } from './dice'
+import { isTime, tip, TIP_DIRECTIONS, type Orientation, type TipDirection } from './dice'
 import { fail } from './errors'
-import { EVENT_DECK, EVENTS, TIMELINE_LENGTH, type EventDef } from './events'
-import { canStackOn, topOf } from './placement'
-import { shuffle } from './rng'
-import type { Board, Die, GameState, Pillar, PlayerState, TimeState } from './types'
+import { canStackOn, inBoard, topOf, type Cell } from './placement'
+import type { Board, DieId, GameState, PlayerState, RolledDie, TimeState } from './types'
 
 export type TimeAction =
-  | { type: 'rotate'; player: number; row: number; col: number; level: number; direction: TipDirection }
-  | { type: 'endStep'; player: number }
+  | { type: 'roll'; player: number; dieId: DieId; direction: TipDirection }
+  | { type: 'scrap'; player: number; dieId: DieId }
 
-/** §9 ② 윗면이 ⧗인 꼭대기의 수. 기둥 속에 묻힌 ⧗은 세지 않는다 */
+/** 굴린 방향의 옆 칸. forward = 앞(1행) 쪽 */
+export function stepCell({ row, col }: Cell, direction: TipDirection): Cell {
+  switch (direction) {
+    case 'forward':
+      return { row: row - 1, col }
+    case 'back':
+      return { row: row + 1, col }
+    case 'left':
+      return { row, col: col - 1 }
+    case 'right':
+      return { row, col: col + 1 }
+  }
+}
+
+/** 윗면이 ⧗인 꼭대기 주사위와 그 칸 */
+export function timeTops(board: Board): { die: RolledDie; cell: Cell }[] {
+  const out: { die: RolledDie; cell: Cell }[] = []
+  board.cells.forEach((row, r) =>
+    row.forEach((pillar, c) => {
+      const top = topOf(pillar)
+      if (top && isTime(top.orientation.top)) out.push({ die: top, cell: { row: r, col: c } })
+    }),
+  )
+  return out
+}
+
+/** §9 준비: 윗면이 ⧗인 꼭대기의 수 */
 export function countTimeTops(board: Board): number {
-  return board.cells.flat().filter((pillar) => {
-    const top = topOf(pillar)
-    return top !== undefined && isTime(top.orientation.top)
-  }).length
+  return timeTops(board).length
+}
+
+/** 꼭대기 주사위의 칸. 꼭대기가 아니면 null */
+export function findTop(board: Board, dieId: DieId): Cell | null {
+  for (let row = 0; row < board.cells.length; row++) {
+    const cols = board.cells[row] ?? []
+    for (let col = 0; col < cols.length; col++) {
+      if (topOf(cols[col] ?? [])?.id === dieId) return { row, col }
+    }
+  }
+  return null
+}
+
+export interface RollTarget {
+  direction: TipDirection
+  to: Cell
+  orientation: Orientation
 }
 
 /**
- * §9 ④ 인과 역류: 기둥을 아래에서부터 다시 판정한다.
- * 쌓기 규칙(§8)을 어긴 첫 주사위와 그 위 주사위들이 무너진다.
- * @returns [남은 기둥, 무너진 주사위(아래부터)]
+ * §9 굴리기: 이 꼭대기 주사위를 굴릴 수 있는 방향과 결과.
+ * 옆 칸이 진공이면 그 칸의 1층, 기둥이면 쌓기 규칙에 맞을 때만 그 꼭대기. 보드 밖은 안 됨.
  */
-export function backflow(pillar: Pillar): [Pillar, Pillar] {
-  for (let i = 1; i < pillar.length; i++) {
-    const below = pillar[i - 1]
-    const cur = pillar[i]
-    if (below && cur && !canStackOn(below.orientation.top, cur.orientation.top)) {
-      return [pillar.slice(0, i), pillar.slice(i)]
-    }
-  }
-  return [pillar, []]
-}
-
-/** 보드의 모든 기둥에 인과 역류를 판정하고, 무너진 주사위를 잔해로 보낸다 */
-function collapsePlayer(player: PlayerState): PlayerState {
-  const fallen: Die[] = []
-  const cells = player.board.cells.map((row) =>
-    row.map((pillar) => {
-      const [kept, lost] = backflow(pillar)
-      fallen.push(...lost.map((d) => ({ id: d.id, color: d.color })))
-      return kept
-    }),
-  )
-  if (fallen.length === 0) return player
-  return { ...player, board: { cells }, debris: [...player.debris, ...fallen] }
+export function rollTargets(board: Board, from: Cell): RollTarget[] {
+  const die = topOf(board.cells[from.row]?.[from.col] ?? [])
+  if (!die) return []
+  return TIP_DIRECTIONS.flatMap((direction) => {
+    const to = stepCell(from, direction)
+    if (!inBoard(to)) return []
+    const orientation = tip(die.layout, die.orientation, direction)
+    const below = topOf(board.cells[to.row]?.[to.col] ?? [])
+    if (below && !canStackOn(below.orientation.top, orientation.top)) return []
+    return [{ direction, to, orientation }]
+  })
 }
 
 function timeOf(state: GameState): TimeState {
@@ -58,110 +84,95 @@ function timeOf(state: GameState): TimeState {
   return state.time
 }
 
-/** 4라운드 준비 (§9 준비): 사건 카드를 섞어 3장을 시간축에 놓고 t1을 공개 */
+/** 선부터 시계 방향으로, from 다음(포함 여부 선택) 굴릴 주사위가 남은 사람. 없으면 null */
+function nextRoller(time: TimeState, from: number, include: boolean): number | null {
+  const n = time.pending.length
+  for (let k = include ? 0 : 1; k <= n; k++) {
+    const p = (from + k) % n
+    if ((time.pending[p]?.length ?? 0) > 0) return p
+  }
+  return null
+}
+
+function proceed(state: GameState, from: number, include: boolean): GameState {
+  const time = timeOf(state)
+  const next = nextRoller(time, from, include)
+  if (next === null) return { ...state, phase: { kind: 'ended' } }
+  return { ...state, currentPlayer: next }
+}
+
+/** 4라운드 준비 (§9 준비): ⧗ 주사위를 정하고 선부터 시작. 아무도 없으면 바로 게임 끝 */
 export function startRound4(state: GameState): GameState {
-  const [deck, rng] = shuffle(state.rng, EVENT_DECK)
-  const time: TimeState = {
-    timeline: deck.slice(0, TIMELINE_LENGTH),
-    step: 0,
-    revealed: 1,
-    counted: [],
-    remaining: [],
-    done: [],
-  }
-  return beginStep({ ...state, rng, time }, 0)
-}
-
-/** 시점 시작: ① 미래 엿보기 → ② 시간 세기 */
-export function beginStep(state: GameState, step: number): GameState {
-  const time = timeOf(state)
-  const event = time.timeline[step]
-  const modifier = event ? (EVENTS[event].timeModifier ?? 0) : 0
-  const counted = state.players.map((p) => Math.max(0, countTimeTops(p.board) + modifier))
-  const next: TimeState = {
-    ...time,
-    step,
-    revealed: Math.min(step + 2, time.timeline.length),
-    counted,
-    remaining: counted.slice(),
-    // 돌릴 횟수가 없으면 할 일이 없으므로 바로 완료
-    done: counted.map((n) => n === 0),
-  }
-  return finishStepIfDone({ ...state, time: next })
-}
-
-/** ⑤ 사건 해결: 사건 효과를 적용하고, 바뀐 기둥의 인과 역류를 판정한다 */
-export function resolveEvent(state: GameState, event: EventDef): GameState {
-  const after = event.resolve ? event.resolve(state) : state
-  // TODO(5단계): 4라운드 목표 카드 달성 확인
-  return { ...after, players: after.players.map(collapsePlayer) }
-}
-
-function finishStepIfDone(state: GameState): GameState {
-  const time = timeOf(state)
-  if (!time.done.every(Boolean)) return state
-  const event = time.timeline[time.step]
-  const resolved = event ? resolveEvent(state, EVENTS[event]) : state
-  if (time.step + 1 < time.timeline.length) return beginStep(resolved, time.step + 1)
-  return { ...resolved, phase: { kind: 'ended' } }
+  const time: TimeState = { pending: state.players.map((p) => timeTops(p.board).map((t) => t.die.id)) }
+  return proceed({ ...state, time }, state.leadPlayer, true)
 }
 
 function setAt<T>(items: readonly T[], i: number, value: T): T[] {
   return items.map((x, j) => (j === i ? value : x))
 }
 
-export function applyTimeAction(state: GameState, action: TimeAction): GameState {
-  const time = timeOf(state)
-  const player = state.players[action.player]
-  if (!player) fail(`없는 플레이어입니다 (${action.player})`)
-  if (time.done[action.player]) fail('이번 시점의 돌리기를 이미 마쳤습니다.')
-
-  switch (action.type) {
-    case 'endStep':
-      return finishStepIfDone({ ...state, time: { ...time, done: setAt(time.done, action.player, true) } })
-
-    case 'rotate': {
-      const remaining = time.remaining[action.player] ?? 0
-      if (remaining <= 0) fail('이번 시점에 남은 돌리기 횟수가 없습니다.')
-      if (!TIP_DIRECTIONS.includes(action.direction)) fail(`없는 돌리기 방향입니다 (${String(action.direction)})`)
-      const pillar = player.board.cells[action.row]?.[action.col]
-      const target = pillar?.[action.level]
-      if (!pillar || !target) fail(`(${action.row}, ${action.col}) ${action.level + 1}층에는 주사위가 없습니다.`)
-
-      // §9 ③ 위 주사위들은 순서와 방향 그대로 다시 올리므로, 대상 주사위의 방향만 바뀐다
-      const rotated = setAt(pillar, action.level, { ...target, orientation: tip(target.orientation, action.direction) })
-      const cells = player.board.cells.map((row, r) => row.map((p, c) => (r === action.row && c === action.col ? rotated : p)))
-      // §9 ④ 돌릴 때마다 즉시 그 기둥을 다시 판정
-      const updated = collapsePlayer({ ...player, board: { cells } })
-
-      const left = remaining - 1
-      const next: TimeState = {
-        ...time,
-        remaining: setAt(time.remaining, action.player, left),
-        done: setAt(time.done, action.player, left === 0),
-      }
-      return finishStepIfDone({ ...state, players: setAt(state.players, action.player, updated), time: next })
-    }
+function mapCell(board: Board, cell: Cell, fn: (pillar: RolledDie[]) => RolledDie[]): Board {
+  return {
+    cells: board.cells.map((row, r) => row.map((p, c) => (r === cell.row && c === cell.col ? fn(p) : p))),
   }
 }
 
-/** 이 플레이어가 지금 할 수 있는 4라운드 행동 */
-export function legalTimeActions(state: GameState, playerId: number): TimeAction[] {
-  const time = state.time
-  const player = state.players[playerId]
-  if (state.phase.kind !== 'round' || state.phase.round !== 4 || !time || !player || time.done[playerId]) return []
-  const out: TimeAction[] = []
-  if ((time.remaining[playerId] ?? 0) > 0) {
-    player.board.cells.forEach((row, r) =>
-      row.forEach((pillar, c) =>
-        pillar.forEach((_, level) => {
-          for (const direction of TIP_DIRECTIONS) {
-            out.push({ type: 'rotate', player: playerId, row: r, col: c, level, direction })
-          }
-        }),
-      ),
-    )
+export function applyTimeAction(state: GameState, action: TimeAction): GameState {
+  const time = timeOf(state)
+  if (action.player !== state.currentPlayer) fail(`지금은 ${state.currentPlayer}번 플레이어의 차례입니다.`)
+  const player = state.players[action.player] as PlayerState
+  const pending = time.pending[action.player] ?? []
+  if (!pending.includes(action.dieId)) fail('굴릴 ⧗ 주사위가 아닙니다.')
+  const from = findTop(player.board, action.dieId)
+  if (!from) throw new Error(`⧗ 주사위가 꼭대기에 없습니다 (${action.dieId})`)
+  const die = topOf(player.board.cells[from.row]?.[from.col] ?? []) as RolledDie
+  const targets = rollTargets(player.board, from)
+
+  let updated: PlayerState
+  switch (action.type) {
+    case 'roll': {
+      const target = targets.find((t) => t.direction === action.direction)
+      if (!target) fail('그 방향으로는 굴릴 수 없습니다.')
+      const lifted = mapCell(player.board, from, (p) => p.slice(0, -1))
+      const board = mapCell(lifted, target.to, (p) => [...p, { ...die, orientation: target.orientation }])
+      updated = { ...player, board }
+      break
+    }
+    case 'scrap': {
+      // §9 네 방향 모두 굴릴 수 없는 ⧗ 주사위만 골라 잔해로 만들 수 있다
+      if (targets.length > 0) fail('굴릴 수 있는 주사위는 잔해로 만들 수 없습니다.')
+      const board = mapCell(player.board, from, (p) => p.slice(0, -1))
+      updated = { ...player, board, debris: [...player.debris, { id: die.id, color: die.color, layout: die.layout }] }
+      break
+    }
   }
-  out.push({ type: 'endStep', player: playerId })
-  return out
+
+  const next: TimeState = {
+    pending: setAt(
+      time.pending,
+      action.player,
+      pending.filter((id) => id !== action.dieId),
+    ),
+  }
+  return proceed(
+    { ...state, players: setAt(state.players, action.player, updated), time: next },
+    action.player,
+    false,
+  )
+}
+
+/** 현재 플레이어가 지금 할 수 있는 4라운드 행동 */
+export function legalTimeActions(state: GameState): TimeAction[] {
+  const time = state.time
+  if (state.phase.kind !== 'round' || state.phase.round !== 4 || !time) return []
+  const playerId = state.currentPlayer
+  const player = state.players[playerId]
+  if (!player) return []
+  return (time.pending[playerId] ?? []).flatMap((dieId): TimeAction[] => {
+    const from = findTop(player.board, dieId)
+    if (!from) return []
+    const targets = rollTargets(player.board, from)
+    if (targets.length === 0) return [{ type: 'scrap', player: playerId, dieId }]
+    return targets.map((t) => ({ type: 'roll', player: playerId, dieId, direction: t.direction }))
+  })
 }

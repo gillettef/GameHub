@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { TIME } from '../dice'
+import { STANDARD_LAYOUT, TIME } from '../dice'
 import { finalScores, winners } from '../final'
 import { createGame } from '../setup'
 import type { Board, GameState } from '../types'
@@ -16,7 +16,7 @@ function ended(players: { board: Board; planeScore: number; debris: number }[]):
         ...p,
         board: x.board,
         planeScore: x.planeScore,
-        debris: Array.from({ length: x.debris }, (_, k) => ({ id: 9000 + i * 100 + k, color: 'red' as const })),
+        debris: Array.from({ length: x.debris }, (_, k) => ({ id: 9000 + i * 100 + k, color: 'red' as const, layout: STANDARD_LAYOUT })),
       }
     }),
   }
@@ -55,7 +55,7 @@ describe('§10 최종 점수', () => {
     expect(b.map((x) => x.player)).toEqual([0, 1])
   })
 
-  it('완전히 같으면 공동 순위', () => {
+  it('§10 완전히 같으면 공동 순위, 공동 승리', () => {
     const s = ended([
       { board: board({}), planeScore: 3, debris: 0 },
       { board: board({}), planeScore: 3, debris: 0 },

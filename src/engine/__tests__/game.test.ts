@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { sideFaces, TIME, type Face } from '../dice'
+import { sideFaces, STANDARD_LAYOUT, TIME, type Face } from '../dice'
 import { applyAction, getLegalActions, IllegalActionError, TURNS_PER_ROUND, type Action } from '../game'
 import { createRng, nextInt } from '../rng'
 import { scorePlane } from '../scoring'
 import { createGame } from '../setup'
+import { legalTimeActions, timeTops } from '../time'
 import type { GameState, RolledDie } from '../types'
 import { die } from './helpers'
 
@@ -16,6 +17,18 @@ const place = (s: GameState, d: RolledDie, row: number, col: number, front?: Fac
 /** 시장을 원하는 주사위로 바꿔 끼운 상태 */
 function withMarket(s: GameState, market: RolledDie[][]): GameState {
   return { ...s, market }
+}
+
+/** 한 플레이어의 한 칸을 원하는 기둥으로 바꾼 상태 */
+function withCell(s: GameState, player: number, row: number, col: number, pillar: RolledDie[]): GameState {
+  return {
+    ...s,
+    players: s.players.map((pl) =>
+      pl.id === player
+        ? { ...pl, board: { cells: pl.board.cells.map((r, ri) => r.map((x, ci) => (ri === row && ci === col ? pillar : x))) } }
+        : pl,
+    ),
+  }
 }
 
 /** 시드 RNG로 합법 행동을 무작위 선택해 끝까지(4라운드 진입) 진행 */
@@ -32,6 +45,11 @@ function playRandomly(seed: number, playerCount: number): GameState[] {
     history.push(s)
   }
   return history
+}
+
+/** 주사위가 놓인 칸 수 */
+function first4Cells(row: RolledDie[][] | undefined): number {
+  return (row ?? []).filter((x) => x.length > 0).length
 }
 
 function countDice(s: GameState): number {
@@ -77,7 +95,7 @@ describe('§5 공통 턴 규칙', () => {
     const d = die('red', 3)
     const s = take(withMarket(s0, [[d], [die('red', 1)]]), 0)
     expect(() => place(s, d, 0, 2, 4)).toThrow(IllegalActionError)
-    const front = sideFaces(3)[2] as Face
+    const front = sideFaces(STANDARD_LAYOUT, 3)[2] as Face
     const after = place(s, d, 0, 2, front)
     expect(after.players[s0.currentPlayer]?.board.cells[0]?.[2]?.[0]?.orientation).toEqual({ top: 3, front })
   })
@@ -166,18 +184,31 @@ describe('§7 2라운드', () => {
 })
 
 describe('§8 3라운드', () => {
-  it('같은 턴에 방금 올린 주사위 위에 이어서 올릴 수 있다', () => {
+  it('§8 같은 턴에 방금 올린 주사위 위에 이어서 올릴 수 있다', () => {
     const states = playRandomly(15, 2)
     let s = states.find((x) => x.phase.kind === 'round' && x.phase.round === 3) as GameState
-    const a = die('red', TIME)
-    const b = die('red', 1)
-    const c = die('red', 2)
+    s = withCell(s, s.currentPlayer, 0, 0, [die('red', 1)])
+    const a = die('red', 2)
+    const b = die('red', 3)
+    const c = die('red', TIME)
     s = take(withMarket(s, [[a, b, c], [die('red', 1), die('red', 1), die('red', 1)]]), 0)
     const p = s.currentPlayer
     s = place(s, a, 0, 0)
     s = place(s, b, 0, 0)
     s = place(s, c, 0, 0)
-    expect(s.players[p]?.board.cells[0]?.[0]?.slice(-3).map((d) => d.orientation.top)).toEqual([TIME, 1, 2])
+    expect(s.players[p]?.board.cells[0]?.[0]?.map((d) => d.orientation.top)).toEqual([1, 2, 3, TIME])
+  })
+
+  it('§8 ⧗ 위는 끝: 같은 턴에 방금 올린 ⧗ 위에도 이어서 올릴 수 없다', () => {
+    const states = playRandomly(15, 2)
+    let s = states.find((x) => x.phase.kind === 'round' && x.phase.round === 3) as GameState
+    s = withCell(s, s.currentPlayer, 0, 0, [die('red', 1)])
+    const a = die('red', TIME)
+    const b = die('red', 5)
+    s = take(withMarket(s, [[a, b, die('red', TIME)], [die('red', 1), die('red', 1), die('red', 1)]]), 0)
+    s = place(s, a, 0, 0)
+    expect(() => place(s, b, 0, 0)).toThrow(IllegalActionError)
+    expect(() => place(s, s.turn.hand[1] as RolledDie, 0, 0)).toThrow(IllegalActionError)
   })
 
   it('쌓기 규칙을 어기는 칸에는 놓을 수 없다', () => {
@@ -192,11 +223,12 @@ describe('§8 3라운드', () => {
     expect(() => place(s, one, 0, 0)).toThrow(IllegalActionError)
   })
 
-  it('2바퀴가 끝나면 4라운드로 넘어가고 시장은 비운다', () => {
+  it('2바퀴가 끝나면 4라운드로 넘어가고 시장은 비운다 (§9 시장을 쓰지 않음)', () => {
     const states = playRandomly(17, 4)
     const first4 = states.find((s) => s.time !== null) as GameState
     expect(first4.market).toEqual([])
-    expect(first4.time?.timeline).toHaveLength(3)
+    // §9 준비: 각자 윗면이 ⧗인 꼭대기 주사위가 ⧗ 주사위
+    expect(first4.time?.pending).toEqual(first4.players.map((p) => timeTops(p.board).map((t) => t.die.id)))
     const last = states[states.length - 1] as GameState
     expect(last.phase).toEqual({ kind: 'ended' })
     expect(getLegalActions(last)).toEqual([])
@@ -218,12 +250,31 @@ describe('무작위 전체 진행 (불변식)', () => {
     const last = states[states.length - 1] as GameState
     const totalCircuits = TURNS_PER_ROUND[1] + TURNS_PER_ROUND[2] + TURNS_PER_ROUND[3]
     expect(last.leadPlayer).toBe((last.startPlayer + totalCircuits) % playerCount)
-    for (const p of last.players) {
+    expect(last.phase).toEqual({ kind: 'ended' })
+
+    // 4라운드 굴리기 전(3라운드 끝) 상태로 1~3라운드 불변식 확인
+    const first4 = states.find((s) => s.time !== null) as GameState
+    for (const p of first4.players) {
       expect(p.board.cells[0]?.every((pillar) => pillar.length >= 1)).toBe(true)
       // 평면 6개 + 쌓기 6개 중 놓은 것 + 잔해 = 12
-      const plane = (p.board.cells[1] ?? []).concat(p.board.cells[2] ?? []).filter((x) => x.length > 0).length
+      const plane = (first4Cells(p.board.cells[1]) + first4Cells(p.board.cells[2]))
       const stacked = p.board.cells.flat().reduce((n, pillar) => n + Math.max(0, pillar.length - 1), 0)
       expect(plane + stacked + p.debris.length).toBe(12)
+    }
+
+    // §9 4라운드에 굴리는 횟수 = 준비 때 센 ⧗ 주사위 수
+    const rolls = states.length - 1 - states.indexOf(first4)
+    expect(rolls).toBe(first4.time?.pending.flat().length)
+  })
+
+  it('§9 4라운드 내내 아직 안 굴린 ⧗ 주사위 = 지금 보드의 ⧗ 꼭대기 (드러난 아래 주사위는 ⧗일 수 없음)', () => {
+    for (const [seed, n] of [[41, 2], [42, 3], [43, 4], [44, 4]] as const) {
+      for (const s of playRandomly(seed, n).filter((x) => x.time !== null && x.phase.kind === 'round')) {
+        const tops = s.players.map((p) => timeTops(p.board).map((t) => t.die.id).sort())
+        expect(s.time?.pending.map((ids) => [...ids].sort())).toEqual(tops)
+        expect(getLegalActions(s)).toEqual(legalTimeActions(s))
+        expect(getLegalActions(s).length).toBeGreaterThan(0)
+      }
     }
   })
 

@@ -58,8 +58,40 @@ describe('§8 3라운드 쌓기 규칙', () => {
     expect(([1, 2, 3, 4, 5, TIME] as Face[]).filter((t) => canStack(5, t))).toEqual([TIME])
   })
 
-  it('⧗ 위는 새 출발: 무엇이든', () => {
-    expect(([1, 2, 3, 4, 5, TIME] as Face[]).every((t) => canStack(TIME, t))).toBe(true)
+  it('§8 ⧗은 언제나: 윗면이 ⧗인 주사위는 어떤 숫자 위에든 쌓을 수 있다', () => {
+    for (const below of [1, 2, 3, 4, 5] as Face[]) expect(canStack(below, TIME)).toBe(true)
+  })
+
+  it('§8 ⧗ 위는 끝: 아래 윗면이 ⧗이면 아무것도(⧗ 포함) 쌓을 수 없다', () => {
+    expect(([1, 2, 3, 4, 5, TIME] as Face[]).filter((t) => canStack(TIME, t))).toEqual([])
+  })
+
+  it('§8 규칙서 예: 가장 높은 기둥은 1 → 2 → 3 → 4 → 5 → ⧗의 6층', () => {
+    const seq = [1, 2, 3, 4, 5, TIME] as Face[]
+    for (let i = 1; i < seq.length; i++) expect(canStack(seq[i - 1] as Face, seq[i] as Face)).toBe(true)
+    // ⧗을 올리면 그 기둥은 완성: 7층째는 무엇도 안 됨
+    expect(seq.some((t) => canStack(TIME, t))).toBe(false)
+  })
+
+  it('§3-3 1·2라운드 바닥에 놓은 ⧗ 칸에도 3라운드에 아무것도 올릴 수 없다', () => {
+    const b = board({
+      ...line(die('red', 1), die('red', TIME), die('red', 1), die('red', 1), die('red', 1)),
+      '1,2': [die('blue', TIME)],
+      '2,2': [die('blue', 2)],
+    })
+    for (const top of [1, 2, 3, 4, 5, TIME] as Face[]) {
+      const legal = cells(legalCells(b, 3, die('green', top)))
+      expect(legal).not.toContain('0,1')
+      expect(legal).not.toContain('1,2')
+    }
+    // 같은 보드의 다른 칸에는 규칙대로 올릴 수 있다
+    expect(cells(legalCells(b, 3, die('green', 3)))).toEqual(['0,0', '0,2', '0,3', '0,4', '2,2'])
+  })
+
+  it('§8 3라운드에 꼭대기에 올린 ⧗ 위에도 더 쌓을 수 없다', () => {
+    const b = board({ '0,0': [die('red', 1), die('red', TIME)], '0,1': [die('red', 1)] })
+    expect(cells(legalCells(b, 3, die('blue', TIME)))).toEqual(['0,1'])
+    expect(cells(legalCells(b, 3, die('blue', 5)))).toEqual(['0,1'])
   })
 
   it('같은 숫자는 쌓을 수 없다', () => {
@@ -70,5 +102,6 @@ describe('§8 3라운드 쌓기 규칙', () => {
     const b = board({ '0,0': [die('red', 1), die('red', 4)], '0,1': [die('red', 2)], '1,1': [die('red', 5)] })
     expect(cells(legalCells(b, 3, die('blue', 3)))).toEqual(['0,1'])
     expect(cells(legalCells(b, 3, die('blue', TIME)))).toEqual(['0,0', '0,1', '1,1'])
+    expect(cells(legalCells(b, 3, die('blue', 2)))).toEqual([])
   })
 })
