@@ -3,10 +3,9 @@ import { sideFaces, STANDARD_LAYOUT, TIME, type Face } from '../dice'
 import { applyAction, getLegalActions, IllegalActionError, TURNS_PER_ROUND, type Action } from '../game'
 import { createRng, nextInt } from '../rng'
 import { scorePlane } from '../scoring'
-import { createGame } from '../setup'
 import { legalTimeActions, timeTops } from '../time'
 import type { GameState, RolledDie } from '../types'
-import { die } from './helpers'
+import { die, startGame } from './helpers'
 
 const take = (s: GameState, slot: number): GameState =>
   applyAction(s, { type: 'takeSlot', player: s.currentPlayer, slot })
@@ -33,7 +32,7 @@ function withCell(s: GameState, player: number, row: number, col: number, pillar
 
 /** 시드 RNG로 합법 행동을 무작위 선택해 끝까지(4라운드 진입) 진행 */
 function playRandomly(seed: number, playerCount: number): GameState[] {
-  let s = createGame({ playerCount, seed })
+  let s = startGame({ playerCount, seed })
   let r = createRng(seed + 1)
   const history = [s]
   for (let guard = 0; guard < 1000; guard++) {
@@ -61,19 +60,19 @@ function countDice(s: GameState): number {
 
 describe('§5 공통 턴 규칙', () => {
   it('차례가 아닌 사람은 행동할 수 없다', () => {
-    const s = createGame({ playerCount: 3, seed: 1 })
+    const s = startGame({ playerCount: 3, seed: 1 })
     const other = (s.currentPlayer + 1) % 3
     expect(() => applyAction(s, { type: 'takeSlot', player: other, slot: 0 })).toThrow(IllegalActionError)
   })
 
   it('칸을 가져오기 전에는 놓을 수 없다', () => {
-    const s = createGame({ playerCount: 3, seed: 1 })
+    const s = startGame({ playerCount: 3, seed: 1 })
     const d = s.market[0]?.[0] as RolledDie
     expect(() => place(s, d, 0, 2)).toThrow(IllegalActionError)
   })
 
   it('칸을 통째로 가져오고, 그 칸은 비워진다(null)', () => {
-    const s0 = createGame({ playerCount: 4, seed: 2 })
+    const s0 = startGame({ playerCount: 4, seed: 2 })
     const s1 = applyAction(withMarket(s0, [[die('red', 1)], [die('blue', 2)], [die('green', 3)], [die('black', 4)]]), {
       type: 'takeSlot',
       player: s0.currentPlayer,
@@ -84,14 +83,14 @@ describe('§5 공통 턴 규칙', () => {
   })
 
   it('이미 가져간 칸은 다시 가져갈 수 없다', () => {
-    let s = createGame({ playerCount: 3, seed: 3 })
+    let s = startGame({ playerCount: 3, seed: 3 })
     const first = s.market[0]?.[0] as RolledDie
     s = place(take(s, 0), first, 0, 2)
     expect(() => take(s, 0)).toThrow(IllegalActionError)
   })
 
   it('윗면은 바꿀 수 없고 앞면만 옆면 중에서 고른다', () => {
-    const s0 = createGame({ playerCount: 2, seed: 4 })
+    const s0 = startGame({ playerCount: 2, seed: 4 })
     const d = die('red', 3)
     const s = take(withMarket(s0, [[d], [die('red', 1)]]), 0)
     expect(() => place(s, d, 0, 2, 4)).toThrow(IllegalActionError)
@@ -101,7 +100,7 @@ describe('§5 공통 턴 규칙', () => {
   })
 
   it('턴이 끝나면 시계 방향 다음 사람의 차례', () => {
-    let s = createGame({ playerCount: 3, seed: 5 })
+    let s = startGame({ playerCount: 3, seed: 5 })
     const lead = s.currentPlayer
     s = place(take(s, 0), s.market[0]?.[0] as RolledDie, 0, 2)
     expect(s.currentPlayer).toBe((lead + 1) % 3)
@@ -110,7 +109,7 @@ describe('§5 공통 턴 규칙', () => {
 
 describe('§5 바퀴 끝', () => {
   it('모두 한 턴씩 하면 시장을 새로 채우고 선이 왼쪽으로 넘어간다', () => {
-    let s = createGame({ playerCount: 3, seed: 6 })
+    let s = startGame({ playerCount: 3, seed: 6 })
     const lead = s.leadPlayer
     for (let i = 0; i < 3; i++) {
       const slot = s.market.findIndex((m) => m !== null)
@@ -124,7 +123,7 @@ describe('§5 바퀴 끝', () => {
   })
 
   it('마지막 사람에게는 남은 칸 하나만 합법이다', () => {
-    let s = createGame({ playerCount: 3, seed: 7 })
+    let s = startGame({ playerCount: 3, seed: 7 })
     for (let i = 0; i < 2; i++) {
       s = take(s, s.market.findIndex((m) => m !== null))
       s = place(s, s.turn.hand[0] as RolledDie, 0, 2)
@@ -135,7 +134,7 @@ describe('§5 바퀴 끝', () => {
 
 describe('§6 1라운드', () => {
   it('1라운드에는 잔해로 버릴 수 없다', () => {
-    const s = take(createGame({ playerCount: 2, seed: 8 }), 0)
+    const s = take(startGame({ playerCount: 2, seed: 8 }), 0)
     expect(() =>
       applyAction(s, { type: 'discard', player: s.currentPlayer, dieId: s.turn.hand[0]?.id as number }),
     ).toThrow(IllegalActionError)

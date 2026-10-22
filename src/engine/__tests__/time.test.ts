@@ -26,7 +26,7 @@ const T = (color: Color = 'red', front: Face = 2, layout: DieLayout = S): Rolled
 
 /** 4라운드 직전 상태를 직접 만들고 4라운드 준비를 한다 */
 function round4(boards: Board[], lead = 0): GameState {
-  const base = createGame({ playerCount: boards.length, seed: 1 })
+  const base = createGame({ playerCount: boards.length, seed: 1, law: 'standard' })
   return startRound4({
     ...base,
     phase: { kind: 'round', round: 4 },

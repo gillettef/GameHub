@@ -5,6 +5,7 @@
  * 진행: 선부터 시계 방향으로, 자기 차례에 ⧗ 주사위 1개를 옆 칸으로 1칸 굴린다(필수).
  * 굴릴 수 없는 주사위를 고르면 잔해가 된다. 모두 다 굴리면 게임이 끝난다 (§10).
  */
+import type { LawId } from './cards'
 import { isTime, tip, TIP_DIRECTIONS, type Orientation, type TipDirection } from './dice'
 import { fail } from './errors'
 import { canStackOn, inBoard, topOf, type Cell } from './placement'
@@ -66,7 +67,7 @@ export interface RollTarget {
  * §9 굴리기: 이 꼭대기 주사위를 굴릴 수 있는 방향과 결과.
  * 옆 칸이 진공이면 그 칸의 1층, 기둥이면 쌓기 규칙에 맞을 때만 그 꼭대기. 보드 밖은 안 됨.
  */
-export function rollTargets(board: Board, from: Cell): RollTarget[] {
+export function rollTargets(board: Board, from: Cell, law: LawId = 'standard'): RollTarget[] {
   const die = topOf(board.cells[from.row]?.[from.col] ?? [])
   if (!die) return []
   return TIP_DIRECTIONS.flatMap((direction) => {
@@ -74,7 +75,8 @@ export function rollTargets(board: Board, from: Cell): RollTarget[] {
     if (!inBoard(to)) return []
     const orientation = tip(die.layout, die.orientation, direction)
     const below = topOf(board.cells[to.row]?.[to.col] ?? [])
-    if (below && !canStackOn(below.orientation.top, orientation.top)) return []
+    // 해석: §9가 '3라운드 쌓기 규칙'을 따르라고 하므로 평평한·뒤집힌 우주도 4라운드에 적용한다
+    if (below && !canStackOn(below.orientation.top, orientation.top, law)) return []
     return [{ direction, to, orientation }]
   })
 }
@@ -126,7 +128,7 @@ export function applyTimeAction(state: GameState, action: TimeAction): GameState
   const from = findTop(player.board, action.dieId)
   if (!from) throw new Error(`⧗ 주사위가 꼭대기에 없습니다 (${action.dieId})`)
   const die = topOf(player.board.cells[from.row]?.[from.col] ?? []) as RolledDie
-  const targets = rollTargets(player.board, from)
+  const targets = rollTargets(player.board, from, state.law)
 
   let updated: PlayerState
   switch (action.type) {
@@ -171,7 +173,7 @@ export function legalTimeActions(state: GameState): TimeAction[] {
   return (time.pending[playerId] ?? []).flatMap((dieId): TimeAction[] => {
     const from = findTop(player.board, dieId)
     if (!from) return []
-    const targets = rollTargets(player.board, from)
+    const targets = rollTargets(player.board, from, state.law)
     if (targets.length === 0) return [{ type: 'scrap', player: playerId, dieId }]
     return targets.map((t) => ({ type: 'roll', player: playerId, dieId, direction: t.direction }))
   })
