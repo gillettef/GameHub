@@ -1,4 +1,4 @@
-import { RULES, DEMANDS, demandFee, demandPenalty, PLAYERS, TOTAL_ROUNDS, INVALID_TEXT, clubWeight, currentEvent, fitScore, handAfter, offerValue, rankings, validateOffer, validateSecond } from '../../core';
+import { RULES, DEMANDS, demandFee, demandPenalty, PLAYERS, TOTAL_ROUNDS, INVALID_TEXT, clubNeed, clubWeight, currentEvent, fitScore, handAfter, offerValue, rankings, validateOffer, validateSecond } from '../../core';
 import type { Demand, Evaluation, GameState, InvalidReason, Stage } from '../../core';
 import type { Session } from '../../store/storage';
 import { agentName, clubById, dot, esc, eventBanner, header, marksOf, money, roundEntries, scoreboard, slotOffer, type Draft, type GuessDraft } from '../view';
@@ -22,9 +22,10 @@ function secretCard(g: GameState, turn: number): string {
   const me = g.agents[turn]!;
   const c = clubById(me.secret);
   const n = clubWeight(g, me.secret, turn);
+  const nd = clubNeed(g.needs, me.secret);
   return `<section class="card secret">
     <h3>🕵️ 나의 비밀 구단 <small class="mu">· 나만 볼 수 있음</small></h3>
-    <p><b>${esc(c.name)}</b> <span class="mu">(제시액 ${c.budget}억 · ${c.pos} 필요 · ${c.pref} 선호)</span></p>
+    <p><b>${esc(c.name)}</b> <span class="mu">(제시액 ${c.budget}억 · 지금 ${nd.pos} 필요 · ${nd.pref} 선호)</span></p>
     <p class="mu">게임이 끝날 때 아무에게도 들키지 않으면, <b>내가 직접</b> 이 구단에 계약시킨 선수 1명당 <b>+${money(RULES.clubBonus)}</b>. 지금 ${n}명 → ${money(n * RULES.clubBonus)}. 한 명에게라도 들키면 0입니다.</p>
   </section>`;
 }
@@ -85,21 +86,22 @@ export function bidScreen(s: Session, d: Draft): string {
     .map((id) => {
       const c = clubById(id);
       const bud = offerValue(c, event);
-      const posFit = p && p.pos === c.pos;
-      const prefFit = p && p.trait === c.pref;
+      const nd = clubNeed(g.needs, id);
+      const posFit = p && p.pos === nd.pos;
+      const prefFit = p && p.trait === nd.pref;
       const tooPoor = p && bud < p.cost;
       const mine = id === me.secret;
       const taken = first?.clubId === id;
       const sel = sl.clubId === id && !sl.pass;
       return `<button class="club ${sel ? 'sel' : ''} ${tooPoor || taken ? 'dim' : ''} ${mine ? 'mine' : ''}" data-act="club" data-arg="${id}" aria-pressed="${sel}" ${taken ? 'disabled' : ''}>
         <b>${mine ? '🕵️ ' : ''}${esc(c.name)}</b><span class="bud">${taken ? '1차에서 제안함' : `제시액 ${bud}억${tooPoor ? ' · 몸값 미달' : ''}`}</span>
-        <span class="needs"><span class="${posFit ? 'fit' : ''}">${c.pos} 필요${posFit ? ' +2' : ''}</span><span class="${prefFit ? 'fit' : ''}">${c.pref} 선호${prefFit ? ' +1' : ''}</span><span>계약 ${clubWeight(g, id)}명</span></span>
+        <span class="needs"><span class="${posFit ? 'fit' : ''}">${nd.pos} 필요${posFit ? ' +2' : ''}</span><span class="${prefFit ? 'fit' : ''}">${nd.pref} 선호${prefFit ? ' +1' : ''}</span><span>계약 ${clubWeight(g, id)}명</span></span>
         <span class="marks" aria-label="이 구단에 낸 제안 기록">${marksOf(g, id) || '<small class="mu">제안 기록 없음</small>'}</span>
       </button>`;
     })
     .join('');
 
-  const fit = p && sl.clubId !== null ? fitScore(p, clubById(sl.clubId)) : null;
+  const fit = p && sl.clubId !== null ? fitScore(p, clubNeed(g.needs, sl.clubId)) : null;
   const est =
     check === 'pass'
       ? `<span class="mu">${st}차 협상 패스 · 카드 소모 없음</span>`
@@ -155,10 +157,16 @@ export function resultScreen(s: Session, bar?: string): string {
   const g = s.game;
   const r = g.results.at(-1)!;
   const lastRound = g.round >= TOTAL_ROUNDS;
+  // 이번 라운드에 계약된 구단은 다음 라운드에 요구 카드를 새로 연다
+  const rotating = RULES.needRotate && !lastRound ? g.clubs.filter((id) => g.signings.some((x) => x.round === r.round && x.clubId === id)) : [];
+  const rotateNote = rotating.length
+    ? `<p class="mu note">🔄 다음 라운드에 요구 카드 교체: ${rotating.map((id) => `<b>${esc(clubById(id).name)}</b> <small>(${clubNeed(g.needs, id).pos}·${clubNeed(g.needs, id).pref} →)</small>`).join(', ')}</p>`
+    : '';
   return `${gameHeader(g)}<main class="content">
     <h2 class="title">라운드 ${r.round} 결과</h2>
     ${eventBanner(g)}
     <section class="entries">${roundEntries(g, r)}</section>
+    ${rotateNote}
     <h3 class="sec-t">순위 <small class="mu">· 공개 수수료만 (비밀 구단·지목 점수는 종료 때)</small></h3>
     ${scoreboard(g)}
   </main>

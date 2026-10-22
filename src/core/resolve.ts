@@ -69,7 +69,7 @@ export function resolveRound(state: GameState, humanSubs: Readonly<Record<number
       // 공개된 요구 수수료 카드는 몸값 미달·협상 무산이어도 소모된다
       agents = agents.map((a, k) => (k === i ? { ...a, hand: playCard(a.hand, offer.demand) } : a));
       if (signedNow.has(offer.playerId)) return void entries.push({ agent: i, stage, status: 'invalid', offer, reason: 'signed' });
-      const ev = evaluateOffer(offer, event);
+      const ev = evaluateOffer(offer, event, state.needs);
       if (!isEvaluation(ev)) return void entries.push({ agent: i, stage, status: 'invalid', offer, reason: ev });
       cands.push({ agent: i, offer, ...ev });
     });
@@ -98,6 +98,6 @@ export function resolveRound(state: GameState, humanSubs: Readonly<Record<number
     agents,
     market,
     signings,
-    results: [...state.results, { round: state.round, event, entries }],
+    results: [...state.results, { round: state.round, event, needs: state.needs, entries }],
   };
 }

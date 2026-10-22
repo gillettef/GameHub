@@ -1,12 +1,12 @@
 import { RULES, STAGES, TOTAL_ROUNDS, player, club } from './data';
 import type { Rng } from './rng';
-import { currentEvent, demandFee, demandPenalty, evaluateOffer, fitScore, handAfter, isEvaluation, offerValue, validateOffer, validateSecond } from './rules';
+import { type Needs, clubNeed, currentEvent, demandFee, demandPenalty, evaluateOffer, fitScore, handAfter, isEvaluation, offerValue, validateOffer, validateSecond } from './rules';
 import type { AgentState, Demand, EventKey, GameState, Guesses, Offer, PersonaKey, RoundBid, Submission } from './types';
 
 /** 게임 구단 중 이 선수와 계약할 수 있는 구단의 최고 적합도 */
-const bestFit = (state: Pick<GameState, 'clubs'>, playerId: number, event: EventKey): number => {
+const bestFit = (state: Pick<GameState, 'clubs'>, playerId: number, event: EventKey, needs: Needs): number => {
   const p = player(playerId);
-  const fits = state.clubs.map(club).filter((c) => offerValue(c, event) >= p.cost).map((c) => fitScore(p, c));
+  const fits = state.clubs.filter((c) => offerValue(club(c), event) >= p.cost).map((c) => fitScore(p, clubNeed(needs, c)));
   return fits.length ? Math.max(...fits) : 0;
 };
 
@@ -19,7 +19,7 @@ export function evidence(state: Pick<GameState, 'results' | 'clubs'>, agentIdx: 
   for (const r of state.results) {
     for (const e of r.entries) {
       if (e.agent !== agentIdx || !e.offer || e.status === 'invalid' || !m.has(e.offer.clubId)) continue;
-      const loss = Math.max(0, bestFit(state, e.offer.playerId, r.event) - fitScore(player(e.offer.playerId), club(e.offer.clubId)));
+      const loss = Math.max(0, bestFit(state, e.offer.playerId, r.event, r.needs) - fitScore(player(e.offer.playerId), clubNeed(r.needs, e.offer.clubId)));
       m.set(e.offer.clubId, m.get(e.offer.clubId)! + 1 + loss * lossWeight);
     }
   }
@@ -187,7 +187,7 @@ export function makeEasyOffer(state: GameState, agentIdx: number, rng: Rng, t: T
   const eligible = state.clubs
     .map(club)
     .filter((c) => offerValue(c, event) >= p.cost && !blocked(t, p.id, c.id))
-    .sort((a, b) => fitScore(p, b) - fitScore(p, a));
+    .sort((a, b) => fitScore(p, clubNeed(state.needs, b.id)) - fitScore(p, clubNeed(state.needs, a.id)));
   const c = eligible[rng.int(Math.min(3, eligible.length))]!;
   return { playerId: p.id, clubId: c.id, demand: t.hand[rng.int(t.hand.length)]! };
 }
@@ -205,7 +205,7 @@ export function makeNormalOffer(state: GameState, agentIdx: number, rng: Rng, ps
   if (!picks.length || picks[0]!.value <= 0) return null;
   const chosen = weightedPick(picks, rng, ps.sharp).offer;
   if (AI_TRACE.on) {
-    const ev = evaluateOffer(chosen, currentEvent(state));
+    const ev = evaluateOffer(chosen, currentEvent(state), state.needs);
     if (isEvaluation(ev)) AI_TRACE.items.push({ round: state.round, agent: agentIdx, playerId: chosen.playerId, predicted: winChance(rivals, chosen.playerId, ev.attract, chosen.demand) });
   }
   return chosen;
@@ -245,13 +245,13 @@ function scoreOffers(state: GameState, agentIdx: number, ps: Persona, rivals: Ri
 
   const scored: { offer: Offer; value: number }[] = [];
   for (const pid of state.market) {
-    const best = bestFit(state, pid, event);
+    const best = bestFit(state, pid, event, state.needs);
     const open = free(pid);
     for (const clubId of state.clubs) {
       if (blocked(t, pid, clubId)) continue;
       for (const demand of hand) {
         const offer = { playerId: pid, clubId, demand } as Offer;
-        const ev = evaluateOffer(offer, event);
+        const ev = evaluateOffer(offer, event, state.needs);
         if (!isEvaluation(ev)) continue;
         const win = (open * winChance(rivals, pid, ev.attract, demand)) ** ps.risk;
         let value = ev.fee * win + ps.greed * demandFee(demand) * win;
@@ -319,7 +319,7 @@ function policyModel(state: GameState, k: number): RivalModel {
   return toModel(
     k,
     picks.flatMap((p) => {
-      const ev = evaluateOffer(p.offer, event);
+      const ev = evaluateOffer(p.offer, event, state.needs);
       return isEvaluation(ev) ? [{ pid: p.offer.playerId, attract: ev.attract, demand: p.offer.demand, w: Math.max(0.05, p.value) ** ps.sharp }] : [];
     }),
   );
@@ -354,7 +354,7 @@ function makeSpoilerOffer(state: GameState, agentIdx: number, rng: Rng): Offer |
   for (const clubId of state.clubs)
     for (const demand of new Set(agent.hand)) {
       const o = { playerId: pid, clubId, demand } as Offer;
-      const ev = evaluateOffer(o, event);
+      const ev = evaluateOffer(o, event, state.needs);
       if (isEvaluation(ev) && ev.attract === want) options.push(o);
     }
   return options.length ? options[rng.int(options.length)]! : null;
@@ -404,10 +404,10 @@ function predictRivals1(state: GameState, agentIdx: number): RivalModel[] {
     if (k === agentIdx) return [];
     const combos: Combo[] = [];
     for (const pid of state.market) {
-      const best = bestFit(state, pid, event);
+      const best = bestFit(state, pid, event, state.needs);
       for (const clubId of state.clubs)
         for (const demand of new Set(o.hand)) {
-          const ev = evaluateOffer({ playerId: pid, clubId, demand } as Offer, event);
+          const ev = evaluateOffer({ playerId: pid, clubId, demand } as Offer, event, state.needs);
           if (!isEvaluation(ev)) continue;
           const w0 = Math.min(0.95, Math.max(0.05, 0.5 + 0.2 * (ev.attract - (best - 2.5))));
           combos.push({ pid, attract: ev.attract, demand, w: Math.exp(ev.fee * w0 * AI_MODEL.beta1) });
@@ -433,7 +433,7 @@ function level2Model(state: GameState, k: number): RivalModel {
   for (const pid of state.market)
     for (const clubId of state.clubs)
       for (const demand of new Set(state.agents[k]!.hand)) {
-        const ev = evaluateOffer({ playerId: pid, clubId, demand } as Offer, event);
+        const ev = evaluateOffer({ playerId: pid, clubId, demand } as Offer, event, state.needs);
         if (!isEvaluation(ev)) continue;
         combos.push({ pid, attract: ev.attract, demand, w: Math.exp(ev.fee * winChance(others, pid, ev.attract, demand) * AI_MODEL.beta2) });
       }

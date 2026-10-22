@@ -59,13 +59,14 @@ function cleanOffer(o: unknown): Submission {
   return isInt(playerId) && isInt(clubId) && isInt(demand) ? ({ playerId, clubId, demand } as Offer) : null;
 }
 
-/** 사람 i 에게 보낼 게임: 다른 사람 비밀 구단·다음 라운드 이후 이벤트·난수 상태를 가린다 (종료 후에는 전부 공개) */
+/** 사람 i 에게 보낼 게임: 다른 사람 비밀 구단·다음 라운드 이후 이벤트·구단 요구 카드 더미 순서·난수 상태를 가린다 (종료 후에는 전부 공개) */
 export function redact(game: GameState, seat: number | null): GameState {
   if (game.phase === 'done') return game;
   return {
     ...game,
     rng: 0,
     events: game.events.slice(0, game.round + 1),
+    needDecks: Object.fromEntries(Object.entries(game.needDecks).map(([c, d]) => [c, d.map(() => -1)])),
     agents: game.agents.map((a, i) => (i === seat ? a : { ...a, secret: -1 })),
   };
 }

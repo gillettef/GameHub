@@ -1,5 +1,5 @@
-import { BUDGET_CUT, DEMANDS, EVENT_BONUS, RULES, club, player } from './data';
-import type { Club, Demand, EventKey, Evaluation, GameState, InvalidReason, Offer, PlayerCard, Submission } from './types';
+import { BUDGET_CUT, DEMANDS, EVENT_BONUS, RULES, club, need, player } from './data';
+import type { Club, ClubNeed, Demand, EventKey, Evaluation, GameState, InvalidReason, Offer, PlayerCard, Submission } from './types';
 
 /** 이번 라운드 이벤트 */
 export const currentEvent = (state: Pick<GameState, 'events' | 'round'>): EventKey => state.events[state.round - 1] ?? 'normal';
@@ -9,8 +9,14 @@ export const upcomingEvent = (state: Pick<GameState, 'events' | 'round'>): Event
 /** 구단 제시액 (긴축 이벤트 시 −2) */
 export const offerValue = (c: Club, event: EventKey): number => c.budget - (event === 'budget' ? BUDGET_CUT : 0);
 
-/** 포지션 일치 +2, 선호 특성 일치 +1 */
-export const fitScore = (p: { pos: string; trait: string }, c: Club): number => (p.pos === c.pos ? 2 : 0) + (p.trait === c.pref ? 1 : 0);
+/** 구단 id → 공개된 요구 카드 id */
+export type Needs = Readonly<Record<number, number>>;
+
+/** 이 구단에 지금 공개된 요구 카드 */
+export const clubNeed = (needs: Needs, clubId: number): ClubNeed => need(needs[clubId] ?? -1);
+
+/** 요구 카드의 포지션 일치 +2, 선호 특성 일치 +1 */
+export const fitScore = (p: { pos: string; trait: string }, n: Pick<ClubNeed, 'pos' | 'pref'>): number => (p.pos === n.pos ? 2 : 0) + (p.trait === n.pref ? 1 : 0);
 
 /** 요구 수수료 카드의 매력도 감점 */
 export const demandPenalty = (d: Demand): number => RULES.penalty[d - 1] ?? d;
@@ -35,11 +41,10 @@ export const inMarket = (state: Pick<GameState, 'market' | 'clubs'>, offer: Offe
   state.market.includes(offer.playerId) && state.clubs.includes(offer.clubId);
 
 /** 매력도·수수료 계산 (모두 정수). 제시액이 몸값보다 낮으면 사유를 반환한다. */
-export function evaluateOffer(offer: Offer, event: EventKey): Evaluation | InvalidReason {
+export function evaluateOffer(offer: Offer, event: EventKey, needs: Needs): Evaluation | InvalidReason {
   const p = player(offer.playerId);
-  const c = club(offer.clubId);
-  if (offerValue(c, event) < p.cost) return 'under-cost';
-  const attract = fitScore(p, c) - demandPenalty(offer.demand);
+  if (offerValue(club(offer.clubId), event) < p.cost) return 'under-cost';
+  const attract = fitScore(p, clubNeed(needs, offer.clubId)) - demandPenalty(offer.demand);
   if (RULES.minAttract !== null && attract < RULES.minAttract) return 'rejected';
   return { attract, fee: p.base + demandFee(offer.demand) + eventFee(p, event) };
 }
@@ -60,13 +65,13 @@ export function precheck(state: GameState, agentIdx: number, offer: Offer, hand?
 
 /** 시장·카드·몸값을 모두 검사한 최종 판정 (1차 기준) */
 export function validateOffer(state: GameState, agentIdx: number, offer: Offer): Evaluation | InvalidReason {
-  return precheck(state, agentIdx, offer) ?? evaluateOffer(offer, currentEvent(state));
+  return precheck(state, agentIdx, offer) ?? evaluateOffer(offer, currentEvent(state), state.needs);
 }
 
 /** 1차를 낸 뒤 2차의 판정 (1차에서 계약될 선수인지는 정산 전이라 알 수 없다) */
 export function validateSecond(state: GameState, agentIdx: number, first: Submission, second: Offer): Evaluation | InvalidReason {
   const hand = handAfter(state, agentIdx, first);
-  return precheck(state, agentIdx, second, hand, first) ?? evaluateOffer(second, currentEvent(state));
+  return precheck(state, agentIdx, second, hand, first) ?? evaluateOffer(second, currentEvent(state), state.needs);
 }
 
 /** 1차 제출 뒤 2차에 쓸 수 있는 손패 (1차가 시장·카드 검사를 통과하면 그 카드는 소모) */

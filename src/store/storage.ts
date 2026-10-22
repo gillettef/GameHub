@@ -1,8 +1,8 @@
 import type { GameState, Guesses, RoundBid } from '../core';
 
 const KEY_PROFILE = 'sl:v1:profile';
-/** v6: 5라운드 × 1·2차 협상, 소진형 카드 (GameState v6) */
-const KEY_SESSION = 'sl:v6:session';
+/** v7: 구단 요구 카드 교체, 카드 종류별 3장 (GameState v7) */
+const KEY_SESSION = 'sl:v7:session';
 
 export interface HistoryItem {
   at: number;
@@ -64,7 +64,7 @@ export const newProfile = (nick: string): Profile => ({ nick, games: 0, wins: 0,
 
 export function loadSession(): Session | null {
   const s = read<Session>(KEY_SESSION);
-  return s && s.game?.v === 6 ? s : null;
+  return s && s.game?.v === 7 ? s : null;
 }
 
 export const saveSession = (s: Session | null): void => write(KEY_SESSION, s);

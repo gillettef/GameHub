@@ -2,7 +2,7 @@
  * v2 설계 프로토타입 시뮬레이터 (엔진 반영 전 수치 탐색용).
  *   npx tsx scripts/proto-v2.ts --games 2000 --players 3 --seed 42 [--B 2 --G 3 --R 8 --clubs 6 --tie next|fail --route 0,1,1,1]
  */
-import { PLAYERS, CLUBS } from '../src/core/data';
+import { PLAYERS, CLUBS, NEEDS, needsOf } from '../src/core/data';
 import { createRng, type Rng } from '../src/core/rng';
 
 declare const process: { argv: string[] };
@@ -50,7 +50,11 @@ interface Bid {
   att: number;
 }
 
-const fit = (p: (typeof PLAYERS)[number], c: (typeof CLUBS)[number]) => (p.pos === c.pos ? 2 : 0) + (p.trait === c.pref ? 1 : 0);
+// v2 프로토타입은 구단 요구 고정: 구단의 첫 요구 카드를 쓴다
+const fit = (p: (typeof PLAYERS)[number], c: (typeof CLUBS)[number]) => {
+  const n = NEEDS[needsOf(c.id)[0]!]!;
+  return (p.pos === n.pos ? 2 : 0) + (p.trait === n.pref ? 1 : 0);
+};
 const budgetOf = (c: (typeof CLUBS)[number], ev: Ev) => c.budget - (ev === 'budget' ? 2 : 0);
 const feeOf = (p: (typeof PLAYERS)[number], d: number, ev: Ev) =>
   p.base + d + (ev === 'fw' && p.pos === 'FW' ? 2 : 0) + (ev === 'young' && p.trait === '유망주' ? 2 : 0) + (ev === 'big' && p.cost >= 6 ? 2 : 0) + (ev === 'deadline' ? 2 : 0);

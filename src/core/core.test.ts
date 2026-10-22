@@ -23,6 +23,10 @@ import {
   makeAiOffer,
   initialHand,
   marketSize,
+  need,
+  needsOf,
+  NEEDS,
+  rotateNeeds,
   nextRound,
   playCard,
   rankings,
@@ -40,13 +44,16 @@ import type { AgentState, Demand, EventKey, GameState, Offer, RoundBid, Submissi
 const agent = (over: Partial<AgentState> = {}): AgentState => ({ name: 'A', kind: 'human', score: 0, deals: 0, hand: [1, 1, 2, 2, 3, 3, 4, 4], secret: 0, ...over });
 
 const state = (over: Partial<GameState> = {}): GameState => ({
-  v: 6,
+  v: 7,
   rng: 1,
   round: 1,
   phase: 'bid',
   events: ['normal', 'normal', 'normal', 'normal', 'deadline'],
   market: [0, 3, 6],
   clubs: [0, 1, 5, 6],
+  // 구단마다 첫 요구 카드(id = 구단 × 3)가 공개된 상태
+  needs: { 0: 0, 1: 3, 5: 15, 6: 18 },
+  needDecks: { 0: [1, 2], 1: [4, 5], 5: [16, 17], 6: [19, 20] },
   signings: [],
   agents: [agent({ name: 'A', secret: 0 }), agent({ name: 'B', secret: 1 })],
   results: [],
@@ -55,7 +62,7 @@ const state = (over: Partial<GameState> = {}): GameState => ({
 
 /** 최준서 → 썬더 울브스, 요구 2: 매력도 3 − 2 = 1, 수수료 2 + 3 = 5 (카드 2 = +3억) */
 const offer = (over: Partial<Offer> = {}): Offer => ({ playerId: 3, clubId: 6, demand: 2, ...over });
-const ev = (o: Offer, e: EventKey = 'normal') => evaluateOffer(o, e);
+const ev = (o: Offer, e: EventKey = 'normal') => evaluateOffer(o, e, state().needs);
 const withEvent = (e: EventKey) => state({ events: [e, 'normal', 'normal', 'normal', 'deadline'] });
 /** 1·2차 제출 (2차 생략 = 패스) */
 const bid = (first: Submission, second: Submission = null): RoundBid => ({ first, second });
@@ -91,8 +98,8 @@ describe('evaluateOffer (정수 계산)', () => {
 });
 
 describe('요구 수수료 카드 (소진형)', () => {
-  it('시작 손패는 종류별 2장, 낸 카드는 1장 버리고 돌아오지 않는다', () => {
-    expect(initialHand()).toEqual([1, 1, 2, 2, 3, 3, 4, 4]);
+  it('시작 손패는 종류별 3장, 낸 카드는 1장 버리고 돌아오지 않는다', () => {
+    expect(initialHand()).toEqual([1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 4]);
     expect(playCard([1, 1, 2, 3], 1)).toEqual([1, 2, 3]);
     expect(playCard([4], 4)).toEqual([]);
   });
@@ -101,7 +108,7 @@ describe('요구 수수료 카드 (소진형)', () => {
     try {
       expect(playCard([1, 2, 3, 4], 3)).toEqual([1, 2, 3, 4]);
     } finally {
-      RULES.copies = 2;
+      RULES.copies = 3;
     }
   });
   it('손에 없는 카드는 낼 수 없다', () => {
@@ -253,7 +260,13 @@ describe('게임 진행', () => {
     expect(new Set(g.events.slice(0, -1)).size).toBe(TOTAL_ROUNDS - 1);
     expect(g.market).toHaveLength(marketSize(3));
     expect(marketSize(3)).toBe(7);
-    expect(g.agents.every((a) => a.hand.length === 8)).toBe(true);
+    expect(g.agents.every((a) => a.hand.length === 12)).toBe(true);
+    // 구단마다 자기 요구 카드 1장 공개 + 2장 더미
+    for (const c of g.clubs) {
+      expect(need(g.needs[c]!).club).toBe(c);
+      expect(g.needDecks[c]).toHaveLength(2);
+      expect(new Set([g.needs[c], ...g.needDecks[c]!])).toEqual(new Set(needsOf(c)));
+    }
     expect(currentEvent(g)).toBe(g.events[0]);
     expect(upcomingEvent(g)).toBe(g.events[1]);
   });
@@ -271,6 +284,38 @@ describe('게임 진행', () => {
     // 계약된 선수는 다시 나오지 않는다
     const signed = dealRound(state({ market: [], signings: [{ playerId: 0, clubId: 0, agent: 0, round: 1, weight: 1 }] }));
     expect(signed.market).not.toContain(0);
+  });
+
+  it('요구 카드 데이터: 구단마다 3장, 모든 카드에 포지션·특성이 둘 다 맞는 선수가 있다', () => {
+    expect(NEEDS).toHaveLength(36);
+    for (let c = 0; c < 12; c++) expect(needsOf(c)).toHaveLength(3);
+    for (const n of NEEDS) expect(PLAYERS.some((p) => p.pos === n.pos && p.trait === n.pref)).toBe(true);
+  });
+
+  it('요구 카드 교체: 이번 라운드에 계약된 구단만 공개 카드를 더미 맨 아래로 넣고 다음 카드를 연다', () => {
+    // 최준서 → 썬더 울브스(6) 계약, 나머지 구단은 계약 없음
+    const r = resolveRound(state(), { 0: bid(offer()), 1: bid(null) });
+    expect(r.results[0]!.needs).toEqual(state().needs);
+    const n = rotateNeeds(r);
+    expect(n.needs).toEqual({ 0: 0, 1: 3, 5: 15, 6: 19 });
+    expect(n.needDecks[6]).toEqual([20, 18]);
+    expect(n.needDecks[0]).toEqual([1, 2]);
+    // nextRound 가 적용하고, 다음 라운드 평가는 새 요구 카드(썬더 울브스 GK·유망주)로 한다
+    const next = nextRound(r);
+    expect(next.needs[6]).toBe(19);
+    expect(evaluateOffer({ playerId: 32, clubId: 6, demand: 1 }, 'normal', next.needs)).toEqual({ attract: 0, fee: 3 });
+    // 지난 라운드 기록은 그때 요구 카드로 남는다
+    expect(next.results[0]!.needs[6]).toBe(18);
+  });
+
+  it('요구 카드 교체를 끄면 (needRotate 0) 그대로', () => {
+    RULES.needRotate = 0;
+    try {
+      const r = resolveRound(state(), { 0: bid(offer()), 1: bid(null) });
+      expect(rotateNeeds(r).needs).toEqual(state().needs);
+    } finally {
+      RULES.needRotate = 1;
+    }
   });
 
   it('5라운드 뒤 지목 단계 → 종료 정산', () => {

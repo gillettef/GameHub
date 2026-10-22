@@ -3,7 +3,7 @@
  *   npx tsx scripts/print-kit.ts > docs/print/kit.html   (브라우저에서 열어 인쇄)
  * 데이터는 src/core/data.ts 에서 직접 읽으므로 규칙 수치와 항상 일치한다.
  */
-import { CLUBS, EVENTS, EVENT_POOL, PLAYERS, RULES, TOTAL_ROUNDS } from '../src/core';
+import { CLUBS, EVENTS, EVENT_POOL, NEEDS, PLAYERS, RULES, TOTAL_ROUNDS } from '../src/core';
 const CLUB_BONUS = RULES.clubBonus;
 const GUESS_BONUS = RULES.guessBonus;
 
@@ -24,8 +24,13 @@ const playerCards = PLAYERS.map(
 );
 const clubCards = CLUBS.map(
   (c) => `<div class="card cl"><div class="hd"><b>⚽ 구단</b><span class="base">${c.budget}</span></div>
-  <div class="nm">${esc(c.name)}</div><div class="tr">${c.pos} 필요 (+2) · ${c.pref} 선호 (+1)</div>
+  <div class="nm">${esc(c.name)}</div><div class="tr">옆에 이 구단의 요구 카드 3장을 섞어 쌓고 맨 위를 공개</div>
   <div class="ft">제시액 <b>${c.budget}</b>억 · 큐브와 계약 선수를 이 카드에</div></div>`,
+);
+const needCards = NEEDS.map(
+  (n) => `<div class="card nd"><div class="hd"><b>요구 카드</b><span class="base">${n.pos}</span></div>
+  <div class="nm">${esc(CLUBS[n.club]!.name)}</div><div class="tr">${n.pos} 필요 (+2) · ${n.pref} 선호 (+1)</div>
+  <div class="ft">이번 라운드에 이 구단에 선수가 계약되면 라운드 끝에 더미 맨 아래로 넣고 다음 카드를 공개</div></div>`,
 );
 const secretCards = CLUBS.map(
   (c) => `<div class="card sc"><div class="hd"><b>🕵️ 비밀 구단</b></div><div class="nm">${esc(c.name)}</div>
@@ -78,7 +83,7 @@ body { font-family: 'Noto Sans KR', 'Apple SD Gothic Neo', sans-serif; color: #1
 .card .cost { font-size: 18px; font-weight: 800; margin-top: 6mm; }
 .card .ft { margin-top: auto; font-size: 11px; line-height: 1.4; }
 .pl.FW .hd b { color: #c0392b; } .pl.MF .hd b { color: #2471a3; } .pl.DF .hd b { color: #1e8449; } .pl.GK .hd b { color: #b9770e; }
-.sc { background: #fdf6e3; } .ev { background: #f4f6fb; } .ev.dl { background: #fde2e2; }
+.sc { background: #fdf6e3; } .nd { background: #eef7f1; } .ev { background: #f4f6fb; } .ev.dl { background: #fde2e2; }
 .dm, .sm { border-left: 4mm solid var(--c); }
 .dm .big, .sm .big { font-size: 40px; font-weight: 900; text-align: center; margin-top: 10mm; }
 .sm { height: 44mm; } .sm .big { margin-top: 1mm; font-size: 28px; }
@@ -94,6 +99,7 @@ td, th { border: 0.3mm solid #555; padding: 2.5mm; text-align: center; }
 <p>점선을 따라 자르세요. 규칙은 docs/rulebook.md. 선수·구단·이벤트 수치는 엔진(src/core/data.ts)에서 생성되었습니다.</p>
 ${group('선수 카드', playerCards)}
 ${group('구단 카드', clubCards)}
+${group('구단 요구 카드', needCards)}
 ${group('비밀 구단 카드', secretCards)}
 ${group('이벤트 카드', eventCards)}
 ${group(`플레이어 카드 (요구 수수료 ${4 * RULES.copies} · 선수 지목 ${MARKET_SLOTS} · 구단 지목 6 × 4색)`, agentCards)}

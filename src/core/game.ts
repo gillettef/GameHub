@@ -1,5 +1,5 @@
 import { NORMAL_FIELD, makeAiGuesses } from './ai';
-import { CLUBS, CLUBS_IN_GAME, EVENT_POOL, MAX_AGENTS, RULES, MIN_AGENTS, OVERSEAS_EXTRA, PLAYERS, TOTAL_ROUNDS, initialHand, marketSize } from './data';
+import { CLUBS, CLUBS_IN_GAME, EVENT_POOL, MAX_AGENTS, RULES, MIN_AGENTS, OVERSEAS_EXTRA, PLAYERS, TOTAL_ROUNDS, initialHand, marketSize, needsOf } from './data';
 import { createRng } from './rng';
 import { currentEvent } from './rules';
 import type { AgentKind, AiLevel, FinalScore, GameState, Guesses, PersonaKey } from './types';
@@ -25,6 +25,10 @@ export function createGame(setup: readonly AgentSetup[], seed: number): GameStat
   if (setup.length < MIN_AGENTS || setup.length > MAX_AGENTS) throw new Error(`agents must be ${MIN_AGENTS}~${MAX_AGENTS}`);
   const rng = createRng(seed);
   const clubs = rng.shuffle(CLUBS.map((c) => c.id)).slice(0, CLUBS_IN_GAME);
+  // 구단마다 요구 카드 3장을 섞어 맨 위를 공개 (교체하지 않는 실험 규칙이면 첫 카드 고정)
+  const decks = clubs.map((c) => (RULES.needRotate ? rng.shuffle(needsOf(c)) : needsOf(c)));
+  const needs = Object.fromEntries(clubs.map((c, i) => [c, decks[i]![0]!]));
+  const needDecks = Object.fromEntries(clubs.map((c, i) => [c, decks[i]!.slice(1)]));
   const secrets = rng.shuffle(clubs);
   const events = [...rng.shuffle(EVENT_POOL).slice(0, TOTAL_ROUNDS - 1), 'deadline' as const];
   let normals = 0;
@@ -42,14 +46,29 @@ export function createGame(setup: readonly AgentSetup[], seed: number): GameStat
       secret: secrets[i]!,
     };
   });
-  return dealRound({ v: 6, rng: rng.state, round: 1, phase: 'bid', events, market: [], clubs, signings: [], agents, results: [] });
+  return dealRound({ v: 7, rng: rng.state, round: 1, phase: 'bid', events, market: [], clubs, needs, needDecks, signings: [], agents, results: [] });
+}
+
+/** 이번 라운드에 선수가 계약된 구단: 공개된 요구 카드를 더미 맨 아래로 넣고 맨 위 카드를 공개한다 */
+export function rotateNeeds(state: GameState): Pick<GameState, 'needs' | 'needDecks'> {
+  if (!RULES.needRotate) return { needs: state.needs, needDecks: state.needDecks };
+  const signed = new Set(state.signings.filter((s) => s.round === state.round).map((s) => s.clubId));
+  const needs = { ...state.needs };
+  const needDecks = { ...state.needDecks };
+  for (const c of signed) {
+    const deck = needDecks[c];
+    if (!deck?.length) continue;
+    needDecks[c] = [...deck.slice(1), needs[c]!];
+    needs[c] = deck[0]!;
+  }
+  return { needs, needDecks };
 }
 
 /** 다음 라운드로. 마지막 라운드 뒤에는 비밀 구단 지목 단계로 넘어간다. */
 export function nextRound(state: GameState): GameState {
   if (state.phase !== 'result') throw new Error('round not resolved');
   if (state.round >= TOTAL_ROUNDS) return { ...state, phase: 'guess' };
-  return dealRound({ ...state, round: state.round + 1 });
+  return dealRound({ ...state, ...rotateNeeds(state), round: state.round + 1 });
 }
 
 /** 공개 기록: 에이전트별로 각 구단에 제안한 횟수 (계약 성공·실패 모두. 실물에서는 구단 카드 위의 색 큐브) */
