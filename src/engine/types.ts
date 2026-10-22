@@ -1,7 +1,7 @@
 /**
  * 게임 상태 타입. 모든 상태는 직렬화 가능한 JSON이어야 한다 (CLAUDE.md 아키텍처 원칙).
  */
-import type { Face, Orientation } from './dice'
+import type { DieLayout, Face, Orientation } from './dice'
 import type { RngState } from './rng'
 
 export type Color = 'red' | 'blue' | 'green' | 'yellow' | 'black'
@@ -10,10 +10,11 @@ export const COLORS: readonly Color[] = ['red', 'blue', 'green', 'yellow', 'blac
 
 export type DieId = number
 
-/** 주머니 안의 주사위 (방향 없음) */
+/** 주머니 안의 주사위 (방향 없음). 면 배치는 주사위마다 다르다 (§2) */
 export interface Die {
   id: DieId
   color: Color
+  layout: DieLayout
 }
 
 /** 굴려져 방향이 정해진 주사위 (시장, 보드 위) */
@@ -72,7 +73,7 @@ export interface TurnState {
 /** 시작 플레이어 결정 굴림 한 번 (§5-6). 동점이면 동점자끼리 다음 굴림 */
 export type StartRoll = { player: number; face: Face }[]
 
-/** 사건 카드 (§11-4) */
+/** 사건 카드 (§11-4). v0.6에서 사용 방식 재설계 중이라 게임에 쓰지 않는다 */
 export type EventId =
   | 'rotation'
   | 'erosion'
@@ -85,20 +86,10 @@ export type EventId =
   | 'bigBang'
   | 'timeRift'
 
-/** 4라운드 시간 진행 상태 (§9). 플레이어별 배열은 플레이어 id 순서 */
+/** 4라운드 진행 상태 (§9). 플레이어별 배열은 플레이어 id 순서 */
 export interface TimeState {
-  /** 시간축 t1~t3의 사건 카드 */
-  timeline: EventId[]
-  /** 현재 시점 (0 = t1) */
-  step: number
-  /** 공개된 사건 카드 수 (앞에서부터) */
-  revealed: number
-  /** ② 시간 세기로 정해진 이번 시점의 돌리기 횟수 */
-  counted: number[]
-  /** 이번 시점에 남은 돌리기 횟수 */
-  remaining: number[]
-  /** 이번 시점의 돌리기를 마쳤는지 */
-  done: boolean[]
+  /** 아직 굴리지 않은 ⧗ 주사위 id. 4라운드 준비 때 정한다 */
+  pending: DieId[][]
 }
 
 export interface GameState {

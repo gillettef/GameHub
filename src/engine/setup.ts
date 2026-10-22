@@ -1,8 +1,8 @@
 /**
  * 게임 생성과 주사위 수급 (§4 구성물, §5 게임 준비)
  */
-import { ALL_ORIENTATIONS, FACES, faceValue, type Face } from './dice'
-import { createRng, drawOne, nextInt, type RngState } from './rng'
+import { allOrientations, FACES, faceValue, type DieLayout, type Face } from './dice'
+import { createRng, drawOne, nextInt, shuffle, type RngState } from './rng'
 import {
   COLORS,
   type Board,
@@ -59,12 +59,13 @@ export function fillMarket(
   return [market, rest, r]
 }
 
-/** 굴리기: 24가지 방향 중 하나가 균등하게 나온다 */
+/** 굴리기: 그 주사위의 24가지 방향 중 하나가 균등하게 나온다 */
 export function roll(rng: RngState, die: Die): [RolledDie, RngState] {
-  const [i, next] = nextInt(rng, ALL_ORIENTATIONS.length)
-  const orientation = ALL_ORIENTATIONS[i]
+  const orientations = allOrientations(die.layout)
+  const [i, next] = nextInt(rng, orientations.length)
+  const orientation = orientations[i]
   if (!orientation) throw new Error('roll: 방향 인덱스 오류')
-  return [{ id: die.id, color: die.color, orientation: { ...orientation } }, next]
+  return [{ id: die.id, color: die.color, layout: die.layout, orientation }, next]
 }
 
 /** 주머니에서 무작위로 1개 뽑아 굴린다. 주머니가 비면 null */
@@ -78,10 +79,24 @@ export function drawAndRoll(
   return [rolled, rest, r2]
 }
 
-export function createDice(): Die[] {
-  return COLORS.flatMap((color, c) =>
-    Array.from({ length: DICE_PER_COLOR }, (_, i) => ({ id: c * DICE_PER_COLOR + i, color })),
-  )
+/** 무작위 면 배치 (§2 v0.6: 주사위마다 다름). 여섯 면을 여섯 자리에 섞어 넣으면 30가지 배치가 고르게 나온다 */
+export function randomLayout(rng: RngState): [DieLayout, RngState] {
+  const [faces, next] = shuffle(rng, FACES)
+  return [faces as unknown as DieLayout, next]
+}
+
+/** 전용 주사위 120개 (§4). 면 배치는 시드로 정한다 */
+export function createDice(rng: RngState): [Die[], RngState] {
+  let r = rng
+  const dice: Die[] = []
+  COLORS.forEach((color, c) => {
+    for (let i = 0; i < DICE_PER_COLOR; i++) {
+      let layout: DieLayout
+      ;[layout, r] = randomLayout(r)
+      dice.push({ id: c * DICE_PER_COLOR + i, color, layout })
+    }
+  })
+  return [dice, r]
 }
 
 export function createBoard(): Board {
@@ -130,9 +145,10 @@ export function createGame(config: GameConfig): GameState {
 
   // §5-6 시작 플레이어 → §5 라운드 시작: 1라운드 시장 채우기
   const [startPlayer, startRolls, rngAfterStart] = rollForStartPlayer(createRng(seed), playerCount)
+  const [dice, rngAfterDice] = createDice(rngAfterStart)
   const [market, bag, rng] = fillMarket(
-    rngAfterStart,
-    createDice(),
+    rngAfterDice,
+    dice,
     marketSlotCount(playerCount),
     dicePerSlot(1),
   )

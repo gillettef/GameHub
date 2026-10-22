@@ -112,7 +112,7 @@ function endRound(state: GameState, round: 1 | 2 | 3): GameState {
 
 export function applyAction(state: GameState, action: Action): GameState {
   if (state.phase.kind === 'ended') fail('게임이 끝났습니다.')
-  if (action.type === 'rotate' || action.type === 'endStep') {
+  if (action.type === 'roll' || action.type === 'scrap') {
     if (currentRound(state) !== 4) fail('4라운드에만 할 수 있는 행동입니다.')
     return applyTimeAction(state, action)
   }
@@ -136,7 +136,7 @@ export function applyAction(state: GameState, action: Action): GameState {
       let placed = die
       if (action.front !== undefined) {
         try {
-          placed = { ...die, orientation: withFront(die.orientation, action.front) }
+          placed = { ...die, orientation: withFront(die.layout, die.orientation, action.front) }
         } catch {
           fail('윗면은 바꿀 수 없고, 앞면은 옆면 중에서만 고를 수 있습니다.')
         }
@@ -156,7 +156,7 @@ export function applyAction(state: GameState, action: Action): GameState {
       const [die, hand] = takeFromHand(state, action.dieId)
       const players = updatePlayer(state.players, action.player, (p) => ({
         ...p,
-        debris: [...p.debris, { id: die.id, color: die.color }],
+        debris: [...p.debris, { id: die.id, color: die.color, layout: die.layout }],
       }))
       return advance({ ...state, players, turn: { ...state.turn, hand } })
     }
@@ -173,11 +173,10 @@ export function legalPlacements(state: GameState, dieId: number): Cell[] {
 }
 
 /**
- * 할 수 있는 행동 목록. 1~3라운드는 현재 플레이어의 행동(놓기는 앞면을 바꾸지 않은 형태로만),
- * 4라운드는 동시 진행이므로 아직 마치지 않은 모든 플레이어의 행동을 나열한다.
+ * 할 수 있는 현재 플레이어의 행동 목록. 놓기는 앞면을 바꾸지 않은 형태로만 나열한다.
  */
 export function getLegalActions(state: GameState): Action[] {
-  if (currentRound(state) === 4) return state.players.flatMap((p) => legalTimeActions(state, p.id))
+  if (currentRound(state) === 4) return legalTimeActions(state)
   const round = draftRound(state)
   if (round === null) return []
   const player = state.currentPlayer

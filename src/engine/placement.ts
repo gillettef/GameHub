@@ -23,7 +23,7 @@ export function topOf(pillar: Pillar): RolledDie | undefined {
   return pillar[pillar.length - 1]
 }
 
-function inBoard({ row, col }: Cell): boolean {
+export function inBoard({ row, col }: Cell): boolean {
   return row >= 0 && row < BOARD_ROWS && col >= 0 && col < BOARD_COLS
 }
 
@@ -38,10 +38,11 @@ export function neighbors({ row, col }: Cell): Cell[] {
 
 /**
  * §8 쌓기 규칙: 올리는 윗면이 아래 윗면보다 큰 숫자.
- * ⧗은 어디 위에든 올릴 수 있고, ⧗ 위에는 무엇이든 올릴 수 있다.
+ * ⧗은 어디 위에든 올릴 수 있고, ⧗ 위에는 아무것도 올릴 수 없다 (⧗ 위는 끝).
  */
 export function canStackOn(below: Face, top: Face): boolean {
-  if (isTime(top) || isTime(below)) return true
+  if (isTime(below)) return false
+  if (isTime(top)) return true
   return faceValue(top) > faceValue(below)
 }
 
