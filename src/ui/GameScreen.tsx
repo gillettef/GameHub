@@ -63,6 +63,8 @@ interface GameScreenProps {
   /** 봇 속도 (카드 시트에서 바꾼다) */
   botSpeed?: BotSpeed
   onBotSpeed?: (speed: BotSpeed) => void
+  /** 마지막 행동을 되돌릴 수 있으면 (굴림 결과가 나온 뒤에는 오지 않는다) */
+  onUndo?: () => void
 }
 
 /** 굴리는 방향 (조사까지 붙여 둔다) */
@@ -134,6 +136,7 @@ export function GameScreen({
   connection = null,
   botSpeed,
   onBotSpeed,
+  onUndo,
 }: GameScreenProps) {
   const humanLocal = localSeats.filter((s) => seats[s]?.kind === 'human')
   const chooser = pendingChooser(state, seats, localSeats)
@@ -573,6 +576,15 @@ export function GameScreen({
           ) : null}
         </span>
       </div>
+
+      {/* 내 차례 안에서 방금 한 수 되돌리기 (주사위를 굴려 나온 결과가 끼면 앱이 버튼을 주지 않는다) */}
+      {onUndo && actor !== null && (
+        <div className="-my-1 flex justify-end">
+          <Button variant="ghost" size="sm" onClick={onUndo}>
+            ↶ 방금 수 되돌리기
+          </Button>
+        </div>
+      )}
 
       {/* 다른 사람이 방금 한 일 (봇·원격 플레이어의 수를 놓치지 않게) */}
       {lastAction && lastAction.player !== actor && lastAction.type !== 'choosePersonalGoal' && (
