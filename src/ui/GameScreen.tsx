@@ -39,6 +39,7 @@ import { Avatar, Button, ConfirmButton, Panel, Screen, TopBar } from './primitiv
 import { RulesSheet } from './RulesSheet'
 import { TipCard } from './TipCard'
 import { useTip, type TipId } from './tips'
+import { Icon } from './icons'
 
 interface GameScreenProps {
   state: GameState
@@ -755,7 +756,13 @@ export function GameScreen({
           action={
             legal.some((a) => a.type === 'reroll') && (
               <Button variant={ui.rerollMode ? 'secondary' : 'ghost'} size="sm" aria-pressed={ui.rerollMode} onClick={() => patch({ rerollMode: !ui.rerollMode })}>
-                {ui.rerollMode ? '취소' : '🎲 1개 다시 굴리기'}
+                {ui.rerollMode ? (
+                  '취소'
+                ) : (
+                  <>
+                    <Icon name="reroll" size={18} /> 1개 다시 굴리기
+                  </>
+                )}
               </Button>
             )
           }
@@ -855,7 +862,7 @@ function GoalStrip({ state, player, viewer, onOpen }: { state: GameState; player
             key={g.id}
             className={`flex min-h-8 items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold ring-1 ring-inset ${status ? 'bg-goal/20 text-goal ring-goal/60' : 'bg-surface/60 text-muted ring-line'}`}
           >
-            <span aria-hidden="true">{status ? '✓' : '◎'}</span>
+            {status ? <span aria-hidden="true">✓</span> : <Icon name="target" size={13} />}
             <GlyphText text={def.name} />
             {status && <span className="font-display">{status}</span>}
             {!status && g.first !== null && <span className="font-normal">· 선착 끝남</span>}
@@ -866,7 +873,7 @@ function GoalStrip({ state, player, viewer, onOpen }: { state: GameState; player
         <span
           className={`flex min-h-8 items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold ring-1 ring-inset ${personal.check(me) ? 'bg-personal/20 text-personal ring-personal/60' : 'bg-surface/60 text-muted ring-line'}`}
         >
-          <span aria-hidden="true">🔒</span>
+          <Icon name="lock" size={13} />
           <GlyphText text={personal.name} />
           <span className="font-normal">{personal.check(me) ? '· 지금 충족' : '· 아직'}</span>
         </span>

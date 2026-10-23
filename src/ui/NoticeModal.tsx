@@ -9,6 +9,7 @@ import { GlyphText, Hourglass } from './DieFace'
 import { buzz } from './fx'
 import type { Notice } from './notices'
 import { Avatar, Button } from './primitives'
+import { Icon } from './icons'
 
 interface NoticeModalProps {
   /** 한 번에 생긴 알림 묶음. 결과(평면·목표·잔해)가 먼저, 라운드 안내가 마지막 */
@@ -186,7 +187,7 @@ function ResultBody({ notice, titleId, name }: { notice: Exclude<Notice, { kind:
     <>
       <div>
         <h2 id={titleId} className="text-2xl font-black" style={{ color: tone }}>
-          {notice.kind === 'goal' && <span aria-hidden="true">✦ </span>}
+          {notice.kind === 'goal' && <Icon name="target" size={22} className="-mt-1 mr-1.5" />}
           {title}
         </h2>
         <p className="text-[13px] text-muted">{sub}</p>
@@ -198,7 +199,7 @@ function ResultBody({ notice, titleId, name }: { notice: Exclude<Notice, { kind:
               <Row player={it.player} name={name(it.player)}>
                 <span className="text-right">
                   <span className="block text-xs text-muted">
-                    {it.first && <span aria-hidden="true">👑 </span>}
+                    {it.first && <Icon name="crown" size={12} className="-mt-0.5 mr-1 text-[#F5C842]" />}
                     {it.name} · {it.first ? '선착' : '달성'}
                   </span>
                   <span className="font-display text-xl font-bold" style={{ color: tone }}>

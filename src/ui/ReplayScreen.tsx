@@ -5,6 +5,7 @@ import { describeAction } from './describe'
 import { seatColor } from './colors'
 import { GlyphText } from './DieFace'
 import { Avatar, Button, Screen, TopBar } from './primitives'
+import { Icon } from './icons'
 
 interface ReplayScreenProps {
   session: Session
@@ -68,7 +69,7 @@ export function ReplayScreen({ session, onBack }: ReplayScreenProps) {
             setStep(step - 1)
           }}
         >
-          ◀ 이전
+          <Icon name="prev" size={14} /> 이전
         </Button>
         <Button
           variant="primary"
@@ -79,7 +80,15 @@ export function ReplayScreen({ session, onBack }: ReplayScreenProps) {
             setAutoplay(!playing)
           }}
         >
-          {playing ? '⏸ 멈춤' : '▶ 재생'}
+          {playing ? (
+            <>
+              <Icon name="pause" size={16} /> 멈춤
+            </>
+          ) : (
+            <>
+              <Icon name="play" size={16} /> 재생
+            </>
+          )}
         </Button>
         <Button
           disabled={step === total}
@@ -88,7 +97,7 @@ export function ReplayScreen({ session, onBack }: ReplayScreenProps) {
             setStep(step + 1)
           }}
         >
-          다음 ▶
+          다음 <Icon name="next" size={14} />
         </Button>
       </div>
       <ul className="grid grid-cols-2 gap-3">

@@ -5,6 +5,7 @@ import { seatColor } from './colors'
 import { Card, CardZoom } from './Card'
 import type { CardKey } from './cardArtData'
 import { Avatar, Button, Segmented, Sheet } from './primitives'
+import { Icon } from './icons'
 
 interface CardsSheetProps {
   state: GameState
@@ -81,7 +82,7 @@ export function CardsSheet({ state, seats, personalOf, onClose, onRules, botSpee
 
       {onRules && (
         <Button block onClick={onRules}>
-          📖 규칙 한눈에 보기
+          <Icon name="codex" size={18} /> 규칙 한눈에 보기
         </Button>
       )}
       {botSpeed && onBotSpeed && seats.some((s) => s.kind === 'bot') && (
