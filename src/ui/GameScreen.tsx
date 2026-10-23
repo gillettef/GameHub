@@ -48,6 +48,8 @@ interface GameScreenProps {
   error: string | null
   /** 확인할 알림 모달이 떠 있는지 알린다 (떠 있는 동안 봇이 기다린다) */
   onHold?: (hold: boolean) => void
+  /** 게임이 끝나고 남은 알림을 모두 확인했을 때 (결과 화면으로) */
+  onFinished?: () => void
 }
 
 const DIRECTION_LABEL: Record<TipDirection, string> = { forward: '앞(아래)', back: '뒤(위)', left: '왼쪽', right: '오른쪽' }
@@ -93,7 +95,7 @@ function fxSummary(events: FxEvent[], seats: Seat[]): string {
 
 const freshUi = (key: string): TurnUi => ({ key, selectedDie: null, front: null, selectedTime: null, rerollMode: false, viewing: null })
 
-export function GameScreen({ state, prev, lastAction, step, seats, localSeats, onAction, onExit, error, onHold }: GameScreenProps) {
+export function GameScreen({ state, prev, lastAction, step, seats, localSeats, onAction, onExit, error, onHold, onFinished }: GameScreenProps) {
   const humanLocal = localSeats.filter((s) => seats[s]?.kind === 'human')
   const chooser = pendingChooser(state, seats, localSeats)
   /** 지금 이 기기에서 조작하는 사람 */
@@ -116,25 +118,34 @@ export function GameScreen({ state, prev, lastAction, step, seats, localSeats, o
   const [sheet, setSheet] = useState<{ kind: 'cards' } | { kind: 'pillar'; player: number; cell: Cell } | null>(null)
   const events = useMemo(() => diffEvents(prev, state), [prev, state])
 
-  // 확인할 알림: 마지막으로 본 상태와 비교해 쌓고, 「확인」을 누를 때마다 하나씩 넘긴다.
+  // 확인할 알림: 마지막으로 본 상태와 비교해 묶음으로 쌓고, 「확인」을 누를 때마다 한 묶음씩 넘긴다.
   // 행동 여러 개가 한꺼번에 들어와도(온라인) 놓치지 않게 직전 행동이 아니라 마지막으로 본 상태와 비교한다
   const [seen, setSeen] = useState(state)
-  const [notices, setNotices] = useState<Notice[]>([])
-  /** 이 기기 사람이 버리기를 두 번 눌러 스스로 만든 잔해는 다시 묻지 않는다 */
-  const selfDebris = (player: number) =>
-    !!lastAction && (lastAction.type === 'discard' || lastAction.type === 'scrap') && lastAction.player === player && humanLocal.includes(player)
+  const [batches, setBatches] = useState<Notice[][]>([])
+  /**
+   * 잔해는 이 기기 사람이 남의 손으로(강제로) 얻었을 때만 모달로 묻는다.
+   * 스스로 버리기를 두 번 눌러 만든 잔해와 봇·원격 플레이어의 잔해는 짧은 팝업으로만 보인다
+   */
+  const quietDebris = (player: number) =>
+    !humanLocal.includes(player) || (!!lastAction && (lastAction.type === 'discard' || lastAction.type === 'scrap') && lastAction.player === player)
   if (seen !== state) {
     setSeen(state)
-    setNotices(seen.config.seed === state.config.seed ? [...notices, ...buildNotices(diffEvents(seen, state), state, selfDebris)] : [])
+    const batch = seen.config.seed === state.config.seed ? buildNotices(diffEvents(seen, state), state, quietDebris) : []
+    setBatches(seen.config.seed === state.config.seed ? (batch.length > 0 ? [...batches, batch] : batches) : [])
   }
-  const notice = notices[0]
-  const holding = notices.length > 0
+  const batch = batches[0]
+  const holding = batches.length > 0
   useEffect(() => {
     onHold?.(holding)
   }, [onHold, holding])
   useEffect(() => () => onHold?.(false), [onHold])
-  // 모달로 알린 사건은 빼고, 차례 배너와 스스로 만든 잔해만 짧게 띄운다
-  const fxEvents = events.filter((e) => e.kind === 'turn' || (e.kind === 'debris' && selfDebris(e.player)))
+  // 게임이 끝나면 마지막 알림까지 확인한 뒤 결과 화면으로 넘어간다
+  const ended = state.phase.kind === 'ended'
+  useEffect(() => {
+    if (ended && !holding) onFinished?.()
+  }, [ended, holding, onFinished])
+  // 모달로 알린 사건은 빼고, 차례 배너와 모달로 묻지 않은 잔해만 짧게 띄운다
+  const fxEvents = events.filter((e) => e.kind === 'turn' || (e.kind === 'debris' && quietDebris(e.player)))
   const scores = useMemo(() => state.players.map((p) => liveScore(state, p.id)), [state])
   // 버튼을 보일지는 엔진의 합법 행동 목록으로 정한다
   const legal = useMemo(() => (actor !== null && state.phase.kind === 'round' ? getLegalActions(state) : []), [actor, state])
@@ -156,6 +167,9 @@ export function GameScreen({ state, prev, lastAction, step, seats, localSeats, o
     if (next !== undefined) patch({ front: next })
   }
   const placeTargets = useMemo(() => (isMine && handDie ? legalPlacements(state, handDie.id) : []), [isMine, handDie, state])
+  /** 손에 든 주사위 중 놓을 칸이 하나도 없는 것 (고르기 전에 미리 알린다) */
+  const stuckDice = useMemo(() => new Set(hand.filter((d) => legalPlacements(state, d.id).length === 0).map((d) => d.id)), [hand, state])
+  const openSlots = state.market.filter((s) => s !== null && s.length > 0).length
 
   const pending = useMemo(() => (round === 4 && actor !== null ? (state.time?.pending[actor] ?? []) : []), [round, actor, state.time])
   const timeCells = useMemo(() => {
@@ -165,7 +179,9 @@ export function GameScreen({ state, prev, lastAction, step, seats, localSeats, o
       return c ? [c] : []
     })
   }, [isMine, shown, pending])
-  const timeFrom = isMine && ui.selectedTime !== null && shown ? findTop(shown.board, ui.selectedTime) : null
+  /** 굴릴 ⧗ 주사위가 하나뿐이면 미리 골라 둔다 (선택지가 하나뿐인 탭 줄이기) */
+  const selectedTime = ui.selectedTime ?? (pending.length === 1 ? (pending[0] ?? null) : null)
+  const timeFrom = isMine && selectedTime !== null && shown ? findTop(shown.board, selectedTime) : null
   const targets = timeFrom && shown ? rollTargets(shown.board, timeFrom, state.law) : []
   const timeDie = timeFrom && shown ? shown.board.cells[timeFrom.row]?.[timeFrom.col]?.at(-1) : undefined
 
@@ -194,14 +210,14 @@ export function GameScreen({ state, prev, lastAction, step, seats, localSeats, o
     }
     if (isMine && round === 4) {
       const target = targets.find((t) => t.to.row === cell.row && t.to.col === cell.col)
-      if (target && ui.selectedTime !== null) {
-        onAction({ type: 'roll', player: actor as number, dieId: ui.selectedTime, direction: target.direction })
+      if (target && selectedTime !== null) {
+        onAction({ type: 'roll', player: actor as number, dieId: selectedTime, direction: target.direction })
         patch({ selectedTime: null })
         return
       }
       const top = shown.board.cells[cell.row]?.[cell.col]?.at(-1)
       if (top && pending.includes(top.id)) {
-        patch({ selectedTime: top.id === ui.selectedTime ? null : top.id })
+        patch({ selectedTime: top.id === selectedTime && pending.length > 1 ? null : top.id })
         return
       }
     }
@@ -209,8 +225,8 @@ export function GameScreen({ state, prev, lastAction, step, seats, localSeats, o
   }
 
   const fx = <FxLayer key={step} events={fxEvents} seats={seats} />
-  const noticeModal = notice && (
-    <NoticeModal notice={notice} remaining={notices.length} law={state.law} seats={seats} onConfirm={() => setNotices(notices.slice(1))} />
+  const noticeModal = batch && (
+    <NoticeModal notices={batch} remaining={batches.length} law={state.law} seats={seats} onConfirm={() => setBatches(batches.slice(1))} />
   )
   const errorToast = error && (
     <p
@@ -274,17 +290,23 @@ export function GameScreen({ state, prev, lastAction, step, seats, localSeats, o
       ? null
       : round === 4
         ? timeDie
-          ? targets.length > 0
+          ? targets.length > 1
             ? '빛나는 칸을 눌러 굴리세요'
-            : '어느 방향으로도 굴릴 수 없습니다'
+            : targets.length === 1
+              ? '이 주사위는 한 방향으로만 굴릴 수 있어요 · 빛나는 칸을 누르세요'
+              : '어느 방향으로도 굴릴 수 없어요 · 잔해로 만드세요'
           : '주황 점이 찍힌 ⧗ 주사위를 고르세요'
         : !state.turn.taken
-          ? '시장에서 묶음 하나를 가져오세요'
+          ? openSlots === 1
+            ? '남은 묶음이 하나뿐이에요 · 눌러서 가져오세요'
+            : '시장에서 묶음 하나를 가져오세요'
           : handDie
             ? placeTargets.length > 0
               ? '빛나는 칸에 놓으세요'
-              : '놓을 수 있는 칸이 없습니다'
-            : '놓을 주사위를 고르세요'
+              : '놓을 칸이 없어요 · 아래에서 잔해로 버리세요'
+            : hand.length > 0 && stuckDice.size === hand.length
+              ? '놓을 칸이 없어요 · 주사위를 골라 잔해로 버리세요'
+              : '놓을 주사위를 고르세요'
 
   return (
     <Screen className="gap-3">
@@ -400,18 +422,24 @@ export function GameScreen({ state, prev, lastAction, step, seats, localSeats, o
           <div className="flex justify-center gap-3">
             {hand.map((d) => {
               const on = d.id === ui.selectedDie
+              const stuck = stuckDice.has(d.id)
               return (
                 <button
                   type="button"
                   key={d.id}
                   aria-pressed={on}
-                  aria-label={`손에 든 주사위 ${colorLabel(d.color)} ${faceLabel(d.orientation.top)}${on ? ', 선택됨' : ''}`}
+                  aria-label={`손에 든 주사위 ${colorLabel(d.color)} ${faceLabel(d.orientation.top)}${stuck ? ', 놓을 칸 없음' : ''}${on ? ', 선택됨' : ''}`}
                   onClick={() => patch({ selectedDie: on ? null : d.id, front: null })}
-                  className={`animate-pop rounded-2xl p-1.5 transition-transform duration-200 ${on ? '-translate-y-2 scale-110 bg-accent/20 ring-2 ring-accent' : 'active:scale-95'}`}
+                  className={`relative animate-pop rounded-2xl p-1.5 transition-transform duration-200 ${on ? '-translate-y-2 scale-110 bg-accent/20 ring-2 ring-accent' : 'active:scale-95'}`}
                 >
-                  <span className={on ? 'block animate-hover' : 'block'}>
+                  <span className={`block ${on ? 'animate-hover' : ''} ${stuck && !on ? 'opacity-45 grayscale-[0.6]' : ''}`}>
                     <Die3D layout={d.layout} color={d.color} base={d.orientation} front={on ? (handFront ?? undefined) : undefined} size={36} />
                   </span>
+                  {stuck && (
+                    <span aria-hidden="true" className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 rounded-full bg-[#3a1d27] px-1.5 text-[10px] leading-4 font-bold whitespace-nowrap text-[#ffb3b3] ring-1 ring-danger/50">
+                      놓을 칸 없음
+                    </span>
+                  )}
                 </button>
               )
             })}

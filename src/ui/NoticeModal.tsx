@@ -8,8 +8,9 @@ import type { Notice } from './notices'
 import { Avatar, Button, GameCard } from './primitives'
 
 interface NoticeModalProps {
-  notice: Notice
-  /** 남은 알림 수 (지금 것 포함) */
+  /** 한 번에 생긴 알림 묶음. 결과(평면·목표·잔해)가 먼저, 라운드 안내가 마지막 */
+  notices: Notice[]
+  /** 남은 묶음 수 (지금 것 포함) */
   remaining: number
   law: LawId
   seats: Seat[]
@@ -17,10 +18,10 @@ interface NoticeModalProps {
 }
 
 /**
- * 확인해야 넘어가는 알림 모달. 배경을 눌러도 닫히지 않고 「확인」(또는 Enter·Esc)으로만 넘어간다.
- * 열려 있는 동안 봇은 기다린다 (App).
+ * 확인해야 넘어가는 알림 모달. 같은 행동으로 생긴 알림은 한 장에 모아 「확인」 한 번으로 넘긴다.
+ * 배경을 눌러도 닫히지 않고 「확인」(또는 Enter·Esc)으로만 넘어간다. 열려 있는 동안 봇은 기다린다 (App).
  */
-export function NoticeModal({ notice, remaining, law, seats, onConfirm }: NoticeModalProps) {
+export function NoticeModal({ notices, remaining, law, seats, onConfirm }: NoticeModalProps) {
   const titleId = useId()
   const dialog = useRef<HTMLDivElement>(null)
   const confirmRef = useRef(onConfirm)
@@ -28,13 +29,13 @@ export function NoticeModal({ notice, remaining, law, seats, onConfirm }: Notice
     confirmRef.current = onConfirm
   }, [onConfirm])
 
-  // 알림마다 진동하고 확인 버튼에 포커스
+  // 묶음마다 가장 중요한 알림으로 한 번 진동하고 확인 버튼에 포커스
   useEffect(() => {
     dialog.current?.querySelector<HTMLElement>('[data-notice-ok]')?.focus()
-    if (notice.kind === 'goal') buzz([20, 60, 30])
-    else if (notice.kind === 'round') buzz([15, 40, 15])
-    else if (notice.kind === 'debris') buzz([40])
-  }, [notice])
+    if (notices.some((n) => n.kind === 'goal')) buzz([20, 60, 30])
+    else if (notices.some((n) => n.kind === 'round')) buzz([15, 40, 15])
+    else if (notices.some((n) => n.kind === 'debris')) buzz([40])
+  }, [notices])
 
   useEffect(() => {
     const before = document.activeElement as HTMLElement | null
@@ -62,14 +63,22 @@ export function NoticeModal({ notice, remaining, law, seats, onConfirm }: Notice
   return (
     <div ref={dialog} className="fixed inset-0 z-50 flex animate-fade items-center justify-center bg-black/70 px-4" role="dialog" aria-modal="true" aria-labelledby={titleId}>
       <div
-        key={JSON.stringify(notice)}
+        key={JSON.stringify(notices)}
         className="flex max-h-[88dvh] w-full max-w-[400px] animate-pop flex-col overflow-hidden rounded-[28px] bg-surface shadow-[0_20px_60px_rgb(0_0_0/0.6)] ring-1 ring-line"
       >
         <div className="flex flex-col gap-3 overflow-y-auto overscroll-contain px-5 pt-5 pb-3 [&>*]:shrink-0">
-          {notice.kind === 'round' ? <RoundBody notice={notice} law={law} titleId={titleId} name={name} /> : <ResultBody notice={notice} titleId={titleId} name={name} />}
+          {notices.map((notice, i) => (
+            <section key={i} className={`flex flex-col gap-3 ${i > 0 ? 'border-t border-line pt-4' : ''}`}>
+              {notice.kind === 'round' ? (
+                <RoundBody notice={notice} law={law} titleId={i === 0 ? titleId : undefined} name={name} />
+              ) : (
+                <ResultBody notice={notice} titleId={i === 0 ? titleId : undefined} name={name} />
+              )}
+            </section>
+          ))}
         </div>
         <div className="flex items-center gap-3 border-t border-line px-5 pt-3 pb-[max(16px,env(safe-area-inset-bottom))]">
-          {remaining > 1 && <span className="shrink-0 font-display text-xs font-bold text-muted">남은 알림 {remaining - 1}</span>}
+          {remaining > 1 && <span className="shrink-0 font-display text-xs font-bold text-muted">남은 알림 {remaining - 1}장</span>}
           <Button data-notice-ok variant="primary" size="lg" block onClick={onConfirm}>
             {last ? '확인' : '확인 · 다음'}
           </Button>
@@ -79,7 +88,7 @@ export function NoticeModal({ notice, remaining, law, seats, onConfirm }: Notice
   )
 }
 
-function RoundBody({ notice, law, titleId, name }: { notice: Extract<Notice, { kind: 'round' }>; law: LawId; titleId: string; name: (p: number) => string }) {
+function RoundBody({ notice, law, titleId, name }: { notice: Extract<Notice, { kind: 'round' }>; law: LawId; titleId?: string; name: (p: number) => string }) {
   const info = ROUND_INFO[notice.round - 1]
   if (!info) return null
   const lawNote = notice.round >= 3 && (law === 'flat' || law === 'inverted') ? LAWS[law] : null
@@ -109,12 +118,20 @@ function RoundBody({ notice, law, titleId, name }: { notice: Extract<Notice, { k
       )}
       {notice.pending && (
         <div className="flex flex-col gap-1.5">
-          <p className="text-xs font-bold text-muted">굴릴 ⧗ 주사위</p>
+          <p className="text-xs font-bold text-muted">굴릴 ⧗ 주사위 · 1개씩 번갈아 굴려요</p>
           {notice.pending.map((n, p) => (
             <Row key={p} player={p} name={name(p)}>
-              <span className="inline-flex items-center gap-1 font-display text-lg font-bold text-personal">
-                <Hourglass size={14} color="#f2a65a" /> {n}
-              </span>
+              {n > 0 ? (
+                <span className="inline-flex items-center gap-1 font-display text-lg font-bold text-personal">
+                  <Hourglass size={14} color="#f2a65a" /> {n}
+                </span>
+              ) : (
+                <span className="text-right text-xs text-muted">
+                  꼭대기에 ⧗이 없어
+                  <br />
+                  4라운드는 쉬어요
+                </span>
+              )}
             </Row>
           ))}
         </div>
@@ -127,7 +144,7 @@ function RoundBody({ notice, law, titleId, name }: { notice: Extract<Notice, { k
   )
 }
 
-function ResultBody({ notice, titleId, name }: { notice: Exclude<Notice, { kind: 'round' }>; titleId: string; name: (p: number) => string }) {
+function ResultBody({ notice, titleId, name }: { notice: Exclude<Notice, { kind: 'round' }>; titleId?: string; name: (p: number) => string }) {
   const title = notice.kind === 'goal' ? '라운드 목표 달성' : notice.kind === 'plane' ? '평면 점수 확정' : '잔해 발생'
   const sub =
     notice.kind === 'goal'

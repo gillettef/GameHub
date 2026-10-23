@@ -72,6 +72,9 @@ export function App() {
   const [error, setError] = useState<string | null>(null)
   /** 확인할 알림 모달이 떠 있으면 봇이 기다린다 */
   const [hold, setHold] = useState(false)
+  /** 마지막 알림까지 확인해 결과 화면을 보여도 되는 게임 id */
+  const [finishedId, setFinishedId] = useState<string | null>(null)
+  const finish = useCallback(() => setFinishedId(session?.id ?? null), [session?.id])
 
   const derived = useMemo(() => (session ? stateOf(session) : null), [session])
   const state = derived?.state ?? null
@@ -150,7 +153,7 @@ export function App() {
   }
 
   if (screen.kind === 'game' && session && state) {
-    if (state.phase.kind === 'ended') {
+    if (state.phase.kind === 'ended' && finishedId === session.id) {
       return (
         <ResultScreen
           state={state}
@@ -176,6 +179,7 @@ export function App() {
         onExit={() => setScreen({ kind: 'home' })}
         error={error}
         onHold={setHold}
+        onFinished={finish}
       />
     )
   }
