@@ -385,6 +385,7 @@ export function GameScreen({
           setup={state.phase.kind === 'setup'}
           round={round}
           onReady={() => setRevealedFor(actor)}
+          onUndo={onUndo}
           recent={
             // 방금 둔 사람(이 기기의 다른 사람)이 마지막 수의 결과를 보고 넘길 수 있게
             lastAction && recentBoard && lastAction.player !== actor && humanLocal.includes(lastAction.player)
@@ -578,7 +579,7 @@ export function GameScreen({
       </div>
 
       {/* 내 차례 안에서 방금 한 수 되돌리기 (주사위를 굴려 나온 결과가 끼면 앱이 버튼을 주지 않는다) */}
-      {onUndo && actor !== null && (
+      {onUndo && (
         <div className="-my-1 flex justify-end">
           <Button variant="ghost" size="sm" onClick={onUndo}>
             ↶ 방금 수 되돌리기
@@ -932,6 +933,7 @@ function PassScreen({
   setup,
   round,
   onReady,
+  onUndo,
   recent,
 }: {
   name: string
@@ -939,6 +941,8 @@ function PassScreen({
   setup: boolean
   round: number | null
   onReady: () => void
+  /** 넘기기 전에 바로 전 사람이 방금 수를 되돌릴 수 있으면 */
+  onUndo?: () => void
   /** 바로 전 사람의 마지막 수 결과 (보드는 공개 정보) */
   recent: { name: string; seat: number; board: Board; score: number; fresh: FreshDie | null } | null
 }) {
@@ -954,6 +958,11 @@ function PassScreen({
           <div className="w-[200px]">
             <BoardView board={recent.board} compact fresh={recent.fresh} />
           </div>
+          {onUndo && (
+            <Button variant="ghost" size="sm" onClick={onUndo}>
+              ↶ {recent.name}의 방금 수 되돌리기
+            </Button>
+          )}
         </section>
       )}
       <p className="relative animate-fade text-sm font-bold tracking-[0.3em] text-muted">기기를 넘겨 주세요</p>
