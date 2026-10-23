@@ -18,6 +18,8 @@ const DIE_SIZE: Record<number, number> = { 1: 40, 2: 36, 3: 32, 4: 30, 5: 28 }
 export function MarketView({ market, onTake, rerollMode = false, onReroll }: MarketViewProps) {
   const size = DIE_SIZE[market.length] ?? 28
   const canTake = !!onTake && !rerollMode
+  /** 가져갈 묶음이 하나뿐이면 (바퀴의 마지막 사람) 그 칸에 표시를 단다 */
+  const onlyOne = market.filter((s) => s !== null && s.length > 0).length === 1
   return (
     <ol className="grid gap-2" style={{ gridTemplateColumns: `repeat(${market.length}, minmax(0, 1fr))` }} aria-label="시장">
       {market.map((slot, i) => {
@@ -77,6 +79,11 @@ export function MarketView({ market, onTake, rerollMode = false, onReroll }: Mar
                 }}
               >
                 {inner}
+                {onlyOne && (
+                  <span aria-hidden="true" className="absolute -top-2 left-1/2 -translate-x-1/2 rounded-full bg-accent px-2 text-[11px] leading-4 font-bold whitespace-nowrap text-void">
+                    남은 하나
+                  </span>
+                )}
               </button>
             ) : (
               <div className={`${base} bg-raised/50 ring-1 ring-line ring-inset`}>
