@@ -45,6 +45,8 @@ export interface PlayerState {
   personalOffer: PersonalGoalId[]
   /** 고른 개인 목표 (비공개). 고르기 전에는 null */
   personalGoal: PersonalGoalId | null
+  /** 4라운드 준비 때 센 ⧗ 주사위 수 (§9 준비, §11-3 시간 지배자). 4라운드 전에는 null */
+  timeDice: number | null
 }
 
 export type Round = 1 | 2 | 3 | 4

@@ -94,6 +94,14 @@ describe('§9 준비: ⧗ 주사위 정하기', () => {
     expect(s.time?.pending).toEqual([[tower.id, floor.id], [other.id]])
   })
 
+  it('§9 준비 때 센 ⧗ 주사위 수를 플레이어마다 기록한다 (§11-3 시간 지배자). 다 굴린 뒤에도 남는다', () => {
+    const s = round4([board({ '1,1': [T()], '1,3': [T()] }), board({})])
+    expect(s.players.map((p) => p.timeDice)).toEqual([2, 0])
+    const { last } = playFirst(s)
+    expect(last.phase.kind).toBe('ended')
+    expect(last.players.map((p) => p.timeDice)).toEqual([2, 0])
+  })
+
   it('§9 이 라운드에는 시장을 쓰지 않는다', () => {
     const s = round4([board({ '1,1': [T()] }), board({})])
     expect(s.market).toEqual([])

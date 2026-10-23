@@ -174,6 +174,7 @@ export function createGame(config: GameConfig): GameState {
     planeScore: null,
     personalOffer: personalDeck.slice(id * PERSONAL_GOAL_DRAW, (id + 1) * PERSONAL_GOAL_DRAW),
     personalGoal: null,
+    timeDice: null,
   }))
 
   const state: GameState = {

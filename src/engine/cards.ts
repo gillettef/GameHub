@@ -342,7 +342,7 @@ export interface PersonalGoalDef {
   id: PersonalGoalId
   name: string
   text: string
-  /** 게임 끝 최종 상태로 판정 */
+  /** 게임 끝 최종 상태로 판정 (시간 지배자만 4라운드 준비 때 센 ⧗ 주사위 수) */
   check: (player: PlayerState) => boolean
 }
 
@@ -379,8 +379,10 @@ export const PERSONAL_GOALS: Record<PersonalGoalId, PersonalGoalDef> = {
   heightWorship: personal('heightWorship', '높이 숭배', '4층 이상 기둥 3개', (p) =>
     allCells().filter((c) => pillarAt(p.board, c).length >= 4).length >= 3,
   ),
-  timeLord: personal('timeLord', '시간 지배자', '꼭대기 ⧗ 3개 이상', (p) =>
-    topsOf(p.board).filter((t) => isTime(t.die.orientation.top)).length >= 3,
+  // v0.6: 4라운드에 ⧗을 모두 굴려 눕히므로 게임 끝 보드가 아니라 4라운드 준비 때 센 수로 판정한다.
+  // 4라운드 전(봇 평가 등)에는 지금 꼭대기 ⧗ 수로 어림한다
+  timeLord: personal('timeLord', '시간 지배자', '4라운드 준비 때 ⧗ 주사위 4개 이상', (p) =>
+    (p.timeDice ?? topsOf(p.board).filter((t) => isTime(t.die.orientation.top)).length) >= 4,
   ),
   evenWorld: personal('evenWorld', '짝수 세계', '최종 선의 윗면이 모두 2 또는 4', (p) =>
     lineTops(p.board).every((f) => f === 2 || f === 4),
