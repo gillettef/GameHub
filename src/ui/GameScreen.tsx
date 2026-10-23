@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   findTop,
   getLegalActions,
@@ -9,6 +9,7 @@ import {
   rollTargets,
   sideFaces,
   TURNS_PER_ROUND,
+  turnOrder,
   type Action,
   type Cell,
   type Face,
@@ -21,10 +22,13 @@ import type { Seat } from '../app/session'
 import { BoardView, type FreshDie } from './BoardView'
 import { CardsSheet } from './CardsSheet'
 import { colorLabel, faceLabel, ROUND_INFO, seatColor } from './colors'
+import { Die3D } from './Die3D'
 import { DieFace, GlyphText, Hourglass } from './DieFace'
 import { diffEvents, liveScore, type FxEvent } from './fx'
 import { FxLayer } from './FxLayer'
 import { MarketView } from './MarketView'
+import { NoticeModal } from './NoticeModal'
+import { buildNotices, type Notice } from './notices'
 import { DieNet, PillarSheet } from './PillarSheet'
 import { Avatar, Button, ConfirmButton, GameCard, Panel, Screen, TopBar } from './primitives'
 
@@ -42,6 +46,8 @@ interface GameScreenProps {
   onExit: () => void
   /** 바로 전 행동이 거절된 이유 */
   error: string | null
+  /** 확인할 알림 모달이 떠 있는지 알린다 (떠 있는 동안 봇이 기다린다) */
+  onHold?: (hold: boolean) => void
 }
 
 const DIRECTION_LABEL: Record<TipDirection, string> = { forward: '앞(아래)', back: '뒤(위)', left: '왼쪽', right: '오른쪽' }
@@ -87,7 +93,7 @@ function fxSummary(events: FxEvent[], seats: Seat[]): string {
 
 const freshUi = (key: string): TurnUi => ({ key, selectedDie: null, front: null, selectedTime: null, rerollMode: false, viewing: null })
 
-export function GameScreen({ state, prev, lastAction, step, seats, localSeats, onAction, onExit, error }: GameScreenProps) {
+export function GameScreen({ state, prev, lastAction, step, seats, localSeats, onAction, onExit, error, onHold }: GameScreenProps) {
   const humanLocal = localSeats.filter((s) => seats[s]?.kind === 'human')
   const chooser = pendingChooser(state, seats, localSeats)
   /** 지금 이 기기에서 조작하는 사람 */
@@ -109,6 +115,26 @@ export function GameScreen({ state, prev, lastAction, step, seats, localSeats, o
 
   const [sheet, setSheet] = useState<{ kind: 'cards' } | { kind: 'pillar'; player: number; cell: Cell } | null>(null)
   const events = useMemo(() => diffEvents(prev, state), [prev, state])
+
+  // 확인할 알림: 마지막으로 본 상태와 비교해 쌓고, 「확인」을 누를 때마다 하나씩 넘긴다.
+  // 행동 여러 개가 한꺼번에 들어와도(온라인) 놓치지 않게 직전 행동이 아니라 마지막으로 본 상태와 비교한다
+  const [seen, setSeen] = useState(state)
+  const [notices, setNotices] = useState<Notice[]>([])
+  /** 이 기기 사람이 버리기를 두 번 눌러 스스로 만든 잔해는 다시 묻지 않는다 */
+  const selfDebris = (player: number) =>
+    !!lastAction && (lastAction.type === 'discard' || lastAction.type === 'scrap') && lastAction.player === player && humanLocal.includes(player)
+  if (seen !== state) {
+    setSeen(state)
+    setNotices(seen.config.seed === state.config.seed ? [...notices, ...buildNotices(diffEvents(seen, state), state, selfDebris)] : [])
+  }
+  const notice = notices[0]
+  const holding = notices.length > 0
+  useEffect(() => {
+    onHold?.(holding)
+  }, [onHold, holding])
+  useEffect(() => () => onHold?.(false), [onHold])
+  // 모달로 알린 사건은 빼고, 차례 배너와 스스로 만든 잔해만 짧게 띄운다
+  const fxEvents = events.filter((e) => e.kind === 'turn' || (e.kind === 'debris' && selfDebris(e.player)))
   const scores = useMemo(() => state.players.map((p) => liveScore(state, p.id)), [state])
   // 버튼을 보일지는 엔진의 합법 행동 목록으로 정한다
   const legal = useMemo(() => (actor !== null && state.phase.kind === 'round' ? getLegalActions(state) : []), [actor, state])
@@ -120,6 +146,15 @@ export function GameScreen({ state, prev, lastAction, step, seats, localSeats, o
 
   const hand = useMemo(() => (actor !== null && round !== null && round < 4 ? state.turn.hand : []), [actor, round, state.turn.hand])
   const handDie: RolledDie | undefined = hand.find((d) => d.id === ui.selectedDie)
+  const handFront = handDie ? (ui.front ?? handDie.orientation.front) : null
+  /** 손에 든 주사위를 수평으로 돌린다. +1 = 왼쪽으로 한 칸 돌아 오른면이 앞으로 */
+  function turnHand(step: number) {
+    if (!handDie) return
+    const order = turnOrder(handDie.layout, handDie.orientation)
+    const k = order.indexOf(handFront ?? handDie.orientation.front)
+    const next = order[(((k + step) % 4) + 4) % 4]
+    if (next !== undefined) patch({ front: next })
+  }
   const placeTargets = useMemo(() => (isMine && handDie ? legalPlacements(state, handDie.id) : []), [isMine, handDie, state])
 
   const pending = useMemo(() => (round === 4 && actor !== null ? (state.time?.pending[actor] ?? []) : []), [round, actor, state.time])
@@ -173,7 +208,10 @@ export function GameScreen({ state, prev, lastAction, step, seats, localSeats, o
     setSheet({ kind: 'pillar', player: shownPlayer, cell })
   }
 
-  const fx = <FxLayer key={step} events={events} state={state} seats={seats} />
+  const fx = <FxLayer key={step} events={fxEvents} seats={seats} />
+  const noticeModal = notice && (
+    <NoticeModal notice={notice} remaining={notices.length} law={state.law} seats={seats} onConfirm={() => setNotices(notices.slice(1))} />
+  )
   const errorToast = error && (
     <p
       key={`${step}-${error}`}
@@ -185,7 +223,12 @@ export function GameScreen({ state, prev, lastAction, step, seats, localSeats, o
   )
 
   if (needsPass && actor !== null) {
-    return <PassScreen name={seats[actor]?.name ?? ''} seat={actor} setup={state.phase.kind === 'setup'} round={round} onReady={() => setRevealedFor(actor)} />
+    return (
+      <>
+        <PassScreen name={seats[actor]?.name ?? ''} seat={actor} setup={state.phase.kind === 'setup'} round={round} onReady={() => setRevealedFor(actor)} />
+        {noticeModal}
+      </>
+    )
   }
 
   // 게임 준비: 개인 목표 고르기 (§5-3)
@@ -217,6 +260,7 @@ export function GameScreen({ state, prev, lastAction, step, seats, localSeats, o
           <Waiting text="다른 플레이어가 개인 목표를 고르는 중" />
         )}
         {errorToast}
+        {noticeModal}
       </Screen>
     )
   }
@@ -366,7 +410,7 @@ export function GameScreen({ state, prev, lastAction, step, seats, localSeats, o
                   className={`animate-pop rounded-2xl p-1.5 transition-transform duration-200 ${on ? '-translate-y-2 scale-110 bg-accent/20 ring-2 ring-accent' : 'active:scale-95'}`}
                 >
                   <span className={on ? 'block animate-hover' : 'block'}>
-                    <DieFace face={d.orientation.top} color={d.color} size={50} />
+                    <Die3D layout={d.layout} color={d.color} base={d.orientation} front={on ? (handFront ?? undefined) : undefined} size={36} />
                   </span>
                 </button>
               )
@@ -374,15 +418,34 @@ export function GameScreen({ state, prev, lastAction, step, seats, localSeats, o
           </div>
           {handDie && (
             <div className="mt-3 flex animate-fade flex-col gap-3 border-t border-line pt-3">
+              <div className="flex items-center justify-center gap-2">
+                <button
+                  type="button"
+                  aria-label="오른쪽으로 돌리기 (왼면이 앞으로)"
+                  onClick={() => turnHand(-1)}
+                  className="flex size-11 items-center justify-center rounded-full bg-raised font-display text-xl text-accent ring-1 ring-line ring-inset active:scale-90"
+                >
+                  ⟳
+                </button>
+                <Die3D layout={handDie.layout} color={handDie.color} base={handDie.orientation} front={handFront ?? undefined} size={64} onTurn={turnHand} />
+                <button
+                  type="button"
+                  aria-label="왼쪽으로 돌리기 (오른면이 앞으로)"
+                  onClick={() => turnHand(1)}
+                  className="flex size-11 items-center justify-center rounded-full bg-raised font-display text-xl text-accent ring-1 ring-line ring-inset active:scale-90"
+                >
+                  ⟲
+                </button>
+              </div>
               <div className="flex items-center justify-between gap-2">
                 <span className="text-xs text-muted">
-                  앞면 고르기
+                  주사위를 끌어 돌려 보세요
                   <br />
                   <span className="text-[11px]">정면 숫자선·굴리기에 쓰여요</span>
                 </span>
                 <div className="flex gap-1">
                   {sideFaces(handDie.layout, handDie.orientation.top).map((f) => {
-                    const active = (ui.front ?? handDie.orientation.front) === f
+                    const active = handFront === f
                     return (
                       <button
                         type="button"
@@ -468,6 +531,7 @@ export function GameScreen({ state, prev, lastAction, step, seats, localSeats, o
       )}
 
       {errorToast}
+      {noticeModal}
 
       {sheet?.kind === 'cards' && <CardsSheet state={state} seats={seats} personalOf={actor} onClose={() => setSheet(null)} />}
       {sheet?.kind === 'pillar' && (
