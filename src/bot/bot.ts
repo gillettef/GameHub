@@ -86,4 +86,4 @@ export function chooseBotAction(state: GameState, playerId: number): Action | nu
   return best
 }
 
-const EASY_GOALS: readonly string[] = ['cleanHands', 'symmetry', 'voidCollector', 'redWorship', 'timeLord']
+const EASY_GOALS: readonly string[] = ['cleanHands', 'symmetry', 'voidCollector', 'redWorship']

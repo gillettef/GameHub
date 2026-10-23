@@ -106,7 +106,8 @@ function proceed(state: GameState, from: number, include: boolean): GameState {
 /** 4라운드 준비 (§9 준비): ⧗ 주사위를 정하고 선부터 시작. 아무도 없으면 바로 게임 끝 */
 export function startRound4(state: GameState): GameState {
   const time: TimeState = { pending: state.players.map((p) => timeTops(p.board).map((t) => t.die.id)) }
-  return proceed({ ...state, time }, state.leadPlayer, true)
+  const players = state.players.map((p, i) => ({ ...p, timeDice: time.pending[i]?.length ?? 0 }))
+  return proceed({ ...state, players, time }, state.leadPlayer, true)
 }
 
 function setAt<T>(items: readonly T[], i: number, value: T): T[] {

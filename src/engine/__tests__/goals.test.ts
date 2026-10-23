@@ -355,9 +355,9 @@ describe('§10 최종 점수: 목표 점수와 개인 목표', () => {
     expect(scoreOf(s, 1)).toMatchObject({ personalGoal: 0, debris: -3, total: -3 })
   })
 
-  it('§10 개인 목표: 보드 판정 (시간 지배자)', () => {
-    const roof = board({ '0,1': [T()], '0,2': [T()], '0,3': [T()] })
-    const s = ended({ personal: ['timeLord', 'timeLord'], boards: [roof, board({ '0,1': [T()] })] })
+  it('§10 개인 목표: 시간 지배자는 4라운드 준비 때 센 ⧗ 주사위 수로 판정', () => {
+    const base = ended({ personal: ['timeLord', 'timeLord'] })
+    const s = { ...base, players: base.players.map((p, i) => ({ ...p, timeDice: i === 0 ? 4 : 3 })) }
     expect(scoreOf(s, 0)?.personalGoal).toBe(6)
     expect(scoreOf(s, 1)?.personalGoal).toBe(0)
   })

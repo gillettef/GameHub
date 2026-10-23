@@ -77,7 +77,7 @@ const colors = (...cs: Color[]) => board(line(...cs.map((c) => die(c, 1))))
 
 const goalCheck = (id: RoundGoalId, b: Board) => ROUND_GOALS[id].check(b)
 
-function player(b: Board, debris = 0): PlayerState {
+function player(b: Board, debris = 0, timeDice: number | null = null): PlayerState {
   return {
     id: 0,
     board: b,
@@ -85,9 +85,11 @@ function player(b: Board, debris = 0): PlayerState {
     planeScore: null,
     personalOffer: [],
     personalGoal: null,
+    timeDice,
   }
 }
-const personal = (id: PersonalGoalId, b: Board, debris = 0) => PERSONAL_GOALS[id].check(player(b, debris))
+const personal = (id: PersonalGoalId, b: Board, debris = 0, timeDice: number | null = null) =>
+  PERSONAL_GOALS[id].check(player(b, debris, timeDice))
 
 /** 높이만 중요한 기둥 (아래부터 1,2,3,... 빨강) */
 const pillarOf = (h: number, color: Color = 'red'): RolledDie[] =>
@@ -735,10 +737,17 @@ describe('§11-3 개인 목표 카드 (게임 끝 최종 상태)', () => {
     expect(personal('heightWorship', board({ '0,0': pillarOf(4), '0,1': pillarOf(5), '2,4': pillarOf(3) }))).toBe(false)
   })
 
-  it('시간 지배자: 꼭대기 ⧗ 3개 이상', () => {
+  it('시간 지배자: 4라운드 준비 때 센 ⧗ 주사위 4개 이상 (게임 끝 보드와 무관)', () => {
+    expect(personal('timeLord', board({}), 0, 4)).toBe(true)
+    expect(personal('timeLord', board({}), 0, 3)).toBe(false)
+    // 4라운드에 다 굴려 꼭대기 ⧗이 없어져도 준비 때 센 수로 판정
+    expect(personal('timeLord', board({ '0,0': [die('red', 2)] }), 0, 5)).toBe(true)
+  })
+
+  it('시간 지배자: 4라운드 전에는 지금 꼭대기 ⧗ 수로 어림한다 (봇·진행 표시용)', () => {
     const T = () => die('red', TIME)
-    expect(personal('timeLord', board({ '0,0': [T()], '0,1': [T()], '0,2': [die('red', 1), T()] }))).toBe(true)
-    expect(personal('timeLord', board({ '0,0': [T()], '0,1': [T()] }))).toBe(false)
+    expect(personal('timeLord', board({ '0,0': [T()], '0,1': [T()], '0,2': [T()], '0,3': [die('red', 1), T()] }))).toBe(true)
+    expect(personal('timeLord', board({ '0,0': [T()], '0,1': [T()], '0,2': [T()] }))).toBe(false)
   })
 
   it('짝수 세계: 최종 선의 윗면이 모두 2 또는 4', () => {
