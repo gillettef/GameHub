@@ -13,7 +13,7 @@ export type Notice =
       goals: RoundGoalId[]
       /** 1라운드: 시작 플레이어 */
       startPlayer: number | null
-      /** 4라운드: 플레이어별 굴릴 ⧗ 주사위 수 */
+      /** 4라운드: 플레이어별 넘길 ⧗ 주사위 수 */
       pending: number[] | null
     }
   | { kind: 'goal'; items: { player: number; name: string; points: number; first: boolean }[] }

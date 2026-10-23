@@ -3,7 +3,7 @@ import { isTime, topOf, type Board, type Cell, type Color, type Face, type TipDi
 import { colorLabel, DIE_COLORS, faceLabel } from './colors'
 import { DieFace } from './DieFace'
 
-/** 방금 움직인 주사위 (놓기 = 떨어짐, 굴리기 = 그 방향에서 굴러 옴) */
+/** 방금 움직인 주사위 (놓기 = 떨어짐, 넘기기 = 그 방향에서 넘어옴) */
 export interface FreshDie {
   dieId: number
   anim: 'drop' | TipDirection
@@ -17,16 +17,16 @@ export interface RollGhost {
 
 interface BoardViewProps {
   board: Board
-  /** 지금 고를 수 있는 칸 (놓기·굴리기 도착) */
+  /** 지금 고를 수 있는 칸 (놓기·넘기기 도착) */
   targets?: Cell[]
   /** 놓기 미리보기: 고른 주사위의 윗면 */
   ghost?: { face: Face; color: Color } | null
-  /** 굴리기 미리보기 */
+  /** 넘기기 미리보기 */
   rollGhosts?: RollGhost[]
   rollColor?: Color
-  /** 선택된 칸 (굴릴 ⧗ 주사위 등) */
+  /** 선택된 칸 (넘길 ⧗ 주사위 등) */
   selected?: Cell | null
-  /** 한 번 눌러 확정을 기다리는 칸 (한 번 더 누르면 놓기·굴리기) */
+  /** 한 번 눌러 확정을 기다리는 칸 (한 번 더 누르면 놓기·넘기기) */
   armed?: Cell | null
   /** ⧗ 주사위처럼 강조할 칸 */
   marked?: Cell[]
@@ -49,7 +49,7 @@ const ROLL_ANIM: Record<TipDirection, string> = {
 }
 
 /**
- * 놓기·굴리기 미리보기. 빈 칸이면 칸 가운데에 반투명으로,
+ * 놓기·넘기기 미리보기. 빈 칸이면 칸 가운데에 반투명으로,
  * 기둥 위로 올라가면 꼭대기를 가리지 않게 오른쪽 아래 모서리에 작게.
  */
 function Ghost({ face, color, size, stacked, arrow, armed = false }: { face: Face; color: Color; size: number; stacked: boolean; arrow?: string; armed?: boolean }) {
@@ -100,7 +100,7 @@ export function BoardView({ board, targets, ghost, rollGhosts, rollColor, select
               const gain = isTarget ? gains?.find((g) => g.cell.row === r && g.cell.col === c)?.delta : undefined
               const rg = rollGhosts?.find((g) => g.to.row === r && g.to.col === c)
               const label = top
-                ? `${r + 1}행 ${c + 1}열, ${pillar.length}층, 꼭대기 ${colorLabel(top.color)} 윗면 ${faceLabel(top.orientation.top)} 앞면 ${faceLabel(top.orientation.front)}${isTarget ? (isArmed ? ', 한 번 더 누르면 확정' : ', 놓을 수 있음') : ''}${isMarked ? ', 굴릴 ⧗ 주사위' : ''}`
+                ? `${r + 1}행 ${c + 1}열, ${pillar.length}층, 꼭대기 ${colorLabel(top.color)} 윗면 ${faceLabel(top.orientation.top)} 앞면 ${faceLabel(top.orientation.front)}${isTarget ? (isArmed ? ', 한 번 더 누르면 확정' : ', 놓을 수 있음') : ''}${isMarked ? ', 넘길 ⧗ 주사위' : ''}`
                 : `${r + 1}행 ${c + 1}열, 비어 있음${isTarget ? (isArmed ? ', 한 번 더 누르면 확정' : ', 놓을 수 있음') : ''}`
               const fullLabel = gain !== undefined ? `${label}, 예상 점수 ${gain >= 0 ? '+' : ''}${gain}` : label
               const lift = Math.max(0, pillar.length - 1) * slab
@@ -179,7 +179,7 @@ export function BoardView({ board, targets, ghost, rollGhosts, rollColor, select
                       {gain > 0 ? `+${gain}` : gain}
                     </span>
                   )}
-                  {/* 꼭대기 앞면: 정면 숫자선(§8)과 굴리기에 쓰이므로 보드에서 바로 보이게 */}
+                  {/* 꼭대기 앞면: 정면 숫자선(§8)과 넘기기에 쓰이므로 보드에서 바로 보이게 */}
                   {!compact && top && (
                     <span aria-hidden="true" className="pointer-events-none absolute bottom-0.5 left-0.5 flex items-center gap-px rounded-md bg-void/85 py-px pr-0.5 pl-1 ring-1 ring-line">
                       <span className="text-[9px] leading-none font-bold text-muted">앞</span>

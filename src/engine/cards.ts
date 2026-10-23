@@ -379,7 +379,7 @@ export const PERSONAL_GOALS: Record<PersonalGoalId, PersonalGoalDef> = {
   heightWorship: personal('heightWorship', '높이 숭배', '4층 이상 기둥 3개', (p) =>
     allCells().filter((c) => pillarAt(p.board, c).length >= 4).length >= 3,
   ),
-  // v0.6: 4라운드에 ⧗을 모두 굴려 눕히므로 게임 끝 보드가 아니라 4라운드 준비 때 센 수로 판정한다.
+  // v0.6: 4라운드에 ⧗을 모두 넘겨 눕히므로 게임 끝 보드가 아니라 4라운드 준비 때 센 수로 판정한다.
   // 4라운드 전(봇 평가 등)에는 지금 꼭대기 ⧗ 수로 어림한다
   timeLord: personal('timeLord', '시간 지배자', '4라운드 준비 때 ⧗ 주사위 4개 이상', (p) =>
     (p.timeDice ?? topsOf(p.board).filter((t) => isTime(t.die.orientation.top)).length) >= 4,

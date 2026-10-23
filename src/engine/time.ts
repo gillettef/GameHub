@@ -2,8 +2,8 @@
  * 4라운드 — 시간의 세계 (§9, v0.6)
  *
  * 준비: 각자 윗면이 ⧗인 꼭대기 주사위(⧗ 주사위)를 정한다.
- * 진행: 선부터 시계 방향으로, 자기 차례에 ⧗ 주사위 1개를 옆 칸으로 1칸 굴린다(필수).
- * 굴릴 수 없는 주사위를 고르면 잔해가 된다. 모두 다 굴리면 게임이 끝난다 (§10).
+ * 진행: 선부터 시계 방향으로, 자기 차례에 ⧗ 주사위 1개를 옆 칸으로 1칸 넘긴다(필수).
+ * 넘길 수 없는 주사위를 고르면 잔해가 된다. 모두 다 넘기면 게임이 끝난다 (§10).
  */
 import type { LawId } from './cards'
 import { isTime, tip, TIP_DIRECTIONS, type Orientation, type TipDirection } from './dice'
@@ -15,7 +15,7 @@ export type TimeAction =
   | { type: 'roll'; player: number; dieId: DieId; direction: TipDirection }
   | { type: 'scrap'; player: number; dieId: DieId }
 
-/** 굴린 방향의 옆 칸. forward = 앞(1행) 쪽 */
+/** 넘긴 방향의 옆 칸. forward = 앞(1행) 쪽 */
 export function stepCell({ row, col }: Cell, direction: TipDirection): Cell {
   switch (direction) {
     case 'forward':
@@ -64,7 +64,7 @@ export interface RollTarget {
 }
 
 /**
- * §9 굴리기: 이 꼭대기 주사위를 굴릴 수 있는 방향과 결과.
+ * §9 넘기기: 이 꼭대기 주사위를 넘길 수 있는 방향과 결과.
  * 옆 칸이 진공이면 그 칸의 1층, 기둥이면 쌓기 규칙에 맞을 때만 그 꼭대기. 보드 밖은 안 됨.
  */
 export function rollTargets(board: Board, from: Cell, law: LawId = 'standard'): RollTarget[] {
@@ -86,7 +86,7 @@ function timeOf(state: GameState): TimeState {
   return state.time
 }
 
-/** 선부터 시계 방향으로, from 다음(포함 여부 선택) 굴릴 주사위가 남은 사람. 없으면 null */
+/** 선부터 시계 방향으로, from 다음(포함 여부 선택) 넘길 주사위가 남은 사람. 없으면 null */
 function nextRoller(time: TimeState, from: number, include: boolean): number | null {
   const n = time.pending.length
   for (let k = include ? 0 : 1; k <= n; k++) {
@@ -125,7 +125,7 @@ export function applyTimeAction(state: GameState, action: TimeAction): GameState
   if (action.player !== state.currentPlayer) fail(`지금은 ${state.currentPlayer}번 플레이어의 차례입니다.`)
   const player = state.players[action.player] as PlayerState
   const pending = time.pending[action.player] ?? []
-  if (!pending.includes(action.dieId)) fail('굴릴 ⧗ 주사위가 아닙니다.')
+  if (!pending.includes(action.dieId)) fail('넘길 ⧗ 주사위가 아닙니다.')
   const from = findTop(player.board, action.dieId)
   if (!from) throw new Error(`⧗ 주사위가 꼭대기에 없습니다 (${action.dieId})`)
   const die = topOf(player.board.cells[from.row]?.[from.col] ?? []) as RolledDie
@@ -135,15 +135,15 @@ export function applyTimeAction(state: GameState, action: TimeAction): GameState
   switch (action.type) {
     case 'roll': {
       const target = targets.find((t) => t.direction === action.direction)
-      if (!target) fail('그 방향으로는 굴릴 수 없습니다.')
+      if (!target) fail('그 방향으로는 넘길 수 없습니다.')
       const lifted = mapCell(player.board, from, (p) => p.slice(0, -1))
       const board = mapCell(lifted, target.to, (p) => [...p, { ...die, orientation: target.orientation }])
       updated = { ...player, board }
       break
     }
     case 'scrap': {
-      // §9 네 방향 모두 굴릴 수 없는 ⧗ 주사위만 골라 잔해로 만들 수 있다
-      if (targets.length > 0) fail('굴릴 수 있는 주사위는 잔해로 만들 수 없습니다.')
+      // §9 네 방향 모두 넘길 수 없는 ⧗ 주사위만 골라 잔해로 만들 수 있다
+      if (targets.length > 0) fail('넘길 수 있는 주사위는 잔해로 만들 수 없습니다.')
       const board = mapCell(player.board, from, (p) => p.slice(0, -1))
       updated = { ...player, board, debris: [...player.debris, { id: die.id, color: die.color, layout: die.layout }] }
       break

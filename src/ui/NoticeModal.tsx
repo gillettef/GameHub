@@ -139,7 +139,7 @@ function RoundBody({
       )}
       {notice.pending && (
         <div className="flex flex-col gap-1.5">
-          <p className="text-xs font-bold text-muted">굴릴 ⧗ 주사위 · 1개씩 번갈아 굴려요</p>
+          <p className="text-xs font-bold text-muted">넘길 ⧗ 주사위 · 1개씩 번갈아 넘겨요</p>
           {notice.pending.map((n, p) => (
             <Row key={p} player={p} name={name(p)}>
               {n > 0 ? (

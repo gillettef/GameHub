@@ -39,7 +39,7 @@ interface DieFaceProps {
   /** 기호(색 구분용)를 보일지 */
   showSymbol?: boolean
   dim?: boolean
-  /** 반투명 미리보기 (놓을 칸, 굴릴 칸) */
+  /** 반투명 미리보기 (놓을 칸, 넘길 칸) */
   ghost?: boolean
   /** 정육면체의 한 면으로 쓸 때: 그림자 없이 모서리를 덜 둥글게 */
   bare?: boolean

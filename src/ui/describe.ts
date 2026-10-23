@@ -41,11 +41,11 @@ export function describeAction(action: Action, before: GameState | null, seats: 
     }
     case 'roll': {
       const d = before ? topDie(before, action.player, action.dieId) : undefined
-      return `${name}: ${dieText(d)} ${DIRECTION[action.direction]} 굴림`
+      return `${name}: ${dieText(d)} ${DIRECTION[action.direction]} 넘김`
     }
     case 'scrap': {
       const d = before ? topDie(before, action.player, action.dieId) : undefined
-      return `${name}: 굴릴 수 없는 ${dieText(d)} 잔해로`
+      return `${name}: 넘길 수 없는 ${dieText(d)} 잔해로`
     }
   }
 }
