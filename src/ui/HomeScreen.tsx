@@ -20,6 +20,35 @@ interface HomeScreenProps {
 }
 
 const DEFAULT_NAMES = ['나', '설계자 2', '설계자 3', '설계자 4']
+const SETUP_KEY = 'tesseract.setup'
+
+interface SavedSetup {
+  count: number
+  seats: Seat[]
+  law: LawId | 'random'
+}
+
+/** 마지막으로 시작한 새 게임 설정 (이름을 매번 다시 쓰지 않게) */
+function loadSetup(): SavedSetup {
+  const fallback: SavedSetup = { count: 2, seats: DEFAULT_NAMES.map((name, i) => ({ name, kind: i === 0 ? 'human' : 'bot' })), law: 'random' }
+  try {
+    const v = JSON.parse(localStorage.getItem(SETUP_KEY) ?? 'null') as Partial<SavedSetup> | null
+    if (!v || !Array.isArray(v.seats) || v.seats.length !== MAX_PLAYERS) return fallback
+    const count = typeof v.count === 'number' && v.count >= MIN_PLAYERS && v.count <= MAX_PLAYERS ? v.count : fallback.count
+    const law = v.law === 'random' || (typeof v.law === 'string' && v.law in LAWS) ? v.law : 'random'
+    return { count, seats: v.seats.map((s, i) => ({ name: String(s?.name ?? DEFAULT_NAMES[i]).slice(0, 12), kind: s?.kind === 'bot' ? 'bot' : 'human' })), law }
+  } catch {
+    return fallback
+  }
+}
+
+function saveSetup(v: SavedSetup): void {
+  try {
+    localStorage.setItem(SETUP_KEY, JSON.stringify(v))
+  } catch {
+    // 저장할 수 없으면 넘어간다
+  }
+}
 
 export function LawSelect({ value, onChange }: { value: LawId | 'random'; onChange: (v: LawId | 'random') => void }) {
   return (
@@ -48,9 +77,10 @@ export function LawSelect({ value, onChange }: { value: LawId | 'random'; onChan
 }
 
 export function HomeScreen({ canContinue, onContinue, onStart, onHistory, onOnline }: HomeScreenProps) {
-  const [count, setCount] = useState(2)
-  const [seats, setSeats] = useState<Seat[]>(DEFAULT_NAMES.map((name, i) => ({ name, kind: i === 0 ? 'human' : 'bot' })))
-  const [law, setLaw] = useState<LawId | 'random'>('random')
+  const [saved] = useState(loadSetup)
+  const [count, setCount] = useState(saved.count)
+  const [seats, setSeats] = useState<Seat[]>(saved.seats)
+  const [law, setLaw] = useState<LawId | 'random'>(saved.law)
   const [rules, setRules] = useState(false)
 
   const update = (i: number, p: Partial<Seat>) => setSeats(seats.map((s, j) => (j === i ? { ...s, ...p } : s)))
@@ -115,12 +145,13 @@ export function HomeScreen({ canContinue, onContinue, onStart, onHistory, onOnli
             variant="primary"
             size="lg"
             block
-            onClick={() =>
+            onClick={() => {
+              saveSetup({ count, seats, law })
               onStart({
                 seats: seats.slice(0, count).map((s, i) => ({ ...s, name: s.name.trim() || DEFAULT_NAMES[i] || `${i + 1}번` })),
                 law,
               })
-            }
+            }}
           >
             게임 시작
           </Button>

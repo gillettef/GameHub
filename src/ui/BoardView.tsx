@@ -30,6 +30,8 @@ interface BoardViewProps {
   armed?: Cell | null
   /** ⧗ 주사위처럼 강조할 칸 */
   marked?: Cell[]
+  /** 고를 수 있는 칸마다 그 수를 두면 늘어나는 점수 (미리보기) */
+  gains?: { cell: Cell; delta: number }[]
   fresh?: FreshDie | null
   onCell?: (cell: Cell) => void
   /** 작은 미리보기 (결과·리플레이) */
@@ -70,7 +72,7 @@ const SLAB = 3
  * 개인 차원 보드 5×3 (§4). 맨 아래 줄이 선(1행, 플레이어 쪽 '앞')이다.
  * 칸에는 꼭대기 주사위와 기둥 층(색 판)을 보여 주고, 탭하면 onCell을 부른다.
  */
-export function BoardView({ board, targets, ghost, rollGhosts, rollColor, selected, armed, marked, fresh, onCell, compact = false }: BoardViewProps) {
+export function BoardView({ board, targets, ghost, rollGhosts, rollColor, selected, armed, marked, gains, fresh, onCell, compact = false }: BoardViewProps) {
   // 화면에서는 앞(선)이 아래로 오도록 행을 뒤집어 그린다
   const rows = board.cells.map((row, r) => ({ row, r })).reverse()
   const die = compact ? 20 : 42
@@ -95,10 +97,12 @@ export function BoardView({ board, targets, ghost, rollGhosts, rollColor, select
               const isSelected = selected?.row === r && selected.col === c
               const isMarked = has(marked, cell)
               const isArmed = armed?.row === r && armed.col === c
+              const gain = isTarget ? gains?.find((g) => g.cell.row === r && g.cell.col === c)?.delta : undefined
               const rg = rollGhosts?.find((g) => g.to.row === r && g.to.col === c)
               const label = top
                 ? `${r + 1}행 ${c + 1}열, ${pillar.length}층, 꼭대기 ${colorLabel(top.color)} 윗면 ${faceLabel(top.orientation.top)} 앞면 ${faceLabel(top.orientation.front)}${isTarget ? (isArmed ? ', 한 번 더 누르면 확정' : ', 놓을 수 있음') : ''}${isMarked ? ', 굴릴 ⧗ 주사위' : ''}`
                 : `${r + 1}행 ${c + 1}열, 비어 있음${isTarget ? (isArmed ? ', 한 번 더 누르면 확정' : ', 놓을 수 있음') : ''}`
+              const fullLabel = gain !== undefined ? `${label}, 예상 점수 ${gain >= 0 ? '+' : ''}${gain}` : label
               const lift = Math.max(0, pillar.length - 1) * slab
               const anim = top && fresh?.dieId === top.id ? (fresh.anim === 'drop' ? 'animate-drop' : ROLL_ANIM[fresh.anim]) : ''
 
@@ -165,6 +169,16 @@ export function BoardView({ board, targets, ghost, rollGhosts, rollColor, select
                   {/* 놓기 미리보기: 빈 칸이면 그 자리에, 쌓기면 꼭대기 위에 겹쳐 */}
                   {isTarget && ghost && !rg && <Ghost face={ghost.face} color={ghost.color} size={die} stacked={!!top} armed={isArmed} />}
                   {rg && rollColor && <Ghost face={rg.face} color={rollColor} size={die} stacked={!!top} arrow={ARROW[rg.direction]} armed={isArmed} />}
+                  {gain !== undefined && (
+                    <span
+                      aria-hidden="true"
+                      className={`pointer-events-none absolute -top-1.5 left-1/2 z-20 -translate-x-1/2 rounded-full px-1.5 font-display text-xs leading-4 font-bold ring-1 ${
+                        gain > 0 ? 'bg-good text-void ring-good' : gain < 0 ? 'bg-[#3a1d27] text-[#ffb3b3] ring-danger/60' : 'bg-void text-muted ring-line'
+                      }`}
+                    >
+                      {gain > 0 ? `+${gain}` : gain}
+                    </span>
+                  )}
                   {/* 꼭대기 앞면: 정면 숫자선(§8)과 굴리기에 쓰이므로 보드에서 바로 보이게 */}
                   {!compact && top && (
                     <span aria-hidden="true" className="pointer-events-none absolute bottom-0.5 left-0.5 flex items-center gap-px rounded-md bg-void/85 py-px pr-0.5 pl-1 ring-1 ring-line">
@@ -186,11 +200,11 @@ export function BoardView({ board, targets, ghost, rollGhosts, rollColor, select
                 </>
               )
               return compact || !onCell ? (
-                <div className={cls} style={glow} role="img" aria-label={label} key={c}>
+                <div className={cls} style={glow} role="img" aria-label={fullLabel} key={c}>
                   {content}
                 </div>
               ) : (
-                <button type="button" className={cls} style={glow} aria-label={label} key={c} onClick={() => onCell(cell)}>
+                <button type="button" className={cls} style={glow} aria-label={fullLabel} key={c} onClick={() => onCell(cell)}>
                   {content}
                 </button>
               )

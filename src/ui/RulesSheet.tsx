@@ -1,5 +1,6 @@
 import { GlyphText, Hourglass } from './DieFace'
-import { Sheet } from './primitives'
+import { Button, Sheet } from './primitives'
+import { resetTips } from './tips'
 
 /** 규칙 요약 (docs/rule.md v0.6에서 옮김). 처음 하는 친구에게 보여 주는 용도 */
 const SECTIONS = [
@@ -27,6 +28,16 @@ const SECTIONS = [
     body: '선부터 번갈아 내 ⧗ 꼭대기 주사위 1개를 앞·뒤·왼·오른 옆 칸으로 한 칸 굴려요. 기둥 위로 갈 땐 쌓기 규칙을 따르고, 빈 칸이면 1층이 돼요. 굴릴 수 없는 주사위를 고르면 잔해가 돼요.',
     score: '굴린 결과로 바뀐 선과 탑이 최종 점수가 돼요',
   },
+]
+
+/** 처음 보는 낱말 풀이 */
+const GLOSSARY: [string, string][] = [
+  ['시장', '가운데에 굴려 둔 주사위 묶음들. 차례마다 칸 하나를 통째로 가져와요.'],
+  ['윗면 · 앞면', '윗면은 위를 보는 면(시장이 정함), 앞면은 선(보드 아래쪽)을 보는 면(놓을 때 고름).'],
+  ['정면 숫자선', '맨 앞줄 다섯 기둥 꼭대기의 앞면을 왼쪽부터 읽어 1씩 오르내리는 연속 3칸 이상 → 칸 수 × 2점.'],
+  ['⧗ (시간)', '숫자 대신 모래시계가 있는 면. 3라운드에는 어디든 올릴 수 있지만 그 위엔 못 쌓고, 4라운드에 굴려요.'],
+  ['잔해', '놓을 수 없거나 굴릴 수 없어 버린 주사위. 1개당 −1점.'],
+  ['선착 · 달성', '라운드 목표를 가장 먼저 이루면 선착 4점, 그 뒤에 이루면 달성 2점.'],
 ]
 
 export function RulesSheet({ onClose }: { onClose: () => void }) {
@@ -58,6 +69,24 @@ export function RulesSheet({ onClose }: { onClose: () => void }) {
         <br />
         동점이면 잔해가 적은 사람, 그다음 가장 높은 기둥을 가진 사람이 이겨요.
       </div>
+      <section className="rounded-2xl bg-raised/60 p-4 ring-1 ring-line ring-inset">
+        <h3 className="font-bold">낱말 풀이</h3>
+        <dl className="mt-2 flex flex-col gap-2 text-sm leading-relaxed">
+          {GLOSSARY.map(([term, text]) => (
+            <div key={term}>
+              <dt className="font-bold text-accent">
+                <GlyphText text={term} />
+              </dt>
+              <dd className="text-muted">
+                <GlyphText text={text} />
+              </dd>
+            </div>
+          ))}
+        </dl>
+      </section>
+      <Button variant="ghost" onClick={resetTips}>
+        💡 게임 중 도움말 처음부터 다시 보기
+      </Button>
     </Sheet>
   )
 }

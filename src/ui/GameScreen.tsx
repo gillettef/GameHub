@@ -1,16 +1,19 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
+  applyAction,
   findTop,
   getLegalActions,
   legalPlacements,
   LAWS,
   PERSONAL_GOAL_POINTS,
   PERSONAL_GOALS,
+  ROUND_GOALS,
   rollTargets,
   sideFaces,
   TURNS_PER_ROUND,
   turnOrder,
   type Action,
+  type Board,
   type Cell,
   type Face,
   type GameState,
@@ -21,17 +24,21 @@ import {
 import type { OnlineStatus } from '../app/online'
 import type { Seat } from '../app/session'
 import { BoardView, type FreshDie } from './BoardView'
-import { CardsSheet } from './CardsSheet'
+import { CardsSheet, type BotSpeed } from './CardsSheet'
 import { colorLabel, faceLabel, ROUND_INFO, seatColor } from './colors'
+import { describeAction } from './describe'
 import { Die3D } from './Die3D'
 import { DieFace, GlyphText, Hourglass } from './DieFace'
-import { diffEvents, liveScore, type FxEvent } from './fx'
+import { buzz, diffEvents, liveScore, scoreParts, type FxEvent } from './fx'
 import { FxLayer } from './FxLayer'
 import { MarketView } from './MarketView'
 import { NoticeModal } from './NoticeModal'
 import { buildNotices, type Notice } from './notices'
 import { DieNet, PillarSheet } from './PillarSheet'
 import { Avatar, Button, ConfirmButton, GameCard, Panel, Screen, TopBar } from './primitives'
+import { RulesSheet } from './RulesSheet'
+import { TipCard } from './TipCard'
+import { useTip, type TipId } from './tips'
 
 interface GameScreenProps {
   state: GameState
@@ -53,9 +60,13 @@ interface GameScreenProps {
   onFinished?: () => void
   /** 온라인 게임이면 서버 연결 상태와 자리별 접속 여부 */
   connection?: { status: OnlineStatus; presence: boolean[] } | null
+  /** 봇 속도 (카드 시트에서 바꾼다) */
+  botSpeed?: BotSpeed
+  onBotSpeed?: (speed: BotSpeed) => void
 }
 
-const DIRECTION_LABEL: Record<TipDirection, string> = { forward: '앞(아래)', back: '뒤(위)', left: '왼쪽', right: '오른쪽' }
+/** 굴리는 방향 (조사까지 붙여 둔다) */
+const DIRECTION_LABEL: Record<TipDirection, string> = { forward: '앞(아래)으로', back: '뒤(위)로', left: '왼쪽으로', right: '오른쪽으로' }
 const DIRECTION_ARROW: Record<TipDirection, string> = { forward: '↓', back: '↑', left: '←', right: '→' }
 
 /** 개인 목표를 아직 고르지 않은, 이 기기의 사람 자리 */
@@ -77,6 +88,10 @@ interface TurnUi {
   slot: number | null
   /** 한 번 눌러 확정을 기다리는 칸 (놓기·굴리기) */
   armedCell: Cell | null
+  /** 고를 수 없는 칸을 누른 횟수 (안내 줄을 흔들어 알린다) */
+  nudge: number
+  /** 고를 수 없어 한 번 누른 칸. 한 번 더 누르면 그 기둥을 펼쳐 본다 */
+  peek: Cell | null
 }
 
 /** 화면 읽기용 한 줄 요약 (연출 레이어는 aria-hidden) */
@@ -100,11 +115,26 @@ function fxSummary(events: FxEvent[], seats: Seat[]): string {
     .join(' ')
 }
 
-const freshUi = (key: string): TurnUi => ({ key, selectedDie: null, front: null, selectedTime: null, rerollMode: false, viewing: null, slot: null, armedCell: null })
+const freshUi = (key: string): TurnUi => ({ key, selectedDie: null, front: null, selectedTime: null, rerollMode: false, viewing: null, slot: null, armedCell: null, nudge: 0, peek: null })
 
 const sameCell = (a: Cell | null | undefined, b: Cell) => !!a && a.row === b.row && a.col === b.col
 
-export function GameScreen({ state, prev, lastAction, step, seats, localSeats, onAction, onExit, error, onHold, onFinished, connection = null }: GameScreenProps) {
+export function GameScreen({
+  state,
+  prev,
+  lastAction,
+  step,
+  seats,
+  localSeats,
+  onAction,
+  onExit,
+  error,
+  onHold,
+  onFinished,
+  connection = null,
+  botSpeed,
+  onBotSpeed,
+}: GameScreenProps) {
   const humanLocal = localSeats.filter((s) => seats[s]?.kind === 'human')
   const chooser = pendingChooser(state, seats, localSeats)
   /** 지금 이 기기에서 조작하는 사람 */
@@ -124,7 +154,7 @@ export function GameScreen({ state, prev, lastAction, step, seats, localSeats, o
   const ui = uiState.key === turnKey ? uiState : freshUi(turnKey)
   const patch = (p: Partial<TurnUi>) => setUiState({ ...ui, ...p })
 
-  const [sheet, setSheet] = useState<{ kind: 'cards' } | { kind: 'pillar'; player: number; cell: Cell } | null>(null)
+  const [sheet, setSheet] = useState<{ kind: 'cards' } | { kind: 'rules' } | { kind: 'pillar'; player: number; cell: Cell } | null>(null)
   const events = useMemo(() => diffEvents(prev, state), [prev, state])
 
   // 확인할 알림: 마지막으로 본 상태와 비교해 묶음으로 쌓고, 「확인」을 누를 때마다 한 묶음씩 넘긴다.
@@ -202,6 +232,47 @@ export function GameScreen({ state, prev, lastAction, step, seats, localSeats, o
   const targets = timeFrom && shown ? rollTargets(shown.board, timeFrom, state.law) : []
   const timeDie = timeFrom && shown ? shown.board.cells[timeFrom.row]?.[timeFrom.col]?.at(-1) : undefined
 
+  /** 고를 수 있는 칸마다 그 수를 두면 늘어나는 점수. 엔진으로 한 수 앞을 실제로 적용해 본다 (공개 점수 기준) */
+  const handDieId = isMine ? (handDie?.id ?? null) : null
+  const rollDieId = isMine && round === 4 ? selectedTime : null
+  const gains = useMemo(() => {
+    if (actor === null) return []
+    const base = liveScore(state, actor)
+    const delta = (a: Action) => {
+      try {
+        return liveScore(applyAction(state, a), actor) - base
+      } catch {
+        return null
+      }
+    }
+    const out: { cell: Cell; delta: number }[] = []
+    if (handDieId !== null) {
+      for (const cell of legalPlacements(state, handDieId)) {
+        const d = delta({ type: 'place', player: actor, dieId: handDieId, row: cell.row, col: cell.col, ...(ui.front !== null ? { front: ui.front } : {}) })
+        if (d !== null) out.push({ cell, delta: d })
+      }
+    } else if (rollDieId !== null) {
+      const board = state.players[actor]?.board
+      const from = board ? findTop(board, rollDieId) : null
+      for (const t of board && from ? rollTargets(board, from, state.law) : []) {
+        const d = delta({ type: 'roll', player: actor, dieId: rollDieId, direction: t.direction })
+        if (d !== null) out.push({ cell: t.to, delta: d })
+      }
+    }
+    return out
+  }, [state, actor, handDieId, rollDieId, ui.front])
+
+  /** 이 기기에서 개인 목표를 볼 수 있는 사람 (핫시트에서는 지금 차례인 사람만) */
+  const viewer = actor ?? (humanLocal.length === 1 ? (humanLocal[0] ?? null) : null)
+
+  // 처음 하는 사람을 위한 상황별 도움말 (라운드 안내가 먼저)
+  const roundTip: TipId | null = actor !== null && round === 2 ? 'round2' : actor !== null && round === 3 ? 'round3' : actor !== null && round === 4 ? 'round4' : null
+  const { tip, dismiss: dismissTip, turnOff: tipsOff } = useTip([
+    roundTip,
+    canTake ? 'take' : null,
+    isMine && handDie && placeTargets.length > 0 ? 'place' : null,
+  ])
+
   const fresh: FreshDie | null =
     lastAction && lastAction.player === shownPlayer
       ? lastAction.type === 'place'
@@ -246,14 +317,14 @@ export function GameScreen({ state, prev, lastAction, step, seats, localSeats, o
     if (!shown) return
     if (isMine && handDie && placeTargets.some((c) => sameCell(c, cell))) {
       if (sameCell(armedCell, cell)) place(cell)
-      else patch({ armedCell: cell })
+      else patch({ armedCell: cell, peek: null })
       return
     }
     if (isMine && round === 4) {
       const target = targets.find((t) => sameCell(t.to, cell))
       if (target && selectedTime !== null) {
         if (sameCell(armedCell, cell)) roll(target.direction)
-        else patch({ armedCell: cell })
+        else patch({ armedCell: cell, peek: null })
         return
       }
       const top = shown.board.cells[cell.row]?.[cell.col]?.at(-1)
@@ -262,6 +333,17 @@ export function GameScreen({ state, prev, lastAction, step, seats, localSeats, o
         return
       }
     }
+    const empty = (shown.board.cells[cell.row]?.[cell.col]?.length ?? 0) === 0
+    // 주사위를 고른 채 놓을 수 없는 칸을 누르면 시트로 흐름을 끊지 않고 안내 줄만 흔든다.
+    // 같은 칸을 한 번 더 누르면 그때 기둥을 펼쳐 본다
+    const choosing = isMine && (!!handDie || (round === 4 && selectedTime !== null))
+    if (choosing && !(sameCell(ui.peek, cell) && !empty)) {
+      buzz(30)
+      patch({ nudge: ui.nudge + 1, peek: cell, armedCell: null })
+      return
+    }
+    if (empty) return
+    patch({ peek: null })
     setSheet({ kind: 'pillar', player: shownPlayer, cell })
   }
 
@@ -271,7 +353,7 @@ export function GameScreen({ state, prev, lastAction, step, seats, localSeats, o
       : isMine && handDie && armedCell && placeTargets.some((c) => sameCell(c, armedCell))
         ? { text: `${armedCell.row + 1}행 ${armedCell.col + 1}열`, label: '여기에 놓기', run: () => place(armedCell) }
         : isMine && armedRoll
-          ? { text: `${DIRECTION_LABEL[armedRoll.direction]}으로`, label: '굴리기', run: () => roll(armedRoll.direction) }
+          ? { text: DIRECTION_LABEL[armedRoll.direction], label: '굴리기', run: () => roll(armedRoll.direction) }
           : null
   const cancelConfirm = () => patch(canTake && slot !== null ? { slot: null } : { armedCell: null })
 
@@ -283,16 +365,35 @@ export function GameScreen({ state, prev, lastAction, step, seats, localSeats, o
     <p
       key={`${step}-${error}`}
       role="alert"
-      className="pointer-events-none fixed inset-x-4 top-[calc(env(safe-area-inset-top)+56px)] z-50 mx-auto max-w-[440px] animate-shake rounded-2xl bg-[#3a1d27] px-4 py-3 text-center text-sm font-bold text-[#ffb3b3] shadow-[0_12px_30px_rgb(0_0_0/0.5)] ring-1 ring-danger/50"
+      className="pointer-events-none fixed inset-x-4 top-[calc(env(safe-area-inset-top)+56px)] z-50 mx-auto max-w-[440px] animate-toast rounded-2xl bg-[#3a1d27] px-4 py-3 text-center text-sm font-bold text-[#ffb3b3] shadow-[0_12px_30px_rgb(0_0_0/0.5)] ring-1 ring-danger/50"
     >
       {error}
     </p>
   )
 
+  const recentBoard = lastAction ? state.players[lastAction.player]?.board : undefined
   if (needsPass && actor !== null) {
     return (
       <>
-        <PassScreen name={seats[actor]?.name ?? ''} seat={actor} setup={state.phase.kind === 'setup'} round={round} onReady={() => setRevealedFor(actor)} />
+        <PassScreen
+          name={seats[actor]?.name ?? ''}
+          seat={actor}
+          setup={state.phase.kind === 'setup'}
+          round={round}
+          onReady={() => setRevealedFor(actor)}
+          recent={
+            // 방금 둔 사람(이 기기의 다른 사람)이 마지막 수의 결과를 보고 넘길 수 있게
+            lastAction && recentBoard && lastAction.player !== actor && humanLocal.includes(lastAction.player)
+              ? {
+                  name: seats[lastAction.player]?.name ?? '',
+                  seat: lastAction.player,
+                  board: recentBoard,
+                  score: liveScore(state, lastAction.player),
+                  fresh: lastAction.type === 'place' ? { dieId: lastAction.dieId, anim: 'drop' } : lastAction.type === 'roll' ? { dieId: lastAction.dieId, anim: lastAction.direction } : null,
+                }
+              : null
+          }
+        />
         {noticeModal}
       </>
     )
@@ -336,9 +437,15 @@ export function GameScreen({ state, prev, lastAction, step, seats, localSeats, o
   const currentSeat = seats[current]
   const turnsInRound = round !== null && round !== 4 ? TURNS_PER_ROUND[round] : null
 
+  const peekCell = isMine && (handDie || (round === 4 && selectedTime !== null)) ? ui.peek : null
+  const peekEmpty = peekCell ? (shown?.board.cells[peekCell.row]?.[peekCell.col]?.length ?? 0) === 0 : true
   const instruction =
     actor === null
       ? null
+      : peekCell
+        ? peekEmpty
+          ? '여기에는 놓을 수 없어요 · 빛나는 칸을 누르세요'
+          : '여기에는 놓을 수 없어요 · 한 번 더 누르면 기둥을 펼쳐 봐요'
       : round === 4
         ? timeDie
           ? armedRoll
@@ -370,9 +477,14 @@ export function GameScreen({ state, prev, lastAction, step, seats, localSeats, o
       {fx}
       <TopBar
         left={
-          <Button variant="ghost" size="sm" onClick={onExit} aria-label="나가기 (진행 상황은 저장됨)">
-            ✕
-          </Button>
+          <span className="flex">
+            <Button variant="ghost" size="sm" onClick={onExit} aria-label="나가기 (진행 상황은 저장됨)">
+              ✕
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => setSheet({ kind: 'rules' })} aria-label="규칙 한눈에 보기">
+              ?
+            </Button>
+          </span>
         }
         title={<RoundProgress round={round} />}
         right={
@@ -439,7 +551,7 @@ export function GameScreen({ state, prev, lastAction, step, seats, localSeats, o
       </p>
       <div className="flex min-h-11 items-center justify-between gap-2 rounded-2xl bg-surface/60 px-3 py-2 ring-1 ring-line ring-inset">
         {instruction ? (
-          <p key={instruction} className="animate-fade text-[15px] font-bold">
+          <p key={`${instruction}-${peekCell ? ui.nudge : 0}`} className={`text-[15px] font-bold ${peekCell ? 'animate-shake text-[#ffd2a8]' : 'animate-fade'}`}>
             <span className="mr-1.5 inline-block size-2 animate-pulse rounded-full bg-accent align-middle" aria-hidden="true" />
             <GlyphText text={instruction} />
           </p>
@@ -457,6 +569,30 @@ export function GameScreen({ state, prev, lastAction, step, seats, localSeats, o
           ) : null}
         </span>
       </div>
+
+      {/* 다른 사람이 방금 한 일 (봇·원격 플레이어의 수를 놓치지 않게) */}
+      {lastAction && lastAction.player !== actor && lastAction.type !== 'choosePersonalGoal' && (
+        <p key={step} className="-mt-1 animate-fade truncate px-1 text-xs text-muted" aria-hidden="true">
+          <span className="font-bold" style={{ color: seatColor(lastAction.player) }}>
+            최근
+          </span>{' '}
+          <GlyphText text={describeAction(lastAction, prev, seats)} />
+        </p>
+      )}
+
+      {/* 남이 가져와 아직 놓지 않은 주사위 */}
+      {actor === null && round !== null && round < 4 && state.turn.hand.length > 0 && (
+        <div className="-mt-1 flex items-center gap-2 px-1" role="group" aria-label={`${currentSeat?.name} 손의 주사위`}>
+          <span className="text-xs text-muted">{currentSeat?.name} 손에</span>
+          {state.turn.hand.map((d) => (
+            <DieFace key={d.id} face={d.orientation.top} color={d.color} size={26} />
+          ))}
+        </div>
+      )}
+
+      {tip && <TipCard id={tip} onDismiss={dismissTip} onOff={tipsOff} />}
+
+      <GoalStrip state={state} player={shownPlayer} viewer={viewer} onOpen={() => setSheet({ kind: 'cards' })} />
 
       {shown && (
         <div className="relative">
@@ -482,9 +618,11 @@ export function GameScreen({ state, prev, lastAction, step, seats, localSeats, o
             selected={timeFrom}
             armed={armedCell}
             marked={timeCells}
+            gains={gains}
             fresh={fresh}
             onCell={onCell}
           />
+          <ScoreBreakdown state={state} player={shownPlayer} />
         </div>
       )}
 
@@ -517,33 +655,15 @@ export function GameScreen({ state, prev, lastAction, step, seats, localSeats, o
             })}
           </div>
           {handDie && (
-            <div className="mt-3 flex animate-fade flex-col gap-3 border-t border-line pt-3">
-              <div className="flex items-center justify-center gap-2">
-                <button
-                  type="button"
-                  aria-label="오른쪽으로 돌리기 (왼면이 앞으로)"
-                  onClick={() => turnHand(-1)}
-                  className="flex size-11 items-center justify-center rounded-full bg-raised font-display text-xl text-accent ring-1 ring-line ring-inset active:scale-90"
-                >
-                  ⟳
-                </button>
-                <Die3D layout={handDie.layout} color={handDie.color} base={handDie.orientation} front={handFront ?? undefined} size={64} onTurn={turnHand} />
-                <button
-                  type="button"
-                  aria-label="왼쪽으로 돌리기 (오른면이 앞으로)"
-                  onClick={() => turnHand(1)}
-                  className="flex size-11 items-center justify-center rounded-full bg-raised font-display text-xl text-accent ring-1 ring-line ring-inset active:scale-90"
-                >
-                  ⟲
-                </button>
-              </div>
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-xs text-muted">
-                  주사위를 끌어 돌려 보세요
-                  <br />
-                  <span className="text-[11px]">정면 숫자선·굴리기에 쓰여요</span>
-                </span>
-                <div className="flex gap-1">
+            <div className="mt-3 flex animate-fade flex-col gap-2 border-t border-line pt-3">
+              {/* 앞면 고르기: 주사위를 좌우로 끌거나 옆면 버튼을 누른다 (같은 일을 하는 조작은 둘만) */}
+              <div className="flex items-center gap-2">
+                <Die3D layout={handDie.layout} color={handDie.color} base={handDie.orientation} front={handFront ?? undefined} size={48} onTurn={turnHand} />
+                <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+                  <span className="text-xs font-bold text-muted">
+                    앞면 고르기 <span className="font-normal">· 주사위를 좌우로 끌어도 돼요</span>
+                  </span>
+                  <div className="flex gap-1">
                   {sideFaces(handDie.layout, handDie.orientation.top).map((f) => {
                     const active = handFront === f
                     return (
@@ -559,8 +679,12 @@ export function GameScreen({ state, prev, lastAction, step, seats, localSeats, o
                       </button>
                     )
                   })}
+                  </div>
                 </div>
               </div>
+              <p className="text-xs leading-relaxed text-muted">
+                앞면은 <b className="text-fg">맨 앞줄</b>에서 「정면 숫자선」 점수가 되고, 4라운드에 굴릴 때 올라올 면을 정해요.
+              </p>
               {legal.some((a) => a.type === 'discard' && a.dieId === handDie.id) && (
                 <ConfirmButton key={handDie.id} confirmText="한 번 더 누르면 버려요 · −1점" onConfirm={() => onAction({ type: 'discard', player: actor as number, dieId: handDie.id })}>
                   잔해로 버리기 · −1점
@@ -590,7 +714,7 @@ export function GameScreen({ state, prev, lastAction, step, seats, localSeats, o
                     type="button"
                     key={t.direction}
                     aria-pressed={sameCell(armedCell, t.to)}
-                    aria-label={`${DIRECTION_LABEL[t.direction]}으로 굴리기, 새 윗면 ${faceLabel(t.orientation.top)}${sameCell(armedCell, t.to) ? ', 한 번 더 누르면 확정' : ''}`}
+                    aria-label={`${DIRECTION_LABEL[t.direction]} 굴리기, 새 윗면 ${faceLabel(t.orientation.top)}${sameCell(armedCell, t.to) ? ', 한 번 더 누르면 확정' : ''}`}
                     onClick={() => onCell(t.to)}
                     className={`flex min-h-12 items-center gap-1.5 rounded-xl px-3 ring-inset active:scale-95 ${sameCell(armedCell, t.to) ? 'bg-accent/20 ring-[3px] ring-fg' : 'bg-raised ring-1 ring-line'}`}
                   >
@@ -606,8 +730,8 @@ export function GameScreen({ state, prev, lastAction, step, seats, localSeats, o
         </Panel>
       )}
 
-      {/* 시장 */}
-      {round !== null && round < 4 && (
+      {/* 시장. 내가 이미 가져갔으면 자리만 차지하므로 숨긴다 (보드와 손이 한 화면에 들어오게) */}
+      {round !== null && round < 4 && !(actor !== null && state.turn.taken) && (
         <Panel
           title="시장"
           highlight={actor !== null && !state.turn.taken}
@@ -648,7 +772,18 @@ export function GameScreen({ state, prev, lastAction, step, seats, localSeats, o
       {errorToast}
       {noticeModal}
 
-      {sheet?.kind === 'cards' && <CardsSheet state={state} seats={seats} personalOf={actor} onClose={() => setSheet(null)} />}
+      {sheet?.kind === 'cards' && (
+        <CardsSheet
+          state={state}
+          seats={seats}
+          personalOf={viewer}
+          onClose={() => setSheet(null)}
+          onRules={() => setSheet({ kind: 'rules' })}
+          botSpeed={botSpeed}
+          onBotSpeed={onBotSpeed}
+        />
+      )}
+      {sheet?.kind === 'rules' && <RulesSheet onClose={() => setSheet(null)} />}
       {sheet?.kind === 'pillar' && (
         <PillarSheet
           pillar={state.players[sheet.player]?.board.cells[sheet.cell.row]?.[sheet.cell.col] ?? []}
@@ -657,6 +792,69 @@ export function GameScreen({ state, prev, lastAction, step, seats, localSeats, o
         />
       )}
     </Screen>
+  )
+}
+
+/** 보고 있는 보드의 공개 점수 항목 (개인 목표는 비공개라 뺀다) */
+function ScoreBreakdown({ state, player }: { state: GameState; player: number }) {
+  const s = scoreParts(state, player)
+  const parts: [string, number, string][] = [
+    ['선', s.line, '#9b8cff'],
+    ['평면', s.plane, '#5ad1e6'],
+    ['입체', s.tower, '#34C483'],
+    ['목표', s.goals, '#F5C842'],
+    ['잔해', s.debris, '#ff6b6b'],
+  ]
+  return (
+    <dl className="mt-2 flex justify-center gap-1" aria-label="지금 점수 항목">
+      {parts.map(([label, value, color]) => (
+        <div key={label} className="flex min-w-0 flex-1 items-baseline justify-center gap-1 rounded-lg bg-surface/60 px-1 py-1 ring-1 ring-line ring-inset">
+          <dt className="text-xs font-bold" style={{ color }}>
+            {label}
+          </dt>
+          <dd className="font-display text-sm font-bold">{value}</dd>
+        </div>
+      ))}
+    </dl>
+  )
+}
+
+/** 지금 라운드 목표(공개)와 내 개인 목표(이 기기 사람에게만)의 진행 상태. 누르면 카드 시트 */
+function GoalStrip({ state, player, viewer, onOpen }: { state: GameState; player: number; viewer: number | null; onOpen: () => void }) {
+  const round = state.phase.kind === 'round' ? state.phase.round : null
+  const board = state.players[player]?.board
+  const goals = state.roundGoals.filter((g) => g.round === round)
+  const me = viewer !== null ? state.players[viewer] : undefined
+  const personal = me?.personalGoal ? PERSONAL_GOALS[me.personalGoal] : null
+  if (!board || (goals.length === 0 && !personal)) return null
+  return (
+    <button type="button" onClick={onOpen} className="flex flex-wrap gap-1.5 text-left active:opacity-70" aria-label="목표 카드 자세히 보기">
+      {goals.map((g) => {
+        const def = ROUND_GOALS[g.id]
+        const status =
+          g.first === player ? '선착 +4' : g.achieved.includes(player) ? '달성 +2' : def.check(board) ? (def.when === 'roundDone' ? '충족 · 라운드 끝 판정' : '충족') : null
+        return (
+          <span
+            key={g.id}
+            className={`flex min-h-8 items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold ring-1 ring-inset ${status ? 'bg-goal/20 text-goal ring-goal/60' : 'bg-surface/60 text-muted ring-line'}`}
+          >
+            <span aria-hidden="true">{status ? '✓' : '◎'}</span>
+            <GlyphText text={def.name} />
+            {status && <span className="font-display">{status}</span>}
+            {!status && g.first !== null && <span className="font-normal">· 선착 끝남</span>}
+          </span>
+        )
+      })}
+      {personal && me && (
+        <span
+          className={`flex min-h-8 items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold ring-1 ring-inset ${personal.check(me) ? 'bg-personal/20 text-personal ring-personal/60' : 'bg-surface/60 text-muted ring-line'}`}
+        >
+          <span aria-hidden="true">🔒</span>
+          <GlyphText text={personal.name} />
+          <span className="font-normal">{personal.check(me) ? '· 지금 충족' : '· 아직'}</span>
+        </span>
+      )}
+    </button>
   )
 }
 
@@ -712,11 +910,36 @@ function Waiting({ text, inline = false }: { text: string; inline?: boolean }) {
 }
 
 /** 핫시트 가림막: 다음 사람에게 기기를 넘긴다 */
-function PassScreen({ name, seat, setup, round, onReady }: { name: string; seat: number; setup: boolean; round: number | null; onReady: () => void }) {
+function PassScreen({
+  name,
+  seat,
+  setup,
+  round,
+  onReady,
+  recent,
+}: {
+  name: string
+  seat: number
+  setup: boolean
+  round: number | null
+  onReady: () => void
+  /** 바로 전 사람의 마지막 수 결과 (보드는 공개 정보) */
+  recent: { name: string; seat: number; board: Board; score: number; fresh: FreshDie | null } | null
+}) {
   const color = seatColor(seat)
   return (
-    <main className="relative flex min-h-dvh flex-col items-center justify-center gap-6 overflow-hidden px-6 text-center">
+    <main className="relative flex min-h-dvh flex-col items-center justify-center gap-5 overflow-hidden px-6 py-8 text-center">
       <span aria-hidden="true" className="absolute top-1/3 left-1/2 size-[420px] -translate-x-1/2 -translate-y-1/2 rounded-full opacity-30 blur-3xl" style={{ background: color }} />
+      {recent && (
+        <section className="relative flex w-full max-w-[260px] animate-rise flex-col items-center gap-1.5 rounded-2xl bg-surface/80 p-3 ring-1 ring-line ring-inset">
+          <p className="text-xs text-muted">
+            방금 <b style={{ color: seatColor(recent.seat) }}>{recent.name}</b>의 우주 · <span className="font-display font-bold text-fg">{recent.score}점</span>
+          </p>
+          <div className="w-[200px]">
+            <BoardView board={recent.board} compact fresh={recent.fresh} />
+          </div>
+        </section>
+      )}
       <p className="relative animate-fade text-sm font-bold tracking-[0.3em] text-muted">기기를 넘겨 주세요</p>
       <div className="relative animate-drop">
         <Avatar name={name} color={color} size={112} glow />

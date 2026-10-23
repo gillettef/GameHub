@@ -18,12 +18,21 @@ export function buzz(pattern: number | number[] = 12): void {
  * 평면은 확정 전이면 현재 평면으로 어림한다.
  */
 export function liveScore(state: GameState, player: number): number {
+  const s = scoreParts(state, player)
+  return s.line + s.plane + s.tower + s.goals + s.debris
+}
+
+/** 지금까지의 점수 항목 (공개 정보만, 잔해는 음수) */
+export function scoreParts(state: GameState, player: number): { line: number; plane: number; tower: number; goals: number; debris: number } {
   const p = state.players[player]
-  if (!p) return 0
-  const line = scoreLine(p.board, state.law).total
-  const plane = state.phase.kind === 'round' && state.phase.round === 1 ? 0 : (p.planeScore ?? scorePlane(p.board, state.law).total)
-  const tower = scoreTower(p.board).total
-  return line + plane + tower + goalPoints(state, player) - p.debris.length
+  if (!p) return { line: 0, plane: 0, tower: 0, goals: 0, debris: 0 }
+  return {
+    line: scoreLine(p.board, state.law).total,
+    plane: state.phase.kind === 'round' && state.phase.round === 1 ? 0 : (p.planeScore ?? scorePlane(p.board, state.law).total),
+    tower: scoreTower(p.board).total,
+    goals: goalPoints(state, player),
+    debris: -p.debris.length,
+  }
 }
 
 export type FxEvent =
