@@ -23,10 +23,11 @@
 |---|---|
 | 언어 | TypeScript 6 (strict, `noUncheckedIndexedAccess`) |
 | 클라이언트 | React 19 + Vite 8, 모바일 우선 반응형, PWA 매니페스트 |
+| 스타일 | Tailwind CSS v4 (`@tailwindcss/vite`). 색·글꼴·애니메이션 토큰은 `src/app/global.css`의 `@theme` 한곳 |
 | 규칙 엔진 | 프레임워크 의존 없는 순수 TS (`src/engine/`). ESLint가 엔진 안의 React import, `Math.random`, `Date.now`, `window`/`document`를 에러로 막음 |
 | 테스트 | Vitest 5 (`src/**/*.test.ts(x)`) |
 | 린트 | ESLint 10 flat config + typescript-eslint |
-| 멀티플레이 | 1단계는 로컬(한 기기 돌려 쓰기 + 봇), 2단계에서 온라인 동기화 방식 결정 |
+| 멀티플레이 | 로컬(한 기기 돌려 쓰기 + 봇) + 온라인(Node `ws` 서버 `server/`, 행동 기록 동기화) |
 
 ## 아키텍처 원칙
 
@@ -54,7 +55,8 @@ public/          아이콘, 매니페스트
 - 터치 대상은 최소 44×44px. 호버에 의존하는 정보 금지 (탭·롱프레스로 대체).
 - 개인 보드(5×3 + 기둥 높이)는 한 화면에 들어와야 한다. 기둥 내부 주사위는 탭해서 펼쳐 본다.
 - 주사위 윗면·앞면·색은 색맹도 구분 가능하게 **색 + 모양/라벨**을 함께 쓴다.
-- 애니메이션은 짧게(≤300ms), `prefers-reduced-motion`을 존중한다.
+- 조작 반응 애니메이션은 짧게(≤300ms). 라운드 스플래시·차례 배너·점수 팝업 같은 연출은 들어오고 나가는 구간만 ≤300ms로 하고 터치를 막지 않는다(`pointer-events: none`). `prefers-reduced-motion`이면 모두 끈다.
+- 연출(라운드 전환, 목표 달성, 잔해 등)은 직전 상태와 비교해 `src/ui/fx.ts`의 `diffEvents`에서 찾는다. 엔진에 연출용 상태를 넣지 않는다.
 
 ## 비주얼 디자인 (Claude Design 캔버스)
 
