@@ -142,10 +142,11 @@ export function App() {
   const undoable =
     !!session && !!state && !session.room && !!lastAction && session.seats[lastAction.player]?.kind === 'human' && canUndo(derived?.prev ?? null, state, lastAction)
   const undo = useCallback(() => {
-    if (!session) return
+    // 누르는 사이 봇이 두었으면 남의 수를 지우지 않게 한 번 더 확인
+    if (!session || !undoable) return
     setError(null)
     setSession({ ...session, actions: session.actions.slice(0, -1) })
-  }, [session])
+  }, [session, undoable])
 
   // 저장: 진행 중이면 이어 하기용으로, 끝나면 기록으로
   useEffect(() => {
