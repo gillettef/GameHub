@@ -15,6 +15,8 @@ export interface RoomSnapshot {
   actions: Action[]
   /** 자리별로 들어온 사람이 있는지 (봇 자리는 true) */
   claimed: boolean[]
+  /** 자리별로 지금 접속해 있는지 (봇 자리는 true) */
+  online: boolean[]
 }
 
 export type ClientMessage =
@@ -25,5 +27,5 @@ export type ClientMessage =
 export type ServerMessage =
   | { t: 'joined'; room: string; snapshot: RoomSnapshot; you: number[] }
   | { t: 'actions'; room: string; from: number; actions: Action[] }
-  | { t: 'seats'; room: string; seats: Seat[]; claimed: boolean[] }
+  | { t: 'seats'; room: string; seats: Seat[]; claimed: boolean[]; online: boolean[] }
   | { t: 'error'; message: string }

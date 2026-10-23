@@ -5,8 +5,12 @@ import { buzz } from './fx'
 
 interface MarketViewProps {
   market: Market
-  /** 지금 가져갈 수 있으면 칸 번호를 넘긴다 */
-  onTake?: (slot: number) => void
+  /** 칸을 눌렀을 때. 내 차례면 고르기(한 번 더 누르면 가져오기), 아니면 들여다보기 */
+  onSelect?: (slot: number) => void
+  /** 지금 가져갈 수 있는지 (빛나는 테두리) */
+  takeable?: boolean
+  /** 고른 칸 */
+  selected?: number | null
   /** 흔들리는 시장: 다시 굴릴 주사위를 고르는 중 */
   rerollMode?: boolean
   onReroll?: (slot: number, dieId: number) => void
@@ -14,10 +18,10 @@ interface MarketViewProps {
 
 const DIE_SIZE: Record<number, number> = { 1: 40, 2: 36, 3: 32, 4: 30, 5: 28 }
 
-/** 시장 (§5): 칸 하나 = 주사위 묶음 하나. 칸을 통째로 탭해서 가져온다 */
-export function MarketView({ market, onTake, rerollMode = false, onReroll }: MarketViewProps) {
+/** 시장 (§5): 칸 하나 = 주사위 묶음 하나. 칸을 한 번 눌러 고르고, 한 번 더 눌러 통째로 가져온다 */
+export function MarketView({ market, onSelect, takeable = false, selected = null, rerollMode = false, onReroll }: MarketViewProps) {
   const size = DIE_SIZE[market.length] ?? 28
-  const canTake = !!onTake && !rerollMode
+  const canTake = takeable && !rerollMode
   /** 가져갈 묶음이 하나뿐이면 (바퀴의 마지막 사람) 그 칸에 표시를 단다 */
   const onlyOne = market.filter((s) => s !== null && s.length > 0).length === 1
   return (
@@ -68,20 +72,27 @@ export function MarketView({ market, onTake, rerollMode = false, onReroll }: Mar
         }
         return (
           <li key={i} className="flex">
-            {canTake && dice.length > 0 ? (
+            {onSelect && !rerollMode && dice.length > 0 ? (
               <button
                 type="button"
-                aria-label={`${label} 가져오기`}
-                className={`${base} glow-pulse bg-raised/80 ring-2 ring-accent ring-inset active:scale-95`}
+                aria-pressed={selected === i}
+                aria-label={`${label}${canTake ? (selected === i ? ', 한 번 더 누르면 가져오기' : ', 눌러서 고르기') : ', 눌러서 면 배치 보기'}`}
+                className={`${base} ${
+                  selected === i
+                    ? `z-10 scale-[1.04] bg-accent/20 ring-[3px] ring-fg ring-inset ${canTake ? 'shadow-[0_0_24px_rgb(236_233_255/0.4)]' : ''}`
+                    : canTake
+                      ? 'glow-pulse bg-raised/80 ring-2 ring-accent ring-inset'
+                      : 'bg-raised/50 ring-1 ring-line ring-inset'
+                } active:scale-95`}
                 onClick={() => {
-                  buzz(16)
-                  onTake(i)
+                  buzz(canTake ? 16 : 8)
+                  onSelect(i)
                 }}
               >
                 {inner}
-                {onlyOne && (
+                {canTake && (onlyOne || selected === i) && (
                   <span aria-hidden="true" className="absolute -top-2 left-1/2 -translate-x-1/2 rounded-full bg-accent px-2 text-[11px] leading-4 font-bold whitespace-nowrap text-void">
-                    남은 하나
+                    {selected === i ? '한 번 더' : '남은 하나'}
                   </span>
                 )}
               </button>

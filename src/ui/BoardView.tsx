@@ -26,6 +26,8 @@ interface BoardViewProps {
   rollColor?: Color
   /** 선택된 칸 (굴릴 ⧗ 주사위 등) */
   selected?: Cell | null
+  /** 한 번 눌러 확정을 기다리는 칸 (한 번 더 누르면 놓기·굴리기) */
+  armed?: Cell | null
   /** ⧗ 주사위처럼 강조할 칸 */
   marked?: Cell[]
   fresh?: FreshDie | null
@@ -48,10 +50,10 @@ const ROLL_ANIM: Record<TipDirection, string> = {
  * 놓기·굴리기 미리보기. 빈 칸이면 칸 가운데에 반투명으로,
  * 기둥 위로 올라가면 꼭대기를 가리지 않게 오른쪽 아래 모서리에 작게.
  */
-function Ghost({ face, color, size, stacked, arrow }: { face: Face; color: Color; size: number; stacked: boolean; arrow?: string }) {
+function Ghost({ face, color, size, stacked, arrow, armed = false }: { face: Face; color: Color; size: number; stacked: boolean; arrow?: string; armed?: boolean }) {
   return (
-    <span className={`pointer-events-none absolute flex animate-pop items-center justify-center ${stacked ? '-right-1 -bottom-1 z-10 rounded-[30%] bg-void p-0.5 shadow-[0_0_0_1.5px_#9b8cff]' : 'inset-0'}`}>
-      <DieFace face={face} color={color} size={stacked ? size * 0.5 : size} showSymbol={false} ghost={!stacked} />
+    <span className={`pointer-events-none absolute flex animate-pop items-center justify-center ${stacked ? `-right-1 -bottom-1 z-10 rounded-[30%] bg-void p-0.5 ${armed ? 'shadow-[0_0_0_2px_#ece9ff]' : 'shadow-[0_0_0_1.5px_#9b8cff]'}` : 'inset-0'}`}>
+      <DieFace face={face} color={color} size={stacked ? size * (armed ? 0.62 : 0.5) : size} showSymbol={false} ghost={!stacked && !armed} />
       {arrow && !stacked && (
         <span aria-hidden="true" className="absolute bottom-0 left-1 font-display text-sm font-bold text-accent">
           {arrow}
@@ -68,7 +70,7 @@ const SLAB = 3
  * 개인 차원 보드 5×3 (§4). 맨 아래 줄이 선(1행, 플레이어 쪽 '앞')이다.
  * 칸에는 꼭대기 주사위와 기둥 층(색 판)을 보여 주고, 탭하면 onCell을 부른다.
  */
-export function BoardView({ board, targets, ghost, rollGhosts, rollColor, selected, marked, fresh, onCell, compact = false }: BoardViewProps) {
+export function BoardView({ board, targets, ghost, rollGhosts, rollColor, selected, armed, marked, fresh, onCell, compact = false }: BoardViewProps) {
   // 화면에서는 앞(선)이 아래로 오도록 행을 뒤집어 그린다
   const rows = board.cells.map((row, r) => ({ row, r })).reverse()
   const die = compact ? 20 : 42
@@ -92,10 +94,11 @@ export function BoardView({ board, targets, ghost, rollGhosts, rollColor, select
               const isTarget = has(targets, cell)
               const isSelected = selected?.row === r && selected.col === c
               const isMarked = has(marked, cell)
+              const isArmed = armed?.row === r && armed.col === c
               const rg = rollGhosts?.find((g) => g.to.row === r && g.to.col === c)
               const label = top
-                ? `${r + 1}행 ${c + 1}열, ${pillar.length}층, 꼭대기 ${colorLabel(top.color)} ${faceLabel(top.orientation.top)}${isTarget ? ', 놓을 수 있음' : ''}${isMarked ? ', 굴릴 ⧗ 주사위' : ''}`
-                : `${r + 1}행 ${c + 1}열, 비어 있음${isTarget ? ', 놓을 수 있음' : ''}`
+                ? `${r + 1}행 ${c + 1}열, ${pillar.length}층, 꼭대기 ${colorLabel(top.color)} 윗면 ${faceLabel(top.orientation.top)} 앞면 ${faceLabel(top.orientation.front)}${isTarget ? (isArmed ? ', 한 번 더 누르면 확정' : ', 놓을 수 있음') : ''}${isMarked ? ', 굴릴 ⧗ 주사위' : ''}`
+                : `${r + 1}행 ${c + 1}열, 비어 있음${isTarget ? (isArmed ? ', 한 번 더 누르면 확정' : ', 놓을 수 있음') : ''}`
               const lift = Math.max(0, pillar.length - 1) * slab
               const anim = top && fresh?.dieId === top.id ? (fresh.anim === 'drop' ? 'animate-drop' : ROLL_ANIM[fresh.anim]) : ''
 
@@ -105,11 +108,11 @@ export function BoardView({ board, targets, ghost, rollGhosts, rollColor, select
                   ? { ['--glow' as string]: '#f2a65a' }
                   : undefined
 
-              const glowing = isTarget || (isMarked && !isSelected)
+              const glowing = (isTarget && !isArmed) || (isMarked && !isSelected)
               // 배경은 한 가지만 고른다 (같은 속성 유틸을 겹치면 CSS 순서로 덮인다)
               const bg = isSelected ? 'bg-personal/25' : isTarget ? 'bg-accent/15' : top ? 'bg-surface/60' : 'bg-surface/30'
               // 테두리: 움직임을 꺼도 남는 정적 표시
-              const ring = isSelected
+              const ring = isSelected || isArmed
                 ? 'ring-[3px] ring-fg'
                 : isTarget
                   ? 'ring-2 ring-accent'
@@ -125,6 +128,7 @@ export function BoardView({ board, targets, ghost, rollGhosts, rollColor, select
                 ring,
                 glowing ? 'glow-pulse' : '',
                 isSelected ? 'z-10 scale-[1.06] shadow-[0_0_24px_rgb(242_166_90/0.7)]' : '',
+                isArmed ? 'z-10 scale-[1.04] shadow-[0_0_24px_rgb(236_233_255/0.45)]' : '',
                 onCell && !compact ? 'active:scale-95' : '',
               ]
                 .filter(Boolean)
@@ -159,8 +163,15 @@ export function BoardView({ board, targets, ghost, rollGhosts, rollColor, select
                     </span>
                   )}
                   {/* 놓기 미리보기: 빈 칸이면 그 자리에, 쌓기면 꼭대기 위에 겹쳐 */}
-                  {isTarget && ghost && !rg && <Ghost face={ghost.face} color={ghost.color} size={die} stacked={!!top} />}
-                  {rg && rollColor && <Ghost face={rg.face} color={rollColor} size={die} stacked={!!top} arrow={ARROW[rg.direction]} />}
+                  {isTarget && ghost && !rg && <Ghost face={ghost.face} color={ghost.color} size={die} stacked={!!top} armed={isArmed} />}
+                  {rg && rollColor && <Ghost face={rg.face} color={rollColor} size={die} stacked={!!top} arrow={ARROW[rg.direction]} armed={isArmed} />}
+                  {/* 꼭대기 앞면: 정면 숫자선(§8)과 굴리기에 쓰이므로 보드에서 바로 보이게 */}
+                  {!compact && top && (
+                    <span aria-hidden="true" className="pointer-events-none absolute bottom-0.5 left-0.5 flex items-center gap-px rounded-md bg-void/85 py-px pr-0.5 pl-1 ring-1 ring-line">
+                      <span className="text-[9px] leading-none font-bold text-muted">앞</span>
+                      <DieFace face={top.orientation.front} color={top.color} size={14} showSymbol={false} bare />
+                    </span>
+                  )}
                   {pillar.length > 1 && (
                     <span
                       aria-hidden="true"

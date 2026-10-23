@@ -54,6 +54,14 @@ export function claimed(room: Room): boolean[] {
   return room.seats.map((s, i) => s.kind === 'bot' || room.owners[i] !== null)
 }
 
+/** 자리별 접속 여부: 봇 자리는 늘 true, 사람 자리는 맡은 기기가 지금 연결돼 있으면 true */
+export function onlineSeats(room: Room, connected: ReadonlySet<string>): boolean[] {
+  return room.seats.map((s, i) => {
+    const owner = room.owners[i]
+    return s.kind === 'bot' || (!!owner && connected.has(owner))
+  })
+}
+
 /** 방에 들어가기: 이미 맡은 자리가 있으면 그대로, 없으면 빈 사람 자리 하나를 맡는다 */
 export function joinRoom(room: Room, token: string, name: string): number[] {
   const mine = seatsOf(room, token)
@@ -103,7 +111,7 @@ export function runBots(room: Room): Room {
   return room
 }
 
-export function snapshot(room: Room): RoomSnapshot {
+export function snapshot(room: Room, connected: ReadonlySet<string>): RoomSnapshot {
   return {
     id: room.id,
     createdAt: room.createdAt,
@@ -111,5 +119,6 @@ export function snapshot(room: Room): RoomSnapshot {
     seats: room.seats,
     actions: room.actions,
     claimed: claimed(room),
+    online: onlineSeats(room, connected),
   }
 }

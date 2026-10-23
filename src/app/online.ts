@@ -17,6 +17,8 @@ export interface OnlineApi {
   /** 방에 들어오면 그 세션 (OnlineScreen이 게임 화면으로 넘어갈 때 씀) */
   joined: Session | null
   claimed: boolean[]
+  /** 자리별 접속 여부 (봇 자리는 true) */
+  presence: boolean[]
   create: (seats: Seat[], law: LawId | 'random') => void
   join: (room: string, name: string) => void
   send: (action: Action, index: number) => void
@@ -54,7 +56,12 @@ export function useOnline(session: Session | null, setSession: (s: Session) => v
   const [error, setError] = useState<string | null>(null)
   const [joined, setJoined] = useState<Session | null>(null)
   const [claimed, setClaimed] = useState<boolean[]>([])
+  const [presence, setPresence] = useState<boolean[]>([])
   const ws = useRef<WebSocket | null>(null)
+  /** 끊겼을 때 다시 연결할 타이머와 몇 번째 시도인지 */
+  const retry = useRef<{ timer: number | null; attempt: number }>({ timer: null, attempt: 0 })
+  /** 사용자가 나가기를 눌렀으면 다시 연결하지 않는다 */
+  const leaving = useRef(false)
   const queue = useRef<ClientMessage[]>([])
   const token = useRef<string>('')
   const latest = useRef<Session | null>(session)
@@ -80,6 +87,7 @@ export function useOnline(session: Session | null, setSession: (s: Session) => v
           }
           lastJoin.current = { room: msg.room, name: msg.snapshot.seats[msg.you[0] ?? 0]?.name ?? '' }
           setClaimed(msg.snapshot.claimed)
+          setPresence(msg.snapshot.online)
           setError(null)
           setJoined(s)
           setSession(s)
@@ -87,6 +95,7 @@ export function useOnline(session: Session | null, setSession: (s: Session) => v
         }
         case 'seats': {
           setClaimed(msg.claimed)
+          setPresence(msg.online)
           const s = latest.current
           if (s && s.room === msg.room) setSession({ ...s, seats: msg.seats })
           return
@@ -122,10 +131,20 @@ export function useOnline(session: Session | null, setSession: (s: Session) => v
     const socket = new WebSocket(serverUrl())
     socket.onopen = () => {
       setStatus('open')
+      setError(null)
+      retry.current.attempt = 0
       for (const m of queue.current.splice(0)) socket.send(JSON.stringify(m))
     }
-    socket.onclose = () => setStatus('closed')
-    socket.onerror = () => setError('서버에 연결할 수 없습니다.')
+    socket.onclose = () => {
+      if (ws.current !== socket) return
+      ws.current = null
+      setStatus('closed')
+      // 방에 들어가 있었으면 점점 길게 기다리며 다시 들어간다 (1, 2, 4, 8초, 최대 10초)
+      if (!leaving.current && latest.current?.room) scheduleRetry()
+    }
+    socket.onerror = () => {
+      if (!latest.current?.room) setError('서버에 연결할 수 없습니다.')
+    }
     socket.onmessage = (e) => {
       try {
         onMessage(JSON.parse(String(e.data)) as ServerMessage)
@@ -135,6 +154,8 @@ export function useOnline(session: Session | null, setSession: (s: Session) => v
     }
     ws.current = socket
     return socket
+    // scheduleRetry는 ref만 쓰므로 렌더마다 바뀌어도 괜찮다
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [onMessage])
 
   const post = useCallback(
@@ -146,6 +167,34 @@ export function useOnline(session: Session | null, setSession: (s: Session) => v
     },
     [connect],
   )
+
+  function scheduleRetry() {
+    if (retry.current.timer !== null) return
+    const delay = Math.min(10_000, 1000 * 2 ** retry.current.attempt)
+    retry.current.attempt += 1
+    retry.current.timer = window.setTimeout(() => {
+      retry.current.timer = null
+      resync()
+    }, delay)
+  }
+
+  // 화면이 다시 보이거나 네트워크가 돌아오면 기다리지 않고 바로 다시 들어간다
+  useEffect(() => {
+    const wake = () => {
+      if (document.visibilityState === 'hidden' || leaving.current || !latest.current?.room) return
+      if (ws.current && ws.current.readyState <= WebSocket.OPEN) return
+      if (retry.current.timer !== null) window.clearTimeout(retry.current.timer)
+      retry.current.timer = null
+      resync()
+    }
+    document.addEventListener('visibilitychange', wake)
+    window.addEventListener('online', wake)
+    return () => {
+      document.removeEventListener('visibilitychange', wake)
+      window.removeEventListener('online', wake)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   function resync() {
     const s = latest.current
@@ -163,15 +212,27 @@ export function useOnline(session: Session | null, setSession: (s: Session) => v
     error,
     joined,
     claimed,
-    create: (seats, law) => post({ t: 'create', seats, law }),
-    join: (room, name) => post({ t: 'join', room: room.trim().toUpperCase(), name }),
+    presence,
+    create: (seats, law) => {
+      leaving.current = false
+      post({ t: 'create', seats, law })
+    },
+    join: (room, name) => {
+      leaving.current = false
+      post({ t: 'join', room: room.trim().toUpperCase(), name })
+    },
     send: (action, index) => {
       const room = latest.current?.room
       if (room) post({ t: 'action', room, index, action })
     },
     leave: () => {
-      ws.current?.close()
+      leaving.current = true
+      if (retry.current.timer !== null) window.clearTimeout(retry.current.timer)
+      retry.current = { timer: null, attempt: 0 }
+      queue.current = []
+      const socket = ws.current
       ws.current = null
+      socket?.close()
       setJoined(null)
       setStatus('idle')
     },

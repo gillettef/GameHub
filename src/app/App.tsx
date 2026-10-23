@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { applyAction, IllegalActionError, type Action, type GameState } from '../engine'
 import { chooseBotAction } from '../bot/bot'
+import { useBack } from '../ui/back'
 import { GameScreen } from '../ui/GameScreen'
 import { HistoryScreen } from '../ui/HistoryScreen'
 import { HomeScreen, type NewGameOptions } from '../ui/HomeScreen'
@@ -80,6 +81,9 @@ export function App() {
   const state = derived?.state ?? null
 
   const online = useOnline(session, setSession)
+
+  // Android 뒤로가기: 홈이 아닌 화면에서는 한 단계 위로 (시트·모달이 열려 있으면 그쪽이 먼저 받는다)
+  useBack(() => setScreen(screen.kind === 'replay' ? { kind: 'history' } : { kind: 'home' }), screen.kind !== 'home')
 
   const dispatch = useCallback(
     (action: Action) => {
@@ -180,6 +184,7 @@ export function App() {
         error={error}
         onHold={setHold}
         onFinished={finish}
+        connection={session.room ? { status: online.status, presence: online.presence } : null}
       />
     )
   }

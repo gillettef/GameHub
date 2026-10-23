@@ -1,5 +1,6 @@
 /** 공통 UI 부품: 버튼, 바텀 시트, 카드, 상단 바, 분할 선택 */
 import { useEffect, useId, useRef, useState, type ButtonHTMLAttributes, type ReactNode } from 'react'
+import { useBack } from './back'
 import { GlyphText } from './DieFace'
 import { buzz } from './fx'
 
@@ -83,7 +84,7 @@ export function Panel({
   )
 }
 
-/** 바텀 시트. 배경을 누르거나 닫기·Esc로 닫힌다. 열리면 닫기 버튼에 포커스, 닫히면 원래 자리로 */
+/** 바텀 시트. 배경을 누르거나 닫기·Esc·뒤로가기로 닫힌다. 열리면 닫기 버튼에 포커스, 닫히면 원래 자리로 */
 export function Sheet({ title, onClose, children }: { title: ReactNode; onClose: () => void; children: ReactNode }) {
   const titleId = useId()
   const panel = useRef<HTMLDivElement>(null)
@@ -91,6 +92,7 @@ export function Sheet({ title, onClose, children }: { title: ReactNode; onClose:
   useEffect(() => {
     closeRef.current = onClose
   }, [onClose])
+  useBack(onClose)
   useEffect(() => {
     const before = document.activeElement as HTMLElement | null
     panel.current?.querySelector<HTMLElement>('[data-sheet-close]')?.focus()
