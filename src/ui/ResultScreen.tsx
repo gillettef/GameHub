@@ -52,6 +52,17 @@ function Confetti() {
 
 const MEDAL = ['🥇', '🥈', '🥉', '4']
 
+/** 점수가 같은 사람이 있으면 순위를 무엇으로 가렸는지 (§10: 잔해가 적은 순 → 가장 높은 기둥 순) */
+function tieNote(s: FinalScore, all: FinalScore[]): string | null {
+  const same = all.filter((o) => o.player !== s.player && o.total === s.total)
+  if (same.length === 0) return null
+  if (same.some((o) => o.rank === s.rank)) return `점수·잔해·가장 높은 기둥까지 같아 공동 ${s.rank}위`
+  const byDebris = same.every((o) => o.debris !== s.debris)
+  return byDebris
+    ? `동점 · 잔해 ${-s.debris}개로 순위를 가렸어요`
+    : `동점 · 잔해도 같아 가장 높은 기둥(${s.tallestPillar}층)으로 순위를 가렸어요`
+}
+
 /** 최종 점수 (§10) */
 export function ResultScreen({ state, seats, onHome, onReplay, onRematch }: ResultScreenProps) {
   const scores = finalScores(state)
@@ -113,18 +124,19 @@ export function ResultScreen({ state, seats, onHome, onReplay, onRematch }: Resu
               <dl className="mt-2 grid grid-cols-6 gap-1 text-center">
                 {PARTS.map((p) => (
                   <div key={p.key} className="rounded-lg bg-void/40 py-1">
-                    <dt className="text-[11px] font-bold" style={{ color: p.color }}>
+                    <dt className="text-xs font-bold" style={{ color: p.color }}>
                       {p.label}
                     </dt>
                     <dd className="font-display text-sm font-bold">{s[p.key]}</dd>
                   </div>
                 ))}
                 <div className="rounded-lg bg-danger/10 py-1">
-                  <dt className="text-[11px] font-bold text-danger">잔해</dt>
+                  <dt className="text-xs font-bold text-danger">잔해</dt>
                   <dd className="font-display text-sm font-bold">{s.debris}</dd>
                 </div>
               </dl>
 
+              {tieNote(s, scores) && <p className="mt-2 rounded-lg bg-white/5 px-2.5 py-1.5 text-xs text-fg/90">⚖ {tieNote(s, scores)}</p>}
               {goal && (
                 <p className="mt-2 text-xs text-muted">
                   개인 목표 <b className="text-personal">{goal.name}</b> {s.personalGoal > 0 ? '✓ 달성' : '— 미달성'}

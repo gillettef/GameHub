@@ -189,7 +189,7 @@ export function BoardView({ board, targets, ghost, rollGhosts, rollColor, select
                   {pillar.length > 1 && (
                     <span
                       aria-hidden="true"
-                      className={`absolute font-display font-bold leading-none ${compact ? 'top-0 right-0 text-[8px] text-fg' : 'top-1 right-1 rounded-full bg-void/85 px-1.5 py-0.5 text-[11px] text-fg ring-1 ring-line'}`}
+                      className={`absolute font-display font-bold leading-none ${compact ? 'top-0 right-0 text-[8px] text-fg' : 'top-1 right-1 rounded-full bg-void/85 px-1.5 py-0.5 text-xs text-fg ring-1 ring-line'}`}
                     >
                       {compact ? pillar.length : `${pillar.length}층`}
                     </span>
@@ -213,7 +213,7 @@ export function BoardView({ board, targets, ghost, rollGhosts, rollColor, select
         ))}
       </div>
       {!compact && (
-        <div className="mt-1.5 flex items-center justify-center gap-1.5 text-[11px] font-bold tracking-[0.2em] text-accent/80" aria-hidden="true">
+        <div className="mt-1.5 flex items-center justify-center gap-1.5 text-xs font-bold tracking-[0.2em] text-accent/80" aria-hidden="true">
           <span>▼</span> 앞 · 선 <span>▼</span>
         </div>
       )}

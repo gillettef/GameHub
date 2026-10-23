@@ -184,7 +184,8 @@ export function GameScreen({
     if (ended && !holding) onFinished?.()
   }, [ended, holding, onFinished])
   // 모달로 알린 사건은 빼고, 차례 배너와 모달로 묻지 않은 잔해만 짧게 띄운다
-  const fxEvents = events.filter((e) => e.kind === 'turn' || (e.kind === 'debris' && quietDebris(e.player)))
+  // 차례 배너는 사람 차례로 넘어갈 때만 (봇 차례마다 상단을 가리지 않게)
+  const fxEvents = events.filter((e) => (e.kind === 'turn' && seats[e.player]?.kind === 'human') || (e.kind === 'debris' && quietDebris(e.player)))
   const scores = useMemo(() => state.players.map((p) => liveScore(state, p.id)), [state])
   // 버튼을 보일지는 엔진의 합법 행동 목록으로 정한다
   const legal = useMemo(() => (actor !== null && state.phase.kind === 'round' ? getLegalActions(state) : []), [actor, state])
@@ -357,7 +358,7 @@ export function GameScreen({
           : null
   const cancelConfirm = () => patch(canTake && slot !== null ? { slot: null } : { armedCell: null })
 
-  const fx = <FxLayer key={step} events={fxEvents} seats={seats} />
+  const fx = <FxLayer key={`fx-${step}`} events={fxEvents} seats={seats} />
   const noticeModal = batch && (
     <NoticeModal notices={batch} remaining={batches.length} law={state.law} seats={seats} onConfirm={() => setBatches(batches.slice(1))} />
   )
@@ -494,7 +495,7 @@ export function GameScreen({
             <span className="relative">
               카드
               {state.roundGoals.length > 0 && (
-                <span className="absolute -top-1.5 -right-3 rounded-full bg-goal px-1 font-display text-[11px] leading-4 text-void">{state.roundGoals.length}</span>
+                <span className="absolute -top-1.5 -right-3 rounded-full bg-goal px-1 font-display text-xs leading-4 text-void">{state.roundGoals.length}</span>
               )}
             </span>
           </Button>
@@ -530,16 +531,17 @@ export function GameScreen({
                 <Avatar name={seats[p.id]?.name ?? '?'} color={color} size={26} glow={turn} />
                 {away && <span aria-hidden="true" className="absolute -right-0.5 -bottom-0.5 size-2.5 rounded-full bg-muted ring-2 ring-void" />}
               </span>
-              {turn && (
-                <span aria-hidden="true" className="absolute top-1 right-1.5 rounded-full px-1.5 text-[11px] leading-4 font-bold text-void" style={{ background: color }}>
-                  차례
-                </span>
-              )}
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-xs font-bold">{seats[p.id]?.name}</span>
-                <span className="flex items-baseline gap-1 font-display text-[13px] leading-none font-bold" style={{ color }}>
+                <span className="flex min-w-0 items-baseline gap-1 font-display text-[13px] leading-none font-bold" style={{ color }}>
                   {scores[p.id]}
-                  {p.debris.length > 0 && <span className="text-[11px] text-danger">잔해{p.debris.length}</span>}
+                  {p.debris.length > 0 && <span className="truncate text-xs text-danger">−{p.debris.length}</span>}
+                  {/* 4인이면 칸이 좁아 글자 대신 테두리·아바타 빛·아래 막대로만 차례를 알린다 */}
+                  {turn && state.players.length <= 3 && (
+                    <span aria-hidden="true" className="ml-auto shrink-0 rounded-full px-1.5 font-sans text-xs leading-4 text-void" style={{ background: color }}>
+                      차례
+                    </span>
+                  )}
                 </span>
               </span>
             </button>
@@ -574,7 +576,7 @@ export function GameScreen({
 
       {/* 다른 사람이 방금 한 일 (봇·원격 플레이어의 수를 놓치지 않게) */}
       {lastAction && lastAction.player !== actor && lastAction.type !== 'choosePersonalGoal' && (
-        <p key={step} className="-mt-1 animate-fade truncate px-1 text-xs text-muted" aria-hidden="true">
+        <p key={`recent-${step}`} className="-mt-1 animate-fade truncate px-1 text-xs text-muted" aria-hidden="true">
           <span className="font-bold" style={{ color: seatColor(lastAction.player) }}>
             최근
           </span>{' '}
@@ -648,7 +650,7 @@ export function GameScreen({
                     <Die3D layout={d.layout} color={d.color} base={d.orientation} front={on ? (handFront ?? undefined) : undefined} size={36} />
                   </span>
                   {stuck && (
-                    <span aria-hidden="true" className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 rounded-full bg-[#3a1d27] px-1.5 text-[10px] leading-4 font-bold whitespace-nowrap text-[#ffb3b3] ring-1 ring-danger/50">
+                    <span aria-hidden="true" className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 rounded-full bg-[#3a1d27] px-1.5 text-xs leading-4 font-bold whitespace-nowrap text-[#ffb3b3] ring-1 ring-danger/50">
                       놓을 칸 없음
                     </span>
                   )}
@@ -888,7 +890,7 @@ function RoundProgress({ round }: { round: number | null }) {
           <span
             key={r.round}
             aria-hidden="true"
-            className={`rounded-full px-2 py-0.5 text-[11px] font-bold transition-all duration-300 ${on ? 'bg-accent text-void shadow-[0_0_14px_rgb(155_140_255/0.7)]' : done ? 'text-accent/80' : 'text-muted'}`}
+            className={`rounded-full px-2 py-0.5 text-xs font-bold transition-all duration-300 ${on ? 'bg-accent text-void shadow-[0_0_14px_rgb(155_140_255/0.7)]' : done ? 'text-accent/80' : 'text-muted'}`}
           >
             {on ? `${r.round} ${r.name}` : r.name}
           </span>

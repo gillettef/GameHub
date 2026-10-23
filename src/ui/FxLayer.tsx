@@ -31,7 +31,7 @@ export function FxLayer({ events, seats }: FxLayerProps) {
   return (
     <div className="pointer-events-none fixed inset-0 z-40 overflow-hidden" aria-hidden="true">
       {turn?.kind === 'turn' && (
-        <div className="absolute inset-x-0 top-[max(12px,env(safe-area-inset-top))] flex animate-banner justify-center">
+        <div className="absolute inset-x-0 top-[calc(env(safe-area-inset-top)+58px)] flex animate-banner justify-center">
           <div
             className="flex items-center gap-2.5 rounded-full bg-surface/95 py-1.5 pr-5 pl-1.5 shadow-[0_10px_30px_rgb(0_0_0/0.5)] ring-1"
             style={{ ['--tw-ring-color' as string]: seatColor(turn.player) }}

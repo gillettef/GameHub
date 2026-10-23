@@ -1,7 +1,9 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { replay, type Session } from '../app/session'
 import { BoardView } from './BoardView'
+import { describeAction } from './describe'
 import { seatColor } from './colors'
+import { GlyphText } from './DieFace'
 import { Avatar, Button, Screen, TopBar } from './primitives'
 
 interface ReplayScreenProps {
@@ -9,34 +11,26 @@ interface ReplayScreenProps {
   onBack: () => void
 }
 
-function describe(session: Session, index: number): string {
-  const a = session.actions[index]
-  if (!a) return '게임 시작'
-  const name = session.seats[a.player]?.name ?? `${a.player + 1}번`
-  switch (a.type) {
-    case 'choosePersonalGoal':
-      return `${name}: 개인 목표 선택`
-    case 'reroll':
-      return `${name}: ${a.slot + 1}번 칸 주사위 다시 굴림`
-    case 'takeSlot':
-      return `${name}: 시장 ${a.slot + 1}번 칸 가져옴`
-    case 'place':
-      return `${name}: ${a.row + 1}행 ${a.col + 1}열에 놓음`
-    case 'discard':
-      return `${name}: 잔해로 버림`
-    case 'roll':
-      return `${name}: ⧗ 주사위 굴림 (${{ forward: '앞', back: '뒤', left: '왼쪽', right: '오른쪽' }[a.direction]})`
-    case 'scrap':
-      return `${name}: 굴릴 수 없는 ⧗ 주사위를 잔해로`
-  }
-}
+/** 자동 재생 때 한 단계마다 기다리는 시간 */
+const AUTOPLAY_MS = 800
 
 /** 리플레이 (로드맵 9단계): 행동 기록을 한 단계씩 다시 재생 */
 export function ReplayScreen({ session, onBack }: ReplayScreenProps) {
   const total = session.actions.length
   const [step, setStep] = useState(total)
+  const [autoplay, setAutoplay] = useState(false)
+  // 끝에 닿으면 저절로 멈춘 것으로 본다
+  const playing = autoplay && step < total
   const state = useMemo(() => replay(session, step), [session, step])
+  const before = useMemo(() => (step > 0 ? replay(session, step - 1) : null), [session, step])
   const last = session.actions[step - 1]
+
+  // 자동 재생: 한 단계씩 넘긴다
+  useEffect(() => {
+    if (!playing) return
+    const timer = setTimeout(() => setStep(step + 1), AUTOPLAY_MS)
+    return () => clearTimeout(timer)
+  }, [playing, step])
   return (
     <Screen>
       <TopBar
@@ -52,7 +46,7 @@ export function ReplayScreen({ session, onBack }: ReplayScreenProps) {
         }
       />
       <p key={step} className="animate-fade rounded-2xl bg-surface/70 px-4 py-3 text-center text-sm font-bold ring-1 ring-line ring-inset">
-        {describe(session, step - 1)}
+        <GlyphText text={last ? describeAction(last, before, session.seats) : '게임 시작'} />
       </p>
       <input
         className="h-11 w-full accent-[#9b8cff]"
@@ -61,13 +55,39 @@ export function ReplayScreen({ session, onBack }: ReplayScreenProps) {
         max={total}
         value={step}
         aria-label="재생 위치"
-        onChange={(e) => setStep(Number(e.target.value))}
+        onChange={(e) => {
+          setAutoplay(false)
+          setStep(Number(e.target.value))
+        }}
       />
-      <div className="grid grid-cols-2 gap-2">
-        <Button disabled={step === 0} onClick={() => setStep(step - 1)}>
+      <div className="grid grid-cols-3 gap-2">
+        <Button
+          disabled={step === 0}
+          onClick={() => {
+            setAutoplay(false)
+            setStep(step - 1)
+          }}
+        >
           ◀ 이전
         </Button>
-        <Button disabled={step === total} onClick={() => setStep(step + 1)}>
+        <Button
+          variant="primary"
+          aria-pressed={playing}
+          onClick={() => {
+            // 끝에서 누르면 처음부터 다시 재생
+            if (!playing && step >= total) setStep(0)
+            setAutoplay(!playing)
+          }}
+        >
+          {playing ? '⏸ 멈춤' : '▶ 재생'}
+        </Button>
+        <Button
+          disabled={step === total}
+          onClick={() => {
+            setAutoplay(false)
+            setStep(step + 1)
+          }}
+        >
           다음 ▶
         </Button>
       </div>
