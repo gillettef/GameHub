@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, type ReactNode } from 'react'
 import { LAWS, ROUND_GOALS, type LawId } from '../engine'
 import type { Seat } from '../app/session'
+import { useBack } from './back'
 import { ROUND_INFO, seatColor } from './colors'
 import { GlyphText, Hourglass } from './DieFace'
 import { buzz } from './fx'
@@ -19,7 +20,7 @@ interface NoticeModalProps {
 
 /**
  * 확인해야 넘어가는 알림 모달. 같은 행동으로 생긴 알림은 한 장에 모아 「확인」 한 번으로 넘긴다.
- * 배경을 눌러도 닫히지 않고 「확인」(또는 Enter·Esc)으로만 넘어간다. 열려 있는 동안 봇은 기다린다 (App).
+ * 배경을 눌러도 닫히지 않고 「확인」(또는 Enter·Esc·뒤로가기)으로만 넘어간다. 열려 있는 동안 봇은 기다린다 (App).
  */
 export function NoticeModal({ notices, remaining, law, seats, onConfirm }: NoticeModalProps) {
   const titleId = useId()
@@ -28,6 +29,8 @@ export function NoticeModal({ notices, remaining, law, seats, onConfirm }: Notic
   useEffect(() => {
     confirmRef.current = onConfirm
   }, [onConfirm])
+  // 뒤로가기도 「확인」으로 본다 (밑에 깔린 화면이 닫히지 않게)
+  useBack(onConfirm)
 
   // 묶음마다 가장 중요한 알림으로 한 번 진동하고 확인 버튼에 포커스
   useEffect(() => {

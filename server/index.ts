@@ -13,7 +13,7 @@ import { extname, join, normalize, resolve } from 'node:path'
 import { randomBytes, randomInt } from 'node:crypto'
 import { WebSocketServer, type WebSocket } from 'ws'
 import type { ClientMessage, ServerMessage } from '../src/app/protocol'
-import { createRoom, joinRoom, RoomError, seatsOf, snapshot, submitAction, claimed, type Room } from './room'
+import { createRoom, joinRoom, onlineSeats, RoomError, seatsOf, snapshot, submitAction, claimed, type Room } from './room'
 
 const PORT = Number(process.env.PORT ?? 8787)
 const DIST = resolve(import.meta.dirname, '..', 'dist')
@@ -22,7 +22,8 @@ const ROOM_TTL_MS = 6 * 60 * 60 * 1000
 
 interface Live {
   room: Room
-  sockets: Set<WebSocket>
+  /** 연결 → 그 기기의 토큰 */
+  sockets: Map<WebSocket, string>
   touchedAt: number
 }
 
@@ -41,14 +42,22 @@ function send(ws: WebSocket, msg: ServerMessage): void {
 }
 
 function broadcast(live: Live, msg: ServerMessage): void {
-  for (const ws of live.sockets) send(ws, msg)
+  for (const ws of live.sockets.keys()) send(ws, msg)
+}
+
+const connectedTokens = (live: Live) => new Set(live.sockets.values())
+
+/** 자리 이름·주인·접속 상태가 바뀌었을 때 모두에게 알린다 */
+function broadcastSeats(live: Live): void {
+  const { room } = live
+  broadcast(live, { t: 'seats', room: room.code, seats: room.seats, claimed: claimed(room), online: onlineSeats(room, connectedTokens(live)) })
 }
 
 function enter(ws: WebSocket, live: Live, token: string): void {
-  live.sockets.add(ws)
+  live.sockets.set(ws, token)
   live.touchedAt = Date.now()
-  send(ws, { t: 'joined', room: live.room.code, snapshot: snapshot(live.room), you: seatsOf(live.room, token) })
-  broadcast(live, { t: 'seats', room: live.room.code, seats: live.room.seats, claimed: claimed(live.room) })
+  send(ws, { t: 'joined', room: live.room.code, snapshot: snapshot(live.room, connectedTokens(live)), you: seatsOf(live.room, token) })
+  broadcastSeats(live)
 }
 
 function handle(ws: WebSocket, msg: ClientMessage): void {
@@ -64,7 +73,7 @@ function handle(ws: WebSocket, msg: ClientMessage): void {
         msg.law,
         msg.token,
       )
-      const live: Live = { room, sockets: new Set(), touchedAt: Date.now() }
+      const live: Live = { room, sockets: new Map(), touchedAt: Date.now() }
       rooms.set(code, live)
       enter(ws, live, msg.token)
       return
@@ -135,7 +144,7 @@ wss.on('connection', (ws) => {
     }
   })
   ws.on('close', () => {
-    for (const live of rooms.values()) live.sockets.delete(ws)
+    for (const live of rooms.values()) if (live.sockets.delete(ws)) broadcastSeats(live)
   })
 })
 

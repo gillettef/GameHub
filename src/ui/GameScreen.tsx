@@ -18,6 +18,7 @@ import {
   type RolledDie,
   type TipDirection,
 } from '../engine'
+import type { OnlineStatus } from '../app/online'
 import type { Seat } from '../app/session'
 import { BoardView, type FreshDie } from './BoardView'
 import { CardsSheet } from './CardsSheet'
@@ -50,6 +51,8 @@ interface GameScreenProps {
   onHold?: (hold: boolean) => void
   /** 게임이 끝나고 남은 알림을 모두 확인했을 때 (결과 화면으로) */
   onFinished?: () => void
+  /** 온라인 게임이면 서버 연결 상태와 자리별 접속 여부 */
+  connection?: { status: OnlineStatus; presence: boolean[] } | null
 }
 
 const DIRECTION_LABEL: Record<TipDirection, string> = { forward: '앞(아래)', back: '뒤(위)', left: '왼쪽', right: '오른쪽' }
@@ -70,6 +73,10 @@ interface TurnUi {
   selectedTime: number | null
   rerollMode: boolean
   viewing: number | null
+  /** 고른 시장 칸 (내 차례: 한 번 더 누르면 가져오기, 아니면 들여다보기) */
+  slot: number | null
+  /** 한 번 눌러 확정을 기다리는 칸 (놓기·굴리기) */
+  armedCell: Cell | null
 }
 
 /** 화면 읽기용 한 줄 요약 (연출 레이어는 aria-hidden) */
@@ -93,9 +100,11 @@ function fxSummary(events: FxEvent[], seats: Seat[]): string {
     .join(' ')
 }
 
-const freshUi = (key: string): TurnUi => ({ key, selectedDie: null, front: null, selectedTime: null, rerollMode: false, viewing: null })
+const freshUi = (key: string): TurnUi => ({ key, selectedDie: null, front: null, selectedTime: null, rerollMode: false, viewing: null, slot: null, armedCell: null })
 
-export function GameScreen({ state, prev, lastAction, step, seats, localSeats, onAction, onExit, error, onHold, onFinished }: GameScreenProps) {
+const sameCell = (a: Cell | null | undefined, b: Cell) => !!a && a.row === b.row && a.col === b.col
+
+export function GameScreen({ state, prev, lastAction, step, seats, localSeats, onAction, onExit, error, onHold, onFinished, connection = null }: GameScreenProps) {
   const humanLocal = localSeats.filter((s) => seats[s]?.kind === 'human')
   const chooser = pendingChooser(state, seats, localSeats)
   /** 지금 이 기기에서 조작하는 사람 */
@@ -156,7 +165,9 @@ export function GameScreen({ state, prev, lastAction, step, seats, localSeats, o
   const isMine = actor !== null && shownPlayer === actor
 
   const hand = useMemo(() => (actor !== null && round !== null && round < 4 ? state.turn.hand : []), [actor, round, state.turn.hand])
-  const handDie: RolledDie | undefined = hand.find((d) => d.id === ui.selectedDie)
+  // 손에 하나만 남았으면 미리 골라 둔다 (선택지가 하나뿐인 탭 줄이기)
+  const selectedDie = ui.selectedDie !== null && hand.some((d) => d.id === ui.selectedDie) ? ui.selectedDie : hand.length === 1 ? (hand[0]?.id ?? null) : null
+  const handDie: RolledDie | undefined = hand.find((d) => d.id === selectedDie)
   const handFront = handDie ? (ui.front ?? handDie.orientation.front) : null
   /** 손에 든 주사위를 수평으로 돌린다. +1 = 왼쪽으로 한 칸 돌아 오른면이 앞으로 */
   function turnHand(step: number) {
@@ -170,6 +181,12 @@ export function GameScreen({ state, prev, lastAction, step, seats, localSeats, o
   /** 손에 든 주사위 중 놓을 칸이 하나도 없는 것 (고르기 전에 미리 알린다) */
   const stuckDice = useMemo(() => new Set(hand.filter((d) => legalPlacements(state, d.id).length === 0).map((d) => d.id)), [hand, state])
   const openSlots = state.market.filter((s) => s !== null && s.length > 0).length
+  const canTake = actor !== null && round !== null && round < 4 && !state.turn.taken
+  // 남은 묶음이 하나뿐이면 미리 골라 둔다. 고른 칸이 그새 비었으면 고르지 않은 것으로 본다
+  const onlySlot = canTake && openSlots === 1 ? state.market.findIndex((s) => s !== null && s.length > 0) : null
+  const slot = ui.slot !== null && (state.market[ui.slot]?.length ?? 0) > 0 ? ui.slot : onlySlot
+  const slotDice = slot !== null ? (state.market[slot] ?? []) : []
+  const armedCell = ui.armedCell
 
   const pending = useMemo(() => (round === 4 && actor !== null ? (state.time?.pending[actor] ?? []) : []), [round, actor, state.time])
   const timeCells = useMemo(() => {
@@ -194,35 +211,69 @@ export function GameScreen({ state, prev, lastAction, step, seats, localSeats, o
           : null
       : null
 
+  function place(cell: Cell) {
+    if (!handDie || actor === null) return
+    onAction({
+      type: 'place',
+      player: actor,
+      dieId: handDie.id,
+      row: cell.row,
+      col: cell.col,
+      ...(ui.front !== null ? { front: ui.front } : {}),
+    })
+    patch({ selectedDie: null, front: null, armedCell: null })
+  }
+
+  const armedRoll = round === 4 && armedCell ? targets.find((t) => sameCell(armedCell, t.to)) : undefined
+  function roll(direction: TipDirection) {
+    if (selectedTime === null || actor === null) return
+    onAction({ type: 'roll', player: actor, dieId: selectedTime, direction })
+    patch({ selectedTime: null, armedCell: null })
+  }
+
+  /** 시장 칸: 내 차례면 한 번 눌러 고르고 한 번 더 눌러 가져온다. 아니면 들여다보기만 */
+  function onSlot(i: number) {
+    if (canTake && slot === i && actor !== null) {
+      onAction({ type: 'takeSlot', player: actor, slot: i })
+      patch({ slot: null })
+      return
+    }
+    patch({ slot: !canTake && slot === i ? null : i })
+  }
+
+  /** 보드 칸: 놓기·굴리기는 한 번 눌러 미리 보고 한 번 더 눌러 확정 (잘못 누른 손가락 막기) */
   function onCell(cell: Cell) {
     if (!shown) return
-    if (isMine && handDie && placeTargets.some((c) => c.row === cell.row && c.col === cell.col)) {
-      onAction({
-        type: 'place',
-        player: actor as number,
-        dieId: handDie.id,
-        row: cell.row,
-        col: cell.col,
-        ...(ui.front !== null ? { front: ui.front } : {}),
-      })
-      patch({ selectedDie: null, front: null })
+    if (isMine && handDie && placeTargets.some((c) => sameCell(c, cell))) {
+      if (sameCell(armedCell, cell)) place(cell)
+      else patch({ armedCell: cell })
       return
     }
     if (isMine && round === 4) {
-      const target = targets.find((t) => t.to.row === cell.row && t.to.col === cell.col)
+      const target = targets.find((t) => sameCell(t.to, cell))
       if (target && selectedTime !== null) {
-        onAction({ type: 'roll', player: actor as number, dieId: selectedTime, direction: target.direction })
-        patch({ selectedTime: null })
+        if (sameCell(armedCell, cell)) roll(target.direction)
+        else patch({ armedCell: cell })
         return
       }
       const top = shown.board.cells[cell.row]?.[cell.col]?.at(-1)
       if (top && pending.includes(top.id)) {
-        patch({ selectedTime: top.id === selectedTime && pending.length > 1 ? null : top.id })
+        patch({ selectedTime: top.id === selectedTime && pending.length > 1 ? null : top.id, armedCell: null })
         return
       }
     }
     setSheet({ kind: 'pillar', player: shownPlayer, cell })
   }
+
+  const confirm: { text: string; label: string; run: () => void } | null =
+    canTake && slot !== null
+      ? { text: `${slot + 1}번 칸 · 주사위 ${slotDice.length}개`, label: '가져오기', run: () => onSlot(slot) }
+      : isMine && handDie && armedCell && placeTargets.some((c) => sameCell(c, armedCell))
+        ? { text: `${armedCell.row + 1}행 ${armedCell.col + 1}열`, label: '여기에 놓기', run: () => place(armedCell) }
+        : isMine && armedRoll
+          ? { text: `${DIRECTION_LABEL[armedRoll.direction]}으로`, label: '굴리기', run: () => roll(armedRoll.direction) }
+          : null
+  const cancelConfirm = () => patch(canTake && slot !== null ? { slot: null } : { armedCell: null })
 
   const fx = <FxLayer key={step} events={fxEvents} seats={seats} />
   const noticeModal = batch && (
@@ -232,7 +283,7 @@ export function GameScreen({ state, prev, lastAction, step, seats, localSeats, o
     <p
       key={`${step}-${error}`}
       role="alert"
-      className="pointer-events-none fixed inset-x-4 bottom-[max(20px,env(safe-area-inset-bottom))] z-50 mx-auto max-w-[440px] animate-shake rounded-2xl bg-[#3a1d27] px-4 py-3 text-center text-sm font-bold text-[#ffb3b3] shadow-[0_12px_30px_rgb(0_0_0/0.5)] ring-1 ring-danger/50"
+      className="pointer-events-none fixed inset-x-4 top-[calc(env(safe-area-inset-top)+56px)] z-50 mx-auto max-w-[440px] animate-shake rounded-2xl bg-[#3a1d27] px-4 py-3 text-center text-sm font-bold text-[#ffb3b3] shadow-[0_12px_30px_rgb(0_0_0/0.5)] ring-1 ring-danger/50"
     >
       {error}
     </p>
@@ -290,26 +341,32 @@ export function GameScreen({ state, prev, lastAction, step, seats, localSeats, o
       ? null
       : round === 4
         ? timeDie
-          ? targets.length > 1
+          ? armedRoll
+            ? '한 번 더 누르면 굴려요'
+            : targets.length > 1
             ? '빛나는 칸을 눌러 굴리세요'
             : targets.length === 1
               ? '이 주사위는 한 방향으로만 굴릴 수 있어요 · 빛나는 칸을 누르세요'
               : '어느 방향으로도 굴릴 수 없어요 · 잔해로 만드세요'
           : '주황 점이 찍힌 ⧗ 주사위를 고르세요'
         : !state.turn.taken
-          ? openSlots === 1
-            ? '남은 묶음이 하나뿐이에요 · 눌러서 가져오세요'
-            : '시장에서 묶음 하나를 가져오세요'
+          ? slot !== null
+            ? openSlots === 1
+              ? '남은 묶음이 하나뿐이에요 · 한 번 더 눌러 가져오세요'
+              : '한 번 더 누르면 가져와요'
+            : '시장에서 묶음 하나를 골라 보세요'
           : handDie
             ? placeTargets.length > 0
-              ? '빛나는 칸에 놓으세요'
+              ? armedCell
+                ? '한 번 더 누르면 놓여요'
+                : '빛나는 칸에 놓으세요'
               : '놓을 칸이 없어요 · 아래에서 잔해로 버리세요'
             : hand.length > 0 && stuckDice.size === hand.length
               ? '놓을 칸이 없어요 · 주사위를 골라 잔해로 버리세요'
               : '놓을 주사위를 고르세요'
 
   return (
-    <Screen className="gap-3">
+    <Screen className={`gap-3 ${confirm ? 'pb-32' : ''}`}>
       {fx}
       <TopBar
         left={
@@ -330,24 +387,35 @@ export function GameScreen({ state, prev, lastAction, step, seats, localSeats, o
         }
       />
 
+      {connection && connection.status !== 'open' && (
+        <p role="status" className="flex items-center justify-center gap-2 rounded-2xl bg-[#3a2a1d] px-4 py-2.5 text-sm font-bold text-[#ffd2a8] ring-1 ring-personal/50">
+          <span className="size-4 animate-spin rounded-full border-2 border-personal border-t-transparent" aria-hidden="true" />
+          연결이 끊겼어요 · 다시 연결하는 중…
+        </p>
+      )}
+
       {/* 플레이어: 탭하면 그 사람 보드를 본다 */}
       <nav className="grid gap-1.5" style={{ gridTemplateColumns: `repeat(${state.players.length}, minmax(0, 1fr))` }} aria-label="플레이어 보드">
         {state.players.map((p) => {
           const active = p.id === shownPlayer
           const turn = p.id === current
           const color = seatColor(p.id)
+          const away = !!connection && connection.presence[p.id] === false
           return (
             <button
               type="button"
               key={p.id}
               aria-pressed={active}
-              aria-label={`${seats[p.id]?.name} 보드 보기${turn ? ', 지금 차례' : ''}`}
+              aria-label={`${seats[p.id]?.name} 보드 보기${turn ? ', 지금 차례' : ''}${away ? ', 연결 끊김' : ''}`}
               onClick={() => patch({ viewing: p.id })}
               className={`relative flex min-h-12 items-center gap-1.5 overflow-hidden rounded-2xl px-2 py-1.5 text-left transition-all duration-200 active:scale-95 ${active ? 'bg-raised ring-2' : 'bg-surface/70 ring-1 ring-line'} ring-inset`}
               style={active ? { ['--tw-ring-color' as string]: color } : undefined}
             >
               {turn && <span aria-hidden="true" className="absolute inset-x-0 bottom-0 h-0.5 animate-pulse" style={{ background: color }} />}
-              <Avatar name={seats[p.id]?.name ?? '?'} color={color} size={26} glow={turn} />
+              <span className="relative shrink-0">
+                <Avatar name={seats[p.id]?.name ?? '?'} color={color} size={26} glow={turn} />
+                {away && <span aria-hidden="true" className="absolute -right-0.5 -bottom-0.5 size-2.5 rounded-full bg-muted ring-2 ring-void" />}
+              </span>
               {turn && (
                 <span aria-hidden="true" className="absolute top-1 right-1.5 rounded-full px-1.5 text-[11px] leading-4 font-bold text-void" style={{ background: color }}>
                   차례
@@ -376,7 +444,10 @@ export function GameScreen({ state, prev, lastAction, step, seats, localSeats, o
             <GlyphText text={instruction} />
           </p>
         ) : (
-          <Waiting inline text={`${currentSeat?.name} 차례${currentSeat?.kind === 'bot' ? ' · 봇이 생각 중' : ''}`} />
+          <Waiting
+            inline
+            text={`${currentSeat?.name} 차례${currentSeat?.kind === 'bot' ? ' · 봇이 생각 중' : connection?.presence[current] === false ? ' · 연결이 끊겨 기다리는 중' : ''}`}
+          />
         )}
         <span className="shrink-0 font-display text-xs font-bold text-muted">
           {turnsInRound !== null ? `바퀴 ${Math.min(state.turn.circuit + 1, turnsInRound)}/${turnsInRound}` : round === 4 && actor !== null ? (
@@ -409,6 +480,7 @@ export function GameScreen({ state, prev, lastAction, step, seats, localSeats, o
             rollGhosts={targets.map((t) => ({ to: t.to, face: t.orientation.top, direction: t.direction }))}
             rollColor={timeDie?.color}
             selected={timeFrom}
+            armed={armedCell}
             marked={timeCells}
             fresh={fresh}
             onCell={onCell}
@@ -421,7 +493,7 @@ export function GameScreen({ state, prev, lastAction, step, seats, localSeats, o
         <Panel title="가져온 주사위" highlight className="animate-rise" action={<span className="text-xs text-muted">{hand.length}개 남음</span>}>
           <div className="flex justify-center gap-3">
             {hand.map((d) => {
-              const on = d.id === ui.selectedDie
+              const on = d.id === selectedDie
               const stuck = stuckDice.has(d.id)
               return (
                 <button
@@ -429,7 +501,7 @@ export function GameScreen({ state, prev, lastAction, step, seats, localSeats, o
                   key={d.id}
                   aria-pressed={on}
                   aria-label={`손에 든 주사위 ${colorLabel(d.color)} ${faceLabel(d.orientation.top)}${stuck ? ', 놓을 칸 없음' : ''}${on ? ', 선택됨' : ''}`}
-                  onClick={() => patch({ selectedDie: on ? null : d.id, front: null })}
+                  onClick={() => patch({ selectedDie: on && hand.length > 1 ? null : d.id, front: null, armedCell: null })}
                   className={`relative animate-pop rounded-2xl p-1.5 transition-transform duration-200 ${on ? '-translate-y-2 scale-110 bg-accent/20 ring-2 ring-accent' : 'active:scale-95'}`}
                 >
                   <span className={`block ${on ? 'animate-hover' : ''} ${stuck && !on ? 'opacity-45 grayscale-[0.6]' : ''}`}>
@@ -517,9 +589,10 @@ export function GameScreen({ state, prev, lastAction, step, seats, localSeats, o
                   <button
                     type="button"
                     key={t.direction}
-                    aria-label={`${DIRECTION_LABEL[t.direction]}으로 굴리기, 새 윗면 ${faceLabel(t.orientation.top)}`}
-                    onClick={() => onAction({ type: 'roll', player: actor as number, dieId: timeDie.id, direction: t.direction })}
-                    className="flex min-h-12 items-center gap-1.5 rounded-xl bg-raised px-3 ring-1 ring-line ring-inset active:scale-95"
+                    aria-pressed={sameCell(armedCell, t.to)}
+                    aria-label={`${DIRECTION_LABEL[t.direction]}으로 굴리기, 새 윗면 ${faceLabel(t.orientation.top)}${sameCell(armedCell, t.to) ? ', 한 번 더 누르면 확정' : ''}`}
+                    onClick={() => onCell(t.to)}
+                    className={`flex min-h-12 items-center gap-1.5 rounded-xl px-3 ring-inset active:scale-95 ${sameCell(armedCell, t.to) ? 'bg-accent/20 ring-[3px] ring-fg' : 'bg-raised ring-1 ring-line'}`}
                   >
                     <span aria-hidden="true" className="font-display text-xl font-bold text-accent">
                       {DIRECTION_ARROW[t.direction]}
@@ -548,16 +621,30 @@ export function GameScreen({ state, prev, lastAction, step, seats, localSeats, o
         >
           <MarketView
             market={state.market}
-            onTake={actor !== null && !state.turn.taken ? (slot) => onAction({ type: 'takeSlot', player: actor, slot }) : undefined}
+            onSelect={onSlot}
+            takeable={canTake}
+            selected={slot}
             rerollMode={ui.rerollMode}
             onReroll={(slot, dieId) => {
               onAction({ type: 'reroll', player: actor as number, slot, dieId })
               patch({ rerollMode: false })
             }}
           />
+          {/* 고른 칸의 주사위 면 배치 (주사위마다 다름, v0.6) */}
+          {slot !== null && slotDice.length > 0 && !ui.rerollMode && (
+            <div className="mt-3 flex animate-fade flex-col gap-2 border-t border-line pt-3">
+              <p className="text-xs font-bold text-muted">{slot + 1}번 칸 주사위 · 지금 방향의 전개도</p>
+              <div className="flex flex-wrap justify-center gap-4">
+                {slotDice.map((d) => (
+                  <DieNet key={d.id} die={d} size={20} />
+                ))}
+              </div>
+            </div>
+          )}
         </Panel>
       )}
 
+      {confirm && <ConfirmBar text={confirm.text} label={confirm.label} onConfirm={confirm.run} onCancel={cancelConfirm} />}
       {errorToast}
       {noticeModal}
 
@@ -570,6 +657,23 @@ export function GameScreen({ state, prev, lastAction, step, seats, localSeats, o
         />
       )}
     </Screen>
+  )
+}
+
+/** 한 번 눌러 고른 행동을 확정하는 아래 바. 고른 곳을 한 번 더 눌러도 확정된다 */
+function ConfirmBar({ text, label, onConfirm, onCancel }: { text: string; label: string; onConfirm: () => void; onCancel: () => void }) {
+  return (
+    <div className="fixed inset-x-0 bottom-0 z-30 animate-rise border-t border-line bg-void/95 backdrop-blur">
+      <div className="mx-auto flex max-w-[480px] items-center gap-2 px-4 pt-3 pb-[max(12px,env(safe-area-inset-bottom))]">
+        <Button onClick={onCancel} className="shrink-0 whitespace-nowrap">
+          취소
+        </Button>
+        <Button variant="primary" block onClick={onConfirm} aria-label={`${text}, ${label}`}>
+          <span className="truncate font-normal opacity-80">{text}</span>
+          <span>· {label}</span>
+        </Button>
+      </div>
+    </div>
   )
 }
 
