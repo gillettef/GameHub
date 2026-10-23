@@ -16,7 +16,8 @@ import type { ClientMessage, ServerMessage } from '../src/app/protocol'
 import { createRoom, joinRoom, onlineSeats, RoomError, seatsOf, snapshot, submitAction, claimed, type Room } from './room'
 
 const PORT = Number(process.env.PORT ?? 8787)
-const DIST = resolve(import.meta.dirname, '..', 'dist')
+/** 배포 번들(server-dist/server.cjs)은 DIST_DIR로 받는다 (scripts/aws/serve.mjs) */
+const DIST = resolve(process.env.DIST_DIR ?? join(import.meta.dirname, '..', 'dist'))
 /** 마지막 활동 뒤 이 시간이 지나면 방을 지운다 */
 const ROOM_TTL_MS = 6 * 60 * 60 * 1000
 
