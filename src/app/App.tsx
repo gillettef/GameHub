@@ -10,7 +10,7 @@ import { OnlineScreen } from '../ui/OnlineScreen'
 import { ReplayScreen } from '../ui/ReplayScreen'
 import { ResultScreen } from '../ui/ResultScreen'
 import { useOnline } from './online'
-import { archive, loadCurrent, newSession, replay, saveCurrent, type Session } from './session'
+import { archive, canUndo, loadCurrent, newSession, replay, saveCurrent, type Session } from './session'
 
 type Screen =
   | { kind: 'home' }
@@ -137,6 +137,16 @@ export function App() {
     [session, state, online],
   )
 
+  // 되돌리기: 로컬 게임에서 이 기기 사람이 자기 차례 안에 한, 굴림 결과가 끼지 않은 행동만 (canUndo)
+  const lastAction = session?.actions.at(-1)
+  const undoable =
+    !!session && !!state && !session.room && !!lastAction && session.seats[lastAction.player]?.kind === 'human' && canUndo(derived?.prev ?? null, state, lastAction)
+  const undo = useCallback(() => {
+    if (!session) return
+    setError(null)
+    setSession({ ...session, actions: session.actions.slice(0, -1) })
+  }, [session])
+
   // 저장: 진행 중이면 이어 하기용으로, 끝나면 기록으로
   useEffect(() => {
     if (!session || !state) return
@@ -224,6 +234,7 @@ export function App() {
         connection={session.room ? { status: online.status, presence: online.presence } : null}
         botSpeed={botSpeed}
         onBotSpeed={changeBotSpeed}
+        onUndo={undoable ? undo : undefined}
       />
     )
   }

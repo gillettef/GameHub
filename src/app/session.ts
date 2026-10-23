@@ -88,3 +88,24 @@ export function archive(session: Session): void {
 export function clearHistory(): void {
   write(HISTORY_KEY, [])
 }
+
+/** 되돌릴 수 있는 행동 종류: 결과가 미리 다 보이는 것만 (4라운드 굴리기·잔해, 다시 굴리기는 제외) */
+const UNDOABLE: ReadonlySet<Action['type']> = new Set(['takeSlot', 'place', 'discard'])
+
+/**
+ * 마지막 행동을 되돌릴 수 있는지 (앱 편의 기능, 로컬 게임만).
+ * - 주사위를 굴려 나온 결과(시장 채우기, 다시 굴리기)가 끼면 안 된다: 행동 전후로 난수 상태가 같아야 한다
+ * - 자기 차례 안에서만: 행동 뒤에도 같은 사람의 같은 턴이어야 한다 (남이 본 수는 되돌리지 않는다)
+ * @param before 마지막 행동 직전 상태, after 마지막 행동 뒤 상태
+ */
+export function canUndo(before: GameState | null, after: GameState, action: Action | undefined): boolean {
+  if (!before || !action || !UNDOABLE.has(action.type)) return false
+  if (after.phase.kind !== 'round' || before.phase.kind !== 'round' || after.phase.round !== before.phase.round) return false
+  if (after.rng.s !== before.rng.s) return false
+  return (
+    after.currentPlayer === action.player &&
+    before.currentPlayer === action.player &&
+    after.turn.circuit === before.turn.circuit &&
+    after.turn.picks === before.turn.picks
+  )
+}
