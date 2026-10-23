@@ -4,6 +4,7 @@ import type { Seat } from '../app/session'
 import { seatColor } from './colors'
 import { Avatar, Button, Panel, Screen, Segmented } from './primitives'
 import { RulesSheet } from './RulesSheet'
+import { StorySheet } from './StorySheet'
 import { TesseractLogo } from './TesseractLogo'
 
 export interface NewGameOptions {
@@ -82,6 +83,7 @@ export function HomeScreen({ canContinue, onContinue, onStart, onHistory, onOnli
   const [seats, setSeats] = useState<Seat[]>(saved.seats)
   const [law, setLaw] = useState<LawId | 'random'>(saved.law)
   const [rules, setRules] = useState(false)
+  const [story, setStory] = useState(false)
 
   const update = (i: number, p: Partial<Seat>) => setSeats(seats.map((s, j) => (j === i ? { ...s, ...p } : s)))
   const humans = seats.slice(0, count).filter((s) => s.kind === 'human').length
@@ -96,6 +98,9 @@ export function HomeScreen({ canContinue, onContinue, onStart, onHistory, onOnli
         <p className="max-w-[300px] animate-rise text-sm leading-relaxed text-muted [animation-delay:80ms]">
           점에서 선으로, 선에서 면으로, 면에서 입체로, 그리고 시간으로.
         </p>
+        <Button variant="ghost" size="sm" className="animate-rise [animation-delay:100ms]" onClick={() => setStory(true)}>
+          ✦ 부서진 테서랙트 이야기
+        </Button>
       </div>
 
       {canContinue && (
@@ -181,6 +186,7 @@ export function HomeScreen({ canContinue, onContinue, onStart, onHistory, onOnli
       </div>
 
       {rules && <RulesSheet onClose={() => setRules(false)} />}
+      {story && <StorySheet onClose={() => setStory(false)} />}
     </Screen>
   )
 }

@@ -44,8 +44,8 @@ export function RulesSheet({ onClose }: { onClose: () => void }) {
   return (
     <Sheet title="규칙 한눈에" onClose={onClose}>
       <p className="text-sm leading-relaxed text-muted">
-        각자 자기만의 작은 우주를 설계해요. 4라운드 동안 같은 주사위로 <b className="text-fg">선 → 평면 → 입체 → 시간</b>을 쌓아 점수가 가장 높은 사람이
-        이겨요.
+        빅뱅으로 부서져 흩어진 테서랙트의 조각(주사위)을 모아 다시 짜 맞춰요. 4라운드 동안 <b className="text-fg">선 → 평면 → 입체 → 시간</b>을 차례로
+        복원해 점수가 가장 높은 사람이 이겨요.
       </p>
       <div className="rounded-2xl bg-raised/60 p-3 text-sm leading-relaxed ring-1 ring-line ring-inset">
         <b>턴:</b> 시장에서 칸 하나(주사위 묶음)를 통째로 가져와 모두 놓아요. 시장 주사위는 굴려진 그대로 놓고, <b>앞면</b>만 고를 수 있어요.

@@ -5,6 +5,7 @@ import { BoardView } from './BoardView'
 import { DIE_COLORS, seatColor } from './colors'
 import { buzz } from './fx'
 import { Avatar, Button, Screen } from './primitives'
+import { RESTORED_LINE } from './story'
 
 interface ResultScreenProps {
   state: GameState
@@ -84,6 +85,7 @@ export function ResultScreen({ state, seats, onHome, onReplay, onRematch }: Resu
           {winners.length > 1 ? 'SHARED VICTORY · 공동 승리' : 'VICTORY · 승리'}
         </p>
         <h1 className="relative animate-rise text-4xl font-black [animation-delay:160ms]">{winners.map((w) => seats[w.player]?.name).join(' · ')}</h1>
+        <p className="relative animate-rise text-sm text-muted [animation-delay:220ms]">{RESTORED_LINE}</p>
       </div>
 
       <ol className="relative z-10 flex flex-col gap-3">
