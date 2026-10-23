@@ -27,7 +27,7 @@ export type DieLayout = readonly [Face, Face, Face, Face, Face, Face]
 /** v0.5까지의 공통 배치 (위 1, 아래 ⧗, 앞 2, 뒤 5, 오른 4, 왼 3). 테스트 기준용 */
 export const STANDARD_LAYOUT: DieLayout = [1, TIME, 2, 5, 4, 3]
 
-/** 굴리기 방향. forward = 플레이어(앞면, 1행) 쪽으로 넘기기 */
+/** 넘기기 방향. forward = 플레이어(앞면, 1행) 쪽으로 넘기기 */
 export type TipDirection = 'forward' | 'back' | 'left' | 'right'
 
 export const TIP_DIRECTIONS: readonly TipDirection[] = ['forward', 'back', 'left', 'right']
@@ -120,7 +120,7 @@ export function backFace(layout: DieLayout, o: Orientation): Face {
   return opposite(layout, o.front)
 }
 
-/** 90° 넘기기 (§9 굴리기). 윗면이 그 방향의 옆면 쪽으로 넘어가고 반대쪽 옆면이 위로 온다. */
+/** 90° 넘기기 (§9). 윗면이 그 방향의 옆면 쪽으로 넘어가고 반대쪽 옆면이 위로 온다. */
 export function tip(layout: DieLayout, o: Orientation, direction: TipDirection): Orientation {
   assertValid(layout, o)
   switch (direction) {

@@ -25,7 +25,7 @@ export interface GameSummary {
   scores: { name: string; kind: string; total: number; line: number; plane: number; tower: number; goals: number; personal: number; debris: number }[]
   /** 3라운드 잔해 수 (사람·봇 합계) */
   round3Debris: number
-  /** 4라운드에 굴린 ⧗ 주사위 수 / 잔해가 된 ⧗ 주사위 수 */
+  /** 4라운드에 넘긴 ⧗ 주사위 수 / 잔해가 된 ⧗ 주사위 수 */
   timeRolls: number
   timeScraps: number
   /** ⧗ 주사위가 0개로 4라운드를 시작한 플레이어 수 */
@@ -100,8 +100,8 @@ export function aggregate(games: GameSummary[]): { overview: Rate[]; goals: Rate
     { label: '목표 점수 비중 (목표 30~40%)', value: `${Math.round(goalShare * 100)}%` },
     { label: '1인당 평균 잔해', value: fmt(avg(all.map((s) => -s.debris))) },
     { label: '3라운드 1인당 평균 잔해', value: fmt(avg(games.map((g) => g.round3Debris / g.players))) },
-    { label: '4라운드 1인당 평균 굴리기', value: fmt(avg(games.map((g) => g.timeRolls / g.players))) },
-    { label: '굴릴 곳 없어 잔해가 된 ⧗ 비율', value: pct(games.reduce((a, g) => a + g.timeScraps, 0), games.reduce((a, g) => a + g.timeRolls + g.timeScraps, 0)) },
+    { label: '4라운드 1인당 평균 넘기기', value: fmt(avg(games.map((g) => g.timeRolls / g.players))) },
+    { label: '넘길 곳 없어 잔해가 된 ⧗ 비율', value: pct(games.reduce((a, g) => a + g.timeScraps, 0), games.reduce((a, g) => a + g.timeRolls + g.timeScraps, 0)) },
     { label: '⧗ 주사위 0개로 4라운드 시작', value: pct(games.reduce((a, g) => a + g.zeroTimePlayers, 0), games.reduce((a, g) => a + g.players, 0)) },
     { label: '봇 승률', value: pct(games.filter((g) => g.scores.some((s) => s.kind === 'bot' && g.winners.includes(s.name))).length, games.length) },
   ]

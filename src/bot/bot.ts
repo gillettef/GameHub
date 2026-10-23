@@ -19,7 +19,7 @@ import {
   type PlayerState,
 } from '../engine'
 
-/** ⧗ 꼭대기 하나의 가치 (4라운드에 굴릴 수 있는 기회) */
+/** ⧗ 꼭대기 하나의 가치 (4라운드에 넘길 수 있는 기회) */
 const TIME_TOP_VALUE = 1.5
 const PERSONAL_GOAL_WEIGHT = 0.5
 
@@ -33,7 +33,7 @@ export function evaluate(state: GameState, playerId: number): number {
     scoreTower(player.board).total +
     goalPoints(state, playerId) -
     player.debris.length
-  // 4라운드 전에는 ⧗ 꼭대기가 앞으로의 굴리기 기회다
+  // 4라운드 전에는 ⧗ 꼭대기가 앞으로의 넘기기 기회다
   if (state.phase.kind !== 'ended' && state.time === null) value += TIME_TOP_VALUE * countTimeTops(player.board)
   if (player.personalGoal && PERSONAL_GOALS[player.personalGoal].check(player)) value += 6 * PERSONAL_GOAL_WEIGHT
   return value

@@ -110,7 +110,7 @@ export type EventId =
 
 /** 4라운드 진행 상태 (§9). 플레이어별 배열은 플레이어 id 순서 */
 export interface TimeState {
-  /** 아직 굴리지 않은 ⧗ 주사위 id. 4라운드 준비 때 정한다 */
+  /** 아직 넘기지 않은 ⧗ 주사위 id. 4라운드 준비 때 정한다 */
   pending: DieId[][]
 }
 

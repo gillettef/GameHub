@@ -67,7 +67,7 @@ interface GameScreenProps {
   onUndo?: () => void
 }
 
-/** 굴리는 방향 (조사까지 붙여 둔다) */
+/** 넘기는 방향 (조사까지 붙여 둔다) */
 const DIRECTION_LABEL: Record<TipDirection, string> = { forward: '앞(아래)으로', back: '뒤(위)로', left: '왼쪽으로', right: '오른쪽으로' }
 const DIRECTION_ARROW: Record<TipDirection, string> = { forward: '↓', back: '↑', left: '←', right: '→' }
 
@@ -88,7 +88,7 @@ interface TurnUi {
   viewing: number | null
   /** 고른 시장 칸 (내 차례: 한 번 더 누르면 가져오기, 아니면 들여다보기) */
   slot: number | null
-  /** 한 번 눌러 확정을 기다리는 칸 (놓기·굴리기) */
+  /** 한 번 눌러 확정을 기다리는 칸 (놓기·넘기기) */
   armedCell: Cell | null
   /** 고를 수 없는 칸을 누른 횟수 (안내 줄을 흔들어 알린다) */
   nudge: number
@@ -230,7 +230,7 @@ export function GameScreen({
       return c ? [c] : []
     })
   }, [isMine, shown, pending])
-  /** 굴릴 ⧗ 주사위가 하나뿐이면 미리 골라 둔다 (선택지가 하나뿐인 탭 줄이기) */
+  /** 넘길 ⧗ 주사위가 하나뿐이면 미리 골라 둔다 (선택지가 하나뿐인 탭 줄이기) */
   const selectedTime = ui.selectedTime ?? (pending.length === 1 ? (pending[0] ?? null) : null)
   const timeFrom = isMine && selectedTime !== null && shown ? findTop(shown.board, selectedTime) : null
   const targets = timeFrom && shown ? rollTargets(shown.board, timeFrom, state.law) : []
@@ -316,7 +316,7 @@ export function GameScreen({
     patch({ slot: !canTake && slot === i ? null : i })
   }
 
-  /** 보드 칸: 놓기·굴리기는 한 번 눌러 미리 보고 한 번 더 눌러 확정 (잘못 누른 손가락 막기) */
+  /** 보드 칸: 놓기·넘기기는 한 번 눌러 미리 보고 한 번 더 눌러 확정 (잘못 누른 손가락 막기) */
   function onCell(cell: Cell) {
     if (!shown) return
     if (isMine && handDie && placeTargets.some((c) => sameCell(c, cell))) {
@@ -357,7 +357,7 @@ export function GameScreen({
       : isMine && handDie && armedCell && placeTargets.some((c) => sameCell(c, armedCell))
         ? { text: `${armedCell.row + 1}행 ${armedCell.col + 1}열`, label: '여기에 놓기', run: () => place(armedCell) }
         : isMine && armedRoll
-          ? { text: DIRECTION_LABEL[armedRoll.direction], label: '굴리기', run: () => roll(armedRoll.direction) }
+          ? { text: DIRECTION_LABEL[armedRoll.direction], label: '넘기기', run: () => roll(armedRoll.direction) }
           : null
   const cancelConfirm = () => patch(canTake && slot !== null ? { slot: null } : { armedCell: null })
 
@@ -456,12 +456,12 @@ export function GameScreen({
       : round === 4
         ? timeDie
           ? armedRoll
-            ? '한 번 더 누르면 굴려요'
+            ? '한 번 더 누르면 넘겨요'
             : targets.length > 1
-            ? '빛나는 칸을 눌러 굴리세요'
+            ? '빛나는 칸을 눌러 넘기세요'
             : targets.length === 1
-              ? '이 주사위는 한 방향으로만 굴릴 수 있어요 · 빛나는 칸을 누르세요'
-              : '어느 방향으로도 굴릴 수 없어요 · 잔해로 만드세요'
+              ? '이 주사위는 한 방향으로만 넘길 수 있어요 · 빛나는 칸을 누르세요'
+              : '어느 방향으로도 넘길 수 없어요 · 잔해로 만드세요'
           : '주황 점이 찍힌 ⧗ 주사위를 고르세요'
         : !state.turn.taken
           ? slot !== null
@@ -700,7 +700,7 @@ export function GameScreen({
                 </div>
               </div>
               <p className="text-xs leading-relaxed text-muted">
-                앞면은 <b className="text-fg">맨 앞줄</b>에서 「정면 숫자선」 점수가 되고, 4라운드에 굴릴 때 올라올 면을 정해요.
+                앞면은 <b className="text-fg">맨 앞줄</b>에서 「정면 숫자선」 점수가 되고, 4라운드에 넘길 때 올라올 면을 정해요.
               </p>
               {legal.some((a) => a.type === 'discard' && a.dieId === handDie.id) && (
                 <ConfirmButton key={handDie.id} confirmText="한 번 더 누르면 버려요 · −1점" onConfirm={() => onAction({ type: 'discard', player: actor as number, dieId: handDie.id })}>
@@ -712,9 +712,9 @@ export function GameScreen({
         </Panel>
       )}
 
-      {/* 4라운드: 굴리기 */}
+      {/* 4라운드: 넘기기 */}
       {isMine && round === 4 && timeDie && (
-        <Panel title="굴리기" highlight className="animate-rise">
+        <Panel title="넘기기" highlight className="animate-rise">
           <div className="flex items-center gap-4">
             <DieNet die={timeDie} size={24} />
             <div className="flex flex-1 flex-wrap gap-2">
@@ -731,7 +731,7 @@ export function GameScreen({
                     type="button"
                     key={t.direction}
                     aria-pressed={sameCell(armedCell, t.to)}
-                    aria-label={`${DIRECTION_LABEL[t.direction]} 굴리기, 새 윗면 ${faceLabel(t.orientation.top)}${sameCell(armedCell, t.to) ? ', 한 번 더 누르면 확정' : ''}`}
+                    aria-label={`${DIRECTION_LABEL[t.direction]} 넘기기, 새 윗면 ${faceLabel(t.orientation.top)}${sameCell(armedCell, t.to) ? ', 한 번 더 누르면 확정' : ''}`}
                     onClick={() => onCell(t.to)}
                     className={`flex min-h-12 items-center gap-1.5 rounded-xl px-3 ring-inset active:scale-95 ${sameCell(armedCell, t.to) ? 'bg-accent/20 ring-[3px] ring-fg' : 'bg-raised ring-1 ring-line'}`}
                   >
