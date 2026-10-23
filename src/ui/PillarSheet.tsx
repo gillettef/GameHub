@@ -8,7 +8,7 @@ export function DieNet({ die, size = 30 }: { die: RolledDie; size?: number }) {
   const cell = (face: typeof f.top, label: string, area: string, main = false) => (
     <div className="flex flex-col items-center gap-0.5" style={{ gridArea: area }}>
       <DieFace face={face} color={die.color} size={size} showSymbol={main} />
-      <span className={`text-[11px] leading-none font-bold ${main ? 'text-fg' : 'text-muted'}`}>{label}</span>
+      <span className={`text-xs leading-none font-bold ${main ? 'text-fg' : 'text-muted'}`}>{label}</span>
     </div>
   )
   return (
@@ -50,7 +50,7 @@ export function PillarSheet({ pillar, cell, onClose }: PillarSheetProps) {
             >
               <span className="w-12 text-center">
                 <span className="block font-display text-2xl font-bold">{pillar.length - i}</span>
-                <span className="text-[11px] text-muted">{i === 0 ? '꼭대기' : '층'}</span>
+                <span className="text-xs text-muted">{i === 0 ? '꼭대기' : '층'}</span>
               </span>
               <DieNet die={die} />
             </li>

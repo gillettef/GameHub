@@ -33,7 +33,7 @@ export function MarketView({ market, onSelect, takeable = false, selected = null
         const label = taken ? `${i + 1}번 칸, 가져감` : `${i + 1}번 칸, ${dice.length === 0 ? '빈 칸' : diceText}`
         const inner = (
           <>
-            <span className="absolute top-1.5 left-2 font-display text-[11px] font-bold text-muted">{i + 1}</span>
+            <span className="absolute top-1.5 left-2 font-display text-xs font-bold text-muted">{i + 1}</span>
             <span aria-hidden={!rerollMode} className="flex min-h-[64px] flex-wrap content-center items-center justify-center gap-1 pt-3">
               {dice.map((d, k) =>
                 rerollMode && onReroll ? (
@@ -91,7 +91,7 @@ export function MarketView({ market, onSelect, takeable = false, selected = null
               >
                 {inner}
                 {canTake && (onlyOne || selected === i) && (
-                  <span aria-hidden="true" className="absolute -top-2 left-1/2 -translate-x-1/2 rounded-full bg-accent px-2 text-[11px] leading-4 font-bold whitespace-nowrap text-void">
+                  <span aria-hidden="true" className="absolute -top-2 left-1/2 -translate-x-1/2 rounded-full bg-accent px-2 text-xs leading-4 font-bold whitespace-nowrap text-void">
                     {selected === i ? '한 번 더' : '남은 하나'}
                   </span>
                 )}

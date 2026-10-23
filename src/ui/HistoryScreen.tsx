@@ -85,7 +85,7 @@ export function HistoryScreen({ onBack, onReplay }: HistoryScreenProps) {
                       👑 {summary.winners.join(', ')} — {summary.scores.map((s) => `${s.name} ${s.total}`).join(' · ')}
                     </div>
                   </div>
-                  <Button size="sm" onClick={() => onReplay(session)}>
+                  <Button size="sm" onClick={() => onReplay(session)} aria-label="이 게임 리플레이 보기">
                     ▶
                   </Button>
                 </li>
