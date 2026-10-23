@@ -28,6 +28,7 @@
 | 테스트 | Vitest 5 (`src/**/*.test.ts(x)`) |
 | 린트 | ESLint 10 flat config + typescript-eslint |
 | 멀티플레이 | 로컬(한 기기 돌려 쓰기 + 봇) + 온라인(Node `ws` 서버 `server/`, 행동 기록 동기화) |
+| 배포 | AWS EC2 공용 서버, 포트 8092 (아래 「배포 (AWS)」) |
 
 ## 아키텍처 원칙
 
@@ -97,8 +98,19 @@ npm run dev        # 개발 서버
 npm test           # Vitest
 npm run typecheck  # tsc --noEmit
 npm run lint
-npm run build
+npm run build      # tsc + vite build + 서버 번들(server-dist/server.cjs, rolldown)
+npm start          # 빌드 결과로 서버 실행 (scripts/aws/serve.mjs, EC2와 같은 진입점)
 ```
+
+## 배포 (AWS)
+
+- 다른 게임(Eleven·MagicAcademy·Rootbound·SmilePark·DoubleAgent)과 같은 EC2(t4g.nano, 서울) 1대를 공유한다. 접속은 **http://54.116.67.196:8092** (HTTP만, HTTPS 없음).
+- `main`에 push하면 `.github/workflows/deploy-aws.yml`이 `npm test` → `npm run lint` → `npm run build`를 통과했을 때만 `dist`·`server-dist`(ws까지 묶은 서버 번들)·`scripts/aws/`를 `~/tesseract`에 올리고, 서버에서 `scripts/aws/deploy-remote.sh`가 systemd `tesseract`(포트 8092)를 재시작·헬스체크(`/health`)한다. 정적 파일과 온라인 대전 WebSocket(`/ws`)을 같은 포트로 서빙한다. 재시작하면 진행 중인 온라인 방은 사라진다.
+- 서버 번들은 Vite 8에 딸린 rolldown으로 만든다(esbuild는 선택 의존성이라 CI에 없을 수 있음). EC2에서는 빌드·`npm install`을 하지 않는다.
+- **수동 배포**(push 없이): `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/deploy-aws.ps1`. SSH 키·IP는 `.dev/astraltab-key.pem`, `.dev/aws-public-ip.txt`(git 제외), 없으면 `../Rootbound/.dev/`의 것을 쓴다.
+- 서버 로그: `ssh -i ../Rootbound/.dev/astraltab-key.pem ec2-user@54.116.67.196 "sudo journalctl -u tesseract -n 100"`
+- SSH(22)는 관리자 IP만 열려 있어 워크플로가 러너 IP를 임시로 열었다 닫는다. 저장소 시크릿: AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY / AWS_REGION / AWS_SECURITY_GROUP_ID / EC2_HOST / EC2_HOST_KEY / EC2_SSH_PRIVATE_KEY (다른 게임 저장소와 같은 값).
+- 서버 준비(완료, 2026-10-23): `scripts/aws/provision.sh` → `scripts/aws/units.sh`, 보안 그룹 TCP 8092 인바운드 추가.
 
 ## 서브에이전트
 
