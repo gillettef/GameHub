@@ -4,7 +4,6 @@ import {
   findTop,
   getLegalActions,
   legalPlacements,
-  LAWS,
   PERSONAL_GOAL_POINTS,
   PERSONAL_GOALS,
   ROUND_GOALS,
@@ -35,7 +34,8 @@ import { MarketView } from './MarketView'
 import { NoticeModal } from './NoticeModal'
 import { buildNotices, type Notice } from './notices'
 import { DieNet, PillarSheet } from './PillarSheet'
-import { Avatar, Button, ConfirmButton, GameCard, Panel, Screen, TopBar } from './primitives'
+import { Card } from './Card'
+import { Avatar, Button, ConfirmButton, Panel, Screen, TopBar } from './primitives'
 import { RulesSheet } from './RulesSheet'
 import { TipCard } from './TipCard'
 import { useTip, type TipId } from './tips'
@@ -412,7 +412,9 @@ export function GameScreen({
           }
           title="게임 준비"
         />
-        <GameCard tone="law" kind="이번 게임의 우주 법칙" name={LAWS[state.law].name} text={LAWS[state.law].text} className="animate-rise" />
+        <div className="animate-rise">
+          <Card card={{ kind: 'law', id: state.law }} kindLabel="이번 게임의 우주 법칙" />
+        </div>
         {me ? (
           <PersonalPick
             key={me.id}
@@ -976,10 +978,10 @@ function PersonalPick({ name, seat, offer, onPick }: { name: string; seat: numbe
               key={id}
               aria-pressed={on}
               onClick={() => setPicked(id)}
-              className={`animate-rise rounded-2xl text-left transition-all duration-200 active:scale-[0.98] ${on ? 'scale-[1.02] ring-2 ring-personal shadow-[0_10px_30px_-8px_rgb(242_166_90/0.6)]' : picked ? 'opacity-55' : ''}`}
+              className={`animate-rise text-left transition-all duration-200 active:scale-[0.98] ${on ? 'scale-[1.02] drop-shadow-[0_10px_24px_rgb(242_166_90/0.55)]' : picked ? 'opacity-55' : ''}`}
               style={{ animationDelay: `${120 + i * 90}ms` }}
             >
-              <GameCard tone="personal" kind={on ? '✓ 선택함' : `개인 목표 ${i + 1}`} name={PERSONAL_GOALS[id].name} text={PERSONAL_GOALS[id].text} />
+              <Card card={{ kind: 'personal', id }} kindLabel={on ? '✓ 선택함' : `개인 목표 ${i + 1}`} />
             </button>
           )
         })}
