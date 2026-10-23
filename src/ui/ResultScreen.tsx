@@ -6,6 +6,7 @@ import { DIE_COLORS, seatColor } from './colors'
 import { buzz } from './fx'
 import { Avatar, Button, Screen } from './primitives'
 import { RESTORED_LINE } from './story'
+import { Icon, RankBadge } from './icons'
 
 interface ResultScreenProps {
   state: GameState
@@ -51,8 +52,6 @@ function Confetti() {
   )
 }
 
-const MEDAL = ['🥇', '🥈', '🥉', '4']
-
 /** 점수가 같은 사람이 있으면 순위를 무엇으로 가렸는지 (§10: 잔해가 적은 순 → 가장 높은 기둥 순) */
 function tieNote(s: FinalScore, all: FinalScore[]): string | null {
   const same = all.filter((o) => o.player !== s.player && o.total === s.total)
@@ -78,8 +77,8 @@ export function ResultScreen({ state, seats, onHome, onReplay, onRematch }: Resu
       <Confetti />
       <div className="relative flex flex-col items-center gap-2 text-center">
         <span aria-hidden="true" className="absolute top-6 size-56 rounded-full opacity-40 blur-3xl" style={{ background: winnerColor }} />
-        <span className="relative animate-drop text-6xl" aria-hidden="true">
-          👑
+        <span className="relative animate-drop text-[#F5C842] drop-shadow-[0_0_18px_rgb(245_200_66/0.5)]">
+          <Icon name="crown" size={64} strokeWidth={1.6} />
         </span>
         <p className="relative animate-rise font-display text-xs font-semibold tracking-[0.35em] text-accent [animation-delay:100ms]">
           {winners.length > 1 ? 'SHARED VICTORY · 공동 승리' : 'VICTORY · 승리'}
@@ -101,9 +100,9 @@ export function ResultScreen({ state, seats, onHome, onReplay, onRematch }: Resu
               style={{ animationDelay: `${300 + i * 120}ms`, ...(first ? { ['--tw-ring-color' as string]: color, ['--tw-shadow' as string]: `0 16px 40px -16px ${color}` } : {}) }}
             >
               <div className="flex items-center gap-3">
-                <span className="w-8 text-center font-display text-2xl font-bold">
+                <span className="flex w-8 justify-center">
                   <span className="sr-only">{s.rank}위</span>
-                  <span aria-hidden="true">{MEDAL[s.rank - 1] ?? s.rank}</span>
+                  <RankBadge rank={s.rank} />
                 </span>
                 <Avatar name={seats[s.player]?.name ?? '?'} color={color} size={40} glow={first} />
                 <span className="min-w-0 flex-1 truncate text-lg font-bold">{seats[s.player]?.name}</span>
@@ -138,7 +137,9 @@ export function ResultScreen({ state, seats, onHome, onReplay, onRematch }: Resu
                 </div>
               </dl>
 
-              {tieNote(s, scores) && <p className="mt-2 rounded-lg bg-white/5 px-2.5 py-1.5 text-xs text-fg/90">⚖ {tieNote(s, scores)}</p>}
+              {tieNote(s, scores) && <p className="mt-2 rounded-lg bg-white/5 px-2.5 py-1.5 text-xs text-fg/90"><Icon name="scale" size={13} className="-mt-0.5 mr-1" />
+                  {tieNote(s, scores)}
+                </p>}
               {goal && (
                 <p className="mt-2 text-xs text-muted">
                   개인 목표 <b className="text-personal">{goal.name}</b> {s.personalGoal > 0 ? '✓ 달성' : '— 미달성'}

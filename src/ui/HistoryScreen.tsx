@@ -3,6 +3,7 @@ import { aggregate, summarize, type GameSummary, type Rate } from '../app/stats'
 import { clearHistory, loadHistory, type Session } from '../app/session'
 import { LAWS } from '../engine'
 import { Button, Panel, Screen, TopBar } from './primitives'
+import { Icon } from './icons'
 
 interface HistoryScreenProps {
   onBack: () => void
@@ -66,9 +67,7 @@ export function HistoryScreen({ onBack, onReplay }: HistoryScreenProps) {
 
       {summaries.length === 0 ? (
         <div className="flex flex-col items-center gap-2 py-16 text-center text-muted">
-          <span className="text-5xl" aria-hidden="true">
-            🪐
-          </span>
+          <Icon name="shards" size={56} strokeWidth={1.4} className="text-accent/70" />
           끝난 게임이 아직 없어요.
         </div>
       ) : (
@@ -82,11 +81,12 @@ export function HistoryScreen({ onBack, onReplay }: HistoryScreenProps) {
                       {new Date(summary.createdAt).toLocaleString('ko-KR', { dateStyle: 'short', timeStyle: 'short' })} · <span className="text-law">{LAWS[summary.law].name}</span>
                     </div>
                     <div className="truncate text-xs text-muted">
-                      👑 {summary.winners.join(', ')} — {summary.scores.map((s) => `${s.name} ${s.total}`).join(' · ')}
+                      <Icon name="crown" size={12} className="-mt-0.5 mr-1 text-[#F5C842]" />
+                      {summary.winners.join(', ')} — {summary.scores.map((s) => `${s.name} ${s.total}`).join(' · ')}
                     </div>
                   </div>
                   <Button size="sm" onClick={() => onReplay(session)} aria-label="이 게임 리플레이 보기">
-                    ▶
+                    <Icon name="play" size={16} />
                   </Button>
                 </li>
               ))}

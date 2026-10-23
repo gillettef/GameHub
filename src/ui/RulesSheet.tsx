@@ -1,6 +1,7 @@
 import { GlyphText, Hourglass } from './DieFace'
 import { Button, Sheet } from './primitives'
 import { resetTips } from './tips'
+import { Icon } from './icons'
 
 /** 규칙 요약 (docs/rule.md v0.6에서 옮김). 처음 하는 친구에게 보여 주는 용도 */
 const SECTIONS = [
@@ -85,7 +86,7 @@ export function RulesSheet({ onClose }: { onClose: () => void }) {
         </dl>
       </section>
       <Button variant="ghost" onClick={resetTips}>
-        💡 게임 중 도움말 처음부터 다시 보기
+        <Icon name="spark" size={16} /> 게임 중 도움말 처음부터 다시 보기
       </Button>
     </Sheet>
   )

@@ -6,6 +6,7 @@ import { Avatar, Button, Panel, Screen, Segmented } from './primitives'
 import { RulesSheet } from './RulesSheet'
 import { StorySheet } from './StorySheet'
 import { TesseractLogo } from './TesseractLogo'
+import { Icon } from './icons'
 
 export interface NewGameOptions {
   seats: Seat[]
@@ -61,7 +62,7 @@ export function LawSelect({ value, onChange }: { value: LawId | 'random'; onChan
           value={value}
           onChange={(e) => onChange(e.target.value as LawId | 'random')}
         >
-          <option value="random">🎲 무작위로 뽑기</option>
+          <option value="random">무작위로 뽑기</option>
           {LAW_DECK.map((id) => (
             <option key={id} value={id}>
               {LAWS[id].name}
@@ -96,16 +97,18 @@ export function HomeScreen({ canContinue, onContinue, onStart, onHistory, onOnli
           TESSERACT
         </h1>
         <p className="max-w-[300px] animate-rise text-sm leading-relaxed text-muted [animation-delay:80ms]">
-          점에서 선으로, 선에서 면으로, 면에서 입체로, 그리고 시간으로.
+          우주는 한때 하나였다.
+          <br />
+          <b className="font-bold text-fg">흩어진 조각으로, 테서랙트를 다시 세워라.</b>
         </p>
         <Button variant="ghost" size="sm" className="animate-rise [animation-delay:100ms]" onClick={() => setStory(true)}>
-          ✦ 부서진 테서랙트 이야기
+          <Icon name="shards" size={16} /> 부서진 테서랙트 이야기
         </Button>
       </div>
 
       {canContinue && (
         <Button variant="primary" size="lg" block className="animate-rise [animation-delay:120ms]" onClick={onContinue}>
-          ▶ 이어 하기
+          <Icon name="play" size={16} /> 이어 하기
         </Button>
       )}
 
@@ -167,19 +170,19 @@ export function HomeScreen({ canContinue, onContinue, onStart, onHistory, onOnli
       <div className="grid animate-rise grid-cols-3 gap-2 [animation-delay:220ms]">
         <Button onClick={onOnline} className="py-2">
           <span className="flex flex-col items-center gap-0.5">
-            <span aria-hidden="true">🌐</span>
+            <Icon name="orbit" size={22} className="text-accent" />
             <span className="text-xs">온라인 대전</span>
           </span>
         </Button>
         <Button onClick={() => setRules(true)} className="py-2">
           <span className="flex flex-col items-center gap-0.5">
-            <span aria-hidden="true">📖</span>
+            <Icon name="codex" size={22} className="text-accent" />
             <span className="text-xs">규칙 보기</span>
           </span>
         </Button>
         <Button onClick={onHistory} className="py-2">
           <span className="flex flex-col items-center gap-0.5">
-            <span aria-hidden="true">📊</span>
+            <Icon name="stats" size={22} className="text-accent" />
             <span className="text-xs">기록 · 통계</span>
           </span>
         </Button>
