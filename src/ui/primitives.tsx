@@ -1,7 +1,6 @@
-/** 공통 UI 부품: 버튼, 바텀 시트, 카드, 상단 바, 분할 선택 */
+/** 공통 UI 부품: 버튼, 바텀 시트, 상단 바, 분할 선택 (카드는 Card.tsx) */
 import { useEffect, useId, useRef, useState, type ButtonHTMLAttributes, type ReactNode } from 'react'
 import { useBack } from './back'
-import { GlyphText } from './DieFace'
 import { buzz } from './fx'
 
 type Variant = 'primary' | 'secondary' | 'ghost' | 'danger'
@@ -160,48 +159,6 @@ export function ConfirmButton({ children, confirmText, onConfirm, className = ''
     >
       {armed ? confirmText : children}
     </Button>
-  )
-}
-
-export type CardTone = 'law' | 'goal' | 'personal' | 'event'
-
-const TONE: Record<CardTone, string> = {
-  law: '#9b8cff',
-  goal: '#5ad1e6',
-  personal: '#f2a65a',
-  event: '#ff8a7a',
-}
-
-/** 카드: 머리띠 색으로 종류를 구분 (CLAUDE.md 카드 머리띠) */
-export function GameCard({
-  tone,
-  kind,
-  name,
-  text,
-  children,
-  className = '',
-}: {
-  tone: CardTone
-  kind: ReactNode
-  name: ReactNode
-  text?: ReactNode
-  children?: ReactNode
-  className?: string
-}) {
-  const color = TONE[tone]
-  return (
-    <div
-      className={`relative overflow-hidden rounded-2xl bg-raised/70 p-4 pt-5 text-left ring-1 ring-inset ${className}`}
-      style={{ ['--tw-ring-color' as string]: `${color}55`, backgroundImage: `linear-gradient(160deg, ${color}1f, transparent 55%)` }}
-    >
-      <span aria-hidden="true" className="absolute inset-x-0 top-0 h-1.5" style={{ background: color }} />
-      <span className="text-[11px] font-bold tracking-[0.12em]" style={{ color }}>
-        {kind}
-      </span>
-      <span className="mt-0.5 block font-display text-lg leading-snug font-bold text-fg">{typeof name === 'string' ? <GlyphText text={name} /> : name}</span>
-      {text && <span className="mt-1 block text-[13.5px] leading-relaxed text-muted">{typeof text === 'string' ? <GlyphText text={text} /> : text}</span>}
-      {children}
-    </div>
   )
 }
 

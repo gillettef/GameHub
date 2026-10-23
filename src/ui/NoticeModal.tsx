@@ -1,12 +1,14 @@
-import { useEffect, useId, useRef, type ReactNode } from 'react'
-import { LAWS, ROUND_GOALS, type LawId } from '../engine'
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
+import type { LawId } from '../engine'
 import type { Seat } from '../app/session'
 import { useBack } from './back'
+import { Card, CardZoom } from './Card'
+import type { CardKey } from './cardArtData'
 import { ROUND_INFO, seatColor } from './colors'
 import { GlyphText, Hourglass } from './DieFace'
 import { buzz } from './fx'
 import type { Notice } from './notices'
-import { Avatar, Button, GameCard } from './primitives'
+import { Avatar, Button } from './primitives'
 
 interface NoticeModalProps {
   /** 한 번에 생긴 알림 묶음. 결과(평면·목표·잔해)가 먼저, 라운드 안내가 마지막 */
@@ -62,6 +64,7 @@ export function NoticeModal({ notices, remaining, law, seats, onConfirm }: Notic
 
   const name = (p: number) => seats[p]?.name ?? `${p + 1}번`
   const last = remaining <= 1
+  const [zoom, setZoom] = useState<CardKey | null>(null)
 
   return (
     <div ref={dialog} className="fixed inset-0 z-50 flex animate-fade items-center justify-center bg-black/70 px-4" role="dialog" aria-modal="true" aria-labelledby={titleId}>
@@ -73,7 +76,7 @@ export function NoticeModal({ notices, remaining, law, seats, onConfirm }: Notic
           {notices.map((notice, i) => (
             <section key={i} className={`flex flex-col gap-3 ${i > 0 ? 'border-t border-line pt-4' : ''}`}>
               {notice.kind === 'round' ? (
-                <RoundBody notice={notice} law={law} titleId={i === 0 ? titleId : undefined} name={name} />
+                <RoundBody notice={notice} law={law} titleId={i === 0 ? titleId : undefined} name={name} onZoom={setZoom} />
               ) : (
                 <ResultBody notice={notice} titleId={i === 0 ? titleId : undefined} name={name} />
               )}
@@ -87,14 +90,29 @@ export function NoticeModal({ notices, remaining, law, seats, onConfirm }: Notic
           </Button>
         </div>
       </div>
+      {zoom && <CardZoom card={zoom} onClose={() => setZoom(null)} />}
     </div>
   )
 }
 
-function RoundBody({ notice, law, titleId, name }: { notice: Extract<Notice, { kind: 'round' }>; law: LawId; titleId?: string; name: (p: number) => string }) {
+function RoundBody({
+  notice,
+  law,
+  titleId,
+  name,
+  onZoom,
+}: {
+  notice: Extract<Notice, { kind: 'round' }>
+  law: LawId
+  titleId?: string
+  name: (p: number) => string
+  onZoom: (card: CardKey) => void
+}) {
   const info = ROUND_INFO[notice.round - 1]
   if (!info) return null
-  const lawNote = notice.round >= 3 && (law === 'flat' || law === 'inverted') ? LAWS[law] : null
+  // 1라운드에는 이번 게임의 법칙을, 3라운드부터는 쌓기를 바꾸는 법칙을 다시 보여 준다
+  const showLaw = notice.round === 1 || (notice.round >= 3 && (law === 'flat' || law === 'inverted'))
+  const cards: CardKey[] = [...(showLaw ? [{ kind: 'law' as const, id: law }] : []), ...notice.goals.map((id) => ({ kind: 'goal' as const, id }))]
   return (
     <>
       <div className="flex items-center gap-4">
@@ -139,10 +157,18 @@ function RoundBody({ notice, law, titleId, name }: { notice: Extract<Notice, { k
           ))}
         </div>
       )}
-      {lawNote && <GameCard tone="law" kind="우주 법칙" name={lawNote.name} text={lawNote.text} />}
-      {notice.goals.map((id) => (
-        <GameCard key={id} tone="goal" kind={`${notice.round}라운드 목표 · 선착 4 / 달성 2`} name={ROUND_GOALS[id].name} text={ROUND_GOALS[id].text} />
-      ))}
+      {cards.length > 0 && (
+        <div className="flex flex-col gap-1.5">
+          <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${Math.max(cards.length, 2)}, minmax(0, 1fr))` }}>
+            {cards.map((card, i) => (
+              <div key={`${card.kind}-${card.id}`} className="animate-rise" style={{ animationDelay: `${120 + i * 90}ms` }}>
+                <Card card={card} size="mini" onOpen={() => onZoom(card)} />
+              </div>
+            ))}
+          </div>
+          <p className="text-center text-xs text-muted">카드를 누르면 크게 볼 수 있어요</p>
+        </div>
+      )}
     </>
   )
 }
