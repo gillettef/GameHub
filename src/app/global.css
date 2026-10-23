@@ -412,7 +412,8 @@
 
   /* 연출로 알려 주는 정보(차례, 잔해)는 움직임 없이 나타났다 사라지게 */
   .animate-banner,
-  .animate-float {
+  .animate-float,
+  .animate-toast {
     animation-name: hold !important;
     animation-duration: 1800ms !important;
   }

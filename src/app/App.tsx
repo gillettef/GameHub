@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { applyAction, IllegalActionError, type Action, type GameState } from '../engine'
 import { chooseBotAction } from '../bot/bot'
 import { useBack } from '../ui/back'
+import type { BotSpeed } from '../ui/CardsSheet'
 import { GameScreen } from '../ui/GameScreen'
 import { HistoryScreen } from '../ui/HistoryScreen'
 import { HomeScreen, type NewGameOptions } from '../ui/HomeScreen'
@@ -18,8 +19,32 @@ type Screen =
   | { kind: 'replay'; session: Session }
   | { kind: 'online' }
 
-/** 봇이 한 수 두기 전 기다리는 시간 (사람이 따라갈 수 있게) */
-const BOT_DELAY_MS = 700
+/** 봇이 한 수 두기 전 기다리는 시간 (사람이 따라갈 수 있게). 카드 시트에서 바꾼다 */
+const BOT_DELAY_MS: Record<BotSpeed, number> = { slow: 1100, normal: 700, fast: 300 }
+const BOT_SPEED_KEY = 'tesseract.botSpeed'
+
+function loadBotSpeed(): BotSpeed {
+  try {
+    const v = localStorage.getItem(BOT_SPEED_KEY)
+    return v === 'slow' || v === 'fast' ? v : 'normal'
+  } catch {
+    return 'normal'
+  }
+}
+
+/** 초대 링크(?room=CODE)로 들어왔으면 그 방 코드. 주소창에서는 지운다 */
+function inviteCode(): string | null {
+  try {
+    const url = new URL(window.location.href)
+    const room = url.searchParams.get('room')
+    if (!room) return null
+    url.searchParams.delete('room')
+    window.history.replaceState(window.history.state, '', url.pathname + url.search + url.hash)
+    return room.trim().toUpperCase().slice(0, 5)
+  } catch {
+    return null
+  }
+}
 
 function randomSeed(): number {
   return Math.floor(Math.random() * 0x7fffffff)
@@ -69,7 +94,17 @@ function stateOf(session: Session): { state: GameState; prev: GameState | null }
 
 export function App() {
   const [session, setSession] = useState<Session | null>(() => loadCurrent())
-  const [screen, setScreen] = useState<Screen>({ kind: 'home' })
+  const [invite] = useState(inviteCode)
+  const [screen, setScreen] = useState<Screen>(() => (invite ? { kind: 'online' } : { kind: 'home' }))
+  const [botSpeed, setBotSpeed] = useState<BotSpeed>(loadBotSpeed)
+  const changeBotSpeed = useCallback((speed: BotSpeed) => {
+    setBotSpeed(speed)
+    try {
+      localStorage.setItem(BOT_SPEED_KEY, speed)
+    } catch {
+      // 저장할 수 없으면 이번 실행 동안만
+    }
+  }, [])
   const [error, setError] = useState<string | null>(null)
   /** 확인할 알림 모달이 떠 있으면 봇이 기다린다 */
   const [hold, setHold] = useState(false)
@@ -121,9 +156,9 @@ export function App() {
     const timer = setTimeout(() => {
       const action = chooseBotAction(state, bot)
       if (action) dispatch(action)
-    }, BOT_DELAY_MS)
+    }, BOT_DELAY_MS[botSpeed])
     return () => clearTimeout(timer)
-  }, [session, state, screen.kind, hold, dispatch])
+  }, [session, state, screen.kind, hold, dispatch, botSpeed])
 
   function start({ seats, law }: NewGameOptions) {
     const config = {
@@ -147,6 +182,7 @@ export function App() {
     return (
       <OnlineScreen
         online={online}
+        initialCode={invite ?? ''}
         onBack={() => setScreen({ kind: 'home' })}
         onJoined={(s) => {
           setSession(s)
@@ -163,6 +199,7 @@ export function App() {
           state={state}
           seats={session.seats}
           onReplay={() => setScreen({ kind: 'replay', session })}
+          onRematch={session.room ? undefined : () => start({ seats: session.seats, law: session.config.law ?? 'random' })}
           onHome={() => {
             setSession(null)
             online.leave()
@@ -185,6 +222,8 @@ export function App() {
         onHold={setHold}
         onFinished={finish}
         connection={session.room ? { status: online.status, presence: online.presence } : null}
+        botSpeed={botSpeed}
+        onBotSpeed={changeBotSpeed}
       />
     )
   }

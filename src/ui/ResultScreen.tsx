@@ -11,6 +11,8 @@ interface ResultScreenProps {
   seats: Seat[]
   onHome: () => void
   onReplay?: () => void
+  /** 같은 자리·법칙 설정으로 새 게임 (로컬 게임만) */
+  onRematch?: () => void
 }
 
 const PARTS: { key: keyof Pick<FinalScore, 'line' | 'plane' | 'tower' | 'goals' | 'personalGoal'>; label: string; color: string }[] = [
@@ -51,7 +53,7 @@ function Confetti() {
 const MEDAL = ['🥇', '🥈', '🥉', '4']
 
 /** 최종 점수 (§10) */
-export function ResultScreen({ state, seats, onHome, onReplay }: ResultScreenProps) {
+export function ResultScreen({ state, seats, onHome, onReplay, onRematch }: ResultScreenProps) {
   const scores = finalScores(state)
   const winners = scores.filter((s) => s.rank === 1)
   const max = Math.max(1, ...scores.map((s) => PARTS.reduce((a, p) => a + Math.max(0, s[p.key]), 0)))
@@ -144,8 +146,13 @@ export function ResultScreen({ state, seats, onHome, onReplay }: ResultScreenPro
       </ol>
 
       <div className="relative z-10 grid grid-cols-2 gap-2">
+        {onRematch && (
+          <Button variant="primary" size="lg" className="col-span-2" onClick={onRematch}>
+            같은 멤버로 한 판 더
+          </Button>
+        )}
         {onReplay && <Button onClick={onReplay}>리플레이 보기</Button>}
-        <Button variant="primary" className={onReplay ? '' : 'col-span-2'} onClick={onHome}>
+        <Button variant={onRematch ? 'secondary' : 'primary'} className={onReplay ? '' : 'col-span-2'} onClick={onHome}>
           처음으로
         </Button>
       </div>

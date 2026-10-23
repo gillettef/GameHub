@@ -11,15 +11,17 @@ interface OnlineScreenProps {
   online: OnlineApi
   onBack: () => void
   onJoined: (session: Session) => void
+  /** 초대 링크로 들어왔을 때 미리 채울 방 코드 */
+  initialCode?: string
 }
 
 const inputCls =
   'min-h-12 w-full min-w-0 rounded-xl bg-void/60 px-4 text-[15px] font-bold text-fg ring-1 ring-line ring-inset placeholder:text-muted/50 focus:ring-accent focus:outline-none'
 
 /** 온라인 대전 (로드맵 8단계): 방 만들기 / 코드로 들어가기 / 대기실 */
-export function OnlineScreen({ online, onBack, onJoined }: OnlineScreenProps) {
+export function OnlineScreen({ online, onBack, onJoined, initialCode = '' }: OnlineScreenProps) {
   const [name, setName] = useState('나')
-  const [code, setCode] = useState('')
+  const [code, setCode] = useState(initialCode)
   const [count, setCount] = useState(2)
   const [kinds, setKinds] = useState<Seat['kind'][]>(['human', 'human', 'bot', 'bot'])
   const [law, setLaw] = useState<LawId | 'random'>('random')
@@ -36,11 +38,13 @@ export function OnlineScreen({ online, onBack, onJoined }: OnlineScreenProps) {
     const waiting = online.claimed.filter((c) => !c).length
     const share = async () => {
       buzz(10)
-      const text = `테서랙트 방 코드: ${joined.room}`
+      // 링크를 열면 방 코드가 채워진 채로 온라인 화면이 열린다 (App의 inviteCode)
+      const url = `${location.origin}${location.pathname}?room=${joined.room ?? ''}`
+      const text = `테서랙트 같이 해요! 방 코드: ${joined.room}`
       try {
-        if (navigator.share) await navigator.share({ title: '테서랙트', text, url: location.origin })
+        if (navigator.share) await navigator.share({ title: '테서랙트', text, url })
         else {
-          await navigator.clipboard.writeText(joined.room ?? '')
+          await navigator.clipboard.writeText(`${text}\n${url}`)
           setCopied(true)
         }
       } catch {
@@ -79,7 +83,7 @@ export function OnlineScreen({ online, onBack, onJoined }: OnlineScreenProps) {
             ))}
           </p>
           <Button size="sm" onClick={share}>
-            {copied ? '✓ 복사했어요' : '공유 · 복사'}
+            {copied ? '✓ 초대 링크를 복사했어요' : '초대 링크 공유'}
           </Button>
         </div>
         <ul className="flex flex-col gap-2">
