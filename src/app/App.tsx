@@ -70,6 +70,8 @@ export function App() {
   const [session, setSession] = useState<Session | null>(() => loadCurrent())
   const [screen, setScreen] = useState<Screen>({ kind: 'home' })
   const [error, setError] = useState<string | null>(null)
+  /** 확인할 알림 모달이 떠 있으면 봇이 기다린다 */
+  const [hold, setHold] = useState(false)
 
   const derived = useMemo(() => (session ? stateOf(session) : null), [session])
   const state = derived?.state ?? null
@@ -106,7 +108,7 @@ export function App() {
 
   // 봇 차례
   useEffect(() => {
-    if (!session || !state || screen.kind !== 'game') return
+    if (!session || !state || screen.kind !== 'game' || hold) return
     const bot = botToMove(state, session)
     if (bot === null) return
     const timer = setTimeout(() => {
@@ -114,7 +116,7 @@ export function App() {
       if (action) dispatch(action)
     }, BOT_DELAY_MS)
     return () => clearTimeout(timer)
-  }, [session, state, screen.kind, dispatch])
+  }, [session, state, screen.kind, hold, dispatch])
 
   function start({ seats, law }: NewGameOptions) {
     const config = {
@@ -173,6 +175,7 @@ export function App() {
         onAction={dispatch}
         onExit={() => setScreen({ kind: 'home' })}
         error={error}
+        onHold={setHold}
       />
     )
   }

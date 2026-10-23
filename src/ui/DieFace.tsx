@@ -41,13 +41,15 @@ interface DieFaceProps {
   dim?: boolean
   /** 반투명 미리보기 (놓을 칸, 굴릴 칸) */
   ghost?: boolean
+  /** 정육면체의 한 면으로 쓸 때: 그림자 없이 모서리를 덜 둥글게 */
+  bare?: boolean
   className?: string
 }
 
 /** 주사위 한 면. 색 + 모양 기호 + 숫자/⧗ 아이콘을 함께 쓴다 (색맹 대응) */
-export function DieFace({ face, color, size = 40, showSymbol = true, dim = false, ghost = false, className = '' }: DieFaceProps) {
+export function DieFace({ face, color, size = 40, showSymbol = true, dim = false, ghost = false, bare = false, className = '' }: DieFaceProps) {
   const c = DIE_COLORS[color]
-  const radius = Math.round(size * 0.22)
+  const radius = Math.round(size * (bare ? 0.12 : 0.22))
   return (
     <span
       role="img"
@@ -63,6 +65,8 @@ export function DieFace({ face, color, size = 40, showSymbol = true, dim = false
         background: `radial-gradient(120% 90% at 30% 20%, ${c.light} 0%, ${c.fill} 48%, ${c.dark} 100%)`,
         boxShadow: ghost
           ? `inset 0 0 0 1.5px ${c.light}`
+          : bare
+            ? `inset 0 0 0 1px rgb(0 0 0 / 0.25)${c.stroke ? `, inset 0 0 0 1.5px ${c.stroke}` : ''}`
           : `inset 0 ${Math.max(1, size * 0.05)}px 0 rgb(255 255 255 / 0.28), inset 0 -${Math.max(2, size * 0.08)}px 0 rgb(0 0 0 / 0.28), 0 ${Math.max(2, size * 0.08)}px ${size * 0.22}px rgb(0 0 0 / 0.45)${c.stroke ? `, inset 0 0 0 1.5px ${c.stroke}` : ''}`,
         filter: ghost ? 'saturate(0.8)' : undefined,
       }}

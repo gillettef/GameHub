@@ -16,6 +16,7 @@ import {
   TIME,
   tip,
   TIP_DIRECTIONS,
+  turnOrder,
   withFront,
   type DieLayout,
   type Face,
@@ -289,6 +290,21 @@ describe('§2 놓기 방향 (윗면 유지, 앞면만 선택)', () => {
         const o = { top, front: sideFaces(layout, top)[0] as Face }
         for (const f of sideFaces(layout, top)) expect(withFront(layout, o, f)).toEqual({ top, front: f })
         expect(() => withFront(layout, o, opposite(layout, top))).toThrow()
+      }
+    }
+  })
+
+  it('수평으로 돌릴 때 앞 → 오른 → 뒤 → 왼 순서로 앞에 온다', () => {
+    expect(turnOrder(S, CANONICAL)).toEqual([2, 4, 5, 3])
+  })
+
+  it('왼쪽으로 한 번 돌리면 지금 오른면이 다음 앞면이 된다 (모든 배치)', () => {
+    for (const layout of LAYOUTS) {
+      for (const top of FACES) {
+        const o = { top, front: sideFaces(layout, top)[0] as Face }
+        const order = turnOrder(layout, o)
+        expect([...order].sort()).toEqual([...sideFaces(layout, top)].sort())
+        order.forEach((f, k) => expect(rightFace(layout, { top, front: f })).toBe(order[(k + 1) % 4]))
       }
     }
   })

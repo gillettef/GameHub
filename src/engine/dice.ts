@@ -142,6 +142,14 @@ export function withFront(layout: DieLayout, o: Orientation, front: Face): Orien
   return next
 }
 
+/**
+ * 윗면을 축으로 수평으로 한 바퀴 돌 때 앞에 오는 면 순서: 앞 → 오른 → 뒤 → 왼.
+ * 주사위를 왼쪽으로 90° 돌릴 때마다 다음 면이 앞으로 온다 (화면의 3D 주사위 돌리기용).
+ */
+export function turnOrder(layout: DieLayout, o: Orientation): Face[] {
+  return [o.front, rightFace(layout, o), backFace(layout, o), leftFace(layout, o)]
+}
+
 /** 이 배치로 가능한 24가지 방향 전부 (굴림 결과 후보) */
 export function allOrientations(layout: DieLayout): Orientation[] {
   return FACES.flatMap((top) => sideFaces(layout, top).map((front) => ({ top, front })))
