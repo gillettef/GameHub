@@ -2,7 +2,7 @@ import { MAX_AGENTS, MIN_AGENTS, PLAYERS, TOTAL_ROUNDS } from '../../core';
 import type { RoundBid } from '../../core';
 import type { NetState } from '../../online/client';
 import type { RoomView, SeatView } from '../../online/protocol';
-import { LEVEL_TEXT, clubById, dot, esc, header, type UiState } from '../view';
+import { ICON, LEVEL_TEXT, clubById, dot, esc, header, type UiState } from '../view';
 
 const STATUS_TEXT: Record<NetState['status'], string> = { idle: '', connecting: '서버에 연결 중…', open: '', closed: '연결이 끊겼습니다. 다시 연결하는 중…' };
 
@@ -11,7 +11,7 @@ export const connLine = (n: NetState): string => (STATUS_TEXT[n.status] ? `<p cl
 /** 방 만들기 / 코드로 참가 */
 export function onlineEntryScreen(ui: UiState, n: NetState): string {
   return `${header(`<span class="pill">${esc(ui.profile!.nick)}</span>`)}<main class="content">
-    <h2 class="title">🌐 온라인 대전</h2>
+    <h2 class="title">온라인 대전</h2>
     <p class="mu">각자 자기 휴대폰으로 접속해 ${MIN_AGENTS}~${MAX_AGENTS}명이 함께 합니다. 빈자리는 AI로 채울 수 있어요. 다른 사람의 제안과 비밀 구단은 서버가 가려서 보내 줍니다.</p>
     ${n.notice ? `<p class="card notice">${esc(n.notice)}</p>` : ''}
     <section class="card"><h3>방 만들기</h3>
@@ -55,7 +55,7 @@ export function roomLobbyScreen(r: RoomView, n: NetState, flash: string): string
   const link = inviteLink(r.code);
   return `${header(`<span class="pill">방 <b>${esc(r.code)}</b></span>`)}<main class="content">
     <h2 class="title">대기실</h2>
-    <section class="card invite"><span class="mu">초대 코드</span><b class="code">${esc(r.code)}</b>
+    <section class="card invite"><span class="mu">초대 코드</span><b class="code" aria-label="초대 코드 ${esc(r.code)}">${[...r.code].map((ch) => `<span>${esc(ch)}</span>`).join('')}</b>
       <button data-act="on-share" class="wide">🔗 초대 링크 보내기</button>
       <small class="mu link-t">${esc(link)}</small>
       ${flash ? `<p class="ok-t">${esc(flash)}</p>` : ''}
@@ -95,7 +95,7 @@ export function waitScreen(r: RoomView, n: NetState, gameHeader: string): string
   const what = g.phase === 'guess' ? '지목을 제출했습니다' : `라운드 ${g.round}/${TOTAL_ROUNDS} 제안을 제출했습니다`;
   const humans = r.seats.filter((s) => s.kind === 'human').length;
   return `${gameHeader}<main class="content center">
-    <div class="hand-ic">🕵️</div>
+    <div class="envelope small" aria-hidden="true"><span class="seal">${ICON.lock}</span></div>
     <h2 class="title">${what}</h2>
     ${g.phase === 'bid' ? bidText(r.myBid) : ''}
     <p class="mu">다른 에이전트를 기다리는 중… (${r.done.length}/${humans})</p>

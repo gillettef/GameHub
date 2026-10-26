@@ -1,7 +1,7 @@
 import { RULES, DEMANDS, demandFee, demandPenalty, PLAYERS, TOTAL_ROUNDS, INVALID_TEXT, clubNeed, clubWeight, currentEvent, fitScore, handAfter, offerValue, rankings, validateOffer, validateSecond } from '../../core';
 import type { Demand, Evaluation, GameState, InvalidReason, Stage } from '../../core';
 import type { Session } from '../../store/storage';
-import { agentName, clubById, dot, esc, eventBanner, header, marksOf, money, roundEntries, scoreboard, slotOffer, type Draft, type GuessDraft } from '../view';
+import { ICON, agentName, clubById, crest, dot, esc, eventBanner, header, marksOf, money, roundEntries, scoreboard, slotOffer, type Draft, type GuessDraft } from '../view';
 
 export const gameHeader = (g: GameState): string =>
   header(`<span class="pill">R <b>${Math.min(g.round, TOTAL_ROUNDS)}/${TOTAL_ROUNDS}</b></span><button class="icon" data-act="quit" aria-label="나가기">⌂</button>`);
@@ -10,7 +10,8 @@ export function handoffScreen(s: Session): string {
   const a = s.game.agents[s.turn]!;
   const what = s.game.phase === 'guess' ? '비밀 구단 지목' : `라운드 ${s.game.round} · 1·2차 협상`;
   return `${gameHeader(s.game)}<main class="content center handoff">
-    <div class="hand-ic">🕵️</div>
+    <div class="envelope" aria-hidden="true"><span class="seal">${ICON.lock}</span></div>
+    <span class="stamp-t">EYES ONLY</span>
     <p class="mu">${what}</p>
     <h1>${esc(a.name)} 님 차례</h1>
     <p class="mu">기기를 ${esc(a.name)} 님에게 넘겨주세요.<br>다른 사람은 화면을 보지 마세요.</p>
@@ -23,10 +24,14 @@ function secretCard(g: GameState, turn: number): string {
   const c = clubById(me.secret);
   const n = clubWeight(g, me.secret, turn);
   const nd = clubNeed(g.needs, me.secret);
-  return `<section class="card secret">
-    <h3>🕵️ 나의 비밀 구단 <small class="mu">· 나만 볼 수 있음</small></h3>
-    <p><b>${esc(c.name)}</b> <span class="mu">(제시액 ${c.budget}억 · 지금 ${nd.pos} 필요 · ${nd.pref} 선호)</span></p>
-    <p class="mu">게임이 끝날 때 아무에게도 들키지 않으면, <b>내가 직접</b> 이 구단에 계약시킨 선수 1명당 <b>+${money(RULES.clubBonus)}</b>. 지금 ${n}명 → ${money(n * RULES.clubBonus)}. 한 명에게라도 들키면 0입니다.</p>
+  return `<section class="secret">
+    <div class="tape"><span>TOP SECRET</span><span>나만 볼 수 있음</span></div>
+    <div class="secret-b">
+      ${crest(c.name, true)}
+      <div class="secret-t"><small>나의 비밀 구단</small><b>${esc(c.name)}</b><small>제시액 ${c.budget}억 · 지금 ${nd.pos} 필요 · ${nd.pref} 선호</small></div>
+      <div class="secret-n"><small>들키지 않으면</small><b>+${money(n * RULES.clubBonus)}</b><small>지금 ${n}명</small></div>
+    </div>
+    <p class="secret-f">게임이 끝날 때 아무에게도 들키지 않으면, <b>내가 직접</b> 이 구단에 계약시킨 선수 1명당 <b>+${money(RULES.clubBonus)}</b>. 한 명에게라도 들키면 0입니다.</p>
   </section>`;
 }
 
@@ -74,10 +79,11 @@ export function bidScreen(s: Session, d: Draft): string {
       const taken = first?.playerId === id;
       const sel = sl.playerId === id && !sl.pass;
       return `<button class="pc ${sel ? 'sel' : ''} ${taken ? 'dim' : ''}" data-act="pick" data-arg="${id}" aria-pressed="${sel}" ${taken ? 'disabled' : ''}>
-        <span class="pos ${q.pos}">${q.pos}</span><span class="val" aria-label="기본 수수료 ${q.base}억">${q.base}</span>
-        <b>${esc(q.name)}</b>
+        <span class="pc-h"><span class="pos ${q.pos}">${q.pos}</span><span class="fee" aria-label="기본 수수료 ${q.base}억"><small>기본 </small>${q.base}<small>억</small></span></span>
+        <b class="nm">${esc(q.name)}</b>
         <span class="tag ${q.trait === '스타' ? 'star' : ''}">${q.trait}</span>
-        <small>${taken ? '1차에서 제안함' : `몸값 ${q.cost}억 · 기본 수수료 ${q.base}억`}</small>
+        ${sel ? `<span class="ck">${ICON.check}</span>` : ''}
+        <small class="pc-f">${taken ? '1차에서 제안함' : `몸값 ${q.cost}억`}</small>
       </button>`;
     })
     .join('');
@@ -94,8 +100,8 @@ export function bidScreen(s: Session, d: Draft): string {
       const taken = first?.clubId === id;
       const sel = sl.clubId === id && !sl.pass;
       return `<button class="club ${sel ? 'sel' : ''} ${tooPoor || taken ? 'dim' : ''} ${mine ? 'mine' : ''}" data-act="club" data-arg="${id}" aria-pressed="${sel}" ${taken ? 'disabled' : ''}>
-        <b>${mine ? '🕵️ ' : ''}${esc(c.name)}</b><span class="bud">${taken ? '1차에서 제안함' : `제시액 ${bud}억${tooPoor ? ' · 몸값 미달' : ''}`}</span>
-        <span class="needs"><span class="${posFit ? 'fit' : ''}">${nd.pos} 필요${posFit ? ' +2' : ''}</span><span class="${prefFit ? 'fit' : ''}">${nd.pref} 선호${prefFit ? ' +1' : ''}</span><span>계약 ${clubWeight(g, id)}명</span></span>
+        ${crest(c.name, mine)}<b class="nm">${esc(c.name)}${mine ? ' <small class="mine-t">비밀</small>' : ''}</b><span class="bud ${tooPoor ? 'poor' : ''}">${taken ? '1차에서 제안함' : `제시액 ${bud}억${tooPoor ? ' · 몸값 미달' : ''}`}</span>
+        <span class="needs"><span class="nc ${posFit ? 'fit' : ''}">${nd.pos} 필요${posFit ? ' +2' : ''}</span><span class="nc ${prefFit ? 'fit' : ''}">${nd.pref} 선호${prefFit ? ' +1' : ''}</span><span class="nc">계약 ${clubWeight(g, id)}명</span></span>
         <span class="marks" aria-label="이 구단에 낸 제안 기록">${marksOf(g, id) || '<small class="mu">제안 기록 없음</small>'}</span>
       </button>`;
     })
@@ -144,7 +150,9 @@ export function bidScreen(s: Session, d: Draft): string {
     <div class="chips">${DEMANDS.map((v) => {
       const n = count(v);
       const sel = sl.demand === v && !sl.pass;
-      return `<button class="chip ${sel ? 'sel' : ''}" data-act="demand" data-arg="${v}" ${n ? '' : 'disabled'} aria-pressed="${sel}">+${demandFee(v)}억<small>매력도 −${demandPenalty(v)}</small><small>${n ? `${n}장` : '없음'}</small></button>`;
+      const total = Math.max(n, RULES.copies);
+      const pips = Array.from({ length: total }, (_, k) => `<i class="pip ${k < n ? '' : 'off'}"></i>`).join('');
+      return `<button class="chip dmd ${sel ? 'sel' : ''}" data-act="demand" data-arg="${v}" ${n ? '' : 'disabled'} aria-pressed="${sel}" aria-label="요구 수수료 +${demandFee(v)}억, 매력도 −${demandPenalty(v)}, ${n ? `${n}장 남음` : '없음'}"><span class="v">+${demandFee(v)}억</span><span class="p">매력도 −${demandPenalty(v)}</span>${RULES.copies ? `<span class="pips" aria-hidden="true">${pips}</span>` : ''}</button>`;
     }).join('')}</div>
   </main>
   <nav class="bar col">
@@ -196,7 +204,7 @@ export function guessScreen(s: Session, d: GuessDraft): string {
     )
     .join('');
   return `${gameHeader(g)}<main class="content">
-    <h2 class="title">🔍 비밀 구단 지목</h2>
+    <h2 class="title ic-title"><span class="target">${ICON.target}</span>비밀 구단 지목</h2>
     <p class="mu">${TOTAL_ROUNDS}라운드 동안의 제안 기록을 보고 다른 에이전트의 비밀 구단을 지목하세요. 맞히면 <b>+${money(RULES.guessBonus)}</b>, 틀리면 <b>−${money(RULES.wrongGuess)}</b>. 자신 없으면 지목하지 않아도 됩니다. 한 명에게라도 들킨 에이전트는 비밀 구단 보너스를 잃습니다.</p>
     ${secretCard(g, s.turn)}
     ${blocks}
@@ -214,10 +222,10 @@ export function finalScreen(s: Session, bar?: string): string {
         const a = g.agents[r.agent]!;
         const f = a.final!;
         const club = f.exposed ? '비밀 구단 들킴 0' : `비밀 구단 ${money(f.clubPoints)}`;
-        return `<div class="row rank-${r.rank}"><span class="rk">${r.rank === 1 ? '🏆' : `${r.rank}위`}</span><span class="nm">${dot(r.agent)}${agentName(a)}<small class="mu"> · 수수료 ${money(a.score)} · ${club} · 지목 ${money(f.guessPoints)}</small></span><b>${money(f.total)}</b></div>`;
+        return `<div class="row rank-${r.rank}"><span class="rk" aria-label="${r.rank}위">${r.rank === 1 ? '1' : `${r.rank}위`}</span><span class="nm">${dot(r.agent)}${agentName(a)}<small class="mu"> · 수수료 ${money(a.score)} · ${club} · 지목 ${money(f.guessPoints)}</small></span><b>${money(f.total)}</b></div>`;
       })
       .join('')}</section>
-    <section class="card reveal"><h3>🕵️ 비밀 구단 공개</h3>${g.agents
+    <section class="card reveal"><h3>비밀 구단 공개</h3>${g.agents
       .map((a, i) => {
         const f = a.final!;
         const c = clubById(a.secret);
@@ -230,7 +238,7 @@ export function finalScreen(s: Session, bar?: string): string {
             return `<li>${esc(t.name)} → ${esc(clubById(cid).name)} ${hit ? `✅ +${money(RULES.guessBonus)}` : `❌ −${money(RULES.wrongGuess)}`}</li>`;
           })
           .join('');
-        return `<h4>${dot(i)}${agentName(a)} — ${esc(c.name)}</h4><p class="mu">${how}</p><p class="mu">${esc(a.name)}의 지목</p>${guesses ? `<ul>${guesses}</ul>` : '<p class="mu">지목하지 않음</p>'}`;
+        return `<h4>${dot(i)}${agentName(a)} — ${esc(c.name)} <span class="stamp-tag ${f.exposed ? 'caught' : 'safe'}">${f.exposed ? 'CAUGHT' : 'SAFE'}</span></h4><p class="mu">${how}</p><p class="mu">${esc(a.name)}의 지목</p>${guesses ? `<ul>${guesses}</ul>` : '<p class="mu">지목하지 않음</p>'}`;
       })
       .join('')}</section>
     <details class="card last"><summary>라운드별 기록</summary>${g.results.map((r) => `<h4>라운드 ${r.round}</h4>${roundEntries(g, r)}`).join('')}</details>
