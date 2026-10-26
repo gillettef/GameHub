@@ -104,7 +104,7 @@ export const NORMAL_FIELD: readonly PersonaKey[] = ['balanced', 'stealth', 'caut
  * cardRel: 카드 종류 선택 비용 = (그 카드 수수료 − 남은 카드 평균 수수료) × cardRel. 카드는 결국 다 쓰게 되므로
  *   지금 높은 카드를 내도 그 수수료는 '나중에 받을 수 있던 돈'이다 → 높은 카드는 경쟁이 없을 때, 낮은 카드는 경쟁할 때 쓴다
  */
-export const AI_MODEL = { beta1: 1 / 1.2, beta2: 1, mix: 1, cardValue: 5, cardRel: 0.5, cardMix: 1 };
+export const AI_MODEL = { beta1: 1 / 1.2, beta2: 1, mix: 1, cardValue: 5, cardRel: 0.25, cardMix: 1 };
 
 /**
  * 게임마다 에이전트별로 고정되는 카드 운용 성향 배율 (1 ± cardMix). 모든 AI가 같은 순서로 카드를 쓰면
@@ -139,20 +139,25 @@ const blocked = (t: Turn, playerId: number, clubId: number): boolean => !!t.firs
 
 /** 남은 협상 수보다 카드가 적을 때 카드 1장을 지금 쓰는 비용 비율 (0 = 넉넉함) */
 export function scarcity(state: Pick<GameState, 'round'>, cards: number, stage: 1 | 2): number {
-  const left = (TOTAL_ROUNDS - state.round) * STAGES + (stage === 1 ? STAGES : 1);
+  const left = negotiationsLeft(state, stage);
   return RULES.copies && cards < left ? 1 - cards / left : 0;
 }
+
+/** 이번 협상을 포함한 남은 협상 수 */
+const negotiationsLeft = (state: Pick<GameState, 'round'>, stage: 1 | 2): number => (TOTAL_ROUNDS - state.round) * STAGES + (stage === 1 ? STAGES : 1);
 
 /**
  * 카드 demand 1장을 지금 쓰는 기회비용 =
  *   낼지 말지: 남은 협상보다 카드가 적은 만큼 (scarcity × cardValue) + 데드라인 데이 1·2차에 쓸 카드를 남기지 못하게 되면 그 보너스만큼
- *   어떤 카드를: (그 카드 수수료 − 손패 평균 수수료) × cardRel. 마지막 라운드에는 남길 이유가 없으므로 0
+ *   어떤 카드를: (그 카드 수수료 − 앞으로 쓸 카드 평균 수수료) × cardRel. 마지막 라운드에는 남길 이유가 없으므로 0
  */
 export function cardCost(state: Pick<GameState, 'round'>, hand: readonly Demand[], stage: 1 | 2, demand: Demand, style = 1): number {
   if (!RULES.copies) return 0;
   const cards = hand.length;
   const reserve = state.round < TOTAL_ROUNDS && cards - 1 < STAGES ? AI_MODEL.cardValue + RULES.deadlineBonus : 0;
-  const rel = state.round < TOTAL_ROUNDS || stage === 1 ? (demandFee(demand) - hand.reduce((a, d) => a + demandFee(d), 0) / cards) * AI_MODEL.cardRel * style : 0;
+  // 남은 협상보다 카드가 많으면 낮은 카드는 끝내 못 쓰므로, 앞으로 쓸 카드(높은 것부터 남은 협상 수만큼)의 평균과 비교한다
+  const used = hand.map(demandFee).sort((a, b) => b - a).slice(0, Math.min(cards, negotiationsLeft(state, stage)));
+  const rel = state.round < TOTAL_ROUNDS || stage === 1 ? (demandFee(demand) - used.reduce((a, f) => a + f, 0) / used.length) * AI_MODEL.cardRel * style : 0;
   return scarcity(state, cards, stage) * AI_MODEL.cardValue + reserve + rel;
 }
 
