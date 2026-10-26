@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { sideFaces, STANDARD_LAYOUT, TIME, type Face } from '../dice'
+import { dieColor, sideFaces, STANDARD_LAYOUT, TIME, type Face } from '../dice'
 import { applyAction, getLegalActions, IllegalActionError, TURNS_PER_ROUND, type Action } from '../game'
 import { createRng, nextInt } from '../rng'
-import { scorePlane } from '../scoring'
+import { scoreLine, scorePlane, scoreTower } from '../scoring'
 import { legalTimeActions, timeTops } from '../time'
 import type { GameState, RolledDie } from '../types'
 import { die, startGame } from './helpers'
@@ -79,7 +79,7 @@ describe('§5 공통 턴 규칙', () => {
       slot: 1,
     })
     expect(s1.market[1]).toBeNull()
-    expect(s1.turn.hand.map((d) => d.color)).toEqual(['blue'])
+    expect(s1.turn.hand.map(dieColor)).toEqual(['blue'])
   })
 
   it('이미 가져간 칸은 다시 가져갈 수 없다', () => {
@@ -166,11 +166,12 @@ describe('§7 2라운드', () => {
     const states = playRandomly(13, 2)
     let s = states.find((x) => x.phase.kind === 'round' && x.phase.round === 2) as GameState
     const p = s.currentPlayer
+    const before = s.players[p]?.debris.length ?? 0
     s = take(s, 0)
     const [d1, d2] = s.turn.hand as [RolledDie, RolledDie]
     s = applyAction(s, { type: 'discard', player: p, dieId: d1.id })
     s = applyAction(s, { type: 'discard', player: p, dieId: d2.id })
-    expect(s.players[p]?.debris.map((d) => d.id)).toEqual([d1.id, d2.id])
+    expect(s.players[p]?.debris.slice(before).map((d) => d.id)).toEqual([d1.id, d2.id])
   })
 
   it('2라운드가 끝나면 평면 점수를 확정한다', () => {
@@ -237,6 +238,113 @@ describe('§8 3라운드', () => {
   })
 })
 
+describe('§5 시장 다시 굴리기 (v0.7)', () => {
+  const reroll = (s: GameState, d: RolledDie): GameState =>
+    applyAction(s, { type: 'rerollHand', player: s.currentPlayer, dieId: d.id })
+
+  it('가져온 주사위 1개를 다시 굴리고, 주머니의 주사위 1개가 내 잔해가 된다', () => {
+    const s0 = take(startGame({ playerCount: 3, seed: 5 }), 0)
+    const p = s0.currentPlayer
+    const d = s0.turn.hand[0] as RolledDie
+    const s1 = reroll(s0, d)
+    const rolled = s1.turn.hand[0] as RolledDie
+    // id·면 배치·면 색은 그대로, 방향만 새로
+    expect({ id: rolled.id, colors: rolled.colors, layout: rolled.layout }).toEqual({ id: d.id, colors: d.colors, layout: d.layout })
+    expect(s1.bag).toHaveLength(s0.bag.length - 1)
+    expect(s1.players[p]?.debris).toHaveLength(1)
+    const cost = s1.players[p]?.debris[0]
+    expect(s0.bag.some((x) => x.id === cost?.id)).toBe(true)
+    expect(s1.bag.some((x) => x.id === cost?.id)).toBe(false)
+    expect(s1.turn.handRerolled).toBe(true)
+    expect(s1.currentPlayer).toBe(p)
+    // 결정적
+    expect(reroll(s0, d)).toEqual(s1)
+  })
+
+  it('가져오기 전에는 할 수 없다', () => {
+    const s = startGame({ playerCount: 2, seed: 6 })
+    const d = s.market[0]?.[0] as RolledDie
+    expect(() => reroll(s, d)).toThrow(IllegalActionError)
+    expect(getLegalActions(s).some((a) => a.type === 'rerollHand')).toBe(false)
+  })
+
+  it('턴마다 1회만, 다음 턴에는 다시 할 수 있다', () => {
+    let s = take(startGame({ playerCount: 2, seed: 7 }), 0)
+    s = reroll(s, s.turn.hand[0] as RolledDie)
+    expect(() => reroll(s, s.turn.hand[0] as RolledDie)).toThrow(IllegalActionError)
+    expect(getLegalActions(s).some((a) => a.type === 'rerollHand')).toBe(false)
+    // 1라운드 첫 주사위는 가운데에
+    s = place(s, s.turn.hand[0] as RolledDie, 0, 2)
+    s = take(s, 1)
+    expect(s.turn.handRerolled).toBe(false)
+    expect(getLegalActions(s).some((a) => a.type === 'rerollHand')).toBe(true)
+  })
+
+  it('2라운드: 하나를 놓은 뒤 남은 주사위를 다시 굴릴 수 있고, 다시 굴린 주사위는 그대로 손에 남는다', () => {
+    const states = playRandomly(17, 2)
+    let s = states.find((x) => x.phase.kind === 'round' && x.phase.round === 2 && !x.turn.taken) as GameState
+    s = take(s, 0)
+    const first = s.turn.hand[0] as RolledDie
+    const cell = getLegalActions(s).find((a) => a.type === 'place' && a.dieId === first.id)
+    if (cell?.type !== 'place') throw new Error('놓을 칸이 없음')
+    s = applyAction(s, cell)
+    const rest = s.turn.hand[0] as RolledDie
+    expect(s.turn.hand).toHaveLength(1)
+    s = reroll(s, rest)
+    expect(s.turn.hand.map((d) => d.id)).toEqual([rest.id])
+    expect(s.turn.handRerolled).toBe(true)
+  })
+
+  it('흔들리는 시장(가져오기 전, 대가 없음)과 시장 다시 굴리기(가져온 뒤, 잔해 1개)는 한 턴에 둘 다 쓸 수 있다', () => {
+    let s = startGame({ playerCount: 2, seed: 11, law: 'shakyMarket' })
+    const p = s.currentPlayer
+    const d = s.market[0]?.[0] as RolledDie
+    s = applyAction(s, { type: 'reroll', player: p, slot: 0, dieId: d.id })
+    expect(s.players[p]?.debris).toHaveLength(0)
+    s = take(s, 0)
+    s = reroll(s, s.turn.hand[0] as RolledDie)
+    expect(s.players[p]?.debris).toHaveLength(1)
+  })
+
+  it('손에 없는 주사위는 다시 굴릴 수 없다', () => {
+    const s = take(startGame({ playerCount: 2, seed: 8 }), 0)
+    expect(() => applyAction(s, { type: 'rerollHand', player: s.currentPlayer, dieId: 99999 })).toThrow(IllegalActionError)
+  })
+
+  it('주머니가 비었으면 할 수 없다', () => {
+    const s = { ...take(startGame({ playerCount: 2, seed: 9 }), 0), bag: [] }
+    expect(() => reroll(s, s.turn.hand[0] as RolledDie)).toThrow(IllegalActionError)
+    expect(getLegalActions(s).some((a) => a.type === 'rerollHand')).toBe(false)
+  })
+
+  it('다른 사람 차례에는 할 수 없다', () => {
+    const s = take(startGame({ playerCount: 2, seed: 10 }), 0)
+    const other = (s.currentPlayer + 1) % 2
+    expect(() => applyAction(s, { type: 'rerollHand', player: other, dieId: (s.turn.hand[0] as RolledDie).id })).toThrow(IllegalActionError)
+  })
+})
+
+describe('§6~§8 기본 점수는 그 라운드 끝에 확정 (v0.7)', () => {
+  it('1라운드 끝에 선, 2라운드 끝에 평면, 3라운드 끝에 탑 점수를 확정한다', () => {
+    const states = playRandomly(16, 3)
+    const at = (round: number) => states.find((x) => x.phase.kind === 'round' && x.phase.round === round) as GameState
+    for (const p of at(1).players) expect([p.lineScore, p.planeScore, p.towerScore]).toEqual([null, null, null])
+    for (const p of at(2).players) {
+      expect(p.lineScore).toBe(scoreLine(p.board).total)
+      expect(p.planeScore).toBeNull()
+    }
+    for (const p of at(3).players) expect(p.planeScore).toBe(scorePlane(p.board).total)
+    const r4 = states.find((x) => x.time !== null) as GameState
+    for (const p of r4.players) expect(p.towerScore).toBe(scoreTower(p.board).total)
+    // 확정한 점수는 그 뒤로 바뀌지 않는다
+    const last = states[states.length - 1] as GameState
+    for (const p of last.players) {
+      expect(p.lineScore).toBe(at(2).players[p.id]?.lineScore)
+      expect(p.towerScore).toBe(r4.players[p.id]?.towerScore)
+    }
+  })
+})
+
 describe('무작위 전체 진행 (불변식)', () => {
   it.each([
     [2, 21],
@@ -253,12 +361,18 @@ describe('무작위 전체 진행 (불변식)', () => {
 
     // 4라운드 굴리기 전(3라운드 끝) 상태로 1~3라운드 불변식 확인
     const first4 = states.find((s) => s.time !== null) as GameState
+    // §5 시장 다시 굴리기마다 주머니의 주사위 1개가 잔해로 더해진다
+    const rerolls = first4.players.map(() => 0)
+    states.forEach((s, i) => {
+      const prev = states[i - 1]
+      if (prev && !prev.turn.handRerolled && s.turn.handRerolled) rerolls[s.currentPlayer]!++
+    })
     for (const p of first4.players) {
       expect(p.board.cells[0]?.every((pillar) => pillar.length >= 1)).toBe(true)
-      // 평면 6개 + 쌓기 6개 중 놓은 것 + 잔해 = 12
+      // 평면 6개 + 쌓기 6개 중 놓은 것 + 잔해 = 12 + 다시 굴린 횟수
       const plane = (first4Cells(p.board.cells[1]) + first4Cells(p.board.cells[2]))
       const stacked = p.board.cells.flat().reduce((n, pillar) => n + Math.max(0, pillar.length - 1), 0)
-      expect(plane + stacked + p.debris.length).toBe(12)
+      expect(plane + stacked + p.debris.length).toBe(12 + (rerolls[p.id] ?? 0))
     }
 
     // §9 4라운드에 굴리는 횟수 = 준비 때 센 ⧗ 주사위 수

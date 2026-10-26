@@ -20,6 +20,14 @@ export const DIE_COLORS: Record<
   },
 }
 
+/** 색이 없는 ⧗ 면 (§2 v0.7). 진주빛 무채색, 기호 없음 */
+export const BLANK_FACE = { fill: '#cfcbe3', light: '#f3f1ff', dark: '#8f8aab', ink: '#2b2838', symbol: '', name: '무색', stroke: undefined }
+
+/** 면 색 팔레트. undefined(⧗ 면)는 무색 */
+export function tint(color: Color | undefined): (typeof DIE_COLORS)[Color] {
+  return color ? DIE_COLORS[color] : BLANK_FACE
+}
+
 /** 플레이어 자리 색 (카드 머리띠 색을 빌려 쓴다) */
 export const SEAT_COLORS = ['#9b8cff', '#5ad1e6', '#f2a65a', '#ff8a7a'] as const
 
@@ -31,9 +39,16 @@ export function faceLabel(face: Face): string {
   return isTime(face) ? '시간' : String(face)
 }
 
-export function colorLabel(color: Color): string {
-  return DIE_COLORS[color].name
+export function colorLabel(color: Color | undefined): string {
+  return tint(color).name
 }
+
+/** 라운드별 기본 점수 (§6~§8 v0.7): 같은 색 연결 하나, 라운드 끝에 확정 */
+export const BASE_INFO = {
+  1: { name: '선', rule: '가장 긴 같은 색 가로 연속' },
+  2: { name: '평면', rule: '가장 넓은 같은 색 영역' },
+  3: { name: '입체', rule: '가장 높은 같은 색 세로 연속' },
+} as const
 
 export const ROUND_INFO = [
   { round: 1, dim: '1차원', name: '선', quote: '선 위의 존재는 위밖에 보지 못한다.', hint: '가운데에서 시작해 양 끝에 붙여 5칸 선을 만드세요' },

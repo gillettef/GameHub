@@ -2,6 +2,7 @@
  * 게임 준비(개인 목표 고르기)와 1~3라운드 턴 진행 (§5, §6~§8)
  *
  * 한 턴: 시장 칸 하나를 통째로 가져옴(takeSlot) → 가져온 주사위를 하나씩 놓거나(place) 잔해로(discard).
+ * 놓기 전에 턴마다 1번, 주머니의 주사위 1개를 잔해로 내고 손의 주사위 1개를 다시 굴릴 수 있다(rerollHand).
  * 손에 든 주사위가 없어지면 턴이 끝나고, 모두 한 턴씩 하면 바퀴가 끝난다.
  * 라운드 목표는 행동마다 확인하고, 라운드가 바뀔 때 새 목표를 공개한다.
  */
@@ -10,7 +11,8 @@ import { withFront, type Face } from './dice'
 import { fail } from './errors'
 import { checkRoundGoals, revealRoundGoals } from './goals'
 import { isLegalCell, legalCells, pillarAt, type Cell } from './placement'
-import { scorePlane } from './scoring'
+import { scoreLine, scorePlane, scoreTower } from './scoring'
+import { drawOne } from './rng'
 import { dicePerSlot, fillMarket, marketSlotCount, roll } from './setup'
 import { applyTimeAction, legalTimeActions, startRound4, type TimeAction } from './time'
 import type { Die, GameState, PlayerState, RolledDie, Round } from './types'
@@ -25,6 +27,7 @@ export type SetupAction = { type: 'choosePersonalGoal'; player: number; goal: Pe
 export type DraftAction =
   | { type: 'reroll'; player: number; slot: number; dieId: number }
   | { type: 'takeSlot'; player: number; slot: number }
+  | { type: 'rerollHand'; player: number; dieId: number }
   | { type: 'place'; player: number; dieId: number; row: number; col: number; front?: Face }
   | { type: 'discard'; player: number; dieId: number }
 
@@ -61,9 +64,9 @@ function takeFromHand(state: GameState, dieId: number): [RolledDie, RolledDie[]]
   return [die, state.turn.hand.filter((d) => d.id !== dieId)]
 }
 
-const unrolled = (d: RolledDie): Die => ({ id: d.id, color: d.color, layout: d.layout })
+const unrolled = (d: RolledDie): Die => ({ id: d.id, colors: d.colors, layout: d.layout })
 
-const freshTurn = (circuit: number) => ({ circuit, picks: 0, hand: [], taken: false, rerolled: false })
+const freshTurn = (circuit: number) => ({ circuit, picks: 0, hand: [], taken: false, rerolled: false, handRerolled: false })
 
 /** 손이 비면 턴 끝 → 바퀴 끝 → 라운드 끝 순서로 진행 */
 function advance(state: GameState): GameState {
@@ -80,7 +83,7 @@ function advance(state: GameState): GameState {
     return {
       ...checked,
       currentPlayer: (state.leadPlayer + picks) % n,
-      turn: { ...state.turn, picks, taken: false, rerolled: false },
+      turn: { ...state.turn, picks, taken: false, rerolled: false, handRerolled: false },
     }
   }
 
@@ -112,11 +115,12 @@ function refillMarket(state: GameState, round: 1 | 2 | 3): GameState {
 }
 
 function endRound(state: GameState, round: 1 | 2 | 3): GameState {
-  let players = state.players
-  // §7 2라운드 점수는 라운드가 끝날 때 확정
-  if (round === 2) {
-    players = players.map((p) => ({ ...p, planeScore: scorePlane(p.board, state.law).total }))
-  }
+  // §6~§8 기본 점수는 그 라운드가 끝날 때 확정 (v0.7)
+  const players = state.players.map((p) => {
+    if (round === 1) return { ...p, lineScore: scoreLine(p.board, state.law).total }
+    if (round === 2) return { ...p, planeScore: scorePlane(p.board, state.law).total }
+    return { ...p, towerScore: scoreTower(p.board, state.law).total }
+  })
   const next = (round + 1) as Round
   const base = revealRoundGoals(
     {
@@ -179,6 +183,22 @@ export function applyAction(state: GameState, action: Action): GameState {
       if (slot === null) fail('이미 가져간 칸입니다.')
       const market = state.market.map((s, i) => (i === action.slot ? null : s))
       return advance({ ...state, market, turn: { ...state.turn, hand: slot, taken: true } })
+    }
+
+    case 'rerollHand': {
+      // §5 시장 다시 굴리기: 주머니에서 1개를 잔해로 내고, 손의 주사위 1개를 다시 굴림 (턴마다 1회)
+      if (!state.turn.taken) fail('먼저 시장 칸을 가져와야 합니다.')
+      if (state.turn.handRerolled) fail('이번 턴에 이미 다시 굴렸습니다.')
+      if (state.bag.length === 0) fail('주머니가 비어 다시 굴릴 수 없습니다.')
+      const [die] = takeFromHand(state, action.dieId)
+      const [cost, bag, r1] = drawOne(state.rng, state.bag)
+      const [rolled, rng] = roll(r1, unrolled(die))
+      const players = updatePlayer(state.players, action.player, (p) => ({
+        ...p,
+        debris: [...p.debris, cost],
+      }))
+      const hand = state.turn.hand.map((d) => (d.id === action.dieId ? rolled : d))
+      return { ...state, rng, bag, players, turn: { ...state.turn, hand, handRerolled: true } }
     }
 
     case 'place': {
@@ -250,12 +270,17 @@ export function getLegalActions(state: GameState): Action[] {
     )
     return [...takes, ...rerolls]
   }
-  return state.turn.hand.flatMap((die) => [
+  const rerolls: Action[] =
+    state.turn.handRerolled || state.bag.length === 0
+      ? []
+      : state.turn.hand.map((die) => ({ type: 'rerollHand', player, dieId: die.id }) as const)
+  const moves: Action[] = state.turn.hand.flatMap((die) => [
     ...legalPlacements(state, die.id).map(
       (c) => ({ type: 'place', player, dieId: die.id, row: c.row, col: c.col }) as const,
     ),
     ...(round === 1 ? [] : [{ type: 'discard', player, dieId: die.id } as const]),
   ])
+  return [...moves, ...rerolls]
 }
 
 /** 보드 위 한 칸의 주사위 수 (테스트·UI 편의) */

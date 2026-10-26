@@ -1,5 +1,5 @@
 import { useState, type CSSProperties, type PointerEvent } from 'react'
-import { facesOf, turnOrder, type Color, type DieLayout, type Face, type Orientation } from '../engine'
+import { faceColor, facesOf, turnOrder, type DieLayout, type Face, type FaceColors, type Orientation } from '../engine'
 import { colorLabel, faceLabel } from './colors'
 import { DieFace } from './DieFace'
 
@@ -17,7 +17,8 @@ const LIGHT = -10
 
 interface Die3DProps {
   layout: DieLayout
-  color: Color
+  /** 숫자 면의 색 (§2 v0.7: 면마다 다름) */
+  colors: FaceColors
   /** 기준 방향 (굴림 결과). 윗면은 그대로, 앞면만 front로 돌려 보인다 */
   base: Orientation
   /** 지금 앞으로 돌린 면. 없으면 base.front */
@@ -35,7 +36,7 @@ interface Die3DProps {
  * CSS 3D 정육면체 주사위. 끌면 손을 따라 돌고, 앞면을 바꾸면 윗면을 축으로 짧게(≤300ms) 돌아간다.
  * 회전 각도는 누적해서 늘 가까운 쪽으로 돈다. prefers-reduced-motion이면 전역 규칙으로 즉시 바뀐다.
  */
-export function Die3D({ layout, color, base, front, size = 56, onTurn, className = '' }: Die3DProps) {
+export function Die3D({ layout, colors, base, front, size = 56, onTurn, className = '' }: Die3DProps) {
   const order = turnOrder(layout, base)
   const k = Math.max(0, order.indexOf(front ?? base.front))
   const f = facesOf(layout, base)
@@ -100,7 +101,7 @@ export function Die3D({ layout, color, base, front, size = 56, onTurn, className
   return (
     <div
       role="img"
-      aria-label={`${colorLabel(color)} 주사위, 윗면 ${faceLabel(base.top)}, 앞면 ${faceLabel(shownFront)}`}
+      aria-label={`${colorLabel(faceColor(colors, base.top))} 주사위, 윗면 ${faceLabel(base.top)}, 앞면 ${faceLabel(shownFront)}`}
       className={`relative shrink-0 ${onTurn ? 'cursor-grab touch-none select-none active:cursor-grabbing' : ''} ${className}`}
       // 정육면체는 기울어져 있어 실제 크기보다 조금 크게 보인다
       style={{ width: size * 1.45, height: size * 1.45, perspective: size * 9 }}
@@ -118,7 +119,7 @@ export function Die3D({ layout, color, base, front, size = 56, onTurn, className
       <div className="preserve-3d absolute top-1/2 left-1/2" style={{ ...cube, margin: `-${half}px 0 0 -${half}px` }}>
         {faces.map(({ face, transform, shade }, i) => (
           <span key={i} className="absolute inset-0 backface-hidden" style={{ transform }}>
-            <DieFace face={face} color={color} size={size} bare />
+            <DieFace face={face} color={faceColor(colors, face)} size={size} bare />
             {shade > 0 && (
               <span
                 aria-hidden="true"

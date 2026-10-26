@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
   applyAction,
+  dieColor,
+  faceColor,
   findTop,
   getLegalActions,
   legalPlacements,
@@ -24,7 +26,7 @@ import type { OnlineStatus } from '../app/online'
 import type { Seat } from '../app/session'
 import { BoardView, type FreshDie } from './BoardView'
 import { CardsSheet, type BotSpeed } from './CardsSheet'
-import { colorLabel, faceLabel, ROUND_INFO, seatColor } from './colors'
+import { BASE_INFO, colorLabel, faceLabel, ROUND_INFO, seatColor } from './colors'
 import { describeAction } from './describe'
 import { Die3D } from './Die3D'
 import { DieFace, GlyphText, Hourglass } from './DieFace'
@@ -111,8 +113,8 @@ function fxSummary(events: FxEvent[], seats: Seat[]): string {
           return `${name(e.player)}, ${e.name} ${e.first ? '선착' : '달성'} ${e.points}점.`
         case 'debris':
           return `${name(e.player)}, 잔해 ${e.count}개.`
-        case 'plane':
-          return `${name(e.player)}, 평면 점수 ${e.points}점 확정.`
+        case 'base':
+          return `${name(e.player)}, ${BASE_INFO[e.round].name} 점수 ${e.points}점 확정.`
       }
     })
     .join(' ')
@@ -167,10 +169,10 @@ export function GameScreen({
   const [batches, setBatches] = useState<Notice[][]>([])
   /**
    * 잔해는 이 기기 사람이 남의 손으로(강제로) 얻었을 때만 모달로 묻는다.
-   * 스스로 버리기를 두 번 눌러 만든 잔해와 봇·원격 플레이어의 잔해는 짧은 팝업으로만 보인다
+   * 스스로 버리기·다시 굴리기를 두 번 눌러 만든 잔해와 봇·원격 플레이어의 잔해는 짧은 팝업으로만 보인다
    */
   const quietDebris = (player: number) =>
-    !humanLocal.includes(player) || (!!lastAction && (lastAction.type === 'discard' || lastAction.type === 'scrap') && lastAction.player === player)
+    !humanLocal.includes(player) || (!!lastAction && (lastAction.type === 'discard' || lastAction.type === 'scrap' || lastAction.type === 'rerollHand') && lastAction.player === player)
   if (seen !== state) {
     setSeen(state)
     const batch = seen.config.seed === state.config.seed ? buildNotices(diffEvents(seen, state), state, quietDebris) : []
@@ -603,7 +605,7 @@ export function GameScreen({
         <div className="-mt-1 flex items-center gap-2 px-1" role="group" aria-label={`${currentSeat?.name} 손의 주사위`}>
           <span className="text-xs text-muted">{currentSeat?.name} 손에</span>
           {state.turn.hand.map((d) => (
-            <DieFace key={d.id} face={d.orientation.top} color={d.color} size={26} />
+            <DieFace key={d.id} face={d.orientation.top} color={dieColor(d)} size={26} />
           ))}
         </div>
       )}
@@ -630,9 +632,9 @@ export function GameScreen({
           <BoardView
             board={shown.board}
             targets={handDie ? placeTargets : targets.map((t) => t.to)}
-            ghost={handDie ? { face: handDie.orientation.top, color: handDie.color } : null}
+            ghost={handDie ? { face: handDie.orientation.top, color: dieColor(handDie) } : null}
             rollGhosts={targets.map((t) => ({ to: t.to, face: t.orientation.top, direction: t.direction }))}
-            rollColor={timeDie?.color}
+            rollColors={timeDie?.colors}
             selected={timeFrom}
             armed={armedCell}
             marked={timeCells}
@@ -656,12 +658,12 @@ export function GameScreen({
                   type="button"
                   key={d.id}
                   aria-pressed={on}
-                  aria-label={`손에 든 주사위 ${colorLabel(d.color)} ${faceLabel(d.orientation.top)}${stuck ? ', 놓을 칸 없음' : ''}${on ? ', 선택됨' : ''}`}
+                  aria-label={`손에 든 주사위 ${colorLabel(dieColor(d))} ${faceLabel(d.orientation.top)}${stuck ? ', 놓을 칸 없음' : ''}${on ? ', 선택됨' : ''}`}
                   onClick={() => patch({ selectedDie: on && hand.length > 1 ? null : d.id, front: null, armedCell: null })}
                   className={`relative animate-pop rounded-2xl p-1.5 transition-transform duration-200 ${on ? '-translate-y-2 scale-110 bg-accent/20 ring-2 ring-accent' : 'active:scale-95'}`}
                 >
                   <span className={`block ${on ? 'animate-hover' : ''} ${stuck && !on ? 'opacity-45 grayscale-[0.6]' : ''}`}>
-                    <Die3D layout={d.layout} color={d.color} base={d.orientation} front={on ? (handFront ?? undefined) : undefined} size={36} />
+                    <Die3D layout={d.layout} colors={d.colors} base={d.orientation} front={on ? (handFront ?? undefined) : undefined} size={36} />
                   </span>
                   {stuck && (
                     <span aria-hidden="true" className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 rounded-full bg-[#3a1d27] px-1.5 text-xs leading-4 font-bold whitespace-nowrap text-[#ffb3b3] ring-1 ring-danger/50">
@@ -676,7 +678,7 @@ export function GameScreen({
             <div className="mt-3 flex animate-fade flex-col gap-2 border-t border-line pt-3">
               {/* 앞면 고르기: 주사위를 좌우로 끌거나 옆면 버튼을 누른다 (같은 일을 하는 조작은 둘만) */}
               <div className="flex items-center gap-2">
-                <Die3D layout={handDie.layout} color={handDie.color} base={handDie.orientation} front={handFront ?? undefined} size={48} onTurn={turnHand} />
+                <Die3D layout={handDie.layout} colors={handDie.colors} base={handDie.orientation} front={handFront ?? undefined} size={48} onTurn={turnHand} />
                 <div className="flex min-w-0 flex-1 flex-col gap-1.5">
                   <span className="text-xs font-bold text-muted">
                     앞면 고르기 <span className="font-normal">· 주사위를 좌우로 끌어도 돼요</span>
@@ -693,7 +695,7 @@ export function GameScreen({
                         onClick={() => patch({ front: f })}
                         className={`flex size-11 items-center justify-center rounded-xl transition-all duration-150 ${active ? 'bg-accent/25 ring-2 ring-accent' : 'bg-void/50 active:scale-90'}`}
                       >
-                        <DieFace face={f} color={handDie.color} size={28} showSymbol={false} />
+                        <DieFace face={f} color={faceColor(handDie.colors, f)} size={28} showSymbol={false} />
                       </button>
                     )
                   })}
@@ -701,8 +703,17 @@ export function GameScreen({
                 </div>
               </div>
               <p className="text-xs leading-relaxed text-muted">
-                앞면은 <b className="text-fg">맨 앞줄</b>에서 「정면 숫자선」 점수가 되고, 4라운드에 넘길 때 올라올 면을 정해요.
+                주사위의 색은 <b className="text-fg">윗면의 색</b>이에요. 앞면은 4라운드에 넘길 때 올라올 면을 정해요.
               </p>
+              {legal.some((a) => a.type === 'rerollHand' && a.dieId === handDie.id) && (
+                <ConfirmButton
+                  key={`reroll-${handDie.id}`}
+                  confirmText="한 번 더 누르면 다시 굴려요 · 주머니에서 잔해 1개"
+                  onConfirm={() => onAction({ type: 'rerollHand', player: actor as number, dieId: handDie.id })}
+                >
+                  이 주사위 다시 굴리기 · 잔해 1개 −1점
+                </ConfirmButton>
+              )}
               {legal.some((a) => a.type === 'discard' && a.dieId === handDie.id) && (
                 <ConfirmButton key={handDie.id} confirmText="한 번 더 누르면 버려요 · −1점" onConfirm={() => onAction({ type: 'discard', player: actor as number, dieId: handDie.id })}>
                   잔해로 버리기 · −1점
@@ -739,7 +750,7 @@ export function GameScreen({
                     <span aria-hidden="true" className="font-display text-xl font-bold text-accent">
                       {DIRECTION_ARROW[t.direction]}
                     </span>
-                    <DieFace face={t.orientation.top} color={timeDie.color} size={28} showSymbol={false} />
+                    <DieFace face={t.orientation.top} color={faceColor(timeDie.colors, t.orientation.top)} size={28} showSymbol={false} />
                   </button>
                 ))
               )}

@@ -26,11 +26,11 @@ const PERSONAL_GOAL_WEIGHT = 0.5
 /** 플레이어 입장의 상태 평가 (높을수록 좋음) */
 export function evaluate(state: GameState, playerId: number): number {
   const player = state.players[playerId] as PlayerState
-  const plane = player.planeScore ?? scorePlane(player.board, state.law).total
+  // 확정된 기본 점수는 확정분, 아직이면 지금 보드로 (v0.7)
   let value =
-    scoreLine(player.board, state.law).total +
-    plane +
-    scoreTower(player.board).total +
+    (player.lineScore ?? scoreLine(player.board, state.law).total) +
+    (player.planeScore ?? scorePlane(player.board, state.law).total) +
+    (player.towerScore ?? scoreTower(player.board, state.law).total) +
     goalPoints(state, playerId) -
     player.debris.length
   // 4라운드 전에는 ⧗ 꼭대기가 앞으로의 넘기기 기회다
@@ -39,12 +39,18 @@ export function evaluate(state: GameState, playerId: number): number {
   return value
 }
 
+/**
+ * 다시 굴리기는 결과를 미리 적용해 보면 난수를 엿보게 되므로 봇은 쓰지 않는다
+ * (흔들리는 시장의 reroll, 시장 다시 굴리기 rerollHand)
+ */
+const isReroll = (a: Action): boolean => a.type === 'reroll' || a.type === 'rerollHand'
+
 /** 행동 하나를 적용한 뒤, 같은 플레이어의 턴이 이어지면 욕심껏 끝까지 둔 결과 */
 function playout(state: GameState, playerId: number, depth: number): GameState {
   let s = state
   for (let i = 0; i < depth; i++) {
     if (s.phase.kind !== 'round' || s.currentPlayer !== playerId) break
-    const actions = getLegalActions(s).filter((a) => a.type !== 'reroll')
+    const actions = getLegalActions(s).filter((a) => !isReroll(a))
     if (actions.length === 0) break
     let best = s
     let bestValue = -Infinity
@@ -73,7 +79,7 @@ export function chooseBotAction(state: GameState, playerId: number): Action | nu
   let best: Action = actions[0] as Action
   let bestValue = -Infinity
   for (const action of actions) {
-    if (action.type === 'reroll') continue
+    if (isReroll(action)) continue
     const next = applyAction(state, action)
     // 칸을 가져온 직후에는 손에 든 주사위를 다 놓아 본 결과로 평가
     const settled = action.type === 'takeSlot' ? playout(next, playerId, 6) : next

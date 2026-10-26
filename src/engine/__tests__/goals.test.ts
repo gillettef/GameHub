@@ -7,7 +7,7 @@ import { checkRoundGoals, goalPoints, personalGoalPoints, revealRoundGoals } fro
 import { createRng, nextInt } from '../rng'
 import { createGame } from '../setup'
 import type { Board, GameState, RolledDie, Round, RoundGoalCard } from '../types'
-import { board, die, line, startGame } from './helpers'
+import { board, colorsWith, die, line, startGame } from './helpers'
 
 // ─── 도우미 ─────────────────────────────────────────────────────────
 
@@ -251,7 +251,7 @@ describe('§5 라운드 목표: 게임 진행 중 판정', () => {
   function round1With(boards: Board[]): { s: GameState; d: RolledDie } {
     let s = staged(1, [card('timeSeed', 1)], boards)
     const d = T()
-    s = { ...s, leadPlayer: 0, currentPlayer: 0, turn: { circuit: 1, picks: 0, hand: [], taken: false, rerolled: false } }
+    s = { ...s, leadPlayer: 0, currentPlayer: 0, turn: { circuit: 1, picks: 0, hand: [], taken: false, rerolled: false, handRerolled: false } }
     s = { ...s, market: [[d], [die('blue', 3)]] }
     return { s, d }
   }
@@ -277,7 +277,7 @@ describe('§5 라운드 목표: 게임 진행 중 판정', () => {
     let s = staged(2, [card('smallSeed', 2)], [board({ ...line(...Array.from({ length: 5 }, () => die('red', 3))), '1,0': [die('red', 1)], '1,1': [die('red', 1)] }), board({})])
     const a = die('green', 1)
     const b = die('green', 5)
-    s = { ...s, leadPlayer: 0, currentPlayer: 0, turn: { circuit: 0, picks: 0, hand: [], taken: false, rerolled: false }, market: [[a, b], [die('red', 2), die('red', 2)]] }
+    s = { ...s, leadPlayer: 0, currentPlayer: 0, turn: { circuit: 0, picks: 0, hand: [], taken: false, rerolled: false, handRerolled: false }, market: [[a, b], [die('red', 2), die('red', 2)]] }
     s = place(take(s, 0), a, 1, 2)
     expect(s.turn.hand).toHaveLength(1)
     expect(s.roundGoals[0]?.first).toBe(0)
@@ -289,7 +289,7 @@ describe('§5 라운드 목표: 게임 진행 중 판정', () => {
     const run = (circuit: number) => {
       let s = staged(2, [card('isolation', 2)], [iso, board({})])
       const [a, b] = [die('red', 2), die('red', 2)]
-      s = { ...s, leadPlayer: 0, currentPlayer: 0, turn: { circuit, picks: 0, hand: [], taken: false, rerolled: false }, market: [[a, b], [die('red', 2), die('red', 2)]] }
+      s = { ...s, leadPlayer: 0, currentPlayer: 0, turn: { circuit, picks: 0, hand: [], taken: false, rerolled: false, handRerolled: false }, market: [[a, b], [die('red', 2), die('red', 2)]] }
       s = take(s, 0)
       s = applyAction(s, { type: 'discard', player: 0, dieId: a.id })
       return applyAction(s, { type: 'discard', player: 0, dieId: b.id })
@@ -337,7 +337,7 @@ describe('§10 최종 점수: 목표 점수와 개인 목표', () => {
         board: opts.boards?.[i] ?? board({}),
         planeScore: 0,
         personalGoal: opts.personal?.[i] ?? null,
-        debris: Array.from({ length: opts.debris?.[i] ?? 0 }, (_, k) => ({ id: 9000 + i * 100 + k, color: 'red' as const, layout: STANDARD_LAYOUT })),
+        debris: Array.from({ length: opts.debris?.[i] ?? 0 }, (_, k) => ({ id: 9000 + i * 100 + k, colors: colorsWith('red', 1), layout: STANDARD_LAYOUT })),
       })),
     }
   }
@@ -375,12 +375,12 @@ describe('§10 최종 점수: 목표 점수와 개인 목표', () => {
 
   it('§10 + §11-1 최종 1차원 점수에 법칙(공허의 우주)이 반영된다', () => {
     const b = board(line(die('red', 1), die('black', 1), die('red', 1), die('red', 1), die('blue', 1)))
-    expect(scoreOf(ended({ law: 'void', boards: [b, board({})] }), 0)?.line).toBe(6)
-    expect(scoreOf(ended({ law: 'standard', boards: [b, board({})] }), 0)?.line).toBe(1)
+    expect(scoreOf(ended({ law: 'void', boards: [b, board({})] }), 0)?.line).toBe(4)
+    expect(scoreOf(ended({ law: 'standard', boards: [b, board({})] }), 0)?.line).toBe(2)
   })
 
   it('§10 2차원 점수는 확정분을 쓰므로 법칙은 2라운드 끝에 이미 반영되어 있다', () => {
-    const states = playRandomly(74, 2, 'mirror')
+    const states = playRandomly(74, 2, 'void')
     const last = states[states.length - 1] as GameState
     const r3 = states.find((s) => roundOf(s) === 3) as GameState
     for (const sc of finalScores(last)) expect(sc.plane).toBe(r3.players[sc.player]?.planeScore)

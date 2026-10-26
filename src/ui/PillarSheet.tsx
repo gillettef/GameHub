@@ -1,4 +1,4 @@
-import { facesOf, type Cell, type Pillar, type RolledDie } from '../engine'
+import { faceColor, facesOf, type Cell, type Pillar, type RolledDie } from '../engine'
 import { DieFace } from './DieFace'
 import { Sheet } from './primitives'
 
@@ -7,7 +7,7 @@ export function DieNet({ die, size = 30 }: { die: RolledDie; size?: number }) {
   const f = facesOf(die.layout, die.orientation)
   const cell = (face: typeof f.top, label: string, area: string, main = false) => (
     <div className="flex flex-col items-center gap-0.5" style={{ gridArea: area }}>
-      <DieFace face={face} color={die.color} size={size} showSymbol={main} />
+      <DieFace face={face} color={faceColor(die.colors, face)} size={size} showSymbol={main} />
       <span className={`text-xs leading-none font-bold ${main ? 'text-fg' : 'text-muted'}`}>{label}</span>
     </div>
   )

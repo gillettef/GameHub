@@ -2,13 +2,13 @@
  * 행동 하나를 사람이 읽는 한 줄로 (최근 행동 줄, 리플레이).
  * 주사위 정보는 행동 직전 상태에서 찾는다. 엔진 상태를 읽기만 한다.
  */
-import { findTop, type Action, type GameState, type RolledDie } from '../engine'
+import { dieColor, findTop, type Action, type GameState, type RolledDie } from '../engine'
 import type { Seat } from '../app/session'
 import { colorLabel, faceLabel } from './colors'
 
 const DIRECTION: Record<string, string> = { forward: '앞으로', back: '뒤로', left: '왼쪽으로', right: '오른쪽으로' }
 
-const dieText = (d: RolledDie | undefined) => (d ? `${colorLabel(d.color)} ${faceLabel(d.orientation.top)}` : '주사위')
+const dieText = (d: RolledDie | undefined) => (d ? `${colorLabel(dieColor(d))} ${faceLabel(d.orientation.top)}` : '주사위')
 
 /** 이 플레이어 보드 꼭대기에서 주사위 찾기 */
 function topDie(state: GameState, player: number, dieId: number): RolledDie | undefined {
@@ -34,6 +34,10 @@ export function describeAction(action: Action, before: GameState | null, seats: 
     case 'place': {
       const d = before?.turn.hand.find((x) => x.id === action.dieId)
       return `${name}: ${dieText(d)} → ${action.row + 1}행 ${action.col + 1}열`
+    }
+    case 'rerollHand': {
+      const d = before?.turn.hand.find((x) => x.id === action.dieId)
+      return `${name}: ${dieText(d)} 다시 굴림 (잔해 1개)`
     }
     case 'discard': {
       const d = before?.turn.hand.find((x) => x.id === action.dieId)

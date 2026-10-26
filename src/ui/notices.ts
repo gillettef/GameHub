@@ -1,5 +1,5 @@
 /**
- * 플레이어가 하나씩 확인하고 넘어가야 할 알림 (라운드 시작, 목표 달성, 평면 점수 확정, 잔해).
+ * 플레이어가 하나씩 확인하고 넘어가야 할 알림 (라운드 시작, 목표 달성, 기본 점수 확정, 잔해).
  * 연출 사건(FxEvent)을 모달 한 장씩으로 묶는다. 엔진 상태를 읽기만 한다.
  */
 import type { GameState, RoundGoalId } from '../engine'
@@ -17,19 +17,22 @@ export type Notice =
       pending: number[] | null
     }
   | { kind: 'goal'; items: { player: number; name: string; points: number; first: boolean }[] }
-  | { kind: 'plane'; items: { player: number; points: number }[] }
+  /** 라운드 끝 기본 점수 확정 (1 선, 2 평면, 3 입체) */
+  | { kind: 'base'; round: 1 | 2 | 3; items: { player: number; points: number }[] }
   | { kind: 'debris'; items: { player: number; count: number }[] }
 
 /**
  * 사건 목록 → 확인할 알림 목록.
- * 직전 라운드의 결과(평면 점수, 목표, 잔해)를 먼저 보이고 새 라운드 안내를 마지막에 둔다.
+ * 직전 라운드의 결과(기본 점수, 목표, 잔해)를 먼저 보이고 새 라운드 안내를 마지막에 둔다.
  * quietDebris: 이 플레이어의 잔해는 알리지 않는다 (스스로 버리기를 두 번 눌러 확인한 경우)
  */
 export function buildNotices(events: FxEvent[], state: GameState, quietDebris: (player: number) => boolean = () => false): Notice[] {
   const out: Notice[] = []
 
-  const plane = events.flatMap((e) => (e.kind === 'plane' ? [{ player: e.player, points: e.points }] : []))
-  if (plane.length > 0) out.push({ kind: 'plane', items: plane })
+  for (const round of [1, 2, 3] as const) {
+    const base = events.flatMap((e) => (e.kind === 'base' && e.round === round ? [{ player: e.player, points: e.points }] : []))
+    if (base.length > 0) out.push({ kind: 'base', round, items: base })
+  }
 
   const goals = events.flatMap((e) => (e.kind === 'goal' ? [{ player: e.player, name: e.name, points: e.points, first: e.first }] : []))
   if (goals.length > 0) out.push({ kind: 'goal', items: goals })

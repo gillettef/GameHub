@@ -12,8 +12,8 @@ export interface Seat {
 }
 
 export interface Session {
-  /** 저장 형식 버전 */
-  v: 1
+  /** 저장 형식 버전. 2 = 규칙 v0.7(면마다 다른 색). 같은 행동 기록이라도 규칙이 바뀌면 다른 게임이 되므로 옛 기록은 버린다 */
+  v: 2
   id: string
   createdAt: number
   config: GameConfig
@@ -26,7 +26,7 @@ export interface Session {
 }
 
 export function newSession(config: GameConfig, seats: Seat[], id: string, createdAt: number): Session {
-  return { v: 1, id, createdAt, config, seats, actions: [] }
+  return { v: 2, id, createdAt, config, seats, actions: [] }
 }
 
 /** 행동 기록을 처음부터 다시 적용한다. upTo로 중간 상태(리플레이)를 만들 수 있다 */
@@ -60,7 +60,7 @@ function write(key: string, value: unknown): void {
 /** 진행 중인 게임 (이어 하기용) */
 export function loadCurrent(): Session | null {
   const s = read<Session>(SAVE_KEY)
-  return s && s.v === 1 ? s : null
+  return s && s.v === 2 ? s : null
 }
 
 export function saveCurrent(session: Session | null): void {
@@ -77,7 +77,7 @@ export function saveCurrent(session: Session | null): void {
 
 /** 끝난 게임 기록 (리플레이·통계용). 최신이 앞 */
 export function loadHistory(): Session[] {
-  return (read<Session[]>(HISTORY_KEY) ?? []).filter((s) => s.v === 1)
+  return (read<Session[]>(HISTORY_KEY) ?? []).filter((s) => s.v === 2)
 }
 
 export function archive(session: Session): void {
@@ -91,7 +91,7 @@ export function clearHistory(): void {
 
 /**
  * 되돌릴 수 있는 행동 종류: 결과가 미리 다 보이는 것. 4라운드 넘기기(roll)와 넘길 수 없는 ⧗의 잔해(scrap)도
- * 주사위를 굴리는 것이 아니라 넘기는 것이라 포함한다. 시장 주사위를 다시 굴리기(reroll)는 제외
+ * 주사위를 굴리는 것이 아니라 넘기는 것이라 포함한다. 시장 주사위 다시 굴리기(reroll, rerollHand)는 제외
  */
 const UNDOABLE: ReadonlySet<Action['type']> = new Set(['takeSlot', 'place', 'discard', 'roll', 'scrap'])
 

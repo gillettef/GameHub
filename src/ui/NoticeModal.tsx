@@ -4,7 +4,7 @@ import type { Seat } from '../app/session'
 import { useBack } from './back'
 import { Card, CardZoom } from './Card'
 import type { CardKey } from './cardArtData'
-import { ROUND_INFO, seatColor } from './colors'
+import { BASE_INFO, ROUND_INFO, seatColor } from './colors'
 import { GlyphText, Hourglass } from './DieFace'
 import { buzz } from './fx'
 import type { Notice } from './notices'
@@ -175,14 +175,14 @@ function RoundBody({
 }
 
 function ResultBody({ notice, titleId, name }: { notice: Exclude<Notice, { kind: 'round' }>; titleId?: string; name: (p: number) => string }) {
-  const title = notice.kind === 'goal' ? '라운드 목표 달성' : notice.kind === 'plane' ? '평면 점수 확정' : '잔해 발생'
+  const title = notice.kind === 'goal' ? '라운드 목표 달성' : notice.kind === 'base' ? `${BASE_INFO[notice.round].name} 점수 확정` : '잔해 발생'
   const sub =
     notice.kind === 'goal'
       ? '처음 달성하면 선착 4점, 그 뒤로는 달성 2점'
-      : notice.kind === 'plane'
-        ? '2라운드가 끝나 평면 점수를 점수 시트에 적어요'
+      : notice.kind === 'base'
+        ? `${notice.round}라운드가 끝나 ${BASE_INFO[notice.round].rule}를 점수로 확정해요`
         : '잔해는 게임 끝에 1개당 −1점'
-  const tone = notice.kind === 'goal' ? '#5ad1e6' : notice.kind === 'plane' ? '#34c483' : '#ff6b6b'
+  const tone = notice.kind === 'goal' ? '#5ad1e6' : notice.kind === 'base' ? '#34c483' : '#ff6b6b'
   return (
     <>
       <div>
@@ -209,7 +209,7 @@ function ResultBody({ notice, titleId, name }: { notice: Exclude<Notice, { kind:
               </Row>
             </li>
           ))}
-        {notice.kind === 'plane' &&
+        {notice.kind === 'base' &&
           notice.items.map((it, i) => (
             <li key={i} className="animate-rise" style={{ animationDelay: `${i * 60}ms` }}>
               <Row player={it.player} name={name(it.player)}>

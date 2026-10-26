@@ -1,46 +1,66 @@
 import { describe, expect, it } from 'vitest'
-import { STANDARD_LAYOUT, TIME } from '../dice'
+import { STANDARD_LAYOUT } from '../dice'
 import { finalScores, winners } from '../final'
 import { createGame } from '../setup'
 import type { Board, GameState } from '../types'
-import { board, die, line } from './helpers'
+import { board, colorsWith, die, line } from './helpers'
 
-function ended(players: { board: Board; planeScore: number; debris: number }[]): GameState {
+interface Ended {
+  board: Board
+  lineScore?: number | null
+  planeScore?: number | null
+  towerScore?: number | null
+  debris: number
+}
+
+function ended(players: Ended[]): GameState {
   const base = createGame({ playerCount: players.length, seed: 1, law: 'standard' })
   return {
     ...base,
     phase: { kind: 'ended' },
     players: base.players.map((p, i) => {
-      const x = players[i] as (typeof players)[number]
+      const x = players[i] as Ended
       return {
         ...p,
         board: x.board,
-        planeScore: x.planeScore,
-        debris: Array.from({ length: x.debris }, (_, k) => ({ id: 9000 + i * 100 + k, color: 'red' as const, layout: STANDARD_LAYOUT })),
+        lineScore: x.lineScore === undefined ? 0 : x.lineScore,
+        planeScore: x.planeScore === undefined ? 0 : x.planeScore,
+        towerScore: x.towerScore === undefined ? 0 : x.towerScore,
+        debris: Array.from({ length: x.debris }, (_, k) => ({ id: 9000 + i * 100 + k, colors: colorsWith('red', 1), layout: STANDARD_LAYOUT })),
       }
     }),
   }
 }
 
 describe('§10 최종 점수', () => {
-  it('1차원(최종 선) + 2차원(확정분) + 3차원(최종 탑) − 잔해', () => {
-    // 선: 빨강 5칸 연속 10점 + 1-2-3-4-5 숫자 연속 5점 = 15
-    // 탑: (0,0) 3층 3점, 앞면은 연속 없음
-    const b = board({
-      ...line(die('red', 1), die('red', 2), die('red', 3), die('red', 4), die('red', 5)),
-      '0,0': [die('red', 1), die('red', 2), die('red', TIME)],
-    })
-    const [s] = finalScores(ended([{ board: b, planeScore: 7, debris: 2 }, { board: board({}), planeScore: 0, debris: 0 }]))
-    expect(s).toMatchObject({ player: 0, plane: 7, tower: 3, debris: -2 })
-    expect(s?.line).toBe(10 + 5) // (0,0)이 1-2-⧗ 기둥이어도 선 주사위는 1층 1 → 1-2-3-4-5 그대로
-    expect(s?.total).toBe((s?.line ?? 0) + 7 + 3 - 2)
+  it('1·2·3차원은 라운드 끝에 확정한 점수 − 잔해', () => {
+    const [s] = finalScores(
+      ended([
+        { board: board({}), lineScore: 4, planeScore: 7, towerScore: 3, debris: 2 },
+        { board: board({}), debris: 0 },
+      ]),
+    )
+    expect(s).toMatchObject({ player: 0, line: 4, plane: 7, tower: 3, debris: -2, total: 4 + 7 + 3 - 2 })
   })
 
-  it('2차원 점수는 현재 평면이 아니라 2라운드에 확정한 점수를 쓴다', () => {
-    // 지금 평면은 빨강 영역 3 → 3점이지만 확정분은 0
-    const b = board({ '0,0': [die('red', 1)], '1,0': [die('red', 1)], '2,0': [die('red', 1)] })
-    const [s] = finalScores(ended([{ board: b, planeScore: 0, debris: 0 }, { board: board({}), planeScore: 0, debris: 0 }]))
-    expect(s?.plane).toBe(0)
+  it('v0.7 4라운드에 보드가 바뀌어도 확정 점수를 쓴다 (지금 보드로 다시 계산하지 않음)', () => {
+    // 지금 보드: 선 빨강 5칸, 평면 영역 5, 기둥 빨강 세로 3 → 하지만 확정분은 모두 1
+    const b = board({
+      ...line(die('red', 1), die('red', 2), die('red', 3), die('red', 4), die('red', 5)),
+      '0,0': [die('red', 1), die('red', 2), die('red', 3)],
+    })
+    const [s] = finalScores(ended([{ board: b, lineScore: 1, planeScore: 1, towerScore: 1, debris: 0 }, { board: board({}), debris: 0 }]))
+    expect(s).toMatchObject({ line: 1, plane: 1, tower: 1 })
+  })
+
+  it('확정 전(null)이면 지금 보드로 계산한다 (테스트·중간 표시용)', () => {
+    const b = board({
+      ...line(die('red', 1), die('red', 2), die('blue', 3), die('red', 4), die('red', 5)),
+      '1,0': [die('red', 1)],
+      '0,4': [die('red', 5)],
+    })
+    const [s] = finalScores(ended([{ board: b, lineScore: null, planeScore: null, towerScore: null, debris: 0 }, { board: board({}), debris: 0 }]))
+    expect(s).toMatchObject({ line: 2, plane: 3, tower: 1 })
   })
 
   it('동점이면 잔해가 적은 사람, 그래도 동점이면 가장 높은 기둥이 높은 사람', () => {

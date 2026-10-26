@@ -2,19 +2,20 @@
  * 게임 상태 타입. 모든 상태는 직렬화 가능한 JSON이어야 한다 (CLAUDE.md 아키텍처 원칙).
  */
 import type { LawId, PersonalGoalId, RoundGoalId } from './cards'
-import type { DieLayout, Face, Orientation } from './dice'
+import type { DieLayout, Face, FaceColors, Orientation } from './dice'
 import type { RngState } from './rng'
 
-export type Color = 'red' | 'blue' | 'green' | 'yellow' | 'black'
-
-export const COLORS: readonly Color[] = ['red', 'blue', 'green', 'yellow', 'black']
+export { COLORS, type Color } from './dice'
 
 export type DieId = number
 
-/** 주머니 안의 주사위 (방향 없음). 면 배치는 주사위마다 다르다 (§2) */
+/**
+ * 주머니 안의 주사위 (방향 없음). 면 배치와 숫자 면의 색은 주사위마다 다르다 (§2).
+ * 주사위의 색은 윗면이 정하므로 굴리기 전에는 색이 없다 (dieColor in dice.ts)
+ */
 export interface Die {
   id: DieId
-  color: Color
+  colors: FaceColors
   layout: DieLayout
 }
 
@@ -39,8 +40,12 @@ export interface PlayerState {
   board: Board
   /** 버리거나 못 놓거나 무너진 주사위. 게임 끝에 1개당 -1점 (§2) */
   debris: Die[]
+  /** 1라운드 끝에 확정한 선 점수 (§6). 확정 전에는 null */
+  lineScore: number | null
   /** 2라운드 끝에 확정한 평면 점수 (§7). 확정 전에는 null */
   planeScore: number | null
+  /** 3라운드 끝에 확정한 탑 점수 (§8). 확정 전에는 null */
+  towerScore: number | null
   /** 게임 준비 때 받은 개인 목표 카드 2장 (§5-3) */
   personalOffer: PersonalGoalId[]
   /** 고른 개인 목표 (비공개). 고르기 전에는 null */
@@ -80,6 +85,8 @@ export interface TurnState {
   taken: boolean
   /** 흔들리는 시장: 이번 턴에 이미 다시 굴렸는지 */
   rerolled: boolean
+  /** 시장 다시 굴리기(§5, 잔해 1개): 이번 턴에 이미 손의 주사위를 다시 굴렸는지 */
+  handRerolled: boolean
 }
 
 /** 공개된 라운드 목표 카드와 달성 마커 (§5 라운드 목표 카드) */
@@ -116,7 +123,7 @@ export interface TimeState {
 
 export interface GameState {
   /** 상태 스키마 버전 (저장/동기화 호환성용) */
-  schema: 1
+  schema: 2
   config: GameConfig
   rng: RngState
   phase: Phase

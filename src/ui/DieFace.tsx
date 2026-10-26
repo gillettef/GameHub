@@ -1,5 +1,5 @@
 import { isTime, type Color, type Face } from '../engine'
-import { colorLabel, DIE_COLORS, faceLabel } from './colors'
+import { colorLabel, faceLabel, tint } from './colors'
 
 /** ⧗ 모래시계 선 아이콘 (텍스트 문자 대신, CLAUDE.md) */
 export function Hourglass({ size, color, className }: { size: number; color: string; className?: string }) {
@@ -34,7 +34,8 @@ export function GlyphText({ text, color = 'currentColor' }: { text: string; colo
 
 interface DieFaceProps {
   face: Face
-  color: Color
+  /** 이 면의 색. ⧗ 면은 무색(undefined) */
+  color: Color | undefined
   size?: number
   /** 기호(색 구분용)를 보일지 */
   showSymbol?: boolean
@@ -48,7 +49,7 @@ interface DieFaceProps {
 
 /** 주사위 한 면. 색 + 모양 기호 + 숫자/⧗ 아이콘을 함께 쓴다 (색맹 대응) */
 export function DieFace({ face, color, size = 40, showSymbol = true, dim = false, ghost = false, bare = false, className = '' }: DieFaceProps) {
-  const c = DIE_COLORS[color]
+  const c = tint(color)
   const radius = Math.round(size * (bare ? 0.12 : 0.22))
   return (
     <span
@@ -76,7 +77,7 @@ export function DieFace({ face, color, size = 40, showSymbol = true, dim = false
       ) : (
         <span style={{ textShadow: c.ink === '#ffffff' ? '0 1px 2px rgb(0 0 0 / 0.35)' : undefined }}>{face}</span>
       )}
-      {showSymbol && size >= 24 && (
+      {showSymbol && size >= 24 && c.symbol && (
         <span
           aria-hidden="true"
           className="absolute leading-none opacity-80"
