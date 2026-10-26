@@ -3,7 +3,7 @@
  * ①·③·④ AI 리그 항목을 판정한다.
  *   npx tsx scripts/league.ts [--games 600] [--seed 42] [--players 2,3,4]
  * v6 (5라운드 x 1·2차): 킹메이킹은 마지막 2라운드 시작(TOTAL_ROUNDS-1) 때의 단독 선두, ④-c는 마지막 2라운드 시작 때 1위 기준.
- * --only cards: 카드 운용 변형(아끼기·몰아 쓰기 등). 변형 좌석은 AI_MODEL 을 그 좌석 차례에만 바꿔 같은 AI로 둔다.
+ * --only cards: 카드 운용 변형(아끼기·몰아 쓰기 등). 변형 자리은 AI_MODEL 을 그 자리 차례에만 바꿔 같은 AI로 둔다.
  */
 import { AI_MODEL, PERSONAS, RULES, STAGES, TOTAL_ROUNDS, createGame, createRng, finishGame, makeAiBid, makeAiGuesses, nextRound, resolveRound, winners } from '../src/core';
 import type { GameState, Guesses, Persona, PersonaKey, RoundBid } from '../src/core';
@@ -55,8 +55,8 @@ const DEPTHS = arg('depths', '').split('/').filter(Boolean).map(Number) as Perso
 const depthRng = createRng(SEED + 1);
 
 /**
- * 카드 운용 변형: src 를 바꾸지 않고, 그 좌석만 사람 좌석으로 두고 스크립트가 makeAiBid 를 대신 부른다.
- * model 은 그 좌석 차례에만 적용되는 AI_MODEL 값 (cardValue = 카드 기회비용, cardValue + deadlineBonus = 마지막 라운드 예약 비용).
+ * 카드 운용 변형: src 를 바꾸지 않고, 그 자리만 사람 자리으로 두고 스크립트가 makeAiBid 를 대신 부른다.
+ * model 은 그 자리 차례에만 적용되는 AI_MODEL 값 (cardValue = 카드 기회비용, cardValue + deadlineBonus = 마지막 라운드 예약 비용).
  */
 type VariantKey = 'hoard' | 'dump' | 'noscar' | 'lowdump' | 'lowhoard';
 type Seat = PersonaKey | VariantKey;
@@ -94,11 +94,11 @@ interface GameOut {
   leaderBeforeLast: number[];
   /** 마지막 2라운드 시작 전 공개 점수 단독 1위 (없으면 -1) — 킹메이킹 */
   soleBeforeLast2: number;
-  /** 좌석별 라운드별 카드 사용 수 */
+  /** 자리별 라운드별 카드 사용 수 */
   cardsByRound: number[][];
-  /** 좌석별 공개된 카드 1~4 수 */
+  /** 자리별 공개된 카드 1~4 수 */
   demandUse: number[][];
-  /** 좌석별 카드 1~4 를 쓴 라운드 합 (평균 사용 라운드 계산용) */
+  /** 자리별 카드 1~4 를 쓴 라운드 합 (평균 사용 라운드 계산용) */
   demandRound: number[][];
   hiddenChanged: boolean;
   roundFees: number[];
@@ -113,7 +113,7 @@ function play(seats: Seat[]): GameOut {
     seats.map((p, i) => (isVariant(p) ? { name: `${p}${i}`, kind: 'human' as const, persona: VARIANTS[p].base } : { name: `${p}${i}`, kind: 'ai' as const, persona: p })),
     rng.int(2 ** 31),
   );
-  // createGame 은 사람 좌석의 persona 를 버리므로 변형 좌석에 다시 붙인다 (없으면 '무작위'로 둔다)
+  // createGame 은 사람 자리의 persona 를 버리므로 변형 자리에 다시 붙인다 (없으면 '무작위'로 둔다)
   s = { ...s, agents: s.agents.map((a, i) => (isVariant(seats[i]!) ? { ...a, persona: VARIANTS[seats[i] as VariantKey].base } : a)) };
   const leadersOf = (st: GameState) => {
     const top = Math.max(...st.agents.map((a) => a.score));
@@ -173,7 +173,7 @@ function play(seats: Seat[]): GameOut {
 }
 
 const shuffle = <T>(xs: T[]) => rng.shuffle(xs);
-/** 좌석을 매판 섞어 좌석 편향을 상쇄하면서, 페르소나별 1석당 승률을 잰다 */
+/** 자리을 매판 섞어 자리 편향을 상쇄하면서, 페르소나별 1인당 승률을 잰다 */
 function series(make: () => Seat[], games: number) {
   const per = new Map<Seat, { seats: number; wins: number }>();
   const outs: GameOut[] = [];
@@ -207,13 +207,13 @@ for (const N of COUNTS) {
   const fair = 1 / N;
   log(`\n## ${N}인 (공정값 ${pct(fair)})`);
 
-  // 좌석 편향: 균형형만으로 (좌석 고정)
+  // 자리 편향: 균형형만으로 (자리 고정)
   if (want('seat')) {
   const seatWins = Array<number>(N).fill(0);
   const SEAT_GAMES = GAMES * 5;
   for (let g = 0; g < SEAT_GAMES; g++) play(Array(N).fill('balanced')).win.forEach((w, i) => (seatWins[i]! += w));
   const seatDev = Math.max(...seatWins.map((w) => Math.abs(w / SEAT_GAMES - fair)));
-  log(`- ${mark(seatDev <= 0.02)} ③-1 좌석 편향 (${SEAT_GAMES}판): ${seatWins.map((w) => pct(w / SEAT_GAMES)).join(' / ')} (최대 편차 ${pct(seatDev)})`);
+  log(`- ${mark(seatDev <= 0.02)} ③-1 자리 편향 (${SEAT_GAMES}판): ${seatWins.map((w) => pct(w / SEAT_GAMES)).join(' / ')} (최대 편차 ${pct(seatDev)})`);
   }
 
   // 리그: 매판 풀에서 N종을 무작위로 뽑아 대진 (④·①-b 통계에도 사용)
@@ -245,7 +245,7 @@ for (const N of COUNTS) {
     const thinkers = mixed.filter((p) => !Number.isNaN(sr.rate(p)));
     const seatsWins = sr.outs.reduce((a, o) => a + o.seats.reduce((x, p, i) => x + (p === 'random' ? 0 : o.win[i]!), 0), 0) / (sr.outs.length * (N - 1));
     skillOk &&= seatsWins > sr.rate('random');
-    skill.push(`서로 다른 생각형 ${N - 1}명: 1석당 ${pct(seatsWins)} vs 무작위 ${pct(sr.rate('random'))} (${thinkers.length}종 섞음)`);
+    skill.push(`서로 다른 생각형 ${N - 1}명: 1인당 ${pct(seatsWins)} vs 무작위 ${pct(sr.rate('random'))} (${thinkers.length}종 섞음)`);
     const clones = series(() => [...Array(N - 1).fill('balanced'), 'random'], GAMES);
     skill.push(`참고: 똑같은 균형형 ${N - 1}명 ${pct(clones.rate('balanced'))} vs 무작위 ${pct(clones.rate('random'))}`);
   }
@@ -292,7 +292,7 @@ for (const N of COUNTS) {
         n++;
       }
       const r2 = (x: number) => Math.round(x * 100) / 100;
-      log(`  - ${mark(sr.rate(p) < fair)} 카드 변형 ${nameOf(p)}: ${pct(sr.rate(p))} · 라운드별 카드 ${rounds.map((x) => r2(x / n)).join('/')} · 카드 1/2/3/4 평균 사용 라운드 ${when.map((w, d) => r2(w / Math.max(1, use[d]!))).join('/')} · 1석당 사용 ${r2(use.reduce((a, b) => a + b, 0) / n)}장`);
+      log(`  - ${mark(sr.rate(p) < fair)} 카드 변형 ${nameOf(p)}: ${pct(sr.rate(p))} · 라운드별 카드 ${rounds.map((x) => r2(x / n)).join('/')} · 카드 1/2/3/4 평균 사용 라운드 ${when.map((w, d) => r2(w / Math.max(1, use[d]!))).join('/')} · 1인당 사용 ${r2(use.reduce((a, b) => a + b, 0) / n)}장`);
     }
   }
 

@@ -1,6 +1,6 @@
 ---
 name: balance-analyst
-description: 게임 밸런스 분석가. src/core 엔진으로 AI 대 AI 시뮬레이션을 돌려 지배 전략·쓸모없는 카드·좌석 편향·이벤트 영향 등을 수치로 분석하고 조정안을 제안한다. 수치 조정 전, AI 난이도 설계, 새 카드/이벤트 추가 검토 시 사용.
+description: 게임 밸런스 분석가. src/core 엔진으로 AI 대 AI 시뮬레이션을 돌려 지배 전략·쓸모없는 카드·자리 편향·이벤트 영향 등을 수치로 분석하고 조정안을 제안한다. 수치 조정 전, AI 난이도 설계, 새 카드/이벤트 추가 검토 시 사용.
 tools: Read, Write, Edit, Glob, Grep, Bash
 ---
 
