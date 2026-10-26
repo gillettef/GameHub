@@ -26,10 +26,10 @@ describe('buildNotices', () => {
       { kind: 'round', round: 3 },
       { kind: 'goal', player: 0, name: '거울', points: 4, first: true },
       { kind: 'debris', player: 1, count: 1 },
-      { kind: 'plane', player: 0, points: 7 },
-      { kind: 'plane', player: 1, points: 5 },
+      { kind: 'base', round: 2, player: 0, points: 7 },
+      { kind: 'base', round: 2, player: 1, points: 5 },
     ]
-    expect(buildNotices(events, state).map((n) => n.kind)).toEqual(['plane', 'goal', 'debris', 'round'])
+    expect(buildNotices(events, state).map((n) => n.kind)).toEqual(['base', 'goal', 'debris', 'round'])
   })
 
   it('차례 넘김만 있으면 알림이 없다', () => {
@@ -51,6 +51,7 @@ describe('buildNotices', () => {
     expect(rounds.map((n) => n.round)).toEqual([1, 2, 3, 4])
     expect(rounds[0]?.startPlayer).not.toBeNull()
     expect(rounds[3]?.pending).toHaveLength(3)
-    expect(notices.some((n) => n.kind === 'plane' && n.items.length === 3)).toBe(true)
+    // 1~3라운드 끝마다 기본 점수 확정 알림이 한 장씩, 세 사람 모두
+    for (const round of [1, 2, 3]) expect(notices.some((n) => n.kind === 'base' && n.round === round && n.items.length === 3)).toBe(true)
   })
 })

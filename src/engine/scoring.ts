@@ -1,14 +1,12 @@
 /**
- * 기본 점수 (§6 1차원, §7 2차원, §8 3차원)
+ * 기본 점수 (§6 1차원, §7 2차원, §8 3차원). v0.7: 라운드마다 같은 색 연결 하나만 센다.
+ * 주사위의 색은 윗면의 색이고 ⧗ 윗면은 무색이라 연결을 끊는다 (§2 면의 색).
  */
 import { colorsLink, type LawId } from './cards'
-import { isTime, type Face } from './dice'
+import { dieColor, isTime, type Face } from './dice'
 import { neighbors, pillarAt, topOf, type Cell } from './placement'
 import { BOARD_COLS, BOARD_ROWS } from './setup'
 import { COLORS, type Board, type Color, type RolledDie } from './types'
-
-/** §6 같은 색 연속 2 / 3 / 4 / 5칸 */
-const COLOR_RUN_POINTS: Record<number, number> = { 2: 1, 3: 3, 4: 6, 5: 10 }
 
 /**
  * 1씩 오르거나 내리는 연속 구간 점수. ⧗(null)에서 끊긴다.
@@ -50,27 +48,19 @@ export function lineDice(board: Board): (RolledDie | undefined)[] {
   return Array.from({ length: BOARD_COLS }, (_, col) => pillarAt(board, { row: 0, col })[0])
 }
 
+/** 주사위의 색. 빈 칸이면 undefined, 윗면이 ⧗이어도 undefined */
+const colorOf = (d: RolledDie | undefined): Color | undefined => (d ? dieColor(d) : undefined)
+
 export interface LineScore {
-  colorRuns: number
-  stepRuns: number
+  /** 가장 긴 같은 색 연속 칸 수 */
+  longestRun: number
   total: number
 }
 
-/** §6 1차원 기본 점수 (최종 선 기준) */
+/** §6 1차원 기본 점수: 선에서 가로로 이어진 같은 색 주사위 수의 최댓값 (1라운드 끝에 확정) */
 export function scoreLine(board: Board, law: LawId = 'standard'): LineScore {
-  const dice = lineDice(board)
-  const colorRuns = colorSegments(
-    dice.map((d) => d?.color),
-    law,
-  )
-    .map((n) => COLOR_RUN_POINTS[n] ?? 0)
-    .reduce((a, b) => a + b, 0)
-
-  const steps = stepRuns(dice.map((d) => (d ? numberOf(d.orientation.top) : null))).reduce(
-    (a, b) => a + b,
-    0,
-  )
-  return { colorRuns, stepRuns: steps, total: colorRuns + steps }
+  const longestRun = Math.max(0, ...colorSegments(lineDice(board).map(colorOf), law))
+  return { longestRun, total: longestRun }
 }
 
 /**
@@ -147,7 +137,7 @@ function colorRegions(colorAt: (cell: Cell) => Color | undefined): number[] {
  * 다른 색과 맞닿지 않은 검정만의 무리도 영역으로 센다. 해석: 검정 칸은 여러 색 영역에 함께 속할 수 있다.
  */
 export function planeRegions(board: Board, law: LawId = 'standard'): number[] {
-  const colorAt = (c: Cell) => planeDie(board, c)?.color
+  const colorAt = (c: Cell) => colorOf(planeDie(board, c))
   if (law !== 'void') return colorRegions(colorAt)
   const out: number[] = []
   for (const color of COLORS) {
@@ -197,21 +187,23 @@ export function planeRegions(board: Board, law: LawId = 'standard'): number[] {
 }
 
 export interface PlaneScore {
-  regions: number
-  neighborSteps: number
+  /** 가장 넓은 같은 색 영역의 크기 */
+  largestRegion: number
   total: number
 }
 
-/**
- * §7 2차원 기본 점수: 크기 3 이상 영역 + 이웃 계단(윗면 1 차이) 쌍.
- * 이웃 계단은 선(1행) 안의 가로 쌍을 빼고, 2·3행 주사위가 들어간 쌍만 센다.
- */
+/** §7 2차원 기본 점수: 선을 포함한 평면에서 가장 큰 같은 색 영역의 크기 (2라운드 끝에 확정) */
 export function scorePlane(board: Board, law: LawId = 'standard'): PlaneScore {
-  const regions = planeRegions(board, law)
-    .filter((size) => size >= 3)
-    .reduce((a, b) => a + b, 0)
+  const largestRegion = Math.max(0, ...planeRegions(board, law))
+  return { largestRegion, total: largestRegion }
+}
 
-  let neighborSteps = 0
+/**
+ * 이웃 계단 쌍 수: 변으로 맞닿은 두 평면 주사위의 윗면이 1 차이.
+ * 선(1행) 안의 가로 쌍은 빼고 2·3행 주사위가 들어간 쌍만 센다. (v0.7부터 점수가 아니라 목표 '계단 사슬'에만 씀)
+ */
+export function neighborSteps(board: Board): number {
+  let count = 0
   for (const cell of allCells()) {
     const a = planeDie(board, cell)
     if (!a) continue
@@ -226,42 +218,28 @@ export function scorePlane(board: Board, law: LawId = 'standard'): PlaneScore {
       if (!b) continue
       const x = numberOf(a.orientation.top)
       const y = numberOf(b.orientation.top)
-      // §11-1 거울 우주: 1 차이 대신 같은 숫자
-      if (x != null && y != null && (law === 'mirror' ? x === y : Math.abs(x - y) === 1)) neighborSteps++
+      if (x != null && y != null && Math.abs(x - y) === 1) count++
     }
   }
-  return { regions, neighborSteps, total: regions + neighborSteps }
+  return count
 }
 
-/** §8 높은 기둥: 3 / 4 / 5 / 6층 이상 */
-export function pillarHeightPoints(height: number): number {
-  if (height >= 6) return 15
-  if (height === 5) return 10
-  if (height === 4) return 6
-  if (height === 3) return 3
-  return 0
-}
-
-export interface TowerScore {
-  pillars: number
-  frontLine: number
-  total: number
-}
-
-/** 맨 앞줄 5개 기둥 꼭대기의 앞면 (왼쪽부터) */
+/** 맨 앞줄 5개 기둥 꼭대기의 앞면 (왼쪽부터). v0.7부터 목표 '숫자 계단'에만 씀 */
 export function frontFaces(board: Board): (Face | undefined)[] {
   return Array.from({ length: BOARD_COLS }, (_, col) => topOf(pillarAt(board, { row: 0, col }))?.orientation.front)
 }
 
-/** §8 3차원 기본 점수 (최종 탑 기준) */
-export function scoreTower(board: Board): TowerScore {
-  const pillars = allCells()
-    .map((c) => pillarHeightPoints(pillarAt(board, c).length))
-    .reduce((a, b) => a + b, 0)
-  const frontLine =
-    stepRuns(frontFaces(board).map((f) => (f === undefined ? null : numberOf(f)))).reduce(
-      (a, b) => a + b,
-      0,
-    ) * 2
-  return { pillars, frontLine, total: pillars + frontLine }
+export interface TowerScore {
+  /** 한 기둥 안 가장 높은 같은 색 세로 연속 */
+  tallestRun: number
+  total: number
+}
+
+/** §8 3차원 기본 점수: 한 기둥 안에서 위아래로 이어진 같은 색 주사위 수(1층 포함)의 최댓값 (3라운드 끝에 확정) */
+export function scoreTower(board: Board, law: LawId = 'standard'): TowerScore {
+  const tallestRun = Math.max(
+    0,
+    ...allCells().flatMap((c) => colorSegments(pillarAt(board, c).map(colorOf), law)),
+  )
+  return { tallestRun, total: tallestRun }
 }

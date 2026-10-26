@@ -19,7 +19,7 @@ import { colorSegments, planeRegions, scoreLine, scorePlane } from '../scoring'
 import { createGame, MARKET_BOARD_SLOTS, marketSlotCount } from '../setup'
 import { rollTargets } from '../time'
 import type { Board, Color, GameState, PlayerState, RolledDie } from '../types'
-import { board, die, line, startGame } from './helpers'
+import { board, colorsWith, die, line, startGame } from './helpers'
 
 // ─── 공통 도우미 ─────────────────────────────────────────────────────
 
@@ -81,8 +81,10 @@ function player(b: Board, debris = 0, timeDice: number | null = null): PlayerSta
   return {
     id: 0,
     board: b,
-    debris: Array.from({ length: debris }, (_, k) => ({ id: 9000 + k, color: 'red' as const, layout: STANDARD_LAYOUT })),
+    debris: Array.from({ length: debris }, (_, k) => ({ id: 9000 + k, colors: colorsWith('red', 1), layout: STANDARD_LAYOUT })),
+    lineScore: null,
     planeScore: null,
+    towerScore: null,
     personalOffer: [],
     personalGoal: null,
     timeDice,
@@ -98,17 +100,17 @@ const pillarOf = (h: number, color: Color = 'red'): RolledDie[] =>
 // ─── §11-1 우주 법칙 ─────────────────────────────────────────────────
 
 describe('§11-1 우주 법칙 카드 덱', () => {
-  it('§11-1 법칙은 8장이고, 영원의 우주(재설계 중)를 뺀 7장이 덱에 들어간다', () => {
+  it('§11-1 법칙은 8장이고, 영원의 우주·거울 우주(재설계 중)를 뺀 6장이 덱에 들어간다', () => {
     expect(Object.keys(LAWS)).toHaveLength(8)
-    expect([...LAW_DECK].sort()).toEqual(
-      ['abundance', 'flat', 'inverted', 'mirror', 'shakyMarket', 'standard', 'void'].sort(),
-    )
+    expect([...LAW_DECK].sort()).toEqual(['abundance', 'flat', 'inverted', 'shakyMarket', 'standard', 'void'].sort())
     expect(LAW_DECK).not.toContain('eternal')
+    expect(LAW_DECK).not.toContain('mirror')
   })
 
   it('§5-1 config.law로 법칙을 고정할 수 있고, 덱에 없는 영원의 우주는 쓸 수 없다', () => {
-    expect(createGame({ playerCount: 2, seed: 1, law: 'mirror' }).law).toBe('mirror')
+    expect(createGame({ playerCount: 2, seed: 1, law: 'void' }).law).toBe('void')
     expect(() => createGame({ playerCount: 2, seed: 1, law: 'eternal' })).toThrow()
+    expect(() => createGame({ playerCount: 2, seed: 1, law: 'mirror' })).toThrow()
   })
 
   it('§5-1 법칙을 정하지 않으면 덱에서 1장 뽑는다 (시드마다 결정적, 여러 법칙이 나옴)', () => {
@@ -215,34 +217,6 @@ describe('§11-1 뒤집힌 우주', () => {
   })
 })
 
-describe('§11-1 거울 우주', () => {
-  it('§11-1 거울 우주: 이웃 계단 대신 같은 숫자끼리 맞닿으면 쌍마다 1점', () => {
-    const b = board({
-      ...line(die('red', 3), die('blue', 1), die('green', 5), die('yellow', 2), die('black', 4)),
-      '1,0': [die('blue', 3)], // (0,0)과 같은 숫자 → 거울 1쌍
-      '1,1': [die('green', 2)], // (1,0)=3과 1 차이 → 표준 1쌍, (0,1)=1과 1 차이 → 표준 1쌍
-    })
-    expect(scorePlane(b, 'mirror').neighborSteps).toBe(1)
-    expect(scorePlane(b, 'standard').neighborSteps).toBe(2)
-  })
-
-  it('§11-1 거울 우주에서도 선(1행) 안의 가로 쌍은 세지 않는다', () => {
-    const b = board(line(die('red', 3), die('blue', 3), die('red', 3), die('blue', 3), die('red', 3)))
-    expect(scorePlane(b, 'mirror').neighborSteps).toBe(0)
-  })
-
-  it('§11-1 거울 우주: ⧗끼리 맞닿은 것은 같은 숫자가 아니다 (⧗은 숫자가 아님 §2)', () => {
-    const b = board({ '0,0': [die('red', TIME)], '1,0': [die('blue', TIME)] })
-    expect(scorePlane(b, 'mirror').neighborSteps).toBe(0)
-  })
-
-  it('§7 + §11-1 2라운드 확정 점수에 거울 우주가 반영된다', () => {
-    const states = playRandomly(55, 3, 'mirror')
-    const r3 = states.find((s) => roundOf(s) === 3) as GameState
-    for (const p of r3.players) expect(p.planeScore).toBe(scorePlane(p.board, 'mirror').total)
-  })
-})
-
 describe('§11-1 공허의 우주', () => {
   it('colorsLink: 같은 색은 언제나, 검정은 공허의 우주에서만 만능', () => {
     expect(colorsLink('red', 'red', 'standard')).toBe(true)
@@ -253,16 +227,16 @@ describe('§11-1 공허의 우주', () => {
   })
 
   it('§11-1 공허의 우주: 선의 같은 색 연속에서 검정이 이어 준다', () => {
-    // 빨강-검정-빨강-빨강 = 4칸 연속(6점), 파랑 1칸
+    // 빨강-검정-빨강-빨강 = 4칸 연속, 표준이면 빨강 2칸이 가장 긺
     const b = colors('red', 'black', 'red', 'red', 'blue')
-    expect(scoreLine(b, 'void').colorRuns).toBe(6)
-    expect(scoreLine(b, 'standard').colorRuns).toBe(1)
+    expect(scoreLine(b, 'void').total).toBe(4)
+    expect(scoreLine(b, 'standard').total).toBe(2)
   })
 
   it('§11-1 공허의 우주 (해석: 검정 칸은 양쪽 색 구간에 모두 속할 수 있다)', () => {
     // 빨강빨강[검정]파랑파랑 → 빨강 3칸 + 파랑 3칸
     expect(colorSegments(['red', 'red', 'black', 'blue', 'blue'], 'void').sort()).toEqual([3, 3])
-    expect(scoreLine(colors('red', 'red', 'black', 'blue', 'blue'), 'void').colorRuns).toBe(6)
+    expect(scoreLine(colors('red', 'red', 'black', 'blue', 'blue'), 'void').total).toBe(3)
     // 검정만 5칸 = 5칸 연속
     expect(colorSegments(['black', 'black', 'black', 'black', 'black'], 'void')).toEqual([5])
     // 검정 구간이 빨강 구간 안에 들어가면 따로 세지 않는다
@@ -280,8 +254,8 @@ describe('§11-1 공허의 우주', () => {
       '2,2': [die('blue', 1)],
     })
     expect(planeRegions(b, 'void').sort()).toEqual([3, 3])
-    expect(scorePlane(b, 'void').regions).toBe(6)
-    expect(scorePlane(b, 'standard').regions).toBe(0)
+    expect(scorePlane(b, 'void').total).toBe(3)
+    expect(scorePlane(b, 'standard').total).toBe(2)
   })
 
   it('§11-1 공허의 우주: 다른 색과 맞닿지 않은 검정만의 무리도 영역이다', () => {
@@ -307,7 +281,7 @@ describe('§11-1 흔들리는 시장', () => {
     const d = s.market[1]?.[0] as RolledDie
     const after = applyAction(s, { type: 'reroll', player: s.currentPlayer, slot: 1, dieId: d.id })
     const rolled = after.market[1]?.[0] as RolledDie
-    expect({ id: rolled.id, color: rolled.color, layout: rolled.layout }).toEqual({ id: d.id, color: d.color, layout: d.layout })
+    expect({ id: rolled.id, colors: rolled.colors, layout: rolled.layout }).toEqual({ id: d.id, colors: d.colors, layout: d.layout })
     expect(isValidOrientation(rolled.layout, rolled.orientation)).toBe(true)
     expect(after.rng).not.toEqual(s.rng)
     expect(after.turn.rerolled).toBe(true)
@@ -558,7 +532,7 @@ describe('§11-2 2라운드 목표 (평면)', () => {
     expect(goalCheck('columnColor', board({ '0,4': [die('green', 1)], '1,4': [die('green', 2)] }))).toBe(false)
   })
 
-  it('계단 사슬: 이웃 계단 쌍 3개', () => {
+  it('계단 사슬: 윗면 1 차이 이웃 쌍 3개', () => {
     const b = { '0,0': [die('red', 1)], '1,0': [die('red', 2)], '2,0': [die('red', 3)], '2,1': [die('red', 4)] }
     expect(goalCheck('stepChain', board(b))).toBe(true)
     expect(goalCheck('stepChain', board({ ...b, '2,1': [] }))).toBe(false)
@@ -566,14 +540,13 @@ describe('§11-2 2라운드 목표 (평면)', () => {
     expect(goalCheck('stepChain', tops(1, 2, 3, 4, 5))).toBe(false)
   })
 
-  it('계단 사슬 (해석: 거울 우주에서도 목표는 1 차이 쌍을 센다)', () => {
-    let s = startGame({ playerCount: 2, seed: 1, law: 'mirror' })
+  it('계단 사슬: 게임 상태의 보드로 달성을 판정한다', () => {
+    let s = startGame({ playerCount: 2, seed: 1 })
     s = { ...s, phase: { kind: 'round', round: 2 }, roundGoals: [{ id: 'stepChain', round: 2, first: null, achieved: [] }] }
     s = withCell(s, 0, 0, 0, [die('red', 1)])
     s = withCell(s, 0, 1, 0, [die('red', 2)])
     s = withCell(s, 0, 2, 0, [die('red', 3)])
     s = withCell(s, 0, 2, 1, [die('red', 4)])
-    expect(scorePlane(s.players[0]?.board as Board, 'mirror').neighborSteps).toBe(0)
     expect(goalCheck('stepChain', s.players[0]?.board as Board)).toBe(true)
   })
 
@@ -643,7 +616,7 @@ describe('§11-2 3라운드 목표 (탑)', () => {
     expect(goalCheck('monoTower', board({ '0,0': pillarOf(2, 'yellow') }))).toBe(false)
   })
 
-  it('숫자 계단: 정면 숫자선 4칸 이상', () => {
+  it('숫자 계단: 맨 앞줄 꼭대기 앞면 연속 4칸 이상', () => {
     // 맨 앞줄 꼭대기 앞면 1-2-3-4-⧗
     const front = (...fs: Face[]) =>
       board(line(...fs.map((f) => (f === 1 ? die('red', 2, 1) : f === TIME ? die('red', 2, TIME) : die('red', 1, f)))))

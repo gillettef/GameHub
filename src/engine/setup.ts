@@ -9,7 +9,7 @@ import {
   type LawId,
   type RoundGoalId,
 } from './cards'
-import { allOrientations, FACES, faceValue, type DieLayout, type Face } from './dice'
+import { allOrientations, FACES, faceValue, type DieLayout, type Face, type FaceColors } from './dice'
 import { revealRoundGoals } from './goals'
 import { createRng, drawOne, nextInt, shuffle, type RngState } from './rng'
 import {
@@ -26,7 +26,8 @@ import {
 
 export const MIN_PLAYERS = 2
 export const MAX_PLAYERS = 4
-export const DICE_PER_COLOR = 24
+/** 전용 주사위 수 (§4) */
+export const DICE_COUNT = 120
 export const BOARD_ROWS = 3
 export const BOARD_COLS = 5
 /** 시장 보드에 인쇄된 칸 수 (4인 + 풍요의 우주) */
@@ -74,7 +75,7 @@ export function roll(rng: RngState, die: Die): [RolledDie, RngState] {
   const [i, next] = nextInt(rng, orientations.length)
   const orientation = orientations[i]
   if (!orientation) throw new Error('roll: 방향 인덱스 오류')
-  return [{ id: die.id, color: die.color, layout: die.layout, orientation }, next]
+  return [{ id: die.id, colors: die.colors, layout: die.layout, orientation }, next]
 }
 
 /** 주머니에서 무작위로 1개 뽑아 굴린다. 주머니가 비면 null */
@@ -94,17 +95,23 @@ export function randomLayout(rng: RngState): [DieLayout, RngState] {
   return [faces as unknown as DieLayout, next]
 }
 
-/** 전용 주사위 120개 (§4). 면 배치는 시드로 정한다 */
+/** 숫자 면 1~5에 다섯 색을 무작위로 하나씩 (§2 면의 색, v0.7) */
+export function randomFaceColors(rng: RngState): [FaceColors, RngState] {
+  const [colors, next] = shuffle(rng, COLORS)
+  return [colors as unknown as FaceColors, next]
+}
+
+/** 전용 주사위 120개 (§4). 면 배치와 숫자 면의 색은 시드로 정한다 */
 export function createDice(rng: RngState): [Die[], RngState] {
   let r = rng
   const dice: Die[] = []
-  COLORS.forEach((color, c) => {
-    for (let i = 0; i < DICE_PER_COLOR; i++) {
-      let layout: DieLayout
-      ;[layout, r] = randomLayout(r)
-      dice.push({ id: c * DICE_PER_COLOR + i, color, layout })
-    }
-  })
+  for (let id = 0; id < DICE_COUNT; id++) {
+    let layout: DieLayout
+    let colors: FaceColors
+    ;[layout, r] = randomLayout(r)
+    ;[colors, r] = randomFaceColors(r)
+    dice.push({ id, colors, layout })
+  }
   return [dice, r]
 }
 
@@ -171,14 +178,16 @@ export function createGame(config: GameConfig): GameState {
     id,
     board: createBoard(),
     debris: [],
+    lineScore: null,
     planeScore: null,
+    towerScore: null,
     personalOffer: personalDeck.slice(id * PERSONAL_GOAL_DRAW, (id + 1) * PERSONAL_GOAL_DRAW),
     personalGoal: null,
     timeDice: null,
   }))
 
   const state: GameState = {
-    schema: 1,
+    schema: 2,
     config: { playerCount, seed, ...(config.law !== undefined ? { law: config.law } : {}) },
     rng,
     phase: { kind: 'setup' },
@@ -189,7 +198,7 @@ export function createGame(config: GameConfig): GameState {
     startPlayer,
     leadPlayer: startPlayer,
     currentPlayer: startPlayer,
-    turn: { circuit: 0, picks: 0, hand: [], taken: false, rerolled: false },
+    turn: { circuit: 0, picks: 0, hand: [], taken: false, rerolled: false, handRerolled: false },
     time: null,
     law,
     goalDecks,

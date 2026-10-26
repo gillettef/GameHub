@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { sideFaces, STANDARD_LAYOUT, TIME, tip, TIP_DIRECTIONS, type DieLayout, type Face, type TipDirection } from '../dice'
+import { dieColor, sideFaces, STANDARD_LAYOUT, TIME, tip, TIP_DIRECTIONS, type DieLayout, type Face, type TipDirection } from '../dice'
 import { applyAction, getLegalActions, IllegalActionError } from '../game'
 import { lineDice, scoreLine } from '../scoring'
 import { createGame } from '../setup'
@@ -13,7 +13,7 @@ import {
   timeTops,
 } from '../time'
 import type { Board, Color, GameState, RolledDie } from '../types'
-import { board, die, line } from './helpers'
+import { board, colorsWith, die, line } from './helpers'
 
 const S = STANDARD_LAYOUT
 
@@ -225,7 +225,7 @@ describe('§9 굴리기: 방향과 옆 칸', () => {
           const moved = cellOf(s, 0, to.row, to.col)[0] as RolledDie
           expect(moved.orientation).toEqual(tip(layout, d.orientation, direction))
           expect(moved.layout).toEqual(layout)
-          expect(moved.color).toBe('blue')
+          expect(moved.colors).toEqual(d.colors)
           // §9 메모: ⧗은 옆면으로 가므로 다시 위로 오지 않는다
           expect(moved.orientation.top).not.toBe(TIME)
         }
@@ -345,7 +345,7 @@ describe('§9 굴릴 수 없는 주사위 → 잔해', () => {
     expect(s.players[0]?.board.cells[0]?.[0]).toHaveLength(1)
     s = scrapDie(s, stuck)
     expect(cellOf(s, 0, 0, 0)).toEqual([])
-    expect(s.players[0]?.debris).toEqual([{ id: stuck.id, color: 'green', layout: stuck.layout }])
+    expect(s.players[0]?.debris).toEqual([{ id: stuck.id, colors: stuck.colors, layout: stuck.layout }])
     expect(s.time?.pending[0]).toEqual([])
     expect(s.currentPlayer).toBe(1)
   })
@@ -432,25 +432,17 @@ describe('§9 선(1행)이 바뀔 때', () => {
   it('선 주사위가 굴러 나가면 그 칸은 빈 칸이 되고, 빈 칸에서 색 연속이 끊긴다', () => {
     const t = T('red')
     const b = board(line(die('red', 1), die('red', 2), t, die('red', 4), die('red', 5)))
-    expect(scoreLine(b)).toEqual({ colorRuns: 10, stepRuns: 0, total: 10 })
+    // §2 v0.7: ⧗ 윗면은 무색이라 이미 끊겨 있다
+    expect(scoreLine(b).total).toBe(2)
     const s = rollDie(round4([b, board({})]), t, 'back')
     const after = s.players[0]?.board as Board
     expect(lineDice(after)[2]).toBeUndefined()
-    // 빨강 2칸 + 빨강 2칸 = 1 + 1
-    expect(scoreLine(after)).toEqual({ colorRuns: 2, stepRuns: 0, total: 2 })
+    expect(scoreLine(after).total).toBe(2)
   })
 
-  it('선 주사위가 굴러 나가면 숫자 연속도 빈 칸에서 끊긴다', () => {
-    // 2-3-(빈 칸)-4-5: 빈 칸을 건너뛰어 2-3-4-5로 이어 세면 안 된다
-    const t = T('blue')
-    const b = board(line(die('red', 2), die('blue', 3), t, die('red', 4), die('blue', 5)))
-    const s = rollDie(round4([b, board({})]), t, 'back')
-    expect(scoreLine(s.players[0]?.board as Board).stepRuns).toBe(0)
-  })
-
-  it('1행 진공 칸으로 굴러 들어오면 새 선 주사위가 되어 점수에 반영된다', () => {
-    // ⧗/4 (기준 배치): 뒤 3 → forward로 굴리면 윗면 3
-    const t = T('red', 4)
+  it('1행 진공 칸으로 굴러 들어오면 새 선 주사위가 되고, 새 윗면의 색이 그 주사위의 색이 된다', () => {
+    // ⧗/4 (기준 배치): 뒤 3 → forward로 굴리면 윗면 3. 3의 면을 빨강으로
+    const t: RolledDie = { ...T('red', 4), colors: colorsWith('red', 3) }
     expect(tip(S, t.orientation, 'forward').top).toBe(3)
     const b = board({
       '0,0': [die('red', 1)],
@@ -459,12 +451,12 @@ describe('§9 선(1행)이 바뀔 때', () => {
       '0,4': [die('red', 5)],
       '1,2': [t],
     })
-    expect(scoreLine(b)).toEqual({ colorRuns: 2, stepRuns: 0, total: 2 })
+    expect(scoreLine(b).total).toBe(2)
     const s = rollDie(round4([b, board({})]), t, 'forward')
     const after = s.players[0]?.board as Board
     expect(lineDice(after)[2]?.id).toBe(t.id)
-    // 빨강 5칸 10점 + 1-2-3-4-5 5점
-    expect(scoreLine(after)).toEqual({ colorRuns: 10, stepRuns: 5, total: 15 })
+    expect(dieColor(lineDice(after)[2] as RolledDie)).toBe('red')
+    expect(scoreLine(after).total).toBe(5)
   })
 
   it('선 기둥 위로 굴러 올라가면 선 주사위(1층)는 그대로다', () => {

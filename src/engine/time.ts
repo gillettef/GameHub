@@ -145,7 +145,7 @@ export function applyTimeAction(state: GameState, action: TimeAction): GameState
       // §9 네 방향 모두 넘길 수 없는 ⧗ 주사위만 골라 잔해로 만들 수 있다
       if (targets.length > 0) fail('넘길 수 있는 주사위는 잔해로 만들 수 없습니다.')
       const board = mapCell(player.board, from, (p) => p.slice(0, -1))
-      updated = { ...player, board, debris: [...player.debris, { id: die.id, color: die.color, layout: die.layout }] }
+      updated = { ...player, board, debris: [...player.debris, { id: die.id, colors: die.colors, layout: die.layout }] }
       break
     }
   }

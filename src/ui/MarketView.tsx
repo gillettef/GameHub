@@ -1,4 +1,4 @@
-import type { Market } from '../engine'
+import { dieColor, type Market } from '../engine'
 import { colorLabel, faceLabel } from './colors'
 import { DieFace } from './DieFace'
 import { buzz } from './fx'
@@ -29,7 +29,7 @@ export function MarketView({ market, onSelect, takeable = false, selected = null
       {market.map((slot, i) => {
         const taken = slot === null
         const dice = slot ?? []
-        const diceText = dice.map((d) => `${colorLabel(d.color)} ${faceLabel(d.orientation.top)}`).join(', ')
+        const diceText = dice.map((d) => `${colorLabel(dieColor(d))} ${faceLabel(d.orientation.top)}`).join(', ')
         const label = taken ? `${i + 1}번 칸, 가져감` : `${i + 1}번 칸, ${dice.length === 0 ? '빈 칸' : diceText}`
         const inner = (
           <>
@@ -42,17 +42,17 @@ export function MarketView({ market, onSelect, takeable = false, selected = null
                     type="button"
                     className="glow-pulse flex min-h-11 min-w-11 items-center justify-center rounded-xl ring-2 ring-event active:scale-90"
                     style={{ ['--glow' as string]: '#ff8a7a' }}
-                    aria-label={`${i + 1}번 칸 ${colorLabel(d.color)} ${faceLabel(d.orientation.top)} 다시 굴리기`}
+                    aria-label={`${i + 1}번 칸 ${colorLabel(dieColor(d))} ${faceLabel(d.orientation.top)} 다시 굴리기`}
                     onClick={() => {
                       buzz(14)
                       onReroll(i, d.id)
                     }}
                   >
-                    <DieFace face={d.orientation.top} color={d.color} size={size} />
+                    <DieFace face={d.orientation.top} color={dieColor(d)} size={size} />
                   </button>
                 ) : (
                   <span key={d.id} className="animate-tumble" style={{ animationDelay: `${i * 50 + k * 70}ms` }}>
-                    <DieFace face={d.orientation.top} color={d.color} size={size} />
+                    <DieFace face={d.orientation.top} color={dieColor(d)} size={size} />
                   </span>
                 ),
               )}

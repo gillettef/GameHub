@@ -1,13 +1,28 @@
-import { allOrientations, facesOf, FACES, sideFaces, STANDARD_LAYOUT, type DieLayout, type Face } from '../dice'
+import { allOrientations, COLORS, facesOf, FACES, isTime, sideFaces, STANDARD_LAYOUT, type DieLayout, type Face, type FaceColors } from '../dice'
 import { applyAction } from '../game'
 import { createBoard, createGame } from '../setup'
 import type { Board, Color, GameConfig, GameState, RolledDie } from '../types'
 
 let nextId = 1000
 
-/** 테스트용 굴린 주사위. 앞면을 생략하면 가능한 옆면 중 첫 번째. 배치를 생략하면 STANDARD_LAYOUT */
+/** face 면이 color인 숫자 면 색 배치. 나머지 면은 남은 색을 COLORS 순서대로. ⧗이면 color를 1의 면에 */
+export function colorsWith(color: Color, face: Face): FaceColors {
+  const rest = COLORS.filter((c) => c !== color)
+  rest.splice(isTime(face) ? 0 : face - 1, 0, color)
+  return rest as unknown as FaceColors
+}
+
+/**
+ * 테스트용 굴린 주사위. 윗면의 색이 color가 되게 면 색을 정한다 (윗면이 ⧗이면 주사위는 무색).
+ * 앞면을 생략하면 가능한 옆면 중 첫 번째. 배치를 생략하면 STANDARD_LAYOUT
+ */
 export function die(color: Color, top: Face, front?: Face, layout: DieLayout = STANDARD_LAYOUT): RolledDie {
-  return { id: nextId++, color, layout, orientation: { top, front: front ?? (sideFaces(layout, top)[0] as Face) } }
+  return {
+    id: nextId++,
+    colors: colorsWith(color, top),
+    layout,
+    orientation: { top, front: front ?? (sideFaces(layout, top)[0] as Face) },
+  }
 }
 
 /** 칸 → 기둥(아래부터) 지정으로 보드 만들기. 키는 'row,col' */

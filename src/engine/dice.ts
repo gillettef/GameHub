@@ -13,6 +13,26 @@ export type Face = NumberFace | typeof TIME
 
 export const FACES: readonly Face[] = [1, 2, 3, 4, 5, TIME]
 
+export type Color = 'red' | 'blue' | 'green' | 'yellow' | 'black'
+
+export const COLORS: readonly Color[] = ['red', 'blue', 'green', 'yellow', 'black']
+
+/**
+ * 숫자 면 1~5의 색 (index 0 = 1의 면). 다섯 색이 한 번씩 들어가고, 짝은 주사위마다 다르다.
+ * ⧗ 면은 무색 (§2 면의 색, v0.7)
+ */
+export type FaceColors = readonly [Color, Color, Color, Color, Color]
+
+/** 면의 색. ⧗은 무색이라 undefined */
+export function faceColor(colors: FaceColors, face: Face): Color | undefined {
+  return isTime(face) ? undefined : colors[face - 1]
+}
+
+/** 주사위의 색 = 윗면의 색 (§2). 윗면이 ⧗이면 undefined */
+export function dieColor(die: { colors: FaceColors; orientation: Orientation }): Color | undefined {
+  return faceColor(die.colors, die.orientation.top)
+}
+
 export interface Orientation {
   top: Face
   front: Face

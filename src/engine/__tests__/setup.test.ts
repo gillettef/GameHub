@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { faceValue, isValidLayout, isValidOrientation, opposite, STANDARD_LAYOUT, TIME, type DieLayout } from '../dice'
+import { dieColor, faceColor, faceValue, isValidLayout, isValidOrientation, opposite, STANDARD_LAYOUT, TIME, type DieLayout } from '../dice'
 import { createRng } from '../rng'
 import {
   BOARD_COLS,
   BOARD_ROWS,
   createDice,
   createGame,
-  DICE_PER_COLOR,
+  DICE_COUNT,
   drawAndRoll,
   dicePerSlot,
   fillMarket,
@@ -16,18 +16,33 @@ import {
   rollForStartPlayer,
 } from '../setup'
 import { COLORS, type Die, type RolledDie } from '../types'
-import { layoutKey } from './helpers'
+import { colorsWith, layoutKey } from './helpers'
 
 const dice = (seed = 1): Die[] => createDice(createRng(seed))[0]
 
 describe('§4 구성물', () => {
-  it('주사위 120개 = 5색 × 24개, id가 모두 다르다', () => {
+  it('주사위 120개, id가 모두 다르다', () => {
     const all = dice()
-    expect(all).toHaveLength(120)
+    expect(all).toHaveLength(DICE_COUNT)
+    expect(DICE_COUNT).toBe(120)
     expect(new Set(all.map((d) => d.id)).size).toBe(120)
-    for (const color of COLORS) {
-      expect(all.filter((d) => d.color === color)).toHaveLength(DICE_PER_COLOR)
-    }
+  })
+
+  it('§2 v0.7 숫자 면 1~5에 다섯 색이 한 번씩, 숫자·색 짝은 주사위마다 다르다', () => {
+    const all = dice()
+    for (const d of all) expect([...d.colors].sort()).toEqual([...COLORS].sort())
+    // 5! = 120가지 짝이 고루 섞여 여러 가지가 나온다
+    expect(new Set(all.map((d) => d.colors.join())).size).toBeGreaterThan(50)
+    // 각 색이 1의 면에 오는 주사위가 대략 1/5씩
+    for (const color of COLORS) expect(all.filter((d) => d.colors[0] === color).length).toBeGreaterThan(10)
+  })
+
+  it('§2 v0.7 주사위의 색은 윗면의 색이고, ⧗ 윗면은 무색', () => {
+    const colors = colorsWith('green', 3)
+    expect(faceColor(colors, 3)).toBe('green')
+    expect(faceColor(colors, TIME)).toBeUndefined()
+    expect(dieColor({ colors, orientation: { top: 3, front: 2 } })).toBe('green')
+    expect(dieColor({ colors, orientation: { top: TIME, front: 2 } })).toBeUndefined()
   })
 
   it('§2 모든 주사위의 면 배치가 유효하다 (여섯 면이 한 번씩)', () => {
@@ -67,10 +82,11 @@ describe('§4 구성물', () => {
 })
 
 describe('굴리기', () => {
-  it('굴린 주사위는 유효한 방향을 가지고 id와 색을 유지한다', () => {
-    const [rolled] = roll(createRng(1), { id: 7, color: 'green', layout: STANDARD_LAYOUT })
+  it('굴린 주사위는 유효한 방향을 가지고 id와 면 색을 유지한다', () => {
+    const colors = colorsWith('green', 1)
+    const [rolled] = roll(createRng(1), { id: 7, colors, layout: STANDARD_LAYOUT })
     expect(rolled.id).toBe(7)
-    expect(rolled.color).toBe('green')
+    expect(rolled.colors).toEqual(colors)
     expect(rolled.layout).toEqual(STANDARD_LAYOUT)
     expect(isValidOrientation(rolled.layout, rolled.orientation)).toBe(true)
   })
@@ -102,7 +118,7 @@ describe('굴리기', () => {
     let rng = createRng(2024)
     for (let i = 0; i < 6000; i++) {
       let rolled: RolledDie
-      ;[rolled, rng] = roll(rng, { id: 0, color: 'red', layout: [3, TIME, 5, 1, 2, 4] })
+      ;[rolled, rng] = roll(rng, { id: 0, colors: colorsWith('red', 1), layout: [3, TIME, 5, 1, 2, 4] })
       const k = String(rolled.orientation.top)
       counts.set(k, (counts.get(k) ?? 0) + 1)
     }
@@ -209,7 +225,7 @@ describe('§5 시장 채우기', () => {
 
 describe('§5 게임 준비', () => {
   it.each([2, 3, 4])('%i인 1라운드: 시장 칸 = 플레이어 수, 칸마다 1개', (playerCount) => {
-    const game = createGame({ playerCount, seed: 1 })
+    const game = createGame({ playerCount, seed: 1, law: 'standard' })
     expect(game.market).toHaveLength(playerCount)
     expect(game.market.every((slot) => slot?.length === 1)).toBe(true)
     expect(game.bag).toHaveLength(120 - playerCount)

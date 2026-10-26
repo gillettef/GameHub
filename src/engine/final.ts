@@ -7,11 +7,11 @@ import type { GameState, PlayerState } from './types'
 
 export interface FinalScore {
   player: number
-  /** 최종 선으로 계산 (§6) */
+  /** 1라운드 끝에 확정한 점수 (§6) */
   line: number
   /** 2라운드 끝에 확정한 점수 (§7) */
   plane: number
-  /** 최종 탑으로 계산 (§8) */
+  /** 3라운드 끝에 확정한 점수 (§8) */
   tower: number
   /** 라운드 목표 카드 점수 (선착 4 / 달성 2) */
   goals: number
@@ -31,10 +31,10 @@ function tallest(player: PlayerState): number {
 }
 
 function scorePlayer(state: GameState, player: PlayerState): Omit<FinalScore, 'rank'> {
-  const line = scoreLine(player.board, state.law).total
-  // 2라운드 점수는 확정분을 쓴다. 확정 전(테스트 등)이면 현재 평면으로 계산
+  // 기본 점수는 라운드 끝에 확정한 값을 쓴다 (v0.7). 확정 전(테스트 등)이면 지금 보드로 계산
+  const line = player.lineScore ?? scoreLine(player.board, state.law).total
   const plane = player.planeScore ?? scorePlane(player.board, state.law).total
-  const tower = scoreTower(player.board).total
+  const tower = player.towerScore ?? scoreTower(player.board, state.law).total
   const goals = goalPoints(state, player.id)
   const personalGoal = personalGoalPoints(player)
   const debris = -player.debris.length

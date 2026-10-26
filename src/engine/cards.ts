@@ -1,14 +1,14 @@
 /**
  * 카드 (§11): 우주 법칙, 라운드 목표, 개인 목표. 카드마다 데이터 + 판정 함수.
  *
- * 사건 카드와 4라운드 목표, 영원의 우주는 v0.6에서 재설계 중이라 덱에 넣지 않는다.
+ * 사건 카드와 4라운드 목표, 영원의 우주는 v0.6에서, 거울 우주는 v0.7에서 재설계 중이라 덱에 넣지 않는다.
  * 규칙서 문구가 여러 뜻으로 읽히는 곳은 `해석:` 주석으로 적어 둔다.
  */
-import { faceValue, isTime, type Face } from './dice'
+import { dieColor, faceValue, isTime, type Face } from './dice'
 import { neighbors, pillarAt, topOf, type Cell } from './placement'
-import { frontFaces, lineDice, scorePlane, stepRuns } from './scoring'
+import { frontFaces, lineDice, neighborSteps, stepRuns } from './scoring'
 import { BOARD_COLS, BOARD_ROWS } from './setup'
-import type { Board, Color, PlayerState, Round } from './types'
+import type { Board, Color, PlayerState, RolledDie, Round } from './types'
 
 // ─── 우주 법칙 (§11-1) ───────────────────────────────────────────────
 
@@ -32,16 +32,16 @@ export interface LawDef {
 
 export const LAWS: Record<LawId, LawDef> = {
   standard: { id: 'standard', name: '표준 우주', text: '변화 없음', inDeck: true },
-  mirror: { id: 'mirror', name: '거울 우주', text: '이웃 계단 대신 같은 숫자끼리 맞닿으면 쌍마다 1점', inDeck: true },
+  mirror: { id: 'mirror', name: '거울 우주', text: '재설계 중', inDeck: false },
   flat: { id: 'flat', name: '평평한 우주', text: '3라운드에 아래와 같은 숫자도 쌓을 수 있음', inDeck: true },
   inverted: { id: 'inverted', name: '뒤집힌 우주', text: '3라운드에 아래보다 작은 숫자만 쌓을 수 있음', inDeck: true },
   shakyMarket: {
     id: 'shakyMarket',
     name: '흔들리는 시장',
-    text: '1~3라운드에 가져오기 전 시장 주사위 1개를 다시 굴릴 수 있음 (턴마다 1회)',
+    text: '1~3라운드에 가져오기 전 시장 주사위 1개를 대가 없이 다시 굴릴 수 있음 (턴마다 1회, 기본 규칙의 시장 다시 굴리기와 별도)',
     inDeck: true,
   },
-  void: { id: 'void', name: '공허의 우주', text: '검정이 색 점수에서 모든 색과 이어짐 (만능)', inDeck: true },
+  void: { id: 'void', name: '공허의 우주', text: '검정이 색 점수(1~3라운드 기본 점수)에서 모든 색과 이어짐 (만능)', inDeck: true },
   abundance: {
     id: 'abundance',
     name: '풍요의 우주',
@@ -113,11 +113,14 @@ function components(match: (cell: Cell) => boolean): number[] {
 
 /** 같은 색 영역 크기들 (평면 주사위 기준) */
 function floorRegions(board: Board): number[] {
-  const colors = new Set(allCells().flatMap((c) => floorAt(board, c)?.color ?? []))
-  return [...colors].flatMap((color) => components((c) => floorAt(board, c)?.color === color))
+  const colors = new Set(allCells().flatMap((c) => colorOf(floorAt(board, c)) ?? []))
+  return [...colors].flatMap((color) => components((c) => colorOf(floorAt(board, c)) === color))
 }
 
 const numberOf = (face: Face): number | null => (isTime(face) ? null : face)
+
+/** 주사위의 색 = 윗면의 색 (§2 v0.7). 빈 칸이거나 윗면이 ⧗이면 undefined */
+const colorOf = (d: RolledDie | undefined): Color | undefined => (d ? dieColor(d) : undefined)
 
 function lineTops(board: Board): (Face | undefined)[] {
   return lineDice(board).map((d) => d?.orientation.top)
@@ -185,7 +188,8 @@ export const ROUND_GOALS: Record<RoundGoalId, RoundGoalDef> = {
   }),
   rainbow: goal('rainbow', 1, '무지개', '선의 5칸이 모두 다른 색', (b) => {
     const d = lineDice(b)
-    return d.every(Boolean) && new Set(d.map((x) => x?.color)).size === 5
+    const colors = d.map(colorOf)
+    return colors.every(Boolean) && new Set(colors).size === 5
   }),
   stairs: goal('stairs', 1, '계단', '윗면이 1씩 오르거나 내리는 연속 4칸', (b) =>
     stepRuns(lineTops(b).map((f) => (f === undefined ? null : numberOf(f)))).some((n) => n >= 4),
@@ -219,12 +223,11 @@ export const ROUND_GOALS: Record<RoundGoalId, RoundGoalDef> = {
   ),
   columnColor: goal('columnColor', 2, '기둥 색', '한 세로줄 3칸이 모두 같은 색', (b) =>
     Array.from({ length: BOARD_COLS }, (_, col) => col).some((col) => {
-      const colors = Array.from({ length: BOARD_ROWS }, (_, row) => floorAt(b, { row, col })?.color)
+      const colors = Array.from({ length: BOARD_ROWS }, (_, row) => colorOf(floorAt(b, { row, col })))
       return colors.every((c) => c !== undefined && c === colors[0])
     }),
   ),
-  // 해석: 거울 우주에서도 목표의 '이웃 계단'은 글자 그대로 1 차이 쌍을 센다
-  stepChain: goal('stepChain', 2, '계단 사슬', '이웃 계단 쌍 3개', (b) => scorePlane(b).neighborSteps >= 3),
+  stepChain: goal('stepChain', 2, '계단 사슬', '변으로 맞닿은 두 주사위의 윗면이 1 차이인 쌍 3개 (선 안의 가로 쌍 제외, 2·3행 주사위가 든 쌍만)', (b) => neighborSteps(b) >= 3),
   // 해석: 공허의 우주는 '색 점수'에만 적용하므로 대륙의 영역은 검정을 잇지 않는다
   continent: goal('continent', 2, '대륙', '크기 6 이상의 영역', (b) => floorRegions(b).some((n) => n >= 6)),
   roots: goal('roots', 2, '뿌리', '2·3행 주사위 중 같은 열 선 주사위와 색이 같은 것 3개', (b) => {
@@ -233,7 +236,8 @@ export const ROUND_GOALS: Record<RoundGoalId, RoundGoalDef> = {
       for (let col = 0; col < BOARD_COLS; col++) {
         const d = floorAt(b, { row, col })
         const root = floorAt(b, { row: 0, col })
-        if (d && root && d.color === root.color) n++
+        const color = colorOf(d)
+        if (color !== undefined && color === colorOf(root)) n++
       }
     }
     return n >= 3
@@ -253,7 +257,7 @@ export const ROUND_GOALS: Record<RoundGoalId, RoundGoalDef> = {
           floorAt(b, { row, col: col + 1 }),
           floorAt(b, { row: row + 1, col }),
           floorAt(b, { row: row + 1, col: col + 1 }),
-        ].map((d) => d?.color)
+        ].map(colorOf)
         if (colors.every(Boolean) && new Set(colors).size === 4) return true
       }
     }
@@ -283,10 +287,11 @@ export const ROUND_GOALS: Record<RoundGoalId, RoundGoalDef> = {
   monoTower: goal('monoTower', 3, '단색 탑', '모두 같은 색인 3층 이상 기둥', (b) =>
     allCells().some((c) => {
       const p = pillarAt(b, c)
-      return p.length >= 3 && p.every((d) => d.color === p[0]?.color)
+      const color = colorOf(p[0])
+      return p.length >= 3 && color !== undefined && p.every((d) => dieColor(d) === color)
     }),
   ),
-  numberStairs: goal('numberStairs', 3, '숫자 계단', '정면 숫자선 4칸 이상', (b) =>
+  numberStairs: goal('numberStairs', 3, '숫자 계단', '맨 앞줄 5개 기둥 꼭대기의 앞면을 왼쪽부터 읽어 1씩 오르거나 내리는 연속 4칸 이상 (⧗에서 끊김)', (b) =>
     stepRuns(frontFaces(b).map((f) => (f === undefined ? null : numberOf(f)))).some((n) => n >= 4),
   ),
   pyramid: goal(
@@ -301,7 +306,7 @@ export const ROUND_GOALS: Record<RoundGoalId, RoundGoalDef> = {
     },
   ),
   fiveLights: goal('fiveLights', 3, '다섯 빛', '꼭대기 색이 5색 모두 있음', (b) =>
-    new Set(topsOf(b).map((t) => t.die.color)).size === 5,
+    new Set(topsOf(b).flatMap((t) => dieColor(t.die) ?? [])).size === 5,
   ),
   perfectStairs: goal('perfectStairs', 3, '완벽한 계단', '아래부터 1·2·3·4·5가 차례로 쌓인 기둥 (1층 포함)', (b) =>
     allCells().some((c) => {
@@ -357,24 +362,24 @@ function personal(
 
 export const PERSONAL_GOALS: Record<PersonalGoalId, PersonalGoalDef> = {
   redWorship: personal('redWorship', '빨강 숭배', '꼭대기 빨강 3개 이상', (p) =>
-    topsOf(p.board).filter((t) => t.die.color === 'red').length >= 3,
+    topsOf(p.board).filter((t) => dieColor(t.die) === 'red').length >= 3,
   ),
   seaTower: personal('seaTower', '바다의 탑', '파랑만으로 된 3층 이상 기둥', (p) =>
     allCells().some((c) => {
       const pillar = pillarAt(p.board, c)
-      return pillar.length >= 3 && pillar.every((d) => d.color === 'blue')
+      return pillar.length >= 3 && pillar.every((d) => dieColor(d) === 'blue')
     }),
   ),
   forestRoof: personal('forestRoof', '숲의 지붕', '꼭대기 초록이 변으로 이어진 3개', (p) =>
-    components((c) => topOf(pillarAt(p.board, c))?.color === 'green').some((n) => n >= 3),
+    components((c) => colorOf(topOf(pillarAt(p.board, c))) === 'green').some((n) => n >= 3),
   ),
   lightFront: personal('lightFront', '빛의 정면', '맨 앞줄 꼭대기 중 노랑 2개 이상', (p) =>
     Array.from({ length: BOARD_COLS }, (_, col) => topOf(pillarAt(p.board, { row: 0, col }))).filter(
-      (d) => d?.color === 'yellow',
+      (d) => colorOf(d) === 'yellow',
     ).length >= 2,
   ),
   voidCollector: personal('voidCollector', '공허 수집가', '탑 전체에 검정 5개 이상', (p) =>
-    p.board.cells.flat(2).filter((d) => d.color === 'black').length >= 5,
+    p.board.cells.flat(2).filter((d) => dieColor(d) === 'black').length >= 5,
   ),
   heightWorship: personal('heightWorship', '높이 숭배', '4층 이상 기둥 3개', (p) =>
     allCells().filter((c) => pillarAt(p.board, c).length >= 4).length >= 3,
