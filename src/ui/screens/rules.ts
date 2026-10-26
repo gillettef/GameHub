@@ -1,3 +1,4 @@
+import { eventArt } from '../art';
 import { RULES, DEMANDS, EVENTS, demandFee, demandPenalty, EVENT_POOL, MAX_AGENTS, MIN_AGENTS, TOTAL_ROUNDS } from '../../core';
 
 export function rulesSheet(): string {
@@ -14,7 +15,7 @@ export function rulesSheet(): string {
       <h4>수수료</h4><p>수수료 = 선수 기본 수수료 + 요구 수수료(+이벤트). 계약한 선수 카드는 그 <b>구단 아래</b>, 내 색 표시와 함께 놓습니다.</p>
       <h4>공개 기록</h4><p>정산된 제안마다 고른 구단 위에 내 색 큐브를 올립니다(경쟁에서 져도. 몸값 미달·협상 무산은 제외). 누가 어느 구단을 밀어 주는지 모두가 볼 수 있습니다.</p>
       <h4>게임 종료</h4><p>마지막 라운드 뒤 모두 동시에 다른 에이전트의 비밀 구단을 지목합니다(지목은 선택). 맞히면 <b>+${RULES.guessBonus}억</b>, 틀리면 <b>−${RULES.wrongGuess}억</b>. 한 명에게라도 들킨 에이전트는 비밀 구단 보너스를 잃고, 들키지 않은 에이전트는 <b>자기가 직접</b> 비밀 구단에 계약시킨 선수 <b>1명당 +${RULES.clubBonus}억</b>을 받습니다. 합계가 가장 큰 사람이 승리합니다.</p>
-      <h4>이벤트</h4><ul>${[...EVENT_POOL, 'deadline' as const].map((k) => `<li>${EVENTS[k].icon} <b>${EVENTS[k].name}</b> — ${EVENTS[k].desc}</li>`).join('')}</ul>
+      <h4>이벤트</h4><ul class="rule-evs">${[...EVENT_POOL, 'deadline' as const].map((k) => `<li class="rule-ev"><span class="rule-art">${eventArt(k, EVENTS[k].name)}</span><span><b>${EVENTS[k].name}</b> — ${EVENTS[k].desc}</span></li>`).join('')}</ul>
       <p class="mu">${EVENT_POOL.length}장 중 ${TOTAL_ROUNDS - 1}장을 무작위로 쓰고, 마지막 라운드는 항상 데드라인 데이입니다.</p>
     </div>
   </div>`;
