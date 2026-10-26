@@ -8,6 +8,7 @@ import { bidScreen, finalScreen, gameHeader, guessScreen, handoffScreen, resultS
 import { connLine, inviteLink, onlineEntryScreen, roomLobbyScreen, waitScreen } from './screens/online';
 import { rulesSheet } from './screens/rules';
 import { setupScreen } from './screens/setup';
+import { parseZoom, zoomSheet } from './screens/zoom';
 import { esc, slotOffer, type Draft, type GuessDraft, type Seat, type Slot, type UiState } from './view';
 
 const AI_NAMES = ['AI 알파', 'AI 브라보', 'AI 찰리'];
@@ -23,6 +24,7 @@ const ui: UiState = {
   draft: null,
   guess: null,
   rulesOpen: false,
+  zoom: null,
   renaming: false,
   error: '',
   joinCode: '',
@@ -108,6 +110,22 @@ function screenHtml(): string {
   }
 }
 
+/** 확대 카드가 보여 줄 게임: 지금 제안·지목 중인 사람의 것만 (가림·대기 화면에서는 없음) */
+function zoomSession(): Session | null {
+  if (isOnline()) {
+    const r = net.state.room!;
+    return r.mySeat === null ? null : onlineSession(r);
+  }
+  const s = ui.session;
+  return ui.view === 'game' && s && s.screen !== 'handoff' ? s : null;
+}
+
+/** 확대 카드 닫기. 열 때 넣은 기록이 있으면 뒤로 가기로 지운다 */
+function closeZoom(): void {
+  ui.zoom = null;
+  if ((history.state as { daZoom?: number } | null)?.daZoom) history.back();
+}
+
 let lastScreenKey = '';
 let lastHtml = '';
 
@@ -118,12 +136,15 @@ export function render(): void {
     ui.view === 'online'
       ? `online:${r?.code}:${r?.game?.phase}:${r?.game?.round}:${r?.mySeat !== null && r?.done.includes(r.mySeat)}:${ui.draft?.stage}`
       : `${ui.view}:${s?.screen}:${s?.game.round}:${s?.turn}:${ui.draft?.stage}:${ui.renaming}`;
-  const html = screenHtml() + (ui.rulesOpen ? rulesSheet() : '');
+  // 화면이 바뀌면(차례 넘김·라운드 진행 등) 확대 카드를 닫는다 → 핫시트에서 다음 사람에게 보이지 않게
+  if (key !== lastScreenKey && ui.zoom) closeZoom();
+  const zs = ui.zoom ? zoomSession() : null;
+  const html = screenHtml() + (ui.rulesOpen ? rulesSheet() : '') + (ui.zoom ? zoomSheet(ui.zoom, zs) : '');
   // 다른 사람의 진행 상황만 바뀐 경우 등 화면이 같으면 다시 그리지 않는다 (열어 둔 접기·입력 유지)
   if (html === lastHtml && key === lastScreenKey) return;
   lastHtml = html;
   root().innerHTML = html;
-  document.body.classList.toggle('locked', ui.rulesOpen);
+  document.body.classList.toggle('locked', ui.rulesOpen || !!ui.zoom);
   if (key !== lastScreenKey) {
     window.scrollTo(0, 0);
     lastScreenKey = key;
@@ -261,6 +282,13 @@ function recordResult(game: GameState, seat: number) {
 const actions: Record<string, (arg: string) => void> = {
   rules: () => (ui.rulesOpen = true),
   'rules-close': () => (ui.rulesOpen = false),
+  zoom: (arg) => {
+    const z = parseZoom(arg);
+    if (!z) return;
+    if (!ui.zoom) history.pushState({ daZoom: 1 }, '');
+    ui.zoom = z;
+  },
+  'zoom-close': () => closeZoom(),
 
   register: () => {
     const input = document.getElementById('nick') as HTMLInputElement | null;
@@ -456,10 +484,19 @@ export function mount(): void {
       actions['on-join']!('');
       render();
     }
-    if (e.key === 'Escape' && ui.rulesOpen) {
+    if (e.key === 'Escape' && ui.zoom) {
+      closeZoom();
+      render();
+    } else if (e.key === 'Escape' && ui.rulesOpen) {
       ui.rulesOpen = false;
       render();
     }
+  });
+  // 뒤로 가기 버튼으로 확대 카드 닫기
+  window.addEventListener('popstate', () => {
+    if (!ui.zoom) return;
+    ui.zoom = null;
+    render();
   });
   // 초대 링크(?room=CODE)로 들어오면 참가 화면에 코드를 채워 둔다
   const invited = new URLSearchParams(location.search).get('room')?.toUpperCase() ?? '';

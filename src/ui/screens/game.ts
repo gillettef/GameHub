@@ -1,7 +1,8 @@
 import { RULES, DEMANDS, demandFee, demandPenalty, PLAYERS, TOTAL_ROUNDS, INVALID_TEXT, clubNeed, clubWeight, currentEvent, fitScore, handAfter, offerValue, rankings, validateOffer, validateSecond } from '../../core';
 import type { Demand, Evaluation, GameState, InvalidReason, Stage } from '../../core';
 import type { Session } from '../../store/storage';
-import { ICON, agentName, clubById, crest, dot, esc, eventBanner, header, marksOf, money, roundEntries, scoreboard, slotOffer, type Draft, type GuessDraft } from '../view';
+import { clubCard, clubEmblem, demandCard, playerCard, secretCard } from '../cards';
+import { ICON, agentName, clubById, dot, esc, eventBanner, header, marksOf, money, roundEntries, scoreboard, slotOffer, zoomBtn, type Draft, type GuessDraft } from '../view';
 
 export const gameHeader = (g: GameState): string =>
   header(`<span class="pill">R <b>${Math.min(g.round, TOTAL_ROUNDS)}/${TOTAL_ROUNDS}</b></span><button class="icon" data-act="quit" aria-label="나가기">⌂</button>`);
@@ -19,21 +20,9 @@ export function handoffScreen(s: Session): string {
   <nav class="bar"><button class="pri" data-act="ready">제가 ${esc(a.name)}입니다 · 시작</button></nav>`;
 }
 
-function secretCard(g: GameState, turn: number): string {
-  const me = g.agents[turn]!;
-  const c = clubById(me.secret);
-  const n = clubWeight(g, me.secret, turn);
-  const nd = clubNeed(g.needs, me.secret);
-  return `<section class="secret">
-    <div class="tape"><span>TOP SECRET</span><span>나만 볼 수 있음</span></div>
-    <div class="secret-b">
-      ${crest(c.name, true)}
-      <div class="secret-t"><small>나의 비밀 구단</small><b>${esc(c.name)}</b><small>제시액 ${c.budget}억 · 지금 ${nd.pos} 필요 · ${nd.pref} 선호</small></div>
-      <div class="secret-n"><small>들키지 않으면</small><b>+${money(n * RULES.clubBonus)}</b><small>지금 ${n}명</small></div>
-    </div>
-    <p class="secret-f">게임이 끝날 때 아무에게도 들키지 않으면, <b>내가 직접</b> 이 구단에 계약시킨 선수 1명당 <b>+${money(RULES.clubBonus)}</b>. 한 명에게라도 들키면 0입니다.</p>
-  </section>`;
-}
+/** 비밀 구단 기본 카드 (누르면 확대). 핫시트에서는 이 화면 앞에 가림 화면이 있다 */
+const secretBox = (g: GameState, turn: number): string =>
+  `<button class="secret" data-act="zoom" data-arg="secret:" aria-label="나의 비밀 구단 카드 크게 보기">${secretCard(g, turn, 'base')}</button>`;
 
 /** 이 협상에서 낼 수 있는 손패 (2차는 1차 카드를 뺀 손) */
 export function slotHand(s: Session, d: Draft, stage: Stage): Demand[] {
@@ -78,32 +67,24 @@ export function bidScreen(s: Session, d: Draft): string {
       const q = PLAYERS[id]!;
       const taken = first?.playerId === id;
       const sel = sl.playerId === id && !sl.pass;
-      return `<button class="pc ${sel ? 'sel' : ''} ${taken ? 'dim' : ''}" data-act="pick" data-arg="${id}" aria-pressed="${sel}" ${taken ? 'disabled' : ''}>
-        <span class="pc-h"><span class="pos ${q.pos}">${q.pos}</span><span class="fee" aria-label="기본 수수료 ${q.base}억"><small>기본 </small>${q.base}<small>억</small></span></span>
-        <b class="nm">${esc(q.name)}</b>
-        <span class="tag ${q.trait === '스타' ? 'star' : ''}">${q.trait}</span>
-        ${sel ? `<span class="ck">${ICON.check}</span>` : ''}
-        <small class="pc-f">${taken ? '1차에서 제안함' : `몸값 ${q.cost}억`}</small>
-      </button>`;
+      return `<div class="cell pc ${sel ? 'sel' : ''} ${taken ? 'dim' : ''}">
+        <button class="pick" data-act="pick" data-arg="${id}" aria-pressed="${sel}" ${taken ? 'disabled' : ''}>${playerCard(id, 'base', taken ? '1차에서 제안함' : '')}${sel ? `<span class="ck">${ICON.check}</span>` : ''}</button>
+        ${zoomBtn(`player:${id}`, q.name)}
+      </div>`;
     })
     .join('');
 
   const clubs = g.clubs
     .map((id) => {
       const c = clubById(id);
-      const bud = offerValue(c, event);
-      const nd = clubNeed(g.needs, id);
-      const posFit = p && p.pos === nd.pos;
-      const prefFit = p && p.trait === nd.pref;
-      const tooPoor = p && bud < p.cost;
+      const tooPoor = p && offerValue(c, event) < p.cost;
       const mine = id === me.secret;
       const taken = first?.clubId === id;
       const sel = sl.clubId === id && !sl.pass;
-      return `<button class="club ${sel ? 'sel' : ''} ${tooPoor || taken ? 'dim' : ''} ${mine ? 'mine' : ''}" data-act="club" data-arg="${id}" aria-pressed="${sel}" ${taken ? 'disabled' : ''}>
-        ${crest(c.name, mine)}<b class="nm">${esc(c.name)}${mine ? ' <small class="mine-t">비밀</small>' : ''}</b><span class="bud ${tooPoor ? 'poor' : ''}">${taken ? '1차에서 제안함' : `제시액 ${bud}억${tooPoor ? ' · 몸값 미달' : ''}`}</span>
-        <span class="needs"><span class="nc ${posFit ? 'fit' : ''}">${nd.pos} 필요${posFit ? ' +2' : ''}</span><span class="nc ${prefFit ? 'fit' : ''}">${nd.pref} 선호${prefFit ? ' +1' : ''}</span><span class="nc">계약 ${clubWeight(g, id)}명</span></span>
-        <span class="marks" aria-label="이 구단에 낸 제안 기록">${marksOf(g, id) || '<small class="mu">제안 기록 없음</small>'}</span>
-      </button>`;
+      return `<div class="cell club ${sel ? 'sel' : ''} ${tooPoor || taken ? 'dim' : ''} ${mine ? 'mine' : ''}">
+        <button class="pick" data-act="club" data-arg="${id}" aria-pressed="${sel}" ${taken ? 'disabled' : ''}>${clubCard(id, 'base', { g, me: s.turn, player: p, taken })}</button>
+        ${zoomBtn(`club:${id}`, c.name)}
+      </div>`;
     })
     .join('');
 
@@ -139,7 +120,7 @@ export function bidScreen(s: Session, d: Draft): string {
     ${eventBanner(g)}
     ${scoreboard(g, s.turn)}
     ${last ? `<details class="card last"><summary>지난 라운드 결과</summary>${roundEntries(g, last)}</details>` : ''}
-    ${secretCard(g, s.turn)}
+    ${secretBox(g, s.turn)}
     <div class="stages" role="tablist" aria-label="협상 차수">${tabs}</div>
     <p class="mu note">1차를 모두 정산한 뒤 2차를 정산합니다. 2차는 1차와 다른 선수·구단만 고를 수 있고, 2차에 고른 선수가 1차에서 계약되면 협상이 무산됩니다(카드는 소모).</p>
     <h3 class="sec-t">1. 선수 <small class="mu">· ${st}차 협상</small></h3>
@@ -150,9 +131,7 @@ export function bidScreen(s: Session, d: Draft): string {
     <div class="chips">${DEMANDS.map((v) => {
       const n = count(v);
       const sel = sl.demand === v && !sl.pass;
-      const total = Math.max(n, RULES.copies);
-      const pips = Array.from({ length: total }, (_, k) => `<i class="pip ${k < n ? '' : 'off'}"></i>`).join('');
-      return `<button class="chip dmd ${sel ? 'sel' : ''}" data-act="demand" data-arg="${v}" ${n ? '' : 'disabled'} aria-pressed="${sel}" aria-label="요구 수수료 +${demandFee(v)}억, 매력도 −${demandPenalty(v)}, ${n ? `${n}장 남음` : '없음'}"><span class="v">+${demandFee(v)}억</span><span class="p">매력도 −${demandPenalty(v)}</span>${RULES.copies ? `<span class="pips" aria-hidden="true">${pips}</span>` : ''}</button>`;
+      return `<div class="cell dmd-c ${sel ? 'sel' : ''}"><button class="pick chip dmd" data-act="demand" data-arg="${v}" ${n ? '' : 'disabled'} aria-pressed="${sel}" aria-label="요구 수수료 +${demandFee(v)}억, 매력도 −${demandPenalty(v)}, ${n ? `${n}장 남음` : '없음'}">${demandCard(v, 'base', n)}</button>${zoomBtn(`demand:${v}`, `요구 수수료 +${demandFee(v)}억`, 'zoom-s')}</div>`;
     }).join('')}</div>
   </main>
   <nav class="bar col">
@@ -195,7 +174,7 @@ export function guessScreen(s: Session, d: GuessDraft): string {
           const mine = id === me.secret;
           const sel = d.picks[i] === id;
           return `<button class="club guess ${sel ? 'sel' : ''}" data-act="guess" data-arg="${i}:${id}" ${mine ? 'disabled' : ''} aria-pressed="${sel}">
-            <b>${esc(c.name)}</b><span class="bud">${mine ? '내 비밀 구단' : `${esc(a.name)}의 계약 ${clubWeight(g, id, i)}명`}</span>
+            <b class="g-nm">${clubEmblem(id)}${esc(c.name)}</b><span class="bud">${mine ? '내 비밀 구단' : `${esc(a.name)}의 계약 ${clubWeight(g, id, i)}명`}</span>
             <span class="marks">${marksOf(g, id) || '<small class="mu">제안 기록 없음</small>'}</span>
           </button>`;
         })
@@ -206,7 +185,7 @@ export function guessScreen(s: Session, d: GuessDraft): string {
   return `${gameHeader(g)}<main class="content">
     <h2 class="title ic-title"><span class="target">${ICON.target}</span>비밀 구단 지목</h2>
     <p class="mu">${TOTAL_ROUNDS}라운드 동안의 제안 기록을 보고 다른 에이전트의 비밀 구단을 지목하세요. 맞히면 <b>+${money(RULES.guessBonus)}</b>, 틀리면 <b>−${money(RULES.wrongGuess)}</b>. 자신 없으면 지목하지 않아도 됩니다. 한 명에게라도 들킨 에이전트는 비밀 구단 보너스를 잃습니다.</p>
-    ${secretCard(g, s.turn)}
+    ${secretBox(g, s.turn)}
     ${blocks}
   </main>
   <nav class="bar"><button class="pri" data-act="guess-submit">지목 제출</button></nav>`;
