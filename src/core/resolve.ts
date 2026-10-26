@@ -14,7 +14,7 @@ interface Candidate {
 /**
  * 같은 선수 제안끼리 경쟁: 매력도가 가장 높은 제안이 계약한다.
  * 최고 매력도가 같으면 요구 수수료 카드가 가장 낮은(수수료가 적은) 제안이 계약한다. 그 카드가 여럿이면 그 매력도의 제안은
- * 모두 상쇄되어 탈락하고 그다음 매력도가 계약한다 (무작위·좌석 우선 없음).
+ * 모두 상쇄되어 탈락하고 그다음 매력도가 계약한다 (무작위·자리 우선 없음).
  */
 export function contest(group: readonly Candidate[]): { winner: Candidate | null; beaten: Candidate[]; cancelled: Candidate[] } {
   const sorted = [...group].sort((x, y) => y.attract - x.attract);

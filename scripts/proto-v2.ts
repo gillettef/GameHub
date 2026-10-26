@@ -335,7 +335,7 @@ const r1 = (x: number) => Math.round(x * 10) / 10;
 const pct = (a: number, b: number) => `${r1((100 * a) / b)}%`;
 const mean = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length;
 console.log(`v2 proto N=${N} games=${GAMES} B=${B} G=${G} R=${R} clubs=${NCLUBS} market=${MARKET} tie=${TIE} deny=${DENY} guess=${GUESS}`);
-console.log(`좌석 승률: ${stats.seatWins.map((w) => pct(w, GAMES)).join(' / ')}`);
+console.log(`자리 승률: ${stats.seatWins.map((w) => pct(w, GAMES)).join(' / ')}`);
 console.log(`평균 점수 ${r1(mean(stats.scores))}, 1·2위 격차 평균 ${r1(mean(stats.gap))}, 동점 우승 판 ${pct(stats.gap.filter((g) => g === 0).length, GAMES)}`);
 console.log(`라운드당 계약 ${r1(stats.deals / GAMES / R)}건, 경쟁 제안 비율 ${pct(stats.contested, stats.bids)}, 동률 상쇄 그룹 ${r1(stats.ties / GAMES)}/판, 패스 ${pct(stats.pass, GAMES * R * N)}`);
 console.log(`자기 비밀 구단 제안 ${pct(stats.ownRoute, stats.bids)}, 그중 계약 ${stats.ownRouteDeals}`);
@@ -344,4 +344,4 @@ if (ACCUSE) console.log(`고발 ${r1(stats.acc / GAMES)}회/판, 적중 ${pct(st
 console.log(`숨은 점수로 우승자가 바뀐 판 ${pct(stats.winnerChangedByHidden, GAMES)}`);
 console.log(`요구 카드 사용/계약: ${[1, 2, 3, 4].map((d) => `${d}:${stats.demandUse[d]}/${pct(stats.demandWin[d]!, stats.demandUse[d]!)}`).join(' ')}`);
 console.log(`이벤트별 라운드 수수료: ${[...stats.roundFee].map(([k, v]) => `${k} ${r1(v.fee / v.n)}`).join(' · ')}`);
-if (ROUTE.length) for (const [rt, s] of [...stats.routeWins].sort((a, b) => a[0] - b[0])) console.log(`  route=${rt}: 1석당 승률 ${pct(s.wins, s.seats)}, 평균 ${r1(s.score / s.seats)}, 노출률 ${pct(s.det, s.tries)}, 구단 보너스 ${r1(s.bonus / s.seats)}`);
+if (ROUTE.length) for (const [rt, s] of [...stats.routeWins].sort((a, b) => a[0] - b[0])) console.log(`  route=${rt}: 1인당 승률 ${pct(s.wins, s.seats)}, 평균 ${r1(s.score / s.seats)}, 노출률 ${pct(s.det, s.tries)}, 구단 보너스 ${r1(s.bonus / s.seats)}`);

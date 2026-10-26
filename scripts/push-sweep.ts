@@ -1,6 +1,6 @@
 /**
  * 비밀 구단을 얼마나 밀어 주는 게 좋은가: 실험용 페르소나(위장형 자리)의 push·stealth 를 바꿔 가며
- * 균형형 N−1명을 상대로 1석당 승률을 잰다.
+ * 균형형 N−1명을 상대로 1인당 승률을 잰다.
  *   npx tsx scripts/push-sweep.ts --players 3 --games 600 --rules clubBonus=5,clubOwnOnly=1
  */
 import { PERSONAS, RULES, createGame, createRng, finishGame, nextRound, resolveRound, winners } from '../src/core';
