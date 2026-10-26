@@ -60,7 +60,7 @@ tests/         # 또는 *.test.ts 를 src/core 옆에 배치
 ## 명령어
 ```
 npm install
-npm run dev        # 개발 서버 (모바일 확인은 --host 로 같은 Wi-Fi 기기에서 접속). /ws 는 8091 로 프록시
+npm run dev        # 개발 서버 (포트 5180 고정, 모바일 확인은 --host 로 같은 Wi-Fi 기기에서 접속). /ws 는 8091 로 프록시
 npm run server     # 온라인 대전 서버 (tsx watch, 8091). 온라인 대전을 개발할 때 dev 와 함께 띄운다
 npm start          # 빌드 결과로 서버 실행 (scripts/aws/serve.mjs, EC2 와 같은 진입점)
 npm run share      # 빌드 후 Cloudflare 퀵 터널로 임시 공개 주소(+QR) 발급 → 다른 네트워크(LTE 등)에서 접속. 종료하면 주소 소멸
@@ -116,3 +116,4 @@ npm run typecheck  # tsc --noEmit
   - `rules-spec` — 규칙·데이터 단일 기준 문서
   - `mobile-check` — 타입체크·테스트·빌드 + 모바일 체크리스트 검증
   - `simulate` — 시드 고정 시뮬레이션 실행 및 리포트
+  - `dev` / `dev-stop` — 로컬 개발 서버(vite 5180 + 온라인 서버 8091) 백그라운드 실행 / 종료 (`scripts/dev-stop.ps1`)
