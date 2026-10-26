@@ -1,9 +1,9 @@
 // 앱의 카드 데이터(cardArtData.ts)로 Claude Design 캔버스의 「카드 v2」 보드(.dc.html)를 만든다.
 // 실행: npx tsx scripts/gen-cards-board.ts <출력 경로>  → 캔버스의 project/CardsV2.dc.html 로 올린다
 import { writeFileSync } from 'node:fs'
-import { LAW_DECK, PERSONAL_GOAL_DECK, ROUND_GOALS, type RoundGoalId } from '../src/engine'
+import { EVENT_DECK, LAW_DECK, PERSONAL_GOAL_DECK, ROUND_GOALS, type RoundGoalId } from '../src/engine'
 import { ART_H, ART_W, cardArt, cardInfo, cardStars, type ArtShape, type CardKey } from '../src/ui/cardArtData'
-import { DIE_COLORS } from '../src/ui/colors'
+import { BLANK_FACE, DIE_COLORS } from '../src/ui/colors'
 
 const out = process.argv[2] as string
 const HOURGLASS = 'M6 3h12M6 21h12M7 3c0 5 10 6 10 9s-10 4-10 9M17 3c0 5-10 6-10 9s10 4 10 9'
@@ -13,7 +13,8 @@ const n = (v: number) => Math.round(v * 100) / 100
 function shape(s: ArtShape, tone: string): string {
   switch (s.t) {
     case 'die': {
-      const c = DIE_COLORS[s.c]
+      // ⧗ 면은 무색 (§2 v0.7)
+      const c = s.f === 't' ? BLANK_FACE : DIE_COLORS[s.c]
       const r = n(s.s * 0.22)
       const face =
         s.f === 't'
@@ -112,6 +113,7 @@ const all: CardKey[] = [
   ...LAW_DECK.map((id) => ({ kind: 'law' as const, id })),
   ...goalIds.map((id) => ({ kind: 'goal' as const, id })),
   ...PERSONAL_GOAL_DECK.map((id) => ({ kind: 'personal' as const, id })),
+  ...EVENT_DECK.map((id) => ({ kind: 'event' as const, id })),
 ]
 const W = 1800
 const label = (t: string, sub: string) =>
@@ -120,14 +122,14 @@ const label = (t: string, sub: string) =>
 const body = `<div style="width: ${W}px; box-sizing: border-box; padding: 56px; background: #14121f; color: #ece9ff; font-family: 'Noto Sans KR', system-ui, sans-serif; display: flex; flex-direction: column; gap: 40px">
 <div style="display: flex; justify-content: space-between; align-items: flex-end">
 <div style="display: flex; flex-direction: column; gap: 6px"><div style="font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 28px; letter-spacing: 0.2em">CARDS v2</div><div style="font-size: 14px; color: #a49fc4">각진 SF 프레임 · 종류 띠와 태그 · 성운 일러스트 창 · 육각 점수 배지. 일러스트는 카드 조건을 주사위 도해로 보여 줌 (앱 src/ui/cardArtData.ts와 같은 데이터)</div></div>
-<div style="display: flex; gap: 16px; font-size: 13px; font-weight: 700"><span style="color: #9b8cff">◆ 우주 법칙</span><span style="color: #5ad1e6">◆ 라운드 목표</span><span style="color: #f2a65a">◆ 개인 목표</span></div>
+<div style="display: flex; gap: 16px; font-size: 13px; font-weight: 700"><span style="color: #9b8cff">◆ 우주 법칙</span><span style="color: #5ad1e6">◆ 라운드 목표</span><span style="color: #f2a65a">◆ 개인 목표</span><span style="color: #ff8a7a">◆ 사건</span></div>
 </div>
 ${label('LARGE', '확대 보기 · 카드를 누르면 · 340px')}
 <div style="display: flex; gap: 32px; align-items: flex-start">${large({ kind: 'law', id: 'mirror' })}${large({ kind: 'goal', id: 'skyscraper' })}${large({ kind: 'personal', id: 'timeLord' })}${back}</div>
 ${label('NORMAL', '가로 카드 · 카드 시트, 개인 목표 고르기 · 화면 너비')}
 <div style="display: flex; gap: 32px; align-items: flex-start">${normal({ kind: 'law', id: 'void' })}${normal({ kind: 'goal', id: 'continent' })}${normal({ kind: 'personal', id: 'symmetry' })}</div>
 ${label('MINI', '세로 썸네일 · 라운드 시작 알림에서 나란히 · 132px')}
-<div style="display: flex; gap: 20px; align-items: flex-start">${mini({ kind: 'law', id: 'shakyMarket' })}${mini({ kind: 'goal', id: 'rainbow' })}${mini({ kind: 'goal', id: 'cross' })}${mini({ kind: 'goal', id: 'pyramid' })}${mini({ kind: 'personal', id: 'redWorship' })}</div>
+<div style="display: flex; gap: 20px; align-items: flex-start">${mini({ kind: 'law', id: 'shakyMarket' })}${mini({ kind: 'goal', id: 'rainbow' })}${mini({ kind: 'goal', id: 'cross' })}${mini({ kind: 'goal', id: 'pyramid' })}${mini({ kind: 'goal', id: 'colorRiver' })}${mini({ kind: 'event', id: 'timeRift' })}${mini({ kind: 'personal', id: 'redWorship' })}</div>
 ${label('ILLUSTRATIONS', `카드 ${all.length}장 전체 일러스트`)}
 <div style="display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 16px">${all.map((c) => mini(c, 152)).join('')}</div>
 </div>`

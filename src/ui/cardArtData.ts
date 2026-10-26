@@ -5,8 +5,17 @@
  * React(CardArt.tsx)와 캔버스 생성 스크립트가 같은 도형을 그리므로, 여기에는 순수 데이터만 둔다.
  * 좌표계는 120 × 80 (가로 3:2).
  */
-import { GOAL_ACHIEVED_POINTS, GOAL_FIRST_POINTS, LAWS, PERSONAL_GOAL_POINTS, PERSONAL_GOALS, ROUND_GOALS } from '../engine'
-import type { Color, LawId, PersonalGoalId, RoundGoalId } from '../engine'
+import {
+  EVENTS,
+  GOAL_ACHIEVED_POINTS,
+  GOAL_FIRST_POINTS,
+  LAWS,
+  PERSONAL_GOAL_POINTS,
+  PERSONAL_GOALS,
+  ROUND4_GOAL_POINTS,
+  ROUND_GOALS,
+} from '../engine'
+import type { Color, EventId, LawId, PersonalGoalId, RoundGoalId } from '../engine'
 
 export const ART_W = 120
 export const ART_H = 80
@@ -21,7 +30,11 @@ export type ArtShape =
   | { t: 'path'; d: string; fill?: string; stroke?: string; sw?: number; tone?: boolean }
   | { t: 'label'; x: number; y: number; text: string; size: number; tone?: boolean }
 
-export type CardKey = { kind: 'law'; id: LawId } | { kind: 'goal'; id: RoundGoalId } | { kind: 'personal'; id: PersonalGoalId }
+export type CardKey =
+  | { kind: 'law'; id: LawId }
+  | { kind: 'goal'; id: RoundGoalId }
+  | { kind: 'personal'; id: PersonalGoalId }
+  | { kind: 'event'; id: EventId }
 
 const COLOR: Record<string, Color> = { r: 'red', b: 'blue', g: 'green', y: 'yellow', k: 'black' }
 
@@ -82,11 +95,11 @@ const LAW_ART: Record<LawId, ArtShape[]> = {
     { t: 'path', d: 'M22 48 C 40 62, 80 62, 98 48', stroke: 'tone', sw: 1.6, tone: true },
     { t: 'circle', cx: 93, cy: 44, r: 3, fill: '#F5C842' },
   ],
-  // 축을 사이에 둔 같은 숫자
+  // 축을 사이에 둔 같은 색
   mirror: [
     { t: 'line', x1: 60, y1: 12, x2: 60, y2: 70, dash: true, tone: true },
-    cellShape('b3*', 34, 32, 18),
-    cellShape('r3*', 68, 32, 18),
+    cellShape('r2*', 34, 32, 18),
+    cellShape('r5*', 68, 32, 18),
     { t: 'path', d: 'M54 41 h-2 M66 41 h2', stroke: 'tone', sw: 1.5, tone: true },
   ],
   // 같은 숫자를 쌓을 수 있음
@@ -142,7 +155,81 @@ const GOAL_ART: Record<RoundGoalId, ArtShape[]> = {
   pyramid: towers([['b1'], ['g1', 'r3'], ['y1*', 'b2*', 'g3*', 'r4*'], ['r2', 'y4'], ['k1']], [{ t: 'path', d: 'M18 52 L 60 18 L 102 52', stroke: 'tone', sw: 1.2, tone: true }]),
   fiveLights: towers([['b1', 'r3*'], ['g2', 'b4*'], ['y1', 'g5*'], ['r2', 'y3*'], ['b1', 'k4*']]),
   perfectStairs: towers([['b2'], [], ['g1*', 'r2*', 'y3*', 'b4*', 'k5*'], ['y3'], ['r1', 'g4']]),
-  timeRoof: towers([['b1', 'rt*'], ['g3'], ['y1', 'gt*'], ['r2', 'b4'], ['bt*']]),
+  timeRoof: towers([['b1', 'rt*'], ['g3'], ['y1', 'gt*'], ['r2', 'b4'], ['b2', 'bt*']]),
+  // ── 4라운드: 위에서 본 꼭대기 지도 (첫 줄 = 뒤, 마지막 줄 = 앞) ──
+  colorRiver: grid(['- b2* - g4 -', 'r1 b4* g3 - y2', 'k2 b5* y1 r4 g3']),
+  filledSky: grid(['g2 r4 - y3 k5', 'b3 y2 r5 g1 b4', 'k1 g3 y4 - b5']),
+  crown: towers(
+    [['b1'], ['g1', 'r3'], ['y1', 'b2', 'g5*'], ['r2', 'y4'], ['k1']],
+    [{ t: 'path', d: 'M53 34 l2 -8 l5 5 l5 -5 l2 8 z', fill: '#F5C842', stroke: 'tone', sw: 0.8, tone: true }],
+  ),
+  evenHorizon: towers(
+    [['b1', 'r3'], ['g1', 'y4'], ['y1', 'b2'], ['r2'], ['k1', 'g3']],
+    [{ t: 'line', x1: 12, y1: 46, x2: 108, y2: 46, dash: true, tone: true }],
+  ),
+  frontRainbow: grid(['- g2 - b4 -', 'y1 - k3 - r2', 'r1* b4* g2* y5* k3*']),
+  mirrorHorizon: grid(['g2* - b4 - g5*', 'r1* y3* - y2* r4*', 'b1 k2 g3 r4 y5'], [{ t: 'line', x1: 60, y1: 12, x2: 60, y2: 70, dash: true, tone: true }]),
+  twoContinents: grid(['r2* r4* - b3* b1*', 'r1* g3 k2 y4 b2*', 'g1 y5 k3 r2 y4']),
+  horizonStairs: grid(['- r2 - g4 -', 'y1 - b3 - k5', 'b2* g3* r4* y5* k1']),
+}
+
+const EVENT_ART: Record<EventId, ArtShape[]> = {
+  // 거꾸로 도는 화살표
+  regression: [
+    { t: 'path', d: 'M82 28 A 24 24 0 1 0 84 52', stroke: 'tone', sw: 2, tone: true },
+    { t: 'path', d: 'M76 22 l8 6 l-9 4', stroke: 'tone', sw: 2, tone: true },
+    cellShape('y3*', 51, 31, 18),
+  ],
+  // 갈라진 시공간과 들어갈 수 없는 빈 칸
+  timeRift: [
+    { t: 'path', d: 'M60 8 l-7 15 l9 8 l-9 13 l7 14 l-5 14', stroke: 'tone', sw: 2, tone: true },
+    { t: 'slot', x: 76, y: 32, s: 18 },
+    cellShape('r4', 26, 32, 18),
+  ],
+  // 좌우로만 넘어감
+  rotation: [
+    cellShape('b3*', 51, 31, 18),
+    { t: 'path', d: 'M40 40 h-18 m5 -5 l-5 5 l5 5 M80 40 h18 m-5 -5 l5 5 l-5 5', stroke: 'tone', sw: 1.8, tone: true },
+  ],
+  // 지진파
+  earthquake: [
+    { t: 'path', d: 'M8 52 h18 l5 -16 l7 30 l7 -26 l6 18 l5 -8 l6 6 h50', stroke: 'tone', sw: 1.8, tone: true },
+    cellShape('g2', 46, 18, 12),
+    cellShape('r4', 62, 12, 12),
+  ],
+  // 가장 높은 기둥의 꼭대기가 깎임
+  erosion: towers(
+    [['b1'], ['g1', 'r3'], ['y1', 'b2', 'g3', 'r4.'], ['r2'], ['k1']],
+    [{ t: 'path', d: 'M74 24 q6 4 4 10 M80 20 q8 6 5 14', stroke: 'tone', sw: 1.2, tone: true }],
+  ),
+  // 높은 탑을 누르는 중력
+  gravityWave: towers(
+    [['b1'], ['g1', 'r3', 'y4', 'k5.'], ['y1'], ['r2', 'b4'], ['k1']],
+    [
+      { t: 'path', d: 'M30 12 q8 -6 16 0 t16 0 t16 0', stroke: 'tone', sw: 1.4, tone: true },
+      { t: 'path', d: 'M26 6 q10 -6 20 0 t20 0 t20 0', stroke: 'tone', sw: 1, tone: true },
+    ],
+  ),
+  // 금 간 왕관
+  crownCurse: [
+    { t: 'path', d: 'M34 56 l6 -28 l14 16 l6 -22 l6 22 l14 -16 l6 28 z', fill: '#F5C842', stroke: 'tone', sw: 1.2, tone: true },
+    { t: 'path', d: 'M60 24 l-4 10 l6 6 l-5 12', stroke: '#14121f', sw: 2 },
+  ],
+  // 터지는 별
+  bigBang: [
+    { t: 'circle', cx: 60, cy: 40, r: 8, fill: '#F5C842' },
+    { t: 'path', d: 'M60 14 v12 M60 54 v12 M34 40 h12 M74 40 h12 M42 22 l8 8 M70 50 l8 8 M78 22 l-8 8 M50 50 l-8 8', stroke: 'tone', sw: 1.8, tone: true },
+  ],
+  // 번지는 초록 꼭대기
+  proliferation: grid(['- g2* g4* - -', 'r1 g1* - y3 -', 'k2 b4 g3* r1 b5']),
+  // 빈 칸을 덮는 물결
+  flood: [
+    { t: 'slot', x: 30, y: 24, s: 16 },
+    { t: 'slot', x: 52, y: 24, s: 16 },
+    { t: 'slot', x: 74, y: 24, s: 16 },
+    { t: 'path', d: 'M10 52 q10 -8 20 0 t20 0 t20 0 t20 0 t20 0', stroke: '#3B7BF6', sw: 2 },
+    { t: 'path', d: 'M10 62 q10 -8 20 0 t20 0 t20 0 t20 0 t20 0', stroke: '#3B7BF6', sw: 1.4 },
+  ],
 }
 
 const PERSONAL_ART: Record<PersonalGoalId, ArtShape[]> = {
@@ -172,6 +259,7 @@ const PERSONAL_ART: Record<PersonalGoalId, ArtShape[]> = {
 export function cardArt(key: CardKey): ArtShape[] {
   if (key.kind === 'law') return LAW_ART[key.id]
   if (key.kind === 'goal') return GOAL_ART[key.id]
+  if (key.kind === 'event') return EVENT_ART[key.id]
   return PERSONAL_ART[key.id]
 }
 
@@ -190,7 +278,7 @@ export function cardStars(seed: string, count = 22): { x: number; y: number; r: 
 
 // ─── 카드에 보이는 정보 ───
 
-const TONE = { law: '#9b8cff', goal: '#5ad1e6', personal: '#f2a65a' } as const
+const TONE = { law: '#9b8cff', goal: '#5ad1e6', personal: '#f2a65a', event: '#ff8a7a' } as const
 
 interface CardInfo {
   tone: string
@@ -210,8 +298,33 @@ export function cardInfo(card: CardKey): CardInfo {
     const def = LAWS[card.id]
     return { tone: TONE.law, kind: '우주 법칙', short: '법칙', tag: '1 / 게임', name: def.name, text: def.text, note: '이번 게임 내내 모두에게 적용돼요', points: [] }
   }
+  if (card.kind === 'event') {
+    const def = EVENTS[card.id]
+    return {
+      tone: TONE.event,
+      kind: '사건',
+      short: def.when === 'start' ? '사건·시작' : '사건·끝',
+      tag: def.when === 'start' ? '4R 시작' : '4R 끝',
+      name: def.name,
+      text: def.text,
+      note: def.when === 'start' ? '공개한 때부터 4라운드 내내 넘기기 규칙이 바뀌어요' : '4라운드가 끝날 때, 점수를 세기 전에 발동해요',
+      points: [],
+    }
+  }
   if (card.kind === 'goal') {
     const def = ROUND_GOALS[card.id]
+    if (def.round === 4) {
+      return {
+        tone: TONE.goal,
+        kind: '4라운드 목표',
+        short: 'R4',
+        tag: 'R4',
+        name: def.name,
+        text: def.text,
+        note: '판정: 4라운드가 끝날 때 한 번, 달성한 사람 모두 (선착 없음)',
+        points: [{ value: String(ROUND4_GOAL_POINTS), label: '달성' }],
+      }
+    }
     return {
       tone: TONE.goal,
       kind: `${def.round}라운드 목표`,

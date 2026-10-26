@@ -9,7 +9,8 @@ import {
   type LawId,
   type RoundGoalId,
 } from './cards'
-import { allOrientations, FACES, faceValue, type DieLayout, type Face, type FaceColors } from './dice'
+import { allOrientations, FACES, faceValue, layoutClasses, type DieLayout, type Face, type FaceColors } from './dice'
+import { EVENT_DECK } from './events'
 import { revealRoundGoals } from './goals'
 import { createRng, drawOne, nextInt, shuffle, type RngState } from './rng'
 import {
@@ -101,14 +102,20 @@ export function randomFaceColors(rng: RngState): [FaceColors, RngState] {
   return [colors as unknown as FaceColors, next]
 }
 
-/** 전용 주사위 120개 (§4). 면 배치와 숫자 면의 색은 시드로 정한다 */
+/** 면 배치 하나당 주사위 수 (§2 v0.8: 30가지 × 4개 = 120개) */
+export const DICE_PER_LAYOUT = 4
+
+/**
+ * 전용 주사위 120개 (§4). 면 배치는 30가지가 4개씩(§2), 숫자 면의 색은 시드로 정한다.
+ * 주머니에서 무작위로 뽑으므로 id 순서대로 배치를 나눠 줘도 된다
+ */
 export function createDice(rng: RngState): [Die[], RngState] {
+  const layouts = layoutClasses()
   let r = rng
   const dice: Die[] = []
   for (let id = 0; id < DICE_COUNT; id++) {
-    let layout: DieLayout
+    const layout = layouts[Math.floor(id / DICE_PER_LAYOUT) % layouts.length] as DieLayout
     let colors: FaceColors
-    ;[layout, r] = randomLayout(r)
     ;[colors, r] = randomFaceColors(r)
     dice.push({ id, colors, layout })
   }
@@ -171,8 +178,10 @@ export function createGame(config: GameConfig): GameState {
     ;[deck, r5] = shuffle(r5, roundGoalDeck(round))
     goalDecks.push(deck)
   }
+  // §5-4 사건 카드 더미
+  const [eventDeck, r6] = shuffle(r5, EVENT_DECK)
   // §5 라운드 시작: 1라운드 시장 채우기
-  const [market, bag, rng] = fillMarket(r5, dice, marketSlotCount(playerCount, law), dicePerSlot(1))
+  const [market, bag, rng] = fillMarket(r6, dice, marketSlotCount(playerCount, law), dicePerSlot(1))
 
   const players: PlayerState[] = Array.from({ length: playerCount }, (_, id) => ({
     id,
@@ -181,13 +190,14 @@ export function createGame(config: GameConfig): GameState {
     lineScore: null,
     planeScore: null,
     towerScore: null,
+    timeScore: null,
     personalOffer: personalDeck.slice(id * PERSONAL_GOAL_DRAW, (id + 1) * PERSONAL_GOAL_DRAW),
     personalGoal: null,
     timeDice: null,
   }))
 
   const state: GameState = {
-    schema: 2,
+    schema: 3,
     config: { playerCount, seed, ...(config.law !== undefined ? { law: config.law } : {}) },
     rng,
     phase: { kind: 'setup' },
@@ -203,6 +213,7 @@ export function createGame(config: GameConfig): GameState {
     law,
     goalDecks,
     roundGoals: [],
+    eventDeck,
   }
   return revealRoundGoals(state, 1)
 }

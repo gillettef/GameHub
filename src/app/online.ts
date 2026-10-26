@@ -76,7 +76,7 @@ export function useOnline(session: Session | null, setSession: (s: Session) => v
       switch (msg.t) {
         case 'joined': {
           const s: Session = {
-            v: 2,
+            v: 3,
             id: msg.snapshot.id,
             createdAt: msg.snapshot.createdAt,
             config: msg.snapshot.config,

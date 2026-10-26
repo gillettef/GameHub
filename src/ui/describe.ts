@@ -51,5 +51,7 @@ export function describeAction(action: Action, before: GameState | null, seats: 
       const d = before ? topDie(before, action.player, action.dieId) : undefined
       return `${name}: 넘길 수 없는 ${dieText(d)} 잔해로`
     }
+    case 'pass':
+      return `${name}: 남은 자유 넘기기 포기`
   }
 }

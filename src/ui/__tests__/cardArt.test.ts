@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { LAWS, PERSONAL_GOALS, ROUND_GOALS, type LawId, type PersonalGoalId, type RoundGoalId } from '../../engine'
+import { EVENTS, LAWS, PERSONAL_GOALS, ROUND_GOALS, type EventId, type LawId, type PersonalGoalId, type RoundGoalId } from '../../engine'
 import { ART_H, ART_W, cardArt, cardInfo, cardStars, type CardKey } from '../cardArtData'
 
 const all: CardKey[] = [
   ...(Object.keys(LAWS) as LawId[]).map((id) => ({ kind: 'law' as const, id })),
   ...(Object.keys(ROUND_GOALS) as RoundGoalId[]).map((id) => ({ kind: 'goal' as const, id })),
   ...(Object.keys(PERSONAL_GOALS) as PersonalGoalId[]).map((id) => ({ kind: 'personal' as const, id })),
+  ...(Object.keys(EVENTS) as EventId[]).map((id) => ({ kind: 'event' as const, id })),
 ]
 
 describe('카드 일러스트 (cardArtData)', () => {
@@ -22,8 +23,10 @@ describe('카드 일러스트 (cardArtData)', () => {
     }
   })
 
-  it('카드 정보: 라운드 목표는 선착·달성 두 점수, 개인 목표는 하나, 법칙은 없음', () => {
+  it('카드 정보: 1~3라운드 목표는 선착·달성 두 점수, 4라운드 목표·개인 목표는 하나, 법칙·사건은 없음', () => {
     expect(cardInfo({ kind: 'goal', id: 'skyscraper' }).points).toHaveLength(2)
+    expect(cardInfo({ kind: 'goal', id: 'colorRiver' }).points).toEqual([{ value: '3', label: '달성' }])
+    expect(cardInfo({ kind: 'event', id: 'flood' }).points).toHaveLength(0)
     expect(cardInfo({ kind: 'personal', id: 'timeLord' }).points).toHaveLength(1)
     expect(cardInfo({ kind: 'law', id: 'mirror' }).points).toHaveLength(0)
   })

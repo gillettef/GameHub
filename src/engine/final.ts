@@ -2,7 +2,7 @@
  * 게임 종료와 최종 점수 (§10)
  */
 import { goalPoints, personalGoalPoints } from './goals'
-import { scoreLine, scorePlane, scoreTower } from './scoring'
+import { scoreLine, scorePlane, scoreTops, scoreTower } from './scoring'
 import type { GameState, PlayerState } from './types'
 
 export interface FinalScore {
@@ -13,7 +13,9 @@ export interface FinalScore {
   plane: number
   /** 3라운드 끝에 확정한 점수 (§8) */
   tower: number
-  /** 라운드 목표 카드 점수 (선착 4 / 달성 2) */
+  /** 4라운드 끝에 확정한 4차원 점수 (꼭대기 지도, §9) */
+  time: number
+  /** 라운드 목표 카드 점수 (선착 4 / 달성 2, 4라운드 목표 3) */
   goals: number
   /** 개인 목표 달성 시 6점 */
   personalGoal: number
@@ -35,6 +37,7 @@ function scorePlayer(state: GameState, player: PlayerState): Omit<FinalScore, 'r
   const line = player.lineScore ?? scoreLine(player.board, state.law).total
   const plane = player.planeScore ?? scorePlane(player.board, state.law).total
   const tower = player.towerScore ?? scoreTower(player.board, state.law).total
+  const time = player.timeScore ?? scoreTops(player.board, state.law).total
   const goals = goalPoints(state, player.id)
   const personalGoal = personalGoalPoints(player)
   const debris = -player.debris.length
@@ -43,10 +46,11 @@ function scorePlayer(state: GameState, player: PlayerState): Omit<FinalScore, 'r
     line,
     plane,
     tower,
+    time,
     goals,
     personalGoal,
     debris,
-    total: line + plane + tower + goals + personalGoal + debris,
+    total: line + plane + tower + time + goals + personalGoal + debris,
     tallestPillar: tallest(player),
   }
 }

@@ -43,16 +43,17 @@ export function colorLabel(color: Color | undefined): string {
   return tint(color).name
 }
 
-/** 라운드별 기본 점수 (§6~§8 v0.7): 같은 색 연결 하나, 라운드 끝에 확정 */
+/** 라운드별 기본 점수 (§6~§9 v0.8): 같은 색 연결 하나, 라운드 끝에 확정 */
 export const BASE_INFO = {
   1: { name: '선', rule: '가장 긴 같은 색 가로 연속' },
   2: { name: '평면', rule: '가장 넓은 같은 색 영역' },
   3: { name: '입체', rule: '가장 높은 같은 색 세로 연속' },
+  4: { name: '시간', rule: '위에서 본 가장 넓은 같은 색 꼭대기 영역' },
 } as const
 
 export const ROUND_INFO = [
   { round: 1, dim: '1차원', name: '선', quote: '선 위의 존재는 위밖에 보지 못한다.', hint: '가운데에서 시작해 양 끝에 붙여 5칸 선을 만드세요' },
   { round: 2, dim: '2차원', name: '평면', quote: '선이 옆으로 펼쳐지면, 이웃이 생긴다.', hint: '선 뒤쪽 칸에 맞닿게 놓아 평면을 펼치세요' },
   { round: 3, dim: '3차원', name: '입체', quote: '평면이 위로 솟으면, 그림자가 생긴다.', hint: '아래보다 큰 숫자만 쌓아요. ⧗은 언제나 올릴 수 있고, ⧗ 위는 끝' },
-  { round: 4, dim: '4차원', name: '시간', quote: '시간은 앞으로만 흐르지만, 설계자는 거꾸로 거슬러 오를 수 있다.', hint: '⧗ 꼭대기 주사위를 옆 칸으로 한 칸 넘기세요' },
+  { round: 4, dim: '4차원', name: '시간', quote: '시간은 앞으로만 흐르지만, 설계자는 거꾸로 거슬러 오를 수 있다.', hint: '⧗ 꼭대기 주사위를 옆 칸으로 한 칸 넘겨, 위에서 본 꼭대기 색 지도를 넓게 이으세요' },
 ] as const

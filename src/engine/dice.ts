@@ -189,3 +189,37 @@ export function facesOf(
     left: leftFace(layout, o),
   }
 }
+
+/** 배치를 회전으로 겹치는 것끼리 하나로 묶는 대표값: 24가지 자세로 본 배치 중 사전순으로 가장 앞선 것 */
+export function canonicalLayout(layout: DieLayout): DieLayout {
+  const key = (l: readonly Face[]) => l.map(String).join(',')
+  let best: DieLayout | null = null
+  for (const o of allOrientations(layout)) {
+    const f = facesOf(layout, o)
+    const seen: DieLayout = [f.top, f.bottom, f.front, f.back, f.right, f.left]
+    if (best === null || key(seen) < key(best)) best = seen
+  }
+  return best as DieLayout
+}
+
+let classes: readonly DieLayout[] | null = null
+
+/** 회전 동치인 면 배치 30가지 (§2). 순서는 대표값의 사전순으로 늘 같다. 한 번만 계산해 둔다 */
+export function layoutClasses(): readonly DieLayout[] {
+  classes ??= computeLayoutClasses()
+  return classes
+}
+
+function computeLayoutClasses(): DieLayout[] {
+  const out = new Map<string, DieLayout>()
+  const permute = (rest: readonly Face[], acc: Face[]): void => {
+    if (rest.length === 0) {
+      const c = canonicalLayout(acc as unknown as DieLayout)
+      out.set(c.map(String).join(','), c)
+      return
+    }
+    rest.forEach((f, i) => permute([...rest.slice(0, i), ...rest.slice(i + 1)], [...acc, f]))
+  }
+  permute(FACES, [])
+  return [...out.entries()].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)).map(([, l]) => l)
+}

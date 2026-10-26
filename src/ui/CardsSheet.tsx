@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { GOAL_ACHIEVED_POINTS, GOAL_FIRST_POINTS, type GameState, type PersonalGoalId, type RoundGoalCard } from '../engine'
+import { GOAL_ACHIEVED_POINTS, GOAL_FIRST_POINTS, ROUND4_GOAL_POINTS, type GameState, type PersonalGoalId, type RoundGoalCard } from '../engine'
 import type { Seat } from '../app/session'
 import { seatColor } from './colors'
 import { Card, CardZoom } from './Card'
@@ -36,8 +36,16 @@ function Who({ players, seats }: { players: number[]; seats: Seat[] }) {
   )
 }
 
-/** 라운드 목표 카드 위의 달성 마커 (선착 칸 1개, 달성 칸 여럿) */
+/** 라운드 목표 카드 위의 달성 마커 (선착 칸 1개, 달성 칸 여럿). 4라운드 목표는 달성 칸만 */
 function Markers({ card, seats }: { card: RoundGoalCard; seats: Seat[] }) {
+  if (card.round === 4) {
+    return (
+      <span className="grid grid-cols-[auto_1fr] items-center gap-x-3 gap-y-2 border-t border-line pt-2.5 text-xs">
+        <span className="rounded-md bg-goal/15 px-2 py-1 font-display font-bold text-goal">달성 +{ROUND4_GOAL_POINTS}</span>
+        <Who players={card.achieved} seats={seats} />
+      </span>
+    )
+  }
   return (
     <span className="grid grid-cols-[auto_1fr] items-center gap-x-3 gap-y-2 border-t border-line pt-2.5 text-xs">
       <span className="rounded-md bg-goal/15 px-2 py-1 font-display font-bold text-goal">선착 +{GOAL_FIRST_POINTS}</span>
@@ -48,7 +56,7 @@ function Markers({ card, seats }: { card: RoundGoalCard; seats: Seat[] }) {
   )
 }
 
-/** 우주 법칙, 공개된 라운드 목표와 달성 마커, 내 개인 목표 */
+/** 우주 법칙, 4라운드 사건, 공개된 라운드 목표와 달성 마커, 내 개인 목표 */
 export function CardsSheet({ state, seats, personalOf, onClose, onRules, botSpeed, onBotSpeed }: CardsSheetProps) {
   const personal: PersonalGoalId | null = personalOf === null ? null : (state.players[personalOf]?.personalGoal ?? null)
   const personalLabel = personalOf !== null ? `${seats[personalOf]?.name}의 개인 목표` : undefined
@@ -65,6 +73,12 @@ export function CardsSheet({ state, seats, personalOf, onClose, onRules, botSpee
           <Card card={{ kind: 'personal', id: personal }} kindLabel={personalLabel} onOpen={() => setZoom({ kind: 'personal', id: personal })} />
         </div>
       )}
+
+      {(state.time?.events ?? []).map((id, i) => (
+        <div key={id} className="animate-rise" style={{ animationDelay: `${(i + 1) * 60}ms` }}>
+          <Card card={{ kind: 'event', id }} onOpen={() => setZoom({ kind: 'event', id })} />
+        </div>
+      ))}
 
       {state.roundGoals.length === 0 && <p className="py-2 text-center text-sm text-muted">아직 공개된 라운드 목표가 없습니다.</p>}
       {[...state.roundGoals].reverse().map((g, i) => (

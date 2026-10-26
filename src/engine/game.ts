@@ -152,7 +152,7 @@ export function applyAction(state: GameState, action: Action): GameState {
     return applySetupAction(state, action)
   }
   if (state.phase.kind === 'setup') fail('먼저 모두 개인 목표를 골라야 합니다.')
-  if (action.type === 'roll' || action.type === 'scrap') {
+  if (action.type === 'roll' || action.type === 'scrap' || action.type === 'pass') {
     if (currentRound(state) !== 4) fail('4라운드에만 할 수 있는 행동입니다.')
     return applyTimeAction(state, action)
   }

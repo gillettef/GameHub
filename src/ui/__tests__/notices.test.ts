@@ -52,6 +52,18 @@ describe('buildNotices', () => {
     expect(rounds[0]?.startPlayer).not.toBeNull()
     expect(rounds[3]?.pending).toHaveLength(3)
     // 1~3라운드 끝마다 기본 점수 확정 알림이 한 장씩, 세 사람 모두
-    for (const round of [1, 2, 3]) expect(notices.some((n) => n.kind === 'base' && n.round === round && n.items.length === 3)).toBe(true)
+    for (const round of [1, 2, 3, 4]) expect(notices.some((n) => n.kind === 'base' && n.round === round && n.items.length === 3)).toBe(true)
+    // v0.8: 4라운드 안내에 사건 카드 2장
+    expect(rounds[3]?.events).toHaveLength(2)
+  })
+
+  it('끝 사건 알림은 맨 앞에, 4차원 점수 확정과 함께 (v0.8)', () => {
+    const state = createGame({ playerCount: 2, seed: 1 })
+    const events: FxEvent[] = [
+      { kind: 'base', round: 4, player: 0, points: 4 },
+      { kind: 'debris', player: 1, count: 1 },
+      { kind: 'endEvents', events: ['flood'] },
+    ]
+    expect(buildNotices(events, state).map((n) => n.kind)).toEqual(['endEvents', 'base', 'debris'])
   })
 })

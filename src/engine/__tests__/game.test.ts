@@ -375,18 +375,61 @@ describe('무작위 전체 진행 (불변식)', () => {
       expect(plane + stacked + p.debris.length).toBe(12 + (rerolls[p.id] ?? 0))
     }
 
-    // §9 4라운드에 굴리는 횟수 = 준비 때 센 ⧗ 주사위 수
-    const rolls = states.length - 1 - states.indexOf(first4)
-    expect(rolls).toBe(first4.time?.pending.flat().length)
+    // §9 4라운드에 ⧗ 주사위를 넘기는 횟수 = 준비 때 센 ⧗ 주사위 수.
+    // v0.8: 그 밖의 행동은 자유 넘기기(자유 넘기기 1 감소) 또는 포기(남은 것 모두 0)뿐
+    const r4 = states.slice(states.indexOf(first4))
+    let timeTipCount = 0
+    for (let i = 1; i < r4.length; i++) {
+      const a = (r4[i - 1] as GameState).time as NonNullable<GameState['time']>
+      const b = (r4[i] as GameState).time as NonNullable<GameState['time']>
+      const pendingDrop = a.pending.flat().length - b.pending.flat().length
+      const freeDrop = a.free.reduce((x, y) => x + y, 0) - b.free.reduce((x, y) => x + y, 0)
+      expect(pendingDrop === 1 ? freeDrop === 0 : pendingDrop === 0 && freeDrop >= 1).toBe(true)
+      timeTipCount += pendingDrop
+    }
+    expect(timeTipCount).toBe(first4.time?.pending.flat().length)
   })
 
-  it('§9 4라운드 내내 아직 안 굴린 ⧗ 주사위 = 지금 보드의 ⧗ 꼭대기 (드러난 아래 주사위는 ⧗일 수 없음)', () => {
+  it('§9 4라운드 내내 아직 안 넘긴 ⧗ 주사위는 모두 보드의 ⧗ 꼭대기이고, 자유 넘기기를 쓰지 않은 사람은 둘이 같다 (드러난 아래 주사위는 ⧗일 수 없음)', () => {
+    // v0.8: 자유 넘기기로 ⧗이 위로 온 주사위는 ⧗ 꼭대기지만 ⧗ 주사위가 아니다 (§9 준비)
     for (const [seed, n] of [[41, 2], [42, 3], [43, 4], [44, 4]] as const) {
-      for (const s of playRandomly(seed, n).filter((x) => x.time !== null && x.phase.kind === 'round')) {
-        const tops = s.players.map((p) => timeTops(p.board).map((t) => t.die.id).sort())
-        expect(s.time?.pending.map((ids) => [...ids].sort())).toEqual(tops)
+      const states = playRandomly(seed, n)
+      const first4 = states.find((x) => x.time !== null) as GameState
+      for (const s of states.filter((x) => x.time !== null && x.phase.kind === 'round')) {
+        s.players.forEach((p, i) => {
+          const tops = timeTops(p.board).map((t) => t.die.id)
+          const pending = s.time?.pending[i] ?? []
+          for (const id of pending) expect(tops).toContain(id)
+          if (s.time?.free[i] === first4.time?.free[i]) expect([...pending].sort()).toEqual([...tops].sort())
+        })
         expect(getLegalActions(s)).toEqual(legalTimeActions(s))
         expect(getLegalActions(s).length).toBeGreaterThan(0)
+      }
+    }
+  })
+
+  it('§9 + §11-1 영원의 우주: 무작위 전체 진행에서도 같은 불변식 (자유 넘기기 사용 포함)', () => {
+    for (const [seed, n] of [[51, 2], [52, 3]] as const) {
+      let s = startGame({ playerCount: n, seed, law: 'eternal' })
+      let r = createRng(seed + 1)
+      const states = [s]
+      for (let guard = 0; guard < 1000; guard++) {
+        const actions = getLegalActions(s)
+        if (actions.length === 0) break
+        let i: number
+        ;[i, r] = nextInt(r, actions.length)
+        s = applyAction(s, actions[i] as Action)
+        states.push(s)
+      }
+      expect(s.phase).toEqual({ kind: 'ended' })
+      for (const x of states) expect(countDice(x)).toBe(120)
+      const first4 = states.find((x) => x.time !== null) as GameState
+      expect(first4.time?.free.every((f) => f >= 1)).toBe(true)
+      for (const x of states.filter((y) => y.time !== null && y.phase.kind === 'round')) {
+        x.players.forEach((p, i) => {
+          const tops = timeTops(p.board).map((t) => t.die.id)
+          for (const id of x.time?.pending[i] ?? []) expect(tops).toContain(id)
+        })
       }
     }
   })
