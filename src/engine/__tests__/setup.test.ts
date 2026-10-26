@@ -1,5 +1,18 @@
 import { describe, expect, it } from 'vitest'
-import { dieColor, faceColor, faceValue, isValidLayout, isValidOrientation, opposite, STANDARD_LAYOUT, TIME, type DieLayout } from '../dice'
+import {
+  canonicalLayout,
+  dieColor,
+  faceColor,
+  faceValue,
+  isValidLayout,
+  isValidOrientation,
+  layoutClasses,
+  opposite,
+  STANDARD_LAYOUT,
+  TIME,
+  type DieLayout,
+} from '../dice'
+import { EVENT_DECK } from '../events'
 import { createRng } from '../rng'
 import {
   BOARD_COLS,
@@ -7,6 +20,7 @@ import {
   createDice,
   createGame,
   DICE_COUNT,
+  DICE_PER_LAYOUT,
   drawAndRoll,
   dicePerSlot,
   fillMarket,
@@ -16,7 +30,7 @@ import {
   rollForStartPlayer,
 } from '../setup'
 import { COLORS, type Die, type RolledDie } from '../types'
-import { colorsWith, layoutKey } from './helpers'
+import { allLayouts, colorsWith, layoutKey } from './helpers'
 
 const dice = (seed = 1): Die[] => createDice(createRng(seed))[0]
 
@@ -49,9 +63,48 @@ describe('§4 구성물', () => {
     for (const seed of [1, 2, 3]) expect(dice(seed).every((d) => isValidLayout(d.layout))).toBe(true)
   })
 
-  it('같은 시드면 같은 배치, 다른 시드면 다른 배치', () => {
+  it('§2 v0.8 같은 시드면 같은 주사위. 면 배치는 시드와 무관하고(30가지 × 4개), 시드는 숫자·색 짝만 바꾼다', () => {
     expect(dice(7)).toEqual(dice(7))
-    expect(dice(7).map((d) => d.layout)).not.toEqual(dice(8).map((d) => d.layout))
+    expect(dice(7).map((d) => d.layout)).toEqual(dice(8).map((d) => d.layout))
+    expect(dice(7).map((d) => d.colors)).not.toEqual(dice(8).map((d) => d.colors))
+  })
+
+  it('§2 v0.8 주사위 120개 = 면 배치 30가지 × 4개: 회전 동치 대표 배치마다 정확히 4개', () => {
+    expect(DICE_PER_LAYOUT).toBe(4)
+    const classes = layoutClasses()
+    expect(classes).toHaveLength(30)
+    expect(DICE_COUNT).toBe(classes.length * DICE_PER_LAYOUT)
+    // 30가지가 서로 회전 동치가 아니고, 대표값은 자기 자신의 대표값
+    expect(new Set(classes.map(layoutKey)).size).toBe(30)
+    for (const c of classes) expect(canonicalLayout(c)).toEqual(c)
+    for (const seed of [1, 2, 99]) {
+      const counts = new Map<string, number>()
+      for (const d of dice(seed)) counts.set(layoutKey(d.layout), (counts.get(layoutKey(d.layout)) ?? 0) + 1)
+      expect(counts.size).toBe(30)
+      for (const n of counts.values()) expect(n).toBe(4)
+    }
+  })
+
+  it('§2 canonicalLayout: 회전으로 겹치는 배치는 같은 대표값, 다른 배치는 다른 대표값', () => {
+    const all = allLayouts()
+    const reps = new Set(all.map((l) => canonicalLayout(l).join()))
+    expect(reps.size).toBe(30)
+    // 대표값이 같다 ⇔ 테스트 도우미의 회전 동치 키가 같다
+    const canon = all.map((l) => canonicalLayout(l).join())
+    const keys = all.map(layoutKey)
+    let mismatches = 0
+    for (let i = 0; i < all.length; i++) {
+      for (let j = i + 1; j < all.length; j++) if ((canon[i] === canon[j]) !== (keys[i] === keys[j])) mismatches++
+    }
+    expect(mismatches).toBe(0)
+  })
+
+  it('§5-4 사건 카드 더미: 10장이 한 장씩, 시드에 따라 섞인다', () => {
+    const s = createGame({ playerCount: 2, seed: 3, law: 'standard' })
+    expect([...s.eventDeck].sort()).toEqual([...EVENT_DECK].sort())
+    expect(EVENT_DECK).toHaveLength(10)
+    const orders = new Set(Array.from({ length: 8 }, (_, seed) => createGame({ playerCount: 2, seed, law: 'standard' }).eventDeck.join()))
+    expect(orders.size).toBeGreaterThan(1)
   })
 
   it('createDice는 다음 RNG 상태를 돌려준다', () => {

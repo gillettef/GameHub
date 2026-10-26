@@ -46,6 +46,8 @@ export interface PlayerState {
   planeScore: number | null
   /** 3라운드 끝에 확정한 탑 점수 (§8). 확정 전에는 null */
   towerScore: number | null
+  /** 4라운드 끝에 확정한 4차원 점수(꼭대기 지도, §9). 확정 전에는 null */
+  timeScore: number | null
   /** 게임 준비 때 받은 개인 목표 카드 2장 (§5-3) */
   personalOffer: PersonalGoalId[]
   /** 고른 개인 목표 (비공개). 고르기 전에는 null */
@@ -93,16 +95,16 @@ export interface TurnState {
 export interface RoundGoalCard {
   id: RoundGoalId
   round: Round
-  /** 선착 칸 (4점) */
+  /** 선착 칸 (4점). 4라운드 목표는 선착이 없어 늘 null */
   first: number | null
-  /** 달성 칸 (2점). 선착한 사람은 넣지 않는다 */
+  /** 달성 칸 (2점, 4라운드 목표는 3점). 선착한 사람은 넣지 않는다 */
   achieved: number[]
 }
 
 /** 시작 플레이어 결정 굴림 한 번 (§5-6). 동점이면 동점자끼리 다음 굴림 */
 export type StartRoll = { player: number; face: Face }[]
 
-/** 사건 카드 (§11-4). v0.6에서 사용 방식 재설계 중이라 게임에 쓰지 않는다 */
+/** 사건 카드 (§11-4). 4라운드 시작 때 2장 공개 */
 export type EventId =
   | 'rotation'
   | 'erosion'
@@ -119,11 +121,15 @@ export type EventId =
 export interface TimeState {
   /** 아직 넘기지 않은 ⧗ 주사위 id. 4라운드 준비 때 정한다 */
   pending: DieId[][]
+  /** 남은 자유 넘기기 수 (§9 자유 넘기기: 영원의 우주, 역행) */
+  free: number[]
+  /** 4라운드 준비 때 공개한 사건 카드 (공개 순서) */
+  events: EventId[]
 }
 
 export interface GameState {
   /** 상태 스키마 버전 (저장/동기화 호환성용) */
-  schema: 2
+  schema: 3
   config: GameConfig
   rng: RngState
   phase: Phase
@@ -146,4 +152,6 @@ export interface GameState {
   goalDecks: RoundGoalId[][]
   /** 지금까지 공개된 라운드 목표 카드 */
   roundGoals: RoundGoalCard[]
+  /** 남은 사건 카드 더미 (§5-4) */
+  eventDeck: EventId[]
 }

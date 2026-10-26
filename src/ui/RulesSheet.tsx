@@ -3,7 +3,7 @@ import { Button, Sheet } from './primitives'
 import { resetTips } from './tips'
 import { Icon } from './icons'
 
-/** 규칙 요약 (docs/rule.md v0.7에서 옮김). 처음 하는 친구에게 보여 주는 용도 */
+/** 규칙 요약 (docs/rule.md v0.8에서 옮김). 처음 하는 친구에게 보여 주는 용도 */
 const SECTIONS = [
   {
     n: 1,
@@ -26,8 +26,8 @@ const SECTIONS = [
   {
     n: 4,
     name: '시간',
-    body: '선부터 번갈아 내 ⧗ 꼭대기 주사위 1개를 앞·뒤·왼·오른 옆 칸으로 한 칸 넘겨요. 기둥 위로 갈 땐 쌓기 규칙을 따르고, 빈 칸이면 1층이 돼요. 넘길 수 없는 주사위를 고르면 잔해가 돼요.',
-    score: '기본 점수 없음. 넘긴 결과는 개인 목표 판정에 쓰여요',
+    body: '시작 때 사건 카드 2장을 공개해요. 선부터 번갈아 내 ⧗ 꼭대기 주사위 1개를 앞·뒤·왼·오른 옆 칸으로 한 칸 넘겨요. 기둥 위로 갈 땐 쌓기 규칙을 따르고, 빈 칸이면 1층이 돼요. 넘길 수 없는 주사위를 고르면 잔해가 돼요. 다 넘기면 끝 사건이 발동해요.',
+    score: '위에서 내려다본 꼭대기 색으로 가장 넓은 같은 색 영역 → 크기만큼 (4라운드 끝에 확정)',
   },
 ]
 
@@ -38,8 +38,9 @@ const GLOSSARY: [string, string][] = [
   ['주사위의 색', '숫자 면마다 색이 달라요(주사위마다 짝이 다름). 주사위의 색은 윗면의 색이고, ⧗ 면은 색이 없어 같은 색 연결을 끊어요.'],
   ['다시 굴리기', '가져온 주사위 1개를 턴마다 한 번 다시 굴릴 수 있어요. 대신 주머니에서 주사위 1개를 꺼내 내 잔해로 둬요(−1점).'],
   ['⧗ (시간)', '숫자 대신 모래시계가 있는 면. 3라운드에는 어디든 올릴 수 있지만 그 위엔 못 쌓고, 4라운드에 넘겨요.'],
+  ['자유 넘기기', '영원의 우주나 사건 「역행」으로 받는 넘기기. ⧗이 아닌 꼭대기도 넘길 수 있고, 쓰지 않아도 돼요.'],
   ['잔해', '놓을 수 없거나 넘길 수 없어 버린 주사위. 1개당 −1점.'],
-  ['선착 · 달성', '라운드 목표를 가장 먼저 이루면 선착 4점, 그 뒤에 이루면 달성 2점.'],
+  ['선착 · 달성', '라운드 목표를 가장 먼저 이루면 선착 4점, 그 뒤에 이루면 달성 2점. 4라운드 목표는 4라운드 끝에 이룬 사람 모두 3점.'],
 ]
 
 export function RulesSheet({ onClose }: { onClose: () => void }) {
@@ -66,7 +67,7 @@ export function RulesSheet({ onClose }: { onClose: () => void }) {
         </article>
       ))}
       <div className="rounded-2xl bg-raised/60 p-3 text-sm leading-relaxed ring-1 ring-line ring-inset">
-        <b className="text-goal">라운드 목표</b> 먼저 달성 4점 · 달성 2점 &nbsp;·&nbsp; <b className="text-personal">개인 목표</b> 게임 끝 달성 6점 &nbsp;·&nbsp;{' '}
+        <b className="text-goal">라운드 목표</b> 먼저 달성 4점 · 달성 2점 (4라운드는 모두 3점) &nbsp;·&nbsp; <b className="text-personal">개인 목표</b> 게임 끝 달성 6점 &nbsp;·&nbsp;{' '}
         <b className="text-law">우주 법칙</b> 게임마다 1장 &nbsp;·&nbsp; <b className="text-danger">잔해</b> 1개당 −1점
         <br />
         동점이면 잔해가 적은 사람, 그다음 가장 높은 기둥을 가진 사람이 이겨요.

@@ -17,10 +17,11 @@ interface ResultScreenProps {
   onRematch?: () => void
 }
 
-const PARTS: { key: keyof Pick<FinalScore, 'line' | 'plane' | 'tower' | 'goals' | 'personalGoal'>; label: string; color: string }[] = [
+const PARTS: { key: keyof Pick<FinalScore, 'line' | 'plane' | 'tower' | 'time' | 'goals' | 'personalGoal'>; label: string; color: string }[] = [
   { key: 'line', label: '선', color: '#9b8cff' },
   { key: 'plane', label: '평면', color: '#5ad1e6' },
   { key: 'tower', label: '입체', color: '#34C483' },
+  { key: 'time', label: '시간', color: '#cfcbe3' },
   { key: 'goals', label: '목표', color: '#F5C842' },
   { key: 'personalGoal', label: '개인', color: '#f2a65a' },
 ]
@@ -122,7 +123,7 @@ export function ResultScreen({ state, seats, onHome, onReplay, onRematch }: Resu
                   />
                 ))}
               </div>
-              <dl className="mt-2 grid grid-cols-6 gap-1 text-center">
+              <dl className="mt-2 grid grid-cols-7 gap-1 text-center">
                 {PARTS.map((p) => (
                   <div key={p.key} className="rounded-lg bg-void/40 py-1">
                     <dt className="text-xs font-bold" style={{ color: p.color }}>

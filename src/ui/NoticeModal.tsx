@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
-import type { LawId } from '../engine'
+import { ROUND4_GOAL_POINTS, type LawId } from '../engine'
 import type { Seat } from '../app/session'
 import { useBack } from './back'
 import { Card, CardZoom } from './Card'
@@ -78,6 +78,8 @@ export function NoticeModal({ notices, remaining, law, seats, onConfirm }: Notic
             <section key={i} className={`flex flex-col gap-3 ${i > 0 ? 'border-t border-line pt-4' : ''}`}>
               {notice.kind === 'round' ? (
                 <RoundBody notice={notice} law={law} titleId={i === 0 ? titleId : undefined} name={name} onZoom={setZoom} />
+              ) : notice.kind === 'endEvents' ? (
+                <EndEventsBody notice={notice} titleId={i === 0 ? titleId : undefined} onZoom={setZoom} />
               ) : (
                 <ResultBody notice={notice} titleId={i === 0 ? titleId : undefined} name={name} />
               )}
@@ -156,6 +158,23 @@ function RoundBody({
               )}
             </Row>
           ))}
+          {notice.free !== null && notice.free > 0 && (
+            <p className="text-xs text-muted">
+              모두 <b className="text-accent">자유 넘기기 {notice.free}회</b>를 받아요 · ⧗이 아닌 꼭대기도 넘길 수 있고, 쓰지 않아도 돼요
+            </p>
+          )}
+        </div>
+      )}
+      {notice.events && notice.events.length > 0 && (
+        <div className="flex flex-col gap-1.5">
+          <p className="text-xs font-bold text-event">사건 카드 · 시작 사건은 지금부터, 끝 사건은 4라운드 끝에</p>
+          <div className="grid grid-cols-2 gap-2">
+            {notice.events.map((id, i) => (
+              <div key={id} className="animate-rise" style={{ animationDelay: `${60 + i * 90}ms` }}>
+                <Card card={{ kind: 'event', id }} size="mini" onOpen={() => onZoom({ kind: 'event', id })} />
+              </div>
+            ))}
+          </div>
         </div>
       )}
       {cards.length > 0 && (
@@ -174,13 +193,37 @@ function RoundBody({
   )
 }
 
-function ResultBody({ notice, titleId, name }: { notice: Exclude<Notice, { kind: 'round' }>; titleId?: string; name: (p: number) => string }) {
+/** 4라운드 끝에 발동한 끝 사건 카드 (그 결과 잔해는 뒤의 잔해 알림에) */
+function EndEventsBody({ notice, titleId, onZoom }: { notice: Extract<Notice, { kind: 'endEvents' }>; titleId?: string; onZoom: (card: CardKey) => void }) {
+  return (
+    <>
+      <div>
+        <h2 id={titleId} className="text-2xl font-black text-event">
+          <Icon name="spark" size={22} className="-mt-1 mr-1.5" />
+          끝 사건 발동
+        </h2>
+        <p className="text-[13px] text-muted">점수를 세기 전에 공개한 순서대로 일어나요</p>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        {notice.events.map((id, i) => (
+          <div key={id} className="animate-rise" style={{ animationDelay: `${i * 90}ms` }}>
+            <Card card={{ kind: 'event', id }} size="mini" onOpen={() => onZoom({ kind: 'event', id })} />
+          </div>
+        ))}
+      </div>
+    </>
+  )
+}
+
+function ResultBody({ notice, titleId, name }: { notice: Exclude<Notice, { kind: 'round' | 'endEvents' }>; titleId?: string; name: (p: number) => string }) {
   const title = notice.kind === 'goal' ? '라운드 목표 달성' : notice.kind === 'base' ? `${BASE_INFO[notice.round].name} 점수 확정` : '잔해 발생'
   const sub =
     notice.kind === 'goal'
-      ? '처음 달성하면 선착 4점, 그 뒤로는 달성 2점'
+      ? notice.items.every((it) => it.points === ROUND4_GOAL_POINTS && !it.first)
+        ? '4라운드 목표는 달성한 사람 모두 3점'
+        : '처음 달성하면 선착 4점, 그 뒤로는 달성 2점'
       : notice.kind === 'base'
-        ? `${notice.round}라운드가 끝나 ${BASE_INFO[notice.round].rule}를 점수로 확정해요`
+        ? `${notice.round}라운드가 끝나 ${BASE_INFO[notice.round].rule}을 점수로 확정해요`
         : '잔해는 게임 끝에 1개당 −1점'
   const tone = notice.kind === 'goal' ? '#5ad1e6' : notice.kind === 'base' ? '#34c483' : '#ff6b6b'
   return (

@@ -12,7 +12,8 @@ import {
   stepCell,
   timeTops,
 } from '../time'
-import type { Board, Color, GameState, RolledDie } from '../types'
+import type { LawId } from '../cards'
+import type { Board, Color, EventId, GameState, RolledDie } from '../types'
 import { board, colorsWith, die, line } from './helpers'
 
 const S = STANDARD_LAYOUT
@@ -24,9 +25,15 @@ const S = STANDARD_LAYOUT
  */
 const T = (color: Color = 'red', front: Face = 2, layout: DieLayout = S): RolledDie => die(color, TIME, front, layout)
 
-/** 4라운드 직전 상태를 직접 만들고 4라운드 준비를 한다 */
-function round4(boards: Board[], lead = 0): GameState {
-  const base = createGame({ playerCount: boards.length, seed: 1, law: 'standard' })
+/** 4라운드 직전 상태를 직접 만들고 4라운드 준비를 한다. 사건 카드는 주지 않으면 없음 */
+const bases = new Map<number, GameState>()
+function round4(boards: Board[], lead = 0, events: EventId[] = [], law: LawId = 'standard'): GameState {
+  // createGame은 면 배치 30가지를 매번 계산해 느리므로 인원별로 한 번만 만든다 (상태는 불변이라 공유해도 안전)
+  let base = bases.get(boards.length)
+  if (!base) {
+    base = createGame({ playerCount: boards.length, seed: 1, law: 'standard' })
+    bases.set(boards.length, base)
+  }
   return startRound4({
     ...base,
     phase: { kind: 'round', round: 4 },
@@ -34,6 +41,8 @@ function round4(boards: Board[], lead = 0): GameState {
     leadPlayer: lead,
     currentPlayer: lead,
     players: base.players.map((p, i) => ({ ...p, board: boards[i] as Board })),
+    eventDeck: events,
+    law,
   })
 }
 
@@ -188,7 +197,7 @@ describe('§9 진행: 선부터 시계 방향, ⧗ 주사위가 남은 사람만
     s = rollDie(s, d, 'forward')
     expect(s.currentPlayer).toBe(0)
     expect(() => rollDie(s, d, 'back')).toThrow(IllegalActionError)
-    expect(legalTimeActions(s).every((a) => a.dieId !== d.id)).toBe(true)
+    expect(legalTimeActions(s).every((a) => (a.type === 'pass' || a.dieId !== d.id))).toBe(true)
   })
 })
 
@@ -382,8 +391,8 @@ describe('§9 굴릴 수 없는 주사위 → 잔해', () => {
     const b = T()
     const s = round4([board({ '0,0': [stuck], '0,1': [a], '1,0': [b] }), board({})])
     const actions = legalTimeActions(s)
-    expect(actions.filter((x) => x.dieId === stuck.id)).toEqual([{ type: 'scrap', player: 0, dieId: stuck.id }])
-    expect(actions.filter((x) => x.dieId === a.id).every((x) => x.type === 'roll')).toBe(true)
+    expect(actions.filter((x) => x.type !== 'pass' && x.dieId === stuck.id)).toEqual([{ type: 'scrap', player: 0, dieId: stuck.id }])
+    expect(actions.filter((x) => x.type !== 'pass' && x.dieId === a.id).every((x) => x.type === 'roll')).toBe(true)
   })
 
   it('굴리기로 막힌 주사위가 다음 차례에는 풀릴 수 있다 (판정은 그때그때)', () => {

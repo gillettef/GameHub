@@ -1,6 +1,6 @@
 import { useId } from 'react'
 import { ART_H, ART_W, cardArt, cardStars, type ArtShape, type CardKey } from './cardArtData'
-import { DIE_COLORS } from './colors'
+import { BLANK_FACE, DIE_COLORS } from './colors'
 
 /** ⧗ 모래시계 선 (DieFace의 Hourglass와 같은 모양, 24 좌표계) */
 const HOURGLASS = 'M6 3h12M6 21h12M7 3c0 5 10 6 10 9s-10 4-10 9M17 3c0 5-10 6-10 9s10 4 10 9'
@@ -8,7 +8,8 @@ const HOURGLASS = 'M6 3h12M6 21h12M7 3c0 5 10 6 10 9s-10 4-10 9M17 3c0 5-10 6-10
 function Shape({ s, tone }: { s: ArtShape; tone: string }) {
   switch (s.t) {
     case 'die': {
-      const c = DIE_COLORS[s.c]
+      // ⧗ 면은 무색 (§2 v0.7)
+      const c = s.f === 't' ? BLANK_FACE : DIE_COLORS[s.c]
       const r = s.s * 0.22
       return (
         <g opacity={s.dim ? 0.38 : 1}>

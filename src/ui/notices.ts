@@ -2,7 +2,7 @@
  * 플레이어가 하나씩 확인하고 넘어가야 할 알림 (라운드 시작, 목표 달성, 기본 점수 확정, 잔해).
  * 연출 사건(FxEvent)을 모달 한 장씩으로 묶는다. 엔진 상태를 읽기만 한다.
  */
-import type { GameState, RoundGoalId } from '../engine'
+import type { EventId, GameState, RoundGoalId } from '../engine'
 import type { FxEvent } from './fx'
 
 export type Notice =
@@ -15,11 +15,17 @@ export type Notice =
       startPlayer: number | null
       /** 4라운드: 플레이어별 넘길 ⧗ 주사위 수 */
       pending: number[] | null
+      /** 4라운드: 공개된 사건 카드 */
+      events: EventId[] | null
+      /** 4라운드: 플레이어마다 받은 자유 넘기기 수 */
+      free: number | null
     }
   | { kind: 'goal'; items: { player: number; name: string; points: number; first: boolean }[] }
-  /** 라운드 끝 기본 점수 확정 (1 선, 2 평면, 3 입체) */
-  | { kind: 'base'; round: 1 | 2 | 3; items: { player: number; points: number }[] }
+  /** 라운드 끝 기본 점수 확정 (1 선, 2 평면, 3 입체, 4 꼭대기 지도) */
+  | { kind: 'base'; round: 1 | 2 | 3 | 4; items: { player: number; points: number }[] }
   | { kind: 'debris'; items: { player: number; count: number }[] }
+  /** 4라운드 끝에 발동한 끝 사건. 그 결과(잔해)는 뒤의 잔해 알림에 */
+  | { kind: 'endEvents'; events: EventId[] }
 
 /**
  * 사건 목록 → 확인할 알림 목록.
@@ -29,7 +35,9 @@ export type Notice =
 export function buildNotices(events: FxEvent[], state: GameState, quietDebris: (player: number) => boolean = () => false): Notice[] {
   const out: Notice[] = []
 
-  for (const round of [1, 2, 3] as const) {
+  for (const e of events) if (e.kind === 'endEvents') out.push({ kind: 'endEvents', events: e.events })
+
+  for (const round of [1, 2, 3, 4] as const) {
     const base = events.flatMap((e) => (e.kind === 'base' && e.round === round ? [{ player: e.player, points: e.points }] : []))
     if (base.length > 0) out.push({ kind: 'base', round, items: base })
   }
@@ -48,6 +56,8 @@ export function buildNotices(events: FxEvent[], state: GameState, quietDebris: (
       goals: state.roundGoals.filter((g) => g.round === e.round).map((g) => g.id),
       startPlayer: e.round === 1 ? state.startPlayer : null,
       pending: e.round === 4 && state.time ? state.time.pending.map((ids) => ids.length) : null,
+      events: e.round === 4 && state.time ? state.time.events : null,
+      free: e.round === 4 && state.time ? (state.time.free[0] ?? 0) : null,
     })
   }
   return out

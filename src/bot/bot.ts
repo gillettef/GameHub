@@ -11,9 +11,12 @@ import {
   getLegalActions,
   scoreLine,
   scorePlane,
+  scoreTops,
   scoreTower,
   goalPoints,
   PERSONAL_GOALS,
+  ROUND4_GOAL_POINTS,
+  ROUND_GOALS,
   type Action,
   type GameState,
   type PlayerState,
@@ -35,6 +38,15 @@ export function evaluate(state: GameState, playerId: number): number {
     player.debris.length
   // 4라운드 전에는 ⧗ 꼭대기가 앞으로의 넘기기 기회다
   if (state.phase.kind !== 'ended' && state.time === null) value += TIME_TOP_VALUE * countTimeTops(player.board)
+  // 4라운드: 꼭대기 지도(4차원 점수)와 4라운드 끝에 판정할 목표를 지금 보드로 어림한다 (§9)
+  if (state.time !== null) {
+    value += player.timeScore ?? scoreTops(player.board, state.law).total
+    if (player.timeScore === null) {
+      for (const g of state.roundGoals) {
+        if (g.round === 4 && ROUND_GOALS[g.id].check(player.board, state.law)) value += ROUND4_GOAL_POINTS
+      }
+    }
+  }
   if (player.personalGoal && PERSONAL_GOALS[player.personalGoal].check(player)) value += 6 * PERSONAL_GOAL_WEIGHT
   return value
 }

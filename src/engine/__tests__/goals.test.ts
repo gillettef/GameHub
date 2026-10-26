@@ -151,7 +151,7 @@ describe('§5 라운드 시작: 목표 카드 2장 공개', () => {
       expect(s.goalDecks[0]).not.toContain(c.id)
     }
     expect(new Set(s.roundGoals.map((c) => c.id)).size).toBe(2)
-    expect(s.goalDecks.map((d) => d.length)).toEqual([6, 8, 8, 0])
+    expect(s.goalDecks.map((d) => d.length)).toEqual([6, 8, 8, 8])
   })
 
   it('§5-4 라운드 목표 더미는 시드에 따라 섞인다', () => {
@@ -159,15 +159,19 @@ describe('§5 라운드 시작: 목표 카드 2장 공개', () => {
     expect(shown.size).toBeGreaterThan(1)
   })
 
-  it('§5 라운드가 바뀔 때마다 그 라운드 목표 2장을 공개, 4라운드는 재설계 중이라 공개 없음', () => {
+  it('§5 v0.8 라운드가 바뀔 때마다 그 라운드 목표 2장을 공개 (4라운드 포함)', () => {
     const states = playRandomly(70, 3)
     const at = (r: Round) => states.find((s) => roundOf(s) === r) as GameState
     expect(at(1).roundGoals.map((c) => c.round)).toEqual([1, 1])
     expect(at(2).roundGoals.map((c) => c.round)).toEqual([1, 1, 2, 2])
     expect(at(3).roundGoals.map((c) => c.round)).toEqual([1, 1, 2, 2, 3, 3])
     const r4 = states.find((s) => s.time !== null) as GameState
-    expect(r4.roundGoals).toHaveLength(6)
-    for (const c of at(3).roundGoals) expect(roundGoalDeck(c.round)).toContain(c.id)
+    expect(r4.roundGoals.map((c) => c.round)).toEqual([1, 1, 2, 2, 3, 3, 4, 4])
+    for (const c of r4.roundGoals) expect(roundGoalDeck(c.round)).toContain(c.id)
+    expect(r4.goalDecks[3]).toHaveLength(6)
+    // 4라운드 목표는 선착이 없다 (§5)
+    const last = states[states.length - 1] as GameState
+    for (const c of last.roundGoals.filter((x) => x.round === 4)) expect(c.first).toBeNull()
   })
 
   it('revealRoundGoals: 더미 위에서 2장, 더미가 비면 공개 없음', () => {
@@ -176,7 +180,12 @@ describe('§5 라운드 시작: 목표 카드 2장 공개', () => {
     const r2 = revealRoundGoals(s, 2)
     expect(r2.roundGoals.slice(2).map((c) => c.id)).toEqual(top2)
     expect(r2.goalDecks[1]).toHaveLength(6)
-    expect(revealRoundGoals(s, 4).roundGoals).toEqual(s.roundGoals)
+    const r4 = revealRoundGoals(s, 4)
+    expect(r4.roundGoals.slice(2)).toEqual(
+      (s.goalDecks[3] ?? []).slice(0, 2).map((id) => ({ id, round: 4, first: null, achieved: [] })),
+    )
+    const empty = { ...s, goalDecks: s.goalDecks.map((d, i) => (i === 3 ? [] : d)) }
+    expect(revealRoundGoals(empty, 4).roundGoals).toEqual(s.roundGoals)
   })
 })
 
@@ -297,10 +306,6 @@ describe('§5 라운드 목표: 게임 진행 중 판정', () => {
     expect(run(0).roundGoals[0]?.first).toBeNull()
     expect(run(TURNS_PER_ROUND[2] - 1).roundGoals[0]?.first).toBe(0)
   })
-
-  it.todo(
-    '§5 라운드 시작(목표 공개) 때 이미 조건을 갖춘 사람(예: 3라운드 다섯 빛·시간의 지붕·숫자 계단)의 선착 순서 (규칙 모호: 사용자 결정 필요 — 현재 엔진은 그 라운드에 먼저 주사위를 놓은 사람이 선착)',
-  )
 
   it('§5 무작위 전체 진행: 마커는 그 라운드에만 늘고, 한 번 놓인 마커는 사라지지 않는다', () => {
     for (const [seed, n] of [[71, 2], [72, 3], [73, 4]] as const) {

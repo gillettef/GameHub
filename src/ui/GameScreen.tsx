@@ -2,12 +2,15 @@ import { useEffect, useMemo, useState } from 'react'
 import {
   applyAction,
   dieColor,
+  EVENTS,
   faceColor,
   findTop,
   getLegalActions,
+  GOAL_ACHIEVED_POINTS,
   legalPlacements,
   PERSONAL_GOAL_POINTS,
   PERSONAL_GOALS,
+  ROUND4_GOAL_POINTS,
   ROUND_GOALS,
   rollTargets,
   sideFaces,
@@ -115,6 +118,8 @@ function fxSummary(events: FxEvent[], seats: Seat[]): string {
           return `${name(e.player)}, 잔해 ${e.count}개.`
         case 'base':
           return `${name(e.player)}, ${BASE_INFO[e.round].name} 점수 ${e.points}점 확정.`
+        case 'endEvents':
+          return `끝 사건 발동: ${e.events.map((id) => EVENTS[id].name).join(', ')}.`
       }
     })
     .join(' ')
@@ -226,6 +231,15 @@ export function GameScreen({
   const armedCell = ui.armedCell
 
   const pending = useMemo(() => (round === 4 && actor !== null ? (state.time?.pending[actor] ?? []) : []), [round, actor, state.time])
+  /** 남은 자유 넘기기 (§9: 영원의 우주·역행) */
+  const free = round === 4 && actor !== null ? (state.time?.free[actor] ?? 0) : 0
+  const timeEvents = state.time?.events ?? []
+  /** 자유 넘기기로 고를 수 있는 꼭대기 (엔진의 합법 행동에서) */
+  const freeIds = useMemo(
+    () => new Set(legal.flatMap((a) => (a.type === 'roll' && !pending.includes(a.dieId) ? [a.dieId] : []))),
+    [legal, pending],
+  )
+  const canPass = legal.some((a) => a.type === 'pass')
   const timeCells = useMemo(() => {
     if (!isMine || !shown) return []
     return pending.flatMap((id) => {
@@ -233,10 +247,11 @@ export function GameScreen({
       return c ? [c] : []
     })
   }, [isMine, shown, pending])
-  /** 넘길 ⧗ 주사위가 하나뿐이면 미리 골라 둔다 (선택지가 하나뿐인 탭 줄이기) */
-  const selectedTime = ui.selectedTime ?? (pending.length === 1 ? (pending[0] ?? null) : null)
+  /** 넘길 ⧗ 주사위가 하나뿐이고 자유 넘기기가 없으면 미리 골라 둔다 (선택지가 하나뿐인 탭 줄이기) */
+  const selectedTime = ui.selectedTime ?? (pending.length === 1 && free === 0 ? (pending[0] ?? null) : null)
+  const freeTip = selectedTime !== null && !pending.includes(selectedTime)
   const timeFrom = isMine && selectedTime !== null && shown ? findTop(shown.board, selectedTime) : null
-  const targets = timeFrom && shown ? rollTargets(shown.board, timeFrom, state.law) : []
+  const targets = timeFrom && shown ? rollTargets(shown.board, timeFrom, state.law, timeEvents) : []
   const timeDie = timeFrom && shown ? shown.board.cells[timeFrom.row]?.[timeFrom.col]?.at(-1) : undefined
 
   /** 고를 수 있는 칸마다 그 수를 두면 늘어나는 점수. 엔진으로 한 수 앞을 실제로 적용해 본다 (공개 점수 기준) */
@@ -261,7 +276,7 @@ export function GameScreen({
     } else if (rollDieId !== null) {
       const board = state.players[actor]?.board
       const from = board ? findTop(board, rollDieId) : null
-      for (const t of board && from ? rollTargets(board, from, state.law) : []) {
+      for (const t of board && from ? rollTargets(board, from, state.law, state.time?.events ?? []) : []) {
         const d = delta({ type: 'roll', player: actor, dieId: rollDieId, direction: t.direction })
         if (d !== null) out.push({ cell: t.to, delta: d })
       }
@@ -335,8 +350,9 @@ export function GameScreen({
         return
       }
       const top = shown.board.cells[cell.row]?.[cell.col]?.at(-1)
-      if (top && pending.includes(top.id)) {
-        patch({ selectedTime: top.id === selectedTime && pending.length > 1 ? null : top.id, armedCell: null })
+      if (top && (pending.includes(top.id) || freeIds.has(top.id))) {
+        const only = pending.length === 1 && free === 0
+        patch({ selectedTime: top.id === selectedTime && !only ? null : top.id, armedCell: null })
         return
       }
     }
@@ -360,7 +376,7 @@ export function GameScreen({
       : isMine && handDie && armedCell && placeTargets.some((c) => sameCell(c, armedCell))
         ? { text: `${armedCell.row + 1}행 ${armedCell.col + 1}열`, label: '여기에 놓기', run: () => place(armedCell) }
         : isMine && armedRoll
-          ? { text: DIRECTION_LABEL[armedRoll.direction], label: '넘기기', run: () => roll(armedRoll.direction) }
+          ? { text: DIRECTION_LABEL[armedRoll.direction], label: freeTip ? '자유 넘기기' : '넘기기', run: () => roll(armedRoll.direction) }
           : null
   const cancelConfirm = () => patch(canTake && slot !== null ? { slot: null } : { armedCell: null })
 
@@ -465,7 +481,11 @@ export function GameScreen({
             : targets.length === 1
               ? '이 주사위는 한 방향으로만 넘길 수 있어요 · 빛나는 칸을 누르세요'
               : '어느 방향으로도 넘길 수 없어요 · 잔해로 만드세요'
-          : '주황 점이 찍힌 ⧗ 주사위를 고르세요'
+          : pending.length > 0
+            ? free > 0
+              ? '주황 점이 찍힌 ⧗ 주사위를 고르세요 · 자유 넘기기로 다른 꼭대기도 넘길 수 있어요'
+              : '주황 점이 찍힌 ⧗ 주사위를 고르세요'
+            : `자유 넘기기 ${free}회 · 넘길 꼭대기를 고르거나 아래에서 포기하세요`
         : !state.turn.taken
           ? slot !== null
             ? openSlots === 1
@@ -576,6 +596,7 @@ export function GameScreen({
           {turnsInRound !== null ? `바퀴 ${Math.min(state.turn.circuit + 1, turnsInRound)}/${turnsInRound}` : round === 4 && actor !== null ? (
             <span className="inline-flex items-center gap-1">
               <Hourglass size={12} color="#f2a65a" /> {pending.length}
+              {free > 0 && <span className="text-accent">· 자유 {free}</span>}
             </span>
           ) : null}
         </span>
@@ -724,9 +745,16 @@ export function GameScreen({
         </Panel>
       )}
 
+      {/* 4라운드: 자유 넘기기 포기 (⧗ 주사위를 다 넘긴 뒤, §9) */}
+      {isMine && round === 4 && canPass && !timeDie && (
+        <ConfirmButton key={`pass-${free}`} confirmText="한 번 더 누르면 남은 자유 넘기기를 버리고 끝내요" onConfirm={() => onAction({ type: 'pass', player: actor as number })}>
+          자유 넘기기 {free}회 포기하고 끝내기
+        </ConfirmButton>
+      )}
+
       {/* 4라운드: 넘기기 */}
       {isMine && round === 4 && timeDie && (
-        <Panel title="넘기기" highlight className="animate-rise">
+        <Panel title={freeTip ? '자유 넘기기' : '넘기기'} highlight className="animate-rise">
           <div className="flex items-center gap-4">
             <DieNet die={timeDie} size={24} />
             <div className="flex flex-1 flex-wrap gap-2">
@@ -837,6 +865,7 @@ function ScoreBreakdown({ state, player }: { state: GameState; player: number })
     ['선', s.line, '#9b8cff'],
     ['평면', s.plane, '#5ad1e6'],
     ['입체', s.tower, '#34C483'],
+    ['시간', s.time, '#f2a65a'],
     ['목표', s.goals, '#F5C842'],
     ['잔해', s.debris, '#ff6b6b'],
   ]
@@ -861,13 +890,24 @@ function GoalStrip({ state, player, viewer, onOpen }: { state: GameState; player
   const goals = state.roundGoals.filter((g) => g.round === round)
   const me = viewer !== null ? state.players[viewer] : undefined
   const personal = me?.personalGoal ? PERSONAL_GOALS[me.personalGoal] : null
-  if (!board || (goals.length === 0 && !personal)) return null
+  const events = round === 4 ? (state.time?.events ?? []) : []
+  if (!board || (goals.length === 0 && !personal && events.length === 0)) return null
   return (
     <button type="button" onClick={onOpen} className="flex flex-wrap gap-1.5 text-left active:opacity-70" aria-label="목표 카드 자세히 보기">
       {goals.map((g) => {
         const def = ROUND_GOALS[g.id]
         const status =
-          g.first === player ? '선착 +4' : g.achieved.includes(player) ? '달성 +2' : def.check(board) ? (def.when === 'roundDone' ? '충족 · 라운드 끝 판정' : '충족') : null
+          g.first === player
+            ? '선착 +4'
+            : g.achieved.includes(player)
+              ? `달성 +${g.round === 4 ? ROUND4_GOAL_POINTS : GOAL_ACHIEVED_POINTS}`
+              : def.check(board, state.law)
+                ? def.when === 'roundDone'
+                  ? g.round === 4
+                    ? '충족 · 4라운드 끝 판정'
+                    : '충족 · 라운드 끝 판정'
+                  : '충족'
+                : null
         return (
           <span
             key={g.id}
@@ -880,6 +920,13 @@ function GoalStrip({ state, player, viewer, onOpen }: { state: GameState; player
           </span>
         )
       })}
+      {events.map((id) => (
+        <span key={id} className="flex min-h-8 items-center gap-1.5 rounded-full bg-event/15 px-3 py-1 text-xs font-bold text-event ring-1 ring-event/50 ring-inset">
+          <Icon name="spark" size={13} />
+          {EVENTS[id].name}
+          <span className="font-normal">· {EVENTS[id].when === 'start' ? '지금 적용' : '끝에 발동'}</span>
+        </span>
+      ))}
       {personal && me && (
         <span
           className={`flex min-h-8 items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold ring-1 ring-inset ${personal.check(me) ? 'bg-personal/20 text-personal ring-personal/60' : 'bg-surface/60 text-muted ring-line'}`}

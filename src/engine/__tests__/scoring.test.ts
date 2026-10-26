@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { TIME } from '../dice'
-import { neighborSteps, scoreLine, scorePlane, scoreTower, stepRuns } from '../scoring'
+import { neighborSteps, scoreLine, scorePlane, scoreTops, scoreTower, stepRuns, topRegions } from '../scoring'
 import type { RolledDie } from '../types'
 import { board, colorsWith, die, line } from './helpers'
 
@@ -139,5 +139,111 @@ describe('§8 3차원 기본 점수: 가장 높은 같은 색 세로 연속', ()
     const b = board({ '1,0': [die('red', 1), die('black', 2), die('red', 3)] })
     expect(scoreTower(b, 'void').total).toBe(3)
     expect(scoreTower(b, 'standard').total).toBe(1)
+  })
+})
+
+// ─── v0.8 ────────────────────────────────────────────────────────────
+
+describe('§9 v0.8 4차원 점수: 가장 넓은 같은 색 꼭대기 영역 (scoreTops / topRegions)', () => {
+  it('규칙서 예: 1행 꼭대기 빨강-빨강-파랑-⧗-빨강, 2행 1열 빨강 → 왼쪽 빨강 3칸 = 3점 (오른쪽 빨강은 따로)', () => {
+    const b = board({
+      ...line(die('red', 1), die('red', 2), die('blue', 3), die('red', TIME), die('red', 4)),
+      '1,0': [die('red', 5)],
+    })
+    expect(scoreTops(b).total).toBe(3)
+    expect(scoreTops(b).largestRegion).toBe(3)
+    expect([...topRegions(b)].sort()).toEqual([1, 1, 3])
+  })
+
+  it('꼭대기 색만 본다: 덮인 주사위의 색은 무관하고, 기둥 높이는 따지지 않는다', () => {
+    const b = board({
+      '0,0': [die('blue', 1), die('red', 2)],
+      '0,1': [die('red', 1)],
+      '0,2': [die('blue', 1), die('blue', 2), die('blue', 3), die('red', 4)],
+      '1,2': [die('red', 1), die('blue', 2)],
+    })
+    expect(scoreTops(b).total).toBe(3)
+  })
+
+  it('진공과 ⧗ 꼭대기에서 끊기고, 대각선은 이어지지 않는다', () => {
+    expect(scoreTops(board({ '1,0': [die('red', 1)], '1,1': [die('red', 1), die('red', TIME)], '1,2': [die('red', 1)] })).total).toBe(1)
+    expect(scoreTops(board({ '1,0': [die('red', 1)], '1,2': [die('red', 1)] })).total).toBe(1)
+    expect(scoreTops(board({ '0,0': [die('red', 1)], '1,1': [die('red', 1)] })).total).toBe(1)
+  })
+
+  it('경계값: 빈 보드·⧗ 꼭대기뿐 = 0점, 15칸 모두 같은 색 = 15점 (최대)', () => {
+    expect(scoreTops(board({})).total).toBe(0)
+    expect(scoreTops(board({ '0,0': [die('red', TIME)], '2,4': [die('red', TIME)] })).total).toBe(0)
+    const all: Record<string, RolledDie[]> = {}
+    for (let r = 0; r < 3; r++) for (let c = 0; c < 5; c++) all[`${r},${c}`] = [die('green', 2)]
+    expect(scoreTops(board(all)).total).toBe(15)
+  })
+
+  it('§11-1 공허의 우주: 꼭대기 지도에서도 검정이 모든 색과 이어진다', () => {
+    const b = board({ '0,0': [die('red', 1)], '0,1': [die('blue', 1), die('black', 2)], '0,2': [die('red', 1)] })
+    expect(scoreTops(b, 'void').total).toBe(3)
+    expect(scoreTops(b, 'standard').total).toBe(1)
+  })
+
+  it('§11-1 거울 우주는 4차원 점수에 더하지 않는다 (1~3라운드 기본 점수만)', () => {
+    const b = board(line(die('red', 1), die('blue', 1), die('green', 1), die('blue', 1), die('red', 1)))
+    expect(scoreTops(b, 'mirror').total).toBe(1)
+  })
+})
+
+describe('§11-1 v0.8 거울 우주: 좌우 대칭 칸(1↔5열, 2↔4열)이 같은 색인 쌍마다 1점', () => {
+  it('1라운드: 선의 대칭 쌍 (최대 2점), total에 더한다', () => {
+    const b = board(line(die('red', 1), die('blue', 1), die('green', 1), die('blue', 1), die('red', 1)))
+    expect(scoreLine(b, 'mirror')).toEqual({ longestRun: 1, mirror: 2, total: 3 })
+    expect(scoreLine(b, 'standard')).toEqual({ longestRun: 1, mirror: 0, total: 1 })
+    // 모두 같은 색: 5 + 2
+    const same = board(line(...[1, 2, 3, 4, 5].map((f) => die('yellow', f as 1))))
+    expect(scoreLine(same, 'mirror').total).toBe(7)
+  })
+
+  it('1라운드: ⧗은 무색이라 쌍이 아니고, 빈 칸도 쌍이 아니다', () => {
+    const b = board(line(die('red', TIME), die('blue', 1), die('green', 1), die('blue', 1), die('red', TIME)))
+    expect(scoreLine(b, 'mirror').mirror).toBe(1)
+    expect(scoreLine(board({ '0,1': [die('red', 1)], '0,2': [die('red', 1)] }), 'mirror').mirror).toBe(0)
+  })
+
+  it('거울 우주에는 공허의 우주가 적용되지 않는다: 검정과 빨강은 쌍이 아니다', () => {
+    const b = board(line(die('black', 1), die('blue', 1), die('green', 1), die('blue', 1), die('red', 1)))
+    expect(scoreLine(b, 'mirror').mirror).toBe(1)
+  })
+
+  it('2라운드: 2·3행 평면 주사위의 대칭 쌍 (최대 4점), 선은 세지 않는다', () => {
+    const b = board({
+      ...line(die('red', 1), die('blue', 1), die('green', 1), die('blue', 1), die('red', 1)),
+      '1,0': [die('yellow', 1)],
+      '1,4': [die('yellow', 1)],
+      '1,1': [die('black', 1)],
+      '1,3': [die('black', 1)],
+      '2,0': [die('green', 1)],
+      '2,4': [die('green', 1)],
+      '2,1': [die('red', 1)],
+      '2,3': [die('red', 1)],
+    })
+    const s = scorePlane(b, 'mirror')
+    expect(s.mirror).toBe(4)
+    expect(s.total).toBe(s.largestRegion + 4)
+    expect(scorePlane(b, 'standard').mirror).toBe(0)
+  })
+
+  it('2라운드: 평면 주사위(1층)의 색을 본다', () => {
+    const b = board({ '1,0': [die('yellow', 1), die('red', 2)], '1,4': [die('yellow', 1)] })
+    expect(scorePlane(b, 'mirror').mirror).toBe(1)
+  })
+
+  it('3라운드: 모든 행의 꼭대기 대칭 쌍 (최대 6점), 덮인 색은 무관', () => {
+    const all: Record<string, RolledDie[]> = {}
+    for (let r = 0; r < 3; r++) for (let c = 0; c < 5; c++) all[`${r},${c}`] = [die('blue', 1), die(c === 2 ? 'red' : 'green', 2)]
+    const s = scoreTower(board(all), 'mirror')
+    expect(s.mirror).toBe(6)
+    expect(s.total).toBe(s.tallestRun + 6)
+    // 꼭대기가 다르면 쌍이 아니다 (아래 파랑끼리는 무관)
+    const b = board({ '0,0': [die('blue', 1), die('red', 2)], '0,4': [die('blue', 1), die('green', 2)] })
+    expect(scoreTower(b, 'mirror').mirror).toBe(0)
+    expect(scoreTower(board({ '2,1': [die('red', 1)], '2,3': [die('red', 1), die('red', 2)] }), 'mirror').mirror).toBe(1)
   })
 })

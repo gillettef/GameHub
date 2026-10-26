@@ -22,7 +22,7 @@ export interface GameSummary {
   law: LawId
   players: number
   winners: string[]
-  scores: { name: string; kind: string; total: number; line: number; plane: number; tower: number; goals: number; personal: number; debris: number }[]
+  scores: { name: string; kind: string; total: number; line: number; plane: number; tower: number; time: number; goals: number; personal: number; debris: number }[]
   /** 3라운드 잔해 수 (사람·봇 합계) */
   round3Debris: number
   /** 4라운드에 넘긴 ⧗ 주사위 수 / 잔해가 된 ⧗ 주사위 수 */
@@ -64,6 +64,7 @@ export function summarize(session: Session): GameSummary {
       line: s.line,
       plane: s.plane,
       tower: s.tower,
+      time: s.time,
       goals: s.goals,
       personal: s.personalGoal,
       debris: s.debris,
@@ -96,7 +97,7 @@ export function aggregate(games: GameSummary[]): { overview: Rate[]; goals: Rate
   const overview: Rate[] = [
     { label: '게임 수', value: String(games.length) },
     { label: '평균 총점', value: fmt(avg(totals)) },
-    { label: '평균 선 / 평면 / 입체', value: `${fmt(avg(all.map((s) => s.line)))} / ${fmt(avg(all.map((s) => s.plane)))} / ${fmt(avg(all.map((s) => s.tower)))}` },
+    { label: '평균 선 / 평면 / 입체 / 시간', value: [all.map((s) => s.line), all.map((s) => s.plane), all.map((s) => s.tower), all.map((s) => s.time)].map((xs) => fmt(avg(xs))).join(' / ') },
     { label: '목표 점수 비중 (목표 30~40%)', value: `${Math.round(goalShare * 100)}%` },
     { label: '1인당 평균 잔해', value: fmt(avg(all.map((s) => -s.debris))) },
     { label: '3라운드 1인당 평균 잔해', value: fmt(avg(games.map((g) => g.round3Debris / g.players))) },

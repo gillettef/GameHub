@@ -75,7 +75,7 @@ const roundOf = (s: GameState) => (s.phase.kind === 'round' ? s.phase.round : nu
 const tops = (...faces: Face[]) => board(line(...faces.map((f) => die('red', f))))
 const colors = (...cs: Color[]) => board(line(...cs.map((c) => die(c, 1))))
 
-const goalCheck = (id: RoundGoalId, b: Board) => ROUND_GOALS[id].check(b)
+const goalCheck = (id: RoundGoalId, b: Board, law: LawId = 'standard') => ROUND_GOALS[id].check(b, law)
 
 function player(b: Board, debris = 0, timeDice: number | null = null): PlayerState {
   return {
@@ -85,6 +85,7 @@ function player(b: Board, debris = 0, timeDice: number | null = null): PlayerSta
     lineScore: null,
     planeScore: null,
     towerScore: null,
+    timeScore: null,
     personalOffer: [],
     personalGoal: null,
     timeDice,
@@ -100,20 +101,21 @@ const pillarOf = (h: number, color: Color = 'red'): RolledDie[] =>
 // ─── §11-1 우주 법칙 ─────────────────────────────────────────────────
 
 describe('§11-1 우주 법칙 카드 덱', () => {
-  it('§11-1 법칙은 8장이고, 영원의 우주·거울 우주(재설계 중)를 뺀 6장이 덱에 들어간다', () => {
+  it('§11-1 v0.8 법칙은 8장이고, 영원의 우주·거울 우주를 포함한 8장 모두 덱에 들어간다', () => {
     expect(Object.keys(LAWS)).toHaveLength(8)
-    expect([...LAW_DECK].sort()).toEqual(['abundance', 'flat', 'inverted', 'shakyMarket', 'standard', 'void'].sort())
-    expect(LAW_DECK).not.toContain('eternal')
-    expect(LAW_DECK).not.toContain('mirror')
+    expect([...LAW_DECK].sort()).toEqual(
+      ['abundance', 'eternal', 'flat', 'inverted', 'mirror', 'shakyMarket', 'standard', 'void'].sort(),
+    )
+    for (const id of Object.keys(LAWS) as LawId[]) expect(LAWS[id].inDeck).toBe(true)
   })
 
-  it('§5-1 config.law로 법칙을 고정할 수 있고, 덱에 없는 영원의 우주는 쓸 수 없다', () => {
+  it('§5-1 config.law로 법칙을 고정할 수 있다 (v0.8: 영원의 우주·거울 우주도)', () => {
     expect(createGame({ playerCount: 2, seed: 1, law: 'void' }).law).toBe('void')
-    expect(() => createGame({ playerCount: 2, seed: 1, law: 'eternal' })).toThrow()
-    expect(() => createGame({ playerCount: 2, seed: 1, law: 'mirror' })).toThrow()
+    expect(createGame({ playerCount: 2, seed: 1, law: 'eternal' }).law).toBe('eternal')
+    expect(createGame({ playerCount: 2, seed: 1, law: 'mirror' }).law).toBe('mirror')
   })
 
-  it('§5-1 법칙을 정하지 않으면 덱에서 1장 뽑는다 (시드마다 결정적, 여러 법칙이 나옴)', () => {
+  it('§5-1 법칙을 정하지 않으면 덱에서 1장 뽑는다 (시드마다 결정적, 여러 법칙이 나옴)', { timeout: 30000 }, () => {
     const laws = Array.from({ length: 60 }, (_, seed) => createGame({ playerCount: 2, seed }).law)
     for (const law of laws) expect(LAW_DECK).toContain(law)
     expect(new Set(laws).size).toBe(LAW_DECK.length)
@@ -419,18 +421,21 @@ describe('§11-1 풍요의 우주', () => {
 // ─── §11-2 라운드 목표 ───────────────────────────────────────────────
 
 describe('§11-2 라운드 목표 카드 덱', () => {
-  it('§11-2 1·2·3라운드 각 8장, 4라운드는 재설계 중이라 0장', () => {
+  it('§11-2 v0.8 1·2·3·4라운드 각 8장, 모두 32장 (§4)', () => {
     expect(roundGoalDeck(1)).toHaveLength(8)
     expect(roundGoalDeck(2)).toHaveLength(8)
     expect(roundGoalDeck(3)).toHaveLength(8)
-    expect(roundGoalDeck(4)).toEqual([])
-    expect(Object.keys(ROUND_GOALS)).toHaveLength(24)
+    expect([...roundGoalDeck(4)].sort()).toEqual(
+      ['colorRiver', 'crown', 'evenHorizon', 'filledSky', 'frontRainbow', 'horizonStairs', 'mirrorHorizon', 'twoContinents'].sort(),
+    )
+    expect(Object.keys(ROUND_GOALS)).toHaveLength(32)
     for (const id of Object.keys(ROUND_GOALS) as RoundGoalId[]) expect(ROUND_GOALS[id].id).toBe(id)
   })
 
-  it('판정 시점: 고립만 라운드를 마친 뒤(roundDone), 나머지는 행동마다(any)', () => {
+  it('판정 시점: 1~3라운드는 고립만 라운드를 마친 뒤(roundDone), 4라운드 목표 8장은 모두 roundDone (§5)', () => {
     const done = (Object.keys(ROUND_GOALS) as RoundGoalId[]).filter((id) => ROUND_GOALS[id].when === 'roundDone')
-    expect(done).toEqual(['isolation'])
+    expect(done.filter((id) => ROUND_GOALS[id].round !== 4)).toEqual(['isolation'])
+    expect(done.filter((id) => ROUND_GOALS[id].round === 4).sort()).toEqual([...roundGoalDeck(4)].sort())
   })
 })
 
@@ -444,8 +449,11 @@ describe('§11-2 1라운드 목표 (선의 윗면·색)', () => {
     expect(goalCheck('mirror', board({ '0,2': [die('red', 3)] }))).toBe(false)
   })
 
-  it('거울: 1·5번이 모두 ⧗이어도 윗면이 같은 것으로 본다', () => {
-    expect(goalCheck('mirror', tops(TIME, 2, 3, 2, TIME))).toBe(true)
+  it('§11-2 v0.8 거울: ⧗은 숫자가 아니라 1·5번이 모두 ⧗이어도 안 된다', () => {
+    expect(goalCheck('mirror', tops(TIME, 2, 3, 2, TIME))).toBe(false)
+    expect(goalCheck('mirror', tops(1, TIME, 3, TIME, 1))).toBe(false)
+    // 가운데(3번)는 ⧗이어도 상관없다
+    expect(goalCheck('mirror', tops(1, 2, TIME, 2, 1))).toBe(true)
   })
 
   it('무지개: 선의 5칸이 모두 다른 색', () => {
@@ -486,8 +494,9 @@ describe('§11-2 1라운드 목표 (선의 윗면·색)', () => {
     expect(goalCheck('triplets', tops(3, 3, 1, 1, 5))).toBe(false)
   })
 
-  it('삼둥이 (해석: ⧗ 3개도 윗면이 같은 것으로 본다)', () => {
-    expect(goalCheck('triplets', tops(TIME, TIME, TIME, 1, 2))).toBe(true)
+  it('§11-2 v0.8 삼둥이: ⧗ 제외 — ⧗ 3개는 안 되고, ⧗이 섞여도 같은 숫자 3개면 된다', () => {
+    expect(goalCheck('triplets', tops(TIME, TIME, TIME, 1, 2))).toBe(false)
+    expect(goalCheck('triplets', tops(TIME, 2, TIME, 2, 2))).toBe(true)
   })
 
   it('시간의 씨앗: 선에 ⧗ 2개 이상', () => {
@@ -557,8 +566,12 @@ describe('§11-2 2라운드 목표 (평면)', () => {
     expect(goalCheck('continent', board({ ...red5, '1,0': [die('blue', 2)] }))).toBe(false)
   })
 
-  it.todo('기둥 색·모자이크·뿌리·단색 탑·바다의 탑 등 색 목표에 공허의 우주 검정 만능이 적용되는지 (규칙 모호: 사용자 결정 필요 — 현재 엔진은 적용하지 않음)')
-  it.todo('대륙: 공허의 우주에서 검정이 영역을 이어 주는지 (규칙 모호: 사용자 결정 필요 — 현재 엔진은 잇지 않음)')
+  it('§11-1 공허의 우주는 목표 카드에 적용하지 않는다 (v0.8): 기둥 색·대륙에서 검정은 만능이 아님', () => {
+    const b = board({ '0,0': [die('red', 1)], '1,0': [die('black', 2)], '2,0': [die('red', 3)] })
+    expect(goalCheck('columnColor', b, 'void')).toBe(false)
+    const red5 = line(...Array.from({ length: 5 }, () => die('red', 1)))
+    expect(goalCheck('continent', board({ ...red5, '1,0': [die('black', 2)] }), 'void')).toBe(false)
+  })
 
   it('뿌리: 2·3행 주사위 중 같은 열 선 주사위와 색이 같은 것 3개', () => {
     const base = line(die('red', 1), die('blue', 1), die('green', 1), die('yellow', 1), die('black', 1))
@@ -616,12 +629,21 @@ describe('§11-2 3라운드 목표 (탑)', () => {
     expect(goalCheck('monoTower', board({ '0,0': pillarOf(2, 'yellow') }))).toBe(false)
   })
 
-  it('숫자 계단: 맨 앞줄 꼭대기 앞면 연속 4칸 이상', () => {
-    // 맨 앞줄 꼭대기 앞면 1-2-3-4-⧗
-    const front = (...fs: Face[]) =>
-      board(line(...fs.map((f) => (f === 1 ? die('red', 2, 1) : f === TIME ? die('red', 2, TIME) : die('red', 1, f)))))
+  it('숫자 계단: 맨 앞줄 꼭대기 앞면 연속 4칸 이상, 그 4칸에 2층 이상 기둥이 하나 이상 (v0.8)', () => {
+    // 맨 앞줄 꼭대기 앞면 1-2-3-4-⧗. 2열은 2층 기둥(꼭대기 앞면 2)
+    const top = (f: Face) => (f === 1 ? die('red', 2, 1) : f === TIME ? die('red', 2, TIME) : die('red', 1, f))
+    const front = (...fs: Face[]) => {
+      const b = board(line(...fs.map(top)))
+      const row0 = b.cells[0] as RolledDie[][]
+      row0[1] = [die('blue', 1), top(fs[1] as Face)]
+      return b
+    }
     expect(goalCheck('numberStairs', front(1, 2, 3, 4, TIME))).toBe(true)
     expect(goalCheck('numberStairs', front(1, 2, 3, TIME, 5))).toBe(false)
+    // 선 앞면만으로는 안 됨 (3라운드 시작 때 이미 달성 방지)
+    expect(goalCheck('numberStairs', board(line(...([1, 2, 3, 4, TIME] as Face[]).map(top))))).toBe(false)
+    // 내림차순도 됨
+    expect(goalCheck('numberStairs', front(5, 4, 3, 2, TIME))).toBe(true)
     // 윗면이 아니라 앞면을 본다: 윗면 1-2-3-4는 상관없음
     expect(goalCheck('numberStairs', board(line(die('red', 1, 5), die('red', 2, 1), die('red', 3, 1), die('red', 4, 1))))).toBe(false)
   })
@@ -638,17 +660,39 @@ describe('§11-2 3라운드 목표 (탑)', () => {
     expect(goalCheck('pyramid', board({ '0,1': pillarOf(1), '2,2': pillarOf(2), '0,3': pillarOf(1) }))).toBe(true)
   })
 
-  it('피라미드 (해석: 가운데가 양 끝보다 높으면, 옆 열과 같은 높이는 허용)', () => {
+  it('§11-2 v0.8 피라미드: 가운데(3열)가 혼자 가장 높아야 한다 (옆 열과 같은 높이는 안 됨)', () => {
     const cols = (...hs: number[]) => board(Object.fromEntries(hs.flatMap((h, col) => (h > 0 ? [[`0,${col}`, pillarOf(h)]] : []))))
-    expect(goalCheck('pyramid', cols(1, 3, 3, 3, 1))).toBe(true)
+    expect(goalCheck('pyramid', cols(1, 3, 3, 3, 1))).toBe(false)
+    expect(goalCheck('pyramid', cols(1, 3, 3, 2, 1))).toBe(false)
     expect(goalCheck('pyramid', cols(3, 3, 3, 3, 1))).toBe(false)
+    // 바깥 두 열끼리 같은 높이는 괜찮다
+    expect(goalCheck('pyramid', cols(2, 2, 3, 2, 2))).toBe(true)
+    expect(goalCheck('pyramid', cols(0, 0, 1, 0, 0))).toBe(true)
+    expect(goalCheck('pyramid', cols(3, 2, 4, 2, 1))).toBe(false) // 바깥으로 가며 다시 높아짐
   })
 
-  it('다섯 빛: 꼭대기 색이 5색 모두 있음 (덮인 주사위는 무관)', () => {
-    expect(goalCheck('fiveLights', colors('red', 'blue', 'green', 'yellow', 'black'))).toBe(true)
+  it('§11-2 v0.8 다섯 빛: 2층 이상 기둥의 꼭대기 색이 5색 모두 있음 (1층짜리·덮인 주사위는 무관)', () => {
+    // 1층 주사위만으로는 안 된다
+    expect(goalCheck('fiveLights', colors('red', 'blue', 'green', 'yellow', 'black'))).toBe(false)
+    const stacked = (cs: Color[]) =>
+      board(Object.fromEntries(cs.map((c, col) => [`0,${col}`, [die('black', 1), die(c, 2)]])))
+    expect(goalCheck('fiveLights', stacked(['red', 'blue', 'green', 'yellow', 'black']))).toBe(true)
+    // 4색은 2층 이상, 검정은 1층 → 안 됨
+    const mixed = board({
+      '0,0': [die('red', 1), die('red', 2)],
+      '0,1': [die('red', 1), die('blue', 2)],
+      '0,2': [die('red', 1), die('green', 2)],
+      '0,3': [die('red', 1), die('yellow', 2)],
+      '0,4': [die('black', 1)],
+    })
+    expect(goalCheck('fiveLights', mixed)).toBe(false)
+    // 덮인 검정은 무관
     const covered = board({
-      ...line(die('red', 1), die('blue', 1), die('green', 1), die('yellow', 1)),
-      '0,4': [die('black', 1), die('red', 2)],
+      '0,0': [die('red', 1), die('red', 2)],
+      '0,1': [die('red', 1), die('blue', 2)],
+      '0,2': [die('red', 1), die('green', 2)],
+      '0,3': [die('red', 1), die('yellow', 2)],
+      '0,4': [die('red', 1), die('black', 2), die('red', 3)],
     })
     expect(goalCheck('fiveLights', covered)).toBe(false)
   })
@@ -660,10 +704,26 @@ describe('§11-2 3라운드 목표 (탑)', () => {
     expect(goalCheck('perfectStairs', board({ '1,1': [die('red', 1), die('red', 2), die('red', 3), die('red', 5)] }))).toBe(false)
   })
 
-  it('시간의 지붕: 꼭대기 ⧗ 3개 이상 (덮인 ⧗은 무관)', () => {
+  it('§11-2 v0.8 시간의 지붕: 2층 이상 기둥의 꼭대기 ⧗ 3개 이상 (1층 ⧗은 무관)', () => {
     const T = () => die('red', TIME)
-    expect(goalCheck('timeRoof', board({ '0,0': [T()], '1,1': [die('red', 1), T()], '2,4': [T()] }))).toBe(true)
-    expect(goalCheck('timeRoof', board({ '0,0': [T()], '1,1': [T()] }))).toBe(false)
+    const up = () => [die('red', 1), T()]
+    expect(goalCheck('timeRoof', board({ '0,0': up(), '1,1': up(), '2,4': up() }))).toBe(true)
+    expect(goalCheck('timeRoof', board({ '0,0': [die('red', 1), die('red', 2), T()], '1,1': up(), '2,4': up() }))).toBe(true)
+    // 1층 ⧗은 세지 않는다
+    expect(goalCheck('timeRoof', board({ '0,0': [T()], '1,1': up(), '2,4': [T()] }))).toBe(false)
+    expect(goalCheck('timeRoof', board({ '0,0': [T()], '0,1': [T()], '0,2': [T()], '0,3': [T()] }))).toBe(false)
+    expect(goalCheck('timeRoof', board({ '0,0': up(), '1,1': up() }))).toBe(false)
+  })
+
+  it('§11-2 v0.8 완벽한 계단: 뒤집힌 우주에서는 아래부터 5·4·3·2·1', () => {
+    const down = () => [5, 4, 3, 2, 1].map((f) => die('red', f as Face))
+    expect(goalCheck('perfectStairs', board({ '1,1': down() }), 'inverted')).toBe(true)
+    expect(goalCheck('perfectStairs', board({ '1,1': [...down(), die('red', TIME)] }), 'inverted')).toBe(true)
+    expect(goalCheck('perfectStairs', board({ '1,1': down() }), 'standard')).toBe(false)
+    expect(goalCheck('perfectStairs', board({ '1,1': pillarOf(5) }), 'inverted')).toBe(false)
+    expect(goalCheck('perfectStairs', board({ '1,1': down().slice(1) }), 'inverted')).toBe(false)
+    // 다른 법칙은 1·2·3·4·5 그대로
+    expect(goalCheck('perfectStairs', board({ '1,1': pillarOf(5) }), 'flat')).toBe(true)
   })
 })
 
@@ -705,9 +765,11 @@ describe('§11-3 개인 목표 카드 (게임 끝 최종 상태)', () => {
     expect(personal('voidCollector', board({ '0,0': pillarOf(4, 'black') }))).toBe(false)
   })
 
-  it('높이 숭배: 4층 이상 기둥 3개', () => {
-    expect(personal('heightWorship', board({ '0,0': pillarOf(4), '0,1': pillarOf(5), '2,4': pillarOf(4) }))).toBe(true)
-    expect(personal('heightWorship', board({ '0,0': pillarOf(4), '0,1': pillarOf(5), '2,4': pillarOf(3) }))).toBe(false)
+  it('§11-3 v0.8 높이 숭배: 3층 이상 기둥 3개', () => {
+    expect(personal('heightWorship', board({ '0,0': pillarOf(3), '0,1': pillarOf(3), '2,4': pillarOf(3) }))).toBe(true)
+    expect(personal('heightWorship', board({ '0,0': pillarOf(4), '0,1': pillarOf(5), '2,4': pillarOf(3) }))).toBe(true)
+    expect(personal('heightWorship', board({ '0,0': pillarOf(3), '0,1': pillarOf(5), '2,4': pillarOf(2) }))).toBe(false)
+    expect(personal('heightWorship', board({ '0,0': pillarOf(6), '0,1': pillarOf(6) }))).toBe(false)
   })
 
   it('시간 지배자: 4라운드 준비 때 센 ⧗ 주사위 4개 이상 (게임 끝 보드와 무관)', () => {
@@ -744,5 +806,126 @@ describe('§11-3 개인 목표 카드 (게임 끝 최종 상태)', () => {
     expect(personal('cleanHands', board({}), 0)).toBe(true)
     expect(personal('cleanHands', board({}), 2)).toBe(true)
     expect(personal('cleanHands', board({}), 3)).toBe(false)
+  })
+})
+
+// ─── §11-2 4라운드 목표 (v0.8) ───────────────────────────────────────
+
+describe('§11-2 v0.8 4라운드 목표 (꼭대기 = 위에서 내려다본 각 칸의 맨 위 주사위)', () => {
+  /** 15칸 모두 1층 주사위, 색은 행마다 문자열로 (r=빨강 b=파랑 g=초록 y=노랑 k=검정 t=⧗ .=진공) */
+  const C: Record<string, Color> = { r: 'red', b: 'blue', g: 'green', y: 'yellow', k: 'black' }
+  const map = (...rows: string[]): Board =>
+    board(
+      Object.fromEntries(
+        rows.flatMap((row, r) =>
+          [...row].flatMap((ch, c) =>
+            ch === '.' ? [] : [[`${r},${c}`, [ch === 't' ? die('red', TIME) : die(C[ch] as Color, 1)]]],
+          ),
+        ),
+      ),
+    )
+
+  it('색의 강: 같은 색 꼭대기가 변으로 이어져 1행부터 3행까지 닿음', () => {
+    expect(goalCheck('colorRiver', map('rbbbb', 'rgggg', 'ryyyy'))).toBe(true)
+    // 구부러져도 된다
+    expect(goalCheck('colorRiver', map('rbbbb', 'rrrgg', 'bbryy'))).toBe(true)
+    // 2행까지만 닿는 색, 한 행에만 있는 색은 안 된다
+    expect(goalCheck('colorRiver', map('rbbbb', 'rgggg', 'yyyyy'))).toBe(false)
+    // 대각선은 이어지지 않는다
+    expect(goalCheck('colorRiver', map('rbgyk', 'grbyg', 'kgrbb'))).toBe(false)
+    // ⧗ 꼭대기·진공에서 끊긴다
+    expect(goalCheck('colorRiver', map('r....', 't....', 'r....'))).toBe(false)
+    expect(goalCheck('colorRiver', map('r....', '.....', 'r....'))).toBe(false)
+    // 해석(목표에는 공허의 우주 미적용): 검정이 이어 주지 않는다
+    expect(goalCheck('colorRiver', map('r....', 'k....', 'r....'), 'void')).toBe(false)
+    // 덮인 색이 아니라 꼭대기 색
+    const covered = board({ '0,0': [die('red', 1)], '1,0': [die('red', 1), die('blue', 2)], '2,0': [die('red', 1)] })
+    expect(goalCheck('colorRiver', covered)).toBe(false)
+  })
+
+  it('메운 하늘: 진공(1행 포함) 2칸 이하', () => {
+    expect(goalCheck('filledSky', map('rrrrr', 'rrrrr', 'rrrrr'))).toBe(true)
+    expect(goalCheck('filledSky', map('rr.rr', 'rrrrr', 'rrrr.'))).toBe(true)
+    expect(goalCheck('filledSky', map('rr.rr', 'rr.rr', 'rrrr.'))).toBe(false)
+    // ⧗ 꼭대기는 진공이 아니다
+    expect(goalCheck('filledSky', map('ttttt', 'ttttt', 'ttt..'))).toBe(true)
+    expect(goalCheck('filledSky', board({}))).toBe(false)
+  })
+
+  it('왕관: 가장 높은 기둥의 꼭대기 윗면이 5 (가장 높은 기둥이 여럿이면 모두)', () => {
+    expect(goalCheck('crown', board({ '1,1': pillarOf(5), '0,0': pillarOf(2) }))).toBe(true)
+    expect(goalCheck('crown', board({ '1,1': pillarOf(4), '0,0': pillarOf(2) }))).toBe(false)
+    // 가장 높은 기둥 둘 다 5여야 한다
+    expect(goalCheck('crown', board({ '1,1': pillarOf(5), '2,2': pillarOf(5) }))).toBe(true)
+    expect(goalCheck('crown', board({ '1,1': pillarOf(5), '2,2': [...pillarOf(4), die('red', TIME)] }))).toBe(false)
+    // 1층짜리만 있어도 가장 높은 기둥이다
+    expect(goalCheck('crown', board({ '0,0': [die('red', 5)], '0,1': [die('red', 5)] }))).toBe(true)
+    expect(goalCheck('crown', board({ '0,0': [die('red', 5)], '0,1': [die('red', 4)] }))).toBe(false)
+    // ⧗ 꼭대기는 5가 아니다
+    expect(goalCheck('crown', board({ '1,1': [...pillarOf(5), die('red', TIME)] }))).toBe(false)
+    expect(goalCheck('crown', board({}))).toBe(false)
+  })
+
+  it('고른 지평: 정면에서 본 열별 최고 높이의 최대-최소 차이가 1 이하', () => {
+    const cols = (...hs: number[]) => board(Object.fromEntries(hs.flatMap((h, col) => (h > 0 ? [[`0,${col}`, pillarOf(h)]] : []))))
+    expect(goalCheck('evenHorizon', cols(2, 2, 2, 2, 2))).toBe(true)
+    expect(goalCheck('evenHorizon', cols(2, 3, 2, 3, 3))).toBe(true)
+    expect(goalCheck('evenHorizon', cols(1, 3, 2, 2, 2))).toBe(false)
+    // 주사위가 하나도 없는 열은 높이 0
+    expect(goalCheck('evenHorizon', cols(0, 1, 1, 1, 1))).toBe(true)
+    expect(goalCheck('evenHorizon', cols(0, 2, 2, 2, 2))).toBe(false)
+    // 열별 최고 높이: 뒷줄 기둥이 그 열의 높이
+    const back = board({ ...Object.fromEntries([0, 1, 2, 3, 4].map((c) => [`0,${c}`, pillarOf(1)])), '2,2': pillarOf(4) })
+    expect(goalCheck('evenHorizon', back)).toBe(false)
+    const back2 = board({ ...Object.fromEntries([0, 1, 2, 3, 4].map((c) => [`0,${c}`, pillarOf(1)])), '2,2': pillarOf(2) })
+    expect(goalCheck('evenHorizon', back2)).toBe(true)
+  })
+
+  it('앞줄 무지개: 1행 꼭대기 5개가 모두 다른 색', () => {
+    expect(goalCheck('frontRainbow', map('rbgyk', '.....', '.....'))).toBe(true)
+    expect(goalCheck('frontRainbow', map('rbgyr', '.....', '.....'))).toBe(false)
+    expect(goalCheck('frontRainbow', map('rbgy.', '.....', '.....'))).toBe(false)
+    expect(goalCheck('frontRainbow', map('rbgyt', '.....', '.....'))).toBe(false)
+    // 덮인 색이 아니라 꼭대기 색: 0,4를 덮으면 검정이 빨강이 된다
+    const b = map('rbgyk', '.....', '.....')
+    b.cells[0]?.[4]?.push(die('red', 2))
+    expect(goalCheck('frontRainbow', b)).toBe(false)
+  })
+
+  it('거울 지평: 같은 행의 1↔5열, 2↔4열 꼭대기가 같은 색인 쌍 3개 이상', () => {
+    expect(goalCheck('mirrorHorizon', map('rbgbr', 'y...y', '.....'))).toBe(true)
+    expect(goalCheck('mirrorHorizon', map('rbgbr', 'y...k', '.....'))).toBe(false)
+    // 다른 행끼리는 짝이 아니다
+    expect(goalCheck('mirrorHorizon', map('rb...', '...br', 'r...r'))).toBe(false)
+    // ⧗끼리는 같은 색이 아니다 (무색)
+    expect(goalCheck('mirrorHorizon', map('rbgbr', 't...t', '.....'))).toBe(false)
+    expect(goalCheck('mirrorHorizon', map('rrrrr', 'rrrrr', 'rrrrr'))).toBe(true)
+  })
+
+  it('두 대륙: 크기 3 이상인 같은 색 꼭대기 영역이 서로 다른 색으로 2개', () => {
+    expect(goalCheck('twoContinents', map('rrr..', '.....', '..bbb'))).toBe(true)
+    // 같은 색 두 영역은 안 됨
+    expect(goalCheck('twoContinents', map('rrr..', '.....', '..rrr'))).toBe(false)
+    expect(goalCheck('twoContinents', map('rrr..', '.....', '...bb'))).toBe(false)
+    // 해석(목표에는 공허의 우주 미적용): 검정이 이어 주지 않는다
+    expect(goalCheck('twoContinents', map('rrk..', '.....', '..bbb'), 'void')).toBe(false)
+  })
+
+  it('지평 계단: 1행 꼭대기 윗면이 왼쪽부터 1씩 오르거나 내리는 연속 4칸 (⧗에서 끊김)', () => {
+    const front = (...fs: (Face | null)[]) =>
+      board(Object.fromEntries(fs.flatMap((f, col) => (f === null ? [] : [[`0,${col}`, [die('red', f)]]]))))
+    expect(goalCheck('horizonStairs', front(1, 2, 3, 4, 1))).toBe(true)
+    expect(goalCheck('horizonStairs', front(5, 5, 4, 3, 2))).toBe(true)
+    expect(goalCheck('horizonStairs', front(1, 2, 3, 2, 1))).toBe(false)
+    expect(goalCheck('horizonStairs', front(1, 2, TIME, 3, 4))).toBe(false)
+    expect(goalCheck('horizonStairs', front(1, 2, null, 3, 4))).toBe(false)
+    // 1층이 아니라 꼭대기의 윗면을 본다
+    const stacked = board({
+      '0,0': [die('red', 1)],
+      '0,1': [die('red', 1), die('red', 2)],
+      '0,2': [die('red', 1), die('red', 3)],
+      '0,3': [die('red', 1), die('red', 4)],
+    })
+    expect(goalCheck('horizonStairs', stacked)).toBe(true)
   })
 })
