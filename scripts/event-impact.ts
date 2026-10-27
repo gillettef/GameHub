@@ -3,7 +3,7 @@
  * '시장 내 대상 비율' 대비 '제안 중 대상 비율'(쏠림 배율)로 보고, 이벤트 라운드와 이적시장 개장(효과 없음) 라운드를 비교한다.
  *   npx tsx scripts/event-impact.ts [--games 2000] [--players 3] [--seed 42] [--ai normal|easy]
  */
-import { PLAYERS, createGame, createRng, finishGame, nextRound, resolveRound } from '../src/core';
+import { PLAYERS, createGame, createRng, nextRound, resolveRound } from '../src/core';
 import type { AiLevel, EventKey, GameState, PlayerCard } from '../src/core';
 
 declare const process: { argv: string[] };
@@ -31,7 +31,7 @@ const gain = Object.fromEntries(keys.map((k) => [k, { t: { n: 0, fee: 0 }, o: { 
 
 for (let g = 0; g < GAMES; g++) {
   let s: GameState = createGame(Array.from({ length: N }, (_, i) => ({ name: `AI${i}`, kind: 'ai' as const, level: AI })), rng.int(2 ** 31));
-  while (s.phase !== 'guess') {
+  while (s.phase !== 'done') {
     const market = s.market.map((id) => PLAYERS[id]!);
     const ev = s.events[s.round - 1]!;
     s = resolveRound(s, {});
@@ -55,7 +55,6 @@ for (let g = 0; g < GAMES; g++) {
     }
     s = nextRound(s);
   }
-  finishGame(s, {});
 }
 const r2 = (x: number) => Math.round(x * 100) / 100;
 console.log(`# 이벤트 쏠림 N=${N} games=${GAMES} ai=${AI}`);

@@ -1,8 +1,8 @@
-import { NORMAL_FIELD, makeAiGuesses } from './ai';
-import { CLUBS, CLUBS_IN_GAME, EVENT_POOL, MAX_AGENTS, RULES, MIN_AGENTS, OVERSEAS_EXTRA, PLAYERS, TOTAL_ROUNDS, initialHand, marketSize, needsOf } from './data';
+import { NORMAL_FIELD } from './ai';
+import { CLUBS, CLUBS_IN_GAME, EVENT_POOL, GOALS, MAX_AGENTS, RULES, MIN_AGENTS, OVERSEAS_EXTRA, PLAYERS, TOTAL_ROUNDS, goal, initialHand, marketSize, needsOf } from './data';
 import { createRng } from './rng';
-import { currentEvent } from './rules';
-import type { AgentKind, AiLevel, FinalScore, GameState, Guesses, PersonaKey } from './types';
+import { currentEvent, goalProgress, ownSignings } from './rules';
+import type { AgentKind, AiLevel, FinalScore, GameState, GoalResult, PersonaKey } from './types';
 
 export interface AgentSetup {
   name: string;
@@ -29,7 +29,9 @@ export function createGame(setup: readonly AgentSetup[], seed: number): GameStat
   const decks = clubs.map((c) => (RULES.needRotate ? rng.shuffle(needsOf(c)) : needsOf(c)));
   const needs = Object.fromEntries(clubs.map((c, i) => [c, decks[i]![0]!]));
   const needDecks = Object.fromEntries(clubs.map((c, i) => [c, decks[i]!.slice(1)]));
-  const secrets = rng.shuffle(clubs);
+  // 목표 카드를 섞어 각자 비공개로 나눠 준다 (남은 카드는 쓰지 않음)
+  const goalDeck = rng.shuffle(GOALS.map((g) => g.id));
+  const per = Math.max(1, Math.min(RULES.goalsPerAgent, Math.floor(GOALS.length / setup.length)));
   const events = [...rng.shuffle(EVENT_POOL).slice(0, TOTAL_ROUNDS - 1), 'deadline' as const];
   let normals = 0;
   const agents = setup.map((a, i) => {
@@ -43,10 +45,10 @@ export function createGame(setup: readonly AgentSetup[], seed: number): GameStat
       score: 0,
       deals: 0,
       hand: initialHand(),
-      secret: secrets[i]!,
+      goals: goalDeck.slice(i * per, (i + 1) * per),
     };
   });
-  return dealRound({ v: 7, rng: rng.state, round: 1, phase: 'bid', events, market: [], clubs, needs, needDecks, signings: [], agents, results: [] });
+  return dealRound({ v: 8, rng: rng.state, round: 1, phase: 'bid', events, market: [], clubs, needs, needDecks, signings: [], agents, results: [] });
 }
 
 /** 이번 라운드에 선수가 계약된 구단: 공개된 요구 카드를 더미 맨 아래로 넣고 맨 위 카드를 공개한다 */
@@ -64,60 +66,37 @@ export function rotateNeeds(state: GameState): Pick<GameState, 'needs' | 'needDe
   return { needs, needDecks };
 }
 
-/** 다음 라운드로. 마지막 라운드 뒤에는 비밀 구단 지목 단계로 넘어간다. */
+/** 다음 라운드로. 마지막 라운드 뒤에는 목표 카드를 공개하고 게임을 끝낸다. */
 export function nextRound(state: GameState): GameState {
   if (state.phase !== 'result') throw new Error('round not resolved');
-  if (state.round >= TOTAL_ROUNDS) return { ...state, phase: 'guess' };
+  if (state.round >= TOTAL_ROUNDS) return finishGame(state);
   return dealRound({ ...state, ...rotateNeeds(state), round: state.round + 1 });
 }
 
-/** 공개 기록: 에이전트별로 각 구단에 제안한 횟수 (계약 성공·실패 모두. 실물에서는 구단 카드 위의 색 큐브) */
-export function clubMarks(state: Pick<GameState, 'results' | 'agents' | 'clubs'>): Record<number, number>[] {
-  const marks = state.agents.map(() => Object.fromEntries(state.clubs.map((c) => [c, 0])) as Record<number, number>);
-  for (const r of state.results) for (const e of r.entries) if (e.offer && e.status !== 'invalid' && marks[e.agent]![e.offer.clubId] !== undefined) marks[e.agent]![e.offer.clubId]!++;
-  return marks;
+/** 이 에이전트의 목표 카드별 진척·달성 여부 (직접 계약한 선수만 센다) */
+export function goalResults(state: Pick<GameState, 'signings' | 'agents'>, agentIdx: number): GoalResult[] {
+  const own = ownSignings(state, agentIdx);
+  return state.agents[agentIdx]!.goals.map((id) => {
+    const progress = goalProgress(id, own);
+    const done = progress >= goal(id).n;
+    return { goal: id, progress, done, points: done ? RULES.goalBonus : 0 };
+  });
 }
 
-/** 구단 아래 놓인 선수 수 (스폰서 데이 계약은 2명으로 셈) */
+/** 구단에 계약된 선수 수 */
 export const clubWeight = (state: Pick<GameState, 'signings'>, clubId: number, agent?: number): number =>
-  state.signings.filter((s) => s.clubId === clubId && (agent === undefined || s.agent === agent)).reduce((n, s) => n + s.weight, 0);
+  state.signings.filter((s) => s.clubId === clubId && (agent === undefined || s.agent === agent)).length;
 
-/**
- * 게임 종료: 모든 에이전트가 다른 에이전트의 비밀 구단을 하나씩 지목한다.
- * 맞히면 지목한 사람 +GUESS_BONUS. 한 명에게라도 들킨 에이전트는 비밀 구단 보너스를 받지 못한다.
- * 들키지 않았으면 비밀 구단 아래 선수 1명당 +CLUB_BONUS.
- */
-export function finishGame(state: GameState, humanGuesses: Readonly<Record<number, Guesses>>): GameState {
-  if (state.phase !== 'guess') throw new Error('not in guess phase');
-  const rng = createRng(state.rng);
-  const guesses: Guesses[] = state.agents.map((a, i) => {
-    if (a.kind === 'ai') return makeAiGuesses(state, i, rng);
-    const g = humanGuesses[i];
-    if (!g) throw new Error(`missing guesses for agent ${i}`);
-    // 한 명만 지목하는 규칙이면 첫 지목만 인정
-    if (RULES.guessOne) {
-      const first = Object.entries(g)[0];
-      return first ? { [Number(first[0])]: first[1] } : {};
-    }
-    return g;
-  });
-  const exposed = state.agents.map((_, i) => guesses.some((g, k) => k !== i && g[i] === state.agents[i]!.secret));
+/** 게임 종료: 모두 목표 카드를 공개하고, 직접 계약한 선수로 조건을 채웠으면 보너스를 더한다. */
+export function finishGame(state: GameState): GameState {
+  if (state.phase === 'done') return state;
   const agents = state.agents.map((a, i) => {
-    const hits = state.agents.filter((o, k) => k !== i && guesses[i]![k] === o.secret).length;
-    const misses = state.agents.filter((o, k) => k !== i && guesses[i]![k] !== undefined && guesses[i]![k] !== o.secret).length;
-    const clubDeals = clubWeight(state, a.secret, RULES.clubOwnOnly ? i : undefined);
-    const final: FinalScore = {
-      guesses: guesses[i]!,
-      guessPoints: hits * RULES.guessBonus - misses * RULES.wrongGuess,
-      exposed: exposed[i]!,
-      clubDeals,
-      clubPoints: exposed[i] ? 0 : clubDeals * RULES.clubBonus,
-      total: 0,
-    };
-    final.total = a.score + final.guessPoints + final.clubPoints;
+    const goals = goalResults(state, i);
+    const goalPoints = goals.reduce((n, g) => n + g.points, 0);
+    const final: FinalScore = { goals, goalPoints, total: a.score + goalPoints };
     return { ...a, final };
   });
-  return { ...state, rng: rng.state, agents, phase: 'done' };
+  return { ...state, agents, phase: 'done' };
 }
 
 export const isFinished = (state: GameState): boolean => state.phase === 'done';

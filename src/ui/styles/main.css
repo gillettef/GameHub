@@ -219,7 +219,6 @@ input[readonly] { color: var(--mu); }
 .cell > .pick { width: 100%; height: 100%; margin: 0; border: 0; border-radius: inherit; background: transparent; text-align: left; font-weight: 400; }
 .cell.sel { border-color: var(--gd); box-shadow: inset 0 0 0 1px var(--gd); background: var(--gd-bg); }
 .cell.dim > .pick { opacity: .45; }
-.cell.mine { border-color: var(--gd-ln); }
 .zoom { position: absolute; top: 2px; right: 2px; z-index: 1; width: 44px; height: 44px; min-height: 44px; padding: 0; border: 0; background: transparent; display: grid; place-items: center; color: var(--tx2); }
 .zoom svg { width: 28px; height: 28px; padding: 6px; border-radius: 50%; background: rgba(11, 18, 32, .78); border: 1px solid var(--ln2); }
 .zoom-s { width: 100%; min-height: 44px; padding: 0; display: grid; place-items: center; background: transparent; border-color: var(--ln); color: var(--mu); }
@@ -264,8 +263,6 @@ input[readonly] { color: var(--mu); }
 .club .bud { grid-column: 2 / -1; color: var(--gr); font-size: 12px; font-weight: 700; white-space: nowrap; }
 .club .bud.poor { color: var(--rd); }
 .crest { display: block; width: 44px; height: 44px; }
-.crest.mine { border-radius: 12px; box-shadow: 0 0 0 1px var(--gd-ln); }
-.mine-t { font-size: 10px; font-weight: 800; color: var(--gd-m); border: 1px solid var(--gd-ln); border-radius: 4px; padding: 0 4px; vertical-align: 1px; }
 .needs { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .nd-art { display: block; width: 40px; height: 52px; }
 .nd-art.sm { width: 18px; height: 24px; }
@@ -273,10 +270,6 @@ input[readonly] { color: var(--mu); }
 .nc { font-size: 11px; padding: 1px 8px; border-radius: 6px; color: var(--tx2); border: 1px solid var(--ln2); }
 .nc.fit { color: var(--gd); border-color: var(--gd-ln); font-weight: 700; }
 .club .zoom { top: 4px; }
-.club.guess { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 8px; align-items: center; min-height: 56px; text-align: left; background: var(--pn2); border-color: var(--ln); font-weight: 400; }
-.club.guess.sel { border-color: var(--gd); background: var(--gd-bg); }
-.club.guess .bud { color: var(--mu); font-size: 12px; text-align: right; }
-.club.guess .marks { grid-column: 1 / -1; }
 .g-nm { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .g-nm .crest { width: 28px; height: 28px; }
 
@@ -377,7 +370,6 @@ input[readonly] { color: var(--mu); }
 .nd b { color: var(--tx2); }
 .nd.open { border-color: var(--gd-ln); }
 .nd.open b { color: var(--gd); }
-.marks.big .dot { width: 14px; height: 14px; }
 .flavor { margin-top: 14px !important; padding-top: 10px; border-top: 1px dashed var(--ln2); font-size: 13px; color: var(--mu) !important; font-style: italic; }
 .flavor::before { content: '“'; }
 .flavor::after { content: '”'; }
@@ -405,22 +397,30 @@ input[readonly] { color: var(--mu); }
 .reveal p { margin: 0 0 4px; }
 .reveal ul { margin: 0; padding-left: 18px; font-size: 13px; line-height: 1.6; }
 
-/* 비밀 구단 · 공개 기록 */
+/* 목표 카드 · 계약 현황 */
 .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: var(--c); margin-right: 4px; vertical-align: 0; flex: none; }
-.marks { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 3px; min-height: 20px; align-items: center; padding-top: 6px; border-top: 1px solid var(--sep); }
-.marks .dot { margin-right: 0; }
-.marks small { font-size: 11px; color: var(--mu); }
-.secret { display: block; width: 100%; margin-bottom: 12px; padding: 0; text-align: left; font-weight: 400; border-radius: 16px; border: 1px solid var(--gd-ln); background: var(--pn); overflow: hidden; }
+.goal { display: block; width: 100%; margin-bottom: 12px; padding: 0; text-align: left; font-weight: 400; border-radius: 16px; border: 1px solid var(--gd-ln); background: var(--pn); overflow: hidden; }
 .tape { display: flex; justify-content: space-between; align-items: center; padding: 4px 14px; background: var(--gd-bg); border-bottom: 1px dashed var(--gd-ln); color: var(--gd-m); font-size: 10px; font-weight: 800; letter-spacing: .16em; }
 .tape span:last-child { letter-spacing: 0; font-weight: 600; color: var(--mu); }
-.secret-b { display: grid; grid-template-columns: 48px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 10px 14px 12px; }
-.secret-b .cd-art.sq { width: 48px; height: 48px; }
-.secret-t { min-width: 0; display: flex; flex-direction: column; }
-.secret-t b { font-size: 16px; font-weight: 800; line-height: 1.3; }
-.secret small { color: var(--mu); font-size: 12px; }
-.secret-n { text-align: right; display: flex; flex-direction: column; }
-.secret-n b { color: var(--gd); font-size: 18px; font-weight: 800; line-height: 1.15; }
-.secret-n small { font-size: 11px; }
+.goal-b { display: grid; grid-template-columns: 48px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 10px 14px 12px; }
+.goal-b .cd-art.sq { width: 48px; height: 48px; }
+.goal-t { min-width: 0; display: flex; flex-direction: column; }
+.goal-t b { font-size: 16px; font-weight: 800; line-height: 1.3; }
+.goal small { color: var(--mu); font-size: 12px; }
+.goal-n { text-align: right; display: flex; flex-direction: column; }
+.goal-n b { color: var(--gd); font-size: 18px; font-weight: 800; line-height: 1.15; }
+.goal-n small { font-size: 11px; }
+.goal-i { display: block; width: 100%; padding: 0; text-align: left; font-weight: 400; background: none; border: 0; border-radius: 0; }
+.goal-i + .goal-i { border-top: 1px dashed var(--gd-ln); }
+.goal-r { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 8px; align-items: center; width: 100%; min-height: 48px; margin: 4px 0 8px; padding: 8px 12px; text-align: left; font-weight: 400; background: var(--pn2); border: 1px solid var(--ln); border-radius: 12px; }
+.goal-r .stamp-tag { justify-self: end; }
+.goal-r .mu:last-child { grid-column: 1 / -1; font-size: 13px; }
+.roster { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 8px; }
+.roster li { display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: center; }
+.roster li > b { flex: 0 0 100%; font-size: 13px; }
+.roster .rp { font-size: 12px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--ln); background: var(--pn2); }
+.roster .rp small { color: var(--mu); }
+.rule-goals { margin: 4px 0 8px; padding-left: 18px; font-size: 13px; }
 
 /* 1·2차 협상 탭 */
 .stages { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin: 4px 0 6px; padding: 4px; border-radius: 16px; background: var(--pn); border: 1px solid var(--ln); }

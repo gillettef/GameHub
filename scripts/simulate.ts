@@ -4,7 +4,7 @@
  * mixed: floor(N/2)명은 normal, 나머지 easy. 게임마다 normal 자리을 회전시켜 자리 편향 상쇄
  * 협상 단위 집계(패스·무효 비율 등)의 분모는 자리 × 라운드 × 차수(STAGES)
  */
-import { AI_MODEL, AI_TUNING, DEMANDS, EVENT_KEYS, RULES, STAGES, TOTAL_ROUNDS, createGame, createRng, finishGame, nextRound, resolveRound, winners } from '../src/core';
+import { AI_MODEL, AI_TUNING, DEMANDS, EVENT_KEYS, GOALS, RULES, STAGES, TOTAL_ROUNDS, createGame, createRng, nextRound, resolveRound, winners } from '../src/core';
 import type { AiLevel, EventKey, GameState } from '../src/core';
 
 declare const process: { argv: string[] };
@@ -51,9 +51,9 @@ const eventFee = Object.fromEntries(EVENT_KEYS.map((k) => [k, { rounds: 0, fee: 
 /** 차수별 집계 */
 const st = [1, 2].map(() => ({ bids: 0, contested: 0, tieGroups: 0, tieBroken: 0, deals: 0, fee: 0, passes: 0, underCost: 0, signed: 0, dup: 0 }));
 const roundCards = Array<number>(TOTAL_ROUNDS).fill(0);
-let exposed = 0;
-let clubPts = 0;
-let guessPts = 0;
+let goalsDone = 0;
+let goalPts = 0;
+const goalStat = new Map<number, { n: number; done: number }>();
 let feePts = 0;
 let changed = 0;
 let sharedWin = 0;
@@ -67,7 +67,7 @@ for (let g = 0; g < GAMES; g++) {
     levels.map((lv, i) => ({ name: `AI${i}`, kind: 'ai' as const, level: lv })),
     seedRng.int(2 ** 31),
   );
-  while (s.phase !== 'guess') {
+  while (s.phase !== 'done') {
     marketMax = Math.max(marketMax, s.market.length);
     const before = s.agents.reduce((a, x) => a + x.hand.length, 0);
     s = resolveRound(s, {});
@@ -109,7 +109,6 @@ for (let g = 0; g < GAMES; g++) {
     s = nextRound(s);
   }
   leftCards += s.agents.reduce((a, x) => a + x.hand.length, 0);
-  s = finishGame(s, {});
   const totalsG = s.agents.map((a) => a.final!.total);
   const visible = s.agents.map((a) => a.score);
   const ws = winners(s);
@@ -122,9 +121,14 @@ for (let g = 0; g < GAMES; g++) {
     level[lv].seats++;
     level[lv].score += a.final!.total;
     if (ws.includes(i)) level[lv].wins += 1 / ws.length;
-    if (a.final!.exposed) exposed++;
-    clubPts += a.final!.clubPoints;
-    guessPts += a.final!.guessPoints;
+    goalPts += a.final!.goalPoints;
+    for (const r of a.final!.goals) {
+      if (r.done) goalsDone++;
+      const x = goalStat.get(r.goal) ?? { n: 0, done: 0 };
+      x.n++;
+      if (r.done) x.done++;
+      goalStat.set(r.goal, x);
+    }
     feePts += a.score;
   });
   totals.push(...totalsG);
@@ -137,7 +141,7 @@ const seats = GAMES * N;
 const slots = seats * TOTAL_ROUNDS;
 console.log(`# 시뮬레이션 N=${N} games=${GAMES} seed=${SEED} ai=${AI} (라운드 ${TOTAL_ROUNDS} × ${STAGES}차, 시장 ${N * RULES.marketPer + RULES.marketExtra}명)`);
 console.log(`자리별 승률: ${seatWins.map((w) => pct(w, GAMES)).join(' / ')}`);
-console.log(`평균 최종 점수 ${r1(mean(totals))} (수수료 ${r1(feePts / seats)} + 비밀 구단 ${r1(clubPts / seats)} + 지목 ${r1(guessPts / seats)})`);
+console.log(`평균 최종 점수 ${r1(mean(totals))} (수수료 ${r1(feePts / seats)} + 목표 ${r1(goalPts / seats)})`);
 console.log(`1·2위 격차 평균 ${r1(mean(gaps))}, 공동 우승 ${pct(sharedWin, GAMES)}, 숨은 점수로 우승자가 바뀐 판 ${pct(changed, GAMES)}`);
 st.forEach((x, k) => {
   console.log(
@@ -145,7 +149,7 @@ st.forEach((x, k) => {
   );
 });
 console.log(`시장 최대 ${marketMax}명, 라운드별 카드 사용(1인당) ${roundCards.map((c) => r1(c / seats)).join('/')}, 남은 카드 ${r1(leftCards / seats)}장`);
-console.log(`비밀 구단 노출률 ${pct(exposed, seats)}`);
+console.log(`목표 달성률 ${pct(goalsDone, seats * RULES.goalsPerAgent)}: ${GOALS.map((g) => `${g.name} ${pct(goalStat.get(g.id)?.done ?? 0, goalStat.get(g.id)?.n ?? 0)}`).join(' · ')}`);
 console.log(`요구 수수료 카드 (사용 / 계약률 / 동률 승): ${DEMANDS.map((d) => `${d} ${demandUse[d]!.n} / ${pct(demandUse[d]!.won, demandUse[d]!.n)} / ${demandUse[d]!.tieWon}`).join(' · ')}`);
 console.log(`이벤트별 라운드 수수료: ${EVENT_KEYS.map((k) => `${k} ${r1(eventFee[k].fee / Math.max(1, eventFee[k].rounds))}`).join(' · ')}`);
 if (AI === 'mixed') for (const lv of ['easy', 'normal'] as const) console.log(`  ${lv}: 1인당 승률 ${pct(level[lv].wins, level[lv].seats)}, 평균 ${r1(level[lv].score / Math.max(1, level[lv].seats))}`);

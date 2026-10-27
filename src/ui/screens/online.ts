@@ -12,7 +12,7 @@ export const connLine = (n: NetState): string => (STATUS_TEXT[n.status] ? `<p cl
 export function onlineEntryScreen(ui: UiState, n: NetState): string {
   return `${header(`<span class="pill">${esc(ui.profile!.nick)}</span>`)}<main class="content">
     <h2 class="title">온라인 대전</h2>
-    <p class="mu">각자 자기 휴대폰으로 접속해 ${MIN_AGENTS}~${MAX_AGENTS}명이 함께 합니다. 빈자리는 AI로 채울 수 있어요. 다른 사람의 제안과 비밀 구단은 서버가 가려서 보내 줍니다.</p>
+    <p class="mu">각자 자기 휴대폰으로 접속해 ${MIN_AGENTS}~${MAX_AGENTS}명이 함께 합니다. 빈자리는 AI로 채울 수 있어요. 다른 사람의 제안과 목표 카드는 서버가 가려서 보내 줍니다.</p>
     ${n.notice ? `<p class="card notice">${esc(n.notice)}</p>` : ''}
     <section class="card"><h3>방 만들기</h3>
       <p class="mu">방을 만들면 4자리 초대 코드가 나옵니다. 코드나 초대 링크를 친구에게 보내 주세요.</p>
@@ -92,7 +92,7 @@ const bidText = (b: RoundBid | null): string => {
 /** 제출 뒤 다른 사람을 기다리는 화면 */
 export function waitScreen(r: RoomView, n: NetState, gameHeader: string): string {
   const g = r.game!;
-  const what = g.phase === 'guess' ? '지목을 제출했습니다' : `라운드 ${g.round}/${TOTAL_ROUNDS} 제안을 제출했습니다`;
+  const what = `라운드 ${g.round}/${TOTAL_ROUNDS} 제안을 제출했습니다`;
   const humans = r.seats.filter((s) => s.kind === 'human').length;
   return `${gameHeader}<main class="content center">
     <div class="envelope small" aria-hidden="true"><span class="seal">${ICON.lock}</span></div>

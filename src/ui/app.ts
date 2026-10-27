@@ -1,15 +1,15 @@
-import { MAX_AGENTS, MIN_AGENTS, PLAYERS, TOTAL_ROUNDS, createGame, finishGame, isDemand, nextRound, rankings, resolveRound } from '../core';
+import { MAX_AGENTS, MIN_AGENTS, PLAYERS, TOTAL_ROUNDS, createGame, isDemand, nextRound, rankings, resolveRound } from '../core';
 import type { Demand, GameState, RoundBid } from '../core';
 import { Net } from '../online/client';
 import { ROOM_CODE_RE, type RoomView } from '../online/protocol';
 import { loadProfile, loadSession, newProfile, saveProfile, saveSession, type Session } from '../store/storage';
 import { homeScreen, registerScreen } from './screens/home';
-import { bidScreen, finalScreen, gameHeader, guessScreen, handoffScreen, resultScreen, slotHand, slotReady, slotCheck } from './screens/game';
+import { bidScreen, finalScreen, gameHeader, handoffScreen, resultScreen, slotHand, slotReady, slotCheck } from './screens/game';
 import { connLine, inviteLink, onlineEntryScreen, roomLobbyScreen, waitScreen } from './screens/online';
 import { rulesSheet } from './screens/rules';
 import { setupScreen } from './screens/setup';
 import { parseZoom, zoomSheet } from './screens/zoom';
-import { esc, slotOffer, type Draft, type GuessDraft, type Seat, type Slot, type UiState } from './view';
+import { esc, slotOffer, type Draft, type Seat, type Slot, type UiState } from './view';
 
 const AI_NAMES = ['AI 알파', 'AI 브라보', 'AI 찰리'];
 const NICK_RE = /[<>&"'\s]/g;
@@ -22,7 +22,6 @@ const ui: UiState = {
   view: 'home',
   seats: [],
   draft: null,
-  guess: null,
   rulesOpen: false,
   zoom: null,
   renaming: false,
@@ -45,7 +44,6 @@ function onNet() {
   // 게임이 끝나는 순간을 이 기기에서 봤으면 전적에 남긴다
   const phase = r?.game ? `${r.code}:${r.game.phase}` : '';
   if (r?.game?.phase === 'done' && r.mySeat !== null && lastOnlinePhase && lastOnlinePhase !== phase) recordResult(r.game, r.mySeat);
-  if (!r?.game) ui.guess = null;
   lastOnlinePhase = phase;
   render();
 }
@@ -55,7 +53,7 @@ const isOnline = () => ui.view === 'online' && !!net.state.room?.game;
 const curSession = (): Session => (isOnline() ? onlineSession(net.state.room!) : ui.session!);
 
 /** 서버가 보낸 내 자리 게임을 화면 함수가 받는 모양으로 */
-const onlineSession = (r: RoomView): Session => ({ game: r.game!, subs: {}, guesses: {}, turn: r.mySeat!, screen: 'bid', recorded: true });
+const onlineSession = (r: RoomView): Session => ({ game: r.game!, subs: {}, turn: r.mySeat!, screen: 'bid', recorded: true });
 
 function onlineHtml(): string {
   const n = net.state;
@@ -69,11 +67,9 @@ function onlineHtml(): string {
   switch (g.phase) {
     case 'bid':
       return (done ? waitScreen(r, n, gameHeader(g)) : bidScreen(s, ensureDraft(s))) + status;
-    case 'guess':
-      return (done ? waitScreen(r, n, gameHeader(g)) : guessScreen(s, ensureGuess(s))) + status;
     case 'result': {
       const waiting = r.seats.filter((x) => x.kind === 'human' && x.online).length;
-      const label = g.round >= TOTAL_ROUNDS ? '비밀 구단 지목 →' : '다음 라운드 →';
+      const label = g.round >= TOTAL_ROUNDS ? '최종 결과 →' : '다음 라운드 →';
       return resultScreen(s, done ? `<button class="pri" disabled>다른 사람 기다리는 중 (${r.done.length}/${waiting})</button>` : `<button class="pri" data-act="next">${label}</button>`) + status;
     }
     case 'done':
@@ -103,14 +99,12 @@ function screenHtml(): string {
       return bidScreen(s, ensureDraft(s));
     case 'result':
       return resultScreen(s);
-    case 'guess':
-      return guessScreen(s, ensureGuess(s));
     case 'final':
       return finalScreen(s);
   }
 }
 
-/** 확대 카드가 보여 줄 게임: 지금 제안·지목 중인 사람의 것만 (가림·대기 화면에서는 없음) */
+/** 확대 카드가 보여 줄 게임: 지금 제안 중인 사람의 것만 (가림·대기 화면에서는 없음) */
 function zoomSession(): Session | null {
   if (isOnline()) {
     const r = net.state.room!;
@@ -130,6 +124,8 @@ let lastScreenKey = '';
 let lastHtml = '';
 
 export function render(): void {
+  // 화면을 먼저 그린다: 입찰 화면은 그리면서 작성 상태(draft)를 만들므로, 그 뒤에 화면 키를 구해야 첫 확대가 바로 닫히지 않는다
+  const screen = screenHtml();
   const s = ui.session;
   const r = net.state.room;
   const key =
@@ -139,7 +135,7 @@ export function render(): void {
   // 화면이 바뀌면(차례 넘김·라운드 진행 등) 확대 카드를 닫는다 → 핫시트에서 다음 사람에게 보이지 않게
   if (key !== lastScreenKey && ui.zoom) closeZoom();
   const zs = ui.zoom ? zoomSession() : null;
-  const html = screenHtml() + (ui.rulesOpen ? rulesSheet() : '') + (ui.zoom ? zoomSheet(ui.zoom, zs) : '');
+  const html = screen + (ui.rulesOpen ? rulesSheet() : '') + (ui.zoom ? zoomSheet(ui.zoom, zs) : '');
   // 다른 사람의 진행 상황만 바뀐 경우 등 화면이 같으면 다시 그리지 않는다 (열어 둔 접기·입력 유지)
   if (html === lastHtml && key === lastScreenKey) return;
   lastHtml = html;
@@ -173,13 +169,6 @@ function ensureDraft(s: Session): Draft {
 /** 지금 작성 중인 협상 */
 const curSlot = (): Slot => ui.draft!.slots[ui.draft!.stage - 1]!;
 
-function ensureGuess(s: Session): GuessDraft {
-  const key = `guess:${s.turn}`;
-  if (ui.guess?.key === key) return ui.guess;
-  ui.guess = { key, picks: {} };
-  return ui.guess;
-}
-
 // ── 게임 흐름 ──────────────────────────────────────────
 
 function beginBidding(game: GameState, base?: Session): Session {
@@ -187,7 +176,6 @@ function beginBidding(game: GameState, base?: Session): Session {
   return {
     game,
     subs: {},
-    guesses: {},
     turn: humans[0] ?? 0,
     screen: humans.length > 1 ? 'handoff' : 'bid',
     recorded: base?.recorded ?? false,
@@ -224,38 +212,14 @@ function advance() {
   if (isOnline()) return net.send({ t: 'ready', round: net.state.room!.game!.round });
   const s = ui.session!;
   const game = nextRound(s.game);
-  if (game.phase === 'guess') {
-    const humans = humansOf(game);
-    if (!humans.length) return finish({ ...s, game });
-    ui.session = { ...s, game, guesses: {}, turn: humans[0]!, screen: humans.length > 1 ? 'handoff' : 'guess' };
+  if (game.phase === 'done') {
+    // 마지막 라운드 뒤: 목표 카드 공개·최종 정산
+    ui.session = { ...s, game, screen: 'final' };
+    record();
   } else {
     ui.session = beginBidding(game, s);
   }
   persist();
-}
-
-function finish(s: Session) {
-  ui.session = { ...s, game: finishGame(s.game, s.guesses), screen: 'final' };
-  ui.guess = null;
-  record();
-  persist();
-}
-
-function submitGuesses(picks: Record<number, number>) {
-  if (isOnline()) {
-    ui.guess = null;
-    return net.send({ t: 'guess', picks });
-  }
-  const s = ui.session!;
-  const guesses = { ...s.guesses, [s.turn]: picks };
-  const nextHuman = humansOf(s.game).find((i) => !(i in guesses));
-  ui.guess = null;
-  if (nextHuman !== undefined) {
-    ui.session = { ...s, guesses, turn: nextHuman, screen: 'handoff' };
-    persist();
-  } else {
-    finish({ ...s, guesses });
-  }
 }
 
 /** 기기 주인(0번 자리)의 전적 기록 */
@@ -316,7 +280,7 @@ const actions: Record<string, (arg: string) => void> = {
     const s = ui.session;
     if (!s) return;
     // 이어하기 시 다른 사람의 화면이 노출되지 않도록 핫시트면 가림 화면부터
-    if ((s.screen === 'bid' || s.screen === 'guess') && humansOf(s.game).length > 1) ui.session = { ...s, screen: 'handoff' };
+    if (s.screen === 'bid' && humansOf(s.game).length > 1) ui.session = { ...s, screen: 'handoff' };
     ui.view = 'game';
   },
   quit: () => {
@@ -410,7 +374,7 @@ const actions: Record<string, (arg: string) => void> = {
 
   ready: () => {
     const s = ui.session!;
-    ui.session = { ...s, screen: s.game.phase === 'guess' ? 'guess' : 'bid' };
+    ui.session = { ...s, screen: 'bid' };
     persist();
   },
   pick: (id) => {
@@ -443,15 +407,6 @@ const actions: Record<string, (arg: string) => void> = {
     const bid = { first: slotOffer(d.slots[0]), second: slotOffer(d.slots[1]) };
     if (!bid.first && !bid.second && !confirm('1차·2차 모두 패스할까요? 요구 수수료 카드는 소모되지 않습니다.')) return;
     submit(bid);
-  },
-  guess: (arg) => {
-    const [who, club] = arg.split(':');
-    // 'none' = 이 에이전트는 지목하지 않음 (틀리면 감점이라 지목은 선택)
-    if (club === 'none') delete ui.guess!.picks[Number(who)];
-    else ui.guess!.picks[Number(who)] = Number(club);
-  },
-  'guess-submit': () => {
-    submitGuesses({ ...ui.guess!.picks });
   },
   next: () => advance(),
 };

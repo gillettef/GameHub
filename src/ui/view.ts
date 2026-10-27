@@ -1,4 +1,4 @@
-import { CLUBS, EVENTS, INVALID_TEXT, club, clubMarks, currentEvent, demandFee, player, upcomingEvent } from '../core';
+import { CLUBS, EVENTS, INVALID_TEXT, club, currentEvent, demandFee, player, upcomingEvent } from '../core';
 import { eventCard } from './cards';
 import type { Zoom } from './screens/zoom';
 import type { AgentKind, AgentState, AiLevel, Demand, GameState, Offer, RoundEntry, RoundResult, Stage } from '../core';
@@ -25,12 +25,6 @@ export interface Draft {
   slots: [Slot, Slot];
 }
 
-/** 지목 작성 중 상태: 다른 에이전트 → 구단 */
-export interface GuessDraft {
-  key: string;
-  picks: Record<number, number>;
-}
-
 export const slotOffer = (d: Slot): Offer | null =>
   !d.pass && d.playerId !== null && d.clubId !== null && d.demand !== null ? { playerId: d.playerId, clubId: d.clubId, demand: d.demand } : null;
 
@@ -44,7 +38,6 @@ export interface UiState {
   flash: string;
   seats: Seat[];
   draft: Draft | null;
-  guess: GuessDraft | null;
   rulesOpen: boolean;
   /** 확대해 보고 있는 카드 (화면이 바뀌면 닫는다) */
   zoom: Zoom | null;
@@ -61,7 +54,7 @@ export const money = (x: number): string => `${x}억`;
 
 export const agentName = (a: AgentState): string => esc(a.name) + (a.kind === 'ai' ? ' <span class="ai">AI</span>' : '');
 
-/** 에이전트 색 (실물에서는 큐브 색). 채도를 낮추되 밝기로도 구분되게 */
+/** 에이전트 색 (실물에서는 카드 테두리 색). 채도를 낮추되 밝기로도 구분되게 */
 export const AGENT_COLORS = ['#d9bd7f', '#7fb3a1', '#93a9cc', '#d39ea4'];
 export const dot = (i: number): string => `<i class="dot" style="--c:${AGENT_COLORS[i] ?? '#999'}" aria-hidden="true"></i>`;
 
@@ -107,10 +100,17 @@ export function scoreboard(g: GameState, me = -1): string {
     .join('')}</div>`;
 }
 
-/** 구단별 공개 기록: 누가 몇 번 이 구단으로 제안했는가 (색 점) */
-export function marksOf(g: GameState, clubId: number): string {
-  const marks = clubMarks(g);
-  return g.agents.map((_, i) => dot(i).repeat(marks[i]![clubId] ?? 0)).join('');
+/** 공개 계약 현황: 에이전트마다 직접 계약시킨 선수 (목표 카드를 읽는 단서) */
+export function rosters(g: GameState): string {
+  return `<ul class="roster">${g.agents
+    .map((a, i) => {
+      const own = g.signings.filter((s) => s.agent === i);
+      const list = own.length
+        ? own.map((s) => { const p = player(s.playerId); return `<span class="rp">${esc(p.name)} <small>${p.pos}·${p.trait}${s.weight > 1 ? ` ×${s.weight}` : ''}</small></span>`; }).join('')
+        : '<small class="mu">아직 없음</small>';
+      return `<li><b>${dot(i)}${esc(a.name)}</b>${list}</li>`;
+    })
+    .join('')}</ul>`;
 }
 
 export const offerText = (o: Offer): string => `${esc(player(o.playerId).name)} → ${esc(club(o.clubId).name)} · 요구 ${demandFee(o.demand)}억`;

@@ -4,7 +4,7 @@
  * 어떤 변형도 공정값을 크게 넘지 못하는 B 가 대칭 균형에 가깝다.
  *   npx tsx scripts/equilibrium.ts --players 3 --games 300 --rules ...
  */
-import { PERSONAS, RULES, createGame, createRng, finishGame, nextRound, resolveRound, winners } from '../src/core';
+import { PERSONAS, RULES, createGame, createRng, nextRound, resolveRound, winners } from '../src/core';
 import type { GameState, Persona, PersonaKey } from '../src/core';
 
 declare const process: { argv: string[] };
@@ -22,20 +22,19 @@ for (const kv of arg('rules', '').split(',').filter(Boolean)) {
 const rng = createRng(Number(arg('seed', '42')));
 const fair = 1 / N;
 
-/** 변형은 stealth 자리, 기준 성향은 balanced 자리에 넣어 대진 */
+/** 변형은 opportunist 자리, 기준 성향은 balanced 자리에 넣어 대진 */
 function rate(variant: Persona, baseP: Persona): number {
   Object.assign(PERSONAS.balanced, baseP);
-  Object.assign(PERSONAS.stealth, variant);
+  Object.assign(PERSONAS.opportunist, variant);
   let win = 0;
   for (let g = 0; g < GAMES; g++) {
-    const seats: PersonaKey[] = rng.shuffle(['stealth', ...Array<PersonaKey>(N - 1).fill('balanced')]);
+    const seats: PersonaKey[] = rng.shuffle(['opportunist', ...Array<PersonaKey>(N - 1).fill('balanced')]);
     let s: GameState = createGame(
       seats.map((p, i) => ({ name: `${p}${i}`, kind: 'ai' as const, persona: p })),
       rng.int(2 ** 31),
     );
-    while (s.phase !== 'guess') s = nextRound(resolveRound(s, {}));
-    s = finishGame(s, {});
-    const me = seats.indexOf('stealth');
+    while (s.phase !== 'done') s = nextRound(resolveRound(s, {}));
+    const me = seats.indexOf('opportunist');
     const ws = winners(s);
     if (ws.includes(me)) win += 1 / ws.length;
   }
@@ -60,5 +59,5 @@ for (const g of grid) {
   const worst = Math.max(...rs.map(([, r]) => r));
   console.log(`greed=${g.greed} risk=${g.risk}: 최대 공략 ${Math.round(worst * 1000) / 10}% (${rs.map(([n, r]) => `${n} ${Math.round(r * 1000) / 10}%`).join(' · ')})`);
   // demand 속성이 남지 않게 초기화
-  delete (PERSONAS.stealth as Partial<Persona>).demand;
+  delete (PERSONAS.opportunist as Partial<Persona>).demand;
 }

@@ -3,7 +3,7 @@
  * 스타일: 평면 선화 · 축구 × 첩보. 색은 클래스(.art .l 등)로 main.css 의 --a* 토큰을 따른다.
  * 외부 이미지·폰트 없음. 데이터는 읽기만 한다.
  */
-import { CLUBS, NEEDS, PLAYERS } from '../../core';
+import { GOALS, CLUBS, NEEDS, PLAYERS } from '../../core';
 import type { Demand, EventKey, Position, Trait } from '../../core';
 
 type Pt = [number, number];
@@ -157,11 +157,21 @@ export function needArt(needId: number): string {
 <rect class="c" x="3" y="3" width="34" height="46" rx="3"/>${zone[n.pos]}<path class="lt" d="M3 26h34M12 3v6h16V3M12 49v-6h16v6"/><circle class="lt" cx="20" cy="26" r="5"/>${traitGlyph(n.pref, 15, 21, 1)}</svg>`;
 }
 
-/** 비밀 구단 카드: 중절모 요원 + 그 구단의 작은 방패 */
-export function secretArt(clubId: number): string {
-  const c = CLUBS[clubId];
-  return `<svg class="art" viewBox="0 0 48 48" style="--as:#2b3240;--ac:${CLUB_TINT[clubId] ?? '#888'}" role="img" aria-label="비밀 요원 일러스트${c ? ` (${c.name})` : ''}">
-<ellipse class="g" cx="24" cy="46" rx="15" ry="1.8"/><path class="s" d="M10 46c0-11 6-17 14-17s14 6 14 17z"/><path class="l" d="m19 29 5 8 5-8M24 37v9"/><circle class="b" cx="24" cy="21" r="6"/><path class="glass" d="M18.5 20.5h4.5M25 20.5h4.5"/><path class="h" d="M11 16.5h26l-3-1.5c-1-5-4-8-10-8s-9 3-10 8z"/><path class="a" d="M15.5 14h17"/><g transform="translate(29 30) scale(.38)">${clubBody(clubId)}</g></svg>`;
+/** 목표 카드: 의뢰서(클립보드) + 과녁 + 조건 표시 (포지션 색, 특성 문양) */
+export function goalArt(goalId: number): string {
+  const g = GOALS[goalId];
+  const r = g?.rule;
+  const accent = r?.kind === 'pos' ? POS_ACCENT[r.pos] : '#c4b07e';
+  const mark =
+    r?.kind === 'trait'
+      ? traitGlyph(r.trait, 19, 33, 1)
+      : r?.kind === 'pos'
+        ? `<text class="t" x="24" y="40" text-anchor="middle">${r.pos}</text>`
+        : r?.kind === 'cost'
+          ? '<text class="t" x="24" y="40" text-anchor="middle">6억+</text>'
+          : '<text class="t" x="24" y="40" text-anchor="middle">4/4</text>';
+  return `<svg class="art" viewBox="0 0 48 48" style="--aa:${accent}" role="img" aria-label="목표 카드 일러스트${g ? ` (${g.name})` : ''}">
+<ellipse class="g" cx="24" cy="46" rx="15" ry="1.8"/><rect class="s" x="10" y="6" width="28" height="38" rx="3"/><path class="l" d="M18 6V3.5h12V6"/><circle class="a" cx="24" cy="20" r="8"/><circle class="a" cx="24" cy="20" r="4"/><circle class="af" cx="24" cy="20" r="1.4"/><path class="lt" d="M14 28h20"/>${mark}</svg>`;
 }
 
 // ── 요구 수수료 카드 ─────────────────────────────────

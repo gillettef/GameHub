@@ -3,7 +3,7 @@
  * 사람이 단순 전략으로 보통 AI를 공략할 수 있는지, AI 한 수에 걸리는 시간을 본다.
  *   npx tsx scripts/app-field.ts [--games 1000] [--players 4] [--seed 42]
  */
-import { createGame, createRng, finishGame, makeAiOffer, nextRound, resolveRound, winners } from '../src/core';
+import { createGame, createRng, makeAiOffer, nextRound, resolveRound, winners } from '../src/core';
 import type { GameState, PersonaKey } from '../src/core';
 
 declare const process: { argv: string[] };
@@ -25,8 +25,7 @@ for (const probe of ['low', 'high', 'balanced', 'random'] as PersonaKey[]) {
       Array.from({ length: N }, (_, i) => (i === seat ? { name: 'P', kind: 'ai' as const, persona: probe } : { name: `AI${i}`, kind: 'ai' as const, level: 'normal' as const })),
       rng.int(2 ** 31),
     );
-    while (s.phase !== 'guess') s = nextRound(resolveRound(s, {}));
-    s = finishGame(s, {});
+    while (s.phase !== 'done') s = nextRound(resolveRound(s, {}));
     const ws = winners(s);
     if (ws.includes(seat)) win += 1 / ws.length;
   }
@@ -36,7 +35,7 @@ for (const probe of ['low', 'high', 'balanced', 'random'] as PersonaKey[]) {
 // 보통 AI 한 수 시간 (라운드 시작 상태에서 균형형 자리)
 let s: GameState = createGame(Array.from({ length: N }, (_, i) => ({ name: `AI${i}`, kind: 'ai' as const, level: 'normal' as const })), 1);
 const times: number[] = [];
-while (s.phase !== 'guess') {
+while (s.phase !== 'done') {
   const t = performance.now();
   makeAiOffer({ ...s }, 0, createRng(s.round));
   times.push(performance.now() - t);

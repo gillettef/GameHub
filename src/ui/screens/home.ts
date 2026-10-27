@@ -21,7 +21,7 @@ export function homeScreen(ui: UiState): string {
   const rate = p.games ? Math.round((p.wins / p.games) * 100) : 0;
   return `${header(`<span class="pill">${esc(p.nick)}</span>`)}<main class="content">
     <section class="hero"><span class="stamp">CLASSIFIED</span><h1>에이전트의 <em>전쟁</em></h1>
-      <p class="mu">선수 계약을 중개해 수수료를 벌면서, 몰래 한 구단에 선수를 몰아 주세요. 들키면 끝입니다.</p>
+      <p class="mu">선수 계약을 중개해 수수료를 벌면서, 남몰래 받은 목표 카드의 주문을 채우세요. 눈치채이면 가로채입니다.</p>
       <p class="mu hero-s">3~${MAX_AGENTS}명 · ${TOTAL_ROUNDS}라운드 · 한 기기 또는 온라인</p></section>
     ${resume ? `<button class="resume" data-act="resume"><span><small>진행 중인 게임</small><b>라운드 ${s.game.round}/${TOTAL_ROUNDS} 이어하기</b></span>${ICON.chevron}</button>` : ''}
     <section class="card"><h3>내 전적</h3>

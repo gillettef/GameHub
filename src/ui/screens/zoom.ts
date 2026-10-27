@@ -1,10 +1,10 @@
-import { CLUBS, EVENTS, PLAYERS, isDemand } from '../../core';
+import { CLUBS, EVENTS, GOALS, PLAYERS, goalResults, isDemand } from '../../core';
 import type { EventKey } from '../../core';
 import type { Session } from '../../store/storage';
-import { clubCard, demandCard, eventCard, playerCard, secretCard } from '../cards';
+import { clubCard, demandCard, eventCard, goalCard, playerCard } from '../cards';
 import { esc } from '../view';
 
-export type ZoomKind = 'player' | 'club' | 'event' | 'demand' | 'secret';
+export type ZoomKind = 'player' | 'club' | 'event' | 'demand' | 'goal';
 export interface Zoom {
   kind: ZoomKind;
   id: string;
@@ -22,14 +22,14 @@ export function parseZoom(arg: string): Zoom | null {
       return Object.prototype.hasOwnProperty.call(EVENTS, id) ? { kind, id } : null;
     case 'demand':
       return isDemand(Number(id)) ? { kind, id } : null;
-    case 'secret':
-      return { kind, id: '' };
+    case 'goal':
+      return GOALS[Number(id)] ? { kind, id } : null;
     default:
       return null;
   }
 }
 
-/** 확대 카드 시트. s = 지금 보고 있는 사람의 게임 (비밀 구단·손패는 그 사람 것만) */
+/** 확대 카드 시트. s = 지금 보고 있는 사람의 게임 (목표 카드·손패는 그 사람 것만) */
 export function zoomSheet(z: Zoom, s: Session | null): string {
   const g = s?.game;
   const me = s?.turn;
@@ -42,7 +42,7 @@ export function zoomSheet(z: Zoom, s: Session | null): string {
       break;
     case 'club':
       title = CLUBS[Number(z.id)]!.name;
-      body = clubCard(Number(z.id), 'full', { g, me });
+      body = clubCard(Number(z.id), 'full', { g });
       break;
     case 'event':
       title = EVENTS[z.id as EventKey].name;
@@ -54,11 +54,15 @@ export function zoomSheet(z: Zoom, s: Session | null): string {
       body = demandCard(d, 'full', g && me !== undefined ? g.agents[me]!.hand.filter((x) => x === d).length : undefined);
       break;
     }
-    case 'secret':
-      if (!g || me === undefined) return '';
-      title = '나의 비밀 구단';
-      body = secretCard(g, me, 'full');
+    case 'goal': {
+      const id = Number(z.id);
+      // 진척은 내 카드이거나 게임이 끝나 공개된 카드일 때만
+      const owner = g ? g.agents.findIndex((a) => a.goals.includes(id)) : -1;
+      const shown = g && owner >= 0 && (owner === me || g.phase === 'done');
+      title = '목표 카드';
+      body = goalCard(id, 'full', shown ? goalResults(g, owner).find((r) => r.goal === id)!.progress : undefined);
       break;
+    }
   }
   return `<div class="sheet-bg" data-act="zoom-close"></div>
   <div class="sheet zoom" role="dialog" aria-modal="true" aria-label="${esc(title)} 카드">
