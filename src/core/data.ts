@@ -1,4 +1,4 @@
-import type { Club, ClubNeed, Demand, EventKey, MarketEvent, PlayerCard, Position, Trait } from './types';
+import type { Club, ClubNeed, Demand, EventKey, GoalCard, MarketEvent, PlayerCard, Position, Trait } from './types';
 
 /** [이름, 포지션, 몸값, 특성, 기본 수수료] */
 type PlayerRow = [string, Position, number, Trait, number];
@@ -72,6 +72,24 @@ export const NEEDS: readonly ClubNeed[] = CLUB_ROWS.flatMap(([, , rows], club) =
 /** 이 구단의 요구 카드 id 들 */
 export const needsOf = (clubId: number): number[] => NEEDS.filter((n) => n.club === clubId).map((n) => n.id);
 
+/** 목표 카드 12장 (보너스는 모두 RULES.goalBonus) */
+export const GOALS: readonly GoalCard[] = (
+  [
+    ['공격 본능', 'FW 3명 이상', { kind: 'pos', pos: 'FW' }, 3],
+    ['중원 사령관', 'MF 3명 이상', { kind: 'pos', pos: 'MF' }, 3],
+    ['철벽 수비', 'DF 3명 이상', { kind: 'pos', pos: 'DF' }, 3],
+    ['골문 수호', 'GK 2명 이상', { kind: 'pos', pos: 'GK' }, 2],
+    ['스타 군단', '스타 3명 이상', { kind: 'trait', trait: '스타' }, 3],
+    ['노련미', '베테랑 3명 이상', { kind: 'trait', trait: '베테랑' }, 3],
+    ['미래 투자', '유망주 3명 이상', { kind: 'trait', trait: '유망주' }, 3],
+    ['패스 마스터', '플레이메이커 2명 이상', { kind: 'trait', trait: '플레이메이커' }, 2],
+    ['무실점', '클린시트 2명 이상', { kind: 'trait', trait: '클린시트' }, 2],
+    ['만능 선수', '멀티플레이어 2명 이상', { kind: 'trait', trait: '멀티플레이어' }, 2],
+    ['빅사이닝', '몸값 6억 이상 3명 이상', { kind: 'cost', min: 6 }, 3],
+    ['완성형 스쿼드', 'FW·MF·DF·GK 각 1명 이상', { kind: 'allPos' }, 4],
+  ] as [string, string, GoalCard['rule'], number][]
+).map(([name, desc, rule, n], id) => ({ id, name, desc, rule, n }));
+
 export const EVENTS: Readonly<Record<EventKey, MarketEvent>> = {
   normal: { key: 'normal', name: '이적시장 개장', icon: '📰', desc: '특별한 효과가 없습니다.' },
   fw: { key: 'fw', name: '공격수 품귀', icon: '🔥', desc: 'FW 선수 계약 수수료 +2억' },
@@ -79,7 +97,7 @@ export const EVENTS: Readonly<Record<EventKey, MarketEvent>> = {
   young: { key: 'young', name: '유망주 열풍', icon: '🌱', desc: '유망주 선수 계약 수수료 +2억' },
   budget: { key: 'budget', name: '구단 긴축', icon: '📉', desc: '모든 구단 제시액 −2억' },
   big: { key: 'big', name: '빅딜 시즌', icon: '💰', desc: '몸값 6억 이상 선수 계약 수수료 +2억' },
-  sponsor: { key: 'sponsor', name: '스폰서 데이', icon: '🎙', desc: '이번 라운드에 직접 계약시킨 선수는 비밀 구단 보너스를 2배로 셉니다' },
+  sponsor: { key: 'sponsor', name: '스폰서 데이', icon: '🎙', desc: "이번 라운드에 직접 계약시킨 선수는 목표 카드의 '○명 이상' 조건에서 2명으로 셉니다" },
   overseas: { key: 'overseas', name: '해외파 귀국', icon: '✈️', desc: '시장에 선수 2명을 더 깝니다' },
   deadline: { key: 'deadline', name: '데드라인 데이', icon: '⏰', desc: '마지막 라운드 · 모든 계약 수수료 +5억' },
 };
@@ -104,10 +122,10 @@ export const OVERSEAS_EXTRA = 2;
  * 밸런스 조정 대상 규칙 수치. 기본값이 공식 규칙이며, 시뮬레이션(--rules k=v)에서만 바꾼다.
  */
 export const RULES = {
-  /** 비밀 구단에 계약된 선수 1명당 보너스 (들키지 않았을 때) */
-  clubBonus: 12,
-  /** 다른 에이전트의 비밀 구단을 맞혔을 때 보너스 */
-  guessBonus: 3,
+  /** 목표 카드 달성 보너스 */
+  goalBonus: 10,
+  /** 에이전트마다 받는 목표 카드 수 */
+  goalsPerAgent: 2,
   /** 데드라인 데이 수수료 보너스 */
   deadlineBonus: 5,
   /** 이 값보다 매력도가 낮은 제안은 구단이 거절한다 (null = 제한 없음) */
@@ -117,12 +135,6 @@ export const RULES = {
    * 3 = 요구 수수료 카드가 낮은(수수료가 적은) 쪽이 계약 (1~3 모두 그것도 같으면 상쇄)
    */
   tieBudget: 3,
-  /** 게임 종료 지목: 0 = 다른 에이전트 전원을 하나씩, 1 = 한 명만 골라 지목 */
-  guessOne: 0,
-  /** 비밀 구단 보너스: 0 = 누가 계약했든 센다, 1 = 내가 직접 계약시킨 선수만 센다 */
-  clubOwnOnly: 1,
-  /** 틀린 지목 1개당 감점 (0 = 감점 없음). 감점이 있으면 지목은 선택이다 */
-  wrongGuess: 2,
   /** 요구 수수료 카드 종류별 장수. 공개된 카드는 버린다 (0 = 소진 없이 매번 1~4 중 자유, 비교 실험용) */
   copies: 3,
   /** 1 = 계약된 구단은 라운드가 끝나면 요구 카드를 교체한다, 0 = 첫 요구 카드 고정 (v6 비교 실험용) */
@@ -135,10 +147,6 @@ export const RULES = {
   marketPer: 2,
   marketExtra: 1,
 };
-/** @deprecated RULES.clubBonus */
-export const CLUB_BONUS = RULES.clubBonus;
-/** @deprecated RULES.guessBonus */
-export const GUESS_BONUS = RULES.guessBonus;
 /** 3~4인 전용 (2026-10-16 사용자 결정: 2인은 지원하지 않음) */
 export const MIN_AGENTS = 3;
 export const MAX_AGENTS = 4;
@@ -159,6 +167,12 @@ export const club = (id: number): Club => {
   const c = CLUBS[id];
   if (!c) throw new Error(`unknown club ${id}`);
   return c;
+};
+
+export const goal = (id: number): GoalCard => {
+  const g = GOALS[id];
+  if (!g) throw new Error(`unknown goal ${id}`);
+  return g;
 };
 
 export const need = (id: number): ClubNeed => {

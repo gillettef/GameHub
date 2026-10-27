@@ -50,11 +50,6 @@ function playRound(hub: Hub, a: FakeConn, b: FakeConn, round: number) {
   hub.handle(b, { t: 'ready', round });
 }
 
-function guessAll(hub: Hub, a: FakeConn, b: FakeConn) {
-  hub.handle(a, { t: 'guess', picks: { 1: a.room.game!.clubs[0]! } });
-  hub.handle(b, { t: 'guess', picks: {} });
-}
-
 afterEach(() => vi.useRealTimers());
 
 describe('온라인 방', () => {
@@ -100,15 +95,15 @@ describe('온라인 방', () => {
     expect(c.lastError()).toContain('이미 게임이 시작');
   });
 
-  it('다른 사람의 비밀 구단·이후 이벤트·난수 상태는 가려서 보낸다', () => {
+  it('다른 사람의 목표 카드·이후 이벤트·난수 상태는 가려서 보낸다', () => {
     const { a, b } = startedRoom();
     const ga = a.room.game!;
     const gb = b.room.game!;
-    expect(ga.agents[0]!.secret).toBeGreaterThanOrEqual(0);
-    expect(ga.agents[1]!.secret).toBe(-1);
-    expect(ga.agents[2]!.secret).toBe(-1);
-    expect(gb.agents[1]!.secret).toBeGreaterThanOrEqual(0);
-    expect(gb.agents[0]!.secret).toBe(-1);
+    expect(ga.agents[0]!.goals.every((x) => x >= 0)).toBe(true);
+    expect(ga.agents[1]!.goals.every((x) => x === -1)).toBe(true);
+    expect(ga.agents[2]!.goals.every((x) => x === -1)).toBe(true);
+    expect(gb.agents[1]!.goals.every((x) => x >= 0)).toBe(true);
+    expect(gb.agents[0]!.goals.every((x) => x === -1)).toBe(true);
     expect(ga.rng).toBe(0);
     expect(ga.events).toHaveLength(2);
     // 구단 요구 카드는 공개된 것만, 더미 순서는 가린다
@@ -118,14 +113,12 @@ describe('온라인 방', () => {
     }
   });
 
-  it('모두 제출하면 정산하고, 끝까지 진행하면 비밀 구단이 공개된다', () => {
+  it('모두 제출하면 정산하고, 끝까지 진행하면 목표 카드가 공개된다', () => {
     const { hub, a, b } = startedRoom();
     for (let round = 1; round <= TOTAL_ROUNDS; round++) playRound(hub, a, b, round);
-    expect(a.room.game!.phase).toBe('guess');
-    guessAll(hub, a, b);
     const g = a.room.game!;
     expect(g.phase).toBe('done');
-    expect(g.agents.every((x) => x.secret >= 0 && x.final)).toBe(true);
+    expect(g.agents.every((x) => x.goals.every((id) => id >= 0) && x.final)).toBe(true);
   });
 
   it('제출 현황(done)에는 누가 냈는지만 보이고 내용은 내 것만 보인다', () => {
@@ -164,7 +157,7 @@ describe('온라인 방', () => {
     expect(b2.msgs.at(-1)).toEqual({ t: 'rejoin-failed' });
     hub.handle(b2, { t: 'rejoin', code, token });
     expect(b2.room.mySeat).toBe(1);
-    expect(b2.room.game!.agents[1]!.secret).toBeGreaterThanOrEqual(0);
+    expect(b2.room.game!.agents[1]!.goals.every((x) => x >= 0)).toBe(true);
     expect(a.room.seats[1]!.online).toBe(true);
   });
 
@@ -189,7 +182,6 @@ describe('온라인 방', () => {
   it('끝난 뒤 다시 하기를 누르면 같은 멤버로 대기실에 돌아간다', () => {
     const { hub, a, b } = startedRoom();
     for (let round = 1; round <= TOTAL_ROUNDS; round++) playRound(hub, a, b, round);
-    guessAll(hub, a, b);
     hub.handle(a, { t: 'rematch' });
     expect(a.room.game).toBeNull();
     expect(b.room.seats.map((s) => s.kind)).toEqual(['human', 'human', 'ai']);

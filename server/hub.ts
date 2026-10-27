@@ -1,8 +1,8 @@
 // 온라인 방 관리 (전송 계층과 무관). 방 상태는 서버 메모리에만 둔다 — DB 없음, 서버가 재시작되면 진행 중인 방은 사라진다.
 // 게임 정산은 src/core 규칙 엔진을 그대로 쓰고, 각자에게는 viewFor 로 볼 수 있는 정보만 보낸다.
 import { randomBytes, randomInt } from 'node:crypto';
-import { MAX_AGENTS, MIN_AGENTS, createGame, finishGame, nextRound, resolveRound } from '../src/core';
-import type { AiLevel, GameState, Guesses, Offer, RoundBid, Submission } from '../src/core';
+import { MAX_AGENTS, MIN_AGENTS, createGame, nextRound, resolveRound } from '../src/core';
+import type { AiLevel, GameState, Offer, RoundBid, Submission } from '../src/core';
 import { ROOM_CODE_RE, type ClientMsg, type RoomView, type SeatView, type ServerMsg } from '../src/online/protocol';
 
 export interface Conn {
@@ -41,7 +41,6 @@ interface Room {
   /** 게임 자리(에이전트 인덱스) → 사람 pid. AI 자리는 null */
   seatPids: (string | null)[];
   subs: Record<number, RoundBid>;
-  guesses: Record<number, Guesses>;
   ready: Set<number>;
   hostTimer?: ReturnType<typeof setTimeout>;
   emptyTimer?: ReturnType<typeof setTimeout>;
@@ -59,7 +58,7 @@ function cleanOffer(o: unknown): Submission {
   return isInt(playerId) && isInt(clubId) && isInt(demand) ? ({ playerId, clubId, demand } as Offer) : null;
 }
 
-/** 사람 i 에게 보낼 게임: 다른 사람 비밀 구단·다음 라운드 이후 이벤트·구단 요구 카드 더미 순서·난수 상태를 가린다 (종료 후에는 전부 공개) */
+/** 사람 i 에게 보낼 게임: 다른 사람 목표 카드·다음 라운드 이후 이벤트·구단 요구 카드 더미 순서·난수 상태를 가린다 (종료 후에는 전부 공개) */
 export function redact(game: GameState, seat: number | null): GameState {
   if (game.phase === 'done') return game;
   return {
@@ -67,7 +66,7 @@ export function redact(game: GameState, seat: number | null): GameState {
     rng: 0,
     events: game.events.slice(0, game.round + 1),
     needDecks: Object.fromEntries(Object.entries(game.needDecks).map(([c, d]) => [c, d.map(() => -1)])),
-    agents: game.agents.map((a, i) => (i === seat ? a : { ...a, secret: -1 })),
+    agents: game.agents.map((a, i) => (i === seat ? a : { ...a, goals: a.goals.map(() => -1) })),
   };
 }
 
@@ -179,18 +178,6 @@ export class Hub {
         room.ready.add(at.seat);
         break;
       }
-      case 'guess': {
-        const at = this.playing(room, me, 'guess');
-        if (!at || at.seat in room.guesses) return;
-        const { game, seat } = at;
-        const picks: Guesses = {};
-        for (const [k, v] of Object.entries(msg.picks ?? {})) {
-          const who = Number(k);
-          if (isInt(who) && who !== seat && game.agents[who] && isInt(v) && game.clubs.includes(v)) picks[who] = v;
-        }
-        room.guesses[seat] = picks;
-        break;
-      }
       case 'rematch':
         if (room.host !== me.pid) throw new HubError('방장만 할 수 있습니다.');
         if (room.game?.phase !== 'done') throw new HubError('게임이 끝난 뒤에 할 수 있습니다.');
@@ -223,7 +210,7 @@ export class Hub {
     do code = Array.from({ length: 4 }, () => CODE_CHARS[this.randInt(CODE_CHARS.length)]).join('');
     while (this.rooms.has(code));
     const m = this.newMember(name);
-    const room: Room = { code, host: m.pid, members: new Map([[m.pid, m]]), seats: [{ kind: 'human', pid: m.pid }], game: null, seatPids: [], subs: {}, guesses: {}, ready: new Set() };
+    const room: Room = { code, host: m.pid, members: new Map([[m.pid, m]]), seats: [{ kind: 'human', pid: m.pid }], game: null, seatPids: [], subs: {}, ready: new Set() };
     this.rooms.set(code, room);
     this.attach(conn, room, m);
   }
@@ -295,7 +282,6 @@ export class Hub {
       room.seatPids[seat] = null;
       room.game = { ...room.game, agents: room.game.agents.map((a, i) => (i === seat ? { ...a, kind: 'ai' as const, level: 'normal' as const, persona: 'balanced' as const } : a)) };
       delete room.subs[seat];
-      delete room.guesses[seat];
       room.ready.delete(seat);
     }
     if (!room.members.size) return this.deleteRoom(room);
@@ -347,7 +333,6 @@ export class Hub {
 
   private resetStep(room: Room): void {
     room.subs = {};
-    room.guesses = {};
     room.ready = new Set();
   }
 
@@ -361,9 +346,6 @@ export class Hub {
         this.resetStep(room);
       } else if (g.phase === 'result' && humans.filter((i) => room.members.get(room.seatPids[i]!)?.conn).every((i) => room.ready.has(i))) {
         room.game = nextRound(g);
-        this.resetStep(room);
-      } else if (g.phase === 'guess' && humans.every((i) => i in room.guesses)) {
-        room.game = finishGame(g, room.guesses);
         this.resetStep(room);
       } else return;
     }
@@ -386,7 +368,7 @@ export class Hub {
           return { kind: a.kind === 'ai' ? 'ai' : 'human', name: a.name, ...(a.level ? { level: a.level } : {}) };
         })
       : room.seats.map((s) => (s.kind === 'human' ? human(s.pid) : { kind: 'ai', name: s.name, level: s.level }));
-    const done = !g ? [] : g.phase === 'bid' ? Object.keys(room.subs).map(Number) : g.phase === 'guess' ? Object.keys(room.guesses).map(Number) : g.phase === 'result' ? [...room.ready] : [];
+    const done = !g ? [] : g.phase === 'bid' ? Object.keys(room.subs).map(Number) : g.phase === 'result' ? [...room.ready] : [];
     return {
       code: room.code,
       me: pid,

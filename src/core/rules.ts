@@ -1,5 +1,5 @@
-import { BUDGET_CUT, DEMANDS, EVENT_BONUS, RULES, club, need, player } from './data';
-import type { Club, ClubNeed, Demand, EventKey, Evaluation, GameState, InvalidReason, Offer, PlayerCard, Submission } from './types';
+import { BUDGET_CUT, DEMANDS, EVENT_BONUS, RULES, club, goal, need, player } from './data';
+import type { Club, ClubNeed, Demand, EventKey, Evaluation, GameState, GoalCard, InvalidReason, Offer, PlayerCard, Signing, Submission } from './types';
 
 /** 이번 라운드 이벤트 */
 export const currentEvent = (state: Pick<GameState, 'events' | 'round'>): EventKey => state.events[state.round - 1] ?? 'normal';
@@ -87,6 +87,30 @@ export function playCard(hand: readonly Demand[], demand: Demand): Demand[] {
   if (i < 0) return [...hand];
   return [...hand.slice(0, i), ...hand.slice(i + 1)];
 }
+
+/** 이 선수가 목표 카드 조건에 맞는가 (allPos 는 모든 선수가 맞고, 진척은 포지션 수로 센다) */
+export function goalMatches(g: GoalCard, p: PlayerCard): boolean {
+  switch (g.rule.kind) {
+    case 'pos':
+      return p.pos === g.rule.pos;
+    case 'trait':
+      return p.trait === g.rule.trait;
+    case 'cost':
+      return p.cost >= g.rule.min;
+    case 'allPos':
+      return true;
+  }
+}
+
+/** 목표 진척: 조건에 맞는 직접 계약 선수 수 (스폰서 데이는 2명). allPos 는 채운 포지션 종류 수 */
+export function goalProgress(goalId: number, signings: readonly Pick<Signing, 'playerId' | 'weight'>[]): number {
+  const g = goal(goalId);
+  if (g.rule.kind === 'allPos') return new Set(signings.map((s) => player(s.playerId).pos)).size;
+  return signings.filter((s) => goalMatches(g, player(s.playerId))).reduce((n, s) => n + s.weight, 0);
+}
+
+/** 이 에이전트가 직접 계약시킨 선수 */
+export const ownSignings = (state: Pick<GameState, 'signings'>, agentIdx: number): Signing[] => state.signings.filter((s) => s.agent === agentIdx);
 
 export const INVALID_TEXT: Record<InvalidReason, string> = {
   'not-in-market': '시장에 없는 선수/구단',

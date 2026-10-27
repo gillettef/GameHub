@@ -5,8 +5,8 @@
  * v6 (5라운드 x 1·2차): 킹메이킹은 마지막 2라운드 시작(TOTAL_ROUNDS-1) 때의 단독 선두, ④-c는 마지막 2라운드 시작 때 1위 기준.
  * --only cards: 카드 운용 변형(아끼기·몰아 쓰기 등). 변형 자리은 AI_MODEL 을 그 자리 차례에만 바꿔 같은 AI로 둔다.
  */
-import { AI_MODEL, PERSONAS, RULES, STAGES, TOTAL_ROUNDS, createGame, createRng, finishGame, makeAiBid, makeAiGuesses, nextRound, resolveRound, winners } from '../src/core';
-import type { GameState, Guesses, Persona, PersonaKey, RoundBid } from '../src/core';
+import { AI_MODEL, PERSONAS, RULES, STAGES, TOTAL_ROUNDS, createGame, createRng, makeAiBid, nextRound, resolveRound, winners } from '../src/core';
+import type { GameState, Persona, PersonaKey, RoundBid } from '../src/core';
 
 declare const process: { argv: string[] };
 const args = process.argv.slice(2);
@@ -80,10 +80,10 @@ function withModel<T>(m: Partial<typeof AI_MODEL>, f: () => T): T {
   }
 }
 
-const THINKERS: PersonaKey[] = ['balanced', 'greedy', 'cautious', 'blatant', 'stealth', 'ignore', 'deducer', 'spoiler'];
+const THINKERS: PersonaKey[] = ['balanced', 'greedy', 'cautious', 'focused', 'opportunist', 'ignore', 'blocker', 'spoiler'];
 const POOL: PersonaKey[] = ['random', ...THINKERS];
-/** 합리적 전략: 무작위·노골형(위장 없이 밀어 줌)·퇴화 전략 제외 */
-const RATIONAL: PersonaKey[] = ['balanced', 'greedy', 'cautious', 'stealth', 'ignore', 'deducer', 'spoiler'];
+/** 합리적 전략: 무작위·퇴화 전략 제외 */
+const RATIONAL: PersonaKey[] = ['balanced', 'greedy', 'cautious', 'focused', 'opportunist', 'ignore', 'blocker', 'spoiler'];
 
 interface GameOut {
   seats: Seat[];
@@ -102,8 +102,8 @@ interface GameOut {
   demandRound: number[][];
   hiddenChanged: boolean;
   roundFees: number[];
-  club: number[];
-  exposed: boolean[];
+  /** 자리별 목표 보너스 */
+  goal: number[];
 }
 
 function play(seats: Seat[]): GameOut {
@@ -126,7 +126,7 @@ function play(seats: Seat[]): GameOut {
   const cardsByRound = seats.map(() => Array<number>(TOTAL_ROUNDS).fill(0));
   const demandUse = seats.map(() => [0, 0, 0, 0]);
   const demandRound = seats.map(() => [0, 0, 0, 0]);
-  while (s.phase !== 'guess') {
+  while (s.phase !== 'done') {
     if (s.round === TOTAL_ROUNDS - 1) {
       leaderBeforeLast2 = leadersOf(s);
       soleBeforeLast2 = leaderBeforeLast2.length === 1 ? leaderBeforeLast2[0]! : -1;
@@ -148,11 +148,6 @@ function play(seats: Seat[]): GameOut {
     roundFees.push(r.entries.reduce((x, e) => x + (e.fee ?? 0), 0));
     s = nextRound(s);
   }
-  const hg: Record<number, Guesses> = {};
-  seats.forEach((p, i) => {
-    if (isVariant(p)) hg[i] = makeAiGuesses(s, i, varRng);
-  });
-  s = finishGame(s, hg);
   const ws = winners(s);
   const vis = s.agents.map((a) => a.score);
   const visTop = Math.max(...vis);
@@ -167,8 +162,7 @@ function play(seats: Seat[]): GameOut {
     demandRound,
     hiddenChanged: !ws.some((w) => vis[w] === visTop),
     roundFees,
-    club: s.agents.map((a) => a.final!.clubPoints),
-    exposed: s.agents.map((a) => a.final!.exposed),
+    goal: s.agents.map((a) => a.final!.goalPoints),
   };
 }
 
@@ -240,7 +234,7 @@ for (const N of COUNTS) {
   }
   if (N > 2) {
     // 사람은 서로 다르게 판단하므로 서로 다른 생각형 N-1명 + 무작위 1명으로 잰다
-    const mixed: PersonaKey[] = ['balanced', 'greedy', 'cautious', 'deducer', 'stealth'];
+    const mixed: PersonaKey[] = ['balanced', 'greedy', 'cautious', 'blocker', 'focused'];
     const sr = series(() => [...shuffle(mixed).slice(0, N - 1), 'random'], GAMES);
     const thinkers = mixed.filter((p) => !Number.isNaN(sr.rate(p)));
     const seatsWins = sr.outs.reduce((a, o) => a + o.seats.reduce((x, p, i) => x + (p === 'random' ? 0 : o.win[i]!), 0), 0) / (sr.outs.length * (N - 1));
@@ -301,10 +295,10 @@ for (const N of COUNTS) {
   const ign = series(() => ['ignore', ...shuffle(RATIONAL.filter((p) => p !== 'ignore')).slice(0, N - 1)], GAMES).rate('ignore');
   const hidden = league.outs.filter((o) => o.hiddenChanged).length / league.outs.length;
   const diag = without.outs;
-  const clubAvg = diag.reduce((a, o) => a + o.club.reduce((x, y) => x + y, 0), 0) / (diag.length * N);
-  const expRate = diag.reduce((a, o) => a + o.exposed.filter(Boolean).length, 0) / (diag.length * N);
-  log(`  - 참고: 균형형끼리 비밀 구단 보너스 평균 ${Math.round(clubAvg * 10) / 10}억, 노출률 ${pct(expRate)}`);
-  log(`- ${mark(ign <= 0.8 * fair)} ①-a 비밀 구단 무시형 승률 ${pct(ign)} (기준 ≤ ${pct(0.8 * fair)})`);
+  const goalAvg = diag.reduce((a, o) => a + o.goal.reduce((x, y) => x + y, 0), 0) / (diag.length * N);
+  const doneRate = diag.reduce((a, o) => a + o.goal.filter((x) => x > 0).length, 0) / (diag.length * N);
+  log(`  - 참고: 균형형끼리 목표 보너스 평균 ${Math.round(goalAvg * 10) / 10}억, 목표 달성률 ${pct(doneRate)}`);
+  log(`- ${mark(ign <= 0.8 * fair)} ①-a 목표 무시형 승률 ${pct(ign)} (기준 ≤ ${pct(0.8 * fair)})`);
   log(`- ${mark(hidden >= 0.15)} ①-b 숨은 점수로 우승자가 바뀐 판 ${pct(hidden)}`);
   }
 

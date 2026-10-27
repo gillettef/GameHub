@@ -8,7 +8,6 @@ import {
   TOTAL_ROUNDS,
   cardCost,
   cardStyle,
-  clubMarks,
   clubWeight,
   contest,
   createGame,
@@ -16,9 +15,12 @@ import {
   currentEvent,
   dealRound,
   evaluateOffer,
-  evidence,
   finishGame,
-  makeAiGuesses,
+  GOALS,
+  goalBelief,
+  goalGain,
+  goalProgress,
+  goalResults,
   makeAiBid,
   makeAiOffer,
   initialHand,
@@ -29,7 +31,6 @@ import {
   rotateNeeds,
   nextRound,
   playCard,
-  rankings,
   resolveRound,
   upcomingEvent,
   validateOffer,
@@ -41,10 +42,10 @@ import type { AgentState, Demand, EventKey, GameState, Offer, RoundBid, Submissi
 // 선수: 0 강태오 FW 몸값8 스타 기본4 / 1 윤시후 MF 몸값6 플메 기본3 / 3 최준서 FW 몸값3 유망주 기본2 / 6 정우진 DF 몸값2 멀티 기본2
 // 구단: 0 블루 드래곤즈 10 FW 스타 / 1 실버 호크스 8 MF 플메 / 5 노바 크루저스 6 DF 베테랑 / 6 썬더 울브스 5 FW 유망주
 
-const agent = (over: Partial<AgentState> = {}): AgentState => ({ name: 'A', kind: 'human', score: 0, deals: 0, hand: [1, 1, 2, 2, 3, 3, 4, 4], secret: 0, ...over });
+const agent = (over: Partial<AgentState> = {}): AgentState => ({ name: 'A', kind: 'human', score: 0, deals: 0, hand: [1, 1, 2, 2, 3, 3, 4, 4], goals: [0], ...over });
 
 const state = (over: Partial<GameState> = {}): GameState => ({
-  v: 7,
+  v: 8,
   rng: 1,
   round: 1,
   phase: 'bid',
@@ -55,7 +56,7 @@ const state = (over: Partial<GameState> = {}): GameState => ({
   needs: { 0: 0, 1: 3, 5: 15, 6: 18 },
   needDecks: { 0: [1, 2], 1: [4, 5], 5: [16, 17], 6: [19, 20] },
   signings: [],
-  agents: [agent({ name: 'A', secret: 0 }), agent({ name: 'B', secret: 1 })],
+  agents: [agent({ name: 'A', goals: [0] }), agent({ name: 'B', goals: [5] })],
   results: [],
   ...over,
 });
@@ -230,10 +231,12 @@ describe('resolveRound', () => {
     expect(validateOffer(s, 0, offer())).toBe('card-not-owned');
   });
 
-  it('스폰서 데이 계약은 비밀 구단 보너스 2배로 센다', () => {
+  it('스폰서 데이 계약은 목표 카드에서 2명으로 센다 (구단 계약 수는 1명)', () => {
     const s = resolveRound(withEvent('sponsor'), { 0: bid(offer()), 1: bid(null) });
     expect(s.signings[0]!.weight).toBe(2);
-    expect(clubWeight(s, 6)).toBe(2);
+    expect(clubWeight(s, 6)).toBe(1);
+    // 최준서(FW) → 공격 본능(FW 3명) 진척 2
+    expect(goalProgress(0, s.signings)).toBe(2);
   });
 
   it('사람 제출이 없으면 오류', () => {
@@ -248,12 +251,13 @@ describe('게임 진행', () => {
     { name: 'C', kind: 'ai' as const },
   ];
 
-  it('createGame: 구단 6곳, 비밀 구단은 서로 다르고 이번 게임 구단 중 하나, 마지막 이벤트는 데드라인 데이', () => {
+  it('createGame: 구단 6곳, 목표 카드는 각자 goalsPerAgent 장이고 서로 겹치지 않음, 마지막 이벤트는 데드라인 데이', () => {
     const g = createGame(setup, 42);
     expect(g.clubs).toHaveLength(CLUBS_IN_GAME);
-    const secrets = g.agents.map((a) => a.secret);
-    expect(new Set(secrets).size).toBe(3);
-    expect(secrets.every((s) => g.clubs.includes(s))).toBe(true);
+    const goals = g.agents.flatMap((a) => a.goals);
+    expect(g.agents.every((a) => a.goals.length === RULES.goalsPerAgent)).toBe(true);
+    expect(new Set(goals).size).toBe(goals.length);
+    expect(goals.every((id) => GOALS[id] !== undefined)).toBe(true);
     expect(TOTAL_ROUNDS).toBe(5);
     expect(g.events).toHaveLength(TOTAL_ROUNDS);
     expect(g.events.at(-1)).toBe('deadline');
@@ -318,53 +322,54 @@ describe('게임 진행', () => {
     }
   });
 
-  it('5라운드 뒤 지목 단계 → 종료 정산', () => {
+  it('5라운드 뒤 바로 종료: 목표 카드 공개·정산', () => {
     let g = createGame(setup, 3);
     for (let r = 1; r <= TOTAL_ROUNDS; r++) {
       expect(g.phase).toBe('bid');
       g = nextRound(resolveRound(g, { 0: bid(null) }));
     }
-    expect(g.phase).toBe('guess');
-    const done = finishGame(g, { 0: { 1: g.agents[1]!.secret, 2: g.clubs.find((c) => c !== g.agents[2]!.secret && c !== g.agents[0]!.secret)! } });
-    expect(done.phase).toBe('done');
-    const me = done.agents[0]!.final!;
-    // 1명 적중 +3, 1명 오답 −2
-    expect(me.guessPoints).toBe(RULES.guessBonus - RULES.wrongGuess);
-    expect(done.agents[1]!.final!.exposed).toBe(true);
-    expect(done.agents[1]!.final!.clubPoints).toBe(0);
-    expect(winners(done).length).toBeGreaterThan(0);
+    expect(g.phase).toBe('done');
+    expect(g.agents.every((a) => a.final && a.final.total === a.score + a.final.goalPoints)).toBe(true);
+    expect(winners(g).length).toBeGreaterThan(0);
   });
 
-  it('비밀 구단 보너스: 들키지 않으면 내가 직접 계약시킨 선수 1명당 +clubBonus (스폰서 데이 2배), 지목은 맞으면 +3 틀리면 −2', () => {
+  it('목표 카드 데이터: 12장, 조건마다 맞는 선수가 필요 인원 이상 있다', () => {
+    expect(GOALS).toHaveLength(12);
+    for (const g of GOALS) {
+      const all = PLAYERS.map((p) => ({ playerId: p.id, weight: 1 }));
+      expect(goalProgress(g.id, all)).toBeGreaterThanOrEqual(g.n);
+    }
+  });
+
+  it('목표 보너스: 내가 직접 계약시킨 선수로 조건을 채우면 +goalBonus, 못 채우면 0 (스폰서 데이 2명)', () => {
+    // A 목표 0 (FW 3명), B 목표 5 (베테랑 3명)
     const base = state({
-      phase: 'guess',
+      phase: 'result',
       round: TOTAL_ROUNDS,
       signings: [
-        { playerId: 3, clubId: 0, agent: 1, round: 1, weight: 1 },
-        { playerId: 6, clubId: 0, agent: 0, round: 2, weight: 2 },
+        { playerId: 0, clubId: 0, agent: 0, round: 1, weight: 1 }, // 강태오 FW
+        { playerId: 3, clubId: 6, agent: 0, round: 2, weight: 2 }, // 최준서 FW (스폰서)
+        { playerId: 2, clubId: 5, agent: 1, round: 1, weight: 1 }, // 박도윤 베테랑
+        { playerId: 14, clubId: 5, agent: 1, round: 3, weight: 1 }, // 장민호 FW·베테랑 — B 계약이라 A 목표에는 안 셈
       ],
     });
-    // A 비밀 0, B 비밀 1. 0번 구단 아래: B가 계약 1명, A가 스폰서 데이에 계약 1명(2명으로 셈)
-    // 서로 지목하지 않으면 A 는 자기 계약분만: 2 × clubBonus
-    const quiet = finishGame(base, { 0: {}, 1: {} });
-    expect(quiet.agents[0]!.final).toMatchObject({ exposed: false, clubDeals: 2, clubPoints: 2 * RULES.clubBonus, guessPoints: 0 });
-    // 둘 다 틀리게 지목하면 각자 −wrongGuess
-    const wrong = finishGame(base, { 0: { 1: 5 }, 1: { 0: 5 } });
-    expect(wrong.agents[0]!.final!.guessPoints).toBe(-RULES.wrongGuess);
-    // B가 A를 맞히면 A는 보너스 몰수, B +guessBonus
-    const caught = finishGame(base, { 0: {}, 1: { 0: 0 } });
-    expect(caught.agents[0]!.final).toMatchObject({ exposed: true, clubPoints: 0 });
-    expect(caught.agents[1]!.final!.guessPoints).toBe(RULES.guessBonus);
-    expect(rankings(caught)[0]!.agent).toBe(1);
+    expect(goalResults(base, 0)).toEqual([{ goal: 0, progress: 3, done: true, points: RULES.goalBonus }]);
+    expect(goalResults(base, 1)).toEqual([{ goal: 5, progress: 2, done: false, points: 0 }]);
+    const done = finishGame({ ...base, agents: base.agents.map((a, i) => ({ ...a, score: i === 0 ? 5 : 20 })) });
+    expect(done.phase).toBe('done');
+    expect(done.agents[0]!.final).toMatchObject({ goalPoints: RULES.goalBonus, total: 5 + RULES.goalBonus });
+    expect(done.agents[1]!.final).toMatchObject({ goalPoints: 0, total: 20 });
   });
 
-  it('지목 단계 전에는 finishGame 불가, 사람 지목이 없으면 오류', () => {
-    expect(() => finishGame(state(), {})).toThrow();
-    expect(() => finishGame(state({ phase: 'guess' }), {})).toThrow();
+  it('완성형 스쿼드: 포지션 종류 수로 센다 (스폰서 데이와 무관)', () => {
+    const id = GOALS.find((g) => g.rule.kind === 'allPos')!.id;
+    const sg = (playerId: number, weight = 1) => ({ playerId, weight });
+    expect(goalProgress(id, [sg(0, 2), sg(3), sg(1)])).toBe(2);
+    expect(goalProgress(id, [sg(0), sg(1), sg(2), sg(4)])).toBe(4);
   });
 });
 
-describe('공개 기록과 AI', () => {
+describe('AI', () => {
   it('cardCost: 시즌 중에는 높은 카드일수록 비싸고, 마지막 협상에는 카드 종류와 무관하다', () => {
     const hand: Demand[] = [1, 1, 2, 2, 3, 3, 4, 4];
     const early = state({ round: 1 });
@@ -385,18 +390,24 @@ describe('공개 기록과 AI', () => {
     }
   });
 
-  it('clubMarks: 에이전트별 구단 제안 횟수 (실패 포함, 몸값 미달 제외)', () => {
-    const s = resolveRound(state(), { 0: bid(offer()), 1: bid(offer({ demand: 1 })) });
-    const m = clubMarks(s);
-    expect(m[0]![6]).toBe(1);
-    expect(m[1]![6]).toBe(1);
-    expect(m[0]![0]).toBe(0);
+  it('goalGain: 목표에 맞는 선수만 가치가 있고, 달성하는 계약은 보너스 전부', () => {
+    // A 목표 0 (FW 3명): 이미 FW 2명
+    const s = state({ signings: [0, 7].map((playerId) => ({ playerId, clubId: 0, agent: 0, round: 1, weight: 1 })) });
+    expect(goalGain(s, 0, [0], 3, 1, 1)).toBe(RULES.goalBonus);
+    expect(goalGain(s, 0, [0], 1, 1, 1)).toBe(0);
+    // 아직 0명이면 일부만
+    const v = goalGain(state(), 0, [0], 3, 1, 1);
+    expect(v).toBeGreaterThan(0);
+    expect(v).toBeLessThan(RULES.goalBonus);
   });
 
-  it('evidence: 더 맞는 구단을 두고 고르면 가중치가 붙는다', () => {
-    // 최준서 → 블루 드래곤즈 (적합 2, 최적은 썬더 울브스 3) → 1 + 1
-    const s = resolveRound(state(), { 0: bid(offer({ clubId: 0 })), 1: bid(null) });
-    expect(evidence(s, 0).get(0)).toBe(2);
+  it('goalBelief: 내 목표는 빼고, 조건에 맞는 선수에 제안한 목표의 확률이 오른다', () => {
+    const s = resolveRound(state(), { 0: bid(offer()), 1: bid(null) });
+    const b = goalBelief(s, 0, [5]);
+    expect(b.has(5)).toBe(false);
+    expect([...b.values()].reduce((a, x) => a + x, 0)).toBeCloseTo(1);
+    // 최준서(FW·유망주): 공격 본능 > 중원 사령관
+    expect(b.get(0)!).toBeGreaterThan(b.get(1)!);
   });
 
   it('AI 제안은 항상 유효하거나 패스, 같은 rng 상태면 같은 결과', () => {
@@ -417,17 +428,6 @@ describe('공개 기록과 AI', () => {
         expect(typeof validateSecond(g, 0, b.first, b.second)).toBe('object');
         if (b.first) expect(b.second.playerId === b.first.playerId || b.second.clubId === b.first.clubId).toBe(false);
       }
-    }
-  });
-
-  it('AI 지목은 다른 에이전트에 대해서만, 자기 비밀 구단을 제외한 이번 게임 구단 (확신 없으면 생략)', () => {
-    let g = createGame([{ name: 'A', kind: 'ai', level: 'normal' }, { name: 'B', kind: 'ai' }, { name: 'C', kind: 'ai' }], 9);
-    while (g.phase !== 'guess') g = nextRound(resolveRound(g, {}));
-    const gs = makeAiGuesses(g, 0, createRng(1));
-    for (const k of Object.keys(gs).map(Number)) expect([1, 2]).toContain(k);
-    for (const c of Object.values(gs)) {
-      expect(g.clubs).toContain(c);
-      expect(c).not.toBe(g.agents[0]!.secret);
     }
   });
 
@@ -453,9 +453,8 @@ describe('공개 기록과 AI', () => {
         Array.from({ length: n }, (_, i) => ({ name: `AI${i}`, kind: 'ai' as const, level: i % 2 ? ('normal' as const) : ('easy' as const) })),
         100 + n,
       );
-      while (g.phase !== 'guess') g = nextRound(resolveRound(g, {}));
-      g = finishGame(g, {});
-      expect(g.agents.every((a) => a.final && a.final.total === a.score + a.final.clubPoints + a.final.guessPoints)).toBe(true);
+      while (g.phase !== 'done') g = nextRound(resolveRound(g, {}));
+      expect(g.agents.every((a) => a.final && a.final.total === a.score + a.final.goalPoints)).toBe(true);
       expect(PLAYERS.length).toBeGreaterThanOrEqual(g.signings.length + g.market.length);
     }
   });

@@ -62,7 +62,7 @@ export const EVENT_FLAVOR: Record<EventKey, string> = {
   young: '다음 스타를 미리 사 두려는 경쟁이 붙었다.',
   budget: '이사회가 지갑을 닫았다. 제시액이 줄어든다.',
   big: '큰 몸값, 큰 수수료. 대형 계약의 계절.',
-  sponsor: '스폰서가 지켜보는 날. 몰래 보낸 선수가 두 배로 빛난다.',
+  sponsor: '스폰서가 지켜보는 날. 오늘 맺은 계약은 주문서에 두 줄로 적힌다.',
   overseas: '해외에서 돌아온 선수들이 시장에 나왔다.',
   deadline: '마감 직전, 모든 계약에 웃돈이 붙는다.',
 };
@@ -74,7 +74,7 @@ export const DEMAND_FLAVOR: Record<Demand, string> = {
   4: '최고의 몫. 경쟁자가 없을 때만 통한다.',
 };
 
-export const SECRET_FLAVOR = '당신의 진짜 고객. 아무도 눈치채지 못하게 선수를 보내라.';
+export const GOAL_FLAVOR = '고객의 은밀한 주문서. 조건을 다 채우면 두둑한 성공 보수가 따라온다.';
 
 export const POS_NAME: Record<Position, string> = { FW: '공격수', MF: '미드필더', DF: '수비수', GK: '골키퍼' };
 

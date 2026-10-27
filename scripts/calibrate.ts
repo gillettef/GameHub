@@ -2,7 +2,7 @@
  * 가치형 AI의 예측 승률이 실제 계약 성공률과 맞는지 확인한다 (구간별 비교).
  *   npx tsx scripts/calibrate.ts --players 3 --games 200 --rules ...
  */
-import { AI_MODEL, AI_TRACE, PERSONAS, RULES, createGame, createRng, finishGame, nextRound, resolveRound } from '../src/core';
+import { AI_MODEL, AI_TRACE, PERSONAS, RULES, createGame, createRng, nextRound, resolveRound } from '../src/core';
 import type { GameState } from '../src/core';
 
 declare const process: { argv: string[] };
@@ -33,7 +33,7 @@ for (let g = 0; g < GAMES; g++) {
     Array.from({ length: N }, (_, i) => ({ name: `A${i}`, kind: 'ai' as const, persona: 'balanced' as const })),
     rng.int(2 ** 31),
   );
-  while (s.phase !== 'guess') {
+  while (s.phase !== 'done') {
     AI_TRACE.items = [];
     s = resolveRound(s, {});
     const r = s.results.at(-1)!;
@@ -48,7 +48,6 @@ for (let g = 0; g < GAMES; g++) {
     }
     s = nextRound(s);
   }
-  finishGame(s, {});
 }
 console.log(`# 예측 승률 보정 N=${N}`);
 for (const [i, b] of bins.entries()) if (b.n) console.log(`${i * 10}~${i * 10 + 10}%: ${b.n}건 · 예측 ${Math.round((b.pred / b.n) * 100)}% · 실제 ${Math.round((b.won / b.n) * 100)}%`);

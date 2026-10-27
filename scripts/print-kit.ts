@@ -1,11 +1,9 @@
 /**
- * 종이 프로토타입 인쇄물(A4) 생성: 선수·구단·비밀 구단·이벤트 카드, 플레이어 카드, 기록지.
+ * 종이 프로토타입 인쇄물(A4) 생성: 선수·구단·목표·이벤트 카드, 플레이어 카드, 기록지.
  *   npx tsx scripts/print-kit.ts > docs/print/kit.html   (브라우저에서 열어 인쇄)
  * 데이터는 src/core/data.ts 에서 직접 읽으므로 규칙 수치와 항상 일치한다.
  */
-import { CLUBS, EVENTS, EVENT_POOL, NEEDS, PLAYERS, RULES, TOTAL_ROUNDS } from '../src/core';
-const CLUB_BONUS = RULES.clubBonus;
-const GUESS_BONUS = RULES.guessBonus;
+import { CLUBS, EVENTS, EVENT_POOL, GOALS, NEEDS, PLAYERS, RULES, TOTAL_ROUNDS } from '../src/core';
 
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
@@ -25,16 +23,17 @@ const playerCards = PLAYERS.map(
 const clubCards = CLUBS.map(
   (c) => `<div class="card cl"><div class="hd"><b>⚽ 구단</b><span class="base">${c.budget}</span></div>
   <div class="nm">${esc(c.name)}</div><div class="tr">옆에 이 구단의 요구 카드 3장을 섞어 쌓고 맨 위를 공개</div>
-  <div class="ft">제시액 <b>${c.budget}</b>억 · 큐브와 계약 선수를 이 카드에</div></div>`,
+  <div class="ft">제시액 <b>${c.budget}</b>억</div></div>`,
 );
 const needCards = NEEDS.map(
   (n) => `<div class="card nd"><div class="hd"><b>요구 카드</b><span class="base">${n.pos}</span></div>
   <div class="nm">${esc(CLUBS[n.club]!.name)}</div><div class="tr">${n.pos} 필요 (+2) · ${n.pref} 선호 (+1)</div>
   <div class="ft">이번 라운드에 이 구단에 선수가 계약되면 라운드 끝에 더미 맨 아래로 넣고 다음 카드를 공개</div></div>`,
 );
-const secretCards = CLUBS.map(
-  (c) => `<div class="card sc"><div class="hd"><b>🕵️ 비밀 구단</b></div><div class="nm">${esc(c.name)}</div>
-  <div class="ft">들키지 않으면 내가 직접 이 구단에<br>계약시킨 선수 1명당 +${CLUB_BONUS}억</div></div>`,
+const goalCards = GOALS.map(
+  (g) => `<div class="card sc"><div class="hd"><b>🎯 목표 카드</b><span class="base">+${RULES.goalBonus}</span></div><div class="nm">${esc(g.name)}</div>
+  <div class="tr">${esc(g.desc)}</div>
+  <div class="ft">게임이 끝날 때 내가 직접 계약시킨 선수로<br>조건을 채우면 +${RULES.goalBonus}억 (스폰서 데이 계약은 2명으로 셈)</div></div>`,
 );
 const eventCards = [...EVENT_POOL, 'deadline' as const].map((k) => {
   const e = EVENTS[k];
@@ -49,24 +48,20 @@ const agentCards = COLORS.flatMap(([name, color]) => [
   ...Array.from({ length: 6 }, (_, i) => `<div class="card sm" style="--c:${color}"><div class="hd"><b>${name}</b></div><div class="big">${LETTERS[i]}</div><div class="ft">구단 지목 (구단 자리)</div></div>`),
 ]);
 
-const record = `<section class="sheet"><h2>점수 · 지목 기록지</h2>
+const record = `<section class="sheet"><h2>점수 기록지</h2>
 <table><tr><th>라운드</th>${COLORS.map(([n]) => `<th>${n}</th>`).join('')}<th>이벤트</th></tr>
 ${Array.from({ length: TOTAL_ROUNDS }, (_, i) => `<tr><td>${i + 1}${i === TOTAL_ROUNDS - 1 ? ' (데드라인)' : ''}</td>${COLORS.map(() => '<td></td>').join('')}<td></td></tr>`).join('')}
 <tr><td>수수료 합</td>${COLORS.map(() => '<td></td>').join('')}<td></td></tr>
-<tr><td>비밀 구단 (+${CLUB_BONUS}×직접 계약, 들키면 0)</td>${COLORS.map(() => '<td></td>').join('')}<td></td></tr>
-<tr><td>지목 (+${GUESS_BONUS}×적중 −${RULES.wrongGuess}×오답)</td>${COLORS.map(() => '<td></td>').join('')}<td></td></tr>
+<tr><td>목표 카드 (달성 +${RULES.goalBonus})</td>${COLORS.map(() => '<td></td>').join('')}<td></td></tr>
 <tr><td><b>최종</b></td>${COLORS.map(() => '<td></td>').join('')}<td></td></tr></table>
-<h3>지목 (게임 종료 때 각자 적고 동시에 공개 · 선택)</h3>
-<table><tr><th>지목하는 사람 →<br>대상 ↓</th>${COLORS.map(([n]) => `<th>${n}</th>`).join('')}</tr>
-${COLORS.map(([n]) => `<tr><td>${n}의 비밀 구단</td>${COLORS.map(() => '<td></td>').join('')}</tr>`).join('')}</table>
 <h3>플레이테스트 메모</h3>
 <table class="memo"><tr><td>인원 / 날짜</td><td></td></tr><tr><td>첫 판 설명 시간</td><td></td></tr><tr><td>라운드당 시간</td><td></td></tr>
-<tr><td>헷갈린 규칙</td><td></td></tr><tr><td>위장·지목 읽기가 있었나</td><td></td></tr><tr><td>일부러 동률을 만든 플레이</td><td></td></tr><tr><td>"한 판 더"?</td><td></td></tr></table></section>`;
+<tr><td>헷갈린 규칙</td><td></td></tr><tr><td>남의 목표를 읽고 가로챘나</td><td></td></tr><tr><td>일부러 동률을 만든 플레이</td><td></td></tr><tr><td>"한 판 더"?</td><td></td></tr></table></section>`;
 
 const market = `<section class="sheet"><h2>시장 칸 보드</h2><div class="slots">${Array.from({ length: MARKET_SLOTS }, (_, i) => `<div class="slot">${i + 1}</div>`).join('')}</div>
 <h2>구단 자리</h2><div class="slots six">${Array.from({ length: 6 }, (_, i) => `<div class="slot">${LETTERS[i]}</div>`).join('')}</div>
 <h2>1·2차 제안 자리판 (색마다 1장)</h2><div class="slots"><div class="slot">1차</div><div class="slot">2차</div></div>
-<p>준비물 추가: 4색 큐브 각 20개 (공개 기록 최대 10 + 계약 표시 최대 10, 또는 색 클립·바둑돌)</p></section>`;
+</section>`;
 
 const group = (title: string, cards: string[]) => `<h2 class="gt">${title} (${cards.length}장)</h2><div class="grid">${cards.join('')}</div>`;
 
@@ -100,7 +95,7 @@ td, th { border: 0.3mm solid #555; padding: 2.5mm; text-align: center; }
 ${group('선수 카드', playerCards)}
 ${group('구단 카드', clubCards)}
 ${group('구단 요구 카드', needCards)}
-${group('비밀 구단 카드', secretCards)}
+${group('목표 카드', goalCards)}
 ${group('이벤트 카드', eventCards)}
 ${group(`플레이어 카드 (요구 수수료 ${4 * RULES.copies} · 선수 지목 ${MARKET_SLOTS} · 구단 지목 6 × 4색)`, agentCards)}
 ${market}

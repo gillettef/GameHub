@@ -2,11 +2,11 @@
  * 카드 컴포넌트: 같은 함수가 size 로 기본(목록·그리드) / 확대(탭해서 보는 전체 카드)를 그린다.
  * 일러스트는 art/ 의 같은 SVG 를 크기만 바꿔 쓴다.
  */
-import { CLUBS, EVENTS, NEEDS, PLAYERS, RULES, clubNeed, clubWeight, currentEvent, demandFee, demandPenalty, needsOf, offerValue, upcomingEvent } from '../core';
+import { CLUBS, EVENTS, GOALS, NEEDS, PLAYERS, RULES, clubNeed, clubWeight, currentEvent, demandFee, demandPenalty, needsOf, offerValue, upcomingEvent } from '../core';
 import type { Demand, EventKey, GameState, PlayerCard } from '../core';
-import { clubArt, demandArt, eventArt, needArt, playerArt, secretArt } from './art';
-import { CLUB_FLAVOR, DEMAND_FLAVOR, EVENT_FLAVOR, PLAYER_FLAVOR, POS_NAME, SECRET_FLAVOR, TRAIT_TEXT } from './art/flavor';
-import { esc, marksOf, money } from './view';
+import { clubArt, demandArt, eventArt, goalArt, needArt, playerArt } from './art';
+import { CLUB_FLAVOR, DEMAND_FLAVOR, EVENT_FLAVOR, GOAL_FLAVOR, PLAYER_FLAVOR, POS_NAME, TRAIT_TEXT } from './art/flavor';
+import { esc, money } from './view';
 
 export type CardSize = 'base' | 'full';
 
@@ -59,21 +59,18 @@ export function needCard(needId: number, size: CardSize, open = false): string {
 
 export interface ClubCtx {
   g?: GameState;
-  /** 보는 사람 자리 (비밀 구단 표시) */
-  me?: number;
   /** 고르는 중인 선수 (적합 표시) */
   player?: PlayerCard | null;
   /** 1차에서 이미 고른 구단 */
   taken?: boolean;
 }
 
-export const clubEmblem = (id: number, mine = false): string => `<span class="crest ${mine ? 'mine' : ''}" aria-hidden="true">${clubArt(id)}</span>`;
+export const clubEmblem = (id: number): string => `<span class="crest" aria-hidden="true">${clubArt(id)}</span>`;
 
 export function clubCard(id: number, size: CardSize, ctx: ClubCtx = {}): string {
   const c = CLUBS[id]!;
   // 이번 게임에 없는 구단이면 게임 정보 없이 정적 카드만
   const g = ctx.g?.clubs.includes(id) ? ctx.g : undefined;
-  const mine = g !== undefined && ctx.me !== undefined && g.agents[ctx.me]?.secret === id;
   const nd = g ? clubNeed(g.needs, id) : NEEDS[needsOf(id)[0]!]!;
   const bud = g ? offerValue(c, currentEvent(g)) : c.budget;
   if (size === 'base') {
@@ -81,20 +78,18 @@ export function clubCard(id: number, size: CardSize, ctx: ClubCtx = {}): string 
     const posFit = p && p.pos === nd.pos;
     const prefFit = p && p.trait === nd.pref;
     const tooPoor = p && bud < p.cost;
-    return `${clubEmblem(id, mine)}<b class="nm">${esc(c.name)}${mine ? ' <small class="mine-t">비밀</small>' : ''}</b><span class="bud ${tooPoor ? 'poor' : ''}">${ctx.taken ? '1차에서 제안함' : `제시액 ${bud}억${tooPoor ? ' · 몸값 미달' : ''}`}</span>
-      <span class="needs"><span class="nd-art sm">${needArt(nd.id)}</span><span class="nc ${posFit ? 'fit' : ''}">${nd.pos} 필요${posFit ? ' +2' : ''}</span><span class="nc ${prefFit ? 'fit' : ''}">${nd.pref} 선호${prefFit ? ' +1' : ''}</span>${g ? `<span class="nc">계약 ${clubWeight(g, id)}명</span>` : ''}</span>
-      ${g ? `<span class="marks" aria-label="이 구단에 낸 제안 기록">${marksOf(g, id) || '<small>제안 기록 없음</small>'}</span>` : ''}`;
+    return `${clubEmblem(id)}<b class="nm">${esc(c.name)}</b><span class="bud ${tooPoor ? 'poor' : ''}">${ctx.taken ? '1차에서 제안함' : `제시액 ${bud}억${tooPoor ? ' · 몸값 미달' : ''}`}</span>
+      <span class="needs"><span class="nd-art sm">${needArt(nd.id)}</span><span class="nc ${posFit ? 'fit' : ''}">${nd.pos} 필요${posFit ? ' +2' : ''}</span><span class="nc ${prefFit ? 'fit' : ''}">${nd.pref} 선호${prefFit ? ' +1' : ''}</span>${g ? `<span class="nc">계약 ${clubWeight(g, id)}명</span>` : ''}</span>`;
   }
   const all = needsOf(id);
   return `<article class="fc">
     <div class="fc-art emb">${clubArt(id)}</div>
-    <div class="fc-h"><h2>${esc(c.name)}</h2>${mine ? '<span class="mine-t">나의 비밀 구단</span>' : ''}</div>
+    <div class="fc-h"><h2>${esc(c.name)}</h2></div>
     ${stats([['제시액', g && bud !== c.budget ? `${bud}억 <small>(기본 ${c.budget}억)</small>` : money(c.budget)], ...(g ? ([['계약', `${clubWeight(g, id)}명`]] as [string, string][]) : [])])}
     <h4 class="fc-t">공개된 요구 카드</h4>
     ${needCard(nd.id, 'full')}
     <h4 class="fc-t">요구 카드 3장 <small class="mu">· 계약되면 다음 라운드에 다음 카드 공개 (순서는 비공개)</small></h4>
     <div class="nds">${all.map((n) => needCard(n, 'base', n === nd.id)).join('')}</div>
-    ${g ? `<h4 class="fc-t">공개 기록</h4><p class="marks big">${marksOf(g, id) || '<small>제안 기록 없음</small>'}</p>` : ''}
     ${flavor(CLUB_FLAVOR[id])}
   </article>`;
 }
@@ -132,25 +127,24 @@ export function demandCard(d: Demand, size: CardSize, count?: number): string {
   </article>`;
 }
 
-// ── 비밀 구단 ────────────────────────────────────────
+// ── 목표 카드 ────────────────────────────────────────
 
-export function secretCard(g: GameState, me: number, size: CardSize): string {
-  const a = g.agents[me]!;
-  const c = CLUBS[a.secret]!;
-  const n = clubWeight(g, a.secret, me);
-  const nd = clubNeed(g.needs, a.secret);
+/** 목표 카드 1장. progress 를 주면 지금 진척을 함께 보인다 (내 카드이거나 게임이 끝나 공개된 카드) */
+export function goalCard(id: number, size: CardSize, progress?: number): string {
+  const gc = GOALS[id]!;
+  const prog = progress === undefined ? '' : `${Math.min(progress, gc.n)}/${gc.n}`;
+  const done = progress !== undefined && progress >= gc.n;
   if (size === 'base')
-    return `<span class="tape"><span>TOP SECRET</span><span>나만 볼 수 있음</span></span>
-      <span class="secret-b"><span class="cd-art sq">${secretArt(a.secret)}</span>
-        <span class="secret-t"><small>나의 비밀 구단</small><b>${esc(c.name)}</b><small>제시액 ${c.budget}억 · 지금 ${nd.pos} 필요 · ${nd.pref} 선호</small></span>
-        <span class="secret-n"><small>들키지 않으면</small><b>+${money(n * RULES.clubBonus)}</b><small>지금 ${n}명</small></span></span>`;
+    return `<span class="goal-b"><span class="cd-art sq">${goalArt(id)}</span>
+        <span class="goal-t"><small>나의 목표 카드</small><b>${esc(gc.name)}</b><small>${esc(gc.desc)} · 직접 계약</small></span>
+        <span class="goal-n"><small>${done ? '달성' : '달성하면'}</small><b>+${money(RULES.goalBonus)}</b>${prog ? `<small>지금 ${prog}</small>` : ''}</span></span>`;
   return `<article class="fc">
-    <span class="tape"><span>TOP SECRET</span><span>나만 볼 수 있음</span></span>
-    <div class="fc-art sq">${secretArt(a.secret)}</div>
-    <div class="fc-h">${clubEmblem(a.secret, true)}<h2>${esc(c.name)}</h2></div>
-    ${stats([['직접 계약', `${n}명`], ['지금 보너스', `+${money(n * RULES.clubBonus)}`], ['1명당', `+${money(RULES.clubBonus)}`]])}
-    <p class="fc-p">게임이 끝날 때 아무에게도 들키지 않으면, <b>내가 직접</b> 이 구단에 계약시킨 선수 1명당 <b>+${money(RULES.clubBonus)}</b>. 한 명에게라도 지목당하면 0입니다.</p>
-    <p class="mu">지금 요구: ${nd.pos} 필요 · ${nd.pref} 선호 · 제시액 ${c.budget}억</p>
-    ${flavor(SECRET_FLAVOR)}
+    <div class="fc-art sq">${goalArt(id)}</div>
+    <div class="fc-h"><h2>${esc(gc.name)}</h2>${done ? '<span class="tag">달성</span>' : ''}</div>
+    ${stats([['조건', esc(gc.desc)], ['보너스', `+${money(RULES.goalBonus)}`], ...(prog ? ([['지금', prog]] as [string, string][]) : [])])}
+    <p class="fc-p">게임이 끝날 때 <b>내가 직접</b> 계약시킨 선수로 조건을 채우면 <b>+${money(RULES.goalBonus)}</b>. 못 채우면 0입니다. 스폰서 데이에 계약한 선수는 '○명 이상' 조건에서 2명으로 셉니다.</p>
+    <p class="mu">목표 카드는 게임이 끝날 때까지 나만 봅니다. 계약한 선수는 모두에게 공개되니, 너무 티 나게 모으면 상대가 가로챌 수 있습니다.</p>
+    ${flavor(GOAL_FLAVOR)}
   </article>`;
 }
+

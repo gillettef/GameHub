@@ -30,6 +30,20 @@ export interface ClubNeed {
   pref: Trait;
 }
 
+/** 목표 카드 조건: 직접 계약한 선수 중 조건에 맞는 선수가 n 명 이상 (allPos 는 FW·MF·DF·GK 각 1명 이상) */
+export type GoalRule = { kind: 'pos'; pos: Position } | { kind: 'trait'; trait: Trait } | { kind: 'cost'; min: number } | { kind: 'allPos' };
+
+/** 목표 카드 (게임 시작 때 비공개로 받고, 게임 종료 때 공개해 달성하면 보너스) */
+export interface GoalCard {
+  id: number;
+  name: string;
+  /** 조건 설명 (카드에 인쇄) */
+  desc: string;
+  rule: GoalRule;
+  /** 필요 인원 (allPos 는 포지션 4종) */
+  n: number;
+}
+
 export interface MarketEvent {
   key: EventKey;
   name: string;
@@ -40,7 +54,7 @@ export interface MarketEvent {
 export type AgentKind = 'human' | 'ai';
 export type AiLevel = 'easy' | 'normal';
 /** AI 성향 (시뮬레이션용. 앱은 level 로 random/balanced 를 쓴다) */
-export type PersonaKey = 'random' | 'balanced' | 'greedy' | 'cautious' | 'blatant' | 'stealth' | 'ignore' | 'deducer' | 'spoiler' | 'pass' | 'low' | 'high';
+export type PersonaKey = 'random' | 'balanced' | 'greedy' | 'cautious' | 'focused' | 'opportunist' | 'ignore' | 'blocker' | 'spoiler' | 'pass' | 'low' | 'high';
 
 export interface AgentState {
   name: string;
@@ -49,27 +63,29 @@ export interface AgentState {
   level?: AiLevel;
   /** AI 성향 (지정하면 level 대신 사용) */
   persona?: PersonaKey;
-  /** 계약 수수료 합계 (비밀 구단·지목 점수는 게임 종료 때 final 에 따로) */
+  /** 계약 수수료 합계 (목표 보너스는 게임 종료 때 final 에 따로) */
   score: number;
   deals: number;
   /** 손에 남은 요구 수수료 카드 (종류별 RULES.copies 장으로 시작, 공개된 카드는 버린다) */
   hand: Demand[];
-  /** 비밀 구단 (이번 게임 구단 중 하나, 본인만 앎) */
-  secret: number;
+  /** 목표 카드 id 들 (본인만 앎, 게임 종료 때 공개) */
+  goals: number[];
   /** 게임 종료 정산 결과 */
   final?: FinalScore;
 }
 
+export interface GoalResult {
+  goal: number;
+  /** 게임 종료 때의 진척 (스폰서 데이 계약은 2명으로 셈) */
+  progress: number;
+  done: boolean;
+  points: number;
+}
+
 export interface FinalScore {
-  /** 다른 에이전트 → 내가 지목한 구단 */
-  guesses: Record<number, number>;
-  /** 맞힌 지목 수 × 지목 보너스 */
-  guessPoints: number;
-  /** 누군가 내 비밀 구단을 맞혔는가 (맞혔으면 비밀 구단 보너스 몰수) */
-  exposed: boolean;
-  /** 내 비밀 구단에 계약된 선수 수 (스폰서 데이는 2명으로 셈) */
-  clubDeals: number;
-  clubPoints: number;
+  goals: GoalResult[];
+  /** 달성한 목표 보너스 합계 */
+  goalPoints: number;
   total: number;
 }
 
@@ -135,15 +151,15 @@ export interface Signing {
   clubId: number;
   agent: number;
   round: number;
-  /** 비밀 구단 보너스 계산 시 몇 명으로 세는가 (스폰서 데이 2) */
+  /** 목표 카드 '○명 이상' 조건에서 몇 명으로 세는가 (스폰서 데이 2) */
   weight: number;
 }
 
-/** bid: 제안 작성 / result: 라운드 결과 / guess: 비밀 구단 지목 / done: 종료 */
-export type Phase = 'bid' | 'result' | 'guess' | 'done';
+/** bid: 제안 작성 / result: 라운드 결과 / done: 종료 (목표 카드 공개) */
+export type Phase = 'bid' | 'result' | 'done';
 
 export interface GameState {
-  v: 7;
+  v: 8;
   rng: number;
   round: number;
   phase: Phase;
@@ -167,5 +183,3 @@ export interface Evaluation {
   fee: number;
 }
 
-/** 게임 종료 시 지목: 다른 에이전트 인덱스 → 구단 id */
-export type Guesses = Record<number, number>;

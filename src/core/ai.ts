@@ -1,7 +1,7 @@
-import { RULES, STAGES, TOTAL_ROUNDS, player, club } from './data';
+import { GOALS, RULES, STAGES, TOTAL_ROUNDS, goal, player, club } from './data';
 import type { Rng } from './rng';
-import { type Needs, clubNeed, currentEvent, demandFee, demandPenalty, evaluateOffer, fitScore, handAfter, isEvaluation, offerValue, validateOffer, validateSecond } from './rules';
-import type { AgentState, Demand, EventKey, GameState, Guesses, Offer, PersonaKey, RoundBid, Submission } from './types';
+import { type Needs, clubNeed, currentEvent, demandFee, evaluateOffer, fitScore, goalMatches, goalProgress, handAfter, isEvaluation, offerValue, ownSignings, validateOffer, validateSecond } from './rules';
+import type { AgentState, Demand, EventKey, GameState, Offer, PersonaKey, RoundBid, Submission } from './types';
 
 /** 게임 구단 중 이 선수와 계약할 수 있는 구단의 최고 적합도 */
 const bestFit = (state: Pick<GameState, 'clubs'>, playerId: number, event: EventKey, needs: Needs): number => {
@@ -11,32 +11,67 @@ const bestFit = (state: Pick<GameState, 'clubs'>, playerId: number, event: Event
 };
 
 /**
- * 공개 기록으로 본 '이 에이전트가 각 구단을 밀어 준 정도'.
- * 제안 1건마다 +1, 더 잘 맞는 구단을 두고 그 구단을 골랐으면 차이 × lossWeight 만큼 더한다.
+ * 목표 카드 가치: 이 선수를 계약하면 목표들이 얼마나 가까워지는가 (억, 승률 곱하기 전).
+ * 달성되면 보너스 전부, 아니면 보너스 × (이번에 채우는 몫) × (남은 협상으로 나머지를 채울 수 있는 정도).
+ * 단계마다 같은 몫이라 끝까지 채우면 합이 보너스와 같다.
  */
-export function evidence(state: Pick<GameState, 'results' | 'clubs'>, agentIdx: number, lossWeight = 1): Map<number, number> {
-  const m = new Map<number, number>(state.clubs.map((c) => [c, 0]));
-  for (const r of state.results) {
-    for (const e of r.entries) {
-      if (e.agent !== agentIdx || !e.offer || e.status === 'invalid' || !m.has(e.offer.clubId)) continue;
-      const loss = Math.max(0, bestFit(state, e.offer.playerId, r.event, r.needs) - fitScore(player(e.offer.playerId), clubNeed(r.needs, e.offer.clubId)));
-      m.set(e.offer.clubId, m.get(e.offer.clubId)! + 1 + loss * lossWeight);
-    }
+export function goalGain(state: Pick<GameState, 'signings' | 'round'>, agentIdx: number, goals: readonly number[], playerId: number, weight: number, stage: 1 | 2): number {
+  const own = ownSignings(state, agentIdx);
+  const left = negotiationsLeft(state, stage) - 1;
+  let v = 0;
+  for (const id of goals) {
+    const g = goal(id);
+    const now = goalProgress(id, own);
+    if (now >= g.n) continue;
+    const after = goalProgress(id, [...own, { playerId, weight }]);
+    if (after <= now) continue;
+    const rest = g.n - after;
+    v += rest <= 0 ? RULES.goalBonus : RULES.goalBonus * ((after - now) / (g.n - now)) * Math.min(1, left / (rest * AI_MODEL.goalPace));
   }
-  return m;
+  return v;
 }
 
-/** 각 구단이 그 에이전트의 비밀 구단일 확률 추정 */
-function suspicion(state: GameState, agentIdx: number): Map<number, number> {
-  const e = evidence(state, agentIdx);
-  const m = new Map<number, number>();
-  let total = 0;
-  for (const [c, v] of e) {
-    m.set(c, v + 0.5);
-    total += v + 0.5;
+/**
+ * 공개된 계약·제안 기록으로 본 '이 에이전트가 각 목표 카드를 들고 있을' 확률 (exclude = 내가 든 카드라 남의 것이 아님).
+ * 목표 조건에 맞는 선수에 제안할 때마다 그 목표의 가능도를 goalTell 배 올린다 (완성형 스쿼드는 모든 선수가 맞아 약하게).
+ */
+export function goalBelief(state: Pick<GameState, 'results'>, agentIdx: number, exclude: readonly number[]): Map<number, number> {
+  const w = new Map<number, number>(GOALS.filter((g) => !exclude.includes(g.id)).map((g) => [g.id, 1]));
+  for (const r of state.results)
+    for (const e of r.entries) {
+      if (e.agent !== agentIdx || !e.offer || (e.status !== 'won' && e.status !== 'lost')) continue;
+      const p = player(e.offer.playerId);
+      for (const [id, x] of w) {
+        const g = goal(id);
+        if (goalMatches(g, p)) w.set(id, x * (g.rule.kind === 'allPos' ? 1.1 : AI_MODEL.goalTell));
+      }
+    }
+  const total = [...w.values()].reduce((a, b) => a + b, 0) || 1;
+  for (const [id, x] of w) w.set(id, x / total);
+  return w;
+}
+
+const beliefCache = new WeakMap<GameState, Map<string, Map<number, number>>>();
+function beliefOf(state: GameState, me: number, k: number): Map<number, number> {
+  let m = beliefCache.get(state);
+  if (!m) beliefCache.set(state, (m = new Map()));
+  const key = `${me}:${k}`;
+  let v = m.get(key);
+  if (!v) m.set(key, (v = goalBelief(state, k, state.agents[me]!.goals)));
+  return v;
+}
+
+/** 상대들이 이 선수로 목표에 가까워지는 정도의 기대값 (견제: 내가 계약하면 막는다) */
+function rivalGoalGain(state: GameState, me: number, playerId: number, weight: number, stage: 1 | 2): number {
+  const leader = soleLeader(state);
+  let v = 0;
+  for (let k = 0; k < state.agents.length; k++) {
+    if (k === me) continue;
+    let x = 0;
+    for (const [id, q] of beliefOf(state, me, k)) x += q * goalGain(state, k, [id], playerId, weight, stage);
+    v += x * (k === leader ? 1.3 : 1);
   }
-  for (const [c, v] of m) m.set(c, v / total);
-  return m;
+  return v;
 }
 
 /**
@@ -46,11 +81,9 @@ function suspicion(state: GameState, agentIdx: number): Map<number, number> {
 export interface Persona {
   name: string;
   kind: 'random' | 'value' | 'spoiler' | 'pass';
-  /** 비밀 구단을 밀어 주는 정도 */
+  /** 목표 카드를 채우는 데 두는 비중 (0 = 무시) */
   push: number;
-  /** true: 공개 기록에서 비밀 구단이 1위가 되지 않게만 민다 (위장) */
-  stealth: boolean;
-  /** 상대 비밀 구단으로 보내는 것을 피하는 정도 */
+  /** 상대가 노릴 법한 목표 선수를 먼저 가로채는 정도 */
   deny: number;
   /** 높은 요구 수수료 카드를 아끼는 비용 (손에 1장 남았으면 0) */
   save: number;
@@ -62,33 +95,29 @@ export interface Persona {
   spread: number;
   /** 가치의 몇 제곱에 비례해 고를지 */
   sharp: number;
-  /** 지목 방식: 공개 기록 1위 / 반반 / 2위 */
-  guess: 'top' | 'mix' | 'second';
-  /** 지목할 때 '더 맞는 구단을 두고 고른' 증거에 주는 가중치 */
-  tell: number;
   /** 요구 수수료를 강제로 고른다 (퇴화 전략 검사용) */
   demand?: 'min' | 'max';
   /**
-   * 상대 예측: 1 = 단순 기대값 softmax, 2 = 상대도 나를 1단계로 예측, 3 = 상대의 실제 선택 방식(상위 후보 가중 선택) 모방 (상대 비밀 구단을 앎 — 진단용),
-   * 4 = 3과 같되 상대 비밀 구단은 공개 기록으로 추정한 확률로 가중 (정보 누출 없음)
+   * 상대 예측: 1 = 단순 기대값 softmax, 2 = 상대도 나를 1단계로 예측, 3 = 상대의 실제 선택 방식(상위 후보 가중 선택) 모방 (상대 목표 카드를 앎 — 진단용),
+   * 4 = 3과 같되 상대 목표 카드는 공개 기록으로 추정한 확률로 가중 (정보 누출 없음)
    */
   depth: 1 | 2 | 3 | 4;
 }
 
-const base: Persona = { name: '균형형', kind: 'value', push: 2, stealth: true, deny: 1, save: 0, greed: 0, risk: 1, spread: 5, sharp: 1.5, guess: 'mix', tell: 1, depth: 1 };
+const base: Persona = { name: '균형형', kind: 'value', push: 1, deny: 0, save: 0, greed: 0, risk: 1, spread: 5, sharp: 1.5, depth: 1 };
 /** 앱의 '보통' = 균형형. 상대 예측만 믿음 기반 정책 모방(depth 4)을 쓴다 */
 const balanced: Persona = { ...base, depth: 4 };
 
 export const PERSONAS: Record<PersonaKey, Persona> = {
-  random: { ...base, name: '무작위', kind: 'random', guess: 'top' },
+  random: { ...base, name: '무작위', kind: 'random' },
   balanced,
   greedy: { ...base, name: '욕심형', greed: 1.5 },
   cautious: { ...base, name: '신중형', risk: 2, greed: 0 },
-  blatant: { ...base, name: '노골형', push: 3, stealth: false, guess: 'top' },
-  stealth: { ...base, name: '위장형', push: 2.5 },
-  /** 비밀 구단을 밀어 주지 않는다 (그 외는 균형형과 같음) — 핵심 장치의 영향 측정용 */
-  ignore: { ...base, name: '무시형', push: 0 },
-  deducer: { ...base, name: '추리형', deny: 2, tell: 2 },
+  focused: { ...base, name: '목표 집중형', push: 2 },
+  opportunist: { ...base, name: '기회형', push: 0.5 },
+  /** 목표 카드를 무시한다 (그 외는 균형형과 같음) — 핵심 장치의 영향 측정용 */
+  ignore: { ...base, name: '목표 무시형', push: 0 },
+  blocker: { ...base, name: '견제형', deny: 0.6 },
   spoiler: { ...base, name: '방해형', kind: 'spoiler' },
   pass: { ...base, name: '항상 패스', kind: 'pass' },
   low: { ...base, name: '항상 최저 카드', demand: 'min' },
@@ -96,15 +125,17 @@ export const PERSONAS: Record<PersonaKey, Persona> = {
 };
 
 /** 보통 AI 자리에 차례로 주는 성향 (같은 AI 복제끼리 같은 수로 몰리지 않게) */
-export const NORMAL_FIELD: readonly PersonaKey[] = ['balanced', 'stealth', 'cautious'];
+export const NORMAL_FIELD: readonly PersonaKey[] = ['balanced', 'focused', 'cautious'];
 
 /**
  * beta1·beta2·mix: 상대 예측 모델의 집중도 (클수록 상대가 좋은 수에 몰린다고 본다). 보정: scripts/calibrate.ts
  * cardValue: 카드가 모자랄 때 카드 1장을 지금 쓰는 기회비용(억)의 평균
  * cardRel: 카드 종류 선택 비용 = (그 카드 수수료 − 남은 카드 평균 수수료) × cardRel. 카드는 결국 다 쓰게 되므로
  *   지금 높은 카드를 내도 그 수수료는 '나중에 받을 수 있던 돈'이다 → 높은 카드는 경쟁이 없을 때, 낮은 카드는 경쟁할 때 쓴다
+ * goalPace: 목표 조건에 맞는 선수 1명을 더 계약하는 데 드는 협상 수 추정 (남은 협상이 이보다 적으면 목표 가치를 깎는다)
+ * goalTell: 목표 추정에서 조건에 맞는 선수에 제안한 기록 1건이 그 목표의 가능도를 몇 배 올리는가
  */
-export const AI_MODEL = { beta1: 1 / 1.2, beta2: 1, mix: 1, cardValue: 5, cardRel: 0.25, cardMix: 1 };
+export const AI_MODEL = { beta1: 1 / 1.2, beta2: 1, mix: 1, cardValue: 5, cardRel: 0.25, cardMix: 1, goalPace: 2.5, goalTell: 1.6 };
 
 /**
  * 게임마다 에이전트별로 고정되는 카드 운용 성향 배율 (1 ± cardMix). 모든 AI가 같은 순서로 카드를 쓰면
@@ -199,7 +230,7 @@ export function makeEasyOffer(state: GameState, agentIdx: number, rng: Rng, t: T
 
 /**
  * 가치형 AI: 모든 (선수, 구단, 카드) 조합의 기대 가치를 비교한다.
- * - 가치 = 수수료 × 승률^risk + 욕심 + 비밀 구단 가치 − 상대 비밀 구단 회피 − 카드 아끼기
+ * - 가치 = 수수료 × 승률^risk + 욕심 + (목표 카드 가치 + 견제 가치) × 승률 − 카드 아끼기
  * - 승률은 상대들의 수를 한 단계 예측해서 구한다 (predictRivals)
  * - 같은 수에 여러 AI가 몰려 서로 상쇄되지 않도록 선수별 최선안 상위 spread 개 중 가치^sharp 에 비례해 고른다
  */
@@ -232,26 +263,25 @@ const rivalsFor = (state: GameState, agentIdx: number, depth: Persona['depth']):
  */
 function scoreOffers(state: GameState, agentIdx: number, ps: Persona, rivals: RivalModel[], t: Turn = turnOf(state, agentIdx)): { offer: Offer; value: number }[] {
   const agent = state.agents[agentIdx]!;
-  const n = state.agents.length;
   const event = currentEvent(state);
-  const clubBonus = (event === 'sponsor' ? 2 : 1) * RULES.clubBonus;
-  const leader = soleLeader(state);
-  const sus = state.agents.map((_, k) => (k === agentIdx ? null : suspicion(state, k)));
-  const own = evidence(state, agentIdx);
-  const maxOther = Math.max(0, ...state.clubs.filter((c) => c !== agent.secret).map((c) => own.get(c)!));
-  const ownDeals = state.signings.filter((s) => s.clubId === agent.secret && (!RULES.clubOwnOnly || s.agent === agentIdx)).reduce((x, s) => x + s.weight, 0);
+  const weight = event === 'sponsor' ? 2 : 1;
   if (!t.hand.length) return [];
   const lastCard = t.hand.length === 1;
   const kinds = [...new Set(t.hand)];
   const hand: Demand[] = ps.demand === 'min' ? [Math.min(...kinds) as Demand] : ps.demand === 'max' ? [Math.max(...kinds) as Demand] : kinds;
   const stage2 = t.first !== undefined;
+  const stage = stage2 ? 2 : 1;
   const style = cardStyle(state, agentIdx);
   const free = (pid: number) => (stage2 ? rivals.reduce((p, r) => p * (1 - (r.target.get(pid) ?? 0)), 1) : 1);
+  // 선수마다 목표 가치(내 목표 + 상대 목표 견제)는 구단·카드와 무관하므로 한 번만 계산
+  const goalOf = new Map(
+    state.market.map((pid) => [pid, (ps.push ? ps.push * goalGain(state, agentIdx, agent.goals, pid, weight, stage) : 0) + (ps.deny ? ps.deny * rivalGoalGain(state, agentIdx, pid, weight, stage) : 0)]),
+  );
 
   const scored: { offer: Offer; value: number }[] = [];
   for (const pid of state.market) {
-    const best = bestFit(state, pid, event, state.needs);
     const open = free(pid);
+    const gv = goalOf.get(pid)!;
     for (const clubId of state.clubs) {
       if (blocked(t, pid, clubId)) continue;
       for (const demand of hand) {
@@ -259,19 +289,9 @@ function scoreOffers(state: GameState, agentIdx: number, ps: Persona, rivals: Ri
         const ev = evaluateOffer(offer, event, state.needs);
         if (!isEvaluation(ev)) continue;
         const win = (open * winChance(rivals, pid, ev.attract, demand)) ** ps.risk;
-        let value = ev.fee * win + ps.greed * demandFee(demand) * win;
-        const fit = ev.attract + demandPenalty(demand);
-        if (clubId === agent.secret && ps.push > 0) {
-          if (!ps.stealth || own.get(clubId)! + 1 + (best - fit) < maxOther) value += ps.push * clubBonus * win;
-          else value -= 0.8 * RULES.clubBonus * (ownDeals + 1);
-        } else if (ps.stealth && ps.push > 0 && own.get(clubId)! >= maxOther) {
-          value += 0.3; // 미끼 구단을 가장 의심스러운 구단으로 유지
-        }
-        for (let k = 0; k < n; k++) {
-          if (k !== agentIdx && !RULES.clubOwnOnly) value -= ps.deny * clubBonus * win * sus[k]!.get(clubId)! * (k === leader ? 1.3 : 0.7);
-        }
+        let value = ev.fee * win + ps.greed * demandFee(demand) * win + gv * win;
         if (!lastCard) value -= ps.save * demand;
-        value -= cardCost(state, t.hand, stage2 ? 2 : 1, demand, style);
+        value -= cardCost(state, t.hand, stage, demand, style);
         scored.push({ offer, value });
       }
     }
@@ -283,27 +303,25 @@ function scoreOffers(state: GameState, agentIdx: number, ps: Persona, rivals: Ri
 
 /**
  * 정책 모방 예측 (depth 3): 각 상대가 '한 단계 예측을 쓰는 균형형'처럼 실제로 후보를 뽑고
- * 가치^sharp 에 비례해 고른다고 보고, 그 선택 확률을 그대로 쓴다.
+ * 가치^sharp 에 비례해 고른다고 보고, 그 선택 확률을 그대로 쓴다 (상대 목표 카드를 그대로 읽는 진단용).
  */
 function policyRivals(state: GameState, agentIdx: number): RivalModel[] {
   return state.agents.flatMap((_, k) => (k === agentIdx ? [] : cached(state, `3:${k}`, () => [policyModel(state, k)])));
 }
 
 /**
- * 믿음 기반 정책 모방 (depth 4): 상대 k 의 비밀 구단을 모르므로, 공개 기록으로 본 의심 확률
- * (내 비밀 구단은 제외)로 '비밀 구단이 c 라면 k 가 둘 수'의 선택 확률을 가중 평균한다.
+ * 믿음 기반 정책 모방 (depth 4): 상대 k 의 목표 카드를 모르므로, 공개 기록으로 본 추정 확률
+ * (내 목표 카드는 제외) 상위 BELIEF_TOP 개로 '목표가 g 라면 k 가 둘 수'의 선택 확률을 가중 평균한다.
  */
 function beliefRivals(state: GameState, agentIdx: number): RivalModel[] {
-  const mine = state.agents[agentIdx]!.secret;
   return state.agents.flatMap((_, k) => {
     if (k === agentIdx) return [];
     return cached(state, `4:${agentIdx}:${k}`, () => {
-      const sus = suspicion(state, k);
-      sus.delete(mine);
-      const total = [...sus.values()].reduce((a, b) => a + b, 0) || 1;
+      const top = [...beliefOf(state, agentIdx, k)].sort((a, b) => b[1] - a[1]).slice(0, BELIEF_TOP);
+      const total = top.reduce((a, [, q]) => a + q, 0) || 1;
       const combos: Combo[] = [];
-      for (const [c, q] of sus) {
-        const agents = state.agents.map((a, i) => (i === k ? { ...a, secret: c } : a));
+      for (const [g, q] of top) {
+        const agents = state.agents.map((a, i) => (i === k ? { ...a, goals: [g] } : a));
         const m = policyModel({ ...state, agents }, k);
         for (const [pid, t] of m.target)
           for (const [key, qa] of m.attract.get(pid) ?? []) combos.push({ pid, attract: attractOf(key), demand: demandOf(key), w: (q / total) * t * qa });
@@ -316,6 +334,9 @@ function beliefRivals(state: GameState, agentIdx: number): RivalModel[] {
     });
   });
 }
+
+/** depth 4 에서 흉내 낼 상대 목표 후보 수 (가능성 높은 순) */
+const BELIEF_TOP = 5;
 
 function policyModel(state: GameState, k: number): RivalModel {
   const ps: Persona = { ...PERSONAS.balanced, depth: 1 };
@@ -479,35 +500,6 @@ function winChance(rivals: RivalModel[], playerId: number, attract: number, dema
     p *= 1 - t + t * lower;
   }
   return Math.min(0.97, Math.max(0.03, p));
-}
-
-/** 비밀 구단 지목: 페르소나의 방식대로 공개 기록 1위 또는 2위(위장 의심) 구단 */
-export function makeAiGuesses(state: GameState, agentIdx: number, rng: Rng): Guesses {
-  const agent = state.agents[agentIdx]!;
-  const ps = personaOf(agent);
-  const out: Guesses = {};
-  const picks: { k: number; club: number; conf: number }[] = [];
-  state.agents.forEach((_, k) => {
-    if (k === agentIdx) return;
-    const e = evidence(state, k, ps.tell);
-    // 내 비밀 구단은 남의 것이 아니므로 제외
-    const order = state.clubs.filter((c) => c !== agent.secret).sort((a, b) => e.get(b)! - e.get(a)! || rng.next() - 0.5);
-    const second = ps.guess === 'second' || (ps.guess === 'mix' && rng.next() < 0.5);
-    const pick = (second ? order[1] : order[0]) ?? order[0]!;
-    const total = order.reduce((s, c) => s + e.get(c)! + 0.5, 0);
-    picks.push({ k, club: pick, conf: (e.get(pick)! + 0.5) / total });
-  });
-  // 틀리면 감점이 있으면 기대값이 양수인 지목만 한다
-  const worth = (p: { conf: number }) => !RULES.wrongGuess || p.conf * RULES.guessBonus > (1 - p.conf) * RULES.wrongGuess;
-  if (!RULES.guessOne) {
-    for (const p of picks) if (worth(p)) out[p.k] = p.club;
-    return out;
-  }
-  // 한 명만: 확신 × (비밀 구단 아래 선수 수 + 1) 이 가장 큰 상대
-  const stake = (c: number) => state.signings.filter((s) => s.clubId === c).reduce((x, s) => x + s.weight, 0) + 1;
-  const best = picks.reduce((a, b) => (b.conf * stake(b.club) > a.conf * stake(a.club) ? b : a));
-  if (worth(best)) out[best.k] = best.club;
-  return out;
 }
 
 function weightedPick<T extends { value: number }>(items: T[], rng: Rng, sharp: number): T {
