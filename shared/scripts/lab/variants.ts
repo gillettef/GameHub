@@ -3,17 +3,13 @@
  * 방향: D0(1,0) D1(1,-1) D2(0,-1) D3(-1,0) D4(-1,1) D5(0,1). 거리 2 직선 = D×2.
  */
 import type { GoalDef, LabRules, SpeciesDef } from './engine.js';
+import { ENTRANCE_TILE, TILE_LIBRARY, type TileSpec } from '../../src/data/tiles.js';
+import { DIRECTIONS } from '../../src/engine/board.js';
+import type { Terrain } from '../../src/types/index.js';
 import { FERTILE, POND, ROCK } from './engine.js';
 
-const D = [
-  [1, 0],
-  [1, -1],
-  [0, -1],
-  [-1, 0],
-  [-1, 1],
-  [0, 1],
-] as const;
-const at = (d: number, v: number, k = 1): [number, number, number] => [D[d]![0] * k, D[d]![1] * k, v];
+/** 방향 d 로 k 칸 떨어진 뿌리 칸에 큐브 v 개 */
+export const at = (d: number, v: number, k = 1): [number, number, number] => [DIRECTIONS[d]![0] * k, DIRECTIONS[d]![1] * k, v];
 const self = (v: number): [number, number, number] => [0, 0, v];
 
 export const SPECIES_V2: SpeciesDef[] = [
@@ -50,42 +46,10 @@ export const GOALS_V2: GoalDef[] = [
   { id: 'dandelion-reserve', kind: 'reserve', species: 'dandelion', a: 2 },
 ];
 
-export const TILES_V1: [number, number][][] = [
-  [[1, POND]],
-  [
-    [1, POND],
-    [2, POND],
-  ],
-  [[1, ROCK]],
-  [[0, POND]],
-  [[1, FERTILE]],
-  [
-    [1, FERTILE],
-    [4, FERTILE],
-  ],
-  [
-    [1, POND],
-    [4, FERTILE],
-  ],
-  [
-    [1, ROCK],
-    [3, FERTILE],
-  ],
-  [
-    [1, POND],
-    [2, POND],
-    [5, FERTILE],
-  ],
-  [
-    [0, FERTILE],
-    [3, ROCK],
-  ],
-  [
-    [2, POND],
-    [5, ROCK],
-  ],
-  [],
-];
+/** 정본 정원 조각(shared/src/data/tiles.ts)을 실험실 지형 번호로 옮긴 것. 정본을 바꾸면 실험실도 따라간다 */
+const LAB_TERRAIN: Record<Terrain, number> = { empty: 0, pond: POND, rock: ROCK, fertile: FERTILE };
+const toLab = (tile: TileSpec): [number, number][] => tile.map(([k, t]) => [k, LAB_TERRAIN[t]]);
+export const TILES_V1: [number, number][][] = TILE_LIBRARY.map(toLab);
 
 export const BASE: LabRules = {
   name: 'v2-base',
@@ -107,7 +71,7 @@ export const BASE: LabRules = {
   requireReserve: true,
   komi: { 2: [0, 0], 3: [0, 0, 0], 4: [0, 0, 0, 0] },
   tiles: TILES_V1,
-  entranceTile: [[1, FERTILE]],
+  entranceTile: toLab(ENTRANCE_TILE),
   noCell: 'entrance',
   refill: 'refill',
 };

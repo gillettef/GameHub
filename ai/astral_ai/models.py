@@ -55,7 +55,7 @@ class Cell(_Model):
 class Board(_Model):
     # 칸 목록. 항상 r → q 오름차순
     cells: list[Cell]
-    # 좌석별 입구 위치
+    # 자리별 입구 위치
     entrances: list[Position]
     tileCount: int
 
@@ -129,7 +129,7 @@ class GameState(_Model):
     currentPlayerId: Optional[PlayerId] = None
     players: list[PlayerState] = Field(default_factory=list)
     plants: list[Plant] = Field(default_factory=list)
-    # 칸별 뿌리 큐브 색(좌석, −1 없음)과 수. board.cells 순서. 한 칸에는 한 색만
+    # 칸별 뿌리 큐브 색(자리, −1 없음)과 수. board.cells 순서. 한 칸에는 한 색만
     rootSeat: list[int] = Field(default_factory=list)
     rootCount: list[int] = Field(default_factory=list)
     rngSeed: int = 0

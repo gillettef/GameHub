@@ -3,7 +3,7 @@
  * 순수 함수. `applyAction(state, action) => { state, error? }`. 입력 state 를 변이하지 않는다.
  */
 import { GOAL_COUNT, START_HAND, MAX_PLAYERS, MIN_PLAYERS, rulesFor } from '../data/constants.js';
-import { FLOWER_SPECIES, FOREST_SPECIES, GOALS, GOAL_EXCLUSIONS, SPECIES_IDS, getGoal, getSpecies, isSpeciesId } from '../data/species.js';
+import { FLOWER_SPECIES, FOREST_SPECIES, GOALS, SPECIES_IDS, getGoal, getSpecies, isSpeciesId } from '../data/species.js';
 import type { Action, Direction, GameLogEntry, GameResultReason, GameState, GoalId, LogKind, PlayerId, PlayerKind, PlayerState, Position, RoundStage, SpeciesId } from '../types/index.js';
 import { buildBoard, cellLabel, cellLabels, isDirection, samePos } from './board.js';
 import { computeOwners, entranceRoots, legalPlantCells, legalSeedCells, plantRoots, supplyLeft } from './influence.js';
@@ -23,8 +23,8 @@ const reject = (state: GameState, error: string): ActionResult => ({ state, erro
 // ---------------------------------------------------------------------------
 
 /**
- * deckSeed 는 카드 더미 셔플 전용이다(Rules.md 11절). 온라인에서는 서버가 boardSeed 와 독립인 암호학적 난수를 넣어야
- * 공개 보드·목표로 손패를 역산할 수 없다. 생략하면(핫시트·테스트) boardSeed 에서 만든다
+ * deckSeed 는 카드 더미 셔플 전용이다(Rules.md 11절). 온라인에서는 서버가 rngSeed 와 독립인 암호학적 난수를 넣어야
+ * 공개 보드·목표로 손패를 역산할 수 없다. 생략하면(핫시트·테스트) rngSeed 에서 만든다
  */
 export function createInitialState(roomId: string, rngSeed: number, deckSeed: number | readonly number[] = (rngSeed ^ 0x9e3779b9) >>> 0): GameState {
   return {
@@ -102,7 +102,7 @@ function updatePlayer(state: GameState, playerId: PlayerId, patch: Partial<Playe
 // 시작: 보드 → 목표 → 이번 판 식물 → 카드 더미·손 → 첫 마켓 (Rules.md 4·5절, 11절 난수 순서)
 // ---------------------------------------------------------------------------
 
-/** 16장을 섞고 앞에서부터 3장씩 끊어 조건(종 연계 1장 이상, 배제 쌍 없음)을 만족하는 첫 묶음 */
+/** 16장을 섞고 앞에서부터 3장씩 끊어 조건(종 연계 1장 이상)을 만족하는 첫 묶음 */
 export function pickGoals(seed: number): { goals: GoalId[]; seed: number } {
   let s = seed;
   for (;;) {
@@ -111,7 +111,6 @@ export function pickGoals(seed: number): { goals: GoalId[]; seed: number } {
     for (let i = 0; i + GOAL_COUNT <= r.items.length; i += GOAL_COUNT) {
       const chunk = r.items.slice(i, i + GOAL_COUNT);
       if (!chunk.some((g) => getGoal(g).species !== null)) continue;
-      if (GOAL_EXCLUSIONS.some(([a, b]) => chunk.includes(a) && chunk.includes(b))) continue;
       return { goals: chunk, seed: s };
     }
   }
@@ -165,9 +164,7 @@ export function startGame(state: GameState): GameState {
   // 카드 더미: 이번 판 식물마다 copies 장을 섞고, 자리 0부터 손에 1장씩
   const dealt = shuffleDeck(garden.species.flatMap((sp) => new Array<SpeciesId>(rule.copies).fill(sp)), deckKeyFrom(state.deckSeed));
   const pile = [...dealt.items];
-  const players = [...state.players]
-    .sort((a, b) => a.seat - b.seat)
-    .map((p) => ({ ...p, hand: pile.splice(0, START_HAND), surrenderedOrder: null, isReady: p.kind === 'ai' }));
+  const players = bySeat(state).map((p) => ({ ...p, hand: pile.splice(0, START_HAND), surrenderedOrder: null, isReady: p.kind === 'ai' }));
   const market = pile.splice(0, rule.market);
   const n = built.board.cells.length;
   let s: GameState = {
@@ -200,9 +197,8 @@ export function startGame(state: GameState): GameState {
 /** 공개 단계에서 기권하지 않은 사람이 모두 확인했으면 1라운드를 연다 (Rules.md 4절 7) */
 function maybeBeginPlay(state: GameState): GameState {
   if (state.phase !== 'reveal') return state;
-  const active = state.players.filter(isActive);
-  if (!active.every((p) => p.isReady)) return state;
-  const first = [...active].sort((a, b) => a.seat - b.seat)[0] as PlayerState;
+  if (!state.players.filter(isActive).every((p) => p.isReady)) return state;
+  const first = bySeat(state).find(isActive) as PlayerState;
   return beginRound({ ...state, phase: 'playing' }, 1, first.seat);
 }
 
@@ -212,6 +208,8 @@ function maybeBeginPlay(state: GameState): GameState {
 // ---------------------------------------------------------------------------
 
 const isActive = (p: PlayerState) => p.surrenderedOrder === null;
+/** 자리 순서로 정렬한 플레이어 */
+const bySeat = (state: GameState): PlayerState[] => [...state.players].sort((a, b) => a.seat - b.seat);
 /** 이번 라운드에 둘 수 있는가: 기권 안 했고 손이나 마켓에 카드가 있다 */
 const canAct = (state: GameState) => (p: PlayerState) => isActive(p) && (p.hand.length > 0 || state.market.length > 0);
 
@@ -231,9 +229,6 @@ function finishGame(state: GameState, reason: GameResultReason): GameState {
   s = addLog(s, 'result', winner, `게임 종료${reason === 'last-standing' ? ' (남은 사람 1명)' : ''}: ${summary}`);
   return s;
 }
-
-/** 자리 순서로 정렬한 플레이어 */
-const bySeat = (state: GameState): PlayerState[] => [...state.players].sort((a, b) => a.seat - b.seat);
 
 /**
  * 다음 라운드의 선: 공급처에 큐브가 가장 많이 남은 기권 안 한 사람. 동점이면 이번 선의 다음 자리부터 시계방향으로
@@ -346,6 +341,61 @@ export function validatePlant(state: GameState, a: Extract<Action, { type: 'PLAN
   return null;
 }
 
+/** 가져오기 (Rules.md 5절 1): 마켓 한 장(빈자리는 더미 맨 위로 바로 채움) 또는 카드 더미 맨 위 1장(뒷면) */
+function applyTake(state: GameState, action: Extract<Action, { type: 'TAKE' }>): ActionResult {
+  const err = validateTake(state, action);
+  if (err) return reject(state, err);
+  const me = getPlayer(state, action.playerId) as PlayerState;
+  const pile = [...state.pile];
+  if (action.take === 'pile') {
+    // 카드 더미 맨 위 1장: 본인만 본다. 기록에 식물 이름을 남기지 않는다 (Rules.md 5절)
+    const card = pile.shift() as SpeciesId;
+    const s = updatePlayer({ ...state, pile, stage: 'plant' }, action.playerId, { hand: [...me.hand, card] });
+    return { state: addLog(s, 'take', action.playerId, `${me.nickname}: 카드 더미에서 1장 가져옴`) };
+  }
+  const card = state.market[action.take] as SpeciesId;
+  const market = state.market.filter((_, i) => i !== action.take);
+  if (pile.length) market.push(pile.shift() as SpeciesId);
+  const s = updatePlayer({ ...state, market, pile, stage: 'plant' }, action.playerId, { hand: [...me.hand, card] });
+  return { state: addLog(s, 'take', action.playerId, `${me.nickname}: 마켓에서 ${getSpecies(card).name} 가져옴`) };
+}
+
+/** 심기 (Rules.md 6절): 식물을 놓고 뿌리를 뻗은 뒤 손에서 카드를 빼고 차례를 넘긴다 */
+function applyPlant(state: GameState, action: Extract<Action, { type: 'PLANT' }>): ActionResult {
+  const err = validatePlant(state, action);
+  if (err) return reject(state, err);
+  const sp = getSpecies(action.species);
+  const rotation = (action.rotation ?? 0) as Direction;
+  const seed = action.seed && sp.seed ? { q: action.seed.q, r: action.seed.r } : null;
+  const plant = { id: `p${state.plants.length + 1}`, species: action.species, ownerId: action.playerId, pos: { q: action.pos.q, r: action.pos.r }, rotation };
+  let s: GameState = { ...state, plants: [...state.plants, plant] };
+  const res = plantRoots(s, action.playerId, action.species, action.pos, rotation, seed);
+  s = spendCard({ ...s, rootSeat: res.rootSeat, rootCount: res.rootCount }, action.playerId, action.species);
+  s = logPlant(state, s, action, seed, res.uprooted);
+  return { state: advance(s) };
+}
+
+/** 심기 기록: 심은 칸 → 옮겨 온 뿌리 → 밀어낸 땅 순서. 칸 이름은 Rules.md 2절 "칸 이름" (예: C4) */
+function logPlant(before: GameState, after: GameState, action: Extract<Action, { type: 'PLANT' }>, seed: Position | null, uprooted: number[]): GameState {
+  const me = getPlayer(before, action.playerId) as PlayerState;
+  const board = before.board as NonNullable<GameState['board']>;
+  const labels = cellLabels(board);
+  let s = addLog(after, 'plant', action.playerId, `${me.nickname}: ${cellLabel(board, action.pos)}에 ${getSpecies(action.species).name} 심음${seed ? `, 씨앗 ${cellLabel(board, seed)}` : ''}`);
+  if (uprooted.length) {
+    const from = [...new Set(uprooted)].map((c) => labels[c]).join(', ');
+    s = addLog(s, 'uproot', action.playerId, `${me.nickname}: 뿌리가 모자라 내 땅 ${from}에서 큐브 ${uprooted.length}개를 옮겨 옴`);
+  }
+  // 다른 사람 땅이 줄었으면 밀어낸 것으로 기록한다 (진행 탭·연출용)
+  const was = computeOwners(before);
+  const now = computeOwners(after);
+  for (const p of after.players) {
+    if (p.seat === me.seat) continue;
+    const lost = labels.filter((_, c) => was[c] === p.seat && now[c] !== p.seat);
+    if (lost.length) s = addLog(s, 'flip', action.playerId, `${me.nickname}: ${p.nickname}의 땅 ${lost.length}칸을 밀어냄 (${lost.join(', ')})`);
+  }
+  return s;
+}
+
 export function applyAction(state: GameState, action: Action): ActionResult {
   switch (action.type) {
     case 'READY': {
@@ -363,59 +413,10 @@ export function applyAction(state: GameState, action: Action): ActionResult {
       const s = addLog(updatePlayer(state, action.playerId, { isReady: true }), 'system', me.id, `${me.nickname} 확인`);
       return { state: maybeBeginPlay(s) };
     }
-    case 'TAKE': {
-      const err = validateTake(state, action);
-      if (err) return reject(state, err);
-      const me = getPlayer(state, action.playerId) as PlayerState;
-      const pile = [...state.pile];
-      if (action.take === 'pile') {
-        // 카드 더미 맨 위 1장: 본인만 본다. 기록에 식물 이름을 남기지 않는다 (Rules.md 5절)
-        const card = pile.shift() as SpeciesId;
-        let s: GameState = { ...state, pile, stage: 'plant' };
-        s = updatePlayer(s, action.playerId, { hand: [...me.hand, card] });
-        return { state: addLog(s, 'take', action.playerId, `${me.nickname}: 카드 더미에서 1장 가져옴`) };
-      }
-      const card = state.market[action.take] as SpeciesId;
-      // 가져간 자리는 더미 맨 위 카드로 바로 채운다 (Rules.md 5절)
-      const market = state.market.filter((_, i) => i !== action.take);
-      if (pile.length) market.push(pile.shift() as SpeciesId);
-      let s: GameState = { ...state, market, pile, stage: 'plant' };
-      s = updatePlayer(s, action.playerId, { hand: [...me.hand, card] });
-      s = addLog(s, 'take', action.playerId, `${me.nickname}: 마켓에서 ${getSpecies(card).name} 가져옴`);
-      return { state: s };
-    }
-    case 'PLANT': {
-      const err = validatePlant(state, action);
-      if (err) return reject(state, err);
-      const me = getPlayer(state, action.playerId) as PlayerState;
-      const sp = getSpecies(action.species);
-      const rotation = (action.rotation ?? 0) as Direction;
-      const board = state.board as NonNullable<GameState['board']>;
-      const labels = cellLabels(board);
-      const before = computeOwners(state);
-      let s: GameState = {
-        ...state,
-        plants: [...state.plants, { id: `p${state.plants.length + 1}`, species: action.species, ownerId: action.playerId, pos: { q: action.pos.q, r: action.pos.r }, rotation }],
-      };
-      const seed = action.seed && sp.seed ? { q: action.seed.q, r: action.seed.r } : null;
-      const res = plantRoots(s, action.playerId, action.species, action.pos, rotation, seed);
-      s = { ...s, rootSeat: res.rootSeat, rootCount: res.rootCount };
-      s = spendCard(s, action.playerId, action.species);
-      // 칸 이름은 Rules.md 2절 "칸 이름" (예: C4)
-      s = addLog(s, 'plant', action.playerId, `${me.nickname}: ${cellLabel(board, action.pos)}에 ${sp.name} 심음${seed ? `, 씨앗 ${cellLabel(board, seed)}` : ''}`);
-      if (res.uprooted.length) {
-        const from = [...new Set(res.uprooted)].map((c) => labels[c]).join(', ');
-        s = addLog(s, 'uproot', action.playerId, `${me.nickname}: 뿌리가 모자라 내 땅 ${from}에서 큐브 ${res.uprooted.length}개를 옮겨 옴`);
-      }
-      const after = computeOwners(s);
-      // 다른 사람 땅이 줄었으면 밀어낸 것으로 기록한다 (진행 탭·연출용)
-      s.players.forEach((p) => {
-        if (p.seat === me.seat) return;
-        const lost = labels.filter((_, c) => before[c] === p.seat && after[c] !== p.seat);
-        if (lost.length) s = addLog(s, 'flip', action.playerId, `${me.nickname}: ${p.nickname}의 땅 ${lost.length}칸을 밀어냄 (${lost.join(', ')})`);
-      });
-      return { state: advance(s) };
-    }
+    case 'TAKE':
+      return applyTake(state, action);
+    case 'PLANT':
+      return applyPlant(state, action);
     case 'DISCARD': {
       const err = turnError(state, action.playerId, 'plant');
       if (err) return reject(state, err);

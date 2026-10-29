@@ -65,7 +65,7 @@ function distanceProfile(cells: Position[], from: Position): number[] {
 export interface Layout {
   /** 조각 중심. 0번이 원점(가운데 조각) */
   centers: Position[];
-  /** 좌석 순서대로 입구 조각 번호 */
+  /** 자리 순서대로 입구 조각 번호 */
   entranceTiles: number[];
 }
 
@@ -165,12 +165,6 @@ export interface BoardIndex {
   indexOf: (p: Position) => number;
   /** 칸별 거리 1 이웃 색인 */
   ring1: number[][];
-  /** 칸별 별 모양 거리 2 (6칸 이하) */
-  star2: number[][];
-  /** 칸별·방향별 거리 1..3 직선 칸. 자리를 지키기 위해 보드 밖 칸은 −1 로 남긴다 (거리 k = 인덱스 k−1) */
-  line: number[][][];
-  /** 칸별 거리 2 이내 칸 (자기 제외) */
-  within2: number[][];
   edge: boolean[];
 }
 
@@ -183,23 +177,13 @@ export function boardIndex(board: Board): BoardIndex {
   board.cells.forEach((c, i) => map.set(posKey(c), i));
   const at = (p: Position) => map.get(posKey(p)) ?? -1;
   const ring1: number[][] = [];
-  const star2: number[][] = [];
-  const line: number[][][] = [];
-  const within2: number[][] = [];
   const edge: boolean[] = [];
-  board.cells.forEach((c, i) => {
+  board.cells.forEach((c) => {
     const nb = DIRECTIONS.map((_, d) => at(step(c, d))).filter((x) => x >= 0);
     ring1.push(nb);
     edge.push(nb.length < 6);
-    star2.push(DIRECTIONS.map((_, d) => at(step(c, d, 2))).filter((x) => x >= 0));
-    line.push(DIRECTIONS.map((_, d) => [1, 2, 3].map((k) => at(step(c, d, k)))));
-    const w: number[] = [];
-    board.cells.forEach((o, j) => {
-      if (j !== i && hexDistance(c, o) <= 2) w.push(j);
-    });
-    within2.push(w);
   });
-  const idx: BoardIndex = { board, n: board.cells.length, indexOf: at, ring1, star2, line, within2, edge };
+  const idx: BoardIndex = { board, n: board.cells.length, indexOf: at, ring1, edge };
   indexCache.set(board, idx);
   return idx;
 }

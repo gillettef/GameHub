@@ -1,7 +1,19 @@
 /**
  * 점수·목표·순위 (Rules.md 8·9절). 보드의 순수 함수. 식물은 누구의 것도 아니고, 그 칸의 주인(큐브 색)이 점수를 받는다.
  */
-import { RESERVE_BONUS, VARIETY_BONUS, VARIETY_SPECIES, rulesFor } from '../data/constants.js';
+import {
+  CENTER_PLAZA_BONUS,
+  FERTILE_BONUS,
+  FLOWER_BONUS,
+  FOREST_BONUS,
+  FOREST_MIN_GROUP,
+  RANK_FIRST_BONUS,
+  RANK_SECOND_BONUS,
+  RESERVE_BONUS,
+  VARIETY_BONUS,
+  VARIETY_SPECIES,
+  rulesFor,
+} from '../data/constants.js';
 import { FLOWER_SPECIES, FOREST_SPECIES, getGoal, getSpecies } from '../data/species.js';
 import type { GameState, GoalId, PlayerId, Score, SpeciesId } from '../types/index.js';
 import { boardIndex, step, type BoardIndex } from './board.js';
@@ -81,21 +93,21 @@ function goalPoints(goal: GoalId, idx: BoardIndex, mine: number[][], occ: Occupa
     case 'pond-side':
       return mine.map((cs) => cs.filter((c) => (idx.ring1[c] as number[]).some((x) => cells[x]?.terrain === 'pond')).length);
     case 'big-garden':
-      return rankAward(mine.map((cs) => Math.max(0, ...components(cs, idx).map((k) => k.length))), 4, 2);
+      return rankAward(mine.map((cs) => Math.max(0, ...components(cs, idx).map((k) => k.length))), RANK_FIRST_BONUS, RANK_SECOND_BONUS);
     case 'long-path':
-      return rankAward(mine.map((cs, seat) => longestLine(seat, cs, owners, idx)), 4, 2);
+      return rankAward(mine.map((cs, seat) => longestLine(seat, cs, owners, idx)), RANK_FIRST_BONUS, RANK_SECOND_BONUS);
     case 'fertile-field':
-      return mine.map((cs) => 2 * cs.filter((c) => cells[c]?.terrain === 'fertile').length);
+      return mine.map((cs) => FERTILE_BONUS * cs.filter((c) => cells[c]?.terrain === 'fertile').length);
     case 'edge-fence':
       return mine.map((cs) => cs.filter((c) => idx.edge[c]).length);
     case 'center-plaza':
-      return rankAward(mine.map((cs) => cs.filter((c) => cells[c]?.tile === 0).length), 4, 0);
+      return rankAward(mine.map((cs) => cs.filter((c) => cells[c]?.tile === 0).length), CENTER_PLAZA_BONUS, 0);
     case 'every-tile':
       return mine.map((cs) => new Set(cs.map((c) => cells[c]?.tile)).size);
     case 'flower-bed':
-      return mine.map((cs) => 2 * cs.filter((c) => has(c, FLOWER_SPECIES)).length);
+      return mine.map((cs) => FLOWER_BONUS * cs.filter((c) => has(c, FLOWER_SPECIES)).length);
     case 'forest':
-      return mine.map((cs) => 4 * components(cs.filter((c) => has(c, FOREST_SPECIES)), idx).filter((k) => k.length >= 3).length);
+      return mine.map((cs) => FOREST_BONUS * components(cs.filter((c) => has(c, FOREST_SPECIES)), idx).filter((k) => k.length >= FOREST_MIN_GROUP).length);
     case 'variety':
       return mine.map((cs) => (new Set(cs.map((c) => occ.plantSpecies[c]).filter((x) => x !== null)).size >= VARIETY_SPECIES ? VARIETY_BONUS : 0));
     default: {
@@ -106,7 +118,7 @@ function goalPoints(goal: GoalId, idx: BoardIndex, mine: number[][], occ: Occupa
   }
 }
 
-/** 좌석별 내 땅 칸 목록 */
+/** 자리별 내 땅 칸 목록 */
 function landCells(state: ScoreState, owners: Int8Array): number[][] {
   const mine: number[][] = Array.from({ length: state.players.length }, () => []);
   owners.forEach((o, c) => {
@@ -115,7 +127,7 @@ function landCells(state: ScoreState, owners: Int8Array): number[][] {
   return mine;
 }
 
-/** 좌석별 점수 (Rules.md 9절). 언제든 부를 수 있다(진행 중 예상 점수 표시용) */
+/** 자리별 점수 (Rules.md 9절). 언제든 부를 수 있다(진행 중 예상 점수 표시용) */
 export function computeScores(state: ScoreState): Record<PlayerId, Score> {
   const idx = boardIndex(requireBoard(state));
   const owners = computeOwners(state);
@@ -137,7 +149,7 @@ export function computeScores(state: ScoreState): Record<PlayerId, Score> {
   return out;
 }
 
-/** 순위 (Rules.md 9절): 기권 안 함 → 점수 → 땅 → 내 땅 위 식물 → 좌석 큰 쪽. 기권자는 늦게 기권한 쪽이 위 */
+/** 순위 (Rules.md 9절): 기권 안 함 → 점수 → 땅 → 내 땅 위 식물 → 자리 큰 쪽. 기권자는 늦게 기권한 쪽이 위 */
 export function computeRanking(state: GameState, scores: Record<PlayerId, Score> = computeScores(state)): PlayerId[] {
   const active = state.players.filter((p) => p.surrenderedOrder === null);
   const gone = state.players.filter((p) => p.surrenderedOrder !== null);
@@ -148,12 +160,4 @@ export function computeRanking(state: GameState, scores: Record<PlayerId, Score>
   });
   gone.sort((a, b) => (b.surrenderedOrder as number) - (a.surrenderedOrder as number));
   return [...active, ...gone].map((p) => p.id);
-}
-
-/** 좌석별 땅 칸 수 (주인 바뀜 기록용) */
-export function landCounts(state: Pick<GameState, 'board' | 'players' | 'rootSeat' | 'rootCount'>): number[] {
-  const owners = computeOwners(state);
-  const counts = new Array<number>(state.players.length).fill(0);
-  for (const o of owners) if (o >= 0) counts[o]!++;
-  return counts;
 }

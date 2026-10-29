@@ -156,39 +156,12 @@ function plantCard(sp, i) {
   return `${sp.id} ${no}/${total} 배지 ${labels.map((l) => l[0]).join('+') || '-'}`;
 }
 
-const GOAL_EDITS = {
-  'big-garden': [['+6 / +3', '+4 / +2']],
-  'long-path': [['+5 / +2', '+4 / +2']],
-  'center-plaza': [
-    ['가운데 구역 7칸에서 내 땅이 가장 많으면 +6. 2등 점수는', '가운데 구역 7칸에서 내 땅이 가장 많으면 +4. 2등 점수는'],
-    ['>+6<', '>+4<'],
-  ],
-  'flower-bed': [
-    ['내 땅 위의 유채·연꽃·무궁화 1개당 +2. 누가 심었든 센다.', '내 땅 위의 민들레·연꽃·무궁화 1개당 +2. 누가 심었든 센다.'],
-    ['꽃 (유채·연꽃·무궁화)', '꽃 (민들레·연꽃·무궁화)'],
-  ],
-  forest: [
-    ['서로 이어진 내 참나무·대나무 3개 이상 무리 1개당 +4', '내 땅 위 참나무·소나무가 3개 이상 맞닿은 무리 1개당 +4'],
-    ['나무 (참나무·대나무)', '나무 (참나무·소나무)'],
-  ],
-  variety: [['서로 다른 식물을 5종 이상 심었으면 +4', '내 땅 위에 서로 다른 식물이 5종 이상이면 +4']],
-};
-
 function goalCard(g, i) {
   const file = join(cards, 'goals', `${g.id}.svg`);
   let s = readFileSync(file, 'utf8');
   const no = String(i + 1).padStart(2, '0');
   s = s.replace(/GOAL · \d\d/, `GOAL · ${no}`);
   s = s.replace(/(<text x="[\d.]+" y="113\.2"[^>]*>)\d\d(<\/text>)/, `$1${no}$2`);
-  for (const [a, b] of GOAL_EDITS[g.id] ?? []) {
-    if (s.includes(b)) continue;
-    if (!s.includes(a)) throw new Error(`${g.id}: "${a}" 를 찾지 못했습니다`);
-    s = s.split(a).join(b);
-  }
-  if (g.species) {
-    const name = specs.species.find((x) => x.id === g.species).name;
-    s = s.replace(`끝날 때 내 땅 위에 있는 내 ${name} 1개당 +2`, `끝날 때 내 땅 위의 ${name} 1개당 +2. 누가 심었든 센다.`);
-  }
   writeFileSync(file, s);
   return `${g.id} ${no}`;
 }

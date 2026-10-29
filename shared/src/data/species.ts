@@ -71,6 +71,3 @@ export function getGoal(id: GoalId): GoalSpec {
   if (!g) throw new Error(`알 수 없는 목표: ${id}`);
   return g;
 }
-
-/** 함께 공개되지 않는 목표 쌍 (Rules.md 8절). 지금은 없다 */
-export const GOAL_EXCLUSIONS: readonly [GoalId, GoalId][] = [];

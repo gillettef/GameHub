@@ -218,3 +218,18 @@ def test_decide_not_my_turn_falls_back_harmlessly() -> None:
 def test_decide_rejects_invalid_payload() -> None:
     res = client.post("/decide", json={"state": {}, "playerId": "p1"})
     assert res.status_code == 422
+
+
+def test_validate_take_pile_reads_masked_pile_count() -> None:
+    # 서버는 가린 상태(pile=[], pileCount)를 보낸다: 장수가 남아 있으면 더미 가져오기가 합법, 0이면 거부
+    from astral_ai.models import TakeAction
+    from astral_ai.rules import validate_take
+
+    raw = _sample(_stage("take"), 1)[0]
+    state = GameState.model_validate(raw)
+    pid = state.currentPlayerId
+    assert pid is not None and state.pile
+    take = TakeAction(type="TAKE", playerId=pid, take="pile")
+    assert validate_take(state, take) is None
+    assert validate_take(state.model_copy(update={"pile": [], "pileCount": len(state.pile)}), take) is None
+    assert validate_take(state.model_copy(update={"pile": [], "pileCount": 0}), take) is not None

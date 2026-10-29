@@ -21,7 +21,7 @@ export interface GameOut {
   claims: number;
   discards: number;
   plays: number[];
-  /** 좌석별 심은 식물 id 개수 */
+  /** 자리별 심은 식물 id 개수 */
   planted: Record<string, number>[];
   maxCubes: number[];
   maxStack: number;
@@ -30,8 +30,8 @@ export interface GameOut {
   /** 큐브 놓기·걷기 동작 수 (오프라인 손 작업) */
   cubeOps: number;
   lastRoundFlips: number;
-  /** 동점 깨기 값의 음수: −(내 땅 위 식물 수). 작을수록 이긴다 */
-  cubesFinal: number[];
+  /** 내 땅 위 식물 수 (동점 깨기: 많을수록 이긴다) */
+  plantsOnLand: number[];
 }
 
 export function playGame(rules: LabRules, P: number, seed: number, botNames: string[], instrument = false): GameOut {
@@ -112,6 +112,6 @@ export function playGame(rules: LabRules, P: number, seed: number, botNames: str
     decisions,
     cubeOps,
     lastRoundFlips,
-    cubesFinal: g.plantsOnLand().map((v) => -v),
+    plantsOnLand: g.plantsOnLand(),
   };
 }

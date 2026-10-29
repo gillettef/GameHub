@@ -342,7 +342,14 @@
     "RESERVE_BONUS": 2,
     "SEED_RANGE": 2,
     "VARIETY_SPECIES": 5,
-    "VARIETY_BONUS": 4
+    "VARIETY_BONUS": 4,
+    "RANK_FIRST_BONUS": 4,
+    "RANK_SECOND_BONUS": 2,
+    "CENTER_PLAZA_BONUS": 4,
+    "FERTILE_BONUS": 2,
+    "FLOWER_BONUS": 2,
+    "FOREST_BONUS": 4,
+    "FOREST_MIN_GROUP": 3
   },
   "playerCountRules": {
     "2": {
@@ -378,5 +385,14 @@
         1
       ]
     }
-  }
+  },
+  "flowerSpecies": [
+    "dandelion",
+    "lotus",
+    "mugunghwa"
+  ],
+  "forestSpecies": [
+    "oak",
+    "pine"
+  ]
 }

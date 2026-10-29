@@ -21,13 +21,13 @@ export interface RoomInfo {
   createdAt: number;
   /** 접속 중인 플레이어 id (재접속·이탈 표시용) */
   connected: PlayerId[];
-  /** 턴 제한 시간(초). null = 제한 없음(비동기 턴). Rules.md 5.4 */
+  /** 차례 제한 시간(초). null = 제한 없음. Rules.md 6.3 */
   turnTimeLimitSec: number | null;
   /** 지금 턴이 시간 초과되는 서버 시각(epoch ms). 제한 없음·AI 턴·AI 대리 중이면 null */
   turnDeadline: number | null;
   /** 이 정보를 만든 서버 시각(epoch ms). 클라이언트는 시계 차이를 보정해 남은 시간을 센다 */
   serverNow: number;
-  /** 연속 시간 초과로 AI 가 대신 두고 있는 사람 좌석 (Rules.md 5.4) */
+  /** 연속 시간 초과로 AI 가 대신 두고 있는 사람 자리 (Rules.md 6.3) */
   autopilot: PlayerId[];
 }
 
@@ -78,17 +78,17 @@ export interface ClientToServerEvents {
   'room:join': (payload: JoinPayload, ack: (res: Ack<{ playerId: PlayerId }>) => void) => void;
   /** 로비에서 나가기 (게임 중엔 기권을 써야 한다) */
   'room:leave': (payload: { roomId: RoomId }, ack: (res: Ack) => void) => void;
-  /** 방장이 빈 좌석에 AI 추가 / 제거 (F026) */
+  /** 방장이 빈 자리에 AI 추가 / 제거 (F026) */
   'room:addAi': (payload: { roomId: RoomId }, ack: (res: Ack<{ playerId: PlayerId }>) => void) => void;
   'room:removeAi': (payload: { roomId: RoomId; playerId: PlayerId }, ack: (res: Ack) => void) => void;
-  /** 방장이 턴 제한 시간 변경 (로비에서만, Rules.md 5.4). seconds 는 TURN_TIME_OPTIONS_SEC 중 하나 */
+  /** 방장이 차례 제한 시간 변경 (로비에서만, Rules.md 6.3). seconds 는 TURN_TIME_OPTIONS_SEC 중 하나 */
   'room:setTurnTime': (payload: { roomId: RoomId; seconds: number | null }, ack: (res: Ack) => void) => void;
-  /** AI 대리(자동 진행) 중인 내 좌석을 되찾는다 (Rules.md 5.4) */
+  /** AI 대리(자동 진행) 중인 내 자리를 되찾는다 (Rules.md 6.3) */
   'game:resume': (payload: { roomId: RoomId }, ack: (res: Ack) => void) => void;
   /**
    * 준비·심기·버리기·기권. 서버가 룰 엔진으로 검증한다.
    * turn: 보낸 사람이 본 차례 번호. 심기·버리기는 서버의 지금 차례와 다르면 거부한다
-   * (선 돌리기로 같은 자리가 연달아 둘 때 늦게 도착한 수가 다음 차례에 적용되지 않게)
+   * (라운드 마지막 자리가 다음 라운드 선이 되어 연달아 둘 때 늦게 도착한 수가 다음 차례에 적용되지 않게)
    */
   'game:action': (payload: { roomId: RoomId; action: Action; turn?: number }, ack: (res: Ack) => void) => void;
 }

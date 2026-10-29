@@ -5,7 +5,7 @@
  *   npm run fixtures   (= npx tsx shared/scripts/write-fixtures.ts)
  *
  *  specs.json     종·목표·상수·인원별 규칙 기준표
- *  scenario.json  2·3·4인 판을 이번 판 식물 공개 단계(initial)부터 시드로 고른 합법 수로 끝까지 둔 기록(용량 때문에 한 줄 JSON).
+ *  scenario.json  2·3·4인 판을 이번 판 식물 공개 단계(initial)부터 시드로 고른 합법 수로 끝까지 둔 기록.
  *                 각 단계 { action, rootSeat, rootCount, owners, scores, legal(심기 단계만), auto(자동 수) } 와, 8단계마다·마지막에 state(log 제외).
  *                 Python 은 initial 에 action 을 차례로 적용하며 state 가 있는 단계에서 상태 일치를,
  *                 매 단계에서 큐브·땅·점수·심을 수 있는 칸·자동 수 일치를 확인한다.
@@ -13,7 +13,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { CONSTANTS, GOALS, PLAYER_COUNT_RULES, SPECIES } from '../src/data/index.js';
+import { CONSTANTS, FLOWER_SPECIES, FOREST_SPECIES, GOALS, PLAYER_COUNT_RULES, SPECIES } from '../src/data/index.js';
 import {
   applyAction,
   autoAction,
@@ -37,7 +37,7 @@ const write = (name: string, data: unknown) => {
   console.log(`wrote fixtures/${name}`);
 };
 
-write('specs.json', { species: SPECIES, goals: GOALS, constants: CONSTANTS, playerCountRules: PLAYER_COUNT_RULES });
+write('specs.json', { species: SPECIES, goals: GOALS, constants: CONSTANTS, playerCountRules: PLAYER_COUNT_RULES, flowerSpecies: FLOWER_SPECIES, forestSpecies: FOREST_SPECIES });
 
 /** 다양한 수가 나오게 자동 수 대신 시드로 고른 합법 수를 둔다 (가져오기 자리·회전·씨앗 포함) */
 function variedAction(s: GameState, rnd: { seed: number }): Action {
@@ -107,4 +107,4 @@ function scenario(players: number, seed: number) {
   return { players, initial, steps };
 }
 
-write('scenario.json', [scenario(2, 101), scenario(3, 202), scenario(4, 303)], true);
+write('scenario.json', [scenario(2, 101), scenario(3, 202), scenario(4, 303)]);

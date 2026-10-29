@@ -21,6 +21,19 @@ export const SEED_RANGE = 2;
 export const VARIETY_SPECIES = 5;
 export const VARIETY_BONUS = 4;
 
+/** 목표 점수 (Rules.md 8절). 1·2등 목표(큰 정원·오솔길)의 1등·2등 점수 */
+export const RANK_FIRST_BONUS = 4;
+export const RANK_SECOND_BONUS = 2;
+/** 중앙 광장: 가운데 구역에서 내 땅이 가장 많으면 (2등 없음) */
+export const CENTER_PLAZA_BONUS = 4;
+/** 비옥한 밭: 기름진 땅인 내 땅 1칸당 */
+export const FERTILE_BONUS = 2;
+/** 꽃밭: 내 땅 위 꽃 1개당 */
+export const FLOWER_BONUS = 2;
+/** 숲: 내 땅 위 나무가 FOREST_MIN_GROUP 개 이상 맞닿은 무리 1개당 */
+export const FOREST_BONUS = 4;
+export const FOREST_MIN_GROUP = 3;
+
 /** 인원별 구성 (Rules.md 4·5·10절) */
 export interface PlayerCountRule {
   /** 이번 판에 쓰는 식물 수 */
@@ -57,6 +70,13 @@ export const CONSTANTS = {
   SEED_RANGE,
   VARIETY_SPECIES,
   VARIETY_BONUS,
+  RANK_FIRST_BONUS,
+  RANK_SECOND_BONUS,
+  CENTER_PLAZA_BONUS,
+  FERTILE_BONUS,
+  FLOWER_BONUS,
+  FOREST_BONUS,
+  FOREST_MIN_GROUP,
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -67,5 +87,25 @@ export const CONSTANTS = {
 export const TURN_TIME_OPTIONS_SEC: readonly (number | null)[] = [60, 90, 180, null];
 /** 새 방의 기본 차례 제한 시간(초) */
 export const DEFAULT_TURN_TIME_SEC = 90;
-/** 연속으로 이 횟수만큼 시간 초과하면 AI 가 그 좌석을 대신 둔다 */
+/** 연속으로 이 횟수만큼 시간 초과하면 AI 가 그 자리를 대신 둔다 */
 export const AFK_STRIKES_FOR_AUTOPILOT = 2;
+/** 서버가 시간 초과·AI 대리 안내 로그에 넣는 문구. 클라이언트는 이 문구로 내 시간 초과를 알아챈다 */
+export const TIMEOUT_LOG_MARK = '자동으로 둡니다';
+export const AUTOPILOT_LOG_MARK = 'AI가 대신 둡니다';
+
+/** 닉네임 길이 (앞뒤 공백 제외) */
+export const NICKNAME_MAX_LENGTH = 12;
+/** 방 비밀번호 자릿수 (숫자만) */
+export const ROOM_PASSWORD_DIGITS = 4;
+
+/** 닉네임이 1~NICKNAME_MAX_LENGTH 자인가 (앞뒤 공백 제외) */
+export function isValidNickname(nickname: unknown): boolean {
+  if (typeof nickname !== 'string') return false;
+  const n = nickname.trim();
+  return n.length >= 1 && n.length <= NICKNAME_MAX_LENGTH;
+}
+
+/** 방 비밀번호가 숫자 ROOM_PASSWORD_DIGITS 자리인가 */
+export function isValidRoomPassword(password: string): boolean {
+  return password.length === ROOM_PASSWORD_DIGITS && /^\d+$/.test(password);
+}
