@@ -2,11 +2,11 @@
  * 판 요약·웹 성능 기록 (2026-10-06). DB 없음 원칙대로 JSON Lines 파일에 한 줄씩 덧붙인다.
  *  - `<DATA_DIR>/stats/games.jsonl`  판이 끝나거나 방치되어 정리될 때 GameRecord 한 줄 (완수율·세션 시간·재방문)
  *  - `<DATA_DIR>/stats/vitals.jsonl` 클라이언트가 보낸 FCP·LCP·동기화 왕복 시간 한 줄
- * 집계는 `npm run stats -w server` (server/scripts/stats.ts). 쓰기 실패는 게임을 멈추지 않고 로그만 남긴다.
+ * 집계는 `npx tsx server/scripts/stats.ts [DATA_DIR]` (= `npm run stats -w server`). 쓰기 실패는 게임을 멈추지 않고 로그만 남긴다.
  */
 import { appendFileSync, mkdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
-import type { GameRecord } from '../rooms/manager.js';
+import type { GameRecord } from '../rooms/record.js';
 
 /** 한 번에 받는 성능 기록. 모든 값은 ms, 클라이언트가 보낸 것이라 서버가 범위를 검사한 뒤 쓴다 */
 export interface VitalsRecord {
@@ -41,7 +41,7 @@ export class StatsLog {
         /* 아직 없음 */
       }
       if (size >= (MAX_FILE_BYTES[file] ?? 10 * 1024 * 1024)) return;
-      appendFileSync(join(this.dir, file), `${JSON.stringify(row)}\n`, 'utf8');
+      appendFileSync(path, `${JSON.stringify(row)}\n`, 'utf8');
     } catch (err) {
       console.error(`[stats] 기록 실패 ${file}: ${(err as Error).message}`);
     }

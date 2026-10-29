@@ -12,7 +12,7 @@
  */
 import { existsSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import type { GameRecord } from '../src/rooms/manager.js';
+import type { GameRecord } from '../src/rooms/record.js';
 import type { VitalsRecord } from '../src/persistence/stats.js';
 
 const dataDir = resolve(process.argv[2] ?? join('server', 'data', 'prod'));
@@ -87,8 +87,8 @@ console.log('== 재플레이 · 재방문 (목표 재방문 30% 이상) ==');
 console.log(`플레이어 ${players.length}명`);
 console.log(`2판 이상 ${pct(players.filter((p) => p.games >= 2).length, players.length)}, 다른 날 다시 옴 ${pct(players.filter((p) => p.days.size >= 2).length, players.length)}\n`);
 
-// --- 종·좌석 ---
-console.log('== 실전 종·좌석 승률 (정상 종료 판, 1위 기준) ==');
+// --- 종·자리 ---
+console.log('== 실전 종·자리 승률 (정상 종료 판, 1위 기준) ==');
 const speciesWins = new Map<string, [number, number]>();
 const seatWins = new Map<string, [number, number]>();
 for (const g of finished) {
@@ -101,7 +101,7 @@ for (const g of finished) {
       if (s.rank === 1) r[1]++;
       speciesWins.set(sp, r);
     }
-    const key = `${era}${g.players}인 좌석 ${s.seat}`;
+    const key = `${era}${g.players}인 자리 ${s.seat}`;
     const t = seatWins.get(key) ?? [0, 0];
     t[0]++;
     if (s.rank === 1) t[1]++;
