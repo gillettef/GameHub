@@ -1,7 +1,7 @@
 # Rootbound 확장판 아이디어 (메모)
 
 > 2026-10-08 작성. **아이디어 메모일 뿐 규칙이 아니다.** 지금은 오리지널을 다듬는 데 집중한다.
-> 규칙 정본은 `notes/Rules.md` 다. 여기 있는 내용은 구현하지 않았고, 채택할 때는 Rules.md 를 먼저 고친 뒤 시뮬레이터(`shared/scripts/garden-sim.ts`)로 재고 들어간다.
+> 규칙 정본은 `notes/Rules.md` 다. 여기 있는 내용은 구현하지 않았고, 채택할 때는 Rules.md 를 먼저 고친 뒤 시뮬레이터(`shared/scripts/lab`)로 재고 들어간다.
 
 ---
 
