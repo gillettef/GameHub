@@ -6,7 +6,7 @@
  *  - mode 'tug'  : 줄다리기. 한 칸에는 한 색만. 남의 큐브가 있는 칸에 뿌리를 뻗으면 1:1로 걷어내고 남는 만큼 내 큐브를 놓는다.
  *  - mode 'sum'  : 색마다 따로 쌓고, 가장 많은 색 하나(엄격한 1등)가 주인 (예전 규칙과 같은 다수결).
  */
-import { layoutFor } from '../../src/engine/board.js';
+import { DIRECTIONS, layoutFor } from '../../src/engine/board.js';
 
 export const EMPTY = 0;
 export const POND = 1;
@@ -20,9 +20,7 @@ export type Ability =
   | { kind: 'ivy'; value: number }
   | { kind: 'cluster'; value: number }
   | { kind: 'fertileRing'; value: number }
-  | { kind: 'bloom'; value: number }
-  | { kind: 'anywhere' }
-  | { kind: 'deep' };
+  | { kind: 'bloom'; value: number };
 
 export interface SpeciesDef {
   id: string;
@@ -44,11 +42,7 @@ export type GoalKind =
   | 'forest'
   | 'variety'
   | 'reserve'
-  | 'long-path'
-  | 'tile-majority'
-  | 'deep-roots'
-  | 'rock-garden'
-  | 'entrance-path';
+  | 'long-path';
 
 export interface GoalDef {
   id: string;
@@ -74,8 +68,8 @@ export interface LabRules {
   startHand: number;
   /** 'turn' = 내 차례에 1장 가져오고 1장 심기. 'round' = 라운드마다 모두 가져온 뒤 모두 심기 */
   flow: 'turn' | 'round';
-  /** 라운드 선: 'fixed' 고정, 'rotate' 시계방향 돌리기, 'supply' 공급처에 큐브가 가장 많이 남은 사람, 'least-land' 땅이 가장 적은 사람, 'lowest' 점수가 가장 낮은 사람 */
-  firstPlayer: 'rotate' | 'fixed' | 'supply' | 'least-land' | 'lowest';
+  /** 라운드 선: 'fixed' 고정, 'rotate' 시계방향 돌리기, 'supply' 공급처에 큐브가 가장 많이 남은 사람, 'lowest' 점수가 가장 낮은 사람 */
+  firstPlayer: 'rotate' | 'fixed' | 'supply' | 'lowest';
   /** 심을 수 있는 칸: 'own' 내 큐브가 있는 칸(줄다리기), 'touch' 내 큐브 1 이상(합산), 'adjacent' 내 땅과 맞닿은 빈 칸까지 */
   plantOn: 'own' | 'touch' | 'adjacent';
   /** 입구 둘레 6칸에 처음 놓는 큐브 */
@@ -98,8 +92,6 @@ export interface LabRules {
   refill: 'refill' | 'round';
   /** 가져오기에서 마켓 대신 카드 더미 맨 위 1장(뒷면)을 가져올 수 있나 (take = -1) */
   blindDraw?: boolean;
-  /** 끝날 때 남은 큐브 1개당 점수 등 추가 규칙 */
-  bonusPerTileMajority?: number;
   /** 인원별 1인 뿌리 큐브 수 (0/없음 = 무제한). 모자라면 가장 높이 쌓인 내 칸에서 옮겨 온다 */
   supply?: Record<number, number>;
   /** 독창성 체크리스트에 더할 고유 장치 이름 */
@@ -132,14 +124,8 @@ export function shuffle<T>(arr: readonly T[], rand: Rand): T[] {
   return a;
 }
 
-export const DIRS: [number, number][] = [
-  [1, 0],
-  [1, -1],
-  [0, -1],
-  [-1, 0],
-  [-1, 1],
-  [0, 1],
-];
+/** 육각 6방향 (정본 board.ts DIRECTIONS) */
+const DIRS = DIRECTIONS;
 
 function rot1(q: number, r: number): [number, number] {
   return [-r, q + r];
@@ -285,7 +271,7 @@ export class Game {
   readonly speciesIds: number[]; // 이번 판 식물 (rules.species 색인)
   readonly goals: GoalDef[];
   readonly komi: number[];
-  /** 좌석별 칸별 큐브 */
+  /** 자리별 칸별 큐브 */
   inf: Int16Array[];
   /** 줄다리기: 칸의 큐브 색 (−1 없음) */
   color: Int8Array;
@@ -303,16 +289,12 @@ export class Game {
   plays: number[];
   over = false;
   records: TurnRecord[] = [];
-  /** 라운드 끝마다 좌석별 점수 */
+  /** 라운드 끝마다 자리별 점수 */
   history: number[][] = [];
   /** 되돌리기 기록: [종류, a, b, c] */
   private undo: number[] = [];
   readonly rotCache: [number, number, number][][][];
-  /** 줄다리기에서 이번 수로 걷어낸 남의 큐브 수 (지표용) */
-  removed = 0;
-  /** 공급처 한도 때문에 옮겨 온 큐브 수 (지표용) */
-  uprooted = 0;
-  /** 좌석별 보드 위 큐브 수 */
+  /** 자리별 보드 위 큐브 수 */
   onBoard: number[] = [];
 
   constructor(rules: LabRules, P: number, seed: number) {
@@ -336,8 +318,7 @@ export class Game {
     for (let tries = 0; tries < 50; tries++) {
       const cand = shuffle(pool, rand).slice(0, rules.goalCount);
       const reserve = cand.some((g) => g.kind === 'reserve');
-      const bad = cand.some((g) => g.kind === 'big-garden') && cand.some((g) => g.kind === 'entrance-path');
-      if ((!rules.requireReserve || reserve) && !bad) {
+      if (!rules.requireReserve || reserve) {
         goals = cand;
         break;
       }
@@ -384,9 +365,7 @@ export class Game {
     // 입구 둘레 큐브
     for (let s = 0; s < P; s++) for (const x of this.geo.nb[this.geo.entrances[s] as number] as number[]) if (this.canHoldRoots(x)) this.addRoots(x, s, rules.entranceRing);
     this.undo.length = 0;
-    this.removed = 0;
     this.current = 0;
-    this.stage = rules.flow === 'round' ? 'take' : 'take';
   }
 
   canHoldRoots(c: number): boolean {
@@ -438,7 +417,6 @@ export class Game {
       if (best < 0) break;
       this.setInf(s, best, bv - 1);
       if (bv - 1 === 0 && this.rules.mode === 'tug') this.setColor(best, -1);
-      this.uprooted++;
       avail++;
     }
     return Math.max(0, Math.min(k, avail));
@@ -469,10 +447,8 @@ export class Game {
     const m = (this.inf[h] as Int16Array)[c] as number;
     if (k < m) {
       this.setInf(h, c, m - k);
-      this.removed += k;
     } else {
       this.setInf(h, c, 0);
-      this.removed += m;
       const rem = k - m;
       const add = rem > 0 ? this.reserve(s, Math.min(cap, rem), c) : 0;
       if (add > 0) {
@@ -489,7 +465,6 @@ export class Game {
       const v = (this.inf[o] as Int16Array)[c] as number;
       if (v > 0) {
         const nv = Math.max(0, v - k);
-        this.removed += v - nv;
         this.setInf(o, c, nv);
         if (this.rules.mode === 'tug' && nv === 0) this.setColor(c, -1);
       }
@@ -537,10 +512,6 @@ export class Game {
     const g = this.geo;
     for (let c = 0; c < g.n; c++) {
       if (!this.isPlantable(c)) continue;
-      if (ab?.kind === 'anywhere') {
-        out.push(c);
-        continue;
-      }
       let ok = false;
       if (this.rules.plantOn === 'own') ok = this.owner(c) === s;
       else if (this.rules.plantOn === 'touch') ok = ((this.inf[s] as Int16Array)[c] as number) >= 1;
@@ -565,7 +536,7 @@ export class Game {
     return opts.length ? opts : [-1];
   }
 
-  /** 심기를 적용한다 (되돌리기 기록에 남는다). 바뀐 칸 주인 수를 돌려준다 */
+  /** 심기를 적용한다 (되돌리기 기록에 남는다) */
   applyPlant(s: number, spIdx: number, c: number, rot: number, extra: number): void {
     const sp = this.sp(spIdx);
     const g = this.geo;
@@ -690,9 +661,6 @@ export class Game {
       case 'pond-side':
         for (let c = 0; c < g.n; c++) if ((own[c] as number) >= 0 && (g.nb[c] as number[]).some((x) => g.terrain[x] === POND)) pts[own[c] as number] += a;
         return pts;
-      case 'rock-garden':
-        for (let c = 0; c < g.n; c++) if ((own[c] as number) >= 0 && (g.nb[c] as number[]).some((x) => g.terrain[x] === ROCK)) pts[own[c] as number] += a;
-        return pts;
       case 'fertile-field':
         for (let c = 0; c < g.n; c++) if ((own[c] as number) >= 0 && g.terrain[c] === FERTILE) pts[own[c] as number] += a;
         return pts;
@@ -708,16 +676,6 @@ export class Game {
         const has = Array.from({ length: P }, () => new Set<number>());
         for (let c = 0; c < g.n; c++) if ((own[c] as number) >= 0) has[own[c] as number]!.add(g.tile[c] as number);
         return has.map((h) => h.size * a);
-      }
-      case 'tile-majority': {
-        // 구역마다 내 땅이 가장 많은 사람(단독) +a
-        const cnt = Array.from({ length: g.tileCount }, () => new Array(P).fill(0));
-        for (let c = 0; c < g.n; c++) if ((own[c] as number) >= 0) cnt[g.tile[c] as number]![own[c] as number]++;
-        for (const row of cnt) {
-          const m = Math.max(...row);
-          if (m > 0 && row.filter((v) => v === m).length === 1) pts[row.indexOf(m)] += a;
-        }
-        return pts;
       }
       case 'flower-bed':
         for (let c = 0; c < g.n; c++) {
@@ -740,14 +698,6 @@ export class Game {
         for (let c = 0; c < g.n; c++) if (this.plant[c] === si && (own[c] as number) >= 0) pts[own[c] as number] += a;
         return pts;
       }
-      case 'deep-roots': {
-        // 큐브 3개 이상 쌓인 내 칸 1개당 +a
-        for (let c = 0; c < g.n; c++) {
-          const s = own[c] as number;
-          if (s >= 0 && ((this.inf[s] as Int16Array)[c] as number) >= (b || 3)) pts[s] += a;
-        }
-        return pts;
-      }
       case 'long-path': {
         const best = new Array(P).fill(0);
         for (let c = 0; c < g.n; c++) {
@@ -765,27 +715,6 @@ export class Game {
           }
         }
         return this.ranked(best, a, b);
-      }
-      case 'entrance-path': {
-        // 입구와 이어진 내 땅 칸 수: 1등 a, 2등 b
-        const size = new Array(P).fill(0);
-        for (let s = 0; s < P; s++) {
-          const seen = new Uint8Array(g.n);
-          const stack = (g.nb[g.entrances[s] as number] as number[]).filter((x) => own[x] === s);
-          stack.forEach((x) => (seen[x] = 1));
-          let k = 0;
-          while (stack.length) {
-            const x = stack.pop() as number;
-            k++;
-            for (const y of g.nb[x] as number[])
-              if (!seen[y] && own[y] === s) {
-                seen[y] = 1;
-                stack.push(y);
-              }
-          }
-          size[s] = k;
-        }
-        return this.ranked(size, a, b);
       }
     }
     return pts;
@@ -891,18 +820,6 @@ export class Game {
     return m;
   }
 
-  /** s 가 볼 때 아직 보지 못한 카드(더미 + 남의 손) 종별 장수: 전체 − 심거나 버린 카드 − 마켓 − 내 손 */
-  unseen(s: number): Map<number, number> {
-    const copies = this.rules.copies[this.P] ?? 4;
-    const m = new Map<number, number>(this.speciesIds.map((x) => [x, copies]));
-    const dec = (x: number) => m.set(x, (m.get(x) ?? 0) - 1);
-    for (const r of this.records) if (r.species >= 0) dec(r.species);
-    for (const x of this.market) dec(x);
-    for (const x of this.hands[s] as number[]) dec(x);
-    for (const [k, v] of m) if (v <= 0) m.delete(k);
-    return m;
-  }
-
   /** 다음 라운드 선 */
   private pickStart(): number {
     const prev = this.roundStart;
@@ -914,8 +831,7 @@ export class Game {
     if (rule === 'supply') {
       const lim = this.rules.supply?.[P] ?? 0;
       val = this.onBoard.map((v) => -(lim ? v - lim : v)); // 공급처에 남은 큐브가 많을수록 큼
-    } else if (rule === 'least-land') val = this.land().map((v) => -v);
-    else val = this.scores().map((v) => -v);
+    } else val = this.scores().map((v) => -v);
     const best = Math.max(...val);
     for (let k = 1; k <= P; k++) {
       const s = (prev + k) % P;
@@ -1001,7 +917,7 @@ export class Game {
     return best;
   }
 
-  /** 좌석별: 내 땅 위에 서 있는 식물 수 (동점 깨기) */
+  /** 자리별: 내 땅 위에 서 있는 식물 수 (동점 깨기) */
   plantsOnLand(): number[] {
     const own = this.owners();
     const out = new Array(this.P).fill(0);
@@ -1009,7 +925,7 @@ export class Game {
     return out;
   }
 
-  /** 줄다리기 공급처 확인용: 좌석별 보드 위 큐브 수 */
+  /** 줄다리기 공급처 확인용: 자리별 보드 위 큐브 수 */
   cubesOnBoard(): number[] {
     return this.inf.map((a) => a.reduce((x, y) => x + y, 0));
   }

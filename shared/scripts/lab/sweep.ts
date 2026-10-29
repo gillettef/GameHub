@@ -23,7 +23,7 @@ async function main(): Promise<void> {
     const cb = r.summaries.map((s) => (s.comeback * 100).toFixed(0)).join('/');
     const lc = r.summaries.map((s) => s.leadChanges.toFixed(1)).join('/');
     const cubes = r.summaries.map((s) => s.maxCubes).join('/');
-    const line = `${nm.padEnd(18)} 독${b.originality.toFixed(2)} 복${b.complexity.toFixed(2)} 재${b.fun.toFixed(2)} 밸${b.balance.toFixed(2)} 리${b.replay.toFixed(2)} | 평균 ${b.mean.toFixed(2)} 최저 ${b.min.toFixed(2)} | 좌석편차 ${seat} 식물폭 ${spread} 역전 ${cb} 교체 ${lc} 큐브 ${cubes}`;
+    const line = `${nm.padEnd(18)} 독${b.originality.toFixed(2)} 복${b.complexity.toFixed(2)} 재${b.fun.toFixed(2)} 밸${b.balance.toFixed(2)} 리${b.replay.toFixed(2)} | 평균 ${b.mean.toFixed(2)} 최저 ${b.min.toFixed(2)} | 자리 편차 ${seat} 식물폭 ${spread} 역전 ${cb} 교체 ${lc} 큐브 ${cubes}`;
     console.log(line);
     rows.push(line);
   }

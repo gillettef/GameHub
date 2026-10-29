@@ -1,18 +1,19 @@
 /**
  * 덤 탐색: 덤은 봇의 수 선택을 바꾸지 않으므로(모든 수에 같은 상수) 덤 0 으로 한 번 돌린 판의 최종 점수로
- * 모든 덤 후보의 좌석 승률을 바로 계산한다.
+ * 모든 덤 후보의 자리 승률을 바로 계산한다.
  */
 export interface FinalRow {
   scores: number[]; // 덤 제외
   land: number[];
-  cubes?: number[];
+  /** 내 땅 위 식물 수 (동점 깨기 3번째) */
+  plantsOnLand?: number[];
 }
 
 export function winnerWith(row: FinalRow, komi: number[]): number {
   const P = row.scores.length;
   let best = 0;
   const sc = row.scores.map((v, i) => v + (komi[i] ?? 0));
-  const key = (s: number) => [sc[s] as number, row.land[s] as number, -((row.cubes?.[s] ?? 0) as number), s];
+  const key = (s: number) => [sc[s] as number, row.land[s] as number, (row.plantsOnLand?.[s] ?? 0) as number, s];
   for (let s = 1; s < P; s++) {
     const a = key(s);
     const b = key(best);

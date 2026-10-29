@@ -32,7 +32,7 @@ export interface Cell {
 export interface Board {
   /** 칸 목록. 항상 r → q 오름차순 (Rules.md 11절) */
   cells: Cell[];
-  /** 좌석별 입구 위치 */
+  /** 자리별 입구 위치 */
   entrances: Position[];
   /** 조각 수 */
   tileCount: number;
@@ -117,7 +117,7 @@ export interface PlayerState {
   id: PlayerId;
   nickname: string;
   kind: PlayerKind;
-  /** 좌석 번호 = 차례 순서. 0부터 */
+  /** 자리 번호 = 차례 순서. 0부터 */
   seat: number;
   /** 로비: 준비 완료. 공개 단계: 확인함 (Rules.md 4절 7) */
   isReady: boolean;
@@ -191,7 +191,7 @@ export interface GameState {
   players: PlayerState[];
   /** 심은 순서대로 */
   plants: Plant[];
-  /** 칸별 뿌리 큐브 색(좌석, −1 없음). board.cells 와 같은 순서. 한 칸에는 한 색만 (줄다리기, Rules.md 6.2) */
+  /** 칸별 뿌리 큐브 색(자리, −1 없음). board.cells 와 같은 순서. 한 칸에는 한 색만 (줄다리기, Rules.md 6.2) */
   rootSeat: number[];
   /** 칸별 뿌리 큐브 수 */
   rootCount: number[];
@@ -220,5 +220,3 @@ export type Action =
   /** 심기 단계. 손의 어떤 카드도 심을 칸이 없을 때만 */
   | { type: 'DISCARD'; playerId: PlayerId; species: SpeciesId }
   | { type: 'SURRENDER'; playerId: PlayerId };
-
-export type ActionType = Action['type'];

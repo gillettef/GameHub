@@ -25,8 +25,9 @@ from .rules import (
     legal_seed_cell_indices,
     load_specs,
     place_roots,
-    rules_for,
     plant_species_at,
+    rotate_spot,
+    rules_for,
     score_totals,
     species_spec,
 )
@@ -87,11 +88,13 @@ class _Evaluator:
         plants[c] = species
         buf = Roots(self.state.rootSeat, self.state.rootCount, plants, self.P)
         place_roots(buf, self.idx, self.seat, species, c, rotation, seed_cell)
-        totals = score_totals(self.idx, self.P, self.state.goals, buf.seat, buf.count, plants)
-        return totals[self.seat] - (max(totals[s] for s in self.rivals) if self.rivals else 0)
+        return self._margin(score_totals(self.idx, self.P, self.state.goals, buf.seat, buf.count, plants))
 
     def base(self) -> int:
-        totals = score_totals(self.idx, self.P, self.state.goals, self.state.rootSeat, self.state.rootCount, self.plants)
+        return self._margin(score_totals(self.idx, self.P, self.state.goals, self.state.rootSeat, self.state.rootCount, self.plants))
+
+    def _margin(self, totals: list[int]) -> int:
+        """내 총점 − 가장 높은 상대 총점."""
         return totals[self.seat] - (max(totals[s] for s in self.rivals) if self.rivals else 0)
 
     def best(self, species_list: list[str], with_seeds: bool) -> Optional[tuple[int, str, int, int, Optional[int]]]:
@@ -125,8 +128,6 @@ def _distinct_rotations(species: str) -> list[int]:
     hit = _ROT_CACHE.get(species)
     if hit is not None:
         return hit
-    from .rules import rotate_spot
-
     seen: set[tuple[tuple[int, int, int], ...]] = set()
     out: list[int] = []
     for rot in range(6):

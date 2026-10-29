@@ -3,7 +3,7 @@
  *   npx tsx shared/scripts/lab/run.ts <variant> [인원 목록=2,3,4] [판수 배율=1]
  *   LAB_PATCH='<json>' 으로 규칙 일부를 덮어쓴다 (예: '{"cap":4}').
  * 시나리오
- *   self  : 사람 흉내 봇(잡음 있는 탐욕)끼리 → 좌석·식물 균형, 재미 지표, 결정 지표
+ *   self  : 사람 흉내 봇(잡음 있는 탐욕)끼리 → 자리·식물 균형, 재미 지표, 결정 지표
  *   gr    : 탐욕 1명 vs 무작위 → 전략이 통하는가
  *   lg    : 2수 앞보기 1명 vs 탐욕 → 더 깊이 생각하면 더 이기는가
  *   arch  : 성향 봇 5종을 자리마다 무작위로 → 한 전략이 독식하는가, 전략 다양성
@@ -92,8 +92,9 @@ async function main(): Promise<void> {
   const name = process.argv[2] ?? 'base';
   const Ps = (process.argv[3] ?? '2,3,4').split(',').map(Number);
   const scale = Number(process.argv[4] ?? '1');
-  let rules = VARIANTS[name];
-  if (!rules) throw new Error(`변형 없음: ${name}. 있는 것: ${Object.keys(VARIANTS).join(', ')}`);
+  const base = VARIANTS[name];
+  if (!base) throw new Error(`변형 없음: ${name}. 있는 것: ${Object.keys(VARIANTS).join(', ')}`);
+  let rules = base;
   if (process.env.LAB_PATCH) rules = { ...rules, ...JSON.parse(process.env.LAB_PATCH) };
   const t0 = Date.now();
   const all: Summary[] = [];
@@ -116,7 +117,7 @@ export function printReport(out: { variant: string; seconds: number; summaries: 
   for (const s of out.summaries) {
     console.log(`\n[${s.P}인] self ${s.n}판`);
     if (s.komiBest) console.log(`  덤 후보 [${s.komiBest.komi.join(',')}] → ${s.komiBest.rates.map((x) => (x * 100).toFixed(1)).join(' / ')} (편차 ${(s.komiBest.dev * 100).toFixed(1)}%p)`);
-    console.log(`  좌석 승률 ${s.seatWin.map((x) => (x * 100).toFixed(1)).join(' / ')}  (최대 편차 ${s.seatDev.toFixed(1)}%p)`);
+    console.log(`  자리 승률 ${s.seatWin.map((x) => (x * 100).toFixed(1)).join(' / ')}  (최대 편차 ${s.seatDev.toFixed(1)}%p)`);
     console.log(`  점수 평균 ${s.meanScore.toFixed(1)} (땅 ${s.meanLand.toFixed(1)}, 목표 ${s.meanGoal.toFixed(1)}), 1·2등 차 중앙 ${s.marginMedian.toFixed(1)} (비율 ${s.marginRatio.toFixed(3)}), 3점 이내 ${(s.closeRate * 100).toFixed(0)}%`);
     console.log(`  선두 교체 ${s.leadChanges.toFixed(2)}회, 역전승(2/3 지점 선두 아님) ${(s.comeback * 100).toFixed(0)}%, 뒤집기 ${s.flipsPerTurn.toFixed(2)}칸/수, 뒤집는 수 ${(s.flipTurnRate * 100).toFixed(0)}%, 마지막 바퀴 뒤집기 ${s.lastRoundFlips.toFixed(1)}`);
     console.log(`  동점(점수·땅·큐브) ${(s.tieRate * 100).toFixed(1)}%, 버림 ${(s.discardRate * 100).toFixed(2)}%, 심기 수 같음 ${s.equalPlays ? 'O' : 'X'}, 큐브 최대 ${s.maxCubes.toFixed(0)}개/인, 한 칸 최대 ${s.maxStack}, 큐브 손작업 ${s.cubeOpsPerTurn.toFixed(1)}/수`);

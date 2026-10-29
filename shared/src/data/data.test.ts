@@ -78,7 +78,7 @@ describe('Rules.md 8절 목표 표와 데이터 일치', () => {
 });
 
 describe('Rules.md 4절 자리 보정 표와 데이터 일치', () => {
-  const rows = tableRows('### 좌석 보정').filter((r) => /인$/.test(r[0] ?? ''));
+  const rows = tableRows('### 자리 보정').filter((r) => /인$/.test(r[0] ?? ''));
   it('인원별 덤', () => {
     for (const r of rows) {
       const n = Number(r[0]!.replace('인', ''));

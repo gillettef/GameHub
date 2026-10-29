@@ -65,7 +65,7 @@ export function summarize(rules: LabRules, P: number, res: (GameOut & { scenario
   let komiBest: Summary['komiBest'];
   if (process.env.LAB_KOMI) {
     const komi = rules.komi[P] ?? new Array(P).fill(0);
-    komiBest = bestKomi(self.map((r) => ({ scores: r.scores.map((v, i) => v - (komi[i] ?? 0)), land: r.land, cubes: r.cubesFinal })), 4);
+    komiBest = bestKomi(self.map((r) => ({ scores: r.scores.map((v, i) => v - (komi[i] ?? 0)), land: r.land, plantsOnLand: r.plantsOnLand })), 4);
   }
   const seatWins = new Array(P).fill(0);
   for (const r of self) seatWins[r.winner]++;
@@ -86,13 +86,10 @@ export function summarize(rules: LabRules, P: number, res: (GameOut & { scenario
     if (m <= 3) close++;
     if (m === 0) {
       const top = r.scores.map((v, i) => (v === s[0] ? i : -1)).filter((i) => i >= 0);
-      const keyOf = (i: number) => `${r.land[i]}:${r.cubesFinal[i]}`;
-      const keys = top.map(keyOf);
       const bestLand = Math.max(...top.map((i) => r.land[i] as number));
       const tops = top.filter((i) => r.land[i] === bestLand);
-      const minC = Math.min(...tops.map((i) => r.cubesFinal[i] as number));
-      if (tops.filter((i) => r.cubesFinal[i] === minC).length > 1) ties++;
-      void keys;
+      const mostPlants = Math.max(...tops.map((i) => r.plantsOnLand[i] as number));
+      if (tops.filter((i) => r.plantsOnLand[i] === mostPlants).length > 1) ties++;
     }
     let lead = -1;
     for (const h of r.history) {
@@ -266,7 +263,7 @@ export function rubric(rules: LabRules, sums: Summary[]) {
     '고민거리(1점 안 후보)': per((s) => band(s.decClose, 2, 8, 4)),
   };
   const balance = {
-    '좌석 승률': per((s) => lin(s.seatDev, 12, s.P === 2 ? 2.5 : 3)),
+    '자리 승률': per((s) => lin(s.seatDev, 12, s.P === 2 ? 2.5 : 3)),
     '식물 승률 폭': per((s) => lin(s.speciesSpread / (100 * fair(s)), 0.6, 0.15)),
     '전략 독식 없음': per((s) => lin(Math.max(...Object.values(s.archShare)), 2.0, 1.25)),
     '전략 고사 없음': per((s) => lin(Math.min(...Object.values(s.archShare)), 0.3, 0.75)),

@@ -13,7 +13,7 @@ def health() -> dict[str, str]:
     return {"status": "ok", "service": "rootbound-ai"}
 
 
-# None 필드(칡 아닌 식물의 direction, 씨앗 없는 seed)는 빼고 보낸다. TS 검증은 undefined 만 "없음"으로 본다
+# None 필드(생략된 rotation, 씨앗 없는 seed)는 빼고 보낸다. TS 검증은 undefined 만 "없음"으로 본다
 @app.post("/decide", response_model=DecideResponse, response_model_exclude_none=True)
 def decide_endpoint(req: DecideRequest) -> DecideResponse:
     action, depth, elapsed_ms = decide(req.state, req.playerId, req.timeLimitMs)

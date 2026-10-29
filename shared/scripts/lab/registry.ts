@@ -1,6 +1,6 @@
 /** 이름 → 규칙 후보. 실험하면서 여기에 추가한다 */
 import type { LabRules } from './engine.js';
-import { BASE, GOALS_V2, SPECIES_V2, patchSpecies, variant } from './variants.js';
+import { BASE, GOALS_V2, SPECIES_V2, at, patchSpecies, variant } from './variants.js';
 
 const goalsSoft = GOALS_V2.map((g) =>
   g.id === 'big-garden' ? { ...g, a: 4, b: 2 } : g.id === 'center-plaza' ? { ...g, a: 4 } : g.id === 'long-path' ? { ...g, a: 4, b: 2 } : g,
@@ -20,18 +20,7 @@ export const VARIANTS: Record<string, LabRules> = {
 };
 
 // 식물 수치 1차 조정 (base 결과: 민들레·무궁화 강, 버섯·소나무·대나무·담쟁이·유채 약)
-const at = (d: number, v: number, k = 1): [number, number, number] => {
-  const D = [
-    [1, 0],
-    [1, -1],
-    [0, -1],
-    [-1, 0],
-    [-1, 1],
-    [0, 1],
-  ] as const;
-  return [D[d]![0] * k, D[d]![1] * k, v];
-};
-export const SPECIES_V3 = patchSpecies(SPECIES_V2, {
+const SPECIES_V3 = patchSpecies(SPECIES_V2, {
   dandelion: { ability: { kind: 'seed', value: 1, range: 2, count: 1 }, pattern: [[0, 0, 1], at(0, 1), at(3, 1)] },
   mugunghwa: { ability: { kind: 'bloom', value: 1 } },
   mushroom: { pattern: [[0, 0, 2]], ability: { kind: 'wither', value: 2 } },
@@ -42,8 +31,6 @@ export const SPECIES_V3 = patchSpecies(SPECIES_V2, {
 });
 VARIANTS.sp3 = variant('sp3', { species: SPECIES_V3 });
 
-
-export { SPECIES_V2, patchSpecies };
 
 VARIANTS.adjsup24 = variant('adjsup24', { plantOn: 'adjacent', supply: { 2: 24, 3: 22, 4: 20 } });
 VARIANTS.adjsup20 = variant('adjsup20', { plantOn: 'adjacent', supply: { 2: 20, 3: 18, 4: 16 } });
@@ -70,7 +57,7 @@ VARIANTS.v3a = variant(
 
 // v4: 기본판 9종(능력 4개), 기름진 땅 일반 보너스 없음
 const BASE9 = new Set(['grass', 'oak', 'pine', 'kudzu', 'fern', 'dandelion', 'lotus', 'mushroom', 'mugunghwa']);
-export const SPECIES_V4 = SPECIES_V3.filter((s) => BASE9.has(s.id)).map((s) => (s.id === 'pine' ? { ...s, tags: ['tree' as const] } : s));
+const SPECIES_V4 = SPECIES_V3.filter((s) => BASE9.has(s.id)).map((s) => (s.id === 'pine' ? { ...s, tags: ['tree' as const] } : s));
 VARIANTS.v4 = variant(
   'v4',
   { species: SPECIES_V4, gardenSize: { 2: 6, 3: 6, 4: 8 }, copies: { 2: 4, 3: 5, 4: 5 }, fertileBonus: 0 },

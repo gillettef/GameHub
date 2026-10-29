@@ -16,7 +16,7 @@ export interface Occupancy {
   plantSpecies: (SpeciesId | null)[];
   /** state.plants 의 번호 (없으면 −1) */
   plantIndex: Int16Array;
-  /** 입구 주인 좌석 (−1 없음) */
+  /** 입구 주인 자리 (−1 없음) */
   entranceSeat: Int8Array;
 }
 
@@ -52,7 +52,7 @@ export function isEmptyCell(idx: BoardIndex, occ: Occupancy, c: number): boolean
   return canHoldRoots(idx, occ, c) && occ.plantIndex[c] === -1;
 }
 
-/** 칸 주인 좌석 (−1 = 없음). 큐브가 있는 색이 주인이다 */
+/** 칸 주인 자리 (−1 = 없음). 큐브가 있는 색이 주인이다 */
 export function computeOwners(state: Pick<GameState, 'board' | 'rootSeat' | 'rootCount'>): Int8Array {
   const n = requireBoard(state).cells.length;
   const out = new Int8Array(n).fill(-1);
@@ -60,7 +60,7 @@ export function computeOwners(state: Pick<GameState, 'board' | 'rootSeat' | 'roo
   return out;
 }
 
-/** 좌석별 보드 위 큐브 수 */
+/** 자리별 보드 위 큐브 수 */
 export function cubesOnBoard(state: Pick<GameState, 'players' | 'rootSeat' | 'rootCount'>): number[] {
   const out = new Array<number>(state.players.length).fill(0);
   state.rootCount.forEach((k, c) => {
@@ -70,7 +70,7 @@ export function cubesOnBoard(state: Pick<GameState, 'players' | 'rootSeat' | 'ro
   return out;
 }
 
-/** 좌석별 공급처에 남은 큐브 (Rules.md 5절 다음 선) */
+/** 자리별 공급처에 남은 큐브 (Rules.md 5절 다음 선) */
 export function supplyLeft(state: Pick<GameState, 'players' | 'rootSeat' | 'rootCount'>): number[] {
   const lim = rulesFor(state.players.length).supply;
   return cubesOnBoard(state).map((v) => lim - v);
@@ -85,8 +85,11 @@ export function rotateSpot(spot: RootSpot, rotation: number): RootSpot {
 
 /** 이 식물을 이 칸에 이 회전으로 심을 때 큐브를 놓을 칸 (놓는 순서). 보드 밖·연못·바위·입구는 건너뛴다 */
 export function rootTargets(state: Pick<GameState, 'board' | 'plants'>, species: SpeciesId, pos: Position, rotation: number): { cell: number; n: number }[] {
-  const idx = boardIndex(requireBoard(state));
-  const occ = occupancy(state);
+  return targetsOn(boardIndex(requireBoard(state)), occupancy(state), species, pos, rotation);
+}
+
+/** rootTargets 본체. 색인·점유를 이미 만든 호출자(plantRoots)가 다시 계산하지 않게 나눠 둔다 */
+function targetsOn(idx: BoardIndex, occ: Occupancy, species: SpeciesId, pos: Position, rotation: number): { cell: number; n: number }[] {
   const out: { cell: number; n: number }[] = [];
   for (const spot of getSpecies(species).roots) {
     const s = rotateSpot(spot, rotation);
@@ -136,7 +139,7 @@ export function legalSeedCells(state: Pick<GameState, 'board' | 'plants'>, plant
 export interface RootBuffer {
   seat: number[];
   count: number[];
-  /** 좌석별 보드 위 큐브 */
+  /** 자리별 보드 위 큐브 */
   onBoard: number[];
   /** 공급처가 모자라 옮겨 온 칸 (기록용, 옮긴 횟수만큼) */
   uprooted: number[];
@@ -243,7 +246,7 @@ export function plantRoots(
   const sp = getSpecies(species);
   const limit = rulesFor(state.players.length).supply;
   const b = buffer(state);
-  for (const t of rootTargets(state, species, pos, rotation)) addRoots(b, t.cell, seat, t.n, limit, occ);
+  for (const t of targetsOn(idx, occ, species, pos, rotation)) addRoots(b, t.cell, seat, t.n, limit, occ);
   const c = idx.indexOf(pos);
   if (sp.wither) for (const x of idx.ring1[c] as number[]) if (canHoldRoots(idx, occ, x)) wither(b, x, seat, sp.wither);
   if (sp.seed && seed) {

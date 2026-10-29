@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { START_HAND, rulesFor } from '../data/index.js';
+import { START_HAND, getSpecies, rulesFor } from '../data/index.js';
+import { maskState } from '../mask.js';
 import type { Action, Board, GameState, Plant, PlayerId, Position, SpeciesId } from '../types/index.js';
 import {
   applyAction,
@@ -68,7 +69,7 @@ function playOut(n: number, seed: number): GameState {
 type RootSpec = [q: number, r: number, seat: number, n: number];
 
 /**
- * 테스트용 평평한 보드(모두 빈 땅, 15×9). 입구는 좌석 0 (0,0), 좌석 1 (6,0). 큐브는 roots 로만 놓는다(입구 둘레 큐브 없음).
+ * 테스트용 평평한 보드(모두 빈 땅, 15×9). 입구는 자리 0 (0,0), 자리 1 (6,0). 큐브는 roots 로만 놓는다(입구 둘레 큐브 없음).
  * terrain 으로 일부 칸 지형을 바꾼다
  */
 function flatState(plants: Omit<Plant, 'id'>[] = [], roots: RootSpec[] = [], terrain: [number, number, Board['cells'][number]['terrain']][] = []): GameState {
@@ -105,7 +106,7 @@ function flatState(plants: Omit<Plant, 'id'>[] = [], roots: RootSpec[] = [], ter
   };
 }
 
-/** 칸의 [좌석, 큐브 수] (없으면 [−1, 0]) */
+/** 칸의 [자리, 큐브 수] (없으면 [−1, 0]) */
 function at(s: Pick<GameState, 'board' | 'rootSeat' | 'rootCount'>, q: number, r: number): [number, number] {
   const c = boardIndex(s.board!).indexOf({ q, r });
   const n = s.rootCount[c] ?? 0;
@@ -166,7 +167,7 @@ describe('보드 조립 (Rules.md 3.3)', () => {
     expect(board.cells).toEqual(sorted);
   });
 
-  it('2·3인 입구는 모든 칸까지의 거리 분포가 좌석마다 같다 (대칭 보드)', () => {
+  it('2·3인 입구는 모든 칸까지의 거리 분포가 자리마다 같다 (대칭 보드)', () => {
     for (const n of [2, 3]) {
       const { board } = buildBoard(n, 3);
       const profiles = board.entrances.map((e) => board.cells.map((c) => hexDistance(c, e)).sort((a, b) => a - b).join(','));
@@ -451,6 +452,55 @@ describe('진행 (Rules.md 4·5절)', () => {
     expect(applyAction(s, { type: 'TAKE', playerId: 'p0', take: 'deck' as never }).error).toMatch(/없는 카드/);
   });
 
+  it('더미가 1장 남았을 때 더미에서 가져오면 더미가 비고, 다음 마켓 가져오기는 채우지 않아 마켓이 1장으로 준다', () => {
+    let s = readyAll(lobby(2, 5));
+    // 더미가 1장 남을 때까지 마켓 0번 가져오기로 진행
+    for (let i = 0; i < 1000 && s.pile.length > 1; i++) s = ok(s, autoAction(s, s.currentPlayerId as PlayerId)!);
+    while (s.stage !== 'take') s = ok(s, autoAction(s, s.currentPlayerId as PlayerId)!);
+    expect(s.pile).toHaveLength(1);
+    s = ok(s, { type: 'TAKE', playerId: s.currentPlayerId as PlayerId, take: 'pile' });
+    expect(s.pile).toHaveLength(0);
+    expect(s.market).toHaveLength(2);
+    s = ok(s, autoAction(s, s.currentPlayerId as PlayerId)!);
+    const pid = s.currentPlayerId as PlayerId;
+    expect(applyAction(s, { type: 'TAKE', playerId: pid, take: 'pile' }).error).toMatch(/카드 더미가 비었/);
+    s = ok(s, { type: 'TAKE', playerId: pid, take: 0 });
+    expect(s.market).toHaveLength(1);
+    expect(applyAction(s, { type: 'TAKE', playerId: pid, take: 1 }).error).toBeTruthy();
+  });
+
+  it.each([2, 3, 4])('%i인: 더미와 마켓을 섞어 가져와도 각자 같은 횟수를 심고 정상 종료', (n) => {
+    let s = readyAll(lobby(n, 40 + n));
+    for (let i = 0; i < 2000 && s.phase === 'playing'; i++) {
+      const pid = s.currentPlayerId as PlayerId;
+      // 가져오기 차례마다 번갈아 더미·마켓 (더미가 비면 마켓)
+      const fromPile = s.stage === 'take' && s.pile.length > 0 && s.turn % 2 === 0;
+      s = ok(s, fromPile ? { type: 'TAKE', playerId: pid, take: 'pile' } : autoAction(s, pid)!);
+    }
+    expect(s.phase).toBe('finished');
+    expect(s.result?.reason).toBe('complete');
+    const rule = rulesFor(n);
+    const plays = (rule.gardenSize * rule.copies) / n;
+    expect(s.log.filter((e) => e.kind === 'take' && e.message.endsWith('카드 더미에서 1장 가져옴')).length).toBeGreaterThan(0);
+    for (const p of s.players) {
+      expect(s.log.filter((e) => e.playerId === p.id && (e.kind === 'plant' || e.kind === 'discard')).length).toBe(plays);
+    }
+  });
+
+  it('더미에서 가져온 카드는 다른 사람에게 보이지 않는다 (가린 상태에 손·더미·기록 어디에도 없다)', () => {
+    const s = readyAll(lobby(3, 8));
+    const t = ok(s, { type: 'TAKE', playerId: 'p0', take: 'pile' });
+    const card = t.players[0]!.hand[t.players[0]!.hand.length - 1]!;
+    const seen = maskState(t, 'p1');
+    const p0 = seen.players.find((p) => p.id === 'p0')!;
+    expect(p0.hand).toEqual([]);
+    expect(p0.handCount).toBe(s.players[0]!.hand.length + 1);
+    expect(seen.pile).toEqual([]);
+    expect(seen.pileCount).toBe(t.pile.length);
+    expect(seen.log[seen.log.length - 1]!.message).not.toContain(getSpecies(card).name);
+    expect(maskState(t, 'p0').players.find((p) => p.id === 'p0')!.hand).toContain(card);
+  });
+
   it('기록: 심은 칸·씨앗 칸·밀어낸 칸을 칸 이름으로 남긴다', () => {
     const s = readyAll(lobby(2));
     expect(s.log.some((e) => e.message === '입구: 1번 자리 D2 · 2번 자리 F7')).toBe(true);
@@ -598,7 +648,7 @@ describe('진행 (Rules.md 4·5절)', () => {
 });
 
 describe('종료·점수·순위 (Rules.md 8·9절)', () => {
-  it('점수 = 땅 + 목표 + 무궁화 + 덤, 순위는 점수 → 땅 → 내 땅 위 식물 → 좌석 큰 쪽', () => {
+  it('점수 = 땅 + 목표 + 무궁화 + 덤, 순위는 점수 → 땅 → 내 땅 위 식물 → 자리 큰 쪽', () => {
     const s = playOut(4, 5);
     const scores = s.result!.scores;
     for (const p of s.players) {
@@ -629,7 +679,7 @@ describe('종료·점수·순위 (Rules.md 8·9절)', () => {
       [5, 1, 1, 1],
       [6, 1, 1, 1],
     ] : []);
-    expect(computeRanking(t)).toEqual(['p1', 'p0']); // 모두 같으면 좌석 큰 쪽
+    expect(computeRanking(t)).toEqual(['p1', 'p0']); // 모두 같으면 자리 큰 쪽
   });
 
   it('땅 점수는 computeOwners 와 같다', () => {
