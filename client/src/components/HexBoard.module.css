@@ -118,7 +118,7 @@
   stroke-width: 0.18;
 }
 
-/* 땅 주인: 좌석색을 옅게 덮고 안쪽에 좌석색 테를 둘러 질감 위에서도 구분되게 한다 */
+/* 땅 주인: 자리 색을 옅게 덮고 안쪽에 자리 색 테를 둘러 질감 위에서도 구분되게 한다 */
 .owned {
   fill: color-mix(in srgb, var(--owner) 38%, transparent);
   stroke: var(--owner);
@@ -207,7 +207,7 @@
   pointer-events: none;
 }
 
-/* 입구: 좌석색 집 모양 + 자리 번호 */
+/* 입구: 자리 색 집 모양 + 자리 번호 */
 .entrance {
   pointer-events: none;
 }
@@ -223,7 +223,7 @@
   fill: var(--board-ink);
 }
 
-/* 식물: 카드 그림 썸네일을 둥글게 잘라 좌석색 고리로 두른다 */
+/* 식물: 카드 그림 썸네일을 둥글게 잘라 자리 색 고리로 두른다 */
 .plant {
   pointer-events: none;
   animation: plant-pop var(--motion-slow) var(--ease-enter);

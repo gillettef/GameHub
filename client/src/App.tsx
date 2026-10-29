@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { autoAction, legalPlantCells } from '@rootbound/shared';
+import { MAX_PLAYERS, MIN_PLAYERS, autoAction, legalPlantCells } from '@rootbound/shared';
 import { asState } from './game/derived';
 import { makeSeed } from './game/hotseat';
 import { navigate, useRoute } from './lib/router';
@@ -8,7 +8,7 @@ import { LandingPage } from './pages/LandingPage';
 import { getNickname } from './lib/identity';
 import { RoomPage } from './pages/RoomPage';
 import { SetupPage } from './pages/SetupPage';
-import { useGameStore, type TabId } from './store/gameStore';
+import { TABS, findMe, useGameStore, type TabId } from './store/gameStore';
 
 /**
  * 개발·검증용 바로가기: `/hotseat?quick` 은 곧장 핫시트를 시작한다(이번 판 식물 공개 화면).
@@ -21,12 +21,12 @@ function readQuickStart(): { players: number; seed: number; play: number; tab: T
   const q = new URLSearchParams(window.location.search);
   if (!q.has('quick')) return null;
   const tab = q.get('tab');
-  const players = Number(q.get('players') ?? 2);
+  const players = Number(q.get('players') ?? MIN_PLAYERS);
   return {
-    players: players >= 2 && players <= 4 ? players : 2,
+    players: players >= MIN_PLAYERS && players <= MAX_PLAYERS ? players : MIN_PLAYERS,
     seed: Number(q.get('seed') ?? makeSeed()),
     play: Number(q.get('play')) || 0,
-    tab: tab === 'status' || tab === 'progress' || tab === 'board' || tab === 'cards' || tab === 'help' ? tab : null,
+    tab: TABS.find((t) => t.id === tab)?.id ?? null,
     select: q.has('select') ? Number(q.get('select')) : null,
     cell: q.has('cell') ? Number(q.get('cell')) : null,
     take: q.get('take') === 'pile' ? 'pile' : q.has('take') ? Number(q.get('take')) : null,
@@ -81,7 +81,7 @@ export function App() {
     if (quick.select !== null && Number.isInteger(quick.select)) selectHandCard(quick.select);
     if (quick.cell !== null && Number.isInteger(quick.cell)) {
       const { state: st, viewerId } = useGameStore.getState();
-      const sp = st && viewerId && quick.select !== null ? st.players.find((p) => p.id === viewerId)?.hand[quick.select] : undefined;
+      const sp = st && viewerId && quick.select !== null ? findMe(st, viewerId)?.hand[quick.select] : undefined;
       const pos = st && viewerId && sp ? legalPlantCells(asState(st), viewerId, sp)[quick.cell] : undefined;
       if (pos) tapCell(pos);
     }

@@ -2,7 +2,7 @@ import { memo, useEffect } from 'react';
 import { playCue } from '../lib/cues';
 import { formatRemaining, useTurnRemaining } from '../lib/turnClock';
 import { cx } from '../lib/cx';
-import { useGameStore } from '../store/gameStore';
+import { selectAwaitingMyConfirm, useGameStore } from '../store/gameStore';
 import { TimerIcon } from './icons';
 import styles from './TurnTimer.module.css';
 
@@ -10,19 +10,14 @@ import styles from './TurnTimer.module.css';
 const WARN_SEC = 10;
 
 /**
- * 턴 제한 시간 남은 시간 (Rules.md 5.4, 온라인 전용). 상단 상태 창 메타 줄에 붙는다.
+ * 차례 제한 시간 남은 시간 (Rules.md 6.3, 온라인 전용). 상단 상태 창 메타 줄에 붙는다.
  * 제한이 없거나 AI 턴·AI 대리 중이면 아무것도 그리지 않는다. 시간 초과 판정은 서버가 한다.
  */
 export const TurnTimer = memo(function TurnTimer() {
   const room = useGameStore((s) => s.room);
   const receivedAt = useGameStore((s) => s.roomReceivedAt);
   // 공개 단계(Rules.md 6.3)에는 아직 확인하지 않았으면 내 시계다
-  const isMine = useGameStore(
-    (s) =>
-      s.state?.phase === 'reveal'
-        ? s.state.players.some((p) => p.id === s.viewerId && !p.isReady && p.surrenderedOrder === null)
-        : s.state?.currentPlayerId === s.viewerId,
-  );
+  const isMine = useGameStore((s) => (s.state?.phase === 'reveal' ? selectAwaitingMyConfirm(s) : s.state?.currentPlayerId === s.viewerId));
   const remaining = useTurnRemaining(room, receivedAt);
 
   useEffect(() => {

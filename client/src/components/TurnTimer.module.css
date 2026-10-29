@@ -1,4 +1,4 @@
-/* 턴 제한 시간 (Rules.md 5.4). 평소엔 보조색, 10초 이하에서 경고색(돌이킬 수 없는 자동 패스가 임박) */
+/* 차례 제한 시간 (Rules.md 6.3). 평소엔 보조색, 10초 이하에서 경고색(돌이킬 수 없는 자동 수가 임박) */
 .timer {
   display: inline-flex;
   align-items: center;

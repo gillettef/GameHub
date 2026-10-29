@@ -29,7 +29,7 @@ export const Market = memo(function Market() {
         </span>
       </span>
       {market.length === 0 ? (
-        <span className={styles.empty}>{pileCount === 0 ? '마켓 없음 · 내 카드만 씁니다' : '모두 가져갔습니다 · 다음 라운드에 새로 펼칩니다'}</span>
+        <span className={styles.empty}>마켓 없음 · 내 카드만 씁니다</span>
       ) : (
         <div className={styles.cards} role="list">
           {market.map((species, i) => (

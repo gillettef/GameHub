@@ -1,5 +1,5 @@
 /**
- * 턴 제한 시간 표시 (Rules.md 5.4). 마감은 서버 시각이라, 스냅샷을 받은 순간의 서버 시각(serverNow)과
+ * 차례 제한 시간 표시 (Rules.md 6.3). 마감은 서버 시각이라, 스냅샷을 받은 순간의 서버 시각(serverNow)과
  * 내 시계의 차이로 보정해 남은 시간을 센다. 판정은 항상 서버가 한다 — 여기는 표시만.
  */
 import { useEffect, useState } from 'react';
@@ -16,7 +16,7 @@ export function localDeadline(room: RoomInfo | null, receivedAt: number): number
   return room.turnDeadline - room.serverNow + receivedAt;
 }
 
-/** 남은 초(올림). 마감이 없으면 null. 1초마다(10초 이하에서는 0.25초마다) 다시 그린다 */
+/** 남은 초(올림). 마감이 없으면 null. 0.25초마다 시계를 다시 잰다(초가 바뀔 때만 숫자가 달라진다) */
 export function useTurnRemaining(room: RoomInfo | null, receivedAt: number): number | null {
   const deadline = localDeadline(room, receivedAt);
   const [now, setNow] = useState(() => Date.now());

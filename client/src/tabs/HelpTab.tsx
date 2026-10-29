@@ -1,6 +1,28 @@
 import { memo } from 'react';
-import { ENTRANCE_ROOTS, RESERVE_BONUS, START_HAND, rulesFor } from '@rootbound/shared';
+import { ENTRANCE_ROOTS, GOAL_COUNT, MAX_PLAYERS, MIN_PLAYERS, RESERVE_BONUS, START_HAND, rulesFor } from '@rootbound/shared';
 import styles from './HelpTab.module.css';
+
+/** 인원별로 각자 심는 횟수 = 이번 판 식물 수 × 장수 ÷ 인원 (Rules.md 4절 6). 같은 횟수끼리 묶는다: "2인 12번, 3·4인 10번" */
+function plantsEachText(): string {
+  const groups: { counts: number[]; times: number }[] = [];
+  for (let n = MIN_PLAYERS; n <= MAX_PLAYERS; n++) {
+    const r = rulesFor(n);
+    const times = (r.gardenSize * r.copies) / n;
+    const last = groups[groups.length - 1];
+    if (last && last.times === times) last.counts.push(n);
+    else groups.push({ counts: [n], times });
+  }
+  return groups.map((g) => `${g.counts.join('·')}인 ${g.times}번`).join(', ');
+}
+
+/** 4인 덤: 덤을 받는 자리 범위와 점수 (Rules.md 4절 자리 보정). "2~4번 자리가 순서 보너스 1점" */
+function komiText(): string {
+  const komi = rulesFor(4).komi;
+  const seats = komi.flatMap((k, seat) => (k > 0 ? [seat + 1] : []));
+  const first = seats[0] ?? 0;
+  const last = seats[seats.length - 1] ?? 0;
+  return `${first === last ? first : `${first}~${last}`}번 자리가 순서 보너스 ${komi[first - 1] ?? 0}점`;
+}
 
 /** 설명 탭: 한 화면 규칙 요약 (정본은 notes/Rules.md). 수치는 shared 상수에서 읽는다 */
 export const HelpTab = memo(function HelpTab() {
@@ -16,17 +38,17 @@ export const HelpTab = memo(function HelpTab() {
       <section className={styles.section}>
         <h2 className={styles.h2}>목표</h2>
         <p>
-          차례마다 마켓이나 카드 더미에서 카드 1장을 가져오고, 내 카드 2장 중 1장을 심어 뿌리를 뻗습니다. 끝났을 때 <strong>내 뿌리가 있는 칸 1칸 = 1점</strong>에 목표 카드 3장의 점수를 더해 가장 높은 사람이 이깁니다.
+          차례마다 마켓이나 카드 더미에서 카드 1장을 가져오고, 내 카드 2장 중 1장을 심어 뿌리를 뻗습니다. 끝났을 때 <strong>내 뿌리가 있는 칸 1칸 = 1점</strong>에 목표 카드 {GOAL_COUNT}장의 점수를 더해 가장 높은 사람이 이깁니다.
         </p>
       </section>
       <section className={styles.section}>
         <h2 className={styles.h2}>한 판의 흐름</h2>
         <ol className={styles.steps}>
           <li>
-            <strong>준비</strong>: 이번 판 식물로 카드 더미를 섞어 각자 {START_HAND}장씩 받고, 마켓에 카드 2장을 펼칩니다. 각자 입구와 맞닿은 6칸에 뿌리 {ENTRANCE_ROOTS}개씩을 놓고 시작합니다.
+            <strong>준비</strong>: 이번 판 식물로 카드 더미를 섞어 각자 {START_HAND}장씩 받고, 마켓에 카드 {rulesFor(2).market}장을 펼칩니다. 각자 입구와 맞닿은 6칸에 뿌리 {ENTRANCE_ROOTS}개씩을 놓고 시작합니다.
           </li>
           <li>
-            <strong>가져오기</strong>: 내 차례에 마켓 2장 중 원하는 카드 1장을 가져오거나(빈자리는 카드 더미에서 바로 채움), 카드 더미 맨 위 1장을 뒷면만 보고 가져옵니다(내 카드 2장). 더미에서 가져온 카드는 나만 봅니다.
+            <strong>가져오기</strong>: 내 차례에 마켓 {rulesFor(2).market}장 중 원하는 카드 1장을 가져오거나(빈자리는 카드 더미에서 바로 채움), 카드 더미 맨 위 1장을 뒷면만 보고 가져옵니다(내 카드 2장). 더미에서 가져온 카드는 나만 봅니다.
           </li>
           <li>
             <strong>심기</strong>: 내 카드 1장을 <strong>내 땅</strong>이나 <strong>내 땅과 맞닿은 빈 칸</strong>에 심고, 카드의 뿌리 모양을 원하는 방향으로 돌려 숫자만큼 뿌리를 놓습니다. 심을 칸이 하나도 없을 때만 1장을 버립니다.
@@ -35,7 +57,7 @@ export const HelpTab = memo(function HelpTab() {
             <strong>다음 선</strong>: 모두 한 번씩 두면 라운드가 끝납니다. <strong>남은 뿌리가 가장 많은 사람</strong>(가장 적게 퍼진 사람)이 다음 라운드의 선입니다. 같으면 이번 선 다음 자리부터 시계방향으로 처음 만나는 사람입니다.
           </li>
           <li>
-            <strong>끝</strong>: 카드를 모두 쓰면 끝납니다(2인 12번, 3·4인 10번 심기). 패스는 없습니다.
+            <strong>끝</strong>: 카드를 모두 쓰면 끝납니다({plantsEachText()} 심기). 패스는 없습니다.
           </li>
         </ol>
       </section>
@@ -72,12 +94,12 @@ export const HelpTab = memo(function HelpTab() {
       <section className={styles.section}>
         <h2 className={styles.h2}>목표 카드</h2>
         <p>
-          판마다 3장이 공개됩니다. "○○ 보호구역"은 끝날 때 내 땅 위에 있는 ○○ 1개당 +{RESERVE_BONUS}점입니다. 누가 심었든 상관없어서, 남이 심은 식물을 뿌리로 감싸 빼앗을 수 있습니다.
+          판마다 {GOAL_COUNT}장이 공개됩니다. "○○ 보호구역"은 끝날 때 내 땅 위에 있는 ○○ 1개당 +{RESERVE_BONUS}점입니다. 누가 심었든 상관없어서, 남이 심은 식물을 뿌리로 감싸 빼앗을 수 있습니다.
         </p>
       </section>
       <section className={styles.section}>
         <h2 className={styles.h2}>순서 보정</h2>
-        <p>남은 뿌리가 많은 사람이 선을 잡아 앞선 사람을 따라잡을 기회를 줍니다. 4인만 2~4번 자리가 순서 보너스 1점을 받고 시작합니다.</p>
+        <p>남은 뿌리가 많은 사람이 선을 잡아 앞선 사람을 따라잡을 기회를 줍니다. 4인만 {komiText()}을 받고 시작합니다.</p>
       </section>
     </div>
   );

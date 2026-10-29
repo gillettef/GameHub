@@ -2,7 +2,7 @@
  * 화면용 파생값. 규칙 계산은 전부 shared 엔진 함수를 부르고(중복 구현 금지), 여기서는 화면 모양으로만 바꾼다.
  */
 import type { Direction, GameState, MaskedGameState, PlayerId, Plant, Position, Score, SpeciesId, Terrain } from '@rootbound/shared';
-import { boardIndex, cellLabels, computeOwners, computeScores, getSpecies, legalPlantCells, plantRoots, posKey, rotateSpot, SPECIES_IDS, supplyLeft } from '@rootbound/shared';
+import { cellLabels, computeOwners, computeScores, getSpecies, legalPlantCells, plantRoots, posKey, rotateSpot, SPECIES_IDS, supplyLeft } from '@rootbound/shared';
 
 /** 가려진 상태도 엔진 함수에 그대로 넣을 수 있다(모양 호환) */
 export const asState = (s: MaskedGameState | GameState): GameState => s as unknown as GameState;
@@ -15,14 +15,14 @@ export interface CellView {
   tile: number;
   /** 칸 이름 (예: "C4", Rules.md 2절) */
   label: string;
-  /** 땅 주인 좌석 = 큐브 색 (−1 없음) */
+  /** 땅 주인 자리 = 큐브 색 (−1 없음) */
   owner: number;
   /** 큐브 수 */
   cubes: number;
   plant: Plant | null;
-  /** 심은 사람 좌석 (기록용. 식물은 땅 주인 것이다) */
+  /** 심은 사람 자리 (기록용. 식물은 땅 주인 것이다) */
   plantedBy: number;
-  /** 입구 좌석 (−1 아님) */
+  /** 입구 자리 (−1 아님) */
   entranceSeat: number;
 }
 
@@ -51,6 +51,24 @@ export function buildCells(state: MaskedGameState | GameState): CellView[] {
       entranceSeat: entranceAt.get(key) ?? -1,
     };
   });
+}
+
+/** 심기 단계 이름 (가져오기 → 심기, Rules.md 5절) */
+export const stageName = (stage: GameState['stage']): string => (stage === 'take' ? '가져오기' : '심기');
+
+/** "N라운드 · 가져오기/심기" */
+export const roundStageLabel = (state: MaskedGameState | GameState): string => `${state.round}라운드 · ${stageName(state.stage)}`;
+
+/** 판 단계 이름. 끝난 판은 finishedLabel(자리 띠 '게임 종료', 진행 탭 '종료') */
+export function phaseLabel(state: MaskedGameState | GameState, finishedLabel: string): string {
+  if (state.phase === 'playing') return roundStageLabel(state);
+  if (state.phase === 'finished') return finishedLabel;
+  return state.phase === 'reveal' ? '이번 판 식물 공개' : '대기실';
+}
+
+/** 공개 단계에서 이 사람이 아직 확인하지 않았나 (기권한 사람은 확인할 일이 없다, Rules.md 4절 8) */
+export function awaitingConfirm(state: MaskedGameState | GameState, playerId: PlayerId | null): boolean {
+  return state.phase === 'reveal' && state.players.some((p) => p.id === playerId && !p.isReady && p.surrenderedOrder === null);
 }
 
 /** 선택한 카드로 심을 수 있는 칸 key */
@@ -95,16 +113,33 @@ export function buildPlayerSummaries(state: MaskedGameState, precomputed?: Recor
 }
 
 export interface PlantPreview {
-  /** 좌석별 땅 변화 */
+  /** 자리별 땅 변화 */
   landDelta: number[];
-  /** 좌석별 총점 변화 */
+  /** 자리별 총점 변화 */
   scoreDelta: number[];
   /** 큐브가 바뀌는 칸 key → 바뀐 뒤 [색, 수] (−1, 0 = 빈 칸) */
   touched: Map<string, [number, number]>;
-  /** 심으면 주인이 바뀌는 칸 key → 새 주인 좌석 */
+  /** 심으면 주인이 바뀌는 칸 key → 새 주인 자리 */
   flips: Map<string, number>;
   /** 공급처가 모자라 옮겨 오는 큐브 수 */
   uprooted: number;
+}
+
+/**
+ * 심었다고 치고 큐브까지 놓은 상태 (엔진 함수만 쓴다, 넘겨받은 상태는 바꾸지 않는다).
+ * 심기 미리보기(previewPlant)와 튜토리얼 봇이 함께 쓴다. 씨앗은 민들레일 때만 쓴다
+ */
+export function simulatePlant(
+  state: GameState,
+  playerId: PlayerId,
+  species: SpeciesId,
+  pos: Position,
+  rotation: Direction,
+  seed: Position | null = null,
+): { after: GameState; uprooted: number[] } {
+  const withPlant: GameState = { ...state, plants: [...state.plants, { id: 'preview', species, ownerId: playerId, pos, rotation }] };
+  const roots = plantRoots(withPlant, playerId, species, pos, rotation, seed && getSpecies(species).seed ? seed : null);
+  return { after: { ...withPlant, rootSeat: roots.rootSeat, rootCount: roots.rootCount }, uprooted: roots.uprooted };
 }
 
 /** 심었다고 치고 결과를 미리 본다 (엔진 함수만 쓴다, 상태는 바꾸지 않는다) */
@@ -118,18 +153,14 @@ export function previewPlant(
 ): PlantPreview | null {
   const s = asState(state);
   if (!s.board) return null;
-  const sp = getSpecies(species);
-  const withPlant: GameState = { ...s, plants: [...s.plants, { id: 'preview', species, ownerId: viewerId, pos, rotation }] };
-  const roots = plantRoots(withPlant, viewerId, species, pos, rotation, seed && sp.seed ? seed : null);
-  const after: GameState = { ...withPlant, rootSeat: roots.rootSeat, rootCount: roots.rootCount };
+  const { after, uprooted } = simulatePlant(s, viewerId, species, pos, rotation, seed);
   const before = computeScores(s);
   const next = computeScores(after);
   const ownB = computeOwners(s);
   const ownA = computeOwners(after);
-  const idx = boardIndex(s.board);
   const touched = new Map<string, [number, number]>();
   const flips = new Map<string, number>();
-  for (let c = 0; c < idx.n; c++) {
+  for (let c = 0; c < s.board.cells.length; c++) {
     const key = posKey(s.board.cells[c]!);
     const nA = after.rootCount[c] ?? 0;
     if (nA !== (s.rootCount[c] ?? 0) || ownA[c] !== ownB[c]) touched.set(key, [ownA[c] as number, nA]);
@@ -141,7 +172,7 @@ export function previewPlant(
     scoreDelta: bySeat.map((p) => (next[p.id]?.total ?? 0) - (before[p.id]?.total ?? 0)),
     touched,
     flips,
-    uprooted: roots.uprooted.length,
+    uprooted: uprooted.length,
   };
 }
 
@@ -164,7 +195,7 @@ export function distinctRotations(species: SpeciesId): Direction[] {
 }
 
 /** 화살표 표시용 방향 이름 (방향 0~5) */
-export const DIRECTION_LABELS = ['→', '↗', '↖', '←', '↙', '↘'] as const;
+const DIRECTION_LABELS = ['→', '↗', '↖', '←', '↙', '↘'] as const;
 
 /** 회전 r 일 때 카드 그림의 오른쪽(방향 0)이 가리키는 화면 방향. 회전 1번은 방향 d 를 d−1 로 보낸다 */
 export const rotationLabel = (rotation: number): string => DIRECTION_LABELS[(6 - (rotation % 6)) % 6] as string;

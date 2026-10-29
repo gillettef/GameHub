@@ -5,6 +5,7 @@ import { TutorialCoach } from '../components/TutorialCoach';
 import { HandoffOverlay } from '../components/HandoffOverlay';
 import { PlayerStrip } from '../components/PlayerStrip';
 import { TabDock } from '../components/TabDock';
+import { awaitingConfirm } from '../game/derived';
 import { useGameCues } from '../game/useGameCues';
 import { api } from '../socket/client';
 import { selectState, selectTab, selectViewerId, useGameStore, type TabId } from '../store/gameStore';
@@ -22,7 +23,7 @@ interface GamePageProps {
 }
 
 /**
- * 게임 대시보드 (F014, F015). 세 탭을 모두 마운트해 두고 `hidden` 으로 숨긴다 — 전환 시 렌더 비용이 없다.
+ * 게임 대시보드 (F014, F015). 다섯 탭을 모두 마운트해 두고 `hidden` 으로 숨긴다 — 전환 시 렌더 비용이 없다.
  * 게임 세계(data-world="game")는 이 루트 안에서만 쓴다.
  */
 export function GamePage({ onQuit }: GamePageProps) {
@@ -53,7 +54,7 @@ export function GamePage({ onQuit }: GamePageProps) {
   useEffect(() => {
     if (!state || !viewerId) return;
     const isMyTurn = state.phase === 'playing' && state.currentPlayerId === viewerId;
-    const toConfirm = state.phase === 'reveal' && state.players.some((p) => p.id === viewerId && !p.isReady && p.surrenderedOrder === null);
+    const toConfirm = awaitingConfirm(state, viewerId);
     document.title = isMyTurn ? '내 차례 · Rootbound' : toConfirm ? '확인 대기 · Rootbound' : 'Rootbound';
   }, [state, viewerId]);
   useEffect(() => () => {

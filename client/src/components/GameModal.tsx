@@ -1,9 +1,9 @@
 import { memo, useEffect, useMemo } from 'react';
 import type { SpeciesId } from '@rootbound/shared';
-import { ENTRANCE_ROOTS, cellLabel, getGoal, getSpecies, hasAnyPlant, legalPlantCells, samePos } from '@rootbound/shared';
+import { ENTRANCE_ROOTS, getGoal, getSpecies, hasAnyPlant, legalPlantCells, samePos } from '@rootbound/shared';
 import { PLANT_BACK_URL, goalCardUrl } from '../game/cardImages';
 import { asState, buildCells, rotationLabel } from '../game/derived';
-import { selectCanPlant, selectCanTake, selectIsMyTurn, selectState, selectViewerId, useGameStore } from '../store/gameStore';
+import { findMe, selectCanPlant, selectCanTake, selectIsMyTurn, selectState, selectViewerId, useGameStore } from '../store/gameStore';
 import { CloseIcon } from './icons';
 import { SpeciesCard } from './SpeciesCard';
 import styles from './GameModal.module.css';
@@ -11,10 +11,10 @@ import styles from './GameModal.module.css';
 const TERRAIN: Record<string, string> = { empty: '빈 땅', fertile: "기름진 땅 (목표 '비옥한 밭'이 센다)", pond: '연못 (심을 수 없고, 누구의 땅도 아님)', rock: '바위 (심을 수 없고, 누구의 땅도 아님)' };
 
 /**
- * 확대 모달 하나로 다섯 가지를 본다 (스토어 cardModal):
+ * 확대 모달 하나로 여섯 가지를 본다 (스토어 cardModal):
  *  - 손패 카드: 심기 차례에 크게 보고 "이 카드 고르기". 심을 칸이 하나도 없으면 "버리기"(Rules.md 6절)
  *  - 마켓 카드: 가져오기 차례에 크게 보고 "이 카드 가져오기"(Rules.md 5절 1)
- *  - 카드 더미 뒷면: 가져오기 차례에 "더미에서 1장 가져오기"(Rules.md 5절 1)
+ *  - 카드 더미 뒷면: 가져오기 차례에 "카드 더미에서 1장 가져오기"(Rules.md 5절 1)
  *  - 식물 카드: 보기 전용 (카드 탭·마켓)
  *  - 목표 카드: 보기 전용 (목표 칩·점수 탭·카드 탭)
  *  - 보드 칸: 칸 이름·지형·식물·뿌리 수·주인
@@ -41,7 +41,7 @@ export const GameModal = memo(function GameModal() {
   }, [target, close]);
 
   if (!target || !state) return null;
-  const me = state.players.find((p) => p.id === viewerId);
+  const me = findMe(state, viewerId);
 
   let body: React.ReactNode = null;
   if (target.kind === 'goal') {
@@ -87,7 +87,7 @@ export const GameModal = memo(function GameModal() {
                   takeCard('pile');
                 }}
               >
-                더미에서 1장 가져오기
+                카드 더미에서 1장 가져오기
               </button>
             </>
           ) : (
@@ -149,7 +149,7 @@ export const GameModal = memo(function GameModal() {
     body = (
       <div className={styles.cellInfo}>
         <h2 className={styles.title}>
-          칸 {state.board ? cellLabel(state.board, cell) : ''}
+          칸 {cell.label}
         </h2>
         <p className={styles.line}>{TERRAIN[cell.terrain]}</p>
         {cell.entranceSeat >= 0 && <p className={styles.line}>{players[cell.entranceSeat]?.nickname}의 입구 (처음에 맞닿은 6칸에 뿌리 {ENTRANCE_ROOTS}씩)</p>}

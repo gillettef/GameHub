@@ -1,11 +1,12 @@
 import { memo, type CSSProperties } from 'react';
-import { selectState, selectViewerId, useGameStore } from '../store/gameStore';
+import { rulesFor } from '@rootbound/shared';
+import { findMe, selectState, selectViewerId, useGameStore } from '../store/gameStore';
 import { GoalList } from './GoalList';
 import { SpeciesCard } from './SpeciesCard';
 import styles from './RevealPanel.module.css';
 
 /**
- * 이번 판 식물 공개 단계 (Rules.md 4절 7). 정원 탭 자리에 보드 대신 나온다.
+ * 이번 판 식물 공개 단계 (Rules.md 4절 8). 정원 탭 자리에 보드 대신 나온다.
  * 이번 판 식물(카드를 누르면 크게 보기) · 목표 3장 · 자리별 확인 현황 · "확인" 버튼.
  *  - 한 기기로: "확인하고 시작" 한 번으로 모두 확인한다(store.confirmReveal). 손 카드는 같은 화면을 모두가 보므로 보여 주지 않는다.
  *  - 온라인: 내 확인(CONFIRM)을 보내고 다른 사람을 기다린다. 내 첫 카드를 함께 보여 준다. AI 는 바로 확인되어 있다.
@@ -22,7 +23,7 @@ export const RevealPanel = memo(function RevealPanel() {
   const players = [...state.players].sort((a, b) => a.seat - b.seat);
   const active = players.filter((p) => p.surrenderedOrder === null);
   const confirmed = active.filter((p) => p.isReady).length;
-  const me = state.players.find((p) => p.id === viewerId);
+  const me = findMe(state, viewerId);
   const online = mode === 'online';
   const myCard = online ? me?.hand[0] : undefined;
   const iSurrendered = !!me && me.surrenderedOrder !== null;
@@ -54,7 +55,7 @@ export const RevealPanel = memo(function RevealPanel() {
           <div className={styles.mineCard}>
             <SpeciesCard species={myCard} variant="chip" seat={me?.seat} onClick={() => openCardModal({ kind: 'species', species: myCard })} />
           </div>
-          <p className={styles.help}>내 첫 카드입니다. 차례마다 마켓 2장 중 1장이나 카드 더미 맨 위 1장을 가져와 2장 중 1장을 심습니다.</p>
+          <p className={styles.help}>내 첫 카드입니다. 차례마다 마켓 {rulesFor(state.players.length).market}장 중 1장이나 카드 더미 맨 위 1장을 가져와 2장 중 1장을 심습니다.</p>
         </section>
       )}
 

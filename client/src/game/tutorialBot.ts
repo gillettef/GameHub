@@ -5,9 +5,9 @@
  * 가져오기에서는 공개 목표(보호구역)에 나온 식물을 먼저, 없으면 마켓 맨 앞 카드를 가져온다(Rules.md 5절).
  * 공개 단계에서는 바로 확인한다.
  */
-import type { Action, Direction, GameState, PlayerId } from '@rootbound/shared';
-import { autoAction, computeScores, getGoal, legalPlantCells, plantRoots } from '@rootbound/shared';
-import { distinctRotations } from './derived';
+import type { Action, GameState, PlayerId } from '@rootbound/shared';
+import { autoAction, computeScores, getGoal, legalPlantCells } from '@rootbound/shared';
+import { awaitingConfirm, distinctRotations, simulatePlant } from './derived';
 
 /** 가져올 마켓 자리 (마켓에 카드가 있을 때만 부른다) */
 function pickTake(state: GameState): number {
@@ -18,7 +18,7 @@ function pickTake(state: GameState): number {
 
 export function tutorialBotAction(state: GameState, playerId: PlayerId): Action | null {
   const me = state.players.find((p) => p.id === playerId);
-  if (state.phase === 'reveal') return me && !me.isReady && me.surrenderedOrder === null ? { type: 'CONFIRM', playerId } : null;
+  if (state.phase === 'reveal') return awaitingConfirm(state, playerId) ? { type: 'CONFIRM', playerId } : null;
   if (state.phase !== 'playing' || state.currentPlayerId !== playerId) return null;
   if (state.stage === 'take') return state.market.length > 0 ? { type: 'TAKE', playerId, take: pickTake(state) } : autoAction(state, playerId);
   const species = me?.hand[0];
@@ -29,9 +29,7 @@ export function tutorialBotAction(state: GameState, playerId: PlayerId): Action 
   let bestLand = -Infinity;
   for (const pos of cells) {
     for (const rotation of distinctRotations(species)) {
-      const withPlant: GameState = { ...state, plants: [...state.plants, { id: 'bot', species, ownerId: playerId, pos, rotation: rotation as Direction }] };
-      const trial: GameState = { ...withPlant, ...plantRoots(withPlant, playerId, species, pos, rotation) };
-      const land = computeScores(trial)[playerId]?.land ?? 0;
+      const land = computeScores(simulatePlant(state, playerId, species, pos, rotation).after)[playerId]?.land ?? 0;
       if (land > bestLand) {
         bestLand = land;
         best = { type: 'PLANT', playerId, species, pos, rotation };

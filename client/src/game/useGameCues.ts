@@ -4,6 +4,7 @@
  */
 import { useEffect, useRef } from 'react';
 import type { LogKind } from '@rootbound/shared';
+import { AFK_STRIKES_FOR_AUTOPILOT, TIMEOUT_LOG_MARK } from '@rootbound/shared';
 import { announceMyTurn, playCue, type Cue } from '../lib/cues';
 import { sampleFps } from '../lib/vitals';
 import { useGameStore } from '../store/gameStore';
@@ -17,6 +18,9 @@ const KIND_CUE: Partial<Record<LogKind, Cue>> = {
 /** 같은 묶음 안에서 소리를 이 순서·간격으로 늘어놓는다 (심기 → 뺏기 → 기권) */
 const ORDER: Cue[] = ['place', 'hit', 'destroy'];
 const GAP_SEC = 0.18;
+/** 첫 시간 초과 뒤 AI 대리까지 남은 횟수 문구 (AFK_STRIKES_FOR_AUTOPILOT 2 → "한 번 더") */
+const STRIKES_LEFT = AFK_STRIKES_FOR_AUTOPILOT - 1;
+const TIMEOUT_NOTICE = `시간이 지나 자동으로 두었습니다. ${STRIKES_LEFT === 1 ? '한 번' : `${STRIKES_LEFT}번`} 더 지나면 AI가 대신 둡니다`;
 
 export function useGameCues(): void {
   const state = useGameStore((s) => s.state);
@@ -46,12 +50,12 @@ export function useGameCues(): void {
       if (cue) cues.add(cue);
     }
     ORDER.filter((c) => cues.has(c)).forEach((c, i) => playCue(c, i * GAP_SEC));
-    // 내 첫 시간 초과는 자동 수가 내가 둔 수처럼 지나가기 쉬워 바로 알린다(서버 로그 문구 '자동으로 둡니다', server/src/rooms/manager.ts)
-    if (fresh.some((e) => e.kind === 'system' && e.playerId === viewerId && e.message.includes('자동으로 둡니다')) && !useGameStore.getState().room?.autopilot.includes(viewerId)) {
-      useGameStore.getState().setNotice('시간이 지나 자동으로 두었습니다. 한 번 더 지나면 AI가 대신 둡니다');
+    // 내 첫 시간 초과는 자동 수가 내가 둔 수처럼 지나가기 쉬워 바로 알린다(서버 로그 문구 TIMEOUT_LOG_MARK)
+    if (fresh.some((e) => e.kind === 'system' && e.playerId === viewerId && e.message.includes(TIMEOUT_LOG_MARK)) && !useGameStore.getState().room?.autopilot.includes(viewerId)) {
+      useGameStore.getState().setNotice(TIMEOUT_NOTICE);
     }
     if (cues.size > 0) sampleFps(); // 연출이 도는 동안의 프레임률 표본
-    // 대기실에서 판이 시작되어 이번 판 식물이 공개되면 확인하라고 알린다 (Rules.md 4절 7)
+    // 대기실에서 판이 시작되어 이번 판 식물이 공개되면 확인하라고 알린다 (Rules.md 4절 8)
     if (mode === 'online' && state.phase === 'reveal' && before.turn === state.turn && fresh.some((e) => e.kind === 'system' && e.message.startsWith('게임 시작'))) {
       announceMyTurn('이번 판 식물이 공개되었습니다. 확인을 누르세요');
       return;

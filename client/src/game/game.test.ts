@@ -42,7 +42,7 @@ describe('핫시트 어댑터', () => {
 });
 
 describe('튜토리얼 연습 봇', () => {
-  it('처음부터 끝까지 항상 엔진이 받아 주는 수를 둔다 (사람 좌석도 봇으로 대신)', () => {
+  it('처음부터 끝까지 항상 엔진이 받아 주는 수를 둔다 (사람 자리도 봇으로 대신)', () => {
     let s = createHotseatGame({ nicknames: ['나', '연습 봇'], seed: 20261007 });
     for (const p of s.players) {
       const confirm = tutorialBotAction(s, p.id);
@@ -74,7 +74,7 @@ describe('튜토리얼 연습 봇', () => {
 });
 
 describe('화면용 파생값', () => {
-  it('칸 목록은 보드 칸 수와 같고, 입구에는 좌석이 표시된다', () => {
+  it('칸 목록은 보드 칸 수와 같고, 입구에는 자리가 표시된다', () => {
     const s = twoPlayers();
     const cells = buildCells(maskState(s, 'p0'));
     expect(cells).toHaveLength(49);
@@ -99,7 +99,7 @@ describe('화면용 파생값', () => {
     expect(pv.landDelta[0]).toBe(after['p0']!.land - before['p0']!.land);
   });
 
-  it('플레이어 요약: 좌석 순, 점수 포함, 가려진 손패는 장수만', () => {
+  it('플레이어 요약: 자리 순, 점수 포함, 가려진 손패는 장수만', () => {
     const s = twoPlayers();
     const rows = buildPlayerSummaries(maskState(s, 'p0'));
     expect(rows.map((r) => r.seat)).toEqual([0, 1]);

@@ -3,30 +3,34 @@
  *
  * 두 모드:
  *  - hotseat : 한 기기에서 번갈아 둔다. 규칙은 shared 엔진이 계산하고, 진행 중 차례가 넘어가면
- *              '기기 넘김' 오버레이(handoffPending)가 다음 사람 손패를 가린다. 튜토리얼은 봇 좌석(botIds)이 있다.
+ *              '기기 넘김' 오버레이(handoffPending)가 다음 사람 손패를 가린다. 튜토리얼은 봇 자리(botIds)가 있다.
  *  - online  : 서버가 정본이다. 액션은 소켓으로 보내고, 상태는 서버가 보낸 스냅샷(가려진 상태)으로만 덮어쓴다.
  * 컴포넌트는 어느 모드든 같은 액션(confirmReveal·takeCard·selectHandCard·tapCell·confirmPlant·discard·surrender)만 쓴다.
- * 판 흐름 (Rules.md 4·5절): 이번 판 식물 공개(phase 'reveal') → 라운드마다 가져오기(stage 'take') → 심기(stage 'plant').
+ * 판 흐름 (Rules.md 4·5절): 이번 판 식물 공개(phase 'reveal') → 차례마다 가져오기(stage 'take') → 심기(stage 'plant').
  */
 import { create } from 'zustand';
 import type { Action, Direction, GameState, GoalId, MaskedGameState, PlayerId, Position, RoomInfo, RoomSnapshot, SpeciesId } from '@rootbound/shared';
-import { getSpecies, legalPlantCells, legalSeedCells, maskState, posKey, samePos } from '@rootbound/shared';
+import { applyAction, getSpecies, legalPlantCells, legalSeedCells, maskState, posKey, samePos } from '@rootbound/shared';
 import { asState } from '../game/derived';
-import { applyHotseatAction, confirmAllHotseat, createHotseatGame, hotseatPlayerId, type HotseatConfig } from '../game/hotseat';
-import { tutorialBotAction } from '../game/tutorialBot';
+import { confirmAllHotseat, createHotseatGame, hotseatPlayerId, type HotseatConfig } from '../game/hotseat';
 import { api } from '../socket/client';
+import { createHotseatDriver } from './hotseatDriver';
+import { findMe, selectCanPlant, selectCanTake } from './selectors';
 
-export type Mode = 'hotseat' | 'online';
+// 선택자는 store/selectors.ts. 기존 import 경로('../store/gameStore')를 지키려고 다시 내보낸다
+export * from './selectors';
+
+type Mode = 'hotseat' | 'online';
 export type TabId = 'board' | 'status' | 'progress' | 'cards' | 'help';
 /** 확대해서 볼 것: 손패 카드(index), 마켓 카드(index, 내 가져오기 차례), 카드 더미 뒷면(내 가져오기 차례), 카탈로그의 종, 목표 카드, 보드의 칸 */
-export type CardModalTarget =
+type CardModalTarget =
   | { kind: 'hand'; index: number }
   | { kind: 'market'; index: number }
   | { kind: 'pile' }
   | { kind: 'species'; species: SpeciesId }
   | { kind: 'goal'; goal: GoalId }
   | { kind: 'cell'; pos: Position };
-export type Connection = 'idle' | 'connecting' | 'connected' | 'disconnected';
+type Connection = 'idle' | 'connecting' | 'connected' | 'disconnected';
 
 /** 순서 = 하단 독 표시 순서 */
 export const TABS: { id: TabId; label: string }[] = [
@@ -37,7 +41,7 @@ export const TABS: { id: TabId; label: string }[] = [
   { id: 'help', label: '설명' },
 ];
 
-interface GameStore {
+export interface GameStore {
   mode: Mode | null;
   state: MaskedGameState | null;
   /** 온라인 방 정보. 핫시트는 null */
@@ -59,7 +63,7 @@ interface GameStore {
   /** 보드 탭이 씨앗 칸 고르기 모드인가 */
   seedPicking: boolean;
   /** 칸마다 뿌리(큐브) 수 표시 */
-  showInfluence: boolean;
+  showRootCounts: boolean;
   /** 칸마다 칸 이름(C4) 표시. 게임 기록의 칸을 찾을 때 켠다 */
   showLabels: boolean;
   notice: string | null;
@@ -67,7 +71,7 @@ interface GameStore {
   cardModal: CardModalTarget | null;
   handoffPending: boolean;
   sending: boolean;
-  /** 핫시트에서 브라우저 봇이 두는 좌석 (튜토리얼) */
+  /** 핫시트에서 브라우저 봇이 두는 자리 (튜토리얼) */
   botIds: PlayerId[];
   tutorial: boolean;
 
@@ -93,7 +97,7 @@ interface GameStore {
   closeCardModal: () => void;
   acknowledgeHandoff: () => void;
   setTab: (tab: TabId) => void;
-  toggleInfluence: () => void;
+  toggleRootCounts: () => void;
   toggleLabels: () => void;
   setNotice: (message: string) => void;
   clearNotice: () => void;
@@ -112,7 +116,7 @@ const EMPTY = {
   connection: 'idle' as Connection,
   tab: 'board' as TabId,
   ...CLEAR_SELECTION,
-  showInfluence: true,
+  showRootCounts: true,
   showLabels: false,
   notice: null,
   resultDismissed: false,
@@ -124,9 +128,10 @@ const EMPTY = {
 };
 
 /** 튜토리얼 고정 설정 */
-export const TUTORIAL_SEED = 20261007;
-const BOT_DELAY_MS = 900;
-let botTimer: number | null = null;
+const TUTORIAL_SEED = 20261007;
+
+// 핫시트 구동(store/hotseatDriver.ts). useGameStore 는 아래에서 만들어지므로 접근자로 늦게 읽는다
+const hotseat = createHotseatDriver(() => useGameStore, CLEAR_SELECTION);
 
 export const useGameStore = create<GameStore>((set, get) => ({
   ...EMPTY,
@@ -140,7 +145,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   startTutorial: (nickname) => {
     const state = createHotseatGame({ nicknames: [nickname.trim() || '나', '연습 봇'], seed: TUTORIAL_SEED });
     set({ ...EMPTY, mode: 'hotseat', state: maskState(state, null), viewerId: hotseatPlayerId(0), botIds: [hotseatPlayerId(1)], tutorial: true });
-    if (state.currentPlayerId === hotseatPlayerId(1)) scheduleBot();
+    if (state.currentPlayerId === hotseatPlayerId(1)) hotseat.scheduleBot();
   },
 
   applySnapshot: ({ room, state, you }) => {
@@ -190,7 +195,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
       });
       return;
     }
-    commitHotseat(applyHotseatAction(asState(state), action));
+    // 핫시트에서는 서버 검증 = 엔진 검증. 거부되면 error 만 채워지고 state 는 그대로다
+    hotseat.commit(applyAction(asState(state), action));
   },
 
   selectHandCard: (index) => {
@@ -210,10 +216,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
       set({ pendingSeed: pos, seedPicking: false, notice: null });
       return;
     }
-    const species = selectedHandIndex !== null ? state.players.find((p) => p.id === viewerId)?.hand[selectedHandIndex] : undefined;
+    const species = selectedHandIndex !== null ? findMe(state, viewerId)?.hand[selectedHandIndex] : undefined;
     const occupied = s.plants.some((p) => samePos(p.pos, pos)) || s.board!.entrances.some((e) => samePos(e, pos));
     if (!species && !occupied && selectCanPlant(get())) {
-      const hand = state.players.find((p) => p.id === viewerId)?.hand ?? [];
+      const hand = findMe(state, viewerId)?.hand ?? [];
       if (hand.some((sp) => legalPlantCells(s, viewerId, sp).some((p) => samePos(p, pos)))) {
         set({ notice: '먼저 아래 내 카드에서 심을 카드를 고르세요' });
         return;
@@ -243,7 +249,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   confirmPlant: () => {
     const { state, viewerId, selectedHandIndex, pendingPos, pendingRotation, pendingSeed, dispatch } = get();
     if (!state || !viewerId || selectedHandIndex === null || !pendingPos) return;
-    const species = state.players.find((p) => p.id === viewerId)?.hand[selectedHandIndex];
+    const species = findMe(state, viewerId)?.hand[selectedHandIndex];
     if (!species) return;
     const sp = getSpecies(species);
     dispatch({
@@ -262,7 +268,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const { mode, state, viewerId, dispatch } = get();
     if (!state || !viewerId || state.phase !== 'reveal') return;
     if (mode === 'hotseat') {
-      commitHotseat(confirmAllHotseat(asState(state)));
+      hotseat.commit(confirmAllHotseat(asState(state)));
       return;
     }
     dispatch({ type: 'CONFIRM', playerId: viewerId });
@@ -292,68 +298,13 @@ export const useGameStore = create<GameStore>((set, get) => ({
   setTab: (tab) => {
     if (get().tab !== tab) set({ tab });
   },
-  toggleInfluence: () => set((s) => ({ showInfluence: !s.showInfluence })),
+  toggleRootCounts: () => set((s) => ({ showRootCounts: !s.showRootCounts })),
   toggleLabels: () => set((s) => ({ showLabels: !s.showLabels })),
   setNotice: (message) => set({ notice: message }),
   clearNotice: () => set({ notice: null }),
   dismissResult: () => set({ resultDismissed: true }),
   reset: () => {
-    if (botTimer !== null) window.clearTimeout(botTimer);
-    botTimer = null;
+    hotseat.cancelBot();
     set({ ...EMPTY });
   },
 }));
-
-/**
- * 핫시트: 엔진 결과를 화면에 반영한다. 봇이 있으면(튜토리얼) 화면 주인은 그대로, 없으면 차례인 사람이 화면을 본다.
- * 진행 중에 보는 사람이 바뀌면(가져오기 → 다음 사람, 가져오기 → 심기 포함) 손패를 가려야 하므로 기기 넘김.
- * 공개 단계에는 차례가 없으므로 넘기지 않는다
- */
-function commitHotseat(result: { state: GameState; error?: string }): void {
-  if (result.error) {
-    useGameStore.setState({ notice: result.error });
-    return;
-  }
-  const next = result.state;
-  const { botIds, viewerId } = useGameStore.getState();
-  const botTurn = next.currentPlayerId !== null && botIds.includes(next.currentPlayerId) && next.phase === 'playing';
-  const nextViewer = botIds.length > 0 ? viewerId : (next.currentPlayerId ?? viewerId);
-  const handoff = botIds.length === 0 && next.phase === 'playing' && nextViewer !== viewerId;
-  useGameStore.setState({ state: maskState(next, null), viewerId: nextViewer, ...CLEAR_SELECTION, notice: null, cardModal: null, handoffPending: handoff });
-  if (botTurn) scheduleBot();
-}
-
-/** 봇 좌석 차례면 잠시 뒤 한 수를 둔다 */
-function scheduleBot(): void {
-  if (botTimer !== null) window.clearTimeout(botTimer);
-  botTimer = window.setTimeout(() => {
-    botTimer = null;
-    const { state, botIds, dispatch } = useGameStore.getState();
-    const cur = state?.currentPlayerId;
-    if (!state || !cur || !botIds.includes(cur) || state.phase !== 'playing') return;
-    const action = tutorialBotAction(asState(state), cur);
-    if (action) dispatch(action);
-  }, BOT_DELAY_MS);
-}
-
-// ---------------------------------------------------------------------------
-// 선택자
-// ---------------------------------------------------------------------------
-
-export const selectState = (s: GameStore): MaskedGameState | null => s.state;
-export const selectViewerId = (s: GameStore): PlayerId | null => s.viewerId;
-export const selectTab = (s: GameStore): TabId => s.tab;
-/** 내 차례(가져오기·심기 어느 단계든) */
-export const selectIsMyTurn = (s: GameStore): boolean =>
-  s.state !== null && s.state.phase === 'playing' && s.state.currentPlayerId === s.viewerId && !s.handoffPending && !s.sending;
-/** 내 가져오기 차례 (Rules.md 5절 2) */
-export const selectCanTake = (s: GameStore): boolean => selectIsMyTurn(s) && s.state?.stage === 'take';
-/** 내 심기 차례 (Rules.md 5절 3) */
-export const selectCanPlant = (s: GameStore): boolean => selectIsMyTurn(s) && s.state?.stage === 'plant';
-
-/** 고른 손패 카드의 종 */
-export const selectSelectedSpecies = (s: GameStore): SpeciesId | null => {
-  if (s.selectedHandIndex === null || !s.state || !s.viewerId) return null;
-  return s.state.players.find((p) => p.id === s.viewerId)?.hand[s.selectedHandIndex] ?? null;
-};
-

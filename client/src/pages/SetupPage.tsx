@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { MAX_PLAYERS, MIN_PLAYERS } from '@rootbound/shared';
+import { MAX_PLAYERS, MIN_PLAYERS, NICKNAME_MAX_LENGTH, isValidNickname } from '@rootbound/shared';
 import { DockShell } from '../components/DockShell';
 import { makeSeed } from '../game/hotseat';
 import { getNickname } from '../lib/identity';
@@ -9,7 +9,7 @@ import landing from './LandingPage.module.css';
 import styles from './SetupPage.module.css';
 
 /**
- * 핫시트 설정 (같은 기기에서 번갈아 두기): 인원 2~4명과 닉네임만 정하면 바로 첫 차례부터 시작한다.
+ * 핫시트 설정 (같은 기기에서 번갈아 두기): 인원(MIN_PLAYERS~MAX_PLAYERS명)과 닉네임만 정하면 바로 첫 차례부터 시작한다.
  * 보드는 인원수로 정해지고 조각 배치는 시드로 매번 달라진다(Rules.md 3절).
  */
 export function SetupPage() {
@@ -24,7 +24,7 @@ export function SetupPage() {
   const [error, setError] = useState<string | null>(null);
 
   const setCount = (n: number) => setNames((cur) => Array.from({ length: n }, (_, i) => cur[i] ?? `플레이어 ${i + 1}`));
-  const valid = names.every((n) => n.trim().length >= 1 && n.trim().length <= 12);
+  const valid = names.every(isValidNickname);
 
   const start = () => {
     try {
@@ -55,7 +55,7 @@ export function SetupPage() {
               <input
                 className={landing.input}
                 value={n}
-                maxLength={12}
+                maxLength={NICKNAME_MAX_LENGTH}
                 aria-label={`${i + 1}번 자리 닉네임`}
                 onChange={(e) => setNames((cur) => cur.map((x, j) => (j === i ? e.target.value : x)))}
               />

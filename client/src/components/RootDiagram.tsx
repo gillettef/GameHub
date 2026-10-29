@@ -1,22 +1,10 @@
 import { memo } from 'react';
 import type { SpeciesId } from '@rootbound/shared';
-import { getSpecies, rotateSpot } from '@rootbound/shared';
+import { DIRECTIONS, getSpecies, posKey, rotateSpot } from '@rootbound/shared';
+import { hexPoints, px } from '../lib/hexGeometry';
 import styles from './RootDiagram.module.css';
 
-/** 축 좌표 → 픽셀 (pointy-top, 반지름 1) */
-const px = (q: number, r: number) => ({ x: Math.sqrt(3) * (q + r / 2), y: 1.5 * r });
-const HEX = [0, 1, 2, 3, 4, 5].map((i) => {
-  const a = (Math.PI / 180) * (60 * i - 30);
-  return `${(Math.cos(a) * 0.92).toFixed(3)},${(Math.sin(a) * 0.92).toFixed(3)}`;
-}).join(' ');
-const DIRS: [number, number][] = [
-  [1, 0],
-  [1, -1],
-  [0, -1],
-  [-1, 0],
-  [-1, 1],
-  [0, 1],
-];
+const HEX = hexPoints(0.92);
 
 interface DiagramCell {
   q: number;
@@ -30,14 +18,14 @@ function cellsFor(species: SpeciesId, rotation: number): DiagramCell[] {
   const sp = getSpecies(species);
   const map = new Map<string, DiagramCell>();
   for (let q = -2; q <= 2; q++)
-    for (let r = -2; r <= 2; r++) if (Math.abs(q + r) <= 2) map.set(`${q},${r}`, { q, r, label: '', tone: 'none' });
+    for (let r = -2; r <= 2; r++) if (Math.abs(q + r) <= 2) map.set(posKey({ q, r }), { q, r, label: '', tone: 'none' });
   const put = (q: number, r: number, tone: DiagramCell['tone'], text: string) => {
-    const c = map.get(`${q},${r}`);
+    const c = map.get(posKey({ q, r }));
     if (c) Object.assign(c, { label: text, tone });
   };
   // 민들레 씨앗: 두 칸 안 어디든 → 빈 칸을 옅게 표시
   if (sp.seed) for (const c of map.values()) if (c.q !== 0 || c.r !== 0) c.tone = 'seed';
-  if (sp.wither) DIRS.forEach(([dq, dr]) => put(dq, dr, 'minus', `−${sp.wither}`));
+  if (sp.wither) DIRECTIONS.forEach(([dq, dr]) => put(dq, dr, 'minus', `−${sp.wither}`));
   for (const spot of sp.roots) {
     const { dq, dr, n } = rotateSpot(spot, rotation);
     put(dq, dr, dq === 0 && dr === 0 ? 'self' : 'plus', String(n));
@@ -60,7 +48,7 @@ export const RootDiagram = memo(function RootDiagram({ species, size = 72, rotat
       {cells.map((c) => {
         const { x, y } = px(c.q, c.r);
         return (
-          <g key={`${c.q},${c.r}`} transform={`translate(${x.toFixed(3)} ${y.toFixed(3)})`}>
+          <g key={posKey(c)} transform={`translate(${x.toFixed(3)} ${y.toFixed(3)})`}>
             <polygon points={HEX} className={styles[c.tone]} />
             {/* 미니 카드(작은 크기)에서는 숫자가 12px 밑으로 작아져 색만 보여 준다. 숫자는 확대 카드에서 */}
             {c.label && showLabels && (

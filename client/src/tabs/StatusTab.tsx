@@ -6,7 +6,7 @@ import { selectState, selectViewerId, useGameStore } from '../store/gameStore';
 import styles from './StatusTab.module.css';
 
 /**
- * 점수 탭 (F010, F011): 지금 끝난다면 몇 점인가. 좌석별 땅·목표·무궁화·덤·합계와 손 장수, 심은 식물 종류(목표 '여러 가지 심기').
+ * 점수 탭 (F010, F011): 지금 끝난다면 몇 점인가. 자리별 땅·목표·무궁화·덤·합계와 손 장수, 심은 식물 종류(목표 '여러 가지 심기').
  * 점수는 언제나 보드에서 다시 계산한 예상값이다(Rules.md 9절).
  */
 export const StatusTab = memo(function StatusTab() {
