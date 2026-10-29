@@ -1,13 +1,13 @@
 /**
  * AI 턴 실행기 (F026, F027). 방 상태가 바뀔 때마다 `maybeRun(roomId)` 를 부르면,
- * 현재 턴이 AI 인 동안 (또는 시간 초과로 AI 대리 중인 사람 좌석, Rules.md 5.4) Python AI 서비스에 결정을 요청해 룰 엔진으로 검증·적용하고 브로드캐스트한다.
+ * 현재 턴이 AI 인 동안 (또는 시간 초과로 AI 대리 중인 사람 자리, Rules.md 6.3) Python AI 서비스에 결정을 요청해 룰 엔진으로 검증·적용하고 브로드캐스트한다.
  * 불법 액션·타임아웃·서비스 다운이면 엔진의 자동 수(autoAction)로 폴백한다. 방마다 한 번에 하나만 돈다.
  */
 import type { Action, GameState, PlayerId } from '@rootbound/shared';
 import { autoAction } from '@rootbound/shared';
-import { actionShapeError } from '../rooms/manager.js';
+import { actionShapeError } from '../rooms/validate.js';
 import { requestAiDecision } from '../ai/client.js';
-import type { RoomManager, Room } from '../rooms/manager.js';
+import { clockKey, type RoomManager, type Room } from '../rooms/manager.js';
 
 export interface AiRunnerOptions {
   manager: RoomManager;
@@ -41,21 +41,20 @@ export function createAiRunner(opts: AiRunnerOptions) {
       const state = room.state;
       const aiId = state.currentPlayerId as PlayerId;
       // 단계·차례 번호가 바뀌었으면 그사이 다른 수가 들어온 것이다
-      const keyOf = (st: GameState) => `${st.phase}:${st.turn}`;
-      const keyBefore = keyOf(state);
+      const keyBefore = clockKey(state);
 
       if (thinkDelayMs > 0) await delay(thinkDelayMs);
       const action = await decide(state, aiId);
 
-      // 기다리는 사이 방이 사라졌거나 턴이 바뀌었거나(기권, 대리 좌석 사람이 직접 PASS 등) 사람이 좌석을
-      // 되찾았으면 이 결정은 버린다. 그래도 지금 턴이 다른 AI 좌석일 수 있으므로 멈추지 않고 처음부터 다시 본다
+      // 기다리는 사이 방이 사라졌거나 턴이 바뀌었거나(기권, 대리 자리 사람이 직접 둔 수 등) 사람이 자리를
+      // 되찾았으면 이 결정은 버린다. 그래도 지금 턴이 다른 AI 자리일 수 있으므로 멈추지 않고 처음부터 다시 본다
       // (이 run 이 도는 동안 commit 의 maybeRun 은 무시되었기 때문)
       const latest = opts.manager.get(roomId);
       if (!latest) return;
-      if (keyOf(latest.state) !== keyBefore || latest.state.currentPlayerId !== aiId || !opts.manager.isAutoTurn(latest)) continue;
+      if (clockKey(latest.state) !== keyBefore || latest.state.currentPlayerId !== aiId || !opts.manager.isAutoTurn(latest)) continue;
 
       const fallback = () => autoAction(opts.manager.get(roomId)!.state, aiId);
-      // AI 응답도 사람 액션처럼 모양부터 검사한다(모양이 깨진 액션이 엔진에서 예외를 내면 이 좌석이 멈춘다)
+      // AI 응답도 사람 액션처럼 모양부터 검사한다(모양이 깨진 액션이 엔진에서 예외를 내면 이 자리가 멈춘다)
       let result = action && action.playerId === aiId && !actionShapeError(action) ? safeApply(roomId, action, latest) : { room: latest, error: 'AI 응답이 없거나 모양이 잘못됨' };
       if (result.error) {
         console.warn(`[ai] room=${roomId} ${aiId} 불법 액션 (${result.error}) → 자동 수 폴백`);
@@ -80,9 +79,6 @@ export function createAiRunner(opts: AiRunnerOptions) {
       run(roomId)
         .catch((err) => console.error(`[ai] room=${roomId} 실행 오류: ${(err as Error).message}`))
         .finally(() => running.delete(roomId));
-    },
-    isRunning(roomId: string): boolean {
-      return running.has(roomId);
     },
   };
 }

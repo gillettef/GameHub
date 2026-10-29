@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import type { Action, GameState, PlayerId } from '@rootbound/shared';
 import { autoAction, legalPlantCells, maskState, rulesFor } from '@rootbound/shared';
 import { createAiRunner } from '../game/aiTurn.js';
-import { RoomError, RoomManager, actionShapeError, isCurrentFormat } from './manager.js';
+import { RoomError, RoomManager } from './manager.js';
+import { actionShapeError, isCurrentFormat } from './validate.js';
 
 function makeManager(): RoomManager {
   let n = 0;
@@ -29,7 +30,7 @@ function toPlant(m: RoomManager, roomId: string): void {
 }
 
 describe('RoomManager 생성·입장·퇴장 (F001, F002, F003)', () => {
-  it('방을 만들면 방장이 좌석 0에 앉고 초대용 id 가 나온다', () => {
+  it('방을 만들면 방장이 자리 0에 앉고 초대용 id 가 나온다', () => {
     const m = makeManager();
     const { room, playerId } = m.create({ playerToken: 't1', nickname: '갑' });
     expect(room.roomId).toBe('room1');
@@ -65,7 +66,7 @@ describe('RoomManager 생성·입장·퇴장 (F001, F002, F003)', () => {
   });
 });
 
-describe('로비 · AI 좌석 · 시작 (F002, F026)', () => {
+describe('로비 · AI 자리 · 시작 (F002, F026)', () => {
   it('방장만 AI 를 넣고 뺀다', () => {
     const m = makeManager();
     m.create({ playerToken: 't1', nickname: '갑' });
@@ -153,7 +154,7 @@ describe('AI 턴 실행기 (F027)', () => {
     expect(calls).toBeGreaterThanOrEqual(2);
   });
 
-  it('대리 좌석 사람이 AI 결정 도중 직접 두어도 다음 AI 좌석 차례는 멈추지 않는다', async () => {
+  it('대리 자리 사람이 AI 결정 도중 직접 두어도 다음 AI 자리 차례는 멈추지 않는다', async () => {
     const m = makeManager();
     m.create({ playerToken: 't1', nickname: '갑' });
     m.addAi('room1', 'p1');
@@ -257,6 +258,18 @@ describe('입력 검증 · 방 정리', () => {
     expect(isCurrentFormat(room)).toBe(true);
     room.state.players[0].hand = ['cactus'];
     expect(isCurrentFormat(room)).toBe(false);
+  });
+
+  it('마켓이 인원별 규칙보다 많은 진행 중 판(2026-10-18 이전 3~5장)은 복원하지 않는다', () => {
+    const m = makeManager();
+    const { room } = m.create({ playerToken: 't1', nickname: '갑' });
+    m.addAi(room.roomId, 'p1');
+    readyAll(m, room.roomId, ['p1']);
+    const started = JSON.parse(JSON.stringify(m.get(room.roomId)));
+    expect(started.state.phase).not.toBe('lobby');
+    expect(isCurrentFormat(started)).toBe(true);
+    started.state.market = [...started.state.market, started.state.pile[0]];
+    expect(isCurrentFormat(started)).toBe(false);
   });
 });
 

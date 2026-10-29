@@ -2,24 +2,30 @@
  * 방 관리 (F001, F002, F003, F026). 소켓과 무관한 순수 로직이라 단위 테스트가 쉽다.
  * 단일 진실 공급원은 `rooms` 맵의 GameState 다. 모든 변경은 shared 엔진을 거친다.
  * 오류는 RoomError 로 던지고, index.ts 가 ack { ok:false, message } 로 바꾼다.
+ * 요청·스냅샷 모양 검사는 validate.ts, 판 요약은 record.ts.
  */
 import { randomInt } from 'node:crypto';
-import type { Action, GameState, PlayerId, RoomId, RoomInfo, RoomPeek } from '@rootbound/shared';
+import type { Action, GameState, GameLogEntry, PlayerId, RoomId, RoomInfo, RoomPeek } from '@rootbound/shared';
 import {
   AFK_STRIKES_FOR_AUTOPILOT,
+  AUTOPILOT_LOG_MARK,
   DEFAULT_TURN_TIME_SEC,
   MAX_PLAYERS,
+  NICKNAME_MAX_LENGTH,
+  ROOM_PASSWORD_DIGITS,
+  TIMEOUT_LOG_MARK,
   TURN_TIME_OPTIONS_SEC,
   applyAction,
   autoAction,
   createInitialState,
   createPlayer,
-  isDirection,
-  GOALS,
-  isSpeciesId,
+  isValidNickname,
+  isValidRoomPassword,
   joinPlayer,
   leaveLobby,
 } from '@rootbound/shared';
+import { buildRecord, type GameRecord } from './record.js';
+import { actionShapeError, isValidToken } from './validate.js';
 
 export class RoomError extends Error {}
 
@@ -35,17 +41,17 @@ export interface Room {
   tokens: Record<string, PlayerId>;
   /** 다음 플레이어 id 번호 (사람·AI 공용) */
   nextPlayerNo: number;
-  /** 턴 제한 시간(초). null = 제한 없음(비동기 턴). Rules.md 5.4. 옛 스냅샷엔 없을 수 있다 */
+  /** 차례 제한 시간(초). null = 제한 없음. Rules.md 6.3. 옛 스냅샷엔 없을 수 있다 */
   turnTimeLimitSec?: number | null;
-  /** 현재 턴이 시작된 서버 시각과 그 턴 번호. 턴 번호가 바뀌면 시계를 다시 잰다 */
+  /** 지금 차례가 시작된 서버 시각 */
   turnStartedAt?: number | null;
-  /** 시계를 잰 대상 (단계·차례 번호·드래프트 픽 번호). 바뀌면 시계를 다시 잰다 */
+  /** 시계를 잰 대상 (clockKey: 단계·차례 번호). 바뀌면 시계를 다시 잰다 */
   turnClockFor?: string | null;
-  /** 사람 좌석별 연속 시간 초과 횟수. 본인이 직접 행동하면 0 */
+  /** 사람 자리별 연속 시간 초과 횟수. 본인이 직접 행동하면 0 */
   afkStrikes?: Record<PlayerId, number>;
-  /** 연속 시간 초과로 AI 가 대신 두는 사람 좌석 */
+  /** 연속 시간 초과로 AI 가 대신 두는 사람 자리 */
   autopilot?: PlayerId[];
-  /** 판 전체 누적: 좌석별 시간 초과 횟수와 한 번이라도 AI 대리가 됐는지 (판 요약용, afkStrikes 와 별개) */
+  /** 판 전체 누적: 자리별 시간 초과 횟수와 한 번이라도 AI 대리가 됐는지 (판 요약용, afkStrikes 와 별개) */
   timeoutTotals?: Record<PlayerId, number>;
   everAutopiloted?: PlayerId[];
   /** 게임이 시작된 서버 시각 (판 요약 로그용) */
@@ -53,38 +59,6 @@ export interface Room {
   /** 판 요약을 이미 기록했는지 (중복 기록 방지) */
   statsRecorded?: boolean;
 }
-
-/** 판 요약 한 줄 (server/data/<env>/stats/games.jsonl). 완수율·세션 시간·재방문 집계용 */
-export interface GameRecord {
-  roomId: RoomId;
-  players: number;
-  startedAt: number;
-  endedAt: number;
-  durationMs: number;
-  rounds: number;
-  turns: number;
-  /** finished = 정상 종료, abandoned = 진행 중 방치되어 정리됨 */
-  outcome: 'finished' | 'abandoned';
-  reason: string | null;
-  turnTimeLimitSec: number | null;
-  seats: {
-    seat: number;
-    kind: 'human' | 'ai';
-    /** 이 자리가 심은 식물 종류 (2026-10-08 드래프트 → 마켓. 예전 기록에는 drafted 가 있다) */
-    planted: string[];
-    /** 재접속 토큰의 해시 일부 (재방문 집계용, 원본 토큰은 남기지 않는다) */
-    playerHash: string | null;
-    rank: number | null;
-    score: number | null;
-    surrendered: boolean;
-    timeouts: number;
-    autopiloted: boolean;
-  }[];
-}
-
-/** 시간 초과·AI 대리 로그 문구 */
-const TIMEOUT_LOG_MARK = '자동으로 둡니다';
-const AUTOPILOT_LOG_MARK = 'AI가 대신 둡니다';
 
 export interface RoomManagerOptions {
   seed: () => number;
@@ -95,13 +69,26 @@ export interface RoomManagerOptions {
 }
 
 /** 서버 하나가 동시에 들고 있을 수 있는 방 수 (공개 IP 에서 방을 무한히 만드는 것을 막는다) */
-export const MAX_ROOMS = 300;
+const MAX_ROOMS = 300;
 const IDLE_MS = 24 * 60 * 60 * 1000;
 const PLAYING_IDLE_MS = 7 * IDLE_MS;
 
-/** 시계 대상 키: 단계 + 차례 번호 */
-function clockKey(state: GameState): string {
+/** 시계 대상 키: 단계 + 차례 번호. AI 턴 실행기도 같은 키로 "차례가 그대로인가"를 본다 */
+export function clockKey(state: GameState): string {
   return `${state.phase}:${state.turn}`;
+}
+
+/** 엔진이 next 에 새로 붙인 로그 앞에 system 안내 한 줄을 끼운다(진행 탭에서 "왜 그렇게 뒀는지"가 그 줄 위에 보인다) */
+function withNoteBefore(prev: GameState, next: GameState, playerId: PlayerId, message: string): GameState {
+  const note: GameLogEntry = { turn: prev.turn, round: prev.round, playerId, kind: 'system', message };
+  const at = prev.log.length;
+  return { ...next, log: [...next.log.slice(0, at), note, ...next.log.slice(at)] };
+}
+
+/** 현재 차례가 AI 자리인가 */
+function isAiTurn(state: GameState): boolean {
+  if (state.phase !== 'playing' || !state.currentPlayerId) return false;
+  return state.players.find((p) => p.id === state.currentPlayerId)?.kind === 'ai';
 }
 
 /** 사람이 읽기 쉬운 짧은 시간 표기 */
@@ -112,65 +99,13 @@ function secLabel(sec: number): string {
 const ROOM_ID_ALPHABET = 'abcdefghjkmnpqrstuvwxyz23456789';
 
 /** 초대 링크용 짧은 방 id (혼동되는 글자 제외). 서버에서 랜덤 발급 */
-export function randomRoomId(length = 6): RoomId {
+function randomRoomId(length = 6): RoomId {
   let out = '';
   for (let i = 0; i < length; i++) out += ROOM_ID_ALPHABET[Math.floor(Math.random() * ROOM_ID_ALPHABET.length)];
   return out;
 }
 
-const isPos = (v: unknown): boolean => {
-  const p = v as Record<string, unknown> | null;
-  return !!p && typeof p === 'object' && Number.isInteger(p.q) && Number.isInteger(p.r);
-};
-
-/** 소켓으로 들어온 액션의 모양 검사. 타입 정의만 믿고 엔진에 넘기지 않는다(조작된 클라이언트 방어) */
-export function actionShapeError(action: unknown): string | null {
-  const a = action as Record<string, unknown> | null;
-  if (!a || typeof a !== 'object' || typeof a.type !== 'string' || typeof a.playerId !== 'string') return '잘못된 요청입니다';
-  switch (a.type) {
-    case 'READY':
-    case 'CONFIRM':
-    case 'SURRENDER':
-      return null;
-    case 'TAKE':
-      return Number.isInteger(a.take) || a.take === 'pile' ? null : '잘못된 가져오기입니다';
-    case 'DISCARD':
-      return isSpeciesId(a.species) ? null : '없는 식물입니다';
-    case 'PLANT':
-      if (!isSpeciesId(a.species) || !isPos(a.pos)) return '잘못된 심기 요청입니다';
-      if (a.rotation !== undefined && !isDirection(a.rotation)) return '잘못된 방향입니다';
-      if (a.seed !== undefined && !isPos(a.seed)) return '잘못된 씨앗 위치입니다';
-      return null;
-    default:
-      return '알 수 없는 행동입니다';
-  }
-}
-
-/** 지금 규칙(Rootbound 오프라인판) 형식의 방인가. 예전 우주 전투판·영향력 합산판 스냅샷은 모양이 다르다 */
-export function isCurrentFormat(room: Room): boolean {
-  const st = room.state as Partial<GameState> | undefined;
-  // 2026-10-16 오프라인판(뿌리 큐브)부터 rootSeat·rootCount 가 있다. 영향력 합산 시절 판(seeds)은 복원하지 않는다
-  if (!st || !Array.isArray(st.players) || !Array.isArray(st.plants) || !Array.isArray(st.rootSeat) || !Array.isArray(st.rootCount)) return false;
-  if (!(st.board === null || (typeof st.board === 'object' && Array.isArray(st.board?.cells)))) return false;
-  // 드래프트 시절 판(2026-10-08 마켓으로 바뀜)은 market·pile 이 없다
-  if (!Array.isArray(st.market) || !Array.isArray(st.pile) || !Array.isArray(st.species)) return false;
-  // 가져오기 → 심기 단계로 바뀌기 전 판(2026-10-08)은 stage 가 없다. 로비는 이어 가도 된다
-  if (st.phase !== 'lobby' && st.stage !== 'take' && st.stage !== 'plant') return false;
-  // 종·목표 id 가 바뀐 예전 판(2026-10-08 선인장·덩굴·해바라기·장미 → 소나무·칡·유채·무궁화)은 복원하지 않는다
-  const species = [...st.plants.map((p) => p.species), ...st.market, ...st.pile, ...st.species, ...st.players.flatMap((p) => p.hand ?? [])];
-  return species.every((sp) => isSpeciesId(sp)) && (st.goals ?? []).every((g) => GOALS.some((x) => x.id === g));
-}
-
-/** 재접속 토큰: 문자열, 1~64자 (스냅샷·메모리에 그대로 들어가므로 길이를 제한한다) */
-export function isValidToken(token: unknown): token is string {
-  return typeof token === 'string' && token.length >= 1 && token.length <= 64;
-}
-
-export function isValidNickname(nickname: string): boolean {
-  if (typeof nickname !== 'string') return false;
-  const n = nickname.trim();
-  return n.length >= 1 && n.length <= 12;
-}
+const NICKNAME_ERROR = `닉네임은 1~${NICKNAME_MAX_LENGTH}자로 입력하세요`;
 
 export class RoomManager {
   private readonly rooms = new Map<RoomId, Room>();
@@ -265,20 +200,15 @@ export class RoomManager {
     };
   }
 
-  playerIdOf(roomId: RoomId, playerToken: string): PlayerId | null {
-    const room = this.rooms.get(roomId);
-    return room?.tokens[playerToken] ?? null;
-  }
-
   // -------------------------------------------------------------------------
   // 생성 · 입장 · 퇴장
   // -------------------------------------------------------------------------
 
   create(input: { playerToken: string; nickname: string; password?: string }): { room: Room; playerId: PlayerId } {
     if (!isValidToken(input.playerToken)) throw new RoomError('잘못된 요청입니다');
-    if (!isValidNickname(input.nickname)) throw new RoomError('닉네임은 1~12자로 입력하세요');
+    if (!isValidNickname(input.nickname)) throw new RoomError(NICKNAME_ERROR);
     const password = input.password?.trim() || null;
-    if (password !== null && !/^\d{4}$/.test(password)) throw new RoomError('비밀번호는 숫자 4자리입니다');
+    if (password !== null && !isValidRoomPassword(password)) throw new RoomError(`비밀번호는 숫자 ${ROOM_PASSWORD_DIGITS}자리입니다`);
     if (this.rooms.size >= MAX_ROOMS) throw new RoomError('서버가 가득 찼습니다. 잠시 후 다시 시도하세요');
 
     let roomId = this.opts.roomId();
@@ -312,7 +242,7 @@ export class RoomManager {
 
   /**
    * 입장. 토큰이 이미 방에 있으면 재접속(게임 중이어도 허용, F007).
-   * 새 토큰은 로비에서만, 빈 좌석이 있을 때만 받는다.
+   * 새 토큰은 로비에서만, 빈 자리가 있을 때만 받는다.
    */
   join(input: { roomId: RoomId; playerToken: string; nickname: string; password?: string }): { room: Room; playerId: PlayerId; reconnected: boolean } {
     const room = this.require(input.roomId);
@@ -320,14 +250,14 @@ export class RoomManager {
     const existing = room.tokens[input.playerToken];
     if (existing && room.state.players.some((p) => p.id === existing)) {
       // 재접속만으로는 AI 대리를 풀지 않는다: 탭을 켜 둔 채 자리를 비워도 소켓은 자동으로 다시 붙기 때문이다.
-      // 돌아온 사람은 '직접 두기'(resume) 나 직접 행동으로 되찾는다 (Rules.md 5.4)
+      // 돌아온 사람은 '직접 두기'(resume) 나 직접 행동으로 되찾는다 (Rules.md 6.3)
       return { room, playerId: existing, reconnected: true };
     }
     if (room.password !== null && (input.password ?? '') !== room.password) {
-      throw new RoomError(room.password !== null && input.password ? '비밀번호가 다릅니다' : '비밀번호가 필요합니다');
+      throw new RoomError(input.password ? '비밀번호가 다릅니다' : '비밀번호가 필요합니다');
     }
     if (room.state.phase !== 'lobby') throw new RoomError('이미 시작된 게임입니다');
-    if (!isValidNickname(input.nickname)) throw new RoomError('닉네임은 1~12자로 입력하세요');
+    if (!isValidNickname(input.nickname)) throw new RoomError(NICKNAME_ERROR);
     if (room.state.players.length >= MAX_PLAYERS) {
       throw new RoomError(`방에는 최대 ${MAX_PLAYERS}명까지 들어올 수 있습니다`);
     }
@@ -358,11 +288,6 @@ export class RoomManager {
     return room;
   }
 
-  /** 끝난 방·빈 방 정리용 */
-  remove(roomId: RoomId): void {
-    this.rooms.delete(roomId);
-  }
-
   // -------------------------------------------------------------------------
   // 로비 설정 (방장)
   // -------------------------------------------------------------------------
@@ -382,7 +307,7 @@ export class RoomManager {
     return room;
   }
 
-  /** 빈 좌석에 AI 추가 (F026). AI 는 준비 완료로 들어온다 */
+  /** 빈 자리에 AI 추가 (F026). AI 는 준비 완료로 들어온다 */
   addAi(roomId: RoomId, byPlayerId: PlayerId): { room: Room; playerId: PlayerId } {
     const room = this.require(roomId);
     this.requireHost(room, byPlayerId);
@@ -435,7 +360,7 @@ export class RoomManager {
     return applied;
   }
 
-  /** AI 대리 중인 내 좌석을 되찾는다 (Rules.md 5.4) */
+  /** AI 대리 중인 내 자리를 되찾는다 (Rules.md 6.3) */
   resume(roomId: RoomId, byPlayerId: PlayerId): Room {
     const room = this.require(roomId);
     if (!room.state.players.some((p) => p.id === byPlayerId && p.kind === 'human')) throw new RoomError('이 방의 플레이어가 아닙니다');
@@ -454,7 +379,7 @@ export class RoomManager {
   }
 
   // -------------------------------------------------------------------------
-  // 턴 제한 시간 (Rules.md 5.4)
+  // 차례 제한 시간 (Rules.md 6.3)
   // -------------------------------------------------------------------------
 
   /** 지금 턴이 시간 초과되는 시각. 제한 없음·진행 중 아님·AI 턴·AI 대리 중·기다리는 사람이 없는 판이면 null */
@@ -473,8 +398,9 @@ export class RoomManager {
   }
 
   /**
-   * 시간 초과 처리. 마감이 지났으면 엔진의 자동 수(autoAction: 드래프트 첫 종 / 맨 앞 카드를 첫 칸에)를 적용하고 연속 초과 횟수를
-   * 올린다. AFK_STRIKES_FOR_AUTOPILOT 번 연속이면 그 좌석을 AI 대리로 돌린다. 처리했으면 방을 돌려준다
+   * 시간 초과 처리. 마감이 지났으면 공개 단계는 남은 사람을 확인하고, 아니면 엔진의 자동 수(autoAction: 가져오기는 마켓 0번,
+   * 심기는 맨 앞 카드를 첫 칸에)를 적용하고 연속 초과 횟수를
+   * 올린다. AFK_STRIKES_FOR_AUTOPILOT 번 연속이면 그 자리를 AI 대리로 돌린다. 처리했으면 방을 돌려준다
    */
   timeoutTurn(roomId: RoomId): Room | null {
     const room = this.rooms.get(roomId);
@@ -488,25 +414,26 @@ export class RoomManager {
     const counts = room.state.stage === 'plant';
     const strikes = (room.afkStrikes?.[pid] ?? 0) + (counts ? 1 : 0);
     const limit = room.turnTimeLimitSec as number;
-    const note = (message: string) => ({ turn: room.state.turn, round: room.state.round, playerId: pid, kind: 'system' as const, message });
     const auto = autoAction(room.state, pid);
     const r = auto ? applyAction(room.state, auto) : { state: room.state, error: '둘 수 있는 수가 없습니다' };
     if (r.error) {
       console.error(`[timer] room=${roomId} ${pid} 자동 수 거부: ${r.error}`);
       return null;
     }
-    // 안내는 자동 수 로그 바로 앞에 끼운다(진행 탭에서 "왜 그렇게 뒀는지"가 그 줄 위에 보인다)
-    const before = room.state.log.length;
-    room.state = { ...r.state, log: [...r.state.log.slice(0, before), note(`${nick}: 시간 초과(${secLabel(limit)})로 ${TIMEOUT_LOG_MARK}`), ...r.state.log.slice(before)] };
+    room.state = withNoteBefore(room.state, r.state, pid, `${nick}: 시간 초과(${secLabel(limit)})로 ${TIMEOUT_LOG_MARK}`);
     room.afkStrikes = { ...(room.afkStrikes ?? {}), [pid]: strikes };
     room.timeoutTotals = { ...(room.timeoutTotals ?? {}), [pid]: (room.timeoutTotals?.[pid] ?? 0) + 1 };
     if (strikes >= AFK_STRIKES_FOR_AUTOPILOT && room.state.phase !== 'finished' && !room.autopilot?.includes(pid)) {
       room.autopilot = [...(room.autopilot ?? []), pid];
       if (!room.everAutopiloted?.includes(pid)) room.everAutopiloted = [...(room.everAutopiloted ?? []), pid];
-      room.state = {
-        ...room.state,
-        log: [...room.state.log, note(`${nick}: ${strikes}번 연속 시간 초과로 ${AUTOPILOT_LOG_MARK}. '다시 내가 두기'를 누르면 되찾습니다`)],
+      const note: GameLogEntry = {
+        turn: room.state.turn,
+        round: room.state.round,
+        playerId: pid,
+        kind: 'system',
+        message: `${nick}: ${strikes}번 연속 시간 초과로 ${AUTOPILOT_LOG_MARK}. '다시 내가 두기'를 누르면 되찾습니다`,
       };
+      room.state = { ...room.state, log: [...room.state.log, note] };
     }
     this.touch(room);
     return room;
@@ -523,16 +450,14 @@ export class RoomManager {
       if (p.isReady || p.surrenderedOrder !== null) continue;
       const r = applyAction(room.state, { type: 'CONFIRM', playerId: p.id });
       if (r.error) continue;
-      const before = room.state.log.length;
-      const note = { turn: room.state.turn, round: room.state.round, playerId: p.id, kind: 'system' as const, message: `${p.nickname}: 시간이 지나 자동으로 확인` };
-      room.state = { ...r.state, log: [...r.state.log.slice(0, before), note, ...r.state.log.slice(before)] };
+      room.state = withNoteBefore(room.state, r.state, p.id, `${p.nickname}: 시간이 지나 자동으로 확인`);
       changed = true;
     }
     if (changed) this.touch(room);
     return changed;
   }
 
-  /** 차례(또는 드래프트 픽)가 바뀌었으면 시계를 다시 잰다. 게임 시작 시각도 여기서 남긴다 */
+  /** 단계·차례가 바뀌었으면 시계를 다시 잰다. 게임 시작 시각도 여기서 남긴다 */
   private syncClock(room: Room): void {
     const state = room.state;
     if (state.phase === 'lobby') {
@@ -562,40 +487,7 @@ export class RoomManager {
     if (room.statsRecorded || room.startedAt == null) return null;
     if (outcome === 'finished' && room.state.phase !== 'finished') return null;
     room.statsRecorded = true;
-    const state = room.state;
-    const endedAt = this.opts.now();
-    const tokenOf = new Map<PlayerId, string>();
-    for (const [token, id] of Object.entries(room.tokens)) tokenOf.set(id, token);
-    const surrendered = new Set(state.log.filter((e) => e.kind === 'surrender' && e.playerId).map((e) => e.playerId as PlayerId));
-    const autopiloted = new Set(room.everAutopiloted ?? []);
-    const ranking = state.result?.ranking ?? [];
-    return {
-      roomId: room.roomId,
-      players: state.players.length,
-      startedAt: room.startedAt,
-      endedAt,
-      durationMs: endedAt - room.startedAt,
-      rounds: state.round,
-      turns: state.turn,
-      outcome,
-      reason: state.result?.reason ?? null,
-      turnTimeLimitSec: room.turnTimeLimitSec ?? null,
-      seats: state.players.map((p) => {
-        const token = tokenOf.get(p.id);
-        const rank = ranking.indexOf(p.id);
-        return {
-          seat: p.seat,
-          kind: p.kind,
-          planted: [...new Set(state.plants.filter((pl) => pl.ownerId === p.id).map((pl) => pl.species))],
-          playerHash: p.kind === 'human' && token ? this.opts.hashToken(token) : null,
-          rank: rank === -1 ? null : rank + 1,
-          score: state.result?.scores[p.id]?.total ?? null,
-          surrendered: surrendered.has(p.id),
-          timeouts: room.timeoutTotals?.[p.id] ?? 0,
-          autopiloted: autopiloted.has(p.id),
-        };
-      }),
-    };
+    return buildRecord({ ...room, startedAt: room.startedAt }, outcome, this.opts.now(), this.opts.hashToken);
   }
 
   /** 검증 포함 적용. AI 턴 실행기가 폴백 판단을 위해 error 를 받는다 */
@@ -619,18 +511,10 @@ export class RoomManager {
     this.syncClock(room);
   }
 
-  /** 현재 턴이 AI 좌석인가 */
-  static isAiTurn(state: GameState): boolean {
-    if (state.phase !== 'playing' || !state.currentPlayerId) return false;
-    return state.players.find((p) => p.id === state.currentPlayerId)?.kind === 'ai';
-  }
-
-  /** 서버가 대신 두는 턴인가: AI 좌석이거나, 시간 초과로 AI 대리 중인 사람 좌석 (AI 턴 실행기가 확인) */
+  /** 서버가 대신 두는 차례인가: AI 자리이거나, 시간 초과로 AI 대리 중인 사람 자리 (AI 턴 실행기가 확인) */
   isAutoTurn(room: Room): boolean {
-    if (RoomManager.isAiTurn(room.state)) return true;
+    if (isAiTurn(room.state)) return true;
     const cur = room.state.currentPlayerId;
-    return (room.state.phase === 'playing') && !!cur && (room.autopilot ?? []).includes(cur);
+    return room.state.phase === 'playing' && !!cur && (room.autopilot ?? []).includes(cur);
   }
 }
-
-export { MAX_PLAYERS };

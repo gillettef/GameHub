@@ -1,15 +1,15 @@
 /**
  * Python AI 서비스(ai/, 포트 8000) HTTP 클라이언트.
- * AI 응답은 반드시 룰 엔진으로 재검증하고, 타임아웃·오류 시 엔진의 자동 수(autoAction)로 폴백한다.
+ * 타임아웃·오류면 null 을 돌려준다. 응답 재검증과 자동 수(autoAction) 폴백은 AI 턴 실행기(game/aiTurn.ts) 한 곳에서 한다.
  */
 import type { Action, GameState, PlayerId } from '@rootbound/shared';
-import { autoAction, maskState } from '@rootbound/shared';
+import { maskState } from '@rootbound/shared';
 
 const AI_BASE_URL = process.env.AI_BASE_URL ?? 'http://127.0.0.1:8000';
 /** F027: AI는 2초 이내에 행동을 결정해야 한다 */
 const AI_TIMEOUT_MS = 2000;
 
-export interface AiDecision {
+interface AiDecision {
   action: Action;
   depth: number;
   elapsedMs: number;
@@ -25,7 +25,6 @@ export async function checkAiHealth(): Promise<'ok' | 'down'> {
 }
 
 export async function requestAiDecision(state: GameState, playerId: PlayerId): Promise<Action | null> {
-  const fallback = autoAction(state, playerId);
   try {
     const res = await fetch(`${AI_BASE_URL}/decide`, {
       method: 'POST',
@@ -35,13 +34,13 @@ export async function requestAiDecision(state: GameState, playerId: PlayerId): P
       signal: AbortSignal.timeout(AI_TIMEOUT_MS + 200),
     });
     if (!res.ok) {
-      console.warn(`[ai] 응답 오류 ${res.status}, 자동 수 폴백`);
-      return fallback;
+      console.warn(`[ai] 응답 오류 ${res.status}`);
+      return null;
     }
     const data = (await res.json()) as AiDecision;
     return data.action;
   } catch (err) {
-    console.warn(`[ai] 호출 실패 (${(err as Error).message}), 자동 수 폴백`);
-    return fallback;
+    console.warn(`[ai] 호출 실패 (${(err as Error).message})`);
+    return null;
   }
 }
