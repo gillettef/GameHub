@@ -29,16 +29,16 @@
 6. 포트 3001은 이 PC에서 사용자의 다른 프로젝트(Eleven)가 쓴다. Rootbound 서버는 3101을 쓰며, 3001을 점유한 프로세스는 절대 종료하지 않는다.
 7. **규칙 변경은 세 곳을 함께 고친다**: `notes/Rules.md` → `shared/src/engine` + `shared/src/data` (Vitest, `data.test.ts` 가 Rules.md 표와 데이터를 대조한다) → `npm run fixtures` → `ai/astral_ai/rules.py` (pytest, 픽스처 재생으로 TS·Python 일치 검증).
 8. **Claude Code는 사용자에게 보이는 답변(채팅 응답)을 한국어로 작성한다.** 코드 식별자는 영어로 쓰되(코딩 규칙 참고), 설명·요약·질문 등 대화 텍스트는 한국어를 쓴다.
-9. **수치를 바꿀 때는 먼저 시뮬레이터로 잰다**: `npx tsx shared/scripts/lab/run.ts <변형> [인원=2,3,4] [배율]` (변형은 `lab/registry.ts` 에 추가, `LAB_PATCH=<json>` 으로 파일 수정 없이 시험, 여러 변형 비교는 `lab/sweep.ts`). 좌석·식물 승률, 재미·결정 지표, 5개 지표 점수표를 출력한다. 결과와 결정 이유는 Rules.md 12절에 남긴다.
+9. **수치를 바꿀 때는 먼저 시뮬레이터로 잰다**: `npx tsx shared/scripts/lab/run.ts <변형> [인원=2,3,4] [배율]` (변형은 `lab/registry.ts` 에 추가, `LAB_PATCH=<json>` 으로 파일 수정 없이 시험, 여러 변형 비교는 `lab/sweep.ts`). 자리·식물 승률, 재미·결정 지표, 5개 지표 점수표를 출력한다. 결과와 결정 이유는 Rules.md 12절에 남긴다.
 
 ---
 
-## 코드 현황 (2026-10-17, 오프라인판 v3)
+## 코드 현황 (2026-10-29, 오프라인판 v3, 전체 리팩토링 후)
 
-- **shared** (`shared/src`): 타입(`types/index.ts`, 이벤트 `types/events.ts`), 데이터(`data/constants.ts` 인원별 규칙 `PLAYER_COUNT_RULES`(이번 판 식물 수·장수·마켓 2장·1인 큐브·덤)·입구 큐브·제한 시간, `data/species.ts` 식물 9종 `SPECIES`·목표 16장 `GOALS`, `data/tiles.ts` 정원 조각), 엔진(`engine/board.ts` 대칭 보드 조립·축 좌표·보드 색인·칸 이름 `cellLabels`/`cellLabel`(기록용 `C4`), `influence.ts` 뿌리 큐브(칸 주인 `computeOwners`·공급처 `supplyLeft`·회전 `rotateSpot`·뿌리 놓을 칸 `rootTargets`·줄다리기 `plantRoots`·입구 큐브)·심을 칸 `legalPlantCells`·민들레 씨앗 `legalSeedCells`, `scoring.ts` 땅·목표·점수·순위, `turn.ts` 로비→공개 단계(`reveal`, `CONFIRM`)→라운드(이번 판 식물 `pickGarden`, `stage` 가져오기 `TAKE`(마켓 번호 또는 `'pile'` 더미 뒷면)·`validateTake` → 심기 `PLANT`(회전·씨앗)/`DISCARD`, 공급처 큐브 최다 선 `nextRoundStart`)→종료 `applyAction`, 시간 초과 자동 수 `autoAction`, 난수 `rng.ts`), 가림 `mask.ts`. Vitest 62개.
-- **server**: `rooms/manager.ts`(방·초대 id·비밀번호·좌석·AI 추가, 차례 제한 시간·자동 수·AI 대리, 판 요약 `takeRecord`, 옛 형식 스냅샷 판별 `isCurrentFormat`), `game/aiTurn.ts`(AI·대리 좌석 차례마다 Python `/decide` → 엔진 검증 → 실패 시 `autoAction` 폴백), `ai/client.ts`(AI 서비스 HTTP 호출·타임아웃), `persistence/snapshots.ts`(JSON 스냅샷), `persistence/stats.ts`(판 요약·웹 성능 JSONL), `index.ts`(Socket.io, `socket.use` 로 요청 모양 검사, 방별 타이머, `POST /api/vitals`). 서버 시작 시 옛 형식 스냅샷은 지운다. Vitest 27개.
-- **AI** (`ai/astral_ai`, 패키지 이름은 옛 이름 그대로): `models.py`(Pydantic, TS 타입 1:1), `rules.py`(TS 엔진 시뮬레이션 사본, 수치는 `shared/fixtures/specs.json`), `search.py`(1수 탐욕: 심기 = 손 카드 × 칸 × 회전(× 민들레 씨앗 상위 칸)에서 내 총점 − 최고 상대 총점, 가져오기 = 그 카드로 둘 최선 1수 가치 + 공개 목표 연계 가산, 더미 뒷면은 못 본 카드 분포의 기댓값 `unseen_cards`, 시간 제한 안에 최선 수), `main.py`(`GET /health` → `rootbound-ai`, `POST /decide`, None 필드 제외). pytest 24개.
-- **client**: 경로 `/` 랜딩(AI와 바로 시작 `lib/quickStart.ts`·방 만들기·초대 참여·핫시트·튜토리얼), `/hotseat` 같은 기기(인원·닉네임 → 바로 시작, 차례마다 기기 넘김 `HandoffOverlay`), `/tutorial` 연습 봇(`game/tutorialBot.ts`)과 단계 안내(`TutorialCoach`), `/room/:id` 온라인 로비(방 → 좌석 → 준비·제한 시간) → 게임. 게임 화면: `PlayerStrip`(단계·차례·남은 시간·자리별 땅/점수/공급처 뿌리) → 탭(정원 `BoardTab`: 공개 단계면 `RevealPanel`, 아니면 목표 칩 + `HexBoard`(SVG 육각 보드, 칸별 뿌리 수 배지는 칸 위 별도 층) + `Market`(마켓·더미 장수, 심을 칸을 고르면 접힘) + `Hand` + `PlantBar`(심기 미리보기·뿌리 방향·민들레 씨앗·취소/심기) + 차례 안내·뿌리 수 토글 / 점수 `StatusTab` / 진행 `ProgressTab` / 카드 `CardsTab` / 설명 `HelpTab`) → `TabDock`(`DockShell`). 보드 질감은 `BoardTextures`(SVG 패턴). 카드는 `SpeciesCard`(작은 카드 = 카드 그림 배경 + 이름 + 뿌리 모양 `RootDiagram`, 확대 = 카드 디자인 앞면), 확대(식물·목표 카드)·칸 정보는 `GameModal`. 화면용 파생값은 `game/derived.ts`(엔진 호출만: 칸 `buildCells`, 심을 칸 `legalKeys`, 미리보기 `previewPlant`, 서로 다른 회전 `distinctRotations`). 효과음·차례 알림 `lib/cues.ts`, 웹 성능 `lib/vitals.ts`, 제한 시간 표시 `lib/turnClock.ts`. Vitest 15개.
+- **shared** (`shared/src`): 타입(`types/index.ts`, 이벤트 `types/events.ts`), 데이터(`data/constants.ts` 인원별 규칙 `PLAYER_COUNT_RULES`(이번 판 식물 수·장수·마켓 2장·1인 큐브·덤)·입구 큐브·목표 점수(`RANK_FIRST_BONUS` 등)·제한 시간·닉네임/방 비밀번호 규칙(`isValidNickname`·`isValidRoomPassword`)·시간 초과 로그 표지(`TIMEOUT_LOG_MARK`), `data/species.ts` 식물 9종 `SPECIES`·목표 16장 `GOALS`, `data/tiles.ts` 정원 조각), 엔진(`engine/board.ts` 대칭 보드 조립·축 좌표·보드 색인·칸 이름 `cellLabels`/`cellLabel`(기록용 `C4`), `influence.ts` 뿌리 큐브(칸 주인 `computeOwners`·공급처 `supplyLeft`·회전 `rotateSpot`·뿌리 놓을 칸 `rootTargets`·줄다리기 `plantRoots`·입구 큐브)·심을 칸 `legalPlantCells`·민들레 씨앗 `legalSeedCells`, `scoring.ts` 땅·목표·점수·순위, `turn.ts` 로비→공개 단계(`reveal`, `CONFIRM`)→라운드(이번 판 식물 `pickGarden`, `stage` 가져오기 `TAKE`(마켓 번호 또는 `'pile'` 더미 뒷면, `applyTake`)·`validateTake` → 심기 `PLANT`(회전·씨앗, `applyPlant`·기록 `logPlant`)/`DISCARD`, 공급처 큐브 최다 선 `nextRoundStart`)→종료 `applyAction`, 시간 초과 자동 수 `autoAction`, 난수 `rng.ts`), 가림 `mask.ts`. Vitest 67개. 실험실·픽스처 스크립트(`shared/scripts`)도 `tsconfig.scripts.json` 으로 타입 검사한다.
+- **server**: `rooms/manager.ts`(방·초대 id·비밀번호·자리·AI 추가, 차례 제한 시간·자동 수·AI 대리, 판 요약 기록 표시 `takeRecord`), `rooms/validate.ts`(요청 모양 검사 `actionShapeError`, 옛 형식 스냅샷 판별 `isCurrentFormat`, 재접속 토큰 검사), `rooms/record.ts`(판 요약 `GameRecord`·`buildRecord`), `game/aiTurn.ts`(AI·대리 자리 차례마다 Python `/decide` → 엔진 검증 → 실패 시 `autoAction` 폴백, 폴백은 여기 한 곳), `ai/client.ts`(AI 서비스 HTTP 호출·타임아웃, 실패면 null), `persistence/snapshots.ts`(JSON 스냅샷), `persistence/stats.ts`(판 요약·웹 성능 JSONL), `index.ts`(Socket.io, `socket.use` 로 요청 모양 검사, 입장한 사람 요청 공통 처리 `handlePlayer`, 남용 방지(방 만들기·비밀번호 대입·웹 성능 빈도), 방별 타이머, `POST /api/vitals`). 서버 시작 시 옛 형식 스냅샷은 `rooms-legacy/` 로 옮긴다. Vitest 28개.
+- **AI** (`ai/astral_ai`, 패키지 이름은 옛 이름 그대로): `models.py`(Pydantic, TS 타입 1:1), `rules.py`(TS 엔진 시뮬레이션 사본, 수치는 `shared/fixtures/specs.json`), `search.py`(1수 탐욕: 심기 = 손 카드 × 칸 × 회전(× 민들레 씨앗 상위 칸)에서 내 총점 − 최고 상대 총점, 가져오기 = 그 카드로 둘 최선 1수 가치 + 공개 목표 연계 가산, 더미 뒷면은 못 본 카드 분포의 기댓값 `unseen_cards`, 시간 제한 안에 최선 수), `main.py`(`GET /health` → `rootbound-ai`, `POST /decide`, None 필드 제외). 목표 점수·꽃/나무 종도 `specs.json` 에서 읽는다. pytest 25개.
+- **client**: 경로 `/` 랜딩(AI와 바로 시작 `lib/quickStart.ts`·방 만들기·초대 참여·핫시트·튜토리얼), `/hotseat` 같은 기기(인원·닉네임 → 바로 시작, 차례마다 기기 넘김 `HandoffOverlay`), `/tutorial` 연습 봇(`game/tutorialBot.ts`)과 단계 안내(`TutorialCoach`), `/room/:id` 온라인 로비(방 → 자리 → 준비·제한 시간) → 게임. 게임 화면: `PlayerStrip`(단계·차례·남은 시간·자리별 땅/점수/공급처 뿌리) → 탭(정원 `BoardTab`: 공개 단계면 `RevealPanel`, 아니면 목표 칩 + `HexBoard`(SVG 육각 보드, 칸별 뿌리 수 배지는 칸 위 별도 층) + `Market`(마켓·더미 장수, 심을 칸을 고르면 접힘) + `Hand` + `PlantBar`(심기 미리보기·뿌리 방향·민들레 씨앗·취소/심기) + 차례 안내·뿌리 수 토글 / 점수 `StatusTab` / 진행 `ProgressTab` / 카드 `CardsTab` / 설명 `HelpTab`) → `TabDock`(`DockShell`). 보드 질감은 `BoardTextures`(SVG 패턴). 카드는 `SpeciesCard`(작은 카드 = 카드 그림 배경 + 이름 + 뿌리 모양 `RootDiagram`, 확대 = 카드 디자인 앞면), 확대(식물·목표 카드)·칸 정보는 `GameModal`. 화면용 파생값은 `game/derived.ts`(엔진 호출만: 칸 `buildCells`, 심을 칸 `legalKeys`, 미리보기 `previewPlant`, 서로 다른 회전 `distinctRotations`). 효과음·차례 알림 `lib/cues.ts`, 웹 성능 `lib/vitals.ts`, 제한 시간 표시 `lib/turnClock.ts`. Vitest 15개.
 - **카드 디자인**(2026-10-08 사용자 제공, SVG): 식물 `client/public/cards/plants/<종 id>.svg`(630×880)·목표 `goals/<목표 id>.svg`(880×630)·각 `back.svg`. 작은 카드 배경은 그림 부분만 자른 `plants/art/<종 id>.webp`(`node scripts/card-thumbs.mjs` 로 생성). 경로는 `client/src/game/cardImages.ts`, 파일 누락은 `cardImages.test.ts`. 카드 안 글자는 `notes/Cards.md` 와 맞춘다(`client/public/cards/README.md`).
 - 개발용 바로가기: `/hotseat?quick&players=<2~4>&seed=<n>&play=<n>&tab=<board|status|progress|cards|help>&select=<손 카드 index>&cell=<합법 칸 index>&take=<마켓 index|pile>&modal=<손 카드 index>` (`play=<n>` = 자동 수로 n번 둔 뒤 시작, 중반·마켓 빈 화면 확인용).
 - localStorage 키 접두어는 옛 이름 `astraltab.` 을 그대로 쓴다(닉네임·재접속 토큰·튜토리얼 표시 유지).
@@ -49,7 +49,7 @@
 
 - 오프라인판(v3, 2인 큐브 16 = v5)은 2026-10-17 main 에 병합해 운영에 배포했다(뿌리 수 배지·심기 확인 바 UI 리뷰 항목 수정 포함).
 - 할 일 목록과 중단된 실험은 `notes/Contest.md` 4절. 요약: 종이 프로토타입, 규칙서 그림, 기획안, 신청서 접수(12-31 마감).
-- 밸런스 시뮬레이터는 `shared/scripts/lab`(옛 `garden-sim.ts` 와 브랜치 `wip/garden-sim-new-flow` 는 v2 용이라 더 쓰지 않는다).
+- 밸런스 시뮬레이터는 `shared/scripts/lab`(옛 v2 `garden-sim.ts` 는 2026-10-29 삭제, git 기록과 브랜치 `wip/garden-sim-new-flow` 에만 있다).
 - 리뷰에서 남은 낮은 항목: 바닥 층(테두리·줄눈·질감)을 미리 구운 이미지로 바꿔 모바일 다시 그리기 비용 줄이기(HexBoard), RevealPanel 의 px 간격 일부 토큰화.
 
 ## 실행 환경 (dev / 운영)
@@ -94,7 +94,7 @@ AstralTab/                 # 저장소 폴더 이름은 아직 옛 이름
 ├── scripts/              # common.ps1, dev.ps1, dev-stop.ps1, deploy-aws.ps1, card-thumbs.mjs(카드 그림 썸네일), aws/(provision.sh, units.sh, deploy-remote.sh, swap.sh)
 ├── shared/
 │   ├── fixtures/         # specs.json, scenario.json (TS 엔진 출력, Python 테스트가 읽는다)
-│   ├── scripts/          # lab/(v3 밸런스 시뮬레이터), write-fixtures.ts, garden-sim.ts(옛 v2, 쓰지 않음)
+│   ├── scripts/          # lab/(v3 밸런스 시뮬레이터), write-fixtures.ts
 │   └── src/
 │       ├── types/        # GameState, PlayerState, Plant, Board, Action, events
 │       ├── data/         # constants.ts, species.ts(식물 9종·목표 16장), tiles.ts(정원 조각)
@@ -104,7 +104,7 @@ AstralTab/                 # 저장소 폴더 이름은 아직 옛 이름
 │   ├── scripts/stats.ts  # 판 요약·웹 성능 집계
 │   └── src/
 │       ├── index.ts      # Express + Socket.io, 방별 타이머, /api/vitals
-│       ├── rooms/        # 방·로비·좌석·제한 시간·AI 대리·판 요약
+│       ├── rooms/        # 방·로비·자리·제한 시간·AI 대리(manager), 요청·스냅샷 모양 검사(validate), 판 요약(record)
 │       ├── game/         # AI 차례 실행기
 │       ├── ai/           # AI 서비스 HTTP 클라이언트 (타임아웃·자동 수 폴백)
 │       └── persistence/  # JSON 스냅샷, 통계 JSONL (DB 아님)
@@ -130,8 +130,8 @@ AstralTab/                 # 저장소 폴더 이름은 아직 옛 이름
 - **단일 진실 공급원은 서버 메모리**의 방 맵이다(`RoomManager`).
 - 클라이언트는 게임 상태를 직접 계산하지 않는다. 액션(`READY`, `CONFIRM`, `TAKE`, `PLANT`, `DISCARD`, `SURRENDER`)을 보내고 서버가 브로드캐스트한 상태로 덮어쓴다. 합법 칸 하이라이트·심기 미리보기처럼 UI 편의를 위한 계산은 `shared/src/engine` 의 순수 함수를 그대로 쓴다(중복 구현 금지).
 - **손 카드는 비공개다.** 본인 손 카드만 내용을 보내고 타인은 장수만. 카드 더미 순서·RNG 시드는 누구에게도 보내지 않는다(더미는 `pileCount` 장수만). 이번 판 식물·마켓·가져간 카드는 공개다.
-- **자동 저장·복구**: 상태가 바뀔 때마다 `server/data/<env>/rooms/<roomId>.json` 에 방을 통째로 쓰고, 서버 시작 시 복원한다(진행 중 차례는 시계를 새로 잰다). 예전 게임 형식 스냅샷은 지운다.
-- **판 요약·웹 성능**: `server/data/<env>/stats/games.jsonl`·`vitals.jsonl` (파일 크기 상한 있음). `npx tsx server/scripts/stats.ts [DATA_DIR]` 로 완수율·세션 시간·재방문·종/좌석 승률·FCP/LCP·동기화 지연·FPS를 집계한다.
+- **자동 저장·복구**: 상태가 바뀔 때마다 `server/data/<env>/rooms/<roomId>.json` 에 방을 통째로 쓰고, 서버 시작 시 복원한다(진행 중 차례는 시계를 새로 잰다). 예전 게임 형식 스냅샷은 `rooms-legacy/` 로 옮긴다.
+- **판 요약·웹 성능**: `server/data/<env>/stats/games.jsonl`·`vitals.jsonl` (파일 크기 상한 있음). `npx tsx server/scripts/stats.ts [DATA_DIR]` 로 완수율·세션 시간·재방문·종/자리 승률·FCP/LCP·동기화 지연·FPS를 집계한다.
 - **로그인/회원가입은 없다.** 닉네임과 재접속용 `playerToken`은 브라우저 `localStorage`, 서버는 `roomId + playerToken` 으로 재접속을 식별한다.
 - `server/data/` 는 git에 커밋하지 않는다.
 
@@ -139,7 +139,7 @@ AstralTab/                 # 저장소 폴더 이름은 아직 옛 이름
 
 ## AI 서비스 (Python)
 
-- `ai/` 는 독립 FastAPI 프로세스다. Node 서버는 AI 좌석(또는 시간 초과로 AI 대리 중인 사람 좌석)의 차례가 오면 `POST /decide` 에 상태와 플레이어 id를 보내고, 받은 `Action` 을 **일반 액션과 똑같이 룰 엔진으로 검증**한 뒤 적용한다.
+- `ai/` 는 독립 FastAPI 프로세스다. Node 서버는 AI 자리(또는 시간 초과로 AI 대리 중인 사람 자리)의 차례가 오면 `POST /decide` 에 상태와 플레이어 id를 보내고, 받은 `Action` 을 **일반 액션과 똑같이 룰 엔진으로 검증**한 뒤 적용한다.
 - 권위는 항상 TS 룰 엔진에 있다. 불법 응답·타임아웃(2초, F027)·서비스 다운이면 서버는 엔진의 `autoAction`(맨 앞 카드를 첫 합법 칸에, 가져오기는 마켓 0번)으로 폴백한다. AI 서비스가 죽어도 게임은 멈추지 않는다.
 - `ai/astral_ai/rules.py` 는 탐색용 **시뮬레이션 사본**이다. 엔진을 바꾸면 `npm run fixtures` 후 rules.py 를 함께 고치고 pytest 로 맞춘다.
 - 요청 `{ "state", "playerId", "timeLimitMs" }` → 응답 `{ "action", "depth", "elapsedMs" }`. 상태 없음(stateless).
@@ -156,7 +156,7 @@ AstralTab/                 # 저장소 폴더 이름은 아직 옛 이름
 - **심을 칸**: 내 땅, 또는 내 땅·입구와 맞닿은 큐브 없는 빈 칸. 연꽃은 연못 옆 빈 칸이면 어디든.
 - **큐브**: 상태 `rootSeat`·`rootCount`(칸별 한 색). 남의 큐브는 1:1로 밀어냄. 1인 큐브 2인 16 / 3인 18 / 4인 16, 모자라면 가장 높은 내 칸(같으면 식물 없는 칸 → 칸 순서)에서 옮김. 버섯은 맞닿은 6칸 남의 큐브 −2.
 - **식물 9종**: 잔디, 참나무, 소나무, 칡, 고사리, 민들레(씨앗), 연꽃(연못), 버섯(걷어내기), 무궁화(+1점). 담쟁이·대나무·유채는 확장 후보.
-- **종료·점수**: 더미·마켓·손이 모두 비면 끝. 점수 = 땅 + 목표 3장 + 무궁화 + 덤(4인만 0,1,1,1). 순위: 기권 안 함 → 점수 → 땅 → 내 땅 위 식물 → 좌석 큰 쪽.
+- **종료·점수**: 더미·마켓·손이 모두 비면 끝. 점수 = 땅 + 목표 3장 + 무궁화 + 덤(4인만 0,1,1,1). 순위: 기권 안 함 → 점수 → 땅 → 내 땅 위 식물 → 자리 큰 쪽.
 - **온라인 제한 시간**(Rules.md 6.3): 방장이 60초/90초/3분/없음. 넘으면 자동 수, 심기 시간 초과 2번 연속이면 AI 대리.
 
 ## 디자인 규칙
@@ -172,7 +172,7 @@ AstralTab/                 # 저장소 폴더 이름은 아직 옛 이름
 - **간격**: 8px 리듬. 라운드 10px(패널) / 16px(카드) / 24px(큰 컨테이너) / 50px·999px(필).
 - **모션**: `motion-fast` 120ms, `motion-standard` 220ms, `motion-slow` 340ms. `prefers-reduced-motion` 존중. 탭 전환은 100ms 예산(F014).
 - **상태 문구**: 오류 대신 다음에 할 일을 적는다("내 뿌리가 닿는 빈 칸에만 심을 수 있습니다"). 성공에 이모지 없음. 비활성은 회색 + 투명도.
-- **화면 용어**: 화면 용어는 `notes/Rules.md` 2절 "화면 용어" 표를 따른다(좌석 → 자리, 손패 → 내 카드 등). 화면에 축 좌표를 보여 주지 않는다. 칸을 가리킬 때는 칸 이름(`C4`, Rules.md 2절 `cellLabels`)을 쓴다(게임 기록·칸 정보·"칸 이름" 토글).
+- **화면 용어**: 화면 용어는 `notes/Rules.md` 2절 "화면 용어" 표를 따른다(코드의 seat → 자리, 손패 → 내 카드 등). 화면에 축 좌표를 보여 주지 않는다. 칸을 가리킬 때는 칸 이름(`C4`, Rules.md 2절 `cellLabels`)을 쓴다(게임 기록·칸 정보·"칸 이름" 토글).
 - **보이스**: 선언형·현재형, 짧고 직접적인 CTA("방 만들기", "심기", "기권").
 
 ### 컬러 월드
@@ -189,9 +189,9 @@ AstralTab/                 # 저장소 폴더 이름은 아직 옛 이름
 | 보드 (2026-10-08 시안 `notes/design/board-2p.svg`) | 바깥 테두리 `#2c455d`, 줄눈 `#2a2a1c`, 구역 경계선 `#94bce3` (`--board-*`) |
 | 빈 땅 | 풀밭 무늬 `#6b7a3f` + 풀잎 |
 | 비옥토(기름진 땅) | 흙 무늬 `#4b3320` + 새싹 |
-| 연못 | 물 그라데이션 `#5d93ad`→`#1f4466` + 물결 무늬(좌석 0 파랑 땅과 헷갈리지 않게 어둡게) |
+| 연못 | 물 그라데이션 `#5d93ad`→`#1f4466` + 물결 무늬(자리 0 파랑 땅과 헷갈리지 않게 어둡게) |
 | 돌밭(바위) | 자갈 무늬 `#868a8d` + 둥근 돌 두 개 |
-| 좌석 0~3 | `#419eff` / `#e69f00` / `#00c58e` / `#f178b6` (땅은 좌석색 38% 덮기 + 좌석색 테, 식물은 카드 그림 썸네일 + 좌석색 고리, 입구는 좌석색 집 모양 + 자리 번호) |
+| 자리 0~3 | `#419eff` / `#e69f00` / `#00c58e` / `#f178b6` (땅은 자리 색 38% 덮기 + 자리 색 테, 식물은 카드 그림 썸네일 + 자리 색 고리, 입구는 자리 색 집 모양 + 자리 번호) |
 | 위험·경고(돌이킬 수 없는 동작) | Danger Red `#e5484d` (연결 끊김, 기권, 10초 이하 남은 시간) |
 | 텍스트 | `#ffffff`, 보조 `#b8c4bc` |
 
@@ -236,8 +236,7 @@ AstralTab/                 # 저장소 폴더 이름은 아직 옛 이름
 | 공용 픽스처 재생성 | `npm run fixtures` (엔진·데이터·타입을 바꾸면 반드시 실행 후 pytest) |
 | 카드 SVG 문구·뿌리 그림 다시 그리기 | `node scripts/card-text.mjs` (fixtures 를 먼저 만든 뒤) |
 | 밸런스 시뮬레이션 (v3) | `npx tsx shared/scripts/lab/run.ts <변형> [인원=2,3,4] [배율]` (5개 지표 점수표), 여러 변형 비교 `lab/sweep.ts`, 정본 엔진 일치 `lab/parity.ts`, 저장 결과 재채점 `lab/rescore.ts`. 변형은 `lab/registry.ts`, 지금 규칙 = `v6`(v5 + 마켓 2장 + 더미 뒷면 가져오기) |
-| (옛) v2 시뮬레이터 | `npx tsx shared/scripts/garden-sim.ts [2인] [3인] [4인]`. `SIM_OVERRIDES=<json>`, `SIM_PHASE=A`(종 승률만), `SEAT_SEARCH=1 SEAT_KOMIS=…`(덤 탐색), `MARKET_MODE=R|base|P|RP`(마켓 규칙 비교, 기본 R = 선 돌리기), `A_GAMES=<n>` |
-| 타입 검사 | `npm run typecheck` |
+| 타입 검사 | `npm run typecheck` (shared·shared/scripts·server·client) |
 | 플레이어 지표 집계 | `npx tsx server/scripts/stats.ts [DATA_DIR]` (기본 `server/data/prod`). 운영은 EC2에서 `cd ~/AstralTab && npx tsx server/scripts/stats.ts server/data/prod` |
 | 커밋 & 푸시 | `/commit-push` |
 
