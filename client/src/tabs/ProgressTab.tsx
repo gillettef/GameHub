@@ -1,6 +1,7 @@
 import { memo, useMemo } from 'react';
 import type { GameLogEntry, LogKind } from '@rootbound/shared';
 import { nameOf } from '@rootbound/shared';
+import { phaseLabel } from '../game/derived';
 import { cx } from '../lib/cx';
 import { selectState, useGameStore } from '../store/gameStore';
 import styles from './ProgressTab.module.css';
@@ -32,14 +33,7 @@ export const ProgressTab = memo(function ProgressTab() {
   const cardsLeft = state.players.reduce((n, p) => n + p.handCount, 0) + state.market.length + state.pileCount;
   const current = state.currentPlayerId ? nameOf(state, state.currentPlayerId) : null;
   const lead = state.phase === 'playing' ? state.players.find((p) => p.seat === state.roundStart) : undefined;
-  const phaseLabel =
-    state.phase === 'playing'
-      ? `${state.round}라운드 · ${state.stage === 'take' ? '가져오기' : '심기'}`
-      : state.phase === 'finished'
-        ? '종료'
-        : state.phase === 'reveal'
-          ? '이번 판 식물 공개'
-          : '대기실';
+  const stage = phaseLabel(state, '종료');
 
   return (
     <div className={styles.root}>
@@ -48,7 +42,7 @@ export const ProgressTab = memo(function ProgressTab() {
           <h2 className={styles.title}>현재</h2>
           <dl className={styles.facts}>
             <dt>단계</dt>
-            <dd>{phaseLabel}</dd>
+            <dd>{stage}</dd>
             {lead && (
               <>
                 <dt>선</dt>

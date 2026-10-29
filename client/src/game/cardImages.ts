@@ -10,7 +10,6 @@ import type { GoalId, SpeciesId } from '@rootbound/shared';
 const base = `${import.meta.env.BASE_URL}cards/`;
 
 export const PLANT_BACK_URL = `${base}plants/back.svg`;
-export const GOAL_BACK_URL = `${base}goals/back.svg`;
 
 export function plantCardUrl(species: SpeciesId): string {
   return `${base}plants/${species}.svg`;

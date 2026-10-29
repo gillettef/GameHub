@@ -1,22 +1,14 @@
 import { memo, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
-import { getSpecies } from '@rootbound/shared';
+import { DIRECTIONS, getSpecies, posKey } from '@rootbound/shared';
 import type { CellView, PlantPreview } from '../game/derived';
 import { plantArtUrl } from '../game/cardImages';
 import { cx } from '../lib/cx';
+import { hexPoints, px } from '../lib/hexGeometry';
 import { BoardTextures } from './BoardTextures';
 import styles from './HexBoard.module.css';
 
-const SQRT3 = Math.sqrt(3);
 /** 화면 글자 최소 크기(px, CLAUDE.md 모바일 우선) */
 const MIN_TEXT_PX = 12;
-
-/** 축 좌표 → 픽셀 (pointy-top, 반지름 1) */
-const px = (q: number, r: number) => ({ x: SQRT3 * (q + r / 2), y: 1.5 * r });
-const corner = (i: number, scale: number, ox = 0, oy = 0) => {
-  const a = (Math.PI / 180) * (60 * i - 30);
-  return `${(ox + Math.cos(a) * scale).toFixed(3)},${(oy + Math.sin(a) * scale).toFixed(3)}`;
-};
-const hexPoints = (scale: number, ox = 0, oy = 0) => [0, 1, 2, 3, 4, 5].map((i) => corner(i, scale, ox, oy)).join(' ');
 
 /*
  * 칸 모양은 사용자 시안(notes/design/board-2p.svg, 칸 반지름 68px)을 반지름 1로 옮긴 값이다:
@@ -26,7 +18,7 @@ const CELL_R = 1.007;
 const TILE_R = 0.95;
 const HEX = hexPoints(TILE_R);
 const HEX_INNER = hexPoints(0.8);
-/** 입구: 좌석색 집 모양 + 자리 번호 */
+/** 입구: 자리 색 집 모양 + 자리 번호 */
 const HOUSE = '0,-0.52 0.42,-0.12 0.42,0.44 -0.42,0.44 -0.42,-0.12';
 /** 시안 좌표(px, 칸 중심 기준)를 그대로 쓰는 장식은 1/68 로 줄여 그린다 */
 const ART_SCALE = 'scale(0.0147)';
@@ -34,19 +26,13 @@ const SPROUT_STEM = 'M0,-19V-39.4';
 const SPROUT_LEAF_L = 'M0,-34q-15,-2.7 -17.7,-16.3q13.6,-1.4 17.7,16.3Z';
 const SPROUT_LEAF_R = 'M0,-29.9q15,-1.4 19,-13.6q-13.6,-2.7 -19,13.6Z';
 const WAVES = 'M-28.6,-5.4q14.3,-11.6 28.6,0t28.6,0M-28.6,17.7q14.3,-11.6 28.6,0t28.6,0';
-/** 식물 썸네일: 좌석색 고리 바깥 반지름 / 그림 반지름 */
+/** 식물 썸네일: 자리 색 고리 바깥 반지름 / 그림 반지름 */
 const THUMB_RING = 0.7;
 const THUMB_ART = 0.58;
 
-/** 축 좌표 이웃 방향(Rules.md 2절)과 그 방향의 화면 각도(도) */
-const DIRS: [number, number, number][] = [
-  [1, 0, 0],
-  [1, -1, -60],
-  [0, -1, -120],
-  [-1, 0, 180],
-  [-1, 1, 120],
-  [0, 1, 60],
-];
+/** 이웃 방향 0~5(shared DIRECTIONS, Rules.md 2절)의 화면 각도(도) */
+const DIR_DEG = [0, -60, -120, 180, 120, 60];
+const DIRS = DIRECTIONS.map(([dq, dr], i) => [dq, dr, DIR_DEG[i] as number] as const);
 
 interface HexBoardProps {
   cells: CellView[];
@@ -60,7 +46,7 @@ interface HexBoardProps {
   seedKey?: string | null;
   preview?: PlantPreview | null;
   /** 칸마다 뿌리(큐브) 수를 보여 준다 */
-  showInfluence: boolean;
+  showRootCounts: boolean;
   /** 칸마다 칸 이름(C4)을 보여 준다 */
   showLabels?: boolean;
   onCellClick: (q: number, r: number) => void;
@@ -76,10 +62,10 @@ const terrainFill: Record<CellView['terrain'], string> = {
 /**
  * 정원 보드 (Rules.md 3절, 축 좌표 육각). SVG 라 컨테이너 크기에 맞춰 늘고 줄어든다(무스크롤, F015).
  * 바닥(테두리·줄눈·지형 질감·구역 경계)은 보드 좌표 그대로 한 번에 그려 질감이 칸마다 이어지고,
- * 칸마다 땅 주인 좌석색(옅게) → 지형 장식 → 입구(집 모양·번호) / 식물(카드 그림 썸네일 + 땅 주인 색 고리) → 뿌리 큐브 수(주인 색 배지)를 올린다.
+ * 칸마다 땅 주인 자리 색(옅게) → 지형 장식 → 입구(집 모양·번호) / 식물(카드 그림 썸네일 + 땅 주인 색 고리) → 뿌리 큐브 수(주인 색 배지)를 올린다.
  * 식물은 누구의 것도 아니므로 고리 색은 심은 사람이 아니라 그 칸의 땅 주인 색이다(Rules.md 1절).
  */
-export const HexBoard = memo(function HexBoard({ cells, legal, legalFaint, seedLegal, pendingKey, seedKey, preview, showInfluence, showLabels = false, onCellClick }: HexBoardProps) {
+export const HexBoard = memo(function HexBoard({ cells, legal, legalFaint, seedLegal, pendingKey, seedKey, preview, showRootCounts, showLabels = false, onCellClick }: HexBoardProps) {
   const box = useMemo(() => {
     const pts = cells.map((c) => px(c.q, c.r));
     const xs = pts.map((p) => p.x);
@@ -92,7 +78,7 @@ export const HexBoard = memo(function HexBoard({ cells, legal, legalFaint, seedL
 
   // 바닥 층: 칸 위치·지형·구역만으로 정해지므로 보드가 바뀔 때만 다시 만든다
   const ground = useMemo(() => {
-    const byKey = new Map(cells.map((c) => [`${c.q},${c.r}`, c]));
+    const byKey = new Map(cells.map((c) => [posKey(c), c]));
     // 테두리·줄눈은 칸 육각을 하나의 path 로 합쳐 노드 수를 줄인다
     const outline = cells
       .map((c) => {
@@ -109,7 +95,7 @@ export const HexBoard = memo(function HexBoard({ cells, legal, legalFaint, seedL
     for (const c of cells) {
       const { x, y } = px(c.q, c.r);
       for (const [dq, dr, deg] of DIRS) {
-        const n = byKey.get(`${c.q + dq},${c.r + dr}`);
+        const n = byKey.get(posKey({ q: c.q + dq, r: c.r + dr }));
         if (!n || n.tile === c.tile || n.q * 1000 + n.r < c.q * 1000 + c.r) continue;
         const a1 = (Math.PI / 180) * (deg - 30);
         const a2 = (Math.PI / 180) * (deg + 30);
@@ -140,9 +126,9 @@ export const HexBoard = memo(function HexBoard({ cells, legal, legalFaint, seedL
   const seatFont = Math.max(0.56, fontFloor);
   // 뿌리 수 배지가 칸을 덮지 않게 상한을 둔다. 보드가 아주 작으면(ppu<15·17) 12px 하한보다 칸 크기를 우선한다(의도된 예외).
   // 식물 칸 배지는 별도 층이라 이웃 칸에 조금 걸쳐도 되므로 상한을 넉넉히 둔다
-  const inflFont = Math.min(Math.max(0.7, fontFloor), 0.8);
+  const rootFont = Math.min(Math.max(0.7, fontFloor), 0.8);
   const smallFont = Math.min(Math.max(0.5, fontFloor), 0.7);
-  const inflR = Math.max(0.36, inflFont * 0.5);
+  const rootR = Math.max(0.36, rootFont * 0.5);
   // 칸 이름은 칸 위쪽 끝에 작게, 12px 하한을 지킨다. 별도 층이라 4인 보드(ppu≈18 → 0.67)에서 칸 위로 조금 넘쳐도 된다.
   // 상한 0.8 은 "E10" 이 칸 폭(√3)을 넘지 않는 크기다
   const labelFont = Math.min(Math.max(0.36, fontFloor), 0.8);
@@ -246,7 +232,7 @@ export const HexBoard = memo(function HexBoard({ cells, legal, legalFaint, seedL
       <g aria-hidden="true">
         {cells.map((c) => {
           const touched = preview?.touched.get(c.key);
-          if (!(showInfluence || touched !== undefined) || !(c.cubes > 0 || touched !== undefined)) return null;
+          if (!(showRootCounts || touched !== undefined) || !(c.cubes > 0 || touched !== undefined)) return null;
           const shown: [number, number] = touched ?? [c.owner, c.cubes];
           const { x, y } = px(c.q, c.r);
           const tx = c.plant ? x + 0.46 : x;
@@ -258,8 +244,8 @@ export const HexBoard = memo(function HexBoard({ cells, legal, legalFaint, seedL
               transform={`translate(${tx.toFixed(3)} ${ty.toFixed(3)})`}
               style={shown[0] >= 0 ? ({ '--owner': `var(--color-seat-${shown[0]})` } as CSSProperties) : undefined}
             >
-              <circle r={c.plant ? smallR : inflR} className={shown[0] >= 0 ? styles.cubeDot : styles.cubeEmpty} />
-              <text textAnchor="middle" dominantBaseline="central" style={{ fontSize: c.plant ? smallFont : inflFont }}>
+              <circle r={c.plant ? smallR : rootR} className={shown[0] >= 0 ? styles.cubeDot : styles.cubeEmpty} />
+              <text textAnchor="middle" dominantBaseline="central" style={{ fontSize: c.plant ? smallFont : rootFont }}>
                 {shown[1]}
               </text>
             </g>

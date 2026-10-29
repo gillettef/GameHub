@@ -6,7 +6,7 @@ import styles from './GoalList.module.css';
 
 interface GoalListProps {
   goals: GoalId[];
-  /** 있으면 목표마다 좌석별 지금 점수를 함께 보여 준다 */
+  /** 있으면 목표마다 자리별 지금 점수를 함께 보여 준다 */
   scores?: Record<PlayerId, Score> | null;
   players?: { id: PlayerId; nickname: string; seat: number }[];
   compact?: boolean;
@@ -45,7 +45,7 @@ export const GoalList = memo(function GoalList({ goals, scores, players, compact
     );
   }
   return (
-    <ol className={compact ? styles.compact : styles.list} aria-label="이번 판 목표">
+    <ol className={styles.list} aria-label="이번 판 목표">
       {goals.map((id, i) => {
         const g = getGoal(id);
         return (
@@ -60,7 +60,7 @@ export const GoalList = memo(function GoalList({ goals, scores, players, compact
                 {g.name}
                 {g.species && <span className={styles.tag}>{getSpecies(g.species).name}</span>}
               </span>
-              {!compact && <span className={styles.desc}>{g.description}</span>}
+              <span className={styles.desc}>{g.description}</span>
               {scores && players && (
                 <span className={styles.points}>
                   {players.map((p) => (

@@ -31,21 +31,6 @@
   margin-top: var(--space-2);
 }
 
-.sectionHead {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--space-2);
-  margin-bottom: var(--space-1);
-}
-
-/* 언제나 모바일 폭이므로 한 열로 쌓는다 */
-.grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: var(--space-3);
-}
-
 .seats {
   list-style: none;
   margin: 0;
@@ -80,7 +65,7 @@
   color: var(--color-muted);
 }
 
-/* 좌석 색 미리보기(2026-09-23): 실제 대국의 좌석 색을 로비에서 미리 보여준다 */
+/* 자리 색 미리보기(2026-09-23): 실제 대국의 자리 색을 로비에서 미리 보여준다 */
 .seatDot {
   flex: none;
   width: 10px;
@@ -89,7 +74,7 @@
   background: var(--seat-color);
 }
 
-/* 준비 현황 요약: 좌석마다 점 하나(2026-09-23) */
+/* 준비 현황 요약: 자리마다 점 하나(2026-09-23) */
 .readyDots {
   display: flex;
   align-items: center;
@@ -192,11 +177,5 @@
 .ready {
   color: var(--color-heading);
   font-weight: 600;
-}
-
-.readyRow {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
 }
 

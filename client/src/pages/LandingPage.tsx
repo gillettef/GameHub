@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { MAX_PLAYERS, MIN_PLAYERS, NICKNAME_MAX_LENGTH, ROOM_PASSWORD_DIGITS, isValidNickname, isValidRoomPassword } from '@rootbound/shared';
 import { DockShell } from '../components/DockShell';
 import { BotIcon, LearnIcon } from '../components/icons';
 import { hasSeenTutorial } from '../lib/onboarding';
@@ -11,10 +12,9 @@ import styles from './LandingPage.module.css';
 /**
  * 랜딩 (비게임 세계): 닉네임 → 방 만들기(F001, F003) / 초대 링크로 참여 / 핫시트.
  * 로그인은 없다. 닉네임과 재접속 토큰은 localStorage 에 둔다.
- * 2026-09-28 사용자 지시로 개편: [플레이어]·[맵]·[종족]이 잠긴 채 보이던 하단 독 탭을 없앴다 —
- * 방을 만들기 전에는 애초에 그 단계들이 없으므로("한 화면 = 한 결정") 잠긴 탭 자체가 혼란이었다.
- * 이제 한 화면에 닉네임 + 세 갈래 선택(방 만들기 / 초대 링크로 참여 / 같은 기기에서)만 세로로
- * 쌓는다. 방을 만들거나 참가하면(RoomPage) 그때부터 좌석→맵→종족 위자드가 시작된다.
+ * 2026-09-28 사용자 지시로 잠긴 하단 독 탭을 없앴다("한 화면 = 한 결정").
+ * 한 화면에 닉네임 + 갈래 선택(AI와 바로 시작 / 방 만들기 / 초대 링크로 참여 / 같은 기기에서)만 세로로
+ * 쌓는다. 방을 만들거나 참가하면(RoomPage) 그때부터 자리 고르기 → 준비·제한 시간 로비가 시작된다.
  */
 export function LandingPage() {
   const [nickname, setNick] = useState(getNickname());
@@ -25,8 +25,8 @@ export function LandingPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const nickOk = nickname.trim().length >= 1 && nickname.trim().length <= 12;
-  const pwOk = !usePassword || /^\d{4}$/.test(password);
+  const nickOk = isValidNickname(nickname);
+  const pwOk = !usePassword || isValidRoomPassword(password);
 
   const createRoom = async () => {
     if (!nickOk || !pwOk || busy) return;
@@ -47,7 +47,7 @@ export function LandingPage() {
     navigate(`/room/${res.roomId}`);
   };
 
-  /** AI와 바로 시작(2026-10-01): 방 만들기 → AI 좌석 채우기 → (로비에서) 준비까지 자동. 보드는 인원수로 정해진다 */
+  /** AI와 바로 시작(2026-10-01): 방 만들기 → AI 자리 채우기 → (로비에서) 준비까지 자동. 보드는 인원수로 정해진다 */
   const startWithAi = async () => {
     if (!nickOk || busy) return;
     setBusy(true);
@@ -83,18 +83,18 @@ export function LandingPage() {
   };
 
   return (
-    <DockShell id="landing" heroTitle="Rootbound" heroSubtitle="식물을 하나씩 심어 뿌리로 땅을 넓히는 정원 땅따먹기. 친구 2~4명, 또는 AI와 함께." activeTab="room">
+    <DockShell id="landing" heroTitle="Rootbound" heroSubtitle={`식물을 하나씩 심어 뿌리로 땅을 넓히는 정원 땅따먹기. 친구 ${MIN_PLAYERS}~${MAX_PLAYERS}명, 또는 AI와 함께.`} activeTab="room">
       <section className={styles.section}>
         <h2 className={styles.h2}>닉네임</h2>
         <input
           className={styles.input}
           value={nickname}
-          placeholder="1~12자"
-          maxLength={12}
+          placeholder={`1~${NICKNAME_MAX_LENGTH}자`}
+          maxLength={NICKNAME_MAX_LENGTH}
           onChange={(e) => setNick(e.target.value)}
           aria-label="닉네임"
         />
-        {!nickOk && nickname.length > 0 && <p className={styles.hint}>닉네임은 1~12자입니다.</p>}
+        {!nickOk && nickname.length > 0 && <p className={styles.hint}>닉네임은 1~{NICKNAME_MAX_LENGTH}자입니다.</p>}
       </section>
 
       {!hasSeenTutorial() && <TutorialSection primary />}
@@ -104,7 +104,7 @@ export function LandingPage() {
         <p className={styles.help}>AI 상대 수를 고르면 곧바로 첫 차례부터 시작합니다.</p>
         <div className={styles.aiRow}>
           <div className={styles.aiPick} role="radiogroup" aria-label="AI 상대 수">
-            {[1, 2, 3].map((n) => (
+            {Array.from({ length: MAX_PLAYERS - 1 }, (_, i) => i + 1).map((n) => (
               <button
                 key={n}
                 type="button"
@@ -131,15 +131,15 @@ export function LandingPage() {
         <p className={styles.help}>방을 만들면 초대 링크가 생깁니다. 링크를 친구에게 보내거나 빈 자리에 AI를 넣으세요.</p>
         <label className={styles.check}>
           <input type="checkbox" checked={usePassword} onChange={(e) => setUsePassword(e.target.checked)} />
-          비밀번호 설정 (숫자 4자리)
+          비밀번호 설정 (숫자 {ROOM_PASSWORD_DIGITS}자리)
         </label>
         {usePassword && (
           <input
             className={styles.input}
             value={password}
             inputMode="numeric"
-            maxLength={4}
-            placeholder="0000"
+            maxLength={ROOM_PASSWORD_DIGITS}
+            placeholder={'0'.repeat(ROOM_PASSWORD_DIGITS)}
             onChange={(e) => setPassword(e.target.value.replace(/\D/g, ''))}
             aria-label="방 비밀번호"
           />
@@ -189,7 +189,7 @@ function TutorialSection({ primary }: { primary: boolean }) {
   return (
     <section className={primary ? styles.sectionPrimary : styles.section}>
       <h2 className={styles.h2}>{primary ? '처음이세요?' : '튜토리얼 다시 보기'}</h2>
-      <p className={styles.help}>연습 봇과 한 판 두면서 카드 고르기 → 칸 고르기 → 마켓에서 가져오기 → 심기를 한 단계씩 따라 합니다. 5분이면 충분합니다.</p>
+      <p className={styles.help}>연습 봇과 한 판 두면서 카드 고르기 → 칸 고르기 → 마켓이나 카드 더미에서 가져오기 → 심기를 한 단계씩 따라 합니다. 5분이면 충분합니다.</p>
       <button type="button" className={primary ? 'pill pill--lg' : 'pill pill--outline'} onClick={() => navigate('/tutorial')}>
         <LearnIcon size={18} /> 튜토리얼 시작
       </button>

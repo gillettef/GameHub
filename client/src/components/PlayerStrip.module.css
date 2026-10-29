@@ -1,4 +1,4 @@
-/* 화면 유일한 상단 요소 (2026-09-23): 라운드·턴 메타 줄 + 좌석 색 플레이어 카드.
+/* 화면 유일한 상단 요소 (2026-09-23): 라운드·턴 메타 줄 + 자리 색 플레이어 카드.
    sticky 는 지금은 no-op(GamePage .root·body 가 overflow:hidden) 이지만 나중에 이 레벨에서
    스크롤이 생겨도 계속 화면 위에 붙어 있도록 방어적으로 남겨 둔다 */
 .root {
@@ -44,7 +44,7 @@
   -webkit-overflow-scrolling: touch;
 }
 
-/* 좌석 색은 인라인 style 로 --seat-color 를 받는다(카드마다 다른 좌석) */
+/* 자리 색은 인라인 style 로 --seat-color 를 받는다(카드마다 다른 자리) */
 .card {
   position: relative;
   display: flex;
@@ -122,8 +122,8 @@
   line-height: 1.5;
 }
 
-/* 종족 표시 (2026-09-23 사용자 지시): 닉네임 아래 작은 텍스트 한 줄 */
-.race {
+/* AI·AI 대리 표시 */
+.botTag {
   flex: none;
   display: inline-flex;
   align-items: center;
@@ -131,7 +131,7 @@
 }
 
 /* 2026-09-24: 좁은 카드에서 flex 아이템이 내용보다 줄어들면 안의 텍스트가 줄바꿈되던 문제
-   (예: "+1/턴" 이 "+1" / "턴" 두 줄로) — 아이콘 표기로 바꾸면서 각 항목을 한 줄로 고정한다 */
+   — 각 항목(땅·총점)을 한 줄로 고정한다 */
 .statsRow {
   display: flex;
   flex-wrap: nowrap;
@@ -141,13 +141,13 @@
   color: var(--color-muted);
 }
 
-.energy,
+.total,
 .score {
   flex: none;
   white-space: nowrap;
 }
 
-.energy {
+.total {
   color: var(--color-accent);
   font-weight: 700;
 }

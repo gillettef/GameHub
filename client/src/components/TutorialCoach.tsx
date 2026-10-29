@@ -1,4 +1,5 @@
-import { memo, useEffect, useRef, useState } from 'react';
+import { memo, useEffect, useState } from 'react';
+import { GOAL_COUNT, rulesFor } from '@rootbound/shared';
 import { markTutorialSeen } from '../lib/onboarding';
 import { useGameStore } from '../store/gameStore';
 import { CloseIcon, LearnIcon } from './icons';
@@ -12,16 +13,9 @@ interface Step {
   /** 화면 위쪽에 띄운다 (아래 내 카드·마켓을 가리지 않게) */
   top?: boolean;
   /** 이 조건이 참이 되면 다음 단계로 넘어간다. 없으면 '다음' 버튼으로 넘긴다 */
-  done?: (s: Store, startTurn: number) => boolean;
+  done?: (s: Store) => boolean;
 }
 
-
-/**
- * 첫 판 튜토리얼 안내 (2026-10-06, 2026-10-07 Rootbound 로 교체, 2026-10-08 가져오기 → 심기 순서).
- * 이번 판 식물 공개 단계에는 공개 화면(RevealPanel)이 설명을 맡고, 1라운드가 시작되면 안내가 뜬다. 연습 봇과 두는 핫시트 판(store.tutorial) 위에 떠서
- * 한 단계씩 할 일을 알려 주고, 플레이어가 실제로 그 조작을 하면 다음 단계로 넘어간다.
- * 보드를 덜 가리도록 내 카드 위(첫 안내는 화면 위쪽)에 작은 패널로 둔다.
- */
 const myPlants = (s: Store) => s.state?.plants.filter((p) => p.ownerId === s.viewerId).length ?? 0;
 
 const tookCard = (s: Store) => s.state?.log.some((e) => e.kind === 'take' && e.playerId === s.viewerId) ?? false;
@@ -29,12 +23,12 @@ const tookCard = (s: Store) => s.state?.log.some((e) => e.kind === 'take' && e.p
 const STEPS: Step[] = [
   {
     title: '목표',
-    body: '내 차례마다 마켓이나 카드 더미에서 카드 1장을 가져온 뒤, 내 카드 2장 중 1장을 심어 뿌리를 뻗습니다. 끝났을 때 내 뿌리가 있는 칸 1칸 = 1점, 여기에 위의 목표 카드 3장 점수를 더해 높은 쪽이 이깁니다.',
+    body: `내 차례마다 마켓이나 카드 더미에서 카드 1장을 가져온 뒤, 내 카드 2장 중 1장을 심어 뿌리를 뻗습니다. 끝났을 때 내 뿌리가 있는 칸 1칸 = 1점, 여기에 위의 목표 카드 ${GOAL_COUNT}장 점수를 더해 높은 쪽이 이깁니다.`,
     top: true,
   },
   {
-    title: '마켓에서 가져오기',
-    body: '보드 아래 마켓에 카드 2장이 펼쳐져 있습니다. 한 장을 눌러 크게 보고 "이 카드 가져오기"를 누르세요. 빈자리는 바로 채워집니다. 맨 끝의 카드 더미 뒷면을 누르면 무엇이 나올지 모르는 1장을 가져옵니다.',
+    title: '카드 가져오기',
+    body: `보드 아래 마켓에 카드 ${rulesFor(2).market}장이 펼쳐져 있습니다. 한 장을 눌러 크게 보고 "이 카드 가져오기"를 누르세요. 빈자리는 바로 채워집니다. 맨 끝의 카드 더미 뒷면을 누르면 무엇이 나올지 모르는 1장을 가져옵니다.`,
     done: (s) => tookCard(s) || myPlants(s) > 0,
   },
   {
@@ -67,19 +61,24 @@ const STEPS: Step[] = [
   },
 ];
 
+/**
+ * 첫 판 튜토리얼 안내 (2026-10-06, 2026-10-07 Rootbound 로 교체, 2026-10-08 가져오기 → 심기 순서).
+ * 이번 판 식물 공개 단계에는 공개 화면(RevealPanel)이 설명을 맡고, 1라운드가 시작되면 안내가 뜬다. 연습 봇과 두는 핫시트 판(store.tutorial) 위에 떠서
+ * 한 단계씩 할 일을 알려 주고, 플레이어가 실제로 그 조작을 하면 다음 단계로 넘어간다.
+ * 보드를 덜 가리도록 내 카드 위(첫 안내는 화면 위쪽)에 작은 패널로 둔다.
+ */
 export const TutorialCoach = memo(function TutorialCoach() {
   const tutorial = useGameStore((s) => s.tutorial);
   const phase = useGameStore((s) => s.state?.phase);
   const [step, setStep] = useState(0);
   const [closed, setClosed] = useState(false);
-  const startTurn = useRef(0);
 
   // 조작 조건을 만족하면 다음 단계로 (스토어를 구독해 매 변경마다 확인)
   useEffect(() => {
     if (!tutorial) return;
     const check = (s: Store) => {
       const cur = STEPS[step];
-      if (cur?.done?.(s, startTurn.current)) advance();
+      if (cur?.done?.(s)) advance();
     };
     check(useGameStore.getState());
     return useGameStore.subscribe(check);
@@ -87,7 +86,6 @@ export const TutorialCoach = memo(function TutorialCoach() {
   }, [tutorial, step]);
 
   function advance() {
-    startTurn.current = useGameStore.getState().state?.turn ?? 0;
     setStep((n) => {
       const next = n + 1;
       if (next >= STEPS.length) markTutorialSeen();

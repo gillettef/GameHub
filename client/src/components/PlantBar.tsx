@@ -2,7 +2,7 @@ import { memo } from 'react';
 import { getSpecies } from '@rootbound/shared';
 import { distinctRotations, rotationLabel, type PlantPreview } from '../game/derived';
 import { cx } from '../lib/cx';
-import { selectSelectedSpecies, selectState, selectViewerId, useGameStore } from '../store/gameStore';
+import { findMe, selectSelectedSpecies, selectState, selectViewerId, useGameStore } from '../store/gameStore';
 import { RootDiagram } from './RootDiagram';
 import styles from './PlantBar.module.css';
 
@@ -26,7 +26,7 @@ export const PlantBar = memo(function PlantBar({ preview }: { preview: PlantPrev
   const sending = useGameStore((s) => s.sending);
   if (!state || !species || !pendingPos || !viewerId) return null;
   const sp = getSpecies(species);
-  const mySeat = state.players.find((p) => p.id === viewerId)?.seat ?? 0;
+  const mySeat = findMe(state, viewerId)?.seat ?? 0;
   const myLand = preview?.landDelta[mySeat] ?? 0;
   const myScore = preview?.scoreDelta[mySeat] ?? 0;
   const pushed = preview ? [...preview.flips.values()].filter((o) => o === mySeat).length : 0;

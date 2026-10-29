@@ -43,7 +43,7 @@ const ICONS: Record<TabId, ReactNode> = {
  * 2026-10-01 사용자 지시로 글자 라벨을 없애고 아이콘만 둔다(접근성은 aria-label/title). 내 차례인데 다른 탭을
  * 보고 있으면 보드 아이콘이 맥동하고, 진행 탭에는 안 읽은 사건 수가 뜬다.
  */
-/** 안 읽은 사건으로 세는 로그 종류(수입·드로우 같은 정산은 뺀다) */
+/** 안 읽은 사건으로 세는 로그 종류(심기·땅 뺏기·버리기·기권. 가져오기·시스템 안내는 뺀다) */
 const NEWS_KINDS = new Set(['plant', 'flip', 'discard', 'surrender']);
 
 export const TabDock = memo(function TabDock() {

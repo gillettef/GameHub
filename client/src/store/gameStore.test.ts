@@ -8,7 +8,7 @@ const start = (players = 2) => {
   useGameStore.getState().startHotseat({ nicknames: Array.from({ length: players }, (_, i) => `P${i}`), seed: 3 });
 };
 
-describe('이번 판 식물 공개 (Rules.md 4절 7)', () => {
+describe('이번 판 식물 공개 (Rules.md 4절 8)', () => {
   it('한 기기로는 공개 단계에서 시작하고, 확인 한 번으로 모두 확인되어 자리 0의 가져오기 차례가 된다', () => {
     start(3);
     const s0 = useGameStore.getState();

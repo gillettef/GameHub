@@ -1,19 +1,19 @@
 /**
  * 핫시트(한 브라우저에서 번갈아 두기) 어댑터. 규칙 계산은 전부 shared 엔진에 맡기고,
- * 이 파일은 로비 절차(입장 → 준비)를 서버 대신 흉내 낸다. 반환 상태는 이번 판 식물 공개 단계다(Rules.md 4절 7).
+ * 이 파일은 로비 절차(입장 → 준비)를 서버 대신 흉내 낸다. 반환 상태는 이번 판 식물 공개 단계다(Rules.md 4절 8).
  * 한 기기에서는 "확인" 한 번으로 모두를 확인 처리한다(confirmAllHotseat).
  */
-import type { Action, GameState, PlayerId } from '@rootbound/shared';
+import type { GameState, PlayerId } from '@rootbound/shared';
 import { MAX_PLAYERS, MIN_PLAYERS, applyAction, createInitialState, createPlayer, joinPlayer } from '@rootbound/shared';
 
 export interface HotseatConfig {
-  /** 좌석 순서대로 닉네임 (2~4명) */
+  /** 자리 순서대로 닉네임 (MIN_PLAYERS~MAX_PLAYERS명) */
   nicknames: string[];
   /** 보드·목표·카드 더미 시드 (엔진은 난수를 만들지 않는다) */
   seed: number;
 }
 
-export const HOTSEAT_ROOM_ID = 'hotseat';
+const HOTSEAT_ROOM_ID = 'hotseat';
 
 export function hotseatPlayerId(seat: number): PlayerId {
   return `p${seat}`;
@@ -48,11 +48,6 @@ export function confirmAllHotseat(state: GameState): { state: GameState; error?:
     s = r.state;
   }
   return { state: s };
-}
-
-/** 핫시트에서는 서버 검증 = 엔진 검증. 거부되면 error 만 채워지고 state 는 그대로다 */
-export function applyHotseatAction(state: GameState, action: Action): { state: GameState; error?: string } {
-  return applyAction(state, action);
 }
 
 /** 브라우저 쪽 시드 발급. 엔진 밖에서만 난수를 만든다 */

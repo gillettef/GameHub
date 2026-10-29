@@ -1,6 +1,7 @@
 import { memo, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import type { GameLogEntry, LogKind } from '@rootbound/shared';
 import { nameOf } from '@rootbound/shared';
+import { stageName } from '../game/derived';
 import { selectState, selectViewerId, useGameStore } from '../store/gameStore';
 import { BoltIcon, PassIcon, PlaceIcon, SurrenderIcon, SwapIcon, SwordIcon } from './icons';
 import styles from './TurnEvents.module.css';
@@ -29,14 +30,14 @@ function shorten(e: GameLogEntry): string {
     }
     case 'take': {
       // turn.ts 가져오기 로그: "닉네임: 마켓에서 소나무 가져옴" / "닉네임: 카드 더미에서 1장 가져옴"
-      if (/: 카드 더미에서 1장 가져옴$/.test(e.message)) return '더미에서 1장';
+      if (/: 카드 더미에서 1장 가져옴$/.test(e.message)) return '카드 더미에서 1장';
       const m = e.message.match(/: 마켓에서 ([^:]+) 가져옴$/);
       return m ? `${m[1]} 가져옴` : e.message;
     }
     case 'flip': {
       // turn.ts 밀어내기 로그: "닉네임: 상대의 땅 2칸을 밀어냄 (C5, D4)"
       const m = e.message.match(/^.*?: (.+)의 땅 (\d+)칸을 밀어냄/);
-      return m ? `${m[1]} 땅 ${m[2]}칸 뺏음` : e.message;
+      return m ? `${m[1]} 땅 ${m[2]}칸 밀어냄` : e.message;
     }
     case 'discard':
       return '버림';
@@ -105,7 +106,7 @@ export const TurnEvents = memo(function TurnEvents() {
       mine: state.currentPlayerId === viewerId,
       name: nameOf(state, state.currentPlayerId),
       seat: current?.seat ?? 0,
-      stage: state.stage === 'take' ? '가져오기' : '심기',
+      stage: stageName(state.stage),
       items,
     });
     // 상태 객체 전체가 아니라 턴이 바뀌었을 때만 다시 계산한다

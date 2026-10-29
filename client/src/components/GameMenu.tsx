@@ -1,5 +1,5 @@
 import { memo, useEffect, useState } from 'react';
-import { selectState, selectViewerId, useGameStore } from '../store/gameStore';
+import { findMe, selectState, selectViewerId, useGameStore } from '../store/gameStore';
 import { isNotifyOn, isSoundOn, notifySupported, setNotifyOn, setSoundOn } from '../lib/cues';
 import { BellIcon, CheckIcon, CloseIcon, ExitIcon, HelpIcon, MoreIcon, MuteIcon, SoundIcon, SurrenderIcon } from './icons';
 import styles from './GameMenu.module.css';
@@ -8,7 +8,7 @@ type Confirm = 'quit' | 'surrender' | null;
 
 /**
  * 게임 메뉴 (2026-10-01): 돌이킬 수 없는 동작(기권·나가기)을 바닥 턴 바에서 떼어 상단 ⋯ 메뉴로 옮겼다.
- * 패스 바로 옆에 기권이 있어 연타로 잘못 누르던 위험을 없앤다. 항목마다 한 번 더 확인한다.
+ * 바닥 버튼 바로 옆에 기권이 있어 연타로 잘못 누르던 위험을 없앤다. 항목마다 한 번 더 확인한다.
  * 나가기(온라인은 게임이 서버에 남고 다시 들어올 수 있다)와 기권(즉시 탈락)의 차이를 문구로 밝힌다.
  */
 export const GameMenu = memo(function GameMenu({ onQuit }: { onQuit: () => void }) {
@@ -34,7 +34,7 @@ export const GameMenu = memo(function GameMenu({ onQuit }: { onQuit: () => void 
     setConfirm(null);
   };
 
-  const canSurrender = (state?.phase === 'playing' || state?.phase === 'reveal') && state.players.find((p) => p.id === viewerId)?.surrenderedOrder === null;
+  const canSurrender = (state?.phase === 'playing' || state?.phase === 'reveal') && findMe(state, viewerId)?.surrenderedOrder === null;
 
   return (
     <div className={styles.root}>

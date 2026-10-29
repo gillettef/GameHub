@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { selectState, selectViewerId, useGameStore } from '../store/gameStore';
+import { findMe, selectState, selectViewerId, useGameStore } from '../store/gameStore';
 import { SpeciesCard } from './SpeciesCard';
 import styles from './Hand.module.css';
 
@@ -12,7 +12,7 @@ export const Hand = memo(function Hand({ plantable = [], canPlant = false }: { p
   const viewerId = useGameStore(selectViewerId);
   const selected = useGameStore((s) => s.selectedHandIndex);
   const openCardModal = useGameStore((s) => s.openCardModal);
-  const me = state?.players.find((p) => p.id === viewerId);
+  const me = findMe(state, viewerId);
   if (!me) return null;
   return (
     <div className={styles.row} role="list" aria-label="내 카드">

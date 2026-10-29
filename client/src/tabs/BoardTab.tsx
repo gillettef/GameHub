@@ -6,8 +6,8 @@ import { HexBoard } from '../components/HexBoard';
 import { Market } from '../components/Market';
 import { PlantBar } from '../components/PlantBar';
 import { RevealPanel } from '../components/RevealPanel';
-import { asState, buildCells, distinctRotations, legalKeys, previewPlant } from '../game/derived';
-import { selectCanPlant, selectCanTake, selectIsMyTurn, selectSelectedSpecies, selectState, selectViewerId, useGameStore } from '../store/gameStore';
+import { asState, buildCells, distinctRotations, previewPlant } from '../game/derived';
+import { findMe, selectCanPlant, selectCanTake, selectIsMyTurn, selectSelectedSpecies, selectState, selectViewerId, useGameStore } from '../store/gameStore';
 import styles from './BoardTab.module.css';
 
 /**
@@ -26,8 +26,8 @@ export const BoardTab = memo(function BoardTab() {
   const pendingRotation = useGameStore((s) => s.pendingRotation);
   const pendingSeed = useGameStore((s) => s.pendingSeed);
   const seedPicking = useGameStore((s) => s.seedPicking);
-  const showInfluence = useGameStore((s) => s.showInfluence);
-  const toggleInfluence = useGameStore((s) => s.toggleInfluence);
+  const showRootCounts = useGameStore((s) => s.showRootCounts);
+  const toggleRootCounts = useGameStore((s) => s.toggleRootCounts);
   const showLabels = useGameStore((s) => s.showLabels);
   const toggleLabels = useGameStore((s) => s.toggleLabels);
   const tapCell = useGameStore((s) => s.tapCell);
@@ -35,23 +35,22 @@ export const BoardTab = memo(function BoardTab() {
   const canPlant = useGameStore(selectCanPlant);
 
   const cells = useMemo(() => (state ? buildCells(state) : []), [state]);
-  // 손패 카드마다 심을 칸 수 (0 이면 그 카드는 음영 + 고르기 잠금)와, 손패 어느 카드로든 심을 수 있는 칸. 상태가 바뀔 때만 계산한다
-  const { plantable, anyLegal } = useMemo(() => {
+  // 손패 카드마다 심을 칸 key(개수 0 이면 그 카드는 음영 + 고르기 잠금)와, 손패 어느 카드로든 심을 수 있는 칸. 상태가 바뀔 때만 계산한다
+  const { perCard, plantable, anyLegal } = useMemo(() => {
     const anyLegal = new Set<string>();
-    if (!state?.board || !viewerId || state.phase !== 'playing') return { plantable: [] as number[], anyLegal };
+    if (!state?.board || !viewerId || state.phase !== 'playing') return { perCard: [] as Set<string>[], plantable: [] as number[], anyLegal };
     const s = asState(state);
-    const hand = state.players.find((p) => p.id === viewerId)?.hand ?? [];
-    const plantable = hand.map((sp) => {
-      const cells = legalPlantCells(s, viewerId, sp);
-      for (const c of cells) anyLegal.add(posKey(c));
-      return cells.length;
-    });
-    return { plantable, anyLegal };
+    const hand = findMe(state, viewerId)?.hand ?? [];
+    const cellsByCard = hand.map((sp) => legalPlantCells(s, viewerId, sp));
+    const perCard = cellsByCard.map((cells) => new Set(cells.map(posKey)));
+    for (const keys of perCard) for (const k of keys) anyLegal.add(k);
+    return { perCard, plantable: cellsByCard.map((cells) => cells.length), anyLegal };
   }, [state, viewerId]);
+  // 고른 카드(species = 같은 상태의 손패[selectedIndex])는 위에서 구한 칸을 그대로 쓴다.
   // 카드를 고르기 전에는 손패 전체로 심을 수 있는 칸을 옅게 보여 준다(첫 차례에 어디를 눌러야 할지 바로 보이게)
   const legal = useMemo(
-    () => (!state || !canPlant || seedPicking ? new Set<string>() : species ? legalKeys(state, viewerId, species) : anyLegal),
-    [state, canPlant, viewerId, species, seedPicking, anyLegal],
+    () => (!state || !canPlant || seedPicking ? new Set<string>() : species && selectedIndex !== null ? (perCard[selectedIndex] ?? new Set<string>()) : anyLegal),
+    [state, canPlant, species, selectedIndex, seedPicking, perCard, anyLegal],
   );
   const seedLegal = useMemo(
     () => (state?.board && seedPicking && pendingPos ? new Set(legalSeedCells(asState(state), pendingPos).map(posKey)) : undefined),
@@ -67,7 +66,7 @@ export const BoardTab = memo(function BoardTab() {
   if (state.phase === 'reveal') return <RevealPanel />;
   if (!state.board) return null;
 
-  const me = state.players.find((p) => p.id === viewerId);
+  const me = findMe(state, viewerId);
   const current = state.players.find((p) => p.id === state.currentPlayerId);
   const stuck = canPlant && plantable.length > 0 && plantable.every((n) => n === 0);
   const selectedDead = selectedIndex !== null && plantable[selectedIndex] === 0;
@@ -104,7 +103,7 @@ export const BoardTab = memo(function BoardTab() {
           pendingKey={pendingPos ? posKey(pendingPos) : null}
           seedKey={pendingSeed ? posKey(pendingSeed) : null}
           preview={preview}
-          showInfluence={showInfluence}
+          showRootCounts={showRootCounts}
           showLabels={showLabels}
           onCellClick={onCellClick}
         />
@@ -120,7 +119,7 @@ export const BoardTab = memo(function BoardTab() {
         {canPlant && pendingPos ? <PlantBar preview={preview} /> : null}
         <div className={styles.turnBar}>
           <span className={isMyTurn ? styles.hintMine : styles.hint}>{hint}</span>
-          <button type="button" className={showInfluence ? styles.toggleOn : styles.toggle} onClick={toggleInfluence} aria-pressed={showInfluence} title="칸마다 뿌리(큐브) 수 보기">
+          <button type="button" className={showRootCounts ? styles.toggleOn : styles.toggle} onClick={toggleRootCounts} aria-pressed={showRootCounts} title="칸마다 뿌리(큐브) 수 보기">
             뿌리 수
           </button>
           <button type="button" className={showLabels ? styles.toggleOn : styles.toggle} onClick={toggleLabels} aria-pressed={showLabels} title="칸마다 칸 이름(C4) 보기 — 진행 탭 기록의 칸을 찾을 때">

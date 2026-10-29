@@ -1,6 +1,6 @@
 import { memo, useMemo } from 'react';
 import { nameOf } from '@rootbound/shared';
-import { buildPlayerSummaries } from '../game/derived';
+import { buildPlayerSummaries, phaseLabel } from '../game/derived';
 import { cx } from '../lib/cx';
 import { selectState, selectViewerId, useGameStore } from '../store/gameStore';
 import { ChangeValue } from './ChangeValue';
@@ -10,7 +10,7 @@ import { TurnTimer } from './TurnTimer';
 import styles from './PlayerStrip.module.css';
 
 /**
- * 화면 맨 위 상태 창: 단계(N라운드 · 가져오기/심기)·차례 메타 줄 + 좌석 색 플레이어 카드(땅·예상 점수, 이번 라운드 선 표시).
+ * 화면 맨 위 상태 창: 단계(N라운드 · 가져오기/심기)·차례 메타 줄 + 자리 색 플레이어 카드(땅·예상 점수, 이번 라운드 선 표시).
  * 이번 판 식물 공개 단계에는 자리별 확인 여부를 보여 준다.
  * 나가기·기권은 ⋯ 메뉴(GameMenu)에 있다.
  */
@@ -23,14 +23,7 @@ export const PlayerStrip = memo(function PlayerStrip({ onQuit }: { onQuit: () =>
   const current = state.currentPlayerId ? nameOf(state, state.currentPlayerId) : null;
   const isMyTurn = state.currentPlayerId === viewerId;
   const reveal = state.phase === 'reveal';
-  const stage =
-    state.phase === 'playing'
-      ? `${state.round}라운드 · ${state.stage === 'take' ? '가져오기' : '심기'}`
-      : state.phase === 'finished'
-        ? '게임 종료'
-        : reveal
-          ? '이번 판 식물 공개'
-          : '대기실';
+  const stage = phaseLabel(state, '게임 종료');
   const active = state.players.filter((p) => p.surrenderedOrder === null);
   const who =
     state.phase === 'finished'
@@ -75,7 +68,7 @@ export const PlayerStrip = memo(function PlayerStrip({ onQuit }: { onQuit: () =>
                     </span>
                   )}
                   {(r.kind === 'ai' || autopilot?.includes(r.id)) && (
-                    <span className={styles.race} title={r.kind === 'ai' ? 'AI' : 'AI가 대신 두는 중'}>
+                    <span className={styles.botTag} title={r.kind === 'ai' ? 'AI' : 'AI가 대신 두는 중'}>
                       <BotIcon size={14} />
                     </span>
                   )}
@@ -84,7 +77,7 @@ export const PlayerStrip = memo(function PlayerStrip({ onQuit }: { onQuit: () =>
                   <span className={styles.score}>
                     땅 <ChangeValue value={r.score?.land ?? 0} />
                   </span>
-                  <span className={styles.energy}>
+                  <span className={styles.total}>
                     <ChangeValue value={r.score?.total ?? 0} />점
                   </span>
                   {r.rootsLeft !== null && (
