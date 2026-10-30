@@ -1,0 +1,60 @@
+# 운영 배포: main 에 병합되면 테스트·빌드 통과 후 EC2(t4g.nano, 서울)에 올리고 systemd neoterra 를 재시작한다
+# 필요한 저장소 시크릿: EC2_HOST(공인 IP), EC2_USER(예: ubuntu), EC2_SSH_KEY(개인 키 PEM 전체)
+# 보안 그룹 TCP 8094 인바운드는 사용자 확인 후 따로 연다
+name: Deploy AWS
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-aws
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+
+      - name: 배포 묶음 만들기
+        run: tar czf neoterra.tgz dist server-dist package.json scripts/aws
+
+      - name: SSH 키 준비
+        env:
+          KEY: ${{ secrets.EC2_SSH_KEY }}
+          HOST: ${{ secrets.EC2_HOST }}
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$KEY" > ~/.ssh/id_ec2
+          chmod 600 ~/.ssh/id_ec2
+          ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts
+
+      - name: 업로드와 원격 설치
+        env:
+          HOST: ${{ secrets.EC2_HOST }}
+          USER: ${{ secrets.EC2_USER }}
+        run: |
+          scp -i ~/.ssh/id_ec2 neoterra.tgz "$USER@$HOST:/tmp/neoterra.tgz"
+          ssh -i ~/.ssh/id_ec2 "$USER@$HOST" 'bash -s' < scripts/aws/deploy-remote.sh
+
+      - name: 상태 확인
+        env:
+          HOST: ${{ secrets.EC2_HOST }}
+        run: |
+          for i in 1 2 3 4 5 6; do
+            if curl -fsS "http://$HOST:8094/health"; then exit 0; fi
+            sleep 5
+          done
+          echo "health 확인 실패" && exit 1
