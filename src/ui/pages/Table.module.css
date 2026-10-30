@@ -2,7 +2,7 @@
   min-height: 100dvh;
 }
 .main {
-  padding-bottom: calc(96px + env(safe-area-inset-bottom));
+  padding-bottom: calc(72px + env(safe-area-inset-bottom));
 }
 .back {
   margin: var(--space-2) var(--space-2) 0;

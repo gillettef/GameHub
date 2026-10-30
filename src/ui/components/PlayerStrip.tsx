@@ -2,6 +2,7 @@
 import { DOCTRINES } from '../../core/types';
 import { defenseValue, mainDoctrine, stage } from '../../core/engine/derive';
 import { eraProgress } from '../../core/engine/era';
+import { DOCTRINE_NAMES } from '../../core/data/constants';
 import { useApp } from '../../store/app';
 import { useGame } from '../useGame';
 import { Icon } from './Icon';
@@ -32,7 +33,8 @@ export function PlayerStrip({ onMenu, onLog }: { onMenu: () => void; onLog: () =
       </div>
       <div className={styles.strip}>
         {game.players.map((p) => {
-          const main = mainDoctrine(p);
+          // 칩에는 주 노선(없으면 가장 높은 노선) 하나만 — 세 노선 모두는 보드에서
+          const lead = mainDoctrine(p) ?? (DOCTRINES.some((d) => p.doctrine[d] > 0) ? DOCTRINES.reduce((a, b) => (p.doctrine[b] > p.doctrine[a] ? b : a)) : null);
           return (
             <button
               key={p.id}
@@ -47,20 +49,18 @@ export function PlayerStrip({ onMenu, onLog }: { onMenu: () => void; onLog: () =
               </span>
               <span className={styles.stats}>
                 <span style={{ color: 'var(--res-culture)' }}>
-                  <Icon name="culture" size={14} /> {p.res.culture}
+                  <Icon name="culture" size={13} /> {p.res.culture}
                 </span>
                 <span style={{ color: 'var(--danger)' }}>
-                  <Icon name="might" size={14} /> {defenseValue(p)}
+                  <Icon name="might" size={13} /> {defenseValue(p)}
                 </span>
-              </span>
-              <span className={styles.docs}>
-                {DOCTRINES.filter((d) => game.players.length <= 3 || d === main || (!main && p.doctrine[d] > 0)).map((d) => (
-                  <span key={d} className={styles.doc} style={{ color: `var(--${d})`, opacity: main === d ? 1 : 0.7 }}>
-                    <Icon name={d} size={12} />
-                    {p.doctrine[d]}
-                    {stage(p, d) > 0 && <sup>{stage(p, d)}</sup>}
+                {lead && (
+                  <span className={styles.doc} style={{ color: `var(--${lead})` }} aria-label={`${DOCTRINE_NAMES[lead]} ${p.doctrine[lead]}점`}>
+                    <Icon name={lead} size={13} />
+                    {p.doctrine[lead]}
+                    {stage(p, lead) > 0 && <sup>{stage(p, lead)}</sup>}
                   </span>
-                ))}
+                )}
               </span>
             </button>
           );
