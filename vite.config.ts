@@ -12,6 +12,7 @@ export default defineConfig({
       '/ws': { target: 'ws://localhost:8094', ws: true },
     },
   },
-  build: { outDir: 'dist', sourcemap: false },
+  // 카드 일러스트는 JS 에 인라인하지 않고 파일로 둔다(지연 로딩)
+  build: { outDir: 'dist', sourcemap: false, assetsInlineLimit: (file: string) => (file.includes('/assets/art/') ? false : undefined) },
   test: { include: ['src/**/*.test.ts', 'server/**/*.test.ts', 'tests/**/*.test.ts'] },
 });

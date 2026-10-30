@@ -285,3 +285,32 @@
   color: var(--text);
   font-weight: 700;
 }
+.artTile {
+  flex: none;
+  width: 104px;
+  min-height: 44px;
+  display: flex;
+  flex-direction: column;
+  padding: 0 0 var(--space-1);
+  overflow: hidden;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  text-align: left;
+}
+.artTile > span:last-child {
+  padding: 2px var(--space-1) 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cost {
+  color: var(--res-energy);
+  font-weight: 700;
+}
+.banner {
+  width: 100%;
+  border-radius: var(--radius-sm);
+  margin-bottom: var(--space-2);
+}

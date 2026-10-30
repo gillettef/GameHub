@@ -48,6 +48,7 @@ import {
 import { buildingUpgradeCost, unitUpgradeCost } from '../../core/engine/actions';
 import { useGame } from '../useGame';
 import { CardFace } from './CardFace';
+import { CardArt } from './CardArt';
 import { Icon, type IconName } from './Icon';
 import { Section } from './Section';
 import { Sheet, type SheetAction } from './Sheet';
@@ -85,7 +86,8 @@ export function ColonyBoard({ player }: { player: PlayerState }) {
 
   const sheet = open ? renderSheet(open) : null;
 
-  function renderSheet(o: Open): { title: ReactNode; body: ReactNode; actions: SheetAction[] } {
+  function renderSheet(o: Open): { title: ReactNode; body: ReactNode; actions: SheetAction[]; art?: string; artIcon?: IconName } {
+    const withArt = (r: { title: ReactNode; body: ReactNode; actions: SheetAction[] }, art: string | null | undefined, artIcon: IconName) => ({ ...r, art: art ?? undefined, artIcon });
     const acts: SheetAction[] = [];
     const add = (label: string, a: Parameters<typeof check>[0], tone?: SheetAction['tone']) => {
       if (mine) acts.push({ label, onClick: () => act(a), disabled: check(a), tone });
@@ -173,18 +175,18 @@ export function ColonyBoard({ player }: { player: PlayerState }) {
         const c = h && CARD_DEFS[h.id];
         if (!c || c.type !== 'supply') return { title: '보급', body: null, actions: [] };
         add('사용 — 지휘 1', { type: 'useSupply', index: o.index });
-        return { title: c.name, body: <p>{instantText(c.instant)}{h.fresh ? ' · 이번 차례에 가져와서 아직 쓸 수 없음' : ''}</p>, actions: acts };
+        return withArt({ title: c.name, body: <p>{instantText(c.instant)}{h.fresh ? ' · 이번 차례에 가져와서 아직 쓸 수 없음' : ''}</p>, actions: acts }, c.id, 'supply');
       }
       case 'legacy': {
         const wip = p.legacyWip;
         const c = wip && CARD_DEFS[wip.id];
         if (!wip || !c || c.type !== 'legacy') return { title: '유산', body: null, actions: [] };
         add(`${wip.done + 1}단계 짓기 — 생산 ${c.stages[wip.done]} · 지휘 1`, { type: 'legacyStage' });
-        return { title: `${c.name} (짓는 중 ${wip.done}/${c.stages.length})`, body: <p>{cardText(c)}</p>, actions: acts };
+        return withArt({ title: `${c.name} (짓는 중 ${wip.done}/${c.stages.length})`, body: <p>{cardText(c)}</p>, actions: acts }, c.id, 'legacy');
       }
       case 'pioneer': {
         const c = p.pioneer ? CARD_DEFS[p.pioneer] : null;
-        return { title: c?.name ?? '선구자', body: <p>{c ? cardText(c) : ''}</p>, actions: [] };
+        return withArt({ title: c?.name ?? '선구자', body: <p>{c ? cardText(c) : ''}</p>, actions: [] }, p.pioneer, 'pioneer');
       }
       case 'satMarket': {
         const id = game.satMarket[o.slot];
@@ -192,12 +194,12 @@ export function ColonyBoard({ player }: { player: PlayerState }) {
         if (!s) return { title: '위성', body: null, actions: [] };
         if (p.orbit.length < 2) add(`발사 — 에너지 ${s.cost} · 지휘 1`, { type: 'launch', slot: o.slot });
         else p.orbit.forEach((ob, i) => add(`발사 — 「${SATELLITE_DEFS[ob.id].name}」 대신 · 에너지 ${s.cost}`, { type: 'launch', slot: o.slot, replace: i }));
-        return { title: s.name, body: <p>궤도에 {s.timer}차례 · 시야 +1{modsText(s.mods) ? ` · ${modsText(s.mods)}` : ''}</p>, actions: acts };
+        return withArt({ title: s.name, body: <p>궤도에 {s.timer}차례 · 시야 +1{modsText(s.mods) ? ` · ${modsText(s.mods)}` : ''}</p>, actions: acts }, s.id, 'satellite');
       }
       case 'orbit': {
         const ob = p.orbit[o.index];
         const s = ob && SATELLITE_DEFS[ob.id];
-        return { title: s?.name ?? '위성', body: <p>남은 {ob?.timer}차례 · 시야 +1{s && modsText(s.mods) ? ` · ${modsText(s.mods)}` : ''}</p>, actions: [] };
+        return withArt({ title: s?.name ?? '위성', body: <p>남은 {ob?.timer}차례 · 시야 +1{s && modsText(s.mods) ? ` · ${modsText(s.mods)}` : ''}</p>, actions: [] }, s?.id, 'satellite');
       }
       case 'charter': {
         const f = o.field;
@@ -220,11 +222,11 @@ export function ColonyBoard({ player }: { player: PlayerState }) {
       }
       case 'patron': {
         const d = PATRON_DEFS[o.id];
-        return { title: d.name, body: <p>{modsText(d.mods)} · 본국 요구: {condText([d.demand])} (시대 전환 때 검사) · {d.points}점</p>, actions: [] };
+        return withArt({ title: d.name, body: <p>{modsText(d.mods)} · 본국 요구: {condText([d.demand])} (시대 전환 때 검사) · {d.points}점</p>, actions: [] }, d.id, 'patron');
       }
       case 'facility': {
         const f = FACILITY_DEFS[o.id];
-        return { title: f.name, body: <p>{modsText(f.mods)}</p>, actions: [] };
+        return withArt({ title: f.name, body: <p>{modsText(f.mods)}</p>, actions: [] }, f.id, 'workshop');
       }
       case 'doctrine':
         return {
@@ -374,46 +376,47 @@ export function ColonyBoard({ player }: { player: PlayerState }) {
       <div className={styles.cards}>
         <Slot label="선구자">
           {p.pioneer ? (
-            <CardFace frame="pioneer" width={72} title={CARD_DEFS[p.pioneer].name} onClick={() => setOpen({ k: 'pioneer' })} />
+            <CardFace frame="pioneer" width={72} title={CARD_DEFS[p.pioneer].name} art={{ id: p.pioneer, icon: 'pioneer' }} onClick={() => setOpen({ k: 'pioneer' })} />
           ) : (
             <Empty />
           )}
         </Slot>
         <Slot label={`유산 ${p.legacies.length}`}>
           {p.legacyWip ? (
-            <CardFace frame="legacy" width={72} title={CARD_DEFS[p.legacyWip.id].name} badge={`${p.legacyWip.done}`} onClick={() => setOpen({ k: 'legacy' })} />
+            <CardFace frame="legacy" width={72} title={CARD_DEFS[p.legacyWip.id].name} badge={`${p.legacyWip.done}`} art={{ id: p.legacyWip.id, icon: 'legacy' }} onClick={() => setOpen({ k: 'legacy' })} />
           ) : (
             <Empty />
           )}
           {p.legacies.map((id) => (
-            <CardFace key={id} frame="legacy" width={72} title={CARD_DEFS[id].name} badge="✓" />
+            <CardFace key={id} frame="legacy" width={72} title={CARD_DEFS[id].name} badge="✓" art={{ id, icon: 'legacy' }} />
           ))}
         </Slot>
         <Slot label={`보급 ${p.hand.length}`}>
           {p.hand.length === 0 && <Empty />}
           {p.hand.map((h, i) => (
-            <CardFace key={i} frame="supply" width={72} title={CARD_DEFS[h.id].name} dim={h.fresh} onClick={() => setOpen({ k: 'hand', index: i })} />
+            <CardFace key={i} frame="supply" width={72} title={CARD_DEFS[h.id].name} dim={h.fresh} art={{ id: h.id, icon: 'supply' }} onClick={() => setOpen({ k: 'hand', index: i })} />
           ))}
         </Slot>
         <Slot label="궤도">
           {p.orbit.length === 0 && <Empty />}
           {p.orbit.map((o, i) => (
-            <CardFace key={i} frame="satellite" width={72} title={SATELLITE_DEFS[o.id].name} badge={o.timer} onClick={() => setOpen({ k: 'orbit', index: i })} />
+            <CardFace key={i} frame="satellite" width={72} title={SATELLITE_DEFS[o.id].name} badge={o.timer} art={{ id: o.id, icon: 'satellite' }} onClick={() => setOpen({ k: 'orbit', index: i })} />
           ))}
         </Slot>
         {(p.patrons.length > 0 || mine) && (
           <Slot label="후원 계약">
             {p.patrons.length === 0 && <Empty />}
             {p.patrons.map((id) => (
-              <CardFace key={id} frame="patron" width={72} title={PATRON_DEFS[id].name} badge={PATRON_DEFS[id].points} onClick={() => setOpen({ k: 'patron', id })} />
+              <CardFace key={id} frame="patron" width={72} title={PATRON_DEFS[id].name} badge={PATRON_DEFS[id].points} art={{ id, icon: 'patron' }} onClick={() => setOpen({ k: 'patron', id })} />
             ))}
           </Slot>
         )}
         {p.facilities.length > 0 && (
           <Slot label="특수 시설">
             {p.facilities.map((id) => (
-              <button key={id} className={styles.chip} onClick={() => setOpen({ k: 'facility', id })}>
-                {FACILITY_DEFS[id].name}
+              <button key={id} className={styles.artTile} onClick={() => setOpen({ k: 'facility', id })}>
+                <CardArt id={id} icon="workshop" tone="var(--warn)" />
+                <span>{FACILITY_DEFS[id].name}</span>
               </button>
             ))}
           </Slot>
@@ -441,8 +444,11 @@ export function ColonyBoard({ player }: { player: PlayerState }) {
           <span className={styles.dim}>위성 발사</span>
           {game.satMarket.map((id, slot) =>
             id ? (
-              <button key={slot} className={styles.chip} onClick={() => setOpen({ k: 'satMarket', slot })}>
-                <Icon name="satellite" size={14} /> {SATELLITE_DEFS[id].name} <span className={styles.dim}>⚡{SATELLITE_DEFS[id].cost}</span>
+              <button key={slot} className={styles.artTile} onClick={() => setOpen({ k: 'satMarket', slot })}>
+                <CardArt id={id} icon="satellite" tone="var(--ark)" />
+                <span>
+                  {SATELLITE_DEFS[id].name} <b className={styles.cost}>⚡{SATELLITE_DEFS[id].cost}</b>
+                </span>
               </button>
             ) : null,
           )}
@@ -451,6 +457,7 @@ export function ColonyBoard({ player }: { player: PlayerState }) {
 
       {sheet && (
         <Sheet title={sheet.title} onClose={() => setOpen(null)} actions={sheet.actions}>
+          {sheet.art && <CardArt id={sheet.art} icon={sheet.artIcon} className={styles.banner} />}
           {sheet.body}
         </Sheet>
       )}

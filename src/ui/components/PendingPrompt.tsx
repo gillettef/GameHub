@@ -6,6 +6,8 @@ import { PATRON_LIMIT } from '../../core/data/constants';
 import { defenseValue } from '../../core/engine/derive';
 import { useGame } from '../useGame';
 import { condText, modsText, optionText, questSummary } from '../describe';
+import { CardArt } from './CardArt';
+import type { IconName } from './Icon';
 import styles from './PendingPrompt.module.css';
 
 export function PendingPrompt() {
@@ -19,11 +21,13 @@ export function PendingPrompt() {
   let title = '';
   let body: ReactNode = null;
   let options: { label: string; choice: number; tone?: string }[] = [];
+  let art: { id: string; icon: IconName } | null = null;
 
   switch (pd.kind) {
     case 'questReward': {
       const q = QUEST_DEFS[pd.questId];
       title = `「${q.name}」 보상 선택`;
+      art = { id: q.id, icon: 'quest' };
       body = <p>{questSummary(q)}</p>;
       if (q.kind === 'judge' || q.kind === 'contest') options = q.options.map((o, i) => ({ label: optionText(o), choice: i, tone: o.doctrine }));
       break;
@@ -31,6 +35,7 @@ export function PendingPrompt() {
     case 'redirect': {
       const q = QUEST_DEFS[pd.questId];
       title = `위협 「${q.name}」 — 유도할까요?`;
+      art = { id: q.id, icon: 'threat' };
       body = (
         <p>
           {questSummary(q)}
@@ -43,6 +48,7 @@ export function PendingPrompt() {
     case 'coexist': {
       const q = QUEST_DEFS[pd.questId];
       title = `「${q.name}」을 막았습니다`;
+      art = { id: q.id, icon: 'threat' };
       body = <p>처치하면 보상을 받고, 공존하면 다음 내 생산까지 안정도 −1 대신 공생 점수 +2·식량 +2(공생 단계 3이면 2배)를 받습니다.</p>;
       options = [
         { label: '처치', choice: 0 },
@@ -53,6 +59,7 @@ export function PendingPrompt() {
     case 'patron': {
       const d = PATRON_DEFS[pd.patronId];
       title = `후원 제안 「${d.name}」`;
+      art = { id: d.id, icon: 'patron' };
       body = (
         <p>
           {modsText(d.mods)} · 본국 요구: {condText([d.demand])} · {d.points}점
@@ -77,6 +84,7 @@ export function PendingPrompt() {
     <div className={styles.backdrop}>
       <section className={styles.box} role="dialog" aria-modal="true">
         <h3>{title}</h3>
+        {art && <CardArt id={art.id} icon={art.icon} className={styles.banner} />}
         {body}
         <div className={styles.options}>
           {options.map((o) => (

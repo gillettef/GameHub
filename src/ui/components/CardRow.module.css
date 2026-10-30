@@ -11,7 +11,8 @@
   flex-direction: column;
   align-items: stretch;
   gap: 2px;
-  padding: var(--space-1) var(--space-2) var(--space-2);
+  padding: 0 0 var(--space-1);
+  overflow: hidden;
   border-radius: var(--radius-sm);
   border: 1px solid var(--border);
   border-top: 3px solid var(--tone);
@@ -21,14 +22,21 @@
 .tile:active {
   transform: scale(0.97);
 }
+.tileArt {
+  width: 100%;
+}
 .tileHead {
   display: flex;
   align-items: center;
   gap: 4px;
   color: var(--tone);
   font-size: 12px;
+  padding: 2px var(--space-1) 0;
+  min-width: 0;
 }
 .tileName {
+  color: var(--text);
+  min-width: 0;
   font-size: 12px;
   font-weight: 700;
   line-height: 1.2;
@@ -52,8 +60,17 @@
 }
 .tile .cost {
   position: absolute;
-  right: var(--space-1);
-  top: var(--space-1);
+  right: 4px;
+  top: 4px;
+  padding: 2px 3px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--bg) 70%, transparent);
+  height: auto;
+}
+.banner {
+  width: 100%;
+  border-radius: var(--radius-sm);
+  margin-bottom: var(--space-2);
 }
 .cost {
   display: flex;

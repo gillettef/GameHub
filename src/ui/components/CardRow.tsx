@@ -6,6 +6,7 @@ import { DOCTRINE_NAMES, slotCost } from '../../core/data/constants';
 import { legacyTakeCost } from '../../core/engine/actions';
 import { useGame } from '../useGame';
 import { Icon } from './Icon';
+import { CardArt } from './CardArt';
 import { Section } from './Section';
 import { Sheet } from './Sheet';
 import { instantText, modsText } from '../describe';
@@ -50,12 +51,11 @@ export function CardRow() {
               onClick={() => setOpen(slot)}
               aria-label={`${c.name}, ${CARD_TYPE_NAMES[c.type]}, 지휘 ${cost}`}
             >
+              <CardArt id={c.id} icon={c.type} tone={TONE[c.type]} className={styles.tileArt} />
               <span className={styles.tileHead}>
-                <Icon name={c.type} size={14} />
-                {CARD_TYPE_NAMES[c.type]}
+                <Icon name={c.type} size={12} />
+                <span className={styles.tileName}>{c.name}</span>
               </span>
-              <span className={styles.tileName}>{c.name}</span>
-              <span className={styles.tileBody}>{cardText(c)}</span>
               <span className={styles.cost} aria-hidden="true">
                 {Array.from({ length: cost }, (_, i) => (
                   <span key={i} className={styles.token} />
@@ -77,6 +77,7 @@ export function CardRow() {
             },
           ]}
         >
+          <CardArt id={card.id} icon={card.type} tone={TONE[card.type]} className={styles.banner} arch={card.type !== 'supply'} />
           <p className={styles.dim}>
             {CARD_TYPE_NAMES[card.type]} · {card.ring}고리
           </p>

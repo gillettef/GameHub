@@ -78,3 +78,12 @@ button.card:active {
   -webkit-line-clamp: 4;
   -webkit-box-orient: vertical;
 }
+/* 그림 창: 프레임 좌표 x14–236, y66–188 (250×350 기준) */
+.window {
+  position: absolute !important;
+  left: 5.6%;
+  width: 88.8%;
+  top: 18.86%;
+  height: 34.86%;
+  aspect-ratio: auto !important;
+}

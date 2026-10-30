@@ -7,7 +7,8 @@ import { meets, playerMods } from '../../core/engine/derive';
 import { HIDDEN } from '../../core/mask';
 import { useGame } from '../useGame';
 import { CardFace, type FrameName } from './CardFace';
-import { Icon } from './Icon';
+import { Icon, type IconName } from './Icon';
+import { CardArt } from './CardArt';
 import { Section } from './Section';
 import { Sheet, type SheetAction } from './Sheet';
 import { QUEST_KIND_NAMES, optionText, questSummary } from '../describe';
@@ -22,9 +23,14 @@ const FRAME: Record<QuestDef['kind'], FrameName> = {
   finale: 'quest-finale',
 };
 
+const ICON: Record<QuestDef['kind'], IconName> = { judge: 'quest', threat: 'threat', contest: 'workshop', patron: 'patron', fruition: 'legacy', finale: 'legacy' };
+const TONE: Record<QuestDef['kind'], string> = { judge: 'var(--res-sci)', threat: 'var(--danger)', contest: 'var(--warn)', patron: 'var(--ring2)', fruition: 'var(--ring3)', finale: 'var(--ring3)' };
+export const questArt = (q: QuestDef) => ({ id: q.id, icon: q.kind === 'fruition' ? q.doctrine : ICON[q.kind], tone: TONE[q.kind] });
+
 export function QuestFace({ q, width, onClick }: { q: QuestDef; width: number; onClick?: () => void }) {
   return (
     <CardFace
+      art={questArt(q)}
       frame={FRAME[q.kind]}
       width={width}
       title={q.name}
@@ -94,6 +100,7 @@ export function QuestTrack() {
       )}
       {q && open && (
         <Sheet title={q.name} onClose={() => setOpen(null)} actions={actions}>
+          <CardArt {...questArt(q)} className={styles.banner} />
           <p className={styles.kind}>
             {QUEST_KIND_NAMES[q.kind]}
             {open.slot === null ? ' · 위성으로 미리 본 카드' : ''}
