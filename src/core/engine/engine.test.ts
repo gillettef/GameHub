@@ -280,7 +280,7 @@ describe('가림', async () => {
     expect(m.questFuture[0]).toBe(s.questFuture[0]);
     expect(m.questFuture[1]).toBe(HIDDEN);
     expect(m.cardDecks[1].every((x) => x === HIDDEN)).toBe(true);
-    expect(m.rngState).toBe(0);
+    expect(m.rngState).toEqual([0, 0, 0, 0]);
     expect(maskFor(s, 1).questFuture[0]).toBe(HIDDEN);
     expect(m.endBundle.filter((x) => x === HIDDEN)).toHaveLength(1);
   });

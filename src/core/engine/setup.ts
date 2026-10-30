@@ -59,7 +59,8 @@ function newPlayer(id: number, seat: SeatConfig): PlayerState {
   };
 }
 
-export function createGame(seed: number, seats: SeatConfig[]): GameState {
+/** seed: 숫자 하나(로컬·테스트) 또는 32비트 단어 4개(서버, 역산 방지) */
+export function createGame(seed: number | number[], seats: SeatConfig[]): GameState {
   if (seats.length < MIN_PLAYERS || seats.length > MAX_PLAYERS) throw new Error('인원은 2~4명');
   const rng = createRng(seed);
   // RNG 순서: 방향 순서 → 곁가지 → 임무 → 카드 덱 → 퀘스트 덱 → 공통 종료 → 후원 계약 → 위성 → 시작 플레이어
@@ -84,8 +85,9 @@ export function createGame(seed: number, seats: SeatConfig[]): GameState {
 
   const state: GameState = {
     version: 1,
-    seed,
+    seed: Array.isArray(seed) ? 0 : seed,
     rngState: rng.state(),
+    ver: 0,
     players,
     era: 1,
     round: 1,

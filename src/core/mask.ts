@@ -5,6 +5,7 @@ import { playerMods } from './engine/derive';
 import { clone } from './engine/util';
 
 export const HIDDEN = '?';
+export const LOG_SEND = 200;
 
 const hideAll = (ids: string[]) => ids.map(() => HIDDEN);
 
@@ -12,10 +13,11 @@ const hideAll = (ids: string[]) => ids.map(() => HIDDEN);
 export function maskFor(state: GameState, viewer: number | null): GameState {
   const s = clone(state);
   s.seed = 0;
-  s.rngState = 0;
-  for (const p of s.players) {
-    if (p.id !== viewer) p.missions = hideAll(p.missions);
-  }
+  s.rngState = [0, 0, 0, 0];
+  // 기록은 최근 것만 보낸다(전송량 제한)
+  if (s.log.length > LOG_SEND) s.log = s.log.slice(-LOG_SEND);
+  // 게임이 끝나면 임무를 모두 공개한다
+  if (!s.gameOver) for (const p of s.players) if (p.id !== viewer) p.missions = hideAll(p.missions);
   s.pending = s.pending.map((pd) => (pd.kind === 'mission' && pd.player !== viewer ? { ...pd, options: hideAll(pd.options) } : pd));
   for (const r of [1, 2, 3] as Ring[]) {
     s.cardDecks[r] = hideAll(s.cardDecks[r]);
@@ -24,7 +26,8 @@ export function maskFor(state: GameState, viewer: number | null): GameState {
   }
   s.satDeck = hideAll(s.satDeck);
   s.missionDeck = hideAll(s.missionDeck);
-  const sight = viewer === null ? 0 : playerMods(state.players[viewer]).sight;
+  const vp = viewer === null ? undefined : state.players[viewer];
+  const sight = vp ? playerMods(vp).sight : 0;
   s.questFuture = s.questFuture.map((id, i) => (i < sight ? id : HIDDEN));
   if (!s.gameOver) s.endBundle = s.endBundle.map((id) => (QUEST_DEFS[id]?.kind === 'fruition' ? id : HIDDEN));
   return s;

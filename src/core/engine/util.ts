@@ -1,5 +1,5 @@
 // 엔진 공용 도우미: 수정치 합산, 자원 연산, 로그, RNG 진행
-import { createRng, type Rng } from '../rng';
+import { restoreRng, type Rng } from '../rng';
 import type { GameState, Mods, Res } from '../types';
 import { RES_KEYS } from '../types';
 
@@ -54,7 +54,7 @@ export function log(state: GameState, player: number | null, text: string): void
 
 /** 상태의 시드 RNG 로 작업한 뒤 rngState 를 갱신한다 */
 export function withRng<T>(state: GameState, fn: (rng: Rng) => T): T {
-  const rng = createRng(state.rngState);
+  const rng = restoreRng(state.rngState);
   const out = fn(rng);
   state.rngState = rng.state();
   return out;

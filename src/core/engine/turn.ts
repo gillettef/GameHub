@@ -26,6 +26,7 @@ export function applyAction(state: GameState, actor: number, action: Action): Ac
     const err = respond(s, action.choice);
     if (err) return { state, error: err };
     runSteps(s);
+    s.ver++;
     return { state: s };
   }
   if (action.type === 'respond') return { state, error: '대기 중인 결정 없음' };
@@ -54,6 +55,7 @@ export function applyAction(state: GameState, actor: number, action: Action): Ac
   }
   if (err) return { state, error: err };
   runSteps(s);
+  s.ver++;
   return { state: s };
 }
 

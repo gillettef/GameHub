@@ -297,7 +297,9 @@ export type Phase = 'external' | 'actions';
 export interface GameState {
   version: 1;
   seed: number;
-  rngState: number;
+  rngState: [number, number, number, number];
+  /** 상태 버전: 행동이 적용될 때마다 1 증가(온라인에서 오래된 화면 기준 행동 거절) */
+  ver: number;
   players: PlayerState[];
   era: Era;
   round: number;
