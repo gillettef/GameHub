@@ -62,7 +62,8 @@ export function QuestTrack() {
       }),
     );
   }
-  const shown = Math.max(sight, 0) + 3;
+  // 한 줄(6장)에 들어가는 만큼만 — 좌우 스크롤 없음
+  const shown = Math.min(6, Math.max(sight, 0) + 3);
 
   return (
     <Section

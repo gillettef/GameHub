@@ -1,23 +1,22 @@
 .row {
-  display: flex;
-  gap: var(--space-2);
-  overflow-x: auto;
-  overscroll-behavior-x: contain;
-  scroll-snap-type: x proximity;
-  touch-action: pan-x manipulation;
-  padding-bottom: var(--space-1);
-  margin: 0 calc(-1 * var(--space-3));
-  padding-left: var(--space-3);
-  padding-right: var(--space-3);
-  scroll-padding-left: var(--space-3);
+  display: grid;
+  grid-template-columns: auto repeat(3, minmax(0, 1fr));
+  align-items: center;
+  column-gap: var(--space-2);
+  row-gap: var(--space-2);
 }
-.slot {
-  flex: none;
+.tier {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--space-1);
-  scroll-snap-align: start;
+  gap: 3px;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+.slot {
+  display: flex;
+  justify-content: center;
+  min-width: 0;
 }
 .empty {
   aspect-ratio: 5 / 7;
@@ -31,8 +30,8 @@
 }
 .cost {
   display: flex;
+  flex-direction: column;
   gap: 3px;
-  height: 12px;
 }
 .token {
   width: 10px;

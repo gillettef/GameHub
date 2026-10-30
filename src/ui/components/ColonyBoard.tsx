@@ -442,8 +442,9 @@ export function ColonyBoard({ player }: { player: PlayerState }) {
 
       {/* 위성 시장(내 보드에서만) */}
       {mine && (
-        <div className={styles.market}>
-          <span className={styles.dim}>위성 발사</span>
+        <>
+          <span className={`${styles.dim} ${styles.marketLabel}`}>위성 발사</span>
+          <div className={styles.market}>
           {game.satMarket.map((id, slot) =>
             id ? (
               <button key={slot} className={styles.artTile} onClick={() => setOpen({ k: 'satMarket', slot })}>
@@ -455,6 +456,7 @@ export function ColonyBoard({ player }: { player: PlayerState }) {
             ) : null,
           )}
         </div>
+        </>
       )}
 
       {sheet && (

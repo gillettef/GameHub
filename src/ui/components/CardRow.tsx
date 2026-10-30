@@ -45,7 +45,7 @@ export function CardRow() {
         {game.cardRow.map((id, slot) => {
           const c = id ? CARD_DEFS[id] : null;
           const cost = c ? costOf(slot, c) : slotCost(slot);
-          return (
+          const cell = (
             <div key={slot} className={styles.slot}>
               {c ? (
                 <div key={id} className="anim-card-in" style={{ '--delay': `${slot * 30}ms` } as CSSProperties}>
@@ -53,7 +53,7 @@ export function CardRow() {
                     frame={c.type}
                     width={sizes.row}
                     title={c.name}
-                    badge={cost}
+                    badge={c.type === 'legacy' && cost !== slotCost(slot) ? cost : undefined}
                     art={{ id: c.id, icon: c.type, tone: TONE[c.type] }}
                     onClick={() => setOpen(slot)}
                     label={`${c.name}, ${CARD_TYPE_NAMES[c.type]}, 지휘 ${cost}`}
@@ -62,13 +62,22 @@ export function CardRow() {
               ) : (
                 <div className={styles.empty} style={{ width: sizes.row }} />
               )}
-              <span className={styles.cost} aria-hidden="true">
-                {Array.from({ length: cost }, (_, i) => (
+            </div>
+          );
+          // 줄 머리: 이 줄 카드의 지휘 비용(1·2·3)
+          if (slot % 3 !== 0) return cell;
+          const tierCost = slotCost(slot);
+          return [
+            <div key={`t${slot}`} className={styles.tier} aria-label={`지휘 ${tierCost}`}>
+              <span className={styles.cost}>
+                {Array.from({ length: tierCost }, (_, i) => (
                   <span key={i} className={styles.token} />
                 ))}
               </span>
-            </div>
-          );
+              지휘 {tierCost}
+            </div>,
+            cell,
+          ];
         })}
       </div>
       {card && open !== null && (

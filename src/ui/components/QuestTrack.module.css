@@ -24,12 +24,11 @@
   font-size: 12px;
 }
 .future {
-  touch-action: pan-x manipulation;
   display: flex;
+  flex-wrap: wrap;
   gap: var(--space-1);
   align-items: center;
   margin-top: var(--space-2);
-  overflow-x: auto;
   padding-bottom: 2px;
 }
 .more {
