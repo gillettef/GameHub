@@ -1,0 +1,70 @@
+/*
+ * 네오테라 디자인 토큰 — 행성 밤하늘 다크 테마.
+ * 컴포넌트 CSS 는 HEX 를 직접 쓰지 말고 이 변수만 쓴다.
+ * 대비 기준(WCAG AA): --text / --text-dim 은 --bg·--surface·--surface-2 위에서 4.5:1 이상.
+ * 노선·고리·자원 색은 --surface 위에서 글자·아이콘으로 써도 4.5:1 이상이 되도록 골랐다.
+ */
+:root {
+  color-scheme: dark;
+
+  /* 바탕 — 남색 밤하늘 */
+  --bg: #0a0f1f;
+  --bg-elev: #10172b;
+  --surface: #161f38;
+  --surface-2: #1f2a48;
+  --border: #33406a;
+
+  /* 글자 */
+  --text: #e9edf8;
+  --text-dim: #a6afcb;
+
+  /* 강조 — 별빛 호박색. 버튼 바탕으로 쓰면 글자는 --accent-contrast */
+  --accent: #f4c56a;
+  --accent-contrast: #1b1305;
+
+  /* 상태 */
+  --danger: #ff7a7a;
+  --ok: #5fd88f;
+  --warn: #ffb550;
+
+  /* 노선 — 방주(청백 금속) · 공생(생물발광 녹청) · 합성(자홍 회로) */
+  --ark: #9cc2ff;
+  --symbiont: #3fe3b8;
+  --synth: #ff6cb0;
+  /* 노선 보조색(장식·그라데이션 끝점) */
+  --ark-2: #dfe9ff;
+  --symbiont-2: #b6ff7a;
+  --synth-2: #ff9a4a;
+
+  /* 테크 웹 고리 — 은회색 → 보라 → 금색 (밝기 차이도 둠) */
+  --ring1: #a9b6d6;
+  --ring2: #b996ff;
+  --ring3: #ffd67a;
+
+  /* 자원 */
+  --res-food: #a3e06c;   /* 식량 — 연두 */
+  --res-prod: #e7a768;   /* 생산 — 청동 */
+  --res-energy: #ffe36b; /* 에너지 — 노랑 */
+  --res-sci: #74bdff;    /* 과학 — 하늘 */
+  --res-culture: #e595ff;/* 문화 — 난초 */
+
+  /* 모양 */
+  --radius: 14px;
+  --radius-sm: 8px;
+
+  /* 간격 (4px 배수) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+
+  /* 글꼴 — 웹폰트 없이 시스템 폰트(한글 포함) */
+  --font: system-ui, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo",
+    "Malgun Gothic", "맑은 고딕", "Noto Sans KR", "Noto Sans CJK KR", "Segoe UI",
+    Roboto, sans-serif;
+  --font-display: "Apple SD Gothic Neo", "Malgun Gothic", "맑은 고딕",
+    "Noto Sans KR", "Noto Sans CJK KR", system-ui, -apple-system, sans-serif;
+
+  /* 그림자 — 어두운 바탕 위 살짝 뜬 패널 */
+  --shadow: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 6px 18px rgba(0, 0, 0, 0.45);
+}

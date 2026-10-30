@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-label="공생 노선 문장">
+  <defs>
+    <radialGradient id="ntSymCore" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#b6ff7a"/>
+      <stop offset="0.5" stop-color="#3fe3b8"/>
+      <stop offset="1" stop-color="#3fe3b8" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="ntSymBg" cx="0.5" cy="0.45" r="0.55">
+      <stop offset="0" stop-color="#123a3a"/>
+      <stop offset="1" stop-color="#0a0f1f"/>
+    </radialGradient>
+  </defs>
+  <!-- 유기적 둥근 테 -->
+  <path d="M60 5c22 0 33 9 44 22s12 30 8 44-15 33-36 40-39 4-52-8S5 72 7 54 20 15 34 9 48 5 60 5z" fill="url(#ntSymBg)" stroke="#3fe3b8" stroke-width="3"/>
+  <!-- 생물발광 중심 -->
+  <circle cx="60" cy="60" r="30" fill="url(#ntSymCore)" opacity=".45"/>
+  <!-- 얽힌 덩굴: 개척민(곧은 줄기)과 토착 생물(촉수)이 감김 -->
+  <path d="M60 104V58" stroke="#b6ff7a" stroke-width="4" stroke-linecap="round"/>
+  <path d="M60 96c-16-6-24-18-20-30s16-14 22-6-2 18-10 14" fill="none" stroke="#3fe3b8" stroke-width="3.5" stroke-linecap="round"/>
+  <path d="M60 86c16-6 26-16 24-30s-14-18-22-10 0 18 8 14" fill="none" stroke="#3fe3b8" stroke-width="3.5" stroke-linecap="round"/>
+  <!-- 꼭대기 잎 -->
+  <path d="M60 58c-3-12 0-24 8-32 5 10 3 24-8 32z" fill="#b6ff7a"/>
+  <path d="M60 60c-7-8-18-10-26-6 6 9 17 11 26 6z" fill="#3fe3b8"/>
+  <!-- 포자 빛점 -->
+  <g fill="#b6ffe0">
+    <circle cx="30" cy="34" r="2.5"/><circle cx="88" cy="30" r="2"/><circle cx="94" cy="78" r="2.6"/>
+    <circle cx="24" cy="76" r="1.8"/><circle cx="76" cy="100" r="1.6"/><circle cx="40" cy="98" r="2"/>
+  </g>
+  <g fill="#3fe3b8" opacity=".5">
+    <circle cx="30" cy="34" r="5"/><circle cx="94" cy="78" r="5"/>
+  </g>
+</svg>

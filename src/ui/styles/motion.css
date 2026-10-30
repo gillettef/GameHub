@@ -1,0 +1,112 @@
+/*
+ * 네오테라 모션 — transform·opacity 만 움직여 모바일 합성 레이어에서 처리한다.
+ * 길이·지연은 변수로 덮어쓸 수 있다: style="--delay: 80ms".
+ * prefers-reduced-motion: reduce 에서는 모두 끈다.
+ */
+
+/* 카드 줄 등장: 아래에서 살짝 떠오르며 나타남. 칸마다 --delay 로 순차 등장 */
+@keyframes nt-card-in {
+  from { opacity: 0; transform: translateY(14px) scale(0.96); }
+  to   { opacity: 1; transform: none; }
+}
+.anim-card-in {
+  animation: nt-card-in var(--dur, 320ms) cubic-bezier(0.2, 0.8, 0.2, 1) var(--delay, 0ms) both;
+}
+
+/* 퀘스트 공개 뒤집기: 부모에 perspective, 요소는 앞면. 뒷면에서 앞면으로 돌아옴 */
+@keyframes nt-flip {
+  0%   { transform: perspective(700px) rotateY(180deg); opacity: 0.6; }
+  50%  { transform: perspective(700px) rotateY(90deg);  opacity: 0.8; }
+  100% { transform: perspective(700px) rotateY(0deg);   opacity: 1; }
+}
+.anim-flip {
+  backface-visibility: hidden;
+  animation: nt-flip var(--dur, 520ms) cubic-bezier(0.3, 0.7, 0.2, 1) var(--delay, 0ms) both;
+}
+
+/* 위성 공전: 궤도 중심에 놓은 래퍼를 회전. 위성 자체는 래퍼 안에서 반지름만큼 떨어뜨린다 */
+@keyframes nt-orbit {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+.anim-orbit {
+  animation: nt-orbit var(--dur, 14s) linear infinite;
+  transform-origin: var(--origin, 50% 50%);
+}
+
+/* 연구 가능 노드 맥동: 크기와 투명도가 은은하게 숨쉼. SVG 노드에는 transform-box 필요 */
+@keyframes nt-pulse {
+  0%, 100% { transform: scale(1);    opacity: 1; }
+  50%      { transform: scale(1.08); opacity: 0.72; }
+}
+.anim-pulse {
+  animation: nt-pulse var(--dur, 1.8s) ease-in-out infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+/* 습격 피격 흔들림 */
+@keyframes nt-hit {
+  0%, 100% { transform: translateX(0); }
+  15% { transform: translateX(-7px) rotate(-1deg); }
+  30% { transform: translateX(6px) rotate(1deg); }
+  45% { transform: translateX(-5px); }
+  60% { transform: translateX(4px); }
+  75% { transform: translateX(-2px); }
+}
+.anim-hit {
+  animation: nt-hit var(--dur, 420ms) ease-out both;
+}
+
+/* 시대 전환 오버레이: 나타나 머문 뒤 사라짐(전체 2.4s). 끝나면 pointer-events 없음 */
+@keyframes nt-era {
+  0%   { opacity: 0; transform: scale(1.04); }
+  18%  { opacity: 1; transform: scale(1); }
+  78%  { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(0.98); }
+}
+.anim-era {
+  animation: nt-era var(--dur, 2400ms) ease-in-out var(--delay, 0ms) both;
+  pointer-events: none;
+}
+
+/* 획득 반짝임: 커졌다 돌아오며 밝게 빛남(의사 요소 광채는 opacity 만 변함) */
+@keyframes nt-glow {
+  0%   { transform: scale(1); }
+  35%  { transform: scale(1.06); }
+  100% { transform: scale(1); }
+}
+@keyframes nt-glow-halo {
+  0%   { opacity: 0; }
+  35%  { opacity: 0.9; }
+  100% { opacity: 0; }
+}
+.anim-glow {
+  position: relative;
+  animation: nt-glow var(--dur, 700ms) ease-out both;
+}
+.anim-glow::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border-radius: inherit;
+  box-shadow: 0 0 0 2px var(--accent), 0 0 18px 4px var(--accent);
+  opacity: 0;
+  pointer-events: none;
+  animation: nt-glow-halo var(--dur, 700ms) ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .anim-card-in,
+  .anim-flip,
+  .anim-orbit,
+  .anim-pulse,
+  .anim-hit,
+  .anim-era,
+  .anim-glow,
+  .anim-glow::after {
+    animation: none !important;
+  }
+  /* 시대 전환 오버레이는 움직임 없이 보이기만 한다(닫기는 코드가 처리) */
+  .anim-era { opacity: 1; }
+}

@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 120" role="img" aria-label="1시대 — 착륙">
+  <defs>
+    <linearGradient id="ntE1Sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0a0f1f"/>
+      <stop offset="0.7" stop-color="#1a2440"/>
+      <stop offset="1" stop-color="#2c3a5e"/>
+    </linearGradient>
+    <linearGradient id="ntE1Plume" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffe36b" stop-opacity=".9"/>
+      <stop offset="1" stop-color="#e7a768" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <rect width="360" height="120" rx="12" fill="url(#ntE1Sky)"/>
+  <g fill="#e9edf8" opacity=".7">
+    <circle cx="30" cy="16" r=".9"/><circle cx="90" cy="30" r=".7"/><circle cx="140" cy="12" r=".8"/>
+    <circle cx="220" cy="22" r=".7"/><circle cx="268" cy="10" r=".9"/><circle cx="330" cy="26" r=".8"/>
+    <circle cx="190" cy="40" r=".6"/><circle cx="60" cy="48" r=".6"/>
+  </g>
+  <!-- 착륙선과 분사 -->
+  <path d="M58 20h12l4 22H54z" fill="#a9b6d6"/>
+  <path d="M54 42h20l4 8H50z" fill="#dfe9ff"/>
+  <path d="M64 12l6 8H58z" fill="#dfe9ff"/>
+  <path d="M52 50l-6 10M76 50l6 10" stroke="#a9b6d6" stroke-width="2"/>
+  <path d="M56 50h16l6 44H50z" fill="url(#ntE1Plume)"/>
+  <!-- 지평선 -->
+  <path d="M0 96c40-8 70-6 110-10s70-6 120 0 80 8 130 2v32H0z" fill="#121a30"/>
+  <path d="M0 104c50-6 100-2 150-4s120-8 210-2v22H0z" fill="#0a0f1f"/>
+  <!-- 오른쪽 바위산 -->
+  <path d="M286 98l18-26 10 12 12-18 20 32z" fill="#1b2542"/>
+  <!-- 착지 깃발 -->
+  <path d="M314 98V78" stroke="#a9b6d6" stroke-width="2"/><path d="M314 78h12l-3 4 3 4h-12z" fill="#f4c56a"/>
+  <!-- 고리 1 표식: 은회 띠 -->
+  <rect x="0.75" y="0.75" width="358.5" height="118.5" rx="11.5" fill="none" stroke="#a9b6d6" stroke-width="1.5" stroke-opacity=".7"/>
+</svg>
