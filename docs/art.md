@@ -109,5 +109,5 @@ body {
 ## 미완성·타협
 
 - 워드마크는 글꼴 없이 직선·원 획으로 그렸다(어떤 기기에서도 같은 모양). 정교한 서체 로고는 아니다.
-- 카드 프레임의 그림 창은 비어 있다. 카드별 일러스트는 없고, 아이콘이나 문장을 크게 넣는 것을 권장한다.
+- 카드별 일러스트는 `src/ui/assets/art/<카드 id>.svg` 134장(규칙은 `docs/art-cards.md`). 묶음별 Claude Design 캔버스: 선구자·유산 https://claude.ai/artifact/5SKiNZWKm9qxUPQGZtGGNN · 보급 https://claude.ai/artifact/AZsnAoY88Ekh7RvPQE93Hf · 1·2시대 퀘스트 https://claude.ai/artifact/VwsHSrJ68MVFDsB9oiqqWU · 3시대·결실·후원 계약 https://claude.ai/artifact/Xg7SY9mAJWDzcGnBebnEpH · 위성·특수 시설 https://claude.ai/artifact/RpCD7cKqhpVY3aKrZUmxXc
 - 아이콘 32종은 1.8px 획 한 벌만 있다(채움형 변형 없음).
