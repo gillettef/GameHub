@@ -6,8 +6,8 @@ import { DOCTRINE_NAMES, slotCost } from '../../core/data/constants';
 import { legacyTakeCost } from '../../core/engine/actions';
 import { useGame } from '../useGame';
 import { Icon } from './Icon';
-import { CardArt } from './CardArt';
 import { CardFace } from './CardFace';
+import { CardZoom } from './CardZoom';
 import { useCardSizes } from '../useCardSizes';
 import { Section } from './Section';
 import { Sheet } from './Sheet';
@@ -51,16 +51,17 @@ export function CardRow() {
                 <div key={id} className="anim-card-in" style={{ '--delay': `${slot * 30}ms` } as CSSProperties}>
                   <CardFace
                     frame={c.type}
-                    width={sizes.row}
+                    width={sizes.card}
                     title={c.name}
                     badge={c.type === 'legacy' && cost !== slotCost(slot) ? cost : undefined}
                     art={{ id: c.id, icon: c.type, tone: TONE[c.type] }}
                     onClick={() => setOpen(slot)}
+                    tip={`${CARD_TYPE_NAMES[c.type]} · 지휘 ${cost}\n${cardText(c)}`}
                     label={`${c.name}, ${CARD_TYPE_NAMES[c.type]}, 지휘 ${cost}`}
                   />
                 </div>
               ) : (
-                <div className={styles.empty} style={{ width: sizes.row }} />
+                <div className={styles.empty} style={{ width: sizes.card }} />
               )}
             </div>
           );
@@ -68,7 +69,7 @@ export function CardRow() {
           if (slot % 3 !== 0) return cell;
           const tierCost = slotCost(slot);
           return [
-            <div key={`t${slot}`} className={styles.tier} aria-label={`지휘 ${tierCost}`}>
+            <div key={`t${slot}`} className={styles.tier} aria-label={`지휘 ${tierCost}`} data-tip={`지휘 ${tierCost}`} data-tip-body={`이 줄의 카드는 가져올 때 지휘 행동 ${tierCost}개가 듭니다(유산은 완성한 유산 수만큼 +1).`}>
               <span className={styles.cost}>
                 {Array.from({ length: tierCost }, (_, i) => (
                   <span key={i} className={styles.token} />
@@ -92,7 +93,7 @@ export function CardRow() {
             },
           ]}
         >
-          <CardArt id={card.id} icon={card.type} tone={TONE[card.type]} className={styles.banner} arch={card.type !== 'supply'} />
+          <CardZoom frame={card.type} title={card.name} badge={costOf(open, card)} art={{ id: card.id, icon: card.type, tone: TONE[card.type] }} body={cardText(card)} />
           <p className={styles.dim}>
             {CARD_TYPE_NAMES[card.type]} · {card.ring}고리
           </p>

@@ -8,7 +8,7 @@ import { HIDDEN } from '../../core/mask';
 import { useGame } from '../useGame';
 import { CardFace, type FrameName } from './CardFace';
 import { Icon, type IconName } from './Icon';
-import { CardArt } from './CardArt';
+import { CardZoom } from './CardZoom';
 import { useCardSizes } from '../useCardSizes';
 import { Section } from './Section';
 import { Sheet, type SheetAction } from './Sheet';
@@ -31,6 +31,7 @@ export const questArt = (q: QuestDef) => ({ id: q.id, icon: q.kind === 'fruition
 export function QuestFace({ q, width, onClick }: { q: QuestDef; width: number; onClick?: () => void }) {
   return (
     <CardFace
+      tip={`${QUEST_KIND_NAMES[q.kind]}\n${questSummary(q)}`}
       art={questArt(q)}
       frame={FRAME[q.kind]}
       width={width}
@@ -62,8 +63,7 @@ export function QuestTrack() {
       }),
     );
   }
-  // 한 줄(6장)에 들어가는 만큼만 — 좌우 스크롤 없음
-  const shown = Math.min(6, Math.max(sight, 0) + 3);
+  const seen = future.slice(0, Math.max(0, sight));
 
   return (
     <Section
@@ -80,10 +80,10 @@ export function QuestTrack() {
             <span className={styles.slotLabel}>{slot === 0 ? '칸 1 · 임박' : '칸 2 · 다음'}</span>
             {id ? (
               <div key={id} className="anim-flip">
-                <QuestFace q={QUEST_DEFS[id]} width={sizes.slot} onClick={() => setOpen({ id, slot })} />
+                <QuestFace q={QUEST_DEFS[id]} width={sizes.card} onClick={() => setOpen({ id, slot })} />
               </div>
             ) : (
-              <div className={styles.empty} style={{ width: sizes.slot }}>
+              <div className={styles.empty} style={{ width: sizes.card }}>
                 비어 있음
               </div>
             )}
@@ -91,21 +91,22 @@ export function QuestTrack() {
         ))}
       </div>
       <div className={styles.future} aria-label="미래 퀘스트 더미">
-        {future.slice(0, shown).map((id, i) =>
-          id !== HIDDEN && i < sight ? (
-            <QuestFace key={i} q={QUEST_DEFS[id]} width={sizes.future} onClick={() => setOpen({ id, slot: null })} />
-          ) : (
-            <CardFace key={i} frame="quest-back" width={sizes.future} label="뒷면 퀘스트" />
-          ),
+        {seen.map((id, i) =>
+          id !== HIDDEN ? <QuestFace key={i} q={QUEST_DEFS[id]} width={sizes.card} onClick={() => setOpen({ id, slot: null })} /> : null,
         )}
-        {future.length > shown && <span className={styles.more}>+{future.length - shown}</span>}
+        {future.length > seen.length && (
+          <div className={styles.deck} data-tip="미래 퀘스트 더미" data-tip-body={`뒷면 ${future.length - seen.length}장. 위성을 띄우면 위에서부터 1장씩 미리 볼 수 있습니다.`}>
+            <CardFace frame="quest-back" width={sizes.card} label={`뒷면 퀘스트 ${future.length - seen.length}장`} />
+            <span className={styles.deckCount}>{future.length - seen.length}</span>
+          </div>
+        )}
       </div>
       {game.era >= 4 && (
         <p className={styles.note}>종료 묶음: 결실 3장(방주·공생·합성) + 비공개 종료 기록 1장. 결실 퀘스트가 칸 1에 들어오면 그 라운드가 마지막입니다.</p>
       )}
       {q && open && (
         <Sheet title={q.name} onClose={() => setOpen(null)} actions={actions}>
-          <CardArt {...questArt(q)} className={styles.banner} />
+          <CardZoom frame={FRAME[q.kind]} title={q.name} badge={q.kind === 'threat' ? q.power : undefined} art={questArt(q)} body={questSummary(q)} />
           <p className={styles.kind}>
             {QUEST_KIND_NAMES[q.kind]}
             {open.slot === null ? ' · 위성으로 미리 본 카드' : ''}

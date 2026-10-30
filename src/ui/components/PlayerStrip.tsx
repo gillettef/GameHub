@@ -41,6 +41,8 @@ export function PlayerStrip({ onMenu, onLog }: { onMenu: () => void; onLog: () =
               className={`${styles.chip} ${p.id === viewing ? styles.viewing : ''} ${p.id === actor ? styles.turn : ''}`}
               onClick={() => set({ viewing: p.id })}
               aria-label={`${p.name} 보드 보기`}
+              data-tip={p.name}
+              data-tip-body={`문화 ${p.res.culture} · 방어값 ${defenseValue(p)}\n${DOCTRINES.map((d) => `${DOCTRINE_NAMES[d]} ${p.doctrine[d]}`).join(' · ')}${p.id === game.startPlayer ? '\n① 시작 플레이어' : ''}\n누르면 이 사람의 보드를 봅니다.`}
             >
               <span className={styles.name}>
                 {p.id === game.startPlayer && <span className={styles.first} title="시작 플레이어">①</span>}

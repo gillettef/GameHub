@@ -60,11 +60,15 @@ export function ActionBar({ onResults }: { onResults: () => void }) {
         </div>
         {external ? (
           <div className={styles.ext}>
-            <button onClick={() => setSheet('raid')}>습격</button>
+            <button onClick={() => setSheet('raid')} data-tip="습격" data-tip-body="방위 행동 2. 공격값이 상대 방어값보다 크면 자원을 약탈합니다.">
+              습격
+            </button>
             <button onClick={() => setSheet('conflict')} disabled={game.era < 2}>
               {game.era < 2 ? '분쟁(2시대~)' : '분쟁'}
             </button>
-            <button onClick={() => setSheet('pull')}>당기기</button>
+            <button onClick={() => setSheet('pull')} data-tip="트랙 당기기" data-tip-body="방위 행동 1. 칸 1의 퀘스트를 지금 처리하고 한 칸 당깁니다. 문화 +시대.">
+              당기기
+            </button>
           </div>
         ) : (
           <span className={styles.phase}>행동 단계 — 연구·카드·건설 등</span>

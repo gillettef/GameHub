@@ -23,6 +23,7 @@ export function CardFace({
   label,
   className,
   art,
+  tip,
 }: {
   frame: FrameName;
   title?: string;
@@ -36,11 +37,13 @@ export function CardFace({
   className?: string;
   /** 그림 창에 넣을 일러스트(카드 id) */
   art?: { id: string; icon?: IconName; tone?: string };
+  /** 마우스 툴팁 설명(제목은 title) */
+  tip?: string;
 }) {
   const style = { width, '--w': width, backgroundImage: `url("${frameUrl(frame)}")` } as CSSProperties;
   const Tag = onClick ? 'button' : 'div';
   return (
-    <Tag className={`${styles.card} ${dim ? styles.dim : ''} ${width < 80 && !art ? styles.small : ''} ${className ?? ''}`} style={style} onClick={onClick} aria-label={label ?? [title, kind].filter(Boolean).join(', ')}>
+    <Tag className={`${styles.card} ${dim ? styles.dim : ''} ${width < 80 && !art ? styles.small : ''} ${className ?? ''}`} style={style} onClick={onClick} aria-label={label ?? [title, kind].filter(Boolean).join(', ')} data-tip={tip !== undefined ? title : undefined} data-tip-body={tip}>
       {art && <CardArt id={art.id} icon={art.icon} tone={art.tone} arch={frame === 'pioneer' || frame === 'legacy'} className={styles.window} />}
       {badge !== undefined && <span className={styles.badge}>{badge}</span>}
       {title && <span className={styles.title}>{title}</span>}

@@ -4,6 +4,7 @@ import { Home } from './pages/Home';
 import { Lobby } from './pages/Lobby';
 import { Table } from './pages/Table';
 import { Toast } from './components/Toast';
+import { TooltipLayer } from './components/Tooltip';
 import { resumeOnline } from '../online/client';
 
 export function App() {
@@ -19,6 +20,7 @@ export function App() {
       {screen === 'lobby' && <Lobby />}
       {screen === 'game' && <Table />}
       <Toast />
+      <TooltipLayer />
     </div>
   );
 }

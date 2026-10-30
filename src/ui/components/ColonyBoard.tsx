@@ -49,6 +49,8 @@ import { buildingUpgradeCost, unitUpgradeCost } from '../../core/engine/actions'
 import { useGame } from '../useGame';
 import { CardFace } from './CardFace';
 import { CardArt } from './CardArt';
+import { CardZoom } from './CardZoom';
+import type { FrameName } from './CardFace';
 import { useCardSizes } from '../useCardSizes';
 import { Icon, type IconName } from './Icon';
 import { Section } from './Section';
@@ -88,8 +90,9 @@ export function ColonyBoard({ player }: { player: PlayerState }) {
 
   const sheet = open ? renderSheet(open) : null;
 
-  function renderSheet(o: Open): { title: ReactNode; body: ReactNode; actions: SheetAction[]; art?: string; artIcon?: IconName } {
-    const withArt = (r: { title: ReactNode; body: ReactNode; actions: SheetAction[] }, art: string | null | undefined, artIcon: IconName) => ({ ...r, art: art ?? undefined, artIcon });
+  type SheetView = { title: ReactNode; body: ReactNode; actions: SheetAction[]; art?: string; artIcon?: IconName; zoom?: { frame: FrameName; text: string; badge?: ReactNode } };
+  function renderSheet(o: Open): SheetView {
+    const withArt = (r: { title: ReactNode; body: ReactNode; actions: SheetAction[] }, art: string | null | undefined, artIcon: IconName, zoom?: SheetView['zoom']): SheetView => ({ ...r, art: art ?? undefined, artIcon, zoom });
     const acts: SheetAction[] = [];
     const add = (label: string, a: Parameters<typeof check>[0], tone?: SheetAction['tone']) => {
       if (mine) acts.push({ label, onClick: () => act(a), disabled: check(a), tone });
@@ -177,18 +180,18 @@ export function ColonyBoard({ player }: { player: PlayerState }) {
         const c = h && CARD_DEFS[h.id];
         if (!c || c.type !== 'supply') return { title: '보급', body: null, actions: [] };
         add('사용 — 지휘 1', { type: 'useSupply', index: o.index });
-        return withArt({ title: c.name, body: <p>{instantText(c.instant)}{h.fresh ? ' · 이번 차례에 가져와서 아직 쓸 수 없음' : ''}</p>, actions: acts }, c.id, 'supply');
+        return withArt({ title: c.name, body: <p>{instantText(c.instant)}{h.fresh ? ' · 이번 차례에 가져와서 아직 쓸 수 없음' : ''}</p>, actions: acts }, c.id, 'supply', { frame: 'supply', text: instantText(c.instant) });
       }
       case 'legacy': {
         const wip = p.legacyWip;
         const c = wip && CARD_DEFS[wip.id];
         if (!wip || !c || c.type !== 'legacy') return { title: '유산', body: null, actions: [] };
         add(`${wip.done + 1}단계 짓기 — 생산 ${c.stages[wip.done]} · 지휘 1`, { type: 'legacyStage' });
-        return withArt({ title: `${c.name} (짓는 중 ${wip.done}/${c.stages.length})`, body: <p>{cardText(c)}</p>, actions: acts }, c.id, 'legacy');
+        return withArt({ title: `${c.name} (짓는 중 ${wip.done}/${c.stages.length})`, body: <p>{cardText(c)}</p>, actions: acts }, c.id, 'legacy', { frame: 'legacy', text: cardText(c), badge: `${wip.done}` });
       }
       case 'pioneer': {
         const c = p.pioneer ? CARD_DEFS[p.pioneer] : null;
-        return withArt({ title: c?.name ?? '선구자', body: <p>{c ? cardText(c) : ''}</p>, actions: [] }, p.pioneer, 'pioneer');
+        return withArt({ title: c?.name ?? '선구자', body: <p>{c ? cardText(c) : ''}</p>, actions: [] }, p.pioneer, 'pioneer', c ? { frame: 'pioneer', text: cardText(c) } : undefined);
       }
       case 'satMarket': {
         const id = game.satMarket[o.slot];
@@ -196,12 +199,12 @@ export function ColonyBoard({ player }: { player: PlayerState }) {
         if (!s) return { title: '위성', body: null, actions: [] };
         if (p.orbit.length < 2) add(`발사 — 에너지 ${s.cost} · 지휘 1`, { type: 'launch', slot: o.slot });
         else p.orbit.forEach((ob, i) => add(`발사 — 「${SATELLITE_DEFS[ob.id].name}」 대신 · 에너지 ${s.cost}`, { type: 'launch', slot: o.slot, replace: i }));
-        return withArt({ title: s.name, body: <p>궤도에 {s.timer}차례 · 시야 +1{modsText(s.mods) ? ` · ${modsText(s.mods)}` : ''}</p>, actions: acts }, s.id, 'satellite');
+        return withArt({ title: s.name, body: <p>궤도에 {s.timer}차례 · 시야 +1{modsText(s.mods) ? ` · ${modsText(s.mods)}` : ''}</p>, actions: acts }, s.id, 'satellite', { frame: 'satellite', text: `궤도 ${s.timer}차례 · 시야 +1${modsText(s.mods) ? ` · ${modsText(s.mods)}` : ''}`, badge: s.cost });
       }
       case 'orbit': {
         const ob = p.orbit[o.index];
         const s = ob && SATELLITE_DEFS[ob.id];
-        return withArt({ title: s?.name ?? '위성', body: <p>남은 {ob?.timer}차례 · 시야 +1{s && modsText(s.mods) ? ` · ${modsText(s.mods)}` : ''}</p>, actions: [] }, s?.id, 'satellite');
+        return withArt({ title: s?.name ?? '위성', body: <p>남은 {ob?.timer}차례 · 시야 +1{s && modsText(s.mods) ? ` · ${modsText(s.mods)}` : ''}</p>, actions: [] }, s?.id, 'satellite', s ? { frame: 'satellite', text: `남은 ${ob?.timer}차례 · 시야 +1${modsText(s.mods) ? ` · ${modsText(s.mods)}` : ''}`, badge: ob?.timer } : undefined);
       }
       case 'charter': {
         const f = o.field;
@@ -224,7 +227,7 @@ export function ColonyBoard({ player }: { player: PlayerState }) {
       }
       case 'patron': {
         const d = PATRON_DEFS[o.id];
-        return withArt({ title: d.name, body: <p>{modsText(d.mods)} · 본국 요구: {condText([d.demand])} (시대 전환 때 검사) · {d.points}점</p>, actions: [] }, d.id, 'patron');
+        return withArt({ title: d.name, body: <p>{modsText(d.mods)} · 본국 요구: {condText([d.demand])} (시대 전환 때 검사) · {d.points}점</p>, actions: [] }, d.id, 'patron', { frame: 'patron', text: `${modsText(d.mods)} · 요구: ${condText([d.demand])}`, badge: d.points });
       }
       case 'facility': {
         const f = FACILITY_DEFS[o.id];
@@ -273,7 +276,7 @@ export function ColonyBoard({ player }: { player: PlayerState }) {
         {RES_KEYS.map((k) => {
           const net = k === 'food' ? pv.net.food : pv.gross[k];
           return (
-            <div key={k} className={styles.res} style={{ color: `var(--res-${k})` }} aria-label={`${RES_NAMES[k]} ${p.res[k]}, 생산 ${net}`}>
+            <div key={k} className={styles.res} style={{ color: `var(--res-${k})` }} aria-label={`${RES_NAMES[k]} ${p.res[k]}, 생산 ${net}`} data-tip={RES_NAMES[k]} data-tip-body={`보유 ${p.res[k]} · 생산 단계마다 ${net >= 0 ? '+' : ''}${net}${k === 'food' ? `(소비 ${pv.upkeep} 반영)` : ''}${k === 'culture' ? '\n문화가 곧 점수입니다.' : ''}`}>
               <Icon name={resIcons[k]} size={18} />
               <strong>{p.res[k]}</strong>
               <span className={styles.net}>{net >= 0 ? `+${net}` : net}</span>
@@ -284,13 +287,13 @@ export function ColonyBoard({ player }: { player: PlayerState }) {
 
       {/* 행동 토큰과 상태 */}
       <div className={styles.tokens}>
-        <span className={styles.tokenGroup} aria-label={`지휘 ${cmdMax - p.commandUsed}/${cmdMax}`}>
+        <span className={styles.tokenGroup} aria-label={`지휘 ${cmdMax - p.commandUsed}/${cmdMax}`} data-tip={`지휘 행동 ${cmdMax - p.commandUsed}/${cmdMax}`} data-tip-body="연구·카드 가져오기·건설·정착민·유산·위성·헌장·경쟁 퀘스트에 씁니다.">
           <Icon name="command" size={16} />
           {Array.from({ length: cmdMax }, (_, i) => (
             <span key={i} className={`${styles.cmd} ${i < p.commandUsed ? styles.used : ''}`} />
           ))}
         </span>
-        <span className={styles.tokenGroup} aria-label={`방위 ${defMax - p.defenseUsed}/${defMax}`}>
+        <span className={styles.tokenGroup} aria-label={`방위 ${defMax - p.defenseUsed}/${defMax}`} data-tip={`방위 행동 ${defMax - p.defenseUsed}/${defMax}`} data-tip-body="유닛 편성·업그레이드, 습격(2)·분쟁 판정(3)·트랙 당기기(1). 남기면 방위 태세(최대 +2).">
           <Icon name="defense" size={16} color="var(--danger)" />
           {Array.from({ length: defMax }, (_, i) => (
             <span key={i} className={`${styles.def} ${i < p.defenseUsed ? styles.used : ''}`} />
@@ -298,16 +301,16 @@ export function ColonyBoard({ player }: { player: PlayerState }) {
         </span>
       </div>
       <div className={styles.status}>
-        <span className={stab < need ? styles.warn : ''}>
+        <span className={stab < need ? styles.warn : ''} data-tip="안정도" data-tip-body={`현재 ${stab} / 필요 ${need}. 모자라면 그만큼 생산량이 낮은 건물부터 멈춥니다. 회관마다 +1.`}>
           <Icon name="stability" size={14} /> 안정도 {stab}/{need}
         </span>
-        <span>
+        <span data-tip="방위력" data-tip-body={`유닛 전력 합 + 보너스. 방어할 때는 포대마다 +1(방어값 ${defenseValue(p)}). 위협·습격·분쟁 판정에 씁니다.`}>
           <Icon name="might" size={14} /> 방위력 {might(p, mods)} (방어 {defenseValue(p)})
         </span>
-        <span className={p.res.energy > cap ? styles.warn : ''}>
+        <span className={p.res.energy > cap ? styles.warn : ''} data-tip="포자 안개" data-tip-body={`보유 에너지 ${p.res.energy} / 기준 ${cap}. 기준을 넘으면 초과 3마다 안정도 −1.`}>
           <Icon name="spore" size={14} /> 포자 {p.res.energy}/{cap}
         </span>
-        <span>
+        <span data-tip="시야" data-tip-body="미래 퀘스트 더미를 위에서부터 볼 수 있는 장수. 궤도의 위성 1기마다 +1.">
           <Icon name="satellite" size={14} /> 시야 {mods.sight}
         </span>
         {p.guard > 0 && <span>방위 태세 +{p.guard}</span>}
@@ -315,7 +318,7 @@ export function ColonyBoard({ player }: { player: PlayerState }) {
       </div>
 
       {/* 노선 트랙 */}
-      <button className={styles.doctrines} onClick={() => setOpen({ k: 'doctrine' })} aria-label="노선 상세">
+      <button className={styles.doctrines} onClick={() => setOpen({ k: 'doctrine' })} aria-label="노선 상세" data-tip="노선" data-tip-body={DOCTRINES.map((d) => `${DOCTRINE_NAMES[d]} ${p.doctrine[d]}점 · 단계 ${stage(p, d)}`).join('\n')}>
         {DOCTRINES.map((d) => (
           <span key={d} className={styles.track} style={{ color: `var(--${d})` }}>
             <Icon name={d} size={14} />
@@ -378,38 +381,38 @@ export function ColonyBoard({ player }: { player: PlayerState }) {
       <div className={styles.cards}>
         <Slot label="선구자">
           {p.pioneer ? (
-            <CardFace frame="pioneer" width={sizes.board} title={CARD_DEFS[p.pioneer].name} art={{ id: p.pioneer, icon: 'pioneer' }} onClick={() => setOpen({ k: 'pioneer' })} />
+            <CardFace frame="pioneer" width={sizes.card} title={CARD_DEFS[p.pioneer].name} tip={`선구자\n${cardText(CARD_DEFS[p.pioneer])}`} art={{ id: p.pioneer, icon: 'pioneer' }} onClick={() => setOpen({ k: 'pioneer' })} />
           ) : (
             <Empty />
           )}
         </Slot>
         <Slot label={`유산 ${p.legacies.length}`}>
           {p.legacyWip ? (
-            <CardFace frame="legacy" width={sizes.board} title={CARD_DEFS[p.legacyWip.id].name} badge={`${p.legacyWip.done}`} art={{ id: p.legacyWip.id, icon: 'legacy' }} onClick={() => setOpen({ k: 'legacy' })} />
+            <CardFace frame="legacy" width={sizes.card} title={CARD_DEFS[p.legacyWip.id].name} tip={`유산 짓는 중 ${p.legacyWip.done}단계\n${cardText(CARD_DEFS[p.legacyWip.id])}`} badge={`${p.legacyWip.done}`} art={{ id: p.legacyWip.id, icon: 'legacy' }} onClick={() => setOpen({ k: 'legacy' })} />
           ) : (
             <Empty />
           )}
           {p.legacies.map((id) => (
-            <CardFace key={id} frame="legacy" width={sizes.board} title={CARD_DEFS[id].name} badge="✓" art={{ id, icon: 'legacy' }} />
+            <CardFace key={id} frame="legacy" width={sizes.card} title={CARD_DEFS[id].name} tip={`완성한 유산\n${cardText(CARD_DEFS[id])}`} badge="✓" art={{ id, icon: 'legacy' }} />
           ))}
         </Slot>
         <Slot label={`보급 ${p.hand.length}`}>
           {p.hand.length === 0 && <Empty />}
           {p.hand.map((h, i) => (
-            <CardFace key={i} frame="supply" width={sizes.board} title={CARD_DEFS[h.id].name} dim={h.fresh} art={{ id: h.id, icon: 'supply' }} onClick={() => setOpen({ k: 'hand', index: i })} />
+            <CardFace key={i} frame="supply" width={sizes.card} title={CARD_DEFS[h.id].name} tip={`보급${h.fresh ? ' · 다음 차례부터 사용' : ''}\n${cardText(CARD_DEFS[h.id])}`} dim={h.fresh} art={{ id: h.id, icon: 'supply' }} onClick={() => setOpen({ k: 'hand', index: i })} />
           ))}
         </Slot>
         <Slot label="궤도">
           {p.orbit.length === 0 && <Empty />}
           {p.orbit.map((o, i) => (
-            <CardFace key={i} frame="satellite" width={sizes.board} title={SATELLITE_DEFS[o.id].name} badge={o.timer} art={{ id: o.id, icon: 'satellite' }} onClick={() => setOpen({ k: 'orbit', index: i })} />
+            <CardFace key={i} frame="satellite" width={sizes.card} title={SATELLITE_DEFS[o.id].name} tip={`위성 · 남은 ${o.timer}차례\n시야 +1${modsText(SATELLITE_DEFS[o.id].mods) ? ` · ${modsText(SATELLITE_DEFS[o.id].mods)}` : ''}`} badge={o.timer} art={{ id: o.id, icon: 'satellite' }} onClick={() => setOpen({ k: 'orbit', index: i })} />
           ))}
         </Slot>
         {(p.patrons.length > 0 || mine) && (
           <Slot label="후원 계약">
             {p.patrons.length === 0 && <Empty />}
             {p.patrons.map((id) => (
-              <CardFace key={id} frame="patron" width={sizes.board} title={PATRON_DEFS[id].name} badge={PATRON_DEFS[id].points} art={{ id, icon: 'patron' }} onClick={() => setOpen({ k: 'patron', id })} />
+              <CardFace key={id} frame="patron" width={sizes.card} title={PATRON_DEFS[id].name} tip={`후원 계약 · ${PATRON_DEFS[id].points}점\n${modsText(PATRON_DEFS[id].mods)}\n요구: ${condText([PATRON_DEFS[id].demand])}`} badge={PATRON_DEFS[id].points} art={{ id, icon: 'patron' }} onClick={() => setOpen({ k: 'patron', id })} />
             ))}
           </Slot>
         )}
@@ -428,7 +431,7 @@ export function ColonyBoard({ player }: { player: PlayerState }) {
       {/* 헌장 */}
       <div className={styles.charters}>
         {CHARTER_FIELDS.map((f) => (
-          <button key={f} className={styles.charter} onClick={() => setOpen({ k: 'charter', field: f })}>
+          <button key={f} className={styles.charter} onClick={() => setOpen({ k: 'charter', field: f })} data-tip={`헌장 · ${CHARTER_NAMES[f]} ${p.charters[f]}/3`} data-tip-body={p.charters[f] < 3 ? `다음 단계(문화 ${CHARTER_COST[p.charters[f] + 1]}): ${f === 'explore' && p.charters[f] === 2 ? '다음 고리 줄기까지 연구 가능' : modsText(CHARTER_MODS[f][p.charters[f] + 1])}` : '모두 채움 — 최종 점수 +4'}>
             <Icon name="charter" size={14} />
             {CHARTER_NAMES[f]}
             <span className={styles.pips}>
@@ -461,7 +464,10 @@ export function ColonyBoard({ player }: { player: PlayerState }) {
 
       {sheet && (
         <Sheet title={sheet.title} onClose={() => setOpen(null)} actions={sheet.actions}>
-          {sheet.art && <CardArt id={sheet.art} icon={sheet.artIcon} className={styles.banner} />}
+          {sheet.art && sheet.zoom && (
+            <CardZoom frame={sheet.zoom.frame} title={typeof sheet.title === 'string' ? sheet.title.replace(/ \(짓는 중.*$/, '') : undefined} badge={sheet.zoom.badge} art={{ id: sheet.art, icon: sheet.artIcon }} body={sheet.zoom.text} />
+          )}
+          {sheet.art && !sheet.zoom && <CardArt id={sheet.art} icon={sheet.artIcon} className={styles.banner} />}
           {sheet.body}
         </Sheet>
       )}
@@ -491,7 +497,7 @@ function Column({
   onClick: () => void;
 }) {
   return (
-    <button className={styles.col} onClick={onClick} aria-label={`${name} ${count}/${cap}`}>
+    <button className={styles.col} onClick={onClick} aria-label={`${name} ${count}/${cap}`} data-tip={`${name} ${count}/${cap}`} data-tip-body={levels.map((l) => `${l === 0 ? '기초' : `Lv${l}`} ${have[l]}개${unlocked(l) ? '' : ' (잠김)'}`).join(' · ')}>
       <span className={styles.colHead} style={{ color }}>
         <Icon name={icon} size={18} />
         <span>{name}</span>
@@ -523,6 +529,6 @@ function Slot({ label, children }: { label: string; children: ReactNode }) {
 }
 
 function Empty() {
-  const { board } = useCardSizes();
-  return <span className={styles.emptyCard} style={{ width: board }} />;
+  const { card } = useCardSizes();
+  return <span className={styles.emptyCard} style={{ width: card }} />;
 }
