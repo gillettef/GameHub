@@ -28,7 +28,9 @@ export function SinceMyTurn() {
   const { view, session } = useView();
   const { setMobileTab, setSideTab } = useUi();
   const phase = view.phase;
-  const myTurn = !!session && 'current' in phase && phase.current === session.playerId;
+  // 이사회·주중에만. 금요일에는 모든 경기가 한꺼번에 판정되어 기록에 남으므로, 여기 보이면 아직 안 본 남의 경기 점수가 먼저 드러난다
+  // ('경기 보기 전에는 점수를 먼저 보여 주지 않는다', 사용자 요청 2026-09-22)
+  const myTurn = !!session && (phase.kind === 'monday.board' || phase.kind === 'weekday') && phase.current === session.playerId;
   const entries = myTurn ? entriesSinceMyTurn(view) : [];
   // 접은 상태는 차례마다 새로 연다 (다음 차례에는 새 소식이 있으므로)
   const turnKey = `${view.week}:${phase.kind}:${phase.kind === 'weekday' ? phase.day : ''}`;
