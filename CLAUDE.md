@@ -12,7 +12,7 @@
 | 문서 | 내용 |
 |---|---|
 | `notes/Rules.md` | **규칙 정본**(v0 초안). 구성 요소, 테크 웹, 노선, 차례 흐름, 자원, 카드 줄, 토착 생물·궤도·임무·헌장, 승리·점수, 용어표 |
-| `notes/Design.md` | (작성 예정) 기획 의도·대안 비교·결정 기록. **규칙 아님** |
+| `notes/Design.md` | 기획 의도·대안 비교·결정 기록. **규칙 아님** |
 
 ---
 
@@ -59,10 +59,10 @@ Neoterra/
 │   ├── core/               # 순수 게임 로직 — DOM·localStorage·Math.random·Date 금지
 │   │   ├── types.ts        # GameState, PlayerState, TechNode, Card, Action
 │   │   ├── data/           # constants.ts, techWeb.ts(노드·연결), cards.ts(카드 줄 덱), doctrines.ts(노선), fleets.ts(선단)
-│   │   ├── engine/         # setup, research(테크 웹), actions, production, natives(토착 생물), orbit, victory, turn
+│   │   ├── engine/         # setup, research(테크 웹), actions, production, external(대외 단계: 습격·분쟁·징후·협약), orbit, victory, turn
 │   │   ├── rng.ts          # 시드 RNG (mulberry32)
 │   │   ├── ai.ts           # AI 결정
-│   │   └── mask.ts         # 비공개 정보 가림(임무 카드·덱 순서·시드)
+│   │   └── mask.ts         # 비공개 정보 가림(임무·방위 손패·덱 순서·징후 더미·시드)
 │   ├── online/             # protocol.ts(클라·서버 공용 메시지), client.ts(재접속)
 │   ├── store/              # localStorage 래퍼(키 접두어 `nt:v1:`), Zustand
 │   └── ui/                 # pages/, tabs/, components/(TechWeb, CardRow, ColonyBoard …), styles/
@@ -94,9 +94,11 @@ npx tsx scripts/simulate.ts --games 500 --players 3 --seed 1
 
 ## 플레이 모드
 
+한 판이 장르 원형 규모(2인 90~120분, 4인 3시간+)라서 AI 대전·핫시트는 **매 차례 `localStorage`에 자동 저장**하고 이어 할 수 있어야 한다.
+
 1. **AI 대전**: 사람 1 + AI 1~3 (2~4인)
 2. **핫시트**: 한 기기를 돌려 쓰며, 차례마다 "기기 넘기기" 가림 화면
-3. **온라인 대전**: 방장이 방을 만들면 4자리 초대 코드(`?room=CODE`). 계정 없음. **서버가 엔진을 그대로 호출해 정산**하고, 각자에게 `mask` 로 다른 사람의 임무 카드·덱 순서·시드를 가려 보낸다. 재접속 토큰은 `localStorage`. 게임 중 나간 자리는 AI가 이어받는다. 서버 재시작 시 진행 중인 방은 사라진다.
+3. **온라인 대전**: 방장이 방을 만들면 4자리 초대 코드(`?room=CODE`). 계정 없음. **서버가 엔진을 그대로 호출해 정산**하고, 각자에게 `mask` 로 다른 사람의 임무·방위 손패·덱 순서·징후 더미·시드를 가려 보낸다. 재접속 토큰은 `localStorage`. 게임 중 나간 자리는 AI가 이어받는다. 서버 재시작 시 진행 중인 방은 사라진다.
 
 ## 모바일 UI 원칙
 
