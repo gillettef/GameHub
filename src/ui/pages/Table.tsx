@@ -1,4 +1,4 @@
-// 게임 테이블: BGA 처럼 한 화면 테이블 — 상단 플레이어 패널, 공용 영역(퀘스트 트랙·카드 줄), 보드, 테크 웹, 하단 행동 바
+// 게임 테이블: BGA 처럼 한 화면 테이블 — 상단 플레이어 패널, 공용 영역(카드 줄·퀘스트 트랙), 보드, 테크 웹, 하단 행동 바
 import { useState } from 'react';
 import { useApp } from '../../store/app';
 import { quitLocal } from '../../store/localGame';
@@ -34,8 +34,8 @@ function TableInner() {
     <div className={styles.table}>
       <PlayerStrip onMenu={() => setOverlay('menu')} onLog={() => setOverlay('log')} />
       <main className={styles.main}>
-        <QuestTrack />
         <CardRow />
+        <QuestTrack />
         {viewing !== me && (
           <button className={styles.back} onClick={() => useApp.getState().set({ viewing: me })}>
             ← 내 보드로

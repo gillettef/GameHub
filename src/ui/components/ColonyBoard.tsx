@@ -49,6 +49,7 @@ import { buildingUpgradeCost, unitUpgradeCost } from '../../core/engine/actions'
 import { useGame } from '../useGame';
 import { CardFace } from './CardFace';
 import { CardArt } from './CardArt';
+import { useCardSizes } from '../useCardSizes';
 import { Icon, type IconName } from './Icon';
 import { Section } from './Section';
 import { Sheet, type SheetAction } from './Sheet';
@@ -72,6 +73,7 @@ type Open =
 
 export function ColonyBoard({ player }: { player: PlayerState }) {
   const { game, me, check, act } = useGame();
+  const sizes = useCardSizes();
   const [open, setOpen] = useState<Open | null>(null);
   const p = player;
   const mine = p.id === me;
@@ -376,38 +378,38 @@ export function ColonyBoard({ player }: { player: PlayerState }) {
       <div className={styles.cards}>
         <Slot label="선구자">
           {p.pioneer ? (
-            <CardFace frame="pioneer" width={72} title={CARD_DEFS[p.pioneer].name} art={{ id: p.pioneer, icon: 'pioneer' }} onClick={() => setOpen({ k: 'pioneer' })} />
+            <CardFace frame="pioneer" width={sizes.board} title={CARD_DEFS[p.pioneer].name} art={{ id: p.pioneer, icon: 'pioneer' }} onClick={() => setOpen({ k: 'pioneer' })} />
           ) : (
             <Empty />
           )}
         </Slot>
         <Slot label={`유산 ${p.legacies.length}`}>
           {p.legacyWip ? (
-            <CardFace frame="legacy" width={72} title={CARD_DEFS[p.legacyWip.id].name} badge={`${p.legacyWip.done}`} art={{ id: p.legacyWip.id, icon: 'legacy' }} onClick={() => setOpen({ k: 'legacy' })} />
+            <CardFace frame="legacy" width={sizes.board} title={CARD_DEFS[p.legacyWip.id].name} badge={`${p.legacyWip.done}`} art={{ id: p.legacyWip.id, icon: 'legacy' }} onClick={() => setOpen({ k: 'legacy' })} />
           ) : (
             <Empty />
           )}
           {p.legacies.map((id) => (
-            <CardFace key={id} frame="legacy" width={72} title={CARD_DEFS[id].name} badge="✓" art={{ id, icon: 'legacy' }} />
+            <CardFace key={id} frame="legacy" width={sizes.board} title={CARD_DEFS[id].name} badge="✓" art={{ id, icon: 'legacy' }} />
           ))}
         </Slot>
         <Slot label={`보급 ${p.hand.length}`}>
           {p.hand.length === 0 && <Empty />}
           {p.hand.map((h, i) => (
-            <CardFace key={i} frame="supply" width={72} title={CARD_DEFS[h.id].name} dim={h.fresh} art={{ id: h.id, icon: 'supply' }} onClick={() => setOpen({ k: 'hand', index: i })} />
+            <CardFace key={i} frame="supply" width={sizes.board} title={CARD_DEFS[h.id].name} dim={h.fresh} art={{ id: h.id, icon: 'supply' }} onClick={() => setOpen({ k: 'hand', index: i })} />
           ))}
         </Slot>
         <Slot label="궤도">
           {p.orbit.length === 0 && <Empty />}
           {p.orbit.map((o, i) => (
-            <CardFace key={i} frame="satellite" width={72} title={SATELLITE_DEFS[o.id].name} badge={o.timer} art={{ id: o.id, icon: 'satellite' }} onClick={() => setOpen({ k: 'orbit', index: i })} />
+            <CardFace key={i} frame="satellite" width={sizes.board} title={SATELLITE_DEFS[o.id].name} badge={o.timer} art={{ id: o.id, icon: 'satellite' }} onClick={() => setOpen({ k: 'orbit', index: i })} />
           ))}
         </Slot>
         {(p.patrons.length > 0 || mine) && (
           <Slot label="후원 계약">
             {p.patrons.length === 0 && <Empty />}
             {p.patrons.map((id) => (
-              <CardFace key={id} frame="patron" width={72} title={PATRON_DEFS[id].name} badge={PATRON_DEFS[id].points} art={{ id, icon: 'patron' }} onClick={() => setOpen({ k: 'patron', id })} />
+              <CardFace key={id} frame="patron" width={sizes.board} title={PATRON_DEFS[id].name} badge={PATRON_DEFS[id].points} art={{ id, icon: 'patron' }} onClick={() => setOpen({ k: 'patron', id })} />
             ))}
           </Slot>
         )}
@@ -519,5 +521,6 @@ function Slot({ label, children }: { label: string; children: ReactNode }) {
 }
 
 function Empty() {
-  return <span className={styles.emptyCard} />;
+  const { board } = useCardSizes();
+  return <span className={styles.emptyCard} style={{ width: board }} />;
 }

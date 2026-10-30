@@ -40,12 +40,12 @@ export function CardFace({
   const style = { width, '--w': width, backgroundImage: `url("${frameUrl(frame)}")` } as CSSProperties;
   const Tag = onClick ? 'button' : 'div';
   return (
-    <Tag className={`${styles.card} ${dim ? styles.dim : ''} ${width < 80 ? styles.small : ''} ${className ?? ''}`} style={style} onClick={onClick} aria-label={label ?? [title, kind].filter(Boolean).join(', ')}>
+    <Tag className={`${styles.card} ${dim ? styles.dim : ''} ${width < 80 && !art ? styles.small : ''} ${className ?? ''}`} style={style} onClick={onClick} aria-label={label ?? [title, kind].filter(Boolean).join(', ')}>
       {art && <CardArt id={art.id} icon={art.icon} tone={art.tone} arch={frame === 'pioneer' || frame === 'legacy'} className={styles.window} />}
       {badge !== undefined && <span className={styles.badge}>{badge}</span>}
       {title && <span className={styles.title}>{title}</span>}
       {kind && width >= 80 && !art && <span className={styles.kind}>{kind}</span>}
-      {body && <span className={styles.body}>{body}</span>}
+      {body && width >= 130 && <span className={styles.body}>{body}</span>}
     </Tag>
   );
 }

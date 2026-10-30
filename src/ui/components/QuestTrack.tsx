@@ -9,6 +9,7 @@ import { useGame } from '../useGame';
 import { CardFace, type FrameName } from './CardFace';
 import { Icon, type IconName } from './Icon';
 import { CardArt } from './CardArt';
+import { useCardSizes } from '../useCardSizes';
 import { Section } from './Section';
 import { Sheet, type SheetAction } from './Sheet';
 import { QUEST_KIND_NAMES, optionText, questSummary } from '../describe';
@@ -44,6 +45,7 @@ export function QuestFace({ q, width, onClick }: { q: QuestDef; width: number; o
 
 export function QuestTrack() {
   const { game, me, check, act } = useGame();
+  const sizes = useCardSizes();
   const [open, setOpen] = useState<{ id: string; slot: number | null } | null>(null);
   const sight = playerMods(game.players[me]).sight;
   const future = game.questFuture;
@@ -77,10 +79,12 @@ export function QuestTrack() {
             <span className={styles.slotLabel}>{slot === 0 ? '칸 1 · 임박' : '칸 2 · 다음'}</span>
             {id ? (
               <div key={id} className="anim-flip">
-                <QuestFace q={QUEST_DEFS[id]} width={150} onClick={() => setOpen({ id, slot })} />
+                <QuestFace q={QUEST_DEFS[id]} width={sizes.slot} onClick={() => setOpen({ id, slot })} />
               </div>
             ) : (
-              <div className={styles.empty}>비어 있음</div>
+              <div className={styles.empty} style={{ width: sizes.slot }}>
+                비어 있음
+              </div>
             )}
           </div>
         ))}
@@ -88,9 +92,9 @@ export function QuestTrack() {
       <div className={styles.future} aria-label="미래 퀘스트 더미">
         {future.slice(0, shown).map((id, i) =>
           id !== HIDDEN && i < sight ? (
-            <QuestFace key={i} q={QUEST_DEFS[id]} width={64} onClick={() => setOpen({ id, slot: null })} />
+            <QuestFace key={i} q={QUEST_DEFS[id]} width={sizes.future} onClick={() => setOpen({ id, slot: null })} />
           ) : (
-            <CardFace key={i} frame="quest-back" width={64} label="뒷면 퀘스트" />
+            <CardFace key={i} frame="quest-back" width={sizes.future} label="뒷면 퀘스트" />
           ),
         )}
         {future.length > shown && <span className={styles.more}>+{future.length - shown}</span>}

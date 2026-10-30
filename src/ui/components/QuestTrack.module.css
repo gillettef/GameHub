@@ -14,7 +14,6 @@
   color: var(--text-dim);
 }
 .empty {
-  width: 150px;
   aspect-ratio: 5 / 7;
   border: 1px dashed var(--border);
   border-radius: var(--radius);

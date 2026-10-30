@@ -7,6 +7,8 @@ import { legacyTakeCost } from '../../core/engine/actions';
 import { useGame } from '../useGame';
 import { Icon } from './Icon';
 import { CardArt } from './CardArt';
+import { CardFace } from './CardFace';
+import { useCardSizes } from '../useCardSizes';
 import { Section } from './Section';
 import { Sheet } from './Sheet';
 import { instantText, modsText } from '../describe';
@@ -23,6 +25,7 @@ const TONE = { pioneer: 'var(--accent)', legacy: 'var(--ring3)', supply: 'var(--
 
 export function CardRow() {
   const { game, me, check, act } = useGame();
+  const sizes = useCardSizes();
   const [open, setOpen] = useState<number | null>(null);
   const p = game.players[me];
   const openId = open !== null ? game.cardRow[open] : null;
@@ -42,26 +45,29 @@ export function CardRow() {
         {game.cardRow.map((id, slot) => {
           const c = id ? CARD_DEFS[id] : null;
           const cost = c ? costOf(slot, c) : slotCost(slot);
-          if (!c) return <div key={slot} className={styles.empty} />;
           return (
-            <button
-              key={`${slot}-${id}`}
-              className={`${styles.tile} anim-card-in`}
-              style={{ '--delay': `${slot * 30}ms`, '--tone': TONE[c.type] } as CSSProperties}
-              onClick={() => setOpen(slot)}
-              aria-label={`${c.name}, ${CARD_TYPE_NAMES[c.type]}, 지휘 ${cost}`}
-            >
-              <CardArt id={c.id} icon={c.type} tone={TONE[c.type]} className={styles.tileArt} />
-              <span className={styles.tileHead}>
-                <Icon name={c.type} size={12} />
-                <span className={styles.tileName}>{c.name}</span>
-              </span>
+            <div key={slot} className={styles.slot}>
+              {c ? (
+                <div key={id} className="anim-card-in" style={{ '--delay': `${slot * 30}ms` } as CSSProperties}>
+                  <CardFace
+                    frame={c.type}
+                    width={sizes.row}
+                    title={c.name}
+                    badge={cost}
+                    art={{ id: c.id, icon: c.type, tone: TONE[c.type] }}
+                    onClick={() => setOpen(slot)}
+                    label={`${c.name}, ${CARD_TYPE_NAMES[c.type]}, 지휘 ${cost}`}
+                  />
+                </div>
+              ) : (
+                <div className={styles.empty} style={{ width: sizes.row }} />
+              )}
               <span className={styles.cost} aria-hidden="true">
                 {Array.from({ length: cost }, (_, i) => (
                   <span key={i} className={styles.token} />
                 ))}
               </span>
-            </button>
+            </div>
           );
         })}
       </div>
