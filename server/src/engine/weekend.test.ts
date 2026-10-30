@@ -41,6 +41,19 @@ describe('주말 (p.25)', () => {
     expect(s.phase.kind).toBe('monday.board');
   });
 
+  it('월요일 화면용 요약: 지난 주말 유지비·버린 자원 + 이번 주 조달 (weekReport)', () => {
+    const s = ready();
+    const due = upkeepDue(s.players['a']!);
+    runWeekend(s, seededRng());
+    const report = s.players['a']!.weekReport!;
+    const proc = cards.boardData.procurement;
+    const t = s.players['a']!.tracks;
+    expect(report.week).toBe(2);
+    expect(report.upkeep).toEqual({ due, paid: due, suspensions: 0 });
+    expect(report.discarded).toEqual({ fandom: 2, ops: 2, stamina: 3 }); // 3·3·4 개에서 1개씩만 남김
+    expect(report.procured).toEqual({ money: proc.money[t.money - 1], fandom: proc.fandom[t.fandom - 1], ops: proc.ops[t.ops - 1], stamina: proc.stamina[t.stamina - 1] });
+  });
+
   it('유지비: 선수/직원/기반 시설 수로 계산, 돈은 상한 없이 유지', () => {
     const s = ready();
     const p = s.players['a']!;

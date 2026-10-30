@@ -11,8 +11,10 @@ import { useUi } from '../ui';
 import type { BoardTab } from '../ui';
 import { objectiveLevel } from '@server/engine/objectives';
 import { ExecutiveCardView, ObjectiveCardView, OpponentCardView, PlayerCardView, SponsorCardView, StaffCardView, TacticCardView } from './Cards';
-import { Chip, EffectChips, Icon } from './Icons';
+import { releaseValue } from '@server/engine/effects';
+import { Chip, EffectChips, Icon, ResourceChip } from './Icons';
 import { BuildOptions, CardActionButtons, useWeekdayTurn } from './ActionSidebar';
+import { UpkeepShift } from './Upkeep';
 import { PlayerCrest } from './Crest';
 import { seatColor } from './Shell';
 import { Tabs } from './Tabs';
@@ -182,7 +184,7 @@ function StadiumBoard({ p }: { p: PlayerPublicView }) {
       {myTurn && (
         <section className="tile build-tile" aria-label="건설">
           <h3 className="tile-title">건설 <span className="tile-sub">기본 행동 · 시설 {p.infrastructure.length}/7 · 고른 뒤 아래에서 확정</span></h3>
-          <BuildOptions me={p} mode="select" />
+          <BuildOptions me={p} />
         </section>
       )}
       <div className="stadium-board">
@@ -320,7 +322,20 @@ function MatchBoard({ p }: { p: PlayerPublicView }) {
               cardId={r.cardId}
               instance={r}
               chosen={chosen === `release:${r.instanceId}`}
-              onClick={canRelease ? () => select(`release:${r.instanceId}`, { type: 'releasePlayer', instanceId: r.instanceId }, <>방출: <b>{instanceName(r)}</b></>) : undefined}
+              onClick={
+                canRelease
+                  ? () =>
+                      select(
+                        `release:${r.instanceId}`,
+                        { type: 'releasePlayer', instanceId: r.instanceId },
+                        <>
+                          방출: <b>{instanceName(r)}</b> → <ResourceChip resource="money" amount={releaseValue(p, r)} signedValue />
+                          {r.careerVP > 0 && <> · 경력 승점 {r.careerVP}</>}
+                          <UpkeepShift view={view} p={p} change={{ players: -1 }} />
+                        </>,
+                      )
+                  : undefined
+              }
             />
           ))}
         </div>

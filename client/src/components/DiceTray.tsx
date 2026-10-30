@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { activeSide, instanceName } from '@server/engine/cards';
-import { boardDecision } from '@server/engine/monday';
+import { activeSide, cards, instanceName } from '@server/engine/cards';
+import { boardDecision, unaffordableCost } from '@server/engine/monday';
 import { hasTrait } from '@server/engine/traits';
 import type { MatchReport } from '@server/engine/match';
 import type { PlayerInstance } from '@server/engine/state';
@@ -177,6 +177,15 @@ export function DiceTray() {
     [],
   );
 
+  // 내가 굴려야 하는 순간(이사회 차례 시작, 경기 결과 확인 직후)에 트레이가 화면 밖이면 보이는 곳까지 내린다 — 굴리기 버튼을 찾아 헤매지 않게
+  const trayRef = useRef<HTMLDivElement>(null);
+  const awaitingMe = !!mode && mine && !decided && roll === null && !(mode === 'match' && !!view && resultSeen !== resultKeyOf(view.week, actorId));
+  useEffect(() => {
+    if (!awaitingMe) return;
+    const reduce = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    trayRef.current?.scrollIntoView({ block: 'nearest', behavior: reduce ? 'auto' : 'smooth' });
+  }, [awaitingMe]);
+
   if (!mode || !actor) return null;
   // 경기 영향 주사위는 경기 결과 스텝에서 "결과 확인"을 누른 뒤에 굴린다 (스텝 진행, test_insight C4)
   const needResultCheck = mode === 'match' && mine && roll === null && !!view && resultSeen !== resultKeyOf(view.week, actorId);
@@ -188,8 +197,8 @@ export function DiceTray() {
   const acceptLabel =
     roll === null
       ? ''
-      : mode === 'board'
-        ? `${COLOR_LABEL[boardDecision(actor, roll)]} 결정 적용`
+      : mode === 'board' && phase?.kind === 'monday.board'
+        ? `${COLOR_LABEL[boardDecision(actor, roll)]} 결정 적용${unaffordableCost(actor, cards.board(phase.meetings[actorId!]!.card).decisions[boardDecision(actor, roll)].effects) ? ' (자원 부족 — 이행 불가)' : ''}`
         : mode === 'injury' && injury
           ? `적용: ${injuryRollLabel(actor.roster, injury.played, roll, injury.count)}`
           : `적용: ${outcome ? matchDieLabel(outcome, roll) : ''}`;
@@ -203,7 +212,7 @@ export function DiceTray() {
   };
 
   return (
-    <div className={`dice-tray${mine && !decided && !spinning && !needResultCheck ? ' attention' : ''}`} aria-live="polite">
+    <div ref={trayRef} className={`dice-tray${mine && !decided && !spinning && !needResultCheck ? ' attention' : ''}`} aria-live="polite">
       <div className="dice-title">{mode === 'board' ? '이사회 주사위' : mode === 'injury' ? `부상 주사위 (12면체)${injury && injury.total > 1 ? ` ${injury.index + 1}/${injury.total}` : ''}` : '경기 영향 주사위'}</div>
       <div className="dice-actor">{mine ? '내 차례' : `${actor.name}의 차례`}</div>
       <div className="die-stage">
@@ -244,7 +253,7 @@ export function DiceTray() {
               <>
                 <span className="dice-or">마음에 안 들면</span>
                 <button className="reroll" disabled={spinning || !canReroll} onClick={() => start(true)} title={freeReroll ? '특성: 팬덤 없이 다시 굴립니다' : canReroll ? '팬덤 1개를 내고 다시 굴립니다' : '다시 굴릴 팬덤이 없습니다'}>
-                  {freeReroll ? '무료로 다시 굴리기' : <><Icon name="fandom" />1 내고 다시 굴리기</>}
+                  {freeReroll ? '무료로 다시 굴리기' : canReroll || spinning ? <><Icon name="fandom" />1 내고 다시 굴리기</> : '팬덤이 없어 다시 굴릴 수 없음'}
                 </button>
               </>
             )}

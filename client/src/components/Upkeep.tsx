@@ -33,6 +33,34 @@ export function UpkeepChip({ view, p }: { view: GameView; p: PlayerPublicView })
   );
 }
 
+// 영입·고용·건설·방출 뒤의 주말 유지비 (확정 막대 미리 보기): 선수·직원·시설 수가 구간을 넘으면 유지비가 바뀐다.
+// 바뀌지 않거나 이번 주말에 유지비가 없으면(마지막 주) null
+export interface UpkeepChange {
+  players?: number; // +1 영입 / −1 방출
+  staffCardId?: string; // 고용할 직원 (특성의 유지비 할인까지 반영)
+  infra?: number; // +1 건설
+}
+export function upkeepShift(view: GameView, p: PlayerPublicView, change: UpkeepChange): { before: number; after: number } | null {
+  if (!upkeepStatus(view, p)) return null;
+  const before = upkeepDue(p);
+  const roster = change.players && change.players < 0 ? p.roster.slice(0, change.players) : [...p.roster, ...Array.from({ length: change.players ?? 0 }, () => p.roster[0]!)];
+  const staff = change.staffCardId ? [...p.staff, { cardId: change.staffCardId, exhausted: false, suspension: 0 }] : p.staff;
+  const infrastructure = [...p.infrastructure, ...Array.from({ length: change.infra ?? 0 }, () => p.infrastructure[0]!)];
+  const after = upkeepDue({ ...p, roster, staff, infrastructure });
+  return after === before ? null : { before, after };
+}
+
+// 확정 막대 문구 끝에 붙이는 유지비 변화 꼬리표
+export function UpkeepShift({ view, p, change }: { view: GameView; p: PlayerPublicView; change: UpkeepChange }) {
+  const s = upkeepShift(view, p, change);
+  if (!s) return null;
+  return (
+    <span className={`upkeep-shift${s.after > s.before ? ' up' : ' down'}`} title="선수·직원·기반 시설 수가 구간을 넘어 주말 유지비가 바뀝니다">
+      · 주말 유지비 <Icon name="money" size={12} />{s.before} → {s.after}
+    </span>
+  );
+}
+
 // 주중 행동 목록 위의 경고: 아직 돈을 마련할 수 있는 동안(화·수·목) 알려 준다
 export function UpkeepWarning({ view, p }: { view: GameView; p: PlayerPublicView }) {
   const status = upkeepStatus(view, p);
