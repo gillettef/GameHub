@@ -154,6 +154,15 @@ export function attachWebSocket(wss: WebSocketServer, rooms: RoomManager, option
         bots.poke(room);
         return;
       }
+      case 'rematch': {
+        const room = rooms.rematch(session.roomCode, session.playerId);
+        bots.forgetRoom(room.code); // 봇 기억(난수·거부 기록)도 새 판으로
+        broadcast(room);
+        return;
+      }
+      case 'matchWatched':
+        bots.rewatch(rooms.markWatched(session.roomCode, session.playerId, msg.week, msg.actor));
+        return;
       case 'chat':
         broadcastChat(rooms.chat(session.roomCode, session.playerId, msg.text));
         return;

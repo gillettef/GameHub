@@ -20,6 +20,8 @@ const EXACT: Record<string, string> = {
   'players must be 1~4': '참가자는 1~4명이어야 합니다',
   'no such bot': '그런 AI 참가자가 없습니다',
   'not in this room': '이 방의 참가자가 아닙니다',
+  'game not over': '게임이 끝난 뒤에만 다시 할 수 있습니다',
+  'invalid watched': '경기 보기 정보가 올바르지 않습니다',
 
   'not in draft phase': '지금은 임원 드래프트 단계가 아닙니다',
   'not in objective phase': '지금은 목표 카드를 고르는 단계가 아닙니다',

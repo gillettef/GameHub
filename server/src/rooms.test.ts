@@ -108,6 +108,37 @@ describe('RoomManager', () => {
     expect(orders.size).toBeGreaterThan(3); // 시드에 따라 순서가 달라진다
   });
 
+  it('다시 하기: 호스트만, 끝난 게임에서만 같은 멤버로 대기실로 돌아가고 다시 시작할 수 있다', () => {
+    const rm = new RoomManager();
+    const { room, player: host } = rm.create('a');
+    const { player: b } = rm.join(room.code, 'b');
+    rm.addBot(room.code, host.id);
+    rm.start(room.code, host.id);
+    expect(() => rm.rematch(room.code, host.id)).toThrow(RoomError); // 진행 중에는 불가
+    room.status = 'over';
+    expect(() => rm.rematch(room.code, b.id)).toThrow(RoomError); // 호스트만
+    rm.rematch(room.code, host.id);
+    expect(room.status).toBe('lobby');
+    expect(room.game).toBeUndefined();
+    expect(room.players).toHaveLength(3); // 참가자·봇 그대로
+    rm.start(room.code, host.id);
+    expect(room.game?.week).toBe(1);
+  });
+
+  it('경기 보기 완료 표시: 참가자만, 주차·차례가 바뀌면 새로 센다', () => {
+    const rm = new RoomManager();
+    const { room, player: host } = rm.create('a');
+    const { player: b } = rm.join(room.code, 'b');
+    rm.markWatched(room.code, host.id, 1, 'x');
+    rm.markWatched(room.code, host.id, 1, 'x');
+    rm.markWatched(room.code, b.id, 1, 'x');
+    expect(room.watched).toEqual({ key: '1:x', ids: [host.id, b.id] });
+    rm.markWatched(room.code, b.id, 1, 'y');
+    expect(room.watched).toEqual({ key: '1:y', ids: [b.id] });
+    expect(() => rm.markWatched(room.code, 'nobody', 1, 'y')).toThrow(RoomError);
+    expect(() => rm.markWatched(room.code, host.id, '1', 'y')).toThrow(RoomError);
+  });
+
   it('재접속은 토큰이 맞아야 하고 연결 상태를 복구한다', () => {
     const rm = new RoomManager();
     const { room, player } = rm.create('a');

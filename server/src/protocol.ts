@@ -45,7 +45,9 @@ export type ClientMessage =
   | { type: 'removeBot'; playerId: string }
   | { type: 'kick'; playerId: string } // 호스트가 대기실에서 참가자를 내보낸다 (봇 포함, 자기 자신 제외)
   | { type: 'startGame' }
+  | { type: 'rematch' } // 호스트가 끝난 게임의 방을 같은 멤버로 대기실로 되돌린다
   | { type: 'action'; action: GameAction }
+  | { type: 'matchWatched'; week: number; actor: string } // 경기 결과 단계에서 그 참가자의 경기 보기를 다 봤다 (봇이 기다리는 시간을 줄인다, 게임 상태와 무관)
   | { type: 'chat'; text: string };
 
 export type ServerMessage =

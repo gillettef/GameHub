@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { cards, tokenLabel } from '@server/engine/cards';
 import { SECTOR_LABEL } from '@server/engine/labels';
 import { SECTOR_PAIRS, regionLine, regionSector } from '@server/engine/match';
@@ -73,13 +73,34 @@ function traceOf(m: MatchAftermath, step: Step): AttackTrace | null {
   return step.side === 'mine' ? sec.myAttack : sec.theirAttack;
 }
 
-// initialIndex/autoplay 는 개발용 카드 점검 페이지(cardAudit)가 특정 스텝을 멈춰 그릴 때만 쓴다
-export function MatchReplay({ actor, m, initialIndex = 0, autoplay = true }: { actor: Team; m: MatchAftermath; initialIndex?: number; autoplay?: boolean }) {
+// 재생 속도 (1배 / 2배). 6주 동안 반복해서 보므로 빠르게 보고 싶은 사람이 많다 — 기기마다 기억한다(eleven.replaySpeed)
+const SPEED_KEY = 'eleven.replaySpeed';
+function loadSpeed(): 1 | 2 {
+  try {
+    return localStorage.getItem(SPEED_KEY) === '2' ? 2 : 1;
+  } catch {
+    return 1;
+  }
+}
+
+// initialIndex/autoplay 는 개발용 카드 점검 페이지(cardAudit)가 특정 스텝을 멈춰 그릴 때만 쓴다.
+// onEnd: 마지막 스텝에 닿았을 때(자동 재생이 끝나거나 ⏭) 한 번 — 다 봤다고 서버에 알리는 데 쓴다
+export function MatchReplay({ actor, m, initialIndex = 0, autoplay = true, onEnd }: { actor: Team; m: MatchAftermath; initialIndex?: number; autoplay?: boolean; onEnd?: () => void }) {
   const opponent = cards.opponent(m.opponentCardId);
   const steps = useMemo(() => buildReplaySteps(m), [m]);
   const [index, setIndex] = useState(Math.min(initialIndex, steps.length - 1));
   const [playing, setPlaying] = useState(autoplay);
+  const [speed, setSpeed] = useState<1 | 2>(loadSpeed);
   const last = steps.length - 1;
+  const toggleSpeed = () => {
+    const next = speed === 1 ? 2 : 1;
+    setSpeed(next);
+    try {
+      localStorage.setItem(SPEED_KEY, String(next));
+    } catch {
+      /* 저장 불가 환경이면 이번 화면에만 */
+    }
+  };
 
   useEffect(() => {
     if (!playing) return;
@@ -87,10 +108,16 @@ export function MatchReplay({ actor, m, initialIndex = 0, autoplay = true }: { a
       setPlaying(false);
       return;
     }
-    // 킥오프 1.2초 + 스텝 1.8초 × 12 ≈ 23초. 봇은 이 시간(driver.ts watchMs 24초)을 기다렸다가 주사위를 굴린다
-    const t = setTimeout(() => setIndex((i) => Math.min(last, i + 1)), index === 0 ? 1200 : 1800);
+    // 킥오프 1.2초 + 스텝 1.8초 × 12 ≈ 23초(1배). 봇은 최대 이 시간(driver.ts watchMs 24초)을 기다리되, 지켜보는 사람이 모두 다 보면 바로 굴린다
+    const t = setTimeout(() => setIndex((i) => Math.min(last, i + 1)), (index === 0 ? 1200 : 1800) / speed);
     return () => clearTimeout(t);
-  }, [playing, index, last]);
+  }, [playing, index, last, speed]);
+
+  const onEndRef = useRef(onEnd);
+  onEndRef.current = onEnd;
+  useEffect(() => {
+    if (index >= last) onEndRef.current?.();
+  }, [index, last]);
 
   // 내 슬롯: 경기에 쓴 배치·역량(일시적 토큰·전술 효과 포함). 상대 슬롯: 카드 그대로 (id 는 엔진 opponentSide 와 같은 규칙)
   const mine = useMemo(() => {
@@ -283,7 +310,8 @@ export function MatchReplay({ actor, m, initialIndex = 0, autoplay = true }: { a
         <button type="button" className="ghost small" disabled={index === 0} onClick={() => { setPlaying(false); setIndex((i) => Math.max(0, i - 1)); }}>◀ 이전</button>
         <button type="button" className="small" disabled={index >= last} onClick={() => setPlaying((p) => !p)}>{playing ? '⏸ 일시정지' : '▶ 자동 재생'}</button>
         <button type="button" className="ghost small" disabled={index >= last} onClick={() => { setPlaying(false); setIndex((i) => Math.min(last, i + 1)); }}>다음 ▶</button>
-        <button type="button" className="ghost small" disabled={index >= last} onClick={() => { setPlaying(false); setIndex(last); }} title="끝으로">⏭</button>
+        <button type="button" className="ghost small" disabled={index >= last} onClick={() => { setPlaying(false); setIndex(last); }} title="끝으로 (결과만 보기)">⏭</button>
+        <button type="button" className={`ghost small${speed === 2 ? ' active' : ''}`} onClick={toggleSpeed} aria-pressed={speed === 2} title="재생 속도 (이 기기에서 기억합니다)">{speed}배속</button>
         <span className="muted small replay-count">{index + 1}/{steps.length}</span>
       </div>
     </div>

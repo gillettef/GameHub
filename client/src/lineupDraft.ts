@@ -34,11 +34,12 @@ export function saveDraft(game: string, week: number, draft: LineupDraft): void 
   }
 }
 
-function load(game: string): Stored | null {
+// 같은 방에서 '다시 하기'로 새 판을 시작하면 판 id(방 코드)가 같다 — 지금보다 뒤 주차의 초안은 이전 판 것이므로 버린다
+function load(game: string, week: number): Stored | null {
   try {
     const raw = localStorage.getItem(KEY);
     const stored = raw ? (JSON.parse(raw) as Stored) : null;
-    return stored && stored.game === game ? stored : null;
+    return stored && stored.game === game && stored.week <= week ? stored : null;
   } catch {
     return null;
   }
@@ -58,7 +59,7 @@ function affordablePlayers(me: Me): string[] {
 // 저장된 초안(같은 주면 그대로, 지난주 것이면 기본값으로)을 지금 상태에 맞게 다듬는다:
 // 없어진 전술 카드·선수, 부상/출장정지, 등번호 중복을 걸러 내고, 배치가 더는 맞지 않으면 자동 배치로 바꾼다
 export function initialDraft(game: string, week: number, me: Me, tacticHand: string[]): LineupDraft {
-  const stored = load(game);
+  const stored = load(game, week);
   const sameWeek = stored?.week === week;
   const tacticCardId = stored && tacticHand.includes(stored.tacticCardId) ? stored.tacticCardId : (tacticHand[0] ?? '');
   const formations = tacticCardId ? cards.tactic(tacticCardId).formations : [];
