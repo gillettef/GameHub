@@ -34,6 +34,7 @@ export interface Room {
   chat: ChatMessage[]; // 최근 CHAT_KEEP 개
   chatSeq: number;
   updatedAt: number;
+  watched?: { key: string; ids: string[] }; // 경기 결과 단계: 지금 차례 참가자(`주차:참가자`)의 경기 보기를 다 본 사람들 (봇 대기용)
 }
 
 export class RoomError extends Error {}
@@ -222,6 +223,30 @@ export class RoomManager {
     }
     if (room.game.phase.kind === 'gameOver') room.status = 'over';
     room.updatedAt = Date.now();
+    return room;
+  }
+
+  // 같은 멤버로 다시 하기: 끝난 게임의 방을 대기실로 되돌린다(호스트만). 참가자·봇·엠블럼·채팅은 그대로, 게임 상태만 지운다.
+  // 방 코드가 같아 친구들은 코드를 다시 돌리지 않아도 되고, 접속해 있던 사람은 자동으로 대기실 화면으로 간다
+  rematch(code: string, playerId: string): Room {
+    const room = this.get(code);
+    this.requireHost(room, playerId);
+    if (room.status !== 'over') throw new RoomError('game not over');
+    room.status = 'lobby';
+    room.game = undefined;
+    room.watched = undefined;
+    room.updatedAt = Date.now();
+    return room;
+  }
+
+  // 경기 결과 단계에서 차례인 참가자의 경기 보기를 다 봤다고 표시한다 (봇이 주사위를 굴리기 전에 기다리는 시간 — bot/driver.ts)
+  markWatched(code: string, playerId: string, week: unknown, actor: unknown): Room {
+    const room = this.get(code);
+    if (!room.players.some((p) => p.id === playerId)) throw new RoomError('not in this room');
+    if (typeof week !== 'number' || typeof actor !== 'string') throw new RoomError('invalid watched');
+    const key = `${week}:${actor}`;
+    if (room.watched?.key !== key) room.watched = { key, ids: [] };
+    if (!room.watched.ids.includes(playerId)) room.watched.ids.push(playerId);
     return room;
   }
 

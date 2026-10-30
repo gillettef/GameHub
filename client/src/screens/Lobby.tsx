@@ -10,18 +10,35 @@ const DIVISIONS: SelectOption<1 | 2 | 3>[] = [
   { value: 1, label: '1부', hint: '어려움' },
 ];
 
+// 초대 링크(`?code=ABCDE`)로 들어오면 방 코드를 미리 채운다. 주소창의 코드는 바로 지운다 — 나중에 새로고침해도 옛 초대가 다시 뜨지 않게
+function inviteCode(): string {
+  try {
+    const code = new URLSearchParams(location.search).get('code')?.toUpperCase().slice(0, 5) ?? '';
+    if (code) history.replaceState(null, '', location.pathname);
+    return /^[A-Z0-9]{5}$/.test(code) ? code : '';
+  } catch {
+    return '';
+  }
+}
+
+export function inviteLink(code: string): string {
+  return `${location.origin}${location.pathname}?code=${code}`;
+}
+
 export function Lobby() {
   const { send, spectate, connected, error } = useStore();
   const [name, setName] = useState('');
-  const [code, setCode] = useState('');
+  const [invited] = useState(inviteCode);
+  const [code, setCode] = useState(invited);
   const ready = connected && name.trim().length > 0;
   return (
     <main className="lobby">
       <h1>ELEVEN</h1>
       <p className="muted">축구 구단 매니지먼트 보드게임 · 온라인</p>
+      {invited && <p className="phase-guide">초대받은 방 <b>{invited}</b> — 닉네임을 입력하고 <b>입장</b>을 누르세요.</p>}
       <label>
         닉네임
-        <input value={name} onChange={(e) => setName(e.target.value)} maxLength={20} placeholder="닉네임" />
+        <input value={name} onChange={(e) => setName(e.target.value)} maxLength={20} placeholder="닉네임" autoFocus={!!invited} />
       </label>
       <div className="row">
         <button className="primary" disabled={!ready} onClick={() => send({ type: 'createRoom', name })}>새 방 만들기</button>
@@ -41,6 +58,44 @@ export function Lobby() {
   );
 }
 
+async function copyText(text: string): Promise<boolean> {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// 방 코드 복사 / 초대 링크 공유 — 친구가 주소와 다섯 글자 코드를 따로 입력하지 않아도 되게.
+// 휴대폰은 공유 시트(navigator.share, 카톡 등)로, 지원하지 않으면 링크를 복사한다
+function ShareRoom({ code }: { code: string }) {
+  const [done, setDone] = useState<string | null>(null);
+  const flash = (text: string) => {
+    setDone(text);
+    setTimeout(() => setDone(null), 2000);
+  };
+  const share = async () => {
+    const url = inviteLink(code);
+    if (typeof navigator.share === 'function') {
+      try {
+        await navigator.share({ title: 'ELEVEN 초대', text: `ELEVEN 방 ${code}에 들어오세요`, url });
+        return;
+      } catch (e) {
+        if (e instanceof DOMException && e.name === 'AbortError') return; // 공유 시트를 닫음
+      }
+    }
+    flash((await copyText(url)) ? '초대 링크를 복사했습니다' : url);
+  };
+  return (
+    <div className="row share-room">
+      <button className="primary" onClick={() => void share()}>초대 링크 보내기</button>
+      <button onClick={() => void copyText(code).then((ok) => flash(ok ? '방 코드를 복사했습니다' : code))}>코드 복사</button>
+      {done && <span className="muted small" role="status">{done}</span>}
+    </div>
+  );
+}
+
 export function RoomLobby() {
   const { room, session, spectating, send, leave, error } = useStore();
   if (!room) return null;
@@ -50,7 +105,8 @@ export function RoomLobby() {
   return (
     <main className="lobby">
       <h1>방 코드: <span className="code">{room.code}</span></h1>
-      <p className="muted">이 코드를 친구에게 알려주세요. 1~4명이 플레이할 수 있습니다.{spectating && ' (관전 중)'}</p>
+      <p className="muted">이 코드나 초대 링크를 친구에게 보내 주세요. 1~4명이 플레이할 수 있습니다.{spectating && ' (관전 중)'}</p>
+      <ShareRoom code={room.code} />
       <ul className="players">
         {room.players.map((p) => (
           <li key={p.id} className="row">

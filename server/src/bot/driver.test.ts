@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { createRng } from '../engine/rng';
 import { viewFor } from '../engine/view';
 import { RoomManager } from '../rooms';
@@ -39,6 +39,48 @@ describe('BotDriver', () => {
     expect(room.status).toBe('over');
     expect(room.game!.week).toBe(6);
     expect(changes).toBeGreaterThan(100);
+  });
+
+  it('경기 결과에서 봇은 경기 보기 시간을 기다리지만, 접속한 사람이 모두 다 봤다고 알리면 바로 진행한다', () => {
+    vi.useFakeTimers();
+    try {
+      const rooms = new RoomManager();
+      const { room, player: host } = rooms.create('사람', 31);
+      rooms.addBot(room.code, host.id);
+      rooms.start(room.code, host.id);
+      // 모든 참가자를 정책으로 움직여 봇이 경기 영향 주사위를 굴리기 전(경기 보기 스텝)까지 간다
+      const rng = createRng(5);
+      const failed = new Set<string>();
+      const atBotWatch = () => {
+        const ph = room.game!.phase;
+        return ph.kind === 'friday.aftermath' && room.players.find((p) => p.id === ph.current)!.isBot && ph.matches[ph.current]!.roll === null;
+      };
+      for (let guard = 0; !atBotWatch(); guard++) {
+        if (guard > 2000) throw new Error('봇의 경기 보기 스텝에 닿지 못함');
+        const ph = room.game!.phase;
+        const actorId = 'current' in ph ? ph.current : room.players.find((p) => decide(viewFor(room.game!, p.id), rng, failed))!.id;
+        const action = decide(viewFor(room.game!, actorId), rng, failed);
+        if (!action) throw new Error(`할 일이 없음: ${ph.kind}`);
+        try {
+          rooms.act(room.code, actorId, action);
+          failed.clear();
+        } catch {
+          failed.add(action.type);
+        }
+      }
+      let changes = 0;
+      const driver = new BotDriver(rooms, () => changes++, 10, 10_000);
+      driver.poke(room);
+      vi.advanceTimersByTime(1000);
+      expect(changes).toBe(0); // 아직 경기 보기 중
+      const week = room.game!.week;
+      const phase = room.game!.phase as { current: string };
+      driver.rewatch(rooms.markWatched(room.code, host.id, week, phase.current));
+      vi.advanceTimersByTime(50);
+      expect(changes).toBeGreaterThan(0); // 사람이 다 봤으니 곧바로 굴림
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('봇 추가/제거는 호스트만, 대기실에서만, 정원까지', () => {

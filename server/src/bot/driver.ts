@@ -90,13 +90,38 @@ export class BotDriver {
   }
 
   // 경기 결과 단계에서 차례인 봇이 아직 주사위를 굴리지 않았으면(= 경기 보기 스텝) 재생 시간만큼 기다린다.
-  // 봇이 곧바로 굴리면 지켜보는 사람의 화면이 경기 보기에서 주사위 스텝으로 바로 넘어가 버린다 (사용자 제보 2026-09-22)
+  // 봇이 곧바로 굴리면 지켜보는 사람의 화면이 경기 보기에서 주사위 스텝으로 바로 넘어가 버린다 (사용자 제보 2026-09-22).
+  // 단, 접속해 있는 사람이 모두 그 경기를 다 봤다고 알렸으면(matchWatched — 재생 끝·건너뛰기) 더 기다리지 않는다
   private watchDelay(room: Room): number {
+    if (!this.watching(room)) return 0;
+    const phase = room.game!.phase as Extract<NonNullable<Room['game']>['phase'], { kind: 'friday.aftermath' }>;
+    const key = `${room.game!.week}:${phase.current}`;
+    const humans = room.players.filter((p) => !p.isBot && p.connected);
+    const allWatched = room.watched?.key === key && humans.every((h) => room.watched!.ids.includes(h.id));
+    return allWatched ? 0 : this.watchMs;
+  }
+
+  // 차례인 봇이 경기 보기 스텝에서 사람들을 기다리는 중인가
+  private watching(room: Room): boolean {
     const phase = room.game?.phase;
-    if (!phase || phase.kind !== 'friday.aftermath') return 0;
+    if (!phase || phase.kind !== 'friday.aftermath') return false;
     const bot = room.players.find((p) => p.id === phase.current && p.isBot);
     const m = phase.matches[phase.current];
-    return bot && m && m.roll === null && m.injuryDice.length === 0 ? this.watchMs : 0;
+    return !!bot && !!m && m.roll === null && m.injuryDice.length === 0;
+  }
+
+  // 누군가 경기를 다 봤다고 알려 오면, 기다리던 봇의 타이머를 다시 잡는다 (모두 봤으면 곧바로 진행)
+  rewatch(room: Room): void {
+    if (!this.watching(room)) return;
+    const t = this.timers.get(room.code);
+    if (t) clearTimeout(t);
+    this.timers.delete(room.code);
+    this.poke(room);
+  }
+
+  // 같은 방에서 새 판을 시작할 때(다시 하기) 봇 기억을 지운다
+  forgetRoom(code: string): void {
+    this.forget(code);
   }
 
   // 지연 없이 봇이 할 수 있는 액션을 모두 처리 (테스트·헤드리스용). 처리한 액션 수를 돌려준다

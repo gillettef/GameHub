@@ -19,7 +19,8 @@ const ROWS = [
 ] as const;
 
 export function GameOverScreen() {
-  const { view, leave } = useView();
+  const { view, leave, send, room, session } = useView();
+  const isHost = !!session && !!room?.players.find((p) => p.id === session.playerId)?.isHost;
   const [review, setReview] = useState(true); // 시즌이 끝나면 항목별 승점 확인 모달을 먼저 띄운다 (닫은 뒤에는 버튼으로 다시)
   if (view.phase.kind !== 'gameOver') return null;
   const { scores, winners } = view.phase;
@@ -74,7 +75,13 @@ export function GameOverScreen() {
       </div>
       <div className="row">
         <button onClick={() => setReview(true)}>항목별 승점 확인</button>
-        <button className="primary" onClick={leave}>로비로</button>
+        {/* 같은 멤버로 한 판 더: 방 코드·참가자·봇을 그대로 두고 대기실로 (호스트만). 다른 참가자는 자동으로 대기실 화면으로 간다 */}
+        {isHost ? (
+          <button className="primary" onClick={() => send({ type: 'rematch' })}>같은 멤버로 다시 하기</button>
+        ) : (
+          session && <span className="muted small">호스트가 '다시 하기'를 누르면 같은 방 대기실로 갑니다</span>
+        )}
+        <button className={isHost ? '' : 'primary'} onClick={leave}>로비로</button>
       </div>
       {review && <ScoreReviewModal view={view} onClose={() => setReview(false)} />}
     </section>

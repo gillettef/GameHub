@@ -17,6 +17,7 @@ import type { StepDef } from '../components/Lineup';
 import { TurnBanner } from '../components/Turn';
 import { StandsPicker } from '../components/StandsPicker';
 import { UpkeepWarning } from '../components/Upkeep';
+import { SectorPreview } from '../components/SectorPreview';
 import { SECTOR_LABEL, matchDieLabel } from '../labels';
 import { initialDraft, saveDraft } from '../lineupDraft';
 import { useGame } from '../store';
@@ -182,6 +183,8 @@ export function FridayPrepareScreen() {
             </p>
           )}
           <Stepper steps={steps} current={step} onSelect={go} />
+          {/* 상대 카드는 스텝 내용 위에 접어 둔다 — 한 열 화면에서 맨 아래에 있으면 배치하면서 비교할 수 없었다 */}
+          {opponentPanel}
           <div className="lineup-layout">
             <div className="stack lineup-main">
               {step === 0 && (
@@ -283,6 +286,7 @@ export function FridayPrepareScreen() {
                     </div>
                   )}
                   {issues.length > 0 ? <p className="error small">{issues.join(' · ')}</p> : <p className="ok-note small">✓ 포메이션대로 배치했습니다.</p>}
+                  <SectorPreview me={me} field={field} played={played} placements={placements} />
                 </div>
               )}
 
@@ -309,7 +313,6 @@ export function FridayPrepareScreen() {
                 </div>
               )}
             </div>
-            {opponentPanel}
           </div>
 
           <div className="submit-row step-nav">
@@ -425,9 +428,12 @@ export function FridayMatchScreen() {
 // ①에서 "결과 확인"(ui.resultSeen)을 눌러야 주사위 트레이의 굴리기가 풀린다 — 굴려야 하는지 몰라 멈춰 있던 문제(test_insight C4).
 // 경기 보기 전에는 그 경기의 점수를 화면 어디에도 먼저 보여 주지 않는다 (사용자 요청 2026-09-22)
 export function FridayAftermathScreen() {
-  const { view } = useGame();
+  const { view, send, room } = useGame();
   const { resultSeen, setResultSeen, matchWatched, setMatchWatched } = useUi();
   const [override, setOverride] = useState<{ key: string; step: number } | null>(null); // 지나온 스텝을 다시 볼 때
+  // 이 경기를 다 봤다(재생 끝·건너뛰기·결과로 넘어감)고 서버에 한 번 알린다. 봇의 경기면 지켜보는 사람이 모두 다 본 순간 봇이 바로 주사위를 굴린다
+  // (예전에는 봇마다 24초를 고정으로 기다려 건너뛰어도 소용이 없었다)
+  const watchedSent = useRef<string | null>(null);
   const dicePlace = '아래'; // 주사위는 단계 패널 바로 아래에 있다
   if (view.phase.kind !== 'friday.aftermath') return null;
   const { current, matches } = view.phase;
@@ -456,6 +462,11 @@ export function FridayAftermathScreen() {
   const sectorGoals = m.report.sectors.reduce((n, s) => n + s.myGoals, 0);
   const sectorConceded = m.report.sectors.reduce((n, s) => n + s.theirGoals, 0);
   const field = actor.uniforms.filter((u) => u.location === 'field');
+  const markWatched = () => {
+    if (watchedSent.current === seenKey) return;
+    watchedSent.current = seenKey;
+    send({ type: 'matchWatched', week: view.week, actor: current });
+  };
 
   return (
     <section className={`panel phase-panel${mine ? ' mine' : ''}`}>
@@ -475,7 +486,14 @@ export function FridayAftermathScreen() {
           );
         })}
       </p>
-      <Stepper steps={steps} current={step} onSelect={(i) => setOverride({ key: overrideKey, step: i })} />
+      <Stepper
+        steps={steps}
+        current={step}
+        onSelect={(i) => {
+          if (i >= 1) markWatched();
+          setOverride({ key: overrideKey, step: i });
+        }}
+      />
       {step >= 1 && (
         <div className="scoreline">
           <span className="team">{actor.name}</span>
@@ -488,15 +506,15 @@ export function FridayAftermathScreen() {
       {step === 0 && (
         <div className="step">
           <h3>경기 보기 <span className="muted">위 = {opponent.teamName}(뒤집힌 상대 카드) · 아래 = {actor.name} · 규칙서 순서(p.21)로 구획을 비교합니다</span></h3>
-          <MatchReplay key={seenKey} actor={actor} m={m} />
+          <MatchReplay key={seenKey} actor={actor} m={m} onEnd={markWatched} />
           {derived === 0 &&
             (mine ? (
               <div className="submit-row step-nav">
                 <span className="muted small">다 봤으면 경기 종료 화면으로 넘어갑니다. 건너뛰어도 됩니다.</span>
-                <button className="primary" onClick={() => setMatchWatched(seenKey)}>경기 종료로 →</button>
+                <button className="primary" onClick={() => { markWatched(); setMatchWatched(seenKey); }}>경기 종료로 →</button>
               </div>
             ) : (
-              <p className="muted small">{actor.name}의 경기입니다. 재생이 끝나면 {actor.name}이(가) 경기 종료 화면으로 넘어갑니다.</p>
+              <p className="muted small">{actor.name}의 경기입니다. {room?.players.find((p) => p.id === current)?.isBot ? ' 모두 다 보면(재생 끝이나 ⏭) AI가 바로 주사위를 굴립니다.' : ` 재생이 끝나면 ${actor.name}이(가) 경기 종료 화면으로 넘어갑니다.`}</p>
             ))}
         </div>
       )}
