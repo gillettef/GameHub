@@ -42,6 +42,13 @@ export class Connection {
 
   constructor(private url: string, private onOpen: (c: Connection) => void) {}
 
+  // 휴대폰을 잠갔다 켜거나 네트워크가 돌아오면 백오프(최대 10초)를 기다리지 않고 바로 다시 붙는다
+  wakeUp(): void {
+    if (this.closed) return;
+    this.backoff = RECONNECT_MIN_MS;
+    this.connect(); // 이미 열려 있거나 연결 중이면 아무것도 하지 않는다
+  }
+
   connect(): void {
     // 이미 열려 있거나 연결 중이면 새로 만들지 않는다 (소켓이 둘 살아 있으면 rejoin 이 두 번 간다)
     if (this.socket && (this.socket.readyState === WebSocket.OPEN || this.socket.readyState === WebSocket.CONNECTING)) return;

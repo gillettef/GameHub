@@ -38,7 +38,7 @@ function PhaseScreen() {
 
 // 레이아웃(모바일 전용): 헤더 + 참가자 띠 / 한 열 본문 / 아래 고정 탭 막대 (components/Mobile.tsx)
 function Layout({ phasePanel, subtitle }: { phasePanel: ReactNode; subtitle?: string }) {
-  const { view, session, error } = useView();
+  const { view, session, error, connected } = useView();
   const current = 'current' in view.phase ? view.phase.current : null;
   const myPending = session ? (view.players[session.playerId]?.pending.length ?? 0) : 0;
   // 선택(확정 대기)은 단계·차례·요일이 바뀌거나 대상 선택이 생기면 지운다
@@ -54,6 +54,8 @@ function Layout({ phasePanel, subtitle }: { phasePanel: ReactNode; subtitle?: st
         <PendingModal />
         <ConfirmBar />
         {error && <div className="toast" role="alert">{error}</div>}
+        {/* 모바일 헤더는 '연결됨' 글자를 숨기고 점만 보여 줘서 끊긴 것을 알아채기 어렵다 — 끊기면 띠로 알린다 */}
+        {!connected && <div className="conn-banner" role="status">연결이 끊겨 다시 연결하는 중…</div>}
       </div>
     </CommitProvider>
   );

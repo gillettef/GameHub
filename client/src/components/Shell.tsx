@@ -31,6 +31,13 @@ export function leagueRankOf(view: { league: { players: Record<PlayerId, number>
   return 1 + [...Object.values(view.league.players), ...view.league.opponents.map((o) => o.position)].filter((x) => x > mine).length;
 }
 
+// 게임 중 '나가기'는 재접속 정보를 지워 자리를 영구히 잃는다(시작한 방에는 다시 들어올 수 없다) — 잘못 누르지 않게 한 번 묻는다.
+// 관전자·끝난 게임은 잃을 것이 없어 묻지 않는다
+export function confirmLeave(phaseKind: string, player: boolean): boolean {
+  if (!player || phaseKind === 'gameOver') return true;
+  return window.confirm('게임에서 나가면 이 자리로 다시 들어올 수 없고, 내 차례에서 판이 멈춥니다.\n잠깐 자리를 비우는 거라면 창만 닫으세요 — 다시 열면 이어서 합니다.\n\n정말 나갈까요?');
+}
+
 export function Header({ subtitle }: { subtitle?: string }) {
   const { view, room, connected, session, leave } = useView();
   return (
@@ -54,7 +61,7 @@ export function Header({ subtitle }: { subtitle?: string }) {
         {session && <NotifyToggles />}
         <span className={`dot ${connected ? 'on' : 'off'}`} title={connected ? '연결됨' : '재연결 중'} />
         <span className="conn-text">{connected ? '연결됨' : '재연결 중'}</span>
-        <button className="link" onClick={leave}>나가기</button>
+        <button className="link" onClick={() => confirmLeave(view.phase.kind, !!session) && leave()}>나가기</button>
       </div>
     </header>
   );

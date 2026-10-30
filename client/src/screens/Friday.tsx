@@ -248,7 +248,7 @@ export function FridayPrepareScreen() {
                                       reason ? (
                                         <span className="error small lineup-blocked">⛔ {reason}</span>
                                       ) : on && side.effect && !side.effect.mandatory ? (
-                                        <label className="row small" onClick={(e) => e.stopPropagation()}>
+                                        <label className="row small activation-toggle" onClick={(e) => e.stopPropagation()}>
                                           <input type="checkbox" checked={!!activations[r.instanceId]} onChange={(e) => setActivations((a) => ({ ...a, [r.instanceId]: e.target.checked }))} />
                                           효과 활성화 <CostChips cost={side.effect.cost} />
                                         </label>
@@ -340,9 +340,9 @@ function tacticEffectBlock(cardId: string, me: { roster: PlayerInstance[]; unifo
 }
 
 // p.21 경기 진행: 상대 팀 카드가 공개되고, 포메이션에 쓴 카드가 아닌 전술 카드 1장의 효과를 쓸 수 있다(카드는 손에 남는다).
-// 선 참가자부터 한 명씩. 효과 카드는 select → 확정 막대, "효과 없이 진행"은 즉시 보낸다
+// 선 참가자부터 한 명씩. 효과 카드와 "효과 없이 진행" 모두 select → 확정 막대
 export function FridayMatchScreen() {
-  const { view, me, act } = useGame();
+  const { view, me } = useGame();
   const { chosen, select } = useCommit();
   if (view.phase.kind !== 'friday.match') return null;
   const { current, decided, effectCard } = view.phase;
@@ -400,7 +400,8 @@ export function FridayMatchScreen() {
                 <p className="muted small">쓸 수 있는 효과 카드가 없습니다 (포메이션 카드는 효과로 쓸 수 없습니다).</p>
               )}
               <div className="row">
-                <button className="primary" onClick={() => act({ type: 'playTacticEffect', cardId: null })}>효과 없이 진행</button>
+                {/* 효과 카드와 같이 확정 막대를 거친다 — 이 버튼만 바로 보내져 잘못 누르면 되돌릴 수 없었다 */}
+                <button className={chosen === 'tactic:none' ? 'chosen' : ''} onClick={() => select('tactic:none', { type: 'playTacticEffect', cardId: null }, <>전술 효과 <b>없이</b> 경기를 진행합니다</>)}>효과 없이 진행</button>
               </div>
             </>
           ) : (
