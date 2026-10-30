@@ -173,8 +173,6 @@ export function pendingChoices(state: GameState): number {
   const pd = state.pending[0];
   if (!pd) return 0;
   switch (pd.kind) {
-    case 'mission':
-      return pd.options.length;
     case 'questReward': {
       const q = QUEST_DEFS[pd.questId];
       return q.kind === 'judge' || q.kind === 'contest' ? q.options.length : 0;
@@ -198,11 +196,6 @@ export function respond(state: GameState, choice: number): string | null {
   state.pending.shift();
   const p = state.players[pd.player];
   switch (pd.kind) {
-    case 'mission': {
-      p.missions = pd.options.filter((_, i) => i !== choice);
-      state.missionDeck.push(pd.options[choice]);
-      break;
-    }
     case 'questReward': {
       const q = QUEST_DEFS[pd.questId];
       if (q.kind === 'judge' || q.kind === 'contest') {

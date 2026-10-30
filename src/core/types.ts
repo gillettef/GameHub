@@ -225,15 +225,6 @@ export interface SatelliteDef {
   text?: string;
 }
 
-export interface MissionDef {
-  id: string;
-  name: string;
-  cond: Cond[];
-  doctrine?: Partial<Record<Doctrine, number>>;
-  points: number;
-  text?: string;
-}
-
 // ── 상태 ──
 export type Levels = number[]; // 레벨별 개수 [Lv0, Lv1, Lv2, Lv3]
 
@@ -254,8 +245,6 @@ export interface PlayerState {
   legacies: string[];
   hand: { id: string; fresh: boolean }[];
   orbit: { id: string; timer: number }[];
-  missions: string[];
-  missionsDone: string[];
   charters: Record<CharterField, number>;
   patrons: string[];
   facilities: string[];
@@ -273,7 +262,6 @@ export type ConflictLoss = 'culture' | 'building' | 'doctrine';
 export type RaidEffect = 'lootProd' | 'lootFood' | 'stealSci' | 'stealEnergy' | 'abduct';
 
 export type Pending =
-  | { kind: 'mission'; player: number; options: string[] }
   | { kind: 'questReward'; player: number; questId: string }
   | { kind: 'redirect'; player: number; questId: string; targets: number[] }
   | { kind: 'coexist'; player: number; questId: string }
@@ -316,7 +304,6 @@ export interface GameState {
   patronDecks: Record<Ring, string[]>;
   satDeck: string[];
   satMarket: (string | null)[];
-  missionDeck: string[];
   stage4Order: Record<Doctrine, number[]>;
   pending: Pending[];
   steps: Step[];

@@ -3,7 +3,6 @@ import type { Doctrine, GameState, PlayerState } from '../types';
 import { CHARTER_FIELDS, DOCTRINES, RES_KEYS } from '../types';
 import { CHARTER_FULL_POINTS, FRUITION_FIRST, FRUITION_OTHER, FRUITION_PER_STAGE } from '../data/constants';
 import { CARD_DEFS } from '../data/cards';
-import { MISSION_DEFS } from '../data/missions';
 import { PATRON_DEFS } from '../data/patrons';
 import { QUEST_DEFS } from '../data/quests';
 import { metric, stage } from './derive';
@@ -13,7 +12,6 @@ export interface ScoreBreakdown {
   culture: number;
   legacies: number;
   charters: number;
-  missions: number;
   patrons: number;
   fruition: number;
   finale: number;
@@ -34,7 +32,6 @@ export function scorePlayer(state: GameState, p: PlayerState): ScoreBreakdown {
     return a + (c?.type === 'legacy' ? c.points : 0);
   }, 0);
   const charters = CHARTER_FIELDS.filter((f) => p.charters[f] >= 3).length * CHARTER_FULL_POINTS;
-  const missions = p.missionsDone.reduce((a, id) => a + (MISSION_DEFS[id]?.points ?? 0), 0);
   const patrons = p.patrons.reduce((a, id) => a + (PATRON_DEFS[id]?.points ?? 0), 0);
   let fruition = 0;
   let finale = 0;
@@ -44,7 +41,7 @@ export function scorePlayer(state: GameState, p: PlayerState): ScoreBreakdown {
     else if (q?.kind === 'finale') finale += Math.floor(metric(state, p, q.metric) / q.divisor);
   }
   const culture = p.res.culture;
-  return { player: p.id, culture, legacies, charters, missions, patrons, fruition, finale, total: culture + legacies + charters + missions + patrons + fruition + finale };
+  return { player: p.id, culture, legacies, charters, patrons, fruition, finale, total: culture + legacies + charters + patrons + fruition + finale };
 }
 
 /** 순위(동점: 노선 단계 합 → 남은 자원 합 → 자리 늦은 쪽) */

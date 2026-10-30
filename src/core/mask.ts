@@ -1,4 +1,4 @@
-// 비공개 정보 가림: 다른 사람의 임무, 덱 순서, 본인 시야 밖의 미래 퀘스트, 공통 종료 퀘스트, 시드
+// 비공개 정보 가림: 덱 순서, 본인 시야 밖의 미래 퀘스트, 공통 종료 퀘스트, 시드
 import type { GameState, Ring } from './types';
 import { QUEST_DEFS } from './data/quests';
 import { playerMods } from './engine/derive';
@@ -16,16 +16,12 @@ export function maskFor(state: GameState, viewer: number | null): GameState {
   s.rngState = [0, 0, 0, 0];
   // 기록은 최근 것만 보낸다(전송량 제한)
   if (s.log.length > LOG_SEND) s.log = s.log.slice(-LOG_SEND);
-  // 게임이 끝나면 임무를 모두 공개한다
-  if (!s.gameOver) for (const p of s.players) if (p.id !== viewer) p.missions = hideAll(p.missions);
-  s.pending = s.pending.map((pd) => (pd.kind === 'mission' && pd.player !== viewer ? { ...pd, options: hideAll(pd.options) } : pd));
   for (const r of [1, 2, 3] as Ring[]) {
     s.cardDecks[r] = hideAll(s.cardDecks[r]);
     s.questDecks[r] = hideAll(s.questDecks[r]);
     s.patronDecks[r] = hideAll(s.patronDecks[r]);
   }
   s.satDeck = hideAll(s.satDeck);
-  s.missionDeck = hideAll(s.missionDeck);
   const vp = viewer === null ? undefined : state.players[viewer];
   const sight = vp ? playerMods(vp).sight : 0;
   s.questFuture = s.questFuture.map((id, i) => (i < sight ? id : HIDDEN));

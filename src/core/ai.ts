@@ -5,7 +5,6 @@ import { BUILDING_COST, CARD_ROW_SIZE, PATRON_LIMIT, UNIT_COST, slotCost } from 
 import { CARD_DEFS } from './data/cards';
 import { QUEST_DEFS } from './data/quests';
 import { PATRON_DEFS } from './data/patrons';
-import { MISSION_DEFS } from './data/missions';
 import { applyAction } from './engine/turn';
 import {
   buildingUnlocked,
@@ -15,7 +14,6 @@ import {
   defenseValue,
   mainDoctrine,
   meets,
-  metric,
   might,
   playerMods,
   productionPreview,
@@ -72,7 +70,6 @@ export function evaluate(state: GameState, p: PlayerState): number {
     if (c.type === 'legacy') v += c.points;
   }
   v += CHARTER_FIELDS.reduce((a, f) => a + p.charters[f] * 1.2 + (p.charters[f] >= 3 ? 4 : 0), 0);
-  v += p.missionsDone.reduce((a, id) => a + (MISSION_DEFS[id]?.points ?? 0), 0);
   v += p.patrons.reduce((a, id) => a + (PATRON_DEFS[id]?.points ?? 0) + 1, 0);
   v += mods.sight * 0.4 * Math.min(1, R / 3);
   v += p.facilities.length * 1;
@@ -84,20 +81,6 @@ export function aiRespond(state: GameState): number {
   const pd = state.pending[0];
   const p = state.players[pd.player];
   switch (pd.kind) {
-    case 'mission': {
-      // 달성 가능성이 가장 낮아 보이는 임무를 버린다
-      let worst = 0;
-      let worstScore = Infinity;
-      pd.options.forEach((id, i) => {
-        const m = MISSION_DEFS[id];
-        const ratio = m.cond.reduce((a, c) => a + Math.min(1, metric(state, p, c.metric) / c.min), 0) / m.cond.length;
-        if (ratio < worstScore) {
-          worstScore = ratio;
-          worst = i;
-        }
-      });
-      return worst;
-    }
     case 'questReward': {
       const q = QUEST_DEFS[pd.questId];
       if (q.kind !== 'judge' && q.kind !== 'contest') return 0;

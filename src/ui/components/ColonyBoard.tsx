@@ -1,4 +1,4 @@
-// 식민지 보드: 자원 은행, 행동 토큰, 건물·유닛 칸(정착민 토큰), 선구자·유산·손패·궤도·후원·임무·헌장
+// 식민지 보드: 자원 은행, 행동 토큰, 건물·유닛 칸(정착민 토큰), 선구자·유산·손패·궤도·후원·헌장
 import { useState, type ReactNode } from 'react';
 import type { BuildingKind, CharterField, PlayerState, UnitKind } from '../../core/types';
 import { BUILDING_KINDS, CHARTER_FIELDS, DOCTRINES, RES_KEYS, UNIT_KINDS } from '../../core/types';
@@ -26,7 +26,6 @@ import { STAGE_TEXT } from '../../core/data/doctrines';
 import { PATRON_DEFS } from '../../core/data/patrons';
 import { FACILITY_DEFS } from '../../core/data/quests';
 import { SATELLITE_DEFS } from '../../core/data/satellites';
-import { MISSION_DEFS } from '../../core/data/missions';
 import {
   buildingCap,
   buildingCount,
@@ -47,7 +46,6 @@ import {
   isHybrid,
 } from '../../core/engine/derive';
 import { buildingUpgradeCost, unitUpgradeCost } from '../../core/engine/actions';
-import { HIDDEN } from '../../core/mask';
 import { useGame } from '../useGame';
 import { CardFace } from './CardFace';
 import { Icon, type IconName } from './Icon';
@@ -69,7 +67,6 @@ type Open =
   | { k: 'charter'; field: CharterField }
   | { k: 'patron'; id: string }
   | { k: 'facility'; id: string }
-  | { k: 'mission'; id: string; done: boolean }
   | { k: 'doctrine' };
 
 export function ColonyBoard({ player }: { player: PlayerState }) {
@@ -228,10 +225,6 @@ export function ColonyBoard({ player }: { player: PlayerState }) {
       case 'facility': {
         const f = FACILITY_DEFS[o.id];
         return { title: f.name, body: <p>{modsText(f.mods)}</p>, actions: [] };
-      }
-      case 'mission': {
-        const m = MISSION_DEFS[o.id];
-        return { title: m.name, body: <p>{condText(m.cond)} · {m.points}점{o.done ? ' · 달성' : ''}</p>, actions: [] };
       }
       case 'doctrine':
         return {
@@ -425,18 +418,6 @@ export function ColonyBoard({ player }: { player: PlayerState }) {
             ))}
           </Slot>
         )}
-        <Slot label="임무">
-          {p.missions.map((id, i) =>
-            id === HIDDEN ? (
-              <CardFace key={i} frame="mission" width={72} title="비공개" />
-            ) : (
-              <CardFace key={id} frame="mission" width={72} title={MISSION_DEFS[id].name} onClick={() => setOpen({ k: 'mission', id, done: false })} />
-            ),
-          )}
-          {p.missionsDone.map((id) => (
-            <CardFace key={id} frame="mission" width={72} title={MISSION_DEFS[id].name} badge="✓" onClick={() => setOpen({ k: 'mission', id, done: true })} />
-          ))}
-        </Slot>
       </div>
 
       {/* 헌장 */}

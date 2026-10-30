@@ -14,7 +14,7 @@ import type { Action, GameState } from '../types';
 
 const seats = (n: number) => Array.from({ length: n }, (_, i) => ({ name: `P${i}`, isAI: true }));
 
-/** 임무 선택 대기를 모두 처리한 게임 */
+/** 대기 결정을 모두 처리한 게임 */
 function ready(seed = 1, n = 3): GameState {
   let s = createGame(seed, seats(n));
   while (s.pending.length) s = applyAction(s, s.pending[0].player, { type: 'respond', choice: 0 }).state;
@@ -50,13 +50,9 @@ describe('준비', () => {
     }
   });
 
-  it('임무 3장 중 2장을 남긴다', () => {
-    const s = ready();
-    for (const p of s.players) expect(p.missions).toHaveLength(2);
-  });
-
   it('대기 결정 중에는 다른 행동이 막힌다', () => {
-    const s = createGame(1, seats(2));
+    const s = ready();
+    s.pending.push({ kind: 'coexist', player: 0, questId: 'q1t1' });
     expect(applyAction(s, s.current, { type: 'endTurn' }).error).toBeTruthy();
   });
 });
@@ -238,6 +234,8 @@ describe('대외 단계', () => {
     s = act(s, { type: 'declareConflict', target: t, loss: 'culture' });
     s = act(s, { type: 'endTurn' });
     s = act(s, { type: 'endTurn' }, t);
+    // 라운드 시작 트랙 진행의 결정이 있으면 먼저 처리해야 내 차례(분쟁 판정)가 시작된다
+    while (s.pending.length) s = act(s, { type: 'respond', choice: 0 }, s.pending[0].player);
     expect(s.players[t].res.culture).toBeLessThan(10);
   });
 });
@@ -271,12 +269,10 @@ describe('AI 전체 게임', () => {
 
 describe('가림', async () => {
   const { maskFor, HIDDEN } = await import('../mask');
-  it('다른 사람 임무·덱·시야 밖 미래 퀘스트·시드를 가린다', () => {
+  it('덱·시야 밖 미래 퀘스트·시드를 가린다', () => {
     const s = ready();
     s.players[0].orbit.push({ id: 'sa3', timer: 3 });
     const m = maskFor(s, 0);
-    expect(m.players[0].missions).toEqual(s.players[0].missions);
-    expect(m.players[1].missions.every((x) => x === HIDDEN)).toBe(true);
     expect(m.questFuture[0]).toBe(s.questFuture[0]);
     expect(m.questFuture[1]).toBe(HIDDEN);
     expect(m.cardDecks[1].every((x) => x === HIDDEN)).toBe(true);

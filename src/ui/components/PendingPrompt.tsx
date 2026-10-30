@@ -1,8 +1,7 @@
-// 내게 온 대기 결정(임무 고르기·퀘스트 보상·유도·공존·후원 계약)
+// 내게 온 대기 결정(퀘스트 보상·유도·공존·후원 계약)
 import { useState, type ReactNode } from 'react';
 import { QUEST_DEFS } from '../../core/data/quests';
 import { PATRON_DEFS } from '../../core/data/patrons';
-import { MISSION_DEFS } from '../../core/data/missions';
 import { PATRON_LIMIT } from '../../core/data/constants';
 import { defenseValue } from '../../core/engine/derive';
 import { useGame } from '../useGame';
@@ -22,11 +21,6 @@ export function PendingPrompt() {
   let options: { label: string; choice: number; tone?: string }[] = [];
 
   switch (pd.kind) {
-    case 'mission':
-      title = '임무 고르기 — 버릴 1장을 고르세요';
-      body = <p>남은 2장은 비공개 임무가 됩니다. 달성하면 공개하고 점수를 받습니다.</p>;
-      options = pd.options.map((id, i) => ({ label: `버리기: ${MISSION_DEFS[id].name} (${condText(MISSION_DEFS[id].cond)} · ${MISSION_DEFS[id].points}점)`, choice: i }));
-      break;
     case 'questReward': {
       const q = QUEST_DEFS[pd.questId];
       title = `「${q.name}」 보상 선택`;

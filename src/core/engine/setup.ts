@@ -8,7 +8,6 @@ import { ringDeckIds } from '../data/cards';
 import { FINALES, FRUITIONS, QUEST_DECKS } from '../data/quests';
 import { PATRONS } from '../data/patrons';
 import { SATELLITES } from '../data/satellites';
-import { MISSIONS } from '../data/missions';
 import { generateLayout } from './research';
 import { fillSlots } from './quest';
 import { gain, log } from './util';
@@ -45,8 +44,6 @@ function newPlayer(id: number, seat: SeatConfig): PlayerState {
     legacies: [],
     hand: [],
     orbit: [],
-    missions: [],
-    missionsDone: [],
     charters: { prosperity: 0, explore: 0, defense: 0, bond: 0 },
     patrons: [],
     facilities: [],
@@ -63,11 +60,9 @@ function newPlayer(id: number, seat: SeatConfig): PlayerState {
 export function createGame(seed: number | number[], seats: SeatConfig[]): GameState {
   if (seats.length < MIN_PLAYERS || seats.length > MAX_PLAYERS) throw new Error('인원은 2~4명');
   const rng = createRng(seed);
-  // RNG 순서: 방향 순서 → 곁가지 → 임무 → 카드 덱 → 퀘스트 덱 → 공통 종료 → 후원 계약 → 위성 → 시작 플레이어
+  // RNG 순서: 방향 순서 → 곁가지 → 카드 덱 → 퀘스트 덱 → 공통 종료 → 후원 계약 → 위성 → 시작 플레이어
   const layout = generateLayout(rng);
   const players = seats.map((s, i) => newPlayer(i, s));
-  const missionDeck = rng.shuffle(MISSIONS.map((m) => m.id));
-  const missionHands = players.map(() => missionDeck.splice(0, 3));
   const cardDecks = { 1: rng.shuffle(ringDeckIds(1)), 2: rng.shuffle(ringDeckIds(2)), 3: rng.shuffle(ringDeckIds(3)) } as Record<Ring, string[]>;
   const questDecks = {} as Record<Ring, string[]>;
   for (const r of [1, 2, 3] as Ring[]) questDecks[r] = rng.shuffle(QUEST_DECKS[r].map((q) => q.id));
@@ -104,9 +99,8 @@ export function createGame(seed: number | number[], seats: SeatConfig[]): GameSt
     patronDecks,
     satDeck,
     satMarket: satDeck.splice(0, SAT_MARKET),
-    missionDeck,
     stage4Order: { ark: [], symbiont: [], synth: [] },
-    pending: missionHands.map((options, i) => ({ kind: 'mission' as const, player: i, options })),
+    pending: [],
     steps: [],
     cardDiscard: { 1: [], 2: [], 3: [] },
     eraStartRound: 1,

@@ -48,7 +48,7 @@ export function ScoreBoard({ onClose, onHome }: { onClose: () => void; onHome: (
               <td>{game.players[r.player].name}</td>
               <td>{r.culture}</td>
               <td>{r.fruition}</td>
-              <td title="유산·헌장·임무·후원·종료 기록">{r.legacies + r.charters + r.missions + r.patrons + r.finale}</td>
+              <td title="유산·헌장·후원·종료 기록">{r.legacies + r.charters + r.patrons + r.finale}</td>
               <td>
                 <strong>{r.total}</strong>
               </td>
@@ -56,7 +56,7 @@ export function ScoreBoard({ onClose, onHome }: { onClose: () => void; onHome: (
           ))}
         </tbody>
       </table>
-      <p className={styles.note}>기타 = 유산 + 헌장 + 임무 + 후원 계약 + 종료 기록</p>
+      <p className={styles.note}>기타 = 유산 + 헌장 + 후원 계약 + 종료 기록</p>
     </Sheet>
   );
 }

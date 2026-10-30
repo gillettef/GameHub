@@ -2,17 +2,14 @@
 import type { Action, ActionResult, GameState, PlayerState } from '../types';
 import { BUILDING_KINDS, CHARTER_FIELDS, UNIT_KINDS } from '../types';
 import { CARD_ROW_SIZE, FAMINE_CULTURE, GUARD_MAX, ROUND_LIMIT, ROW_DISCARD } from '../data/constants';
-import { MISSION_DEFS } from '../data/missions';
 import { SATELLITE_DEFS } from '../data/satellites';
-import { defenseLeft, meets, playerMods, productionPreview } from './derive';
-import { addDoctrine } from './effects';
+import { defenseLeft, playerMods, productionPreview } from './derive';
 import { applyMainAction } from './actions';
 import { declareConflict, pullTrack, raid, resolveConflict } from './external';
 import { advanceEraRest, advanceEraStart, eraShouldAdvance } from './era';
 import { advanceTrack, respond, startThreatOn } from './quest';
 import { ranking } from './scoring';
 import { clone, log, withRng } from './util';
-import { DOCTRINES } from '../types';
 
 /** 행동 하나를 적용한다. 입력 상태는 바꾸지 않는다 */
 export function applyAction(state: GameState, actor: number, action: Action): ActionResult {
@@ -180,24 +177,11 @@ export function produce(state: GameState, p: PlayerState): void {
   } else p.res.food = food;
 }
 
-function checkMissions(state: GameState, p: PlayerState): void {
-  for (const id of [...p.missions]) {
-    const m = MISSION_DEFS[id];
-    if (m && meets(state, p, m.cond)) {
-      p.missions = p.missions.filter((x) => x !== id);
-      p.missionsDone.push(id);
-      for (const d of DOCTRINES) addDoctrine(state, p, d, m.doctrine?.[d] ?? 0);
-      log(state, p.id, `임무 「${m.name}」 달성`);
-    }
-  }
-}
-
-/** 차례 끝: 생산 → 임무 → 궤도 정리·방위 태세 → 시대 전환 검사 → (대기 결정 뒤) 다음 차례 */
+/** 차례 끝: 생산 → 궤도 정리·방위 태세 → 시대 전환 검사 → (대기 결정 뒤) 다음 차례 */
 export function endTurn(state: GameState): void {
   const p = state.players[state.current];
   produce(state, p);
   p.coexist = 0;
-  checkMissions(state, p);
   for (const o of p.orbit) o.timer--;
   const fallen = p.orbit.filter((o) => o.timer <= 0);
   for (const o of fallen) log(state, p.id, `위성 「${SATELLITE_DEFS[o.id].name}」 수명 다함`);
