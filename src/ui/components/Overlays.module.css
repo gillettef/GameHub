@@ -1,0 +1,60 @@
+.log {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: 13px;
+}
+.log li {
+  padding: var(--space-1) 0;
+  border-bottom: 1px solid var(--border);
+}
+.round {
+  display: inline-block;
+  min-width: 32px;
+  color: var(--text-dim);
+  font-size: 12px;
+}
+.score {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.score th,
+.score td {
+  padding: var(--space-2) var(--space-1);
+  text-align: center;
+  border-bottom: 1px solid var(--border);
+}
+.score th {
+  color: var(--text-dim);
+  font-weight: 400;
+  font-size: 12px;
+}
+.win td {
+  color: var(--accent);
+}
+.note {
+  font-size: 12px;
+  color: var(--text-dim);
+}
+.era {
+  position: fixed;
+  inset: 0;
+  z-index: 45;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  background: color-mix(in srgb, var(--bg) 70%, transparent);
+  pointer-events: none;
+}
+.era img {
+  width: min(360px, 90vw);
+  height: auto;
+}
+.era strong {
+  font-family: var(--font-display);
+  font-size: 28px;
+  margin-top: -84px;
+}

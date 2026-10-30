@@ -1,0 +1,102 @@
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: color-mix(in srgb, var(--bg) 60%, transparent);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+.sheet {
+  width: 100%;
+  max-width: 480px;
+  max-height: 82dvh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-bottom: none;
+  border-radius: var(--radius) var(--radius) 0 0;
+  box-shadow: var(--shadow);
+  padding-bottom: env(safe-area-inset-bottom);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  animation: nt-card-in 220ms ease-out both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .sheet {
+    animation: none;
+  }
+}
+.head {
+  position: sticky;
+  top: 0;
+  background: var(--bg-elev);
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3) var(--space-4) var(--space-2);
+}
+.head h3 {
+  margin: 0;
+  font-size: 16px;
+  font-family: var(--font-display);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.close {
+  width: 44px;
+  height: 44px;
+  border: none;
+  background: none;
+  color: var(--text-dim);
+  font-size: 18px;
+}
+.body {
+  padding: 0 var(--space-4) var(--space-3);
+  color: var(--text);
+}
+.body p {
+  margin: 0 0 var(--space-2);
+}
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4) var(--space-4);
+  border-top: 1px solid var(--border);
+}
+.actionRow {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.btn {
+  min-height: 46px;
+  border-radius: var(--radius-sm);
+  font-weight: 700;
+  border: 1px solid var(--accent);
+}
+.primary {
+  background: var(--accent);
+  color: var(--accent-contrast);
+}
+.danger {
+  background: transparent;
+  border-color: var(--danger);
+  color: var(--danger);
+}
+.plain {
+  background: var(--surface-2);
+  border-color: var(--border);
+  color: var(--text);
+}
+.btn:disabled {
+  opacity: 0.4;
+}
+.why {
+  font-size: 12px;
+  color: var(--warn);
+}
