@@ -26,7 +26,11 @@
 
 ```
 git config credential.https://github.com.username gillettef
+git config user.name gillettef
+git config user.email 108650157+gillettef@users.noreply.github.com
 ```
+
+커밋 작성자는 GitHub가 주는 noreply 주소로 둔다. 개인 이메일이 커밋에 남지 않고, 항상 gillettef 계정으로 표시된다.
 
 새로 클론한 경우에도 위 명령을 한 번 실행한다(`.git/config` 는 저장소에 올라가지 않는다).
 
