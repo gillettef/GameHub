@@ -84,13 +84,23 @@ export function UiProvider({ children }: { children: ReactNode }) {
     if (!view.seats.includes(selected)) setSelected(session?.playerId ?? view.seats[0]!);
   }, [view.seats, selected, session?.playerId]);
 
+  // 차례가 바뀌어 보던 참가자가 자동으로 바뀐 것은 '메뉴를 누른 것'이 아니므로 화면을 맨 위로 올리지 않는다 (아래 스크롤 효과).
+  // 미리 라인업을 짜거나 시장을 읽는 중에 봇이 차례를 넘길 때마다 화면이 튀었다. 단계 전환·내 차례 시작은 탭을 다시 잡으므로 올린다
+  const autoSelect = useRef(false);
+  const forceNav = useRef(false);
   const current = 'current' in view.phase ? view.phase.current : null;
+  const selectedRef = useRef(selected);
+  selectedRef.current = selected;
   useEffect(() => {
-    if (current) setSelected(current);
+    if (current) {
+      if (selectedRef.current !== current) autoSelect.current = true; // 실제로 바뀔 때만 (안 바뀌면 스크롤 효과가 돌지 않아 표시가 남는다)
+      setSelected(current);
+    }
     setReleasing(false);
   }, [current]);
 
   useEffect(() => {
+    forceNav.current = true;
     const d = defaults(view.phase.kind);
     setMainTab(d.main);
     setBoardTab(d.board);
@@ -142,14 +152,16 @@ export function UiProvider({ children }: { children: ReactNode }) {
   const prevMyTurn = useRef(myTurn);
   useEffect(() => {
     if (myTurn && !prevMyTurn.current) {
+      forceNav.current = true;
       const d = defaults(view.phase.kind);
       setMainTab(d.main);
       setBoardTab(d.board);
       setSharedTab(d.shared);
       setMobileTab('play');
-    } else if (!myTurn && prevMyTurn.current && turnBased) {
-      // 내 차례가 끝나 다른 참가자 차례가 되면 모바일은 '기록·채팅' 탭의 기록으로 (사용자 요청 2026-09-24): '진행' 탭은 남의 차례엔 비어 있고,
-      // 다른 참가자가 무엇을 하는지는 기록으로 본다 (행동 따라가기 기능은 없앴다). PC 는 오른쪽 기록이 늘 보이므로 그대로
+    } else if (!myTurn && prevMyTurn.current && turnBased && view.phase.kind === 'weekday') {
+      // 주중에 내 차례가 끝나 다른 참가자 차례가 되면 '기록·채팅' 탭의 기록으로 (사용자 요청 2026-09-24): '진행' 탭은 남의 주중 차례엔 비어 있고,
+      // 다른 참가자가 무엇을 하는지는 기록으로 본다 (행동 따라가기 기능은 없앴다).
+      // 이사회·경기 결과는 남의 주사위와 경기 보기가 '진행' 탭에 나오므로 그대로 둔다 — 서로 지켜보라고 턴제로 바꾼 단계다
       setMobileTab('log');
       setSideTab('log');
     }
@@ -159,11 +171,21 @@ export function UiProvider({ children }: { children: ReactNode }) {
   // 메뉴·탭을 누르면(또는 단계가 바뀌어 탭이 재설정되면) 항상 화면 맨 위로 (사용자 요청 2026-09-22). 페이지는 window 가 스크롤한다(헤더·사이드바는 sticky).
   // showCard 로 왔으면 맨 위 대신 그 카드(`data-focus`)가 보이게 맞추고 잠깐 초록 테두리로 표시한다
   const firstNav = useRef(true);
+  const lastNav = useRef({ selected, mainTab, boardTab, sharedTab, marketTab, mobileTab, navTick });
   useEffect(() => {
+    const prev = lastNav.current;
+    lastNav.current = { selected, mainTab, boardTab, sharedTab, marketTab, mobileTab, navTick };
+    const auto = autoSelect.current;
+    const forced = forceNav.current;
+    autoSelect.current = false;
+    forceNav.current = false;
     if (firstNav.current) {
       firstNav.current = false;
       return;
     }
+    // 차례가 바뀌어 보던 참가자만 자동으로 바뀌었으면(다른 탭 상태는 그대로) 스크롤하지 않는다
+    const onlySelected = prev.selected !== selected && prev.mainTab === mainTab && prev.boardTab === boardTab && prev.sharedTab === sharedTab && prev.marketTab === marketTab && prev.mobileTab === mobileTab && prev.navTick === navTick;
+    if (auto && onlySelected && !forced) return;
     const behavior = reducedMotion() ? 'auto' : 'smooth';
     const key = focusRef.current;
     focusRef.current = null;

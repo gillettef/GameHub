@@ -95,7 +95,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       }
     });
     conn.connect();
+    const wake = () => {
+      if (document.visibilityState === 'visible') conn.wakeUp();
+    };
+    document.addEventListener('visibilitychange', wake);
+    window.addEventListener('online', wake);
     return () => {
+      document.removeEventListener('visibilitychange', wake);
+      window.removeEventListener('online', wake);
       offStatus();
       offMsg();
       conn.close();

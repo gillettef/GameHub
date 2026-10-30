@@ -86,6 +86,14 @@ function beep(): void {
   }
 }
 
+function vibrate(): void {
+  try {
+    navigator.vibrate?.([120, 80, 120]);
+  } catch {
+    /* 진동을 못 쓰는 환경 */
+  }
+}
+
 function desktopNotify(body: string): void {
   if (typeof Notification === 'undefined' || Notification.permission !== 'granted' || !document.hidden) return;
   try {
@@ -123,7 +131,10 @@ export function NotifyProvider({ children }: { children: ReactNode }) {
     wasNeeded.current = needs;
     if (was === null || was === needs || !needs || !task) return;
     if (view?.phase.kind.startsWith('setup')) return; // 준비 단계는 패널 자체가 안내라 소리를 내지 않는다
-    if (prefsRef.current.sound) beep();
+    if (prefsRef.current.sound) {
+      beep();
+      vibrate(); // 휴대폰은 무음 모드거나 소리가 막혀 있는 경우가 많다 (지원하는 기기만 — iOS Safari 는 무시)
+    }
     if (prefsRef.current.desktop) desktopNotify(task);
   }, [needs, task]);
 

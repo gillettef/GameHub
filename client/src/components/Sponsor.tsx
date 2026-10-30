@@ -37,7 +37,8 @@ export function SponsorContractModal({ cardId, me, onClose, onSign }: { cardId: 
   );
 
   return createPortal(
-    <div className="modal-backdrop dismissable" onClick={onClose}>
+    // 유형을 고른 뒤에는 바깥을 눌러도 닫지 않는다 — 바텀 시트라 바깥이 넓어 고른 것을 잘못 날리기 쉽다 (취소·Esc 로 닫는다)
+    <div className={`modal-backdrop${choice ? '' : ' dismissable'}`} onClick={choice ? undefined : onClose}>
       <div className="modal sponsor-modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="스폰서 계약">
         <div className="panel-head">
           <h2>스폰서 계약 — {card.name}</h2>
