@@ -49,12 +49,17 @@ export function trainPlayer(player: PlayerState, instance: PlayerInstance): void
 }
 
 // p.16 방출: 2돈 + 현재 역량, 부상/출장정지면 절반(내림), 카드 위 승점 토큰 획득. 주중 방출 행동과 카드 효과가 공유한다
+// 방출로 받는 돈: 2 + 현재 역량, 부상·출장정지면 절반(내림) + 특성 보너스. 확정 막대의 미리 보기도 같은 함수를 쓴다
+export function releaseValue(player: Pick<PlayerState, 'staff' | 'executives'>, inst: PlayerInstance): number {
+  let money = 2 + effectiveSkill(inst);
+  if (inst.tokens.injury > 0 || inst.tokens.suspension > 0) money = Math.floor(money / 2);
+  return money + traitSum(player, 'releaseBonus'); // 특성: 방출 시 돈 +N
+}
+
 export function releaseFromRoster(state: GameState, player: PlayerState, inst: PlayerInstance): number {
   const idx = player.roster.indexOf(inst);
   if (idx < 0) throw new GameError('no such player');
-  let money = 2 + effectiveSkill(inst);
-  if (inst.tokens.injury > 0 || inst.tokens.suspension > 0) money = Math.floor(money / 2);
-  money += traitSum(player, 'releaseBonus'); // 특성: 방출 시 돈 +N
+  const money = releaseValue(player, inst);
   player.resources.money += money;
   player.vp += inst.careerVP;
   player.roster.splice(idx, 1);

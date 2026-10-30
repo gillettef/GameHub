@@ -80,6 +80,15 @@ export interface PlayerState {
   vp: number; // 개인 공급처의 승점 토큰
   pending: PendingEffect[];
   nextInstance: number;
+  weekReport?: WeekReport; // 이번 주 월요일에 보여 줄 '지난 주말 정산 + 조달' 요약 (화면 표시용, 규칙에는 쓰지 않음)
+}
+
+// 주말 정산과 월요일 조달은 한꺼번에 조용히 일어나서 자원이 왜 바뀌었는지 알기 어렵다 — 그 결과를 남겨 월요일 화면에 보여 준다
+export interface WeekReport {
+  week: number; // 조달을 받은 주
+  procured: Resources; // 월요일 조달 (트랙 위치만큼)
+  upkeep?: { due: number; paid: number; suspensions: number }; // 지난 주말 유지비 (첫 주는 없음)
+  discarded?: Partial<Resources>; // 지난 주말 1개만 남기고 버린 팬덤·체력·운영
 }
 
 export interface LeagueOpponent {

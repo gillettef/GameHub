@@ -1343,3 +1343,44 @@ th .crest, .crest-title .crest, .score-name .crest { vertical-align: middle; mar
 .conn-banner { position: fixed; top: var(--head-h, 48px); left: 0; right: 0; z-index: 25; background: var(--danger); color: #fff; text-align: center; font-size: var(--fs-sub); font-weight: 600; padding: 6px 12px; }
 .activation-toggle { min-height: 44px; padding: 4px 6px; margin: -4px -6px; border-radius: var(--radius-sm); }
 .activation-toggle input[type='checkbox'] { width: 22px; height: 22px; }
+/* 못 누르는 버튼의 이유 · 버튼 아래 보조 설명 (터치에서는 title 툴팁이 버튼에 뜨지 않는다) */
+.action-item { flex-wrap: wrap; }
+.action-why, .action-sub { flex-basis: 100%; font-size: var(--fs-sub); font-weight: 500; line-height: 1.35; }
+.action-why { color: var(--danger); }
+.action-sub { color: var(--muted); }
+.action-item.primary .action-sub { color: inherit; opacity: 0.9; }
+.card-actions-wrap { display: flex; flex-direction: column; gap: 4px; }
+.card-actions-wrap > .action-why { padding: 0 2px; }
+.paid-cost { display: inline-flex; align-items: center; gap: 2px; margin-left: 2px; }
+/* 기본 행동을 마치면 차례 끝내기가 다음 할 일 — 초록 링이 숨 쉬듯 (주사위 트레이와 같은 방식) */
+.action-item.attention { animation: tray-pulse 1.4s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .action-item.attention { animation: none; box-shadow: 0 0 0 3px var(--pitch-tint); } }
+/* 확정 막대의 유지비 변화 꼬리표 */
+.upkeep-shift { display: inline-flex; align-items: center; gap: 3px; margin-left: 4px; font-weight: 600; }
+.upkeep-shift.up { color: #ffb4a8; }
+/* 도움말 버튼 줄 (진행 탭 위쪽) */
+.help-row { display: flex; gap: 8px; }
+.help-row .legend-button, .mobile-ui .help-row .legend-button { order: 0; flex: 1; width: auto; }
+/* 지금 할 일 안내 */
+.phase-guide { margin: 0; display: flex; gap: 10px; align-items: flex-start; background: var(--pitch-tint); border: 1px solid var(--line); border-radius: var(--radius-md); padding: 10px 12px; font-size: var(--fs-body); line-height: 1.5; }
+.phase-guide-text { flex: 1; min-width: 0; }
+.phase-guide .link { flex: none; white-space: nowrap; }
+.guide-on { align-self: flex-start; }
+/* 지난 내 차례 이후 */
+.since-turn > summary { font-weight: 700; font-size: var(--fs-title); padding: 2px 0; }
+.since-list { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+.since-list > .link { align-self: flex-start; }
+/* 참가자 띠: 자원 보유 수가 바뀌면 +N/−N 이 잠깐 떠올랐다 사라진다 */
+.delta-host { position: relative; }
+.stat-delta { position: absolute; left: 100%; top: -2px; margin-left: 2px; font-size: var(--fs-sub); font-weight: 700; line-height: 1; padding: 1px 4px; border-radius: 999px; white-space: nowrap; pointer-events: none; animation: delta-float 1.8s var(--ease-standard) forwards; }
+.stat-delta.up { background: var(--pitch); color: #fff; }
+.stat-delta.down { background: var(--danger); color: #fff; }
+@keyframes delta-float { 0% { opacity: 0; transform: translateY(4px); } 12% { opacity: 1; transform: none; } 75% { opacity: 1; } 100% { opacity: 0; transform: translateY(-4px); } }
+@media (prefers-reduced-motion: reduce) { .stat-delta { animation: none; } }
+/* 구단 보드 머리 아래 승점 내역 */
+.score-break { margin: -4px 0 10px; font-size: var(--fs-body); line-height: 1.5; }
+/* 월요일: 지난 주말 정산 + 이번 주 조달 */
+.week-report { display: flex; flex-direction: column; gap: 6px; background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--radius-md); padding: 10px 12px; margin-bottom: 10px; }
+.week-report-row { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+.week-report-label { font-weight: 700; min-width: 72px; }
+.week-report .chips { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px; }

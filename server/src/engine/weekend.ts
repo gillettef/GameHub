@@ -29,7 +29,7 @@ export function upkeepSuspensionPer(player: Pick<PlayerState, 'staff' | 'executi
 
 // p.25 3: 못 낸 돈 1개마다 직원 카드 1장을 "선택하여" 출장정지 2개. 출장정지 없는 카드에 먼저.
 // 고를 직원이 둘 이상이면 대기 효과로 쌓여 그 참가자가 고른다 (후보가 하나면 자동)
-function payUpkeep(state: GameState, player: PlayerState, rng: Rng): void {
+function payUpkeep(state: GameState, player: PlayerState, rng: Rng): { due: number; paid: number; suspensions: number } {
   const due = upkeepDue(player);
   player.upkeepDiscount = 0; // 할인은 한 번만
   const paid = Math.min(due, player.resources.money);
@@ -38,6 +38,7 @@ function payUpkeep(state: GameState, player: PlayerState, rng: Rng): void {
   const per = upkeepSuspensionPer(player);
   addLog(state, tagged('유지비', shortfall > 0 ? `${due} 중 ${paid}만 지불 → 직원 출장정지 ${shortfall * per}개` : `${due} 지불`), { actor: player.id, day: 'weekend' });
   for (let i = 0; i < shortfall; i++) applyEffects(state, player.id, [{ type: 'addStaffSuspension', count: per, unsuspendedFirst: true }], UPKEEP_SOURCE, {}, rng);
+  return { due, paid, suspensions: player.staff.length > 0 ? shortfall * per : 0 };
 }
 
 // p.25 주말. 상대 팀 카드가 다 떨어졌으면(6주차) 게임 종료
@@ -56,11 +57,15 @@ export function runWeekend(state: GameState, rng: Rng): void {
 
   for (const id of state.seats) {
     const player = getPlayer(state, id);
-    payUpkeep(state, player, rng);
+    const upkeep = payUpkeep(state, player, rng);
     // p.25 5: 팬덤/체력/운영은 1개씩만 남긴다
+    const before = { ...player.resources };
     player.resources.fandom = Math.min(1, player.resources.fandom);
     player.resources.stamina = Math.min(Math.max(1, traitCount(player, 'keepStamina')), player.resources.stamina); // 특성: 체력 N개까지 남김
     player.resources.ops = Math.min(1, player.resources.ops);
+    const discarded = Object.fromEntries((['fandom', 'stamina', 'ops'] as const).map((r) => [r, before[r] - player.resources[r]]).filter(([, n]) => (n as number) > 0));
+    // 월요일 조달(startMonday)이 procured 를 채운다
+    player.weekReport = { week: state.week + 1, procured: { money: 0, fandom: 0, ops: 0, stamina: 0 }, upkeep, discarded };
     // p.25 5: 이번 주의 점검용 토큰(요일 제한)은 버린다. 다음 주 것은 남긴다
     player.restrictions = player.restrictions.filter((r) => r.week > state.week);
     // 특성(팬덤 없이 재굴림)은 주당 1회 — 새 주에 다시 쓸 수 있다

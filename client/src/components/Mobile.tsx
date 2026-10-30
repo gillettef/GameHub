@@ -8,7 +8,7 @@ import { ActionSidebar } from './ActionSidebar';
 import { PlayerBoard } from './Boards';
 import { unreadCount } from './Chat';
 import { PlayerCrest } from './Crest';
-import { ActionLog, LeagueBody, MarketBody, seatColor } from './Shell';
+import { ActionLog, LeagueBody, MarketBody, scoreLines, seatColor } from './Shell';
 
 // 모바일용 화면 (device.tsx 에서 '모바일용'을 고른 경우): 한 열 + 아래 고정 탭 막대. 한 번에 한 영역만 보인다.
 //   진행 = 주사위 · 주중 행동 목록 · 단계 패널(드래프트/이사회/경기 준비…) / 구단 = 고른 참가자의 개인 보드 /
@@ -81,12 +81,16 @@ export function MobileMain({ phasePanel }: { phasePanel: ReactNode }) {
   return (
     <main className="mobile-main">
       <div className="mobile-play" hidden={mobileTab !== 'play'}>
-        <ActionSidebar />
-        {view.phase.kind !== 'weekday' && <div className="main-top">{phasePanel}</div>}
+        <ActionSidebar panel={view.phase.kind !== 'weekday' && <div className="main-top">{phasePanel}</div>} />
       </div>
       {mobileTab === 'board' && (
         <section className="panel main-panel">
           <div className="panel-head"><h2 className="crest-title"><PlayerCrest id={p.id} name={p.name} color={seatColor(view, p.id)} size={22} />{p.name}</h2></div>
+          {/* 참가자 띠의 승점 내역은 툴팁이라 터치에서는 볼 수 없다(띠를 누르면 이 보드로 온다) — 여기에 글로 적는다 */}
+          {(() => {
+            const s = scoreLines(view, p.id, isMe);
+            return <p className="score-break"><b>지금 끝나면 승점 {s.total}</b> <span className="muted">= {s.parts.join(' · ')}</span></p>;
+          })()}
           <PlayerBoard p={p} privateInfo={isMe ? view.self : undefined} />
         </section>
       )}

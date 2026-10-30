@@ -17,7 +17,7 @@ import { PlayerCardView, SponsorCardView, StaffCardView } from './Cards';
 import { ChatBody, unreadCount } from './Chat';
 import { Crest, PlayerCrest } from './Crest';
 import { CostChips, Icon } from './Icons';
-import { UpkeepChip } from './Upkeep';
+import { UpkeepChip, UpkeepShift } from './Upkeep';
 import { SponsorContractModal } from './Sponsor';
 import { Tabs } from './Tabs';
 
@@ -88,6 +88,46 @@ function playerStatus(view: ReturnType<typeof useView>['view'], pid: PlayerId): 
   }
 }
 
+// 보유 수가 바뀌면 옆에 +N/−N 을 잠깐 띄운다 — 효과 토스트·따라가기를 없앤 뒤(사용자 결정 2026-09) 남의 행동은 이 숫자 변화로 보는데,
+// 숫자만 조용히 바뀌어 알아채기 어려웠다. 첫 화면(새로고침)에서는 띄우지 않는다
+const DELTA_MS = 1800;
+function DeltaNum({ value }: { value: number }) {
+  const prev = useRef(value);
+  const [delta, setDelta] = useState<{ n: number; key: number } | null>(null);
+  useEffect(() => {
+    const n = value - prev.current;
+    prev.current = value;
+    if (n === 0) return;
+    setDelta({ n, key: Date.now() });
+    const t = setTimeout(() => setDelta(null), DELTA_MS);
+    return () => clearTimeout(t);
+  }, [value]);
+  return (
+    <b className="delta-host">
+      {value}
+      {delta && <span key={delta.key} className={`stat-delta ${delta.n > 0 ? 'up' : 'down'}`} aria-hidden="true">{delta.n > 0 ? `+${delta.n}` : `−${-delta.n}`}</span>}
+    </b>
+  );
+}
+
+// 지금 시즌이 끝나면 받을 승점의 항목별 내역 (참가자 띠 툴팁·구단 보드 머리 공용). 목표 카드는 비공개라 내 것만 더한다
+export function scoreLines(view: ReturnType<typeof useView>['view'], id: PlayerId, isMe: boolean): { total: number; parts: string[] } {
+  const sc = view.players[id]!.score;
+  const objective = isMe ? view.self.objectiveScore : 0;
+  return {
+    total: sc.total + objective,
+    parts: [
+      `리그 ${sc.leagueRank}위 ${signedPoints(sc.league)}`,
+      `토큰 ${signedPoints(sc.tokens)}`,
+      `직원 세트 ${signedPoints(sc.staffSets)}`,
+      `시설 ${signedPoints(sc.infrastructure)}`,
+      `사무실 ${signedPoints(sc.office)}`,
+      ...(sc.suspensions !== 0 ? [`출장정지 ${signedPoints(sc.suspensions)}`] : []),
+      isMe ? `목표 카드 ${signedPoints(objective)}` : '목표 카드 비공개',
+    ],
+  };
+}
+
 // 자원 칸: 위 = 지금 보유한 자원(큰 숫자), 아래 = 능력치 트랙 위치를 5칸 눈금으로 (월요일 조달 기준)
 function SeatStats({ id }: { id: PlayerId }) {
   const { view } = useView();
@@ -96,7 +136,7 @@ function SeatStats({ id }: { id: PlayerId }) {
     <span className="pseat-stats">
       {RESOURCES.map((r) => (
         <span key={r} className={`stat ${r}`} title={`${RESOURCE_LABEL[r]}: 보유 ${p.resources[r]}개 · 트랙 ${p.tracks[r]}칸 (월요일마다 +${p.tracks[r]})`}>
-          <span className="stat-top"><Icon name={r} size={14} /><b>{p.resources[r]}</b></span>
+          <span className="stat-top"><Icon name={r} size={14} /><DeltaNum value={p.resources[r]} /></span>
           <span className="pips" aria-hidden="true">
             {Array.from({ length: TRACK_MAX }, (_, i) => <i key={i} className={i < p.tracks[r] ? 'on' : ''} />)}
           </span>
@@ -137,19 +177,8 @@ export function PlayerStrip() {
     const isMe = session?.playerId === id;
     const isBot = room?.players.find((r) => r.id === id)?.isBot;
     // 지금 시즌이 끝난다면 받을 승점: 리그 순위 + 승점 토큰 + 직원 세트 + 시설 + 사무실 − 출장정지. 목표 카드는 비공개라 내 것만 더한다 (서버가 매번 새로 계산해 보낸다)
-    const sc = p.score;
-    const objective = isMe ? view.self.objectiveScore : 0;
-    const scoreTotal = sc.total + objective;
-    const scoreTip = [
-      `지금 시즌이 끝나면 ${scoreTotal}점`,
-      `리그 ${sc.leagueRank}위 ${signedPoints(sc.league)}`,
-      `승점 토큰 ${signedPoints(sc.tokens)}`,
-      `직원 세트 ${signedPoints(sc.staffSets)}`,
-      `기반 시설 ${signedPoints(sc.infrastructure)}`,
-      `사무실 ${signedPoints(sc.office)}`,
-      `출장정지 ${signedPoints(sc.suspensions)}`,
-      isMe ? `목표 카드 ${signedPoints(objective)}` : '목표 카드는 비공개라 제외',
-    ].join(' · ');
+    const { total: scoreTotal, parts } = scoreLines(view, id, isMe);
+    const scoreTip = [`지금 시즌이 끝나면 ${scoreTotal}점`, ...parts].join(' · ');
     return (
       <button
         key={id}
@@ -200,29 +229,42 @@ export function MarketBody() {
   }, [marketTab]);
   const me = session ? view.players[session.playerId] : undefined;
   const canBuy = !!me && view.phase.kind === 'weekday' && view.phase.current === me.id && !view.phase.basicDone;
-  const playerRow = (row: 'players' | 'veterans') => (id: string, i: number) => (
-    <PlayerCardView
-      key={id}
-      cardId={id}
-      chosen={chosen === `market:${id}`}
-      onClick={
-        canBuy && me && i >= marketMinIndex(me, 'players')
-          ? () => select(`market:${id}`, { type: 'recruitPlayer', marketIndex: i, row }, <>{row === 'veterans' ? '베테랑' : '주전 선수'} 영입: <b>{cards.player(id).name}</b> <CostChips cost={{ money: cards.player(id).untrained.cost }} /></>)
-          : undefined
-      }
-    />
-  );
-  const render: Record<Exclude<MarketTab, 'prospects'>, (id: string, i: number) => React.ReactNode> = {
-    players: playerRow('players'),
-    veterans: playerRow('veterans'),
-    staff: (id, i) => (
-      <StaffCardView
+  // 살 수 있는 자리의 카드인데 돈이 모자라면 고르지 못하게 하고 카드 아래에 이유를 적는다 (확정한 뒤에야 서버 오류가 나던 문제)
+  const short = (price: number) => (me && canBuy && me.resources.money < price ? <span className="error small lineup-blocked">돈 부족 — <Icon name="money" size={12} />{price} 필요 (보유 {me.resources.money})</span> : undefined);
+  const affordable = (price: number) => !!me && me.resources.money >= price;
+  const playerRow = (row: 'players' | 'veterans') => (id: string, i: number) => {
+    const price = cards.player(id).untrained.cost;
+    const open = canBuy && !!me && i >= marketMinIndex(me, 'players');
+    return (
+      <PlayerCardView
         key={id}
         cardId={id}
         chosen={chosen === `market:${id}`}
-        onClick={canBuy && me && i >= 2 ? () => select(`market:${id}`, { type: 'hireStaff', marketIndex: i }, <>직원 고용: <b>{cards.staff(id).name}</b> <CostChips cost={{ money: hireCost(me, cards.staff(id).cost) }} /></>) : undefined}
+        footer={open ? short(price) : undefined}
+        onClick={
+          open && me && affordable(price)
+            ? () => select(`market:${id}`, { type: 'recruitPlayer', marketIndex: i, row }, <>{row === 'veterans' ? '베테랑' : '주전 선수'} 영입: <b>{cards.player(id).name}</b> <CostChips cost={{ money: price }} /><UpkeepShift view={view} p={me} change={{ players: 1 }} /></>)
+            : undefined
+        }
       />
-    ),
+    );
+  };
+  const render: Record<Exclude<MarketTab, 'prospects'>, (id: string, i: number) => React.ReactNode> = {
+    players: playerRow('players'),
+    veterans: playerRow('veterans'),
+    staff: (id, i) => {
+      const price = me ? hireCost(me, cards.staff(id).cost) : 0;
+      const open = canBuy && !!me && i >= 2;
+      return (
+        <StaffCardView
+          key={id}
+          cardId={id}
+          chosen={chosen === `market:${id}`}
+          footer={open ? short(price) : undefined}
+          onClick={open && me && affordable(price) ? () => select(`market:${id}`, { type: 'hireStaff', marketIndex: i }, <>직원 고용: <b>{cards.staff(id).name}</b> <CostChips cost={{ money: price }} /><UpkeepShift view={view} p={me} change={{ staffCardId: id }} /></>) : undefined}
+        />
+      );
+    },
     sponsors: (id, i) => <SponsorCardView key={id} cardId={id} onClick={canBuy && me && i >= marketMinIndex(me, 'sponsors') ? () => setSponsorPick(i) : undefined} />,
   };
   const sponsorCardId = sponsorPick !== null ? view.market.sponsors[sponsorPick] : undefined;
@@ -249,7 +291,8 @@ export function MarketBody() {
               <PlayerCardView
                 cardId={prospect}
                 chosen={chosen === 'prospect'}
-                onClick={canBuy && me ? () => select('prospect', { type: 'recruitProspect' }, <>유망주 영입 ({cards.player(prospect).untrained.role === 'attack' ? '공격' : '수비'}) <CostChips cost={{ money: prospectPrice }} /></>) : undefined}
+                footer={short(prospectPrice)}
+                onClick={canBuy && me && affordable(prospectPrice) ? () => select('prospect', { type: 'recruitProspect' }, <>유망주 영입 ({cards.player(prospect).untrained.role === 'attack' ? '공격' : '수비'}) <CostChips cost={{ money: prospectPrice }} /><UpkeepShift view={view} p={me} change={{ players: 1 }} /></>) : undefined}
               />
             ) : (
               <span className="muted small">유망주 더미가 비었습니다</span>
@@ -354,6 +397,22 @@ export function LeagueBody() {
   );
 }
 
+// 기록 한 줄: 자리 색 점 + 행위자 + "[분류] 문구" — 분류 꼬리표(직원 세트·스폰서·경기·이사회 …)를 떼어 따로 그린다 (사용자 요청 2026-09-24)
+export function LogLine({ entry: e }: { entry: LogEntry }) {
+  const { view } = useView();
+  const { tag, text } = splitLogTag(e.text);
+  return (
+    <div className="log-entry" style={e.actor ? ({ '--seat': seatColor(view, e.actor) } as React.CSSProperties) : undefined}>
+      {e.actor ? <span className="seat-dot" /> : <span className="seat-dot neutral" />}
+      <span className="log-actor">{e.actor ? view.players[e.actor]?.name : ''}</span>
+      <span className="log-text">
+        {tag && <span className="log-tag">[{tag}]</span>}
+        {text}
+      </span>
+    </div>
+  );
+}
+
 // 오른쪽 패널(모바일은 '기록' 탭): 공개 행동 기록 / 채팅. 기록은 주차·요일별로 묶고 행위자를 자리 색으로 표시.
 // 채팅 탭을 보고 있으면 온 글을 읽은 것으로 치고, 아니면 탭에 안 읽은 수를 붙인다
 export function ActionLog() {
@@ -384,20 +443,7 @@ export function ActionLog() {
         {[...groups].reverse().map((g) => (
           <section key={g.key} className="log-group">
             <h3>{g.day === 'setup' ? '준비' : `${g.week}주차 ${DAY_LABEL[g.day]}`}</h3>
-            {[...g.entries].reverse().map((e) => {
-              // "[분류] 문구" — 분류 꼬리표(직원 세트·스폰서·경기·이사회 …)를 떼어 따로 그린다 (사용자 요청 2026-09-24)
-              const { tag, text } = splitLogTag(e.text);
-              return (
-                <div key={e.id} className="log-entry" style={e.actor ? ({ '--seat': seatColor(view, e.actor) } as React.CSSProperties) : undefined}>
-                  {e.actor ? <span className="seat-dot" /> : <span className="seat-dot neutral" />}
-                  <span className="log-actor">{e.actor ? view.players[e.actor]?.name : ''}</span>
-                  <span className="log-text">
-                    {tag && <span className="log-tag">[{tag}]</span>}
-                    {text}
-                  </span>
-                </div>
-              );
-            })}
+            {[...g.entries].reverse().map((e) => <LogLine key={e.id} entry={e} />)}
           </section>
         ))}
         {view.log.length === 0 && <p className="muted small">아직 기록이 없습니다.</p>}

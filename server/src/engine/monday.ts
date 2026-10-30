@@ -15,7 +15,14 @@ export function startMonday(state: GameState): void {
   const meetings: Record<PlayerId, { card: string; roll: null; decided: false }> = {};
   for (const id of state.seats) {
     const player = getPlayer(state, id);
-    for (const r of RESOURCES) player.resources[r] += procurement[r][player.tracks[r] - 1] ?? 0;
+    const procured = { money: 0, fandom: 0, ops: 0, stamina: 0 };
+    for (const r of RESOURCES) {
+      procured[r] = procurement[r][player.tracks[r] - 1] ?? 0;
+      player.resources[r] += procured[r];
+    }
+    // 화면 표시용 요약: 주말이 남긴 정산(같은 주차일 때만)에 조달을 더한다. 첫 주는 조달만
+    const prev = player.weekReport?.week === state.week ? player.weekReport : undefined;
+    player.weekReport = { ...prev, week: state.week, procured };
     const card = state.decks.board.shift();
     if (!card) throw new GameError('board deck exhausted');
     meetings[id] = { card, roll: null, decided: false };

@@ -428,7 +428,7 @@ export function FridayAftermathScreen() {
   const { view } = useGame();
   const { resultSeen, setResultSeen, matchWatched, setMatchWatched } = useUi();
   const [override, setOverride] = useState<{ key: string; step: number } | null>(null); // 지나온 스텝을 다시 볼 때
-  const dicePlace = '위'; // 주사위는 단계 패널 위에 있다
+  const dicePlace = '아래'; // 주사위는 단계 패널 바로 아래에 있다
   if (view.phase.kind !== 'friday.aftermath') return null;
   const { current, matches } = view.phase;
   const actor = view.players[current]!;

@@ -1,17 +1,20 @@
-import { boardDecision, tallyVotes } from '@server/engine/monday';
+import { cards } from '@server/engine/cards';
+import { boardDecision, tallyVotes, unaffordableCost } from '@server/engine/monday';
 import type { PlayerId } from '@server/engine/state';
 import { BoardCardView, ExecutiveCardView } from '../components/Cards';
 import { Icon } from '../components/Icons';
 import { TurnBanner } from '../components/Turn';
-import { COLOR_LABEL } from '../labels';
+import { WeekReportCard } from '../components/WeekReport';
+import { COLOR_LABEL, RESOURCE_LABEL } from '../labels';
 import { useGame } from '../store';
 import { useRevealedRoll } from '../ui';
 
 // 이사회는 선 참가자부터 한 명씩 진행한다. 차례인 참가자의 이사회 카드·임원·주사위 결과를 모두가 본다.
-// 굴리기·팬덤 재굴림·"결정 적용"은 모두 왼쪽 사이드바 주사위 트레이에 있다(사용자 요청). 적용 결과는 기록과 참가자 띠에 나타난다
+// 굴리기·팬덤 재굴림·"결정 적용"은 모두 패널 바로 아래 주사위 트레이에 있다(사용자 요청). 적용 결과는 기록과 참가자 띠에 나타난다.
+// 맨 위에는 내 '지난 주말 정산 + 이번 주 조달' 요약
 export function MondayScreen() {
-  const { view } = useGame();
-  const dicePlace = '위'; // 주사위는 단계 패널 위에 있다
+  const { view, me } = useGame();
+  const dicePlace = '아래'; // 주사위는 단계 패널 바로 아래에 있다
   if (view.phase.kind !== 'monday.board') return null;
   const { current, meetings } = view.phase;
   const actor: PlayerId = current;
@@ -25,6 +28,12 @@ export function MondayScreen() {
   const t = roll ? tallyVotes(player, roll) : null;
   const color = roll ? boardDecision(player, roll) : null;
   const done = Object.fromEntries(view.seats.map((id) => [id, meetings[id]!.decided]));
+  // 비용을 다 낼 수 없는 결정은 나와도 이행하지 못한다(비용·보상 모두 없음, 엔진 unaffordableCost) — 굴리기 전에 미리 알려 준다
+  const board = cards.board(meeting.card);
+  const blocked = (['yellow', 'blue', 'red'] as const).flatMap((c) => {
+    const short = unaffordableCost(player, board.decisions[c].effects);
+    return short ? [{ c, short }] : [];
+  });
 
   return (
     <section className={`panel phase-panel${mine ? ' mine' : ''}`}>
@@ -32,11 +41,17 @@ export function MondayScreen() {
         <h2>이사회</h2>
         <TurnBanner current={current} done={done} />
       </div>
+      <WeekReportCard p={me} week={view.week} />
       <p className="hint">
         {mine
-          ? '조달은 끝났습니다. 주사위를 굴리면 임원 3명이 눈의 색대로 투표하고, 표가 많은 결정이 적용됩니다.'
+          ? '주사위를 굴리면 임원 3명이 눈의 색대로 투표하고, 표가 많은 결정이 적용됩니다.'
           : `${player.name}의 이사회입니다. 주사위 결과와 임원들의 투표를 함께 지켜보세요.`}
       </p>
+      {blocked.length > 0 && !meetings[actor]!.decided && (
+        <p className="error small">
+          {blocked.map(({ c, short }) => `${COLOR_LABEL[c]} 결정은 ${RESOURCE_LABEL[short]}이(가) 모자라 나와도 이행하지 못합니다 (비용·보상 모두 없음)`).join(' · ')}
+        </p>
+      )}
       <div className="two-col">
         <BoardCardView cardId={meeting.card} highlight={color} />
         <div className="stack">
