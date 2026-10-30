@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 222 122"><defs><linearGradient id="a-f_beacon-s" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0a0f1f"/><stop offset=".7" stop-color="#1f2a48"/><stop offset="1" stop-color="#3a2f48"/></linearGradient><radialGradient id="a-f_beacon-g"><stop offset="0" stop-color="#ff9a4a" stop-opacity=".9"/><stop offset="1" stop-color="#ff9a4a" stop-opacity="0"/></radialGradient><linearGradient id="a-f_beacon-b" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#ff9a4a" stop-opacity=".5"/><stop offset="1" stop-color="#ff9a4a" stop-opacity="0"/></linearGradient></defs>
+<rect width="222" height="122" fill="url(#a-f_beacon-s)"/>
+<g fill="#e9edf8"><circle cx="14" cy="12" r=".9"/><circle cx="44" cy="34" r=".6"/><circle cx="70" cy="10" r="1"/><circle cx="150" cy="8" r=".7"/><circle cx="206" cy="54" r=".8"/><circle cx="24" cy="56" r=".6"/><circle cx="140" cy="40" r=".6"/></g>
+<circle cx="186" cy="26" r="13" fill="#33406a"/><path d="M186 13a13 13 0 0 1 0 26 9 13 0 0 0 0-26z" fill="#1f2a48"/><ellipse cx="186" cy="26" rx="23" ry="5" fill="none" stroke="#ffd67a" stroke-opacity=".7" stroke-width="1.4" transform="rotate(-14 186 26)"/><circle cx="34" cy="20" r="4" fill="#a9b6d6"/><circle cx="50" cy="12" r="2" fill="#a9b6d6" fill-opacity=".7"/>
+<path d="M104 6l7-4 7 4M111 12V2" fill="none" stroke="#dfe9ff" stroke-width="1"/><path d="M106 18h10L132 0H90z" fill="url(#a-f_beacon-b)"/>
+<path d="M0 90l20-8 18 5 22-12 24 9 28-6 26 8 22-10 22 7 18-4 22 6v37H0z" fill="#161f38"/>
+<path d="M0 100l30-4 40 3 40-5 46 4 66-3v27H0z" fill="#10172b"/>
+<g stroke="#e7a768" stroke-width="1.6" fill="none" stroke-linejoin="round"><path d="M98 98L108 22h6l10 76M100 84h22M102 68h18M104 52h14M106 36h10M100 84l18-16-14-16 12-16M122 84l-18-16 14-16-12-16"/></g>
+<path d="M124 50q10 0 12 10l-12-4z" fill="#a9b6d6" stroke="#0a0f1f" stroke-width=".6"/>
+<circle cx="111" cy="20" r="18" fill="url(#a-f_beacon-g)"/><circle cx="111" cy="20" r="4" fill="#ffd67a"/>
+<path d="M80 104h62v-10l-8-6h-46l-8 6z" fill="#1f2a48" stroke="#33406a"/><g fill="#ff9a4a"><rect x="90" y="96" width="6" height="4"/><rect x="104" y="96" width="6" height="4"/><rect x="126" y="96" width="6" height="4"/></g>
+<path d="M0 122v-14l40 2 60-4 50 3 72-4v17z" fill="#0a0f1f"/><g fill="#0a0f1f"><path d="M150 108v-6h2v-3h2v3h2v6z"/><circle cx="64" cy="104" r="1.6"/><path d="M63 105h2v4h-2z"/></g>
+</svg>
