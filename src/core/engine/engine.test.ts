@@ -10,6 +10,7 @@ import { chooseAction } from '../ai';
 import { TWIG_DEFS, trunkId, CORE_ID } from '../data/techWeb';
 import { QUEST_DEFS } from '../data/quests';
 import { clone } from './util';
+import { TRUNK_BASE_COST } from '../data/constants';
 import type { Action, GameState } from '../types';
 
 const seats = (n: number) => Array.from({ length: n }, (_, i) => ({ name: `P${i}`, isAI: true }));
@@ -92,7 +93,8 @@ describe('테크 웹 연구', () => {
     const graph = webGraph(s.layout);
     expect(graph.adj[trunkId(d2, 1)]).toContain(CORE_ID);
     const mods = playerMods(p);
-    expect(researchCost(s, p, trunkId(d2, 1), mods)).toBe(3 - 1);
+    // 연구 노드 2개(core 제외)라 증가분 0 — 1고리 줄기 기본 비용에서 인접 할인 1만 빠진다
+    expect(researchCost(s, p, trunkId(d2, 1), mods)).toBe(TRUNK_BASE_COST[1] - 1);
   });
 
   it('곁가지 연구는 노선 점수를 준다', () => {

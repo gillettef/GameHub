@@ -1,7 +1,7 @@
 // AI 결정: 후보 행동을 한 수 적용해 보고 평가 함수 증가량이 가장 큰 것을 고른다(결정적, 난수 없음)
 import type { Action, GameState, PlayerState, RaidEffect, UnitKind } from './types';
 import { BUILDING_KINDS, CHARTER_FIELDS, DOCTRINES, UNIT_KINDS } from './types';
-import { BUILDING_COST, CARD_ROW_SIZE, PATRON_LIMIT, UNIT_COST, slotCost } from './data/constants';
+import { BUILDING_COST, CARD_ROW_SIZE, PATRON_LIMIT, TRUNK_BASE_COST, UNIT_COST, slotCost } from './data/constants';
 import { CARD_DEFS } from './data/cards';
 import { QUEST_DEFS } from './data/quests';
 import { PATRON_DEFS } from './data/patrons';
@@ -22,17 +22,20 @@ import {
 } from './engine/derive';
 import { researchBlock, researchCost, webGraph, researchedCount, trunksAt } from './engine/research';
 import { canTarget, raidWins } from './engine/external';
-import { eraProgress } from './engine/era';
 import { pendingChoices } from './engine/quest';
 
 const THREAT_LEVEL = [0, 5, 9, 14, 14];
 
+/** 쌓아 둔 자원은 쓸 곳이 한정돼 있으니 일정량을 넘으면 가치를 크게 깎는다(쌓아 두기만 하는 착시 방지) */
+const STOCK_SOFT_CAP = { food: 8, prod: 10, sci: 10 };
+const soft = (x: number, cap: number) => Math.min(x, cap) + Math.max(0, x - cap) * 0.15;
+
 function remainingRounds(state: GameState): number {
   if (state.endTriggered) return 1;
   if (state.era >= 4) return 2;
-  const { have, need } = eraProgress(state);
-  const left = Math.max(0, 1 - have / need);
-  return (3 - state.era) * 5 + 3 + left * 4;
+  // 시대 진행도(줄기 합)에 묶으면 내 줄기 연구가 "남은 판을 줄이는" 손해로 보여 연구를 미룬다 — 라운드만으로 추정한다
+  const inEra = state.round - state.eraStartRound;
+  return (3 - state.era) * 6 + Math.max(1, 6 - inEra) + 2;
 }
 
 /** 플레이어 한 명의 대략적 가치(문화 환산) */
@@ -43,11 +46,12 @@ export function evaluate(state: GameState, p: PlayerState): number {
   const pv = productionPreview(p, mods);
   let v = p.res.culture;
   v += DOCTRINES.reduce((a, d) => a + p.doctrine[d] * 0.8, 0);
-  v += (p.res.food * 0.3 + p.res.prod * 0.4 + Math.min(p.res.energy, 8) * 0.2 + p.res.sci * 0.5) * resW;
+  v += (soft(p.res.food, STOCK_SOFT_CAP.food) * 0.3 + soft(p.res.prod, STOCK_SOFT_CAP.prod) * 0.4 + Math.min(p.res.energy, 8) * 0.2 + soft(p.res.sci, STOCK_SOFT_CAP.sci) * 0.5) * resW;
   v += R * (pv.gross.culture * 1 + pv.gross.sci * 0.6 + pv.gross.prod * 0.45 + pv.net.food * 0.35 + pv.gross.energy * 0.15);
   v += researchedCount(p) * 0.6 * Math.min(1, R / 4);
-  const trunks = p.researched.filter((id) => id.startsWith('t:')).length;
-  v += trunks * 2.5 * Math.min(1, R / 4);
+  // 줄기는 높은 고리일수록 큰 건물·유닛 레벨을 연다 — 기본 비용에 비례해 평가(고리 2·3 줄기를 미루는 착시 방지)
+  const trunkValue = [1, 2, 3].reduce((a, r) => a + trunksAt(p, r) * TRUNK_BASE_COST[r], 0);
+  v += trunkValue * Math.min(1, R / 4);
   if (state.era <= 3) v += trunksAt(p, state.era) * 1.0 * Math.min(1, R / 4);
   const m = might(p, mods);
   const lvl = THREAT_LEVEL[state.era];

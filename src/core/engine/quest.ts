@@ -1,6 +1,6 @@
 // 퀘스트 트랙: 진행, 종류별 처리, 대기 응답, 후원 계약 (Rules.md 12·13절)
 import type { GameState, PlayerState, QuestOption, ThreatQuest } from '../types';
-import { COEXIST_FOOD, COEXIST_SYMBIONT, DOCTRINE_NAMES, PATRON_FAIL_CULTURE, PATRON_LIMIT } from '../data/constants';
+import { COEXIST_FOOD, COEXIST_SYMBIONT, DOCTRINE_NAMES, PATRON_FAIL_CULTURE, PATRON_LIMIT, PATRON_MET_CULTURE_PER_ERA } from '../data/constants';
 import { QUEST_DEFS } from '../data/quests';
 import { PATRON_DEFS } from '../data/patrons';
 import { defenseValue, mainDoctrine, meets, metric, stage } from './derive';
@@ -247,8 +247,9 @@ export function checkPatronDemands(state: GameState, era: number): void {
     for (const id of p.patrons) {
       const def = PATRON_DEFS[id];
       if (metric(state, p, def.demand.metric) >= def.demand.min) {
-        p.res.culture += era * 2;
-        log(state, p.id, `「${def.name}」 요구 충족: 문화 +${era * 2}`);
+        const gain = era * PATRON_MET_CULTURE_PER_ERA;
+        p.res.culture += gain;
+        log(state, p.id, `「${def.name}」 요구 충족: 문화 +${gain}`);
       } else {
         p.res.culture = Math.max(0, p.res.culture - PATRON_FAIL_CULTURE);
         log(state, p.id, `「${def.name}」 요구 미달: 문화 −${PATRON_FAIL_CULTURE}`);

@@ -7,7 +7,7 @@ export const COLONIST_TOTAL = 24;
 export const ROUND_LIMIT = 40;
 
 export const START_RES: Res = { food: 2, prod: 2, energy: 0, sci: 2, culture: 0 };
-export const SEAT_BONUS: Partial<Res>[] = [{}, { sci: 1 }, { prod: 1, sci: 1 }, { prod: 2, sci: 1 }];
+export const SEAT_BONUS: Partial<Res>[] = [{}, { sci: 1, culture: 3 }, { prod: 1, sci: 1, culture: 5 }, { prod: 2, sci: 1, culture: 7 }];
 export const FIRST_ROUND_COMMAND = [2, 3, 4, 4];
 
 export const BASE_COMMAND = 4;
@@ -24,7 +24,7 @@ export const ERA_TRUNK_PER_PLAYER = 3;
 export const ERA_MAX_ROUNDS = 8;
 
 // 테크 웹
-export const TRUNK_BASE_COST = [0, 3, 5, 7];
+export const TRUNK_BASE_COST = [0, 4, 5, 6];
 export const TWIG_BASE_COST = [0, 2, 3, 4];
 export const RESEARCH_STEP = 5;
 export const TWIG_POOL_PICK_PER_DOCTRINE = 4;
@@ -124,6 +124,8 @@ export const COEXIST_FOOD = 2;
 // 후원 계약
 export const PATRON_LIMIT = 3;
 export const PATRON_FAIL_CULTURE = 3;
+/** 요구 충족 시 문화 = 시대 × 이 값 */
+export const PATRON_MET_CULTURE_PER_ERA = 2;
 
 // 궤도
 export const ORBIT_SLOTS = 2;
