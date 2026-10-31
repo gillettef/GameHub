@@ -87,6 +87,25 @@ button.card:active {
   height: 34.86%;
   aspect-ratio: auto !important;
 }
+/* 종류 태그: 그림 창 왼쪽 위에 겹쳐 표시 */
+.tag {
+  position: absolute;
+  left: 7.5%;
+  top: 20.5%;
+  max-width: 85%;
+  padding: 1px 5px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--tag, var(--text));
+  background: color-mix(in srgb, var(--bg) 85%, transparent);
+  border: 1px solid var(--tag, var(--border));
+  border-radius: var(--radius-sm);
+  pointer-events: none;
+}
 /* 퀘스트 프레임: 배지 칸이 오른쪽 위(x196–228), 제목은 왼쪽부터 */
 .quest .title {
   left: 6%;

@@ -25,6 +25,7 @@ export function CardFace({
   className,
   art,
   tip,
+  tagTone,
 }: {
   frame: FrameName;
   title?: string;
@@ -42,12 +43,15 @@ export function CardFace({
   art?: { id: string; icon?: IconName; tone?: string };
   /** 마우스 툴팁 설명(제목은 title) */
   tip?: string;
+  /** 그림 창 위 종류 태그 색(art 와 kind 가 있을 때 태그로 표시) */
+  tagTone?: string;
 }) {
   const style = { width, '--w': width, backgroundImage: `url("${frameUrl(frame)}")` } as CSSProperties;
   const Tag = onClick ? 'button' : 'div';
   return (
     <Tag className={`${styles.card} ${frame.startsWith('quest-') ? styles.quest : ''} ${dim ? styles.dim : ''} ${width < 80 && !art ? styles.small : ''} ${className ?? ''}`} style={style} onClick={onClick} aria-label={label ?? [title, kind].filter(Boolean).join(', ')} data-tip={tip !== undefined ? title : undefined} data-tip-body={tip}>
       {art && <CardArt id={art.id} icon={art.icon} tone={art.tone} arch={frame === 'pioneer' || frame === 'legacy'} className={styles.window} />}
+      {art && kind && <span className={styles.tag} style={tagTone ? ({ '--tag': tagTone } as CSSProperties) : undefined}>{kind}</span>}
       {badge !== undefined && <span className={styles.badge}>{badge}</span>}
       {title && <span className={styles.title}>{title}</span>}
       {kind && width >= 80 && !art && <span className={styles.kind}>{kind}</span>}

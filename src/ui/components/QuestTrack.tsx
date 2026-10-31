@@ -43,6 +43,7 @@ export function QuestFace({ q, width, onClick }: { q: QuestDef; width: number; o
       width={width}
       title={q.name}
       kind={QUEST_KIND_NAMES[q.kind]}
+      tagTone={TONE[q.kind]}
       badge={q.kind === 'threat' ? q.power : undefined}
       body={width >= 120 ? questSummary(q) : undefined}
       brief={<QuestBrief q={q} />}
@@ -61,6 +62,7 @@ function TrackFace({ id, width, onClick }: { id: string; width: number; onClick:
       width={width}
       title={c.name}
       kind={CARD_TYPE_NAMES[c.type]}
+      tagTone={CARD_TONE[c.type]}
       art={cardArt(c)}
       brief={<CardBrief card={c} />}
       onClick={onClick}
