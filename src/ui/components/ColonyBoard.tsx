@@ -50,6 +50,7 @@ import { useGame } from '../useGame';
 import { CardFace } from './CardFace';
 import { CardArt } from './CardArt';
 import { CardZoom } from './CardZoom';
+import { CardBrief, ModsBrief } from './CardBrief';
 import type { FrameName } from './CardFace';
 import { useCardSizes } from '../useCardSizes';
 import { Icon, type IconName } from './Icon';
@@ -65,6 +66,7 @@ type Open =
   | { k: 'colonist' }
   | { k: 'hand'; index: number }
   | { k: 'legacy' }
+  | { k: 'legacyDone'; id: string }
   | { k: 'pioneer' }
   | { k: 'satMarket'; slot: number }
   | { k: 'orbit'; index: number }
@@ -188,6 +190,10 @@ export function ColonyBoard({ player }: { player: PlayerState }) {
         if (!wip || !c || c.type !== 'legacy') return { title: '유산', body: null, actions: [] };
         add(`${wip.done + 1}단계 짓기 — 생산 ${c.stages[wip.done]} · 지휘 1`, { type: 'legacyStage' });
         return withArt({ title: `${c.name} (짓는 중 ${wip.done}/${c.stages.length})`, body: <p>{cardText(c)}</p>, actions: acts }, c.id, 'legacy', { frame: 'legacy', text: cardText(c), badge: `${wip.done}` });
+      }
+      case 'legacyDone': {
+        const c = CARD_DEFS[o.id];
+        return withArt({ title: `${c.name} (완성)`, body: <p>{cardText(c)}</p>, actions: [] }, c.id, 'legacy', { frame: 'legacy', text: cardText(c), badge: '✓' });
       }
       case 'pioneer': {
         const c = p.pioneer ? CARD_DEFS[p.pioneer] : null;
@@ -381,45 +387,45 @@ export function ColonyBoard({ player }: { player: PlayerState }) {
       <div className={styles.cards}>
         <Slot label="선구자">
           {p.pioneer ? (
-            <CardFace frame="pioneer" width={sizes.card} title={CARD_DEFS[p.pioneer].name} tip={`선구자\n${cardText(CARD_DEFS[p.pioneer])}`} art={{ id: p.pioneer, icon: 'pioneer' }} onClick={() => setOpen({ k: 'pioneer' })} />
+            <CardFace frame="pioneer" width={sizes.card} title={CARD_DEFS[p.pioneer].name} tip={`선구자\n${cardText(CARD_DEFS[p.pioneer])}`} art={{ id: p.pioneer, icon: 'pioneer' }} brief={<CardBrief card={CARD_DEFS[p.pioneer]} />} onClick={() => setOpen({ k: 'pioneer' })} />
           ) : (
             <Empty />
           )}
         </Slot>
         <Slot label={`유산 ${p.legacies.length}`}>
           {p.legacyWip ? (
-            <CardFace frame="legacy" width={sizes.card} title={CARD_DEFS[p.legacyWip.id].name} tip={`유산 짓는 중 ${p.legacyWip.done}단계\n${cardText(CARD_DEFS[p.legacyWip.id])}`} badge={`${p.legacyWip.done}`} art={{ id: p.legacyWip.id, icon: 'legacy' }} onClick={() => setOpen({ k: 'legacy' })} />
+            <CardFace frame="legacy" width={sizes.card} title={CARD_DEFS[p.legacyWip.id].name} tip={`유산 짓는 중 ${p.legacyWip.done}단계\n${cardText(CARD_DEFS[p.legacyWip.id])}`} badge={`${p.legacyWip.done}`} art={{ id: p.legacyWip.id, icon: 'legacy' }} brief={<CardBrief card={CARD_DEFS[p.legacyWip.id]} />} onClick={() => setOpen({ k: 'legacy' })} />
           ) : (
             <Empty />
           )}
           {p.legacies.map((id) => (
-            <CardFace key={id} frame="legacy" width={sizes.card} title={CARD_DEFS[id].name} tip={`완성한 유산\n${cardText(CARD_DEFS[id])}`} badge="✓" art={{ id, icon: 'legacy' }} />
+            <CardFace key={id} frame="legacy" width={sizes.card} title={CARD_DEFS[id].name} tip={`완성한 유산\n${cardText(CARD_DEFS[id])}`} badge="✓" art={{ id, icon: 'legacy' }} onClick={() => setOpen({ k: 'legacyDone', id })} brief={<CardBrief card={CARD_DEFS[id]} />} />
           ))}
         </Slot>
         <Slot label={`보급 ${p.hand.length}`}>
           {p.hand.length === 0 && <Empty />}
           {p.hand.map((h, i) => (
-            <CardFace key={i} frame="supply" width={sizes.card} title={CARD_DEFS[h.id].name} tip={`보급${h.fresh ? ' · 다음 차례부터 사용' : ''}\n${cardText(CARD_DEFS[h.id])}`} dim={h.fresh} art={{ id: h.id, icon: 'supply' }} onClick={() => setOpen({ k: 'hand', index: i })} />
+            <CardFace key={i} frame="supply" width={sizes.card} title={CARD_DEFS[h.id].name} tip={`보급${h.fresh ? ' · 다음 차례부터 사용' : ''}\n${cardText(CARD_DEFS[h.id])}`} dim={h.fresh} art={{ id: h.id, icon: 'supply' }} brief={<CardBrief card={CARD_DEFS[h.id]} />} onClick={() => setOpen({ k: 'hand', index: i })} />
           ))}
         </Slot>
         <Slot label="궤도">
           {p.orbit.length === 0 && <Empty />}
           {p.orbit.map((o, i) => (
-            <CardFace key={i} frame="satellite" width={sizes.card} title={SATELLITE_DEFS[o.id].name} tip={`위성 · 남은 ${o.timer}차례\n시야 +1${modsText(SATELLITE_DEFS[o.id].mods) ? ` · ${modsText(SATELLITE_DEFS[o.id].mods)}` : ''}`} badge={o.timer} art={{ id: o.id, icon: 'satellite' }} onClick={() => setOpen({ k: 'orbit', index: i })} />
+            <CardFace key={i} frame="satellite" width={sizes.card} title={SATELLITE_DEFS[o.id].name} tip={`위성 · 남은 ${o.timer}차례\n시야 +1${modsText(SATELLITE_DEFS[o.id].mods) ? ` · ${modsText(SATELLITE_DEFS[o.id].mods)}` : ''}`} badge={o.timer} art={{ id: o.id, icon: 'satellite' }} brief={<ModsBrief mods={SATELLITE_DEFS[o.id].mods} />} onClick={() => setOpen({ k: 'orbit', index: i })} />
           ))}
         </Slot>
         {(p.patrons.length > 0 || mine) && (
           <Slot label="후원 계약">
             {p.patrons.length === 0 && <Empty />}
             {p.patrons.map((id) => (
-              <CardFace key={id} frame="patron" width={sizes.card} title={PATRON_DEFS[id].name} tip={`후원 계약 · ${PATRON_DEFS[id].points}점\n${modsText(PATRON_DEFS[id].mods)}\n요구: ${condText([PATRON_DEFS[id].demand])}`} badge={PATRON_DEFS[id].points} art={{ id, icon: 'patron' }} onClick={() => setOpen({ k: 'patron', id })} />
+              <CardFace key={id} frame="patron" width={sizes.card} title={PATRON_DEFS[id].name} tip={`후원 계약 · ${PATRON_DEFS[id].points}점\n${modsText(PATRON_DEFS[id].mods)}\n요구: ${condText([PATRON_DEFS[id].demand])}`} badge={PATRON_DEFS[id].points} art={{ id, icon: 'patron' }} brief={<ModsBrief mods={PATRON_DEFS[id].mods} />} onClick={() => setOpen({ k: 'patron', id })} />
             ))}
           </Slot>
         )}
         {p.facilities.length > 0 && (
           <Slot label="특수 시설">
             {p.facilities.map((id) => (
-              <button key={id} className={styles.artTile} onClick={() => setOpen({ k: 'facility', id })}>
+              <button key={id} className={styles.artTile} style={{ width: sizes.card }} onClick={() => setOpen({ k: 'facility', id })}>
                 <CardArt id={id} icon="workshop" tone="var(--warn)" />
                 <span>{FACILITY_DEFS[id].name}</span>
               </button>
@@ -465,7 +471,7 @@ export function ColonyBoard({ player }: { player: PlayerState }) {
       {sheet && (
         <Sheet title={sheet.title} onClose={() => setOpen(null)} actions={sheet.actions}>
           {sheet.art && sheet.zoom && (
-            <CardZoom frame={sheet.zoom.frame} title={typeof sheet.title === 'string' ? sheet.title.replace(/ \(짓는 중.*$/, '') : undefined} badge={sheet.zoom.badge} art={{ id: sheet.art, icon: sheet.artIcon }} body={sheet.zoom.text} />
+            <CardZoom frame={sheet.zoom.frame} title={typeof sheet.title === 'string' ? sheet.title.replace(/ \((짓는 중|완성).*$/, '') : undefined} badge={sheet.zoom.badge} art={{ id: sheet.art, icon: sheet.artIcon }} body={sheet.zoom.text} />
           )}
           {sheet.art && !sheet.zoom && <CardArt id={sheet.art} icon={sheet.artIcon} className={styles.banner} />}
           {sheet.body}
@@ -530,5 +536,9 @@ function Slot({ label, children }: { label: string; children: ReactNode }) {
 
 function Empty() {
   const { card } = useCardSizes();
-  return <span className={styles.emptyCard} style={{ width: card }} />;
+  return (
+    <span className={styles.emptyCard} style={{ width: card }}>
+      없음
+    </span>
+  );
 }

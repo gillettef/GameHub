@@ -1,5 +1,6 @@
 .row {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--space-2);
   justify-content: center;
 }
@@ -22,14 +23,6 @@
   justify-content: center;
   color: var(--text-dim);
   font-size: 12px;
-}
-.future {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-1);
-  align-items: center;
-  margin-top: var(--space-2);
-  padding-bottom: 2px;
 }
 .more {
   font-size: 12px;

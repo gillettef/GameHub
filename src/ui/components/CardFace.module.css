@@ -87,3 +87,13 @@ button.card:active {
   height: 34.86%;
   aspect-ratio: auto !important;
 }
+/* 퀘스트 프레임: 배지 칸이 오른쪽 위(x196–228), 제목은 왼쪽부터 */
+.quest .title {
+  left: 6%;
+  right: 23%;
+}
+.quest .badge {
+  left: 78.4%;
+  width: 12.8%;
+  color: var(--danger);
+}

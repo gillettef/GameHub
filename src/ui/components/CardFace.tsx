@@ -17,6 +17,7 @@ export function CardFace({
   kind,
   badge,
   body,
+  brief,
   width = 96,
   onClick,
   dim,
@@ -30,6 +31,8 @@ export function CardFace({
   kind?: string;
   badge?: ReactNode;
   body?: ReactNode;
+  /** 작은 카드 아랫부분의 아이콘 요약(body 가 안 보이는 크기에서) */
+  brief?: ReactNode;
   width?: number;
   onClick?: () => void;
   dim?: boolean;
@@ -43,12 +46,12 @@ export function CardFace({
   const style = { width, '--w': width, backgroundImage: `url("${frameUrl(frame)}")` } as CSSProperties;
   const Tag = onClick ? 'button' : 'div';
   return (
-    <Tag className={`${styles.card} ${dim ? styles.dim : ''} ${width < 80 && !art ? styles.small : ''} ${className ?? ''}`} style={style} onClick={onClick} aria-label={label ?? [title, kind].filter(Boolean).join(', ')} data-tip={tip !== undefined ? title : undefined} data-tip-body={tip}>
+    <Tag className={`${styles.card} ${frame.startsWith('quest-') ? styles.quest : ''} ${dim ? styles.dim : ''} ${width < 80 && !art ? styles.small : ''} ${className ?? ''}`} style={style} onClick={onClick} aria-label={label ?? [title, kind].filter(Boolean).join(', ')} data-tip={tip !== undefined ? title : undefined} data-tip-body={tip}>
       {art && <CardArt id={art.id} icon={art.icon} tone={art.tone} arch={frame === 'pioneer' || frame === 'legacy'} className={styles.window} />}
       {badge !== undefined && <span className={styles.badge}>{badge}</span>}
       {title && <span className={styles.title}>{title}</span>}
       {kind && width >= 80 && !art && <span className={styles.kind}>{kind}</span>}
-      {body && width >= 130 && <span className={styles.body}>{body}</span>}
+      {body && width >= 130 ? <span className={styles.body}>{body}</span> : brief}
     </Tag>
   );
 }

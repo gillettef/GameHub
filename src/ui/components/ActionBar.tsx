@@ -64,7 +64,8 @@ export function ActionBar({ onResults }: { onResults: () => void }) {
               습격
             </button>
             <button onClick={() => setSheet('conflict')} disabled={game.era < 2}>
-              {game.era < 2 ? '분쟁(2시대~)' : '분쟁'}
+              분쟁
+              {game.era < 2 && <small>2시대~</small>}
             </button>
             <button onClick={() => setSheet('pull')} data-tip="트랙 당기기" data-tip-body="방위 행동 1. 칸 1의 퀘스트를 지금 처리하고 한 칸 당깁니다. 문화 +시대.">
               당기기

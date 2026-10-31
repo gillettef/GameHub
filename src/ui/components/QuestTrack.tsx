@@ -9,6 +9,7 @@ import { useGame } from '../useGame';
 import { CardFace, type FrameName } from './CardFace';
 import { Icon, type IconName } from './Icon';
 import { CardZoom } from './CardZoom';
+import { QuestBrief } from './CardBrief';
 import { useCardSizes } from '../useCardSizes';
 import { Section } from './Section';
 import { Sheet, type SheetAction } from './Sheet';
@@ -39,6 +40,7 @@ export function QuestFace({ q, width, onClick }: { q: QuestDef; width: number; o
       kind={QUEST_KIND_NAMES[q.kind]}
       badge={q.kind === 'threat' ? q.power : undefined}
       body={width >= 120 ? questSummary(q) : undefined}
+      brief={<QuestBrief q={q} />}
       onClick={onClick}
     />
   );
@@ -89,15 +91,22 @@ export function QuestTrack() {
             )}
           </div>
         ))}
-      </div>
-      <div className={styles.future} aria-label="미래 퀘스트 더미">
+        {/* 미래 더미: 위성 시야만큼 앞면, 나머지는 뒷면 한 더미 — 공개 칸과 같은 줄에 */}
         {seen.map((id, i) =>
-          id !== HIDDEN ? <QuestFace key={i} q={QUEST_DEFS[id]} width={sizes.card} onClick={() => setOpen({ id, slot: null })} /> : null,
+          id !== HIDDEN ? (
+            <div key={`f${i}`} className={styles.slot}>
+              <span className={styles.slotLabel}>미래 {i + 1}</span>
+              <QuestFace q={QUEST_DEFS[id]} width={sizes.card} onClick={() => setOpen({ id, slot: null })} />
+            </div>
+          ) : null,
         )}
         {future.length > seen.length && (
-          <div className={styles.deck} data-tip="미래 퀘스트 더미" data-tip-body={`뒷면 ${future.length - seen.length}장. 위성을 띄우면 위에서부터 1장씩 미리 볼 수 있습니다.`}>
-            <CardFace frame="quest-back" width={sizes.card} label={`뒷면 퀘스트 ${future.length - seen.length}장`} />
-            <span className={styles.deckCount}>{future.length - seen.length}</span>
+          <div className={styles.slot}>
+            <span className={styles.slotLabel}>미래 더미</span>
+            <div className={styles.deck} aria-label="미래 퀘스트 더미" data-tip="미래 퀘스트 더미" data-tip-body={`뒷면 ${future.length - seen.length}장. 위성을 띄우면 위에서부터 1장씩 미리 볼 수 있습니다.`}>
+              <CardFace frame="quest-back" width={sizes.card} label={`뒷면 퀘스트 ${future.length - seen.length}장`} />
+              <span className={styles.deckCount}>{future.length - seen.length}</span>
+            </div>
           </div>
         )}
       </div>

@@ -41,8 +41,24 @@
   font-weight: 700;
   font-size: 13px;
 }
+.ext button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  line-height: 1.15;
+}
+.ext button small {
+  font-size: 12px;
+  font-weight: 400;
+}
 .ext button:disabled {
-  opacity: 0.35;
+  border-color: color-mix(in srgb, var(--danger) 35%, transparent);
+  color: color-mix(in srgb, var(--danger) 45%, var(--bg));
+}
+/* 비활성 이유 안내는 흐리지 않고 읽히게 */
+.ext button:disabled small {
+  color: var(--text-dim);
 }
 .phase {
   flex: 1;

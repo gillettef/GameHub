@@ -8,6 +8,7 @@ import { useGame } from '../useGame';
 import { Icon } from './Icon';
 import { CardFace } from './CardFace';
 import { CardZoom } from './CardZoom';
+import { CardBrief } from './CardBrief';
 import { useCardSizes } from '../useCardSizes';
 import { Section } from './Section';
 import { Sheet } from './Sheet';
@@ -55,6 +56,7 @@ export function CardRow() {
                     title={c.name}
                     badge={c.type === 'legacy' && cost !== slotCost(slot) ? cost : undefined}
                     art={{ id: c.id, icon: c.type, tone: TONE[c.type] }}
+                    brief={<CardBrief card={c} />}
                     onClick={() => setOpen(slot)}
                     tip={`${CARD_TYPE_NAMES[c.type]} · 지휘 ${cost}\n${cardText(c)}`}
                     label={`${c.name}, ${CARD_TYPE_NAMES[c.type]}, 지휘 ${cost}`}
