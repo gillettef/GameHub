@@ -1,5 +1,6 @@
 // 퀘스트 트랙: 퀘스트 선택, 종류별 처리, 대기 응답, 후원 계약 (Rules.md 11~13절)
 import type { CardDef, GameState, PlayerState, QuestOption, ThreatQuest } from '../types';
+import { HAND_TYPES } from '../types';
 import {
   COEXIST_FOOD,
   COEXIST_SYMBIONT,
@@ -43,7 +44,7 @@ export function slotVisible(state: GameState, viewer: number | null, slot: numbe
 export function cardTakeBlock(state: GameState, p: PlayerState, c: CardDef): string | null {
   if (c.type === 'pioneer' && p.pioneerEras.includes(Math.min(state.era, 3))) return '이번 시대에 이미 선구자를 들였습니다';
   if (c.type === 'legacy' && p.legacyWip) return '이미 짓는 유산이 있습니다';
-  if (c.type === 'supply' && p.hand.length >= commandMax(state, p)) return '보급 손패가 가득 찼습니다';
+  if (HAND_TYPES.includes(c.type) && p.hand.length >= commandMax(state, p)) return '손패가 가득 찼습니다';
   return null;
 }
 
@@ -153,7 +154,7 @@ function takeCard(state: GameState, p: PlayerState, c: CardDef): void {
     log(state, p.id, `유산 「${c.name}」 착공`);
   } else {
     p.hand.push({ id: c.id, fresh: true });
-    log(state, p.id, `보급 「${c.name}」 획득`);
+    log(state, p.id, `${c.type === 'supply' ? '보급' : c.type === 'raid' ? '습격' : '분쟁'} 「${c.name}」 획득`);
   }
 }
 

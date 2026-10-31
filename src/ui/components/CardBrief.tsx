@@ -89,6 +89,16 @@ export function CardBrief({ card }: { card: CardDef }) {
         }
       />
     );
+  if (card.type === 'raid') {
+    const res: Record<string, IconName> = { lootFood: 'food', lootProd: 'prod', stealSci: 'sci', stealEnergy: 'energy' };
+    const chips: Chip[] = card.effects.map((e) => ({ icon: res[e], color: `var(--res-${res[e]})`, text: '' }));
+    if (card.bonus) chips.push({ text: `+${card.bonus}` });
+    return <Chips chips={chips} lead={<span className={styles.chip} style={{ color: 'var(--danger)' }}><Icon name="might" size={12} />{sign(card.atk)}</span>} />;
+  }
+  if (card.type === 'conflict') {
+    const loss: Record<string, Chip> = { culture: { icon: 'culture', color: 'var(--res-culture)', text: '−' }, building: { icon: 'hall', text: '↓' }, doctrine: { text: '노선−' } };
+    return <Chips chips={[loss[card.loss]]} lead={<span className={styles.chip} style={{ color: 'var(--danger)' }}><Icon name="might" size={12} />{sign(card.atk)}</span>} />;
+  }
   return <Chips chips={instantChips(card.instant)} />;
 }
 

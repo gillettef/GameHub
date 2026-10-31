@@ -1,9 +1,11 @@
-// 선구자·유산·보급 (Rules.md 11절). 고리별 24·30·30장, 그 시대 퀘스트 덱에 섞인다
-import type { CardDef, LegacyDef, PioneerDef, Ring, SupplyDef } from '../types';
+// 선구자·유산·보급·습격·분쟁 (Rules.md 11절). 고리별 24·30·30장, 그 시대 퀘스트 덱에 섞인다
+import type { CardDef, ConflictDef, LegacyDef, PioneerDef, RaidDef, Ring, SupplyDef } from '../types';
 
 const P = (id: string, ring: Ring, name: string, doctrine: PioneerDef['doctrine'], mods: PioneerDef['mods'], text: string): PioneerDef => ({ type: 'pioneer', id, ring, name, doctrine, mods, text });
 const L = (id: string, ring: Ring, name: string, stages: number[], mods: LegacyDef['mods'], points: number, text: string): LegacyDef => ({ type: 'legacy', id, ring, name, stages, mods, points, text });
 const S = (id: string, ring: Ring, name: string, copies: number, instant: SupplyDef['instant']): SupplyDef => ({ type: 'supply', id, ring, name, copies, instant });
+const RD = (id: string, ring: Ring, name: string, effects: RaidDef['effects'], atk: number, bonus: number, text: string): RaidDef => ({ type: 'raid', id, ring, name, copies: 1, effects, atk, bonus, text });
+const CF = (id: string, ring: Ring, name: string, loss: ConflictDef['loss'], atk: number, text: string): ConflictDef => ({ type: 'conflict', id, ring, name, copies: 1, loss, atk, text });
 
 export const PIONEERS: PioneerDef[] = [
   P('p1a', 1, '항해장 하윤', 'ark', { health: 1, income: { culture: 1 } }, '선단을 이끌고 착륙한 첫 지휘관'),
@@ -36,40 +38,66 @@ export const LEGACIES: LegacyDef[] = [
 ];
 
 export const SUPPLIES: SupplyDef[] = [
-  // 고리 1: 16장
-  S('s1f', 1, '식량 상자', 3, { gain: { food: 3 } }),
-  S('s1p', 1, '자재 상자', 3, { gain: { prod: 3 } }),
+  // 고리 1: 12장
+  S('s1f', 1, '식량 상자', 2, { gain: { food: 3 } }),
+  S('s1p', 1, '자재 상자', 2, { gain: { prod: 3 } }),
   S('s1e', 1, '연료 전지', 2, { gain: { energy: 3 } }),
-  S('s1s', 1, '탐사 기록', 3, { gain: { sci: 3 } }),
-  S('s1c', 1, '고향의 편지', 2, { gain: { culture: 2 } }),
+  S('s1s', 1, '탐사 기록', 2, { gain: { sci: 3 } }),
+  S('s1c', 1, '고향의 편지', 1, { gain: { culture: 2 } }),
   S('s1m', 1, '동면 해제', 2, { colonist: 1 }),
   S('s1d', 1, '정착 교본', 1, { gain: { food: 1, prod: 1, sci: 1 } }),
-  // 고리 2: 22장
-  S('s2f', 2, '식량 저장고', 3, { gain: { food: 5 } }),
-  S('s2p', 2, '공장 출하', 3, { gain: { prod: 5 } }),
-  S('s2e', 2, '축전 함', 3, { gain: { energy: 4 } }),
-  S('s2s', 2, '연구 보고서', 3, { gain: { sci: 5 } }),
-  S('s2c', 2, '축제', 3, { gain: { culture: 3 } }),
-  S('s2m', 2, '이주선 도착', 2, { colonist: 1, gain: { food: 2 } }),
+  // 고리 2: 15장
+  S('s2f', 2, '식량 저장고', 2, { gain: { food: 5 } }),
+  S('s2p', 2, '공장 출하', 2, { gain: { prod: 5 } }),
+  S('s2e', 2, '축전 함', 2, { gain: { energy: 4 } }),
+  S('s2s', 2, '연구 보고서', 2, { gain: { sci: 5 } }),
+  S('s2c', 2, '축제', 2, { gain: { culture: 3 } }),
+  S('s2m', 2, '이주선 도착', 1, { colonist: 1, gain: { food: 2 } }),
   S('s2a', 2, '방주 교리문', 1, { doctrine: { ark: 2 } }),
   S('s2b', 2, '공생 의례', 1, { doctrine: { symbiont: 2 } }),
   S('s2y', 2, '합성 설계도', 1, { doctrine: { synth: 2 } }),
-  S('s2d', 2, '교역 호송대', 2, { gain: { food: 2, prod: 2, energy: 2 } }),
-  // 고리 3: 22장
-  S('s3f', 3, '풍년', 3, { gain: { food: 7 } }),
-  S('s3p', 3, '대량 생산', 3, { gain: { prod: 7 } }),
-  S('s3e', 3, '핵융합 전지', 3, { gain: { energy: 6 } }),
-  S('s3s', 3, '대발견', 3, { gain: { sci: 7 } }),
-  S('s3c', 3, '걸작', 3, { gain: { culture: 5 } }),
-  S('s3m', 3, '새 세대', 2, { colonist: 1, gain: { culture: 2 } }),
+  S('s2d', 2, '교역 호송대', 1, { gain: { food: 2, prod: 2, energy: 2 } }),
+  // 고리 3: 15장
+  S('s3f', 3, '풍년', 2, { gain: { food: 7 } }),
+  S('s3p', 3, '대량 생산', 2, { gain: { prod: 7 } }),
+  S('s3e', 3, '핵융합 전지', 2, { gain: { energy: 6 } }),
+  S('s3s', 3, '대발견', 2, { gain: { sci: 7 } }),
+  S('s3c', 3, '걸작', 2, { gain: { culture: 5 } }),
+  S('s3m', 3, '새 세대', 1, { colonist: 1, gain: { culture: 2 } }),
   S('s3a', 3, '방주 서사시', 1, { doctrine: { ark: 3 } }),
   S('s3b', 3, '공생 합창', 1, { doctrine: { symbiont: 3 } }),
   S('s3y', 3, '합성 각성', 1, { doctrine: { synth: 3 } }),
-  S('s3d', 3, '행성 박람회', 2, { gain: { culture: 3, sci: 3 } }),
+  S('s3d', 3, '행성 박람회', 1, { gain: { culture: 3, sci: 3 } }),
+];
+
+// 습격 카드(Rules 10.2): 고리마다 4장
+export const RAIDS: RaidDef[] = [
+  RD('r1a', 1, '창고 기습', ['lootFood', 'lootProd'], 0, 0, '밤사이 남의 창고 문을 연다'),
+  RD('r1b', 1, '기록 탈취', ['stealSci'], 1, 0, '탐사 기록을 몰래 베껴 온다'),
+  RD('r1c', 1, '전지 약탈', ['stealEnergy'], 1, 0, '충전된 전지를 통째로 들고 온다'),
+  RD('r1d', 1, '야간 기습', ['lootFood', 'lootProd', 'stealSci', 'stealEnergy'], 0, 0, '어둠을 틈타 무엇이든 챙긴다'),
+  RD('r2a', 2, '보급로 차단', ['lootFood', 'lootProd'], 1, 1, '이웃 정착지의 수송로를 끊는다'),
+  RD('r2b', 2, '연구소 잠입', ['stealSci'], 2, 1, '경비를 피해 실험 자료를 빼낸다'),
+  RD('r2c', 2, '송전망 습격', ['stealEnergy'], 2, 1, '송전선에 몰래 줄을 댄다'),
+  RD('r2d', 2, '기동 기습', ['lootFood', 'lootProd', 'stealSci', 'stealEnergy'], 1, 0, '빠르게 치고 빠진다'),
+  RD('r3a', 3, '봉쇄 작전', ['lootFood', 'lootProd'], 2, 2, '정착지 전체를 포위해 물자를 거둔다'),
+  RD('r3b', 3, '두뇌 유출', ['stealSci'], 3, 2, '연구자들을 꾀어 자료째 데려온다'),
+  RD('r3c', 3, '발전소 점거', ['stealEnergy'], 3, 2, '발전 시설을 잠시 손에 넣는다'),
+  RD('r3d', 3, '전격 습격', ['lootFood', 'lootProd', 'stealSci', 'stealEnergy'], 2, 1, '하늘과 땅에서 동시에 들이친다'),
+];
+
+// 분쟁 카드(Rules 10.3): 2·3고리에 3장씩
+export const CONFLICTS: ConflictDef[] = [
+  CF('c2a', 2, '명예 분쟁', 'culture', 0, '누구의 이야기가 행성에 남을지 다툰다'),
+  CF('c2b', 2, '영역 분쟁', 'building', 0, '경계선 위의 시설을 두고 맞선다'),
+  CF('c2c', 2, '교리 분쟁', 'doctrine', 0, '어떤 길이 옳은지 힘으로 가린다'),
+  CF('c3a', 3, '패권 분쟁', 'culture', 2, '행성의 주인이 누구인지 묻는다'),
+  CF('c3b', 3, '대륙 분쟁', 'building', 2, '대륙 하나를 두고 정착지가 충돌한다'),
+  CF('c3c', 3, '노선 전면전', 'doctrine', 2, '세 갈래 길 중 하나만 남긴다'),
 ];
 
 export const CARD_DEFS: Record<string, CardDef> = Object.fromEntries(
-  [...PIONEERS, ...LEGACIES, ...SUPPLIES].map((c) => [c.id, c]),
+  [...PIONEERS, ...LEGACIES, ...SUPPLIES, ...RAIDS, ...CONFLICTS].map((c) => [c.id, c]),
 );
 
 /** 고리별 카드 id 목록(보급은 장수만큼 반복) */
@@ -77,6 +105,6 @@ export function ringDeckIds(ring: Ring): string[] {
   const ids: string[] = [];
   for (const p of PIONEERS) if (p.ring === ring) ids.push(p.id);
   for (const l of LEGACIES) if (l.ring === ring) ids.push(l.id);
-  for (const s of SUPPLIES) if (s.ring === ring) for (let i = 0; i < s.copies; i++) ids.push(s.id);
+  for (const s of [...SUPPLIES, ...RAIDS, ...CONFLICTS]) if (s.ring === ring) for (let i = 0; i < s.copies; i++) ids.push(s.id);
   return ids;
 }

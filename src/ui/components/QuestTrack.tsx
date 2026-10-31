@@ -9,7 +9,7 @@ import { meets, playerMods } from '../../core/engine/derive';
 import { slotVisible } from '../../core/engine/quest';
 import { HIDDEN } from '../../core/mask';
 import { useGame } from '../useGame';
-import { CardFace, type FrameName } from './CardFace';
+import { CARD_FRAME, CARD_ICON, CardFace, type FrameName } from './CardFace';
 import { Icon, type IconName } from './Icon';
 import { CardZoom } from './CardZoom';
 import { CardBrief, QuestBrief } from './CardBrief';
@@ -31,8 +31,8 @@ const FRAME: Record<QuestDef['kind'], FrameName> = {
 const ICON: Record<QuestDef['kind'], IconName> = { judge: 'quest', threat: 'threat', contest: 'workshop', patron: 'patron', fruition: 'legacy', finale: 'legacy' };
 const TONE: Record<QuestDef['kind'], string> = { judge: 'var(--res-sci)', threat: 'var(--danger)', contest: 'var(--warn)', patron: 'var(--ring2)', fruition: 'var(--ring3)', finale: 'var(--ring3)' };
 export const questArt = (q: QuestDef) => ({ id: q.id, icon: q.kind === 'fruition' ? q.doctrine : ICON[q.kind], tone: TONE[q.kind] });
-const CARD_TONE: Record<CardDef['type'], string> = { pioneer: 'var(--accent)', legacy: 'var(--ring3)', supply: 'var(--res-prod)' };
-const cardArt = (c: CardDef) => ({ id: c.id, icon: c.type, tone: CARD_TONE[c.type] });
+const CARD_TONE: Record<CardDef['type'], string> = { pioneer: 'var(--accent)', legacy: 'var(--ring3)', supply: 'var(--res-prod)', raid: 'var(--danger)', conflict: 'var(--danger)' };
+const cardArt = (c: CardDef) => ({ id: c.id, icon: CARD_ICON[c.type], tone: CARD_TONE[c.type] });
 
 export function QuestFace({ q, width, onClick }: { q: QuestDef; width: number; onClick?: () => void }) {
   return (
@@ -58,7 +58,7 @@ function TrackFace({ id, width, onClick }: { id: string; width: number; onClick:
   const c = CARD_DEFS[id];
   return (
     <CardFace
-      frame={c.type}
+      frame={CARD_FRAME[c.type]}
       width={width}
       title={c.name}
       kind={CARD_TYPE_NAMES[c.type]}
@@ -135,7 +135,7 @@ export function QuestTrack() {
       {open !== null && openId !== undefined && (
         <Sheet title={name} onClose={() => setOpen(null)} actions={actions}>
           {q && <CardZoom frame={FRAME[q.kind]} title={q.name} badge={q.kind === 'threat' ? q.power : undefined} art={questArt(q)} body={questSummary(q)} />}
-          {card && <CardZoom frame={card.type} title={card.name} art={cardArt(card)} body={cardText(card)} />}
+          {card && <CardZoom frame={CARD_FRAME[card.type]} title={card.name} art={cardArt(card)} body={cardText(card)} />}
           {!openKnown && (
             <>
               <CardZoom frame="quest-back" title="뒷면 카드" />
@@ -176,6 +176,8 @@ export function QuestTrack() {
               {card.type === 'pioneer' && <p className={styles.kind}>고르면 바로 내 선구자가 됩니다(기존 선구자는 버림). 한 시대에 한 명만.</p>}
               {card.type === 'legacy' && <p className={styles.kind}>고르면 “짓는 중”. 단계마다 지휘 1 + 생산. 동시에 하나만.</p>}
               {card.type === 'supply' && <p className={styles.kind}>손에 들고 있다가 다음 차례부터 지휘 1로 사용.</p>}
+              {card.type === 'raid' && <p className={styles.kind}>손에 들고 있다가 다음 차례부터 대외 단계에 방위 행동 2와 함께 내서 습격.</p>}
+              {card.type === 'conflict' && <p className={styles.kind}>손에 들고 있다가 다음 차례부터(2시대 이후) 대외 단계에 분쟁으로 선포.</p>}
               {card.text && <p className={styles.flavor}>“{card.text}”</p>}
             </>
           )}

@@ -6,6 +6,7 @@ import { ranking } from '../src/core/engine/scoring';
 import { mainDoctrine, totalColonists } from '../src/core/engine/derive';
 import { researchedCount } from '../src/core/engine/research';
 import type { GameState } from '../src/core/types';
+import { FIRST_ROUND_COMMAND } from '../src/core/data/constants';
 
 function arg(name: string, def: number): number {
   const i = process.argv.indexOf(`--${name}`);
@@ -34,6 +35,9 @@ export function playGame(seed: number, players: number, maxSteps = 20000): { sta
 }
 
 if (process.argv[1]?.includes('simulate')) {
+  // --first 2,3,3,3 : 첫 라운드 자리별 지휘 수를 파일 수정 없이 바꿔 시험
+  const fi = process.argv.indexOf('--first');
+  if (fi >= 0) process.argv[fi + 1].split(',').forEach((v, i) => (FIRST_ROUND_COMMAND[i] = Number(v)));
   const games = arg('games', 50);
   const players = arg('players', 3);
   const seed0 = arg('seed', 1);
@@ -46,6 +50,11 @@ if (process.argv[1]?.includes('simulate')) {
   let nodes = 0;
   let healthHits = 0; // 건강 부족으로 생산에 손해를 본 생산 단계 수(옛 '건강 부족' 포함)
   let colonists = 0;
+  let raids = 0;
+  let raidWinsN = 0;
+  let conflicts = 0;
+  let raidCards = 0;
+  let conflictCards = 0;
   const eraStarts = [0, 0, 0, 0];
   const t0 = Date.now();
   for (let g = 0; g < games; g++) {
@@ -62,6 +71,11 @@ if (process.argv[1]?.includes('simulate')) {
     nodes += state.players.reduce((a, p) => a + researchedCount(p), 0) / players;
     eraRounds.forEach((rd, i) => (eraStarts[i] += rd));
     healthHits += state.log.filter((e) => /건강 부족|역병/.test(e.text)).length / players;
+    raids += state.log.filter((e) => /습격 (성공|실패)/.test(e.text)).length / players;
+    raidWinsN += state.log.filter((e) => /습격 성공/.test(e.text)).length / players;
+    raidCards += state.log.filter((e) => /^습격 「/.test(e.text)).length / players;
+    conflictCards += state.log.filter((e) => /^분쟁 「/.test(e.text)).length / players;
+    conflicts += state.log.filter((e) => /분쟁 선포/.test(e.text)).length / players;
     colonists += state.players.reduce((a, p) => a + totalColonists(p), 0) / players;
   }
   const pct = (n: number, d: number) => `${((100 * n) / Math.max(1, d)).toFixed(1)}%`;
@@ -70,5 +84,6 @@ if (process.argv[1]?.includes('simulate')) {
   console.log(`시대 시작 라운드 평균: ${eraStarts.map((x) => (x / games).toFixed(1)).join(' / ')}`);
   console.log(`자리별 승률: ${seatWins.map((w, i) => `${i + 1}번 ${pct(w, games)}`).join(' · ')}`);
   console.log(`1인당: 건강 부족 생산 단계 ${(healthHits / games).toFixed(2)}회 · 최종 정착민 ${(colonists / games).toFixed(1)}명`);
+  console.log(`1인당: 습격 ${(raids / games).toFixed(2)}회(성공 ${(raidWinsN / games).toFixed(2)}) · 분쟁 선포 ${(conflicts / games).toFixed(2)}회 · 카드 획득 습격 ${(raidCards / games).toFixed(2)} · 분쟁 ${(conflictCards / games).toFixed(2)}`);
   console.log(`주 노선별 승률: ${Object.keys(docWins).map((d) => `${d} ${docWins[d]}/${docCount[d]} (${pct(docWins[d], docCount[d])})`).join(' · ')}`);
 }

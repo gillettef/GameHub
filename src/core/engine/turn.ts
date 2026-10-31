@@ -45,7 +45,7 @@ export function applyAction(state: GameState, actor: number, action: Action): Ac
     case 'raid':
     case 'declareConflict':
       if (s.phase !== 'external') return { state, error: '대외 단계가 지났습니다' };
-      err = action.type === 'raid' ? raid(s, p, action.target, action.effect, !!action.swarm) : declareConflict(s, p, action.target, action.loss);
+      err = action.type === 'raid' ? raid(s, p, action.card, action.target, action.effect, !!action.swarm) : declareConflict(s, p, action.card, action.target);
       if (!err) s.phase = 'actions';
       break;
     case 'endTurn':
@@ -63,7 +63,6 @@ export function applyAction(state: GameState, actor: number, action: Action): Ac
 
 const isInt = (n: unknown, min: number, max: number) => Number.isInteger(n) && (n as number) >= min && (n as number) <= max;
 const RAID_EFFECTS = ['lootProd', 'lootFood', 'stealSci', 'stealEnergy', 'abduct'];
-const CONFLICT_LOSSES = ['culture', 'building', 'doctrine'];
 
 /** 온라인 입력을 포함해 행동 값의 모양을 먼저 검사한다 */
 function validate(state: GameState, actor: number, a: Action): string | null {
@@ -93,9 +92,9 @@ function validate(state: GameState, actor: number, a: Action): string | null {
     case 'charter':
       return CHARTER_FIELDS.includes(a.field) ? null : '잘못된 헌장';
     case 'raid':
-      return isInt(a.target, 0, last) && RAID_EFFECTS.includes(a.effect) ? null : '잘못된 습격';
+      return isInt(a.card, 0, 99) && isInt(a.target, 0, last) && RAID_EFFECTS.includes(a.effect) ? null : '잘못된 습격';
     case 'declareConflict':
-      return isInt(a.target, 0, last) && CONFLICT_LOSSES.includes(a.loss) ? null : '잘못된 분쟁';
+      return isInt(a.card, 0, 99) && isInt(a.target, 0, last) ? null : '잘못된 분쟁';
     case 'respond':
       return isInt(a.choice, 0, 99) ? null : '잘못된 선택';
     case 'addColonist':

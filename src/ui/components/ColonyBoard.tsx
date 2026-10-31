@@ -51,7 +51,7 @@ import {
 } from '../../core/engine/derive';
 import { buildingUpgradeCost, unitUpgradeCost } from '../../core/engine/actions';
 import { useGame } from '../useGame';
-import { CardFace } from './CardFace';
+import { CARD_FRAME, CARD_ICON, CardFace } from './CardFace';
 import { CardArt } from './CardArt';
 import { CardZoom } from './CardZoom';
 import { CardBrief, ModsBrief } from './CardBrief';
@@ -61,7 +61,7 @@ import { Icon, type IconName } from './Icon';
 import { Num, useFresh } from '../motion';
 import { Section } from './Section';
 import { Sheet, type SheetAction } from './Sheet';
-import { cardText, condText, instantText, modsText } from '../describe';
+import { CARD_TYPE_NAMES, cardText, condText, instantText, modsText } from '../describe';
 import styles from './ColonyBoard.module.css';
 
 type Open =
@@ -198,7 +198,10 @@ export function ColonyBoard({ player }: { player: PlayerState }) {
       case 'hand': {
         const h = p.hand[o.index];
         const c = h && CARD_DEFS[h.id];
-        if (!c || c.type !== 'supply') return { title: '보급', body: null, actions: [] };
+        if (!c) return { title: '손패', body: null, actions: [] };
+        if (c.type === 'raid' || c.type === 'conflict')
+          return withArt({ title: c.name, body: <p>{cardText(c)}{h.fresh ? ' · 이번 차례에 가져와서 아직 쓸 수 없음' : ' · 대외 단계에 상단의 ' + (c.type === 'raid' ? '습격' : '분쟁') + ' 버튼으로 씁니다'}</p>, actions: [] }, c.id, CARD_ICON[c.type], { frame: CARD_FRAME[c.type], text: cardText(c) });
+        if (c.type !== 'supply') return { title: '손패', body: null, actions: [] };
         add('사용 — 지휘 1', { type: 'useSupply', index: o.index });
         return withArt({ title: c.name, body: <p>{instantText(c.instant)}{h.fresh ? ' · 이번 차례에 가져와서 아직 쓸 수 없음' : ''}</p>, actions: acts }, c.id, 'supply', { frame: 'supply', text: instantText(c.instant) });
       }
@@ -449,10 +452,10 @@ export function ColonyBoard({ player }: { player: PlayerState }) {
             <CardFace key={id} className={pop(`done:${id}`)} frame="legacy" width={sizes.card} title={CARD_DEFS[id].name} tip={`완성한 유산\n${cardText(CARD_DEFS[id])}`} badge="✓" art={{ id, icon: 'legacy' }} onClick={() => setOpen({ k: 'legacyDone', id })} brief={<CardBrief card={CARD_DEFS[id]} />} />
           ))}
         </Slot>
-        <Slot label={`보급 ${p.hand.length}`}>
+        <Slot label={`손패 ${p.hand.length}`}>
           {p.hand.length === 0 && <Empty />}
           {p.hand.map((h, i) => (
-            <CardFace key={i} className={pop(`hand:${h.id}:${p.hand.slice(0, i).filter((x) => x.id === h.id).length}`)} frame="supply" width={sizes.card} title={CARD_DEFS[h.id].name} tip={`보급${h.fresh ? ' · 다음 차례부터 사용' : ''}\n${cardText(CARD_DEFS[h.id])}`} dim={h.fresh} art={{ id: h.id, icon: 'supply' }} brief={<CardBrief card={CARD_DEFS[h.id]} />} onClick={() => setOpen({ k: 'hand', index: i })} />
+            <CardFace key={i} className={pop(`hand:${h.id}:${p.hand.slice(0, i).filter((x) => x.id === h.id).length}`)} frame={CARD_FRAME[CARD_DEFS[h.id].type]} width={sizes.card} title={CARD_DEFS[h.id].name} tip={`${CARD_TYPE_NAMES[CARD_DEFS[h.id].type]}${h.fresh ? ' · 다음 차례부터 사용' : ''}\n${cardText(CARD_DEFS[h.id])}`} dim={h.fresh} art={{ id: h.id, icon: CARD_ICON[CARD_DEFS[h.id].type] }} brief={<CardBrief card={CARD_DEFS[h.id]} />} onClick={() => setOpen({ k: 'hand', index: i })} />
           ))}
         </Slot>
         <Slot label="궤도">

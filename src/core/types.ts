@@ -140,7 +140,36 @@ export interface SupplyDef {
   instant: Instant;
   text?: string;
 }
-export type CardDef = PioneerDef | LegacyDef | SupplyDef;
+/** 습격 카드(Rules 10.2): 손에 들었다가 대외 단계에 습격으로 낸다 */
+export interface RaidDef {
+  type: 'raid';
+  id: string;
+  ring: Ring;
+  name: string;
+  copies: number;
+  /** 성공 시 고를 수 있는 효과 */
+  effects: RaidEffect[];
+  /** 공격값 보정 */
+  atk: number;
+  /** 획득량 추가 */
+  bonus: number;
+  text?: string;
+}
+/** 분쟁 카드(Rules 10.3): 손에 들었다가 대외 단계에 분쟁으로 선포한다 */
+export interface ConflictDef {
+  type: 'conflict';
+  id: string;
+  ring: Ring;
+  name: string;
+  copies: number;
+  loss: ConflictLoss;
+  /** 판정 때 공격값 보정 */
+  atk: number;
+  text?: string;
+}
+export type CardDef = PioneerDef | LegacyDef | SupplyDef | RaidDef | ConflictDef;
+/** 손에 드는 카드 종류 */
+export const HAND_TYPES: CardDef['type'][] = ['supply', 'raid', 'conflict'];
 
 // ── 퀘스트 ──
 export interface QuestOption {
@@ -254,7 +283,7 @@ export interface PlayerState {
   guard: number;
   /** 공존: 다음 내 생산 단계까지 건강 감소(공존 토큰 수) */
   coexist: number;
-  conflict: { target: number; loss: ConflictLoss } | null;
+  conflict: { target: number; loss: ConflictLoss; atk: number; card: string } | null;
   harmedRound: number;
 }
 
@@ -283,7 +312,7 @@ export interface LogEntry {
 export type Phase = 'quest' | 'external' | 'actions';
 
 export interface GameState {
-  version: 2;
+  version: 3;
   seed: number;
   rngState: [number, number, number, number];
   /** 상태 버전: 행동이 적용될 때마다 1 증가(온라인에서 오래된 화면 기준 행동 거절) */
@@ -327,8 +356,8 @@ export type Action =
   | { type: 'legacyStage' }
   | { type: 'launch'; slot: number; replace?: number }
   | { type: 'charter'; field: CharterField }
-  | { type: 'raid'; target: number; effect: RaidEffect; swarm?: boolean }
-  | { type: 'declareConflict'; target: number; loss: ConflictLoss }
+  | { type: 'raid'; card: number; target: number; effect: RaidEffect; swarm?: boolean }
+  | { type: 'declareConflict'; card: number; target: number }
   | { type: 'endTurn' }
   | { type: 'respond'; choice: number };
 

@@ -1,5 +1,6 @@
 // 카드 프레임(SVG) 위에 글자를 얹은 카드
 import type { CSSProperties, ReactNode } from 'react';
+import type { CardDef } from '../../core/types';
 import { CardArt } from './CardArt';
 import type { IconName } from './Icon';
 import styles from './CardFace.module.css';
@@ -10,6 +11,10 @@ const frameUrl = (name: string) => frames[`../assets/cards/${name}.svg`];
 export type FrameName =
   | 'pioneer' | 'legacy' | 'supply' | 'patron' | 'satellite' | 'mission'
   | 'quest-back' | 'quest-judge' | 'quest-threat' | 'quest-contest' | 'quest-patron' | 'quest-fruition' | 'quest-finale';
+
+/** 선구자·유산·보급·습격·분쟁 카드의 프레임과 그림 창 아이콘(습격·분쟁 전용 프레임은 아직 없어 임무 프레임을 쓴다) */
+export const CARD_FRAME: Record<CardDef['type'], FrameName> = { pioneer: 'pioneer', legacy: 'legacy', supply: 'supply', raid: 'mission', conflict: 'mission' };
+export const CARD_ICON: Record<CardDef['type'], IconName> = { pioneer: 'pioneer', legacy: 'legacy', supply: 'supply', raid: 'rider', conflict: 'might' };
 
 export function CardFace({
   frame,

@@ -1,12 +1,13 @@
 // AI 결정: 후보 행동을 한 수 적용해 보고 평가 함수 증가량이 가장 큰 것을 고른다(결정적, 난수 없음)
 import type { Action, GameState, PlayerState, RaidEffect, UnitKind } from './types';
 import { BUILDING_KINDS, CHARTER_FIELDS, DOCTRINES, UNIT_KINDS } from './types';
-import { BUILDING_COST, PATRON_LIMIT, TRUNK_BASE_COST, UNIT_COST } from './data/constants';
+import { BUILDING_COST, CONFLICT_DEFENSE, PATRON_LIMIT, RAID_DEFENSE, TRUNK_BASE_COST, UNIT_COST } from './data/constants';
 import { CARD_DEFS } from './data/cards';
 import { QUEST_DEFS } from './data/quests';
 import { PATRON_DEFS } from './data/patrons';
 import { applyAction } from './engine/turn';
 import {
+  attackValue,
   buildingUnlocked,
   commandLeft,
   defenseLeft,
@@ -69,6 +70,11 @@ export function evaluate(state: GameState, p: PlayerState): number {
       const g = c.instant.gain ?? {};
       const docs = Object.values(c.instant.doctrine ?? {}).reduce((a, b) => a + (b ?? 0), 0);
       v += 0.7 * ((g.culture ?? 0) + ((g.food ?? 0) + (g.prod ?? 0) + (g.sci ?? 0)) * 0.4 * resW + (g.energy ?? 0) * 0.2 * resW + docs * 0.8 + (c.instant.colonist ?? 0) * 0.6);
+    } else if (c.type === 'raid') {
+      // 쓸 기회가 남아 있어야 가치가 있다. 쓰는 이득보다 작게 잡아 손에 묵히지 않게 한다
+      v += (0.5 + c.atk * 0.1) * Math.min(1, R / 3);
+    } else if (c.type === 'conflict') {
+      v += (0.8 + c.atk * 0.1) * Math.min(1, R / 3);
     }
   }
   if (p.legacyWip) {
@@ -275,29 +281,32 @@ function externalChoice(state: GameState, p: PlayerState, base: number): { actio
     if (!best || score > best.score) best = { action, score };
   };
   const def = defenseLeft(p);
-  if (def >= 2) {
-    for (const t of state.players) {
-      if (canTarget(state, p, t.id)) continue;
-      const swarm = stage(p, 'symbiont') >= 2;
-      if (swarm && raidWins(state, p, t.id, true)) consider({ type: 'raid', target: t.id, effect: 'lootProd', swarm: true });
-      if (raidWins(state, p, t.id, false)) {
-        const effects: RaidEffect[] = ['lootProd', 'lootFood', 'stealSci', 'stealEnergy'];
-        if (stage(p, 'ark') >= 2) effects.push('abduct');
-        for (const e of effects) consider({ type: 'raid', target: t.id, effect: e }, -0.5);
+  p.hand.forEach((h, card) => {
+    const c = CARD_DEFS[h.id];
+    if (h.fresh || !c) return;
+    if (c.type === 'raid' && def >= RAID_DEFENSE) {
+      for (const t of state.players) {
+        if (canTarget(state, p, t.id)) continue;
+        const swarm = stage(p, 'symbiont') >= 2;
+        if (swarm && raidWins(state, p, t.id, true)) consider({ type: 'raid', card, target: t.id, effect: c.effects[0], swarm: true });
+        if (raidWins(state, p, t.id, false, c)) {
+          const effects: RaidEffect[] = [...c.effects];
+          if (stage(p, 'ark') >= 2) effects.push('abduct');
+          for (const e of effects) consider({ type: 'raid', card, target: t.id, effect: e });
+        }
       }
     }
-  }
-  if (state.era >= 2 && !p.conflict && defenseMax(p) >= 3) {
-    for (const t of state.players) {
-      if (canTarget(state, p, t.id)) continue;
-      const margin = might(p) - defenseValue(t);
-      if (margin >= 4) {
-        const loss = t.res.culture >= 6 ? 'culture' : 'building';
-        const score = margin * 0.6;
-        if (!best || score > best.score) best = { action: { type: 'declareConflict', target: t.id, loss }, score };
+    if (c.type === 'conflict' && state.era >= 2 && !p.conflict && defenseMax(p) >= CONFLICT_DEFENSE) {
+      for (const t of state.players) {
+        if (canTarget(state, p, t.id)) continue;
+        const margin = attackValue(p, t) + c.atk - defenseValue(t);
+        if (margin >= 4) {
+          const score = margin * 0.6 - (c.loss === 'culture' && t.res.culture < 6 ? 1.5 : 0);
+          if (!best || score > best.score) best = { action: { type: 'declareConflict', card, target: t.id }, score };
+        }
       }
     }
-  }
+  });
   return best;
 }
 

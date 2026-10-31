@@ -157,7 +157,7 @@ describe('차례와 시대', () => {
     s = act(s, { type: 'endTurn' });
     expect(s.era).toBe(2);
     expect(s.questRow).toHaveLength(QUEST_ROW_SIZE);
-    expect(s.questRow.every((c) => /^(q2|p2|l2|s2)/.test(c))).toBe(true);
+    expect(s.questRow.every((c) => /^(q2|p2|l2|s2|r2|c2)/.test(c))).toBe(true);
   });
 
   it('종료 시대: 결실 퀘스트가 칸 1에 들어오면 그 라운드 끝에 종료', () => {
@@ -412,23 +412,57 @@ describe('대외 단계', () => {
     const t = (me + 1) % 3;
     s.players[me].units.guard[3] = 3;
     s.players[t].res.prod = 9;
-    s = act(s, { type: 'raid', target: t, effect: 'lootProd' });
+    s.players[me].hand = [{ id: 'r1a', fresh: false }, { id: 'r1b', fresh: false }];
+    s = act(s, { type: 'raid', card: 0, target: t, effect: 'lootProd' });
     expect(s.players[t].res.prod).toBe(9 - 3);
     expect(s.players[t].harmedRound).toBe(s.round);
     expect(s.phase).toBe('actions');
-    expect(applyAction(s, me, { type: 'raid', target: (me + 2) % 3, effect: 'lootProd' }).error).toBe('대외 단계가 지났습니다');
+    expect(s.players[me].hand.map((h) => h.id)).toEqual(['r1b']);
+    expect(applyAction(s, me, { type: 'raid', card: 0, target: (me + 2) % 3, effect: 'stealSci' }).error).toBe('대외 단계가 지났습니다');
+  });
+
+  it('습격은 손의 습격 카드가 있어야 하고, 카드에 적힌 효과만 고른다', () => {
+    const s = ready(1, 3);
+    const me = s.current;
+    const t = (me + 1) % 3;
+    s.players[me].units.guard[3] = 3;
+    const p = s.players[me];
+    expect(applyAction(s, me, { type: 'raid', card: 0, target: t, effect: 'lootProd' }).error).toBe('없는 카드');
+    p.hand = [{ id: 's1f', fresh: false }];
+    expect(applyAction(s, me, { type: 'raid', card: 0, target: t, effect: 'lootProd' }).error).toBe('습격 카드가 아닙니다');
+    p.hand = [{ id: 'r1a', fresh: true }];
+    expect(applyAction(s, me, { type: 'raid', card: 0, target: t, effect: 'lootProd' }).error).toBe('가져온 차례에는 쓸 수 없습니다');
+    p.hand = [{ id: 'r1a', fresh: false }];
+    expect(applyAction(s, me, { type: 'raid', card: 0, target: t, effect: 'stealSci' }).error).toBe('이 카드로 고를 수 없는 효과입니다');
+  });
+
+  it('습격 카드의 공격 보정과 추가량이 적용된다', () => {
+    let s = ready(1, 2);
+    const me = s.current;
+    const t = 1 - me;
+    s.era = 2;
+    s.players[t].res.sci = 20;
+    s.players[me].hand = [{ id: 'r2b', fresh: false }]; // 공격 +2, 추가량 +1
+    // 방위력 0 대 0: 카드 보정 +2 로 성공
+    s.players[t].units.guard = [0, 0, 0, 0];
+    s.players[me].units.guard = [0, 0, 0, 0];
+    s = act(s, { type: 'raid', card: 0, target: t, effect: 'stealSci' });
+    expect(s.players[t].res.sci).toBe(20 - (2 + 2 + 1));
   });
 
   it('분쟁은 2시대부터, 다음 차례에 판정', () => {
     let s = ready(1, 2);
     const me = s.current;
     const t = 1 - me;
-    expect(applyAction(s, me, { type: 'declareConflict', target: t, loss: 'culture' }).error).toBe('분쟁은 2시대부터');
+    s.players[me].hand = [{ id: 'c2a', fresh: false }];
+    expect(applyAction(s, me, { type: 'declareConflict', card: 0, target: t }).error).toBe('분쟁은 2시대부터');
     s.era = 2;
     s.players[me].units.guard[3] = 3;
     s.players[me].researched.push(trunkId('defense', 1), trunkId('defense', 2));
     s.players[t].res.culture = 10;
-    s = act(s, { type: 'declareConflict', target: t, loss: 'culture' });
+    s = act(s, { type: 'declareConflict', card: 0, target: t });
+    expect(s.players[me].hand).toEqual([]);
+    expect(s.players[me].conflict?.loss).toBe('culture');
     s = act(s, { type: 'endTurn' });
     s.questRow[0] = 's1f';
     s = act(s, { type: 'pickQuest', slot: 0 }, t);

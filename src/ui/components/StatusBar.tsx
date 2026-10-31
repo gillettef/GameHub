@@ -1,6 +1,8 @@
-// 상단 고정 상태 줄(BGA 의 페이지 제목 줄): 메뉴·시대 정보, 지금 누가 무엇을 하는지, 퀘스트 선택 안내, 대외 단계(습격·분쟁)와 차례 종료 버튼
+// 상단 고정 상태 줄(BGA 의 페이지 제목 줄): 메뉴·시대 정보, 지금 누가 무엇을 하는지, 퀘스트 선택 안내, 대외 단계(손의 습격·분쟁 카드)와 차례 종료 버튼
 import { useEffect, useRef, useState } from 'react';
-import type { ConflictLoss, RaidEffect } from '../../core/types';
+import type { ConflictDef, RaidDef, RaidEffect } from '../../core/types';
+import { CONFLICT_LOSS_NAMES, RAID_EFFECT_NAMES } from '../describe';
+import { CARD_DEFS } from '../../core/data/cards';
 import { CONFLICT_DEFENSE, RAID_DEFENSE, raidAmount } from '../../core/data/constants';
 import { attackValue, commandLeft, defenseLeft, defenseValue, edgeBonus, stage } from '../../core/engine/derive';
 import { swarmValue } from '../../core/engine/external';
@@ -10,14 +12,8 @@ import { Icon } from './Icon';
 import { Sheet } from './Sheet';
 import styles from './StatusBar.module.css';
 
-const EFFECT_NAMES: Record<RaidEffect, string> = {
-  lootProd: '생산 약탈',
-  lootFood: '식량 약탈',
-  stealSci: '과학 탈취',
-  stealEnergy: '에너지 탈취',
-  abduct: '정착민 납치',
-};
-const LOSS_NAMES: Record<ConflictLoss, string> = { culture: '문화', building: '건물', doctrine: '노선 점수' };
+const EFFECT_NAMES = RAID_EFFECT_NAMES;
+const LOSS_NAMES = CONFLICT_LOSS_NAMES;
 
 export function StatusBar({ onMenu, onLog, onResults }: { onMenu: () => void; onLog: () => void; onResults: () => void }) {
   const { game } = useGame();
@@ -62,7 +58,21 @@ function ActionRow({ onResults }: { onResults: () => void }) {
   const { game, me, myTurn, check, act } = useGame();
   const [sheet, setSheet] = useState<'raid' | 'conflict' | 'end' | null>(null);
   const [target, setTarget] = useState<number | null>(null);
+  const [pick, setPick] = useState<number | null>(null);
   const p = game.players[me];
+  // 손에서 지금 쓸 수 있는 습격·분쟁 카드(가져온 차례 제외)
+  const usable = <T extends 'raid' | 'conflict'>(type: T) =>
+    p.hand.flatMap((h, index) => {
+      const def = CARD_DEFS[h.id];
+      return def?.type === type && !h.fresh ? [{ index, def: def as Extract<RaidDef | ConflictDef, { type: T }> }] : [];
+    });
+  const raidCards = usable('raid');
+  const conflictCards = usable('conflict');
+  const close = () => {
+    setSheet(null);
+    setTarget(null);
+    setPick(null);
+  };
   const actor = game.pending.length ? game.pending[0].player : game.current;
   const others = game.players.filter((x) => x.id !== me);
 
@@ -108,19 +118,22 @@ function ActionRow({ onResults }: { onResults: () => void }) {
   }
   const external = game.phase === 'external';
   const t = target !== null ? game.players[target] : null;
-  const amount = raidAmount(game.era);
+  const raidCard = raidCards.find((c) => c.index === pick) ?? raidCards[0];
+  const conflictCard = conflictCards.find((c) => c.index === pick) ?? conflictCards[0];
+  const amount = raidAmount(game.era) + (raidCard?.def.bonus ?? 0);
   return (
     <>
       <div className={styles.bar}>
         {counts}
         {external ? (
           <div className={styles.ext}>
-            <button onClick={() => setSheet('raid')} data-tip="습격" data-tip-body="방위 행동 2. 공격값이 상대 방어값보다 크면 자원을 약탈합니다.">
+            <button onClick={() => setSheet('raid')} disabled={raidCards.length === 0} data-tip="습격" data-tip-body="손의 습격 카드 1장 + 방위 행동 2. 공격값이 상대 방어값보다 크면 카드에 적힌 자원을 약탈합니다.">
               습격
+              <small>{raidCards.length ? `카드 ${raidCards.length}` : '카드 없음'}</small>
             </button>
-            <button onClick={() => setSheet('conflict')} disabled={game.era < 2}>
+            <button onClick={() => setSheet('conflict')} disabled={game.era < 2 || conflictCards.length === 0} data-tip="분쟁" data-tip-body="손의 분쟁 카드 1장으로 선포. 다음 내 차례에 방위 행동 3으로 판정합니다.">
               분쟁
-              {game.era < 2 && <small>2시대~</small>}
+              <small>{game.era < 2 ? '2시대~' : conflictCards.length ? `카드 ${conflictCards.length}` : '카드 없음'}</small>
             </button>
           </div>
         ) : (
@@ -132,57 +145,52 @@ function ActionRow({ onResults }: { onResults: () => void }) {
         </button>
       </div>
 
-      {sheet === 'raid' && (
+      {sheet === 'raid' && raidCard && (
         <Sheet
           title="습격"
-          onClose={() => {
-            setSheet(null);
-            setTarget(null);
-          }}
+          onClose={close}
           actions={
             t
               ? [
-                  ...(['lootProd', 'lootFood', 'stealSci', 'stealEnergy', ...(stage(p, 'ark') >= 2 ? ['abduct'] : [])] as RaidEffect[]).map((e) => ({
-                    label: `${EFFECT_NAMES[e]}${e === 'abduct' ? '' : ` ${amount}`} — 방위 ${RAID_DEFENSE}`,
-                    onClick: () => act({ type: 'raid', target: t.id, effect: e }),
-                    disabled: check({ type: 'raid', target: t.id, effect: e }),
-                  })),
+                  ...([...raidCard.def.effects, ...(stage(p, 'ark') >= 2 ? ['abduct'] : [])] as RaidEffect[]).map((e) => {
+                    const a = { type: 'raid', card: raidCard.index, target: t.id, effect: e } as const;
+                    return { label: `${EFFECT_NAMES[e]}${e === 'abduct' ? '' : ` ${amount}`} — 방위 ${RAID_DEFENSE}`, onClick: () => act(a), disabled: check(a) };
+                  }),
                   ...(stage(p, 'symbiont') >= 2
                     ? [
-                        {
-                          label: `무리 몰이(판정 ${swarmValue(game, p)}) — 건물 1곳 하락 · 공생 +1`,
-                          onClick: () => act({ type: 'raid', target: t.id, effect: 'lootProd', swarm: true }),
-                          disabled: check({ type: 'raid', target: t.id, effect: 'lootProd', swarm: true }),
-                        },
+                        (() => {
+                          const a = { type: 'raid', card: raidCard.index, target: t.id, effect: raidCard.def.effects[0], swarm: true } as const;
+                          return { label: `무리 몰이(판정 ${swarmValue(game, p)}) — 건물 1곳 하락 · 공생 +1`, onClick: () => act(a), disabled: check(a) };
+                        })(),
                       ]
                     : []),
                 ]
               : []
           }
         >
-          <p>대상을 고르세요. 공격값이 방어값보다 커야 성공합니다. 실패해도 방위 행동은 돌아오지 않습니다.</p>
-          <TargetPicker others={others} target={target} setTarget={setTarget} attack={(id) => attackValue(p, game.players[id])} edge={(id) => edgeBonus(p, game.players[id])} harmed={(id) => game.players[id].harmedRound === game.round} />
+          <CardPicker cards={raidCards} current={raidCard.index} onPick={setPick} detail={(d) => `공격 ${d.atk ? `+${d.atk}` : '±0'}${d.bonus ? ` · 획득 +${d.bonus}` : ''} · ${d.effects.map((e) => EFFECT_NAMES[e]).join('·')}`} />
+          <p>대상을 고르세요. 공격값이 방어값보다 커야 성공합니다. 실패해도 카드와 방위 행동은 돌아오지 않습니다.</p>
+          <TargetPicker others={others} target={target} setTarget={setTarget} attack={(id) => attackValue(p, game.players[id]) + raidCard.def.atk} edge={(id) => edgeBonus(p, game.players[id])} harmed={(id) => game.players[id].harmedRound === game.round} />
         </Sheet>
       )}
-      {sheet === 'conflict' && (
+      {sheet === 'conflict' && conflictCard && (
         <Sheet
           title="분쟁 선포"
-          onClose={() => {
-            setSheet(null);
-            setTarget(null);
-          }}
+          onClose={close}
           actions={
             t
-              ? (['culture', 'building', 'doctrine'] as ConflictLoss[]).map((loss) => ({
-                  label: `노리는 손실: ${LOSS_NAMES[loss]}`,
-                  onClick: () => act({ type: 'declareConflict', target: t.id, loss }),
-                  disabled: check({ type: 'declareConflict', target: t.id, loss }),
-                }))
+              ? [
+                  (() => {
+                    const a = { type: 'declareConflict', card: conflictCard.index, target: t.id } as const;
+                    return { label: `「${conflictCard.def.name}」 선포 — 노리는 손실: ${LOSS_NAMES[conflictCard.def.loss]}`, onClick: () => act(a), disabled: check(a) };
+                  })(),
+                ]
               : []
           }
         >
+          <CardPicker cards={conflictCards} current={conflictCard.index} onPick={setPick} detail={(d) => `노리는 손실: ${LOSS_NAMES[d.loss]}${d.atk ? ` · 공격 +${d.atk}` : ''}`} />
           <p>다음 내 차례 시작에 방위 행동 {CONFLICT_DEFENSE}을 내고 판정합니다. 선포는 공개되어 상대가 대비할 수 있습니다. 지면 문화 −2.</p>
-          <TargetPicker others={others} target={target} setTarget={setTarget} attack={(id) => attackValue(p, game.players[id])} edge={(id) => edgeBonus(p, game.players[id])} harmed={(id) => game.players[id].harmedRound === game.round} />
+          <TargetPicker others={others} target={target} setTarget={setTarget} attack={(id) => attackValue(p, game.players[id]) + conflictCard.def.atk} edge={(id) => edgeBonus(p, game.players[id])} harmed={(id) => game.players[id].harmedRound === game.round} />
         </Sheet>
       )}
       {sheet === 'end' && (
@@ -215,6 +223,20 @@ function TurnCue() {
   return (
     <div key={n} className={`${styles.cue} anim-cue`} role="status">
       {myTurn ? '내 차례입니다' : '결정할 일이 있습니다'}
+    </div>
+  );
+}
+
+/** 손의 습격·분쟁 카드 중 쓸 카드 고르기 */
+function CardPicker<D extends { name: string }>({ cards, current, onPick, detail }: { cards: { index: number; def: D }[]; current: number; onPick: (i: number) => void; detail: (d: D) => string }) {
+  return (
+    <div className={styles.targets}>
+      {cards.map((c) => (
+        <button key={c.index} className={`${styles.target} ${c.index === current ? styles.on : ''}`} onClick={() => onPick(c.index)} aria-pressed={c.index === current}>
+          <strong>{c.def.name}</strong>
+          <span>{detail(c.def)}</span>
+        </button>
+      ))}
     </div>
   );
 }

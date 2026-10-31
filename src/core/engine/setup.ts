@@ -77,7 +77,7 @@ export function createGame(seed: number | number[], seats: SeatConfig[]): GameSt
   });
 
   const state: GameState = {
-    version: 2,
+    version: 3,
     seed: Array.isArray(seed) ? 0 : seed,
     rngState: rng.state(),
     ver: 0,

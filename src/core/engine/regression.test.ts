@@ -67,7 +67,8 @@ describe('회귀', () => {
     let s = createGame(1, seats(2));
     s.phase = 'external';
     s.era = 2;
-    const r = applyAction(s, s.current, { type: 'declareConflict', target: 1 - s.current, loss: 'culture' });
+    s.players[s.current].hand = [{ id: 'c2a', fresh: false }];
+    const r = applyAction(s, s.current, { type: 'declareConflict', card: 0, target: 1 - s.current });
     expect(r.error).toContain('방위 행동 3');
   });
 });

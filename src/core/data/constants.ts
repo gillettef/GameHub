@@ -8,9 +8,9 @@ export const ROUND_LIMIT = 40;
 
 export const START_RES: Res = { food: 2, prod: 2, energy: 0, sci: 2, culture: 0 };
 export const SEAT_BONUS: Partial<Res>[] = [{}, { sci: 1, culture: 3 }, { prod: 1, sci: 1, culture: 5 }, { prod: 2, sci: 1, culture: 7 }];
-export const FIRST_ROUND_COMMAND = [2, 3, 4, 4];
+export const FIRST_ROUND_COMMAND = [1, 2, 3, 3];
 
-export const BASE_COMMAND = 4;
+export const BASE_COMMAND = 3;
 export const BASE_DEFENSE = 2;
 
 // 퀘스트 트랙(쓰루의 카드 줄 자리): 칸 수
@@ -123,6 +123,8 @@ export const BEATS: Record<Doctrine, Doctrine> = { ark: 'synth', synth: 'symbion
 export const RAID_DEFENSE = 2;
 export const CONFLICT_DEFENSE = 3;
 export const raidAmount = (era: number) => Math.min(era, 3) + 2;
+/** 납치할 유휴 정착민이 없을 때 대신 약탈하는 식량 */
+export const ABDUCT_FALLBACK_FOOD = 3;
 export const CONFLICT_FAIL_CULTURE = 2;
 export const CONFLICT_CULTURE_MAX = 12;
 
