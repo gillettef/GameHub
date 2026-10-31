@@ -1,0 +1,198 @@
+/*
+ * 홈 히어로 모션. 시퀀스(첫 진입):
+ *   0s     행성이 지평선 뒤에서 떠오름(1.8s) · 위성 공전·대기 광채·포자·안개 루프 시작
+ *   0.3s   착륙선 하강(2.2s, 분사 불꽃 깜박임)
+ *   2.3s   착지 먼지 → 착륙지 불빛 → 테크 웹 고리 1·2·3·바큇살이 그려지고 노드가 톡톡 켜짐(~3.4s)
+ *   3.2s~  별똥별(9s 주기)
+ * --seq 로 모든 지연·등장 길이를 비례 축소한다(두 번째 방문 0.15).
+ * transform·opacity 위주. 웹 그리기만 1회성 stroke-dashoffset.
+ */
+.hero {
+  --seq: 1;
+  position: relative;
+  width: 100%;
+  aspect-ratio: 400 / 330;
+  overflow: hidden;
+  pointer-events: none;
+  /* 땅이 페이지 하늘로 스며들게 아래를 흐림 */
+  -webkit-mask-image: linear-gradient(to bottom, black 80%, transparent);
+  mask-image: linear-gradient(to bottom, black 80%, transparent);
+}
+.svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* ── 행성 ── */
+.rise {
+  animation: rise calc(var(--seq) * 1800ms) cubic-bezier(0.2, 0.75, 0.2, 1) backwards;
+}
+@keyframes rise {
+  from { opacity: 0; transform: translateY(130px); }
+  to   { opacity: 1; transform: none; }
+}
+.halo {
+  animation: breathe 7s ease-in-out infinite alternate;
+}
+@keyframes breathe {
+  from { opacity: 0.55; }
+  to   { opacity: 1; }
+}
+
+/* ── 위성: 가로 왕복 × 세로 왕복(반 박자 늦게) = 타원. 뒤로 갈 때 작고 흐려짐 ── */
+.satX {
+  transform: translateX(calc(var(--rx) * var(--p)));
+  animation: satX var(--d) ease-in-out var(--o) infinite alternate;
+}
+.satY {
+  transform: translateY(calc(var(--ry) * var(--q)));
+  animation: satY var(--d) ease-in-out calc(var(--o) - var(--d) / 2) infinite alternate;
+}
+@keyframes satX {
+  from { transform: translateX(calc(var(--rx) * -1)); }
+  to   { transform: translateX(var(--rx)); }
+}
+@keyframes satY {
+  from { transform: translateY(calc(var(--ry) * -1)) scale(0.75); opacity: 0.35; }
+  to   { transform: translateY(var(--ry)) scale(1.15); opacity: 1; }
+}
+.ark { fill: var(--ark); }
+.ark .panel { fill: var(--ark-2); }
+.symbiont { fill: var(--symbiont); }
+.symbiont .panel { fill: var(--symbiont-2); }
+.synth { fill: var(--synth); }
+.synth .panel { fill: var(--synth-2); }
+.panel { opacity: 0.8; }
+
+/* ── 별똥별: 9s 마다 한 번 긋고 사라짐 ── */
+.meteor {
+  opacity: 0;
+  animation: meteor 9s ease-out calc(var(--seq) * 3200ms) infinite;
+}
+.star { fill: var(--text); }
+@keyframes meteor {
+  0%        { opacity: 0; transform: none; }
+  3%        { opacity: 1; }
+  10%, 100% { opacity: 0; transform: translate(150px, 52px); }
+}
+
+/* ── 포자 안개 ── */
+.fog {
+  animation: fog 16s ease-in-out infinite alternate;
+}
+@keyframes fog {
+  from { transform: translateX(-18px); }
+  to   { transform: translateX(18px); }
+}
+
+/* ── 테크 웹 ── */
+.web {
+  stroke-width: 1.6;
+  stroke-dasharray: 1;
+  animation: draw calc(var(--seq) * 1100ms) cubic-bezier(0.3, 0.6, 0.2, 1) calc(var(--seq) * (2200ms + var(--w))) backwards;
+}
+@keyframes draw {
+  from { stroke-dashoffset: 1; }
+  to   { stroke-dashoffset: 0; }
+}
+.spokes { stroke: var(--ring1); stroke-width: 1; opacity: 0.45; }
+.ring1 { stroke: var(--ring1); opacity: 0.9; }
+.ring2 { stroke: var(--ring2); opacity: 0.8; }
+.ring3 { stroke: var(--ring3); opacity: 0.7; }
+.dot1 { fill: var(--ring1); }
+.dot2 { fill: var(--ring2); }
+.dot3 { fill: var(--ring3); }
+.node {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: pop calc(var(--seq) * 420ms) cubic-bezier(0.3, 1.6, 0.4, 1) calc(var(--seq) * (2200ms + var(--w))) backwards;
+}
+@keyframes pop {
+  from { opacity: 0; transform: scale(0); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* ── 착륙 ── */
+.site {
+  animation: fadeIn calc(var(--seq) * 1200ms) ease-out calc(var(--seq) * 2400ms) backwards;
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.dust {
+  fill: var(--ark-2);
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: dust 900ms ease-out calc(var(--seq) * 2300ms) both;
+}
+@keyframes dust {
+  0%   { opacity: 0; transform: scale(0.2); }
+  12%  { opacity: 0.75; }
+  100% { opacity: 0; transform: scale(1.9); }
+}
+.lander {
+  animation: land calc(var(--seq) * 2200ms) cubic-bezier(0.15, 0.6, 0.25, 1) calc(var(--seq) * 300ms) backwards;
+}
+@keyframes land {
+  0%   { transform: translate(-26px, -260px) rotate(-9deg); }
+  70%  { transform: translate(0, -16px) rotate(1deg); }
+  100% { transform: none; }
+}
+.flame {
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: 50% 0;
+  animation: flame calc(var(--seq) * 2200ms) linear calc(var(--seq) * 300ms) both;
+}
+@keyframes flame {
+  0%   { opacity: 1; transform: scaleY(1); }
+  12%  { transform: scaleY(0.6); }
+  24%  { transform: scaleY(1.2); }
+  36%  { transform: scaleY(0.7); }
+  48%  { transform: scaleY(1.1); }
+  60%  { transform: scaleY(0.75); }
+  80%  { opacity: 1; transform: scaleY(1); }
+  100% { opacity: 0; transform: scaleY(0.2); }
+}
+.flameOuter { fill: var(--accent); }
+.flameCore { fill: var(--text); }
+.legs { fill: none; stroke: var(--ark); stroke-width: 1.4; stroke-linecap: round; }
+.hull { fill: var(--ark-2); }
+.seam { stroke: var(--border); stroke-width: 2; }
+.window { fill: var(--symbiont); }
+.beacon {
+  fill: var(--synth);
+  animation: blink 1.6s ease-in-out calc(var(--seq) * 2600ms) infinite;
+}
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.2; }
+}
+
+/* ── 포자 ── */
+.spore {
+  fill: var(--symbiont);
+  opacity: 0;
+  animation: spore var(--d) ease-in-out var(--o) infinite;
+}
+.lime { fill: var(--symbiont-2); }
+@keyframes spore {
+  0%   { opacity: 0; transform: none; }
+  18%  { opacity: 0.9; }
+  100% { opacity: 0; transform: translate(var(--dx), -120px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rise, .halo, .satX, .satY, .fog, .web, .node, .site, .lander, .beacon {
+    animation: none;
+  }
+  .meteor, .dust, .flame, .spore {
+    animation: none;
+    display: none;
+  }
+}

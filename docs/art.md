@@ -3,7 +3,7 @@
 행성의 밤하늘, 포자 안개, 토착 생물, 궤도 위성을 바탕으로 한 다크 테마 시각 자산. 모두 직접 설계한 벡터(SVG)이며 래스터 이미지와 웹폰트는 쓰지 않는다.
 
 - Claude Design 캔버스(디자인 확인용, 비공개): https://claude.ai/artifact/34UtDyLuoFUUSyCgUrpeHh
-  - 아트보드: 토큰·로고·배경 / 아이콘 32종 / 카드 프레임 13종 / 노선 문장·시대 배너·모션
+  - 아트보드: 토큰·로고·배경 / 아이콘 32종 / 카드 프레임 13종 / 노선 문장·시대 배너·모션 / 랜딩(홈) 402 폭(모션 실시간 재생)
 - **정본은 이 저장소의 파일**이다. 캔버스를 고쳤으면 해당 SVG/CSS 도 같이 고친다.
 
 ## 파일 목록
@@ -13,13 +13,18 @@
 | `src/ui/styles/tokens.css` | `:root` 색·간격·모양·글꼴·그림자 변수 |
 | `src/ui/styles/motion.css` | keyframes 와 `.anim-*` 유틸 클래스 |
 | `src/ui/assets/bg-sky.svg` | 앱 배경. viewBox 430×932, `preserveAspectRatio="xMidYMid slice"` |
+| `src/ui/assets/landing/planet.svg` | 홈 히어로 고리 행성(본체·띠·고리 앞뒤·작은 달). 중심 (262,118) r64. viewBox 400×360 |
+| `src/ui/assets/landing/ground.svg` | 홈 히어로 착륙지 지평선(대기 광채·먼 능선·땅·생물발광 식생). 지평선 꼭대기 (200,244). viewBox 400×360 |
+| `src/ui/components/LandingHero.tsx` | 홈 히어로 인라인 SVG — 위 두 장을 `<image>` 로 깔고 위성·별똥별·안개·테크 웹·착륙선·포자를 얹는다. 모션은 `LandingHero.module.css` |
 | `src/ui/assets/logo.svg` | 심볼(고리 행성 + 새싹 + 세 노선 위성) + 기하학 획 워드마크 "네오테라". viewBox 324×96 |
 | `src/ui/assets/icons/*.svg` | 24×24 단색 아이콘 32종 |
 | `src/ui/assets/cards/*.svg` | 카드 프레임 13종, viewBox 250×350 |
 | `src/ui/assets/emblems/{ark,symbiont,synth}.svg` | 노선 문장 120×120 (고정 색) |
 | `src/ui/assets/emblems/era{1..4}.svg` | 시대 전환 배너 360×120 (1 착륙 · 2 정착 · 3 궤도 · 4 종료/결실) |
 
-전체 SVG 약 53KB(목표 400KB 이하), 배경 약 8KB.
+- `landing/planet.svg`·`ground.svg` 는 `<image>` 로 불러와 CSS 변수가 닿지 않으므로 색을 HEX 로 박았다. `tokens.css` 색을 바꾸면 이 둘도 다시 뽑는다.
+
+전체 SVG 약 53KB(목표 400KB 이하), 배경 약 8KB, 랜딩 히어로 2장 약 6KB.
 
 ## 색 토큰
 
@@ -95,6 +100,25 @@
 | `.anim-confetti` | 결과판 축포 조각(`<Confetti>`) | 1.5~2.7s |
 | `.anim-rays` / `.anim-track-in` | 시대 전환 빛살 / 시대 이름 글자 모임 | 2.4s / 800ms |
 | `.sky::before·::after` | 배경 별 반짝임(4.5s) · 성운 흐름(48s) — `global.css` | 무한 |
+
+### 홈(랜딩) 모션 — `LandingHero.module.css`, `Home.module.css`
+
+CSS Modules 는 모듈 안의 `animation` 이름을 해시로 바꾸므로, 이 둘은 keyframes 를 **모듈 안에** 따로 둔다(전역 `nt-*` 이름을 모듈 CSS 에서 직접 쓰면 해시된 이름이 되어 재생되지 않는다).
+
+| 때(첫 진입) | 요소 | 모션 |
+|---|---|---|
+| 0–1.8s | 고리 행성 | 지평선 뒤에서 떠오름(`rise`) |
+| 0.3–2.5s | 착륙선 | 기울어진 채 하강 → 착지(`land`), 분사 불꽃 깜박임(`flame`) |
+| 0.7–2.2s | 로고 | 빛 번짐(blur·밝기) → 정착(`logoIn`), 뒤 호박색 광채(`flare`)·가로 빛줄(`streak`). 바깥 래퍼는 `.anim-float` |
+| 1.3s | 태그라인 | `.anim-track-in`(글자 간격 모임) |
+| 1.5s~ | 노선 칩·이름·이어 하기·AI 대전·온라인 대전·설명 | `.anim-rise` 80ms 간격 |
+| 2.3–3.4s | 착륙지 | 먼지 퍼짐(`dust`) → 불빛(`site`) → 테크 웹 고리 1·2·3·바큇살 그리기(`draw`, stroke-dashoffset) → 노드 톡톡(`pop`) |
+| 루프 | 행성 대기 광채 7s · 위성 3기 타원 공전 6–9.5s(뒤로 갈 때 작고 흐림) · 포자 안개 16s · 포자 4개 9–12s · 착륙선 표지등 1.6s · 별똥별 9s · 로고 둥실 5s | |
+
+- 게임에서 홈으로 돌아오면(새로고침 전까지) `--seq: 0.15` 로 시퀀스 전체를 짧게 줄인다.
+- 세그먼트(AI 수·인원)는 고른 칸으로 빛 알약이 `transform` 으로 미끄러진다(`--i`).
+- 메뉴 패널은 유리질(backdrop-filter) + 노선색(`--tone`) 그라데이션 테두리. 이름 = 방주, AI 대전 = 공생, 온라인 대전 = 합성.
+- `prefers-reduced-motion: reduce` 에서는 모두 멈추고 최종 장면(착륙 완료·웹 완성)만 보인다. 별똥별·불꽃·먼지·포자·빛줄은 숨긴다.
 
 - 새로 나타난 것만 움직이려면 `useFresh()`(처음 그릴 때 있던 키는 제외)를 쓴다. 등장 효과(card-in·pop·rise)는 fill `backwards` 라 끝난 뒤 버튼 누름 반응(`button:active` scale)을 막지 않는다.
 - 위치를 transform 으로 잡는 버튼은 전역 누름 scale 과 겹치므로 `translate` 속성으로 잡는다.
