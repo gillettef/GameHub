@@ -9,12 +9,12 @@ const frames = import.meta.glob('../assets/cards/*.svg', { eager: true, query: '
 const frameUrl = (name: string) => frames[`../assets/cards/${name}.svg`];
 
 export type FrameName =
-  | 'pioneer' | 'legacy' | 'supply' | 'patron' | 'satellite' | 'mission'
+  | 'pioneer' | 'legacy' | 'supply' | 'patron' | 'satellite' | 'mission' | 'raid' | 'conflict'
   | 'quest-back' | 'quest-judge' | 'quest-threat' | 'quest-contest' | 'quest-patron' | 'quest-fruition' | 'quest-finale';
 
-/** 선구자·유산·보급·습격·분쟁 카드의 프레임과 그림 창 아이콘(습격·분쟁 전용 프레임은 아직 없어 임무 프레임을 쓴다) */
-export const CARD_FRAME: Record<CardDef['type'], FrameName> = { pioneer: 'pioneer', legacy: 'legacy', supply: 'supply', raid: 'mission', conflict: 'mission' };
-export const CARD_ICON: Record<CardDef['type'], IconName> = { pioneer: 'pioneer', legacy: 'legacy', supply: 'supply', raid: 'rider', conflict: 'might' };
+/** 선구자·유산·보급·습격·분쟁 카드의 프레임과 그림 창 아이콘 */
+export const CARD_FRAME: Record<CardDef['type'], FrameName> = { pioneer: 'pioneer', legacy: 'legacy', supply: 'supply', raid: 'raid', conflict: 'conflict' };
+export const CARD_ICON: Record<CardDef['type'], IconName> = { pioneer: 'pioneer', legacy: 'legacy', supply: 'supply', raid: 'raid', conflict: 'conflict' };
 
 export function CardFace({
   frame,

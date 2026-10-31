@@ -3,7 +3,7 @@
 행성의 밤하늘, 포자 안개, 토착 생물, 궤도 위성을 바탕으로 한 다크 테마 시각 자산. 모두 직접 설계한 벡터(SVG)이며 래스터 이미지와 웹폰트는 쓰지 않는다.
 
 - Claude Design 캔버스(디자인 확인용, 비공개): https://claude.ai/artifact/34UtDyLuoFUUSyCgUrpeHh
-  - 아트보드: 토큰·로고·배경 / 아이콘 32종 / 카드 프레임 13종 / 노선 문장·시대 배너·모션 / 랜딩(홈) 402 폭(모션 실시간 재생)
+  - 아트보드: 토큰·로고·배경 / 아이콘 34종 / 카드 프레임 15종 / 노선 문장·시대 배너·모션 / 랜딩(홈) 402 폭(모션 실시간 재생)
 - **정본은 이 저장소의 파일**이다. 캔버스를 고쳤으면 해당 SVG/CSS 도 같이 고친다.
 
 ## 파일 목록
@@ -17,8 +17,8 @@
 | `src/ui/assets/landing/ground.svg` | 홈 히어로 착륙지 지평선(대기 광채·먼 능선·땅·생물발광 식생). 지평선 꼭대기 (200,244). viewBox 400×360 |
 | `src/ui/components/LandingHero.tsx` | 홈 히어로 인라인 SVG — 위 두 장을 `<image>` 로 깔고 위성·별똥별·안개·테크 웹·착륙선·포자를 얹는다. 모션은 `LandingHero.module.css` |
 | `src/ui/assets/logo.svg` | 심볼(고리 행성 + 새싹 + 세 노선 위성) + 기하학 획 워드마크 "네오테라". viewBox 324×96 |
-| `src/ui/assets/icons/*.svg` | 24×24 단색 아이콘 32종 |
-| `src/ui/assets/cards/*.svg` | 카드 프레임 13종, viewBox 250×350 |
+| `src/ui/assets/icons/*.svg` | 24×24 단색 아이콘 34종 |
+| `src/ui/assets/cards/*.svg` | 카드 프레임 15종, viewBox 250×350 |
 | `src/ui/assets/emblems/{ark,symbiont,synth}.svg` | 노선 문장 120×120 (고정 색) |
 | `src/ui/assets/emblems/era{1..4}.svg` | 시대 전환 배너 360×120 (1 착륙 · 2 정착 · 3 궤도 · 4 종료/결실) |
 
@@ -47,7 +47,9 @@
 
 ## 아이콘
 
-`food prod energy sci culture command defense might health spore ark symbiont synth farm workshop power lab hall guard rider battery flyer satellite quest threat patron mission charter legacy pioneer supply colonist`
+`food prod energy sci culture command defense might health spore ark symbiont synth farm workshop power lab hall guard rider battery flyer satellite quest threat patron mission charter legacy pioneer supply colonist raid conflict`
+
+- `raid`(습격): 사선 화살촉 + 속도선. `conflict`(분쟁): 교차한 두 창(창끝·손잡이 가로대). 습격·분쟁 카드의 그림 창 아이콘이다.
 
 - 루트에 `stroke="currentColor" fill="none" stroke-width="1.8"` 가 있어 **인라인 SVG**로 넣으면 부모의 `color` 를 따른다. 예: 자원 칩에서 `color: var(--res-food)`.
 - `<img>` 로 쓰면 currentColor 가 검정이 되므로, 색을 입히려면 CSS `mask-image: url(...)` + `background-color: currentColor` 방식을 권장한다(아래 사용 예). `innerHTML` 류로 SVG 문자열을 넣는 방식은 프로젝트 규칙상 쓰지 않는다.
@@ -55,17 +57,18 @@
 
 ## 카드 프레임
 
-`pioneer legacy supply patron satellite mission quest-back quest-judge quest-threat quest-contest quest-patron quest-fruition quest-finale`
+`pioneer legacy supply patron satellite mission raid conflict quest-back quest-judge quest-threat quest-contest quest-patron quest-fruition quest-finale`
 
 - 글자 없이 테두리·띠·그림 창만 있다. 코드가 위에 글자를 절대 위치로 얹는다(250×350 기준 좌표, 실제 크기에 비례해 환산).
-  - 상단 띠 y 8–58: 이름·종류. 왼쪽 비용 원 (31,33) r15 — 선구자·유산·보급·후원 계약·위성. 퀘스트는 오른쪽 표식 칸 (196,18) 32×30, 위협형은 같은 자리 육각(위협도).
+  - 상단 띠 y 8–58: 이름·종류. 왼쪽 비용 원 (31,33) r15 — 선구자·유산·보급·습격·분쟁·후원 계약·위성. 퀘스트는 오른쪽 표식 칸 (196,18) 32×30, 위협형은 같은 자리 육각(위협도).
   - 그림 창 y 66–188 (선구자·유산은 아치형).
   - 구분선 y 197, 본문 y 205–290.
   - 노선 선택지 칸 y 296–330, x 18·92·166 (폭 66) — 판정형·위협형·경쟁형. 칸 색은 `--ark/--symbiont/--synth`.
+  - 습격 `raid`: 오른쪽 위·왼쪽 아래를 사선으로 깎은 테두리, 띠에 발톱자국 세 줄, 아래에 속도선 + 화살촉. 분쟁 `conflict`: 팔각 겹테두리, 띠에 교차한 두 창, 비용 원 바깥 고리, 그림 창 모서리 리벳, 아래 제비꼬리 깃발 띠(y 304–330).
   - 유산 단계 마름모 4개 x 228, y 219·243·267·291. 위성 타이머 원 4개 y 318, x 86·112·138·164.
-- 테두리·장식색은 **`currentColor`**, 루트 `color` 속성에 종류별 기본색이 들어 있다(선구자 호박, 유산 금, 보급 청동, 판정 하늘, 위협 빨강, 경쟁 주황, 후원 제안 보라, 결실·종료 금, 후원 계약 난초, 위성 연청, 임무 녹색). 인라인으로 넣고 CSS `color` 를 주면 노선색 등으로 바꿀 수 있다(예: 선구자 카드 `color: var(--ark)`).
+- 테두리·장식색은 **`currentColor`**, 루트 `color` 속성에 종류별 기본색이 들어 있다(선구자 호박, 유산 금, 보급 청동, 판정 하늘, 위협 빨강, 경쟁 주황, 후원 제안 보라, 결실·종료 금, 후원 계약 난초, 위성 연청, 임무 녹색, 습격 위험 빨강 `#ff7a7a`, 분쟁 진한 주홍(적동) `#e8693f`). 인라인으로 넣고 CSS `color` 를 주면 노선색 등으로 바꿀 수 있다(예: 선구자 카드 `color: var(--ark)`).
 - 바탕은 `style="fill:var(--surface,#161f38)"` 처럼 토큰을 쓰고 대체값을 둔다. `<img>` 로 써도 대체값으로 같은 모양이 나온다.
-- 인라인으로 한 화면에 여러 장 넣을 때: `clipPath` id 가 파일마다 다르게(`ntSupClip`, `ntFinClip`, `ntMisClip`) 지정돼 있어 충돌하지 않는다. 같은 프레임을 여러 장 인라인하면 id 가 중복되지만 내용이 같아 표시에는 문제가 없다.
+- 인라인으로 한 화면에 여러 장 넣을 때: `clipPath` id 가 파일마다 다르게(`ntSupClip`, `ntFinClip`, `ntMisClip`, `ntRaidClip`, `ntConClip`) 지정돼 있어 충돌하지 않는다. 같은 프레임을 여러 장 인라인하면 id 가 중복되지만 내용이 같아 표시에는 문제가 없다.
 
 ## 노선 문장·시대 배너
 
@@ -152,4 +155,4 @@ body {
 
 - 워드마크는 글꼴 없이 직선·원 획으로 그렸다(어떤 기기에서도 같은 모양). 정교한 서체 로고는 아니다.
 - 카드별 일러스트는 `src/ui/assets/art/<카드 id>.svg` 134장(규칙은 `docs/art-cards.md`). 묶음별 Claude Design 캔버스: 선구자·유산 https://claude.ai/artifact/5SKiNZWKm9qxUPQGZtGGNN · 보급 https://claude.ai/artifact/AZsnAoY88Ekh7RvPQE93Hf · 1·2시대 퀘스트 https://claude.ai/artifact/VwsHSrJ68MVFDsB9oiqqWU · 3시대·결실·후원 계약 https://claude.ai/artifact/Xg7SY9mAJWDzcGnBebnEpH · 위성·특수 시설 https://claude.ai/artifact/RpCD7cKqhpVY3aKrZUmxXc
-- 아이콘 32종은 1.8px 획 한 벌만 있다(채움형 변형 없음).
+- 아이콘 34종은 1.8px 획 한 벌만 있다(채움형 변형 없음).

@@ -8,7 +8,7 @@ const byName: Record<string, string> = Object.fromEntries(Object.entries(urls).m
 export type IconName =
   | 'food' | 'prod' | 'energy' | 'sci' | 'culture' | 'command' | 'defense' | 'might' | 'health' | 'spore'
   | 'ark' | 'symbiont' | 'synth' | 'farm' | 'workshop' | 'power' | 'lab' | 'hall' | 'guard' | 'rider' | 'battery' | 'flyer'
-  | 'satellite' | 'quest' | 'threat' | 'patron' | 'mission' | 'charter' | 'legacy' | 'pioneer' | 'supply' | 'colonist';
+  | 'satellite' | 'quest' | 'threat' | 'patron' | 'mission' | 'charter' | 'legacy' | 'pioneer' | 'supply' | 'colonist' | 'raid' | 'conflict';
 
 export function Icon({ name, size = 18, color, title }: { name: IconName; size?: number; color?: string; title?: string }) {
   const style = { width: size, height: size, color, '--icon': `url("${byName[name]}")` } as CSSProperties;
