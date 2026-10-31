@@ -39,7 +39,7 @@ export function CommonArea() {
           <Icon name="satellite" /> 공용 영역
         </>
       }
-      extra={`위성 덱 ${game.satDeck.length} · 카드 덱 ${[1, 2, 3].map((r) => game.cardDecks[r as 1 | 2 | 3].length).join('/')}`}
+      extra={`위성 덱 ${game.satDeck.length}`}
     >
       <span className={styles.label}>위성 시장 — 지휘 1 + 에너지로 발사</span>
       <div className={styles.market}>

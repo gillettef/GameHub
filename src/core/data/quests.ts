@@ -1,5 +1,6 @@
-// 퀘스트 트랙 카드와 종료 묶음 (Rules.md 12절). 1시대 14 · 2시대 16 · 3시대 16 + 종료 5
-import type { ContestQuest, FacilityDef, FinaleQuest, FruitionQuest, JudgeQuest, PatronQuest, QuestDef, QuestOption, Ring, ThreatQuest } from '../types';
+// 퀘스트 트랙 사건 카드와 종료 묶음 (Rules.md 12절). 1시대 14 · 2시대 16 · 3시대 16 + 종료 5
+import type { CardDef, ContestQuest, FacilityDef, FinaleQuest, FruitionQuest, JudgeQuest, PatronQuest, QuestDef, QuestOption, Ring, ThreatQuest } from '../types';
+import { CARD_DEFS, ringDeckIds } from './cards';
 
 /** 세 노선 선택지를 한 번에 만든다: 노선 점수 n + 각자의 자원 */
 function opts(n: number, ark: QuestOption['gain'], sym: QuestOption['gain'], syn: QuestOption['gain']): QuestOption[] {
@@ -95,3 +96,24 @@ export const QUEST_DECKS: Record<Ring, QuestDef[]> = { 1: ERA1, 2: ERA2, 3: ERA3
 export const QUEST_DEFS: Record<string, QuestDef> = Object.fromEntries(
   [...ERA1, ...ERA2, ...ERA3, ...FRUITIONS, ...FINALES].map((q) => [q.id, q]),
 );
+
+/** 시대 퀘스트 덱 구성: 사건 카드 + 그 고리의 선구자·유산·보급 (Rules.md 3.1) */
+export function eraDeckIds(ring: Ring): string[] {
+  return [...QUEST_DECKS[ring].map((q) => q.id), ...ringDeckIds(ring)];
+}
+
+/** 퀘스트 트랙의 카드 하나: 사건 카드(QuestDef) 또는 선구자·유산·보급(CardDef) */
+export type TrackDef = { src: 'quest'; def: QuestDef } | { src: 'card'; def: CardDef };
+export function trackDef(id: string): TrackDef | null {
+  if (QUEST_DEFS[id]) return { src: 'quest', def: QUEST_DEFS[id] };
+  if (CARD_DEFS[id]) return { src: 'card', def: CARD_DEFS[id] };
+  return null;
+}
+export function trackName(id: string): string {
+  return trackDef(id)?.def.name ?? '?';
+}
+/** 종료 묶음(결실·공통 종료) 카드는 고를 수 없다 */
+export function isEndCard(id: string): boolean {
+  const k = QUEST_DEFS[id]?.kind;
+  return k === 'fruition' || k === 'finale';
+}

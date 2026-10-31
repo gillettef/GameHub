@@ -1,17 +1,15 @@
-// 대외 단계: 습격·분쟁·트랙 당기기 (Rules.md 10절)
+// 대외 단계: 습격·분쟁 (Rules.md 10절)
 import type { ConflictLoss, GameState, PlayerState, RaidEffect } from '../types';
 import { DOCTRINES } from '../types';
 import {
   CONFLICT_CULTURE_MAX,
   CONFLICT_DEFENSE,
   CONFLICT_FAIL_CULTURE,
-  PULL_DEFENSE,
   RAID_DEFENSE,
   raidAmount,
 } from '../data/constants';
 import { attackValue, defenseLeft, defenseMax, defenseValue, mainDoctrine, stage } from './derive';
 import { addDoctrine, downgradeBuilding } from './effects';
-import { advanceTrack } from './quest';
 import { log } from './util';
 
 export type Err = string | null;
@@ -136,15 +134,4 @@ export function resolveConflict(state: GameState, p: PlayerState): void {
     addDoctrine(state, t, main, -n);
     log(state, p.id, `${t.name}와의 분쟁 승리: 상대 노선 점수 −${n}`);
   }
-}
-
-export function pullTrack(state: GameState, p: PlayerState): Err {
-  if (defenseLeft(p) < PULL_DEFENSE) return '방위 행동이 부족합니다';
-  if (!state.questSlots[0] && !state.questSlots[1] && !state.questFuture.length) return '퀘스트 트랙이 비었습니다';
-  p.defenseUsed += PULL_DEFENSE;
-  const c = Math.min(state.era, 3);
-  p.res.culture += c;
-  log(state, p.id, `퀘스트 트랙 당기기: 문화 +${c}`);
-  advanceTrack(state, p.id);
-  return null;
 }

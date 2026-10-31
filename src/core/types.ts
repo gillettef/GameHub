@@ -110,7 +110,7 @@ export interface TechNode {
   parent?: string;
 }
 
-// ── 카드 줄 ──
+// ── 선구자·유산·보급(퀘스트 덱에 섞임) ──
 export interface PioneerDef {
   type: 'pioneer';
   id: string;
@@ -270,7 +270,7 @@ export type Pending =
 /** 대기 결정이 끝난 뒤 이어서 처리할 엔진 단계(처리 순서 보장용) */
 export type Step =
   | { k: 'threat'; questId: string; pid: number; redirect: boolean; exclude: number[] }
-  | { k: 'eraRest'; old: number }
+  | { k: 'afterQuest' }
   | { k: 'next' }
   | { k: 'start' };
 
@@ -280,10 +280,10 @@ export interface LogEntry {
   text: string;
 }
 
-export type Phase = 'external' | 'actions';
+export type Phase = 'quest' | 'external' | 'actions';
 
 export interface GameState {
-  version: 1;
+  version: 2;
   seed: number;
   rngState: [number, number, number, number];
   /** 상태 버전: 행동이 적용될 때마다 1 증가(온라인에서 오래된 화면 기준 행동 거절) */
@@ -295,11 +295,12 @@ export interface GameState {
   current: number;
   phase: Phase;
   layout: WebLayout;
-  cardDecks: Record<Ring, string[]>;
-  cardRow: (string | null)[];
-  questDecks: Record<Ring, string[]>;
-  questFuture: string[];
-  questSlots: (string | null)[];
+  /** 시대별 퀘스트 덱(사건 카드 + 선구자·유산·보급). 종료 시대에는 4번 자리가 종료 묶음 덱 */
+  questDecks: Record<Ring | 4, string[]>;
+  /** 퀘스트 트랙(앞 칸부터, 최대 QUEST_ROW_SIZE). 칸 1은 늘 앞면 */
+  questRow: string[];
+  /** 칸별 앞면 여부(칸 1 외에는 뒷면 종료 묶음을 골라 뒤집은 경우만 true) */
+  questOpen: boolean[];
   endBundle: string[];
   patronDecks: Record<Ring, string[]>;
   satDeck: string[];
@@ -307,7 +308,6 @@ export interface GameState {
   stage4Order: Record<Doctrine, number[]>;
   pending: Pending[];
   steps: Step[];
-  cardDiscard: Record<Ring, string[]>;
   eraStartRound: number;
   endTriggered: boolean;
   gameOver: boolean;
@@ -315,8 +315,8 @@ export interface GameState {
 }
 
 export type Action =
+  | { type: 'pickQuest'; slot: number }
   | { type: 'research'; node: string }
-  | { type: 'takeCard'; slot: number }
   | { type: 'useSupply'; index: number }
   | { type: 'build'; kind: BuildingKind; level: number }
   | { type: 'upgrade'; kind: BuildingKind; from: number; to: number }
@@ -327,10 +327,8 @@ export type Action =
   | { type: 'legacyStage' }
   | { type: 'launch'; slot: number; replace?: number }
   | { type: 'charter'; field: CharterField }
-  | { type: 'doQuest'; slot: number; option: number }
   | { type: 'raid'; target: number; effect: RaidEffect; swarm?: boolean }
   | { type: 'declareConflict'; target: number; loss: ConflictLoss }
-  | { type: 'pullTrack' }
   | { type: 'endTurn' }
   | { type: 'respond'; choice: number };
 

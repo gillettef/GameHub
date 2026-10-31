@@ -63,7 +63,7 @@ function Chips({ chips, lead, className }: { chips: Chip[]; lead?: ReactNode; cl
   );
 }
 
-/** 카드 줄·보드의 카드 요약 */
+/** 퀘스트 트랙·보드의 카드 요약 */
 export function CardBrief({ card }: { card: CardDef }) {
   if (card.type === 'pioneer')
     return (

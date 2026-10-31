@@ -1,5 +1,5 @@
 // 게임 테이블: BGA 의 TTA 테이블처럼 상하 스크롤 한 화면 —
-// 상단 고정 상태 줄(행동 버튼) → 플레이어 상태창 → 퀘스트 트랙 → 카드 줄 → 플레이어별 보드(나 먼저) → 공용 영역
+// 상단 고정 상태 줄(행동 버튼) → 플레이어 상태창 → 퀘스트 트랙(쓰루의 카드 줄 자리) → 플레이어별 보드(나 먼저) → 공용 영역
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { useApp } from '../../store/app';
 import { quitLocal } from '../../store/localGame';
@@ -8,7 +8,6 @@ import { useGame } from '../useGame';
 import { StatusBar } from '../components/StatusBar';
 import { PlayerStrip } from '../components/PlayerStrip';
 import { QuestTrack } from '../components/QuestTrack';
-import { CardRow } from '../components/CardRow';
 import { ColonyBoard } from '../components/ColonyBoard';
 import { TechWeb } from '../components/TechWeb';
 import { CommonArea } from '../components/CommonArea';
@@ -38,7 +37,6 @@ function TableInner() {
       <main className={styles.main}>
         <PlayerStrip />
         <QuestTrack />
-        <CardRow />
         {order.map((p) => (
           <div key={p.id} id={`board-${p.id}`} className={styles.board} style={{ '--seat': `var(--seat-${p.id})` } as CSSProperties}>
             <HitFlash harmed={p.harmedRound} round={game.round} />

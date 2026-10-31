@@ -1,15 +1,15 @@
 // 차례 진행과 행동 적용 진입점 (Rules.md 9절). (state, action) => { state, error? }
 import type { Action, ActionResult, GameState, PlayerState } from '../types';
 import { BUILDING_KINDS, CHARTER_FIELDS, UNIT_KINDS } from '../types';
-import { CARD_ROW_SIZE, FAMINE_CULTURE, GUARD_MAX, ROUND_LIMIT, ROW_DISCARD } from '../data/constants';
+import { FAMINE_CULTURE, GUARD_MAX, QUEST_ROW_SIZE, ROUND_LIMIT } from '../data/constants';
 import { SATELLITE_DEFS } from '../data/satellites';
 import { defenseLeft, playerMods, productionPreview, unhealthy } from './derive';
 import { applyMainAction } from './actions';
-import { declareConflict, pullTrack, raid, resolveConflict } from './external';
-import { advanceEraRest, advanceEraStart, eraShouldAdvance } from './era';
-import { advanceTrack, respond, startThreatOn } from './quest';
+import { declareConflict, raid, resolveConflict } from './external';
+import { advanceEra, eraShouldAdvance } from './era';
+import { canPickAny, pickQuest, respond, startThreatOn } from './quest';
 import { ranking } from './scoring';
-import { clone, log, withRng } from './util';
+import { clone, log } from './util';
 
 /** 행동 하나를 적용한다. 입력 상태는 바꾸지 않는다 */
 export function applyAction(state: GameState, actor: number, action: Action): ActionResult {
@@ -30,17 +30,22 @@ export function applyAction(state: GameState, actor: number, action: Action): Ac
   if (actor !== s.current) return { state, error: '내 차례가 아닙니다' };
   const p = s.players[actor];
   let err: string | null = null;
+  if (s.phase === 'quest' && action.type !== 'pickQuest') return { state, error: '먼저 퀘스트를 고르세요' };
   switch (action.type) {
+    case 'pickQuest': {
+      if (s.phase !== 'quest') return { state, error: '이번 차례에는 이미 퀘스트를 골랐습니다' };
+      const r = pickQuest(s, p, action.slot);
+      if (r === 'again') {
+        if (!canPickAny(s, p)) afterQuest(s);
+      } else if (r) err = r;
+      // 위협 대상 단계(processThreat 가 넣은 것) 뒤에 온다
+      else s.steps.push({ k: 'afterQuest' });
+      break;
+    }
     case 'raid':
     case 'declareConflict':
-    case 'pullTrack':
       if (s.phase !== 'external') return { state, error: '대외 단계가 지났습니다' };
-      err =
-        action.type === 'raid'
-          ? raid(s, p, action.target, action.effect, !!action.swarm)
-          : action.type === 'declareConflict'
-            ? declareConflict(s, p, action.target, action.loss)
-            : pullTrack(s, p);
+      err = action.type === 'raid' ? raid(s, p, action.target, action.effect, !!action.swarm) : declareConflict(s, p, action.target, action.loss);
       if (!err) s.phase = 'actions';
       break;
     case 'endTurn':
@@ -67,8 +72,8 @@ function validate(state: GameState, actor: number, a: Action): string | null {
   switch (a.type) {
     case 'research':
       return typeof a.node === 'string' ? null : '잘못된 노드';
-    case 'takeCard':
-      return isInt(a.slot, 0, CARD_ROW_SIZE - 1) ? null : '잘못된 칸';
+    case 'pickQuest':
+      return isInt(a.slot, 0, QUEST_ROW_SIZE - 1) ? null : '잘못된 칸';
     case 'useSupply':
       return isInt(a.index, 0, 99) ? null : '잘못된 카드';
     case 'build':
@@ -87,8 +92,6 @@ function validate(state: GameState, actor: number, a: Action): string | null {
       return isInt(a.slot, 0, 2) && (a.replace === undefined || isInt(a.replace, 0, 1)) ? null : '잘못된 위성';
     case 'charter':
       return CHARTER_FIELDS.includes(a.field) ? null : '잘못된 헌장';
-    case 'doQuest':
-      return isInt(a.slot, 0, 1) && isInt(a.option, 0, 9) ? null : '잘못된 퀘스트';
     case 'raid':
       return isInt(a.target, 0, last) && RAID_EFFECTS.includes(a.effect) ? null : '잘못된 습격';
     case 'declareConflict':
@@ -97,7 +100,6 @@ function validate(state: GameState, actor: number, a: Action): string | null {
       return isInt(a.choice, 0, 99) ? null : '잘못된 선택';
     case 'addColonist':
     case 'legacyStage':
-    case 'pullTrack':
     case 'endTurn':
       return null;
     default:
@@ -114,8 +116,8 @@ export function runSteps(state: GameState): void {
       case 'threat':
         startThreatOn(state, step.questId, step.pid, step.redirect, step.exclude);
         break;
-      case 'eraRest':
-        advanceEraRest(state, step.old);
+      case 'afterQuest':
+        afterQuest(state);
         break;
       case 'next':
         nextTurn(state);
@@ -127,40 +129,21 @@ export function runSteps(state: GameState): void {
   }
 }
 
-/** 차례 시작: 카드 줄 정리 → 분쟁 판정 → 대외 단계 */
-export function startTurn(state: GameState, first = false): void {
+/** 차례 시작: 퀘스트 선택(고를 카드가 없으면 건너뜀) → 분쟁 판정 → 대외 단계 */
+export function startTurn(state: GameState): void {
   const p = state.players[state.current];
   p.commandUsed = 0;
   p.defenseUsed = 0;
   p.guard = 0;
   for (const h of p.hand) h.fresh = false;
-  if (!first && state.round > 1) cleanCardRow(state);
-  resolveConflict(state, p);
+  state.phase = 'quest';
+  if (!canPickAny(state, p)) afterQuest(state);
+}
+
+/** 퀘스트 처리와 그 결정이 끝난 뒤: 분쟁 판정 → 대외 단계 */
+function afterQuest(state: GameState): void {
+  resolveConflict(state, state.players[state.current]);
   state.phase = 'external';
-}
-
-function cleanCardRow(state: GameState): void {
-  const n = ROW_DISCARD[state.players.length] ?? 1;
-  const row = state.cardRow;
-  const ring = Math.min(state.era, 3) as 1 | 2 | 3;
-  for (let i = 0; i < n && i < row.length; i++) {
-    if (row[i]) state.cardDiscard[ring].push(row[i]!);
-    row[i] = null;
-  }
-  const rest = row.filter((c): c is string => !!c);
-  refillDeck(state, ring, CARD_ROW_SIZE - rest.length);
-  const deck = state.cardDecks[ring];
-  while (rest.length < CARD_ROW_SIZE && deck.length) rest.push(deck.shift()!);
-  state.cardRow = [...rest, ...Array(CARD_ROW_SIZE - rest.length).fill(null)];
-}
-
-/** 덱이 모자라면 버린 카드 더미를 섞어 덱 아래에 붙인다 */
-function refillDeck(state: GameState, ring: 1 | 2 | 3, need: number): void {
-  if (state.cardDecks[ring].length >= need || !state.cardDiscard[ring].length) return;
-  const pile = state.cardDiscard[ring];
-  state.cardDiscard[ring] = [];
-  state.cardDecks[ring].push(...withRng(state, (rng) => rng.shuffle(pile)));
-  log(state, null, '카드 줄 덱이 바닥나 버린 카드를 섞었습니다');
 }
 
 export function produce(state: GameState, p: PlayerState): void {
@@ -189,10 +172,10 @@ export function endTurn(state: GameState): void {
   p.guard = Math.min(GUARD_MAX, Math.max(0, defenseLeft(p)));
   const roundEnd = (state.current + 1) % state.players.length === state.startPlayer;
   state.steps.push({ k: 'next' });
-  if (eraShouldAdvance(state, roundEnd)) advanceEraStart(state);
+  if (eraShouldAdvance(state, roundEnd)) advanceEra(state);
 }
 
-/** 다음 차례로: 라운드가 끝나면 종료 검사 → 라운드 시작 트랙 진행 → (대기 결정 뒤) 차례 시작 */
+/** 다음 차례로: 라운드가 끝나면 종료 검사 → 차례 시작 */
 function nextTurn(state: GameState): void {
   const next = (state.current + 1) % state.players.length;
   state.current = next;
@@ -204,7 +187,6 @@ function nextTurn(state: GameState): void {
     state.round++;
   }
   state.steps.unshift({ k: 'start' });
-  if (next === state.startPlayer) advanceTrack(state, state.startPlayer);
 }
 
 function finish(state: GameState): void {

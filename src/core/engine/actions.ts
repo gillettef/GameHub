@@ -11,10 +11,8 @@ import {
   ORBIT_SLOTS,
   UNIT_COST,
   UNIT_NAMES,
-  slotCost,
 } from '../data/constants';
 import { CARD_DEFS } from '../data/cards';
-import { QUEST_DEFS } from '../data/quests';
 import { SATELLITE_DEFS } from '../data/satellites';
 import { webGraph, researchBlock, researchCost } from './research';
 import {
@@ -23,15 +21,13 @@ import {
   buildingUnlocked,
   commandLeft,
   defenseLeft,
-  meets,
   playerMods,
   unitCap,
   unitCount,
   unitUnlocked,
 } from './derive';
 import { addDoctrine, applyInstant } from './effects';
-import { applyOption } from './quest';
-import { canPay, gain, log } from './util';
+import { log } from './util';
 
 type Err = string | null;
 
@@ -40,10 +36,6 @@ function needCommand(state: GameState, p: PlayerState, n = 1): Err {
 }
 function needDefense(p: PlayerState, n = 1): Err {
   return defenseLeft(p) >= n ? null : '방위 행동이 부족합니다';
-}
-
-export function legacyTakeCost(p: PlayerState, slot: number): number {
-  return slotCost(slot) + p.legacies.length;
 }
 
 export function unitUpgradeCost(p: PlayerState, k: UnitKind, from: number, to: number): number {
@@ -79,30 +71,6 @@ export function applyMainAction(state: GameState, p: PlayerState, a: Action): Er
       }
       return null;
     }
-    case 'takeCard': {
-      const id = state.cardRow[a.slot];
-      if (!id) return '빈 칸입니다';
-      const card = CARD_DEFS[id];
-      const cost = card.type === 'legacy' ? legacyTakeCost(p, a.slot) : slotCost(a.slot);
-      const err = needCommand(state, p, cost);
-      if (err) return err;
-      if (card.type === 'pioneer' && p.pioneerEras.includes(state.era)) return '이번 시대에 이미 선구자를 들였습니다';
-      if (card.type === 'legacy' && p.legacyWip) return '이미 짓는 유산이 있습니다';
-      if (card.type === 'supply' && p.hand.length >= commandMaxForHand(state, p)) return '보급 손패가 가득 찼습니다';
-      p.commandUsed += cost;
-      state.cardRow[a.slot] = null;
-      if (card.type === 'pioneer') {
-        if (p.pioneer) state.cardDiscard[(CARD_DEFS[p.pioneer] as { ring: 1 | 2 | 3 }).ring].push(p.pioneer);
-        p.pioneer = id;
-        p.pioneerEras.push(state.era);
-      } else if (card.type === 'legacy') {
-        p.legacyWip = { id, done: 0 };
-      } else {
-        p.hand.push({ id, fresh: true });
-      }
-      log(state, p.id, `카드 「${card.name}」 획득`);
-      return null;
-    }
     case 'useSupply': {
       const h = p.hand[a.index];
       if (!h) return '없는 카드';
@@ -113,7 +81,6 @@ export function applyMainAction(state: GameState, p: PlayerState, a: Action): Er
       if (card.type !== 'supply') return '보급 카드가 아닙니다';
       p.commandUsed++;
       p.hand.splice(a.index, 1);
-      state.cardDiscard[card.ring].push(card.id);
       applyInstant(state, p, card.instant);
       log(state, p.id, `보급 「${card.name}」 사용`);
       return null;
@@ -217,32 +184,9 @@ export function applyMainAction(state: GameState, p: PlayerState, a: Action): Er
     }
     case 'charter':
       return buyCharter(state, p, a.field);
-    case 'doQuest': {
-      const id = state.questSlots[a.slot];
-      if (!id) return '빈 칸입니다';
-      const q = QUEST_DEFS[id];
-      if (q.kind !== 'contest') return '경쟁형 퀘스트가 아닙니다';
-      if (!q.options[a.option]) return '잘못된 선택지';
-      if (!meets(state, p, q.cond)) return '조건을 만족하지 않습니다';
-      if (!canPay(p.res, q.cost)) return '비용이 부족합니다';
-      if (q.facility && p.facilities.includes(q.facility)) return '이미 가진 특수 시설';
-      const err = needCommand(state, p);
-      if (err) return err;
-      gain(p.res, q.cost, -1);
-      p.commandUsed++;
-      state.questSlots[a.slot] = null;
-      applyOption(state, p, q.options[a.option]);
-      if (q.facility) p.facilities.push(q.facility);
-      log(state, p.id, `경쟁 퀘스트 「${q.name}」 수행`);
-      return null;
-    }
     default:
       return '행동 단계에서 할 수 없는 행동';
   }
-}
-
-function commandMaxForHand(state: GameState, p: PlayerState): number {
-  return commandLeft(state, p) + p.commandUsed;
 }
 
 function build(state: GameState, p: PlayerState, k: BuildingKind, level: number): Err {

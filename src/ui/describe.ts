@@ -1,5 +1,5 @@
 // 효과·조건·카드를 화면용 한국어 문장으로 바꾼다
-import type { Cond, Instant, Loss, Metric, Mods, QuestDef, QuestOption, Res, ThreatTarget } from '../core/types';
+import type { CardDef, Cond, Instant, Loss, Metric, Mods, QuestDef, QuestOption, Res, ThreatTarget } from '../core/types';
 import { RES_KEYS } from '../core/types';
 import { DOCTRINE_NAMES, RES_NAMES, UNIT_NAMES } from '../core/data/constants';
 import { FACILITY_DEFS } from '../core/data/quests';
@@ -131,4 +131,12 @@ export function questSummary(q: QuestDef): string {
     case 'finale':
       return q.text ?? '';
   }
+}
+
+export const CARD_TYPE_NAMES: Record<CardDef['type'], string> = { pioneer: '선구자', legacy: '유산', supply: '보급' };
+
+export function cardText(c: CardDef): string {
+  if (c.type === 'pioneer') return `${DOCTRINE_NAMES[c.doctrine]} 성향 · ${modsText(c.mods)}`;
+  if (c.type === 'legacy') return `${c.stages.length}단계(생산 ${c.stages.join('·')}) · 완성 시 ${modsText(c.mods)} · ${c.points}점`;
+  return instantText(c.instant);
 }

@@ -8,4 +8,4 @@ export { webGraph, researchBlock, researchCost, ringLimit } from './engine/resea
 export { eraProgress } from './engine/era';
 export { pendingChoices } from './engine/quest';
 export { raidWins, swarmValue, canTarget } from './engine/external';
-export { legacyTakeCost, unitUpgradeCost, buildingUpgradeCost } from './engine/actions';
+export { unitUpgradeCost, buildingUpgradeCost } from './engine/actions';

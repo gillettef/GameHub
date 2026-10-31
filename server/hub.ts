@@ -3,7 +3,7 @@ import { randomBytes, randomInt } from 'node:crypto';
 import type { WebSocket } from 'ws';
 import { createGame } from '../src/core/engine/setup';
 import { applyAction } from '../src/core/engine/turn';
-import { chooseAction } from '../src/core/ai';
+import { chooseAction, fallbackAction } from '../src/core/ai';
 import { maskFor } from '../src/core/mask';
 import type { Action, GameState } from '../src/core/types';
 import { MAX_PLAYERS, MIN_PLAYERS } from '../src/core/data/constants';
@@ -104,7 +104,7 @@ function scheduleAI(r: Room): void {
     if (!g.players[actor].isAI) return;
     const a = chooseAction(g, actor) ?? { type: 'endTurn' as const };
     let res = applyAction(g, actor, a);
-    if (res.error) res = applyAction(g, actor, g.pending.length ? { type: 'respond', choice: 0 } : { type: 'endTurn' });
+    if (res.error) res = applyAction(g, actor, fallbackAction(g, actor));
     if (!res.error) {
       r.game = res.state;
       r.aiFails = 0;

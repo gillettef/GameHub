@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createGame } from './setup';
-import { applyAction, runSteps } from './turn';
-import { advanceEraStart } from './era';
+import { applyAction } from './turn';
 import { chooseAction } from '../ai';
 import { totalColonists } from './derive';
 import { COLONIST_TOTAL } from '../data/constants';
@@ -53,7 +52,8 @@ describe('회귀', () => {
       { type: 'build', kind: 'castle', level: 0 },
       { type: 'raid', target: 1, effect: 'nuke' },
       { type: 'declareConflict', target: 9, loss: 'culture' },
-      { type: 'takeCard', slot: 1.5 },
+      { type: 'pickQuest', slot: 1.5 },
+      { type: 'pickQuest', slot: 9 },
       { type: 'hack' },
     ];
     for (const a of bad) {
@@ -63,28 +63,9 @@ describe('회귀', () => {
     }
   });
 
-  it('시대 전환: 위협 공존 결정이 후원 계약 요구 검사보다 먼저 처리된다', () => {
-    let s = createGame(2, seats(2));
-    while (s.pending.length) s = applyAction(s, s.pending[0].player, { type: 'respond', choice: 0 }).state;
-    const p = s.players[0];
-    p.doctrine.symbiont = 5; // 주 노선 공생, 공존하면 7
-    p.units.guard[3] = 3;
-    p.patrons = ['pa7']; // 요구: 공생 6 이상
-    s.players[1].units.guard[3] = 3;
-    s.questSlots = ['q1t5', null]; // 전원 대상 위협
-    advanceEraStart(s);
-    runSteps(s);
-    expect(s.pending[0]).toMatchObject({ kind: 'coexist', player: 0 });
-    const cultureBefore = s.players[0].res.culture;
-    s = applyAction(s, 0, { type: 'respond', choice: 1 }).state;
-    expect(s.era).toBe(2);
-    expect(s.players[0].doctrine.symbiont).toBe(7);
-    expect(s.players[0].res.culture).toBe(cultureBefore + 2); // 요구 충족: 문화 +1시대×2
-  });
-
   it('분쟁은 판정 가능한 방위 행동이 없으면 선포할 수 없다', () => {
     let s = createGame(1, seats(2));
-    while (s.pending.length) s = applyAction(s, s.pending[0].player, { type: 'respond', choice: 0 }).state;
+    s.phase = 'external';
     s.era = 2;
     const r = applyAction(s, s.current, { type: 'declareConflict', target: 1 - s.current, loss: 'culture' });
     expect(r.error).toContain('방위 행동 3');

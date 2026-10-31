@@ -1,7 +1,7 @@
-// 비공개 정보 가림: 덱 순서, 본인 시야 밖의 미래 퀘스트, 공통 종료 퀘스트, 시드
-import type { GameState, Ring } from './types';
+// 비공개 정보 가림: 덱 순서, 퀘스트 트랙의 본인 시야 밖 뒷면 카드, 공통 종료 퀘스트, 시드
+import type { GameState } from './types';
 import { QUEST_DEFS } from './data/quests';
-import { playerMods } from './engine/derive';
+import { slotVisible } from './engine/quest';
 import { clone } from './engine/util';
 
 export const HIDDEN = '?';
@@ -16,15 +16,10 @@ export function maskFor(state: GameState, viewer: number | null): GameState {
   s.rngState = [0, 0, 0, 0];
   // 기록은 최근 것만 보낸다(전송량 제한)
   if (s.log.length > LOG_SEND) s.log = s.log.slice(-LOG_SEND);
-  for (const r of [1, 2, 3] as Ring[]) {
-    s.cardDecks[r] = hideAll(s.cardDecks[r]);
-    s.questDecks[r] = hideAll(s.questDecks[r]);
-    s.patronDecks[r] = hideAll(s.patronDecks[r]);
-  }
+  for (const r of [1, 2, 3, 4] as const) s.questDecks[r] = hideAll(s.questDecks[r]);
+  for (const r of [1, 2, 3] as const) s.patronDecks[r] = hideAll(s.patronDecks[r]);
   s.satDeck = hideAll(s.satDeck);
-  const vp = viewer === null ? undefined : state.players[viewer];
-  const sight = vp ? playerMods(vp).sight : 0;
-  s.questFuture = s.questFuture.map((id, i) => (i < sight ? id : HIDDEN));
+  if (!s.gameOver) s.questRow = s.questRow.map((id, i) => (slotVisible(state, viewer, i) ? id : HIDDEN));
   if (!s.gameOver) s.endBundle = s.endBundle.map((id) => (QUEST_DEFS[id]?.kind === 'fruition' ? id : HIDDEN));
   return s;
 }

@@ -61,8 +61,7 @@ import { Icon, type IconName } from './Icon';
 import { Num, useFresh } from '../motion';
 import { Section } from './Section';
 import { Sheet, type SheetAction } from './Sheet';
-import { cardText } from './CardRow';
-import { condText, instantText, modsText } from '../describe';
+import { cardText, condText, instantText, modsText } from '../describe';
 import styles from './ColonyBoard.module.css';
 
 type Open =
@@ -313,7 +312,7 @@ export function ColonyBoard({ player }: { player: PlayerState }) {
             <span key={i} className={`${styles.cmd} ${i < p.commandUsed ? styles.used : ''}`} />
           ))}
         </span>
-        <span className={styles.tokenGroup} aria-label={`방위 ${defMax - p.defenseUsed}/${defMax}`} data-tip={`방위 행동 ${defMax - p.defenseUsed}/${defMax}`} data-tip-body="유닛 편성·업그레이드, 습격(2)·분쟁 판정(3)·트랙 당기기(1). 남기면 방위 태세(최대 +2).">
+        <span className={styles.tokenGroup} aria-label={`방위 ${defMax - p.defenseUsed}/${defMax}`} data-tip={`방위 행동 ${defMax - p.defenseUsed}/${defMax}`} data-tip-body="유닛 편성·업그레이드, 습격(2)·분쟁 판정(3). 남기면 방위 태세(최대 +2).">
           <Icon name="defense" size={16} color="var(--danger)" />
           {Array.from({ length: defMax }, (_, i) => (
             <span key={i} className={`${styles.def} ${i < p.defenseUsed ? styles.used : ''}`} />
@@ -330,7 +329,7 @@ export function ColonyBoard({ player }: { player: PlayerState }) {
         <span className={p.res.energy > cap ? styles.warn : ''} data-tip="포자 안개" data-tip-body={`보유 에너지 ${p.res.energy} / 기준 ${cap}. 기준을 넘으면 초과 3마다 건강 −1.`}>
           <Icon name="spore" size={14} /> 포자 {p.res.energy}/{cap}
         </span>
-        <span data-tip="시야" data-tip-body="미래 퀘스트 더미를 위에서부터 볼 수 있는 장수. 궤도의 위성 1기마다 +1.">
+        <span data-tip="시야" data-tip-body="퀘스트 트랙의 뒷면 카드를 칸 2부터 미리 볼 수 있는 장수. 궤도의 위성 1기마다 +1.">
           <Icon name="satellite" size={14} /> 시야 {mods.sight}
         </span>
         {p.guard > 0 && <span>방위 태세 +{p.guard}</span>}

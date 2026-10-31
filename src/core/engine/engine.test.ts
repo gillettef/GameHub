@@ -1,25 +1,32 @@
 import { describe, expect, it } from 'vitest';
 import { createGame } from './setup';
-import { applyAction, runSteps } from './turn';
+import { applyAction } from './turn';
 import { webGraph, researchCost, researchBlock } from './research';
-import { advanceEraStart } from './era';
-import { advanceTrack, processQuest } from './quest';
+import { advanceEra } from './era';
+import { slotVisible } from './quest';
 import { defenseValue, health, plague, playerMods, productionPreview, requiredHealth, stage, unhealthy } from './derive';
 import { scorePlayer } from './scoring';
 import { chooseAction } from '../ai';
 import { TWIG_DEFS, trunkId, CORE_ID } from '../data/techWeb';
 import { QUEST_DEFS } from '../data/quests';
 import { clone } from './util';
-import { COLONIST_TOTAL, COLONIST_TRACK, TRUNK_BASE_COST, colonistTrack } from '../data/constants';
+import { COLONIST_TOTAL, COLONIST_TRACK, QUEST_ROW_SIZE, TRUNK_BASE_COST, colonistTrack } from '../data/constants';
 import { produce } from './turn';
 import type { Action, GameState } from '../types';
 
 const seats = (n: number) => Array.from({ length: n }, (_, i) => ({ name: `P${i}`, isAI: true }));
 
-/** 대기 결정을 모두 처리한 게임 */
+/** 퀘스트 선택을 마친 것으로 둔 게임(대외 단계부터) */
 function ready(seed = 1, n = 3): GameState {
-  let s = createGame(seed, seats(n));
-  while (s.pending.length) s = applyAction(s, s.pending[0].player, { type: 'respond', choice: 0 }).state;
+  const s = createGame(seed, seats(n));
+  s.phase = 'external';
+  return s;
+}
+
+/** 차례 처음 퀘스트 선택 단계의 게임. 칸 slot 에 원하는 카드를 놓는다 */
+function atQuest(id: string, slot = 0, seed = 1, n = 3): GameState {
+  const s = createGame(seed, seats(n));
+  s.questRow[slot] = id;
   return s;
 }
 
@@ -149,19 +156,21 @@ describe('차례와 시대', () => {
     for (const p of s.players) for (const d of s.layout.dirOrder.slice(0, 3)) p.researched.push(trunkId(d, 1));
     s = act(s, { type: 'endTurn' });
     expect(s.era).toBe(2);
-    expect(s.cardRow.every((c) => !c || c.startsWith('p2') || c.startsWith('l2') || c.startsWith('s2'))).toBe(true);
+    expect(s.questRow).toHaveLength(QUEST_ROW_SIZE);
+    expect(s.questRow.every((c) => /^(q2|p2|l2|s2)/.test(c))).toBe(true);
   });
 
   it('종료 시대: 결실 퀘스트가 칸 1에 들어오면 그 라운드 끝에 종료', () => {
     let s = ready(3, 2);
     s.era = 3;
-    advanceEraStart(s);
-    runSteps(s);
+    advanceEra(s);
     expect(s.era).toBe(4);
-    expect(s.questSlots.every((id) => !id || QUEST_DEFS[id].kind !== 'fruition')).toBe(true);
+    expect(s.questRow.every((id) => QUEST_DEFS[id]?.kind !== 'fruition')).toBe(true);
+    expect(s.questDecks[4]).toHaveLength(4);
     let guard = 0;
     while (!s.gameOver && guard++ < 200) {
       if (s.pending.length) s = applyAction(s, s.pending[0].player, { type: 'respond', choice: 0 }).state;
+      else if (s.phase === 'quest') s = act(s, { type: 'pickQuest', slot: 0 });
       else s = act(s, { type: 'endTurn' });
     }
     expect(s.gameOver).toBe(true);
@@ -256,37 +265,136 @@ describe('건강과 역병', () => {
 });
 
 describe('퀘스트', () => {
-  it('판정형: 조건을 만족한 사람마다 보상 선택 대기', () => {
-    const s = ready();
-    s.players[0].buildings.farm[0] = 3;
-    processQuest(s, 'q1j1', 0);
-    expect(s.pending.map((p) => p.player)).toEqual([0]);
+  it('판정형: 고른 사람만 검사해 만족하면 보상 선택 대기', () => {
+    const s = atQuest('q1j1');
+    const me = s.current;
+    s.players.forEach((p) => (p.buildings.farm[0] = 3));
+    const after = act(s, { type: 'pickQuest', slot: 0 });
+    expect(after.pending).toEqual([{ kind: 'questReward', player: me, questId: 'q1j1' }]);
   });
 
   it('위협형: 방어값이 모자라면 손실, 넘으면 처치', () => {
-    const s = ready();
+    const s = atQuest('q1t5'); // 전원, 위협도 3, 손실 식량 1
     s.players.forEach((p) => (p.res.food = 5));
     s.players[1].units.guard[3] = 2; // 방어값 크게
-    processQuest(s, 'q1t5', 0); // 전원, 위협도 3, 손실 식량 1
-    runSteps(s);
-    expect(defenseValue(s.players[0])).toBeLessThan(3);
-    expect(s.players[0].res.food).toBe(4);
-    expect(s.players[1].res.food).toBe(5 + 1);
+    const after = act(s, { type: 'pickQuest', slot: 0 });
+    expect(defenseValue(after.players[0])).toBeLessThan(3);
+    expect(after.players[0].res.food).toBe(4);
+    expect(after.players[1].res.food).toBe(5 + 1);
   });
 
-  it('트랙 진행은 칸 1을 처리하고 한 칸씩 당긴다', () => {
-    const s = ready();
-    const [a, b] = s.questSlots;
-    const next = s.questFuture[0];
-    advanceTrack(s, 0);
-    expect(s.questSlots).toEqual([b, next]);
-    expect(s.questSlots).not.toContain(a);
+  it('위협형은 고른 사람이 아니라 카드의 대상에게 발동한다', () => {
+    const s = atQuest('q1t1'); // 방위력 최저 1명, 손실 식량 2
+    const me = s.current;
+    const other = (me + 1) % 3;
+    s.players.forEach((p) => (p.res.food = 5));
+    s.players[me].units.guard[3] = 2;
+    s.players[(me + 2) % 3].units.guard[3] = 2;
+    const after = act(s, { type: 'pickQuest', slot: 0 });
+    expect(after.players[other].res.food).toBe(3);
+    expect(after.players[me].res.food).toBe(5);
+  });
+
+  it('퀘스트 선택: 고른 칸을 빼고 뒤를 당긴 뒤 덱에서 칸 5를 채운다', () => {
+    let s = createGame(1, seats(3));
+    const row = [...s.questRow];
+    const next = s.questDecks[1][0];
+    s = act(s, { type: 'pickQuest', slot: 2 });
+    expect(s.questRow).toEqual([row[0], row[1], row[3], row[4], next]);
+  });
+
+  it('퀘스트 선택 전에는 다른 행동이 막히고, 한 차례에 한 번만 고른다', () => {
+    let s = atQuest('s1f');
+    expect(applyAction(s, s.current, { type: 'endTurn' }).error).toBe('먼저 퀘스트를 고르세요');
+    s = act(s, { type: 'pickQuest', slot: 0 });
+    expect(s.phase).toBe('external');
+    expect(s.players[s.current].hand.map((h) => h.id)).toEqual(['s1f']);
+    expect(applyAction(s, s.current, { type: 'pickQuest', slot: 0 }).error).toBeTruthy();
+  });
+
+  it('뒷면 카드도 고를 수 있고, 시야만큼 칸 2부터 본인만 본다', () => {
+    const s = atQuest('p1a', 3);
+    const me = s.current;
+    expect(slotVisible(s, me, 0)).toBe(true);
+    expect(slotVisible(s, me, 1)).toBe(false);
+    s.players[me].orbit.push({ id: 'sa3', timer: 3 });
+    expect(slotVisible(s, me, 1)).toBe(true);
+    expect(slotVisible(s, me, 2)).toBe(false);
+    expect(slotVisible(s, (me + 1) % 3, 1)).toBe(false);
+    const after = act(s, { type: 'pickQuest', slot: 3 });
+    expect(after.players[me].pioneer).toBe('p1a');
+  });
+
+  it('가져올 수 없는 카드: 보이면 못 고르고, 뒷면으로 고르면 버려진다', () => {
+    const s = atQuest('p1s', 0);
+    s.questRow[2] = 'p1y';
+    s.players[s.current].pioneerEras = [1];
+    expect(applyAction(s, s.current, { type: 'pickQuest', slot: 0 }).error).toBe('이번 시대에 이미 선구자를 들였습니다');
+    const after = act(s, { type: 'pickQuest', slot: 2 });
+    expect(after.players[s.current].pioneer).toBeNull();
+    expect(after.questRow).not.toContain('p1y');
+  });
+
+  it('뒷면 종료 묶음 카드를 고르면 뒤집어 두고 다시 고른다', () => {
+    let s = atQuest('e_ark', 2);
+    s = act(s, { type: 'pickQuest', slot: 2 });
+    expect(s.phase).toBe('quest');
+    expect(s.questOpen[2]).toBe(true);
+    expect(applyAction(s, s.current, { type: 'pickQuest', slot: 2 }).error).toBe('종료 묶음 카드는 고를 수 없습니다');
+  });
+
+  it('뒷면이 모두 종료 묶음이어도 건너뛰지 않고(정체 누출 없음), 다 뒤집혀 고를 칸이 없으면 대외 단계로', () => {
+    let s = createGame(1, seats(2));
+    s.questRow = ['e_ark', 'e_symbiont', 'e_synth'];
+    s.questOpen = [false, false, false];
+    s.phase = 'quest';
+    s = act(s, { type: 'pickQuest', slot: 1 });
+    expect(s.phase).toBe('quest');
+    s = act(s, { type: 'pickQuest', slot: 2 });
+    expect(s.phase).toBe('external');
+  });
+
+  it('덱이 바닥나 트랙을 다 채우지 못하면 차례 끝에 다음 시대', () => {
+    let s = createGame(1, seats(2));
+    s.questDecks[1] = [];
+    s.questRow[0] = 's1f';
+    s = act(s, { type: 'pickQuest', slot: 0 });
+    expect(s.questRow).toHaveLength(QUEST_ROW_SIZE - 1);
+    s = act(s, { type: 'endTurn' });
+    expect(s.era).toBe(2);
+    expect(s.questRow).toHaveLength(QUEST_ROW_SIZE);
+  });
+
+  it('종료 시대 진입 때 3시대 덱이 5장보다 적으면 나머지 칸을 종료 묶음으로 채운다', () => {
+    const s = createGame(1, seats(2));
+    s.era = 3;
+    s.questDecks[3] = ['s3f', 's3p'];
+    advanceEra(s);
+    expect(s.questRow.slice(0, 2)).toEqual(['s3f', 's3p']);
+    expect(s.questRow.slice(2).every((id) => id.startsWith('e_'))).toBe(true);
+    expect(s.questDecks[4]).toHaveLength(1);
+  });
+
+  it('종료 시대의 선구자는 3시대와 같은 시대로 센다', () => {
+    const s = atQuest('p3a');
+    s.era = 4;
+    s.players[s.current].pioneerEras = [3];
+    expect(applyAction(s, s.current, { type: 'pickQuest', slot: 0 }).error).toBe('이번 시대에 이미 선구자를 들였습니다');
+  });
+
+  it('AI 퀘스트 선택은 시야 밖 칸의 정체에 따라 달라지지 않는다', () => {
+    const a = createGame(3, seats(3));
+    const b = clone(a);
+    b.questRow[3] = a.questRow[3] === 's1f' ? 's1p' : 's1f';
+    b.questRow[4] = 'q1t4';
+    b.questDecks[1] = [...a.questDecks[1]].reverse();
+    expect(chooseAction(b, b.current)).toEqual(chooseAction(a, a.current));
   });
 
   it('후원 제안: 지표 최고 플레이어에게 먼저 묻고 거절하면 다음 사람', () => {
-    let s = ready();
+    let s = atQuest('q1p1');
     const patronId = s.patronDecks[1][0];
-    processQuest(s, 'q1p1', 0);
+    s = act(s, { type: 'pickQuest', slot: 0 });
     const pd = s.pending[0];
     expect(pd.kind).toBe('patron');
     const first = pd.player;
@@ -308,7 +416,7 @@ describe('대외 단계', () => {
     expect(s.players[t].res.prod).toBe(9 - 3);
     expect(s.players[t].harmedRound).toBe(s.round);
     expect(s.phase).toBe('actions');
-    expect(applyAction(s, me, { type: 'pullTrack' }).error).toBe('대외 단계가 지났습니다');
+    expect(applyAction(s, me, { type: 'raid', target: (me + 2) % 3, effect: 'lootProd' }).error).toBe('대외 단계가 지났습니다');
   });
 
   it('분쟁은 2시대부터, 다음 차례에 판정', () => {
@@ -322,9 +430,13 @@ describe('대외 단계', () => {
     s.players[t].res.culture = 10;
     s = act(s, { type: 'declareConflict', target: t, loss: 'culture' });
     s = act(s, { type: 'endTurn' });
+    s.questRow[0] = 's1f';
+    s = act(s, { type: 'pickQuest', slot: 0 }, t);
     s = act(s, { type: 'endTurn' }, t);
-    // 라운드 시작 트랙 진행의 결정이 있으면 먼저 처리해야 내 차례(분쟁 판정)가 시작된다
-    while (s.pending.length) s = act(s, { type: 'respond', choice: 0 }, s.pending[0].player);
+    // 분쟁 판정은 내 퀘스트 선택 뒤에 일어난다
+    expect(s.players[t].res.culture).toBe(10);
+    s.questRow[0] = 's1p';
+    s = act(s, { type: 'pickQuest', slot: 0 }, me);
     expect(s.players[t].res.culture).toBeLessThan(10);
   });
 });
@@ -358,15 +470,16 @@ describe('AI 전체 게임', () => {
 
 describe('가림', async () => {
   const { maskFor, HIDDEN } = await import('../mask');
-  it('덱·시야 밖 미래 퀘스트·시드를 가린다', () => {
+  it('덱·시야 밖 뒷면 칸·시드를 가린다', () => {
     const s = ready();
     s.players[0].orbit.push({ id: 'sa3', timer: 3 });
     const m = maskFor(s, 0);
-    expect(m.questFuture[0]).toBe(s.questFuture[0]);
-    expect(m.questFuture[1]).toBe(HIDDEN);
-    expect(m.cardDecks[1].every((x) => x === HIDDEN)).toBe(true);
+    expect(m.questRow.slice(0, 2)).toEqual(s.questRow.slice(0, 2));
+    expect(m.questRow.slice(2).every((x) => x === HIDDEN)).toBe(true);
+    expect(m.questDecks[1].every((x) => x === HIDDEN)).toBe(true);
     expect(m.rngState).toEqual([0, 0, 0, 0]);
-    expect(maskFor(s, 1).questFuture[0]).toBe(HIDDEN);
+    expect(maskFor(s, 1).questRow[1]).toBe(HIDDEN);
+    expect(maskFor(s, null).questRow[0]).toBe(s.questRow[0]);
     expect(m.endBundle.filter((x) => x === HIDDEN)).toHaveLength(1);
   });
 });

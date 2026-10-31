@@ -1,7 +1,7 @@
 // AI 결정: 후보 행동을 한 수 적용해 보고 평가 함수 증가량이 가장 큰 것을 고른다(결정적, 난수 없음)
 import type { Action, GameState, PlayerState, RaidEffect, UnitKind } from './types';
 import { BUILDING_KINDS, CHARTER_FIELDS, DOCTRINES, UNIT_KINDS } from './types';
-import { BUILDING_COST, CARD_ROW_SIZE, PATRON_LIMIT, TRUNK_BASE_COST, UNIT_COST, slotCost } from './data/constants';
+import { BUILDING_COST, PATRON_LIMIT, TRUNK_BASE_COST, UNIT_COST } from './data/constants';
 import { CARD_DEFS } from './data/cards';
 import { QUEST_DEFS } from './data/quests';
 import { PATRON_DEFS } from './data/patrons';
@@ -13,7 +13,6 @@ import {
   defenseMax,
   defenseValue,
   mainDoctrine,
-  meets,
   might,
   plague,
   playerMods,
@@ -24,9 +23,14 @@ import {
 } from './engine/derive';
 import { researchBlock, researchCost, webGraph, researchedCount, trunksAt } from './engine/research';
 import { canTarget, raidWins } from './engine/external';
-import { pendingChoices } from './engine/quest';
+import { pendingChoices, pickBlock, slotVisible } from './engine/quest';
+import { maskFor } from './mask';
 
 const THREAT_LEVEL = [0, 5, 9, 14, 14];
+/** 뒷면 카드를 모른 채 고를 때 기대 가치(임시). 덱 평균을 엿보지 않고 상수로 둔다 */
+const BLIND_PICK_VALUE = 1.5;
+/** 상대에게 준 손해를 내 이득으로 셈하는 비율 */
+const HARM_WEIGHT = 0.3;
 
 /** 쌓아 둔 자원은 쓸 곳이 한정돼 있으니 일정량을 넘으면 가치를 크게 깎는다(쌓아 두기만 하는 착시 방지) */
 const STOCK_SOFT_CAP = { food: 8, prod: 10, sci: 10 };
@@ -161,7 +165,6 @@ function candidates(state: GameState, p: PlayerState): Action[] {
     for (const id of Object.keys(nodes)) {
       if (!researchBlock(state, p, id) && researchCost(state, p, id, mods) <= p.res.sci) out.push({ type: 'research', node: id });
     }
-    for (let slot = 0; slot < CARD_ROW_SIZE; slot++) if (state.cardRow[slot]) out.push({ type: 'takeCard', slot });
     p.hand.forEach((h, index) => !h.fresh && out.push({ type: 'useSupply', index }));
     for (const k of BUILDING_KINDS) {
       if (p.idle > 0) {
@@ -194,10 +197,6 @@ function candidates(state: GameState, p: PlayerState): Action[] {
       if (id) out.push(p.orbit.length >= 2 ? { type: 'launch', slot, replace: p.orbit[0].timer <= p.orbit[1].timer ? 0 : 1 } : { type: 'launch', slot });
     });
     for (const f of CHARTER_FIELDS) out.push({ type: 'charter', field: f });
-    state.questSlots.forEach((id, slot) => {
-      const q = id ? QUEST_DEFS[id] : null;
-      if (q?.kind === 'contest' && meets(state, p, q.cond)) q.options.forEach((_, option) => out.push({ type: 'doQuest', slot, option }));
-    });
   }
   if (def > 0) {
     for (const k of UNIT_KINDS as UnitKind[]) {
@@ -223,8 +222,42 @@ function candidates(state: GameState, p: PlayerState): Action[] {
   return out;
 }
 
-function commandCost(a: Action): number {
-  return a.type === 'takeCard' ? slotCost(a.slot) : 1;
+/** 퀘스트 선택: 보이는 칸은 한 수 적용해 보고(상대 손해 포함), 뒷면 칸은 상수 기대값. 뒷면은 엿보지 않는다 */
+function questChoice(state: GameState, p: PlayerState): Action {
+  // 시험 수는 내 시야로 가린 상태에서 둔다 — 당겨져 들어올 뒷면 칸·덱·후원 계약 덱을 엿보지 않기 위해
+  const view = maskFor(state, p.id);
+  const me = view.players[p.id];
+  const base = evaluate(view, me);
+  let best: Action = firstPickable(view, me);
+  let bestScore = -Infinity;
+  for (let slot = 0; slot < view.questRow.length; slot++) {
+    if (pickBlock(view, me, slot)) continue;
+    const action: Action = { type: 'pickQuest', slot };
+    let score = BLIND_PICK_VALUE;
+    if (slotVisible(view, p.id, slot)) {
+      const s = simulate(view, p.id, action);
+      if (!s) continue;
+      score = evaluate(s, s.players[p.id]) - base;
+      for (const o of view.players) if (o.id !== p.id) score += (evaluate(view, o) - evaluate(s, s.players[o.id])) * HARM_WEIGHT;
+    }
+    if (score > bestScore) {
+      bestScore = score;
+      best = action;
+    }
+  }
+  return best;
+}
+
+function firstPickable(state: GameState, p: PlayerState): Action {
+  const slot = state.questRow.findIndex((_, i) => !pickBlock(state, p, i));
+  return { type: 'pickQuest', slot: Math.max(0, slot) };
+}
+
+/** AI 행동이 거절됐을 때 대신 둘 수(서버·로컬 공용): 결정 대기면 0번, 퀘스트 선택이면 고를 수 있는 첫 칸, 아니면 차례 종료 */
+export function fallbackAction(state: GameState, actor: number): Action {
+  if (state.pending.length) return { type: 'respond', choice: 0 };
+  if (state.phase === 'quest') return firstPickable(state, state.players[actor]);
+  return { type: 'endTurn' };
 }
 
 /** 대외 단계 후보 */
@@ -254,7 +287,6 @@ function externalChoice(state: GameState, p: PlayerState, base: number): { actio
       }
     }
   }
-  if (def >= 1 && state.questSlots[0]) consider({ type: 'pullTrack' }, -0.8);
   if (state.era >= 2 && !p.conflict && defenseMax(p) >= 3) {
     for (const t of state.players) {
       if (canTarget(state, p, t.id)) continue;
@@ -282,6 +314,7 @@ export function chooseAction(state: GameState, pid: number): Action | null {
   const p = lean.players[pid];
   const base = evaluate(lean, p);
   let best: { action: Action; score: number } | null = null;
+  if (lean.phase === 'quest') return questChoice(state, state.players[pid]);
   if (lean.phase === 'external') {
     const ext = externalChoice(lean, p, base);
     if (ext && ext.score > 0.5) return ext.action;
@@ -289,7 +322,7 @@ export function chooseAction(state: GameState, pid: number): Action | null {
   for (const a of candidates(lean, p)) {
     const s = simulate(lean, pid, a);
     if (!s) continue;
-    const score = (evaluate(s, s.players[pid]) - base) / commandCost(a);
+    const score = evaluate(s, s.players[pid]) - base;
     if (!best || score > best.score) best = { action: a, score };
   }
   if (best && best.score > 0.15) return best.action;

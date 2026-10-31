@@ -73,7 +73,7 @@
 
 | 클래스 | 쓰임 | 기본 길이 |
 |---|---|---|
-| `.anim-card-in` | 카드 줄 칸 채움. 칸마다 `style="--delay: 40ms"` 처럼 순차 | 320ms |
+| `.anim-card-in` | 카드 칸 채움. 칸마다 `style="--delay: 40ms"` 처럼 순차 | 320ms |
 | `.anim-flip` | 퀘스트 공개(뒷면 → 앞면). 앞면 요소에 붙이고 부모는 같은 크기 유지 | 520ms |
 | `.anim-orbit` | 위성 공전. 궤도 중심 래퍼에 붙이고 위성은 래퍼 안에서 반지름만큼 떨어뜨림 | 14s 무한 |
 | `.anim-pulse` | 연구 가능한 테크 웹 노드(SVG `<g>`/`<circle>`에도 동작, `transform-box: fill-box`) | 1.8s 무한 |

@@ -1,7 +1,7 @@
 // 로컬 AI 대전: 엔진을 직접 호출하고, AI 차례는 잠깐씩 쉬며 진행, 매 행동 자동 저장
 import { createGame } from '../core/engine/setup';
 import { applyAction } from '../core/engine/turn';
-import { chooseAction } from '../core/ai';
+import { chooseAction, fallbackAction } from '../core/ai';
 import type { Action, GameState } from '../core/types';
 import { storage } from './storage';
 import { useApp } from './app';
@@ -34,7 +34,7 @@ function scheduleAI(): void {
     if (!s.players[who].isAI) return;
     const a = chooseAction(s, who) ?? { type: 'endTurn' as const };
     let r = applyAction(s, who, a);
-    if (r.error) r = applyAction(s, who, s.pending.length ? { type: 'respond', choice: 0 } : { type: 'endTurn' });
+    if (r.error) r = applyAction(s, who, fallbackAction(s, who));
     if (!r.error) commit(r.state);
   }, AI_DELAY);
 }
@@ -59,7 +59,7 @@ export function startLocal(name: string, aiCount: number, seed: number): void {
 
 export function resumeLocal(): boolean {
   const save = storage.loadLocal();
-  if (!save || save.game.version !== 1 || !Array.isArray(save.game.rngState)) return false;
+  if (!save || save.game.version !== 2 || !Array.isArray(save.game.rngState)) return false;
   useApp.getState().set({ screen: 'game', mode: 'local', me: save.me, viewing: save.me, send });
   commit(save.game);
   return true;

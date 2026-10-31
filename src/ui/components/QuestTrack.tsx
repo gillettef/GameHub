@@ -1,19 +1,22 @@
-// 퀘스트 트랙: 공개 2칸(임박·다음) + 미래 더미(위성 시야만큼 앞면)
-import { useState } from 'react';
-import type { QuestDef } from '../../core/types';
+// 퀘스트 트랙(쓰루의 카드 줄 자리): 5칸, 칸 1만 앞면. 칸 2부터는 위성 시야만큼 나에게만 앞면.
+// 차례 처음에 1장을 골라 즉시 처리한다(뒷면도 고를 수 있음)
+import { useState, type CSSProperties } from 'react';
+import type { CardDef, QuestDef } from '../../core/types';
+import { QUEST_ROW_SIZE } from '../../core/data/constants';
+import { CARD_DEFS } from '../../core/data/cards';
 import { QUEST_DEFS } from '../../core/data/quests';
-import { DOCTRINE_NAMES } from '../../core/data/constants';
 import { meets, playerMods } from '../../core/engine/derive';
+import { slotVisible } from '../../core/engine/quest';
 import { HIDDEN } from '../../core/mask';
 import { useGame } from '../useGame';
 import { CardFace, type FrameName } from './CardFace';
 import { Icon, type IconName } from './Icon';
 import { CardZoom } from './CardZoom';
-import { QuestBrief } from './CardBrief';
+import { CardBrief, QuestBrief } from './CardBrief';
 import { useCardSizes } from '../useCardSizes';
 import { Section } from './Section';
 import { Sheet, type SheetAction } from './Sheet';
-import { QUEST_KIND_NAMES, optionText, questSummary } from '../describe';
+import { CARD_TYPE_NAMES, QUEST_KIND_NAMES, cardText, optionText, questSummary } from '../describe';
 import styles from './QuestTrack.module.css';
 
 const FRAME: Record<QuestDef['kind'], FrameName> = {
@@ -28,6 +31,8 @@ const FRAME: Record<QuestDef['kind'], FrameName> = {
 const ICON: Record<QuestDef['kind'], IconName> = { judge: 'quest', threat: 'threat', contest: 'workshop', patron: 'patron', fruition: 'legacy', finale: 'legacy' };
 const TONE: Record<QuestDef['kind'], string> = { judge: 'var(--res-sci)', threat: 'var(--danger)', contest: 'var(--warn)', patron: 'var(--ring2)', fruition: 'var(--ring3)', finale: 'var(--ring3)' };
 export const questArt = (q: QuestDef) => ({ id: q.id, icon: q.kind === 'fruition' ? q.doctrine : ICON[q.kind], tone: TONE[q.kind] });
+const CARD_TONE: Record<CardDef['type'], string> = { pioneer: 'var(--accent)', legacy: 'var(--ring3)', supply: 'var(--res-prod)' };
+const cardArt = (c: CardDef) => ({ id: c.id, icon: c.type, tone: CARD_TONE[c.type] });
 
 export function QuestFace({ q, width, onClick }: { q: QuestDef; width: number; onClick?: () => void }) {
   return (
@@ -46,98 +51,132 @@ export function QuestFace({ q, width, onClick }: { q: QuestDef; width: number; o
   );
 }
 
-export function QuestTrack() {
-  const { game, me, check, act } = useGame();
-  const sizes = useCardSizes();
-  const [open, setOpen] = useState<{ id: string; slot: number | null } | null>(null);
-  const sight = playerMods(game.players[me]).sight;
-  const future = game.questFuture;
-  const q = open ? QUEST_DEFS[open.id] : null;
+function TrackFace({ id, width, onClick }: { id: string; width: number; onClick: () => void }) {
+  const q = QUEST_DEFS[id];
+  if (q) return <QuestFace q={q} width={width} onClick={onClick} />;
+  const c = CARD_DEFS[id];
+  return (
+    <CardFace
+      frame={c.type}
+      width={width}
+      title={c.name}
+      kind={CARD_TYPE_NAMES[c.type]}
+      art={cardArt(c)}
+      brief={<CardBrief card={c} />}
+      onClick={onClick}
+      tip={`${CARD_TYPE_NAMES[c.type]}\n${cardText(c)}`}
+      label={`${c.name}, ${CARD_TYPE_NAMES[c.type]}`}
+    />
+  );
+}
 
-  const actions: SheetAction[] = [];
-  if (q?.kind === 'contest' && open?.slot != null) {
-    const slot = open.slot;
-    q.options.forEach((o, i) =>
-      actions.push({
-        label: `수행 — ${optionText(o)}`,
-        onClick: () => act({ type: 'doQuest', slot, option: i }),
-        disabled: check({ type: 'doQuest', slot, option: i }),
-      }),
-    );
-  }
-  const seen = future.slice(0, Math.max(0, sight));
+export function QuestTrack() {
+  const { game, me, myTurn, check, act } = useGame();
+  const sizes = useCardSizes();
+  const [open, setOpen] = useState<number | null>(null);
+  const sight = playerMods(game.players[me]).sight;
+  const deck = game.questDecks[game.era];
+  const picking = myTurn && game.phase === 'quest' && !game.pending.length;
+  // 온라인에서는 가려진 id(HIDDEN)가 오고, 로컬에서는 엔진의 시야 규칙으로 가린다
+  const known = (slot: number) => game.questRow[slot] !== HIDDEN && slotVisible(game, me, slot);
+
+  const openId = open !== null ? game.questRow[open] : undefined;
+  const openKnown = open !== null && known(open) && openId !== undefined;
+  const q = openKnown ? QUEST_DEFS[openId] : null;
+  const card = openKnown ? CARD_DEFS[openId] : null;
+  const name = q?.name ?? card?.name ?? `칸 ${(open ?? 0) + 1} · 뒷면 카드`;
+  const actions: SheetAction[] =
+    picking && open !== null
+      ? [{ label: openKnown ? '이 카드 고르기' : '모른 채 고르기', onClick: () => act({ type: 'pickQuest', slot: open }), disabled: check({ type: 'pickQuest', slot: open }) }]
+      : [];
 
   return (
     <Section
+      id="quest-track"
       tone="var(--zone-quest)"
       title={
         <>
           <Icon name="quest" /> 퀘스트 트랙
         </>
       }
-      extra={`시야 ${sight} · 미래 ${future.length}장`}
+      extra={`시야 ${sight} · 덱 ${deck.length}장`}
     >
+      {picking && <p className={styles.cue}>차례 처음 — 1장을 골라 바로 처리합니다. 뒷면 카드도 고를 수 있습니다.</p>}
       <div className={styles.row}>
-        {game.questSlots.map((id, slot) => (
-          <div key={slot} className={styles.slot}>
-            <span className={styles.slotLabel}>{slot === 0 ? '칸 1 · 임박' : '칸 2 · 다음'}</span>
-            {id ? (
-              // 칸 1에 위협이 오면 붉게 경보한다
-              <div key={id} className={`anim-flip ${slot === 0 && QUEST_DEFS[id].kind === 'threat' ? 'anim-alarm' : ''}`}>
-                <QuestFace q={QUEST_DEFS[id]} width={sizes.card} onClick={() => setOpen({ id, slot })} />
-              </div>
-            ) : (
-              <div className={styles.empty} style={{ width: sizes.card }}>
-                비어 있음
-              </div>
-            )}
-          </div>
-        ))}
-        {/* 미래 더미: 위성 시야만큼 앞면, 나머지는 뒷면 한 더미 — 공개 칸과 같은 줄에 */}
-        {seen.map((id, i) =>
-          id !== HIDDEN ? (
-            <div key={`f${i}`} className={styles.slot}>
-              <span className={styles.slotLabel}>미래 {i + 1}</span>
-              <QuestFace q={QUEST_DEFS[id]} width={sizes.card} onClick={() => setOpen({ id, slot: null })} />
+        {Array.from({ length: QUEST_ROW_SIZE }, (_, slot) => {
+          const id = game.questRow[slot];
+          return (
+            <div key={slot} className={styles.slot}>
+              <span className={styles.slotLabel}>
+                칸 {slot + 1}
+                {slot === 0 ? ' · 앞면' : id && known(slot) && !game.questOpen[slot] ? ' · 시야' : ''}
+              </span>
+              {!id ? (
+                <div className={styles.empty} style={{ width: sizes.card }}>
+                  비어 있음
+                </div>
+              ) : known(slot) ? (
+                // 칸 1의 위협은 붉게 경보하고, 시야로 미리 본 칸(나에게만 보임)은 점선 테두리로 구분한다
+                <div key={id} className={`anim-flip ${slot === 0 && QUEST_DEFS[id]?.kind === 'threat' ? 'anim-alarm' : ''} ${slot > 0 && !game.questOpen[slot] ? styles.peek : ''}`} style={{ '--delay': `${slot * 30}ms` } as CSSProperties}>
+                  <TrackFace id={id} width={sizes.card} onClick={() => setOpen(slot)} />
+                </div>
+              ) : (
+                <CardFace frame="quest-back" width={sizes.card} label={`칸 ${slot + 1} 뒷면 카드`} tip={`뒷면 카드\n위성을 띄우면 칸 2부터 미리 볼 수 있습니다.`} onClick={() => setOpen(slot)} />
+              )}
             </div>
-          ) : null,
-        )}
-        {future.length > seen.length && (
-          <div className={styles.slot}>
-            <span className={styles.slotLabel}>미래 더미</span>
-            <div className={styles.deck} aria-label="미래 퀘스트 더미" data-tip="미래 퀘스트 더미" data-tip-body={`뒷면 ${future.length - seen.length}장. 위성을 띄우면 위에서부터 1장씩 미리 볼 수 있습니다.`}>
-              <CardFace frame="quest-back" width={sizes.card} label={`뒷면 퀘스트 ${future.length - seen.length}장`} />
-              <span className={styles.deckCount}>{future.length - seen.length}</span>
-            </div>
-          </div>
-        )}
+          );
+        })}
       </div>
       {game.era >= 4 && (
-        <p className={styles.note}>종료 묶음: 결실 3장(방주·공생·합성) + 비공개 종료 기록 1장. 결실 퀘스트가 칸 1에 들어오면 그 라운드가 마지막입니다.</p>
+        <p className={styles.note}>종료 묶음(결실 3장 + 비공개 종료 기록 1장)은 고를 수 없습니다. 종료 묶음 카드가 칸 1에 오면 그 라운드가 마지막입니다.</p>
       )}
-      {q && open && (
-        <Sheet title={q.name} onClose={() => setOpen(null)} actions={actions}>
-          <CardZoom frame={FRAME[q.kind]} title={q.name} badge={q.kind === 'threat' ? q.power : undefined} art={questArt(q)} body={questSummary(q)} />
-          <p className={styles.kind}>
-            {QUEST_KIND_NAMES[q.kind]}
-            {open.slot === null ? ' · 위성으로 미리 본 카드' : ''}
-          </p>
-          <p>{questSummary(q)}</p>
-          {(q.kind === 'judge' || q.kind === 'contest') && (
+      {open !== null && openId !== undefined && (
+        <Sheet title={name} onClose={() => setOpen(null)} actions={actions}>
+          {q && <CardZoom frame={FRAME[q.kind]} title={q.name} badge={q.kind === 'threat' ? q.power : undefined} art={questArt(q)} body={questSummary(q)} />}
+          {card && <CardZoom frame={card.type} title={card.name} art={cardArt(card)} body={cardText(card)} />}
+          {!openKnown && (
             <>
-              <p className={styles.kind}>보상 선택지</p>
-              <ul className={styles.opts}>
-                {q.options.map((o, i) => (
-                  <li key={i} style={{ color: `var(--${o.doctrine})` }}>
-                    {optionText(o)}
-                  </li>
-                ))}
-              </ul>
-              <p className={styles.kind}>지금 조건 {meets(game, game.players[me], q.cond) ? '충족' : '미충족'}</p>
+              <CardZoom frame="quest-back" title="뒷면 카드" />
+              <p>무엇인지 모른 채 고릅니다. 사건·위협·후원 제안·선구자·유산·보급 중 하나입니다. 위성을 띄우면 칸 2부터 시야만큼 미리 볼 수 있습니다.</p>
             </>
           )}
-          {q.kind === 'fruition' && <p>{DOCTRINE_NAMES[q.doctrine]} 노선의 최종 정산입니다.</p>}
-          {q.text && <p className={styles.flavor}>“{q.text}”</p>}
+          {q && (
+            <>
+              <p className={styles.kind}>
+                {QUEST_KIND_NAMES[q.kind]}
+                {open > 0 && !game.questOpen[open] ? ' · 위성으로 미리 본 카드' : ''}
+              </p>
+              <p>{questSummary(q)}</p>
+              {(q.kind === 'judge' || q.kind === 'contest') && (
+                <>
+                  <p className={styles.kind}>보상 선택지</p>
+                  <ul className={styles.opts}>
+                    {q.options.map((o, i) => (
+                      <li key={i} style={{ color: `var(--${o.doctrine})` }}>
+                        {optionText(o)}
+                      </li>
+                    ))}
+                  </ul>
+                  <p className={styles.kind}>지금 조건 {meets(game, game.players[me], q.cond) ? '충족' : '미충족'}</p>
+                </>
+              )}
+              {q.kind === 'threat' && <p className={styles.kind}>고르면 카드에 적힌 대상에게 발동합니다(내가 대상이 아닐 수도 있습니다).</p>}
+              {(q.kind === 'fruition' || q.kind === 'finale') && <p className={styles.kind}>종료 묶음 카드 — 고를 수 없고, 게임이 끝날 때 정산합니다.</p>}
+              {q.text && <p className={styles.flavor}>“{q.text}”</p>}
+            </>
+          )}
+          {card && (
+            <>
+              <p className={styles.kind}>
+                {CARD_TYPE_NAMES[card.type]} · {card.ring}고리
+              </p>
+              <p>{cardText(card)}</p>
+              {card.type === 'pioneer' && <p className={styles.kind}>고르면 바로 내 선구자가 됩니다(기존 선구자는 버림). 한 시대에 한 명만.</p>}
+              {card.type === 'legacy' && <p className={styles.kind}>고르면 “짓는 중”. 단계마다 지휘 1 + 생산. 동시에 하나만.</p>}
+              {card.type === 'supply' && <p className={styles.kind}>손에 들고 있다가 다음 차례부터 지휘 1로 사용.</p>}
+              {card.text && <p className={styles.flavor}>“{card.text}”</p>}
+            </>
+          )}
         </Sheet>
       )}
     </Section>

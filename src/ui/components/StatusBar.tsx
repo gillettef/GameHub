@@ -1,7 +1,7 @@
-// 상단 고정 상태 줄(BGA 의 페이지 제목 줄): 메뉴·시대 정보, 지금 누가 무엇을 하는지, 대외 단계(습격·분쟁·트랙 당기기)와 차례 종료 버튼
+// 상단 고정 상태 줄(BGA 의 페이지 제목 줄): 메뉴·시대 정보, 지금 누가 무엇을 하는지, 퀘스트 선택 안내, 대외 단계(습격·분쟁)와 차례 종료 버튼
 import { useEffect, useRef, useState } from 'react';
 import type { ConflictLoss, RaidEffect } from '../../core/types';
-import { CONFLICT_DEFENSE, PULL_DEFENSE, RAID_DEFENSE, raidAmount } from '../../core/data/constants';
+import { CONFLICT_DEFENSE, RAID_DEFENSE, raidAmount } from '../../core/data/constants';
 import { attackValue, commandLeft, defenseLeft, defenseValue, edgeBonus, stage } from '../../core/engine/derive';
 import { swarmValue } from '../../core/engine/external';
 import { eraProgress } from '../../core/engine/era';
@@ -60,7 +60,7 @@ export function StatusBar({ onMenu, onLog, onResults }: { onMenu: () => void; on
 
 function ActionRow({ onResults }: { onResults: () => void }) {
   const { game, me, myTurn, check, act } = useGame();
-  const [sheet, setSheet] = useState<'raid' | 'conflict' | 'pull' | 'end' | null>(null);
+  const [sheet, setSheet] = useState<'raid' | 'conflict' | 'end' | null>(null);
   const [target, setTarget] = useState<number | null>(null);
   const p = game.players[me];
   const actor = game.pending.length ? game.pending[0].player : game.current;
@@ -95,6 +95,17 @@ function ActionRow({ onResults }: { onResults: () => void }) {
       </div>
     );
   }
+  if (game.phase === 'quest') {
+    return (
+      <div className={styles.bar}>
+        {counts}
+        <button className={`${styles.primary} anim-shine`} onClick={() => document.getElementById('quest-track')?.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' })}>
+          퀘스트 고르기
+        </button>
+        <span className={styles.phase}>차례 처음 — 퀘스트 트랙에서 1장</span>
+      </div>
+    );
+  }
   const external = game.phase === 'external';
   const t = target !== null ? game.players[target] : null;
   const amount = raidAmount(game.era);
@@ -111,12 +122,9 @@ function ActionRow({ onResults }: { onResults: () => void }) {
               분쟁
               {game.era < 2 && <small>2시대~</small>}
             </button>
-            <button onClick={() => setSheet('pull')} data-tip="트랙 당기기" data-tip-body="방위 행동 1. 칸 1의 퀘스트를 지금 처리하고 한 칸 당깁니다. 문화 +시대.">
-              당기기
-            </button>
           </div>
         ) : (
-          <span className={styles.phase}>행동 단계 — 연구·카드·건설 등</span>
+          <span className={styles.phase}>행동 단계 — 연구·건설 등</span>
         )}
         {/* 할 일을 다 했으면 차례 종료 버튼에 빛이 훑고 지나간다 */}
         <button className={`${styles.primary} ${commandLeft(game, p) === 0 ? 'anim-shine' : ''}`} onClick={() => (commandLeft(game, p) > 0 ? setSheet('end') : act({ type: 'endTurn' }))}>
@@ -175,15 +183,6 @@ function ActionRow({ onResults }: { onResults: () => void }) {
         >
           <p>다음 내 차례 시작에 방위 행동 {CONFLICT_DEFENSE}을 내고 판정합니다. 선포는 공개되어 상대가 대비할 수 있습니다. 지면 문화 −2.</p>
           <TargetPicker others={others} target={target} setTarget={setTarget} attack={(id) => attackValue(p, game.players[id])} edge={(id) => edgeBonus(p, game.players[id])} harmed={(id) => game.players[id].harmedRound === game.round} />
-        </Sheet>
-      )}
-      {sheet === 'pull' && (
-        <Sheet
-          title="퀘스트 트랙 당기기"
-          onClose={() => setSheet(null)}
-          actions={[{ label: `당기기 — 방위 ${PULL_DEFENSE}, 문화 +${Math.min(game.era, 3)}`, onClick: () => act({ type: 'pullTrack' }), disabled: check({ type: 'pullTrack' }) }]}
-        >
-          <p>칸 1의 퀘스트를 지금 처리하고 트랙을 한 칸 당깁니다. 위성 시야로 다음 퀘스트를 알고 있을 때 유리한 퀘스트를 앞당기거나, 상대가 준비하기 전에 위협을 터뜨릴 수 있습니다.</p>
         </Sheet>
       )}
       {sheet === 'end' && (

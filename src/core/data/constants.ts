@@ -13,10 +13,8 @@ export const FIRST_ROUND_COMMAND = [2, 3, 4, 4];
 export const BASE_COMMAND = 4;
 export const BASE_DEFENSE = 2;
 
-// 카드 줄
-export const CARD_ROW_SIZE = 9;
-export const ROW_DISCARD: Record<number, number> = { 2: 3, 3: 2, 4: 1 };
-export const slotCost = (slot: number) => (slot < 3 ? 1 : slot < 6 ? 2 : 3);
+// 퀘스트 트랙(쓰루의 카드 줄 자리): 칸 수
+export const QUEST_ROW_SIZE = 5;
 
 // 시대 전환: 현재 고리 줄기 합 ≥ 인원 × ERA_TRUNK_PER_PLAYER
 export const ERA_TRUNK_PER_PLAYER = 3;
@@ -124,7 +122,6 @@ export const BEATS: Record<Doctrine, Doctrine> = { ark: 'synth', synth: 'symbion
 // 대외 단계
 export const RAID_DEFENSE = 2;
 export const CONFLICT_DEFENSE = 3;
-export const PULL_DEFENSE = 1;
 export const raidAmount = (era: number) => Math.min(era, 3) + 2;
 export const CONFLICT_FAIL_CULTURE = 2;
 export const CONFLICT_CULTURE_MAX = 12;
@@ -157,7 +154,8 @@ export const CHARTER_MODS: Record<CharterField, Partial<Mods>[]> = {
 export const FRUITION_PER_STAGE = 3;
 export const FRUITION_FIRST = 6;
 export const FRUITION_OTHER = 3;
-export const END_KEEP_FUTURE = 3;
+/** 종료 시대 진입 때 트랙을 채울 3시대 덱 장수 */
+export const END_KEEP_ROW = 5;
 
 // 이름
 export const DOCTRINE_NAMES: Record<Doctrine, string> = { ark: '방주', symbiont: '공생', synth: '합성' };

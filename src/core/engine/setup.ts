@@ -2,14 +2,13 @@
 import type { GameState, PlayerState, Ring } from '../types';
 import { BUILDING_KINDS, UNIT_KINDS } from '../types';
 import { createRng } from '../rng';
-import { CARD_ROW_SIZE, COLONIST_TOTAL, MAX_PLAYERS, MIN_PLAYERS, SAT_MARKET, SEAT_BONUS, START_RES } from '../data/constants';
+import { COLONIST_TOTAL, MAX_PLAYERS, MIN_PLAYERS, SAT_MARKET, SEAT_BONUS, START_RES } from '../data/constants';
 import { CORE_ID } from '../data/techWeb';
-import { ringDeckIds } from '../data/cards';
-import { FINALES, FRUITIONS, QUEST_DECKS } from '../data/quests';
+import { FINALES, FRUITIONS, eraDeckIds } from '../data/quests';
 import { PATRONS } from '../data/patrons';
 import { SATELLITES } from '../data/satellites';
 import { generateLayout } from './research';
-import { fillSlots } from './quest';
+import { refillRow } from './quest';
 import { gain, log } from './util';
 import { startTurn } from './turn';
 
@@ -60,12 +59,11 @@ function newPlayer(id: number, seat: SeatConfig): PlayerState {
 export function createGame(seed: number | number[], seats: SeatConfig[]): GameState {
   if (seats.length < MIN_PLAYERS || seats.length > MAX_PLAYERS) throw new Error('인원은 2~4명');
   const rng = createRng(seed);
-  // RNG 순서: 방향 순서 → 곁가지 → 카드 덱 → 퀘스트 덱 → 공통 종료 → 후원 계약 → 위성 → 시작 플레이어
+  // RNG 순서: 방향 순서 → 곁가지 → 시대별 퀘스트 덱(사건 + 선구자·유산·보급) → 공통 종료 → 후원 계약 → 위성 → 시작 플레이어
   const layout = generateLayout(rng);
   const players = seats.map((s, i) => newPlayer(i, s));
-  const cardDecks = { 1: rng.shuffle(ringDeckIds(1)), 2: rng.shuffle(ringDeckIds(2)), 3: rng.shuffle(ringDeckIds(3)) } as Record<Ring, string[]>;
-  const questDecks = {} as Record<Ring, string[]>;
-  for (const r of [1, 2, 3] as Ring[]) questDecks[r] = rng.shuffle(QUEST_DECKS[r].map((q) => q.id));
+  const questDecks: GameState['questDecks'] = { 1: [], 2: [], 3: [], 4: [] };
+  for (const r of [1, 2, 3] as Ring[]) questDecks[r] = rng.shuffle(eraDeckIds(r));
   const finale = FINALES[rng.int(FINALES.length)];
   const endBundle = [...FRUITIONS.map((f) => f.id), finale.id];
   const patronDecks = {} as Record<Ring, string[]>;
@@ -79,7 +77,7 @@ export function createGame(seed: number | number[], seats: SeatConfig[]): GameSt
   });
 
   const state: GameState = {
-    version: 1,
+    version: 2,
     seed: Array.isArray(seed) ? 0 : seed,
     rngState: rng.state(),
     ver: 0,
@@ -88,13 +86,11 @@ export function createGame(seed: number | number[], seats: SeatConfig[]): GameSt
     round: 1,
     startPlayer,
     current: startPlayer,
-    phase: 'external',
+    phase: 'quest',
     layout,
-    cardDecks,
-    cardRow: cardDecks[1].splice(0, CARD_ROW_SIZE),
     questDecks,
-    questFuture: [],
-    questSlots: [null, null],
+    questRow: [],
+    questOpen: [],
     endBundle,
     patronDecks,
     satDeck,
@@ -102,15 +98,13 @@ export function createGame(seed: number | number[], seats: SeatConfig[]): GameSt
     stage4Order: { ark: [], symbiont: [], synth: [] },
     pending: [],
     steps: [],
-    cardDiscard: { 1: [], 2: [], 3: [] },
     eraStartRound: 1,
     endTriggered: false,
     gameOver: false,
     log: [],
   };
-  state.questFuture = state.questDecks[1].splice(0);
-  fillSlots(state);
+  refillRow(state);
   log(state, null, `게임 시작 — 시작 플레이어 ${players[startPlayer].name}`);
-  startTurn(state, true);
+  startTurn(state);
   return state;
 }

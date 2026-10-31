@@ -1,13 +1,22 @@
-// 퀘스트 트랙: 진행, 종류별 처리, 대기 응답, 후원 계약 (Rules.md 12·13절)
-import type { GameState, PlayerState, QuestOption, ThreatQuest } from '../types';
-import { COEXIST_FOOD, COEXIST_SYMBIONT, DOCTRINE_NAMES, PATRON_FAIL_CULTURE, PATRON_LIMIT, PATRON_MET_CULTURE_PER_ERA } from '../data/constants';
-import { QUEST_DEFS } from '../data/quests';
+// 퀘스트 트랙: 퀘스트 선택, 종류별 처리, 대기 응답, 후원 계약 (Rules.md 11~13절)
+import type { CardDef, GameState, PlayerState, QuestOption, ThreatQuest } from '../types';
+import {
+  COEXIST_FOOD,
+  COEXIST_SYMBIONT,
+  DOCTRINE_NAMES,
+  PATRON_FAIL_CULTURE,
+  PATRON_LIMIT,
+  PATRON_MET_CULTURE_PER_ERA,
+  QUEST_ROW_SIZE,
+} from '../data/constants';
+import { CARD_DEFS } from '../data/cards';
+import { QUEST_DEFS, isEndCard, trackName } from '../data/quests';
 import { PATRON_DEFS } from '../data/patrons';
-import { defenseValue, mainDoctrine, meets, metric, stage } from './derive';
+import { commandMax, defenseValue, mainDoctrine, meets, metric, sight, stage } from './derive';
 import { addDoctrine, applyLoss } from './effects';
-import { gain, log } from './util';
+import { canPay, gain, log } from './util';
 
-/** 진행을 일으킨 플레이어부터 자리 순 */
+/** 고른 플레이어부터 자리 순 */
 export function orderFrom(state: GameState, start: number): number[] {
   const n = state.players.length;
   return Array.from({ length: n }, (_, i) => (start + i) % n);
@@ -18,64 +27,133 @@ export function applyOption(state: GameState, p: PlayerState, o: QuestOption): v
   gain(p.res, o.gain);
 }
 
-/** 결실 퀘스트가 칸 1(임박)에 처음 들어오면 종료 예고 */
+/** 지금 덱 자리: 1~3시대는 그 시대 덱, 종료 시대는 종료 묶음 덱(4) */
+export function deckKey(state: GameState): 1 | 2 | 3 | 4 {
+  return state.era;
+}
+
+/** viewer 가 그 칸의 앞면을 아는지: 칸 1·뒤집힌 카드는 모두, 칸 2부터는 시야만큼 본인만 (Rules 12.1) */
+export function slotVisible(state: GameState, viewer: number | null, slot: number): boolean {
+  if (slot === 0 || state.questOpen[slot]) return true;
+  if (viewer === null) return false;
+  return slot <= sight(state.players[viewer]);
+}
+
+/** 선구자·유산·보급을 가져올 수 없는 이유(Rules 11절) */
+export function cardTakeBlock(state: GameState, p: PlayerState, c: CardDef): string | null {
+  if (c.type === 'pioneer' && p.pioneerEras.includes(Math.min(state.era, 3))) return '이번 시대에 이미 선구자를 들였습니다';
+  if (c.type === 'legacy' && p.legacyWip) return '이미 짓는 유산이 있습니다';
+  if (c.type === 'supply' && p.hand.length >= commandMax(state, p)) return '보급 손패가 가득 찼습니다';
+  return null;
+}
+
+/** 그 칸을 고를 수 없는 이유. 앞면을 모르는 칸은 늘 고를 수 있다 */
+export function pickBlock(state: GameState, p: PlayerState, slot: number): string | null {
+  const id = state.questRow[slot];
+  if (!id) return '빈 칸입니다';
+  if (!slotVisible(state, p.id, slot)) return null;
+  if (isEndCard(id)) return '종료 묶음 카드는 고를 수 없습니다';
+  const c = CARD_DEFS[id];
+  return c ? cardTakeBlock(state, p, c) : null;
+}
+
+/** 이번 차례에 고를 수 있는 칸이 하나라도 있는지(없으면 퀘스트 선택을 건너뜀).
+ *  플레이어가 아는 정보로만 판단한다 — 뒷면 칸은 종료 묶음이어도 고를 수 있는 칸으로 센다(가림 정보 누출 방지) */
+export function canPickAny(state: GameState, p: PlayerState): boolean {
+  return state.questRow.some((_, slot) => !pickBlock(state, p, slot));
+}
+
+/** 종료 묶음 카드가 칸 1에 처음 들어오면 종료 예고 (Rules 12.6) */
 function checkEndTrigger(state: GameState): void {
   if (state.endTriggered) return;
-  {
-    const id = state.questSlots[0];
-    if (id && QUEST_DEFS[id]?.kind === 'fruition') {
-      state.endTriggered = true;
-      log(state, null, `「${QUEST_DEFS[id].name}」 공개 — 이번 라운드를 마치면 게임이 끝납니다`);
-      return;
-    }
+  const id = state.questRow[0];
+  if (id && isEndCard(id)) {
+    state.endTriggered = true;
+    log(state, null, `「${QUEST_DEFS[id].name}」 공개 — 이번 라운드를 마치면 게임이 끝납니다`);
   }
 }
 
-export function fillSlots(state: GameState): void {
-  for (let i = 0; i < state.questSlots.length; i++) {
-    if (!state.questSlots[i] && state.questFuture.length) state.questSlots[i] = state.questFuture.shift()!;
+/** 덱에서 빈 칸을 뒤에서부터 채운다 */
+export function refillRow(state: GameState): void {
+  const deck = state.questDecks[deckKey(state)];
+  while (state.questRow.length < QUEST_ROW_SIZE && deck.length) {
+    state.questRow.push(deck.shift()!);
+    state.questOpen.push(false);
   }
   checkEndTrigger(state);
 }
 
-/** 트랙 1칸 진행: 칸 1 처리 → 칸 2 를 칸 1로 → 미래 더미에서 칸 2 공개 */
-export function advanceTrack(state: GameState, trigger: number): void {
-  const front = state.questSlots[0];
-  state.questSlots[0] = null;
-  if (front) processQuest(state, front, trigger);
-  state.questSlots[0] = state.questSlots[1];
-  state.questSlots[1] = state.questFuture.shift() ?? null;
-  checkEndTrigger(state);
+/** 퀘스트 선택(Rules 12.2). 뒷면 종료 묶음이면 뒤집어 두고 다시 고르게 한다 → 'again' */
+export function pickQuest(state: GameState, p: PlayerState, slot: number): string | 'again' | null {
+  const err = pickBlock(state, p, slot);
+  if (err) return err;
+  const id = state.questRow[slot];
+  if (isEndCard(id)) {
+    state.questOpen[slot] = true;
+    log(state, p.id, `뒷면 카드 「${QUEST_DEFS[id].name}」 — 종료 묶음이라 다시 고릅니다`);
+    return 'again';
+  }
+  const blind = !slotVisible(state, p.id, slot);
+  state.questRow.splice(slot, 1);
+  state.questOpen.splice(slot, 1);
+  refillRow(state);
+  log(state, p.id, `퀘스트 「${trackName(id)}」 선택${blind ? '(뒷면)' : ''}`);
+  resolvePick(state, p, id);
+  return null;
 }
 
-export function processQuest(state: GameState, id: string, trigger: number): void {
+function resolvePick(state: GameState, p: PlayerState, id: string): void {
+  const c = CARD_DEFS[id];
+  if (c) {
+    takeCard(state, p, c);
+    return;
+  }
   const q = QUEST_DEFS[id];
   if (!q) return;
   switch (q.kind) {
-    case 'judge': {
-      log(state, null, `판정 「${q.name}」`);
-      for (const pid of orderFrom(state, trigger)) {
-        const p = state.players[pid];
-        if (meets(state, p, q.cond)) state.pending.push({ kind: 'questReward', player: pid, questId: id });
-        else if (q.failLoss) {
-          applyLoss(state, p, q.failLoss);
-          log(state, pid, `「${q.name}」 조건 미달 손실`);
-        }
-      }
-      break;
-    }
-    case 'threat':
-      processThreat(state, q, trigger);
+    case 'judge':
+      if (meets(state, p, q.cond)) state.pending.push({ kind: 'questReward', player: p.id, questId: id });
+      else if (q.failLoss) {
+        applyLoss(state, p, q.failLoss);
+        log(state, p.id, `「${q.name}」 조건 미달 손실`);
+      } else log(state, p.id, `「${q.name}」 조건 미달`);
       break;
     case 'contest':
-      log(state, null, `경쟁 「${q.name}」 — 수행한 사람 없이 사라짐`);
+      if (meets(state, p, q.cond) && canPay(p.res, q.cost)) {
+        gain(p.res, q.cost, -1);
+        if (q.facility && !p.facilities.includes(q.facility)) p.facilities.push(q.facility);
+        log(state, p.id, `경쟁 퀘스트 「${q.name}」 수행`);
+        state.pending.push({ kind: 'questReward', player: p.id, questId: id });
+      } else log(state, p.id, `「${q.name}」 수행 못함 — 버림`);
+      break;
+    case 'threat':
+      processThreat(state, q, p.id);
       break;
     case 'patron':
-      offerPatron(state, q.era, trigger, q.name);
+      offerPatron(state, q.era, p.id, q.name);
       break;
     case 'fruition':
     case 'finale':
       break;
+  }
+}
+
+function takeCard(state: GameState, p: PlayerState, c: CardDef): void {
+  const block = cardTakeBlock(state, p, c);
+  if (block) {
+    log(state, p.id, `「${c.name}」 가져올 수 없음(${block}) — 버림`);
+    return;
+  }
+  if (c.type === 'pioneer') {
+    p.pioneer = c.id;
+    p.pioneerEras.push(Math.min(state.era, 3)); // 종료 시대는 3시대로 친다(Rules 17)
+    log(state, p.id, `선구자 「${c.name}」 영입`);
+  } else if (c.type === 'legacy') {
+    p.legacyWip = { id: c.id, done: 0 };
+    log(state, p.id, `유산 「${c.name}」 착공`);
+  } else {
+    p.hand.push({ id: c.id, fresh: true });
+    log(state, p.id, `보급 「${c.name}」 획득`);
   }
 }
 
@@ -161,6 +239,8 @@ function offerPatron(state: GameState, era: number, trigger: number, questName: 
     return;
   }
   const def = PATRON_DEFS[patronId];
+  // 가린 상태(AI 의 한 수 시험)에서는 덱 맨 위를 모른다
+  if (!def) return;
   const order = orderFrom(state, trigger);
   const queue = [...order].sort((a, b) => metric(state, state.players[b], def.metric) - metric(state, state.players[a], def.metric));
   log(state, null, `후원 제안 「${def.name}」`);
