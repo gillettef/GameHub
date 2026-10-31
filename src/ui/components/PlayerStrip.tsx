@@ -1,6 +1,6 @@
-// 플레이어 상태창(BGA 의 플레이어 패널). 한 줄에 2명, 칩마다 이름·남은 행동·점수·노선·자원. 누르면 그 사람 보드로 스크롤
+// 플레이어 상태창(BGA 의 플레이어 패널). 한 줄에 2명, 칩마다 이름·남은 행동·점수·노선·자원(보유량 + 생산 단계 증감). 누르면 그 사람 보드로 스크롤
 import { DOCTRINES } from '../../core/types';
-import { commandLeft, defenseLeft, defenseValue, mainDoctrine, stage } from '../../core/engine/derive';
+import { commandLeft, defenseLeft, defenseValue, mainDoctrine, productionPreview, stage } from '../../core/engine/derive';
 import { DOCTRINE_NAMES, RES_NAMES } from '../../core/data/constants';
 import { useGame } from '../useGame';
 import { Icon, type IconName } from './Icon';
@@ -8,6 +8,9 @@ import { Num } from '../motion';
 import styles from './PlayerStrip.module.css';
 
 // 칩에 보이는 자원(문화는 점수 줄에 따로)
+// 생산 단계 증감(식량은 소비 차감 후). 칩에서는 0 이면 숨겨 줄 수를 아낀다
+const signed = (n: number) => (n > 0 ? `+${n}` : n < 0 ? `${n}` : '±0');
+
 const CHIP_RES = [
   ['food', 'food'],
   ['prod', 'prod'],
@@ -24,6 +27,7 @@ export function PlayerStrip() {
       <div className={styles.strip}>
         {game.players.map((p) => {
           // 칩에는 주 노선(없으면 가장 높은 노선) 하나만 — 세 노선 모두는 보드에서
+          const inc = productionPreview(p).net;
           const lead = mainDoctrine(p) ?? (DOCTRINES.some((d) => p.doctrine[d] > 0) ? DOCTRINES.reduce((a, b) => (p.doctrine[b] > p.doctrine[a] ? b : a)) : null);
           return (
             <button
@@ -31,9 +35,9 @@ export function PlayerStrip() {
               className={`${styles.chip} ${p.id === me ? styles.viewing : ''} ${p.id === actor ? `${styles.turn} anim-turn` : ''}`}
               style={{ borderLeftColor: `var(--seat-${p.id})` }}
               onClick={() => goto(p.id)}
-              aria-label={`${p.name} 보드 보기`}
+              aria-label={`${p.name} — 문화 ${p.res.culture}(${signed(inc.culture)}), ${CHIP_RES.map(([k]) => `${RES_NAMES[k]} ${p.res[k]}(${signed(inc[k])})`).join(', ')}. 보드 보기`}
               data-tip={p.name}
-              data-tip-body={`문화 ${p.res.culture} · 방어값 ${defenseValue(p)}\n남은 행동: 지휘 ${commandLeft(game, p)} · 방위 ${defenseLeft(p)}\n${CHIP_RES.map(([k]) => `${RES_NAMES[k]} ${p.res[k]}`).join(' · ')}\n${DOCTRINES.map((d) => `${DOCTRINE_NAMES[d]} ${p.doctrine[d]}`).join(' · ')}${p.id === game.startPlayer ? '\n① 시작 플레이어' : ''}\n누르면 이 사람의 보드로 이동합니다.`}
+              data-tip-body={`문화 ${p.res.culture}(${signed(inc.culture)}) · 방어값 ${defenseValue(p)}\n남은 행동: 지휘 ${commandLeft(game, p)} · 방위 ${defenseLeft(p)}\n${CHIP_RES.map(([k]) => `${RES_NAMES[k]} ${p.res[k]}(${signed(inc[k])})`).join(' · ')}\n괄호 = 다음 생산 단계 증감(식량은 소비 차감 후)\n${DOCTRINES.map((d) => `${DOCTRINE_NAMES[d]} ${p.doctrine[d]}`).join(' · ')}${p.id === game.startPlayer ? '\n① 시작 플레이어' : ''}\n누르면 이 사람의 보드로 이동합니다.`}
             >
               <span className={styles.nameRow}>
                 <span className={styles.name}>
@@ -53,6 +57,7 @@ export function PlayerStrip() {
               <span className={styles.stats}>
                 <span style={{ color: 'var(--res-culture)' }}>
                   <Icon name="culture" size={13} /> <Num value={p.res.culture} />
+                  {inc.culture !== 0 && <span className={styles.inc}>{signed(inc.culture)}</span>}
                 </span>
                 <span style={{ color: 'var(--danger)' }}>
                   <Icon name="might" size={13} /> <Num value={defenseValue(p)} />
@@ -67,8 +72,9 @@ export function PlayerStrip() {
               </span>
               <span className={styles.res}>
                 {CHIP_RES.map(([k, icon]) => (
-                  <span key={k} style={{ color: `var(--res-${k})` }} aria-label={`${RES_NAMES[k]} ${p.res[k]}`}>
+                  <span key={k} style={{ color: `var(--res-${k})` }}>
                     <Icon name={icon} size={13} /> <Num value={p.res[k]} />
+                    {inc[k] !== 0 && <span className={`${styles.inc} ${inc[k] < 0 ? styles.neg : ''}`}>{signed(inc[k])}</span>}
                   </span>
                 ))}
               </span>

@@ -100,3 +100,14 @@
   font-size: 12px;
   line-height: 0;
 }
+
+/* 생산 단계 증감: 보유량 옆에 작게 */
+.inc {
+  margin-left: 1px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-dim);
+}
+.neg {
+  color: var(--danger);
+}
