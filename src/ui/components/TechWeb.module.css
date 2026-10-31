@@ -21,6 +21,13 @@
 .dirLabel {
   fill: var(--text-dim);
   font-size: 16px;
+  font-weight: 700;
+}
+/* 줄기 노드 안 고리 번호(viewBox 384 기준 — 402px 화면에서 약 12px) */
+.ringNo {
+  font-size: 13px;
+  font-weight: 800;
+  pointer-events: none;
 }
 .ripple {
   fill: none;
