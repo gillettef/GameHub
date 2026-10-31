@@ -4,7 +4,7 @@
 
 | 환경 | 위치 | 포트 | 실행 |
 |---|---|---|---|
-| 로컬 | 각자 PC | Vite 5190, 서버 8094 | `/dev`, `/dev-stop` |
+| 로컬 | 각자 PC | Vite 25358, 서버 23641 | `/dev`, `/dev-stop` |
 | 운영 | AWS EC2 공용 서버(t4g.nano, 서울) | 8094 | `main` 병합 시 `deploy-aws.yml` 자동 배포 (준비 전) |
 
 > 현재 상태(2026-10-30): 첫 구현 완료, 로컬 개발 중. CI(`ci.yml`)가 dev·main 푸시마다 타입체크·테스트·빌드를 돌린다. `deploy-aws.yml`·`scripts/aws/` 는 준비만 됐고, 저장소 시크릿(EC2_HOST·EC2_USER·EC2_SSH_KEY)과 보안 그룹 8094 개방(사용자 확인 후) 전에는 배포하지 않는다.

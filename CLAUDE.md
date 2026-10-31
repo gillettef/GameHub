@@ -24,7 +24,7 @@
    - 이 저장소의 GitHub 계정은 **`gillettef`만** 쓴다. 로컬 git 설정 `credential.https://github.com.username=gillettef` 로 고정돼 있으니 지우거나 다른 계정으로 바꾸지 않는다.
 4. **DB를 쓰지 않는다.** DB·Redis·ORM 도입 금지. 방 상태는 서버 메모리, 개인 데이터는 `localStorage`.
 5. 개발 서버를 포그라운드로 띄우지 않는다. `/dev` 로 시작하고 `/dev-stop` 으로 끈다.
-6. **포트**: Neoterra 는 dev Vite **5190**, 서버 **8094**(dev·운영 공통). 다른 프로젝트 포트(3001·3002 Eleven, 3101·3201 Rootbound, 5173, 5180, 8000·8001, 8080 MagicAcademy, 8090 SmilePark, 8091 DoubleAgent, 8092 Tesseract, 8093 Beltbreaker)를 점유한 프로세스는 절대 종료하지 않는다.
+6. **포트**: Neoterra 로컬 개발은 Vite **25358**, 서버 **23641**(다른 서비스와 겹치지 않게 고른 무작위 고정값). 운영 서버는 **8094**(systemd 가 `PORT` 지정). 다른 프로젝트 포트(3001·3002 Eleven, 3101·3201 Rootbound, 5173, 5180, 8000·8001, 8080 MagicAcademy, 8090 SmilePark, 8091 DoubleAgent, 8092 Tesseract, 8093 Beltbreaker)를 점유한 프로세스는 절대 종료하지 않는다.
 7. **규칙 변경 순서**: `notes/Rules.md` → `src/core/data` + `src/core/engine` + 테스트 → UI. 수치를 바꿀 때는 먼저 `/simulate` 로 전후를 재고, 결정 이유를 Rules.md "밸런스 기록" 절에 남긴다.
 8. 새 라이브러리 도입 전에는 사용자에게 먼저 확인한다.
 
@@ -40,7 +40,7 @@
 | 영역 | 선택 | 비고 |
 |---|---|---|
 | 언어 | TypeScript (strict) | 엔진·서버·클라이언트 공용 |
-| 프론트엔드 | React 18 + Vite | 포트 5190, `/ws` 는 Vite proxy로 8094 |
+| 프론트엔드 | React 18 + Vite | 개발 포트 25358, `/ws` 는 Vite proxy로 23641 |
 | 상태 | Zustand | UI 상태만. 게임 상태의 권위는 엔진(로컬) 또는 서버(온라인) |
 | 스타일 | CSS Modules + `tokens.css` CSS 변수 | 컴포넌트 CSS 에 HEX 직접 기입 금지 |
 | 테크 웹 렌더 | SVG | 노드·연결선, viewBox 로 화면 폭에 맞춤, 핀치 줌 대신 확대 모달 |
@@ -74,8 +74,8 @@ Neoterra/
 
 ```
 npm install
-npm run dev        # Vite 5190 (--host)
-npm run server     # 온라인 서버 tsx watch 8094
+npm run dev        # Vite 25358 (--host)
+npm run server     # 온라인 서버 tsx watch 23641(개발)
 npm run build      # tsc --noEmit + vite build + 서버 번들
 npm test           # vitest run
 npm run typecheck
@@ -123,7 +123,7 @@ npx tsx scripts/simulate.ts --games 500 --players 3 --seed 1
 | 에이전트 | `balance-analyst` | AI 대 AI 시뮬레이션으로 노선·자리별 승률, 테크 웹 경로 다양성 분석 |
 | 에이전트 | `mobile-ui-reviewer` | 모바일 레이아웃·터치·테크 웹 가독성·탭 성능 검토 (읽기 전용) |
 | 에이전트 | `online-sync-reviewer` | WebSocket 프로토콜·비공개 정보 가림·재접속·서버 권위 검토 (읽기 전용) |
-| 스킬 | `/dev`, `/dev-stop` | Vite 5190 + 서버 8094 백그라운드 실행 / 종료 |
+| 스킬 | `/dev`, `/dev-stop` | Vite 25358 + 서버 23641 백그라운드 실행 / 종료 |
 | 스킬 | `/commit-push` | 한국어 커밋 후 push |
 | 스킬 | `/simulate` | 시드 고정 대량 시뮬레이션과 밸런스 리포트 |
 | 스킬 | `/mobile-check` | 타입체크·테스트·빌드 + 모바일 체크리스트 |

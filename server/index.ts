@@ -1,11 +1,11 @@
-// Neoterra 서버: 정적 dist + /ws(온라인 대전) + /health. 포트 8094
+// Neoterra 서버: 정적 dist + /ws(온라인 대전) + /health. 운영 포트 8094(systemd 가 PORT 지정), 로컬 개발 23641
 import { createServer } from 'node:http';
 import { readFile, stat } from 'node:fs/promises';
 import { extname, join, normalize, resolve, sep } from 'node:path';
 import { WebSocketServer, type WebSocket } from 'ws';
 import { onConnection, roomCount, sweep } from './hub';
 
-const PORT = Number(process.env.PORT ?? 8094);
+const PORT = Number(process.env.PORT ?? (process.env.NODE_ENV === 'production' ? 8094 : 23641));
 const DIST = resolve(process.cwd(), 'dist');
 const TYPES: Record<string, string> = {
   '.html': 'text/html; charset=utf-8',

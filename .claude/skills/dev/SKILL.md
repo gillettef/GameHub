@@ -1,15 +1,15 @@
 ---
 name: dev
-description: Neoterra 로컬 개발 서버를 띄운다 — Vite(5190, --host)와 온라인 대전 서버(8094)를 백그라운드로 실행하고 PC·휴대폰 접속 주소를 알려 준다. "서버 켜 줘/로컬에서 띄워 줘/dev" 요청 시 사용. 종료는 /dev-stop.
+description: Neoterra 로컬 개발 서버를 띄운다 — Vite(25358, --host)와 온라인 대전 서버(23641)를 백그라운드로 실행하고 PC·휴대폰 접속 주소를 알려 준다. "서버 켜 줘/로컬에서 띄워 줘/dev" 요청 시 사용. 종료는 /dev-stop.
 ---
 
 # /dev — 로컬 개발 서버 실행
 
-AI 대전은 Vite 만으로 되지만, 온라인 대전까지 확인할 수 있게 **둘 다** 띄운다(Vite 가 `/ws` 를 8094 로 프록시).
+AI 대전은 Vite 만으로 되지만, 온라인 대전까지 확인할 수 있게 **둘 다** 띄운다(Vite 가 `/ws` 를 23641 로 프록시).
 
 ## 1. 이미 떠 있는지 확인
 ```powershell
-Get-NetTCPConnection -LocalPort 5190,8094 -State Listen -ErrorAction SilentlyContinue | Select-Object LocalPort, OwningProcess
+Get-NetTCPConnection -LocalPort 25358,23641 -State Listen -ErrorAction SilentlyContinue | Select-Object LocalPort, OwningProcess
 ```
 - 둘 다 떠 있으면 새로 띄우지 말고 3번 주소만 알려 준다.
 - 하나만 떠 있거나 다른 프로그램이 잡고 있으면 `/dev-stop` 절차로 정리한 뒤 진행한다.
@@ -21,12 +21,12 @@ Get-NetTCPConnection -LocalPort 5190,8094 -State Listen -ErrorAction SilentlyCon
 npm run server
 npm run dev -- --host
 ```
-- 포트는 `vite.config.ts` 에서 5190 고정(`strictPort`), 서버는 `PORT` 기본 8094. 다른 프로젝트 포트(CLAUDE.md 필수 규칙 6)는 건드리지 않는다.
+- 포트는 `vite.config.ts` 에서 25358 고정(`strictPort`), 서버는 `PORT` 가 없으면 개발 기본 23641(운영은 systemd 가 `PORT=8094`). 다른 프로젝트 포트(CLAUDE.md 필수 규칙 6)는 건드리지 않는다.
 - `node_modules` 가 없으면 먼저 `npm install`.
 - 몇 초 뒤 1번 명령으로 두 포트가 Listen 인지 확인한다. 안 떴으면 백그라운드 출력의 오류를 보고한다.
 
 ## 3. 접속 주소 안내
-- PC: `http://localhost:5190`
+- PC: `http://localhost:25358`
 - 휴대폰(같은 Wi-Fi): Vite 출력의 `Network:` 주소. 안 보이면
   ```powershell
   Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.PrefixOrigin -eq 'Dhcp' } | Select-Object IPAddress, InterfaceAlias

@@ -14,8 +14,8 @@ v0.3 규칙 초안 + 첫 구현(규칙 엔진·AI·시뮬레이터, 모바일 �
 
 ```
 npm install
-npm run dev        # Vite http://localhost:5190
-npm run server     # 온라인 대전 서버 8094
+npm run dev        # Vite http://localhost:25358
+npm run server     # 온라인 대전 서버 23641(개발, 운영은 8094)
 npm test
 npm run build
 ```
