@@ -10,7 +10,7 @@
   to   { opacity: 1; transform: none; }
 }
 .anim-card-in {
-  animation: nt-card-in var(--dur, 320ms) cubic-bezier(0.2, 0.8, 0.2, 1) var(--delay, 0ms) both;
+  animation: nt-card-in var(--dur, 320ms) cubic-bezier(0.2, 0.8, 0.2, 1) var(--delay, 0ms) backwards;
 }
 
 /* 퀘스트 공개 뒤집기: 부모에 perspective, 요소는 앞면. 뒷면에서 앞면으로 돌아옴 */
@@ -96,6 +96,281 @@
   animation: nt-glow-halo var(--dur, 700ms) ease-out both;
 }
 
+/* ───────────── 테이블 반응 모션 ───────────── */
+
+/* 바탕 막(시트·오버레이 뒤) 서서히 나타남 */
+@keyframes nt-fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.anim-fade {
+  animation: nt-fade var(--dur, 200ms) ease-out var(--delay, 0ms) both;
+}
+
+/* 시트: 화면 아래에서 미끄러져 올라옴 */
+@keyframes nt-sheet-up {
+  from { transform: translateY(100%); }
+  to   { transform: none; }
+}
+.anim-sheet-up {
+  animation: nt-sheet-up var(--dur, 320ms) cubic-bezier(0.2, 0.9, 0.25, 1) both;
+}
+
+/* 토스트: 아래에서 떠올랐다가 끝에서 흐려짐(전체 2.2s). 가운데 정렬 transform 은 바깥 래퍼가 맡는다 */
+@keyframes nt-toast {
+  0%   { opacity: 0; transform: translateY(16px) scale(0.96); }
+  10%  { opacity: 1; transform: none; }
+  85%  { opacity: 1; transform: none; }
+  100% { opacity: 0; transform: translateY(6px); }
+}
+.anim-toast {
+  animation: nt-toast var(--dur, 2200ms) cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+/* 숫자 변화: 값이 바뀐 순간 톡 튀어 오름 */
+@keyframes nt-tick {
+  0%   { transform: scale(1); }
+  30%  { transform: scale(1.35); }
+  100% { transform: scale(1); }
+}
+.anim-tick {
+  display: inline-block;
+  animation: nt-tick var(--dur, 420ms) cubic-bezier(0.3, 1.6, 0.4, 1) both;
+}
+
+/* 증감 표시(+2 / −1): 숫자 위로 떠오르며 사라짐. 부모는 position: relative */
+@keyframes nt-float-up {
+  0%   { opacity: 0; transform: translate(-50%, 4px) scale(0.8); }
+  20%  { opacity: 1; transform: translate(-50%, -6px) scale(1.05); }
+  100% { opacity: 0; transform: translate(-50%, -22px) scale(1); }
+}
+.anim-delta {
+  position: absolute;
+  left: 50%;
+  bottom: 60%;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+  pointer-events: none;
+  text-shadow: 0 1px 3px var(--bg);
+  animation: nt-float-up var(--dur, 1100ms) ease-out both;
+  z-index: 2;
+}
+.anim-delta.up   { color: var(--ok); }
+.anim-delta.down { color: var(--danger); }
+
+/* 차례 표시 숨쉬기: ::after 광채의 투명도만 변함 */
+@keyframes nt-breathe {
+  0%, 100% { opacity: 0.25; }
+  50%      { opacity: 1; }
+}
+.anim-turn {
+  position: relative;
+}
+.anim-turn::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  /* 안쪽 광채 — overflow: hidden 인 칩에서도 잘리지 않는다 */
+  box-shadow: inset 0 0 0 2px var(--accent), inset 0 0 14px var(--accent);
+  pointer-events: none;
+  animation: nt-breathe var(--dur, 1.8s) ease-in-out infinite;
+}
+
+/* 빛 훑기: 주요 버튼 위를 빛줄기가 지나감 */
+@keyframes nt-sweep {
+  0%        { transform: translateX(-120%) skewX(-20deg); }
+  60%, 100% { transform: translateX(300%) skewX(-20deg); }
+}
+.anim-shine {
+  position: relative;
+  overflow: hidden;
+}
+.anim-shine::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 40%;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--text) 55%, transparent), transparent);
+  pointer-events: none;
+  animation: nt-sweep var(--dur, 2.6s) ease-in-out var(--delay, 0.4s) infinite;
+}
+
+/* 내 차례 알림 띠: 위에서 내려와 머물다 올라감(전체 1.8s). 가운데 정렬은 translate 속성으로 따로 */
+@keyframes nt-cue {
+  0%   { opacity: 0; transform: translateY(-24px) scale(0.9); }
+  14%  { opacity: 1; transform: scale(1.04); }
+  22%  { transform: none; }
+  80%  { opacity: 1; transform: none; }
+  100% { opacity: 0; transform: translateY(-16px); }
+}
+.anim-cue {
+  animation: nt-cue var(--dur, 1800ms) cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  pointer-events: none;
+}
+
+/* 파문: 원이 퍼지며 사라짐(연구 완료 노드). SVG 는 transform-box 로 제자리 확대 */
+@keyframes nt-ripple {
+  0%   { transform: scale(0.6); opacity: 0.95; }
+  100% { transform: scale(2.6); opacity: 0; }
+}
+.anim-ripple {
+  animation: nt-ripple var(--dur, 900ms) cubic-bezier(0.1, 0.6, 0.3, 1) var(--delay, 0ms) both;
+  transform-box: fill-box;
+  transform-origin: center;
+  pointer-events: none;
+}
+
+/* 꽃핌: 새로 채워진 노드가 커졌다 제자리로 */
+@keyframes nt-bloom {
+  0%   { transform: scale(0.3); }
+  55%  { transform: scale(1.35); }
+  100% { transform: scale(1); }
+}
+.anim-bloom {
+  animation: nt-bloom var(--dur, 560ms) cubic-bezier(0.3, 1.5, 0.4, 1) both;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+/* 선 그리기: 새로 이어진 연결선이 뻗어 나감. pathLength="1" 인 선에 쓴다 */
+@keyframes nt-draw {
+  from { stroke-dashoffset: 1; }
+  to   { stroke-dashoffset: 0; }
+}
+.anim-draw {
+  stroke-dasharray: 1;
+  animation: nt-draw var(--dur, 600ms) ease-out both;
+}
+
+/* 톡 나타남: 정착민 말·카드가 새로 놓일 때 */
+@keyframes nt-pop {
+  0%   { transform: scale(0); opacity: 0; }
+  60%  { transform: scale(1.3); opacity: 1; }
+  100% { transform: scale(1); }
+}
+.anim-pop {
+  animation: nt-pop var(--dur, 360ms) cubic-bezier(0.3, 1.5, 0.4, 1) var(--delay, 0ms) backwards;
+}
+
+/* 위협 경보: 붉은 광채가 맥박처럼 */
+@keyframes nt-alarm {
+  0%, 100% { opacity: 0; }
+  50%      { opacity: 0.9; }
+}
+.anim-alarm {
+  position: relative;
+}
+.anim-alarm::after {
+  content: "";
+  position: absolute;
+  inset: -3px;
+  border-radius: 10px;
+  box-shadow: 0 0 0 2px var(--danger), 0 0 16px 3px var(--danger);
+  pointer-events: none;
+  animation: nt-alarm var(--dur, 1.4s) ease-in-out infinite;
+}
+
+/* 피격 붉은 번쩍임(보드 위에 덮는 막) */
+@keyframes nt-flash {
+  0%   { opacity: 0; }
+  15%  { opacity: 0.6; }
+  100% { opacity: 0; }
+}
+.anim-flash {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(circle at 50% 20%, color-mix(in srgb, var(--danger) 60%, transparent), transparent 70%);
+  pointer-events: none;
+  animation: nt-flash var(--dur, 800ms) ease-out both;
+  z-index: 3;
+}
+
+/* 아래에서 차례로 떠오름(결과판 줄·홈 상자). --delay 로 순차 */
+@keyframes nt-rise {
+  from { opacity: 0; transform: translateY(18px); }
+  to   { opacity: 1; transform: none; }
+}
+.anim-rise {
+  animation: nt-rise var(--dur, 460ms) cubic-bezier(0.2, 0.8, 0.2, 1) var(--delay, 0ms) backwards;
+}
+
+/* 옆에서 미끄러져 들어옴(최근 기록 새 줄) */
+@keyframes nt-slide-in {
+  from { opacity: 0; transform: translateX(-12px); }
+  to   { opacity: 1; transform: none; }
+}
+.anim-slide-in {
+  animation: nt-slide-in var(--dur, 320ms) ease-out var(--delay, 0ms) both;
+}
+
+/* 등장 효과(card-in·pop·rise)는 fill backwards — 끝나면 원래 모양이라 버튼 누름 반응을 막지 않는다 */
+
+/* 둥실: 로고 등이 천천히 떠오르내림 */
+@keyframes nt-float {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-6px); }
+}
+.anim-float {
+  animation: nt-float var(--dur, 5s) ease-in-out infinite;
+}
+
+/* 축포 조각: --x --y --r 로 흩어질 방향·회전을 정함 */
+@keyframes nt-confetti {
+  0%   { opacity: 1; transform: translate(0, 0) rotate(0deg); }
+  100% { opacity: 0; transform: translate(var(--x, 0px), var(--y, 260px)) rotate(var(--r, 360deg)); }
+}
+.anim-confetti {
+  position: absolute;
+  top: 0;
+  width: 7px;
+  height: 11px;
+  border-radius: 2px;
+  pointer-events: none;
+  animation: nt-confetti var(--dur, 1800ms) cubic-bezier(0.15, 0.6, 0.4, 1) var(--delay, 0ms) both;
+}
+
+/* 시대 전환 빛살: 배너 뒤에서 돌며 펼쳐졌다 사라짐 */
+@keyframes nt-rays {
+  from { transform: rotate(0deg) scale(0.6); opacity: 0; }
+  20%  { opacity: 0.85; }
+  to   { transform: rotate(40deg) scale(1.1); opacity: 0; }
+}
+.anim-rays {
+  animation: nt-rays var(--dur, 2400ms) ease-out both;
+}
+/* 시대 이름: 글자 간격이 좁혀지며 등장 */
+@keyframes nt-track-in {
+  from { letter-spacing: 0.6em; opacity: 0; filter: blur(4px); }
+  to   { letter-spacing: 0.04em; opacity: 1; filter: none; }
+}
+.anim-track-in {
+  animation: nt-track-in var(--dur, 800ms) cubic-bezier(0.2, 0.8, 0.2, 1) var(--delay, 200ms) both;
+}
+
+/* 하늘: 별 반짝임(.sky::before)과 성운의 느린 흐름(.sky::after) — global.css 에서 쓴다 */
+@keyframes nt-twinkle {
+  0%, 100% { opacity: 0.3; }
+  50%      { opacity: 1; }
+}
+@keyframes nt-drift {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  50%      { transform: translate3d(-4%, 2%, 0) scale(1.06); }
+}
+
+/* 누름 반응: 버튼이 눌릴 때 살짝 들어감 */
+button {
+  transition: transform 120ms ease-out, background-color 180ms ease-out, border-color 180ms ease-out, color 180ms ease-out, box-shadow 180ms ease-out, opacity 180ms ease-out;
+}
+button:not(:disabled):active {
+  transform: scale(0.97);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .anim-card-in,
   .anim-flip,
@@ -104,9 +379,46 @@
   .anim-hit,
   .anim-era,
   .anim-glow,
-  .anim-glow::after {
+  .anim-glow::after,
+  .anim-fade,
+  .anim-sheet-up,
+  .anim-toast,
+  .anim-tick,
+  .anim-delta,
+  .anim-turn::after,
+  .anim-shine::before,
+  .anim-cue,
+  .anim-ripple,
+  .anim-bloom,
+  .anim-draw,
+  .anim-pop,
+  .anim-alarm::after,
+  .anim-flash,
+  .anim-rise,
+  .anim-slide-in,
+  .anim-float,
+  .anim-confetti,
+  .anim-rays,
+  .anim-track-in,
+  .sky::before,
+  .sky::after {
     animation: none !important;
   }
   /* 시대 전환 오버레이는 움직임 없이 보이기만 한다(닫기는 코드가 처리) */
   .anim-era { opacity: 1; }
+  /* 한 번 번쩍이고 사라지는 장식은 아예 숨긴다 */
+  .anim-delta,
+  .anim-ripple,
+  .anim-flash,
+  .anim-confetti,
+  .anim-rays,
+  .anim-shine::before {
+    display: none;
+  }
+  .anim-turn::after { opacity: 1; }
+  button,
+  button:not(:disabled):active {
+    transition: none;
+    transform: none;
+  }
 }

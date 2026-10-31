@@ -1,5 +1,6 @@
 // 기록 서랍, 결과판, 시대 전환 배너
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { Confetti } from '../motion';
 import { ranking } from '../../core/engine/scoring';
 import { useGame } from '../useGame';
 import { Sheet } from './Sheet';
@@ -30,6 +31,9 @@ export function ScoreBoard({ onClose, onHome }: { onClose: () => void; onHome: (
   const rows = ranking(game);
   return (
     <Sheet title="최종 점수" onClose={onClose} actions={[{ label: '처음 화면으로', onClick: onHome }]}>
+      <div className={styles.party}>
+        <Confetti />
+      </div>
       <table className={styles.score}>
         <thead>
           <tr>
@@ -43,8 +47,8 @@ export function ScoreBoard({ onClose, onHome }: { onClose: () => void; onHome: (
         </thead>
         <tbody>
           {rows.map((r, i) => (
-            <tr key={r.player} className={i === 0 ? styles.win : ''}>
-              <td>{i + 1}</td>
+            <tr key={r.player} className={`${i === 0 ? styles.win : ''} anim-rise`} style={{ '--delay': `${150 + (rows.length - 1 - i) * 160}ms` } as CSSProperties}>
+              <td>{i === 0 ? <span className={`${styles.crown} anim-float`}>★</span> : i + 1}</td>
               <td>{game.players[r.player].name}</td>
               <td>{r.culture}</td>
               <td>{r.fruition}</td>
@@ -77,8 +81,11 @@ export function EraOverlay() {
   if (show === null) return null;
   return (
     <div className={`${styles.era} anim-era`} onAnimationEnd={() => setShow(null)}>
-      <img src={banners[`../assets/emblems/era${show}.svg`]} alt="" />
-      <strong style={{ color: `var(--ring${Math.min(show, 3)})` }}>{show <= 3 ? `${show}시대` : '종료 시대'}</strong>
+      <span className={`${styles.rays} anim-rays`} style={{ color: `var(--ring${Math.min(show, 3)})` }} aria-hidden />
+      <img src={banners[`../assets/emblems/era${show}.svg`]} alt="" className="anim-float" style={{ '--dur': '2.4s' } as CSSProperties} />
+      <strong className="anim-track-in" style={{ color: `var(--ring${Math.min(show, 3)})` }}>
+        {show <= 3 ? `${show}시대` : '종료 시대'}
+      </strong>
     </div>
   );
 }

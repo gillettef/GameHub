@@ -1,6 +1,6 @@
 // 게임 테이블: BGA 의 TTA 테이블처럼 상하 스크롤 한 화면 —
 // 상단 고정 상태 줄(행동 버튼) → 플레이어 상태창 → 퀘스트 트랙 → 카드 줄 → 플레이어별 보드(나 먼저) → 공용 영역
-import { useState, type CSSProperties } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { useApp } from '../../store/app';
 import { quitLocal } from '../../store/localGame';
 import { leaveOnline } from '../../online/client';
@@ -41,6 +41,7 @@ function TableInner() {
         <CardRow />
         {order.map((p) => (
           <div key={p.id} id={`board-${p.id}`} className={styles.board} style={{ '--seat': `var(--seat-${p.id})` } as CSSProperties}>
+            <HitFlash harmed={p.harmedRound} round={game.round} />
             <h2 className={styles.banner}>
               {p.name}
               {p.id === me ? <span className={styles.tag}>내 보드</span> : <span className={styles.tag}>{p.id + 1}번 자리</span>}
@@ -81,11 +82,29 @@ function RecentLog() {
   return (
     <ul className={styles.recent} aria-label="최근 기록">
       {last.map((e, i) => (
-        <li key={game.log.length - i}>
+        <li key={game.log.length - i} className="anim-slide-in" style={{ '--delay': `${(last.length - 1 - i) * 60}ms` } as CSSProperties}>
           {e.player !== null && <strong>{game.players[e.player].name} </strong>}
           {e.text}
         </li>
       ))}
     </ul>
   );
+}
+
+/** 이 보드가 습격·분쟁·위협으로 피해를 입은 순간 붉게 번쩍인다(harmedRound 가 이번 라운드로 바뀔 때) */
+function HitFlash({ harmed, round }: { harmed: number; round: number }) {
+  const last = useRef(harmed);
+  const [n, setN] = useState(0);
+  useEffect(() => {
+    if (harmed !== last.current) {
+      last.current = harmed;
+      if (harmed === round) setN((x) => x + 1);
+    }
+  }, [harmed, round]);
+  useEffect(() => {
+    if (!n) return;
+    const t = setTimeout(() => setN(0), 900);
+    return () => clearTimeout(t);
+  }, [n]);
+  return n ? <div key={n} className="anim-flash" aria-hidden /> : null;
 }

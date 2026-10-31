@@ -1,5 +1,5 @@
 // 테크 웹 SVG: 중심에서 6방향·3고리. 고리별 색, 곁가지는 노선색, 연구 가능 노드는 맥동
-import { useState } from 'react';
+import { useState, type CSSProperties } from 'react';
 import type { PlayerState } from '../../core/types';
 import { DIRECTION_NAMES, DIRECTION_UNLOCKS, BUILDING_NAMES, UNIT_NAMES, DOCTRINE_NAMES, LEVEL_NAMES } from '../../core/data/constants';
 import { CORE_ID } from '../../core/data/techWeb';
@@ -7,6 +7,7 @@ import { playerMods } from '../../core/engine/derive';
 import { researchBlock, researchCost, webGraph } from '../../core/engine/research';
 import { useGame } from '../useGame';
 import { Icon } from './Icon';
+import { useFresh } from '../motion';
 import { Section } from './Section';
 import { Sheet } from './Sheet';
 import { instantText, modsText } from '../describe';
@@ -22,8 +23,10 @@ function polar(r: number, deg: number): [number, number] {
 }
 
 export function TechWeb({ player }: { player: PlayerState }) {
-  const { game, me, check, act } = useGame();
+  const { game, me, myTurn, check, act } = useGame();
   const [open, setOpen] = useState<string | null>(null);
+  // 막 연구한 노드·막 이어진 선은 꽃피고 뻗어 나간다
+  const fresh = useFresh(1000);
   const { nodes, adj } = webGraph(game.layout);
   const p = player;
   const mine = p.id === me;
@@ -75,16 +78,19 @@ export function TechWeb({ player }: { player: PlayerState }) {
         {[1, 2, 3].map((r) => (
           <circle key={r} r={RADIUS[r]} className={styles.ring} style={{ stroke: `var(--ring${r})` }} />
         ))}
-        {edges.map(([a, b]) => (
-          <line
-            key={`${a}-${b}`}
-            x1={pos[a][0]}
-            y1={pos[a][1]}
-            x2={pos[b][0]}
-            y2={pos[b][1]}
-            className={`${styles.edge} ${has(a) && has(b) ? styles.edgeOn : ''}`}
-          />
-        ))}
+        {edges.map(([a, b]) => {
+          const on = has(a) && has(b);
+          // fresh 는 연구한 노드에만 묻는다(안 그러면 연구 전에 '본 것'으로 기록됨)
+          const draw = on && fresh(`e:${a}-${b}`);
+          // 선은 먼저 연구한 쪽에서 새 노드 쪽으로 그린다
+          const [from, to] = draw && fresh(`n:${a}`) ? [b, a] : [a, b];
+          return (
+            <g key={`${a}-${b}`}>
+              <line x1={pos[a][0]} y1={pos[a][1]} x2={pos[b][0]} y2={pos[b][1]} className={`${styles.edge} ${on && !draw ? styles.edgeOn : ''}`} />
+              {draw && <line x1={pos[from][0]} y1={pos[from][1]} x2={pos[to][0]} y2={pos[to][1]} pathLength={1} className={`${styles.edge} ${styles.edgeOn} anim-draw`} />}
+            </g>
+          );
+        })}
         {game.layout.dirOrder.map((dir, i) => {
           const [x, y] = polar(180, i * 60);
           return (
@@ -96,6 +102,7 @@ export function TechWeb({ player }: { player: PlayerState }) {
         {Object.values(nodes).map((n) => {
           const [x, y] = pos[n.id];
           const done = has(n.id);
+          const bloom = done && fresh(`n:${n.id}`);
           const can = mine && !done && !researchBlock(game, p, n.id);
           const r = n.kind === 'core' ? 14 : n.kind === 'trunk' ? 12 : 7;
           const color = n.kind === 'twig' ? `var(--${n.twig!.doctrine})` : n.kind === 'core' ? 'var(--accent)' : `var(--ring${n.ring})`;
@@ -112,7 +119,14 @@ export function TechWeb({ player }: { player: PlayerState }) {
             >
               <circle r={n.kind === 'twig' ? 15 : 20} className={styles.hit} />
               {can && <circle r={r + 5} className={styles.canRing} />}
-              <g className={can ? 'anim-pulse' : undefined}>
+              {bloom && (
+                <>
+                  <circle r={r} className={`${styles.ripple} anim-ripple`} style={{ stroke: color }} />
+                  <circle r={r} className={`${styles.ripple} anim-ripple`} style={{ stroke: color, '--delay': '180ms' } as CSSProperties} />
+                </>
+              )}
+              {/* 맥동은 내 차례에만 — SVG 는 합성 레이어가 아니라 계속 돌리면 무겁다 */}
+              <g className={can && myTurn ? 'anim-pulse' : bloom ? 'anim-bloom' : undefined}>
                 <circle r={r} style={{ stroke: color, fill: done ? color : 'var(--bg)' }} className={`${styles.dot} ${can ? styles.can : ''} ${!done && !can ? styles.off : ''}`} />
               </g>
             </g>

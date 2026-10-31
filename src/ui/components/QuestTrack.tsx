@@ -82,7 +82,8 @@ export function QuestTrack() {
           <div key={slot} className={styles.slot}>
             <span className={styles.slotLabel}>{slot === 0 ? '칸 1 · 임박' : '칸 2 · 다음'}</span>
             {id ? (
-              <div key={id} className="anim-flip">
+              // 칸 1에 위협이 오면 붉게 경보한다
+              <div key={id} className={`anim-flip ${slot === 0 && QUEST_DEFS[id].kind === 'threat' ? 'anim-alarm' : ''}`}>
                 <QuestFace q={QUEST_DEFS[id]} width={sizes.card} onClick={() => setOpen({ id, slot })} />
               </div>
             ) : (

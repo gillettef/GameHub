@@ -80,6 +80,24 @@
 | `.anim-hit` | 습격·위협 피격 시 식민지 패널 흔들림 | 420ms |
 | `.anim-era` | 시대 전환 오버레이(나타남 → 머묾 → 사라짐). `animationend` 에서 제거 | 2.4s |
 | `.anim-glow` | 카드 획득·노선 단계 도달 반짝임(`::after` 광채, `--accent`) | 700ms |
+| `.anim-fade` / `.anim-sheet-up` | 시트 바탕 막 / 시트 올라옴 | 200 / 320ms |
+| `.anim-toast` | 토스트 떠오름 → 머묾 → 흐려짐 | 2.2s |
+| `.anim-tick` / `.anim-delta.up·down` | 숫자 변화 튐 / `+n`·`−n` 떠오름. `src/ui/motion.tsx` 의 `<Num>` 이 붙인다 | 420 / 1100ms |
+| `.anim-turn` | 차례인 플레이어 칩 안쪽 광채 숨쉬기 | 1.8s 무한 |
+| `.anim-shine` | 주요 버튼 빛 훑기(행동을 다 쓴 차례 종료·결과 보기·이어 하기) | 2.6s 무한 |
+| `.anim-cue` | "내 차례입니다" 알림 띠 | 1.8s |
+| `.anim-ripple` / `.anim-bloom` / `.anim-draw` | 연구 완료 노드 파문 / 꽃핌 / 새 연결선 그리기(`pathLength="1"`) | 900 / 560 / 600ms |
+| `.anim-pop` | 새로 들어온 카드·정착민 말 톡 나타남 | 360ms |
+| `.anim-alarm` | 칸 1 위협 퀘스트 붉은 경보 | 1.4s 무한 |
+| `.anim-flash` | 피해 입은 보드 붉은 번쩍임 | 800ms |
+| `.anim-rise` / `.anim-slide-in` | 결과판 줄·홈 요소 차례로 떠오름 / 최근 기록 새 줄 | 460 / 320ms |
+| `.anim-float` | 로고·시대 배너·우승 별 둥실 | 5s 무한 |
+| `.anim-confetti` | 결과판 축포 조각(`<Confetti>`) | 1.5~2.7s |
+| `.anim-rays` / `.anim-track-in` | 시대 전환 빛살 / 시대 이름 글자 모임 | 2.4s / 800ms |
+| `.sky::before·::after` | 배경 별 반짝임(4.5s) · 성운 흐름(48s) — `global.css` | 무한 |
+
+- 새로 나타난 것만 움직이려면 `useFresh()`(처음 그릴 때 있던 키는 제외)를 쓴다. 등장 효과(card-in·pop·rise)는 fill `backwards` 라 끝난 뒤 버튼 누름 반응(`button:active` scale)을 막지 않는다.
+- 위치를 transform 으로 잡는 버튼은 전역 누름 scale 과 겹치므로 `translate` 속성으로 잡는다.
 
 - 모두 `transform`·`opacity` 만 움직인다(`.anim-glow::after` 의 box-shadow 는 고정, opacity 만 변함).
 - 길이·지연은 `--dur`, `--delay` 변수로 덮어쓴다. 같은 클래스를 다시 재생하려면 클래스를 뗐다가 다음 프레임에 붙이거나 `key` 를 바꾼다.

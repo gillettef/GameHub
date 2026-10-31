@@ -58,6 +58,7 @@ import { CardBrief, ModsBrief } from './CardBrief';
 import type { FrameName } from './CardFace';
 import { useCardSizes } from '../useCardSizes';
 import { Icon, type IconName } from './Icon';
+import { Num, useFresh } from '../motion';
 import { Section } from './Section';
 import { Sheet, type SheetAction } from './Sheet';
 import { cardText } from './CardRow';
@@ -82,6 +83,9 @@ export function ColonyBoard({ player }: { player: PlayerState }) {
   const { game, me, check, act } = useGame();
   const sizes = useCardSizes();
   const [open, setOpen] = useState<Open | null>(null);
+  // 새로 들어온 카드는 톡 나타난다
+  const fresh = useFresh(700);
+  const pop = (key: string) => (fresh(key) ? 'anim-pop' : undefined);
   const p = player;
   const mine = p.id === me;
   const mods = playerMods(p);
@@ -292,7 +296,9 @@ export function ColonyBoard({ player }: { player: PlayerState }) {
           return (
             <div key={k} className={styles.res} style={{ color: `var(--res-${k})` }} aria-label={`${RES_NAMES[k]} ${p.res[k]}, 생산 ${net}`} data-tip={RES_NAMES[k]} data-tip-body={`보유 ${p.res[k]} · 생산 단계마다 ${net >= 0 ? '+' : ''}${net}${k === 'food' ? `(소비 ${pv.upkeep} 반영)` : ''}${k === 'culture' ? '\n문화가 곧 점수입니다.' : ''}`}>
               <Icon name={resIcons[k]} size={18} />
-              <strong>{p.res[k]}</strong>
+              <strong>
+                <Num value={p.res[k]} />
+              </strong>
               <span className={styles.net}>{net >= 0 ? `+${net}` : net}</span>
             </div>
           );
@@ -429,38 +435,38 @@ export function ColonyBoard({ player }: { player: PlayerState }) {
       <div className={styles.cards}>
         <Slot label="선구자">
           {p.pioneer ? (
-            <CardFace frame="pioneer" width={sizes.card} title={CARD_DEFS[p.pioneer].name} tip={`선구자\n${cardText(CARD_DEFS[p.pioneer])}`} art={{ id: p.pioneer, icon: 'pioneer' }} brief={<CardBrief card={CARD_DEFS[p.pioneer]} />} onClick={() => setOpen({ k: 'pioneer' })} />
+            <CardFace className={pop(`pio:${p.pioneer}`)} frame="pioneer" width={sizes.card} title={CARD_DEFS[p.pioneer].name} tip={`선구자\n${cardText(CARD_DEFS[p.pioneer])}`} art={{ id: p.pioneer, icon: 'pioneer' }} brief={<CardBrief card={CARD_DEFS[p.pioneer]} />} onClick={() => setOpen({ k: 'pioneer' })} />
           ) : (
             <Empty />
           )}
         </Slot>
         <Slot label={`유산 ${p.legacies.length}`}>
           {p.legacyWip ? (
-            <CardFace frame="legacy" width={sizes.card} title={CARD_DEFS[p.legacyWip.id].name} tip={`유산 짓는 중 ${p.legacyWip.done}단계\n${cardText(CARD_DEFS[p.legacyWip.id])}`} badge={`${p.legacyWip.done}`} art={{ id: p.legacyWip.id, icon: 'legacy' }} brief={<CardBrief card={CARD_DEFS[p.legacyWip.id]} />} onClick={() => setOpen({ k: 'legacy' })} />
+            <CardFace className={pop(`wip:${p.legacyWip.id}`)} frame="legacy" width={sizes.card} title={CARD_DEFS[p.legacyWip.id].name} tip={`유산 짓는 중 ${p.legacyWip.done}단계\n${cardText(CARD_DEFS[p.legacyWip.id])}`} badge={`${p.legacyWip.done}`} art={{ id: p.legacyWip.id, icon: 'legacy' }} brief={<CardBrief card={CARD_DEFS[p.legacyWip.id]} />} onClick={() => setOpen({ k: 'legacy' })} />
           ) : (
             <Empty />
           )}
           {p.legacies.map((id) => (
-            <CardFace key={id} frame="legacy" width={sizes.card} title={CARD_DEFS[id].name} tip={`완성한 유산\n${cardText(CARD_DEFS[id])}`} badge="✓" art={{ id, icon: 'legacy' }} onClick={() => setOpen({ k: 'legacyDone', id })} brief={<CardBrief card={CARD_DEFS[id]} />} />
+            <CardFace key={id} className={pop(`done:${id}`)} frame="legacy" width={sizes.card} title={CARD_DEFS[id].name} tip={`완성한 유산\n${cardText(CARD_DEFS[id])}`} badge="✓" art={{ id, icon: 'legacy' }} onClick={() => setOpen({ k: 'legacyDone', id })} brief={<CardBrief card={CARD_DEFS[id]} />} />
           ))}
         </Slot>
         <Slot label={`보급 ${p.hand.length}`}>
           {p.hand.length === 0 && <Empty />}
           {p.hand.map((h, i) => (
-            <CardFace key={i} frame="supply" width={sizes.card} title={CARD_DEFS[h.id].name} tip={`보급${h.fresh ? ' · 다음 차례부터 사용' : ''}\n${cardText(CARD_DEFS[h.id])}`} dim={h.fresh} art={{ id: h.id, icon: 'supply' }} brief={<CardBrief card={CARD_DEFS[h.id]} />} onClick={() => setOpen({ k: 'hand', index: i })} />
+            <CardFace key={i} className={pop(`hand:${h.id}:${p.hand.slice(0, i).filter((x) => x.id === h.id).length}`)} frame="supply" width={sizes.card} title={CARD_DEFS[h.id].name} tip={`보급${h.fresh ? ' · 다음 차례부터 사용' : ''}\n${cardText(CARD_DEFS[h.id])}`} dim={h.fresh} art={{ id: h.id, icon: 'supply' }} brief={<CardBrief card={CARD_DEFS[h.id]} />} onClick={() => setOpen({ k: 'hand', index: i })} />
           ))}
         </Slot>
         <Slot label="궤도">
           {p.orbit.length === 0 && <Empty />}
           {p.orbit.map((o, i) => (
-            <CardFace key={i} frame="satellite" width={sizes.card} title={SATELLITE_DEFS[o.id].name} tip={`위성 · 남은 ${o.timer}차례\n시야 +1${modsText(SATELLITE_DEFS[o.id].mods) ? ` · ${modsText(SATELLITE_DEFS[o.id].mods)}` : ''}`} badge={o.timer} art={{ id: o.id, icon: 'satellite' }} brief={<ModsBrief mods={SATELLITE_DEFS[o.id].mods} />} onClick={() => setOpen({ k: 'orbit', index: i })} />
+            <CardFace key={i} className={pop(`orb:${o.id}`)} frame="satellite" width={sizes.card} title={SATELLITE_DEFS[o.id].name} tip={`위성 · 남은 ${o.timer}차례\n시야 +1${modsText(SATELLITE_DEFS[o.id].mods) ? ` · ${modsText(SATELLITE_DEFS[o.id].mods)}` : ''}`} badge={o.timer} art={{ id: o.id, icon: 'satellite' }} brief={<ModsBrief mods={SATELLITE_DEFS[o.id].mods} />} onClick={() => setOpen({ k: 'orbit', index: i })} />
           ))}
         </Slot>
         {(p.patrons.length > 0 || mine) && (
           <Slot label="후원 계약">
             {p.patrons.length === 0 && <Empty />}
             {p.patrons.map((id) => (
-              <CardFace key={id} frame="patron" width={sizes.card} title={PATRON_DEFS[id].name} tip={`후원 계약 · ${PATRON_DEFS[id].points}점\n${modsText(PATRON_DEFS[id].mods)}\n요구: ${condText([PATRON_DEFS[id].demand])}`} badge={PATRON_DEFS[id].points} art={{ id, icon: 'patron' }} brief={<ModsBrief mods={PATRON_DEFS[id].mods} />} onClick={() => setOpen({ k: 'patron', id })} />
+              <CardFace key={id} className={pop(`pat:${id}`)} frame="patron" width={sizes.card} title={PATRON_DEFS[id].name} tip={`후원 계약 · ${PATRON_DEFS[id].points}점\n${modsText(PATRON_DEFS[id].mods)}\n요구: ${condText([PATRON_DEFS[id].demand])}`} badge={PATRON_DEFS[id].points} art={{ id, icon: 'patron' }} brief={<ModsBrief mods={PATRON_DEFS[id].mods} />} onClick={() => setOpen({ k: 'patron', id })} />
             ))}
           </Slot>
         )}

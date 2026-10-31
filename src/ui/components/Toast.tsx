@@ -13,7 +13,7 @@ export function Toast() {
   }, [toast]);
   if (!toast || !visible) return null;
   return (
-    <div className={styles.toast} role="status">
+    <div key={toast.id} className={`${styles.toast} anim-toast`} role="status">
       {toast.text}
     </div>
   );

@@ -1,10 +1,13 @@
-import { useState } from 'react';
+import { useState, type CSSProperties } from 'react';
 import logo from '../assets/logo.svg';
 import { storage } from '../../store/storage';
 import { resumeLocal, startLocal } from '../../store/localGame';
 import { createRoom, joinRoom } from '../../online/client';
 import { Rules } from '../components/Rules';
 import styles from './Home.module.css';
+
+// 홈 화면 요소가 위에서부터 차례로 떠오른다
+const rise = (i: number) => ({ '--delay': `${i * 90}ms` }) as CSSProperties;
 
 export function Home() {
   const [name, setName] = useState(storage.loadName());
@@ -19,21 +22,21 @@ export function Home() {
 
   return (
     <main className={styles.home}>
-      <img src={logo} alt="네오테라" className={styles.logo} />
-      <p className={styles.tag}>새 행성 개척 문명 카드게임</p>
+      <img src={logo} alt="네오테라" className={`${styles.logo} anim-float`} />
+      <p className={`${styles.tag} anim-rise`} style={rise(1)}>새 행성 개척 문명 카드게임</p>
 
-      <label className={styles.field}>
+      <label className={`${styles.field} anim-rise`} style={rise(2)}>
         <span>이름</span>
         <input value={name} maxLength={12} onChange={(e) => setName(e.target.value)} placeholder="개척자" />
       </label>
 
       {save && !save.game.gameOver && Array.isArray(save.game.rngState) && (
-        <button className={styles.primary} onClick={() => resumeLocal()}>
+        <button className={`${styles.primary} anim-shine`} onClick={() => resumeLocal()}>
           이어 하기 · {save.game.era <= 3 ? `${save.game.era}시대` : '종료 시대'} {save.game.round}라운드
         </button>
       )}
 
-      <section className={styles.box}>
+      <section className={`${styles.box} anim-rise`} style={rise(3)}>
         <h2>AI 대전</h2>
         <div className={styles.seg} role="radiogroup" aria-label="AI 수">
           {[1, 2, 3].map((n) => (
@@ -53,7 +56,7 @@ export function Home() {
         </button>
       </section>
 
-      <section className={styles.box}>
+      <section className={`${styles.box} anim-rise`} style={rise(4)}>
         <h2>온라인 대전</h2>
         <div className={styles.seg} role="radiogroup" aria-label="인원">
           {[2, 3, 4].map((n) => (
@@ -86,7 +89,7 @@ export function Home() {
         </div>
       </section>
 
-      <button className={styles.link} onClick={() => setShowRules(true)}>
+      <button className={`${styles.link} anim-rise`} style={rise(5)} onClick={() => setShowRules(true)}>
         게임 설명 보기
       </button>
       {showRules && <Rules onClose={() => setShowRules(false)} />}

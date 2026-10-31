@@ -4,6 +4,10 @@
 *::after {
   box-sizing: border-box;
 }
+html {
+  /* 장식 모션이 넘쳐도 가로 스크롤이 생기지 않게(구형 iOS 는 body 값만으로 부족) */
+  overflow-x: clip;
+}
 html,
 body,
 #root {
@@ -43,6 +47,38 @@ input {
   z-index: -1;
   background: var(--bg) url('../assets/bg-sky.svg') center top / cover no-repeat;
   pointer-events: none;
+  overflow: hidden;
+}
+/* 반짝이는 별 — 작은 점 여러 개를 배경으로 깔고 투명도만 숨쉰다 */
+.sky::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(1.5px 1.5px at 12% 18%, var(--text) 50%, transparent 51%),
+    radial-gradient(1px 1px at 27% 42%, var(--ark-2) 50%, transparent 51%),
+    radial-gradient(2px 2px at 44% 9%, var(--text) 50%, transparent 51%),
+    radial-gradient(1px 1px at 63% 31%, var(--text) 50%, transparent 51%),
+    radial-gradient(1.5px 1.5px at 81% 14%, var(--ring3) 50%, transparent 51%),
+    radial-gradient(1px 1px at 91% 47%, var(--text) 50%, transparent 51%),
+    radial-gradient(1.5px 1.5px at 7% 63%, var(--symbiont) 50%, transparent 51%),
+    radial-gradient(1px 1px at 36% 76%, var(--text) 50%, transparent 51%),
+    radial-gradient(2px 2px at 58% 58%, var(--ark-2) 50%, transparent 51%),
+    radial-gradient(1px 1px at 74% 83%, var(--text) 50%, transparent 51%),
+    radial-gradient(1.5px 1.5px at 19% 92%, var(--text) 50%, transparent 51%),
+    radial-gradient(1px 1px at 86% 69%, var(--synth-2) 50%, transparent 51%);
+  animation: nt-twinkle 4.5s ease-in-out infinite;
+}
+/* 성운 — 노선색 안개가 아주 천천히 흐른다 */
+.sky::after {
+  content: '';
+  position: absolute;
+  inset: -10%;
+  background:
+    radial-gradient(40% 30% at 20% 30%, color-mix(in srgb, var(--symbiont) 9%, transparent), transparent 70%),
+    radial-gradient(35% 28% at 80% 60%, color-mix(in srgb, var(--synth) 8%, transparent), transparent 70%),
+    radial-gradient(45% 30% at 50% 90%, color-mix(in srgb, var(--ark) 7%, transparent), transparent 70%);
+  animation: nt-drift 48s ease-in-out infinite;
 }
 .app {
   max-width: 480px;

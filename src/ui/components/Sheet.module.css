@@ -21,12 +21,6 @@
   padding-bottom: env(safe-area-inset-bottom);
   overflow-y: auto;
   overscroll-behavior: contain;
-  animation: nt-card-in 220ms ease-out both;
-}
-@media (prefers-reduced-motion: reduce) {
-  .sheet {
-    animation: none;
-  }
 }
 .head {
   position: sticky;

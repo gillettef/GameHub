@@ -38,9 +38,13 @@ export function StatusBar({ onMenu, onLog, onResults }: { onMenu: () => void; on
           ☰
         </button>
         <div className={styles.era} style={{ color: `var(--ring${Math.min(game.era, 3)})` }}>
-          <strong>{game.era <= 3 ? `${game.era}시대` : '종료 시대'}</strong>
+          <strong key={game.era} className="anim-tick">
+            {game.era <= 3 ? `${game.era}시대` : '종료 시대'}
+          </strong>
           <span>
-            {game.round}라운드
+            <span key={game.round} className="anim-tick">
+              {game.round}라운드
+            </span>
             {game.era <= 3 ? ` · 시대 진행 ${prog.have}/${prog.need}` : game.endTriggered ? ' · 마지막 라운드' : ''}
           </span>
         </div>
@@ -49,6 +53,7 @@ export function StatusBar({ onMenu, onLog, onResults }: { onMenu: () => void; on
         </button>
       </div>
       <ActionRow onResults={onResults} />
+      <TurnCue />
     </header>
   );
 }
@@ -64,7 +69,7 @@ function ActionRow({ onResults }: { onResults: () => void }) {
   if (game.gameOver) {
     return (
       <div className={styles.bar}>
-        <button className={styles.primary} onClick={onResults}>
+        <button className={`${styles.primary} anim-shine`} onClick={onResults}>
           결과 보기
         </button>
       </div>
@@ -113,7 +118,8 @@ function ActionRow({ onResults }: { onResults: () => void }) {
         ) : (
           <span className={styles.phase}>행동 단계 — 연구·카드·건설 등</span>
         )}
-        <button className={styles.primary} onClick={() => (commandLeft(game, p) > 0 ? setSheet('end') : act({ type: 'endTurn' }))}>
+        {/* 할 일을 다 했으면 차례 종료 버튼에 빛이 훑고 지나간다 */}
+        <button className={`${styles.primary} ${commandLeft(game, p) === 0 ? 'anim-shine' : ''}`} onClick={() => (commandLeft(game, p) > 0 ? setSheet('end') : act({ type: 'endTurn' }))}>
           차례 종료
         </button>
       </div>
@@ -188,6 +194,29 @@ function ActionRow({ onResults }: { onResults: () => void }) {
         </Sheet>
       )}
     </>
+  );
+}
+
+/** 내 차례(또는 내 결정)가 오면 상태 줄 아래로 알림 띠가 잠깐 내려온다 */
+function TurnCue() {
+  const { game, me, myTurn } = useGame();
+  const mine = myTurn || (game.pending.length > 0 && game.pending[0].player === me);
+  const was = useRef(mine);
+  const [n, setN] = useState(0);
+  useEffect(() => {
+    if (mine && !was.current) setN((x) => x + 1);
+    was.current = mine;
+  }, [mine]);
+  useEffect(() => {
+    if (!n) return;
+    const t = setTimeout(() => setN(0), 1900);
+    return () => clearTimeout(t);
+  }, [n]);
+  if (!n || game.gameOver) return null;
+  return (
+    <div key={n} className={`${styles.cue} anim-cue`} role="status">
+      {myTurn ? '내 차례입니다' : '결정할 일이 있습니다'}
+    </div>
   );
 }
 

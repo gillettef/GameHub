@@ -4,6 +4,7 @@ import { commandLeft, defenseLeft, defenseValue, mainDoctrine, stage } from '../
 import { DOCTRINE_NAMES, RES_NAMES } from '../../core/data/constants';
 import { useGame } from '../useGame';
 import { Icon, type IconName } from './Icon';
+import { Num } from '../motion';
 import styles from './PlayerStrip.module.css';
 
 // 칩에 보이는 자원(문화는 점수 줄에 따로)
@@ -27,7 +28,7 @@ export function PlayerStrip() {
           return (
             <button
               key={p.id}
-              className={`${styles.chip} ${p.id === me ? styles.viewing : ''} ${p.id === actor ? styles.turn : ''}`}
+              className={`${styles.chip} ${p.id === me ? styles.viewing : ''} ${p.id === actor ? `${styles.turn} anim-turn` : ''}`}
               style={{ borderLeftColor: `var(--seat-${p.id})` }}
               onClick={() => goto(p.id)}
               aria-label={`${p.name} 보드 보기`}
@@ -42,19 +43,19 @@ export function PlayerStrip() {
                 </span>
                 <span className={styles.acts} aria-label={`남은 지휘 ${commandLeft(game, p)}, 방위 ${defenseLeft(p)}`}>
                   <span>
-                    <Icon name="command" size={13} /> {commandLeft(game, p)}
+                    <Icon name="command" size={13} /> <Num value={commandLeft(game, p)} delta={false} />
                   </span>
                   <span style={{ color: 'var(--danger)' }}>
-                    <Icon name="defense" size={13} /> {defenseLeft(p)}
+                    <Icon name="defense" size={13} /> <Num value={defenseLeft(p)} delta={false} />
                   </span>
                 </span>
               </span>
               <span className={styles.stats}>
                 <span style={{ color: 'var(--res-culture)' }}>
-                  <Icon name="culture" size={13} /> {p.res.culture}
+                  <Icon name="culture" size={13} /> <Num value={p.res.culture} />
                 </span>
                 <span style={{ color: 'var(--danger)' }}>
-                  <Icon name="might" size={13} /> {defenseValue(p)}
+                  <Icon name="might" size={13} /> <Num value={defenseValue(p)} />
                 </span>
                 {lead && (
                   <span className={styles.doc} style={{ color: `var(--${lead})` }} aria-label={`${DOCTRINE_NAMES[lead]} ${p.doctrine[lead]}점`}>
@@ -67,7 +68,7 @@ export function PlayerStrip() {
               <span className={styles.res}>
                 {CHIP_RES.map(([k, icon]) => (
                   <span key={k} style={{ color: `var(--res-${k})` }} aria-label={`${RES_NAMES[k]} ${p.res[k]}`}>
-                    <Icon name={icon} size={13} /> {p.res[k]}
+                    <Icon name={icon} size={13} /> <Num value={p.res[k]} />
                   </span>
                 ))}
               </span>

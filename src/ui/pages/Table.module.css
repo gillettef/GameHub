@@ -6,6 +6,7 @@
 }
 /* 플레이어 보드 묶음 — 자리 색 띠로 사람마다 구분. 상태창에서 누르면 여기로 스크롤(상단 고정 상태 줄만큼 띄움) */
 .board {
+  position: relative;
   scroll-margin-top: calc(var(--status-h, 112px) + var(--space-2));
   /* 화면 밖 보드는 그리기를 미룬다(4인이면 보드·테크 웹이 8개) */
   content-visibility: auto;

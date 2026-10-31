@@ -22,6 +22,10 @@
   fill: var(--text-dim);
   font-size: 16px;
 }
+.ripple {
+  fill: none;
+  stroke-width: 3;
+}
 .canRing {
   fill: none;
   stroke: var(--accent);
@@ -43,6 +47,7 @@
 }
 .dot {
   stroke-width: 2.5;
+  transition: fill 400ms ease-out, opacity 300ms ease-out;
 }
 .can {
   stroke-width: 3.5;

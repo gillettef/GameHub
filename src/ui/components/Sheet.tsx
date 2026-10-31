@@ -17,8 +17,8 @@ export function Sheet({ title, children, actions = [], onClose }: { title: React
   }, [onClose]);
   const titleId = useId();
   return (
-    <div className={styles.backdrop} onClick={onClose}>
-      <section className={styles.sheet} role="dialog" aria-modal="true" aria-labelledby={titleId} onClick={(e) => e.stopPropagation()}>
+    <div className={`${styles.backdrop} anim-fade`} onClick={onClose}>
+      <section className={`${styles.sheet} anim-sheet-up`} role="dialog" aria-modal="true" aria-labelledby={titleId} onClick={(e) => e.stopPropagation()}>
         <header className={styles.head}>
           <h3 id={titleId}>{title}</h3>
           <button className={styles.close} onClick={onClose} aria-label="닫기">

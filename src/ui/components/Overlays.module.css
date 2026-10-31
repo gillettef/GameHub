@@ -48,6 +48,7 @@
   gap: var(--space-2);
   background: color-mix(in srgb, var(--bg) 70%, transparent);
   pointer-events: none;
+  overflow: hidden;
 }
 .era img {
   width: min(360px, 90vw);
@@ -57,4 +58,33 @@
   font-family: var(--font-display);
   font-size: 28px;
   margin-top: -84px;
+}
+/* 시대 전환 빛살: 고리색 원뿔 그라데이션이 배너 뒤에서 돈다 */
+.rays {
+  position: absolute;
+  width: min(620px, 150vw);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: repeating-conic-gradient(from 0deg, color-mix(in srgb, currentColor 28%, transparent) 0deg 6deg, transparent 6deg 22deg);
+  mask-image: radial-gradient(circle, #000 15%, transparent 68%);
+  -webkit-mask-image: radial-gradient(circle, #000 15%, transparent 68%);
+}
+.era img,
+.era strong {
+  position: relative;
+}
+/* 결과판 축포: 시트 위쪽에서 흩날림 */
+.party {
+  position: relative;
+  height: 0;
+}
+.party > div {
+  height: 200px;
+  top: -40px;
+}
+.crown {
+  display: inline-block;
+  color: var(--accent);
+  font-size: 16px;
+  --dur: 2.4s;
 }
