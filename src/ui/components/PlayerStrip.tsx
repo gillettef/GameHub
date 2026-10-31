@@ -1,10 +1,18 @@
-// 플레이어 상태창(BGA 의 플레이어 패널을 가로로 접은 형태). 누르면 그 사람 보드로 스크롤
+// 플레이어 상태창(BGA 의 플레이어 패널). 한 줄에 2명, 칩마다 이름·남은 행동·점수·노선·자원. 누르면 그 사람 보드로 스크롤
 import { DOCTRINES } from '../../core/types';
-import { defenseValue, mainDoctrine, stage } from '../../core/engine/derive';
-import { DOCTRINE_NAMES } from '../../core/data/constants';
+import { commandLeft, defenseLeft, defenseValue, mainDoctrine, stage } from '../../core/engine/derive';
+import { DOCTRINE_NAMES, RES_NAMES } from '../../core/data/constants';
 import { useGame } from '../useGame';
-import { Icon } from './Icon';
+import { Icon, type IconName } from './Icon';
 import styles from './PlayerStrip.module.css';
+
+// 칩에 보이는 자원(문화는 점수 줄에 따로)
+const CHIP_RES = [
+  ['food', 'food'],
+  ['prod', 'prod'],
+  ['energy', 'energy'],
+  ['sci', 'sci'],
+] as const satisfies readonly (readonly [string, IconName])[];
 
 export function PlayerStrip() {
   const { game, me } = useGame();
@@ -24,12 +32,22 @@ export function PlayerStrip() {
               onClick={() => goto(p.id)}
               aria-label={`${p.name} 보드 보기`}
               data-tip={p.name}
-              data-tip-body={`문화 ${p.res.culture} · 방어값 ${defenseValue(p)}\n${DOCTRINES.map((d) => `${DOCTRINE_NAMES[d]} ${p.doctrine[d]}`).join(' · ')}${p.id === game.startPlayer ? '\n① 시작 플레이어' : ''}\n누르면 이 사람의 보드로 이동합니다.`}
+              data-tip-body={`문화 ${p.res.culture} · 방어값 ${defenseValue(p)}\n남은 행동: 지휘 ${commandLeft(game, p)} · 방위 ${defenseLeft(p)}\n${CHIP_RES.map(([k]) => `${RES_NAMES[k]} ${p.res[k]}`).join(' · ')}\n${DOCTRINES.map((d) => `${DOCTRINE_NAMES[d]} ${p.doctrine[d]}`).join(' · ')}${p.id === game.startPlayer ? '\n① 시작 플레이어' : ''}\n누르면 이 사람의 보드로 이동합니다.`}
             >
-              <span className={styles.name}>
-                {p.id === game.startPlayer && <span className={styles.first} title="시작 플레이어">①</span>}
-                {p.name}
-                {p.id === me && <span className={styles.me}>나</span>}
+              <span className={styles.nameRow}>
+                <span className={styles.name}>
+                  {p.id === game.startPlayer && <span className={styles.first} title="시작 플레이어">①</span>}
+                  {p.name}
+                  {p.id === me && <span className={styles.me}>나</span>}
+                </span>
+                <span className={styles.acts} aria-label={`남은 지휘 ${commandLeft(game, p)}, 방위 ${defenseLeft(p)}`}>
+                  <span>
+                    <Icon name="command" size={13} /> {commandLeft(game, p)}
+                  </span>
+                  <span style={{ color: 'var(--danger)' }}>
+                    <Icon name="defense" size={13} /> {defenseLeft(p)}
+                  </span>
+                </span>
               </span>
               <span className={styles.stats}>
                 <span style={{ color: 'var(--res-culture)' }}>
@@ -45,6 +63,13 @@ export function PlayerStrip() {
                     {stage(p, lead) > 0 && <sup>{stage(p, lead)}</sup>}
                   </span>
                 )}
+              </span>
+              <span className={styles.res}>
+                {CHIP_RES.map(([k, icon]) => (
+                  <span key={k} style={{ color: `var(--res-${k})` }} aria-label={`${RES_NAMES[k]} ${p.res[k]}`}>
+                    <Icon name={icon} size={13} /> {p.res[k]}
+                  </span>
+                ))}
               </span>
             </button>
           );

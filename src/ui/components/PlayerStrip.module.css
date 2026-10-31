@@ -3,8 +3,7 @@
 }
 .strip {
   display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: minmax(0, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--space-1);
   padding: 0 var(--space-2);
 }
@@ -32,8 +31,39 @@
   border-color: var(--accent);
   box-shadow: 0 0 0 1px var(--accent) inset;
 }
-.name {
+/* 이름 줄: 왼쪽 이름, 오른쪽 남은 지휘·방위 행동 */
+.nameRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-width: 0;
+}
+.acts {
+  flex: none;
+  margin-left: auto;
+  display: inline-flex;
+  gap: 6px;
   font-size: 12px;
+  font-weight: 700;
+}
+.acts > span,
+.res > span,
+.stats > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+/* 자원 줄: 칩 폭 안에서 넘치면 아래로 */
+.res {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 6px;
+  font-size: 12px;
+  font-weight: 700;
+}
+.name {
+  min-width: 0;
+  font-size: 13px;
   font-weight: 700;
   white-space: nowrap;
   overflow: hidden;
