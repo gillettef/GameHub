@@ -42,7 +42,7 @@
 
 ## 아이콘
 
-`food prod energy sci culture command defense might stability spore ark symbiont synth farm workshop power lab hall guard rider battery flyer satellite quest threat patron mission charter legacy pioneer supply colonist`
+`food prod energy sci culture command defense might health spore ark symbiont synth farm workshop power lab hall guard rider battery flyer satellite quest threat patron mission charter legacy pioneer supply colonist`
 
 - 루트에 `stroke="currentColor" fill="none" stroke-width="1.8"` 가 있어 **인라인 SVG**로 넣으면 부모의 `color` 를 따른다. 예: 자원 칩에서 `color: var(--res-food)`.
 - `<img>` 로 쓰면 currentColor 가 검정이 되므로, 색을 입히려면 CSS `mask-image: url(...)` + `background-color: currentColor` 방식을 권장한다(아래 사용 예). `innerHTML` 류로 SVG 문자열을 넣는 방식은 프로젝트 규칙상 쓰지 않는다.

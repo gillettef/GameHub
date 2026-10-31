@@ -49,7 +49,7 @@ export function PendingPrompt() {
       const q = QUEST_DEFS[pd.questId];
       title = `「${q.name}」을 막았습니다`;
       art = { id: q.id, icon: 'threat' };
-      body = <p>처치하면 보상을 받고, 공존하면 다음 내 생산까지 안정도 −1 대신 공생 점수 +2·식량 +2(공생 단계 3이면 2배)를 받습니다.</p>;
+      body = <p>처치하면 보상을 받고, 공존하면 다음 내 생산까지 건강 −1 대신 공생 점수 +2·식량 +2(공생 단계 3이면 2배)를 받습니다.</p>;
       options = [
         { label: '처치', choice: 0 },
         { label: '공존', choice: 1, tone: 'symbiont' },

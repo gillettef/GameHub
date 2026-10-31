@@ -23,7 +23,7 @@ export const CHARTER_FIELDS: CharterField[] = ['prosperity', 'explore', 'defense
 
 /** 영구 수정치. 여러 출처(곁가지·노선·헌장·선구자·유산·후원 계약·특수 시설·위성)를 합산한다 */
 export interface Mods {
-  stability: number;
+  health: number;
   sporeCap: number;
   might: number;
   command: number;
@@ -74,7 +74,7 @@ export type Metric =
   | 'symbiont'
   | 'synth'
   | 'legacies'
-  | 'stability';
+  | 'health';
 
 export interface Cond {
   metric: Metric;
@@ -252,7 +252,7 @@ export interface PlayerState {
   defenseUsed: number;
   /** 방위 태세: 다음 내 차례 시작까지 방위력 보너스 */
   guard: number;
-  /** 공존: 다음 내 차례 시작까지 안정도 감소 */
+  /** 공존: 다음 내 생산 단계까지 건강 감소(공존 토큰 수) */
   coexist: number;
   conflict: { target: number; loss: ConflictLoss } | null;
   harmedRound: number;

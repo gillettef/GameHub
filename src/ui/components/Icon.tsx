@@ -6,7 +6,7 @@ const urls = import.meta.glob('../assets/icons/*.svg', { eager: true, query: '?u
 const byName: Record<string, string> = Object.fromEntries(Object.entries(urls).map(([k, v]) => [k.split('/').pop()!.replace('.svg', ''), v]));
 
 export type IconName =
-  | 'food' | 'prod' | 'energy' | 'sci' | 'culture' | 'command' | 'defense' | 'might' | 'stability' | 'spore'
+  | 'food' | 'prod' | 'energy' | 'sci' | 'culture' | 'command' | 'defense' | 'might' | 'health' | 'spore'
   | 'ark' | 'symbiont' | 'synth' | 'farm' | 'workshop' | 'power' | 'lab' | 'hall' | 'guard' | 'rider' | 'battery' | 'flyer'
   | 'satellite' | 'quest' | 'threat' | 'patron' | 'mission' | 'charter' | 'legacy' | 'pioneer' | 'supply' | 'colonist';
 

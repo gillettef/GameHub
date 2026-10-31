@@ -20,16 +20,16 @@ export const FACILITIES: FacilityDef[] = [
   { id: 'f_observatory', name: '궤도 관측소', mods: { sight: 1, income: { sci: 1 } }, text: '하늘 너머를 읽는다' },
   { id: 'f_bastion', name: '외곽 보루', mods: { might: 2 }, text: '정착지 바깥의 첫 방어선' },
   { id: 'f_reactor', name: '심층 반응로', mods: { income: { energy: 2 }, sporeCap: 2 }, text: '지열을 끌어올리는 반응로' },
-  { id: 'f_archive', name: '두 세계 기록관', mods: { income: { culture: 1 }, stability: 1 }, text: '지구와 행성의 이야기를 함께 남긴다' },
+  { id: 'f_archive', name: '두 세계 기록관', mods: { income: { culture: 1 }, health: 1 }, text: '지구와 행성의 이야기를 함께 남긴다' },
   { id: 'f_foundry', name: '궤도 주조소', mods: { income: { prod: 2 } }, text: '무중력에서 강철을 붓는다' },
-  { id: 'f_sanctum', name: '포자 성소', mods: { stability: 2, sporeCap: 3 }, text: '안개가 가라앉는 고요한 곳' },
+  { id: 'f_sanctum', name: '포자 성소', mods: { health: 2, sporeCap: 3 }, text: '안개가 가라앉는 고요한 곳' },
 ];
 export const FACILITY_DEFS: Record<string, FacilityDef> = Object.fromEntries(FACILITIES.map((f) => [f.id, f]));
 
 const ERA1: QuestDef[] = [
   J('q1j1', 1, '첫 수확', [{ metric: 'farms', min: 3 }], opts(1, { culture: 1 }, { food: 3 }, { prod: 2 }), '행성의 흙에서 처음으로 작물이 자랐다'),
   J('q1j2', 1, '지형 측량', [{ metric: 'nodes', min: 4 }], opts(1, { culture: 2 }, { sci: 2 }, { energy: 2 }), '착륙지 주변의 지도가 완성되었다'),
-  J('q1j3', 1, '정착지 축제', [{ metric: 'stability', min: 2 }], opts(1, { culture: 2 }, { food: 2 }, { prod: 2 }), '모두가 모여 첫 해를 기념한다', { res: { culture: 1 } }),
+  J('q1j3', 1, '정착지 축제', [{ metric: 'health', min: 2 }], opts(1, { culture: 2 }, { food: 2 }, { prod: 2 }), '모두가 모여 첫 해를 기념한다', { res: { culture: 1 } }),
   J('q1j4', 1, '광맥 발견', [{ metric: 'workshops', min: 3 }], opts(1, { prod: 2 }, { food: 2 }, { prod: 3 }), '언덕 아래에서 금속 광맥이 드러났다'),
   J('q1j5', 1, '야간 경계', [{ metric: 'might', min: 3 }], opts(1, { culture: 1 }, { food: 2 }, { energy: 2 }), '밤마다 울음소리가 가까워진다', { res: { food: 1 } }),
   T('q1t1', 1, '굴파기 무리', 3, 'weakest', { food: 2 }, { res: { food: 2 } }, '땅속에서 무언가가 저장고를 노린다'),

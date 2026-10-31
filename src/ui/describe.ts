@@ -20,7 +20,7 @@ export function modsText(m: Partial<Mods> | undefined): string {
     const inc = RES_KEYS.filter((k) => m.income![k]).map((k) => `${RES_NAMES[k]} ${sign(m.income![k]!)}`);
     if (inc.length) out.push(`생산 단계마다 ${inc.join(', ')}`);
   }
-  if (m.stability) out.push(`안정도 ${sign(m.stability)}`);
+  if (m.health) out.push(`건강 ${sign(m.health)}`);
   if (m.sporeCap) out.push(`포자 안개 기준치 ${sign(m.sporeCap)}`);
   if (m.might) out.push(`방위력 ${sign(m.might)}`);
   if (m.command) out.push(`지휘 행동 ${sign(m.command)}`);
@@ -75,7 +75,7 @@ export const METRIC_NAMES: Record<Metric, string> = {
   symbiont: '공생 점수',
   synth: '합성 점수',
   legacies: '완성 유산',
-  stability: '안정도',
+  health: '건강',
 };
 
 export function condText(c: Cond[]): string {

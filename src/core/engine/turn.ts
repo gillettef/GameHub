@@ -3,7 +3,7 @@ import type { Action, ActionResult, GameState, PlayerState } from '../types';
 import { BUILDING_KINDS, CHARTER_FIELDS, UNIT_KINDS } from '../types';
 import { CARD_ROW_SIZE, FAMINE_CULTURE, GUARD_MAX, ROUND_LIMIT, ROW_DISCARD } from '../data/constants';
 import { SATELLITE_DEFS } from '../data/satellites';
-import { defenseLeft, playerMods, productionPreview } from './derive';
+import { defenseLeft, playerMods, productionPreview, unhealthy } from './derive';
 import { applyMainAction } from './actions';
 import { declareConflict, pullTrack, raid, resolveConflict } from './external';
 import { advanceEraRest, advanceEraStart, eraShouldAdvance } from './era';
@@ -166,7 +166,7 @@ function refillDeck(state: GameState, ring: 1 | 2 | 3, need: number): void {
 export function produce(state: GameState, p: PlayerState): void {
   const mods = playerMods(p);
   const pv = productionPreview(p, mods);
-  if (pv.stopped.length) log(state, p.id, `안정도 부족으로 건물 ${pv.stopped.length}곳 멈춤`);
+  if (pv.plague) log(state, p.id, `역병: 불건강 정착민 ${unhealthy(p, mods)}명이 유휴 ${p.idle}명보다 많아 건물 생산이 멈춤`);
   for (const k of ['prod', 'energy', 'sci', 'culture'] as const) p.res[k] += pv.gross[k];
   const food = p.res.food + pv.gross.food - pv.upkeep;
   if (food < 0) {

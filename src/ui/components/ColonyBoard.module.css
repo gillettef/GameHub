@@ -63,6 +63,69 @@
 .warn {
   color: var(--warn);
 }
+.danger {
+  color: var(--danger);
+  font-weight: 700;
+}
+/* 정착민 공급 트랙(보드 인쇄 칸). 10구간이 한 줄에 안 들어가면 아래로 */
+.supply {
+  list-style: none;
+  margin: var(--space-1) 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: var(--space-1);
+}
+.seg {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 0 4px;
+  padding: 2px;
+  font-size: 12px;
+  font-weight: 700;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-variant-numeric: tabular-nums;
+}
+.seg > span {
+  display: inline-flex;
+  align-items: center;
+}
+.segRange {
+  width: 100%;
+  text-align: center;
+  color: var(--text-dim);
+  font-weight: 400;
+}
+/* 지난 구간: 흐리게 하지 않고(대비 유지) 점선·낮은 바탕으로 구분 */
+.segPast {
+  border-style: dashed;
+  background: var(--surface);
+}
+.segFood {
+  color: var(--res-food);
+}
+.segHealth {
+  color: var(--ok);
+}
+.alert {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 0 var(--space-2);
+  border: 1px solid currentColor;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  font-size: 12px;
+}
+.segOn {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent) inset;
+}
 .doctrines {
   width: 100%;
   display: flex;

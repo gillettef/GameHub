@@ -1,4 +1,4 @@
-// 파생값: 수정치, 행동 수, 방위력, 안정도, 생산 예상, 노선 단계, 지표 (상태에 캐시하지 않는다)
+// 파생값: 수정치, 행동 수, 방위력, 건강, 생산 예상, 노선 단계, 지표 (상태에 캐시하지 않는다)
 import type { BuildingKind, Doctrine, GameState, Metric, Mods, PlayerState, Res, UnitKind } from '../types';
 import { BUILDING_KINDS, DOCTRINES, RES_KEYS, UNIT_KINDS, CHARTER_FIELDS } from '../types';
 import {
@@ -17,10 +17,9 @@ import {
   FIRST_ROUND_COMMAND,
   SPORE_CAP,
   SPORE_STEP,
-  STABILITY_FREE,
   UNIT_DIRECTION,
   UNIT_POWER,
-  foodUpkeep,
+  colonistTrack,
 } from '../data/constants';
 import { STAGE_MODS } from '../data/doctrines';
 import { CARD_DEFS } from '../data/cards';
@@ -146,43 +145,44 @@ export function placedColonists(p: PlayerState): number {
 }
 export const totalColonists = (p: PlayerState) => placedColonists(p) + p.idle;
 
-export function requiredStability(p: PlayerState): number {
-  return Math.ceil(Math.max(0, placedColonists(p) - STABILITY_FREE) / 2);
+/** 필요 건강: 정착민 공급 트랙에 인쇄된 값 */
+export function requiredHealth(p: PlayerState): number {
+  return colonistTrack(totalColonists(p)).health;
 }
+
+/** 불건강 정착민 수(건강 부족분). 유휴 정착민보다 많으면 역병 */
+export function unhealthy(p: PlayerState, mods = playerMods(p)): number {
+  return Math.max(0, requiredHealth(p) - health(p, mods));
+}
+export const plague = (p: PlayerState, mods = playerMods(p)): boolean => unhealthy(p, mods) > p.idle;
 
 export function sporePenalty(p: PlayerState, mods = playerMods(p)): number {
   const cap = SPORE_CAP + mods.sporeCap;
   return p.res.energy > cap ? Math.ceil((p.res.energy - cap) / SPORE_STEP) : 0;
 }
 
-export function stability(p: PlayerState, mods = playerMods(p)): number {
-  return buildingCount(p, 'hall') + mods.stability - sporePenalty(p, mods) - p.coexist;
+export function health(p: PlayerState, mods = playerMods(p)): number {
+  return buildingCount(p, 'hall') + mods.health - sporePenalty(p, mods) - p.coexist;
 }
 
 export interface ProductionPreview {
   gross: Res;
-  stopped: { kind: BuildingKind; level: number }[];
+  /** 역병: 이번 생산 단계의 건물 생산이 모두 멈춤 */
+  plague: boolean;
   upkeep: number;
   net: Res;
 }
 
-/** 생산 단계 예상(멈추는 건물·식량 소비 포함) */
+/** 생산 단계 예상(역병·식량 소비 포함). 역병이면 건물 생산만 멈추고 생산 단계 보너스·식량 소비는 그대로 */
 export function productionPreview(p: PlayerState, mods = playerMods(p)): ProductionPreview {
-  const outputs: { kind: BuildingKind; level: number; out: number }[] = [];
-  for (const k of BUILDING_KINDS) {
-    p.buildings[k].forEach((n, lvl) => {
-      for (let i = 0; i < n; i++) outputs.push({ kind: k, level: lvl, out: BUILDING_OUTPUT[k][lvl] ?? 0 });
-    });
-  }
-  const shortfall = Math.max(0, requiredStability(p) - stability(p, mods));
-  outputs.sort((a, b) => a.out - b.out);
-  const stopped = outputs.slice(0, shortfall).map(({ kind, level }) => ({ kind, level }));
+  const sick = plague(p, mods);
   const gross: Res = { food: 0, prod: 0, energy: 0, sci: 0, culture: 0 };
-  for (const o of outputs.slice(shortfall)) gross[BUILDING_RES[o.kind]] += o.out;
+  if (!sick)
+    for (const k of BUILDING_KINDS) p.buildings[k].forEach((n, lvl) => (gross[BUILDING_RES[k]] += n * (BUILDING_OUTPUT[k][lvl] ?? 0)));
   for (const k of RES_KEYS) gross[k] += mods.income[k] ?? 0;
-  const upkeep = Math.max(0, foodUpkeep(totalColonists(p)) - mods.foodUpkeep);
+  const upkeep = Math.max(0, colonistTrack(totalColonists(p)).food - mods.foodUpkeep);
   const net = { ...gross, food: gross.food - upkeep };
-  return { gross, stopped, upkeep, net };
+  return { gross, plague: sick, upkeep, net };
 }
 
 export function buildingCap(p: PlayerState, k: BuildingKind, mods = playerMods(p)): number {
@@ -267,8 +267,8 @@ export function metric(_state: GameState, p: PlayerState, m: Metric): number {
       return p.doctrine[m];
     case 'legacies':
       return p.legacies.length;
-    case 'stability':
-      return stability(p);
+    case 'health':
+      return health(p);
   }
 }
 

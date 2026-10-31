@@ -5,7 +5,7 @@ import { RES_KEYS } from '../types';
 
 export function emptyMods(): Mods {
   return {
-    stability: 0,
+    health: 0,
     sporeCap: 0,
     might: 0,
     command: 0,

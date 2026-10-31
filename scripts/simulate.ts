@@ -3,7 +3,7 @@ import { createGame } from '../src/core/engine/setup';
 import { applyAction } from '../src/core/engine/turn';
 import { chooseAction } from '../src/core/ai';
 import { ranking } from '../src/core/engine/scoring';
-import { mainDoctrine } from '../src/core/engine/derive';
+import { mainDoctrine, totalColonists } from '../src/core/engine/derive';
 import { researchedCount } from '../src/core/engine/research';
 import type { GameState } from '../src/core/types';
 
@@ -44,6 +44,8 @@ if (process.argv[1]?.includes('simulate')) {
   let unfinished = 0;
   let winScore = 0;
   let nodes = 0;
+  let healthHits = 0; // 건강 부족으로 생산에 손해를 본 생산 단계 수(옛 '건강 부족' 포함)
+  let colonists = 0;
   const eraStarts = [0, 0, 0, 0];
   const t0 = Date.now();
   for (let g = 0; g < games; g++) {
@@ -59,11 +61,14 @@ if (process.argv[1]?.includes('simulate')) {
     winScore += r[0].total;
     nodes += state.players.reduce((a, p) => a + researchedCount(p), 0) / players;
     eraRounds.forEach((rd, i) => (eraStarts[i] += rd));
+    healthHits += state.log.filter((e) => /건강 부족|역병/.test(e.text)).length / players;
+    colonists += state.players.reduce((a, p) => a + totalColonists(p), 0) / players;
   }
   const pct = (n: number, d: number) => `${((100 * n) / Math.max(1, d)).toFixed(1)}%`;
   console.log(`게임 ${games} · ${players}인 · 시드 ${seed0}~ · ${((Date.now() - t0) / 1000).toFixed(1)}초`);
   console.log(`평균 라운드 ${(rounds / games).toFixed(1)} · 미종료 ${unfinished} · 우승 점수 평균 ${(winScore / games).toFixed(1)} · 연구 노드 평균 ${(nodes / games).toFixed(1)}`);
   console.log(`시대 시작 라운드 평균: ${eraStarts.map((x) => (x / games).toFixed(1)).join(' / ')}`);
   console.log(`자리별 승률: ${seatWins.map((w, i) => `${i + 1}번 ${pct(w, games)}`).join(' · ')}`);
+  console.log(`1인당: 건강 부족 생산 단계 ${(healthHits / games).toFixed(2)}회 · 최종 정착민 ${(colonists / games).toFixed(1)}명`);
   console.log(`주 노선별 승률: ${Object.keys(docWins).map((d) => `${d} ${docWins[d]}/${docCount[d]} (${pct(docWins[d], docCount[d])})`).join(' · ')}`);
 }

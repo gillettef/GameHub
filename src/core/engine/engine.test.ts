@@ -4,13 +4,14 @@ import { applyAction, runSteps } from './turn';
 import { webGraph, researchCost, researchBlock } from './research';
 import { advanceEraStart } from './era';
 import { advanceTrack, processQuest } from './quest';
-import { defenseValue, playerMods, stage } from './derive';
+import { defenseValue, health, plague, playerMods, productionPreview, requiredHealth, stage, unhealthy } from './derive';
 import { scorePlayer } from './scoring';
 import { chooseAction } from '../ai';
 import { TWIG_DEFS, trunkId, CORE_ID } from '../data/techWeb';
 import { QUEST_DEFS } from '../data/quests';
 import { clone } from './util';
-import { TRUNK_BASE_COST } from '../data/constants';
+import { COLONIST_TOTAL, COLONIST_TRACK, TRUNK_BASE_COST, colonistTrack } from '../data/constants';
+import { produce } from './turn';
 import type { Action, GameState } from '../types';
 
 const seats = (n: number) => Array.from({ length: n }, (_, i) => ({ name: `P${i}`, isAI: true }));
@@ -165,6 +166,92 @@ describe('차례와 시대', () => {
     }
     expect(s.gameOver).toBe(true);
     expect(s.endTriggered).toBe(true);
+  });
+});
+
+describe('건강과 역병', () => {
+  it('정착민 공급 트랙: 구간 값을 그대로 읽는다', () => {
+    expect(colonistTrack(6)).toMatchObject({ food: 0, health: 0 });
+    expect(colonistTrack(7)).toMatchObject({ food: 1, health: 0 });
+    expect(colonistTrack(10)).toMatchObject({ food: 1, health: 1 });
+    expect(colonistTrack(11)).toMatchObject({ food: 2, health: 2 });
+    expect(colonistTrack(24)).toMatchObject({ food: 4, health: 8 });
+    // 구간이 1~24를 빈틈없이 덮고 값이 줄지 않는다
+    expect(COLONIST_TRACK[COLONIST_TRACK.length - 1].upTo).toBe(COLONIST_TOTAL);
+    expect(colonistTrack(0)).toMatchObject({ food: 0, health: 0 });
+    expect(colonistTrack(COLONIST_TOTAL + 1)).toBe(COLONIST_TRACK[COLONIST_TRACK.length - 1]);
+    for (let i = 1; i < COLONIST_TRACK.length; i++) {
+      expect(COLONIST_TRACK[i].health).toBeGreaterThanOrEqual(COLONIST_TRACK[i - 1].health);
+      expect(COLONIST_TRACK[i].food).toBeGreaterThanOrEqual(COLONIST_TRACK[i - 1].food);
+    }
+  });
+
+  it('필요 건강은 배치+유휴 총수 기준', () => {
+    const s = ready();
+    const p = s.players[0];
+    p.idle += 4; // 시작 7명 → 11명
+    p.pool -= 4;
+    expect(requiredHealth(p)).toBe(2);
+  });
+
+  /** 총 11명(필요 건강 2), 유휴 5명. 공존 토큰으로 불건강 수를 맞춘다 */
+  function sickSetup(sick: number): GameState {
+    const s = clone(ready());
+    const p = s.players[0];
+    p.res.energy = 0;
+    p.coexist = 0;
+    p.pool -= 5 - p.idle;
+    p.idle = 5;
+    p.coexist = sick - requiredHealth(p) + health(p);
+    expect(unhealthy(p)).toBe(sick);
+    return s;
+  }
+
+  it('불건강 ≤ 유휴면 생산 정상', () => {
+    const p = sickSetup(5).players[0];
+    expect(requiredHealth(p)).toBe(2);
+    expect(plague(p)).toBe(false);
+    expect(productionPreview(p).gross.food).toBeGreaterThan(playerMods(p).income.food ?? 0);
+  });
+
+  it('유휴 0: 불건강 0이면 무사, 1이면 역병', () => {
+    const s = sickSetup(0);
+    const p = s.players[0];
+    p.idle = 0;
+    p.pool += 5; // 총 6명 → 필요 건강 0
+    p.coexist = 0;
+    p.coexist = health(p) - requiredHealth(p);
+    expect(unhealthy(p)).toBe(0);
+    expect(plague(p)).toBe(false);
+    p.coexist += 1;
+    expect(plague(p)).toBe(true);
+  });
+
+  it('역병이 아니면 역병 기록이 없다', () => {
+    const s = sickSetup(5);
+    produce(s, s.players[0]);
+    expect(s.log.some((e) => e.text.startsWith('역병'))).toBe(false);
+  });
+
+  it('AI: 공존하면 역병이 될 때는 처치를 고른다', () => {
+    const s = sickSetup(5);
+    s.pending = [{ kind: 'coexist', player: 0, questId: 'q1t1' }];
+    expect(chooseAction(s, 0)).toEqual({ type: 'respond', choice: 0 });
+  });
+
+  it('불건강 > 유휴면 역병: 건물 생산만 멈추고 보너스·식량 소비는 그대로', () => {
+    const s = sickSetup(6);
+    const p = s.players[0];
+    const mods = playerMods(p);
+    const pv = productionPreview(p);
+    expect(pv.plague).toBe(true);
+    expect(pv.gross.food).toBe(mods.income.food ?? 0);
+    expect(pv.gross.sci).toBe(mods.income.sci ?? 0);
+    expect(pv.upkeep).toBe(Math.max(0, colonistTrack(11).food - mods.foodUpkeep));
+    const sci = p.res.sci;
+    produce(s, p);
+    expect(p.res.sci).toBe(sci + (mods.income.sci ?? 0));
+    expect(s.log.some((e) => e.player === 0 && e.text.startsWith('역병'))).toBe(true);
   });
 });
 

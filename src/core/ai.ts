@@ -15,8 +15,10 @@ import {
   mainDoctrine,
   meets,
   might,
+  plague,
   playerMods,
   productionPreview,
+  unhealthy,
   stage,
   unitUnlocked,
 } from './engine/derive';
@@ -116,7 +118,8 @@ export function aiRespond(state: GameState): number {
       return best;
     }
     case 'coexist':
-      return 1;
+      // 공존은 건강 −1: 불건강이 유휴보다 많아지면 역병이니 처치를 고른다
+      return unhealthy(p) + 1 > p.idle ? 0 : 1;
     case 'patron': {
       const def = PATRON_DEFS[pd.patronId];
       if (p.patrons.length < PATRON_LIMIT) return 1;
@@ -179,6 +182,13 @@ function candidates(state: GameState, p: PlayerState): Action[] {
       }
     }
     if (p.pool > 0) out.push({ type: 'addColonist' });
+    // 역병이 예정이면 해체로 유휴 정착민을 늘려 버티는 수도 본다(계열마다 가장 낮은 레벨 1개)
+    if (plague(p)) {
+      for (const k of BUILDING_KINDS) {
+        const lvl = p.buildings[k].findIndex((n) => n > 0);
+        if (lvl >= 0) out.push({ type: 'disband', group: 'building', kind: k, level: lvl });
+      }
+    }
     if (p.legacyWip) out.push({ type: 'legacyStage' });
     state.satMarket.forEach((id, slot) => {
       if (id) out.push(p.orbit.length >= 2 ? { type: 'launch', slot, replace: p.orbit[0].timer <= p.orbit[1].timer ? 0 : 1 } : { type: 'launch', slot });

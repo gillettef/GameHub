@@ -88,17 +88,29 @@ export const GUARD_MAX = 2;
 
 // 정착민
 export const COLONIST_FOOD = [0, 2, 3, 4, 4];
-export function foodUpkeep(total: number): number {
-  if (total <= 6) return 0;
-  if (total <= 10) return 1;
-  if (total <= 14) return 2;
-  if (total <= 18) return 3;
-  return 4;
-}
 export const FAMINE_CULTURE = 2;
 
-// 안정도·포자 안개
-export const STABILITY_FREE = 6;
+/**
+ * 정착민 공급 트랙(개인 보드에 인쇄, Rules 9.1, 수치 임시). 꺼낸 정착민 총수(배치+유휴)가 upTo 이하인 첫 구간을 읽는다.
+ * 오프라인에서도 계산 없이 칸만 보고 식량 소비·필요 건강을 안다.
+ */
+export const COLONIST_TRACK: readonly { upTo: number; food: number; health: number }[] = [
+  { upTo: 6, food: 0, health: 0 },
+  { upTo: 8, food: 1, health: 0 },
+  { upTo: 10, food: 1, health: 1 },
+  { upTo: 12, food: 2, health: 2 },
+  { upTo: 14, food: 2, health: 3 },
+  { upTo: 16, food: 3, health: 4 },
+  { upTo: 18, food: 3, health: 5 },
+  { upTo: 20, food: 4, health: 6 },
+  { upTo: 22, food: 4, health: 7 },
+  { upTo: 24, food: 4, health: 8 },
+];
+export function colonistTrack(total: number): { upTo: number; food: number; health: number } {
+  return COLONIST_TRACK.find((s) => total <= s.upTo) ?? COLONIST_TRACK[COLONIST_TRACK.length - 1];
+}
+
+// 건강·포자 안개(에너지 트랙의 기준치 다음 칸부터 SPORE_STEP 칸마다 '건강 −1' 표시)
 export const SPORE_CAP = 8;
 export const SPORE_STEP = 3;
 
@@ -138,7 +150,7 @@ export const CHARTER_MODS: Record<CharterField, Partial<Mods>[]> = {
   prosperity: [{}, { buildingCap: 1 }, { foodUpkeep: 1 }, { income: { prod: 2 } }],
   explore: [{}, { trunkDiscount: 1 }, { income: { sci: 2 } }, {}],
   defense: [{}, { unitCap: 1 }, { defense: 1 }, { might: 3 }],
-  bond: [{}, { stability: 2 }, { command: 1 }, { sight: 1, stability: 2 }],
+  bond: [{}, { health: 2 }, { command: 1 }, { sight: 1, health: 2 }],
 };
 
 // 결실 정산

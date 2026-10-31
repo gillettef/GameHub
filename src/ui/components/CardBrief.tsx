@@ -15,7 +15,7 @@ function modsChips(m: Partial<Mods> | undefined): Chip[] {
   if (!m) return [];
   const out: Chip[] = [];
   if (m.income) for (const k of RES_KEYS) if (m.income[k]) out.push({ icon: k, color: `var(--res-${k})`, text: sign(m.income[k]!) });
-  if (m.stability) out.push({ icon: 'stability', text: sign(m.stability) });
+  if (m.health) out.push({ icon: 'health', text: sign(m.health) });
   if (m.might) out.push({ icon: 'might', color: 'var(--danger)', text: sign(m.might) });
   if (m.command) out.push({ icon: 'command', text: sign(m.command) });
   if (m.defense) out.push({ icon: 'defense', color: 'var(--danger)', text: sign(m.defense) });

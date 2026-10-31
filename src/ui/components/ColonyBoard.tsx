@@ -11,6 +11,8 @@ import {
   CHARTER_MODS,
   CHARTER_NAMES,
   COLONIST_FOOD,
+  COLONIST_TRACK,
+  colonistTrack,
   DOCTRINE_NAMES,
   DOCTRINE_STEP,
   FLYER_ENERGY,
@@ -37,13 +39,15 @@ import {
   might,
   playerMods,
   productionPreview,
-  requiredStability,
-  stability,
+  requiredHealth,
+  health,
   stage,
   unitCap,
   unitCount,
   unitUnlocked,
   isHybrid,
+  totalColonists,
+  unhealthy,
 } from '../../core/engine/derive';
 import { buildingUpgradeCost, unitUpgradeCost } from '../../core/engine/actions';
 import { useGame } from '../useGame';
@@ -84,8 +88,11 @@ export function ColonyBoard({ player }: { player: PlayerState }) {
   const pv = productionPreview(p, mods);
   const cmdMax = commandMax(game, p, mods);
   const defMax = defenseMax(p, mods);
-  const stab = stability(p, mods);
-  const need = requiredStability(p);
+  const stab = health(p, mods);
+  const need = requiredHealth(p);
+  const sick = unhealthy(p, mods);
+  const total = totalColonists(p);
+  const cur = colonistTrack(total);
   const cap = SPORE_CAP + mods.sporeCap;
   const main = mainDoctrine(p);
 
@@ -117,7 +124,7 @@ export function ColonyBoard({ player }: { player: PlayerState }) {
             <>
               <p>
                 {RES_NAMES[BUILDING_RES[k]]} 생산 · 레벨별 {levels.map((l) => `${LEVEL_NAMES[l]} ${BUILDING_OUTPUT[k][l]}`).join(' / ')}
-                {k === 'hall' && ' · 회관마다 안정도 +1'}
+                {k === 'hall' && ' · 회관마다 건강 +1'}
               </p>
               <p className={styles.dim}>
                 보유 {buildingCount(p, k)} / 한도 {buildingCap(p, k, mods)} · 해금 최고 레벨 {top !== undefined ? LEVEL_NAMES[top] : '없음'} · 유휴 정착민 {p.idle}
@@ -171,7 +178,16 @@ export function ColonyBoard({ player }: { player: PlayerState }) {
           ),
           body: (
             <p>
-              유휴 {p.idle} · 공급 {p.pool}. 건물·유닛을 지으면 유휴 정착민이 자동으로 들어갑니다. 생산 단계 식량 소비 {pv.upkeep}.
+              유휴 {p.idle} · 공급 {p.pool}. 건물·유닛을 지으면 유휴 정착민이 자동으로 들어갑니다. 생산 단계 식량 소비 {pv.upkeep}. 정착민이 늘면 공급 트랙의 필요 건강도 오릅니다(지금 {need}). 유휴 정착민은 불건강 정착민을 버텨 줍니다.
+              {sick > 0 && (
+                <>
+                  <br />
+                  <strong className={pv.plague ? styles.danger : styles.warn}>
+                    불건강 {sick}명 · 유휴 {p.idle}명 — {pv.plague ? '다음 생산 단계에 역병으로 건물 생산이 모두 멈춥니다.' : '유휴 정착민이 버티고 있어 아직 괜찮습니다.'}
+                  </strong>
+                  {pv.plague && ` 해결: 건강 +${sick - p.idle} 올리기(회관 건설 등), 에너지를 써서 포자 안개 줄이기, 또는 건물·유닛을 해체해 유휴 정착민 늘리기.`}
+                </>
+              )}
             </p>
           ),
           actions: acts,
@@ -299,20 +315,26 @@ export function ColonyBoard({ player }: { player: PlayerState }) {
         </span>
       </div>
       <div className={styles.status}>
-        <span className={stab < need ? styles.warn : ''} data-tip="안정도" data-tip-body={`현재 ${stab} / 필요 ${need}. 모자라면 그만큼 생산량이 낮은 건물부터 멈춥니다. 회관마다 +1.`}>
-          <Icon name="stability" size={14} /> 안정도 {stab}/{need}
+        <span className={stab < need ? styles.warn : ''} data-tip="건강" data-tip-body={`현재 ${stab} / 필요 ${need}(정착민 공급 트랙). 모자란 만큼 불건강 정착민이 생기고, 유휴 정착민보다 많으면 역병으로 건물 생산이 멈춥니다. 회관마다 +1.`}>
+          <Icon name="health" size={14} /> 건강 {stab}/{need}
         </span>
         <span data-tip="방위력" data-tip-body={`유닛 전력 합 + 보너스. 방어할 때는 포대마다 +1(방어값 ${defenseValue(p)}). 위협·습격·분쟁 판정에 씁니다.`}>
           <Icon name="might" size={14} /> 방위력 {might(p, mods)} (방어 {defenseValue(p)})
         </span>
-        <span className={p.res.energy > cap ? styles.warn : ''} data-tip="포자 안개" data-tip-body={`보유 에너지 ${p.res.energy} / 기준 ${cap}. 기준을 넘으면 초과 3마다 안정도 −1.`}>
+        <span className={p.res.energy > cap ? styles.warn : ''} data-tip="포자 안개" data-tip-body={`보유 에너지 ${p.res.energy} / 기준 ${cap}. 기준을 넘으면 초과 3마다 건강 −1.`}>
           <Icon name="spore" size={14} /> 포자 {p.res.energy}/{cap}
         </span>
         <span data-tip="시야" data-tip-body="미래 퀘스트 더미를 위에서부터 볼 수 있는 장수. 궤도의 위성 1기마다 +1.">
           <Icon name="satellite" size={14} /> 시야 {mods.sight}
         </span>
         {p.guard > 0 && <span>방위 태세 +{p.guard}</span>}
-        {pv.stopped.length > 0 && <span className={styles.warn}>멈춤 {pv.stopped.length}곳</span>}
+        {sick > 0 && (
+          // 터치 기기는 툴팁이 없으니 눌러서 정착민 시트(해결법 포함)를 연다
+          <button className={`${styles.alert} ${pv.plague ? styles.danger : styles.warn}`} onClick={() => setOpen({ k: 'colonist' })}>
+            {pv.plague && <Icon name="threat" size={14} />}
+            {pv.plague ? `역병 예정 — 불건강 ${sick} > 유휴 ${p.idle}` : `불건강 ${sick} ≤ 유휴 ${p.idle}`}
+          </button>
+        )}
       </div>
 
       {/* 노선 트랙 */}
@@ -374,6 +396,34 @@ export function ColonyBoard({ player }: { player: PlayerState }) {
         {p.idle === 0 && <span className={styles.dim}>없음</span>}
         <span className={styles.pool}>공급 {p.pool}</span>
       </button>
+      {/* 정착민 공급 트랙: 구간마다 인쇄된 식량 소비·필요 건강, 지금 구간 강조 */}
+      <ol className={styles.supply} aria-label={`정착민 공급 트랙 — 총 ${total}명, 식량 소비 ${pv.upkeep}, 필요 건강 ${need}`}>
+        {COLONIST_TRACK.map((s, i) => {
+          const from = i === 0 ? 1 : COLONIST_TRACK[i - 1].upTo + 1;
+          const range = from === s.upTo ? `${s.upTo}` : `${from}–${s.upTo}`;
+          const here = s === cur;
+          return (
+            <li
+              key={s.upTo}
+              className={`${styles.seg} ${here ? styles.segOn : ''} ${total > s.upTo ? styles.segPast : ''}`}
+              aria-current={here ? 'step' : undefined}
+              aria-label={`${range}명: 식량 −${s.food}, 필요 건강 ${s.health}${here ? ', 현재' : ''}`}
+            >
+              <span className={styles.segRange} aria-hidden>
+                {here && '▶'}
+                {range}
+              </span>
+              <span className={styles.segFood} aria-hidden>
+                <Icon name="food" size={12} />−{s.food}
+              </span>
+              <span className={styles.segHealth} aria-hidden>
+                <Icon name="health" size={12} />
+                {s.health}
+              </span>
+            </li>
+          );
+        })}
+      </ol>
 
       {/* 카드 영역 */}
       <div className={styles.cards}>
