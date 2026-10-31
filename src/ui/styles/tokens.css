@@ -48,6 +48,17 @@
   --res-sci: #74bdff;    /* 과학 — 하늘 */
   --res-culture: #e595ff;/* 문화 — 난초 */
 
+  /* 테이블 영역 — 영역마다 띠·테두리 색을 달리해 구분 */
+  --zone-quest: #c58cff;  /* 퀘스트 트랙 — 보라 */
+  --zone-cards: #f4c56a;  /* 카드 줄 — 호박 */
+  --zone-common: #6fd3e8; /* 공용 영역 — 청록 */
+
+  /* 자리 색 — 상태창 칩과 개인 보드 띠를 잇는다 */
+  --seat-0: #ffa86b;
+  --seat-1: #7fb2ff;
+  --seat-2: #ff86b0;
+  --seat-3: #a6e36b;
+
   /* 모양 */
   --radius: 14px;
   --radius-sm: 8px;

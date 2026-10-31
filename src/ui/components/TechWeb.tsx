@@ -63,6 +63,7 @@ export function TechWeb({ player }: { player: PlayerState }) {
 
   return (
     <Section
+      tone={`var(--seat-${p.id})`}
       title={
         <>
           <Icon name="sci" /> 테크 웹{mine ? '' : ` · ${p.name}`}
@@ -70,7 +71,7 @@ export function TechWeb({ player }: { player: PlayerState }) {
       }
       extra={`연구 ${p.researched.length - 1} · 과학 ${p.res.sci}`}
     >
-      <svg viewBox="-192 -192 384 384" className={styles.web} role="img" aria-label="테크 웹">
+      <svg viewBox="-192 -192 384 384" className={styles.web} role="img" aria-label={`${p.name} 테크 웹`}>
         {[1, 2, 3].map((r) => (
           <circle key={r} r={RADIUS[r]} className={styles.ring} style={{ stroke: `var(--ring${r})` }} />
         ))}

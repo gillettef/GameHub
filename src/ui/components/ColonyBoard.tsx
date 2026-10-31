@@ -68,7 +68,6 @@ type Open =
   | { k: 'legacy' }
   | { k: 'legacyDone'; id: string }
   | { k: 'pioneer' }
-  | { k: 'satMarket'; slot: number }
   | { k: 'orbit'; index: number }
   | { k: 'charter'; field: CharterField }
   | { k: 'patron'; id: string }
@@ -199,14 +198,6 @@ export function ColonyBoard({ player }: { player: PlayerState }) {
         const c = p.pioneer ? CARD_DEFS[p.pioneer] : null;
         return withArt({ title: c?.name ?? '선구자', body: <p>{c ? cardText(c) : ''}</p>, actions: [] }, p.pioneer, 'pioneer', c ? { frame: 'pioneer', text: cardText(c) } : undefined);
       }
-      case 'satMarket': {
-        const id = game.satMarket[o.slot];
-        const s = id ? SATELLITE_DEFS[id] : null;
-        if (!s) return { title: '위성', body: null, actions: [] };
-        if (p.orbit.length < 2) add(`발사 — 에너지 ${s.cost} · 지휘 1`, { type: 'launch', slot: o.slot });
-        else p.orbit.forEach((ob, i) => add(`발사 — 「${SATELLITE_DEFS[ob.id].name}」 대신 · 에너지 ${s.cost}`, { type: 'launch', slot: o.slot, replace: i }));
-        return withArt({ title: s.name, body: <p>궤도에 {s.timer}차례 · 시야 +1{modsText(s.mods) ? ` · ${modsText(s.mods)}` : ''}</p>, actions: acts }, s.id, 'satellite', { frame: 'satellite', text: `궤도 ${s.timer}차례 · 시야 +1${modsText(s.mods) ? ` · ${modsText(s.mods)}` : ''}`, badge: s.cost });
-      }
       case 'orbit': {
         const ob = p.orbit[o.index];
         const s = ob && SATELLITE_DEFS[ob.id];
@@ -270,6 +261,7 @@ export function ColonyBoard({ player }: { player: PlayerState }) {
 
   return (
     <Section
+      tone={`var(--seat-${p.id})`}
       title={
         <>
           <Icon name="colonist" /> {mine ? '내 식민지' : `${p.name}의 식민지`}
@@ -448,25 +440,6 @@ export function ColonyBoard({ player }: { player: PlayerState }) {
           </button>
         ))}
       </div>
-
-      {/* 위성 시장(내 보드에서만) */}
-      {mine && (
-        <>
-          <span className={`${styles.dim} ${styles.marketLabel}`}>위성 발사</span>
-          <div className={styles.market}>
-          {game.satMarket.map((id, slot) =>
-            id ? (
-              <button key={slot} className={styles.artTile} onClick={() => setOpen({ k: 'satMarket', slot })}>
-                <CardArt id={id} icon="satellite" tone="var(--ark)" />
-                <span>
-                  {SATELLITE_DEFS[id].name} <b className={styles.cost}>⚡{SATELLITE_DEFS[id].cost}</b>
-                </span>
-              </button>
-            ) : null,
-          )}
-        </div>
-        </>
-      )}
 
       {sheet && (
         <Sheet title={sheet.title} onClose={() => setOpen(null)} actions={sheet.actions}>

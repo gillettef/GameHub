@@ -69,6 +69,7 @@ export function QuestTrack() {
 
   return (
     <Section
+      tone="var(--zone-quest)"
       title={
         <>
           <Icon name="quest" /> 퀘스트 트랙

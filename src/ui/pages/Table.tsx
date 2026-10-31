@@ -1,15 +1,17 @@
-// 게임 테이블: BGA 처럼 한 화면 테이블 — 상단 플레이어 패널, 공용 영역(카드 줄·퀘스트 트랙), 보드, 테크 웹, 하단 행동 바
-import { useState } from 'react';
+// 게임 테이블: BGA 의 TTA 테이블처럼 상하 스크롤 한 화면 —
+// 상단 고정 상태 줄(행동 버튼) → 플레이어 상태창 → 퀘스트 트랙 → 카드 줄 → 플레이어별 보드(나 먼저) → 공용 영역
+import { useState, type CSSProperties } from 'react';
 import { useApp } from '../../store/app';
 import { quitLocal } from '../../store/localGame';
 import { leaveOnline } from '../../online/client';
 import { useGame } from '../useGame';
+import { StatusBar } from '../components/StatusBar';
 import { PlayerStrip } from '../components/PlayerStrip';
 import { QuestTrack } from '../components/QuestTrack';
 import { CardRow } from '../components/CardRow';
 import { ColonyBoard } from '../components/ColonyBoard';
 import { TechWeb } from '../components/TechWeb';
-import { ActionBar } from '../components/ActionBar';
+import { CommonArea } from '../components/CommonArea';
 import { PendingPrompt } from '../components/PendingPrompt';
 import { EraOverlay, LogDrawer, ScoreBoard } from '../components/Overlays';
 import { Rules } from '../components/Rules';
@@ -24,28 +26,32 @@ export function Table() {
 
 function TableInner() {
   const { game, me } = useGame();
-  const viewing = useApp((s) => s.viewing);
   const mode = useApp((s) => s.mode);
   const [overlay, setOverlay] = useState<'menu' | 'log' | 'rules' | 'score' | null>(game.gameOver ? 'score' : null);
-  const player = game.players[viewing] ?? game.players[me];
   const leave = () => (mode === 'online' ? leaveOnline() : quitLocal());
+  // 보드 순서: 나 → 나머지 플레이어를 자리 순서대로
+  const order = [game.players[me], ...game.players.filter((p) => p.id !== me)];
 
   return (
     <div className={styles.table}>
-      <PlayerStrip onMenu={() => setOverlay('menu')} onLog={() => setOverlay('log')} />
+      <StatusBar onMenu={() => setOverlay('menu')} onLog={() => setOverlay('log')} onResults={() => setOverlay('score')} />
       <main className={styles.main}>
-        <CardRow />
+        <PlayerStrip />
         <QuestTrack />
-        {viewing !== me && (
-          <button className={styles.back} onClick={() => useApp.getState().set({ viewing: me })}>
-            ← 내 보드로
-          </button>
-        )}
-        <ColonyBoard player={player} />
-        <TechWeb player={player} />
+        <CardRow />
+        {order.map((p) => (
+          <div key={p.id} id={`board-${p.id}`} className={styles.board} style={{ '--seat': `var(--seat-${p.id})` } as CSSProperties}>
+            <h2 className={styles.banner}>
+              {p.name}
+              {p.id === me ? <span className={styles.tag}>내 보드</span> : <span className={styles.tag}>{p.id + 1}번 자리</span>}
+            </h2>
+            <ColonyBoard player={p} />
+            <TechWeb player={p} />
+          </div>
+        ))}
+        <CommonArea />
         <RecentLog />
       </main>
-      <ActionBar onResults={() => setOverlay('score')} />
       <PendingPrompt />
       <EraOverlay />
       {overlay === 'log' && <LogDrawer onClose={() => setOverlay(null)} />}
@@ -68,7 +74,7 @@ function TableInner() {
   );
 }
 
-/** 최근 기록 3줄(BGA 의 로그 패널 축약) */
+/** 최근 기록 4줄(BGA 의 로그 패널 축약) */
 function RecentLog() {
   const { game } = useGame();
   const last = game.log.slice(-4).reverse();

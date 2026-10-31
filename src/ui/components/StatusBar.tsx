@@ -1,13 +1,14 @@
-// 하단 고정 행동 바: 대외 단계(습격·분쟁·트랙 당기기)와 차례 종료
-import { useState } from 'react';
+// 상단 고정 상태 줄(BGA 의 페이지 제목 줄): 메뉴·시대 정보, 지금 누가 무엇을 하는지, 대외 단계(습격·분쟁·트랙 당기기)와 차례 종료 버튼
+import { useEffect, useRef, useState } from 'react';
 import type { ConflictLoss, RaidEffect } from '../../core/types';
 import { CONFLICT_DEFENSE, PULL_DEFENSE, RAID_DEFENSE, raidAmount } from '../../core/data/constants';
 import { attackValue, commandLeft, defenseLeft, defenseValue, edgeBonus, stage } from '../../core/engine/derive';
 import { swarmValue } from '../../core/engine/external';
+import { eraProgress } from '../../core/engine/era';
 import { useGame } from '../useGame';
 import { Icon } from './Icon';
 import { Sheet } from './Sheet';
-import styles from './ActionBar.module.css';
+import styles from './StatusBar.module.css';
 
 const EFFECT_NAMES: Record<RaidEffect, string> = {
   lootProd: '생산 약탈',
@@ -18,7 +19,41 @@ const EFFECT_NAMES: Record<RaidEffect, string> = {
 };
 const LOSS_NAMES: Record<ConflictLoss, string> = { culture: '문화', building: '건물', doctrine: '노선 점수' };
 
-export function ActionBar({ onResults }: { onResults: () => void }) {
+export function StatusBar({ onMenu, onLog, onResults }: { onMenu: () => void; onLog: () => void; onResults: () => void }) {
+  const { game } = useGame();
+  const prog = eraProgress(game);
+  // 실제 높이를 --status-h 로 알려 보드 이동 여백·접힌 결정 버튼 위치에 쓴다(위 안전 영역 포함)
+  const ref = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => document.documentElement.style.setProperty('--status-h', `${el.offsetHeight}px`));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  return (
+    <header className={styles.wrap} ref={ref}>
+      <div className={styles.top}>
+        <button className={styles.iconBtn} onClick={onMenu} aria-label="메뉴">
+          ☰
+        </button>
+        <div className={styles.era} style={{ color: `var(--ring${Math.min(game.era, 3)})` }}>
+          <strong>{game.era <= 3 ? `${game.era}시대` : '종료 시대'}</strong>
+          <span>
+            {game.round}라운드
+            {game.era <= 3 ? ` · 시대 진행 ${prog.have}/${prog.need}` : game.endTriggered ? ' · 마지막 라운드' : ''}
+          </span>
+        </div>
+        <button className={styles.textBtn} onClick={onLog}>
+          기록
+        </button>
+      </div>
+      <ActionRow onResults={onResults} />
+    </header>
+  );
+}
+
+function ActionRow({ onResults }: { onResults: () => void }) {
   const { game, me, myTurn, check, act } = useGame();
   const [sheet, setSheet] = useState<'raid' | 'conflict' | 'pull' | 'end' | null>(null);
   const [target, setTarget] = useState<number | null>(null);
@@ -35,9 +70,20 @@ export function ActionBar({ onResults }: { onResults: () => void }) {
       </div>
     );
   }
+  const counts = (
+    <div className={styles.counts}>
+      <span>
+        <Icon name="command" size={14} /> {commandLeft(game, p)}
+      </span>
+      <span style={{ color: 'var(--danger)' }}>
+        <Icon name="defense" size={14} /> {defenseLeft(p)}
+      </span>
+    </div>
+  );
   if (!myTurn) {
     return (
       <div className={styles.bar}>
+        {counts}
         <span className={styles.wait}>
           {game.pending.length && actor === me ? '결정을 기다리는 중' : `${game.players[actor].name}의 ${game.pending.length ? '결정' : '차례'}…`}
         </span>
@@ -50,14 +96,7 @@ export function ActionBar({ onResults }: { onResults: () => void }) {
   return (
     <>
       <div className={styles.bar}>
-        <div className={styles.counts}>
-          <span>
-            <Icon name="command" size={14} /> {commandLeft(game, p)}
-          </span>
-          <span style={{ color: 'var(--danger)' }}>
-            <Icon name="defense" size={14} /> {defenseLeft(p)}
-          </span>
-        </div>
+        {counts}
         {external ? (
           <div className={styles.ext}>
             <button onClick={() => setSheet('raid')} data-tip="습격" data-tip-body="방위 행동 2. 공격값이 상대 방어값보다 크면 자원을 약탈합니다.">

@@ -35,6 +35,7 @@ export function CardRow() {
   const costOf = (slot: number, c: CardDef) => (c.type === 'legacy' ? legacyTakeCost(p, slot) : slotCost(slot));
   return (
     <Section
+      tone="var(--zone-cards)"
       title={
         <>
           <Icon name="supply" /> 카드 줄

@@ -267,13 +267,6 @@
   background: var(--accent);
   border-color: var(--accent);
 }
-.market {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  align-items: center;
-  gap: var(--space-1);
-  margin-top: var(--space-2);
-}
 .dim {
   color: var(--text-dim);
   font-size: 12px;
@@ -306,18 +299,10 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.cost {
-  color: var(--res-energy);
-  font-weight: 700;
-}
 .banner {
   width: 100%;
   border-radius: var(--radius-sm);
   margin-bottom: var(--space-2);
-}
-.marketLabel {
-  display: block;
-  margin-top: var(--space-2);
 }
 .facilities {
   display: grid;
