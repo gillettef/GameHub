@@ -9,6 +9,7 @@ import {
   FLYER_ENERGY,
   LEVEL_NAMES,
   ORBIT_SLOTS,
+  TRUNK_NAMES,
   UNIT_COST,
   UNIT_NAMES,
 } from '../data/constants';
@@ -67,7 +68,7 @@ export function applyMainAction(state: GameState, p: PlayerState, a: Action): Er
         applyInstant(state, p, node.twig.instant);
         log(state, p.id, `곁가지 「${node.twig.name}」 연구`);
       } else {
-        log(state, p.id, `줄기 기술 연구(${a.node})`);
+        log(state, p.id, `줄기 「${TRUNK_NAMES[node.direction!][node.ring]}」 연구`);
       }
       return null;
     }

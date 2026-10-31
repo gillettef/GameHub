@@ -1,7 +1,7 @@
 // 테크 웹 SVG: 중심에서 6방향·3고리. 고리별 색, 곁가지는 노선색, 연구 가능 노드는 맥동
 import { useState, type CSSProperties } from 'react';
 import type { PlayerState } from '../../core/types';
-import { DIRECTION_NAMES, DIRECTION_UNLOCKS, BUILDING_NAMES, UNIT_NAMES, DOCTRINE_NAMES, LEVEL_NAMES } from '../../core/data/constants';
+import { DIRECTION_NAMES, TRUNK_NAMES, DIRECTION_UNLOCKS, BUILDING_NAMES, UNIT_NAMES, DOCTRINE_NAMES, LEVEL_NAMES } from '../../core/data/constants';
 import { CORE_ID } from '../../core/data/techWeb';
 import { playerMods } from '../../core/engine/derive';
 import { researchBlock, researchCost, webGraph } from '../../core/engine/research';
@@ -52,7 +52,7 @@ export function TechWeb({ player }: { player: PlayerState }) {
     const n = nodes[id];
     if (n.kind === 'core') return '착륙지(중심)';
     if (n.kind === 'twig') return `${n.twig!.name}(${DOCTRINE_NAMES[n.twig!.doctrine]} 곁가지)`;
-    return `${DIRECTION_NAMES[n.direction!]} ${n.ring}고리 줄기`;
+    return `${TRUNK_NAMES[n.direction!][n.ring]}(${DIRECTION_NAMES[n.direction!]} ${n.ring}고리 줄기)`;
   };
   const unlockText = (dir: keyof typeof DIRECTION_UNLOCKS, ring: number) => {
     const u = DIRECTION_UNLOCKS[dir];
@@ -138,7 +138,7 @@ export function TechWeb({ player }: { player: PlayerState }) {
       </p>
       {node && open && (
         <Sheet
-          title={node.kind === 'twig' ? node.twig!.name : node.kind === 'core' ? '착륙지(중심)' : `${DIRECTION_NAMES[node.direction!]} ${node.ring}고리 줄기`}
+          title={node.kind === 'twig' ? node.twig!.name : node.kind === 'core' ? '착륙지(중심)' : TRUNK_NAMES[node.direction!][node.ring]}
           onClose={() => setOpen(null)}
           actions={
             mine && node.kind !== 'core' && !has(open)
@@ -146,6 +146,7 @@ export function TechWeb({ player }: { player: PlayerState }) {
               : []
           }
         >
+          {node.kind === 'trunk' && <p>{DIRECTION_NAMES[node.direction!]} {node.ring}고리 줄기</p>}
           {node.kind === 'trunk' && <p>해금: {unlockText(node.direction!, node.ring)}</p>}
           {node.kind === 'twig' && (
             <p style={{ color: `var(--${node.twig!.doctrine})` }}>

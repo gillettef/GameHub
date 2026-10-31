@@ -163,5 +163,14 @@ export const RES_NAMES: Record<keyof Res, string> = { food: '식량', prod: '생
 export const BUILDING_NAMES: Record<BuildingKind, string> = { farm: '농장', workshop: '제작소', power: '발전소', lab: '연구소', hall: '회관' };
 export const UNIT_NAMES: Record<UnitKind, string> = { guard: '경비대', rider: '기동대', battery: '포대', flyer: '비행대' };
 export const DIRECTION_NAMES: Record<Direction, string> = { agri: '농업', industry: '산업', power: '동력', academic: '학술', culture: '문화', defense: '방위' };
+/** 줄기 기술 이름: 방향별 [_, 1고리, 2고리, 3고리] (Rules.md 6.1) */
+export const TRUNK_NAMES: Record<Direction, [string, string, string, string]> = {
+  agri: ['', '정착 농경', '토착 목축', '행성 생태 농업'],
+  industry: ['', '노천 채굴', '탄도 공학', '중공업 복합체'],
+  power: ['', '태양 집광', '지열 발전', '반중력 비행'],
+  academic: ['', '현장 탐사', '행성 과학', '통합 지휘망'],
+  culture: ['', '개척 연대기', '공동 집회', '행성 시민권'],
+  defense: ['', '경계 순찰', '방어 진지', '방위 사령부'],
+};
 export const CHARTER_NAMES: Record<CharterField, string> = { prosperity: '번영', explore: '탐구', defense: '방위', bond: '결속' };
 export const LEVEL_NAMES = ['기초', 'Lv1', 'Lv2', 'Lv3'];
