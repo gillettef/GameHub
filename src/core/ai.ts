@@ -66,6 +66,7 @@ export function evaluate(state: GameState, p: PlayerState): number {
   v += p.idle * 0.6 * Math.min(1, R / 4);
   for (const h of p.hand) {
     const c = CARD_DEFS[h.id];
+    if (!c) continue; // 가린 손패
     if (c.type === 'supply') {
       const g = c.instant.gain ?? {};
       const docs = Object.values(c.instant.doctrine ?? {}).reduce((a, b) => a + (b ?? 0), 0);

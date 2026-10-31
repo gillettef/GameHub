@@ -306,7 +306,10 @@ export type Step =
 export interface LogEntry {
   round: number;
   player: number | null;
+  /** 본인(player)에게 보이는 글 */
   text: string;
+  /** 다른 사람에게 보이는 글(있으면 text 는 본인만 본다 — 뒷면에서 손패로 가져간 카드 등) */
+  pub?: string;
 }
 
 export type Phase = 'quest' | 'external' | 'actions';

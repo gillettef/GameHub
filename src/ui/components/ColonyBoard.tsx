@@ -454,9 +454,14 @@ export function ColonyBoard({ player }: { player: PlayerState }) {
         </Slot>
         <Slot label={`손패 ${p.hand.length}`}>
           {p.hand.length === 0 && <Empty />}
-          {p.hand.map((h, i) => (
+          {p.hand.map((h, i) =>
+            !CARD_DEFS[h.id] ? (
+              // 다른 사람의 손패는 뒷면만 보인다(Rules 11절)
+              <CardFace key={i} frame="quest-back" width={sizes.card} label="비공개 손패" tip="비공개 손패\n다른 사람의 손패는 보이지 않습니다. 앞면이 공개된 칸에서 가져간 카드는 그때 모두가 봤으니 기억해 두세요(최근 기록에도 남습니다)." />
+            ) : (
             <CardFace key={i} className={pop(`hand:${h.id}:${p.hand.slice(0, i).filter((x) => x.id === h.id).length}`)} frame={CARD_FRAME[CARD_DEFS[h.id].type]} width={sizes.card} title={CARD_DEFS[h.id].name} tip={`${CARD_TYPE_NAMES[CARD_DEFS[h.id].type]}${h.fresh ? ' · 다음 차례부터 사용' : ''}\n${cardText(CARD_DEFS[h.id])}`} dim={h.fresh} art={{ id: h.id, icon: CARD_ICON[CARD_DEFS[h.id].type] }} brief={<CardBrief card={CARD_DEFS[h.id]} />} onClick={() => setOpen({ k: 'hand', index: i })} />
-          ))}
+            ),
+          )}
         </Slot>
         <Slot label="궤도">
           {p.orbit.length === 0 && <Empty />}

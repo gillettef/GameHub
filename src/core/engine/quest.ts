@@ -95,18 +95,23 @@ export function pickQuest(state: GameState, p: PlayerState, slot: number): strin
     return 'again';
   }
   const blind = !slotVisible(state, p.id, slot);
+  // 모두가 앞면을 본 칸(칸 1·뒤집힌 칸)인지. 아니면 뒷면에서 손패로 가져간 카드는 다른 사람에게 공개하지 않는다(Rules 12.2)
+  const open = slot === 0 || state.questOpen[slot];
+  const c = CARD_DEFS[id];
+  const secret = !open && !!c && HAND_TYPES.includes(c.type) && !cardTakeBlock(state, p, c);
   state.questRow.splice(slot, 1);
   state.questOpen.splice(slot, 1);
   refillRow(state);
-  log(state, p.id, `퀘스트 「${trackName(id)}」 선택${blind ? '(뒷면)' : ''}`);
-  resolvePick(state, p, id);
+  if (secret) log(state, p.id, `퀘스트 「${trackName(id)}」 선택(뒷면, 비공개)`, '뒷면 퀘스트 선택 — 손패로 가져감(비공개)');
+  else log(state, p.id, `퀘스트 「${trackName(id)}」 선택${blind ? '(뒷면)' : ''}`);
+  resolvePick(state, p, id, secret);
   return null;
 }
 
-function resolvePick(state: GameState, p: PlayerState, id: string): void {
+function resolvePick(state: GameState, p: PlayerState, id: string, secret: boolean): void {
   const c = CARD_DEFS[id];
   if (c) {
-    takeCard(state, p, c);
+    takeCard(state, p, c, secret);
     return;
   }
   const q = QUEST_DEFS[id];
@@ -139,7 +144,7 @@ function resolvePick(state: GameState, p: PlayerState, id: string): void {
   }
 }
 
-function takeCard(state: GameState, p: PlayerState, c: CardDef): void {
+function takeCard(state: GameState, p: PlayerState, c: CardDef, secret = false): void {
   const block = cardTakeBlock(state, p, c);
   if (block) {
     log(state, p.id, `「${c.name}」 가져올 수 없음(${block}) — 버림`);
@@ -154,7 +159,9 @@ function takeCard(state: GameState, p: PlayerState, c: CardDef): void {
     log(state, p.id, `유산 「${c.name}」 착공`);
   } else {
     p.hand.push({ id: c.id, fresh: true });
-    log(state, p.id, `${c.type === 'supply' ? '보급' : c.type === 'raid' ? '습격' : '분쟁'} 「${c.name}」 획득`);
+    const text = `${c.type === 'supply' ? '보급' : c.type === 'raid' ? '습격' : '분쟁'} 「${c.name}」 획득`;
+    if (secret) log(state, p.id, text, '손패 1장 획득(비공개)');
+    else log(state, p.id, text);
   }
 }
 

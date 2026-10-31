@@ -48,8 +48,9 @@ export function canPay(res: Res, cost: Partial<Res>): boolean {
   return RES_KEYS.every((k) => res[k] >= (cost[k] ?? 0));
 }
 
-export function log(state: GameState, player: number | null, text: string): void {
-  state.log.push({ round: state.round, player, text });
+/** pub 를 주면 text 는 player 본인만, 다른 사람은 pub 를 본다(mask 가 바꿔 보냄) */
+export function log(state: GameState, player: number | null, text: string, pub?: string): void {
+  state.log.push(pub === undefined ? { round: state.round, player, text } : { round: state.round, player, text, pub });
 }
 
 /** 상태의 시드 RNG 로 작업한 뒤 rngState 를 갱신한다 */

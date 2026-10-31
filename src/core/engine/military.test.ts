@@ -125,3 +125,40 @@ describe('손패와 덱', () => {
     expect([1, 2, 3].map((r) => ringDeckIds(r as 1 | 2 | 3).filter((id) => CARD_DEFS[id].type === 'raid').length)).toEqual([4, 4, 4]);
   });
 });
+
+describe('손패 비공개', () => {
+  it('다른 사람의 손패는 장수만 보이고 본인 손패는 보인다', async () => {
+    const { maskFor, HIDDEN } = await import('../mask');
+    const s = ready(3);
+    s.players[1].hand = [{ id: 'r1a', fresh: true }, { id: 's1f', fresh: false }];
+    expect(maskFor(s, 1).players[1].hand.map((h) => h.id)).toEqual(['r1a', 's1f']);
+    expect(maskFor(s, 0).players[1].hand).toEqual([{ id: HIDDEN, fresh: true }, { id: HIDDEN, fresh: false }]);
+    expect(maskFor(s, null).players[1].hand.every((h) => h.id === HIDDEN)).toBe(true);
+  });
+
+  it('뒷면 칸에서 손패로 가져간 카드는 다른 사람 기록에 이름이 안 나온다', async () => {
+    const { maskFor } = await import('../mask');
+    let s = createGame(1, seats(2));
+    s.round = 2;
+    const me = s.current;
+    s.questRow[2] = 'r1c';
+    s = act(s, { type: 'pickQuest', slot: 2 });
+    expect(s.players[me].hand.map((h) => h.id)).toEqual(['r1c']);
+    const mine = maskFor(s, me).log.map((e) => e.text).join('\n');
+    const theirs = maskFor(s, 1 - me).log.map((e) => e.text).join('\n');
+    expect(mine).toContain('전지 약탈');
+    expect(theirs).not.toContain('전지 약탈');
+    expect(theirs).toContain('비공개');
+    expect(maskFor(s, 1 - me).log.every((e) => e.pub === undefined)).toBe(true);
+  });
+
+  it('칸 1(앞면)에서 가져간 카드는 모두에게 공개된다', async () => {
+    const { maskFor } = await import('../mask');
+    let s = createGame(1, seats(2));
+    s.round = 2;
+    const me = s.current;
+    s.questRow[0] = 'r1c';
+    s = act(s, { type: 'pickQuest', slot: 0 });
+    expect(maskFor(s, 1 - me).log.map((e) => e.text).join('\n')).toContain('전지 약탈');
+  });
+});
