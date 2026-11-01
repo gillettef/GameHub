@@ -114,3 +114,25 @@
   color: var(--text-dim);
   font-size: 12px;
 }
+
+/* 마우스 호버 툴팁 — 터치 기기에서는 나타나지 않는다(터치는 시트) */
+.tip {
+  position: absolute;
+  z-index: 5;
+  width: max-content;
+  max-width: 62%;
+  transform: translate(-50%, calc(-100% - 22px));
+  padding: var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  border: 1px solid var(--text-dim);
+  color: var(--text);
+  font-size: 12px;
+  pointer-events: none;
+}
+.tipBelow {
+  transform: translate(-50%, 22px);
+}
+.tip p {
+  margin: 2px 0 0;
+}

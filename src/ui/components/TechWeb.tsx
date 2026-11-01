@@ -1,6 +1,6 @@
 // 테크 웹 SVG: 행성 지도 회화(assets/techweb/map.webp) 위에 그림 배지 노드. 중심에서 6방향·3고리. 줄기는 연구하면 얻는 것(방향이 여는 자원·방위)의 색, 고리는 배경 원 색과 노드 안 숫자, 곁가지는 안쪽이 얻는 것의 색·테두리가 노선색, 연구 가능 노드는 맥동
-import { useId, useState, type CSSProperties, type MouseEvent as ReactMouseEvent } from 'react';
-import type { Direction, PlayerState } from '../../core/types';
+import { useId, useState, type CSSProperties, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from 'react';
+import type { Direction, PlayerState, TechNode } from '../../core/types';
 import { DIRECTION_NAMES, TRUNK_NAMES, DIRECTION_UNLOCKS, BUILDING_DIRECTION, BUILDING_NAMES, UNIT_NAMES, DOCTRINE_NAMES, LEVEL_NAMES } from '../../core/data/constants';
 import { CORE_ID } from '../../core/data/techWeb';
 import { playerMods } from '../../core/engine/derive';
@@ -38,6 +38,8 @@ function polar(r: number, deg: number): [number, number] {
 export function TechWeb({ player }: { player: PlayerState }) {
   const { game, me, myTurn, check, act } = useGame();
   const [open, setOpen] = useState<string | null>(null);
+  // 마우스를 올린 노드(터치는 해당 없음 — 터치는 누르면 시트가 열린다)
+  const [hover, setHover] = useState<string | null>(null);
   // 판마다 gradient id 가 겹치지 않게(useId 의 콜론은 url() 에서 빼 둔다)
   const uid = useId().replace(/[^a-zA-Z0-9_-]/g, '');
   const gid = (k: string) => `ntTw${k}${uid}`;
@@ -61,16 +63,10 @@ export function TechWeb({ player }: { player: PlayerState }) {
 
   // 노드마다 따로 누르는 원을 두면 곁가지(배지 반지름 8)가 줄기의 누르는 원에 가려진다.
   // 대신 웹 전체에서 누른 점과 가장 가까운 노드를 고른다(이웃 노드 사이 가운데가 경계)
-  const pickNode = (e: ReactMouseEvent<SVGSVGElement>) => {
-    // VoiceOver·스위치 제어·키보드의 '활성화'는 좌표 없는 클릭(detail 0) — 그 노드를 바로 연다
-    if (e.detail === 0) {
-      const g = (e.target as Element).closest<SVGElement>('[data-node]');
-      if (g?.dataset.node) setOpen(g.dataset.node);
-      return;
-    }
-    const m = e.currentTarget.getScreenCTM();
-    if (!m) return;
-    const pt = new DOMPoint(e.clientX, e.clientY).matrixTransform(m.inverse());
+  const nearestNode = (svg: SVGSVGElement, clientX: number, clientY: number): string | null => {
+    const m = svg.getScreenCTM();
+    if (!m) return null;
+    const pt = new DOMPoint(clientX, clientY).matrixTransform(m.inverse());
     let best: string | null = null;
     let bestD = TAP_REACH;
     for (const id of Object.keys(nodes)) {
@@ -82,6 +78,21 @@ export function TechWeb({ player }: { player: PlayerState }) {
         best = id;
       }
     }
+    return best;
+  };
+  const hoverNode = (e: ReactPointerEvent<SVGSVGElement>) => {
+    if (e.pointerType !== 'mouse') return;
+    const id = nearestNode(e.currentTarget, e.clientX, e.clientY);
+    setHover((cur) => (cur === id ? cur : id));
+  };
+  const pickNode = (e: ReactMouseEvent<SVGSVGElement>) => {
+    // VoiceOver·스위치 제어·키보드의 '활성화'는 좌표 없는 클릭(detail 0) — 그 노드를 바로 연다
+    if (e.detail === 0) {
+      const g = (e.target as Element).closest<SVGElement>('[data-node]');
+      if (g?.dataset.node) setOpen(g.dataset.node);
+      return;
+    }
+    const best = nearestNode(e.currentTarget, e.clientX, e.clientY);
     if (best) setOpen(best);
   };
 
@@ -106,6 +117,36 @@ export function TechWeb({ player }: { player: PlayerState }) {
     return parts.flatMap((x, i) => (i ? [{ text: ' · ' }, x] : [x]));
   };
 
+  const nodeBody = (n: TechNode) => (
+    <>
+    {n.kind === 'trunk' && (
+      <p>
+        <span style={{ color: DIRECTION_TONE[n.direction!] }}>{DIRECTION_NAMES[n.direction!]}</span> {n.ring}고리 줄기
+      </p>
+    )}
+    {n.kind === 'trunk' && (
+      <p>
+        해금: <Segs segs={unlockSegs(n.direction!, n.ring)} />
+      </p>
+    )}
+    {n.kind === 'twig' && (
+      <p>
+        <DoctrineTag doctrine={n.twig!.doctrine}>
+          {DOCTRINE_NAMES[n.twig!.doctrine]} +{n.twig!.points}
+        </DoctrineTag>
+        {[instantSegs(n.twig!.instant), modsSegs(n.twig!.mods)]
+          .filter((g) => g.length)
+          .map((g, i) => (
+            <span key={i}>
+              {' · '}
+              <Segs segs={g} />
+            </span>
+          ))}
+      </p>
+    )}
+    </>
+  );
+
   return (
     <Section
       tone={`var(--seat-${p.id})`}
@@ -122,7 +163,7 @@ export function TechWeb({ player }: { player: PlayerState }) {
     >
       <div className={styles.frame}>
         <img className={styles.map} src={mapArt} alt="" loading="lazy" decoding="async" draggable={false} />
-        <svg viewBox="-212 -212 424 424" className={styles.web} role="group" aria-label={`${p.name} 테크 웹`} onClick={pickNode}>
+        <svg viewBox="-212 -212 424 424" className={styles.web} role="group" aria-label={`${p.name} 테크 웹`} onClick={pickNode} onPointerMove={hoverNode} onPointerLeave={() => setHover(null)}>
           <defs>
             {/* 배지 테두리(금속)·광택·안쪽 그늘 */}
             <radialGradient id={gid('Bezel')} cx="0.35" cy="0.3" r="0.8">
@@ -222,6 +263,17 @@ export function TechWeb({ player }: { player: PlayerState }) {
             );
           })}
         </svg>
+        {hover && nodes[hover] && pos[hover] && (
+          <div
+            className={`${styles.tip} ${pos[hover][1] < 0 ? styles.tipBelow : ''}`}
+            style={{ left: `${Math.min(80, Math.max(20, ((pos[hover][0] + 212) / 424) * 100))}%`, top: `${((pos[hover][1] + 212) / 424) * 100}%` }}
+            role="tooltip"
+          >
+            <strong>{nodeName(hover)}</strong>
+            {nodeBody(nodes[hover])}
+            <p className={styles.dim}>{has(hover) ? '연구함' : (researchBlock(game, p, hover) ?? '연구 가능')}</p>
+          </div>
+        )}
       </div>
       <p className={styles.legend}>
         큰 배지 색 = 연구하면 얻는 것({game.layout.dirOrder.map((d, i) => (
@@ -244,31 +296,7 @@ export function TechWeb({ player }: { player: PlayerState }) {
               : []
           }
         >
-          {node.kind === 'trunk' && (
-            <p>
-              <span style={{ color: DIRECTION_TONE[node.direction!] }}>{DIRECTION_NAMES[node.direction!]}</span> {node.ring}고리 줄기
-            </p>
-          )}
-          {node.kind === 'trunk' && (
-            <p>
-              해금: <Segs segs={unlockSegs(node.direction!, node.ring)} />
-            </p>
-          )}
-          {node.kind === 'twig' && (
-            <p>
-              <DoctrineTag doctrine={node.twig!.doctrine}>
-                {DOCTRINE_NAMES[node.twig!.doctrine]} +{node.twig!.points}
-              </DoctrineTag>
-              {[instantSegs(node.twig!.instant), modsSegs(node.twig!.mods)]
-                .filter((g) => g.length)
-                .map((g, i) => (
-                  <span key={i}>
-                    {' · '}
-                    <Segs segs={g} />
-                  </span>
-                ))}
-            </p>
-          )}
+          {nodeBody(node)}
           <p className={styles.dim}>{has(open) ? '연구함' : (researchBlock(game, p, open) ?? '연구 가능')}</p>
         </Sheet>
       )}
