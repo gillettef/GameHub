@@ -303,6 +303,73 @@ describe('퀘스트', () => {
     expect(s.questRow).toEqual([row[0], row[1], row[3], row[4], next]);
   });
 
+  /** 퀘스트 선택 단계의 게임에 트랙을 직접 놓는다(차례 시작 칸 1도 맞춤) */
+  const withRow = (row: string[]) => {
+    const s = createGame(1, seats(3));
+    s.questRow = [...row];
+    s.questOpen = row.map(() => false);
+    s.turnFront = row[0];
+    return s;
+  };
+  /** 대외 단계부터 차례를 끝낼 때까지 아무 행동 없이 넘긴다 */
+  const finishTurn = (s: GameState) => act(s, { type: 'endTurn' });
+
+  it('트랙 밀기: 칸 2~5를 고르면 차례 끝에 칸 1도 밀림 더미로 가서 2칸 움직인다', () => {
+    let s = withRow(['s1f', 's1p', 's1e', 's1s', 's1c']);
+    const row = [...s.questRow];
+    const deck = [...s.questDecks[1]];
+    s = act(s, { type: 'pickQuest', slot: 2 });
+    s = finishTurn(s);
+    expect(s.questDiscard).toEqual([row[0]]);
+    expect(s.questRow).toEqual([row[1], row[3], row[4], deck[0], deck[1]]);
+  });
+
+  it('트랙 밀기: 칸 1을 고르면 1칸만 움직이고 밀림 더미는 그대로', () => {
+    let s = withRow(['s1f', 's1p', 's1e', 's1s', 's1c']);
+    const row = [...s.questRow];
+    const deck = [...s.questDecks[1]];
+    s = act(s, { type: 'pickQuest', slot: 0 });
+    s = finishTurn(s);
+    expect(s.questDiscard).toEqual([]);
+    expect(s.questRow).toEqual([row[1], row[2], row[3], row[4], deck[0]]);
+  });
+
+  it('트랙 밀기: 칸 1·2가 같은 카드 사본이어도 칸 1을 고르면 1칸만 움직인다', () => {
+    let s = withRow(['s1f', 's1f', 's1e', 's1s', 's1c']);
+    const deck = [...s.questDecks[1]];
+    s = act(s, { type: 'pickQuest', slot: 0 });
+    s = finishTurn(s);
+    expect(s.questDiscard).toEqual([]);
+    expect(s.questRow).toEqual(['s1f', 's1e', 's1s', 's1c', deck[0]]);
+  });
+
+  it('트랙 밀기: 덱이 떨어지면 밀림 더미를 섞어 새 덱으로 놓는다', () => {
+    let s = withRow(['s1f', 's1p', 's1e', 's1s', 's1c']);
+    s.questDecks[1] = [];
+    s.questDiscard = ['s1m', 's1d', 's1f'];
+    // 고른 칸을 채울 때 덱이 비어 더미 3장을 섞어 새 덱으로 놓고 1장을 쓴다
+    s = act(s, { type: 'pickQuest', slot: 1 });
+    expect(s.questRow).toHaveLength(QUEST_ROW_SIZE);
+    expect(s.questDecks[1]).toHaveLength(2);
+    expect(s.questDiscard).toEqual([]);
+    // 차례 끝 밀기: 칸 1 카드는 새 밀림 더미로, 남은 덱에서 1장을 채운다
+    s = finishTurn(s);
+    expect(s.era).toBe(1);
+    expect(s.questDiscard).toEqual(['s1f']);
+    expect(s.questDecks[1]).toHaveLength(1);
+    expect(s.questRow).toHaveLength(QUEST_ROW_SIZE);
+  });
+
+  it('덱과 밀림 더미가 모두 비어야 덱 소진으로 시대가 넘어간다', () => {
+    let s = createGame(1, seats(2));
+    s.questDecks[1] = [];
+    s.questDiscard = [];
+    s = act(s, { type: 'pickQuest', slot: 1 });
+    s = finishTurn(s);
+    expect(s.era).toBe(2);
+    expect(s.questDiscard).toEqual([]);
+  });
+
   it('퀘스트 선택 전에는 다른 행동이 막히고, 한 차례에 한 번만 고른다', () => {
     let s = atQuest('s1f');
     expect(applyAction(s, s.current, { type: 'endTurn' }).error).toBe('먼저 퀘스트를 고르세요');

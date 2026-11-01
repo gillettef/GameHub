@@ -7,7 +7,7 @@ import { defenseLeft, playerMods, productionPreview, unhealthy } from './derive'
 import { applyMainAction } from './actions';
 import { declareConflict, raid, resolveConflict } from './external';
 import { advanceEra, eraShouldAdvance } from './era';
-import { canPickAny, pickQuest, respond, startThreatOn } from './quest';
+import { canPickAny, pickQuest, pushRow, respond, startThreatOn } from './quest';
 import { ranking } from './scoring';
 import { clone, log } from './util';
 
@@ -135,6 +135,7 @@ export function startTurn(state: GameState): void {
   p.defenseUsed = 0;
   p.guard = 0;
   for (const h of p.hand) h.fresh = false;
+  state.turnFront = state.questRow[0] ?? null;
   state.phase = 'quest';
   if (!canPickAny(state, p)) afterQuest(state);
 }
@@ -171,6 +172,7 @@ export function endTurn(state: GameState): void {
   p.guard = Math.min(GUARD_MAX, Math.max(0, defenseLeft(p)));
   const roundEnd = (state.current + 1) % state.players.length === state.startPlayer;
   state.steps.push({ k: 'next' });
+  pushRow(state);
   if (eraShouldAdvance(state, roundEnd)) advanceEra(state);
 }
 

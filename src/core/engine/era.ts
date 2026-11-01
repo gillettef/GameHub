@@ -13,7 +13,7 @@ export function eraProgress(state: GameState): { have: number; need: number } {
 
 /** 현재 시대 퀘스트 덱이 바닥나 트랙을 다 채우지 못하는 상태(4.2 덱 소진) */
 export function deckExhausted(state: GameState): boolean {
-  return state.era <= 3 && state.questDecks[state.era].length === 0 && state.questRow.length < QUEST_ROW_SIZE;
+  return state.era <= 3 && state.questDecks[state.era].length === 0 && state.questDiscard.length === 0 && state.questRow.length < QUEST_ROW_SIZE;
 }
 
 /** 테크 기준·덱 소진은 매 차례 끝, 라운드 상한 안전장치는 라운드 끝에서만 본다 */
@@ -32,6 +32,8 @@ export function advanceEra(state: GameState): void {
   state.era = next;
   state.questRow = [];
   state.questOpen = [];
+  state.questDiscard = [];
+  state.turnFront = null;
   if (next <= 3) {
     refillRow(state);
   } else {

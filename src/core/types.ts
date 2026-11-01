@@ -315,7 +315,7 @@ export interface LogEntry {
 export type Phase = 'quest' | 'external' | 'actions';
 
 export interface GameState {
-  version: 3;
+  version: 4;
   seed: number;
   rngState: [number, number, number, number];
   /** 상태 버전: 행동이 적용될 때마다 1 증가(온라인에서 오래된 화면 기준 행동 거절) */
@@ -333,6 +333,10 @@ export interface GameState {
   questRow: string[];
   /** 칸별 앞면 여부(칸 1 외에는 뒷면 종료 묶음을 골라 뒤집은 경우만 true) */
   questOpen: boolean[];
+  /** 밀림 더미(Rules 12.2): 차례 끝 트랙 밀기로 칸 1에서 버려진 카드. 공개 정보. 덱이 떨어지면 섞어 새 덱이 된다 */
+  questDiscard: string[];
+  /** 이번 차례 시작 때 칸 1에 있던 카드(차례 끝 트랙 밀기 판단용) */
+  turnFront: string | null;
   endBundle: string[];
   patronDecks: Record<Ring, string[]>;
   satDeck: string[];

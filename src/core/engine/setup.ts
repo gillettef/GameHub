@@ -77,7 +77,7 @@ export function createGame(seed: number | number[], seats: SeatConfig[]): GameSt
   });
 
   const state: GameState = {
-    version: 3,
+    version: 4,
     seed: Array.isArray(seed) ? 0 : seed,
     rngState: rng.state(),
     ver: 0,
@@ -91,6 +91,8 @@ export function createGame(seed: number | number[], seats: SeatConfig[]): GameSt
     questDecks,
     questRow: [],
     questOpen: [],
+    questDiscard: [],
+    turnFront: null,
     endBundle,
     patronDecks,
     satDeck,

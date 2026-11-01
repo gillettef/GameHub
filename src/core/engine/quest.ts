@@ -15,7 +15,7 @@ import { QUEST_DEFS, isEndCard, trackName } from '../data/quests';
 import { PATRON_DEFS } from '../data/patrons';
 import { commandMax, defenseValue, mainDoctrine, meets, metric, sight, stage } from './derive';
 import { addDoctrine, applyLoss } from './effects';
-import { canPay, gain, log } from './util';
+import { canPay, gain, log, withRng } from './util';
 
 /** 고른 플레이어부터 자리 순 */
 export function orderFrom(state: GameState, start: number): number[] {
@@ -74,14 +74,34 @@ function checkEndTrigger(state: GameState): void {
   }
 }
 
-/** 덱에서 빈 칸을 뒤에서부터 채운다 */
+/** 덱에서 빈 칸을 뒤에서부터 채운다. 덱이 바닥나면 밀림 더미를 섞어 새 덱으로 놓는다(Rules 12.2) */
 export function refillRow(state: GameState): void {
-  const deck = state.questDecks[deckKey(state)];
-  while (state.questRow.length < QUEST_ROW_SIZE && deck.length) {
-    state.questRow.push(deck.shift()!);
+  const key = deckKey(state);
+  while (state.questRow.length < QUEST_ROW_SIZE) {
+    if (!state.questDecks[key].length) {
+      if (!state.questDiscard.length) break;
+      const pile = state.questDiscard;
+      state.questDiscard = [];
+      state.questDecks[key] = withRng(state, (rng) => rng.shuffle(pile));
+      log(state, null, `퀘스트 덱이 떨어져 밀림 더미 ${pile.length}장을 섞어 새 덱으로 놓음`);
+    }
+    state.questRow.push(state.questDecks[key].shift()!);
     state.questOpen.push(false);
   }
   checkEndTrigger(state);
+}
+
+/** 차례 끝 트랙 밀기(Rules 12.2): 차례 시작 때의 칸 1 카드가 남아 있으면 밀림 더미로 보내고 당겨 채운다.
+ *  칸 1을 고르면 pickQuest 가 turnFront 를 비운다(같은 id 사본이 칸 2에서 당겨져도 밀지 않게 id 로 비교하지 않음) */
+export function pushRow(state: GameState): void {
+  const front = state.turnFront;
+  state.turnFront = null;
+  if (!front || !state.questRow.length) return;
+  state.questRow.shift();
+  state.questOpen.shift();
+  state.questDiscard.push(front);
+  log(state, null, `퀘스트 트랙이 밀려 「${trackName(front)}」 버림`);
+  refillRow(state);
 }
 
 /** 퀘스트 선택(Rules 12.2). 뒷면 종료 묶음이면 뒤집어 두고 다시 고르게 한다 → 'again' */
@@ -99,6 +119,7 @@ export function pickQuest(state: GameState, p: PlayerState, slot: number): strin
   const open = slot === 0 || state.questOpen[slot];
   const c = CARD_DEFS[id];
   const secret = !open && !!c && HAND_TYPES.includes(c.type) && !cardTakeBlock(state, p, c);
+  if (slot === 0) state.turnFront = null;
   state.questRow.splice(slot, 1);
   state.questOpen.splice(slot, 1);
   refillRow(state);
