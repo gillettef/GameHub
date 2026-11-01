@@ -82,7 +82,7 @@ export function startLocal(name: string, aiCount: number, seed: number): void {
 
 export function resumeLocal(): boolean {
   const save = storage.loadLocal();
-  if (!save || save.game.version !== 4 || !Array.isArray(save.game.rngState)) return false;
+  if (!save || save.game.version !== 5 || !Array.isArray(save.game.rngState)) return false;
   useApp.getState().set({ screen: 'game', mode: 'local', me: save.me, viewing: save.me, send, undo });
   history = [];
   commit(save.game);

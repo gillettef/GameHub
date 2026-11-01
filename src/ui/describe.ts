@@ -1,7 +1,7 @@
 // 효과·조건·카드를 화면용 한국어 문장으로 바꾼다
 import type { CardDef, Doctrine, Cond, ConflictLoss, RaidEffect, Instant, Loss, Metric, Mods, QuestDef, QuestOption, Res, ThreatTarget } from '../core/types';
 import { RES_KEYS } from '../core/types';
-import { DOCTRINE_NAMES, RES_NAMES, UNIT_NAMES } from '../core/data/constants';
+import { BUILDING_NAMES, BUILDING_RES, DOCTRINE_NAMES, RES_NAMES, UNIT_NAMES } from '../core/data/constants';
 import { FACILITY_DEFS } from '../core/data/quests';
 import { EFFECT_TONE, RES_TONE } from './tones';
 
@@ -42,10 +42,13 @@ export function modsSegs(m: Partial<Mods> | undefined): Seg[] {
   if (m.researchDiscount) one(`연구 비용 −${m.researchDiscount}`, RES_TONE.sci);
   if (m.trunkDiscount) one(`줄기 연구 비용 −${m.trunkDiscount}`, RES_TONE.sci);
   if (m.buildingCap) one(`건물 계열 한도 ${sign(m.buildingCap)}`);
-  if (m.unitCap) one(`유닛 계열 한도 ${sign(m.unitCap)}`, EFFECT_TONE.military);
+  if (m.unitCap) one(`유닛 총수 한도 ${sign(m.unitCap)}`, EFFECT_TONE.military);
   if (m.foodUpkeep) one(`식량 소비 −${m.foodUpkeep}`, RES_TONE.food);
   if (m.unitUpgradeDiscount) one(`유닛 업그레이드 비용 −${m.unitUpgradeDiscount}`, EFFECT_TONE.military);
   if (m.raidBonus) one(`습격 판정 ${sign(m.raidBonus)}`, EFFECT_TONE.military);
+  if (m.buildingBonus) {
+    for (const [k, v] of Object.entries(m.buildingBonus)) if (v) one(`${BUILDING_NAMES[k as keyof typeof BUILDING_NAMES]} 산출 ${sign(v)}`, RES_TONE[BUILDING_RES[k as keyof typeof BUILDING_RES]]);
+  }
   if (m.unitPower) {
     for (const [k, v] of Object.entries(m.unitPower)) if (v) one(`${UNIT_NAMES[k as keyof typeof UNIT_NAMES]} 전력 ${sign(v)}`, EFFECT_TONE.military);
   }

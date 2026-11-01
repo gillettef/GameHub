@@ -13,7 +13,7 @@ export type UnitKind = 'guard' | 'rider' | 'battery' | 'flyer';
 export const UNIT_KINDS: UnitKind[] = ['guard', 'rider', 'battery', 'flyer'];
 
 export type Direction = 'agri' | 'industry' | 'power' | 'academic' | 'culture' | 'defense';
-export const DIRECTIONS: Direction[] = ['agri', 'industry', 'power', 'academic', 'culture', 'defense'];
+export const DIRECTIONS: Direction[] = ['agri', 'culture', 'academic', 'power', 'industry', 'defense'];
 
 export type Era = 1 | 2 | 3 | 4;
 export type Ring = 1 | 2 | 3;
@@ -37,6 +37,8 @@ export interface Mods {
   unitUpgradeDiscount: number;
   raidBonus: number;
   income: Partial<Res>;
+  /** 건물 하나마다 산출 +n */
+  buildingBonus: Partial<Record<BuildingKind, number>>;
   unitPower: Partial<Record<UnitKind, number>>;
 }
 
@@ -315,7 +317,7 @@ export interface LogEntry {
 export type Phase = 'quest' | 'external' | 'actions';
 
 export interface GameState {
-  version: 4;
+  version: 5;
   seed: number;
   rngState: [number, number, number, number];
   /** 상태 버전: 행동이 적용될 때마다 1 증가(온라인에서 오래된 화면 기준 행동 거절) */

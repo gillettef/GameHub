@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { createGame } from './setup';
 import { applyAction } from './turn';
-import { webGraph, researchCost, researchBlock } from './research';
+import { webGraph, researchCost, researchBlock, twigNeighborTrunks } from './research';
 import { advanceEra } from './era';
 import { slotVisible } from './quest';
-import { defenseValue, health, plague, playerMods, productionPreview, requiredHealth, stage, unhealthy } from './derive';
+import { unitPoolCap, defenseValue, health, plague, playerMods, productionPreview, requiredHealth, stage, unhealthy } from './derive';
 import { scorePlayer } from './scoring';
 import { chooseAction } from '../ai';
 import { TWIG_DEFS, trunkId, CORE_ID } from '../data/techWeb';
@@ -47,7 +47,7 @@ describe('준비', () => {
     for (let seed = 1; seed <= 30; seed++) {
       const { layout } = createGame(seed, seats(2));
       expect(layout).toEqual(first);
-      expect(layout.dirOrder).toEqual(['agri', 'industry', 'power', 'academic', 'culture', 'defense']);
+      expect(layout.dirOrder).toEqual(['agri', 'culture', 'academic', 'power', 'industry', 'defense']);
       expect(new Set(layout.dirOrder).size).toBe(6);
       for (const ring of [1, 2, 3]) {
         const counts: Record<string, number> = {};
@@ -115,6 +115,92 @@ describe('테크 웹 연구', () => {
     const twig = s.layout.twigs[trunkId('agri', 1)][0];
     const after = act(s, { type: 'research', node: `w:${twig}` });
     expect(after.players[s.current].doctrine[TWIG_DEFS[twig].doctrine]).toBe(TWIG_DEFS[twig].points);
+  });
+});
+
+describe('곁가지 개편', () => {
+  it('3고리 곁가지는 양옆 방향의 3고리 줄기를 둘 다 연구해야 열린다', () => {
+    const s = ready();
+    const p = s.players[s.current];
+    // 학술(문화·동력 사이)의 3고리 줄기까지 연구한 상태
+    p.researched.push(trunkId('academic', 3));
+    const twig = `w:${s.layout.twigs[trunkId('academic', 3)][0]}`;
+    s.era = 3;
+    expect(researchBlock(s, p, twig)).toBe('양옆 방향의 3고리 줄기가 필요');
+    p.researched.push(trunkId('culture', 3));
+    expect(researchBlock(s, p, twig)).toBe('양옆 방향의 3고리 줄기가 필요');
+    p.researched.push(trunkId('power', 3));
+    expect(researchBlock(s, p, twig)).toBeNull();
+  });
+
+  it('1·2고리 곁가지는 양옆 줄기 없이 열린다', () => {
+    const s = ready();
+    const p = s.players[s.current];
+    s.era = 2;
+    p.researched.push(trunkId('academic', 1), trunkId('academic', 2));
+    for (const ring of [1, 2]) expect(researchBlock(s, p, `w:${s.layout.twigs[trunkId('academic', ring)][0]}`)).toBeNull();
+  });
+
+  it('건물 산출 보강은 건물마다 더해진다', () => {
+    const s = ready();
+    const p = s.players[s.current];
+    p.buildings.farm = [2, 0, 0, 0];
+    const before = productionPreview(p).gross.food;
+    p.researched.push('w:agri2b');
+    expect(productionPreview(p).gross.food).toBe(before + 2);
+  });
+
+  it('유닛 한도는 4계열을 합친 총수다', () => {
+    const s = ready();
+    const p = s.players[s.current];
+    p.researched.push(trunkId('defense', 1));
+    p.idle = 3;
+    p.res.prod = 30;
+    // 총수 한도 = 4 + 2 × 방위 줄기 1 = 6. 경비대 5 + 기동대 0 이면 기동대 1대 더 가능
+    p.units.guard = [5, 0, 0, 0];
+    p.units.rider = [0, 0, 0, 0];
+    expect(applyAction(s, s.current, { type: 'buildUnit', kind: 'rider', level: 1 }).error).toBeUndefined();
+    // 경비대 5 + 기동대 1 = 6 이면 어느 계열이든 막힌다
+    p.units.rider = [0, 1, 0, 0];
+    expect(applyAction(s, s.current, { type: 'buildUnit', kind: 'rider', level: 1 }).error).toBe('유닛 총수 한도');
+    expect(applyAction(s, s.current, { type: 'buildUnit', kind: 'guard', level: 0 }).error).toBe('유닛 총수 한도');
+  });
+});
+
+describe('곁가지 구조·한도 보강', () => {
+  it('곁가지 36개: 고리마다 노선 4·4·4, 한 줄기의 두 곁가지는 태그가 다르다, 3고리 이웃은 순환 이웃', () => {
+    const s = ready();
+    const g = webGraph(s.layout);
+    const twigs = Object.values(g.nodes).filter((n) => n.kind === 'twig');
+    expect(twigs).toHaveLength(36);
+    const dirs = s.layout.dirOrder;
+    dirs.forEach((dir, i) => {
+      const nb = twigNeighborTrunks(s.layout, g.nodes[`w:${dir}3a`]);
+      expect(nb.sort()).toEqual([trunkId(dirs[(i + 5) % 6], 3), trunkId(dirs[(i + 1) % 6], 3)].sort());
+      expect(twigNeighborTrunks(s.layout, g.nodes[`w:${dir}2a`])).toEqual([]);
+    });
+  });
+
+  it('건물 산출 보강은 역병이면 건물 생산과 함께 멈춘다', () => {
+    const s = ready();
+    const p = s.players[s.current];
+    p.buildings.farm = [2, 0, 0, 0];
+    p.researched.push('w:agri2b');
+    p.idle = 0;
+    p.coexist = 99; // 건강 크게 부족 → 역병
+    const prev = productionPreview(p);
+    expect(prev.plague).toBe(true);
+    expect(prev.gross.food).toBe(0);
+  });
+
+  it('유닛 업그레이드는 총수 한도와 무관하고, 한도를 늘리는 곁가지가 있다', () => {
+    const s = ready();
+    const p = s.players[s.current];
+    const base = unitPoolCap(p);
+    p.researched.push('w:industry3a');
+    expect(unitPoolCap(p)).toBe(base + 1);
+    p.charters.defense = 1;
+    expect(unitPoolCap(p)).toBe(base + 2);
   });
 });
 

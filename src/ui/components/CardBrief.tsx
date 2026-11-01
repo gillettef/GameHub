@@ -22,6 +22,7 @@ function modsChips(m: Partial<Mods> | undefined): Chip[] {
   if (m.sight) out.push({ icon: 'satellite', text: sign(m.sight) });
   if (m.sporeCap) out.push({ icon: 'spore', text: sign(m.sporeCap) });
   if (m.raidBonus) out.push({ icon: 'rider', color: 'var(--danger)', text: sign(m.raidBonus) });
+  if (m.buildingBonus) for (const [k, v] of Object.entries(m.buildingBonus)) if (v) out.push({ icon: k as IconName, text: sign(v) });
   if (m.unitPower) for (const [k, v] of Object.entries(m.unitPower)) if (v) out.push({ icon: k as UnitKind, color: 'var(--danger)', text: sign(v) });
   if (m.researchDiscount) out.push({ icon: 'sci', color: 'var(--res-sci)', text: `−${m.researchDiscount}` });
   if (m.trunkDiscount) out.push({ text: `줄기−${m.trunkDiscount}` });

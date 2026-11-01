@@ -42,7 +42,8 @@ import {
   requiredHealth,
   health,
   stage,
-  unitCap,
+  unitPoolCap,
+  unitTotal,
   unitCount,
   unitUnlocked,
   isHybrid,
@@ -173,7 +174,7 @@ export function ColonyBoard({ player }: { player: PlayerState }) {
                 전력 {levels.map((l) => `${LEVEL_NAMES[l]} ${UNIT_POWER[k][l]}`).join(' / ')} · {trait[k]}
               </p>
               <p className={styles.dim}>
-                보유 {unitCount(p, k)} / 한도 {unitCap(p, k, mods)} · 유휴 정착민 {p.idle}
+                보유 {unitCount(p, k)} · 유닛 전체 {unitTotal(p)} / {unitPoolCap(p, mods)} · 유휴 정착민 {p.idle}
               </p>
             </>
           ),

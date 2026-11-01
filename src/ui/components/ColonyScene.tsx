@@ -6,7 +6,7 @@ import type { BuildingKind, Era, PlayerState, Res, UnitKind } from '../../core/t
 import { BUILDING_KINDS, RES_KEYS, UNIT_KINDS } from '../../core/types';
 import { BUILDING_NAMES, BUILDING_OUTPUT, LEVEL_NAMES, RES_NAMES, UNIT_NAMES, UNIT_POWER } from '../../core/data/constants';
 import { CARD_DEFS } from '../../core/data/cards';
-import { buildingCap, buildingCount, buildingUnlocked, unitCap, unitCount, unitUnlocked, type playerMods } from '../../core/engine/derive';
+import { buildingCap, buildingCount, buildingUnlocked, unitRoom, unitCount, unitUnlocked, type playerMods } from '../../core/engine/derive';
 import { Icon, type IconName } from './Icon';
 import { Num, useFresh } from '../motion';
 import { width as W, height as H, slots, building, unit, legacy } from '../assets/scene/layout.json';
@@ -158,7 +158,7 @@ export function ColonyScene({ player: p, era, mods, eager = false, onBuilding, o
             atlas={(l) => atlasStyle(unitsAtlas, 4, 4, col, l)}
             name={UNIT_NAMES[k]}
             count={unitCount(p, k)}
-            cap={unitCap(p, k, mods)}
+            cap={unitRoom(p, k, mods)}
             levels={levels}
             have={p.units[k]}
             unlocked={(l) => unitUnlocked(p, k, l)}

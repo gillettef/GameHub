@@ -25,7 +25,6 @@ export const ERA_MAX_ROUNDS = 8;
 export const TRUNK_BASE_COST = [0, 4, 5, 6];
 export const TWIG_BASE_COST = [0, 2, 3, 4];
 export const RESEARCH_STEP = 5;
-export const TWIG_POOL_PICK_PER_DOCTRINE = 4;
 
 /** 방향별 줄기 해금: [건물/유닛 계열, 고리별 레벨] */
 export const DIRECTION_UNLOCKS: Record<Direction, { building?: BuildingKind; units?: { kind: UnitKind; levels: number[] }[]; command?: number[]; defense?: number[] }> = {
@@ -76,6 +75,9 @@ export const BUILDING_RES: Record<BuildingKind, keyof Res> = {
   hall: 'culture',
 };
 export const FAMILY_BASE_CAP = 2;
+/** 유닛 총수 한도 = 기본 + 방위 줄기 수 × 줄기당 (Rules.md 7.3, 임시 수치) */
+export const UNIT_POOL_BASE_CAP = 4;
+export const UNIT_POOL_PER_TRUNK = 2;
 
 // 유닛
 export const UNIT_COST: Record<UnitKind, (number | null)[]> = {

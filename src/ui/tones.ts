@@ -1,5 +1,6 @@
 // 화면 색 규칙: 연구·카드로 얻는 것의 색(tokens.css 변수). 테크 웹 배지·효과 글자가 같이 쓴다
 import type { Direction, Res, TwigDef } from '../core/types';
+import { BUILDING_RES } from '../core/data/constants';
 
 export const RES_TONE: Record<keyof Res, string> = {
   food: 'var(--res-food)',
@@ -34,6 +35,8 @@ export function twigTone(t: TwigDef): string {
   if (i?.colonist) return EFFECT_TONE.colonist;
   const res = (Object.keys(RES_TONE) as (keyof Res)[]).find((k) => i?.gain?.[k] || m?.income?.[k]);
   if (res) return RES_TONE[res];
+  const bb = m?.buildingBonus && (Object.keys(m.buildingBonus) as (keyof typeof BUILDING_RES)[]).find((k) => m.buildingBonus![k]);
+  if (bb) return RES_TONE[BUILDING_RES[bb]];
   if (m?.might || m?.raidBonus || (m?.unitPower && Object.values(m.unitPower).some(Boolean))) return EFFECT_TONE.military;
   if (m?.health) return EFFECT_TONE.health;
   if (m?.sporeCap) return EFFECT_TONE.spore;

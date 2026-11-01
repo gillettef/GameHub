@@ -1,21 +1,23 @@
 // 테크 웹: 배치 생성, 노드·연결선, 연구 가능 여부와 비용 (Rules.md 6절)
 import { DIRECTIONS, type Direction, type GameState, type PlayerState, type Ring, type TechNode, type WebLayout } from '../types';
-import { RESEARCH_STEP, TRUNK_BASE_COST, TWIG_BASE_COST, TWIG_POOL_PICK_PER_DOCTRINE } from '../data/constants';
-import { CORE_ID, FIXED_TWIG_PAIRS, TWIG_DEFS, TWIG_POOLS, trunkId, twigNodeId } from '../data/techWeb';
+import { RESEARCH_STEP, TRUNK_BASE_COST, TWIG_BASE_COST } from '../data/constants';
+import { CORE_ID, TWIG_DEFS, trunkId, twigIdsOf, twigNodeId } from '../data/techWeb';
 
-/** 고정 배치(Rules.md 6.4) — 난수를 쓰지 않는다. 방향은 DIRECTIONS 순서, 곁가지는 고리별 풀에서 노선별로 앞 4개를 순서대로 쓴다 */
+/** 고정 배치(Rules.md 6.4) — 난수를 쓰지 않는다. 방향은 DIRECTIONS 순서, 곁가지는 줄기마다 정해져 있다 */
 export function generateLayout(): WebLayout {
   const dirOrder: Direction[] = [...DIRECTIONS];
   const twigs: Record<string, string[]> = {};
-  for (const ring of [1, 2, 3] as Ring[]) {
-    const next: Record<string, number> = { ark: 0, symbiont: 0, synth: 0 };
-    const byDoctrine = (d: string) => TWIG_POOLS[ring].filter((t) => t.doctrine === d).slice(0, TWIG_POOL_PICK_PER_DOCTRINE);
-    const lists = { ark: byDoctrine('ark'), symbiont: byDoctrine('symbiont'), synth: byDoctrine('synth') };
-    dirOrder.forEach((dir, i) => {
-      twigs[trunkId(dir, ring)] = FIXED_TWIG_PAIRS[i].map((d) => lists[d][next[d]++].id);
-    });
-  }
+  for (const ring of [1, 2, 3] as Ring[]) for (const dir of dirOrder) twigs[trunkId(dir, ring)] = twigIdsOf(dir, ring);
   return { dirOrder, twigs };
+}
+
+/** 3고리 곁가지의 추가 조건: 붙은 줄기 양옆 방향의 3고리 줄기 (Rules.md 6.3) */
+export function twigNeighborTrunks(layout: WebLayout, node: TechNode): string[] {
+  if (node.kind !== 'twig' || node.ring !== 3 || !node.direction) return [];
+  const { dirOrder } = layout;
+  const i = dirOrder.indexOf(node.direction);
+  const n = dirOrder.length;
+  return [dirOrder[(i + n - 1) % n], dirOrder[(i + 1) % n]].map((d) => trunkId(d, 3));
 }
 
 export interface WebGraph {
@@ -93,6 +95,7 @@ export function researchBlock(state: GameState, p: PlayerState, nodeId: string):
   if (p.researched.includes(nodeId)) return '이미 연구함';
   if (node.ring > ringLimit(state, p, node.kind)) return '아직 연구할 수 없는 고리';
   if (!(adj[nodeId] ?? []).some((n) => p.researched.includes(n))) return '연결된 연구 노드 없음';
+  if (twigNeighborTrunks(state.layout, node).some((id) => !p.researched.includes(id))) return '양옆 방향의 3고리 줄기가 필요';
   return null;
 }
 

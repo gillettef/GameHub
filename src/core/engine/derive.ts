@@ -14,6 +14,8 @@ import {
   DOCTRINE_STEP,
   EDGE_BONUS,
   FAMILY_BASE_CAP,
+  UNIT_POOL_BASE_CAP,
+  UNIT_POOL_PER_TRUNK,
   FIRST_ROUND_COMMAND,
   SPORE_CAP,
   SPORE_STEP,
@@ -178,7 +180,10 @@ export function productionPreview(p: PlayerState, mods = playerMods(p)): Product
   const sick = plague(p, mods);
   const gross: Res = { food: 0, prod: 0, energy: 0, sci: 0, culture: 0 };
   if (!sick)
-    for (const k of BUILDING_KINDS) p.buildings[k].forEach((n, lvl) => (gross[BUILDING_RES[k]] += n * (BUILDING_OUTPUT[k][lvl] ?? 0)));
+    for (const k of BUILDING_KINDS) p.buildings[k].forEach((n, lvl) => {
+      const out = BUILDING_OUTPUT[k][lvl];
+      if (out != null) gross[BUILDING_RES[k]] += n * (out + (mods.buildingBonus[k] ?? 0));
+    });
   for (const k of RES_KEYS) gross[k] += mods.income[k] ?? 0;
   const upkeep = Math.max(0, colonistTrack(totalColonists(p)).food - mods.foodUpkeep);
   const net = { ...gross, food: gross.food - upkeep };
@@ -188,8 +193,14 @@ export function productionPreview(p: PlayerState, mods = playerMods(p)): Product
 export function buildingCap(p: PlayerState, k: BuildingKind, mods = playerMods(p)): number {
   return FAMILY_BASE_CAP + trunksInDirection(p, BUILDING_DIRECTION[k]) + mods.buildingCap;
 }
-export function unitCap(p: PlayerState, k: UnitKind, mods = playerMods(p)): number {
-  return FAMILY_BASE_CAP + trunksInDirection(p, UNIT_DIRECTION[k]) + mods.unitCap;
+/** 유닛 총수 한도(4계열 합산) — Rules.md 7.3 */
+export function unitPoolCap(p: PlayerState, mods = playerMods(p)): number {
+  return UNIT_POOL_BASE_CAP + UNIT_POOL_PER_TRUNK * trunksInDirection(p, 'defense') + mods.unitCap;
+}
+export const unitTotal = (p: PlayerState): number => UNIT_KINDS.reduce((a, k) => a + unitCount(p, k), 0);
+/** 계열 k 가 도달할 수 있는 수(화면 표시용): 지금 수 + 총수 한도의 남은 칸 */
+export function unitRoom(p: PlayerState, k: UnitKind, mods = playerMods(p)): number {
+  return unitCount(p, k) + Math.max(0, unitPoolCap(p, mods) - unitTotal(p));
 }
 
 /** 해금된 최고 레벨. 기초(0)는 기초가 있는 계열이면 항상 가능 */

@@ -23,8 +23,8 @@ import {
   commandLeft,
   defenseLeft,
   playerMods,
-  unitCap,
-  unitCount,
+  unitPoolCap,
+  unitTotal,
   unitUnlocked,
 } from './derive';
 import { addDoctrine, applyInstant } from './effects';
@@ -208,7 +208,7 @@ function build(state: GameState, p: PlayerState, k: BuildingKind, level: number)
 
 function buildUnit(state: GameState, p: PlayerState, k: UnitKind, level: number): Err {
   if (!unitUnlocked(p, k, level)) return '아직 해금되지 않은 유닛';
-  if (unitCount(p, k) >= unitCap(p, k)) return `${UNIT_NAMES[k]} 한도`;
+  if (unitTotal(p) >= unitPoolCap(p)) return '유닛 총수 한도';
   if (p.idle < 1) return '유휴 정착민이 없습니다';
   const err = needDefense(p);
   if (err) return err;

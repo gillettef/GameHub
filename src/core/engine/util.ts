@@ -19,6 +19,7 @@ export function emptyMods(): Mods {
     unitUpgradeDiscount: 0,
     raidBonus: 0,
     income: {},
+    buildingBonus: {},
     unitPower: {},
   };
 }
@@ -26,7 +27,7 @@ export function emptyMods(): Mods {
 export function addMods(into: Mods, m: Partial<Mods> | undefined): Mods {
   if (!m) return into;
   for (const [k, v] of Object.entries(m)) {
-    if (k === 'income' || k === 'unitPower') {
+    if (k === 'income' || k === 'unitPower' || k === 'buildingBonus') {
       const target = into[k] as Record<string, number>;
       for (const [rk, rv] of Object.entries(v as Record<string, number>)) target[rk] = (target[rk] ?? 0) + rv;
     } else {
