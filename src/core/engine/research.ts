@@ -1,6 +1,6 @@
 // 테크 웹: 배치 생성, 노드·연결선, 연구 가능 여부와 비용 (Rules.md 6절)
 import { DIRECTIONS, type Direction, type GameState, type PlayerState, type Ring, type TechNode, type WebLayout } from '../types';
-import { RESEARCH_STEP, TRUNK_BASE_COST, TWIG_BASE_COST } from '../data/constants';
+import { RESEARCH_STEP, TRUNK_BASE_COST, TRUNK_NAMES, TWIG_BASE_COST } from '../data/constants';
 import { CORE_ID, TWIG_DEFS, trunkId, twigIdsOf, twigNodeId } from '../data/techWeb';
 
 /** 고정 배치(Rules.md 6.4) — 난수를 쓰지 않는다. 방향은 DIRECTIONS 순서, 곁가지는 줄기마다 정해져 있다 */
@@ -95,7 +95,8 @@ export function researchBlock(state: GameState, p: PlayerState, nodeId: string):
   if (p.researched.includes(nodeId)) return '이미 연구함';
   if (node.ring > ringLimit(state, p, node.kind)) return '아직 연구할 수 없는 고리';
   if (!(adj[nodeId] ?? []).some((n) => p.researched.includes(n))) return '연결된 연구 노드 없음';
-  if (twigNeighborTrunks(state.layout, node).some((id) => !p.researched.includes(id))) return '양옆 방향의 3고리 줄기가 필요';
+  const lacking = twigNeighborTrunks(state.layout, node).filter((id) => !p.researched.includes(id));
+  if (lacking.length) return `양옆 3고리 줄기가 필요: ${lacking.map((id) => TRUNK_NAMES[id.split(':')[1] as Direction][3]).join('·')}`;
   return null;
 }
 

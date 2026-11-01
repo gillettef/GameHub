@@ -126,9 +126,9 @@ describe('곁가지 개편', () => {
     p.researched.push(trunkId('academic', 3));
     const twig = `w:${s.layout.twigs[trunkId('academic', 3)][0]}`;
     s.era = 3;
-    expect(researchBlock(s, p, twig)).toBe('양옆 방향의 3고리 줄기가 필요');
+    expect(researchBlock(s, p, twig)).toContain('양옆 3고리 줄기가 필요');
     p.researched.push(trunkId('culture', 3));
-    expect(researchBlock(s, p, twig)).toBe('양옆 방향의 3고리 줄기가 필요');
+    expect(researchBlock(s, p, twig)).toBe('양옆 3고리 줄기가 필요: 반중력 비행');
     p.researched.push(trunkId('power', 3));
     expect(researchBlock(s, p, twig)).toBeNull();
   });
