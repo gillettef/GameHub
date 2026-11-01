@@ -59,7 +59,7 @@ function newPlayer(id: number, seat: SeatConfig): PlayerState {
 export function createGame(seed: number | number[], seats: SeatConfig[]): GameState {
   if (seats.length < MIN_PLAYERS || seats.length > MAX_PLAYERS) throw new Error('인원은 2~4명');
   const rng = createRng(seed);
-  // RNG 순서: 방향 순서 → 곁가지 → 시대별 퀘스트 덱(사건 + 선구자·유산·보급) → 공통 종료 → 후원 계약 → 위성 → 시작 플레이어
+  // RNG 순서: 방향 순서 → 곁가지 → 시대별 퀘스트 덱(사건 + 후원자·유산·자원 팟) → 공통 종료 → 후원 계약 → 위성 → 시작 플레이어
   const layout = generateLayout(rng);
   const players = seats.map((s, i) => newPlayer(i, s));
   const questDecks: GameState['questDecks'] = { 1: [], 2: [], 3: [], 4: [] };

@@ -79,11 +79,11 @@ export function applyMainAction(state: GameState, p: PlayerState, a: Action): Er
       const err = needCommand(state, p);
       if (err) return err;
       const card = CARD_DEFS[h.id];
-      if (card.type !== 'supply') return '보급 카드가 아닙니다';
+      if (card.type !== 'supply') return '자원 팟 카드가 아닙니다';
       p.commandUsed++;
       p.hand.splice(a.index, 1);
       applyInstant(state, p, card.instant);
-      log(state, p.id, `보급 「${card.name}」 사용`);
+      log(state, p.id, `자원 팟 「${card.name}」 사용`);
       return null;
     }
     case 'build':

@@ -12,7 +12,7 @@ export type FrameName =
   | 'pioneer' | 'legacy' | 'supply' | 'patron' | 'satellite' | 'mission' | 'raid' | 'conflict'
   | 'quest-back' | 'quest-judge' | 'quest-threat' | 'quest-contest' | 'quest-patron' | 'quest-fruition' | 'quest-finale';
 
-/** 선구자·유산·보급·습격·분쟁 카드의 프레임과 그림 창 아이콘 */
+/** 후원자·유산·자원 팟·습격·분쟁 카드의 프레임과 그림 창 아이콘 */
 export const CARD_FRAME: Record<CardDef['type'], FrameName> = { pioneer: 'pioneer', legacy: 'legacy', supply: 'supply', raid: 'raid', conflict: 'conflict' };
 export const CARD_ICON: Record<CardDef['type'], IconName> = { pioneer: 'pioneer', legacy: 'legacy', supply: 'supply', raid: 'raid', conflict: 'conflict' };
 

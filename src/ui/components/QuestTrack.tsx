@@ -139,7 +139,7 @@ export function QuestTrack() {
           {!openKnown && (
             <>
               <CardZoom frame="quest-back" title="뒷면 카드" />
-              <p>무엇인지 모른 채 고릅니다. 사건·위협·후원 제안·선구자·유산·보급 중 하나입니다. 위성을 띄우면 칸 2부터 시야만큼 미리 볼 수 있습니다.</p>
+              <p>무엇인지 모른 채 고릅니다. 사건·위협·후원 제안·후원자·유산·자원 팟 중 하나입니다. 위성을 띄우면 칸 2부터 시야만큼 미리 볼 수 있습니다.</p>
             </>
           )}
           {q && (
@@ -173,7 +173,7 @@ export function QuestTrack() {
                 {CARD_TYPE_NAMES[card.type]} · {card.ring}고리
               </p>
               <p>{cardText(card)}</p>
-              {card.type === 'pioneer' && <p className={styles.kind}>고르면 바로 내 선구자가 됩니다(기존 선구자는 버림). 한 시대에 한 명만.</p>}
+              {card.type === 'pioneer' && <p className={styles.kind}>고르면 바로 내 후원자가 됩니다(기존 후원자는 버림). 한 시대에 한 명만.</p>}
               {card.type === 'legacy' && <p className={styles.kind}>고르면 “짓는 중”. 단계마다 지휘 1 + 생산. 동시에 하나만.</p>}
               {card.type === 'supply' && <p className={styles.kind}>손에 들고 있다가 다음 차례부터 지휘 1로 사용.</p>}
               {card.type === 'raid' && <p className={styles.kind}>손에 들고 있다가 다음 차례부터 대외 단계에 방위 행동 2와 함께 내서 습격.</p>}

@@ -97,12 +97,12 @@ export const QUEST_DEFS: Record<string, QuestDef> = Object.fromEntries(
   [...ERA1, ...ERA2, ...ERA3, ...FRUITIONS, ...FINALES].map((q) => [q.id, q]),
 );
 
-/** 시대 퀘스트 덱 구성: 사건 카드 + 그 고리의 선구자·유산·보급 (Rules.md 3.1) */
+/** 시대 퀘스트 덱 구성: 사건 카드 + 그 고리의 후원자·유산·자원 팟 (Rules.md 3.1) */
 export function eraDeckIds(ring: Ring): string[] {
   return [...QUEST_DECKS[ring].map((q) => q.id), ...ringDeckIds(ring)];
 }
 
-/** 퀘스트 트랙의 카드 하나: 사건 카드(QuestDef) 또는 선구자·유산·보급(CardDef) */
+/** 퀘스트 트랙의 카드 하나: 사건 카드(QuestDef) 또는 후원자·유산·자원 팟(CardDef) */
 export type TrackDef = { src: 'quest'; def: QuestDef } | { src: 'card'; def: CardDef };
 export function trackDef(id: string): TrackDef | null {
   if (QUEST_DEFS[id]) return { src: 'quest', def: QUEST_DEFS[id] };

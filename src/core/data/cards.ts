@@ -1,4 +1,4 @@
-// 선구자·유산·보급·습격·분쟁 (Rules.md 11절). 고리별 24·30·30장, 그 시대 퀘스트 덱에 섞인다
+// 후원자·유산·자원 팟·습격·분쟁 (Rules.md 11절). 고리별 24·30·30장, 그 시대 퀘스트 덱에 섞인다
 import type { CardDef, ConflictDef, LegacyDef, PioneerDef, RaidDef, Ring, SupplyDef } from '../types';
 
 const P = (id: string, ring: Ring, name: string, doctrine: PioneerDef['doctrine'], mods: PioneerDef['mods'], text: string): PioneerDef => ({ type: 'pioneer', id, ring, name, doctrine, mods, text });
@@ -100,7 +100,7 @@ export const CARD_DEFS: Record<string, CardDef> = Object.fromEntries(
   [...PIONEERS, ...LEGACIES, ...SUPPLIES, ...RAIDS, ...CONFLICTS].map((c) => [c.id, c]),
 );
 
-/** 고리별 카드 id 목록(보급은 장수만큼 반복) */
+/** 고리별 카드 id 목록(자원 팟은 장수만큼 반복) */
 export function ringDeckIds(ring: Ring): string[] {
   const ids: string[] = [];
   for (const p of PIONEERS) if (p.ring === ring) ids.push(p.id);

@@ -76,11 +76,11 @@ describe('습격 카드', () => {
     expect(s.players[me].pool).toBe(pool + 1);
   });
 
-  it('보급 사용 행동으로 습격 카드를 쓸 수 없다', () => {
+  it('자원 팟 사용 행동으로 습격 카드를 쓸 수 없다', () => {
     const s = ready();
     s.phase = 'actions';
     s.players[s.current].hand = [{ id: 'r1a', fresh: false }];
-    expect(applyAction(s, s.current, { type: 'useSupply', index: 0 }).error).toBe('보급 카드가 아닙니다');
+    expect(applyAction(s, s.current, { type: 'useSupply', index: 0 }).error).toBe('자원 팟 카드가 아닙니다');
   });
 });
 
@@ -108,7 +108,7 @@ describe('분쟁 카드', () => {
 });
 
 describe('손패와 덱', () => {
-  it('습격·분쟁 카드도 보급과 같은 손 한도에 센다', () => {
+  it('습격·분쟁 카드도 자원 팟과 같은 손 한도에 센다', () => {
     const s = ready();
     const p = s.players[s.current];
     p.hand = Array.from({ length: commandMax(s, p) }, () => ({ id: 'r1a', fresh: false }));

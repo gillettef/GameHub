@@ -21,7 +21,7 @@ export function CardArt({
   tone?: string;
   className?: string;
   style?: CSSProperties;
-  /** 선구자·유산 프레임처럼 위가 둥근 창 */
+  /** 후원자·유산 프레임처럼 위가 둥근 창 */
   arch?: boolean;
 }) {
   const url = byId[id];

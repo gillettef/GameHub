@@ -329,7 +329,7 @@ describe('퀘스트', () => {
     const s = atQuest('p1s', 0);
     s.questRow[2] = 'p1y';
     s.players[s.current].pioneerEras = [1];
-    expect(applyAction(s, s.current, { type: 'pickQuest', slot: 0 }).error).toBe('이번 시대에 이미 선구자를 들였습니다');
+    expect(applyAction(s, s.current, { type: 'pickQuest', slot: 0 }).error).toBe('이번 시대에 이미 후원자를 들였습니다');
     const after = act(s, { type: 'pickQuest', slot: 2 });
     expect(after.players[s.current].pioneer).toBeNull();
     expect(after.questRow).not.toContain('p1y');
@@ -375,11 +375,11 @@ describe('퀘스트', () => {
     expect(s.questDecks[4]).toHaveLength(1);
   });
 
-  it('종료 시대의 선구자는 3시대와 같은 시대로 센다', () => {
+  it('종료 시대의 후원자는 3시대와 같은 시대로 센다', () => {
     const s = atQuest('p3a');
     s.era = 4;
     s.players[s.current].pioneerEras = [3];
-    expect(applyAction(s, s.current, { type: 'pickQuest', slot: 0 }).error).toBe('이번 시대에 이미 선구자를 들였습니다');
+    expect(applyAction(s, s.current, { type: 'pickQuest', slot: 0 }).error).toBe('이번 시대에 이미 후원자를 들였습니다');
   });
 
   it('AI 퀘스트 선택은 시야 밖 칸의 정체에 따라 달라지지 않는다', () => {

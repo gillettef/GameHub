@@ -21,7 +21,7 @@ export type Ring = 1 | 2 | 3;
 export type CharterField = 'prosperity' | 'explore' | 'defense' | 'bond';
 export const CHARTER_FIELDS: CharterField[] = ['prosperity', 'explore', 'defense', 'bond'];
 
-/** 영구 수정치. 여러 출처(곁가지·노선·헌장·선구자·유산·후원 계약·특수 시설·위성)를 합산한다 */
+/** 영구 수정치. 여러 출처(곁가지·노선·헌장·후원자·유산·후원 계약·특수 시설·위성)를 합산한다 */
 export interface Mods {
   health: number;
   sporeCap: number;
@@ -110,7 +110,7 @@ export interface TechNode {
   parent?: string;
 }
 
-// ── 선구자·유산·보급(퀘스트 덱에 섞임) ──
+// ── 후원자·유산·자원 팟(퀘스트 덱에 섞임) ──
 export interface PioneerDef {
   type: 'pioneer';
   id: string;
@@ -327,7 +327,7 @@ export interface GameState {
   current: number;
   phase: Phase;
   layout: WebLayout;
-  /** 시대별 퀘스트 덱(사건 카드 + 선구자·유산·보급). 종료 시대에는 4번 자리가 종료 묶음 덱 */
+  /** 시대별 퀘스트 덱(사건 카드 + 후원자·유산·자원 팟). 종료 시대에는 4번 자리가 종료 묶음 덱 */
   questDecks: Record<Ring | 4, string[]>;
   /** 퀘스트 트랙(앞 칸부터, 최대 QUEST_ROW_SIZE). 칸 1은 늘 앞면 */
   questRow: string[];

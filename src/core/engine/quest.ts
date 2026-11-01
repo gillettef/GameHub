@@ -40,9 +40,9 @@ export function slotVisible(state: GameState, viewer: number | null, slot: numbe
   return slot <= sight(state.players[viewer]);
 }
 
-/** 선구자·유산·보급을 가져올 수 없는 이유(Rules 11절) */
+/** 후원자·유산·자원 팟을 가져올 수 없는 이유(Rules 11절) */
 export function cardTakeBlock(state: GameState, p: PlayerState, c: CardDef): string | null {
-  if (c.type === 'pioneer' && p.pioneerEras.includes(Math.min(state.era, 3))) return '이번 시대에 이미 선구자를 들였습니다';
+  if (c.type === 'pioneer' && p.pioneerEras.includes(Math.min(state.era, 3))) return '이번 시대에 이미 후원자를 들였습니다';
   if (c.type === 'legacy' && p.legacyWip) return '이미 짓는 유산이 있습니다';
   if (HAND_TYPES.includes(c.type) && p.hand.length >= commandMax(state, p)) return '손패가 가득 찼습니다';
   return null;
@@ -153,13 +153,13 @@ function takeCard(state: GameState, p: PlayerState, c: CardDef, secret = false):
   if (c.type === 'pioneer') {
     p.pioneer = c.id;
     p.pioneerEras.push(Math.min(state.era, 3)); // 종료 시대는 3시대로 친다(Rules 17)
-    log(state, p.id, `선구자 「${c.name}」 영입`);
+    log(state, p.id, `후원자 「${c.name}」 영입`);
   } else if (c.type === 'legacy') {
     p.legacyWip = { id: c.id, done: 0 };
     log(state, p.id, `유산 「${c.name}」 착공`);
   } else {
     p.hand.push({ id: c.id, fresh: true });
-    const text = `${c.type === 'supply' ? '보급' : c.type === 'raid' ? '습격' : '분쟁'} 「${c.name}」 획득`;
+    const text = `${c.type === 'supply' ? '자원 팟' : c.type === 'raid' ? '습격' : '분쟁'} 「${c.name}」 획득`;
     if (secret) log(state, p.id, text, '손패 1장 획득(비공개)');
     else log(state, p.id, text);
   }

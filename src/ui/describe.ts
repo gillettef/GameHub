@@ -133,7 +133,7 @@ export function questSummary(q: QuestDef): string {
   }
 }
 
-export const CARD_TYPE_NAMES: Record<CardDef['type'], string> = { pioneer: '선구자', legacy: '유산', supply: '보급', raid: '습격', conflict: '분쟁' };
+export const CARD_TYPE_NAMES: Record<CardDef['type'], string> = { pioneer: '후원자', legacy: '유산', supply: '자원 팟', raid: '습격', conflict: '분쟁' };
 export const RAID_EFFECT_NAMES: Record<RaidEffect, string> = {
   lootProd: '생산 약탈',
   lootFood: '식량 약탈',
