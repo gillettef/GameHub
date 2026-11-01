@@ -17,7 +17,7 @@ export const BASE_DEFENSE = 2;
 export const QUEST_ROW_SIZE = 5;
 
 // 시대 전환: 현재 고리 줄기 합 ≥ 인원 × ERA_TRUNK_PER_PLAYER
-export const ERA_TRUNK_PER_PLAYER = 3;
+export const ERA_TRUNK_PER_PLAYER = 4;
 // 안전장치: 한 시대가 이 라운드 수만큼 지나면 넘어간다
 export const ERA_MAX_ROUNDS = 8;
 
