@@ -11,6 +11,7 @@ import { useFresh } from '../motion';
 import { Section } from './Section';
 import { Sheet } from './Sheet';
 import { instantSegs, modsSegs, type Seg } from '../describe';
+import { DoctrineTag, Segs } from './DoctrineTag';
 import { DIRECTION_TONE, EFFECT_TONE, twigTone } from '../tones';
 import mapArt from '../assets/techweb/map.webp';
 import styles from './TechWeb.module.css';
@@ -24,18 +25,6 @@ const TWIG_LEGEND: [string, string][] = [
   [EFFECT_TONE.sight, '시야'],
 ];
 
-/** 효과 조각을 얻는 것의 색으로 */
-function Segs({ segs }: { segs: Seg[] }) {
-  return (
-    <>
-      {segs.map((s, i) => (
-        <span key={i} style={s.tone ? { color: s.tone } : undefined}>
-          {s.text}
-        </span>
-      ))}
-    </>
-  );
-}
 const TWIG_OFFSET = 22;
 const TWIG_SPREAD = 11; // 도
 
@@ -235,9 +224,9 @@ export function TechWeb({ player }: { player: PlayerState }) {
           )}
           {node.kind === 'twig' && (
             <p>
-              <span style={{ color: `var(--${node.twig!.doctrine})` }}>
+              <DoctrineTag doctrine={node.twig!.doctrine}>
                 {DOCTRINE_NAMES[node.twig!.doctrine]} +{node.twig!.points}
-              </span>
+              </DoctrineTag>
               {[instantSegs(node.twig!.instant), modsSegs(node.twig!.mods)]
                 .filter((g) => g.length)
                 .map((g, i) => (

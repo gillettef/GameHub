@@ -1,5 +1,5 @@
 // 효과·조건·카드를 화면용 한국어 문장으로 바꾼다
-import type { CardDef, Cond, ConflictLoss, RaidEffect, Instant, Loss, Metric, Mods, QuestDef, QuestOption, Res, ThreatTarget } from '../core/types';
+import type { CardDef, Doctrine, Cond, ConflictLoss, RaidEffect, Instant, Loss, Metric, Mods, QuestDef, QuestOption, Res, ThreatTarget } from '../core/types';
 import { RES_KEYS } from '../core/types';
 import { DOCTRINE_NAMES, RES_NAMES, UNIT_NAMES } from '../core/data/constants';
 import { FACILITY_DEFS } from '../core/data/quests';
@@ -18,6 +18,8 @@ export function resText(r: Partial<Res> | undefined, prefix = ''): string {
 export interface Seg {
   text: string;
   tone?: string;
+  /** 노선 조각 — 화면에서는 노선 배지(DoctrineTag)로 그린다 */
+  doctrine?: Doctrine;
 }
 const joinSegs = (groups: Seg[][]): Seg[] => groups.flatMap((g, i) => (i ? [{ text: ' · ' }, ...g] : g));
 const resSegs = (r: Partial<Res>, fmt: (n: number) => string): Seg[] =>
@@ -57,7 +59,7 @@ export function instantSegs(e: Instant | undefined): Seg[] {
     const g = resSegs(e.gain, (n) => `+${n}`);
     if (g.length) out.push([{ text: '즉시 ' }, ...g]);
   }
-  if (e.doctrine) for (const [d, n] of Object.entries(e.doctrine)) if (n) out.push([{ text: `${DOCTRINE_NAMES[d as keyof typeof DOCTRINE_NAMES]} 점수 +${n}`, tone: `var(--${d})` }]);
+  if (e.doctrine) for (const [d, n] of Object.entries(e.doctrine)) if (n) out.push([{ text: `${DOCTRINE_NAMES[d as Doctrine]} 점수 +${n}`, doctrine: d as Doctrine }]);
   if (e.colonist) out.push([{ text: `정착민 +${e.colonist}`, tone: EFFECT_TONE.colonist }]);
   return joinSegs(out);
 }
@@ -109,10 +111,11 @@ export function lossText(l: Loss | undefined): string {
   return out.join(', ');
 }
 
-export function optionText(o: QuestOption): string {
-  const g = resText(o.gain, '+');
-  return `${DOCTRINE_NAMES[o.doctrine]} +${o.points}${g ? ` · ${g}` : ''}`;
+export function optionSegs(o: QuestOption): Seg[] {
+  const g = o.gain ? resSegs(o.gain, (n) => `+${n}`) : [];
+  return [{ text: `${DOCTRINE_NAMES[o.doctrine]} +${o.points}`, doctrine: o.doctrine }, ...(g.length ? [{ text: ' · ' }, ...g] : [])];
 }
+export const optionText = (o: QuestOption) => segsText(optionSegs(o));
 
 const TARGET_NAMES: Record<string, string> = {
   weakest: '방위력 최저 1명',
@@ -150,6 +153,18 @@ export function questSummary(q: QuestDef): string {
   }
 }
 
+/** questSummary 의 색 조각판 — 노선이 들어간 문구만 배지로 나눈다 */
+export function questSegs(q: QuestDef): Seg[] {
+  if (q.kind === 'fruition')
+    return [{ text: '종료 시 ' }, { text: DOCTRINE_NAMES[q.doctrine], doctrine: q.doctrine }, { text: ' 단계 × 3 문화, 단계 4 선착 +6 · 나머지 +3' }];
+  if (q.kind === 'threat' && !TARGET_NAMES[q.target]) {
+    const [pre, post] = questSummary(q).split(targetText(q.target));
+    const d = q.target as Doctrine;
+    return [{ text: `${pre}주 노선이 ` }, { text: DOCTRINE_NAMES[d], doctrine: d }, { text: `인 플레이어${post}` }];
+  }
+  return [{ text: questSummary(q) }];
+}
+
 export const CARD_TYPE_NAMES: Record<CardDef['type'], string> = { pioneer: '후원자', legacy: '유산', supply: '자원 팟', raid: '습격', conflict: '분쟁' };
 export const RAID_EFFECT_NAMES: Record<RaidEffect, string> = {
   lootProd: '생산 약탈',
@@ -159,6 +174,14 @@ export const RAID_EFFECT_NAMES: Record<RaidEffect, string> = {
   abduct: '정착민 납치',
 };
 export const CONFLICT_LOSS_NAMES: Record<ConflictLoss, string> = { culture: '문화', building: '건물', doctrine: '노선 점수' };
+
+/** cardText 의 색 조각판 */
+export function cardSegs(c: CardDef): Seg[] {
+  if (c.type === 'pioneer') return [{ text: `${DOCTRINE_NAMES[c.doctrine]} 성향`, doctrine: c.doctrine }, { text: ' · ' }, ...modsSegs(c.mods)];
+  if (c.type === 'legacy') return [{ text: `${c.stages.length}단계(생산 ${c.stages.join('·')}) · 완성 시 ` }, ...modsSegs(c.mods), { text: ` · ${c.points}점` }];
+  if (c.type === 'supply') return instantSegs(c.instant);
+  return [{ text: cardText(c) }];
+}
 
 export function cardText(c: CardDef): string {
   if (c.type === 'pioneer') return `${DOCTRINE_NAMES[c.doctrine]} 성향 · ${modsText(c.mods)}`;

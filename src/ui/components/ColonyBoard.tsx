@@ -62,7 +62,8 @@ import { useFresh } from '../motion';
 import { Section } from './Section';
 import { ActionBeads, ColonyScene, ResourceTray } from './ColonyScene';
 import { Sheet, type SheetAction } from './Sheet';
-import { CARD_TYPE_NAMES, cardText, condText, instantText, modsText } from '../describe';
+import { CARD_TYPE_NAMES, cardSegs, cardText, condText, instantSegs, instantText, modsText } from '../describe';
+import { DoctrineTag, Segs } from './DoctrineTag';
 import styles from './ColonyBoard.module.css';
 
 type Open =
@@ -201,25 +202,25 @@ export function ColonyBoard({ player }: { player: PlayerState }) {
         const c = h && CARD_DEFS[h.id];
         if (!c) return { title: '손패', body: null, actions: [] };
         if (c.type === 'raid' || c.type === 'conflict')
-          return withArt({ title: c.name, body: <p>{cardText(c)}{h.fresh ? ' · 이번 차례에 가져와서 아직 쓸 수 없음' : ' · 대외 단계에 상단의 ' + (c.type === 'raid' ? '습격' : '분쟁') + ' 버튼으로 씁니다'}</p>, actions: [] }, c.id, CARD_ICON[c.type], { frame: CARD_FRAME[c.type], text: cardText(c) });
+          return withArt({ title: c.name, body: <p><Segs segs={cardSegs(c)} />{h.fresh ? ' · 이번 차례에 가져와서 아직 쓸 수 없음' : ' · 대외 단계에 상단의 ' + (c.type === 'raid' ? '습격' : '분쟁') + ' 버튼으로 씁니다'}</p>, actions: [] }, c.id, CARD_ICON[c.type], { frame: CARD_FRAME[c.type], text: cardText(c) });
         if (c.type !== 'supply') return { title: '손패', body: null, actions: [] };
         add('사용 — 지휘 1', { type: 'useSupply', index: o.index });
-        return withArt({ title: c.name, body: <p>{instantText(c.instant)}{h.fresh ? ' · 이번 차례에 가져와서 아직 쓸 수 없음' : ''}</p>, actions: acts }, c.id, 'supply', { frame: 'supply', text: instantText(c.instant) });
+        return withArt({ title: c.name, body: <p><Segs segs={instantSegs(c.instant)} />{h.fresh ? ' · 이번 차례에 가져와서 아직 쓸 수 없음' : ''}</p>, actions: acts }, c.id, 'supply', { frame: 'supply', text: instantText(c.instant) });
       }
       case 'legacy': {
         const wip = p.legacyWip;
         const c = wip && CARD_DEFS[wip.id];
         if (!wip || !c || c.type !== 'legacy') return { title: '유산', body: null, actions: [] };
         add(`${wip.done + 1}단계 짓기 — 생산 ${c.stages[wip.done]} · 지휘 1`, { type: 'legacyStage' });
-        return withArt({ title: `${c.name} (짓는 중 ${wip.done}/${c.stages.length})`, body: <p>{cardText(c)}</p>, actions: acts }, c.id, 'legacy', { frame: 'legacy', text: cardText(c), badge: `${wip.done}` });
+        return withArt({ title: `${c.name} (짓는 중 ${wip.done}/${c.stages.length})`, body: <p><Segs segs={cardSegs(c)} /></p>, actions: acts }, c.id, 'legacy', { frame: 'legacy', text: cardText(c), badge: `${wip.done}` });
       }
       case 'legacyDone': {
         const c = CARD_DEFS[o.id];
-        return withArt({ title: `${c.name} (완성)`, body: <p>{cardText(c)}</p>, actions: [] }, c.id, 'legacy', { frame: 'legacy', text: cardText(c), badge: '✓' });
+        return withArt({ title: `${c.name} (완성)`, body: <p><Segs segs={cardSegs(c)} /></p>, actions: [] }, c.id, 'legacy', { frame: 'legacy', text: cardText(c), badge: '✓' });
       }
       case 'pioneer': {
         const c = p.pioneer ? CARD_DEFS[p.pioneer] : null;
-        return withArt({ title: c?.name ?? '후원자', body: <p>{c ? cardText(c) : ''}</p>, actions: [] }, p.pioneer, 'pioneer', c ? { frame: 'pioneer', text: cardText(c) } : undefined);
+        return withArt({ title: c?.name ?? '후원자', body: <p>{c ? <Segs segs={cardSegs(c)} /> : ''}</p>, actions: [] }, p.pioneer, 'pioneer', c ? { frame: 'pioneer', text: cardText(c) } : undefined);
       }
       case 'orbit': {
         const ob = p.orbit[o.index];
@@ -261,7 +262,7 @@ export function ColonyBoard({ player }: { player: PlayerState }) {
               {DOCTRINES.map((d) => (
                 <div key={d} style={{ color: `var(--${d})` }}>
                   <strong>
-                    {DOCTRINE_NAMES[d]} {p.doctrine[d]}점 · 단계 {stage(p, d)}
+                    <DoctrineTag doctrine={d} /> {p.doctrine[d]}점 · 단계 {stage(p, d)}
                   </strong>
                   <ul className={styles.list}>
                     {[1, 2, 3, 4].map((s) => (
@@ -290,7 +291,18 @@ export function ColonyBoard({ player }: { player: PlayerState }) {
           <Icon name="colonist" /> {mine ? '내 식민지' : `${p.name}의 식민지`}
         </>
       }
-      extra={main ? `주 노선 ${DOCTRINE_NAMES[main]}${isHybrid(p) ? ' · 혼합' : ''}` : isHybrid(p) ? '혼합 노선' : '주 노선 없음'}
+      extra={
+        main ? (
+          <>
+            주 노선 <DoctrineTag doctrine={main} />
+            {isHybrid(p) ? ' · 혼합' : ''}
+          </>
+        ) : isHybrid(p) ? (
+          '혼합 노선'
+        ) : (
+          '주 노선 없음'
+        )
+      }
     >
       {/* 착륙지 풍경: 구조물·유닛·정착민·유산이 그림으로 선다. 누르면 같은 시트 */}
       <ColonyScene

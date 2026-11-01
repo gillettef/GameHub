@@ -16,7 +16,8 @@ import { CardBrief, QuestBrief } from './CardBrief';
 import { useCardSizes } from '../useCardSizes';
 import { Section } from './Section';
 import { Sheet, type SheetAction } from './Sheet';
-import { CARD_TYPE_NAMES, QUEST_KIND_NAMES, cardText, optionText, questSummary } from '../describe';
+import { CARD_TYPE_NAMES, QUEST_KIND_NAMES, cardSegs, cardText, optionSegs, questSegs, questSummary } from '../describe';
+import { Segs } from './DoctrineTag';
 import styles from './QuestTrack.module.css';
 
 const FRAME: Record<QuestDef['kind'], FrameName> = {
@@ -148,14 +149,16 @@ export function QuestTrack() {
                 {QUEST_KIND_NAMES[q.kind]}
                 {open > 0 && !game.questOpen[open] ? ' · 위성으로 미리 본 카드' : ''}
               </p>
-              <p>{questSummary(q)}</p>
+              <p>
+                <Segs segs={questSegs(q)} />
+              </p>
               {(q.kind === 'judge' || q.kind === 'contest') && (
                 <>
                   <p className={styles.kind}>보상 선택지</p>
                   <ul className={styles.opts}>
                     {q.options.map((o, i) => (
-                      <li key={i} style={{ color: `var(--${o.doctrine})` }}>
-                        {optionText(o)}
+                      <li key={i}>
+                        <Segs segs={optionSegs(o)} />
                       </li>
                     ))}
                   </ul>
@@ -172,7 +175,9 @@ export function QuestTrack() {
               <p className={styles.kind}>
                 {CARD_TYPE_NAMES[card.type]} · {card.ring}고리
               </p>
-              <p>{cardText(card)}</p>
+              <p>
+                <Segs segs={cardSegs(card)} />
+              </p>
               {card.type === 'pioneer' && <p className={styles.kind}>고르면 바로 내 후원자가 됩니다(기존 후원자는 버림). 한 시대에 한 명만.</p>}
               {card.type === 'legacy' && <p className={styles.kind}>고르면 “짓는 중”. 단계마다 지휘 1 + 생산. 동시에 하나만.</p>}
               {card.type === 'supply' && <p className={styles.kind}>손에 들고 있다가 다음 차례부터 지휘 1로 사용.</p>}

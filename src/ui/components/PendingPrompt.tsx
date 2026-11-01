@@ -5,7 +5,8 @@ import { PATRON_DEFS } from '../../core/data/patrons';
 import { PATRON_LIMIT } from '../../core/data/constants';
 import { defenseValue } from '../../core/engine/derive';
 import { useGame } from '../useGame';
-import { condText, modsText, optionText, questSummary } from '../describe';
+import { condText, modsText, optionSegs, questSegs, questSummary } from '../describe';
+import { DoctrineTag, Segs } from './DoctrineTag';
 import { CardArt } from './CardArt';
 import type { IconName } from './Icon';
 import styles from './PendingPrompt.module.css';
@@ -20,7 +21,7 @@ export function PendingPrompt() {
 
   let title = '';
   let body: ReactNode = null;
-  let options: { label: string; choice: number; tone?: string }[] = [];
+  let options: { label: ReactNode; choice: number; tone?: string }[] = [];
   let art: { id: string; icon: IconName } | null = null;
 
   switch (pd.kind) {
@@ -28,8 +29,12 @@ export function PendingPrompt() {
       const q = QUEST_DEFS[pd.questId];
       title = `「${q.name}」 보상 선택`;
       art = { id: q.id, icon: 'quest' };
-      body = <p>{questSummary(q)}</p>;
-      if (q.kind === 'judge' || q.kind === 'contest') options = q.options.map((o, i) => ({ label: optionText(o), choice: i, tone: o.doctrine }));
+      body = (
+        <p>
+          <Segs segs={questSegs(q)} />
+        </p>
+      );
+      if (q.kind === 'judge' || q.kind === 'contest') options = q.options.map((o, i) => ({ label: <Segs segs={optionSegs(o)} />, choice: i, tone: o.doctrine }));
       break;
     }
     case 'redirect': {
@@ -39,7 +44,7 @@ export function PendingPrompt() {
       body = (
         <p>
           {questSummary(q)}
-          <br />내 방어값 {defenseValue(p)}. 공생 점수 1을 내고 다른 플레이어에게 넘길 수 있습니다.
+          <br />내 방어값 {defenseValue(p)}. <DoctrineTag doctrine="symbiont">공생 점수 1</DoctrineTag>을 내고 다른 플레이어에게 넘길 수 있습니다.
         </p>
       );
       options = [{ label: '직접 맞선다', choice: 0 }, ...pd.targets.map((t, i) => ({ label: `${game.players[t].name}에게 유도 (방어 ${defenseValue(game.players[t])})`, choice: i + 1 }))];
@@ -49,7 +54,7 @@ export function PendingPrompt() {
       const q = QUEST_DEFS[pd.questId];
       title = `「${q.name}」을 막았습니다`;
       art = { id: q.id, icon: 'threat' };
-      body = <p>처치하면 보상을 받고, 공존하면 다음 내 생산까지 건강 −1 대신 공생 점수 +2·식량 +2(공생 단계 3이면 2배)를 받습니다.</p>;
+      body = <p>처치하면 보상을 받고, 공존하면 다음 내 생산까지 건강 −1 대신 <DoctrineTag doctrine="symbiont">공생 점수 +2</DoctrineTag>·<span style={{ color: 'var(--res-food)' }}>식량 +2</span>(공생 단계 3이면 2배)를 받습니다.</p>;
       options = [
         { label: '처치', choice: 0 },
         { label: '공존', choice: 1, tone: 'symbiont' },
@@ -88,7 +93,7 @@ export function PendingPrompt() {
         {body}
         <div className={styles.options}>
           {options.map((o) => (
-            <button key={o.choice} onClick={() => choose(o.choice)} style={o.tone ? { borderColor: `var(--${o.tone})`, color: `var(--${o.tone})` } : undefined}>
+            <button key={o.choice} onClick={() => choose(o.choice)} style={o.tone ? { borderColor: `var(--${o.tone})` } : undefined}>
               {o.label}
             </button>
           ))}
