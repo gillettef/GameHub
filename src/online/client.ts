@@ -105,6 +105,60 @@ function bindLifecycle(): void {
   window.addEventListener('pageshow', (e) => e.persisted && wake(true));
 }
 
+// 다른 사람의 행동은 받는 대로 바로 그리지 않고 일정 간격으로 하나씩 보여 준다 — 무슨 일이 있었는지 따라갈 수 있게
+const STATE_GAP = 1300;
+/** 한꺼번에 이만큼 넘게 밀리면(재접속 따라잡기) 간격 없이 바로 최신으로 */
+const CATCH_UP = 8;
+type StateMsg = Extract<ServerMsg, { t: 'state' }>;
+let queue: StateMsg[] = [];
+let queueTimer: ReturnType<typeof setTimeout> | null = null;
+let lastShown = 0;
+let shownLog = 0;
+
+function showState(msg: StateMsg): void {
+  const app = useApp.getState();
+  const first = app.screen !== 'game';
+  lastShown = Date.now();
+  shownLog = msg.state.log.length;
+  app.set({ game: msg.state, me: msg.seat, mode: 'online', send, undo: null, canUndo: false, screen: 'game', ...(first ? { viewing: msg.seat } : {}) });
+}
+
+function drain(): void {
+  queueTimer = null;
+  const next = queue.shift();
+  if (!next) return;
+  showState(next);
+  if (queue.length) queueTimer = setTimeout(drain, STATE_GAP);
+}
+
+function resetQueue(): void {
+  queue = [];
+  if (queueTimer) clearTimeout(queueTimer);
+  queueTimer = null;
+  lastShown = 0;
+  shownLog = 0;
+}
+
+/** 내 행동의 결과는 바로, 남의 행동은 간격을 두고 */
+function receiveState(msg: StateMsg): void {
+  const cur = useApp.getState().game;
+  const added = msg.state.log.slice(shownLog);
+  const others = added.some((e) => e.player !== null && e.player !== msg.seat);
+  if (!cur || msg.state.log.length < shownLog || added.length > CATCH_UP) {
+    resetQueue();
+    showState(msg);
+    return;
+  }
+  if (!others && !queue.length) {
+    showState(msg);
+    return;
+  }
+  queue.push(msg);
+  if (queueTimer) return;
+  const wait = Math.max(0, lastShown + STATE_GAP - Date.now());
+  queueTimer = setTimeout(drain, wait);
+}
+
 const send = (action: Action) => raw({ t: 'action', ver: useApp.getState().game?.ver ?? 0, action });
 
 function onMessage(msg: ServerMsg): void {
@@ -120,16 +174,15 @@ function onMessage(msg: ServerMsg): void {
       app.set({ lobby: msg.lobby });
       if (!msg.lobby.started && app.screen !== 'lobby') app.set({ screen: 'lobby' });
       break;
-    case 'state': {
-      const first = app.screen !== 'game';
-      app.set({ game: msg.state, me: msg.seat, mode: 'online', send, screen: 'game', ...(first ? { viewing: msg.seat } : {}) });
+    case 'state':
+      receiveState(msg);
       break;
-    }
     case 'error':
       // 대기실에서 오래 자리를 비우면 서버가 자리를 비운다 — 방이 사라진 것처럼 읽히지 않게
       app.showToast(msg.message.includes('방을 찾을 수 없') && app.screen === 'lobby' ? '오래 자리를 비워 대기실 자리가 비워졌습니다 — 초대 코드로 다시 참가하세요' : msg.message);
       if (msg.message.includes('방을 찾을 수 없')) {
         intentionalClose = true;
+        resetQueue();
         storage.clearSession();
         app.set({ screen: 'home', mode: null, game: null, lobby: null, send: null });
       }
@@ -164,6 +217,7 @@ export function leaveOnline(): void {
   intentionalClose = true;
   dropped = false;
   if (retry) clearTimeout(retry);
+  resetQueue();
   raw({ t: 'leave' });
   ws?.close();
   ws = null;

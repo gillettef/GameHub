@@ -8,6 +8,7 @@ import { CONFLICT_DEFENSE, RAID_DEFENSE, raidAmount } from '../../core/data/cons
 import { attackValue, commandLeft, defenseLeft, defenseValue, edgeBonus, stage } from '../../core/engine/derive';
 import { swarmValue } from '../../core/engine/external';
 import { eraProgress } from '../../core/engine/era';
+import { useApp } from '../../store/app';
 import { useGame } from '../useGame';
 import { Icon } from './Icon';
 import { Sheet } from './Sheet';
@@ -18,6 +19,8 @@ const LOSS_NAMES = CONFLICT_LOSS_NAMES;
 
 export function StatusBar({ onMenu, onLog, onResults }: { onMenu: () => void; onLog: () => void; onResults: () => void }) {
   const { game } = useGame();
+  const canUndo = useApp((s) => s.canUndo);
+  const undo = useApp((s) => s.undo);
   const prog = eraProgress(game);
   // 실제 높이를 --status-h 로 알려 보드 이동 여백·접힌 결정 버튼 위치에 쓴다(위 안전 영역 포함)
   const ref = useRef<HTMLElement>(null);
@@ -45,6 +48,11 @@ export function StatusBar({ onMenu, onLog, onResults }: { onMenu: () => void; on
             {game.era <= 3 ? ` · 시대 진행 ${prog.have}/${prog.need}` : game.endTriggered ? ' · 마지막 라운드' : ''}
           </span>
         </div>
+        {canUndo && undo && (
+          <button className={styles.textBtn} onClick={undo}>
+            되돌리기
+          </button>
+        )}
         <button className={styles.textBtn} onClick={onLog}>
           기록
         </button>

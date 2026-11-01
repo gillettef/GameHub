@@ -7,10 +7,14 @@ import { maskFor } from '../core/mask';
 import { storage } from './storage';
 import { useApp } from './app';
 
-const AI_DELAY = 450;
+/** AI 한 행동마다 쉬는 시간 — 화면이 따라가며 무슨 일이 있었는지 볼 틈 */
+const AI_DELAY = 1400;
+const UNDO_MAX = 30;
 let timer: ReturnType<typeof setTimeout> | null = null;
 /** 권위 상태(전체). 화면(useApp.game)에는 내 시야로 가린 상태를 둔다 — 온라인과 같은 정보만 보이게 */
 let full: GameState | null = null;
+/** 내 행동 직전 상태들. AI 가 움직이면 비운다(남의 행동을 되돌리지 않게) */
+let history: GameState[] = [];
 
 function actorOf(s: GameState): number {
   return s.pending.length ? s.pending[0].player : s.current;
@@ -19,7 +23,7 @@ function actorOf(s: GameState): number {
 function commit(s: GameState): void {
   const { me } = useApp.getState();
   full = s;
-  useApp.getState().set({ game: maskFor(s, me) });
+  useApp.getState().set({ game: maskFor(s, me), canUndo: history.length > 0 });
   storage.saveLocal(s, me, Date.now());
   scheduleAI();
 }
@@ -40,7 +44,10 @@ function scheduleAI(): void {
     const a = chooseAction(s, who) ?? { type: 'endTurn' as const };
     let r = applyAction(s, who, a);
     if (r.error) r = applyAction(s, who, fallbackAction(s, who));
-    if (!r.error) commit(r.state);
+    if (!r.error) {
+      history = [];
+      commit(r.state);
+    }
   }, AI_DELAY);
 }
 
@@ -53,20 +60,31 @@ function send(a: Action): void {
     showToast(r.error);
     return;
   }
+  history.push(game);
+  if (history.length > UNDO_MAX) history.shift();
   commit(r.state);
+}
+
+function undo(): void {
+  const prev = history.pop();
+  if (!prev) return;
+  commit(prev);
+  useApp.getState().showToast('되돌렸습니다');
 }
 
 export function startLocal(name: string, aiCount: number, seed: number): void {
   const seats = [{ name: name || '나', isAI: false }, ...Array.from({ length: aiCount }, (_, i) => ({ name: `AI ${i + 1}`, isAI: true }))];
   const game = createGame(seed, seats);
-  useApp.getState().set({ screen: 'game', mode: 'local', me: 0, viewing: 0, send });
+  useApp.getState().set({ screen: 'game', mode: 'local', me: 0, viewing: 0, send, undo, follow: true });
+  history = [];
   commit(game);
 }
 
 export function resumeLocal(): boolean {
   const save = storage.loadLocal();
   if (!save || save.game.version !== 4 || !Array.isArray(save.game.rngState)) return false;
-  useApp.getState().set({ screen: 'game', mode: 'local', me: save.me, viewing: save.me, send });
+  useApp.getState().set({ screen: 'game', mode: 'local', me: save.me, viewing: save.me, send, undo });
+  history = [];
   commit(save.game);
   return true;
 }
@@ -75,5 +93,6 @@ export function quitLocal(): void {
   if (timer) clearTimeout(timer);
   timer = null;
   full = null;
-  useApp.getState().set({ screen: 'home', mode: null, game: null, send: null });
+  history = [];
+  useApp.getState().set({ screen: 'home', mode: null, game: null, send: null, undo: null, canUndo: false });
 }
