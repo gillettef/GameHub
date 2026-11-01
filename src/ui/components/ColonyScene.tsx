@@ -309,7 +309,8 @@ export function ProductionBand({ net, upkeep }: { net: Record<keyof Res, number>
   );
 }
 
-/** 자원 트레이: 종류별 실물 토큰 더미 + 보유 수 */
+/** 자원 트레이: 종류별 접시에 실물 토큰 더미, 아래에 보유 수 */
+const PILE_MAX = 6;
 export function ResourceTray({ res, net, upkeep }: { res: Res; net: Record<keyof Res, number>; upkeep: number }) {
   return (
     <div className={styles.tray}>
@@ -323,38 +324,53 @@ export function ResourceTray({ res, net, upkeep }: { res: Res; net: Record<keyof
           data-tip={RES_NAMES[k]}
           data-tip-body={`보유 ${res[k]} · 생산 단계마다 ${net[k] >= 0 ? '+' : ''}${net[k]}${k === 'food' ? `(소비 ${upkeep} 반영)` : ''}${k === 'culture' ? '\n문화가 곧 점수입니다.' : ''}`}
         >
-          <Icon name={RES_ICON[k]} size={16} />
-          <span className={styles.pile} aria-hidden>
-            {Array.from({ length: Math.min(res[k], 8) }, (_, i) => (
-              <Prop key={i} name={k} className={styles.token} />
-            ))}
+          <span className={`${styles.dish} ${res[k] === 0 ? styles.dishEmpty : ''}`} aria-hidden>
+            <span className={styles.pile}>
+              {Array.from({ length: Math.min(res[k], PILE_MAX) }, (_, i) => (
+                <Prop key={i} name={k} className={styles.token} />
+              ))}
+            </span>
           </span>
-          <strong>
-            <Num value={res[k]} />
-          </strong>
+          <span className={styles.count}>
+            <Icon name={RES_ICON[k]} size={14} />
+            <strong>
+              <Num value={res[k]} />
+            </strong>
+          </span>
+          <span className={`${styles.delta} ${net[k] < 0 ? styles.minus : ''}`} aria-hidden>
+            {net[k] >= 0 ? `+${net[k]}` : net[k]}
+          </span>
         </div>
       ))}
     </div>
   );
 }
 
-/** 행동 구슬: 남은 것은 구슬, 쓴 것은 빈 홈 */
+/** 행동 구슬: 홈이 파인 받침대. 남은 것은 구슬, 쓴 것은 빈 홈 */
 export function ActionBeads({ cmdMax, cmdUsed, defMax, defUsed }: { cmdMax: number; cmdUsed: number; defMax: number; defUsed: number }) {
   return (
     <div className={styles.beads}>
-      <span className={styles.beadGroup} role="group" aria-label={`지휘 ${cmdMax - cmdUsed}/${cmdMax}`} data-tip={`지휘 행동 ${cmdMax - cmdUsed}/${cmdMax}`} data-tip-body="연구·카드 가져오기·건설·정착민·유산·위성·헌장·경쟁 퀘스트에 씁니다.">
-        <Icon name="command" size={16} />
-        <span className={styles.beadLabel}>지휘</span>
-        {Array.from({ length: cmdMax }, (_, i) => (
-          <Prop key={i} name={i < cmdMax - cmdUsed ? 'cmd' : 'empty'} className={styles.bead} />
-        ))}
+      <span className={styles.beadGroup} style={{ '--tone': 'var(--text)' } as Vars} role="group" aria-label={`지휘 ${cmdMax - cmdUsed}/${cmdMax}`} data-tip={`지휘 행동 ${cmdMax - cmdUsed}/${cmdMax}`} data-tip-body="연구·카드 가져오기·건설·정착민·유산·위성·헌장·경쟁 퀘스트에 씁니다.">
+        <span className={styles.beadLabel}>
+          <Icon name="command" size={14} />
+          지휘 <b>{cmdMax - cmdUsed}</b>
+        </span>
+        <span className={styles.rail}>
+          {Array.from({ length: cmdMax }, (_, i) => (
+            <Prop key={i} name={i < cmdMax - cmdUsed ? 'cmd' : 'empty'} className={styles.bead} />
+          ))}
+        </span>
       </span>
-      <span className={styles.beadGroup} role="group" aria-label={`방위 ${defMax - defUsed}/${defMax}`} data-tip={`방위 행동 ${defMax - defUsed}/${defMax}`} data-tip-body="유닛 편성·업그레이드, 습격(2)·분쟁 판정(3). 남기면 방위 태세(최대 +2).">
-        <Icon name="defense" size={16} color="var(--danger)" />
-        <span className={styles.beadLabel}>방위</span>
-        {Array.from({ length: defMax }, (_, i) => (
-          <Prop key={i} name={i < defMax - defUsed ? 'def' : 'empty'} className={styles.bead} />
-        ))}
+      <span className={styles.beadGroup} style={{ '--tone': 'var(--danger)' } as Vars} role="group" aria-label={`방위 ${defMax - defUsed}/${defMax}`} data-tip={`방위 행동 ${defMax - defUsed}/${defMax}`} data-tip-body="유닛 편성·업그레이드, 습격(2)·분쟁 판정(3). 남기면 방위 태세(최대 +2).">
+        <span className={styles.beadLabel}>
+          <Icon name="defense" size={14} />
+          방위 <b>{defMax - defUsed}</b>
+        </span>
+        <span className={styles.rail}>
+          {Array.from({ length: defMax }, (_, i) => (
+            <Prop key={i} name={i < defMax - defUsed ? 'def' : 'empty'} className={styles.bead} />
+          ))}
+        </span>
       </span>
     </div>
   );

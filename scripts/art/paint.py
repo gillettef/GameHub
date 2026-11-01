@@ -276,8 +276,9 @@ def chrome_shot(html_path: Path, png_path: Path, w: int, h: int):
         raise RuntimeError(f'캡처 실패: {png_path}')
 
 
-def bake(name: str, doc: Doc, out: Path, quality=80, alpha_quality=85, method=6):
-    """SVG 원본을 scripts/art/src 에 저장하고, Chrome 으로 PNG 캡처 → WebP 저장. 바이트 수를 돌려줌"""
+def bake(name: str, doc: Doc, out: Path, quality=80, alpha_quality=85, method=6, save=None):
+    """SVG 원본을 scripts/art/src 에 저장하고, Chrome 으로 PNG 캡처 → WebP 저장. 바이트 수를 돌려줌
+    save(im, out): 저장 방식을 바꿀 때(예: 정확한 색이 필요한 yard 의 무손실 저장)"""
     from PIL import Image
 
     SRC_DIR.mkdir(parents=True, exist_ok=True)
@@ -292,6 +293,9 @@ def bake(name: str, doc: Doc, out: Path, quality=80, alpha_quality=85, method=6)
     if im.size != (doc.w, doc.h):
         im = im.crop((0, 0, doc.w, doc.h))
     out.parent.mkdir(parents=True, exist_ok=True)
+    if save:
+        save(im, out)
+        return out.stat().st_size
     opaque = im.getextrema()[3][0] == 255
     if opaque:
         im.convert('RGB').save(out, 'WEBP', quality=quality, method=method)

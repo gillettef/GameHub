@@ -252,71 +252,138 @@
   font-weight: 800;
 }
 
-/* ── 자원 트레이: 토큰 더미 ── */
+/* ── 자원 트레이: 땅에 놓인 다섯 접시, 접시마다 실물 토큰 더미 ── */
 .tray {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-1) var(--space-2);
-  margin-top: var(--space-2);
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: var(--space-1);
 }
 .stock {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 6px;
-  min-height: 32px;
+  gap: 2px;
   min-width: 0;
-  padding: 0 var(--space-2);
-  border-radius: var(--radius-sm);
-  background: linear-gradient(180deg, color-mix(in srgb, currentColor 10%, var(--surface-2)), color-mix(in srgb, var(--bg) 60%, var(--surface)));
-  border: 1px solid color-mix(in srgb, currentColor 30%, var(--border));
-  box-shadow: inset 0 2px 4px color-mix(in srgb, var(--bg) 70%, transparent);
+  padding: 6px 2px 4px;
+  border-radius: var(--radius);
+  /* 위에서 비추는 빛 아래 어두운 돌받침 */
+  background:
+    radial-gradient(120% 70% at 50% 0%, color-mix(in srgb, currentColor 14%, transparent), transparent 70%),
+    color-mix(in srgb, var(--bg) 62%, transparent);
+  border: 1px solid color-mix(in srgb, currentColor 22%, transparent);
+  box-shadow: 0 6px 14px color-mix(in srgb, var(--bg) 70%, transparent);
 }
-.stock:last-child {
-  grid-column: 1 / -1;
+/* 접시: 납작한 타원 그릇. 토큰은 바닥 줄부터 쌓인다 */
+.dish {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  width: 100%;
+  max-width: 64px;
+  height: 46px;
+  padding-bottom: 7px;
 }
-.stock strong {
-  margin-left: auto;
-  font-size: 16px;
-  color: var(--text);
-  font-variant-numeric: tabular-nums;
+.dish::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 22px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--bg) 85%, transparent), color-mix(in srgb, var(--surface-2) 80%, transparent));
+  border: 1px solid color-mix(in srgb, currentColor 40%, var(--border));
+  box-shadow:
+    inset 0 3px 6px color-mix(in srgb, var(--bg) 90%, transparent),
+    0 0 12px color-mix(in srgb, currentColor 18%, transparent);
+}
+.dishEmpty::before {
+  border-color: color-mix(in srgb, currentColor 18%, var(--border));
+  box-shadow: inset 0 3px 6px color-mix(in srgb, var(--bg) 90%, transparent);
 }
 .pile {
+  position: relative;
   display: flex;
-  align-items: center;
-  min-width: 0;
-  overflow: hidden;
+  flex-wrap: wrap-reverse;
+  justify-content: center;
+  align-content: flex-start;
+  width: 48px;
+  row-gap: 0;
 }
 .token {
   width: 20px;
   height: 20px;
-  margin-left: -9px;
+  margin: -4px -3px;
+  filter: drop-shadow(0 2px 2px color-mix(in srgb, var(--bg) 80%, transparent));
 }
-.token:first-child {
-  margin-left: 0;
+.count {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+.count strong {
+  font-size: 17px;
+  font-weight: 800;
+  line-height: 1.1;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 0 10px color-mix(in srgb, currentColor 50%, transparent);
+}
+.delta {
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.delta.minus {
+  color: var(--danger);
 }
 
-/* ── 행동 구슬 ── */
+/* ── 행동 구슬: 홈 파인 받침대 두 개 ── */
 .beads {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-1) var(--space-4);
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
   margin-top: var(--space-2);
 }
 .beadGroup {
-  display: inline-flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 3px;
-  min-height: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
 }
 .beadLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   font-size: 12px;
   color: var(--text-dim);
-  margin-right: 2px;
+}
+.beadLabel :first-child {
+  color: var(--tone);
+}
+.beadLabel b {
+  color: var(--text);
+  font-size: 14px;
+}
+.rail {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 3px;
+  min-height: 34px;
+  padding: 4px 6px;
+  border-radius: var(--radius);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--bg) 90%, transparent), color-mix(in srgb, var(--surface) 70%, transparent));
+  border: 1px solid color-mix(in srgb, var(--tone) 28%, var(--border));
+  box-shadow:
+    inset 0 3px 7px color-mix(in srgb, var(--bg) 95%, transparent),
+    0 1px 0 color-mix(in srgb, var(--text) 8%, transparent);
 }
 .bead {
-  width: 20px;
-  height: 20px;
+  width: 22px;
+  height: 22px;
 }
 .lvl + .more {
   margin-left: 2px;

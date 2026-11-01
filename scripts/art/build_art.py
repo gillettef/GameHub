@@ -1,6 +1,6 @@
 # 네오테라 회화풍 래스터 자산 굽기.
 #   python scripts/art/build_art.py            # 전부
-#   python scripts/art/build_art.py buildings  # 일부만(buildings units props legacy scenes techweb landing)
+#   python scripts/art/build_art.py buildings  # 일부만(buildings units props legacy scenes yard techweb landing)
 # SVG 원본은 scripts/art/src/*.svg 에 남고, 결과 WebP 는 src/ui/assets/{scene,techweb,landing}/ 에 들어간다.
 # 필요: 헤드리스 Chrome(NT_CHROME 로 경로 지정 가능), Python Pillow(WebP). npm 라이브러리는 쓰지 않는다.
 import json
@@ -64,6 +64,11 @@ def do_scenes():
         report.append((f'era{era}.webp', bake(f'scene-era{era}', d, ASSETS / 'scene' / f'era{era}.webp', quality=74)))
 
 
+def do_yard():
+    y = mod('yard')
+    report.append(('yard.webp', bake('scene-yard', y.yard_doc(), ASSETS / 'scene' / 'yard.webp', save=y.save)))
+
+
 def do_techweb():
     d = mod('techweb').map_doc()
     report.append(('techweb/map.webp', bake('techweb-map', d, ASSETS / 'techweb' / 'map.webp', quality=74)))
@@ -74,7 +79,7 @@ def do_landing():
         report.append((f'landing/{name}.webp', bake(f'landing-{name}', fn(), ASSETS / 'landing' / f'{name}.webp', quality=q)))
 
 
-JOBS = {'buildings': do_buildings, 'units': do_units, 'legacy': do_legacy, 'props': do_props, 'scenes': do_scenes, 'techweb': do_techweb, 'landing': do_landing}
+JOBS = {'buildings': do_buildings, 'units': do_units, 'legacy': do_legacy, 'props': do_props, 'scenes': do_scenes, 'yard': do_yard, 'techweb': do_techweb, 'landing': do_landing}
 
 if __name__ == '__main__':
     names = sys.argv[1:] or list(JOBS)

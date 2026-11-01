@@ -16,6 +16,7 @@
 | `src/ui/assets/landing/{sky,planet,ground}.webp` | 홈 히어로 회화 3장(800×720 = viewBox 400×360 의 2배). 하늘(불투명) / 고리 행성·달(투명, 중심 (262,118) r64) / 지평선·생물발광 계곡·정착지 불빛(투명, 지평선 꼭대기 (200,244)) |
 | `src/ui/components/LandingHero.tsx` | 홈 히어로 인라인 SVG — 위 세 장을 `<image>` 로 깔고 위성·별똥별·안개·테크 웹·착륙선·포자를 얹는다. 모션은 `LandingHero.module.css` |
 | `src/ui/assets/scene/era{1..4}.webp` | 식민지 풍경 배경 840×980(1 착륙지 노을 · 2 정착촌 오로라 밤 · 3 궤도 도시 · 4 결실 금빛 새벽). 빈 터(돌 테두리 원판)를 자리 좌표에 구워 둠 |
+| `src/ui/assets/scene/yard.webp` | 개척지 앞마당 840×1400(불투명, 약 142KB): 풍경 아래 UI 영역(자원 트레이·구슬·트랙·카드 자리·헌장) 바탕. 어두운 레골리스 땅·지층 띠·가장자리 바위와 이끼 점·옅은 포자 안개. 맨 위 40px 은 풍경 맨 아래 줄 색(약 `#121624`)에서 시작, 맨 아래 160px 은 `--bg` 단색(마지막 줄 정확히 `#0a0f1f`) |
 | `src/ui/assets/scene/buildings.webp` | 건물 아틀라스 5열(농장·제작소·발전소·연구소·회관) × 4행(기초·Lv1~3), 칸 240×200, 땅선 y172. 발전소·회관 기초 칸은 비어 있음 |
 | `src/ui/assets/scene/units.webp` | 유닛 아틀라스 4열(경비대·기동대·포대·비행대) × 4행, 칸 220×180, 땅선 y158 |
 | `src/ui/assets/scene/legacy.webp` | 유산 기념물 5칸(0 짓는 중 비계, 1~4 완성: 금빛 오벨리스크·개척자 동상·고리 인 아치·빛나무), 칸 120×150 |
@@ -30,7 +31,7 @@
 | `src/ui/assets/emblems/era{1..4}.svg` | 시대 전환 배너 360×120 (1 착륙 · 2 정착 · 3 궤도 · 4 종료/결실) |
 
 
-전체 SVG 약 50KB(목표 400KB 이하), 배경 약 8KB. WebP 래스터 합계 약 455KB(목표 1.5MB 이하, 장면 1장 200KB 이하).
+전체 SVG 약 50KB(목표 400KB 이하), 배경 약 8KB. WebP 래스터 합계 약 596KB(목표 1.5MB 이하, 장면 1장 200KB 이하).
 
 ## 회화풍 래스터 자산(WebP)
 
@@ -39,14 +40,15 @@
 - **만드는 법**: 이미지 생성 모델 없이 Python 이 그라데이션·조명·붓결 필터(feTurbulence + feDisplacementMap + soft-light 붓 자국)를 쓴 SVG 를 만들고, 헤드리스 Chrome 으로 투명 배경 캡처한 뒤 Pillow 로 WebP 저장한다. npm 라이브러리는 쓰지 않는다.
   ```
   python scripts/art/build_art.py            # 전부 다시 굽기
-  python scripts/art/build_art.py scenes     # 일부만: buildings units legacy props scenes techweb landing
+  python scripts/art/build_art.py scenes     # 일부만: buildings units legacy props scenes yard techweb landing
   ```
-  - `scripts/art/paint.py` 도형·필터·굽기 도우미, `buildings.py` `units.py` `props.py` `scenes.py` `techweb.py` `landing.py` 그림별 코드. 생성된 SVG 원본은 `scripts/art/src/*.svg` 에 남는다(임시 PNG 는 `scripts/art/.tmp/`, git 제외). Chrome 경로가 다르면 `NT_CHROME` 환경 변수.
+  - `scripts/art/paint.py` 도형·필터·굽기 도우미, `buildings.py` `units.py` `props.py` `scenes.py` `yard.py` `techweb.py` `landing.py` 그림별 코드. 생성된 SVG 원본은 `scripts/art/src/*.svg` 에 남는다(임시 PNG 는 `scripts/art/.tmp/`, git 제외). Chrome 경로가 다르면 `NT_CHROME` 환경 변수.
 - **해상도**: 기기 2배 기준(402px 폭 → 장면 약 800px). 구조물·유닛·토큰은 알파 WebP 아틀라스로, CSS `background-position` 으로 칸을 고른다(`--atlas --cols --rows --ax --ay`). 같은 아틀라스를 2~4명 보드가 함께 쓴다. 장면 배경과 테크 웹 지도는 `<img loading="lazy">`.
 - **색**: 래스터에는 CSS 변수가 닿지 않으므로 `paint.py` 의 `T` 표에 `tokens.css` 값을 옮겨 두고 구웠다. **`tokens.css` 색을 바꾸면 `T` 를 맞춘 뒤 다시 굽는다.** 노드 색·고리 색처럼 규칙상 의미가 있는 색은 래스터에 굽지 않고 SVG/CSS(토큰)로 그린다.
+- **앞마당(yard.webp)**: 칸·글자·아이콘·보드판·테이블 결은 그리지 않는다(UI 는 CSS 로 얹음). 가운데(좌우 6% 안쪽)는 어둡고 대비가 낮게 — 99퍼센타일 휘도 약 0.021로 `--text-dim` 글자가 패널 없이 놓여도 약 6.8:1. 밝은 이끼·바위 하이라이트는 좌우 가장자리에만. 손실 WebP 는 YUV 변환 탓에 `--bg` 를 정확히 낼 수 없어(복원하면 `#0a0e1f`) 손실 q76 으로 한 번 압축·복원한 뒤 맨 아래 160px 을 `--bg` 로 덮고 무손실로 저장한다(`yard.save`). CSS 는 그림 아래를 `background-color: var(--bg)` 로 잇는다. 시대별로 따로 굽지 않는다.
 - **자리 좌표**: `assets/scene/layout.json` 을 바꾸면 빈 터 위치가 달라지므로 `scenes` 를 다시 굽는다.
 - **누르는 영역**: 구조물 버튼은 같은 줄 이웃과의 간격 − 8 로 폭을 줄이고 땅선 위 120(×scale)만 덮는다. 그림 칸은 `pointer-events: none` 으로 버튼 밖으로 넘친다. 정착민 말 줄은 한 줄 고정이고 말이 4개를 넘으면 레벨마다 `×n` 으로 줄인다. 유산 광장은 그림 2개까지, 나머지는 이름판 `+n`(모두 아래 카드 칸에 있음).
-- **원본 SVG**: `scripts/art/src/*.svg` 12장(합계 약 1MB)을 커밋 대상으로 남긴다. 스크립트만으로도 같은 결과를 다시 만들 수 있지만, 그림을 손보거나 비교할 때 쓴다.
+- **원본 SVG**: `scripts/art/src/*.svg` 13장(합계 약 1MB)을 커밋 대상으로 남긴다. 스크립트만으로도 같은 결과를 다시 만들 수 있지만, 그림을 손보거나 비교할 때 쓴다.
 - **구조물 그림**(레벨이 오를수록 커지고 바뀜): 농장 = 일군 밭과 천막 → 유리 온실 돔 → 쌍둥이 온실·물탑 → 층층 수직 농장 탑 / 제작소 = 천막 작업대·고철 → 굴뚝 단 조립 창고 → 용광로 공장 → 갠트리 크레인 제작 단지 / 발전소 = 태양 집광판 → 지열 냉각탑 → 떠 있는 고리를 두른 반중력 첨탑 / 연구소 = 탐사 천막·안테나 → 관측 돔 → 접시 안테나 연구 단지 → 결정 첨탑 학원 / 회관 = 깃발 천막 집회장 → 열주 회당 → 빛 돔 대회관. 유닛: 경비대 = 창 든 민병 → 방패 경비 → 강화복 소총대 → 두 발 보행 기계, 기동대 = 여섯 다리 토착 짐승 기수 → 호버 바이크 → 호버 전차, 포대 = 레일 포 → 플라스마 중포, 비행대 = 포함(砲艦) 드론. 유닛 깃발은 진홍(위험색 계열).
 - 지금 그림은 절차적으로 그린 회화 흉내라서, 손으로 그린 일러스트만큼 세밀하지는 않다. 같은 아틀라스 칸 크기를 지키면 나중에 더 좋은 그림으로 바꿔 끼울 수 있다.
 

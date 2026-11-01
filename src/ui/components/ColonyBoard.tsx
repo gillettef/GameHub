@@ -1,5 +1,5 @@
 // 식민지 보드: 착륙지 풍경(구조물·유닛·정착민 말·유산 기념물), 자원 토큰·행동 구슬, 상태·노선·공급 트랙, 후원자·유산·손패·궤도·후원·헌장
-import { useState, type ReactNode } from 'react';
+import { useState, type CSSProperties, type ReactNode } from 'react';
 import type { BuildingKind, CharterField, PlayerState, UnitKind } from '../../core/types';
 import { CHARTER_FIELDS, DOCTRINES, RES_KEYS } from '../../core/types';
 import {
@@ -60,11 +60,18 @@ import { useCardSizes } from '../useCardSizes';
 import { Icon, type IconName } from './Icon';
 import { useFresh } from '../motion';
 import { Section } from './Section';
-import { ActionBeads, ColonyScene, ResourceTray } from './ColonyScene';
+import { ActionBeads, ColonyScene, Prop, ResourceTray } from './ColonyScene';
+import yardArt from '../assets/scene/yard.webp';
+import arkEmblem from '../assets/emblems/ark.svg';
+import symbiontEmblem from '../assets/emblems/symbiont.svg';
+import synthEmblem from '../assets/emblems/synth.svg';
 import { Sheet, type SheetAction } from './Sheet';
 import { CARD_TYPE_NAMES, cardSegs, cardText, condText, instantSegs, instantText, modsText } from '../describe';
 import { DoctrineTag, Segs } from './DoctrineTag';
 import styles from './ColonyBoard.module.css';
+
+type Vars = CSSProperties & Record<`--${string}`, string | number>;
+const EMBLEMS: Record<(typeof DOCTRINES)[number], string> = { ark: arkEmblem, symbiont: symbiontEmblem, synth: synthEmblem };
 
 type Open =
   | { k: 'building'; kind: BuildingKind }
@@ -318,146 +325,182 @@ export function ColonyBoard({ player }: { player: PlayerState }) {
         onLegacy={() => setOpen({ k: 'legacy' })}
         onLegacyDone={(id) => setOpen({ k: 'legacyDone', id })}
       />
-      {/* 자원 토큰 트레이와 행동 구슬 */}
-      <ResourceTray res={p.res} net={net} upkeep={pv.upkeep} />
-      <ActionBeads cmdMax={cmdMax} cmdUsed={p.commandUsed} defMax={defMax} defUsed={p.defenseUsed} />
-      <div className={styles.status}>
-        <span className={stab < need ? styles.warn : ''} data-tip="건강" data-tip-body={`현재 ${stab} / 필요 ${need}(정착민 공급 트랙). 모자란 만큼 불건강 정착민이 생기고, 유휴 정착민보다 많으면 역병으로 건물 생산이 멈춥니다. 회관마다 +1.`}>
-          <Icon name="health" size={14} /> 건강 {stab}/{need}
-        </span>
-        <span data-tip="방위력" data-tip-body={`유닛 전력 합 + 보너스. 방어할 때는 포대마다 +1(방어값 ${defenseValue(p)}). 위협·습격·분쟁 판정에 씁니다.`}>
-          <Icon name="might" size={14} /> 방위력 {might(p, mods)} (방어 {defenseValue(p)})
-        </span>
-        <span className={p.res.energy > cap ? styles.warn : ''} data-tip="포자 안개" data-tip-body={`보유 에너지 ${p.res.energy} / 기준 ${cap}. 기준을 넘으면 초과 3마다 건강 −1.`}>
-          <Icon name="spore" size={14} /> 포자 {p.res.energy}/{cap}
-        </span>
-        <span data-tip="시야" data-tip-body="퀘스트 트랙의 뒷면 카드를 칸 2부터 미리 볼 수 있는 장수. 궤도의 위성 1기마다 +1.">
-          <Icon name="satellite" size={14} /> 시야 {mods.sight}
-        </span>
-        {p.guard > 0 && <span>방위 태세 +{p.guard}</span>}
-        {sick > 0 && (
-          // 터치 기기는 툴팁이 없으니 눌러서 정착민 시트(해결법 포함)를 연다
-          <button className={`${styles.alert} ${pv.plague ? styles.danger : styles.warn}`} onClick={() => setOpen({ k: 'colonist' })}>
-            {pv.plague && <Icon name="threat" size={14} />}
-            {pv.plague ? `역병 예정 — 불건강 ${sick} > 유휴 ${p.idle}` : `불건강 ${sick} ≤ 유휴 ${p.idle}`}
-          </button>
-        )}
-      </div>
+      {/* 풍경 아래 앞마당: 그림 바탕 위에 토큰 접시·구슬 받침·메달·트랙·카드 자리·헌장 깃발 */}
+      <div className={styles.yard} style={{ '--yard': `url("${yardArt}")` } as Vars}>
+        <ResourceTray res={p.res} net={net} upkeep={pv.upkeep} />
+        <ActionBeads cmdMax={cmdMax} cmdUsed={p.commandUsed} defMax={defMax} defUsed={p.defenseUsed} />
 
-      {/* 노선 트랙 */}
-      <button className={styles.doctrines} onClick={() => setOpen({ k: 'doctrine' })} aria-label="노선 상세" data-tip="노선" data-tip-body={DOCTRINES.map((d) => `${DOCTRINE_NAMES[d]} ${p.doctrine[d]}점 · 단계 ${stage(p, d)}`).join('\n')}>
-        {DOCTRINES.map((d) => (
-          <span key={d} className={styles.track} style={{ color: `var(--${d})` }}>
-            <Icon name={d} size={14} />
-            <span className={styles.bar}>
-              <span style={{ width: `${Math.min(100, (p.doctrine[d] / (DOCTRINE_STEP * 4)) * 100)}%` }} />
-              {[1, 2, 3].map((s) => (
-                <i key={s} style={{ left: `${s * 25}%` }} />
-              ))}
-            </span>
-            <b>{p.doctrine[d]}</b>
-          </span>
-        ))}
-      </button>
-
-      {/* 정착민 공급 트랙: 구간마다 인쇄된 식량 소비·필요 건강, 지금 구간 강조 */}
-      <ol className={styles.supply} aria-label={`정착민 공급 트랙 — 총 ${total}명, 식량 소비 ${pv.upkeep}, 필요 건강 ${need}`}>
-        {COLONIST_TRACK.map((s, i) => {
-          const from = i === 0 ? 1 : COLONIST_TRACK[i - 1].upTo + 1;
-          const range = from === s.upTo ? `${s.upTo}` : `${from}–${s.upTo}`;
-          const here = s === cur;
-          return (
-            <li
-              key={s.upTo}
-              className={`${styles.seg} ${here ? styles.segOn : ''} ${total > s.upTo ? styles.segPast : ''}`}
-              aria-current={here ? 'step' : undefined}
-              aria-label={`${range}명: 식량 −${s.food}, 필요 건강 ${s.health}${here ? ', 현재' : ''}`}
-            >
-              <span className={styles.segRange} aria-hidden>
-                {here && '▶'}
-                {range}
-              </span>
-              <span className={styles.segFood} aria-hidden>
-                <Icon name="food" size={12} />−{s.food}
-              </span>
-              <span className={styles.segHealth} aria-hidden>
-                <Icon name="health" size={12} />
-                {s.health}
-              </span>
-            </li>
-          );
-        })}
-      </ol>
-
-      {/* 카드 영역 */}
-      <div className={styles.cards}>
-        <Slot label="후원자">
-          {p.pioneer ? (
-            <CardFace className={pop(`pio:${p.pioneer}`)} frame="pioneer" width={sizes.card} title={CARD_DEFS[p.pioneer].name} tip={`후원자\n${cardText(CARD_DEFS[p.pioneer])}`} art={{ id: p.pioneer, icon: 'pioneer' }} brief={<CardBrief card={CARD_DEFS[p.pioneer]} />} onClick={() => setOpen({ k: 'pioneer' })} />
-          ) : (
-            <Empty />
-          )}
-        </Slot>
-        <Slot label={`유산 ${p.legacies.length}`}>
-          {p.legacyWip ? (
-            <CardFace className={pop(`wip:${p.legacyWip.id}`)} frame="legacy" width={sizes.card} title={CARD_DEFS[p.legacyWip.id].name} tip={`유산 짓는 중 ${p.legacyWip.done}단계\n${cardText(CARD_DEFS[p.legacyWip.id])}`} badge={`${p.legacyWip.done}`} art={{ id: p.legacyWip.id, icon: 'legacy' }} brief={<CardBrief card={CARD_DEFS[p.legacyWip.id]} />} onClick={() => setOpen({ k: 'legacy' })} />
-          ) : (
-            <Empty />
-          )}
-          {p.legacies.map((id) => (
-            <CardFace key={id} className={pop(`done:${id}`)} frame="legacy" width={sizes.card} title={CARD_DEFS[id].name} tip={`완성한 유산\n${cardText(CARD_DEFS[id])}`} badge="✓" art={{ id, icon: 'legacy' }} onClick={() => setOpen({ k: 'legacyDone', id })} brief={<CardBrief card={CARD_DEFS[id]} />} />
-          ))}
-        </Slot>
-        <Slot label={`손패 ${p.hand.length}`}>
-          {p.hand.length === 0 && <Empty />}
-          {p.hand.map((h, i) =>
-            !CARD_DEFS[h.id] ? (
-              // 다른 사람의 손패는 뒷면만 보인다(Rules 11절)
-              <CardFace key={i} frame="quest-back" width={sizes.card} label="비공개 손패" tip="비공개 손패\n다른 사람의 손패는 보이지 않습니다. 앞면이 공개된 칸에서 가져간 카드는 그때 모두가 봤으니 기억해 두세요(최근 기록에도 남습니다)." />
-            ) : (
-            <CardFace key={i} className={pop(`hand:${h.id}:${p.hand.slice(0, i).filter((x) => x.id === h.id).length}`)} frame={CARD_FRAME[CARD_DEFS[h.id].type]} width={sizes.card} title={CARD_DEFS[h.id].name} tip={`${CARD_TYPE_NAMES[CARD_DEFS[h.id].type]}${h.fresh ? ' · 다음 차례부터 사용' : ''}\n${cardText(CARD_DEFS[h.id])}`} dim={h.fresh} art={{ id: h.id, icon: CARD_ICON[CARD_DEFS[h.id].type] }} brief={<CardBrief card={CARD_DEFS[h.id]} />} onClick={() => setOpen({ k: 'hand', index: i })} />
-            ),
-          )}
-        </Slot>
-        <Slot label="궤도">
-          {p.orbit.length === 0 && <Empty />}
-          {p.orbit.map((o, i) => (
-            <CardFace key={i} className={pop(`orb:${o.id}`)} frame="satellite" width={sizes.card} title={SATELLITE_DEFS[o.id].name} tip={`위성 · 남은 ${o.timer}차례\n시야 +1${modsText(SATELLITE_DEFS[o.id].mods) ? ` · ${modsText(SATELLITE_DEFS[o.id].mods)}` : ''}`} badge={o.timer} art={{ id: o.id, icon: 'satellite' }} brief={<ModsBrief mods={SATELLITE_DEFS[o.id].mods} />} onClick={() => setOpen({ k: 'orbit', index: i })} />
-          ))}
-        </Slot>
-        {(p.patrons.length > 0 || mine) && (
-          <Slot label="주둔지">
-            {p.patrons.length === 0 && <Empty />}
-            {p.patrons.map((id) => (
-              <CardFace key={id} className={pop(`pat:${id}`)} frame="patron" width={sizes.card} title={PATRON_DEFS[id].name} tip={`주둔지 · ${PATRON_DEFS[id].points}점\n${modsText(PATRON_DEFS[id].mods)}\n요구: ${condText([PATRON_DEFS[id].demand])}`} badge={PATRON_DEFS[id].points} art={{ id, icon: 'patron' }} brief={<ModsBrief mods={PATRON_DEFS[id].mods} />} onClick={() => setOpen({ k: 'patron', id })} />
-            ))}
-          </Slot>
-        )}
-        {p.facilities.length > 0 && (
-          <Slot label="특수 시설">
-            {p.facilities.map((id) => (
-              <button key={id} className={styles.artTile} style={{ width: sizes.card }} onClick={() => setOpen({ k: 'facility', id })}>
-                <CardArt id={id} icon="workshop" tone="var(--warn)" />
-                <span>{FACILITY_DEFS[id].name}</span>
+        {/* 상태 메달 */}
+        <div className={styles.status}>
+          <Medal
+            icon="health"
+            tone="var(--eff-health)"
+            label="건강"
+            value={`${stab}/${need}`}
+            warn={stab < need}
+            tip="건강"
+            tipBody={`현재 ${stab} / 필요 ${need}(정착민 공급 트랙). 모자란 만큼 불건강 정착민이 생기고, 유휴 정착민보다 많으면 역병으로 건물 생산이 멈춥니다. 회관마다 +1.`}
+          />
+          <Medal
+            icon="might"
+            tone="var(--danger)"
+            label="방위력"
+            value={
+              <>
+                {might(p, mods)}
+                <small> 방어 {defenseValue(p)}</small>
+              </>
+            }
+            tip="방위력"
+            tipBody={`유닛 전력 합 + 보너스. 방어할 때는 포대마다 +1(방어값 ${defenseValue(p)}). 위협·습격·분쟁 판정에 씁니다.`}
+          />
+          <Medal
+            icon="spore"
+            tone="var(--eff-spore)"
+            label="포자"
+            value={`${p.res.energy}/${cap}`}
+            warn={p.res.energy > cap}
+            tip="포자 안개"
+            tipBody={`보유 에너지 ${p.res.energy} / 기준 ${cap}. 기준을 넘으면 초과 3마다 건강 −1.`}
+          />
+          <Medal icon="satellite" tone="var(--eff-sight)" label="시야" value={mods.sight} tip="시야" tipBody="퀘스트 트랙의 뒷면 카드를 칸 2부터 미리 볼 수 있는 장수. 궤도의 위성 1기마다 +1." />
+        </div>
+        {(p.guard > 0 || sick > 0) && (
+          <div className={styles.alerts}>
+            {p.guard > 0 && <span className={styles.guard}>방위 태세 +{p.guard}</span>}
+            {sick > 0 && (
+              // 터치 기기는 툴팁이 없으니 눌러서 정착민 시트(해결법 포함)를 연다
+              <button className={`${styles.alert} ${pv.plague ? styles.danger : styles.warn}`} onClick={() => setOpen({ k: 'colonist' })}>
+                {pv.plague && <Icon name="threat" size={14} />}
+                {pv.plague ? `역병 예정 — 불건강 ${sick} > 유휴 ${p.idle}` : `불건강 ${sick} ≤ 유휴 ${p.idle}`}
               </button>
+            )}
+          </div>
+        )}
+
+        {/* 노선 트랙: 홈 파인 레일 위를 노선 문장 말이 나아간다. 4점마다 단계 징 */}
+        <Legend>노선</Legend>
+        <button className={styles.doctrines} onClick={() => setOpen({ k: 'doctrine' })} aria-label="노선 상세" data-tip="노선" data-tip-body={DOCTRINES.map((d) => `${DOCTRINE_NAMES[d]} ${p.doctrine[d]}점 · 단계 ${stage(p, d)}`).join('\n')}>
+          {DOCTRINES.map((d) => {
+            const at = Math.min(1, p.doctrine[d] / (DOCTRINE_STEP * 4));
+            return (
+              <span key={d} className={`${styles.track} ${main === d ? styles.trackMain : ''}`} style={{ '--tone': `var(--${d})` } as Vars}>
+                <span className={styles.groove}>
+                  <span className={styles.glow} style={{ width: `${at * 100}%` }} />
+                  {[1, 2, 3, 4].map((st) => (
+                    <i key={st} className={`${styles.stud} ${stage(p, d) >= st ? styles.studOn : ''}`} style={{ left: `${st * 25}%` }} />
+                  ))}
+                  <img className={styles.marker} src={EMBLEMS[d]} alt="" style={{ left: `${at * 100}%` }} draggable={false} />
+                </span>
+                <b>{p.doctrine[d]}</b>
+              </span>
+            );
+          })}
+        </button>
+
+        {/* 정착민 공급 트랙: 디딤돌마다 인쇄된 식량 소비·필요 건강, 지금 디딤돌에 정착민 말 */}
+        <Legend>정착민 공급 · 총 {total}명</Legend>
+        <ol className={styles.supply} aria-label={`정착민 공급 트랙 — 총 ${total}명, 식량 소비 ${pv.upkeep}, 필요 건강 ${need}`}>
+          {COLONIST_TRACK.map((s, i) => {
+            const from = i === 0 ? 1 : COLONIST_TRACK[i - 1].upTo + 1;
+            const range = from === s.upTo ? `${s.upTo}` : `${from}–${s.upTo}`;
+            const here = s === cur;
+            return (
+              <li
+                key={s.upTo}
+                className={`${styles.seg} ${here ? styles.segOn : ''} ${total > s.upTo ? styles.segPast : ''}`}
+                aria-current={here ? 'step' : undefined}
+                aria-label={`${range}명: 식량 −${s.food}, 필요 건강 ${s.health}${here ? ', 현재' : ''}`}
+              >
+                {here && <Prop name="pawn" className={styles.segPawn} />}
+                <span className={styles.segRange} aria-hidden>
+                  {range}
+                </span>
+                <span className={styles.segFood} aria-hidden>
+                  <Icon name="food" size={12} />−{s.food}
+                </span>
+                <span className={styles.segHealth} aria-hidden>
+                  <Icon name="health" size={12} />
+                  {s.health}
+                </span>
+              </li>
+            );
+          })}
+        </ol>
+
+        {/* 카드 자리 */}
+        <div className={styles.cards}>
+          <Slot label="후원자" icon="pioneer" tone="var(--accent)">
+            {p.pioneer ? (
+              <CardFace className={pop(`pio:${p.pioneer}`)} frame="pioneer" width={sizes.card} title={CARD_DEFS[p.pioneer].name} tip={`후원자\n${cardText(CARD_DEFS[p.pioneer])}`} art={{ id: p.pioneer, icon: 'pioneer' }} brief={<CardBrief card={CARD_DEFS[p.pioneer]} />} onClick={() => setOpen({ k: 'pioneer' })} />
+            ) : (
+              <Empty />
+            )}
+          </Slot>
+          <Slot label={`유산 ${p.legacies.length}`} icon="legacy" tone="var(--ring3)">
+            {p.legacyWip ? (
+              <CardFace className={pop(`wip:${p.legacyWip.id}`)} frame="legacy" width={sizes.card} title={CARD_DEFS[p.legacyWip.id].name} tip={`유산 짓는 중 ${p.legacyWip.done}단계\n${cardText(CARD_DEFS[p.legacyWip.id])}`} badge={`${p.legacyWip.done}`} art={{ id: p.legacyWip.id, icon: 'legacy' }} brief={<CardBrief card={CARD_DEFS[p.legacyWip.id]} />} onClick={() => setOpen({ k: 'legacy' })} />
+            ) : (
+              <Empty />
+            )}
+            {p.legacies.map((id) => (
+              <CardFace key={id} className={pop(`done:${id}`)} frame="legacy" width={sizes.card} title={CARD_DEFS[id].name} tip={`완성한 유산\n${cardText(CARD_DEFS[id])}`} badge="✓" art={{ id, icon: 'legacy' }} onClick={() => setOpen({ k: 'legacyDone', id })} brief={<CardBrief card={CARD_DEFS[id]} />} />
             ))}
           </Slot>
-        )}
-      </div>
-
-      {/* 헌장 */}
-      <div className={styles.charters}>
-        {CHARTER_FIELDS.map((f) => (
-          <button key={f} className={styles.charter} onClick={() => setOpen({ k: 'charter', field: f })} data-tip={`헌장 · ${CHARTER_NAMES[f]} ${p.charters[f]}/3`} data-tip-body={p.charters[f] < 3 ? `다음 단계(문화 ${CHARTER_COST[p.charters[f] + 1]}): ${f === 'explore' && p.charters[f] === 2 ? '다음 고리 줄기까지 연구 가능' : modsText(CHARTER_MODS[f][p.charters[f] + 1])}` : '모두 채움 — 최종 점수 +4'}>
-            <Icon name="charter" size={14} />
-            {CHARTER_NAMES[f]}
-            <span className={styles.pips}>
-              {[1, 2, 3].map((l) => (
-                <i key={l} className={p.charters[f] >= l ? styles.pipOn : ''} />
+          <Slot label={`손패 ${p.hand.length}`} icon="quest" tone="var(--zone-quest)">
+            {p.hand.length === 0 && <Empty />}
+            {p.hand.map((h, i) =>
+              !CARD_DEFS[h.id] ? (
+                // 다른 사람의 손패는 뒷면만 보인다(Rules 11절)
+                <CardFace key={i} frame="quest-back" width={sizes.card} label="비공개 손패" tip="비공개 손패\n다른 사람의 손패는 보이지 않습니다. 앞면이 공개된 칸에서 가져간 카드는 그때 모두가 봤으니 기억해 두세요(최근 기록에도 남습니다)." />
+              ) : (
+              <CardFace key={i} className={pop(`hand:${h.id}:${p.hand.slice(0, i).filter((x) => x.id === h.id).length}`)} frame={CARD_FRAME[CARD_DEFS[h.id].type]} width={sizes.card} title={CARD_DEFS[h.id].name} tip={`${CARD_TYPE_NAMES[CARD_DEFS[h.id].type]}${h.fresh ? ' · 다음 차례부터 사용' : ''}\n${cardText(CARD_DEFS[h.id])}`} dim={h.fresh} art={{ id: h.id, icon: CARD_ICON[CARD_DEFS[h.id].type] }} brief={<CardBrief card={CARD_DEFS[h.id]} />} onClick={() => setOpen({ k: 'hand', index: i })} />
+              ),
+            )}
+          </Slot>
+          <Slot label="궤도" icon="satellite" tone="var(--eff-sight)">
+            {p.orbit.length === 0 && <Empty />}
+            {p.orbit.map((o, i) => (
+              <CardFace key={i} className={pop(`orb:${o.id}`)} frame="satellite" width={sizes.card} title={SATELLITE_DEFS[o.id].name} tip={`위성 · 남은 ${o.timer}차례\n시야 +1${modsText(SATELLITE_DEFS[o.id].mods) ? ` · ${modsText(SATELLITE_DEFS[o.id].mods)}` : ''}`} badge={o.timer} art={{ id: o.id, icon: 'satellite' }} brief={<ModsBrief mods={SATELLITE_DEFS[o.id].mods} />} onClick={() => setOpen({ k: 'orbit', index: i })} />
+            ))}
+          </Slot>
+          {(p.patrons.length > 0 || mine) && (
+            <Slot label="주둔지" icon="patron" tone="var(--zone-common)">
+              {p.patrons.length === 0 && <Empty />}
+              {p.patrons.map((id) => (
+                <CardFace key={id} className={pop(`pat:${id}`)} frame="patron" width={sizes.card} title={PATRON_DEFS[id].name} tip={`주둔지 · ${PATRON_DEFS[id].points}점\n${modsText(PATRON_DEFS[id].mods)}\n요구: ${condText([PATRON_DEFS[id].demand])}`} badge={PATRON_DEFS[id].points} art={{ id, icon: 'patron' }} brief={<ModsBrief mods={PATRON_DEFS[id].mods} />} onClick={() => setOpen({ k: 'patron', id })} />
               ))}
-            </span>
-          </button>
-        ))}
+            </Slot>
+          )}
+          {p.facilities.length > 0 && (
+            <Slot label="특수 시설" icon="workshop" tone="var(--warn)">
+              {p.facilities.map((id) => (
+                <button key={id} className={styles.artTile} style={{ width: sizes.card }} onClick={() => setOpen({ k: 'facility', id })}>
+                  <CardArt id={id} icon="workshop" tone="var(--warn)" />
+                  <span>{FACILITY_DEFS[id].name}</span>
+                </button>
+              ))}
+            </Slot>
+          )}
+        </div>
+
+        {/* 헌장: 막대에 걸린 네 깃발, 단계마다 보석 */}
+        <Legend>헌장</Legend>
+        <div className={styles.charters}>
+          {CHARTER_FIELDS.map((f) => (
+            <button key={f} className={`${styles.charter} ${p.charters[f] >= 3 ? styles.charterFull : ''}`} style={{ '--lv': p.charters[f] } as Vars} onClick={() => setOpen({ k: 'charter', field: f })} data-tip={`헌장 · ${CHARTER_NAMES[f]} ${p.charters[f]}/3`} data-tip-body={p.charters[f] < 3 ? `다음 단계(문화 ${CHARTER_COST[p.charters[f] + 1]}): ${f === 'explore' && p.charters[f] === 2 ? '다음 고리 줄기까지 연구 가능' : modsText(CHARTER_MODS[f][p.charters[f] + 1])}` : '모두 채움 — 최종 점수 +4'}>
+              <span className={styles.pennant}>
+                <Icon name="charter" size={14} />
+                <span className={styles.charterName}>{CHARTER_NAMES[f]}</span>
+                <span className={styles.pips}>
+                  {[1, 2, 3].map((l) => (
+                    <i key={l} className={p.charters[f] >= l ? styles.pipOn : ''} />
+                  ))}
+                </span>
+              </span>
+            </button>
+          ))}
+        </div>
       </div>
 
       {sheet && (
@@ -473,10 +516,13 @@ export function ColonyBoard({ player }: { player: PlayerState }) {
   );
 }
 
-function Slot({ label, children }: { label: string; children: ReactNode }) {
+function Slot({ label, icon, tone, children }: { label: string; icon: IconName; tone: string; children: ReactNode }) {
   return (
-    <div className={styles.slot}>
-      <span className={styles.slotLabel}>{label}</span>
+    <div className={styles.slot} style={{ '--tone': tone } as Vars}>
+      <span className={styles.slotLabel}>
+        <Icon name={icon} size={12} />
+        {label}
+      </span>
       <div className={styles.slotCards}>{children}</div>
     </div>
   );
@@ -487,6 +533,30 @@ function Empty() {
   return (
     <span className={styles.emptyCard} style={{ width: card }}>
       없음
+    </span>
+  );
+}
+
+/** 상태 메달: 둥근 금속 테 안의 아이콘 + 값 */
+function Medal({ icon, tone, label, value, warn, tip, tipBody }: { icon: IconName; tone: string; label: string; value: ReactNode; warn?: boolean; tip: string; tipBody: string }) {
+  return (
+    <span className={`${styles.medal} ${warn ? styles.medalWarn : ''}`} style={{ '--tone': warn ? 'var(--warn)' : tone } as Vars} data-tip={tip} data-tip-body={tipBody}>
+      <span className={styles.medalFace}>
+        <Icon name={icon} size={18} />
+      </span>
+      <span className={styles.medalText}>
+        <b>{value}</b>
+        <span>{label}</span>
+      </span>
+    </span>
+  );
+}
+
+/** 앞마당 구역 이름: 땅에 새긴 듯한 작은 글자 + 양옆으로 사라지는 선 */
+function Legend({ children }: { children: ReactNode }) {
+  return (
+    <span className={styles.legend} aria-hidden>
+      {children}
     </span>
   );
 }
