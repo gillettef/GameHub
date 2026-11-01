@@ -1,5 +1,6 @@
 // 상단 고정 상태 줄(BGA 의 페이지 제목 줄): 메뉴·시대 정보, 지금 누가 무엇을 하는지, 퀘스트 선택 안내, 대외 단계(손의 습격·분쟁 카드)와 차례 종료 버튼
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import type { ConflictDef, RaidDef, RaidEffect } from '../../core/types';
 import { CONFLICT_LOSS_NAMES, RAID_EFFECT_NAMES } from '../describe';
 import { CARD_DEFS } from '../../core/data/cards';
@@ -220,10 +221,12 @@ function TurnCue() {
     return () => clearTimeout(t);
   }, [n]);
   if (!n || game.gameOver) return null;
-  return (
+  // 상태 줄(backdrop-filter) 밖으로 꺼내야 화면 가운데에 고정된다
+  return createPortal(
     <div key={n} className={`${styles.cue} anim-cue`} role="status">
       {myTurn ? '내 차례입니다' : '결정할 일이 있습니다'}
-    </div>
+    </div>,
+    document.body,
   );
 }
 
