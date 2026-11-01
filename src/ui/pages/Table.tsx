@@ -15,6 +15,7 @@ import { PendingPrompt } from '../components/PendingPrompt';
 import { EraOverlay, LogDrawer, ScoreBoard } from '../components/Overlays';
 import { Rules } from '../components/Rules';
 import { Sheet } from '../components/Sheet';
+import { useWakeLock } from '../useWakeLock';
 import styles from './Table.module.css';
 
 export function Table() {
@@ -28,6 +29,8 @@ function TableInner() {
   const mode = useApp((s) => s.mode);
   const [overlay, setOverlay] = useState<'menu' | 'log' | 'rules' | 'score' | null>(game.gameOver ? 'score' : null);
   const leave = () => (mode === 'online' ? leaveOnline() : quitLocal());
+  // 한 판이 길고 상대 차례를 기다리는 시간이 많다 — 게임 중에는 화면이 꺼지지 않게
+  useWakeLock(!game.gameOver);
   // 보드 순서: 나 → 나머지 플레이어를 자리 순서대로
   const order = [game.players[me], ...game.players.filter((p) => p.id !== me)];
 

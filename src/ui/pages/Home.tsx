@@ -55,7 +55,7 @@ export function Home() {
         <div className={styles.menu}>
           <label className={`${styles.panel} ${styles.field} anim-rise`} style={rise(1)}>
             <span>개척자 이름</span>
-            <input value={name} maxLength={12} onChange={(e) => setName(e.target.value)} placeholder="개척자" />
+            <input value={name} maxLength={12} onChange={(e) => setName(e.target.value)} onBlur={keepName} placeholder="개척자" autoComplete="nickname" enterKeyHint="done" onKeyDown={(e) => e.key === 'Enter' && !e.nativeEvent.isComposing && e.currentTarget.blur()} />
           </label>
 
           {save && !save.game.gameOver && Array.isArray(save.game.rngState) && (
@@ -120,7 +120,25 @@ export function Home() {
               방 만들기
             </button>
             <div className={styles.join}>
-              <input value={code} maxLength={4} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="초대 코드" aria-label="초대 코드" />
+              <input
+                value={code}
+                maxLength={4}
+                onChange={(e) => setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
+                placeholder="초대 코드"
+                aria-label="초대 코드"
+                // iOS 키보드: 대문자로 시작, 자동 수정·맞춤법 밑줄·자동 완성 끔, 키보드의 '참가' 키로 바로 참가
+                autoCapitalize="characters"
+                autoCorrect="off"
+                autoComplete="off"
+                spellCheck={false}
+                enterKeyHint="go"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.nativeEvent.isComposing && code.length === 4) {
+                    keepName();
+                    joinRoom(code, nick());
+                  }
+                }}
+              />
               <button
                 className={styles.secondary}
                 disabled={code.length !== 4}

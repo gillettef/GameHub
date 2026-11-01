@@ -1,5 +1,5 @@
 // 테크 웹 SVG: 행성 지도 회화(assets/techweb/map.webp) 위에 그림 배지 노드. 중심에서 6방향·3고리. 줄기는 연구하면 얻는 것(방향이 여는 자원·방위)의 색, 고리는 배경 원 색과 노드 안 숫자, 곁가지는 안쪽이 얻는 것의 색·테두리가 노선색, 연구 가능 노드는 맥동
-import { useId, useState, type CSSProperties } from 'react';
+import { useId, useState, type CSSProperties, type MouseEvent as ReactMouseEvent } from 'react';
 import type { Direction, PlayerState } from '../../core/types';
 import { DIRECTION_NAMES, TRUNK_NAMES, DIRECTION_UNLOCKS, BUILDING_DIRECTION, BUILDING_NAMES, UNIT_NAMES, DOCTRINE_NAMES, LEVEL_NAMES } from '../../core/data/constants';
 import { CORE_ID } from '../../core/data/techWeb';
@@ -26,6 +26,8 @@ const TWIG_LEGEND: [string, string][] = [
 ];
 
 const TWIG_OFFSET = 22;
+/** 누른 점에서 이 거리(viewBox 단위, 402px 화면에서 약 28px) 안의 가장 가까운 노드를 연다 — 작은 곁가지도 손끝으로 맞히게 */
+const TAP_REACH = 34;
 const TWIG_SPREAD = 11; // 도
 
 function polar(r: number, deg: number): [number, number] {
@@ -56,6 +58,32 @@ export function TechWeb({ player }: { player: PlayerState }) {
       });
     }
   });
+
+  // 노드마다 따로 누르는 원을 두면 곁가지(배지 반지름 8)가 줄기의 누르는 원에 가려진다.
+  // 대신 웹 전체에서 누른 점과 가장 가까운 노드를 고른다(이웃 노드 사이 가운데가 경계)
+  const pickNode = (e: ReactMouseEvent<SVGSVGElement>) => {
+    // VoiceOver·스위치 제어·키보드의 '활성화'는 좌표 없는 클릭(detail 0) — 그 노드를 바로 연다
+    if (e.detail === 0) {
+      const g = (e.target as Element).closest<SVGElement>('[data-node]');
+      if (g?.dataset.node) setOpen(g.dataset.node);
+      return;
+    }
+    const m = e.currentTarget.getScreenCTM();
+    if (!m) return;
+    const pt = new DOMPoint(e.clientX, e.clientY).matrixTransform(m.inverse());
+    let best: string | null = null;
+    let bestD = TAP_REACH;
+    for (const id of Object.keys(nodes)) {
+      const at = pos[id];
+      if (!at) continue;
+      const d = Math.hypot(at[0] - pt.x, at[1] - pt.y);
+      if (d < bestD) {
+        bestD = d;
+        best = id;
+      }
+    }
+    if (best) setOpen(best);
+  };
 
   const edges: [string, string][] = [];
   for (const [a, list] of Object.entries(adj)) for (const b of list) if (a < b) edges.push([a, b]);
@@ -94,7 +122,7 @@ export function TechWeb({ player }: { player: PlayerState }) {
     >
       <div className={styles.frame}>
         <img className={styles.map} src={mapArt} alt="" loading="lazy" decoding="async" draggable={false} />
-        <svg viewBox="-212 -212 424 424" className={styles.web} role="group" aria-label={`${p.name} 테크 웹`}>
+        <svg viewBox="-212 -212 424 424" className={styles.web} role="group" aria-label={`${p.name} 테크 웹`} onClick={pickNode}>
           <defs>
             {/* 배지 테두리(금속)·광택·안쪽 그늘 */}
             <radialGradient id={gid('Bezel')} cx="0.35" cy="0.3" r="0.8">
@@ -156,8 +184,12 @@ export function TechWeb({ player }: { player: PlayerState }) {
               <g
                 key={n.id}
                 transform={`translate(${x} ${y})`}
-                onClick={() => setOpen(n.id)}
-                onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && setOpen(n.id)}
+                data-node={n.id}
+                onKeyDown={(e) => {
+                  if (e.key !== 'Enter' && e.key !== ' ') return;
+                  e.preventDefault();
+                  setOpen(n.id);
+                }}
                 tabIndex={0}
                 className={styles.node}
                 role="button"

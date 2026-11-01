@@ -17,6 +17,7 @@
   border: 1px solid var(--accent);
   border-bottom: none;
   border-radius: var(--radius) var(--radius) 0 0;
+  overscroll-behavior: contain;
   animation: nt-card-in 240ms ease-out both;
 }
 @media (prefers-reduced-motion: reduce) {
@@ -41,6 +42,11 @@
   top: calc(var(--status-h, 112px) + var(--space-2));
   z-index: 50;
   min-height: 48px;
+  /* 제목이 길어도 화면 폭을 넘지 않게 한 줄로 줄인다 */
+  max-width: calc(100vw - 2 * var(--space-4));
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
   padding: 0 var(--space-4);
   border-radius: var(--radius);
   border: 1px solid var(--accent);

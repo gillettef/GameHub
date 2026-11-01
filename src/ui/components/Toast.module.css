@@ -11,4 +11,6 @@
   box-shadow: var(--shadow);
   z-index: 60;
   text-align: center;
+  /* 시트 아래에 붙은 행동 버튼 위에 떠도 누르는 손가락을 가로채지 않게 */
+  pointer-events: none;
 }

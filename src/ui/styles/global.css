@@ -7,6 +7,16 @@
 html {
   /* 장식 모션이 넘쳐도 가로 스크롤이 생기지 않게(구형 iOS 는 body 값만으로 부족) */
   overflow-x: clip;
+  /* 맨 위에서 아래로 당겨도 새로고침되지 않게(iOS Safari 당겨서 새로고침) */
+  overscroll-behavior-y: none;
+  /* 가로로 돌렸을 때 iOS 가 글자를 멋대로 키우지 않게 */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+/* 시트·결정 창이 열린 동안 뒤 테이블이 따라 스크롤되지 않게(useScrollLock) */
+html.nt-lock,
+html.nt-lock body {
+  overflow: hidden;
 }
 html,
 body,
@@ -34,12 +44,21 @@ button {
   color: inherit;
   touch-action: manipulation;
   cursor: pointer;
+  /* 카드·버튼을 길게 눌러도 글자 선택·돋보기·이미지 저장 메뉴가 뜨지 않게 */
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+img {
+  -webkit-touch-callout: none;
 }
 button:disabled {
   cursor: default;
 }
 input {
   font: inherit;
+  /* iOS Safari 는 16px 미만 입력칸에 포커스하면 화면을 확대한다 */
+  font-size: 16px;
 }
 .sky {
   position: fixed;

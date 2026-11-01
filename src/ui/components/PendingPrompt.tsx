@@ -9,13 +9,23 @@ import { condText, modsText, optionSegs, questSegs, questSummary } from '../desc
 import { DoctrineTag, Segs } from './DoctrineTag';
 import { CardArt } from './CardArt';
 import type { IconName } from './Icon';
+import { useScrollLock } from '../useScrollLock';
 import styles from './PendingPrompt.module.css';
 
 export function PendingPrompt() {
   const { game, me, act } = useGame();
   const [peek, setPeek] = useState(false);
   const pd = game.pending[0];
-  if (!pd || pd.player !== me) return null;
+  const mine = !!pd && pd.player === me;
+  // 새 결정이 오면 접힌 상태를 풀고 다시 펼친다
+  const [seen, setSeen] = useState(pd);
+  if (pd !== seen) {
+    setSeen(pd);
+    if (peek) setPeek(false);
+  }
+  // 결정 창이 펼쳐진 동안만 뒤 테이블 스크롤을 잠근다(접으면 보드를 볼 수 있게 풂)
+  useScrollLock(mine && !peek);
+  if (!pd || !mine) return null;
   const p = game.players[me];
   const choose = (choice: number) => act({ type: 'respond', choice });
 
@@ -87,8 +97,8 @@ export function PendingPrompt() {
     );
   return (
     <div className={styles.backdrop}>
-      <section className={styles.box} role="dialog" aria-modal="true">
-        <h3>{title}</h3>
+      <section className={styles.box} role="dialog" aria-modal="true" aria-labelledby="nt-pending-title">
+        <h3 id="nt-pending-title">{title}</h3>
         {art && <CardArt id={art.id} icon={art.icon} className={styles.banner} />}
         {body}
         <div className={styles.options}>
