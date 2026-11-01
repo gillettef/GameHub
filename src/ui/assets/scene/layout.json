@@ -1,0 +1,76 @@
+{
+  "width": 840,
+  "height": 980,
+  "building": {
+    "w": 240,
+    "h": 200,
+    "base": 172
+  },
+  "unit": {
+    "w": 220,
+    "h": 180,
+    "base": 158
+  },
+  "legacy": {
+    "w": 120,
+    "h": 150,
+    "base": 136
+  },
+  "slots": {
+    "lab": {
+      "x": 118,
+      "base": 335,
+      "scale": 0.95
+    },
+    "hall": {
+      "x": 320,
+      "base": 335,
+      "scale": 0.95
+    },
+    "power": {
+      "x": 522,
+      "base": 335,
+      "scale": 0.95
+    },
+    "idle": {
+      "x": 716,
+      "base": 335,
+      "scale": 0.95
+    },
+    "farm": {
+      "x": 156,
+      "base": 612,
+      "scale": 1.15
+    },
+    "workshop": {
+      "x": 420,
+      "base": 612,
+      "scale": 1.15
+    },
+    "legacy": {
+      "x": 700,
+      "base": 612,
+      "scale": 1.15
+    },
+    "guard": {
+      "x": 114,
+      "base": 850,
+      "scale": 1.1
+    },
+    "rider": {
+      "x": 316,
+      "base": 850,
+      "scale": 1.1
+    },
+    "battery": {
+      "x": 524,
+      "base": 850,
+      "scale": 1.1
+    },
+    "flyer": {
+      "x": 728,
+      "base": 850,
+      "scale": 1.1
+    }
+  }
+}

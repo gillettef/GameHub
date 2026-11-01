@@ -1,5 +1,5 @@
-// 테크 웹 SVG: 중심에서 6방향·3고리. 줄기는 연구하면 얻는 것(방향이 여는 자원·방위)의 색, 고리는 배경 원 색과 노드 안 숫자, 곁가지는 노선색, 연구 가능 노드는 맥동
-import { useState, type CSSProperties } from 'react';
+// 테크 웹 SVG: 행성 지도 회화(assets/techweb/map.webp) 위에 그림 배지 노드. 중심에서 6방향·3고리. 줄기는 연구하면 얻는 것(방향이 여는 자원·방위)의 색, 고리는 배경 원 색과 노드 안 숫자, 곁가지는 노선색, 연구 가능 노드는 맥동
+import { useId, useState, type CSSProperties } from 'react';
 import type { Direction, PlayerState } from '../../core/types';
 import { DIRECTION_NAMES, TRUNK_NAMES, DIRECTION_UNLOCKS, BUILDING_NAMES, UNIT_NAMES, DOCTRINE_NAMES, LEVEL_NAMES } from '../../core/data/constants';
 import { CORE_ID } from '../../core/data/techWeb';
@@ -11,6 +11,7 @@ import { useFresh } from '../motion';
 import { Section } from './Section';
 import { Sheet } from './Sheet';
 import { instantText, modsText } from '../describe';
+import mapArt from '../assets/techweb/map.webp';
 import styles from './TechWeb.module.css';
 
 const RADIUS = [0, 62, 112, 160];
@@ -34,6 +35,9 @@ function polar(r: number, deg: number): [number, number] {
 export function TechWeb({ player }: { player: PlayerState }) {
   const { game, me, myTurn, check, act } = useGame();
   const [open, setOpen] = useState<string | null>(null);
+  // 판마다 gradient id 가 겹치지 않게(useId 의 콜론은 url() 에서 빼 둔다)
+  const uid = useId().replace(/[^a-zA-Z0-9_-]/g, '');
+  const gid = (k: string) => `ntTw${k}${uid}`;
   // 막 연구한 노드·막 이어진 선은 꽃피고 뻗어 나간다
   const fresh = useFresh(1000);
   const { nodes, adj } = webGraph(game.layout);
@@ -83,77 +87,110 @@ export function TechWeb({ player }: { player: PlayerState }) {
       }
       extra={`연구 ${p.researched.length - 1} · 과학 ${p.res.sci}`}
     >
-      <svg viewBox="-192 -192 384 384" className={styles.web} role="img" aria-label={`${p.name} 테크 웹`}>
-        {[1, 2, 3].map((r) => (
-          <circle key={r} r={RADIUS[r]} className={styles.ring} style={{ stroke: `var(--ring${r})` }} />
-        ))}
-        {edges.map(([a, b]) => {
-          const on = has(a) && has(b);
-          // fresh 는 연구한 노드에만 묻는다(안 그러면 연구 전에 '본 것'으로 기록됨)
-          const draw = on && fresh(`e:${a}-${b}`);
-          // 선은 먼저 연구한 쪽에서 새 노드 쪽으로 그린다
-          const [from, to] = draw && fresh(`n:${a}`) ? [b, a] : [a, b];
-          return (
-            <g key={`${a}-${b}`}>
-              <line x1={pos[a][0]} y1={pos[a][1]} x2={pos[b][0]} y2={pos[b][1]} className={`${styles.edge} ${on && !draw ? styles.edgeOn : ''}`} />
-              {draw && <line x1={pos[from][0]} y1={pos[from][1]} x2={pos[to][0]} y2={pos[to][1]} pathLength={1} className={`${styles.edge} ${styles.edgeOn} anim-draw`} />}
+      <div className={styles.frame}>
+        <img className={styles.map} src={mapArt} alt="" loading="lazy" decoding="async" draggable={false} />
+        <svg viewBox="-212 -212 424 424" className={styles.web} role="group" aria-label={`${p.name} 테크 웹`}>
+          <defs>
+            {/* 배지 테두리(금속)·광택·안쪽 그늘 */}
+            <radialGradient id={gid('Bezel')} cx="0.35" cy="0.3" r="0.8">
+              <stop offset="0" style={{ stopColor: 'var(--text-dim)' }} />
+              <stop offset="0.55" style={{ stopColor: 'var(--surface-2)' }} />
+              <stop offset="1" style={{ stopColor: 'var(--bg)' }} />
+            </radialGradient>
+            <radialGradient id={gid('Gloss')} cx="0.38" cy="0.28" r="0.6">
+              <stop offset="0" style={{ stopColor: 'var(--text)', stopOpacity: 0.55 }} />
+              <stop offset="1" style={{ stopColor: 'var(--text)', stopOpacity: 0 }} />
+            </radialGradient>
+            <radialGradient id={gid('Shade')} cx="0.5" cy="0.5" r="0.5">
+              <stop offset="0.6" style={{ stopColor: 'var(--bg)', stopOpacity: 0 }} />
+              <stop offset="1" style={{ stopColor: 'var(--bg)', stopOpacity: 0.55 }} />
+            </radialGradient>
+          </defs>
+          {[1, 2, 3].map((r) => (
+            <g key={r} style={{ stroke: `var(--ring${r})` }}>
+              <circle r={RADIUS[r]} className={styles.ringBand} />
+              <circle r={RADIUS[r]} className={styles.ring} />
             </g>
-          );
-        })}
-        {game.layout.dirOrder.map((dir, i) => {
-          const [x, y] = polar(180, i * 60);
-          return (
-            <text key={dir} x={x} y={y} className={styles.dirLabel} style={{ fill: DIRECTION_TONE[dir] }} textAnchor="middle" dominantBaseline="middle">
-              {DIRECTION_NAMES[dir]}
-            </text>
-          );
-        })}
-        {Object.values(nodes).map((n) => {
-          const [x, y] = pos[n.id];
-          const done = has(n.id);
-          const bloom = done && fresh(`n:${n.id}`);
-          const can = mine && !done && !researchBlock(game, p, n.id);
-          const r = n.kind === 'core' ? 14 : n.kind === 'trunk' ? 12 : 7;
-          const color = n.kind === 'twig' ? `var(--${n.twig!.doctrine})` : n.kind === 'core' ? 'var(--accent)' : DIRECTION_TONE[n.direction!];
-          return (
-            <g
-              key={n.id}
-              transform={`translate(${x} ${y})`}
-              onClick={() => setOpen(n.id)}
-              onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && setOpen(n.id)}
-              tabIndex={0}
-              className={styles.node}
-              role="button"
-              aria-label={`${nodeName(n.id)} · ${done ? '연구함' : can ? '연구 가능' : '잠김'}`}
-            >
-              <circle r={n.kind === 'twig' ? 15 : 20} className={styles.hit} />
-              {can && <circle r={r + 5} className={styles.canRing} />}
-              {bloom && (
-                <>
-                  <circle r={r} className={`${styles.ripple} anim-ripple`} style={{ stroke: color }} />
-                  <circle r={r} className={`${styles.ripple} anim-ripple`} style={{ stroke: color, '--delay': '180ms' } as CSSProperties} />
-                </>
-              )}
-              {/* 맥동은 내 차례에만 — SVG 는 합성 레이어가 아니라 계속 돌리면 무겁다 */}
-              <g className={can && myTurn ? 'anim-pulse' : bloom ? 'anim-bloom' : undefined}>
-                <circle r={r} style={{ stroke: color, fill: done ? color : 'var(--bg)' }} className={`${styles.dot} ${can ? styles.can : ''} ${!done && !can ? styles.off : ''}`} />
-                {n.kind === 'trunk' && (
-                  // 고리 번호: 연구 전에는 줄기 색, 연구 후(채운 점)에는 바탕색 글자
-                  <text className={styles.ringNo} style={{ fill: done ? 'var(--bg)' : color }} textAnchor="middle" dominantBaseline="central">
-                    {n.ring}
-                  </text>
-                )}
+          ))}
+          {edges.map(([a, b]) => {
+            const on = has(a) && has(b);
+            // fresh 는 연구한 노드에만 묻는다(안 그러면 연구 전에 '본 것'으로 기록됨)
+            const draw = on && fresh(`e:${a}-${b}`);
+            // 선은 먼저 연구한 쪽에서 새 노드 쪽으로 그린다
+            const [from, to] = draw && fresh(`n:${a}`) ? [b, a] : [a, b];
+            return (
+              <g key={`${a}-${b}`}>
+                <line x1={pos[a][0]} y1={pos[a][1]} x2={pos[b][0]} y2={pos[b][1]} className={styles.edgeUnder} />
+                <line x1={pos[a][0]} y1={pos[a][1]} x2={pos[b][0]} y2={pos[b][1]} className={`${styles.edge} ${on && !draw ? styles.edgeOn : ''}`} />
+                {draw && <line x1={pos[from][0]} y1={pos[from][1]} x2={pos[to][0]} y2={pos[to][1]} pathLength={1} className={`${styles.edge} ${styles.edgeOn} anim-draw`} />}
               </g>
-            </g>
-          );
-        })}
-      </svg>
+            );
+          })}
+          {game.layout.dirOrder.map((dir, i) => {
+            const [x, y] = polar(200, i * 60);
+            return (
+              <text key={dir} x={x} y={y} className={styles.dirLabel} style={{ fill: DIRECTION_TONE[dir] }} textAnchor="middle" dominantBaseline="middle">
+                {DIRECTION_NAMES[dir]}
+              </text>
+            );
+          })}
+          {Object.values(nodes)
+            .sort((a, b) => (a.kind === 'twig' ? 0 : 1) - (b.kind === 'twig' ? 0 : 1))
+            .map((n) => {
+            const [x, y] = pos[n.id];
+            const done = has(n.id);
+            const bloom = done && fresh(`n:${n.id}`);
+            const can = mine && !done && !researchBlock(game, p, n.id);
+            // 배지 반지름 — 장식은 모두 이 안. 연구 가능 점선 고리는 바깥 r+5 에만
+            const r = n.kind === 'core' ? 16 : n.kind === 'trunk' ? 14 : 8;
+            const color = n.kind === 'twig' ? `var(--${n.twig!.doctrine})` : n.kind === 'core' ? 'var(--accent)' : DIRECTION_TONE[n.direction!];
+            const rim = n.kind === 'trunk' ? `var(--ring${n.ring})` : color;
+            const inner = r - (n.kind === 'twig' ? 2.5 : 4);
+            return (
+              <g
+                key={n.id}
+                transform={`translate(${x} ${y})`}
+                onClick={() => setOpen(n.id)}
+                onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && setOpen(n.id)}
+                tabIndex={0}
+                className={styles.node}
+                role="button"
+                aria-label={`${nodeName(n.id)} · ${done ? '연구함' : can ? '연구 가능' : '잠김'}`}
+              >
+                <circle r={n.kind === 'twig' ? 16 : n.kind === 'core' ? 26 : 24} className={styles.hit} />
+                {can && <circle r={r + 5} className={`${styles.canRing} ${myTurn ? 'anim-pulse' : ''}`} />}
+                {bloom && (
+                  <>
+                    <circle r={r} className={`${styles.ripple} anim-ripple`} style={{ stroke: color }} />
+                    <circle r={r} className={`${styles.ripple} anim-ripple`} style={{ stroke: color, '--delay': '180ms' } as CSSProperties} />
+                  </>
+                )}
+                {/* 맥동은 내 차례에만, 연구 가능 점선 고리만 — SVG 는 합성 레이어가 아니라 계속 돌리면 무겁다 */}
+                <g className={`${!done && !can ? styles.off : ''} ${bloom ? 'anim-bloom' : ''}`}>
+                  <circle r={r + 1.5} cx={1} cy={2} className={styles.drop} />
+                  <circle r={r} fill={`url(#${gid('Bezel')})`} style={{ stroke: rim }} className={styles.bezel} />
+                  <circle r={inner} style={{ stroke: color, fill: done ? color : 'var(--bg)' }} className={`${styles.dot} ${can ? styles.can : ''}`} />
+                  {done && <circle r={inner} fill={`url(#${gid('Shade')})`} />}
+                  <ellipse cx={-inner * 0.25} cy={-inner * 0.4} rx={inner * 0.62} ry={inner * 0.4} fill={`url(#${gid('Gloss')})`} />
+                  {n.kind === 'core' && <circle r={4} style={{ fill: done ? 'var(--accent-contrast)' : 'var(--accent)' }} />}
+                  {n.kind === 'trunk' && (
+                    // 고리 번호: 연구 전에는 줄기 색, 연구 후(채운 배지)에는 바탕색 글자
+                    <text className={styles.ringNo} style={{ fill: done ? 'var(--bg)' : color }} textAnchor="middle" dominantBaseline="central">
+                      {n.ring}
+                    </text>
+                  )}
+                </g>
+              </g>
+            );
+          })}
+        </svg>
+      </div>
       <p className={styles.legend}>
-        큰 점 색 = 연구하면 얻는 것({game.layout.dirOrder.map((d, i) => (
+        큰 배지 색 = 연구하면 얻는 것({game.layout.dirOrder.map((d, i) => (
           <span key={d} style={{ color: DIRECTION_TONE[d] }}>
             {i ? ' ' : ''}● {DIRECTION_NAMES[d]}
           </span>
-        ))}) · 점 안 숫자·배경 원 = 고리 · 작은 점 = 곁가지(노선색) · 채운 점 = 연구함 · 점선 고리 = 지금 연구 가능
+        ))}) · 배지 안 숫자·테두리·배경 원 = 고리 · 작은 배지 = 곁가지(노선색) · 채운 배지 = 연구함 · 점선 고리 = 지금 연구 가능
       </p>
       {node && open && (
         <Sheet

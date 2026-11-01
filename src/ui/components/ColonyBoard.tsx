@@ -1,7 +1,7 @@
-// 식민지 보드: 자원 은행, 행동 토큰, 건물·유닛 칸(정착민 토큰), 선구자·유산·손패·궤도·후원·헌장
+// 식민지 보드: 착륙지 풍경(구조물·유닛·정착민 말·유산 기념물), 자원 토큰·행동 구슬, 상태·노선·공급 트랙, 후원자·유산·손패·궤도·후원·헌장
 import { useState, type ReactNode } from 'react';
 import type { BuildingKind, CharterField, PlayerState, UnitKind } from '../../core/types';
-import { BUILDING_KINDS, CHARTER_FIELDS, DOCTRINES, RES_KEYS, UNIT_KINDS } from '../../core/types';
+import { CHARTER_FIELDS, DOCTRINES, RES_KEYS } from '../../core/types';
 import {
   BUILDING_COST,
   BUILDING_NAMES,
@@ -58,8 +58,9 @@ import { CardBrief, ModsBrief } from './CardBrief';
 import type { FrameName } from './CardFace';
 import { useCardSizes } from '../useCardSizes';
 import { Icon, type IconName } from './Icon';
-import { Num, useFresh } from '../motion';
+import { useFresh } from '../motion';
 import { Section } from './Section';
+import { ActionBeads, ColonyScene, ResourceTray } from './ColonyScene';
 import { Sheet, type SheetAction } from './Sheet';
 import { CARD_TYPE_NAMES, cardText, condText, instantText, modsText } from '../describe';
 import styles from './ColonyBoard.module.css';
@@ -218,7 +219,7 @@ export function ColonyBoard({ player }: { player: PlayerState }) {
       }
       case 'pioneer': {
         const c = p.pioneer ? CARD_DEFS[p.pioneer] : null;
-        return withArt({ title: c?.name ?? '선구자', body: <p>{c ? cardText(c) : ''}</p>, actions: [] }, p.pioneer, 'pioneer', c ? { frame: 'pioneer', text: cardText(c) } : undefined);
+        return withArt({ title: c?.name ?? '후원자', body: <p>{c ? cardText(c) : ''}</p>, actions: [] }, p.pioneer, 'pioneer', c ? { frame: 'pioneer', text: cardText(c) } : undefined);
       }
       case 'orbit': {
         const ob = p.orbit[o.index];
@@ -279,7 +280,7 @@ export function ColonyBoard({ player }: { player: PlayerState }) {
     }
   }
 
-  const resIcons: Record<string, IconName> = { food: 'food', prod: 'prod', energy: 'energy', sci: 'sci', culture: 'culture' };
+  const net = Object.fromEntries(RES_KEYS.map((k) => [k, k === 'food' ? pv.net.food : pv.gross[k]])) as Record<(typeof RES_KEYS)[number], number>;
 
   return (
     <Section
@@ -291,37 +292,23 @@ export function ColonyBoard({ player }: { player: PlayerState }) {
       }
       extra={main ? `주 노선 ${DOCTRINE_NAMES[main]}${isHybrid(p) ? ' · 혼합' : ''}` : isHybrid(p) ? '혼합 노선' : '주 노선 없음'}
     >
-      {/* 자원 은행 */}
-      <div className={styles.bank}>
-        {RES_KEYS.map((k) => {
-          const net = k === 'food' ? pv.net.food : pv.gross[k];
-          return (
-            <div key={k} className={styles.res} style={{ color: `var(--res-${k})` }} aria-label={`${RES_NAMES[k]} ${p.res[k]}, 생산 ${net}`} data-tip={RES_NAMES[k]} data-tip-body={`보유 ${p.res[k]} · 생산 단계마다 ${net >= 0 ? '+' : ''}${net}${k === 'food' ? `(소비 ${pv.upkeep} 반영)` : ''}${k === 'culture' ? '\n문화가 곧 점수입니다.' : ''}`}>
-              <Icon name={resIcons[k]} size={18} />
-              <strong>
-                <Num value={p.res[k]} />
-              </strong>
-              <span className={styles.net}>{net >= 0 ? `+${net}` : net}</span>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* 행동 토큰과 상태 */}
-      <div className={styles.tokens}>
-        <span className={styles.tokenGroup} aria-label={`지휘 ${cmdMax - p.commandUsed}/${cmdMax}`} data-tip={`지휘 행동 ${cmdMax - p.commandUsed}/${cmdMax}`} data-tip-body="연구·카드 가져오기·건설·정착민·유산·위성·헌장·경쟁 퀘스트에 씁니다.">
-          <Icon name="command" size={16} />
-          {Array.from({ length: cmdMax }, (_, i) => (
-            <span key={i} className={`${styles.cmd} ${i < p.commandUsed ? styles.used : ''}`} />
-          ))}
-        </span>
-        <span className={styles.tokenGroup} aria-label={`방위 ${defMax - p.defenseUsed}/${defMax}`} data-tip={`방위 행동 ${defMax - p.defenseUsed}/${defMax}`} data-tip-body="유닛 편성·업그레이드, 습격(2)·분쟁 판정(3). 남기면 방위 태세(최대 +2).">
-          <Icon name="defense" size={16} color="var(--danger)" />
-          {Array.from({ length: defMax }, (_, i) => (
-            <span key={i} className={`${styles.def} ${i < p.defenseUsed ? styles.used : ''}`} />
-          ))}
-        </span>
-      </div>
+      {/* 착륙지 풍경: 구조물·유닛·정착민·유산이 그림으로 선다. 누르면 같은 시트 */}
+      <ColonyScene
+        player={p}
+        era={game.era}
+        mods={mods}
+        eager={mine}
+        net={net}
+        upkeep={pv.upkeep}
+        onBuilding={(kind) => setOpen({ k: 'building', kind })}
+        onUnit={(kind) => setOpen({ k: 'unit', kind })}
+        onColonist={() => setOpen({ k: 'colonist' })}
+        onLegacy={() => setOpen({ k: 'legacy' })}
+        onLegacyDone={(id) => setOpen({ k: 'legacyDone', id })}
+      />
+      {/* 자원 토큰 트레이와 행동 구슬 */}
+      <ResourceTray res={p.res} net={net} upkeep={pv.upkeep} />
+      <ActionBeads cmdMax={cmdMax} cmdUsed={p.commandUsed} defMax={defMax} defUsed={p.defenseUsed} />
       <div className={styles.status}>
         <span className={stab < need ? styles.warn : ''} data-tip="건강" data-tip-body={`현재 ${stab} / 필요 ${need}(정착민 공급 트랙). 모자란 만큼 불건강 정착민이 생기고, 유휴 정착민보다 많으면 역병으로 건물 생산이 멈춥니다. 회관마다 +1.`}>
           <Icon name="health" size={14} /> 건강 {stab}/{need}
@@ -361,49 +348,6 @@ export function ColonyBoard({ player }: { player: PlayerState }) {
         ))}
       </button>
 
-      {/* 건물 칸 */}
-      <div className={styles.tableau}>
-        {BUILDING_KINDS.map((k) => (
-          <Column
-            key={k}
-            icon={k}
-            name={BUILDING_NAMES[k]}
-            count={buildingCount(p, k)}
-            cap={buildingCap(p, k, mods)}
-            levels={[3, 2, 1, 0].filter((l) => BUILDING_OUTPUT[k][l] != null)}
-            have={p.buildings[k]}
-            unlocked={(l) => buildingUnlocked(p, k, l)}
-            color={`var(--res-${BUILDING_RES[k]})`}
-            onClick={() => setOpen({ k: 'building', kind: k })}
-          />
-        ))}
-      </div>
-      <div className={`${styles.tableau} ${styles.units}`}>
-        {UNIT_KINDS.map((k) => (
-          <Column
-            key={k}
-            icon={k}
-            name={UNIT_NAMES[k]}
-            count={unitCount(p, k)}
-            cap={unitCap(p, k, mods)}
-            levels={[3, 2, 1, 0].filter((l) => UNIT_POWER[k][l] != null)}
-            have={p.units[k]}
-            unlocked={(l) => unitUnlocked(p, k, l)}
-            color="var(--danger)"
-            onClick={() => setOpen({ k: 'unit', kind: k })}
-          />
-        ))}
-      </div>
-
-      {/* 정착민 */}
-      <button className={styles.colonists} onClick={() => setOpen({ k: 'colonist' })}>
-        <span>유휴</span>
-        {Array.from({ length: p.idle }, (_, i) => (
-          <span key={i} className={styles.pawn} />
-        ))}
-        {p.idle === 0 && <span className={styles.dim}>없음</span>}
-        <span className={styles.pool}>공급 {p.pool}</span>
-      </button>
       {/* 정착민 공급 트랙: 구간마다 인쇄된 식량 소비·필요 건강, 지금 구간 강조 */}
       <ol className={styles.supply} aria-label={`정착민 공급 트랙 — 총 ${total}명, 식량 소비 ${pv.upkeep}, 필요 건강 ${need}`}>
         {COLONIST_TRACK.map((s, i) => {
@@ -435,9 +379,9 @@ export function ColonyBoard({ player }: { player: PlayerState }) {
 
       {/* 카드 영역 */}
       <div className={styles.cards}>
-        <Slot label="선구자">
+        <Slot label="후원자">
           {p.pioneer ? (
-            <CardFace className={pop(`pio:${p.pioneer}`)} frame="pioneer" width={sizes.card} title={CARD_DEFS[p.pioneer].name} tip={`선구자\n${cardText(CARD_DEFS[p.pioneer])}`} art={{ id: p.pioneer, icon: 'pioneer' }} brief={<CardBrief card={CARD_DEFS[p.pioneer]} />} onClick={() => setOpen({ k: 'pioneer' })} />
+            <CardFace className={pop(`pio:${p.pioneer}`)} frame="pioneer" width={sizes.card} title={CARD_DEFS[p.pioneer].name} tip={`후원자\n${cardText(CARD_DEFS[p.pioneer])}`} art={{ id: p.pioneer, icon: 'pioneer' }} brief={<CardBrief card={CARD_DEFS[p.pioneer]} />} onClick={() => setOpen({ k: 'pioneer' })} />
           ) : (
             <Empty />
           )}
@@ -514,50 +458,6 @@ export function ColonyBoard({ player }: { player: PlayerState }) {
         </Sheet>
       )}
     </Section>
-  );
-}
-
-function Column({
-  icon,
-  name,
-  count,
-  cap,
-  levels,
-  have,
-  unlocked,
-  color,
-  onClick,
-}: {
-  icon: IconName;
-  name: string;
-  count: number;
-  cap: number;
-  levels: number[];
-  have: number[];
-  unlocked: (l: number) => boolean;
-  color: string;
-  onClick: () => void;
-}) {
-  return (
-    <button className={styles.col} onClick={onClick} aria-label={`${name} ${count}/${cap}`} data-tip={`${name} ${count}/${cap}`} data-tip-body={levels.map((l) => `${l === 0 ? '기초' : `Lv${l}`} ${have[l]}개${unlocked(l) ? '' : ' (잠김)'}`).join(' · ')}>
-      <span className={styles.colHead} style={{ color }}>
-        <Icon name={icon} size={18} />
-        <span>{name}</span>
-        <small>
-          {count}/{cap}
-        </small>
-      </span>
-      {levels.map((l) => (
-        <span key={l} className={`${styles.cell} ${unlocked(l) ? '' : styles.locked}`}>
-          <span className={styles.lvl}>{l === 0 ? '기' : l}</span>
-          <span className={styles.pawns}>
-            {Array.from({ length: have[l] }, (_, i) => (
-              <span key={i} className={styles.pawn} />
-            ))}
-          </span>
-        </span>
-      ))}
-    </button>
   );
 }
 

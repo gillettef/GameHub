@@ -1,6 +1,6 @@
 # 네오테라 아트 키트
 
-행성의 밤하늘, 포자 안개, 토착 생물, 궤도 위성을 바탕으로 한 다크 테마 시각 자산. 모두 직접 설계한 벡터(SVG)이며 래스터 이미지와 웹폰트는 쓰지 않는다.
+행성의 밤하늘, 포자 안개, 토착 생물, 궤도 위성을 바탕으로 한 다크 테마 시각 자산. 아이콘·카드 프레임·문장·로고는 직접 설계한 벡터(SVG)다. **회화 장면·구조물(식민지 풍경, 테크 웹 지도, 홈 히어로)만 WebP 래스터를 허용**한다 — 아래 "회화풍 래스터 자산". 웹폰트는 쓰지 않는다.
 
 - Claude Design 캔버스(디자인 확인용, 비공개): https://claude.ai/artifact/34UtDyLuoFUUSyCgUrpeHh
   - 아트보드: 토큰·로고·배경 / 아이콘 34종 / 카드 프레임 15종 / 노선 문장·시대 배너·모션 / 랜딩(홈) 402 폭(모션 실시간 재생)
@@ -13,18 +13,42 @@
 | `src/ui/styles/tokens.css` | `:root` 색·간격·모양·글꼴·그림자 변수 |
 | `src/ui/styles/motion.css` | keyframes 와 `.anim-*` 유틸 클래스 |
 | `src/ui/assets/bg-sky.svg` | 앱 배경. viewBox 430×932, `preserveAspectRatio="xMidYMid slice"` |
-| `src/ui/assets/landing/planet.svg` | 홈 히어로 고리 행성(본체·띠·고리 앞뒤·작은 달). 중심 (262,118) r64. viewBox 400×360 |
-| `src/ui/assets/landing/ground.svg` | 홈 히어로 착륙지 지평선(대기 광채·먼 능선·땅·생물발광 식생). 지평선 꼭대기 (200,244). viewBox 400×360 |
-| `src/ui/components/LandingHero.tsx` | 홈 히어로 인라인 SVG — 위 두 장을 `<image>` 로 깔고 위성·별똥별·안개·테크 웹·착륙선·포자를 얹는다. 모션은 `LandingHero.module.css` |
+| `src/ui/assets/landing/{sky,planet,ground}.webp` | 홈 히어로 회화 3장(800×720 = viewBox 400×360 의 2배). 하늘(불투명) / 고리 행성·달(투명, 중심 (262,118) r64) / 지평선·생물발광 계곡·정착지 불빛(투명, 지평선 꼭대기 (200,244)) |
+| `src/ui/components/LandingHero.tsx` | 홈 히어로 인라인 SVG — 위 세 장을 `<image>` 로 깔고 위성·별똥별·안개·테크 웹·착륙선·포자를 얹는다. 모션은 `LandingHero.module.css` |
+| `src/ui/assets/scene/era{1..4}.webp` | 식민지 풍경 배경 840×980(1 착륙지 노을 · 2 정착촌 오로라 밤 · 3 궤도 도시 · 4 결실 금빛 새벽). 빈 터(돌 테두리 원판)를 자리 좌표에 구워 둠 |
+| `src/ui/assets/scene/buildings.webp` | 건물 아틀라스 5열(농장·제작소·발전소·연구소·회관) × 4행(기초·Lv1~3), 칸 240×200, 땅선 y172. 발전소·회관 기초 칸은 비어 있음 |
+| `src/ui/assets/scene/units.webp` | 유닛 아틀라스 4열(경비대·기동대·포대·비행대) × 4행, 칸 220×180, 땅선 y158 |
+| `src/ui/assets/scene/legacy.webp` | 유산 기념물 5칸(0 짓는 중 비계, 1~4 완성: 금빛 오벨리스크·개척자 동상·고리 인 아치·빛나무), 칸 120×150 |
+| `src/ui/assets/scene/props.webp` | 실물 토큰 9칸 64×64: 정착민 말, 자원 5종(식량 꼬투리·생산 육각 덩이·에너지 원반·과학 결정 큐브·문화 보석), 지휘 구슬(흰), 방위 구슬(빨강), 빈 홈 |
+| `src/ui/assets/scene/layout.json` | 장면 자리 좌표(x, 땅선 base, scale). 굽는 스크립트와 `ColonyScene.tsx` 가 함께 읽는다 |
+| `src/ui/assets/techweb/map.webp` | 테크 웹 바탕 행성 지도 768×768(viewBox 384 의 2배, 중심 384,384). 방향 순서는 판마다 달라 방향색은 굽지 않음 |
+| `src/ui/components/ColonyScene.tsx` | 식민지 풍경 장면·생산 칩 띠·자원 토큰 트레이·행동 구슬 |
 | `src/ui/assets/logo.svg` | 심볼(고리 행성 + 새싹 + 세 노선 위성) + 기하학 획 워드마크 "네오테라". viewBox 324×96 |
 | `src/ui/assets/icons/*.svg` | 24×24 단색 아이콘 34종 |
 | `src/ui/assets/cards/*.svg` | 카드 프레임 15종, viewBox 250×350 |
 | `src/ui/assets/emblems/{ark,symbiont,synth}.svg` | 노선 문장 120×120 (고정 색) |
 | `src/ui/assets/emblems/era{1..4}.svg` | 시대 전환 배너 360×120 (1 착륙 · 2 정착 · 3 궤도 · 4 종료/결실) |
 
-- `landing/planet.svg`·`ground.svg` 는 `<image>` 로 불러와 CSS 변수가 닿지 않으므로 색을 HEX 로 박았다. `tokens.css` 색을 바꾸면 이 둘도 다시 뽑는다.
 
-전체 SVG 약 53KB(목표 400KB 이하), 배경 약 8KB, 랜딩 히어로 2장 약 6KB.
+전체 SVG 약 50KB(목표 400KB 이하), 배경 약 8KB. WebP 래스터 합계 약 455KB(목표 1.5MB 이하, 장면 1장 200KB 이하).
+
+## 회화풍 래스터 자산(WebP)
+
+참고한 느낌: 테이블 위 보드게임 풍경 — 내 문명이 한 장의 풍경 그림이고, 건물은 지형 위 구조물 그림(레벨마다 그림이 바뀜), 정착민은 건물 옆 말, 유닛은 깃발 든 무리, 유산은 기념물, 자원은 빛나는 실물 토큰. 다른 게임의 그림·구도·명칭은 옮기지 않고 네오테라 세계관(착륙지 → 정착촌 → 궤도 도시, 포자 안개, 생물발광 식생, 세 노선 색)으로 직접 그렸다.
+
+- **만드는 법**: 이미지 생성 모델 없이 Python 이 그라데이션·조명·붓결 필터(feTurbulence + feDisplacementMap + soft-light 붓 자국)를 쓴 SVG 를 만들고, 헤드리스 Chrome 으로 투명 배경 캡처한 뒤 Pillow 로 WebP 저장한다. npm 라이브러리는 쓰지 않는다.
+  ```
+  python scripts/art/build_art.py            # 전부 다시 굽기
+  python scripts/art/build_art.py scenes     # 일부만: buildings units legacy props scenes techweb landing
+  ```
+  - `scripts/art/paint.py` 도형·필터·굽기 도우미, `buildings.py` `units.py` `props.py` `scenes.py` `techweb.py` `landing.py` 그림별 코드. 생성된 SVG 원본은 `scripts/art/src/*.svg` 에 남는다(임시 PNG 는 `scripts/art/.tmp/`, git 제외). Chrome 경로가 다르면 `NT_CHROME` 환경 변수.
+- **해상도**: 기기 2배 기준(402px 폭 → 장면 약 800px). 구조물·유닛·토큰은 알파 WebP 아틀라스로, CSS `background-position` 으로 칸을 고른다(`--atlas --cols --rows --ax --ay`). 같은 아틀라스를 2~4명 보드가 함께 쓴다. 장면 배경과 테크 웹 지도는 `<img loading="lazy">`.
+- **색**: 래스터에는 CSS 변수가 닿지 않으므로 `paint.py` 의 `T` 표에 `tokens.css` 값을 옮겨 두고 구웠다. **`tokens.css` 색을 바꾸면 `T` 를 맞춘 뒤 다시 굽는다.** 노드 색·고리 색처럼 규칙상 의미가 있는 색은 래스터에 굽지 않고 SVG/CSS(토큰)로 그린다.
+- **자리 좌표**: `assets/scene/layout.json` 을 바꾸면 빈 터 위치가 달라지므로 `scenes` 를 다시 굽는다.
+- **누르는 영역**: 구조물 버튼은 같은 줄 이웃과의 간격 − 8 로 폭을 줄이고 땅선 위 120(×scale)만 덮는다. 그림 칸은 `pointer-events: none` 으로 버튼 밖으로 넘친다. 정착민 말 줄은 한 줄 고정이고 말이 4개를 넘으면 레벨마다 `×n` 으로 줄인다. 유산 광장은 그림 2개까지, 나머지는 이름판 `+n`(모두 아래 카드 칸에 있음).
+- **원본 SVG**: `scripts/art/src/*.svg` 12장(합계 약 1MB)을 커밋 대상으로 남긴다. 스크립트만으로도 같은 결과를 다시 만들 수 있지만, 그림을 손보거나 비교할 때 쓴다.
+- **구조물 그림**(레벨이 오를수록 커지고 바뀜): 농장 = 일군 밭과 천막 → 유리 온실 돔 → 쌍둥이 온실·물탑 → 층층 수직 농장 탑 / 제작소 = 천막 작업대·고철 → 굴뚝 단 조립 창고 → 용광로 공장 → 갠트리 크레인 제작 단지 / 발전소 = 태양 집광판 → 지열 냉각탑 → 떠 있는 고리를 두른 반중력 첨탑 / 연구소 = 탐사 천막·안테나 → 관측 돔 → 접시 안테나 연구 단지 → 결정 첨탑 학원 / 회관 = 깃발 천막 집회장 → 열주 회당 → 빛 돔 대회관. 유닛: 경비대 = 창 든 민병 → 방패 경비 → 강화복 소총대 → 두 발 보행 기계, 기동대 = 여섯 다리 토착 짐승 기수 → 호버 바이크 → 호버 전차, 포대 = 레일 포 → 플라스마 중포, 비행대 = 포함(砲艦) 드론. 유닛 깃발은 진홍(위험색 계열).
+- 지금 그림은 절차적으로 그린 회화 흉내라서, 손으로 그린 일러스트만큼 세밀하지는 않다. 같은 아틀라스 칸 크기를 지키면 나중에 더 좋은 그림으로 바꿔 끼울 수 있다.
 
 ## 색 토큰
 
@@ -60,13 +84,13 @@
 `pioneer legacy supply patron satellite mission raid conflict quest-back quest-judge quest-threat quest-contest quest-patron quest-fruition quest-finale`
 
 - 글자 없이 테두리·띠·그림 창만 있다. 코드가 위에 글자를 절대 위치로 얹는다(250×350 기준 좌표, 실제 크기에 비례해 환산).
-  - 상단 띠 y 8–58: 이름·종류. 왼쪽 비용 원 (31,33) r15 — 선구자·유산·보급·습격·분쟁·후원 계약·위성. 퀘스트는 오른쪽 표식 칸 (196,18) 32×30, 위협형은 같은 자리 육각(위협도).
-  - 그림 창 y 66–188 (선구자·유산은 아치형).
+  - 상단 띠 y 8–58: 이름·종류. 왼쪽 비용 원 (31,33) r15 — 후원자·유산·자원 팟·습격·분쟁·후원 계약·위성. 퀘스트는 오른쪽 표식 칸 (196,18) 32×30, 위협형은 같은 자리 육각(위협도).
+  - 그림 창 y 66–188 (후원자·유산은 아치형).
   - 구분선 y 197, 본문 y 205–290.
   - 노선 선택지 칸 y 296–330, x 18·92·166 (폭 66) — 판정형·위협형·경쟁형. 칸 색은 `--ark/--symbiont/--synth`.
   - 습격 `raid`: 오른쪽 위·왼쪽 아래를 사선으로 깎은 테두리, 띠에 발톱자국 세 줄, 아래에 속도선 + 화살촉. 분쟁 `conflict`: 팔각 겹테두리, 띠에 교차한 두 창, 비용 원 바깥 고리, 그림 창 모서리 리벳, 아래 제비꼬리 깃발 띠(y 304–330).
   - 유산 단계 마름모 4개 x 228, y 219·243·267·291. 위성 타이머 원 4개 y 318, x 86·112·138·164.
-- 테두리·장식색은 **`currentColor`**, 루트 `color` 속성에 종류별 기본색이 들어 있다(선구자 호박, 유산 금, 보급 청동, 판정 하늘, 위협 빨강, 경쟁 주황, 후원 제안 보라, 결실·종료 금, 후원 계약 난초, 위성 연청, 임무 녹색, 습격 위험 빨강 `#ff7a7a`, 분쟁 진한 주홍(적동) `#e8693f`). 인라인으로 넣고 CSS `color` 를 주면 노선색 등으로 바꿀 수 있다(예: 선구자 카드 `color: var(--ark)`).
+- 테두리·장식색은 **`currentColor`**, 루트 `color` 속성에 종류별 기본색이 들어 있다(후원자 호박, 유산 금, 자원 팟 청동, 판정 하늘, 위협 빨강, 경쟁 주황, 후원 제안 보라, 결실·종료 금, 후원 계약 난초, 위성 연청, 임무 녹색, 습격 위험 빨강 `#ff7a7a`, 분쟁 진한 주홍(적동) `#e8693f`). 인라인으로 넣고 CSS `color` 를 주면 노선색 등으로 바꿀 수 있다(예: 후원자 카드 `color: var(--ark)`).
 - 바탕은 `style="fill:var(--surface,#161f38)"` 처럼 토큰을 쓰고 대체값을 둔다. `<img>` 로 써도 대체값으로 같은 모양이 나온다.
 - 인라인으로 한 화면에 여러 장 넣을 때: `clipPath` id 가 파일마다 다르게(`ntSupClip`, `ntFinClip`, `ntMisClip`, `ntRaidClip`, `ntConClip`) 지정돼 있어 충돌하지 않는다. 같은 프레임을 여러 장 인라인하면 id 가 중복되지만 내용이 같아 표시에는 문제가 없다.
 
@@ -154,5 +178,5 @@ body {
 ## 미완성·타협
 
 - 워드마크는 글꼴 없이 직선·원 획으로 그렸다(어떤 기기에서도 같은 모양). 정교한 서체 로고는 아니다.
-- 카드별 일러스트는 `src/ui/assets/art/<카드 id>.svg` 134장(규칙은 `docs/art-cards.md`). 묶음별 Claude Design 캔버스: 선구자·유산 https://claude.ai/artifact/5SKiNZWKm9qxUPQGZtGGNN · 보급 https://claude.ai/artifact/AZsnAoY88Ekh7RvPQE93Hf · 1·2시대 퀘스트 https://claude.ai/artifact/VwsHSrJ68MVFDsB9oiqqWU · 3시대·결실·후원 계약 https://claude.ai/artifact/Xg7SY9mAJWDzcGnBebnEpH · 위성·특수 시설 https://claude.ai/artifact/RpCD7cKqhpVY3aKrZUmxXc
+- 카드별 일러스트는 `src/ui/assets/art/<카드 id>.svg` 134장(규칙은 `docs/art-cards.md`). 묶음별 Claude Design 캔버스: 후원자·유산 https://claude.ai/artifact/5SKiNZWKm9qxUPQGZtGGNN · 자원 팟 https://claude.ai/artifact/AZsnAoY88Ekh7RvPQE93Hf · 1·2시대 퀘스트 https://claude.ai/artifact/VwsHSrJ68MVFDsB9oiqqWU · 3시대·결실·후원 계약 https://claude.ai/artifact/Xg7SY9mAJWDzcGnBebnEpH · 위성·특수 시설 https://claude.ai/artifact/RpCD7cKqhpVY3aKrZUmxXc
 - 아이콘 34종은 1.8px 획 한 벌만 있다(채움형 변형 없음).

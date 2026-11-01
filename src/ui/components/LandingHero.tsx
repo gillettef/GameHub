@@ -1,8 +1,9 @@
 // 홈 화면 히어로: 고리 행성이 지평선 위로 떠오르고, 착륙선이 내려앉으면 방사형 테크 웹이 땅에 그려진다.
-// 정지 그림은 assets/landing/*.svg, 움직이는 층은 이 인라인 SVG. 모션은 LandingHero.module.css
+// 정지 그림은 회화풍 WebP 3장(assets/landing/sky·planet·ground, scripts/art 로 구움), 움직이는 층은 이 인라인 SVG. 모션은 LandingHero.module.css
 import type { CSSProperties } from 'react';
-import planet from '../assets/landing/planet.svg';
-import ground from '../assets/landing/ground.svg';
+import sky from '../assets/landing/sky.webp';
+import planet from '../assets/landing/planet.webp';
+import ground from '../assets/landing/ground.webp';
 import styles from './LandingHero.module.css';
 
 type Vars = CSSProperties & Record<`--${string}`, string | number>;
@@ -69,6 +70,9 @@ export function LandingHero({ quick = false }: { quick?: boolean }) {
             <path d="M0 262Q200 226 400 262V360H0Z" />
           </clipPath>
         </defs>
+
+        {/* 노을 밤하늘(움직이지 않는 맨 아래 층) */}
+        <image href={sky} width="400" height="360" preserveAspectRatio="none" />
 
         {/* 행성: 지평선 뒤에서 떠오름 */}
         <g className={styles.rise}>
