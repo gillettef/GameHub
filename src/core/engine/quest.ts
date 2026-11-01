@@ -1,4 +1,4 @@
-// 퀘스트 트랙: 퀘스트 선택, 종류별 처리, 대기 응답, 후원 계약 (Rules.md 11~13절)
+// 퀘스트 트랙: 퀘스트 선택, 종류별 처리, 대기 응답, 주둔지 (Rules.md 11~13절)
 import type { CardDef, GameState, PlayerState, QuestOption, ThreatQuest } from '../types';
 import { HAND_TYPES } from '../types';
 import {
@@ -243,7 +243,7 @@ function offerPatron(state: GameState, era: number, trigger: number, questName: 
   const deck = state.patronDecks[era as 1 | 2 | 3];
   const patronId = deck.shift();
   if (!patronId) {
-    log(state, null, `「${questName}」 — 남은 후원 계약 없음`);
+    log(state, null, `「${questName}」 — 남은 주둔지 없음`);
     return;
   }
   const def = PATRON_DEFS[patronId];
@@ -251,7 +251,7 @@ function offerPatron(state: GameState, era: number, trigger: number, questName: 
   if (!def) return;
   const order = orderFrom(state, trigger);
   const queue = [...order].sort((a, b) => metric(state, state.players[b], def.metric) - metric(state, state.players[a], def.metric));
-  log(state, null, `후원 제안 「${def.name}」`);
+  log(state, null, `주둔지 제안 「${def.name}」`);
   const [first, ...rest] = queue;
   state.pending.push({ kind: 'patron', player: first, patronId, queue: rest });
 }
@@ -279,7 +279,7 @@ export function respond(state: GameState, choice: number): string | null {
   const pd = state.pending[0];
   if (!pd) return '대기 중인 결정 없음';
   if (!Number.isInteger(choice) || choice < 0 || choice >= pendingChoices(state)) return '잘못된 선택';
-  if (pd.kind === 'patron' && choice === 1 && state.players[pd.player].patrons.length >= PATRON_LIMIT) return '후원 계약 한도 — 해지할 계약을 고르세요';
+  if (pd.kind === 'patron' && choice === 1 && state.players[pd.player].patrons.length >= PATRON_LIMIT) return '주둔지 한도 — 철수시킬 주둔지를 고르세요';
   if (pd.kind === 'patron' && choice >= 2 && state.players[pd.player].patrons.length < PATRON_LIMIT) return '한도가 남아 있어 해지할 필요가 없습니다';
   state.pending.shift();
   const p = state.players[pd.player];
@@ -311,17 +311,17 @@ export function respond(state: GameState, choice: number): string | null {
     case 'patron': {
       const def = PATRON_DEFS[pd.patronId];
       if (choice === 0) {
-        log(state, p.id, `후원 계약 「${def.name}」 거절`);
+        log(state, p.id, `주둔지 「${def.name}」 거절`);
         const [next, ...rest] = pd.queue;
         if (next !== undefined) state.pending.unshift({ kind: 'patron', player: next, patronId: pd.patronId, queue: rest });
         else log(state, null, `「${def.name}」 — 모두 거절해 버림`);
       } else {
         if (choice >= 2) {
           const dropped = p.patrons.splice(choice - 2, 1)[0];
-          log(state, p.id, `후원 계약 「${PATRON_DEFS[dropped].name}」 해지`);
+          log(state, p.id, `주둔지 「${PATRON_DEFS[dropped].name}」 철수`);
         }
         p.patrons.push(pd.patronId);
-        log(state, p.id, `후원 계약 「${def.name}」 체결`);
+        log(state, p.id, `주둔지 「${def.name}」 받음`);
       }
       break;
     }
@@ -329,7 +329,7 @@ export function respond(state: GameState, choice: number): string | null {
   return null;
 }
 
-/** 후원 계약 요구 검사(시대 전환 때) */
+/** 주둔지 요구 검사(시대 전환 때) */
 export function checkPatronDemands(state: GameState, era: number): void {
   for (const p of state.players) {
     for (const id of p.patrons) {

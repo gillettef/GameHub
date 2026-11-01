@@ -1,4 +1,4 @@
-// 내게 온 대기 결정(퀘스트 보상·유도·공존·후원 계약)
+// 내게 온 대기 결정(퀘스트 보상·유도·공존·주둔지)
 import { useState, type ReactNode } from 'react';
 import { QUEST_DEFS } from '../../core/data/quests';
 import { PATRON_DEFS } from '../../core/data/patrons';
@@ -58,7 +58,7 @@ export function PendingPrompt() {
     }
     case 'patron': {
       const d = PATRON_DEFS[pd.patronId];
-      title = `후원 제안 「${d.name}」`;
+      title = `주둔지 제안 「${d.name}」`;
       art = { id: d.id, icon: 'patron' };
       body = (
         <p>
@@ -68,8 +68,8 @@ export function PendingPrompt() {
         </p>
       );
       options = [{ label: '거절', choice: 0 }];
-      if (p.patrons.length < PATRON_LIMIT) options.unshift({ label: '계약 체결', choice: 1 });
-      else p.patrons.forEach((id, i) => options.unshift({ label: `「${PATRON_DEFS[id].name}」 해지하고 체결`, choice: 2 + i }));
+      if (p.patrons.length < PATRON_LIMIT) options.unshift({ label: '주둔지 받기', choice: 1 });
+      else p.patrons.forEach((id, i) => options.unshift({ label: `「${PATRON_DEFS[id].name}」 철수시키고 받기`, choice: 2 + i }));
       break;
     }
   }

@@ -102,7 +102,7 @@ export function CardBrief({ card }: { card: CardDef }) {
   return <Chips chips={instantChips(card.instant)} />;
 }
 
-/** 위성·후원 계약처럼 영구 수정치만 있는 카드 */
+/** 위성·주둔지처럼 영구 수정치만 있는 카드 */
 export function ModsBrief({ mods }: { mods: Partial<Mods> | undefined }) {
   return <Chips chips={modsChips(mods)} />;
 }
@@ -114,7 +114,7 @@ export function QuestBrief({ q }: { q: QuestDef }) {
   let line = '';
   if (q.kind === 'judge' || q.kind === 'contest') line = q.cond.map((c) => `${METRIC_NAMES[c.metric]} ${c.min}+`).join(' · ');
   else if (q.kind === 'threat') line = `대상 ${THREAT_TARGETS[q.target] ?? DOCTRINE_NAMES[q.target as keyof typeof DOCTRINE_NAMES]}`;
-  else if (q.kind === 'patron') line = '후원 제안';
+  else if (q.kind === 'patron') line = '주둔지 제안';
   else if (q.kind === 'fruition') line = `${DOCTRINE_NAMES[q.doctrine]} 결실`;
   const opts = q.kind === 'judge' || q.kind === 'contest' ? q.options : [];
   return (

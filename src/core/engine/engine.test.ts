@@ -391,7 +391,7 @@ describe('퀘스트', () => {
     expect(chooseAction(b, b.current)).toEqual(chooseAction(a, a.current));
   });
 
-  it('후원 제안: 지표 최고 플레이어에게 먼저 묻고 거절하면 다음 사람', () => {
+  it('주둔지 제안: 지표 최고 플레이어에게 먼저 묻고 거절하면 다음 사람', () => {
     let s = atQuest('q1p1');
     const patronId = s.patronDecks[1][0];
     s = act(s, { type: 'pickQuest', slot: 0 });

@@ -21,7 +21,7 @@ export type Ring = 1 | 2 | 3;
 export type CharterField = 'prosperity' | 'explore' | 'defense' | 'bond';
 export const CHARTER_FIELDS: CharterField[] = ['prosperity', 'explore', 'defense', 'bond'];
 
-/** 영구 수정치. 여러 출처(곁가지·노선·헌장·후원자·유산·후원 계약·특수 시설·위성)를 합산한다 */
+/** 영구 수정치. 여러 출처(곁가지·노선·헌장·후원자·유산·주둔지·특수 시설·위성)를 합산한다 */
 export interface Mods {
   health: number;
   sporeCap: number;
@@ -237,7 +237,7 @@ export interface PatronDef {
   id: string;
   era: Ring;
   name: string;
-  /** 계약자를 정하는 지표 */
+  /** 주둔지를 받을 사람을 정하는 지표 */
   metric: Metric;
   mods: Partial<Mods>;
   demand: Cond;

@@ -414,10 +414,10 @@ export function ColonyBoard({ player }: { player: PlayerState }) {
           ))}
         </Slot>
         {(p.patrons.length > 0 || mine) && (
-          <Slot label="후원 계약">
+          <Slot label="주둔지">
             {p.patrons.length === 0 && <Empty />}
             {p.patrons.map((id) => (
-              <CardFace key={id} className={pop(`pat:${id}`)} frame="patron" width={sizes.card} title={PATRON_DEFS[id].name} tip={`후원 계약 · ${PATRON_DEFS[id].points}점\n${modsText(PATRON_DEFS[id].mods)}\n요구: ${condText([PATRON_DEFS[id].demand])}`} badge={PATRON_DEFS[id].points} art={{ id, icon: 'patron' }} brief={<ModsBrief mods={PATRON_DEFS[id].mods} />} onClick={() => setOpen({ k: 'patron', id })} />
+              <CardFace key={id} className={pop(`pat:${id}`)} frame="patron" width={sizes.card} title={PATRON_DEFS[id].name} tip={`주둔지 · ${PATRON_DEFS[id].points}점\n${modsText(PATRON_DEFS[id].mods)}\n요구: ${condText([PATRON_DEFS[id].demand])}`} badge={PATRON_DEFS[id].points} art={{ id, icon: 'patron' }} brief={<ModsBrief mods={PATRON_DEFS[id].mods} />} onClick={() => setOpen({ k: 'patron', id })} />
             ))}
           </Slot>
         )}

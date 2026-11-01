@@ -231,7 +231,7 @@ function candidates(state: GameState, p: PlayerState): Action[] {
 
 /** 퀘스트 선택: 보이는 칸은 한 수 적용해 보고(상대 손해 포함), 뒷면 칸은 상수 기대값. 뒷면은 엿보지 않는다 */
 function questChoice(state: GameState, p: PlayerState): Action {
-  // 시험 수는 내 시야로 가린 상태에서 둔다 — 당겨져 들어올 뒷면 칸·덱·후원 계약 덱을 엿보지 않기 위해
+  // 시험 수는 내 시야로 가린 상태에서 둔다 — 당겨져 들어올 뒷면 칸·덱·주둔지 덱을 엿보지 않기 위해
   const view = maskFor(state, p.id);
   const me = view.players[p.id];
   const base = evaluate(view, me);

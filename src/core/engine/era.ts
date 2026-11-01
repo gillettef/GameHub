@@ -23,7 +23,7 @@ export function eraShouldAdvance(state: GameState, roundEnd: boolean): boolean {
   return have >= need || deckExhausted(state) || (roundEnd && state.round - state.eraStartRound >= ERA_MAX_ROUNDS);
 }
 
-/** 시대 전환(4.3): 후원 계약 요구 → 퀘스트 트랙 교체 */
+/** 시대 전환(4.3): 주둔지 요구 → 퀘스트 트랙 교체 */
 export function advanceEra(state: GameState): void {
   const old = state.era;
   const next = (old + 1) as Era;

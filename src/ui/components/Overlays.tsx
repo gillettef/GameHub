@@ -60,7 +60,7 @@ export function ScoreBoard({ onClose, onHome }: { onClose: () => void; onHome: (
           ))}
         </tbody>
       </table>
-      <p className={styles.note}>기타 = 유산 + 헌장 + 후원 계약 + 종료 기록</p>
+      <p className={styles.note}>기타 = 유산 + 헌장 + 주둔지 + 종료 기록</p>
     </Sheet>
   );
 }

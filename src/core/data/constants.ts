@@ -132,7 +132,7 @@ export const CONFLICT_CULTURE_MAX = 12;
 export const COEXIST_SYMBIONT = 2;
 export const COEXIST_FOOD = 2;
 
-// 후원 계약
+// 주둔지
 export const PATRON_LIMIT = 3;
 export const PATRON_FAIL_CULTURE = 3;
 /** 요구 충족 시 문화 = 시대 × 이 값 */

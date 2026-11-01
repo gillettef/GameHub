@@ -111,7 +111,7 @@ export const QUEST_KIND_NAMES: Record<QuestDef['kind'], string> = {
   judge: '판정형',
   threat: '위협형',
   contest: '경쟁형',
-  patron: '후원 제안',
+  patron: '주둔지 제안',
   fruition: '결실',
   finale: '종료 기록',
 };
@@ -125,7 +125,7 @@ export function questSummary(q: QuestDef): string {
     case 'contest':
       return `조건: ${condText(q.cond)} · 비용 ${resText(q.cost)} + 지휘 1${q.facility ? ` · 특수 시설 「${FACILITY_DEFS[q.facility].name}」` : ''}`;
     case 'patron':
-      return '처리될 때 후원 계약 1장을 공개해 지표 최고인 사람에게 제안';
+      return '처리될 때 주둔지 1장을 공개해 지표 최고인 사람에게 제안';
     case 'fruition':
       return `종료 시 ${DOCTRINE_NAMES[q.doctrine]} 단계 × 3 문화, 단계 4 선착 +6 · 나머지 +3`;
     case 'finale':

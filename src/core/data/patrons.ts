@@ -1,4 +1,4 @@
-// 후원 계약 (Rules.md 13절). 시대별 4장
+// 주둔지 (Rules.md 13절). 시대별 4장
 import type { PatronDef } from '../types';
 
 export const PATRONS: PatronDef[] = [
