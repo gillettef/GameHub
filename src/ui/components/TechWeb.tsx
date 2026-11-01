@@ -1,7 +1,7 @@
 // 테크 웹 SVG: 행성 지도 회화(assets/techweb/map.webp) 위에 그림 배지 노드. 중심에서 6방향·3고리. 줄기는 연구하면 얻는 것(방향이 여는 자원·방위)의 색, 고리는 배경 원 색과 노드 안 숫자, 곁가지는 안쪽이 얻는 것의 색·테두리가 노선색, 연구 가능 노드는 맥동
 import { useId, useState, type CSSProperties } from 'react';
-import type { Direction, PlayerState, Res, TwigDef } from '../../core/types';
-import { DIRECTION_NAMES, TRUNK_NAMES, DIRECTION_UNLOCKS, BUILDING_NAMES, UNIT_NAMES, DOCTRINE_NAMES, LEVEL_NAMES } from '../../core/data/constants';
+import type { Direction, PlayerState } from '../../core/types';
+import { DIRECTION_NAMES, TRUNK_NAMES, DIRECTION_UNLOCKS, BUILDING_DIRECTION, BUILDING_NAMES, UNIT_NAMES, DOCTRINE_NAMES, LEVEL_NAMES } from '../../core/data/constants';
 import { CORE_ID } from '../../core/data/techWeb';
 import { playerMods } from '../../core/engine/derive';
 import { researchBlock, researchCost, webGraph } from '../../core/engine/research';
@@ -10,48 +10,32 @@ import { Icon } from './Icon';
 import { useFresh } from '../motion';
 import { Section } from './Section';
 import { Sheet } from './Sheet';
-import { instantText, modsText } from '../describe';
+import { instantSegs, modsSegs, type Seg } from '../describe';
+import { DIRECTION_TONE, EFFECT_TONE, twigTone } from '../tones';
 import mapArt from '../assets/techweb/map.webp';
 import styles from './TechWeb.module.css';
 
 const RADIUS = [0, 62, 112, 160];
-/** 방향(줄기)이 여는 것의 색: 농업=식량, 산업=생산, 동력=에너지, 학술=과학, 문화=문화, 방위=방위 */
-export const DIRECTION_TONE: Record<Direction, string> = {
-  agri: 'var(--res-food)',
-  industry: 'var(--res-prod)',
-  power: 'var(--res-energy)',
-  academic: 'var(--res-sci)',
-  culture: 'var(--res-culture)',
-  defense: 'var(--danger)',
-};
-const RES_TONE: Record<keyof Res, string> = {
-  food: 'var(--res-food)',
-  prod: 'var(--res-prod)',
-  energy: 'var(--res-energy)',
-  sci: 'var(--res-sci)',
-  culture: 'var(--res-culture)',
-};
-/** 곁가지가 주는 것의 색: 정착민 → 자원(즉시·생산 단계) → 군사 → 건강 → 포자 안개 → 시야 → 비용 할인 순으로 첫 효과 */
-export function twigTone(t: TwigDef): string {
-  const { instant: i, mods: m } = t;
-  if (i?.colonist) return 'var(--eff-colonist)';
-  const res = (Object.keys(RES_TONE) as (keyof Res)[]).find((k) => i?.gain?.[k] || m?.income?.[k]);
-  if (res) return RES_TONE[res];
-  if (m?.might || m?.raidBonus || (m?.unitPower && Object.values(m.unitPower).some(Boolean))) return 'var(--danger)';
-  if (m?.health) return 'var(--eff-health)';
-  if (m?.sporeCap) return 'var(--eff-spore)';
-  if (m?.sight) return 'var(--eff-sight)';
-  if (m?.foodUpkeep) return RES_TONE.food;
-  if (m?.researchDiscount || m?.trunkDiscount) return RES_TONE.sci;
-  return `var(--${t.doctrine})`;
-}
 const TWIG_LEGEND: [string, string][] = [
-  ['var(--danger)', '군사'],
-  ['var(--eff-health)', '건강'],
-  ['var(--eff-spore)', '포자 안개'],
-  ['var(--eff-colonist)', '정착민'],
-  ['var(--eff-sight)', '시야'],
+  [EFFECT_TONE.military, '군사'],
+  [EFFECT_TONE.health, '건강'],
+  [EFFECT_TONE.spore, '포자 안개'],
+  [EFFECT_TONE.colonist, '정착민'],
+  [EFFECT_TONE.sight, '시야'],
 ];
+
+/** 효과 조각을 얻는 것의 색으로 */
+function Segs({ segs }: { segs: Seg[] }) {
+  return (
+    <>
+      {segs.map((s, i) => (
+        <span key={i} style={s.tone ? { color: s.tone } : undefined}>
+          {s.text}
+        </span>
+      ))}
+    </>
+  );
+}
 const TWIG_OFFSET = 22;
 const TWIG_SPREAD = 11; // 도
 
@@ -95,14 +79,14 @@ export function TechWeb({ player }: { player: PlayerState }) {
     if (n.kind === 'twig') return `${n.twig!.name}(${DOCTRINE_NAMES[n.twig!.doctrine]} 곁가지)`;
     return `${TRUNK_NAMES[n.direction!][n.ring]}(${DIRECTION_NAMES[n.direction!]} ${n.ring}고리 줄기)`;
   };
-  const unlockText = (dir: keyof typeof DIRECTION_UNLOCKS, ring: number) => {
+  const unlockSegs = (dir: Direction, ring: number): Seg[] => {
     const u = DIRECTION_UNLOCKS[dir];
-    const parts: string[] = [];
-    if (u.building) parts.push(`${BUILDING_NAMES[u.building]} ${LEVEL_NAMES[ring]}`);
-    if (u.unit && u.unit.levels[ring]) parts.push(`${UNIT_NAMES[u.unit.kind]} ${LEVEL_NAMES[u.unit.levels[ring]]}`);
-    if (u.command?.[ring]) parts.push(`지휘 +${u.command[ring]}`);
-    if (u.defense?.[ring]) parts.push(`방위 +${u.defense[ring]}`);
-    return parts.join(' · ');
+    const parts: Seg[] = [];
+    if (u.building) parts.push({ text: `${BUILDING_NAMES[u.building]} ${LEVEL_NAMES[ring]}`, tone: DIRECTION_TONE[BUILDING_DIRECTION[u.building]] });
+    if (u.unit && u.unit.levels[ring]) parts.push({ text: `${UNIT_NAMES[u.unit.kind]} ${LEVEL_NAMES[u.unit.levels[ring]]}`, tone: EFFECT_TONE.military });
+    if (u.command?.[ring]) parts.push({ text: `지휘 +${u.command[ring]}` });
+    if (u.defense?.[ring]) parts.push({ text: `방위 +${u.defense[ring]}`, tone: EFFECT_TONE.military });
+    return parts.flatMap((x, i) => (i ? [{ text: ' · ' }, x] : [x]));
   };
 
   return (
@@ -113,7 +97,11 @@ export function TechWeb({ player }: { player: PlayerState }) {
           <Icon name="sci" /> 테크 웹{mine ? '' : ` · ${p.name}`}
         </>
       }
-      extra={`연구 ${p.researched.length - 1} · 과학 ${p.res.sci}`}
+      extra={
+        <>
+          연구 {p.researched.length - 1} · <span style={{ color: 'var(--res-sci)' }}>과학 {p.res.sci}</span>
+        </>
+      }
     >
       <div className={styles.frame}>
         <img className={styles.map} src={mapArt} alt="" loading="lazy" decoding="async" draggable={false} />
@@ -235,12 +223,29 @@ export function TechWeb({ player }: { player: PlayerState }) {
               : []
           }
         >
-          {node.kind === 'trunk' && <p>{DIRECTION_NAMES[node.direction!]} {node.ring}고리 줄기</p>}
-          {node.kind === 'trunk' && <p>해금: {unlockText(node.direction!, node.ring)}</p>}
+          {node.kind === 'trunk' && (
+            <p>
+              <span style={{ color: DIRECTION_TONE[node.direction!] }}>{DIRECTION_NAMES[node.direction!]}</span> {node.ring}고리 줄기
+            </p>
+          )}
+          {node.kind === 'trunk' && (
+            <p>
+              해금: <Segs segs={unlockSegs(node.direction!, node.ring)} />
+            </p>
+          )}
           {node.kind === 'twig' && (
-            <p style={{ color: `var(--${node.twig!.doctrine})` }}>
-              {DOCTRINE_NAMES[node.twig!.doctrine]} +{node.twig!.points}
-              {[instantText(node.twig!.instant), modsText(node.twig!.mods)].filter(Boolean).map((t) => ` · ${t}`)}
+            <p>
+              <span style={{ color: `var(--${node.twig!.doctrine})` }}>
+                {DOCTRINE_NAMES[node.twig!.doctrine]} +{node.twig!.points}
+              </span>
+              {[instantSegs(node.twig!.instant), modsSegs(node.twig!.mods)]
+                .filter((g) => g.length)
+                .map((g, i) => (
+                  <span key={i}>
+                    {' · '}
+                    <Segs segs={g} />
+                  </span>
+                ))}
             </p>
           )}
           <p className={styles.dim}>{has(open) ? '연구함' : (researchBlock(game, p, open) ?? '연구 가능')}</p>

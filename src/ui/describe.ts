@@ -3,6 +3,7 @@ import type { CardDef, Cond, ConflictLoss, RaidEffect, Instant, Loss, Metric, Mo
 import { RES_KEYS } from '../core/types';
 import { DOCTRINE_NAMES, RES_NAMES, UNIT_NAMES } from '../core/data/constants';
 import { FACILITY_DEFS } from '../core/data/quests';
+import { EFFECT_TONE, RES_TONE } from './tones';
 
 const sign = (n: number) => (n > 0 ? `+${n}` : `${n}`);
 
@@ -13,41 +14,57 @@ export function resText(r: Partial<Res> | undefined, prefix = ''): string {
     .join(', ');
 }
 
-export function modsText(m: Partial<Mods> | undefined): string {
-  if (!m) return '';
-  const out: string[] = [];
+/** 색을 입힐 수 있는 글자 조각. 이어 붙이면 *Text 문장과 같다 */
+export interface Seg {
+  text: string;
+  tone?: string;
+}
+const joinSegs = (groups: Seg[][]): Seg[] => groups.flatMap((g, i) => (i ? [{ text: ' · ' }, ...g] : g));
+const resSegs = (r: Partial<Res>, fmt: (n: number) => string): Seg[] =>
+  RES_KEYS.filter((k) => r[k]).flatMap((k, i) => [...(i ? [{ text: ', ' }] : []), { text: `${RES_NAMES[k]} ${fmt(r[k]!)}`, tone: RES_TONE[k] }]);
+
+export function modsSegs(m: Partial<Mods> | undefined): Seg[] {
+  if (!m) return [];
+  const out: Seg[][] = [];
+  const one = (text: string, tone?: string) => out.push([{ text, tone }]);
   if (m.income) {
-    const inc = RES_KEYS.filter((k) => m.income![k]).map((k) => `${RES_NAMES[k]} ${sign(m.income![k]!)}`);
-    if (inc.length) out.push(`생산 단계마다 ${inc.join(', ')}`);
+    const inc = resSegs(m.income, sign);
+    if (inc.length) out.push([{ text: '생산 단계마다 ' }, ...inc]);
   }
-  if (m.health) out.push(`건강 ${sign(m.health)}`);
-  if (m.sporeCap) out.push(`포자 안개 기준치 ${sign(m.sporeCap)}`);
-  if (m.might) out.push(`방위력 ${sign(m.might)}`);
-  if (m.command) out.push(`지휘 행동 ${sign(m.command)}`);
-  if (m.defense) out.push(`방위 행동 ${sign(m.defense)}`);
-  if (m.sight) out.push(`시야 ${sign(m.sight)}`);
-  if (m.researchDiscount) out.push(`연구 비용 −${m.researchDiscount}`);
-  if (m.trunkDiscount) out.push(`줄기 연구 비용 −${m.trunkDiscount}`);
-  if (m.buildingCap) out.push(`건물 계열 한도 ${sign(m.buildingCap)}`);
-  if (m.unitCap) out.push(`유닛 계열 한도 ${sign(m.unitCap)}`);
-  if (m.foodUpkeep) out.push(`식량 소비 −${m.foodUpkeep}`);
-  if (m.unitUpgradeDiscount) out.push(`유닛 업그레이드 비용 −${m.unitUpgradeDiscount}`);
-  if (m.raidBonus) out.push(`습격 판정 ${sign(m.raidBonus)}`);
+  if (m.health) one(`건강 ${sign(m.health)}`, EFFECT_TONE.health);
+  if (m.sporeCap) one(`포자 안개 기준치 ${sign(m.sporeCap)}`, EFFECT_TONE.spore);
+  if (m.might) one(`방위력 ${sign(m.might)}`, EFFECT_TONE.military);
+  if (m.command) one(`지휘 행동 ${sign(m.command)}`);
+  if (m.defense) one(`방위 행동 ${sign(m.defense)}`, EFFECT_TONE.military);
+  if (m.sight) one(`시야 ${sign(m.sight)}`, EFFECT_TONE.sight);
+  if (m.researchDiscount) one(`연구 비용 −${m.researchDiscount}`, RES_TONE.sci);
+  if (m.trunkDiscount) one(`줄기 연구 비용 −${m.trunkDiscount}`, RES_TONE.sci);
+  if (m.buildingCap) one(`건물 계열 한도 ${sign(m.buildingCap)}`);
+  if (m.unitCap) one(`유닛 계열 한도 ${sign(m.unitCap)}`, EFFECT_TONE.military);
+  if (m.foodUpkeep) one(`식량 소비 −${m.foodUpkeep}`, RES_TONE.food);
+  if (m.unitUpgradeDiscount) one(`유닛 업그레이드 비용 −${m.unitUpgradeDiscount}`, EFFECT_TONE.military);
+  if (m.raidBonus) one(`습격 판정 ${sign(m.raidBonus)}`, EFFECT_TONE.military);
   if (m.unitPower) {
-    for (const [k, v] of Object.entries(m.unitPower)) if (v) out.push(`${UNIT_NAMES[k as keyof typeof UNIT_NAMES]} 전력 ${sign(v)}`);
+    for (const [k, v] of Object.entries(m.unitPower)) if (v) one(`${UNIT_NAMES[k as keyof typeof UNIT_NAMES]} 전력 ${sign(v)}`, EFFECT_TONE.military);
   }
-  return out.join(' · ');
+  return joinSegs(out);
 }
 
-export function instantText(e: Instant | undefined): string {
-  if (!e) return '';
-  const out: string[] = [];
-  const g = resText(e.gain, '+');
-  if (g) out.push(`즉시 ${g}`);
-  if (e.doctrine) for (const [d, n] of Object.entries(e.doctrine)) if (n) out.push(`${DOCTRINE_NAMES[d as keyof typeof DOCTRINE_NAMES]} 점수 +${n}`);
-  if (e.colonist) out.push(`정착민 +${e.colonist}`);
-  return out.join(' · ');
+export function instantSegs(e: Instant | undefined): Seg[] {
+  if (!e) return [];
+  const out: Seg[][] = [];
+  if (e.gain) {
+    const g = resSegs(e.gain, (n) => `+${n}`);
+    if (g.length) out.push([{ text: '즉시 ' }, ...g]);
+  }
+  if (e.doctrine) for (const [d, n] of Object.entries(e.doctrine)) if (n) out.push([{ text: `${DOCTRINE_NAMES[d as keyof typeof DOCTRINE_NAMES]} 점수 +${n}`, tone: `var(--${d})` }]);
+  if (e.colonist) out.push([{ text: `정착민 +${e.colonist}`, tone: EFFECT_TONE.colonist }]);
+  return joinSegs(out);
 }
+
+export const segsText = (s: Seg[]) => s.map((x) => x.text).join('');
+export const modsText = (m: Partial<Mods> | undefined) => segsText(modsSegs(m));
+export const instantText = (e: Instant | undefined) => segsText(instantSegs(e));
 
 export const METRIC_NAMES: Record<Metric, string> = {
   might: '방위력',
