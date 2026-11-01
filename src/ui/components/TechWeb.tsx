@@ -1,6 +1,6 @@
-// 테크 웹 SVG: 행성 지도 회화(assets/techweb/map.webp) 위에 그림 배지 노드. 중심에서 6방향·3고리. 줄기는 연구하면 얻는 것(방향이 여는 자원·방위)의 색, 고리는 배경 원 색과 노드 안 숫자, 곁가지는 노선색, 연구 가능 노드는 맥동
+// 테크 웹 SVG: 행성 지도 회화(assets/techweb/map.webp) 위에 그림 배지 노드. 중심에서 6방향·3고리. 줄기는 연구하면 얻는 것(방향이 여는 자원·방위)의 색, 고리는 배경 원 색과 노드 안 숫자, 곁가지는 안쪽이 얻는 것의 색·테두리가 노선색, 연구 가능 노드는 맥동
 import { useId, useState, type CSSProperties } from 'react';
-import type { Direction, PlayerState } from '../../core/types';
+import type { Direction, PlayerState, Res, TwigDef } from '../../core/types';
 import { DIRECTION_NAMES, TRUNK_NAMES, DIRECTION_UNLOCKS, BUILDING_NAMES, UNIT_NAMES, DOCTRINE_NAMES, LEVEL_NAMES } from '../../core/data/constants';
 import { CORE_ID } from '../../core/data/techWeb';
 import { playerMods } from '../../core/engine/derive';
@@ -24,6 +24,34 @@ export const DIRECTION_TONE: Record<Direction, string> = {
   culture: 'var(--res-culture)',
   defense: 'var(--danger)',
 };
+const RES_TONE: Record<keyof Res, string> = {
+  food: 'var(--res-food)',
+  prod: 'var(--res-prod)',
+  energy: 'var(--res-energy)',
+  sci: 'var(--res-sci)',
+  culture: 'var(--res-culture)',
+};
+/** 곁가지가 주는 것의 색: 정착민 → 자원(즉시·생산 단계) → 군사 → 건강 → 포자 안개 → 시야 → 비용 할인 순으로 첫 효과 */
+export function twigTone(t: TwigDef): string {
+  const { instant: i, mods: m } = t;
+  if (i?.colonist) return 'var(--eff-colonist)';
+  const res = (Object.keys(RES_TONE) as (keyof Res)[]).find((k) => i?.gain?.[k] || m?.income?.[k]);
+  if (res) return RES_TONE[res];
+  if (m?.might || m?.raidBonus || (m?.unitPower && Object.values(m.unitPower).some(Boolean))) return 'var(--danger)';
+  if (m?.health) return 'var(--eff-health)';
+  if (m?.sporeCap) return 'var(--eff-spore)';
+  if (m?.sight) return 'var(--eff-sight)';
+  if (m?.foodUpkeep) return RES_TONE.food;
+  if (m?.researchDiscount || m?.trunkDiscount) return RES_TONE.sci;
+  return `var(--${t.doctrine})`;
+}
+const TWIG_LEGEND: [string, string][] = [
+  ['var(--danger)', '군사'],
+  ['var(--eff-health)', '건강'],
+  ['var(--eff-spore)', '포자 안개'],
+  ['var(--eff-colonist)', '정착민'],
+  ['var(--eff-sight)', '시야'],
+];
 const TWIG_OFFSET = 22;
 const TWIG_SPREAD = 11; // 도
 
@@ -143,8 +171,9 @@ export function TechWeb({ player }: { player: PlayerState }) {
             const can = mine && !done && !researchBlock(game, p, n.id);
             // 배지 반지름 — 장식은 모두 이 안. 연구 가능 점선 고리는 바깥 r+5 에만
             const r = n.kind === 'core' ? 16 : n.kind === 'trunk' ? 14 : 8;
-            const color = n.kind === 'twig' ? `var(--${n.twig!.doctrine})` : n.kind === 'core' ? 'var(--accent)' : DIRECTION_TONE[n.direction!];
-            const rim = n.kind === 'trunk' ? `var(--ring${n.ring})` : color;
+            // 안쪽 = 연구하면 얻는 것, 테두리 = 줄기는 고리색·곁가지는 노선색
+            const color = n.kind === 'twig' ? twigTone(n.twig!) : n.kind === 'core' ? 'var(--accent)' : DIRECTION_TONE[n.direction!];
+            const rim = n.kind === 'trunk' ? `var(--ring${n.ring})` : n.kind === 'twig' ? `var(--${n.twig!.doctrine})` : color;
             const inner = r - (n.kind === 'twig' ? 2.5 : 4);
             return (
               <g
@@ -190,7 +219,11 @@ export function TechWeb({ player }: { player: PlayerState }) {
           <span key={d} style={{ color: DIRECTION_TONE[d] }}>
             {i ? ' ' : ''}● {DIRECTION_NAMES[d]}
           </span>
-        ))}) · 배지 안 숫자·테두리·배경 원 = 고리 · 작은 배지 = 곁가지(노선색) · 채운 배지 = 연구함 · 점선 고리 = 지금 연구 가능
+        ))}) · 배지 안 숫자·테두리·배경 원 = 고리 · 작은 배지 = 곁가지(안쪽 색 = 얻는 것, 자원은 위와 같고{TWIG_LEGEND.map(([c, l]) => (
+          <span key={l} style={{ color: c }}>
+            {' '}● {l}
+          </span>
+        ))} · 테두리 = 노선색) · 채운 배지 = 연구함 · 점선 고리 = 지금 연구 가능
       </p>
       {node && open && (
         <Sheet

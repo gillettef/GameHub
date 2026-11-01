@@ -47,6 +47,11 @@
   --res-energy: #ffe36b; /* 에너지 — 노랑 */
   --res-sci: #74bdff;    /* 과학 — 하늘 */
   --res-culture: #e595ff;/* 문화 — 난초 */
+  /* 자원 밖 효과(테크 웹 곁가지 배지 등) — 군사는 --danger */
+  --eff-health: #5fd88f;   /* 건강 — 초록 */
+  --eff-spore: #c9bc8c;    /* 포자 안개 기준치 — 모래빛 */
+  --eff-colonist: #f2f4fb; /* 정착민 — 흰빛 */
+  --eff-sight: #9ee8ff;    /* 시야(위성) — 연청 */
 
   /* 테이블 영역 — 영역마다 띠·테두리 색을 달리해 구분 */
   --zone-quest: #c58cff;  /* 퀘스트 트랙 — 보라 */
