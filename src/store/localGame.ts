@@ -75,7 +75,7 @@ function undo(): void {
 export function startLocal(name: string, aiCount: number, seed: number): void {
   const seats = [{ name: name || '나', isAI: false }, ...Array.from({ length: aiCount }, (_, i) => ({ name: `AI ${i + 1}`, isAI: true }))];
   const game = createGame(seed, seats);
-  useApp.getState().set({ screen: 'game', mode: 'local', me: 0, viewing: 0, send, undo, follow: true });
+  useApp.getState().set({ screen: 'game', mode: 'local', me: 0, viewing: 0, send, undo });
   history = [];
   commit(game);
 }

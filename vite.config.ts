@@ -9,6 +9,8 @@ export default defineConfig({
     port: 25358,
     strictPort: true,
     host: true,
+    // Cloudflare 퀵 터널(/dev tunnel)로 들어오는 외부 네트워크 친구 접속 허용
+    allowedHosts: ['.trycloudflare.com'],
     proxy: {
       '/ws': { target: 'ws://localhost:23641', ws: true },
     },

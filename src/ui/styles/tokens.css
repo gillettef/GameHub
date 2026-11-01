@@ -73,12 +73,10 @@
   --space-3: 12px;
   --space-4: 16px;
 
-  /* 글꼴 — 웹폰트 없이 시스템 폰트(한글 포함) */
-  --font: system-ui, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo",
-    "Malgun Gothic", "맑은 고딕", "Noto Sans KR", "Noto Sans CJK KR", "Segoe UI",
-    Roboto, sans-serif;
-  --font-display: "Apple SD Gothic Neo", "Malgun Gothic", "맑은 고딕",
-    "Noto Sans KR", "Noto Sans CJK KR", system-ui, -apple-system, sans-serif;
+  /* 글꼴 — 전부 Pretendard(index.html 에서 로드), 못 받으면 시스템 글꼴 */
+  --font: "Pretendard Variable", Pretendard, system-ui, -apple-system, BlinkMacSystemFont,
+    "Apple SD Gothic Neo", "Malgun Gothic", "맑은 고딕", "Noto Sans KR", sans-serif;
+  --font-display: var(--font);
 
   /* 그림자 — 어두운 바탕 위 살짝 뜬 패널 */
   --shadow: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 6px 18px rgba(0, 0, 0, 0.45);

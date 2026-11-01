@@ -18,8 +18,6 @@ export interface AppState {
   /** 되돌리기(로컬 AI 대전만) — 내 마지막 행동을 취소. 되돌릴 게 없으면 canUndo 가 false */
   undo: (() => void) | null;
   canUndo: boolean;
-  /** 다른 플레이어가 행동하면 화면이 그 보드로 따라간다 */
-  follow: boolean;
   set: (p: Partial<AppState>) => void;
   showToast: (text: string) => void;
 }
@@ -37,7 +35,6 @@ export const useApp = create<AppState>((set) => ({
   send: null,
   undo: null,
   canUndo: false,
-  follow: true,
   set: (p) => set(p),
   showToast: (text) => set({ toast: { text, id: ++toastId } }),
 }));

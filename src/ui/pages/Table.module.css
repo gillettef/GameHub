@@ -58,9 +58,3 @@
 .recent li + li {
   margin-top: 2px;
 }
-
-/* 방금 행동한 사람의 보드를 잠깐 밝힌다 */
-.acting {
-  box-shadow: 0 0 0 3px var(--seat), 0 0 18px color-mix(in srgb, var(--seat) 70%, transparent);
-  transition: box-shadow 0.3s ease;
-}
