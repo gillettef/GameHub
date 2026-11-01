@@ -104,7 +104,7 @@ export function QuestTrack() {
       }
       extra={`시야 ${sight} · 덱 ${deck.length}장 · 밀림 ${game.questDiscard.length}장`}
     >
-      {picking && <p className={styles.cue}>차례 처음 — 1장을 골라 바로 처리합니다. 뒷면 카드도 고를 수 있습니다. 차례가 끝나면 칸 1 카드는 밀려 버려집니다.</p>}
+      {picking && <p className={styles.cue}>차례 처음 — 1장을 골라 바로 처리합니다. 뒷면 카드도 고를 수 있습니다.{game.era <= 3 && ' 차례가 끝나면 칸 1 카드는 밀려 버려집니다.'}</p>}
       <div className={styles.row}>
         {Array.from({ length: QUEST_ROW_SIZE }, (_, slot) => {
           const id = game.questRow[slot];

@@ -360,6 +360,22 @@ describe('퀘스트', () => {
     expect(s.questRow).toHaveLength(QUEST_ROW_SIZE);
   });
 
+  it('종료 시대에는 트랙을 밀지 않는다', () => {
+    let s = createGame(1, seats(3));
+    advanceEra(s);
+    advanceEra(s);
+    advanceEra(s);
+    expect(s.era).toBe(4);
+    s.questRow = ['s3f', 's3p', 's3e', 's3s', 's3c'];
+    s.questOpen = s.questRow.map(() => false);
+    s.turnFront = 's3f';
+    s.phase = 'quest';
+    s = act(s, { type: 'pickQuest', slot: 2 });
+    s = finishTurn(s);
+    expect(s.questDiscard).toEqual([]);
+    expect(s.questRow.slice(0, 4)).toEqual(['s3f', 's3p', 's3s', 's3c']);
+  });
+
   it('덱과 밀림 더미가 모두 비어야 덱 소진으로 시대가 넘어간다', () => {
     let s = createGame(1, seats(2));
     s.questDecks[1] = [];

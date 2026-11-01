@@ -96,7 +96,8 @@ export function refillRow(state: GameState): void {
 export function pushRow(state: GameState): void {
   const front = state.turnFront;
   state.turnFront = null;
-  if (!front || !state.questRow.length) return;
+  // 종료 시대에는 밀지 않는다(Rules 12.6)
+  if (!front || !state.questRow.length || state.era >= 4) return;
   state.questRow.shift();
   state.questOpen.shift();
   state.questDiscard.push(front);
