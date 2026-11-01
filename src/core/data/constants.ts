@@ -28,13 +28,22 @@ export const RESEARCH_STEP = 5;
 export const TWIG_POOL_PICK_PER_DOCTRINE = 4;
 
 /** 방향별 줄기 해금: [건물/유닛 계열, 고리별 레벨] */
-export const DIRECTION_UNLOCKS: Record<Direction, { building?: BuildingKind; unit?: { kind: UnitKind; levels: number[] }; command?: number[]; defense?: number[] }> = {
-  agri: { building: 'farm', unit: { kind: 'rider', levels: [0, 1, 2, 3] } },
-  industry: { building: 'workshop', unit: { kind: 'battery', levels: [0, 0, 1, 2] } },
-  power: { building: 'power', unit: { kind: 'flyer', levels: [0, 0, 0, 1] } },
+export const DIRECTION_UNLOCKS: Record<Direction, { building?: BuildingKind; units?: { kind: UnitKind; levels: number[] }[]; command?: number[]; defense?: number[] }> = {
+  agri: { building: 'farm' },
+  industry: { building: 'workshop' },
+  power: { building: 'power' },
   academic: { building: 'lab', command: [0, 0, 0, 1] },
   culture: { building: 'hall', command: [0, 0, 1, 1] },
-  defense: { unit: { kind: 'guard', levels: [0, 1, 2, 3] }, defense: [0, 0, 1, 1] },
+  // 군사 유닛 4계열은 모두 방위 방향이 연다. 인덱스 = 고리, 값 = 그 고리 줄기가 여는 레벨(0 = 없음)
+  defense: {
+    units: [
+      { kind: 'guard', levels: [0, 1, 2, 3] },
+      { kind: 'rider', levels: [0, 1, 2, 3] },
+      { kind: 'battery', levels: [0, 0, 1, 2] },
+      { kind: 'flyer', levels: [0, 0, 0, 1] },
+    ],
+    defense: [0, 0, 1, 1],
+  },
 };
 /** 건물 계열을 해금하는 방향 */
 export const BUILDING_DIRECTION: Record<BuildingKind, Direction> = {
@@ -46,9 +55,9 @@ export const BUILDING_DIRECTION: Record<BuildingKind, Direction> = {
 };
 export const UNIT_DIRECTION: Record<UnitKind, Direction> = {
   guard: 'defense',
-  rider: 'agri',
-  battery: 'industry',
-  flyer: 'power',
+  rider: 'defense',
+  battery: 'defense',
+  flyer: 'defense',
 };
 // 건물: 레벨별 비용·생산 (null = 없는 레벨)
 export const BUILDING_COST = [2, 4, 6, 8];

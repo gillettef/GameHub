@@ -111,7 +111,7 @@ export function TechWeb({ player }: { player: PlayerState }) {
     const u = DIRECTION_UNLOCKS[dir];
     const parts: Seg[] = [];
     if (u.building) parts.push({ text: `${BUILDING_NAMES[u.building]} ${LEVEL_NAMES[ring]}`, tone: DIRECTION_TONE[BUILDING_DIRECTION[u.building]] });
-    if (u.unit && u.unit.levels[ring]) parts.push({ text: `${UNIT_NAMES[u.unit.kind]} ${LEVEL_NAMES[u.unit.levels[ring]]}`, tone: EFFECT_TONE.military });
+    for (const un of u.units ?? []) if (un.levels[ring]) parts.push({ text: `${UNIT_NAMES[un.kind]} ${LEVEL_NAMES[un.levels[ring]]}`, tone: EFFECT_TONE.military });
     if (u.command?.[ring]) parts.push({ text: `지휘 +${u.command[ring]}` });
     if (u.defense?.[ring]) parts.push({ text: `방위 +${u.defense[ring]}`, tone: EFFECT_TONE.military });
     return parts.flatMap((x, i) => (i ? [{ text: ' · ' }, x] : [x]));

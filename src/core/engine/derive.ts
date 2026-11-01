@@ -202,7 +202,7 @@ export function unitUnlocked(p: PlayerState, k: UnitKind, level: number): boolea
   if (UNIT_POWER[k][level] == null) return false;
   if (level === 0) return true;
   const dir = UNIT_DIRECTION[k];
-  const levels = DIRECTION_UNLOCKS[dir].unit?.levels ?? [];
+  const levels = DIRECTION_UNLOCKS[dir].units?.find((u) => u.kind === k)?.levels ?? [];
   for (let r = 1; r <= 3; r++) if (levels[r] === level && hasTrunk(p, dir, r)) return true;
   return false;
 }
