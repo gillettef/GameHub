@@ -72,6 +72,16 @@ const RING3: TwigDef[] = [
   tw('r3y6', 3, '양자 연구망', 'synth', 1, { mods: { researchDiscount: 1 } }),
 ];
 
+/** 줄기에 붙는 곁가지 노선 쌍 — 방향 순서(DIRECTIONS)대로. 고리마다 세 노선이 4개씩이 되고 한 줄기의 두 노선은 다르다 (Rules.md 6.4) */
+export const FIXED_TWIG_PAIRS: readonly (readonly [Doctrine, Doctrine])[] = [
+  ['ark', 'symbiont'], // 농업
+  ['symbiont', 'synth'], // 산업
+  ['synth', 'ark'], // 동력
+  ['ark', 'symbiont'], // 학술
+  ['symbiont', 'synth'], // 문화
+  ['synth', 'ark'], // 방위
+];
+
 export const TWIG_POOLS: Record<Ring, TwigDef[]> = { 1: RING1, 2: RING2, 3: RING3 };
 export const TWIG_DEFS: Record<string, TwigDef> = Object.fromEntries(
   [...RING1, ...RING2, ...RING3].map((t) => [t.id, t]),

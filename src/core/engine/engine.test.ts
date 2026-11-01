@@ -39,13 +39,15 @@ function act(s: GameState, a: Action, actor = s.current): GameState {
 describe('준비', () => {
   it('같은 시드면 같은 상태', () => {
     expect(createGame(7, seats(3))).toEqual(createGame(7, seats(3)));
-    expect(createGame(7, seats(3)).layout).not.toEqual(createGame(8, seats(3)).layout);
+    expect(createGame(7, seats(3)).layout).toEqual(createGame(8, seats(3)).layout);
   });
 
-  it('테크 웹 배치 제약: 농업 고정, 한 줄기 곁가지 노선이 다름, 고리별 노선 4개씩', () => {
+  it('테크 웹 배치는 고정이고 제약을 지킨다: 12시 농업, 한 줄기 곁가지 노선이 다름, 고리별 노선 4개씩', () => {
+    const first = createGame(1, seats(2)).layout;
     for (let seed = 1; seed <= 30; seed++) {
       const { layout } = createGame(seed, seats(2));
-      expect(layout.dirOrder[0]).toBe('agri');
+      expect(layout).toEqual(first);
+      expect(layout.dirOrder).toEqual(['agri', 'industry', 'power', 'academic', 'culture', 'defense']);
       expect(new Set(layout.dirOrder).size).toBe(6);
       for (const ring of [1, 2, 3]) {
         const counts: Record<string, number> = {};

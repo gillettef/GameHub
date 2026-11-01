@@ -22,7 +22,7 @@
 | `src/ui/assets/scene/legacy.webp` | 유산 기념물 5칸(0 짓는 중 비계, 1~4 완성: 금빛 오벨리스크·개척자 동상·고리 인 아치·빛나무), 칸 120×150 |
 | `src/ui/assets/scene/props.webp` | 실물 토큰 9칸 64×64: 정착민 말, 자원 5종(식량 꼬투리·생산 육각 덩이·에너지 원반·과학 결정 큐브·문화 보석), 지휘 구슬(흰), 방위 구슬(빨강), 빈 홈 |
 | `src/ui/assets/scene/layout.json` | 장면 자리 좌표(x, 땅선 base, scale). 굽는 스크립트와 `ColonyScene.tsx` 가 함께 읽는다 |
-| `src/ui/assets/techweb/map.webp` | 테크 웹 바탕 행성 지도 768×768(viewBox 384 의 2배, 중심 384,384). 방향 순서는 판마다 달라 방향색은 굽지 않음 |
+| `src/ui/assets/techweb/map.webp` | 테크 웹 바탕 행성 지도 768×768(viewBox 384 의 2배, 중심 384,384). 방향 순서는 고정이지만 방향색은 지도에 굽지 않고 코드에서 입힘 |
 | `src/ui/components/ColonyScene.tsx` | 식민지 풍경 장면·생산 칩 띠·자원 토큰 트레이·행동 구슬 |
 | `src/ui/assets/logo.svg` | 심볼(고리 행성 + 새싹 + 세 노선 위성) + 기하학 획 워드마크 "네오테라". viewBox 324×96 |
 | `src/ui/assets/icons/*.svg` | 24×24 단색 아이콘 34종 |

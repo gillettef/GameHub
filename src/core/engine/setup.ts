@@ -59,8 +59,8 @@ function newPlayer(id: number, seat: SeatConfig): PlayerState {
 export function createGame(seed: number | number[], seats: SeatConfig[]): GameState {
   if (seats.length < MIN_PLAYERS || seats.length > MAX_PLAYERS) throw new Error('인원은 2~4명');
   const rng = createRng(seed);
-  // RNG 순서: 방향 순서 → 곁가지 → 시대별 퀘스트 덱(사건 + 후원자·유산·자원 팟) → 공통 종료 → 주둔지 → 위성 → 시작 플레이어
-  const layout = generateLayout(rng);
+  // RNG 순서(테크 웹 배치는 고정이라 난수 없음): 시대별 퀘스트 덱(사건 + 후원자·유산·자원 팟) → 공통 종료 → 주둔지 → 위성 → 시작 플레이어
+  const layout = generateLayout();
   const players = seats.map((s, i) => newPlayer(i, s));
   const questDecks: GameState['questDecks'] = { 1: [], 2: [], 3: [], 4: [] };
   for (const r of [1, 2, 3] as Ring[]) questDecks[r] = rng.shuffle(eraDeckIds(r));

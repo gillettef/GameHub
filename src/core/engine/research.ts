@@ -1,32 +1,18 @@
 // 테크 웹: 배치 생성, 노드·연결선, 연구 가능 여부와 비용 (Rules.md 6절)
 import { DIRECTIONS, type Direction, type GameState, type PlayerState, type Ring, type TechNode, type WebLayout } from '../types';
-import type { Rng } from '../rng';
 import { RESEARCH_STEP, TRUNK_BASE_COST, TWIG_BASE_COST, TWIG_POOL_PICK_PER_DOCTRINE } from '../data/constants';
-import { CORE_ID, TWIG_DEFS, TWIG_POOLS, trunkId, twigNodeId } from '../data/techWeb';
+import { CORE_ID, FIXED_TWIG_PAIRS, TWIG_DEFS, TWIG_POOLS, trunkId, twigNodeId } from '../data/techWeb';
 
-/** 방향 순서(농업 고정) → 곁가지 배치 순서로 RNG 를 쓴다 */
-export function generateLayout(rng: Rng): WebLayout {
-  const rest = rng.shuffle(DIRECTIONS.filter((d) => d !== 'agri'));
-  const dirOrder: Direction[] = ['agri', ...rest];
+/** 고정 배치(Rules.md 6.4) — 난수를 쓰지 않는다. 방향은 DIRECTIONS 순서, 곁가지는 고리별 풀에서 노선별로 앞 4개를 순서대로 쓴다 */
+export function generateLayout(): WebLayout {
+  const dirOrder: Direction[] = [...DIRECTIONS];
   const twigs: Record<string, string[]> = {};
   for (const ring of [1, 2, 3] as Ring[]) {
-    const pool = TWIG_POOLS[ring];
-    const picked: string[] = [];
-    for (const d of ['ark', 'symbiont', 'synth'] as const) {
-      picked.push(...rng.shuffle(pool.filter((t) => t.doctrine === d)).slice(0, TWIG_POOL_PICK_PER_DOCTRINE).map((t) => t.id));
-    }
-    // 한 줄기의 곁가지 2개는 노선이 달라야 한다 — 어기면 같은 RNG 로 다시 섞는다
-    let order = rng.shuffle(picked);
-    for (let tries = 0; tries < 200; tries++) {
-      let ok = true;
-      for (let i = 0; i < 6; i++) {
-        if (TWIG_DEFS[order[i * 2]].doctrine === TWIG_DEFS[order[i * 2 + 1]].doctrine) ok = false;
-      }
-      if (ok) break;
-      order = rng.shuffle(picked);
-    }
+    const next: Record<string, number> = { ark: 0, symbiont: 0, synth: 0 };
+    const byDoctrine = (d: string) => TWIG_POOLS[ring].filter((t) => t.doctrine === d).slice(0, TWIG_POOL_PICK_PER_DOCTRINE);
+    const lists = { ark: byDoctrine('ark'), symbiont: byDoctrine('symbiont'), synth: byDoctrine('synth') };
     dirOrder.forEach((dir, i) => {
-      twigs[trunkId(dir, ring)] = [order[i * 2], order[i * 2 + 1]];
+      twigs[trunkId(dir, ring)] = FIXED_TWIG_PAIRS[i].map((d) => lists[d][next[d]++].id);
     });
   }
   return { dirOrder, twigs };
