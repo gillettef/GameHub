@@ -239,9 +239,9 @@ describe('차례와 시대', () => {
     expect(s.players[pid].res.sci).toBe(before.sci + 1);
   });
 
-  it('현재 고리 줄기 합이 인원 × 3 이상이면 차례 끝에 다음 시대', () => {
+  it('현재 고리 줄기 합이 인원 × 4 이상이면 차례 끝에 다음 시대', () => {
     let s = ready(1, 2);
-    for (const p of s.players) for (const d of s.layout.dirOrder.slice(0, 3)) p.researched.push(trunkId(d, 1));
+    for (const p of s.players) for (const d of s.layout.dirOrder.slice(0, 4)) p.researched.push(trunkId(d, 1));
     s = act(s, { type: 'endTurn' });
     expect(s.era).toBe(2);
     expect(s.questRow).toHaveLength(QUEST_ROW_SIZE);
