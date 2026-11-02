@@ -46,7 +46,7 @@ npm start          # 빌드 결과 실행(dist + 서버). 운영은 systemd 가 
 - push 대상 repo: `https://github.com/gillettef/Election.git`. GitHub 계정은 **`gillettef`만** 쓴다(로컬 git 설정 `credential.https://github.com.username=gillettef` 를 지우거나 바꾸지 않는다).
 - **일상 작업은 `dev` 브랜치에 커밋·푸시한다. `main`(운영 배포)에는 직접 커밋하지 않고**, 사용자가 요청할 때만 `dev` → `main` PR로 병합한다. 작업 시작 전 현재 브랜치가 `dev`인지 확인한다. 상세는 `docs/environments.md`.
 
-## 배포 (AWS)
+## 배포 (AWS) — 운영 중 (v0.1.0, 2026-11-02)
 
 - 다른 게임과 같은 EC2(t4g.nano, 서울) 1대를 공유한다. systemd `election`, 포트 8096, 경로 `~/election`, 주소 `http://54.116.67.196:8096`. `main` 병합 시 `.github/workflows/deploy-aws.yml` 이 `npm test` → `npm run build` 통과 후 배포한다(Neoterra·DoubleAgent 와 같은 방식: 러너 IP 를 SSH 22 에 임시 허용 → `ec2-user` 로 dist·server-dist·package.json·scripts/aws 업로드 → 서버 안 `scripts/aws/deploy-remote.sh` 가 systemd 설치·재시작·`/health` 확인 → 허용 제거).
 - CI(`.github/workflows/ci.yml`)는 dev·main 푸시와 PR 마다 타입체크·테스트·빌드를 돌린다.
