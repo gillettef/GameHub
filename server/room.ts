@@ -1,6 +1,6 @@
 /**
- * 방 하나의 규칙(순수 로직). Durable Object(server/worker.ts)는 저장·소켓만 맡고 판단은 여기서 한다.
- * Cloudflare 타입에 의존하지 않으므로 Vitest에서 그대로 테스트한다.
+ * 방 하나의 규칙(순수 로직). server/hub.ts 는 방 보관·소켓만 맡고 판단은 여기서 한다.
+ * 소켓·ws 에 의존하지 않으므로 Vitest에서 그대로 테스트한다.
  */
 import { applyAction, initialState, isLegal } from '../src/core/rules';
 import type { GameState, Player } from '../src/core/types';

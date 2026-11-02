@@ -37,7 +37,7 @@ function swManifest(): Plugin {
   };
 }
 
-/** 로컬 Cloudflare Worker(npm run dev:server) — 온라인 대결 API */
+/** 로컬 온라인 대결 서버(npm run dev:server, server/index.ts) — 운영에서는 같은 서버가 dist 도 서빙한다 */
 const apiProxy = { '/api': { target: 'http://localhost:38637', ws: true } };
 
 export default defineConfig({
