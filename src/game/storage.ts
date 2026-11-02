@@ -56,15 +56,24 @@ export function clientId(): string {
   try {
     const old = localStorage.getItem(CLIENT_ID_KEY);
     if (old && /^[\w-]{8,64}$/.test(old)) return old;
-    const id = crypto.randomUUID();
+    const id = newClientId();
     localStorage.setItem(CLIENT_ID_KEY, id);
     return id;
   } catch {
     // 저장소를 못 쓰면 이번 실행 동안만 유지
-    return (memoryId ??= crypto.randomUUID());
+    return (memoryId ??= newClientId());
   }
 }
 let memoryId: string | undefined;
+
+/**
+ * 기기 식별자(32자리 16진수). crypto.randomUUID 는 보안 컨텍스트(HTTPS·localhost)에서만 있어
+ * 운영(HTTP IP:포트)에서 방 만들기·참가가 막혔다. getRandomValues 는 어디서나 된다.
+ */
+export function newClientId(): string {
+  const b = crypto.getRandomValues(new Uint8Array(16));
+  return Array.from(b, (x) => x.toString(16).padStart(2, '0')).join('');
+}
 
 export interface SavedRoom {
   code: string;
