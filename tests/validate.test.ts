@@ -34,7 +34,7 @@ describe('isGameState', () => {
   it.each<[string, Partial<GameState>]>([
     ['빈 버스로 순회 중', { phase: 'sow', bus: [] }],
     ['빈 보드에서 출발 선택', { phase: 'pick', holes: [[], [], [], [], [], []] }],
-    ['투입을 이미 2개 했는데 투입 단계', { placedThisTurn: 2 }],
+    ['이번 턴 투입을 이미 마쳤는데 투입 단계', { placedThisTurn: 1 }],
     ['배치 토큰이 없는데 배치 단계', { phase: 'setup', setupLeft: [0, 4] }],
     ['예비군이 없는데 투입 단계', { reserves: [0, 11] }],
     ['토큰이 처음보다 많음', { reserves: [14, 11] }],

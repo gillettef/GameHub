@@ -87,7 +87,7 @@ export class GameScreen {
     this.statusDetail = h('span', { class: 'status-detail' });
 
     this.stepEls = ['① 투입', '② 출발', '③ 유세'].map((t) => h('li', { text: t }));
-    this.steps = h('ol', { class: 'steps', attrs: { 'aria-label': '턴 단계' } }, this.stepEls);
+    this.steps = h('ol', { class: 'steps', attrs: { 'aria-label': '차례 단계' } }, this.stepEls);
 
     // 행동 버튼은 한 번만 만들고 hidden/aria-disabled만 바꾼다 (포커스 유지)
     this.drops = ([0, 1] as const).map((c) => {
@@ -155,7 +155,7 @@ export class GameScreen {
       h('div', { class: 'score-cards' }, this.cards.map((x) => x.root)),
       h('div', { class: 'tug', attrs: { 'aria-hidden': 'true' } }, [
         h('div', { class: 'tug-bar' }, [...this.segs, h('span', { class: 'tug-mid' })]),
-        h('div', { class: 'tug-legend' }, [h('span', { text: `선거인단 ${TOTAL_SEATS}석` }), this.tugLegend]),
+        h('div', { class: 'tug-legend' }, [h('span', { text: `선거인단 ${TOTAL_SEATS}표` }), this.tugLegend]),
       ]),
     ]);
     // 보이는 상태 줄은 live region이 아니다. 알림은 announcer가 맡는다.
@@ -253,7 +253,7 @@ export class GameScreen {
       if (el.className !== cls) el.className = cls;
     });
     const undecided = TOTAL_SEATS - t[0] - t[1];
-    setText(this.tugLegend, undecided > 0 ? `미확정 ${undecided}석` : '전 권역 확정');
+    setText(this.tugLegend, undecided > 0 ? `미확정 ${undecided}표` : '전 권역 확정');
 
     this.updateSteps(s);
 
@@ -292,10 +292,10 @@ export class GameScreen {
     this.steps.classList.toggle('single', setup);
     const order = { place: 0, pick: 1, sow: 2 } as const;
     const cur = setup || over ? -1 : order[s.phase as keyof typeof order];
-    const label = [`① 투입 ${Math.min(s.placedThisTurn + 1, MAX_PLACE_PER_TURN)}/${MAX_PLACE_PER_TURN}`, '② 출발', '③ 유세'];
+    const label = [MAX_PLACE_PER_TURN > 1 ? `① 투입 ${Math.min(s.placedThisTurn + 1, MAX_PLACE_PER_TURN)}/${MAX_PLACE_PER_TURN}` : '① 투입', '② 출발', '③ 유세'];
     this.stepEls.forEach((li, k) => {
       li.hidden = setup && k > 0;
-      const text = setup ? `사전 배치 · ${this.who(s.current)} 남은 ${s.setupLeft[s.current]}개` : k === 0 && cur !== 0 ? '① 투입' : label[k];
+      const text = setup ? `사전 배치 · ${this.who(s.current)} 남은 ${s.setupLeft[s.current]}명` : k === 0 && cur !== 0 ? '① 투입' : label[k];
       setText(li, text);
       li.classList.toggle('on', setup ? k === 0 : k === cur);
       li.classList.toggle('done', !setup && k < cur);
@@ -398,7 +398,7 @@ export class GameScreen {
     const kicker = w === null ? '선거일 · 개표 완료' : w === mine ? '선거일 · 승리' : '선거일 · 패배';
     const tieNote =
       t[0] === t[1]
-        ? h('p', { class: 'tie-note', text: `총점 동점 — 남은 예비군 ${s.reserves[0]} : ${s.reserves[1]}${w === null ? ', 무승부' : ` 로 ${PLAYER_NAMES[w]} 승리`}` })
+        ? h('p', { class: 'tie-note', text: `총점 동점 — 남은 예비군 ${s.reserves[0]} : ${s.reserves[1]}${w === null ? ', 무승부' : ` 로 ${PLAYER_NAMES[w]} 후보 당선`}` })
         : null;
     const parts: (Node | null)[] = [
       h('div', { class: 'sheet-head' }, [
@@ -408,7 +408,7 @@ export class GameScreen {
             ? ['무승부']
             : [`${PLAYER_NAMES[w]} 후보`, h('br'), '당선 확정']),
         ]),
-        h('div', { class: `stamp disp ${w === null ? 'tie' : `w${w}`}`, text: w === null ? '동률' : '당선', attrs: { 'aria-hidden': 'true' } }),
+        h('div', { class: `stamp disp ${w === null ? 'tie' : `w${w}`}`, text: w === null ? '무승부' : '당선', attrs: { 'aria-hidden': 'true' } }),
       ]),
       h('div', { class: 'score-cards' }, [card(0), card(1)]),
       tieNote,

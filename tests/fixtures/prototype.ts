@@ -4,6 +4,7 @@
  */
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { MAX_PLACE_PER_TURN } from '../../src/core/constants';
 import type { GameState, Player } from '../../src/core/types';
 
 export interface ProtoState {
@@ -53,7 +54,10 @@ export function loadPrototype(): Proto {
   const start = html.indexOf('<script>') + '<script>'.length;
   const end = html.indexOf('/* ---------- 흐름');
   if (start < 8 || end < 0) throw new Error('프로토타입 스크립트 구간을 찾지 못했습니다');
-  const src = html.slice(start, end);
+  // 의도적으로 바꾼 규칙: 턴당 투입 상한(프로토타입 2 → 본 구현 MAX_PLACE_PER_TURN). 나머지는 원본 그대로
+  const PROTO_PLACE_LIMIT = 's.ph=(s.pc<2&&canPlace(s))';
+  if (!html.includes(PROTO_PLACE_LIMIT)) throw new Error('프로토타입 투입 상한 코드를 찾지 못했습니다');
+  const src = html.slice(start, end).replace(PROTO_PLACE_LIMIT, `s.ph=(s.pc<${MAX_PLACE_PER_TURN}&&canPlace(s))`);
   const names = 'CAP,init,cl,put,pick,drop,step,fin,nxt,full,score,winner,canPlace,ev,moves,aiPlan';
   return new Function(`${src}\nreturn {${names}};`)() as Proto;
 }
