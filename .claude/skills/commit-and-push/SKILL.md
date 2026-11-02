@@ -5,7 +5,7 @@ description: 마법학교 프로젝트의 작업 종료 시 git commit & push �
 
 # commit-and-push
 
-`CLAUDE.md`의 필수 작업 규칙에 따라, 이 저장소에서는 작업을 마칠 때마다 커밋 후 원격 저장소(`https://github.com/gillettef/MagicAcademy.git`, 브랜치 `main`)로 push까지 완료한다. 이 스킬은 그 과정을 안전하고 일관되게 수행하기 위한 절차다.
+`CLAUDE.md`의 필수 작업 규칙에 따라, 이 저장소에서는 작업을 마칠 때마다 커밋 후 원격 저장소(`https://github.com/gillettef/MagicAcademy.git`, 브랜치 `dev`)로 push까지 완료한다. 커밋 전에 현재 브랜치가 `dev`인지 확인하고(`main`이면 `git switch dev`), `main`(운영 배포)으로는 직접 푸시하지 않는다. 운영 반영은 사용자가 요청할 때만 `gh pr create --base main --head dev`로 PR을 만들어 병합한다. 이 스킬은 그 과정을 안전하고 일관되게 수행하기 위한 절차다.
 
 ## 절차
 
