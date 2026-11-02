@@ -1,6 +1,6 @@
 ---
 name: commit-push
-description: 작업 완료 후 변경 사항을 한국어 커밋 메시지로 커밋하고 https://github.com/gillettef/Rootbound.git 의 dev 브랜치로 푸시한다(main 은 운영 배포용, 직접 푸시 금지). 작업 단위가 끝날 때마다 반드시 실행한다.
+description: 작업 완료 후 변경 사항을 한국어 커밋 메시지로 커밋하고 https://github.com/gillettef/Rootbound.git 의 dev 브랜치로 푸시한다. 작업 단위가 끝날 때마다 반드시 실행한다.
 ---
 
 # /commit-push — 한국어 커밋 후 푸시
@@ -46,7 +46,6 @@ description: 작업 완료 후 변경 사항을 한국어 커밋 메시지로 �
    - 원격이 없으면: `git remote add origin https://github.com/gillettef/Rootbound.git`
    - 첫 푸시라면: `git push -u origin dev`
    - 거부(rejected)되면 `git pull --rebase origin dev` 후 다시 푸시한다. 충돌은 사용자에게 알린다.
-   - `main`(운영 배포)으로 직접 푸시하지 않는다. 운영 반영은 사용자가 요청할 때만 `gh pr create --base main --head dev` 로 PR을 만들어 병합한다.
 
 5. 결과 보고: 커밋 해시와 제목 한 줄을 사용자에게 알린다.
 
