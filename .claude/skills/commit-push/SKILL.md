@@ -60,12 +60,15 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 
 ## 4. 푸시
 
+커밋 전에 `git branch --show-current` 가 `dev` 인지 확인합니다(`main` 이면 `git switch dev`).
+
 ```
-git push origin HEAD
+git push origin dev
 ```
 
-- 첫 푸시라면 `git push -u origin main`.
-- 거부되면(원격이 앞섬) `git pull --rebase origin main` 후 충돌이 없을 때만 다시 푸시합니다. 충돌이 있거나 강제 푸시가 필요해 보이면 멈추고 사용자에게 묻습니다. `--force`는 사용자의 명시적 지시 없이 쓰지 않습니다.
+- 첫 푸시라면 `git push -u origin dev`.
+- `main`(운영 배포)으로 직접 푸시하지 않습니다. 운영 반영은 사용자가 요청할 때만 `gh pr create --base main --head dev` 로 PR을 만들어 병합합니다.
+- 거부되면(원격이 앞섬) `git pull --rebase origin dev` 후 충돌이 없을 때만 다시 푸시합니다. 충돌이 있거나 강제 푸시가 필요해 보이면 멈추고 사용자에게 묻습니다. `--force`는 사용자의 명시적 지시 없이 쓰지 않습니다.
 - 인증 실패 시 사용자에게 알리고 `! git push` 로 직접 실행하도록 안내합니다.
 
 ## 5. 보고

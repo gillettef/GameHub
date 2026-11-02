@@ -5,7 +5,8 @@
 ## 필수 작업 규칙
 
 - **단계별 작업이 끝나면 반드시 git commit & push를 진행한다.** (`/commit-push` 스킬 사용)
-  - 원격: `origin` = https://github.com/gillettef/Tesseract.git, 기본 브랜치 `main`
+  - 원격: `origin` = https://github.com/gillettef/Tesseract.git, 기본 브랜치 `dev`
+  - **일상 작업은 `dev`(기본 브랜치)에 커밋·푸시한다. `main`(운영 배포)에는 직접 커밋·푸시하지 않고**, 사용자가 요청할 때만 `dev` → `main` PR(`gh pr create --base main --head dev`)로 병합한다. 작업 시작 전 현재 브랜치가 `dev`인지 확인한다. `dev` 푸시는 CI(`.github/workflows/ci.yml`)만 돌고, `main` 병합이 곧 운영 배포다.
   - 테스트·타입 체크가 실패한 상태로는 커밋하지 않는다. 실패하면 고치거나, 사용자에게 알리고 지시를 받는다.
 - **commit 메시지는 가급적 한국어로 작성한다.** 형식은 `/commit-push` 스킬 참고.
 - 사용자와의 대화, 문서, 코드 주석도 한국어를 기본으로 한다. 식별자(변수·함수·파일명)는 영어.
@@ -108,7 +109,7 @@ npm start          # 빌드 결과로 서버 실행 (scripts/aws/serve.mjs, EC2�
 ## 배포 (AWS)
 
 - 다른 게임(Eleven·MagicAcademy·Rootbound·SmilePark·DoubleAgent)과 같은 EC2(t4g.nano, 서울) 1대를 공유한다. 접속은 **http://54.116.67.196:8092** (HTTP만, HTTPS 없음).
-- `main`에 push하면 `.github/workflows/deploy-aws.yml`이 `npm test` → `npm run lint` → `npm run build`를 통과했을 때만 `dist`·`server-dist`(ws까지 묶은 서버 번들)·`scripts/aws/`를 `~/tesseract`에 올리고, 서버에서 `scripts/aws/deploy-remote.sh`가 systemd `tesseract`(포트 8092)를 재시작·헬스체크(`/health`)한다. 정적 파일과 온라인 대전 WebSocket(`/ws`)을 같은 포트로 서빙한다. 재시작하면 진행 중인 온라인 방은 사라진다.
+- `main`에 병합되면 `.github/workflows/deploy-aws.yml`이 `npm test` → `npm run lint` → `npm run build`를 통과했을 때만 `dist`·`server-dist`(ws까지 묶은 서버 번들)·`scripts/aws/`를 `~/tesseract`에 올리고, 서버에서 `scripts/aws/deploy-remote.sh`가 systemd `tesseract`(포트 8092)를 재시작·헬스체크(`/health`)한다. 정적 파일과 온라인 대전 WebSocket(`/ws`)을 같은 포트로 서빙한다. 재시작하면 진행 중인 온라인 방은 사라진다.
 - 서버 번들은 Vite 8에 딸린 rolldown으로 만든다(esbuild는 선택 의존성이라 CI에 없을 수 있음). EC2에서는 빌드·`npm install`을 하지 않는다.
 - **수동 배포**(push 없이): `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/deploy-aws.ps1`. SSH 키·IP는 `.dev/astraltab-key.pem`, `.dev/aws-public-ip.txt`(git 제외), 없으면 `../Rootbound/.dev/`의 것을 쓴다.
 - 서버 로그: `ssh -i ../Rootbound/.dev/astraltab-key.pem ec2-user@54.116.67.196 "sudo journalctl -u tesseract -n 100"`
