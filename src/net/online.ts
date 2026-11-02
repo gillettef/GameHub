@@ -32,7 +32,7 @@ export interface ConnectionOptions {
   clientId: string;
   /** 새 방 만들기. 첫 welcome 뒤로는 일반 재접속으로 바뀐다 */
   create: boolean;
-  /** API 서버 주소(예: https://election.example.workers.dev). 없으면 페이지와 같은 출처 */
+  /** API 서버 주소(예: https://api.example.com). 없으면 페이지와 같은 출처 */
   origin?: string;
 }
 

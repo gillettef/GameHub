@@ -1,11 +1,11 @@
 {
-  // Cloudflare Worker용 타입 검사 (브라우저 DOM 타입 대신 workerd 런타임 타입)
+  // Node 서버(server/)용 타입 검사 — 브라우저 DOM 타입 대신 Node 타입
   "compilerOptions": {
     "target": "ES2022",
     "module": "ESNext",
     "moduleResolution": "bundler",
     "lib": ["ES2022"],
-    "types": [],
+    "types": ["node"],
     "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
@@ -15,5 +15,5 @@
     "skipLibCheck": true,
     "noEmit": true
   },
-  "include": ["worker.ts", "room.ts", "worker-configuration.d.ts"]
+  "include": ["index.ts", "hub.ts", "room.ts"]
 }

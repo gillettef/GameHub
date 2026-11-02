@@ -11,9 +11,9 @@ description: 현재 세션 백그라운드에서 개발 서버(또는 빌드 미
 |---|---|---|---|
 | 개발(HMR) | 없음 / `dev` | 38617 | `npx vite --host --port 38617 --strictPort` |
 | 미리보기(빌드 결과) | `preview` | 38627 | `npm run build` 후 `npx vite preview --host --port 38627 --strictPort` |
-| 온라인 대결 서버(Worker) | 두 모드 모두 함께 | 38637 | `npx wrangler dev` (포트·IP는 `wrangler.jsonc`의 `dev`에 고정) |
+| 온라인 대결 서버(Node) | 두 모드 모두 함께 | 38637 | `npm run dev:server` (tsx watch server/index.ts, 포트는 코드에 고정) |
 
-Vite(개발·미리보기 둘 다)는 `/api`를 38637의 Worker로 프록시한다(`vite.config.ts`). Worker가 없으면 AI 대결은 되지만 온라인 대결은 "다시 접속하는 중…"에서 멈춘다.
+Vite(개발·미리보기 둘 다)는 `/api`를 38637의 서버로 프록시한다(`vite.config.ts`). 서버가 없으면 AI 대결은 되지만 온라인 대결은 "다시 접속하는 중…"에서 멈춘다.
 
 ## 절차
 
@@ -23,9 +23,8 @@ Vite(개발·미리보기 둘 다)는 `/api`를 38637의 Worker로 프록시한�
    ```
    - 떠 있으면 새로 띄우지 않는다. 아래 4단계처럼 URL만 다시 알려 준다(이 세션이 띄운 것인지 아닌지도 말한다).
 2. **(preview만) 빌드.** 포그라운드에서 `npm run build`. 실패하면 멈추고 오류를 보고한다.
-3. **백그라운드로 실행.** Bash 도구에서 `run_in_background: true`로 위 표의 Vite 명령과 `npx wrangler dev`를 각각 실행한다(작업 디렉터리는 프로젝트 루트). 반환된 task ID 두 개를 기억해 둔다. `dev-stop`이 이 ID를 쓴다.
-   - `wrangler.jsonc`의 `assets.directory`가 `./dist`라서 `dist/`가 없으면 wrangler가 시작하지 못할 수 있다. 없으면 먼저 `npm run build`.
-   - wrangler 준비 줄은 `Ready on`이다.
+3. **백그라운드로 실행.** Bash 도구에서 `run_in_background: true`로 위 표의 Vite 명령과 `npm run dev:server`를 각각 실행한다(작업 디렉터리는 프로젝트 루트). 반환된 task ID 두 개를 기억해 둔다. `dev-stop`이 이 ID를 쓴다.
+   - 서버 준비 줄은 `유세 대작전 서버 http://localhost:38637`이다.
 4. **URL 확인.** 출력 파일에서 Vite의 준비 줄(`Local:`, `Network:`)이 나올 때까지만 읽는다. 대기는 Monitor 등을 쓰고 sleep 반복은 하지 않는다. 그런 다음 확인용 요청을 보낸다.
    ```bash
    curl -s -o /dev/null -w "%{http_code}\n" http://localhost:38617/
