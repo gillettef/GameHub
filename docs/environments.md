@@ -7,7 +7,7 @@
 | 로컬 | 각자 PC | Vite 25358, 서버 23641 | `/dev`, `/dev-stop` |
 | 운영 | AWS EC2 공용 서버(t4g.nano, 서울) | 8094 | `main` 병합 시 `deploy-aws.yml` 자동 배포 (준비 전) |
 
-> 현재 상태(2026-10-30): 첫 구현 완료, 로컬 개발 중. CI(`ci.yml`)가 dev·main 푸시마다 타입체크·테스트·빌드를 돌린다. `deploy-aws.yml`·`scripts/aws/` 는 준비만 됐고, 저장소 시크릿(EC2_HOST·EC2_USER·EC2_SSH_KEY)과 보안 그룹 8094 개방(사용자 확인 후) 전에는 배포하지 않는다.
+> 현재 상태(2026-11-02): CI(`ci.yml`)가 dev·main 푸시마다 타입체크·테스트·빌드를 돌린다. `deploy-aws.yml` 은 DoubleAgent 와 같은 방식이다. SSH(22)는 관리자 IP 에만 열려 있으므로 배포하는 동안만 러너 IP 를 보안 그룹에 임시로 열고, `ec2-user` 로 올린 뒤 서버 안에서 `/health` 를 확인한다. 보안 그룹 8094 는 열려 있다. 저장소 시크릿은 AWS_REGION·AWS_SECURITY_GROUP_ID·EC2_HOST·EC2_HOST_KEY 를 등록했다. **AWS_ACCESS_KEY_ID·AWS_SECRET_ACCESS_KEY(IAM `astraltab-ci`)와 EC2_SSH_PRIVATE_KEY(서버 authorized_keys 의 `games-ci` 키)는 사용자가 직접 넣어야 한다.**
 
 ## 브랜치 전략
 
