@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { MAX_PLACE_PER_TURN } from '../src/core/constants';
 import { mulberry32 } from '../src/core/rng';
 import {
   applyAction,
@@ -60,21 +61,16 @@ describe('셋업', () => {
 describe('① 예비군 투입', () => {
   const base = mk({ holes: [[B], [R], [], [], [], []] });
 
-  it('최소 1개를 놓기 전에는 투입 완료할 수 없다', () => {
-    expect(isLegal(base, { type: 'endPlace' })).toBe(false);
+  it('턴당 1개만 놓고, 놓으면 바로 출발 단계로 간다', () => {
+    expect(MAX_PLACE_PER_TURN).toBe(1);
+    expect(isLegal(base, { type: 'endPlace' })).toBe(false); // 건너뛸 수 없다
     const s = applyAction(base, { type: 'place', hole: 2 });
-    expect(s.phase).toBe('place');
+    expect(s.holes[2]).toEqual([B]);
     expect(s.reserves[0]).toBe(9);
-    expect(isLegal(s, { type: 'endPlace' })).toBe(true);
-    expect(applyAction(s, { type: 'endPlace' }).phase).toBe('pick');
-  });
-
-  it('같은 권역에 두 번 놓을 수 있고, 2개 놓으면 출발 단계로 간다', () => {
-    let s = applyAction(base, { type: 'place', hole: 4 });
-    s = applyAction(s, { type: 'place', hole: 4 });
-    expect(s.holes[4]).toEqual([B, B]);
+    expect(s.placedThisTurn).toBe(1);
     expect(s.phase).toBe('pick');
-    expect(s.placedThisTurn).toBe(2);
+    expect(isLegal(s, { type: 'place', hole: 2 })).toBe(false);
+    expect(isLegal(s, { type: 'endPlace' })).toBe(false);
   });
 
   it('포화 권역에는 놓을 수 없다', () => {
@@ -197,8 +193,8 @@ describe('종료 판정', () => {
     });
     const a = applyAction(s, { type: 'place', hole: 3 });
     expect(fullCount(a)).toBe(4);
-    expect(a.phase).toBe('place'); // 아직 진행 중
-    const b = applyAction(applyAction(a, { type: 'endPlace' }), { type: 'pick', hole: 4 });
+    expect(a.phase).toBe('pick'); // 아직 진행 중
+    const b = applyAction(a, { type: 'pick', hole: 4 });
     expect(b.phase).toBe('over');
     expect(b.current).toBe(0); // 종료 시 차례는 넘기지 않는다
   });

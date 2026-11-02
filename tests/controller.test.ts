@@ -43,8 +43,6 @@ describe('GameController', () => {
     // 셋업 후 C = [🔵]. 🔵가 C에 투입하고 C에서 출발하면 단색 버스 → 자동 하차 동안 busy
     c.act({ type: 'place', hole: 2 });
     await idle(c);
-    c.act({ type: 'endPlace' });
-    await idle(c);
     expect(c.act({ type: 'pick', hole: 2 })).toBe(true); // C = [🔵, 🔵(투입)] → 단색 → 자동 하차
     expect(c.view.busy).toBe(true);
     expect(c.act({ type: 'pick', hole: 0 })).toBe(false);
