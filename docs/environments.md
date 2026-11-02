@@ -13,8 +13,8 @@
 
 ## 첫 배포 준비
 
-1. GitHub 저장소 시크릿 7개 등록(Settings → Secrets and variables → Actions).
-2. 보안 그룹 `sg-009e7c5a6dd31ef68` 에 TCP **8096** 인바운드(0.0.0.0/0) 추가, `aws_config.md` 포트 목록에 `Election 8096` 추가.
+1. ~~GitHub 저장소 시크릿 7개 등록~~ — 완료(2026-11-02, `aws_config.md` 값)
+2. ~~보안 그룹 `sg-009e7c5a6dd31ef68` 에 TCP **8096** 인바운드(0.0.0.0/0) 추가~~ — 완료(2026-11-02, 설명 `Election`), `aws_config.md` 포트 목록 갱신
 3. `main` 보호 규칙(직접 푸시 금지, PR 필수, CI 통과 필수).
 4. `dev` → `main` PR 병합 → Actions 의 `Deploy AWS` 성공 확인 → `http://54.116.67.196:8096` 접속 → `v0.1.0` 태그.
 
