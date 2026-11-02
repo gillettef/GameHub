@@ -17,6 +17,7 @@
 - `core/rules.ts`의 `resolveAction`은 연출 박자(Step[])를, `applyAction`은 최종 상태를 돌려준다(둘 다 자동 하차·턴 종료 포함). 박자 사이 지연은 `game/controller.ts`의 `DELAYS`.
 - AI는 데스크톱 기준 한 수 평균 ~5ms, 최대 ~30ms라 메인 스레드에서 돈다(Web Worker 미사용).
 - 아이콘 PNG는 `node scripts/make-icons.mjs`로 생성(`public/icon.svg`와 같은 도안).
+- 비주얼 방향(2026-11-02): "개표방송 × 인쇄 보드게임". 라이트는 크라프트지(`--bg #f2ede2`), 다크는 개표방송 네이비(`--bg #0e1320`). 제목·점수는 Google Fonts `Black Han Sans`(`.disp`, 오프라인이면 시스템 글꼴로 대체), 본문은 시스템 글꼴. 기표 도장(卜) 로고, 선거인단 35칸 줄다리기 바, 턴 단계 칩, 속보 티커, 개표 결과 시트. UI 아이콘은 `src/ui/icons.ts`의 선 SVG(이모지 대신). 색 토큰은 `src/style.css` 맨 위.
 - `public/sw.js`의 `CACHE`/`PRECACHE` 줄은 빌드 때 `vite.config.ts`의 `swManifest` 플러그인이 dist 전체 파일 목록과 내용 해시로 바꾼다. 그 두 줄의 형태(`const CACHE = …` / `const PRECACHE = …`, 한 줄)를 유지할 것.
 
 ## 기술 스택
@@ -46,7 +47,7 @@ npm start          # 빌드 결과 실행(dist + 서버). 운영은 systemd 가 
 - push 대상 repo: `https://github.com/gillettef/Election.git`. GitHub 계정은 **`gillettef`만** 쓴다(로컬 git 설정 `credential.https://github.com.username=gillettef` 를 지우거나 바꾸지 않는다).
 - **일상 작업은 `dev` 브랜치에 커밋·푸시한다. `main`(운영 배포)에는 직접 커밋하지 않고**, 사용자가 요청할 때만 `dev` → `main` PR로 병합한다. 작업 시작 전 현재 브랜치가 `dev`인지 확인한다. 상세는 `docs/environments.md`.
 
-## 배포 (AWS)
+## 배포 (AWS) — 운영 중 (v0.1.0, 2026-11-02)
 
 - 다른 게임과 같은 EC2(t4g.nano, 서울) 1대를 공유한다. systemd `election`, 포트 8096, 경로 `~/election`, 주소 `http://54.116.67.196:8096`. `main` 병합 시 `.github/workflows/deploy-aws.yml` 이 `npm test` → `npm run build` 통과 후 배포한다(Neoterra·DoubleAgent 와 같은 방식: 러너 IP 를 SSH 22 에 임시 허용 → `ec2-user` 로 dist·server-dist·package.json·scripts/aws 업로드 → 서버 안 `scripts/aws/deploy-remote.sh` 가 systemd 설치·재시작·`/health` 확인 → 허용 제거).
 - CI(`.github/workflows/ci.yml`)는 dev·main 푸시와 PR 마다 타입체크·테스트·빌드를 돌린다.
