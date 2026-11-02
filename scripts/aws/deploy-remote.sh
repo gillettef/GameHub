@@ -17,4 +17,10 @@ npm install --workspace @rootbound/server --workspace @rootbound/shared --no-aud
 ai/.venv/bin/pip install -q -r ai/requirements.txt
 sudo systemctl restart astraltab-prod-ai astraltab-prod-server
 
-echo "DEPLOY_OK"
+for i in 1 2 3 4 5 6 7 8 9 10; do
+  if curl -fsS -o /dev/null http://127.0.0.1:3201/api/health; then echo "헬스체크 통과"; echo "DEPLOY_OK"; exit 0; fi
+  sleep 2
+done
+echo "헬스체크 실패"
+sudo journalctl -u astraltab-prod-server -u astraltab-prod-ai -n 50 --no-pager || true
+exit 1
