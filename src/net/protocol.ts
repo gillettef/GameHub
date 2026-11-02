@@ -1,7 +1,7 @@
 /**
- * 온라인 대결 프로토콜 — 브라우저(src/net/online.ts)와 Cloudflare 서버(server/)가 함께 쓴다.
+ * 온라인 대결 프로토콜 — 브라우저(src/net/online.ts)와 Node 서버(server/)가 함께 쓴다.
  *
- * 동기화 모델: 서버(방마다 Durable Object 하나)가 상태의 기준이다.
+ * 동기화 모델: 서버(server/hub.ts, 방마다 메모리에 하나)가 상태의 기준이다.
  * - 클라이언트는 자기 차례에 액션을 바로 화면에 적용(낙관적)하고 `{t:'action', action, from}`을 보낸다.
  *   `from`은 적용 전 state.version.
  * - 서버는 version·차례·합법성을 확인해 적용하고, 상대에게만 같은 액션을 전달한다.

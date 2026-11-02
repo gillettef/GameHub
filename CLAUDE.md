@@ -8,11 +8,11 @@
   - 직접 수정하지 않는다. 규칙이 애매하면 이 파일의 동작이 정답이다.
   - 규칙을 의도적으로 바꿀 때는 사용자에게 먼저 확인하고, `.claude/skills/game-rules/SKILL.md`를 함께 갱신한다.
 - 본 구현(Vite + TypeScript)이 아래 구조로 동작한다: AI 대결, 온라인 대결, 이어하기(AI 대결만 localStorage), PWA. 한 기기 2인(핫시트) 모드는 없앴다.
-- 온라인 대결은 Cloudflare Workers + Durable Objects(WebSocket Hibernation). 한 Worker가 정적 사이트(`dist/`)와 `/api/room/:code`를 함께 맡는다(`wrangler.jsonc`).
-  - 서버가 상태의 기준: 방마다 Durable Object 하나가 `src/core`의 `applyAction`으로 검증·적용하고 상대에게 액션만 전달한다. 클라이언트는 낙관적으로 적용하고, 거부되면 `state` 메시지로 되돌린다. 프로토콜은 `src/net/protocol.ts`(서버·클라이언트 공용).
-  - 판단 로직은 `server/room.ts`(순수, Vitest로 테스트), `server/worker.ts`는 저장·소켓만. 방장 자리(🔵 선공 seat 0 / 🔴 후공 seat 1)는 방을 만들 때 Worker가 무작위로 정하고 참가자는 남은 자리. AI 대결도 판마다 내 색을 무작위로 정한다(저장에 `aiPlayer` 포함). 자리는 기기별 `clientId`(localStorage)로 기억해 재접속 시 되찾는다. 24시간 쓰지 않은 방은 알람으로 지운다.
+- 온라인 대결은 Node 서버(`server/index.ts`, `ws`) 하나가 정적 사이트(`dist/`)·`/api/room/:code`(WebSocket)·`/health`를 같은 포트로 맡는다. **DB 없음** — 방 상태는 서버 메모리에만 있어 재시작하면 진행 중인 방이 사라진다. (2026-11-02 Cloudflare Workers + Durable Objects 에서 옮김)
+  - 서버가 상태의 기준: 방마다 `src/core`의 `applyAction`으로 검증·적용하고 상대에게 액션만 전달한다. 클라이언트는 낙관적으로 적용하고, 거부되면 `state` 메시지로 되돌린다. 프로토콜은 `src/net/protocol.ts`(서버·클라이언트 공용).
+  - 판단 로직은 `server/room.ts`(순수), 방 보관·소켓 전달은 `server/hub.ts`(ws 비의존, Vitest로 테스트), HTTP·WebSocket 연결은 `server/index.ts`. 방장 자리(🔵 선공 seat 0 / 🔴 후공 seat 1)는 방을 만들 때 서버가 무작위로 정하고 참가자는 남은 자리. AI 대결도 판마다 내 색을 무작위로 정한다(저장에 `aiPlayer` 포함). 자리는 기기별 `clientId`(localStorage)로 기억해 재접속 시 되찾는다. 접속자 없이 24시간 지난 방은 주기적으로 지운다.
   - 초대 링크는 `?room=CODE`. 프런트를 다른 곳에 호스팅하면 `VITE_API_ORIGIN`으로 API 주소를 지정한다.
-  - `wrangler.jsonc`를 바꾸면 `npm run types:server`로 `server/worker-configuration.d.ts`를 다시 만든다.
+  - 서버는 빌드 때 esbuild 로 `server-dist/server.cjs` 한 파일(ws 포함)로 번들한다(`scripts/build-server.mjs`). 운영 서버에서 `npm install` 하지 않는다.
 - 패리티 테스트(`tests/parity.test.ts`)는 프로토타입 HTML의 `<script>`에서 규칙·AI 구간(`/* ---------- 흐름` 주석 앞까지)을 테스트 시점에 잘라 평가한다. 프로토타입의 그 주석이나 함수 이름이 바뀌면 `tests/fixtures/prototype.ts`도 고친다.
 - `core/rules.ts`의 `resolveAction`은 연출 박자(Step[])를, `applyAction`은 최종 상태를 돌려준다(둘 다 자동 하차·턴 종료 포함). 박자 사이 지연은 `game/controller.ts`의 `DELAYS`.
 - AI는 데스크톱 기준 한 수 평균 ~5ms, 최대 ~30ms라 메인 스레드에서 돈다(Web Worker 미사용).
@@ -24,19 +24,34 @@
 - Vite + TypeScript (strict), UI 프레임워크 없음 — DOM + SVG 직접 렌더링
 - 테스트: Vitest
 - 배포 형태: 정적 사이트 + PWA (manifest, service worker로 오프라인 플레이)
-- 온라인: Cloudflare Workers + Durable Objects. 개발 의존성 `wrangler`만 쓰고 클라이언트는 브라우저 WebSocket.
+- 온라인: Node 22 + `ws`(개발 의존성, 서버 번들에 포함). 클라이언트는 브라우저 WebSocket. 서버 번들 esbuild, 개발 실행 tsx.
 - 런타임 의존성은 최소화한다(현재 0개). 새 의존성 추가 전 사용자에게 확인.
+- 배포: AWS EC2 게임 공용 서버(t4g.nano, 서울), systemd `election`, 포트 **8096**. 아래 "배포" 참고.
 
 ## 명령
 
 ```
 npm run dev        # 개발 서버 (모바일 기기 확인 시 --host)
-npm run dev:server # 온라인 대결용 로컬 Worker (wrangler dev, 포트 38637 — Vite가 /api를 프록시)
-npm run build      # typecheck && vite build
+npm run dev:server # 온라인 대결용 로컬 서버 (tsx watch server/index.ts, 포트 38637 — Vite가 /api를 프록시)
+npm run build      # typecheck && vite build && 서버 번들(server-dist/server.cjs)
 npm run test       # vitest run
-npm run typecheck  # tsc --noEmit (브라우저) && tsc --noEmit -p server (Worker)
-npm run deploy     # build 후 wrangler deploy (Cloudflare 로그인 필요: npx wrangler login)
+npm run typecheck  # tsc --noEmit (브라우저) && tsc --noEmit -p server (Node 서버)
+npm start          # 빌드 결과 실행(dist + 서버). 운영은 systemd 가 PORT=8096 으로 실행
 ```
+
+포트: 로컬 Vite 38617, 미리보기 38627, 서버 38637 / 운영 8096. 다른 프로젝트 포트(3001 Eleven, 3201 AstralTab, 8080 MagicAcademy, 8090 SmilePark, 8091 DoubleAgent, 8092 Tesseract, 8093 Beltbreaker, 8094 Neoterra, 8095 jandi-obsidian)를 점유한 프로세스는 절대 종료하지 않는다.
+
+## Git·브랜치
+
+- push 대상 repo: `https://github.com/gillettef/Election.git`. GitHub 계정은 **`gillettef`만** 쓴다(로컬 git 설정 `credential.https://github.com.username=gillettef` 를 지우거나 바꾸지 않는다).
+- **일상 작업은 `dev` 브랜치에 커밋·푸시한다. `main`(운영 배포)에는 직접 커밋하지 않고**, 사용자가 요청할 때만 `dev` → `main` PR로 병합한다. 작업 시작 전 현재 브랜치가 `dev`인지 확인한다. 상세는 `docs/environments.md`.
+
+## 배포 (AWS)
+
+- 다른 게임과 같은 EC2(t4g.nano, 서울) 1대를 공유한다. systemd `election`, 포트 8096, 경로 `~/election`, 주소 `http://54.116.67.196:8096`. `main` 병합 시 `.github/workflows/deploy-aws.yml` 이 `npm test` → `npm run build` 통과 후 배포한다(Neoterra·DoubleAgent 와 같은 방식: 러너 IP 를 SSH 22 에 임시 허용 → `ec2-user` 로 dist·server-dist·package.json·scripts/aws 업로드 → 서버 안 `scripts/aws/deploy-remote.sh` 가 systemd 설치·재시작·`/health` 확인 → 허용 제거).
+- CI(`.github/workflows/ci.yml`)는 dev·main 푸시와 PR 마다 타입체크·테스트·빌드를 돌린다.
+- 관리자 SSH 키·IP는 `../Rootbound/.dev/astraltab-key.pem`, `../Rootbound/.dev/aws-public-ip.txt` 를 공용으로 쓴다. 저장소 시크릿 값의 정본은 저장소 밖 `../../aws_config.md`. 서버 로그: `ssh -i ../Rootbound/.dev/astraltab-key.pem ec2-user@54.116.67.196 "sudo journalctl -u election -n 100"`.
+- 운영은 HTTP(IP:포트)라 서비스 워커·PWA 설치·오프라인은 동작하지 않는다(브라우저가 HTTPS/localhost 에서만 등록). 게임·온라인 대결은 된다.
 
 작업을 끝냈다고 말하기 전에 `npm run typecheck`와 `npm run test`를 통과시킨다.
 
@@ -57,9 +72,10 @@ src/
   main.ts
   style.css
 public/      manifest, 아이콘, sw.js(서비스 워커)
-server/      Cloudflare Worker: worker.ts(Durable Object Room), room.ts(순수 방 로직), tsconfig.json(Worker 타입)
-tests/       Vitest (parity / rules / controller / validate / online)
-scripts/     make-icons.mjs
+server/      Node 서버: index.ts(HTTP·정적·WebSocket·/health), hub.ts(메모리 방·소켓 전달), room.ts(순수 방 로직), tsconfig.json(Node 타입)
+tests/       Vitest (parity / rules / controller / validate / online / hub)
+scripts/     make-icons.mjs, build-server.mjs(서버 번들), aws/(deploy-remote.sh, election.service)
+.github/     workflows/ci.yml(검사), workflows/deploy-aws.yml(main → EC2 배포)
 ```
 
 핵심 원칙:
