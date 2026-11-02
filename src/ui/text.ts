@@ -34,7 +34,7 @@ export function statusText(v: View, seats: Seats): StatusText {
 
   if (v.mode === 'online' && s.current !== seats.seat) {
     if (s.phase === 'sow') return { title: '상대 버스가 유세 중…', detail: '' };
-    if (s.phase === 'setup') return { title: '상대가 토큰을 배치하는 중…', detail: '' };
+    if (s.phase === 'setup') return { title: '상대가 사전 배치하는 중…', detail: '' };
     return { title: '상대 차례예요. 기다리는 중…', detail: '' };
   }
 
@@ -49,7 +49,7 @@ export function statusText(v: View, seats: Seats): StatusText {
   if (v.busy) return { title: `잠시만요…`, detail: '' };
   switch (s.phase) {
     case 'setup':
-      return { title: `사전 배치`, detail: `토큰을 놓을 권역을 고르세요 · 남은 ${s.setupLeft[s.current]}개` };
+      return { title: `사전 배치`, detail: `지지자를 놓을 권역을 고르세요 · 남은 ${s.setupLeft[s.current]}명` };
     case 'place':
       return {
         title: s.placedThisTurn >= 1 ? '한 명 더 놓거나 투입 완료' : '예비군을 놓을 권역을 고르세요',
