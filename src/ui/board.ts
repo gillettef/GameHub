@@ -117,7 +117,7 @@ export class Board {
           h('span', { class: 'ribbon', attrs: { 'aria-hidden': 'true' } }),
           h('span', { class: 'next-tag', text: '다음 정차', attrs: { 'aria-hidden': 'true' } }),
           h('span', { class: 'hole-head' }, [h('span', { class: 'hole-letter disp', text: HOLE_LABELS[i] }), HOLE_NAMES[i]]),
-          h('span', { class: 'hole-sub' }, ['선거인단 ', h('b', { text: String(CAP[i]) }), lead]),
+          h('span', { class: 'hole-sub' }, ['선거인단', h('span', {}, [h('b', { text: String(CAP[i]) }), '표']), lead]),
           h('span', { class: 'slots', attrs: { 'aria-hidden': 'true' } }, slots),
           full,
         ],
@@ -174,7 +174,7 @@ export class Board {
     this.gauge.segs.forEach((p, k) => p.classList.toggle('on', k < fc));
     this.gauge.num.textContent = `${Math.min(fc, FULL_HOLES_TO_END)}/${FULL_HOLES_TO_END}`;
     const left = FULL_HOLES_TO_END - fc;
-    this.gaugeLeft.textContent = s.phase === 'over' ? '선거 종료' : left > 0 ? `선거일까지 ${left}곳` : '이번 턴이 끝나면 선거일';
+    this.gaugeLeft.textContent = s.phase === 'over' ? '개표 완료' : left > 0 ? `선거일까지 ${left}곳` : '이번 차례가 끝나면 선거일';
 
     this.updateBus(s);
   }
@@ -201,7 +201,7 @@ export class Board {
 
 function holeAria(s: GameState, i: number, isNext: boolean): string {
   const g = s.holes[i];
-  const parts = [`${HOLE_LABELS[i]} ${HOLE_NAMES[i]}`, `선거인단 ${CAP[i]}`];
+  const parts = [`${HOLE_LABELS[i]} ${HOLE_NAMES[i]}`, `선거인단 ${CAP[i]}표`];
   if (!g.length) parts.push('비어 있음');
   else {
     const b = countColor(g, 0);
@@ -210,6 +210,6 @@ function holeAria(s: GameState, i: number, isNext: boolean): string {
     if (o !== null) parts.push(`${PLAYER_NAMES[o]} 우세`);
   }
   if (isFull(s, i)) parts.push('포화');
-  if (isNext) parts.push('다음 정차지');
+  if (isNext) parts.push('다음 정차');
   return parts.join(', ');
 }
