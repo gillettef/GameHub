@@ -95,14 +95,15 @@ npm run typecheck  # tsc --noEmit
 - 밸런스 수치 조정은 `balance-analyst` 에이전트로 시뮬레이션 근거를 남긴 뒤 진행
 
 ## 배포 (AWS)
-- 다른 게임(Eleven·MagicAcademy·Rootbound·SmilePark)과 같은 EC2(t4g.nano, 서울) 1대를 공유한다. `main`에 push하면 `.github/workflows/deploy-aws.yml`이 `npm test` → `npm run build`를 통과했을 때만 `dist`·`server-dist`(ws 까지 묶은 서버 번들)·`scripts/aws/`(systemd 진입점 `serve.mjs` 등)를 `~/doubleagent`에 올리고, 서버에서 `scripts/aws/deploy-remote.sh`가 systemd `doubleagent`(포트 **8091**)를 재시작·헬스체크(`/health`)한다. 정적 파일과 온라인 대전 WebSocket(`/ws`)을 같은 포트로 서빙한다. 접속은 `http://54.116.67.196:8091`.
+- 다른 게임(Eleven·MagicAcademy·Rootbound·SmilePark)과 같은 EC2(t4g.nano, 서울) 1대를 공유한다. `main`에 병합되면 `.github/workflows/deploy-aws.yml`이 `npm test` → `npm run build`를 통과했을 때만 `dist`·`server-dist`(ws 까지 묶은 서버 번들)·`scripts/aws/`(systemd 진입점 `serve.mjs` 등)를 `~/doubleagent`에 올리고, 서버에서 `scripts/aws/deploy-remote.sh`가 systemd `doubleagent`(포트 **8091**)를 재시작·헬스체크(`/health`)한다. 정적 파일과 온라인 대전 WebSocket(`/ws`)을 같은 포트로 서빙한다. 접속은 `http://54.116.67.196:8091`.
 - **수동 배포**(push 없이 재배포): `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/deploy-aws.ps1` — 로컬에서 테스트·빌드 후 같은 방식으로 전송한다. SSH 키·IP는 Rootbound와 공용인 `.dev/astraltab-key.pem`, `.dev/aws-public-ip.txt`(git 제외)를 쓰고, 없으면 `../Rootbound/.dev/`의 것을 쓴다.
 - 서버 로그: `ssh -i ../Rootbound/.dev/astraltab-key.pem ec2-user@54.116.67.196 "sudo journalctl -u doubleagent -n 100"`
 - SSH(22)는 관리자 IP만 열려 있어 워크플로가 러너 IP를 임시로 열었다 닫는다. 저장소 시크릿: AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY / AWS_REGION / AWS_SECURITY_GROUP_ID / EC2_HOST / EC2_HOST_KEY / EC2_SSH_PRIVATE_KEY (다른 게임 저장소와 같은 값).
 - 서버 준비(완료, 2026-10-17): `scripts/aws/provision.sh` → `scripts/aws/units.sh`, 보안 그룹 TCP 8091 인바운드 추가.
 
 ## Git
-- 저장소: https://github.com/gillettef/DoubleAgent.git (`origin`, 기본 브랜치 `main`)
+- 저장소: https://github.com/gillettef/DoubleAgent.git (`origin`, 기본 브랜치 `dev`)
+- **일상 작업은 `dev`(기본 브랜치)에 커밋·푸시한다. `main`(운영 배포)에는 직접 커밋·푸시하지 않고**, 사용자가 요청할 때만 `dev` → `main` PR(`gh pr create --base main --head dev`)로 병합한다. 작업 시작 전 현재 브랜치가 `dev`인지 확인한다. `dev` 푸시는 CI(`.github/workflows/ci.yml`)만 돌고, `main` 병합이 곧 운영 배포다.
 - 모든 작업이 끝나면 git commit 후 push까지 진행한다
 - 커밋 메시지는 가급적 한국어로 작성한다 (예: `규칙 엔진: 빅딜 시즌 동률 보너스 처리`)
 - 커밋 전 `npm run typecheck && npm run test`가 통과해야 한다 (스크립트가 생긴 뒤부터)
