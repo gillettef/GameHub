@@ -18,15 +18,26 @@ import { OnlineConnection, type FatalReason } from '../net/online';
 import { ROOM_TTL_MS, isRoomCode, normalizeRoomCode, randomRoomCode, type ServerMsg } from '../net/protocol';
 import { h } from './dom';
 import { GameScreen, type NetInfo } from './gameScreen';
+import { brandMark, heroEmblem, icon, type IconName } from './icons';
 import { rulesDetails } from './rules';
 
 function resumeScore(saved: SavedGame): string {
   if (saved.state.phase === 'setup') return '배치 중';
   const t = score(saved.state);
-  return `🔵 ${t[0]} : ${t[1]} 🔴`;
+  return `파랑 ${t[0]} : ${t[1]} 빨강`;
 }
 
-const THEME_LABEL: Record<ThemePref, string> = { auto: '🌓 자동', light: '☀️ 밝게', dark: '🌙 어둡게' };
+const THEME_LABEL: Record<ThemePref, string> = { auto: '자동', light: '밝게', dark: '어둡게' };
+const THEME_ICON: Record<ThemePref, IconName> = { auto: 'auto', light: 'sun', dark: 'moon' };
+const THEME_COLOR = { light: '#f2ede2', dark: '#0e1320' };
+
+/** 큰 메뉴 버튼: 아이콘 + 제목 + 설명 */
+function bigButton(cls: string, iconName: IconName, title: string, sub: string, onClick: () => void): HTMLButtonElement {
+  return h('button', { class: `btn big ${cls}`, attrs: { type: 'button' }, onClick }, [
+    h('span', { class: 'big-icon' }, [icon(iconName, 26)]),
+    h('span', { class: 'big-text' }, [h('span', { class: 'big-title disp', text: title }), h('span', { class: 'big-sub', text: sub })]),
+  ]);
+}
 const NEXT_THEME: Record<ThemePref, ThemePref> = { auto: 'light', light: 'dark', dark: 'auto' };
 
 const FATAL_TEXT: Record<FatalReason, (code: string) => string> = {
@@ -73,13 +84,13 @@ export class App {
         autocapitalize: 'characters',
         spellcheck: 'false',
         maxlength: '6',
-        placeholder: '방 코드',
+        placeholder: '방 코드 4자리',
         'aria-label': '참가할 방 코드',
       },
     });
     const joinForm = h('form', { class: 'join-row' }, [
       codeInput,
-      h('button', { class: 'btn', text: '참가', attrs: { type: 'submit' } }),
+      h('button', { class: 'btn blue', text: '참가', attrs: { type: 'submit' } }),
     ]);
     joinForm.addEventListener('submit', (e) => {
       e.preventDefault();
@@ -92,40 +103,32 @@ export class App {
     });
 
     const menu = h('main', { class: 'menu' }, [
-      h('header', { class: 'topbar' }, [
-        h('h1', { class: 'title' }, ['🗳️ 유세 대작전 ', h('small', { text: '대통령 선거 만칼라' })]),
-        h('div', { class: 'topbar-buttons' }, [this.themeButton()]),
+      h('header', { class: 'topbar' }, [this.themeButton()]),
+      h('section', { class: 'hero' }, [
+        heroEmblem(),
+        h('span', { class: 'hero-kicker', text: '대통령 선거 만칼라' }),
+        h('h1', { class: 'hero-title disp', text: '유세 대작전' }),
+        h('p', { class: 'hero-intro', text: '유세 버스로 여섯 권역을 돌며 지지자를 내려놓으세요. 포화 권역이 4곳이 되면 선거일입니다.' }),
       ]),
-      notice
-        ? h('p', { class: 'status notice', text: notice, attrs: { role: 'alert' } })
-        : h('p', { class: 'status intro', text: '두 후보가 6개 권역을 도는 유세 버스로 지지자를 모읍니다. 포화 권역이 4곳이 되면 선거일!' }),
-      saved &&
-        h('button', { class: 'btn pri big', attrs: { type: 'button' }, onClick: () => this.startAi(saved) }, [
-          `▶ 이어하기 `,
-          h('small', { text: `(AI 대결 · ${resumeScore(saved)})` }),
+      h('div', { class: 'menu-actions' }, [
+        notice && h('p', { class: 'status notice', text: notice, attrs: { role: 'alert' } }),
+        saved && bigButton('pri', 'play', '이어하기', `AI 대결 · ${resumeScore(saved)}`, () => this.startAi(saved)),
+        bigButton(saved ? 'outline' : 'pri', 'robot', saved ? '새 게임 · AI와 대결' : 'AI와 대결', '선공·후공은 추첨으로 정해요', () => this.startAi()),
+        h('section', { class: 'online-panel', attrs: { 'aria-labelledby': 'online-title' } }, [
+          h('h2', { class: 'panel-title disp', attrs: { id: 'online-title' } }, [icon('globe', 18), '온라인 대결']),
+          room &&
+            h('button', { class: 'btn', attrs: { type: 'button' }, onClick: () => this.startOnline(room.code, false) }, [
+              `방 ${room.code} 다시 접속`,
+            ]),
+          h('button', { class: 'btn', text: '방 만들고 초대하기', attrs: { type: 'button' }, onClick: () => this.createRoom() }),
+          joinForm,
+          h('small', { class: 'hint', text: '방을 만든 뒤 초대 버튼으로 링크나 코드를 보내세요. 선공은 무작위예요.' }),
         ]),
-      h('button', {
-        class: `btn big${saved ? '' : ' pri'}`,
-        text: '🤖 AI와 대결 (선공 무작위)',
-        attrs: { type: 'button' },
-        onClick: () => this.startAi(),
-      }),
-      h('section', { class: 'online-panel', attrs: { 'aria-labelledby': 'online-title' } }, [
-        h('h2', { class: 'panel-title', text: '🌐 온라인 대결', attrs: { id: 'online-title' } }),
-        room &&
-          h('button', { class: 'btn big', attrs: { type: 'button' }, onClick: () => this.startOnline(room.code, false) }, [
-            `▶ 방 ${room.code} 다시 접속`,
-          ]),
-        h('button', { class: 'btn big', attrs: { type: 'button' }, onClick: () => this.createRoom() }, [
-          '방 만들기 ',
-          h('small', { text: '(선공 무작위)' }),
-        ]),
-        joinForm,
-        h('small', { class: 'hint', text: '방을 만든 뒤 "초대" 버튼으로 링크나 코드를 상대에게 보내세요.' }),
+        rulesDetails(!saved && !notice && !room),
       ]),
-      rulesDetails(!saved && !notice),
     ]);
     this.root.replaceChildren(menu);
+    window.scrollTo(0, 0);
   }
 
   startAi(saved?: SavedGame): void {
@@ -170,9 +173,13 @@ export class App {
     this.online = { code, conn, net, createTries };
     this.root.replaceChildren(
       h('main', { class: 'menu' }, [
-        h('header', { class: 'topbar' }, [h('h1', { class: 'title' }, ['🗳️ 유세 대작전'])]),
-        h('p', { class: 'status', text: `🌐 방 ${code}에 접속하는 중…`, attrs: { role: 'status' } }),
-        h('button', { class: 'btn big', text: '취소', attrs: { type: 'button' }, onClick: () => this.showMenu() }),
+        h('header', { class: 'topbar' }, [h('h1', { class: 'brand disp' }, [brandMark(), '유세 대작전'])]),
+        h('div', { class: 'connecting' }, [
+          h('div', { class: 'spinner', attrs: { 'aria-hidden': 'true' } }),
+          h('p', { class: 'disp', text: `방 ${code}`, attrs: { style: 'margin:0;font-size:28px' } }),
+          h('p', { text: '접속하는 중…', attrs: { role: 'status', style: 'margin:0;color:var(--mu)' } }),
+        ]),
+        h('button', { class: 'btn', text: '취소', attrs: { type: 'button' }, onClick: () => this.showMenu() }),
       ]),
     );
     conn.connect();
@@ -250,7 +257,7 @@ export class App {
     url.search = '';
     url.hash = '';
     url.searchParams.set('room', code);
-    const text = `🗳️ 유세 대작전 한 판 해요! 방 코드: ${code}`;
+    const text = `유세 대작전 한 판 해요! 방 코드: ${code}`;
     try {
       if (navigator.share) {
         await navigator.share({ title: '유세 대작전', text, url: url.toString() });
@@ -275,6 +282,7 @@ export class App {
       themeButton: this.themeButton(),
     });
     this.root.replaceChildren(this.screen.el);
+    window.scrollTo(0, 0);
   }
 
   private teardown(): void {
@@ -287,17 +295,18 @@ export class App {
   }
 
   private themeButton(): HTMLButtonElement {
-    const b = h('button', {
-      class: 'btn small',
-      text: THEME_LABEL[this.theme],
-      attrs: { type: 'button', 'aria-label': `화면 테마: ${THEME_LABEL[this.theme]} (눌러서 변경)` },
-    });
+    const b = h('button', { class: 'icon-btn', attrs: { type: 'button' } });
+    const paint = () => {
+      b.replaceChildren(icon(THEME_ICON[this.theme]));
+      b.setAttribute('aria-label', `화면 테마: ${THEME_LABEL[this.theme]} (눌러서 변경)`);
+      b.title = `테마: ${THEME_LABEL[this.theme]}`;
+    };
+    paint();
     b.addEventListener('click', () => {
       this.theme = NEXT_THEME[this.theme];
       saveTheme(this.theme);
       this.applyTheme();
-      b.textContent = THEME_LABEL[this.theme];
-      b.setAttribute('aria-label', `화면 테마: ${THEME_LABEL[this.theme]} (눌러서 변경)`);
+      paint();
     });
     return b;
   }
@@ -308,6 +317,6 @@ export class App {
     else el.setAttribute('data-theme', this.theme);
     const dark =
       this.theme === 'dark' || (this.theme === 'auto' && window.matchMedia?.('(prefers-color-scheme: dark)').matches);
-    document.querySelectorAll('meta[name="theme-color"]').forEach((m) => m.setAttribute('content', dark ? '#16171a' : '#f6f4ef'));
+    document.querySelectorAll('meta[name="theme-color"]').forEach((m) => m.setAttribute('content', dark ? THEME_COLOR.dark : THEME_COLOR.light));
   }
 }
