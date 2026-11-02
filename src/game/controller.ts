@@ -55,9 +55,9 @@ const defaultSleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms))
 export function describe(e: GameEvent): string | null {
   switch (e.type) {
     case 'setup':
-      return `${PLAYER_EMOJI[e.player]} ${HOLE_LABELS[e.hole]} 배치`;
+      return `${PLAYER_EMOJI[e.player]} ${HOLE_LABELS[e.hole]} 사전 배치`;
     case 'place':
-      return `${PLAYER_EMOJI[e.player]} ${HOLE_LABELS[e.hole]} 조직 투입`;
+      return `${PLAYER_EMOJI[e.player]} ${HOLE_LABELS[e.hole]} 예비군 투입`;
     case 'pick':
       return `${PLAYER_EMOJI[e.player]} ${HOLE_LABELS[e.hole]}에서 버스 출발 (${e.count}명)`;
     case 'lost':

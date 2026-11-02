@@ -22,7 +22,7 @@ import { brandMark, heroEmblem, icon, type IconName } from './icons';
 import { rulesDetails } from './rules';
 
 function resumeScore(saved: SavedGame): string {
-  if (saved.state.phase === 'setup') return '배치 중';
+  if (saved.state.phase === 'setup') return '사전 배치 중';
   const t = score(saved.state);
   return `파랑 ${t[0]} : ${t[1]} 빨강`;
 }
@@ -122,7 +122,7 @@ export class App {
             ]),
           h('button', { class: 'btn', text: '방 만들고 초대하기', attrs: { type: 'button' }, onClick: () => this.createRoom() }),
           joinForm,
-          h('small', { class: 'hint', text: '방을 만든 뒤 초대 버튼으로 링크나 코드를 보내세요. 선공은 무작위예요.' }),
+          h('small', { class: 'hint', text: '방을 만든 뒤 초대 버튼으로 링크나 코드를 보내세요. 선공·후공은 추첨으로 정해요.' }),
         ]),
         rulesDetails(!saved && !notice && !room),
       ]),

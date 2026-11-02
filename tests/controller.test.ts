@@ -73,7 +73,7 @@ describe('GameController', () => {
     c.act({ type: 'setup', hole: 4 });
     await idle(c);
     expect(c.view.highlight).toBe(4);
-    expect(c.view.log[0]).toBe('🔵 E 배치');
+    expect(c.view.log[0]).toBe('🔵 E 사전 배치');
     expect(describeEvent({ type: 'lost', player: 0, tokens: [0, 1] })).toBe('🚌 놓을 곳이 없어 2명 낙선');
   });
 });
