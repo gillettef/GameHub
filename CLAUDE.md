@@ -110,10 +110,10 @@ npx tsx scripts/simulate.ts --games 500 --players 3 --seed 1
 - 카드·배경 같은 이미지, 일러스트, 모션은 Claude Design(Design 아티팩트)으로 만들고 `src/ui/assets`·`src/ui/styles` 의 SVG/CSS 로 받는다(`docs/art.md`). 웹은 따로 띄우지 않고 백그라운드로 작업한다.
 - 테크 웹은 작은 화면에서 한눈에 보이도록 고리별 색·노선 아이콘을 쓰고, 노드를 누르면 상세 시트를 연다.
 
-## 배포 (AWS) — 준비 전
+## 배포 (AWS) — 운영 중 (v0.1.0, 2026-11-02)
 
-- 다른 게임과 같은 EC2(t4g.nano, 서울) 1대를 공유한다. systemd `neoterra`, 포트 8094, 경로 `~/neoterra`. `main` 병합 시 `.github/workflows/deploy-aws.yml` 이 `npm test` → `npm run build` 통과 후 배포(DoubleAgent 구성을 본뜬다).
-- SSH 키·IP는 `../Rootbound/.dev/astraltab-key.pem`, `../Rootbound/.dev/aws-public-ip.txt` 를 공용으로 쓴다. 보안 그룹에 TCP 8094 인바운드 추가가 필요하다(사용자 확인 후).
+- 다른 게임과 같은 EC2(t4g.nano, 서울) 1대를 공유한다. systemd `neoterra`, 포트 8094, 경로 `~/neoterra`, 주소 `http://54.116.67.196:8094`. `main` 병합 시 `.github/workflows/deploy-aws.yml` 이 `npm test` → `npm run build` 통과 후 배포한다(DoubleAgent 와 같은 방식: 러너 IP 를 SSH 22 에 임시 허용 → `ec2-user` 로 업로드 → 서버 안 `/health` 확인 → 허용 제거).
+- 관리자 SSH 키·IP는 `../Rootbound/.dev/astraltab-key.pem`, `../Rootbound/.dev/aws-public-ip.txt` 를 공용으로 쓴다. 저장소 시크릿 값의 정본은 저장소 밖 `../../aws_config.md`. 서버 로그: `ssh -i ../Rootbound/.dev/astraltab-key.pem ec2-user@54.116.67.196 "sudo journalctl -u neoterra -n 100"`.
 
 ## .claude 구성
 
