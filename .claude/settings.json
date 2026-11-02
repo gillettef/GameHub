@@ -7,10 +7,17 @@
       "Bash(npm run typecheck:*)",
       "Bash(npx vitest:*)",
       "Bash(npx tsc:*)",
-      "Bash(npx tsx scripts/simulate.ts:*)"
+      "Bash(npx tsx scripts/simulate.ts:*)",
+      "Bash(git push origin dev)",
+      "Bash(git push -u origin dev)",
+      "Bash(git pull --rebase origin dev)"
     ],
     "deny": [
-      "Edit(notes/**)"
+      "Edit(notes/**)",
+      "Bash(git push --force:*)",
+      "Bash(git push -f:*)",
+      "Bash(git push origin main:*)",
+      "Bash(git push -u origin main:*)"
     ]
   }
 }
