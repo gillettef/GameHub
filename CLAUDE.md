@@ -17,6 +17,7 @@
 - `core/rules.ts`의 `resolveAction`은 연출 박자(Step[])를, `applyAction`은 최종 상태를 돌려준다(둘 다 자동 하차·턴 종료 포함). 박자 사이 지연은 `game/controller.ts`의 `DELAYS`.
 - AI는 데스크톱 기준 한 수 평균 ~5ms, 최대 ~30ms라 메인 스레드에서 돈다(Web Worker 미사용).
 - 아이콘 PNG는 `node scripts/make-icons.mjs`로 생성(`public/icon.svg`와 같은 도안).
+- 비주얼 방향(2026-11-02): "개표방송 × 인쇄 보드게임". 라이트는 크라프트지(`--bg #f2ede2`), 다크는 개표방송 네이비(`--bg #0e1320`). 제목·점수는 Google Fonts `Black Han Sans`(`.disp`, 오프라인이면 시스템 글꼴로 대체), 본문은 시스템 글꼴. 기표 도장(卜) 로고, 선거인단 35칸 줄다리기 바, 턴 단계 칩, 속보 티커, 개표 결과 시트. UI 아이콘은 `src/ui/icons.ts`의 선 SVG(이모지 대신). 색 토큰은 `src/style.css` 맨 위.
 - `public/sw.js`의 `CACHE`/`PRECACHE` 줄은 빌드 때 `vite.config.ts`의 `swManifest` 플러그인이 dist 전체 파일 목록과 내용 해시로 바꾼다. 그 두 줄의 형태(`const CACHE = …` / `const PRECACHE = …`, 한 줄)를 유지할 것.
 
 ## 기술 스택

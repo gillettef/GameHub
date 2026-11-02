@@ -1,13 +1,13 @@
 // 앱 아이콘 생성 (의존성 없이 PNG 직접 인코딩). 실행: node scripts/make-icons.mjs
-// 디자인: 원형 순회로 위 6개 권역(파랑 원/빨강 네모 교대)과 가운데 노란 투표 표식. public/icon.svg와 같은 도안.
+// 디자인: 원형 순회로 위 6개 권역(파랑 원/빨강 네모 교대)과 가운데 기표 도장(卜). public/icon.svg와 같은 도안.
 import { writeFileSync } from 'node:fs';
 import { deflateSync } from 'node:zlib';
 
-const BG = [0x1d, 0x1d, 0x1f];
-const RING = [0x55, 0x58, 0x60];
-const BLUE = [0x5b, 0x93, 0xf5];
-const RED = [0xf0, 0x6b, 0x6b];
-const YELLOW = [0xf2, 0xb0, 0x1e];
+const BG = [0x0e, 0x13, 0x20];
+const RING = [0x3e, 0x4b, 0x6b];
+const BLUE = [0x6e, 0x9b, 0xff];
+const RED = [0xff, 0x7a, 0x6b];
+const YELLOW = [0xf5, 0xb7, 0x31];
 
 /** 단위 정사각형(0~1) 좌표에서 색을 돌려준다. maskable이면 도안을 안전 영역(80%) 안으로 줄인다 */
 function shade(x, y, maskable) {
@@ -26,19 +26,14 @@ function shade(x, y, maskable) {
     } else if (Math.abs(u - cx) < 0.075 && Math.abs(v - cy) < 0.075) return RED;
   }
   if (Math.abs(d - 0.33) < 0.012) return RING;
-  // 가운데 체크 표시 상자
-  if (Math.abs(dx) < 0.13 && Math.abs(dy) < 0.13) {
-    const inner = Math.abs(dx) < 0.1 && Math.abs(dy) < 0.1;
-    if (!inner) return YELLOW;
-    // 체크 (두 선분)
-    const onSeg = (x1, y1, x2, y2) => {
-      const px = dx - x1, py = dy - y1, sx = x2 - x1, sy = y2 - y1;
-      const t = Math.max(0, Math.min(1, (px * sx + py * sy) / (sx * sx + sy * sy)));
-      return Math.hypot(px - t * sx, py - t * sy) < 0.018;
-    };
-    if (onSeg(-0.06, 0.0, -0.015, 0.05) || onSeg(-0.015, 0.05, 0.065, -0.05)) return YELLOW;
-    return BG;
-  }
+  // 가운데 기표 도장: 원 + 卜
+  const seg = (x1, y1, x2, y2, w) => {
+    const px = dx - x1, py = dy - y1, sx = x2 - x1, sy = y2 - y1;
+    const t = Math.max(0, Math.min(1, (px * sx + py * sy) / (sx * sx + sy * sy)));
+    return Math.hypot(px - t * sx, py - t * sy) < w;
+  };
+  if (Math.abs(d - 0.17) < 0.022) return YELLOW;
+  if (seg(0, -0.1, 0, 0.1, 0.024) || seg(0, -0.01, 0.075, 0.025, 0.024)) return YELLOW;
   if (!maskable) {
     // 둥근 모서리 바깥은 투명
     const r = 0.18;
