@@ -15,8 +15,9 @@
       "Bash(git log:*)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "Bash(git push:*)",
-      "Bash(git pull:*)",
+      "Bash(git push origin dev)",
+      "Bash(git push -u origin dev)",
+      "Bash(git pull --rebase origin dev)",
       "Bash(git remote:*)",
       "Bash(powershell -NoProfile -ExecutionPolicy Bypass -File scripts/dev.ps1)",
       "Bash(powershell -NoProfile -ExecutionPolicy Bypass -File scripts/dev-stop.ps1)",
@@ -25,7 +26,9 @@
     ],
     "deny": [
       "Bash(git push --force:*)",
-      "Bash(git push -f:*)"
+      "Bash(git push -f:*)",
+      "Bash(git push origin main:*)",
+      "Bash(git push -u origin main:*)"
     ]
   }
 }
