@@ -23,7 +23,7 @@
 
 1. **작업이 완료되면 반드시 `git commit` & `git push`를 진행한다.** 기능 하나, 버그 수정 하나 등 의미 있는 단위가 끝날 때마다 커밋하고 푸시한다. `/commit-push` 스킬을 사용한다.
 2. **commit 메시지는 가급적 한국어로 작성한다.** 제목은 `<타입>: <요약>` 형식 (예: `기능: 마켓 화면 (F008)`, `수정: 칡 거리 계산`). 관련 F-ID가 있으면 괄호로 덧붙인다.
-3. **push 대상 repo는 `https://github.com/gillettef/Rootbound.git` 이다**(2026-10-07 AstralTab 에서 이름 변경). 브랜치는 `main`을 기본으로 사용한다.
+3. **push 대상 repo는 `https://github.com/gillettef/Rootbound.git` 이다**(2026-10-07 AstralTab 에서 이름 변경). 브랜치는 `dev`를 기본으로 사용한다. **일상 작업은 `dev`(기본 브랜치)에 커밋·푸시한다. `main`(운영 배포)에는 직접 커밋·푸시하지 않고**, 사용자가 요청할 때만 `dev` → `main` PR(`gh pr create --base main --head dev`)로 병합한다. 작업 시작 전 현재 브랜치가 `dev`인지 확인한다. `dev` 푸시는 CI(`.github/workflows/ci.yml`)만 돌고, `main` 병합이 곧 운영 배포다.
 4. **이 서비스는 DB를 사용하지 않는다.** DB·Redis·ORM을 도입하지 않는다. 아래 "DB 없는 상태 관리" 참고.
 5. 로컬 테스트 시 서버를 포그라운드로 직접 띄우지 않는다(터미널이 블로킹됨). 반드시 `/dev`로 시작하고 `/dev-stop`으로 종료한다. `scripts/dev.ps1` 출력을 `| grep` 등 다른 프로세스로 파이프하지 않는다.
 6. 포트 3001은 이 PC에서 사용자의 다른 프로젝트(Eleven)가 쓴다. Rootbound 서버는 3101을 쓰며, 3001을 점유한 프로세스는 절대 종료하지 않는다.
@@ -57,13 +57,13 @@
 | 환경 | 위치 | 서버 | 클라이언트 | AI | 용도 |
 |---|---|---|---|---|---|
 | dev | 로컬 PC, `/dev` · `/dev-stop` | 3101 (tsx watch) | 5173 (Vite, proxy) | 8000 (`--reload`) | 로컬 개발. 핫리로드. 다른 기기·친구는 Cloudflare 빠른 터널 주소(`/dev` 출력의 `Public` 줄, `.dev/tunnel-url.txt`, 띄울 때마다 바뀜, `-NoTunnel` 로 끔) |
-| 운영 | **AWS EC2 상시 서버** | 3201 (systemd `astraltab-prod-server`) | `client/dist/prod` 를 3201에서 정적 서빙 | 8001 (systemd `astraltab-prod-ai`) | 친구들이 접속하는 **유일한 서버**. `main` push 시 자동 배포 |
+| 운영 | **AWS EC2 상시 서버** | 3201 (systemd `astraltab-prod-server`) | `client/dist/prod` 를 3201에서 정적 서빙 | 8001 (systemd `astraltab-prod-ai`) | 친구들이 접속하는 **유일한 서버**. `main` 병합 시 자동 배포 |
 
-- 2026-09-28 사용자 지시로 서버를 AWS EC2 상시 서버로 옮겼고, 2026-09-29 test/prod 구분을 없애 단일 운영 서버로 통일했다 — GitHub `main` push 가 곧 운영 배포다. systemd 서비스명·`~/AstralTab` 경로·`dist/prod`·`data/prod` 는 예전 이름을 그대로 둔 것이다. `/prod-server` 스킬은 push 없이 수동 재배포할 때만 쓴다.
+- 2026-09-28 사용자 지시로 서버를 AWS EC2 상시 서버로 옮겼고, 2026-09-29 test/prod 구분을 없애 단일 운영 서버로 통일했다 — GitHub `main` 병합이 곧 운영 배포다(일상 작업은 `dev`). systemd 서비스명·`~/AstralTab` 경로·`dist/prod`·`data/prod` 는 예전 이름을 그대로 둔 것이다. `/prod-server` 스킬은 push 없이 수동 재배포할 때만 쓴다.
 - **AWS 인프라**: 리전 서울(`ap-northeast-2`), EC2 **t4g.nano** (ARM, 메모리 0.5GB, 스왑 2GB — `scripts/aws/swap.sh`; 2026-10-02 사용자 지시로 **Eleven·MagicAcademy와 인스턴스 1대를 공유**. 포트: Eleven 3001 / MagicAcademy 8080 / Rootbound 3201, 한 번에 한 게임만 플레이하는 전제) Amazon Linux 2023, Elastic IP(`.dev/aws-public-ip.txt`, git 제외). 도메인 없이 `http://<Elastic IP>:3201`. 보안 그룹은 22(SSH, 관리자 IP만)·3201 만 연다. SSH 키(`.dev/astraltab-key.pem`)와 인스턴스 id(`.dev/aws-instance-id.txt`)도 `.dev/`(gitignore)에 있다.
 - GitHub 저장소가 비공개라 EC2에서 `git clone`/`pull` 하지 않는다. 로컬에서 `git archive`로 패키징해 ssh로 전송한다(`scripts/deploy-aws.ps1`). 클라이언트 빌드(vite)는 CI 러너(수동 배포는 로컬)에서 하고 `client/dist/prod` 만 전송한다. EC2에서는 server·shared 의존성 설치와 systemd 재시작만 한다.
 - **수동 배포**: `powershell -File scripts/deploy-aws.ps1`. 최초 1회 인스턴스 준비는 `scripts/aws/provision.sh` → `scripts/aws/units.sh`.
-- **`main`에 push되면 GitHub Actions(`.github/workflows/deploy-aws.yml`)가 테스트·타입 검사·pytest(`verify` job) 통과 후 EC2에 자동 배포한다.** 검증 전 변경은 별도 브랜치에 둔다. 워크플로는 SSH(22)에 러너 IP를 배포 직전에 임시로 추가했다가 제거한다(최소 권한 IAM 사용자 `astraltab-ci`). 필요한 Secrets: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`, `AWS_SECURITY_GROUP_ID`, `EC2_HOST`, `EC2_SSH_PRIVATE_KEY`(선택 `EC2_HOST_KEY`). 수동 배포는 `astraltab-key.pem`, CI는 별도 키(`astraltab-github-actions`)를 쓴다.
+- **`main`에 병합되면 GitHub Actions(`.github/workflows/deploy-aws.yml`)가 테스트·타입 검사·pytest 통과 후 EC2에 자동 배포한다.** 일상 작업은 `dev`에 두고 CI(`ci.yml`)로 검사한다. 워크플로는 SSH(22)에 러너 IP를 배포 직전에 임시로 추가했다가 제거한다(최소 권한 IAM 사용자 `astraltab-ci`). 필요한 Secrets 7개(`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`, `AWS_SECURITY_GROUP_ID`, `EC2_HOST`, `EC2_HOST_KEY`, `EC2_SSH_PRIVATE_KEY`)는 모든 게임 저장소 공용이며 정본은 저장소 밖 `../../aws_config.md`. 수동 배포는 `astraltab-key.pem`, CI는 별도 키(`smilepark-ci`)를 쓴다.
 - 서버 환경 변수: `APP_ENV`, `PORT`, `HOST`, `CLIENT_DIST`, `DATA_DIR`, `AI_BASE_URL` (`server/src/index.ts` 주석, EC2는 systemd unit 에 박혀 있다). 스냅샷은 EC2 `~/AstralTab/server/data/prod/rooms`, 판 요약·웹 성능은 `.../prod/stats`.
 
 ---
@@ -226,7 +226,7 @@ AstralTab/                 # 저장소 폴더 이름은 아직 옛 이름
 |---|---|
 | 서버·클라이언트·AI 백그라운드 실행 (개발) | `/dev` |
 | 백그라운드 프로세스 종료 (개발) | `/dev-stop` |
-| AWS 서버에 배포 | `main` push 시 자동. 수동은 `powershell -File scripts/deploy-aws.ps1` |
+| AWS 서버에 배포 | `dev` → `main` 병합 시 자동. 수동은 `powershell -File scripts/deploy-aws.ps1` |
 | AWS 서버 로그 확인 | `ssh -i .dev/astraltab-key.pem ec2-user@$(cat .dev/aws-public-ip.txt) "sudo journalctl -u astraltab-prod-server -n 100"` |
 | 로그 확인 (dev) | `tail -n 50 .dev/server.log`, `.dev/client.log`, `.dev/ai.log` |
 | 의존성 설치 (JS) | `npm install` (루트) |
