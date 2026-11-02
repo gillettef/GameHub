@@ -53,7 +53,7 @@ export function statusText(v: View, seats: Seats): StatusText {
     case 'place':
       return {
         title: s.placedThisTurn >= 1 ? '한 명 더 놓거나 투입 완료' : '예비군을 놓을 권역을 고르세요',
-        detail: s.placedThisTurn >= 1 ? '' : `(최대 ${MAX_PLACE_PER_TURN}명)`,
+        detail: s.placedThisTurn >= 1 || MAX_PLACE_PER_TURN === 1 ? '' : `(최대 ${MAX_PLACE_PER_TURN}명)`,
       };
     case 'pick':
       return { title: '버스를 출발시킬 권역을 고르세요', detail: '' };

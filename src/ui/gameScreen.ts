@@ -292,7 +292,7 @@ export class GameScreen {
     this.steps.classList.toggle('single', setup);
     const order = { place: 0, pick: 1, sow: 2 } as const;
     const cur = setup || over ? -1 : order[s.phase as keyof typeof order];
-    const label = [`① 투입 ${Math.min(s.placedThisTurn + 1, MAX_PLACE_PER_TURN)}/${MAX_PLACE_PER_TURN}`, '② 출발', '③ 유세'];
+    const label = [MAX_PLACE_PER_TURN > 1 ? `① 투입 ${Math.min(s.placedThisTurn + 1, MAX_PLACE_PER_TURN)}/${MAX_PLACE_PER_TURN}` : '① 투입', '② 출발', '③ 유세'];
     this.stepEls.forEach((li, k) => {
       li.hidden = setup && k > 0;
       const text = setup ? `사전 배치 · ${this.who(s.current)} 남은 ${s.setupLeft[s.current]}명` : k === 0 && cur !== 0 ? '① 투입' : label[k];

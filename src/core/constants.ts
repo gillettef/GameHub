@@ -8,8 +8,13 @@ export const HOLE_LABELS: readonly string[] = ['A', 'B', 'C', 'D', 'E', 'F'];
 export const INITIAL_RESERVES: readonly [number, number] = [10, 11];
 /** 셋업 단계에서 각자 배치하는 토큰 수 */
 export const SETUP_TOKENS = 4;
-/** 한 턴에 투입할 수 있는 최대 예비군 수 */
-export const MAX_PLACE_PER_TURN = 2;
+/**
+ * 한 턴에 투입할 수 있는 최대 예비군 수.
+ * 프로토타입은 2(1~2개)였으나, 실제로 1개만 놓는 경우가 1% 수준이라 2026-11-02 1개로 바꿨다
+ * (AI 셀프플레이 비교: 선공 승률 53.8→49.3%, 역전 5.7→11.3회/판, 수읽기 이득 61→66%).
+ * 1보다 크게 두면 투입 완료(endPlace) 흐름이 다시 살아난다.
+ */
+export const MAX_PLACE_PER_TURN = 1;
 /** 포화 권역이 이만큼 되면 선거일 */
 export const FULL_HOLES_TO_END = 4;
 
