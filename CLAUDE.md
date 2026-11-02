@@ -38,7 +38,7 @@
 - skills: `/commit-push`, `/balance-check`, `/notes-sync`
 
 ## 작업 규칙
-1. 모든 작업 후 git commit & push를 반드시 진행한다.
+1. 모든 작업 후 git commit & push를 반드시 진행한다. **일상 작업은 `dev`(기본 브랜치)에 커밋·푸시한다. `main`(운영 배포)에는 직접 커밋·푸시하지 않고**, 사용자가 요청할 때만 `dev` → `main` PR(`gh pr create --base main --head dev`)로 병합한다. 작업 시작 전 현재 브랜치가 `dev`인지 확인한다. `dev` 푸시는 CI(`.github/workflows/ci.yml`)만 돌고, `main` 병합이 곧 운영 배포다.
 2. commit 메시지는 가급적 한국어로 작성한다.
 3. 문서·답변·카드 텍스트는 한국어로 작성한다.
 4. 카드 수치를 바꾸면 영향(밸런스, 룰북 서술)을 함께 확인한다.
@@ -52,6 +52,6 @@
 - 현재 구현 룰은 `docs/design-v1.md`(pptx의 빈 부분을 채운 것, **오프라인 보드게임 기준**: 카드 인쇄값 그대로, 확률·환산 공식 없음, 손계산 가능). v0은 `docs/archive/`. 인원은 사람 0~1 + AI로 전체 2~5인(`CFG.minPlayers`~`maxPlayers`), 한 기기 다인(핫시트) 미지원. 룰 상수(`CFG`)·인쇄값 변환(`PRINT`)을 바꾸면 `npx tsx scripts/balance.ts`로 영향을 확인하고, 카드 원본(xlsx)은 수정하지 않는다.
 
 ## 배포 (AWS)
-- 다른 게임(Eleven·AstralTab·MagicAcademy)과 같은 EC2(t4g.nano) 1대를 공유한다. SmilePark는 정적 웹앱이라 `main`에 push하면 `.github/workflows/deploy-aws.yml`이 `npm test` → `npm run build`를 통과했을 때만 `dist`와 `scripts/aws/serve.mjs`(의존성 없는 정적 서버)를 `~/smilepark`에 올리고 systemd `smilepark`(포트 **8090**)를 재시작한다. 접속은 `http://<Elastic IP>:8090`.
+- 다른 게임(Eleven·AstralTab·MagicAcademy)과 같은 EC2(t4g.nano) 1대를 공유한다. SmilePark는 정적 웹앱이라 `main`에 병합되면 `.github/workflows/deploy-aws.yml`이 `npm test` → `npm run build`를 통과했을 때만 `dist`와 `scripts/aws/`(의존성 없는 정적 서버 `serve.mjs`, `deploy-remote.sh`)를 `~/smilepark`에 올리고 `deploy-remote.sh`가 systemd `smilepark`(포트 **8090**)를 재시작·헬스체크한다. 접속은 `http://<Elastic IP>:8090`.
 - SSH(22)는 관리자 IP만 열려 있어 워크플로가 러너 IP를 임시로 열었다 닫는다. 저장소 시크릿: AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY / AWS_REGION / AWS_SECURITY_GROUP_ID / EC2_HOST / EC2_HOST_KEY / EC2_SSH_PRIVATE_KEY (다른 게임 저장소와 같은 값).
 - 최초 1회: EC2에서 `scripts/aws/provision.sh` → `scripts/aws/units.sh` 실행, 보안 그룹에 TCP 8090 인바운드 추가.
