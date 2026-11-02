@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git push origin dev)",
+      "Bash(git push -u origin dev)",
+      "Bash(git pull --rebase origin dev)"
+    ],
+    "deny": [
+      "Bash(git push --force:*)",
+      "Bash(git push -f:*)",
+      "Bash(git push origin main:*)",
+      "Bash(git push -u origin main:*)"
+    ]
+  }
+}
