@@ -1,8 +1,9 @@
-import { CAP, HOLE_COUNT, HOLE_LABELS, HOLE_NAMES, PLAYER_NAMES } from '../core/constants';
-import { countColor, holeOwner, isFull, nextStop } from '../core/rules';
+import { CAP, FULL_HOLES_TO_END, HOLE_COUNT, HOLE_LABELS, HOLE_NAMES, PLAYER_NAMES } from '../core/constants';
+import { countColor, fullCount, holeOwner, isFull, nextStop } from '../core/rules';
 import type { GameState, Player } from '../core/types';
 import type { View } from '../game/controller';
 import { h, restartAnimation, svg } from './dom';
+import { busGlyph } from './icons';
 
 /** 권역 i의 보드 내 위치(%) — 맨 위 A부터 시계 방향 */
 const RADIUS = 35;
@@ -14,6 +15,7 @@ export function holePos(i: number): [number, number] {
 
 function ringSvg(): SVGSVGElement {
   const root = svg('svg', { viewBox: '0 0 100 100', 'aria-hidden': 'true', class: 'ring' }, [
+    svg('circle', { cx: 50, cy: 50, r: RADIUS, class: 'ring-road' }),
     svg('circle', { cx: 50, cy: 50, r: RADIUS, class: 'ring-line' }),
   ]);
   // 권역 사이 화살표 (시계 방향)
@@ -22,11 +24,28 @@ function ringSvg(): SVGSVGElement {
     const a = (t * Math.PI) / 180;
     root.append(
       svg('g', { transform: `translate(${50 + RADIUS * Math.cos(a)} ${50 + RADIUS * Math.sin(a)}) rotate(${t + 180})` }, [
-        svg('path', { d: 'M0,-2.6 L2,1.8 L-2,1.8Z', class: 'ring-arrow' }),
+        svg('path', { d: 'M0,-2.4 L1.9,1.6 L-1.9,1.6Z', class: 'ring-arrow' }),
       ]),
     );
   }
   return root;
+}
+
+/** 포화 게이지: 4칸 원호 */
+function gaugeSvg(): { root: SVGSVGElement; segs: SVGPathElement[]; num: SVGTextElement } {
+  const segs: SVGPathElement[] = [];
+  const n = FULL_HOLES_TO_END;
+  const r = 26;
+  const gap = 6; // 도(degree)
+  for (let k = 0; k < n; k++) {
+    const a0 = ((-90 + (360 / n) * k + gap / 2) * Math.PI) / 180;
+    const a1 = ((-90 + (360 / n) * (k + 1) - gap / 2) * Math.PI) / 180;
+    const d = `M${32 + r * Math.cos(a0)} ${32 + r * Math.sin(a0)} A${r} ${r} 0 0 1 ${32 + r * Math.cos(a1)} ${32 + r * Math.sin(a1)}`;
+    segs.push(svg('path', { d, class: 'gauge-seg' }));
+  }
+  const num = svg('text', { x: 32, y: 38.5, 'text-anchor': 'middle', class: 'gauge-num' });
+  const root = svg('svg', { viewBox: '0 0 64 64', class: 'gauge', 'aria-hidden': 'true' }, [...segs, num]);
+  return { root, segs, num };
 }
 
 export interface BoardHandlers {
@@ -49,30 +68,56 @@ export class Board {
   private busAngle = 0;
   private lastPulse = -1;
   private lastHighlight = -1;
+  private centerIdle: HTMLElement;
+  private centerBus: HTMLElement;
+  private gauge: ReturnType<typeof gaugeSvg>;
+  private gaugeLeft: HTMLElement;
+  private busTotal: HTMLElement;
+  private busMix: [Text, Text];
 
   constructor(handlers: BoardHandlers) {
-    this.busCount = h('span', { class: 'bus-count' });
-    this.busIcon = h('span', { class: 'bus-icon' }, ['🚌', this.busCount]);
+    this.busCount = h('span', { class: 'bus-count disp' });
+    this.busIcon = h('span', { class: 'bus-icon' }, [busGlyph(), this.busCount]);
     this.orbit = h('div', { class: 'bus-orbit', attrs: { 'aria-hidden': 'true' } }, [this.busIcon]);
-    const center = h('div', { class: 'board-center', attrs: { 'aria-hidden': 'true' } }, [
-      h('span', { class: 'center-emoji', text: '🗳️' }),
-      h('span', { text: '시계 방향' }),
-      h('span', { class: 'center-dir', text: 'A→B→C→D→E→F' }),
+
+    this.gauge = gaugeSvg();
+    this.gaugeLeft = h('span');
+    this.centerIdle = h('div', { class: 'board-center', attrs: { 'aria-hidden': 'true' } }, [
+      this.gauge.root,
+      h('span', { class: 'center-label', text: '포화 권역' }),
+      this.gaugeLeft,
     ]);
-    this.el = h('div', { class: 'board', attrs: { role: 'group', 'aria-label': '권역 보드' } }, [ringSvg(), center, this.orbit]);
+    this.busTotal = h('span', { class: 'center-big disp' });
+    this.busMix = [document.createTextNode(''), document.createTextNode('')];
+    this.centerBus = h('div', { class: 'board-center', attrs: { 'aria-hidden': 'true' } }, [
+      h('span', { class: 'center-label', text: '버스 탑승' }),
+      this.busTotal,
+      h('span', { class: 'center-mix' }, [
+        h('span', { class: 'mark m0' }),
+        this.busMix[0],
+        h('span', { class: 'mark m1' }),
+        this.busMix[1],
+      ]),
+    ]);
+    this.el = h('div', { class: 'board', attrs: { role: 'group', 'aria-label': '권역 보드' } }, [
+      ringSvg(),
+      this.centerIdle,
+      this.centerBus,
+    ]);
 
     for (let i = 0; i < HOLE_COUNT; i++) {
       const lead = h('span', { class: 'lead' });
       const slots = Array.from({ length: CAP[i] }, () => h('span', { class: 'tok' }));
-      const full = h('span', { class: 'full-tag', text: '포화' });
+      const full = h('span', { class: 'full-tag disp', text: '포화', attrs: { 'aria-hidden': 'true' } });
       const [x, y] = holePos(i);
       const btn = h(
         'button',
         { class: 'hole', attrs: { type: 'button', style: `left:${x}%;top:${y}%` }, onClick: () => handlers.onHole(i) },
         [
-          h('span', { class: 'next-tag', text: '다음 ▼', attrs: { 'aria-hidden': 'true' } }),
-          h('span', { class: 'hole-head' }, [h('b', { text: HOLE_LABELS[i] }), ` ${HOLE_NAMES[i]}`]),
-          h('span', { class: 'hole-sub' }, [`선거인단 ${CAP[i]}`, lead]),
+          h('span', { class: 'ribbon', attrs: { 'aria-hidden': 'true' } }),
+          h('span', { class: 'next-tag', text: '다음 정차', attrs: { 'aria-hidden': 'true' } }),
+          h('span', { class: 'hole-head' }, [h('span', { class: 'hole-letter disp', text: HOLE_LABELS[i] }), HOLE_NAMES[i]]),
+          h('span', { class: 'hole-sub' }, ['선거인단 ', h('b', { text: String(CAP[i]) }), lead]),
           h('span', { class: 'slots', attrs: { 'aria-hidden': 'true' } }, slots),
           full,
         ],
@@ -80,6 +125,7 @@ export class Board {
       this.el.append(btn);
       this.holes.push({ btn, lead, slots, full });
     }
+    this.el.append(this.orbit);
   }
 
   update(v: View, selectable: (i: number) => boolean): void {
@@ -104,8 +150,10 @@ export class Board {
       e.lead.title = owner === null ? '' : `${PLAYER_NAMES[owner]} 우세`;
       e.full.hidden = !full;
       e.slots.forEach((el, k) => {
-        el.className = k < g.length ? `tok t${g[k]}${k === 0 ? ' flag' : ''}` : 'tok';
-        el.textContent = k === 0 && g.length ? '⚑' : '';
+        const cls = k < g.length ? `tok t${g[k]}${k === 0 ? ' flag' : ''}` : 'tok';
+        if (el.className !== cls) el.className = cls;
+        const t = k === 0 && g.length ? '⚑' : '';
+        if (el.textContent !== t) el.textContent = t;
       });
     }
 
@@ -121,13 +169,21 @@ export class Board {
       if (v.highlight >= 0 && s.phase !== 'over') restartAnimation(this.holes[v.highlight].btn, 'drp');
     }
 
+    // 중앙: 평소엔 포화 게이지, 유세 중엔 버스 탑승 현황
+    const fc = fullCount(s);
+    this.gauge.segs.forEach((p, k) => p.classList.toggle('on', k < fc));
+    this.gauge.num.textContent = `${Math.min(fc, FULL_HOLES_TO_END)}/${FULL_HOLES_TO_END}`;
+    const left = FULL_HOLES_TO_END - fc;
+    this.gaugeLeft.textContent = s.phase === 'over' ? '선거 종료' : left > 0 ? `선거일까지 ${left}곳` : '이번 턴이 끝나면 선거일';
+
     this.updateBus(s);
   }
 
   private updateBus(s: GameState): void {
     const on = s.phase === 'sow';
     this.orbit.classList.toggle('on', on);
-    this.el.classList.toggle('sowing', on);
+    this.centerIdle.hidden = on;
+    this.centerBus.hidden = !on;
     if (!on) return;
     // 누적 각도로 항상 시계 방향 회전
     const target = 60 * s.busPos;
@@ -136,6 +192,10 @@ export class Board {
     this.orbit.style.transform = `rotate(${this.busAngle}deg)`;
     this.busIcon.style.transform = `rotate(${-this.busAngle}deg)`;
     this.busCount.textContent = String(s.bus.length);
+    const blue = countColor(s.bus, 0);
+    this.busTotal.textContent = `${s.bus.length}명`;
+    this.busMix[0].textContent = `${blue} `;
+    this.busMix[1].textContent = `${s.bus.length - blue}`;
   }
 }
 
