@@ -32,6 +32,30 @@ export interface LocalSave {
   savedAt: number;
 }
 
+/** AI 한 행동 사이 쉬는 시간 단계 */
+export type AiSpeed = 'normal' | 'fast' | 'instant';
+
+/** 화면 설정(기기마다 따로) */
+export interface Settings {
+  aiSpeed: AiSpeed;
+  /** 내 차례가 돌아오면 지난 차례 이후 상대 행동 요약을 띄운다 */
+  turnSummary: boolean;
+  /** 첫 판 코치 문구 */
+  coach: boolean;
+}
+
+export const DEFAULT_SETTINGS: Settings = { aiSpeed: 'normal', turnSummary: true, coach: true };
+
+function loadSettings(): Settings {
+  const s = read<Partial<Settings>>('settings');
+  if (!s || typeof s !== 'object') return { ...DEFAULT_SETTINGS };
+  return {
+    aiSpeed: s.aiSpeed === 'fast' || s.aiSpeed === 'instant' ? s.aiSpeed : 'normal',
+    turnSummary: s.turnSummary !== false,
+    coach: s.coach !== false,
+  };
+}
+
 export const storage = {
   loadLocal: () => read<LocalSave>('local'),
   saveLocal: (game: GameState, me: number, savedAt: number) => write('local', { game, me, savedAt }),
@@ -41,4 +65,6 @@ export const storage = {
   loadSession: () => read<{ room: string; token: string }>('session'),
   saveSession: (room: string, token: string) => write('session', { room, token }),
   clearSession: () => remove('session'),
+  loadSettings,
+  saveSettings: (v: Settings) => write('settings', v),
 };

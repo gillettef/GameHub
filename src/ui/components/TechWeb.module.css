@@ -106,9 +106,75 @@
   opacity: 0.55;
 }
 .legend {
-  margin: var(--space-1) 0 0;
+  margin: 0;
+  padding-left: var(--space-4);
+  font-size: 13px;
+}
+.legend li + li {
+  margin-top: var(--space-1);
+}
+/* 줄기 배지 안 과학 비용. 360px 화면에서 웹 폭은 약 300px(424 → 0.71배) — 17 이면 약 12px */
+.cost {
+  font-size: 17px;
+  font-weight: 800;
+  fill: var(--res-sci);
+  pointer-events: none;
+}
+/* 상대가 내 직전 차례 이후 새로 연구한 노드 */
+.newRing {
+  fill: none;
+  stroke: var(--warn);
+  stroke-width: 2.6;
+}
+/* 웹 아래 칩 줄: 연구 가능한 곳·새 연구·보는 법. 넘치면 아래로 */
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+  margin-top: var(--space-1);
+}
+.chipsLabel {
   font-size: 12px;
   color: var(--text-dim);
+  margin-right: var(--space-1);
+}
+.chip {
+  --tone: var(--border);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: 44px;
+  max-width: 100%;
+  padding: 0 var(--space-3);
+  border-radius: 999px;
+  border: 1px solid var(--tone);
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 13px;
+}
+.chipCost {
+  color: var(--res-sci);
+  font-variant-numeric: tabular-nums;
+}
+/* 과학이 모자라는 비용 */
+.chipCost.short {
+  color: var(--warn);
+}
+.newNote {
+  flex: 1 1 200px;
+  font-size: 12px;
+  color: var(--warn);
+}
+.help {
+  min-height: 44px;
+  margin-left: auto;
+  padding: 0 var(--space-3);
+  border: none;
+  background: none;
+  color: var(--text-dim);
+  font-size: 13px;
+  text-decoration: underline;
 }
 .dim {
   color: var(--text-dim);

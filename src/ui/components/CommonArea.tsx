@@ -33,6 +33,7 @@ export function CommonArea() {
 
   return (
     <Section
+      id="common-area"
       tone="var(--zone-common)"
       title={
         <>
@@ -48,7 +49,10 @@ export function CommonArea() {
             <button key={i} className={styles.tile} onClick={() => setSlot(i)} data-tip={SATELLITE_DEFS[sid].name} data-tip-body={`에너지 ${SATELLITE_DEFS[sid].cost} · 궤도 ${SATELLITE_DEFS[sid].timer}차례\n시야 +1${modsText(SATELLITE_DEFS[sid].mods) ? ` · ${modsText(SATELLITE_DEFS[sid].mods)}` : ''}`}>
               <CardArt id={sid} icon="satellite" tone="var(--ark)" />
               <span>
-                {SATELLITE_DEFS[sid].name} <b className={styles.cost}>⚡{SATELLITE_DEFS[sid].cost}</b>
+                {SATELLITE_DEFS[sid].name} <b className={styles.cost} aria-label={`에너지 ${SATELLITE_DEFS[sid].cost}`}>
+                  <Icon name="energy" size={13} />
+                  {SATELLITE_DEFS[sid].cost}
+                </b>
               </span>
             </button>
           ) : (

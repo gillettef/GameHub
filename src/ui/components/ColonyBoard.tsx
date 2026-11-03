@@ -8,6 +8,7 @@ import {
   BUILDING_OUTPUT,
   BUILDING_RES,
   CHARTER_COST,
+  CHARTER_FULL_POINTS,
   CHARTER_MODS,
   CHARTER_NAMES,
   COLONIST_FOOD,
@@ -86,7 +87,11 @@ type Open =
   | { k: 'charter'; field: CharterField }
   | { k: 'patron'; id: string }
   | { k: 'facility'; id: string }
-  | { k: 'doctrine' };
+  | { k: 'doctrine' }
+  | { k: 'info'; title: string; body: string };
+
+/** 행동 뒤에도 갱신된 상태로 시트를 열어 두는(이어서 반복할 수 있는) 행동 */
+const REPEATABLE = new Set(['build', 'upgrade', 'buildUnit', 'upgradeUnit', 'addColonist', 'legacyStage', 'charter']);
 
 export function ColonyBoard({ player }: { player: PlayerState }) {
   const { game, me, check, act } = useGame();
@@ -109,14 +114,17 @@ export function ColonyBoard({ player }: { player: PlayerState }) {
   const cap = SPORE_CAP + mods.sporeCap;
   const main = mainDoctrine(p);
 
-  const sheet = open ? renderSheet(open) : null;
+  // 유산 마지막 단계를 지으면(짓는 중 카드가 사라짐) 열어 둔 시트를 방금 완성한 유산 보기로 바꾼다
+  const view: Open | null =
+    open?.k === 'legacy' && !p.legacyWip ? (p.legacies.length ? { k: 'legacyDone', id: p.legacies[p.legacies.length - 1] } : null) : open;
+  const sheet = view ? renderSheet(view) : null;
 
   type SheetView = { title: ReactNode; body: ReactNode; actions: SheetAction[]; art?: string; artIcon?: IconName; zoom?: { frame: FrameName; text: string; badge?: ReactNode } };
   function renderSheet(o: Open): SheetView {
     const withArt = (r: { title: ReactNode; body: ReactNode; actions: SheetAction[] }, art: string | null | undefined, artIcon: IconName, zoom?: SheetView['zoom']): SheetView => ({ ...r, art: art ?? undefined, artIcon, zoom });
     const acts: SheetAction[] = [];
     const add = (label: string, a: Parameters<typeof check>[0], tone?: SheetAction['tone']) => {
-      if (mine) acts.push({ label, onClick: () => act(a), disabled: check(a), tone });
+      if (mine) acts.push({ label, onClick: () => act(a), disabled: check(a), tone, keepOpen: REPEATABLE.has(a.type) });
     };
     switch (o.k) {
       case 'building': {
@@ -248,7 +256,7 @@ export function ColonyBoard({ player }: { player: PlayerState }) {
                   {l}단계(문화 {CHARTER_COST[l]}): {l === 3 && f === 'explore' ? '다음 고리 줄기까지 연구 가능' : modsText(CHARTER_MODS[f][l])}
                 </li>
               ))}
-              <li>3단계까지 채우면 최종 점수 +4</li>
+              <li>3단계까지 채우면 최종 점수 +{CHARTER_FULL_POINTS}</li>
             </ul>
           ),
           actions: acts,
@@ -262,6 +270,8 @@ export function ColonyBoard({ player }: { player: PlayerState }) {
         const f = FACILITY_DEFS[o.id];
         return withArt({ title: f.name, body: <p>{modsText(f.mods)}</p>, actions: [] }, f.id, 'workshop');
       }
+      case 'info':
+        return { title: o.title, body: <p className={styles.preline}>{o.body}</p>, actions: [] };
       case 'doctrine':
         return {
           title: '노선',
@@ -334,6 +344,7 @@ export function ColonyBoard({ player }: { player: PlayerState }) {
         {/* 상태 메달 */}
         <div className={styles.status}>
           <Medal
+            onOpen={(title, body) => setOpen({ k: 'info', title, body })}
             icon="health"
             tone="var(--eff-health)"
             label="건강"
@@ -343,7 +354,9 @@ export function ColonyBoard({ player }: { player: PlayerState }) {
             tipBody={`현재 ${stab} / 필요 ${need}(정착민 공급 트랙). 모자란 만큼 불건강 정착민이 생기고, 유휴 정착민보다 많으면 역병으로 건물 생산이 멈춥니다. 회관마다 +1.`}
           />
           <Medal
+            onOpen={(title, body) => setOpen({ k: 'info', title, body })}
             icon="might"
+            say={`${might(p, mods)}, 방어 ${defenseValue(p)}`}
             tone="var(--danger)"
             label="방위력"
             value={
@@ -356,6 +369,7 @@ export function ColonyBoard({ player }: { player: PlayerState }) {
             tipBody={`유닛 전력 합 + 보너스. 방어할 때는 포대마다 +1(방어값 ${defenseValue(p)}). 위협·습격·분쟁 판정에 씁니다.`}
           />
           <Medal
+            onOpen={(title, body) => setOpen({ k: 'info', title, body })}
             icon="spore"
             tone="var(--eff-spore)"
             label="포자"
@@ -364,7 +378,7 @@ export function ColonyBoard({ player }: { player: PlayerState }) {
             tip="포자 안개"
             tipBody={`보유 에너지 ${p.res.energy} / 기준 ${cap}. 기준을 넘으면 초과 3마다 건강 −1.`}
           />
-          <Medal icon="satellite" tone="var(--eff-sight)" label="시야" value={mods.sight} tip="시야" tipBody="퀘스트 트랙의 뒷면 카드를 칸 2부터 미리 볼 수 있는 장수. 궤도의 위성 1기마다 +1." />
+          <Medal onOpen={(title, body) => setOpen({ k: 'info', title, body })} icon="satellite" tone="var(--eff-sight)" label="시야" value={mods.sight} tip="시야" tipBody="퀘스트 트랙의 뒷면 카드를 칸 2부터 미리 볼 수 있는 장수. 궤도의 위성 1기마다 +1." />
         </div>
         {(p.guard > 0 || sick > 0) && (
           <div className={styles.alerts}>
@@ -489,7 +503,7 @@ export function ColonyBoard({ player }: { player: PlayerState }) {
         <Legend>헌장</Legend>
         <div className={styles.charters}>
           {CHARTER_FIELDS.map((f) => (
-            <button key={f} className={`${styles.charter} ${p.charters[f] >= 3 ? styles.charterFull : ''}`} style={{ '--lv': p.charters[f] } as Vars} onClick={() => setOpen({ k: 'charter', field: f })} data-tip={`헌장 · ${CHARTER_NAMES[f]} ${p.charters[f]}/3`} data-tip-body={p.charters[f] < 3 ? `다음 단계(문화 ${CHARTER_COST[p.charters[f] + 1]}): ${f === 'explore' && p.charters[f] === 2 ? '다음 고리 줄기까지 연구 가능' : modsText(CHARTER_MODS[f][p.charters[f] + 1])}` : '모두 채움 — 최종 점수 +4'}>
+            <button key={f} className={`${styles.charter} ${p.charters[f] >= 3 ? styles.charterFull : ''}`} style={{ '--lv': p.charters[f] } as Vars} onClick={() => setOpen({ k: 'charter', field: f })} data-tip={`헌장 · ${CHARTER_NAMES[f]} ${p.charters[f]}/3`} data-tip-body={p.charters[f] < 3 ? `다음 단계(문화 ${CHARTER_COST[p.charters[f] + 1]}): ${f === 'explore' && p.charters[f] === 2 ? '다음 고리 줄기까지 연구 가능' : modsText(CHARTER_MODS[f][p.charters[f] + 1])}` : `모두 채움 — 최종 점수 +${CHARTER_FULL_POINTS}`}>
               <span className={styles.pennant}>
                 <Icon name="charter" size={14} />
                 <span className={styles.charterName}>{CHARTER_NAMES[f]}</span>
@@ -538,10 +552,18 @@ function Empty() {
   );
 }
 
-/** 상태 메달: 둥근 금속 테 안의 아이콘 + 값 */
-function Medal({ icon, tone, label, value, warn, tip, tipBody }: { icon: IconName; tone: string; label: string; value: ReactNode; warn?: boolean; tip: string; tipBody: string }) {
+/** 상태 메달: 둥근 금속 테 안의 아이콘 + 값. 누르면 설명 시트(터치 기기·보조 기술도 같은 설명을 본다) */
+function Medal({ icon, tone, label, value, warn, tip, tipBody, onOpen, say }: { icon: IconName; tone: string; label: string; value: ReactNode; warn?: boolean; tip: string; tipBody: string; onOpen: (title: string, body: string) => void; say?: string }) {
   return (
-    <span className={`${styles.medal} ${warn ? styles.medalWarn : ''}`} style={{ '--tone': warn ? 'var(--warn)' : tone } as Vars} data-tip={tip} data-tip-body={tipBody}>
+    <button
+      type="button"
+      className={`${styles.medal} ${warn ? styles.medalWarn : ''}`}
+      style={{ '--tone': warn ? 'var(--warn)' : tone } as Vars}
+      data-tip={tip}
+      data-tip-body={tipBody}
+      aria-label={`${label} ${say ?? (typeof value === 'string' || typeof value === 'number' ? value : '')} — 설명 보기`}
+      onClick={() => onOpen(tip, tipBody)}
+    >
       <span className={styles.medalFace}>
         <Icon name={icon} size={18} />
       </span>
@@ -549,7 +571,7 @@ function Medal({ icon, tone, label, value, warn, tip, tipBody }: { icon: IconNam
         <b>{value}</b>
         <span>{label}</span>
       </span>
-    </span>
+    </button>
   );
 }
 

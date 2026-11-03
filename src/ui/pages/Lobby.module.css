@@ -67,3 +67,29 @@
   color: var(--text-dim);
   text-decoration: underline;
 }
+.count {
+  margin: 0;
+  text-align: center;
+  font-size: 14px;
+  color: var(--text-dim);
+}
+
+.nameInput {
+  min-height: 40px;
+  min-width: 0;
+  padding: 0 var(--space-2);
+  font-size: 16px; /* iOS 확대 방지 */
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-sm);
+}
+.rename {
+  min-height: 44px;
+  padding: 0 var(--space-2);
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-size: 12px;
+  text-decoration: underline;
+}

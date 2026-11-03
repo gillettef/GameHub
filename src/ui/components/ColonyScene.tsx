@@ -1,7 +1,7 @@
 // 식민지 풍경 장면: 시대별 착륙지 그림 위에 건물·유닛 구조물, 정착민 말, 유산 기념물을 정해진 자리에 얹는다.
 // 그림은 scripts/art 로 구운 WebP(docs/art.md). 자리 좌표는 assets/scene/layout.json 한 곳(굽는 스크립트도 같은 파일을 읽음).
 // 누르는 영역(버튼)은 이웃 자리와 겹치지 않게 폭·높이를 줄이고, 그림은 pointer-events 없이 원래 크기로 넘친다.
-import type { CSSProperties } from 'react';
+import { memo, type CSSProperties } from 'react';
 import type { BuildingKind, Era, PlayerState, Res, UnitKind } from '../../core/types';
 import { BUILDING_KINDS, RES_KEYS, UNIT_KINDS } from '../../core/types';
 import { BUILDING_NAMES, BUILDING_OUTPUT, LEVEL_NAMES, RES_NAMES, UNIT_NAMES, UNIT_POWER } from '../../core/data/constants';
@@ -106,7 +106,13 @@ interface SceneProps {
   upkeep: number;
 }
 
-export function ColonyScene({ player: p, era, mods, eager = false, onBuilding, onUnit, onColonist, onLegacy, onLegacyDone, net, upkeep }: SceneProps) {
+/**
+ * 풍경은 그림·버튼이 많다. 판의 플레이어·시대·생산이 그대로면 다시 그리지 않는다
+ * (상태는 행동마다 깊은 복사라 객체가 늘 새것 — 값으로 비교). 콜백은 시트 열기만 하므로 비교에서 뺀다
+ */
+export const ColonyScene = memo(ColonySceneView, (a, b) => a.era === b.era && a.eager === b.eager && a.upkeep === b.upkeep && JSON.stringify(a.net) === JSON.stringify(b.net) && JSON.stringify(a.player) === JSON.stringify(b.player));
+
+function ColonySceneView({ player: p, era, mods, eager = false, onBuilding, onUnit, onColonist, onLegacy, onLegacyDone, net, upkeep }: SceneProps) {
   const fresh = useFresh(800);
   const pop = (key: string) => (fresh(key) ? 'anim-pop' : '');
 

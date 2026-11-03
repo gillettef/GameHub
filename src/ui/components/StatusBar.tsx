@@ -1,10 +1,11 @@
 // 상단 고정 상태 줄(BGA 의 페이지 제목 줄): 메뉴·시대 정보, 지금 누가 무엇을 하는지, 퀘스트 선택 안내, 대외 단계(손의 습격·분쟁 카드)와 차례 종료 버튼
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import type { ConflictDef, RaidDef, RaidEffect } from '../../core/types';
+import type { ConflictDef, GameState, RaidDef, RaidEffect } from '../../core/types';
+import { RES_KEYS } from '../../core/types';
 import { CONFLICT_LOSS_NAMES, RAID_EFFECT_NAMES } from '../describe';
 import { CARD_DEFS } from '../../core/data/cards';
-import { CONFLICT_DEFENSE, RAID_DEFENSE, raidAmount } from '../../core/data/constants';
+import { CONFLICT_DEFENSE, RAID_DEFENSE, RES_NAMES, raidAmount } from '../../core/data/constants';
 import { attackValue, commandLeft, defenseLeft, defenseValue, edgeBonus, stage } from '../../core/engine/derive';
 import { swarmValue } from '../../core/engine/external';
 import { eraProgress } from '../../core/engine/era';
@@ -15,10 +16,14 @@ import { Sheet } from './Sheet';
 import styles from './StatusBar.module.css';
 
 const EFFECT_NAMES = RAID_EFFECT_NAMES;
+/** 첫 판 코치는 이 라운드까지만 */
+const COACH_ROUNDS = 3;
+const smooth = () => (matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth');
+const scrollToId = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: smooth(), block: 'start' });
 const LOSS_NAMES = CONFLICT_LOSS_NAMES;
 
 export function StatusBar({ onMenu, onLog, onResults }: { onMenu: () => void; onLog: () => void; onResults: () => void }) {
-  const { game } = useGame();
+  const { game, offline } = useGame();
   const canUndo = useApp((s) => s.canUndo);
   const undo = useApp((s) => s.undo);
   const prog = eraProgress(game);
@@ -53,18 +58,27 @@ export function StatusBar({ onMenu, onLog, onResults }: { onMenu: () => void; on
             되돌리기
           </button>
         )}
+        <button className={styles.textBtn} onClick={() => scrollToId('common-area')} aria-label="위성 시장으로 이동">
+          <Icon name="satellite" size={16} /> 위성
+        </button>
         <button className={styles.textBtn} onClick={onLog}>
           기록
         </button>
       </div>
+      {offline && (
+        <div className={styles.offline} role="alert">
+          연결 끊김 — 다시 연결하는 중(행동 잠김)
+        </div>
+      )}
       <ActionRow onResults={onResults} />
+      <MyResources />
       <TurnCue />
     </header>
   );
 }
 
 function ActionRow({ onResults }: { onResults: () => void }) {
-  const { game, me, myTurn, check, act } = useGame();
+  const { game, me, myTurn, offline, check, act } = useGame();
   const [sheet, setSheet] = useState<'raid' | 'conflict' | 'end' | null>(null);
   const [target, setTarget] = useState<number | null>(null);
   const [pick, setPick] = useState<number | null>(null);
@@ -105,11 +119,17 @@ function ActionRow({ onResults }: { onResults: () => void }) {
     </div>
   );
   if (!myTurn) {
+    const last = lastOtherLog(game, me);
     return (
       <div className={styles.bar}>
         {counts}
         <span className={styles.wait}>
-          {game.pending.length && actor === me ? '결정을 기다리는 중' : `${game.players[actor].name}의 ${game.pending.length ? '결정' : '차례'}…`}
+          <span>{game.pending.length && actor === me ? '결정을 기다리는 중' : `${game.players[actor].name}의 ${game.pending.length ? '결정' : '차례'}…`}</span>
+          {last && (
+            <span key={game.log.length} className={`${styles.lastLog} anim-slide-in`}>
+              {game.players[last.player!].name}: {last.text}
+            </span>
+          )}
         </span>
       </div>
     );
@@ -118,7 +138,7 @@ function ActionRow({ onResults }: { onResults: () => void }) {
     return (
       <div className={styles.bar}>
         {counts}
-        <button className={`${styles.primary} anim-shine`} onClick={() => document.getElementById('quest-track')?.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' })}>
+        <button className={`${styles.primary} anim-shine`} onClick={() => scrollToId('quest-track')}>
           퀘스트 고르기
         </button>
         <span className={styles.phase}>차례 처음 — 퀘스트 트랙에서 1장</span>
@@ -136,11 +156,11 @@ function ActionRow({ onResults }: { onResults: () => void }) {
         {counts}
         {external ? (
           <div className={styles.ext}>
-            <button onClick={() => setSheet('raid')} disabled={raidCards.length === 0} data-tip="습격" data-tip-body="손의 습격 카드 1장 + 방위 행동 2. 공격값이 상대 방어값보다 크면 카드에 적힌 자원을 약탈합니다.">
+            <button onClick={() => setSheet('raid')} disabled={offline || raidCards.length === 0} data-tip="습격" data-tip-body="손의 습격 카드 1장 + 방위 행동 2. 공격값이 상대 방어값보다 크면 카드에 적힌 자원을 약탈합니다.">
               습격
               <small>{raidCards.length ? `카드 ${raidCards.length}` : '카드 없음'}</small>
             </button>
-            <button onClick={() => setSheet('conflict')} disabled={game.era < 2 || conflictCards.length === 0} data-tip="분쟁" data-tip-body={`손의 분쟁 카드 1장으로 선포. 다음 내 차례에 방위 행동 ${CONFLICT_DEFENSE}로 판정합니다.`}>
+            <button onClick={() => setSheet('conflict')} disabled={offline || game.era < 2 || conflictCards.length === 0} data-tip="분쟁" data-tip-body={`손의 분쟁 카드 1장으로 선포. 다음 내 차례에 방위 행동 ${CONFLICT_DEFENSE}로 판정합니다.`}>
               분쟁
               <small>{game.era < 2 ? '2시대~' : conflictCards.length ? `카드 ${conflictCards.length}` : '카드 없음'}</small>
             </button>
@@ -149,7 +169,7 @@ function ActionRow({ onResults }: { onResults: () => void }) {
           <span className={styles.phase}>행동 단계 — 연구·건설 등</span>
         )}
         {/* 할 일을 다 했으면 차례 종료 버튼에 빛이 훑고 지나간다 */}
-        <button className={`${styles.primary} ${commandLeft(game, p) === 0 ? 'anim-shine' : ''}`} onClick={() => (commandLeft(game, p) > 0 ? setSheet('end') : act({ type: 'endTurn' }))}>
+        <button className={`${styles.primary} ${commandLeft(game, p) === 0 ? 'anim-shine' : ''}`} disabled={offline} onClick={() => (commandLeft(game, p) > 0 ? setSheet('end') : act({ type: 'endTurn' }))}>
           차례 종료
         </button>
       </div>
@@ -210,6 +230,61 @@ function ActionRow({ onResults }: { onResults: () => void }) {
         </Sheet>
       )}
     </>
+  );
+}
+
+/** 상대 차례 동안 상태 줄에 보일 상대의 마지막 기록 1줄 */
+function lastOtherLog(game: GameState, me: number) {
+  for (let i = game.log.length - 1; i >= 0; i--) {
+    const e = game.log[i];
+    if (e.player !== null && e.player !== me) return e;
+  }
+  return null;
+}
+
+/** 안내 줄: 첫 판 코치(단계별) 또는 대외 단계 주의. 상태 줄 밖(테이블 스크롤 영역)에 둔다 */
+export function Guide() {
+  const { game, me, myTurn } = useGame();
+  const coach = useApp((s) => s.settings.coach);
+  const setSettings = useApp((s) => s.setSettings);
+  if (!myTurn || game.gameOver) return null;
+  const p = game.players[me];
+  const left = commandLeft(game, p);
+  if (coach && game.round <= COACH_ROUNDS) {
+    const step =
+      game.phase === 'quest'
+        ? '① 퀘스트 트랙에서 카드 1장을 고르세요. 맨 앞 칸만 앞면이고, 뒷면도 고를 수 있습니다.'
+        : game.phase === 'external'
+          ? '② 대외 단계 — 손의 습격·분쟁 카드는 지금, 다른 행동보다 먼저만 낼 수 있습니다. 없으면 연구·건설로 넘어가세요.'
+          : left > 0
+            ? `③ 남은 지휘 ${left}개로 테크 웹 연구, 건설, 정착민 늘리기 등을 하세요.`
+            : '④ 할 일을 다 했으면 차례 종료를 누르세요. 생산은 차례 끝에 들어옵니다.';
+    return (
+      <div className={styles.coach}>
+        <span>{step}</span>
+        <button className={styles.coachOff} onClick={() => setSettings({ coach: false })}>
+          다시 보지 않기
+        </button>
+      </div>
+    );
+  }
+  if (game.phase === 'external') return <p className={styles.hint}>습격·분쟁은 다른 행동보다 먼저 — 연구·건설 등을 하면 이번 차례 기회가 넘어갑니다</p>;
+  return null;
+}
+
+/** 내 자원 한 줄(보유량) */
+function MyResources() {
+  const { game, me } = useGame();
+  const p = game.players[me];
+  if (!p) return null;
+  return (
+    <div className={styles.res} role="group" aria-label={`내 자원 — ${RES_KEYS.map((k) => `${RES_NAMES[k]} ${p.res[k]}`).join(', ')}`}>
+      {RES_KEYS.map((k) => (
+        <span key={k} style={{ color: `var(--res-${k})` }} aria-hidden>
+          <Icon name={k} size={14} /> {p.res[k]}
+        </span>
+      ))}
+    </div>
   );
 }
 

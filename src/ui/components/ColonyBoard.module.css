@@ -49,6 +49,15 @@
   min-height: 44px;
   padding: 4px 2px;
   text-align: center;
+  /* 버튼 기본 모양 지우기 */
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+}
+/* 설명 시트 본문(툴팁 글의 줄바꿈 유지) */
+.preline {
+  white-space: pre-line;
 }
 /* 금속 테를 두른 둥근 메달 */
 .medalFace {

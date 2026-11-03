@@ -20,6 +20,8 @@ export type ClientMsg =
   | { t: 'join'; room: string; name: string }
   | { t: 'resume'; room: string; token: string }
   | { t: 'start' }
+  /** 대기실에서 내 이름 바꾸기(시작 전만) */
+  | { t: 'rename'; name: string }
   | { t: 'action'; ver: number; action: Action }
   | { t: 'leave' }
   | { t: 'ping' };

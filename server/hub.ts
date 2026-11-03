@@ -203,6 +203,15 @@ function handle(ws: WebSocket, msg: ClientMsg): void {
       attach(ws, r, seat);
       return;
     }
+    case 'rename': {
+      const r = conn.room ? rooms.get(conn.room) : null;
+      if (!r || r.seats[conn.seat]?.ws !== ws) return;
+      if (r.game) return send(ws, { t: 'error', message: '시작한 뒤에는 이름을 바꿀 수 없습니다' });
+      r.seats[conn.seat].name = cleanName(msg.name);
+      r.lastActive = Date.now();
+      broadcast(r);
+      return;
+    }
     case 'start': {
       const r = conn.room ? rooms.get(conn.room) : null;
       if (!r) return;

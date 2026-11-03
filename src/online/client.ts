@@ -20,9 +20,18 @@ function url(): string {
   return `${proto}://${location.host}/ws`;
 }
 
-function raw(msg: ClientMsg): void {
-  if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(msg));
+/** 열린 소켓으로 보낸다. 닫혀 있으면 보내지 못했다고 돌려준다(조용히 버리지 않는다) */
+function raw(msg: ClientMsg): boolean {
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify(msg));
+    return true;
+  }
+  return false;
 }
+
+const setConn = (conn: 'connecting' | 'open' | 'closed' | null) => {
+  if (useApp.getState().conn !== conn) useApp.getState().set({ conn });
+};
 
 function connect(first: ClientMsg): void {
   intentionalClose = false;
@@ -30,13 +39,16 @@ function connect(first: ClientMsg): void {
   if (ws && ws.readyState === WebSocket.OPEN) {
     raw(first);
     pendingOpen = null;
+    setConn('open');
     return;
   }
   ws?.close();
   const sock = new WebSocket(url());
   ws = sock;
+  if (useApp.getState().conn !== 'closed') setConn('connecting');
   sock.onopen = () => {
     dropped = false;
+    setConn('open');
     if (pendingOpen) raw(pendingOpen);
     pendingOpen = null;
     if (ping) clearInterval(ping);
@@ -55,6 +67,7 @@ function connect(first: ClientMsg): void {
     // 버린 옛 소켓이 늦게 닫혀도 새 소켓의 핑을 끄지 않게, 현재 소켓일 때만 정리한다
     if (ws !== sock || intentionalClose) return;
     if (ping) clearInterval(ping);
+    setConn('closed');
     const session = storage.loadSession();
     if (session) {
       if (!dropped) useApp.getState().showToast('연결이 끊겼습니다 — 다시 연결하는 중');
@@ -159,7 +172,12 @@ function receiveState(msg: StateMsg): void {
   queueTimer = setTimeout(drain, wait);
 }
 
-const send = (action: Action) => raw({ t: 'action', ver: useApp.getState().game?.ver ?? 0, action });
+const send = (action: Action) => {
+  if (!raw({ t: 'action', ver: useApp.getState().game?.ver ?? 0, action })) {
+    useApp.getState().showToast('연결이 끊겨 행동을 보내지 못했습니다 — 다시 연결되면 다시 눌러 주세요');
+    reconnect();
+  }
+};
 
 function onMessage(msg: ServerMsg): void {
   const app = useApp.getState();
@@ -181,10 +199,9 @@ function onMessage(msg: ServerMsg): void {
       // 대기실에서 오래 자리를 비우면 서버가 자리를 비운다 — 방이 사라진 것처럼 읽히지 않게
       app.showToast(msg.message.includes('방을 찾을 수 없') && app.screen === 'lobby' ? '오래 자리를 비워 대기실 자리가 비워졌습니다 — 초대 코드로 다시 참가하세요' : msg.message);
       if (msg.message.includes('방을 찾을 수 없')) {
-        intentionalClose = true;
-        resetQueue();
+        closeSocket();
         storage.clearSession();
-        app.set({ screen: 'home', mode: null, game: null, lobby: null, send: null });
+        app.set({ screen: 'home', mode: null, game: null, lobby: null, send: null, conn: null, mark: null, confirm: null });
       }
       break;
     case 'pong':
@@ -202,8 +219,32 @@ export function joinRoom(room: string, name: string): void {
   connect({ t: 'join', room: room.toUpperCase(), name });
 }
 
+/** 대기실에서 내 이름 바꾸기. 보냈으면 true */
+export function renameOnline(name: string): boolean {
+  if (raw({ t: 'rename', name })) return true;
+  useApp.getState().showToast('연결이 끊겨 이름을 바꾸지 못했습니다 — 다시 연결하는 중');
+  reconnect();
+  return false;
+}
+
 export function startOnline(): void {
-  raw({ t: 'start' });
+  if (raw({ t: 'start' })) return;
+  useApp.getState().showToast('연결이 끊겨 시작하지 못했습니다 — 다시 연결하는 중');
+  reconnect();
+}
+
+/** 의도한 종료: 재시도·핑·재생 큐를 정리하고 소켓을 닫는다(다음 연결은 새 소켓으로) */
+function closeSocket(): void {
+  intentionalClose = true;
+  dropped = false;
+  if (retry) clearTimeout(retry);
+  retry = null;
+  if (ping) clearInterval(ping);
+  ping = null;
+  resetQueue();
+  const old = ws;
+  ws = null;
+  old?.close();
 }
 
 /** 저장된 재접속 토큰이 있으면 이어 붙는다 */
@@ -214,14 +255,9 @@ export function resumeOnline(): void {
 }
 
 export function leaveOnline(): void {
-  intentionalClose = true;
-  dropped = false;
-  if (retry) clearTimeout(retry);
-  resetQueue();
   raw({ t: 'leave' });
-  ws?.close();
-  ws = null;
+  closeSocket();
   storage.clearSession();
   history.replaceState(null, '', location.pathname);
-  useApp.getState().set({ screen: 'home', mode: null, game: null, lobby: null, send: null });
+  useApp.getState().set({ screen: 'home', mode: null, game: null, lobby: null, send: null, conn: null, mark: null, confirm: null });
 }
