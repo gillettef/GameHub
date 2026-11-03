@@ -3,14 +3,15 @@ import { createGame } from './setup';
 import { applyAction } from './turn';
 import { webGraph, researchCost, researchBlock, twigNeighborTrunks } from './research';
 import { advanceEra } from './era';
-import { pickBlock, slotVisible } from './quest';
+import { checkPatronDemands, pickBlock, slotVisible } from './quest';
+import { sight } from './derive';
 import { unitPoolCap, defenseValue, health, plague, playerMods, productionPreview, requiredHealth, stage, unhealthy } from './derive';
 import { scorePlayer } from './scoring';
 import { chooseAction } from '../ai';
 import { TWIG_DEFS, trunkId, CORE_ID } from '../data/techWeb';
 import { QUEST_DEFS } from '../data/quests';
 import { clone } from './util';
-import { COLONIST_TOTAL, COLONIST_TRACK, ERA_TRUNK_PER_PLAYER, QUEST_ROW_SIZE, SEAT_BONUS, START_RES, TRUNK_BASE_COST, colonistTrack } from '../data/constants';
+import { COLONIST_TOTAL, COLONIST_TRACK, ERA_TRUNK_PER_PLAYER, PATRON_FAIL_CULTURE, PATRON_MET_CULTURE_PER_ERA, QUEST_ROW_SIZE, SEAT_BONUS, START_RES, TRUNK_BASE_COST, colonistTrack } from '../data/constants';
 import { produce } from './turn';
 import type { Action, GameState } from '../types';
 
@@ -552,7 +553,7 @@ describe('퀘스트', () => {
     const me = s.current;
     expect(slotVisible(s, me, 0)).toBe(true);
     expect(slotVisible(s, me, 1)).toBe(false);
-    s.players[me].orbit.push({ id: 'sa3', timer: 3 });
+    s.players[me].orbit.push({ id: 'sa1', timer: 3 });
     expect(slotVisible(s, me, 1)).toBe(true);
     expect(slotVisible(s, me, 2)).toBe(false);
     expect(slotVisible(s, (me + 1) % 3, 1)).toBe(false);
@@ -637,6 +638,58 @@ describe('퀘스트', () => {
     expect(s.pending[0]?.player).not.toBe(first);
     s = applyAction(s, s.pending[0].player, { type: 'respond', choice: 1 }).state;
     expect(s.players.some((p) => p.patrons.includes(patronId))).toBe(true);
+  });
+
+  it('방위력 최저 동점이면 고른 사람의 다음 자리가 대상, 고른 사람은 마지막', () => {
+    const s = atQuest('q1t1'); // 방위력 최저 1명, 손실 식량 2
+    const me = s.current;
+    s.players.forEach((p) => (p.res.food = 5)); // 모두 방위력 같음
+    const after = act(s, { type: 'pickQuest', slot: 0 });
+    expect(after.players[(me + 1) % 3].res.food).toBe(3);
+    expect(after.players[me].res.food).toBe(5);
+    expect(after.players[(me + 2) % 3].res.food).toBe(5);
+  });
+
+  it('방위력 하위 2명 동점이면 고른 사람의 다음 두 자리가 대상', () => {
+    const s = atQuest('q1t3'); // 하위 2명, 위협도 4, 손실 생산 2
+    const me = s.current;
+    s.players.forEach((p) => (p.res.prod = 5));
+    const after = act(s, { type: 'pickQuest', slot: 0 });
+    expect(after.players[(me + 1) % 3].res.prod).toBe(3);
+    expect(after.players[(me + 2) % 3].res.prod).toBe(3);
+    expect(after.players[me].res.prod).toBe(5);
+  });
+
+  it('주둔지 종료 검사는 라운드 상한으로 일찍 끝나도 시대 3으로 셈한다', () => {
+    const s = createGame(1, seats(3));
+    s.era = 2;
+    s.players[0].patrons = ['pa9']; // 요구 방주 10
+    s.players[0].doctrine.ark = 10;
+    s.players[0].res.culture = 0;
+    checkPatronDemands(s, s.era, true);
+    expect(s.players[0].res.culture).toBe(3 * PATRON_MET_CULTURE_PER_ERA);
+  });
+
+  it('중계 위성은 위성 시야 +1 에 더해 시야 +1(합 2)', () => {
+    const s = createGame(1, seats(3));
+    s.players[0].orbit = [{ id: 'sa3', timer: 3 }];
+    expect(sight(s.players[0])).toBe(2);
+  });
+
+  it('주둔지 요구: 받은 시대가 끝날 때는 면제, 다음 시대 전환과 종료 때 검사', () => {
+    const s = createGame(1, seats(3));
+    s.players[0].patrons = ['pa1']; // 1시대 카드, 요구 제작소 3
+    s.players[0].res.culture = 10;
+    checkPatronDemands(s, 1);
+    expect(s.players[0].res.culture).toBe(10);
+    checkPatronDemands(s, 2);
+    expect(s.players[0].res.culture).toBe(10 - PATRON_FAIL_CULTURE);
+    s.players[1].patrons = ['pa9']; // 3시대 카드: 3→4 전환은 면제, 종료 검사만
+    s.players[1].res.culture = 10;
+    checkPatronDemands(s, 3);
+    expect(s.players[1].res.culture).toBe(10);
+    checkPatronDemands(s, 4, true);
+    expect(s.players[1].res.culture).toBe(10 - PATRON_FAIL_CULTURE);
   });
 });
 
@@ -741,7 +794,7 @@ describe('가림', async () => {
   const { maskFor, HIDDEN } = await import('../mask');
   it('덱·시야 밖 뒷면 칸·시드를 가린다', () => {
     const s = ready();
-    s.players[0].orbit.push({ id: 'sa3', timer: 3 });
+    s.players[0].orbit.push({ id: 'sa1', timer: 3 });
     const m = maskFor(s, 0);
     expect(m.questRow.slice(0, 2)).toEqual(s.questRow.slice(0, 2));
     expect(m.questRow.slice(2).every((x) => x === HIDDEN)).toBe(true);

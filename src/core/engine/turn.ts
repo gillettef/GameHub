@@ -7,7 +7,7 @@ import { defenseLeft, playerMods, productionPreview, unhealthy } from './derive'
 import { applyMainAction } from './actions';
 import { declareConflict, raid, resolveConflict } from './external';
 import { advanceEra, eraShouldAdvance } from './era';
-import { canPickAny, pickQuest, pushRow, respond, startThreatOn } from './quest';
+import { canPickAny, checkPatronDemands, pickQuest, pushRow, respond, startThreatOn } from './quest';
 import { ranking } from './scoring';
 import { clone, log } from './util';
 
@@ -191,6 +191,9 @@ function nextTurn(state: GameState): void {
 }
 
 function finish(state: GameState): void {
+  // 종료 검사(Rules 13절): 가진 주둔지 요구를 마지막으로 한 번 더 본다(시대는 3으로 셈)
+  log(state, null, '게임 종료 — 주둔지 요구 마지막 검사');
+  checkPatronDemands(state, state.era, true);
   state.gameOver = true;
   state.phase = 'actions';
   const r = ranking(state);

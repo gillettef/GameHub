@@ -16,7 +16,7 @@ function tw(dir: Direction, ring: Ring, n: 'a' | 'b', name: string, doctrine: Do
  */
 const AGRI: TwigDef[] = [
   tw('agri', 1, 'a', '봉인 종자고', 'ark', 1, { mods: { income: { food: 1 } } }),
-  tw('agri', 1, 'b', '토양 균사', 'symbiont', 1, { instant: { gain: { food: 3 } } }),
+  tw('agri', 1, 'b', '토양 균사', 'symbiont', 1, { mods: { income: { food: 1 } }, instant: { gain: { food: 1 } } }),
   tw('agri', 2, 'a', '저장 곡창', 'ark', 1, { mods: { foodUpkeep: 1 } }),
   tw('agri', 2, 'b', '공생 배양조', 'symbiont', 2, { mods: { buildingBonus: { farm: 1 } } }),
   // 양옆: 문화·방위
@@ -37,7 +37,7 @@ const CULTURE: TwigDef[] = [
 const ACADEMIC: TwigDef[] = [
   tw('academic', 1, 'a', '연산 코어', 'synth', 1, { mods: { income: { sci: 1 } } }),
   tw('academic', 1, 'b', '이주민 학교', 'ark', 1, { instant: { gain: { sci: 3 } } }),
-  tw('academic', 2, 'a', '양자 연구망', 'synth', 1, { mods: { researchDiscount: 1 } }),
+  tw('academic', 2, 'a', '양자 연구망', 'synth', 1, { mods: { researchDiscount: 2 } }),
   tw('academic', 2, 'b', '현장 실험실', 'ark', 1, { mods: { buildingBonus: { lab: 1 } } }),
   // 양옆: 문화·동력
   tw('academic', 3, 'a', '의식 업로드', 'synth', 2, { mods: { buildingBonus: { lab: 1, power: 1 } } }),
@@ -46,7 +46,7 @@ const ACADEMIC: TwigDef[] = [
 
 const POWER: TwigDef[] = [
   tw('power', 1, 'a', '축전 격자', 'synth', 1, { mods: { income: { energy: 1 } } }),
-  tw('power', 1, 'b', '생체 발광', 'symbiont', 1, { instant: { gain: { energy: 3 } } }),
+  tw('power', 1, 'b', '생체 발광', 'symbiont', 1, { mods: { income: { energy: 1 } }, instant: { gain: { energy: 1 } } }),
   tw('power', 2, 'a', '전력망 확장', 'synth', 1, { mods: { buildingBonus: { power: 1 } } }),
   tw('power', 2, 'b', '지열 공명', 'symbiont', 1, { mods: { sporeCap: 3, income: { sci: 1 } } }),
   // 양옆: 학술·산업
@@ -56,7 +56,7 @@ const POWER: TwigDef[] = [
 
 const INDUSTRY: TwigDef[] = [
   tw('industry', 1, 'a', '조립 로봇', 'synth', 1, { mods: { income: { prod: 1 } } }),
-  tw('industry', 1, 'b', '광석 분해', 'symbiont', 1, { instant: { gain: { prod: 3 } } }),
+  tw('industry', 1, 'b', '광석 분해', 'symbiont', 1, { mods: { income: { prod: 1 } }, instant: { gain: { prod: 1 } } }),
   tw('industry', 2, 'a', '나노 공정', 'synth', 2, { mods: { buildingBonus: { workshop: 1 } } }),
   tw('industry', 2, 'b', '순환 재활용', 'symbiont', 1, { mods: { unitUpgradeDiscount: 1, income: { prod: 1 } } }),
   // 양옆: 동력·방위
@@ -67,7 +67,7 @@ const INDUSTRY: TwigDef[] = [
 const DEFENSE: TwigDef[] = [
   tw('defense', 1, 'a', '전투 기계', 'synth', 1, { mods: { might: 1 } }),
   tw('defense', 1, 'b', '방벽 설계', 'ark', 1, { mods: { unitPower: { guard: 1 } } }),
-  tw('defense', 2, 'a', '자율 드론', 'synth', 1, { mods: { raidBonus: 1 } }),
+  tw('defense', 2, 'a', '자율 드론', 'synth', 1, { mods: { raidBonus: 1, might: 1 } }),
   tw('defense', 2, 'b', '요새 포좌', 'ark', 1, { mods: { unitPower: { battery: 1 } } }),
   // 양옆: 산업·농업
   tw('defense', 3, 'a', '무장 공장', 'synth', 1, { mods: { unitPower: { battery: 1 }, buildingBonus: { workshop: 1 } } }),

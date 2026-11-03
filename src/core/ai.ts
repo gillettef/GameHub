@@ -1,10 +1,10 @@
 // AI 결정: 후보 행동을 한 수 적용해 보고 평가 함수 증가량이 가장 큰 것을 고른다(결정적, 난수 없음)
 import type { Action, GameState, PlayerState, RaidEffect, UnitKind } from './types';
 import { BUILDING_KINDS, CHARTER_FIELDS, DOCTRINES, UNIT_KINDS } from './types';
-import { BUILDING_COST, CHARTER_COST, CHARTER_FULL_POINTS, CONFLICT_DEFENSE, PATRON_LIMIT, RAID_DEFENSE, TRUNK_BASE_COST, UNIT_COST } from './data/constants';
+import { BUILDING_COST, CHARTER_COST, CHARTER_FULL_POINTS, COLONIST_FOOD, CONFLICT_DEFENSE, PATRON_FAIL_CULTURE, PATRON_LIMIT, PATRON_MET_CULTURE_PER_ERA, RAID_DEFENSE, TRUNK_BASE_COST, UNIT_COST } from './data/constants';
 import { CARD_DEFS } from './data/cards';
 import { QUEST_DEFS } from './data/quests';
-import { PATRON_DEFS } from './data/patrons';
+import { PATRONS, PATRON_DEFS } from './data/patrons';
 import { applyAction } from './engine/turn';
 import {
   attackValue,
@@ -15,6 +15,7 @@ import {
   defenseMax,
   defenseValue,
   mainDoctrine,
+  metric,
   might,
   plague,
   playerMods,
@@ -29,12 +30,13 @@ import { pendingChoices, pickBlock, slotVisible } from './engine/quest';
 import { maskFor } from './mask';
 
 const THREAT_LEVEL = [0, 5, 9, 14, 14];
-/** 뒷면 카드를 모른 채 고를 때 기대 가치(임시). 덱 평균을 엿보지 않고 상수로 둔다 */
-const BLIND_PICK_VALUE = 1.5;
+/** 뒷면 카드를 모른 채 고를 때 기대 가치(임시). 덱 평균을 엿보지 않고 상수로 둔다.
+ *  1.5 는 칸 1 의 한 수 평가보다 자주 커서 칸 2 를 기계적으로 골랐다(트랙 2칸 이동 → 덱 소모·카드 낭비 착시). 2026-11-03 측정으로 0.5 */
+const BLIND_PICK_VALUE = 0.5;
 /** 상대에게 준 손해를 내 이득으로 셈하는 비율 */
 const HARM_WEIGHT = 0.3;
-/** 쌓인 식량이 이만큼이면 식량 생산의 가치를 거의 없는 것으로 본다 */
-const FOOD_STOCK_ENOUGH = 25;
+/** 쌓인 식량이 남은 판에 필요한 양(정착민 늘리기 + 유지비 적자)의 이 배수를 넘으면 식량 생산의 가치를 거의 없는 것으로 본다 */
+const FOOD_NEED_MARGIN = 1.2;
 /** 지휘·방위 행동 1개의 라운드당 가치(문화 환산, 임시) */
 const COMMAND_VALUE = 0.9;
 const DEFENSE_VALUE = 0.3;
@@ -63,9 +65,12 @@ export function evaluate(state: GameState, p: PlayerState): number {
   const pv = productionPreview(p, mods);
   let v = p.res.culture;
   v += DOCTRINES.reduce((a, d) => a + p.doctrine[d] * 0.8, 0);
+  // 식량은 정착민 늘리기·유지비 말고 쓸 곳이 없다 — 남은 판에 필요한 양으로 식량 생산의 가치를 줄인다(식량 쌓기 착시 방지).
+  // 재고 가치에는 쓰지 않는다: 정착민을 늘리면 필요량도 줄어 식량 쓰기가 손해로 보이기 때문
+  const foodNeed = Math.max(4, p.pool * (COLONIST_FOOD[Math.min(state.era, 4)] ?? 4) + Math.max(0, -pv.net.food) * R);
   v += (soft(p.res.food, STOCK_SOFT_CAP.food) * 0.3 + soft(p.res.prod, STOCK_SOFT_CAP.prod) * 0.4 + Math.min(p.res.energy, 8) * 0.2 + soft(p.res.sci, STOCK_SOFT_CAP.sci) * 0.5) * resW;
   // 식량은 정착민·손실 대비 말고는 쓸 곳이 적다 — 쌓아 둔 양이 많을수록 식량 생산의 가치를 줄인다(농장만 키우는 착시 방지)
-  const foodW = Math.max(0.1, 1 - p.res.food / FOOD_STOCK_ENOUGH);
+  const foodW = Math.max(0.05, 1 - p.res.food / (foodNeed * FOOD_NEED_MARGIN));
   v += R * (pv.gross.culture * 1 + pv.gross.sci * 0.6 + pv.gross.prod * 0.45 + pv.net.food * 0.35 * foodW + pv.gross.energy * 0.15);
   // 늘어난 행동 수(줄기·헌장·노선·후원자): 한 수 앞만 보면 0으로 보이니 남은 라운드만큼 직접 셈한다
   v += Math.min(R, 10) * (mods.command * COMMAND_VALUE + mods.defense * DEFENSE_VALUE);
@@ -96,7 +101,12 @@ export function evaluate(state: GameState, p: PlayerState): number {
   }
   if (p.legacyWip) {
     const c = CARD_DEFS[p.legacyWip.id];
-    if (c.type === 'legacy') v += (p.legacyWip.done / c.stages.length) * c.points + 1;
+    // 못 끝낸 유산은 0점 — 남은 단계를 남은 라운드 안에 끝낼 수 있을 때만 진행분을 가치로 본다(판 끝 착공·방치 착시 방지)
+    if (c.type === 'legacy') {
+      const left = c.stages.length - p.legacyWip.done;
+      const feasible = Math.min(1, R / (left * 1.5));
+      v += ((p.legacyWip.done / c.stages.length) * c.points + 1) * feasible;
+    }
   }
   for (const id of p.legacies) {
     const c = CARD_DEFS[id];
@@ -110,10 +120,39 @@ export function evaluate(state: GameState, p: PlayerState): number {
     for (let l = 1; l <= p.charters[f]; l++) x += CHARTER_COST[l] * charterKeep;
     return a + x;
   }, 0);
-  v += p.patrons.reduce((a, id) => a + (PATRON_DEFS[id]?.points ?? 0) + 1, 0);
+  v += p.patrons.reduce((a, id) => a + patronWorth(state, p, id), 0);
   v += mods.sight * 0.4 * Math.min(1, R / 3);
   v += p.facilities.length * 1;
   return v;
+}
+
+/** 주둔지 1장의 대략적 가치(문화 환산): 점수 + 효과 + 남은 요구 검사의 기대 손익.
+ *  요구는 지금 지표가 기준에 얼마나 가까운지로 가망을 본다(받은 시대 끝에는 검사 면제 — Rules 13절) */
+function patronWorth(state: GameState, p: PlayerState, id: string): number {
+  const def = PATRON_DEFS[id];
+  if (!def) return 0;
+  const have = metric(state, p, def.demand.metric);
+  const ratio = def.demand.min > 0 ? have / def.demand.min : 1;
+  const chance = ratio >= 1 ? 1 : ratio >= 0.6 ? (ratio - 0.4) * 1.5 : 0;
+  // 남은 검사 수: 카드 시대 다음 전환부터 3→4 전환까지 + 종료 검사 1
+  const checks = Math.max(0, 4 - Math.max(state.era, def.era + 1)) + 1;
+  const perCheck = chance * Math.min(state.era + 1, 3) * PATRON_MET_CULTURE_PER_ERA - (1 - chance) * PATRON_FAIL_CULTURE;
+  return def.points + 1.5 + checks * perCheck;
+}
+
+/** 주둔지 제안 칸의 기대 가치: 그 시대 주둔지 중 남은 것마다 내가 지표 1위(동점은 고른 사람 먼저)면 받을 가치 */
+function patronOfferValue(state: GameState, p: PlayerState, era: number): number {
+  if (!state.patronDecks[era as 1 | 2 | 3]?.length) return 0; // 장수는 공개 정보
+  const held = new Set(state.players.flatMap((x) => x.patrons));
+  const pool = PATRONS.filter((d) => d.era === era && !held.has(d.id));
+  if (!pool.length) return 0;
+  let sum = 0;
+  for (const d of pool) {
+    const mine = metric(state, p, d.metric);
+    const top = state.players.every((o) => o.id === p.id || metric(state, o, d.metric) <= mine);
+    if (top) sum += Math.max(0, patronWorth(state, p, d.id));
+  }
+  return sum / pool.length;
 }
 
 /** 대기 결정에 대한 AI 응답 */
@@ -159,13 +198,16 @@ export function aiRespond(state: GameState): number {
       // 공존은 건강 −1: 불건강이 유휴보다 많아지면 역병이니 처치를 고른다
       return unhealthy(p) + 1 > p.idle ? 0 : 1;
     case 'patron': {
-      const def = PATRON_DEFS[pd.patronId];
+      // 요구를 채울 가망이 없으면 거절한다(문화 −3 을 시대마다 내는 착시 방지)
+      const worth = patronWorth(state, p, pd.patronId);
+      if (worth <= 0) return 0;
       if (p.patrons.length < PATRON_LIMIT) return 1;
       let worst = -1;
-      let worstPts = def.points;
+      let worstV = worth;
       p.patrons.forEach((id, i) => {
-        if (PATRON_DEFS[id].points < worstPts) {
-          worstPts = PATRON_DEFS[id].points;
+        const w = patronWorth(state, p, id);
+        if (w < worstV) {
+          worstV = w;
           worst = i;
         }
       });
@@ -272,6 +314,9 @@ function questChoice(state: GameState, p: PlayerState): Action {
       const s = simulate(view, p.id, action);
       if (!s) continue;
       score = evaluate(s, s.players[p.id]) - base;
+      // 가린 상태에서는 주둔지 덱 맨 위를 몰라 제안이 0점으로 보인다 — 공개 정보로 기대값을 더한다
+      const q = QUEST_DEFS[view.questRow[slot]];
+      if (q?.kind === 'patron') score += patronOfferValue(view, me, q.era);
       for (const o of view.players) if (o.id !== p.id) score += (evaluate(view, o) - evaluate(s, s.players[o.id])) * HARM_WEIGHT;
     }
     if (score > bestScore) {

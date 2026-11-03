@@ -190,7 +190,9 @@ function takeCard(state: GameState, p: PlayerState, c: CardDef, secret = false):
 
 function threatTargets(state: GameState, q: ThreatQuest, trigger: number): number[] {
   const order = orderFrom(state, trigger);
-  const byDefense = [...order].sort((a, b) => defenseValue(state.players[a]) - defenseValue(state.players[b]));
+  // 방위력 동점은 고른 사람의 다음 자리부터 — 고른 사람은 동점 중 마지막(Rules 12.3). 위협은 상대를 겨누는 수단이다
+  const tieOrder = orderFrom(state, (trigger + 1) % state.players.length);
+  const byDefense = [...tieOrder].sort((a, b) => defenseValue(state.players[a]) - defenseValue(state.players[b]));
   switch (q.target) {
     case 'all':
       return order;
@@ -352,13 +354,15 @@ export function respond(state: GameState, choice: number): string | null {
   return null;
 }
 
-/** 주둔지 요구 검사(시대 전환 때) */
-export function checkPatronDemands(state: GameState, era: number): void {
+/** 주둔지 요구 검사(Rules 13절): 끝나는 시대 era 의 시대 전환 때, 그리고 게임 종료 때(final).
+ *  받은 시대(= 카드의 시대)가 끝날 때는 면제한다 — 받자마자 요구를 채울 시간 없이 벌을 받지 않게. 종료 검사는 모두 받는다 */
+export function checkPatronDemands(state: GameState, era: number, final = false): void {
   for (const p of state.players) {
     for (const id of p.patrons) {
       const def = PATRON_DEFS[id];
+      if (!final && def.era >= era) continue;
       if (metric(state, p, def.demand.metric) >= def.demand.min) {
-        const gain = era * PATRON_MET_CULTURE_PER_ERA;
+        const gain = (final ? 3 : era) * PATRON_MET_CULTURE_PER_ERA;
         p.res.culture += gain;
         log(state, p.id, `「${def.name}」 요구 충족: 문화 +${gain}`);
       } else {
