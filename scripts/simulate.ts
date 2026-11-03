@@ -2,6 +2,7 @@
 // 메모리가 적은 기기에서는 한 번에 하나씩, 판 수를 나눠 돌린다(--json 결과를 합쳐 비교)
 //   --detail : 노드 연구율·위성 발사·퀘스트 칸 선택 분포 등 상세 지표
 //   --json <파일> : 요약 지표를 JSON 으로 저장
+//   --seat "0,0;1,1;1,0" : 자리별 시작 보정(생산,과학) 시험
 import { writeFileSync } from 'node:fs';
 import { createGame } from '../src/core/engine/setup';
 import { applyAction } from '../src/core/engine/turn';
@@ -10,7 +11,7 @@ import { ranking } from '../src/core/engine/scoring';
 import { mainDoctrine, totalColonists } from '../src/core/engine/derive';
 import { researchedCount, webGraph } from '../src/core/engine/research';
 import type { GameState } from '../src/core/types';
-import { FIRST_ROUND_COMMAND, ERA_MAX_ROUNDS } from '../src/core/data/constants';
+import { FIRST_ROUND_COMMAND, ERA_MAX_ROUNDS, SEAT_BONUS } from '../src/core/data/constants';
 import { SATELLITES } from '../src/core/data/satellites';
 import { CORE_ID } from '../src/core/data/techWeb';
 
@@ -56,6 +57,14 @@ if (process.argv[1]?.includes('simulate')) {
   // --first 2,3,3,3 : 첫 라운드 자리별 지휘 수를 파일 수정 없이 바꿔 시험
   const fi = process.argv.indexOf('--first');
   if (fi >= 0) process.argv[fi + 1].split(',').forEach((v, i) => (FIRST_ROUND_COMMAND[i] = Number(v)));
+  // --seat "0,0;1,1;2,1" : 이번 인원의 자리별 시작 보정(생산,과학)을 파일 수정 없이 바꿔 시험
+  const si = process.argv.indexOf('--seat');
+  if (si >= 0) {
+    SEAT_BONUS[arg('players', 3)] = process.argv[si + 1].split(';').map((x) => {
+      const [prod, sci] = x.split(',').map(Number);
+      return { ...(prod ? { prod } : {}), ...(sci ? { sci } : {}) };
+    });
+  }
   const ji = process.argv.indexOf('--json');
   const jsonPath = ji >= 0 ? process.argv[ji + 1] : null;
   const detail = process.argv.includes('--detail');

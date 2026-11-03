@@ -13,7 +13,7 @@ export const START_RES: Res = { food: 2, prod: 2, energy: 0, sci: 2, culture: 0 
  */
 export const SEAT_BONUS: Record<number, Partial<Res>[]> = {
   2: [{ prod: 1, sci: 1 }, {}],
-  3: [{}, { prod: 1, sci: 1 }, { prod: 1 }],
+  3: [{}, { prod: 2 }, { prod: 1, sci: 1 }],
   4: [{}, { prod: 1, sci: 1 }, { prod: 1 }, { prod: 2, sci: 1 }],
 };
 export const FIRST_ROUND_COMMAND = [1, 2, 3, 3];
