@@ -3,14 +3,14 @@ import { createGame } from './setup';
 import { applyAction } from './turn';
 import { webGraph, researchCost, researchBlock, twigNeighborTrunks } from './research';
 import { advanceEra } from './era';
-import { slotVisible } from './quest';
+import { pickBlock, slotVisible } from './quest';
 import { unitPoolCap, defenseValue, health, plague, playerMods, productionPreview, requiredHealth, stage, unhealthy } from './derive';
 import { scorePlayer } from './scoring';
 import { chooseAction } from '../ai';
 import { TWIG_DEFS, trunkId, CORE_ID } from '../data/techWeb';
 import { QUEST_DEFS } from '../data/quests';
 import { clone } from './util';
-import { COLONIST_TOTAL, COLONIST_TRACK, QUEST_ROW_SIZE, TRUNK_BASE_COST, colonistTrack } from '../data/constants';
+import { COLONIST_TOTAL, COLONIST_TRACK, ERA_TRUNK_PER_PLAYER, QUEST_ROW_SIZE, SEAT_BONUS, START_RES, TRUNK_BASE_COST, colonistTrack } from '../data/constants';
 import { produce } from './turn';
 import type { Action, GameState } from '../types';
 
@@ -239,16 +239,59 @@ describe('차례와 시대', () => {
     expect(s.players[pid].res.sci).toBe(before.sci + 1);
   });
 
-  it('현재 고리 줄기 합이 인원 × 4 이상이면 차례 끝에 다음 시대', () => {
+  it('현재 고리 줄기 합이 인원 × 시대 기준 이상이면 차례 끝에 다음 시대', () => {
     let s = ready(1, 2);
-    for (const p of s.players) for (const d of s.layout.dirOrder.slice(0, 4)) p.researched.push(trunkId(d, 1));
+    const need = ERA_TRUNK_PER_PLAYER[1];
+    for (const p of s.players) for (const d of s.layout.dirOrder.slice(0, need)) p.researched.push(trunkId(d, 1));
+    // 한 개 모자라면 넘어가지 않는다
+    const short = clone(s);
+    short.players[0].researched.pop();
+    expect(act(short, { type: 'endTurn' }).era).toBe(1);
     s = act(s, { type: 'endTurn' });
     expect(s.era).toBe(2);
     expect(s.questRow).toHaveLength(QUEST_ROW_SIZE);
     expect(s.questRow.every((c) => /^(q2|p2|l2|s2|r2|c2)/.test(c))).toBe(true);
   });
 
-  it('종료 시대: 결실 퀘스트가 칸 1에 들어오면 그 라운드 끝에 종료', () => {
+  it('2시대 기준은 인원 × ERA_TRUNK_PER_PLAYER[2]', () => {
+    let s = ready(1, 2);
+    s.era = 2;
+    const need = ERA_TRUNK_PER_PLAYER[2];
+    for (const p of s.players) for (const d of s.layout.dirOrder.slice(0, need)) p.researched.push(trunkId(d, 1), trunkId(d, 2));
+    const short = clone(s);
+    short.players[0].researched.pop();
+    expect(act(short, { type: 'endTurn' }).era).toBe(2);
+    s = act(s, { type: 'endTurn' });
+    expect(s.era).toBe(3);
+  });
+
+  it('endRound 가 없는 옛 저장은 예고된 그 라운드 끝에 끝난다', () => {
+    let s = ready(1, 2);
+    s.endTriggered = true;
+    delete s.endRound;
+    const round = s.round;
+    // 시작 플레이어부터 두 사람의 차례를 끝까지 넘긴다
+    let guard = 0;
+    while (!s.gameOver && guard++ < 50) {
+      if (s.pending.length) s = applyAction(s, s.pending[0].player, { type: 'respond', choice: 0 }).state;
+      else if (s.phase === 'quest') s = act(s, { type: 'pickQuest', slot: Math.max(0, s.questRow.findIndex((_, i) => !pickBlock(s, s.players[s.current], i))) });
+      else s = act(s, { type: 'endTurn' });
+    }
+    expect(s.gameOver).toBe(true);
+    expect(s.round).toBe(round);
+  });
+
+  it('합성 단계 3은 연구 비용 −1', () => {
+    const s = ready(1, 2);
+    const p = s.players[0];
+    const node = trunkId(s.layout.dirOrder[0], 1);
+    const before = researchCost(s, p, node, playerMods(p));
+    p.doctrine.synth = 12;
+    expect(stage(p, 'synth')).toBe(3);
+    expect(researchCost(s, p, node, playerMods(p))).toBe(Math.max(1, before - 1));
+  });
+
+  it('종료 시대: 결실 퀘스트가 칸 1에 들어오면 그 라운드와 한 라운드를 더 마치고 종료', () => {
     let s = ready(3, 2);
     s.era = 3;
     advanceEra(s);
@@ -256,13 +299,34 @@ describe('차례와 시대', () => {
     expect(s.questRow.every((id) => QUEST_DEFS[id]?.kind !== 'fruition')).toBe(true);
     expect(s.questDecks[4]).toHaveLength(4);
     let guard = 0;
+    let triggerRound = 0;
     while (!s.gameOver && guard++ < 200) {
       if (s.pending.length) s = applyAction(s, s.pending[0].player, { type: 'respond', choice: 0 }).state;
-      else if (s.phase === 'quest') s = act(s, { type: 'pickQuest', slot: 0 });
+      else if (s.phase === 'quest') s = act(s, { type: 'pickQuest', slot: Math.max(0, s.questRow.findIndex((_, i) => !pickBlock(s, s.players[s.current], i))) });
       else s = act(s, { type: 'endTurn' });
+      if (s.endTriggered && !triggerRound) triggerRound = s.round;
     }
     expect(s.gameOver).toBe(true);
     expect(s.endTriggered).toBe(true);
+    // 예고된 라운드 다음 라운드까지 모두 같은 차례 수를 두고 끝난다
+    expect(s.endRound).toBe(triggerRound + 1);
+    expect(s.round).toBe(triggerRound + 1);
+    expect(s.current).toBe(s.startPlayer);
+  });
+});
+
+describe('자리 보정', () => {
+  it('인원별 표를 읽고 문화는 주지 않는다', () => {
+    for (const n of [2, 3, 4]) {
+      const s = createGame(7, Array.from({ length: n }, (_, i) => ({ name: `P${i}`, isAI: true })));
+      s.players.forEach((p) => {
+        const seat = (p.id - s.startPlayer + n) % n;
+        const b = SEAT_BONUS[n][seat];
+        expect(p.res.prod).toBe(START_RES.prod + (b.prod ?? 0));
+        expect(p.res.sci).toBe(START_RES.sci + (b.sci ?? 0));
+        expect(p.res.culture).toBe(START_RES.culture);
+      });
+    }
   });
 });
 

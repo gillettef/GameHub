@@ -45,7 +45,7 @@ export function StatusBar({ onMenu, onLog, onResults }: { onMenu: () => void; on
             <span key={game.round} className="anim-tick">
               {game.round}라운드
             </span>
-            {game.era <= 3 ? ` · 시대 진행 ${prog.have}/${prog.need}` : game.endTriggered ? ' · 마지막 라운드' : ''}
+            {game.era <= 3 ? ` · 시대 진행 ${prog.have}/${prog.need}` : game.endTriggered ? (game.round < (game.endRound ?? game.round) ? ' · 다음 라운드가 마지막' : ' · 마지막 라운드') : ''}
           </span>
         </div>
         {canUndo && undo && (
@@ -140,7 +140,7 @@ function ActionRow({ onResults }: { onResults: () => void }) {
               습격
               <small>{raidCards.length ? `카드 ${raidCards.length}` : '카드 없음'}</small>
             </button>
-            <button onClick={() => setSheet('conflict')} disabled={game.era < 2 || conflictCards.length === 0} data-tip="분쟁" data-tip-body="손의 분쟁 카드 1장으로 선포. 다음 내 차례에 방위 행동 3으로 판정합니다.">
+            <button onClick={() => setSheet('conflict')} disabled={game.era < 2 || conflictCards.length === 0} data-tip="분쟁" data-tip-body={`손의 분쟁 카드 1장으로 선포. 다음 내 차례에 방위 행동 ${CONFLICT_DEFENSE}로 판정합니다.`}>
               분쟁
               <small>{game.era < 2 ? '2시대~' : conflictCards.length ? `카드 ${conflictCards.length}` : '카드 없음'}</small>
             </button>

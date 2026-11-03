@@ -7,7 +7,15 @@ export const COLONIST_TOTAL = 24;
 export const ROUND_LIMIT = 40;
 
 export const START_RES: Res = { food: 2, prod: 2, energy: 0, sci: 2, culture: 0 };
-export const SEAT_BONUS: Partial<Res>[] = [{}, { sci: 1, culture: 3 }, { prod: 1, sci: 1, culture: 5 }, { prod: 2, sci: 1, culture: 7 }];
+/**
+ * 자리 보정: 인원 → 자리(시작 플레이어 0)별 시작 자원 (Rules 5.6, 임시).
+ * 문화는 헌장을 바로 사는 돈이 되므로 넣지 않는다. 2인은 뒷자리가 유리해 1번 자리에 준다.
+ */
+export const SEAT_BONUS: Record<number, Partial<Res>[]> = {
+  2: [{ prod: 1, sci: 1 }, {}],
+  3: [{}, { prod: 1, sci: 1 }, { prod: 1 }],
+  4: [{}, { prod: 1, sci: 1 }, { prod: 1 }, { prod: 2, sci: 1 }],
+};
 export const FIRST_ROUND_COMMAND = [1, 2, 3, 3];
 
 export const BASE_COMMAND = 3;
@@ -16,8 +24,8 @@ export const BASE_DEFENSE = 2;
 // 퀘스트 트랙(쓰루의 카드 줄 자리): 칸 수
 export const QUEST_ROW_SIZE = 5;
 
-// 시대 전환: 현재 고리 줄기 합 ≥ 인원 × ERA_TRUNK_PER_PLAYER
-export const ERA_TRUNK_PER_PLAYER = 4;
+// 시대 전환: 현재 고리 줄기 합 ≥ 인원 × ERA_TRUNK_PER_PLAYER[현재 고리] (인덱스 = 고리)
+export const ERA_TRUNK_PER_PLAYER = [0, 3, 4, 4];
 // 안전장치: 한 시대가 이 라운드 수만큼 지나면 넘어간다
 export const ERA_MAX_ROUNDS = 8;
 
@@ -132,7 +140,7 @@ export const BEATS: Record<Doctrine, Doctrine> = { ark: 'synth', synth: 'symbion
 
 // 대외 단계
 export const RAID_DEFENSE = 2;
-export const CONFLICT_DEFENSE = 3;
+export const CONFLICT_DEFENSE = 2;
 export const raidAmount = (era: number) => Math.min(era, 3) + 2;
 /** 납치할 유휴 정착민이 없을 때 대신 약탈하는 식량 */
 export const ABDUCT_FALLBACK_FOOD = 3;
@@ -155,7 +163,7 @@ export const SAT_MARKET = 3;
 
 // 헌장
 export const CHARTER_COST = [0, 3, 6, 9];
-export const CHARTER_FULL_POINTS = 4;
+export const CHARTER_FULL_POINTS = 8;
 export const CHARTER_MODS: Record<CharterField, Partial<Mods>[]> = {
   prosperity: [{}, { buildingCap: 1 }, { foodUpkeep: 1 }, { income: { prod: 2 } }],
   explore: [{}, { trunkDiscount: 1 }, { income: { sci: 2 } }, {}],

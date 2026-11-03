@@ -70,7 +70,8 @@ function checkEndTrigger(state: GameState): void {
   const id = state.questRow[0];
   if (id && isEndCard(id)) {
     state.endTriggered = true;
-    log(state, null, `「${QUEST_DEFS[id].name}」 공개 — 이번 라운드를 마치면 게임이 끝납니다`);
+    state.endRound = state.round + 1;
+    log(state, null, `「${QUEST_DEFS[id].name}」 공개 — 이번 라운드와 다음 라운드(${state.endRound}라운드)를 마치면 게임이 끝납니다`);
   }
 }
 

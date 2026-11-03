@@ -3,7 +3,7 @@ import { createGame } from './setup';
 import { applyAction } from './turn';
 import { chooseAction } from '../ai';
 import { totalColonists } from './derive';
-import { COLONIST_TOTAL } from '../data/constants';
+import { BASE_DEFENSE, COLONIST_TOTAL, CONFLICT_DEFENSE } from '../data/constants';
 import { clone } from './util';
 import type { Action, GameState } from '../types';
 
@@ -63,12 +63,14 @@ describe('회귀', () => {
     }
   });
 
-  it('분쟁은 판정 가능한 방위 행동이 없으면 선포할 수 없다', () => {
-    let s = createGame(1, seats(2));
+  it('분쟁 판정 비용은 기본 방위 행동 안이라 방위 줄기 없이도 선포할 수 있다', () => {
+    const s = createGame(1, seats(2));
     s.phase = 'external';
     s.era = 2;
     s.players[s.current].hand = [{ id: 'c2a', fresh: false }];
+    expect(BASE_DEFENSE).toBeGreaterThanOrEqual(CONFLICT_DEFENSE);
     const r = applyAction(s, s.current, { type: 'declareConflict', card: 0, target: 1 - s.current });
-    expect(r.error).toContain('방위 행동 3');
+    expect(r.error).toBeUndefined();
+    expect(r.state.players[s.current].conflict).toBeTruthy();
   });
 });

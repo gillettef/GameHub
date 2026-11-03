@@ -26,12 +26,12 @@ const AGRI: TwigDef[] = [
 
 const CULTURE: TwigDef[] = [
   tw('culture', 1, 'a', '이주 기록관', 'ark', 1, { instant: { gain: { culture: 2 } } }),
-  tw('culture', 1, 'b', '토착 언어', 'symbiont', 1, { mods: { health: 1 } }),
+  tw('culture', 1, 'b', '토착 언어', 'symbiont', 1, { mods: { health: 1 }, instant: { gain: { culture: 1 } } }),
   tw('culture', 2, 'a', '공동체 의회', 'ark', 1, { mods: { buildingBonus: { hall: 1 } } }),
   tw('culture', 2, 'b', '토착 의례', 'symbiont', 2, { mods: { income: { culture: 1 } } }),
   // 양옆: 농업·학술
   tw('culture', 3, 'a', '두 번째 고향', 'ark', 2, { mods: { buildingBonus: { hall: 1, lab: 1 } } }),
-  tw('culture', 3, 'b', '균사 도시', 'symbiont', 1, { mods: { health: 2, foodUpkeep: 1 } }),
+  tw('culture', 3, 'b', '균사 도시', 'symbiont', 1, { mods: { health: 2, foodUpkeep: 1, buildingBonus: { hall: 1 } } }),
 ];
 
 const ACADEMIC: TwigDef[] = [
@@ -48,17 +48,17 @@ const POWER: TwigDef[] = [
   tw('power', 1, 'a', '축전 격자', 'synth', 1, { mods: { income: { energy: 1 } } }),
   tw('power', 1, 'b', '생체 발광', 'symbiont', 1, { instant: { gain: { energy: 3 } } }),
   tw('power', 2, 'a', '전력망 확장', 'synth', 1, { mods: { buildingBonus: { power: 1 } } }),
-  tw('power', 2, 'b', '지열 공명', 'symbiont', 1, { mods: { sporeCap: 3 } }),
+  tw('power', 2, 'b', '지열 공명', 'symbiont', 1, { mods: { sporeCap: 3, income: { sci: 1 } } }),
   // 양옆: 학술·산업
   tw('power', 3, 'a', '궤도 제조소', 'synth', 2, { mods: { buildingBonus: { power: 1, workshop: 1 } } }),
-  tw('power', 3, 'b', '지열 순환로', 'symbiont', 1, { mods: { sporeCap: 4, income: { sci: 1 } } }),
+  tw('power', 3, 'b', '지열 순환로', 'symbiont', 1, { mods: { sporeCap: 4, buildingBonus: { lab: 1 } } }),
 ];
 
 const INDUSTRY: TwigDef[] = [
   tw('industry', 1, 'a', '조립 로봇', 'synth', 1, { mods: { income: { prod: 1 } } }),
   tw('industry', 1, 'b', '광석 분해', 'symbiont', 1, { instant: { gain: { prod: 3 } } }),
   tw('industry', 2, 'a', '나노 공정', 'synth', 2, { mods: { buildingBonus: { workshop: 1 } } }),
-  tw('industry', 2, 'b', '순환 재활용', 'symbiont', 1, { mods: { unitUpgradeDiscount: 1 } }),
+  tw('industry', 2, 'b', '순환 재활용', 'symbiont', 1, { mods: { unitUpgradeDiscount: 1, income: { prod: 1 } } }),
   // 양옆: 동력·방위
   tw('industry', 3, 'a', '자기 복제 공장', 'synth', 2, { mods: { buildingBonus: { workshop: 1 }, unitCap: 1 } }),
   tw('industry', 3, 'b', '재생 공장', 'symbiont', 1, { mods: { buildingBonus: { workshop: 1 }, income: { energy: 1 } } }),

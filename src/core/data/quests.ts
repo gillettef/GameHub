@@ -28,11 +28,11 @@ export const FACILITIES: FacilityDef[] = [
 export const FACILITY_DEFS: Record<string, FacilityDef> = Object.fromEntries(FACILITIES.map((f) => [f.id, f]));
 
 const ERA1: QuestDef[] = [
-  J('q1j1', 1, '첫 수확', [{ metric: 'farms', min: 3 }], opts(1, { culture: 1 }, { food: 3 }, { prod: 2 }), '행성의 흙에서 처음으로 작물이 자랐다'),
-  J('q1j2', 1, '지형 측량', [{ metric: 'nodes', min: 4 }], opts(1, { culture: 2 }, { sci: 2 }, { energy: 2 }), '착륙지 주변의 지도가 완성되었다'),
-  J('q1j3', 1, '정착지 축제', [{ metric: 'health', min: 2 }], opts(1, { culture: 2 }, { food: 2 }, { prod: 2 }), '모두가 모여 첫 해를 기념한다', { res: { culture: 1 } }),
+  J('q1j1', 1, '첫 수확', [{ metric: 'farms', min: 3 }], opts(1, { culture: 1 }, { culture: 1, food: 1 }, { prod: 2 }), '행성의 흙에서 처음으로 작물이 자랐다'),
+  J('q1j2', 1, '지형 측량', [{ metric: 'nodes', min: 4 }], opts(1, { culture: 2 }, { sci: 4 }, { energy: 5 }), '착륙지 주변의 지도가 완성되었다'),
+  J('q1j3', 1, '정착지 축제', [{ metric: 'health', min: 2 }], opts(1, { culture: 2 }, { culture: 1, food: 2 }, { prod: 4 }), '모두가 모여 첫 해를 기념한다', { res: { culture: 1 } }),
   J('q1j4', 1, '광맥 발견', [{ metric: 'workshops', min: 3 }], opts(1, { prod: 2 }, { food: 2 }, { prod: 3 }), '언덕 아래에서 금속 광맥이 드러났다'),
-  J('q1j5', 1, '야간 경계', [{ metric: 'might', min: 3 }], opts(1, { culture: 1 }, { food: 2 }, { energy: 2 }), '밤마다 울음소리가 가까워진다', { res: { food: 1 } }),
+  J('q1j5', 1, '야간 경계', [{ metric: 'might', min: 3 }], opts(1, { culture: 1 }, { culture: 1, food: 1 }, { energy: 3 }), '밤마다 울음소리가 가까워진다', { res: { food: 1 } }),
   T('q1t1', 1, '굴파기 무리', 3, 'weakest', { food: 2 }, { res: { food: 2 } }, '땅속에서 무언가가 저장고를 노린다'),
   T('q1t2', 1, '포자 폭풍', 4, 'energyMost', { energy: 2 }, { res: { energy: 3 } }, '쌓인 에너지에 이끌린 포자가 몰려온다'),
   T('q1t3', 1, '갑각 떼', 4, 'weakest2', { prod: 2 }, { res: { prod: 2 } }, '단단한 껍질의 무리가 들판을 지난다'),
@@ -45,12 +45,12 @@ const ERA1: QuestDef[] = [
 ];
 
 const ERA2: QuestDef[] = [
-  J('q2j1', 2, '정착지 연합', [{ metric: 'buildings', min: 8 }], opts(1, { culture: 3 }, { food: 3 }, { prod: 3 }), '흩어진 정착지들이 도로로 이어졌다'),
-  J('q2j2', 2, '대학 설립', [{ metric: 'labs', min: 2 }, { metric: 'nodes', min: 9 }], opts(2, { culture: 2 }, { sci: 3 }, { sci: 3 }), '첫 세대가 행성에서 배운다'),
-  J('q2j3', 2, '토착 접촉', [{ metric: 'symbiont', min: 4 }], opts(2, { culture: 2 }, { food: 4 }, { energy: 3 }), '토착 생물이 먼저 다가왔다'),
-  J('q2j4', 2, '방벽 완공', [{ metric: 'might', min: 8 }], opts(1, { culture: 3 }, { food: 2 }, { prod: 3 }), '정착지를 두르는 벽이 완성되었다', { res: { culture: 2 } }),
-  J('q2j5', 2, '전력망', [{ metric: 'powers', min: 2 }], opts(1, { prod: 2 }, { food: 2 }, { energy: 4 }), '모든 집에 불이 들어왔다'),
-  J('q2j6', 2, '인구 증가', [{ metric: 'colonists', min: 12 }], opts(1, { culture: 3 }, { food: 3 }, { prod: 3 }), '행성에서 태어난 아이들이 늘었다', { res: { food: 2 } }),
+  J('q2j1', 2, '정착지 연합', [{ metric: 'buildings', min: 8 }], opts(1, { culture: 3 }, { culture: 2, food: 3 }, { prod: 6 }), '흩어진 정착지들이 도로로 이어졌다'),
+  J('q2j2', 2, '대학 설립', [{ metric: 'labs', min: 2 }, { metric: 'nodes', min: 9 }], opts(2, { culture: 2 }, { sci: 4 }, { sci: 4 }), '첫 세대가 행성에서 배운다'),
+  J('q2j3', 2, '토착 접촉', [{ metric: 'symbiont', min: 4 }], opts(2, { culture: 2 }, { culture: 1, food: 3 }, { energy: 3 }), '토착 생물이 먼저 다가왔다'),
+  J('q2j4', 2, '방벽 완공', [{ metric: 'ark', min: 4 }, { metric: 'might', min: 6 }], opts(2, { culture: 3 }, { culture: 2, food: 3 }, { prod: 6 }), '정착지를 두르는 벽이 완성되었다', { res: { culture: 2 } }),
+  J('q2j5', 2, '전력망', [{ metric: 'synth', min: 4 }, { metric: 'powers', min: 1 }], opts(2, { culture: 2 }, { culture: 1, food: 2 }, { energy: 5 }), '모든 집에 불이 들어왔다'),
+  J('q2j6', 2, '인구 증가', [{ metric: 'colonists', min: 12 }], opts(1, { culture: 3 }, { culture: 2, food: 3 }, { prod: 6 }), '행성에서 태어난 아이들이 늘었다', { res: { food: 2 } }),
   T('q2t1', 2, '거대 갑각수', 7, 'weakest', { prod: 3 }, { downgrade: 1, res: { prod: 2 } }, '집채만 한 껍질이 벽에 부딪힌다'),
   T('q2t2', 2, '포자 해일', 6, 'energyMost', { energy: 3 }, { res: { energy: 4 }, downgrade: 1 }, '안개가 해일처럼 밀려온다'),
   T('q2t3', 2, '하늘 날개 떼', 8, 'weakest2', { culture: 2 }, { res: { food: 3 } }, '하늘을 덮는 날개 소리'),
@@ -64,19 +64,19 @@ const ERA2: QuestDef[] = [
 ];
 
 const ERA3: QuestDef[] = [
-  J('q3j1', 3, '행성 문화제', [{ metric: 'cultureRate', min: 5 }], opts(2, { culture: 4 }, { culture: 3 }, { culture: 3 }), '두 세계의 예술이 한 무대에 오른다'),
-  J('q3j2', 3, '기술 특이점', [{ metric: 'nodes', min: 18 }], opts(2, { culture: 3 }, { sci: 4 }, { sci: 5 }), '연구가 스스로 연구를 낳기 시작했다'),
-  J('q3j3', 3, '대도시', [{ metric: 'buildingLevels', min: 20 }], opts(2, { culture: 4 }, { food: 4 }, { prod: 4 }), '정착지가 도시가 되었다'),
-  J('q3j4', 3, '요새 행성', [{ metric: 'might', min: 15 }], opts(1, { culture: 4 }, { food: 3 }, { energy: 3 }), '어떤 위협도 두렵지 않다', { res: { culture: 3 } }),
+  J('q3j1', 3, '행성 문화제', [{ metric: 'cultureRate', min: 5 }], opts(2, { culture: 4 }, { culture: 4 }, { culture: 4 }), '두 세계의 예술이 한 무대에 오른다'),
+  J('q3j2', 3, '기술 특이점', [{ metric: 'nodes', min: 18 }], opts(2, { culture: 3 }, { sci: 6 }, { sci: 6 }), '연구가 스스로 연구를 낳기 시작했다'),
+  J('q3j3', 3, '대도시', [{ metric: 'buildingLevels', min: 20 }], opts(2, { culture: 4 }, { culture: 2, food: 4 }, { prod: 8 }), '정착지가 도시가 되었다'),
+  J('q3j4', 3, '요새 행성', [{ metric: 'might', min: 15 }], opts(1, { culture: 4 }, { culture: 2, food: 4 }, { energy: 9 }), '어떤 위협도 두렵지 않다', { res: { culture: 3 } }),
   J('q3j5', 3, '정체성 선언', [{ metric: 'doctrineTotal', min: 20 }], opts(2, { culture: 3 }, { culture: 3 }, { culture: 3 }), '우리는 더 이상 지구인이 아니다'),
-  J('q3j6', 3, '자급 경제', [{ metric: 'foodRate', min: 8 }], opts(1, { culture: 3 }, { food: 5 }, { prod: 4 }), '본국 보급 없이도 살아갈 수 있다', { res: { culture: 2 } }),
+  J('q3j6', 3, '자급 경제', [{ metric: 'foodRate', min: 8 }], opts(1, { culture: 3 }, { culture: 2, food: 3 }, { prod: 6 }), '본국 보급 없이도 살아갈 수 있다', { res: { culture: 2 } }),
   T('q3t1', 3, '고대 수호자', 13, 'weakest', { culture: 4 }, { downgrade: 2 }, '행성 깊은 곳의 거대한 존재가 일어섰다'),
   T('q3t2', 3, '포자 대폭발', 12, 'energyMost', { energy: 4 }, { res: { energy: 6 }, downgrade: 1 }, '행성 전체가 숨을 내쉰다'),
   T('q3t3', 3, '방주 거부 반응', 14, 'ark', { culture: 3 }, { downgrade: 1, colonist: 1 }, '행성이 지구의 흔적을 밀어낸다'),
   T('q3t4', 3, '기계 잠식', 14, 'synth', { culture: 3 }, { downgrade: 1, res: { energy: 4 } }, '토착 균류가 회로를 먹어 들어간다'),
   T('q3t5', 3, '대이동', 11, 'all', { culture: 2 }, { res: { food: 3 } }, '행성의 모든 무리가 한 방향으로 움직인다'),
-  C('q3c1', 3, '두 세계 기록관', [{ metric: 'halls', min: 3 }], { prod: 8 }, opts(2, { culture: 2 }, { culture: 2 }, { culture: 2 }), '지구와 행성의 이야기를 함께 남긴다', 'f_archive'),
-  C('q3c2', 3, '궤도 주조소', [{ metric: 'satellites', min: 1 }, { metric: 'workshops', min: 3 }], { prod: 8 }, opts(1, {}, {}, { prod: 2 }), '무중력에서 강철을 붓는다', 'f_foundry'),
+  C('q3c1', 3, '두 세계 기록관', [{ metric: 'ark', min: 8 }, { metric: 'halls', min: 2 }], { prod: 8 }, opts(2, { culture: 2 }, { culture: 2 }, { culture: 2 }), '지구와 행성의 이야기를 함께 남긴다', 'f_archive'),
+  C('q3c2', 3, '궤도 주조소', [{ metric: 'synth', min: 8 }, { metric: 'satellites', min: 1 }], { prod: 8 }, opts(1, {}, {}, { prod: 2 }), '무중력에서 강철을 붓는다', 'f_foundry'),
   C('q3c3', 3, '포자 성소', [{ metric: 'symbiont', min: 8 }], { prod: 7 }, opts(2, {}, { food: 2 }, {}), '안개가 가라앉는 고요한 곳', 'f_sanctum'),
   PQ('q3p1', 3, '본국 마지막 지원', '지구의 세력들이 마지막 투자를 결정한다'),
   PQ('q3p2', 3, '전략 동반자', '본국의 한 세력이 장기 동반자를 찾는다'),

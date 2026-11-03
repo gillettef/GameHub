@@ -1,7 +1,7 @@
 // 효과·조건·카드를 화면용 한국어 문장으로 바꾼다
 import type { CardDef, Doctrine, Cond, ConflictLoss, RaidEffect, Instant, Loss, Metric, Mods, QuestDef, QuestOption, Res, ThreatTarget } from '../core/types';
 import { RES_KEYS } from '../core/types';
-import { BUILDING_NAMES, BUILDING_RES, DOCTRINE_NAMES, RES_NAMES, UNIT_NAMES } from '../core/data/constants';
+import { BUILDING_NAMES, BUILDING_RES, CONFLICT_DEFENSE, DOCTRINE_NAMES, RES_NAMES, UNIT_NAMES } from '../core/data/constants';
 import { FACILITY_DEFS } from '../core/data/quests';
 import { EFFECT_TONE, RES_TONE } from './tones';
 
@@ -190,6 +190,6 @@ export function cardText(c: CardDef): string {
   if (c.type === 'pioneer') return `${DOCTRINE_NAMES[c.doctrine]} 성향 · ${modsText(c.mods)}`;
   if (c.type === 'legacy') return `${c.stages.length}단계(생산 ${c.stages.join('·')}) · 완성 시 ${modsText(c.mods)} · ${c.points}점`;
   if (c.type === 'raid') return `습격 · 공격 ${c.atk ? `+${c.atk}` : '±0'} · 성공 시 ${c.effects.map((e) => RAID_EFFECT_NAMES[e]).join('/')}(시대 + 2${c.bonus ? ` + ${c.bonus}` : ''}) · 방위 행동 2`;
-  if (c.type === 'conflict') return `분쟁 선포 · 노리는 손실 ${CONFLICT_LOSS_NAMES[c.loss]}${c.atk ? ` · 판정 공격 +${c.atk}` : ''} · 다음 차례 방위 행동 3으로 판정`;
+  if (c.type === 'conflict') return `분쟁 선포 · 노리는 손실 ${CONFLICT_LOSS_NAMES[c.loss]}${c.atk ? ` · 판정 공격 +${c.atk}` : ''} · 다음 차례 방위 행동 ${CONFLICT_DEFENSE}로 판정`;
   return instantText(c.instant);
 }

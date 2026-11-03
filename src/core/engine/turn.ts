@@ -181,7 +181,7 @@ function nextTurn(state: GameState): void {
   const next = (state.current + 1) % state.players.length;
   state.current = next;
   if (next === state.startPlayer) {
-    if (state.endTriggered || state.round >= ROUND_LIMIT) {
+    if ((state.endTriggered && state.round >= (state.endRound ?? state.round)) || state.round >= ROUND_LIMIT) {
       finish(state);
       return;
     }

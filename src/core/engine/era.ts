@@ -8,7 +8,7 @@ import { log, withRng } from './util';
 export function eraProgress(state: GameState): { have: number; need: number } {
   const ring = Math.min(state.era, 3);
   const have = state.players.reduce((a, p) => a + trunksAt(p, ring), 0);
-  return { have, need: state.players.length * ERA_TRUNK_PER_PLAYER };
+  return { have, need: state.players.length * ERA_TRUNK_PER_PLAYER[ring] };
 }
 
 /** 현재 시대 퀘스트 덱이 바닥나 트랙을 다 채우지 못하는 상태(4.2 덱 소진) */

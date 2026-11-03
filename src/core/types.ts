@@ -348,6 +348,8 @@ export interface GameState {
   steps: Step[];
   eraStartRound: number;
   endTriggered: boolean;
+  /** 종료 예고 뒤 이 라운드가 끝나면 게임이 끝난다(Rules 12.6). 옛 저장에는 없을 수 있다 */
+  endRound?: number;
   gameOver: boolean;
   log: LogEntry[];
 }

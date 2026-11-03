@@ -73,7 +73,7 @@ export function createGame(seed: number | number[], seats: SeatConfig[]): GameSt
 
   players.forEach((p) => {
     const seat = (p.id - startPlayer + players.length) % players.length;
-    gain(p.res, SEAT_BONUS[seat]);
+    gain(p.res, SEAT_BONUS[players.length]?.[seat] ?? {});
   });
 
   const state: GameState = {
