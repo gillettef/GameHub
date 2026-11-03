@@ -280,6 +280,8 @@ export interface PlayerState {
   patrons: string[];
   facilities: string[];
   commandUsed: number;
+  /** 이번 차례에 개척 만찬을 했는지(차례당 1회). 옛 저장에는 없음 */
+  feasted?: boolean;
   defenseUsed: number;
   /** 방위 태세: 다음 내 차례 시작까지 방위력 보너스 */
   guard: number;
@@ -364,6 +366,7 @@ export type Action =
   | { type: 'upgradeUnit'; kind: UnitKind; from: number; to: number }
   | { type: 'disband'; group: 'building' | 'unit'; kind: BuildingKind | UnitKind; level: number }
   | { type: 'addColonist' }
+  | { type: 'feast' }
   | { type: 'legacyStage' }
   | { type: 'launch'; slot: number; replace?: number }
   | { type: 'charter'; field: CharterField }

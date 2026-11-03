@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { BUILDING_KINDS, CHARTER_FIELDS, UNIT_KINDS, type Action } from '../../core/types';
 import { CARD_DEFS } from '../../core/data/cards';
 import { buildingUnlocked, commandLeft, playerMods, unitUnlocked } from '../../core/engine/derive';
-import { BUILDING_COST, CHARTER_COST, COLONIST_FOOD, UNIT_COST } from '../../core/data/constants';
+import { BUILDING_COST, CHARTER_COST, COLONIST_FOOD, FEAST_MIN_FOOD, UNIT_COST } from '../../core/data/constants';
 import { SATELLITE_DEFS } from '../../core/data/satellites';
 import { researchBlock, researchCost, webGraph } from '../../core/engine/research';
 import { useApp } from '../../store/app';
@@ -167,11 +167,13 @@ function ActionChips() {
     const charter = CHARTER_FIELDS.filter((f) => p.charters[f] < 3 && CHARTER_COST[p.charters[f] + 1] <= p.res.culture && ok({ type: 'charter', field: f })).length;
     const colonist = p.pool > 0 && COLONIST_FOOD[game.era] <= p.res.food && ok({ type: 'addColonist' });
     const legacy = !!p.legacyWip && ok({ type: 'legacyStage' });
+    const feast = !p.feasted && FEAST_MIN_FOOD <= p.res.food && ok({ type: 'feast' });
     const list: { label: string; target: string }[] = [];
     if (research) list.push({ label: `연구 ${research}`, target: `web-${me}` });
     if (build) list.push({ label: `건설 ${build}`, target: `colony-${me}` });
     if (units) list.push({ label: `편성 ${units}`, target: `colony-${me}` });
     if (colonist) list.push({ label: '정착민', target: `colony-${me}` });
+    if (feast) list.push({ label: '만찬', target: `colony-${me}` });
     if (supply) list.push({ label: `팟 ${supply}`, target: `colony-${me}` });
     if (legacy) list.push({ label: '유산', target: `colony-${me}` });
     if (charter) list.push({ label: `헌장 ${charter}`, target: `colony-${me}` });

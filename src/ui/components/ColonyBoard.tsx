@@ -12,6 +12,9 @@ import {
   CHARTER_MODS,
   CHARTER_NAMES,
   COLONIST_FOOD,
+  FEAST_CULTURE,
+  FEAST_FOOD,
+  FEAST_MIN_FOOD,
   COLONIST_TRACK,
   colonistTrack,
   DOCTRINE_NAMES,
@@ -51,7 +54,7 @@ import {
   totalColonists,
   unhealthy,
 } from '../../core/engine/derive';
-import { buildingUpgradeCost, unitUpgradeCost } from '../../core/engine/actions';
+import { buildingUpgradeCost, feastBundles, unitUpgradeCost } from '../../core/engine/actions';
 import { useGame } from '../useGame';
 import { CARD_FRAME, CARD_ICON, CardFace } from './CardFace';
 import { CardArt } from './CardArt';
@@ -91,7 +94,7 @@ type Open =
   | { k: 'info'; title: string; body: string };
 
 /** 행동 뒤에도 갱신된 상태로 시트를 열어 두는(이어서 반복할 수 있는) 행동 */
-const REPEATABLE = new Set(['build', 'upgrade', 'buildUnit', 'upgradeUnit', 'addColonist', 'legacyStage', 'charter']);
+const REPEATABLE = new Set(['build', 'upgrade', 'buildUnit', 'upgradeUnit', 'addColonist', 'feast', 'legacyStage', 'charter']);
 
 export function ColonyBoard({ player }: { player: PlayerState }) {
   const { game, me, check, act } = useGame();
@@ -191,6 +194,10 @@ export function ColonyBoard({ player }: { player: PlayerState }) {
       }
       case 'colonist':
         add(`정착민 늘리기 — 식량 ${COLONIST_FOOD[game.era]} · 지휘 1`, { type: 'addColonist' });
+        {
+          const n = feastBundles(p.res.food);
+          add(n > 0 ? `개척 만찬 — 식량 −${n * FEAST_FOOD} → 문화 +${n * FEAST_CULTURE} (차례당 1회, 지휘 없음)` : `개척 만찬 — 식량 ${FEAST_MIN_FOOD} 이상일 때 (차례당 1회, 지휘 없음)`, { type: 'feast' });
+        }
         return {
           title: (
             <>

@@ -6,6 +6,10 @@ import {
   CHARTER_COST,
   CHARTER_NAMES,
   COLONIST_FOOD,
+  FEAST_CULTURE,
+  FEAST_FOOD,
+  FEAST_KEEP_FOOD,
+  FEAST_MIN_FOOD,
   FLYER_ENERGY,
   LEVEL_NAMES,
   ORBIT_SLOTS,
@@ -31,6 +35,11 @@ import { addDoctrine, applyInstant } from './effects';
 import { log } from './util';
 
 type Err = string | null;
+
+/** 만찬 한 번에 바꾸는 묶음 수: 식량 FEAST_KEEP_FOOD 를 남기고 FEAST_FOOD 마다 1 (Rules 7.4) */
+export function feastBundles(food: number): number {
+  return food < FEAST_MIN_FOOD ? 0 : Math.floor((food - FEAST_KEEP_FOOD) / FEAST_FOOD);
+}
 
 function needCommand(state: GameState, p: PlayerState, n = 1): Err {
   return commandLeft(state, p) >= n ? null : '지휘 행동이 부족합니다';
@@ -142,6 +151,17 @@ export function applyMainAction(state: GameState, p: PlayerState, a: Action): Er
       p.pool--;
       p.idle++;
       log(state, p.id, '정착민 늘리기');
+      return null;
+    }
+    case 'feast': {
+      // 지휘 행동을 쓰지 않는다 — 성장(정착민·건설)과 지휘를 다투면 AI·사람 모두 성장을 미룬다
+      if (p.feasted) return '개척 만찬은 차례당 한 번입니다';
+      if (p.res.food < FEAST_MIN_FOOD) return `식량이 ${FEAST_MIN_FOOD} 이상일 때만 만찬을 열 수 있습니다`;
+      p.feasted = true;
+      const n = feastBundles(p.res.food);
+      p.res.food -= n * FEAST_FOOD;
+      p.res.culture += n * FEAST_CULTURE;
+      log(state, p.id, `개척 만찬: 식량 −${n * FEAST_FOOD}, 문화 +${n * FEAST_CULTURE}`);
       return null;
     }
     case 'legacyStage': {

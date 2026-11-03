@@ -25,6 +25,7 @@ export const BASE_DEFENSE = 2;
 export const QUEST_ROW_SIZE = 5;
 
 // 시대 전환: 현재 고리 줄기 합 ≥ 인원 × ERA_TRUNK_PER_PLAYER[현재 고리] (인덱스 = 고리)
+// 기준 × 인원은 올림한다(소수 기준을 쓸 수 있게)
 export const ERA_TRUNK_PER_PLAYER = [0, 3, 4, 4];
 // 안전장치: 한 시대가 이 라운드 수만큼 지나면 넘어간다
 export const ERA_MAX_ROUNDS = 8;
@@ -105,6 +106,13 @@ export const GUARD_MAX = 2;
 
 // 정착민
 export const COLONIST_FOOD = [0, 2, 3, 4, 4];
+/** 개척 만찬(Rules 7.4, 임시): 지휘 행동 없이 차례당 1회, 식량이 FEAST_MIN_FOOD 이상일 때
+ *  FEAST_KEEP_FOOD 를 남기고 식량 FEAST_FOOD 마다 문화 FEAST_CULTURE. 1묶음만 바꾸면 식량 수입(차례당 +7~11)을 못 따라가 84가 남았다.
+ *  지휘 1 을 쓰고 제한이 없으면 정착민 늘리기 대신 만찬을 해 3인 정착민이 21 → 9.6명으로 무너졌다(2026-11-03) */
+export const FEAST_FOOD = 6;
+export const FEAST_CULTURE = 2;
+export const FEAST_MIN_FOOD = 15;
+export const FEAST_KEEP_FOOD = 9;
 export const FAMINE_CULTURE = 2;
 
 /**

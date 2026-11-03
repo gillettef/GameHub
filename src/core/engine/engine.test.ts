@@ -11,7 +11,7 @@ import { chooseAction } from '../ai';
 import { TWIG_DEFS, trunkId, CORE_ID } from '../data/techWeb';
 import { QUEST_DEFS } from '../data/quests';
 import { clone } from './util';
-import { COLONIST_TOTAL, COLONIST_TRACK, ERA_TRUNK_PER_PLAYER, PATRON_FAIL_CULTURE, PATRON_MET_CULTURE_PER_ERA, QUEST_ROW_SIZE, SEAT_BONUS, START_RES, TRUNK_BASE_COST, colonistTrack } from '../data/constants';
+import { COLONIST_TOTAL, COLONIST_TRACK, ERA_TRUNK_PER_PLAYER, FEAST_CULTURE, FEAST_FOOD, FEAST_KEEP_FOOD, FEAST_MIN_FOOD, PATRON_FAIL_CULTURE, PATRON_MET_CULTURE_PER_ERA, QUEST_ROW_SIZE, SEAT_BONUS, START_RES, TRUNK_BASE_COST, colonistTrack } from '../data/constants';
 import { produce } from './turn';
 import type { Action, GameState } from '../types';
 
@@ -254,11 +254,14 @@ describe('차례와 시대', () => {
     expect(s.questRow.every((c) => /^(q2|p2|l2|s2|r2|c2)/.test(c))).toBe(true);
   });
 
-  it('2시대 기준은 인원 × ERA_TRUNK_PER_PLAYER[2]', () => {
+  it('2시대 기준은 인원 × ERA_TRUNK_PER_PLAYER[2] 올림', () => {
     let s = ready(1, 2);
     s.era = 2;
-    const need = ERA_TRUNK_PER_PLAYER[2];
-    for (const p of s.players) for (const d of s.layout.dirOrder.slice(0, need)) p.researched.push(trunkId(d, 1), trunkId(d, 2));
+    const total = Math.ceil(2 * ERA_TRUNK_PER_PLAYER[2]);
+    const each = [Math.ceil(total / 2), Math.floor(total / 2)];
+    s.players.forEach((p, i) => {
+      for (const d of s.layout.dirOrder.slice(0, each[i])) p.researched.push(trunkId(d, 1), trunkId(d, 2));
+    });
     const short = clone(s);
     short.players[0].researched.pop();
     expect(act(short, { type: 'endTurn' }).era).toBe(2);
@@ -648,6 +651,54 @@ describe('퀘스트', () => {
     expect(after.players[(me + 1) % 3].res.food).toBe(3);
     expect(after.players[me].res.food).toBe(5);
     expect(after.players[(me + 2) % 3].res.food).toBe(5);
+  });
+
+  it('개척 만찬: 식량 기준 이상일 때 차례당 1회, 지휘 없이 식량 → 문화', () => {
+    const s = ready();
+    s.round = 2; // 첫 라운드 지휘 제한을 피한다
+    const me = s.current;
+    s.players[me].res.food = FEAST_MIN_FOOD - 1;
+    s.players[me].res.culture = 0;
+    expect(applyAction(s, me, { type: 'feast' }).error).toContain('이상일 때만');
+    s.players[me].res.food = FEAST_KEEP_FOOD + 3 * FEAST_FOOD + 2; // 3묶음 + 나머지 2
+    const after = act(s, { type: 'feast' });
+    expect(after.players[me].res.food).toBe(FEAST_KEEP_FOOD + 2);
+    expect(after.players[me].res.culture).toBe(3 * FEAST_CULTURE);
+    expect(after.players[me].commandUsed).toBe(s.players[me].commandUsed); // 지휘를 쓰지 않음
+    expect(applyAction(after, me, { type: 'feast' }).error).toBe('개척 만찬은 차례당 한 번입니다');
+  });
+
+  it('개척 만찬: 다음 차례에 다시 할 수 있고, feasted 가 없는 옛 저장도 된다', () => {
+    let s = ready();
+    s.round = 2;
+    const me = s.current;
+    delete s.players[me].feasted; // 옛 저장
+    s.players[me].res.food = 30;
+    s = act(s, { type: 'feast' });
+    expect(s.players[me].feasted).toBe(true);
+    s = act(s, { type: 'endTurn' });
+    expect(s.players[me].feasted).toBe(true); // 내 차례가 다시 올 때 풀린다
+    while (s.current !== me || s.pending.length) {
+      const actor = s.pending.length ? s.pending[0].player : s.current;
+      s = act(s, chooseAction(s, actor) ?? { type: 'endTurn' }, actor);
+    }
+    expect(s.players[me].feasted).toBe(false);
+  });
+
+  it('AI 는 할 행동이 없을 때 남는 식량으로 만찬을 하고, 대외 단계에서도 한다', () => {
+    for (const phase of ['actions', 'external'] as const) {
+      const s = ready();
+      s.round = 2;
+      s.phase = phase;
+      const me = s.current;
+      const p = s.players[me];
+      p.res = { food: 40, prod: 0, energy: 0, sci: 0, culture: 0 };
+      p.pool = 0;
+      p.hand = [];
+      p.commandUsed = 99; // 지휘 바닥
+      p.defenseUsed = 99;
+      expect(chooseAction(s, me)).toEqual({ type: 'feast' });
+    }
   });
 
   it('방위력 하위 2명 동점이면 고른 사람의 다음 두 자리가 대상', () => {

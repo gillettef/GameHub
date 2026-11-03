@@ -6,6 +6,7 @@ import { CARD_DEFS } from './data/cards';
 import { QUEST_DEFS } from './data/quests';
 import { PATRONS, PATRON_DEFS } from './data/patrons';
 import { applyAction } from './engine/turn';
+import { feastBundles } from './engine/actions';
 import {
   attackValue,
   buildingCap,
@@ -74,6 +75,9 @@ export function evaluate(state: GameState, p: PlayerState): number {
   v += R * (pv.gross.culture * 1 + pv.gross.sci * 0.6 + pv.gross.prod * 0.45 + pv.net.food * 0.35 * foodW + pv.gross.energy * 0.15);
   // 늘어난 행동 수(줄기·헌장·노선·후원자): 한 수 앞만 보면 0으로 보이니 남은 라운드만큼 직접 셈한다
   v += Math.min(R, 10) * (mods.command * COMMAND_VALUE + mods.defense * DEFENSE_VALUE);
+  // 영구 할인: 한 수 앞만 보면 0으로 보여 (가중치는 2026-11-03 3인 120판으로 고름: 0.45 는 판이 18.9R 로 짧아짐)
+  // 할인 곁가지(양자 연구망 등)를 거의 안 했다 — 차례당 한 번 쓴다고 보고 남은 라운드만큼 셈한다
+  v += Math.min(R, 10) * (mods.researchDiscount * 0.3 + mods.trunkDiscount * 0.15 + mods.unitUpgradeDiscount * 0.1);
   // 한도가 찬 건물 계열의 한도 증가는 다음 건설을 여는 가치
   if (mods.buildingCap > 0 && BUILDING_KINDS.some((k) => familyCount(p, k) >= buildingCap(p, k, mods))) v += mods.buildingCap * 2 * Math.min(1, R / 4);
   v += researchedCount(p) * 0.6 * Math.min(1, R / 4);
@@ -408,6 +412,9 @@ export function chooseAction(state: GameState, pid: number): Action | null {
     if (!best || score > best.score) best = { action: a, score };
   }
   if (best && best.score > 0.15) return best.action;
+  // 개척 만찬은 차례를 마치기 직전에만 — 먼저 하면 정착민 늘리기에 쓸 식량을 문화로 바꿔 버린다(남는 식량만 바꾸는 행동)
+  // 대외 단계에서 끝내는 차례도 포함: 여기까지 왔으면 습격·분쟁은 하지 않기로 한 것이라 대외 단계가 끝나도 잃는 것이 없다
+  if (!p.feasted && feastBundles(p.res.food) > 0) return { type: 'feast' };
   return { type: 'endTurn' };
 }
 

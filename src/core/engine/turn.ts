@@ -98,6 +98,7 @@ function validate(state: GameState, actor: number, a: Action): string | null {
     case 'respond':
       return isInt(a.choice, 0, 99) ? null : '잘못된 선택';
     case 'addColonist':
+    case 'feast':
     case 'legacyStage':
     case 'endTurn':
       return null;
@@ -132,6 +133,7 @@ export function runSteps(state: GameState): void {
 export function startTurn(state: GameState): void {
   const p = state.players[state.current];
   p.commandUsed = 0;
+  p.feasted = false;
   p.defenseUsed = 0;
   p.guard = 0;
   for (const h of p.hand) h.fresh = false;

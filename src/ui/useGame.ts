@@ -5,7 +5,7 @@ import type { Action, GameState } from '../core/types';
 import { useApp } from '../store/app';
 
 /** 대외 단계에서 이 행동을 하면 습격·분쟁 기회가 넘어간다(엔진이 주요 행동 뒤 phase 를 actions 로 바꾼다) */
-const SKIPS_EXTERNAL: Action['type'][] = ['research', 'useSupply', 'build', 'upgrade', 'buildUnit', 'upgradeUnit', 'disband', 'addColonist', 'legacyStage', 'launch', 'charter'];
+const SKIPS_EXTERNAL: Action['type'][] = ['research', 'useSupply', 'build', 'upgrade', 'buildUnit', 'upgradeUnit', 'disband', 'addColonist', 'feast', 'legacyStage', 'launch', 'charter'];
 
 /** 지금 실제로 낼 수 있는 습격·분쟁이 있는가 */
 export function externalAvailable(game: GameState, me: number, check: (a: Action) => string | null): boolean {
