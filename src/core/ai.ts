@@ -1,13 +1,14 @@
 // AI 결정: 후보 행동을 한 수 적용해 보고 평가 함수 증가량이 가장 큰 것을 고른다(결정적, 난수 없음)
 import type { Action, GameState, PlayerState, RaidEffect, UnitKind } from './types';
 import { BUILDING_KINDS, CHARTER_FIELDS, DOCTRINES, UNIT_KINDS } from './types';
-import { BUILDING_COST, CONFLICT_DEFENSE, PATRON_LIMIT, RAID_DEFENSE, TRUNK_BASE_COST, UNIT_COST } from './data/constants';
+import { BUILDING_COST, CHARTER_COST, CHARTER_FULL_POINTS, CONFLICT_DEFENSE, PATRON_LIMIT, RAID_DEFENSE, TRUNK_BASE_COST, UNIT_COST } from './data/constants';
 import { CARD_DEFS } from './data/cards';
 import { QUEST_DEFS } from './data/quests';
 import { PATRON_DEFS } from './data/patrons';
 import { applyAction } from './engine/turn';
 import {
   attackValue,
+  buildingCap,
   buildingUnlocked,
   commandLeft,
   defenseLeft,
@@ -32,18 +33,27 @@ const THREAT_LEVEL = [0, 5, 9, 14, 14];
 const BLIND_PICK_VALUE = 1.5;
 /** 상대에게 준 손해를 내 이득으로 셈하는 비율 */
 const HARM_WEIGHT = 0.3;
+/** 쌓인 식량이 이만큼이면 식량 생산의 가치를 거의 없는 것으로 본다 */
+const FOOD_STOCK_ENOUGH = 25;
+/** 지휘·방위 행동 1개의 라운드당 가치(문화 환산, 임시) */
+const COMMAND_VALUE = 0.9;
+const DEFENSE_VALUE = 0.3;
+/** 보상 선택에서 지금 주 노선 쪽에 더하는 가산(노선 단계를 모으는 방향을 유지) */
+const MAIN_DOCTRINE_PULL = 1;
 
 /** 쌓아 둔 자원은 쓸 곳이 한정돼 있으니 일정량을 넘으면 가치를 크게 깎는다(쌓아 두기만 하는 착시 방지) */
 const STOCK_SOFT_CAP = { food: 8, prod: 10, sci: 10 };
 const soft = (x: number, cap: number) => Math.min(x, cap) + Math.max(0, x - cap) * 0.15;
 
 function remainingRounds(state: GameState): number {
-  if (state.endTriggered) return 1;
+  if (state.endTriggered) return state.round < (state.endRound ?? state.round) ? 2 : 1;
   if (state.era >= 4) return 2;
   // 시대 진행도(줄기 합)에 묶으면 내 줄기 연구가 "남은 판을 줄이는" 손해로 보여 연구를 미룬다 — 라운드만으로 추정한다
   const inEra = state.round - state.eraStartRound;
   return (3 - state.era) * 6 + Math.max(1, 6 - inEra) + 2;
 }
+
+const familyCount = (p: PlayerState, k: (typeof BUILDING_KINDS)[number]) => p.buildings[k].reduce((a, n) => a + n, 0);
 
 /** 플레이어 한 명의 대략적 가치(문화 환산) */
 export function evaluate(state: GameState, p: PlayerState): number {
@@ -54,7 +64,13 @@ export function evaluate(state: GameState, p: PlayerState): number {
   let v = p.res.culture;
   v += DOCTRINES.reduce((a, d) => a + p.doctrine[d] * 0.8, 0);
   v += (soft(p.res.food, STOCK_SOFT_CAP.food) * 0.3 + soft(p.res.prod, STOCK_SOFT_CAP.prod) * 0.4 + Math.min(p.res.energy, 8) * 0.2 + soft(p.res.sci, STOCK_SOFT_CAP.sci) * 0.5) * resW;
-  v += R * (pv.gross.culture * 1 + pv.gross.sci * 0.6 + pv.gross.prod * 0.45 + pv.net.food * 0.35 + pv.gross.energy * 0.15);
+  // 식량은 정착민·손실 대비 말고는 쓸 곳이 적다 — 쌓아 둔 양이 많을수록 식량 생산의 가치를 줄인다(농장만 키우는 착시 방지)
+  const foodW = Math.max(0.1, 1 - p.res.food / FOOD_STOCK_ENOUGH);
+  v += R * (pv.gross.culture * 1 + pv.gross.sci * 0.6 + pv.gross.prod * 0.45 + pv.net.food * 0.35 * foodW + pv.gross.energy * 0.15);
+  // 늘어난 행동 수(줄기·헌장·노선·후원자): 한 수 앞만 보면 0으로 보이니 남은 라운드만큼 직접 셈한다
+  v += Math.min(R, 10) * (mods.command * COMMAND_VALUE + mods.defense * DEFENSE_VALUE);
+  // 한도가 찬 건물 계열의 한도 증가는 다음 건설을 여는 가치
+  if (mods.buildingCap > 0 && BUILDING_KINDS.some((k) => familyCount(p, k) >= buildingCap(p, k, mods))) v += mods.buildingCap * 2 * Math.min(1, R / 4);
   v += researchedCount(p) * 0.6 * Math.min(1, R / 4);
   // 줄기는 높은 고리일수록 큰 건물·유닛 레벨을 연다 — 기본 비용에 비례해 평가(고리 2·3 줄기를 미루는 착시 방지)
   const trunkValue = [1, 2, 3].reduce((a, r) => a + trunksAt(p, r) * TRUNK_BASE_COST[r], 0);
@@ -86,7 +102,14 @@ export function evaluate(state: GameState, p: PlayerState): number {
     const c = CARD_DEFS[id];
     if (c.type === 'legacy') v += c.points;
   }
-  v += CHARTER_FIELDS.reduce((a, f) => a + p.charters[f] * 1.2 + (p.charters[f] >= 3 ? 4 : 0), 0);
+  // 헌장은 문화를 내고 효과를 오래 받는 투자 — 한 수 앞만 보면 늘 손해로 보이니 산 단계를 비용의 일부로 셈한다(남은 판이 길수록 높게)
+  // 효과(한도·할인·건강)는 한 수 평가에 잘 안 잡히므로, 판이 길게 남으면 비용보다 조금 높게, 끝 무렵엔 낮게 본다
+  const charterKeep = 0.7 + 0.5 * Math.min(1, R / 8);
+  v += CHARTER_FIELDS.reduce((a, f) => {
+    let x = p.charters[f] >= 3 ? CHARTER_FULL_POINTS : 0;
+    for (let l = 1; l <= p.charters[f]; l++) x += CHARTER_COST[l] * charterKeep;
+    return a + x;
+  }, 0);
   v += p.patrons.reduce((a, id) => a + (PATRON_DEFS[id]?.points ?? 0) + 1, 0);
   v += mods.sight * 0.4 * Math.min(1, R / 3);
   v += p.facilities.length * 1;
@@ -104,9 +127,13 @@ export function aiRespond(state: GameState): number {
       const main = mainDoctrine(p) ?? DOCTRINES.reduce((a, b) => (p.doctrine[b] > p.doctrine[a] ? b : a));
       let best = 0;
       let bestV = -Infinity;
+      // 선택지를 실제로 적용해 평가 함수로 비교한다 — 고정 가중치는 시점과 무관하게 문화(방주 선택지)로 쏠린다
+      // 시험 적용은 내 시야로 가린 상태에서 한다(퀘스트 선택과 같은 원칙: 덱·뒷면 칸을 엿보지 않음)
+      const view = maskFor(state, pd.player);
       q.options.forEach((o, i) => {
-        const g = o.gain ?? {};
-        const v = (o.doctrine === main ? 2 : 0) + o.points + (g.culture ?? 0) + ((g.food ?? 0) + (g.prod ?? 0) + (g.sci ?? 0)) * 0.4 + (g.energy ?? 0) * 0.2;
+        const r = applyAction(view, pd.player, { type: 'respond', choice: i });
+        if (r.error) return;
+        const v = evaluate(r.state, r.state.players[pd.player]) + (o.doctrine === main ? MAIN_DOCTRINE_PULL : 0);
         if (v > bestV) {
           bestV = v;
           best = i;
