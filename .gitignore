@@ -1,1 +1,9 @@
+node_modules/
+dist/
+server-dist/
+.env*
+*.log
+.DS_Store
+Thumbs.db
 .claude/settings.local.json
+.dev/
