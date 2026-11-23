@@ -360,3 +360,46 @@ export function publicView(state, pid) {
     log: state.log.map((e) => (e.type === 'place' && e.pid === opp ? { ...e, secret: undefined } : e)),
   };
 }
+
+// ---------------------------------------------------------------- 플레이어 화면 정보
+// 서버(온라인 대전)와 봇 모드 화면이 함께 쓴다. pid 가 알아도 되는 정보만 담는다.
+export function playerView(state, pid, { revealOpp = false } = {}) {
+  const opp = other(pid);
+  const me = state.players[pid];
+  const op = state.players[opp];
+  const over = state.phase === 'over';
+  const show = over || revealOpp;
+  return {
+    me: pid,
+    round: state.round,
+    phase: state.phase,
+    nebula: state.nebula,
+    holds: { ...state.holds },
+    holdCount: { A: holdCount(state, 'A'), B: holdCount(state, 'B') },
+    winner: state.winner,
+    lastLight: state.lastLight,
+    ripple: Object.fromEntries(PLANETS.map((p) => [p, ripple(state, p)])),
+    fleets: me.fleets.map((f) => ({
+      id: f.id,
+      front: f.front,
+      back: f.back,
+      echo: f.echo,
+      real: realPos(f),
+      attacked: f.attacked,
+      recalled: f.recalled,
+      legal: state.phase === 'plan' ? legalMoves(state, pid, f.id) : [],
+      canOccupy: state.phase === 'occupy' ? canOccupy(state, pid, f.id) : false,
+    })),
+    slots: me.slots.map((s) => (s ? s.map((c) => ({ ...c })) : null)),
+    decoys: me.decoys,
+    eligible: state.phase === 'occupy' ? eligibleFleets(state, pid) : [],
+    blockades: state.phase === 'blockade' ? blockadeOptions(state).filter((o) => o.blocker === pid) : [],
+    opp: {
+      fleets: op.fleets.map((f) => ({ id: f.id, echo: f.echo, real: show ? realPos(f) : null })),
+      slotCounts: [null, 1, 2, 3, 4, 5].map((k) => (k ? op.slots[k].length : null)),
+      decoys: op.decoys,
+    },
+    log: publicView(state, pid).log,
+    history: over ? state.history : [],
+  };
+}

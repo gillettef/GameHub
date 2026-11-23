@@ -1,8 +1,10 @@
-// 빌드 결과(dist)를 서빙하는 의존성 없는 정적 서버. EC2 에서 systemd 로 실행한다.
+// 빌드 결과(dist)를 서빙하는 의존성 없는 서버. EC2 에서 systemd 로 실행한다.
+// /api/rooms/* 는 온라인 대전 방 서비스(rooms.mjs)가 처리한다. 규칙 엔진은 dist/src/engine.js 를 그대로 쓴다.
 import { createServer } from 'node:http';
 import { readFile, stat } from 'node:fs/promises';
 import { extname, join, normalize, resolve, sep } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+import { createRoomService } from './rooms.mjs';
 
 const ROOT = resolve(fileURLToPath(new URL('../../dist', import.meta.url)));
 const PORT = Number(process.env.PORT ?? 8099);
@@ -24,9 +26,14 @@ async function resolveFile(urlPath) {
   return extname(rel) ? null : join(ROOT, 'index.html');
 }
 
+const engine = await import(pathToFileURL(join(ROOT, 'src', 'engine.js')).href);
+const roomService = createRoomService(engine);
+
 createServer(async (req, res) => {
+  const url = new URL(req.url, 'http://x');
+  if (url.pathname.startsWith('/api/')) { await roomService.handle(req, res, url); return; }
   try {
-    const file = await resolveFile(new URL(req.url, 'http://x').pathname);
+    const file = await resolveFile(url.pathname);
     if (!file) { res.writeHead(404).end('Not found'); return; }
     const body = await readFile(file);
     const hashed = /[/\\]assets[/\\]/.test(file);
