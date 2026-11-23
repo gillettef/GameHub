@@ -29,11 +29,18 @@ Lightcone/
 ├── components/
 │   └── components.md    # 구성물 목록과 사양
 ├── playtests/           # 플레이테스트 기록 (YYYY-MM-DD-NN.md)
+├── print/               # 출력용 종이 프로토타입 PDF (scripts/pnp/build_pnp.py 로 생성)
+├── prototype/           # 웹 시뮬레이터(봇 대전): src/(규칙 엔진·봇·지도), web/(화면), test/
+├── package.json         # npm test(node --test) · npm run build(→ dist/, 의존성 없음)
 ├── scripts/
+│   ├── build.mjs        # prototype → dist 복사
+│   ├── pnp/             # 출력용 PDF 생성기(reportlab)
 │   ├── deploy-aws.ps1   # 수동 배포
 │   └── aws/             # EC2 준비·재시작 스크립트, 정적 서버(serve.mjs)
 └── .github/workflows/   # ci.yml(검사), deploy-aws.yml(main 병합 시 배포)
 ```
+
+- 웹 시뮬레이터 규칙은 룰북을 따라야 한다. 룰북을 바꾸면 `prototype/src/engine.js`·`map.js`와 테스트도 함께 고친다. 화면 흐름 점검은 `?selftest` 쿼리로 한다.
 
 ## 작업 규칙
 
