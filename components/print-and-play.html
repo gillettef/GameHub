@@ -78,7 +78,7 @@
 </head>
 <body>
 <div class="guide">
-  <h1>HEARSAY 프린트 앤 플레이 (룰북 v0.3 기준)</h1>
+  <h1>HEARSAY 프린트 앤 플레이 (룰북 v0.4 기준)</h1>
   <ol>
     <li>브라우저에서 <b>인쇄 → A4, 배율 100%(실제 크기), 배경 그래픽 켜기</b>로 인쇄합니다. 단면 인쇄로 충분합니다.</li>
     <li>섬 보드와 점수 트랙은 가로 페이지입니다. 두꺼운 종이나 하드보드에 붙이면 좋습니다.</li>
@@ -164,9 +164,10 @@ const page = (title, land) => { const p = el(`<section class="page${land ? ' lan
   for (let i = 0; i < 6; i++) t += `<div class="tok" style="--hc:${GREY.v}"></div>`;
   t += '</div>';
   p.appendChild(el(t));
-  p.appendChild(el('<p class="note"><b>기록 표지</b> — 집안 색 12개씩 + 회색 12개. 가운데가 흰 고리 모양으로 증언 토큰과 구분한다.</p>'));
+  p.appendChild(el('<p class="note"><b>기록 표지</b> — 집안 색 10개씩 + 회색 16개. 가운데가 흰 고리 모양으로 증언 토큰과 구분한다.</p>'));
   let r = '<div class="grid-tok">';
-  for (const ho of [...HOUSES, GREY]) for (let i = 0; i < 12; i++) r += `<div class="ring" style="--hc:${ho.v}"></div>`;
+  for (const ho of HOUSES) for (let i = 0; i < 10; i++) r += `<div class="ring" style="--hc:${ho.v}"></div>`;
+  for (let i = 0; i < 16; i++) r += `<div class="ring" style="--hc:${GREY.v}"></div>`;
   r += '</div>';
   p.appendChild(el(r));
 }
@@ -175,16 +176,16 @@ const page = (title, land) => { const p = el(`<section class="page${land ? ' lan
   const p = page('요약 카드 6장 · 질문자 표지 · 질문 표지 · 점수 표지');
   const sc = `<div class="sc"><h3>HEARSAY 요약</h3>
   <b>계절 (1~7)</b><br>
-  ① 점유: 모래시계 안에 구역 카드 1장 뒷면 → "하나, 둘, 셋" 공개. 혼자면 땅 타일, 겹치면 다툼(타일은 주머니로)<br>
+  ① 점유: 구역 카드 1장 뒷면 → "하나, 둘, 셋" 공개. 혼자면 땅 타일, 겹치면 다툼(타일은 주머니로)<br>
   ② 망각(2계절~): 직전 계절 열 → 망각 주머니<br>
   ③ 회의(2계절~): 질문 4·5인 2개 / 6인 1개<br>
   <b>마지막 회의</b>: 7계절 열 망각 → 질문 4인 4 / 5인 3 / 6인 6<br>
-  <b>질문</b>: 회상 카드 2장 + 모래시계 → 질문 칸 선언 → 속삭임 → 주먹 → 공개<br>
+  <b>질문</b>: 회상 카드 2장(선언까지 침묵) → 질문 칸 선언 → 모래시계 → 속삭임·주먹 → 공개<br>
   <b>자기 집안은 증언할 수 없다.</b> 내 땅은 남이 말해 줘야 한다.
   <table><tr><th>결과</th><th>땅 점수</th><th>평판 1점</th></tr>
   <tr><td>집안 색 단독 최다</td><td>그 집안 +구역 값</td><td>그 색 증언자</td></tr>
   <tr><td>회색 단독 최다</td><td>없음</td><td>회색 증언자</td></tr>
-  <tr><td>최다 동점</td><td colspan="2">질문자 증언이 동점 답에 있으면 그 답 / 없으면 공백(득점 없음)</td></tr></table>
+  <tr><td>최다 동점</td><td colspan="2">질문자의 유효 증언이 동점 답에 있으면 그 답 / 없으면 공백(득점 없음)</td></tr></table>
   메모·사진 금지 · 말은 자유(속삭임 종료~공개는 침묵)</div>`;
   p.appendChild(el(`<div class="summ">${sc.repeat(6)}</div>`));
   let m = '<div class="markers"><div class="mk round">질문자<br>표지</div><div class="mk arrow"></div><span style="font-size:10px">← 질문 표지</span></div>';
