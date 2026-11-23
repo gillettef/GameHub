@@ -20,7 +20,7 @@
 - [ ] **공모전 신청서** (공식 양식 docx) — 작가 개인정보·서명은 **작가 본인이 직접** 작성. 이메일 접수 시 자필 서명 스캔/촬영 첨부
   - 게임 제목: HEARSAY (히어세이)
   - 응모 분야: ☑ 패밀리 플러스 게임
-- [ ] **게임 기획안** (공식 양식 docx, **A4 2쪽 이내**) — 초안: `contest/proposal.md`
+- [ ] **게임 기획안** (공식 양식 docx, **A4 2쪽 이내**) — 공식 양식에 채운 파일: `contest/HEARSAY_기획안.docx` (작가명 칸과 2쪽 사진만 채우면 됨). 긴 원고: `contest/proposal.md`. 다시 만들기: `python contest/tools/fill_plan.py <공식양식.docx> contest/HEARSAY_기획안.docx`
   - [ ] 2쪽에 **게임 진행 사진 1~2장 필수** (프로토타입이 없으면 손그림·구성물 그림으로 대체 가능)
 - [ ] **규칙서** (.pdf/.doc/.ppt/.hwp, 분량 자유) — `python rules/build_pdf.py`로 `contest/HEARSAY_규칙서.pdf` 생성(표지·도해 포함)
   - [ ] 요강 권고: 게임을 모르는 사람에게 규칙서만 읽혀 이해되는지 확인
