@@ -32,12 +32,12 @@ Lastgrain/
 │   └── components.md    # 구성물 목록과 사양
 ├── playtests/           # 플레이테스트 기록 (YYYY-MM-DD-NN.md)
 ├── submission/          # 2027 코리아보드게임즈 공모전 제출물 (기획안 등, 마감 2026-12-31)
-├── prototype/           # 웹 시뮬레이터(봇 대전): src/rules.js(규칙 엔진), bot.js, ui.js, test/
+├── prototype/           # 웹 시뮬레이터(봇·온라인 대전, iPhone 17 Pro 기준 UI): src/rules.js(규칙 엔진), bot.js, net.js, ui.js, test/
 ├── package.json         # npm test(규칙 엔진 테스트), npm run build(→ dist/)
 ├── scripts/
 │   ├── build.mjs        # prototype/ + 제출용 규칙서 → dist/
 │   ├── deploy-aws.ps1   # 수동 배포
-│   └── aws/             # EC2 준비·재시작 스크립트, 정적 서버(serve.mjs)
+│   └── aws/             # EC2 준비·재시작 스크립트, 서버(serve.mjs: 정적+API), 온라인 방 관리(online.mjs)
 └── .github/workflows/   # ci.yml(검사), deploy-aws.yml(main 병합 시 배포)
 ```
 
@@ -60,7 +60,7 @@ Lastgrain/
 ## 배포 (AWS)
 
 - 다른 게임(Eleven·MagicAcademy·SmilePark·DoubleAgent·Tesseract·Neoterra·Election·Lightcone·Retrocause 등)과 같은 EC2(t4g.nano, 서울) 1대를 공유한다. Lastgrain의 포트는 **8104**, systemd 서비스 이름은 `lastgrain`이다. 접속은 `http://54.116.67.196:8104` (HTTP만).
-- 배포 대상은 디지털 프로토타입(정적 웹앱)이다. **`package.json`이 없는 동안에는 CI 검사와 배포를 모두 건너뛴다.** 프로토타입을 만들 때는 `package.json`을 저장소 루트에 두고 `npm test`·`npm run build`(산출물 `dist/`)를 제공한다.
+- 배포 대상은 디지털 프로토타입(웹 시뮬레이터)이다. `scripts/aws/serve.mjs`가 `dist/`를 서빙하고 온라인 대전 API(`/api/rooms`, SSE)를 제공한다. 방 상태는 메모리에만 있어 배포·재시작 시 진행 중인 온라인 게임이 사라진다. **`package.json`이 없는 동안에는 CI 검사와 배포를 모두 건너뛴다.** 프로토타입을 만들 때는 `package.json`을 저장소 루트에 두고 `npm test`·`npm run build`(산출물 `dist/`)를 제공한다.
 - `main`에 병합되면 `.github/workflows/deploy-aws.yml`이 `npm test` → `npm run build`를 통과했을 때만 `dist`와 `scripts/aws/`(의존성 없는 정적 서버 `serve.mjs`, `deploy-remote.sh`)를 `~/lastgrain`에 올리고, `deploy-remote.sh`가 systemd `lastgrain`을 재시작·헬스체크한다.
 - **수동 배포**(push 없이): `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/deploy-aws.ps1`. SSH 키·IP는 `.dev/`(git 제외), 없으면 `../Rootbound/.dev/`의 것을 쓴다.
 - SSH(22)는 관리자 IP만 열려 있어 워크플로가 러너 IP를 임시로 열었다 닫는다. 저장소 시크릿: AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY / AWS_REGION / AWS_SECURITY_GROUP_ID / EC2_HOST / EC2_HOST_KEY / EC2_SSH_PRIVATE_KEY (다른 게임 저장소와 같은 값, 정본은 저장소 밖 `personal/aws_config.md`).

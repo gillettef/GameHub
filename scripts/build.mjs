@@ -7,7 +7,7 @@ const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const DIST = join(ROOT, 'dist');
 await rm(DIST, { recursive: true, force: true });
 await mkdir(DIST, { recursive: true });
-for (const f of ['index.html', 'style.css', 'favicon.svg']) await copyFile(join(ROOT, 'prototype', f), join(DIST, f));
+for (const f of ['index.html', 'style.css', 'favicon.svg', 'manifest.webmanifest', 'apple-touch-icon.png']) await copyFile(join(ROOT, 'prototype', f), join(DIST, f));
 await cp(join(ROOT, 'prototype', 'src'), join(DIST, 'src'), { recursive: true });
 const rules = join(ROOT, 'submission', 'LASTGRAIN_규칙서.html');
 try { await access(rules); await copyFile(rules, join(DIST, 'rules.html')); } catch { console.warn('규칙서 HTML이 없어 rules.html을 건너뜀'); }
