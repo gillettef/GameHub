@@ -11,9 +11,9 @@ const LOG_TAIL = 40;
 
 const pickOne = (v, allowed, dflt) => (allowed.includes(v) ? v : dflt);
 
-/** 규칙 엔진을 읽는다. 배포본(dist)에는 빌드 산출물, 개발·테스트에서는 원본을 쓴다. */
+/** 규칙 엔진을 읽는다. 개발·테스트에서는 원본(prototype)을, 원본이 없는 배포본에서는 빌드 산출물(dist)을 쓴다. */
 export async function loadRules() {
-  try { return await import('../../dist/src/rules.js'); } catch { return import('../../prototype/src/rules.js'); }
+  try { return await import('../../prototype/src/rules.js'); } catch { return import('../../dist/src/rules.js'); }
 }
 
 export function sanitizeConfig(body = {}) {
