@@ -44,7 +44,7 @@ export function newGame(cfg = {}) {
     crumbled: [],         // 이번 차례에 소멸한 활성 플레이어 모래병 id
     mustSummon: false,    // 보드가 비어 반드시 소환해야 함
     over: false, winner: null, endReason: null,
-    log: [],
+    log: [], seq: 0,     // seq: 기록이 늘 때마다 1씩 증가(화면·네트워크 변경 감지용)
   };
   startTurn(s);
   return s;
@@ -56,7 +56,7 @@ export const onBoard = (s, p) => Object.values(s.units).filter((u) => u.owner ==
 export const reserve = (s, p) => Object.values(s.units).filter((u) => u.owner === p && !u.pos);
 export const ruinsHeld = (s, p) => RUINS.filter((k) => { const [c, r] = k.split(',').map(Number); const u = unitAt(s, c, r); return u && u.owner === p; }).length;
 
-function log(s, text, p = null) { s.log.push({ turn: s.turn, p, text }); if (s.log.length > 300) s.log.shift(); }
+function log(s, text, p = null) { s.seq = (s.seq || 0) + 1; s.log.push({ turn: s.turn, p, text }); if (s.log.length > 300) s.log.shift(); }
 
 // ---------------------------------------------------------------- 차례
 function startTurn(s) {
@@ -151,7 +151,16 @@ function finish(s, w, reason) {
   s.over = true;
   s.winner = w;
   s.endReason = reason;
-  log(s, `${PLAYER_NAME[w]} 승리! (${reason === 'score' ? `${s.config.target}점 달성` : '대모래시계 종료'})`, w);
+  const why = { score: `${s.config.target}점 달성`, time: '대모래시계 종료', resign: '상대 기권' }[reason];
+  log(s, `${PLAYER_NAME[w]} 승리! (${why})`, w);
+}
+
+/** 플레이어 p가 기권한다. */
+export function resign(s, p) {
+  if (s.over) return { ok: false, error: '이미 끝난 게임이다.' };
+  log(s, `${PLAYER_NAME[p]}가 기권했다.`, p);
+  finish(s, 1 - p, 'resign');
+  return { ok: true };
 }
 
 // ---------------------------------------------------------------- 소환
