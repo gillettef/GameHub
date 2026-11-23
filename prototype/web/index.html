@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>RETROCAUSE 프로토타입</title>
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <header class="top">
+    <div class="brand">
+      <span class="logo">RETROCAUSE</span>
+      <span class="sub">레트로코즈 · 룰북 v0.2 프로토타입</span>
+    </div>
+    <nav class="topnav">
+      <a href="./rulebook.txt" target="_blank" rel="noopener">룰북 전문</a>
+      <button id="btn-new" class="ghost" hidden>새 게임</button>
+    </nav>
+  </header>
+
+  <main id="setup" class="setup">
+    <section class="panel intro">
+      <h1>성은 이미 불탔다.</h1>
+      <p class="lede">역사가 누구를 범인으로 기억하게 만들 것인가?</p>
+      <ul class="rules-mini">
+        <li>결말 3장은 고정이다. 시간선의 빈 칸 어디에나 원인 카드를 끼워 넣는다.</li>
+        <li>카드는 <b>놓인 칸의 다음 칸부터</b> 사실을 바꾼다. 조건이 그 칸에서 참이어야 놓을 수 있다.</li>
+        <li>내 카드 때문에 이미 놓인 카드가 깨지면 버려지고, 장당 <b>패러독스</b> 1개(-2점)를 받는다.</li>
+        <li>결말마다 <b>결정 원인</b>은 결말과 같은 결과를 내는 <b>조건 있는</b> 카드 중 가장 오른쪽 카드다.</li>
+        <li>내 비밀 목표 인물이 결정 원인이면 +3점, 시간선의 내 인물 카드 1장당 +1점, 끝나고 남의 인물을 맞히면 +1점.</li>
+      </ul>
+    </section>
+    <section class="panel form">
+      <label>내 이름 <input id="in-name" value="나" maxlength="8"></label>
+      <label>인원
+        <select id="in-players">
+          <option value="3">3인 (봇 2)</option>
+          <option value="4" selected>4인 (봇 3)</option>
+          <option value="5">5인 (봇 4)</option>
+        </select>
+      </label>
+      <label>봇 속도
+        <select id="in-speed">
+          <option value="1200">느리게</option>
+          <option value="700" selected>보통</option>
+          <option value="250">빠르게</option>
+        </select>
+      </label>
+      <label>시드 (비우면 무작위) <input id="in-seed" inputmode="numeric" placeholder="예: 42"></label>
+      <button id="btn-start" class="primary">게임 시작</button>
+      <p class="hint">봇은 직진형·견제형·위장형 중에서 섞여 나옵니다. 봇은 자기 손패와 공개 정보만 봅니다.</p>
+    </section>
+  </main>
+
+  <main id="game" class="game" hidden>
+    <section class="statusbar">
+      <div id="status-turn" class="turn"></div>
+      <div class="meta"><span id="status-round"></span><span id="status-deck"></span></div>
+      <div class="motive">내 비밀 목표 <button id="btn-motive" class="chip-btn">보기</button></div>
+    </section>
+
+    <section class="board panel">
+      <div class="board-head">
+        <h2>시간선 <small>왼쪽이 과거 → 오른쪽이 결말</small></h2>
+        <label class="toggle"><input type="checkbox" id="tg-states" checked> 칸별 상태 보기</label>
+      </div>
+      <div id="endings-bar" class="endings-bar"></div>
+      <div class="timeline-wrap">
+        <div id="timeline" class="timeline"></div>
+      </div>
+    </section>
+
+    <div class="cols">
+      <section class="panel hand-panel">
+        <h2>내 손패 <small id="hand-hint"></small></h2>
+        <div id="hand" class="hand"></div>
+        <div class="actions">
+          <button id="btn-exchange" class="ghost">선택한 카드 교체</button>
+          <button id="btn-pass" class="ghost">패스</button>
+        </div>
+      </section>
+      <section class="panel players-panel">
+        <h2>플레이어</h2>
+        <div id="players"></div>
+      </section>
+    </div>
+
+    <section class="panel log-panel">
+      <h2>기록</h2>
+      <ol id="log" class="log"></ol>
+    </section>
+  </main>
+
+  <dialog id="dlg-end">
+    <form method="dialog" id="end-form">
+      <h2 id="end-title">추리</h2>
+      <div id="end-body"></div>
+      <div class="dlg-actions" id="end-actions"></div>
+    </form>
+  </dialog>
+
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
