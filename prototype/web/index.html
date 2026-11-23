@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CREASE 프로토타입</title>
+<style>
+  :root {
+    --paper: #f4ecd8; --paper-back: #dfe6ea; --ink: #2b2a28; --muted: #7a746a;
+    --table: #3d4a4f; --gold: #d9a521; --line: #b9ad92; --hl: #4fa36b;
+    --p0: #d1495b; --p1: #2e86c1; --p2: #3aa76d; --p3: #e0a800;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: "Pretendard", "Noto Sans KR", system-ui, sans-serif; background: var(--table); color: var(--paper); }
+  header { padding: 14px 20px; display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
+  header h1 { margin: 0; font-size: 22px; letter-spacing: 4px; }
+  header small { color: #c9c1ad; }
+  main { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 16px; padding: 0 20px 20px; }
+  @media (max-width: 900px) { main { grid-template-columns: 1fr; } }
+  .panel { background: #2f393d; border-radius: 10px; padding: 14px; }
+  #board { width: 100%; height: auto; display: block; }
+  .col { transition: transform .55s cubic-bezier(.4,.1,.2,1), opacity .4s; }
+  .cell { stroke: var(--line); stroke-width: 1; }
+  .cell.front { fill: var(--paper); }
+  .cell.back { fill: var(--paper-back); }
+  .cell.legal { fill: #cfe8d3; cursor: pointer; }
+  .cell.legal:hover { fill: #a9d8b3; }
+  .coord { font-size: 10px; fill: var(--muted); pointer-events: none; }
+  .ghost { fill: none; stroke: #6d7b80; stroke-dasharray: 4 4; }
+  .seam { stroke: var(--gold); stroke-width: 4; stroke-linecap: round; }
+  .hinge { stroke: #8f8570; stroke-width: 2; }
+  .piece { transition: transform .45s ease; pointer-events: none; }
+  .players .p { display: grid; grid-template-columns: 14px 1fr auto; gap: 8px; align-items: center; padding: 6px 8px; border-radius: 6px; }
+  .players .p.active { background: #44535a; }
+  .dot { width: 14px; height: 14px; border-radius: 50%; }
+  .btns { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 8px; }
+  button { font: inherit; border: 0; border-radius: 6px; padding: 8px 10px; background: var(--paper); color: var(--ink); cursor: pointer; }
+  button:disabled { opacity: .35; cursor: default; }
+  button.primary { background: var(--gold); font-weight: 700; }
+  h3 { margin: 14px 0 6px; font-size: 14px; color: #c9c1ad; font-weight: 600; }
+  #log { font-size: 12px; max-height: 220px; overflow: auto; color: #d6cfbd; line-height: 1.6; }
+  #status { font-size: 14px; min-height: 40px; }
+  .setup { max-width: 520px; margin: 40px auto; }
+  .setup label { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; }
+  select { font: inherit; padding: 4px 8px; border-radius: 6px; }
+  .legend { font-size: 12px; color: #c9c1ad; line-height: 1.7; }
+</style>
+</head>
+<body>
+<header>
+  <h1>CREASE</h1><small>접는 보드 디지털 프로토타입 · 룰북 v1.0 기준</small>
+</header>
+<div id="app"></div>
+<script type="module" src="./app.js"></script>
+</body>
+</html>
