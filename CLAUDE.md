@@ -31,6 +31,7 @@ Hearsay/
 ├── components/
 │   └── components.md    # 구성물 목록과 사양
 ├── playtests/           # 플레이테스트 기록 (YYYY-MM-DD-NN.md)
+├── contest/             # 2027 코리아보드게임즈 공모전 제출 준비 (체크리스트, 기획안 초안)
 ├── scripts/
 │   ├── deploy-aws.ps1   # 수동 배포
 │   └── aws/             # EC2 준비·재시작 스크립트, 정적 서버(serve.mjs)
