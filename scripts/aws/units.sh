@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Proxymind(8101) systemd 서비스를 등록한다. provision.sh 후 한 번 실행한다.
+# Proxymind(8105) systemd 서비스를 등록한다. provision.sh 후 한 번 실행한다.
 # 코드는 GitHub Actions(.github/workflows/deploy-aws.yml)가 올리고 서비스를 시작한다.
 set -euxo pipefail
 NODE_BIN=$(command -v node)
@@ -13,7 +13,7 @@ After=network.target
 Type=simple
 User=ec2-user
 WorkingDirectory=/home/ec2-user/proxymind
-Environment=PORT=8101
+Environment=PORT=8105
 ExecStart=${NODE_BIN} scripts/aws/serve.mjs
 Restart=always
 RestartSec=3
