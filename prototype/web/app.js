@@ -254,11 +254,28 @@ $('#btn-lobby-leave').addEventListener('click', () => { if (confirm('방에서 �
 $('#btn-share').addEventListener('click', async () => {
   const url = `${location.origin}${location.pathname}?room=${v.code}`;
   const text = `RETROCAUSE 같이 해요! 방 코드 ${v.code}`;
-  try {
-    if (navigator.share) await navigator.share({ title: 'RETROCAUSE', text, url });
-    else { await navigator.clipboard.writeText(`${text}\n${url}`); toast('초대 링크를 복사했습니다'); }
-  } catch { /* 공유 취소 */ }
+  // HTTP(비보안 출처)에서는 iOS 가 공유 시트·클립보드 API 를 막으므로 단계별로 대체한다
+  if (navigator.share) {
+    try { await navigator.share({ title: 'RETROCAUSE', text, url }); return; } catch (e) { if (e.name === 'AbortError') return; }
+  }
+  if (await copyText(`${text}\n${url}`)) { toast('초대 링크를 복사했습니다. 메신저에 붙여 넣으세요'); return; }
+  prompt('아래 링크를 복사해 보내세요', url);
 });
+
+async function copyText(s) {
+  try { if (navigator.clipboard && window.isSecureContext) { await navigator.clipboard.writeText(s); return true; } } catch { /* 다음 방법 */ }
+  const ta = document.createElement('textarea');
+  ta.value = s;
+  ta.setAttribute('readonly', '');
+  ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0;font-size:16px';
+  document.body.appendChild(ta);
+  ta.focus();
+  ta.setSelectionRange(0, s.length);
+  let ok = false;
+  try { ok = document.execCommand('copy'); } catch { ok = false; }
+  ta.remove();
+  return ok;
+}
 
 // ---------- 게임 화면 ----------
 const isMine = () => v && !v.over && v.phase === 'play' && v.current === v.seat;
