@@ -15,7 +15,7 @@ from reportlab.pdfgen import canvas
 
 ROOT = Path(__file__).resolve().parents[2]
 OUT = ROOT / "print"
-VERSION = "v0.5"
+VERSION = "v0.6"
 
 pdfmetrics.registerFont(TTFont("KR", "C:/Windows/Fonts/malgun.ttf"))
 pdfmetrics.registerFont(TTFont("KRB", "C:/Windows/Fonts/malgunbd.ttf"))
@@ -291,9 +291,9 @@ def page_ripple_conveyor(c, pid):
     c.setFont("KR", 8)
     lines = [
         "파문 진행: 매 라운드 모든 카드를 1칸씩 오른쪽(낮은 번호)으로 옮긴다. 1번 칸에서 옮겨지는 카드는 도달한다.",
-        "점령 처리: 행성 카드는 그 행성의 파문 거리 번호 칸에, 위장 카드는 3·4·5번 칸 중 하나에 놓는다. (파문 진행이 점령 처리보다 먼저)",
+        "점령 처리: 행성 카드는 그 행성의 파문 거리 번호 칸(성운이면 +1)에, 위장 카드는 3·4·5번 칸 중 하나에 놓는다. (파문 진행이 점령 처리보다 먼저)",
         "도달한 행성 카드: 그 행성에 내 점령 마커를 놓는다(상대 마커는 치운다). 같은 라운드에 양쪽이 같은 행성에 도달하면 중립.",
-        "마지막 빛: 10라운드가 끝나면 1번 칸, 그다음 2번 칸만 처리한다. 3번 칸 이상은 치운다.",
+        "마지막 빛: 10라운드가 끝나면 1번, 2번, 3번 칸 순서로 처리한다. 4번 칸 이상은 치운다. 봉쇄는 마지막 빛에도 쓸 수 있다.",
     ]
     for i, s in enumerate(lines):
         c.drawString(14 * mm, 40 * mm - i * 6 * mm, s)
@@ -499,6 +499,23 @@ def build_tokens_and_reference():
             c.rect(x + 12 * mm, y - 2 * mm, 12 * mm, 10 * mm, fill=1, stroke=1)
             text_c(c, x + 18 * mm, y + 1.5 * mm, "뒤", "KRB", 9, white)
         y -= 22 * mm
+    # 성운 타일과 성운 카드
+    c.setFillColor(INK)
+    c.setFont("KRB", 10)
+    c.drawString(14 * mm, y, "성운 타일 ×2 · 성운 카드 ×5 (준비 때 성운 카드 1장을 뽑는다)")
+    for i in range(2):
+        cx = 26 * mm + i * 28 * mm
+        c.setFillColor(HexColor("#5B4B8A"))
+        c.circle(cx, y - 16 * mm, 10 * mm, fill=1, stroke=0)
+        text_c(c, cx, y - 15 * mm, "성운", "KRB", 9, white)
+        text_c(c, cx, y - 20 * mm, "파문 +1", "KR", 7, white)
+    for i, txt in enumerate(("2 · 16", "4 · 14", "7 · 11", "8 · 10", "9")):
+        x = 80 * mm + i * 24 * mm
+        c.setFillColor(HexColor("#EDE9F6"))
+        c.setStrokeColor(HexColor("#5B4B8A"))
+        c.roundRect(x, y - 30 * mm, 21 * mm, 28 * mm, 2 * mm, fill=1, stroke=1)
+        text_c(c, x + 10.5 * mm, y - 9 * mm, "성운", "KR", 7, HexColor("#5B4B8A"))
+        text_c(c, x + 10.5 * mm, y - 18 * mm, txt, "KRB", 11, HexColor("#5B4B8A"))
     footer(c, w, "토큰")
     c.showPage()
 
@@ -517,12 +534,15 @@ def build_tokens_and_reference():
             ("2. 공격 처리", ["공격할 함대의 공격 카드를 동시에 공개하고, 그 함대의 위치를 증명한다.",
                           "상대는 그 성계에 실체가 있는지 답한다. '있다'면 위치 증명 후 교전(전력 합 비교).",
                           "'없다'면 공격 표식을 놓는다 → 2라운드 뒤 공개 카드로 확인한다. 거짓이면 패배.",
-                          "진 쪽(동률이면 양쪽)은 귀환: 컨베이어 카드 공개 → 머무름(앞)·모항성(뒤)으로 채운다."]),
+                          "진 쪽(동률이면 공격받은 쪽)은 귀환: 컨베이어 카드 공개 → 머무름(앞)·모항성(뒤)으로 채운다."]),
             ("3. 파문 진행", ["파문 컨베이어의 모든 카드를 1칸씩 옮긴다. 1번 칸에서 나온 카드는 도달한다.",
+                          "상대 카드가 도달한 행성에 내 실체가 있으면 위치를 증명해 봉쇄(무효)할 수 있다.",
                           "행성 카드가 도달하면 그 행성에 점령 마커를 놓는다. 같은 라운드 양쪽 도달은 중립."]),
             ("4. 점령 처리", ["행성에 있는 함대(공격·귀환하지 않은)로 점령: 행성 카드를 파문 거리 칸에 놓는다.",
-                          "위장 카드는 3·4·5번 칸에 놓을 수 있다. 칸별로 손에 쥐고 동시에 놓는다."]),
-            ("5. 승리 확인", ["확정 점령 6개 이상이면 즉시 승리. 10라운드 뒤에는 마지막 빛(1번·2번 칸만 처리)."]),
+                          "성운 행성은 1칸 높은 칸에. 위장 카드는 3·4·5번 칸. 칸별로 손에 쥐고 동시에 놓는다.",
+                          "놓는 카드 수 ≤ 이번 라운드에 공격·귀환하지 않은 함대 수."]),
+            ("5. 승리 확인", ["확정 점령 6개 이상이면 즉시 승리.",
+                          "10라운드 뒤 마지막 빛: 남은 공격 표식 확인 → 1·2·3번 칸 순서로 처리 → 많은 쪽 승리."]),
         ]
         y = h - 32 * mm
         for title, lines in steps:
