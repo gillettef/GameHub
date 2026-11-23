@@ -1,0 +1,16 @@
+{
+  "name": "retrocause-prototype",
+  "version": "0.2.0",
+  "private": true,
+  "description": "RETROCAUSE 규칙 엔진, 봇 시뮬레이터, 웹 플레이 프로토타입 (룰북 v0.2 기준)",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "node --test \"prototype/test/*.test.js\"",
+    "build": "node prototype/build.mjs",
+    "sim": "node prototype/sim/run.mjs",
+    "start": "node prototype/build.mjs && node scripts/aws/serve.mjs"
+  }
+}
