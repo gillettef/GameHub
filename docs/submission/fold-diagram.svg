@@ -1,0 +1,236 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="606" height="730" viewBox="0 0 606 730" font-family="Pretendard, 'Noto Sans KR', sans-serif">
+<rect width="606" height="730" fill="#ffffff"/>
+<text x="20" y="26" font-size="15" font-weight="700" fill="#2b2a28">① 펼친 보드: A1에서 G3까지 8걸음</text>
+<rect x="20" y="38" width="34" height="34" fill="#f4ecd8" stroke="#a89c80"/>
+<text x="23" y="49" font-size="9" fill="#6f6a60">A1</text>
+<rect x="20" y="72" width="34" height="34" fill="#f4ecd8" stroke="#a89c80"/>
+<text x="23" y="83" font-size="9" fill="#6f6a60">A2</text>
+<rect x="20" y="106" width="34" height="34" fill="#f4ecd8" stroke="#a89c80"/>
+<text x="23" y="117" font-size="9" fill="#6f6a60">A3</text>
+<rect x="20" y="140" width="34" height="34" fill="#f4ecd8" stroke="#a89c80"/>
+<text x="23" y="151" font-size="9" fill="#6f6a60">A4</text>
+<rect x="20" y="174" width="34" height="34" fill="#f4ecd8" stroke="#a89c80"/>
+<text x="23" y="185" font-size="9" fill="#6f6a60">A5</text>
+<rect x="54" y="38" width="34" height="34" fill="#f4ecd8" stroke="#a89c80"/>
+<text x="57" y="49" font-size="9" fill="#6f6a60">B1</text>
+<rect x="54" y="72" width="34" height="34" fill="#f4ecd8" stroke="#a89c80"/>
+<text x="57" y="83" font-size="9" fill="#6f6a60">B2</text>
+<rect x="54" y="106" width="34" height="34" fill="#f4ecd8" stroke="#a89c80"/>
+<text x="57" y="117" font-size="9" fill="#6f6a60">B3</text>
+<rect x="54" y="140" width="34" height="34" fill="#f4ecd8" stroke="#a89c80"/>
+<text x="57" y="151" font-size="9" fill="#6f6a60">B4</text>
+<rect x="54" y="174" width="34" height="34" fill="#f4ecd8" stroke="#a89c80"/>
+<text x="57" y="185" font-size="9" fill="#6f6a60">B5</text>
+<rect x="88" y="38" width="34" height="34" fill="#f4ecd8" stroke="#a89c80"/>
+<text x="91" y="49" font-size="9" fill="#6f6a60">C1</text>
+<rect x="88" y="72" width="34" height="34" fill="#f4ecd8" stroke="#a89c80"/>
+<text x="91" y="83" font-size="9" fill="#6f6a60">C2</text>
+<rect x="88" y="106" width="34" height="34" fill="#f4ecd8" stroke="#a89c80"/>
+<text x="91" y="117" font-size="9" fill="#6f6a60">C3</text>
+<rect x="88" y="140" width="34" height="34" fill="#f4ecd8" stroke="#a89c80"/>
+<text x="91" y="151" font-size="9" fill="#6f6a60">C4</text>
+<rect x="88" y="174" width="34" height="34" fill="#f4ecd8" stroke="#a89c80"/>
+<text x="91" y="185" font-size="9" fill="#6f6a60">C5</text>
+<rect x="122" y="38" width="34" height="34" fill="#f4ecd8" stroke="#a89c80"/>
+<text x="125" y="49" font-size="9" fill="#6f6a60">D1</text>
+<rect x="122" y="72" width="34" height="34" fill="#f4ecd8" stroke="#a89c80"/>
+<text x="125" y="83" font-size="9" fill="#6f6a60">D2</text>
+<rect x="122" y="106" width="34" height="34" fill="#f4ecd8" stroke="#a89c80"/>
+<text x="125" y="117" font-size="9" fill="#6f6a60">D3</text>
+<rect x="122" y="140" width="34" height="34" fill="#f4ecd8" stroke="#a89c80"/>
+<text x="125" y="151" font-size="9" fill="#6f6a60">D4</text>
+<rect x="122" y="174" width="34" height="34" fill="#f4ecd8" stroke="#a89c80"/>
+<text x="125" y="185" font-size="9" fill="#6f6a60">D5</text>
+<rect x="156" y="38" width="34" height="34" fill="#f4ecd8" stroke="#a89c80"/>
+<text x="159" y="49" font-size="9" fill="#6f6a60">E1</text>
+<rect x="156" y="72" width="34" height="34" fill="#f4ecd8" stroke="#a89c80"/>
+<text x="159" y="83" font-size="9" fill="#6f6a60">E2</text>
+<rect x="156" y="106" width="34" height="34" fill="#f4ecd8" stroke="#a89c80"/>
+<text x="159" y="117" font-size="9" fill="#6f6a60">E3</text>
+<rect x="156" y="140" width="34" height="34" fill="#f4ecd8" stroke="#a89c80"/>
+<text x="159" y="151" font-size="9" fill="#6f6a60">E4</text>
+<rect x="156" y="174" width="34" height="34" fill="#f4ecd8" stroke="#a89c80"/>
+<text x="159" y="185" font-size="9" fill="#6f6a60">E5</text>
+<rect x="190" y="38" width="34" height="34" fill="#f4ecd8" stroke="#a89c80"/>
+<text x="193" y="49" font-size="9" fill="#6f6a60">F1</text>
+<rect x="190" y="72" width="34" height="34" fill="#f4ecd8" stroke="#a89c80"/>
+<text x="193" y="83" font-size="9" fill="#6f6a60">F2</text>
+<rect x="190" y="106" width="34" height="34" fill="#f4ecd8" stroke="#a89c80"/>
+<text x="193" y="117" font-size="9" fill="#6f6a60">F3</text>
+<rect x="190" y="140" width="34" height="34" fill="#f4ecd8" stroke="#a89c80"/>
+<text x="193" y="151" font-size="9" fill="#6f6a60">F4</text>
+<rect x="190" y="174" width="34" height="34" fill="#f4ecd8" stroke="#a89c80"/>
+<text x="193" y="185" font-size="9" fill="#6f6a60">F5</text>
+<rect x="224" y="38" width="34" height="34" fill="#f4ecd8" stroke="#a89c80"/>
+<text x="227" y="49" font-size="9" fill="#6f6a60">G1</text>
+<rect x="224" y="72" width="34" height="34" fill="#f4ecd8" stroke="#a89c80"/>
+<text x="227" y="83" font-size="9" fill="#6f6a60">G2</text>
+<rect x="224" y="106" width="34" height="34" fill="#f4ecd8" stroke="#a89c80"/>
+<text x="227" y="117" font-size="9" fill="#6f6a60">G3</text>
+<rect x="224" y="140" width="34" height="34" fill="#f4ecd8" stroke="#a89c80"/>
+<text x="227" y="151" font-size="9" fill="#6f6a60">G4</text>
+<rect x="224" y="174" width="34" height="34" fill="#f4ecd8" stroke="#a89c80"/>
+<text x="227" y="185" font-size="9" fill="#6f6a60">G5</text>
+<rect x="258" y="38" width="34" height="34" fill="#f4ecd8" stroke="#a89c80"/>
+<text x="261" y="49" font-size="9" fill="#6f6a60">H1</text>
+<rect x="258" y="72" width="34" height="34" fill="#f4ecd8" stroke="#a89c80"/>
+<text x="261" y="83" font-size="9" fill="#6f6a60">H2</text>
+<rect x="258" y="106" width="34" height="34" fill="#f4ecd8" stroke="#a89c80"/>
+<text x="261" y="117" font-size="9" fill="#6f6a60">H3</text>
+<rect x="258" y="140" width="34" height="34" fill="#f4ecd8" stroke="#a89c80"/>
+<text x="261" y="151" font-size="9" fill="#6f6a60">H4</text>
+<rect x="258" y="174" width="34" height="34" fill="#f4ecd8" stroke="#a89c80"/>
+<text x="261" y="185" font-size="9" fill="#6f6a60">H5</text>
+<rect x="292" y="38" width="34" height="34" fill="#f4ecd8" stroke="#a89c80"/>
+<text x="295" y="49" font-size="9" fill="#6f6a60">I1</text>
+<rect x="292" y="72" width="34" height="34" fill="#f4ecd8" stroke="#a89c80"/>
+<text x="295" y="83" font-size="9" fill="#6f6a60">I2</text>
+<rect x="292" y="106" width="34" height="34" fill="#f4ecd8" stroke="#a89c80"/>
+<text x="295" y="117" font-size="9" fill="#6f6a60">I3</text>
+<rect x="292" y="140" width="34" height="34" fill="#f4ecd8" stroke="#a89c80"/>
+<text x="295" y="151" font-size="9" fill="#6f6a60">I4</text>
+<rect x="292" y="174" width="34" height="34" fill="#f4ecd8" stroke="#a89c80"/>
+<text x="295" y="185" font-size="9" fill="#6f6a60">I5</text>
+<polyline points="37,55 37,89 37,123 71,123 105,123 139,123 173,123 207,123 241,123" fill="none" stroke="#d1495b" stroke-width="3" stroke-linejoin="round" marker-end="url(#arr)"/>
+<circle cx="37" cy="55" r="7" fill="#d1495b"/>
+<text x="346" y="54" font-size="13" fill="#3d3a35">보드는 9열 × 5행.</text>
+<text x="346" y="73" font-size="13" fill="#3d3a35">양 끝 6열은 한 열씩 접히는</text>
+<text x="346" y="92" font-size="13" fill="#3d3a35">날개 패널, 가운데 D~F는</text>
+<text x="346" y="111" font-size="13" fill="#3d3a35">중앙 패널이다.</text>
+<text x="20" y="266" font-size="15" font-weight="700" fill="#2b2a28">② 왼쪽 3선으로 접기: A열이 G열 옆으로 → 3걸음</text>
+<rect x="22" y="280" width="30" height="166" rx="4" fill="none" stroke="#b5b5b5" stroke-dasharray="3 3"/>
+<rect x="56" y="280" width="30" height="166" rx="4" fill="none" stroke="#b5b5b5" stroke-dasharray="3 3"/>
+<rect x="90" y="280" width="30" height="166" rx="4" fill="none" stroke="#b5b5b5" stroke-dasharray="3 3"/>
+<rect x="190" y="278" width="34" height="34" fill="#d8e3ea" stroke="#a89c80"/>
+<text x="193" y="289" font-size="9" fill="#6f6a60">A1</text>
+<rect x="190" y="312" width="34" height="34" fill="#d8e3ea" stroke="#a89c80"/>
+<text x="193" y="323" font-size="9" fill="#6f6a60">A2</text>
+<rect x="190" y="346" width="34" height="34" fill="#d8e3ea" stroke="#a89c80"/>
+<text x="193" y="357" font-size="9" fill="#6f6a60">A3</text>
+<rect x="190" y="380" width="34" height="34" fill="#d8e3ea" stroke="#a89c80"/>
+<text x="193" y="391" font-size="9" fill="#6f6a60">A4</text>
+<rect x="190" y="414" width="34" height="34" fill="#d8e3ea" stroke="#a89c80"/>
+<text x="193" y="425" font-size="9" fill="#6f6a60">A5</text>
+<rect x="156" y="278" width="34" height="34" fill="#d8e3ea" stroke="#a89c80"/>
+<text x="159" y="289" font-size="9" fill="#6f6a60">B1</text>
+<rect x="156" y="312" width="34" height="34" fill="#d8e3ea" stroke="#a89c80"/>
+<text x="159" y="323" font-size="9" fill="#6f6a60">B2</text>
+<rect x="156" y="346" width="34" height="34" fill="#d8e3ea" stroke="#a89c80"/>
+<text x="159" y="357" font-size="9" fill="#6f6a60">B3</text>
+<rect x="156" y="380" width="34" height="34" fill="#d8e3ea" stroke="#a89c80"/>
+<text x="159" y="391" font-size="9" fill="#6f6a60">B4</text>
+<rect x="156" y="414" width="34" height="34" fill="#d8e3ea" stroke="#a89c80"/>
+<text x="159" y="425" font-size="9" fill="#6f6a60">B5</text>
+<rect x="122" y="278" width="34" height="34" fill="#d8e3ea" stroke="#a89c80"/>
+<text x="125" y="289" font-size="9" fill="#6f6a60">C1</text>
+<rect x="122" y="312" width="34" height="34" fill="#d8e3ea" stroke="#a89c80"/>
+<text x="125" y="323" font-size="9" fill="#6f6a60">C2</text>
+<rect x="122" y="346" width="34" height="34" fill="#d8e3ea" stroke="#a89c80"/>
+<text x="125" y="357" font-size="9" fill="#6f6a60">C3</text>
+<rect x="122" y="380" width="34" height="34" fill="#d8e3ea" stroke="#a89c80"/>
+<text x="125" y="391" font-size="9" fill="#6f6a60">C4</text>
+<rect x="122" y="414" width="34" height="34" fill="#d8e3ea" stroke="#a89c80"/>
+<text x="125" y="425" font-size="9" fill="#6f6a60">C5</text>
+<rect x="224" y="278" width="34" height="34" fill="#f4ecd8" stroke="#a89c80"/>
+<text x="227" y="289" font-size="9" fill="#6f6a60">G1</text>
+<rect x="224" y="312" width="34" height="34" fill="#f4ecd8" stroke="#a89c80"/>
+<text x="227" y="323" font-size="9" fill="#6f6a60">G2</text>
+<rect x="224" y="346" width="34" height="34" fill="#f4ecd8" stroke="#a89c80"/>
+<text x="227" y="357" font-size="9" fill="#6f6a60">G3</text>
+<rect x="224" y="380" width="34" height="34" fill="#f4ecd8" stroke="#a89c80"/>
+<text x="227" y="391" font-size="9" fill="#6f6a60">G4</text>
+<rect x="224" y="414" width="34" height="34" fill="#f4ecd8" stroke="#a89c80"/>
+<text x="227" y="425" font-size="9" fill="#6f6a60">G5</text>
+<rect x="258" y="278" width="34" height="34" fill="#f4ecd8" stroke="#a89c80"/>
+<text x="261" y="289" font-size="9" fill="#6f6a60">H1</text>
+<rect x="258" y="312" width="34" height="34" fill="#f4ecd8" stroke="#a89c80"/>
+<text x="261" y="323" font-size="9" fill="#6f6a60">H2</text>
+<rect x="258" y="346" width="34" height="34" fill="#f4ecd8" stroke="#a89c80"/>
+<text x="261" y="357" font-size="9" fill="#6f6a60">H3</text>
+<rect x="258" y="380" width="34" height="34" fill="#f4ecd8" stroke="#a89c80"/>
+<text x="261" y="391" font-size="9" fill="#6f6a60">H4</text>
+<rect x="258" y="414" width="34" height="34" fill="#f4ecd8" stroke="#a89c80"/>
+<text x="261" y="425" font-size="9" fill="#6f6a60">H5</text>
+<rect x="292" y="278" width="34" height="34" fill="#f4ecd8" stroke="#a89c80"/>
+<text x="295" y="289" font-size="9" fill="#6f6a60">I1</text>
+<rect x="292" y="312" width="34" height="34" fill="#f4ecd8" stroke="#a89c80"/>
+<text x="295" y="323" font-size="9" fill="#6f6a60">I2</text>
+<rect x="292" y="346" width="34" height="34" fill="#f4ecd8" stroke="#a89c80"/>
+<text x="295" y="357" font-size="9" fill="#6f6a60">I3</text>
+<rect x="292" y="380" width="34" height="34" fill="#f4ecd8" stroke="#a89c80"/>
+<text x="295" y="391" font-size="9" fill="#6f6a60">I4</text>
+<rect x="292" y="414" width="34" height="34" fill="#f4ecd8" stroke="#a89c80"/>
+<text x="295" y="425" font-size="9" fill="#6f6a60">I5</text>
+<line x1="224" y1="278" x2="224" y2="448" stroke="#d9a521" stroke-width="4"/>
+<polyline points="207,295 207,329 207,363 241,363" fill="none" stroke="#d1495b" stroke-width="3" stroke-linejoin="round" marker-end="url(#arr)"/>
+<circle cx="207" cy="295" r="7" fill="#d1495b"/>
+<text x="346" y="294" font-size="13" fill="#3d3a35">푸른 칸 = 넘어간 날개의 뒷면</text>
+<text x="346" y="313" font-size="13" fill="#3d3a35">(앞면과 같은 좌표가 인쇄됨).</text>
+<text x="346" y="332" font-size="13" fill="#3d3a35">D~F열은 날개 아래에 가려져</text>
+<text x="346" y="351" font-size="13" fill="#3d3a35">그 위의 말·조각은 부재.</text>
+<text x="346" y="370" font-size="13" fill="#3d3a35">금색 선 = 이음(새 이웃).</text>
+<text x="20" y="506" font-size="15" font-weight="700" fill="#2b2a28">③ 양쪽 2선 접기: A1에서 I5까지 12걸음 → 6걸음</text>
+<rect x="22" y="520" width="30" height="166" rx="4" fill="none" stroke="#b5b5b5" stroke-dasharray="3 3"/>
+<rect x="56" y="520" width="30" height="166" rx="4" fill="none" stroke="#b5b5b5" stroke-dasharray="3 3"/>
+<rect x="260" y="520" width="30" height="166" rx="4" fill="none" stroke="#b5b5b5" stroke-dasharray="3 3"/>
+<rect x="294" y="520" width="30" height="166" rx="4" fill="none" stroke="#b5b5b5" stroke-dasharray="3 3"/>
+<rect x="122" y="518" width="34" height="34" fill="#d8e3ea" stroke="#a89c80"/>
+<text x="125" y="529" font-size="9" fill="#6f6a60">A1</text>
+<rect x="122" y="552" width="34" height="34" fill="#d8e3ea" stroke="#a89c80"/>
+<text x="125" y="563" font-size="9" fill="#6f6a60">A2</text>
+<rect x="122" y="586" width="34" height="34" fill="#d8e3ea" stroke="#a89c80"/>
+<text x="125" y="597" font-size="9" fill="#6f6a60">A3</text>
+<rect x="122" y="620" width="34" height="34" fill="#d8e3ea" stroke="#a89c80"/>
+<text x="125" y="631" font-size="9" fill="#6f6a60">A4</text>
+<rect x="122" y="654" width="34" height="34" fill="#d8e3ea" stroke="#a89c80"/>
+<text x="125" y="665" font-size="9" fill="#6f6a60">A5</text>
+<rect x="88" y="518" width="34" height="34" fill="#d8e3ea" stroke="#a89c80"/>
+<text x="91" y="529" font-size="9" fill="#6f6a60">B1</text>
+<rect x="88" y="552" width="34" height="34" fill="#d8e3ea" stroke="#a89c80"/>
+<text x="91" y="563" font-size="9" fill="#6f6a60">B2</text>
+<rect x="88" y="586" width="34" height="34" fill="#d8e3ea" stroke="#a89c80"/>
+<text x="91" y="597" font-size="9" fill="#6f6a60">B3</text>
+<rect x="88" y="620" width="34" height="34" fill="#d8e3ea" stroke="#a89c80"/>
+<text x="91" y="631" font-size="9" fill="#6f6a60">B4</text>
+<rect x="88" y="654" width="34" height="34" fill="#d8e3ea" stroke="#a89c80"/>
+<text x="91" y="665" font-size="9" fill="#6f6a60">B5</text>
+<rect x="156" y="518" width="34" height="34" fill="#f4ecd8" stroke="#a89c80"/>
+<text x="159" y="529" font-size="9" fill="#6f6a60">E1</text>
+<rect x="156" y="552" width="34" height="34" fill="#f4ecd8" stroke="#a89c80"/>
+<text x="159" y="563" font-size="9" fill="#6f6a60">E2</text>
+<rect x="156" y="586" width="34" height="34" fill="#f4ecd8" stroke="#a89c80"/>
+<text x="159" y="597" font-size="9" fill="#6f6a60">E3</text>
+<rect x="156" y="620" width="34" height="34" fill="#f4ecd8" stroke="#a89c80"/>
+<text x="159" y="631" font-size="9" fill="#6f6a60">E4</text>
+<rect x="156" y="654" width="34" height="34" fill="#f4ecd8" stroke="#a89c80"/>
+<text x="159" y="665" font-size="9" fill="#6f6a60">E5</text>
+<rect x="224" y="518" width="34" height="34" fill="#d8e3ea" stroke="#a89c80"/>
+<text x="227" y="529" font-size="9" fill="#6f6a60">H1</text>
+<rect x="224" y="552" width="34" height="34" fill="#d8e3ea" stroke="#a89c80"/>
+<text x="227" y="563" font-size="9" fill="#6f6a60">H2</text>
+<rect x="224" y="586" width="34" height="34" fill="#d8e3ea" stroke="#a89c80"/>
+<text x="227" y="597" font-size="9" fill="#6f6a60">H3</text>
+<rect x="224" y="620" width="34" height="34" fill="#d8e3ea" stroke="#a89c80"/>
+<text x="227" y="631" font-size="9" fill="#6f6a60">H4</text>
+<rect x="224" y="654" width="34" height="34" fill="#d8e3ea" stroke="#a89c80"/>
+<text x="227" y="665" font-size="9" fill="#6f6a60">H5</text>
+<rect x="190" y="518" width="34" height="34" fill="#d8e3ea" stroke="#a89c80"/>
+<text x="193" y="529" font-size="9" fill="#6f6a60">I1</text>
+<rect x="190" y="552" width="34" height="34" fill="#d8e3ea" stroke="#a89c80"/>
+<text x="193" y="563" font-size="9" fill="#6f6a60">I2</text>
+<rect x="190" y="586" width="34" height="34" fill="#d8e3ea" stroke="#a89c80"/>
+<text x="193" y="597" font-size="9" fill="#6f6a60">I3</text>
+<rect x="190" y="620" width="34" height="34" fill="#d8e3ea" stroke="#a89c80"/>
+<text x="193" y="631" font-size="9" fill="#6f6a60">I4</text>
+<rect x="190" y="654" width="34" height="34" fill="#d8e3ea" stroke="#a89c80"/>
+<text x="193" y="665" font-size="9" fill="#6f6a60">I5</text>
+<line x1="156" y1="518" x2="156" y2="688" stroke="#d9a521" stroke-width="4"/>
+<line x1="190" y1="518" x2="190" y2="688" stroke="#d9a521" stroke-width="4"/>
+<polyline points="139,535 173,535 207,535 207,569 207,603 207,637 207,671" fill="none" stroke="#d1495b" stroke-width="3" stroke-linejoin="round" marker-end="url(#arr)"/>
+<circle cx="139" cy="535" r="7" fill="#d1495b"/>
+<text x="346" y="534" font-size="13" fill="#3d3a35">양쪽 날개 폭의 합은 4까지.</text>
+<text x="346" y="553" font-size="13" fill="#3d3a35">지도가 짧아질수록 길은</text>
+<text x="346" y="572" font-size="13" fill="#3d3a35">빨라지지만, 가려지는</text>
+<text x="346" y="591" font-size="13" fill="#3d3a35">칸도 늘어난다.</text>
+<defs><marker id="arr" markerUnits="userSpaceOnUse" markerWidth="12" markerHeight="12" refX="9" refY="6" orient="auto"><path d="M0,0 L12,6 L0,12 z" fill="#d1495b"/></marker></defs>
+</svg>

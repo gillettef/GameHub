@@ -1,5 +1,5 @@
 // 수치 격자 탐색: node prototype/tools/grid.mjs <players> <games> '<json array of config overrides>'
-import { DEFAULT_CONFIG } from '../engine.js';
+import { RULES as DEFAULT_CONFIG } from '../rules-config.js'; // 확정 수치 위에 덮어쓴다
 import { runBatch, mergeConfig } from '../sim.js';
 const [n, games, list] = [Number(process.argv[2]), Number(process.argv[3]), JSON.parse(process.argv[4])];
 for (const over of list) {

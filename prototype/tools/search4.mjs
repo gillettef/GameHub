@@ -1,4 +1,4 @@
-import { DEFAULT_CONFIG } from '../engine.js';
+import { RULES as DEFAULT_CONFIG } from '../rules-config.js'; // 확정 수치 위에 덮어쓴다
 import { runBatch, mergeConfig } from '../sim.js';
 const G = Number(process.argv[2] || 400);
 const base = { spawnPerRound: { 4: 0 }, spawnPerTurn: 1, target: { 4: 7 }, initialShards: { 4: 6 }, endMode: 'round' };
