@@ -6,7 +6,7 @@ NODE_BIN=$(command -v node)
 
 sudo tee /etc/systemd/system/sightline.service >/dev/null <<UNIT
 [Unit]
-Description=Sightline static web server
+Description=Sightline web simulator (static + online play API)
 After=network.target
 
 [Service]
