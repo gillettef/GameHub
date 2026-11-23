@@ -18,12 +18,18 @@
   --W: #2e8b57;
   --X: #9aa0a6;
   --radius: 12px;
-  font-family: "Pretendard", "Noto Sans KR", "Malgun Gothic", system-ui, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Pretendard", "Noto Sans KR", "Malgun Gothic", system-ui, sans-serif;
+  --bar-h: 0px;
 }
 * { box-sizing: border-box; }
-html, body { margin: 0; background: var(--bg); color: var(--text); }
+html, body { margin: 0; background: var(--bg); color: var(--text); -webkit-text-size-adjust: 100%; }
+html { -webkit-tap-highlight-color: transparent; }
 body {
   min-height: 100vh;
+  min-height: 100dvh;
+  touch-action: manipulation;
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
   background:
     radial-gradient(1200px 600px at 80% -10%, rgba(232, 198, 106, .10), transparent 60%),
     radial-gradient(900px 500px at -10% 110%, rgba(63, 107, 53, .25), transparent 60%),
@@ -44,7 +50,7 @@ button.ghost { background: transparent; }
 button.danger { border-color: var(--danger); color: var(--danger); background: transparent; }
 button.on { background: var(--gold-d); border-color: var(--gold); color: #fff; }
 input, select {
-  font: inherit; color: var(--text); background: var(--bg2); border: 1px solid var(--line);
+  font: inherit; font-size: 16px; /* iOS 입력 시 자동 확대 방지 */ color: var(--text); background: var(--bg2); border: 1px solid var(--line);
   border-radius: 10px; padding: .55rem .75rem; width: 100%;
 }
 input:focus, select:focus, button:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
@@ -52,7 +58,7 @@ input:focus, select:focus, button:focus-visible { outline: 2px solid var(--gold)
 
 .top {
   display: flex; align-items: center; justify-content: space-between;
-  padding: .7rem 1rem; border-bottom: 1px solid var(--line); background: rgba(15, 23, 19, .85);
+  padding: calc(.7rem + env(safe-area-inset-top)) 1rem .7rem; border-bottom: 1px solid var(--line); background: rgba(15, 23, 19, .85);
   position: sticky; top: 0; z-index: 10; backdrop-filter: blur(6px);
 }
 .brand { display: flex; align-items: baseline; gap: .5rem; color: var(--text); text-decoration: none; }
@@ -89,7 +95,7 @@ main { max-width: 1180px; margin: 0 auto; padding: 1rem; }
 /* 게임 */
 .game { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 1rem; align-items: start; }
 .board-wrap { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: .6rem; position: relative; }
-svg.board { width: 100%; height: auto; display: block; user-select: none; touch-action: manipulation; }
+svg.board { width: 100%; height: auto; display: block; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; touch-action: manipulation; }
 .board-bar { display: flex; justify-content: space-between; align-items: center; gap: .5rem; padding: .2rem .3rem .5rem; flex-wrap: wrap; }
 .status { font-weight: 700; }
 .status small { color: var(--muted); font-weight: 400; }
@@ -140,7 +146,7 @@ svg.board { width: 100%; height: auto; display: block; user-select: none; touch-
 .dlg-body pre { background: var(--bg2); padding: .6rem; border-radius: 8px; overflow: auto; font-size: .8rem; line-height: 1.35; }
 
 #toast {
-  position: fixed; left: 50%; bottom: 1.2rem; transform: translateX(-50%) translateY(150%);
+  position: fixed; left: 50%; bottom: calc(1.2rem + var(--bar-h) + env(safe-area-inset-bottom)); transform: translateX(-50%) translateY(150%);
   background: #2b1d1a; border: 1px solid var(--danger); color: #ffd9d2; padding: .6rem 1rem; border-radius: 10px;
   transition: transform .25s, opacity .25s; z-index: 50; max-width: 90vw; opacity: 0; pointer-events: none;
 }
@@ -155,4 +161,94 @@ svg.board { width: 100%; height: auto; display: block; user-select: none; touch-
 @media (max-width: 480px) {
   main { padding: .6rem; }
   .brand-sub { display: none; }
+}
+
+/* ---------- 상태·행동 카드·탭 (공통) ---------- */
+.status.my-turn { color: var(--gold); }
+.tabs { display: none; }
+.action-card .ac-head { display: flex; align-items: center; gap: .35rem; margin-bottom: .55rem; }
+.action-card .ac-buttons { display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: .45rem; margin-bottom: .45rem; }
+.action-card .ac-buttons button { min-height: 44px; }
+.action-card .ac-buttons .wide { grid-column: 1 / -1; }
+.action-card .ac-hint { margin: .1rem 0 0; }
+.action-card.mine { border-color: var(--gold-d); }
+.dot.pulse { width: 10px; height: 10px; border-radius: 50%; display: inline-block; animation: pulse 1.4s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity: .35; transform: scale(.8); } }
+@media (prefers-reduced-motion: reduce) { .dot.pulse { animation: none; } }
+
+/* 하단 시트 */
+.sheet {
+  border: 1px solid var(--line); border-radius: 18px; background: var(--panel); color: var(--text);
+  width: min(460px, 94vw); padding: 1.1rem 1rem calc(1rem + env(safe-area-inset-bottom));
+}
+.sheet::backdrop { background: rgba(0, 0, 0, .55); }
+.sheet-text { margin: 0 0 1rem; line-height: 1.6; }
+.sheet-buttons { display: grid; gap: .5rem; }
+.sheet-buttons button { min-height: 48px; font-size: 1rem; }
+
+/* ---------- 휴대폰 세로 (아이폰 17 Pro 402pt 기준) ---------- */
+@media (max-width: 700px) {
+  main { padding: .5rem .5rem calc(var(--bar-h) + 1rem + env(safe-area-inset-bottom)); }
+  .top { padding: calc(.45rem + env(safe-area-inset-top)) .75rem .45rem; }
+  .top-actions button { min-height: 40px; padding: .4rem .8rem; }
+  .brand-sub { display: none; }
+  button { min-height: 44px; }
+
+  .hero { margin-top: .2rem; gap: .8rem; }
+  .hero h1 { font-size: 1.75rem; }
+  .hero p { font-size: .95rem; }
+  .hero ul { font-size: .9rem; }
+  .home { display: flex; flex-direction: column; }
+  .home > .row { order: -1; margin-bottom: .4rem; }
+  .home > .divider { display: none; }
+  .hero-art { max-width: 170px; }
+  section.row { flex-direction: column; }
+  section.row > .card { width: 100%; }
+
+  .lobby { margin: .5rem auto; }
+
+  .game { gap: .6rem; }
+  .board-wrap { padding: .3rem; border-radius: 10px; margin: 0 -.2rem; }
+  .board-bar { padding: .15rem .3rem .2rem; }
+  .board-bar .status { font-size: .95rem; }
+  .board-bar button { min-height: 36px; padding: .3rem .7rem; font-size: .85rem; }
+  .board-wrap .legend { display: none; }
+  .board-wrap .hint { font-size: .8rem; margin: .3rem .3rem .1rem; }
+  .scout-banner { display: none; }
+
+  /* 행동 카드는 엄지가 닿는 화면 아래에 고정 */
+  .action-card {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 20;
+    border-radius: 16px 16px 0 0; border-width: 1px 0 0; margin: 0;
+    padding: .7rem calc(.8rem + env(safe-area-inset-right)) calc(.6rem + env(safe-area-inset-bottom)) calc(.8rem + env(safe-area-inset-left));
+    background: rgba(27, 42, 33, .97); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    box-shadow: 0 -8px 24px rgba(0, 0, 0, .35);
+  }
+  .action-card .ac-head { margin-bottom: .45rem; font-size: .95rem; }
+  .action-card .ac-buttons button { min-height: 48px; font-size: 1rem; }
+  .action-card.waiting .ac-hint { display: none; }
+  .action-card.waiting .ac-head { margin: 0; justify-content: center; min-height: 32px; }
+
+  /* 나머지 정보는 탭으로 */
+  .tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: .35rem; }
+  .tabs button { min-height: 42px; }
+  .side .tabbed { display: none; }
+  .side.tab-me .tab-me, .side.tab-players .tab-players, .side.tab-log .tab-log { display: block; }
+  .log { max-height: none; }
+  .pl .meta { font-size: .72rem; }
+  .result .row { flex-direction: column; }
+}
+
+/* ---------- 휴대폰 가로 (높이가 낮다) ---------- */
+@media (orientation: landscape) and (max-height: 500px) {
+  .top { padding: calc(.3rem + env(safe-area-inset-top)) 1rem .3rem; }
+  main { padding: .4rem .6rem calc(.6rem + env(safe-area-inset-bottom)); max-width: none; }
+  .game { grid-template-columns: auto minmax(260px, 1fr); }
+  .board-wrap { padding: .2rem; }
+  svg.board { height: calc(100dvh - 7.2rem); width: auto; max-width: 100%; }
+  .board-wrap .legend, .scout-banner { display: none; }
+  .side { max-height: calc(100dvh - 4rem); overflow: auto; }
+  .tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: .35rem; }
+  .side .tabbed { display: none; }
+  .side.tab-me .tab-me, .side.tab-players .tab-players, .side.tab-log .tab-log { display: block; }
 }

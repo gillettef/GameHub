@@ -7,7 +7,27 @@ const C = 60; // 칸 크기 (SVG 단위)
 const B = C * 7;
 const ROT = { S: 0, E: 90, N: 180, W: 270 };
 
-const ui = { payload: null, es: null, sel: null, mode: 'move', session: null, busy: false };
+const ui = { payload: null, es: null, sel: null, mode: 'move', session: null, busy: false, tab: 'me', lastTurnSeq: null };
+
+// ---------- 하단 시트 (iOS 기본 confirm 대신) ----------
+/** buttons: [{label, value, primary}] → 고른 value, 닫으면 null */
+function sheet(text, buttons) {
+  const d = document.getElementById('sheet');
+  d.querySelector('.sheet-text').textContent = text;
+  const box = d.querySelector('.sheet-buttons');
+  box.innerHTML = buttons.map((b, k) => `<button type="button" data-k="${k}" class="${b.primary ? 'primary' : ''}">${esc(b.label)}</button>`).join('')
+    + '<button type="button" class="ghost" data-k="-1">취소</button>';
+  return new Promise((resolve) => {
+    const done = (v) => { d.close(); d.onclick = null; resolve(v); };
+    d.onclick = (e) => {
+      if (e.target === d) { done(null); return; }
+      const b = e.target.closest('[data-k]');
+      if (b) done(+b.dataset.k < 0 ? null : buttons[+b.dataset.k].value);
+    };
+    d.showModal();
+  });
+}
+const ask = async (text, okLabel = '확인') => (await sheet(text, [{ label: okLabel, value: true, primary: true }])) === true;
 
 // ---------- 공통 ----------
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -61,6 +81,11 @@ function connect(session) {
     if (p.view && ui.payload?.view && p.view.seq !== ui.payload.view.seq) { ui.sel = null; if (p.view.phase !== 'scout') ui.mode = 'move'; }
     ui.payload = p;
     render();
+    const v = p.view;
+    if (v && v.phase === 'play' && v.turn === v.me && ui.lastTurnSeq !== v.seq) {
+      ui.lastTurnSeq = v.seq;
+      if (document.hidden) document.title = '● 내 차례 · SIGHTLINE';
+    }
   };
   es.onerror = () => {
     if (es.readyState === EventSource.CLOSED && !ui.payload) goHome('방을 찾을 수 없습니다. 서버가 다시 시작되었거나 방이 닫혔습니다.');
@@ -76,7 +101,7 @@ function render() {
 // ---------- 홈 ----------
 function renderHome() {
   const joinCode = new URLSearchParams(location.search).get('room') || '';
-  $app.innerHTML = `
+  $app.innerHTML = `<div class="home">
   <section class="hero">
     <div>
       <h1>앉은 자리가 곧 <em>시야</em>다.</h1>
@@ -116,7 +141,7 @@ function renderHome() {
         <button data-act="join" class="${joinCode ? 'primary' : ''}">참가</button>
       </div>
     </div>
-  </section>`;
+  </section></div>`;
 }
 
 function heroArt() {
@@ -231,6 +256,7 @@ function boardSvg(v, rot, opts) {
     }
     const tok = p.token != null ? `<circle cx="${cx - 22}" cy="${cy + 22}" r="8" fill="${colorOf(v.players[p.token].seat)}" stroke="#f5d76e" stroke-width="3"/>` : '';
     parts.push(`<g class="piece" data-pid="${p.id}" style="cursor:pointer">
+      <rect x="${(p.x - 1) * C}" y="${(p.y - 1) * C}" width="${C}" height="${C}" fill="transparent"/>
       ${hl ? `<rect x="${cx - 28}" y="${cy - 28}" width="56" height="56" rx="10" fill="none" stroke="#e2735f" stroke-width="3" stroke-dasharray="5 3"/>` : ''}
       <rect x="${cx - 20}" y="${cy - 20}" width="40" height="40" rx="6" fill="${sel ? '#fff4cf' : '#f7f3ea'}" stroke="${sel ? '#b8902a' : '#5a5246'}" stroke-width="${sel ? 3 : 1.6}"/>
       ${edge}
@@ -256,7 +282,7 @@ function boardSvg(v, rot, opts) {
     if (side === 'W') { r = [-52, 0, w, B]; tx = -35; ty = B / 2; ta = -90; }
     if (side === 'E') { r = [B + 18, 0, w, B]; tx = B + 35; ty = B / 2; ta = 90; }
     bars.push(`<rect x="${r[0]}" y="${r[1]}" width="${r[2]}" height="${r[3]}" rx="6" fill="${fill}" opacity="${empty ? .6 : .92}" ${turn ? 'stroke="#f5d76e" stroke-width="4"' : ''}/>
-      <text x="${tx}" y="${ty}" text-anchor="middle" dominant-baseline="central" font-size="14" font-weight="700" fill="#fff" transform="rotate(${ta} ${tx} ${ty})">${turn ? '▶ ' : ''}${txt}${pl && !pl.card ? ' · 카드 없음' : ''}</text>`);
+      <text x="${tx}" y="${ty}" text-anchor="middle" dominant-baseline="central" font-size="16" font-weight="700" fill="#fff" transform="rotate(${ta} ${tx} ${ty})">${turn ? '▶ ' : ''}${txt}${pl && !pl.card ? ' · 카드 없음' : ''}</text>`);
     if (scoutSeat === seat) bars.push(`<rect x="${r[0] - 4}" y="${r[1] - 4}" width="${r[2] + 8}" height="${r[3] + 8}" rx="8" fill="none" stroke="#e8c66a" stroke-width="3" stroke-dasharray="6 4"/>`);
   }
   return `<svg class="board" viewBox="-60 -60 ${B + 120} ${B + 120}" role="img" aria-label="정원 보드">
@@ -305,24 +331,27 @@ function renderGame(p) {
   $app.innerHTML = `
   <section class="game">
     <div class="board-wrap">
-      <div class="board-bar"><div class="status">${status}</div>
+      <div class="board-bar"><div class="status ${myTurn ? 'my-turn' : ''}">${status}</div>
         <button class="ghost" data-act="deselect" ${ui.sel == null ? 'disabled' : ''}>선택 해제</button></div>
       ${scoutBanner}
       ${boardSvg(v, rot, { names, highlight, dests, selected: ui.sel, scoutSeat: scouting ? v.scout.seat : null })}
       ${selInfo}
-      <p class="hint">색 점선 = 그 가면을 볼 수 있는 단 하나의 좌석 · 검은 가면 면 = 가려짐 · 말 안의 색 점 = 내가 아는 정체(빈 원은 예전에 본 것) · 금테 원 = 초대장 토큰</p>
+      <p class="hint legend">색 점선 = 그 가면을 볼 수 있는 단 하나의 좌석 · 검은 가면 면 = 가려짐 · 말 안의 색 점 = 내가 아는 정체(빈 원은 예전에 본 것) · 금테 원 = 초대장 토큰</p>
     </div>
-    <aside class="side">
-      ${me ? myCard(v, me, names) : ''}
-      ${me && v.phase !== 'over' ? actionCard(v, me, myTurn) : ''}
+    <aside class="side tab-${ui.tab}">
       ${v.phase === 'over' ? resultCard(v, names, p) : ''}
-      <div class="card"><h3>후원자</h3><div class="players">${v.players.map((pl, k) => `
+      ${me && v.phase !== 'over' ? actionCard(v, me, myTurn, names) : ''}
+      <nav class="tabs" role="tablist">
+        ${[['me', '내 정보'], ['players', '후원자'], ['log', '기록']].map(([k, l]) => `<button role="tab" aria-selected="${ui.tab === k}" class="${ui.tab === k ? 'on' : ''}" data-act="tab" data-tab="${k}">${l}</button>`).join('')}
+      </nav>
+      ${me ? myCard(v, me, names) : ''}
+      <div class="card tabbed tab-players"><h3>후원자</h3><div class="players">${v.players.map((pl, k) => `
         <div class="pl ${k === v.turn && v.phase !== 'over' ? 'turn' : ''}">
           <span class="dot" style="background:${colorOf(pl.seat)}"></span>
           <div><div>${seatLabel(pl.seat)} ${esc(names[pl.seat] || '')}${k === v.me ? ' (나)' : ''}</div>
           <div class="meta">쫓는 대상 ${seatLabel(pl.target)} · 접선 ${pl.contacted.length} · 포획 ${pl.captured.length} · 오인 ${pl.mistakes} · 카드 ${pl.card ? '있음' : '없음'} · 글라스 ${pl.glass}</div></div>
           <div class="sc">${pl.score}</div></div>`).join('')}</div></div>
-      <div class="card"><h3>기록</h3><div class="log">${v.log.slice().reverse().map((l) => `<div><span class="r">R${l.round}</span>${l.seat ? `<span style="color:${colorOf(l.seat)}">●</span> ` : ''}${esc(l.text)}</div>`).join('')}</div></div>
+      <div class="card tabbed tab-log"><h3>기록</h3><div class="log">${v.log.slice().reverse().map((l) => `<div><span class="r">R${l.round}</span>${l.seat ? `<span style="color:${colorOf(l.seat)}">●</span> ` : ''}${esc(l.text)}</div>`).join('')}</div></div>
     </aside>
   </section>`;
 }
@@ -335,7 +364,7 @@ function myCard(v, me, names) {
     return q.out === 'contacted' ? '접선' : q.out === 'captured' ? '잡힘' : '떠남';
   };
   void names;
-  return `<div class="card"><h3>나: ${seatLabel(me.seat)} · <span style="color:${colorOf(me.seat)}">${crestName(me.seat)}</span></h3>
+  return `<div class="card tabbed tab-me"><h3>나: ${seatLabel(me.seat)} · <span style="color:${colorOf(me.seat)}">${crestName(me.seat)}</span></h3>
     <dl class="me-grid">
       <dt>쫓는 대상</dt><dd><span class="chip"><span class="sw" style="background:${colorOf(me.target)}"></span>${seatLabel(me.target)} ${crestName(me.target)}</span></dd>
       <dt>나를 쫓는 사람</dt><dd><span class="chip"><span class="sw" style="background:${colorOf(hunter.seat)}"></span>${seatLabel(hunter.seat)}</span> ${hunter.card ? '' : '(카드 없음)'}</dd>
@@ -346,24 +375,32 @@ function myCard(v, me, names) {
     </dl></div>`;
 }
 
-function actionCard(v, me, myTurn) {
-  if (!myTurn) return '<div class="card"><h3>행동</h3><p class="hint">다른 후원자의 차례입니다. 보드를 살펴보세요. 내 쪽을 향한 말, 누가 무엇을 옮겼는지가 단서입니다.</p></div>';
-  if (v.phase === 'scout') return '<div class="card"><h3>정찰</h3><p class="hint">지금 보이는 것은 정찰한 좌석의 시야입니다. 이 좌석을 향한 말 하나를 지목하거나, 지목하지 않기를 누르세요.</p></div>';
+function actionCard(v, me, myTurn, names) {
+  if (!myTurn) {
+    const cur = v.players[v.turn];
+    return `<div class="card action-card waiting"><div class="ac-head"><span class="dot pulse" style="background:${colorOf(cur.seat)}"></span>
+      <b>${seatLabel(cur.seat)} ${esc(names[cur.seat] || '')}</b>&nbsp;차례…</div>
+      <p class="hint ac-hint">내 쪽을 향한 말, 누가 무엇을 옮겼는지가 단서입니다.</p></div>`;
+  }
+  if (v.phase === 'scout') {
+    return `<div class="card action-card mine"><div class="ac-head">🔭 <b>${seatLabel(v.scout.seat)} 좌석</b>&nbsp;정찰 중</div>
+      <p class="hint ac-hint">${me.card ? '이 좌석을 향한 말(빨간 점선)을 눌러 지목하거나' : '지목 카드가 없습니다.'}</p>
+      <div class="ac-buttons"><button class="wide" data-act="scoutSkip">지목하지 않기</button></div></div>`;
+  }
   const mySeat = me.seat;
   const present = v.pieces.filter((q) => q.present);
   const contactable = present.filter((q) => v.roster.agents.includes(q.id) && RENDEZVOUS.some(([a, b]) => a === q.x && b === q.y));
   const acc = me.card ? accusableIds(present, mySeat, mySeat, v.emptySeats) : [];
-  const others = v.players.filter((q, k) => k !== v.me);
-  return `<div class="card"><h3>내 차례 — 하나만 고르세요</h3>
-    <div class="actions">
+  return `<div class="card action-card mine"><div class="ac-head"><b>내 차례</b>&nbsp;· 하나만 고르세요</div>
+    ${contactable.length ? `<div class="ac-buttons">${contactable.map((q) => `<button class="primary wide" data-act="contact" data-pid="${q.id}">${q.id}번 접선 +3</button>`).join('')}</div>` : ''}
+    <div class="ac-buttons">
       <button class="${ui.mode === 'move' ? 'on' : ''}" data-act="modeMove">이동</button>
-      <button class="${ui.mode === 'accuse' ? 'on' : ''}" data-act="modeAccuse" ${me.card && acc.length ? '' : 'disabled'}>지목 (${acc.length})</button>
-      ${contactable.map((q) => `<button class="primary wide" data-act="contact" data-pid="${q.id}">${q.id}번으로 접선 (+3)</button>`).join('')}
-      ${me.glass > 0 ? others.map((q) => `<button data-act="scout" data-seat="${q.seat}">${seatLabel(q.seat)} 정찰</button>`).join('') : ''}
+      <button class="${ui.mode === 'accuse' ? 'on' : ''}" data-act="modeAccuse" ${me.card && acc.length ? '' : 'disabled'}>지목 ${acc.length}</button>
+      <button data-act="scoutPick" ${me.glass > 0 ? '' : 'disabled'}>정찰 ${me.glass}</button>
     </div>
-    <p class="hint">${ui.mode === 'accuse'
-    ? `빨간 점선 말이 지목 가능한 말(내 좌석을 향함)입니다. 눌러서 ${crestName(me.target)} 첩자라고 지목합니다. 맞으면 +2·카드 회수, 틀리면 −1·카드 잃음.`
-    : '옮길 손님 말을 누르고 노란 칸을 고르세요. 이동한 방향이 곧 가면 방향입니다. 내 좌석에 가면이 새로 드러나는 이동은 표시되지 않습니다.'}</p>
+    <p class="hint ac-hint">${ui.mode === 'accuse'
+    ? `빨간 점선 말을 눌러 ${crestName(me.target)} 첩자로 지목 · 맞으면 +2, 틀리면 −1·카드 잃음`
+    : ui.sel != null ? '노란 칸을 눌러 옮기세요 · 이동 방향이 곧 가면 방향' : '옮길 손님 말을 누르세요'}</p>
   </div>`;
 }
 
@@ -425,10 +462,14 @@ $app.addEventListener('click', async (e) => {
   if (actName === 'modeMove') { ui.mode = 'move'; render(); return undefined; }
   if (actName === 'modeAccuse') { ui.mode = 'accuse'; ui.sel = null; render(); return undefined; }
   if (actName === 'contact') return sendAction({ type: 'contact', pieceId: +t.dataset.pid });
-  if (actName === 'scout') {
-    if (confirm(`${seatLabel(t.dataset.seat)} 좌석에서 정찰할까요? 오페라 글라스는 게임에 한 번뿐입니다.`)) return sendAction({ type: 'scout', seat: t.dataset.seat });
+  if (actName === 'scoutPick') {
+    const v = ui.payload.view;
+    const seat = await sheet('어느 좌석에서 정찰할까요? 오페라 글라스는 게임에 한 번뿐입니다. 정찰한 뒤 그 좌석을 향한 말을 지목할 수 있습니다.',
+      v.players.filter((q, k) => k !== v.me).map((q) => ({ label: `${seatLabel(q.seat)} · ${crestName(q.seat)}`, value: q.seat })));
+    if (seat) return sendAction({ type: 'scout', seat });
     return undefined;
   }
+  if (actName === 'tab') { ui.tab = t.dataset.tab; render(); return undefined; }
   if (actName === 'scoutSkip') return sendAction({ type: 'scoutAccuse', pieceId: null });
   if (t.dataset.move) {
     const [pid, dir, steps] = t.dataset.move.split(',');
@@ -443,14 +484,14 @@ $app.addEventListener('click', async (e) => {
     if (myTurn && v.phase === 'scout') {
       const q = v.pieces[pid - 1];
       if (me.card && q.facing === v.scout.seat) {
-        if (confirm(`${pid}번을 ${crestName(me.target)} 첩자로 지목할까요?`)) return sendAction({ type: 'scoutAccuse', pieceId: pid });
+        if (await ask(`${pid}번을 ${crestName(me.target)} 첩자로 지목할까요? 틀리면 지목 카드를 잃습니다.`, '지목')) return sendAction({ type: 'scoutAccuse', pieceId: pid });
       } else toast('정찰한 좌석을 향한 말만 지목할 수 있습니다.');
       return undefined;
     }
     if (myTurn && ui.mode === 'accuse') {
       const ok = accusableIds(v.pieces.filter((q) => q.present), me.seat, me.seat, v.emptySeats).includes(pid);
       if (!ok) { toast('내 좌석을 향한 말만 지목할 수 있습니다.'); return undefined; }
-      if (confirm(`${pid}번을 ${crestName(me.target)} 첩자로 지목할까요?`)) return sendAction({ type: 'accuse', pieceId: pid });
+      if (await ask(`${pid}번을 ${crestName(me.target)} 첩자로 지목할까요? 틀리면 지목 카드를 잃습니다.`, '지목')) return sendAction({ type: 'accuse', pieceId: pid });
       return undefined;
     }
     ui.sel = ui.sel === pid ? null : pid;
@@ -463,9 +504,21 @@ $app.addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && e.target.id === 'code') document.querySelector('[data-act="join"]')?.click();
 });
 
-document.getElementById('btnLeave').addEventListener('click', () => {
-  if (confirm('방에서 나갈까요? 진행 중인 게임에서 내 자리는 비게 됩니다.')) goHome();
+document.getElementById('btnLeave').addEventListener('click', async () => {
+  if (await ask('방에서 나갈까요? 진행 중인 게임에서 내 자리는 비게 됩니다.', '나가기')) goHome();
 });
+
+// 하단 고정 행동 바 높이를 CSS에 알려 본문이 가려지지 않게 한다
+const barObserver = new ResizeObserver(() => {
+  const bar = document.querySelector('.action-card');
+  document.documentElement.style.setProperty('--bar-h', `${bar ? Math.ceil(bar.getBoundingClientRect().height) : 0}px`);
+});
+new MutationObserver(() => {
+  const bar = document.querySelector('.action-card');
+  barObserver.disconnect();
+  if (bar) barObserver.observe(bar); else document.documentElement.style.setProperty('--bar-h', '0px');
+}).observe($app, { childList: true });
+document.addEventListener('visibilitychange', () => { if (!document.hidden) document.title = 'SIGHTLINE · 사이트라인'; });
 
 // ---------- 규칙 ----------
 function md(src) {
