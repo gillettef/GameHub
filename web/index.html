@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SIGHTLINE · 사이트라인</title>
+  <meta name="description" content="앉은 자리가 곧 시야다. 가면무도회 정원의 숨은 정보·블러핑 보드게임 웹 시뮬레이터">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23142019'/%3E%3Cpath d='M6 16c3-5 6.5-7 10-7s7 2 10 7c-3 5-6.5 7-10 7s-7-2-10-7z' fill='none' stroke='%23e8c66a' stroke-width='2'/%3E%3Ccircle cx='16' cy='16' r='3.5' fill='%23e8c66a'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="style.css?v=__BUILD__">
+</head>
+<body>
+  <header class="top">
+    <a class="brand" href="./" aria-label="처음으로">
+      <span class="brand-mark">◉</span><span class="brand-name">SIGHTLINE</span><span class="brand-sub">사이트라인</span>
+    </a>
+    <nav class="top-actions">
+      <button class="ghost" id="btnRules" type="button">규칙</button>
+      <button class="ghost hidden" id="btnLeave" type="button">나가기</button>
+    </nav>
+  </header>
+
+  <main id="app"></main>
+
+  <dialog id="rulesDlg" class="dlg">
+    <div class="dlg-head"><h2>규칙 요약</h2><button class="ghost" data-close type="button">닫기</button></div>
+    <div class="dlg-body" id="rulesBody"></div>
+  </dialog>
+
+  <div id="toast" role="status" aria-live="polite"></div>
+  <script type="module" src="app.js?v=__BUILD__"></script>
+</body>
+</html>
