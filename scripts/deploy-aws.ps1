@@ -2,7 +2,7 @@
 #   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/deploy-aws.ps1
 #
 # 로컬에서 테스트·빌드를 하고 dist·scripts/aws(serve.mjs, deploy-remote.sh)만 ssh로 전송한 뒤,
-# 서버에서 scripts/aws/deploy-remote.sh 가 systemd 서비스(lightcone, 포트 8098) 재시작·헬스체크를 한다.
+# 서버에서 scripts/aws/deploy-remote.sh 가 systemd 서비스(lightcone, 포트 8099) 재시작·헬스체크를 한다.
 # EC2(t4g.nano, 0.5GB)에서는 빌드하지 않는다.
 #
 # 사전 조건: SSH 키와 Elastic IP 파일. 공용 인스턴스라 Rootbound 와 같은 것을 쓴다.
@@ -50,4 +50,4 @@ if ($LASTEXITCODE -ne 0) { throw "원격 배포 실패 (exit $LASTEXITCODE)" }
 
 Write-Host ""
 Write-Host "=== 배포 완료 ==="
-Write-Host "접속: http://${ip}:8098"
+Write-Host "접속: http://${ip}:8099"
