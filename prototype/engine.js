@@ -171,9 +171,32 @@ export function newGame(numPlayers, seed = 1, config = DEFAULT_CONFIG) {
   return state;
 }
 
+export function shardsInUse(state) {
+  let n = 0;
+  for (const v of state.shards.values()) n += v;
+  for (const p of state.players) n += p.carried + p.score;
+  return n;
+}
+
 export function spawn(state) {
+  const cfg = state.config;
+  if (cfg.shardSupply && shardsInUse(state) >= cfg.shardSupply) return null;
+  if (state.deck.length === 0 && cfg.reshuffle) {
+    // 별똥별 카드 더미가 비면 버린 카드를 모두 섞어 새 더미를 만든다
+    for (const c of cfg.spawnCols) for (let r = 0; r < ROWS; r++) state.deck.push(key(c, r));
+    shuffle(state.deck, state.rnd);
+    state.reshuffles = (state.reshuffles || 0) + 1;
+  }
   if (state.deck.length === 0) return null;
   const k = state.deck.pop();
+  state.lastBurst = null;
+  // 날개 터뜨리기: 가려진 칸에 떨어지면 그 칸을 가린 날개를 펼친 뒤 놓는다
+  if (state.config.burstOnCovered && isCoveredCol(state.fold, unkey(k)[0])) {
+    const c = unkey(k)[0];
+    const side = state.fold.L > 0 && c >= state.fold.L && c <= 2 * state.fold.L - 1 ? 'L' : 'R';
+    state.fold = { ...state.fold, [side]: 0 };
+    state.lastBurst = side;
+  }
   state.shards.set(k, (state.shards.get(k) || 0) + 1);
   state.lastSpawn = k;
   return k;
@@ -204,13 +227,15 @@ export function startTurn(state) {
   state.turnSteps = 0;
   state.turnFolded = false;
   state.turnActions = [];
+  state.turnStartAbsent = !playerPresent(state, state.players[state.current]);
+  state.turnMaxSteps = state.config.moveSteps;
   resolveCell(state, state.players[state.current]);
 }
 
 /** 활성 플레이어가 지금 할 수 있는 걸음 목적지 */
 export function legalSteps(state) {
   const p = state.players[state.current];
-  if (state.turnSteps >= state.config.moveSteps || !playerPresent(state, p)) return [];
+  if (state.turnSteps >= state.turnMaxSteps || !playerPresent(state, p)) return [];
   return neighbors(state.fold, p.c, p.r);
 }
 
@@ -221,7 +246,7 @@ export function legalFolds(state) {
 
 export function doStep(state, to) {
   const p = state.players[state.current];
-  if (state.turnSteps >= state.config.moveSteps) throw new Error('걸음 수 초과');
+  if (state.turnSteps >= state.turnMaxSteps) throw new Error('걸음 수 초과');
   if (!playerPresent(state, p)) throw new Error('부재 중인 길잡이는 이동할 수 없다');
   const ok = neighbors(state.fold, p.c, p.r).some(([c, r]) => c === to[0] && r === to[1]);
   if (!ok) throw new Error(`이웃 칸이 아니다: ${cellName(p.c, p.r)} -> ${cellName(...to)}`);
@@ -238,6 +263,9 @@ export function doFold(state, a) {
   state.fold = applyFoldAction(state.fold, a);
   state.turnFolded = true;
   state.turnActions.push({ ...a });
+  if (state.config.freedStepPenalty && state.turnStartAbsent && playerPresent(state, state.players[state.current])) {
+    state.turnMaxSteps = state.config.moveSteps - state.config.freedStepPenalty;
+  }
   resolveCell(state, state.players[state.current]);
 }
 
@@ -264,31 +292,61 @@ export function playTurn(state, actions) {
   return finishTurn(state);
 }
 
+function nextActive(state, from) {
+  for (let i = 1; i <= state.n; i++) {
+    const c = (from + i) % state.n;
+    if (!state.activeIds || state.activeIds.includes(c)) return c;
+  }
+  return from;
+}
+
 function endTurn(state) {
   const { target } = state.config;
   const mode = state.config.endMode || 'round';
   const prev = state.current;
   state.turn++;
   if (state.config.spawnPerTurn) for (let i = 0; i < state.config.spawnPerTurn; i++) spawn(state);
-  state.current = (state.current + 1) % state.n;
-  if (!state.endTriggered && (state.players.some((pl) => pl.score >= target[state.n]) || state.deck.length === 0)) {
+  const supplyOut = state.config.shardSupply ? shardsInUse(state) >= state.config.shardSupply : (!state.config.reshuffle && state.deck.length === 0);
+  if (!state.endTriggered && (state.players.some((pl) => pl.score >= target[state.n]) || supplyOut)) {
     state.endTriggered = true;
     state.endTrigger = prev;
     if (mode === 'immediate') { state.over = true; return; }
   }
-  // 'lastTurn': 종료를 일으킨 플레이어를 뺀 모두가 한 차례씩 더 하고 끝난다
-  if (mode === 'lastTurn' && state.endTriggered && state.current === state.endTrigger) { state.over = true; return; }
-  if (state.current === 0) {
-    if (mode === 'round' && state.endTriggered) { state.over = true; return; }
+  if (mode === 'lastTurn') {
+    state.current = (prev + 1) % state.n;
+    if (state.endTriggered && state.current === state.endTrigger) { state.over = true; return; }
+    if (state.current === 0) state.round++;
+    return;
+  }
+  // 'round': 종료가 정해지면 그 라운드 끝까지 진행한다
+  const nxt = nextActive(state, prev);
+  const roundEnded = nxt <= prev;
+  if (roundEnded) {
+    if (state.endTriggered) {
+      const tied = winners(state);
+      // 동점 결승: 동점인 플레이어끼리만 한 라운드를 더 진행한다 (카드가 남아 있는 동안)
+      if (tied.length > 1 && state.config.tieBreak === 'extraRound' && (state.extraRounds || 0) < 3) {
+        state.activeIds = tied;
+        state.extraRounds = (state.extraRounds || 0) + 1;
+        state.round++;
+        state.current = tied[0];
+        return;
+      }
+      state.over = true;
+      return;
+    }
     for (let i = 0; i < state.config.spawnPerRound[state.n]; i++) spawn(state);
     state.round++;
   }
+  state.current = nxt;
 }
 
 /** 승자 판정: 점수 > 들고 있는 조각. 그래도 같으면 공동 승리(목록 반환) */
 export function winners(state) {
-  const best = Math.max(...state.players.map((p) => p.score * 100 + p.carried));
-  return state.players.filter((p) => p.score * 100 + p.carried === best).map((p) => p.id);
+  const late = state.config.tieBreak === 'lateSeat';
+  const val = (p) => p.score * 1000 + p.carried * 10 + (late ? p.id : 0);
+  const best = Math.max(...state.players.map(val));
+  return state.players.filter((p) => val(p) === best).map((p) => p.id);
 }
 export function winner(state) {
   return winners(state)[0];

@@ -55,6 +55,7 @@ export function chooseTurn(state, profileName = 'balanced', rnd = Math.random) {
   let best = null;
   let bestVal = -Infinity;
   const seen = new Set();
+  const startAbsent = isCoveredCol(state.fold, me.c);
 
   function resolve(node) {
     // 보이는 칸에 있을 때만 줍기·득점
@@ -83,12 +84,12 @@ export function chooseTurn(state, profileName = 'balanced', rnd = Math.random) {
   }
 
   function dfs(node) {
-    const sk = `${node.c},${node.r},${node.fold.L},${node.fold.R},${node.steps},${node.folded},${node.carried},${node.score}`;
+    const sk = `${node.c},${node.r},${node.fold.L},${node.fold.R},${node.steps},${node.folded},${node.carried},${node.score},${node.maxSteps}`;
     if (seen.has(sk)) return;
     seen.add(sk);
     const v = evaluate(node);
     if (v > bestVal) { bestVal = v; best = node.actions; }
-    if (node.steps < cfg.moveSteps && !isCoveredCol(node.fold, node.c)) {
+    if (node.steps < node.maxSteps && !isCoveredCol(node.fold, node.c)) {
       for (const [nc, nr] of neighbors(node.fold, node.c, node.r)) {
         dfs(resolve({ ...node, c: nc, r: nr, steps: node.steps + 1, actions: [...node.actions, { type: 'step', to: [nc, nr] }] }));
       }
@@ -96,13 +97,17 @@ export function chooseTurn(state, profileName = 'balanced', rnd = Math.random) {
     if (!node.folded) {
       for (const a of foldActions(node.fold)) {
         if (!prof.allowFold && a.type === 'fold') continue;
-        dfs(resolve({ ...node, fold: applyFoldAction(node.fold, a), folded: true, actions: [...node.actions, a] }));
+        const nf = applyFoldAction(node.fold, a);
+        const freed = cfg.freedStepPenalty && startAbsent && !isCoveredCol(nf, node.c);
+        const maxSteps = freed ? cfg.moveSteps - cfg.freedStepPenalty : node.maxSteps;
+        if (node.steps > maxSteps) continue;
+        dfs(resolve({ ...node, fold: nf, folded: true, maxSteps, actions: [...node.actions, a] }));
       }
     }
   }
 
   const root = resolve({
-    c: me.c, r: me.r, fold: { ...state.fold }, steps: 0, folded: false,
+    c: me.c, r: me.r, fold: { ...state.fold }, steps: 0, folded: false, maxSteps: cfg.moveSteps,
     carried: me.carried, score: me.score, shards: state.shards, actions: [],
   });
   dfs(root);

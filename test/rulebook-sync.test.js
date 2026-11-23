@@ -22,7 +22,7 @@ test('룰북의 걸음 수·들 수 있는 조각·초기 조각 수가 엔진�
   assert.ok(book.includes(`최대 ${RULES.moveSteps}**걸음**`), '걸음 수');
   assert.ok(book.includes(`최대 ${RULES.carryLimit}개까지 들고`), '들 수 있는 조각');
   for (const n of [2, 3, 4]) assert.equal(RULES.initialShards[n], 6);
-  assert.match(book, /별똥별 카드를 6장 뒤집어/);
+  assert.ok(book.includes("별똥별 카드를 6장 뒤집는다"), "초기 조각 수");
   assert.equal(RULES.spawnPerTurn, 1);
   assert.equal(RULES.endMode, 'round');
 });

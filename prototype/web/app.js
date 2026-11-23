@@ -1,7 +1,7 @@
 // CREASE 웹 프로토타입 (핫시트 + 봇). 규칙은 engine.js, 수치는 rules-config.js
 import {
   COLS, ROWS, COL_NAMES, cellName, key, unkey, physPos, isCoveredCol, isFlippedCol,
-  newGame, startTurn, legalSteps, legalFolds, doStep, doFold, finishTurn, winners,
+  newGame, startTurn, legalSteps, legalFolds, doStep, doFold, finishTurn, winners, shardsInUse,
 } from './engine.js';
 import { chooseTurn } from './bot.js';
 import { RULES } from './rules-config.js';
@@ -179,13 +179,13 @@ function renderSide() {
     status.innerHTML = `<b>게임 끝!</b> 승자: ${w.map((i) => `<span style="color:${COLORS[i]}">${NAMES[i]}</span>`).join(', ')}`;
   } else {
     const absent = isCoveredCol(state.fold, cur.c);
-    status.innerHTML = `<b style="color:${COLORS[cur.id]}">${NAMES[cur.id]}</b> 차례 (${state.round}라운드) · ${seats[cur.id] === 'bot' ? '봇 생각 중…' : `남은 걸음 ${state.config.moveSteps - state.turnSteps} · 접기 ${state.turnFolded ? '사용함' : '가능'}`}${absent ? '<br><b>부재 중</b>: 펼쳐야 움직일 수 있어요' : ''}`;
+    status.innerHTML = `${state.activeIds ? '<b>동점 결승</b> · ' : ''}<b style="color:${COLORS[cur.id]}">${NAMES[cur.id]}</b> 차례 (${state.round}라운드) · ${seats[cur.id] === 'bot' ? '봇 생각 중…' : `남은 걸음 ${state.config.moveSteps - state.turnSteps} · 접기 ${state.turnFolded ? '사용함' : '가능'}`}${absent ? '<br><b>부재 중</b>: 펼쳐야 움직일 수 있어요' : ''}`;
   }
   app.querySelector('#players').innerHTML = state.players.map((p, i) => `
     <div class="p ${i === state.current && !state.over ? 'active' : ''}"><span class="dot" style="background:${COLORS[i]}"></span>
     <span>${NAMES[i]} (${seats[i] === 'bot' ? '봇' : '사람'}) · 닻 ${cellName(...unkey(p.anchor))}</span>
     <span>${p.score}점 · 든 조각 ${p.carried}/${state.config.carryLimit}</span></div>`).join('') +
-    `<div class="legend">목표 ${state.config.target[state.n]}점 · 별똥별 카드 ${state.deck.length}장 남음</div>`;
+    `<div class="legend">목표 ${state.config.target[state.n]}점 · 별똥별 카드 ${state.deck.length}장 남음 · 공급처 ${state.config.shardSupply - shardsInUse(state)}개</div>`;
   const human = seats[state.current] === 'human' && !state.over && !busy;
   const legal = human ? legalFolds(state) : [];
   const btn = (a, label) => {
@@ -254,8 +254,10 @@ function endTurn() {
   const spawned = finishTurn(state);
   if (spawned != null) {
     const [c, r] = unkey(spawned);
-    log(`✦ 별똥별: ${cellName(c, r)}${isCoveredCol(state.fold, c) ? ' (가려진 칸 · 부재)' : ''}`);
+    const burst = state.lastBurst ? ` · <b>날개 터뜨리기!</b> ${state.lastBurst === 'L' ? '왼쪽' : '오른쪽'} 날개가 펼쳐짐` : '';
+    log(`✦ 별똥별: ${cellName(c, r)}${burst}`);
   }
+  if (state.activeIds && !state.over) log(`⚔ 동점 결승 라운드: ${state.activeIds.map((i) => NAMES[i]).join(' · ')}`);
   if (state.over) {
     log(`게임 끝 · ${state.players.map((q) => `${NAMES[q.id]} ${q.score}`).join(' / ')}`);
     render();
@@ -267,4 +269,29 @@ function endTurn() {
 
 const sleep = (ms) => new Promise((res) => setTimeout(res, ms));
 void COL_NAMES;
-setupScreen();
+
+// URL 매개변수: ?n=4&seats=hbbb&seed=7&ff=12 → 자동 시작, ff 차례만큼 봇으로 빨리 감기(시연·스크린샷용)
+function autoStart() {
+  const q = new URLSearchParams(location.search);
+  if (!q.has('n')) return false;
+  const n = Math.min(4, Math.max(2, Number(q.get('n')) || 2));
+  const code = (q.get('seats') || 'h' + 'b'.repeat(n - 1)).padEnd(n, 'b');
+  seats = [...code].slice(0, n).map((ch) => (ch === 'h' ? 'human' : 'bot'));
+  state = newGame(n, Number(q.get('seed')) || 1, RULES);
+  logLines.length = 0;
+  log(`게임 시작 · ${n}인 · 목표 ${RULES.target[n]}점`);
+  const ff = Number(q.get('ff')) || 0;
+  for (let i = 0; i < ff && !state.over; i++) {
+    startTurn(state);
+    const p = state.players[state.current];
+    for (const a of chooseTurn(state, 'balanced')) {
+      if (a.type === 'step') doStep(state, a.to); else doFold(state, a);
+      log(`${NAMES[p.id]}: ${describe(a)}`);
+    }
+    finishTurn(state);
+  }
+  gameScreen();
+  beginTurn();
+  return true;
+}
+if (!autoStart()) setupScreen();
