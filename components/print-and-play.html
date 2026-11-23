@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HEARSAY 프린트 앤 플레이</title>
+<style>
+  :root {
+    --ink: #2a2622; --paper: #fbf7ef; --line: #8a7f70; --grey: #9a9a9a;
+    --c-red: #c8473b; --c-blue: #3b67b5; --c-yellow: #e2b230;
+    --c-green: #3f8f57; --c-purple: #7d55a8; --c-black: #2b2b2b;
+  }
+  @page { size: A4; margin: 8mm; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: "Noto Sans KR", "Malgun Gothic", sans-serif; color: var(--ink); background: #ddd; }
+  .guide { max-width: 900px; margin: 16px auto; padding: 16px; background: #fff; border-radius: 8px; line-height: 1.6; }
+  .guide h1 { margin: 0 0 8px; font-size: 22px; }
+  .guide li { margin: 2px 0; }
+  .page { width: 194mm; min-height: 281mm; margin: 12px auto; background: #fff; padding: 4mm; page-break-after: always; break-after: page; position: relative; }
+  .page.land { width: 281mm; min-height: 190mm; }
+  .page h2 { font-size: 13px; margin: 0 0 3mm; color: #555; font-weight: 600; }
+  @media print {
+    body { background: none; }
+    .guide { display: none; }
+    .page { margin: 0; box-shadow: none; min-height: 0 !important; }
+    .page.land { page: landscape; }
+  }
+  @page landscape { size: A4 landscape; margin: 8mm; }
+
+  /* 섬 보드 */
+  .board { width: 100%; border-collapse: collapse; background: var(--paper); }
+  .board th, .board td { border: 1px solid var(--line); text-align: center; }
+  .board thead th { height: 9mm; font-size: 13px; background: #efe6d4; }
+  .board td.cell { width: 25mm; height: 21mm; }
+  .board th.plot { width: 52mm; text-align: left; padding: 2mm 3mm; background: #f3ead9; }
+  .plot-name { font-size: 16px; font-weight: 700; }
+  .plot-meta { font-size: 11px; color: #555; margin-top: 1mm; display: flex; gap: 3mm; align-items: center; }
+  .val { display: inline-flex; width: 8mm; height: 8mm; border-radius: 50%; background: var(--ink); color: #fff; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; }
+  .pc { font-size: 10px; border: 1px solid #777; border-radius: 3px; padding: 0 1.5mm; }
+  .board-title { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 2mm; }
+  .board-title b { font-size: 20px; letter-spacing: 2px; }
+
+  /* 점수 트랙 */
+  .track { display: grid; grid-template-columns: repeat(10, 1fr); gap: 0; border: 1px solid var(--line); }
+  .track div { height: 25mm; border: 1px solid var(--line); display: flex; align-items: flex-start; justify-content: flex-start; padding: 1.5mm; font-weight: 700; font-size: 14px; background: var(--paper); }
+  .track div.five { background: #efe6d4; }
+
+  /* 카드 */
+  .cards { display: grid; grid-template-columns: repeat(4, 44mm); grid-auto-rows: 63mm; gap: 2mm; }
+  .card { border: 0.3mm dashed #aaa; position: relative; padding: 2.2mm; }
+  .card .inner { height: 100%; border-radius: 2.5mm; border: 2.6mm solid var(--hc); background: var(--paper); display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 2mm; }
+  .card .inner .nm { font-size: 17px; font-weight: 700; }
+  .card .inner .sub { font-size: 9px; color: #555; }
+  .card .house { position: absolute; top: 3.6mm; left: 4.5mm; font-size: 8px; color: #fff; }
+  .card.recall .inner { background: #3a352f; color: #f3ead9; border-color: #3a352f; outline: 0.6mm solid #f3ead9; outline-offset: -2mm; }
+  .card.recall .inner .sub { color: #d6cbb6; }
+  .card.recall .val { background: #f3ead9; color: #3a352f; }
+
+  /* 타일·토큰 */
+  .grid-tiles { display: grid; grid-template-columns: repeat(9, 18mm); grid-auto-rows: 18mm; gap: 1mm; }
+  .tile { background: var(--hc); border: 0.3mm solid #555; }
+  .grid-tok { display: grid; grid-template-columns: repeat(12, 15mm); grid-auto-rows: 15mm; gap: 1mm; margin-bottom: 4mm; }
+  .tok { border-radius: 50%; background: var(--hc); border: 0.3mm solid #555; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 7px; font-weight: 700; }
+  .ring { border-radius: 50%; background: radial-gradient(circle, #fff 0 32%, var(--hc) 33%); border: 0.3mm solid #555; }
+  .note { font-size: 10px; color: #666; margin: 1mm 0 3mm; }
+
+  /* 요약 카드 */
+  .summ { display: grid; grid-template-columns: repeat(2, 92mm); gap: 3mm; }
+  .sc { border: 0.3mm dashed #aaa; padding: 3mm; height: 88mm; font-size: 9.5px; line-height: 1.45; background: var(--paper); }
+  .sc h3 { margin: 0 0 1.5mm; font-size: 12px; }
+  .sc table { border-collapse: collapse; width: 100%; margin-top: 1mm; }
+  .sc td, .sc th { border: 1px solid #bbb; padding: 0.6mm 1mm; font-size: 8.5px; }
+  .markers { display: flex; gap: 6mm; margin-top: 6mm; align-items: center; }
+  .mk { width: 40mm; height: 40mm; border: 0.3mm solid #555; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; background: var(--paper); text-align: center; }
+  .mk.round { border-radius: 50%; }
+  .mk.arrow { width: 22mm; height: 22mm; clip-path: polygon(50% 0, 100% 100%, 0 100%); background: var(--c-red); border: none; }
+</style>
+</head>
+<body>
+<div class="guide">
+  <h1>HEARSAY 프린트 앤 플레이 (룰북 v0.3 기준)</h1>
+  <ol>
+    <li>브라우저에서 <b>인쇄 → A4, 배율 100%(실제 크기), 배경 그래픽 켜기</b>로 인쇄합니다. 단면 인쇄로 충분합니다.</li>
+    <li>섬 보드와 점수 트랙은 가로 페이지입니다. 두꺼운 종이나 하드보드에 붙이면 좋습니다.</li>
+    <li>구역 카드는 앞면 테두리 색이 집안 색입니다. 뒷면은 모두 흰색이라 같은 집안끼리 구분되지 않아도 됩니다(내 카드만 손에 들기 때문). 불투명하도록 두꺼운 종이를 권합니다.</li>
+    <li>땅 타일 뒷면은 모두 흰색이어야 합니다. 인쇄 후 잘라 쓰세요.</li>
+    <li>증언 토큰·기록 표지는 종이로 잘라도 되지만, <b>색 구슬, 바둑알+스티커, 포커칩</b>을 쓰면 주먹에 쥐기 편합니다. 증언 토큰은 모두 같은 모양·크기여야 합니다.</li>
+    <li>필요한 것: 60초 모래시계(스마트폰 타이머로 대체 가능), 불투명 주머니 1개.</li>
+  </ol>
+</div>
+<div id="root"></div>
+<script>
+const HOUSES = [
+  { id: 'red', name: '빨강', v: 'var(--c-red)' },
+  { id: 'blue', name: '파랑', v: 'var(--c-blue)' },
+  { id: 'yellow', name: '노랑', v: 'var(--c-yellow)' },
+  { id: 'green', name: '초록', v: 'var(--c-green)' },
+  { id: 'purple', name: '보라', v: 'var(--c-purple)' },
+  { id: 'black', name: '검정', v: 'var(--c-black)' },
+];
+const GREY = { id: 'grey', name: '회색', v: 'var(--grey)' };
+const PLOTS = [
+  { name: '강가', value: 4, pc: '4~6인' },
+  { name: '포구', value: 3, pc: '4~6인' },
+  { name: '우물터', value: 3, pc: '5~6인' },
+  { name: '소금밭', value: 2, pc: '4~6인' },
+  { name: '북쪽 언덕', value: 2, pc: '4~6인' },
+  { name: '대숲', value: 2, pc: '4~6인' },
+  { name: '갯벌', value: 2, pc: '6인' },
+];
+const SEASONS = 7;
+const root = document.getElementById('root');
+const el = (html) => { const d = document.createElement('div'); d.innerHTML = html.trim(); return d.firstChild; };
+const page = (title, land) => { const p = el(`<section class="page${land ? ' land' : ''}"><h2>${title}</h2></section>`); root.appendChild(p); return p; };
+
+// 1. 섬 보드
+{
+  const p = page('섬 보드 (가로 인쇄)', true);
+  let head = '<tr><th class="plot">구역</th>';
+  for (let s = 1; s <= SEASONS; s++) head += `<th>${s}계절</th>`;
+  head += '</tr>';
+  let body = '';
+  for (const pl of PLOTS) {
+    body += `<tr><th class="plot"><div class="plot-name">${pl.name}</div><div class="plot-meta"><span class="val">${pl.value}</span><span class="pc">${pl.pc}</span></div></th>`;
+    for (let s = 1; s <= SEASONS; s++) body += '<td class="cell"></td>';
+    body += '</tr>';
+  }
+  p.appendChild(el(`<div class="board-title"><b>HEARSAY · 섬 보드</b><span style="font-size:11px">점유 중에는 직전 계절 열과 이번 계절 열만 보인다 · 회의 때는 이번 계절 열만 남는다</span></div>`));
+  p.appendChild(el(`<table class="board"><thead>${head}</thead><tbody>${body}</tbody></table>`));
+}
+// 2. 점수 트랙
+{
+  const p = page('점수 트랙 0~59 (가로 인쇄) · 59를 넘으면 점수 표지를 눕히고 0부터 다시', true);
+  let h = '<div class="track">';
+  for (let i = 0; i < 60; i++) h += `<div class="${i % 5 === 0 ? 'five' : ''}">${i}</div>`;
+  h += '</div>';
+  p.appendChild(el(h));
+}
+// 3. 구역 카드 + 회상 카드
+{
+  const cards = [];
+  for (const h of HOUSES) for (const pl of PLOTS) cards.push(`<div class="card" style="--hc:${h.v}"><span class="house">${h.name}</span><div class="inner"><div class="nm">${pl.name}</div><span class="val">${pl.value}</span><div class="sub">구역 카드 · ${pl.pc}</div></div></div>`);
+  for (const pl of PLOTS) cards.push(`<div class="card recall"><div class="inner"><div class="sub">회상 카드</div><div class="nm">${pl.name}</div><span class="val">${pl.value}</span><div class="sub">${pl.pc}</div></div></div>`);
+  for (let i = 0; i < cards.length; i += 16) {
+    const p = page(`구역 카드(집안별 7장) · 회상 카드(어두운 카드 7장) — ${i / 16 + 1}/${Math.ceil(cards.length / 16)}`);
+    p.appendChild(el(`<div class="cards">${cards.slice(i, i + 16).join('')}</div>`));
+  }
+}
+// 4. 땅 타일
+{
+  const p = page('땅 타일 — 집안별 7장 (뒷면은 모두 흰색으로 둘 것)');
+  let h = '<div class="grid-tiles">';
+  for (const ho of HOUSES) for (let i = 0; i < SEASONS; i++) h += `<div class="tile" style="--hc:${ho.v}"></div>`;
+  h += '</div>';
+  p.appendChild(el(h));
+  p.appendChild(el('<p class="note">18mm 정사각형. 앞면에는 집안 색만 있다(구역 정보 없음).</p>'));
+}
+// 5. 증언 토큰 + 기록 표지
+{
+  const p = page('증언 토큰 · 기록 표지');
+  p.appendChild(el('<p class="note"><b>증언 토큰</b> — 집안 색 5개씩 + 회색 6개. 각자 자기 집안을 뺀 색 1개씩과 회색 1개를 받는다. (모두 같은 모양)</p>'));
+  let t = '<div class="grid-tok">';
+  for (const ho of HOUSES) for (let i = 0; i < 5; i++) t += `<div class="tok" style="--hc:${ho.v}"></div>`;
+  for (let i = 0; i < 6; i++) t += `<div class="tok" style="--hc:${GREY.v}"></div>`;
+  t += '</div>';
+  p.appendChild(el(t));
+  p.appendChild(el('<p class="note"><b>기록 표지</b> — 집안 색 12개씩 + 회색 12개. 가운데가 흰 고리 모양으로 증언 토큰과 구분한다.</p>'));
+  let r = '<div class="grid-tok">';
+  for (const ho of [...HOUSES, GREY]) for (let i = 0; i < 12; i++) r += `<div class="ring" style="--hc:${ho.v}"></div>`;
+  r += '</div>';
+  p.appendChild(el(r));
+}
+// 6. 요약 카드 + 표지
+{
+  const p = page('요약 카드 6장 · 질문자 표지 · 질문 표지 · 점수 표지');
+  const sc = `<div class="sc"><h3>HEARSAY 요약</h3>
+  <b>계절 (1~7)</b><br>
+  ① 점유: 모래시계 안에 구역 카드 1장 뒷면 → "하나, 둘, 셋" 공개. 혼자면 땅 타일, 겹치면 다툼(타일은 주머니로)<br>
+  ② 망각(2계절~): 직전 계절 열 → 망각 주머니<br>
+  ③ 회의(2계절~): 질문 4·5인 2개 / 6인 1개<br>
+  <b>마지막 회의</b>: 7계절 열 망각 → 질문 4인 4 / 5인 3 / 6인 6<br>
+  <b>질문</b>: 회상 카드 2장 + 모래시계 → 질문 칸 선언 → 속삭임 → 주먹 → 공개<br>
+  <b>자기 집안은 증언할 수 없다.</b> 내 땅은 남이 말해 줘야 한다.
+  <table><tr><th>결과</th><th>땅 점수</th><th>평판 1점</th></tr>
+  <tr><td>집안 색 단독 최다</td><td>그 집안 +구역 값</td><td>그 색 증언자</td></tr>
+  <tr><td>회색 단독 최다</td><td>없음</td><td>회색 증언자</td></tr>
+  <tr><td>최다 동점</td><td colspan="2">질문자 증언이 동점 답에 있으면 그 답 / 없으면 공백(득점 없음)</td></tr></table>
+  메모·사진 금지 · 말은 자유(속삭임 종료~공개는 침묵)</div>`;
+  p.appendChild(el(`<div class="summ">${sc.repeat(6)}</div>`));
+  let m = '<div class="markers"><div class="mk round">질문자<br>표지</div><div class="mk arrow"></div><span style="font-size:10px">← 질문 표지</span></div>';
+  p.appendChild(el(m));
+  let s = '<div class="grid-tok" style="margin-top:4mm">';
+  for (const ho of HOUSES) s += `<div class="tok" style="--hc:${ho.v}">점수</div>`;
+  s += '</div>';
+  p.appendChild(el(s));
+}
+</script>
+</body>
+</html>
