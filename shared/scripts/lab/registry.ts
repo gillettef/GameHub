@@ -90,3 +90,12 @@ VARIANTS.v5rotate = variant('v5rotate', { firstPlayer: 'rotate' }, VARIANTS.v5!)
 VARIANTS.v6 = variant('v6', { market: { 2: 2, 3: 2, 4: 2 }, blindDraw: true }, VARIANTS.v5!);
 VARIANTS.v6m = variant('v6m', { market: { 2: 2, 3: 3, 4: 4 }, blindDraw: true }, VARIANTS.v5!);
 VARIANTS.v5m2 = variant('v5m2', { market: { 2: 2, 3: 2, 4: 2 } }, VARIANTS.v5!);
+
+// 2026-11-23 2인 재평가: v6 2인 약점(자리 편차·접전·선두 교체·목표 비중) 후보
+const V6 = VARIANTS.v6!;
+VARIANTS.p2g2 = variant('p2g2', { goalCount: 2 }, V6);
+VARIANTS.p2c3 = variant('p2c3', { cap: 3, extraRules: ['라운드 선(공급처 큐브 많은 사람)', '한 칸 큐브 상한'] }, V6);
+VARIANTS.p2v6s14 = variant('p2v6s14', { supply: { 2: 14, 3: 18, 4: 16 } }, V6);
+VARIANTS.p2v6s18 = variant('p2v6s18', { supply: { 2: 18, 3: 18, 4: 16 } }, V6);
+VARIANTS.p2v6m3 = variant('p2v6m3', { market: { 2: 3, 3: 2, 4: 2 } }, V6);
+VARIANTS.p2nbg2 = variant('p2nbg2', { goalCount: 2 }, VARIANTS.v5m2!);
