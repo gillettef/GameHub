@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LASTGRAIN 시뮬레이터</title>
+  <meta name="description" content="LASTGRAIN — 실물 모래시계 전술 보드게임의 웹 시뮬레이터. 봇과 대전한다.">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="top">
+    <div class="brand"><span class="logo">LASTGRAIN</span><span class="sub">모래가 다하기 전에 · 봇 대전 시뮬레이터</span></div>
+    <nav>
+      <a class="btn ghost" href="rules.html" target="_blank" rel="noopener">규칙서</a>
+      <button class="btn ghost" id="btn-pause" type="button">일시정지</button>
+      <button class="btn ghost" id="btn-new" type="button">새 게임</button>
+    </nav>
+  </header>
+
+  <main class="layout">
+    <section class="side left" aria-label="시간과 점수">
+      <div class="card glass-card">
+        <h2>대모래시계</h2>
+        <div id="great" class="great"></div>
+        <div id="great-time" class="great-time"></div>
+        <p class="hint">차례와 상관없이 계속 흐른다.</p>
+      </div>
+      <div class="card">
+        <h2>점수</h2>
+        <div id="scores" class="scores"></div>
+      </div>
+    </section>
+
+    <section class="center">
+      <div id="banner" class="banner" role="status" aria-live="polite"></div>
+      <div id="board" class="board" aria-label="사구 보드"></div>
+      <div class="controls">
+        <button class="btn primary" id="btn-end" type="button">차례 마치기 · 눕히기 <kbd>Space</kbd></button>
+      </div>
+      <div id="popover" class="popover" hidden></div>
+    </section>
+
+    <section class="side right" aria-label="비축과 기록">
+      <div class="card">
+        <h2 id="bot-res-title">봇 비축</h2>
+        <div id="bot-reserve" class="reserve"></div>
+      </div>
+      <div class="card">
+        <h2 id="my-res-title">내 비축 <small>(눌러서 소환)</small></h2>
+        <div id="my-reserve" class="reserve"></div>
+      </div>
+      <div class="card log-card">
+        <h2>기록</h2>
+        <ol id="log" class="log"></ol>
+      </div>
+    </section>
+  </main>
+
+  <dialog id="setup" class="dialog">
+    <form method="dialog" id="setup-form">
+      <h2>새 게임</h2>
+      <p class="lead">당신의 모래시계는 <b>당신의 차례에만</b> 흐릅니다. 오래 고민할수록 군대가 줄어듭니다.</p>
+      <div class="grid">
+        <label>내 순서
+          <select name="side"><option value="random">무작위</option><option value="0">선 플레이어</option><option value="1">후 플레이어 (+2점)</option></select></label>
+        <label>봇 난이도
+          <select name="level"><option value="easy">쉬움</option><option value="normal" selected>보통</option><option value="hard">어려움</option></select></label>
+        <label>봇 생각 속도 (행동 하나당)
+          <select name="botDelay"><option value="2500">느림 2.5초</option><option value="1500" selected>보통 1.5초</option><option value="800">빠름 0.8초</option></select></label>
+        <label>대모래시계
+          <select name="greatMin"><option value="20" selected>20분 (정식)</option><option value="10">10분</option><option value="5">5분</option></select></label>
+        <label>목표 점수
+          <select name="target"><option value="25" selected>25점 (정식)</option><option value="15">15점</option><option value="10">10점</option></select></label>
+        <label>세우기·눕히기 조작 시간
+          <select name="handleMs"><option value="1000" selected>모래시계당 1초 (정식)</option><option value="0">끔</option></select></label>
+        <label class="check"><input type="checkbox" name="showSec" checked> 잔량을 초로 표시 (실물에는 숫자가 없다)</label>
+      </div>
+      <div class="dialog-actions"><button class="btn primary" value="start">게임 시작</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="over" class="dialog">
+    <div id="over-body"></div>
+    <div class="dialog-actions"><button class="btn primary" id="btn-again" type="button">다시 하기</button></div>
+  </dialog>
+
+  <script type="module" src="src/ui.js"></script>
+</body>
+</html>

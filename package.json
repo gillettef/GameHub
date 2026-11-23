@@ -1,0 +1,13 @@
+{
+  "name": "lastgrain-prototype",
+  "version": "0.4.0",
+  "private": true,
+  "description": "LASTGRAIN 웹 시뮬레이터 (봇 대전). 규칙 기준: rules/rulebook.md",
+  "type": "module",
+  "scripts": {
+    "test": "node --test \"prototype/test/**/*.test.mjs\"",
+    "build": "node scripts/build.mjs",
+    "start": "npm run build && node scripts/aws/serve.mjs"
+  },
+  "engines": { "node": ">=20" }
+}
