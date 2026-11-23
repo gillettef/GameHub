@@ -31,6 +31,7 @@ Lastgrain/
 ├── components/
 │   └── components.md    # 구성물 목록과 사양
 ├── playtests/           # 플레이테스트 기록 (YYYY-MM-DD-NN.md)
+├── submission/          # 2027 코리아보드게임즈 공모전 제출물 (기획안 등, 마감 2026-12-31)
 ├── scripts/
 │   ├── deploy-aws.ps1   # 수동 배포
 │   └── aws/             # EC2 준비·재시작 스크립트, 정적 서버(serve.mjs)
