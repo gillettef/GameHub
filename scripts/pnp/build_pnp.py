@@ -15,7 +15,7 @@ from reportlab.pdfgen import canvas
 
 ROOT = Path(__file__).resolve().parents[2]
 OUT = ROOT / "print"
-VERSION = "v0.6"
+VERSION = "v0.7"
 
 pdfmetrics.registerFont(TTFont("KR", "C:/Windows/Fonts/malgun.ttf"))
 pdfmetrics.registerFont(TTFont("KRB", "C:/Windows/Fonts/malgunbd.ttf"))
@@ -502,14 +502,14 @@ def build_tokens_and_reference():
     # 성운 타일과 성운 카드
     c.setFillColor(INK)
     c.setFont("KRB", 10)
-    c.drawString(14 * mm, y, "성운 타일 ×2 · 성운 카드 ×5 (준비 때 성운 카드 1장을 뽑는다)")
+    c.drawString(14 * mm, y, "성운 타일 ×2 · 성운 카드 ×4 (준비 때 성운 카드 1장을 뽑는다)")
     for i in range(2):
         cx = 26 * mm + i * 28 * mm
         c.setFillColor(HexColor("#5B4B8A"))
         c.circle(cx, y - 16 * mm, 10 * mm, fill=1, stroke=0)
         text_c(c, cx, y - 15 * mm, "성운", "KRB", 9, white)
         text_c(c, cx, y - 20 * mm, "파문 +1", "KR", 7, white)
-    for i, txt in enumerate(("2 · 16", "4 · 14", "7 · 11", "8 · 10", "9")):
+    for i, txt in enumerate(("4 · 14", "7 · 11", "8 · 10", "9")):
         x = 80 * mm + i * 24 * mm
         c.setFillColor(HexColor("#EDE9F6"))
         c.setStrokeColor(HexColor("#5B4B8A"))
@@ -534,9 +534,10 @@ def build_tokens_and_reference():
             ("2. 공격 처리", ["공격할 함대의 공격 카드를 동시에 공개하고, 그 함대의 위치를 증명한다.",
                           "상대는 그 성계에 실체가 있는지 답한다. '있다'면 위치 증명 후 교전(전력 합 비교).",
                           "'없다'면 공격 표식을 놓는다 → 2라운드 뒤 공개 카드로 확인한다. 거짓이면 패배.",
-                          "진 쪽(동률이면 공격받은 쪽)은 귀환: 컨베이어 카드 공개 → 머무름(앞)·모항성(뒤)으로 채운다."]),
+                          "진 쪽은 귀환(동률이면 공격받은 쪽, 쌍방 공격 동률이면 아무도 귀환하지 않음).",
+                          "귀환: 컨베이어 카드 공개(남은 공격 표식 확인) → 머무름(앞)·모항성(뒤)으로 채운다."]),
             ("3. 파문 진행", ["파문 컨베이어의 모든 카드를 1칸씩 옮긴다. 1번 칸에서 나온 카드는 도달한다.",
-                          "상대 카드가 도달한 행성에 내 실체가 있으면 위치를 증명해 봉쇄(무효)할 수 있다.",
+                          "상대 카드가 도달한 행성에 내 실체가 있으면 위치를 증명해 봉쇄(무효)할 수 있다. 공격한 함대는 봉쇄 불가.",
                           "행성 카드가 도달하면 그 행성에 점령 마커를 놓는다. 같은 라운드 양쪽 도달은 중립."]),
             ("4. 점령 처리", ["행성에 있는 함대(공격·귀환하지 않은)로 점령: 행성 카드를 파문 거리 칸에 놓는다.",
                           "성운 행성은 1칸 높은 칸에. 위장 카드는 3·4·5번 칸. 칸별로 손에 쥐고 동시에 놓는다.",
