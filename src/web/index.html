@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HEARSAY 히어세이</title>
+<meta name="description" content="기억과 증언으로 역사를 정하는 보드게임 HEARSAY 웹 시뮬레이터">
+<link rel="stylesheet" href="/style.css?v=__BUILD__">
+</head>
+<body>
+<header class="top">
+  <div class="brand" id="brand">HEARSAY <small>히어세이</small></div>
+  <div class="status" id="status"></div>
+  <button class="ghost" id="helpBtn" type="button">규칙 요약</button>
+</header>
+
+<main id="home" class="screen">
+  <section class="hero">
+    <h1>HEARSAY</h1>
+    <p class="lede">이 섬마을에는 글자가 없다.<br>지난 일은 오직 서로의 입으로만 전해진다.<br>그리고 누구도 자기 집안의 일을 스스로 증언할 수 없다.</p>
+  </section>
+  <section class="card form">
+    <label>내 이름 <input id="nameInput" maxlength="16" placeholder="이야기꾼"></label>
+    <div class="group">
+      <h2>봇과 대전</h2>
+      <p class="hint">기억이 흐려지는 봇들(기록형·정치형·조작형·휩쓸림형)과 바로 시작합니다.</p>
+      <div class="row">
+        <button data-solo="4" type="button">4인</button>
+        <button data-solo="5" type="button">5인</button>
+        <button data-solo="6" type="button">6인</button>
+      </div>
+    </div>
+    <div class="group">
+      <h2>다른 플레이어와 대전</h2>
+      <p class="hint">방을 만들고 코드나 링크를 공유하세요. 빈자리는 시작할 때 봇으로 채웁니다.</p>
+      <div class="row">
+        <button data-multi="4" type="button">4인 방</button>
+        <button data-multi="5" type="button">5인 방</button>
+        <button data-multi="6" type="button">6인 방</button>
+      </div>
+      <div class="row join">
+        <input id="codeInput" maxlength="5" placeholder="방 코드" autocomplete="off">
+        <button id="joinBtn" type="button">참가</button>
+      </div>
+    </div>
+    <p class="error" id="homeError" role="alert"></p>
+  </section>
+</main>
+
+<main id="lobby" class="screen hidden">
+  <section class="card">
+    <h2>방 <span id="lobbyCode" class="code"></span></h2>
+    <p>링크를 보내 친구를 초대하세요.</p>
+    <div class="row"><input id="shareLink" readonly><button id="copyBtn" type="button">복사</button></div>
+    <ul id="seatList" class="seats"></ul>
+    <p class="hint" id="lobbyHint"></p>
+    <div class="row"><button id="startBtn" type="button" class="primary">빈자리는 봇으로 채우고 시작</button><button id="leaveBtn" type="button" class="ghost">나가기</button></div>
+  </section>
+</main>
+
+<main id="game" class="screen hidden">
+  <div class="layout">
+    <section class="boardWrap">
+      <div id="board"></div>
+      <div id="panel" class="panel" aria-live="polite"></div>
+    </section>
+    <aside class="side">
+      <div id="players" class="players"></div>
+      <div class="chat">
+        <div class="chatHead">말 <small>말은 20초 뒤 흩어집니다 · 메모·캡처 금지</small></div>
+        <div id="chatLog" class="chatLog"></div>
+        <form id="chatForm" class="chatForm" autocomplete="off">
+          <input id="chatInput" maxlength="140" placeholder="주장하고, 설득하고, 거래하세요">
+          <button type="submit">말하기</button>
+        </form>
+      </div>
+    </aside>
+  </div>
+</main>
+
+<dialog id="help">
+  <h2>규칙 요약 (룰북 v0.5)</h2>
+  <ol>
+    <li><b>점유</b> — 구역 카드 한 장을 몰래 고릅니다. 혼자 고른 구역에 땅 타일이 놓이고, 겹치면 <b>다툼</b>으로 아무도 갖지 못합니다.</li>
+    <li><b>망각</b> — 다음 계절이 되면 지난 계절의 땅은 사라집니다. 보드에 보이는 땅은 이번 계절(점유 중에는 직전 계절까지)뿐입니다.</li>
+    <li><b>회의</b> — 질문자가 회상 카드 2장 중 한 구역의 사라진 칸을 묻습니다. 선언 전에는 모두 침묵합니다.</li>
+    <li><b>속삭임 60초</b> — 자유롭게 주장·거래한 뒤 증언 토큰 하나(또는 빈 주먹)를 냅니다. <b>자기 집안 색 토큰은 없습니다.</b></li>
+    <li><b>공식 역사</b> — 가장 많은 답이 기록됩니다. 동점이면 질문자의 답, 그것도 아니면 공백. 그 집안은 구역 값만큼, 같은 답을 낸 사람은 평판 1점을 얻습니다.</li>
+    <li>7계절과 마지막 회의 뒤 점수가 가장 높은 사람이 이깁니다. 진실은 끝까지 공개되지 않습니다.</li>
+  </ol>
+  <form method="dialog"><button>닫기</button></form>
+</dialog>
+
+<script type="module" src="/app.js?v=__BUILD__"></script>
+</body>
+</html>

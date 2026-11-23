@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # EC2 에서 실행: 업로드된 ~/hearsay 의 systemd hearsay(포트 8103)를 재시작하고 헬스체크한다.
 # GitHub Actions(deploy-aws.yml)와 수동 배포가 ssh 로 호출한다. systemd 유닛은 scripts/aws/units.sh 로 최초 1회 등록돼 있다.
-# 정적 파일만 서빙하므로 재시작해도 잃는 상태는 없다.
+# 웹 시뮬레이터의 방·게임 상태는 메모리에만 있으므로, 재시작하면 진행 중인 방은 사라진다.
 set -euo pipefail
 APP="$HOME/hearsay"
 cd "$APP"

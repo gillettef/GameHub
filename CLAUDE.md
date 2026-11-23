@@ -6,7 +6,9 @@
 
 - 코드가 아니라 **보드게임 디자인 문서** 프로젝트다. 산출물은 룰북, 구성물 목록, 플레이테스트 기록, 디자인 결정 로그다.
 - 모든 문서는 한국어로 쓴다. 게임 용어는 `docs/glossary.md`의 표기를 따른다(한국어 용어 + 영문 병기).
-- 디지털 프로토타입(예: 웹 시뮬레이터)은 필요할 때 `prototype/`에 따로 만든다. 룰의 기준은 항상 `rules/rulebook.md`다.
+- 디지털 프로토타입은 웹 시뮬레이터(`src/`)다. 봇 대전과 온라인 대전을 제공한다. 룰의 기준은 항상 `rules/rulebook.md`이며, 룰을 바꾸면 `src/engine/rules.js`·`game.js`와 테스트도 함께 고친다.
+- 시뮬레이터는 서버 권위형이다. 망각된 칸의 진실은 엔진에서도 지우고 클라이언트에 보내지 않는다(기둥 1). 지난 기록·채팅 로그를 화면에 남기지 않는다.
+- 로컬 실행: `npm start` → http://localhost:8103
 
 ## 핵심 디자인 기둥 (변경 시 사용자 확인 필수)
 
@@ -32,7 +34,10 @@ Hearsay/
 │   └── components.md    # 구성물 목록과 사양
 ├── playtests/           # 플레이테스트 기록 (YYYY-MM-DD-NN.md)
 ├── contest/             # 2027 코리아보드게임즈 공모전 제출 준비 (체크리스트, 기획안 초안)
+├── src/               # 웹 시뮬레이터: engine/(룰 엔진·봇), server/(방·SSE API), web/(화면)
+├── test/              # npm test (node --test)
 ├── scripts/
+│   ├── build.mjs        # npm run build → dist/
 │   ├── deploy-aws.ps1   # 수동 배포
 │   └── aws/             # EC2 준비·재시작 스크립트, 정적 서버(serve.mjs)
 └── .github/workflows/   # ci.yml(검사), deploy-aws.yml(main 병합 시 배포)

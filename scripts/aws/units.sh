@@ -6,7 +6,7 @@ NODE_BIN=$(command -v node)
 
 sudo tee /etc/systemd/system/hearsay.service >/dev/null <<UNIT
 [Unit]
-Description=Hearsay static web server
+Description=Hearsay web simulator server
 After=network.target
 
 [Service]
