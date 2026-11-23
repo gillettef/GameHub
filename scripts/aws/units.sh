@@ -6,7 +6,7 @@ NODE_BIN=$(command -v node)
 
 sudo tee /etc/systemd/system/proxymind.service >/dev/null <<UNIT
 [Unit]
-Description=Proxymind static web server
+Description=Proxymind web server (static + online WebSocket)
 After=network.target
 
 [Service]

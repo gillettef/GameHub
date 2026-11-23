@@ -1,7 +1,7 @@
 ﻿# Proxymind AWS(EC2) 수동 재배포 스크립트. 평소에는 main push 시 GitHub Actions 가 배포하므로 push 없이 재배포할 때만 쓴다.
 #   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/deploy-aws.ps1
 #
-# 로컬에서 테스트·빌드를 하고 dist·scripts/aws(serve.mjs, deploy-remote.sh)만 ssh로 전송한 뒤,
+# 로컬에서 테스트·빌드를 하고 dist·server-dist·scripts/aws(serve.mjs, deploy-remote.sh)만 ssh로 전송한 뒤,
 # 서버에서 scripts/aws/deploy-remote.sh 가 systemd 서비스(proxymind, 포트 8105) 재시작·헬스체크를 한다.
 # EC2(t4g.nano, 0.5GB)에서는 빌드하지 않는다.
 #
@@ -37,10 +37,10 @@ try {
     & npm run build
     if ($LASTEXITCODE -ne 0) { throw "빌드 실패 (exit $LASTEXITCODE)" }
 
-    Write-Host "[deploy-aws] $target 로 dist·scripts/aws 전송 중 ..."
+    Write-Host "[deploy-aws] $target 로 dist·server-dist·scripts/aws 전송 중 ..."
     # PowerShell 5.1 파이프는 바이너리를 깨뜨리므로 cmd 파이프를 쓴다
-    $tarCmd = "rm -rf ~/proxymind/dist && mkdir -p ~/proxymind && tar -x -C ~/proxymind"
-    cmd /c "tar -c dist scripts/aws | ssh $($sshOpts -join ' ') $target `"$tarCmd`""
+    $tarCmd = "rm -rf ~/proxymind/dist ~/proxymind/server-dist && mkdir -p ~/proxymind && tar -x -C ~/proxymind"
+    cmd /c "tar -c dist server-dist scripts/aws | ssh $($sshOpts -join ' ') $target `"$tarCmd`""
     if ($LASTEXITCODE -ne 0) { throw "전송 실패 (exit $LASTEXITCODE)" }
 } finally { Pop-Location }
 
