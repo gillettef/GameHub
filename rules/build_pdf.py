@@ -149,6 +149,8 @@ CAPTIONS = {
 def build_html():
     md = SRC.read_text(encoding="utf-8")
     md = re.sub(r"^> 작성 규칙은.*\n", "", md, flags=re.M)
+    version = re.search(r"\(초안 (v[\d.]+)\)", md)
+    md = re.sub(r"^# HEARSAY 룰북 \(초안 v[\d.]+\)", "# HEARSAY 규칙서", md, count=1, flags=re.M)
     body = markdown.markdown(md, extensions=["tables", "sane_lists"])
 
     def put_fig(m):
@@ -156,7 +158,6 @@ def build_html():
         return f'<figure>{FIGURES[name]()}<figcaption>{CAPTIONS.get(name, "")}</figcaption></figure>'
 
     body = re.sub(r"<!-- fig:(\w+) -->", put_fig, body)
-    version = re.search(r"\(초안 (v[\d.]+)\)", md)
     cover = f"""<div class="cover"><div class="t">HEARSAY</div><div class="k">히어세이</div>
 <div class="m">4~6인 · 45~60분 · 12세 이상</div>
 <div class="q">이 섬마을에는 글자가 없다.<br>지난 일은 오직 서로의 입으로만 전해진다.<br>그리고 누구도 자기 집안의 일을<br>스스로 증언할 수 없다.</div>
