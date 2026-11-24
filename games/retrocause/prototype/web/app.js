@@ -22,11 +22,19 @@ const store = {
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* 저장 불가 환경 */ } },
   del(k) { try { localStorage.removeItem(k); } catch { /* 무시 */ } },
 };
+// 같은 origin 을 여러 게임이 함께 쓰므로 예전 'rc:' 키를 'retrocause:' 키로 한 번 옮긴다
+for (const k of ['states', 'name', 'room']) {
+  try {
+    const old = localStorage.getItem(`rc:${k}`);
+    if (old !== null && localStorage.getItem(`retrocause:${k}`) === null) localStorage.setItem(`retrocause:${k}`, old);
+    if (old !== null) localStorage.removeItem(`rc:${k}`);
+  } catch { /* 저장 불가 환경 */ }
+}
 
 let ctl = null;
 let v = null;
 const ui = {
-  selected: null, target: null, showMotive: false, showStates: store.get('rc:states') ?? true,
+  selected: null, target: null, showMotive: false, showStates: store.get('retrocause:states') ?? true,
   flash: { placed: null, removed: [] }, tab: 'players', endClosedFor: null, receivedAt: 0, takeoverTimer: null,
 };
 
@@ -40,7 +48,7 @@ function toast(msg, ms = 2400) {
 }
 function myName() {
   const n = $('#in-name').value.trim() || '손님';
-  store.set('rc:name', n);
+  store.set('retrocause:name', n);
   return n;
 }
 function show(screen) {
@@ -121,7 +129,7 @@ function localController({ name, n, speed }) {
 
 // ---------- 온라인 ----------
 async function api(path, body) {
-  const res = await fetch(`/api/rooms${path}`, {
+  const res = await fetch(`api/rooms${path}`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body ?? {}),
   });
   const data = await res.json().catch(() => ({ error: '서버 응답을 읽을 수 없습니다' }));
@@ -135,7 +143,7 @@ function onlineController(code, token) {
   let failures = 0;
   const connect = () => {
     es?.close();
-    es = new EventSource(`/api/rooms/${code}/stream?token=${encodeURIComponent(token)}`);
+    es = new EventSource(`api/rooms/${code}/stream?token=${encodeURIComponent(token)}`);
     es.onmessage = (e) => { failures = 0; setView(JSON.parse(e.data)); };
     es.onerror = async () => {
       if (closed) return;
@@ -143,7 +151,7 @@ function onlineController(code, token) {
       if (es.readyState === EventSource.CLOSED || failures >= 3) {
         // 방이 사라졌는지 확인한다
         try { await api(`/${code}/view`, { token }); connect(); } catch (err) {
-          store.del('rc:room');
+          store.del('retrocause:room');
           toast(err.message);
           goHome();
         }
@@ -161,14 +169,14 @@ function onlineController(code, token) {
     config(players) { call('config', { players }).catch(() => {}); },
     takeover() { call('takeover').catch(() => {}); },
     reconnect() { if (!closed && (!es || es.readyState !== EventSource.OPEN)) connect(); },
-    leave() { closed = true; es?.close(); api(`/${code}/leave`, { token }).catch(() => {}); store.del('rc:room'); },
+    leave() { closed = true; es?.close(); api(`/${code}/leave`, { token }).catch(() => {}); store.del('retrocause:room'); },
   };
 }
 
 async function joinOnline(code, token) {
   const name = myName();
   const res = await api(`/${code.toUpperCase()}/join`, { name, token });
-  store.set('rc:room', { code: res.code, token: res.token });
+  store.set('retrocause:room', { code: res.code, token: res.token });
   history.replaceState(null, '', `?room=${res.code}`);
   ctl?.leave?.();
   ctl = onlineController(res.code, res.token);
@@ -189,11 +197,11 @@ function goHome() {
 
 // ---------- 홈 ----------
 function renderHome() {
-  const saved = store.get('rc:room');
+  const saved = store.get('retrocause:room');
   $('#btn-resume').hidden = !saved;
   if (saved) $('#btn-resume').textContent = `이전 방으로 돌아가기 (${saved.code})`;
 }
-$('#in-name').value = store.get('rc:name') ?? '';
+$('#in-name').value = store.get('retrocause:name') ?? '';
 const qRoom = new URLSearchParams(location.search).get('room');
 if (qRoom) $('#in-code').value = qRoom.toUpperCase().slice(0, 4);
 $('#in-code').addEventListener('input', (e) => { e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 4); });
@@ -215,19 +223,19 @@ $('#btn-local').addEventListener('click', () => {
 $('#btn-create').addEventListener('click', async () => {
   try {
     const res = await api('', { name: myName() });
-    store.set('rc:room', res);
+    store.set('retrocause:room', res);
     await joinOnline(res.code, res.token);
   } catch (e) { toast(e.message); }
 });
 $('#btn-join').addEventListener('click', async () => {
   const code = $('#in-code').value.trim();
   if (code.length !== 4) { toast('방 코드 4자리를 입력하세요'); return; }
-  const saved = store.get('rc:room');
+  const saved = store.get('retrocause:room');
   try { await joinOnline(code, saved?.code === code.toUpperCase() ? saved.token : undefined); } catch (e) { toast(e.message); }
 });
 $('#btn-resume').addEventListener('click', async () => {
-  const saved = store.get('rc:room');
-  try { await joinOnline(saved.code, saved.token); } catch (e) { store.del('rc:room'); renderHome(); toast(e.message); }
+  const saved = store.get('retrocause:room');
+  try { await joinOnline(saved.code, saved.token); } catch (e) { store.del('retrocause:room'); renderHome(); toast(e.message); }
 });
 
 // ---------- 대기실 ----------
@@ -481,7 +489,7 @@ function renderSheet() {
       ${v.mode === 'online' ? `<button class="btn" id="btn-share2">방 코드 ${v.code} 공유</button>` : ''}
       <button class="btn" id="btn-quit">${v.mode === 'online' ? '방 나가기' : '연습 그만하기'}</button>
       <p class="hint">시드 ${v.seed} · 덱 ${v.deckCount}장 · 버림 ${v.discardCount}장</p></div>`;
-    $('#tg-states').addEventListener('change', (e) => { ui.showStates = e.target.checked; store.set('rc:states', ui.showStates); renderTimeline(); });
+    $('#tg-states').addEventListener('change', (e) => { ui.showStates = e.target.checked; store.set('retrocause:states', ui.showStates); renderTimeline(); });
     $('#btn-rules').addEventListener('click', () => {
       body.innerHTML = '<iframe src="./rulebook.html" title="룰북" style="width:100%;height:62dvh;border:0;border-radius:12px;background:#15110e"></iframe>';
     });
@@ -489,10 +497,10 @@ function renderSheet() {
     $('#btn-quit').addEventListener('click', () => {
       if (confirm(v.mode === 'online' ? '방에서 나갈까요? 같은 방 코드로 다시 들어올 수 있습니다.' : '연습을 그만할까요?')) {
         const online = v.mode === 'online';
-        const saved = store.get('rc:room');
+        const saved = store.get('retrocause:room');
         $('#sheet').close();
         goHome();
-        if (online && saved) { store.set('rc:room', saved); renderHome(); } // 같은 방으로 돌아갈 수 있게 남긴다
+        if (online && saved) { store.set('retrocause:room', saved); renderHome(); } // 같은 방으로 돌아갈 수 있게 남긴다
       }
     });
   }
@@ -547,7 +555,7 @@ function renderEnd() {
 document.addEventListener('visibilitychange', () => { if (!document.hidden) ctl?.reconnect?.(); });
 renderHome();
 show('home');
-if (qRoom && store.get('rc:room')?.code === qRoom.toUpperCase()) {
-  const saved = store.get('rc:room');
-  joinOnline(saved.code, saved.token).catch(() => { store.del('rc:room'); renderHome(); });
+if (qRoom && store.get('retrocause:room')?.code === qRoom.toUpperCase()) {
+  const saved = store.get('retrocause:room');
+  joinOnline(saved.code, saved.token).catch(() => { store.del('retrocause:room'); renderHome(); });
 }
