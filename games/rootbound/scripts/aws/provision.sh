@@ -8,20 +8,15 @@ set -euxo pipefail
 # 램 0.5GB 라 전체 dnf update 는 하지 않는다(메모리 부족으로 죽을 수 있음).
 
 curl -fsSL https://rpm.nodesource.com/setup_22.x | sudo bash -
-sudo dnf install -y nodejs git gcc gcc-c++ make python3.11 python3.11-pip
+sudo dnf install -y nodejs git gcc gcc-c++ make
 
 node -v
-python3.11 -V
 
 bash ~/AstralTab/scripts/aws/swap.sh
 
 # 클라이언트 빌드(client/dist/prod)는 EC2 에서 하지 않는다. 로컬/CI 에서 빌드해 전송한다(scripts/deploy-aws.ps1).
 cd ~/AstralTab
 npm install --workspace @rootbound/server --workspace @rootbound/shared --no-audit --no-fund
-
-python3.11 -m venv ai/.venv
-ai/.venv/bin/pip install -q --upgrade pip
-ai/.venv/bin/pip install -q -r ai/requirements.txt
 
 mkdir -p server/data/prod
 

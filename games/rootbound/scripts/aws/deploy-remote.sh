@@ -14,13 +14,19 @@ fi
 
 # 서버 실행에 필요한 것(server·shared 와 tsx)만 설치한다. client(React·Vite) 의존성은 받지 않는다.
 npm install --workspace @rootbound/server --workspace @rootbound/shared --no-audit --no-fund
-ai/.venv/bin/pip install -q -r ai/requirements.txt
-sudo systemctl restart astraltab-prod-ai astraltab-prod-server
+# AI 는 서버 안에서 돈다(2026-11-25 Python AI 를 TS 로 옮김). 예전 Python AI 서비스가 남아 있으면 끄고 지운다
+if systemctl list-unit-files astraltab-prod-ai.service >/dev/null 2>&1; then
+  sudo systemctl disable --now astraltab-prod-ai || true
+  sudo rm -f /etc/systemd/system/astraltab-prod-ai.service
+  sudo systemctl daemon-reload
+fi
+rm -rf ai
+sudo systemctl restart astraltab-prod-server
 
 for i in 1 2 3 4 5 6 7 8 9 10; do
   if curl -fsS -o /dev/null http://127.0.0.1:3201/api/health; then echo "헬스체크 통과"; echo "DEPLOY_OK"; exit 0; fi
   sleep 2
 done
 echo "헬스체크 실패"
-sudo journalctl -u astraltab-prod-server -u astraltab-prod-ai -n 50 --no-pager || true
+sudo journalctl -u astraltab-prod-server -n 50 --no-pager || true
 exit 1

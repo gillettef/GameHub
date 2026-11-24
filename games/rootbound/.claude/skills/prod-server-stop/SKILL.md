@@ -1,6 +1,6 @@
 ---
 name: prod-server-stop
-description: AWS EC2에서 상시 운영 중인 운영 서버(Node 3201, Python AI 8001)를 systemd로 중지한다. "운영 서버 꺼줘", "배포 서버 종료", "prod 내려줘" 요청 시 사용. 평소 배포에는 필요 없다 — 코드 반영은 /prod-server(재배포) 로 한다.
+description: AWS EC2에서 상시 운영 중인 운영 서버(Node 3201, AI 포함)를 systemd로 중지한다. "운영 서버 꺼줘", "배포 서버 종료", "prod 내려줘" 요청 시 사용. 평소 배포에는 필요 없다 — 코드 반영은 /prod-server(재배포) 로 한다.
 ---
 
 # /prod-server-stop — 운영 서버 중지 (AWS EC2)
@@ -10,13 +10,13 @@ description: AWS EC2에서 상시 운영 중인 운영 서버(Node 3201, Python 
 ## 실행 절차
 
 ```
-ssh -i .dev/astraltab-key.pem ec2-user@$(cat .dev/aws-public-ip.txt) "sudo systemctl stop astraltab-prod-server astraltab-prod-ai"
+ssh -i .dev/astraltab-key.pem ec2-user@$(cat .dev/aws-public-ip.txt) "sudo systemctl stop astraltab-prod-server"
 ```
 
 다시 켜려면:
 
 ```
-ssh -i .dev/astraltab-key.pem ec2-user@$(cat .dev/aws-public-ip.txt) "sudo systemctl start astraltab-prod-server astraltab-prod-ai"
+ssh -i .dev/astraltab-key.pem ec2-user@$(cat .dev/aws-public-ip.txt) "sudo systemctl start astraltab-prod-server"
 ```
 
 ## 주의

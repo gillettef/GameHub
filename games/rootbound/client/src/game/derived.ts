@@ -2,7 +2,7 @@
  * 화면용 파생값. 규칙 계산은 전부 shared 엔진 함수를 부르고(중복 구현 금지), 여기서는 화면 모양으로만 바꾼다.
  */
 import type { Direction, GameState, MaskedGameState, PlayerId, Plant, Position, Score, SpeciesId, Terrain } from '@rootbound/shared';
-import { cellLabels, computeOwners, computeScores, getSpecies, legalPlantCells, plantRoots, posKey, rotateSpot, SPECIES_IDS, supplyLeft } from '@rootbound/shared';
+import { cellLabels, computeOwners, computeScores, getSpecies, legalPlantCells, plantRoots, posKey, SPECIES_IDS, supplyLeft } from '@rootbound/shared';
 
 /** 가려진 상태도 엔진 함수에 그대로 넣을 수 있다(모양 호환) */
 export const asState = (s: MaskedGameState | GameState): GameState => s as unknown as GameState;
@@ -176,23 +176,8 @@ export function previewPlant(
   };
 }
 
-/** 모양이 서로 다른 회전 번호 (버섯은 0 하나뿐) */
-export function distinctRotations(species: SpeciesId): Direction[] {
-  const seen = new Set<string>();
-  const out: Direction[] = [];
-  for (let rot = 0 as Direction; rot < 6; rot = (rot + 1) as Direction) {
-    const key = getSpecies(species)
-      .roots.map((x) => rotateSpot(x, rot))
-      .map((x) => `${x.dq},${x.dr},${x.n}`)
-      .sort()
-      .join(';');
-    if (!seen.has(key)) {
-      seen.add(key);
-      out.push(rot);
-    }
-  }
-  return out;
-}
+/** 모양이 서로 다른 회전 번호 — 엔진 함수를 그대로 내보낸다(AI 탐색과 같은 정본) */
+export { distinctRotations } from '@rootbound/shared';
 
 /** 화살표 표시용 방향 이름 (방향 0~5) */
 const DIRECTION_LABELS = ['→', '↗', '↖', '←', '↙', '↘'] as const;

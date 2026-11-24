@@ -1,12 +1,12 @@
 /**
  * AI 턴 실행기 (F026, F027). 방 상태가 바뀔 때마다 `maybeRun(roomId)` 를 부르면,
- * 현재 턴이 AI 인 동안 (또는 시간 초과로 AI 대리 중인 사람 자리, Rules.md 6.3) Python AI 서비스에 결정을 요청해 룰 엔진으로 검증·적용하고 브로드캐스트한다.
- * 불법 액션·타임아웃·서비스 다운이면 엔진의 자동 수(autoAction)로 폴백한다. 방마다 한 번에 하나만 돈다.
+ * 현재 턴이 AI 인 동안 (또는 시간 초과로 AI 대리 중인 사람 자리, Rules.md 6.3) AI 탐색(ai/search.ts)으로 수를 정해 룰 엔진으로 검증·적용하고 브로드캐스트한다.
+ * 불법 액션·예외면 엔진의 자동 수(autoAction)로 폴백한다. 방마다 한 번에 하나만 돈다.
  */
 import type { Action, GameState, PlayerId } from '@rootbound/shared';
 import { autoAction } from '@rootbound/shared';
 import { actionShapeError } from '../rooms/validate.js';
-import { requestAiDecision } from '../ai/client.js';
+import { requestAiDecision } from '../ai/search.js';
 import { clockKey, type RoomManager, type Room } from '../rooms/manager.js';
 
 export interface AiRunnerOptions {

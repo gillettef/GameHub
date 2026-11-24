@@ -7,7 +7,7 @@ description: 운영 서버(AWS EC2 상시 서버, http://<Elastic IP>:3201, 유�
 
 서버는 **AWS EC2 단일 운영 서버 하나**뿐이다(test 환경은 2026-09-29 폐지). 평소 배포는 `main` push → GitHub Actions(`verify` 통과 후 `deploy`)가 자동으로 한다. 이 스킬은 push 없이 현재 워킹트리를 바로 올려야 할 때만 쓴다.
 
-`scripts/deploy-aws.ps1` 이 로컬 워킹트리를 `git archive`로 패키징해 ssh 전송하고, 서버에서 `scripts/aws/deploy-remote.sh` 가 `npm install` → 클라이언트 빌드(`client/dist/prod`) → `pip install` → systemd(`astraltab-prod-server`/`astraltab-prod-ai`) 재시작을 수행한다. "prod"라는 이름은 예전 그대로 둔 것이다.
+`scripts/deploy-aws.ps1` 이 로컬 워킹트리를 `git archive`로 패키징해 ssh 전송하고, 서버에서 `scripts/aws/deploy-remote.sh` 가 `npm install` → 클라이언트 빌드(`client/dist/prod`) → systemd(`astraltab-prod-server`) 재시작을 수행한다. "prod"라는 이름은 예전 그대로 둔 것이다.
 
 ## 실행 절차
 
@@ -24,7 +24,6 @@ description: 운영 서버(AWS EC2 상시 서버, http://<Elastic IP>:3201, 유�
 
 ```
 ssh -i .dev/astraltab-key.pem ec2-user@$(cat .dev/aws-public-ip.txt) "sudo journalctl -u astraltab-prod-server -n 100"
-ssh -i .dev/astraltab-key.pem ec2-user@$(cat .dev/aws-public-ip.txt) "sudo journalctl -u astraltab-prod-ai -n 100"
 ```
 
 ## 주의
