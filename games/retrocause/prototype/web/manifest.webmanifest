@@ -1,0 +1,16 @@
+{
+  "name": "RETROCAUSE",
+  "short_name": "Retrocause",
+  "description": "역인과 추리·블러핑 보드게임 프로토타입",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#15110e",
+  "theme_color": "#15110e",
+  "lang": "ko",
+  "icons": [
+    { "src": "./icon.svg", "sizes": "any", "type": "image/svg+xml" },
+    { "src": "./icon-180.png", "sizes": "180x180", "type": "image/png" }
+  ]
+}

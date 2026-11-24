@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180">
+  <defs>
+    <radialGradient id="g" cx="50%" cy="35%" r="70%">
+      <stop offset="0" stop-color="#3a2416"/>
+      <stop offset="1" stop-color="#15110e"/>
+    </radialGradient>
+  </defs>
+  <rect width="180" height="180" fill="url(#g)"/>
+  <!-- 모래시계: 거꾸로 흐르는 시간 -->
+  <path d="M58 38h64M58 142h64" stroke="#d9a441" stroke-width="8" stroke-linecap="round"/>
+  <path d="M64 42c0 30 26 34 26 48s-26 18-26 48h52c0-30-26-34-26-48s26-18 26-48z" fill="none" stroke="#d9a441" stroke-width="6" stroke-linejoin="round"/>
+  <path d="M74 132c4-14 12-18 16-26 4 8 12 12 16 26z" fill="#e0603a"/>
+  <path d="M78 56h24c-3 8-8 11-12 16-4-5-9-8-12-16z" fill="#e0603a" opacity=".55"/>
+</svg>
