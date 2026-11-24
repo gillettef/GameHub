@@ -4,6 +4,15 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Rootbound</title>
+    <script>
+      // 앱 base 경로 계산. 서버 루트(/)와 허브 접두어(/rootbound/) 아래 모두에서 돌고, /room/:id 같은 깊은 경로에서 새로고침해도
+      // 에셋·API·소켓 주소가 맞도록 주소에서 라우터 경로를 떼어 낸다(src/lib/router.ts 의 경로와 맞출 것).
+      // 빌드 결과의 JS·CSS 태그는 vite.config.ts 의 runtimeBaseEntry 가 이 값 기준으로 다시 쓴다.
+      (function () {
+        var p = location.pathname.replace(/\/(?:room\/[A-Za-z0-9_-]+|hotseat|tutorial)\/?$/, '/');
+        window.__APP_BASE__ = p.slice(0, p.lastIndexOf('/') + 1) || '/';
+      })();
+    </script>
     <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
     <!-- 디스플레이(헤딩) 폰트, tokens.css --font-display (2026-09-28) -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />

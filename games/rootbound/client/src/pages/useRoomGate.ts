@@ -3,6 +3,7 @@ import type { RoomPeek } from '@rootbound/shared';
 import { getNickname, getPlayerToken, getRoomPassword, setRoomPassword } from '../lib/identity';
 import { api, connectSocket } from '../socket/client';
 import { useGameStore } from '../store/gameStore';
+import { toUrlPath } from '../lib/appBase';
 
 export type Gate = { kind: 'loading' } | { kind: 'nickname' } | { kind: 'password'; message: string | null } | { kind: 'error'; message: string } | { kind: 'joined' };
 
@@ -20,7 +21,7 @@ export function useRoomGate(roomId: string): { gate: Gate; setGate: (gate: Gate)
   useEffect(() => {
     let alive = true;
     setGate({ kind: 'loading' });
-    fetch(`/api/rooms/${roomId}`)
+    fetch(toUrlPath(`/api/rooms/${roomId}`))
       .then(async (r) => {
         const body = (await r.json()) as RoomPeek | { message: string };
         if (!alive) return;

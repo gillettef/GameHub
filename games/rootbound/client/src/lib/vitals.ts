@@ -3,6 +3,8 @@
  * `/api/vitals` 로 한 번 보낸다(sendBeacon). 서버는 stats/vitals.jsonl 에 쌓고 server/scripts/stats.ts 가 집계한다.
  * 개인 정보는 없다(값과 화면 크기뿐). 실패해도 게임에는 영향이 없다.
  */
+import { toUrlPath } from './appBase';
+
 const rtts: number[] = [];
 const fpsSamples: number[] = [];
 let fcp: number | null = null;
@@ -43,8 +45,8 @@ function flush(): void {
   fpsSamples.length = 0;
   if (pageVitals) sent = true;
   try {
-    if (navigator.sendBeacon) navigator.sendBeacon('/api/vitals', new Blob([body], { type: 'application/json' }));
-    else void fetch('/api/vitals', { method: 'POST', body, headers: { 'Content-Type': 'application/json' }, keepalive: true });
+    if (navigator.sendBeacon) navigator.sendBeacon(toUrlPath('/api/vitals'), new Blob([body], { type: 'application/json' }));
+    else void fetch(toUrlPath('/api/vitals'), { method: 'POST', body, headers: { 'Content-Type': 'application/json' }, keepalive: true });
   } catch {
     /* 기록 실패는 무시 */
   }
