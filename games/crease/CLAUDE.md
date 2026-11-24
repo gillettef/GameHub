@@ -56,6 +56,7 @@ Crease/
 
 ## 배포 (AWS)
 
+- **2026-11-24부터 운영은 GameHub 허브 안에서 실행된다**(`hub/games.json` `"mode": "inproc"`, 진입점 `scripts/aws/hub-entry.mjs`). 접속은 `http://54.116.67.196/crease/`. 배포하면 `deploy-remote.sh`가 예전 systemd `crease` 서비스를 끄고 허브(`gamehub`)를 재시작한다 — 허브 안 다른 게임의 진행 중인 방도 함께 사라진다. `serve.mjs`는 로컬 단독 실행용으로 남는다. 아래의 포트·systemd 설명은 예전 단독 운영 기준이다.
 - 다른 게임(Eleven·MagicAcademy·SmilePark·DoubleAgent·Tesseract·Neoterra·Election·Lightcone·Retrocause 등)과 같은 EC2(t4g.nano, 서울) 1대를 공유한다. Crease의 포트는 **8101**, systemd 서비스 이름은 `crease`이다. 접속은 `http://54.116.67.196:8101` (HTTP만).
 - 배포 대상은 웹 시뮬레이터(정적 웹앱 + 온라인 대전방 API)다. 서버는 의존성 없는 `scripts/aws/serve.mjs`(정적 파일, `/api/rooms` 대전방, SSE 실시간 전송)이고 대전방 로직은 `scripts/aws/rooms.mjs`다. 대전방은 메모리에만 있어 재시작·배포 때 진행 중인 방이 사라진다. **`package.json`이 없는 동안에는 CI 검사와 배포를 모두 건너뛴다.** 프로토타입을 만들 때는 `package.json`을 저장소 루트에 두고 `npm test`·`npm run build`(산출물 `dist/`)를 제공한다.
 - `main`에 병합되면 `.github/workflows/deploy-aws.yml`이 `npm test` → `npm run build`를 통과했을 때만 `dist`와 `scripts/aws/`(의존성 없는 서버 `serve.mjs`·`rooms.mjs`, `deploy-remote.sh`)를 `~/crease`에 올리고, `deploy-remote.sh`가 systemd `crease`를 재시작·헬스체크한다.

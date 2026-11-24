@@ -19,7 +19,8 @@ sudo systemctl restart gamehub
 
 for i in $(seq 1 15); do
   if curl -fsS -o /dev/null http://127.0.0.1/smilepark/ \
-     && curl -fsS http://127.0.0.1/healthz/status         | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>process.exit(JSON.parse(s).games.find(g=>g.slug==="smilepark")?.mode==="inproc"?0:1))'; then
+     && curl -fsS http://127.0.0.1/healthz/status \
+        | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>process.exit(JSON.parse(s).games.find(g=>g.slug==="smilepark")?.mode==="inproc"?0:1))'; then
     echo "헬스체크 통과 (허브 안에서 실행)"; echo "DEPLOY_OK"; exit 0
   fi
   sleep 2
