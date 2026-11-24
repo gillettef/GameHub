@@ -3,7 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import express from "express";
-import { randomUUID } from "node:crypto";
+import { randomUUID, timingSafeEqual } from "node:crypto";
 import { WebSocketServer, type WebSocket } from "ws";
 import { BALANCE, activityBaseDice } from "./game/config.js";
 import { createRoom, getRoom, joinRoom, leaveRoom, leaveRoomIfNoHumans, scheduleRoomExpiry, broadcast, syncEmptyRoomExpiry, pickHost, HOST_AWAY_HANDOVER_MS, type Player, type Room } from "./rooms.js";
@@ -49,6 +49,12 @@ const wss = new WebSocketServer({ server, path: "/ws" });
 
 function send(socket: WebSocket | undefined, message: ServerMessage): void {
   if (socket && socket.readyState === socket.OPEN) socket.send(JSON.stringify(message));
+}
+
+// 재접속 토큰 비교 (길이가 다르거나 없으면 실패, 같으면 상수 시간 비교)
+function tokenMatches(expected: string | undefined, given: unknown): boolean {
+  if (!expected || typeof given !== "string" || given.length !== expected.length) return false;
+  return timingSafeEqual(Buffer.from(expected), Buffer.from(given));
 }
 
 const playerInfo = (room: Room) =>
@@ -308,8 +314,9 @@ wss.on("connection", (socket) => {
     if (message.type === "rejoin_room") {
       const room = getRoom(message.roomCode);
       const player = room?.players.get(message.playerId);
-      // 봇 자리(스스로 나간 자리 포함)와 내보내진 자리(방에서 지워짐)는 돌아올 수 없다
-      if (!room || !player || player.bot) {
+      // 봇 자리(스스로 나간 자리 포함)와 내보내진 자리(방에서 지워짐)는 돌아올 수 없다.
+      // playerId 는 공개 값이라 본인에게만 준 비밀 토큰이 맞아야 그 자리로 돌아올 수 있다
+      if (!room || !player || player.bot || !tokenMatches(player.token, message.token)) {
         send(socket, { type: "rejoin_failed" });
         return;
       }
@@ -340,13 +347,14 @@ wss.on("connection", (socket) => {
 
     if (message.type === "create_room") {
       playerId = randomUUID();
-      const player: Player = { id: playerId, name: message.playerName, socket };
+      const player: Player = { id: playerId, name: message.playerName, socket, token: randomUUID() };
       const room = createRoom(player);
       currentRoomCode = room.code;
       send(socket, {
         type: "room_created",
         roomCode: room.code,
         playerId,
+        token: player.token!,
         players: playerInfo(room),
       });
       return;
@@ -367,13 +375,14 @@ wss.on("connection", (socket) => {
         return;
       }
       playerId = randomUUID();
-      const player: Player = { id: playerId, name: message.playerName, socket };
+      const player: Player = { id: playerId, name: message.playerName, socket, token: randomUUID() };
       joinRoom(room.code, player);
       currentRoomCode = room.code;
       send(socket, {
         type: "room_joined",
         roomCode: room.code,
         playerId,
+        token: player.token!,
         players: playerInfo(room),
       });
       broadcast(room, { type: "player_joined", playerId, playerName: message.playerName }, playerId);

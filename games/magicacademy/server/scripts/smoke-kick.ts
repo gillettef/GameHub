@@ -49,12 +49,13 @@ async function makeRoom(names: string[], bots = 0) {
   send(host, { type: "create_room", playerName: names[0] });
   await wait(200);
   const created = last(host, "room_created")!;
-  const guests: { client: Client; id: string }[] = [];
+  const guests: { client: Client; id: string; token: string }[] = [];
   for (const name of names.slice(1)) {
     const client = await connect();
     send(client, { type: "join_room", roomCode: created.roomCode, playerName: name });
     await wait(200);
-    guests.push({ client, id: last(client, "room_joined")!.playerId });
+    const joined = last(client, "room_joined")!;
+    guests.push({ client, id: joined.playerId, token: joined.token });
   }
   for (let i = 0; i < bots; i++) {
     send(host, { type: "add_bot" });
@@ -97,7 +98,7 @@ async function main() {
   assert(afterKick.log.some((l) => l.message.includes("내보내졌어요")), "내보냈다는 기록이 남음");
   assert(last(a.host, "player_left")?.playerId === ghost.id, "남은 사람에게 player_left");
   const rejoin = await connect();
-  send(rejoin, { type: "rejoin_room", roomCode: a.code, playerId: ghost.id });
+  send(rejoin, { type: "rejoin_room", roomCode: a.code, playerId: ghost.id, token: ghost.token });
   await wait(200);
   assert(last(rejoin, "rejoin_failed"), "내보내진 자리로는 rejoin 불가");
 
