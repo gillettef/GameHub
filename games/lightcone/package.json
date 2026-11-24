@@ -1,0 +1,15 @@
+{
+  "name": "lightcone-simulator",
+  "version": "0.7.0",
+  "private": true,
+  "description": "LIGHTCONE 웹 시뮬레이터 (봇 대전). 규칙 기준은 rules/rulebook.md",
+  "type": "module",
+  "scripts": {
+    "test": "node --test \"prototype/test/**/*.test.js\"",
+    "build": "node scripts/build.mjs",
+    "start": "npm run build && node scripts/aws/serve.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
