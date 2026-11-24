@@ -1,0 +1,182 @@
+import type { Club, ClubNeed, Demand, EventKey, GoalCard, MarketEvent, PlayerCard, Position, Trait } from './types';
+
+/** [이름, 포지션, 몸값, 특성, 기본 수수료] */
+type PlayerRow = [string, Position, number, Trait, number];
+
+const PLAYER_ROWS: PlayerRow[] = [
+  ['강태오', 'FW', 8, '스타', 4],
+  ['윤시후', 'MF', 6, '플레이메이커', 3],
+  ['박도윤', 'DF', 4, '베테랑', 2],
+  ['최준서', 'FW', 3, '유망주', 2],
+  ['김민재', 'GK', 4, '클린시트', 2],
+  ['이하준', 'MF', 3, '유망주', 2],
+  ['정우진', 'DF', 2, '멀티플레이어', 2],
+  ['한승우', 'FW', 7, '스타', 4],
+  ['오지환', 'MF', 5, '플레이메이커', 3],
+  ['문현수', 'DF', 3, '베테랑', 2],
+  ['임재원', 'FW', 2, '유망주', 2],
+  ['백승민', 'GK', 2, '클린시트', 2],
+  ['서강민', 'MF', 6, '스타', 3],
+  ['조현우', 'DF', 2, '멀티플레이어', 2],
+  ['장민호', 'FW', 5, '베테랑', 3],
+  ['남기훈', 'MF', 2, '유망주', 2],
+  ['유태양', 'DF', 6, '스타', 3],
+  ['신도현', 'GK', 3, '클린시트', 2],
+  ['차은결', 'MF', 2, '플레이메이커', 2],
+  ['배준혁', 'FW', 6, '스타', 3],
+  ['송지호', 'FW', 5, '베테랑', 3],
+  ['권태민', 'MF', 4, '멀티플레이어', 2],
+  ['홍석진', 'DF', 7, '스타', 4],
+  ['류건우', 'GK', 6, '스타', 3],
+  ['안재현', 'FW', 2, '멀티플레이어', 2],
+  ['고민성', 'MF', 7, '스타', 4],
+  ['황보람', 'DF', 3, '유망주', 2],
+  ['전하늘', 'GK', 2, '유망주', 2],
+  ['노승현', 'MF', 4, '베테랑', 2],
+  ['마동훈', 'DF', 4, '클린시트', 2],
+  ['표준영', 'FW', 4, '플레이메이커', 2],
+  ['엄태웅', 'MF', 3, '멀티플레이어', 2],
+  ['하지원', 'FW', 3, '유망주', 2],
+  ['구본철', 'GK', 5, '베테랑', 3],
+  ['진우석', 'DF', 5, '플레이메이커', 3],
+  ['석현준', 'MF', 5, '유망주', 3],
+];
+
+export const PLAYERS: readonly PlayerCard[] = PLAYER_ROWS.map(([name, pos, cost, trait, base], id) => ({ id, name, pos, cost, trait, base }));
+
+/** [필요 포지션, 선호 특성] */
+type NeedRow = [Position, Trait];
+/** [이름, 제시액, 요구 카드 3장] */
+type ClubRow = [string, number, NeedRow[]];
+
+const CLUB_ROWS: ClubRow[] = [
+  ['블루 드래곤즈', 10, [['FW', '스타'], ['MF', '스타'], ['DF', '스타']]],
+  ['실버 호크스', 8, [['MF', '플레이메이커'], ['FW', '플레이메이커'], ['DF', '플레이메이커']]],
+  ['아이언 가디언즈', 7, [['GK', '클린시트'], ['DF', '클린시트'], ['GK', '베테랑']]],
+  ['에메랄드 타이거즈', 9, [['DF', '스타'], ['GK', '스타'], ['FW', '스타']]],
+  ['오로라 FC', 6, [['MF', '유망주'], ['FW', '유망주'], ['DF', '유망주']]],
+  ['노바 크루저스', 6, [['DF', '베테랑'], ['MF', '베테랑'], ['FW', '베테랑']]],
+  ['썬더 울브스', 5, [['FW', '유망주'], ['GK', '유망주'], ['MF', '멀티플레이어']]],
+  ['스톰 파이오니어', 9, [['MF', '플레이메이커'], ['MF', '스타'], ['FW', '베테랑']]],
+  ['레드 피닉스', 8, [['GK', '베테랑'], ['DF', '베테랑'], ['GK', '클린시트']]],
+  ['골든 이글스', 7, [['FW', '멀티플레이어'], ['DF', '멀티플레이어'], ['MF', '멀티플레이어']]],
+  ['퍼플 나이츠', 7, [['DF', '유망주'], ['MF', '유망주'], ['FW', '유망주']]],
+  ['화이트 샤크스', 10, [['MF', '스타'], ['FW', '스타'], ['GK', '스타']]],
+];
+
+export const CLUBS: readonly Club[] = CLUB_ROWS.map(([name, budget], id) => ({ id, name, budget }));
+
+/** 구단 요구 카드 36장 (구단 id 순, 구단마다 3장) */
+export const NEEDS: readonly ClubNeed[] = CLUB_ROWS.flatMap(([, , rows], club) => rows.map(([pos, pref]) => ({ club, pos, pref }))).map((n, id) => ({ id, ...n }));
+
+/** 이 구단의 요구 카드 id 들 */
+export const needsOf = (clubId: number): number[] => NEEDS.filter((n) => n.club === clubId).map((n) => n.id);
+
+/** 목표 카드 12장 (보너스는 모두 RULES.goalBonus) */
+export const GOALS: readonly GoalCard[] = (
+  [
+    ['공격 본능', 'FW 3명 이상', { kind: 'pos', pos: 'FW' }, 3],
+    ['중원 사령관', 'MF 3명 이상', { kind: 'pos', pos: 'MF' }, 3],
+    ['철벽 수비', 'DF 3명 이상', { kind: 'pos', pos: 'DF' }, 3],
+    ['골문 수호', 'GK 2명 이상', { kind: 'pos', pos: 'GK' }, 2],
+    ['스타 군단', '스타 3명 이상', { kind: 'trait', trait: '스타' }, 3],
+    ['노련미', '베테랑 3명 이상', { kind: 'trait', trait: '베테랑' }, 3],
+    ['미래 투자', '유망주 3명 이상', { kind: 'trait', trait: '유망주' }, 3],
+    ['패스 마스터', '플레이메이커 2명 이상', { kind: 'trait', trait: '플레이메이커' }, 2],
+    ['무실점', '클린시트 2명 이상', { kind: 'trait', trait: '클린시트' }, 2],
+    ['만능 선수', '멀티플레이어 2명 이상', { kind: 'trait', trait: '멀티플레이어' }, 2],
+    ['빅사이닝', '몸값 6억 이상 3명 이상', { kind: 'cost', min: 6 }, 3],
+    ['완성형 스쿼드', 'FW·MF·DF·GK 각 1명 이상', { kind: 'allPos' }, 4],
+  ] as [string, string, GoalCard['rule'], number][]
+).map(([name, desc, rule, n], id) => ({ id, name, desc, rule, n }));
+
+export const EVENTS: Readonly<Record<EventKey, MarketEvent>> = {
+  normal: { key: 'normal', name: '이적시장 개장', icon: '📰', desc: '특별한 효과가 없습니다.' },
+  fw: { key: 'fw', name: '공격수 품귀', icon: '🔥', desc: 'FW 선수 계약 수수료 +2억' },
+  defense: { key: 'defense', name: '수비 보강', icon: '🧤', desc: 'DF·GK 선수 계약 수수료 +2억' },
+  young: { key: 'young', name: '유망주 열풍', icon: '🌱', desc: '유망주 선수 계약 수수료 +2억' },
+  budget: { key: 'budget', name: '구단 긴축', icon: '📉', desc: '모든 구단 제시액 −2억' },
+  big: { key: 'big', name: '빅딜 시즌', icon: '💰', desc: '몸값 6억 이상 선수 계약 수수료 +2억' },
+  sponsor: { key: 'sponsor', name: '스폰서 데이', icon: '🎙', desc: "이번 라운드에 직접 계약시킨 선수는 목표 카드의 '○명 이상' 조건에서 2명으로 셉니다" },
+  overseas: { key: 'overseas', name: '해외파 귀국', icon: '✈️', desc: '시장에 선수 2명을 더 깝니다' },
+  deadline: { key: 'deadline', name: '데드라인 데이', icon: '⏰', desc: '마지막 라운드 · 모든 계약 수수료 +5억' },
+};
+
+/** 무작위로 섞어 4장을 쓰는 이벤트 (마지막 라운드는 항상 데드라인 데이) */
+export const EVENT_POOL: readonly EventKey[] = ['normal', 'fw', 'defense', 'young', 'budget', 'big', 'sponsor', 'overseas'];
+export const EVENT_KEYS: readonly EventKey[] = [...EVENT_POOL, 'deadline'];
+
+export const DEMANDS: readonly Demand[] = [1, 2, 3, 4];
+/** 라운드 수. 라운드마다 1차·2차 협상 */
+export const TOTAL_ROUNDS = 5;
+export const STAGES = 2;
+/** 게임에 쓰는 구단 수 (12곳 중 무작위) */
+export const CLUBS_IN_GAME = 6;
+/** 이벤트 수수료 보너스 (억) */
+export const EVENT_BONUS = 2;
+/** 긴축 시 제시액 감소 */
+export const BUDGET_CUT = 2;
+/** 해외파 귀국 시 추가 선수 */
+export const OVERSEAS_EXTRA = 2;
+/**
+ * 밸런스 조정 대상 규칙 수치. 기본값이 공식 규칙이며, 시뮬레이션(--rules k=v)에서만 바꾼다.
+ */
+export const RULES = {
+  /** 목표 카드 달성 보너스 */
+  goalBonus: 10,
+  /** 에이전트마다 받는 목표 카드 수 */
+  goalsPerAgent: 2,
+  /** 데드라인 데이 수수료 보너스 */
+  deadlineBonus: 5,
+  /** 이 값보다 매력도가 낮은 제안은 구단이 거절한다 (null = 제한 없음) */
+  minAttract: null as number | null,
+  /**
+   * 최고 매력도 동률일 때: 0 = 모두 상쇄, 1 = 제시액이 큰 구단 쪽이 계약, 2 = 요구 수수료 카드가 높은 쪽이 계약,
+   * 3 = 요구 수수료 카드가 낮은(수수료가 적은) 쪽이 계약 (1~3 모두 그것도 같으면 상쇄)
+   */
+  tieBudget: 3,
+  /** 요구 수수료 카드 종류별 장수. 공개된 카드는 버린다 (0 = 소진 없이 매번 1~4 중 자유, 비교 실험용) */
+  copies: 3,
+  /** 1 = 계약된 구단은 라운드가 끝나면 요구 카드를 교체한다, 0 = 첫 요구 카드 고정 (v6 비교 실험용) */
+  needRotate: 1,
+  /** 요구 수수료 카드 1·2·3·4 의 매력도 감점 (카드에 인쇄) */
+  penalty: [1, 2, 3, 4] as number[],
+  /** 요구 수수료 카드 1·2·3·4 로 받는 수수료 (카드에 인쇄) */
+  fee: [1, 3, 5, 6] as number[],
+  /** 시장 선수 수 = 인원 × marketPer + marketExtra */
+  marketPer: 2,
+  marketExtra: 1,
+};
+/** 3~4인 전용 (2026-10-16 사용자 결정: 2인은 지원하지 않음) */
+export const MIN_AGENTS = 3;
+export const MAX_AGENTS = 4;
+
+/** 라운드 시장 선수 수 2N + 1 (남은 선수는 다음 라운드에도 남고 빈자리만 채운다) */
+export const marketSize = (agents: number): number => agents * RULES.marketPer + RULES.marketExtra;
+
+/** 게임 시작 손패: 종류별 RULES.copies 장 */
+export const initialHand = (): Demand[] => DEMANDS.flatMap((d) => Array.from({ length: Math.max(1, RULES.copies) }, () => d));
+
+export const player = (id: number): PlayerCard => {
+  const p = PLAYERS[id];
+  if (!p) throw new Error(`unknown player ${id}`);
+  return p;
+};
+
+export const club = (id: number): Club => {
+  const c = CLUBS[id];
+  if (!c) throw new Error(`unknown club ${id}`);
+  return c;
+};
+
+export const goal = (id: number): GoalCard => {
+  const g = GOALS[id];
+  if (!g) throw new Error(`unknown goal ${id}`);
+  return g;
+};
+
+export const need = (id: number): ClubNeed => {
+  const n = NEEDS[id];
+  if (!n) throw new Error(`unknown need ${id}`);
+  return n;
+};
