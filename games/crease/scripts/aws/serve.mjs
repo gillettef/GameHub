@@ -5,6 +5,7 @@ import { readFile, stat } from 'node:fs/promises';
 import { extname, join, normalize, resolve, sep } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { createRooms } from './rooms.mjs';
+import { clientIp } from './client-ip.mjs';
 
 const ROOT = resolve(fileURLToPath(new URL('../../dist', import.meta.url)));
 const PORT = Number(process.env.PORT ?? 8101);
@@ -67,7 +68,7 @@ function json(res, status, body) {
 
 async function api(req, res, url) {
   const parts = url.pathname.split('/').filter(Boolean); // ['api', 'rooms', CODE, action]
-  const ip = req.socket.remoteAddress || '?';
+  const ip = clientIp(req);
   if (req.method === 'GET' && parts[1] === 'health') return json(res, 200, { ok: true, rooms: rooms.rooms.size });
   if (parts[1] !== 'rooms') return json(res, 404, { error: '없는 API' });
   const code = parts[2];

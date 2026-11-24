@@ -2405,9 +2405,11 @@ test("62절 한 덱: 고를 때 카드를 정하면 그 카드로 진행하고, 
     assert.throws(() => selectActivity(state, b, kind, undefined, c2.id), /이미 다른 친구가 고른 카드/);
     selectActivity(state, b, kind, undefined, c1.id);
     assert.deepEqual(state.activityChoices.map((c) => c.cardId), [c2.id, c1.id]);
+    // 나머지 친구도 모두 골라야 진행이 시작된다. 판정 카드가 남지 않으면 겨루기로 고른다 (4장 중 1장이 겨루기 카드인 판)
     for (const id of state.activityOrder.slice(2)) {
       const k = availableActivities(state, id).find((x) => x !== "duel");
       if (k) selectActivity(state, id, k);
+      else selectActivity(state, id, "duel", duelTargets(state, id)[0]);
     }
     advanceResolution(state);
     assert.equal(state.pendingPick, null, "정해 둔 카드는 다시 고르지 않는다");
@@ -2440,9 +2442,11 @@ test("62절 한 덱: 겨루기 카드를 고르면 그 카드를 써서 버리�
     const duels = state.activityOffers.duel!.cards.length;
     const [x, y] = state.activityOrder;
     selectActivity(state, x, "duel", y);
+    // 나머지 친구도 모두 골라야 진행이 시작된다. 판정 카드가 남지 않으면 겨루기로 고른다
     for (const id of state.activityOrder.slice(1)) {
       const a = availableActivities(state, id).find((k) => k !== "duel");
       if (a) selectActivity(state, id, a);
+      else selectActivity(state, id, "duel", duelTargets(state, id)[0]);
     }
     advanceResolution(state);
     assert.equal(state.activityOffers.duel!.cards.length, duels - 1, "겨루기 카드 1장을 썼다");
@@ -2562,13 +2566,17 @@ test("62-7절: 자율활동에 실패하면 낸 기운 중 1개는 남아 다음
       const { id } = found;
       const entry = state.pendingRoll!.entries.find((e) => e.playerId === id)!;
       const fuel = entry.diceToken!;
-      const target = (state.hidden.roll as { target: number }).target;
+      const { target, card } = state.hidden.roll as { target: number; card: Partial<ExplorationCard> };
       const before = tokensOf(state.players[id], fuel);
       submitRoll(state, id, 2);
       const failed = entry.dice!.reduce((x, y) => x + y, 0) < target;
       confirmRoll(state, id);
       seen.add(failed ? "실패" : "성공");
-      assert.equal(tokensOf(state.players[id], fuel), before - 2 + (failed ? 1 : 0), `${failed ? "실패하면 1개 남는다" : "성공하면 모두 쓴다"} (${fuel})`);
+      // 탐험 카드 성공 보상은 같은 기운을 줄 수 있다 (예: 요정들의 티 파티 성공 = 체력기운 +1).
+      // 카드의 실패 효과는 explorationPenalty가 켜졌을 때만 받고, 기운은 0 아래로 내려가지 않는다
+      const effect = failed ? (BALANCE.explorationPenalty ? card.failure : undefined) : card.success;
+      const cardTokens = effect?.tokens?.[fuel] ?? 0;
+      assert.equal(tokensOf(state.players[id], fuel), Math.max(0, before - 2 + (failed ? 1 : 0) + cardTokens), `${failed ? "실패하면 1개 남는다" : "성공하면 모두 쓴다"} (${fuel}, 카드 기운 ${cardTokens})`);
     });
   }
   assert.equal(seen.size, 2, "실패와 성공을 모두 확인했다");
