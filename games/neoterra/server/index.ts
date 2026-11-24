@@ -1,9 +1,9 @@
-// Neoterra 서버: 정적 dist + /ws(온라인 대전) + /health. 운영 포트 8094(systemd 가 PORT 지정), 로컬 개발 23641
+// Neoterra 단독 서버(로컬 개발·예전 systemd): 정적 dist + 온라인 대전(app.ts: /ws, /health). 로컬 개발 포트 23641
+// 운영은 GameHub 허브 안에서 실행된다(scripts/aws/hub-entry.mjs).
 import { createServer } from 'node:http';
 import { readFile, stat } from 'node:fs/promises';
 import { extname, join, normalize, resolve, sep } from 'node:path';
-import { WebSocketServer, type WebSocket } from 'ws';
-import { onConnection, roomCount, sweep } from './hub';
+import { createApp } from './app';
 
 const PORT = Number(process.env.PORT ?? (process.env.NODE_ENV === 'production' ? 8094 : 23641));
 const DIST = resolve(process.cwd(), 'dist');
@@ -18,6 +18,8 @@ const TYPES: Record<string, string> = {
   '.webmanifest': 'application/manifest+json',
 };
 
+const app = createApp();
+
 const server = createServer(async (req, res) => {
   let path: string;
   try {
@@ -26,11 +28,7 @@ const server = createServer(async (req, res) => {
     res.writeHead(400).end();
     return;
   }
-  if (path === '/health') {
-    res.writeHead(200, { 'content-type': 'application/json' });
-    res.end(JSON.stringify({ ok: true, rooms: roomCount() }));
-    return;
-  }
+  if (app.handle(req, res)) return;
   // 경로 이탈 방지: dist 안의 파일만
   let file = normalize(join(DIST, path));
   if (file !== DIST && !file.startsWith(DIST + sep)) {
@@ -53,25 +51,10 @@ const server = createServer(async (req, res) => {
   }
 });
 
-const wss = new WebSocketServer({ server, path: '/ws', maxPayload: 16 * 1024 });
-const alive = new WeakMap<WebSocket, boolean>();
-wss.on('connection', (ws) => {
-  alive.set(ws, true);
-  ws.on('pong', () => alive.set(ws, true));
-  onConnection(ws);
+server.on('upgrade', (req, socket, head) => {
+  if (!app.upgrade(req, socket, head)) socket.destroy();
 });
-// 죽은 연결 감지: 30초마다 ping, 응답이 없으면 끊는다(모바일 망 전환 대비)
-setInterval(() => {
-  for (const ws of wss.clients) {
-    if (!alive.get(ws)) {
-      ws.terminate();
-      continue;
-    }
-    alive.set(ws, false);
-    ws.ping();
-  }
-}, 30_000).unref();
-setInterval(() => sweep(), 15_000).unref();
+
 process.on('uncaughtException', (e) => console.error('처리되지 않은 예외', e));
 process.on('unhandledRejection', (e) => console.error('처리되지 않은 거부', e));
 

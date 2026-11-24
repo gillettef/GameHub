@@ -13,7 +13,7 @@
     "lint": "eslint .",
     "dev:server": "tsx watch server/index.ts",
     "server": "tsx server/index.ts",
-    "build:server": "rolldown server/index.ts -p node -f cjs -o server-dist/server.cjs -e bufferutil,utf-8-validate --logLevel warn",
+    "build:server": "rolldown server/index.ts -p node -f cjs -o server-dist/server.cjs -e bufferutil,utf-8-validate --logLevel warn && rolldown server/app.ts -p node -f cjs -o server-dist/app.cjs -e bufferutil,utf-8-validate --logLevel warn",
     "start": "node scripts/aws/serve.mjs"
   },
   "dependencies": {
