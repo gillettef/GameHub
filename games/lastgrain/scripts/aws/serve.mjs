@@ -97,14 +97,36 @@ async function handleApi(req, res, url, rooms) {
   throw new HttpError(404, 'Not found');
 }
 
-export async function startServer(port = Number(process.env.PORT ?? 8104)) {
+/** 온라인 대전 API. 단독 서버(startServer)와 GameHub 허브(hub-entry.mjs)가 함께 쓴다. 200ms 마다 방 시계를 돌린다 */
+export async function createApp() {
   const rules = await loadRules();
   const rooms = createRooms({ rules });
   const timer = setInterval(() => rooms.step(), 200);
+  return {
+    rooms,
+    /** /api/* 를 맡으면 true. 나머지(정적 파일)는 호출한 쪽이 서빙한다 */
+    async handle(req, res) {
+      const url = new URL(req.url, 'http://x');
+      if (!url.pathname.startsWith('/api/')) return false;
+      try {
+        await handleApi(req, res, url, rooms);
+      } catch (e) {
+        if (res.headersSent) res.end();
+        else if (e instanceof HttpError) sendJson(res, e.status, { error: e.message });
+        else { console.error(e); sendJson(res, 500, { error: 'Server error' }); }
+      }
+      return true;
+    },
+    close() { clearInterval(timer); },
+  };
+}
+
+export async function startServer(port = Number(process.env.PORT ?? 8104)) {
+  const app = await createApp();
   const server = createServer(async (req, res) => {
+    if (await app.handle(req, res)) return undefined;
     const url = new URL(req.url, 'http://x');
     try {
-      if (url.pathname.startsWith('/api/')) return await handleApi(req, res, url, rooms);
       const file = await resolveFile(url.pathname);
       if (!file) { res.writeHead(404).end('Not found'); return undefined; }
       const body = await readFile(file);
@@ -115,14 +137,13 @@ export async function startServer(port = Number(process.env.PORT ?? 8104)) {
       }).end(body);
     } catch (e) {
       if (res.headersSent) { res.end(); return undefined; }
-      if (e instanceof HttpError) sendJson(res, e.status, { error: e.message });
-      else { console.error(e); sendJson(res, 500, { error: 'Server error' }); }
+      console.error(e); sendJson(res, 500, { error: 'Server error' });
     }
     return undefined;
   });
-  server.on('close', () => clearInterval(timer));
+  server.on('close', () => app.close());
   await new Promise((ok) => server.listen(port, ok));
-  return { server, rooms, port: server.address().port };
+  return { server, rooms: app.rooms, port: server.address().port };
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {

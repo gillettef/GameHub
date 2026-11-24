@@ -52,6 +52,7 @@
 - 현재 구현 룰은 `docs/design-v1.md`(pptx의 빈 부분을 채운 것, **오프라인 보드게임 기준**: 카드 인쇄값 그대로, 확률·환산 공식 없음, 손계산 가능). v0은 `docs/archive/`. 인원은 사람 0~1 + AI로 전체 2~5인(`CFG.minPlayers`~`maxPlayers`), 한 기기 다인(핫시트) 미지원. 룰 상수(`CFG`)·인쇄값 변환(`PRINT`)을 바꾸면 `npx tsx scripts/balance.ts`로 영향을 확인하고, 카드 원본(xlsx)은 수정하지 않는다.
 
 ## 배포 (AWS)
+- **2026-11-24부터 운영은 GameHub 허브 안에서 실행된다**(`hub/games.json` `"mode": "inproc"`, 진입점 `scripts/aws/hub-entry.mjs`). 접속은 `http://54.116.67.196/smilepark/`. 배포하면 `deploy-remote.sh`가 예전 systemd `smilepark` 서비스를 끄고 허브(`gamehub`)를 재시작한다 — 허브 안 다른 게임의 진행 중인 방도 함께 사라진다. `serve.mjs`는 로컬 단독 실행용으로 남는다. 아래의 포트·systemd 설명은 예전 단독 운영 기준이다.
 - 다른 게임(Eleven·AstralTab·MagicAcademy)과 같은 EC2(t4g.nano) 1대를 공유한다. SmilePark는 정적 웹앱이라 `main`에 병합되면 `.github/workflows/deploy-aws.yml`이 `npm test` → `npm run build`를 통과했을 때만 `dist`와 `scripts/aws/`(의존성 없는 정적 서버 `serve.mjs`, `deploy-remote.sh`)를 `~/smilepark`에 올리고 `deploy-remote.sh`가 systemd `smilepark`(포트 **8090**)를 재시작·헬스체크한다. 접속은 `http://<Elastic IP>:8090`.
 - SSH(22)는 관리자 IP만 열려 있어 워크플로가 러너 IP를 임시로 열었다 닫는다. 저장소 시크릿: AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY / AWS_REGION / AWS_SECURITY_GROUP_ID / EC2_HOST / EC2_HOST_KEY / EC2_SSH_PRIVATE_KEY (다른 게임 저장소와 같은 값).
 - 최초 1회: EC2에서 `scripts/aws/provision.sh` → `scripts/aws/units.sh` 실행, 보안 그룹에 TCP 8090 인바운드 추가.
