@@ -1,0 +1,108 @@
+/**
+ * 화면 연출용 도우미: 진동 피드백, 직전 행동으로 생긴 사건(라운드 전환, 목표 달성 등) 찾기.
+ * 엔진 상태를 읽기만 한다.
+ */
+import {
+  GOAL_ACHIEVED_POINTS,
+  GOAL_FIRST_POINTS,
+  goalPoints,
+  ROUND4_GOAL_POINTS,
+  ROUND_GOALS,
+  scoreLine,
+  scorePlane,
+  scoreTops,
+  scoreTower,
+  EVENTS,
+  type EventId,
+  type GameState,
+} from '../engine'
+
+/** 짧은 진동. 지원하지 않거나 막힌 기기에서는 아무것도 하지 않는다 */
+export function buzz(pattern: number | number[] = 12): void {
+  try {
+    if (typeof navigator !== 'undefined' && 'vibrate' in navigator) navigator.vibrate(pattern)
+  } catch {
+    // 무시
+  }
+}
+
+/**
+ * 지금까지의 점수 (공개 정보만). 개인 목표는 비공개라 빼고,
+ * 기본 점수는 확정분, 지금 라운드 것은 현재 보드로 어림한다 (v0.7: 라운드 끝에 확정).
+ */
+export function liveScore(state: GameState, player: number): number {
+  const s = scoreParts(state, player)
+  return s.line + s.plane + s.tower + s.time + s.goals + s.debris
+}
+
+/** 지금까지의 점수 항목 (공개 정보만, 잔해는 음수) */
+export function scoreParts(
+  state: GameState,
+  player: number,
+): { line: number; plane: number; tower: number; time: number; goals: number; debris: number } {
+  const p = state.players[player]
+  if (!p) return { line: 0, plane: 0, tower: 0, time: 0, goals: 0, debris: 0 }
+  // 아직 오지 않은 라운드의 점수는 0
+  const round = state.phase.kind === 'round' ? state.phase.round : state.phase.kind === 'ended' ? 4 : 0
+  return {
+    line: p.lineScore ?? (round >= 1 ? scoreLine(p.board, state.law).total : 0),
+    plane: p.planeScore ?? (round >= 2 ? scorePlane(p.board, state.law).total : 0),
+    tower: p.towerScore ?? (round >= 3 ? scoreTower(p.board, state.law).total : 0),
+    time: p.timeScore ?? (round >= 4 ? scoreTops(p.board, state.law).total : 0),
+    goals: goalPoints(state, player),
+    debris: -p.debris.length,
+  }
+}
+
+export type FxEvent =
+  | { kind: 'round'; round: 1 | 2 | 3 | 4 }
+  | { kind: 'turn'; player: number }
+  | { kind: 'goal'; player: number; name: string; points: number; first: boolean }
+  | { kind: 'debris'; player: number; count: number }
+  /** 라운드 끝 기본 점수 확정 (1 선, 2 평면, 3 입체, 4 꼭대기 지도) */
+  | { kind: 'base'; round: 1 | 2 | 3 | 4; player: number; points: number }
+  /** 4라운드 끝에 발동한 끝 사건 (§11-4) */
+  | { kind: 'endEvents'; events: EventId[] }
+
+/** 직전 상태와 비교해 연출할 사건을 찾는다 */
+export function diffEvents(prev: GameState | null, next: GameState): FxEvent[] {
+  if (!prev) return []
+  const out: FxEvent[] = []
+  const prevRound = prev.phase.kind === 'round' ? prev.phase.round : null
+  const nextRound = next.phase.kind === 'round' ? next.phase.round : null
+  const roundChanged = nextRound !== null && nextRound !== prevRound
+  if (roundChanged) out.push({ kind: 'round', round: nextRound })
+  if (prevRound === 4 && next.phase.kind === 'ended') {
+    const ended = (next.time?.events ?? []).filter((e) => EVENTS[e].when === 'end')
+    if (ended.length > 0) out.push({ kind: 'endEvents', events: ended })
+  }
+
+  for (const g of next.roundGoals) {
+    const before = prev.roundGoals.find((x) => x.id === g.id)
+    const name = ROUND_GOALS[g.id].name
+    if (g.first !== null && before?.first !== g.first) {
+      out.push({ kind: 'goal', player: g.first, name, points: GOAL_FIRST_POINTS, first: true })
+    }
+    for (const p of g.achieved) {
+      if (!before?.achieved.includes(p)) {
+        out.push({ kind: 'goal', player: p, name, points: g.round === 4 ? ROUND4_GOAL_POINTS : GOAL_ACHIEVED_POINTS, first: false })
+      }
+    }
+  }
+
+  for (const p of next.players) {
+    const before = prev.players[p.id]
+    if (!before) continue
+    const added = p.debris.length - before.debris.length
+    if (added > 0) out.push({ kind: 'debris', player: p.id, count: added })
+    if (before.lineScore === null && p.lineScore !== null) out.push({ kind: 'base', round: 1, player: p.id, points: p.lineScore })
+    if (before.planeScore === null && p.planeScore !== null) out.push({ kind: 'base', round: 2, player: p.id, points: p.planeScore })
+    if (before.towerScore === null && p.towerScore !== null) out.push({ kind: 'base', round: 3, player: p.id, points: p.towerScore })
+    if (before.timeScore === null && p.timeScore !== null) out.push({ kind: 'base', round: 4, player: p.id, points: p.timeScore })
+  }
+
+  if (!roundChanged && next.phase.kind === 'round' && prev.phase.kind === 'round' && prev.currentPlayer !== next.currentPlayer) {
+    out.push({ kind: 'turn', player: next.currentPlayer })
+  }
+  return out
+}

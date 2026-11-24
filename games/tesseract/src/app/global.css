@@ -1,0 +1,439 @@
+@import 'tailwindcss';
+
+/* Claude Design 캔버스의 색·글꼴 (CLAUDE.md 비주얼 디자인) */
+@theme {
+  --color-void: #14121f;
+  --color-surface: #1f1c30;
+  --color-raised: #2a2640;
+  --color-line: #34304d;
+  --color-fg: #ece9ff;
+  --color-muted: #a49fc4;
+  --color-accent: #9b8cff;
+  --color-accent-deep: #6d5cf0;
+  --color-law: #9b8cff;
+  --color-goal: #5ad1e6;
+  --color-personal: #f2a65a;
+  --color-event: #ff8a7a;
+  --color-danger: #ff6b6b;
+  --color-good: #34c483;
+
+  --font-sans: 'Noto Sans KR', system-ui, -apple-system, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+  --font-display: 'Space Grotesk', 'Noto Sans KR', system-ui, sans-serif;
+
+  /* 조작 반응은 300ms 이하 (CLAUDE.md 모바일 UI 원칙) */
+  --animate-drop: drop 280ms cubic-bezier(0.2, 1.5, 0.4, 1) both;
+  --animate-pop: pop 220ms cubic-bezier(0.2, 1.4, 0.4, 1) both;
+  --animate-tumble: tumble 300ms cubic-bezier(0.2, 1.2, 0.4, 1) both;
+  --animate-roll-forward: roll-forward 300ms cubic-bezier(0.3, 1.2, 0.5, 1) both;
+  --animate-roll-back: roll-back 300ms cubic-bezier(0.3, 1.2, 0.5, 1) both;
+  --animate-roll-left: roll-left 300ms cubic-bezier(0.3, 1.2, 0.5, 1) both;
+  --animate-roll-right: roll-right 300ms cubic-bezier(0.3, 1.2, 0.5, 1) both;
+  --animate-rise: rise 260ms cubic-bezier(0.2, 1, 0.3, 1) both;
+  --animate-sheet: sheet 280ms cubic-bezier(0.2, 1, 0.3, 1) both;
+  --animate-fade: fade 200ms ease-out both;
+  --animate-ripple: ripple 300ms ease-out both;
+  --animate-shake: shake 280ms ease-in-out both;
+  /* 연출: 들어오고 나가는 구간은 각각 300ms 이하, 사이에 머무름 */
+  --animate-banner: banner 1500ms ease-in-out both;
+  --animate-float: float 1600ms ease-out both;
+  --animate-toast: toast 2600ms ease-in-out both;
+  /* 배경·반복 연출 */
+  --animate-hover: hover 2.4s ease-in-out infinite;
+  --animate-spin-slow: spin3d 22s linear infinite;
+  --animate-spin-rev: spin3d-rev 16s linear infinite;
+  --animate-twinkle: twinkle 3.2s ease-in-out infinite;
+  --animate-confetti: confetti 2.6s cubic-bezier(0.2, 0.6, 0.4, 1) both;
+  --animate-count: count 900ms cubic-bezier(0.2, 0.8, 0.3, 1) both;
+  --animate-shine: shine 3.6s ease-in-out infinite;
+  --animate-grow: grow 600ms cubic-bezier(0.2, 0.8, 0.3, 1) both;
+
+  @keyframes grow {
+    0% {
+      transform: scaleX(0);
+    }
+    100% {
+      transform: none;
+    }
+  }
+
+  /* 놓기: 위에서 살짝 비틀린 채 내려와 바닥에 닿으며 눌렸다 편다 */
+  @keyframes drop {
+    0% {
+      transform: translateY(-34px) scale(1.35) rotate(-24deg);
+      opacity: 0;
+    }
+    70% {
+      transform: translateY(2px) scale(0.94) rotate(3deg);
+      opacity: 1;
+    }
+    100% {
+      transform: none;
+      opacity: 1;
+    }
+  }
+  @keyframes pop {
+    0% {
+      transform: scale(0.6);
+      opacity: 0;
+    }
+    100% {
+      transform: none;
+      opacity: 1;
+    }
+  }
+  @keyframes tumble {
+    0% {
+      transform: rotate(-200deg) scale(0.3);
+      opacity: 0;
+    }
+    100% {
+      transform: none;
+      opacity: 1;
+    }
+  }
+  /* 굴리기: 화면에서 '앞'은 아래쪽이다 */
+  @keyframes roll-forward {
+    0% {
+      transform: translateY(-110%) rotateX(90deg);
+    }
+    100% {
+      transform: none;
+    }
+  }
+  @keyframes roll-back {
+    0% {
+      transform: translateY(110%) rotateX(-90deg);
+    }
+    100% {
+      transform: none;
+    }
+  }
+  @keyframes roll-left {
+    0% {
+      transform: translateX(110%) rotateY(-90deg);
+    }
+    100% {
+      transform: none;
+    }
+  }
+  @keyframes roll-right {
+    0% {
+      transform: translateX(-110%) rotateY(90deg);
+    }
+    100% {
+      transform: none;
+    }
+  }
+  @keyframes rise {
+    0% {
+      transform: translateY(16px);
+      opacity: 0;
+    }
+    100% {
+      transform: none;
+      opacity: 1;
+    }
+  }
+  @keyframes sheet {
+    0% {
+      transform: translateY(100%);
+    }
+    100% {
+      transform: none;
+    }
+  }
+  @keyframes fade {
+    0% {
+      opacity: 0;
+    }
+    100% {
+      opacity: 1;
+    }
+  }
+  @keyframes ripple {
+    0% {
+      transform: scale(0.4);
+      opacity: 0.9;
+    }
+    100% {
+      transform: scale(1.35);
+      opacity: 0;
+    }
+  }
+  @keyframes shake {
+    0%,
+    100% {
+      transform: none;
+    }
+    25% {
+      transform: translateX(-6px);
+    }
+    75% {
+      transform: translateX(6px);
+    }
+  }
+  @keyframes banner {
+    0% {
+      transform: translateY(-120%);
+      opacity: 0;
+    }
+    16%,
+    84% {
+      transform: none;
+      opacity: 1;
+    }
+    100% {
+      transform: translateY(-120%);
+      opacity: 0;
+    }
+  }
+  @keyframes float {
+    0% {
+      transform: translateY(12px) scale(0.8);
+      opacity: 0;
+    }
+    15% {
+      transform: none;
+      opacity: 1;
+    }
+    80% {
+      transform: translateY(-18px);
+      opacity: 1;
+    }
+    100% {
+      transform: translateY(-32px);
+      opacity: 0;
+    }
+  }
+  @keyframes toast {
+    0% {
+      transform: translateY(20px);
+      opacity: 0;
+    }
+    10%,
+    88% {
+      transform: none;
+      opacity: 1;
+    }
+    100% {
+      transform: translateY(20px);
+      opacity: 0;
+      visibility: hidden;
+    }
+  }
+  @keyframes glow {
+    0%,
+    100% {
+      opacity: 0.25;
+    }
+    50% {
+      opacity: 1;
+    }
+  }
+  @keyframes hover {
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-4px);
+    }
+  }
+  @keyframes spin3d {
+    0% {
+      transform: rotateX(-24deg) rotateY(0deg);
+    }
+    100% {
+      transform: rotateX(-24deg) rotateY(360deg);
+    }
+  }
+  @keyframes spin3d-rev {
+    0% {
+      transform: rotateX(30deg) rotateY(360deg) rotateZ(10deg);
+    }
+    100% {
+      transform: rotateX(30deg) rotateY(0deg) rotateZ(10deg);
+    }
+  }
+  @keyframes twinkle {
+    0%,
+    100% {
+      opacity: 0.25;
+    }
+    50% {
+      opacity: 1;
+    }
+  }
+  @keyframes confetti {
+    0% {
+      transform: translate3d(0, -10vh, 0) rotate(0deg);
+      opacity: 1;
+    }
+    85% {
+      opacity: 1;
+    }
+    100% {
+      transform: translate3d(var(--dx, 0), 105vh, 0) rotate(var(--rot, 540deg));
+      opacity: 0;
+    }
+  }
+  @keyframes count {
+    0% {
+      --n: 0;
+    }
+    100% {
+      --n: var(--to);
+    }
+  }
+  @keyframes shine {
+    0%,
+    60% {
+      transform: translateX(-120%) skewX(-20deg);
+    }
+    100% {
+      transform: translateX(220%) skewX(-20deg);
+    }
+  }
+}
+
+/* 결과 화면 점수 카운트업용 정수 속성 */
+@property --n {
+  syntax: '<integer>';
+  initial-value: 0;
+  inherits: false;
+}
+
+@layer base {
+  :root {
+    color-scheme: dark;
+    -webkit-text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  html,
+  body {
+    min-height: 100%;
+    overflow-x: hidden;
+    background-color: var(--color-void);
+    color: var(--color-fg);
+    font-family: var(--font-sans);
+    overscroll-behavior-y: none;
+    word-break: keep-all;
+    overflow-wrap: anywhere;
+  }
+
+  /* 우주 배경: 은은한 성운 + 별. 스크롤 때 다시 그리지 않게 고정 레이어로 */
+  /* 배경색은 html에만 둔다. body에 있으면 아래 z-index:-1 레이어를 덮는다 */
+  body {
+    background-color: transparent;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background-image:
+      radial-gradient(1200px 600px at 110% -10%, rgb(155 140 255 / 0.16), transparent 60%),
+      radial-gradient(900px 500px at -20% 110%, rgb(90 209 230 / 0.1), transparent 60%),
+      radial-gradient(1.5px 1.5px at 20% 30%, rgb(255 255 255 / 0.5), transparent),
+      radial-gradient(1px 1px at 70% 20%, rgb(255 255 255 / 0.45), transparent),
+      radial-gradient(1.5px 1.5px at 40% 80%, rgb(255 255 255 / 0.35), transparent),
+      radial-gradient(1px 1px at 85% 65%, rgb(255 255 255 / 0.4), transparent),
+      radial-gradient(1px 1px at 10% 90%, rgb(255 255 255 / 0.3), transparent);
+  }
+
+  #root {
+    min-height: 100dvh;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom)
+      env(safe-area-inset-left);
+  }
+
+  button {
+    touch-action: manipulation;
+    cursor: pointer;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  button:disabled {
+    cursor: default;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+}
+
+/* 점수 카운트업: --to까지 정수로 세며 counter로 보여 준다 */
+@utility count-up {
+  animation: var(--animate-count);
+  counter-reset: n var(--n);
+  &::after {
+    content: counter(n);
+  }
+}
+
+/*
+ * 고를 수 있는 곳의 빛. 정적인 ring은 각 요소가 따로 갖고(움직임을 꺼도 남음),
+ * 여기서는 그 위에 번지는 빛의 opacity만 반복한다 (box-shadow를 매 프레임 다시 그리지 않게).
+ */
+@utility glow-pulse {
+  position: relative;
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    box-shadow: 0 0 18px 2px color-mix(in oklab, var(--glow, var(--color-accent)) 65%, transparent);
+    animation: glow 1.4s ease-in-out infinite;
+  }
+}
+
+@utility perspective-board {
+  perspective: 600px;
+}
+
+@utility preserve-3d {
+  transform-style: preserve-3d;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  /* 연출로 알려 주는 정보(차례, 잔해)는 움직임 없이 나타났다 사라지게 */
+  .animate-banner,
+  .animate-float,
+  .animate-toast {
+    animation-name: hold !important;
+    animation-duration: 1800ms !important;
+  }
+
+  .glow-pulse::after {
+    animation: none !important;
+    opacity: 0.6;
+  }
+}
+
+@keyframes hold {
+  0% {
+    opacity: 0;
+  }
+  8%,
+  88% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    visibility: hidden;
+  }
+}
