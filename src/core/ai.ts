@@ -41,6 +41,8 @@ const FOOD_NEED_MARGIN = 1.2;
 /** 지휘·방위 행동 1개의 라운드당 가치(문화 환산, 임시) */
 const COMMAND_VALUE = 0.9;
 const DEFENSE_VALUE = 0.3;
+/** 유휴 정착민 1명의 가치. 0.6 이면 할인 평가 뒤 연구에 밀려 정착민 15명, 2.0 이면 19.8명이지만 3번 자리 승률이 24%로 무너졌다(2026-11-03) */
+const IDLE_VALUE = 1.4;
 /** 보상 선택에서 지금 주 노선 쪽에 더하는 가산(노선 단계를 모으는 방향을 유지) */
 const MAIN_DOCTRINE_PULL = 1;
 
@@ -88,7 +90,7 @@ export function evaluate(state: GameState, p: PlayerState): number {
   const m = might(p, mods);
   const lvl = THREAT_LEVEL[state.era];
   v += Math.min(m, lvl) * 0.7 + Math.max(0, m - lvl) * 0.1;
-  v += p.idle * 0.6 * Math.min(1, R / 4);
+  v += p.idle * IDLE_VALUE * Math.min(1, R / 4);
   for (const h of p.hand) {
     const c = CARD_DEFS[h.id];
     if (!c) continue; // 가린 손패
