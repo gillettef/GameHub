@@ -1,0 +1,17 @@
+[Unit]
+Description=Neoterra 온라인 대전 서버 (포트 8094)
+After=network.target
+
+[Service]
+Type=simple
+User=__USER__
+WorkingDirectory=__APP__
+Environment=PORT=8094
+Environment=NODE_ENV=production
+ExecStart=/usr/bin/env node __APP__/server-dist/server.cjs
+Restart=always
+RestartSec=3
+MemoryMax=180M
+
+[Install]
+WantedBy=multi-user.target

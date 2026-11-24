@@ -1,0 +1,118 @@
+/* 프레임 좌표(250×350 기준)를 카드 폭에 비례해 환산: 1단위 = var(--w)/250 px */
+.card {
+  position: relative;
+  flex: none;
+  aspect-ratio: 5 / 7;
+  border: none;
+  padding: 0;
+  background: center / 100% 100% no-repeat;
+  color: var(--text);
+  text-align: center;
+  border-radius: calc(var(--w) * 1px / 250 * 14);
+  overflow: hidden;
+}
+button.card:active {
+  transform: scale(0.97);
+}
+.dim {
+  opacity: 0.45;
+}
+.title {
+  position: absolute;
+  left: 18%;
+  right: 6%;
+  top: 4.5%;
+  height: 11%;
+  min-height: 15px;
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: max(15px, calc(var(--w) * 1px * 0.11 / 0.714));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.small .title {
+  left: 6%;
+  top: 30%;
+  height: auto;
+  line-height: 1.2;
+  white-space: normal;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  text-align: center;
+}
+.kind {
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  top: 19%;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+.badge {
+  position: absolute;
+  left: 6.4%;
+  top: 4.3%;
+  width: 12%;
+  min-width: 16px;
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--accent);
+}
+.body {
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  top: 56%;
+  max-height: 38%;
+  font-size: 12px;
+  line-height: 1.25;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+}
+/* 그림 창: 프레임 좌표 x14–236, y66–188 (250×350 기준) */
+.window {
+  position: absolute !important;
+  left: 5.6%;
+  width: 88.8%;
+  top: 18.86%;
+  height: 34.86%;
+  aspect-ratio: auto !important;
+}
+/* 종류 태그: 그림 창 왼쪽 위에 겹쳐 표시 */
+.tag {
+  position: absolute;
+  left: 7.5%;
+  top: 20.5%;
+  max-width: 85%;
+  padding: 1px 5px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--tag, var(--text));
+  background: color-mix(in srgb, var(--bg) 85%, transparent);
+  border: 1px solid var(--tag, var(--border));
+  border-radius: var(--radius-sm);
+  pointer-events: none;
+}
+/* 퀘스트 프레임: 배지 칸이 오른쪽 위(x196–228), 제목은 왼쪽부터 */
+.quest .title {
+  left: 6%;
+  right: 23%;
+}
+.quest .badge {
+  left: 78.4%;
+  width: 12.8%;
+  color: var(--danger);
+}

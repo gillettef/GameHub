@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 222 122"><defs><linearGradient id="a-f_sanctum-s" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0a0f1f"/><stop offset=".7" stop-color="#1f2a48"/><stop offset="1" stop-color="#24403f"/></linearGradient><radialGradient id="a-f_sanctum-g"><stop offset="0" stop-color="#ff9a4a" stop-opacity=".8"/><stop offset="1" stop-color="#ff9a4a" stop-opacity="0"/></radialGradient><linearGradient id="a-f_sanctum-m" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3fe3b8" stop-opacity="0"/><stop offset="1" stop-color="#3fe3b8" stop-opacity=".4"/></linearGradient></defs>
+<rect width="222" height="122" fill="url(#a-f_sanctum-s)"/>
+<g fill="#e9edf8"><circle cx="14" cy="12" r=".9"/><circle cx="44" cy="30" r=".6"/><circle cx="90" cy="8" r="1"/><circle cx="134" cy="14" r=".7"/><circle cx="168" cy="6" r=".6"/><circle cx="210" cy="44" r=".8"/></g>
+<circle cx="186" cy="24" r="11" fill="#33406a"/><ellipse cx="186" cy="24" rx="20" ry="4.5" fill="none" stroke="#ffd67a" stroke-opacity=".7" stroke-width="1.3" transform="rotate(-12 186 24)"/><circle cx="34" cy="18" r="3.5" fill="#a9b6d6"/><circle cx="48" cy="12" r="2" fill="#a9b6d6" fill-opacity=".7"/>
+<path d="M0 84l30-8 26 6 30-10 30 8 28-6 30 8 26-6 22 4v42H0z" fill="#161f38"/>
+<g fill="#3fe3b8" fill-opacity=".55"><path d="M20 90q-3-16 3-22 5 8 0 22zM34 88q-5-12 2-18 6 8-2 18zM186 88q-3-16 3-22 5 8 0 22zM200 90q-5-12 2-18 5 8-2 18z"/></g>
+<circle cx="111" cy="82" r="34" fill="url(#a-f_sanctum-g)"/>
+<g stroke="#0a0f1f" stroke-width=".8"><path d="M68 98h86l-6-6H74z" fill="#5a6a96"/><path d="M62 104h98l-6-6H68z" fill="#4a5a84"/><path d="M80 92V62h8v30zM134 92V62h8v30z" fill="#a9b6d6"/><path d="M94 92V66h6v26zM122 92V66h6v26z" fill="#7f8db3"/><path d="M74 62q37-30 74 0z" fill="#33406a"/><path d="M80 60q31-22 62 0" fill="none" stroke="#a9b6d6" stroke-width="1.2"/></g>
+<path d="M111 40v-6" stroke="#a9b6d6" stroke-width="1.4"/><circle cx="111" cy="32" r="2.4" fill="#b6ff7a"/>
+<path d="M111 64v6" stroke="#a9b6d6" stroke-width="1"/><path d="M106 70h10l-1 10h-8z" fill="#ff9a4a" stroke="#0a0f1f" stroke-width=".7"/><circle cx="111" cy="75" r="2.4" fill="#ffd67a"/>
+<rect x="0" y="80" width="222" height="42" fill="url(#a-f_sanctum-m)"/>
+<g fill="#3fe3b8" fill-opacity=".3"><ellipse cx="40" cy="102" rx="44" ry="5"/><ellipse cx="180" cy="100" rx="46" ry="5"/><ellipse cx="111" cy="110" rx="80" ry="6"/></g>
+<g fill="#b6ff7a"><circle cx="60" cy="72" r="1"/><circle cx="76" cy="50" r=".8"/><circle cx="150" cy="56" r="1"/><circle cx="164" cy="76" r=".8"/><circle cx="96" cy="44" r=".7"/><circle cx="130" cy="40" r=".7"/></g>
+<path d="M0 122v-10l60 2 40-4h22l40 4 60-2v10z" fill="#0a0f1f"/><g fill="#0a0f1f"><circle cx="111" cy="106" r="1.6"/><path d="M109.5 107.5h3l1 4h-5z"/></g>
+</svg>

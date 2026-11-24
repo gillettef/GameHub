@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 120" role="img" aria-label="종료 시대 — 결실의 새벽">
+  <defs>
+    <linearGradient id="ntE4Sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0a0f1f"/>
+      <stop offset="0.6" stop-color="#2a1f3e"/>
+      <stop offset="1" stop-color="#5a3a3a"/>
+    </linearGradient>
+    <radialGradient id="ntE4Sun" cx="0.5" cy="1" r="0.6">
+      <stop offset="0" stop-color="#fff2c8"/>
+      <stop offset="0.25" stop-color="#ffd67a" stop-opacity=".9"/>
+      <stop offset="1" stop-color="#ffd67a" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="ntE4BeamA" x1="0" y1="1" x2="0" y2="0">
+      <stop offset="0" stop-color="#9cc2ff" stop-opacity=".55"/><stop offset="1" stop-color="#9cc2ff" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="ntE4BeamB" x1="0" y1="1" x2="0" y2="0">
+      <stop offset="0" stop-color="#3fe3b8" stop-opacity=".55"/><stop offset="1" stop-color="#3fe3b8" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="ntE4BeamC" x1="0" y1="1" x2="0" y2="0">
+      <stop offset="0" stop-color="#ff6cb0" stop-opacity=".55"/><stop offset="1" stop-color="#ff6cb0" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <rect width="360" height="120" rx="12" fill="url(#ntE4Sky)"/>
+  <!-- 새벽 해 -->
+  <ellipse cx="180" cy="104" rx="150" ry="70" fill="url(#ntE4Sun)"/>
+  <!-- 세 노선의 빛기둥 (왼쪽·가운데 뒤·오른쪽) -->
+  <path d="M40 100 30 0h22z" fill="url(#ntE4BeamA)"/>
+  <path d="M320 100 308 0h22z" fill="url(#ntE4BeamC)"/>
+  <path d="M286 100l-4-70h12z" fill="url(#ntE4BeamB)"/>
+  <path d="M74 100l-4-70h12z" fill="url(#ntE4BeamB)"/>
+  <!-- 세 노선 탑 실루엣 -->
+  <path d="M34 100V70l7-8 7 8v30z" fill="#1b2542"/>
+  <path d="M70 100V78c0-6 4-10 6-12 2 2 6 6 6 12v22z" fill="#123a3a"/>
+  <path d="M282 100V74h12v26z" fill="#123a3a"/>
+  <path d="M312 100V66l8-6 8 6v34z" fill="#2a1530"/>
+  <circle cx="41" cy="60" r="2" fill="#9cc2ff"/><circle cx="76" cy="64" r="2" fill="#3fe3b8"/>
+  <circle cx="288" cy="72" r="2" fill="#3fe3b8"/><circle cx="320" cy="58" r="2" fill="#ff6cb0"/>
+  <!-- 지평선 -->
+  <path d="M0 100h360v20H0z" fill="#120e1c"/>
+  <path d="M30 100h300" stroke="#ffd67a" stroke-opacity=".6"/>
+  <rect x="0.75" y="0.75" width="358.5" height="118.5" rx="11.5" fill="none" stroke="#ffd67a" stroke-width="1.5" stroke-opacity=".8"/>
+</svg>

@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 324 96" color="#e9edf8" role="img" aria-label="네오테라">
+  <defs>
+    <radialGradient id="ntLogoPlanet" cx="0.36" cy="0.32" r="0.75">
+      <stop offset="0" stop-color="#5a6fb0"/>
+      <stop offset="0.6" stop-color="#26315a"/>
+      <stop offset="1" stop-color="#121833"/>
+    </radialGradient>
+    <linearGradient id="ntLogoRing" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#9cc2ff"/>
+      <stop offset="0.5" stop-color="#3fe3b8"/>
+      <stop offset="1" stop-color="#ff6cb0"/>
+    </linearGradient>
+  </defs>
+
+  <!-- 심볼: 고리 행성 + 새싹(정착) + 세 노선 점 -->
+  <g transform="translate(48 50)">
+    <!-- 고리 뒤쪽 -->
+    <path d="M-44 4a44 13 0 0 1 88 -8" fill="none" stroke="url(#ntLogoRing)" stroke-width="3.5" stroke-linecap="round" opacity=".55" transform="rotate(-16)"/>
+    <circle r="27" fill="url(#ntLogoPlanet)"/>
+    <circle r="27" fill="none" stroke="#9cc2ff" stroke-width="1.2" opacity=".5"/>
+    <!-- 지표의 새싹 -->
+    <path d="M0 14V-2" stroke="#3fe3b8" stroke-width="3" stroke-linecap="round"/>
+    <path d="M0 2c-2-8-9-11-15-10 1 7 7 11 15 10z" fill="#3fe3b8"/>
+    <path d="M0 -2c2-9 9-13 16-12-1 8-8 13-16 12z" fill="#b6ff7a"/>
+    <!-- 고리 앞쪽 -->
+    <path d="M-44 4a44 13 0 0 0 88 -8" fill="none" stroke="url(#ntLogoRing)" stroke-width="3.5" stroke-linecap="round" transform="rotate(-16)"/>
+    <!-- 세 노선 위성 -->
+    <circle cx="-40" cy="16" r="3.4" fill="#9cc2ff"/>
+    <circle cx="20" cy="22" r="3.4" fill="#3fe3b8"/>
+    <circle cx="42" cy="-16" r="3.4" fill="#ff6cb0"/>
+  </g>
+
+  <!-- 워드마크: 기하학 획으로 그린 '네오테라' (글꼴 의존 없음) -->
+  <g fill="none" stroke="currentColor" stroke-width="7" stroke-linecap="round" stroke-linejoin="round">
+    <!-- 네 -->
+    <path d="M114 28V66H132"/>
+    <path d="M132 48H142M142 24V72M154 22V74"/>
+    <!-- 오 -->
+    <circle cx="188" cy="37" r="12"/>
+    <path d="M188 52V66M168 66H208"/>
+    <!-- 테 -->
+    <path d="M240 28H222V66H242M222 47H238"/>
+    <path d="M242 48H252M252 24V72M264 22V74"/>
+    <!-- 라 -->
+    <path d="M276 28H296V47H276V66H298"/>
+    <path d="M308 22V74M308 48H318"/>
+  </g>
+</svg>
