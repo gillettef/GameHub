@@ -19,10 +19,10 @@ function cleanName(name) {
 export class RoomHub {
   constructor({
     botDelay = 900, takeoverMs = 45_000, idleMs = 6 * 3600_000, maxRooms = 300,
-    schedule = (fn, ms) => setTimeout(fn, ms), now = () => Date.now(),
+    schedule = (fn, ms) => setTimeout(fn, ms), cancel = (handle) => clearTimeout(handle), now = () => Date.now(),
     token = () => globalThis.crypto.randomUUID(), random = Math.random,
   } = {}) {
-    Object.assign(this, { botDelay, takeoverMs, idleMs, maxRooms, schedule, now, token, random });
+    Object.assign(this, { botDelay, takeoverMs, idleMs, maxRooms, schedule, cancel, now, token, random });
     this.rooms = new Map();
     this.listeners = new Set();
   }
@@ -254,7 +254,12 @@ export class RoomHub {
 
   sweep() {
     const t = this.now();
-    for (const [code, room] of this.rooms) if (t - room.updatedAt > this.idleMs) this.rooms.delete(code);
+    for (const [code, room] of this.rooms) {
+      if (t - room.updatedAt <= this.idleMs) continue;
+      // 예약된 봇 차례를 함께 취소한다(지운 방에서 봇이 계속 돌지 않게)
+      if (room.timer) { this.cancel(room.timer); room.timer = null; }
+      this.rooms.delete(code);
+    }
   }
 }
 

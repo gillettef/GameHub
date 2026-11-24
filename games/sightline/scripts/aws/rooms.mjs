@@ -203,7 +203,7 @@ export function stats() {
   return { rooms: rooms.size };
 }
 
-setInterval(() => {
+const sweeper = setInterval(() => {
   const now = Date.now();
   for (const [c, r] of rooms) {
     const live = Object.values(r.slots).some((s) => s.clients?.size);
@@ -213,3 +213,13 @@ setInterval(() => {
     }
   }
 }, 60 * 1000).unref();
+
+/** 종료 정리(GameHub 허브가 내려갈 때): 방 정리 타이머, 봇 타이머, SSE 연결을 닫는다 */
+export function shutdown() {
+  clearInterval(sweeper);
+  for (const r of rooms.values()) {
+    if (r.botTimer) clearTimeout(r.botTimer);
+    for (const s of Object.values(r.slots)) for (const res of s?.clients ?? []) res.end();
+  }
+  rooms.clear();
+}

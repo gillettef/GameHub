@@ -133,12 +133,12 @@ SDK가 맡는 것(지금 15번 따로 구현된 것):
 | ~~높음~~ 고침(2026-11-24) | magicacademy | 재접속 키인 `playerId`가 방 전원에게 방송된다(`server/src/index.ts:54-55`). 같은 방 사람이 남의 자리로 `rejoin_room` 할 수 있다. 비밀 토큰을 따로 둬야 한다. |
 | 중간, **2b로 보류**(2026-11-24 결정) | tesseract | 스냅샷에 `config.seed`가 그대로 나가 클라이언트가 이후 난수(시장 굴림·다시 굴리기·주머니·이후 목표/사건 카드)를 예측할 수 있다(`server/room.ts:284`). 온라인도 클라이언트가 시드+행동 기록을 재생하는 구조라 시드만 뺄 수 없다. 친구끼리는 악용 가능성이 낮아 두고, 2b에서 서버가 좌석별로 가린 상태를 보내는 구조로 옮길 때 고친다. |
 | ~~중간~~ 고침(2026-11-24) | lastgrain, crease, rootbound | IP별 제한이 `req.socket.remoteAddress`를 써서 허브 뒤에서는 모든 사용자가 127.0.0.1 하나로 묶인다. 허브는 이미 `x-forwarded-for`를 넘긴다. |
-| 낮음 | retrocause | sweep이 방을 지울 때 봇 `setTimeout`을 해제하지 않는다. 방이 없을 때도 404가 아니라 400을 돌려준다. |
+| 낮음(봇 타이머는 고침 2026-11-24) | retrocause | sweep이 방을 지울 때 봇 `setTimeout`을 해제하지 않는다. 방이 없을 때도 404가 아니라 400을 돌려준다. |
 | 낮음 | sightline | `start`가 빌드를 하지 않아 `dist/engine`이 없으면 서버가 뜨지 않는다(지금은 CI가 빌드 후 올려서 괜찮음). |
 
 ## 5. 이행 순서(제안)
 
-진행 상황(2026-11-24): 2번 호스트 골격 완료(`hub/server.mjs`, `hub/lib/static.mjs`, `hub/test/`), 3번 완료: smilepark·crease·lightcone·lastgrain(운영 확인) → eleven·doubleagent·proxymind inproc 전환.
+진행 상황(2026-11-24): 2번 호스트 골격 완료(`hub/server.mjs`, `hub/lib/static.mjs`, `hub/test/`), 3번 완료: smilepark·crease·lightcone·lastgrain(운영 확인) → eleven·doubleagent·proxymind(운영 확인) → retrocause·hearsay·sightline inproc 전환(5번 앞부분).
 4번 봇 계산 시간(개발 PC, 2026-11-24): doubleagent 3인 normal 라운드 정산 중앙 7ms·최대 28ms, proxymind 5인 봇 설계 1회 최대 11ms·개입 1ms 이하. t4g.nano 가 몇 배 느려도 100ms 안팎이라 worker 없이 둔다. tesseract 는 옮길 때 잰다.
 
 
