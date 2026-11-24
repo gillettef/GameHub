@@ -31,7 +31,14 @@ export interface NetState {
   error: string;
 }
 
-const wsUrl = () => `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws`;
+// 페이지 디렉터리 기준으로 만든다. 루트(/)·Vite 개발 서버에서는 /ws, 허브 아래(/proxymind/)에서는 /proxymind/ws 가 된다.
+const wsUrl = () => {
+  const u = new URL('ws', location.href);
+  u.protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  u.search = '';
+  u.hash = '';
+  return u.href;
+};
 
 export class Net {
   state: NetState = { status: 'idle', room: null, error: '' };
