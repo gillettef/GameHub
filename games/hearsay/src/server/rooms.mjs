@@ -225,6 +225,13 @@ export function sweep(aggressive = false) {
 const sweeper = setInterval(sweep, 5 * 60 * 1000);
 sweeper.unref?.();
 
+/** 종료 정리(GameHub 허브가 내려갈 때): 방 정리 타이머와 모든 방(틱·봇 타이머, SSE 연결)을 닫는다 */
+export function shutdown() {
+  clearInterval(sweeper);
+  for (const r of rooms.values()) r.close();
+  rooms.clear();
+}
+
 // ───────── HTTP ─────────
 async function readJson(req) {
   let size = 0;
