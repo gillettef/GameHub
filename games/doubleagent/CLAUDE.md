@@ -95,6 +95,7 @@ npm run typecheck  # tsc --noEmit
 - 밸런스 수치 조정은 `balance-analyst` 에이전트로 시뮬레이션 근거를 남긴 뒤 진행
 
 ## 배포 (AWS)
+- **2026-11-24부터 운영은 GameHub 허브 안에서 실행된다**(`hub/games.json` `"mode": "inproc"`, 진입점 `scripts/aws/hub-entry.mjs` → `server-dist/app.cjs`(`server/app.ts`)). 접속은 `http://54.116.67.196/doubleagent/`. 배포하면 `deploy-remote.sh`가 예전 systemd `doubleagent` 서비스를 끄고 허브(`gamehub`)를 재시작한다 — 허브 안 다른 게임의 진행 중인 방도 함께 사라진다. 아래의 포트·systemd 설명은 예전 단독 운영 기준이다(단독 서버는 로컬 실행용으로 남는다).
 - 다른 게임(Eleven·MagicAcademy·Rootbound·SmilePark)과 같은 EC2(t4g.nano, 서울) 1대를 공유한다. `main`에 병합되면 `.github/workflows/deploy-aws.yml`이 `npm test` → `npm run build`를 통과했을 때만 `dist`·`server-dist`(ws 까지 묶은 서버 번들)·`scripts/aws/`(systemd 진입점 `serve.mjs` 등)를 `~/doubleagent`에 올리고, 서버에서 `scripts/aws/deploy-remote.sh`가 systemd `doubleagent`(포트 **8091**)를 재시작·헬스체크(`/health`)한다. 정적 파일과 온라인 대전 WebSocket(`/ws`)을 같은 포트로 서빙한다. 접속은 `http://54.116.67.196:8091`.
 - **수동 배포**(push 없이 재배포): `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/deploy-aws.ps1` — 로컬에서 테스트·빌드 후 같은 방식으로 전송한다. SSH 키·IP는 Rootbound와 공용인 `.dev/astraltab-key.pem`, `.dev/aws-public-ip.txt`(git 제외)를 쓰고, 없으면 `../Rootbound/.dev/`의 것을 쓴다.
 - 서버 로그: `ssh -i ../Rootbound/.dev/astraltab-key.pem ec2-user@54.116.67.196 "sudo journalctl -u doubleagent -n 100"`
