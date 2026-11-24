@@ -22,6 +22,10 @@ export interface NewsEffect {
   gift?: Partial<Record<KeptToken, number>>;
   // 시험 주간: 벼락치기로 바꿀 수 있는 시험 과목 기운
   cramTo?: KeptToken;
+  // 63절: 모두가 받는 그 과목 노트 1장 / 이번 달 판정마다 다시 굴리기 +n / 이번 달 판정 주사위 +n
+  noteGift?: StatKey;
+  rerollBonus?: number;
+  extraDice?: number;
 }
 
 // 졸업식 시상 부문 (46절, 52절, 55절): 주문력(마법상)·지력(수석상)·체력(튼튼상)·마법생물(생물사랑상, 매력의 부문). 인기상은 55절에서 없앴다(매력이 두 부문을 받치던 문제). 학점은 부문이 아니라 승점이다
@@ -196,6 +200,10 @@ export interface PlayerGameState {
   // 성과 횟수 (56절 B3 특별상)
   feats?: Partial<Record<FeatKey, number>>;
   classCards: ClassCard[];
+  // 63절: 손에 든 수업 노트 (과목, 지력 장수까지)와 마법생물 세트 학점을 받았는지
+  notes?: StatKey[];
+  setBonus?: boolean;
+  // 곁에 둔 마법생물 (63절: 매력 마리까지)
   creatures: CreatureCard[];
   // 임시 능력치 효과가 남아 있는 연구 카드 (시험 대비 카드)
   equipment: LabCard[];
@@ -235,7 +243,9 @@ export interface PendingRoll {
   // diceToken은 이 굴림의 주사위 재료 기운이다 (없으면 마나기운, 39절). assistMax가 있으면 굴리기 전에 보조 능력치 기운(assist.kind)을 0~max개 더 낼 수 있다. 낸 개수는 assist에 남는다 (38-6절)
   // baseDice가 있으면 낸 기운과 상관없이 그만큼 더 굴린다 (기운은 0개부터 낼 수 있다, 47절)
   // 방향형: fuelUsed/fuelLimit = 다시 굴리기·조정에 쓴 재료 기운과 한도(능력치)
-  entries: { playerId: string; label: string; diceCount: number; diceToken?: KeptToken; diceChoiceMax?: number; baseDice?: number; fuelPaid?: number; bonus?: number; fuelUsed?: number; fuelLimit?: number; assistMax?: number; assist?: number; dice: number[] | null; confirmed: boolean; rerolls: number; rerollCounts?: number[] }[];
+  // 63절(skillRules): rerollsLeft = 남은 다시 굴리기(체력), bonus = 주사위에 더하는 값(능력치·생물·노트), noteStats = 낼 수 있는 노트 과목,
+  // notesPlayed = 낸 노트, targets = 성공·대성공 목표 (겨루기는 막기 점수 + 1이 성공), bonusParts = 더하는 값의 내역
+  entries: { playerId: string; label: string; diceCount: number; rerollsLeft?: number; noteStats?: StatKey[]; notesPlayed?: StatKey[]; targets?: { success: number; great?: number }; bonusParts?: { label: string; value: number }[]; diceToken?: KeptToken; diceChoiceMax?: number; baseDice?: number; fuelPaid?: number; bonus?: number; fuelUsed?: number; fuelLimit?: number; assistMax?: number; assist?: number; dice: number[] | null; confirmed: boolean; rerolls: number; rerollCounts?: number[] }[];
   // 이 굴림에서 보조 능력치로 쓸 수 있는 기운 (마법 경연: 체력기운 "끝까지 달려요", 설정으로 켰을 때만). 없으면 해당 없음
   assist?: { kind: "stamina"; name: string; title: string; hint: string };
   // 방향형 결과(48절)의 눈별 효과 (1~6) — 있으면 다시 굴리기·조정은 그 활동의 재료 기운으로 한다
@@ -270,10 +280,10 @@ export type RollContext =
   | { kind: "first"; contenders: string[] }
   | { kind: "tournament"; playerId: string }
   | { kind: "tournamentCard"; playerId: string; card: TournamentCard; target: number }
-  | { kind: "creature"; playerId: string; card: CreatureCard; target: number }
-  | { kind: "lab"; playerId: string; card: LabCard; target: number }
+  | { kind: "creature"; playerId: string; card: CreatureCard; target: number; great?: number }
+  | { kind: "lab"; playerId: string; card: LabCard; target: number; great?: number }
   | { kind: "duel"; challengerId: string; targetId: string }
-  | { kind: "exploration"; card: ExplorationCard; playerIds: string[]; target: number }
+  | { kind: "exploration"; card: ExplorationCard; playerIds: string[]; target: number; great?: number }
   | { kind: "exam"; examType: "midterm_exam" | "final_exam"; card: ExamCard }
   | { kind: "direction"; activity: "creature" | "lab" | "exploration"; card: CreatureCard | LabCard | ExplorationCard; playerIds: string[]; faces: DirectionOutcome[] };
 
@@ -433,4 +443,12 @@ export interface PublicRules {
   growthCredit: number;
   // 57절 교감: 데려온 마법생물의 속성별로 오르는 능력치 (null이면 예전 생물 능력)
   creatureBondStats: Record<CreatureElement, StatKey> | null;
+  // 63절: 능력치마다 역할이 다른 규칙 (기운 없음)과 그 수치
+  skillRules: boolean;
+  noteBonus: number;
+  greatGap: number;
+  skillSetCredit: number;
+  creatureHelp: number;
+  creatureHelpRare: number;
+  creatureHelpRareMin: number;
 }

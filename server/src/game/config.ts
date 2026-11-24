@@ -163,6 +163,27 @@ export const BALANCE = {
   activityMarket: true, // 62절 채택(2026-10-17) // true면 구역 없이 마법생물·연구·탐험·겨루기 카드를 한 덱으로 섞어 매달 1주차에 인원 + activityMarketExtra 장을 공개하고, 3주차에 그중 1장씩 고른다
   activityMarketExtra: 0, // 62-7절: 인원 + 1 → 인원만큼
   duelCardCount: 14, // 62-7절: 공개 장수가 인원만큼으로 줄어 4인 결투가형이 약해져 12 → 14 // 한 덱에 넣는 마법 겨루기 카드 수 (62절: 16장이면 4인 판당 겨루기 8.3회로 잦아 12장)
+  // ── 63절 (2026-10-18): 능력치마다 역할이 다른 규칙. 기운이 없다 ──
+  // 주문력 = 주사위 수, 지력·체력·매력 = 그 분야 판정 합에 더함. 지력 = 노트 한도, 체력 = 다시 굴리기 횟수, 매력 = 마법생물 동행 한도.
+  // 수업은 배우기(능력치 +1) 또는 노트(그 과목 판정 +2). 활동은 성공(분야 능력치 +1·학점 +1) / 대성공(+ 카드 보상) 두 단계
+  skillRules: true,
+  skillInitialSpell: 2, // 시작 주문력 (시작 주사위 2개)
+  skillLearnGain: 1, // 수업을 배우면 그 과목 능력치 +1
+  noteBonus: 2, // 노트 한 장이 판정에 더하는 값
+  greatGap: 4, // 대성공 목표 = 성공 목표 + greatGap
+  // 성공 목표: 조련 = 조련 기준 × creatureScale + creatureBase, 연구 = 인쇄 목표(labTargetMod 포함) + labMod, 탐험 = 인쇄 목표 + exploreMod
+  skillTargets: { creatureScale: 0.5, creatureBase: 3, labMod: 3, exploreMod: 2 },
+  skillRoundStep: 1, // 학년이 올라갈수록 어려워진다: 목표 = 카드 숫자 + 개월 × 이 값 (능력치가 매달 올라 목표가 고정이면 후반 성공률이 100%가 된다)
+  creatureOnSuccess: true, // true면 조련은 성공만 해도 생물이 곁에 오고, 대성공이면 학점 +creatureGreatCredit
+  creatureGreatCredit: 1,
+  skillDefenderRerolls: true,
+  skillMaxDice: 0, // 판정 주사위 수의 상한 (0이면 없음, 넘는 주문력은 졸업식 마법상에만 쓰인다)
+  skillDefenderBonus: 3, // 겨루기에서 막는 친구가 더하는 값 (막기 = 주문력 주사위 + 이 값)
+  skillDuelCredit: 1, // 겨루기에서 이기면 주문력 +1과 함께 받는 학점 // 겨루기에서 막는 친구도 체력만큼 낮은 주사위(3 이하)를 자동으로 다시 굴린다
+  creatureHelp: 1, // 곁에 둔 생물이 판정에 더하는 값 (어려운 생물은 creatureHelpRare)
+  creatureHelpRare: 2,
+  creatureHelpRareMin: 16, // 조련 기준이 이 값 이상이면 어려운 생물
+  skillSetCredit: 2, // 하늘·육지·바다를 한 마리씩 처음 곁에 두면 학점 (한 번)
   // 탐험 카드 목표값 보정 (실험용, 카드에 인쇄된 목표에 더한다)
   exploreTargetMod: -2, // 62-7절: 공짜 주사위를 없애며 +1 → -2 (인쇄 목표 6~11 → 3~8, 성공률 약 67%) // 61절: 전략 AI 리그 격자 탐색으로 +1 (인쇄된 탐험 목표에 더한다)
   // 대회 카드 목표값 보정 (실험용, 카드에 인쇄된 목표에 더한다)

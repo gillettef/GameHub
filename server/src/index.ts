@@ -20,6 +20,7 @@ import {
   submitRoll,
   confirmRoll,
   rerollDice,
+  playNote,
   advanceResolution,
   canAdvanceResolution,
   rollRevealed,
@@ -235,6 +236,13 @@ const PUBLIC_RULES: PublicRules = {
   explorationPenalty: BALANCE.explorationPenalty,
   growthCredit: BALANCE.growthCredit,
   creatureBondStats: BALANCE.creatureBond ? BALANCE.creatureBondStats : null,
+  skillRules: BALANCE.skillRules,
+  noteBonus: BALANCE.noteBonus,
+  greatGap: BALANCE.greatGap,
+  skillSetCredit: BALANCE.skillSetCredit,
+  creatureHelp: BALANCE.creatureHelp,
+  creatureHelpRare: BALANCE.creatureHelpRare,
+  creatureHelpRareMin: BALANCE.creatureHelpRareMin,
 };
 
 function broadcastGameState(room: Room): void {
@@ -535,6 +543,18 @@ wss.on("connection", (socket) => {
       return;
     }
 
+    if (message.type === "play_note") {
+      if (!room.game) return;
+      try {
+        playNote(room.game, playerId, message.stat);
+        broadcastGameState(room);
+      } catch (err) {
+        send(socket, { type: "error", message: err instanceof Error ? err.message : "알 수 없는 오류" });
+        broadcastGameState(room);
+      }
+      return;
+    }
+
     if (message.type === "confirm_roll") {
       if (!room.game) return;
       try {
@@ -564,7 +584,7 @@ wss.on("connection", (socket) => {
     if (message.type === "take_class_card") {
       if (!room.game) return;
       try {
-        takeClassCard(room.game, playerId, message.cardId);
+        takeClassCard(room.game, playerId, message.cardId, message.mode === "note" ? "note" : "learn");
         broadcastGameState(room);
         scheduleBots(room);
       } catch (err) {
