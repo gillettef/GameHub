@@ -10,7 +10,14 @@ export interface NetState {
   notice: string;
 }
 
-const wsUrl = () => `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws`;
+/** 현재 페이지 디렉터리 기준 ws 주소. 게임 허브가 /doubleagent/ 아래로 프록시하면 /doubleagent/ws 가 된다 */
+const wsUrl = (): string => {
+  const url = new URL('ws', location.href);
+  url.protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  url.search = '';
+  url.hash = '';
+  return url.toString();
+};
 
 export class Net {
   state: NetState = { status: 'idle', room: null, error: '', notice: '' };
