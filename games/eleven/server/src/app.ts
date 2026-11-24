@@ -1,5 +1,6 @@
 import { createServer } from 'node:http';
-import type { Server } from 'node:http';
+import type { IncomingMessage, Server, ServerResponse } from 'node:http';
+import type { Duplex } from 'node:stream';
 import { WebSocketServer } from 'ws';
 import * as data from './data';
 import type { BotDriver } from './bot/driver';
@@ -25,24 +26,52 @@ export interface AppOptions extends WsOptions {
   staticDir?: string;
 }
 
-export function createApp(rooms = new RoomManager(), options: AppOptions = {}): { server: Server; rooms: RoomManager; bots: BotDriver } {
+/** HTTP(/health·/api/cards·정적 파일)와 WebSocket(/ws)을 처리하는 핸들러. 자체 서버를 띄우지 않는다(GameHub 허브가 쓴다). */
+export function createHandlers(rooms = new RoomManager(), options: AppOptions = {}) {
   const serveStatic = createStaticHandler(options.staticDir);
-  const server = createServer((req, res) => {
+  const wss = new WebSocketServer({ noServer: true, maxPayload: 64 * 1024 });
+  const bots = attachWebSocket(wss, rooms, options);
+
+  /** 응답했으면 true */
+  function handle(req: IncomingMessage, res: ServerResponse): boolean {
     if (req.url === '/health') {
       res.writeHead(200, { 'content-type': 'application/json' });
       res.end(JSON.stringify({ ok: true }));
-      return;
+      return true;
     }
     if (req.url === '/api/cards') {
       res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'public, max-age=3600' });
       res.end(CARD_CATALOG);
-      return;
+      return true;
     }
-    if (serveStatic?.(req, res)) return;
+    return serveStatic?.(req, res) ?? false;
+  }
+
+  /** /ws 업그레이드를 맡으면 true */
+  function upgrade(req: IncomingMessage, socket: Duplex, head: Buffer): boolean {
+    if (new URL(req.url ?? '/', 'http://x').pathname !== '/ws') return false;
+    wss.handleUpgrade(req, socket, head, (ws) => wss.emit('connection', ws, req));
+    return true;
+  }
+
+  function close(): void {
+    for (const ws of wss.clients) ws.terminate();
+    wss.close();
+  }
+
+  return { handle, upgrade, close, rooms, bots };
+}
+
+export function createApp(rooms = new RoomManager(), options: AppOptions = {}): { server: Server; rooms: RoomManager; bots: BotDriver } {
+  const h = createHandlers(rooms, options);
+  const server = createServer((req, res) => {
+    if (h.handle(req, res)) return;
     res.writeHead(404);
     res.end();
   });
-  const wss = new WebSocketServer({ server, path: '/ws', maxPayload: 64 * 1024 });
-  const bots = attachWebSocket(wss, rooms, options);
-  return { server, rooms, bots };
+  server.on('upgrade', (req, socket, head) => {
+    if (!h.upgrade(req, socket, head)) socket.destroy();
+  });
+  server.on('close', () => h.close());
+  return { server, rooms: h.rooms, bots: h.bots };
 }

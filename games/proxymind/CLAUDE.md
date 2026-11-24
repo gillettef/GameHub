@@ -54,6 +54,8 @@ Proxymind/
 
 ## 배포 (AWS)
 
+- **2026-11-24부터 운영은 GameHub 허브 안에서 실행된다**(`hub/games.json` `"mode": "inproc"`, 진입점 `scripts/aws/hub-entry.mjs` → `server-dist/app.cjs`(`prototype/server/app.ts`)). 접속은 `http://54.116.67.196/proxymind/`. 배포하면 `deploy-remote.sh`가 예전 systemd `proxymind` 서비스를 끄고 허브(`gamehub`)를 재시작한다 — 허브 안 다른 게임의 진행 중인 방도 함께 사라진다. 아래의 포트·systemd 설명은 예전 단독 운영 기준이다(단독 서버는 로컬 실행용으로 남는다).
+
 - 다른 게임(Eleven·MagicAcademy·SmilePark·DoubleAgent·Tesseract·Neoterra·Election·Lightcone 등)과 같은 EC2(t4g.nano, 서울) 1대를 공유한다. Proxymind의 포트는 **8105**, systemd 서비스 이름은 `proxymind`이다. 접속은 `http://54.116.67.196:8105` (HTTP만).
 - 배포 대상은 웹 시뮬레이터(`prototype/`)다. 정적 프론트(`dist/`)와 온라인 대전 WebSocket(`/ws`)을 한 포트에서 서빙하는 Node 서버(`server-dist/server.cjs`, 의존성 없이 실행)로 구성된다. `npm test`·`npm run build`가 통과해야 배포된다.
   - `prototype/src/core/`: 룰북을 구현한 규칙 엔진·봇 AI·자동 시뮬레이션(브라우저와 서버가 같이 쓴다). **룰북을 바꾸면 엔진(`data.ts`·`engine.ts`)과 테스트도 같이 고친다.**

@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "esbuild src/index.ts --bundle --platform=node --format=esm --packages=external --outfile=dist/index.js",
+    "build": "esbuild src/index.ts src/hub.ts --bundle --platform=node --format=esm --packages=external --outdir=dist",
     "start": "node dist/index.js",
     "bots": "tsx src/bot/run.ts",
     "balance": "tsx src/bot/balance.ts",
