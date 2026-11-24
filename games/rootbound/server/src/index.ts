@@ -14,6 +14,7 @@ import { SnapshotStore } from './persistence/snapshots.js';
 import { StatsLog, parseVitals } from './persistence/stats.js';
 import { RoomError, RoomManager, type Room } from './rooms/manager.js';
 import { isCurrentFormat } from './rooms/validate.js';
+import { clientIp } from './net/clientIp.js';
 
 /**
  * 환경 변수 (dev 는 scripts/dev.ps1, 운영은 systemd unit(scripts/aws/units.sh)이 넣는다):
@@ -136,7 +137,7 @@ app.post('/api/vitals', (req, res) => {
   const now = Date.now();
   const origin = req.get('origin');
   if (origin && origin !== `${req.protocol}://${req.get('host')}`) return void res.status(403).end();
-  if (!allowVitals(req.ip ?? 'unknown', now)) return void res.status(429).end();
+  if (!allowVitals(clientIp(req.socket.remoteAddress, req.headers['x-forwarded-for']), now)) return void res.status(429).end();
   const record = parseVitals(req.body, now);
   if (record) stats.vitals(record);
   res.status(204).end();
@@ -303,7 +304,7 @@ io.on('connection', (socket: AppSocket) => {
 
   socket.on('room:create', (payload, ack) => {
     try {
-      const ip = socket.handshake.address;
+      const ip = clientIp(socket.handshake.address, socket.handshake.headers['x-forwarded-for']);
       const now = Date.now();
       assertCanCreate(ip, now);
       const { room, playerId } = manager.create(payload);
@@ -319,7 +320,7 @@ io.on('connection', (socket: AppSocket) => {
 
   socket.on('room:join', (payload, ack) => {
     // 4자리 비밀번호 무차별 대입 방지: 같은 주소에서 실패가 쌓이면 잠시 막는다
-    const ip = socket.handshake.address;
+    const ip = clientIp(socket.handshake.address, socket.handshake.headers['x-forwarded-for']);
     try {
       assertJoinAllowed(ip, Date.now());
       const { room, playerId, reconnected } = manager.join(payload);
