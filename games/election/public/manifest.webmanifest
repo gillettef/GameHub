@@ -1,0 +1,17 @@
+{
+  "name": "유세 대작전 - 대통령 선거 만칼라",
+  "short_name": "유세 대작전",
+  "description": "두 후보가 6개 권역을 도는 유세 버스로 지지자를 모으는 만칼라형 2인 보드게임",
+  "lang": "ko",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0e1320",
+  "theme_color": "#0e1320",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml" },
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
