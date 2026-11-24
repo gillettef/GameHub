@@ -12,10 +12,13 @@
 ## 운영 구조 (1단계: 하이브리드)
 
 - 공용 EC2(t4g.nano, 서울, Amazon Linux, `ec2-user`). 허브는 systemd `gamehub`(:80), 게임은 기존대로 각자 systemd 서비스·포트.
-- 허브는 `/<slug>/` 접두어를 떼고 `127.0.0.1:<port>`로 넘긴다. 그래서 **게임 클라이언트는 절대경로를 쓰면 안 된다**:
+- 허브는 `/<slug>/` 접두어를 떼고 게임에 넘긴다. 방식은 `hub/games.json`의 게임별 `mode`:
+  `proxy`(기본, `127.0.0.1:<port>`로 프록시) 또는 `inproc`(허브 프로세스가 `~/<slug>/scripts/aws/hub-entry.mjs`를 불러 직접 실행, 2단계 2a).
+  inproc 모듈 계약은 `hub/server.mjs` 머리 주석. 운영 점검: 서버 안에서 `curl 127.0.0.1/healthz/status`(메모리·게임별 실행 방식). 그래서 **게임 클라이언트는 절대경로를 쓰면 안 된다**:
   에셋·`fetch`·WebSocket URL·공유 링크는 현재 페이지 디렉터리 기준 상대경로로 만든다. 루트(IP:포트) 직접 접속에서도 동작해야 한다.
 - 모든 게임이 같은 origin을 쓰므로 localStorage·cookie 키는 `<slug>:` 접두어를 붙인다. service worker scope는 게임 디렉터리 안으로 제한한다.
-- 서버 메모리가 빠듯하다(0.4GB, 스왑 사용 중). 2단계에서 공통 방·봇 SDK와 단일 프로세스로 합친다.
+- 서버 메모리가 빠듯하다(0.4GB, 스왑 사용 중). 2단계에서 공통 방·봇 SDK와 단일 프로세스로 합친다(`docs/phase2-design.md`).
+  inproc로 옮긴 게임: smilepark. 옮긴 게임의 `deploy-remote.sh`는 자기 systemd 유닛을 끄고 `gamehub`를 재시작한다.
 
 ## 브랜치·배포
 
