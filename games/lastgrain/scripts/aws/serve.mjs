@@ -10,6 +10,7 @@ import { readFile, stat } from 'node:fs/promises';
 import { extname, join, normalize, resolve, sep } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { createRooms, loadRules, HttpError } from './online.mjs';
+import { clientIp } from './client-ip.mjs';
 
 const ROOT = resolve(fileURLToPath(new URL('../../dist', import.meta.url)));
 const TYPES = {
@@ -66,7 +67,7 @@ async function handleApi(req, res, url, rooms) {
   const [code, verb] = [parts[2], parts[3]];
 
   if (!code && req.method === 'POST') {
-    if (!allowCreate(req.socket.remoteAddress, Date.now())) throw new HttpError(429, '방을 너무 자주 만들었다. 잠시 뒤에 다시 시도하라.');
+    if (!allowCreate(clientIp(req), Date.now())) throw new HttpError(429, '방을 너무 자주 만들었다. 잠시 뒤에 다시 시도하라.');
     return sendJson(res, 200, rooms.create(await readJson(req)));
   }
   if (code && !verb && req.method === 'GET') return sendJson(res, 200, rooms.info(code));

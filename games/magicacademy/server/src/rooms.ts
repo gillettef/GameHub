@@ -5,6 +5,9 @@ import type { GameState } from "./game/types.js";
 export interface Player {
   id: string;
   name: string;
+  // 재접속(rejoin_room) 비밀 토큰. id 는 게임 상태·참가자 목록으로 모두에게 공개되므로 복귀 증명은 이 값으로 한다.
+  // 본인에게만 room_created·room_joined 로 한 번 보내고 다른 메시지에는 절대 넣지 않는다. 봇은 없다
+  token?: string;
   // 봇은 소켓이 없고, 서버가 대신 행동한다
   socket?: WebSocket;
   bot?: BotStrategy;

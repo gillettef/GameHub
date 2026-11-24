@@ -30,12 +30,15 @@ const SESSION_KEY = "magic-academy-session";
 interface Session {
   roomCode: string;
   playerId: string;
+  // 재접속 비밀 토큰 (서버가 본인에게만 준다). 토큰이 없는 예전 저장본은 복귀할 수 없으므로 버린다
+  token: string;
 }
 
 function loadSession(): Session | null {
   try {
     const raw = localStorage.getItem(SESSION_KEY);
-    return raw ? (JSON.parse(raw) as Session) : null;
+    const session = raw ? (JSON.parse(raw) as Partial<Session>) : null;
+    return session?.roomCode && session.playerId && session.token ? (session as Session) : null;
   } catch {
     return null;
   }
@@ -110,7 +113,7 @@ export function useGameSocket() {
     if (session) {
       socket.addEventListener(
         "open",
-        () => socket.send(JSON.stringify({ type: "rejoin_room", roomCode: session.roomCode, playerId: session.playerId } satisfies ClientMessage)),
+        () => socket.send(JSON.stringify({ type: "rejoin_room", roomCode: session.roomCode, playerId: session.playerId, token: session.token } satisfies ClientMessage)),
         { once: true },
       );
     }
@@ -120,7 +123,7 @@ export function useGameSocket() {
       const message: ServerMessage = JSON.parse(event.data);
       switch (message.type) {
         case "room_created":
-          sessionRef.current = { roomCode: message.roomCode, playerId: message.playerId };
+          sessionRef.current = { roomCode: message.roomCode, playerId: message.playerId, token: message.token };
           saveSession(sessionRef.current);
           setState(() => ({
             status: "in_room",
@@ -131,7 +134,7 @@ export function useGameSocket() {
           }));
           break;
         case "room_joined":
-          sessionRef.current = { roomCode: message.roomCode, playerId: message.playerId };
+          sessionRef.current = { roomCode: message.roomCode, playerId: message.playerId, token: message.token };
           saveSession(sessionRef.current);
           setState(() => ({
             status: "in_room",

@@ -10,7 +10,7 @@ export type ClientMessage =
   | { type: "create_room"; playerName: string }
   | { type: "join_room"; roomCode: string; playerName: string }
   // 끊겼던 연결을 되살릴 때: 이전에 받은 방 코드와 플레이어 id로 같은 자리에 복귀한다
-  | { type: "rejoin_room"; roomCode: string; playerId: string }
+  | { type: "rejoin_room"; roomCode: string; playerId: string; token: string }
   // 연결이 살아 있는지 확인하는 신호 (서버는 pong으로 답한다)
   | { type: "ping" }
   // 방(게임)에서 자발적으로 나간다 (게임 중이면 봇이 자리를 이어받고, 다시 돌아올 수 없다)
@@ -40,8 +40,8 @@ export type ClientMessage =
   | { type: "pick_activity_card"; cardId: string | null };
 
 export type ServerMessage =
-  | { type: "room_created"; roomCode: string; playerId: string; players: RoomPlayerInfo[] }
-  | { type: "room_joined"; roomCode: string; playerId: string; players: RoomPlayerInfo[] }
+  | { type: "room_created"; roomCode: string; playerId: string; token: string; players: RoomPlayerInfo[] }
+  | { type: "room_joined"; roomCode: string; playerId: string; token: string; players: RoomPlayerInfo[] }
   | { type: "room_rejoined"; roomCode: string; playerId: string; isHost: boolean; players: RoomPlayerInfo[] }
   | { type: "rejoin_failed" }
   | { type: "pong" }

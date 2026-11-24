@@ -50,7 +50,7 @@ async function main() {
   await wait(300);
   assert(last(host, "presence")?.offline.includes(joined.playerId), "남은 사람에게 '연결 끊김'이 전달");
   const back1 = await connect();
-  send(back1, { type: "rejoin_room", roomCode: created.roomCode, playerId: joined.playerId });
+  send(back1, { type: "rejoin_room", roomCode: created.roomCode, playerId: joined.playerId, token: joined.token });
   await wait(300);
   assert(last(back1, "room_rejoined")?.playerId === joined.playerId, "같은 playerId로 복귀");
   assert(last(back1, "game_state")?.game.players[joined.playerId]?.isBot === false, "봇으로 바뀌지 않음");
@@ -63,16 +63,28 @@ async function main() {
   assert(stateWhileAway.players[joined.playerId]?.isBot === false, "끊긴 자리를 봇이 맡지 않음");
   assert(!stateWhileAway.log.some((l) => l.message.includes("봇이 이어받")), "봇 인계 기록이 없음");
   const back2 = await connect();
-  send(back2, { type: "rejoin_room", roomCode: created.roomCode, playerId: joined.playerId });
+  send(back2, { type: "rejoin_room", roomCode: created.roomCode, playerId: joined.playerId, token: joined.token });
   await wait(300);
   assert(last(back2, "room_rejoined"), "오래 끊긴 뒤에도 복귀 성공");
   assert(last(back2, "game_state")?.game.players[joined.playerId]?.isBot === false, "복귀한 자리는 계속 사람");
 
   console.log("[3] 없는 방/자리");
   const stranger = await connect();
-  send(stranger, { type: "rejoin_room", roomCode: created.roomCode, playerId: "nope" });
+  send(stranger, { type: "rejoin_room", roomCode: created.roomCode, playerId: "nope", token: joined.token });
   await wait(200);
   assert(last(stranger, "rejoin_failed"), "없는 자리는 rejoin_failed");
+
+  console.log("[4] 공개된 playerId만으로는 남의 자리를 가로챌 수 없음 (비밀 토큰 필요)");
+  const snapshot = JSON.stringify(host.msgs);
+  assert(!snapshot.includes(joined.token), "손님의 토큰은 다른 사람에게 한 번도 전달되지 않음");
+  assert(created.token !== joined.token, "자리마다 토큰이 다름");
+  for (const token of [undefined, "", created.token, joined.token.toUpperCase()]) {
+    const thief = await connect();
+    send(thief, { type: "rejoin_room", roomCode: created.roomCode, playerId: joined.playerId, token } as never);
+    await wait(200);
+    assert(last(thief, "rejoin_failed") && !last(thief, "room_rejoined"), `틀린 토큰(${token === undefined ? "없음" : token === "" ? "빈 값" : "다른 값"})은 rejoin_failed`);
+  }
+  assert(last(back2, "game_state") && back2.socket.readyState === back2.socket.OPEN, "진짜 주인의 연결은 끊기지 않음");
 
   console.log("모두 통과");
   process.exit(0);
