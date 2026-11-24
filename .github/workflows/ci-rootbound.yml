@@ -1,5 +1,5 @@
 # GameHub 모노레포로 옮긴 rootbound 워크플로(원본: games/rootbound/.github/workflows/ci.yml). games/rootbound/** 가 바뀔 때만 돈다.
-# 품질 게이트: dev·main 푸시와 PR 마다 테스트·타입 검사·클라이언트 빌드를 돌린다 (배포는 deploy-aws.yml 이 따로 맡는다)
+# 품질 게이트: dev·main 푸시와 PR 마다 테스트·타입 검사·클라이언트·서버 번들 빌드를 돌린다 (배포는 deploy-aws.yml 이 따로 맡는다)
 name: CI rootbound
 
 on:
@@ -34,3 +34,7 @@ jobs:
       - run: npx tsc --noEmit -p shared && npx tsc --noEmit -p server && npx tsc --noEmit -p client
       - name: 클라이언트 빌드
         run: cd client && npx vite build --outDir dist/prod --emptyOutDir
+      - name: 서버 단일 번들(허브 안 실행용) 빌드·불러오기 확인
+        run: |
+          npm run build -w @rootbound/server
+          node -e "import('./server/dist/app.mjs').then((m) => { if (typeof m.createRootboundServer !== 'function') process.exit(1) })"

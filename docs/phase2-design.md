@@ -138,7 +138,7 @@ SDK가 맡는 것(지금 15번 따로 구현된 것):
 
 ## 5. 이행 순서(제안)
 
-진행 상황(2026-11-24): 2번 호스트 골격 완료(`hub/server.mjs`, `hub/lib/static.mjs`, `hub/test/`), 3번 완료: smilepark·crease·lightcone·lastgrain(운영 확인) → eleven·doubleagent·proxymind(운영 확인) → retrocause·hearsay·sightline(운영 확인) → tesseract·election·neoterra(운영 확인) → magicacademy inproc 전환. 남은 것: rootbound(6번).
+진행 상황(2026-11-24): 2번 호스트 골격 완료(`hub/server.mjs`, `hub/lib/static.mjs`, `hub/test/`), 3번 완료: smilepark·crease·lightcone·lastgrain(운영 확인) → eleven·doubleagent·proxymind(운영 확인) → retrocause·hearsay·sightline(운영 확인) → tesseract·election·neoterra(운영 확인) → magicacademy(운영 확인). 6번 rootbound(2026-11-25): Python AI 를 TS 로 이식(Python 과 4,654개 상태에서 같은 수)·사이드카 제거, esbuild 단일 번들, socket.io 를 같은 http.Server 의 request·upgrade 로 연결, `~/AstralTab` → `~/rootbound` 데이터 이전은 deploy-remote.sh. 이것으로 15개 모두 inproc. 다음: 7번(배포 워크플로 단순화)·1번(운영 메모리 실측).
 4번 봇 계산 시간(개발 PC, 2026-11-24): doubleagent 3인 normal 라운드 정산 중앙 7ms·최대 28ms, proxymind 5인 봇 설계 1회 최대 11ms·개입 1ms 이하. t4g.nano 가 몇 배 느려도 100ms 안팎이라 worker 없이 둔다. tesseract 4인: 봇 한 수 최대 7ms, 사람 차례 사이 봇 연속 계산 최대 25ms.
 
 
@@ -154,6 +154,6 @@ SDK가 맡는 것(지금 15번 따로 구현된 것):
 
 ## 6. 결정이 필요한 것
 
-1. **rootbound Python AI**: (a) 사이드카로 유지(프로세스 2개), (b) TS로 이식(`shared/scripts/lab/bots.ts`의 greedy/lookahead가 후보, 기존 fixtures로 동등성 검증) 후 Python 제거.
+1. ~~**rootbound Python AI**~~ 결정(2026-11-25): (b) TS로 이식 후 Python 제거. `server/src/ai/search.ts` 가 엔진 함수를 그대로 부르고, 허브 이벤트 루프를 위해 8ms마다 양보한다.
 2. **재시작 시 방 소실**: 단일 프로세스에서는 배포 한 번에 모든 게임의 방이 사라진다. 2a에서 감수할지, 방 스냅샷을 2a에 앞당길지.
 3. **2b 범위**: 기존 게임의 와이어 프로토콜까지 SDK로 통일할지(클라이언트 수정 필요), 서버 내부 구조만 공통화할지.

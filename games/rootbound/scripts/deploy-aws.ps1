@@ -1,13 +1,12 @@
-# Rootbound(옛 이름 AstralTab) AWS(EC2) 재배포 스크립트. EC2 경로·서비스 이름은 옛 이름(AstralTab, astraltab-prod-*)을 그대로 쓴다.
+# Rootbound 운영(EC2, GameHub 허브 안 실행) 수동 재배포 스크립트. 평소 배포는 GameHub 저장소의 Deploy 워크플로가 한다.
 #   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/deploy-aws.ps1
 #
-# GitHub 저장소가 비공개라 EC2에서 직접 git clone/pull 하지 않는다. 대신 로컬 워킹트리를
-# `git archive`로 패키징해 ssh로 전송한 뒤, 서버에서 scripts/aws/deploy-remote.sh 가
-# npm install → pip install → systemd 서비스 재시작을 수행한다. 클라이언트 빌드(vite)는
-# EC2(t4g.nano, 0.5GB)에서 하지 않고 이 스크립트가 로컬에서 미리 해서 client/dist/prod 만 전송한다.
+# 2026-11-25부터 rootbound 는 GameHub 허브(systemd gamehub, :80) 안에서 실행된다(~/rootbound/scripts/aws/hub-entry.mjs).
+# 이 스크립트는 .github/workflows/deploy-rootbound.yml 과 같은 일을 로컬에서 한다:
+#   클라이언트(vite)·서버(esbuild 단일 번들) 로컬 빌드 → server/dist client/dist/prod scripts/aws 만 ~/rootbound 로 전송
+#   → 서버에서 scripts/aws/deploy-remote.sh 가 허브 재시작·헬스체크(허브 안 다른 게임의 진행 중인 방은 사라진다).
 #
 # 사전 조건: .dev/astraltab-key.pem (SSH 키), .dev/aws-public-ip.txt (Elastic IP) 존재.
-# 인스턴스 자체를 새로 만드는 절차는 scripts/aws/provision.sh, scripts/aws/units.sh 참고.
 
 $ErrorActionPreference = 'Stop'
 $root    = Split-Path -Parent $PSScriptRoot
@@ -21,34 +20,30 @@ $ip     = (Get-Content $ipFile -Raw).Trim()
 $target = "ec2-user@$ip"
 $sshOpts = @('-i', $keyPath, '-o', 'StrictHostKeyChecking=accept-new')
 
-Write-Host "[deploy-aws] $target 로 최신 코드 전송 중 (git archive)..."
-Push-Location $root
-try {
-    $archiveCmd = "git archive HEAD"
-    $tarCmd     = "mkdir -p ~/AstralTab && tar -x -C ~/AstralTab"
-    cmd /c "$archiveCmd | ssh $($sshOpts -join ' ') $target `"$tarCmd`""
-    if ($LASTEXITCODE -ne 0) { throw "소스 전송 실패 (exit $LASTEXITCODE)" }
-} finally { Pop-Location }
-
-Write-Host "[deploy-aws] 클라이언트 로컬 빌드 중 ..."
+Write-Host "[deploy-aws] 클라이언트·서버 로컬 빌드 중 ..."
 Push-Location (Join-Path $root 'client')
 try {
     & npx vite build --outDir dist/prod --emptyOutDir
     if ($LASTEXITCODE -ne 0) { throw "클라이언트 빌드 실패 (exit $LASTEXITCODE)" }
 } finally { Pop-Location }
-
-Write-Host "[deploy-aws] 빌드 결과(client/dist/prod) 전송 중 ..."
-Push-Location (Join-Path $root 'client\dist')
+Push-Location $root
 try {
-    $distCmd = "rm -rf ~/AstralTab/client/dist/prod && mkdir -p ~/AstralTab/client/dist && tar -x -C ~/AstralTab/client/dist"
-    cmd /c "tar -c prod | ssh $($sshOpts -join ' ') $target `"$distCmd`""
-    if ($LASTEXITCODE -ne 0) { throw "빌드 결과 전송 실패 (exit $LASTEXITCODE)" }
+    & npm run build -w '@rootbound/server'
+    if ($LASTEXITCODE -ne 0) { throw "서버 번들 빌드 실패 (exit $LASTEXITCODE)" }
 } finally { Pop-Location }
 
-Write-Host "[deploy-aws] 서버에서 의존성 설치·재시작 중 ..."
-& ssh @sshOpts $target "bash ~/AstralTab/scripts/aws/deploy-remote.sh"
+Write-Host "[deploy-aws] 산출물 전송 중 (server/dist, client/dist/prod, scripts/aws) ..."
+Push-Location $root
+try {
+    $untar = "rm -rf ~/rootbound/server/dist ~/rootbound/client/dist ~/rootbound/scripts && mkdir -p ~/rootbound && tar -x -C ~/rootbound"
+    cmd /c "tar -c server/dist client/dist/prod scripts/aws | ssh $($sshOpts -join ' ') $target `"$untar`""
+    if ($LASTEXITCODE -ne 0) { throw "산출물 전송 실패 (exit $LASTEXITCODE)" }
+} finally { Pop-Location }
+
+Write-Host "[deploy-aws] 서버에서 허브 재시작·헬스체크 중 ..."
+& ssh @sshOpts $target "bash ~/rootbound/scripts/aws/deploy-remote.sh"
 if ($LASTEXITCODE -ne 0) { throw "원격 배포 실패 (exit $LASTEXITCODE)" }
 
 Write-Host ""
 Write-Host "=== 배포 완료 ==="
-Write-Host "접속: http://${ip}:3201"
+Write-Host "접속: http://${ip}/rootbound/"

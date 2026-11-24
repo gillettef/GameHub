@@ -1,25 +1,25 @@
 ---
 name: prod-server-stop
-description: AWS EC2에서 상시 운영 중인 운영 서버(Node 3201, AI 포함)를 systemd로 중지한다. "운영 서버 꺼줘", "배포 서버 종료", "prod 내려줘" 요청 시 사용. 평소 배포에는 필요 없다 — 코드 반영은 /prod-server(재배포) 로 한다.
+description: 운영 rootbound 를 내리는 방법 안내. 2026-11-25부터 rootbound 는 GameHub 허브(systemd gamehub) 안에서 실행되므로 rootbound 만 따로 끌 수 없다. "운영 서버 꺼줘", "prod 내려줘" 요청 시 사용.
 ---
 
-# /prod-server-stop — 운영 서버 중지 (AWS EC2)
+# /prod-server-stop — 운영 rootbound 내리기
 
-2026-09-28부터 prod는 AWS EC2에서 systemd로 상시 실행되며(Restart=always, 재부팅 시 자동 시작), 로컬 PC에서 켜고 끄는 프로세스가 아니다. 이 스킬은 유지보수 등으로 **친구들 접속을 일시적으로 막고 싶을 때만** 쓴다.
+rootbound 는 GameHub 허브 프로세스(systemd `gamehub`, :80) 안에서 다른 게임 14개와 함께 돈다. 예전처럼 `astraltab-prod-server` 하나만 끄는 방법은 없다.
 
-## 실행 절차
+## 선택지 (사용자에게 먼저 확인한다)
 
-```
-ssh -i .dev/astraltab-key.pem ec2-user@$(cat .dev/aws-public-ip.txt) "sudo systemctl stop astraltab-prod-server"
-```
+1. **허브 전체 중지** — 모든 게임이 내려간다. 사용자가 명시적으로 원할 때만:
 
-다시 켜려면:
+   ```
+   ssh -i .dev/astraltab-key.pem ec2-user@$(cat .dev/aws-public-ip.txt) "sudo systemctl stop gamehub"
+   ```
 
-```
-ssh -i .dev/astraltab-key.pem ec2-user@$(cat .dev/aws-public-ip.txt) "sudo systemctl start astraltab-prod-server"
-```
+   다시 켜기: 같은 명령에서 `stop` → `start`.
+
+2. **rootbound 만 막기** — GameHub 저장소에서 `hub/games.json` 의 rootbound 를 빼거나 바꾸는 변경을 `dev` → `main` 으로 배포한다(허브 재시작이 따른다).
 
 ## 주의
 
 - 접속 중이던 친구들에게 서버가 내려갔음을 알려야 한다고 사용자에게 말한다.
-- 코드를 반영하는 게 목적이면 이 스킬 대신 `main` push 또는 `/prod-server`를 쓴다 — 재배포 과정에서 서비스가 자동으로 재시작된다.
+- 코드를 반영하는 게 목적이면 이 스킬 대신 배포(`/prod-server` 또는 GameHub Deploy 워크플로)를 쓴다.

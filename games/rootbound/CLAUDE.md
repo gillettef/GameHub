@@ -36,7 +36,7 @@
 ## 코드 현황 (2026-10-29, 오프라인판 v3, 전체 리팩토링 후)
 
 - **shared** (`shared/src`): 타입(`types/index.ts`, 이벤트 `types/events.ts`), 데이터(`data/constants.ts` 인원별 규칙 `PLAYER_COUNT_RULES`(이번 판 식물 수·장수·마켓 2장·1인 큐브·덤)·입구 큐브·목표 점수(`RANK_FIRST_BONUS` 등)·제한 시간·닉네임/방 비밀번호 규칙(`isValidNickname`·`isValidRoomPassword`)·시간 초과 로그 표지(`TIMEOUT_LOG_MARK`), `data/species.ts` 식물 9종 `SPECIES`·목표 16장 `GOALS`, `data/tiles.ts` 정원 조각), 엔진(`engine/board.ts` 대칭 보드 조립·축 좌표·보드 색인·칸 이름 `cellLabels`/`cellLabel`(기록용 `C4`), `influence.ts` 뿌리 큐브(칸 주인 `computeOwners`·공급처 `supplyLeft`·회전 `rotateSpot`·뿌리 놓을 칸 `rootTargets`·줄다리기 `plantRoots`·입구 큐브)·심을 칸 `legalPlantCells`·민들레 씨앗 `legalSeedCells`, `scoring.ts` 땅·목표·점수·순위, `turn.ts` 로비→공개 단계(`reveal`, `CONFIRM`)→라운드(이번 판 식물 `pickGarden`, `stage` 가져오기 `TAKE`(마켓 번호 또는 `'pile'` 더미 뒷면, `applyTake`)·`validateTake` → 심기 `PLANT`(회전·씨앗, `applyPlant`·기록 `logPlant`)/`DISCARD`, 공급처 큐브 최다 선 `nextRoundStart`)→종료 `applyAction`, 시간 초과 자동 수 `autoAction`, 난수 `rng.ts`), 가림 `mask.ts`. Vitest 67개. 실험실·픽스처 스크립트(`shared/scripts`)도 `tsconfig.scripts.json` 으로 타입 검사한다.
-- **server**: `rooms/manager.ts`(방·초대 id·비밀번호·자리·AI 추가, 차례 제한 시간·자동 수·AI 대리, 판 요약 기록 표시 `takeRecord`), `rooms/validate.ts`(요청 모양 검사 `actionShapeError`, 옛 형식 스냅샷 판별 `isCurrentFormat`, 재접속 토큰 검사), `rooms/record.ts`(판 요약 `GameRecord`·`buildRecord`), `game/aiTurn.ts`(AI·대리 자리 차례마다 `ai/search.ts` 결정 → 엔진 검증 → 실패 시 `autoAction` 폴백, 폴백은 여기 한 곳), `ai/search.ts`(AI 수 결정, 아래 AI 항목), `persistence/snapshots.ts`(JSON 스냅샷), `persistence/stats.ts`(판 요약·웹 성능 JSONL), `index.ts`(Socket.io, `socket.use` 로 요청 모양 검사, 입장한 사람 요청 공통 처리 `handlePlayer`, 남용 방지(방 만들기·비밀번호 대입·웹 성능 빈도), 방별 타이머, `POST /api/vitals`). 서버 시작 시 옛 형식 스냅샷은 `rooms-legacy/` 로 옮긴다. Vitest 40개.
+- **server**: `rooms/manager.ts`(방·초대 id·비밀번호·자리·AI 추가, 차례 제한 시간·자동 수·AI 대리, 판 요약 기록 표시 `takeRecord`), `rooms/validate.ts`(요청 모양 검사 `actionShapeError`, 옛 형식 스냅샷 판별 `isCurrentFormat`, 재접속 토큰 검사), `rooms/record.ts`(판 요약 `GameRecord`·`buildRecord`), `game/aiTurn.ts`(AI·대리 자리 차례마다 `ai/search.ts` 결정 → 엔진 검증 → 실패 시 `autoAction` 폴백, 폴백은 여기 한 곳), `ai/search.ts`(AI 수 결정, 아래 AI 항목), `persistence/snapshots.ts`(JSON 스냅샷), `persistence/stats.ts`(판 요약·웹 성능 JSONL), `app.ts`(`createRootboundServer`, 포트를 열지 않는 서버 본체: Express·Socket.io, `socket.use` 로 요청 모양 검사, 입장한 사람 요청 공통 처리 `handlePlayer`, 남용 방지(방 만들기·비밀번호 대입·웹 성능 빈도), 방별 타이머, `POST /api/vitals`), `index.ts`(단독 실행 listen). 운영 진입점은 `scripts/aws/hub-entry.mjs`(허브 안). 서버 시작 시 옛 형식 스냅샷은 `rooms-legacy/` 로 옮긴다. Vitest 40개.
 - **AI** (`server/src/ai/search.ts`, 2026-11-25 Python `ai/` 를 옮김·제거): 1수 탐욕. 심기 = 손 카드 × 칸 × 회전(× 민들레 씨앗 상위 칸)에서 내 총점 − 최고 상대 총점, 가져오기 = 그 카드로 둘 최선 1수 가치 + 공개 목표 연계 가산, 더미 뒷면은 못 본 카드 분포의 기댓값 `unseenCards`. 규칙 계산은 엔진(`plantRoots`·`computeScores`·`legalPlantCells`·`distinctRotations`)을 그대로 부른다. 가린 상태(`maskState`)만 본다. 2초 예산 안에서 8ms마다 이벤트 루프에 양보한다. 테스트 `search.test.ts`(9개, `shared/fixtures/scenario.json` 재생).
 - **client**: 경로 `/` 랜딩(AI와 바로 시작 `lib/quickStart.ts`·방 만들기·초대 참여·핫시트·튜토리얼), `/hotseat` 같은 기기(인원·닉네임 → 바로 시작, 차례마다 기기 넘김 `HandoffOverlay`), `/tutorial` 연습 봇(`game/tutorialBot.ts`)과 단계 안내(`TutorialCoach`), `/room/:id` 온라인 로비(방 → 자리 → 준비·제한 시간) → 게임. 게임 화면: `PlayerStrip`(단계·차례·남은 시간·자리별 땅/점수/공급처 뿌리) → 탭(정원 `BoardTab`: 공개 단계면 `RevealPanel`, 아니면 목표 칩 + `HexBoard`(SVG 육각 보드, 칸별 뿌리 수 배지는 칸 위 별도 층) + `Market`(마켓·더미 장수, 심을 칸을 고르면 접힘) + `Hand` + `PlantBar`(심기 미리보기·뿌리 방향·민들레 씨앗·취소/심기) + 차례 안내·뿌리 수 토글 / 점수 `StatusTab` / 진행 `ProgressTab` / 카드 `CardsTab` / 설명 `HelpTab`) → `TabDock`(`DockShell`). 보드 질감은 `BoardTextures`(SVG 패턴). 카드는 `SpeciesCard`(작은 카드 = 카드 그림 배경 + 이름 + 뿌리 모양 `RootDiagram`, 확대 = 카드 디자인 앞면), 확대(식물·목표 카드)·칸 정보는 `GameModal`. 화면용 파생값은 `game/derived.ts`(엔진 호출만: 칸 `buildCells`, 심을 칸 `legalKeys`, 미리보기 `previewPlant`, 서로 다른 회전 `distinctRotations`). 효과음·차례 알림 `lib/cues.ts`, 웹 성능 `lib/vitals.ts`, 제한 시간 표시 `lib/turnClock.ts`. Vitest 15개.
 - **카드 디자인**(2026-10-08 사용자 제공, SVG): 식물 `client/public/cards/plants/<종 id>.svg`(630×880)·목표 `goals/<목표 id>.svg`(880×630)·각 `back.svg`. 작은 카드 배경은 그림 부분만 자른 `plants/art/<종 id>.webp`(`node scripts/card-thumbs.mjs` 로 생성). 경로는 `client/src/game/cardImages.ts`, 파일 누락은 `cardImages.test.ts`. 카드 안 글자는 `notes/Cards.md` 와 맞춘다(`client/public/cards/README.md`).
@@ -56,15 +56,17 @@
 
 | 환경 | 위치 | 서버 | 클라이언트 | AI | 용도 |
 |---|---|---|---|---|---|
-| dev | 로컬 PC, `/dev` · `/dev-stop` | 3101 (tsx watch) | 5173 (Vite, proxy) | 서버 안 | 로컬 개발. 핫리로드. 다른 기기·친구는 Cloudflare 빠른 터널 주소(`/dev` 출력의 `Public` 줄, `.dev/tunnel-url.txt`, 띄울 때마다 바뀜, `-NoTunnel` 로 끔) |
-| 운영 | **AWS EC2 상시 서버** | 3201 (systemd `astraltab-prod-server`) | `client/dist/prod` 를 3201에서 정적 서빙 | 서버 안 | 친구들이 접속하는 **유일한 서버**. `main` 병합 시 자동 배포 |
+| dev | 로컬 PC, `/dev` · `/dev-stop` | 3101 (tsx watch, `src/index.ts`) | 5173 (Vite, proxy) | 서버 안 | 로컬 개발. 핫리로드. 다른 기기·친구는 Cloudflare 빠른 터널 주소(`/dev` 출력의 `Public` 줄, `.dev/tunnel-url.txt`, 띄울 때마다 바뀜, `-NoTunnel` 로 끔) |
+| 운영 | **AWS EC2 공용 서버, GameHub 허브 안** | 허브 `gamehub`(:80) 안 `/rootbound/` (`scripts/aws/hub-entry.mjs` → `server/dist/app.mjs`) | `client/dist/prod` 를 서버 앱이 정적 서빙(gzip) | 서버 안 | 친구들이 접속하는 **유일한 서버** `http://<IP>/rootbound/`. GameHub 저장소 `main` 병합 시 자동 배포 |
 
-- 2026-09-28 사용자 지시로 서버를 AWS EC2 상시 서버로 옮겼고, 2026-09-29 test/prod 구분을 없애 단일 운영 서버로 통일했다 — GitHub `main` 병합이 곧 운영 배포다(일상 작업은 `dev`). systemd 서비스명·`~/AstralTab` 경로·`dist/prod`·`data/prod` 는 예전 이름을 그대로 둔 것이다. `/prod-server` 스킬은 push 없이 수동 재배포할 때만 쓴다.
-- **AWS 인프라**: 리전 서울(`ap-northeast-2`), EC2 **t4g.nano** (ARM, 메모리 0.5GB, 스왑 2GB — `scripts/aws/swap.sh`; 2026-10-02 사용자 지시로 **Eleven·MagicAcademy와 인스턴스 1대를 공유**. 포트: Eleven 3001 / MagicAcademy 8080 / Rootbound 3201, 한 번에 한 게임만 플레이하는 전제) Amazon Linux 2023, Elastic IP(`.dev/aws-public-ip.txt`, git 제외). 도메인 없이 `http://<Elastic IP>:3201`. 보안 그룹은 22(SSH, 관리자 IP만)·3201 만 연다. SSH 키(`.dev/astraltab-key.pem`)와 인스턴스 id(`.dev/aws-instance-id.txt`)도 `.dev/`(gitignore)에 있다.
-- GitHub 저장소가 비공개라 EC2에서 `git clone`/`pull` 하지 않는다. 로컬에서 `git archive`로 패키징해 ssh로 전송한다(`scripts/deploy-aws.ps1`). 클라이언트 빌드(vite)는 CI 러너(수동 배포는 로컬)에서 하고 `client/dist/prod` 만 전송한다. EC2에서는 server·shared 의존성 설치와 systemd 재시작만 한다.
-- **수동 배포**: `powershell -File scripts/deploy-aws.ps1`. 최초 1회 인스턴스 준비는 `scripts/aws/provision.sh` → `scripts/aws/units.sh`.
-- **`main`에 병합되면 GitHub Actions(`.github/workflows/deploy-aws.yml`)가 테스트·타입 검사 통과 후 EC2에 자동 배포한다.** 일상 작업은 `dev`에 두고 CI(`ci.yml`)로 검사한다. 워크플로는 SSH(22)에 러너 IP를 배포 직전에 임시로 추가했다가 제거한다(최소 권한 IAM 사용자 `astraltab-ci`). 필요한 Secrets 7개(`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`, `AWS_SECURITY_GROUP_ID`, `EC2_HOST`, `EC2_HOST_KEY`, `EC2_SSH_PRIVATE_KEY`)는 모든 게임 저장소 공용이며 정본은 저장소 밖 `../../aws_config.md`. 수동 배포는 `astraltab-key.pem`, CI는 별도 키(`smilepark-ci`)를 쓴다.
-- 서버 환경 변수: `APP_ENV`, `PORT`, `HOST`, `CLIENT_DIST`, `DATA_DIR` (`server/src/index.ts` 주석, EC2는 systemd unit 에 박혀 있다). 스냅샷은 EC2 `~/AstralTab/server/data/prod/rooms`, 판 요약·웹 성능은 `.../prod/stats`.
+- **2026-11-25 GameHub 허브 안 실행(inproc)으로 옮겼다.** 운영 경로는 `~/rootbound`(예전 `~/AstralTab`·systemd `astraltab-prod-server`/`astraltab-prod-ai`·포트 3201/8001 은 첫 배포 때 `deploy-remote.sh` 가 데이터를 옮기고 지운다). 허브 계약은 GameHub `hub/server.mjs` 머리 주석, 2단계 설계는 GameHub `docs/phase2-design.md`.
+- 서버 코드는 `server/src/app.ts` 의 `createRootboundServer()`(포트를 열지 않음) 하나다. 단독 실행(`src/index.ts`, 로컬 /dev)은 그 `httpServer` 로 listen 하고, 허브 안에서는 허브가 `/rootbound` 를 뗀 요청·WebSocket 을 같은 `httpServer` 로 넘긴다(socket.io 경로 `/socket.io`). `process.exit`·`process.on` 을 쓰지 않는다.
+- 운영 산출물: 러너에서 클라이언트(vite)와 서버 단일 번들(`npm run build -w @rootbound/server` → esbuild, shared·express·socket.io 포함 `server/dist/app.mjs`)을 만들어 `server/dist`·`client/dist/prod`·`scripts/aws` 만 보낸다. EC2 에는 `node_modules`·tsx 가 없다.
+- **배포**: 일상 작업은 GameHub 저장소 `dev`, `dev` → `main` PR 병합이 곧 운영 배포다(`.github/workflows/deploy-rootbound.yml`, `deploy.yml` 이 순서대로 부른다). 배포는 허브를 재시작하므로 **허브 안 다른 게임의 진행 중인 방이 사라진다**(rootbound 방은 스냅샷으로 복원). 수동 배포는 `powershell -File scripts/deploy-aws.ps1`(`/prod-server`).
+- **AWS 인프라**: 리전 서울(`ap-northeast-2`), EC2 **t4g.nano** (ARM, 메모리 0.5GB, 스왑 2GB) Amazon Linux 2023, Elastic IP(`.dev/aws-public-ip.txt`, git 제외), 게임 15개가 허브 하나를 함께 쓴다. SSH 키(`.dev/astraltab-key.pem`)와 인스턴스 id(`.dev/aws-instance-id.txt`)도 `.dev/`(gitignore)에 있다. 시크릿 정본은 저장소 밖 `../../aws_config.md`.
+- 스냅샷은 EC2 `~/rootbound/server/data/prod/rooms`, 판 요약·웹 성능은 `.../prod/stats`. 집계는 로컬에서 `npx tsx server/scripts/stats.ts <내려받은 DATA_DIR>`.
+- 단독 실행 환경 변수: `APP_ENV`, `PORT`, `HOST`, `CLIENT_DIST`, `DATA_DIR` (`server/src/index.ts` 주석). 허브 안에서는 `hub-entry.mjs` 가 정한다.
+- `scripts/aws/provision.sh`·`units.sh` 는 예전 단독 운영(새 인스턴스 준비) 기록이다. 지금 운영에는 쓰지 않는다.
 
 ---
 
@@ -102,7 +104,8 @@ AstralTab/                 # 저장소 폴더 이름은 아직 옛 이름
 ├── server/
 │   ├── scripts/stats.ts  # 판 요약·웹 성능 집계
 │   └── src/
-│       ├── index.ts      # Express + Socket.io, 방별 타이머, /api/vitals
+│       ├── app.ts        # 서버 본체 createRootboundServer (Express + Socket.io, 방별 타이머, /api/vitals)
+│       ├── index.ts      # 단독 실행 진입점 (listen)
 │       ├── rooms/        # 방·로비·자리·제한 시간·AI 대리(manager), 요청·스냅샷 모양 검사(validate), 판 요약(record)
 │       ├── game/         # AI 차례 실행기
 │       ├── ai/           # AI 수 결정 (1수 탐욕, 엔진 함수 사용)
@@ -223,8 +226,8 @@ AstralTab/                 # 저장소 폴더 이름은 아직 옛 이름
 |---|---|
 | 서버(AI 포함)·클라이언트 백그라운드 실행 (개발) | `/dev` |
 | 백그라운드 프로세스 종료 (개발) | `/dev-stop` |
-| AWS 서버에 배포 | `dev` → `main` 병합 시 자동. 수동은 `powershell -File scripts/deploy-aws.ps1` |
-| AWS 서버 로그 확인 | `ssh -i .dev/astraltab-key.pem ec2-user@$(cat .dev/aws-public-ip.txt) "sudo journalctl -u astraltab-prod-server -n 100"` |
+| AWS 서버에 배포 | GameHub 저장소 `dev` → `main` 병합 시 자동. 수동은 `powershell -File scripts/deploy-aws.ps1` |
+| AWS 서버 로그 확인 | `ssh -i .dev/astraltab-key.pem ec2-user@$(cat .dev/aws-public-ip.txt) "sudo journalctl -u gamehub -n 200 \| grep rootbound"` |
 | 로그 확인 (dev) | `tail -n 50 .dev/server.log`, `.dev/client.log`, `.dev/ai.log` |
 | 의존성 설치 (JS) | `npm install` (루트) |
 | 테스트 (JS) | `npm test` (루트, 전 워크스페이스) |
@@ -232,7 +235,8 @@ AstralTab/                 # 저장소 폴더 이름은 아직 옛 이름
 | 카드 SVG 문구·뿌리 그림 다시 그리기 | `node scripts/card-text.mjs` (fixtures 를 먼저 만든 뒤) |
 | 밸런스 시뮬레이션 (v3) | `npx tsx shared/scripts/lab/run.ts <변형> [인원=2,3,4] [배율]` (5개 지표 점수표), 여러 변형 비교 `lab/sweep.ts`, 정본 엔진 일치 `lab/parity.ts`, 저장 결과 재채점 `lab/rescore.ts`. 변형은 `lab/registry.ts`, 지금 규칙 = `v6`(v5 + 마켓 2장 + 더미 뒷면 가져오기) |
 | 타입 검사 | `npm run typecheck` (shared·shared/scripts·server·client) |
-| 플레이어 지표 집계 | `npx tsx server/scripts/stats.ts [DATA_DIR]` (기본 `server/data/prod`). 운영은 EC2에서 `cd ~/AstralTab && npx tsx server/scripts/stats.ts server/data/prod` |
+| 서버 단일 번들 (운영·허브용) | `npm run build -w @rootbound/server` → `server/dist/app.mjs` |
+| 플레이어 지표 집계 | `npx tsx server/scripts/stats.ts [DATA_DIR]` (기본 `server/data/prod`). 운영 데이터는 EC2 `~/rootbound/server/data/prod` 를 내려받아 로컬에서 집계 |
 | 커밋 & 푸시 | `/commit-push` |
 
 ## 서브에이전트
