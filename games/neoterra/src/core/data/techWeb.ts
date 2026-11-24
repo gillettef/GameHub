@@ -17,7 +17,7 @@ function tw(dir: Direction, ring: Ring, n: 'a' | 'b', name: string, doctrine: Do
 const AGRI: TwigDef[] = [
   tw('agri', 1, 'a', '봉인 종자고', 'ark', 1, { mods: { income: { food: 1 } } }),
   tw('agri', 1, 'b', '토양 균사', 'symbiont', 1, { mods: { income: { food: 1 } }, instant: { gain: { food: 1 } } }),
-  tw('agri', 2, 'a', '저장 곡창', 'ark', 1, { mods: { foodUpkeep: 1 } }),
+  tw('agri', 2, 'a', '저장 곡창', 'ark', 1, { mods: { foodUpkeep: 1, income: { prod: 1 } } }),
   tw('agri', 2, 'b', '공생 배양조', 'symbiont', 2, { mods: { buildingBonus: { farm: 1 } } }),
   // 양옆: 문화·방위
   tw('agri', 3, 'a', '수확 축제', 'ark', 2, { mods: { buildingBonus: { farm: 1, hall: 1 } } }),
@@ -47,7 +47,7 @@ const ACADEMIC: TwigDef[] = [
 const POWER: TwigDef[] = [
   tw('power', 1, 'a', '축전 격자', 'synth', 1, { mods: { income: { energy: 1 } } }),
   tw('power', 1, 'b', '생체 발광', 'symbiont', 1, { mods: { income: { energy: 1 } }, instant: { gain: { energy: 1 } } }),
-  tw('power', 2, 'a', '전력망 확장', 'synth', 1, { mods: { buildingBonus: { power: 1 } } }),
+  tw('power', 2, 'a', '전력망 확장', 'synth', 1, { mods: { buildingBonus: { power: 1 }, income: { prod: 1 } } }),
   tw('power', 2, 'b', '지열 공명', 'symbiont', 1, { mods: { sporeCap: 3, income: { sci: 1 } } }),
   // 양옆: 학술·산업
   tw('power', 3, 'a', '궤도 제조소', 'synth', 2, { mods: { buildingBonus: { power: 1, workshop: 1 } } }),
@@ -68,7 +68,7 @@ const DEFENSE: TwigDef[] = [
   tw('defense', 1, 'a', '전투 기계', 'synth', 1, { mods: { might: 1 } }),
   tw('defense', 1, 'b', '방벽 설계', 'ark', 1, { mods: { unitPower: { guard: 1 } } }),
   tw('defense', 2, 'a', '자율 드론', 'synth', 1, { mods: { raidBonus: 1, might: 1 } }),
-  tw('defense', 2, 'b', '요새 포좌', 'ark', 1, { mods: { unitPower: { battery: 1 } } }),
+  tw('defense', 2, 'b', '요새 포좌', 'ark', 1, { mods: { unitPower: { battery: 1 }, might: 2 } }),
   // 양옆: 산업·농업
   tw('defense', 3, 'a', '무장 공장', 'synth', 1, { mods: { unitPower: { battery: 1 }, buildingBonus: { workshop: 1 } } }),
   tw('defense', 3, 'b', '보급 방벽', 'ark', 1, { mods: { unitPower: { guard: 1, rider: 1 }, foodUpkeep: 1 } }),
