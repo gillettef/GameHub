@@ -38,13 +38,19 @@ export interface ConnectionOptions {
 
 const RETRY_MS = [500, 1000, 2000, 4000, 8000];
 
-export function socketUrl(o: ConnectionOptions, loc: { protocol: string; host: string }): string {
+/**
+ * 방 WebSocket 주소. 게임 허브가 `/<slug>/` 접두어 아래로 프록시해도 붙도록
+ * 같은 출처일 때는 현재 페이지의 디렉터리(pathname 마지막 `/`까지)를 기준으로 만든다.
+ */
+export function socketUrl(o: ConnectionOptions, loc: { protocol: string; host: string; pathname?: string }): string {
   const base = o.origin ? new URL(o.origin) : null;
   const secure = (base?.protocol ?? loc.protocol) === 'https:';
   const host = base?.host ?? loc.host;
+  const path = base ? base.pathname : (loc.pathname ?? '/');
+  const dir = path.slice(0, path.lastIndexOf('/') + 1) || '/';
   const q = new URLSearchParams({ id: o.clientId });
   if (o.create) q.set('create', '1');
-  return `${secure ? 'wss' : 'ws'}://${host}${roomPath(o.code)}?${q}`;
+  return `${secure ? 'wss' : 'ws'}://${host}${dir.replace(/\/$/, '')}${roomPath(o.code)}?${q}`;
 }
 
 export class OnlineConnection {
