@@ -33,14 +33,14 @@ async function api(path, body) {
   if (!res.ok) throw new Error(data.error || `오류 ${res.status}`);
   return data;
 }
-const act = (body) => api(`/api/rooms/${session.code}/act`, { ...body, token: session.token }).catch((e) => toast(e.message));
+const act = (body) => api(`api/rooms/${session.code}/act`, { ...body, token: session.token }).catch((e) => toast(e.message));
 
 function connect(code, token) {
   session = { code, token };
   store.set(`hearsay:${code}`, token);
   history.replaceState(null, '', `?room=${code}`);
   es?.close();
-  es = new EventSource(`/api/rooms/${code}/stream?token=${encodeURIComponent(token)}`);
+  es = new EventSource(`api/rooms/${code}/stream?token=${encodeURIComponent(token)}`);
   es.onmessage = (ev) => {
     view = JSON.parse(ev.data); viewAt = performance.now();
     const qk = `${view.phase}|${view.season}|${view.question?.plot}|${view.question?.season}`;
@@ -49,7 +49,7 @@ function connect(code, token) {
   };
   es.onerror = async () => {
     // 방이 사라졌거나 참가자가 아니면 처음 화면으로
-    const r = await fetch(`/api/rooms/${code}`).catch(() => null);
+    const r = await fetch(`api/rooms/${code}`).catch(() => null);
     if (r && r.status === 404) { leave('방이 사라졌습니다 (서버 재시작 또는 오래 비어 있던 방)'); }
   };
 }
@@ -84,7 +84,7 @@ function render() {
 function renderLobby() {
   show('lobby');
   $('lobbyCode').textContent = view.code;
-  $('shareLink').value = `${location.origin}/?room=${view.code}`;
+  $('shareLink').value = `${location.origin}${location.pathname}?room=${view.code}`;
   const items = [];
   for (let i = 0; i < view.size; i++) {
     const s = view.seats[i];
@@ -309,7 +309,7 @@ nameInput.value = store.get('hearsay:name') || '';
 const myName = () => { const v = nameInput.value.trim() || '이야기꾼'; store.set('hearsay:name', v); return v; };
 
 async function startSolo(size) {
-  try { const r = await api('/api/rooms', { name: myName(), size, mode: 'solo' }); connect(r.code, r.token); } catch (e) { $('homeError').textContent = e.message; }
+  try { const r = await api('api/rooms', { name: myName(), size, mode: 'solo' }); connect(r.code, r.token); } catch (e) { $('homeError').textContent = e.message; }
 }
 
 document.addEventListener('click', async (ev) => {
@@ -317,9 +317,9 @@ document.addEventListener('click', async (ev) => {
   if (!t) return;
   if (t.dataset.solo) startSolo(Number(t.dataset.solo));
   else if (t.dataset.multi) {
-    try { const r = await api('/api/rooms', { name: myName(), size: Number(t.dataset.multi), mode: 'multi' }); connect(r.code, r.token); } catch (e) { $('homeError').textContent = e.message; }
+    try { const r = await api('api/rooms', { name: myName(), size: Number(t.dataset.multi), mode: 'multi' }); connect(r.code, r.token); } catch (e) { $('homeError').textContent = e.message; }
   } else if (t.id === 'joinBtn') joinRoom($('codeInput').value);
-  else if (t.id === 'startBtn') api(`/api/rooms/${session.code}/start`, { token: session.token }).catch((e) => ($('lobbyHint').textContent = e.message));
+  else if (t.id === 'startBtn') api(`api/rooms/${session.code}/start`, { token: session.token }).catch((e) => ($('lobbyHint').textContent = e.message));
   else if (t.id === 'leaveBtn' || t.id === 'homeBtn') leave();
   else if (t.id === 'copyBtn') { navigator.clipboard?.writeText($('shareLink').value); t.textContent = '복사됨'; }
   else if (t.dataset.claim) act({ type: 'claim', plot: t.dataset.claim });
@@ -416,7 +416,7 @@ async function joinRoom(raw) {
   if (!code) return;
   const saved = store.get(`hearsay:${code}`);
   if (saved) { connect(code, saved); return; }
-  try { const r = await api(`/api/rooms/${code}/join`, { name: myName() }); connect(r.code, r.token); } catch (e) { $('homeError').textContent = e.message; show('home'); }
+  try { const r = await api(`api/rooms/${code}/join`, { name: myName() }); connect(r.code, r.token); } catch (e) { $('homeError').textContent = e.message; show('home'); }
 }
 
 // 링크로 들어온 경우
