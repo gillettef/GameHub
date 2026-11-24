@@ -1,4 +1,6 @@
 // 온라인 대전 클라이언트: REST(POST) + SSE(상태 스트림). 서버 API는 scripts/aws/serve.mjs 참고.
+// API 경로는 페이지 디렉터리 기준 상대경로다. 루트(/)에서는 /api/..., 허브 아래(/lastgrain/)에서는 /lastgrain/api/... 로 간다.
+const API = 'api/rooms';
 
 async function call(method, url, body) {
   const r = await fetch(url, {
@@ -11,18 +13,18 @@ async function call(method, url, body) {
   return j;
 }
 
-export const createRoom = (cfg) => call('POST', '/api/rooms', cfg);
-export const roomInfo = (code) => call('GET', `/api/rooms/${encodeURIComponent(code)}`);
-export const joinRoom = (code) => call('POST', `/api/rooms/${encodeURIComponent(code)}/join`, {});
-export const sendAction = (code, token, action) => call('POST', `/api/rooms/${encodeURIComponent(code)}/action`, { token, action });
-export const requestRematch = (code, token) => call('POST', `/api/rooms/${encodeURIComponent(code)}/rematch`, { token });
+export const createRoom = (cfg) => call('POST', API, cfg);
+export const roomInfo = (code) => call('GET', `${API}/${encodeURIComponent(code)}`);
+export const joinRoom = (code) => call('POST', `${API}/${encodeURIComponent(code)}/join`, {});
+export const sendAction = (code, token, action) => call('POST', `${API}/${encodeURIComponent(code)}/action`, { token, action });
+export const requestRematch = (code, token) => call('POST', `${API}/${encodeURIComponent(code)}/rematch`, { token });
 
 /**
  * 상태 스트림에 연결한다. EventSource가 끊기면 스스로 다시 연결한다.
  * onSnap(snapshot), onStatus('open'|'reconnecting'), onFatal(message)
  */
 export function connect(code, token, { onSnap, onStatus, onFatal }) {
-  const es = new EventSource(`/api/rooms/${encodeURIComponent(code)}/events?token=${encodeURIComponent(token)}`);
+  const es = new EventSource(`${API}/${encodeURIComponent(code)}/events?token=${encodeURIComponent(token)}`);
   es.addEventListener('state', (e) => onSnap(JSON.parse(e.data)));
   es.addEventListener('fatal', (e) => { es.close(); onFatal(JSON.parse(e.data).error); });
   es.onopen = () => onStatus('open');
