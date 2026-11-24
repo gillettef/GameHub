@@ -56,6 +56,8 @@ function connect(code, token) {
 
 function leave(msg) {
   es?.close(); es = null;
+  keepAwake(false);
+  if (typeof setChat === 'function') setChat(false);
   if (session) store.del(`hearsay:${session.code}`);
   session = null; view = null;
   history.replaceState(null, '', location.pathname);
@@ -71,6 +73,7 @@ function render() {
   if (!view) return;
   if (view.lobby) { renderLobby(); return; }
   show('game');
+  keepAwake(view.phase !== 'ended');
   renderStatus();
   renderBoard();
   renderPlayers();
@@ -102,8 +105,8 @@ function msLeft() {
 
 function renderStatus() {
   const season = view.council?.kind === 'final' || (view.phase === 'ended') ? '마지막 회의' : `${view.season}계절 / 7`;
-  const left = view.council ? ` · 남은 질문 ${view.council.left}` : '';
-  $('status').innerHTML = `방 <b class="code">${esc(view.code)}</b> · <b>${season}</b> · ${PHASE[view.phase] ?? view.phase}${left} <span class="timer" id="timer"></span>`;
+  const left = view.council ? `<span class="st-left"> · 남은 질문 ${view.council.left}</span>` : '';
+  $('status').innerHTML = `<span class="st-room">방 <b class="code">${esc(view.code)}</b> · </span><b>${season}</b> · ${PHASE[view.phase] ?? view.phase}${left} <span class="timer" id="timer"></span>`;
   tickTimer();
 }
 
@@ -169,7 +172,7 @@ function answerLabel(c) {
 
 function renderPlayers() {
   $('players').innerHTML = view.players.map((p, i) => `
-    <div class="pl ${view.me?.index === i ? 'me' : ''}">
+    <div class="pl ${view.me?.index === i ? 'me' : ''} ${view.questioner === i && view.phase !== 'ended' ? 'isq' : ''} ${p.ready ? 'isready' : ''}">
       ${swatch(p.color)}
       <div><div class="nm">${esc(p.name)} ${view.questioner === i && view.phase !== 'ended' ? '<span class="badge">질문자</span>' : ''}</div>
       <div class="meta">${p.isBot ? `봇 · ${PERSONA[p.persona] ?? ''}` : '사람'}${view.me?.index === i ? ' · 나' : ''} ${p.ready ? '<span class="ready">✓ 준비</span>' : ''}</div></div>
@@ -218,16 +221,17 @@ function renderPanel() {
       if (fist) {
         mine = `<p>주먹을 내밀었습니다: <b>${answerLabel(fist)}</b> <span class="muted">(공개 전까지 바꿀 수 없음)</span></p>`;
       } else {
-        const opts = me.tokens.map((t) => `<button type="button" data-token="${t}" class="${selectedToken === t ? 'sel' : ''}">${t === 'empty' ? '✊ 빈 주먹' : `${swatch(t)} ${answerLabel(t)}`}</button>`).join('');
+        const tokenLabel = (t) => (t === 'grey' ? '아무도 없었다' : esc(nameOf(view.players.findIndex((pl) => pl.color === t))));
+        const opts = me.tokens.map((t) => `<button type="button" data-token="${t}" class="${selectedToken === t ? 'sel' : ''}" title="${t === 'empty' ? '빈 주먹' : answerLabel(t)}">${t === 'empty' ? '✊ 빈 주먹' : `${swatch(t)} ${tokenLabel(t)}`}</button>`).join('');
         mine = `<p><b>증언 토큰을 고르세요</b> <span class="muted">— 당신(${HOUSE[me.color].name})의 색은 없습니다</span></p>
-          <div class="choices">${opts}</div>
+          <div class="choices tokens">${opts}</div>
           <button type="button" class="primary" id="fistBtn" ${selectedToken ? '' : 'disabled'}>주먹 내밀기</button>`;
       }
       const claimBtns = [...view.players.map((pl) => pl.color), 'grey'].map((c) => `<button type="button" data-assert="${c}">${swatch(c)} ${c === me.color ? '내 땅이었어' : answerLabel(c)}</button>`).join('');
       p.innerHTML = `<h3>“${qName}의 주인은 누구였나?”</h3>
         <div class="bar"><i></i></div>
         ${mine}
-        <p class="muted">빠른 주장 (말로 하기, 거짓말도 됩니다)</p><div class="choices">${claimBtns}</div>`;
+        <p class="muted">빠른 주장 (말로 하기, 거짓말도 됩니다)</p><div class="choices assertRow">${claimBtns}</div>`;
       break;
     }
     case 'result': {
@@ -268,7 +272,15 @@ function renderChat() {
     el.innerHTML = `<span class="who" style="color:${HOUSE[pl.color].hex}">${esc(pl.name)}</span>${esc(m.text)}`;
     log.appendChild(el);
     chatShown.set(m.id, el);
+    if (isPhone() && !chatOpen && m.from !== view.me?.index) {
+      showBubble(pl, m.text);
+      unread++;
+    }
   }
+  const badge = $('chatBadge');
+  badge.textContent = String(unread);
+  badge.classList.toggle('hidden', unread === 0 || chatOpen);
+  $('chatFab').classList.toggle('hidden', view.phase === 'ended');
   log.scrollTop = log.scrollHeight;
   $('chatInput').disabled = !view.canSpeak;
   $('chatInput').placeholder = view.canSpeak ? '주장하고, 설득하고, 거래하세요' : '지금은 침묵해야 합니다';
@@ -334,6 +346,69 @@ $('chatForm').addEventListener('submit', (ev) => {
   act({ type: 'say', text: v });
 });
 $('helpBtn').addEventListener('click', () => $('help').showModal());
+
+// ───────── 휴대폰 (아이폰) ─────────
+const phoneMq = matchMedia('(max-width: 600px)');
+const isPhone = () => phoneMq.matches;
+let chatOpen = false;
+let unread = 0;
+function setChat(open) {
+  chatOpen = open;
+  document.querySelector('.chat').classList.toggle('open', open);
+  $('scrim').classList.toggle('hidden', !open);
+  if (open) { unread = 0; $('chatBadge').classList.add('hidden'); $('bubbles').innerHTML = ''; }
+  else $('chatInput').blur();
+}
+$('chatFab').addEventListener('click', () => setChat(true));
+$('chatClose').addEventListener('click', () => setChat(false));
+$('scrim').addEventListener('click', () => setChat(false));
+phoneMq.addEventListener('change', () => { if (!isPhone()) setChat(false); });
+
+function showBubble(pl, text) {
+  const box = $('bubbles');
+  const b = document.createElement('div');
+  b.className = 'bubble';
+  b.innerHTML = `<b style="color:${HOUSE[pl.color].hex}">${esc(pl.name)}</b>${esc(text)}`;
+  box.appendChild(b);
+  while (box.children.length > 3) box.firstChild.remove();
+  setTimeout(() => b.remove(), 5200);
+}
+
+// 아래 시트 높이만큼 보드 아래에 여백을 두고, 말 버튼·말풍선을 시트 위에 띄운다
+new ResizeObserver(() => {
+  const h = isPhone() && !$('game').classList.contains('hidden') ? $('panel').offsetHeight : 0;
+  document.documentElement.style.setProperty('--sheet-h', `${h}px`);
+}).observe($('panel'));
+
+// iOS 키보드가 올라오면 말 서랍을 키보드 위로 올린다
+if (window.visualViewport) {
+  const vv = window.visualViewport;
+  const onVV = () => {
+    const kb = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+    document.documentElement.style.setProperty('--kb', `${kb}px`);
+  };
+  vv.addEventListener('resize', onVV);
+  vv.addEventListener('scroll', onVV);
+}
+$('chatInput').addEventListener('focus', () => { if (isPhone() && !chatOpen) setChat(true); });
+
+// 게임 중에는 화면이 꺼지지 않게 한다 (iOS 16.4+)
+let wakeLock = null;
+async function keepAwake(on) {
+  try {
+    if (on && !wakeLock && document.visibilityState === 'visible' && 'wakeLock' in navigator) {
+      wakeLock = await navigator.wakeLock.request('screen');
+      wakeLock.addEventListener('release', () => { wakeLock = null; });
+    } else if (!on && wakeLock) { await wakeLock.release(); wakeLock = null; }
+  } catch { /* 지원하지 않거나 거부됨 */ }
+}
+
+// 앱 전환 뒤 돌아오면 연결을 다시 잇는다 (iOS는 백그라운드에서 SSE를 끊는다)
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState !== 'visible' || !session) return;
+  if (!es || es.readyState === EventSource.CLOSED) connect(session.code, session.token);
+  if (view && !view.lobby && view.phase !== 'ended') keepAwake(true);
+});
 $('brand').addEventListener('click', () => { if (!session || view?.phase === 'ended' || confirm('처음 화면으로 갈까요? 진행 중인 게임은 그대로 이어집니다(같은 링크로 돌아올 수 있음).')) { es?.close(); es = null; session = null; view = null; history.replaceState(null, '', location.pathname); show('home'); $('status').innerHTML = ''; } });
 
 async function joinRoom(raw) {

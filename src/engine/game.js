@@ -73,6 +73,10 @@ export class Game {
     this.phase = 'claim';
     this.claims = Array(this.n).fill(null);
     this.claimReveal = null;
+    this.question = null;
+    this.drawn = null;
+    this.fists = null;
+    this.result = null;
     this.deadline = now + this.timing.claimMs;
     this.bump();
   }

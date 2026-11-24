@@ -21,7 +21,10 @@ function playOut(n, seed) {
     else if (g.phase === 'whisper') {
       brains.forEach((b, i) => { const a = b.assertion(); if (a) g.say(i, a.text, now, a.answer ? { answer: a.answer } : null); });
       brains.forEach((b, i) => g.phase === 'whisper' && g.fist(i, b.testimony(), now));
-    } else g.tick(now + 60_000);
+    } else {
+      g.tick(now + 60_000);
+      if (g.phase === 'claim') assert.equal(g.view(0, now).question, null, '새 계절에는 지난 질문 칸 표시가 없다');
+    }
   }
   return { g, questions };
 }

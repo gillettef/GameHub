@@ -10,10 +10,13 @@
   }
 }
 * { box-sizing: border-box; }
-html, body { margin: 0; background: var(--paper); color: var(--ink); font-family: "Noto Sans KR", "Malgun Gothic", "Apple SD Gothic Neo", sans-serif; }
+html, body { margin: 0; background: var(--paper); color: var(--ink); font-family: -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif; -webkit-text-size-adjust: 100%; }
+body { min-height: 100dvh; }
 button, input { font: inherit; }
-button { cursor: pointer; border: 1px solid var(--line); background: var(--card); color: var(--ink); border-radius: 8px; padding: 8px 14px; }
-button:hover:not(:disabled) { border-color: var(--ink2); }
+button { cursor: pointer; border: 1px solid var(--line); background: var(--card); color: var(--ink); border-radius: 8px; padding: 8px 14px; touch-action: manipulation; -webkit-tap-highlight-color: transparent; transition: transform .08s; }
+@media (hover: hover) { button:hover:not(:disabled) { border-color: var(--ink2); } }
+button:active:not(:disabled) { transform: scale(.97); }
+.board td { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
 button:disabled { opacity: .45; cursor: default; }
 button.primary { background: var(--ink); color: var(--paper); border-color: var(--ink); }
 button.ghost { background: transparent; }
@@ -25,15 +28,6 @@ input { border: 1px solid var(--line); background: var(--card); color: var(--ink
 .brand small { font-weight: 400; letter-spacing: 0; color: var(--ink2); margin-left: 4px; }
 .status { flex: 1; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; font-size: 14px; color: var(--ink2); }
 .status b { color: var(--ink); }
-@media (max-width: 640px) {
-  .top { flex-wrap: wrap; row-gap: 4px; }
-  .status { order: 3; flex-basis: 100%; font-size: 13px; }
-  .board td { height: 40px; }
-  .tile { width: 22px; height: 22px; }
-  .ring { width: 20px; height: 20px; }
-  .board th.plot { width: 70px; }
-  .board th.plot .nm { font-size: 12px; }
-}
 .timer { font-variant-numeric: tabular-nums; font-weight: 700; color: var(--accent); }
 
 .screen { max-width: 1180px; margin: 0 auto; padding: 16px; }
@@ -69,7 +63,9 @@ input { border: 1px solid var(--line); background: var(--card); color: var(--ink
 .board td.forgotten { background: var(--dim); border-style: dashed; }
 .board td.future { background: transparent; border-style: dotted; }
 .board td.askable { outline: 2px solid var(--accent); cursor: pointer; }
-.board td.askable:hover { background: color-mix(in srgb, var(--accent) 15%, var(--card)); }
+@media (hover: hover) { .board td.askable:hover { background: color-mix(in srgb, var(--accent) 15%, var(--card)); } }
+.board td.askable { animation: pulse 1.6s ease-in-out infinite; }
+@keyframes pulse { 50% { background: color-mix(in srgb, var(--accent) 14%, var(--card)); } }
 .board td.questioned { outline: 3px solid var(--accent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 25%, transparent); }
 .board td.feud::after { content: "다툼"; position: absolute; inset: auto 0 4px; font-size: 10px; color: var(--accent); font-weight: 700; }
 .tile { display: inline-block; width: 30px; height: 30px; border-radius: 4px; border: 1px solid rgba(0,0,0,.35); vertical-align: middle; }
@@ -117,5 +113,115 @@ input { border: 1px solid var(--line); background: var(--card); color: var(--ink
 .chatForm input { flex: 1; }
 .chat.silent .chatForm { opacity: .5; }
 
+#helpBtn .sm, .chatFab, .bubbles, #chatClose { display: none; }
+.scrim { position: fixed; inset: 0; background: rgba(0,0,0,.35); z-index: 28; }
+
 dialog { max-width: 560px; border: 1px solid var(--line); border-radius: 14px; background: var(--card); color: var(--ink); }
 dialog li { margin: 6px 0; line-height: 1.6; }
+
+/* ───────── 휴대폰 (아이폰 17 Pro 402×874pt 기준) ───────── */
+@media (max-width: 600px) {
+  input { font-size: 16px; } /* iOS 입력 시 확대 방지 */
+  .top {
+    padding: calc(env(safe-area-inset-top) + 6px) calc(12px + env(safe-area-inset-right)) 8px calc(12px + env(safe-area-inset-left));
+    gap: 8px; flex-wrap: nowrap;
+  }
+  .brand { letter-spacing: 2px; font-size: 15px; }
+  .brand small { display: none; }
+  .status { font-size: 12px; gap: 6px; flex-wrap: nowrap; overflow: hidden; white-space: nowrap; }
+  .status .code { padding: 1px 5px; letter-spacing: 1px; }
+  .st-room, .st-left { display: none; }
+  .status .timer { margin-left: auto; font-size: 15px; }
+  #helpBtn { width: 34px; height: 34px; padding: 0; border-radius: 50%; flex: none; }
+  #helpBtn .lg { display: none; }
+  #helpBtn .sm { display: inline; font-weight: 700; }
+
+  .screen { padding: 10px calc(12px + env(safe-area-inset-right)) calc(16px + env(safe-area-inset-bottom)) calc(12px + env(safe-area-inset-left)); }
+  .hero { padding: 14px 0 0; }
+  .hero h1 { letter-spacing: 6px; }
+  .lede { font-size: 14px; line-height: 1.8; }
+  .card { padding: 16px; margin: 12px 0; border-radius: 18px; }
+  .row button { flex: 1; min-height: 50px; font-size: 16px; border-radius: 12px; }
+  .row.join button { flex: none; min-width: 84px; }
+  .seats li { min-height: 46px; }
+
+  #game.screen { padding-bottom: calc(var(--sheet-h, 260px) + 12px); }
+  .layout { display: flex; flex-direction: column; gap: 8px; }
+  .side { order: -1; }
+  .players { display: flex; gap: 6px; overflow-x: auto; margin: 0 -12px; padding: 2px 12px 4px; scrollbar-width: none; scroll-snap-type: x proximity; }
+  .players::-webkit-scrollbar { display: none; }
+  .pl { flex: none; padding: 6px 10px 6px 8px; gap: 6px; border-radius: 999px; scroll-snap-align: start; }
+  .pl .meta { display: none; }
+  .pl .nm { font-size: 13px; max-width: 64px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pl .nm .badge { display: none; }
+  .pl .sc { font-size: 15px; margin-left: 2px; }
+  .pl.isq { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+  .pl.isready::after { content: "✓"; color: var(--ok); font-weight: 800; font-size: 13px; }
+
+  .board { border-spacing: 2px; }
+  .board th { font-size: 11px; padding: 2px 0; }
+  .board th.colh small { font-size: 9px; }
+  .board th.plot { width: 64px; }
+  .board th.plot .nm { font-size: 12px; display: block; }
+  .board th.plot .val { width: 16px; height: 16px; font-size: 10px; margin: 2px 0 0; }
+  .board th.plot .badge { font-size: 9px; padding: 0 4px; }
+  .board td { height: 42px; border-radius: 7px; }
+  .tile { width: 24px; height: 24px; }
+  .ring { width: 22px; height: 22px; }
+  .board td.feud::after { font-size: 9px; bottom: 2px; }
+
+  /* 행동 패널 = 엄지가 닿는 아래 시트 */
+  .panel {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; margin: 0; min-height: 0;
+    max-height: 58dvh; overflow-y: auto; overscroll-behavior: contain;
+    border-radius: 22px 22px 0 0; border-bottom: none;
+    padding: 18px calc(16px + env(safe-area-inset-right)) calc(14px + env(safe-area-inset-bottom)) calc(16px + env(safe-area-inset-left));
+    box-shadow: 0 -10px 30px rgba(0, 0, 0, .14);
+  }
+  .panel::before { content: ""; position: absolute; top: 7px; left: 50%; width: 38px; height: 5px; margin-left: -19px; border-radius: 3px; background: var(--line); }
+  .panel h3 { font-size: 16px; }
+  .panel .muted { font-size: 12.5px; }
+  .choices { gap: 8px; }
+  .choices button { flex: 1 1 calc(50% - 8px); min-height: 48px; justify-content: center; font-size: 15px; border-radius: 12px; }
+  .choices.tokens button { flex: 1 1 calc(33.33% - 8px); min-height: 46px; font-size: 13.5px; padding: 6px 6px; gap: 5px; }
+  .choices.tokens button .dot { flex: none; }
+  .choices.assertRow { flex-wrap: nowrap; overflow-x: auto; margin: 6px -16px 0; padding: 0 16px 2px; scrollbar-width: none; }
+  .choices.assertRow::-webkit-scrollbar { display: none; }
+  .choices.assertRow button { flex: none; min-height: 40px; font-size: 13px; }
+  #fistBtn, .panel .row button { width: 100%; min-height: 52px; font-size: 17px; border-radius: 14px; }
+  .reveal { grid-template-columns: repeat(2, 1fr); gap: 6px; }
+  .reveal div { padding: 6px; font-size: 12.5px; }
+  .verdict { font-size: 17px; }
+
+  /* 말: 서랍 + 떠오르는 말풍선 */
+  .chat {
+    position: fixed; left: 0; right: 0; bottom: var(--kb, 0px); z-index: 30; margin: 0; height: min(72dvh, 560px, calc(100dvh - var(--kb, 0px) - env(safe-area-inset-top) - 20px));
+    border-radius: 22px 22px 0 0; padding-bottom: env(safe-area-inset-bottom);
+    transform: translateY(105%); transition: transform .25s ease; box-shadow: 0 -10px 30px rgba(0,0,0,.2);
+  }
+  .chat.open { transform: none; }
+  .chatHead { display: flex; align-items: center; gap: 6px; padding: 12px 14px; }
+  .chatHead small { flex: 1; }
+  #chatClose { display: inline-block; padding: 6px 10px; }
+  .msg { font-size: 15px; }
+  .chatForm { padding: 10px 12px; }
+  .chatForm button { min-height: 44px; }
+  .chatFab {
+    display: flex; align-items: center; justify-content: center; position: fixed; z-index: 25;
+    right: calc(14px + env(safe-area-inset-right)); bottom: calc(var(--sheet-h, 260px) + 12px);
+    width: 52px; height: 52px; border-radius: 50%; font-size: 22px; padding: 0;
+    background: var(--ink); color: var(--paper); border: none; box-shadow: 0 6px 18px rgba(0,0,0,.25);
+  }
+  .fabBadge { position: absolute; top: -2px; right: -2px; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 10px; background: var(--accent); color: #fff; font-size: 12px; line-height: 20px; }
+  .bubbles {
+    display: flex; flex-direction: column; justify-content: flex-end; gap: 6px; position: fixed; z-index: 24;
+    left: calc(12px + env(safe-area-inset-left)); right: calc(76px + env(safe-area-inset-right)); bottom: calc(var(--sheet-h, 260px) + 12px);
+    pointer-events: none;
+  }
+  .bubble { align-self: flex-start; max-width: 100%; background: var(--card); border: 1px solid var(--line); border-radius: 16px 16px 16px 4px; padding: 7px 11px; font-size: 13.5px; line-height: 1.45; box-shadow: 0 4px 14px rgba(0,0,0,.12); animation: rise .2s ease-out, bubbleOut .6s ease-in 4.4s forwards; }
+  .bubble b { margin-right: 4px; }
+  @keyframes rise { from { transform: translateY(8px); opacity: 0; } }
+  @keyframes bubbleOut { to { opacity: 0; transform: translateY(-6px); } }
+
+  dialog { width: calc(100% - 24px); max-height: 80dvh; border-radius: 18px; }
+}
