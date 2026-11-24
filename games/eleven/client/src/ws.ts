@@ -112,7 +112,11 @@ export class Connection {
   }
 }
 
+// 지금 페이지 기준 상대 주소 "ws". 서버 루트면 /ws, 허브 접두어 아래면 /eleven/ws, Vite dev 면 /ws(프록시)가 된다
 export function wsUrl(): string {
-  const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
-  return `${protocol}://${location.host}/ws`;
+  const url = new URL('ws', location.href);
+  url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
+  url.search = '';
+  url.hash = '';
+  return url.href;
 }
