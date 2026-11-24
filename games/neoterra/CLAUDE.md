@@ -64,7 +64,7 @@ Neoterra/
 │   │   ├── ai.ts           # AI 결정
 │   │   └── mask.ts         # 비공개 정보 가림(덱 순서·본인 시야 밖 퀘스트 트랙 뒷면 칸·시드)
 │   ├── online/             # protocol.ts(클라·서버 공용 메시지), client.ts(재접속)
-│   ├── store/              # localStorage 래퍼(키 접두어 `nt:v1:`), Zustand
+│   ├── store/              # localStorage 래퍼(키 접두어 `neoterra:v1:`), Zustand
 │   └── ui/                 # pages/, tabs/, components/(TechWeb, CardRow, ColonyBoard …), styles/
 ├── server/                 # index.ts(정적 dist + /ws + /health), hub.ts(방·자리·정산·가림)
 └── tests/ 또는 *.test.ts
@@ -90,7 +90,7 @@ npx tsx scripts/simulate.ts --games 500 --players 3 --seed 1
 - 클라이언트·서버 공용 메시지 타입은 `src/online/protocol.ts` 한 곳.
 - 주요 사건(연구, 카드 획득, 건설, 노선 단계 도달, 토착 생물 공격, 위성 발사·추락, 퀘스트 처리, 주둔지, 습격·분쟁, 시대 전환, 종료)은 `GameState.log` 에 남긴다.
 - 사용자 입력은 `textContent` 로 넣는다. `innerHTML` 금지.
-- `localStorage` 접근은 `src/store` 에서만, try/catch, 키 버전 `nt:v1:*`.
+- `localStorage` 접근은 `src/store` 에서만, try/catch, 키 버전 `neoterra:v1:*`(예전 `nt:v1:*` 값은 `storage.ts`의 `migrate`가 처음 읽을 때 옮긴다).
 
 ## 플레이 모드
 

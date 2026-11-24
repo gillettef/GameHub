@@ -15,9 +15,13 @@ let hiddenAt = 0;
 /** 이만큼 넘게 백그라운드에 있다 돌아오면 소켓이 살아 보여도 새로 붙는다 — iOS 는 잠금·앱 전환 때 소켓을 조용히 끊는다 */
 const STALE_AFTER = 15000;
 
+/** 현재 페이지 디렉터리 기준 ws 주소. 게임 허브가 /neoterra/ 아래로 프록시하면 /neoterra/ws 가 된다 */
 function url(): string {
-  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-  return `${proto}://${location.host}/ws`;
+  const u = new URL('ws', location.href);
+  u.protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  u.search = '';
+  u.hash = '';
+  return u.toString();
 }
 
 /** 열린 소켓으로 보낸다. 닫혀 있으면 보내지 못했다고 돌려준다(조용히 버리지 않는다) */
