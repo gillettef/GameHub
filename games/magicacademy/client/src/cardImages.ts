@@ -117,6 +117,7 @@ const CARD_IMAGE_FILE: Record<string, string> = {
 
 export type CardBackKind = "class" | "creature" | "exam" | "exploration" | "lab";
 
+// 상대 base('./')로 빌드하므로 문서(앱 루트) 기준 상대 주소가 된다
 const BASE = import.meta.env.BASE_URL;
 
 export function cardImageUrl(name: string): string | null {

@@ -57,9 +57,13 @@ const STALE_AFTER_MS = 25_000;
 const PING_TIMEOUT_MS = 3_000;
 const MAX_RECONNECT_ATTEMPTS = 30;
 
+// 지금 페이지 기준 상대 주소 "ws". 서버 루트면 /ws, 허브 접두어 아래면 /magicacademy/ws, vite dev 면 /ws(프록시)가 된다
 function getWebSocketUrl(): string {
-  const protocol = window.location.protocol === "https:" ? "wss" : "ws";
-  return `${protocol}://${window.location.host}/ws`;
+  const url = new URL("ws", window.location.href);
+  url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
+  url.hash = "";
+  url.search = "";
+  return url.href;
 }
 
 export function useGameSocket() {
