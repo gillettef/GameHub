@@ -7,7 +7,7 @@
   { "slug": "rootbound",    "name": "루트바운드",   "port": 3201, "players": "1~4인", "tagline": "정원 땅따먹기", "online": true, "bot": true },
   { "slug": "eleven",       "name": "일레븐",       "port": 3001, "players": "1~4인", "tagline": "축구 구단 매니지먼트", "online": true, "bot": true },
   { "slug": "proxymind",    "name": "프록시마인드", "port": 8105, "players": "3~5인", "tagline": "남이 짠 두뇌로 싸우는 로봇 아레나", "online": true, "bot": true },
-  { "slug": "smilepark",    "name": "스마일파크",   "port": 8090, "players": "2~5인", "tagline": "놀이공원 경영", "online": false, "bot": true },
+  { "slug": "smilepark",    "name": "스마일파크",   "port": 8090, "players": "2~5인", "tagline": "놀이공원 경영", "online": false, "bot": true, "mode": "inproc" },
   { "slug": "crease",       "name": "크리스",       "port": 8101, "players": "2~4인", "tagline": "접는 보드 경주", "online": true, "bot": true },
   { "slug": "hearsay",      "name": "히어세이",     "port": 8103, "players": "4~6인", "tagline": "집단 기억으로 역사 정하기", "online": true, "bot": true },
   { "slug": "lastgrain",    "name": "라스트그레인", "port": 8104, "players": "2인",   "tagline": "수명이 붙은 모래병 전술", "online": true, "bot": true },
