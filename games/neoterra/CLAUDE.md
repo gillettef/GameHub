@@ -112,6 +112,8 @@ npx tsx scripts/simulate.ts --games 500 --players 3 --seed 1
 
 ## 배포 (AWS) — 운영 중 (v0.1.0, 2026-11-02)
 
+- **2026-11-24부터 운영은 GameHub 허브 안에서 실행된다**(`hub/games.json` `"mode": "inproc"`, 진입점 `scripts/aws/hub-entry.mjs` → `server-dist/app.cjs`(`server/app.ts`, `createApp`)). 접속은 `http://54.116.67.196/neoterra/`. 배포하면 `deploy-remote.sh`가 예전 systemd `neoterra` 서비스를 끄고 허브(`gamehub`)를 재시작한다 — 허브 안 다른 게임의 진행 중인 방도 함께 사라진다. `server/index.ts`(`server-dist/server.cjs`)는 로컬 단독 실행용으로 남는다. 아래의 포트·systemd 설명은 예전 단독 운영 기준이다.
+
 - 다른 게임과 같은 EC2(t4g.nano, 서울) 1대를 공유한다. systemd `neoterra`, 포트 8094, 경로 `~/neoterra`, 주소 `http://54.116.67.196:8094`. `main` 병합 시 `.github/workflows/deploy-aws.yml` 이 `npm test` → `npm run build` 통과 후 배포한다(DoubleAgent 와 같은 방식: 러너 IP 를 SSH 22 에 임시 허용 → `ec2-user` 로 업로드 → 서버 안 `/health` 확인 → 허용 제거).
 - 관리자 SSH 키·IP는 `../Rootbound/.dev/astraltab-key.pem`, `../Rootbound/.dev/aws-public-ip.txt` 를 공용으로 쓴다. 저장소 시크릿 값의 정본은 저장소 밖 `../../aws_config.md`. 서버 로그: `ssh -i ../Rootbound/.dev/astraltab-key.pem ec2-user@54.116.67.196 "sudo journalctl -u neoterra -n 100"`.
 
