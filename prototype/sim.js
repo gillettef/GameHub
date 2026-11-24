@@ -80,7 +80,7 @@ export function runBatch(n, games, config, profiles, seed0 = 1) {
   };
 }
 
-const isMain = process.argv[1] && process.argv[1].replace(/\\/g, '/').endsWith('prototype/sim.js');
+const isMain = typeof process !== 'undefined' && process.argv?.[1] && process.argv[1].replace(/\\/g, '/').endsWith('prototype/sim.js');
 if (isMain) {
   const args = parseArgs(process.argv.slice(2));
   const config = mergeConfig(args.base === 'default' ? DEFAULT_CONFIG : RULES, args.config);

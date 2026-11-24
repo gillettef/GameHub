@@ -3,5 +3,5 @@ import { cpSync, mkdirSync, rmSync, existsSync } from 'node:fs';
 rmSync('dist', { recursive: true, force: true });
 mkdirSync('dist', { recursive: true });
 if (existsSync('prototype/web')) cpSync('prototype/web', 'dist', { recursive: true });
-for (const f of ['engine.js', 'bot.js', 'rules-config.js']) cpSync(`prototype/${f}`, `dist/${f}`);
+for (const f of ['engine.js', 'bot.js', 'rules-config.js', 'sim.js']) cpSync(`prototype/${f}`, `dist/${f}`);
 console.log('dist/ 빌드 완료');

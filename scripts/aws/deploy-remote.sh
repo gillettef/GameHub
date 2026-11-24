@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # EC2 에서 실행: 업로드된 ~/crease 의 systemd crease(포트 8101)를 재시작하고 헬스체크한다.
 # GitHub Actions(deploy-aws.yml)와 수동 배포가 ssh 로 호출한다. systemd 유닛은 scripts/aws/units.sh 로 최초 1회 등록돼 있다.
-# 정적 파일만 서빙하므로 재시작해도 잃는 상태는 없다.
+# 정적 파일과 온라인 대전방 API를 함께 서빙한다. 대전방은 메모리에만 있으므로 재시작하면 진행 중인 방이 사라진다.
 set -euo pipefail
 APP="$HOME/crease"
 cd "$APP"

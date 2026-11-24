@@ -363,3 +363,37 @@ export function cloneState(s) {
     log: [],
   };
 }
+
+// ---------------------------------------------------------------- 네트워크용 상태 보기
+/** 직렬화 가능한 상태 보기(서버 → 클라이언트) */
+export function toView(state) {
+  return {
+    n: state.n,
+    fold: { ...state.fold },
+    players: state.players.map((p) => ({ id: p.id, c: p.c, r: p.r, anchor: p.anchor, carried: p.carried, score: p.score })),
+    shards: [...state.shards.entries()],
+    current: state.current,
+    round: state.round,
+    turnSteps: state.turnSteps || 0,
+    turnMaxSteps: state.turnMaxSteps ?? state.config.moveSteps,
+    turnFolded: !!state.turnFolded,
+    deckLeft: state.deck.length,
+    supplyLeft: state.config.shardSupply ? state.config.shardSupply - shardsInUse(state) : null,
+    over: !!state.over,
+    winners: state.over ? winners(state) : null,
+    activeIds: state.activeIds || null,
+    lastSpawn: state.lastSpawn ?? null,
+    lastBurst: state.lastBurst ?? null,
+  };
+}
+
+/** 상태 보기를 렌더링·합법 수 계산에 쓸 수 있는 가벼운 상태로 되돌린다 */
+export function fromView(view, config) {
+  return {
+    ...view,
+    config,
+    shards: new Map(view.shards),
+    players: view.players.map((p) => ({ ...p })),
+    deck: { length: view.deckLeft },
+  };
+}
