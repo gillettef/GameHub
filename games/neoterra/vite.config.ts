@@ -3,6 +3,8 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
 export default defineConfig({
+  // 게임 허브가 /neoterra/ 접두어 아래로 프록시해도 에셋을 찾도록 상대 경로로 빌드한다
+  base: './',
   plugins: [react()],
   server: {
     // 개발 포트: 다른 서비스와 겹치지 않게 고른 무작위 고정값(운영과 무관)

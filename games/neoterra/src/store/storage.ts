@@ -1,10 +1,22 @@
-// localStorage 래퍼 — 접근은 이 파일에서만, 키는 nt:v1:*, 모두 try/catch
+// localStorage 래퍼 — 접근은 이 파일에서만, 키는 neoterra:v1:*, 모두 try/catch
 import type { GameState } from '../core/types';
 
-const P = 'nt:v1:';
+// 게임 허브에서는 여러 게임이 같은 출처의 localStorage 를 함께 쓰므로 게임 이름을 접두어로 쓴다
+const P = 'neoterra:v1:';
+/** 예전 접두어. 값이 남아 있으면 처음 읽을 때 한 번 옮긴다 */
+const LEGACY_P = 'nt:v1:';
+
+function migrate(key: string): void {
+  if (localStorage.getItem(P + key) !== null) return;
+  const old = localStorage.getItem(LEGACY_P + key);
+  if (old === null) return;
+  localStorage.setItem(P + key, old);
+  localStorage.removeItem(LEGACY_P + key);
+}
 
 function read<T>(key: string): T | null {
   try {
+    migrate(key);
     const raw = localStorage.getItem(P + key);
     return raw ? (JSON.parse(raw) as T) : null;
   } catch {
