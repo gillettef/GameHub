@@ -1,0 +1,23 @@
+{
+  "name": "eleven",
+  "private": true,
+  "workspaces": [
+    "server",
+    "client"
+  ],
+  "scripts": {
+    "build": "npm run build -w client && npm run build -w server",
+    "start": "node server/dist/index.js",
+    "typecheck": "npm run typecheck --workspaces",
+    "lint": "eslint .",
+    "test": "npm run test --workspaces --if-present",
+    "check": "npm run typecheck && npm run lint && npm run test"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.0.0",
+    "eslint": "^9.0.0",
+    "globals": "^15.0.0",
+    "typescript": "^5.6.0",
+    "typescript-eslint": "^8.0.0"
+  }
+}

@@ -1,0 +1,546 @@
+import { activeSide, cards, effectiveSkill, instanceName, tokenLabel } from './cards';
+import { applyEffects, moveTrack, trainPlayer } from './effects';
+import type { EffectContext, MatchContext } from './effects';
+import { regionIssues, regionSector, resolveMatch } from './match';
+import type { MatchReport, Slot, TeamSide } from './match';
+import { playerSource, tacticSource, tagged } from './labels';
+import { matchDieResult } from './matchDie';
+import type { Rng } from './rng';
+import { GameError, addLog, currentInjuryDie, emptyMods, getPlayer, nextInTurn, requireTurn } from './state';
+import type { GameState, InjuryDie, LineupSubmission, MatchAftermath, MatchMods, PlayerId, PlayerInstance, PlayerState } from './state';
+import { hasTrait, lineupStaminaCost, traitCount, traitSum } from './traits';
+import { REGIONS, RESOURCES, SECTORS } from './types';
+import { claimUniforms } from './uniforms';
+import { runWeekend } from './weekend';
+import type { Cost, Effect, MatchTiming, OpponentTeamCard, PlayerEffect, Resources, Sector } from './types';
+
+const PRINTED_STANDS = 2; // p.6 1번/2번 관중석
+export const LEAGUE_MAX = 18; // 리그 성적표 마지막 칸
+const LEAGUE_WIN = 3;
+const LEAGUE_DRAW = 1;
+// placeholder: 상대 팀 주사위 눈 (p.2 그림: 0/1/3)
+const OPPONENT_DIE = [0, 0, 1, 1, 3, 3] as const;
+
+// 관중석 수 = 인쇄 2 + 3·4번 관중석 + 상시 효과(스폰서 '매 경기 팬덤 1개 추가 배치')
+export function standsCount(player: Pick<PlayerState, 'infrastructure' | 'passives'>): number {
+  return PRINTED_STANDS + player.infrastructure.filter((i) => i === 'stand3' || i === 'stand4').length + player.passives.filter((p) => p.passive === 'extraStand').length;
+}
+
+export function startFriday(state: GameState): void {
+  for (const id of state.seats) getPlayer(state, id).tacticRedrawn = false;
+  state.phase = {
+    kind: 'friday.prepare',
+    current: state.firstPlayer,
+    submitted: Object.fromEntries(state.seats.map((id) => [id, null])),
+    preMatch: Object.fromEntries(state.seats.map((id) => [id, emptyMods()])),
+  };
+}
+
+function instanceOf(player: PlayerState, instanceId: string): PlayerInstance {
+  const inst = player.roster.find((p) => p.instanceId === instanceId);
+  if (!inst) throw new GameError(`no such player: ${instanceId}`);
+  return inst;
+}
+
+// 벤치에 있는 출전 선수 토큰을 카드 없는 필드 토큰(가장 큰 번호)과 교환 (p.20 3)
+export function swapBenchTokens(player: Pick<PlayerState, 'uniforms'>, played: string[]): void {
+  for (const instanceId of played) {
+    const token = player.uniforms.find((u) => u.cardInstanceId === instanceId);
+    if (!token || token.location === 'field') continue;
+    const swapOut = player.uniforms
+      .filter((u) => u.location === 'field' && (!u.cardInstanceId || !played.includes(u.cardInstanceId)))
+      .sort((a, b) => (b.number ?? -1) - (a.number ?? -1))[0];
+    if (!swapOut) throw new GameError('no field token to swap with');
+    swapOut.location = 'bench';
+    token.location = 'field';
+  }
+}
+
+function pay(player: PlayerState, cost: Cost): void {
+  for (const r of RESOURCES) if ((cost[r] ?? 0) > player.resources[r]) throw new GameError(`not enough ${r}`);
+  for (const r of RESOURCES) player.resources[r] -= cost[r] ?? 0;
+}
+
+function validateLineup(player: PlayerState, sub: LineupSubmission): { players: PlayerInstance[] } {
+  if (!player.tacticCards.includes(sub.tacticCardId)) throw new GameError('tactic card not in hand');
+  const formation = cards.tactic(sub.tacticCardId).formations[sub.formationIndex];
+  if (!formation) throw new GameError('invalid formation index');
+
+  const players = sub.players.map((id) => instanceOf(player, id));
+  if (new Set(sub.players).size !== players.length) throw new GameError('duplicate player');
+  const numbers = new Set<number>();
+  for (const inst of players) {
+    if (inst.tokens.injury > 0 || inst.tokens.suspension > 0) throw new GameError('injured or suspended player cannot play');
+    const n = activeSide(inst).number;
+    if (n !== undefined) {
+      if (numbers.has(n)) throw new GameError(`duplicate uniform number ${n}`);
+      numbers.add(n);
+    }
+  }
+  // 골키퍼는 1명만 출전한다 (사용자 제보 2026-09: 훈련 전 유망주 골키퍼는 등번호가 없어 번호 중복 검사를 빠져나갔다)
+  if (players.filter((inst) => activeSide(inst).goalkeeper).length > 1) throw new GameError('only one goalkeeper can play');
+
+  claimUniforms(player, sub.players); // 같은 등번호 선수가 여럿이면 출전하는 쪽이 토큰을 가진다
+  swapBenchTokens(player, sub.players);
+  const field = player.uniforms.filter((u) => u.location === 'field');
+  const placedIds = Object.keys(sub.placements);
+  if (placedIds.length !== field.length || field.some((u) => !(u.id in sub.placements))) {
+    throw new GameError('placements must cover exactly the field tokens');
+  }
+  // 9지역 배치 (p.20): 라인별 인원 = 포메이션, 센터 지역 1~3, 윙 지역 최대 1. 선수 카드는 허용 구획에 속한 지역에만
+  for (const token of field) {
+    const region = sub.placements[token.id]!;
+    if (!REGIONS.includes(region)) throw new GameError(`invalid region ${region}`);
+    if (token.cardInstanceId && sub.players.includes(token.cardInstanceId)) {
+      const zones = activeSide(instanceOf(player, token.cardInstanceId)).zones;
+      if (!zones.includes(regionSector(region))) throw new GameError(`${token.cardInstanceId} cannot play in ${region}`);
+    }
+  }
+  const issues = regionIssues(formation, field.map((u) => sub.placements[u.id]!), (r) => r, (l) => l);
+  if (issues.length > 0) throw new GameError(`formation mismatch: ${issues.join(', ')}`);
+
+  const stands = sub.fandomInStands ?? 0;
+  if (!Number.isInteger(stands) || stands < 0 || stands > standsCount(player)) throw new GameError('too many fandom in stands');
+  // 효과 활성화용 자원: 출전 선수에게만, 0 이상의 정수만 (음수를 내면 자원이 생겨 버린다)
+  for (const [instanceId, placed] of Object.entries(sub.activations ?? {})) {
+    if (!sub.players.includes(instanceId)) throw new GameError('activation for a player who is not playing');
+    for (const [r, n] of Object.entries(placed)) {
+      if (!(RESOURCES as readonly string[]).includes(r) || !Number.isInteger(n) || n < 0) throw new GameError('invalid activation amount');
+    }
+  }
+  return { players };
+}
+
+// 경기 전 맥락: 상대는 더미 맨 위 카드. 결과가 필요한 조건은 'defer' 된다
+function preMatchContext(player: PlayerState, sub: LineupSubmission): MatchContext {
+  const opponentCardId = player.opponentDeck[0];
+  return { stage: 'pre', myGoals: 0, theirGoals: 0, sectorGoals: {}, placements: sub.placements, opponentTeamId: opponentCardId ? cards.opponent(opponentCardId).teamId : '' };
+}
+
+// p.20 경기 준비 제출. 전원 제출하면 경기 진행(상대 공개·전술 효과) 단계로
+export function submitLineup(state: GameState, pid: PlayerId, sub: LineupSubmission, rng: Rng): GameState {
+  const next = structuredClone(state);
+  if (next.phase.kind !== 'friday.prepare') throw new GameError('not in match preparation');
+  if (next.phase.submitted[pid] === undefined) throw new GameError(`unknown player: ${pid}`);
+  if (next.phase.submitted[pid]) throw new GameError('already submitted');
+  requireTurn(next.phase, pid);
+  const player = getPlayer(next, pid);
+  const { players } = validateLineup(player, sub);
+
+  const cost: Partial<Resources> = { stamina: lineupStaminaCost(player, players), fandom: sub.fandomInStands ?? 0 };
+  for (const placed of Object.values(sub.activations ?? {})) {
+    for (const r of RESOURCES) cost[r] = (cost[r] ?? 0) + (placed[r] ?? 0);
+  }
+  pay(player, cost);
+  // 미리 올려놓은 체력이 있는 출전 선수는 그중 1개를 출전 체력으로 쓴다. 남은 것은 경기 후 버려진다(p.24 4)
+  for (const inst of players) if (inst.stamina > 0) inst.stamina--;
+  for (const [instanceId, placed] of Object.entries(sub.activations ?? {})) {
+    const inst = instanceOf(player, instanceId);
+    for (const r of RESOURCES) if (placed[r]) inst.placed[r] = (inst.placed[r] ?? 0) + placed[r];
+  }
+
+  // p.20 4: 부상/출장정지 카드마다 1개씩 제거
+  for (const inst of player.roster) {
+    if (inst.tokens.injury > 0) inst.tokens.injury--;
+    if (inst.tokens.suspension > 0) inst.tokens.suspension--;
+  }
+  for (const s of player.staff) if (s.suspension > 0) s.suspension--;
+
+  next.phase.submitted[pid] = sub;
+  // 경기 전 효과는 여기서 바로 적용한다. 판정과 같은 액션 안에서 처리하면 대상 선택(pending)이 경기 뒤로 밀려
+  // 일시 역량 토큰 등이 경기에 반영되지 않는다. 대상 선택이 남으면 이 참가자 차례에 머물고,
+  // resolvePending 뒤 advanceFriday 가 다음 참가자로 넘긴다
+  applyTimedEffects(next, pid, players, 'beforeMatch', { mods: next.phase.preMatch[pid]!, played: sub.players, match: preMatchContext(player, sub) }, rng);
+  advanceFriday(next, pid, rng);
+  return next;
+}
+
+// 금요일 턴제 진행: 경기 준비(라인업)와 경기 진행(전술 효과) 모두, 현재 참가자의 대상 선택이 끝나야 다음 참가자로.
+// 전원 라인업 제출 → 경기 진행 단계, 전원 전술 효과 결정 → 경기 판정
+export function advanceFriday(state: GameState, pid: PlayerId, rng: Rng): void {
+  const phase = state.phase;
+  if (phase.kind === 'friday.prepare') {
+    if (phase.current !== pid || !phase.submitted[pid] || getPlayer(state, pid).pending.length > 0) return;
+    const submitted = phase.submitted;
+    const following = nextInTurn(state, (id) => submitted[id] !== null);
+    if (following) phase.current = following;
+    else startMatchPhase(state);
+    return;
+  }
+  if (phase.kind === 'friday.match') {
+    if (phase.current !== pid || !phase.decided[pid] || getPlayer(state, pid).pending.length > 0) return;
+    const decided = phase.decided;
+    const following = nextInTurn(state, (id) => !!decided[id]);
+    if (following) phase.current = following;
+    else resolveAllMatches(state, rng);
+  }
+}
+
+// p.21 경기 진행: 상대 팀 카드를 공개하고(뷰가 현재 참가자의 카드를 앞면으로 보여준다) 전술 효과 카드 1장을 쓸 수 있다
+function startMatchPhase(state: GameState): void {
+  if (state.phase.kind !== 'friday.prepare') return;
+  const submitted: Record<PlayerId, LineupSubmission> = {};
+  for (const id of state.seats) submitted[id] = state.phase.submitted[id]!;
+  state.phase = {
+    kind: 'friday.match',
+    current: state.firstPlayer,
+    submitted,
+    preMatch: state.phase.preMatch,
+    effectCard: {},
+    decided: Object.fromEntries(state.seats.map((id) => [id, false])),
+  };
+}
+
+// p.21 8 / p.28: 포메이션에 쓴 카드가 아닌 전술 카드 1장의 효과를 적용한다(카드는 손에 남는다). null 이면 쓰지 않는다
+export function playTacticEffect(state: GameState, pid: PlayerId, cardId: string | null, rng: Rng): GameState {
+  const next = structuredClone(state);
+  if (next.phase.kind !== 'friday.match') throw new GameError('not in match phase');
+  requireTurn(next.phase, pid);
+  if (next.phase.decided[pid]) throw new GameError('already decided');
+  const player = getPlayer(next, pid);
+  const sub = next.phase.submitted[pid]!;
+  if (cardId !== null) {
+    if (!player.tacticCards.includes(cardId)) throw new GameError('tactic card not in hand');
+    if (cardId === sub.tacticCardId) throw new GameError('formation card cannot be used for its effect');
+    const card = cards.tactic(cardId);
+    if (!card.effect) throw new GameError('card has no effect');
+    addLog(next, tagged('전술', `효과 사용: ${card.name}`), { actor: pid });
+    applyEffects(next, pid, card.effect.effects, tacticSource(card), { mods: next.phase.preMatch[pid]!, played: sub.players, match: preMatchContext(player, sub) }, rng);
+  }
+  next.phase.effectCard[pid] = cardId;
+  next.phase.decided[pid] = true;
+  advanceFriday(next, pid, rng);
+  return next;
+}
+
+function activated(inst: PlayerInstance, effect: PlayerEffect): boolean {
+  if (effect.mandatory) return true;
+  return RESOURCES.every((r) => (effect.cost[r] ?? 0) <= (inst.placed[r] ?? 0));
+}
+
+// 출전 선수 카드의 시점별 효과. 득점·선방·득점 무효 같은 경기 효과는 ctx.mods 로 경기 판정에 반영된다
+function applyTimedEffects(state: GameState, pid: PlayerId, played: PlayerInstance[], timing: MatchTiming, ctx: EffectContext, rng: Rng): void {
+  for (const inst of played) {
+    const effect = activeSide(inst).effect;
+    if (!effect || effect.timing !== timing || !activated(inst, effect)) continue;
+    applyEffects(state, pid, effect.effects, playerSource(cards.player(inst.cardId)), { ...ctx, inst }, rng);
+    inst.exhausted = true;
+  }
+}
+
+function buildSide(player: PlayerState, sub: LineupSubmission, played: PlayerInstance[], mods: MatchMods): TeamSide {
+  const sectors: Record<Sector, Slot[]> = { LW: [], CB: [], CM: [], CF: [], RW: [] };
+  const playedIds = new Set(played.map((p) => p.instanceId));
+  for (const token of player.uniforms.filter((u) => u.location === 'field')) {
+    const inst = token.cardInstanceId && playedIds.has(token.cardInstanceId) ? instanceOf(player, token.cardInstanceId) : null;
+    const sector = regionSector(sub.placements[token.id]!);
+    sectors[sector].push({ id: token.id, role: token.face, skill: Math.max(0, (inst ? effectiveSkill(inst) : 1) + (mods.sectorSkill[sector] ?? 0)) });
+  }
+  const gk = played.find((p) => activeSide(p).goalkeeper);
+  const base = gk ? { skill: effectiveSkill(gk), saves: activeSide(gk).goalkeeper!.saves } : { skill: 1, saves: 1 };
+  return { sectors, goalkeeper: { ...base, saves: base.saves + mods.extraSaves + traitCount(player, 'extraSaves') } };
+}
+
+// 상대 카드는 상하 반전(p.20)이지만 SECTOR_PAIRS 가 내 LW↔상대 RW 로 짝짓기 때문에 카드 구획을 그대로 쓴다
+function opponentSide(card: OpponentTeamCard): TeamSide {
+  const sectors: Record<Sector, Slot[]> = { LW: [], CB: [], CM: [], CF: [], RW: [] };
+  for (const s of SECTORS) sectors[s] = card.sectors[s].map((slot, i) => ({ id: `${card.id}:${s}${i}`, ...slot }));
+  return { sectors, goalkeeper: card.goalkeeper };
+}
+
+function moveLeague(state: GameState, pid: PlayerId, teamId: string, outcome: MatchReport['outcome']): void {
+  const mine = outcome === 'win' ? LEAGUE_WIN : outcome === 'draw' ? LEAGUE_DRAW : 0;
+  const theirs = outcome === 'loss' ? LEAGUE_WIN : outcome === 'draw' ? LEAGUE_DRAW : 0;
+  state.league.players[pid] = Math.min(LEAGUE_MAX, state.league.players[pid]! + mine);
+  const opp = state.league.opponents.find((o) => o.teamId === teamId);
+  if (opp) opp.position = Math.min(LEAGUE_MAX, opp.position + theirs);
+}
+
+function resolveAllMatches(state: GameState, rng: Rng): void {
+  if (state.phase.kind !== 'friday.match') return;
+  const matches: Record<PlayerId, MatchAftermath> = {};
+  const faced = new Map<string, PlayerId[]>(); // 상대 팀 → 이번 주에 그 팀과 경기한 참가자
+
+  for (const pid of state.seats) {
+    const player = getPlayer(state, pid);
+    const sub = state.phase.submitted[pid]!;
+    const mods = state.phase.preMatch[pid]!; // 경기 전 효과·전술 효과가 쌓아 둔 보정치
+    const opponentCardId = player.opponentDeck.shift();
+    if (!opponentCardId) throw new GameError('no opponent left');
+    player.scouted = false; // 미리 본 카드는 이번 경기로 소진
+    const opponent = cards.opponent(opponentCardId);
+    const played = sub.players.map((id) => instanceOf(player, id));
+    const pre: MatchContext = { stage: 'pre', myGoals: 0, theirGoals: 0, sectorGoals: {}, placements: sub.placements, opponentTeamId: opponent.teamId };
+    const logStart = state.log.length; // 이 참가자의 판정 중 남는 기록을 경기 종료 화면에 모아 보여 준다
+
+    applyTimedEffects(state, pid, played, 'duringMatch', { mods, played: sub.players, match: pre }, rng);
+    const side = buildSide(player, sub, played, mods);
+    const skills = Object.fromEntries(Object.values(side.sectors).flatMap((slots) => slots.map((slot) => [slot.id, slot.skill])));
+    const raw = resolveMatch(side, opponentSide(opponent));
+    const preGoals = mods.mine; // 경기 전 효과·전술 효과로 미리 넣은 골
+    const denied = Math.min(mods.denyGoals, raw.theirGoals);
+    mods.mine += raw.myGoals;
+    mods.theirs += Math.max(0, raw.theirGoals - mods.denyGoals); // 득점 무효·슛 막기는 구획 비교 득점에만
+    const sectorGoals: Partial<Record<Sector, number>> = {};
+    for (const s of raw.sectors) sectorGoals[s.mine] = (sectorGoals[s.mine] ?? 0) + s.myGoals;
+    const post = (): MatchContext => ({ stage: 'post', myGoals: mods.mine, theirGoals: mods.theirs, sectorGoals, placements: sub.placements, opponentTeamId: opponent.teamId });
+
+    // 경기 전에 미뤄 둔 조건부 효과(전술 카드 등) → 경기 후 선수 효과
+    const deferred = mods.deferred;
+    mods.deferred = [];
+    for (const d of deferred) {
+      const inst = d.instanceId ? player.roster.find((r) => r.instanceId === d.instanceId) : undefined;
+      applyEffects(state, pid, [d.effect], d.source, { mods, played: sub.players, match: post(), inst }, rng);
+    }
+    applyTimedEffects(state, pid, played, 'afterMatch', { mods, played: sub.players, match: post() }, rng);
+
+    const report: MatchReport = {
+      ...raw,
+      myGoals: mods.mine,
+      theirGoals: mods.theirs,
+      outcome: mods.mine > mods.theirs ? 'win' : mods.mine < mods.theirs ? 'loss' : 'draw',
+    };
+    addLog(state, tagged('경기', `결과 ${report.myGoals}:${report.theirGoals} vs ${opponent.teamName} (${{ win: '승리', draw: '무승부', loss: '패배' }[report.outcome]})`), { actor: pid });
+    if (report.scorers.length > 0) addLog(state, tagged('경기', `득점: ${report.scorers.map((id) => tokenLabel(player, sub.players, id)).join(' · ')}`), { actor: pid });
+
+    player.matchHistory.push({ week: state.week, outcome: report.outcome, myGoals: report.myGoals, theirGoals: report.theirGoals });
+    moveLeague(state, pid, opponent.teamId, report.outcome);
+    faced.set(opponent.teamId, [...(faced.get(opponent.teamId) ?? []), pid]);
+
+    // 상시 효과: 승리할 때마다 팬덤 +1 (스폰서 추가 보너스)
+    const fandomOnWin = player.passives.filter((p) => p.passive === 'fandomOnWin').length;
+    if (report.outcome === 'win' && fandomOnWin > 0) {
+      player.resources.fandom += fandomOnWin;
+      addLog(state, tagged('경기', `승리 보너스: 팬덤 +${fandomOnWin}`), { actor: pid });
+    }
+
+    // p.24 4: 관중석 팬덤 → 돈, 출전 선수의 자원·일시적 토큰 제거
+    player.resources.money += sub.fandomInStands ?? 0;
+    if ((sub.fandomInStands ?? 0) > 0) player.resources.money += traitSum(player, 'standsBonusMoney'); // 특성: 관중 수입 +N
+    const scorerTokens = new Set(report.scorers);
+    for (const inst of played) {
+      inst.placed = {};
+      inst.stamina = 0; // 미리 올려놓고 남은 체력도 자원 마커라 함께 버린다. 미출전 선수의 것은 남는다
+      inst.tokens.strengthTemp = 0;
+      inst.tokens.weaknessTemp = 0;
+      const career = activeSide(inst).career;
+      if (career) {
+        if (inst.careerUsed.appearances < career.appearances) {
+          inst.careerUsed.appearances++;
+          inst.careerVP++;
+        }
+        const token = player.uniforms.find((u) => u.cardInstanceId === inst.instanceId);
+        if (token && scorerTokens.has(token.id) && inst.careerUsed.goals < career.goals) {
+          inst.careerUsed.goals++;
+          inst.careerVP++;
+        }
+      }
+    }
+    const effects = state.log
+      .slice(logStart)
+      .filter((e) => e.actor === pid && !e.text.startsWith('경기 결과 ') && !e.text.startsWith('득점: '))
+      .map((e) => e.text);
+    matches[pid] = {
+      opponentCardId,
+      played: sub.players,
+      placements: sub.placements,
+      skills,
+      effectCard: state.phase.effectCard[pid] ?? null,
+      report,
+      preGoals,
+      denied,
+      effects,
+      roll: null,
+      injuryDice: [],
+      decided: false,
+    };
+  }
+
+  // p.24 3: 같은 상대와 2명 이상 경기 → 비활성. p.24 6: 아무도 상대하지 않은 팀은 상대 팀 주사위
+  for (const opp of state.league.opponents) {
+    const rivals = faced.get(opp.teamId) ?? [];
+    const n = rivals.length;
+    const teamName = cards.teamName(opp.teamId);
+    if (n >= 2) {
+      opp.active = false;
+      addLog(state, tagged('리그', `${rivals.map((id) => getPlayer(state, id).name).join('·')}이(가) 같은 상대 ${teamName}와(과) 경기 → ${teamName} 마커를 비활성 면으로 뒤집음 (p.24: 다음에 아무도 상대하지 않는 주에는 주사위 이동 대신 활성 면으로 돌아옴)`));
+    } else if (n === 0) {
+      if (!opp.active) {
+        opp.active = true;
+        addLog(state, tagged('리그', `${teamName}: 비활성이라 이번 주는 이동하지 않고 활성 면으로 돌아옴`));
+      } else opp.position = Math.min(LEAGUE_MAX, opp.position + OPPONENT_DIE[rng.int(6)]!);
+    }
+  }
+  state.phase = { kind: 'friday.aftermath', current: state.firstPlayer, matches };
+}
+
+function aftermathOf(state: GameState, pid: PlayerId): MatchAftermath {
+  if (state.phase.kind !== 'friday.aftermath') throw new GameError('not in match aftermath');
+  const m = state.phase.matches[pid];
+  if (!m) throw new GameError(`unknown player: ${pid}`);
+  if (m.decided) throw new GameError('already decided');
+  requireTurn(state.phase, pid);
+  return m;
+}
+
+// p.24 5: 경기 영향 주사위
+export function rollMatchDie(state: GameState, pid: PlayerId, rng: Rng): GameState {
+  const next = structuredClone(state);
+  const m = aftermathOf(next, pid);
+  if (m.roll !== null) throw new GameError('already rolled; use reroll');
+  m.roll = rng.die(6);
+  return next;
+}
+
+export function rerollMatchDie(state: GameState, pid: PlayerId, rng: Rng): GameState {
+  const next = structuredClone(state);
+  const m = aftermathOf(next, pid);
+  if (m.roll === null) throw new GameError('roll first');
+  if (m.injuryDice.length > 0) throw new GameError('match roll already applied');
+  const player = getPlayer(next, pid);
+  // 특성(팬덤 없이 재굴림)은 주당 1회 (사용자 결정, 2026-09). 그 뒤로는 팬덤을 낸다
+  if (hasTrait(player, 'freeMatchReroll') && !player.freeRerollUsed.match) {
+    player.freeRerollUsed.match = true;
+    addLog(next, tagged('특성', '팬덤 없이 경기 영향 주사위를 다시 굴림 (이번 주 무료 재굴림 사용)'), { actor: pid });
+  } else {
+    if (player.resources.fandom < 1) throw new GameError('not enough fandom');
+    player.resources.fandom--;
+  }
+  m.roll = rng.die(6);
+  return next;
+}
+
+// 특성(전술 분석): 경기 준비 중 스카우트 보고서를 본 뒤 전술 카드 1장을 더미 맨 아래로 보내고 새로 1장 뽑는다 (경기일마다 1회)
+export function redrawTactic(state: GameState, pid: PlayerId, cardId: string): GameState {
+  const next = structuredClone(state);
+  if (next.phase.kind !== 'friday.prepare') throw new GameError('not in match preparation');
+  requireTurn(next.phase, pid);
+  if (next.phase.submitted[pid]) throw new GameError('already submitted');
+  const player = getPlayer(next, pid);
+  if (!hasTrait(player, 'redrawTactic')) throw new GameError('no such trait');
+  if (player.tacticRedrawn) throw new GameError('already redrawn this match day');
+  const idx = player.tacticCards.indexOf(cardId);
+  if (idx < 0) throw new GameError('tactic card not in hand');
+  const fresh = next.decks.tactics.shift();
+  if (!fresh) throw new GameError('tactic deck empty');
+  player.tacticCards.splice(idx, 1, fresh);
+  next.decks.tactics.push(cardId);
+  player.tacticRedrawn = true;
+  return next;
+}
+
+function chooseAmong(player: PlayerState, candidates: PlayerInstance[], effect: Effect, source: string, apply: (inst: PlayerInstance) => void): void {
+  if (candidates.length === 1) apply(candidates[0]!);
+  else if (candidates.length > 1) {
+    player.pending.push({ id: `${source}#${player.pending.length}`, effect, source, target: 'player', candidates: candidates.map((c) => c.instanceId) });
+  }
+}
+
+// p.24/p.27 부상: 12면체 눈 = 유니폼 번호. 12는 12 이상 번호 선수 중 선택. 눈은 참가자가 굴린 부상 주사위(injuryDice)에서 온다
+function injure(state: GameState, player: PlayerState, played: PlayerInstance[], count: number, face: number): void {
+  const hit = played.filter((p) => {
+    const n = activeSide(p).number;
+    return n !== undefined && (face === 12 ? n >= 12 : n === face);
+  });
+  const who = face === 12 ? '등번호 12 이상' : `등번호 ${face}번`;
+  addLog(state, tagged('부상', `12면체 주사위 ${face}: ${hit.length ? `${who} ${hit.map((h) => instanceName(h)).join(', ')} → 부상 ${count}개` : `${who} 출전 선수가 없어 아무 일도 없음`}`), { actor: player.id });
+  if (hit.length > 0) player.matchDieInjured = true; // 목표 카드 '무사고 시즌' 판정용
+  chooseAmong(player, hit, { type: 'addPlayerToken', token: 'injury', count }, '부상', (inst) => (inst.tokens.injury += count));
+}
+
+export function acceptMatchRoll(state: GameState, pid: PlayerId, rng: Rng): GameState {
+  const next = structuredClone(state);
+  const m = aftermathOf(next, pid);
+  if (m.roll === null) throw new GameError('roll first');
+  if (m.injuryDice.length > 0) throw new GameError('match roll already applied');
+  const player = getPlayer(next, pid);
+  const played = m.played.map((id) => instanceOf(player, id));
+  const injuryDice = (...counts: number[]) => {
+    m.injuryDice = counts.map((count) => ({ count, roll: null, applied: false }));
+  };
+
+  // 결과는 경기 승/무/패에 따라 다르다 (경기 보드 표)
+  switch (matchDieResult(m.report.outcome, m.roll)) {
+    case 'fandomUp':
+      moveTrack(player, 'fandom', 1);
+      break;
+    case 'train':
+      chooseAmong(player, played.filter((p) => !p.trained), { type: 'trainPlayer', count: 1 }, '경기 영향:훈련', (inst) => trainPlayer(player, inst));
+      break;
+    case 'strength':
+      chooseAmong(player, played, { type: 'addPlayerToken', token: 'strengthTemp', count: 1 }, '경기 영향:역량', (inst) => inst.tokens.strengthTemp++);
+      break;
+    case 'weakness':
+      chooseAmong(player, played, { type: 'addPlayerToken', token: 'weaknessTemp', count: 1 }, '경기 영향:약점', (inst) => inst.tokens.weaknessTemp++);
+      break;
+    // 부상류: 여기서 끝내지 않고 12면체 부상 주사위를 참가자가 굴리게 한다 (rollInjuryDie → acceptInjuryRoll)
+    case 'injury':
+      injuryDice(1);
+      break;
+    case 'severeInjury':
+      injuryDice(2);
+      break;
+    case 'doubleInjury':
+      injuryDice(1, 1);
+      break;
+    case 'doubleSevereInjury':
+      injuryDice(2, 2);
+      break;
+  }
+  if (m.injuryDice.length === 0) finishAftermath(next, m, rng);
+  return next;
+}
+
+// 이 참가자의 경기 결과 처리가 끝났다: 다음 참가자로, 전원 끝났으면 주말
+function finishAftermath(state: GameState, m: MatchAftermath, rng: Rng): void {
+  m.decided = true;
+  if (state.phase.kind !== 'friday.aftermath') return;
+  const matches = state.phase.matches;
+  const following = nextInTurn(state, (id) => matches[id]!.decided);
+  if (following) state.phase.current = following;
+  else runWeekend(state, rng);
+}
+
+// p.24·p.27 부상 주사위(12면체). 경기 영향 주사위처럼 굴림 → 팬덤 1개로 재굴림(p.12: 상대 팀 주사위만 재굴림 불가) → 적용
+function injuryDieOf(state: GameState, pid: PlayerId): { m: MatchAftermath; die: InjuryDie } {
+  const m = aftermathOf(state, pid);
+  const die = currentInjuryDie(m);
+  if (!die) throw new GameError('no injury die to roll');
+  return { m, die };
+}
+
+export function rollInjuryDie(state: GameState, pid: PlayerId, rng: Rng): GameState {
+  const next = structuredClone(state);
+  const { die } = injuryDieOf(next, pid);
+  if (die.roll !== null) throw new GameError('already rolled; use reroll');
+  die.roll = rng.die(12);
+  return next;
+}
+
+export function rerollInjuryDie(state: GameState, pid: PlayerId, rng: Rng): GameState {
+  const next = structuredClone(state);
+  const { die } = injuryDieOf(next, pid);
+  if (die.roll === null) throw new GameError('roll first');
+  const player = getPlayer(next, pid);
+  if (player.resources.fandom < 1) throw new GameError('not enough fandom');
+  player.resources.fandom--;
+  die.roll = rng.die(12);
+  return next;
+}
+
+export function acceptInjuryRoll(state: GameState, pid: PlayerId, rng: Rng): GameState {
+  const next = structuredClone(state);
+  const { m, die } = injuryDieOf(next, pid);
+  if (die.roll === null) throw new GameError('roll first');
+  const player = getPlayer(next, pid);
+  injure(
+    next,
+    player,
+    m.played.map((id) => instanceOf(player, id)),
+    die.count,
+    die.roll,
+  );
+  die.applied = true;
+  if (!currentInjuryDie(m)) finishAftermath(next, m, rng);
+  return next;
+}

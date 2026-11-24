@@ -1,0 +1,15 @@
+# Render Blueprint — GitHub 저장소를 연결하고 "New → Blueprint" 로 고르면 이 설정으로 웹 서비스가 생긴다.
+# 무료 플랜은 15분 동안 접속이 없으면 잠들고, 다음 접속 때 깨어나는 데 30초~1분 걸린다(진행 중 판은 유실됨).
+services:
+  - type: web
+    name: eleven
+    runtime: node
+    plan: free
+    region: singapore
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
