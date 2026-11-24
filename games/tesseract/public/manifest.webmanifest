@@ -1,10 +1,11 @@
 {
   "name": "테서랙트",
   "short_name": "테서랙트",
-  "start_url": "/",
+  "start_url": "./",
+  "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#14121f",
   "theme_color": "#14121f",
-  "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml" }]
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml" }]
 }

@@ -42,13 +42,20 @@ function deviceToken(): string {
   }
 }
 
-/** 서버 주소: VITE_SERVER_URL, 개발 서버(5173)면 같은 호스트의 8787, 아니면 같은 주소 */
+/**
+ * 서버 주소: VITE_SERVER_URL, 개발 서버(5173)면 같은 호스트의 8787, 아니면 현재 페이지 디렉터리의 ws.
+ * 게임 허브가 /tesseract/ 접두어 아래로 프록시하면 /tesseract/ws 로 붙는다.
+ */
 export function serverUrl(): string {
   const env = import.meta.env.VITE_SERVER_URL as string | undefined
   if (env) return env
   const scheme = location.protocol === 'https:' ? 'wss' : 'ws'
-  const host = location.port === '5173' ? `${location.hostname}:8787` : location.host
-  return `${scheme}://${host}/ws`
+  if (location.port === '5173') return `${scheme}://${location.hostname}:8787/ws`
+  const url = new URL('ws', location.href)
+  url.protocol = `${scheme}:`
+  url.search = ''
+  url.hash = ''
+  return url.toString()
 }
 
 export function useOnline(session: Session | null, setSession: (s: Session) => void): OnlineApi {
