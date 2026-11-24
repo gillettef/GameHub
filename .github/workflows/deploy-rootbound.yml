@@ -1,9 +1,9 @@
 # GameHub 모노레포로 옮긴 rootbound 워크플로(원본: games/rootbound/.github/workflows/deploy-aws.yml). games/rootbound/** 가 바뀔 때만 돈다.
-# 운영 배포: main 에 병합되면 테스트·타입 검사 통과 후 EC2(게임 공용 서버, t4g.nano, 서울)에 올리고
-# systemd astraltab-prod-server(포트 3201)를 재시작한다(AI 는 서버 안에서 돈다, 2026-11-25 Python 사이드카 제거).
-# 저장소가 비공개라 EC2가 직접 clone 하지 못하므로 git archive 로 소스를 ssh 파이프로 보내고,
-# 클라이언트 빌드(vite)는 EC2(메모리 0.5GB) 대신 러너에서 해 client/dist/prod 만 보낸다.
-# 서버에서 scripts/aws/deploy-remote.sh 가 의존성 설치·재시작·헬스체크한다. (서비스명·~/AstralTab 경로는 예전 이름 그대로)
+# 운영 배포: 테스트·타입 검사 통과 후 EC2(게임 공용 서버, t4g.nano, 서울)의 ~/rootbound 에 올린다.
+# rootbound 는 2026-11-25부터 GameHub 허브 안에서 실행된다(hub/games.json "mode": "inproc", scripts/aws/hub-entry.mjs).
+# 서버는 러너에서 esbuild 로 한 파일(server/dist/app.mjs)로 묶고, 클라이언트도 러너에서 빌드한다(EC2 메모리 0.5GB).
+# 러너에서 만든 산출물(server/dist client/dist/prod scripts/aws)만 ssh 로 올리고, 서버에서 scripts/aws/deploy-remote.sh 가
+# 예전 단독 운영(~/AstralTab, astraltab-prod-*)에서 옮기기·허브 재시작·헬스체크를 한다.
 # 일상 작업은 dev 에 푸시한다(ci.yml 만 돈다). dev → main PR 병합이 곧 운영 배포다.
 # Actions 탭의 수동 실행(workflow_dispatch)으로 재배포도 가능하다.
 #
@@ -58,8 +58,10 @@ jobs:
         run: |
           npm test
           npx tsc --noEmit -p shared && npx tsc --noEmit -p server && npx tsc --noEmit -p client
-      - name: 클라이언트 빌드 (EC2 메모리 절약을 위해 러너에서)
-        run: cd client && npx vite build --outDir dist/prod --emptyOutDir
+      - name: 빌드 (EC2 메모리 절약을 위해 러너에서) — 클라이언트, 서버 단일 번들
+        run: |
+          (cd client && npx vite build --outDir dist/prod --emptyOutDir)
+          npm run build -w @rootbound/server
 
       - uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -85,17 +87,16 @@ jobs:
           chmod 600 ~/.ssh/ci_key
           printf '%s\n' "$HOST_KEY" >> ~/.ssh/known_hosts
 
-      - name: 산출물 업로드 (git archive 소스 + client/dist/prod)
+      - name: 산출물 업로드 (server/dist, client/dist/prod, scripts/aws — server/data 는 건드리지 않는다)
         run: |
-          git archive HEAD:games/rootbound | ssh -i ~/.ssh/ci_key ec2-user@${{ secrets.EC2_HOST }} \
-            "mkdir -p ~/AstralTab && tar -x -C ~/AstralTab"
-          tar -c -C client/dist prod | ssh -i ~/.ssh/ci_key ec2-user@${{ secrets.EC2_HOST }} \
-            "rm -rf ~/AstralTab/client/dist/prod && mkdir -p ~/AstralTab/client/dist && tar -x -C ~/AstralTab/client/dist"
+          tar -c server/dist client/dist/prod scripts/aws \
+            | ssh -i ~/.ssh/ci_key ec2-user@${{ secrets.EC2_HOST }} \
+              "rm -rf ~/rootbound/server/dist ~/rootbound/client/dist ~/rootbound/scripts && mkdir -p ~/rootbound && tar -x -C ~/rootbound"
 
       - name: 재시작 + 헬스체크
         run: |
           ssh -i ~/.ssh/ci_key ec2-user@${{ secrets.EC2_HOST }} \
-            "bash ~/AstralTab/scripts/aws/deploy-remote.sh"
+            "bash ~/rootbound/scripts/aws/deploy-remote.sh"
 
       - name: 임시 SSH 허용 제거
         working-directory: ${{ github.workspace }}  # checkout 전이거나 checkout 실패 시에도 돌아야 하므로 게임 폴더가 아닌 루트에서
