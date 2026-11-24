@@ -1,0 +1,17 @@
+[
+  { "slug": "tesseract",    "name": "테서랙트",     "port": 8092, "players": "1~4인", "tagline": "주사위 퍼즐", "online": true,  "bot": true },
+  { "slug": "doubleagent",  "name": "더블 에이전트", "port": 8091, "players": "2~3인", "tagline": "축구 에이전트 협상 카드게임", "online": true, "bot": true },
+  { "slug": "election",     "name": "유세 대작전",   "port": 8096, "players": "2인",   "tagline": "대통령 선거 만칼라", "online": true, "bot": true },
+  { "slug": "neoterra",     "name": "네오테라",     "port": 8094, "players": "2~4인", "tagline": "새 행성 개척 문명 카드게임", "online": true, "bot": true },
+  { "slug": "magicacademy", "name": "마법학교",     "port": 8080, "players": "2~4인", "tagline": "아기자기한 마법 학교", "online": true, "bot": true },
+  { "slug": "rootbound",    "name": "루트바운드",   "port": 3201, "players": "1~4인", "tagline": "정원 땅따먹기", "online": true, "bot": true },
+  { "slug": "eleven",       "name": "일레븐",       "port": 3001, "players": "1~4인", "tagline": "축구 구단 매니지먼트", "online": true, "bot": true },
+  { "slug": "proxymind",    "name": "프록시마인드", "port": 8105, "players": "3~5인", "tagline": "남이 짠 두뇌로 싸우는 로봇 아레나", "online": true, "bot": true },
+  { "slug": "smilepark",    "name": "스마일파크",   "port": 8090, "players": "2~5인", "tagline": "놀이공원 경영", "online": false, "bot": true },
+  { "slug": "crease",       "name": "크리스",       "port": 8101, "players": "2~4인", "tagline": "접는 보드 경주", "online": true, "bot": true },
+  { "slug": "hearsay",      "name": "히어세이",     "port": 8103, "players": "4~6인", "tagline": "집단 기억으로 역사 정하기", "online": true, "bot": true },
+  { "slug": "lastgrain",    "name": "라스트그레인", "port": 8104, "players": "2인",   "tagline": "수명이 붙은 모래병 전술", "online": true, "bot": true },
+  { "slug": "lightcone",    "name": "라이트콘",     "port": 8099, "players": "2인",   "tagline": "빛의 속도 지연 성간 대결", "online": true, "bot": true },
+  { "slug": "retrocause",   "name": "레트로코즈",   "port": 8100, "players": "3~5인", "tagline": "결말에서 시작하는 역인과 추리", "online": true, "bot": true },
+  { "slug": "sightline",    "name": "사이트라인",   "port": 8102, "players": "3~4인", "tagline": "앉은 자리가 곧 시야", "online": true, "bot": true }
+]
