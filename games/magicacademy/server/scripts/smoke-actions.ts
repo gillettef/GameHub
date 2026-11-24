@@ -19,6 +19,9 @@ export function nextAction(game: PublicGameState, playerId: string): SmokeAction
     const mine = roll.entries.find((e) => !e.confirmed);
     if (mine?.playerId !== playerId) return null;
     if (mine.dice === null) return { key: `${base}:roll:${roll.kind}:${roll.title}`, message: { type: "roll_dice" } };
+    // 63절: 낼 수 있는 노트가 있으면 한 장 낸다
+    const note = (me.notes ?? []).find((s) => mine.noteStats?.includes(s));
+    if (note) return { key: `${base}:note:${roll.title}:${(me.notes ?? []).length}`, message: { type: "play_note", stat: note } };
     return { key: `${base}:confirm:${roll.kind}:${roll.title}`, message: { type: "confirm_roll" } };
   }
 
@@ -32,7 +35,9 @@ export function nextAction(game: PublicGameState, playerId: string): SmokeAction
   if (game.phase === "class") {
     if (game.classPickOrder[game.classPickPointer] !== playerId) return null;
     const card = game.classMarket.find((c) => canTakeClassCard(me, c));
-    return { key: `${base}:class:${game.classPickPointer}`, message: { type: "take_class_card", cardId: card?.id ?? null } };
+    // 63절: 노트 칸이 남으면 번갈아 노트로 보관한다
+    const mode = game.rules.skillRules && (me.notes ?? []).length < me.intelligence && game.classPickPointer % 2 === 0 ? "note" : "learn";
+    return { key: `${base}:class:${game.classPickPointer}`, message: { type: "take_class_card", cardId: card?.id ?? null, mode } };
   }
 
   // 공개된 카드(구역 카드·마법 겨루기 마도서) 중 비용을 낼 수 있는 카드를 고른다 (없으면 넘어감)

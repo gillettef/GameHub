@@ -1,4 +1,4 @@
-import type { ActivityId, KeptToken, PublicGameState } from "./game/types.js";
+import type { ActivityId, StatKey, KeptToken, PublicGameState } from "./game/types.js";
 
 export interface RoomPlayerInfo {
   id: string;
@@ -24,7 +24,10 @@ export type ClientMessage =
   // 리액션 이모지 (정해진 목록만 허용)
   | { type: "emoji"; emoji: string }
   // 2주차: 공개된 수업카드 중 1장을 가져간다 (cardId가 null이면 가져가지 않고 넘어간다)
-  | { type: "take_class_card"; cardId: string | null }
+  // 63절: mode "learn" = 배우기(능력치 +1), "note" = 노트로 보관 (생략하면 배우기)
+  | { type: "take_class_card"; cardId: string | null; mode?: "learn" | "note" }
+  // 63절: 굴린 뒤 그 과목 노트 1장을 낸다 (+noteBonus)
+  | { type: "play_note"; stat: StatKey }
   // assist: 보조 능력치 기운(마법 경연 체력기운, 설정으로 켰을 때만)을 낼 개수
   | { type: "roll_dice"; diceCount?: number; assist?: number }
   // 시험 달 1주차 벼락치기: from 기운 1개를 시험 과목 기운 1개로 바꾼다 (null이면 하지 않고 넘어간다). 선부터 한 명씩

@@ -28,6 +28,15 @@ import {
   projectedScore,
   labTargetValue,
   pickableCards,
+  ACTIVITY_STAT,
+  bestHelper,
+  canKeepNote,
+  companionLimit,
+  creatureHelpOf,
+  playNote,
+  skillDice,
+  skillRerolls,
+  skillTargets,
 } from "./engine.js";
 import {
   effectiveStat,
@@ -178,6 +187,7 @@ const pickOne = <T,>(items: T[]): T => items[Math.floor(Math.random() * items.le
 // 정규수업 (42절): 공개된 수업카드 중 이번 달 활동에 쓸 기운을 주는 과목을 고른다. 카드의 가치 = 실제로 늘어나는 기운의 양 × (그 기운을 연료로 쓰는 활동에 대한 선호 + 키우려는 능력치 가중치).
 // 심화 과목은 능력치가 모자라면 고를 수 없다
 export function playClassTurn(state: GameState, playerId: string, strategy: BotStrategy): void {
+  if (BALANCE.skillRules) return playSkillClassTurn(state, playerId, strategy);
   const p = state.players[playerId];
   const bias = biasOf(state, strategy);
   const fuelPref = (kind: KeptToken) => ACTIVITIES.filter((a) => BALANCE.rollFuel[a] === kind && !BALANCE.disabledActivities.includes(a)).reduce((s, a) => s + bias[a], 0);
@@ -207,6 +217,7 @@ export function playCramTurn(state: GameState, playerId: string): void {
 
 // 50절: 공개된 구역 카드 중 내가 가져갈 수 있는 카드의 가치. 이미 누가 들어간 구역이면 먼저 온 사람이 가장 좋은 카드를 가져간다고 보고 남는 카드로 계산한다
 function zoneOutlook(state: GameState, strategy: BotStrategy, player: PlayerGameState, activityId: ActivityId): number {
+  if (BALANCE.skillRules) return skillZoneOutlook(state, strategy, player, activityId);
   // 마법 경연(54절): 참가하면 언제나 주문력 성장과 학점을 받는다. 다른 구역의 가치(카드 효과)에는 성장 몫이 들어 있지 않아 같은 눈높이가 되도록 절반으로 본다
   // (1이면 봇이 마법 경연에 몰려 마법 겨루기가 판당 1.2회로 줄고 전략 범위가 7~39%로 벌어졌다)
   if (activityId === "tournament" && !BALANCE.tournamentCards)
@@ -281,6 +292,7 @@ export function chooseActivityAction(
   };
   // 활동의 연료 기운이 넉넉할수록 끌린다 (수업에서 기운을 얻은 활동을 하게 된다. 기운이 없으면 공짜 주사위 1개라 덜 끌린다)
   const energy = (a: ActivityId) => {
+    if (BALANCE.skillRules) return 1;
     const t = tokensOf(p, BALANCE.rollFuel[a]);
     return t >= 3 ? 1 : t >= 1 ? 0.75 : 0.4;
   };
@@ -370,6 +382,7 @@ export function botAssist(state: GameState, playerId: string): number {
 export function rerollLowDice(state: GameState, playerId: string, strategy: BotStrategy = BOT_PERSONALITIES[0]): void {
   const pending = state.pendingRoll;
   const entry = pending?.entries.find((e) => e.playerId === playerId);
+  if (BALANCE.skillRules && pending && pending.kind !== "first" && entry?.dice && !entry.confirmed) return playSkillRoll(state, playerId, strategy);
   if (!pending || pending.kind === "first" || !entry?.dice || !BALANCE.reroll) return;
   if (pending.faces) return steerDirectional(state, playerId, strategy);
   const p = state.players[playerId];
@@ -458,6 +471,7 @@ export function choosePick(state: GameState, strategy: BotStrategy): string | nu
   if (options.length === 0) return null;
   if (strategy.random) return pickOne(options).id;
   const value = (card: (typeof cards)[number]): number => {
+    if (BALANCE.skillRules && pick.activityId !== "tournament") return skillCardValue(state, strategy, player, pick.activityId as "creature" | "lab" | "exploration", card);
     if (BALANCE.directionalResults) {
       const v = directionalCardValue(state, strategy, player, pick.activityId as "creature" | "lab" | "exploration", card as CreatureCard | LabCard | ExplorationCard);
       return pick.activityId === "lab" ? v - (card as LabCard).cost * 0.3 : v;
@@ -476,4 +490,199 @@ export function choosePick(state: GameState, strategy: BotStrategy): string | nu
     }
   };
   return [...options].sort((a, b) => value(b) - value(a))[0].id;
+}
+
+// ── 63절(skillRules): 주문력 주사위 + 분야 능력치, 체력만큼 다시 굴리기, 지력만큼 노트, 매력만큼 마법생물 ──
+
+// 판정 성공 확률 (주사위 n개, 다시 굴리기 r번, 합 need 이상): "모자라면 가장 낮은 주사위부터 다시 굴린다"는 방식으로 미리 굴려 본 값.
+// 게임의 난수를 건드리지 않도록 고정 시드의 따로 된 난수를 쓴다
+const chanceCache = new Map<string, number>();
+let mcSeed = 12345;
+const mcRandom = () => {
+  mcSeed = (mcSeed + 0x6d2b79f5) | 0;
+  let t = Math.imul(mcSeed ^ (mcSeed >>> 15), 1 | mcSeed);
+  t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+  return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+};
+const mcDie = () => BALANCE.dieFaces[Math.floor(mcRandom() * BALANCE.dieFaces.length)];
+export function skillChance(n: number, r: number, need: number): number {
+  if (need <= n) return 1;
+  if (need > n * Math.max(...BALANCE.dieFaces)) return 0;
+  const key = `${n},${r},${need}`;
+  const hit = chanceCache.get(key);
+  if (hit !== undefined) return hit;
+  const trials = 1500;
+  let ok = 0;
+  for (let k = 0; k < trials; k++) {
+    const dice = Array.from({ length: n }, mcDie);
+    let s = dice.reduce((a, b) => a + b, 0);
+    for (let left = r; left > 0 && s < need; left--) {
+      const i = dice.indexOf(Math.min(...dice));
+      if (dice[i] >= 6) break;
+      const d = mcDie();
+      s += d - dice[i];
+      dice[i] = d;
+    }
+    if (s >= need) ok++;
+  }
+  const p = ok / trials;
+  chanceCache.set(key, p);
+  return p;
+}
+
+// 판정에 더해지는 값: 그 분야 능력치 + 곁의 생물 + (노트가 있으면) 노트 한 장
+function skillBonus(player: PlayerGameState, activity: "creature" | "lab" | "exploration" | "duel"): number {
+  const stat = ACTIVITY_STAT[activity];
+  const helper = bestHelper(player, activity);
+  const note = (player.notes ?? []).includes(stat) ? BALANCE.noteBonus : 0;
+  return (activity === "duel" ? 0 : effectiveStat(player, stat)) + (helper ? creatureHelpOf(helper) : 0) + note;
+}
+
+// 성공 보상(그 분야 능력치 +1·학점 +1)의 가치
+const successValue = (state: GameState, strategy: BotStrategy, player: PlayerGameState, stat: StatKey) =>
+  effectValue(state, strategy, { stats: { [stat]: BALANCE.growthAmount }, credit: BALANCE.growthCredit }, player);
+
+// 마법생물이 곁에 오는 가치: 도움(자주 하는 활동일수록) + 세트를 채우면 학점. 이미 꽉 찼는데 더 약한 생물이면 거의 없다
+function companionValue(state: GameState, strategy: BotStrategy, player: PlayerGameState, card: CreatureCard): number {
+  const bias = biasOf(state, strategy);
+  const helps: ActivityId = card.element === "sky" ? "duel" : card.element === "land" ? "exploration" : "lab";
+  let v = creatureHelpOf(card) * (0.8 + 0.3 * bias[helps] + 0.3 * bias.creature);
+  const limit = companionLimit(player);
+  const full = player.creatures.length >= limit;
+  const weakest = Math.min(...player.creatures.map(creatureHelpOf), Infinity);
+  if (full && creatureHelpOf(card) <= weakest) v *= 0.3;
+  const hasEl = player.creatures.some((c) => c.element === card.element);
+  if (!player.setBonus && !hasEl && limit >= 3) v += BALANCE.skillSetCredit * (player.creatures.length >= 1 ? 1.2 : 0.6);
+  return v;
+}
+
+type OfferedCardLike = CreatureCard | LabCard | ExplorationCard | TournamentCard | { id: string; name: string; description: string };
+
+// 공개된 활동 카드 한 장의 기대값 = 성공 확률 × 성공 보상 + 대성공 확률 × 카드 보상
+export function skillCardValue(state: GameState, strategy: BotStrategy, player: PlayerGameState, activity: "creature" | "lab" | "exploration", card: OfferedCardLike): number {
+  const t = skillTargets(activity, card as CreatureCard, state.round);
+  const n = skillDice(state, player);
+  const r = skillRerolls(state, player);
+  const bonus = skillBonus(player, activity);
+  const pS = skillChance(n, r, t.success - bonus);
+  const pG = skillChance(n, r, t.great - bonus);
+  if (activity === "creature" && BALANCE.creatureOnSuccess)
+    return pS * (successValue(state, strategy, player, "charm") + companionValue(state, strategy, player, card as CreatureCard)) + pG * BALANCE.creatureGreatCredit * 3;
+  const reward =
+    activity === "creature" ? companionValue(state, strategy, player, card as CreatureCard) : effectValue(state, strategy, activity === "lab" ? (card as LabCard).effect : (card as ExplorationCard).success, player);
+  return pS * successValue(state, strategy, player, ACTIVITY_STAT[activity]) + pG * reward;
+}
+
+// 마법 겨루기: 지목할 수 있는 친구 중 막기가 가장 약한 친구를 이길 확률 × (주문력 +1·학점 +1)
+function skillDuelValue(state: GameState, strategy: BotStrategy, player: PlayerGameState): number {
+  const targets = duelTargets(state, player.id);
+  if (targets.length === 0) return 0;
+  const n = skillDice(state, player);
+  const r = skillRerolls(state, player);
+  const best = Math.max(
+    ...targets.map((id) => {
+      const o = state.players[id];
+      const h = bestHelper(o, "duel");
+      const defMean = skillDice(state, o) * 3.5 + (h ? creatureHelpOf(h) : 0) + BALANCE.skillDefenderBonus;
+      return skillChance(n, r, Math.round(defMean + 1) - skillBonus(player, "duel"));
+    }),
+  );
+  return best * effectValue(state, strategy, { stats: { spellPower: BALANCE.growthAmount }, credit: BALANCE.skillDuelCredit }, player);
+}
+
+function skillZoneOutlook(state: GameState, strategy: BotStrategy, player: PlayerGameState, activityId: ActivityId): number {
+  const taken = takenNow(state, activityId);
+  if (activityId === "duel") return (state.hidden.offers.duel?.length ?? 0) <= taken ? 0 : skillDuelValue(state, strategy, player);
+  if (activityId === "tournament") return 0;
+  const cards = state.hidden.offers[activityId] ?? [];
+  const values = cards.map((c) => skillCardValue(state, strategy, player, activityId as "creature" | "lab" | "exploration", c)).sort((a, b) => b - a);
+  return Math.max(0, values[taken] ?? 0);
+}
+
+// 다음 시험이 2개월 안이면 그 과목 (노트를 아껴 둔다)
+function examSoonStats(state: GameState): StatKey[] {
+  const isMid = state.round <= BALANCE.midtermRound;
+  const exam = isMid ? state.exams.midterm : state.exams.final;
+  const examRound = isMid ? BALANCE.midtermRound : BALANCE.totalRounds;
+  if (!exam || examRound - state.round > 2) return [];
+  return [exam.diceStat, ...(exam.bonusStat ? [exam.bonusStat] : [])];
+}
+
+// 정규수업: 성향·시험·이번 달 계획에 맞는 과목을 고르고, 시험이 가까운 과목이거나 이번 달 할 활동의 과목이면 가끔 노트로 남긴다
+function playSkillClassTurn(state: GameState, playerId: string, strategy: BotStrategy): void {
+  const p = state.players[playerId];
+  const options = state.classMarket;
+  if (options.length === 0) return takeClassCard(state, playerId, null);
+  if (strategy.random) return takeClassCard(state, playerId, pickOne(options).id, Math.random() < 0.3 && canKeepNote(p) ? "note" : "learn");
+  const plan = plannedActivity(state, p, strategy);
+  const planStat = plan === "tournament" ? null : ACTIVITY_STAT[plan];
+  const w = weightsOf(state, strategy, p);
+  const value = (c: (typeof options)[number]) => c.gain * w[c.stat] * examWeight(state, c.stat) * (planStat === c.stat ? 1.3 : 1);
+  const card = [...options].sort((a, b) => value(b) - value(a))[0];
+  const soon = examSoonStats(state).includes(card.stat);
+  const noteForPlan = planStat === card.stat && !(p.notes ?? []).includes(card.stat) && Math.random() < NOTE_FOR_PLAN;
+  takeClassCard(state, playerId, card.id, canKeepNote(p) && (soon || noteForPlan) ? "note" : "learn");
+}
+const NOTE_FOR_PLAN = Number(process.env.BOT_NOTE_PLAN ?? 0.35);
+
+// 굴린 뒤: 모자라면 가장 낮은 주사위부터 다시 굴리고, 그래도 모자라면 노트로 메운다. 이미 성공했으면 대성공을 노릴 만할 때만 다시 굴린다
+// (새 눈을 따라야 해서 성공을 놓칠 수 있다). 시험이 가까운 과목의 노트는 성공을 지킬 때만 쓴다
+function playSkillRoll(state: GameState, playerId: string, strategy: BotStrategy): void {
+  const pending = state.pendingRoll!;
+  const entry = pending.entries.find((e) => e.playerId === playerId)!;
+  const p = state.players[playerId];
+  const total = () => entry.dice!.reduce((a, b) => a + b, 0) + (entry.bonus ?? 0);
+  const usable = (keep: boolean) => (p.notes ?? []).filter((s) => entry.noteStats?.includes(s) && (!keep || pending.kind === "exam" || !examSoonStats(state).includes(s)));
+  const lowest = () => entry.dice!.indexOf(Math.min(...entry.dice!));
+  const reroll = (i: number) => rerollDice(state, playerId, [i]);
+  const faceAtLeast = (x: number) => Math.min(1, Math.max(0, (7 - x) / 6));
+  if (pending.kind === "exam") {
+    while ((entry.rerollsLeft ?? 0) > 0 && entry.dice![lowest()] <= 3) reroll(lowest());
+    for (const s of usable(false)) playNote(state, playerId, s);
+    return;
+  }
+  const success = entry.targets?.success ?? 0;
+  const great = entry.targets?.great;
+  const ctx = state.hidden.roll;
+  const activity = ctx?.kind === "creature" || ctx?.kind === "lab" || ctx?.kind === "exploration" ? ctx.kind : null;
+  const stat = activity ? ACTIVITY_STAT[activity] : "spellPower";
+  let vS = successValue(state, strategy, p, stat);
+  let vG = 0;
+  if (activity === "creature" && BALANCE.creatureOnSuccess && ctx?.kind === "creature") {
+    vS += companionValue(state, strategy, p, ctx.card);
+    vG = BALANCE.creatureGreatCredit * 3;
+  } else if (activity && great !== undefined && ctx && "card" in ctx) {
+    vG = activity === "creature" ? companionValue(state, strategy, p, ctx.card as CreatureCard) : effectValue(state, strategy, activity === "lab" ? (ctx.card as LabCard).effect : (ctx.card as ExplorationCard).success, p);
+  }
+  for (let guard = 0; guard < 30; guard++) {
+    const t = total();
+    if (great !== undefined && t >= great) return;
+    if (t < success) {
+      if ((entry.rerollsLeft ?? 0) > 0 && entry.dice![lowest()] < 6) {
+        reroll(lowest());
+        continue;
+      }
+      const notes = usable(false);
+      if (notes.length > 0 && t + BALANCE.noteBonus * notes.length >= success) {
+        playNote(state, playerId, notes[0]);
+        continue;
+      }
+      return;
+    }
+    if (great === undefined) return;
+    const notes = usable(true);
+    if (notes.length > 0 && t + BALANCE.noteBonus * notes.length >= great && vG >= 1) {
+      playNote(state, playerId, notes[0]);
+      continue;
+    }
+    if ((entry.rerollsLeft ?? 0) <= 0) return;
+    const d = entry.dice![lowest()];
+    const pGreat = faceAtLeast(d + great - t);
+    const pFail = 1 - faceAtLeast(d - (t - success));
+    if (pGreat * vG > pFail * vS) {
+      reroll(lowest());
+      continue;
+    }
+    return;
+  }
 }

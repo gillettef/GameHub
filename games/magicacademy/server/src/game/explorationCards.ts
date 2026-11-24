@@ -3,6 +3,7 @@
 // 판정이 없는 카드는 무조건 성공합니다. 기운은 바로 받거나 잃습니다(0 아래로는 내려가지 않음, 51절에서 "다음 달 기운"·임시 능력치를 없앴다).
 // 탐험은 가장 하이리스크 하이리턴인 활동입니다 — 한방 카드(6장)는 성공 보상이 크고 실패 손해도 크며, 뒤처진 플레이어의 역전 수단입니다.
 // 카드 구성과 수치는 초안이며 플레이테스트 후 조정합니다. 20장.
+import { BALANCE } from "./config.js";
 import type { CardEffect, ExplorationCard } from "./types.js";
 
 type Def = Omit<ExplorationCard, "id" | "failure"> & { failure?: CardEffect };
@@ -39,7 +40,10 @@ const STAT_NAME = { intelligence: "지력", stamina: "체력", charm: "매력", 
 export function describeEffect(e: CardEffect): string {
   const sign = (n: number) => (n > 0 ? `+${n}` : `${n}`);
   const parts: string[] = [];
-  const TOKEN = { intelligence: "지력기운", stamina: "체력기운", charm: "매력기운", mana: "마나기운" } as const;
+  // 63절(기운 없음): 받는 기운은 그 과목 노트가 된다
+  const TOKEN = BALANCE.skillRules
+    ? ({ intelligence: "지력 노트", stamina: "체력 노트", charm: "매력 노트", mana: "주문력 노트" } as const)
+    : ({ intelligence: "지력기운", stamina: "체력기운", charm: "매력기운", mana: "마나기운" } as const);
   for (const [k, v] of Object.entries(e.tokens ?? {})) parts.push(`${TOKEN[k as keyof typeof TOKEN]} ${sign(v)}`);
   for (const [k, v] of Object.entries(e.stats ?? {})) parts.push(`${STAT_NAME[k as keyof typeof STAT_NAME]} 영구 ${sign(v)}`);
   for (const [k, v] of Object.entries(e.tempStats ?? {})) parts.push(`${STAT_NAME[k as keyof typeof STAT_NAME]} 임시 ${sign(v)}`);
