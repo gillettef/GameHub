@@ -13,7 +13,7 @@ export const START_RES: Res = { food: 2, prod: 2, energy: 0, sci: 2, culture: 0 
  */
 export const SEAT_BONUS: Record<number, Partial<Res>[]> = {
   2: [{ prod: 1, sci: 1 }, {}],
-  3: [{}, { prod: 2 }, { prod: 1, sci: 1 }],
+  3: [{}, { prod: 1, sci: 1 }, { prod: 2 }],
   4: [{}, { prod: 1, sci: 1 }, { prod: 1 }, { prod: 2, sci: 1 }],
 };
 export const FIRST_ROUND_COMMAND = [1, 2, 3, 3];
@@ -26,7 +26,7 @@ export const QUEST_ROW_SIZE = 5;
 
 // 시대 전환: 현재 고리 줄기 합 ≥ 인원 × ERA_TRUNK_PER_PLAYER[현재 고리] (인덱스 = 고리)
 // 기준 × 인원은 올림한다(소수 기준을 쓸 수 있게)
-export const ERA_TRUNK_PER_PLAYER = [0, 3, 4, 4];
+export const ERA_TRUNK_PER_PLAYER = [0, 3, 3.5, 4];
 // 안전장치: 한 시대가 이 라운드 수만큼 지나면 넘어간다
 export const ERA_MAX_ROUNDS = 8;
 
