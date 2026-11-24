@@ -1,0 +1,15 @@
+{
+  "name": "HEARSAY 히어세이",
+  "short_name": "HEARSAY",
+  "description": "기억과 증언으로 역사를 정하는 보드게임",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f6f0e4",
+  "theme_color": "#f6f0e4",
+  "lang": "ko",
+  "icons": [
+    { "src": "/icon-180.png", "sizes": "180x180", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

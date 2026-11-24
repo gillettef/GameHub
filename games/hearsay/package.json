@@ -1,0 +1,13 @@
+{
+  "name": "hearsay",
+  "version": "0.5.0",
+  "private": true,
+  "description": "HEARSAY 웹 시뮬레이터 (봇 대전·온라인 대전)",
+  "type": "module",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "test": "node --test test/*.test.mjs",
+    "build": "node scripts/build.mjs",
+    "start": "node scripts/build.mjs && node scripts/aws/serve.mjs"
+  }
+}
