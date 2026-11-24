@@ -1,0 +1,248 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>더블 에이전트 인쇄 키트</title><style>
+@page { size: A4; margin: 10mm; }
+body { font-family: 'Noto Sans KR', 'Apple SD Gothic Neo', sans-serif; color: #111; margin: 0; }
+.gt { font-size: 14px; margin: 6mm 0 2mm; break-after: avoid; }
+.grid { display: grid; grid-template-columns: repeat(3, 63mm); gap: 0; }
+.card { width: 63mm; height: 88mm; box-sizing: border-box; border: 0.3mm dashed #999; padding: 4mm; display: flex; flex-direction: column; break-inside: avoid; }
+.card .hd { display: flex; justify-content: space-between; font-size: 11px; }
+.card .base { font-size: 22px; font-weight: 900; }
+.card .nm { font-size: 20px; font-weight: 800; margin-top: 8mm; }
+.card .tr { font-size: 12px; margin-top: 2mm; color: #333; }
+.card .cost { font-size: 18px; font-weight: 800; margin-top: 6mm; }
+.card .ft { margin-top: auto; font-size: 11px; line-height: 1.4; }
+.pl.FW .hd b { color: #c0392b; } .pl.MF .hd b { color: #2471a3; } .pl.DF .hd b { color: #1e8449; } .pl.GK .hd b { color: #b9770e; }
+.sc { background: #fdf6e3; } .nd { background: #eef7f1; } .ev { background: #f4f6fb; } .ev.dl { background: #fde2e2; }
+.dm, .sm { border-left: 4mm solid var(--c); }
+.dm .big, .sm .big { font-size: 40px; font-weight: 900; text-align: center; margin-top: 10mm; }
+.sm { height: 44mm; } .sm .big { margin-top: 1mm; font-size: 28px; }
+.sheet { break-before: page; }
+table { border-collapse: collapse; width: 100%; margin-bottom: 6mm; font-size: 12px; }
+td, th { border: 0.3mm solid #555; padding: 2.5mm; text-align: center; }
+.memo td:first-child { width: 45mm; text-align: left; } .memo td { height: 9mm; }
+.slots { display: grid; grid-template-columns: repeat(4, 1fr); gap: 3mm; } .slots.six { grid-template-columns: repeat(3, 1fr); }
+.slot { border: 0.4mm solid #333; height: 92mm; display: flex; align-items: flex-start; justify-content: center; font-size: 22px; font-weight: 900; padding-top: 2mm; }
+.slots .slot { height: 60mm; }
+</style></head><body>
+<h1>더블 에이전트 — 종이 프로토타입</h1>
+<p>점선을 따라 자르세요. 규칙은 docs/rulebook.md. 선수·구단·이벤트 수치는 엔진(src/core/data.ts)에서 생성되었습니다.</p>
+<h2 class="gt">선수 카드 (36장)</h2><div class="grid"><div class="card pl FW"><div class="hd"><b>FW</b><span class="base">4</span></div>
+  <div class="nm">강태오</div><div class="tr">스타</div><div class="cost">몸값 8억</div>
+  <div class="ft">오른쪽 위 숫자 = 기본 수수료 4억</div></div><div class="card pl MF"><div class="hd"><b>MF</b><span class="base">3</span></div>
+  <div class="nm">윤시후</div><div class="tr">플레이메이커</div><div class="cost">몸값 6억</div>
+  <div class="ft">오른쪽 위 숫자 = 기본 수수료 3억</div></div><div class="card pl DF"><div class="hd"><b>DF</b><span class="base">2</span></div>
+  <div class="nm">박도윤</div><div class="tr">베테랑</div><div class="cost">몸값 4억</div>
+  <div class="ft">오른쪽 위 숫자 = 기본 수수료 2억</div></div><div class="card pl FW"><div class="hd"><b>FW</b><span class="base">2</span></div>
+  <div class="nm">최준서</div><div class="tr">유망주</div><div class="cost">몸값 3억</div>
+  <div class="ft">오른쪽 위 숫자 = 기본 수수료 2억</div></div><div class="card pl GK"><div class="hd"><b>GK</b><span class="base">2</span></div>
+  <div class="nm">김민재</div><div class="tr">클린시트</div><div class="cost">몸값 4억</div>
+  <div class="ft">오른쪽 위 숫자 = 기본 수수료 2억</div></div><div class="card pl MF"><div class="hd"><b>MF</b><span class="base">2</span></div>
+  <div class="nm">이하준</div><div class="tr">유망주</div><div class="cost">몸값 3억</div>
+  <div class="ft">오른쪽 위 숫자 = 기본 수수료 2억</div></div><div class="card pl DF"><div class="hd"><b>DF</b><span class="base">2</span></div>
+  <div class="nm">정우진</div><div class="tr">멀티플레이어</div><div class="cost">몸값 2억</div>
+  <div class="ft">오른쪽 위 숫자 = 기본 수수료 2억</div></div><div class="card pl FW"><div class="hd"><b>FW</b><span class="base">4</span></div>
+  <div class="nm">한승우</div><div class="tr">스타</div><div class="cost">몸값 7억</div>
+  <div class="ft">오른쪽 위 숫자 = 기본 수수료 4억</div></div><div class="card pl MF"><div class="hd"><b>MF</b><span class="base">3</span></div>
+  <div class="nm">오지환</div><div class="tr">플레이메이커</div><div class="cost">몸값 5억</div>
+  <div class="ft">오른쪽 위 숫자 = 기본 수수료 3억</div></div><div class="card pl DF"><div class="hd"><b>DF</b><span class="base">2</span></div>
+  <div class="nm">문현수</div><div class="tr">베테랑</div><div class="cost">몸값 3억</div>
+  <div class="ft">오른쪽 위 숫자 = 기본 수수료 2억</div></div><div class="card pl FW"><div class="hd"><b>FW</b><span class="base">2</span></div>
+  <div class="nm">임재원</div><div class="tr">유망주</div><div class="cost">몸값 2억</div>
+  <div class="ft">오른쪽 위 숫자 = 기본 수수료 2억</div></div><div class="card pl GK"><div class="hd"><b>GK</b><span class="base">2</span></div>
+  <div class="nm">백승민</div><div class="tr">클린시트</div><div class="cost">몸값 2억</div>
+  <div class="ft">오른쪽 위 숫자 = 기본 수수료 2억</div></div><div class="card pl MF"><div class="hd"><b>MF</b><span class="base">3</span></div>
+  <div class="nm">서강민</div><div class="tr">스타</div><div class="cost">몸값 6억</div>
+  <div class="ft">오른쪽 위 숫자 = 기본 수수료 3억</div></div><div class="card pl DF"><div class="hd"><b>DF</b><span class="base">2</span></div>
+  <div class="nm">조현우</div><div class="tr">멀티플레이어</div><div class="cost">몸값 2억</div>
+  <div class="ft">오른쪽 위 숫자 = 기본 수수료 2억</div></div><div class="card pl FW"><div class="hd"><b>FW</b><span class="base">3</span></div>
+  <div class="nm">장민호</div><div class="tr">베테랑</div><div class="cost">몸값 5억</div>
+  <div class="ft">오른쪽 위 숫자 = 기본 수수료 3억</div></div><div class="card pl MF"><div class="hd"><b>MF</b><span class="base">2</span></div>
+  <div class="nm">남기훈</div><div class="tr">유망주</div><div class="cost">몸값 2억</div>
+  <div class="ft">오른쪽 위 숫자 = 기본 수수료 2억</div></div><div class="card pl DF"><div class="hd"><b>DF</b><span class="base">3</span></div>
+  <div class="nm">유태양</div><div class="tr">스타</div><div class="cost">몸값 6억</div>
+  <div class="ft">오른쪽 위 숫자 = 기본 수수료 3억</div></div><div class="card pl GK"><div class="hd"><b>GK</b><span class="base">2</span></div>
+  <div class="nm">신도현</div><div class="tr">클린시트</div><div class="cost">몸값 3억</div>
+  <div class="ft">오른쪽 위 숫자 = 기본 수수료 2억</div></div><div class="card pl MF"><div class="hd"><b>MF</b><span class="base">2</span></div>
+  <div class="nm">차은결</div><div class="tr">플레이메이커</div><div class="cost">몸값 2억</div>
+  <div class="ft">오른쪽 위 숫자 = 기본 수수료 2억</div></div><div class="card pl FW"><div class="hd"><b>FW</b><span class="base">3</span></div>
+  <div class="nm">배준혁</div><div class="tr">스타</div><div class="cost">몸값 6억</div>
+  <div class="ft">오른쪽 위 숫자 = 기본 수수료 3억</div></div><div class="card pl FW"><div class="hd"><b>FW</b><span class="base">3</span></div>
+  <div class="nm">송지호</div><div class="tr">베테랑</div><div class="cost">몸값 5억</div>
+  <div class="ft">오른쪽 위 숫자 = 기본 수수료 3억</div></div><div class="card pl MF"><div class="hd"><b>MF</b><span class="base">2</span></div>
+  <div class="nm">권태민</div><div class="tr">멀티플레이어</div><div class="cost">몸값 4억</div>
+  <div class="ft">오른쪽 위 숫자 = 기본 수수료 2억</div></div><div class="card pl DF"><div class="hd"><b>DF</b><span class="base">4</span></div>
+  <div class="nm">홍석진</div><div class="tr">스타</div><div class="cost">몸값 7억</div>
+  <div class="ft">오른쪽 위 숫자 = 기본 수수료 4억</div></div><div class="card pl GK"><div class="hd"><b>GK</b><span class="base">3</span></div>
+  <div class="nm">류건우</div><div class="tr">스타</div><div class="cost">몸값 6억</div>
+  <div class="ft">오른쪽 위 숫자 = 기본 수수료 3억</div></div><div class="card pl FW"><div class="hd"><b>FW</b><span class="base">2</span></div>
+  <div class="nm">안재현</div><div class="tr">멀티플레이어</div><div class="cost">몸값 2억</div>
+  <div class="ft">오른쪽 위 숫자 = 기본 수수료 2억</div></div><div class="card pl MF"><div class="hd"><b>MF</b><span class="base">4</span></div>
+  <div class="nm">고민성</div><div class="tr">스타</div><div class="cost">몸값 7억</div>
+  <div class="ft">오른쪽 위 숫자 = 기본 수수료 4억</div></div><div class="card pl DF"><div class="hd"><b>DF</b><span class="base">2</span></div>
+  <div class="nm">황보람</div><div class="tr">유망주</div><div class="cost">몸값 3억</div>
+  <div class="ft">오른쪽 위 숫자 = 기본 수수료 2억</div></div><div class="card pl GK"><div class="hd"><b>GK</b><span class="base">2</span></div>
+  <div class="nm">전하늘</div><div class="tr">유망주</div><div class="cost">몸값 2억</div>
+  <div class="ft">오른쪽 위 숫자 = 기본 수수료 2억</div></div><div class="card pl MF"><div class="hd"><b>MF</b><span class="base">2</span></div>
+  <div class="nm">노승현</div><div class="tr">베테랑</div><div class="cost">몸값 4억</div>
+  <div class="ft">오른쪽 위 숫자 = 기본 수수료 2억</div></div><div class="card pl DF"><div class="hd"><b>DF</b><span class="base">2</span></div>
+  <div class="nm">마동훈</div><div class="tr">클린시트</div><div class="cost">몸값 4억</div>
+  <div class="ft">오른쪽 위 숫자 = 기본 수수료 2억</div></div><div class="card pl FW"><div class="hd"><b>FW</b><span class="base">2</span></div>
+  <div class="nm">표준영</div><div class="tr">플레이메이커</div><div class="cost">몸값 4억</div>
+  <div class="ft">오른쪽 위 숫자 = 기본 수수료 2억</div></div><div class="card pl MF"><div class="hd"><b>MF</b><span class="base">2</span></div>
+  <div class="nm">엄태웅</div><div class="tr">멀티플레이어</div><div class="cost">몸값 3억</div>
+  <div class="ft">오른쪽 위 숫자 = 기본 수수료 2억</div></div><div class="card pl FW"><div class="hd"><b>FW</b><span class="base">2</span></div>
+  <div class="nm">하지원</div><div class="tr">유망주</div><div class="cost">몸값 3억</div>
+  <div class="ft">오른쪽 위 숫자 = 기본 수수료 2억</div></div><div class="card pl GK"><div class="hd"><b>GK</b><span class="base">3</span></div>
+  <div class="nm">구본철</div><div class="tr">베테랑</div><div class="cost">몸값 5억</div>
+  <div class="ft">오른쪽 위 숫자 = 기본 수수료 3억</div></div><div class="card pl DF"><div class="hd"><b>DF</b><span class="base">3</span></div>
+  <div class="nm">진우석</div><div class="tr">플레이메이커</div><div class="cost">몸값 5억</div>
+  <div class="ft">오른쪽 위 숫자 = 기본 수수료 3억</div></div><div class="card pl MF"><div class="hd"><b>MF</b><span class="base">3</span></div>
+  <div class="nm">석현준</div><div class="tr">유망주</div><div class="cost">몸값 5억</div>
+  <div class="ft">오른쪽 위 숫자 = 기본 수수료 3억</div></div></div>
+<h2 class="gt">구단 카드 (12장)</h2><div class="grid"><div class="card cl"><div class="hd"><b>⚽ 구단</b><span class="base">10</span></div>
+  <div class="nm">블루 드래곤즈</div><div class="tr">옆에 이 구단의 요구 카드 3장을 섞어 쌓고 맨 위를 공개</div>
+  <div class="ft">제시액 <b>10</b>억</div></div><div class="card cl"><div class="hd"><b>⚽ 구단</b><span class="base">8</span></div>
+  <div class="nm">실버 호크스</div><div class="tr">옆에 이 구단의 요구 카드 3장을 섞어 쌓고 맨 위를 공개</div>
+  <div class="ft">제시액 <b>8</b>억</div></div><div class="card cl"><div class="hd"><b>⚽ 구단</b><span class="base">7</span></div>
+  <div class="nm">아이언 가디언즈</div><div class="tr">옆에 이 구단의 요구 카드 3장을 섞어 쌓고 맨 위를 공개</div>
+  <div class="ft">제시액 <b>7</b>억</div></div><div class="card cl"><div class="hd"><b>⚽ 구단</b><span class="base">9</span></div>
+  <div class="nm">에메랄드 타이거즈</div><div class="tr">옆에 이 구단의 요구 카드 3장을 섞어 쌓고 맨 위를 공개</div>
+  <div class="ft">제시액 <b>9</b>억</div></div><div class="card cl"><div class="hd"><b>⚽ 구단</b><span class="base">6</span></div>
+  <div class="nm">오로라 FC</div><div class="tr">옆에 이 구단의 요구 카드 3장을 섞어 쌓고 맨 위를 공개</div>
+  <div class="ft">제시액 <b>6</b>억</div></div><div class="card cl"><div class="hd"><b>⚽ 구단</b><span class="base">6</span></div>
+  <div class="nm">노바 크루저스</div><div class="tr">옆에 이 구단의 요구 카드 3장을 섞어 쌓고 맨 위를 공개</div>
+  <div class="ft">제시액 <b>6</b>억</div></div><div class="card cl"><div class="hd"><b>⚽ 구단</b><span class="base">5</span></div>
+  <div class="nm">썬더 울브스</div><div class="tr">옆에 이 구단의 요구 카드 3장을 섞어 쌓고 맨 위를 공개</div>
+  <div class="ft">제시액 <b>5</b>억</div></div><div class="card cl"><div class="hd"><b>⚽ 구단</b><span class="base">9</span></div>
+  <div class="nm">스톰 파이오니어</div><div class="tr">옆에 이 구단의 요구 카드 3장을 섞어 쌓고 맨 위를 공개</div>
+  <div class="ft">제시액 <b>9</b>억</div></div><div class="card cl"><div class="hd"><b>⚽ 구단</b><span class="base">8</span></div>
+  <div class="nm">레드 피닉스</div><div class="tr">옆에 이 구단의 요구 카드 3장을 섞어 쌓고 맨 위를 공개</div>
+  <div class="ft">제시액 <b>8</b>억</div></div><div class="card cl"><div class="hd"><b>⚽ 구단</b><span class="base">7</span></div>
+  <div class="nm">골든 이글스</div><div class="tr">옆에 이 구단의 요구 카드 3장을 섞어 쌓고 맨 위를 공개</div>
+  <div class="ft">제시액 <b>7</b>억</div></div><div class="card cl"><div class="hd"><b>⚽ 구단</b><span class="base">7</span></div>
+  <div class="nm">퍼플 나이츠</div><div class="tr">옆에 이 구단의 요구 카드 3장을 섞어 쌓고 맨 위를 공개</div>
+  <div class="ft">제시액 <b>7</b>억</div></div><div class="card cl"><div class="hd"><b>⚽ 구단</b><span class="base">10</span></div>
+  <div class="nm">화이트 샤크스</div><div class="tr">옆에 이 구단의 요구 카드 3장을 섞어 쌓고 맨 위를 공개</div>
+  <div class="ft">제시액 <b>10</b>억</div></div></div>
+<h2 class="gt">구단 요구 카드 (36장)</h2><div class="grid"><div class="card nd"><div class="hd"><b>요구 카드</b><span class="base">FW</span></div>
+  <div class="nm">블루 드래곤즈</div><div class="tr">FW 필요 (+2) · 스타 선호 (+1)</div>
+  <div class="ft">이번 라운드에 이 구단에 선수가 계약되면 라운드 끝에 더미 맨 아래로 넣고 다음 카드를 공개</div></div><div class="card nd"><div class="hd"><b>요구 카드</b><span class="base">MF</span></div>
+  <div class="nm">블루 드래곤즈</div><div class="tr">MF 필요 (+2) · 스타 선호 (+1)</div>
+  <div class="ft">이번 라운드에 이 구단에 선수가 계약되면 라운드 끝에 더미 맨 아래로 넣고 다음 카드를 공개</div></div><div class="card nd"><div class="hd"><b>요구 카드</b><span class="base">DF</span></div>
+  <div class="nm">블루 드래곤즈</div><div class="tr">DF 필요 (+2) · 스타 선호 (+1)</div>
+  <div class="ft">이번 라운드에 이 구단에 선수가 계약되면 라운드 끝에 더미 맨 아래로 넣고 다음 카드를 공개</div></div><div class="card nd"><div class="hd"><b>요구 카드</b><span class="base">MF</span></div>
+  <div class="nm">실버 호크스</div><div class="tr">MF 필요 (+2) · 플레이메이커 선호 (+1)</div>
+  <div class="ft">이번 라운드에 이 구단에 선수가 계약되면 라운드 끝에 더미 맨 아래로 넣고 다음 카드를 공개</div></div><div class="card nd"><div class="hd"><b>요구 카드</b><span class="base">FW</span></div>
+  <div class="nm">실버 호크스</div><div class="tr">FW 필요 (+2) · 플레이메이커 선호 (+1)</div>
+  <div class="ft">이번 라운드에 이 구단에 선수가 계약되면 라운드 끝에 더미 맨 아래로 넣고 다음 카드를 공개</div></div><div class="card nd"><div class="hd"><b>요구 카드</b><span class="base">DF</span></div>
+  <div class="nm">실버 호크스</div><div class="tr">DF 필요 (+2) · 플레이메이커 선호 (+1)</div>
+  <div class="ft">이번 라운드에 이 구단에 선수가 계약되면 라운드 끝에 더미 맨 아래로 넣고 다음 카드를 공개</div></div><div class="card nd"><div class="hd"><b>요구 카드</b><span class="base">GK</span></div>
+  <div class="nm">아이언 가디언즈</div><div class="tr">GK 필요 (+2) · 클린시트 선호 (+1)</div>
+  <div class="ft">이번 라운드에 이 구단에 선수가 계약되면 라운드 끝에 더미 맨 아래로 넣고 다음 카드를 공개</div></div><div class="card nd"><div class="hd"><b>요구 카드</b><span class="base">DF</span></div>
+  <div class="nm">아이언 가디언즈</div><div class="tr">DF 필요 (+2) · 클린시트 선호 (+1)</div>
+  <div class="ft">이번 라운드에 이 구단에 선수가 계약되면 라운드 끝에 더미 맨 아래로 넣고 다음 카드를 공개</div></div><div class="card nd"><div class="hd"><b>요구 카드</b><span class="base">GK</span></div>
+  <div class="nm">아이언 가디언즈</div><div class="tr">GK 필요 (+2) · 베테랑 선호 (+1)</div>
+  <div class="ft">이번 라운드에 이 구단에 선수가 계약되면 라운드 끝에 더미 맨 아래로 넣고 다음 카드를 공개</div></div><div class="card nd"><div class="hd"><b>요구 카드</b><span class="base">DF</span></div>
+  <div class="nm">에메랄드 타이거즈</div><div class="tr">DF 필요 (+2) · 스타 선호 (+1)</div>
+  <div class="ft">이번 라운드에 이 구단에 선수가 계약되면 라운드 끝에 더미 맨 아래로 넣고 다음 카드를 공개</div></div><div class="card nd"><div class="hd"><b>요구 카드</b><span class="base">GK</span></div>
+  <div class="nm">에메랄드 타이거즈</div><div class="tr">GK 필요 (+2) · 스타 선호 (+1)</div>
+  <div class="ft">이번 라운드에 이 구단에 선수가 계약되면 라운드 끝에 더미 맨 아래로 넣고 다음 카드를 공개</div></div><div class="card nd"><div class="hd"><b>요구 카드</b><span class="base">FW</span></div>
+  <div class="nm">에메랄드 타이거즈</div><div class="tr">FW 필요 (+2) · 스타 선호 (+1)</div>
+  <div class="ft">이번 라운드에 이 구단에 선수가 계약되면 라운드 끝에 더미 맨 아래로 넣고 다음 카드를 공개</div></div><div class="card nd"><div class="hd"><b>요구 카드</b><span class="base">MF</span></div>
+  <div class="nm">오로라 FC</div><div class="tr">MF 필요 (+2) · 유망주 선호 (+1)</div>
+  <div class="ft">이번 라운드에 이 구단에 선수가 계약되면 라운드 끝에 더미 맨 아래로 넣고 다음 카드를 공개</div></div><div class="card nd"><div class="hd"><b>요구 카드</b><span class="base">FW</span></div>
+  <div class="nm">오로라 FC</div><div class="tr">FW 필요 (+2) · 유망주 선호 (+1)</div>
+  <div class="ft">이번 라운드에 이 구단에 선수가 계약되면 라운드 끝에 더미 맨 아래로 넣고 다음 카드를 공개</div></div><div class="card nd"><div class="hd"><b>요구 카드</b><span class="base">DF</span></div>
+  <div class="nm">오로라 FC</div><div class="tr">DF 필요 (+2) · 유망주 선호 (+1)</div>
+  <div class="ft">이번 라운드에 이 구단에 선수가 계약되면 라운드 끝에 더미 맨 아래로 넣고 다음 카드를 공개</div></div><div class="card nd"><div class="hd"><b>요구 카드</b><span class="base">DF</span></div>
+  <div class="nm">노바 크루저스</div><div class="tr">DF 필요 (+2) · 베테랑 선호 (+1)</div>
+  <div class="ft">이번 라운드에 이 구단에 선수가 계약되면 라운드 끝에 더미 맨 아래로 넣고 다음 카드를 공개</div></div><div class="card nd"><div class="hd"><b>요구 카드</b><span class="base">MF</span></div>
+  <div class="nm">노바 크루저스</div><div class="tr">MF 필요 (+2) · 베테랑 선호 (+1)</div>
+  <div class="ft">이번 라운드에 이 구단에 선수가 계약되면 라운드 끝에 더미 맨 아래로 넣고 다음 카드를 공개</div></div><div class="card nd"><div class="hd"><b>요구 카드</b><span class="base">FW</span></div>
+  <div class="nm">노바 크루저스</div><div class="tr">FW 필요 (+2) · 베테랑 선호 (+1)</div>
+  <div class="ft">이번 라운드에 이 구단에 선수가 계약되면 라운드 끝에 더미 맨 아래로 넣고 다음 카드를 공개</div></div><div class="card nd"><div class="hd"><b>요구 카드</b><span class="base">FW</span></div>
+  <div class="nm">썬더 울브스</div><div class="tr">FW 필요 (+2) · 유망주 선호 (+1)</div>
+  <div class="ft">이번 라운드에 이 구단에 선수가 계약되면 라운드 끝에 더미 맨 아래로 넣고 다음 카드를 공개</div></div><div class="card nd"><div class="hd"><b>요구 카드</b><span class="base">GK</span></div>
+  <div class="nm">썬더 울브스</div><div class="tr">GK 필요 (+2) · 유망주 선호 (+1)</div>
+  <div class="ft">이번 라운드에 이 구단에 선수가 계약되면 라운드 끝에 더미 맨 아래로 넣고 다음 카드를 공개</div></div><div class="card nd"><div class="hd"><b>요구 카드</b><span class="base">MF</span></div>
+  <div class="nm">썬더 울브스</div><div class="tr">MF 필요 (+2) · 멀티플레이어 선호 (+1)</div>
+  <div class="ft">이번 라운드에 이 구단에 선수가 계약되면 라운드 끝에 더미 맨 아래로 넣고 다음 카드를 공개</div></div><div class="card nd"><div class="hd"><b>요구 카드</b><span class="base">MF</span></div>
+  <div class="nm">스톰 파이오니어</div><div class="tr">MF 필요 (+2) · 플레이메이커 선호 (+1)</div>
+  <div class="ft">이번 라운드에 이 구단에 선수가 계약되면 라운드 끝에 더미 맨 아래로 넣고 다음 카드를 공개</div></div><div class="card nd"><div class="hd"><b>요구 카드</b><span class="base">MF</span></div>
+  <div class="nm">스톰 파이오니어</div><div class="tr">MF 필요 (+2) · 스타 선호 (+1)</div>
+  <div class="ft">이번 라운드에 이 구단에 선수가 계약되면 라운드 끝에 더미 맨 아래로 넣고 다음 카드를 공개</div></div><div class="card nd"><div class="hd"><b>요구 카드</b><span class="base">FW</span></div>
+  <div class="nm">스톰 파이오니어</div><div class="tr">FW 필요 (+2) · 베테랑 선호 (+1)</div>
+  <div class="ft">이번 라운드에 이 구단에 선수가 계약되면 라운드 끝에 더미 맨 아래로 넣고 다음 카드를 공개</div></div><div class="card nd"><div class="hd"><b>요구 카드</b><span class="base">GK</span></div>
+  <div class="nm">레드 피닉스</div><div class="tr">GK 필요 (+2) · 베테랑 선호 (+1)</div>
+  <div class="ft">이번 라운드에 이 구단에 선수가 계약되면 라운드 끝에 더미 맨 아래로 넣고 다음 카드를 공개</div></div><div class="card nd"><div class="hd"><b>요구 카드</b><span class="base">DF</span></div>
+  <div class="nm">레드 피닉스</div><div class="tr">DF 필요 (+2) · 베테랑 선호 (+1)</div>
+  <div class="ft">이번 라운드에 이 구단에 선수가 계약되면 라운드 끝에 더미 맨 아래로 넣고 다음 카드를 공개</div></div><div class="card nd"><div class="hd"><b>요구 카드</b><span class="base">GK</span></div>
+  <div class="nm">레드 피닉스</div><div class="tr">GK 필요 (+2) · 클린시트 선호 (+1)</div>
+  <div class="ft">이번 라운드에 이 구단에 선수가 계약되면 라운드 끝에 더미 맨 아래로 넣고 다음 카드를 공개</div></div><div class="card nd"><div class="hd"><b>요구 카드</b><span class="base">FW</span></div>
+  <div class="nm">골든 이글스</div><div class="tr">FW 필요 (+2) · 멀티플레이어 선호 (+1)</div>
+  <div class="ft">이번 라운드에 이 구단에 선수가 계약되면 라운드 끝에 더미 맨 아래로 넣고 다음 카드를 공개</div></div><div class="card nd"><div class="hd"><b>요구 카드</b><span class="base">DF</span></div>
+  <div class="nm">골든 이글스</div><div class="tr">DF 필요 (+2) · 멀티플레이어 선호 (+1)</div>
+  <div class="ft">이번 라운드에 이 구단에 선수가 계약되면 라운드 끝에 더미 맨 아래로 넣고 다음 카드를 공개</div></div><div class="card nd"><div class="hd"><b>요구 카드</b><span class="base">MF</span></div>
+  <div class="nm">골든 이글스</div><div class="tr">MF 필요 (+2) · 멀티플레이어 선호 (+1)</div>
+  <div class="ft">이번 라운드에 이 구단에 선수가 계약되면 라운드 끝에 더미 맨 아래로 넣고 다음 카드를 공개</div></div><div class="card nd"><div class="hd"><b>요구 카드</b><span class="base">DF</span></div>
+  <div class="nm">퍼플 나이츠</div><div class="tr">DF 필요 (+2) · 유망주 선호 (+1)</div>
+  <div class="ft">이번 라운드에 이 구단에 선수가 계약되면 라운드 끝에 더미 맨 아래로 넣고 다음 카드를 공개</div></div><div class="card nd"><div class="hd"><b>요구 카드</b><span class="base">MF</span></div>
+  <div class="nm">퍼플 나이츠</div><div class="tr">MF 필요 (+2) · 유망주 선호 (+1)</div>
+  <div class="ft">이번 라운드에 이 구단에 선수가 계약되면 라운드 끝에 더미 맨 아래로 넣고 다음 카드를 공개</div></div><div class="card nd"><div class="hd"><b>요구 카드</b><span class="base">FW</span></div>
+  <div class="nm">퍼플 나이츠</div><div class="tr">FW 필요 (+2) · 유망주 선호 (+1)</div>
+  <div class="ft">이번 라운드에 이 구단에 선수가 계약되면 라운드 끝에 더미 맨 아래로 넣고 다음 카드를 공개</div></div><div class="card nd"><div class="hd"><b>요구 카드</b><span class="base">MF</span></div>
+  <div class="nm">화이트 샤크스</div><div class="tr">MF 필요 (+2) · 스타 선호 (+1)</div>
+  <div class="ft">이번 라운드에 이 구단에 선수가 계약되면 라운드 끝에 더미 맨 아래로 넣고 다음 카드를 공개</div></div><div class="card nd"><div class="hd"><b>요구 카드</b><span class="base">FW</span></div>
+  <div class="nm">화이트 샤크스</div><div class="tr">FW 필요 (+2) · 스타 선호 (+1)</div>
+  <div class="ft">이번 라운드에 이 구단에 선수가 계약되면 라운드 끝에 더미 맨 아래로 넣고 다음 카드를 공개</div></div><div class="card nd"><div class="hd"><b>요구 카드</b><span class="base">GK</span></div>
+  <div class="nm">화이트 샤크스</div><div class="tr">GK 필요 (+2) · 스타 선호 (+1)</div>
+  <div class="ft">이번 라운드에 이 구단에 선수가 계약되면 라운드 끝에 더미 맨 아래로 넣고 다음 카드를 공개</div></div></div>
+<h2 class="gt">목표 카드 (12장)</h2><div class="grid"><div class="card sc"><div class="hd"><b>🎯 목표 카드</b><span class="base">+10</span></div><div class="nm">공격 본능</div>
+  <div class="tr">FW 3명 이상</div>
+  <div class="ft">게임이 끝날 때 내가 직접 계약시킨 선수로<br>조건을 채우면 +10억 (스폰서 데이 계약은 2명으로 셈)</div></div><div class="card sc"><div class="hd"><b>🎯 목표 카드</b><span class="base">+10</span></div><div class="nm">중원 사령관</div>
+  <div class="tr">MF 3명 이상</div>
+  <div class="ft">게임이 끝날 때 내가 직접 계약시킨 선수로<br>조건을 채우면 +10억 (스폰서 데이 계약은 2명으로 셈)</div></div><div class="card sc"><div class="hd"><b>🎯 목표 카드</b><span class="base">+10</span></div><div class="nm">철벽 수비</div>
+  <div class="tr">DF 3명 이상</div>
+  <div class="ft">게임이 끝날 때 내가 직접 계약시킨 선수로<br>조건을 채우면 +10억 (스폰서 데이 계약은 2명으로 셈)</div></div><div class="card sc"><div class="hd"><b>🎯 목표 카드</b><span class="base">+10</span></div><div class="nm">골문 수호</div>
+  <div class="tr">GK 2명 이상</div>
+  <div class="ft">게임이 끝날 때 내가 직접 계약시킨 선수로<br>조건을 채우면 +10억 (스폰서 데이 계약은 2명으로 셈)</div></div><div class="card sc"><div class="hd"><b>🎯 목표 카드</b><span class="base">+10</span></div><div class="nm">스타 군단</div>
+  <div class="tr">스타 3명 이상</div>
+  <div class="ft">게임이 끝날 때 내가 직접 계약시킨 선수로<br>조건을 채우면 +10억 (스폰서 데이 계약은 2명으로 셈)</div></div><div class="card sc"><div class="hd"><b>🎯 목표 카드</b><span class="base">+10</span></div><div class="nm">노련미</div>
+  <div class="tr">베테랑 3명 이상</div>
+  <div class="ft">게임이 끝날 때 내가 직접 계약시킨 선수로<br>조건을 채우면 +10억 (스폰서 데이 계약은 2명으로 셈)</div></div><div class="card sc"><div class="hd"><b>🎯 목표 카드</b><span class="base">+10</span></div><div class="nm">미래 투자</div>
+  <div class="tr">유망주 3명 이상</div>
+  <div class="ft">게임이 끝날 때 내가 직접 계약시킨 선수로<br>조건을 채우면 +10억 (스폰서 데이 계약은 2명으로 셈)</div></div><div class="card sc"><div class="hd"><b>🎯 목표 카드</b><span class="base">+10</span></div><div class="nm">패스 마스터</div>
+  <div class="tr">플레이메이커 2명 이상</div>
+  <div class="ft">게임이 끝날 때 내가 직접 계약시킨 선수로<br>조건을 채우면 +10억 (스폰서 데이 계약은 2명으로 셈)</div></div><div class="card sc"><div class="hd"><b>🎯 목표 카드</b><span class="base">+10</span></div><div class="nm">무실점</div>
+  <div class="tr">클린시트 2명 이상</div>
+  <div class="ft">게임이 끝날 때 내가 직접 계약시킨 선수로<br>조건을 채우면 +10억 (스폰서 데이 계약은 2명으로 셈)</div></div><div class="card sc"><div class="hd"><b>🎯 목표 카드</b><span class="base">+10</span></div><div class="nm">만능 선수</div>
+  <div class="tr">멀티플레이어 2명 이상</div>
+  <div class="ft">게임이 끝날 때 내가 직접 계약시킨 선수로<br>조건을 채우면 +10억 (스폰서 데이 계약은 2명으로 셈)</div></div><div class="card sc"><div class="hd"><b>🎯 목표 카드</b><span class="base">+10</span></div><div class="nm">빅사이닝</div>
+  <div class="tr">몸값 6억 이상 3명 이상</div>
+  <div class="ft">게임이 끝날 때 내가 직접 계약시킨 선수로<br>조건을 채우면 +10억 (스폰서 데이 계약은 2명으로 셈)</div></div><div class="card sc"><div class="hd"><b>🎯 목표 카드</b><span class="base">+10</span></div><div class="nm">완성형 스쿼드</div>
+  <div class="tr">FW·MF·DF·GK 각 1명 이상</div>
+  <div class="ft">게임이 끝날 때 내가 직접 계약시킨 선수로<br>조건을 채우면 +10억 (스폰서 데이 계약은 2명으로 셈)</div></div></div>
+<h2 class="gt">이벤트 카드 (9장)</h2><div class="grid"><div class="card ev "><div class="hd"><b>이벤트</b><span class="base">📰</span></div>
+  <div class="nm">이적시장 개장</div><div class="ft">특별한 효과가 없습니다.</div></div><div class="card ev "><div class="hd"><b>이벤트</b><span class="base">🔥</span></div>
+  <div class="nm">공격수 품귀</div><div class="ft">FW 선수 계약 수수료 +2억</div></div><div class="card ev "><div class="hd"><b>이벤트</b><span class="base">🧤</span></div>
+  <div class="nm">수비 보강</div><div class="ft">DF·GK 선수 계약 수수료 +2억</div></div><div class="card ev "><div class="hd"><b>이벤트</b><span class="base">🌱</span></div>
+  <div class="nm">유망주 열풍</div><div class="ft">유망주 선수 계약 수수료 +2억</div></div><div class="card ev "><div class="hd"><b>이벤트</b><span class="base">📉</span></div>
+  <div class="nm">구단 긴축</div><div class="ft">모든 구단 제시액 −2억</div></div><div class="card ev "><div class="hd"><b>이벤트</b><span class="base">💰</span></div>
+  <div class="nm">빅딜 시즌</div><div class="ft">몸값 6억 이상 선수 계약 수수료 +2억</div></div><div class="card ev "><div class="hd"><b>이벤트</b><span class="base">🎙</span></div>
+  <div class="nm">스폰서 데이</div><div class="ft">이번 라운드에 직접 계약시킨 선수는 목표 카드의 '○명 이상' 조건에서 2명으로 셉니다</div></div><div class="card ev "><div class="hd"><b>이벤트</b><span class="base">✈️</span></div>
+  <div class="nm">해외파 귀국</div><div class="ft">시장에 선수 2명을 더 깝니다</div></div><div class="card ev dl"><div class="hd"><b>이벤트</b><span class="base">⏰</span></div>
+  <div class="nm">데드라인 데이</div><div class="ft">마지막 라운드 · 모든 계약 수수료 +5억</div></div></div>
+<h2 class="gt">플레이어 카드 (요구 수수료 12 · 선수 지목 12 · 구단 지목 6 × 4색) (120장)</h2><div class="grid"><div class="card dm" style="--c:#f5c86b"><div class="hd"><b>노랑</b></div><div class="big">+1억</div><div class="ft">요구 수수료 · 매력도 −1</div></div><div class="card dm" style="--c:#f5c86b"><div class="hd"><b>노랑</b></div><div class="big">+1억</div><div class="ft">요구 수수료 · 매력도 −1</div></div><div class="card dm" style="--c:#f5c86b"><div class="hd"><b>노랑</b></div><div class="big">+1억</div><div class="ft">요구 수수료 · 매력도 −1</div></div><div class="card dm" style="--c:#f5c86b"><div class="hd"><b>노랑</b></div><div class="big">+3억</div><div class="ft">요구 수수료 · 매력도 −2</div></div><div class="card dm" style="--c:#f5c86b"><div class="hd"><b>노랑</b></div><div class="big">+3억</div><div class="ft">요구 수수료 · 매력도 −2</div></div><div class="card dm" style="--c:#f5c86b"><div class="hd"><b>노랑</b></div><div class="big">+3억</div><div class="ft">요구 수수료 · 매력도 −2</div></div><div class="card dm" style="--c:#f5c86b"><div class="hd"><b>노랑</b></div><div class="big">+5억</div><div class="ft">요구 수수료 · 매력도 −3</div></div><div class="card dm" style="--c:#f5c86b"><div class="hd"><b>노랑</b></div><div class="big">+5억</div><div class="ft">요구 수수료 · 매력도 −3</div></div><div class="card dm" style="--c:#f5c86b"><div class="hd"><b>노랑</b></div><div class="big">+5억</div><div class="ft">요구 수수료 · 매력도 −3</div></div><div class="card dm" style="--c:#f5c86b"><div class="hd"><b>노랑</b></div><div class="big">+6억</div><div class="ft">요구 수수료 · 매력도 −4</div></div><div class="card dm" style="--c:#f5c86b"><div class="hd"><b>노랑</b></div><div class="big">+6억</div><div class="ft">요구 수수료 · 매력도 −4</div></div><div class="card dm" style="--c:#f5c86b"><div class="hd"><b>노랑</b></div><div class="big">+6억</div><div class="ft">요구 수수료 · 매력도 −4</div></div><div class="card sm" style="--c:#f5c86b"><div class="hd"><b>노랑</b></div><div class="big">1</div><div class="ft">선수 지목 (시장 칸)</div></div><div class="card sm" style="--c:#f5c86b"><div class="hd"><b>노랑</b></div><div class="big">2</div><div class="ft">선수 지목 (시장 칸)</div></div><div class="card sm" style="--c:#f5c86b"><div class="hd"><b>노랑</b></div><div class="big">3</div><div class="ft">선수 지목 (시장 칸)</div></div><div class="card sm" style="--c:#f5c86b"><div class="hd"><b>노랑</b></div><div class="big">4</div><div class="ft">선수 지목 (시장 칸)</div></div><div class="card sm" style="--c:#f5c86b"><div class="hd"><b>노랑</b></div><div class="big">5</div><div class="ft">선수 지목 (시장 칸)</div></div><div class="card sm" style="--c:#f5c86b"><div class="hd"><b>노랑</b></div><div class="big">6</div><div class="ft">선수 지목 (시장 칸)</div></div><div class="card sm" style="--c:#f5c86b"><div class="hd"><b>노랑</b></div><div class="big">7</div><div class="ft">선수 지목 (시장 칸)</div></div><div class="card sm" style="--c:#f5c86b"><div class="hd"><b>노랑</b></div><div class="big">8</div><div class="ft">선수 지목 (시장 칸)</div></div><div class="card sm" style="--c:#f5c86b"><div class="hd"><b>노랑</b></div><div class="big">9</div><div class="ft">선수 지목 (시장 칸)</div></div><div class="card sm" style="--c:#f5c86b"><div class="hd"><b>노랑</b></div><div class="big">10</div><div class="ft">선수 지목 (시장 칸)</div></div><div class="card sm" style="--c:#f5c86b"><div class="hd"><b>노랑</b></div><div class="big">11</div><div class="ft">선수 지목 (시장 칸)</div></div><div class="card sm" style="--c:#f5c86b"><div class="hd"><b>노랑</b></div><div class="big">12</div><div class="ft">선수 지목 (시장 칸)</div></div><div class="card sm" style="--c:#f5c86b"><div class="hd"><b>노랑</b></div><div class="big">A</div><div class="ft">구단 지목 (구단 자리)</div></div><div class="card sm" style="--c:#f5c86b"><div class="hd"><b>노랑</b></div><div class="big">B</div><div class="ft">구단 지목 (구단 자리)</div></div><div class="card sm" style="--c:#f5c86b"><div class="hd"><b>노랑</b></div><div class="big">C</div><div class="ft">구단 지목 (구단 자리)</div></div><div class="card sm" style="--c:#f5c86b"><div class="hd"><b>노랑</b></div><div class="big">D</div><div class="ft">구단 지목 (구단 자리)</div></div><div class="card sm" style="--c:#f5c86b"><div class="hd"><b>노랑</b></div><div class="big">E</div><div class="ft">구단 지목 (구단 자리)</div></div><div class="card sm" style="--c:#f5c86b"><div class="hd"><b>노랑</b></div><div class="big">F</div><div class="ft">구단 지목 (구단 자리)</div></div><div class="card dm" style="--c:#68d6b0"><div class="hd"><b>초록</b></div><div class="big">+1억</div><div class="ft">요구 수수료 · 매력도 −1</div></div><div class="card dm" style="--c:#68d6b0"><div class="hd"><b>초록</b></div><div class="big">+1억</div><div class="ft">요구 수수료 · 매력도 −1</div></div><div class="card dm" style="--c:#68d6b0"><div class="hd"><b>초록</b></div><div class="big">+1억</div><div class="ft">요구 수수료 · 매력도 −1</div></div><div class="card dm" style="--c:#68d6b0"><div class="hd"><b>초록</b></div><div class="big">+3억</div><div class="ft">요구 수수료 · 매력도 −2</div></div><div class="card dm" style="--c:#68d6b0"><div class="hd"><b>초록</b></div><div class="big">+3억</div><div class="ft">요구 수수료 · 매력도 −2</div></div><div class="card dm" style="--c:#68d6b0"><div class="hd"><b>초록</b></div><div class="big">+3억</div><div class="ft">요구 수수료 · 매력도 −2</div></div><div class="card dm" style="--c:#68d6b0"><div class="hd"><b>초록</b></div><div class="big">+5억</div><div class="ft">요구 수수료 · 매력도 −3</div></div><div class="card dm" style="--c:#68d6b0"><div class="hd"><b>초록</b></div><div class="big">+5억</div><div class="ft">요구 수수료 · 매력도 −3</div></div><div class="card dm" style="--c:#68d6b0"><div class="hd"><b>초록</b></div><div class="big">+5억</div><div class="ft">요구 수수료 · 매력도 −3</div></div><div class="card dm" style="--c:#68d6b0"><div class="hd"><b>초록</b></div><div class="big">+6억</div><div class="ft">요구 수수료 · 매력도 −4</div></div><div class="card dm" style="--c:#68d6b0"><div class="hd"><b>초록</b></div><div class="big">+6억</div><div class="ft">요구 수수료 · 매력도 −4</div></div><div class="card dm" style="--c:#68d6b0"><div class="hd"><b>초록</b></div><div class="big">+6억</div><div class="ft">요구 수수료 · 매력도 −4</div></div><div class="card sm" style="--c:#68d6b0"><div class="hd"><b>초록</b></div><div class="big">1</div><div class="ft">선수 지목 (시장 칸)</div></div><div class="card sm" style="--c:#68d6b0"><div class="hd"><b>초록</b></div><div class="big">2</div><div class="ft">선수 지목 (시장 칸)</div></div><div class="card sm" style="--c:#68d6b0"><div class="hd"><b>초록</b></div><div class="big">3</div><div class="ft">선수 지목 (시장 칸)</div></div><div class="card sm" style="--c:#68d6b0"><div class="hd"><b>초록</b></div><div class="big">4</div><div class="ft">선수 지목 (시장 칸)</div></div><div class="card sm" style="--c:#68d6b0"><div class="hd"><b>초록</b></div><div class="big">5</div><div class="ft">선수 지목 (시장 칸)</div></div><div class="card sm" style="--c:#68d6b0"><div class="hd"><b>초록</b></div><div class="big">6</div><div class="ft">선수 지목 (시장 칸)</div></div><div class="card sm" style="--c:#68d6b0"><div class="hd"><b>초록</b></div><div class="big">7</div><div class="ft">선수 지목 (시장 칸)</div></div><div class="card sm" style="--c:#68d6b0"><div class="hd"><b>초록</b></div><div class="big">8</div><div class="ft">선수 지목 (시장 칸)</div></div><div class="card sm" style="--c:#68d6b0"><div class="hd"><b>초록</b></div><div class="big">9</div><div class="ft">선수 지목 (시장 칸)</div></div><div class="card sm" style="--c:#68d6b0"><div class="hd"><b>초록</b></div><div class="big">10</div><div class="ft">선수 지목 (시장 칸)</div></div><div class="card sm" style="--c:#68d6b0"><div class="hd"><b>초록</b></div><div class="big">11</div><div class="ft">선수 지목 (시장 칸)</div></div><div class="card sm" style="--c:#68d6b0"><div class="hd"><b>초록</b></div><div class="big">12</div><div class="ft">선수 지목 (시장 칸)</div></div><div class="card sm" style="--c:#68d6b0"><div class="hd"><b>초록</b></div><div class="big">A</div><div class="ft">구단 지목 (구단 자리)</div></div><div class="card sm" style="--c:#68d6b0"><div class="hd"><b>초록</b></div><div class="big">B</div><div class="ft">구단 지목 (구단 자리)</div></div><div class="card sm" style="--c:#68d6b0"><div class="hd"><b>초록</b></div><div class="big">C</div><div class="ft">구단 지목 (구단 자리)</div></div><div class="card sm" style="--c:#68d6b0"><div class="hd"><b>초록</b></div><div class="big">D</div><div class="ft">구단 지목 (구단 자리)</div></div><div class="card sm" style="--c:#68d6b0"><div class="hd"><b>초록</b></div><div class="big">E</div><div class="ft">구단 지목 (구단 자리)</div></div><div class="card sm" style="--c:#68d6b0"><div class="hd"><b>초록</b></div><div class="big">F</div><div class="ft">구단 지목 (구단 자리)</div></div><div class="card dm" style="--c:#8fb7ff"><div class="hd"><b>파랑</b></div><div class="big">+1억</div><div class="ft">요구 수수료 · 매력도 −1</div></div><div class="card dm" style="--c:#8fb7ff"><div class="hd"><b>파랑</b></div><div class="big">+1억</div><div class="ft">요구 수수료 · 매력도 −1</div></div><div class="card dm" style="--c:#8fb7ff"><div class="hd"><b>파랑</b></div><div class="big">+1억</div><div class="ft">요구 수수료 · 매력도 −1</div></div><div class="card dm" style="--c:#8fb7ff"><div class="hd"><b>파랑</b></div><div class="big">+3억</div><div class="ft">요구 수수료 · 매력도 −2</div></div><div class="card dm" style="--c:#8fb7ff"><div class="hd"><b>파랑</b></div><div class="big">+3억</div><div class="ft">요구 수수료 · 매력도 −2</div></div><div class="card dm" style="--c:#8fb7ff"><div class="hd"><b>파랑</b></div><div class="big">+3억</div><div class="ft">요구 수수료 · 매력도 −2</div></div><div class="card dm" style="--c:#8fb7ff"><div class="hd"><b>파랑</b></div><div class="big">+5억</div><div class="ft">요구 수수료 · 매력도 −3</div></div><div class="card dm" style="--c:#8fb7ff"><div class="hd"><b>파랑</b></div><div class="big">+5억</div><div class="ft">요구 수수료 · 매력도 −3</div></div><div class="card dm" style="--c:#8fb7ff"><div class="hd"><b>파랑</b></div><div class="big">+5억</div><div class="ft">요구 수수료 · 매력도 −3</div></div><div class="card dm" style="--c:#8fb7ff"><div class="hd"><b>파랑</b></div><div class="big">+6억</div><div class="ft">요구 수수료 · 매력도 −4</div></div><div class="card dm" style="--c:#8fb7ff"><div class="hd"><b>파랑</b></div><div class="big">+6억</div><div class="ft">요구 수수료 · 매력도 −4</div></div><div class="card dm" style="--c:#8fb7ff"><div class="hd"><b>파랑</b></div><div class="big">+6억</div><div class="ft">요구 수수료 · 매력도 −4</div></div><div class="card sm" style="--c:#8fb7ff"><div class="hd"><b>파랑</b></div><div class="big">1</div><div class="ft">선수 지목 (시장 칸)</div></div><div class="card sm" style="--c:#8fb7ff"><div class="hd"><b>파랑</b></div><div class="big">2</div><div class="ft">선수 지목 (시장 칸)</div></div><div class="card sm" style="--c:#8fb7ff"><div class="hd"><b>파랑</b></div><div class="big">3</div><div class="ft">선수 지목 (시장 칸)</div></div><div class="card sm" style="--c:#8fb7ff"><div class="hd"><b>파랑</b></div><div class="big">4</div><div class="ft">선수 지목 (시장 칸)</div></div><div class="card sm" style="--c:#8fb7ff"><div class="hd"><b>파랑</b></div><div class="big">5</div><div class="ft">선수 지목 (시장 칸)</div></div><div class="card sm" style="--c:#8fb7ff"><div class="hd"><b>파랑</b></div><div class="big">6</div><div class="ft">선수 지목 (시장 칸)</div></div><div class="card sm" style="--c:#8fb7ff"><div class="hd"><b>파랑</b></div><div class="big">7</div><div class="ft">선수 지목 (시장 칸)</div></div><div class="card sm" style="--c:#8fb7ff"><div class="hd"><b>파랑</b></div><div class="big">8</div><div class="ft">선수 지목 (시장 칸)</div></div><div class="card sm" style="--c:#8fb7ff"><div class="hd"><b>파랑</b></div><div class="big">9</div><div class="ft">선수 지목 (시장 칸)</div></div><div class="card sm" style="--c:#8fb7ff"><div class="hd"><b>파랑</b></div><div class="big">10</div><div class="ft">선수 지목 (시장 칸)</div></div><div class="card sm" style="--c:#8fb7ff"><div class="hd"><b>파랑</b></div><div class="big">11</div><div class="ft">선수 지목 (시장 칸)</div></div><div class="card sm" style="--c:#8fb7ff"><div class="hd"><b>파랑</b></div><div class="big">12</div><div class="ft">선수 지목 (시장 칸)</div></div><div class="card sm" style="--c:#8fb7ff"><div class="hd"><b>파랑</b></div><div class="big">A</div><div class="ft">구단 지목 (구단 자리)</div></div><div class="card sm" style="--c:#8fb7ff"><div class="hd"><b>파랑</b></div><div class="big">B</div><div class="ft">구단 지목 (구단 자리)</div></div><div class="card sm" style="--c:#8fb7ff"><div class="hd"><b>파랑</b></div><div class="big">C</div><div class="ft">구단 지목 (구단 자리)</div></div><div class="card sm" style="--c:#8fb7ff"><div class="hd"><b>파랑</b></div><div class="big">D</div><div class="ft">구단 지목 (구단 자리)</div></div><div class="card sm" style="--c:#8fb7ff"><div class="hd"><b>파랑</b></div><div class="big">E</div><div class="ft">구단 지목 (구단 자리)</div></div><div class="card sm" style="--c:#8fb7ff"><div class="hd"><b>파랑</b></div><div class="big">F</div><div class="ft">구단 지목 (구단 자리)</div></div><div class="card dm" style="--c:#ff9aa4"><div class="hd"><b>빨강</b></div><div class="big">+1억</div><div class="ft">요구 수수료 · 매력도 −1</div></div><div class="card dm" style="--c:#ff9aa4"><div class="hd"><b>빨강</b></div><div class="big">+1억</div><div class="ft">요구 수수료 · 매력도 −1</div></div><div class="card dm" style="--c:#ff9aa4"><div class="hd"><b>빨강</b></div><div class="big">+1억</div><div class="ft">요구 수수료 · 매력도 −1</div></div><div class="card dm" style="--c:#ff9aa4"><div class="hd"><b>빨강</b></div><div class="big">+3억</div><div class="ft">요구 수수료 · 매력도 −2</div></div><div class="card dm" style="--c:#ff9aa4"><div class="hd"><b>빨강</b></div><div class="big">+3억</div><div class="ft">요구 수수료 · 매력도 −2</div></div><div class="card dm" style="--c:#ff9aa4"><div class="hd"><b>빨강</b></div><div class="big">+3억</div><div class="ft">요구 수수료 · 매력도 −2</div></div><div class="card dm" style="--c:#ff9aa4"><div class="hd"><b>빨강</b></div><div class="big">+5억</div><div class="ft">요구 수수료 · 매력도 −3</div></div><div class="card dm" style="--c:#ff9aa4"><div class="hd"><b>빨강</b></div><div class="big">+5억</div><div class="ft">요구 수수료 · 매력도 −3</div></div><div class="card dm" style="--c:#ff9aa4"><div class="hd"><b>빨강</b></div><div class="big">+5억</div><div class="ft">요구 수수료 · 매력도 −3</div></div><div class="card dm" style="--c:#ff9aa4"><div class="hd"><b>빨강</b></div><div class="big">+6억</div><div class="ft">요구 수수료 · 매력도 −4</div></div><div class="card dm" style="--c:#ff9aa4"><div class="hd"><b>빨강</b></div><div class="big">+6억</div><div class="ft">요구 수수료 · 매력도 −4</div></div><div class="card dm" style="--c:#ff9aa4"><div class="hd"><b>빨강</b></div><div class="big">+6억</div><div class="ft">요구 수수료 · 매력도 −4</div></div><div class="card sm" style="--c:#ff9aa4"><div class="hd"><b>빨강</b></div><div class="big">1</div><div class="ft">선수 지목 (시장 칸)</div></div><div class="card sm" style="--c:#ff9aa4"><div class="hd"><b>빨강</b></div><div class="big">2</div><div class="ft">선수 지목 (시장 칸)</div></div><div class="card sm" style="--c:#ff9aa4"><div class="hd"><b>빨강</b></div><div class="big">3</div><div class="ft">선수 지목 (시장 칸)</div></div><div class="card sm" style="--c:#ff9aa4"><div class="hd"><b>빨강</b></div><div class="big">4</div><div class="ft">선수 지목 (시장 칸)</div></div><div class="card sm" style="--c:#ff9aa4"><div class="hd"><b>빨강</b></div><div class="big">5</div><div class="ft">선수 지목 (시장 칸)</div></div><div class="card sm" style="--c:#ff9aa4"><div class="hd"><b>빨강</b></div><div class="big">6</div><div class="ft">선수 지목 (시장 칸)</div></div><div class="card sm" style="--c:#ff9aa4"><div class="hd"><b>빨강</b></div><div class="big">7</div><div class="ft">선수 지목 (시장 칸)</div></div><div class="card sm" style="--c:#ff9aa4"><div class="hd"><b>빨강</b></div><div class="big">8</div><div class="ft">선수 지목 (시장 칸)</div></div><div class="card sm" style="--c:#ff9aa4"><div class="hd"><b>빨강</b></div><div class="big">9</div><div class="ft">선수 지목 (시장 칸)</div></div><div class="card sm" style="--c:#ff9aa4"><div class="hd"><b>빨강</b></div><div class="big">10</div><div class="ft">선수 지목 (시장 칸)</div></div><div class="card sm" style="--c:#ff9aa4"><div class="hd"><b>빨강</b></div><div class="big">11</div><div class="ft">선수 지목 (시장 칸)</div></div><div class="card sm" style="--c:#ff9aa4"><div class="hd"><b>빨강</b></div><div class="big">12</div><div class="ft">선수 지목 (시장 칸)</div></div><div class="card sm" style="--c:#ff9aa4"><div class="hd"><b>빨강</b></div><div class="big">A</div><div class="ft">구단 지목 (구단 자리)</div></div><div class="card sm" style="--c:#ff9aa4"><div class="hd"><b>빨강</b></div><div class="big">B</div><div class="ft">구단 지목 (구단 자리)</div></div><div class="card sm" style="--c:#ff9aa4"><div class="hd"><b>빨강</b></div><div class="big">C</div><div class="ft">구단 지목 (구단 자리)</div></div><div class="card sm" style="--c:#ff9aa4"><div class="hd"><b>빨강</b></div><div class="big">D</div><div class="ft">구단 지목 (구단 자리)</div></div><div class="card sm" style="--c:#ff9aa4"><div class="hd"><b>빨강</b></div><div class="big">E</div><div class="ft">구단 지목 (구단 자리)</div></div><div class="card sm" style="--c:#ff9aa4"><div class="hd"><b>빨강</b></div><div class="big">F</div><div class="ft">구단 지목 (구단 자리)</div></div></div>
+<section class="sheet"><h2>시장 칸 보드</h2><div class="slots"><div class="slot">1</div><div class="slot">2</div><div class="slot">3</div><div class="slot">4</div><div class="slot">5</div><div class="slot">6</div><div class="slot">7</div><div class="slot">8</div><div class="slot">9</div><div class="slot">10</div><div class="slot">11</div><div class="slot">12</div></div>
+<h2>구단 자리</h2><div class="slots six"><div class="slot">A</div><div class="slot">B</div><div class="slot">C</div><div class="slot">D</div><div class="slot">E</div><div class="slot">F</div></div>
+<h2>1·2차 제안 자리판 (색마다 1장)</h2><div class="slots"><div class="slot">1차</div><div class="slot">2차</div></div>
+</section>
+<section class="sheet"><h2>점수 기록지</h2>
+<table><tr><th>라운드</th><th>노랑</th><th>초록</th><th>파랑</th><th>빨강</th><th>이벤트</th></tr>
+<tr><td>1</td><td></td><td></td><td></td><td></td><td></td></tr><tr><td>2</td><td></td><td></td><td></td><td></td><td></td></tr><tr><td>3</td><td></td><td></td><td></td><td></td><td></td></tr><tr><td>4</td><td></td><td></td><td></td><td></td><td></td></tr><tr><td>5 (데드라인)</td><td></td><td></td><td></td><td></td><td></td></tr>
+<tr><td>수수료 합</td><td></td><td></td><td></td><td></td><td></td></tr>
+<tr><td>목표 카드 (달성 +10)</td><td></td><td></td><td></td><td></td><td></td></tr>
+<tr><td><b>최종</b></td><td></td><td></td><td></td><td></td><td></td></tr></table>
+<h3>플레이테스트 메모</h3>
+<table class="memo"><tr><td>인원 / 날짜</td><td></td></tr><tr><td>첫 판 설명 시간</td><td></td></tr><tr><td>라운드당 시간</td><td></td></tr>
+<tr><td>헷갈린 규칙</td><td></td></tr><tr><td>남의 목표를 읽고 가로챘나</td><td></td></tr><tr><td>일부러 동률을 만든 플레이</td><td></td></tr><tr><td>"한 판 더"?</td><td></td></tr></table></section>
+</body></html>

@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>스토브리그 — 에이전트의 전쟁</title>
+<style>
+:root{--bg:#0b1220;--pn:#121d30;--pn2:#18263c;--ln:#2a3a53;--tx:#edf3fb;--mu:#9eb0c8;--gd:#f5c86b;--gr:#68d6b0;color-scheme:dark;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at top,#1b2c45,#0b1220 55%) fixed;background-color:var(--bg);color:var(--tx);font:15px/1.5 system-ui,-apple-system,"Noto Sans KR",sans-serif;min-height:100vh}
+button,select,input{font:inherit}button{cursor:pointer;border:1px solid #415571;border-radius:10px;padding:10px 14px;color:var(--tx);background:#22334c}button:hover:not(:disabled){border-color:var(--gd)}button:disabled{opacity:.35;cursor:not-allowed}
+.pri{background:var(--gd);color:#172033;border-color:var(--gd);font-weight:800}.sub{background:transparent}
+input,select{width:100%;background:#0d1727;color:var(--tx);border:1px solid #3a4c64;border-radius:9px;padding:10px}
+.wrap{max-width:1100px;margin:auto;padding:18px}.top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;border-bottom:1px solid var(--ln);padding-bottom:14px;margin-bottom:16px}
+.top h1{margin:0;font-size:26px}.eb{color:var(--gd);font-size:11px;font-weight:900;letter-spacing:2px}.mu{color:var(--mu);font-size:13px}
+.pill{border:1px solid var(--ln);background:#111d2e;border-radius:999px;padding:6px 12px;font-size:13px;color:var(--mu);margin-left:6px}.pill b{color:var(--gd)}
+.sec{background:rgba(18,29,48,.93);border:1px solid var(--ln);border-radius:16px;padding:16px;margin-bottom:14px}.sec h3{margin:0 0 10px;font-size:15px}
+.lay{display:grid;grid-template-columns:minmax(0,1fr) 270px;gap:16px}.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.pc{border:1px solid #3b4b62;background:linear-gradient(145deg,#20314a,#121b2a);border-radius:13px;padding:12px;display:flex;flex-direction:column;gap:6px;cursor:pointer}.pc.sel{border:2px solid var(--gd)}.pc.sold{opacity:.35;pointer-events:none}
+.pc .r{font-size:24px;font-weight:900;float:right}.pos{font-size:11px;font-weight:900;color:var(--gd)}.tag{font-size:10px;padding:2px 7px;border-radius:5px;background:#30415b}.tag.star{background:#604b20;color:#ffe09a}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}.grid2 label{display:block;color:var(--mu);font-size:12px;margin-bottom:4px}
+.est{grid-column:1/-1;background:#0e1929;border:1px solid var(--ln);border-radius:10px;padding:12px;display:flex;justify-content:space-between;align-items:center}.est b{color:var(--gd);font-size:20px}
+.ev{border:1px solid #6c5730;background:linear-gradient(100deg,#332b1d,#171f2d);border-radius:12px;padding:12px}.ev strong{color:var(--gd)}
+.row{display:flex;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid #ffffff12}.row strong{color:var(--gd);font-size:18px}.row.me{background:#40351d33}
+.club{border:1px solid var(--ln);background:var(--pn2);border-radius:10px;padding:9px;margin-bottom:7px;font-size:12px}.club.act{border-color:var(--gr)}.club b{color:var(--gr)}
+.lg{max-height:340px;overflow:auto;font-size:12px;color:#c3d0e2}.lg div{padding:7px 0;border-bottom:1px solid #ffffff0d}.lg b{color:var(--gd)}
+.code{font-size:46px;font-weight:900;letter-spacing:8px;color:var(--gd);text-align:center;margin:8px 0}
+.err{color:#ffb2b8;font-size:13px;min-height:20px;margin-top:8px}.ctr{max-width:460px;margin:8vh auto}.acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.acts>*{flex:1}
+@media(max-width:800px){.lay{grid-template-columns:1fr}.grid2{grid-template-columns:1fr}}
+</style></head><body><div class="wrap" id="app"><p class="mu">연결 중…</p></div>
+<div id="rules" style="display:none;position:fixed;inset:0;background:#050a12d9;z-index:10;padding:20px;overflow:auto" onclick="this.style.display='none'"><div class="sec" style="max-width:580px;margin:4vh auto" onclick="event.stopPropagation()"><h3>📖 게임 규칙</h3><p><b>목표</b><br>5라운드 동안 선수 계약을 성사시켜 수수료(억 원)를 가장 많이 모은 에이전트가 승리합니다.</p><p><b>진행</b><br>매 라운드 선수 1명, 구단 1곳, 연봉, 수수료율 카드, (선택) 전략 카드를 정해 제출합니다. 모두 제출하면 결과가 한꺼번에 공개됩니다. 연봉은 선수의 최소 연봉 이상, 구단 예산 이하여야 합니다.</p><p><b>매력도와 경쟁</b><br>연봉 + 포지션 일치(+2) + 구단 선호 특성(+1) + 전략 카드 + 이벤트 보너스. 같은 선수를 노리면 매력도가 높은 쪽이 계약하고, 동률이면 수수료율이 낮은 쪽, 그래도 같으면 무작위입니다.</p><p><b>수수료</b><br>연봉 × 수수료율 + 선수 계약 보너스 ± 카드·이벤트 효과 (단위: 억 원). 예) 연봉 8억 × 10% = 0.8억</p><p><b>수수료율 카드</b><br>시작 시 5·10·15·20% 카드를 각 2장씩, 총 8장 받습니다. 5라운드 동안 라운드마다 1장을 골라 쓰며, 제출하면 계약 성사 여부와 관계없이 소모되어 재사용할 수 없습니다. 패스하면 소모되지 않습니다.</p><p><b>전략 카드</b><br>시작 시 무작위 3장을 받으며 라운드당 1장까지, 재사용 불가입니다.<br>관계 구축 +2 / 이적설 흘리기 +3 (수수료 -0.2억) / 신속한 결단 +1 (성공 시 +0.3억) / 실속 협상 연봉 -1억 & +1</p><p><b>이벤트</b><br>매 라운드 시장 이벤트가 모든 에이전트에게 적용됩니다.</p><div class="acts"><button class="pri" onclick="$('rules').style.display='none'">확인</button></div></div></div>
+<script>
+const PL=[["강태오","FW",10,8,"스타",1],["윤시후","MF",8,6,"플레이메이커",0],["박도윤","DF",7,4,"베테랑",.3],["최준서","FW",6,3,"유망주",1],["김민재","GK",7,4,"클린시트",.5],["이하준","MF",6,3,"유망주",1],["정우진","DF",5,2,"멀티플레이어",.3],["한승우","FW",9,7,"스타",1],["오지환","MF",7,5,"플레이메이커",.3],["문현수","DF",6,3,"베테랑",.3],["임재원","FW",5,2,"유망주",1],["백승민","GK",5,2,"클린시트",.5],["서강민","MF",8,6,"스타",1],["조현우","DF",4,2,"멀티플레이어",.3],["장민호","FW",7,5,"베테랑",.5],["남기훈","MF",5,2,"유망주",1],["유태양","DF",8,6,"스타",1],["신도현","GK",6,3,"클린시트",.5],["차은결","MF",4,2,"플레이메이커",.3],["배준혁","FW",8,6,"스타",1]].map((a,i)=>({id:i,n:a[0],pos:a[1],v:a[2],min:a[3],tr:a[4],b:a[5]}));
+const CL=[["블루 드래곤즈",10,"FW","스타"],["실버 호크스",8,"MF","플레이메이커"],["아이언 가디언즈",7,"GK","클린시트"],["에메랄드 타이거즈",9,"DF","스타"],["오로라 FC",6,"MF","유망주"],["노바 크루저스",6,"DF","베테랑"],["썬더 울브스",5,"FW","유망주"],["스톰 파이오니어",9,"MF","플레이메이커"]].map(a=>({n:a[0],bud:a[1],pos:a[2],pref:a[3]}));
+const EV=[["이적시장 개장","📰","기본 협상 라운드입니다.","normal"],["공격수 품귀 현상","🔥","FW 선수의 계약 매력도 +1","fw"],["구단 긴축 경영","📉","모든 구단의 유효 예산 -1억","budget"],["유망주 열풍","🌱","유망주 선수 수수료 +0.3억","young"],["빅딜 시즌","💰","이번 라운드 성사된 계약 중 연봉이 가장 높은 계약에 +0.5억 (동률이면 모두)","deadline"]];
+const TK={none:["사용 안 함",0,0,0,0],charm:["관계 구축 (+2 매력도)",2,0,0,0],leak:["이적설 흘리기 (+3 매력도, 수수료 -0.2억)",3,-.2,0,0],fast:["신속한 결단 (+1 매력도, 성공 시 +0.3억)",1,0,.3,0],low:["실속 협상 (연봉 -1억, 매력도 +1)",1,0,0,-1]};
+const $=id=>document.getElementById(id),esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const shuf=a=>{a=[...a];for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a},rnd=n=>Math.floor(Math.random()*n);
+let db,uid,prof,view="login",msg="",code=null,g=null,offs={},unsubs=[],f={},busy=false,lastRes=null;
+const PP=()=>db.doc(`data/users/${uid}/profile`),saveProf=()=>PP().set(prof);
+const M=x=>(Math.round(x*100)/100)+"억",showRules=()=>$("rules").style.display="block",feeRem=u=>{const r={5:2,10:2,15:2,20:2};u.forEach(n=>r[n]--);return r},aiFee=(i,d)=>{const r=feeRem(d.fu[i]||[]),a=[5,10,15,20].filter(n=>r[n]>0);return a[rnd(a.length)]},aiTk=(i,d)=>{const h=d.th[i]||[];return h.length&&Math.random()<.45?h[rnd(h.length)]:"none"};
+const seat=()=>g?g.pl.findIndex(p=>p.id===uid):-1,nm=(i)=>i<g.pl.length?esc(g.pl[i].n):"AI "+(i-g.pl.length+1);
+const hex=s=>Array.from(new TextEncoder().encode(s.toLowerCase())).map(b=>b.toString(16).padStart(2,"0")).join("");
+
+(async()=>{try{const c=await claude.use("db"),u=await claude.use("user");if(!c||!u)throw 0;db=c;uid=await u.id();if(!uid)throw 0;
+ const s=await PP().get();if(s.exists){prof=s.data();view="home"}}catch(e){$("app").innerHTML='<div class="sec ctr"><h3>로그인이 필요합니다</h3><p class="mu">claude.ai에 로그인한 상태에서 이 페이지를 열어주세요. (db 기능 사용 불가)</p></div>';return}
+ render()})();
+
+function render(){const a=$("app");a.innerHTML=view==="login"?loginH():view==="home"?homeH():roomH();if(view==="room"&&g&&g.status==="done")record()}
+const hdr=(extra="")=>`<header class="top"><div><div class="eb">OFFSEASON · AGENT WAR</div><h1>⚾ 스토브리그</h1></div><div>${extra}</div></header>`;
+const errH=()=>`<div class="err">${esc(msg)}</div>`;
+
+function loginH(){return hdr()+`<div class="sec ctr"><h3>에이전트 등록</h3><p class="mu">게임에서 사용할 아이디(닉네임)를 입력하세요. 2~12자, 계정에 저장되며 다른 사람과 중복될 수 없습니다.</p><input id="nick" maxlength="12" placeholder="아이디 입력"><div class="acts"><button class="pri" onclick="login()">등록하고 시작</button></div>${errH()}</div>`}
+async function login(){const n=$("nick").value.replace(/[<>&"'\s]/g,"").slice(0,12);if(n.length<2){msg="아이디는 2자 이상이어야 합니다.";return render()}
+ try{const r=db.doc("ids/"+hex(n)),s=await r.get();if(s.exists&&s.data().uid!==uid){msg="이미 사용 중인 아이디입니다.";return render()}
+ await r.set({uid,nick:n});prof={nick:n,games:0,wins:0,total:0,recent:[],hist:[],done:[]};await saveProf();msg="";view="home";render()}catch(e){msg="저장 실패: "+(e.message||e.code);render()}}
+
+function homeH(){const p=prof;return hdr(`<span class="pill">에이전트 <b>${esc(p.nick)}</b></span>`)+`<div class="lay"><main>
+<div class="sec"><h3>🎮 새 게임 만들기</h3><p class="mu">방을 만들면 초대 코드가 생성됩니다. 빈 자리는 AI 에이전트로 채울 수 있습니다. (최대 4명)</p><div class="grid2"><div><label>AI 에이전트 수</label><select id="aiN"><option value="0">0명 (친구와만)</option><option value="1" selected>1명</option><option value="2">2명</option><option value="3">3명</option></select></div></div><div class="acts"><button class="pri" onclick="createGame()">게임 생성</button></div></div>
+<div class="sec"><h3>🔑 초대 코드로 참가</h3><input id="jc" maxlength="5" placeholder="예: K7M2X" style="text-transform:uppercase"><div class="acts"><button onclick="joinGame($('jc').value)">참가하기</button></div>${errH()}</div></main>
+<aside><div class="sec"><h3>📊 내 전적</h3><div class="row"><span>플레이</span><strong>${p.games}</strong></div><div class="row"><span>승리</span><strong>${p.wins}</strong></div><div class="row"><span>누적 수수료</span><strong>${M(p.total)}</strong></div></div>
+<div class="sec"><h3>🕘 최근 게임</h3>${p.recent.length?p.recent.map(c=>`<button class="sub" style="width:100%;margin-bottom:6px" onclick="joinGame('${esc(c)}')">${esc(c)} 입장</button>`).join(""):'<p class="mu">아직 기록이 없습니다.</p>'}${p.hist.map(h=>`<div class="mu">${h.w?"🏆":"·"} ${esc(h.c)} · ${M(h.s)}</div>`).join("")}</div></aside></div>`}
+
+async function createGame(){const ai=+$("aiN").value;msg="";try{const c="ABCDEFGHJKMNPQRSTUVWXYZ23456789";let k="";for(let i=0;i<5;i++)k+=c[rnd(c.length)];
+ await db.doc("games/"+k).set({host:uid,status:"lobby",ai,pl:[{id:uid,n:prof.nick}],round:0,sc:[0,0,0,0],dl:[0,0,0,0],sold:[],used:{},lg:[],mk:[],cl:[],ev:0});await enter(k)}catch(e){msg="생성 실패: "+(e.message||e.code);render()}}
+async function joinGame(c){c=(c||"").trim().toUpperCase();msg="";try{if(c.length!==5)throw{message:"5자리 코드를 입력하세요."};const r=db.doc("games/"+c),s=await r.get();if(!s.exists)throw{message:"존재하지 않는 코드입니다."};
+ const d=s.data();if(!d.pl.some(p=>p.id===uid)){if(d.status!=="lobby")throw{message:"이미 시작된 게임입니다."};if(d.pl.length+d.ai>=4)throw{message:"방이 가득 찼습니다."};await r.update({pl:[...d.pl,{id:uid,n:prof.nick}]})}
+ await enter(c)}catch(e){msg=e.message||e.code;render()}}
+async function enter(c){code=c;unsubs.forEach(u=>u());g=null;offs={};f={};lastRes=null;prof.recent=[c,...prof.recent.filter(x=>x!==c)].slice(0,5);saveProf();view="room";render();
+ unsubs=[db.doc("games/"+c).onSnapshot(s=>{if(s.exists){g=s.data();render();tryResolve()}}),db.collection(`games/${c}/offers`).onSnapshot(s=>{offs={};s.docs.forEach(d=>offs[d.id]=d.data());render();tryResolve()})]}
+function leave(){unsubs.forEach(u=>u());unsubs=[];g=null;view="home";render()}
+
+function roomH(){if(!g)return hdr()+'<p class="mu">불러오는 중…</p>';const bar=`<span class="pill">코드 <b>${code}</b></span><button class="sub" onclick="showRules()">📖 게임 규칙</button><button class="sub" onclick="leave()">나가기</button>`;
+ if(g.status==="lobby")return hdr(bar)+`<div class="sec ctr"><h3>대기실</h3><p class="mu">친구에게 초대 코드를 알려주세요. (친구도 이 페이지를 열어 코드를 입력)</p><div class="code">${code}</div><div class="acts"><button onclick="navigator.clipboard&&navigator.clipboard.writeText('${code}')">코드 복사</button></div>
+ <h3 style="margin-top:16px">참가자 ${g.pl.length}명 + AI ${g.ai}명</h3>${g.pl.map(p=>`<div class="row"><span>${esc(p.n)}${p.id===g.host?" 👑":""}</span></div>`).join("")}
+ <div class="acts">${g.host===uid?`<button class="pri" ${g.pl.length+g.ai<2?"disabled":""} onclick="startGame()">게임 시작</button>`:'<span class="mu">방장이 시작하기를 기다리는 중…</span>'}</div></div>`;
+ const tot=g.pl.length+g.ai,names=Array.from({length:tot},(_,i)=>i),mx=Math.max(...g.sc.slice(0,tot));
+ if(g.status==="done")return hdr(bar)+`<div class="sec ctr"><div class="eb">TRANSFER WINDOW CLOSED</div><h2>스토브리그 종료</h2>${names.map(i=>`<div class="row ${g.sc[i]===mx?"me":""}"><span>${g.sc[i]===mx?"🏆 ":""}${nm(i)} · ${g.dl[i]}건</span><strong>${M(g.sc[i])}</strong></div>`).join("")}<div class="acts"><button class="pri" onclick="leave()">로비로</button></div></div>`;
+ const me=seat(),e=EV[g.ev],hand=(g.th&&g.th[me])||[],fr=feeRem((g.fu&&g.fu[me])||[]),sub=offs[uid]&&offs[uid].round===g.round,bid=g.status==="bid"&&!sub&&me>=0;
+ if(f.round!==g.round)f={round:g.round,pid:null,club:g.cl[0],sal:0,fee:[10,5,15,20].find(n=>fr[n]>0)||5,tk:"none"};
+ const p=f.pid!=null?PL[f.pid]:null,o=p&&ev1({pid:f.pid,club:f.club,sal:f.sal,fee:f.fee,tk:f.tk}),subN=g.pl.filter(u=>offs[u.id]&&offs[u.id].round===g.round).length;
+ const salOpts=p?Array.from({length:11-p.min},(_,i)=>p.min+i).map(n=>`<option value="${n}" ${n===f.sal?"selected":""}>${n}억</option>`).join(""):"";
+ return hdr(bar+`<span class="pill">라운드 <b>${g.round}/5</b></span>`)+`<div class="sec"><div class="ev"><strong>${e[1]} ${e[0]}</strong><div class="mu">${e[2]}</div></div></div><div class="lay"><main>
+<div class="sec"><h3>선수 시장</h3><div class="cards">${g.mk.map(id=>{const q=PL[id],sd=g.sold.includes(id);return `<div class="pc ${f.pid===id?"sel":""} ${sd?"sold":""}" ${bid&&!sd?`onclick="pick(${id})"`:""}><span class="r">${q.v}억</span><span class="pos">${q.pos}</span><b>${q.n}</b><div><span class="tag ${q.tr==="스타"?"star":""}">${q.tr}</span></div><span class="mu">최소 연봉 ${q.min}억 · 계약 보너스 +${q.b.toFixed(1)}억</span></div>`}).join("")}</div></div>
+<div class="sec"><h3>협상 조건</h3>${g.status==="bid"?`<div class="grid2"><div><label>구단</label><select ${bid?"":"disabled"} onchange="setF('club',this.value)">${g.cl.map(n=>`<option ${n===f.club?"selected":""}>${n}</option>`).join("")}</select></div>
+<div><label>연봉</label><select ${bid&&p?"":"disabled"} onchange="setF('sal',+this.value)">${salOpts}</select></div>
+<div><label>수수료율 카드 (사용 후 소멸)</label><select ${bid?"":"disabled"} onchange="setF('fee',+this.value)">${[5,10,15,20].filter(n=>fr[n]>0).map(n=>`<option value="${n}" ${n===f.fee?"selected":""}>${n}% (남은 ${fr[n]}장)</option>`).join("")}</select></div>
+<div><label>전략 카드 (보유 카드만, 사용 후 소멸)</label><select ${bid?"":"disabled"} onchange="setF('tk',this.value)">${Object.keys(TK).filter(k=>k==="none"||hand.includes(k)).map(k=>`<option value="${k}" ${k===f.tk?"selected":""}>${TK[k][0]}</option>`).join("")}</select></div>
+<div class="est"><span class="mu">${!p?"선수를 선택하세요":o?`${p.n} · ${esc(f.club)} · 매력도 ${o.at}`:"조건 불가 (최소 연봉/구단 예산 확인)"}</span><b>${o?M(o.pts):"—"}</b></div></div>
+<div class="acts"><button class="pri" ${bid&&o?"":"disabled"} onclick="submitOffer()">🤝 협상 제출</button><button ${bid?"":"disabled"} onclick="passRound()">이번 라운드 패스</button></div>
+<p class="mu">${sub?"제출 완료. 다른 에이전트를 기다리는 중…":""} 제출 현황 ${subN}/${g.pl.length}명</p>`:`<p class="mu">라운드 결과가 나왔습니다.</p><div class="acts">${g.host===uid?`<button class="pri" onclick="nextRound()">${g.round>=5?"최종 결과 보기":"다음 라운드 →"}</button>`:'<span class="mu">방장이 다음 라운드를 시작하기를 기다리는 중…</span>'}</div>`}</div>
+<div class="sec"><h3>협상 노트</h3><div class="lg">${g.lg.map(x=>`<div>${x}</div>`).join("")||"<div>첫 계약을 노려보세요.</div>"}</div></div></main>
+<aside><div class="sec"><h3>🏆 랭킹</h3>${names.map(i=>`<div class="row ${i===me?"me":""}"><div>${nm(i)}${i===me?" (나)":""}<br><span class="mu">계약 ${g.dl[i]}건</span></div><strong>${M(g.sc[i])}</strong></div>`).join("")}</div>
+<div class="sec"><h3>🃏 내 카드</h3><div class="mu">수수료율 카드: ${[5,10,15,20].map(n=>`${n}% ×${fr[n]}`).join(" · ")}<br>전략 카드: ${hand.map(k=>TK[k][0].split(" (")[0]).join(", ")||"없음"}</div></div><div class="sec"><h3>🏟️ 구단 수요</h3>${g.cl.map(n=>{const c=CL.find(x=>x.n===n);return `<div class="club ${f.club===n?"act":""}"><b>${n}</b> 예산 ${c.bud-(e[3]==="budget"?1:0)}억<br>${c.pos} 필요 · ${c.pref} 선호</div>`}).join("")}</div></aside></div>`}
+function pick(id){f.pid=id;f.sal=PL[id].min;render()}
+function setF(k,v){f[k]=v;render()}
+
+function ev1(o){const p=PL[o.pid],c=CL.find(x=>x.n===o.club),t=TK[o.tk]||TK.none,e=EV[g.ev][3],s=o.sal+t[4];
+ if(!p||!c||s<p.min||s>c.bud-(e==="budget"?1:0))return null;
+ return {...o,s,p,c,at:s+(p.pos===c.pos?2:0)+(p.tr===c.pref?1:0)+t[1]+(e==="fw"&&p.pos==="FW"?1:0),pts:Math.max(0,s*o.fee/100+t[2]+p.b+t[3]+(e==="young"&&p.tr==="유망주"?.3:0))}}
+async function submitOffer(){try{await db.doc(`games/${code}/offers/${uid}`).set({round:g.round,pid:f.pid,club:f.club,sal:f.sal,fee:f.fee,tk:f.tk})}catch(e){msg=e.message}}
+async function passRound(){try{await db.doc(`games/${code}/offers/${uid}`).set({round:g.round,pid:-1,club:"",sal:0,fee:0,tk:"none"})}catch(e){msg=e.message}}
+
+function deal(d){d.ev=rnd(EV.length);const n=d.pl.length+d.ai+1;d.mk=shuf(PL.map(p=>p.id).filter(i=>!d.sold.includes(i))).slice(0,n);d.cl=shuf(CL.map(c=>c.n)).slice(0,n);d.status="bid"}
+async function startGame(){const d={...g,round:1,sold:[],fu:{},th:{},lg:[]},ks=Object.keys(TK).filter(k=>k!=="none");for(let i=0;i<g.pl.length+g.ai;i++)d.th[i]=shuf(ks).slice(0,3);deal(d);await db.doc("games/"+code).set(d)}
+async function nextRound(){const d={...g,round:g.round+1};if(d.round>5)d.status="done";else deal(d);await db.doc("games/"+code).set(d)}
+function aiOffer(i,d){const p=PL[g.mk[rnd(g.mk.length)]],bd=EV[g.ev][3]==="budget"?1:0,fit=c=>(c.pos===p.pos?2:0)+(c.pref===p.tr?1:0);
+ const el=g.cl.map(n=>CL.find(c=>c.n===n)).filter(c=>c.bud-bd>=p.min).sort((a,b)=>fit(b)-fit(a));if(!el.length)return null;const c=el[rnd(Math.min(3,el.length))];
+ return ev1({pid:p.id,club:c.n,sal:Math.min(c.bud-bd,p.min+rnd(3)),fee:aiFee(i,d),tk:aiTk(i,d)})}
+async function tryResolve(){if(!g||g.host!==uid||g.status!=="bid"||busy)return;
+ if(!g.pl.every(u=>offs[u.id]&&offs[u.id].round===g.round))return;busy=true;
+ try{const d=JSON.parse(JSON.stringify(g)),all=[],props=[];d.fu=d.fu||{};d.th=d.th||{};
+ const desc=(i,o,tag)=>`<b>${nm(i)}</b>: ${PL[o.pid].n} / ${o.club} / 연봉 ${o.s!=null?o.s:o.sal}억 / 수수료율 ${o.fee}%${o.tk!=="none"?" / 카드 "+TK[o.tk][0].split(" (")[0]:""}${tag}`;
+ g.pl.forEach((u,i)=>{const o=offs[u.id];if(o.pid<0){props.push(`<b>${nm(i)}</b>: 이번 라운드 패스`);return}
+  const okF=feeRem(d.fu[i]||[])[o.fee]>0,okT=o.tk==="none"||(d.th[i]||[]).includes(o.tk);
+  if(!okF||!okT){props.push(desc(i,o," → 무효 (보유하지 않은 카드)"));return}
+  d.fu[i]=[...(d.fu[i]||[]),o.fee];if(o.tk!=="none")d.th[i]=d.th[i].filter(k=>k!==o.tk);
+  const r=ev1(o);if(r){r.who=i;all.push(r);props.push(desc(i,r," · 매력도 "+r.at))}else props.push(desc(i,o," → 무효 (최소 연봉/구단 예산 조건 불충족)"))});
+ for(let k=0;k<g.ai;k++){const i=g.pl.length+k,r=aiOffer(i,d);
+  if(r){r.who=i;all.push(r);d.fu[i]=[...(d.fu[i]||[]),r.fee];if(r.tk!=="none")d.th[i]=d.th[i].filter(x=>x!==r.tk);props.push(desc(i,r," · 매력도 "+r.at))}else props.push(`<b>${nm(i)}</b>: 제안 없음`)}
+ const by={};all.forEach(r=>(by[r.pid]=by[r.pid]||[]).push(r));const gs=Object.values(by),res=[];
+ gs.forEach(a=>a.sort((x,y)=>y.at-x.at||x.fee-y.fee||Math.random()-.5));
+ const mxS=Math.max(0,...gs.map(a=>a[0].s));
+ gs.forEach(a=>{const w=a[0],bn=EV[g.ev][3]==="deadline"&&w.s===mxS?.5:0,pts=w.pts+bn;
+  d.sold.push(w.pid);d.sc[w.who]+=pts;d.dl[w.who]++;
+  res.push(`✅ <b>${nm(w.who)}</b> 계약 성공 · ${w.p.n} → ${w.c.n} · 연봉 ${w.s}억 · 수수료 <b>+${M(pts)}</b>${bn?" (빅딜 보너스 +0.5억 포함)":""}`);
+  a.slice(1).forEach(x=>res.push(`❌ <b>${nm(x.who)}</b> 협상 실패 · ${x.p.n} 영입전 패배 (매력도 ${x.at} ≤ ${w.at})`))});
+ if(!gs.length)res.push("성사된 계약이 없습니다.");
+ d.lg=[`<b>[${g.round}라운드] ${EV[g.ev][0]}</b>`,...props.map(x=>"📝 "+x),...res,...g.lg].slice(0,45);d.status="res";
+ await db.doc("games/"+code).set(d)}catch(e){msg=e.message}finally{busy=false}}
+
+async function record(){if(prof.done.includes(code))return;prof.done=[...prof.done,code].slice(-50);const m=seat(),mx=Math.max(...g.sc.slice(0,g.pl.length+g.ai)),s=g.sc[m]||0;
+ prof.games++;if(s===mx)prof.wins++;prof.total=+(prof.total+s).toFixed(2);prof.hist=[{c:code,s,w:s===mx,t:Date.now()},...prof.hist].slice(0,8);try{await saveProf()}catch(e){}}
+</script></body></html>
