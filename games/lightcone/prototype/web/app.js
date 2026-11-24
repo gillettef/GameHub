@@ -65,7 +65,7 @@ class OnlineSession {
   }
 
   connect() {
-    this.es = new EventSource(`/api/rooms/${this.code}/events?token=${encodeURIComponent(this.token)}`);
+    this.es = new EventSource(`api/rooms/${this.code}/events?token=${encodeURIComponent(this.token)}`);
     this.es.addEventListener('view', (e) => { this.v = JSON.parse(e.data); this.connected = true; refresh(); renderConn(); });
     this.es.onopen = () => { this.connected = true; renderConn(); };
     this.es.onerror = () => { this.connected = false; renderConn(); };
@@ -74,7 +74,7 @@ class OnlineSession {
   view() { return this.v; }
 
   async submit(kind, payload) {
-    const res = await fetch(`/api/rooms/${this.code}/action`, {
+    const res = await fetch(`api/rooms/${this.code}/action`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ token: this.token, kind, payload }),
@@ -100,10 +100,10 @@ async function openRoom(code) {
   let saved = null;
   try { saved = JSON.parse(localStorage.getItem(storeKey(code)) || 'null'); } catch { /* 무시 */ }
   if (saved) {
-    const res = await fetch(`/api/rooms/${code}/state?token=${encodeURIComponent(saved.token)}`);
+    const res = await fetch(`api/rooms/${code}/state?token=${encodeURIComponent(saved.token)}`);
     if (res.ok) { startSession(new OnlineSession({ code, ...saved })); return; }
   }
-  startSession(new OnlineSession(await apiPost(`/api/rooms/${code}/join`)));
+  startSession(new OnlineSession(await apiPost(`api/rooms/${code}/join`)));
 }
 
 // ---------------------------------------------------------------- 화면 상태
@@ -385,7 +385,7 @@ function renderDock() {
   if (online && !online.oppJoined) {
     title.textContent = '상대를 초대하세요';
     hint.textContent = '코드나 링크를 보내면 다른 네트워크에서도 참가할 수 있습니다.';
-    const link = `${location.origin}/?room=${online.code}`;
+    const link = `${location.origin}${location.pathname}?room=${online.code}`;
     const box = div('invite');
     box.innerHTML = `<div class="code">${online.code}</div>`;
     const row = div('row');
@@ -515,7 +515,7 @@ function render() {
 // ---------------------------------------------------------------- 이벤트
 $('botBtn').addEventListener('click', () => startSession(new BotSession()));
 $('createBtn').addEventListener('click', async () => {
-  try { startSession(new OnlineSession(await apiPost('/api/rooms'))); } catch (e) { $('lobbyErr').textContent = e.message; }
+  try { startSession(new OnlineSession(await apiPost('api/rooms'))); } catch (e) { $('lobbyErr').textContent = e.message; }
 });
 $('joinForm').addEventListener('submit', async (e) => {
   e.preventDefault();
