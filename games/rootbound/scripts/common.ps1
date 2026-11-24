@@ -6,21 +6,7 @@ $script:root   = Split-Path -Parent $PSScriptRoot
 $script:devDir = Join-Path $script:root '.dev'
 New-Item -ItemType Directory -Force $script:devDir | Out-Null
 
-# Python 3.11 is installed but not on PATH on this machine.
-$script:pythonCandidates = @(
-    "$env:LOCALAPPDATA\Programs\Python\Python311\python.exe",
-    "$env:LOCALAPPDATA\Programs\Python\Python312\python.exe",
-    "$env:LOCALAPPDATA\Programs\Python\Python313\python.exe"
-)
-
-function Find-Python {
-    $cmd = Get-Command python -ErrorAction SilentlyContinue
-    if ($cmd -and $cmd.Source -notmatch 'WindowsApps') { return $cmd.Source }
-    foreach ($c in $script:pythonCandidates) { if (Test-Path $c) { return $c } }
-    return $null
-}
-
-# Vite (Node 22) listens on ::1 by default, uvicorn/express on 127.0.0.1 - probe both.
+# Vite (Node 22) listens on ::1 by default, express on 127.0.0.1 - probe both.
 function Test-Port([int]$port) {
     foreach ($addr in @('127.0.0.1', '::1')) {
         try {
@@ -41,28 +27,6 @@ function Ensure-NodeDeps {
     Write-Host "[deps] npm install (root workspaces)..."
     Push-Location $script:root
     try { cmd /c npm install } finally { Pop-Location }
-}
-
-function Ensure-PyDeps([string]$dir) {
-    $venvPy = Join-Path $dir '.venv\Scripts\python.exe'
-    if (-not (Test-Path $venvPy)) {
-        $py = Find-Python
-        if (-not $py) { throw "Python not found. Install Python 3.11+ or add it to `$pythonCandidates in scripts/common.ps1." }
-        Write-Host "[deps] creating venv with $py ..."
-        & $py -m venv (Join-Path $dir '.venv')
-    }
-    $req   = Join-Path $dir 'requirements.txt'
-    $stamp = Join-Path $dir '.venv\.requirements.stamp'
-    $needInstall = $true
-    if ((Test-Path $stamp) -and (Test-Path $req)) {
-        $needInstall = (Get-Item $req).LastWriteTime -gt (Get-Item $stamp).LastWriteTime
-    }
-    if ($needInstall -and (Test-Path $req)) {
-        Write-Host "[deps] pip install -r ai/requirements.txt ..."
-        & $venvPy -m pip install -q -r $req
-        Get-Date | Set-Content $stamp
-    }
-    return $venvPy
 }
 
 # 이미 실행 중이거나 포트가 점유됐으면 $null, 아니면 pid 파일 경로를 돌려준다.

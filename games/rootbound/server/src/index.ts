@@ -8,7 +8,6 @@ import express from 'express';
 import { Server, type Socket } from 'socket.io';
 import type { Ack, ClientToServerEvents, PlayerId, RoomId, ServerToClientEvents } from '@rootbound/shared';
 import { maskState } from '@rootbound/shared';
-import { checkAiHealth } from './ai/client.js';
 import { createAiRunner } from './game/aiTurn.js';
 import { SnapshotStore } from './persistence/snapshots.js';
 import { StatsLog, parseVitals } from './persistence/stats.js';
@@ -23,7 +22,6 @@ import { clientIp } from './net/clientIp.js';
  *  APP_ENV      dev | prod (헬스 응답과 로그에 표시)
  *  CLIENT_DIST  빌드된 클라이언트 디렉터리. 지정하면 정적 서빙 + SPA 폴백 (운영 서버)
  *  DATA_DIR     JSON 스냅샷 디렉터리 (F006). 기본 server/data/<APP_ENV>
- *  AI_BASE_URL  Python AI 서비스 주소 (server/src/ai/client.ts)
  */
 const PORT = Number(process.env.PORT ?? 3101);
 const HOST = process.env.HOST ?? '0.0.0.0';
@@ -126,9 +124,9 @@ for (const room of snapshots.loadAll()) {
 }
 console.log(`[server] 복원된 방 ${manager.list().length}개`);
 
-app.get('/api/health', async (_req, res) => {
-  const ai = await checkAiHealth();
-  res.json({ ok: true, service: 'rootbound-server', env: APP_ENV, ai, rooms: manager.list().length });
+app.get('/api/health', (_req, res) => {
+  // AI 는 서버 안에서 돈다(server/src/ai/search.ts). 예전 Python 서비스 상태 자리는 호환을 위해 'ok' 로 둔다
+  res.json({ ok: true, service: 'rootbound-server', env: APP_ENV, ai: 'ok', rooms: manager.list().length });
 });
 
 // 웹 성능 기록 (FCP·LCP·동기화 왕복·FPS). 같은 출처만, 빈도 상한(allowVitals) 안에서 받는다.

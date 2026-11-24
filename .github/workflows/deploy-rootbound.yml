@@ -1,6 +1,6 @@
 # GameHub 모노레포로 옮긴 rootbound 워크플로(원본: games/rootbound/.github/workflows/deploy-aws.yml). games/rootbound/** 가 바뀔 때만 돈다.
-# 운영 배포: main 에 병합되면 테스트·타입 검사·pytest 통과 후 EC2(게임 공용 서버, t4g.nano, 서울)에 올리고
-# systemd astraltab-prod-server(포트 3201)·astraltab-prod-ai(8001)를 재시작한다.
+# 운영 배포: main 에 병합되면 테스트·타입 검사 통과 후 EC2(게임 공용 서버, t4g.nano, 서울)에 올리고
+# systemd astraltab-prod-server(포트 3201)를 재시작한다(AI 는 서버 안에서 돈다, 2026-11-25 Python 사이드카 제거).
 # 저장소가 비공개라 EC2가 직접 clone 하지 못하므로 git archive 로 소스를 ssh 파이프로 보내고,
 # 클라이언트 빌드(vite)는 EC2(메모리 0.5GB) 대신 러너에서 해 client/dist/prod 만 보낸다.
 # 서버에서 scripts/aws/deploy-remote.sh 가 의존성 설치·재시작·헬스체크한다. (서비스명·~/AstralTab 경로는 예전 이름 그대로)
@@ -52,16 +52,12 @@ jobs:
           node-version: 22
           cache: npm
           cache-dependency-path: games/rootbound/package-lock.json
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
 
       - run: npm ci
-      - name: 테스트·타입 검사·pytest — 통과해야 배포한다
+      - name: 테스트·타입 검사 — 통과해야 배포한다
         run: |
           npm test
           npx tsc --noEmit -p shared && npx tsc --noEmit -p server && npx tsc --noEmit -p client
-          pip install -r ai/requirements.txt && python -m pytest ai/tests -q
       - name: 클라이언트 빌드 (EC2 메모리 절약을 위해 러너에서)
         run: cd client && npx vite build --outDir dist/prod --emptyOutDir
 

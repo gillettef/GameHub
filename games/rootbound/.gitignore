@@ -26,13 +26,5 @@ Thumbs.db
 # 로그
 *.log
 
-# Python (ai/)
-ai/.venv/
-__pycache__/
-*.pyc
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
-
 # Claude Code 로컬 설정
 .claude/settings.local.json
