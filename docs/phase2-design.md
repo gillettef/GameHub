@@ -138,7 +138,8 @@ SDK가 맡는 것(지금 15번 따로 구현된 것):
 
 ## 5. 이행 순서(제안)
 
-진행 상황(2026-11-24): 2번 호스트 골격 완료(`hub/server.mjs`, `hub/lib/static.mjs`, `hub/test/`), 3번 smilepark(운영 확인) → crease·lightcone·lastgrain inproc 전환.
+진행 상황(2026-11-24): 2번 호스트 골격 완료(`hub/server.mjs`, `hub/lib/static.mjs`, `hub/test/`), 3번 완료: smilepark·crease·lightcone·lastgrain(운영 확인) → eleven·doubleagent·proxymind inproc 전환.
+4번 봇 계산 시간(개발 PC, 2026-11-24): doubleagent 3인 normal 라운드 정산 중앙 7ms·최대 28ms, proxymind 5인 봇 설계 1회 최대 11ms·개입 1ms 이하. t4g.nano 가 몇 배 느려도 100ms 안팎이라 worker 없이 둔다. tesseract 는 옮길 때 잰다.
 
 
 1. 운영 메모리 실측(기준선).

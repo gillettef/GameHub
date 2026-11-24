@@ -221,6 +221,8 @@ notes/    규칙서 원본 및 텍스트 레퍼런스
 
 ### 배포 (다른 네트워크의 친구와 플레이)
 
+- **2026-11-24부터 운영은 GameHub 허브 안에서 실행된다**(`hub/games.json` `"mode": "inproc"`, 진입점 `scripts/aws/hub-entry.mjs` → `server/dist/hub.js`(`server/src/hub.ts`, `createHandlers`)). 접속은 `http://54.116.67.196/eleven/`. 배포하면 `deploy-remote.sh`가 예전 systemd `eleven` 서비스를 끄고 허브(`gamehub`)를 재시작한다 — 허브 안 다른 게임의 진행 중인 방도 함께 사라진다. 아래의 포트·systemd 설명은 예전 단독 운영 기준이다(단독 서버는 로컬 실행용으로 남는다).
+
 - **원리**: `npm run build` → `client/dist`(Vite) + `server/dist/index.js`(esbuild 번들, `ws` 는 external).
   `npm start`(= `node server/dist/index.js`)가 `PORT`(기본 3001)·`HOST`(기본 0.0.0.0)로 뜨며 `client/dist` 가
   있으면 정적 파일과 SPA 폴백(`server/src/static.ts`)까지 서빙한다. 클라이언트는 `location.host` 의 `/ws` 로
