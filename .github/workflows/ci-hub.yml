@@ -1,0 +1,25 @@
+# 허브(hub/**) 품질 게이트: 문법 검사 + 동작 테스트(로비·프록시·허브 안 실행·오류 격리). 의존성 없음.
+name: CI hub
+
+on:
+  push:
+    paths: ['hub/**', '.github/workflows/ci-hub.yml']
+    branches: [main, dev]
+  pull_request:
+    paths: ['hub/**', '.github/workflows/ci-hub.yml']
+
+concurrency:
+  group: ci-hub-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node --check hub/server.mjs && node --check hub/lib/static.mjs
+      - run: node --test hub/test/*.test.mjs

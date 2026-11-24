@@ -14,8 +14,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: 문법 검사
-        run: node --check hub/server.mjs
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: 문법 검사 + 테스트
+        run: node --check hub/server.mjs && node --test hub/test/*.test.mjs
 
       - uses: aws-actions/configure-aws-credentials@v4
         with:
