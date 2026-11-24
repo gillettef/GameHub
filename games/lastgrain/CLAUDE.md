@@ -59,6 +59,7 @@ Lastgrain/
 
 ## 배포 (AWS)
 
+- **2026-11-24부터 운영은 GameHub 허브 안에서 실행된다**(`hub/games.json` `"mode": "inproc"`, 진입점 `scripts/aws/hub-entry.mjs`). 접속은 `http://54.116.67.196/lastgrain/`. 배포하면 `deploy-remote.sh`가 예전 systemd `lastgrain` 서비스를 끄고 허브(`gamehub`)를 재시작한다 — 허브 안 다른 게임의 진행 중인 방도 함께 사라진다. `serve.mjs`는 로컬 단독 실행용으로 남는다. 아래의 포트·systemd 설명은 예전 단독 운영 기준이다.
 - 다른 게임(Eleven·MagicAcademy·SmilePark·DoubleAgent·Tesseract·Neoterra·Election·Lightcone·Retrocause 등)과 같은 EC2(t4g.nano, 서울) 1대를 공유한다. Lastgrain의 포트는 **8104**, systemd 서비스 이름은 `lastgrain`이다. 접속은 `http://54.116.67.196:8104` (HTTP만).
 - 배포 대상은 디지털 프로토타입(웹 시뮬레이터)이다. `scripts/aws/serve.mjs`가 `dist/`를 서빙하고 온라인 대전 API(`/api/rooms`, SSE)를 제공한다. 방 상태는 메모리에만 있어 배포·재시작 시 진행 중인 온라인 게임이 사라진다. **`package.json`이 없는 동안에는 CI 검사와 배포를 모두 건너뛴다.** 프로토타입을 만들 때는 `package.json`을 저장소 루트에 두고 `npm test`·`npm run build`(산출물 `dist/`)를 제공한다.
 - `main`에 병합되면 `.github/workflows/deploy-aws.yml`이 `npm test` → `npm run build`를 통과했을 때만 `dist`와 `scripts/aws/`(의존성 없는 정적 서버 `serve.mjs`, `deploy-remote.sh`)를 `~/lastgrain`에 올리고, `deploy-remote.sh`가 systemd `lastgrain`을 재시작·헬스체크한다.
