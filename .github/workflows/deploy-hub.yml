@@ -48,6 +48,7 @@ jobs:
              && rm -rf ~/gamehub/hub && mv ~/gamehub/hub.new ~/gamehub/hub && bash ~/gamehub/hub/aws/deploy-remote.sh"
 
       - name: 임시 SSH 허용 제거
+        working-directory: ${{ github.workspace }}  # checkout 전이거나 checkout 실패 시에도 돌아야 하므로 게임 폴더가 아닌 루트에서
         if: always()
         run: |
           if [ -n "${RUNNER_IP:-}" ]; then
