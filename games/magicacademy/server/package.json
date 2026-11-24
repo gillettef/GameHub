@@ -1,0 +1,37 @@
+{
+  "name": "magic-academy-server",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js",
+    "simulate": "tsx scripts/simulate.ts",
+    "simulate:stat": "tsx scripts/stat-value.ts",
+    "simulate:starter": "tsx scripts/starter-stats.ts",
+    "simulate:cards": "tsx scripts/card-usage.ts",
+    "simulate:tokens": "tsx scripts/token-stats.ts",
+    "simulate:fun": "tsx scripts/fun-metrics.ts",
+    "league": "tsx scripts/ai-league.ts",
+    "check": "tsx scripts/rules-check.ts",
+    "smoke": "tsx scripts/smoke.ts",
+    "smoke:bot": "tsx scripts/smoke-bot.ts",
+    "smoke:rejoin": "tsx scripts/smoke-rejoin.ts",
+    "smoke:leave": "tsx scripts/smoke-leave.ts",
+    "smoke:social": "tsx scripts/smoke-social.ts",
+    "smoke:kick": "tsx scripts/smoke-kick.ts",
+    "playtest": "npm --prefix ../client run build && tsx src/index.ts"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node": "^22.10.2",
+    "@types/ws": "^8.5.13",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}

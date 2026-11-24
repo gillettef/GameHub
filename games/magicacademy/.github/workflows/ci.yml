@@ -1,0 +1,37 @@
+# 품질 게이트: dev·main 푸시와 PR 마다 검사·빌드를 돌린다 (배포는 deploy-aws.yml 이 따로 맡는다)
+name: CI
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            server/package-lock.json
+            client/package-lock.json
+
+      - name: 의존성 설치
+        run: |
+          (cd server && npm ci)
+          (cd client && npm ci)
+      - name: 규칙 검증
+        run: cd server && npm run check
+      - name: 빌드
+        run: |
+          (cd client && npm run build)
+          (cd server && npm run build)
