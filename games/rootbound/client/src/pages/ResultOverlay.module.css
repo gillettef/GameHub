@@ -1,0 +1,162 @@
+.backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--color-canvas) 82%, transparent);
+  animation: fade-in var(--motion-standard) var(--ease-enter);
+}
+
+.panel {
+  animation: result-pop var(--motion-slow) var(--ease-enter);
+  width: min(560px, 92vw);
+  padding: var(--space-4) var(--space-5);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.eyebrow {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: var(--text-small);
+}
+
+.title {
+  font-size: var(--text-section);
+  color: var(--color-accent);
+}
+
+.ranking {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 48px 1fr auto 72px;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--color-canvas) 50%, transparent);
+}
+
+.first {
+  background: color-mix(in srgb, var(--color-accent) 22%, transparent);
+}
+
+.rank {
+  font-weight: 700;
+}
+
+.name {
+  font-weight: 600;
+}
+
+.seat {
+  font-weight: 400;
+  color: var(--color-muted);
+  font-size: var(--text-small);
+}
+
+.breakdown {
+  color: var(--color-muted);
+  font-size: var(--text-small);
+  white-space: nowrap;
+}
+
+.total {
+  text-align: right;
+  font-size: var(--text-nav);
+  font-weight: 700;
+}
+
+.actions {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  margin-top: var(--space-1);
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* 결과 연출(2026-10-01): 패널이 튀어나오고 순위가 위에서부터 차례로 들어온다 */
+.row {
+  animation: result-row var(--motion-slow) var(--ease-enter) both;
+}
+
+.row:nth-child(1) {
+  animation-delay: 250ms;
+}
+.row:nth-child(2) {
+  animation-delay: 420ms;
+}
+.row:nth-child(3) {
+  animation-delay: 590ms;
+}
+.row:nth-child(4) {
+  animation-delay: 760ms;
+}
+
+.first {
+  animation-name: result-row, result-glow;
+  animation-duration: var(--motion-slow), 1600ms;
+  animation-iteration-count: 1, 2;
+  animation-delay: 250ms, 700ms;
+}
+
+@keyframes result-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.8) translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes result-row {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes result-glow {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.03);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel,
+  .row,
+  .first {
+    animation: none;
+  }
+}
