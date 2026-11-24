@@ -1,11 +1,11 @@
-// 게임 서버: 빌드된 프론트(dist)와 온라인 멀티 WebSocket(/ws)을 한 포트로 서빙한다.
+// 단독 게임 서버(로컬 개발·예전 systemd): 빌드된 프론트(dist)와 온라인 멀티(app.ts)를 한 포트로 서빙한다.
+// 운영은 GameHub 허브 안에서 실행된다(scripts/aws/hub-entry.mjs → server-dist/app.cjs).
 //   개발: npm run server (8105) + npm run dev (Vite 가 /ws 를 8105 로 프록시)
 //   배포: npm run build 가 server-dist/server.cjs 로 묶고, EC2 systemd 가 scripts/aws/serve.mjs 로 실행한다.
 import { createServer } from 'node:http';
 import { readFile, stat } from 'node:fs/promises';
 import { extname, join, normalize, resolve, sep } from 'node:path';
-import { WebSocketServer, type WebSocket } from 'ws';
-import { Hub, type Conn } from './hub';
+import { createApp } from './app';
 
 const PORT = Number(process.env.PORT ?? 8105);
 const ROOT = resolve(process.env.DIST_DIR ?? join(process.cwd(), 'dist'));
@@ -29,15 +29,12 @@ async function resolveFile(urlPath: string): Promise<string | null> {
   return extname(rel) ? null : join(ROOT, 'index.html');
 }
 
-const hub = new Hub();
+const app = createApp();
 
 const server = createServer(async (req, res) => {
   try {
+    if (app.handle(req, res)) return;
     const path = new URL(req.url ?? '/', 'http://x').pathname;
-    if (path === '/health') {
-      res.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify({ ok: true, rooms: hub.roomCount }));
-      return;
-    }
     const file = await resolveFile(path);
     if (!file) return void res.writeHead(404).end('Not found');
     const body = await readFile(file);
@@ -51,44 +48,8 @@ const server = createServer(async (req, res) => {
   }
 });
 
-const wss = new WebSocketServer({ server, path: '/ws', maxPayload: 16 * 1024 });
-const alive = new WeakMap<WebSocket, boolean>();
-
-wss.on('connection', (ws) => {
-  alive.set(ws, true);
-  const conn: Conn = { send: (msg) => ws.readyState === ws.OPEN && ws.send(JSON.stringify(msg)) };
-  // 소켓당 속도 제한: 버스트 30, 초당 10
-  let tokens = 30;
-  let last = Date.now();
-  ws.on('pong', () => alive.set(ws, true));
-  ws.on('message', (data) => {
-    const now = Date.now();
-    tokens = Math.min(30, tokens + ((now - last) / 1000) * 10);
-    last = now;
-    if (tokens < 1) return conn.send({ t: 'error', msg: '요청이 너무 많습니다. 잠시 뒤 다시 시도하세요.' });
-    tokens--;
-    let msg: unknown;
-    try {
-      msg = JSON.parse(String(data));
-    } catch {
-      return conn.send({ t: 'error', msg: '잘못된 요청입니다.' });
-    }
-    hub.handle(conn, msg);
-  });
-  ws.on('close', () => hub.disconnect(conn));
+server.on('upgrade', (req, socket, head) => {
+  if (!app.upgrade(req, socket, head)) socket.destroy();
 });
-
-// 30초 하트비트: pong 이 없으면 끊는다 (모바일에서 앱 전환 시 죽은 연결 정리)
-const beat = setInterval(() => {
-  for (const ws of wss.clients) {
-    if (!alive.get(ws)) {
-      ws.terminate();
-      continue;
-    }
-    alive.set(ws, false);
-    ws.ping();
-  }
-}, 30_000);
-wss.on('close', () => clearInterval(beat));
 
 server.listen(PORT, () => console.log(`Proxymind server on :${PORT} (static ${ROOT}, ws /ws)`));
