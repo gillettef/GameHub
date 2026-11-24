@@ -138,6 +138,9 @@ SDK가 맡는 것(지금 15번 따로 구현된 것):
 
 ## 5. 이행 순서(제안)
 
+진행 상황(2026-11-24): 2번 호스트 골격 완료(`hub/server.mjs`, `hub/lib/static.mjs`, `hub/test/`), 3번 smilepark inproc 전환.
+
+
 1. 운영 메모리 실측(기준선).
 2. 호스트 골격: `hub/` 안에 mount 로더, 정적 서빙, 예외 격리, `inproc`/`proxy` 혼합. 처음엔 모든 게임 `proxy` → 동작 동일 확인.
 3. smilepark → crease → lightcone → lastgrain → eleven → doubleagent → proxymind (쉬운 순).
