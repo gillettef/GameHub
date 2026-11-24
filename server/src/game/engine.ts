@@ -253,8 +253,10 @@ function checkTextOf(card: ExplorationCard, round: number): string | undefined {
 
 // 탐험 카드/연구 카드 효과를 플레이어에게 적용한다
 function applyCardEffect(state: GameState, player: PlayerGameState, effect: CardEffect): void {
-  // 기운은 바로 받거나 잃는다 (0 아래로는 내려가지 않는다, 51절)
-  for (const [kind, amount] of Object.entries(effect.tokens ?? {})) player[TOKEN_FIELD[kind as KeptToken]] = Math.max(0, player[TOKEN_FIELD[kind as KeptToken]] + amount);
+  // 기운은 바로 받거나 잃는다 (0 아래로는 내려가지 않는다, 51절). 63절(기운 없음): 받는 기운은 그 과목 노트가 된다 (마나기운 = 주문력 노트)
+  if (BALANCE.skillRules) {
+    for (const [kind, amount] of Object.entries(effect.tokens ?? {})) for (let i = 0; i < amount; i++) addNote(state, player, ENERGY_STAT[kind as KeptToken]);
+  } else for (const [kind, amount] of Object.entries(effect.tokens ?? {})) player[TOKEN_FIELD[kind as KeptToken]] = Math.max(0, player[TOKEN_FIELD[kind as KeptToken]] + amount);
   for (const [stat, amount] of Object.entries(effect.stats ?? {})) player[stat as StatKey] += amount;
   for (const [stat, amount] of Object.entries(effect.tempStats ?? {})) {
     player.tempBoosts[stat as StatKey] = (player.tempBoosts[stat as StatKey] ?? 0) + amount;
@@ -313,6 +315,176 @@ const FAIL_FUEL = { creature: "charm", lab: "intelligence", exploration: "stamin
 // 지금 결과를 적용하는 굴림에서 사람마다 실제로 낸 재료 기운 개수 (resolveRoll이 채운다, 실패해도 이월 62-7절)
 let rollFuelPaid: Record<string, number> = {};
 
+// ── 63절(skillRules): 능력치마다 역할이 다르다. 주문력 = 주사위 수, 지력·체력·매력 = 그 분야 판정에 더함,
+// 지력 = 노트 한도, 체력 = 다시 굴리기, 매력 = 마법생물 동행 한도 ──
+export type SkillActivity = "creature" | "lab" | "exploration" | "duel";
+// 활동마다 판정에 더하고 성공하면 오르는 능력치
+export const ACTIVITY_STAT: Record<SkillActivity, StatKey> = { creature: "charm", lab: "intelligence", exploration: "stamina", duel: "spellPower" };
+// 판정 주사위 수 = 주문력 (행사로 이번 달 +n)
+export const skillDice = (state: Pick<GameState, "news">, p: PlayerGameState): number =>
+  Math.max(1, (BALANCE.skillMaxDice > 0 ? Math.min(BALANCE.skillMaxDice, effectiveStat(p, "spellPower")) : effectiveStat(p, "spellPower")) + (newsEffect(state).extraDice ?? 0));
+// 판정마다 다시 굴릴 수 있는 횟수 = 체력 (행사로 이번 달 +n)
+export const skillRerolls = (state: Pick<GameState, "news">, p: PlayerGameState): number => effectiveStat(p, "stamina") + (newsEffect(state).rerollBonus ?? 0);
+// 손에 들 수 있는 노트 = 지력, 곁에 둘 수 있는 마법생물 = 매력
+export const noteLimit = (p: PlayerGameState): number => effectiveStat(p, "intelligence");
+export const companionLimit = (p: PlayerGameState): number => effectiveStat(p, "charm");
+const notesOf = (p: PlayerGameState): StatKey[] => (p.notes ??= []);
+
+// 노트 1장을 손에 넣는다 (한도가 차면 못 받는다)
+function addNote(state: GameState, player: PlayerGameState, stat: StatKey): boolean {
+  if (notesOf(player).length >= noteLimit(player)) {
+    log(state, `${player.name}: 노트가 가득 차서 ${STAT_NAME[stat]} 노트를 받지 못했어요 (지력 ${noteLimit(player)}장까지)`);
+    return false;
+  }
+  notesOf(player).push(stat);
+  return true;
+}
+
+// 판정 목표 (성공, 대성공 = 성공 + greatGap)
+export function skillTargets(activity: "creature" | "lab" | "exploration", card: OfferedCard, round = 0): { success: number; great: number } {
+  const t = BALANCE.skillTargets;
+  const printed =
+    activity === "creature"
+      ? Math.round((card as CreatureCard).trainTarget * t.creatureScale) + t.creatureBase
+      : activity === "lab"
+        ? labTargetValue(card as LabCard) + t.labMod
+        : ((card as ExplorationCard).check?.target ?? 0) + t.exploreMod;
+  const success = printed + Math.round(round * BALANCE.skillRoundStep);
+  return { success: Math.max(1, success), great: Math.max(1, success) + BALANCE.greatGap };
+}
+
+// 곁에 둔 마법생물의 도움 (판정마다 가장 큰 한 마리): 하늘 = 겨루기, 육지 = 탐험, 바다 = 연구, 조련은 모든 생물이 돕는다
+const HELPS: Record<SkillActivity, CreatureCard["element"] | "any"> = { creature: "any", duel: "sky", exploration: "land", lab: "ocean" };
+export const creatureHelpOf = (c: Pick<CreatureCard, "trainTarget">): number => (c.trainTarget >= BALANCE.creatureHelpRareMin ? BALANCE.creatureHelpRare : BALANCE.creatureHelp);
+export function bestHelper(p: PlayerGameState, activity: SkillActivity): CreatureCard | undefined {
+  const el = HELPS[activity];
+  return p.creatures.filter((c) => el === "any" || c.element === el).sort((a, b) => creatureHelpOf(b) - creatureHelpOf(a))[0];
+}
+export const helperText = (c: Pick<CreatureCard, "element" | "trainTarget">): string => `${{ sky: "겨루기", land: "탐험", ocean: "연구" }[c.element]}·조련 +${creatureHelpOf(c)}`;
+
+// 마법생물이 곁에 온다. 매력보다 많아지면 도움이 가장 작은 생물부터(같으면 먼저 온 생물) 숲으로 돌아간다. 하늘·육지·바다가 처음 다 모이면 학점
+export function addCompanion(state: GameState, player: PlayerGameState, creature: CreatureCard): void {
+  player.creatures.push(creature);
+  while (player.creatures.length > Math.max(1, companionLimit(player))) {
+    const weakest = player.creatures.reduce((w, c) => (creatureHelpOf(c) < creatureHelpOf(w) ? c : w));
+    player.creatures = player.creatures.filter((c) => c !== weakest);
+    state.creatureDiscard.push(weakest);
+    log(state, `${player.name}: 매력(${companionLimit(player)})보다 생물이 많아져 "${weakest.name}"이(가) 숲으로 돌아갔어요`);
+  }
+  if (!player.setBonus && BALANCE.skillSetCredit > 0 && creatureSets(player.creatures) > 0) {
+    player.setBonus = true;
+    player.credit += BALANCE.skillSetCredit;
+    log(state, `${player.name}: 하늘·육지·바다 친구가 모두 모였어요! 학점 +${BALANCE.skillSetCredit}`);
+  }
+}
+
+// 63절 판정 항목: 주사위 주문력 개 + 더하는 값(능력치·생물), 다시 굴리기 체력 번, 낼 수 있는 노트 과목
+function skillEntry(
+  state: GameState,
+  p: PlayerGameState,
+  label: string,
+  parts: { label: string; value: number }[],
+  noteStats: StatKey[],
+  targets?: { success: number; great?: number },
+  rerolls = skillRerolls(state, p),
+) {
+  const shown = parts.filter((x) => x.value !== 0);
+  return {
+    playerId: p.id,
+    label,
+    diceCount: skillDice(state, p),
+    bonus: shown.reduce((a, x) => a + x.value, 0),
+    bonusParts: shown,
+    rerollsLeft: rerolls,
+    noteStats,
+    notesPlayed: [] as StatKey[],
+    ...(targets ? { targets } : {}),
+    dice: null,
+    confirmed: false,
+    rerolls: 0,
+  };
+}
+
+// 활동 판정 항목 (조련·연구·탐험): 그 분야 능력치 + 도와주는 생물
+function activitySkillEntry(state: GameState, p: PlayerGameState, activity: "creature" | "lab" | "exploration", targets: { success: number; great: number }) {
+  const stat = ACTIVITY_STAT[activity];
+  const helper = bestHelper(p, activity);
+  const parts = [{ label: STAT_NAME[stat], value: effectiveStat(p, stat) }, ...(helper ? [{ label: helper.name, value: creatureHelpOf(helper) }] : [])];
+  return skillEntry(state, p, p.name, parts, [stat], targets);
+}
+
+function skillRollLines(state: GameState, p: PlayerGameState, activity: "creature" | "lab" | "exploration", targets: { success: number; great: number }): string[] {
+  const stat = ACTIVITY_STAT[activity];
+  return [
+    `주사위 ${skillDice(state, p)}개(주문력) + ${STAT_NAME[stat]}${bestHelper(p, activity) ? " + 곁의 생물" : ""}. 굴린 뒤 다시 굴리기 ${skillRerolls(state, p)}번(체력), ${STAT_NAME[stat]} 노트를 내면 +${BALANCE.noteBonus}`,
+    `${targets.success} 이상 성공(${STAT_NAME[stat]} +1·학점 +1) · ${targets.great} 이상 대성공(+ 카드 보상)`,
+  ];
+}
+
+// 굴린 뒤 노트를 낸다 (그 과목 판정에서만, 한 장에 +noteBonus)
+export function playNote(state: GameState, playerId: string, stat: StatKey): void {
+  const pending = state.pendingRoll;
+  if (!BALANCE.skillRules || !pending) throw new Error("지금은 노트를 낼 수 없어요.");
+  if (currentRoller(state) !== playerId) throw new Error("아직 내 차례가 아니에요.");
+  const entry = pending.entries.find((e) => e.playerId === playerId)!;
+  if (!entry.dice || entry.confirmed) throw new Error("주사위를 굴린 뒤, 확인하기 전에 낼 수 있어요.");
+  if (!entry.noteStats?.includes(stat)) throw new Error(`이 판정에는 ${STAT_NAME[stat]} 노트를 낼 수 없어요.`);
+  const player = state.players[playerId];
+  const notes = notesOf(player);
+  const i = notes.indexOf(stat);
+  if (i < 0) throw new Error(`${STAT_NAME[stat]} 노트가 없어요.`);
+  notes.splice(i, 1);
+  (entry.notesPlayed ??= []).push(stat);
+  entry.bonus = (entry.bonus ?? 0) + BALANCE.noteBonus;
+  log(state, `${player.name}: ${STAT_NAME[stat]} 노트를 펼쳤어요! +${BALANCE.noteBonus}`);
+}
+
+// 판정 결과 (조련·연구·탐험): 성공 = 그 분야 능력치 +1·학점 +1, 대성공 = 여기에 카드 보상
+function resolveSkillCheck(
+  state: GameState,
+  activity: "creature" | "lab" | "exploration",
+  card: CreatureCard | LabCard | ExplorationCard,
+  playerId: string,
+  dice: number[],
+  bonus: number,
+  targets: { success: number; great: number },
+): void {
+  const player = state.players[playerId];
+  const total = sum(dice) + bonus;
+  const great = total >= targets.great;
+  const success = total >= targets.success;
+  const text = `주사위 ${dice.join("+")}${bonus ? ` + ${bonus}` : ""} = ${total} / 성공 ${targets.success} · 대성공 ${targets.great} → ${great ? "대성공!" : success ? "성공" : "실패"}`;
+  const title = activity === "creature" ? `마법생물 "${card.name}"` : activity === "lab" ? `연구 카드 "${card.name}"` : `별빛 다락방 "${card.name}"`;
+  log(state, `${player.name}: ${title} ${text}`);
+  if (success) {
+    addFeat(player, activity);
+    grow(state, player, activity, ACTIVITY_STAT[activity]);
+  }
+  // 조련은 성공만 해도 생물이 곁에 오고, 대성공이면 학점을 더 받는다 (설정으로 켰을 때)
+  if (activity === "creature" && BALANCE.creatureOnSuccess && success) {
+    if (great) {
+      player.credit += BALANCE.creatureGreatCredit;
+      log(state, `${player.name}: 대성공! 학점 +${BALANCE.creatureGreatCredit}`);
+    }
+    log(state, `${player.name}: "${card.name}"이(가) 곁에 왔어요! (${helperText(card as CreatureCard)})`);
+    addCompanion(state, player, card as CreatureCard);
+    return;
+  }
+  if (great) {
+    if (activity === "creature") {
+      log(state, `${player.name}: "${card.name}"이(가) 곁에 왔어요! (${helperText(card as CreatureCard)})`);
+      addCompanion(state, player, card as CreatureCard);
+      return;
+    }
+    const effect = activity === "lab" ? (card as LabCard).effect : (card as ExplorationCard).success;
+    applyCardEffect(state, player, effect);
+    log(state, `${player.name}: 대성공 보상 ${describeEffect(effect)}`);
+  }
+  if (activity === "creature") state.creatureDiscard.push(card as CreatureCard);
+  else if (activity === "lab") state.labPile.discard.push(card as LabCard);
+  else state.explorationPile.discard.push(card as ExplorationCard);
+}
+
 // 성과 횟수 (56절 B3 특별상)
 function addFeat(player: PlayerGameState, key: FeatKey, n = 1): void {
   const feats = (player.feats ??= {});
@@ -337,6 +509,7 @@ function createPlayer(id: string, name: string, isBot = false): PlayerGameState 
     name,
     isBot,
     ...BALANCE.initialStats,
+    ...(BALANCE.skillRules ? { spellPower: BALANCE.skillInitialSpell, notes: [] } : {}),
     credit: BALANCE.initialCredit,
     tempBoosts: {},
     tempAged: {},
@@ -530,6 +703,7 @@ function beginRound(state: GameState): void {
   for (const playerId of state.turnOrder) {
     const player = state.players[playerId];
     for (const kind of ENERGY_KINDS) player[TOKEN_FIELD[kind]] += state.news.effect.gift?.[kind] ?? 0;
+    if (state.news.effect.noteGift) addNote(state, player, state.news.effect.noteGift);
   }
   // 중간고사(6개월)·기말고사(12개월) 달에는 정규수업·자율활동 없이 벼락치기 뒤 시험을 친다 (이월된 기운으로 치른다)
   if (isExamRound(state.round)) beginCramPhase(state);
@@ -612,7 +786,9 @@ function beginClassPhase(state: GameState): void {
     if (!card) break;
     state.classMarket.push(card);
   }
-  // 행사로 그 과목 수업이 더 알차면 공개된 카드의 기운을 올려 둔다
+  // 63절: 수업을 배우면 그 과목 능력치 +skillLearnGain (gain에 적어 둔다)
+  if (BALANCE.skillRules) state.classMarket = state.classMarket.map((c) => ({ ...c, gain: BALANCE.skillLearnGain }));
+  // 행사로 그 과목 수업이 더 알차면 공개된 카드의 기운(63절: 배우면 오르는 능력치)을 올려 둔다
   if (effect.classBonus) state.classMarket = state.classMarket.map((c) => (effect.classBonus?.[c.stat] ? { ...c, gain: c.gain + effect.classBonus[c.stat]! } : c));
   // 수업 신청은 선이 마지막이다 (선은 활동을 먼저 고르는 대신)
   const fromStarter = orderFromStarter(state);
@@ -641,8 +817,12 @@ export function classGainApplied(player: PlayerGameState, card: Pick<ClassCard, 
   return Math.min(card.gain, room);
 }
 
+// 63절: 수업 노트로 보관할 수 있는가 (지력 장수까지)
+export const canKeepNote = (player: PlayerGameState): boolean => (player.notes ?? []).length < noteLimit(player);
+
 // 2주차: 내 차례에 공개된 수업카드 중 1장을 가져간다 (무료, 그 과목의 기운을 얻는다). cardId가 null이면 가져가지 않고 넘어간다
-export function takeClassCard(state: GameState, playerId: string, cardId: string | null): void {
+// 63절(skillRules): mode "learn" = 그 과목 능력치 +gain, "note" = 노트로 보관 (그 과목 판정에서 굴린 뒤 +noteBonus)
+export function takeClassCard(state: GameState, playerId: string, cardId: string | null, mode: "learn" | "note" = "learn"): void {
   if (state.phase !== "class") throw new Error("지금은 정규수업 단계가 아닙니다.");
   const player = state.players[playerId];
   if (!player) throw new Error("플레이어를 찾을 수 없습니다.");
@@ -654,6 +834,26 @@ export function takeClassCard(state: GameState, playerId: string, cardId: string
     if (!card) throw new Error("공개된 수업카드 중에서만 고를 수 있습니다.");
     if (!canTakeClassCard(player, card)) {
       throw new Error(`${LEVEL_NAME[card.level]} 과목이라 ${STAT_NAME[card.stat]} ${card.minStat} 이상이어야 들을 수 있어요 (지금 ${effectiveStat(player, card.stat)}).`);
+    }
+    if (BALANCE.skillRules) {
+      if (mode === "note") {
+        if (!canKeepNote(player)) throw new Error(`노트가 가득 찼어요 (지력 ${noteLimit(player)}장까지). 배우기를 골라 주세요.`);
+        notesOf(player).push(card.stat);
+        log(state, `${player.name}: 수업 "${card.name}"을(를) ${STAT_NAME[card.stat]} 노트로 정리했어요 (노트 ${notesOf(player).length}/${noteLimit(player)})`);
+      } else {
+        player[card.stat] += card.gain;
+        log(state, `${player.name}: 수업 "${card.name}"을(를) 배웠어요! ${STAT_NAME[card.stat]} +${card.gain}`);
+      }
+      player.classCards.push(card);
+      state.classMarket = state.classMarket.filter((c) => c.id !== cardId);
+      player.hasActedThisPhase = true;
+      state.classPickPointer += 1;
+      if (state.classPickPointer >= state.classPickOrder.length) {
+        state.classDiscard.push(...state.classMarket);
+        state.classMarket = [];
+        beginActivityPhase(state);
+      }
+      return;
     }
     const kind = classGainKind(card);
     const applied = classGainApplied(player, card);
@@ -738,7 +938,7 @@ export function activityBlockReason(state: ActivityView, playerId: string, activ
   if (!canPay(player, open, 0, extra)) return `카드를 열 지력기운 ${open}개가 필요해요 (먼저 들어오면 카드를 여는 사람이 지력기운을 내요).`;
   if (activityId === "tournament" && !BALANCE.tournamentCards && player.manaTokens < 1) return "마나기운이 1개 이상 필요해요 (낸 마나기운만큼 주사위를 굴려요).";
   if (activityId === "duel") {
-    const need = (activityBaseDice() > 0 ? 0 : 1) + BALANCE.duelManaFee;
+    const need = BALANCE.skillRules ? 0 : (activityBaseDice() > 0 ? 0 : 1) + BALANCE.duelManaFee;
     if (need > 0 && player.manaTokens < need) return `마나기운이 ${need}개 이상 필요해요 (${BALANCE.duelManaFee}개는 지목당한 친구에게 건네고, 낸 마나기운만큼 주사위를 굴려요).`;
     if (duelTargets(state, playerId).length === 0) return "지목할 수 있는 친구가 없어요.";
     if (player.charm < BALANCE.duelCharmFee) return `지목당한 친구에게 건넬 매력(${BALANCE.duelCharmFee})이 없어요.`;
@@ -787,7 +987,26 @@ function fuelLine(player: PlayerGameState, fuel: KeptToken): string {
 }
 
 // 마법생물 조련: 매력기운을 골라 내고 낸 개수만큼 주사위를 굴려, 합이 목표값 이상이면 조련에 성공한다. 실패하면 낸 매력기운을 잃고 카드는 버린다 (52-7절, 연구실·별빛 다락방과 같다)
+// 63절 판정 시작 (조련·연구·탐험): 주사위 주문력 개 + 그 분야 능력치 + 곁의 생물, 목표 두 개
+const SKILL_TITLE = { creature: "마법생물 조련", lab: "연구실 실험", exploration: "별빛 다락방" } as const;
+function startSkillRoll(state: GameState, player: PlayerGameState, activity: "creature" | "lab" | "exploration", card: CreatureCard | LabCard | ExplorationCard): void {
+  const targets = skillTargets(activity, card, state.round);
+  state.hidden.roll =
+    activity === "exploration"
+      ? { kind: "exploration", card: card as ExplorationCard, playerIds: [player.id], target: targets.success, great: targets.great }
+      : activity === "lab"
+        ? { kind: "lab", playerId: player.id, card: card as LabCard, target: targets.success, great: targets.great }
+        : { kind: "creature", playerId: player.id, card: card as CreatureCard, target: targets.success, great: targets.great };
+  state.pendingRoll = {
+    kind: activity,
+    title: `${SKILL_TITLE[activity]} · ${card.name}`,
+    lines: [...(activity === "exploration" ? [card.description] : []), ...skillRollLines(state, player, activity, targets)],
+    entries: [activitySkillEntry(state, player, activity, targets)],
+  };
+}
+
 function startCreatureRoll(state: GameState, player: PlayerGameState, creature: CreatureCard): void {
+  if (BALANCE.skillRules) return startSkillRoll(state, player, "creature", creature);
   if (BALANCE.directionalResults) return startDirectionalRoll(state, "creature", creature, [player.id]);
   const target = creatureTarget(creature);
   const fuel = BALANCE.rollFuel.creature;
@@ -833,6 +1052,7 @@ function resolveCreature(state: GameState, ctx: Extract<RollContext, { kind: "cr
 // 연구실 실험: 카드를 보고 지력기운을 몇 개 낼지 골라(굴릴 때 낸다) 낸 개수만큼 주사위를 굴려, 합이 목표값 이상이면 실험 성공 (카드 효과를 받는다)
 // 지력기운이 없으면 주사위 1개는 공짜로 굴린다
 function startLabRoll(state: GameState, player: PlayerGameState, lab: LabCard): void {
+  if (BALANCE.skillRules) return startSkillRoll(state, player, "lab", lab);
   if (BALANCE.directionalResults) return startDirectionalRoll(state, "lab", lab, [player.id]);
   const target = labTargetValue(lab);
   const fuel = BALANCE.rollFuel.lab;
@@ -912,7 +1132,54 @@ function resolveTournamentCard(state: GameState, ctx: Extract<RollContext, { kin
   } else log(state, `${player.name}: 대회 "${ctx.card.name}" 아쉽게 탈락... (${text})`);
 }
 
+// 63절 마법 겨루기: 지목당한 친구는 주문력 주사위(+ 곁의 하늘 생물)로 바로 막고, 도전자는 그 점수를 보고 굴린다 (다시 굴리기·주문력 노트). 더 높아야 이긴다
+function startSkillDuel(state: GameState, player: PlayerGameState, target: PlayerGameState): void {
+  state.hidden.roll = { kind: "duel", challengerId: player.id, targetId: target.id };
+  const defHelper = bestHelper(target, "duel");
+  const defParts = [...(defHelper ? [{ label: defHelper.name, value: creatureHelpOf(defHelper) }] : []), ...(BALANCE.skillDefenderBonus ? [{ label: "막기", value: BALANCE.skillDefenderBonus }] : [])];
+  const defBonus = defParts.reduce((a, x) => a + x.value, 0);
+  const defDice = rollDice(skillDice(state, target));
+  // 막는 친구도 체력만큼 낮은 주사위(3 이하)를 자동으로 다시 굴린다 (설정으로 켰을 때)
+  if (BALANCE.skillDefenderRerolls) {
+    for (let left = skillRerolls(state, target); left > 0; left--) {
+      const i = defDice.indexOf(Math.min(...defDice));
+      if (defDice[i] > 3) break;
+      defDice[i] = rollD6();
+    }
+  }
+  const defTotal = sum(defDice) + defBonus;
+  const helper = bestHelper(player, "duel");
+  const parts = helper ? [{ label: helper.name, value: creatureHelpOf(helper) }] : [];
+  state.pendingRoll = {
+    kind: "duel",
+    title: `마법 겨루기 · ${player.name} vs ${target.name}`,
+    lines: [
+      `${player.name}님이 ${target.name}님을 지목했어요. ${target.name}님은 주사위 ${defDice.length}개(주문력)${defBonus ? " + 곁의 하늘 생물" : ""}로 자동으로 막아요: ${defTotal}`,
+      `도전자는 주사위 ${skillDice(state, player)}개(주문력)를 굴려 ${defTotal + 1} 이상이면 승리 (주문력 +1·학점 +1). 다시 굴리기 ${skillRerolls(state, player)}번(체력), 주문력 노트 +${BALANCE.noteBonus}`,
+    ],
+    entries: [
+      { playerId: target.id, label: `${target.name} (막기)`, diceCount: defDice.length, bonus: defBonus, bonusParts: defParts, dice: defDice, confirmed: true, rerolls: 0 },
+      skillEntry(state, player, `${player.name} (도전자)`, parts, ["spellPower"], { success: defTotal + 1 }),
+    ],
+  };
+}
+
+function resolveSkillDuel(state: GameState, ctx: Extract<RollContext, { kind: "duel" }>, cDice: number[], cBonus: number, dDice: number[], dBonus: number): void {
+  const player = state.players[ctx.challengerId];
+  const target = state.players[ctx.targetId];
+  const c = sum(cDice) + cBonus;
+  const d = sum(dDice) + dBonus;
+  const text = (dice: number[], bonus: number, total: number) => `주사위 ${dice.join("+")}${bonus ? ` + ${bonus}` : ""} = ${total}`;
+  log(state, `${player.name}(${text(cDice, cBonus, c)})이(가) ${target.name}(${text(dDice, dBonus, d)})을(를) 지목! ${c > d ? `${player.name} 승리` : `${target.name}님이 막아 냈어요`}`);
+  if (c <= d) return;
+  addFeat(player, "duel");
+  player.spellPower += BALANCE.growthAmount;
+  player.credit += BALANCE.skillDuelCredit;
+  log(state, `${player.name}: 성장! 주문력 +${BALANCE.growthAmount}${BALANCE.skillDuelCredit > 0 ? ` · 학점 +${BALANCE.skillDuelCredit}` : ""}`);
+}
+
 function startDuel(state: GameState, player: PlayerGameState, target: PlayerGameState): void {
+  if (BALANCE.skillRules) return startSkillDuel(state, player, target);
   state.hidden.roll = { kind: "duel", challengerId: player.id, targetId: target.id };
   // 도전자는 지목당한 친구에게 마나기운 1개를 건네고(매력 참가비와 별도), 양쪽 모두 마나기운을 1~보유 개수 사이에서 골라 내고 낸 개수만큼 굴린다
   const gift = Math.min(BALANCE.duelManaFee, player.manaTokens);
@@ -1018,6 +1285,7 @@ function startExplorationRoll(
     resolveExploration(state, { kind: "exploration", card, playerIds, target: 0 }, {});
     return;
   }
+  if (BALANCE.skillRules) return startSkillRoll(state, state.players[playerIds[0]], "exploration", card);
   if (BALANCE.directionalResults) return startDirectionalRoll(state, "exploration", card, playerIds);
   const rule = base;
   state.hidden.roll = { kind: "exploration", card, playerIds, target: rule.target };
@@ -1078,7 +1346,31 @@ function offerCards(state: GameState, activityId: ActivityId): OfferedCard[] {
   return state.hidden.offers[activityId] ?? [];
 }
 
+// 63절 카드 표시: 판정에 더하는 능력치와 성공·대성공 목표, 대성공 보상
+function skillOfferView(activityId: SkillActivity, card: OfferedCard, round: number): OfferCardView {
+  if (activityId === "duel") {
+    const c = card as DuelCard;
+    return { id: c.id, name: c.name, description: c.description, tags: "마법 겨루기", lines: ["친구 한 명을 지목해 주문력 주사위로 겨뤄요", "막기(그 친구의 주문력 주사위)보다 높으면 주문력 +1 · 학점 +1"] };
+  }
+  const t = skillTargets(activityId, card, round);
+  const stat = STAT_NAME[ACTIVITY_STAT[activityId]];
+  const reward =
+    activityId === "creature" ? (BALANCE.creatureOnSuccess ? `학점 +${BALANCE.creatureGreatCredit}` : `곁에 데려와요 (${helperText(card as CreatureCard)})`) : activityId === "lab" ? describeEffect((card as LabCard).effect) : describeEffect((card as ExplorationCard).success);
+  return {
+    id: card.id,
+    name: card.name,
+    description: card.description,
+    tags: `${activityId === "creature" ? `${creatureTagsOf(card as CreatureCard)} · ` : ""}${t.success} / ${t.great}`,
+    lines: [
+      `판정: 주사위(주문력) + ${stat}`,
+      `성공 ${t.success}+: ${stat} +1 · 학점 +1${activityId === "creature" && BALANCE.creatureOnSuccess ? ` · 곁에 데려와요 (${helperText(card as CreatureCard)})` : ""}`,
+      `대성공 ${t.great}+: ${reward}`,
+    ],
+  };
+}
+
 function offerViewOf(activityId: ActivityId, card: OfferedCard, round: number): OfferCardView {
+  if (BALANCE.skillRules && activityId !== "tournament") return skillOfferView(activityId, card, round);
   switch (activityId) {
     case "creature": {
       const c = card as CreatureCard;
@@ -1554,7 +1846,7 @@ export function rerollDice(state: GameState, playerId: string, diceIndexes: numb
   const pending = state.pendingRoll;
   if (!pending) throw new Error("지금은 주사위를 다시 굴릴 때가 아닙니다.");
   if (pending.kind === "first") throw new Error("선 정하기 주사위는 다시 굴릴 수 없어요.");
-  if (!BALANCE.reroll) throw new Error("이번 규칙에서는 다시 굴리기가 없어요.");
+  if (!BALANCE.reroll && !BALANCE.skillRules) throw new Error("이번 규칙에서는 다시 굴리기가 없어요.");
   const entry = pending.entries.find((e) => e.playerId === playerId);
   if (!entry) throw new Error("이번 굴림에 참여하지 않습니다.");
   if (entry.confirmed) throw new Error("이미 결과를 확인했어요.");
@@ -1563,6 +1855,20 @@ export function rerollDice(state: GameState, playerId: string, diceIndexes: numb
   if (indexes.length === 0) throw new Error("다시 굴릴 주사위를 골라 주세요.");
   if (indexes.some((i) => !Number.isInteger(i) || i < 0 || i >= entry.dice!.length)) throw new Error("없는 주사위입니다.");
   const player = state.players[playerId];
+  // 63절: 다시 굴리기는 판정마다 체력 번 (한 번에 주사위 1개씩 센다). 새 눈을 따른다
+  if (BALANCE.skillRules) {
+    if (currentRoller(state) !== playerId) throw new Error("아직 내 차례가 아니에요.");
+    const left = entry.rerollsLeft ?? 0;
+    if (indexes.length > left) throw new Error(left > 0 ? `다시 굴리기가 ${left}번 남았어요 (체력만큼).` : "다시 굴리기를 다 썼어요 (체력만큼).");
+    entry.rerollsLeft = left - indexes.length;
+    const before = indexes.map((i) => entry.dice![i]);
+    for (const i of indexes) entry.dice[i] = rollD6();
+    entry.rerolls += indexes.length;
+    const counts = entry.rerollCounts ?? (entry.rerollCounts = entry.dice.map(() => 0));
+    for (const i of indexes) counts[i] = (counts[i] ?? 0) + 1;
+    log(state, `${player.name}: 다시 굴렸어요 (${before.join(", ")} → ${indexes.map((i) => entry.dice![i]).join(", ")})`);
+    return;
+  }
   if (pending.faces) {
     // 방향형(48절): 그 활동의 재료 기운으로 다시 굴린다. 한 번에 쓸 수 있는 기운은 능력치까지
     const kind = entry.diceToken ?? "mana";
@@ -1627,6 +1933,8 @@ function resolveRoll(state: GameState): void {
   if (!pending || !ctx) return;
   const diceOf = (id: string) => pending.entries.find((e) => e.playerId === id)?.dice ?? [];
   const assistOf = (id: string) => pending.entries.find((e) => e.playerId === id)?.assist ?? 0;
+  const bonusOf = (id: string) => pending.entries.find((e) => e.playerId === id)?.bonus ?? 0;
+  const skill = BALANCE.skillRules;
   rollFuelPaid = Object.fromEntries(pending.entries.map((e) => [e.playerId, e.fuelPaid ?? 0]));
   state.pendingRoll = null;
   state.hidden.roll = null;
@@ -1637,6 +1945,16 @@ function resolveRoll(state: GameState): void {
     finishResolutionStep(state);
   } else if (ctx.kind === "tournamentCard") {
     resolveTournamentCard(state, ctx, diceOf(ctx.playerId));
+    finishResolutionStep(state);
+  } else if (skill && (ctx.kind === "creature" || ctx.kind === "lab")) {
+    resolveSkillCheck(state, ctx.kind, ctx.card, ctx.playerId, diceOf(ctx.playerId), bonusOf(ctx.playerId), { success: ctx.target, great: ctx.great ?? ctx.target + BALANCE.greatGap });
+    finishResolutionStep(state);
+  } else if (skill && ctx.kind === "exploration") {
+    const id = ctx.playerIds[0];
+    resolveSkillCheck(state, "exploration", ctx.card, id, diceOf(id), bonusOf(id), { success: ctx.target, great: ctx.great ?? ctx.target + BALANCE.greatGap });
+    finishResolutionStep(state);
+  } else if (skill && ctx.kind === "duel") {
+    resolveSkillDuel(state, ctx, diceOf(ctx.challengerId), bonusOf(ctx.challengerId), diceOf(ctx.targetId), bonusOf(ctx.targetId));
     finishResolutionStep(state);
   } else if (ctx.kind === "creature") {
     resolveCreature(state, ctx, diceOf(ctx.playerId));
@@ -1654,7 +1972,7 @@ function resolveRoll(state: GameState): void {
     resolveExploration(state, ctx, Object.fromEntries(ctx.playerIds.map((id) => [id, diceOf(id)])));
     finishResolutionStep(state);
   } else {
-    resolveExam(state, ctx.examType, ctx.card, Object.fromEntries(state.turnOrder.map((id) => [id, diceOf(id)])));
+    resolveExam(state, ctx.examType, ctx.card, Object.fromEntries(state.turnOrder.map((id) => [id, diceOf(id)])), skill ? Object.fromEntries(state.turnOrder.map((id) => [id, bonusOf(id)])) : undefined);
   }
 }
 
@@ -1707,7 +2025,7 @@ function finishCleanup(state: GameState): void {
     expireTempBoosts(state, player);
     player.hasActedThisPhase = false;
   }
-  log(state, "4주차(정리): 쓰고 남은 기운은 다음 달로 이어져요");
+  if (!BALANCE.skillRules) log(state, "4주차(정리): 쓰고 남은 기운은 다음 달로 이어져요");
   if (nextIndex !== state.startingPlayerIndex) {
     state.startingPlayerIndex = nextIndex;
     log(state, BALANCE.starterRule === "charmTokens" ? `4주차(정리): 남은 매력기운이 가장 많은 ${starterName}님(${starterTokens}개)이 다음 달 선이 돼요` : `4주차(정리): ${starterName}님이 다음 달 선이 돼요`);
@@ -1734,6 +2052,23 @@ function beginExam(state: GameState, examType: "midterm_exam" | "final_exam"): v
   state.phase = examType;
   const card = state.hidden.examPlan[examType === "midterm_exam" ? "midterm" : "final"];
   state.hidden.roll = { kind: "exam", examType, card };
+  // 63절: 시험 점수 = 주사위(주문력 개) + 시험 카드의 두 능력치 + 그 과목 노트, 다시 굴리기는 체력 번
+  if (BALANCE.skillRules) {
+    const stats = [...new Set([card.diceStat, ...(card.bonusStat ? [card.bonusStat] : [])])];
+    state.pendingRoll = {
+      kind: "exam",
+      title: `${examType === "midterm_exam" ? "중간고사" : "기말고사"} · ${card.name}`,
+      lines: [
+        `점수 = 주사위(주문력 개) + ${stats.map((s) => STAT_NAME[s]).join(" + ")} — 높은 순서로 순위를 매겨요`,
+        `${BALANCE.turnOrderRule === "creditAsc" ? "학점이 낮은 친구부터" : "선부터"} 한 명씩 굴려요. 다시 굴리기는 체력만큼, ${stats.map((s) => STAT_NAME[s]).join("·")} 노트를 내면 +${BALANCE.noteBonus}`,
+      ],
+      entries: orderFromStarter(state).map((id) => {
+        const p = state.players[id];
+        return skillEntry(state, p, p.name, stats.map((s) => ({ label: STAT_NAME[s], value: effectiveStat(p, s) })), stats);
+      }),
+    };
+    return;
+  }
   state.pendingRoll = {
     kind: "exam",
     title: `${examType === "midterm_exam" ? "중간고사" : "기말고사"} · ${card.name}`,
@@ -1745,8 +2080,8 @@ function beginExam(state: GameState, examType: "midterm_exam" | "final_exam"): v
   };
 }
 
-function resolveExam(state: GameState, examType: "midterm_exam" | "final_exam", card: ExamCard, diceByPlayer: Record<string, number[]>): void {
-  const bonusOf = Object.fromEntries(state.turnOrder.map((id) => [id, examBonus(state, id, card)]));
+function resolveExam(state: GameState, examType: "midterm_exam" | "final_exam", card: ExamCard, diceByPlayer: Record<string, number[]>, bonusOverride?: Record<string, number>): void {
+  const bonusOf = bonusOverride ?? Object.fromEntries(state.turnOrder.map((id) => [id, examBonus(state, id, card)]));
   const scores = new Map(state.turnOrder.map((id) => [id, sum(diceByPlayer[id] ?? []) + bonusOf[id]]));
   // 동점은 공동 순위: 같은 점수는 같은 순위의 학점을 받는다 (1, 1, 3, ...)
   const ranked = rankByScore(state.turnOrder, (id) => scores.get(id) ?? 0);

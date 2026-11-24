@@ -111,7 +111,9 @@ function statCounts(total: number, weights: Record<StatKey, number>): Record<Sta
 
 // 그 학기의 덱: 인원과 무관하게 classDeckSize장을 학기 비율대로 능력치별로 나눠, 같은 능력치 안에서는 종류 한 벌씩 섞어 이어 붙인다
 export function createClassDeck(makeId: () => string, semester: 1 | 2 = 1, size = BALANCE.classDeckSize): ClassCard[] {
-  const counts = statCounts(size, BALANCE.classSemesters[semester - 1].statWeights);
+  // 63절: 주문력 과목 수업이 없다 (주문력은 겨루기·카드 보상으로만 오른다)
+  const weights = BALANCE.classSemesters[semester - 1].statWeights;
+  const counts = statCounts(size, BALANCE.skillRules ? { ...weights, spellPower: 0 } : weights);
   const deck: ClassCard[] = [];
   for (const stat of STATS) {
     const pool = templates().filter((t) => t.stat === stat);
