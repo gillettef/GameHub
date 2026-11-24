@@ -110,7 +110,7 @@ export class OnlineGame extends Emitter {
   }
 
   connect() {
-    const url = `/api/rooms/${this.code}/events${this.token ? `?token=${encodeURIComponent(this.token)}` : ''}`;
+    const url = `api/rooms/${this.code}/events${this.token ? `?token=${encodeURIComponent(this.token)}` : ''}`;
     this.es = new EventSource(url);
     this.es.onmessage = (e) => {
       const snap = JSON.parse(e.data);
@@ -131,7 +131,7 @@ export class OnlineGame extends Emitter {
   canAct() { return this.status === 'playing' && this.state && !this.state.over && this.state.current === this.you; }
 
   async post(path, body) {
-    const res = await fetch(`/api/rooms/${this.code}${path}`, {
+    const res = await fetch(`api/rooms/${this.code}${path}`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: this.token, ...body }),
     });
     const data = await res.json().catch(() => ({}));
@@ -146,14 +146,14 @@ export class OnlineGame extends Emitter {
 }
 
 export async function createRoom({ n, name, bots }) {
-  const res = await fetch('/api/rooms', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ n, name, bots }) });
+  const res = await fetch('api/rooms', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ n, name, bots }) });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || '방을 만들지 못했습니다');
   return data;
 }
 
 export async function joinRoom(code, name) {
-  const res = await fetch(`/api/rooms/${encodeURIComponent(code)}/join`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }) });
+  const res = await fetch(`api/rooms/${encodeURIComponent(code)}/join`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }) });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || '참가하지 못했습니다');
   return data;
