@@ -1,17 +1,11 @@
-# 허브(로비 + 리버스 프록시, :80) 운영 배포. main 의 hub/** 가 바뀌면 공용 EC2 의 ~/gamehub/hub 를 갈아 끼우고 gamehub 서비스를 재시작한다.
-# 게임별 배포는 아직 각 게임 원본 저장소의 deploy-aws.yml 이 맡는다(1단계 하이브리드). 게임 배포도 이 저장소로 옮기면 경로 필터로 나눈다.
+# 허브(로비 + 리버스 프록시, :80) 운영 배포. 공용 EC2 의 ~/gamehub/hub 를 갈아 끼우고 gamehub 서비스를 재시작한다.
+# main 에서 hub/** 가 바뀌면 오케스트레이터(deploy.yml)가 호출한다. Actions 탭에서 단독 수동 실행도 된다.
 # SSH(22)는 관리자 IP 로만 열려 있어 배포 동안만 러너 IP 를 임시로 연다(다른 게임 저장소와 같은 방식·같은 시크릿).
 name: Deploy Hub
 
 on:
-  push:
-    branches: [main]
-    paths: ['hub/**', '.github/workflows/deploy-hub.yml']
+  workflow_call: {}
   workflow_dispatch: {}
-
-concurrency:
-  group: deploy-aws
-  cancel-in-progress: false
 
 jobs:
   deploy:

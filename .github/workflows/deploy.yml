@@ -1,0 +1,151 @@
+# 운영 배포 오케스트레이터. main 에 push(= dev → main 병합)되면 바뀐 게임(games/<slug>/**)과 허브(hub/**)만 골라
+# 게임별 워크플로(deploy-<slug>.yml, workflow_call)를 **하나씩 순서대로** 부른다.
+# - 순서대로인 이유: 공용 EC2 가 t4g.nano(메모리 0.4GB)라 재시작이 몰리면 버티지 못하고, 보안 그룹 임시 규칙도 겹치지 않게 한다.
+#   (게임마다 따로 push 트리거 + 같은 concurrency 그룹을 쓰면 대기 중인 실행이 취소되므로 이렇게 묶었다.)
+# - 한 게임이 실패해도 다음 게임은 계속 배포한다(!cancelled()).
+# - 수동 실행: Actions → Deploy → Run workflow, games 에 "all" 또는 "tesseract eleven" 처럼 공백으로 구분해 적는다.
+# - 새 게임을 추가하면 이 파일을 다시 생성하거나 아래 체인 끝에 잡을 하나 붙인다.
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+    paths: ["games/**", "hub/**", ".github/workflows/deploy*.yml"]
+  workflow_dispatch:
+    inputs:
+      games:
+        description: "배포할 대상(공백 구분, hub 포함 가능) 또는 all"
+        required: true
+        default: all
+
+concurrency:
+  group: deploy-aws
+  cancel-in-progress: false
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      targets: ${{ steps.pick.outputs.targets }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: pick
+        env:
+          EVENT: ${{ github.event_name }}
+          INPUT: ${{ github.event.inputs.games }}
+          BEFORE: ${{ github.event.before }}
+          SHA: ${{ github.sha }}
+        run: |
+          ALL="hub crease doubleagent election eleven hearsay lastgrain lightcone magicacademy neoterra proxymind retrocause rootbound sightline smilepark tesseract"
+          if [ "$EVENT" = "workflow_dispatch" ]; then
+            if [ "$INPUT" = "all" ]; then T="$ALL"; else T="$INPUT"; fi
+          elif [ -z "$BEFORE" ] || [ "$BEFORE" = "0000000000000000000000000000000000000000" ] || ! git cat-file -e "$BEFORE" 2>/dev/null; then
+            T="$ALL"   # 새 브랜치 등 비교 기준이 없으면 전부
+          else
+            CHANGED="$(git diff --name-only "$BEFORE" "$SHA")"
+            T=""
+            for s in $ALL; do
+              dir="games/$s"; [ "$s" = hub ] && dir=hub
+              if printf '%s\n' "$CHANGED" | grep -qE "^($dir/|\.github/workflows/deploy-$s\.yml$)"; then T="$T $s"; fi
+            done
+          fi
+          echo "배포 대상:$T"
+          echo "targets= $T " >> "$GITHUB_OUTPUT"
+
+  hub:
+    needs: [changes]
+    if: ${{ !cancelled() && contains(needs.changes.outputs.targets, ' hub ') }}
+    uses: ./.github/workflows/deploy-hub.yml
+    secrets: inherit
+
+  crease:
+    needs: [changes, hub]
+    if: ${{ !cancelled() && contains(needs.changes.outputs.targets, ' crease ') }}
+    uses: ./.github/workflows/deploy-crease.yml
+    secrets: inherit
+
+  doubleagent:
+    needs: [changes, crease]
+    if: ${{ !cancelled() && contains(needs.changes.outputs.targets, ' doubleagent ') }}
+    uses: ./.github/workflows/deploy-doubleagent.yml
+    secrets: inherit
+
+  election:
+    needs: [changes, doubleagent]
+    if: ${{ !cancelled() && contains(needs.changes.outputs.targets, ' election ') }}
+    uses: ./.github/workflows/deploy-election.yml
+    secrets: inherit
+
+  eleven:
+    needs: [changes, election]
+    if: ${{ !cancelled() && contains(needs.changes.outputs.targets, ' eleven ') }}
+    uses: ./.github/workflows/deploy-eleven.yml
+    secrets: inherit
+
+  hearsay:
+    needs: [changes, eleven]
+    if: ${{ !cancelled() && contains(needs.changes.outputs.targets, ' hearsay ') }}
+    uses: ./.github/workflows/deploy-hearsay.yml
+    secrets: inherit
+
+  lastgrain:
+    needs: [changes, hearsay]
+    if: ${{ !cancelled() && contains(needs.changes.outputs.targets, ' lastgrain ') }}
+    uses: ./.github/workflows/deploy-lastgrain.yml
+    secrets: inherit
+
+  lightcone:
+    needs: [changes, lastgrain]
+    if: ${{ !cancelled() && contains(needs.changes.outputs.targets, ' lightcone ') }}
+    uses: ./.github/workflows/deploy-lightcone.yml
+    secrets: inherit
+
+  magicacademy:
+    needs: [changes, lightcone]
+    if: ${{ !cancelled() && contains(needs.changes.outputs.targets, ' magicacademy ') }}
+    uses: ./.github/workflows/deploy-magicacademy.yml
+    secrets: inherit
+
+  neoterra:
+    needs: [changes, magicacademy]
+    if: ${{ !cancelled() && contains(needs.changes.outputs.targets, ' neoterra ') }}
+    uses: ./.github/workflows/deploy-neoterra.yml
+    secrets: inherit
+
+  proxymind:
+    needs: [changes, neoterra]
+    if: ${{ !cancelled() && contains(needs.changes.outputs.targets, ' proxymind ') }}
+    uses: ./.github/workflows/deploy-proxymind.yml
+    secrets: inherit
+
+  retrocause:
+    needs: [changes, proxymind]
+    if: ${{ !cancelled() && contains(needs.changes.outputs.targets, ' retrocause ') }}
+    uses: ./.github/workflows/deploy-retrocause.yml
+    secrets: inherit
+
+  rootbound:
+    needs: [changes, retrocause]
+    if: ${{ !cancelled() && contains(needs.changes.outputs.targets, ' rootbound ') }}
+    uses: ./.github/workflows/deploy-rootbound.yml
+    secrets: inherit
+
+  sightline:
+    needs: [changes, rootbound]
+    if: ${{ !cancelled() && contains(needs.changes.outputs.targets, ' sightline ') }}
+    uses: ./.github/workflows/deploy-sightline.yml
+    secrets: inherit
+
+  smilepark:
+    needs: [changes, sightline]
+    if: ${{ !cancelled() && contains(needs.changes.outputs.targets, ' smilepark ') }}
+    uses: ./.github/workflows/deploy-smilepark.yml
+    secrets: inherit
+
+  tesseract:
+    needs: [changes, smilepark]
+    if: ${{ !cancelled() && contains(needs.changes.outputs.targets, ' tesseract ') }}
+    uses: ./.github/workflows/deploy-tesseract.yml
+    secrets: inherit

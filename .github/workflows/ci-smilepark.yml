@@ -1,0 +1,44 @@
+# GameHub 모노레포로 옮긴 smilepark 워크플로(원본: games/smilepark/.github/workflows/ci.yml). games/smilepark/** 가 바뀔 때만 돈다.
+# 품질 게이트: dev·main 푸시와 PR 마다 검사·빌드를 돌린다 (배포는 deploy-aws.yml 이 따로 맡는다)
+name: CI smilepark
+
+on:
+  push:
+    paths: ['games/smilepark/**', '.github/workflows/ci-smilepark.yml']
+    branches: [main, dev]
+  pull_request:
+    paths: ['games/smilepark/**', '.github/workflows/ci-smilepark.yml']
+
+concurrency:
+  group: ci-smilepark-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: games/smilepark
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      # 스캐폴딩 전(package.json 없음)에는 검사를 건너뛴다
+      - name: package.json 확인
+        id: pkg
+        run: |
+          if [ -f package.json ]; then echo "exists=true" >> "$GITHUB_OUTPUT"; else echo "exists=false" >> "$GITHUB_OUTPUT"; fi
+
+      - uses: actions/setup-node@v4
+        if: steps.pkg.outputs.exists == 'true'
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: games/smilepark/package-lock.json
+
+      - run: npm ci
+        if: steps.pkg.outputs.exists == 'true'
+
+      - name: 검사·빌드
+        if: steps.pkg.outputs.exists == 'true'
+        run: npm test && npm run build
