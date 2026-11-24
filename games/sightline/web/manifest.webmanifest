@@ -1,0 +1,17 @@
+{
+  "name": "SIGHTLINE · 사이트라인",
+  "short_name": "SIGHTLINE",
+  "description": "앉은 자리가 곧 시야다. 가면무도회 정원의 숨은 정보·블러핑 보드게임",
+  "lang": "ko",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0f1713",
+  "theme_color": "#0f1713",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}
