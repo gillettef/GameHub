@@ -1,0 +1,63 @@
+# 허브(로비 + 리버스 프록시, :80) 운영 배포. main 의 hub/** 가 바뀌면 공용 EC2 의 ~/gamehub/hub 를 갈아 끼우고 gamehub 서비스를 재시작한다.
+# 게임별 배포는 아직 각 게임 원본 저장소의 deploy-aws.yml 이 맡는다(1단계 하이브리드). 게임 배포도 이 저장소로 옮기면 경로 필터로 나눈다.
+# SSH(22)는 관리자 IP 로만 열려 있어 배포 동안만 러너 IP 를 임시로 연다(다른 게임 저장소와 같은 방식·같은 시크릿).
+name: Deploy Hub
+
+on:
+  push:
+    branches: [main]
+    paths: ['hub/**', '.github/workflows/deploy-hub.yml']
+  workflow_dispatch: {}
+
+concurrency:
+  group: deploy-aws
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 문법 검사
+        run: node --check hub/server.mjs
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION || 'ap-northeast-2' }}
+
+      - name: 이 러너의 IP 를 SSH(22)에 임시 허용
+        run: |
+          RUNNER_IP="$(curl -s https://checkip.amazonaws.com)"
+          echo "RUNNER_IP=${RUNNER_IP}" >> "$GITHUB_ENV"
+          aws ec2 authorize-security-group-ingress \
+            --group-id "${{ secrets.AWS_SECURITY_GROUP_ID }}" \
+            --ip-permissions "IpProtocol=tcp,FromPort=22,ToPort=22,IpRanges=[{CidrIp=${RUNNER_IP}/32,Description=github-actions-gamehub}]"
+
+      - name: SSH 키 준비
+        env:
+          KEY: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
+          HOST_KEY: ${{ secrets.EC2_HOST_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$KEY" > ~/.ssh/ci_key
+          chmod 600 ~/.ssh/ci_key
+          printf '%s\n' "$HOST_KEY" >> ~/.ssh/known_hosts
+
+      - name: 업로드 + 재시작 + 헬스체크
+        run: |
+          tar -c hub | ssh -i ~/.ssh/ci_key ec2-user@${{ secrets.EC2_HOST }} \
+            "rm -rf ~/gamehub/hub.new && mkdir -p ~/gamehub/hub.new && tar -x -C ~/gamehub/hub.new --strip-components=1 \
+             && rm -rf ~/gamehub/hub && mv ~/gamehub/hub.new ~/gamehub/hub && bash ~/gamehub/hub/aws/deploy-remote.sh"
+
+      - name: 임시 SSH 허용 제거
+        if: always()
+        run: |
+          if [ -n "${RUNNER_IP:-}" ]; then
+            aws ec2 revoke-security-group-ingress \
+              --group-id "${{ secrets.AWS_SECURITY_GROUP_ID }}" \
+              --ip-permissions "IpProtocol=tcp,FromPort=22,ToPort=22,IpRanges=[{CidrIp=${RUNNER_IP}/32}]" || true
+          fi
