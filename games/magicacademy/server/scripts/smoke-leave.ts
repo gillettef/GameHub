@@ -39,7 +39,7 @@ async function makeRoom() {
   send(guest, { type: "join_room", roomCode: created.roomCode, playerName: "손님" });
   await wait(200);
   const joined = last(guest, "room_joined")!;
-  return { host, guest, code: created.roomCode, hostId: created.playerId, guestId: joined.playerId };
+  return { host, guest, code: created.roomCode, hostId: created.playerId, hostToken: created.token, guestId: joined.playerId };
 }
 
 async function main() {
@@ -62,7 +62,7 @@ async function main() {
   assert(game.players[b.hostId]?.isBot === true, "나간 자리를 봇이 이어받음");
   assert(last(b.guest, "host_changed")?.hostId === b.guestId, "방장이 남은 사람에게 넘어감");
   const back = await connect();
-  send(back, { type: "rejoin_room", roomCode: b.code, playerId: b.hostId });
+  send(back, { type: "rejoin_room", roomCode: b.code, playerId: b.hostId, token: b.hostToken });
   await wait(200);
   assert(last(back, "rejoin_failed"), "나간 자리로는 재접속 불가");
 

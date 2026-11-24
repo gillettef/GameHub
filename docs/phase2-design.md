@@ -130,7 +130,7 @@ SDK가 맡는 것(지금 15번 따로 구현된 것):
 
 | 심각도 | 게임 | 문제 |
 |---|---|---|
-| 높음 | magicacademy | 재접속 키인 `playerId`가 방 전원에게 방송된다(`server/src/index.ts:54-55`). 같은 방 사람이 남의 자리로 `rejoin_room` 할 수 있다. 비밀 토큰을 따로 둬야 한다. |
+| ~~높음~~ 고침(2026-11-24) | magicacademy | 재접속 키인 `playerId`가 방 전원에게 방송된다(`server/src/index.ts:54-55`). 같은 방 사람이 남의 자리로 `rejoin_room` 할 수 있다. 비밀 토큰을 따로 둬야 한다. |
 | 중간 | tesseract | 스냅샷에 `config.seed`가 그대로 나가 클라이언트가 이후 난수를 예측할 수 있다(`server/room.ts:284`). |
 | 중간 | lastgrain, crease, rootbound | IP별 제한이 `req.socket.remoteAddress`를 써서 허브 뒤에서는 모든 사용자가 127.0.0.1 하나로 묶인다. 허브는 이미 `x-forwarded-for`를 넘긴다. |
 | 낮음 | retrocause | sweep이 방을 지울 때 봇 `setTimeout`을 해제하지 않는다. 방이 없을 때도 404가 아니라 400을 돌려준다. |
