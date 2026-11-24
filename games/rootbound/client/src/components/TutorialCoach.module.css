@@ -1,0 +1,76 @@
+/* 튜토리얼 안내 패널. 플랫(그림자 없음) */
+.coach {
+  position: absolute;
+  left: var(--space-2);
+  right: var(--space-2);
+  /* 보드를 덜 가리게 마켓 줄 바로 위(보드와 바닥 패널 사이)에 띄운다 */
+  bottom: 278px;
+  z-index: 12;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: var(--space-1) var(--space-2) var(--space-2);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  border: 1.5px solid var(--color-accent);
+  animation: coach-in var(--motion-standard) var(--ease-standard);
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--color-accent);
+}
+
+.title {
+  color: var(--color-heading);
+  font-size: var(--text-body);
+}
+
+.count {
+  margin-left: auto;
+  font-size: var(--text-micro);
+  color: var(--color-muted);
+}
+
+.close {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-full);
+  color: var(--color-muted);
+}
+
+.body {
+  margin: 0;
+  font-size: var(--text-small);
+  line-height: 1.5;
+  color: var(--color-text);
+}
+
+.coach :global(.pill) {
+  align-self: flex-end;
+}
+
+@keyframes coach-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .coach {
+    animation: none;
+  }
+}
+
+/* 첫 안내처럼 아래 카드·마켓을 가리지 않아야 할 때는 상태 창 아래에 띄운다 */
+.coachTop {
+  composes: coach;
+  bottom: auto;
+  top: 112px;
+}

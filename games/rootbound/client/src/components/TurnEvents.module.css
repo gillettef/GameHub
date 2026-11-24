@@ -1,0 +1,141 @@
+/* 보드 위에 떠서 지나가는 연출. 탭을 가로채지 않는다(pointer-events: none) */
+.root {
+  position: absolute;
+  left: var(--space-2);
+  right: var(--space-2);
+  top: 34%;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  pointer-events: none;
+}
+
+.splash {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 6px var(--space-3) 6px 6px;
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--seat-color) 38%, var(--color-surface));
+  border: 2px solid var(--seat-color);
+  color: var(--color-heading);
+  font-size: var(--text-nav);
+  animation: te-splash 1100ms var(--ease-enter) both;
+}
+
+.avatar {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--seat-color);
+  color: var(--color-navy);
+  font-weight: 700;
+}
+
+.items {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+}
+
+.item {
+  max-width: 100%;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px 4px 6px;
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--seat-color) 30%, var(--color-surface));
+  border: 1.5px solid var(--seat-color);
+  color: var(--color-heading);
+  font-size: var(--text-small);
+  font-weight: 600;
+  opacity: 0;
+  animation: te-item 2600ms var(--ease-enter) both;
+}
+
+.item[data-kind='destroy'],
+.item[data-kind='eliminate'] {
+  border-color: var(--color-danger);
+}
+
+.icon {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--seat-color);
+  color: var(--color-navy);
+}
+
+.text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@keyframes te-splash {
+  0% {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  25% {
+    opacity: 1;
+    transform: scale(1.08);
+  }
+  40% {
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0.0;
+    transform: translateY(-10px) scale(1);
+  }
+}
+
+/* 사건 칩: 옆에서 미끄러져 들어와 잠깐 머문 뒤 위로 사라진다. 순서는 animation-delay 로 엇갈린다 */
+@keyframes te-item {
+  0% {
+    opacity: 0;
+    transform: translateX(-24px) scale(0.9);
+  }
+  12% {
+    opacity: 1;
+    transform: translateX(0) scale(1.04);
+  }
+  18% {
+    transform: translateX(0) scale(1);
+  }
+  80% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .splash {
+    animation: none;
+  }
+
+  .item {
+    animation: none;
+    opacity: 1;
+  }
+}

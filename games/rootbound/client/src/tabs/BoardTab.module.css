@@ -1,0 +1,73 @@
+/* 위→아래 한 방향: 목표 카드 축소판 → 보드(남는 높이) → 마켓 → 내 카드 → 심기 바·안내 */
+.root {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.goals {
+  flex: none;
+}
+
+.boardArea {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+}
+
+.bottom {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.handPanel {
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--color-surface) 94%, transparent);
+}
+
+.turnBar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 6px 6px 6px var(--space-2);
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--color-surface) 94%, transparent);
+}
+
+.hint,
+.hintMine {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--text-small);
+}
+
+.hint {
+  color: var(--color-muted);
+}
+
+.hintMine {
+  color: var(--color-accent);
+  font-weight: 700;
+}
+
+.toggle,
+.toggleOn {
+  flex: none;
+  height: 32px;
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-full);
+  border: 1px solid color-mix(in srgb, var(--color-muted) 50%, transparent);
+  font-size: var(--text-micro);
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.toggleOn {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: var(--color-accent-text);
+}

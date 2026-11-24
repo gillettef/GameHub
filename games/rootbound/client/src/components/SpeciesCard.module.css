@@ -1,0 +1,132 @@
+/* 식물 카드. 플랫(그림자 없음), 라운드 16px(카드). 자리 색은 --seat-color 로 테두리에만 */
+.card {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  border: 2px solid color-mix(in srgb, var(--seat-color, var(--color-muted)) 55%, transparent);
+  color: var(--color-text);
+  text-align: center;
+  transition:
+    transform var(--motion-fast) var(--ease-standard),
+    border-color var(--motion-fast) var(--ease-standard);
+}
+
+button.card:active {
+  transform: scale(0.97);
+}
+
+.mini {
+  flex: none;
+  width: 92px;
+  padding: 6px 4px;
+}
+
+/* 확대 모달: 카드 디자인 앞면(630×880). 모달 폭과 화면 높이 중 좁은 쪽에 맞춘다 */
+/* 260px = 모달 위아래 여백(닫기 버튼 자리 포함) + 손패일 때 아래 버튼·안내문 */
+.full {
+  width: min(100%, 300px, calc((100dvh - 260px) * 630 / 880));
+  aspect-ratio: 630 / 880;
+  padding: 0;
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.face {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.selected {
+  border-color: var(--color-accent);
+  transform: translateY(-4px);
+}
+
+.dimmed {
+  opacity: 0.45;
+}
+
+.name {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: var(--text-body);
+  color: var(--color-heading);
+}
+
+/* 작은 카드 배경: 카드 그림 썸네일(plants/art, 가로로 긴 그림 부분)을 꽉 채워 깔고, 글자가 읽히도록 판 색으로 덮는다 */
+.art {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: center;
+}
+
+.art::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--color-surface) 35%, transparent),
+    color-mix(in srgb, var(--color-surface) 82%, transparent) 70%
+  );
+}
+
+.chip .art::after {
+  background: linear-gradient(
+    to right,
+    color-mix(in srgb, var(--color-surface) 45%, transparent),
+    color-mix(in srgb, var(--color-surface) 85%, transparent) 60%
+  );
+}
+
+.diagram {
+  display: flex;
+  justify-content: center;
+}
+
+.specialMini {
+  font-size: var(--text-micro);
+  font-weight: 700;
+  color: var(--color-accent);
+  line-height: 1.3;
+  min-height: 2.6em;
+}
+
+/* 손패용 납작한 카드 */
+.compact {
+  width: 76px;
+  padding: 4px 3px;
+  gap: 2px;
+}
+
+/* 마켓용 가로 칩: 뿌리 모양 왼쪽, 이름 오른쪽. 보드 높이를 덜 먹도록 낮게 */
+.chip {
+  flex-direction: row;
+  justify-content: center;
+  gap: 2px;
+  min-width: 0;
+  height: 40px;
+  padding: 2px 6px 2px 2px;
+}
+
+.chip .name {
+  font-size: var(--text-small);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+/* 고른 카드는 배경 덮개를 강조색으로 물들인다 */
+.selected .art::after {
+  background: color-mix(in srgb, var(--color-accent) 30%, color-mix(in srgb, var(--color-surface) 70%, transparent));
+}

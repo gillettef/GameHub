@@ -1,0 +1,33 @@
+# 품질 게이트: dev·main 푸시와 PR 마다 테스트·타입 검사·pytest·클라이언트 빌드를 돌린다 (배포는 deploy-aws.yml 이 따로 맡는다)
+name: CI
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - run: npm ci
+      - run: npm test
+      - run: npx tsc --noEmit -p shared && npx tsc --noEmit -p server && npx tsc --noEmit -p client
+      - run: pip install -r ai/requirements.txt && python -m pytest ai/tests -q
+      - name: 클라이언트 빌드
+        run: cd client && npx vite build --outDir dist/prod --emptyOutDir

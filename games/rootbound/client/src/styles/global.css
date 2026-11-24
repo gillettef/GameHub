@@ -1,0 +1,155 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+/* 모바일 브라우저(특히 iOS Safari)가 세로/가로 전환이나 시스템 글자 크기 설정에 맞춰
+   본문 글자를 제멋대로 키우는 "text size adjust" 를 끈다 — 이게 화면이 미세하게 확대돼
+   보이는 흔한 원인이다(2026-09-24). 100%로 고정해 tokens.css 가 정한 크기 그대로 보이게 한다. */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+/* 화면 전체 좌우 폭을 모바일 크기로 고정한다(2026-09-22 사용자 지시): 넓은 화면에서는
+   #root 가 --app-max-width 로 잘리고 가운데 정렬되며, 바깥은 letterbox 색으로 채운다.
+   좁은 화면(실제 폭 < 480px)에서는 자연히 꽉 채운다. */
+body {
+  font-family: var(--font-body);
+  font-size: var(--text-body);
+  color: var(--color-text);
+  background: var(--color-app-frame);
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+  /* 모바일 좁은 폭에서 긴 닉네임·카드 이름이 레이아웃을 깨지 않게 */
+  overflow-wrap: anywhere;
+  display: flex;
+  justify-content: center;
+}
+
+#root {
+  width: 100%;
+  max-width: var(--app-max-width);
+  background: var(--color-canvas);
+}
+
+/* 스크롤바 디자인 (2026-09-24 사용자 지시): 브라우저 기본 굵은 스크롤바 대신 톤에 맞춘 얇은
+   스크롤바를 쓴다. 보드 확대판 패닝, 상태·진행·카드·설명 탭, 손패 가로 스크롤 전부에 적용된다. */
+:root {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--color-muted) 55%, transparent) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: color-mix(in srgb, var(--color-muted) 55%, transparent);
+  border-radius: var(--radius-full);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background-color: color-mix(in srgb, var(--color-muted) 80%, transparent);
+  background-clip: padding-box;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
+  /* Gothic A1 은 900 굵기만 불러온다(index.html) — 다른 굵기를 요청하면 합성 볼드가 걸려 흐려진다 */
+  font-weight: 900;
+  color: var(--color-heading);
+  margin: 0;
+}
+
+button {
+  font-family: inherit;
+  font-size: var(--text-body);
+  cursor: pointer;
+  border: 0;
+  background: none;
+  color: inherit;
+  padding: 0;
+}
+
+button:disabled {
+  cursor: default;
+}
+
+input {
+  font-family: inherit;
+  font-size: var(--text-body);
+  color: inherit;
+}
+
+/* 필 CTA (DESIGN.md Buttons). 각진 버튼 금지.
+   높이는 화면 어디서나 34px 하나로 통일한다(2026-09-28 사용자 지시: 모든 버튼 크기를 하나로
+   맞춘다). 너비는 통일하지 않고 padding + 버튼 텍스트 길이에 따라 자연스럽게 달라진다. */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  height: 34px;
+  padding: var(--space-1) var(--space-4);
+  border-radius: var(--radius-pill);
+  background: var(--color-accent);
+  color: var(--color-accent-text);
+  font-weight: 600;
+  white-space: nowrap;
+  transition:
+    opacity var(--motion-fast) var(--ease-standard),
+    transform var(--motion-fast) var(--ease-standard);
+}
+
+.pill:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.pill:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.pill:disabled {
+  opacity: 0.4;
+}
+
+.pill--outline {
+  background: transparent;
+  color: var(--color-heading);
+  border: 1px solid var(--color-outline);
+  border-radius: var(--radius-full);
+  height: 34px;
+  padding: var(--space-1) var(--space-2);
+  font-weight: 500;
+}
+
+.pill--lg {
+  height: 34px;
+  padding: var(--space-1) var(--space-5);
+  font-size: var(--text-nav);
+}
+
+/* 비활성 텍스트: 회색 + 투명도 (DESIGN.md States) */
+.is-disabled {
+  color: var(--color-muted);
+  opacity: 0.7;
+}
+

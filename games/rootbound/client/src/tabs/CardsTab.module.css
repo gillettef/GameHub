@@ -1,0 +1,67 @@
+.root {
+  height: 100%;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-1) 2px var(--space-3);
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--text-nav);
+  color: var(--color-heading);
+}
+
+.help {
+  margin: 0;
+  font-size: var(--text-micro);
+  color: var(--color-muted);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+  gap: 6px;
+  justify-items: center;
+}
+
+.goals {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.goals button {
+  width: 100%;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px var(--space-1);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  font-size: var(--text-small);
+}
+
+.goals button span {
+  font-size: var(--text-micro);
+  color: var(--color-muted);
+}
+
+.goals button.linked {
+  border-left: 3px solid var(--color-accent);
+}

@@ -1,0 +1,35 @@
+/* 뿌리 모양 다이어그램: 가운데(심는 칸) 강조, 큐브 칸은 초록, 걷어내기(버섯)는 경고색, 씨앗 범위(민들레)는 옅은 초록 */
+.root {
+  display: block;
+  flex: none;
+}
+
+.none {
+  fill: color-mix(in srgb, var(--color-text) 8%, transparent);
+}
+
+.self {
+  fill: var(--color-accent);
+}
+
+.plus {
+  fill: color-mix(in srgb, var(--color-seat-2) 55%, transparent);
+}
+
+.seed {
+  fill: color-mix(in srgb, var(--color-seat-2) 18%, transparent);
+}
+
+.minus {
+  fill: color-mix(in srgb, var(--color-danger) 60%, transparent);
+}
+
+.label {
+  font-size: 1px;
+  font-weight: 800;
+  fill: var(--color-text);
+}
+
+.self + .label {
+  fill: var(--color-accent-text);
+}
