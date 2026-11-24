@@ -6,8 +6,10 @@
  * 파일 이름은 Rules.md 의 영문 id 그대로다. 빠진 파일이 없는지는 cardImages.test.ts 가 검사한다.
  */
 import type { GoalId, SpeciesId } from '@rootbound/shared';
+import { appBase } from '../lib/appBase';
 
-const base = `${import.meta.env.BASE_URL}cards/`;
+// 앱 base 기준(허브 접두어 아래서도 깊은 경로에서도 맞게). index.html 이 먼저 정해 둔다
+const base = `${appBase()}cards/`;
 
 export const PLANT_BACK_URL = `${base}plants/back.svg`;
 

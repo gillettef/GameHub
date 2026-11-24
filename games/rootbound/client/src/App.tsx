@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { MAX_PLAYERS, MIN_PLAYERS, autoAction, legalPlantCells } from '@rootbound/shared';
 import { asState } from './game/derived';
 import { makeSeed } from './game/hotseat';
-import { navigate, useRoute } from './lib/router';
+import { currentPath, navigate, useRoute } from './lib/router';
 import { GamePage } from './pages/GamePage';
 import { LandingPage } from './pages/LandingPage';
 import { getNickname } from './lib/identity';
@@ -86,7 +86,7 @@ export function App() {
       if (pos) tapCell(pos);
     }
     if (quick.modal !== null && Number.isInteger(quick.modal)) openCardModal({ kind: 'hand', index: quick.modal });
-    if (window.location.pathname !== '/hotseat') navigate('/hotseat', true);
+    if (currentPath() !== '/hotseat') navigate('/hotseat', true);
   }, [startHotseat, confirmReveal, acknowledgeHandoff, setTab, selectHandCard, tapCell, takeCard, openCardModal]);
 
   // /tutorial 로 들어오면(새로고침 포함) 연습 판을 새로 시작한다

@@ -6,6 +6,7 @@
 import { io, type Socket } from 'socket.io-client';
 import type { Ack, Action, ClientToServerEvents, JoinPayload, PlayerId, RoomId, ServerToClientEvents } from '@rootbound/shared';
 import { recordSyncRtt } from '../lib/vitals';
+import { toUrlPath } from '../lib/appBase';
 
 export type AppSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
 
@@ -15,7 +16,7 @@ let socket: AppSocket | null = null;
 
 export function getSocket(): AppSocket {
   if (!socket) {
-    socket = io({ autoConnect: false, path: '/socket.io', transports: ['websocket', 'polling'] });
+    socket = io({ autoConnect: false, path: toUrlPath('/socket.io'), transports: ['websocket', 'polling'] });
   }
   return socket;
 }
