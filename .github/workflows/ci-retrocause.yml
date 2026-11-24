@@ -1,0 +1,44 @@
+# GameHub 모노레포로 옮긴 retrocause 워크플로(원본: games/retrocause/.github/workflows/ci.yml). games/retrocause/** 가 바뀔 때만 돈다.
+# 품질 게이트: dev·main 푸시와 PR 마다 검사·빌드를 돌린다 (배포는 deploy-aws.yml 이 따로 맡는다)
+name: CI retrocause
+
+on:
+  push:
+    paths: ['games/retrocause/**', '.github/workflows/ci-retrocause.yml']
+    branches: [main, dev]
+  pull_request:
+    paths: ['games/retrocause/**', '.github/workflows/ci-retrocause.yml']
+
+concurrency:
+  group: ci-retrocause-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: games/retrocause
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      # 디지털 프로토타입(package.json) 이 생기기 전에는 검사를 건너뛴다
+      - name: package.json 확인
+        id: pkg
+        run: |
+          if [ -f package.json ]; then echo "exists=true" >> "$GITHUB_OUTPUT"; else echo "exists=false" >> "$GITHUB_OUTPUT"; fi
+
+      - uses: actions/setup-node@v4
+        if: steps.pkg.outputs.exists == 'true'
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: games/retrocause/package-lock.json
+
+      - run: npm ci
+        if: steps.pkg.outputs.exists == 'true'
+
+      - name: 검사·빌드
+        if: steps.pkg.outputs.exists == 'true'
+        run: npm test && npm run build
