@@ -146,6 +146,17 @@ describe('프로토콜', () => {
     expect(
       socketUrl({ code: 'K7QM', clientId: 'abc', create: false, origin: 'http://localhost:38637' }, loc),
     ).toBe('ws://localhost:38637/api/room/K7QM?id=abc');
+    // 게임 허브가 /election/ 아래로 프록시할 때는 페이지 디렉터리를 붙인다
+    const hub = { protocol: 'http:', host: 'hub.example', pathname: '/election/' };
+    expect(socketUrl({ code: 'K7QM', clientId: 'abc', create: false }, hub)).toBe(
+      'ws://hub.example/election/api/room/K7QM?id=abc',
+    );
+    expect(
+      socketUrl({ code: 'K7QM', clientId: 'abc', create: false }, { ...hub, pathname: '/election/index.html' }),
+    ).toBe('ws://hub.example/election/api/room/K7QM?id=abc');
+    expect(socketUrl({ code: 'K7QM', clientId: 'abc', create: false }, { ...hub, pathname: '/' })).toBe(
+      'ws://hub.example/api/room/K7QM?id=abc',
+    );
   });
 });
 

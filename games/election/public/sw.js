@@ -17,7 +17,10 @@ self.addEventListener('activate', (e) => {
   e.waitUntil(
     caches
       .keys()
-      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
+      // 게임 허브에서는 여러 게임이 같은 출처의 Cache Storage 를 함께 쓰므로 이 게임의 옛 캐시만 지운다
+      .then((keys) =>
+        Promise.all(keys.filter((k) => k !== CACHE && k.startsWith('election-mancala-')).map((k) => caches.delete(k))),
+      )
       .then(() => self.clients.claim()),
   );
 });
