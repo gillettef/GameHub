@@ -1,0 +1,204 @@
+/* 테크 웹: 행성 지도 회화(WebP, tokens.css 색으로 구움) 위에 SVG 그림 배지 노드. 모션은 전역 .anim-* 만 쓴다 */
+.frame {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1;
+}
+.map {
+  /* 지도는 viewBox 384 기준으로 구웠고 SVG 는 424(이름표·점선 고리 여백) — 가운데 384/424 에 맞춤 */
+  position: absolute;
+  left: 4.717%;
+  top: 4.717%;
+  width: 90.566%;
+  height: 90.566%;
+  display: block;
+  pointer-events: none;
+  user-select: none;
+}
+.web {
+  position: relative;
+  width: 100%;
+  height: auto;
+  display: block;
+  touch-action: manipulation;
+}
+/* 고리: 배경 원 색(--ring1..3)의 옅은 띠 + 점선 */
+.ringBand {
+  fill: none;
+  stroke-width: 14;
+  opacity: 0.08;
+}
+.ring {
+  fill: none;
+  stroke-width: 1.4;
+  opacity: 0.55;
+  stroke-dasharray: 2 4;
+}
+.edgeUnder {
+  stroke: var(--bg);
+  stroke-width: 4.5;
+  stroke-linecap: round;
+  opacity: 0.7;
+}
+.edge {
+  stroke: var(--border);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+}
+.edgeOn {
+  stroke: var(--text);
+  stroke-width: 2.5;
+  opacity: 0.85;
+}
+.dirLabel {
+  font-size: 16px;
+  font-weight: 800;
+  paint-order: stroke;
+  stroke: var(--bg);
+  stroke-width: 4px;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+/* 줄기 배지 안 고리 번호(viewBox 424 기준 17 → 360px 화면에서도 약 12.6px) */
+.ringNo {
+  font-size: 17px;
+  font-weight: 800;
+  pointer-events: none;
+}
+.ripple {
+  fill: none;
+  stroke-width: 3;
+}
+.canRing {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 1.8;
+  stroke-dasharray: 3 3;
+}
+.node:focus-visible {
+  outline: none;
+}
+.node:focus-visible .hit {
+  stroke: var(--accent);
+  stroke-width: 2;
+}
+.node {
+  cursor: pointer;
+}
+.hit {
+  fill: transparent;
+}
+.drop {
+  fill: var(--bg);
+  opacity: 0.6;
+}
+.bezel {
+  stroke-width: 2;
+}
+.dot {
+  stroke-width: 2;
+  transition: fill 400ms ease-out;
+}
+.can {
+  stroke-width: 2.6;
+}
+.off {
+  opacity: 0.55;
+}
+.legend {
+  margin: 0;
+  padding-left: var(--space-4);
+  font-size: 13px;
+}
+.legend li + li {
+  margin-top: var(--space-1);
+}
+/* 줄기 배지 안 과학 비용. 360px 화면에서 웹 폭은 약 300px(424 → 0.71배) — 17 이면 약 12px */
+.cost {
+  font-size: 17px;
+  font-weight: 800;
+  fill: var(--res-sci);
+  pointer-events: none;
+}
+/* 상대가 내 직전 차례 이후 새로 연구한 노드 */
+.newRing {
+  fill: none;
+  stroke: var(--warn);
+  stroke-width: 2.6;
+}
+/* 웹 아래 칩 줄: 연구 가능한 곳·새 연구·보는 법. 넘치면 아래로 */
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+  margin-top: var(--space-1);
+}
+.chipsLabel {
+  font-size: 12px;
+  color: var(--text-dim);
+  margin-right: var(--space-1);
+}
+.chip {
+  --tone: var(--border);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: 44px;
+  max-width: 100%;
+  padding: 0 var(--space-3);
+  border-radius: 999px;
+  border: 1px solid var(--tone);
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 13px;
+}
+.chipCost {
+  color: var(--res-sci);
+  font-variant-numeric: tabular-nums;
+}
+/* 과학이 모자라는 비용 */
+.chipCost.short {
+  color: var(--warn);
+}
+.newNote {
+  flex: 1 1 200px;
+  font-size: 12px;
+  color: var(--warn);
+}
+.help {
+  min-height: 44px;
+  margin-left: auto;
+  padding: 0 var(--space-3);
+  border: none;
+  background: none;
+  color: var(--text-dim);
+  font-size: 13px;
+  text-decoration: underline;
+}
+.dim {
+  color: var(--text-dim);
+  font-size: 12px;
+}
+
+/* 마우스 호버 툴팁 — 터치 기기에서는 나타나지 않는다(터치는 시트) */
+.tip {
+  position: absolute;
+  z-index: 5;
+  width: max-content;
+  max-width: 62%;
+  transform: translate(-50%, calc(-100% - 22px));
+  padding: var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  border: 1px solid var(--text-dim);
+  color: var(--text);
+  font-size: 12px;
+  pointer-events: none;
+}
+.tipBelow {
+  transform: translate(-50%, 22px);
+}
+.tip p {
+  margin: 2px 0 0;
+}

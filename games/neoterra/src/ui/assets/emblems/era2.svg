@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 120" role="img" aria-label="2시대 — 정착지 성장">
+  <defs>
+    <linearGradient id="ntE2Sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0d0f24"/>
+      <stop offset="0.7" stop-color="#241c48"/>
+      <stop offset="1" stop-color="#3a2c66"/>
+    </linearGradient>
+    <linearGradient id="ntE2Dome" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#b996ff" stop-opacity=".55"/>
+      <stop offset="1" stop-color="#b996ff" stop-opacity=".15"/>
+    </linearGradient>
+  </defs>
+  <rect width="360" height="120" rx="12" fill="url(#ntE2Sky)"/>
+  <g fill="#e9edf8" opacity=".6">
+    <circle cx="40" cy="14" r=".8"/><circle cx="120" cy="24" r=".7"/><circle cx="200" cy="10" r=".9"/>
+    <circle cx="250" cy="30" r=".6"/><circle cx="320" cy="14" r=".8"/><circle cx="160" cy="36" r=".6"/>
+  </g>
+  <!-- 큰 달 -->
+  <circle cx="300" cy="34" r="14" fill="#cfd8ee" opacity=".8"/><circle cx="305" cy="30" r="13" fill="#241c48" opacity=".6"/>
+  <!-- 왼쪽 정착지: 돔과 탑 -->
+  <path d="M10 100a26 26 0 0 1 52 0z" fill="url(#ntE2Dome)" stroke="#b996ff" stroke-width="1.5"/>
+  <path d="M54 100a18 18 0 0 1 36 0z" fill="url(#ntE2Dome)" stroke="#b996ff" stroke-width="1.5"/>
+  <path d="M74 100V56h6v44z" fill="#4a3d80"/><circle cx="77" cy="54" r="3" fill="#ffd67a"/>
+  <!-- 오른쪽 정착지 -->
+  <path d="M276 100V70h10v30zM290 100V60h8v40z" fill="#3a3070"/>
+  <path d="M296 100a22 22 0 0 1 44 0z" fill="url(#ntE2Dome)" stroke="#b996ff" stroke-width="1.5"/>
+  <g fill="#ffe36b" opacity=".85"><rect x="279" y="76" width="3" height="3"/><rect x="279" y="86" width="3" height="3"/><rect x="292" y="68" width="3" height="3"/><rect x="292" y="80" width="3" height="3"/></g>
+  <!-- 땅과 길 -->
+  <path d="M0 98h360v22H0z" fill="#0f0d22"/>
+  <path d="M90 100c50 6 130 6 186 0" fill="none" stroke="#b996ff" stroke-opacity=".4" stroke-dasharray="4 4"/>
+  <rect x="0.75" y="0.75" width="358.5" height="118.5" rx="11.5" fill="none" stroke="#b996ff" stroke-width="1.5" stroke-opacity=".7"/>
+</svg>

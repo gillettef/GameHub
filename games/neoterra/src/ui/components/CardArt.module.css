@@ -1,0 +1,27 @@
+.art {
+  display: block;
+  position: relative;
+  aspect-ratio: 222 / 122;
+  overflow: hidden;
+  background: var(--surface-2);
+}
+.art img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.arch {
+  border-radius: 50% 50% 0 0 / 38% 38% 0 0;
+}
+.placeholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(120% 90% at 50% 100%, var(--surface), var(--bg));
+  opacity: 0.8;
+}

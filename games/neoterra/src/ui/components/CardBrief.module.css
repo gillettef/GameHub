@@ -1,0 +1,59 @@
+/* 카드 그림 창 아래(프레임 y≈196–326, 250×350 기준)에 아이콘 요약 */
+.brief {
+  position: absolute;
+  left: 7%;
+  right: 7%;
+  top: 57%;
+  bottom: 9%;
+  display: flex;
+  flex-wrap: wrap;
+  align-content: center;
+  justify-content: center;
+  gap: 2px 6px;
+  overflow: hidden;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1;
+  pointer-events: none;
+}
+/* 유산 프레임 오른쪽 마름모 장식(x221–235)을 피한다 */
+.legacy {
+  right: 12%;
+  left: 12%;
+}
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  white-space: nowrap;
+}
+/* 퀘스트: 그림 창 아래(y≈200–290) 한두 줄 */
+.questLine {
+  position: absolute;
+  left: 7%;
+  right: 7%;
+  top: 57%;
+  max-height: calc(2 * 1.25em);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font-size: 12px;
+  line-height: 1.25;
+  word-break: keep-all;
+  color: var(--text);
+  pointer-events: none;
+}
+/* 노선 칸: x18/92/166, y296, 66×34 (250×350 기준) */
+.opt {
+  position: absolute;
+  top: 84.6%;
+  width: 26.4%;
+  height: 9.7%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 800;
+  pointer-events: none;
+}

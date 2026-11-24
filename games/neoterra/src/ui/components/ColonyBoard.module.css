@@ -1,0 +1,500 @@
+/*
+ * 식민지 보드 아래 "앞마당": 풍경 그림의 땅이 이어지는 회화 바탕(yard.webp) 위에
+ * 토큰 접시·구슬 받침(ColonyScene.module.css), 상태 메달, 노선 레일, 공급 디딤돌, 카드 자리, 헌장 깃발을 얹는다.
+ * 그림 맨 아래는 --bg 로 수렴하므로 그 아래는 바탕색이 이어받는다.
+ */
+.yard {
+  position: relative;
+  margin: 0 calc(-1 * var(--space-3)) calc(-1 * var(--space-3));
+  padding: var(--space-3) var(--space-3) var(--space-4);
+  background: var(--yard) top center / 100% auto no-repeat, var(--bg);
+}
+
+/* 구역 이름: 땅에 새긴 작은 글자 + 양옆으로 사라지는 선 */
+.legend {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: var(--space-3) 0 var(--space-1);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: color-mix(in srgb, var(--accent) 45%, var(--text-dim));
+  text-shadow: 0 1px 2px var(--bg);
+}
+.legend::before,
+.legend::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--accent) 35%, transparent));
+}
+.legend::after {
+  background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 35%, transparent), transparent);
+}
+
+/* ── 상태 메달 ── */
+.status {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-1);
+  margin-top: var(--space-2);
+}
+.medal {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+  min-height: 44px;
+  padding: 4px 2px;
+  text-align: center;
+  /* 버튼 기본 모양 지우기 */
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+}
+/* 설명 시트 본문(툴팁 글의 줄바꿈 유지) */
+.preline {
+  white-space: pre-line;
+}
+/* 금속 테를 두른 둥근 메달 */
+.medalFace {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  color: var(--tone);
+  background:
+    radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--tone) 30%, var(--surface-2)), var(--bg) 75%);
+  border: 2px solid color-mix(in srgb, var(--tone) 55%, var(--border));
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, var(--bg) 80%, transparent),
+    0 0 14px color-mix(in srgb, var(--tone) 25%, transparent),
+    inset 0 2px 3px color-mix(in srgb, var(--text) 18%, transparent),
+    inset 0 -3px 6px color-mix(in srgb, var(--bg) 80%, transparent);
+}
+.medalText {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 0;
+  max-width: 100%;
+  line-height: 1.15;
+}
+.medalText b {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 1px 3px var(--bg);
+}
+.medalText span {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  color: var(--text-dim);
+  text-shadow: 0 1px 2px var(--bg);
+}
+.medalWarn .medalText b {
+  color: var(--warn);
+}
+.medalWarn .medalFace {
+  animation: none;
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, var(--bg) 80%, transparent),
+    0 0 18px color-mix(in srgb, var(--warn) 55%, transparent),
+    inset 0 -3px 6px color-mix(in srgb, var(--bg) 80%, transparent);
+}
+.alerts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
+  margin-top: var(--space-1);
+  font-size: 12px;
+}
+.guard {
+  padding: 2px var(--space-2);
+  border-radius: 999px;
+  color: var(--danger);
+  background: color-mix(in srgb, var(--bg) 75%, transparent);
+  border: 1px solid color-mix(in srgb, var(--danger) 45%, transparent);
+}
+.warn {
+  color: var(--warn);
+}
+.danger {
+  color: var(--danger);
+  font-weight: 700;
+}
+.alert {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 0 var(--space-2);
+  border: 1px solid currentColor;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--bg) 80%, transparent);
+  font-size: 12px;
+}
+
+/* ── 노선 트랙: 홈 파인 레일 + 노선 문장 말 ── */
+.doctrines {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px var(--space-3) 10px var(--space-4);
+  background: color-mix(in srgb, var(--bg) 55%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 18%, var(--border));
+  border-radius: var(--radius);
+  box-shadow: 0 6px 14px color-mix(in srgb, var(--bg) 60%, transparent);
+}
+.track {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 28px;
+}
+.track b {
+  width: 22px;
+  text-align: right;
+  font-size: 15px;
+  color: var(--tone);
+  font-variant-numeric: tabular-nums;
+}
+.groove {
+  position: relative;
+  flex: 1;
+  height: 10px;
+  border-radius: 5px;
+  background: linear-gradient(180deg, var(--bg), color-mix(in srgb, var(--surface) 70%, var(--bg)));
+  box-shadow:
+    inset 0 2px 4px color-mix(in srgb, var(--bg) 95%, transparent),
+    0 1px 0 color-mix(in srgb, var(--text) 10%, transparent);
+}
+/* 지나온 길이 노선 색으로 빛난다 */
+.glow {
+  position: absolute;
+  inset: 2px auto 2px 0;
+  border-radius: 3px;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--tone) 25%, transparent), var(--tone));
+  box-shadow: 0 0 8px color-mix(in srgb, var(--tone) 60%, transparent);
+  transition: width 700ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+/* 단계 징(4·8·12·16점) */
+.stud {
+  position: absolute;
+  top: 50%;
+  width: 10px;
+  height: 10px;
+  margin: -5px 0 0 -5px;
+  transform: rotate(45deg);
+  border-radius: 2px;
+  background: var(--surface-2);
+  border: 1px solid color-mix(in srgb, var(--tone) 40%, var(--border));
+}
+.studOn {
+  background: var(--tone);
+  border-color: color-mix(in srgb, var(--tone) 50%, var(--text));
+  box-shadow: 0 0 8px var(--tone);
+}
+/* 말: 노선 문장 */
+.marker {
+  position: absolute;
+  top: 50%;
+  width: 26px;
+  height: 26px;
+  margin: -13px 0 0 -13px;
+  filter: drop-shadow(0 2px 3px var(--bg)) drop-shadow(0 0 4px color-mix(in srgb, var(--tone) 45%, transparent));
+  transition: left 700ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  pointer-events: none;
+}
+.trackMain .marker {
+  width: 30px;
+  height: 30px;
+  margin: -15px 0 0 -15px;
+}
+
+/* ── 정착민 공급 트랙: 디딤돌 ── */
+.supply {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px 4px;
+}
+.seg {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 0 4px;
+  min-height: 44px;
+  padding: 3px 2px 4px;
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  /* 둥글게 깎인 돌: 위쪽 빛, 아래쪽 그늘 */
+  border-radius: 14px 12px 15px 11px / 12px 14px 11px 15px;
+  background:
+    radial-gradient(90% 70% at 40% 20%, color-mix(in srgb, var(--text) 9%, transparent), transparent 70%),
+    color-mix(in srgb, var(--surface-2) 75%, var(--bg));
+  border: 1px solid color-mix(in srgb, var(--text) 10%, var(--border));
+  box-shadow:
+    inset 0 -3px 5px color-mix(in srgb, var(--bg) 70%, transparent),
+    0 4px 6px color-mix(in srgb, var(--bg) 70%, transparent);
+}
+.seg > span {
+  display: inline-flex;
+  align-items: center;
+}
+.segRange {
+  width: 100%;
+  justify-content: center;
+  color: var(--text-dim);
+  font-weight: 400;
+}
+/* 지나온 돌: 흐리게 하지 않고(대비 유지) 땅에 묻힌 듯 낮고 납작하게 */
+.segPast {
+  background: color-mix(in srgb, var(--surface) 55%, var(--bg));
+  border-style: dashed;
+  box-shadow: inset 0 2px 4px color-mix(in srgb, var(--bg) 80%, transparent);
+}
+.segOn {
+  border-color: var(--accent);
+  box-shadow:
+    0 0 0 1px var(--accent) inset,
+    0 0 14px color-mix(in srgb, var(--accent) 40%, transparent),
+    0 4px 6px color-mix(in srgb, var(--bg) 70%, transparent);
+}
+/* 지금 돌 위에 선 정착민 말 */
+.segPawn {
+  position: absolute;
+  top: -8px;
+  right: -3px;
+  width: 22px;
+  height: 22px;
+  filter: drop-shadow(0 2px 2px var(--bg));
+}
+.segFood {
+  color: var(--res-food);
+}
+.segHealth {
+  color: var(--ok);
+}
+
+/* ── 카드 자리: 땅에 깐 어두운 깔개 + 이름표 ── */
+/* 깔개는 카드 영역 전체에 하나. 자리마다 두르면 그 폭만큼 한 줄 3장(useCardSizes)이 깨진다 —
+   음수 바깥 여백 = 안쪽 여백이라 카드가 쓰는 폭은 그대로 */
+.cards {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-3) var(--space-2);
+  margin: var(--space-4) calc(-1 * var(--space-2) - 1px) 0;
+  padding: var(--space-2);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--bg) 60%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 16%, transparent);
+  box-shadow:
+    inset 0 3px 10px color-mix(in srgb, var(--bg) 85%, transparent),
+    0 6px 14px color-mix(in srgb, var(--bg) 50%, transparent);
+}
+.slot {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+  max-width: 100%;
+}
+/* 자리 이름표: 자리 종류 색의 작은 탭 */
+.slotLabel {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  max-width: 100%;
+  padding: 0 6px;
+  border-radius: 999px;
+  font-size: 12px;
+  line-height: 18px;
+  white-space: nowrap;
+  color: var(--text);
+  background: color-mix(in srgb, var(--tone) 18%, var(--bg));
+  border: 1px solid color-mix(in srgb, var(--tone) 55%, transparent);
+}
+.slotLabel > :first-child {
+  color: var(--tone);
+}
+.slotCards {
+  display: flex;
+  gap: var(--space-1);
+  flex-wrap: wrap;
+  min-width: 0;
+}
+.emptyCard {
+  /* 빈 칸은 카드 높이 대신 낮게 — 시작할 때 보드가 빈 칸으로 길어지지 않게 */
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed color-mix(in srgb, var(--tone, var(--border)) 35%, var(--border));
+  border-radius: var(--radius-sm);
+  flex: none;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+/* ── 헌장: 가로 막대에 걸린 네 깃발 ── */
+.charters {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-2);
+  padding-top: 6px;
+}
+/* 깃대 막대 */
+.charters::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -2px;
+  right: -2px;
+  height: 5px;
+  border-radius: 3px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 55%, var(--text)), color-mix(in srgb, var(--accent) 30%, var(--bg)));
+  box-shadow: 0 2px 4px var(--bg);
+}
+.charter {
+  min-width: 0;
+  min-height: 64px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text);
+  filter: drop-shadow(0 4px 5px color-mix(in srgb, var(--bg) 80%, transparent));
+}
+.pennant {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  height: 100%;
+  min-height: 64px;
+  padding: 6px 2px 16px;
+  font-size: 12px;
+  /* 아래가 제비꼬리로 갈라진 천. 단계가 오를수록 금빛이 짙어진다 */
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 80%, 0 100%);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--text) 8%, transparent), transparent 40%),
+    color-mix(in srgb, var(--accent) calc(var(--lv) * 12%), var(--surface-2));
+}
+.pennant > :first-child {
+  color: var(--accent);
+}
+.charterName {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 700;
+}
+.charterFull .pennant {
+  color: var(--accent-contrast);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--text) 30%, var(--accent)), var(--accent));
+}
+.charterFull .pennant > :first-child {
+  color: var(--accent-contrast);
+}
+.charter:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.pips {
+  display: flex;
+  gap: 4px;
+}
+/* 보석: 빈 홈 → 박힌 호박색 보석 */
+.pips i {
+  width: 9px;
+  height: 9px;
+  transform: rotate(45deg);
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--bg) 70%, transparent);
+  border: 1px solid color-mix(in srgb, var(--text) 30%, transparent);
+}
+.pips .pipOn {
+  background: radial-gradient(circle at 35% 35%, color-mix(in srgb, var(--text) 70%, var(--accent)), var(--accent) 60%);
+  border-color: var(--accent);
+  box-shadow: 0 0 6px var(--accent);
+}
+/* 다 채운 금빛 깃발 위에서는 보석을 어둡게 박아 보이게 */
+.charterFull .pips .pipOn {
+  background: var(--accent-contrast);
+  border-color: var(--accent-contrast);
+  box-shadow: none;
+}
+
+.dim {
+  color: var(--text-dim);
+  font-size: 12px;
+}
+.list {
+  margin: 0 0 var(--space-2);
+  padding-left: var(--space-4);
+  color: var(--text-dim);
+}
+.got {
+  color: var(--text);
+  font-weight: 700;
+}
+.artTile {
+  min-width: 0;
+  min-height: 44px;
+  display: flex;
+  flex-direction: column;
+  padding: 0 0 var(--space-1);
+  overflow: hidden;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  text-align: left;
+}
+.artTile > span:last-child {
+  padding: 2px var(--space-1) 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.banner {
+  width: 100%;
+  border-radius: var(--radius-sm);
+  margin-bottom: var(--space-2);
+}
+.facilities {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .glow,
+  .marker {
+    transition: none;
+  }
+}
+.medalText b small {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-dim);
+}

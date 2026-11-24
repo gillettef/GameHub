@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-label="방주 노선 문장">
+  <defs>
+    <linearGradient id="ntArkMetal" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#dfe9ff"/>
+      <stop offset="0.5" stop-color="#9cc2ff"/>
+      <stop offset="1" stop-color="#4f6fa8"/>
+    </linearGradient>
+    <linearGradient id="ntArkDark" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1f2a48"/>
+      <stop offset="1" stop-color="#0a0f1f"/>
+    </linearGradient>
+  </defs>
+  <!-- 육각 방패: 질서와 금속 -->
+  <path d="M60 4 108 31v58L60 116 12 89V31z" fill="url(#ntArkDark)" stroke="url(#ntArkMetal)" stroke-width="4"/>
+  <path d="M60 14 99 36v48L60 106 21 84V36z" fill="none" stroke="#9cc2ff" stroke-opacity=".35"/>
+  <!-- 지구 기억: 푸른 원과 위도선 -->
+  <circle cx="60" cy="48" r="18" fill="#2b4f8f"/>
+  <path d="M42 48h36M45 39h30M45 57h30" stroke="#9cc2ff" stroke-opacity=".6" stroke-width="1.5"/>
+  <circle cx="60" cy="48" r="18" fill="none" stroke="#dfe9ff" stroke-width="2"/>
+  <!-- 방주선: 원 아래를 받치는 선체 -->
+  <path d="M28 70h64l-8 14H36z" fill="url(#ntArkMetal)"/>
+  <path d="M36 70V64h48v6" fill="none" stroke="#dfe9ff" stroke-width="2"/>
+  <path d="M44 78h32" stroke="#1f2a48" stroke-width="2"/>
+  <!-- 질서의 세 줄 -->
+  <path d="M42 92h36M48 98h24" stroke="#9cc2ff" stroke-width="2.5" stroke-linecap="round" stroke-opacity=".8"/>
+  <!-- 정점 별 -->
+  <path d="M60 18l1.6 4 4 1.6-4 1.6L60 29l-1.6-3.8-4-1.6 4-1.6z" fill="#dfe9ff"/>
+</svg>

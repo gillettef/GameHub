@@ -1,0 +1,356 @@
+/* 홈(랜딩). 히어로 모션은 components/LandingHero.module.css, 메뉴 등장은 motion.css 의 .anim-rise */
+.home {
+  --seq: 1;
+  position: relative;
+  overflow: hidden; /* 장식 광채가 넘쳐도 가로 스크롤 없음 */
+  overflow: clip;
+  padding-top: env(safe-area-inset-top); /* 히어로가 상태 표시줄·다이내믹 아일랜드에 가리지 않게 */
+  padding-bottom: calc(var(--space-4) * 2 + env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+}
+
+/* 설명 시트가 열려 있는 동안 뒤 루프 모션을 멈춘다 */
+.paused *,
+.paused *::before,
+.paused *::after {
+  animation-play-state: paused !important;
+}
+
+/* ── 로고·태그라인 ── */
+.brand {
+  position: relative;
+  margin-top: clamp(-90px, -19vw, -68px); /* 히어로 땅 위에 겹쳐 얹음 */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0 var(--space-4);
+}
+.logoWrap {
+  position: relative;
+  width: min(264px, 72%);
+}
+.logo {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: auto;
+  animation: logoIn calc(var(--seq) * 1100ms) cubic-bezier(0.2, 0.8, 0.2, 1) calc(var(--seq) * 700ms) backwards;
+}
+/* 빛 번짐 → 정착 */
+@keyframes logoIn {
+  from { opacity: 0; transform: scale(1.18); filter: blur(10px) brightness(2); }
+  60%  { opacity: 1; filter: blur(0) brightness(1.35); }
+  to   { opacity: 1; transform: none; filter: none; }
+}
+.flare {
+  position: absolute;
+  inset: -70% -18%;
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--accent) 50%, transparent), transparent);
+  opacity: 0.32;
+  pointer-events: none;
+  animation: flare calc(var(--seq) * 1500ms) ease-out calc(var(--seq) * 700ms) backwards;
+}
+@keyframes flare {
+  0%   { opacity: 0; transform: scale(0.4); }
+  35%  { opacity: 1; transform: scale(1.1); }
+  100% { opacity: 0.32; transform: none; }
+}
+.streak {
+  position: absolute;
+  left: -30%;
+  right: -30%;
+  top: 50%;
+  height: 2px;
+  margin-top: -1px;
+  background: linear-gradient(90deg, transparent, var(--text), transparent);
+  opacity: 0;
+  pointer-events: none;
+  animation: streak calc(var(--seq) * 1000ms) ease-out calc(var(--seq) * 800ms) both;
+}
+@keyframes streak {
+  0%   { opacity: 0; transform: scaleX(0.1); }
+  30%  { opacity: 1; }
+  100% { opacity: 0; transform: scaleX(1); }
+}
+.tag {
+  margin: 0;
+  text-align: center;
+  color: var(--text-dim);
+}
+.doctrines {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  gap: 14px;
+  font-size: 12px;
+  font-weight: 700;
+}
+.doctrines li {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--tone);
+}
+.doctrines li::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--tone);
+  box-shadow: 0 0 8px var(--tone);
+}
+.ark { --tone: var(--ark); }
+.symbiont { --tone: var(--symbiont); }
+.synth { --tone: var(--synth); }
+
+/* ── 메뉴 ── */
+.menu {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: 20px var(--space-4) 0;
+}
+
+/* 유리질 패널: 노선색 그라데이션 테두리 + 위쪽 빛줄 + 은은한 바깥 광채 */
+.panel {
+  --tone: var(--ark);
+  position: relative;
+  border-radius: var(--radius);
+  padding: var(--space-3) 14px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: linear-gradient(
+    160deg,
+    color-mix(in srgb, var(--tone) 8%, color-mix(in srgb, var(--surface) 55%, transparent)),
+    color-mix(in srgb, var(--bg-elev) 72%, transparent)
+  );
+  /* 뒤 하늘이 반짝여 매 프레임 다시 흐리므로 약하게만 */
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+  box-shadow:
+    0 10px 30px color-mix(in srgb, var(--bg) 60%, transparent),
+    0 0 26px -8px color-mix(in srgb, var(--tone) 70%, transparent);
+}
+.panel::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(
+    135deg,
+    var(--tone),
+    color-mix(in srgb, var(--border) 60%, transparent) 40%,
+    color-mix(in srgb, var(--border) 40%, transparent) 70%,
+    color-mix(in srgb, var(--tone) 70%, transparent)
+  );
+  -webkit-mask: linear-gradient(black 0 0) content-box, linear-gradient(black 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+.panel::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 14%;
+  right: 14%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--tone), transparent);
+  pointer-events: none;
+}
+.toneSymbiont { --tone: var(--symbiont); }
+.toneSynth { --tone: var(--synth); }
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.mark {
+  width: 34px;
+  height: 34px;
+  flex: none;
+}
+.head h2 {
+  margin: 0;
+  font-size: 16px;
+  font-family: var(--font-display);
+}
+.head p {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.home input {
+  min-width: 0;
+  min-height: 44px;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--bg) 60%, transparent);
+  color: var(--text);
+  transition: border-color 180ms ease-out, box-shadow 180ms ease-out;
+}
+.home input:focus {
+  outline: none;
+  border-color: var(--ark);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ark) 45%, transparent);
+}
+.home input::placeholder {
+  color: var(--text-dim);
+}
+.field {
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-2) var(--space-2) 14px;
+}
+.field span {
+  font-size: 13px;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+.field input {
+  flex: 1;
+}
+
+/* 세그먼트: 고른 칸으로 빛 알약이 미끄러짐(transform) */
+.seg {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-1);
+  padding: var(--space-1);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--bg) 55%, transparent);
+  border: 1px solid var(--border);
+}
+.pill {
+  position: absolute;
+  top: var(--space-1);
+  bottom: var(--space-1);
+  left: var(--space-1);
+  width: calc((100% - 4 * var(--space-1)) / 3);
+  border-radius: 7px;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--accent) 24%, transparent),
+    color-mix(in srgb, var(--accent) 10%, transparent)
+  );
+  box-shadow:
+    inset 0 0 0 1px var(--accent),
+    0 0 14px -2px color-mix(in srgb, var(--accent) 50%, transparent);
+  transform: translateX(calc(var(--i) * (100% + var(--space-1))));
+  transition: transform 280ms cubic-bezier(0.3, 1.3, 0.4, 1);
+  pointer-events: none;
+}
+.seg button {
+  position: relative;
+  min-height: 44px;
+  border: none;
+  background: none;
+  border-radius: 7px;
+  color: var(--text-dim);
+  font-size: 13px;
+  padding: 0 2px;
+}
+.seg .on {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+/* 주요 버튼: 별빛 호박색 금속 광택 + 아래 광채, 누르면 들어가며 어두워짐 */
+.primary,
+.secondary {
+  min-height: 48px;
+  border-radius: 10px;
+  font-weight: 700;
+}
+.primary {
+  position: relative;
+  overflow: hidden;
+  min-height: 50px;
+  border: none;
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--accent-contrast);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--accent) 65%, var(--text)),
+    var(--accent) 55%,
+    color-mix(in srgb, var(--accent) 82%, var(--synth-2))
+  );
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--text) 60%, transparent),
+    0 6px 18px -4px color-mix(in srgb, var(--accent) 55%, transparent);
+}
+.primary:not(:disabled):active {
+  filter: brightness(0.92);
+  box-shadow:
+    inset 0 2px 6px color-mix(in srgb, var(--accent-contrast) 35%, transparent),
+    0 2px 8px -4px color-mix(in srgb, var(--accent) 55%, transparent);
+}
+.resume {
+  min-height: 56px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+}
+.resume small {
+  font-size: 12px;
+  font-weight: 600;
+  opacity: 0.8;
+}
+.secondary {
+  border: 1px solid var(--tone);
+  background: color-mix(in srgb, var(--tone) 9%, transparent);
+  color: var(--tone);
+}
+.secondary:not(:disabled):active {
+  background: color-mix(in srgb, var(--tone) 20%, transparent);
+}
+.secondary:disabled {
+  opacity: 0.45;
+}
+.join {
+  display: flex;
+  gap: var(--space-2);
+}
+.join input {
+  flex: 1;
+  text-transform: uppercase;
+  letter-spacing: 0.3em;
+  text-align: center;
+}
+.join button {
+  padding: 0 20px;
+}
+.link {
+  min-height: 44px;
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .logo, .flare {
+    animation: none;
+  }
+  .streak {
+    animation: none;
+    display: none;
+  }
+  .pill {
+    transition: none;
+  }
+}

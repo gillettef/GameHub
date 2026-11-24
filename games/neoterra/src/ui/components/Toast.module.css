@@ -1,0 +1,16 @@
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(var(--space-4) + env(safe-area-inset-bottom));
+  translate: -50% 0;
+  max-width: min(440px, calc(100vw - 32px));
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  z-index: 60;
+  text-align: center;
+  /* 시트 아래에 붙은 행동 버튼 위에 떠도 누르는 손가락을 가로채지 않게 */
+  pointer-events: none;
+}

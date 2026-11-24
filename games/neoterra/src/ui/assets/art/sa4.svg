@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 222 122"><defs><linearGradient id="a-sa4-s" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0a0f1f"/><stop offset="1" stop-color="#1f2a48"/></linearGradient><radialGradient id="a-sa4-p" cx=".5" cy="0" r=".5"><stop offset="0" stop-color="#2d4170"/><stop offset="1" stop-color="#10172b"/></radialGradient><linearGradient id="a-sa4-m" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset=".5" stop-color="#dfe9ff"/><stop offset="1" stop-color="#7f9fd6"/></linearGradient><linearGradient id="a-sa4-b" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffe36b" stop-opacity=".55"/><stop offset="1" stop-color="#ffe36b" stop-opacity=".1"/></linearGradient><radialGradient id="a-sa4-g"><stop offset="0" stop-color="#ffe36b" stop-opacity=".9"/><stop offset="1" stop-color="#ffe36b" stop-opacity="0"/></radialGradient></defs>
+<rect width="222" height="122" fill="url(#a-sa4-s)"/>
+<g fill="#e9edf8"><circle cx="150" cy="10" r=".9"/><circle cx="180" cy="28" r=".6"/><circle cx="206" cy="12" r="1.1"/><circle cx="196" cy="62" r=".7"/><circle cx="40" cy="60" r=".6"/><circle cx="62" cy="44" r=".6"/><circle cx="168" cy="72" r=".6"/></g>
+<circle cx="18" cy="14" r="22" fill="url(#a-sa4-g)"/><circle cx="18" cy="14" r="6" fill="#fff6c8"/>
+<path d="M24 18L76 32" stroke="#ffe36b" stroke-opacity=".35" stroke-width="5"/>
+<circle cx="111" cy="372" r="282" fill="none" stroke="#9cc2ff" stroke-opacity=".14" stroke-width="7"/><circle cx="111" cy="372" r="276" fill="url(#a-sa4-p)" stroke="#9cc2ff" stroke-opacity=".6" stroke-width="1.4"/>
+<path d="M84 58L104 104h14L138 58z" fill="url(#a-sa4-b)"/><ellipse cx="111" cy="104" rx="26" ry="7" fill="url(#a-sa4-g)"/><ellipse cx="111" cy="104" rx="12" ry="3" fill="#fff6c8"/>
+<path d="M-6 120Q111 90 228 120" fill="none" stroke="#a9b6d6" stroke-opacity=".5" stroke-width="2.5"/>
+<g stroke="#2c4a86" stroke-width=".8" fill="none"><ellipse cx="111" cy="40" rx="40" ry="22" fill="url(#a-sa4-m)" stroke="#a9b6d6" stroke-width="1.6"/><path d="M71 40h80M91 21l40 38M131 21L91 59M111 18v44"/><ellipse cx="111" cy="40" rx="20" ry="11"/></g>
+<circle cx="111" cy="40" r="5" fill="#9cc2ff" stroke="#0a0f1f"/><path d="M111 45v13" stroke="#dfe9ff" stroke-width="1.5"/><circle cx="95" cy="31" r="2" fill="#ffffff"/>
+</svg>
