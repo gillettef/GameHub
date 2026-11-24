@@ -44,7 +44,7 @@ function toast(msg, kind = 'err') {
 }
 
 async function api(path, body) {
-  const res = await fetch(`/api/${path}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body ?? {}) });
+  const res = await fetch(`api/${path}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body ?? {}) });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || `오류 (${res.status})`);
   return data;
@@ -74,7 +74,7 @@ function connect(session) {
   document.getElementById('btnLeave').classList.remove('hidden');
   history.replaceState(null, '', `?room=${session.code}`);
   if (ui.es) ui.es.close();
-  const es = new EventSource(`/api/rooms/${session.code}/stream?seat=${session.seat}&token=${session.token}`);
+  const es = new EventSource(`api/rooms/${session.code}/stream?seat=${session.seat}&token=${session.token}`);
   ui.es = es;
   es.onmessage = (e) => {
     const p = JSON.parse(e.data);
