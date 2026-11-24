@@ -327,7 +327,7 @@ function enterRoom({ code, token }) {
   // 방이 사라졌으면(서버 재시작·만료) 안내하고 돌아간다
   setTimeout(() => {
     if (g.snap) return;
-    fetch(`/api/rooms/${code}?token=${encodeURIComponent(token)}`).then((r) => r.json()).then((d) => {
+    fetch(`api/rooms/${code}?token=${encodeURIComponent(token)}`).then((r) => r.json()).then((d) => {
       if (d.error && current === g) { store.set('online', null); g.stop(); onlineHome(); app.querySelector('#err').textContent = d.error; }
     }).catch(() => {});
   }, 2500);
@@ -341,7 +341,7 @@ function lobby(g) {
       <div class="card" style="text-align:center">
         <div class="label">방 코드</div>
         <div class="code">${esc(g.code)}</div>
-        <div class="row" style="margin-top:8px"><input class="field" id="link" readonly value="${esc(`${location.origin}/?room=${g.code}`)}" style="font-size:14px"><button class="btn" id="share" style="flex:none">공유</button></div>
+        <div class="row" style="margin-top:8px"><input class="field" id="link" readonly value="${esc(`${location.origin}${location.pathname}?room=${g.code}`)}" style="font-size:14px"><button class="btn" id="share" style="flex:none">공유</button></div>
       </div>
       <div class="card stack"><div class="label" style="margin:0">자리 (차례 순서)</div><div class="stack" id="seats" style="gap:8px"></div></div>
       <div class="muted" id="err" style="text-align:center"></div>
