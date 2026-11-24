@@ -18,7 +18,7 @@
   에셋·`fetch`·WebSocket URL·공유 링크는 현재 페이지 디렉터리 기준 상대경로로 만든다. 루트(IP:포트) 직접 접속에서도 동작해야 한다.
 - 모든 게임이 같은 origin을 쓰므로 localStorage·cookie 키는 `<slug>:` 접두어를 붙인다. service worker scope는 게임 디렉터리 안으로 제한한다.
 - 서버 메모리가 빠듯하다(0.4GB, 스왑 사용 중). 2단계에서 공통 방·봇 SDK와 단일 프로세스로 합친다(`docs/phase2-design.md`).
-  inproc로 옮긴 게임: smilepark, crease, lightcone, lastgrain, eleven, doubleagent, proxymind, retrocause, hearsay, sightline. 옮긴 게임의 `deploy-remote.sh`는 자기 systemd 유닛을 끄고 `gamehub`를 재시작한다.
+  inproc로 옮긴 게임: rootbound·magicacademy 를 뺀 13개(smilepark, crease, lightcone, lastgrain, eleven, doubleagent, proxymind, retrocause, hearsay, sightline, tesseract, election, neoterra). 옮긴 게임의 `deploy-remote.sh`는 자기 systemd 유닛을 끄고 `gamehub`를 재시작한다.
 
 ## 브랜치·배포
 

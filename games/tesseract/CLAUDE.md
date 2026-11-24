@@ -109,6 +109,8 @@ npm start          # 빌드 결과로 서버 실행 (scripts/aws/serve.mjs, EC2�
 
 ## 배포 (AWS)
 
+- **2026-11-24부터 운영은 GameHub 허브 안에서 실행된다**(`hub/games.json` `"mode": "inproc"`, 진입점 `scripts/aws/hub-entry.mjs` → `server-dist/app.cjs`(`server/app.ts`, `createApp`)). 접속은 `http://54.116.67.196/tesseract/`. 배포하면 `deploy-remote.sh`가 예전 systemd `tesseract` 서비스를 끄고 허브(`gamehub`)를 재시작한다 — 허브 안 다른 게임의 진행 중인 방도 함께 사라진다. `server/index.ts`(`server-dist/server.cjs`)는 로컬 단독 실행용으로 남는다. 아래의 포트·systemd 설명은 예전 단독 운영 기준이다.
+
 - 다른 게임(Eleven·MagicAcademy·Rootbound·SmilePark·DoubleAgent)과 같은 EC2(t4g.nano, 서울) 1대를 공유한다. 접속은 **http://54.116.67.196:8092** (HTTP만, HTTPS 없음).
 - `main`에 병합되면 `.github/workflows/deploy-aws.yml`이 `npm test` → `npm run lint` → `npm run build`를 통과했을 때만 `dist`·`server-dist`(ws까지 묶은 서버 번들)·`scripts/aws/`를 `~/tesseract`에 올리고, 서버에서 `scripts/aws/deploy-remote.sh`가 systemd `tesseract`(포트 8092)를 재시작·헬스체크(`/health`)한다. 정적 파일과 온라인 대전 WebSocket(`/ws`)을 같은 포트로 서빙한다. 재시작하면 진행 중인 온라인 방은 사라진다.
 - 서버 번들은 Vite 8에 딸린 rolldown으로 만든다(esbuild는 선택 의존성이라 CI에 없을 수 있음). EC2에서는 빌드·`npm install`을 하지 않는다.
