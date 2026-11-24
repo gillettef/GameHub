@@ -1,0 +1,13 @@
+{
+  "name": "crease-prototype",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "CREASE 규칙 엔진, 밸런스 시뮬레이터, 웹 프로토타입",
+  "scripts": {
+    "test": "node --test \"test/*.test.js\"",
+    "build": "node scripts/build.mjs",
+    "sim": "node prototype/sim.js"
+  },
+  "engines": { "node": ">=20" }
+}
