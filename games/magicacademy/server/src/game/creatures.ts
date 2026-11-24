@@ -1,0 +1,79 @@
+// 마법생물 카드 30장 (출처: notes/마법학교.xlsx "마법생물" 시트).
+// 원본 능력 텍스트는 카드 배틀 용어(전장/전투/생명력/피해)로 쓰여 있어, 현재 게임 규칙에 맞게 아래처럼 변환했습니다.
+//   전장에 들어올 때 → 획득 즉시 (acquire)
+//   턴 시작 시      → 매 라운드 1주차(준비) (prep)
+//   전투에 참여할 때 → 마법 겨루기 참여 시, 도전자/도전받은 쪽 모두 (duel)
+//   공격을 받을 때   → 마법 겨루기에서 도전받았을 때 (defend)
+//   피해를 받을 때   → 마법 겨루기에서 패배했을 때 (lose)
+//   공격력 +N       → 마법 겨루기 굴림 +N (rollBonus)
+//   상대에게 피해 N  → 상대의 마법 겨루기 굴림 -N (enemyRollPenalty)
+//   피해를 받지 않음  → 마법 겨루기 패배 시 낸 마나기운 1개를 다음 달 준비 때 돌려받음 (immune)
+//   주문력 N 얻기    → acquire: 주문력 영구 +N / prep: 그 달 마나기운 +N (mana)
+//   생명력 N 회복/감소 → 체력기운. prep이면 그 달 즉시 +N, 그 외에는 다음 달 준비 때 +N/-N (stamina / enemyStamina)
+import type { CreatureAbility, CreatureCard, CreatureElement } from "./types.js";
+
+// trainTarget: 조련 기준 수치 (낸 마나기운만큼 굴린 주사위 합이 이 값 × BALANCE.trainTargetScale 이상이면 조련 성공). 생물마다 고정이며 카드별로 직접 조정한다 (원본 xlsx의 "요구 주문력" × 4를 초안으로 사용)
+type Def = [name: string, element: CreatureElement, kind: "animal" | "plant", trainTarget: number, description: string];
+
+// 능력은 속성별 세 가지로 통일한다 (51절 단순화): 하늘 = 마법 겨루기 굴림 +, 육지 = 매달 체력기운 +, 바다 = 매달 마나기운 +.
+// 조련하기 어려운 생물(기준 16 이상)은 +2, 나머지는 +1
+export function creatureAbilityOf(element: CreatureElement, trainTarget: number): CreatureAbility {
+  const amount = trainTarget >= 16 ? 2 : 1;
+  if (element === "sky") return { trigger: "duel", effect: "rollBonus", amount };
+  if (element === "land") return { trigger: "prep", effect: "stamina", amount };
+  return { trigger: "prep", effect: "mana", amount };
+}
+
+const DEFS: Def[] = [
+  // 하늘
+  ["하늘의 감시자", "sky", "animal", 12, "날개가 달린 귀여운 작은 생물. 하늘을 감시하고 있어요."],
+  ["에어 스피릿", "sky", "plant", 16, "가벼운 공기와 빛으로 이루어진 식물 생명체."],
+  ["천상의 레오파드", "sky", "animal", 20, "하늘을 떠다니는 우아한 퓨마. 발톱이 반짝여요."],
+  ["하늘의 꽃마녀", "sky", "plant", 8, "꽃잎과 빛을 조종하는 작은 마녀."],
+  ["황금 날개 새", "sky", "animal", 12, "황금빛 깃털의 아름다운 새."],
+  ["하늘의 노래꾼", "sky", "plant", 8, "노래로 행복을 전하는 식물 생명체."],
+  ["은하의 수호자", "sky", "animal", 16, "별을 품은 날개를 가진 착한 눈의 동물."],
+  // 육지
+  ["대지의 수호자", "land", "animal", 12, "돌 갑옷과 커다란 뿔을 가진 수호자."],
+  ["정령 고릴라", "land", "animal", 8, "정령의 기운을 두른 힘센 고릴라."],
+  ["돌연변이 식물", "land", "plant", 12, "독특한 색과 모양의 돌연변이 식물."],
+  ["땅굴 잠수꾼", "land", "animal", 8, "땅속을 민첩하게 누비는 작은 생물."],
+  ["대지의 수호정령", "land", "plant", 16, "흙과 나무로 이루어진 수호정령."],
+  ["바위망치 코끼리", "land", "animal", 20, "바위처럼 단단한 피부의 코끼리."],
+  ["지하 돌껍질", "land", "animal", 16, "단단한 돌껍질로 몸을 지키는 생물."],
+  // 바다
+  ["심해의 수호자", "ocean", "animal", 12, "어둠 속에서 빛나는 큰 눈의 수호자."],
+  ["해양 정령", "ocean", "animal", 16, "푸른 물결과 함께 나타나는 투명한 정령."],
+  ["심해의 마녀", "ocean", "plant", 8, "심해에서 독과 불꽃을 다루는 마녀."],
+  ["감각 물고기", "ocean", "animal", 8, "눈과 귀가 아주 예민한 물고기."],
+  ["푸른 해마", "ocean", "animal", 12, "작고 아름다운 푸른 꼬리의 해마."],
+  ["심해의 수호요정", "ocean", "plant", 16, "심해의 꽃을 닮은 치유의 요정."],
+  ["바다의 여왕", "ocean", "animal", 20, "위엄 있고 아름다운 바다의 여왕."],
+];
+
+export const CREATURE_CARDS: readonly Omit<CreatureCard, "id">[] = DEFS.map(
+  ([name, element, kind, trainTarget, description], index) => ({
+    cardNo: index + 1,
+    name,
+    element,
+    kind,
+    trainTarget,
+    ability: creatureAbilityOf(element, trainTarget),
+    description,
+  }),
+);
+
+export function describeAbility(a: CreatureAbility): string {
+  const when = { acquire: "획득 즉시", prep: "매달 준비 때", duel: "마법 겨루기 참여 시", defend: "대결 도전받을 때", lose: "대결 패배 시", always: "항상" }[a.trigger];
+  const what = {
+    spellPower: `주문력 영구 +${a.amount}`,
+    mana: `마나기운 +${a.amount}`,
+    stamina: a.trigger === "prep" ? `체력기운 +${a.amount}` : `다음 달 체력기운 +${a.amount}`,
+    rollBonus: `내 굴림 +${a.amount}`,
+    enemyRollPenalty: `상대 굴림 -${a.amount}`,
+    enemyStamina: `상대 다음 달 체력기운 -${a.amount}`,
+    immune: "낸 마나기운 1개를 다음 달에 돌려받음",
+    charmToken: `매력기운 +${a.amount}`,
+  }[a.effect];
+  return `${when}: ${what}`;
+}
