@@ -108,3 +108,19 @@ test('자리를 비우면 45초 뒤 봇에게 넘기고, 돌아오면 되찾는�
   hub.join(a.code, '돌아옴', idleTok);
   assert.equal(hub.view(a.code, other).seatBots[seat], false);
 });
+
+test('오래 쉰 방을 지울 때 예약된 봇 차례도 취소한다', () => {
+  const cancelled = [];
+  let t = 0;
+  const hub = new RoomHub({ schedule: () => 'handle-1', cancel: (h) => cancelled.push(h), now: () => t, idleMs: 1000 });
+  const a = hub.createRoom('철수');
+  hub.rooms.get(a.code).timer = 'handle-1';
+  t = 500;
+  hub.sweep();
+  assert.ok(hub.rooms.has(a.code), '아직 쉬는 시간이 짧으면 남긴다');
+  assert.deepEqual(cancelled, []);
+  t = 2000;
+  hub.sweep();
+  assert.ok(!hub.rooms.has(a.code));
+  assert.deepEqual(cancelled, ['handle-1']);
+});

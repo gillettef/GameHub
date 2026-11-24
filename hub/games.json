@@ -9,9 +9,9 @@
   { "slug": "proxymind",    "name": "프록시마인드", "port": 8105, "players": "3~5인", "tagline": "남이 짠 두뇌로 싸우는 로봇 아레나", "online": true, "bot": true, "mode": "inproc" },
   { "slug": "smilepark",    "name": "스마일파크",   "port": 8090, "players": "2~5인", "tagline": "놀이공원 경영", "online": false, "bot": true, "mode": "inproc" },
   { "slug": "crease",       "name": "크리스",       "port": 8101, "players": "2~4인", "tagline": "접는 보드 경주", "online": true, "bot": true, "mode": "inproc" },
-  { "slug": "hearsay",      "name": "히어세이",     "port": 8103, "players": "4~6인", "tagline": "집단 기억으로 역사 정하기", "online": true, "bot": true },
+  { "slug": "hearsay",      "name": "히어세이",     "port": 8103, "players": "4~6인", "tagline": "집단 기억으로 역사 정하기", "online": true, "bot": true, "mode": "inproc" },
   { "slug": "lastgrain",    "name": "라스트그레인", "port": 8104, "players": "2인",   "tagline": "수명이 붙은 모래병 전술", "online": true, "bot": true, "mode": "inproc" },
   { "slug": "lightcone",    "name": "라이트콘",     "port": 8099, "players": "2인",   "tagline": "빛의 속도 지연 성간 대결", "online": true, "bot": true, "mode": "inproc" },
-  { "slug": "retrocause",   "name": "레트로코즈",   "port": 8100, "players": "3~5인", "tagline": "결말에서 시작하는 역인과 추리", "online": true, "bot": true },
-  { "slug": "sightline",    "name": "사이트라인",   "port": 8102, "players": "3~4인", "tagline": "앉은 자리가 곧 시야", "online": true, "bot": true }
+  { "slug": "retrocause",   "name": "레트로코즈",   "port": 8100, "players": "3~5인", "tagline": "결말에서 시작하는 역인과 추리", "online": true, "bot": true, "mode": "inproc" },
+  { "slug": "sightline",    "name": "사이트라인",   "port": 8102, "players": "3~4인", "tagline": "앉은 자리가 곧 시야", "online": true, "bot": true, "mode": "inproc" }
 ]
