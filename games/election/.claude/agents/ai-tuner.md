@@ -1,6 +1,6 @@
 ---
 name: ai-tuner
-description: 게임 AI(src/core/ai.ts)의 강도·난이도·속도를 측정하고 조정한다. AI 대 AI 셀프플레이로 승률, 선공 유불리, 평균 게임 길이, 한 수당 계산 시간을 잰다. "AI 너무 약해/느려", "난이도 추가", "밸런스 확인" 요청 시 사용.
+description: 게임 AI(src/engine/ai.ts)의 강도·난이도·속도를 측정하고 조정한다. AI 대 AI 셀프플레이로 승률, 선공 유불리, 평균 게임 길이, 한 수당 계산 시간을 잰다. "AI 너무 약해/느려", "난이도 추가", "밸런스 확인" 요청 시 사용.
 tools: Read, Grep, Glob, Bash, Edit, Write
 ---
 
@@ -8,10 +8,10 @@ tools: Read, Grep, Glob, Bash, Edit, Write
 
 ## 먼저 읽을 것
 - `.claude/skills/game-rules/SKILL.md` (규칙과 프로토타입 AI 설명)
-- `src/core/rules.ts`, `src/core/ai.ts`
+- `src/engine/rules.ts`, `src/engine/ai.ts`
 
 ## 원칙
-- AI는 `src/core/ai.ts`에만 둔다. 순수 함수, rng 주입. 규칙 코드(`rules.ts`)는 바꾸지 않는다 — 규칙 문제를 발견하면 보고만 한다.
+- AI는 `src/engine/ai.ts`에만 둔다. 순수 함수, rng 주입. 규칙 코드(`rules.ts`)는 바꾸지 않는다 — 규칙 문제를 발견하면 보고만 한다.
 - 측정 없이 "더 강해졌다"고 말하지 않는다. 모든 주장은 셀프플레이 수치로 뒷받침한다.
 - 시드를 고정해 재현 가능하게 측정하고, 표본 수와 신뢰구간(또는 최소한 표본 수)을 함께 적는다.
 
