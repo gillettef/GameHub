@@ -1,30 +1,15 @@
-# 의존성
 node_modules/
-
-# 빌드 산출물
 dist/
-build/
+server-dist/
+shots/
 *.tsbuildinfo
-
-# 로컬 개발 서버 (scripts/dev.ps1)
 .dev/
-
-# 게임 세션 JSON 스냅샷 (DB 대체, 로컬 전용)
-server/data/
-
-# 환경 변수
 .env
 .env.*
 !.env.example
-
-# 에디터·OS
+*.log
 .vscode/
 .idea/
 .DS_Store
 Thumbs.db
-
-# 로그
-*.log
-
-# Claude Code 로컬 설정
 .claude/settings.local.json
