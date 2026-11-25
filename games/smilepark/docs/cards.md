@@ -2,7 +2,7 @@
 
 > 자동 생성: `npx tsx scripts/cards-md.ts > docs/cards.md`. 규칙은 `docs/design-v1.md`.
 
-원본 수치(notes/놀이공원_v1.xlsx)를 아래 규칙으로 한 번 변환한 "카드에 인쇄되는 값"이다(`src/game/data/cards.ts`의 `PRINT`).
+원본 수치(notes/놀이공원_v1.xlsx)를 아래 규칙으로 한 번 변환한 "카드에 인쇄되는 값"이다(`src/engine/data/cards.ts`의 `PRINT`).
 
 - 건설비 = 원본 건설비(최소 $2), 유지비 = 원본 그대로
 - 놀이기구 정원 = 원본 건설비 7 이상 4명, 3 이상 3명, 그 외 2명

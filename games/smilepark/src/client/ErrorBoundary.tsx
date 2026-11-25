@@ -1,5 +1,5 @@
 import { Component, Fragment, type ErrorInfo, type ReactNode } from 'react';
-import { clearSave } from '../platform/storage';
+import { clearSave } from './platform/storage';
 import { Icon } from './Icon';
 
 interface State {
@@ -9,13 +9,13 @@ interface State {
 
 /** 렌더 중 예외가 나면 흰 화면 대신 안내 화면을 보여주고, 저장을 지운 뒤 타이틀로 돌아갈 수 있게 한다 */
 export class ErrorBoundary extends Component<{ children: ReactNode }, State> {
-  state: State = { error: null, key: 0 };
+  override state: State = { error: null, key: 0 };
 
   static getDerivedStateFromError(error: Error): Partial<State> {
     return { error };
   }
 
-  componentDidCatch(error: Error, info: ErrorInfo) {
+  override componentDidCatch(error: Error, info: ErrorInfo) {
     console.error('[SmilePark] 렌더 오류', error, info.componentStack);
   }
 
@@ -29,10 +29,10 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, State> {
     this.setState((s) => ({ error: null, key: s.key + 1 }));
   };
 
-  render() {
+  override render() {
     if (this.state.error) {
       return (
-        <div className="app">
+        <div className="gh-app">
           <div className="crash" role="alert">
             <span className="crash-ico">
               <Icon name="crack" size={40} />

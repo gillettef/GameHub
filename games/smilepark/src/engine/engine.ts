@@ -20,7 +20,7 @@ import {
  */
 export const CFG = {
   rounds: 8,
-  /** 지원 인원 (사람 0~1 + AI) */
+  /** 지원 인원 (사람 + AI) */
   minPlayers: 2,
   maxPlayers: 5,
   /** 시작 자금: 1라운드 선 플레이어 startMoney, 이후 순서마다 +seatMoney */
@@ -303,10 +303,22 @@ export function computeReport(s: GameState, p: Player): RoundReport {
 
 /* ───────── 세팅 ───────── */
 
-export function newGame(opts: { aiCount: number; humans?: number; seed?: number; humanName?: string; profiles?: string[] }): GameState {
-  // 사람은 0~1명(핫시트 미지원), 전체 인원은 minPlayers~maxPlayers
+/** 자리 하나: AI 인지, 이름(없으면 AI 는 기본 이름, 사람은 humanName) */
+export interface SeatSpec {
+  ai: boolean;
+  name?: string;
+}
+
+/**
+ * 새 게임. seats 를 주면 그 자리 순서대로(사람 여럿 가능: 돌려 하기·온라인), 없으면 옛 방식(사람 humans 명이 앞, AI aiCount 명).
+ * profiles 는 AI 자리 순서대로의 성향.
+ */
+export function newGame(opts: { aiCount?: number; humans?: number; seed?: number; humanName?: string; profiles?: string[]; seats?: SeatSpec[] }): GameState {
+  // 옛 방식: 사람은 0~1명, 전체 인원은 minPlayers~maxPlayers
   const humans = Math.max(0, Math.min(1, Math.floor(opts.humans ?? 1)));
-  const aiCount = Math.max(CFG.minPlayers - humans, Math.min(CFG.maxPlayers - humans, Math.floor(opts.aiCount) || 0));
+  const aiCount = Math.max(CFG.minPlayers - humans, Math.min(CFG.maxPlayers - humans, Math.floor(opts.aiCount ?? 0) || 0));
+  const seats: SeatSpec[] = opts.seats ?? Array.from({ length: humans + aiCount }, (_, i) => ({ ai: i >= humans }));
+  if (seats.length < CFG.minPlayers || seats.length > CFG.maxPlayers) throw new Error(`인원은 ${CFG.minPlayers}~${CFG.maxPlayers}명이에요`);
   const s: GameState = {
     round: 0,
     maxRounds: CFG.rounds,
@@ -324,22 +336,26 @@ export function newGame(opts: { aiCount: number; humans?: number; seed?: number;
     pickOrder: [],
     pickTurn: 0,
     pickDone: [],
+    opStep: [],
+    ready: [],
     eventDeck: [],
     event: null,
     nextEvent: null,
-    rng: opts.seed ?? (Math.random() * 2 ** 32) >>> 0,
+    rng: (opts.seed ?? 1) >>> 0,
     log: [],
     notice: null,
   };
   const aiNames = ['미니', '코코', '루루', '팝콘', '봉봉'];
-  const total = humans + aiCount;
+  const total = seats.length;
+  let aiNo = 0;
   for (let i = 0; i < total; i++) {
-    const isAI = i >= humans;
+    const isAI = seats[i].ai;
+    const k = isAI ? aiNo++ : -1;
     s.players.push({
       id: i,
-      name: isAI ? `${aiNames[i - humans]} 파크` : (opts.humanName ?? '내 파크'),
+      name: seats[i].name ?? (isAI ? `${aiNames[k]} 파크` : (opts.humanName ?? '내 파크')),
       isAI,
-      ai: isAI ? (opts.profiles?.[i - humans] ?? 'balanced') : undefined,
+      ai: isAI ? (opts.profiles?.[k] ?? 'balanced') : undefined,
       money: CFG.startMoney,
       vp: 0,
       facilities: Array(CFG.slots).fill(null),
@@ -562,6 +578,8 @@ function takeGroup(s: GameState, p: Player, groupId: number): boolean {
 function startOperate(s: GameState) {
   s.phase = 'operate';
   s.step = 'fee';
+  s.opStep = s.players.map((p) => (p.isAI ? 'done' : 'fee'));
+  s.ready = s.players.map(() => false);
   for (const p of s.players) {
     p.place = p.groups.map(() => null);
     if (p.isAI) {
@@ -573,8 +591,22 @@ function startOperate(s: GameState) {
   }
 }
 
+/** 사람마다 입장료·배치를 마쳤는지 보고 step 을 맞춘다. 모두 마쳤으면 운영 결과를 낸다 */
+function syncOperate(s: GameState) {
+  const humans = s.players.filter((p) => !p.isAI).map((p) => p.id);
+  if (humans.every((i) => s.opStep[i] === 'done')) {
+    runOperate(s);
+    return;
+  }
+  s.step = humans.some((i) => s.opStep[i] === 'fee') ? 'fee' : 'place';
+}
+
+/** 사람 플레이어가 모두 ready 인지 */
+const allReady = (s: GameState) => s.players.every((p) => p.isAI || s.ready[p.id]);
+
 function runOperate(s: GameState) {
   s.step = 'result';
+  s.ready = s.players.map(() => false);
   for (const p of s.players) {
     const r = computeReport(s, p);
     p.report = r;
@@ -608,6 +640,7 @@ function repairTargets(p: Player): number[] {
 function startManage(s: GameState) {
   s.phase = 'manage';
   s.step = null;
+  s.ready = s.players.map(() => false);
   for (const p of s.players) {
     // 인력·부대시설의 무료 처리는 자동 (수리는 가치가 큰 놀이기구부터)
     let free = freeRepairsOf(p);
@@ -692,11 +725,11 @@ export const STAFF_LABEL: Record<StaffKey, string> = {
   researcher: '연구원',
 };
 
-/** 사람 플레이어의 행동. 잘못된 행동이면 notice만 채워 돌려준다. */
-export function dispatch(prev: GameState, a: Action): GameState {
+/** 사람 플레이어(seat, 기본 0번)의 행동. 잘못된 행동이면 notice만 채워 돌려준다. */
+export function dispatch(prev: GameState, a: Action, seat = HUMAN): GameState {
   const s = structuredClone(prev);
   s.notice = null;
-  const err = apply(s, a);
+  const err = apply(s, seat, a);
   if (err) {
     s.notice = err;
     return s;
@@ -705,13 +738,26 @@ export function dispatch(prev: GameState, a: Action): GameState {
   return s;
 }
 
-function apply(s: GameState, a: Action): string | null {
-  const p = s.players[HUMAN];
+/** 좌석 seat 의 행동. 규칙에 맞지 않으면 prev 를 그대로 두고 error 에 이유를 담는다 */
+export function play(prev: GameState, seat: number, a: Action): { state: GameState; error: string | null } {
+  const s = structuredClone(prev);
+  s.notice = null;
+  const error = apply(s, seat, a);
+  if (error) return { state: prev, error };
+  settle(s);
+  return { state: s, error: null };
+}
+
+function apply(s: GameState, seat: number, a: Action): string | null {
+  const p = s.players[seat];
   if (!p || p.isAI) return '사람 플레이어가 없어요';
   const need = (ph: Phase, step?: GameState['step']) => (s.phase === ph && (step === undefined || s.step === step) ? null : '지금은 할 수 없는 행동이에요');
+  /** 운영 입력: 이 사람이 입장료(fee)·배치(place) 중 어디에 있는지 */
+  const needOp = (st: 'fee' | 'place') => (s.phase === 'operate' && s.step !== 'result' && s.opStep[seat] === st ? null : '지금은 할 수 없는 행동이에요');
+  const needManage = () => need('manage') ?? (s.ready[seat] ? '관리를 마쳤어요. 다른 공원을 기다리는 중이에요' : null);
   switch (a.type) {
     case 'buy': {
-      const e = need('construct') ?? (s.turn === HUMAN && !s.passed[HUMAN] ? null : '내 차례가 아니에요');
+      const e = need('construct') ?? (s.turn === seat && !s.passed[seat] ? null : '내 차례가 아니에요');
       if (e) return e;
       if (!s.market.includes(a.cardId)) return '이미 팔린 카드예요';
       if (!Number.isInteger(a.slot) || a.slot < 0 || a.slot >= CFG.slots) return '잘못된 자리예요';
@@ -721,49 +767,51 @@ function apply(s: GameState, a: Action): string | null {
       return null;
     }
     case 'pass': {
-      const e = need('construct') ?? (s.turn === HUMAN ? null : '내 차례가 아니에요');
+      const e = need('construct') ?? (s.turn === seat ? null : '내 차례가 아니에요');
       if (e) return e;
-      s.passed[HUMAN] = true;
+      s.passed[seat] = true;
       advanceTurn(s);
       return null;
     }
     case 'bid': {
       const e = need('promote', 'bid');
       if (e) return e;
+      if (p.bid !== null) return '이미 입찰했어요';
       if (!Number.isInteger(a.amount) || a.amount < 0) return '잘못된 금액이에요';
       if (a.amount > p.money) return '돈이 부족해요';
       p.bid = a.amount;
       return null;
     }
     case 'pickGroup': {
-      const e = need('promote', 'pick') ?? (s.pickTurn === HUMAN && !s.pickDone[HUMAN] ? null : '내 차례가 아니에요');
+      const e = need('promote', 'pick') ?? (s.pickTurn === seat && !s.pickDone[seat] ? null : '내 차례가 아니에요');
       if (e) return e;
       if (!takeGroup(s, p, a.groupId)) return '이미 다른 공원이 데려갔어요';
       return null;
     }
     case 'donePicking': {
-      const e = need('promote', 'pick') ?? (s.pickTurn === HUMAN && !s.pickDone[HUMAN] ? null : '지금은 할 수 없어요');
+      const e = need('promote', 'pick') ?? (s.pickTurn === seat && !s.pickDone[seat] ? null : '지금은 할 수 없어요');
       if (e) return e;
-      s.pickDone[HUMAN] = true;
+      s.pickDone[seat] = true;
       advancePick(s);
       return null;
     }
     case 'setFee': {
-      const e = need('operate', 'fee');
+      const e = needOp('fee');
       if (e) return e;
       if (!Number.isFinite(a.fee)) return '잘못된 입장료예요';
       p.fee = Math.max(0, Math.min(feeCap(s), Math.round(a.fee)));
       return null;
     }
     case 'confirmFee': {
-      const e = need('operate', 'fee');
+      const e = needOp('fee');
       if (e) return e;
-      s.step = 'place';
+      s.opStep[seat] = 'place';
       p.place = p.groups.map(() => null);
+      syncOperate(s);
       return null;
     }
     case 'place': {
-      const e = need('operate', 'place');
+      const e = needOp('place');
       if (e) return e;
       if (!Number.isInteger(a.index) || a.index < 0 || a.index >= p.groups.length) return '잘못된 그룹이에요';
       const next = [...p.place];
@@ -776,40 +824,42 @@ function apply(s: GameState, a: Action): string | null {
       return null;
     }
     case 'autoPlace': {
-      const e = need('operate', 'place');
+      const e = needOp('place');
       if (e) return e;
       p.place = bestPlacement(s, p).place;
       return null;
     }
     case 'clearPlace': {
-      const e = need('operate', 'place');
+      const e = needOp('place');
       if (e) return e;
       p.place = p.groups.map(() => null);
       return null;
     }
     case 'confirmPlace': {
-      const e = need('operate', 'place');
+      const e = needOp('place');
       if (e) return e;
       const err = placementError(s, p, p.place);
       if (err) return err;
-      runOperate(s);
+      s.opStep[seat] = 'done';
+      syncOperate(s);
       return null;
     }
     case 'continue': {
-      const e = need('operate', 'result');
+      const e = need('operate', 'result') ?? (s.ready[seat] ? '이미 확인했어요' : null);
       if (e) return e;
-      startManage(s);
+      s.ready[seat] = true;
+      if (allReady(s)) startManage(s);
       return null;
     }
     case 'repair': {
-      const e = need('manage');
+      const e = needManage();
       if (e) return e;
       if (!Number.isInteger(a.slot) || !p.facilities[a.slot]?.repair) return '수리 토큰이 없는 시설이에요';
       if (!doRepair(p, a.slot)) return '돈이 부족해요';
       return null;
     }
     case 'clean': {
-      const e = need('manage');
+      const e = needManage();
       if (e) return e;
       if (p.trash <= 0) return '치울 쓰레기가 없어요';
       if (p.money < CFG.cleanCost) return '돈이 부족해요';
@@ -818,7 +868,7 @@ function apply(s: GameState, a: Action): string | null {
       return null;
     }
     case 'hire': {
-      const e = need('manage');
+      const e = needManage();
       if (e) return e;
       if (p.hired) return '인력은 라운드당 1명만 고용할 수 있어요';
       if (p.staff[a.staff] >= CFG.maxStaff) return '이미 최고 등급이에요';
@@ -827,16 +877,17 @@ function apply(s: GameState, a: Action): string | null {
       return null;
     }
     case 'endManage': {
-      const e = need('manage');
+      const e = needManage();
       if (e) return e;
-      finishRound(s);
+      s.ready[seat] = true;
+      if (allReady(s)) finishRound(s);
       return null;
     }
   }
 }
 
-/** UI용: 현재 사람 플레이어가 건설 행동을 할 수 있는지 */
-export const isHumanTurn = (s: GameState) => s.phase === 'construct' && s.turn === HUMAN && !s.passed[HUMAN];
+/** UI용: 사람 플레이어(seat)가 지금 건설 행동을 할 수 있는지 */
+export const isHumanTurn = (s: GameState, seat = HUMAN) => s.phase === 'construct' && s.turn === seat && !s.passed[seat];
 
 /* ───────── AI ───────── */
 
@@ -1080,4 +1131,91 @@ function aiManage(s: GameState, p: Player) {
     }
   }
   if (pick) doHire(s, p, pick);
+}
+
+/* ───────── 사람 자리 대리 (온라인에서 자리를 비웠을 때·봇끼리 판의 진행 담당) ───────── */
+
+/**
+ * 사람 자리(seat)가 지금 둘 한 수를 AI(균형 성향)와 같은 판단으로 고른다. 둘 것이 없으면 null.
+ * 판의 상태(난수 포함)는 건드리지 않는다: AI 함수는 복사본에서 돌리고 결과만 행동으로 바꾼다.
+ */
+export function botAction(s: GameState, seat: number): Action | null {
+  const p = s.players[seat];
+  if (!p || p.isAI) return null;
+  const copy = () => {
+    const c = structuredClone(s);
+    return { c, q: c.players[seat] };
+  };
+  switch (s.phase) {
+    case 'construct': {
+      if (s.turn !== seat || s.passed[seat]) return null;
+      const { c, q } = copy();
+      aiConstructTurn(c, q);
+      if (q.built > p.built) {
+        const slot = q.facilities.findIndex((f, i) => f?.id !== p.facilities[i]?.id);
+        if (slot >= 0) return { type: 'buy', cardId: q.facilities[slot]!.id, slot };
+      }
+      return { type: 'pass' };
+    }
+    case 'promote': {
+      if (s.step === 'bid') {
+        if (p.bid !== null) return null;
+        const { c, q } = copy();
+        return { type: 'bid', amount: aiBid(c, q) };
+      }
+      if (s.pickTurn !== seat || s.pickDone[seat]) return null;
+      const { c, q } = copy();
+      aiPickTurn(c, q);
+      return q.groups.length > p.groups.length ? { type: 'pickGroup', groupId: q.groups[q.groups.length - 1] } : { type: 'donePicking' };
+    }
+    case 'operate': {
+      if (s.step === 'result') return s.ready[seat] ? null : { type: 'continue' };
+      if (s.opStep[seat] === 'fee') {
+        const fee = aiFee(s, p);
+        return p.fee === fee ? { type: 'confirmFee' } : { type: 'setFee', fee };
+      }
+      if (s.opStep[seat] !== 'place') return null;
+      const best = bestPlacement(s, p).place;
+      return best.every((v, i) => v === p.place[i]) ? { type: 'confirmPlace' } : { type: 'autoPlace' };
+    }
+    case 'manage': {
+      if (s.ready[seat]) return null;
+      const last = s.round >= s.maxRounds;
+      // aiManage 와 같은 순서: 수리(가치 큰 것부터, 마지막 라운드 제외) → 청소 → 인력 1명
+      const fix = last ? [] : repairTargets(p);
+      if (fix.length > 0 && p.money >= CFG.repairCost) return { type: 'repair', slot: fix[0] };
+      if (p.trash > 0 && p.money >= CFG.cleanCost) return { type: 'clean' };
+      if (!p.hired && !last) {
+        const { c, q } = copy();
+        aiManage(c, q);
+        const k = STAFF_KEYS.find((key) => q.staff[key] > p.staff[key]);
+        if (k) return { type: 'hire', staff: k };
+      }
+      return { type: 'endManage' };
+    }
+    default:
+      return null;
+  }
+}
+
+/** botAction 이 거절됐을 때 대신 둘, 늘 받아들여지는 한 수 */
+export function fallbackAction(s: GameState, seat: number): Action | null {
+  const p = s.players[seat];
+  if (!p || p.isAI) return null;
+  switch (s.phase) {
+    case 'construct':
+      return s.turn === seat ? { type: 'pass' } : null;
+    case 'promote':
+      if (s.step === 'bid') return p.bid === null ? { type: 'bid', amount: 0 } : null;
+      return s.pickTurn === seat && !s.pickDone[seat] ? { type: 'donePicking' } : null;
+    case 'operate':
+      if (s.step === 'result') return s.ready[seat] ? null : { type: 'continue' };
+      if (s.opStep[seat] === 'fee') return { type: 'confirmFee' };
+      if (s.opStep[seat] !== 'place') return null;
+      return placementError(s, p, p.place) ? { type: 'clearPlace' } : { type: 'confirmPlace' };
+    case 'manage':
+      return s.ready[seat] ? null : { type: 'endManage' };
+    default:
+      return null;
+  }
 }
