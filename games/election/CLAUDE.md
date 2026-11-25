@@ -77,7 +77,7 @@ src/
 public/      manifest, 아이콘, sw.js(서비스 워커)
 server/      Node 서버: index.ts(HTTP·정적·WebSocket·/health), hub.ts(메모리 방·소켓 전달), room.ts(순수 방 로직), tsconfig.json(Node 타입)
 tests/       Vitest (parity / rules / controller / validate / online / hub)
-scripts/     make-icons.mjs, build-server.mjs(서버 번들), aws/(deploy-remote.sh, election.service)
+scripts/     make-icons.mjs, build-server.mjs(서버 번들), aws/(deploy-remote.sh, hub-entry.mjs)
 .github/     workflows/ci.yml(검사), workflows/deploy-aws.yml(main → EC2 배포)
 ```
 

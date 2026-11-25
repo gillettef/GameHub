@@ -100,7 +100,7 @@ npm run typecheck  # tsc --noEmit
 - **수동 배포**(push 없이 재배포): `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/deploy-aws.ps1` — 로컬에서 테스트·빌드 후 같은 방식으로 전송한다. SSH 키·IP는 Rootbound와 공용인 `.dev/astraltab-key.pem`, `.dev/aws-public-ip.txt`(git 제외)를 쓰고, 없으면 `../Rootbound/.dev/`의 것을 쓴다.
 - 서버 로그: `ssh -i ../Rootbound/.dev/astraltab-key.pem ec2-user@54.116.67.196 "sudo journalctl -u doubleagent -n 100"`
 - SSH(22)는 관리자 IP만 열려 있어 워크플로가 러너 IP를 임시로 열었다 닫는다. 저장소 시크릿: AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY / AWS_REGION / AWS_SECURITY_GROUP_ID / EC2_HOST / EC2_HOST_KEY / EC2_SSH_PRIVATE_KEY (다른 게임 저장소와 같은 값).
-- 서버 준비(완료, 2026-10-17): `scripts/aws/provision.sh` → `scripts/aws/units.sh`, 보안 그룹 TCP 8091 인바운드 추가.
+- 서버 준비(완료, 2026-10-17): 보안 그룹 TCP 8091 인바운드 추가.
 
 ## Git
 - 저장소: https://github.com/gillettef/GameHub.git 의 `games/doubleagent/` (모노레포, 옛 개별 저장소 `gillettef/DoubleAgent` 는 2026-11-25 삭제) (`origin`, 기본 브랜치 `dev`)

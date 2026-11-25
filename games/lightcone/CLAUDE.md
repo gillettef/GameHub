@@ -29,7 +29,7 @@ Lightcone/
 ├── components/
 │   └── components.md    # 구성물 목록과 사양
 ├── playtests/           # 플레이테스트 기록 (YYYY-MM-DD-NN.md)
-├── print/               # 출력용 종이 프로토타입 PDF (scripts/pnp/build_pnp.py 로 생성)
+├── print/               # scripts/pnp/build_pnp.py 가 만드는 출력용 PDF 위치(저장소에는 없음)
 ├── prototype/           # 웹 시뮬레이터(봇 대전): src/(규칙 엔진·봇·지도), web/(화면), test/
 ├── package.json         # npm test(node --test) · npm run build(→ dist/, 의존성 없음)
 ├── scripts/
@@ -66,7 +66,7 @@ Lightcone/
 - `main`에 병합되면 `.github/workflows/deploy-aws.yml`이 `npm test` → `npm run build`를 통과했을 때만 `dist`와 `scripts/aws/`(의존성 없는 정적 서버 `serve.mjs`, `deploy-remote.sh`)를 `~/lightcone`에 올리고, `deploy-remote.sh`가 systemd `lightcone`을 재시작·헬스체크한다.
 - **수동 배포**(push 없이): `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/deploy-aws.ps1`. SSH 키·IP는 `.dev/`(git 제외), 없으면 `../Rootbound/.dev/`의 것을 쓴다.
 - SSH(22)는 관리자 IP만 열려 있어 워크플로가 러너 IP를 임시로 열었다 닫는다. 저장소 시크릿: AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY / AWS_REGION / AWS_SECURITY_GROUP_ID / EC2_HOST / EC2_HOST_KEY / EC2_SSH_PRIVATE_KEY (다른 게임 저장소와 같은 값, 정본은 저장소 밖 `personal/aws_config.md`).
-- 서버 준비(완료, 2026-11-23): `scripts/aws/provision.sh` → `scripts/aws/units.sh`(systemd `lightcone` 등록·enable), 보안 그룹 TCP 8099 인바운드 추가, 저장소 시크릿 7개 등록.
+- 서버 준비(완료, 2026-11-23): 보안 그룹 TCP 8099 인바운드 추가, 저장소 시크릿 7개 등록.
 
 ## 서브에이전트
 
