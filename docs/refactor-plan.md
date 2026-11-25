@@ -46,11 +46,14 @@
 packages/
   ui/       # 게임 셸(아래 5절), 시트, 버튼, 토큰
   net/      # 방·좌석·재접속 클라이언트와 서버 공통 코드
-  config/   # tsconfig, eslint, vite 공통 설정
+  config/   # tsconfig, eslint, vite, 서버 번들, 배포 스크립트, iPhone 화면 확인 도구
+  example/  # 새 구조의 본보기 게임(허브 로비에는 없음)
 games/<slug>/
   src/engine/   # 순수 TS 규칙 (React·DOM·시간·난수 직접 사용 금지)
+  src/def.ts    # 공통 방·진행 코드에 엔진을 연결하는 GameDef (서버·브라우저 공용)
   src/client/   # React 화면
-  server/       # 방, 봇, hub-entry
+  server/app.ts # createRoomApp(def)
+  scripts/aws/hub-entry.mjs
 ```
 
 - 루트에 npm workspaces를 둔다. 지금은 게임마다 `npm ci`를 하므로 CI·배포 워크플로를 함께 고친다.
@@ -110,7 +113,7 @@ games/<slug>/
 | 단계 | 내용 | 끝나는 조건 |
 |---|---|---|
 | 0 | 이 문서 확정 | 완료(2026-11-25) |
-| 1 | 기반: `packages/*`, 공통 CI·배포 템플릿 | 빈 예제 게임이 허브에서 실행 |
+| 1 | 기반: `packages/*`, 공통 CI·배포 템플릿 | 완료(2026-11-25): `packages/example` 이 허브에서 실행 |
 | 2 | 시범: **crease**(순수 JS, SSE, 서버 봇), **tesseract**(React, ws, 테스트 많음) | 사용자가 실기기에서 확인 |
 | 3-a | lastgrain, lightcone, sightline | 리뷰 통과 후 `dev` 반영 |
 | 3-b | hearsay, retrocause, proxymind | 〃 |
@@ -120,7 +123,31 @@ games/<slug>/
 
 공통 코드(`packages/*`)와 허브·워크플로를 바꾸는 작업은 한 번에 한 곳에서만 한다.
 
-## 8. 결정 (2026-11-25)
+## 8. 게임 옮기는 방법
+
+`packages/example` 의 구조를 그대로 따른다.
+
+1. 지금 되는 모드와 화면 요소를 목록으로 만들고, 5절의 ①~⑤ 배치 표를 쓴다.
+2. 규칙 엔진을 `src/engine/` 의 TypeScript 로 옮기고, 옛 엔진과 같은 시드·행동으로 상태가 같은지 비교하는 테스트를 먼저 통과시킨다.
+3. `src/def.ts` 에 `GameDef` 를 쓴다. `view` 는 그 좌석이 봐도 되는 것만 돌려주고, `apply` 는 거절할 때 상태를 건드리지 않고 `RuleError` 를 던진다.
+4. 화면은 `@gamehub/ui` 의 `HomeScreen`·`WaitingRoom`·`GameShell` 로 만든다. 색은 `--gh-*` 변수만 바꾼다.
+5. `e2e/mobile.mjs` 로 한 기기·온라인 흐름을 끝까지 두며 화면 캡처를 확인한다.
+6. 루트 `package.json` 의 `workspaces` 와 `lint` 에 게임을 더하고, 게임의 `package-lock.json` 을 지운다.
+7. `ci-<slug>.yml` 은 지우고 `ci-workspace.yml` 의 paths 에 게임을 더한다. `deploy-<slug>.yml` 은 `deploy-workspace-game.yml` 을 부르는 몇 줄로 바꾼다.
+8. 게임의 `CLAUDE.md` 를 새 구조에 맞게 고친다.
+
+`npm install` 은 이 PC 에서 `...\personal\GameHub` 표기 경로에서 실행한다.
+
+## 9. 공통 진행 방식 (옛 게임과 달라지는 점)
+
+- 온라인은 항상 대기실 → 방장 시작. 시작할 때 빈자리는 봇이 앉는다.
+- 방을 아무도 보고 있지 않으면 봇과 대리 진행이 멈춘다(휴대폰에서 다른 앱을 여는 동안 판이 끝나지 않게).
+- 접속이 끊긴 사람의 차례는 45초 뒤 봇이 대신한다(게임별로 바꿀 수 있다).
+- 게임 중 나가면 그 자리는 봇이 이어받고 돌아올 수 없다.
+- 방 코드는 4자리, 접속 토큰은 서버가 좌석마다 발급한다.
+- 아직 공통 코드에 없는 것: 실시간 틱(hearsay, lastgrain), 내보내기, 방 상태 저장, 차례 제한 시간. 필요한 게임 묶음에서 더한다.
+
+## 10. 결정 (2026-11-25)
 
 1. 스타일: Tailwind CSS v4.
 2. 통신: 모두 `ws`로 통일.

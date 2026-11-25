@@ -6,6 +6,7 @@
 ## 구조
 
 - `hub/` — 허브: 로비(`public/`) + `/<slug>/...` 리버스 프록시(`server.mjs`, HTTP·WebSocket). 게임 목록·포트는 `hub/games.json`.
+- `packages/` — 새 기술스택 공통 코드(루트 npm workspaces): `net`(방·진행), `ui`(화면 배치), `config`(빌드·검사·배포), `example`(본보기 게임). 계획·게임 옮기는 방법은 `docs/refactor-plan.md`. 검사: 루트에서 `npm run check` / `npm run e2e`.
 - `games/<slug>/` — 게임별 프로젝트. 각자의 `CLAUDE.md`가 그 게임의 규칙·코드 규칙이다. 게임 안에서 작업할 때는 그 문서를 먼저 따른다.
 - `.github/workflows/` — `ci-<slug>.yml`(경로 필터), `deploy-<slug>.yml`(workflow_call), `deploy.yml`(오케스트레이터), `deploy-hub.yml`.
 
@@ -29,4 +30,4 @@
 ## 게임 추가
 
 1. `games/<slug>/`에 넣고 상대경로 규칙을 지킨다. 2. `hub/games.json`에 slug·포트·인원 추가.
-3. `.github/workflows/ci-<slug>.yml`, `deploy-<slug>.yml`(workflow_call) 작성, `deploy.yml` 체인 끝에 잡 추가.
+3. `.github/workflows/ci-<slug>.yml`, `deploy-<slug>.yml`(workflow_call) 작성, `deploy.yml` 체인 끝에 잡 추가. 새 게임은 `packages/example` 구조로 만들고 `docs/refactor-plan.md` 8절을 따른다.
