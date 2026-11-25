@@ -12,7 +12,7 @@
 5. **약한/강한 카드 조정**(3인 거울전 구매자 승률, 기대 33%)
    - 약함: 트램폴린 19% · 레이저 태그 21% · 클라이밍 벽 22% · 유령의 집 22% · 정보 안내 센터 22%
    - 강함: 산악 롤러코스터 48% · 바이킹 45% · 빠른 스낵바 45%
-   - 조정 수단: `src/game/data/cards.ts`의 `EFFECTS` 효과 보강. xlsx 원본은 수정하지 않는다.
+   - 조정 수단: `src/engine/data/cards.ts`의 `EFFECTS` 효과 보강. xlsx 원본은 수정하지 않는다.
 6. **건설 중심 AI 약함**(성향 혼합 승률 25%): 규칙 문제인지 AI 판단 문제인지 가린다.
 7. **사람 플레이테스트**: 입찰 심리전, 배치 고민, 1라운드 정산 시간(목표 1분 이내)을 실제 플레이로 확인한다. 웹 UI 흐름도 함께 확인한다.
 
@@ -37,21 +37,34 @@
 - skills: `/commit-push`, `/balance-check`, `/notes-sync`
 
 ## 작업 규칙
-1. 모든 작업 후 git commit & push를 반드시 진행한다. **일상 작업은 `dev`(기본 브랜치)에 커밋·푸시한다. `main`(운영 배포)에는 직접 커밋·푸시하지 않고**, 사용자가 요청할 때만 `dev` → `main` PR(`gh pr create --base main --head dev`)로 병합한다. 작업 시작 전 현재 브랜치가 `dev`인지 확인한다. `dev` 푸시는 CI(`.github/workflows/ci.yml`)만 돌고, `main` 병합이 곧 운영 배포다.
+1. 모든 작업 후 git commit & push를 반드시 진행한다. **일상 작업은 `dev`(기본 브랜치)에 커밋·푸시한다. `main`(운영 배포)에는 직접 커밋·푸시하지 않고**, 사용자가 요청할 때만 `dev` → `main` PR(`gh pr create --base main --head dev`)로 병합한다. 작업 시작 전 현재 브랜치가 `dev`인지 확인한다. `dev` 푸시는 CI(GameHub 루트 `.github/workflows/ci-workspace.yml`)만 돌고, `main` 병합이 곧 운영 배포다.
 2. commit 메시지는 가급적 한국어로 작성한다.
 3. 문서·답변·카드 텍스트는 한국어로 작성한다.
 4. 카드 수치를 바꾸면 영향(밸런스, 룰북 서술)을 함께 확인한다.
 
-## 개발 (`src/`)
-- 스택: TypeScript + Vite + React. `npm run dev`(웹 테스트, 모바일 뷰포트로 확인) / `npm run build` / `npm test` / `npm run sim`(AI 대전 요약). 밸런스 측정 도구는 `scripts/`(simulate·balance·cards-md), 절차와 결과는 `docs/balance-report.md`.
-- `src/game/` — UI 무관 순수 게임 로직(`engine.ts`의 `dispatch`/`newGame`, 카드 데이터 `data/`). 시설 원본은 `python tools/gen_facilities.py`로 xlsx에서 생성(`data/facilities.ts`), 카드 인쇄값 변환·특수효과는 `data/cards.ts`, 관객 그룹은 `data/groups.ts`, 운영카드는 `data/events.ts`. 카드 목록 문서는 `npx tsx scripts/cards-md.ts > docs/cards.md`로 재생성.
-- `src/ui/` — 모바일 세로 우선 UI. `src/platform/` — 저장/햅틱 등 플랫폼 종속 코드(앱 포장 시 교체).
-- 이모지/시스템 이모티콘은 쓰지 않고 `src/ui/Icon.tsx`의 커스텀 SVG 아이콘만 쓴다.
-- 이미지 에셋: `public/images/<슬롯키>.webp`에 넣으면 자동 적용(없으면 플레이스홀더). 슬롯 정의는 `src/ui/assets.ts`, 목록/크기는 개발 서버(`npm run dev`)에서 앱 주소 뒤 `#assets`(운영 빌드에서는 비활성).
-- 현재 구현 룰은 `docs/design-v1.md`(pptx의 빈 부분을 채운 것, **오프라인 보드게임 기준**: 카드 인쇄값 그대로, 확률·환산 공식 없음, 손계산 가능). 인원은 사람 0~1 + AI로 전체 2~5인(`CFG.minPlayers`~`maxPlayers`), 한 기기 다인(핫시트) 미지원. 룰 상수(`CFG`)·인쇄값 변환(`PRINT`)을 바꾸면 `npx tsx scripts/balance.ts`로 영향을 확인하고, 카드 원본(xlsx)은 수정하지 않는다.
+## 개발 (2026-11-25 GameHub 공통 구조로 옮김)
+- 스택: TypeScript strict, React 19 + Vite, 공통 `@gamehub/ui/theme.css`(Tailwind v4) 위에 게임 부품 CSS(`src/client/style.css`, `@layer components`, 색은 `--gh-*`). 공통 코드: `@gamehub/net`(방·진행·대리 봇·한 기기 `LocalGame`·온라인 `useRoom`), `@gamehub/ui`(HomeScreen·WaitingRoom·GameShell·PlayerStrip). 린트·tsconfig·Vite 설정은 루트 공통(`packages/config`).
+- `src/engine/` — UI 무관 순수 게임 로직(`engine.ts`의 `newGame`/`play`/`dispatch`, AI, 대리 봇 `botAction`, 카드 데이터 `data/`). React·DOM·`Math.random`·`Date.now` 금지(ESLint). 시설 원본은 `python tools/gen_facilities.py`로 xlsx에서 생성(`data/facilities.ts`), 카드 인쇄값 변환·특수효과는 `data/cards.ts`, 관객 그룹은 `data/groups.ts`, 운영카드는 `data/events.ts`. 카드 목록 문서는 `npx tsx scripts/cards-md.ts > docs/cards.md`로 재생성.
+- `src/def.ts` — GameDef: 행동 검사(`parseAction`), 지금 둘 좌석(`actorsOf`), 좌석별로 가린 view, 대리 봇. 봇 자리는 엔진 AI(`isAI`)가 엔진 안에서 바로 둔다(옛 진행과 같다). 봇끼리 판이면 0번 자리를 엔진의 사람으로 두고 대리 봇이 진행을 맡는다.
+- 숨은 정보(view): 난수 상태, 덱 순서(정렬해 보냄), 공개 전 남의 홍보 입찰액(`bidDone`만), 운영 결과 전 남의 입장료·배치. 끝나면 모두 공개.
+- `src/client/` — React 화면: `App`(처음·대기실·한 기기·온라인·돌려 하기 가림 화면), `Game`(GameShell 대국), `Report`(운영 결과), `Rules`, `parts`(카드·시트), `platform/`(저장·햅틱·뒤로가기·서비스워커, 앱 포장 시 교체).
+- `server/app.ts` = `createRoomApp(def)`. 빌드가 `server-dist/app.cjs`로 묶고 허브가 `scripts/aws/hub-entry.mjs`로 불러 실행한다(inproc).
+- 테스트: `test/engine.test.ts`(규칙), `test/legacy.test.ts`(옮기기 전 엔진 기록 `test/fixtures/legacy-games.json`과 행동마다 상태 해시 비교), `test/def.test.ts`. 화면: `e2e/mobile.mjs`(iPhone 17 Pro, 모든 모드, `shots/*.png`).
+- 명령(게임 폴더, 설치는 GameHub 루트에서 `npm install` 한 번): `npm run dev`(화면 + 온라인 방 서버 /ws) / `npm run build` / `npm start`(허브 방식 실행) / `npm test` / `npm run typecheck` / `npm run e2e` / `npm run sim`·`npm run balance`(`npx tsx`). 커밋 전에는 루트에서 `npm run check`·`npm run e2e`.
+- 클라이언트는 절대경로를 쓰지 않는다(허브 `/smilepark/` 아래). localStorage 키는 `smilepark:` 접두어(`smilepark:local` 이어 하기, 공통 HomeScreen 의 `smilepark:name`·`smilepark:seats`, 온라인 `smilepark:session`).
+- 이모지/시스템 이모티콘은 쓰지 않고 `src/client/Icon.tsx`의 커스텀 SVG 아이콘만 쓴다.
+- 이미지 에셋: `public/images/<슬롯키>.webp`에 넣으면 자동 적용(없으면 플레이스홀더). 슬롯 정의는 `src/client/assets.ts`, 목록/크기는 개발 서버(`npm run dev`)에서 앱 주소 뒤 `#assets`(운영 빌드에서는 비활성).
+- 현재 구현 룰은 `docs/design-v1.md`(pptx의 빈 부분을 채운 것, **오프라인 보드게임 기준**: 카드 인쇄값 그대로, 확률·환산 공식 없음, 손계산 가능). 룰 상수(`CFG`)·인쇄값 변환(`PRINT`)을 바꾸면 `npx tsx scripts/balance.ts`로 영향을 확인하고, 카드 원본(xlsx)은 수정하지 않는다. 엔진을 바꾸면 `test/legacy.test.ts` 기록과 달라지는 것이 의도한 규칙 변경인지 확인한다.
 
-## 배포 (AWS)
-- **2026-11-24부터 운영은 GameHub 허브 안에서 실행된다**(`hub/games.json` `"mode": "inproc"`, 진입점 `scripts/aws/hub-entry.mjs`). 접속은 `http://54.116.67.196/smilepark/`. 배포하면 `deploy-remote.sh`가 예전 systemd `smilepark` 서비스를 끄고 허브(`gamehub`)를 재시작한다 — 허브 안 다른 게임의 진행 중인 방도 함께 사라진다. `serve.mjs`는 로컬 단독 실행용으로 남는다. 아래의 포트·systemd 설명은 예전 단독 운영 기준이다.
-- 다른 게임(Eleven·AstralTab·MagicAcademy)과 같은 EC2(t4g.nano) 1대를 공유한다. SmilePark는 정적 웹앱이라 `main`에 병합되면 `.github/workflows/deploy-aws.yml`이 `npm test` → `npm run build`를 통과했을 때만 `dist`와 `scripts/aws/`(의존성 없는 정적 서버 `serve.mjs`, `deploy-remote.sh`)를 `~/smilepark`에 올리고 `deploy-remote.sh`가 systemd `smilepark`(포트 **8090**)를 재시작·헬스체크한다. 접속은 `http://<Elastic IP>:8090`.
-- SSH(22)는 관리자 IP만 열려 있어 워크플로가 러너 IP를 임시로 열었다 닫는다. 저장소 시크릿: AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY / AWS_REGION / AWS_SECURITY_GROUP_ID / EC2_HOST / EC2_HOST_KEY / EC2_SSH_PRIVATE_KEY (다른 게임 저장소와 같은 값).
-- 최초 1회: 보안 그룹에 TCP 8090 인바운드 추가.
+## 플레이 모드
+1. **한 기기 AI 대전** — 사람 1명 + 봇(AI, 균형 성향) 1~4명.
+2. **돌려 하기** — 한 기기에서 사람 2~5명(+봇). 건설·관객 고르기는 차례대로, 입찰·운영·관리는 사람마다 따로. 비밀 단계(홍보 입찰, 운영 입장료·배치)에서 둘 사람이 바뀌면 가림 화면. 운영 결과의 '관리 단계로'는 한 번만 누른다.
+3. **봇끼리 관전** — 모든 자리를 봇으로 두면 0번 자리가 진행을 맡아 한 수씩 둔다. 메뉴에서 일시정지.
+4. **온라인 대전** — 방 만들기(4자리 코드·`?room=` 초대 링크) → 대기실 → 방장 시작, 빈자리는 봇. 재접속(새로고침), 끊긴 사람 차례는 45초 뒤 대리 봇, 게임 중 나가면 그 자리는 봇. 관전은 공개 정보만.
+- 이어 하기: 한 기기 판은 행동 기록을 저장해 처음 화면의 "이어 하기"로 돌아온다. 서버 재시작(배포) 시 온라인 방은 사라진다.
+
+## 대국 화면 배치 (GameShell ①~⑤)
+① 할 일(내 차례·기다리는 중)과 라운드·단계·운영카드 ② 공원 줄(만족도·돈·선, 누르면 그 공원 보기) ③ 진행 단계·운영카드(다음 카드)·최근 소식·공원 보드(부지 6칸·인력·토큰·입구) ④ 시설 시장 / 관객 줄·입찰액 / 관객 고르기 / 입장료 / 배치할 그룹 / 관리(수리·청소·고용) ⑤ 건설 마치기 / 입찰 공개 / 그만 데려오기 / 문 열기 / 비우기·추천·운영 시작 / 결과 보기 / 라운드 종료. ≡ 메뉴: 진행 기록·규칙·운영 결과·(봇끼리) 일시정지·나가기
+
+## 배포
+- GameHub 허브 안에서 실행된다(`hub/games.json` `"mode": "inproc"`, 진입점 `scripts/aws/hub-entry.mjs`, 접속 `http://54.116.67.196/smilepark/`). `main` 병합 시 루트 `deploy.yml`이 `deploy-smilepark.yml`(→ 공통 `deploy-workspace-game.yml`)을 불러 빌드 결과(`dist`, `server-dist`)를 올리고 허브를 재시작한다. 예전 단독 포트·systemd·`serve.mjs`·`deploy-remote.sh`는 없앴다.

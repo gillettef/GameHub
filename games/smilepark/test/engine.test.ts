@@ -11,11 +11,11 @@ import {
   rankings,
   seatMoney,
   winners,
-} from '../src/game/engine';
-import { CARDS, CARD_BY_ID } from '../src/game/data/cards';
-import { EVENT_BY_ID } from '../src/game/data/events';
-import { GROUPS, GROUP_BY_ID } from '../src/game/data/groups';
-import type { GameState, Player } from '../src/game/types';
+} from '../src/engine/engine';
+import { CARDS, CARD_BY_ID } from '../src/engine/data/cards';
+import { EVENT_BY_ID } from '../src/engine/data/events';
+import { GROUPS, GROUP_BY_ID } from '../src/engine/data/groups';
+import type { GameState, Player } from '../src/engine/types';
 
 /** 사람 1 + AI 1 게임을 홍보 입찰 단계까지 진행 */
 function toBid(seed: number) {

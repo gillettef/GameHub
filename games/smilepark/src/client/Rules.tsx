@@ -1,6 +1,6 @@
-import { CFG } from '../game/engine';
-import { OUTDOOR, PRINT } from '../game/data/cards';
-import { STAFF_KEYS } from '../game/types';
+import { CFG } from '../engine/engine';
+import { OUTDOOR, PRINT } from '../engine/data/cards';
+import { STAFF_KEYS } from '../engine/types';
 import { Icon, type IconName } from './Icon';
 import { STAFF_META } from './meta';
 
@@ -31,7 +31,7 @@ export function RulesBody() {
   return (
     <div className="rules">
       <p className="lead">
-        {CFG.rounds}라운드 동안 공원을 키워 <b>만족도</b>가 가장 높은 공원이 승리해요. {CFG.minPlayers}~{CFG.maxPlayers}인(나 + AI). 시작 자금은 1라운드 선 플레이어 ${CFG.startMoney}, 다음 순서부터 ${CFG.seatMoney}씩 더 받아요. 2라운드부터 선 플레이어는 시계 방향으로 넘어가요.
+        {CFG.rounds}라운드 동안 공원을 키워 <b>만족도</b>가 가장 높은 공원이 승리해요. {CFG.minPlayers}~{CFG.maxPlayers}인(사람·AI 섞어서, 한 기기 돌려 하기·온라인 가능). 입찰·운영·관리는 사람마다 동시에 하고, 건설·관객 고르기는 차례대로 해요. 시작 자금은 1라운드 선 플레이어 ${CFG.startMoney}, 다음 순서부터 ${CFG.seatMoney}씩 더 받아요. 2라운드부터 선 플레이어는 시계 방향으로 넘어가요.
       </p>
       <div className="callout">
         <Icon name="sparkle" size={20} />
