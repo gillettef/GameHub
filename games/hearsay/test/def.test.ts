@@ -61,7 +61,7 @@ const ctx = { name: (i: number) => `${i + 1}번`, log: () => {}, byBot: false }
 const clockCtx = { log: () => {} }
 const seats = (...kinds: ('human' | 'bot')[]): SeatInfo[] => kinds.map((kind, i) => ({ kind, name: kind === 'bot' ? `봇 ${i + 1}` : `사람${i + 1}` }))
 const setup = (n = 4, passPlay = false, seed = 7) =>
-  def.setup({ seats: seats(...Array.from({ length: n }, (_, i) => (i < 2 ? 'human' : 'bot'))), seed, options: parseOptions({ passPlay }) })
+  def.setup({ seats: seats(...Array.from({ length: n }, (_, i) => (i < 2 ? 'human' : 'bot'))), seed, options: { passPlay } })
 
 /** 모두 점유해 점유 공개로, 시간을 흘려 다음 단계로 */
 function claimAll(t: Table, plots: string[]): Table {
@@ -95,7 +95,7 @@ describe('행동·설정 검사', () => {
     expect(parseAction(null)).toBeNull()
     expect(parseAction([{ type: 'quiet' }])).toBeNull()
     expect(parseOptions({ passPlay: 'yes' })).toEqual({ passPlay: false })
-    expect(parseOptions({ passPlay: true })).toEqual({ passPlay: true })
+    expect(parseOptions({ passPlay: true })).toEqual({ passPlay: false }) // 온라인에서는 돌려 하기를 받지 않는다
     expect(parseOptions(undefined)).toEqual({ passPlay: false })
   })
 

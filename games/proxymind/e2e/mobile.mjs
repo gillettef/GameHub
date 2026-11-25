@@ -12,7 +12,8 @@ const dir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 
 const status = (page) => page.getByRole('status').first()
 const isVisible = async (loc) => (await loc.count()) > 0 && (await loc.first().isVisible())
-const handTiles = (page) => page.getByRole('button', { name: / 꽂기$/ })
+// 누를 수 있는 손패만(확정한 뒤 남을 기다리는 동안에는 비활성으로 남는다)
+const handTiles = (page) => page.getByRole('button', { name: / 꽂기$/, disabled: false })
 const confirmIv = (page) => page.getByRole('button', { name: /^확정 · / })
 
 /** 내 차례(설계 또는 실행)인지 */
@@ -23,8 +24,15 @@ async function myTurn(page) {
 /** 내 차례 하나를 둔다: 설계면 앞의 타일 3개를 꽂고 확정, 실행이면 지금 고른 개입(기본: 개입 안 함)으로 확정 */
 async function playTurn(page) {
   if (await isVisible(handTiles(page))) {
-    for (let k = 0; k < 3; k++) await page.locator('button:not([disabled])').filter({ hasText: /지금 (참|거짓)/ }).first().click()
-    return page.getByRole('button', { name: '확정', exact: true }).click()
+    // 봇이 두는 동안 손패가 다시 그려질 수 있어, 확정 버튼이 켜질 때까지 타일을 꽂는다(한 번의 클릭이 빗나가도 다시)
+    const done = page.getByRole('button', { name: '확정', exact: true })
+    for (let k = 0; k < 12 && !(await done.isEnabled().catch(() => false)); k++) {
+      await page.locator('button:not([disabled])').filter({ hasText: /지금 (참|거짓)/ }).first().click({ timeout: 3000 }).catch(() => {})
+    }
+    // 확인하는 사이 단계가 넘어갔으면(모두 제출해 실행 단계로) 이번에는 둘 것이 없다
+    if (!(await done.isEnabled().catch(() => false))) return
+    // 누르기 직전에 단계가 넘어갈 수도 있다(누를 것이 없으면 다음 바퀴에서 다시 본다)
+    return done.click({ timeout: 3000 }).catch(() => {})
   }
   if (await isVisible(confirmIv(page))) return confirmIv(page).click()
 }
@@ -139,8 +147,8 @@ await withGame(dir, async ({ url, open, shot }) => {
   await status(guest).getByText('설계:').waitFor()
   await shot(guest, '13-online-resumed')
   await playTurn(guest)
-  // 둘 다 실행 차례를 한 번씩 둔다
-  const until = Date.now() + 60_000
+  // 둘 다 실행 차례를 한 번씩 둔다(설계 단계가 늦게 끝날 수 있어 넉넉히)
+  const until = Date.now() + 150_000
   const played = new Set()
   while (played.size < 2) {
     assert.ok(Date.now() < until, '실행 차례가 오지 않음')
@@ -150,6 +158,8 @@ await withGame(dir, async ({ url, open, shot }) => {
     ]) {
       if (await isVisible(confirmIv(page))) {
         await confirmIv(page).click()
+        // 확정이 받아들여지면 차례가 넘어가 버튼이 사라진다. 거절됐으면 이유를 남긴다
+        await confirmIv(page).waitFor({ state: 'hidden', timeout: 5000 }).catch(() => {})
         played.add(name)
       } else if (await isVisible(handTiles(page))) await playTurn(page)
     }

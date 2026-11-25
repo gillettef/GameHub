@@ -136,7 +136,8 @@ function parseRecord<T>(raw: unknown, value: (v: unknown) => T | null, max = 24)
   const out: Record<string, T> = {};
   for (const [k, v] of entries) {
     const parsed = value(v);
-    if (!isId(k) || parsed === null) return null;
+    // 객체의 특수 키(__proto__ 등)는 받지 않는다
+    if (!isId(k) || k === "__proto__" || k === "constructor" || k === "prototype" || parsed === null) return null;
     out[k] = parsed;
   }
   return out;

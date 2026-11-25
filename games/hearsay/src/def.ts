@@ -59,8 +59,10 @@ const isObject = (v: unknown): v is Record<string, unknown> => typeof v === 'obj
 const TOKENS: readonly string[] = [...HOUSE_IDS, GREY, EMPTY]
 const ANSWERS: readonly string[] = [...HOUSE_IDS, GREY]
 
+/** 온라인 방 옵션(서버만 부른다). 돌려 하기(passPlay)는 한 기기 전용이라 받지 않는다 — 방장이 남의 말하기를 막지 못하게 */
 export function parseOptions(raw: unknown): Options {
-  return { passPlay: isObject(raw) && raw.passPlay === true }
+  void raw
+  return { passPlay: false }
 }
 
 /** 신뢰할 수 없는 입력 → 행동. 좌석은 행동에 담지 않는다(접속한 자리로만 둔다) */
@@ -170,7 +172,7 @@ export const def: GameDef<Table, Action, View, Options> = {
     // 사람 자리의 대리 진행은 거짓말하지 않는 기록형으로 기억한다
     const brains = players.map((p) => newBrain(p.persona ?? 'archivist', Math.floor(r() * 2 ** 31)))
     start(g, 0)
-    return { g, brains, now: 0, talked: players.map(() => 0), passPlay: parseOptions(options).passPlay }
+    return { g, brains, now: 0, talked: players.map(() => 0), passPlay: options?.passPlay === true } // 온라인 옵션은 이미 parseOptions 로 걸러져 늘 false
   },
   parseAction,
   actors,
