@@ -1,9 +1,9 @@
 # Rootbound
 
 웹 브라우저(와 실물 보드게임)로 즐기는 **정원 땅따먹기 보드게임**. 2026-10-16 **오프라인판(v3)** 으로 바꿨다: 차례마다 마켓 2장 중 1장이나 카드 더미 맨 위 1장(뒷면)을 가져와 손 2장 중 1장을 심고, 카드의 **뿌리 모양**을 원하는 방향으로 돌려 내 색 **뿌리 큐브**를 놓는다. 한 칸에는 한 색만 있고 남의 큐브는 1:1로 밀어낸다(줄다리기). 식물은 주인이 없고 그 칸 큐브 주인의 것이다. 1인 큐브 수가 정해져 있어 모자라면 가장 높이 쌓인 내 칸에서 옮겨 온다. 라운드가 끝나면 공급처에 큐브가 가장 많이 남은 사람이 다음 선. 끝나면 내 큐브가 있는 칸 + 목표 카드 3장. 식물 9종(판마다 2·3인 6종 / 4인 8종), 목표 16장. **공모전 응모 범위는 2~3인**(4인은 온라인만).
-정원 / 점수 / 진행 / 카드 / 설명 다섯 탭으로 화면을 나누고, 스크롤 없이 한 화면에서 대국을 진행한다.
+GameHub 공통 배치(① 상태바 ② 플레이어 ③ 보드 ④ 내 영역 ⑤ 행동, 점수·진행·카드·설명은 ≡ 메뉴)로 스크롤 없이 한 화면에서 대국을 진행한다.
 
-> 2026-10-07 사용자 지시로 이전 게임(AstralTab, 카드 기반 우주 전투 보드게임)을 전부 걷어내고 Rootbound 로 교체했다. 예전 규칙·코드는 git 기록에만 있다. 저장소·EC2 경로·systemd 서비스 이름에는 옛 이름(AstralTab, astraltab-*)이 남아 있다(아래 "실행 환경").
+> 2026-10-07 사용자 지시로 이전 게임(AstralTab, 카드 기반 우주 전투 보드게임)을 전부 걷어내고 Rootbound 로 교체했다. 예전 규칙·코드는 git 기록에만 있다. 2026-11-25 GameHub 공통 구조로 옮기며 옛 이름(AstralTab, `astraltab.` 저장 키)은 모두 걷어냈다.
 
 **게임 규칙의 정본은 `notes/Rules.md` 다.** 룰 엔진·AI·UI 어디든 규칙이 어긋나면 Rules.md가 맞다. 규칙을 바꿀 때는 Rules.md를 먼저 고친다.
 
@@ -21,129 +21,107 @@
 
 ## 필수 작업 규칙
 
-1. **작업이 완료되면 반드시 `git commit` & `git push`를 진행한다.** 기능 하나, 버그 수정 하나 등 의미 있는 단위가 끝날 때마다 커밋하고 푸시한다. `/commit-push` 스킬을 사용한다.
+1. **작업이 끝나면 `git commit` & `git push`를 한다.** 기능 하나, 버그 수정 하나 등 의미 있는 단위마다 커밋하고 푸시한다. `/commit-push` 스킬을 쓴다.
 2. **commit 메시지는 가급적 한국어로 작성한다.** 제목은 `<타입>: <요약>` 형식 (예: `기능: 마켓 화면 (F008)`, `수정: 칡 거리 계산`). 관련 F-ID가 있으면 괄호로 덧붙인다.
-3. **push 대상 repo는 `https://github.com/gillettef/GameHub.git` 의 `games/rootbound/` (모노레포) 이다**. 옛 개별 저장소(`gillettef/Rootbound`, 2026-10-07 AstralTab 에서 이름 변경)는 2026-11-25 삭제했다. 브랜치는 `dev`를 기본으로 사용한다. **일상 작업은 `dev`(기본 브랜치)에 커밋·푸시한다.** 작업 시작 전 현재 브랜치가 `dev`인지 확인한다. `dev` 푸시는 CI(GameHub `.github/workflows/ci-rootbound.yml`)만 돌고, `main` 병합이 곧 운영 배포다.
+3. **저장소는 `https://github.com/gillettef/GameHub.git` 의 `games/rootbound/` (모노레포)**. 옛 개별 저장소(`gillettef/Rootbound`)는 2026-11-25 삭제했다. **일상 작업은 `dev`에 커밋·푸시한다.** `dev` 푸시는 CI(GameHub `.github/workflows/ci-workspace.yml`)만 돌고, `main` 병합이 곧 운영 배포다.
 4. **이 서비스는 DB를 사용하지 않는다.** DB·Redis·ORM을 도입하지 않는다. 아래 "DB 없는 상태 관리" 참고.
-5. 로컬 테스트 시 서버를 포그라운드로 직접 띄우지 않는다(터미널이 블로킹됨). 반드시 `/dev`로 시작하고 `/dev-stop`으로 종료한다. `scripts/dev.ps1` 출력을 `| grep` 등 다른 프로세스로 파이프하지 않는다.
-6. 포트 3001은 이 PC에서 사용자의 다른 프로젝트(Eleven)가 쓴다. Rootbound 서버는 3101을 쓰며, 3001을 점유한 프로세스는 절대 종료하지 않는다.
-7. **규칙 변경은 함께 고친다**: `notes/Rules.md` → `shared/src/engine` + `shared/src/data` (Vitest, `data.test.ts` 가 Rules.md 표와 데이터를 대조한다) → `npm run fixtures`(AI 테스트가 읽는 판 기록) → 필요하면 AI 평가(`server/src/ai/search.ts`). AI는 엔진 함수를 그대로 부르므로 규칙 사본이 없다.
-8. **Claude Code는 사용자에게 보이는 답변(채팅 응답)을 한국어로 작성한다.** 코드 식별자는 영어로 쓰되(코딩 규칙 참고), 설명·요약·질문 등 대화 텍스트는 한국어를 쓴다.
-9. **수치를 바꿀 때는 먼저 시뮬레이터로 잰다**: `npx tsx shared/scripts/lab/run.ts <변형> [인원=2,3,4] [배율]` (변형은 `lab/registry.ts` 에 추가, `LAB_PATCH=<json>` 으로 파일 수정 없이 시험, 여러 변형 비교는 `lab/sweep.ts`). 자리·식물 승률, 재미·결정 지표, 5개 지표 점수표를 출력한다. 결과와 결정 이유는 Rules.md 12절에 남긴다.
+5. 로컬 실행은 `npm run dev -w @gamehub/rootbound`(Vite 하나로 화면과 온라인 방 서버가 함께 뜬다). 포트 3001은 이 PC에서 사용자의 다른 프로젝트(Eleven)가 쓴다. 3001을 점유한 프로세스는 절대 종료하지 않는다.
+6. **규칙 변경은 함께 고친다**: `notes/Rules.md` → `src/engine` + `src/engine/data` (Vitest, `test/data.test.ts` 가 Rules.md 표와 데이터를 대조한다) → `npm run fixtures -w @gamehub/rootbound`(AI 테스트가 읽는 판 기록) → 필요하면 AI 평가(`src/ai/search.ts`). AI는 엔진 함수를 그대로 부르므로 규칙 사본이 없다. AI 결정이 바뀌면 `test/legacy.test.ts` 의 기록(`test/fixtures/ai-*.json`)도 다시 만들어야 한다(옛 AI 와의 비교 기록이라, 의도한 변경이면 지우고 새 기준을 남긴다).
+7. **Claude Code는 사용자에게 보이는 답변(채팅 응답)을 한국어로 작성한다.** 코드 식별자는 영어, 설명·요약·질문은 한국어.
+8. **수치를 바꿀 때는 먼저 시뮬레이터로 잰다**: `npx tsx tools/lab/run.ts <변형> [인원=2,3,4] [배율]` (게임 폴더에서, 변형은 `tools/lab/registry.ts` 에 추가, `LAB_PATCH=<json>` 으로 파일 수정 없이 시험, 여러 변형 비교는 `tools/lab/sweep.ts`). 자리·식물 승률, 재미·결정 지표, 5개 지표 점수표를 출력한다. 결과와 결정 이유는 Rules.md 12절에 남긴다.
 
 ---
 
-## 코드 현황 (2026-10-29, 오프라인판 v3, 전체 리팩토링 후)
+## 코드 현황 (2026-11-25, GameHub 공통 구조로 이전)
 
-- **shared** (`shared/src`): 타입(`types/index.ts`, 이벤트 `types/events.ts`), 데이터(`data/constants.ts` 인원별 규칙 `PLAYER_COUNT_RULES`(이번 판 식물 수·장수·마켓 2장·1인 큐브·덤)·입구 큐브·목표 점수(`RANK_FIRST_BONUS` 등)·제한 시간·닉네임/방 비밀번호 규칙(`isValidNickname`·`isValidRoomPassword`)·시간 초과 로그 표지(`TIMEOUT_LOG_MARK`), `data/species.ts` 식물 9종 `SPECIES`·목표 16장 `GOALS`, `data/tiles.ts` 정원 조각), 엔진(`engine/board.ts` 대칭 보드 조립·축 좌표·보드 색인·칸 이름 `cellLabels`/`cellLabel`(기록용 `C4`), `influence.ts` 뿌리 큐브(칸 주인 `computeOwners`·공급처 `supplyLeft`·회전 `rotateSpot`·뿌리 놓을 칸 `rootTargets`·줄다리기 `plantRoots`·입구 큐브)·심을 칸 `legalPlantCells`·민들레 씨앗 `legalSeedCells`, `scoring.ts` 땅·목표·점수·순위, `turn.ts` 로비→공개 단계(`reveal`, `CONFIRM`)→라운드(이번 판 식물 `pickGarden`, `stage` 가져오기 `TAKE`(마켓 번호 또는 `'pile'` 더미 뒷면, `applyTake`)·`validateTake` → 심기 `PLANT`(회전·씨앗, `applyPlant`·기록 `logPlant`)/`DISCARD`, 공급처 큐브 최다 선 `nextRoundStart`)→종료 `applyAction`, 시간 초과 자동 수 `autoAction`, 난수 `rng.ts`), 가림 `mask.ts`. Vitest 67개. 실험실·픽스처 스크립트(`shared/scripts`)도 `tsconfig.scripts.json` 으로 타입 검사한다.
-- **server**: `rooms/manager.ts`(방·초대 id·비밀번호·자리·AI 추가, 차례 제한 시간·자동 수·AI 대리, 판 요약 기록 표시 `takeRecord`), `rooms/validate.ts`(요청 모양 검사 `actionShapeError`, 옛 형식 스냅샷 판별 `isCurrentFormat`, 재접속 토큰 검사), `rooms/record.ts`(판 요약 `GameRecord`·`buildRecord`), `game/aiTurn.ts`(AI·대리 자리 차례마다 `ai/search.ts` 결정 → 엔진 검증 → 실패 시 `autoAction` 폴백, 폴백은 여기 한 곳), `ai/search.ts`(AI 수 결정, 아래 AI 항목), `persistence/snapshots.ts`(JSON 스냅샷), `persistence/stats.ts`(판 요약·웹 성능 JSONL), `app.ts`(`createRootboundServer`, 포트를 열지 않는 서버 본체: Express·Socket.io, `socket.use` 로 요청 모양 검사, 입장한 사람 요청 공통 처리 `handlePlayer`, 남용 방지(방 만들기·비밀번호 대입·웹 성능 빈도), 방별 타이머, `POST /api/vitals`), `index.ts`(단독 실행 listen). 운영 진입점은 `scripts/aws/hub-entry.mjs`(허브 안). 서버 시작 시 옛 형식 스냅샷은 `rooms-legacy/` 로 옮긴다. Vitest 40개.
-- **AI** (`server/src/ai/search.ts`, 2026-11-25 Python `ai/` 를 옮김·제거): 1수 탐욕. 심기 = 손 카드 × 칸 × 회전(× 민들레 씨앗 상위 칸)에서 내 총점 − 최고 상대 총점, 가져오기 = 그 카드로 둘 최선 1수 가치 + 공개 목표 연계 가산, 더미 뒷면은 못 본 카드 분포의 기댓값 `unseenCards`. 규칙 계산은 엔진(`plantRoots`·`computeScores`·`legalPlantCells`·`distinctRotations`)을 그대로 부른다. 가린 상태(`maskState`)만 본다. 2초 예산 안에서 8ms마다 이벤트 루프에 양보한다. 테스트 `search.test.ts`(9개, `shared/fixtures/scenario.json` 재생).
-- **client**: 경로 `/` 랜딩(AI와 바로 시작 `lib/quickStart.ts`·방 만들기·초대 참여·핫시트·튜토리얼), `/hotseat` 같은 기기(인원·닉네임 → 바로 시작, 차례마다 기기 넘김 `HandoffOverlay`), `/tutorial` 연습 봇(`game/tutorialBot.ts`)과 단계 안내(`TutorialCoach`), `/room/:id` 온라인 로비(방 → 자리 → 준비·제한 시간) → 게임. 게임 화면: `PlayerStrip`(단계·차례·남은 시간·자리별 땅/점수/공급처 뿌리) → 탭(정원 `BoardTab`: 공개 단계면 `RevealPanel`, 아니면 목표 칩 + `HexBoard`(SVG 육각 보드, 칸별 뿌리 수 배지는 칸 위 별도 층) + `Market`(마켓·더미 장수, 심을 칸을 고르면 접힘) + `Hand` + `PlantBar`(심기 미리보기·뿌리 방향·민들레 씨앗·취소/심기) + 차례 안내·뿌리 수 토글 / 점수 `StatusTab` / 진행 `ProgressTab` / 카드 `CardsTab` / 설명 `HelpTab`) → `TabDock`(`DockShell`). 보드 질감은 `BoardTextures`(SVG 패턴). 카드는 `SpeciesCard`(작은 카드 = 카드 그림 배경 + 이름 + 뿌리 모양 `RootDiagram`, 확대 = 카드 디자인 앞면), 확대(식물·목표 카드)·칸 정보는 `GameModal`. 화면용 파생값은 `game/derived.ts`(엔진 호출만: 칸 `buildCells`, 심을 칸 `legalKeys`, 미리보기 `previewPlant`, 서로 다른 회전 `distinctRotations`). 효과음·차례 알림 `lib/cues.ts`, 웹 성능 `lib/vitals.ts`, 제한 시간 표시 `lib/turnClock.ts`. Vitest 15개.
-- **카드 디자인**(2026-10-08 사용자 제공, SVG): 식물 `client/public/cards/plants/<종 id>.svg`(630×880)·목표 `goals/<목표 id>.svg`(880×630)·각 `back.svg`. 작은 카드 배경은 그림 부분만 자른 `plants/art/<종 id>.webp`(`node scripts/card-thumbs.mjs` 로 생성). 경로는 `client/src/game/cardImages.ts`, 파일 누락은 `cardImages.test.ts`. 카드 안 글자는 `notes/Cards.md` 와 맞춘다(`client/public/cards/README.md`).
-- 개발용 바로가기: `/hotseat?quick&players=<2~4>&seed=<n>&play=<n>&tab=<board|status|progress|cards|help>&select=<손 카드 index>&cell=<합법 칸 index>&take=<마켓 index|pile>&modal=<손 카드 index>` (`play=<n>` = 자동 수로 n번 둔 뒤 시작, 중반·마켓 빈 화면 확인용).
-- localStorage 키 접두어는 옛 이름 `astraltab.` 을 그대로 쓴다(닉네임·재접속 토큰·튜토리얼 표시 유지).
+2026-11-25 GameHub 공통 구조(루트 npm workspaces, `@gamehub/net` 방·진행, `@gamehub/ui` 화면)로 옮겼다. 계획·완료 기준은 GameHub `docs/refactor-plan.md`. 옛 `shared`·`server`·`client` 세 패키지(Express·socket.io)는 한 패키지로 합치고 지웠다(git 기록에만 있다). **엔진은 내용 그대로** 옮겼다(가져오는 경로만 바뀜).
+
+- **엔진** (`src/engine`): 타입(`types.ts`), 데이터(`data/constants.ts` 인원별 규칙 `PLAYER_COUNT_RULES`·입구 큐브·목표 점수·제한 시간(`TURN_TIME_OPTIONS_SEC`·`AFK_STRIKES_FOR_AUTOPILOT`)·시간 초과 로그 표지, `data/species.ts` 식물 9종 `SPECIES`·목표 16장 `GOALS`, `data/tiles.ts` 정원 조각), `board.ts` 대칭 보드 조립·축 좌표·칸 이름 `cellLabels`/`cellLabel`(기록용 `C4`), `influence.ts` 뿌리 큐브(칸 주인 `computeOwners`·공급처 `supplyLeft`·회전 `rotateSpot`·줄다리기 `plantRoots`·입구 큐브)·심을 칸 `legalPlantCells`·민들레 씨앗 `legalSeedCells`, `scoring.ts` 땅·목표·점수·순위, `turn.ts` 로비→공개 단계(`CONFIRM`)→라운드(가져오기 `TAKE`(마켓 번호 또는 `'pile'`) → 심기 `PLANT`/`DISCARD`, 공급처 큐브 최다 선)→종료 `applyAction`, 시간 초과 자동 수 `autoAction`, 난수 `rng.ts`, 가림 `mask.ts`(`maskState`·`MaskedGameState`).
+- **AI** (`src/ai/search.ts`): 1수 탐욕(심기 = 손 카드 × 칸 × 회전(× 민들레 씨앗 상위 칸)에서 내 총점 − 최고 상대 총점, 가져오기 = 그 카드로 둘 최선 1수 가치 + 공개 목표 연계 가산, 더미 뒷면은 못 본 카드 분포의 기댓값). 가린 상태만 본다. 공통 봇(`def.bot.next`)이 동기 함수라 2026-11-25 이벤트 루프 양보를 빼고 동기로 바꿨다(고르는 수는 같다: `test/legacy.test.ts`). 봇 한 수는 `BOT_TIME_LIMIT_MS`(1초 → 탐색 예산 450ms) 안, 개발 PC 기준 중앙 4ms·최대 50ms. 튜토리얼 연습 봇은 `src/ai/tutorial.ts`.
+- **`src/def.ts`** (GameDef, 서버·브라우저 공용): 좌석 번호 = 엔진 자리, 플레이어 id `p<좌석>`, 봇 자리 = 엔진 `'ai'`. 행동 `CONFIRM`·`TAKE`·`PLANT`·`DISCARD`·`SURRENDER`·`RESUME`(가져오기·심기·버리기는 고를 때 본 차례 번호 `turn` 을 함께 보내 늦게 도착한 수를 거절), `parseAction` 이 모양과 범위를 검사한다. `view` = 그 좌석 기준 `maskState`(관전자는 아무 손도 안 보임). 옵션 `turnTime`(온라인 차례 제한 시간, 한 기기는 없음)·`tutorial`. 제한 시간은 `GameDef.clock`: 넘으면 자동 수, 심기 차례 시간 초과 2번 연속이면 그 자리를 AI 대리(`autopilot`), '다시 내가 두기'(`RESUME`)로 되찾는다. 시계만 흐를 때는 상태를 다시 보내지 않는다(시계 객체 안에서만 줄인다). 온라인 서버(`server/app.ts`)는 카드 더미 셔플 키를 보드 시드와 따로 암호학적 난수로 넣는다(`makeDef({ deckKey })`).
+- **화면** (`src/client`): `App.tsx` 처음(공통 `HomeScreen`: 한 기기·온라인, 이어 하기, 튜토리얼, 규칙, 온라인 제한 시간) → 대기실(공통 `WaitingRoom`) → 대국 `GameView.tsx`(공통 `GameShell` 배치 ①~⑤, 아래 표). 받은 상태는 Zustand `store/gameStore.ts` 에 넣고(`applyView`), 기존 부품(보드 `HexBoard`·카드 `SpeciesCard`·`Market`·`Hand`·`PlantBar`·`RevealPanel`·`GameModal`·`ResultOverlay`·`HandoffOverlay`·`TutorialCoach`·`TurnEvents`, 탭 `StatusTab`·`ProgressTab`·`CardsTab`·`HelpTab`)은 store 를 읽는다. 화면용 파생값은 `game/derived.ts`(엔진 호출만), 효과음·차례 알림 `lib/cues.ts`, 제한 시간 표시 `lib/turnClock.ts`. 스타일은 CSS Modules + `styles/tokens.css`(공통 화면 색 `--gh-*` 도 여기서 정한다).
+
+| 배치 | 내용 |
+|---|---|
+| ① 상태바 | 차례·할 일(내 차례면 다음 할 일 안내), 남은 시간, 라운드·카드 더미 장수, 접속 끊김 알림. ≡ 메뉴(시트): 점수·진행(기록)·카드·설명 탭, 칸마다 뿌리 수·칸 이름·효과음·차례 알림, 나가기·기권 |
+| ② 플레이어 | 자리 색·총점·땅·남은 뿌리·선·AI/AI 대리·확인 여부. 누르면 메뉴 점수 탭 |
+| ③ 보드 | 목표 카드 축소판 + 육각 보드(칸은 `data-compact`). 공개 단계에는 이번 판 식물·목표·확인 현황 |
+| ④ 내 영역 | 마켓(가져오기 차례에 눌러 가져오기) 또는 심기 확인 바(방향·씨앗·예상 결과) + 내 카드 |
+| ⑤ 행동 | 확인(한 기기는 '확인하고 시작'으로 모두) / 카드 더미에서 1장 / 취소·심기 / 다시 내가 두기 / 결과 보기·새 게임 |
+
+- **모드**: 한 기기(사람·봇 섞기: AI 대전, 사람이 둘 이상이면 돌려 하기 — 차례마다 가림 화면, 이어 하기 저장 `rootbound:local`), 튜토리얼(연습 봇, 고정 시드), 온라인(방 코드 4자리·초대 링크 `?room=`, 대기실에서 방장이 시작하면 빈자리는 봇, 새로고침·재접속 복귀, 관전). 끊긴 사람의 차례는 45초 뒤 봇이 대신 두고, 게임 중 나가면 그 자리는 봇이 이어받는다(공통 진행, GameHub `docs/refactor-plan.md` 9절).
+- **카드 디자인**(2026-10-08 사용자 제공, SVG): 식물 `public/cards/plants/<종 id>.svg`(630×880)·목표 `goals/<목표 id>.svg`(880×630)·각 `back.svg`. 작은 카드 배경은 그림 부분만 자른 `plants/art/<종 id>.webp`(`node tools/card-thumbs.mjs` 로 생성). 경로는 `src/client/game/cardImages.ts`(페이지 기준 상대경로), 파일 누락은 `cardImages.test.ts`. 카드 안 글자는 `notes/Cards.md` 와 맞춘다(`public/cards/README.md`).
+- localStorage 키는 `rootbound:` 접두어(닉네임·접속 정보는 공통 코드, 이어 하기·제한 시간·효과음·알림·튜토리얼 표시).
 
 ---
 
-## 다음에 이어서 할 일 (2026-10-17 기준)
+## 다음에 이어서 할 일
 
-- 오프라인판(v3, 2인 큐브 16 = v5)은 2026-10-17 main 에 병합해 운영에 배포했다(뿌리 수 배지·심기 확인 바 UI 리뷰 항목 수정 포함).
 - 할 일 목록과 중단된 실험은 `notes/Contest.md` 4절. 요약: 종이 프로토타입, 규칙서 그림, 기획안, 신청서 접수(12-31 마감).
-- 밸런스 시뮬레이터는 `shared/scripts/lab`(옛 v2 `garden-sim.ts` 는 2026-10-29 삭제, git 기록과 브랜치 `wip/garden-sim-new-flow` 에만 있다).
+- 2026-11-25 이전으로 없어진 것(필요하면 공통 코드에 더한다): 방 비밀번호, 방 스냅샷 저장·복원(서버를 다시 시작하면 진행 중인 방이 사라진다), 판 요약·웹 성능 기록(`stats`·`vitals`), 개발용 바로가기 URL(`/hotseat?quick…`), 대기실에서 제한 시간 바꾸기(방을 만들 때 고른다).
 - 리뷰에서 남은 낮은 항목: 바닥 층(테두리·줄눈·질감)을 미리 구운 이미지로 바꿔 모바일 다시 그리기 비용 줄이기(HexBoard), RevealPanel 의 px 간격 일부 토큰화.
 
 ## 실행 환경 (dev / 운영)
 
-| 환경 | 위치 | 서버 | 클라이언트 | AI | 용도 |
-|---|---|---|---|---|---|
-| dev | 로컬 PC, `/dev` · `/dev-stop` | 3101 (tsx watch, `src/index.ts`) | 5173 (Vite, proxy) | 서버 안 | 로컬 개발. 핫리로드. 다른 기기·친구는 Cloudflare 빠른 터널 주소(`/dev` 출력의 `Public` 줄, `.dev/tunnel-url.txt`, 띄울 때마다 바뀜, `-NoTunnel` 로 끔) |
-| 운영 | **AWS EC2 공용 서버, GameHub 허브 안** | 허브 `gamehub`(:80) 안 `/rootbound/` (`scripts/aws/hub-entry.mjs` → `server/dist/app.mjs`) | `client/dist/prod` 를 서버 앱이 정적 서빙(gzip) | 서버 안 | 친구들이 접속하는 **유일한 서버** `http://<IP>/rootbound/`. GameHub 저장소 `main` 병합 시 자동 배포 |
+| 환경 | 방법 | 용도 |
+|---|---|---|
+| dev | `npm run dev -w @gamehub/rootbound` (Vite, 온라인 방 서버 `/ws` 함께) | 로컬 개발 |
+| 운영 | GameHub 허브(`gamehub`, :80) 안 `/rootbound/` (inproc, `scripts/aws/hub-entry.mjs` → `server-dist/app.cjs`, 정적 파일 `dist` 는 허브가 서빙) | 공용 EC2(t4g.nano, 서울) |
 
-- **2026-11-25 GameHub 허브 안 실행(inproc)으로 옮겼다.** 운영 경로는 `~/rootbound`(예전 `~/AstralTab`·systemd `astraltab-prod-server`/`astraltab-prod-ai`·포트 3201/8001 은 첫 배포 때 `deploy-remote.sh` 가 데이터를 옮기고 지운다). 허브 계약은 GameHub `hub/server.mjs` 머리 주석, 2단계 설계는 GameHub `docs/phase2-design.md`.
-- 서버 코드는 `server/src/app.ts` 의 `createRootboundServer()`(포트를 열지 않음) 하나다. 단독 실행(`src/index.ts`, 로컬 /dev)은 그 `httpServer` 로 listen 하고, 허브 안에서는 허브가 `/rootbound` 를 뗀 요청·WebSocket 을 같은 `httpServer` 로 넘긴다(socket.io 경로 `/socket.io`). `process.exit`·`process.on` 을 쓰지 않는다.
-- 운영 산출물: 러너에서 클라이언트(vite)와 서버 단일 번들(`npm run build -w @rootbound/server` → esbuild, shared·express·socket.io 포함 `server/dist/app.mjs`)을 만들어 `server/dist`·`client/dist/prod`·`scripts/aws` 만 보낸다. EC2 에는 `node_modules`·tsx 가 없다.
-- **배포**: 일상 작업은 GameHub 저장소 `dev`, `dev` → `main` PR 병합이 곧 운영 배포다(`.github/workflows/deploy-rootbound.yml`, `deploy.yml` 이 순서대로 부른다). 배포는 허브를 재시작하므로 **허브 안 다른 게임의 진행 중인 방이 사라진다**(rootbound 방은 스냅샷으로 복원). 수동 배포는 `powershell -File scripts/deploy-aws.ps1`(`/prod-server`).
-- **AWS 인프라**: 리전 서울(`ap-northeast-2`), EC2 **t4g.nano** (ARM, 메모리 0.5GB, 스왑 2GB) Amazon Linux 2023, Elastic IP(`.dev/aws-public-ip.txt`, git 제외), 게임 15개가 허브 하나를 함께 쓴다. SSH 키(`.dev/astraltab-key.pem`)와 인스턴스 id(`.dev/aws-instance-id.txt`)도 `.dev/`(gitignore)에 있다. 시크릿 정본은 저장소 밖 `../../aws_config.md`.
-- 스냅샷은 EC2 `~/rootbound/server/data/prod/rooms`, 판 요약·웹 성능은 `.../prod/stats`. 집계는 로컬에서 `npx tsx server/scripts/stats.ts <내려받은 DATA_DIR>`.
-- 단독 실행 환경 변수: `APP_ENV`, `PORT`, `HOST`, `CLIENT_DIST`, `DATA_DIR` (`server/src/index.ts` 주석). 허브 안에서는 `hub-entry.mjs` 가 정한다.
+- 운영 산출물은 러너에서 `npm run build -w @gamehub/rootbound`(vite + esbuild 서버 한 파일)로 만들어 `dist`·`server-dist`·`scripts/aws` 만 올린다(`.github/workflows/deploy-rootbound.yml` → 공통 `deploy-workspace-game.yml`). `dev` → `main` 병합이 곧 배포다. 배포는 허브를 재시작하므로 진행 중인 방이 모두 사라진다.
+- 클라이언트는 절대경로를 쓰지 않는다(에셋·WebSocket 모두 페이지 기준 상대경로). 루트 직접 접속에서도 동작한다.
 
 ---
 
-## 기술 스택 (확정)
+## 기술 스택
 
 | 영역 | 선택 | 비고 |
 |---|---|---|
-| 언어 | TypeScript | 서버·클라이언트·공용 타입·AI 모두 TS (2026-11-25 Python AI 제거) |
-| 백엔드 | Node.js 22 + Express + Socket.io | 포트 `3101` |
-| 프론트엔드 | React 18 + Vite + Zustand | 포트 `5173`, `/api`·`/socket.io`는 Vite proxy로 3101에 연결 |
-| 스타일 | CSS Modules | 탭 전환 시 언마운트 대신 `hidden` 전환 |
+| 언어 | TypeScript strict | GameHub `packages/config/tsconfig.base.json` |
+| 서버 | `@gamehub/net` 의 `createRoomApp(def)` (`ws`, `node:http`) | socket.io·Express 는 2026-11-25 제거 |
+| 프론트엔드 | React 19 + Vite + Zustand | 공통 화면 `@gamehub/ui`(Tailwind v4), 게임 부품은 CSS Modules |
 | 보드 렌더 | SVG | 축 좌표 육각, viewBox 로 컨테이너에 맞춤 |
-| 테스트 | Vitest | 룰 엔진은 순수 함수, 단위 테스트 필수 |
-| AI | TS, 서버 안 (`server/src/ai/search.ts`) | 따로 띄우는 프로세스 없음 |
-| 저장소 | **없음** | 인메모리 + JSON 파일 스냅샷 + JSONL 통계 |
-| 패키지 관리 | npm workspaces (`@rootbound/shared`·`server`·`client`) | `npm install`은 루트에서 한 번. `node_modules/@rootbound/*` 가 링크가 아니라 복사본이 되면 예전 코드로 테스트가 돈다 — 이상하면 `rm -rf node_modules/@rootbound && npm install` |
+| 테스트 | Vitest + Playwright(iPhone 화면, `e2e/mobile.mjs`) | |
+| AI | TS, 봇(`def.bot`) | 따로 띄우는 프로세스 없음 |
+| 저장소 | **없음** | 서버 메모리. 한 기기 판은 브라우저 localStorage |
+| 패키지 관리 | GameHub 루트 npm workspaces (`@gamehub/rootbound`) | `npm install` 은 GameHub 루트에서(이 PC 에서는 대문자 `GameHub` 경로) |
 
 ## 디렉터리 구조
 
 ```
-AstralTab/                 # 저장소 폴더 이름은 아직 옛 이름
-├── CLAUDE.md
-├── DESIGN.md
-├── package.json          # npm workspaces: shared, server, client (이름 rootbound)
-├── notes/Rules.md        # 규칙 정본
-├── scripts/              # common.ps1, dev.ps1, dev-stop.ps1, deploy-aws.ps1, card-thumbs.mjs(카드 그림 썸네일), aws/(deploy-remote.sh, swap.sh)
-├── shared/
-│   ├── fixtures/         # specs.json(카드 문구), scenario.json(AI 테스트가 재생하는 판 기록)
-│   ├── scripts/          # lab/(v3 밸런스 시뮬레이터), write-fixtures.ts
-│   └── src/
-│       ├── types/        # GameState, PlayerState, Plant, Board, Action, events
-│       ├── data/         # constants.ts, species.ts(식물 9종·목표 16장), tiles.ts(정원 조각)
-│       ├── engine/       # board, influence, scoring, turn, rng (순수 함수)
-│       └── mask.ts       # 손 카드·카드 더미 가림
-├── server/
-│   ├── scripts/stats.ts  # 판 요약·웹 성능 집계
-│   └── src/
-│       ├── app.ts        # 서버 본체 createRootboundServer (Express + Socket.io, 방별 타이머, /api/vitals)
-│       ├── index.ts      # 단독 실행 진입점 (listen)
-│       ├── rooms/        # 방·로비·자리·제한 시간·AI 대리(manager), 요청·스냅샷 모양 검사(validate), 판 요약(record)
-│       ├── game/         # AI 차례 실행기
-│       ├── ai/           # AI 수 결정 (1수 탐욕, 엔진 함수 사용)
-│       └── persistence/  # JSON 스냅샷, 통계 JSONL (DB 아님)
-├── client/
-│   ├── public/cards/     # 카드 디자인 SVG: plants/(식물 9 + back, art/ 썸네일), goals/(목표 16 + back)
-│   └── src/
-│       ├── pages/        # LandingPage, SetupPage(핫시트), RoomPage(로비), GamePage, ResultOverlay
-│       ├── tabs/         # BoardTab, StatusTab, ProgressTab, CardsTab, HelpTab
-│       ├── components/   # HexBoard, SpeciesCard, RootDiagram, Hand, PlantBar, Market, GoalList, GameModal, PlayerStrip, TabDock, TurnTimer, TurnEvents, TutorialCoach, GameMenu …
-│       ├── game/         # hotseat.ts, derived.ts, tutorialBot.ts, useGameCues.ts, cardImages.ts
-│       ├── store/        # Zustand 전역 상태
-│       ├── lib/          # cues, vitals, turnClock, identity, router, onboarding …
-│       ├── socket/       # Socket.io 클라이언트
-│       └── styles/       # tokens.css, global.css
+games/rootbound/
+├── CLAUDE.md, DESIGN.md, notes/     # 규칙 정본 notes/Rules.md
+├── index.html, vite.config.ts, tsconfig.json, package.json
+├── public/cards/                    # 카드 디자인 SVG·썸네일
+├── src/
+│   ├── engine/                      # 순수 규칙: types, data/, board, influence, scoring, turn, rng, mask
+│   ├── ai/                          # search.ts(봇 AI), tutorial.ts(연습 봇)
+│   ├── def.ts                       # GameDef: 좌석·행동 검사·가림·제한 시간·봇
+│   └── client/                      # App, GameView, components/, tabs/, game/, store/, lib/, styles/
+├── server/app.ts                    # createRoomApp(def) (더미 셔플 키는 암호학적 난수)
+├── scripts/aws/hub-entry.mjs        # 허브 inproc 진입점
+├── test/                            # 엔진·데이터·AI·def·옛 AI 비교(legacy) 테스트, fixtures/
+├── tools/                           # lab/(밸런스 시뮬레이터), write-fixtures.ts, board-labels.ts, card-text.mjs, card-thumbs.mjs
+└── e2e/mobile.mjs                   # iPhone 17 Pro 화면 확인(모든 모드)
 ```
 
 ---
 
 ## DB 없는 상태 관리
 
-- **단일 진실 공급원은 서버 메모리**의 방 맵이다(`RoomManager`).
-- 클라이언트는 게임 상태를 직접 계산하지 않는다. 액션(`READY`, `CONFIRM`, `TAKE`, `PLANT`, `DISCARD`, `SURRENDER`)을 보내고 서버가 브로드캐스트한 상태로 덮어쓴다. 합법 칸 하이라이트·심기 미리보기처럼 UI 편의를 위한 계산은 `shared/src/engine` 의 순수 함수를 그대로 쓴다(중복 구현 금지).
-- **손 카드는 비공개다.** 본인 손 카드만 내용을 보내고 타인은 장수만. 카드 더미 순서·RNG 시드는 누구에게도 보내지 않는다(더미는 `pileCount` 장수만). 이번 판 식물·마켓·가져간 카드는 공개다.
-- **자동 저장·복구**: 상태가 바뀔 때마다 `server/data/<env>/rooms/<roomId>.json` 에 방을 통째로 쓰고, 서버 시작 시 복원한다(진행 중 차례는 시계를 새로 잰다). 예전 게임 형식 스냅샷은 `rooms-legacy/` 로 옮긴다.
-- **판 요약·웹 성능**: `server/data/<env>/stats/games.jsonl`·`vitals.jsonl` (파일 크기 상한 있음). `npx tsx server/scripts/stats.ts [DATA_DIR]` 로 완수율·세션 시간·재방문·종/자리 승률·FCP/LCP·동기화 지연·FPS를 집계한다.
-- **로그인/회원가입은 없다.** 닉네임과 재접속용 `playerToken`은 브라우저 `localStorage`, 서버는 `roomId + playerToken` 으로 재접속을 식별한다.
-- `server/data/` 는 git에 커밋하지 않는다.
+- **온라인의 단일 진실 공급원은 서버 메모리**의 방(`@gamehub/net` RoomHub)이다. 방 스냅샷 저장은 없다.
+- 화면은 게임 상태를 직접 바꾸지 않는다. 행동을 보내고 받은 상태(View)로 덮어쓴다. 합법 칸 하이라이트·심기 미리보기처럼 UI 편의를 위한 계산은 `src/engine` 의 순수 함수를 그대로 쓴다(중복 구현 금지).
+- **손 카드는 비공개다.** 본인 손 카드만 내용을 보내고 타인은 장수만. 카드 더미 순서·RNG 시드는 누구에게도 보내지 않는다(더미는 `pileCount` 장수만). 이번 판 식물·마켓·가져간 카드(마켓에서)는 공개, 더미에서 가져온 카드는 기록에도 이름을 남기지 않는다.
+- **로그인/회원가입은 없다.** 닉네임과 재접속 토큰(서버가 좌석마다 발급)은 브라우저 localStorage.
 
 ---
 
 ## AI
 
-- AI 자리(또는 시간 초과로 AI 대리 중인 사람 자리)의 차례가 오면 `game/aiTurn.ts` 가 `ai/search.ts` 의 `requestAiDecision` 으로 수를 받아 **일반 액션과 똑같이 룰 엔진으로 검증**한 뒤 적용한다.
-- 권위는 항상 룰 엔진에 있다. 불법 응답·예외면 엔진의 `autoAction`(맨 앞 카드를 첫 합법 칸에, 가져오기는 마켓 0번)으로 폴백한다.
-- AI 는 그 자리가 보는 가린 상태(`maskState`)만 본다(자기 손만, 카드 더미 순서·시드 없음).
-- 시간: 2초(F027) 중 60% − 150ms 를 탐색 예산으로 쓰고, 넘으면 그때까지의 최선 또는 자동 수. 허브 프로세스 안에서 다른 게임과 이벤트 루프를 함께 쓰므로 8ms마다 양보한다. 개발 PC 기준 한 수 중앙 5ms·최대 100ms.
-- 2026-11-25 Python FastAPI 서비스(`ai/`)를 TS 로 옮기고 지웠다. 옮길 때 4,654개 상태에서 Python 과 같은 수를 고르는 것을 확인했다(옛 코드는 git 기록에만 있다).
-- 다음 과제: 1수 탐욕을 넘어서는 탐색(2인 알파베타, 3~4인 max-n)과 평가 가중치. 무거워지면 `worker_threads` 로 옮긴다.
+- AI 자리(또는 접속이 끊겨 봇이 대신 두는 사람 자리)의 차례가 오면 공통 진행 코드가 `def.bot.next` 를 부르고, `src/ai/search.ts` 의 `requestAiDecision` 이 수를 고른다. **일반 행동과 똑같이 엔진으로 검증**하고, 거절되면 엔진 `autoAction`(`def.bot.fallback`).
+- 연속 시간 초과로 AI 대리(`autopilot`)가 된 자리는 차례 시계(`def.clock`)가 0.8초 뒤 같은 AI 로 둔다.
+- AI 는 그 자리가 보는 가린 상태(`maskState`)만 본다. 입력 상태를 바꾸지 않는다. 규칙을 다시 구현하지 않고 엔진 함수를 부른다.
+- 다음 과제: 1수 탐욕을 넘어서는 탐색(2인 알파베타, 3~4인 max-n)과 평가 가중치. 무거워지면 서버를 막지 않도록 공통 봇을 비동기(또는 `worker_threads`)로 바꿔야 한다.
 
 ---
 
@@ -176,9 +154,9 @@ AstralTab/                 # 저장소 폴더 이름은 아직 옛 이름
 
 ### 컬러 월드
 
-**비게임 화면** (랜딩, 로비, 핫시트 설정): Corca 기업 프레임 — 캔버스 `#ffffff`, 서피스 `#f1f5f9`, 헤딩 `#1a2352`, 본문 `#324158`, 보조 `#bbbbbb`, 주요 CTA `#777cdc`.
+**처음·대기실** (2026-11-25 공통 화면 `@gamehub/ui` 로 옮기며 옛 흰 Corca 프레임 대신 아래 밤 정원 색을 그대로 쓴다. 공통 화면 색 `--gh-*` 는 `tokens.css` 에서 이 토큰으로 정한다).
 
-**게임 대시보드** (2026-10-07 Rootbound 전환, 사용자 지시로 우주 테마를 걷어내고 밤 정원으로): 값은 `client/src/styles/tokens.css` 의 `[data-world='game']` 과 도메인 색.
+**게임 대시보드** (2026-10-07 Rootbound 전환, 사용자 지시로 우주 테마를 걷어내고 밤 정원으로): 값은 `src/client/styles/tokens.css` 의 `:root`.
 
 | 역할 | 값 |
 |---|---|
@@ -197,45 +175,40 @@ AstralTab/                 # 저장소 폴더 이름은 아직 옛 이름
 ### 구현 방식
 
 - 모든 색·간격·라운드·모션 값은 `tokens.css` 의 CSS 변수로만 쓴다. 컴포넌트 CSS에 HEX 직접 기입 금지.
-- 게임 화면 루트에 `data-world="game"` 을 두고 변수 값을 덮어써서 두 세계를 전환한다. 두 세계를 한 화면에 섞지 않는다.
+- 요소 기본값(`body`·`button`·`h1~3` 등)은 `global.css` 의 `@layer base` 안에 둔다(층 밖에 두면 공통 화면의 Tailwind 유틸리티를 덮어쓴다).
 
 ### 모바일 우선 (2026-09-22 사용자 지시)
 
-- **화면 폭 고정**: `#root` 가 `max-width: var(--app-max-width)`(480px)로 가운데 정렬. 미디어 쿼리로 폭 분기를 만들지 말고 처음부터 좁은 폭 하나로 설계한다.
+- **화면 폭·높이**: 공통 `gh-app`(최대 440px, `100dvh`, 안전 영역). 미디어 쿼리로 폭 분기를 만들지 말고 처음부터 좁은 폭 하나로 설계한다. 누르는 대상 44×44px 이상(보드 칸은 `data-compact`), 페이지·가로 스크롤 없음(GameHub `docs/refactor-plan.md` 4절).
 - **폰트**: 기본 14px, 최소 12px(`--text-micro`).
 - **줄바꿈**: `body { overflow-wrap: anywhere }`.
-- **게임 레이아웃**: 위→아래 한 방향. `PlayerStrip` → 탭 내용(정원 탭: 목표 칩 → 보드(남는 높이 전부) → 심기 확인 바 · 손패 · 차례 안내) → `TabDock`.
-- 헤드리스 스크린샷 확인 시 `--window-size` 는 522 이상(Chrome 헤드리스 최소 뷰포트 ~504px).
+- **게임 레이아웃**: 위→아래 한 방향. 위의 ①~⑤ 표(`GameView.tsx`).
+- 화면 확인은 `npm run e2e -w @gamehub/rootbound`(iPhone 17 Pro WebKit, 캡처는 `shots/`).
 
 ## 코딩 규칙
 
-- 룰 엔진(`shared/src/engine`)은 **부수효과 없는 순수 함수**로 작성한다. `(state, action) => { state, error? }`. 난수는 상태 안의 시드 RNG만, Rules.md 11절 순서대로. 칸 순서는 `r` → `q`.
+- 룰 엔진(`src/engine`)은 **부수효과 없는 순수 함수**로 작성한다. `(state, action) => { state, error? }`. 난수는 상태 안의 시드 RNG만, Rules.md 11절 순서대로. 칸 순서는 `r` → `q`.
 - 영향력·땅·점수는 파생값이다. 계산 함수가 정본이고, 상태에 캐시하지 않는다.
-- 수치는 `shared/src/data` 한 곳에만 둔다. 엔진·UI·AI 어디에도 하드코딩하지 않는다. Rules.md 표와 데이터 일치는 `data.test.ts` 가 검사한다.
-- 서버·클라이언트 공용 타입·상수는 `shared/`에만. Socket 이벤트 이름·페이로드는 `shared/src/types/events.ts` 한 곳.
-- 탭 컴포넌트는 `React.memo`, 탭 전환으로 언마운트하지 않는다.
+- 수치는 `src/engine/data` 한 곳에만 둔다. 엔진·UI·AI 어디에도 하드코딩하지 않는다. Rules.md 표와 데이터 일치는 `data.test.ts` 가 검사한다.
+- 서버·클라이언트 공용 타입·상수는 `src/engine`에만. 통신 형식은 공통 코드(`@gamehub/net`)가 정하고, 게임 행동 모양은 `src/def.ts` 의 `Action`·`parseAction` 한 곳.
+- 탭 컴포넌트는 `React.memo`(≡ 메뉴 시트 안에서 고른 탭만 그린다).
 - 주요 사건(심기, 가져오기, 땅 뺏기, 버리기, 기권, 차례 전환, 시간 초과, 종료)은 `GameState.log` 에 기록한다.
-- 룰 엔진 변경은 Vitest 테스트를 함께 추가하고 `npm run fixtures` 후 `npm test` 를 돌린다.
+- 룰 엔진 변경은 Vitest 테스트를 함께 추가하고 `npm run fixtures -w @gamehub/rootbound` 후 `npm test -w @gamehub/rootbound` 를 돌린다.
 - 주석과 UI 문구는 한국어, 식별자는 영어. 종·목표 id는 Rules.md의 영문 id를 그대로 쓴다.
-- AI(`server/src/ai/search.ts`)는 입력 상태를 바꾸지 않는다. 규칙을 다시 구현하지 않고 엔진 함수를 부른다.
+- AI(`src/ai/search.ts`)는 입력 상태를 바꾸지 않는다. 규칙을 다시 구현하지 않고 엔진 함수를 부른다.
 
-## 자주 쓰는 명령
+## 자주 쓰는 명령 (GameHub 루트에서)
 
 | 목적 | 방법 |
 |---|---|
-| 서버(AI 포함)·클라이언트 백그라운드 실행 (개발) | `/dev` |
-| 백그라운드 프로세스 종료 (개발) | `/dev-stop` |
-| AWS 서버에 배포 | GameHub 저장소 `dev` → `main` 병합 시 자동. 수동은 `powershell -File scripts/deploy-aws.ps1` |
-| AWS 서버 로그 확인 | `ssh -i .dev/astraltab-key.pem ec2-user@$(cat .dev/aws-public-ip.txt) "sudo journalctl -u gamehub -n 200 \| grep rootbound"` |
-| 로그 확인 (dev) | `tail -n 50 .dev/server.log`, `.dev/client.log`, `.dev/ai.log` |
-| 의존성 설치 (JS) | `npm install` (루트) |
-| 테스트 (JS) | `npm test` (루트, 전 워크스페이스) |
-| 공용 픽스처 재생성 | `npm run fixtures` (엔진·데이터·타입을 바꾸면 반드시 실행 후 `npm test`) |
-| 카드 SVG 문구·뿌리 그림 다시 그리기 | `node scripts/card-text.mjs` (fixtures 를 먼저 만든 뒤) |
-| 밸런스 시뮬레이션 (v3) | `npx tsx shared/scripts/lab/run.ts <변형> [인원=2,3,4] [배율]` (5개 지표 점수표), 여러 변형 비교 `lab/sweep.ts`, 정본 엔진 일치 `lab/parity.ts`, 저장 결과 재채점 `lab/rescore.ts`. 변형은 `lab/registry.ts`, 지금 규칙 = `v6`(v5 + 마켓 2장 + 더미 뒷면 가져오기) |
-| 타입 검사 | `npm run typecheck` (shared·shared/scripts·server·client) |
-| 서버 단일 번들 (운영·허브용) | `npm run build -w @rootbound/server` → `server/dist/app.mjs` |
-| 플레이어 지표 집계 | `npx tsx server/scripts/stats.ts [DATA_DIR]` (기본 `server/data/prod`). 운영 데이터는 EC2 `~/rootbound/server/data/prod` 를 내려받아 로컬에서 집계 |
+| 개발 실행(화면 + 온라인 방 서버) | `npm run dev -w @gamehub/rootbound` |
+| 의존성 설치 | `npm install` (GameHub 루트) |
+| 테스트 · 타입 · 빌드 | `npm test -w @gamehub/rootbound` · `npm run typecheck -w @gamehub/rootbound` · `npm run build -w @gamehub/rootbound` |
+| 전체 검사 · 화면 확인 | `npm run check` · `npm run e2e` (모든 workspace) |
+| 공용 픽스처 재생성 | `npm run fixtures -w @gamehub/rootbound` (엔진·데이터·타입을 바꾸면 반드시 실행 후 테스트) |
+| 카드 SVG 문구·뿌리 그림 다시 그리기 | `node tools/card-text.mjs` (fixtures 를 먼저 만든 뒤) |
+| 밸런스 시뮬레이션 (v3) | 게임 폴더에서 `npx tsx tools/lab/run.ts <변형> [인원=2,3,4] [배율]` (5개 지표 점수표), 여러 변형 비교 `tools/lab/sweep.ts`, 정본 엔진 일치 `tools/lab/parity.ts`, 저장 결과 재채점 `tools/lab/rescore.ts`. 변형은 `tools/lab/registry.ts`, 지금 규칙 = `v6`(v5 + 마켓 2장 + 더미 뒷면 가져오기) |
+| AWS 서버 로그 | `sudo journalctl -u gamehub -n 200 \| grep rootbound` (EC2 안) |
 | 커밋 & 푸시 | `/commit-push` |
 
 ## 서브에이전트
@@ -244,8 +217,8 @@ AstralTab/                 # 저장소 폴더 이름은 아직 옛 이름
 |---|---|
 | `spec-checker` | 구현 결과를 Rules.md·CLAUDE.md 요구에 대조 |
 | `rules-engine-reviewer` | 룰 엔진(보드·영향력·이번 판 식물·라운드 마켓·차례·점수)의 순수성·결정성·Rules.md 일치·엣지 케이스 검토 |
-| `realtime-sync-reviewer` | Socket.io 이벤트, 손패 비공개, 재접속, 제한 시간·AI 대리, 스냅샷 복구 검토 |
+| `realtime-sync-reviewer` | `src/def.ts` 의 가림(손패 비공개)·행동 검사, 재접속, 제한 시간·AI 대리 검토 |
 | `ui-tab-reviewer` | 탭 UI 성능(100ms), 무스크롤 레이아웃, 보드·내 카드·마켓 렌더, 리렌더 검토 |
-| `ai-reviewer` | AI(`server/src/ai/search.ts`)의 합법성, 평가, 시간 제한·이벤트 루프 양보 검토 |
+| `ai-reviewer` | AI(`src/ai/search.ts`)의 합법성, 평가, 시간 제한(서버를 오래 막지 않는지) 검토 |
 
 기능 구현을 마치면 `spec-checker`로 확인하고, 영역에 맞는 리뷰어를 거친 뒤 `/commit-push`한다.
