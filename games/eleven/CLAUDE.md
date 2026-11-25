@@ -636,8 +636,8 @@ npm start              # 배포 모드로 실행 (PORT, HOST, STATIC_DIR 환경�
 
 ## Git 규칙
 
-- 원격 저장소: https://github.com/gillettef/Eleven.git (기본 브랜치 `dev`)
-- **일상 작업은 `dev`(기본 브랜치)에 커밋·푸시한다. `main`(운영 배포)에는 직접 커밋·푸시하지 않고**, 사용자가 요청할 때만 `dev` → `main` PR(`gh pr create --base main --head dev`)로 병합한다. 작업 시작 전 현재 브랜치가 `dev`인지 확인한다. `dev` 푸시는 CI(`.github/workflows/ci.yml`)만 돌고, `main` 병합이 곧 운영 배포다.
+- 원격 저장소: https://github.com/gillettef/GameHub.git 의 `games/eleven/` (모노레포, 옛 개별 저장소 `gillettef/Eleven` 는 2026-11-25 삭제) (기본 브랜치 `dev`)
+- **일상 작업은 `dev`(기본 브랜치)에 커밋·푸시한다. `main`(운영 배포)에는 직접 커밋·푸시하지 않고**, 사용자가 요청할 때만 `dev` → `main` PR(`gh pr create --base main --head dev`)로 병합한다. 작업 시작 전 현재 브랜치가 `dev`인지 확인한다. `dev` 푸시는 CI(GameHub `.github/workflows/ci-eleven.yml`)만 돌고, `main` 병합이 곧 운영 배포다.
 - **모든 작업을 완료하면 `git commit` 후 `git push`까지 진행한다.** 작업 단위마다 커밋하고, 작업이
   끝난 채로 푸시하지 않은 상태로 두지 않는다.
 - 커밋 메시지는 **한국어**로 작성한다. 첫 줄은 무엇을 왜 바꿨는지 한 문장으로 요약한다.
