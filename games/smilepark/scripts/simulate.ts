@@ -2,8 +2,8 @@
  * AI 대전 요약.  npm run sim -- [판 수=500] [인원=3]
  * 좌석 승률은 1라운드 순서(startFirst 기준) 기준이며, 공동 1위는 승리를 나눠 센다.
  */
-import { newGame, probe, winners } from '../src/game/engine';
-import { CARD_BY_ID } from '../src/game/data/cards';
+import { newGame, probe, winners } from '../src/engine/engine';
+import { CARD_BY_ID } from '../src/engine/data/cards';
 
 const N = Number(process.argv[2] ?? 500);
 const players = Number(process.argv[3] ?? 3);

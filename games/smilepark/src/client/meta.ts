@@ -1,5 +1,5 @@
-import { CFG } from '../game/engine';
-import type { FacilityType, Phase, StaffKey } from '../game/types';
+import { CFG } from '../engine/engine';
+import type { FacilityType, Phase, StaffKey } from '../engine/types';
 import type { IconName } from './Icon';
 
 export const TYPE_META: Record<FacilityType, { icon: IconName; color: string; short: string }> = {

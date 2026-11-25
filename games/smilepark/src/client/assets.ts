@@ -8,9 +8,9 @@
  * - 슬롯 목록과 권장 크기는 개발 서버(npm run dev)에서 앱 주소 뒤에 `#assets` 를 붙이면 확인할 수 있다.
  * - 앱 포장(Capacitor 등) 시에도 public/images 가 그대로 번들된다.
  */
-import { FACILITIES } from '../game/data/facilities';
-import { EVENTS } from '../game/data/events';
-import type { FacilityType, StaffKey } from '../game/types';
+import { FACILITIES } from '../engine/data/facilities';
+import { EVENTS } from '../engine/data/events';
+import type { FacilityType, StaffKey } from '../engine/types';
 
 export const IMAGE_BASE = 'images/';
 export const IMAGE_EXTS = ['webp', 'png', 'jpg'] as const;
