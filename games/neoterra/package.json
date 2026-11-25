@@ -1,33 +1,22 @@
 {
-  "name": "neoterra",
+  "name": "@gamehub/neoterra",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.0.0",
   "type": "module",
+  "description": "네오테라: 새 행성 개척 문명 카드게임(한 기기 AI 대전, 온라인)",
   "scripts": {
-    "dev": "vite",
-    "server": "tsx watch server/index.ts",
-    "build": "tsc --noEmit && vite build && node scripts/build-server.mjs",
-    "test": "vitest run",
+    "dev": "vite --host",
+    "build": "vite build && gamehub-build-server",
+    "start": "gamehub-serve",
     "typecheck": "tsc --noEmit",
-    "start": "node server-dist/server.cjs",
-    "simulate": "tsx scripts/simulate.ts"
+    "test": "vitest run",
+    "e2e": "node e2e/mobile.mjs",
+    "simulate": "esbuild scripts/simulate.ts --bundle --platform=node --format=esm --outfile=server-dist/simulate.mjs --log-level=warning && node server-dist/simulate.mjs"
   },
   "dependencies": {
-    "react": "18.3.1",
-    "react-dom": "18.3.1",
+    "@gamehub/config": "*",
+    "@gamehub/net": "*",
+    "@gamehub/ui": "*",
     "zustand": "4.5.5"
-  },
-  "devDependencies": {
-    "@types/node": "22.7.5",
-    "@types/react": "18.3.11",
-    "@types/react-dom": "18.3.1",
-    "@types/ws": "8.5.12",
-    "@vitejs/plugin-react": "4.3.2",
-    "esbuild": "0.24.0",
-    "tsx": "4.19.1",
-    "typescript": "5.6.3",
-    "vite": "5.4.9",
-    "vitest": "2.1.3",
-    "ws": "8.18.0"
   }
 }

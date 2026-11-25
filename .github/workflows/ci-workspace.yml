@@ -4,10 +4,10 @@ name: CI workspace
 
 on:
   push:
-    paths: ['packages/**', 'games/hearsay/**', 'games/election/**', 'games/doubleagent/**', 'games/retrocause/**', 'games/crease/**', 'games/tesseract/**', 'games/lastgrain/**', 'games/lightcone/**', 'games/sightline/**', 'games/proxymind/**', 'hub/server.mjs', 'hub/lib/**', 'package.json', 'package-lock.json', 'eslint.config.js', '.github/workflows/ci-workspace.yml']
+    paths: ['packages/**', 'games/neoterra/**', 'games/hearsay/**', 'games/election/**', 'games/doubleagent/**', 'games/retrocause/**', 'games/crease/**', 'games/tesseract/**', 'games/lastgrain/**', 'games/lightcone/**', 'games/sightline/**', 'games/proxymind/**', 'hub/server.mjs', 'hub/lib/**', 'package.json', 'package-lock.json', 'eslint.config.js', '.github/workflows/ci-workspace.yml']
     branches: [main, dev]
   pull_request:
-    paths: ['packages/**', 'games/hearsay/**', 'games/election/**', 'games/doubleagent/**', 'games/retrocause/**', 'games/crease/**', 'games/tesseract/**', 'games/lastgrain/**', 'games/lightcone/**', 'games/sightline/**', 'games/proxymind/**', 'hub/server.mjs', 'hub/lib/**', 'package.json', 'package-lock.json', 'eslint.config.js', '.github/workflows/ci-workspace.yml']
+    paths: ['packages/**', 'games/neoterra/**', 'games/hearsay/**', 'games/election/**', 'games/doubleagent/**', 'games/retrocause/**', 'games/crease/**', 'games/tesseract/**', 'games/lastgrain/**', 'games/lightcone/**', 'games/sightline/**', 'games/proxymind/**', 'hub/server.mjs', 'hub/lib/**', 'package.json', 'package-lock.json', 'eslint.config.js', '.github/workflows/ci-workspace.yml']
 
 concurrency:
   group: ci-workspace-${{ github.ref }}

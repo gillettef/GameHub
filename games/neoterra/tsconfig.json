@@ -1,22 +1,8 @@
 {
+  "extends": "@gamehub/config/tsconfig.base.json",
   "compilerOptions": {
-    "target": "ES2022",
-    "lib": ["ES2022", "DOM", "DOM.Iterable"],
-    "module": "ESNext",
-    "moduleResolution": "Bundler",
-    "jsx": "react-jsx",
-    "strict": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "noFallthroughCasesInSwitch": true,
-    "noUncheckedIndexedAccess": false,
-    "skipLibCheck": true,
-    "esModuleInterop": true,
-    "resolveJsonModule": true,
-    "isolatedModules": true,
-    "allowImportingTsExtensions": false,
-    "noEmit": true,
-    "types": ["node", "vite/client"]
+    // 엔진·화면은 옮기기 전부터 배열 인덱스를 검사 없이 쓴다(내용을 그대로 옮겼다)
+    "noUncheckedIndexedAccess": false
   },
-  "include": ["src", "server", "scripts", "tests"]
+  "include": ["src", "server", "scripts", "test", "vite.config.ts"]
 }
