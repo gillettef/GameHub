@@ -15,7 +15,7 @@ import {
   submitDesign,
   targetOf,
   type GameState,
-} from './index';
+} from '../src/engine/index';
 
 const seats = (n: number) => Array.from({ length: n }, (_, i) => ({ name: `P${i}`, kind: 'bot' as const }));
 const tileInst = (g: GameState, code: string, nth = 0) => {

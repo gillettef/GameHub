@@ -6,7 +6,7 @@
 
 - 코드가 아니라 **보드게임 디자인 문서** 프로젝트다. 산출물은 룰북, 구성물 목록, 플레이테스트 기록, 디자인 결정 로그다.
 - 모든 문서는 한국어로 쓴다. 게임 용어는 `docs/glossary.md`의 표기를 따른다(한국어 용어 + 영문 병기).
-- 디지털 프로토타입(예: 웹 시뮬레이터)은 필요할 때 `prototype/`에 따로 만든다. 룰의 기준은 항상 `rules/rulebook.md`다.
+- 디지털 버전(웹 게임)은 GameHub 공통 구조(`src/engine`·`src/def.ts`·`src/client`·`server`)에 있다. 룰의 기준은 항상 `rules/rulebook.md`다.
 
 ## 핵심 디자인 기둥 (변경 시 사용자 확인 필수)
 
@@ -29,10 +29,15 @@ Proxymind/
 ├── components/
 │   └── components.md    # 구성물 목록과 사양
 ├── playtests/           # 플레이테스트 기록 (YYYY-MM-DD-NN.md)
-├── scripts/
-│   ├── deploy-aws.ps1   # 수동 배포
-│   └── aws/             # EC2 준비·재시작 스크립트, 정적 서버(serve.mjs)
-└── .github/workflows/   # ci.yml(검사), deploy-aws.yml(main 병합 시 배포)
+├── src/
+│   ├── engine/          # 룰북을 구현한 규칙 엔진·봇 AI·자동 시뮬레이션(순수 TS, 브라우저·서버 공용)
+│   ├── def.ts           # 공통 방·진행 코드(@gamehub/net)에 엔진을 연결하는 GameDef(좌석별로 가린 view, 행동 검사, 봇)
+│   ├── text.ts          # 사건·개입 문장(기록), 좌석 색
+│   └── client/          # React 화면(처음·대기실은 @gamehub/ui, 대국은 GameShell, 자동 시뮬레이션)
+├── server/app.ts        # createRoomApp(def) — 온라인 방(/ws, /health)
+├── test/                # 엔진 테스트(engine.test.ts), GameDef·방 흐름(def.test.ts)
+├── e2e/mobile.mjs       # iPhone 17 Pro 화면 확인(모든 모드)
+└── scripts/aws/hub-entry.mjs  # 허브 inproc 진입점
 ```
 
 ## 작업 규칙
@@ -50,21 +55,17 @@ Proxymind/
 - **저장소:** https://github.com/gillettef/GameHub.git 의 `games/proxymind/` (모노레포, 옛 개별 저장소 `gillettef/Proxymind` 는 2026-11-25 삭제) (기본 브랜치: `dev`)
 - **작은 작업 단위가 끝날 때마다 반드시 commit하고 push한다.** 여러 작업을 모아서 한 번에 올리지 않는다. `/commit-push` 스킬을 쓴다. (이 규칙은 커밋·푸시에 대한 사전 승인이다. 단, force push·히스토리 변경은 사용자에게 먼저 확인한다.)
 - **commit 메시지는 한국어로 쓴다.** 형식은 `/commit-push` 스킬을 따른다. (예: `규칙: 규칙 타일 발동 순서 문장 정리`)
-- **일상 작업은 `dev`에 커밋·푸시한다. `main`(운영 배포)에는 직접 커밋·푸시하지 않고**, 사용자가 요청할 때만 `dev` → `main` PR(`gh pr create --base main --head dev`)로 병합한다. 작업 시작 전 현재 브랜치가 `dev`인지 확인한다. `dev` 푸시는 CI(GameHub `.github/workflows/ci-proxymind.yml`)만 돌고, `main` 병합이 곧 운영 배포다.
+- **일상 작업은 `dev`에 커밋·푸시한다. `main`(운영 배포)에는 직접 커밋·푸시하지 않고**, 사용자가 요청할 때만 `dev` → `main` PR(`gh pr create --base main --head dev`)로 병합한다. 작업 시작 전 현재 브랜치가 `dev`인지 확인한다. `dev` 푸시는 CI(GameHub `.github/workflows/ci-workspace.yml`)만 돌고, `main` 병합이 곧 운영 배포다.
 
 ## 배포 (AWS)
 
-- **2026-11-24부터 운영은 GameHub 허브 안에서 실행된다**(`hub/games.json` `"mode": "inproc"`, 진입점 `scripts/aws/hub-entry.mjs` → `server-dist/app.cjs`(`prototype/server/app.ts`)). 접속은 `http://54.116.67.196/proxymind/`. 배포하면 `deploy-remote.sh`가 예전 systemd `proxymind` 서비스를 끄고 허브(`gamehub`)를 재시작한다 — 허브 안 다른 게임의 진행 중인 방도 함께 사라진다. 아래의 포트·systemd 설명은 예전 단독 운영 기준이다(단독 서버는 로컬 실행용으로 남는다).
-
-- 다른 게임(Eleven·MagicAcademy·SmilePark·DoubleAgent·Tesseract·Neoterra·Election·Lightcone 등)과 같은 EC2(t4g.nano, 서울) 1대를 공유한다. Proxymind의 포트는 **8105**, systemd 서비스 이름은 `proxymind`이다. 접속은 `http://54.116.67.196:8105` (HTTP만).
-- 배포 대상은 웹 시뮬레이터(`prototype/`)다. 정적 프론트(`dist/`)와 온라인 대전 WebSocket(`/ws`)을 한 포트에서 서빙하는 Node 서버(`server-dist/server.cjs`, 의존성 없이 실행)로 구성된다. `npm test`·`npm run build`가 통과해야 배포된다.
-  - `prototype/src/core/`: 룰북을 구현한 규칙 엔진·봇 AI·자동 시뮬레이션(브라우저와 서버가 같이 쓴다). **룰북을 바꾸면 엔진(`data.ts`·`engine.ts`)과 테스트도 같이 고친다.**
-  - `prototype/server/`: 온라인 방 관리(`hub.ts`). 방 상태는 서버 메모리에만 있다.
-  - 개발: `npm run server`(8105) + `npm run dev`(5195, `/ws`를 8105로 프록시).
-- `main`에 병합되면 `.github/workflows/deploy-aws.yml`이 `npm test` → `npm run build`를 통과했을 때만 `dist`·`server-dist`·`scripts/aws/`(진입점 `serve.mjs`, `deploy-remote.sh`)를 `~/proxymind`에 올리고, `deploy-remote.sh`가 systemd `proxymind`를 재시작·헬스체크한다.
-- **수동 배포**(push 없이): `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/deploy-aws.ps1`. SSH 키·IP는 `.dev/`(git 제외), 없으면 `../Rootbound/.dev/`의 것을 쓴다.
-- SSH(22)는 관리자 IP만 열려 있어 워크플로가 러너 IP를 임시로 열었다 닫는다. 저장소 시크릿: AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY / AWS_REGION / AWS_SECURITY_GROUP_ID / EC2_HOST / EC2_HOST_KEY / EC2_SSH_PRIVATE_KEY (다른 게임 저장소와 같은 값, 정본은 저장소 밖 `personal/aws_config.md`).
-- 서버 준비(완료, 2026-11-23): 보안 그룹 TCP 8105 인바운드 추가, 저장소 시크릿 7개 등록.
+- 운영은 GameHub 허브 안에서 실행된다(`hub/games.json` `"mode": "inproc"`, 진입점 `scripts/aws/hub-entry.mjs` → `server-dist/app.cjs`(`server/app.ts`)). 접속은 `http://54.116.67.196/proxymind/`.
+- 개발·검사는 GameHub 루트 npm workspaces 로 한다(`npm install` 은 루트에서). 이 폴더에서 `npm run dev`(화면과 온라인 서버가 vite 하나로 뜬다), `npm test`, `npm run build`, `npm run e2e`. 루트에서 `npm run check` / `npm run e2e`.
+- **룰북을 바꾸면 엔진(`src/engine/data.ts`·`engine.ts`)과 테스트도 같이 고친다.** 엔진은 React·DOM·시간·난수(Math.random)를 직접 쓰지 않는다(시드 RNG).
+- 클라이언트는 상대경로만 쓴다(허브 `/proxymind/` 아래). localStorage 키는 `proxymind:` 접두어.
+- `main` 병합 때 GameHub `deploy.yml` → `deploy-proxymind.yml` → 공통 `deploy-workspace-game.yml` 이 검사·빌드를 통과한 산출물(`dist`, `server-dist`, `scripts/aws`)만 `~/proxymind` 에 올리고 허브(`gamehub`)를 재시작한다. 재시작하면 모든 게임의 진행 중인 방이 사라진다. 수동 재배포는 Actions → Deploy proxymind.
+- 방 상태는 서버 메모리에만 있다. 온라인은 대기실 → 방장 시작(빈자리는 봇), 끊긴 사람의 차례는 45초 뒤 봇이 대신 둔다(공통 진행 방식, `docs/refactor-plan.md` 9절).
+- 예전 단독 운영(포트 8105, systemd `proxymind`, `prototype/` 웹 시뮬레이터, 수동 배포 스크립트)은 2026-11-25 새 구조로 옮기며 없앴다.
 
 ## 서브에이전트
 
