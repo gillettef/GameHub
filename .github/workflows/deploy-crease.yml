@@ -1,16 +1,4 @@
-# GameHub 모노레포로 옮긴 crease 워크플로(원본: games/crease/.github/workflows/deploy-aws.yml). games/crease/** 가 바뀔 때만 돈다.
-# 운영 배포: main 에 병합되면 검사·빌드 통과 후 EC2(게임 공용 서버, t4g.nano, 서울)에 올리고 systemd crease(포트 8101, 정적 서버 scripts/aws/serve.mjs)를 재시작한다.
-# 러너에서 빌드한 산출물(dist scripts/aws)만 ssh 로 올리고, 서버에서 scripts/aws/deploy-remote.sh 가 재시작·헬스체크한다.
-# 일상 작업은 dev 에 푸시한다(ci.yml 만 돈다). dev → main PR 병합이 곧 운영 배포다.
-# Actions 탭의 수동 실행(workflow_dispatch)으로 재배포도 가능하다.
-# 디지털 프로토타입(package.json) 이 생기기 전에는 배포를 건너뛴다.
-#
-# SSH(22)는 관리자 IP 로만 열려 있다. 배포 직전에 러너 IP 를 보안 그룹에 임시로 열고, 끝나면(성공·실패 무관) 반드시 닫는다.
-# 이 규칙 추가/삭제만 가능한 최소 권한 IAM 사용자(astraltab-ci)의 키를 쓴다. (다른 게임 저장소와 공용, 정본은 저장소 밖 aws_config.md)
-#
-# 필요한 저장소 시크릿: AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION, AWS_SECURITY_GROUP_ID,
-#                       EC2_HOST, EC2_HOST_KEY(known_hosts 한 줄), EC2_SSH_PRIVATE_KEY
-
+# crease 운영 배포: 루트 workspaces 공통 배포(deploy-workspace-game.yml)를 부른다. deploy.yml 이 main 병합 때 부르고, Actions 에서 직접 실행할 수도 있다.
 name: Deploy crease
 
 on:
@@ -19,105 +7,7 @@ on:
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: games/crease
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: package.json 확인 — 프로토타입이 없으면 배포하지 않는다
-        id: pkg
-        run: |
-          if [ -f package.json ]; then
-            echo "exists=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "exists=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::package.json 이 없어 배포를 건너뜁니다 (디지털 프로토타입 미작성)"
-          fi
-
-      - name: 시크릿 확인 — 값은 출력하지 않고 비어 있는 이름만 알린다
-        working-directory: ${{ github.workspace }}  # checkout 전이거나 checkout 실패 시에도 돌아야 하므로 게임 폴더가 아닌 루트에서
-        if: steps.pkg.outputs.exists == 'true'
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_REGION: ${{ secrets.AWS_REGION }}
-          AWS_SECURITY_GROUP_ID: ${{ secrets.AWS_SECURITY_GROUP_ID }}
-          EC2_HOST: ${{ secrets.EC2_HOST }}
-          EC2_HOST_KEY: ${{ secrets.EC2_HOST_KEY }}
-          EC2_SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
-        run: |
-          missing=0
-          for n in AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_REGION AWS_SECURITY_GROUP_ID EC2_HOST EC2_HOST_KEY EC2_SSH_PRIVATE_KEY; do
-            v="${!n}"
-            if [ -n "$v" ]; then echo "OK    $n (값 길이 ${#v})"; else echo "::error::비어 있음: $n"; missing=1; fi
-          done
-          exit $missing
-
-      - uses: actions/setup-node@v4
-        if: steps.pkg.outputs.exists == 'true'
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: games/crease/package-lock.json
-
-      - run: npm ci
-        if: steps.pkg.outputs.exists == 'true'
-      - name: 테스트 — 통과해야 배포한다
-        if: steps.pkg.outputs.exists == 'true'
-        run: npm test
-      - name: 빌드
-        if: steps.pkg.outputs.exists == 'true'
-        run: npm run build
-
-      - uses: aws-actions/configure-aws-credentials@v4
-        if: steps.pkg.outputs.exists == 'true'
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION || 'ap-northeast-2' }}
-
-      - name: 이 러너의 IP 를 SSH(22)에 임시 허용
-        if: steps.pkg.outputs.exists == 'true'
-        run: |
-          RUNNER_IP="$(curl -s https://checkip.amazonaws.com)"
-          echo "RUNNER_IP=${RUNNER_IP}" >> "$GITHUB_ENV"
-          aws ec2 authorize-security-group-ingress \
-            --group-id "${{ secrets.AWS_SECURITY_GROUP_ID }}" \
-            --ip-permissions "IpProtocol=tcp,FromPort=22,ToPort=22,IpRanges=[{CidrIp=${RUNNER_IP}/32,Description=github-actions-crease}]"
-
-      - name: SSH 키 준비
-        if: steps.pkg.outputs.exists == 'true'
-        env:
-          KEY: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
-          HOST_KEY: ${{ secrets.EC2_HOST_KEY }}
-        run: |
-          mkdir -p ~/.ssh
-          printf '%s\n' "$KEY" > ~/.ssh/ci_key
-          chmod 600 ~/.ssh/ci_key
-          printf '%s\n' "$HOST_KEY" >> ~/.ssh/known_hosts
-
-      - name: 산출물 업로드
-        if: steps.pkg.outputs.exists == 'true'
-        run: |
-          tar -c dist scripts/aws \
-            | ssh -i ~/.ssh/ci_key ec2-user@${{ secrets.EC2_HOST }} \
-              "rm -rf ~/crease/dist && mkdir -p ~/crease && tar -x -C ~/crease"
-
-      - name: 재시작 + 헬스체크
-        if: steps.pkg.outputs.exists == 'true'
-        run: |
-          ssh -i ~/.ssh/ci_key ec2-user@${{ secrets.EC2_HOST }} \
-            "bash ~/crease/scripts/aws/deploy-remote.sh"
-
-      - name: 임시 SSH 허용 제거
-        working-directory: ${{ github.workspace }}  # checkout 전이거나 checkout 실패 시에도 돌아야 하므로 게임 폴더가 아닌 루트에서
-        if: always()
-        run: |
-          if [ -n "${RUNNER_IP:-}" ]; then
-            aws ec2 revoke-security-group-ingress \
-              --group-id "${{ secrets.AWS_SECURITY_GROUP_ID }}" \
-              --ip-permissions "IpProtocol=tcp,FromPort=22,ToPort=22,IpRanges=[{CidrIp=${RUNNER_IP}/32}]" || true
-          fi
+    uses: ./.github/workflows/deploy-workspace-game.yml
+    with:
+      slug: crease
+    secrets: inherit
