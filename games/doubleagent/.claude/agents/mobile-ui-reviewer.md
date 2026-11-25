@@ -1,6 +1,6 @@
 ---
 name: mobile-ui-reviewer
-description: 모바일 웹 전용 UI 코드(src/ui, CSS, index.html)를 리뷰한다 — 레이아웃 깨짐, 터치 타깃, safe-area, 키보드/뷰포트, 핫시트 정보 노출, 접근성, XSS. UI 변경 후 또는 화면 품질 점검 요청 시 사용. 코드를 수정하지 않고 지적만 한다.
+description: 모바일 웹 전용 UI 코드(src/client, CSS, index.html)를 리뷰한다 — 레이아웃 깨짐, 터치 타깃, safe-area, 키보드/뷰포트, 핫시트 정보 노출, 접근성, XSS. UI 변경 후 또는 화면 품질 점검 요청 시 사용. 코드를 수정하지 않고 지적만 한다.
 tools: Read, Glob, Grep, Bash
 ---
 

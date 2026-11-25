@@ -4,8 +4,8 @@
  * 어떤 변형도 공정값을 크게 넘지 못하는 B 가 대칭 균형에 가깝다.
  *   npx tsx scripts/equilibrium.ts --players 3 --games 300 --rules ...
  */
-import { PERSONAS, RULES, createGame, createRng, nextRound, resolveRound, winners } from '../src/core';
-import type { GameState, Persona, PersonaKey } from '../src/core';
+import { PERSONAS, RULES, createGame, createRng, nextRound, resolveRound, winners } from '../src/engine';
+import type { GameState, Persona, PersonaKey } from '../src/engine';
 
 declare const process: { argv: string[] };
 const args = process.argv.slice(2);

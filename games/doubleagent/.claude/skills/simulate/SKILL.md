@@ -9,7 +9,7 @@ description: 규칙 엔진으로 AI 대 AI 게임을 시드 고정으로 대량 
 ```
 npx tsx scripts/simulate.ts --games 2000 --players 3 --seed 42
 ```
-- `scripts/simulate.ts`가 없으면 아래 요구사항대로 작성한다. `src/core`만 import하고 DOM/`localStorage`를 쓰지 않는다.
+- `scripts/simulate.ts`가 없으면 아래 요구사항대로 작성한다. `src/engine`만 import하고 DOM/`localStorage`를 쓰지 않는다.
 - 시드가 같으면 결과가 완전히 같아야 한다 (재현성 확인을 위해 같은 시드로 2회 실행해 비교).
 
 ## 스크립트 요구사항
@@ -25,4 +25,4 @@ npx tsx scripts/simulate.ts --games 2000 --players 3 --seed 42
 
 ## 리포트
 - 표로 정리하고, 눈에 띄는 불균형 3개 이내와 조정 제안(수치 + 근거)을 붙인다.
-- 수치 변경을 실제로 적용할지는 사용자에게 확인. 적용 시 `rules-spec` 스킬 문서 → `src/core/data.ts` → 테스트 순서로 반영하고 재시뮬레이션해 전후 비교를 보여준다.
+- 수치 변경을 실제로 적용할지는 사용자에게 확인. 적용 시 `rules-spec` 스킬 문서 → `src/engine/data.ts` → 테스트 순서로 반영하고 재시뮬레이션해 전후 비교를 보여준다.

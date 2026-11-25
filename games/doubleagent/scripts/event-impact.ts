@@ -3,8 +3,8 @@
  * '시장 내 대상 비율' 대비 '제안 중 대상 비율'(쏠림 배율)로 보고, 이벤트 라운드와 이적시장 개장(효과 없음) 라운드를 비교한다.
  *   npx tsx scripts/event-impact.ts [--games 2000] [--players 3] [--seed 42] [--ai normal|easy]
  */
-import { PLAYERS, createGame, createRng, nextRound, resolveRound } from '../src/core';
-import type { AiLevel, EventKey, GameState, PlayerCard } from '../src/core';
+import { PLAYERS, createGame, createRng, nextRound, resolveRound } from '../src/engine';
+import type { AiLevel, EventKey, GameState, PlayerCard } from '../src/engine';
 
 declare const process: { argv: string[] };
 const args = process.argv.slice(2);

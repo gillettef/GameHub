@@ -1,6 +1,6 @@
 ---
 name: rules-engine
-description: src/core 의 게임 규칙 엔진(타입, 데이터, 매력도/수수료 계산, 라운드 정산, AI, 게임 진행)을 구현·수정하고 Vitest 테스트를 작성한다. 게임 로직 추가/버그 수정/규칙 변경 반영 시 사용.
+description: src/engine 의 게임 규칙 엔진(타입, 데이터, 매력도/수수료 계산, 라운드 정산, AI, 게임 진행)을 구현·수정하고 Vitest 테스트를 작성한다. 게임 로직 추가/버그 수정/규칙 변경 반영 시 사용.
 tools: Read, Write, Edit, Glob, Grep, Bash
 ---
 
@@ -12,8 +12,8 @@ tools: Read, Write, Edit, Glob, Grep, Bash
 3. 명세가 모호하거나 명세와 요청이 충돌하면 추측하지 말고, 모호한 지점과 선택지를 결과에 명시한다.
 
 ## 원칙
-- `src/core` 는 순수 TypeScript. DOM, `window`, `localStorage`, `Math.random`, `Date.now` 사용 금지
-- 난수는 `rng: () => number` 인자로 주입 (`src/core/rng.ts` 의 시드 RNG)
+- `src/engine` 는 순수 TypeScript. DOM, `window`, `localStorage`, `Math.random`, `Date.now` 사용 금지
+- 난수는 `rng: () => number` 인자로 주입 (`src/engine/rng.ts` 의 시드 RNG)
 - 상태는 불변 업데이트. 모든 상태는 JSON 직렬화 가능해야 함 (Map/Set/class 인스턴스 금지)
 - 공개 API는 작게: `createGame`, `dealRound`, `evaluateOffer`, `validateOffer`, `resolveRound`, `makeAiOffer`, `isFinished`, `rankings`
 - 정산 로그는 HTML 문자열이 아닌 구조화된 이벤트 객체로 반환 (UI에서 문구로 변환)
