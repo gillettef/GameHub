@@ -1,0 +1,66 @@
+@import '@gamehub/ui/theme.css';
+
+/* 더블 에이전트 색: 기밀 스카우팅 파일 — 차분한 남색 바탕, 금색은 선택·주요 버튼에만(옛 화면의 색) */
+:root {
+  --gh-bg: #0b1220;
+  --gh-surface: #111a2a;
+  --gh-raised: #18243a;
+  --gh-line: #26344a;
+  --gh-text: #e3e8ef;
+  --gh-muted: #94a2b6;
+  --gh-primary: #f5c86b;
+  --gh-on-primary: #14100a;
+  --gh-danger: #e0a0a6;
+  --da-gold-m: #c9ad72;
+  --da-gold-bg: #1d1a10;
+  --da-green: #7fb3a1;
+  --da-blue: #93a9cc;
+  --da-red: #d39ea4;
+  --da-art: #0e1625;
+}
+
+/* 포지션 색 */
+.pos-FW { color: #c9958a; }
+.pos-MF { color: #8fb0c6; }
+.pos-DF { color: #98b496; }
+.pos-GK { color: #c4b07e; }
+
+/* 일러스트 (src/client/art). 선 · 몸 · 유니폼 · 강조 색은 카드마다 --as/--aa/--ac 로 */
+.da-art { display: block; overflow: hidden; }
+.da-art > svg { display: block; width: 100%; height: 100%; }
+.art { display: block; width: 100%; height: 100%; --al: #8794a8; --ab: #3b475a; --ah: #222c3b; --ag: #162132; --at: #7d8aa0; --abl: #a3adbb; --aa: #8f9db1; --as: #2f3b4f; --ac: #7a8495; }
+.art .l { fill: none; stroke: var(--al); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.art .lt { fill: none; stroke: var(--al); stroke-width: 1; opacity: .55; stroke-linecap: round; stroke-linejoin: round; }
+.art .d { stroke-dasharray: 2 2.5; }
+.art .w { fill: none; stroke: var(--ab); stroke-width: 3.4; stroke-linecap: round; stroke-linejoin: round; }
+.art .w2 { fill: none; stroke: var(--al); stroke-width: 3; stroke-linecap: round; }
+.art .b { fill: var(--ab); }
+.art .h { fill: var(--ah); }
+.art .s { fill: var(--as); stroke: var(--al); stroke-width: 1.1; stroke-linejoin: round; }
+.art .sash { stroke: var(--aa); stroke-width: 2; opacity: .6; }
+.art .g { fill: var(--ag); }
+.art .a { fill: none; stroke: var(--aa); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.art .af { fill: var(--aa); }
+.art .gf { fill: var(--da-gold-m); }
+.art .coin { fill: #3a3426; stroke: #a8916a; stroke-width: 1.1; }
+.art .c { fill: var(--ac); fill-opacity: .16; stroke: var(--ac); stroke-width: 1.6; stroke-linejoin: round; }
+.art .zf { fill: var(--aa); opacity: .3; }
+.art .bl { fill: var(--abl); stroke: var(--al); stroke-width: 1; }
+.art .k { fill: var(--gh-bg); }
+.art .gl { fill: var(--aa); opacity: .8; }
+.art .glass { stroke: var(--gh-bg); stroke-width: 2.2; stroke-linecap: round; }
+.art .p { fill: #1c2739; stroke: var(--al); stroke-width: 1.1; }
+.art .cone { fill: var(--al); opacity: .08; }
+.art .t { fill: var(--at); font-size: 7px; font-weight: 700; font-family: inherit; }
+
+/* 고른 카드: 금색 테두리 */
+.da-pick[aria-pressed='true'] { border-color: var(--gh-primary); background: var(--da-gold-bg); }
+.da-stamp { display: inline-block; font-size: 11px; font-weight: 800; letter-spacing: 0.2em; color: var(--da-red); border: 1px solid #5a3a3f; border-radius: 6px; padding: 1px 8px; transform: rotate(-2deg); }
+
+@media (prefers-reduced-motion: no-preference) {
+  .da-in { animation: da-in 0.25s ease-out; }
+  @keyframes da-in {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: none; }
+  }
+}
