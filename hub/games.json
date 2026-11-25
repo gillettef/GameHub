@@ -1,6 +1,6 @@
 [
   { "slug": "tesseract",    "name": "테서랙트",     "port": 8092, "players": "1~4인", "tagline": "주사위 퍼즐", "online": true,  "bot": true, "mode": "inproc" },
-  { "slug": "doubleagent",  "name": "더블 에이전트", "port": 8091, "players": "2~3인", "tagline": "축구 에이전트 협상 카드게임", "online": true, "bot": true, "mode": "inproc" },
+  { "slug": "doubleagent",  "name": "더블 에이전트", "port": 8091, "players": "3~4인", "tagline": "축구 에이전트 협상 카드게임", "online": true, "bot": true, "mode": "inproc" },
   { "slug": "election",     "name": "유세 대작전",   "port": 8096, "players": "2인",   "tagline": "대통령 선거 만칼라", "online": true, "bot": true, "mode": "inproc" },
   { "slug": "neoterra",     "name": "네오테라",     "port": 8094, "players": "2~4인", "tagline": "새 행성 개척 문명 카드게임", "online": true, "bot": true, "mode": "inproc" },
   { "slug": "magicacademy", "name": "마법학교",     "port": 8080, "players": "2~4인", "tagline": "아기자기한 마법 학교", "online": true, "bot": true, "mode": "inproc" },
