@@ -4,16 +4,16 @@
 //   --json <파일> : 요약 지표를 JSON 으로 저장
 //   --seat "0,0;1,1;1,0" : 자리별 시작 보정(생산,과학) 시험
 import { writeFileSync } from 'node:fs';
-import { createGame } from '../src/core/engine/setup';
-import { applyAction } from '../src/core/engine/turn';
-import { chooseAction } from '../src/core/ai';
-import { ranking } from '../src/core/engine/scoring';
-import { mainDoctrine, totalColonists } from '../src/core/engine/derive';
-import { researchedCount, webGraph } from '../src/core/engine/research';
-import type { GameState } from '../src/core/types';
-import { FIRST_ROUND_COMMAND, ERA_MAX_ROUNDS, SEAT_BONUS } from '../src/core/data/constants';
-import { SATELLITES } from '../src/core/data/satellites';
-import { CORE_ID } from '../src/core/data/techWeb';
+import { createGame } from '../src/engine/rules/setup';
+import { applyAction } from '../src/engine/rules/turn';
+import { chooseAction } from '../src/engine/ai';
+import { ranking } from '../src/engine/rules/scoring';
+import { mainDoctrine, totalColonists } from '../src/engine/rules/derive';
+import { researchedCount, webGraph } from '../src/engine/rules/research';
+import type { GameState } from '../src/engine/types';
+import { FIRST_ROUND_COMMAND, ERA_MAX_ROUNDS, SEAT_BONUS } from '../src/engine/data/constants';
+import { SATELLITES } from '../src/engine/data/satellites';
+import { CORE_ID } from '../src/engine/data/techWeb';
 
 function arg(name: string, def: number): number {
   const i = process.argv.indexOf(`--${name}`);

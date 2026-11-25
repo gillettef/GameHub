@@ -4,10 +4,12 @@
 
 | 환경 | 위치 | 포트 | 실행 |
 |---|---|---|---|
-| 로컬 | 각자 PC | Vite 25358, 서버 23641 | `/dev`, `/dev-stop` |
-| 운영 | AWS EC2 공용 서버(t4g.nano, 서울) | 8094 | `main` 병합 시 `deploy-aws.yml` 자동 배포 (운영 중) |
+| 로컬 | 각자 PC | Vite 25358(온라인 방 서버 /ws 포함) | `/dev`, `/dev-stop` |
+| 운영 | AWS EC2 공용 서버(t4g.nano, 서울), GameHub 허브 안 `/neoterra/` | 허브 :80 | `main` 병합 시 루트 `deploy.yml` → `deploy-neoterra.yml` 자동 배포 |
 
-> 현재 상태(2026-11-02): **v0.1.0 첫 운영 배포 완료** (`http://54.116.67.196:8094`). CI(`ci.yml`)가 dev·main 푸시마다 타입체크·테스트·빌드를 돌린다. `deploy-aws.yml` 은 DoubleAgent 와 같은 방식이다. SSH(22)는 관리자 IP 에만 열려 있으므로 배포하는 동안만 러너 IP 를 보안 그룹에 임시로 열고, `ec2-user` 로 올린 뒤 서버 안에서 `/health` 를 확인한다. 저장소 시크릿 7개(AWS_ACCESS_KEY_ID·AWS_SECRET_ACCESS_KEY는 IAM `astraltab-ci`, EC2_SSH_PRIVATE_KEY는 CI 전용 `smilepark-ci` 키)는 저장소 밖 `aws_config.md` 값과 같다.
+> 2026-11-25 GameHub 모노레포의 공통 구조로 옮겼다. CI 는 루트 `ci-workspace.yml`, 배포는 `deploy-workspace-game.yml`(허브 재시작). 아래는 예전 단독 운영 기록이다.
+>
+> 예전 상태(2026-11-02): **v0.1.0 첫 운영 배포 완료** (`http://54.116.67.196:8094`). CI(`ci.yml`)가 dev·main 푸시마다 타입체크·테스트·빌드를 돌린다. `deploy-aws.yml` 은 DoubleAgent 와 같은 방식이다. SSH(22)는 관리자 IP 에만 열려 있으므로 배포하는 동안만 러너 IP 를 보안 그룹에 임시로 열고, `ec2-user` 로 올린 뒤 서버 안에서 `/health` 를 확인한다. 저장소 시크릿 7개(AWS_ACCESS_KEY_ID·AWS_SECRET_ACCESS_KEY는 IAM `astraltab-ci`, EC2_SSH_PRIVATE_KEY는 CI 전용 `smilepark-ci` 키)는 저장소 밖 `aws_config.md` 값과 같다.
 
 ## 브랜치 전략
 

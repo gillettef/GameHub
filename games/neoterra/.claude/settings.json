@@ -6,7 +6,6 @@
       "Bash(npm test:*)",
       "Bash(npx tsc:*)",
       "Bash(npx vitest:*)",
-      "Bash(npx tsx scripts/simulate.ts:*)",
       "Bash(git status:*)",
       "Bash(git diff:*)",
       "Bash(git log:*)",
