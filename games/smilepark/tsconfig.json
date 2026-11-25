@@ -1,15 +1,8 @@
 {
+  "extends": "@gamehub/config/tsconfig.base.json",
   "compilerOptions": {
-    "target": "ES2022",
-    "lib": ["ES2022", "DOM", "DOM.Iterable"],
-    "module": "ESNext",
-    "moduleResolution": "bundler",
-    "jsx": "react-jsx",
-    "strict": true,
-    "noEmit": true,
-    "skipLibCheck": true,
-    "isolatedModules": true,
-    "types": ["vite/client", "node"]
+    // 엔진(src/engine)은 옛 구현을 거의 그대로 옮겼다. 그 코드가 배열 색인을 검사 없이 쓰므로 이 검사만 끈다
+    "noUncheckedIndexedAccess": false
   },
-  "include": ["src", "scripts", "tests"]
+  "include": ["src", "server", "test", "scripts", "vite.config.ts"]
 }
