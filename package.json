@@ -12,6 +12,7 @@
     "games/hearsay",
     "games/lastgrain",
     "games/lightcone",
+    "games/magicacademy",
     "games/neoterra",
     "games/proxymind",
     "games/retrocause",
@@ -24,7 +25,7 @@
   },
   "scripts": {
     "typecheck": "npm run typecheck --workspaces --if-present",
-    "lint": "eslint packages games/crease games/doubleagent games/election games/eleven games/hearsay games/lastgrain games/lightcone games/neoterra games/proxymind games/retrocause games/rootbound games/sightline games/tesseract",
+    "lint": "eslint packages games/crease games/doubleagent games/election games/eleven games/hearsay games/lastgrain games/lightcone games/magicacademy games/neoterra games/proxymind games/retrocause games/rootbound games/sightline games/tesseract",
     "test": "npm run test --workspaces --if-present",
     "build": "npm run build --workspaces --if-present",
     "check": "npm run typecheck && npm run lint && npm test && npm run build",

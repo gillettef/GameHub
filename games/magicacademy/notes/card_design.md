@@ -2,7 +2,7 @@
 
 마법학교에 구현된 **모든 카드**를 정리하고, 카드 일러스트/프레임을 이미지 생성 AI(또는 일러스트레이터)에게 맡길 때 필요한 크기·화풍·컬러·장면 설명을 담은 문서입니다.
 
-- 카드 데이터 출처: `server/src/game/` 의 `classCards.ts`, `creatures.ts`, `examCards.ts`, `explorationCards.ts`, `grimoireCards.ts`, `labCards.ts` (수치는 모두 초안이며 플레이테스트로 바뀔 수 있음. 바뀌면 이 문서의 표도 갱신)
+- 카드 데이터 출처: `src/engine/` 의 `classCards.ts`, `creatures.ts`, `examCards.ts`, `explorationCards.ts`, `grimoireCards.ts`, `labCards.ts` (수치는 모두 초안이며 플레이테스트로 바뀔 수 있음. 바뀌면 이 문서의 표도 갱신)
 - 게임 규칙은 `notes/기획_정리.md` 참고. 카드의 **수치·효과 텍스트는 이미지에 굽지 않고 클라이언트(React)가 얹는 것을 기본**으로 한다 (수치가 바뀌어도 이미지를 다시 만들 필요가 없도록). 이미지에는 **일러스트만** 넣는다.
 
 ## 1. 카드 종류 요약
@@ -26,7 +26,7 @@
 | **일러스트 영역** | **690 × 520 px** (카드 안쪽, 상단) | 핵심 대상은 중앙 60% 안에 배치 (모서리·프레임에 가려짐) |
 | **가로형 썸네일(선택)** | 512 × 384 px | 모바일 목록/공개 시장에서 카드가 작게 나올 때 |
 | **카드 뒷면** | 750 × 1050 px | 종류별 1장씩 총 6장 |
-| **아이콘(토큰/능력치)** | 128 × 128 px, 투명 PNG | 현재는 `client/src/Icons.tsx`의 SVG 사용 중. 필요 시 교체 |
+| **아이콘(토큰/능력치)** | 128 × 128 px, 투명 PNG | 현재는 `src/client/Icons.tsx`의 SVG 사용 중. 필요 시 교체 |
 
 - 포맷: 일러스트는 **PNG(또는 WebP)**, 배경 불투명. 모서리는 코드에서 `border-radius: 32px` 정도로 잘라낸다 (이미지는 모서리를 둥글게 미리 자르지 않는다).
 - **안전 여백**: 사방 36px 안쪽에 중요한 요소를 둔다.
@@ -406,5 +406,5 @@ from a fluffy cloud watchtower, sky-blue and white color scheme, soft pastel gra
 | **합계(카드 앞면)** | **130 + 뒷면 6** |
 
 - 파일명 예: `class_intelligence_textbook.png`, `creature_sky_01.png`, `exploration_dragon_hoard.png`, `lab_study_personal_tutoring.png`, `grimoire_whispering_wisdom.png`, `exam_written.png`, `back_class.png`
-- 저장 위치 제안: `client/public/cards/<종류>/` (정적 파일로 빌드에 포함). 이미지 도입 시 파일 크기 관리를 위해 WebP 변환 권장 (카드당 100KB 이하 목표). 새 라이브러리는 도입하지 않는다.
+- 저장 위치 제안: `public/cards/<종류>/` (정적 파일로 빌드에 포함). 이미지 도입 시 파일 크기 관리를 위해 WebP 변환 권장 (카드당 100KB 이하 목표). 새 라이브러리는 도입하지 않는다.
 - 일관성 팁: 같은 종류 카드는 한 번에 같은 시드/스타일 참조(레퍼런스 이미지)를 고정하고 프레임은 코드(CSS)로 씌운다.
