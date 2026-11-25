@@ -1,5 +1,6 @@
-# 새 기술스택(루트 npm workspaces: packages/* 와 옮긴 게임) 품질 게이트. 타입체크·린트·테스트·빌드·iPhone 화면 확인.
-# 게임을 옮기면 아래 두 paths 에 games/<slug>/** 를 더하고 그 게임의 ci-<slug>.yml 은 지운다.
+# 새 기술스택(루트 npm workspaces: packages/* 와 15개 게임) 품질 게이트.
+# check: 타입체크·린트·테스트·빌드 한 번. e2e: workspace 마다 따로(병렬) iPhone 화면 확인 — 순서대로 돌리면 20분을 넘는다.
+# 게임을 더하면 아래 두 paths 와 e2e matrix 에 넣는다.
 name: CI workspace
 
 on:
@@ -16,7 +17,7 @@ concurrency:
 jobs:
   check:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -26,12 +27,47 @@ jobs:
           cache-dependency-path: package-lock.json
       - run: npm ci
       - run: npm run check
+
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        workspace:
+          - packages/example
+          - games/crease
+          - games/doubleagent
+          - games/election
+          - games/eleven
+          - games/hearsay
+          - games/lastgrain
+          - games/lightcone
+          - games/magicacademy
+          - games/neoterra
+          - games/proxymind
+          - games/retrocause
+          - games/rootbound
+          - games/sightline
+          - games/smilepark
+          - games/tesseract
+    name: e2e ${{ matrix.workspace }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci
+      - name: 빌드
+        run: npm run build -w ${{ matrix.workspace }}
       - name: iPhone 화면 확인(WebKit)
-        run: npx playwright install --with-deps webkit && npm run e2e
+        run: npx playwright install --with-deps webkit && npm run e2e -w ${{ matrix.workspace }}
       - name: 화면 캡처 보관
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: shots
-          path: '*/*/shots/*.png'
+          name: shots-${{ strategy.job-index }}
+          path: ${{ matrix.workspace }}/shots/*.png
           if-no-files-found: ignore
