@@ -1,0 +1,838 @@
+@import '@gamehub/ui/theme.css';
+
+/* =========================================================
+   유세 대작전 — "개표방송 × 인쇄 보드게임"
+   라이트: 크라프트지 보드 / 다크: 개표방송 스튜디오 네이비. 테마는 :root[data-theme] (theme.ts)
+   게임 색 토큰(--bg, --b, --r, --hl …)을 정하고 공통 화면 색(--gh-*)을 그 값으로 입힌다.
+   게임 전용 클래스는 Tailwind 유틸리티와 겹치지 않게 el- 를 붙인다.
+   ========================================================= */
+:root {
+  --bg: #f2ede2;
+  --surface: #fffdf8;
+  --chip: #e5ddcc;
+  --tx: #1a1c24;
+  --mu: #4a463f;
+  --mu2: #615c52;
+  --bd: #d6ccb8;
+  --bd-soft: #ece4d3;
+  --b: #1f4fbf;
+  --b-tx: #1f4fbf;
+  --b-soft: #e7edfb;
+  --r: #c73a2f;
+  --r-tx: #b2322a;
+  --r-soft: #f9e7e3;
+  --hl: #e8a317;
+  /* 테두리·외곽선용 (배경 대비 3:1 이상) */
+  --hl-line: #a87508;
+  --hl-soft: rgba(232, 163, 23, 0.24);
+  --on-hl: #1a1c24;
+  --on-token: #ffffff;
+  --empty-slot: #c4b9a2;
+  --seg-none: #ddd3c0;
+  --lift: #d6ccb8;
+  --ink: #1a1c24;
+  --on-ink: #fffdf8;
+  --stamp: #c73a2f;
+  color-scheme: light;
+
+  --gh-bg: var(--bg);
+  --gh-surface: var(--surface);
+  --gh-raised: var(--chip);
+  --gh-line: var(--bd);
+  --gh-text: var(--tx);
+  --gh-muted: var(--mu);
+  --gh-primary: var(--ink);
+  --gh-on-primary: var(--on-ink);
+  --gh-danger: var(--r-tx);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --bg: #0e1320;
+    --surface: #172036;
+    --chip: #1d2842;
+    --tx: #eef0f5;
+    --mu: #c4cbdb;
+    --mu2: #a3acc0;
+    --bd: #2a3654;
+    --bd-soft: #222c45;
+    --b: #6e9bff;
+    --b-tx: #8fb1ff;
+    --b-soft: #1a2a52;
+    --r: #ff7a6b;
+    --r-tx: #ff9d91;
+    --r-soft: #3a1f28;
+    --hl: #f5b731;
+    --hl-line: #f5b731;
+    --hl-soft: rgba(245, 183, 49, 0.2);
+    --on-hl: #0e1320;
+    --on-token: #0e1320;
+    --empty-slot: #3e4b6b;
+    --seg-none: #2a3654;
+    --lift: #070a12;
+    --ink: #f5b731;
+    --on-ink: #0e1320;
+    --stamp: #ff7a6b;
+    color-scheme: dark;
+  }
+}
+:root[data-theme='dark'] {
+  --bg: #0e1320;
+  --surface: #172036;
+  --chip: #1d2842;
+  --tx: #eef0f5;
+  --mu: #c4cbdb;
+  --mu2: #a3acc0;
+  --bd: #2a3654;
+  --bd-soft: #222c45;
+  --b: #6e9bff;
+  --b-tx: #8fb1ff;
+  --b-soft: #1a2a52;
+  --r: #ff7a6b;
+  --r-tx: #ff9d91;
+  --r-soft: #3a1f28;
+  --hl: #f5b731;
+  --hl-line: #f5b731;
+  --hl-soft: rgba(245, 183, 49, 0.2);
+  --on-hl: #0e1320;
+  --on-token: #0e1320;
+  --empty-slot: #3e4b6b;
+  --seg-none: #2a3654;
+  --lift: #070a12;
+  --ink: #f5b731;
+  --on-ink: #0e1320;
+  --stamp: #ff7a6b;
+  color-scheme: dark;
+}
+
+.el-disp {
+  font-family: 'Black Han Sans', 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', sans-serif;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+}
+
+/* 후보 모양 단서: 파랑 원 / 빨강 네모 */
+.el-mark {
+  display: inline-block;
+  width: 0.8em;
+  height: 0.8em;
+  flex-shrink: 0;
+}
+.el-mark.el-m0 {
+  background: var(--b);
+  border-radius: 50%;
+}
+.el-mark.el-m1 {
+  background: var(--r);
+  border-radius: 2px;
+}
+
+/* ---------- 처음 화면 ---------- */
+.el-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 2px;
+}
+.el-hero-emblem {
+  width: 104px;
+  height: 104px;
+  color: var(--mu2);
+}
+.el-hero-emblem .el-em-b {
+  fill: var(--b);
+}
+.el-hero-emblem .el-em-r {
+  fill: var(--r);
+}
+.el-hero-emblem .el-em-stamp {
+  stroke: var(--stamp);
+}
+.el-hero-kicker {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.3em;
+  color: var(--mu2);
+}
+.el-hero-title {
+  margin: 0;
+  font-size: 44px;
+  line-height: 1.1;
+}
+.el-hero-intro {
+  margin: 4px 0 0;
+  color: var(--mu);
+  font-size: 14px;
+}
+
+/* ---------- 선거인단 줄다리기 바 (35칸) ---------- */
+.el-tug-bar {
+  position: relative;
+  display: flex;
+  gap: 2px;
+  border-radius: 4px;
+  overflow: hidden;
+}
+.el-seg {
+  flex: 1;
+  height: 10px;
+  background: var(--seg-none);
+  transition: background-color 0.35s;
+}
+.el-tug-bar.lg .el-seg {
+  height: 16px;
+}
+.el-seg.s0 {
+  background: var(--b);
+}
+.el-seg.s1 {
+  background: var(--r);
+}
+.el-tug-mid {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--tx);
+}
+.el-tug-legend {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--mu2);
+}
+
+/* ---------- 차례 단계 칩 ---------- */
+.el-steps {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+.el-steps.single {
+  grid-template-columns: minmax(0, 1fr);
+}
+.el-steps li {
+  text-align: center;
+  padding: 4px 0;
+  border-radius: 10px;
+  background: var(--chip);
+  color: var(--mu);
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+  transition: background-color 0.2s, color 0.2s;
+}
+.el-steps li.on {
+  background: var(--tx);
+  color: var(--bg);
+}
+.el-steps li.done {
+  color: var(--mu2);
+}
+
+/* ---------- 보드 ---------- */
+/* 보드 자리(③ 안): 가로·세로 중 짧은 쪽에 맞춘 정사각형 */
+.el-stage {
+  width: 100%;
+  height: 100%;
+  container-type: size;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.el-board {
+  position: relative;
+  width: min(100cqw, 100cqh);
+  aspect-ratio: 1;
+  container-type: inline-size;
+  user-select: none;
+  -webkit-user-select: none;
+  color: var(--tx);
+}
+.el-ring {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.el-ring-road {
+  fill: none;
+  stroke: var(--chip);
+  stroke-width: 3;
+}
+.el-ring-line {
+  fill: none;
+  stroke: var(--empty-slot);
+  stroke-width: 0.5;
+  stroke-dasharray: 1.6 2.2;
+}
+.el-ring-arrow {
+  fill: var(--mu2);
+}
+.el-board-center {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6cqw;
+  color: var(--mu);
+  font-size: clamp(11px, 3.3cqw, 15px);
+  line-height: 1.25;
+  text-align: center;
+  pointer-events: none;
+  white-space: nowrap;
+}
+.el-gauge {
+  width: 18cqw;
+  height: 18cqw;
+}
+.el-gauge-seg {
+  fill: none;
+  stroke: var(--seg-none);
+  stroke-width: 8;
+  transition: stroke 0.35s;
+}
+.el-gauge-seg.on {
+  stroke: var(--tx);
+}
+.el-gauge-num {
+  fill: var(--tx);
+  font-family: 'Black Han Sans', 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+  font-size: 18px;
+}
+.el-center-label {
+  font-weight: 700;
+}
+.el-center-big {
+  font-size: 2em;
+  line-height: 1;
+  color: var(--tx);
+}
+.el-center-mix {
+  display: flex;
+  align-items: center;
+  gap: 0.35em;
+  font-weight: 700;
+}
+
+.el-hole {
+  position: absolute;
+  width: 29%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6cqw;
+  padding: 2cqw 1.5cqw 2.2cqw;
+  background: var(--surface);
+  border: 1px solid var(--bd);
+  border-radius: 4cqw;
+  color: var(--tx);
+  font-size: clamp(10px, 3.6cqw, 17px);
+  line-height: 1.2;
+  text-align: center;
+  cursor: default;
+  box-shadow: 0 0.9cqw 0 var(--lift);
+  transition: border-color 0.2s, box-shadow 0.2s, background-color 0.3s, opacity 0.2s;
+}
+.el-hole:focus-visible {
+  outline: 3px solid var(--hl-line);
+  outline-offset: 2px;
+}
+.el-hole.lead-0 {
+  background: var(--b-soft);
+}
+.el-hole.lead-1 {
+  background: var(--r-soft);
+}
+.el-ribbon {
+  position: absolute;
+  left: 12%;
+  right: 12%;
+  top: -1px;
+  height: 1.5cqw;
+  min-height: 4px;
+  border-radius: 0 0 4px 4px;
+  background: transparent;
+  transition: background-color 0.3s;
+}
+.lead-0 .el-ribbon {
+  background: var(--b);
+}
+.lead-1 .el-ribbon {
+  background: var(--r);
+}
+.el-hole.can {
+  cursor: pointer;
+  border: 2px solid var(--hl);
+  box-shadow: 0 0 0 1.2cqw var(--hl-soft), 0 0.9cqw 0 var(--lift);
+}
+.el-board.acting .el-hole:not(.can) {
+  opacity: 0.55;
+}
+.el-hole.can:active {
+  transform: translate(-50%, -50%) scale(0.96);
+}
+.el-hole.nx {
+  border: 2px dashed var(--hl-line);
+}
+.el-hole-head {
+  display: flex;
+  align-items: center;
+  gap: 0.3em;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.el-hole-letter {
+  font-size: 1.1em;
+}
+.el-hole-sub {
+  display: flex;
+  align-items: center;
+  gap: 0.35em;
+  font-size: 0.78em;
+  color: var(--mu);
+  white-space: nowrap;
+}
+.el-hole-sub b {
+  color: var(--tx);
+}
+.el-hole-sub .el-mark {
+  width: 0.85em;
+  height: 0.85em;
+}
+.el-slots {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 1.1cqw;
+  width: 24cqw;
+  margin-top: 0.4cqw;
+}
+.el-tok {
+  --size: 4.8cqw;
+  width: var(--size);
+  height: var(--size);
+  border-radius: 50%;
+  border: 1.5px dashed var(--empty-slot);
+  font-size: calc(var(--size) * 0.62);
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--on-token);
+}
+.el-tok.t0,
+.el-tok.t1 {
+  border: 0;
+  box-shadow: inset 0 calc(var(--size) * -0.12) 0 rgba(0, 0, 0, 0.25);
+}
+.el-tok.t0 {
+  background: var(--b);
+}
+.el-tok.t1 {
+  background: var(--r);
+  border-radius: 22%;
+}
+.el-full-tag {
+  position: absolute;
+  right: -2.4cqw;
+  top: -2.6cqw;
+  transform: rotate(10deg);
+  font-size: 0.72em;
+  padding: 0.1em 0.45em;
+  border: 2px solid var(--tx);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--tx);
+}
+.el-next-tag {
+  position: absolute;
+  top: -0.95em;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--hl);
+  color: var(--on-hl);
+  font-size: 0.72em;
+  font-weight: 700;
+  padding: 0.1em 0.7em;
+  border-radius: 99px;
+  white-space: nowrap;
+  display: none;
+}
+.el-hole.nx .el-next-tag {
+  display: block;
+}
+.el-hole.drp {
+  animation: el-pop 0.7s ease-out;
+}
+@keyframes el-pop {
+  0% {
+    box-shadow: 0 0 0 2.4cqw var(--hl-soft), 0 0 0 0.8cqw var(--hl);
+    scale: 1.08;
+  }
+  100% {
+    scale: 1;
+  }
+}
+
+/* 버스: 보드 중심에 놓인 크기 0의 축을 회전시켜 원을 따라 이동 */
+.el-bus-orbit {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: transform 0.6s ease-in-out, opacity 0.25s, visibility 0s linear 0.25s;
+}
+.el-bus-orbit.on {
+  opacity: 1;
+  visibility: visible;
+  transition: transform 0.6s ease-in-out, opacity 0.25s, visibility 0s;
+}
+.el-bus-icon {
+  position: absolute;
+  left: 0;
+  top: -16.5cqw;
+  translate: -50% -50%;
+  width: 12.5cqw;
+  height: 8.6cqw;
+  border-radius: 2.6cqw;
+  background: var(--hl);
+  color: var(--on-hl);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 0 1cqw var(--bg), 0 1.6cqw 3cqw rgba(0, 0, 0, 0.35);
+  transition: transform 0.6s ease-in-out;
+}
+.el-bus-icon svg {
+  width: 72%;
+  height: auto;
+}
+.el-bus-count {
+  position: absolute;
+  right: -2.4cqw;
+  top: -2.4cqw;
+  min-width: 5cqw;
+  height: 5cqw;
+  padding: 0 1cqw;
+  border-radius: 99px;
+  background: var(--tx);
+  color: var(--bg);
+  font-size: 3cqw;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ---------- 속보(최근 진행) ---------- */
+.el-ticker {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  margin: 0 12px 6px;
+  padding: 0 10px;
+  border: 1px solid var(--bd);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--tx);
+  text-align: left;
+}
+.el-ticker-tag {
+  flex-shrink: 0;
+  padding: 1px 8px;
+  border-radius: 6px;
+  background: var(--r);
+  color: #fff;
+  font-size: 13px;
+}
+.el-ticker-text {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+}
+
+/* ---------- ⑤ 행동 ---------- */
+.el-hint {
+  margin: 0;
+  display: flex;
+  min-height: 48px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  background: var(--bg);
+  color: var(--mu);
+  font-size: 14px;
+  text-align: center;
+}
+.el-drop {
+  display: flex;
+  min-height: 52px;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border-radius: 14px;
+  border: 2px solid transparent;
+  font-weight: 700;
+  font-size: 16px;
+}
+.el-drop.d0 {
+  background: var(--b-soft);
+  color: var(--b-tx);
+  border-color: var(--b);
+}
+.el-drop.d1 {
+  background: var(--r-soft);
+  color: var(--r-tx);
+  border-color: var(--r);
+}
+.el-drop .el-mark {
+  width: 1.1em;
+  height: 1.1em;
+}
+.el-drop-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1.2;
+}
+.el-drop-text small {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--mu);
+}
+
+/* ---------- 규칙 ---------- */
+.el-rules {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: el-rule;
+}
+.el-rules li {
+  position: relative;
+  padding: 6px 0 6px 30px;
+  font-size: 14px;
+  color: var(--mu);
+  counter-increment: el-rule;
+}
+.el-rules li::before {
+  content: counter(el-rule);
+  position: absolute;
+  left: 0;
+  top: 7px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--chip);
+  color: var(--tx);
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.el-rules b {
+  color: var(--tx);
+}
+
+/* ---------- 개표 결과 ---------- */
+.el-result {
+  display: grid;
+  gap: 14px;
+}
+.el-result-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.el-kicker {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.25em;
+  color: var(--mu2);
+  margin-bottom: 4px;
+}
+.el-result-title {
+  margin: 0;
+  font-size: 34px;
+  line-height: 1.08;
+}
+.el-result-title.w0 {
+  color: var(--b-tx);
+}
+.el-result-title.w1 {
+  color: var(--r-tx);
+}
+.el-stamp {
+  width: 84px;
+  height: 84px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: 5px solid var(--stamp);
+  color: var(--stamp);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26px;
+  transform: rotate(-12deg);
+  animation: el-stamp 0.5s 0.25s cubic-bezier(0.3, 1.6, 0.5, 1) both;
+}
+.el-stamp.w0 {
+  border-color: var(--b);
+  color: var(--b-tx);
+}
+.el-stamp.w1 {
+  border-color: var(--r);
+  color: var(--r-tx);
+}
+.el-stamp.tie {
+  font-size: 20px;
+  border-color: var(--mu2);
+  color: var(--mu2);
+}
+@keyframes el-stamp {
+  from {
+    transform: rotate(-12deg) scale(2.2);
+    opacity: 0;
+  }
+}
+.el-score-cards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.el-pcard {
+  border-radius: 12px;
+  padding: 7px 10px 8px;
+  min-width: 0;
+  outline: 2.5px solid transparent;
+}
+.el-pcard.p0 {
+  background: var(--b-soft);
+}
+.el-pcard.p1 {
+  background: var(--r-soft);
+}
+.el-pcard.win.p0 {
+  outline-color: var(--b);
+}
+.el-pcard.win.p1 {
+  outline-color: var(--r);
+}
+.el-pname {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 700;
+  min-width: 0;
+}
+.p0 .el-pname {
+  color: var(--b-tx);
+}
+.p1 .el-pname {
+  color: var(--r-tx);
+}
+.el-pscore-row {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+.el-pscore {
+  font-size: 40px;
+  line-height: 1.05;
+}
+.el-pscore-unit {
+  font-size: 14px;
+  color: var(--mu);
+}
+.el-tie-note {
+  margin: -4px 0 0;
+  font-size: 14px;
+  color: var(--mu);
+  text-align: center;
+}
+.el-dist {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.el-dist li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 40px;
+  border-bottom: 1px solid var(--bd-soft);
+}
+.el-dist-letter {
+  width: 22px;
+  font-size: 16px;
+}
+.el-dist-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 500;
+}
+.el-dist-tally {
+  color: var(--mu2);
+  font-size: 12px;
+  margin-left: 6px;
+}
+.el-dist-who {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  width: 64px;
+  font-size: 14px;
+  font-weight: 700;
+}
+.el-dist-who.w0 {
+  color: var(--b-tx);
+}
+.el-dist-who.w1 {
+  color: var(--r-tx);
+}
+.el-dist-who.wn {
+  color: var(--mu2);
+}
+.el-dist-cap {
+  width: 28px;
+  text-align: right;
+  font-size: 18px;
+}
+
+/* ---------- 모션 줄이기 ---------- */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+  /* 움직임 대신 마지막으로 놓인 권역을 정적으로 표시 */
+  .el-hole.drp {
+    box-shadow: 0 0 0 3px var(--hl-line);
+  }
+}
