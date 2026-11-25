@@ -1,6 +1,6 @@
 ---
 name: commit-push
-description: 작업 완료 후 변경 사항을 한국어 커밋 메시지로 커밋하고 https://github.com/gillettef/Rootbound.git 의 dev 브랜치로 푸시한다. 작업 단위가 끝날 때마다 반드시 실행한다.
+description: 작업 완료 후 변경 사항을 한국어 커밋 메시지로 커밋하고 https://github.com/gillettef/GameHub.git(`games/rootbound/`) 의 dev 브랜치로 푸시한다. 작업 단위가 끝날 때마다 반드시 실행한다.
 ---
 
 # /commit-push — 한국어 커밋 후 푸시
@@ -43,7 +43,7 @@ description: 작업 완료 후 변경 사항을 한국어 커밋 메시지로 �
    ```
    git push origin dev
    ```
-   - 원격이 없으면: `git remote add origin https://github.com/gillettef/Rootbound.git`
+   - 원격이 없으면: `git remote add origin https://github.com/gillettef/GameHub.git(`games/rootbound/`)`
    - 첫 푸시라면: `git push -u origin dev`
    - 거부(rejected)되면 `git pull --rebase origin dev` 후 다시 푸시한다. 충돌은 사용자에게 알린다.
 

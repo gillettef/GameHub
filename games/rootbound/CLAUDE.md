@@ -23,7 +23,7 @@
 
 1. **작업이 완료되면 반드시 `git commit` & `git push`를 진행한다.** 기능 하나, 버그 수정 하나 등 의미 있는 단위가 끝날 때마다 커밋하고 푸시한다. `/commit-push` 스킬을 사용한다.
 2. **commit 메시지는 가급적 한국어로 작성한다.** 제목은 `<타입>: <요약>` 형식 (예: `기능: 마켓 화면 (F008)`, `수정: 칡 거리 계산`). 관련 F-ID가 있으면 괄호로 덧붙인다.
-3. **push 대상 repo는 `https://github.com/gillettef/Rootbound.git` 이다**(2026-10-07 AstralTab 에서 이름 변경). 브랜치는 `dev`를 기본으로 사용한다. **일상 작업은 `dev`(기본 브랜치)에 커밋·푸시한다.** 작업 시작 전 현재 브랜치가 `dev`인지 확인한다. `dev` 푸시는 CI(`.github/workflows/ci.yml`)만 돌고, `main` 병합이 곧 운영 배포다.
+3. **push 대상 repo는 `https://github.com/gillettef/GameHub.git` 의 `games/rootbound/` (모노레포) 이다**. 옛 개별 저장소(`gillettef/Rootbound`, 2026-10-07 AstralTab 에서 이름 변경)는 2026-11-25 삭제했다. 브랜치는 `dev`를 기본으로 사용한다. **일상 작업은 `dev`(기본 브랜치)에 커밋·푸시한다.** 작업 시작 전 현재 브랜치가 `dev`인지 확인한다. `dev` 푸시는 CI(GameHub `.github/workflows/ci-rootbound.yml`)만 돌고, `main` 병합이 곧 운영 배포다.
 4. **이 서비스는 DB를 사용하지 않는다.** DB·Redis·ORM을 도입하지 않는다. 아래 "DB 없는 상태 관리" 참고.
 5. 로컬 테스트 시 서버를 포그라운드로 직접 띄우지 않는다(터미널이 블로킹됨). 반드시 `/dev`로 시작하고 `/dev-stop`으로 종료한다. `scripts/dev.ps1` 출력을 `| grep` 등 다른 프로세스로 파이프하지 않는다.
 6. 포트 3001은 이 PC에서 사용자의 다른 프로젝트(Eleven)가 쓴다. Rootbound 서버는 3101을 쓰며, 3001을 점유한 프로세스는 절대 종료하지 않는다.
@@ -66,7 +66,6 @@
 - **AWS 인프라**: 리전 서울(`ap-northeast-2`), EC2 **t4g.nano** (ARM, 메모리 0.5GB, 스왑 2GB) Amazon Linux 2023, Elastic IP(`.dev/aws-public-ip.txt`, git 제외), 게임 15개가 허브 하나를 함께 쓴다. SSH 키(`.dev/astraltab-key.pem`)와 인스턴스 id(`.dev/aws-instance-id.txt`)도 `.dev/`(gitignore)에 있다. 시크릿 정본은 저장소 밖 `../../aws_config.md`.
 - 스냅샷은 EC2 `~/rootbound/server/data/prod/rooms`, 판 요약·웹 성능은 `.../prod/stats`. 집계는 로컬에서 `npx tsx server/scripts/stats.ts <내려받은 DATA_DIR>`.
 - 단독 실행 환경 변수: `APP_ENV`, `PORT`, `HOST`, `CLIENT_DIST`, `DATA_DIR` (`server/src/index.ts` 주석). 허브 안에서는 `hub-entry.mjs` 가 정한다.
-- `scripts/aws/provision.sh`·`units.sh` 는 예전 단독 운영(새 인스턴스 준비) 기록이다. 지금 운영에는 쓰지 않는다.
 
 ---
 
@@ -92,7 +91,7 @@ AstralTab/                 # 저장소 폴더 이름은 아직 옛 이름
 ├── DESIGN.md
 ├── package.json          # npm workspaces: shared, server, client (이름 rootbound)
 ├── notes/Rules.md        # 규칙 정본
-├── scripts/              # common.ps1, dev.ps1, dev-stop.ps1, deploy-aws.ps1, card-thumbs.mjs(카드 그림 썸네일), aws/(provision.sh, units.sh, deploy-remote.sh, swap.sh)
+├── scripts/              # common.ps1, dev.ps1, dev-stop.ps1, deploy-aws.ps1, card-thumbs.mjs(카드 그림 썸네일), aws/(deploy-remote.sh, swap.sh)
 ├── shared/
 │   ├── fixtures/         # specs.json(카드 문구), scenario.json(AI 테스트가 재생하는 판 기록)
 │   ├── scripts/          # lab/(v3 밸런스 시뮬레이터), write-fixtures.ts

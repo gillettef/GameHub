@@ -1,13 +1,13 @@
 ---
 name: commit-push
-description: Neoterra 작업 단위가 끝났을 때 변경 사항을 한국어 커밋 메시지로 커밋하고 https://github.com/gillettef/Neoterra.git 의 dev 로 푸시한다. "커밋해 줘/푸시해 줘/commit-push" 요청 시, 또는 기능·수정 하나가 끝났을 때 사용.
+description: Neoterra 작업 단위가 끝났을 때 변경 사항을 한국어 커밋 메시지로 커밋하고 https://github.com/gillettef/GameHub.git(`games/neoterra/`) 의 dev 로 푸시한다. "커밋해 줘/푸시해 줘/commit-push" 요청 시, 또는 기능·수정 하나가 끝났을 때 사용.
 ---
 
 # /commit-push — 한국어 커밋 후 푸시
 
 ## 0. 저장소 준비 확인
 - `git rev-parse --is-inside-work-tree` 가 실패하면 저장소가 없다. 사용자에게 `git init` 과 GitHub 저장소(`gillettef/Neoterra`) 생성 여부를 먼저 묻는다. 묻지 않고 원격 저장소를 만들지 않는다.
-- 원격이 없으면 `git remote add origin https://github.com/gillettef/Neoterra.git`.
+- 원격은 GameHub 모노레포(`https://github.com/gillettef/GameHub.git`, `origin`)다. 이 게임은 `games/neoterra/` 에 있고 커밋·푸시는 저장소 루트 기준이다(옛 개별 저장소 `gillettef/Neoterra` 는 2026-11-25 삭제).
 - `git config --get credential.https://github.com.username` 이 `gillettef` 인지 확인한다. 비어 있으면 `git config credential.https://github.com.username gillettef` 로 설정한다. 다른 GitHub 계정으로 푸시하지 않는다.
 - `git branch --show-current` 가 `dev` 여야 한다. `main` 이면 커밋하지 말고 `git switch dev` 후 진행한다(변경 사항은 그대로 따라온다).
 

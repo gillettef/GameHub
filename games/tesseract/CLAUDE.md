@@ -5,15 +5,15 @@
 ## 필수 작업 규칙
 
 - **단계별 작업이 끝나면 반드시 git commit & push를 진행한다.** (`/commit-push` 스킬 사용)
-  - 원격: `origin` = https://github.com/gillettef/Tesseract.git, 기본 브랜치 `dev`
-  - **일상 작업은 `dev`(기본 브랜치)에 커밋·푸시한다. `main`(운영 배포)에는 직접 커밋·푸시하지 않고**, 사용자가 요청할 때만 `dev` → `main` PR(`gh pr create --base main --head dev`)로 병합한다. 작업 시작 전 현재 브랜치가 `dev`인지 확인한다. `dev` 푸시는 CI(`.github/workflows/ci.yml`)만 돌고, `main` 병합이 곧 운영 배포다.
+  - 원격: `origin` = https://github.com/gillettef/GameHub.git 의 `games/tesseract/` (모노레포, 옛 개별 저장소 `gillettef/Tesseract` 는 2026-11-25 삭제), 기본 브랜치 `dev`
+  - **일상 작업은 `dev`(기본 브랜치)에 커밋·푸시한다. `main`(운영 배포)에는 직접 커밋·푸시하지 않고**, 사용자가 요청할 때만 `dev` → `main` PR(`gh pr create --base main --head dev`)로 병합한다. 작업 시작 전 현재 브랜치가 `dev`인지 확인한다. `dev` 푸시는 CI(GameHub `.github/workflows/ci-tesseract.yml`)만 돌고, `main` 병합이 곧 운영 배포다.
   - 테스트·타입 체크가 실패한 상태로는 커밋하지 않는다. 실패하면 고치거나, 사용자에게 알리고 지시를 받는다.
 - **commit 메시지는 가급적 한국어로 작성한다.** 형식은 `/commit-push` 스킬 참고.
 - 사용자와의 대화, 문서, 코드 주석도 한국어를 기본으로 한다. 식별자(변수·함수·파일명)는 영어.
 
 ## 규칙의 단일 출처
 
-- 게임 규칙은 **`docs/rule.md`**(현재 v0.8)가 유일한 기준이다. `docs/rule_v0.*.md`는 과거 버전 기록이므로 구현에 쓰지 않는다.
+- 게임 규칙은 **`docs/rule.md`**(현재 v0.8)가 유일한 기준이다.
 - 규칙이 모호하거나 빠진 부분은 **추측해서 구현하지 않는다.** 사용자에게 묻고, 결정된 내용은 사용자 동의를 받아 `docs/rule.md`에 반영한다.
 - 구현 중 규칙 자체의 문제(밸런스, 모순)를 발견하면 코드로 몰래 고치지 말고 사용자에게 보고한다.
 - 규칙을 구현하거나 바꿀 때는 `/implement-rule` 스킬 절차를 따른다.
@@ -117,7 +117,7 @@ npm start          # 빌드 결과로 서버 실행 (scripts/aws/serve.mjs, EC2�
 - **수동 배포**(push 없이): `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/deploy-aws.ps1`. SSH 키·IP는 `.dev/astraltab-key.pem`, `.dev/aws-public-ip.txt`(git 제외), 없으면 `../Rootbound/.dev/`의 것을 쓴다.
 - 서버 로그: `ssh -i ../Rootbound/.dev/astraltab-key.pem ec2-user@54.116.67.196 "sudo journalctl -u tesseract -n 100"`
 - SSH(22)는 관리자 IP만 열려 있어 워크플로가 러너 IP를 임시로 열었다 닫는다. 저장소 시크릿: AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY / AWS_REGION / AWS_SECURITY_GROUP_ID / EC2_HOST / EC2_HOST_KEY / EC2_SSH_PRIVATE_KEY (다른 게임 저장소와 같은 값).
-- 서버 준비(완료, 2026-10-23): `scripts/aws/provision.sh` → `scripts/aws/units.sh`, 보안 그룹 TCP 8092 인바운드 추가.
+- 서버 준비(완료, 2026-10-23): 보안 그룹 TCP 8092 인바운드 추가.
 
 ## 서브에이전트
 

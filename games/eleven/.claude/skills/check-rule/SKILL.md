@@ -9,9 +9,7 @@ disable-model-invocation: false
 ---
 
 Answer the following rules question about the Eleven board game, using
-`notes/Eleven_Rulebook.md` as the sole source of truth (double-check against
-`notes/Eleven_Rulebook_KOR.pdf` only if the markdown transcription looks ambiguous
-or incomplete for this question):
+`notes/Eleven_Rulebook.md` as the sole source of truth:
 
 $question
 
