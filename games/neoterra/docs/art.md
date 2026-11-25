@@ -10,25 +10,25 @@
 
 | 경로 | 내용 |
 |---|---|
-| `src/ui/styles/tokens.css` | `:root` 색·간격·모양·글꼴·그림자 변수 |
-| `src/ui/styles/motion.css` | keyframes 와 `.anim-*` 유틸 클래스 |
-| `src/ui/assets/bg-sky.svg` | 앱 배경. viewBox 430×932, `preserveAspectRatio="xMidYMid slice"` |
-| `src/ui/assets/landing/{sky,planet,ground}.webp` | 홈 히어로 회화 3장(800×720 = viewBox 400×360 의 2배). 하늘(불투명) / 고리 행성·달(투명, 중심 (262,118) r64) / 지평선·생물발광 계곡·정착지 불빛(투명, 지평선 꼭대기 (200,244)) |
-| `src/ui/components/LandingHero.tsx` | 홈 히어로 인라인 SVG — 위 세 장을 `<image>` 로 깔고 위성·별똥별·안개·테크 웹·착륙선·포자를 얹는다. 모션은 `LandingHero.module.css` |
-| `src/ui/assets/scene/era{1..4}.webp` | 식민지 풍경 배경 840×980(1 착륙지 노을 · 2 정착촌 오로라 밤 · 3 궤도 도시 · 4 결실 금빛 새벽). 빈 터(돌 테두리 원판)를 자리 좌표에 구워 둠 |
-| `src/ui/assets/scene/yard.webp` | 개척지 앞마당 840×1400(불투명, 약 142KB): 풍경 아래 UI 영역(자원 트레이·구슬·트랙·카드 자리·헌장) 바탕. 어두운 레골리스 땅·지층 띠·가장자리 바위와 이끼 점·옅은 포자 안개. 맨 위 40px 은 풍경 맨 아래 줄 색(약 `#121624`)에서 시작, 맨 아래 160px 은 `--bg` 단색(마지막 줄 정확히 `#0a0f1f`) |
-| `src/ui/assets/scene/buildings.webp` | 건물 아틀라스 5열(농장·제작소·발전소·연구소·회관) × 4행(기초·Lv1~3), 칸 240×200, 땅선 y172. 발전소·회관 기초 칸은 비어 있음 |
-| `src/ui/assets/scene/units.webp` | 유닛 아틀라스 4열(경비대·기동대·포대·비행대) × 4행, 칸 220×180, 땅선 y158 |
-| `src/ui/assets/scene/legacy.webp` | 유산 기념물 5칸(0 짓는 중 비계, 1~4 완성: 금빛 오벨리스크·개척자 동상·고리 인 아치·빛나무), 칸 120×150 |
-| `src/ui/assets/scene/props.webp` | 실물 토큰 9칸 64×64: 정착민 말, 자원 5종(식량 꼬투리·생산 육각 덩이·에너지 원반·과학 결정 큐브·문화 보석), 지휘 구슬(흰), 방위 구슬(빨강), 빈 홈 |
-| `src/ui/assets/scene/layout.json` | 장면 자리 좌표(x, 땅선 base, scale). 굽는 스크립트와 `ColonyScene.tsx` 가 함께 읽는다 |
-| `src/ui/assets/techweb/map.webp` | 테크 웹 바탕 행성 지도 768×768(viewBox 384 의 2배, 중심 384,384). 방향 순서는 고정이지만 방향색은 지도에 굽지 않고 코드에서 입힘 |
-| `src/ui/components/ColonyScene.tsx` | 식민지 풍경 장면·생산 칩 띠·자원 토큰 트레이·행동 구슬 |
-| `src/ui/assets/logo.svg` | 심볼(고리 행성 + 새싹 + 세 노선 위성) + 기하학 획 워드마크 "네오테라". viewBox 324×96 |
-| `src/ui/assets/icons/*.svg` | 24×24 단색 아이콘 34종 |
-| `src/ui/assets/cards/*.svg` | 카드 프레임 15종, viewBox 250×350 |
-| `src/ui/assets/emblems/{ark,symbiont,synth}.svg` | 노선 문장 120×120 (고정 색) |
-| `src/ui/assets/emblems/era{1..4}.svg` | 시대 전환 배너 360×120 (1 착륙 · 2 정착 · 3 궤도 · 4 종료/결실) |
+| `src/client/styles/tokens.css` | `:root` 색·간격·모양·글꼴·그림자 변수 |
+| `src/client/styles/motion.css` | keyframes 와 `.anim-*` 유틸 클래스 |
+| `src/client/assets/bg-sky.svg` | 앱 배경. viewBox 430×932, `preserveAspectRatio="xMidYMid slice"` |
+| `src/client/assets/landing/{sky,planet,ground}.webp` | 홈 히어로 회화 3장(800×720 = viewBox 400×360 의 2배). 하늘(불투명) / 고리 행성·달(투명, 중심 (262,118) r64) / 지평선·생물발광 계곡·정착지 불빛(투명, 지평선 꼭대기 (200,244)) |
+| `src/client/components/LandingHero.tsx` | 홈 히어로 인라인 SVG — 위 세 장을 `<image>` 로 깔고 위성·별똥별·안개·테크 웹·착륙선·포자를 얹는다. 모션은 `LandingHero.module.css` |
+| `src/client/assets/scene/era{1..4}.webp` | 식민지 풍경 배경 840×980(1 착륙지 노을 · 2 정착촌 오로라 밤 · 3 궤도 도시 · 4 결실 금빛 새벽). 빈 터(돌 테두리 원판)를 자리 좌표에 구워 둠 |
+| `src/client/assets/scene/yard.webp` | 개척지 앞마당 840×1400(불투명, 약 142KB): 풍경 아래 UI 영역(자원 트레이·구슬·트랙·카드 자리·헌장) 바탕. 어두운 레골리스 땅·지층 띠·가장자리 바위와 이끼 점·옅은 포자 안개. 맨 위 40px 은 풍경 맨 아래 줄 색(약 `#121624`)에서 시작, 맨 아래 160px 은 `--bg` 단색(마지막 줄 정확히 `#0a0f1f`) |
+| `src/client/assets/scene/buildings.webp` | 건물 아틀라스 5열(농장·제작소·발전소·연구소·회관) × 4행(기초·Lv1~3), 칸 240×200, 땅선 y172. 발전소·회관 기초 칸은 비어 있음 |
+| `src/client/assets/scene/units.webp` | 유닛 아틀라스 4열(경비대·기동대·포대·비행대) × 4행, 칸 220×180, 땅선 y158 |
+| `src/client/assets/scene/legacy.webp` | 유산 기념물 5칸(0 짓는 중 비계, 1~4 완성: 금빛 오벨리스크·개척자 동상·고리 인 아치·빛나무), 칸 120×150 |
+| `src/client/assets/scene/props.webp` | 실물 토큰 9칸 64×64: 정착민 말, 자원 5종(식량 꼬투리·생산 육각 덩이·에너지 원반·과학 결정 큐브·문화 보석), 지휘 구슬(흰), 방위 구슬(빨강), 빈 홈 |
+| `src/client/assets/scene/layout.json` | 장면 자리 좌표(x, 땅선 base, scale). 굽는 스크립트와 `ColonyScene.tsx` 가 함께 읽는다 |
+| `src/client/assets/techweb/map.webp` | 테크 웹 바탕 행성 지도 768×768(viewBox 384 의 2배, 중심 384,384). 방향 순서는 고정이지만 방향색은 지도에 굽지 않고 코드에서 입힘 |
+| `src/client/components/ColonyScene.tsx` | 식민지 풍경 장면·생산 칩 띠·자원 토큰 트레이·행동 구슬 |
+| `src/client/assets/logo.svg` | 심볼(고리 행성 + 새싹 + 세 노선 위성) + 기하학 획 워드마크 "네오테라". viewBox 324×96 |
+| `src/client/assets/icons/*.svg` | 24×24 단색 아이콘 34종 |
+| `src/client/assets/cards/*.svg` | 카드 프레임 15종, viewBox 250×350 |
+| `src/client/assets/emblems/{ark,symbiont,synth}.svg` | 노선 문장 120×120 (고정 색) |
+| `src/client/assets/emblems/era{1..4}.svg` | 시대 전환 배너 360×120 (1 착륙 · 2 정착 · 3 궤도 · 4 종료/결실) |
 
 
 전체 SVG 약 50KB(목표 400KB 이하), 배경 약 8KB. WebP 래스터 합계 약 596KB(목표 1.5MB 이하, 장면 1장 200KB 이하).
@@ -116,7 +116,7 @@
 | `.anim-glow` | 카드 획득·노선 단계 도달 반짝임(`::after` 광채, `--accent`) | 700ms |
 | `.anim-fade` / `.anim-sheet-up` | 시트 바탕 막 / 시트 올라옴 | 200 / 320ms |
 | `.anim-toast` | 토스트 떠오름 → 머묾 → 흐려짐 | 2.2s |
-| `.anim-tick` / `.anim-delta.up·down` | 숫자 변화 튐 / `+n`·`−n` 떠오름. `src/ui/motion.tsx` 의 `<Num>` 이 붙인다 | 420 / 1100ms |
+| `.anim-tick` / `.anim-delta.up·down` | 숫자 변화 튐 / `+n`·`−n` 떠오름. `src/client/motion.tsx` 의 `<Num>` 이 붙인다 | 420 / 1100ms |
 | `.anim-turn` | 차례인 플레이어 칩 안쪽 광채 숨쉬기 | 1.8s 무한 |
 | `.anim-shine` | 주요 버튼 빛 훑기(행동을 다 쓴 차례 종료·결과 보기·이어 하기) | 2.6s 무한 |
 | `.anim-cue` | "내 차례입니다" 알림 띠 | 1.8s |
@@ -180,5 +180,5 @@ body {
 ## 미완성·타협
 
 - 워드마크는 글꼴 없이 직선·원 획으로 그렸다(어떤 기기에서도 같은 모양). 정교한 서체 로고는 아니다.
-- 카드별 일러스트는 `src/ui/assets/art/<카드 id>.svg` 134장(규칙은 `docs/art-cards.md`). 묶음별 Claude Design 캔버스: 후원자·유산 https://claude.ai/artifact/5SKiNZWKm9qxUPQGZtGGNN · 자원 팟 https://claude.ai/artifact/AZsnAoY88Ekh7RvPQE93Hf · 1·2시대 퀘스트 https://claude.ai/artifact/VwsHSrJ68MVFDsB9oiqqWU · 3시대·결실·주둔지 https://claude.ai/artifact/Xg7SY9mAJWDzcGnBebnEpH · 위성·특수 시설 https://claude.ai/artifact/RpCD7cKqhpVY3aKrZUmxXc
+- 카드별 일러스트는 `src/client/assets/art/<카드 id>.svg` 134장(규칙은 `docs/art-cards.md`). 묶음별 Claude Design 캔버스: 후원자·유산 https://claude.ai/artifact/5SKiNZWKm9qxUPQGZtGGNN · 자원 팟 https://claude.ai/artifact/AZsnAoY88Ekh7RvPQE93Hf · 1·2시대 퀘스트 https://claude.ai/artifact/VwsHSrJ68MVFDsB9oiqqWU · 3시대·결실·주둔지 https://claude.ai/artifact/Xg7SY9mAJWDzcGnBebnEpH · 위성·특수 시설 https://claude.ai/artifact/RpCD7cKqhpVY3aKrZUmxXc
 - 아이콘 34종은 1.8px 획 한 벌만 있다(채움형 변형 없음).
