@@ -253,8 +253,10 @@ export class RoomHub<S, A, V, O> {
       options: room.options,
       timers: this.timers,
       autoDelay: (i) => this.autoDelay(room, i),
-      onChange: () => {
-        room.touchedAt = this.deps.now()
+      now: () => this.deps.now(),
+      onChange: (by) => {
+        // 시계만 흐른 것은 방의 활동이 아니다(아무도 없는 방이 정리되도록)
+        if (by !== 'clock') room.touchedAt = this.deps.now()
         this.broadcast(room)
       },
     })
@@ -331,10 +333,12 @@ export class RoomHub<S, A, V, O> {
   }
 
   private send(conn: Conn, room: Room<S, A, V, O>, seat: number | null): void {
+    room.match?.refresh()
     conn.send({ t: 'room', room: this.snapshot(room, seat) })
   }
 
   private broadcast(room: Room<S, A, V, O>): void {
+    room.match?.refresh()
     for (const conn of room.conns) this.send(conn, room, this.where.get(conn)?.seat ?? null)
   }
 

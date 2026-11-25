@@ -1,0 +1,173 @@
+@import '@gamehub/ui/theme.css';
+
+/* LASTGRAIN 색: 밤 사막(갈색 바탕), 모래 보드, 파랑(선)·빨강(후) */
+:root {
+  --gh-bg: #2a1d13;
+  --gh-surface: #3b2a1c;
+  --gh-raised: #4d3826;
+  --gh-line: #5e4630;
+  --gh-text: #f3e6cc;
+  --gh-muted: #c2ab88;
+  --gh-primary: #e0ac35;
+  --gh-on-primary: #2e2116;
+  --gh-danger: #e2604c;
+  --lg-sand: #efdcb3;
+  --lg-sand-line: #c8a86e;
+  --lg-wood: #b8925a;
+  --lg-blue: #2f6db5;
+  --lg-blue-d: #1d4a80;
+  --lg-red: #b8442f;
+  --lg-red-d: #7f2a1b;
+  --lg-spring: #3f8fb3;
+  --lg-ok: #3f9b5a;
+}
+
+body {
+  background: radial-gradient(120% 60% at 50% 0%, #4a3423, var(--gh-bg) 70%) fixed;
+}
+
+/* 보드: 남는 칸에 맞는 가장 큰 정사각형 */
+.lg-board-wrap {
+  container-type: size;
+}
+.lg-board {
+  width: min(100cqw, 100cqh);
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-rows: repeat(5, minmax(0, 1fr));
+  aspect-ratio: 1;
+  background: var(--lg-wood);
+  padding: 6px;
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgb(0 0 0 / 0.4);
+}
+.lg-cell {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--lg-sand);
+  border: 1px solid var(--lg-sand-line);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+.lg-cell.home0 {
+  background: #dfe2dc;
+}
+.lg-cell.home1 {
+  background: #edd7c3;
+}
+.lg-cell .coord {
+  position: absolute;
+  left: 3px;
+  top: 1px;
+  font-size: 10px;
+  color: #8a6d42;
+}
+.lg-cell .terrain {
+  position: absolute;
+  inset: 14%;
+  pointer-events: none;
+}
+.lg-cell.target::after {
+  content: '';
+  position: absolute;
+  width: 28%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: var(--lg-ok);
+  opacity: 0.85;
+}
+.lg-cell.target.flip::after {
+  background: var(--lg-spring);
+  box-shadow: 0 0 0 4px rgb(255 255 255 / 0.75);
+}
+.lg-cell.summon-target {
+  box-shadow: inset 0 0 0 4px var(--lg-ok);
+}
+.lg-cell.attackable {
+  box-shadow: inset 0 0 0 4px var(--gh-danger);
+}
+
+/* 모래병 */
+.lg-piece {
+  position: relative;
+  aspect-ratio: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+}
+.lg-piece .disc {
+  position: absolute;
+  width: 88%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  border: 3px solid;
+}
+.lg-piece.p0 .disc {
+  background: var(--lg-blue);
+  border-color: var(--lg-blue-d);
+}
+.lg-piece.p1 .disc {
+  background: var(--lg-red);
+  border-color: var(--lg-red-d);
+}
+.lg-piece svg {
+  position: relative;
+  width: 44%;
+  height: 70%;
+  transition: transform 0.25s;
+}
+.lg-piece.lying svg {
+  transform: rotate(90deg);
+}
+.lg-piece.acted {
+  filter: saturate(0.5) brightness(0.88);
+}
+.lg-piece.selected .disc {
+  box-shadow:
+    0 0 0 4px #fff,
+    0 0 16px 4px rgb(255 255 255 / 0.7);
+}
+.lg-piece .kind {
+  position: absolute;
+  right: 0;
+  top: 0;
+  font-size: 11px;
+  font-weight: 800;
+  background: #fffaf0;
+  color: #3b2a17;
+  border-radius: 6px;
+  padding: 0 3px;
+  line-height: 1.4;
+}
+.lg-piece .sec {
+  position: absolute;
+  bottom: -1px;
+  font-size: 11px;
+  font-weight: 700;
+  background: rgb(0 0 0 / 0.6);
+  color: #fff;
+  padding: 0 4px;
+  border-radius: 6px;
+  font-variant-numeric: tabular-nums;
+}
+.lg-piece .sec.low {
+  background: var(--gh-danger);
+}
+
+.lg-count {
+  font-size: 120px;
+  font-weight: 900;
+  color: var(--gh-primary);
+  text-shadow: 0 6px 30px rgb(0 0 0 / 0.6);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lg-piece svg {
+    transition: none;
+  }
+}
