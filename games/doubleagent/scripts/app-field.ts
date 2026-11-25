@@ -3,8 +3,8 @@
  * 사람이 단순 전략으로 보통 AI를 공략할 수 있는지, AI 한 수에 걸리는 시간을 본다.
  *   npx tsx scripts/app-field.ts [--games 1000] [--players 4] [--seed 42]
  */
-import { createGame, createRng, makeAiOffer, nextRound, resolveRound, winners } from '../src/core';
-import type { GameState, PersonaKey } from '../src/core';
+import { createGame, createRng, makeAiOffer, nextRound, resolveRound, winners } from '../src/engine';
+import type { GameState, PersonaKey } from '../src/engine';
 
 declare const process: { argv: string[] };
 declare const performance: { now(): number };

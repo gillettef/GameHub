@@ -11,12 +11,12 @@ npm run typecheck
 npm run test
 npm run build
 ```
-- `package.json`에 스크립트가 없으면 CLAUDE.md "명령어" 절의 정의대로 추가하자고 먼저 알리고, 임의로 다른 명령을 만들지 않는다.
-- 빌드 후 `dist/` 용량을 확인한다 (JS gzip 기준 100KB 이하 목표).
+- 그다음 `npm run e2e` (iPhone 17 Pro 화면으로 모든 모드를 두고 `shots/*.png` 를 남긴다). 캡처를 직접 열어 본다.
+- 커밋 전에는 GameHub 루트에서 `npm run check` 와 `npm run e2e`.
 
 ## 2. 화면 확인 (가능한 경우)
 - `npm run dev -- --host` 로 띄우고 사용자에게 휴대폰에서 접속할 주소를 알려준다.
-- 브라우저 도구(built-in browser / Chrome)가 있으면 뷰포트 **375×812**, **360×640** 두 크기로 홈 → 게임 설정 → 입찰 → 결과 → 최종 화면 스크린샷을 확인한다.
+- 브라우저 도구(built-in browser / Chrome)가 있으면 뷰포트 **402×874**(iPhone 17 Pro)로 홈 → 게임 설정 → 입찰 → 결과 → 최종 화면 스크린샷을 확인한다.
 - 브라우저 도구가 없으면 코드 기반 점검(3번)만 하고 "실기기 확인 필요"라고 명시한다.
 
 ## 3. 모바일 체크리스트 (변경된 화면 대상)

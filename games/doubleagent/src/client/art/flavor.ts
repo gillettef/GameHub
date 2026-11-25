@@ -1,5 +1,5 @@
 /** 확대 카드의 분위기 문구 (UI 전용, 규칙 효과 없음). 배열 순서 = 엔진 데이터 id 순 */
-import type { Demand, EventKey, Position, Trait } from '../../core';
+import type { Demand, EventKey, Position, Trait } from '../../engine';
 
 export const PLAYER_FLAVOR: readonly string[] = [
   '관중석이 그의 이름을 먼저 외친다. 몸값만큼 시선도 비싸다.',
