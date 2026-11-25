@@ -9,7 +9,7 @@ model: inherit
 
 ## 검토 대상
 
-`src/ui/**`, `index.html`, 스타일 파일. 범위가 없으면 최근 변경 파일.
+`src/client/**`, `index.html`, 스타일 파일. 범위가 없으면 최근 변경 파일.
 
 ## 체크리스트
 
