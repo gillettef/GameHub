@@ -122,7 +122,7 @@ export class Match<S, A, V, O> {
       byBot,
     })
     for (const entry of added) this.pushLog(entry)
-    this.history.push({ seat, action, byBot })
+    if (this.def.keepHistory !== false) this.history.push({ seat, action, byBot })
     this.version++
   }
 
