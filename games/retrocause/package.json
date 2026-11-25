@@ -1,16 +1,21 @@
 {
-  "name": "retrocause-prototype",
-  "version": "0.2.0",
+  "name": "@gamehub/retrocause",
   "private": true,
-  "description": "RETROCAUSE 규칙 엔진, 봇 시뮬레이터, 웹 플레이 프로토타입 (룰북 v0.2 기준)",
+  "version": "0.0.0",
   "type": "module",
-  "engines": {
-    "node": ">=20"
-  },
+  "description": "RETROCAUSE 규칙 엔진·봇·시뮬레이터와 웹 게임(봇 대전·한 기기 돌려 하기, 온라인 대전, 관전)",
   "scripts": {
-    "test": "node --test \"prototype/test/*.test.js\"",
-    "build": "node prototype/build.mjs",
-    "sim": "node prototype/sim/run.mjs",
-    "start": "node prototype/build.mjs && node scripts/aws/serve.mjs"
+    "dev": "vite --host",
+    "build": "vite build && gamehub-build-server",
+    "start": "gamehub-serve",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "e2e": "node e2e/mobile.mjs",
+    "sim": "node --experimental-strip-types --no-warnings=ExperimentalWarning tools/sim.ts"
+  },
+  "dependencies": {
+    "@gamehub/config": "*",
+    "@gamehub/net": "*",
+    "@gamehub/ui": "*"
   }
 }

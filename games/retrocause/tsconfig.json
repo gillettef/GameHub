@@ -1,0 +1,8 @@
+{
+  "extends": "@gamehub/config/tsconfig.base.json",
+  "compilerOptions": {
+    // 엔진은 node --experimental-strip-types 로 바로 실행하므로 import 에 .ts 를 붙인다
+    "allowImportingTsExtensions": true
+  },
+  "include": ["src", "server", "test", "vite.config.ts"]
+}
