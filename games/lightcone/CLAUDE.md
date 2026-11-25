@@ -6,7 +6,7 @@
 
 - 코드가 아니라 **보드게임 디자인 문서** 프로젝트다. 산출물은 룰북, 구성물 목록, 플레이테스트 기록, 디자인 결정 로그다.
 - 모든 문서는 한국어로 쓴다. 게임 용어는 `docs/glossary.md`의 표기를 따른다(한국어 용어 + 영문 병기).
-- 디지털 프로토타입(예: 웹 시뮬레이터)은 필요할 때 `prototype/`에 따로 만든다. 룰의 기준은 항상 `rules/rulebook.md`다.
+- 디지털판(웹 게임)은 `src/`의 TypeScript·React 코드다. 룰의 기준은 항상 `rules/rulebook.md`다.
 
 ## 핵심 디자인 기둥 (변경 시 사용자 확인 필수)
 
@@ -18,29 +18,29 @@
 ## 폴더 구조
 
 ```
-Lightcone/
+games/lightcone/
 ├── CLAUDE.md
-├── docs/
-│   ├── concept.md       # 게임 개요, 핵심 경험, 열린 질문
-│   ├── decisions.md     # 디자인 결정 로그 (D-001, D-002 ...)
-│   └── glossary.md      # 공식 용어집
-├── rules/
-│   └── rulebook.md      # 룰북 초안 (규칙의 단일 기준)
-├── components/
-│   └── components.md    # 구성물 목록과 사양
+├── docs/                # concept.md(개요) · decisions.md(결정 로그 D-001…) · glossary.md(용어집)
+├── rules/rulebook.md    # 룰북 초안 (규칙의 단일 기준)
+├── components/          # 구성물 목록과 사양
 ├── playtests/           # 플레이테스트 기록 (YYYY-MM-DD-NN.md)
-├── print/               # scripts/pnp/build_pnp.py 가 만드는 출력용 PDF 위치(저장소에는 없음)
-├── prototype/           # 웹 시뮬레이터(봇 대전): src/(규칙 엔진·봇·지도), web/(화면), test/
-├── package.json         # npm test(node --test) · npm run build(→ dist/, 의존성 없음)
-├── scripts/
-│   ├── build.mjs        # prototype → dist 복사
-│   ├── pnp/             # 출력용 PDF 생성기(reportlab)
-│   ├── deploy-aws.ps1   # 수동 배포
-│   └── aws/             # EC2 준비·재시작 스크립트, 정적 서버(serve.mjs)
-└── .github/workflows/   # ci.yml(검사), deploy-aws.yml(main 병합 시 배포)
+├── src/
+│   ├── engine/          # 순수 TS 규칙: map.ts(지도·수치) · engine.ts(단계 처리·보기) · bot.ts(봇, 공개 정보만 씀)
+│   ├── def.ts           # 공통 방·진행 코드(@gamehub/net)에 엔진을 잇는 GameDef. 두 사람이 단계마다 동시에 비밀로 낸다
+│   └── client/          # React 화면: 처음, 대국(Table·Board·Hand), 기기 넘기기, 봇 실체 보기, 결과·실제 경로, 규칙 요약
+├── public/              # 아이콘·manifest
+├── server/app.ts        # 온라인 대전 서버(createRoomApp(def), WebSocket /ws)
+├── scripts/aws/hub-entry.mjs  # 허브 안 실행 진입점
+├── scripts/pnp/         # 출력용 PDF 생성기(reportlab). 결과는 print/(저장소에는 없음)
+├── test/                # vitest. legacy.test.ts 는 옛 JS 엔진과 같은 진행인지 기록(fixtures/)으로 비교한다
+└── e2e/mobile.mjs       # iPhone 17 Pro 화면 확인(Playwright WebKit)
 ```
 
-- 웹 시뮬레이터 규칙은 룰북을 따라야 한다. 룰북을 바꾸면 `prototype/src/engine.js`·`map.js`와 테스트도 함께 고친다. 화면 흐름 점검은 `?selftest` 쿼리로 한다.
+- 웹 게임 규칙은 룰북을 따라야 한다. 룰북을 바꾸면 `src/engine/engine.ts`·`map.ts`와 테스트도 함께 고친다. 규칙을 바꾸면 `legacy.test.ts` 가 깨지는 것이 정상이므로, 그때는 비교 기록을 지우고 그 사실을 결정 로그에 남긴다.
+- 엔진의 import 는 `.ts` 확장자를 붙인다. 엔진은 시간·난수를 직접 쓰지 않는다(시드·rng 는 부르는 쪽이 준다).
+- 숨길 정보: `def.ts` 의 `view` 는 좌석마다 자기 함대·컨베이어 전부와 상대의 잔상·파문 칸별 장수·남은 위장 수·공개 기록만 보낸다. 먼저 낸 행동(pending)·시드는 보내지 않는다. 관전자는 양쪽 공개 정보만 본다. 게임이 끝나면 실체·실제 경로를 공개한다.
+- 명령(GameHub 루트에서 `npm install` 후, 이 폴더에서): `npm run dev`(화면+서버) · `npm test` · `npm run e2e`(빌드 후).
+- 바로 시작 링크: `?play=bot`(나 vs 봇), `?room=ABCD`(온라인 초대). 처음 화면에서 한 기기 두 사람(차례마다 기기 넘기기), 봇끼리 관전도 고를 수 있다.
 
 ## 작업 규칙
 
@@ -56,17 +56,14 @@ Lightcone/
 - **저장소:** https://github.com/gillettef/GameHub.git 의 `games/lightcone/` (모노레포, 옛 개별 저장소 `gillettef/Lightcone` 는 2026-11-25 삭제) (기본 브랜치: `dev`)
 - **작은 작업 단위가 끝날 때마다 반드시 commit하고 push한다.** 여러 작업을 모아서 한 번에 올리지 않는다. `/commit-push` 스킬을 쓴다. (이 규칙은 커밋·푸시에 대한 사전 승인이다. 단, force push·히스토리 변경은 사용자에게 먼저 확인한다.)
 - **commit 메시지는 한국어로 쓴다.** 형식은 `/commit-push` 스킬을 따른다. (예: `규칙: 잔상 이동 단계 문장 정리`)
-- **일상 작업은 `dev`에 커밋·푸시한다. `main`(운영 배포)에는 직접 커밋·푸시하지 않고**, 사용자가 요청할 때만 `dev` → `main` PR(`gh pr create --base main --head dev`)로 병합한다. 작업 시작 전 현재 브랜치가 `dev`인지 확인한다. `dev` 푸시는 CI(GameHub `.github/workflows/ci-lightcone.yml`)만 돌고, `main` 병합이 곧 운영 배포다.
+- **일상 작업은 `dev`에 커밋·푸시한다. `main`(운영 배포)에는 직접 커밋·푸시하지 않고**, 사용자가 요청할 때만 `dev` → `main` PR(`gh pr create --base main --head dev`)로 병합한다. 작업 시작 전 현재 브랜치가 `dev`인지 확인한다. `dev` 푸시는 CI(GameHub `.github/workflows/ci-workspace.yml`)만 돌고, `main` 병합이 곧 운영 배포다.
 
 ## 배포 (AWS)
 
-- **2026-11-24부터 운영은 GameHub 허브 안에서 실행된다**(`hub/games.json` `"mode": "inproc"`, 진입점 `scripts/aws/hub-entry.mjs`). 접속은 `http://54.116.67.196/lightcone/`. 배포하면 `deploy-remote.sh`가 예전 systemd `lightcone` 서비스를 끄고 허브(`gamehub`)를 재시작한다 — 허브 안 다른 게임의 진행 중인 방도 함께 사라진다. `serve.mjs`는 로컬 단독 실행용으로 남는다. 아래의 포트·systemd 설명은 예전 단독 운영 기준이다.
-- 다른 게임(Eleven·MagicAcademy·SmilePark·DoubleAgent·Tesseract·Neoterra·Election 등)과 같은 EC2(t4g.nano, 서울) 1대를 공유한다. Lightcone의 포트는 **8099**, systemd 서비스 이름은 `lightcone`이다. 접속은 `http://54.116.67.196:8099` (HTTP만).
-- 배포 대상은 디지털 프로토타입(정적 웹앱)이다. **`package.json`이 없는 동안에는 CI 검사와 배포를 모두 건너뛴다.** 프로토타입을 만들 때는 `package.json`을 저장소 루트에 두고 `npm test`·`npm run build`(산출물 `dist/`)를 제공한다.
-- `main`에 병합되면 `.github/workflows/deploy-aws.yml`이 `npm test` → `npm run build`를 통과했을 때만 `dist`와 `scripts/aws/`(의존성 없는 정적 서버 `serve.mjs`, `deploy-remote.sh`)를 `~/lightcone`에 올리고, `deploy-remote.sh`가 systemd `lightcone`을 재시작·헬스체크한다.
-- **수동 배포**(push 없이): `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/deploy-aws.ps1`. SSH 키·IP는 `.dev/`(git 제외), 없으면 `../Rootbound/.dev/`의 것을 쓴다.
-- SSH(22)는 관리자 IP만 열려 있어 워크플로가 러너 IP를 임시로 열었다 닫는다. 저장소 시크릿: AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY / AWS_REGION / AWS_SECURITY_GROUP_ID / EC2_HOST / EC2_HOST_KEY / EC2_SSH_PRIVATE_KEY (다른 게임 저장소와 같은 값, 정본은 저장소 밖 `personal/aws_config.md`).
-- 서버 준비(완료, 2026-11-23): 보안 그룹 TCP 8099 인바운드 추가, 저장소 시크릿 7개 등록.
+- 운영은 GameHub 허브 안에서 실행된다(`hub/games.json` `"mode": "inproc"`, 진입점 `scripts/aws/hub-entry.mjs`). 접속은 `http://54.116.67.196/lightcone/`.
+- `main` 병합 때 GameHub `deploy.yml` → `deploy-lightcone.yml` → 공통 `deploy-workspace-game.yml` 이 검사·빌드를 통과한 산출물(`dist`, `server-dist`, `scripts/aws`)만 `~/lightcone` 에 올리고 허브(`gamehub`)를 재시작한다. 재시작하면 모든 게임의 진행 중인 방이 사라진다. 수동 재배포는 Actions → Deploy lightcone.
+- 온라인 대전은 공통 `@gamehub/net` 방식이다: 대기실 → 방장 시작(빈자리는 봇), 끊긴 사람의 단계는 45초 뒤 봇이 대신 낸다, 게임 중 나가면 그 자리는 봇이 이어받는다(`docs/refactor-plan.md` 9절). 판이 끝난 뒤 같은 방에서 다시 하기는 없다.
+- 예전 단독 운영(포트 8099, systemd `lightcone`, SSE API, 수동 배포 스크립트)은 2026-11-25 새 구조로 옮기며 없앴다.
 
 ## 서브에이전트
 

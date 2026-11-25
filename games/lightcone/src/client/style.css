@@ -1,0 +1,67 @@
+@import '@gamehub/ui/theme.css';
+
+/* LIGHTCONE 색: 깊은 우주 남색, 내 쪽 파랑, 상대 쪽 주황, 행성 초록, 성운 보라 */
+:root {
+  --gh-bg: #070b16;
+  --gh-surface: #0f1628;
+  --gh-raised: #1a2540;
+  --gh-line: #24304d;
+  --gh-text: #e8eef9;
+  --gh-muted: #8d9ab8;
+  --gh-primary: #57a3ff;
+  --gh-on-primary: #04101f;
+  --gh-danger: #ff7a59;
+  --lc-me: #5aa9ff;
+  --lc-opp: #ff9a4d;
+  --lc-planet: #45d19a;
+  --lc-nebula: #a98bff;
+  --lc-target: #ffe08a;
+}
+
+.lc-me { color: var(--lc-me); }
+.lc-opp { color: var(--lc-opp); }
+.lc-planet { color: var(--lc-planet); }
+
+.lc-board { width: 100%; height: 100%; }
+.lc-board .edge { stroke: #2b3a5e; stroke-width: 3; }
+.lc-board .hit { fill: transparent; }
+.lc-board .base { fill: #0d1528; stroke: #3a4a72; stroke-width: 2.5; }
+.lc-board .planet .base { fill: #0d2219; stroke: var(--lc-planet); stroke-width: 3.5; }
+.lc-board .homeMe .base { fill: #10305a; stroke: var(--lc-me); stroke-width: 4; }
+.lc-board .homeOpp .base { fill: #4a250c; stroke: var(--lc-opp); stroke-width: 4; }
+.lc-board .id { fill: var(--gh-text); font-weight: 800; font-size: 26px; text-anchor: middle; dominant-baseline: central; pointer-events: none; }
+.lc-board .sub { fill: var(--gh-muted); font-size: 13px; text-anchor: middle; pointer-events: none; }
+.lc-board .target { cursor: pointer; }
+.lc-board .target .base { stroke: var(--lc-target); stroke-width: 5; filter: drop-shadow(0 0 10px rgba(255, 224, 138, 0.75)); }
+.lc-board .chosen .base { fill: #2a2610; }
+.lc-board .badge circle { fill: var(--lc-planet); }
+.lc-board .badge.neb circle { fill: var(--lc-nebula); }
+.lc-board .badge text { fill: #06130d; font-weight: 800; font-size: 15px; text-anchor: middle; dominant-baseline: central; pointer-events: none; }
+.lc-board .arrow { stroke: var(--lc-target); stroke-width: 3; stroke-dasharray: 6 5; fill: none; opacity: 0.85; pointer-events: none; }
+
+/* 함대 말: 위치가 바뀌면 미끄러져 간다(잔상이 실체를 늦게 따라가는 것이 보이게) */
+.lc-board .tok { transition: transform 0.5s cubic-bezier(0.4, 0.1, 0.2, 1); }
+.lc-board .tok text { font-weight: 800; font-size: 15px; text-anchor: middle; dominant-baseline: central; pointer-events: none; }
+.lc-board .tok.real circle.body { fill: var(--lc-me); stroke: #dceeff; stroke-width: 2; }
+.lc-board .tok.real text { fill: #04101f; }
+.lc-board .tok.echo circle.body { fill: none; stroke: var(--lc-me); stroke-width: 2.5; stroke-dasharray: 5 4; }
+.lc-board .tok.echo text { fill: var(--lc-me); }
+.lc-board .tok.oecho circle.body { fill: rgba(255, 154, 77, 0.22); stroke: var(--lc-opp); stroke-width: 2.5; }
+.lc-board .tok.oecho text { fill: var(--lc-opp); }
+.lc-board .tok.oreal circle.body { fill: var(--lc-opp); stroke: #ffe6d1; stroke-width: 2; opacity: 0.85; }
+.lc-board .tok.oreal text { fill: #2a1200; }
+.lc-board .tok.pick { cursor: pointer; }
+.lc-board .tok:not(.pick) { pointer-events: none; }
+.lc-board .tok.sel circle.body { stroke: var(--lc-target); stroke-width: 4; }
+
+.lc-spin {
+  display: inline-block; width: 16px; height: 16px; border-radius: 50%;
+  border: 2px solid var(--gh-line); border-top-color: var(--gh-primary);
+  animation: lc-spin 0.9s linear infinite;
+}
+@keyframes lc-spin { to { transform: rotate(360deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .lc-board .tok { transition: none; }
+  .lc-spin { animation: none; }
+}
