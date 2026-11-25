@@ -3,8 +3,8 @@
  * 스타일: 평면 선화 · 축구 × 첩보. 색은 클래스(.art .l 등)로 main.css 의 --a* 토큰을 따른다.
  * 외부 이미지·폰트 없음. 데이터는 읽기만 한다.
  */
-import { GOALS, CLUBS, NEEDS, PLAYERS } from '../../core';
-import type { Demand, EventKey, Position, Trait } from '../../core';
+import { GOALS, CLUBS, NEEDS, PLAYERS } from '../../engine';
+import type { Demand, EventKey, Position, Trait } from '../../engine';
 
 type Pt = [number, number];
 interface Pose {

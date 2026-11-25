@@ -1,9 +1,9 @@
 /**
  * 종이 프로토타입 인쇄물(A4) 생성: 선수·구단·목표·이벤트 카드, 플레이어 카드, 기록지.
  *   npx tsx scripts/print-kit.ts > docs/print/kit.html   (브라우저에서 열어 인쇄)
- * 데이터는 src/core/data.ts 에서 직접 읽으므로 규칙 수치와 항상 일치한다.
+ * 데이터는 src/engine/data.ts 에서 직접 읽으므로 규칙 수치와 항상 일치한다.
  */
-import { CLUBS, EVENTS, EVENT_POOL, GOALS, NEEDS, PLAYERS, RULES, TOTAL_ROUNDS } from '../src/core';
+import { CLUBS, EVENTS, EVENT_POOL, GOALS, NEEDS, PLAYERS, RULES, TOTAL_ROUNDS } from '../src/engine';
 
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
@@ -91,7 +91,7 @@ td, th { border: 0.3mm solid #555; padding: 2.5mm; text-align: center; }
 .slots .slot { height: 60mm; }
 </style></head><body>
 <h1>더블 에이전트 — 종이 프로토타입</h1>
-<p>점선을 따라 자르세요. 규칙은 docs/rulebook.md. 선수·구단·이벤트 수치는 엔진(src/core/data.ts)에서 생성되었습니다.</p>
+<p>점선을 따라 자르세요. 규칙은 docs/rulebook.md. 선수·구단·이벤트 수치는 엔진(src/engine/data.ts)에서 생성되었습니다.</p>
 ${group('선수 카드', playerCards)}
 ${group('구단 카드', clubCards)}
 ${group('구단 요구 카드', needCards)}

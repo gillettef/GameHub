@@ -2,8 +2,8 @@
  * v2 설계 프로토타입 시뮬레이터 (엔진 반영 전 수치 탐색용).
  *   npx tsx scripts/proto-v2.ts --games 2000 --players 3 --seed 42 [--B 2 --G 3 --R 8 --clubs 6 --tie next|fail --route 0,1,1,1]
  */
-import { PLAYERS, CLUBS, NEEDS, needsOf } from '../src/core/data';
-import { createRng, type Rng } from '../src/core/rng';
+import { PLAYERS, CLUBS, NEEDS, needsOf } from '../src/engine/data';
+import { createRng, type Rng } from '../src/engine/rng';
 
 declare const process: { argv: string[] };
 const args = process.argv.slice(2);
