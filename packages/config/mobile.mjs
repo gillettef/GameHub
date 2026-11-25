@@ -50,7 +50,12 @@ export async function withGame(gameDir, run) {
         await rendered(page) // 빈 화면은 어떤 배치 검사도 통과해 버린다
         await settled(page)
         await page.screenshot({ path: path.join(shots, `${name}.png`) })
-        const problems = await layoutProblems(page)
+        let problems = await layoutProblems(page)
+        // 재는 사이 새 화면(봇이 둔 뒤 뜨는 알림 등)이 등장 연출 중이었을 수 있다: 연출이 끝난 뒤 한 번 더 잰다
+        if (problems.length) {
+          await settled(page)
+          problems = await layoutProblems(page)
+        }
         if (problems.length) throw new Error(`[${name}] 화면 기준 위반:\n- ${problems.join('\n- ')}`)
         console.log(`확인: ${name}`)
       },
