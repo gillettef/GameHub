@@ -1,6 +1,13 @@
 node_modules/
 dist/
-.dev/
+coverage/
+.vite/
 *.log
 .env
 .env.*
+!.env.example
+.DS_Store
+Thumbs.db
+.claude/settings.local.json
+server-dist/
+.dev/
