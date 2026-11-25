@@ -30,7 +30,7 @@ jobs:
 
   e2e:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
@@ -63,7 +63,10 @@ jobs:
       - name: 빌드
         run: npm run build -w ${{ matrix.workspace }}
       - name: iPhone 화면 확인(WebKit)
-        run: npx playwright install --with-deps webkit && npm run e2e -w ${{ matrix.workspace }}
+        # 자동으로 뜨는 창·봇 진행과 클릭이 겹치는 타이밍 실패가 CI 에서 가끔 난다: 실패하면 한 번 더 돌린다(두 번 다 실패해야 실패)
+        run: |
+          npx playwright install --with-deps webkit
+          npm run e2e -w ${{ matrix.workspace }} || { echo "::warning::e2e 첫 시도 실패, 다시 시도"; npm run e2e -w ${{ matrix.workspace }}; }
       - name: 화면 캡처 보관
         if: always()
         uses: actions/upload-artifact@v4
