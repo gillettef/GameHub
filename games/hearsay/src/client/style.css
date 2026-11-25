@@ -1,0 +1,230 @@
+@import '@gamehub/ui/theme.css';
+
+/* HEARSAY 색: 밤의 섬마을(먹빛 종이), 붉은 흙 강조, 여섯 집안 색 */
+:root {
+  --gh-bg: #1d1a17;
+  --gh-surface: #27231f;
+  --gh-raised: #352f29;
+  --gh-line: #4a4238;
+  --gh-text: #ece4d6;
+  --gh-muted: #b7ab98;
+  --gh-primary: #e0745c;
+  --gh-on-primary: #1d1a17;
+  --gh-danger: #ef8a6f;
+  --hs-red: #d0513f;
+  --hs-blue: #4a78c8;
+  --hs-yellow: #e2b230;
+  --hs-green: #4a9e62;
+  --hs-purple: #9468c4;
+  --hs-black: #121212;
+  --hs-black-ring: #e8e0d0;
+  --hs-black-text: #e8e0d0;
+  --hs-grey: #9a9a9a;
+  --hs-row: 36px;
+}
+@media (max-height: 780px) {
+  :root {
+    --hs-row: 31px;
+  }
+}
+
+body {
+  background: radial-gradient(120% 60% at 50% 0%, #2c2620, var(--gh-bg) 70%) fixed;
+}
+
+.hs-dot {
+  display: inline-block;
+  width: 0.7em;
+  height: 0.7em;
+  border-radius: 50%;
+  flex-shrink: 0;
+  vertical-align: baseline;
+}
+.hs-dot-black {
+  box-shadow: 0 0 0 1px var(--hs-black-ring);
+}
+
+/* 섬 보드: 구역 이름 + 7계절 */
+.hs-board {
+  display: grid;
+  grid-template-columns: 64px repeat(7, minmax(0, 1fr));
+  gap: 3px;
+  flex-shrink: 0;
+}
+.hs-colh {
+  text-align: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--gh-muted);
+  line-height: 1.15;
+}
+.hs-colh small {
+  display: block;
+  font-size: 10px;
+  font-weight: 400;
+  min-height: 1.15em;
+}
+.hs-colh.cur {
+  color: var(--gh-text);
+}
+.hs-plot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2px;
+  font-size: 13px;
+  min-width: 0;
+  padding-right: 2px;
+}
+.hs-plot b {
+  font-size: 11px;
+  color: var(--gh-muted);
+}
+.hs-plot.recall span {
+  color: var(--gh-primary);
+  font-weight: 700;
+}
+.hs-cell {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  border-radius: 6px;
+  background: var(--gh-raised);
+  border: 1px solid transparent;
+}
+.hs-cell.future {
+  opacity: 0.35;
+}
+.hs-cell.forgotten {
+  background: repeating-linear-gradient(135deg, var(--gh-surface) 0 5px, #2f2a24 5px 10px);
+}
+.hs-cell.askable {
+  border: 2px solid var(--gh-primary);
+  cursor: pointer;
+}
+.hs-cell.picked {
+  background: color-mix(in srgb, var(--gh-primary) 45%, var(--gh-surface));
+}
+.hs-cell.questioned {
+  box-shadow: 0 0 0 2px var(--gh-text);
+}
+.hs-cell.feud {
+  box-shadow: inset 0 0 0 2px var(--gh-danger);
+}
+.hs-tile {
+  width: 78%;
+  height: 78%;
+  border-radius: 4px;
+}
+.hs-tile.black {
+  box-shadow: 0 0 0 1px var(--hs-black-ring);
+}
+.hs-tile.fadeout {
+  animation: hs-fade 4s ease-in forwards;
+}
+@keyframes hs-fade {
+  to {
+    opacity: 0.15;
+    transform: scale(0.7);
+  }
+}
+.hs-ring {
+  width: 62%;
+  aspect-ratio: 1;
+  max-height: 80%;
+  border-radius: 50%;
+  border: 3px solid;
+}
+.hs-feud {
+  color: var(--gh-danger);
+  font-weight: 800;
+}
+
+/* 단계 안내·공개 결과 */
+.hs-panel {
+  border-radius: 12px;
+  background: var(--gh-surface);
+  border: 1px solid var(--gh-line);
+  padding: 8px 10px;
+}
+.hs-reveal {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+.hs-reveal > div {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 4px 6px;
+  border-radius: 8px;
+  background: var(--gh-raised);
+}
+.hs-bar {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--gh-raised);
+  overflow: hidden;
+}
+.hs-bar i {
+  display: block;
+  height: 100%;
+  background: var(--gh-primary);
+  transition: width 0.25s linear;
+}
+.hs-msg {
+  font-size: 14px;
+  line-height: 1.35;
+  transition: opacity 0.25s;
+}
+.hs-msg.assert {
+  padding-left: 6px;
+  border-left: 3px solid var(--gh-primary);
+}
+
+/* 내 영역: 구역 카드·질문 후보·증언 토큰 */
+.hs-hand {
+  padding: 6px 12px 8px;
+}
+.hs-hand-title {
+  margin: 0 0 4px;
+  font-size: 12px;
+  color: var(--gh-muted);
+}
+.hs-choice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  min-height: 44px;
+  min-width: 0;
+  padding: 0 10px;
+  border-radius: 10px;
+  border: 2px solid transparent;
+  background: var(--gh-raised);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--gh-text);
+}
+.hs-choice[aria-pressed='true'] {
+  border-color: var(--gh-primary);
+  background: color-mix(in srgb, var(--gh-primary) 22%, var(--gh-raised));
+}
+.hs-choice:disabled {
+  opacity: 0.4;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hs-tile.fadeout {
+    animation: none;
+    opacity: 0.4;
+  }
+  .hs-bar i,
+  .hs-msg {
+    transition: none;
+  }
+}
