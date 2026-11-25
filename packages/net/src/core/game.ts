@@ -47,6 +47,11 @@ export interface GameDef<S, A, V = S, O = unknown> {
   view(state: S, seat: number | null): V
   isOver(state: S): boolean
   /**
+   * false 면 지난 행동 기록(Match.history)을 남기지 않는다. 지난 일을 아무도(서버조차) 갖지 않아야 하는 게임용(hearsay 의 망각).
+   * 그 대신 한 기기 판을 저장했다가 다시 만들 수 없다(LocalGame.save 의 history 가 빈다)
+   */
+  keepHistory?: boolean
+  /**
    * 실시간 게임만: 실제 시간이 흐르면 바뀌는 상태(모래시계 등). 행동 직전과 syncMs 마다 흘린다.
    * 시간이 흘러도 version 은 그대로라 고르던 행동이 거절되지 않는다. 화면은 받은 뒤 흐른 시간만큼 표시를 줄여 보이면 된다
    */

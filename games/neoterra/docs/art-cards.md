@@ -4,7 +4,7 @@
 
 ## 파일
 
-- 경로: `src/ui/assets/art/<카드 id>.svg` (id 는 `src/core/data/*` 의 정의 id 그대로. 예: `p1a.svg`, `q2t3.svg`, `pa5.svg`, `sa10.svg`, `f_beacon.svg`, `e_ark.svg`)
+- 경로: `src/client/assets/art/<카드 id>.svg` (id 는 `src/engine/data/*` 의 정의 id 그대로. 예: `p1a.svg`, `q2t3.svg`, `pa5.svg`, `sa10.svg`, `f_beacon.svg`, `e_ark.svg`)
 - **viewBox `0 0 222 122`** (카드 프레임의 그림 창 x14–236, y66–188 과 같은 비율 1.82:1). `width`/`height` 속성은 넣지 않는다.
 - 그림은 viewBox 전체를 채운다(바깥 여백 없음). 화면이 창 모양(후원자·유산은 아치형)으로 잘라 쓰므로 **중요한 형체는 가운데 70% 안**에 둔다.
 - 한 파일 **6KB 이하**. 래스터·외부 참조·`<script>`·`<foreignObject>`·`<text>` 금지.
@@ -18,7 +18,7 @@
 - 세계관: 지구를 떠난 개척민이 정착한 낯선 행성. 밤하늘 남색, 고리 행성, 두 개의 위성, 생물발광 숲, 포자 안개, 기계 도시. 사람은 작은 실루엣이나 뒷모습(얼굴 묘사 없음).
 - **오리지널**: 문명 비욘드 어스 등 기존 게임·영화의 디자인·로고·캐릭터를 닮게 그리지 않는다.
 
-## 팔레트 (`src/ui/styles/tokens.css` 와 맞춤)
+## 팔레트 (`src/client/styles/tokens.css` 와 맞춤)
 
 | 쓰임 | 색 |
 |---|---|

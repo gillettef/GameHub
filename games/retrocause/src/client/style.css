@@ -1,0 +1,94 @@
+@import '@gamehub/ui/theme.css';
+
+/* RETROCAUSE 색: 불탄 왕궁의 짙은 갈색 바탕, 금빛 강조, 불씨 빨강(옛 화면의 색) */
+:root {
+  --gh-bg: #15110e;
+  --gh-surface: #1e1814;
+  --gh-raised: #2c241e;
+  --gh-line: #3b3029;
+  --gh-text: #efe6da;
+  --gh-muted: #a8998a;
+  --gh-primary: #d9a441;
+  --gh-on-primary: #1b130c;
+  --gh-danger: #e06a6a;
+  --rc-ember: #e0603a;
+  --rc-ok: #6fbf73;
+  --rc-card: #f3ead9;
+  --rc-card-ink: #2a211b;
+}
+
+/* 원인 카드(밝은 종이, 왼쪽 띠가 인물 색) */
+.rc-card {
+  background: var(--rc-card);
+  color: var(--rc-card-ink);
+  border-left: 6px solid var(--fig, #777);
+}
+.rc-card .rc-sub {
+  color: #5b4d41;
+}
+.rc-card .rc-fig {
+  color: var(--fig, #777);
+  filter: brightness(0.8);
+}
+
+/* 결말 */
+.rc-ending {
+  background: linear-gradient(160deg, #3a1d14, #22140f);
+  border: 1px solid #6b3523;
+}
+.rc-ending b {
+  color: #ffcf9a;
+}
+
+/* 방금 놓은 칸·연쇄 정리로 버려진 칸 */
+@keyframes rc-flash {
+  0% {
+    box-shadow: 0 0 0 3px var(--gh-primary);
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+@keyframes rc-burn {
+  0% {
+    box-shadow: 0 0 0 3px var(--rc-ember);
+    background: #4a1f14;
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+.rc-flash {
+  animation: rc-flash 1.2s ease;
+}
+.rc-burn {
+  animation: rc-burn 1.4s ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  .rc-flash {
+    animation: none;
+    box-shadow: 0 0 0 2px var(--gh-primary);
+  }
+  .rc-burn {
+    animation: none;
+    box-shadow: 0 0 0 2px var(--rc-ember);
+  }
+  .rc-smooth {
+    scroll-behavior: auto !important;
+  }
+}
+
+.rc-rulebook {
+  font-size: 14px;
+  color: var(--gh-text);
+}
+.rc-rulebook h1 { font-size: 1.25rem; margin: 0.6rem 0; }
+.rc-rulebook h2 { font-size: 1.1rem; margin: 1.2rem 0 0.5rem; color: var(--gh-primary); }
+.rc-rulebook h3 { font-size: 1rem; margin: 1rem 0 0.4rem; }
+.rc-rulebook p, .rc-rulebook li { line-height: 1.6; }
+.rc-rulebook ul { padding-left: 1.2rem; }
+.rc-rulebook blockquote { margin: 0.6rem 0; padding: 0.4rem 0.8rem; border-left: 3px solid var(--gh-primary); color: var(--gh-muted); }
+.rc-rulebook pre { overflow-x: auto; font-size: 11px; line-height: 1.35; background: var(--gh-bg); padding: 0.6rem; border-radius: 8px; }
+.rc-rulebook table { display: block; overflow-x: auto; border-collapse: collapse; font-size: 13px; margin: 0.5rem 0; }
+.rc-rulebook th, .rc-rulebook td { border: 1px solid var(--gh-line); padding: 0.3rem 0.45rem; text-align: left; vertical-align: top; }
+.rc-rulebook code { background: var(--gh-raised); padding: 0 0.25rem; border-radius: 4px; }

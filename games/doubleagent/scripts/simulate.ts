@@ -4,8 +4,8 @@
  * mixed: floor(N/2)명은 normal, 나머지 easy. 게임마다 normal 자리을 회전시켜 자리 편향 상쇄
  * 협상 단위 집계(패스·무효 비율 등)의 분모는 자리 × 라운드 × 차수(STAGES)
  */
-import { AI_MODEL, AI_TUNING, DEMANDS, EVENT_KEYS, GOALS, RULES, STAGES, TOTAL_ROUNDS, createGame, createRng, nextRound, resolveRound, winners } from '../src/core';
-import type { AiLevel, EventKey, GameState } from '../src/core';
+import { AI_MODEL, AI_TUNING, DEMANDS, EVENT_KEYS, GOALS, RULES, STAGES, TOTAL_ROUNDS, createGame, createRng, nextRound, resolveRound, winners } from '../src/engine';
+import type { AiLevel, EventKey, GameState } from '../src/engine';
 
 declare const process: { argv: string[] };
 

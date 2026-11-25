@@ -7,8 +7,8 @@
 
 - `hub/` — 허브: 로비(`public/`) + `/<slug>/...` 리버스 프록시(`server.mjs`, HTTP·WebSocket). 게임 목록·포트는 `hub/games.json`.
 - `packages/` — 새 기술스택 공통 코드(루트 npm workspaces): `net`(방·진행), `ui`(화면 배치), `config`(빌드·검사·배포), `example`(본보기 게임). 계획·게임 옮기는 방법은 `docs/refactor-plan.md`. 검사: 루트에서 `npm run check` / `npm run e2e`.
-- `games/<slug>/` — 게임별 프로젝트. 각자의 `CLAUDE.md`가 그 게임의 규칙·코드 규칙이다. 게임 안에서 작업할 때는 그 문서를 먼저 따른다.
-- `.github/workflows/` — `ci-<slug>.yml`(경로 필터), `deploy-<slug>.yml`(workflow_call), `deploy.yml`(오케스트레이터), `deploy-hub.yml`.
+- `games/<slug>/` — 게임별 프로젝트. 각자의 `CLAUDE.md`가 그 게임의 규칙·코드 규칙이다. 게임 안에서 작업할 때는 그 문서를 먼저 따른다. 2026-11-25부터 15개 게임 모두 루트 workspaces 의 공통 구조(`src/engine`·`src/def.ts`(GameDef)·`src/client`·`server/app.ts`)다. 설치는 루트에서 한 번(`npm install`), 게임별 lock 은 없다.
+- `.github/workflows/` — `ci-workspace.yml`(모든 게임·공통 코드 검사와 iPhone e2e), `deploy-<slug>.yml`(공통 `deploy-workspace-game.yml` 호출), `deploy.yml`(오케스트레이터: 공통 코드가 바뀌면 모든 게임을 다시 배포), `deploy-hub.yml`.
 
 ## 운영 구조 (1단계: 하이브리드)
 

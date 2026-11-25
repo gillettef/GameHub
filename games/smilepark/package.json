@@ -1,28 +1,22 @@
 {
-  "name": "smilepark",
+  "name": "@gamehub/smilepark",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.0.0",
   "type": "module",
+  "description": "스마일 파크: 놀이공원을 경영해 만족도를 겨루는 2~5인 보드게임(한 기기 AI 대전·돌려 하기, 온라인, 관전)",
   "scripts": {
     "dev": "vite --host",
-    "build": "tsc --noEmit && vite build",
-    "preview": "vite preview --host",
+    "build": "vite build && gamehub-build-server",
+    "start": "gamehub-serve",
+    "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "sim": "tsx scripts/simulate.ts",
-    "balance": "tsx scripts/balance.ts"
+    "e2e": "node e2e/mobile.mjs",
+    "sim": "npx --yes tsx scripts/simulate.ts",
+    "balance": "npx --yes tsx scripts/balance.ts"
   },
   "dependencies": {
-    "react": "^19.3.0",
-    "react-dom": "^19.3.0"
-  },
-  "devDependencies": {
-    "@types/node": "^26.6.4",
-    "@types/react": "^19.3.0",
-    "@types/react-dom": "^19.3.0",
-    "@vitejs/plugin-react": "^6.1.1",
-    "tsx": "^4.23.15",
-    "typescript": "^7.0.2",
-    "vite": "^8.3.2",
-    "vitest": "^5.0.3"
+    "@gamehub/config": "*",
+    "@gamehub/net": "*",
+    "@gamehub/ui": "*"
   }
 }

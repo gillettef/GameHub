@@ -14,14 +14,14 @@
     <link rel="icon" href="./icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="./icon-180.png" />
     <link rel="manifest" href="./manifest.webmanifest" />
-    <!-- 제목·점수용 디스플레이 글꼴. 오프라인이면 시스템 글꼴로 대체된다 -->
+    <!-- 제목·점수용 디스플레이 글꼴. 받지 못하면 시스템 글꼴로 대체된다 -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&display=swap" />
   </head>
   <body>
-    <div id="app"></div>
+    <div id="root"></div>
     <noscript>이 게임은 JavaScript가 필요합니다.</noscript>
-    <script type="module" src="/src/main.ts"></script>
+    <script type="module" src="./src/client/main.tsx"></script>
   </body>
 </html>

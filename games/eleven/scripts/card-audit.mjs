@@ -1,4 +1,4 @@
-// 카드 넘침 점검: Vite 로 client/card-audit.html 을 띄우고 헤드리스 브라우저(Edge/Chrome)로 열어 결과(JSON)를 읽어 출력한다.
+// 카드 넘침 점검: Vite 로 card-audit.html 을 띄우고 헤드리스 브라우저(Edge/Chrome)로 열어 결과(JSON)를 읽어 출력한다.
 // 사용: node scripts/card-audit.mjs [only=sponsor] [shot.png] — 카드 밖으로 나가거나 잘리는 것이 있으면 종료 코드 1 (말줄임은 참고용)
 import { execFile } from 'node:child_process';
 import { existsSync } from 'node:fs';
@@ -8,8 +8,8 @@ import { promisify } from 'node:util';
 
 // 동기 실행(execFileSync)은 같은 프로세스의 Vite 서버까지 멈춰 세우므로 쓰지 않는다
 const run = promisify(execFile);
-const clientDir = fileURLToPath(new URL('../client', import.meta.url));
-const require = createRequire(new URL('../client/package.json', import.meta.url));
+const clientDir = fileURLToPath(new URL('..', import.meta.url));
+const require = createRequire(new URL('../package.json', import.meta.url));
 const { createServer } = await import(pathToFileURL(require.resolve('vite')).href);
 const browser = [
   'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe',

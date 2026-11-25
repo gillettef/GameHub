@@ -2,8 +2,8 @@
  * 가치형 AI의 예측 승률이 실제 계약 성공률과 맞는지 확인한다 (구간별 비교).
  *   npx tsx scripts/calibrate.ts --players 3 --games 200 --rules ...
  */
-import { AI_MODEL, AI_TRACE, PERSONAS, RULES, createGame, createRng, nextRound, resolveRound } from '../src/core';
-import type { GameState } from '../src/core';
+import { AI_MODEL, AI_TRACE, PERSONAS, RULES, createGame, createRng, nextRound, resolveRound } from '../src/engine';
+import type { GameState } from '../src/engine';
 
 declare const process: { argv: string[] };
 const args = process.argv.slice(2);
