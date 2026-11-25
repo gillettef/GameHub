@@ -1,4 +1,5 @@
 /** 공통 UI 부품: 버튼, 바텀 시트, 상단 바, 분할 선택 (카드는 Card.tsx) */
+import { RotateNotice } from '@gamehub/ui'
 import { useEffect, useId, useRef, useState, type ButtonHTMLAttributes, type ReactNode } from 'react'
 import { useBack } from './back'
 import { buzz } from './fx'
@@ -44,7 +45,7 @@ export function Button({ variant = 'secondary', size = 'md', block = false, hapt
 /** 화면 위쪽 바: 왼쪽 버튼, 가운데 제목, 오른쪽 버튼 */
 export function TopBar({ left, title, right }: { left?: ReactNode; title: ReactNode; right?: ReactNode }) {
   return (
-    <header className="sticky top-0 z-20 -mx-4 -mt-[env(safe-area-inset-top)] grid grid-cols-[minmax(44px,auto)_1fr_minmax(44px,auto)] items-center gap-2 bg-void/95 px-2 pt-[calc(env(safe-area-inset-top)+4px)] pb-1">
+    <header className="sticky top-0 z-20 -mx-4 grid grid-cols-[minmax(44px,auto)_1fr_minmax(44px,auto)] items-center gap-2 bg-void/95 px-2 pt-1 pb-1">
       <div className="flex justify-start">{left}</div>
       <div className="truncate text-center font-display text-[15px] font-semibold tracking-wide">{title}</div>
       <div className="flex justify-end">{right}</div>
@@ -52,8 +53,15 @@ export function TopBar({ left, title, right }: { left?: ReactNode; title: ReactN
   )
 }
 
-export function Screen({ children, className = '' }: { children: ReactNode; className?: string }) {
-  return <main className={`mx-auto flex min-h-dvh w-full max-w-[480px] flex-col gap-4 px-4 pb-8 ${className}`}>{children}</main>
+/** 대국이 아닌 화면: 페이지는 스크롤하지 않고 본문 안에서 스크롤한다(docs/refactor-plan.md 4절). footer 는 아래에 고정 */
+export function Screen({ children, className = '', footer }: { children: ReactNode; className?: string; footer?: ReactNode }) {
+  return (
+    <div className="gh-app">
+      <main className={`flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto overscroll-contain px-4 pb-8 *:shrink-0 ${className}`}>{children}</main>
+      {footer != null && <footer className="gh-bottom flex shrink-0 flex-col gap-2 border-t border-line bg-void/95 px-4 pt-3">{footer}</footer>}
+      <RotateNotice />
+    </div>
+  )
 }
 
 export function Panel({

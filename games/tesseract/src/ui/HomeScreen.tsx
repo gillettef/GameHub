@@ -1,66 +1,49 @@
+// 처음 화면: 공통 HomeScreen(한 기기·온라인, 인원·자리) 위에 로고·이어 하기·우주 법칙·기록을 얹는다
+import type { SeatInfo } from '@gamehub/net'
+import { HomeScreen as CommonHome } from '@gamehub/ui'
 import { useState } from 'react'
 import { LAW_DECK, LAWS, MAX_PLAYERS, MIN_PLAYERS, type LawId } from '../engine'
-import type { Seat } from '../app/session'
-import { seatColor } from './colors'
-import { Avatar, Button, Panel, Screen, Segmented } from './primitives'
+import { Button } from './primitives'
 import { RulesSheet } from './RulesSheet'
 import { StorySheet } from './StorySheet'
 import { TesseractLogo } from './TesseractLogo'
 import { Icon } from './icons'
 
-export interface NewGameOptions {
-  seats: Seat[]
-  law: LawId | 'random'
-}
+export type LawChoice = LawId | 'random'
 
 interface HomeScreenProps {
+  invited: string | null
+  error: string | null
+  connecting: boolean
   canContinue: boolean
-  onContinue: () => void
-  onStart: (options: NewGameOptions) => void
-  onHistory: () => void
-  onOnline: () => void
+  onContinue(): void
+  onLocal(seats: SeatInfo[], law: LawChoice): void
+  onCreate(name: string, seats: number, bots: number[], law: LawChoice): void
+  onJoin(code: string, name: string): void
+  onWatch(code: string): void
+  onHistory(): void
 }
 
-const DEFAULT_NAMES = ['나', '설계자 2', '설계자 3', '설계자 4']
-const SETUP_KEY = 'tesseract.setup'
+const LAW_KEY = 'tesseract:law'
 
-interface SavedSetup {
-  count: number
-  seats: Seat[]
-  law: LawId | 'random'
-}
-
-/** 마지막으로 시작한 새 게임 설정 (이름을 매번 다시 쓰지 않게) */
-function loadSetup(): SavedSetup {
-  const fallback: SavedSetup = { count: 2, seats: DEFAULT_NAMES.map((name, i) => ({ name, kind: i === 0 ? 'human' : 'bot' })), law: 'random' }
+function loadLaw(): LawChoice {
   try {
-    const v = JSON.parse(localStorage.getItem(SETUP_KEY) ?? 'null') as Partial<SavedSetup> | null
-    if (!v || !Array.isArray(v.seats) || v.seats.length !== MAX_PLAYERS) return fallback
-    const count = typeof v.count === 'number' && v.count >= MIN_PLAYERS && v.count <= MAX_PLAYERS ? v.count : fallback.count
-    const law = v.law === 'random' || (typeof v.law === 'string' && v.law in LAWS) ? v.law : 'random'
-    return { count, seats: v.seats.map((s, i) => ({ name: String(s?.name ?? DEFAULT_NAMES[i]).slice(0, 12), kind: s?.kind === 'bot' ? 'bot' : 'human' })), law }
+    const v = localStorage.getItem(LAW_KEY)
+    return v && Object.hasOwn(LAWS, v) ? (v as LawId) : 'random'
   } catch {
-    return fallback
+    return 'random'
   }
 }
 
-function saveSetup(v: SavedSetup): void {
-  try {
-    localStorage.setItem(SETUP_KEY, JSON.stringify(v))
-  } catch {
-    // 저장할 수 없으면 넘어간다
-  }
-}
-
-export function LawSelect({ value, onChange }: { value: LawId | 'random'; onChange: (v: LawId | 'random') => void }) {
+export function LawSelect({ value, onChange }: { value: LawChoice; onChange: (v: LawChoice) => void }) {
   return (
     <label className="flex flex-col gap-1.5">
-      <span className="text-xs font-bold text-muted">우주 법칙</span>
+      <span className="text-sm text-muted">우주 법칙</span>
       <span className="relative">
         <select
-          className="min-h-12 w-full appearance-none rounded-xl bg-void/60 px-4 pr-10 text-[15px] font-bold text-fg ring-1 ring-line ring-inset focus:ring-accent"
+          className="min-h-12 w-full appearance-none rounded-xl bg-surface px-4 pr-10 font-bold text-fg ring-1 ring-line ring-inset focus:ring-accent"
           value={value}
-          onChange={(e) => onChange(e.target.value as LawId | 'random')}
+          onChange={(e) => onChange(e.target.value as LawChoice)}
         >
           <option value="random">무작위로 뽑기</option>
           {LAW_DECK.map((id) => (
@@ -78,118 +61,68 @@ export function LawSelect({ value, onChange }: { value: LawId | 'random'; onChan
   )
 }
 
-export function HomeScreen({ canContinue, onContinue, onStart, onHistory, onOnline }: HomeScreenProps) {
-  const [saved] = useState(loadSetup)
-  const [count, setCount] = useState(saved.count)
-  const [seats, setSeats] = useState<Seat[]>(saved.seats)
-  const [law, setLaw] = useState<LawId | 'random'>(saved.law)
+export function HomeScreen(p: HomeScreenProps) {
+  const [law, setLawRaw] = useState<LawChoice>(loadLaw)
   const [rules, setRules] = useState(false)
   const [story, setStory] = useState(false)
-
-  const update = (i: number, p: Partial<Seat>) => setSeats(seats.map((s, j) => (j === i ? { ...s, ...p } : s)))
-  const humans = seats.slice(0, count).filter((s) => s.kind === 'human').length
+  const setLaw = (v: LawChoice) => {
+    setLawRaw(v)
+    try {
+      localStorage.setItem(LAW_KEY, v)
+    } catch {
+      // 저장할 수 없으면 이번 실행 동안만
+    }
+  }
 
   return (
-    <Screen className="pt-6">
-      <div className="flex flex-col items-center gap-3 pt-4 text-center">
-        <TesseractLogo size={150} />
-        <h1 className="animate-rise bg-gradient-to-r from-[#d9d2ff] via-accent to-goal bg-clip-text font-display text-[40px] leading-none font-bold tracking-[0.18em] text-transparent">
-          TESSERACT
-        </h1>
-        <p className="max-w-[300px] animate-rise text-sm leading-relaxed text-muted [animation-delay:80ms]">
-          우주는 한때 하나였다.
-          <br />
-          <b className="font-bold text-fg">흩어진 조각으로, 테서랙트를 다시 세워라.</b>
-        </p>
-        <Button variant="ghost" size="sm" className="animate-rise [animation-delay:100ms]" onClick={() => setStory(true)}>
-          <Icon name="shards" size={16} /> 부서진 테서랙트 이야기
-        </Button>
-      </div>
-
-      {canContinue && (
-        <Button variant="primary" size="lg" block className="animate-rise [animation-delay:120ms]" onClick={onContinue}>
-          <Icon name="play" size={16} /> 이어 하기
-        </Button>
-      )}
-
-      <Panel title="새 게임 · 한 기기로 돌려 하기" className="animate-rise [animation-delay:160ms]">
-        <div className="flex flex-col gap-4">
-          <Segmented
-            label="인원"
-            value={count}
-            onChange={setCount}
-            options={Array.from({ length: MAX_PLAYERS - MIN_PLAYERS + 1 }, (_, i) => ({ value: i + MIN_PLAYERS, label: `${i + MIN_PLAYERS}인` }))}
-          />
-
-          <ul className="flex flex-col gap-2">
-            {seats.slice(0, count).map((s, i) => (
-              <li key={i} className="flex animate-rise items-center gap-2" style={{ animationDelay: `${i * 40}ms` }}>
-                <Avatar name={s.name || '?'} color={seatColor(i)} size={36} />
-                <input
-                  className="min-h-12 min-w-0 flex-1 rounded-xl bg-void/60 px-3 text-[15px] font-bold text-fg ring-1 ring-line ring-inset placeholder:text-muted/60 focus:ring-accent focus:outline-none"
-                  aria-label={`${i + 1}번 자리 이름`}
-                  value={s.name}
-                  maxLength={12}
-                  onChange={(e) => update(i, { name: e.target.value })}
-                />
-                <div className="w-[118px] shrink-0">
-                  <Segmented
-                    label={`${i + 1}번 자리 종류`}
-                    value={s.kind}
-                    onChange={(kind) => update(i, { kind })}
-                    options={[
-                      { value: 'human', label: '사람' },
-                      { value: 'bot', label: '봇' },
-                    ]}
-                  />
-                </div>
-              </li>
-            ))}
-          </ul>
-
-          <LawSelect value={law} onChange={setLaw} />
-
-          <Button
-            variant="primary"
-            size="lg"
-            block
-            onClick={() => {
-              saveSetup({ count, seats, law })
-              onStart({
-                seats: seats.slice(0, count).map((s, i) => ({ ...s, name: s.name.trim() || DEFAULT_NAMES[i] || `${i + 1}번` })),
-                law,
-              })
-            }}
-          >
-            게임 시작
+    <>
+      <CommonHome
+        slug="tesseract"
+        title="TESSERACT"
+        minSeats={MIN_PLAYERS}
+        maxSeats={MAX_PLAYERS}
+        bots
+        invited={p.invited}
+        error={p.error}
+        connecting={p.connecting}
+        hero={
+          <div className="flex flex-col items-center gap-2 pt-1 text-center">
+            <TesseractLogo size={112} />
+            <h1 className="m-0 bg-gradient-to-r from-[#d9d2ff] via-accent to-goal bg-clip-text font-display text-[36px] leading-none font-bold tracking-[0.18em] text-transparent">
+              TESSERACT
+            </h1>
+            <p className="m-0 max-w-[300px] text-sm leading-relaxed text-muted">
+              우주는 한때 하나였다. <b className="font-bold text-fg">흩어진 조각으로, 테서랙트를 다시 세워라.</b>
+            </p>
+            <Button variant="ghost" size="sm" onClick={() => setStory(true)}>
+              <Icon name="shards" size={16} /> 부서진 테서랙트 이야기
+            </Button>
+          </div>
+        }
+        top={
+          p.canContinue ? (
+            <Button variant="primary" size="lg" block onClick={p.onContinue}>
+              <Icon name="play" size={16} /> 이어 하기
+            </Button>
+          ) : undefined
+        }
+        setup={<LawSelect value={law} onChange={setLaw} />}
+        onLocal={(seats) => p.onLocal(seats, law)}
+        onCreate={(name, seats, bots) => p.onCreate(name, seats, bots, law)}
+        onJoin={p.onJoin}
+        onWatch={p.onWatch}
+      >
+        <div className="grid grid-cols-2 gap-2">
+          <Button onClick={() => setRules(true)}>
+            <Icon name="codex" size={20} className="text-accent" /> 규칙 보기
           </Button>
-          {humans > 1 && <p className="-mt-2 text-center text-xs text-muted">차례마다 기기를 넘겨요. 개인 목표는 가림막 뒤에서만 보여요.</p>}
+          <Button onClick={p.onHistory}>
+            <Icon name="stats" size={20} className="text-accent" /> 기록 · 통계
+          </Button>
         </div>
-      </Panel>
-
-      <div className="grid animate-rise grid-cols-3 gap-2 [animation-delay:220ms]">
-        <Button onClick={onOnline} className="py-2">
-          <span className="flex flex-col items-center gap-0.5">
-            <Icon name="orbit" size={22} className="text-accent" />
-            <span className="text-xs">온라인 대전</span>
-          </span>
-        </Button>
-        <Button onClick={() => setRules(true)} className="py-2">
-          <span className="flex flex-col items-center gap-0.5">
-            <Icon name="codex" size={22} className="text-accent" />
-            <span className="text-xs">규칙 보기</span>
-          </span>
-        </Button>
-        <Button onClick={onHistory} className="py-2">
-          <span className="flex flex-col items-center gap-0.5">
-            <Icon name="stats" size={22} className="text-accent" />
-            <span className="text-xs">기록 · 통계</span>
-          </span>
-        </Button>
-      </div>
-
+      </CommonHome>
       {rules && <RulesSheet onClose={() => setRules(false)} />}
       {story && <StorySheet onClose={() => setStory(false)} />}
-    </Screen>
+    </>
   )
 }

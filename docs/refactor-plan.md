@@ -114,7 +114,7 @@ games/<slug>/
 |---|---|---|
 | 0 | 이 문서 확정 | 완료(2026-11-25) |
 | 1 | 기반: `packages/*`, 공통 CI·배포 템플릿 | 완료(2026-11-25): `packages/example` 이 허브에서 실행 |
-| 2 | 시범: **crease**(순수 JS, SSE, 서버 봇), **tesseract**(React, ws, 테스트 많음) | 사용자가 실기기에서 확인. crease 는 옮김(2026-11-25, 실기기 확인 대기) |
+| 2 | 시범: **crease**(순수 JS, SSE, 서버 봇), **tesseract**(React, ws, 테스트 많음) | 사용자가 실기기에서 확인. crease·tesseract 는 옮김(2026-11-25, 실기기 확인 대기) |
 | 3-a | lastgrain, lightcone, sightline | 리뷰 통과 후 `dev` 반영 |
 | 3-b | hearsay, retrocause, proxymind | 〃 |
 | 3-c | doubleagent, election, smilepark | 〃 |

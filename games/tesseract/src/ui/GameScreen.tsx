@@ -25,7 +25,8 @@ import {
   type RolledDie,
   type TipDirection,
 } from '../engine'
-import type { OnlineStatus } from '../app/online'
+import type { LogEntry } from '@gamehub/net'
+import { GameShell, LogList } from '@gamehub/ui'
 import type { Seat } from '../app/session'
 import { BoardView, type FreshDie } from './BoardView'
 import { CardsSheet, type BotSpeed } from './CardsSheet'
@@ -40,7 +41,7 @@ import { NoticeModal } from './NoticeModal'
 import { buildNotices, type Notice } from './notices'
 import { DieNet, PillarSheet } from './PillarSheet'
 import { Card } from './Card'
-import { Avatar, Button, ConfirmButton, Panel, Screen, TopBar } from './primitives'
+import { Avatar, Button, ConfirmButton, Panel, Screen, Sheet, TopBar } from './primitives'
 import { RulesSheet } from './RulesSheet'
 import { TipCard } from './TipCard'
 import { useTip, type TipId } from './tips'
@@ -54,8 +55,14 @@ interface GameScreenProps {
   /** 지금까지의 행동 수. 연출 레이어를 행동마다 새로 띄우는 key */
   step: number
   seats: Seat[]
-  /** 이 기기가 조작하는 자리 */
+  /** 이 기기가 조작하는 자리 (한 기기: 모든 자리, 온라인: 내 자리) */
   localSeats: number[]
+  /** 지금 두어야 하는 자리들 (공통 진행 코드가 정한다. 게임 준비 때는 아직 고르지 않은 모두) */
+  actors: number[]
+  /** 게임 기록 (메뉴) */
+  log: readonly LogEntry[]
+  /** 나가기 전에 확인할 말. 없으면 바로 나간다 */
+  exitWarning?: string
   onAction: (action: Action) => void
   onExit: () => void
   /** 바로 전 행동이 거절된 이유 */
@@ -65,7 +72,7 @@ interface GameScreenProps {
   /** 게임이 끝나고 남은 알림을 모두 확인했을 때 (결과 화면으로) */
   onFinished?: () => void
   /** 온라인 게임이면 서버 연결 상태와 자리별 접속 여부 */
-  connection?: { status: OnlineStatus; presence: boolean[] } | null
+  connection?: { open: boolean; presence: boolean[] } | null
   /** 봇 속도 (카드 시트에서 바꾼다) */
   botSpeed?: BotSpeed
   onBotSpeed?: (speed: BotSpeed) => void
@@ -77,11 +84,10 @@ interface GameScreenProps {
 const DIRECTION_LABEL: Record<TipDirection, string> = { forward: '앞(아래)으로', back: '뒤(위)로', left: '왼쪽으로', right: '오른쪽으로' }
 const DIRECTION_ARROW: Record<TipDirection, string> = { forward: '↓', back: '↑', left: '←', right: '→' }
 
-/** 개인 목표를 아직 고르지 않은, 이 기기의 사람 자리 */
-function pendingChooser(state: GameState, seats: Seat[], localSeats: number[]): number | null {
+/** 개인 목표를 아직 고르지 않은, 이 기기의 사람 자리. 남의 개인 목표는 가려져 오므로 actors 로 정한다 */
+function pendingChooser(state: GameState, seats: Seat[], localSeats: number[], actors: number[]): number | null {
   if (state.phase.kind !== 'setup') return null
-  const p = state.players.find((pl) => pl.personalGoal === null && localSeats.includes(pl.id) && seats[pl.id]?.kind === 'human')
-  return p ? p.id : null
+  return actors.find((p) => localSeats.includes(p) && seats[p]?.kind === 'human') ?? null
 }
 
 /** 차례 안에서만 유지하는 선택 상태. 차례가 바뀌면(key가 달라지면) 처음 값으로 본다 */
@@ -136,6 +142,9 @@ export function GameScreen({
   step,
   seats,
   localSeats,
+  actors,
+  log,
+  exitWarning,
   onAction,
   onExit,
   error,
@@ -147,7 +156,7 @@ export function GameScreen({
   onUndo,
 }: GameScreenProps) {
   const humanLocal = localSeats.filter((s) => seats[s]?.kind === 'human')
-  const chooser = pendingChooser(state, seats, localSeats)
+  const chooser = pendingChooser(state, seats, localSeats, actors)
   /** 지금 이 기기에서 조작하는 사람 */
   const actor =
     state.phase.kind === 'setup'
@@ -165,7 +174,7 @@ export function GameScreen({
   const ui = uiState.key === turnKey ? uiState : freshUi(turnKey)
   const patch = (p: Partial<TurnUi>) => setUiState({ ...ui, ...p })
 
-  const [sheet, setSheet] = useState<{ kind: 'cards' } | { kind: 'rules' } | { kind: 'pillar'; player: number; cell: Cell } | null>(null)
+  const [sheet, setSheet] = useState<{ kind: 'menu' } | { kind: 'cards' } | { kind: 'rules' } | { kind: 'pillar'; player: number; cell: Cell } | null>(null)
   const events = useMemo(() => diffEvents(prev, state), [prev, state])
 
   // 확인할 알림: 마지막으로 본 상태와 비교해 묶음으로 쌓고, 「확인」을 누를 때마다 한 묶음씩 넘긴다.
@@ -180,8 +189,9 @@ export function GameScreen({
     !humanLocal.includes(player) || (!!lastAction && (lastAction.type === 'discard' || lastAction.type === 'scrap' || lastAction.type === 'rerollHand') && lastAction.player === player)
   if (seen !== state) {
     setSeen(state)
-    const batch = seen.config.seed === state.config.seed ? buildNotices(diffEvents(seen, state), state, quietDebris) : []
-    setBatches(seen.config.seed === state.config.seed ? (batch.length > 0 ? [...batches, batch] : batches) : [])
+    // 게임이 바뀌면 App 이 이 화면을 새로 그린다(key). 시드는 가려져 오므로 비교하지 않는다
+    const batch = buildNotices(diffEvents(seen, state), state, quietDebris)
+    if (batch.length > 0) setBatches([...batches, batch])
   }
   const batch = batches[0]
   const holding = batches.length > 0
@@ -502,80 +512,88 @@ export function GameScreen({
               ? '놓을 칸이 없어요 · 주사위를 골라 잔해로 버리세요'
               : '놓을 주사위를 고르세요'
 
+  const status =
+    actor !== null
+      ? humanLocal.length > 1
+        ? `${seats[actor]?.name} 차례`
+        : '내 차례'
+      : `${currentSeat?.name ?? ''} 차례${currentSeat?.kind === 'bot' ? ' · 봇이 생각 중' : ''}`
+  const players = (
+    <nav className="grid shrink-0 gap-1.5 px-2 py-1.5" style={{ gridTemplateColumns: `repeat(${state.players.length}, minmax(0, 1fr))` }} aria-label="플레이어 보드">
+      {state.players.map((p) => {
+        const active = p.id === shownPlayer
+        const turn = p.id === current
+        const color = seatColor(p.id)
+        const away = !!connection && connection.presence[p.id] === false
+        return (
+          <button
+            type="button"
+            key={p.id}
+            aria-pressed={active}
+            aria-label={`${seats[p.id]?.name} 보드 보기${turn ? ', 지금 차례' : ''}${away ? ', 연결 끊김' : ''}`}
+            onClick={() => patch({ viewing: p.id })}
+            className={`relative flex min-h-12 items-center gap-1.5 overflow-hidden rounded-2xl px-2 py-1.5 text-left transition-all duration-200 active:scale-95 ${active ? 'bg-raised ring-2' : 'bg-surface/70 ring-1 ring-line'} ring-inset`}
+            style={active ? { ['--tw-ring-color' as string]: color } : undefined}
+          >
+            {turn && <span aria-hidden="true" className="absolute inset-x-0 bottom-0 h-0.5 animate-pulse" style={{ background: color }} />}
+            <span className="relative shrink-0">
+              <Avatar name={seats[p.id]?.name ?? '?'} color={color} size={26} glow={turn} />
+              {away && <span aria-hidden="true" className="absolute -right-0.5 -bottom-0.5 size-2.5 rounded-full bg-muted ring-2 ring-void" />}
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-xs font-bold">{seats[p.id]?.name}</span>
+              <span className="flex min-w-0 items-baseline gap-1 font-display text-[13px] leading-none font-bold" style={{ color }}>
+                {scores[p.id]}
+                {p.debris.length > 0 && <span className="truncate text-xs text-danger">−{p.debris.length}</span>}
+                {/* 4인이면 칸이 좁아 글자 대신 테두리·아바타 빛·아래 막대로만 차례를 알린다 */}
+                {turn && state.players.length <= 3 && (
+                  <span aria-hidden="true" className="ml-auto shrink-0 rounded-full px-1.5 font-sans text-xs leading-4 text-void" style={{ background: color }}>
+                    차례
+                  </span>
+                )}
+              </span>
+            </span>
+          </button>
+        )
+      })}
+    </nav>
+  )
+  // ⑤ 행동: 한 번 눌러 고른 행동의 확정·취소. 없으면 되돌리기 (주사위를 굴려 나온 결과가 끼면 App 이 주지 않는다)
+  const actions = confirm ? (
+    <>
+      <Button onClick={cancelConfirm} className="max-w-24 shrink-0 whitespace-nowrap">
+        취소
+      </Button>
+      <Button variant="primary" className="min-w-0 grow-[3]" onClick={confirm.run} aria-label={`${confirm.text}, ${confirm.label}`}>
+        <span className="truncate font-normal opacity-80">{confirm.text}</span>
+        <span className="whitespace-nowrap">· {confirm.label}</span>
+      </Button>
+    </>
+  ) : onUndo ? (
+    <Button onClick={onUndo}>↶ 방금 수 되돌리기</Button>
+  ) : null
+
   return (
-    <Screen className={`gap-3 ${confirm ? 'pb-32' : ''}`}>
+    <>
       {fx}
-      <TopBar
-        left={
-          <span className="flex">
-            <Button variant="ghost" size="sm" onClick={onExit} aria-label="나가기 (진행 상황은 저장됨)">
-              ✕
-            </Button>
-            <Button variant="ghost" size="sm" onClick={() => setSheet({ kind: 'rules' })} aria-label="규칙 한눈에 보기">
-              ?
-            </Button>
+      <GameShell
+        status={status}
+        detail={
+          <span className="inline-flex items-center gap-2">
+            <RoundProgress round={round} />
+            {turnsInRound !== null && (
+              <span className="font-display text-xs font-bold">
+                바퀴 {Math.min(state.turn.circuit + 1, turnsInRound)}/{turnsInRound}
+              </span>
+            )}
           </span>
         }
-        title={<RoundProgress round={round} />}
-        right={
-          <Button variant="ghost" size="sm" onClick={() => setSheet({ kind: 'cards' })}>
-            <span className="relative">
-              카드
-              {state.roundGoals.length > 0 && (
-                <span className="absolute -top-1.5 -right-3 rounded-full bg-goal px-1 font-display text-xs leading-4 text-void">{state.roundGoals.length}</span>
-              )}
-            </span>
-          </Button>
-        }
-      />
-
-      {connection && connection.status !== 'open' && (
-        <p role="status" className="flex items-center justify-center gap-2 rounded-2xl bg-[#3a2a1d] px-4 py-2.5 text-sm font-bold text-[#ffd2a8] ring-1 ring-personal/50">
-          <span className="size-4 animate-spin rounded-full border-2 border-personal border-t-transparent" aria-hidden="true" />
-          연결이 끊겼어요 · 다시 연결하는 중…
-        </p>
-      )}
-
-      {/* 플레이어: 탭하면 그 사람 보드를 본다 */}
-      <nav className="grid gap-1.5" style={{ gridTemplateColumns: `repeat(${state.players.length}, minmax(0, 1fr))` }} aria-label="플레이어 보드">
-        {state.players.map((p) => {
-          const active = p.id === shownPlayer
-          const turn = p.id === current
-          const color = seatColor(p.id)
-          const away = !!connection && connection.presence[p.id] === false
-          return (
-            <button
-              type="button"
-              key={p.id}
-              aria-pressed={active}
-              aria-label={`${seats[p.id]?.name} 보드 보기${turn ? ', 지금 차례' : ''}${away ? ', 연결 끊김' : ''}`}
-              onClick={() => patch({ viewing: p.id })}
-              className={`relative flex min-h-12 items-center gap-1.5 overflow-hidden rounded-2xl px-2 py-1.5 text-left transition-all duration-200 active:scale-95 ${active ? 'bg-raised ring-2' : 'bg-surface/70 ring-1 ring-line'} ring-inset`}
-              style={active ? { ['--tw-ring-color' as string]: color } : undefined}
-            >
-              {turn && <span aria-hidden="true" className="absolute inset-x-0 bottom-0 h-0.5 animate-pulse" style={{ background: color }} />}
-              <span className="relative shrink-0">
-                <Avatar name={seats[p.id]?.name ?? '?'} color={color} size={26} glow={turn} />
-                {away && <span aria-hidden="true" className="absolute -right-0.5 -bottom-0.5 size-2.5 rounded-full bg-muted ring-2 ring-void" />}
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-xs font-bold">{seats[p.id]?.name}</span>
-                <span className="flex min-w-0 items-baseline gap-1 font-display text-[13px] leading-none font-bold" style={{ color }}>
-                  {scores[p.id]}
-                  {p.debris.length > 0 && <span className="truncate text-xs text-danger">−{p.debris.length}</span>}
-                  {/* 4인이면 칸이 좁아 글자 대신 테두리·아바타 빛·아래 막대로만 차례를 알린다 */}
-                  {turn && state.players.length <= 3 && (
-                    <span aria-hidden="true" className="ml-auto shrink-0 rounded-full px-1.5 font-sans text-xs leading-4 text-void" style={{ background: color }}>
-                      차례
-                    </span>
-                  )}
-                </span>
-              </span>
-            </button>
-          )
-        })}
-      </nav>
-
+        onMenu={() => setSheet({ kind: 'menu' })}
+        players={players}
+        actions={actions}
+        notice={connection && !connection.open ? '연결이 끊겼어요 · 다시 연결하는 중…' : null}
+      >
+        <div className="flex h-full flex-col gap-3 overflow-y-auto overscroll-contain px-4 py-3 *:shrink-0">
       {/* 지금 할 일 */}
       <p className="sr-only" aria-live="polite">
         {fxSummary(events, seats)} {instruction ?? `${currentSeat?.name} 차례`}
@@ -593,7 +611,7 @@ export function GameScreen({
           />
         )}
         <span className="shrink-0 font-display text-xs font-bold text-muted">
-          {turnsInRound !== null ? `바퀴 ${Math.min(state.turn.circuit + 1, turnsInRound)}/${turnsInRound}` : round === 4 && actor !== null ? (
+          {round === 4 && actor !== null ? (
             <span className="inline-flex items-center gap-1">
               <Hourglass size={12} color="#f2a65a" /> {pending.length}
               {free > 0 && <span className="text-accent">· 자유 {free}</span>}
@@ -601,15 +619,6 @@ export function GameScreen({
           ) : null}
         </span>
       </div>
-
-      {/* 내 차례 안에서 방금 한 수 되돌리기 (주사위를 굴려 나온 결과가 끼면 앱이 버튼을 주지 않는다) */}
-      {onUndo && (
-        <div className="-my-1 flex justify-end">
-          <Button variant="ghost" size="sm" onClick={onUndo}>
-            ↶ 방금 수 되돌리기
-          </Button>
-        </div>
-      )}
 
       {/* 다른 사람이 방금 한 일 (봇·원격 플레이어의 수를 놓치지 않게) */}
       {lastAction && lastAction.player !== actor && lastAction.type !== 'choosePersonalGoal' && (
@@ -831,9 +840,27 @@ export function GameScreen({
         </Panel>
       )}
 
-      {confirm && <ConfirmBar text={confirm.text} label={confirm.label} onConfirm={confirm.run} onCancel={cancelConfirm} />}
+        </div>
+      </GameShell>
       {errorToast}
       {noticeModal}
+      {sheet?.kind === 'menu' && (
+        <Sheet title="메뉴" onClose={() => setSheet(null)}>
+          <div className="grid grid-cols-2 gap-2">
+            <Button onClick={() => setSheet({ kind: 'cards' })}>카드 · 목표</Button>
+            <Button onClick={() => setSheet({ kind: 'rules' })}>규칙 보기</Button>
+          </div>
+          <h3 className="m-0 text-sm text-muted">기록</h3>
+          <LogList entries={log} />
+          {exitWarning ? (
+            <ConfirmButton confirmText={exitWarning} onConfirm={onExit}>
+              나가기
+            </ConfirmButton>
+          ) : (
+            <Button onClick={onExit}>나가기 · 진행 상황은 저장돼요</Button>
+          )}
+        </Sheet>
+      )}
 
       {sheet?.kind === 'cards' && (
         <CardsSheet
@@ -854,7 +881,7 @@ export function GameScreen({
           onClose={() => setSheet(null)}
         />
       )}
-    </Screen>
+    </>
   )
 }
 
@@ -893,7 +920,7 @@ function GoalStrip({ state, player, viewer, onOpen }: { state: GameState; player
   const events = round === 4 ? (state.time?.events ?? []) : []
   if (!board || (goals.length === 0 && !personal && events.length === 0)) return null
   return (
-    <button type="button" onClick={onOpen} className="flex flex-wrap gap-1.5 text-left active:opacity-70" aria-label="목표 카드 자세히 보기">
+    <button type="button" onClick={onOpen} className="flex min-h-11 flex-wrap items-center gap-1.5 text-left active:opacity-70" aria-label="목표 카드 자세히 보기">
       {goals.map((g) => {
         const def = ROUND_GOALS[g.id]
         const status =
@@ -937,23 +964,6 @@ function GoalStrip({ state, player, viewer, onOpen }: { state: GameState; player
         </span>
       )}
     </button>
-  )
-}
-
-/** 한 번 눌러 고른 행동을 확정하는 아래 바. 고른 곳을 한 번 더 눌러도 확정된다 */
-function ConfirmBar({ text, label, onConfirm, onCancel }: { text: string; label: string; onConfirm: () => void; onCancel: () => void }) {
-  return (
-    <div className="fixed inset-x-0 bottom-0 z-30 animate-rise border-t border-line bg-void/95 backdrop-blur">
-      <div className="mx-auto flex max-w-[480px] items-center gap-2 px-4 pt-3 pb-[max(12px,env(safe-area-inset-bottom))]">
-        <Button onClick={onCancel} className="shrink-0 whitespace-nowrap">
-          취소
-        </Button>
-        <Button variant="primary" block onClick={onConfirm} aria-label={`${text}, ${label}`}>
-          <span className="truncate font-normal opacity-80">{text}</span>
-          <span>· {label}</span>
-        </Button>
-      </div>
-    </div>
   )
 }
 
@@ -1013,7 +1023,7 @@ function PassScreen({
 }) {
   const color = seatColor(seat)
   return (
-    <main className="relative flex min-h-dvh flex-col items-center justify-center gap-5 overflow-hidden px-6 py-8 text-center">
+    <main className="gh-app relative items-center justify-center gap-5 overflow-hidden px-6 py-8 text-center">
       <span aria-hidden="true" className="absolute top-1/3 left-1/2 size-[420px] -translate-x-1/2 -translate-y-1/2 rounded-full opacity-30 blur-3xl" style={{ background: color }} />
       {recent && (
         <section className="relative flex w-full max-w-[260px] animate-rise flex-col items-center gap-1.5 rounded-2xl bg-surface/80 p-3 ring-1 ring-line ring-inset">

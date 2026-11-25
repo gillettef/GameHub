@@ -26,7 +26,7 @@ export const TIPS: Record<TipId, { title: string; text: string }> = {
   },
 }
 
-const KEY = 'tesseract.tips'
+const KEY = 'tesseract:tips'
 
 interface TipStore {
   seen: TipId[]
