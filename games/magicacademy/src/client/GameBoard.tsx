@@ -383,7 +383,7 @@ export function ExamInfoPanel({ game }: { game: GameState }) {
       </p>
       {card ? (
         <div className="mt-1.5 flex items-center gap-3">
-          <CardButton className="w-32 shrink-0" card={{ name: card.name, badge: describeExam(card), lines: [card.description] }} />
+          <CardButton className="w-32 shrink-0" card={{ name: card.name, badge: describeExam(card, game.rules.skillRules), lines: [card.description] }} />
           <p className="text-xs text-sky-600">카드를 누르면 자세한 설명을 볼 수 있어요</p>
         </div>
       ) : (
@@ -450,14 +450,14 @@ export function MonthOffersPanel({ game }: { game: GameState }) {
   const zones = MONTH_ZONES.filter((a) => (game.activityOffers[a]?.cards.length ?? 0) > 0);
   // 62절 한 덱: 종류를 섞어 인원만큼(62-7절) 한 줄로 보여 준다 (카드마다 종류·쓰는 기운 배지)
   if (game.rules.activityMarket) {
-    const cards = MARKET_ZONES.flatMap((a) => (game.activityOffers[a]?.cards ?? []).map((card) => marketCardInfo(a, card)));
+    const cards = MARKET_ZONES.flatMap((a) => (game.activityOffers[a]?.cards ?? []).map((card) => marketCardInfo(a, card, game.rules.skillRules)));
     if (cards.length === 0) return null;
     return (
       <div className="rounded-3xl border-2 border-amber-200 bg-amber-50 p-3">
         <p className="font-display text-base text-amber-700">
           <InlineIcon name="compass" /> 이번 달 활동 카드 {cards.length}장
         </p>
-        <p className="mb-2 text-xs text-amber-800">3주차에 학점이 낮은 친구부터 1장씩 골라요. 하고 싶은 카드의 기운을 주는 수업을 골라 두세요.</p>
+        <p className="mb-2 text-xs text-amber-800">3주차에 학점이 낮은 친구부터 1장씩 골라요. {game.rules.skillRules ? "하고 싶은 카드의 능력치를 2주차 수업에서 배우거나 노트로 챙겨 두세요." : "하고 싶은 카드의 기운을 주는 수업을 골라 두세요."}</p>
         <CardGrid cards={cards} />
       </div>
     );
@@ -489,10 +489,13 @@ export function MonthOffersPanel({ game }: { game: GameState }) {
 // 62절 한 덱: 활동 카드의 종류와 굴릴 때 쓰는 기운
 const MARKET_ZONES: ActivityId[] = ["creature", "exploration", "lab", "duel"];
 const MARKET_KIND: Partial<Record<ActivityId, string>> = { creature: "조련 · 매력기운", exploration: "탐험 · 체력기운", lab: "연구 · 지력기운", duel: "겨루기 · 마나기운" };
-function marketCardInfo(a: ActivityId, card: OfferCardView, note?: string): CardInfo {
+// 63절(skillRules)에는 기운이 없어 그 분야 능력치를 보인다
+const MARKET_KIND_SKILL: Partial<Record<ActivityId, string>> = { creature: "조련 · 매력", exploration: "탐험 · 체력", lab: "연구 · 지력", duel: "겨루기 · 주문력" };
+function marketCardInfo(a: ActivityId, card: OfferCardView, skillRules: boolean, note?: string): CardInfo {
   const info = offerCardInfo(card);
   const tags = a === "duel" ? undefined : info.badge;
-  return { ...info, badge: [note, MARKET_KIND[a], tags].filter(Boolean).join(" · "), chip: note ?? MARKET_KIND[a] };
+  const kind = (skillRules ? MARKET_KIND_SKILL : MARKET_KIND)[a];
+  return { ...info, badge: [note, kind, tags].filter(Boolean).join(" · "), chip: note ?? kind };
 }
 
 // 62절 한 덱: 공개된 카드마다 누가 골랐는지 (카드를 정해 고른 친구는 그 카드, 종류만 고른 친구(봇)와 겨루기는 그 종류의 남은 카드를 앞에서부터 채운다).
@@ -639,7 +642,7 @@ function ChoosePanel({
         const blocked = !owner && a === "duel" ? duelBlocked : null;
         return {
           key: card.id,
-          card: marketCardInfo(a, card, owner ? `${nameOf(owner)} 선택` : blocked ? "지목할 친구 없음" : undefined),
+          card: marketCardInfo(a, card, game.rules.skillRules, owner ? `${nameOf(owner)} 선택` : blocked ? "지목할 친구 없음" : undefined),
           onAction: isMyTurn ? () => (a === "duel" ? setPendingActivity("duel") : onSelect(a, undefined, card.id)) : undefined,
           actionLabel: owner ? `${nameOf(owner)} 선택` : blocked ? "지목할 친구 없음" : a === "duel" ? "친구 지목하기" : "이 카드 고르기",
           disabled: Boolean(owner || blocked),

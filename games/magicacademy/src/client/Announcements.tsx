@@ -66,7 +66,7 @@ function cleanupBanner(prev: GameState): Announcement {
     kind: "banner",
     icon: "bag",
     title: `${prev.round}개월 4주차 · 정리`,
-    subtitle: `쓰고 남은 기운은 다음 달로 이어져요. 다음 달 선은 시계방향으로 한 칸 넘어가요${prev.rules.turnOrderRule === "creditAsc" ? " (차례는 학점이 낮은 친구부터)" : ""}`,
+    subtitle: `${prev.rules.skillRules ? "" : "쓰고 남은 기운은 다음 달로 이어져요. "}다음 달 선은 시계방향으로 한 칸 넘어가요${prev.rules.turnOrderRule === "creditAsc" ? " (차례는 학점이 낮은 친구부터)" : ""}`,
   });
 }
 
@@ -88,7 +88,7 @@ const classBanner = (game: GameState): Announcement =>
     kind: "banner",
     icon: "book",
     title: `${game.round}개월 2주차 · 정규수업`,
-    subtitle: `이번 달 선은 ${starterName(game)}님! 수업카드는 무료예요. ${orderText(game.rules)} 한 장씩 가져가요. 가져가면 그 과목의 기운을 얻어요`,
+    subtitle: `이번 달 선은 ${starterName(game)}님! 수업카드는 무료예요. ${orderText(game.rules)} 한 장씩 가져가요. ${game.rules.skillRules ? `배우면 그 과목 능력치 +1, 노트로 두면 그 과목 판정에 +${game.rules.noteBonus}` : "가져가면 그 과목의 기운을 얻어요"}`,
   });
 
 function activityBanner(game: GameState, myId: string): Announcement {
@@ -132,6 +132,9 @@ function activityResult(prev: GameState, next: GameState, myId: string): Announc
     if (d !== 0) tiles.push({ text: `${STAT_LABEL[key]} ${d > 0 ? "+" : ""}${d}`, tone: d > 0 ? "good" : "bad" });
   }
   // 시험·마법 경연 최종 보상이 같은 전환에 섞이면 활동 결과와 구분할 수 없어 학점 변화는 생략한다
+  // 63절(skillRules): 노트를 받거나 쓰면 알려 준다
+  const noteDiff = (after.notes?.length ?? 0) - (before.notes?.length ?? 0);
+  if (noteDiff !== 0) tiles.push({ text: `노트 ${noteDiff > 0 ? "+" : ""}${noteDiff}`, tone: noteDiff > 0 ? "good" : "bad" });
   const creditDiff = after.credit - before.credit;
   if (!examHappened && creditDiff !== 0) tiles.push({ text: `학점 ${creditDiff > 0 ? "+" : ""}${creditDiff}`, tone: creditDiff > 0 ? "good" : "bad" });
   for (const [label, list] of [["마법생물", "creatures"], ["연구 카드", "equipment"]] as const) {
@@ -161,7 +164,7 @@ function examBanner(next: GameState): Announcement {
     kind: "banner",
     icon: "dice",
     title: next.phase === "midterm_exam" ? "중간고사 시작!" : "기말고사 시작!",
-    subtitle: `${card.name}: ${describeExam(card)}로 점수를 내요`,
+    subtitle: `${card.name}: ${describeExam(card, next.rules.skillRules)}로 점수를 내요`,
   });
 }
 
@@ -184,8 +187,10 @@ function examRevealBanner(next: GameState, which: "midterm" | "final"): Announce
     kind: "banner",
     icon: "note",
     title: `${which === "midterm" ? "중간고사" : "기말고사"} 과목 공개!`,
-    subtitle: `"${card.name}" — ${describeExam(card)}`,
-    lines: [card.description, `${card.diceStat === "spellPower" ? "마나" : STAT_LABEL[card.diceStat]}기운을 많이 낼수록 주사위가 늘어요${card.bonusStat ? `. ${STAT_LABEL[card.bonusStat]} 수치는 점수에 그대로 더해져요` : ""}`],
+    subtitle: `"${card.name}" — ${describeExam(card, next.rules.skillRules)}`,
+    lines: next.rules.skillRules
+      ? [card.description, `그 과목 노트를 모아 두면 시험에서 한 장에 +${next.rules.noteBonus}`]
+      : [card.description, `${card.diceStat === "spellPower" ? "마나" : STAT_LABEL[card.diceStat]}기운을 많이 낼수록 주사위가 늘어요${card.bonusStat ? `. ${STAT_LABEL[card.bonusStat]} 수치는 점수에 그대로 더해져요` : ""}`],
   });
 }
 
