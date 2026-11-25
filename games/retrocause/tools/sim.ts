@@ -1,10 +1,11 @@
-// 봇 대전 시뮬레이터. 사용법:
+// 봇 대전 시뮬레이터(옛 prototype/sim/run.mjs). 사용법:
+// 타입 검사(tsconfig)에서는 빠져 있다. node --experimental-strip-types 로 바로 실행한다.
 //   npm run sim -- --games 2000 --players 4 --style rival
 //   npm run sim -- --games 2000 --players 3,4,5 --style mixed --json out.json
 // 출력: 인물별·자리별 승률, 게임 길이, 연쇄 정리·패러독스 빈도, 결정 원인 분포 등
 import { writeFileSync } from 'node:fs';
-import { newGame, finalScore, FIGURES, CARD, DEFAULT_RULES, ENDING_POOL } from '../src/engine.js';
-import { playBotGame, guessMotives, BOT_STYLES } from '../src/bots.js';
+import { newGame, finalScore, FIGURES, DEFAULT_RULES, ENDING_POOL } from '../src/engine/engine.ts';
+import { playBotGame, guessMotives, BOT_STYLES, type BotKey, type BotStyle } from '../src/engine/bots.ts';
 
 const args = Object.fromEntries(
   process.argv.slice(2).reduce((acc, a, i, arr) => (a.startsWith('--') ? [...acc, [a.slice(2), arr[i + 1]]] : acc), []),
@@ -22,8 +23,9 @@ if (args.slots) {
   rules.slotsByPlayers = { 3: s[0], 4: s[1] ?? s[0], 5: s[2] ?? s[0] };
 }
 
-const styleList = Object.keys(BOT_STYLES).filter((k) => k !== 'random');
-if (args.activity) for (const k of styleList) BOT_STYLES[k] = { ...BOT_STYLES[k], activity: Number(args.activity) };
+const table: Record<string, BotStyle> = { ...BOT_STYLES };
+const styleList = (Object.keys(BOT_STYLES) as BotKey[]).filter((k) => k !== 'random');
+if (args.activity) for (const k of styleList) table[k] = { ...table[k]!, activity: Number(args.activity) };
 const pct = (a, b) => (b ? ((100 * a) / b).toFixed(1) + '%' : '-');
 const avg = (xs) => (xs.length ? xs.reduce((s, x) => s + x, 0) / xs.length : 0);
 
@@ -40,7 +42,7 @@ for (const n of PLAYERS) {
   for (let i = 0; i < GAMES; i++) {
     const seed = SEED0 + i * 7919 + n;
     const styles = Array.from({ length: n }, (_, p) =>
-      STYLE === 'mixed' ? BOT_STYLES[styleList[(p + i) % styleList.length]] : BOT_STYLES[STYLE]);
+      STYLE === 'mixed' ? table[styleList[(p + i) % styleList.length]!]! : table[STYLE]!);
     const styleNames = styles.map((s) => s.label);
     const g = playBotGame(newGame({ names: styleNames, seed, rules }), styles, seed + 1);
     const s = finalScore(g, g.names.map((_, p) => guessMotives(g, p)));
@@ -88,4 +90,3 @@ for (const n of PLAYERS) {
   console.log('결말 사실별 결정 원인 없음 비율:', Object.entries(st.endingFactNoDecisive).map(([k, [a, b]]) => `${k} ${pct(a, b)}`).join(' · '));
 }
 if (args.json) writeFileSync(args.json, JSON.stringify(report, null, 2));
-void CARD;

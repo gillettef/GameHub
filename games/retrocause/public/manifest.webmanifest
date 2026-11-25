@@ -1,7 +1,7 @@
 {
   "name": "RETROCAUSE",
   "short_name": "Retrocause",
-  "description": "역인과 추리·블러핑 보드게임 프로토타입",
+  "description": "결말은 고정, 원인은 자유. 역인과 추리·블러핑 보드게임",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

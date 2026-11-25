@@ -9,14 +9,15 @@
     "games/lastgrain",
     "games/lightcone",
     "games/sightline",
-    "games/tesseract"
+    "games/tesseract",
+    "games/retrocause"
   ],
   "engines": {
     "node": ">=22"
   },
   "scripts": {
     "typecheck": "npm run typecheck --workspaces --if-present",
-    "lint": "eslint packages games/crease games/lastgrain games/lightcone games/sightline games/tesseract",
+    "lint": "eslint packages games/crease games/lastgrain games/lightcone games/retrocause games/sightline games/tesseract",
     "test": "npm run test --workspaces --if-present",
     "build": "npm run build --workspaces --if-present",
     "check": "npm run typecheck && npm run lint && npm test && npm run build",
