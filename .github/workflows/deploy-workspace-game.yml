@@ -1,0 +1,93 @@
+# 루트 workspaces 로 옮긴 게임의 공통 배포. 게임의 deploy-<slug>.yml 이 slug 만 넘겨 부른다.
+# 러너에서 검사·빌드한 산출물(dist server-dist scripts/aws)만 올리고, 서버에서는 설치·빌드하지 않는다.
+# SSH(22)는 관리자 IP 로만 열려 있어, 배포 직전에 러너 IP 를 보안 그룹에 임시로 열고 끝나면 반드시 닫는다.
+# 필요한 저장소 시크릿: AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION, AWS_SECURITY_GROUP_ID,
+#                       EC2_HOST, EC2_HOST_KEY(known_hosts 한 줄), EC2_SSH_PRIVATE_KEY
+name: Deploy workspace game
+
+on:
+  workflow_call:
+    inputs:
+      slug:
+        required: true
+        type: string
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      SLUG: ${{ inputs.slug }}
+    steps:
+      - name: 시크릿 확인 — 값은 출력하지 않고 비어 있는 이름만 알린다
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+          AWS_SECURITY_GROUP_ID: ${{ secrets.AWS_SECURITY_GROUP_ID }}
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          EC2_HOST_KEY: ${{ secrets.EC2_HOST_KEY }}
+          EC2_SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
+        run: |
+          missing=0
+          for n in AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_REGION AWS_SECURITY_GROUP_ID EC2_HOST EC2_HOST_KEY EC2_SSH_PRIVATE_KEY; do
+            v="${!n}"
+            if [ -n "$v" ]; then echo "OK    $n (값 길이 ${#v})"; else echo "::error::비어 있음: $n"; missing=1; fi
+          done
+          exit $missing
+
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - run: npm ci
+      - name: 타입체크·린트·테스트·빌드 — 통과해야 배포한다
+        run: npm run check
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION || 'ap-northeast-2' }}
+
+      - name: 이 러너의 IP 를 SSH(22)에 임시 허용
+        run: |
+          RUNNER_IP="$(curl -s https://checkip.amazonaws.com)"
+          echo "RUNNER_IP=${RUNNER_IP}" >> "$GITHUB_ENV"
+          aws ec2 authorize-security-group-ingress \
+            --group-id "${{ secrets.AWS_SECURITY_GROUP_ID }}" \
+            --ip-permissions "IpProtocol=tcp,FromPort=22,ToPort=22,IpRanges=[{CidrIp=${RUNNER_IP}/32,Description=github-actions-${SLUG}}]"
+
+      - name: SSH 키 준비
+        env:
+          KEY: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
+          HOST_KEY: ${{ secrets.EC2_HOST_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$KEY" > ~/.ssh/ci_key
+          chmod 600 ~/.ssh/ci_key
+          printf '%s\n' "$HOST_KEY" >> ~/.ssh/known_hosts
+
+      - name: 산출물 업로드
+        working-directory: games/${{ inputs.slug }}
+        run: |
+          tar -c dist server-dist scripts/aws \
+            | ssh -i ~/.ssh/ci_key ec2-user@${{ secrets.EC2_HOST }} \
+              "rm -rf ~/${SLUG}/dist ~/${SLUG}/server-dist ~/${SLUG}/scripts && mkdir -p ~/${SLUG} && tar -x -C ~/${SLUG}"
+
+      - name: 허브 재시작 + 헬스체크
+        run: |
+          ssh -i ~/.ssh/ci_key ec2-user@${{ secrets.EC2_HOST }} "bash -s -- ${SLUG}" < packages/config/deploy-remote.sh
+
+      - name: 임시 SSH 허용 제거
+        if: always()
+        run: |
+          if [ -n "${RUNNER_IP:-}" ]; then
+            aws ec2 revoke-security-group-ingress \
+              --group-id "${{ secrets.AWS_SECURITY_GROUP_ID }}" \
+              --ip-permissions "IpProtocol=tcp,FromPort=22,ToPort=22,IpRanges=[{CidrIp=${RUNNER_IP}/32}]" || true
+          fi

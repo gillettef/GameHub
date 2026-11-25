@@ -6,7 +6,7 @@
 
 - 코드가 아니라 **보드게임 디자인 문서** 프로젝트다. 산출물은 룰북, 구성물 목록, 플레이테스트 기록, 디자인 결정 로그다.
 - 모든 문서는 한국어로 쓴다. 게임 용어는 `docs/glossary.md`의 표기를 따른다(한국어 용어 + 영문 병기).
-- 디지털 프로토타입(예: 웹 시뮬레이터)은 필요할 때 `prototype/`에 따로 만든다. 룰의 기준은 항상 `rules/rulebook.md`다.
+- 디지털 구현(규칙 엔진·봇·밸런스 시뮬레이터·웹 게임)은 GameHub 공통 구조(`packages/example`, `docs/refactor-plan.md`)를 따른다. 룰의 기준은 항상 `rules/rulebook.md`이고, 엔진은 그 구현이다.
 
 ## 핵심 디자인 기둥 (변경 시 사용자 확인 필수)
 
@@ -20,22 +20,26 @@
 ## 폴더 구조
 
 ```
-Crease/
+games/crease/
 ├── CLAUDE.md
-├── docs/
-│   ├── concept.md       # 게임 개요, 핵심 경험, 열린 질문
-│   ├── decisions.md     # 디자인 결정 로그 (D-001, D-002 ...)
-│   └── glossary.md      # 공식 용어집
-├── rules/
-│   └── rulebook.md      # 룰북 초안 (규칙의 단일 기준)
-├── components/
-│   └── components.md    # 구성물 목록과 사양
-├── playtests/           # 플레이테스트 기록 (YYYY-MM-DD-NN.md)
-├── scripts/
-│   ├── deploy-aws.ps1   # 수동 배포
-│   └── aws/             # EC2 준비·재시작 스크립트, 정적 서버(serve.mjs)
-└── .github/workflows/   # ci.yml(검사), deploy-aws.yml(main 병합 시 배포)
+├── docs/                # concept.md(개요) · decisions.md(결정 로그) · glossary.md(용어집) · balance.md(밸런스 측정)
+├── rules/rulebook.md    # 룰북 초안 (규칙의 단일 기준)
+├── components/          # 구성물 목록과 사양
+├── src/
+│   ├── engine/          # 순수 TS 규칙: engine.ts(판·차례) · rules.ts(확정 수치 RULES) · bot.ts(봇) · sim.ts(일괄 시뮬레이션)
+│   ├── def.ts           # 공통 방·진행 코드(@gamehub/net)에 엔진을 잇는 GameDef. 행동 = 걸음 1칸·접기·펼치기·차례 끝
+│   └── client/          # React 화면: 처음, 대국(Table·Board), 봇 대전 관전, 밸런스 시뮬레이션, 규칙 요약
+├── server/app.ts        # 온라인 대전 서버(createRoomApp(def), WebSocket /ws)
+├── scripts/aws/hub-entry.mjs  # 허브 안 실행 진입점
+├── tools/               # 밸런스 CLI(sim·grid·endcause·search3·search4)와 설명 그림(make-figure)
+├── test/                # vitest. legacy.test.ts 는 옛 JS 엔진과 같은 진행인지 기록(fixtures/)으로 비교한다
+└── e2e/mobile.mjs       # iPhone 17 Pro 화면 확인(Playwright WebKit)
 ```
+
+- 엔진·도구의 import 는 `.ts` 확장자를 붙인다(`node --experimental-strip-types` 로 바로 실행).
+- 규칙 수치를 바꾸면 `src/engine/rules.ts` 와 룰북 3장 표를 함께 고친다(`test/rulebook-sync.test.ts`). 규칙을 바꾸면 `legacy.test.ts` 가 깨지는 것이 정상이므로, 그때는 비교 기록을 지우고 그 사실을 결정 로그에 남긴다.
+- 명령(GameHub 루트에서 `npm install` 후, 이 폴더에서): `npm run dev`(화면+서버) · `npm test` · `npm run e2e`(빌드 후) · `npm run sim -- --games 300 --players 3` · `npm run figure`.
+- 바로 시작 링크: `?play=3`(나 vs 봇 3인), `?watch=4`(봇 4인 관전), `?room=ABCD`(온라인 초대).
 
 ## 작업 규칙
 
@@ -52,17 +56,14 @@ Crease/
 - **저장소:** https://github.com/gillettef/GameHub.git 의 `games/crease/` (모노레포, 옛 개별 저장소 `gillettef/Crease` 는 2026-11-25 삭제) (기본 브랜치: `dev`)
 - **작은 작업 단위가 끝날 때마다 반드시 commit하고 push한다.** 여러 작업을 모아서 한 번에 올리지 않는다. `/commit-push` 스킬을 쓴다. (이 규칙은 커밋·푸시에 대한 사전 승인이다. 단, force push·히스토리 변경은 사용자에게 먼저 확인한다.)
 - **commit 메시지는 한국어로 쓴다.** 형식은 `/commit-push` 스킬을 따른다. (예: `규칙: 접기 단계 문장 정리`)
-- **일상 작업은 `dev`에 커밋·푸시한다. `main`(운영 배포)에는 직접 커밋·푸시하지 않고**, 사용자가 요청할 때만 `dev` → `main` PR(`gh pr create --base main --head dev`)로 병합한다. 작업 시작 전 현재 브랜치가 `dev`인지 확인한다. `dev` 푸시는 CI(GameHub `.github/workflows/ci-crease.yml`)만 돌고, `main` 병합이 곧 운영 배포다.
+- **일상 작업은 `dev`에 커밋·푸시한다. `main`(운영 배포)에는 직접 커밋·푸시하지 않고**, 사용자가 요청할 때만 `dev` → `main` PR(`gh pr create --base main --head dev`)로 병합한다. 작업 시작 전 현재 브랜치가 `dev`인지 확인한다. `dev` 푸시는 CI(GameHub `.github/workflows/ci-workspace.yml`)만 돌고, `main` 병합이 곧 운영 배포다.
 
 ## 배포 (AWS)
 
-- **2026-11-24부터 운영은 GameHub 허브 안에서 실행된다**(`hub/games.json` `"mode": "inproc"`, 진입점 `scripts/aws/hub-entry.mjs`). 접속은 `http://54.116.67.196/crease/`. 배포하면 `deploy-remote.sh`가 예전 systemd `crease` 서비스를 끄고 허브(`gamehub`)를 재시작한다 — 허브 안 다른 게임의 진행 중인 방도 함께 사라진다. `serve.mjs`는 로컬 단독 실행용으로 남는다. 아래의 포트·systemd 설명은 예전 단독 운영 기준이다.
-- 다른 게임(Eleven·MagicAcademy·SmilePark·DoubleAgent·Tesseract·Neoterra·Election·Lightcone·Retrocause 등)과 같은 EC2(t4g.nano, 서울) 1대를 공유한다. Crease의 포트는 **8101**, systemd 서비스 이름은 `crease`이다. 접속은 `http://54.116.67.196:8101` (HTTP만).
-- 배포 대상은 웹 시뮬레이터(정적 웹앱 + 온라인 대전방 API)다. 서버는 의존성 없는 `scripts/aws/serve.mjs`(정적 파일, `/api/rooms` 대전방, SSE 실시간 전송)이고 대전방 로직은 `scripts/aws/rooms.mjs`다. 대전방은 메모리에만 있어 재시작·배포 때 진행 중인 방이 사라진다. **`package.json`이 없는 동안에는 CI 검사와 배포를 모두 건너뛴다.** 프로토타입을 만들 때는 `package.json`을 저장소 루트에 두고 `npm test`·`npm run build`(산출물 `dist/`)를 제공한다.
-- `main`에 병합되면 `.github/workflows/deploy-aws.yml`이 `npm test` → `npm run build`를 통과했을 때만 `dist`와 `scripts/aws/`(의존성 없는 서버 `serve.mjs`·`rooms.mjs`, `deploy-remote.sh`)를 `~/crease`에 올리고, `deploy-remote.sh`가 systemd `crease`를 재시작·헬스체크한다.
-- **수동 배포**(push 없이): `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/deploy-aws.ps1`. SSH 키·IP는 `.dev/`(git 제외), 없으면 `../Rootbound/.dev/`의 것을 쓴다.
-- SSH(22)는 관리자 IP만 열려 있어 워크플로가 러너 IP를 임시로 열었다 닫는다. 저장소 시크릿: AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY / AWS_REGION / AWS_SECURITY_GROUP_ID / EC2_HOST / EC2_HOST_KEY / EC2_SSH_PRIVATE_KEY (다른 게임 저장소와 같은 값, 정본은 저장소 밖 `personal/aws_config.md`).
-- 서버 준비(완료, 2026-11-23): 보안 그룹 TCP 8101 인바운드 추가, 저장소 시크릿 7개 등록.
+- 운영은 GameHub 허브 안에서 실행된다(`hub/games.json` `"mode": "inproc"`, 진입점 `scripts/aws/hub-entry.mjs`). 접속은 `http://54.116.67.196/crease/`.
+- `main` 병합 때 GameHub `deploy.yml` → `deploy-crease.yml` → 공통 `deploy-workspace-game.yml` 이 검사·빌드를 통과한 산출물(`dist`, `server-dist`, `scripts/aws`)만 `~/crease` 에 올리고 허브(`gamehub`)를 재시작한다. 재시작하면 모든 게임의 진행 중인 방이 사라진다. 수동 재배포는 Actions → Deploy crease.
+- 온라인 대전은 공통 `@gamehub/net` 방식이다: 대기실 → 방장 시작(빈자리는 봇), 끊긴 사람의 차례는 45초 뒤 봇이 대신, 게임 중 나가면 그 자리는 봇이 이어받는다(`docs/refactor-plan.md` 9절).
+- 예전 단독 운영(포트 8101, systemd `crease`, SSE API)은 2026-11-25 새 구조로 옮기며 없앴다.
 
 ## 서브에이전트
 
