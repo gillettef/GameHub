@@ -1,7 +1,9 @@
-// 자동 생성 원본: 카드 세트 v0 (components/components.md 와 일치해야 한다 — test/cards.test.js 가 검사)
-export const SUBJECTS = [{"id": "성", "states": ["멀쩡", "불탐"]}, {"id": "왕", "states": ["건강", "중독"]}, {"id": "금고", "states": ["가득", "빔"]}, {"id": "경비", "states": ["깨어 있음", "잠듦"]}, {"id": "성문", "states": ["닫힘", "열림"]}];
-export const FIGURES = ["하인", "왕비", "대신", "경비대장", "궁정 의사", "광대"];
-export const CARDS = [
+import type { Card, Figure, Subject } from './types.ts'
+
+// 카드 세트 v0 (components/components.md 와 일치해야 한다 — test/engine.test.ts 가 검사)
+export const SUBJECTS: readonly Subject[] = [{"id": "성", "states": ["멀쩡", "불탐"]}, {"id": "왕", "states": ["건강", "중독"]}, {"id": "금고", "states": ["가득", "빔"]}, {"id": "경비", "states": ["깨어 있음", "잠듦"]}, {"id": "성문", "states": ["닫힘", "열림"]}];
+export const FIGURES: readonly Figure[] = ["하인", "왕비", "대신", "경비대장", "궁정 의사", "광대"];
+export const CARDS: readonly Card[] = [
   {"id": "C01", "title": "물동이 행렬", "figure": "하인", "cond": {"subject": "경비", "state": "깨어 있음"}, "effect": {"subject": "성", "state": "멀쩡"}},
   {"id": "C02", "title": "소화 지휘", "figure": "왕비", "cond": {"subject": "성", "state": "불탐"}, "effect": {"subject": "성", "state": "멀쩡"}},
   {"id": "C03", "title": "보수 공사", "figure": "대신", "cond": null, "effect": {"subject": "성", "state": "멀쩡"}},
