@@ -4,12 +4,12 @@
 
 ## 1. 방법
 
-- 규칙 엔진: `prototype/engine.js` (룰북 v1.0 규칙 구현). 확정 수치: `prototype/rules-config.js`.
-- 봇: `prototype/bot.js`. 한 차례 안에서 가능한 모든 "걸음 + 접기 끼워 넣기" 조합(최대 수천 개)을 펼쳐 보고, 평가 함수가 가장 높은 것을 고른다.
+- 규칙 엔진: `src/engine/engine.ts` (룰북 규칙 구현, 2026-11-25 `prototype/engine.js` 에서 옮김 — 같은 시드에서 같은 진행임을 `test/legacy.test.ts` 로 확인). 확정 수치: `src/engine/rules.ts` 의 `RULES`.
+- 봇: `src/engine/bot.ts`. 한 차례 안에서 가능한 모든 "걸음 + 접기 끼워 넣기" 조합(최대 수천 개)을 펼쳐 보고, 평가 함수가 가장 높은 것을 고른다.
   - 평가 = 10 × 점수 + 7 × 들고 있는 조각 − 1.1 × (다음 목표까지 거리) − 부재 벌점, 여기에서 가장 앞선 상대의 같은 값 × 견제 가중치를 뺀다.
   - 성향: `balanced`(견제 0.6), `greedy`(견제 0), `spiteful`(견제 1.2), `nofold`(접기 금지, 펼치기만 허용).
 - 실행: `npm run sim -- --games 1000 --players 2,3,4`
-- 수치 탐색 도구: `prototype/tools/grid.mjs`, `search3.mjs`, `search4.mjs`
+- 수치 탐색 도구: `tools/grid.ts`, `search3.ts`, `search4.ts`, `endcause.ts` (`node --experimental-strip-types tools/<이름>.ts`)
 
 ### 한계
 
@@ -66,7 +66,7 @@
 - v1.0에서는 3인 게임의 21%, 4인의 약 절반이 목표 점수 전에 카드 35장 소진으로 끝났고, 공동 승리가 3~4인 18~19%였다.
 - 카드를 다시 섞고 동점 결승 라운드를 넣자 카드 소진 종료 0%, 공동 승리 0.3~2%가 되었다.
 - 날개 터뜨리기로 수동 펼치기가 차례당 0.45회에서 0.31회로 줄었다(접고 펴기 소모전 감소).
-- 주의: 초기 탐색 도구(`prototype/tools/*.mjs`)는 v1.2 전까지 확정 수치가 아니라 엔진 기본값 위에 덮어썼다. 지금은 `RULES` 기준이다. 아래 3절 표는 모두 `RULES`로 다시 측정한 값이다.
+- 주의: 초기 탐색 도구(옛 `prototype/tools/*.mjs`)는 v1.2 전까지 확정 수치가 아니라 엔진 기본값 위에 덮어썼다. 지금은 `RULES` 기준이다. 아래 3절 표는 모두 `RULES`로 다시 측정한 값이다.
 
 ## 3. 확정 수치와 결과 (룰북 v1.2, 1000판)
 
