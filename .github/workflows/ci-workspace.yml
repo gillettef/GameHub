@@ -4,10 +4,10 @@ name: CI workspace
 
 on:
   push:
-    paths: ['packages/**', 'games/crease/**', 'games/tesseract/**', 'hub/server.mjs', 'hub/lib/**', 'package.json', 'package-lock.json', 'eslint.config.js', '.github/workflows/ci-workspace.yml']
+    paths: ['packages/**', 'games/crease/**', 'games/tesseract/**', 'games/lastgrain/**', 'hub/server.mjs', 'hub/lib/**', 'package.json', 'package-lock.json', 'eslint.config.js', '.github/workflows/ci-workspace.yml']
     branches: [main, dev]
   pull_request:
-    paths: ['packages/**', 'games/crease/**', 'games/tesseract/**', 'hub/server.mjs', 'hub/lib/**', 'package.json', 'package-lock.json', 'eslint.config.js', '.github/workflows/ci-workspace.yml']
+    paths: ['packages/**', 'games/crease/**', 'games/tesseract/**', 'games/lastgrain/**', 'hub/server.mjs', 'hub/lib/**', 'package.json', 'package-lock.json', 'eslint.config.js', '.github/workflows/ci-workspace.yml']
 
 concurrency:
   group: ci-workspace-${{ github.ref }}

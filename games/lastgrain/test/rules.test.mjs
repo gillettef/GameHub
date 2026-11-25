@@ -1,11 +1,11 @@
-// 룰북 v0.4 판정 규칙 검사. 실행: npm test
-import test from 'node:test';
+// 룰북 v0.4 판정 규칙 검사 (옛 prototype/test/rules.test.mjs 를 그대로 옮김). 실행: npm test
+import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import {
   newGame, tick, endTurn, summon, move, attack, moveOptions, attackOptions,
-  onBoard, reserve, unitAt, canSummon, legalActions, apply,
-} from '../src/rules.js';
-import { chooseAction } from '../src/bot.js';
+  reserve, legalActions, apply,
+} from '../src/engine/rules.ts';
+import { chooseAction } from '../src/engine/bot.ts';
 
 const NO_HANDLE = { handleMs: 0 };
 const pick = (s, p, kind) => reserve(s, p).find((u) => u.kind === kind);
