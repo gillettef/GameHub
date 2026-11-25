@@ -22,6 +22,11 @@ export interface ApplyContext {
   byBot: boolean
 }
 
+/** 시계가 상태를 바꿀 때 쓰는 것(행동이 아니라 시간 때문에 생긴 일) */
+export interface ClockContext {
+  log(text: string, kind?: string): void
+}
+
 /** 규칙에 맞지 않는 행동. 메시지는 그대로 사용자에게 보인다 */
 export class RuleError extends Error {}
 
@@ -41,6 +46,16 @@ export interface GameDef<S, A, V = S, O = unknown> {
   /** 그 좌석에 보여도 되는 상태(JSON 으로 보낼 수 있어야 한다). seat 이 null 이면 관전 */
   view(state: S, seat: number | null): V
   isOver(state: S): boolean
+  /**
+   * 실시간 게임만: 실제 시간이 흐르면 바뀌는 상태(모래시계 등). 행동 직전과 syncMs 마다 흘린다.
+   * 시간이 흘러도 version 은 그대로라 고르던 행동이 거절되지 않는다. 화면은 받은 뒤 흐른 시간만큼 표시를 줄여 보이면 된다
+   */
+  clock?: {
+    /** ms 만큼 흐른 뒤의 상태. 바뀐 것이 없으면 같은 객체를 돌려준다 */
+    advance(state: S, ms: number, ctx: ClockContext): S
+    /** 상태를 다시 보내는 간격(기본 1000) */
+    syncMs?: number
+  }
   bot?: {
     /** 다음 한 수. memory 는 그 좌석에 계속 유지되는 보관함(차례 계획 등) */
     next(state: S, seat: number, memory: Record<string, unknown>): A | null

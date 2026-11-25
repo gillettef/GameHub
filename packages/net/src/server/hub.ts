@@ -253,8 +253,12 @@ export class RoomHub<S, A, V, O> {
       options: room.options,
       timers: this.timers,
       autoDelay: (i) => this.autoDelay(room, i),
-      onChange: () => {
-        room.touchedAt = this.deps.now()
+      now: () => this.deps.now(),
+      // 아무도 보고 있지 않으면 시계도 멈춘다(봇이 멈춘 동안 봇의 모래만 흐르지 않게)
+      clockRunning: () => room.conns.size > 0,
+      onChange: (by) => {
+        // 시계만 흐른 것은 방의 활동이 아니다(아무도 없는 방이 정리되도록)
+        if (by !== 'clock') room.touchedAt = this.deps.now()
         this.broadcast(room)
       },
     })

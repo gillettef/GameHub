@@ -1,8 +1,8 @@
-"""웹 앱 아이콘(PNG) 생성. 실행: python scripts/make_icons.py → web/icon-180.png, icon-192.png, icon-512.png"""
+"""웹 앱 아이콘(PNG) 생성. 실행: python scripts/make_icons.py → public/icon-180.png, icon-192.png, icon-512.png"""
 import os
 from PIL import Image, ImageDraw
 
-OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "web")
+OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "public")
 BG = (20, 32, 25)
 GOLD = (232, 198, 106)
 GARDEN = (223, 233, 211)

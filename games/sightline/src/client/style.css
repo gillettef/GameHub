@@ -1,0 +1,43 @@
+@import '@gamehub/ui/theme.css';
+
+/* SIGHTLINE 색: 달빛 정원의 짙은 초록 바탕, 금빛 강조(옛 화면의 색) */
+:root {
+  --gh-bg: #0f1713;
+  --gh-surface: #16221b;
+  --gh-raised: #22352a;
+  --gh-line: #2c4033;
+  --gh-text: #ece6d6;
+  --gh-muted: #9fae9f;
+  --gh-primary: #e8c66a;
+  --gh-on-primary: #2a2108;
+  --gh-danger: #e2735f;
+}
+
+.sl-board {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.sl-board [role='button'] {
+  cursor: pointer;
+  outline: none;
+}
+.sl-board [role='button']:focus-visible > rect:first-child {
+  stroke: var(--gh-primary);
+  stroke-width: 3;
+}
+
+.sl-rulebook {
+  font-size: 14px;
+  color: var(--gh-text);
+}
+.sl-rulebook h1 { font-size: 1.25rem; margin: 0.6rem 0; }
+.sl-rulebook h2 { font-size: 1.1rem; margin: 1.2rem 0 0.5rem; color: var(--gh-primary); }
+.sl-rulebook h3 { font-size: 1rem; margin: 1rem 0 0.4rem; }
+.sl-rulebook p, .sl-rulebook li { line-height: 1.6; }
+.sl-rulebook ul { padding-left: 1.2rem; }
+.sl-rulebook blockquote { margin: 0.6rem 0; padding: 0.4rem 0.8rem; border-left: 3px solid var(--gh-primary); color: var(--gh-muted); }
+.sl-rulebook pre { overflow-x: auto; font-size: 11px; line-height: 1.35; background: var(--gh-bg); padding: 0.6rem; border-radius: 8px; }
+.sl-rulebook table { display: block; overflow-x: auto; border-collapse: collapse; font-size: 13px; margin: 0.5rem 0; }
+.sl-rulebook th, .sl-rulebook td { border: 1px solid var(--gh-line); padding: 0.3rem 0.45rem; text-align: left; vertical-align: top; }
+.sl-rulebook code { background: var(--gh-raised); padding: 0 0.25rem; border-radius: 4px; }

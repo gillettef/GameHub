@@ -6,7 +6,7 @@
 
 - 코드가 아니라 **보드게임 디자인 문서** 프로젝트다. 산출물은 룰북, 구성물 목록, 플레이테스트 기록, 디자인 결정 로그다.
 - 모든 문서는 한국어로 쓴다. 게임 용어는 `docs/glossary.md`의 표기를 따른다(한국어 용어 + 영문 병기).
-- 웹 시뮬레이터(봇 대전)는 `prototype/`에 있다. 룰의 기준은 항상 `rules/rulebook.md`다. **룰북을 바꾸면 `prototype/src/rules.js`와 테스트도 같이 고친다.**
+- 웹 게임(봇 대전·온라인 실시간 대전)은 GameHub 공통 구조(`packages/example`, `docs/refactor-plan.md`)를 따른다. 룰의 기준은 항상 `rules/rulebook.md`다. **룰북을 바꾸면 `src/engine/rules.ts`와 테스트도 같이 고친다.** 규칙을 바꾸면 `test/legacy.test.ts`(옛 JS 엔진과의 동일성 비교)가 깨지는 것이 정상이므로, 그때는 비교 기록을 지우고 결정 로그에 남긴다.
 
 ## 핵심 디자인 기둥 (변경 시 사용자 확인 필수)
 
@@ -32,14 +32,20 @@ Lastgrain/
 │   └── components.md    # 구성물 목록과 사양
 ├── playtests/           # 플레이테스트 기록 (YYYY-MM-DD-NN.md)
 ├── submission/          # 규칙서 HTML(빌드가 rules.html 로 복사)과 생성 스크립트
-├── prototype/           # 웹 시뮬레이터(봇·온라인 대전, iPhone 17 Pro 기준 UI): src/rules.js(규칙 엔진), bot.js, net.js, ui.js, test/
-├── package.json         # npm test(규칙 엔진 테스트), npm run build(→ dist/)
-├── scripts/
-│   ├── build.mjs        # prototype/ + 제출용 규칙서 → dist/
-│   ├── deploy-aws.ps1   # 수동 배포
-│   └── aws/             # EC2 준비·재시작 스크립트, 서버(serve.mjs: 정적+API), 온라인 방 관리(online.mjs)
-└── .github/workflows/   # ci.yml(검사), deploy-aws.yml(main 병합 시 배포)
+├── src/
+│   ├── engine/          # 순수 TS 규칙: rules.ts(판·차례·tick), bot.ts(1수 앞 봇), random.ts
+│   ├── def.ts           # 공통 방·진행 코드(@gamehub/net)에 잇는 GameDef. def.clock 이 실시간으로 모래를 흘린다
+│   └── client/          # React 화면: App(처음·설정), Table(대국), Piece(모래병·모래시계)
+├── server/app.ts        # 온라인 서버(createRoomApp(def), WebSocket /ws)
+├── scripts/aws/hub-entry.mjs  # 허브 안 실행 진입점
+├── public/              # 아이콘·매니페스트
+├── test/                # vitest: rules.test.mjs(판정), legacy.test.ts(옛 엔진과 같은 진행, fixtures/), def.test.ts
+└── e2e/mobile.mjs       # iPhone 17 Pro 화면 확인
 ```
+
+- 빌드(`npm run build`)는 `submission/LASTGRAIN_규칙서.html` 을 `dist/rules.html` 로 함께 낸다(화면의 「규칙서」 링크).
+- 실시간 처리: 판정은 진행 쪽 시계(온라인은 서버, 봇 대전은 브라우저의 Match)로 하고 1초마다 상태를 다시 보낸다. 화면은 받은 뒤 흐른 시간만큼 모래를 줄여 보여 줄 뿐이다(`Table.tsx` 의 `predict`). 온라인은 시작 전 3초를 센다.
+- 명령(GameHub 루트에서 `npm install` 후 이 폴더에서): `npm run dev` · `npm test` · `npm run e2e`(빌드 후).
 
 ## 작업 규칙
 
@@ -55,17 +61,14 @@ Lastgrain/
 - **저장소:** https://github.com/gillettef/GameHub.git 의 `games/lastgrain/` (모노레포, 옛 개별 저장소 `gillettef/Lastgrain` 는 2026-11-25 삭제) (기본 브랜치: `dev`)
 - **작은 작업 단위가 끝날 때마다 반드시 commit하고 push한다.** 여러 작업을 모아서 한 번에 올리지 않는다. `/commit-push` 스킬을 쓴다. (이 규칙은 커밋·푸시에 대한 사전 승인이다. 단, force push·히스토리 변경은 사용자에게 먼저 확인한다.)
 - **commit 메시지는 한국어로 쓴다.** 형식은 `/commit-push` 스킬을 따른다. (예: `규칙: 뒤집기 단계 문장 정리`)
-- **일상 작업은 `dev`에 커밋·푸시한다. `main`(운영 배포)에는 직접 커밋·푸시하지 않고**, 사용자가 요청할 때만 `dev` → `main` PR(`gh pr create --base main --head dev`)로 병합한다. 작업 시작 전 현재 브랜치가 `dev`인지 확인한다. `dev` 푸시는 CI(GameHub `.github/workflows/ci-lastgrain.yml`)만 돌고, `main` 병합이 곧 운영 배포다.
+- **일상 작업은 `dev`에 커밋·푸시한다. `main`(운영 배포)에는 직접 커밋·푸시하지 않고**, 사용자가 요청할 때만 `dev` → `main` PR(`gh pr create --base main --head dev`)로 병합한다. 작업 시작 전 현재 브랜치가 `dev`인지 확인한다. `dev` 푸시는 CI(GameHub `.github/workflows/ci-workspace.yml`)만 돌고, `main` 병합이 곧 운영 배포다.
 
 ## 배포 (AWS)
 
-- **2026-11-24부터 운영은 GameHub 허브 안에서 실행된다**(`hub/games.json` `"mode": "inproc"`, 진입점 `scripts/aws/hub-entry.mjs`). 접속은 `http://54.116.67.196/lastgrain/`. 배포하면 `deploy-remote.sh`가 예전 systemd `lastgrain` 서비스를 끄고 허브(`gamehub`)를 재시작한다 — 허브 안 다른 게임의 진행 중인 방도 함께 사라진다. `serve.mjs`는 로컬 단독 실행용으로 남는다. 아래의 포트·systemd 설명은 예전 단독 운영 기준이다.
-- 다른 게임(Eleven·MagicAcademy·SmilePark·DoubleAgent·Tesseract·Neoterra·Election·Lightcone·Retrocause 등)과 같은 EC2(t4g.nano, 서울) 1대를 공유한다. Lastgrain의 포트는 **8104**, systemd 서비스 이름은 `lastgrain`이다. 접속은 `http://54.116.67.196:8104` (HTTP만).
-- 배포 대상은 디지털 프로토타입(웹 시뮬레이터)이다. `scripts/aws/serve.mjs`가 `dist/`를 서빙하고 온라인 대전 API(`/api/rooms`, SSE)를 제공한다. 방 상태는 메모리에만 있어 배포·재시작 시 진행 중인 온라인 게임이 사라진다. **`package.json`이 없는 동안에는 CI 검사와 배포를 모두 건너뛴다.** 프로토타입을 만들 때는 `package.json`을 저장소 루트에 두고 `npm test`·`npm run build`(산출물 `dist/`)를 제공한다.
-- `main`에 병합되면 `.github/workflows/deploy-aws.yml`이 `npm test` → `npm run build`를 통과했을 때만 `dist`와 `scripts/aws/`(의존성 없는 정적 서버 `serve.mjs`, `deploy-remote.sh`)를 `~/lastgrain`에 올리고, `deploy-remote.sh`가 systemd `lastgrain`을 재시작·헬스체크한다.
-- **수동 배포**(push 없이): `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/deploy-aws.ps1`. SSH 키·IP는 `.dev/`(git 제외), 없으면 `../Rootbound/.dev/`의 것을 쓴다.
-- SSH(22)는 관리자 IP만 열려 있어 워크플로가 러너 IP를 임시로 열었다 닫는다. 저장소 시크릿: AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY / AWS_REGION / AWS_SECURITY_GROUP_ID / EC2_HOST / EC2_HOST_KEY / EC2_SSH_PRIVATE_KEY (다른 게임 저장소와 같은 값, 정본은 저장소 밖 `personal/aws_config.md`).
-- 서버 준비(완료, 2026-11-23): 보안 그룹 TCP 8104 인바운드 추가, 저장소 시크릿 7개 등록.
+- 운영은 GameHub 허브 안에서 실행된다(`hub/games.json` `"mode": "inproc"`, 진입점 `scripts/aws/hub-entry.mjs`). 접속은 `http://54.116.67.196/lastgrain/`.
+- `main` 병합 때 GameHub `deploy.yml` → `deploy-lastgrain.yml` → 공통 `deploy-workspace-game.yml` 이 검사·빌드를 통과한 산출물(`dist`, `server-dist`, `scripts/aws`)만 `~/lastgrain` 에 올리고 허브(`gamehub`)를 재시작한다. 재시작하면 모든 게임의 진행 중인 방이 사라진다. 수동 재배포는 Actions → Deploy lastgrain.
+- 온라인 대전은 공통 방식이다: 방 코드 4자리, 대기실 → 방장 시작(빈자리는 봇), 1번 자리가 선. 끊긴 사람의 차례는 45초 뒤 봇이 대신하고(그동안 그 사람의 모래는 계속 흐른다), 게임 중 나가면 그 자리는 봇이 이어받는다(GameHub `docs/refactor-plan.md` 9절).
+- 예전 단독 운영(포트 8104, systemd `lastgrain`, SSE API `scripts/aws/online.mjs`)은 2026-11-25 새 구조로 옮기며 없앴다.
 
 ## 서브에이전트
 
