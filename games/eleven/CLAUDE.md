@@ -52,46 +52,60 @@
 - 그림/아트 에셋은 보유하고 있지 않으므로 카드 아트는 자체 제작(간단한 아이콘/텍스트 기반 UI)으로
   대체한다. 텍스트·수치·규칙은 원작 그대로, 비주얼만 자체 디자인.
 
-## 기술 스택
+## 기술 스택 (GameHub 공통 구조, 2026-11-25 이전)
 
-- **언어**: TypeScript 전체 통일 (프론트/백엔드).
-- **백엔드**: Node.js. 실시간 동기화를 위해 WebSocket(예: `ws` 또는 Socket.IO) 사용.
-- **프론트엔드**: React.
-- **상태 저장**: 서버 메모리 상주. DB 없음 — 서버가 재시작되면 진행 중인 게임은 유실되어도 무방함
-  (한 판은 보통 한 번의 서버 세션 동안만 진행된다고 가정).
-- **세션/방 모델**: 로그인/계정 시스템 없음. 방 코드(room code) 발급 → 참가자는 코드 + 닉네임으로
-  입장. (Jackbox/코드네임 스타일)
-- **배포**: 외부에서 접속 가능하도록 배포한다 (지인들이 각자 집에서 접속). **단일 Node 프로세스**가
-  빌드된 프론트(`client/dist`)와 WebSocket(`/ws`)을 한 origin 으로 서빙한다 — 아래 "배포" 절 참고.
+- GameHub 모노레포 루트 npm workspaces 의 한 패키지(`@gamehub/eleven`). 공통 스택: TypeScript strict, React 19 + Vite, Tailwind v4(공통 화면만), Node 22 + `ws`,
+  esbuild 서버 번들, Vitest + Playwright(iPhone 화면). 기준 문서: 루트 `docs/refactor-plan.md`.
+- **방·접속·봇 진행은 공통 `@gamehub/net`**(대기실 → 방장 시작, 빈자리는 봇, 4자리 방 코드, 좌석 토큰 재접속, 끊긴 사람 차례는 45초 뒤 봇이 대신,
+  게임 중 나가면 그 자리는 봇이 이어받고 돌아올 수 없음, 아무도 보고 있지 않으면 진행 멈춤). 게임은 `src/def.ts`의 `GameDef` 하나로 연결한다.
+- **화면 틀은 공통 `@gamehub/ui`**: 처음 화면(`HomeScreen`: 한 기기/온라인, 인원·사람/봇, 닉네임), 대기실(`WaitingRoom`), 대국 배치(`GameShell`), 시트(`Sheet`).
+- **상태 저장**: 서버 메모리. 배포·재시작하면 진행 중인 방은 사라진다. 한 기기 게임은 브라우저에 시드 + 행동 기록(`eleven:current`)을 저장해 이어 한다.
 
 ### 프로젝트 구조
 
 ```
-server/   Node.js + TypeScript 게임 서버 (WebSocket). dev 포트 3001. `npm run dev`
-client/   React + Vite 프론트엔드.               dev 포트 5173. `npm run dev`
-scripts/  dev.ps1 / dev-stop.ps1 — 개발 서버 시작/종료 (/dev, /dev-stop 스킬이 호출)
-          tunnel.ps1 — 배포 모드 서버 + Cloudflare 빠른 터널로 공개 URL 발급 (/tunnel 스킬이 호출). -Slot main/test 로 서버 두 벌
-notes/    규칙서 원본 및 텍스트 레퍼런스
-.dev/     개발 서버 PID·로그 (gitignore)
+src/engine/   규칙 엔진(순수 TS, React·DOM·시간·난수 직접 사용 금지 — 난수는 Rng 인자). 테스트는 같은 폴더 *.test.ts
+src/data/     카드 mock 데이터 + data.test.ts
+src/bot/      policy.ts(GameView 만 보는 휴리스틱 봇), headless.ts(지연 없이 한 판 끝까지), balance.ts(npm run balance)
+src/def.ts    GameDef: 엔진 ↔ 공통 방·진행 코드(서버·브라우저 공용). seeded.ts = 상태에 저장하는 난수, protocol.ts = 엠블럼, errors.ts = 엔진 오류 한국어
+src/client/   React 화면(옛 client/src 부품 그대로 + App/HomeScreen/GameScreen/store 새로)
+server/app.ts createRoomApp(def) — 개발 서버(vite)와 운영 번들(server-dist/app.cjs)이 같이 쓴다
+scripts/aws/hub-entry.mjs  허브 inproc 진입점
+scripts/card-audit.mjs     카드 넘침 점검(card-audit.html)
+test/def.test.ts           GameDef(입력 검사·좌석별 가림·봇 완주·봇 쉼/경기 보기 대기)
+e2e/mobile.mjs             iPhone 17 Pro 화면으로 한 기기·봇끼리 완주·온라인 두 기기
+notes/        규칙서 원본 텍스트
 ```
 
-게임 엔진(규칙 로직)은 `server/` 안에서 UI·네트워크와 분리된 순수 TypeScript 모듈로 두어
-단위 테스트와 시뮬레이션이 가능하게 한다.
+### GameDef (`src/def.ts`)
 
-### 클라이언트 구조 (`client/src`)
+- 좌석 i 의 엔진 참가자 id 는 `p${i}`. 시작할 때 방 난수로 좌석 순서를 섞어 시계방향 차례를 정한다(옛 `rooms.start`와 같은 순서·같은 난수 소비).
+- 상태(`Table`) = 엔진 `GameState` + 난수 위치(`rng`, `seeded.ts` — `createRng`와 같은 수열) + 시드 + 사람/봇 + 엠블럼 + `hold`. **엔진은 옮기기만 하고 고치지 않았다.**
+- `view` = 엔진 `viewFor`(옛 서버가 보내던 GameView 그대로) + 엠블럼·사람/봇·경기 보기 대기 표시. 난수·시드·덱 순서·되돌리기 스냅샷은 보내지 않는다. 관전은 `viewFor(state, '')`.
+- `actors` = 엔진상 둘 수 있는 참가자(동시 단계의 아직 안 고른 사람, 턴제의 `current`) + **대상 선택(pending)이 남은 참가자**(유지비 미납 출장정지 직원 고르기 등, 차례와 무관).
+- `parseAction` 은 모든 행동 형식을 엄격히 검사(라인업의 지역·자원·관중석 정수 포함). 행동에 참가자 id 가 없고 좌석으로 정해져 남의 자리를 사칭할 수 없다.
+  엔진 `GameError`는 `koError`로 한국어 `RuleError`가 된다.
+- 게임 전용 행동 두 가지(엔진 밖): `emblem`(준비 단계에서 내 엠블럼 바꾸기, 한 판에서 겹치지 않음 — 옛 대기실 선택 격자를 드래프트 화면 아래로 옮김), `watched`(아래).
+- **봇 간격 `hold`**(공통 봇 지연은 한 값뿐이라 옛 `driver.ts`의 쉼을 시계로 옮김, `def.clock` syncMs 250): 봇 행동 뒤 다음도 봇이면 `PAUSE_FACTOR`(굴림 4배, 행동 3배 …) − 1 만큼 봇 좌석을
+  actors 에서 뺀다. 경기 결과 단계에서 차례인 봇이 아직 안 굴렸고 사람 좌석이 있으면 **경기 보기 대기**(`BOT_WATCH_MS` 24초): 그동안 actors 는 아직 안 본 사람들이고,
+  화면이 재생 끝·건너뛰기·결과 스텝 이동 때 `watched`를 보내 모두 보면 바로 진행. hold 의 남은 시간은 같은 객체에서 줄여 매 틱 전체 상태를 다시 보내지 않는다.
+- 봇(`def.bot`): 옛 `BotDriver.step`처럼 `decide`가 낸 행동을 엔진에 미리 적용해 보고(난수 복사본) 거절되면 그 종류를 빼고 다시 고른다. 다 막히면 `fallback`이 받아들여지는 가장 단순한 행동.
 
-- 클라이언트는 서버 엔진·타입을 **`@server/*` alias(`../server/src/*`)로 직접 import**해서 쓴다
-  (Vite alias + tsconfig paths). 카드 데이터·`cards` 조회·`sectorCounts` 같은 순수 로직을 중복 없이 재사용하기
-  위함. 단, `rooms.ts`/`ws.ts`/`app.ts` 등 Node 전용 모듈은 절대 import하지 않는다(엔진과 `protocol.ts`만).
-- `ws.ts` — 재연결(백오프)과 `localStorage` 세션(`eleven.session`)으로 자동 rejoin. `store.tsx` — 서버 메시지를
-  React 상태(`room`, `view`, `error`)로 반영하는 컨텍스트, `useGame()`이 `view`와 `me`를 제공.
-- `screens/` — 단계별 화면(Lobby/RoomLobby, Setup(드래프트·목표), Monday, Weekday, …). `components/Cards.tsx` —
-  카드 종류별 렌더링, `components/Shell.tsx` — 헤더·참가자 요약·내 구단·이적 시장·리그·기록·대상 선택 모달.
-  `labels.ts` — 한국어 라벨과 효과 DSL 설명 문자열.
-- `App.tsx`의 `GameLayout`(모바일 전용): 헤더(`Header`) + 그 아래 **참가자 띠**(`PlayerStrip`: 자리 색·이름·자원/트랙·리그·승점·상태 점, 누르면 그 참가자의 개인 보드) + 한 열 본문(`MobileMain`) + 아래 고정 탭 막대(`MobileNav`).
-  '진행' 탭 = `ActionSidebar`(`WeekSchedule`, `DiceTray`, 주중이면 `WeekdayActions`, `LegendButton`) + 단계 패널(`PhaseScreen`이 `view.phase.kind`로 고름, 주중에는 없음). 탐색 상태는 `client/src/ui.tsx` `UiProvider`/`useUi()`.
-  관전자는 같은 레이아웃에 `PhaseStatus`. 레이아웃 위에 `PendingModal`·`ConfirmBar`가
-  고정 위치로 얹힌다.
+### 클라이언트 구조 (`src/client`)
+
+- 엔진·데이터는 상대경로로 직접 import(`../engine/*`, `../data`). 서버 전용 코드는 없다(server/app.ts 한 줄).
+- `App.tsx`: 공통 `useRoom`(온라인, 새로고침·화면 복귀 때 자동 재접속) / `LocalGame`(한 기기, 이어 하기, 봇 속도 보통·빠르게·아주 빠르게 = 봇 간격과 hold 시계를 함께 배속) → `HomeScreen`(상대할 부 선택) · `WaitingRoom` · `GameScreen`.
+  한 기기에 사람이 둘 이상이면 넘길 때 화면을 가린다(목표 카드·전술 손패 비공개).
+- `store.tsx`: 옛 `useStore/useView/useGame` 모양을 공통 `RoomSnapshot`에서 만들어 넣는다(`session.playerId = p<좌석>`, `room.players[].emblem/isBot`). 거절 이유는 GameShell 알림으로 6초.
+- `GameScreen.tsx` = 공통 `GameShell` 배치: ① 상태바(지금 할 일 또는 누구 차례 / 주차·단계·방 코드, ≡ 메뉴 시트 = 알림 설정·봇 속도·나가기) ② 참가자 띠(`PlayerStrip`, 옆으로 밀기)
+  ③ 본문 `.mobile-main`(진행/구단/시장/리그/기록 중 하나, **이 영역 안에서만 스크롤**) ⑤ 아래 막대(확정 막대·차례 끝내기 막대 + 탭 막대). 페이지 스크롤·가로 스크롤 없음, 누르는 대상 44px 이상.
+- CSS: `global.css`가 공통 `theme.css`(Tailwind) 뒤에 옛 `styles.css`를 `eleven` 층으로 넣는다(Tailwind 기본값보다 이기고 공통 화면 유틸리티보다 진다). 색은 `--gh-*`(DESIGN.md 값)이고 `--bg`·`--surface`·`--ink`·`--pitch` 등이 그것을 읽는다.
+  styles.css 맨 끝의 "GameHub 공통 배치" 절이 예전 sticky/fixed 막대를 GameShell 안으로 옮긴 규칙이다.
+- 저장 키는 모두 `eleven:` 접두어(`eleven:current`·`eleven:botSpeed`·`eleven:division`·`eleven:lineup`·`eleven:notify`·`eleven:guide`·`eleven:replaySpeed`, 공통 `eleven:session`·`eleven:name`·`eleven:seats`).
+- 아래는 옛 화면 부품의 결정 사항(대부분 그대로 유효). "헤더 48px·window 스크롤·fixed 탭 막대·채팅·강퇴·다시 하기" 같은 옛 배치·방 기능 설명은 위 공통 구조로 바뀌었다.
+- 대국 화면(`GameScreen.tsx` + `components/Mobile.tsx`): 참가자 띠(`PlayerStrip`: 자리 색·이름·자원/트랙·리그·승점·상태 점, 누르면 그 참가자의 개인 보드) + 한 열 본문(`MobileMain`) + 아래 탭 막대(`MobileNav`).
+  '진행' 탭 = `ActionSidebar`(`WeekSchedule`, `DiceTray`, 주중이면 `WeekdayActions`, `LegendButton`) + 단계 패널(`PhaseScreen`이 `view.phase.kind`로 고름, 주중에는 없음). 탐색 상태는 `client/ui.tsx` `UiProvider`/`useUi()`.
+  관전자는 같은 레이아웃에 `PhaseStatus`. 그 위에 `PendingModal`이 얹힌다.
 - **주중 행동은 사이드바 목록, 버튼은 고르는 화면으로 이동만**(사용자 요청 2026-09): 맨 위에 차례 끝내기·처음으로 되돌리기(`undoTurn`, 확정 필요) **둘뿐 — 패스 버튼은 없다**.
   기본 행동 없이 차례 끝내기를 누르면 확정 막대를 거쳐 끝내고 엔진 `endTurn`이 패스로 기록한다(`pass` 액션은 봇·테스트용으로 남아 있음). 그 아래 버튼은 전부 이동용:
   **주전 선수 영입/베테랑 영입**/직원 고용/스폰서 계약 → 공용 보드의 해당 시장 탭(`showMarket`), "선수 방출…" → 방출 모드 + 경기 보드(`releasing`),
@@ -100,8 +114,6 @@ notes/    규칙서 원본 및 텍스트 레퍼런스
   구단 보드 `card-slot`의 `data-focus`를 `scrollIntoView`로 찾아가고 1.6초 초록 링(`focus-flash`). 탭 전환 시 맨 위로 가는 스크롤 효과가 이 경우엔 카드로 간다. 보드에서 고르면 `select` → 확정 막대. 가능 여부는 `useWeekdayTurn`(ActionSidebar.tsx)이 공용으로 계산. 내 차례가 아니거나 조건(기본 행동 소진, 돈 부족, 소진 카드 등)이 안 맞으면 비활성.
   **유망주 영입… 버튼**도 다른 영입 버튼처럼 이적 시장의 유망주 탭으로 이동시키고, 거기서 더미 맨 위 카드(`view.nextProspect`)를 눌러 고른다.
   미훈련 면만 보이고 훈련 면은 영입 후 공개. 이적 시장 탭은 주전/베테랑/유망주/직원/스폰서 5개(`MarketTab`).
-  **상단 헤더는 모바일(≤760px)에서도 높이 48px를 유지**한다(`--head-h` 기반 스티키 오프셋이 깨지지 않게): 부제 태그·"연결됨"
-  글자·알림 토글 라벨을 숨기고 주차/단계를 두 줄로 줄인다(사용자 요청, 2026-09). 400px 이하에선 방 코드도 숨긴다.
   **모달(아이콘 설명·스폰서 계약)은 `createPortal`로 `document.body`에 그린다** — 사이드바가 `position: sticky`라 자체 스태킹
   컨텍스트를 만들어, 그 안에서 그린 `position: fixed` 모달이 메인 영역 뒤에 깔리기 때문. 새 모달도 같은 방식으로.
 - **화면은 모바일 전용이다**(사용자 결정 2026-09-29: PC용 3열 화면과 PC/모바일 선택 화면 `device.tsx`를 전부 삭제). `index.html`의 `<html class="mobile-ui">`가 늘 붙어 있고 스타일은 `.mobile-ui …`로 건다
@@ -111,7 +123,7 @@ notes/    규칙서 원본 및 텍스트 레퍼런스
     한 열 본문 + **아래 고정 탭 막대**(`MobileNav`: 진행/구단/시장/리그/기록, `ui.mobileTab`). '진행' = 이번 주 일정 + 주사위 + 주중 행동 목록 + 단계 패널.
     '진행' 영역은 다른 탭을 볼 때도 `hidden`으로 마운트를 유지한다(경기 준비 라인업의 로컬 상태·주사위 애니메이션 보존). 단계가 바뀌거나 **내 차례가 시작되면**
     '진행'으로 돌아오고(PC 는 그 단계의 기본 탭으로 — 다른 참가자의 보드를 보고 있었을 수 있어서, 사용자 요청 2026-09-22), `showMarket`/`showBoard`/`selectPlayer`는 `mobileTab`도 함께 옮긴다. 내 할 일이 있는데 다른 탭이면 '진행'에 금색 점.
-    **내 차례가 끝나 다른 참가자 차례가 되면 '기록·채팅' 탭의 기록으로 간다**(모바일용만, 사용자 요청 2026-09-24: 남의 차례엔 '진행'이 비어 있고 남이 뭘 하는지는 기록으로 본다). PC 는 오른쪽 기록이 늘 보이므로 그대로.
+    **내 차례가 끝나 다른 참가자 차례가 되면 '기록' 탭의 기록으로 간다**(모바일용만, 사용자 요청 2026-09-24: 남의 차례엔 '진행'이 비어 있고 남이 뭘 하는지는 기록으로 본다). PC 는 오른쪽 기록이 늘 보이므로 그대로.
   - `MobileTurnBar`: 주중 내 차례에 기본 행동을 마치고 다른 탭(시장 등)에 있으면 탭 막대 위에 "차례 끝내기" 막대(확정 막대와 같은 자리, 확정 막대가 우선).
   - 카드 줄(`.cards`)은 접지 않고 **옆으로 미는 한 줄**(카드 크기 유지, scroll-snap). 이적 시장 행은 살 수 있는 오른쪽 3장이 먼저 보이게
     맨 앞('지금 구매 가능' 구역)에서 시작한다(`MarketBody`). 탭 줄도 옆으로 밀리고 고른 탭이 보이게 맞춘다(`Tabs`). 모달은 바텀 시트, 확정 막대·오류
@@ -193,7 +205,7 @@ notes/    규칙서 원본 및 텍스트 레퍼런스
     못 고르는 카드에 이유 표시, 효과 활성화) → 배치(토큰을 누르고 구획을 누름, 토큰끼리는 자리 바꿈,
     갈 수 있는 구획 강조, 역량 표시) → 관중석·제출(**관중석은 넣을 수 있는 최대치가 기본값**, 요약 + 제출. 관중석은 `components/StandsPicker.tsx` — 스타디움 보드 같은 **경기장 평면도에서 관중석을 눌러 팬덤을 놓고 빼며**, 잔디 가운데에 큰 숫자 n/최대와 "경기 후 돈 +n", 사용자 요청 2026-09 "눈에 안 띈다"). 앞 스텝이 유효해야 다음으로 가지만
     뒤로는 언제든 돌아간다. 상대 팀 카드는 모든 스텝 옆에 고정(모바일은 접이식). **내 차례가 아니어도 미리 짜 둘 수 있고** 제출만 차례에.
-    초안은 `lineupDraft.ts`가 `localStorage`(`eleven.lineup`)에 저장: 같은 주면 스텝·관중석까지 복원(새로고침), **다음 주에는 지난주 라인업이
+    초안은 `lineupDraft.ts`가 `localStorage`(`eleven:lineup`)에 저장: 같은 주면 스텝·관중석까지 복원(새로고침), **다음 주에는 지난주 라인업이
     기본값**(없어진 전술 카드·부상/출장정지·등번호 중복은 걸러 내고 배치가 안 맞으면 자동 배치, 관중석은 다시 최대치). 첫 주는 체력이 닿는 만큼 자동 선발.
   - **금요일은 크게 경기 준비 / 경기 보기 / 경기 종료 세 단계로 보인다**(사용자 요청 2026-09-22). 엔진 단계는 그대로(`friday.prepare` → `friday.match` → 전원 판정 → `friday.aftermath`)이고
     `friday.match` 패널 제목은 "상대 팀 공개 · 전술 효과"(준비의 마지막 조각). 결과 단계 4스텝: ⓪ **경기 보기**(`components/MatchReplay.tsx`) → ① 경기 종료(구획별 득점자 `tokenLabel`,
@@ -208,41 +220,21 @@ notes/    규칙서 원본 및 텍스트 레퍼런스
     상대 슬롯 id 는 엔진 `opponentSide`와 같은 `${cardId}:${sector}${i}` 규칙.
 - **전체 카드 목록** (`components/Catalog.tsx` `CatalogButton`, 사용자 요청 2026-09): 사이드바(모바일은 '진행' 탭)의 "카드 목록" 버튼 → 모달에서 종류별 탭
   (주전/베테랑/유망주/직원/스폰서/이사회/임원/목표/전술/상대 팀) + 이름·효과 문구 검색, 선수 탭은 "훈련 면 보기"(모든 선수 탭에서 기본은 꺼짐 — 유망주 포함, 사용자 요청).
-  `@server/data`의 배열을 그대로 읽는 읽기 전용 화면. 상대 팀 카드는 앞면이 경기 때 공개되는 정보라 스카우트 보고서 면만 보여 준다.
+  `src/data`의 배열을 그대로 읽는 읽기 전용 화면. 상대 팀 카드는 앞면이 경기 때 공개되는 정보라 스카우트 보고서 면만 보여 준다.
   카드 줄은 `.catalog-grid`(모바일용에서도 여러 줄로 접음 — `.cards`의 한 줄 밀기를 쓰지 않는다).
 - **시즌 종료 승점 확인 모달** (`components/ScoreReview.tsx`, 사용자 요청 2026-09): 게임이 끝나면 결과 화면 위에 먼저 뜬다. 항목 7개(리그 순위·승점 토큰·직원 세트·
   기반 시설·사무실·목표 카드·출장정지) + 합계를 스텝으로 넘기고, 항목마다 참가자를 한 명씩(450ms 간격) ✓ 체크하며 근거(어느 카드·시설에서 나온 점수인지)·점수·누적을 보여 준다.
   점수는 서버의 `ScoreBreakdown` 그대로, 근거만 공개 보드에서 다시 읽는다. "모두 보기"로 건너뛰고, 닫은 뒤에는 결과 화면의 "항목별 승점 확인" 버튼으로 다시 연다. 관전자도 본다.
 - `lineup.ts` — 경기 준비 화면의 헬퍼(벤치 교환 미리보기 `previewField`, 자동 배치 `autoPlace`, 검증
-  `validatePlacements`). `lineup.test.ts`(client vitest, `@server` alias 사용)가 자동 배치 결과를 실제
+  `validatePlacements`). `lineup.test.ts`(vitest)가 자동 배치 결과를 실제
   `submitLineup`에 넣어 서버가 받아들이는지 확인한다. 클라이언트 테스트도 `npm run check`에 포함된다.
 
-### 배포 (다른 네트워크의 친구와 플레이)
+### 배포
 
-- **2026-11-24부터 운영은 GameHub 허브 안에서 실행된다**(`hub/games.json` `"mode": "inproc"`, 진입점 `scripts/aws/hub-entry.mjs` → `server/dist/hub.js`(`server/src/hub.ts`, `createHandlers`)). 접속은 `http://54.116.67.196/eleven/`. 배포하면 `deploy-remote.sh`가 예전 systemd `eleven` 서비스를 끄고 허브(`gamehub`)를 재시작한다 — 허브 안 다른 게임의 진행 중인 방도 함께 사라진다. 아래의 포트·systemd 설명은 예전 단독 운영 기준이다(단독 서버는 로컬 실행용으로 남는다).
-
-- **원리**: `npm run build` → `client/dist`(Vite) + `server/dist/index.js`(esbuild 번들, `ws` 는 external).
-  `npm start`(= `node server/dist/index.js`)가 `PORT`(기본 3001)·`HOST`(기본 0.0.0.0)로 뜨며 `client/dist` 가
-  있으면 정적 파일과 SPA 폴백(`server/src/static.ts`)까지 서빙한다. 클라이언트는 `location.host` 의 `/ws` 로
-  붙으므로 어떤 도메인에 올려도 설정 변경이 없다. `STATIC_DIR` 로 다른 위치 지정 가능. 개발 중(`/dev`)에는
-  dist 가 없어도 되고 Vite 프록시가 그대로 동작한다.
-- **방법 A — 내 PC에서 바로 (`/tunnel`)**: `scripts/tunnel.ps1` 이 빌드 → 배포 모드 서버(3001) → `cloudflared tunnel
-  --url`(빠른 터널, 계정 불필요, 첫 실행 시 `.dev/cloudflared.exe` 다운로드) 순으로 띄우고
-  `https://….trycloudflare.com` 주소를 출력한다(`.dev/tunnel-url.txt`에도 저장). 주소는 매번 바뀌고 PC·터널이
-  켜져 있는 동안만 유효. `/dev` 와 포트 3001을 공유하므로 먼저 `/dev-stop`. 종료도 `/dev-stop`(`.dev/tunnel-pids.json`).
-  **새 빌드를 반영할 때는 `tunnel.ps1 -Reload`**: 터널(`cloudflared`)은 그대로 두고 서버(node)만 교체하므로 공개 주소가
-  유지된다(주소는 cloudflared 프로세스에 묶여 있다). 터널 전체를 내렸다 올리면 주소가 바뀌니 배포 목적으로는 쓰지 않는다(사용자 요청, 2026-09).
-  **서버 두 벌 — 슬롯**(사용자 요청, 2026-09): `-Slot main`(기본, 포트 3001) = **서버1, 친구들과 쓰는 안정 서버**, `-Slot test`(포트 3002) =
-  **서버2, 새 수정을 시험하는 서버**. 슬롯마다 터널·공개 주소·pid/로그(`.dev/tunnel-test-pids.json`, `tunnel-test-url.txt`, `serve-test.log`)가
-  따로이고, 빌드 결과를 `.dev/slots/<slot>/`에 복사해 그 사본으로 실행하므로 한쪽을 새로 빌드해도 다른 쪽(서버 코드·정적 파일)은 바뀌지 않는다.
-  서버1은 사용자가 "서버1에 반영"이라고 할 때만 `tunnel.ps1 -Reload`(= main)로 올린다. 한 슬롯만 내리려면 `dev-stop.ps1 -Slot test`.
-- **방법 C — AWS EC2 (서버3, 상시 주소, 게임 3종 공용 서버)**: `.github/workflows/deploy-aws.yml`(**`main`에 병합되면 자동 배포**, 먼저 `npm run check`를 통과해야 함).
-  **2026-10-02 사용자 지시로 Eleven·AstralTab·MagicAcademy를 EC2 t4g.nano 1대(ARM, Amazon Linux 2023, 서울, Elastic IP 고정)에 합쳤다.** 기존 Eleven 전용 인스턴스(`eleven-game-server-arm`)와 `eleven-game-sg`는 삭제됐다. 세 게임은 포트로 구분한다(Eleven 3001 / MagicAcademy 8080 / AstralTab 3201) — 셋 다 `/ws` 경로를 쓰므로 경로 접두사로는 못 나눈다. 한 번에 한 게임만 플레이하는 전제다.
-  배포는 러너/PC에서 빌드한 `server/dist`·`client/dist`·package.json류를 `ssh + tar`로 `~/eleven`에 풀고 → `npm install --omit=dev --workspace server` → `sudo systemctl restart eleven` → `/health`. RAM 0.5GB라 서버에서 빌드하지 않고, 스왑 2GB(`/swapfile`)가 있어야 `npm`이 OOM으로 안 죽는다.
-  서비스는 `eleven.service`(systemd, 3001 직접 노출, nginx 없음).
-  **SSH(22)는 관리자 IP로만 열려 있고**, 워크플로가 배포 직전에 러너 IP를 보안 그룹에 임시로 열었다 닫는다(최소 권한 IAM 사용자 `astraltab-ci`, 세 저장소 공용). 시크릿: AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY / AWS_REGION / AWS_SECURITY_GROUP_ID / EC2_HOST / EC2_HOST_KEY / EC2_SSH_PRIVATE_KEY.
-  워크플로는 `concurrency` 그룹으로 한 번에 하나만 돈다. **`main` 병합 = 서버3 운영 반영**이라는 점에 주의(서버1·2 슬롯 규칙과 별개). 서비스가 재시작되므로 진행 중인 판은 유실된다.
-
+- 운영은 GameHub 허브 안(`hub/games.json` `"mode": "inproc"`, 진입점 `scripts/aws/hub-entry.mjs` → `server-dist/app.cjs`, 정적 파일 `dist`). 접속 `http://54.116.67.196/eleven/`.
+- `npm run build` = `vite build`(dist, 상대 base) + `gamehub-build-server`(server-dist/app.cjs, ws 포함 한 파일). 배포는 `.github/workflows/deploy-eleven.yml` → 공통 `deploy-workspace-game.yml`
+  (main 병합 때 `deploy.yml`이 부름). CI 는 `ci-workspace.yml`. 배포하면 허브가 재시작되어 진행 중인 방은 사라진다.
+- 개발: `npm run dev -w games/eleven`(Vite 하나로 화면 + /ws 서버). 옛 터널·슬롯 스크립트(`tunnel.ps1` 등)와 단독 서버는 지웠다.
 
 ### 멀티플레이 설계 시 주의
 
@@ -255,32 +247,28 @@ notes/    규칙서 원본 및 텍스트 레퍼런스
   주사위·경기 보고서를 읽기 전용으로 보여준다. `DiceTray`도 현재 참가자의 주사위를 전원에게 보여주며(다른
   사람의 눈이 오면 짧게 굴러가는 연출) 버튼은 내 차례일 때만 나온다. `GameLayout`은 차례가 바뀌면 그 참가자의
   보드를 자동으로 따라간다.
-- **선택은 확정해야 전송** (`client/src/commit.tsx` `CommitProvider`/`useCommit`/`ConfirmBar`):
+- **선택은 확정해야 전송** (`src/client/commit.tsx` `CommitProvider`/`useCommit`/`ConfirmBar`):
   이적 시장 카드·주중 행동 버튼·방출 선수는 `select(key, action, label)`로 고르면 `chosen` 강조(카드가 떠오르고 ✓ 배지,
   나머지 흐려짐, 버튼은 초록 테두리)만 되고, 화면 아래 고정 **확정 막대**에서 "확정"을 눌러야 서버에 보낸다.
   "취소"/Esc/같은 항목 재클릭은 선택 해제. 단계·차례·요일이 바뀌거나 대상 선택이 생기면(`scope`) 선택은 자동 소거.
   스폰서 계약 모달(`components/Sponsor.tsx`)과 대상 선택 모달은 모달 안에 확정/취소가 있다. "이 결정 적용"·
   "라인업 제출"·"적용"·"차례 끝내기"·주사위 버튼은 그 자체가 확정이라 바로 보낸다.
-- **턴 알림** (`client/src/notify.tsx` `NotifyProvider`): `myTask(view)`가 "내가 지금 할 일"(턴제 단계의 내 차례,
-  동시 단계에서 아직 안 고름, 대상 선택 대기)을 판정하고, 없음→있음 전환 순간에 탭 제목
-  깜빡임(🔔) + 설정에 따라 WebAudio 두 음(소리)·`Notification` API(탭이 뒤에 있을 때) 알림. 헤더의 `NotifyToggles`
-  로 켜고 끄며 `localStorage`(`eleven.notify`)에 저장. 새로고침 직후 첫 판정은 알리지 않는다. **준비 단계(드래프트·목표)에서는
-  소리를 내지 않고**, 고른 뒤에는 "다른 참가자를 기다리는 중… (이름)"만 보인다(사용자 요청, 2026-09).
-  **화면 가운데 "내 차례" 배너(`TurnAlert`)는 없앴다**(사용자 요청 2026-09: 없어도 된다) — 내 차례는 참가자 띠의 '행동 중', 주사위 트레이 깜빡임, 소리·탭 제목으로 안다.
+- **턴 알림** (`client/notify.tsx` `NotifyProvider`): `myTask(view)`가 "내가 지금 할 일"을 판정하고, 없음→있음 전환 순간에 탭 제목 깜빡임(🔔) + 설정에 따라 WebAudio 두 음·진동·`Notification`.
+  메뉴 시트의 `NotifyToggles`로 켜고 끈다(`eleven:notify`). 새로고침 직후 첫 판정과 준비 단계(드래프트·목표)에서는 소리를 내지 않는다. 지금 할 일은 상태바 ①에도 글로 보인다.
   **임원 드래프트와 목표 카드는 확정 막대 없이 카드를 누르면 바로 영입·보관**한다(사용자 요청 2026-09; 목표 카드는 2026-09-22).
 - **UX 개선 묶음**(사용자 요청 2026-10-30, 잘 만든 모바일 게임 조사 후 "추천대로 모두"):
   - 차례가 바뀌어 `selected`만 자동으로 바뀐 경우는 맨 위로 스크롤하지 않는다(`ui.tsx` `autoSelect`/`forceNav`). 내 차례가 끝나면 '기록' 탭으로 가는 것은 **주중만**(이사회·경기 결과는 남의 주사위·경기를 '진행'에서 본다).
-  - 게임 중 '나가기'는 `confirmLeave`로 확인. 화면 복귀·`online` 때 즉시 재연결(`Connection.wakeUp`), 끊기면 `.conn-banner`. 차례 알림에 진동.
+  - 게임 중 '나가기'(메뉴)는 `confirmLeave`로 확인(온라인은 자리를 봇이 이어받고 돌아올 수 없다). 재연결·끊김 알림은 공통 접속 코드와 GameShell 알림. 차례 알림에 진동.
   - 못 누르는 버튼은 **버튼 안에 이유를 글로**(`.action-why` — 터치에서는 버튼 title 툴팁이 안 뜬다). 시장 카드는 돈이 모자라면 고를 수 없고 카드 아래 이유. 확정 막대에 주말 유지비 변화(`Upkeep.tsx` `UpkeepShift`)·방출 금액(엔진 `releaseValue`).
   - 기본 행동을 마치면 '차례 끝내기'가 `primary attention`. 사이드바의 시설 7종 목록은 없애고 "시설 건설·사무실 확장…" 하나로(목록은 스타디움 보드 `BuildOptions`에만).
-  - '진행' 탭 순서: 일정 → 도움말(카드 목록·아이콘 설명) → `PhaseGuide`(지금 할 일 한 줄, `eleven.guide`로 끔) → `SinceMyTurn`(이사회·주중 내 차례 시작 때 지난 내 차례 이후 기록 요약 — **금요일엔 안 보임**: 남의 경기 점수 스포일러) → 단계 패널 → 주사위 트레이 → 주중 행동. 주사위는 패널 **아래**라 안내 문구도 "아래", 내가 굴릴 때 트레이로 스크롤.
+  - '진행' 탭 순서: 일정 → 도움말(카드 목록·아이콘 설명) → `PhaseGuide`(지금 할 일 한 줄, `eleven:guide`로 끔) → `SinceMyTurn`(이사회·주중 내 차례 시작 때 지난 내 차례 이후 기록 요약 — **금요일엔 안 보임**: 남의 경기 점수 스포일러) → 단계 패널 → 주사위 트레이 → 주중 행동. 주사위는 패널 **아래**라 안내 문구도 "아래", 내가 굴릴 때 트레이로 스크롤.
   - 엔진 `PlayerState.weekReport`(지난 주말 유지비·버린 자원 + 월요일 조달) → 월요일 패널 맨 위 `WeekReportCard`. 이사회는 비용이 모자라 이행 못 하는 결정을 굴리기 전에 알리고 적용 버튼에도 표시.
   - 참가자 띠 자원이 바뀌면 +N/−N(`DeltaNum`), 구단 보드 머리 아래 승점 내역(`scoreLines`).
-  - 경기 준비: 상대 카드는 스텝 위에 접어 둠, 배치 스텝에 `SectorPreview`(구획별 역량, 상대 카드를 미리 봤으면 `resolveMatch`로 예상 득실). 경기 보기 1/2배속(`eleven.replaySpeed`).
-  - **봇의 경기 보기 대기**: 클라이언트가 재생 끝·건너뛰기·결과 스텝 이동 때 `matchWatched{week, actor}`를 보내고(`Room.watched`), 접속한 사람이 모두 봤으면 봇은 `BOT_WATCH_MS`를 기다리지 않는다(`BotDriver.rewatch`).
-  - 대기실 초대 링크(`?code=` — 로비가 코드를 미리 채우고 주소에서 지움, 공유 시트/복사)·코드 복사. 게임 종료 후 호스트의 **같은 멤버로 다시 하기**(`rematch` → 방이 `lobby`로, 같은 코드). 같은 방 새 판이라 라인업 초안은 지금보다 뒤 주차면 버린다.
-- **메뉴·탭을 누르면 항상 화면 맨 위로**(사용자 요청 2026-09-22): `UiProvider`가 탐색 상태(`selected`·`mainTab`·`boardTab`·`sharedTab`·`marketTab`·`mobileTab`)가 바뀔 때마다
-  `window.scrollTo(0)`(페이지는 window 스크롤, 헤더·사이드바는 sticky). 첫 마운트는 제외, `prefers-reduced-motion`이면 즉시 이동.
+  - 경기 준비: 상대 카드는 스텝 위에 접어 둠, 배치 스텝에 `SectorPreview`(구획별 역량, 상대 카드를 미리 봤으면 `resolveMatch`로 예상 득실). 경기 보기 1/2배속(`eleven:replaySpeed`).
+  - **봇의 경기 보기 대기**: 위 GameDef `hold` 참고. 화면은 재생 끝·건너뛰기·결과 스텝 이동 때 `watched` 행동을 보낸다(기다리는 사람일 때만).
+  - 초대 링크는 공통 대기실의 `?room=` 링크. 채팅·강퇴·"같은 멤버로 다시 하기"는 공통 방 코드에 없어 GameHub 이전 때 뺐다(한 기기는 결과 화면의 "같은 구성으로 다시 하기").
+- **메뉴·탭을 누르면 항상 본문 맨 위로**(사용자 요청 2026-09-22): `UiProvider`가 탐색 상태가 바뀔 때마다 본문 영역(`.mobile-main`)을 맨 위로(첫 마운트 제외, `prefers-reduced-motion`이면 즉시).
+  차례가 바뀌어 보던 참가자만 자동으로 바뀐 것은 올리지 않는다. 화면 상태를 게임 상태에 맞추는 것(차례·단계·내 차례 시작)은 렌더 중에 고친다(효과에서 setState 하지 않는다 — 루트 eslint react-hooks 규칙).
 - **"다른 참가자의 행동 따라가기"는 없앴다**(사용자 결정 2026-09-22): 내 차례가 아닐 때 다른 참가자(봇)의 행동마다 그 보드·탭으로 자동 이동하고 만진 카드를 비추는 기능
   (엔진 `lastAction`/`focusOf`, `ui.spotlight`, 헤더 따라가기 토글, 아래 "보러 가기" 띠까지 두 가지 형태)을 시험했으나 화면이 튀어 정신없다는 피드백으로 **전면 삭제**.
   다른 참가자가 뭘 했는지는 오른쪽 기록·참가자 띠의 자원 변화로 본다. 다시 만들지 말 것. 남아 있는 것: 차례 참가자가 바뀌면 `selected`가 그 참가자로 바뀌는 기존 동작과,
@@ -297,14 +285,11 @@ notes/    규칙서 원본 및 텍스트 레퍼런스
   억제하고 떠나면 되돌린다(hover 중 React 가 title 을 바꾸면 MutationObserver 로 갱신). 새 컴포넌트도 그냥 `title=`만 쓰면 된다.
   터치 기기(`hover: none`)에서는 아이콘 칩·배지 같은 비조작 요소를 **누르면** 말풍선이 뜨고 다른 곳을 누르거나 스크롤하면(또는 4초 뒤) 닫힌다
   (버튼·입력·누를 수 있는 카드 자체의 `title`은 띄우지 않는다).
-- **서버 오류 문구는 한국어로 바꿔 보인다**(`client/src/errors.ts` `koError`): 서버 GameError/RoomError 는 영어 코드용 문구라 그대로 내면 뜻을 모른다. 새 오류를 추가하면 `EXACT`/`PATTERNS`에도 넣을 것 —
+- **서버 오류 문구는 한국어로 바꿔 보인다**(`src/client/errors.ts` `koError`): 서버 GameError/RoomError 는 영어 코드용 문구라 그대로 내면 뜻을 모른다. 새 오류를 추가하면 `EXACT`/`PATTERNS`에도 넣을 것 —
   없는 문구는 "지금은 그 행동을 할 수 없습니다"로 대체하고 원문은 콘솔에만 남긴다. 토스트는 6초, 같은 오류가 반복돼도 타이머를 다시 건다(`errorSeq`).
-- **연결(`ws.ts`)**: 소켓마다 자기 것인지 확인(`this.socket !== socket`)해 옛 소켓의 close/message 가 재연결을 또 예약하거나 상태를 덮지 않게 한다. `close()`는 재연결 타이머도 지운다.
-  "방을 찾을 수 없음/재접속 정보 오류"가 오면 세션뿐 아니라 `room`·`view`·`chat`도 비워 옛 게임 화면이 남지 않게 한다.
-- **접근성 공용**(`client/src/a11y.ts`): `useEscape`(모달 Esc 닫기 — 카탈로그·아이콘 설명·스폰서 계약·승점 확인, 대상 선택 같은 강제 선택 모달은 닫지 않음), `pressable(handler)`(눌러서 쓰는 div 에 role/tabIndex/Enter·Space).
+- **접근성 공용**(`src/client/a11y.ts`): `useEscape`(모달 Esc 닫기 — 카탈로그·아이콘 설명·스폰서 계약·승점 확인, 대상 선택 같은 강제 선택 모달은 닫지 않음), `pressable(handler)`(눌러서 쓰는 div 에 role/tabIndex/Enter·Space).
   새 모달은 `role="dialog" aria-modal="true"` + `useEscape`, 클릭 가능한 div 는 `pressable`을 쓴다.
-- **서버 방어**(`ws.ts`/`app.ts`/`rooms.ts`): `maxPayload` 64KB, 소켓당 속도 제한(버스트 30·초당 10, 초과 시 `too many requests`), 연결당 방 5개·서버 전체 200개, 30초 하트비트(pong 없으면 끊음),
-  방 시드는 `randomInt`(클라이언트가 보낸 `seed`는 `WsOptions.allowClientSeed`가 켜진 테스트에서만 받음 — 시드를 알면 덱·목표 카드를 추측할 수 있다). 지연 0 으로 보내는 외부 봇 테스트는 `noRateLimit`.
+- **서버 방어**는 공통 `createRoomApp`(메시지 크기·속도 제한, 하트비트, 방 정리)이 맡는다. 시드는 서버가 정하고 보내지 않는다(시드를 알면 덱·목표 카드를 추측할 수 있다).
 - **임원 드래프트 중에는 다른 참가자가 고른 임원을 뷰에서 뺀다**(`view.ts`, 규칙서 p.7: 세 장을 다 고른 뒤 공개). 다음 상대 팀 카드 id(`nextOpponent`)·유망주 더미 맨 위 카드 id(`nextProspect`)는 여전히 보낸다 —
   카드 데이터가 클라이언트 번들에 있어 id 를 숨겨도 본인이 조회할 수 있고, 스카우트 보고서 면은 공개 정보라서 얻는 이득이 작다고 보고 남겨 둔 결정.
 - **참가자 띠의 승점은 '지금 시즌이 끝나면 받을 승점'을 실시간으로 보인다**(사용자 요청 2026-09-29: 시설을 지어도 반영이 안 됐다 — 예전에는 승점 토큰(`p.vp`)만 보였다).
@@ -348,36 +333,18 @@ MVP에서 **단순화 가능**한 부분: 선수/직원/임원/스폰서/이사�
 (2026-09 현재 mock 카드의 모든 효과가 실제 로직으로 구현되어 `text` 효과는 남아 있지 않다. 새 카드에 `text`를 쓰면
 기록만 남고 아무 일도 일어나지 않으므로, 필요한 효과 종류를 DSL에 추가할 것. 전술 카드 효과는 경기 진행 단계에서 쓴다.)
 
-**현재 상태**: 위 1~6번 엔진 로직은 `server/src/engine/`에 구현·테스트 완료
+**현재 상태**: 위 1~6번 엔진 로직은 `src/engine/`에 구현·테스트 완료
 (`game.test.ts`가 4인 6주 한 판을 자동 진행). 서버 계층(방·WebSocket·개별 뷰)과 클라이언트 전 단계 화면
 (로비 → 드래프트/목표 → 이사회 → 화수목 → 경기 준비/결과 → 최종 점수)까지 구현. 배포 경로(터널·호스팅 설정)도 마련됨. 남은 MVP: **브라우저 실사용
 검증과 UI 다듬기**.
 
-### 서버 프로토콜 (`server/src/protocol.ts`)
+### 방·통신
 
-- WebSocket `/ws`, JSON 메시지. 클라이언트→서버: `createRoom{name}`, `joinRoom{code,name}`,
-  `rejoin{code,playerId,token}`, `setDivision{division}`(호스트), `startGame`(호스트), `action{action: GameAction}`.
-- 서버→클라이언트: `joined{code,playerId,token}`(토큰은 재접속용, 클라이언트가 localStorage에 보관),
-  `room{room}`(로비 정보), `state{view}`(참가자별 `GameView`), `error{message}`.
-- `GameAction`은 `server/src/engine/actions.ts`의 union — 엔진 함수 하나에 액션 하나. 서버는 액션을
-  `applyAction`에 넘기고 결과를 방 전원에게 각자의 `viewFor(state, pid)`로 브로드캐스트한다.
-- `GameView`(`engine/view.ts`)는 다른 참가자의 드래프트 손패·목표 카드·전술 손패·라인업·덱 내용을 제거한다.
-  카드 정의(mock 데이터 전체)는 `GET /api/cards`로 받는다.
-- **대기실 호스트 기능**(사용자 요청 2026-09): `kick{playerId}` = 강퇴(대기실에서만, 봇·연결 끊긴 참가자 포함, 자기 자신 제외). 내보낸 참가자에게는 서버→클라이언트 `kicked`가
-  가고 클라이언트는 세션을 지우고 로비로 돌아간다(같은 이름으로 다시 들어올 수는 있다). 게임이 시작되면 자리가 고정이라 강퇴할 수 없다.
-  **시작 순서는 항상 무작위**(옵션 아님 — 사용자 결정 2026-09, 예전의 `setRandomOrder` 체크 옵션은 삭제): `start` 때 `room.players`를 방의 rng 로 섞어 그 순서가
-  자리(시계방향 차례)가 되고 첫 자리가 1주차 선 참가자. 기록에 "시작 순서를 무작위로 정함: …"을 남긴다(2명 이상일 때).
-- **구단 엠블럼**(사용자 요청 2026-09): 프리셋 12종(`protocol.ts` `EMBLEM_IDS`/`EmblemId`), `RoomPlayer.emblem` → `RoomPlayerView.emblem`. 입장(봇 포함)하면 방에서 아직 안 쓰는
-  엠블럼 중 **무작위 하나**를 받고(사용자 요청 2026-09 — 예전에는 프리셋 순서대로였다. `rooms.ts` `freeEmblem`, 게임 난수 `room.rng`는 쓰지 않는다), 대기실에서 `setEmblem{emblem}`으로 바꾼다(참가자 누구나 자기 것, **한 방에서 겹치지 않음**, 게임 시작 뒤에는 불가). 게임 상태(엔진)에는 넣지 않고
-  클라이언트가 `room.players`에서 찾는다. 그림은 `components/Crest.tsx` `EMBLEMS`(바탕 모양 5종 — 방패·원·육각·깃발·각진 방패 — + 흰 무늬, 바탕색은 자리 색; 평면 도형만):
-  `Crest`의 `emblem` prop, 참가자용은 `PlayerCrest{id}`. 참가자 띠·리그표·스타디움 잔디·차례 배너·모바일 보드 제목·결과 화면·승점 확인에 나온다. 상대 팀은 예전처럼 회색 방패 + 첫 글자.
-  대기실의 선택 격자는 `.emblem-grid`(6칸 × 2줄, 다른 참가자가 쓰는 것은 비활성 + 툴팁에 주인 이름).
-- **채팅**(test_insight C9): 클라이언트→서버 `chat{text}`, 서버→클라이언트 `chat{messages}`(방의 최근 100개 전체 — 입장·재접속·관전 시작 때와 새 글마다).
-  게임 상태와 별개로 `Room.chat`에 쌓이고 참가자만 쓴다(관전자는 읽기만). 공백 정리 후 200자(`CHAT_MAX_LENGTH`), 같은 참가자 300ms 간격 제한.
-  **채팅 화면은 게임이 시작된 뒤에만 있다 — 대기실에는 두지 않는다**(사용자 요청 2026-09).
-  클라이언트는 `store.chat`/`sendChat`, `components/Chat.tsx` `ChatBody`(오른쪽 패널의 '채팅' 탭: `ui.sideTab`, 안 읽은 수 `ui.chatSeen`·`unreadCount`,
-  모바일은 아래 탭 막대 '기록·채팅'에 배지 — 누르면 채팅 탭으로).
-- 방은 `RoomManager`(인메모리) — 코드 5자, 최대 4명, 호스트 = 생성자, 6시간 미활동 시 정리.
+- 공통 `@gamehub/net` 프로토콜(`/ws`, create·join·resume·watch·seat·start·act·leave). 행동은 `src/def.ts`의 `Action`(= 엔진 `GameAction` + `emblem` + `watched`)이고
+  서버는 좌석마다 `def.view`를 보낸다. 방 코드 4자리, 최대 4명, 인원 1~4(빈자리는 시작할 때 봇).
+- 상대할 부(3·2·1부)는 방을 만들 때의 옵션(`parseOptions`), 처음 화면에서 고른다. 시작 순서는 항상 무작위(옵션 아님 — 사용자 결정 2026-09).
+- **구단 엠블럼**(사용자 요청 2026-09): 프리셋 12종(`src/protocol.ts` `EMBLEM_IDS`). 시작할 때 좌석마다 겹치지 않게 무작위(게임 난수와 따로), 준비 단계 드래프트 화면 아래 "내 구단 엠블럼 바꾸기"에서 바꾼다.
+  그림은 `components/Crest.tsx`. 상대 팀은 예전처럼 회색 방패 + 첫 글자.
 
 ### 이후 확장 (2단계 이후)
 - 출장정지 세부(직원 카드 출장정지 시 특성·세트 승점 무효 등), 이사회 점검용 토큰 효과
@@ -414,8 +381,8 @@ MVP에서 **단순화 가능**한 부분: 선수/직원/임원/스폰서/이사�
   - 첫 번째 트레이너 4장(`staff.mock.ts` st-01~04)은 모두 "훈련"이지만 방식이 다르다(사용자 요청, 2026-09): 기본 / 혹독한 훈련
     (`trainPlayer.withTokens` = 훈련한 선수에 영구 역량 1 + 부상 1) / 체력 1로 훈련 + 일시 역량 1 / 운영 1로 2명 훈련.
 - **상대 팀 난이도 목표**(사용자 결정, 2026-09): 무난하게 하는 참가자 기준 **3부 상위권 · 2부 중상위권 · 1부 중위권**. 3부가 너무 쉽다는
-  반응으로 네 덱 모두 카드당 역량 합을 +2 올림(`opponents.mock.ts` 머리 주석). 수치를 바꿀 때는 `npm run balance -w server -- [판 수] [부]`
-  (`server/src/bot/balance.ts`: 봇 4명 헤드리스 판의 리그 등수·승무패·주차별 분포)로 전후를 비교한다. 봇은 사람보다 많이 약하므로
+  반응으로 네 덱 모두 카드당 역량 합을 +2 올림(`opponents.mock.ts` 머리 주석). 수치를 바꿀 때는 `npm run balance -w games/eleven -- [판 수] [부]`
+  (`src/bot/balance.ts`: 봇 4명 헤드리스 판의 리그 등수·승무패·주차별 분포)로 전후를 비교한다. 봇은 사람보다 많이 약하므로
   (출전 카드 2~3장) 절대값이 아니라 **변화량**을 본다.
 - 직원 카드에는 최소 인원("3+") 필드, 세트(5종) 필드가 필요하다.
 - **스폰서 카드 균형**(사용자 결정, 2026-09; 리밸런싱 2026-09-22): 유니폼(1장, 효과 + 보너스) > 광고판(2~3장, 효과 또는 보너스) > 장내 방송
@@ -571,75 +538,36 @@ MVP에서 **단순화 가능**한 부분: 선수/직원/임원/스폰서/이사�
 
 ## .claude/ 프로젝트 설정
 
-- `.claude/agents/rules-checker.md` — `notes/Eleven_Rulebook.md`를 근거로 규칙 질문에 정확한
-  페이지 인용과 함께 답하는 읽기 전용 서브에이전트. 카드 "내용물"(개별 카드 스탯 등)에 대한 질문은
-  자신의 범위가 아니라 Mock 데이터 정책 소관이라고 알려준다.
-- `.claude/agents/mock-card-designer.md` — Mock 데이터 정책에 따라 카드 데이터와 보드 인쇄 수치
-  placeholder를 규칙서의 예시 스키마에 맞춰 생성·확장하는 서브에이전트. 게임 엔진 로직은 건드리지 않는다.
-- `.claude/skills/check-rule/` — `/check-rule <질문>`으로 규칙서를 즉시 조회 (rules-checker로 포크).
-- `.claude/skills/add-mock-cards/` — `/add-mock-cards <카드종류> <개수>`로 mock 카드 데이터 생성/확장
-  (mock-card-designer로 포크).
-- `.claude/skills/dev/` — `/dev`: `scripts/dev.ps1`로 server/client 개발 서버를 백그라운드 실행하고
-  PID를 `.dev/pids.json`에 기록. 개발 서버는 반드시 이 스킬로 띄운다(Bash 백그라운드 실행 금지).
-- `.claude/skills/dev-stop/` — `/dev-stop`: `scripts/dev-stop.ps1`로 기록된 프로세스 트리(dev 서버·봇·터널)를 종료.
-  자기가 띄우지 않은 프로세스는 건드리지 않는다(pid 재사용 대비로 node/npm/cloudflared 가 아니면 건너뜀).
-- `.claude/skills/tunnel/` — `/tunnel`: `scripts/tunnel.ps1`로 배포 모드 서버 + Cloudflare 빠른 터널을 띄워
-  다른 네트워크의 친구가 접속할 공개 URL을 발급한다. 위 "배포" 절 참고.
-- `.claude/skills/check/` — `/check`: `npm run check` (양쪽 typecheck → eslint → server vitest).
-  변경을 마치고 완료 보고하기 전에 반드시 통과시킨다. 규칙 억제나 테스트 스킵으로 통과시키지 않는다.
-- `.claude/skills/bots/` — `/bots <code> [count]`: `scripts/bots.ps1`로 봇 프로세스를 띄워 방에 투입하거나
-  (`-Create -Start`) 봇만의 판을 만들어 시작. PID는 `.dev/bots-*.pid`, `/dev-stop`이 함께 종료.
+- `.claude/agents/rules-checker.md` — `notes/Eleven_Rulebook.md`를 근거로 규칙 질문에 페이지 인용과 함께 답하는 읽기 전용 서브에이전트(카드 내용물은 Mock 데이터 정책 소관).
+- `.claude/agents/mock-card-designer.md` — Mock 데이터 정책에 따라 카드 데이터를 만드는 서브에이전트. 엔진 로직은 건드리지 않는다.
+- `/check-rule <질문>`(rules-checker), `/add-mock-cards <종류> <개수>`(mock-card-designer), `/check`(루트 `npm run check`).
 
 ### 봇과 관전 (혼자 테스트하기)
 
-- **기본 방식은 대기실의 "🤖 AI 추가" 버튼** — 호스트가 봇을 추가/제거(`addBot`/`removeBot`, 대기실에서만,
-  정원 4명). 봇은 `server/src/bot/driver.ts`가 서버 안에서 움직인다: 사람 액션(또는 시작) 직후 `poke` →
-  봇 한 액션씩 더 할 일이 없을 때까지 진행하고 매번 브로드캐스트. 간격은 `BOT_DELAY_MS`(기본 800ms) × 액션별
-  배수(`PAUSE_FACTOR`: 주사위 굴림 4배 = 애니메이션이 멈추고 결과가 보일 때까지, 주중 행동·결정 적용·라인업 3배 =
-  결과를 읽을 시간, 차례 끝내기 1.5배, 드래프트 1배, 전술 효과 3배) — 사람이 봇의 선택과 결과를 지켜볼 수 있게(사용자 요청).
-  `runUntilIdle`(테스트·헤드리스)은 지연 없이 돈다. `RoomPlayer.isBot`, `RoomPlayerView.isBot`으로 구분.
-  **경기 결과 단계에서 차례인 봇은 주사위를 굴리기 전에 `BOT_WATCH_MS`(기본 24초 ≈ 경기 보기 재생 길이)를 기다린다**(`driver.ts` `watchDelay`, 사용자 제보 2026-09-22:
-  봇이 바로 굴리면 지켜보는 사람 화면이 경기 보기에서 주사위 스텝으로 곧장 넘어갔다). 재생 간격(`MatchReplay` 1.2초 + 1.8초 × 12)을 바꾸면 이 값도 맞출 것.
-- `policy.ts` — GameView만 보고 판단하는 휴리스틱(사람과 같은 정보). 서버가 거부한 액션 종류는 그 차례 동안
-  재시도하지 않고, 드라이버는 거부 직후 같은 step 안에서 곧바로 다시 판단한다(`MAX_ATTEMPTS`) — 거부 한 번에 멈추면 사람이
-  다시 건드릴 때까지 봇이 서 버리므로. 점검용 토큰 "카드 행동만"인 날은 정책이 카드 행동/패스만 낸다. `driver.test.ts`(사람 1 + 봇 3), `bots.test.ts`(외부 ws 봇 4)가 한 판을 완주.
-- `bot.ts`/`run.ts` — 외부 ws 클라이언트 봇과 CLI(`npm run bots -w server -- create 4 start`). 헤드리스 봇 판이나
-  스택 스모크 테스트용. PowerShell의 `npm` 래퍼는 `--플래그`를 벗겨내므로 CLI는 위치 인자도 받는다.
-- 봇 로그에 같은 액션의 `거부:`가 반복되면 정책 버그(엔진 아님).
-- **관전**: `spectate{code}` → `spectating{code}` + 빈 참가자 id(`''`)의 뷰. 클라이언트 로비의 "관전" 버튼,
-  `screens/Spectator.tsx`(모든 참가자 보드·단계 상태 읽기 전용). 관전자는 액션 불가.
-- 라인업 도우미(`engine/lineup.ts`: `eligiblePlayers`/`previewField`/`autoPlace`/`validatePlacements`/`buildLineup`)는
-  UI·봇·테스트가 공유한다. 배치 못 한 출전 선수는 미배치로 남기고 `buildLineup`이 그 선수를 빼며 재시도.
+- 한 기기: 처음 화면에서 자리를 봇으로 두고 시작(사람 0명이면 봇끼리 관전). 메뉴의 봇 속도로 빠르게 볼 수 있다. 온라인: 대기실에서 방장이 빈자리를 봇으로, 시작하면 남은 빈자리도 봇.
+- `policy.ts` — GameView 만 보고 판단하는 휴리스틱(사람과 같은 정보). 거절된 행동 종류는 그 차례 동안 다시 내지 않는다. 점검용 토큰 "카드 행동만"인 날은 카드 행동/패스만.
+- 관전: 공통 `watch`(방 코드 + 관전) → 참가자가 아닌 뷰. `screens/Spectator.tsx`(`PhaseStatus`)가 읽기 전용 단계 상태를 보여 준다.
+- 라인업 도우미(`engine/lineup.ts`: `eligiblePlayers`/`previewField`/`autoPlace`/`validatePlacements`/`buildLineup`)는 UI·봇·테스트가 공유한다.
 
-### 개발 명령
+### 개발 명령 (GameHub 루트에서)
 
 ```
-npm install            # 루트에서 한 번 (npm workspaces)
-npm run check          # typecheck + lint + test
-npm run test -w server # 서버 엔진 테스트만
-npm run build          # client/dist + server/dist (배포용)
-npm start              # 배포 모드로 실행 (PORT, HOST, STATIC_DIR 환경변수)
+npm install                         # 루트에서 한 번 (이 PC 는 ...\personal\GameHub 대문자 경로)
+npm run check                       # 모든 workspace: typecheck → lint → test → build
+npm run test -w games/eleven        # 이 게임 테스트만 (엔진·데이터·def·클라이언트 헬퍼)
+npm run e2e -w games/eleven         # iPhone 화면 확인(빌드 후). 캡처는 games/eleven/shots/
+npm run balance -w games/eleven -- 40 3,2,1   # 봇 4명 헤드리스 판의 리그 등수 분포
+npm run dev -w games/eleven         # 개발 서버(화면 + /ws)
+node games/eleven/scripts/card-audit.mjs [only=sponsor] [shot.png]   # 카드 넘침 점검
 ```
-엔진 테스트는 `server/src/engine/**/*.test.ts`(vitest). 규칙서 페이지를 테스트 이름/주석에 남겨
-어느 규칙을 검증하는지 추적 가능하게 한다 (예: `scoring.test.ts` — p.26 리그 순위 승점).
+엔진 테스트는 `src/engine/**/*.test.ts`. 규칙서 페이지를 테스트 이름/주석에 남겨 어느 규칙을 검증하는지 추적 가능하게 한다 (예: `scoring.test.ts` — p.26 리그 순위 승점).
 
-**참고**: "에이전트 팀(agent team)"은 이 버전의 Claude Code에서 프로젝트 파일로 정적 정의할 수 있는
-기능이 아니라 세션/런타임에서만 존재하는 실험적 기능이다 (`.claude/teams/` 같은 파일을 만들어도
-설정으로 인식되지 않는다). 재사용 가능한 "역할"은 위 서브에이전트로 정의해 두고, 필요할 때
-"rules-checker 에이전트로 팀원을 소환해줘"처럼 세션 중에 참조해서 쓰는 방식이 맞는 접근이다.
 
 ## Git 규칙
 
-- 원격 저장소: https://github.com/gillettef/GameHub.git 의 `games/eleven/` (모노레포, 옛 개별 저장소 `gillettef/Eleven` 는 2026-11-25 삭제) (기본 브랜치 `dev`)
-- **일상 작업은 `dev`(기본 브랜치)에 커밋·푸시한다. `main`(운영 배포)에는 직접 커밋·푸시하지 않고**, 사용자가 요청할 때만 `dev` → `main` PR(`gh pr create --base main --head dev`)로 병합한다. 작업 시작 전 현재 브랜치가 `dev`인지 확인한다. `dev` 푸시는 CI(GameHub `.github/workflows/ci-eleven.yml`)만 돌고, `main` 병합이 곧 운영 배포다.
-- **모든 작업을 완료하면 `git commit` 후 `git push`까지 진행한다.** 작업 단위마다 커밋하고, 작업이
-  끝난 채로 푸시하지 않은 상태로 두지 않는다.
-- 커밋 메시지는 **한국어**로 작성한다. 첫 줄은 무엇을 왜 바꿨는지 한 문장으로 요약한다.
-- 커밋 전 `git status`로 포함 파일을 확인한다. `.dev/`, `node_modules/`, `.env*`는 gitignore 대상.
-- **푸시까지 마친 뒤에는 `scripts/tunnel.ps1 -Reload -Slot test`로 서버2(시험 서버)에 새 빌드를 반영한다**
-  (사용자 요청, 2026-09). **서버1(main 슬롯)은 건드리지 않는다** — 사용자가 서버1에 반영하라고 할 때만 `tunnel.ps1 -Reload`.
-  서버2 터널(`.dev/tunnel-test-pids.json`)이 떠 있지 않으면 건너뛰고 그 사실만 알린다 — 주소가 바뀌므로
-  터널을 새로 띄우지는 않는다. 서버가 교체되므로 그 서버에서 진행 중인 판은 유실된다는 점도 함께 알린다.
+- GameHub 모노레포(https://github.com/gillettef/GameHub)의 `games/eleven/`. 루트 `CLAUDE.md`의 브랜치·배포 규칙을 따른다: 일상 작업은 `dev`(CI만), `main` 병합이 곧 운영 배포(사용자가 요청할 때만 PR).
+- 커밋 메시지는 **한국어**, 첫 줄은 무엇을 왜 바꿨는지 한 문장. 커밋 전 `git status`로 포함 파일을 확인한다(`shots/`·`dist/`·`server-dist/`·`.dev/`는 커밋하지 않는다).
+
 
 ## 개발 시 참고사항
 

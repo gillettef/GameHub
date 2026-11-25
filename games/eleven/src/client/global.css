@@ -1,0 +1,25 @@
+/* 화면 CSS 진입점.
+   - 공통 화면(@gamehub/ui: 처음·대기실·대국 틀)은 Tailwind 유틸리티, 게임 화면 부품은 옛 styles.css(DESIGN.md 디자인).
+   - styles.css 는 'eleven' 층에 넣는다: Tailwind 의 기본값(preflight)보다는 이기고, 공통 화면의 유틸리티 클래스보다는 진다
+     (층 없는 CSS 는 층 안의 모든 규칙을 이기므로 옛 button 규칙이 공통 버튼 모양을 덮어 버린다). */
+@layer theme, base, eleven, components, utilities;
+@import '@gamehub/ui/theme.css';
+@import './styles.css' layer(eleven);
+
+/* 공통 화면이 쓰는 색 = DESIGN.md 의 토큰(styles.css 의 --bg·--surface 등이 이 값을 읽는다) */
+:root {
+  --gh-bg: #f6f8fa;
+  --gh-surface: #ffffff;
+  --gh-raised: #eef1f4;
+  --gh-line: #dcdee0;
+  --gh-text: #1e1e23;
+  --gh-muted: #767678;
+  --gh-primary: #09aa5c;
+  --gh-on-primary: #ffffff;
+  --gh-danger: #e53935;
+  color-scheme: light;
+}
+
+body {
+  font-family: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', system-ui, sans-serif;
+}
