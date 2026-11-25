@@ -1,15 +1,20 @@
 {
-  "name": "lightcone-simulator",
-  "version": "0.7.0",
+  "name": "@gamehub/lightcone",
   "private": true,
-  "description": "LIGHTCONE 웹 시뮬레이터 (봇 대전). 규칙 기준은 rules/rulebook.md",
+  "version": "0.8.0",
   "type": "module",
+  "description": "LIGHTCONE 규칙 엔진·봇과 웹 게임(봇 대전, 한 기기 2인, 온라인, 관전). 규칙 기준은 rules/rulebook.md",
   "scripts": {
-    "test": "node --test \"prototype/test/**/*.test.js\"",
-    "build": "node scripts/build.mjs",
-    "start": "npm run build && node scripts/aws/serve.mjs"
+    "dev": "vite --host",
+    "build": "vite build && gamehub-build-server",
+    "start": "gamehub-serve",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "e2e": "node e2e/mobile.mjs"
   },
-  "engines": {
-    "node": ">=20"
+  "dependencies": {
+    "@gamehub/config": "*",
+    "@gamehub/net": "*",
+    "@gamehub/ui": "*"
   }
 }

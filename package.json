@@ -6,15 +6,16 @@
   "workspaces": [
     "packages/*",
     "games/crease",
-    "games/tesseract",
-    "games/lastgrain"
+    "games/lastgrain",
+    "games/lightcone",
+    "games/tesseract"
   ],
   "engines": {
     "node": ">=22"
   },
   "scripts": {
     "typecheck": "npm run typecheck --workspaces --if-present",
-    "lint": "eslint packages games/crease games/tesseract games/lastgrain",
+    "lint": "eslint packages games/crease games/lastgrain games/lightcone games/tesseract",
     "test": "npm run test --workspaces --if-present",
     "build": "npm run build --workspaces --if-present",
     "check": "npm run typecheck && npm run lint && npm test && npm run build",
