@@ -453,7 +453,7 @@ function rulesPage() {
       <li><b>들고 다니기</b> · 조각은 2개까지. 지나가기만 해도 줍고, 닻 칸에 들어가면 모두 득점.</li>
       <li><b>동점</b> · 동점인 사람끼리 한 라운드 더.</li>
     </ol></div>
-    <div style="margin-top:auto;padding-top:16px"><a class="btn block" href="https://github.com/gillettef/Crease/blob/dev/rules/rulebook.md" target="_blank" rel="noopener">전체 룰북 보기</a></div>`);
+    <div style="margin-top:auto;padding-top:16px"><a class="btn block" href="https://github.com/gillettef/GameHub/blob/dev/games/crease/rules/rulebook.md" target="_blank" rel="noopener">전체 룰북 보기</a></div>`);
   on('[data-back]', 'click', home);
 }
 

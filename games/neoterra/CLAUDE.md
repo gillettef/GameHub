@@ -20,7 +20,7 @@
 
 1. **Claude Code는 사용자에게 보이는 답변을 한국어로 작성한다.** 코드 식별자는 영어, 주석·UI 문구·문서는 한국어.
 2. **작업 단위가 끝나면 `git commit` & `git push`** 한다(`/commit-push`). 커밋 메시지는 한국어, 제목은 `<타입>: <요약>`(예: `기능: 테크 웹 연구 검증`, `수정: 인접 할인 계산`). 테스트·빌드가 통과하는 완결된 단위에서만 커밋한다.
-3. **push 대상 repo: `https://github.com/gillettef/Neoterra.git`**. **일상 작업은 `dev` 브랜치에 커밋·푸시한다. `main`(운영 배포)에는 직접 커밋하지 않고**, 사용자가 요청할 때만 `dev` → `main` PR로 병합한다. 작업 시작 전 현재 브랜치가 `dev`인지 확인한다. 상세는 `docs/environments.md`.
+3. **push 대상 repo: `https://github.com/gillettef/GameHub.git` 의 `games/neoterra/` (모노레포, 옛 개별 저장소 `gillettef/Neoterra` 는 2026-11-25 삭제)**. **일상 작업은 `dev` 브랜치에 커밋·푸시한다. `main`(운영 배포)에는 직접 커밋하지 않고**, 사용자가 요청할 때만 `dev` → `main` PR로 병합한다. 작업 시작 전 현재 브랜치가 `dev`인지 확인한다. 상세는 `docs/environments.md`.
    - 이 저장소의 GitHub 계정은 **`gillettef`만** 쓴다. 로컬 git 설정 `credential.https://github.com.username=gillettef` 로 고정돼 있으니 지우거나 다른 계정으로 바꾸지 않는다.
 4. **DB를 쓰지 않는다.** DB·Redis·ORM 도입 금지. 방 상태는 서버 메모리, 개인 데이터는 `localStorage`.
 5. 개발 서버를 포그라운드로 띄우지 않는다. `/dev` 로 시작하고 `/dev-stop` 으로 끈다.

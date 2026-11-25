@@ -31,7 +31,7 @@ Lastgrain/
 ├── components/
 │   └── components.md    # 구성물 목록과 사양
 ├── playtests/           # 플레이테스트 기록 (YYYY-MM-DD-NN.md)
-├── submission/          # 2027 코리아보드게임즈 공모전 제출물 (기획안 등, 마감 2026-12-31)
+├── submission/          # 규칙서 HTML(빌드가 rules.html 로 복사)과 생성 스크립트
 ├── prototype/           # 웹 시뮬레이터(봇·온라인 대전, iPhone 17 Pro 기준 UI): src/rules.js(규칙 엔진), bot.js, net.js, ui.js, test/
 ├── package.json         # npm test(규칙 엔진 테스트), npm run build(→ dist/)
 ├── scripts/
@@ -52,10 +52,10 @@ Lastgrain/
 
 ## Git 규칙
 
-- **저장소:** https://github.com/gillettef/Lastgrain.git (기본 브랜치: `dev`)
+- **저장소:** https://github.com/gillettef/GameHub.git 의 `games/lastgrain/` (모노레포, 옛 개별 저장소 `gillettef/Lastgrain` 는 2026-11-25 삭제) (기본 브랜치: `dev`)
 - **작은 작업 단위가 끝날 때마다 반드시 commit하고 push한다.** 여러 작업을 모아서 한 번에 올리지 않는다. `/commit-push` 스킬을 쓴다. (이 규칙은 커밋·푸시에 대한 사전 승인이다. 단, force push·히스토리 변경은 사용자에게 먼저 확인한다.)
 - **commit 메시지는 한국어로 쓴다.** 형식은 `/commit-push` 스킬을 따른다. (예: `규칙: 뒤집기 단계 문장 정리`)
-- **일상 작업은 `dev`에 커밋·푸시한다. `main`(운영 배포)에는 직접 커밋·푸시하지 않고**, 사용자가 요청할 때만 `dev` → `main` PR(`gh pr create --base main --head dev`)로 병합한다. 작업 시작 전 현재 브랜치가 `dev`인지 확인한다. `dev` 푸시는 CI(`.github/workflows/ci.yml`)만 돌고, `main` 병합이 곧 운영 배포다.
+- **일상 작업은 `dev`에 커밋·푸시한다. `main`(운영 배포)에는 직접 커밋·푸시하지 않고**, 사용자가 요청할 때만 `dev` → `main` PR(`gh pr create --base main --head dev`)로 병합한다. 작업 시작 전 현재 브랜치가 `dev`인지 확인한다. `dev` 푸시는 CI(GameHub `.github/workflows/ci-lastgrain.yml`)만 돌고, `main` 병합이 곧 운영 배포다.
 
 ## 배포 (AWS)
 
@@ -65,7 +65,7 @@ Lastgrain/
 - `main`에 병합되면 `.github/workflows/deploy-aws.yml`이 `npm test` → `npm run build`를 통과했을 때만 `dist`와 `scripts/aws/`(의존성 없는 정적 서버 `serve.mjs`, `deploy-remote.sh`)를 `~/lastgrain`에 올리고, `deploy-remote.sh`가 systemd `lastgrain`을 재시작·헬스체크한다.
 - **수동 배포**(push 없이): `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/deploy-aws.ps1`. SSH 키·IP는 `.dev/`(git 제외), 없으면 `../Rootbound/.dev/`의 것을 쓴다.
 - SSH(22)는 관리자 IP만 열려 있어 워크플로가 러너 IP를 임시로 열었다 닫는다. 저장소 시크릿: AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY / AWS_REGION / AWS_SECURITY_GROUP_ID / EC2_HOST / EC2_HOST_KEY / EC2_SSH_PRIVATE_KEY (다른 게임 저장소와 같은 값, 정본은 저장소 밖 `personal/aws_config.md`).
-- 서버 준비(완료, 2026-11-23): `scripts/aws/provision.sh` → `scripts/aws/units.sh`(systemd `lastgrain` 등록·enable), 보안 그룹 TCP 8104 인바운드 추가, 저장소 시크릿 7개 등록.
+- 서버 준비(완료, 2026-11-23): 보안 그룹 TCP 8104 인바운드 추가, 저장소 시크릿 7개 등록.
 
 ## 서브에이전트
 

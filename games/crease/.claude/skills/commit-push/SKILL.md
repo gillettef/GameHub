@@ -1,6 +1,6 @@
 ---
 name: commit-push
-description: CREASE 작업 단위가 끝났을 때 변경 사항을 한국어 커밋 메시지로 커밋하고 https://github.com/gillettef/Crease.git 의 dev 로 푸시한다. "커밋해 줘/푸시해 줘/commit-push" 요청 시, 또는 문서·규칙 수정 하나가 끝났을 때 사용.
+description: CREASE 작업 단위가 끝났을 때 변경 사항을 한국어 커밋 메시지로 커밋하고 https://github.com/gillettef/GameHub.git(`games/crease/`) 의 dev 로 푸시한다. "커밋해 줘/푸시해 줘/commit-push" 요청 시, 또는 문서·규칙 수정 하나가 끝났을 때 사용.
 ---
 
 # /commit-push — 한국어 커밋 후 푸시
@@ -8,7 +8,7 @@ description: CREASE 작업 단위가 끝났을 때 변경 사항을 한국어 �
 CLAUDE.md 규칙: **작은 작업 단위가 끝날 때마다 반드시 commit & push**, **메시지는 한국어**.
 
 ## 0. 저장소 준비 확인
-- 원격이 없으면 `git remote add origin https://github.com/gillettef/Crease.git`.
+- 원격은 GameHub 모노레포(`https://github.com/gillettef/GameHub.git`, `origin`)다. 이 게임은 `games/crease/` 에 있고 커밋·푸시는 저장소 루트 기준이다(옛 개별 저장소 `gillettef/Crease` 는 2026-11-25 삭제).
 - `git config --get credential.https://github.com.username` 이 `gillettef` 인지 확인한다. 비어 있으면 `git config credential.https://github.com.username gillettef` 로 설정한다. 다른 GitHub 계정으로 푸시하지 않는다.
 - `git branch --show-current` 가 `dev` 여야 한다. `main` 이면 커밋하지 말고 `git switch dev` 후 진행한다(변경 사항은 그대로 따라온다).
 
@@ -53,7 +53,7 @@ git push origin dev
 - 인증 실패 시 사용자에게 알리고 `! git push origin dev` 로 직접 실행하도록 안내한다.
 
 ## 4-1. 운영 반영 (사용자가 요청할 때만)
-`dev` → `main` PR 을 만든다: `gh pr create --base main --head dev`. 병합되면 `deploy-aws.yml` 이 배포한다(프로토타입이 없으면 건너뜀).
+`dev` → `main` PR 을 만든다: `gh pr create --base main --head dev`. 병합되면 GameHub `deploy.yml`(→ `deploy-crease.yml`)이 배포한다(프로토타입이 없으면 건너뜀).
 
 ## 5. 보고
 커밋 해시와 제목 한 줄, 푸시 결과.

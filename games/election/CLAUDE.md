@@ -44,7 +44,7 @@ npm start          # 빌드 결과 실행(dist + 서버). 운영은 systemd 가 
 
 ## Git·브랜치
 
-- push 대상 repo: `https://github.com/gillettef/Election.git`. GitHub 계정은 **`gillettef`만** 쓴다(로컬 git 설정 `credential.https://github.com.username=gillettef` 를 지우거나 바꾸지 않는다).
+- push 대상 repo: `https://github.com/gillettef/GameHub.git` 의 `games/election/` (모노레포, 옛 개별 저장소 `gillettef/Election` 는 2026-11-25 삭제). GitHub 계정은 **`gillettef`만** 쓴다(로컬 git 설정 `credential.https://github.com.username=gillettef` 를 지우거나 바꾸지 않는다).
 - **일상 작업은 `dev` 브랜치에 커밋·푸시한다. `main`(운영 배포)에는 직접 커밋하지 않고**, 사용자가 요청할 때만 `dev` → `main` PR로 병합한다. 작업 시작 전 현재 브랜치가 `dev`인지 확인한다. 상세는 `docs/environments.md`.
 
 ## 배포 (AWS) — 운영 중 (v0.1.0, 2026-11-02)
@@ -52,7 +52,7 @@ npm start          # 빌드 결과 실행(dist + 서버). 운영은 systemd 가 
 - **2026-11-24부터 운영은 GameHub 허브 안에서 실행된다**(`hub/games.json` `"mode": "inproc"`, 진입점 `scripts/aws/hub-entry.mjs` → `server-dist/app.cjs`(`server/app.ts`, `createApp`)). 접속은 `http://54.116.67.196/election/`. 배포하면 `deploy-remote.sh`가 예전 systemd `election` 서비스를 끄고 허브(`gamehub`)를 재시작한다 — 허브 안 다른 게임의 진행 중인 방도 함께 사라진다. `server/index.ts`(`server-dist/server.cjs`)는 로컬 단독 실행용으로 남는다. 아래의 포트·systemd 설명은 예전 단독 운영 기준이다.
 
 - 다른 게임과 같은 EC2(t4g.nano, 서울) 1대를 공유한다. systemd `election`, 포트 8096, 경로 `~/election`, 주소 `http://54.116.67.196:8096`. `main` 병합 시 `.github/workflows/deploy-aws.yml` 이 `npm test` → `npm run build` 통과 후 배포한다(Neoterra·DoubleAgent 와 같은 방식: 러너 IP 를 SSH 22 에 임시 허용 → `ec2-user` 로 dist·server-dist·package.json·scripts/aws 업로드 → 서버 안 `scripts/aws/deploy-remote.sh` 가 systemd 설치·재시작·`/health` 확인 → 허용 제거).
-- CI(`.github/workflows/ci.yml`)는 dev·main 푸시와 PR 마다 타입체크·테스트·빌드를 돌린다.
+- CI(GameHub `.github/workflows/ci-election.yml`)는 dev·main 푸시와 PR 마다 타입체크·테스트·빌드를 돌린다.
 - 관리자 SSH 키·IP는 `../Rootbound/.dev/astraltab-key.pem`, `../Rootbound/.dev/aws-public-ip.txt` 를 공용으로 쓴다. 저장소 시크릿 값의 정본은 저장소 밖 `../../aws_config.md`. 서버 로그: `ssh -i ../Rootbound/.dev/astraltab-key.pem ec2-user@54.116.67.196 "sudo journalctl -u election -n 100"`.
 - 운영은 HTTP(IP:포트)라 서비스 워커·PWA 설치·오프라인은 동작하지 않는다(브라우저가 HTTPS/localhost 에서만 등록). 게임·온라인 대결은 된다.
 
@@ -77,7 +77,7 @@ src/
 public/      manifest, 아이콘, sw.js(서비스 워커)
 server/      Node 서버: index.ts(HTTP·정적·WebSocket·/health), hub.ts(메모리 방·소켓 전달), room.ts(순수 방 로직), tsconfig.json(Node 타입)
 tests/       Vitest (parity / rules / controller / validate / online / hub)
-scripts/     make-icons.mjs, build-server.mjs(서버 번들), aws/(deploy-remote.sh, election.service)
+scripts/     make-icons.mjs, build-server.mjs(서버 번들), aws/(deploy-remote.sh, hub-entry.mjs)
 .github/     workflows/ci.yml(검사), workflows/deploy-aws.yml(main → EC2 배포)
 ```
 
