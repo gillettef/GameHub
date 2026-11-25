@@ -1,0 +1,174 @@
+@import '@gamehub/ui/theme.css';
+
+/* PROXYMIND 색: 폐공장 지하 아레나 — 그을린 강철 바탕, 경고등 호박색(옛 화면의 색) */
+:root {
+  --gh-bg: #0e1013;
+  --gh-surface: #15181d;
+  --gh-raised: #232830;
+  --gh-line: #2b313a;
+  --gh-text: #e8e4dc;
+  --gh-muted: #8f959e;
+  --gh-primary: #f2a33a;
+  --gh-on-primary: #1a1205;
+  --gh-danger: #ff6b5e;
+  --pm-ok: #6fcf7f;
+}
+
+/* 아레나 */
+.pm-board {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.pm-label text {
+  fill: var(--gh-muted);
+  font-size: 10px;
+  text-anchor: middle;
+}
+.pm-cell {
+  fill: #1a1e24;
+  stroke: #2b313a;
+  stroke-width: 1;
+}
+.pm-edge {
+  fill: #20252c;
+}
+.pm-line {
+  opacity: 0.16;
+}
+.pm-spot {
+  fill: none;
+  stroke: #f2a33a55;
+  stroke-width: 1.5;
+  stroke-dasharray: 3 3;
+}
+.pm-pillar {
+  fill: #3a414b;
+  stroke: #555e6a;
+}
+.pm-pillar-mark {
+  stroke: #6b7480;
+  stroke-width: 3;
+}
+.pm-core {
+  fill: #f2a33a;
+  stroke: #ffd28a;
+  stroke-width: 1;
+}
+.pm-bot {
+  transition: transform 0.35s ease;
+}
+.pm-arrow {
+  stroke: #0e1013;
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+}
+.pm-ring {
+  fill: none;
+  stroke-width: 2.5;
+  opacity: 0.9;
+}
+.pm-ring-target {
+  stroke-dasharray: 4 3;
+}
+
+/* 규칙 타일 */
+.pm-tile {
+  position: relative;
+  display: flex;
+  min-height: 64px;
+  flex-direction: column;
+  gap: 1px;
+  overflow: hidden;
+  border: 1px solid var(--gh-line);
+  border-radius: 10px;
+  background: var(--gh-raised);
+  padding: 4px 6px;
+  text-align: left;
+}
+.pm-tile-empty {
+  border-style: dashed;
+  background: transparent;
+}
+.pm-tile-back {
+  background: repeating-linear-gradient(135deg, #2a3038 0 6px, #232830 6px 12px);
+}
+.pm-tile-slot {
+  font-size: 11px;
+  color: var(--gh-muted);
+}
+.pm-tile-fired {
+  border-color: var(--gh-primary);
+  box-shadow: inset 0 0 0 1px var(--gh-primary);
+}
+.pm-tile-would {
+  border-color: var(--pm-ok);
+  border-style: dashed;
+}
+.pm-tile-blocked {
+  opacity: 0.5;
+  background: repeating-linear-gradient(135deg, #3a1f1f 0 6px, #2a1a1a 6px 12px);
+}
+.pm-tile-used {
+  opacity: 0.35;
+}
+.pm-tile-tag {
+  position: absolute;
+  right: 4px;
+  bottom: 3px;
+  border-radius: 6px;
+  background: var(--gh-bg);
+  padding: 0 4px;
+  font-size: 10px;
+  color: var(--gh-text);
+}
+.pm-slot-btn,
+.pm-hand-btn {
+  display: flex;
+  min-height: 44px;
+  flex-direction: column;
+  border-radius: 10px;
+  text-align: left;
+}
+.pm-slot-btn:disabled {
+  opacity: 1;
+}
+.pm-hand-btn:disabled {
+  cursor: default;
+}
+.pm-slot-btn > .pm-tile,
+.pm-hand-btn > .pm-tile {
+  flex: 1;
+}
+.pm-truth {
+  margin-top: 2px;
+  font-size: 11px;
+  text-align: center;
+}
+.pm-yes {
+  color: var(--pm-ok);
+}
+.pm-no {
+  color: var(--gh-muted);
+}
+
+.pm-rules h3 {
+  margin: 1rem 0 0.4rem;
+  font-size: 0.95rem;
+  color: var(--gh-primary);
+}
+.pm-rules ol,
+.pm-rules ul {
+  margin: 0;
+  padding-left: 1.2rem;
+}
+.pm-rules li {
+  margin-bottom: 0.25rem;
+  line-height: 1.55;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pm-bot {
+    transition: none;
+  }
+}

@@ -1,13 +1,20 @@
 {
-  "name": "hearsay",
-  "version": "0.5.0",
+  "name": "@gamehub/hearsay",
   "private": true,
-  "description": "HEARSAY 웹 시뮬레이터 (봇 대전·온라인 대전)",
+  "version": "0.0.0",
   "type": "module",
-  "engines": { "node": ">=20" },
+  "description": "HEARSAY 규칙 엔진·봇과 웹 게임(봇 대전·한 기기 돌려 하기, 온라인 실시간 대전, 관전)",
   "scripts": {
-    "test": "node --test test/*.test.mjs",
-    "build": "node scripts/build.mjs",
-    "start": "node scripts/build.mjs && node scripts/aws/serve.mjs"
+    "dev": "vite --host",
+    "build": "vite build && gamehub-build-server",
+    "start": "gamehub-serve",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "e2e": "node e2e/mobile.mjs"
+  },
+  "dependencies": {
+    "@gamehub/config": "*",
+    "@gamehub/net": "*",
+    "@gamehub/ui": "*"
   }
 }

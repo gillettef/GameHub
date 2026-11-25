@@ -1,25 +1,21 @@
 {
-  "name": "election-mancala",
+  "name": "@gamehub/election",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.0.0",
   "type": "module",
+  "description": "유세 대작전: 유세 버스로 여섯 권역을 도는 만칼라형 2인 보드게임(봇, 한 기기, 온라인, 관전)",
   "scripts": {
-    "dev": "vite",
-    "dev:server": "tsx watch server/index.ts",
-    "build": "npm run typecheck && vite build && node scripts/build-server.mjs",
-    "preview": "vite preview",
+    "dev": "vite --host",
+    "build": "vite build && gamehub-build-server",
+    "start": "gamehub-serve",
+    "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit && tsc --noEmit -p server",
-    "start": "node server-dist/server.cjs"
+    "e2e": "node e2e/mobile.mjs",
+    "icons": "node scripts/make-icons.mjs"
   },
-  "devDependencies": {
-    "@types/node": "^26.6.6",
-    "@types/ws": "^8.18.2",
-    "esbuild": "^0.28.2",
-    "tsx": "^4.23.15",
-    "typescript": "^7.0.2",
-    "vite": "^8.3.5",
-    "vitest": "^5.0.5",
-    "ws": "^8.22.1"
+  "dependencies": {
+    "@gamehub/config": "*",
+    "@gamehub/net": "*",
+    "@gamehub/ui": "*"
   }
 }

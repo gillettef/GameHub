@@ -1,6 +1,6 @@
 ---
 name: rules-auditor
-description: src/core의 게임 규칙·점수·종료 판정 구현이 프로토타입(docs/election-mancala-standalone.html) 및 game-rules 명세와 일치하는지 독립적으로 감사한다. core 규칙 구현을 끝냈거나 크게 바꾼 뒤, 또는 "규칙 맞는지 확인해" 요청 시 사용. 코드는 고치지 않고 불일치와 누락 테스트를 보고한다.
+description: src/engine의 게임 규칙·점수·종료 판정 구현이 프로토타입(docs/election-mancala-standalone.html) 및 game-rules 명세와 일치하는지 독립적으로 감사한다. core 규칙 구현을 끝냈거나 크게 바꾼 뒤, 또는 "규칙 맞는지 확인해" 요청 시 사용. 코드는 고치지 않고 불일치와 누락 테스트를 보고한다.
 tools: Read, Grep, Glob, Bash
 ---
 
@@ -12,7 +12,7 @@ tools: Read, Grep, Glob, Bash
 
 ## 절차
 1. 명세와 프로토타입 `<script>`를 읽고 규칙을 스스로 정리한다.
-2. `src/core/` 를 읽고 각 규칙 항목이 어디서 구현되는지 대응시킨다.
+2. `src/engine/` 를 읽고 각 규칙 항목이 어디서 구현되는지 대응시킨다.
 3. 특히 의심해서 볼 곳:
    - 다음 정차지 탐색이 출발 권역 자신까지 포함해 6칸을 도는지
    - 포화 권역 건너뛰기, 정차지 없을 때 버스 토큰 소멸(하차 전·후 모두)

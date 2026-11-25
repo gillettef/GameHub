@@ -1,6 +1,6 @@
 ---
 name: ai-reviewer
-description: AI 수 결정(server/src/ai/search.ts, 심기 1수 탐욕 + 마켓 가져오기 평가)의 합법성, 평가, 2초 시간 제한·이벤트 루프 양보, 정보 가림(maskState) 준수를 검토한다. AI 코드 또는 룰 엔진을 변경한 뒤 사용. 읽기 전용.
+description: AI 수 결정(src/ai/search.ts, 심기 1수 탐욕 + 마켓 가져오기 평가)의 합법성, 평가, 2초 시간 제한·이벤트 루프 양보, 정보 가림(maskState) 준수를 검토한다. AI 코드 또는 룰 엔진을 변경한 뒤 사용. 읽기 전용.
 tools: Read, Grep, Glob, Bash
 model: inherit
 ---
@@ -9,7 +9,7 @@ model: inherit
 
 ## 검토 대상
 
-`server/src/ai/search.ts`, `server/src/ai/search.test.ts`, 호출부 `server/src/game/aiTurn.ts`, 그리고 기준인 `shared/src/engine/**`, `shared/fixtures/scenario.json`, `notes/Rules.md`.
+`src/ai/search.ts`, `test/search.test.ts`, 호출부 `src/def.ts(def.bot)`, 그리고 기준인 `src/engine/**`, `test/fixtures/scenario.json`, `notes/Rules.md`.
 
 ## 기준
 

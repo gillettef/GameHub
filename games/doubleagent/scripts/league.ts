@@ -5,8 +5,8 @@
  * v6 (5라운드 x 1·2차): 킹메이킹은 마지막 2라운드 시작(TOTAL_ROUNDS-1) 때의 단독 선두, ④-c는 마지막 2라운드 시작 때 1위 기준.
  * --only cards: 카드 운용 변형(아끼기·몰아 쓰기 등). 변형 자리은 AI_MODEL 을 그 자리 차례에만 바꿔 같은 AI로 둔다.
  */
-import { AI_MODEL, PERSONAS, RULES, STAGES, TOTAL_ROUNDS, createGame, createRng, makeAiBid, nextRound, resolveRound, winners } from '../src/core';
-import type { GameState, Persona, PersonaKey, RoundBid } from '../src/core';
+import { AI_MODEL, PERSONAS, RULES, STAGES, TOTAL_ROUNDS, createGame, createRng, makeAiBid, nextRound, resolveRound, winners } from '../src/engine';
+import type { GameState, Persona, PersonaKey, RoundBid } from '../src/engine';
 
 declare const process: { argv: string[] };
 const args = process.argv.slice(2);

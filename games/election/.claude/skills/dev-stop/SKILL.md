@@ -1,18 +1,18 @@
 ---
 name: dev-stop
-description: dev 스킬로 띄운 개발 서버(38617)·미리보기 서버(38627)·온라인 대결 서버(38637)를 끈다. "서버 꺼", "dev 종료" 요청이나 /dev-stop 에 사용.
+description: dev 스킬로 띄운 개발 서버(38617)·미리보기 서버(38627)를 끈다. "서버 꺼", "dev 종료" 요청이나 /dev-stop 에 사용.
 ---
 
 # 개발 서버 종료
 
-대상 포트는 **38617(dev), 38627(preview), 38637(서버, `npm run dev:server`)뿐**이다. 다른 포트나 다른 프로그램은 건드리지 않는다.
+대상 포트는 **38617(dev, 온라인 방 서버 포함), 38627(preview)뿐**이다. 다른 포트나 다른 프로그램은 건드리지 않는다.
 
 ## 절차
 
 1. **이 세션이 띄운 백그라운드 작업이면 그 작업을 멈춘다.** `dev` 스킬을 실행할 때 받은 task ID가 대화에 있으면 TaskStop 도구로 멈춘다. TaskStop은 지연 로드 도구이므로 먼저 `ToolSearch("select:TaskStop")`로 불러온다.
 2. **포트로 남은 프로세스를 정리한다. 이 단계는 반드시 한다.** Windows에서는 TaskStop이 셸(npx)만 끄고 실제 서버인 `node.exe`가 포트를 계속 잡고 있는 경우가 많다(실제로 확인함). 이전 세션이 띄운 서버도 여기서 정리된다.
    ```bash
-   netstat -ano | grep -E ":(38617|38627|38637) " | grep LISTENING
+   netstat -ano | grep -E ":(38617|38627) " | grep LISTENING
    ```
    PID마다 프로세스 이름을 확인한다.
    ```bash

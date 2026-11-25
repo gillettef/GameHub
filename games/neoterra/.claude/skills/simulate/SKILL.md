@@ -7,14 +7,14 @@ description: Neoterra 규칙 엔진으로 AI 대 AI 게임을 시드 고정으�
 
 ## 실행
 ```
-npx tsx scripts/simulate.ts --games 500 --players 3 --seed 1
+npm run simulate -- --games 500 --players 3 --seed 1
 ```
 - 인원 2·3·4를 각각 돌린다. 같은 시드로 2회 실행해 출력이 완전히 같은지 먼저 확인한다(결정성).
 - `scripts/simulate.ts` 가 없으면 아래 요구사항대로 작성한다.
 
 ## 스크립트 요구사항
-- `src/core` 만 import 한다. DOM·`localStorage`·`Math.random` 금지.
-- 인자: `--games`, `--players`(2~4), `--seed`, `--ai`(기본 `normal`), `--patch <json>`(파일 수정 없이 `src/core/data` 수치를 덮어써 변형 시험), `--json`(기계용 출력).
+- `src/engine` 만 import 한다. DOM·`localStorage`·`Math.random` 금지.
+- 인자: `--games`, `--players`(2~4), `--seed`, `--ai`(기본 `normal`), `--patch <json>`(파일 수정 없이 `src/engine/data` 수치를 덮어써 변형 시험), `--json`(기계용 출력).
 - 무한 루프 방지: 한 판 최대 행동 수 상한, 넘으면 "중단된 판"으로 따로 센다.
 - 출력 지표:
   - 자리별 승률, 주력 노선(최고 트랙)별 승률, 주둔지별 승률, 시대별 라운드 수
@@ -26,5 +26,5 @@ npx tsx scripts/simulate.ts --games 500 --players 3 --seed 1
 
 ## 리포트
 - 표로 정리하고 눈에 띄는 불균형 3개 이내와 조정 제안(수치 + 근거)을 붙인다.
-- 실제 적용은 사용자 확인 후. 적용 시 `notes/Rules.md` → `src/core/data` → 테스트 순으로 반영하고, 재시뮬레이션 전후 비교표와 함께 Rules.md 12절 "밸런스 기록"에 남긴다.
+- 실제 적용은 사용자 확인 후. 적용 시 `notes/Rules.md` → `src/engine/data` → 테스트 순으로 반영하고, 재시뮬레이션 전후 비교표와 함께 Rules.md 12절 "밸런스 기록"에 남긴다.
 - 깊은 분석이 필요하면 `balance-analyst` 에이전트에 맡긴다.

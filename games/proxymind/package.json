@@ -1,27 +1,20 @@
 {
-  "name": "proxymind",
+  "name": "@gamehub/proxymind",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.0.0",
   "type": "module",
-  "description": "PROXYMIND 웹 시뮬레이터 — 봇 대전, 온라인 대전, 자동 시뮬레이션",
+  "description": "PROXYMIND 규칙 엔진·봇과 웹 게임(봇 대전·한 기기 돌려 하기, 온라인 대전, 관전, 자동 시뮬레이션)",
   "scripts": {
-    "dev": "vite",
-    "server": "tsx watch prototype/server/index.ts",
-    "build": "tsc --noEmit && vite build && npm run build:server",
-    "build:server": "esbuild prototype/server/index.ts --bundle --platform=node --format=cjs --target=node20 --outfile=server-dist/server.cjs --external:bufferutil --external:utf-8-validate --log-level=warning && esbuild prototype/server/app.ts --bundle --platform=node --format=cjs --target=node20 --outfile=server-dist/app.cjs --external:bufferutil --external:utf-8-validate --log-level=warning",
-    "preview": "vite preview",
-    "start": "node scripts/aws/serve.mjs",
+    "dev": "vite --host",
+    "build": "vite build && gamehub-build-server",
+    "start": "gamehub-serve",
+    "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "e2e": "node e2e/mobile.mjs"
   },
-  "devDependencies": {
-    "@types/node": "^26.6.6",
-    "@types/ws": "^8.18.2",
-    "esbuild": "^0.28.2",
-    "tsx": "^4.23.15",
-    "typescript": "^5.9.3",
-    "vite": "^7.3.8",
-    "vitest": "^3.2.7",
-    "ws": "^8.23.0"
+  "dependencies": {
+    "@gamehub/config": "*",
+    "@gamehub/net": "*",
+    "@gamehub/ui": "*"
   }
 }

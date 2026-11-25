@@ -35,14 +35,14 @@ v3 점수 근거: `docs/balance/2026-10-16-v3.md` (AI 플레이테스터 리그,
 - [x] **v5 — 요구 수수료 카드 +1/+3/+5/+6억, 비밀 구단 보너스 12억, 데드라인 데이 +5억** (2026-10-17): ③ 4.5 복구
 - [x] **v4 — 요구 수수료 카드 +1/+3/+4/+5억, 동률이면 높은 카드 승** (2026-10-17): 근거 `docs/balance/2026-10-17-high-card.md` 8절
 - [x] **v3 — AI 플레이테스터 리그로 조정** (2026-10-16)
-  - 페르소나 12종(`src/core/ai.ts` PERSONAS), 리그 판정 `scripts/league.ts`, 균형점 탐색 `scripts/equilibrium.ts`, 승률 보정 `scripts/calibrate.ts`, 밀어 주기 강도 `scripts/push-sweep.ts`
+  - 페르소나 12종(`src/engine/ai.ts` PERSONAS), 리그 판정 `scripts/league.ts`, 균형점 탐색 `scripts/equilibrium.ts`, 승률 보정 `scripts/calibrate.ts`, 밀어 주기 강도 `scripts/push-sweep.ts`
   - 요구 수수료 카드 순환 삭제, 비밀 구단 보너스 '직접 계약만 10억', 지목 선택·오답 −2, 데드라인 데이 +4, 3~4인 전용
   - 근거와 기각안: `rules-spec` 변경 이력
 
 ## 다음 작업 (우선순위 순)
 
 ### 1. 사람 플레이테스트 (③ 상한 해제, ①④ 검증) — 사용자만 할 수 있음
-- [ ] 핫시트 모드(`npm run share`로 휴대폰 접속) 또는 종이 프로토타입(키트 인쇄, 생성은 `mkdir -p docs/print && npx tsx scripts/print-kit.ts > docs/print/kit.html`)으로 **3~5회**
+- [ ] 핫시트 모드(`npm run dev` 로 같은 Wi-Fi 휴대폰 접속) 또는 종이 프로토타입(키트 인쇄, 생성은 `mkdir -p docs/print && npx tsx scripts/print-kit.ts > docs/print/kit.html`)으로 **3~5회**
   - 3인·4인 위주로 한다. 4인에서 '생각한 플레이가 보상받는가'가 남은 위험 1순위다 (밸런스 리포트 3번)
 - [ ] 판마다 기록할 것
   - 첫 판 설명 시간, 라운드당 시간
@@ -59,7 +59,7 @@ v3 점수 근거: `docs/balance/2026-10-16-v3.md` (AI 플레이테스터 리그,
 - 규칙 변경 후보 (게임 중 고발)는 v2에서 기각됨 (`rules-spec` 변경 이력). 큐브 대신 구단 지목 카드를 쌓는 방식은 구성물 단순화 후보로 남김
 
 ### 0. 직접 플레이로 수정 방향 잡기 (최우선, 2026-10-17 사용자)
-- 사용자가 앱(`npm run dev` / `npm run share`)이나 종이 키트(`scripts/print-kit.ts`로 생성)로 v5를 직접 플레이하고 수정 방향을 정한다
+- 사용자가 앱(`npm run dev`)이나 종이 키트(`scripts/print-kit.ts`로 생성)로 v5를 직접 플레이하고 수정 방향을 정한다
 - 확인하면 좋은 것: 카드 +1/+3/+5/+6억의 체감(카드 2·3을 실제로 쓰는가), '동률이면 높은 카드 승'이 직관적인가, 비밀 구단 보너스 12억이 수수료 대비 과하지 않은가, 데드라인 데이 +5억 막판 긴장감
 - [x] ③ 4.0 → 4.5 복구 (2026-10-17): AI 재설계(depth 4, 보통 AI 성향 회전) → 표준 리그 `--depths 1/4` → v4(동률 높은 카드 승) → **v5**(수수료 표 1/3/5/6, 보너스 12, 데드라인 +5). 과정·기각안은 `docs/balance/2026-10-17-high-card.md`, `rules-spec` 변경 이력
 
@@ -77,11 +77,10 @@ v3 점수 근거: `docs/balance/2026-10-16-v3.md` (AI 플레이테스터 리그,
 - [ ] 실물 프로토타입: 선수 36, 구단 12, 비밀 구단 12, 이벤트 9, 플레이어별(4색) 요구 수수료 4·큐브 16·선수 지목 8·구단 지목 6, 시장 칸 보드, 지목 기록지
 
 ### 5. 웹 배포 (완료, 2026-10-17)
-- 다른 게임과 같은 공용 EC2에 정적 서빙: `http://54.116.67.196:8091` (CLAUDE.md "배포 (AWS)")
+- GameHub 허브 안에서 실행: `http://54.116.67.196/doubleagent/` (CLAUDE.md "배포 (AWS)", 2026-11-25 공통 구조로 옮김)
 - `main` push 자동 배포는 GitHub 저장소 시크릿 등록 후 동작
-- 임시 공개는 `npm run share`(Cloudflare 퀵 터널)로도 가능
 
 ## 작업 규칙 메모
 - 순서: 규칙 명세(`rules-spec`)를 먼저 고치고 → 엔진·테스트 → UI
 - 수치 조정은 시뮬레이션 근거를 변경 이력에 남긴다 (`scripts/simulate.ts`, seed 42·7)
-- 커밋 전 `npm run typecheck && npm run test`, 끝나면 커밋 후 push
+- 커밋 전 GameHub 루트에서 `npm run check`·`npm run e2e`

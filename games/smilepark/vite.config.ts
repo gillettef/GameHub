@@ -1,8 +1,8 @@
 import { readdirSync, statSync } from 'node:fs';
 import { join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { defineConfig, type Plugin } from 'vite';
-import react from '@vitejs/plugin-react';
+import { defineGameConfig } from '@gamehub/config/vite';
+import type { Plugin } from 'vite';
 
 const IMAGES_DIR = fileURLToPath(new URL('./public/images', import.meta.url));
 const IMAGE_RE = /\.(webp|png|jpg)$/i;
@@ -57,7 +57,5 @@ function imageManifest(): Plugin {
   };
 }
 
-export default defineConfig({
-  plugins: [react(), imageManifest()],
-  base: './', // WebView/Capacitor 포장 대비 상대 경로
-});
+// 공통 설정(React·Tailwind·개발용 방 서버, base './')에 이미지 목록 플러그인만 더한다
+export default defineGameConfig({ plugins: [imageManifest()] });

@@ -3,10 +3,10 @@
  *   npx tsx scripts/balance.ts [--n 1000] [--exp mirror,profiles,cards,staff] [--set shopIncome=2,favBonus=3]
  * --set 은 CFG(engine.ts) 또는 PRINT(data/cards.ts) 키를 덮어쓴다. PRINT 를 바꾸면 카드 인쇄값을 다시 계산한다.
  */
-import { AI_PROFILES, CFG, newGame, probe, rankings, winners } from '../src/game/engine';
-import { CARDS, CARD_BY_ID, PRINT, printCard } from '../src/game/data/cards';
-import { FACILITIES } from '../src/game/data/facilities';
-import type { GameState, StaffKey } from '../src/game/types';
+import { AI_PROFILES, CFG, newGame, probe, rankings, winners } from '../src/engine/engine';
+import { CARDS, CARD_BY_ID, PRINT, printCard } from '../src/engine/data/cards';
+import { FACILITIES } from '../src/engine/data/facilities';
+import type { GameState, StaffKey } from '../src/engine/types';
 
 const args = process.argv.slice(2);
 const opt = (k: string, d: string) => (args.indexOf('--' + k) >= 0 ? args[args.indexOf('--' + k) + 1] : d);
