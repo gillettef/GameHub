@@ -1,0 +1,20 @@
+{
+  "name": "@gamehub/config",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "exports": {
+    "./tsconfig.base.json": "./tsconfig.base.json",
+    "./eslint": "./eslint.js",
+    "./vite": {
+      "types": "./vite.d.ts",
+      "default": "./vite.js"
+    },
+    "./mobile": "./mobile.mjs",
+    "./package.json": "./package.json"
+  },
+  "bin": {
+    "gamehub-build-server": "./build-server.mjs",
+    "gamehub-serve": "./serve.mjs"
+  }
+}

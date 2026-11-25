@@ -1,0 +1,20 @@
+{
+  "name": "@gamehub/example",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "새 기술스택의 본보기. 게임을 옮길 때 이 구조를 따른다. 허브 로비(games.json)에는 올리지 않는다.",
+  "scripts": {
+    "dev": "vite --host",
+    "build": "vite build && gamehub-build-server",
+    "start": "gamehub-serve",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "e2e": "node e2e/mobile.mjs"
+  },
+  "dependencies": {
+    "@gamehub/config": "*",
+    "@gamehub/net": "*",
+    "@gamehub/ui": "*"
+  }
+}

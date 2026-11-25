@@ -1,0 +1,37 @@
+# 새 기술스택(루트 npm workspaces: packages/* 와 옮긴 게임) 품질 게이트. 타입체크·린트·테스트·빌드·iPhone 화면 확인.
+# 게임을 옮기면 아래 두 paths 에 games/<slug>/** 를 더하고 그 게임의 ci-<slug>.yml 은 지운다.
+name: CI workspace
+
+on:
+  push:
+    paths: ['packages/**', 'hub/server.mjs', 'hub/lib/**', 'package.json', 'package-lock.json', 'eslint.config.js', '.github/workflows/ci-workspace.yml']
+    branches: [main, dev]
+  pull_request:
+    paths: ['packages/**', 'hub/server.mjs', 'hub/lib/**', 'package.json', 'package-lock.json', 'eslint.config.js', '.github/workflows/ci-workspace.yml']
+
+concurrency:
+  group: ci-workspace-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci
+      - run: npm run check
+      - name: iPhone 화면 확인(WebKit)
+        run: npx playwright install --with-deps webkit && npm run e2e
+      - name: 화면 캡처 보관
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: shots
+          path: '*/*/shots/*.png'
+          if-no-files-found: ignore
