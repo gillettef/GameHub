@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { generateLines, planTurn, chooseSetup, evaluate } from '../src/core/ai';
-import { mulberry32 } from '../src/core/rng';
-import { applyAction, initialState, legalActions, nextStop, score, winner } from '../src/core/rules';
-import type { Action, GameState } from '../src/core/types';
+import { generateLines, planTurn, chooseSetup, evaluate } from '../src/engine/ai';
+import { mulberry32 } from '../src/engine/rng';
+import { applyAction, initialState, legalActions, nextStop, score, winner } from '../src/engine/rules';
+import type { Action, GameState } from '../src/engine/types';
 import { loadPrototype, normCore, normProto, toProto, type ProtoState } from './fixtures/prototype';
 
 const P = loadPrototype();

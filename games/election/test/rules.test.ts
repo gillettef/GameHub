@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { MAX_PLACE_PER_TURN } from '../src/core/constants';
-import { mulberry32 } from '../src/core/rng';
+import { MAX_PLACE_PER_TURN } from '../src/engine/constants';
+import { mulberry32 } from '../src/engine/rng';
 import {
   applyAction,
   canPlace,
@@ -13,8 +13,8 @@ import {
   resolveAction,
   score,
   winner,
-} from '../src/core/rules';
-import type { GameState, Player } from '../src/core/types';
+} from '../src/engine/rules';
+import type { GameState, Player } from '../src/engine/types';
 
 const B: Player = 0;
 const R: Player = 1;
