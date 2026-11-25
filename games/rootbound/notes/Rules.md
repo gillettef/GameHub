@@ -1,6 +1,6 @@
 # Rootbound 규칙 (정본)
 
-> **이 문서가 규칙의 정본이다.** 룰 엔진(`shared/src/engine`)·데이터(`shared/src/data`)·AI(`ai/astral_ai/rules.py`)·UI 어디든
+> **이 문서가 규칙의 정본이다.** 룰 엔진(`shared/src/engine`)·데이터(`shared/src/data`)·AI(`server/src/ai/search.ts`)·UI 어디든
 > 이 문서와 어긋나면 이 문서가 맞다. 규칙을 바꿀 때는 이 문서를 먼저 고친다.
 >
 > 2026-10-16: **오프라인판 규칙(v3)** 으로 바꿨다(사용자 지시: 2027 코리아보드게임즈 공모전 응모, 실물 보드게임으로 손으로 진행할 수

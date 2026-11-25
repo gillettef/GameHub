@@ -1,14 +1,14 @@
 /**
- * shared/fixtures/*.json 을 생성한다. TS 엔진 출력이 기준이고,
- * Python(ai/tests) 은 이 파일을 읽어 모델·규칙 일치를 검증한다.
+ * shared/fixtures/*.json 을 생성한다. TS 엔진 출력이 기준이다.
+ * specs.json 은 카드 SVG 문구(scripts/card-text.mjs)가, scenario.json 은 AI 테스트(server/src/ai/search.test.ts)가 읽는다.
+ * (2026-11-25 까지는 Python AI 가 이 기록으로 TS·Python 규칙 일치를 검증했다. 기록 형식은 그때 그대로다)
  *
  *   npm run fixtures   (= npx tsx shared/scripts/write-fixtures.ts)
  *
  *  specs.json     종·목표·상수·인원별 규칙 기준표
  *  scenario.json  2·3·4인 판을 이번 판 식물 공개 단계(initial)부터 시드로 고른 합법 수로 끝까지 둔 기록.
  *                 각 단계 { action, rootSeat, rootCount, owners, scores, legal(심기 단계만), auto(자동 수) } 와, 8단계마다·마지막에 state(log 제외).
- *                 Python 은 initial 에 action 을 차례로 적용하며 state 가 있는 단계에서 상태 일치를,
- *                 매 단계에서 큐브·땅·점수·심을 수 있는 칸·자동 수 일치를 확인한다.
+ *                 AI 테스트는 initial 에 action 을 차례로 적용해 진행 중 상태(기권·마켓 빈 라운드 포함)를 얻는다.
  */
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';

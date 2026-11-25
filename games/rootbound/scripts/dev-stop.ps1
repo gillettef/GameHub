@@ -1,6 +1,6 @@
 # Rootbound local dev stopper.
-# Kills the process trees recorded in .dev/server.pid, client.pid, ai.pid, tunnel.pid. As a fallback it
-# looks at listeners on ports 3101 / 5173 / 8000, but only kills a process started from THIS
+# Kills the process trees recorded in .dev/server.pid, client.pid, tunnel.pid (and a leftover ai.pid). As a fallback it
+# looks at listeners on ports 3101 / 5173 / 8000 (old Python AI), but only kills a process started from THIS
 # project directory. Anything else (e.g. Eleven on port 3001) is left alone and reported.
 
 $ErrorActionPreference = 'Continue'

@@ -83,6 +83,29 @@ export function rotateSpot(spot: RootSpot, rotation: number): RootSpot {
   return { dq, dr, n: spot.n };
 }
 
+const rotationCache = new Map<SpeciesId, Direction[]>();
+
+/** 모양이 서로 다른 회전 번호 (버섯은 0 하나뿐). 같은 모양이면 앞 번호만 남긴다 */
+export function distinctRotations(species: SpeciesId): Direction[] {
+  const hit = rotationCache.get(species);
+  if (hit) return hit;
+  const seen = new Set<string>();
+  const out: Direction[] = [];
+  for (let rot = 0 as Direction; rot < 6; rot = (rot + 1) as Direction) {
+    const key = getSpecies(species)
+      .roots.map((x) => rotateSpot(x, rot))
+      .map((x) => `${x.dq},${x.dr},${x.n}`)
+      .sort()
+      .join(';');
+    if (!seen.has(key)) {
+      seen.add(key);
+      out.push(rot);
+    }
+  }
+  rotationCache.set(species, out);
+  return out;
+}
+
 /** 이 식물을 이 칸에 이 회전으로 심을 때 큐브를 놓을 칸 (놓는 순서). 보드 밖·연못·바위·입구는 건너뛴다 */
 export function rootTargets(state: Pick<GameState, 'board' | 'plants'>, species: SpeciesId, pos: Position, rotation: number): { cell: number; n: number }[] {
   return targetsOn(boardIndex(requireBoard(state)), occupancy(state), species, pos, rotation);
