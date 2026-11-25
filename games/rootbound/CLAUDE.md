@@ -66,7 +66,6 @@
 - **AWS 인프라**: 리전 서울(`ap-northeast-2`), EC2 **t4g.nano** (ARM, 메모리 0.5GB, 스왑 2GB) Amazon Linux 2023, Elastic IP(`.dev/aws-public-ip.txt`, git 제외), 게임 15개가 허브 하나를 함께 쓴다. SSH 키(`.dev/astraltab-key.pem`)와 인스턴스 id(`.dev/aws-instance-id.txt`)도 `.dev/`(gitignore)에 있다. 시크릿 정본은 저장소 밖 `../../aws_config.md`.
 - 스냅샷은 EC2 `~/rootbound/server/data/prod/rooms`, 판 요약·웹 성능은 `.../prod/stats`. 집계는 로컬에서 `npx tsx server/scripts/stats.ts <내려받은 DATA_DIR>`.
 - 단독 실행 환경 변수: `APP_ENV`, `PORT`, `HOST`, `CLIENT_DIST`, `DATA_DIR` (`server/src/index.ts` 주석). 허브 안에서는 `hub-entry.mjs` 가 정한다.
-- `scripts/aws/provision.sh`·`units.sh` 는 예전 단독 운영(새 인스턴스 준비) 기록이다. 지금 운영에는 쓰지 않는다.
 
 ---
 
@@ -92,7 +91,7 @@ AstralTab/                 # 저장소 폴더 이름은 아직 옛 이름
 ├── DESIGN.md
 ├── package.json          # npm workspaces: shared, server, client (이름 rootbound)
 ├── notes/Rules.md        # 규칙 정본
-├── scripts/              # common.ps1, dev.ps1, dev-stop.ps1, deploy-aws.ps1, card-thumbs.mjs(카드 그림 썸네일), aws/(provision.sh, units.sh, deploy-remote.sh, swap.sh)
+├── scripts/              # common.ps1, dev.ps1, dev-stop.ps1, deploy-aws.ps1, card-thumbs.mjs(카드 그림 썸네일), aws/(deploy-remote.sh, swap.sh)
 ├── shared/
 │   ├── fixtures/         # specs.json(카드 문구), scenario.json(AI 테스트가 재생하는 판 기록)
 │   ├── scripts/          # lab/(v3 밸런스 시뮬레이터), write-fixtures.ts

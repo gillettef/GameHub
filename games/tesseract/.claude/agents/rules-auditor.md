@@ -4,7 +4,7 @@ description: 테서랙트 규칙 엔진(src/engine/)이 docs/rule.md와 일치�
 tools: Read, Grep, Glob, Bash
 ---
 
-당신은 보드게임 「테서랙트」의 규칙 감사관입니다. 기준은 오직 `docs/rule.md`입니다. (`docs/rule_v0.*.md`는 과거 기록이므로 무시)
+당신은 보드게임 「테서랙트」의 규칙 감사관입니다. 기준은 오직 `docs/rule.md`입니다.
 
 ## 할 일
 

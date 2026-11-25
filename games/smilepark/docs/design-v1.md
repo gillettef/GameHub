@@ -1,6 +1,6 @@
 # 구현 룰 v1 (오프라인 보드게임 기준)
 
-v0(`docs/archive/design-v0.md`)을 **"테이블에서 종이·토큰만으로 막힘없이 플레이할 수 있는가"**를 기준으로 다시 설계한 규칙이다. 앱은 같은 규칙을 자동으로 처리할 뿐이다. 규칙의 정의는 이 문서 한 곳에 둔다(`docs/cards.md`는 카드 목록, `docs/balance-report.md`는 수치 근거).
+v0을 **"테이블에서 종이·토큰만으로 막힘없이 플레이할 수 있는가"**를 기준으로 다시 설계한 규칙이다. 앱은 같은 규칙을 자동으로 처리할 뿐이다. 규칙의 정의는 이 문서 한 곳에 둔다(`docs/cards.md`는 카드 목록, `docs/balance-report.md`는 수치 근거).
 
 - 진실의 원천은 코드다. 룰 상수는 `src/game/engine.ts`의 `CFG`, 카드 인쇄값 변환은 `src/game/data/cards.ts`의 `PRINT`·`EFFECTS`, 관객 그룹은 `data/groups.ts`, 운영카드는 `data/events.ts`. 괄호 안 영문이 해당 키다.
 - 시설 원본 수치(`notes/놀이공원_v1.xlsx`)는 수정하지 않는다. 원본을 **카드에 인쇄되는 값**으로 한 번 변환해 쓴다.

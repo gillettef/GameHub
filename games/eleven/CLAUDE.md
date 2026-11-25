@@ -5,7 +5,6 @@
 
 ## 규칙 원본
 
-- `notes/Eleven_Rulebook_KOR.pdf` — 원작 규칙서 원본 (이미지 기반 PDF, 텍스트 레이어 없음)
 - `notes/Eleven_Rulebook.md` — 위 PDF를 전체 옮겨 적은 텍스트 레퍼런스. **게임 로직 구현 시 이 문서를
   1차 스펙으로 삼는다.** 각 절에 `<!-- p.NN -->` 원본 페이지 주석이 있으므로, 애매한 규칙은 원본 PDF의
   해당 페이지를 다시 확인할 것. 규칙 질문은 `/check-rule <질문>` 스킬로 조회한다.
@@ -72,7 +71,6 @@ server/   Node.js + TypeScript 게임 서버 (WebSocket). dev 포트 3001. `npm 
 client/   React + Vite 프론트엔드.               dev 포트 5173. `npm run dev`
 scripts/  dev.ps1 / dev-stop.ps1 — 개발 서버 시작/종료 (/dev, /dev-stop 스킬이 호출)
           tunnel.ps1 — 배포 모드 서버 + Cloudflare 빠른 터널로 공개 URL 발급 (/tunnel 스킬이 호출). -Slot main/test 로 서버 두 벌
-Dockerfile, render.yaml — 호스팅 배포 설정 (아래 "배포" 절)
 notes/    규칙서 원본 및 텍스트 레퍼런스
 .dev/     개발 서버 PID·로그 (gitignore)
 ```
@@ -238,14 +236,10 @@ notes/    규칙서 원본 및 텍스트 레퍼런스
   **서버2, 새 수정을 시험하는 서버**. 슬롯마다 터널·공개 주소·pid/로그(`.dev/tunnel-test-pids.json`, `tunnel-test-url.txt`, `serve-test.log`)가
   따로이고, 빌드 결과를 `.dev/slots/<slot>/`에 복사해 그 사본으로 실행하므로 한쪽을 새로 빌드해도 다른 쪽(서버 코드·정적 파일)은 바뀌지 않는다.
   서버1은 사용자가 "서버1에 반영"이라고 할 때만 `tunnel.ps1 -Reload`(= main)로 올린다. 한 슬롯만 내리려면 `dev-stop.ps1 -Slot test`.
-- **방법 B — 호스팅 (상시 주소)**: `render.yaml`(Render Blueprint, Node 22, 무료 플랜: 15분 미접속 시 슬립 →
-  진행 중 판 유실)과 `Dockerfile`(멀티스테이지, Fly.io/Railway 등 컨테이너 호스팅용). 둘 다 헬스체크는 `/health`.
-  게임 상태는 메모리에만 있으므로 인스턴스는 항상 1개여야 한다(스케일아웃 금지).
-
-- **방법 C — AWS EC2 (서버3, 상시 주소, 게임 3종 공용 서버)**: `scripts/aws-deploy.ps1`(수동, 이 PC에서 빌드 → ssh로 전송 → 재시작)와 `.github/workflows/deploy-aws.yml`(**`main`에 병합되면 자동 배포**, 먼저 `npm run check`를 통과해야 함).
+- **방법 C — AWS EC2 (서버3, 상시 주소, 게임 3종 공용 서버)**: `.github/workflows/deploy-aws.yml`(**`main`에 병합되면 자동 배포**, 먼저 `npm run check`를 통과해야 함).
   **2026-10-02 사용자 지시로 Eleven·AstralTab·MagicAcademy를 EC2 t4g.nano 1대(ARM, Amazon Linux 2023, 서울, Elastic IP 고정)에 합쳤다.** 기존 Eleven 전용 인스턴스(`eleven-game-server-arm`)와 `eleven-game-sg`는 삭제됐다. 세 게임은 포트로 구분한다(Eleven 3001 / MagicAcademy 8080 / AstralTab 3201) — 셋 다 `/ws` 경로를 쓰므로 경로 접두사로는 못 나눈다. 한 번에 한 게임만 플레이하는 전제다.
   배포는 러너/PC에서 빌드한 `server/dist`·`client/dist`·package.json류를 `ssh + tar`로 `~/eleven`에 풀고 → `npm install --omit=dev --workspace server` → `sudo systemctl restart eleven` → `/health`. RAM 0.5GB라 서버에서 빌드하지 않고, 스왑 2GB(`/swapfile`)가 있어야 `npm`이 OOM으로 안 죽는다.
-  서비스는 `eleven.service`(systemd, 3001 직접 노출, nginx 없음). 서버 설정 스크립트(`provision.sh`·`units.sh`)는 `scripts/aws/`에 있다(인스턴스 새로 만들 때 `provision.sh` → `units.sh`, 다른 게임과 공용이라 스왑·Node 는 있으면 건너뜀).
+  서비스는 `eleven.service`(systemd, 3001 직접 노출, nginx 없음).
   **SSH(22)는 관리자 IP로만 열려 있고**, 워크플로가 배포 직전에 러너 IP를 보안 그룹에 임시로 열었다 닫는다(최소 권한 IAM 사용자 `astraltab-ci`, 세 저장소 공용). 시크릿: AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY / AWS_REGION / AWS_SECURITY_GROUP_ID / EC2_HOST / EC2_HOST_KEY / EC2_SSH_PRIVATE_KEY.
   워크플로는 `concurrency` 그룹으로 한 번에 하나만 돈다. **`main` 병합 = 서버3 운영 반영**이라는 점에 주의(서버1·2 슬롯 규칙과 별개). 서비스가 재시작되므로 진행 중인 판은 유실된다.
 

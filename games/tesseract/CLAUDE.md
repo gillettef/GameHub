@@ -13,7 +13,7 @@
 
 ## 규칙의 단일 출처
 
-- 게임 규칙은 **`docs/rule.md`**(현재 v0.8)가 유일한 기준이다. `docs/rule_v0.*.md`는 과거 버전 기록이므로 구현에 쓰지 않는다.
+- 게임 규칙은 **`docs/rule.md`**(현재 v0.8)가 유일한 기준이다.
 - 규칙이 모호하거나 빠진 부분은 **추측해서 구현하지 않는다.** 사용자에게 묻고, 결정된 내용은 사용자 동의를 받아 `docs/rule.md`에 반영한다.
 - 구현 중 규칙 자체의 문제(밸런스, 모순)를 발견하면 코드로 몰래 고치지 말고 사용자에게 보고한다.
 - 규칙을 구현하거나 바꿀 때는 `/implement-rule` 스킬 절차를 따른다.
@@ -117,7 +117,7 @@ npm start          # 빌드 결과로 서버 실행 (scripts/aws/serve.mjs, EC2�
 - **수동 배포**(push 없이): `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/deploy-aws.ps1`. SSH 키·IP는 `.dev/astraltab-key.pem`, `.dev/aws-public-ip.txt`(git 제외), 없으면 `../Rootbound/.dev/`의 것을 쓴다.
 - 서버 로그: `ssh -i ../Rootbound/.dev/astraltab-key.pem ec2-user@54.116.67.196 "sudo journalctl -u tesseract -n 100"`
 - SSH(22)는 관리자 IP만 열려 있어 워크플로가 러너 IP를 임시로 열었다 닫는다. 저장소 시크릿: AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY / AWS_REGION / AWS_SECURITY_GROUP_ID / EC2_HOST / EC2_HOST_KEY / EC2_SSH_PRIVATE_KEY (다른 게임 저장소와 같은 값).
-- 서버 준비(완료, 2026-10-23): `scripts/aws/provision.sh` → `scripts/aws/units.sh`, 보안 그룹 TCP 8092 인바운드 추가.
+- 서버 준비(완료, 2026-10-23): 보안 그룹 TCP 8092 인바운드 추가.
 
 ## 서브에이전트
 
