@@ -71,16 +71,19 @@ function setup() {
 }
 
 describe('실시간 시계', () => {
-  it('행동 직전에 흐른 시간을 반영하고, version 은 행동으로만 오른다', () => {
+  it('행동 직전에 흐른 시간을 반영하고, 시간이 흐르기만 해서는 version 이 오르지 않는다(차례가 바뀔 때만)', () => {
     const { match, advance } = setup()
     advance(3000)
     match.act(0, { go: true })
     expect(match.state).toMatchObject({ turn: 1, left: 5000, burned: 0 })
     expect(match.version).toBe(1)
-    advance(6000)
+    advance(3000)
+    match.refresh()
+    expect(match.version).toBe(1)
+    advance(3000)
     match.refresh()
     expect(match.state).toMatchObject({ turn: 0, burned: 1 })
-    expect(match.version).toBe(1)
+    expect(match.version).toBe(2)
     expect(match.log.at(-1)?.text).toBe('시간 초과')
   })
 
@@ -148,5 +151,49 @@ describe('실시간 시계', () => {
     }
     hub.sweep()
     expect(hub.size).toBe(0)
+  })
+})
+
+describe('리뷰에서 찾은 경로', () => {
+  it('시계가 게임을 끝낸 직후의 행동은 거절되지만 끝남은 알린다', () => {
+    const { match, advance, changes } = setup()
+    advance(4999)
+    match.act(0, { go: true }) // 1번 차례
+    changes()
+    for (let i = 0; i < 2; i++) {
+      advance(5001) // 시간 초과
+      match.refresh()
+    }
+    advance(5001) // 세 번째 시간 초과는 행동 직전에 시계가 반영한다 → 끝
+    expect(() => match.act(1, { go: true })).toThrow()
+    expect(match.over).toBe(true)
+    expect(changes()).toContain('clock')
+  })
+
+  it('시계로 차례가 바뀌면 version 이 올라 이전 차례에 고른 행동을 막는다', () => {
+    const { match, advance } = setup()
+    const v = match.version
+    advance(5001)
+    match.refresh()
+    expect(match.version).toBe(v + 1)
+  })
+
+  it('온라인: 아무도 보고 있지 않으면 시계가 멈춘다', () => {
+    const t = fakeTimers()
+    let clock = 0
+    let n = 0
+    const hub = new RoomHub(fuseGame, { randomInt: (m) => ++n % m, token: () => `t${++n}`, now: () => clock, timers: t.timers })
+    const a = new FakeConn()
+    hub.receive(a, { t: 'create', name: 'A', seats: 2 })
+    const b = new FakeConn()
+    hub.receive(b, { t: 'join', code: a.joined.code, name: 'B' })
+    hub.receive(a, { t: 'start' })
+    hub.disconnect(a)
+    hub.disconnect(b)
+    clock += 60_000
+    t.next()
+    const back = new FakeConn()
+    hub.receive(back, { t: 'resume', code: a.joined.code, token: a.joined.token! })
+    expect((back.room.view as unknown as Fuse).burned).toBe(0)
   })
 })

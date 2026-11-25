@@ -4,7 +4,7 @@
 import { RuleError, type ClockContext, type GameDef } from '@gamehub/net'
 import { chooseAction, isLevel, type Level } from './engine/bot.ts'
 import { mulberry32 } from './engine/random.ts'
-import { apply, clone, newGame, resign, tick, type Action, type State } from './engine/rules.ts'
+import { apply, clone, newGame, onBoard, resign, tick, type Action, type State } from './engine/rules.ts'
 
 export type Act = Action | { type: 'resign' }
 
@@ -101,7 +101,9 @@ export const def: GameDef<Table, Act, View, Options> = {
       if (t.game.over) return t
       const countdown = Math.max(0, t.countdown - ms)
       const flow = ms - (t.countdown - countdown)
-      if (flow <= 0) return countdown === t.countdown ? t : { ...t, countdown }
+      // 흐를 모래가 없으면(대모래시계가 다 떨어졌고 보드가 빈 채 소환을 기다림) 같은 상태를 돌려 다시 보내지 않는다
+      const idle = t.game.greatRem <= 0 && onBoard(t.game, t.game.active).length === 0
+      if (flow <= 0 || idle) return countdown === t.countdown ? t : { ...t, countdown }
       const game = clone(t.game)
       tick(game, flow)
       relay(t.game, game, ctx)

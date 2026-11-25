@@ -69,7 +69,11 @@ export class Match<S, A, V, O> {
     return this.opts.now?.() ?? Date.now()
   }
 
-  /** 실시간 게임: 마지막으로 흘린 뒤 지난 시간만큼 시계를 흘린다. 둘 사람이 바뀌면 자동 진행을 다시 예약한다 */
+  /**
+   * 실시간 게임: 마지막으로 흘린 뒤 지난 시간만큼 시계를 흘린다. 바뀌었으면 바로 알린다(onChange('clock'))
+   * — 시계가 게임을 끝낸 직후 들어온 행동이 거절돼도 끝남이 모두에게 전해지도록.
+   * 둘 사람이 바뀌면 version 을 올리고(이전 차례에 고른 행동이 새 차례에 적용되지 않게) 자동 진행을 다시 예약한다
+   */
   refresh(): void {
     const clock = this.def.clock
     const now = this.now()
@@ -79,7 +83,12 @@ export class Match<S, A, V, O> {
     const before = this.state
     const actors = this.actors().join()
     this.state = clock.advance(this.state, dt, { log: (text, kind) => this.pushLog(kind === undefined ? { text } : { text, kind }) })
-    if (this.state !== before && this.actors().join() !== actors) this.schedule()
+    if (this.state === before) return
+    if (this.actors().join() !== actors) {
+      this.version++
+      this.schedule()
+    }
+    this.opts.onChange('clock')
   }
 
   private pushLog(entry: Omit<LogEntry, 'id'>): void {
@@ -156,9 +165,7 @@ export class Match<S, A, V, O> {
     if (!clock || this.clockTimer !== null || this.over) return
     this.clockTimer = this.timers.set(() => {
       this.clockTimer = null
-      const before = this.state
       this.refresh()
-      if (this.state !== before) this.opts.onChange('clock')
       this.scheduleClock()
     }, clock.syncMs ?? 1000)
   }

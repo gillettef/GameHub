@@ -103,7 +103,6 @@ export class LocalGame<S, A, V, O> {
   }
 
   private publish(error: string | null = null): void {
-    this.match.refresh()
     this.state = { room: this.snapshot(), error, paused: this.paused }
     for (const listener of this.listeners) listener()
   }
