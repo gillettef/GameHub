@@ -106,6 +106,12 @@ describe('시계', () => {
     expect(t.game.units[scout.id]!.rem).toBe(50_000)
   })
 
+  it('흐를 모래가 없으면 같은 상태를 돌려준다(다시 보내지 않게)', () => {
+    let t = def.setup({ seats: seats('human', 'human'), seed: 1, options: parseOptions({ countdown: 0 }) })
+    t = { ...t, game: { ...t.game, greatRem: 0 } }
+    expect(def.clock!.advance(t, 5000, ctx)).toBe(t)
+  })
+
   it('시간 때문에 생긴 일도 누구의 일인지와 함께 기록한다', () => {
     let t = def.setup({ seats: seats('human', 'human'), seed: 1, options: parseOptions({ countdown: 0, handleMs: 0 }) })
     const scout = reserve(t.game, 0).find((u) => u.kind === 'scout')!
