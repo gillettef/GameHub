@@ -55,7 +55,7 @@ async function tap(page, locator) {
     await closeNotices(page)
     await answerPending(page)
     try {
-      await locator.first().click({ timeout: 1500 })
+      await locator.first().click({ timeout: 3000 })
       return
     } catch {
       // 창이 떠 있거나 아직 없다
@@ -69,8 +69,10 @@ async function tap(page, locator) {
 async function pickQuest(page) {
   await until(page, footer(page).getByRole('button', { name: '퀘스트 고르기' }))
   await tap(page, footer(page).getByRole('button', { name: '퀘스트 고르기' }))
-  await tap(page, page.locator('#quest-track button').first())
-  await tap(page, page.getByRole('dialog').getByRole('button', { name: /고르기$/ }))
+  // 느린 환경(CI)에서는 첫 클릭이 시간 안에 끝나지 않아도 시트가 열린다: 열렸으면 다시 누르지 않는다
+  const pick = page.getByRole('dialog').getByRole('button', { name: /고르기$/ })
+  if (!(await pick.isVisible().catch(() => false))) await tap(page, page.locator('#quest-track button').first())
+  await tap(page, pick)
 }
 
 await withGame(dir, async ({ url, open, shot }) => {

@@ -37,12 +37,13 @@
   flex: 1 1 200px;
   min-width: 0;
   display: flex;
+  flex-wrap: wrap; /* 좁은 화면·글꼴에서도 버튼이 44px 아래로 줄지 않게 줄을 바꾼다 */
   gap: 4px;
 }
 
 .dir {
   flex: 1;
-  min-width: 0;
+  min-width: 44px;
   height: 44px;
   display: flex;
   align-items: center;
