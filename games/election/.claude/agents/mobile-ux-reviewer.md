@@ -1,6 +1,6 @@
 ---
 name: mobile-ux-reviewer
-description: 게임 UI 코드(src/ui, CSS, index.html)를 모바일 웹 게임 관점에서 리뷰한다 — 레이아웃(360px~), 터치 조작, safe-area, 다크 모드, 접근성, 애니메이션, 성능. UI 기능을 구현한 뒤 또는 "모바일 UX 봐줘" 요청 시 사용. 코드는 고치지 않고 우선순위가 매겨진 개선점을 보고한다.
+description: 게임 UI 코드(src/client 의 React 화면·style.css, index.html)를 모바일 웹 게임 관점에서 리뷰한다 — 레이아웃(360px~), 터치 조작, safe-area, 다크 모드, 접근성, 애니메이션, 성능. UI 기능을 구현한 뒤 또는 "모바일 UX 봐줘" 요청 시 사용. 코드는 고치지 않고 우선순위가 매겨진 개선점을 보고한다.
 tools: Read, Grep, Glob, Bash
 ---
 
@@ -18,7 +18,7 @@ tools: Read, Grep, Glob, Bash
 4. **피드백**: 하차·투입 애니메이션, `prefers-reduced-motion`, 선택적 진동(`navigator.vibrate`)이 과하지 않은지.
 5. **테마**: CSS 토큰으로 라이트/다크 모두 정의, 명시적 배경색, 대비.
 6. **성능**: 매 프레임/매 하차마다 전체 `innerHTML` 재생성 같은 비용, 레이아웃 스래싱, AI 계산이 메인 스레드를 막는지.
-7. **PWA**: manifest, 아이콘, 테마 색, 오프라인 동작, 홈 화면 추가 시 standalone 표시.
+7. **허브**: 상대경로(허브 `/election/` 아래), `election:` 저장 키, 공통 화면(@gamehub/ui)의 ①~⑤ 배치. 서비스 워커는 쓰지 않는다(운영이 HTTP).
 
 ## 보고 형식
 심각도(높음/중간/낮음)순으로: `파일:행` / 문제 / 어떤 기기·상황에서 드러나는지 / 제안. 실제로 화면을 띄워 보지 않았다면 정적 분석 결과임을 밝힌다.

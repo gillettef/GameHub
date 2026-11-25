@@ -4,8 +4,8 @@
  */
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { MAX_PLACE_PER_TURN } from '../../src/core/constants';
-import type { GameState, Player } from '../../src/core/types';
+import { MAX_PLACE_PER_TURN } from '../../src/engine/constants';
+import type { GameState, Player } from '../../src/engine/types';
 
 export interface ProtoState {
   h: number[][];

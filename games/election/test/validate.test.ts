@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { chooseActions } from '../src/core/ai';
-import { mulberry32 } from '../src/core/rng';
-import { applyAction, initialState, isOver } from '../src/core/rules';
-import type { GameState } from '../src/core/types';
-import { isGameState } from '../src/core/validate';
+import { chooseActions } from '../src/engine/ai';
+import { mulberry32 } from '../src/engine/rng';
+import { applyAction, initialState, isOver } from '../src/engine/rules';
+import type { GameState } from '../src/engine/types';
+import { isGameState } from '../src/engine/validate';
 
 const json = (s: GameState): unknown => JSON.parse(JSON.stringify(s));
 

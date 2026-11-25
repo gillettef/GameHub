@@ -16,16 +16,16 @@ description: docs/election-mancala-standalone.html 프로토타입의 기능(규
 ## 2. 계층 나누기
 | 프로토타입의 것 | 갈 곳 |
 |---|---|
-| 상태 변경, 판정, 점수 | `src/core/rules.ts` (순수 함수, 불변 업데이트) |
-| AI 평가·탐색 | `src/core/ai.ts` (rng 인자 주입) |
-| `sleep`, `busy`, 자동 하차 반복, AI 호출 시점 | `src/game/` |
+| 상태 변경, 판정, 점수 | `src/engine/rules.ts` (순수 함수, 불변 업데이트) |
+| AI 평가·탐색 | `src/engine/ai.ts` (rng 인자 주입) |
+| `sleep`, `busy`, 자동 하차 연출 박자 | `src/client/playback.ts` (진행·봇 호출은 공통 `@gamehub/net`, 연결은 `src/def.ts`) |
 | `room.emit/on`, 버전 `n` | `src/net/` (인터페이스만) |
-| `innerHTML` 문자열, CSS, 하이라이트 | `src/ui/` |
+| `innerHTML` 문자열, CSS, 하이라이트 | `src/client/` (React) |
 
 ## 3. 테스트 먼저
 - 프로토타입 동작을 고정하는 테스트를 작성한다. 구체적인 보드 상태 → 액션 → 기대 상태.
 - 규칙 로직이면 최소한: 정상 경로, 포화 권역 건너뛰기, 버스 토큰 소멸, 깃발 동점, 종료 조건, 턴 교대 시 place 건너뛰기.
-- 가능하면 **패리티 테스트**: 프로토타입 함수를 `tests/fixtures/prototype.js`로 그대로 추출(원본 수정 없이 복사)하고, 같은 시드의 랜덤 액션 시퀀스를 양쪽에 적용해 상태(UI 전용 필드 제외)가 일치하는지 비교한다.
+- 가능하면 **패리티 테스트**: 프로토타입 함수를 `test/fixtures/prototype.ts`로 그대로 추출(원본 수정 없이 복사)하고, 같은 시드의 랜덤 액션 시퀀스를 양쪽에 적용해 상태(UI 전용 필드 제외)가 일치하는지 비교한다.
 
 ## 4. 구현
 - 이름은 의미 있게(`S`→`state`, `cl`→`cloneState` 대신 불변 업데이트 등).
