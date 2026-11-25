@@ -48,6 +48,7 @@ export async function withGame(gameDir, run) {
       },
       async shot(page, name) {
         await rendered(page) // 빈 화면은 어떤 배치 검사도 통과해 버린다
+        await settled(page)
         await page.screenshot({ path: path.join(shots, `${name}.png`) })
         const problems = await layoutProblems(page)
         if (problems.length) throw new Error(`[${name}] 화면 기준 위반:\n- ${problems.join('\n- ')}`)
@@ -64,6 +65,21 @@ export async function withGame(gameDir, run) {
 /** React 가 화면을 그릴 때까지 */
 function rendered(page) {
   return page.waitForFunction(() => (document.querySelector('#root')?.textContent ?? '').trim().length > 0)
+}
+
+/** 끝이 있는 애니메이션(등장 연출 등)이 끝날 때까지, 길어도 3초. 반복 연출은 기다리지 않는다 */
+function settled(page) {
+  return page.evaluate(() =>
+    Promise.race([
+      Promise.all(
+        document
+          .getAnimations()
+          .filter((a) => a.effect?.getComputedTiming().iterations !== Infinity)
+          .map((a) => a.finished.catch(() => {})),
+      ),
+      new Promise((ok) => setTimeout(ok, 3000)),
+    ]),
+  )
 }
 
 /** 가로 스크롤, 페이지 스크롤, 44pt 보다 작은 누르는 대상, 16px 보다 작은 입력 글자 */

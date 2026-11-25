@@ -14,7 +14,7 @@ CLAUDE.md 규칙: **단계별 작업이 끝나면 반드시 commit & push**, **�
 ```
 npm run typecheck
 npm test
-npm run lint
+npm run lint --prefix ../..   # 린트는 GameHub 루트 설정
 ```
 
 - 하나라도 실패하면 커밋하지 않습니다. 고칠 수 있으면 고치고 다시 검증합니다. 고칠 수 없으면 실패 출력과 함께 사용자에게 알리고 멈춥니다.

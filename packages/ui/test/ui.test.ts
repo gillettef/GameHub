@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { defaultSeats, inviteLink, namedSeats, resizeSeats, toggleSeat } from '../src/seats'
+import { defaultSeats, inviteLink, namedSeats, renameSeat, resizeSeats, restoreSeats, toggleSeat } from '../src/seats'
 import { FIT, clampView, zoomAt } from '../src/zoom'
 
 const size = { width: 400, height: 600 }
@@ -31,6 +31,21 @@ describe('좌석 구성', () => {
     expect(namedSeats(defaultSeats(2, true, ''), ' ')[0]!.name).toBe('나')
     expect(namedSeats(defaultSeats(2, false, ''), '')[0]!.name).toBe('1번')
     expect(namedSeats(defaultSeats(2, true, ''), '가람')[0]!.name).toBe('가람')
+  })
+
+  it('한 기기의 다른 사람 자리는 이름을 바꿀 수 있고, 비면 번호', () => {
+    const seats = renameSeat(toggleSeat(defaultSeats(3, true, ''), 1), 1, '  나래 ')
+    expect(namedSeats(seats, '가람').map((s) => s.name)).toEqual(['가람', '나래', '봇 3'])
+    expect(namedSeats(renameSeat(seats, 1, ' '), '가람')[1]!.name).toBe('2번')
+  })
+
+  it('저장한 구성은 인원·형식을 검사해 되살린다', () => {
+    const saved = JSON.parse(JSON.stringify(renameSeat(toggleSeat(defaultSeats(2, true, ''), 1), 1, '나래')))
+    expect(restoreSeats(saved, 2, 4, true)).toEqual(saved)
+    expect(restoreSeats([{ kind: 'bot', name: 'x' }, { kind: 'bot', name: 'y' }], 2, 4, false)!.every((s) => s.kind === 'human')).toBe(true)
+    expect(restoreSeats(saved.slice(0, 1), 2, 4, true)).toBeNull()
+    expect(restoreSeats([{ kind: 'alien', name: 'x' }, saved[0]], 2, 4, true)).toBeNull()
+    expect(restoreSeats('nope', 2, 4, true)).toBeNull()
   })
 
   it('초대 링크는 게임 디렉터리 + room 코드', () => {

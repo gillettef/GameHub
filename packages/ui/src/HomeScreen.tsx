@@ -2,13 +2,19 @@ import { NAME_MAX, type SeatInfo } from '@gamehub/net'
 import { useState, type ReactNode } from 'react'
 import { Button } from './Button'
 import { LobbyLink, Screen } from './Screen'
-import { defaultSeats, namedSeats, resizeSeats, toggleSeat } from './seats'
+import { defaultSeats, namedSeats, renameSeat, resizeSeats, restoreSeats, toggleSeat } from './seats'
 
 export interface HomeScreenProps {
   /** 저장 키 접두어 */
   slug: string
   title: string
   tagline?: ReactNode
+  /** 제목 대신 보일 로고·제목 묶음 */
+  hero?: ReactNode
+  /** 제목 아래(이어 하기 같은 큰 버튼) */
+  top?: ReactNode
+  /** 새 게임을 만들 때만 보이는 게임별 설정(한 기기 시작, 온라인 방 만들기) */
+  setup?: ReactNode
   minSeats: number
   maxSeats: number
   /** 봇이 있는 게임인지 */
@@ -31,7 +37,25 @@ export function HomeScreen(p: HomeScreenProps) {
   const [mode, setMode] = useState<'local' | 'online'>(p.invited ? 'online' : 'local')
   const [code, setCode] = useState(p.invited ?? '')
   // 한 기기는 나머지 자리가 봇, 온라인은 친구가 들어올 빈자리가 기본이다
-  const [seats, setSeats] = useState<SeatInfo[]>(() => defaultSeats(p.minSeats, p.bots, ''))
+  const seatsKey = `${p.slug}:seats`
+  const [seats, setSeatsRaw] = useState<SeatInfo[]>(() => {
+    try {
+      return restoreSeats(JSON.parse(localStorage.getItem(seatsKey) ?? 'null'), p.minSeats, p.maxSeats, p.bots) ?? defaultSeats(p.minSeats, p.bots, '')
+    } catch {
+      return defaultSeats(p.minSeats, p.bots, '')
+    }
+  })
+  /** 한 기기 구성(인원·사람/봇·이름)은 다음에 다시 쓰도록 저장한다 */
+  const setSeats = (update: (all: SeatInfo[]) => SeatInfo[]) =>
+    setSeatsRaw((all) => {
+      const next = update(all)
+      try {
+        localStorage.setItem(seatsKey, JSON.stringify(next))
+      } catch {
+        /* 사생활 보호 모드 */
+      }
+      return next
+    })
   const [onlineBots, setOnlineBots] = useState<number[]>([])
 
   const rename = (value: string) => {
@@ -70,8 +94,13 @@ export function HomeScreen(p: HomeScreenProps) {
       }
     >
       <LobbyLink />
-      <h1 className="mt-1 mb-1 text-3xl font-extrabold">{p.title}</h1>
-      {p.tagline != null && <p className="mt-0 text-muted">{p.tagline}</p>}
+      {p.hero ?? (
+        <>
+          <h1 className="mt-1 mb-1 text-3xl font-extrabold">{p.title}</h1>
+          {p.tagline != null && <p className="mt-0 text-muted">{p.tagline}</p>}
+        </>
+      )}
+      {p.top != null && <div className="mt-3 flex flex-col gap-2">{p.top}</div>}
 
       <div className="my-3 grid grid-cols-2 gap-1 rounded-xl bg-surface p-1">
         {(['local', 'online'] as const).map((m) => (
@@ -135,11 +164,22 @@ export function HomeScreen(p: HomeScreenProps) {
             </div>
           )}
           <ul className="m-0 mb-3 list-none p-0">
-            {seats.map((_, i) => (
+            {seats.map((s, i) => (
               <li key={i} className="flex min-h-12 items-center justify-between gap-2 border-b border-line">
-                <span>
-                  {i + 1}번 자리{mode === 'online' && i === 0 ? ' · 나' : ''}
-                </span>
+                {mode === 'local' && i > 0 && s.kind === 'human' ? (
+                  <input
+                    className="h-11 min-w-0 flex-1 rounded-lg border border-line bg-surface px-3"
+                    aria-label={`${i + 1}번 자리 이름`}
+                    placeholder={`${i + 1}번`}
+                    value={s.name === `${i + 1}번` ? '' : s.name}
+                    maxLength={NAME_MAX}
+                    onChange={(e) => setSeats((all) => renameSeat(all, i, e.target.value))}
+                  />
+                ) : (
+                  <span>
+                    {i + 1}번 자리{mode === 'online' && i === 0 ? ' · 나' : ''}
+                  </span>
+                )}
                 {mode === 'online' && i === 0 ? null : p.bots ? (
                   <button type="button" className="min-h-11 min-w-24 rounded-lg bg-raised px-3 text-sm" onClick={() => toggle(i)}>
                     {isBot(i) ? '봇' : mode === 'online' ? '친구' : '사람'}
@@ -150,6 +190,7 @@ export function HomeScreen(p: HomeScreenProps) {
               </li>
             ))}
           </ul>
+          {p.setup != null && <div className="mb-3">{p.setup}</div>}
         </>
       )}
 
