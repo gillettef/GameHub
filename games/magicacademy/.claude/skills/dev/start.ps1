@@ -1,4 +1,4 @@
-﻿# 마법학교 외부 공개 개발 서버 실행: 클라이언트 빌드 -> Express 서버 -> Cloudflare 퀵 터널
+﻿# 마법학교 외부 공개 개발 서버 실행: 빌드(화면 + server-dist) -> 허브 방식 서버(gamehub-serve, /magicacademy/) -> Cloudflare 퀵 터널
 $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path (Join-Path $PSScriptRoot '../../..')).Path
 $state = Join-Path $root '.dev'
@@ -29,21 +29,21 @@ if ($cfCmd) { $cf = $cfCmd.Source } else {
   }
 }
 
-# 의존성 설치 + 클라이언트 빌드
-foreach ($d in 'server', 'client') {
-  if (-not (Test-Path (Join-Path $root "$d/node_modules"))) { npm --prefix (Join-Path $root $d) install | Out-Host }
-}
-Write-Host '클라이언트 빌드 중...'
-npm --prefix (Join-Path $root 'client') run build | Out-Host
-if ($LASTEXITCODE -ne 0) { throw '클라이언트 빌드 실패' }
+# 의존성 설치(GameHub 루트 npm workspaces) + 빌드
+$repo = (Resolve-Path (Join-Path $root '../..')).Path
+if (-not (Test-Path (Join-Path $repo 'node_modules'))) { npm --prefix $repo install | Out-Host }
+Write-Host '빌드 중...'
+npm --prefix $root run build | Out-Host
+if ($LASTEXITCODE -ne 0) { throw '빌드 실패' }
 
 # 서버 실행 (기존 8080 점유 프로세스가 있으면 중단)
 if (Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue) {
   throw "포트 $port 를 이미 다른 프로세스가 사용 중입니다."
 }
 $serverLog = Join-Path $state 'server.log'
-$serverProc = Start-Process node -ArgumentList 'node_modules/tsx/dist/cli.mjs', 'src/index.ts' `
-  -WorkingDirectory (Join-Path $root 'server') -WindowStyle Hidden -PassThru `
+$env:PORT = "$port"
+$serverProc = Start-Process node -ArgumentList (Join-Path $repo 'packages/config/serve.mjs'), $root `
+  -WorkingDirectory $root -WindowStyle Hidden -PassThru `
   -RedirectStandardOutput $serverLog -RedirectStandardError (Join-Path $state 'server.err.log')
 for ($i = 0; $i -lt 30; $i++) {
   if (Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue) { break }
@@ -68,6 +68,7 @@ for ($i = 0; $i -lt 60 -and -not $url; $i++) {
   if ($tunnelProc.HasExited) { throw ('터널이 종료되었습니다. ' + $tunnelErr + ' 확인') }
 }
 if (-not $url) { throw ('터널 주소를 얻지 못했습니다. ' + $tunnelErr + ' 확인') }
+$url = "$url/magicacademy/"
 Set-Content $urlFile $url
 Write-Host ''
 Write-Host "친구 접속 주소: $url"
