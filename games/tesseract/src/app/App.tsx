@@ -1,27 +1,30 @@
+/**
+ * 화면 전환과 게임 연결. 진행은 공통 방·진행 코드(@gamehub/net)가 맡는다:
+ * 한 기기 게임은 LocalGame(이어 하기·되돌리기), 온라인은 useRoom(대기실 → 대국, 재접속).
+ * 게임이 끝나면 전체 기록(view.record)을 받아 리플레이·통계용으로 보관한다.
+ */
+import type { RoomSnapshot, SeatInfo } from '@gamehub/net'
+import { LocalGame, invitedCode, useLocalGame, useRoom, type LocalSave } from '@gamehub/net/client'
+import { WaitingRoom } from '@gamehub/ui'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { applyAction, IllegalActionError, type Action, type GameState } from '../engine'
-import { chooseBotAction } from '../bot/bot'
+import { def, type Options, type Table, type View } from '../def'
+import type { Action, GameState } from '../engine'
 import { useBack } from '../ui/back'
 import type { BotSpeed } from '../ui/CardsSheet'
 import { GameScreen } from '../ui/GameScreen'
 import { HistoryScreen } from '../ui/HistoryScreen'
-import { HomeScreen, type NewGameOptions } from '../ui/HomeScreen'
-import { OnlineScreen } from '../ui/OnlineScreen'
+import { HomeScreen, type LawChoice } from '../ui/HomeScreen'
 import { ReplayScreen } from '../ui/ReplayScreen'
 import { ResultScreen } from '../ui/ResultScreen'
-import { useOnline } from './online'
-import { archive, canUndo, loadCurrent, newSession, replay, saveCurrent, type Session } from './session'
+import { archive, loadCurrent, saveCurrent, type SavedLocal, type Seat, type Session } from './session'
 
-type Screen =
-  | { kind: 'home' }
-  | { kind: 'game' }
-  | { kind: 'history' }
-  | { kind: 'replay'; session: Session }
-  | { kind: 'online' }
+type Local = LocalGame<Table, Action, View, Options>
+type Screen = { kind: 'home' } | { kind: 'history' } | { kind: 'replay'; session: Session }
 
 /** 봇이 한 수 두기 전 기다리는 시간 (사람이 따라갈 수 있게). 카드 시트에서 바꾼다 */
 const BOT_DELAY_MS: Record<BotSpeed, number> = { slow: 1100, normal: 700, fast: 300 }
-const BOT_SPEED_KEY = 'tesseract.botSpeed'
+const BOT_SPEED_KEY = 'tesseract:botSpeed'
+const TITLE = '테서랙트'
 
 function loadBotSpeed(): BotSpeed {
   try {
@@ -32,223 +35,268 @@ function loadBotSpeed(): BotSpeed {
   }
 }
 
-/** 초대 링크(?room=CODE)로 들어왔으면 그 방 코드. 주소창에서는 지운다 */
-function inviteCode(): string | null {
+const speedOf = (speed: BotSpeed) => def.bot!.delayMs / BOT_DELAY_MS[speed]
+
+interface LocalRun {
+  key: number
+  createdAt: number
+  game: Local
+}
+
+let runKey = 0
+
+/** 한 기기 게임을 만든다(저장한 판이면 이어서). 저장한 판을 지금 규칙으로 이어 둘 수 없으면 null */
+function newLocal(save: Pick<LocalSave<Action>, 'seats' | 'options'> & Partial<LocalSave<Action>>, createdAt: number, key = ++runKey): LocalRun | null {
   try {
-    const url = new URL(window.location.href)
-    const room = url.searchParams.get('room')
-    if (!room) return null
-    url.searchParams.delete('room')
-    window.history.replaceState(window.history.state, '', url.pathname + url.search + url.hash)
-    return room.trim().toUpperCase().slice(0, 5)
+    const game: Local = new LocalGame(def, {
+      seats: save.seats,
+      options: def.parseOptions!(save.options),
+      ...(save.seed !== undefined ? { seed: save.seed } : {}),
+      ...(save.history ? { history: save.history } : {}),
+      onSave: (s) => saveCurrent({ v: 4, createdAt, save: s }),
+    })
+    return { key, createdAt, game }
   } catch {
     return null
   }
 }
 
-function randomSeed(): number {
-  return Math.floor(Math.random() * 0x7fffffff)
-}
-
-function randomId(): string {
-  return Math.random().toString(36).slice(2, 10)
-}
-
-/** 지금 봇이 둘 차례면 그 봇의 자리 */
-function botToMove(state: GameState, session: Session): number | null {
-  const mine = session.localSeats ?? session.seats.map((_, i) => i)
-  const isLocalBot = (p: number) => session.seats[p]?.kind === 'bot' && mine.includes(p)
-  if (state.phase.kind === 'setup') {
-    const p = state.players.find((pl) => pl.personalGoal === null && isLocalBot(pl.id))
-    return p ? p.id : null
-  }
-  if (state.phase.kind === 'round' && isLocalBot(state.currentPlayer)) return state.currentPlayer
-  return null
-}
-
-/**
- * 행동 기록 → 상태. 행동이 하나씩 늘 때는 직전 상태에 이어서 적용한다.
- * 연출용으로 마지막 행동 직전 상태(prev)도 함께 둔다.
- */
-let cache: { id: string; count: number; state: GameState; prev: GameState | null } | null = null
-
-function stateOf(session: Session): { state: GameState; prev: GameState | null } {
-  const n = session.actions.length
-  if (cache && cache.id === session.id && cache.count === n) return cache
-  let state: GameState
-  let prev: GameState | null = null
-  if (cache && cache.id === session.id && cache.count < n) {
-    state = cache.state
-    for (const a of session.actions.slice(cache.count)) {
-      prev = state
-      state = applyAction(state, a)
-    }
-  } else {
-    prev = n > 0 ? replay(session, n - 1) : null
-    const last = session.actions[n - 1]
-    state = prev && last ? applyAction(prev, last) : replay(session)
-  }
-  cache = { id: session.id, count: n, state, prev }
-  return cache
-}
-
 export function App() {
-  const [session, setSession] = useState<Session | null>(() => loadCurrent())
-  const [invite] = useState(inviteCode)
-  const [screen, setScreen] = useState<Screen>(() => (invite ? { kind: 'online' } : { kind: 'home' }))
-  const [botSpeed, setBotSpeed] = useState<BotSpeed>(loadBotSpeed)
-  const changeBotSpeed = useCallback((speed: BotSpeed) => {
-    setBotSpeed(speed)
+  const [online, client] = useRoom<View, Action>({ slug: def.slug })
+  const [local, setLocal] = useState<LocalRun | null>(null)
+  const [saved, setSaved] = useState<SavedLocal | null>(loadCurrent)
+  const [screen, setScreen] = useState<Screen>({ kind: 'home' })
+  const [invited, setInvited] = useState(() => invitedCode(location.search))
+  const [botSpeed, setBotSpeedRaw] = useState<BotSpeed>(loadBotSpeed)
+  const setBotSpeed = useCallback((speed: BotSpeed) => {
+    setBotSpeedRaw(speed)
     try {
       localStorage.setItem(BOT_SPEED_KEY, speed)
     } catch {
       // 저장할 수 없으면 이번 실행 동안만
     }
   }, [])
-  const [error, setError] = useState<string | null>(null)
-  /** 확인할 알림 모달이 떠 있으면 봇이 기다린다 */
-  const [hold, setHold] = useState(false)
-  /** 마지막 알림까지 확인해 결과 화면을 보여도 되는 게임 id */
-  const [finishedId, setFinishedId] = useState<string | null>(null)
-  const finish = useCallback(() => setFinishedId(session?.id ?? null), [session?.id])
 
-  const derived = useMemo(() => (session ? stateOf(session) : null), [session])
-  const state = derived?.state ?? null
-
-  const online = useOnline(session, setSession)
-
-  // Android 뒤로가기: 홈이 아닌 화면에서는 한 단계 위로 (시트·모달이 열려 있으면 그쪽이 먼저 받는다)
+  const home = () => {
+    setLocal(null)
+    setSaved(loadCurrent())
+    setInvited(null)
+    history.replaceState(null, '', location.pathname)
+    setScreen({ kind: 'home' })
+  }
+  // Android 뒤로가기: 기록·리플레이에서는 한 단계 위로 (시트·모달이 열려 있으면 그쪽이 먼저 받는다)
   useBack(() => setScreen(screen.kind === 'replay' ? { kind: 'history' } : { kind: 'home' }), screen.kind !== 'home')
 
-  const dispatch = useCallback(
-    (action: Action) => {
-      if (!session || !state) return
-      try {
-        applyAction(state, action)
-      } catch (e) {
-        setError(e instanceof IllegalActionError ? e.message : '할 수 없는 행동입니다.')
-        return
-      }
-      setError(null)
-      const next = { ...session, actions: [...session.actions, action] }
-      setSession(next)
-      if (next.room) online.send(action, session.actions.length)
-    },
-    [session, state, online],
-  )
-
-  // 되돌리기: 로컬 게임에서 이 기기 사람이 자기 차례 안에 한, 굴림 결과가 끼지 않은 행동만 (canUndo)
-  const lastAction = session?.actions.at(-1)
-  const undoable =
-    !!session && !!state && !session.room && !!lastAction && session.seats[lastAction.player]?.kind === 'human' && canUndo(derived?.prev ?? null, state, lastAction)
-  const undo = useCallback(() => {
-    // 누르는 사이 봇이 두었으면 남의 수를 지우지 않게 한 번 더 확인
-    if (!session || !undoable) return
-    setError(null)
-    setSession({ ...session, actions: session.actions.slice(0, -1) })
-  }, [session, undoable])
-
-  // 저장: 진행 중이면 이어 하기용으로, 끝나면 기록으로
-  useEffect(() => {
-    if (!session || !state) return
-    if (state.phase.kind === 'ended') {
-      archive(session)
-      if (!session.room) saveCurrent(null)
-    } else if (!session.room) {
-      saveCurrent(session)
-    }
-  }, [session, state])
-
-  // 봇 차례
-  useEffect(() => {
-    if (!session || !state || screen.kind !== 'game' || hold) return
-    const bot = botToMove(state, session)
-    if (bot === null) return
-    const timer = setTimeout(() => {
-      const action = chooseBotAction(state, bot)
-      if (action) dispatch(action)
-    }, BOT_DELAY_MS[botSpeed])
-    return () => clearTimeout(timer)
-  }, [session, state, screen.kind, hold, dispatch, botSpeed])
-
-  function start({ seats, law }: NewGameOptions) {
-    const config = {
-      playerCount: seats.length,
-      seed: randomSeed(),
-      ...(law === 'random' ? {} : { law }),
-    }
-    const s = newSession(config, seats, randomId(), Date.now())
-    setSession(s)
-    setError(null)
-    setScreen({ kind: 'game' })
-  }
-
-  if (screen.kind === 'history') {
-    return <HistoryScreen onBack={() => setScreen({ kind: 'home' })} onReplay={(s) => setScreen({ kind: 'replay', session: s })} />
-  }
-  if (screen.kind === 'replay') {
-    return <ReplayScreen session={screen.session} onBack={() => setScreen({ kind: 'history' })} />
-  }
-  if (screen.kind === 'online') {
+  const room = online.room
+  if (room?.status === 'lobby') {
     return (
-      <OnlineScreen
-        online={online}
-        initialCode={invite ?? ''}
-        onBack={() => setScreen({ kind: 'home' })}
-        onJoined={(s) => {
-          setSession(s)
-          setScreen({ kind: 'game' })
+      <WaitingRoom
+        title={TITLE}
+        room={room}
+        bots
+        error={online.error}
+        onSeat={(i, kind) => client.setSeat(i, kind)}
+        onStart={() => client.start()}
+        onLeave={() => {
+          client.leave()
+          home()
         }}
       />
     )
   }
-
-  if (screen.kind === 'game' && session && state) {
-    if (state.phase.kind === 'ended' && finishedId === session.id) {
-      return (
-        <ResultScreen
-          state={state}
-          seats={session.seats}
-          onReplay={() => setScreen({ kind: 'replay', session })}
-          onRematch={session.room ? undefined : () => start({ seats: session.seats, law: session.config.law ?? 'random' })}
-          onHome={() => {
-            setSession(null)
-            online.leave()
-            setScreen({ kind: 'home' })
-          }}
-        />
-      )
-    }
+  if (room?.view) {
     return (
-      <GameScreen
-        state={state}
-        prev={derived?.prev ?? null}
-        lastAction={session.actions.at(-1) ?? null}
-        step={session.actions.length}
-        seats={session.seats}
-        localSeats={session.localSeats ?? session.seats.map((_, i) => i)}
-        onAction={dispatch}
-        onExit={() => setScreen({ kind: 'home' })}
-        error={error}
-        onHold={setHold}
-        onFinished={finish}
-        connection={session.room ? { status: online.status, presence: online.presence } : null}
-        botSpeed={botSpeed}
-        onBotSpeed={changeBotSpeed}
-        onUndo={undoable ? undo : undefined}
+      <GameView
+        key={`online-${room.code}`}
+        room={room as RoomSnapshot<View>}
+        error={online.error}
+        onAct={(a) => client.act(a)}
+        localSeats={room.you === null ? [] : [room.you]}
+        connection={{ open: online.connection === 'open', presence: room.seats.map((s) => s.online) }}
+        exitWarning="한 번 더 누르면 나가요 · 자리는 봇이 이어받아요"
+        onExit={() => {
+          client.leave()
+          home()
+        }}
       />
     )
   }
+  if (local) {
+    return (
+      <LocalTable
+        key={local.key}
+        run={local}
+        botSpeed={botSpeed}
+        onBotSpeed={setBotSpeed}
+        onReplace={setLocal}
+        onHome={home}
+      />
+    )
+  }
+  if (screen.kind === 'history') return <HistoryScreen onBack={() => setScreen({ kind: 'home' })} onReplay={(s) => setScreen({ kind: 'replay', session: s })} />
+  if (screen.kind === 'replay') return <ReplayScreen session={screen.session} onBack={() => setScreen({ kind: 'history' })} />
 
-  const canContinue = !!session && !!state && state.phase.kind !== 'ended'
+  const startLocal = (seats: SeatInfo[], law: LawChoice) => setLocal(newLocal({ seats, options: { law } }, Date.now()))
   return (
     <HomeScreen
-      canContinue={canContinue}
-      onContinue={() => setScreen({ kind: 'game' })}
-      onStart={start}
+      invited={invited}
+      error={online.error}
+      connecting={online.connection !== 'idle'}
+      canContinue={saved !== null}
+      onContinue={() => {
+        const run = saved ? newLocal(saved.save, saved.createdAt) : null
+        if (run) setLocal(run)
+        else {
+          saveCurrent(null)
+          setSaved(null)
+        }
+      }}
+      onLocal={startLocal}
+      onCreate={(name, seats, bots, law) => client.create(name, seats, bots, { law })}
+      onJoin={(code, name) => client.join(code, name)}
+      onWatch={(code) => client.watch(code)}
       onHistory={() => setScreen({ kind: 'history' })}
-      onOnline={() => setScreen({ kind: 'online' })}
     />
   )
 }
 
+/** 한 기기 게임: 봇 속도, 알림을 확인하는 동안 봇 멈춤, 되돌리기, 같은 설정으로 다시 하기 */
+function LocalTable({
+  run,
+  botSpeed,
+  onBotSpeed,
+  onReplace,
+  onHome,
+}: {
+  run: LocalRun
+  botSpeed: BotSpeed
+  onBotSpeed(speed: BotSpeed): void
+  onReplace(run: LocalRun | null): void
+  onHome(): void
+}) {
+  const { game } = run
+  const state = useLocalGame(game)
+  const room = state.room
+  const v = room.view!
+  const over = v.game.phase.kind === 'ended'
+
+  useEffect(() => game.setSpeed(speedOf(botSpeed)), [game, botSpeed])
+  // 확인할 알림이 떠 있는 동안 봇이 기다린다. GameScreen 이 효과 안에서 부르므로 함수가 바뀌지 않게 둔다
+  const hold = useCallback((h: boolean) => game.setPaused(h), [game])
+  // 끝난 판은 이어 하기에서 뺀다(기록은 GameView 가 보관한다)
+  useEffect(() => {
+    if (over) saveCurrent(null)
+  }, [over])
+
+  const last = v.last
+  const undoable = !over && v.undoable && last !== null && room.seats[last.player]?.kind === 'human'
+  const undo = () => {
+    // 누르는 사이 봇이 두었으면 남의 수를 지우지 않게 지금 기록으로 다시 확인한다
+    const save = game.save()
+    const move = save.history.at(-1)
+    if (!move || move.byBot || room.seats[move.seat]?.kind !== 'human') return
+    game.dispose()
+    onReplace(newLocal({ ...save, history: save.history.slice(0, -1) }, run.createdAt, run.key))
+  }
+  const rematch = () => {
+    const save = game.save()
+    onReplace(newLocal({ seats: save.seats, options: save.options }, Date.now()))
+  }
+
+  return (
+    <GameView
+      room={room}
+      error={state.error}
+      onAct={(a) => game.act(a)}
+      localSeats={room.seats.map((_, i) => i)}
+      connection={null}
+      onExit={onHome}
+      onHold={hold}
+      botSpeed={botSpeed}
+      onBotSpeed={onBotSpeed}
+      onUndo={undoable ? undo : undefined}
+      onRematch={rematch}
+    />
+  )
+}
+
+interface GameViewProps {
+  room: RoomSnapshot<View>
+  error: string | null
+  onAct(a: Action): void
+  localSeats: number[]
+  connection: { open: boolean; presence: boolean[] } | null
+  exitWarning?: string
+  onExit(): void
+  onHold?(hold: boolean): void
+  botSpeed?: BotSpeed
+  onBotSpeed?(speed: BotSpeed): void
+  onUndo?(): void
+  onRematch?(): void
+}
+
+/** 대국 → (알림을 다 확인하면) 결과 → 리플레이 */
+function GameView(p: GameViewProps) {
+  const v = p.room.view!
+  // 연출용 직전 상태: 행동 수가 바뀔 때만 앞으로 민다(접속 표시만 바뀐 소식으로 연출이 지워지지 않게)
+  const [pair, setPair] = useState<{ step: number; cur: GameState; prev: GameState | null }>({ step: v.step, cur: v.game, prev: null })
+  if (pair.cur !== v.game) setPair(pair.step === v.step ? { ...pair, cur: v.game } : { step: v.step, cur: v.game, prev: pair.cur })
+  const [finished, setFinished] = useState(false)
+  const [replaying, setReplaying] = useState(false)
+  const [createdAt] = useState(() => Date.now())
+
+  const seats: Seat[] = useMemo(() => p.room.seats.map((s) => ({ name: s.name, kind: s.kind === 'bot' ? 'bot' : 'human' })), [p.room.seats])
+  const record = v.record
+  const session: Session | null = useMemo(
+    () =>
+      record && {
+        v: 3,
+        id: `${p.room.code ?? 'local'}-${record.config.seed}`,
+        createdAt,
+        config: record.config,
+        seats,
+        actions: record.actions,
+        ...(p.room.code ? { room: p.room.code } : {}),
+      },
+    [record, seats, createdAt, p.room.code],
+  )
+  useEffect(() => {
+    if (session) archive(session)
+  }, [session])
+  const finish = useCallback(() => setFinished(true), [])
+
+  if (v.game.phase.kind === 'ended' && finished) {
+    if (replaying && session) return <ReplayScreen session={session} onBack={() => setReplaying(false)} />
+    return (
+      <ResultScreen
+        state={v.game}
+        seats={seats}
+        {...(session ? { onReplay: () => setReplaying(true) } : {})}
+        {...(p.onRematch ? { onRematch: p.onRematch } : {})}
+        onHome={p.onExit}
+      />
+    )
+  }
+  return (
+    <GameScreen
+      state={v.game}
+      prev={pair.prev}
+      lastAction={v.last}
+      step={v.step}
+      seats={seats}
+      localSeats={p.localSeats}
+      actors={p.room.actors}
+      log={p.room.log}
+      {...(p.exitWarning ? { exitWarning: p.exitWarning } : {})}
+      onAction={p.onAct}
+      onExit={p.onExit}
+      error={p.error}
+      {...(p.onHold ? { onHold: p.onHold } : {})}
+      onFinished={finish}
+      connection={p.connection}
+      {...(p.botSpeed ? { botSpeed: p.botSpeed } : {})}
+      {...(p.onBotSpeed ? { onBotSpeed: p.onBotSpeed } : {})}
+      {...(p.onUndo ? { onUndo: p.onUndo } : {})}
+    />
+  )
+}

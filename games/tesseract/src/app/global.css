@@ -1,4 +1,17 @@
-@import 'tailwindcss';
+@import '@gamehub/ui/theme.css';
+
+/* 공통 화면(@gamehub/ui: 처음·대기실·대국 틀)이 쓰는 색. 아래 @theme 의 캔버스 색과 같은 값 */
+:root {
+  --gh-bg: #14121f;
+  --gh-surface: #1f1c30;
+  --gh-raised: #2a2640;
+  --gh-line: #34304d;
+  --gh-text: #ece9ff;
+  --gh-muted: #a49fc4;
+  --gh-primary: #9b8cff;
+  --gh-on-primary: #14121f;
+  --gh-danger: #ff6b6b;
+}
 
 /* Claude Design 캔버스의 색·글꼴 (CLAUDE.md 비주얼 디자인) */
 @theme {
@@ -310,11 +323,12 @@
     -webkit-tap-highlight-color: transparent;
   }
 
+  html {
+    background-color: var(--color-void);
+  }
+
   html,
   body {
-    min-height: 100%;
-    overflow-x: hidden;
-    background-color: var(--color-void);
     color: var(--color-fg);
     font-family: var(--font-sans);
     overscroll-behavior-y: none;
@@ -342,12 +356,6 @@
       radial-gradient(1.5px 1.5px at 40% 80%, rgb(255 255 255 / 0.35), transparent),
       radial-gradient(1px 1px at 85% 65%, rgb(255 255 255 / 0.4), transparent),
       radial-gradient(1px 1px at 10% 90%, rgb(255 255 255 / 0.3), transparent);
-  }
-
-  #root {
-    min-height: 100dvh;
-    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom)
-      env(safe-area-inset-left);
   }
 
   button {
