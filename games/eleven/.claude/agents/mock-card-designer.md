@@ -52,8 +52,8 @@ of `CLAUDE.md`. Read that section first if you haven't already.
 ## Verification
 
 You have no shell tool, so you cannot run `npm run typecheck` or tests. Instead, verify by
-inspection against `server/src/engine/types.ts` (every discriminant/enum string, required
-fields, tuple lengths) and against the invariants in `server/src/data/data.test.ts` (counts,
+inspection against `src/engine/types.ts` (every discriminant/enum string, required
+fields, tuple lengths) and against the invariants in `src/data/data.test.ts` (counts,
 unique ids, numeric ranges, structural rules). In your final report, state that the caller
 must run `/check` to confirm — never claim a typecheck passed.
 
