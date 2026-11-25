@@ -1,0 +1,8 @@
+{
+  "extends": "@gamehub/config/tsconfig.base.json",
+  "compilerOptions": {
+    // 옛 엔진(약 5천 줄)은 players[id] 같은 색인 접근을 검사 없이 쓴다. 규칙 코드를 바꾸지 않으려고 이 검사만 끈다
+    "noUncheckedIndexedAccess": false
+  },
+  "include": ["src", "server", "scripts", "test", "vite.config.ts"]
+}

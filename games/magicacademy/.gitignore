@@ -15,6 +15,7 @@ Thumbs.db
 # Common build / dependency output (미리 대비용; 기술 스택 확정 후 조정)
 node_modules/
 dist/
+server-dist/
 build/
 .next/
 .turbo/

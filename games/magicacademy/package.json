@@ -1,0 +1,20 @@
+{
+  "name": "@gamehub/magicacademy",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "마법학교: 12개월 동안 수업과 자율활동으로 능력치와 학점을 모으는 보드게임(한 기기 봇·돌려 하기, 온라인)",
+  "scripts": {
+    "dev": "vite --host",
+    "build": "vite build && gamehub-build-server",
+    "start": "gamehub-serve",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "e2e": "node e2e/mobile.mjs"
+  },
+  "dependencies": {
+    "@gamehub/config": "*",
+    "@gamehub/net": "*",
+    "@gamehub/ui": "*"
+  }
+}
