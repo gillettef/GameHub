@@ -1,20 +1,9 @@
-// GameHub 허브 안에서 실행할 때의 진입점(허브 games.json 의 "mode": "inproc"). 단독 실행(로컬·예전 systemd)은 serve.mjs.
-// /api/rooms/* 는 온라인 대전 방 서비스(rooms.mjs), 나머지는 허브가 dist 를 정적으로 서빙한다.
-import { join } from 'node:path';
-import { fileURLToPath, pathToFileURL } from 'node:url';
-import { createRoomService } from './rooms.mjs';
+// GameHub 허브 안에서 실행할 때의 진입점(허브 games.json 의 "mode": "inproc").
+// 온라인 대전(/ws, /health)은 npm run build 가 묶은 server-dist/app.cjs, 정적 파일(dist)은 허브가 서빙한다.
+import { createRequire } from 'node:module'
+import { fileURLToPath } from 'node:url'
 
 export async function mount() {
-  const root = fileURLToPath(new URL('../../dist', import.meta.url));
-  const engine = await import(pathToFileURL(join(root, 'src', 'engine.js')).href);
-  const roomService = createRoomService(engine);
-  return {
-    staticRoot: root,
-    async handle(req, res) {
-      const url = new URL(req.url, 'http://x');
-      if (!url.pathname.startsWith('/api/')) return false;
-      await roomService.handle(req, res, url);
-      return true;
-    },
-  };
+  const app = createRequire(import.meta.url)('../../server-dist/app.cjs').createApp()
+  return { staticRoot: fileURLToPath(new URL('../../dist', import.meta.url)), handle: app.handle, upgrade: app.upgrade, close: app.close }
 }
