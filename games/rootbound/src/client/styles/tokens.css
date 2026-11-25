@@ -1,0 +1,145 @@
+/*
+ * 디자인 토큰. 값은 DESIGN.md 팔레트에서만 가져온다 (CLAUDE.md "디자인 규칙").
+ * 컴포넌트 CSS에 HEX를 직접 쓰지 말고 이 변수만 참조한다.
+ *
+ * 2026-11-25 공통 화면(@gamehub/ui)으로 옮기며 처음·대기실도 밤 정원 무대 하나로 맞췄다(옛 흰 비게임 화면은 지웠다).
+ * 공통 화면 색(--gh-*)은 아래에서 이 토큰으로 정한다.
+ */
+:root {
+  /* 색: 밤 정원 무대 */
+  --color-canvas: #0e1a14;
+  --color-surface: #1d3328;
+  --color-raised: #27443a;
+  --color-line: #2e4a3d;
+  --color-heading: #ffffff;
+  --color-text: #ffffff;
+  --color-muted: #b8c4bc;
+  --color-outline: #ffffff;
+  --color-accent: #fff3b7;
+  --color-accent-text: #1a2352;
+  --color-band-lavender: #faeeff;
+  --color-band-sky: #d9e5f5;
+  --color-band-amber: #fdd484;
+  --color-white: #ffffff;
+  --color-navy: #1a2352;
+  /* 앱 바깥 여백(letterbox) 색. 두 세계 어느 쪽에도 속하지 않는 외곽 크롬이라 공통으로 하나만 쓴다 */
+  --color-app-frame: #0e1a14;
+
+  /* 게임 도메인 색 (두 세계 공통 의미, 2026-10-07 Rootbound 정원 테마) */
+  --color-pond: #1f4466;
+  --color-rock: #6b7078;
+  --color-fertile: #fdd484;
+  --color-soil: #213a2d;
+  --color-grid: #0e1a14;
+  /* 보드 질감 (2026-10-08 사용자 시안 notes/design/board-2p.svg). 풀밭·흙·자갈 무늬, 연못·돌 그라데이션, 테두리 */
+  --board-grass: #6b7a3f;
+  --board-grass-1: #8fa457;
+  --board-grass-2: #55682e;
+  --board-grass-3: #a9b86a;
+  --board-grass-4: #46562a;
+  --board-loam: #4b3320;
+  --board-loam-1: #2a1a0e;
+  --board-loam-2: #6e4c2c;
+  --board-loam-3: #8a6238;
+  --board-loam-4: #1c120a;
+  --board-gravel: #868a8d;
+  --board-gravel-1: #a3a6a8;
+  --board-gravel-2: #6f7377;
+  --board-gravel-3: #c2c4c5;
+  --board-gravel-4: #5c6064;
+  --board-water-hi: #5d93ad;
+  --board-water-mid: #2f5f80;
+  --board-stone-hi: #d9dbdc;
+  --board-stone-mid: #9a9ea1;
+  --board-stone-low: #55595f;
+  --board-sprout: #9cc25a;
+  --board-sprout-hi: #a9d064;
+  --board-sprout-lo: #86b44a;
+  /* 칸 사이 줄눈, 보드 바깥 테두리, 구역 경계선, 입구·썸네일 외곽선 */
+  --board-grout: #2a2a1c;
+  --board-frame: #2c455d;
+  --board-zone-line: #94bce3;
+  --board-ink: #1f2a1c;
+  /* 목표 카드 축소판 (카드 디자인 client/public/cards/goals 의 종이·남색 띠·선 색) */
+  --goal-card-paper: #f4f5f6;
+  --goal-card-edge: #b5c7d9;
+  --goal-card-ink: #1f2430;
+  --goal-card-kicker: #6b7c93;
+  --goal-card-band: #1d2d3d;
+  --goal-card-line: #94bce3;
+  /* 자리 4색: 색각 이상 안전 조합(Okabe-Ito 계열). 마커는 이 색으로 채우고 종류는 모양(육각·사각·원·마름모)으로 구분한다 */
+  --color-seat-0: #419eff;
+  --color-seat-1: #e69f00;
+  --color-seat-2: #00c58e;
+  --color-seat-3: #f178b6;
+  /* 경고색(2026-09-28 사용자 지시로 확정, DESIGN.md에 없던 값이라 기존 팔레트와 어울리도록 새로 골랐다):
+     자리 1(주황 #e69f00)·자리 3(분홍 #f178b6)과 헷갈리지 않는 선명한 빨강. 네이비 무대·흰 캔버스 둘 다에서
+     대비가 나온다. 연결 끊김 배너, 기권 확정 경고처럼 "돌이킬 수 없음"을 뜻하는 곳에만 쓴다 —
+     "낼 수 없음" 같은 비활성 상태는 여전히 회색(--color-muted)을 쓴다(DESIGN.md 상태 문구 규칙) */
+  --color-danger: #e5484d;
+
+  /* 타이포: 모바일 우선. 기본 14px, 최소(micro) 12px 아래로는 내려가지 않는다 */
+  --font-body: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  /* 디스플레이 폰트(2026-09-28 사용자 지시로 확정): Corca 원본의 커스텀 히어로 폰트는 라이선스가 없어
+     그대로 쓸 수 없다. 처음 고른 Black Han Sans 는 "플" 처럼 획이 많은 글자가 앱 실제 헤딩 크기
+     (15px 대)에서 뭉개져(.dev/font-compare.png 로 확인) 되돌리고, 굵기 900의 Gothic A1(구글 폰트,
+     index.html 에서 불러온다)으로 바꿨다 — 15px 에서도 또렷하면서 본문(Pretendard)보다 확실히 무겁다.
+     비게임 화면(밝은 네이비 헤딩)·게임 무대(흰 헤딩) 둘 다에 어울리고, 로드 실패 시 본문 폰트로
+     자연스럽게 대체된다 */
+  --font-display: 'Gothic A1', var(--font-body);
+  --text-micro: 12px;
+  --text-small: 13px;
+  --text-body: 14px;
+  --text-nav: 15px;
+  --text-sub: 22px;
+  --text-section: 26px;
+  --text-stat: 36px;
+  --text-hero: 44px;
+
+  /* 간격 (8px 리듬) */
+  /* 8px 리듬의 반 칸: 작은 칩·배지 안쪽 간격 */
+  --space-half: 4px;
+  --space-1: 8px;
+  --space-2: 15px;
+  --space-3: 16px;
+  --space-4: 24px;
+  --space-5: 48px;
+  --space-6: 64px;
+
+  /* 라운드 */
+  --radius-xs: 8px;
+  --radius-sm: 10px;
+  --radius-md: 16px;
+  --radius-lg: 24px;
+  --radius-pill: 50px;
+  --radius-full: 999px;
+
+  /* 모션 */
+  --motion-fast: 120ms;
+  --motion-standard: 220ms;
+  --motion-slow: 340ms;
+  --ease-enter: cubic-bezier(0.2, 0.6, 0.25, 1);
+  --ease-exit: cubic-bezier(0.4, 0, 1, 1);
+  --ease-standard: cubic-bezier(0.25, 0.1, 0.25, 1);
+}
+
+/* 공통 화면(@gamehub/ui) 색 */
+:root {
+  --gh-bg: var(--color-canvas);
+  --gh-surface: var(--color-surface);
+  --gh-raised: var(--color-raised);
+  --gh-line: var(--color-line);
+  --gh-text: var(--color-text);
+  --gh-muted: var(--color-muted);
+  --gh-primary: var(--color-accent);
+  --gh-on-primary: var(--color-accent-text);
+  --gh-danger: var(--color-danger);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-fast: 0ms;
+    --motion-standard: 0ms;
+    --motion-slow: 0ms;
+  }
+}

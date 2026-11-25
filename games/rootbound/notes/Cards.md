@@ -1,8 +1,8 @@
 # Rootbound 카드 모음
 
 > 식물 카드 9종과 목표 카드 16장을 한곳에 모은 정리 문서다. **정본이 아니다.**
-> 규칙·수치의 정본은 `notes/Rules.md`(7·8절), 데이터는 `shared/src/data/species.ts`·`constants.ts` 다.
-> 이야기 문구는 `notes/Story.md` 에서 가져왔다. 수치를 바꾸면 이 문서와 카드 SVG(`node scripts/card-text.mjs`)를 함께 고친다. (2026-10-16 오프라인판 기준)
+> 규칙·수치의 정본은 `notes/Rules.md`(7·8절), 데이터는 `src/engine/data/species.ts`·`constants.ts` 다.
+> 이야기 문구는 `notes/Story.md` 에서 가져왔다. 수치를 바꾸면 이 문서와 카드 SVG(`node tools/card-text.mjs`)를 함께 고친다. (2026-10-16 오프라인판 기준)
 
 ---
 
@@ -137,5 +137,5 @@
 
 ## 4. 카드 그림
 
-카드 디자인(SVG, 2026-10-08 사용자 제공)은 `client/public/cards/` 에 있다. 식물은 `plants/<종 id>.svg`(630×880 세로), 목표는 `goals/<목표 id>.svg`(880×630 가로), 뒷면은 각 폴더의 `back.svg` 다(`client/public/cards/README.md`).
-2026-10-16 오프라인판으로 바꾸며 뿌리 그림·카드 문구·번호·배지를 `node scripts/card-text.mjs` 로 다시 그렸다(그림·이야기는 그대로). 수치를 바꾸면 이 스크립트의 문구 표와 함께 다시 돌린다.
+카드 디자인(SVG, 2026-10-08 사용자 제공)은 `public/cards/` 에 있다. 식물은 `plants/<종 id>.svg`(630×880 세로), 목표는 `goals/<목표 id>.svg`(880×630 가로), 뒷면은 각 폴더의 `back.svg` 다(`public/cards/README.md`).
+2026-10-16 오프라인판으로 바꾸며 뿌리 그림·카드 문구·번호·배지를 `node tools/card-text.mjs` 로 다시 그렸다(그림·이야기는 그대로). 수치를 바꾸면 이 스크립트의 문구 표와 함께 다시 돌린다.

@@ -15,10 +15,7 @@
       "Bash(git push -u origin dev)",
       "Bash(git pull --rebase origin dev)",
       "Bash(git remote:*)",
-      "Bash(powershell -NoProfile -ExecutionPolicy Bypass -File scripts/dev.ps1)",
-      "Bash(powershell -NoProfile -ExecutionPolicy Bypass -File scripts/dev-stop.ps1)",
-      "Bash(tail:*)",
-      "Bash(cat .dev/*)"
+      "Bash(tail:*)"
     ],
     "deny": [
       "Bash(git push --force:*)",
