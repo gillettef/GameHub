@@ -30,8 +30,12 @@ export interface MatchOptions<A, O> {
   timers?: Timers
   /** 그 좌석을 지금 자동으로 둬야 하면 기다릴 시간(ms), 아니면 null */
   autoDelay(seat: number): number | null
-  /** 상태가 바뀔 때마다 */
-  onChange(): void
+  /** 상태가 바뀔 때마다. 시계만 흘러 바뀌었으면 by 가 'clock' */
+  onChange(by?: 'clock'): void
+  /** 실시간 게임의 시계(기본 Date.now) */
+  now?(): number
+  /** 실시간 게임의 시계를 지금 흘릴지(한 기기 일시정지 등). 기본 늘 흐른다 */
+  clockRunning?(): boolean
   /** 저장해 둔 판을 이어갈 때의 지난 행동 */
   replay?: readonly Move<A>[]
 }
@@ -45,6 +49,8 @@ export class Match<S, A, V, O> {
   readonly history: Move<A>[] = []
   private readonly timers: Timers
   private timer: unknown = null
+  private clockTimer: unknown = null
+  private lastTick: number
   private logId = 0
   private readonly memory: Record<string, unknown>[]
 
@@ -56,6 +62,38 @@ export class Match<S, A, V, O> {
     this.memory = opts.seats.map(() => ({}))
     this.state = def.setup({ seats: opts.seats, seed: opts.seed, options: opts.options })
     for (const move of opts.replay ?? []) this.step(move.seat, move.action, move.byBot)
+    this.lastTick = this.now()
+  }
+
+  private now(): number {
+    return this.opts.now?.() ?? Date.now()
+  }
+
+  /**
+   * 실시간 게임: 마지막으로 흘린 뒤 지난 시간만큼 시계를 흘린다. 바뀌었으면 바로 알린다(onChange('clock'))
+   * — 시계가 게임을 끝낸 직후 들어온 행동이 거절돼도 끝남이 모두에게 전해지도록.
+   * 둘 사람이 바뀌면 version 을 올리고(이전 차례에 고른 행동이 새 차례에 적용되지 않게) 자동 진행을 다시 예약한다
+   */
+  refresh(): void {
+    const clock = this.def.clock
+    const now = this.now()
+    const dt = now - this.lastTick
+    this.lastTick = now
+    if (!clock || this.over || dt <= 0 || this.opts.clockRunning?.() === false) return
+    const before = this.state
+    const actors = this.actors().join()
+    this.state = clock.advance(this.state, dt, { log: (text, kind) => this.pushLog(kind === undefined ? { text } : { text, kind }) })
+    if (this.state === before) return
+    if (this.actors().join() !== actors) {
+      this.version++
+      this.schedule()
+    }
+    this.opts.onChange('clock')
+  }
+
+  private pushLog(entry: Omit<LogEntry, 'id'>): void {
+    this.log.push({ id: ++this.logId, ...entry })
+    if (this.log.length > LOG_LIMIT) this.log.splice(0, this.log.length - LOG_LIMIT)
   }
 
   get over(): boolean {
@@ -68,6 +106,7 @@ export class Match<S, A, V, O> {
 
   /** 행동 하나를 적용하고 다음 자동 진행을 예약한다. 규칙 위반이면 RuleError */
   act(seat: number, action: A, byBot = false): void {
+    this.refresh()
     if (this.over) throw new RuleError('이미 끝난 게임입니다.')
     if (!this.def.actors(this.state).includes(seat)) throw new RuleError('지금은 내 차례가 아닙니다.')
     this.step(seat, action, byBot)
@@ -82,15 +121,15 @@ export class Match<S, A, V, O> {
       log: (text, kind) => added.push(kind === undefined ? { text } : { text, kind }),
       byBot,
     })
-    for (const entry of added) this.log.push({ id: ++this.logId, ...entry })
-    if (this.log.length > LOG_LIMIT) this.log.splice(0, this.log.length - LOG_LIMIT)
+    for (const entry of added) this.pushLog(entry)
     this.history.push({ seat, action, byBot })
     this.version++
   }
 
   /** 자동으로 둘 좌석이 있으면 예약한다. 접속 상태처럼 autoDelay 의 답이 달라질 때도 부른다 */
   schedule(): void {
-    this.stop()
+    this.stopBot()
+    this.scheduleClock()
     if (!this.def.bot) return
     let next: { seat: number; ms: number } | null = null
     for (const seat of this.actors()) {
@@ -120,8 +159,25 @@ export class Match<S, A, V, O> {
     }
   }
 
-  stop(): void {
+  /** 실시간 게임: syncMs 마다 시계를 흘리고 알린다(끝나면 멈춘다) */
+  private scheduleClock(): void {
+    const clock = this.def.clock
+    if (!clock || this.clockTimer !== null || this.over) return
+    this.clockTimer = this.timers.set(() => {
+      this.clockTimer = null
+      this.refresh()
+      this.scheduleClock()
+    }, clock.syncMs ?? 1000)
+  }
+
+  private stopBot(): void {
     if (this.timer !== null) this.timers.clear(this.timer)
     this.timer = null
+  }
+
+  stop(): void {
+    this.stopBot()
+    if (this.clockTimer !== null) this.timers.clear(this.clockTimer)
+    this.clockTimer = null
   }
 }

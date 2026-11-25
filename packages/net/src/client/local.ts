@@ -23,6 +23,8 @@ export interface LocalOptions<A, O> {
   options?: O
   history?: Move<A>[]
   timers?: Timers
+  /** 실시간 게임의 시계(테스트용, 기본 Date.now) */
+  now?(): number
   /** 상태가 바뀔 때마다(이어하기 저장용) */
   onSave?(save: LocalSave<A>): void
 }
@@ -56,6 +58,9 @@ export class LocalGame<S, A, V, O> {
       seed: this.seed,
       options: this.options,
       timers: opts.timers,
+      ...(opts.now ? { now: opts.now } : {}),
+      // 일시정지하면 실시간 게임의 시계도 멈춘다
+      clockRunning: () => !this.paused,
       replay: opts.history,
       autoDelay: (i) => {
         if (this.paused || this.seats[i]?.kind !== 'bot') return null
