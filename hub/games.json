@@ -4,7 +4,7 @@
   { "slug": "election",     "name": "유세 대작전",   "port": 8096, "players": "2인",   "tagline": "대통령 선거 만칼라", "online": true, "bot": true, "mode": "inproc" },
   { "slug": "neoterra",     "name": "네오테라",     "port": 8094, "players": "2~4인", "tagline": "새 행성 개척 문명 카드게임", "online": true, "bot": true, "mode": "inproc" },
   { "slug": "magicacademy", "name": "마법학교",     "port": 8080, "players": "2~4인", "tagline": "아기자기한 마법 학교", "online": true, "bot": true, "mode": "inproc" },
-  { "slug": "rootbound",    "name": "루트바운드",   "port": 3201, "players": "1~4인", "tagline": "정원 땅따먹기", "online": true, "bot": true },
+  { "slug": "rootbound",    "name": "루트바운드",   "port": 3201, "players": "1~4인", "tagline": "정원 땅따먹기", "online": true, "bot": true, "mode": "inproc" },
   { "slug": "eleven",       "name": "일레븐",       "port": 3001, "players": "1~4인", "tagline": "축구 구단 매니지먼트", "online": true, "bot": true, "mode": "inproc" },
   { "slug": "proxymind",    "name": "프록시마인드", "port": 8105, "players": "3~5인", "tagline": "남이 짠 두뇌로 싸우는 로봇 아레나", "online": true, "bot": true, "mode": "inproc" },
   { "slug": "smilepark",    "name": "스마일파크",   "port": 8090, "players": "2~5인", "tagline": "놀이공원 경영", "online": false, "bot": true, "mode": "inproc" },

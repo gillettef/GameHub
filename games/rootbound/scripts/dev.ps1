@@ -1,5 +1,5 @@
 # Rootbound local dev launcher.
-# Starts server (3101), client (5173, Vite) and the Python AI service (8000) as
+# Starts server (3101, AI 포함) and client (5173, Vite) as
 # detached background processes, writes PIDs to .dev/*.pid and logs to
 # .dev/*.log. Stop them with scripts/dev-stop.ps1.
 # 다른 기기(휴대폰·친구 PC)에서도 열 수 있게 Vite(5173)를 Cloudflare 빠른 터널로 공개한다
@@ -18,17 +18,8 @@ function Start-Node([string]$name, [string]$dir, [int]$port) {
         return
     }
     Ensure-NodeDeps
-    $envVars = @{ APP_ENV = 'dev'; PORT = $port; HOST = '0.0.0.0'; AI_BASE_URL = 'http://127.0.0.1:8000' }
+    $envVars = @{ APP_ENV = 'dev'; PORT = $port; HOST = '0.0.0.0' }
     Start-Detached $name 'cmd.exe' @('/c', 'npm', 'run', 'dev') $dir $port $envVars | Out-Null
-}
-
-function Start-PythonAI([string]$name, [string]$dir, [int]$port) {
-    if (-not (Test-Path (Join-Path $dir 'requirements.txt'))) {
-        Write-Host "[$name] $dir\requirements.txt not found - skipping (not scaffolded yet)"
-        return
-    }
-    $venvPy = Ensure-PyDeps $dir
-    Start-Detached $name $venvPy @('-m', 'uvicorn', 'astral_ai.main:app', '--host', '127.0.0.1', '--port', "$port", '--reload') $dir $port | Out-Null
 }
 
 # Cloudflare 빠른 터널 -> Vite(5173). /api·/socket.io 는 Vite 프록시가 이 PC 안에서 3101 로 넘긴다.
@@ -70,13 +61,11 @@ function Start-Tunnel([int]$port) {
 
 Start-Node     'server' (Join-Path $root 'server') 3101
 Start-Node     'client' (Join-Path $root 'client') 5173
-Start-PythonAI 'ai'     (Join-Path $root 'ai')     8000
 $publicUrl = if ($NoTunnel) { $null } else { Start-Tunnel 5173 }
 
 Write-Host ""
 Write-Host "Client : http://localhost:5173"
 Write-Host "Server : http://localhost:3101"
-Write-Host "AI     : http://localhost:8000"
 if ($publicUrl) { Write-Host "Public : $publicUrl   (other devices / friends; changes each time the tunnel restarts)" }
 elseif (-not $NoTunnel) { Write-Host "Public : (none) - check .dev\tunnel.err.log" }
 Write-Host "Stop   : scripts/dev-stop.ps1"
