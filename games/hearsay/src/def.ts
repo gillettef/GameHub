@@ -151,6 +151,8 @@ export function actors(t: Table): number[] {
 
 export const def: GameDef<Table, Action, View, Options> = {
   slug: 'hearsay',
+  // 기둥 1(망각): 지난 행동을 진행 쪽(서버·한 기기) 메모리에도 남기지 않는다
+  keepHistory: false,
   minSeats: MIN_PLAYERS,
   maxSeats: MAX_PLAYERS,
   parseOptions,

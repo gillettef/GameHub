@@ -197,3 +197,24 @@ describe('리뷰에서 찾은 경로', () => {
     expect((back.room.view as unknown as Fuse).burned).toBe(0)
   })
 })
+
+describe('행동 기록', () => {
+  it('keepHistory: false 면 지난 행동을 남기지 않는다', () => {
+    const t = fakeTimers()
+    const forget = new Match({ ...fuseGame, keepHistory: false }, {
+      seats: [
+        { kind: 'human', name: 'A' },
+        { kind: 'human', name: 'B' },
+      ],
+      seed: 1,
+      options: undefined,
+      timers: t.timers,
+      now: () => 0,
+      autoDelay: () => null,
+      onChange: () => {},
+    })
+    forget.act(0, { go: true })
+    expect(forget.history).toEqual([])
+    expect(forget.version).toBe(1)
+  })
+})
