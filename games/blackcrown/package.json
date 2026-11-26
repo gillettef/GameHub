@@ -1,0 +1,17 @@
+{
+  "name": "@gamehub/blackcrown",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "마왕의 패: 공용 보드 탐험 + 카드 족보 전투 RPG, 결말 반전(검은 왕관) — 지금은 엔진·봇만(화면을 만들면 dev/build/start/e2e 를 더한다)",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "sim": "tsx tools/sim.ts"
+  },
+  "dependencies": {
+    "@gamehub/config": "*",
+    "@gamehub/net": "*",
+    "@gamehub/ui": "*"
+  }
+}
