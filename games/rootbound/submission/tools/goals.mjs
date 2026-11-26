@@ -1,7 +1,7 @@
 /**
  * 소문 카드 16장 (엔진 목표 id 그대로, 이름·문구만 고양이 테마). 점수는 notes/Rules.md 8절과 같다.
  */
-import { icon, text } from './draw.mjs';
+import { artUrl, icon, text } from './draw.mjs';
 
 export const GOALS = [
   { id: 'pond-side', name: '개울가 산책', rule: '개울과 맞닿은\n내 칸 1칸당', pts: '+1', glyph: 'pond' },
@@ -66,6 +66,8 @@ function glyph(kind, cx, cy, s) {
 /** 소문 카드 한 장 (x, y 왼쪽 위, w × h) */
 export function goalCard(id, x, y, w, h) {
   const g = BY.get(id);
+  const url = artUrl(`goal-${id}`);
+  if (url) return `<image href="${url}" x="${x}" y="${y}" width="${w}" height="${h}" preserveAspectRatio="xMidYMid meet"/>`;
   const band = g.reserve ? '#4f9d5a' : '#c0692f';
   const o = [];
   o.push(`<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${w * 0.07}" fill="#fffaf0" stroke="#5a4630" stroke-width="${w * 0.02}"/>`);

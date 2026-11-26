@@ -3,6 +3,23 @@
  * 좌표: 축 좌표 (q, r), 꼭짓점이 위인 육각. 방향 0 = 동쪽, 1 = 북동 … (src/engine/board.ts DIRECTIONS).
  * 규칙 데이터의 id(grass·oak…)는 엔진 그대로 쓰고, 이름·그림만 고양이 테마로 바꾼다(submission/rulebook.md 대응표).
  */
+import { existsSync, readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const ART_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', 'art');
+const artCache = new Map();
+/** submission/art/<name>.svg (클로드 디자인 그림)를 data URL 로. 없으면 null → 벡터 대체 그림을 쓴다 */
+export function artUrl(name) {
+  if (process.env.NO_ART) return null;
+  if (!artCache.has(name)) {
+    const f = join(ART_DIR, `${name}.svg`);
+    artCache.set(name, existsSync(f) ? `data:image/svg+xml;base64,${readFileSync(f).toString('base64')}` : null);
+  }
+  return artCache.get(name);
+}
+const artImage = (url, x, y, w, h, extra = '') => `<image href="${url}" x="${x.toFixed(2)}" y="${y.toFixed(2)}" width="${w.toFixed(2)}" height="${h.toFixed(2)}" ${extra}/>`;
+
 const SQ3 = Math.sqrt(3);
 const FONT = `Pretendard, 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif`;
 
@@ -102,6 +119,9 @@ export function icon(id, x, y, s) {
  */
 export function spotTile(id, cx, cy, R, { rotation = 0, label = true, compact = false } = {}) {
   const sp = SPOTS[id];
+  const url = artUrl(`spot-${id}`);
+  // 디자인 그림: viewBox −100..100(반지름 100). 규칙의 회전 1번 = 화면에서 시계 방향 60°
+  if (url) return `<g transform="rotate(${60 * rotation} ${cx} ${cy})">${artImage(url, cx - R, cy - R, 2 * R, 2 * R)}</g>`;
   const out = [];
   out.push(`<polygon points="${hexPoints(cx, cy, R)}" fill="${sp.bg}" stroke="#4a3a28" stroke-width="${R * 0.05}"/>`);
   out.push(`<polygon points="${hexPoints(cx, cy, R * 0.9)}" fill="none" stroke="#fffaf0" stroke-width="${R * 0.03}" opacity="0.9"/>`);
@@ -112,17 +132,30 @@ export function spotTile(id, cx, cy, R, { rotation = 0, label = true, compact = 
     out.push(T(x, y + rr * 0.4, rr * 1.15, far ? `»${n}` : `${n}`));
   };
   let center = 0;
-  for (const [dq0, dr0, n] of sp.roots) {
+  const spots = sp.roots.map(([dq0, dr0, n]) => {
     const [dq, dr] = rot(dq0, dr0, rotation);
-    if (dq === 0 && dr === 0) {
-      center = n;
+    return { dq, dr, n, far: Math.max(Math.abs(dq), Math.abs(dr), Math.abs(dq + dr)) === 2 };
+  });
+  // 같은 방향에 옆 칸과 두 칸 앞이 함께 있으면(쥐구멍) 안쪽·바깥쪽으로 나란히 놓고 화살표로 잇는다
+  const dirKey = (dq, dr) => `${Math.sign(dq)},${Math.sign(dr)}`;
+  const nearDirs = new Set(spots.filter((t) => !t.far && (t.dq || t.dr)).map((t) => dirKey(t.dq, t.dr)));
+  const farDirs = new Set(spots.filter((t) => t.far).map((t) => dirKey(t.dq, t.dr)));
+  for (const t of spots) {
+    if (t.dq === 0 && t.dr === 0) {
+      center = t.n;
       continue;
     }
-    const [x, y] = px(dq, dr, 1);
+    const [x, y] = px(t.dq, t.dr, 1);
     const len = Math.hypot(x, y);
-    const far = Math.max(Math.abs(dq), Math.abs(dr), Math.abs(dq + dr)) === 2;
-    const d = R * 0.66;
-    badge(cx + (x / len) * d, cy + (y / len) * d, n, far);
+    const shared = t.far ? nearDirs.has(dirKey(t.dq, t.dr)) : farDirs.has(dirKey(t.dq, t.dr));
+    const d = R * (shared ? (t.far ? 0.7 : 0.4) : 0.66);
+    if (shared && t.far) {
+      const a = R * 0.52;
+      const ux = x / len;
+      const uy = y / len;
+      out.push(`<path d="M${cx + ux * (a - R * 0.04)},${cy + uy * (a - R * 0.04)} L${cx + ux * (a + R * 0.03)},${cy + uy * (a + R * 0.03)}" stroke="#3b2f1a" stroke-width="${R * 0.05}" stroke-linecap="round"/>`);
+    }
+    badge(cx + (x / len) * d, cy + (y / len) * d, t.n, t.far);
   }
   // 가운데 고양이 수: 고양이 얼굴 배지
   const cr = R * 0.2;
@@ -141,6 +174,8 @@ export function spotTile(id, cx, cy, R, { rotation = 0, label = true, compact = 
 // 고양이 토큰 (둥근 나무 토큰, 쌓는다)
 // ---------------------------------------------------------------------------
 export function catToken(cx, cy, r, seat) {
+  const url = artUrl(`cat-${seat}`);
+  if (url) return `<ellipse cx="${cx}" cy="${cy + r * 0.22}" rx="${r}" ry="${r * 0.9}" fill="${SEAT_DARK[seat]}" stroke="#1a1a1a" stroke-width="${r * 0.06}"/>${artImage(url, cx - r, cy - r, 2 * r, 2 * r)}`;
   return `<ellipse cx="${cx}" cy="${cy + r * 0.18}" rx="${r}" ry="${r * 0.62}" fill="${SEAT_DARK[seat]}" stroke="#1a1a1a" stroke-width="${r * 0.08}"/>
 <ellipse cx="${cx}" cy="${cy}" rx="${r}" ry="${r * 0.62}" fill="${SEAT[seat]}" stroke="#1a1a1a" stroke-width="${r * 0.08}"/>
 <path d="M${cx - r * 0.45},${cy - r * 0.05} l${r * 0.08},${-r * 0.32} l${r * 0.22},${r * 0.18} h${r * 0.3} l${r * 0.22},${-r * 0.18} l${r * 0.08},${r * 0.32} q0,${r * 0.36} ${-r * 0.45},${r * 0.36} q${-r * 0.45},0 ${-r * 0.45},${-r * 0.36} z" fill="${SEAT_LIGHT[seat]}" opacity="0.95"/>
@@ -150,7 +185,8 @@ export function catToken(cx, cy, r, seat) {
 export function catStack(cx, cy, n, seat, r) {
   const out = [];
   const shown = Math.min(n, 5);
-  for (let i = 0; i < shown; i++) out.push(catToken(cx, cy - i * r * 0.32, r, seat));
+  const step = artUrl(`cat-${seat}`) ? 0.26 : 0.32;
+  for (let i = 0; i < shown; i++) out.push(catToken(cx, cy - i * r * step, r, seat));
   if (n >= 3) {
     const bx = cx + r * 1.05;
     const by = cy - (shown - 1) * r * 0.32 - r * 0.2;
@@ -181,6 +217,8 @@ function terrainDeco(t, x, y, R) {
 }
 
 function hideout(x, y, R, seat) {
+  const url = artUrl(`hideout-${seat}`);
+  if (url) return artImage(url, x - R, y - R, 2 * R, 2 * R);
   const s = R * 0.55;
   return `<polygon points="${hexPoints(x, y, R * 0.98)}" fill="${SEAT[seat]}" stroke="#1a1a1a" stroke-width="${R * 0.04}"/>
 <path d="M${x - s * 0.7},${y + s * 0.55} v${-s * 0.55} l${s * 0.7},${-s * 0.6} l${s * 0.7},${s * 0.6} v${s * 0.55} z" fill="#fff8e6" stroke="#1a1a1a" stroke-width="${R * 0.04}"/>
@@ -208,8 +246,12 @@ export function board(state, R, opts = {}) {
   }
   for (const c of cells) {
     const [x, y] = px(c.q, c.r, R);
-    out.push(`<polygon points="${hexPoints(x, y, R)}" fill="${TERRAIN[c.terrain].fill}" stroke="#a89878" stroke-width="${R * 0.03}"/>`);
-    if (c.entrance < 0 || c.entrance === undefined) out.push(terrainDeco(c.terrain, x, y, R));
+    const turl = artUrl(`terrain-${c.terrain}`);
+    if (turl) out.push(artImage(turl, x - R * 1.005, y - R * 1.005, R * 2.01, R * 2.01));
+    else {
+      out.push(`<polygon points="${hexPoints(x, y, R)}" fill="${TERRAIN[c.terrain].fill}" stroke="#a89878" stroke-width="${R * 0.03}"/>`);
+      if (c.entrance < 0 || c.entrance === undefined) out.push(terrainDeco(c.terrain, x, y, R));
+    }
   }
   if (opts.tileEdges !== false) {
     const DIRS = [[1, 0], [1, -1], [0, -1], [-1, 0], [-1, 1], [0, 1]];
@@ -245,8 +287,8 @@ export function board(state, R, opts = {}) {
     else if (m === 'no') out.push(`<path d="M${x - R * 0.32},${y - R * 0.32} L${x + R * 0.32},${y + R * 0.32} M${x + R * 0.32},${y - R * 0.32} L${x - R * 0.32},${y + R * 0.32}" stroke="#d33" stroke-width="${R * 0.12}" stroke-linecap="round"/>`);
     else if (m) out.push(`<polygon points="${hexPoints(x, y, R * 0.86)}" fill="none" stroke="${m}" stroke-width="${R * 0.12}" stroke-dasharray="${R * 0.22},${R * 0.12}"/>`);
     if (opts.labels?.[k]) {
-      const lx = x - R * 0.52;
-      const ly = y - R * 0.48;
+      const lx = x;
+      const ly = y - R * 0.58;
       out.push(`<circle cx="${lx}" cy="${ly}" r="${R * 0.24}" fill="#c0392b" stroke="#fff" stroke-width="${R * 0.04}"/>${T(lx, ly + R * 0.09, R * 0.26, opts.labels[k], { fill: '#fff' })}`);
     }
   }

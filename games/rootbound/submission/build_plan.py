@@ -1,7 +1,7 @@
 """공식 기획안 양식(forms/공모전기획안_양식.docx)에 「냥냥 골목」 내용을 채운다.
 
 사용(게임 폴더에서, 그림 PNG 를 먼저 만든다):
-  node submission/tools/svg2png.mjs cover table3
+  node submission/tools/svg2png.mjs table2 table3
   python submission/build_plan.py
 출력: submission/out/냥냥골목_기획안.docx
 
@@ -94,7 +94,7 @@ def main() -> None:
     cell.text = ""
     p = cell.paragraphs[0]
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    p.add_run().add_picture(str(OUT / "cover.png"), width=Mm(132))
+    p.add_run().add_picture(str(OUT / "table2.png"), width=Mm(132))
     cap = cell.add_paragraph()
     cap.alignment = WD_ALIGN_PARAGRAPH.CENTER
     r = cap.add_run("2인 게임 중반 (치즈냥·턱시도냥, 14차례 진행)")

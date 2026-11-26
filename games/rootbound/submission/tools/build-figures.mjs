@@ -4,7 +4,7 @@
  * 판 그림(준비·진행 모습)은 dump-state.ts 로 실제 규칙 엔진(실험실 엔진, 정본과 같음)에서 뽑은 판을 그린다.
  */
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { SEAT_NAME, SPOTS, SPOT_IDS, TERRAIN, board, catStack, catToken, spotTile, text, wrap } from './draw.mjs';
@@ -67,7 +67,10 @@ function tableScene(st, W) {
   return wrap(defs + parts.join(''), vb, W);
 }
 const mid = dump(2, 7, 14);
-save('cover', tableScene(mid, 1100));
+save('table2', tableScene(mid, 1100));
+// 표지: 클로드 디자인 표지 그림(art/cover.svg)이 있으면 그것을 쓴다
+if (existsSync(join(HERE, '..', 'art', 'cover.svg'))) save('cover', readFileSync(join(HERE, '..', 'art', 'cover.svg'), 'utf8'));
+else save('cover', tableScene(mid, 1100));
 const mid3 = dump(3, 12, 18);
 save('table3', tableScene(mid3, 1100));
 
@@ -139,7 +142,7 @@ save('table3', tableScene(mid3, 1100));
     '0,1': { terrain: 'rock' },
     '2,-1': { seat: 1, count: 1 },
   });
-  const marks = { '-1,1': 'ok', '0,0': 'ok', '-2,2': 'ok', '-1,2': 'ok', '0,-1': 'ok', '-1,-1': 'ok', '-2,0': 'ok', '1,0': 'no', '-1,0': 'no', '2,0': 'no', '1,1': 'no', '2,-2': 'no', '0,-2': 'no' };
+  const marks = { '-1,1': 'ok', '0,0': 'ok', '-2,2': 'ok', '-1,2': 'ok', '0,-1': 'ok', '-1,-1': 'ok', '-2,0': 'ok', '1,0': 'no', '-1,0': 'no', '2,0': 'no', '1,1': 'no', '2,-2': 'no', '0,-2': 'no', '1,-2': 'no', '2,-1': 'no', '0,2': 'no' };
   const b = scene(st, 34, { marks });
   const legend = `${caption(0, 0, 0, '')}`;
   save('where', wrap(b.svg + legend, b.bbox, 520));
@@ -161,7 +164,7 @@ save('table3', tableScene(mid3, 1100));
       for (let i = 0; i < rotation; i++) [a, b] = [-b, a + b];
       return [a, b];
     }))
-      if (dq || dr) marks[`${dq},${dr}`] = '#c0392b';
+      marks[`${dq},${dr}`] = '#c0392b';
     const b = scene(st, 22, { marks, spotLabels: false });
     return `<g transform="translate(${ox},100)">${b.svg}</g>`;
   };
@@ -184,13 +187,13 @@ save('table3', tableScene(mid3, 1100));
   const before = patch(2, { ...base, '0,0': { plant: 'oak', rotation: 0 } });
   const after = patch(2, { ...base, '0,0': { plant: 'oak', rotation: 0, seat: 0, count: 2 }, '1,0': { seat: 0, count: 1 }, '-1,0': { seat: 0, count: 2 } });
   const R = 30;
-  const b1 = scene(before, R, { labels: { '0,0': '2', '1,0': '2', '-1,0': '2' } });
+  const b1 = scene(before, R, { labels: { '0,0': '2', '1,0': '2', '-1,0': '2' }, marks: { '0,0': '#c0392b', '1,0': '#c0392b', '-1,0': '#c0392b' } });
   const b2 = scene(after, R);
   const w = b1.bbox[2];
   const p = [`<g transform="translate(${-b1.bbox[0]},${-b1.bbox[1]})">${b1.svg}</g>`, `<g transform="translate(${w + 70 - b2.bbox[0]},${-b2.bbox[1]})">${b2.svg}</g>`];
   p.push(`<path d="M${w + 12},${b1.bbox[3] / 2} h44 l-10,-10 M${w + 56},${b1.bbox[3] / 2} l-10,10" stroke="#3b2a18" stroke-width="5" fill="none"/>`);
-  p.push(caption(w / 2, b1.bbox[3] + 18, 15, '평상을 놓는다 (빨간 숫자 = 오는 고양이)'));
-  p.push(caption(w + 70 + w / 2, b1.bbox[3] + 18, 15, '턱시도냥 1마리를 쫓아내고 1마리가 남는다'));
+  p.push(caption(w / 2, b1.bbox[3] + 18, 15, '평상을 놓는다 (점선 칸에 빨간 숫자만큼 온다)'));
+  p.push(caption(w + 70 + w / 2, b1.bbox[3] + 18, 15, '턱시도냥 1마리 쫓아내고 치즈냥 1마리 앉음'));
   save('example', wrap(p.join(''), [0, 0, 2 * w + 70, b1.bbox[3] + 30], 900));
 }
 
@@ -208,7 +211,7 @@ save('table3', tableScene(mid3, 1100));
   const p = [`<g transform="translate(${-b1.bbox[0]},${-b1.bbox[1]})">${b1.svg}</g>`, `<g transform="translate(${w + 70 - b2.bbox[0]},${-b2.bbox[1]})">${b2.svg}</g>`];
   p.push(`<path d="M${w + 12},${b1.bbox[3] / 2} h44 l-10,-10 M${w + 56},${b1.bbox[3] / 2} l-10,10" stroke="#3b2a18" stroke-width="5" fill="none"/>`);
   p.push(caption(w / 2, b1.bbox[3] + 18, 14, '쉬는 고양이 2 + 데려올 3 (점선 칸 제외)'));
-  p.push(caption(w + 70 + w / 2, b1.bbox[3] + 18, 14, '높은 칸에서 ①② → 같으면 명당 없는 칸 ③'));
+  p.push(caption(w + 70 + w / 2, b1.bbox[3] + 18, 14, '①② 가장 높은 칸 → ③ 명당 없는 칸 중 선택'));
   save('short', wrap(p.join(''), [0, 0, 2 * w + 70, b1.bbox[3] + 30], 900));
 }
 
