@@ -1,5 +1,5 @@
 import { memo, useEffect, useState } from 'react';
-import { GOAL_COUNT, rulesFor } from '../../engine';
+import { CHORE_EXTRA, GOAL_COUNT, rulesFor } from '../../engine';
 import { markTutorialSeen } from '../lib/onboarding';
 import { useGameStore } from '../store/gameStore';
 import { CloseIcon, LearnIcon } from './icons';
@@ -20,36 +20,55 @@ const myPlants = (s: Store) => s.state?.plants.filter((p) => p.ownerId === s.vie
 
 const tookCard = (s: Store) => s.state?.log.some((e) => e.kind === 'take' && e.playerId === s.viewerId) ?? false;
 
+const pickedChore = (s: Store) => s.state?.log.some((e) => e.kind === 'chore' && e.playerId === s.viewerId) ?? false;
+
+/** 명당을 놓지 않는 일과(담 넘기·명당 부르기)로 차례를 마쳤나. 그러면 놓기 안내 단계는 건너뛴다 */
+const didOtherChore = (s: Store) => s.state?.log.some((e) => (e.kind === 'move' || e.kind === 'call' || e.kind === 'pass') && e.playerId === s.viewerId) ?? false;
+
+/** 첫 차례를 마쳤나 (놓았거나, 놓지 않는 일과를 했거나) */
+const playedOnce = (s: Store) => myPlants(s) > 0 || didOtherChore(s);
+
 const STEPS: Step[] = [
   {
     title: '목표',
-    body: `내 차례마다 펼친 타일이나 주머니에서 명당 타일 1개를 가져온 뒤, 손의 타일 2개 중 1개를 놓아 고양이를 불러 모읍니다. 끝났을 때 내 고양이가 앉은 칸 1칸 = 1점, 여기에 위의 소문 카드 ${GOAL_COUNT}장 점수를 더해 높은 쪽이 이깁니다.`,
+    body: `라운드마다 골목 일과 하나를 고르고, 그 일과대로 명당 타일을 놓아 고양이를 불러 모읍니다. 끝났을 때 내 고양이가 앉은 칸 1칸 = 1점, 여기에 위의 소문 카드 ${GOAL_COUNT}장 점수를 더해 높은 쪽이 이깁니다. 2인은 ${rulesFor(2).rounds}라운드입니다.`,
     top: true,
+  },
+  {
+    title: '일과 고르기',
+    body: `아래에 일과 ${2 + CHORE_EXTRA}장이 펼쳐져 있습니다(인원 + 1장). 선부터 하나씩 고르고 마지막 1장은 남습니다. 처음에는 명당을 놓는 일과(식빵 굽기·생선 냄새·마실·대장 방울)를 골라 보세요. 일과를 누르고 맨 아래 버튼으로 정합니다.`,
+    top: true,
+    done: (s) => pickedChore(s),
   },
   {
     title: '타일 가져오기',
     body: `보드 아래에 타일 ${rulesFor(2).market}개가 펼쳐져 있습니다. 하나를 눌러 크게 보고 가져오기 버튼을 누르세요. 빈자리는 바로 채워집니다. 맨 끝의 주머니를 누르면 무엇이 나올지 모르는 타일 1개를 뽑습니다.`,
-    done: (s) => tookCard(s) || myPlants(s) > 0,
+    done: (s) => tookCard(s) || playedOnce(s),
   },
   {
     title: '타일 고르기',
     body: '이어서 명당을 놓을 차례입니다. 아래 내 타일 2개 중 하나를 눌러 크게 보고 고르기 버튼을 누르세요. 그림의 숫자가 그 칸에 모이는 고양이 수입니다.',
-    done: (s) => s.selectedHandIndex !== null || myPlants(s) > 0,
+    done: (s) => s.selectedHandIndex !== null || playedOnce(s),
   },
   {
     title: '놓을 칸 고르기',
-    body: '밝게 빛나는 칸이 내 칸이나, 내 칸·아지트와 맞닿은 고양이 없는 칸입니다. 한 칸을 누르세요.',
-    done: (s) => s.pendingPos !== null || myPlants(s) > 0,
+    body: '밝게 빛나는 칸이 내 칸이나, 내 칸·아지트와 맞닿은 고양이 없는 칸입니다(마실이면 두 칸 안 빈 칸도). 한 칸을 누르세요.',
+    done: (s) => s.pendingPos !== null || playedOnce(s),
   },
   {
     title: '명당 놓기',
-    body: '타일 방향을 고르면 내 칸·점수가 얼마나 바뀌는지 보입니다. 마음에 들면 "놓기", 아니면 "취소"를 누르세요.',
-    done: (s) => myPlants(s) > 0,
+    body: '타일 방향을 고르면 내 칸·점수가 얼마나 바뀌는지 보입니다(식빵 굽기면 놓은 칸 +1). 마음에 들면 "놓기", 아니면 "취소"를 누르세요.',
+    done: (s) => playedOnce(s),
   },
   {
     title: '상대 차례',
-    body: '연습 봇이 두는 중입니다. 고양이 색이 그 칸의 주인입니다. 라운드가 끝나면 쉬는 고양이가 가장 많은 사람이 다음 라운드의 선(먼저 하는 사람)이 됩니다.',
-    done: (s) => s.state?.currentPlayerId === s.viewerId && myPlants(s) > 0,
+    body: '연습 봇이 두는 중입니다. 고양이 색이 그 칸의 주인입니다. 라운드가 끝나면 대장 방울을 고른 사람, 없으면 쉬는 고양이가 가장 많은 사람이 다음 라운드의 선(먼저 하는 사람)이 됩니다.',
+    done: (s) => s.state?.currentPlayerId === s.viewerId && playedOnce(s),
+  },
+  {
+    title: '놓지 않는 일과',
+    body: '담 넘기는 명당 대신 내 칸의 고양이 1~2마리를 맞닿은 칸으로 두 번까지 옮기고, 명당 부르기는 내 칸 위 명당을 돌려 고양이를 다시 부른 뒤(그 칸 +1) 펼친 타일 1개를 가져옵니다. 일과는 ≡ 메뉴의 설명 탭에서 다시 볼 수 있습니다.',
+    top: true,
   },
   {
     title: '한 마리가 한 마리를 쫓아낸다',
@@ -57,12 +76,13 @@ const STEPS: Step[] = [
   },
   {
     title: '이제 직접',
-    body: '타일을 다 쓰면 끝납니다. ≡ 메뉴의 점수 탭에서 소문 카드별 점수를, 설명 탭에서 규칙을 볼 수 있습니다.',
+    body: `${rulesFor(2).rounds}라운드가 끝나면(타일을 먼저 다 쓰면 그때) 게임이 끝납니다. ≡ 메뉴의 점수 탭에서 소문 카드별 점수를, 설명 탭에서 규칙과 일과를 볼 수 있습니다.`,
   },
 ];
 
 /**
- * 첫 판 튜토리얼 안내 (2026-10-06, 2026-10-07 Rootbound 로 교체, 2026-10-08 가져오기 → 심기 순서).
+ * 첫 판 튜토리얼 안내 (2026-10-06, 2026-10-07 Rootbound 로 교체, 2026-10-08 가져오기 → 심기 순서, 2026-11-26 v7 일과 고르기).
+ * 놓지 않는 일과(담 넘기·명당 부르기)를 고르면 놓기 안내 단계는 그 차례를 마칠 때 건너뛴다(막히지 않게).
  * 이번 판 명당 공개 단계에는 공개 화면(RevealPanel)이 설명을 맡고, 1라운드가 시작되면 안내가 뜬다. 연습 봇과 두는 핫시트 판(store.tutorial) 위에 떠서
  * 한 단계씩 할 일을 알려 주고, 플레이어가 실제로 그 조작을 하면 다음 단계로 넘어간다.
  * 보드를 덜 가리도록 내 타일 위(첫 안내는 화면 위쪽)에 작은 패널로 둔다.

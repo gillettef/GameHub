@@ -11,6 +11,7 @@ import styles from './Market.module.css';
  * 내 가져오기 차례에는 타일을 누르면 크게 보고 "이 타일 가져오기"로 가져온다(GameModal 'market').
  * 같은 차례에 맨 끝의 주머니를 누르면 "주머니에서 1개 꺼내기"(GameModal 'pile')로 뒷면만 보고 가져온다.
  * 그 밖에는 크게 보기만 된다. 개수·순서는 가정하지 않는다 — state.market 을 그대로 그린다.
+ * 생선 냄새(v7, Rules.md 5.3): 주머니 맨 위를 펼친 타일(state.peek)을 세 번째로 보여 주고, 그 차례에는 주머니 뒷면 대신 이 타일을 가져올 수 있다.
  */
 export const Market = memo(function Market() {
   const market = useGameStore((s) => s.state?.market);
@@ -18,6 +19,7 @@ export const Market = memo(function Market() {
   const canTake = useGameStore(selectCanTake);
   const openCardModal = useGameStore((s) => s.openCardModal);
   const phase = useGameStore((s) => selectState(s)?.phase);
+  const peek = useGameStore((s) => s.state?.peek ?? null);
   if (!market || phase !== 'playing') return null;
 
   return (
@@ -29,7 +31,7 @@ export const Market = memo(function Market() {
           주머니 {pileCount}
         </span>
       </span>
-      {market.length === 0 ? (
+      {market.length === 0 && !peek ? (
         <span className={styles.empty}>펼친 타일 없음 · 내 타일만 씁니다</span>
       ) : (
         <div className={styles.cards} role="list">
@@ -43,7 +45,15 @@ export const Market = memo(function Market() {
               />
             </div>
           ))}
-          {canTake && pileCount > 0 && (
+          {peek && (
+            <div role="listitem" className={styles.slot}>
+              <div className={styles.peek}>
+                <SpeciesCard species={peek} variant="mini" compact onClick={() => openCardModal(canTake ? { kind: 'peek' } : { kind: 'species', species: peek })} />
+                <span className={styles.peekTag}>생선 냄새</span>
+              </div>
+            </div>
+          )}
+          {canTake && !peek && pileCount > 0 && (
             <div role="listitem" className={styles.slot}>
               <button type="button" className={styles.pileCard} onClick={() => openCardModal({ kind: 'pile' })} aria-label={`주머니에서 뒷면으로 1개 꺼내기 (남은 ${pileCount}개)`}>
                 <img className={styles.pileBack} src={SPOT_BACK_URL} alt="" />

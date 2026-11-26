@@ -1,6 +1,6 @@
 import { memo, useMemo } from 'react';
 import type { GameLogEntry, LogKind } from '../../engine';
-import { nameOf } from '../../engine';
+import { bossSeat, getChore, nameOf, remainingChores } from '../../engine';
 import { phaseLabel } from '../game/derived';
 import { cx } from '../lib/cx';
 import { selectState, useGameStore } from '../store/gameStore';
@@ -16,6 +16,11 @@ const KIND_LABEL: Record<LogKind, string> = {
   uproot: '데려옴',
   surrender: '기권',
   result: '결과',
+  chore: '일과',
+  move: '담 넘기',
+  call: '부르기',
+  peek: '생선 냄새',
+  pass: '쉼',
 };
 
 /** 눈에 띄어야 하는 사건. 굵기·테두리로 강조한다 */
@@ -34,6 +39,8 @@ export const ProgressTab = memo(function ProgressTab() {
   const current = state.currentPlayerId ? nameOf(state, state.currentPlayerId) : null;
   const lead = state.phase === 'playing' ? state.players.find((p) => p.seat === state.roundStart) : undefined;
   const stage = phaseLabel(state, '종료');
+  const boss = state.phase === 'playing' ? bossSeat(state) : null;
+  const left = state.phase === 'playing' ? remainingChores(state) : [];
 
   return (
     <div className={styles.root}>
@@ -46,7 +53,14 @@ export const ProgressTab = memo(function ProgressTab() {
             {lead && (
               <>
                 <dt>선</dt>
-                <dd title="이번 라운드에 먼저 두는 사람. 라운드가 끝나면 쉬는 고양이가 가장 많은 사람이 다음 선입니다">{lead.nickname}</dd>
+                <dd title="이번 라운드에 먼저 두는 사람. 라운드가 끝나면 대장 방울을 고른 사람, 없으면 쉬는 고양이가 가장 많은 사람이 다음 선입니다">{lead.nickname}</dd>
+                <dt>다음 선</dt>
+                <dd>{boss !== null ? `${state.players.find((p) => p.seat === boss)?.nickname ?? ''} (대장 방울)` : '쉬는 고양이 최다'}</dd>
+                <dt>일과</dt>
+                <dd>
+                  {state.choreOffer.map((c) => getChore(c).name).join(' · ')}
+                  {left.length > 0 && ` (남은 ${left.length}장)`}
+                </dd>
               </>
             )}
             <dt>차례</dt>

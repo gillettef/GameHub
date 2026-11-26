@@ -6,14 +6,14 @@
  *   npm run fixtures   (= npx tsx tools/write-fixtures.ts)
  *
  *  specs.json     종·목표·상수·인원별 규칙 기준표
- *  scenario.json  2·3·4인 판을 이번 판 식물 공개 단계(initial)부터 시드로 고른 합법 수로 끝까지 둔 기록.
+ *  scenario.json  2·3·4인 판을 이번 판 식물 공개 단계(initial)부터 시드로 고른 합법 수(일과 고르기·가져오기·심기·담 넘기·명당 부르기, v7)로 끝까지 둔 기록.
  *                 각 단계 { action, rootSeat, rootCount, owners, scores, legal(심기 단계만), auto(자동 수) } 와, 8단계마다·마지막에 state(log 제외).
  *                 AI 테스트는 initial 에 action 을 차례로 적용해 진행 중 상태(기권·마켓 빈 라운드 포함)를 얻는다.
  */
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { CONSTANTS, FLOWER_SPECIES, FOREST_SPECIES, GOALS, PLAYER_COUNT_RULES, SPECIES } from '../src/engine/data/index.js';
+import { CONSTANTS, FLOWER_SPECIES, FOREST_SPECIES, GOALS, HAND_MAX, PLAYER_COUNT_RULES, SPECIES } from '../src/engine/data/index.js';
 import {
   applyAction,
   autoAction,
@@ -21,10 +21,17 @@ import {
   computeScores,
   createInitialState,
   createPlayer,
+  distinctRotations,
   joinPlayer,
+  legalCallCells,
+  legalMoveSources,
+  legalMoveTargets,
   legalPlantCells,
   legalSeedCells,
+  moveMaxCount,
+  moveRoots,
   nextRandom,
+  remainingChores,
 } from '../src/engine/index.js';
 import type { Action, GameState, PlayerId } from '../src/engine/types.js';
 
@@ -39,7 +46,7 @@ const write = (name: string, data: unknown) => {
 
 write('specs.json', { species: SPECIES, goals: GOALS, constants: CONSTANTS, playerCountRules: PLAYER_COUNT_RULES, flowerSpecies: FLOWER_SPECIES, forestSpecies: FOREST_SPECIES });
 
-/** 다양한 수가 나오게 자동 수 대신 시드로 고른 합법 수를 둔다 (가져오기 자리·회전·씨앗 포함) */
+/** 다양한 수가 나오게 자동 수 대신 시드로 고른 합법 수를 둔다 (일과·가져오기 자리·회전·씨앗·담 넘기·부르기 포함) */
 function variedAction(s: GameState, rnd: { seed: number }): Action {
   const pick = <T>(arr: T[]): T => {
     const r = nextRandom(rnd.seed);
@@ -53,8 +60,35 @@ function variedAction(s: GameState, rnd: { seed: number }): Action {
   }
   const pid = s.currentPlayerId as PlayerId;
   if (s.phase !== 'playing') return autoAction(s, pid) as Action;
-  if (s.stage === 'take') return { type: 'TAKE', playerId: pid, take: pick<number | 'pile'>([...s.market.map((_, i) => i), ...(s.pile.length ? ['pile' as const] : [])]) };
   const me = s.players.find((p) => p.id === pid)!;
+  if (s.stage === 'chore') return { type: 'PICK_CHORE', playerId: pid, chore: pick(remainingChores(s)) };
+  if (s.stage === 'take') {
+    const peekTurn = s.chores[me.seat] === 'peek';
+    const options: (number | 'pile' | 'peek')[] = [...s.market.map((_, i) => i), ...(s.pile.length && !peekTurn ? ['pile' as const] : []), ...(s.peek ? ['peek' as const] : [])];
+    return { type: 'TAKE', playerId: pid, take: pick(options) };
+  }
+  if (s.stage === 'move') {
+    const moves: { from: { q: number; r: number }; to: { q: number; r: number }; count: number }[] = [];
+    let cur = s;
+    const times = pick([1, 2]);
+    for (let k = 0; k < times; k++) {
+      const sources = legalMoveSources(cur, pid);
+      if (!sources.length) break;
+      const from = pick(sources);
+      const to = pick(legalMoveTargets(cur, from));
+      const count = pick([1, 2].filter((n) => n <= moveMaxCount(cur, pid, from)));
+      moves.push({ from, to, count });
+      cur = { ...cur, ...moveRoots(cur, pid, from, to, count) };
+    }
+    return { type: 'MOVE', playerId: pid, moves };
+  }
+  if (s.stage === 'call') {
+    const pos = pick(legalCallCells(s, pid));
+    const species = s.plants.find((p) => p.pos.q === pos.q && p.pos.r === pos.r)!.species;
+    const rotation = pick(distinctRotations(species));
+    const canTake = me.hand.length < HAND_MAX && s.market.length > 0;
+    return canTake ? { type: 'CALL', playerId: pid, pos, rotation, take: pick(s.market.map((_, i) => i)) } : { type: 'CALL', playerId: pid, pos, rotation };
+  }
   const options = [...new Set(me.hand)].flatMap((sp) => legalPlantCells(s, pid, sp).map((pos) => ({ sp, pos })));
   if (options.length === 0) return autoAction(s, pid) as Action;
   const { sp, pos } = pick(options);

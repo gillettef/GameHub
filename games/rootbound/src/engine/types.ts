@@ -130,10 +130,36 @@ export interface PlayerState {
 /** lobby → reveal(이번 판 식물 공개, Rules.md 4절 7) → playing → finished */
 export type GamePhase = 'lobby' | 'reveal' | 'playing' | 'finished';
 
-/** 차례 안의 단계 (Rules.md 5절): 마켓에서 가져온 뒤 심는다 */
-export type RoundStage = 'take' | 'plant';
+/**
+ * 단계 (Rules.md 5절, v7 「골목 일과」).
+ *  - 'chore': 라운드 시작의 일과 고르기. currentPlayerId 가 지금 고르는 사람 (PICK_CHORE)
+ *  - 'take' → 'plant': 명당을 놓는 일과(식빵 굽기·생선 냄새·마실·대장 방울)의 가져오기 → 심기 (TAKE → PLANT/DISCARD)
+ *  - 'move': 담 넘기 차례 (MOVE)
+ *  - 'call': 명당 부르기 차례 (CALL)
+ */
+export type RoundStage = 'chore' | 'take' | 'plant' | 'move' | 'call';
 
-export type LogKind = 'system' | 'take' | 'plant' | 'discard' | 'flip' | 'uproot' | 'turn' | 'surrender' | 'result';
+/** 일과 6장 (Rules.md 5.3). 화면 이름은 data/chores.ts */
+export type ChoreId = 'bread' | 'peek' | 'roam' | 'boss' | 'move' | 'call';
+
+export interface ChoreSpec {
+  id: ChoreId;
+  /** 화면 이름 (식빵 굽기 …) */
+  name: string;
+  /** 짧은 설명 (일과 카드에 표시) */
+  description: string;
+  /** 명당을 놓는 일과인가 (가져오기 → 심기) */
+  place: boolean;
+}
+
+/** 담 넘기 한 번: from 칸의 내 큐브 count 개(1~2)를 맞닿은 to 칸으로 (Rules.md 5.3) */
+export interface MoveStep {
+  from: Position;
+  to: Position;
+  count: number;
+}
+
+export type LogKind = 'system' | 'take' | 'plant' | 'discard' | 'flip' | 'uproot' | 'turn' | 'surrender' | 'result' | 'chore' | 'move' | 'call' | 'peek' | 'pass';
 
 export interface GameLogEntry {
   turn: number;
@@ -178,8 +204,14 @@ export interface GameState {
   market: SpeciesId[];
   /** 카드 더미 (맨 앞이 다음 카드). 서버는 아무에게도 보내지 않는다 */
   pile: SpeciesId[];
-  /** 이번 라운드의 선(첫 자리). 라운드가 끝날 때 공급처에 큐브가 가장 많이 남은 사람 (Rules.md 5절). 공개 */
+  /** 이번 라운드의 선(첫 자리). 대장 방울을 고른 사람, 없으면 라운드가 끝날 때 공급처에 큐브가 가장 많이 남은 사람 (Rules.md 5.4). 공개 */
   roundStart: number;
+  /** 이번 라운드에 펼친 일과 (펼친 순서, 고른 것 포함, 공개). 남은 일과는 remainingChores() (Rules.md 5.1) */
+  choreOffer: ChoreId[];
+  /** 자리별 이번 라운드에 고른 일과 (아직 안 골랐거나 기권이면 null, 공개). 대장 방울을 고른 자리는 bossSeat() */
+  chores: (ChoreId | null)[];
+  /** 생선 냄새 차례에 카드 더미 맨 위에서 앞면으로 편 카드 (공개). 가져오기가 끝나면 null (Rules.md 5.3) */
+  peek: SpeciesId | null;
   /** 라운드 = 모두 한 차례씩 둔 것. 1부터 (공개 단계는 0) */
   round: number;
   /** 차례 안의 단계 (공개 단계·종료에서는 의미 없음) */
@@ -213,10 +245,18 @@ export type Action =
   | { type: 'READY'; playerId: PlayerId }
   /** 이번 판 식물 공개 단계에서 확인 (Rules.md 4절 7) */
   | { type: 'CONFIRM'; playerId: PlayerId }
-  /** 차례 앞부분: 마켓 take 번 카드, 또는 'pile' = 카드 더미 맨 위 1장(뒷면)을 손에 든다 (Rules.md 5절) */
-  | { type: 'TAKE'; playerId: PlayerId; take: number | 'pile' }
+  /** 일과 고르기 단계: 펼친 일과 중 아직 안 고른 하나 (Rules.md 5.1) */
+  | { type: 'PICK_CHORE'; playerId: PlayerId; chore: ChoreId }
+  /** 가져오기: 마켓 take 번 카드, 'pile' = 카드 더미 맨 위 1장(뒷면), 'peek' = 생선 냄새로 편 카드 (Rules.md 5.2·5.3).
+   * 생선 냄새 차례에는 'pile' 대신 'peek' */
+  | { type: 'TAKE'; playerId: PlayerId; take: number | 'pile' | 'peek' }
   /** 심기. rotation: 뿌리 모양 회전(생략 0). seed: 민들레만(생략 가능) */
   | { type: 'PLANT'; playerId: PlayerId; species: SpeciesId; pos: Position; rotation?: Direction; seed?: Position }
   /** 심기 단계. 손의 어떤 카드도 심을 칸이 없을 때만 */
   | { type: 'DISCARD'; playerId: PlayerId; species: SpeciesId }
+  /** 담 넘기 차례: 1~2번 이동. 두 번째 이동은 첫 이동 뒤의 보드 기준 (Rules.md 5.3) */
+  | { type: 'MOVE'; playerId: PlayerId; moves: MoveStep[] }
+  /** 명당 부르기 차례: 내 땅 위 식물 칸 pos, 새 방향 rotation(생략하면 지금 방향). take: 그다음 손에 가져올 마켓 번호
+   * (손이 3장 미만이고 마켓에 카드가 있으면 반드시, 아니면 생략) (Rules.md 5.3) */
+  | { type: 'CALL'; playerId: PlayerId; pos: Position; rotation?: Direction; take?: number }
   | { type: 'SURRENDER'; playerId: PlayerId };

@@ -1,12 +1,12 @@
 /**
  * AI 탐색(search.ts)이 시간 제한 안에 합법 수를 고르는지 확인한다. 예전 Python ai/tests/test_api.py 를 옮겼다.
- * 상태는 test/fixtures/scenario.json(2·3·4인 판 기록, 기권·마켓 빈 라운드 포함)을 엔진으로 재생해 얻는다.
+ * 상태는 test/fixtures/scenario.json(2·3·4인 판 기록, 기권·마켓 빈 라운드·v7 일과의 모든 단계 포함)을 엔진으로 재생해 얻는다.
  */
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import type { Action, GameState, PlayerId } from '../src/engine/index.js';
-import { applyAction, maskState } from '../src/engine/index.js';
-import { AI_TIME_LIMIT_MS, decide, requestAiDecision, takeGoalBonus, unseenCards } from '../src/ai/search.js';
+import type { Action, GameState, PlayerId, RoundStage } from '../src/engine/index.js';
+import { applyAction, maskState, remainingChores } from '../src/engine/index.js';
+import { AI_TIME_LIMIT_MS, choreValues, decide, requestAiDecision, takeGoalBonus, unseenCards } from '../src/ai/search.js';
 
 interface Scenario {
   initial: GameState;
@@ -28,7 +28,7 @@ const replayed: GameState[] = scenarios.flatMap((sc) => {
   return out;
 });
 
-const stage = (st: 'take' | 'plant', market?: boolean) => replayed.filter((s) => s.stage === st && (market === undefined || s.market.length > 0 === market));
+const stage = (st: RoundStage, market?: boolean) => replayed.filter((s) => s.stage === st && (market === undefined || s.market.length > 0 === market));
 const sample = <T>(xs: T[], n: number) => xs.filter((_, i) => i % Math.max(1, Math.floor(xs.length / n)) === 0);
 
 function expectLegal(state: GameState, action: Action): void {
@@ -71,6 +71,46 @@ describe('AI 탐색', () => {
     }
   });
 
+  it('일과 고르기 단계에서는 남은 일과 중 하나를 고르고, 일과마다 값을 매긴다', async () => {
+    const states = sample(stage('chore'), 10);
+    expect(states.length).toBeGreaterThan(5);
+    for (const s of states) {
+      const pid = s.currentPlayerId as PlayerId;
+      const { action, depth } = await decideMasked(s, pid);
+      expect(depth).toBe(1);
+      expect(action.type).toBe('PICK_CHORE');
+      if (action.type === 'PICK_CHORE') expect(remainingChores(s)).toContain(action.chore);
+      expectLegal(s, action);
+      const vals = choreValues(maskState(s, pid), pid, remainingChores(s), performance.now() + 10_000);
+      expect(vals).toHaveLength(remainingChores(s).length);
+      for (const v of vals) expect(Number.isFinite(v)).toBe(true);
+    }
+  });
+
+  it('담 넘기·명당 부르기 차례에는 합법인 MOVE·CALL 을 고른다', async () => {
+    const moves = stage('move');
+    const calls = stage('call');
+    expect(moves.length).toBeGreaterThan(0);
+    expect(calls.length).toBeGreaterThan(0);
+    for (const s of [...moves, ...calls]) {
+      const pid = s.currentPlayerId as PlayerId;
+      const { action, depth } = await decideMasked(s, pid);
+      expect(depth).toBe(1);
+      expect(action.type).toBe(s.stage === 'move' ? 'MOVE' : 'CALL');
+      expectLegal(s, action);
+    }
+  });
+
+  it('생선 냄새 차례에는 더미 뒷면을 고르지 않는다(편 카드는 후보)', async () => {
+    const peekTurns = replayed.filter((s) => s.stage === 'take' && s.peek !== null);
+    expect(peekTurns.length).toBeGreaterThan(0);
+    for (const s of peekTurns) {
+      const { action } = await decideMasked(s, s.currentPlayerId as PlayerId);
+      expect(action).not.toMatchObject({ take: 'pile' });
+      expectLegal(s, action);
+    }
+  });
+
   it('기권한 사람이 있는 판에서도 합법 수를 고른다', async () => {
     const after = replayed.filter((s) => s.players.some((p) => p.surrenderedOrder !== null));
     expect(after.length).toBeGreaterThan(0);
@@ -99,7 +139,7 @@ describe('AI 탐색', () => {
   });
 
   it('같은 종 두 장이면 앞 자리를 고르고, 더미가 비면 더미는 후보가 아니다', async () => {
-    const s = stage('take')[0]!;
+    const s = stage('take').filter((x) => x.peek === null)[0]!;
     const pid = s.currentPlayerId as PlayerId;
     const { action } = await decide({ ...s, market: [s.market[0]!, s.market[0]!], pile: [] }, pid, 60_000);
     expect(action).toEqual({ type: 'TAKE', playerId: pid, take: 0 });

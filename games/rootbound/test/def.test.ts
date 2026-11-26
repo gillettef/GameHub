@@ -1,7 +1,7 @@
 /** GameDef 연결: 행동 모양 검사, 좌석별 가림, 거절, 차례 제한 시간·AI 대리, 봇으로 끝까지 */
 import { RuleError, type SeatInfo } from '@gamehub/net'
 import { describe, expect, it } from 'vitest'
-import { AUTOPILOT_LOG_MARK, TIMEOUT_LOG_MARK, legalPlantCells } from '../src/engine'
+import { AUTOPILOT_LOG_MARK, TIMEOUT_LOG_MARK, legalPlantCells, remainingChores, type ChoreId } from '../src/engine'
 import { actorsOf, def, makeDef, parseAction, parseOptions, playerId, type Action, type Options, type Table } from '../src/def'
 
 const ctx = (byBot = false) => ({ name: (i: number) => `${i}`, log: () => {}, byBot })
@@ -17,6 +17,12 @@ function playing(seats: SeatInfo[], options: Partial<Options> = {}): Table {
   return t
 }
 
+/** 일과 고르기 처음이면 펼친 일과를 바꾼다(테스트가 원하는 일과로 차례를 열 때) */
+function offer(t: Table, chores: ChoreId[]): Table {
+  expect(t.game.stage).toBe('chore')
+  return { ...t, game: { ...t.game, choreOffer: chores } }
+}
+
 /** 봇 수(def.bot.next) 하나를 그 좌석으로 둔다 */
 function botMove(t: Table, seat: number): Table {
   const a = def.bot!.next(t, seat, {})
@@ -29,6 +35,13 @@ describe('행동 모양 검사', () => {
     expect(parseAction({ type: 'CONFIRM', playerId: 'p3' })).toEqual({ type: 'CONFIRM' })
     expect(parseAction({ type: 'TAKE', turn: 3, take: 1, extra: 1 })).toEqual({ type: 'TAKE', turn: 3, take: 1 })
     expect(parseAction({ type: 'TAKE', turn: 3, take: 'pile' })).toEqual({ type: 'TAKE', turn: 3, take: 'pile' })
+    expect(parseAction({ type: 'TAKE', turn: 3, take: 'peek' })).toEqual({ type: 'TAKE', turn: 3, take: 'peek' })
+    expect(parseAction({ type: 'PICK_CHORE', turn: 2, chore: 'roam', x: 1 })).toEqual({ type: 'PICK_CHORE', turn: 2, chore: 'roam' })
+    expect(
+      parseAction({ type: 'MOVE', turn: 4, moves: [{ from: { q: 1, r: 0 }, to: { q: 2, r: 0, z: 1 }, count: 2, extra: 1 }, { from: { q: 2, r: 0 }, to: { q: 3, r: 0 }, count: 1 }] }),
+    ).toEqual({ type: 'MOVE', turn: 4, moves: [{ from: { q: 1, r: 0 }, to: { q: 2, r: 0 }, count: 2 }, { from: { q: 2, r: 0 }, to: { q: 3, r: 0 }, count: 1 }] })
+    expect(parseAction({ type: 'CALL', turn: 5, pos: { q: 1, r: 1 }, rotation: 2, take: 1 })).toEqual({ type: 'CALL', turn: 5, pos: { q: 1, r: 1 }, rotation: 2, take: 1 })
+    expect(parseAction({ type: 'CALL', turn: 5, pos: { q: 1, r: 1 } })).toEqual({ type: 'CALL', turn: 5, pos: { q: 1, r: 1 } })
     expect(parseAction({ type: 'PLANT', turn: 1, species: 'oak', pos: { q: 1, r: -2, x: 9 }, rotation: 3, seed: { q: 0, r: 0 } })).toEqual({
       type: 'PLANT',
       turn: 1,
@@ -52,6 +65,18 @@ describe('행동 모양 검사', () => {
       { type: 'PLANT', turn: 1, species: 'oak', pos: { q: 0, r: 0 }, rotation: 6 },
       { type: 'PLANT', turn: 1, species: 'oak', pos: { q: 0, r: 0 }, seed: 'x' },
       { type: 'DISCARD', turn: 1, species: '__proto__' },
+      { type: 'PICK_CHORE', turn: 1, chore: 'nap' },
+      { type: 'PICK_CHORE', chore: 'roam' },
+      { type: 'TAKE', turn: 1, take: 'peeks' },
+      { type: 'MOVE', turn: 1, moves: [] },
+      { type: 'MOVE', turn: 1, moves: 'x' },
+      { type: 'MOVE', turn: 1, moves: [{ from: { q: 0, r: 0 }, to: { q: 1, r: 0 }, count: 3 }] },
+      { type: 'MOVE', turn: 1, moves: [{ from: { q: 0, r: 0 }, to: { q: 1, r: 0 }, count: 0 }] },
+      { type: 'MOVE', turn: 1, moves: [{ from: { q: 0, r: 0 }, count: 1 }] },
+      { type: 'MOVE', turn: 1, moves: [1, 2, 3].map(() => ({ from: { q: 0, r: 0 }, to: { q: 1, r: 0 }, count: 1 })) },
+      { type: 'CALL', turn: 1, pos: { q: 0, r: 0 }, rotation: 7 },
+      { type: 'CALL', turn: 1, pos: { q: 0, r: 0 }, take: -1 },
+      { type: 'CALL', turn: 1 },
     ]) {
       expect(parseAction(bad)).toBeNull()
     }
@@ -106,8 +131,20 @@ describe('좌석이 봐도 되는 것', () => {
     expect(JSON.parse(JSON.stringify(v))).toEqual(v)
   })
 
+  it('펼친 일과·고른 일과는 모두에게 보인다', () => {
+    let t = playing(humans(3))
+    t = def.apply(t, 0, { type: 'PICK_CHORE', turn: t.game.turn, chore: t.game.choreOffer[1]! }, ctx())
+    for (const seat of [0, 1, 2, null]) {
+      const v = def.view(t, seat)
+      expect(v.game.choreOffer).toEqual(t.game.choreOffer)
+      expect(v.game.chores).toEqual(t.game.chores)
+    }
+  })
+
   it('카드 더미에서 가져온 카드는 기록에도 이름이 남지 않는다', () => {
-    const t = playing(humans(2))
+    let t = offer(playing(humans(2)), ['boss', 'roam', 'bread'])
+    t = def.apply(t, 0, { type: 'PICK_CHORE', turn: t.game.turn, chore: 'boss' }, ctx())
+    t = def.apply(t, 1, { type: 'PICK_CHORE', turn: t.game.turn, chore: 'roam' }, ctx())
     const next = def.apply(t, 0, { type: 'TAKE', turn: t.game.turn, take: 'pile' }, ctx())
     const seen = def.view(next, 1)
     const card = next.game.players[0]!.hand.at(-1)!
@@ -158,8 +195,32 @@ describe('차례 제한 시간 (Rules.md 6.3)', () => {
     expect(advance(t, 1000)).toBe(t)
   })
 
+  it('일과 고르기 시간 초과는 남은 첫 일과를 자동으로 고르지만 세지 않는다', () => {
+    let t = offer(playing(humans(2), { turnTime: 60 }), ['bread', 'move', 'call'])
+    t = advance(t, 60_000)
+    expect(t.game.chores[0]).toBe('bread')
+    expect(t.strikes[0]).toBe(0)
+    expect(t.game.currentPlayerId).toBe('p1')
+    expect(t.game.log.some((e) => e.playerId === 'p0' && e.message.includes(TIMEOUT_LOG_MARK))).toBe(true)
+    // 새 차례 번호라 새 시계
+    expect(def.view(t, 1).leftMs).toBe(60_000)
+  })
+
+  it('담 넘기·명당 부르기 시간 초과도 차례를 끝내므로 센다', () => {
+    let t = offer(playing(humans(2), { turnTime: 60 }), ['move', 'bread', 'call'])
+    t = def.apply(t, 0, { type: 'PICK_CHORE', turn: t.game.turn, chore: 'move' }, ctx())
+    t = def.apply(t, 1, { type: 'PICK_CHORE', turn: t.game.turn, chore: 'bread' }, ctx())
+    expect(t.game.stage).toBe('move')
+    t = advance(t, 60_000)
+    expect(t.strikes[0]).toBe(1)
+    expect(t.game.log.some((e) => e.kind === 'move' && e.playerId === 'p0')).toBe(true)
+  })
+
   it('지나면 자동 수, 심기 차례 시간 초과가 2번 이어지면 AI 가 대신 두고, 되찾을 수 있다', () => {
-    let t = playing(humans(2), { turnTime: 60 })
+    let t = offer(playing(humans(2), { turnTime: 60 }), ['boss', 'roam', 'bread'])
+    // 자리 0 은 대장 방울(다음 라운드에도 자리 0 이 선), 자리 1 은 마실
+    t = def.apply(t, 0, { type: 'PICK_CHORE', turn: t.game.turn, chore: 'boss' }, ctx())
+    t = def.apply(t, 1, { type: 'PICK_CHORE', turn: t.game.turn, chore: 'roam' }, ctx())
     // 시계는 차례(가져오기+심기)마다 하나다(옛 서버와 같다): 가져오기에서 시간이 다 되면 자동으로 가져오고, 바로 다음 시계 틱에 심기도 자동
     const timeout = () => {
       const turn = t.game.turn
@@ -179,9 +240,15 @@ describe('차례 제한 시간 (Rules.md 6.3)', () => {
     const me = t.game.players[1]!
     const sp = me.hand.find((s) => legalPlantCells(t.game, 'p1', s).length > 0)!
     t = def.apply(t, 1, { type: 'PLANT', turn: t.game.turn, species: sp, pos: legalPlantCells(t.game, 'p1', sp)[0]! }, ctx())
-    // 다음 라운드의 선은 공급처 큐브 최다: 자리 0 차례가 올 때까지 자리 1 은 직접 둔다
-    for (let i = 0; i < 4 && t.game.currentPlayerId !== 'p0'; i++) t = botMove(t, 1)
+    // 2라운드는 대장 방울을 고른 자리 0 부터: 일과 고르기 시간 초과(세지 않음), 자리 1 은 직접 고른다
+    expect(t.game.round).toBe(2)
     expect(t.game.currentPlayerId).toBe('p0')
+    t = offer(t, ['boss', 'roam', 'bread'])
+    t = advance(t, 60_000)
+    expect(t.strikes[0]).toBe(1)
+    t = def.apply(t, 1, { type: 'PICK_CHORE', turn: t.game.turn, chore: 'roam' }, ctx())
+    expect(t.game.currentPlayerId).toBe('p0')
+    expect(t.game.stage).toBe('take')
     timeout()
     expect(t.strikes[0]).toBe(2)
     expect(t.autopilot).toEqual([0])
@@ -192,11 +259,12 @@ describe('차례 제한 시간 (Rules.md 6.3)', () => {
     expect(t.game.currentPlayerId).toBe('p0')
     expect(t.clock?.mode).toBe('autopilot')
     expect(def.view(t, 0).leftMs).toBeNull()
+    // 3라운드 자리 0 일과 고르기를 AI 가 대신 한다
+    expect(t.game.stage).toBe('chore')
     const turn = t.game.turn
     t = advance(t, 800)
-    expect(t.game.stage).toBe('plant')
-    t = advance(t, 1000)
     expect(t.game.turn).toBe(turn + 1)
+    expect(t.game.chores[0]).not.toBeNull()
     t = def.apply(t, 0, { type: 'RESUME' }, ctx())
     expect(t.autopilot).toEqual([])
     expect(t.strikes[0]).toBe(0)
@@ -207,7 +275,7 @@ describe('차례 제한 시간 (Rules.md 6.3)', () => {
     t = { ...t, strikes: [1, 0] }
     const byBot = botMove(t, 0)
     expect(byBot.strikes[0]).toBe(1)
-    const direct = def.apply(t, 0, { type: 'TAKE', turn: t.game.turn, take: 0 }, ctx())
+    const direct = def.apply(t, 0, { type: 'PICK_CHORE', turn: t.game.turn, chore: remainingChores(t.game)[0]! }, ctx())
     expect(direct.strikes[0]).toBe(0)
   })
 })
@@ -239,8 +307,8 @@ describe('봇', () => {
   it('대리: 자리를 비운 사람 차례면 그 자리가 보는 정보로 AI 가 둔다. 차례가 아니면 null', () => {
     const t = playing(humans(2))
     expect(def.bot!.next(t, 1, {})).toBeNull()
-    expect(def.bot!.next(t, 0, {})).toMatchObject({ type: 'TAKE', turn: t.game.turn })
-    expect(def.bot!.fallback!(t, 0)).toEqual({ type: 'TAKE', turn: t.game.turn, take: 0 })
+    expect(def.bot!.next(t, 0, {})).toMatchObject({ type: 'PICK_CHORE', turn: t.game.turn })
+    expect(def.bot!.fallback!(t, 0)).toEqual({ type: 'PICK_CHORE', turn: t.game.turn, chore: t.game.choreOffer[0] })
   })
 
   it('기권: 차례에 기권하면 다음 사람으로, 둘이면 남은 사람이 이긴다', () => {

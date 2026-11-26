@@ -1,20 +1,31 @@
 import { memo } from 'react';
-import { ENTRANCE_ROOTS, GOAL_COUNT, MAX_PLAYERS, MIN_PLAYERS, RESERVE_BONUS, START_HAND, rulesFor } from '../../engine';
+import { BREAD_BONUS, CALL_BONUS, CHORE_EXTRA, ENTRANCE_ROOTS, GOAL_COUNT, HAND_MAX, MOVE_MAX, MOVE_TIMES, RESERVE_BONUS, ROAM_RANGE, START_HAND, rulesFor } from '../../engine';
+import type { ChoreId } from '../../engine';
+import { choreArtUrl } from '../game/cardImages';
 import { CREW_NAMES } from '../game/derived';
 import styles from './HelpTab.module.css';
 
-/** 인원별로 각자 놓는 횟수 = 이번 판 명당 수 × 개수 ÷ 인원 (Rules.md 4절 6). 같은 횟수끼리 묶는다: "2인 12번, 3·4인 10번" */
-function plantsEachText(): string {
-  const groups: { counts: number[]; times: number }[] = [];
-  for (let n = MIN_PLAYERS; n <= MAX_PLAYERS; n++) {
-    const r = rulesFor(n);
-    const times = (r.gardenSize * r.copies) / n;
+/** 인원별 라운드 수 (Rules.md 5절). 같은 수끼리 묶는다: "2인 12라운드, 3·4인 10라운드" */
+function roundsText(): string {
+  const groups: { counts: number[]; rounds: number }[] = [];
+  for (let n = 2; n <= 4; n++) {
+    const rounds = rulesFor(n).rounds;
     const last = groups[groups.length - 1];
-    if (last && last.times === times) last.counts.push(n);
-    else groups.push({ counts: [n], times });
+    if (last && last.rounds === rounds) last.counts.push(n);
+    else groups.push({ counts: [n], rounds });
   }
-  return groups.map((g) => `${g.counts.join('·')}인 ${g.times}번`).join(', ');
+  return groups.map((g) => `${g.counts.join('·')}인 ${g.rounds}라운드`).join(', ');
 }
+
+/** 일과 6장 표 (submission/rulebook.md "라운드 흐름" 표, 수치는 엔진 상수) */
+const CHORE_ROWS: { id: ChoreId; name: string; place: boolean; text: string }[] = [
+  { id: 'bread', name: '식빵 굽기', place: true, text: `명당 놓기 + 놓은 칸에 오는 고양이 +${BREAD_BONUS}` },
+  { id: 'peek', name: '생선 냄새', place: true, text: '가져오기 전에 주머니 맨 위 1개를 펴고, 펼친 타일 2개와 그 1개 중 하나를 가져와 명당 놓기. 남는 1개는 주머니 맨 위로(주머니에서 뽑기는 못 함)' },
+  { id: 'roam', name: '마실', place: true, text: `명당 놓기. 이번에는 내 칸에서 ${ROAM_RANGE}칸 안의 고양이 없는 빈 칸에도 놓을 수 있음` },
+  { id: 'boss', name: '대장 방울', place: true, text: '명당 놓기. 이 라운드가 끝나면 대장 방울을 가져와 다음 라운드 선' },
+  { id: 'move', name: '담 넘기', place: false, text: `명당을 놓지 않고 ${MOVE_TIMES}번까지: 내 칸 하나에서 고양이 1~${MOVE_MAX}마리를 맞닿은 칸으로 옮김. 남의 칸이면 1마리가 1마리를 쫓아내고 남은 만큼 앉음` },
+  { id: 'call', name: '명당 부르기', place: false, text: `명당을 놓지 않고, 내 영역 위 명당 하나를 원하는 방향으로 돌려 그 모양대로 고양이를 다시 부름(능력 없음, 그 칸 +${CALL_BONUS}). 그다음 펼친 타일 1개를 손에 가져옴` },
+];
 
 /** 4인 덤: 덤을 받는 자리 범위와 점수 (Rules.md 4절 자리 보정). "2~4번 자리가 순서 보너스 1점" */
 function komiText(): string {
@@ -72,10 +83,35 @@ export const HelpTab = memo(function HelpTab() {
         </p>
       </section>
       <section className={styles.section}>
-        <h2 className={styles.h2}>내 차례</h2>
+        <h2 className={styles.h2}>라운드 흐름</h2>
+        <p>
+          한 라운드는 <strong>① 일과 고르기 → ② 선부터 차례대로 두기</strong>입니다. {roundsText()}를 하면 게임이 끝납니다.
+        </p>
         <ol className={styles.steps}>
           <li>
-            <strong>가져오기</strong>: 펼친 타일 {r2.market}개 중 1개를 가져오거나(빈자리는 주머니에서 바로 채움), 주머니에서 1개를 뽑아 나만 봅니다. 손에 타일이 2개가 됩니다.
+            일과 타일 6장을 섞어 <strong>(인원 + {CHORE_EXTRA})장</strong>을 펼칩니다(2인 {2 + CHORE_EXTRA}장, 3인 {3 + CHORE_EXTRA}장).
+          </li>
+          <li>선부터 펼친 일과 중 1장씩 고릅니다. 마지막 1장은 남습니다.</li>
+          <li>선부터 차례대로 자기가 고른 일과대로 차례를 합니다.</li>
+        </ol>
+        <ul className={styles.chores}>
+          {CHORE_ROWS.map((c) => (
+            <li key={c.id}>
+              <img className={styles.choreArt} src={choreArtUrl(c.id)} alt="" width={72} height={50} />
+              <span>
+                <strong>{c.name}</strong> ({c.place ? '놓기' : '놓지 않음'}): {c.text}
+              </span>
+            </li>
+          ))}
+        </ul>
+        <p className={styles.note}>놓지 않는 일과를 할 수 없으면(옮길 고양이·부를 명당이 없음) 그 차례에는 쉽니다. 손에 드는 타일은 최대 {HAND_MAX}개입니다.</p>
+      </section>
+      <section className={styles.section}>
+        <h2 className={styles.h2}>차례 — 명당을 놓는 일과</h2>
+        <p>식빵 굽기·생선 냄새·마실·대장 방울을 고른 사람은 아래 순서로 두고 일과 효과를 더합니다.</p>
+        <ol className={styles.steps}>
+          <li>
+            <strong>가져오기</strong>: 펼친 타일 {r2.market}개 중 1개를 가져오거나(빈자리는 주머니에서 바로 채움), 주머니에서 1개를 뽑아 나만 봅니다(생선 냄새는 펼친 타일 3개 중 1개).
           </li>
           <li>
             <strong>명당 놓기</strong>: 손의 타일 1개를 <strong>내 칸</strong>이나, <strong>내 칸·아지트와 맞닿은 고양이 없는 칸</strong>에 원하는 방향으로 돌려 놓습니다. 남의 고양이가 앉은 칸에는 놓을 수 없습니다(낚시꾼만 예외). 놓을 칸이 하나도 없을 때만 1개를 버립니다.
@@ -99,13 +135,13 @@ export const HelpTab = memo(function HelpTab() {
       <section className={styles.section}>
         <h2 className={styles.h2}>라운드와 선</h2>
         <p>
-          모두 한 차례씩 하면 라운드가 끝납니다. <strong>쉬는 고양이가 가장 많은 사람</strong>(고양이를 가장 적게 내보낸 무리)이 다음 라운드의 선입니다. 같으면 지금 선 다음 자리부터 시계 방향으로 처음 만나는 사람입니다.
+          모두 한 차례씩 하면 라운드가 끝납니다. 이번 라운드에 <strong>대장 방울</strong> 일과를 고른 사람이 다음 라운드 선입니다. 없으면 <strong>쉬는 고양이가 가장 많은 사람</strong>(고양이를 가장 적게 내보낸 무리)이 선입니다. 같으면 지금 선 다음 자리부터 시계 방향으로 처음 만나는 사람입니다.
         </p>
       </section>
       <section className={styles.section}>
         <h2 className={styles.h2}>끝과 점수</h2>
         <ul className={styles.list}>
-          <li>주머니·펼친 타일·모두의 손이 비면 끝납니다({plantsEachText()} 놓기). 패스는 없습니다.</li>
+          <li>{roundsText()}가 끝나면 게임이 끝납니다(주머니·펼친 타일·모두의 손이 먼저 비면 그 라운드 끝에). 손에 남은 타일은 점수와 무관합니다.</li>
           <li>
             점수 = 내 칸 + 소문 카드 {GOAL_COUNT}장 + 캣맘 급식소. "○○ 단골"은 내 영역 위 ○○ 1개당 +{RESERVE_BONUS}점이라, 남이 놓은 명당도 내 고양이로 차지하면 내 점수입니다.
           </li>

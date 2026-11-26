@@ -7,7 +7,7 @@
 export const MIN_PLAYERS = 2;
 export const MAX_PLAYERS = 4;
 
-/** 처음 손에 드는 카드 (Rules.md 4절). 차례마다 1장 가져와 2장 중 1장을 심는다 */
+/** 처음 손에 드는 카드 (Rules.md 4절). 명당을 놓는 차례마다 1장 가져와 손 중 1장을 심는다 */
 export const START_HAND = 1;
 /** 입구 둘레 6칸에 처음 놓는 큐브 */
 export const ENTRANCE_ROOTS = 1;
@@ -34,6 +34,22 @@ export const FLOWER_BONUS = 2;
 export const FOREST_BONUS = 4;
 export const FOREST_MIN_GROUP = 3;
 
+// 골목 일과 (v7, Rules.md 5·10절)
+/** 라운드마다 펼치는 일과 = 기권하지 않은 인원 + 이만큼 */
+export const CHORE_EXTRA = 1;
+/** 손 카드 최대 (명당 부르기로 이보다 많이 가져올 수 없다) */
+export const HAND_MAX = 3;
+/** 식빵 굽기: 심은 칸에 놓는 큐브 + */
+export const BREAD_BONUS = 1;
+/** 명당 부르기: 그 식물 칸에 놓는 큐브 + */
+export const CALL_BONUS = 1;
+/** 담 넘기: 이동 횟수 최대 */
+export const MOVE_TIMES = 2;
+/** 담 넘기: 한 번에 옮기는 큐브 최대 */
+export const MOVE_MAX = 2;
+/** 마실: 내 땅에서 이 거리 안의 빈 칸에도 심는다 */
+export const ROAM_RANGE = 2;
+
 /** 인원별 구성 (Rules.md 4·5·10절) */
 export interface PlayerCountRule {
   /** 이번 판에 쓰는 식물 수 */
@@ -46,12 +62,14 @@ export interface PlayerCountRule {
   supply: number;
   /** 자리별 순서 보너스(덤) */
   komi: number[];
+  /** 라운드 수 (v7, Rules.md 5.4). 이만큼 라운드를 마치면 끝난다 */
+  rounds: number;
 }
 
 export const PLAYER_COUNT_RULES: Record<number, PlayerCountRule> = {
-  2: { gardenSize: 6, copies: 4, market: 2, supply: 16, komi: [0, 0] },
-  3: { gardenSize: 6, copies: 5, market: 2, supply: 18, komi: [0, 0, 0] },
-  4: { gardenSize: 8, copies: 5, market: 2, supply: 16, komi: [0, 1, 1, 1] },
+  2: { gardenSize: 6, copies: 4, market: 2, supply: 16, komi: [0, 0], rounds: 12 },
+  3: { gardenSize: 6, copies: 5, market: 2, supply: 18, komi: [0, 0, 0], rounds: 10 },
+  4: { gardenSize: 8, copies: 5, market: 2, supply: 16, komi: [0, 1, 1, 1], rounds: 10 },
 };
 
 export function rulesFor(players: number): PlayerCountRule {
@@ -77,6 +95,13 @@ export const CONSTANTS = {
   FLOWER_BONUS,
   FOREST_BONUS,
   FOREST_MIN_GROUP,
+  CHORE_EXTRA,
+  HAND_MAX,
+  BREAD_BONUS,
+  CALL_BONUS,
+  MOVE_TIMES,
+  MOVE_MAX,
+  ROAM_RANGE,
 } as const;
 
 // ---------------------------------------------------------------------------

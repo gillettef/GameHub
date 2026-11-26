@@ -1,11 +1,22 @@
 import { describe, expect, it } from 'vitest';
 import { tutorialBotAction } from '../../ai/tutorial';
 import { def } from '../../def';
-import type { GameState } from '../../engine';
-import { START_HAND, applyAction, autoAction, computeScores, legalPlantCells, maskState, rulesFor } from '../../engine';
+import type { ChoreId, GameState, PlayerId } from '../../engine';
+import {
+  START_HAND,
+  applyAction,
+  autoAction,
+  computeScores,
+  legalCallCells,
+  legalMoveSources,
+  legalMoveTargets,
+  legalPlantCells,
+  maskState,
+  rulesFor,
+} from '../../engine';
 import { formatRemaining, localDeadline, turnTimeLabel } from '../lib/turnClock';
 import type { RoomInfo } from '../store/gameStore';
-import { buildCells, buildPlayerSummaries, legalKeys, previewPlant } from './derived';
+import { applyMoves, buildCells, buildPlayerSummaries, choicePick, legalKeys, plantBonus, previewCall, previewMoves, previewPlant, roundStageLabel, stageName } from './derived';
 
 const hotseatPlayerId = (seat: number) => `p${seat}`;
 
@@ -26,19 +37,42 @@ function confirmAllHotseat(state: GameState): { state: GameState; error?: string
   return { state: s };
 }
 
-/** 공개 단계를 모두 확인해 1라운드 가져오기 차례(자리 0)에서 시작한 2인 판 */
+/** 공개 단계를 모두 확인해 1라운드 일과 고르기 차례(자리 0)에서 시작한 2인 판 */
 const twoPlayers = () => confirmAllHotseat(createHotseatGame({ nicknames: ['나', '연습 봇'], seed: 20261007 })).state;
 
-/** 자동 수로 p0 의 심기 차례까지 진행한다 */
-function toPlantStage(start: GameState): GameState {
+/** 일과 고르기 차례에 이 일과를 고른다. 펼친 일과에 없으면 테스트용으로 펼친 일과에 끼워 넣는다 */
+function pick(s: GameState, playerId: PlayerId, chore: ChoreId): GameState {
+  const offered: GameState = s.choreOffer.includes(chore) ? s : { ...s, choreOffer: [chore, ...s.choreOffer] };
+  const r = applyAction(offered, { type: 'PICK_CHORE', playerId, chore });
+  if (r.error) throw new Error(r.error);
+  return r.state;
+}
+
+/** p0 이 chore 를, 나머지는 남은 다른 일과를 고르게 하고 p0 의 차례(일과 단계가 아닌 첫 단계)까지 자동 수로 진행한다 */
+function toMyTurn(start: GameState, chore: ChoreId): GameState {
   let s = start;
-  for (let i = 0; i < 10 && !(s.stage === 'plant' && s.currentPlayerId === 'p0'); i++) s = applyAction(s, autoAction(s, s.currentPlayerId!)!).state;
+  for (let i = 0; i < 400 && !(s.stage !== 'chore' && s.currentPlayerId === 'p0' && s.chores[0] === chore); i++) {
+    if (s.phase !== 'playing') throw new Error('판이 끝남');
+    if (s.stage === 'chore' && s.currentPlayerId === 'p0') s = pick(s, 'p0', chore);
+    else if (s.stage === 'chore') {
+      // 상대는 p0 가 원하는 일과를 남겨 둔다
+      const other = s.choreOffer.find((c) => c !== chore && !s.chores.includes(c))!;
+      s = pick(s, s.currentPlayerId!, other);
+    } else s = applyAction(s, autoAction(s, s.currentPlayerId!)!).state;
+  }
+  return s;
+}
+
+/** 자동 수로 p0 의 심기 차례까지 진행한다 (p0 은 기본으로 식빵 굽기) */
+function toPlantStage(start: GameState, chore: ChoreId = 'bread'): GameState {
+  let s = toMyTurn(start, chore);
+  if (s.stage === 'take') s = applyAction(s, autoAction(s, 'p0')!).state;
   return s;
 }
 
 
 describe('한 기기 판 시작 (def.setup)', () => {
-  it('2~4명이 앉아 모두 준비하면 이번 판 식물 공개 단계가 되고, 한 번에 모두 확인하면 1라운드 가져오기가 시작된다', () => {
+  it('2~4명이 앉아 모두 준비하면 이번 판 식물 공개 단계가 되고, 한 번에 모두 확인하면 1라운드 일과 고르기가 시작된다', () => {
     for (const n of [2, 3, 4]) {
       const s = createHotseatGame({ nicknames: Array.from({ length: n }, (_, i) => `P${i}`), seed: n });
       expect(s.phase).toBe('reveal');
@@ -48,9 +82,13 @@ describe('한 기기 판 시작 (def.setup)', () => {
       const r = confirmAllHotseat(s);
       expect(r.error).toBeUndefined();
       expect(r.state.phase).toBe('playing');
-      expect(r.state.stage).toBe('take');
+      expect(r.state.stage).toBe('chore');
+      expect(r.state.round).toBe(1);
       expect(r.state.currentPlayerId).toBe(hotseatPlayerId(0));
       expect(r.state.market).toHaveLength(rulesFor(n).market);
+      // 펼친 일과 = 인원 + 1장, 아직 아무도 안 고름
+      expect(r.state.choreOffer).toHaveLength(n + 1);
+      expect(r.state.chores.every((c) => c === null)).toBe(true);
     }
     expect(() => createHotseatGame({ nicknames: ['혼자'], seed: 1 })).toThrow();
   });
@@ -75,12 +113,21 @@ describe('튜토리얼 연습 봇', () => {
     expect(s.plants.some((p) => p.ownerId === hotseatPlayerId(1))).toBe(true);
   });
 
-  it('가져오기 차례에는 TAKE, 심기 차례에는 take 없는 PLANT 를 보낸다', () => {
-    const s = twoPlayers();
-    const action = tutorialBotAction(s, s.currentPlayerId!);
+  it('일과 고르기 차례에는 놓는 일과의 PICK_CHORE, 가져오기 차례에는 TAKE, 심기 차례에는 take 없는 PLANT 를 보낸다', () => {
+    let s = twoPlayers();
+    const pickAction = tutorialBotAction(s, s.currentPlayerId!);
+    expect(pickAction?.type).toBe('PICK_CHORE');
+    if (pickAction?.type !== 'PICK_CHORE') throw new Error('일과 고르기가 아님');
+    expect(['bread', 'peek', 'roam', 'boss']).toContain(pickAction.chore);
+    s = applyAction(s, pickAction).state;
+    s = applyAction(s, tutorialBotAction(s, s.currentPlayerId!)!).state;
+    expect(s.stage).toBe('take');
+    expect(s.currentPlayerId).toBe('p0');
+    const action = tutorialBotAction(s, 'p0');
     expect(action?.type).toBe('TAKE');
     expect(applyAction(s, action!).error).toBeUndefined();
-    const plant = toPlantStage(s);
+    const plant = applyAction(s, action!).state;
+    expect(plant.stage).toBe('plant');
     const a2 = tutorialBotAction(plant, 'p0');
     expect(a2?.type).toBe('PLANT');
     expect(a2 && 'take' in a2).toBe(false);
@@ -103,15 +150,76 @@ describe('화면용 파생값', () => {
     expect(keys.size).toBe(legalPlantCells(s, 'p0', me.hand[0]!).length);
   });
 
-  it('미리보기: 심었을 때 점수 변화가 실제 엔진 결과와 같다', () => {
-    const s = toPlantStage(twoPlayers());
-    const action = autoAction(s, 'p0')!;
-    if (action.type !== 'PLANT') throw new Error('심기가 아님');
-    const pv = previewPlant(s, 'p0', action.species, action.pos, action.rotation ?? 0, null)!;
-    const before = computeScores(s);
-    const after = computeScores(applyAction(s, action).state);
-    expect(pv.scoreDelta[0]).toBe(after['p0']!.total - before['p0']!.total);
-    expect(pv.landDelta[0]).toBe(after['p0']!.land - before['p0']!.land);
+  it('미리보기: 심었을 때 점수 변화가 실제 엔진 결과와 같다 (식빵 굽기 +1 포함)', () => {
+    for (const chore of ['roam', 'bread'] as const) {
+      const s = toPlantStage(twoPlayers(), chore);
+      expect(s.stage).toBe('plant');
+      const action = autoAction(s, 'p0')!;
+      if (action.type !== 'PLANT') throw new Error('심기가 아님');
+      expect(plantBonus(s, 'p0')).toBe(chore === 'bread' ? 1 : 0);
+      const pv = previewPlant(s, 'p0', action.species, action.pos, action.rotation ?? 0, null, plantBonus(s, 'p0'))!;
+      const before = computeScores(s);
+      const next = applyAction(s, action).state;
+      const after = computeScores(next);
+      expect(pv.scoreDelta[0]).toBe(after['p0']!.total - before['p0']!.total);
+      expect(pv.landDelta[0]).toBe(after['p0']!.land - before['p0']!.land);
+      // 바뀌는 칸의 고양이 수가 엔진 결과와 같다
+      for (const [key, [, n]] of pv.touched) {
+        const c = s.board!.cells.findIndex((x) => `${x.q},${x.r}` === key);
+        expect(next.rootCount[c]).toBe(n);
+      }
+    }
+  });
+
+  it('마실: 심을 칸이 넓어진다(엔진이 state.chores 로 읽는다)', () => {
+    const s = toPlantStage(twoPlayers(), 'roam');
+    const species = s.players[0]!.hand[0]!;
+    const roam = legalPlantCells(s, 'p0', species);
+    const plain = legalPlantCells({ ...s, chores: s.chores.map(() => null) }, 'p0', species);
+    expect(roam.length).toBeGreaterThan(plain.length);
+    expect(legalKeys(maskState(s, 'p0'), 'p0', species).size).toBe(roam.length);
+  });
+
+  it('담 넘기 미리보기: 두 번 옮긴 결과가 엔진 MOVE 결과와 같고, 두 번째 이동은 첫 이동 뒤 보드 기준이다', () => {
+    const s = toMyTurn(twoPlayers(), 'move');
+    expect(s.stage).toBe('move');
+    const from = legalMoveSources(s, 'p0')[0]!;
+    const to = legalMoveTargets(s, from)[0]!;
+    const first = { from, to, count: 1 };
+    const base = applyMoves(s, 'p0', [first]);
+    const from2 = legalMoveSources(base, 'p0').find((p) => p.q !== from.q || p.r !== from.r)!;
+    const second = { from: from2, to: legalMoveTargets(base, from2)[0]!, count: 1 };
+    const moves = [first, second];
+    const r = applyAction(s, { type: 'MOVE', playerId: 'p0', moves });
+    expect(r.error).toBeUndefined();
+    const pv = previewMoves(maskState(s, 'p0'), 'p0', moves)!;
+    expect(pv.scoreDelta[0]).toBe(computeScores(r.state)['p0']!.total - computeScores(s)['p0']!.total);
+    expect(applyMoves(s, 'p0', moves).rootCount).toEqual(r.state.rootCount);
+  });
+
+  it('명당 부르기 미리보기: 결과가 엔진 CALL 결과와 같다 (그 칸 +1)', () => {
+    // 1라운드에 명당을 놓고, 2라운드에 부른다
+    let s = toPlantStage(twoPlayers(), 'bread');
+    s = applyAction(s, autoAction(s, 'p0')!).state;
+    s = toMyTurn(s, 'call');
+    expect(s.stage).toBe('call');
+    const pos = legalCallCells(s, 'p0')[0]!;
+    const rotation = ((s.plants.find((p) => p.pos.q === pos.q && p.pos.r === pos.r)!.rotation + 1) % 6) as 0 | 1 | 2 | 3 | 4 | 5;
+    const r = applyAction(s, { type: 'CALL', playerId: 'p0', pos, rotation, take: 0 });
+    expect(r.error).toBeUndefined();
+    const pv = previewCall(maskState(s, 'p0'), 'p0', pos, rotation)!;
+    expect(pv.scoreDelta[0]).toBe(computeScores(r.state)['p0']!.total - computeScores(s)['p0']!.total);
+    expect(pv.landDelta[0]).toBe(computeScores(r.state)['p0']!.land - computeScores(s)['p0']!.land);
+  });
+
+  it('단계 이름과 라운드 표기: N/12라운드 · 일과 고르기 · 1번째 선택', () => {
+    const s = twoPlayers();
+    expect(roundStageLabel(s)).toBe(`1/${rulesFor(2).rounds}라운드 · 일과 고르기 · 1번째 선택`);
+    const s2 = pick(s, 'p0', s.choreOffer[0]!);
+    expect(choicePick(s2)).toBe(2);
+    expect(stageName('move')).toBe('담 넘기');
+    expect(stageName('call')).toBe('명당 부르기');
+    expect(stageName('take')).toBe('가져오기');
   });
 
   it('플레이어 요약: 자리 순, 점수 포함, 가려진 손패는 장수만', () => {
@@ -149,13 +257,16 @@ describe('제한 시간 표시 (Rules.md 6.3)', () => {
 });
 
 describe('핫시트 상태 보존 (2026-10-07 리뷰)', () => {
-  it('maskState(null) 을 거쳐 다시 엔진에 넣어도 카드 더미가 남아 끝까지 12번씩 둔다', () => {
+  it('maskState(null) 을 거쳐 다시 엔진에 넣어도 카드 더미가 남아 12라운드를 끝까지 둔다', () => {
     let s = maskState(twoPlayers(), null) as unknown as GameState;
-    for (let i = 0; i < 300 && s.phase !== 'finished'; i++) {
+    for (let i = 0; i < 600 && s.phase !== 'finished'; i++) {
       const a = autoAction(s, s.currentPlayerId!)!;
       s = maskState(applyAction(s, a).state, null) as unknown as GameState;
     }
     expect(s.phase).toBe('finished');
-    expect(s.plants.length + s.log.filter((e) => e.kind === 'discard').length).toBe(24);
+    expect(s.round).toBe(rulesFor(2).rounds);
+    // 놓는 일과 차례마다 놓거나 버렸다(주머니·펼친 타일이 사라지지 않았다)
+    const placeTurns = s.log.filter((e) => e.kind === 'turn' && /· (식빵 굽기|생선 냄새|마실|대장 방울)$/.test(e.message)).length;
+    expect(s.plants.length + s.log.filter((e) => e.kind === 'discard').length).toBe(placeTurns);
   });
 });

@@ -20,6 +20,12 @@ export const selectMe = (s: GameStore): MaskedPlayer | undefined => findMe(s.sta
 /** 내 차례(가져오기·심기 어느 단계든) */
 export const selectIsMyTurn = (s: GameStore): boolean =>
   s.state !== null && s.state.phase === 'playing' && s.state.currentPlayerId === s.viewerId && !s.handoffPending && !s.sending;
+/** 내 일과 고르기 차례 (Rules.md 5.1) */
+export const selectCanPickChore = (s: GameStore): boolean => selectIsMyTurn(s) && s.state?.stage === 'chore';
+/** 내 담 넘기 차례 (Rules.md 5.3) */
+export const selectCanMove = (s: GameStore): boolean => selectIsMyTurn(s) && s.state?.stage === 'move';
+/** 내 명당 부르기 차례 (Rules.md 5.3) */
+export const selectCanCall = (s: GameStore): boolean => selectIsMyTurn(s) && s.state?.stage === 'call';
 /** 내 가져오기 차례 (Rules.md 5절 1) */
 export const selectCanTake = (s: GameStore): boolean => selectIsMyTurn(s) && s.state?.stage === 'take';
 /** 내 심기 차례 (Rules.md 5절 2) */

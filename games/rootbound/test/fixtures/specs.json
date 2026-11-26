@@ -349,7 +349,14 @@
     "FERTILE_BONUS": 2,
     "FLOWER_BONUS": 2,
     "FOREST_BONUS": 4,
-    "FOREST_MIN_GROUP": 3
+    "FOREST_MIN_GROUP": 3,
+    "CHORE_EXTRA": 1,
+    "HAND_MAX": 3,
+    "BREAD_BONUS": 1,
+    "CALL_BONUS": 1,
+    "MOVE_TIMES": 2,
+    "MOVE_MAX": 2,
+    "ROAM_RANGE": 2
   },
   "playerCountRules": {
     "2": {
@@ -360,7 +367,8 @@
       "komi": [
         0,
         0
-      ]
+      ],
+      "rounds": 12
     },
     "3": {
       "gardenSize": 6,
@@ -371,7 +379,8 @@
         0,
         0,
         0
-      ]
+      ],
+      "rounds": 10
     },
     "4": {
       "gardenSize": 8,
@@ -383,7 +392,8 @@
         1,
         1,
         1
-      ]
+      ],
+      "rounds": 10
     }
   },
   "flowerSpecies": [

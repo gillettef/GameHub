@@ -1,28 +1,44 @@
 /**
  * 대국 화면 (docs/refactor-plan.md 5절 배치). 한 기기·온라인·관전이 같은 화면을 쓴다.
  *  ① 상태바: 차례·할 일·남은 시간, ≡ 메뉴(점수·진행·타일·설명 탭, 보기 설정, 효과음, 기권, 나가기)
- *  ② 플레이어: 자리 색·무리 이름·점수·내 칸·쉬는 고양이·선
+ *  ② 플레이어: 자리 색·점수·내 칸·쉬는 고양이·이번 라운드 일과(작은 그림)·선·대장 방울(다음 선)
  *  ③ 보드: 소문 카드 축소판 + 육각 보드 (공개 단계는 이번 판 명당 공개 화면)
- *  ④ 내 영역: 펼친 타일(가져오기) · 내 타일 · 놓기 확인 바(방향·멀리 보내기·예상 결과)
- *  ⑤ 행동: 확인 / 주머니에서 뽑기 / 취소·놓기 / 다시 내가 두기 / 결과
+ *  ④ 내 영역: 일과 고르기 줄 · 펼친 타일(가져오기) · 내 타일 · 놓기 확인 바 · 담 넘기 바 · 명당 부르기 바
+ *  ⑤ 행동: 확인 / 일과 고르기 / 주머니에서 뽑기 / 취소·놓기 / 담 넘기(한 번 더·끝내기) / 부르기 / 다시 내가 두기 / 결과
  * 받은 상태(RoomSnapshot<View>)는 store 에 넣고, 기존 부품(보드·카드·탭)은 store 를 읽는다.
  */
 import type { RoomSnapshot } from '@gamehub/net'
 import { Button, GameShell, PlayerStrip, Sheet, type PlayerChip } from '@gamehub/ui'
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { fromEngine, playerId, type Action, type View } from '../def'
+import { bossSeat, canCallTake, getChore, MOVE_TIMES } from '../engine'
 import { GameModal } from './components/GameModal'
 import { HandoffOverlay } from './components/HandoffOverlay'
 import { TurnEvents } from './components/TurnEvents'
 import { TurnTimer } from './components/TurnTimer'
 import { TutorialCoach } from './components/TutorialCoach'
-import { awaitingConfirm, buildPlayerSummaries, roundStageLabel } from './game/derived'
+import { asState, awaitingConfirm, buildPlayerSummaries, choicePick, choreOf, roundLabel, roundStageLabel, stageDoing } from './game/derived'
+import { choreArtUrl } from './game/cardImages'
 import { boardHint } from './game/hint'
 import { usePlantable } from './game/usePlantable'
 import { useGameCues } from './game/useGameCues'
 import { isNotifyOn, isSoundOn, notifySupported, setNotifyOn, setSoundOn } from './lib/cues'
 import { ResultOverlay } from './pages/ResultOverlay'
-import { findMe, selectCanPlant, selectCanTake, selectIsMyTurn, selectSelectedSpecies, selectState, selectViewerId, TABS, useGameStore, type TabId } from './store/gameStore'
+import {
+  findMe,
+  selectCanCall,
+  selectCanMove,
+  selectCanPickChore,
+  selectCanPlant,
+  selectCanTake,
+  selectIsMyTurn,
+  selectSelectedSpecies,
+  selectState,
+  selectViewerId,
+  TABS,
+  useGameStore,
+  type TabId,
+} from './store/gameStore'
 import { BoardArea, HandArea } from './tabs/BoardTab'
 import { CardsTab } from './tabs/CardsTab'
 import { HelpTab } from './tabs/HelpTab'
@@ -151,22 +167,30 @@ function Table({ room, offline, onAct, onLeave, onNewGame }: { room: RoomSnapsho
   )
 }
 
+/** 내 차례의 할 일 (① 상태바) */
+const MY_TURN_TEXT: Record<string, string> = {
+  chore: '내 차례 · 일과 고르기',
+  take: '내 차례 · 타일 가져오기',
+  plant: '내 차례 · 명당 놓기',
+  move: '내 차례 · 담 넘기',
+  call: '내 차례 · 명당 부르기',
+}
+
 /** ① 지금 누구 차례이고 무엇을 해야 하는지 */
 function Status() {
   const state = useGameStore(selectState)
   const viewerId = useGameStore(selectViewerId)
   const isMyTurn = useGameStore(selectIsMyTurn)
-  const canTake = useGameStore(selectCanTake)
   if (!state) return null
   let text: string
   if (state.phase === 'finished') text = '게임 종료'
   else if (state.phase === 'reveal') {
     const active = state.players.filter((p) => p.surrenderedOrder === null)
     text = awaitingConfirm(state, viewerId) ? '이번 판 명당 확인' : `확인 기다리는 중 ${active.filter((p) => p.isReady).length}/${active.length}`
-  } else if (isMyTurn) text = canTake ? '내 차례 · 타일 가져오기' : '내 차례 · 명당 놓기'
+  } else if (isMyTurn) text = MY_TURN_TEXT[state.stage] ?? '내 차례'
   else {
     const current = state.players.find((p) => p.id === state.currentPlayerId)
-    text = `${current?.nickname ?? ''}의 차례 · ${state.stage === 'take' ? '가져오는 중' : '놓는 중'}`
+    text = `${current?.nickname ?? ''}의 차례 · ${stageDoing(state.stage)}`
   }
   return (
     <span className="flex items-center gap-2">
@@ -185,7 +209,14 @@ function Detail() {
   if (!state) return null
   if (state.phase === 'reveal') return <>이번 판에 나오는 명당과 소문 카드를 보고 확인하세요</>
   const info = state.phase === 'playing' ? `${roundStageLabel(state)} · 주머니 ${state.pileCount}개` : '결과는 ≡ 메뉴 → 점수에서 다시 볼 수 있습니다'
-  return <>{isMyTurn ? boardHint(store, plantable) : info}</>
+  if (state.phase === 'playing' && isMyTurn) {
+    return (
+      <>
+        {roundLabel(state)} · {boardHint(store, plantable)}
+      </>
+    )
+  }
+  return <>{info}</>
 }
 
 /** ② 자리별 요약. 누르면 메뉴(점수 탭)를 연다 */
@@ -197,10 +228,13 @@ function Players({ onSelect }: { onSelect(): void }) {
   const setTab = useGameStore((s) => s.setTab)
   const rows = useMemo(() => (state ? buildPlayerSummaries(state) : []), [state])
   if (!state) return null
+  const boss = state.phase === 'playing' ? bossSeat(state) : null
   const chips: PlayerChip[] = rows.map((r) => {
     const ready = state.players.find((p) => p.id === r.id)?.isReady ?? false
+    const chore = state.phase === 'playing' ? (state.chores[r.seat] ?? null) : null
     const tags = [
       state.phase === 'playing' && r.seat === state.roundStart && !r.surrendered ? '선' : null,
+      boss === r.seat ? '다음 선' : null,
       r.kind === 'ai' ? 'AI' : autopilot?.includes(r.id) ? 'AI 대리' : null,
       r.surrendered ? '기권' : state.phase === 'reveal' ? (ready ? '확인함' : '확인 전') : null,
     ].filter(Boolean)
@@ -210,7 +244,13 @@ function Players({ onSelect }: { onSelect(): void }) {
       color: `var(--color-seat-${r.seat})`,
       score: `${r.score?.total ?? 0}`,
       // 칩이 좁아 무리 이름은 자리 색 점으로 대신하고(점수 탭·결과에 이름), 쉬는 고양이는 줄여 쓴다
-      detail: [`칸 ${r.score?.land ?? 0}`, r.rootsLeft !== null ? `쉬는 ${r.rootsLeft}` : null, ...tags].filter(Boolean).join(' · '),
+      // 이번 라운드에 고른 일과는 작은 그림으로 맨 앞에(이름은 그림의 대체 글자·점수 탭)
+      detail: (
+        <>
+          {chore && <img className="mr-1 inline-block h-3.5 w-5 rounded-sm align-[-2px]" src={choreArtUrl(chore)} alt={getChore(chore).name} title={getChore(chore).name} />}
+          {[`칸 ${r.score?.land ?? 0}`, r.rootsLeft !== null ? `쉬는 ${r.rootsLeft}` : null, ...tags].filter(Boolean).join(' · ')}
+        </>
+      ),
       active: r.isCurrent,
       you: r.id === viewerId,
       offline: r.kind === 'human' && connected !== undefined && !connected.includes(r.id),
@@ -236,8 +276,23 @@ function Actions({ room, onAct, onNewGame }: { room: RoomSnapshot<View>; onAct(a
   const autopilot = useGameStore((s) => s.room?.autopilot)
   const canTake = useGameStore(selectCanTake)
   const canPlant = useGameStore(selectCanPlant)
+  const canPickChore = useGameStore(selectCanPickChore)
+  const canMove = useGameStore(selectCanMove)
+  const canCall = useGameStore(selectCanCall)
   const species = useGameStore(selectSelectedSpecies)
   const pendingPos = useGameStore((s) => s.pendingPos)
+  const pendingChore = useGameStore((s) => s.pendingChore)
+  const confirmChore = useGameStore((s) => s.confirmChore)
+  const moveSteps = useGameStore((s) => s.moveSteps)
+  const moveFrom = useGameStore((s) => s.moveFrom)
+  const moveTo = useGameStore((s) => s.moveTo)
+  const moveAgain = useGameStore((s) => s.moveAgain)
+  const confirmMove = useGameStore((s) => s.confirmMove)
+  const cancelMove = useGameStore((s) => s.cancelMove)
+  const callPos = useGameStore((s) => s.callPos)
+  const callTake = useGameStore((s) => s.callTake)
+  const confirmCall = useGameStore((s) => s.confirmCall)
+  const cancelCall = useGameStore((s) => s.cancelCall)
   const seedPicking = useGameStore((s) => s.seedPicking)
   const resultDismissed = useGameStore((s) => s.resultDismissed)
   const confirmReveal = useGameStore((s) => s.confirmReveal)
@@ -276,7 +331,42 @@ function Actions({ room, onAct, onNewGame }: { room: RoomSnapshot<View>; onAct(a
       </Button>
     )
   }
+  if (canPickChore) {
+    return (
+      <Button tone="primary" disabled={sending || !pendingChore} onClick={confirmChore}>
+        {pendingChore ? `「${getChore(pendingChore).name}」 고르기` : '일과를 누르세요'}
+      </Button>
+    )
+  }
+  if (canMove) {
+    const current = moveFrom && moveTo ? 1 : 0
+    const total = moveSteps.length + current
+    if (total === 0 && !moveFrom) return wait('고양이를 옮길 내 칸(빛나는 칸)을 누르세요')
+    return (
+      <>
+        <Button onClick={cancelMove}>취소</Button>
+        {current > 0 && moveSteps.length + 1 < MOVE_TIMES && <Button onClick={moveAgain}>한 번 더 옮기기</Button>}
+        <Button tone="primary" disabled={sending || total === 0} onClick={confirmMove}>
+          이대로 끝내기
+        </Button>
+      </>
+    )
+  }
+  if (canCall) {
+    if (!callPos) return wait('부를 명당(빛나는 칸)을 누르세요')
+    const mustTake = canCallTake(asState(state), viewerId)
+    return (
+      <>
+        <Button onClick={cancelCall}>취소</Button>
+        <Button tone="primary" disabled={sending || (mustTake && callTake === null)} onClick={confirmCall}>
+          부르기
+        </Button>
+      </>
+    )
+  }
   if (canTake) {
+    // 생선 냄새 차례에는 주머니 대신 펼친 타일 3개 중에서 가져온다
+    if (choreOf(state, viewerId) === 'peek') return wait(state.peek ? '펼친 타일 3개 중 1개를 누르세요' : '펼친 타일에서 고르세요')
     return state.pileCount > 0 ? (
       <Button onClick={() => openCardModal({ kind: 'pile' })}>주머니에서 1개</Button>
     ) : (
@@ -294,6 +384,7 @@ function Actions({ room, onAct, onNewGame }: { room: RoomSnapshot<View>; onAct(a
     )
   }
   if (canPlant) return wait('내 타일을 눌러 고르세요')
+  if (state.stage === 'chore') return wait(`일과 고르는 중 · ${choicePick(state)}번째 선택`)
   return wait(<>상대가 두는 중 · 기다려 주세요</>)
 }
 

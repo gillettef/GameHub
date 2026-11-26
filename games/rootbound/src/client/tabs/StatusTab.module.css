@@ -97,3 +97,22 @@
 .planted {
   color: var(--color-text);
 }
+
+/* 이번 라운드에 고른 일과 (v7): 작은 일과 그림 + 이름 */
+.chore {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--text-micro);
+  color: var(--color-muted);
+}
+
+.chore strong {
+  color: var(--color-heading);
+}
+
+.choreArt {
+  flex: none;
+  width: 40px;
+  aspect-ratio: 630 / 440;
+}
