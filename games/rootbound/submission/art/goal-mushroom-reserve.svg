@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 630 880" role="img" aria-label="소문 카드 — 할머니 단골" font-family="Pretendard, 'Malgun Gothic', sans-serif">
+<title>소문 카드 — 할머니 단골</title>
+<defs><clipPath id="goal-mushroom-reserve-clip"><rect x="8" y="8" width="614" height="864" rx="38"/></clipPath></defs>
+<rect x="4" y="4" width="622" height="872" rx="42" fill="#fffaf0" stroke="#3b2a1c" stroke-width="8"/>
+<g clip-path="url(#goal-mushroom-reserve-clip)">
+<rect x="0" y="0" width="630" height="150" fill="#4f9d5a"/>
+<path d="M0,150 Q80,170 160,150 T320,150 T480,150 T640,150 V0 H0 Z" fill="#4f9d5a"/>
+<path d="M0,150 Q80,170 160,150 T320,150 T480,150 T640,150" fill="none" stroke="#2f6b3a" stroke-width="5"/>
+<g fill="#ffffff" opacity="0.14"><g transform="translate(60,40) scale(2.2)"><ellipse cx="0" cy="2" rx="4" ry="3.4"/><circle cx="-4" cy="-3" r="1.6"/><circle cx="0" cy="-4.6" r="1.6"/><circle cx="4" cy="-3" r="1.6"/></g><g transform="translate(575,112) scale(2.2)"><ellipse cx="0" cy="2" rx="4" ry="3.4"/><circle cx="-4" cy="-3" r="1.6"/><circle cx="0" cy="-4.6" r="1.6"/><circle cx="4" cy="-3" r="1.6"/></g><g transform="translate(520,30) scale(2.2)"><ellipse cx="0" cy="2" rx="4" ry="3.4"/><circle cx="-4" cy="-3" r="1.6"/><circle cx="0" cy="-4.6" r="1.6"/><circle cx="4" cy="-3" r="1.6"/></g></g>
+</g>
+<g><rect x="34" y="28" width="92" height="36" rx="18" fill="#fffaf0" stroke="#3b2a1c" stroke-width="3"/><text x="80" y="55" font-size="23" text-anchor="middle" font-weight="900" fill="#2f6b3a" font-family="Pretendard, 'Malgun Gothic', sans-serif">단골</text></g>
+<text x="315" y="120" font-size="64" text-anchor="middle" font-weight="900" fill="#ffffff" font-family="Pretendard, 'Malgun Gothic', sans-serif" stroke="#2f6b3a" stroke-width="3" paint-order="stroke">할머니 단골</text>
+<defs><clipPath id="goal-mushroom-reserve-art"><rect x="24" y="186" width="582" height="390" rx="20"/></clipPath></defs>
+<g data-art="1" clip-path="url(#goal-mushroom-reserve-art)"><g transform="translate(315,384) scale(0.86) translate(-315,-360)"><polygon points="444.9,285 444.9,435 315,510 185.1,435 185.1,285 315,210" fill="#efe2cf" stroke="#3b2a1c" stroke-width="6" stroke-linejoin="round"/><polygon points="432.78,292 432.78,428 315,496 197.22,428 197.22,292 315,224" fill="none" stroke="#fffaf0" stroke-width="4" stroke-dasharray="12 8"/><g transform="translate(315,364) scale(2.7)">
+<ellipse cx="2" cy="22" rx="38" ry="3.5" fill="#3a2a17" opacity="0.15"/>
+<path d="M-14,22 V16 M-4,22 V16" stroke="#3b2a1c" stroke-width="4" stroke-linecap="round"/>
+<path d="M-24,18 C-26,2 -20,-4 -9,-4 C2,-4 8,2 6,18 Z" fill="#a77fb5" stroke="#3b2a1c" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M-17,-1 C-18,8 -16,14 -15,18 H-3 C-2,14 0,8 -1,-1 Z" fill="#fff8ec" stroke="#3b2a1c" stroke-width="1.4"/>
+<circle cx="-9" cy="-12" r="8.2" fill="#f2c9a0" stroke="#3b2a1c" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M-17.5,-12 Q-18,-21 -9,-21 Q0,-21 -0.5,-12 Q-3,-17 -9,-17 Q-15,-17 -17.5,-12 Z" fill="#d6d6de" stroke="#3b2a1c" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="-9" cy="-23.5" r="4.2" fill="#d6d6de" stroke="#3b2a1c" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="-12.4" cy="-11" r="2.6" fill="#fff" stroke="#3b2a1c" stroke-width="1.2"/><circle cx="-5.6" cy="-11" r="2.6" fill="#fff" stroke="#3b2a1c" stroke-width="1.2"/><path d="M-9.8,-11 h1.6" stroke="#3b2a1c" stroke-width="1.2"/>
+<path d="M-15,-15.5 l4,1.2 M-3,-15.5 l-4,1.2" stroke="#3b2a1c" stroke-width="1.4" stroke-linecap="round"/>
+<path d="M-12,-5.5 q3,-1.6 6,0" stroke="#3b2a1c" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+<path d="M2,2 L14,-6" stroke="#3b2a1c" stroke-width="4.5" stroke-linecap="round"/>
+<path d="M30,-26 L14,10" stroke="#8a5a2e" stroke-width="3.6" stroke-linecap="round"/>
+<circle cx="15" cy="-6" r="3.2" fill="#f2c9a0" stroke="#3b2a1c" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M15,6 L4,22 L26,24 L20,9 Z" fill="#e3c25e" stroke="#3b2a1c" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M14,10 L8,22 M17,11 L14,23 M19,11 L20,23" stroke="#a8862a" stroke-width="1.2"/>
+<path d="M14,10 L20,11" stroke="#c0392b" stroke-width="2.4"/>
+<path d="M34,-2 h8 M32,4 h10 M35,10 h6" stroke="#3b2a1c" stroke-width="1.5" stroke-linecap="round" opacity="0.6"/></g></g></g>
+<rect x="40" y="590" width="550" height="130" rx="24" fill="#f6ead6"/>
+<text x="315" y="642" font-size="42" text-anchor="middle" font-weight="700" fill="#3b2a1c" font-family="Pretendard, 'Malgun Gothic', sans-serif">내 영역 위</text>
+<text x="315" y="698" font-size="42" text-anchor="middle" font-weight="700" fill="#3b2a1c" font-family="Pretendard, 'Malgun Gothic', sans-serif">빗자루 할머니 1개당</text>
+<text x="315" y="848" font-size="110" text-anchor="middle" font-weight="900" fill="#4f9d5a" font-family="Pretendard, 'Malgun Gothic', sans-serif" stroke="#3b2a1c" stroke-width="3" paint-order="stroke">+2</text>
+</svg>

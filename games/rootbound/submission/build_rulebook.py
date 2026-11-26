@@ -45,7 +45,8 @@ hr { display: none; }
 .fig { text-align:center; margin: 2.5mm 0; break-inside: avoid; }
 .fig svg { max-width: 100%; height: auto; }
 .fig .cap { font-size: 8.5pt; color:#7a6a55; margin-top: .5mm; }
-.fig.cover svg { width: 150mm; }
+.fig.cover svg { width: 160mm; height: auto; }
+.fig.table2 svg { width: 150mm; }
 .fig.components svg { width: 175mm; }
 .fig.terrain svg { width: 120mm; }
 .fig.setup svg { width: 165mm; }
@@ -60,6 +61,7 @@ strong { color: #6a3410; }
 
 CAPTIONS = {
     "cover": "",
+    "table2": "게임 진행 모습 (2인, 치즈냥·턱시도냥)",
     "components": "그림 1. 구성물",
     "terrain": "그림 2. 지형 4종과 아지트",
     "setup": "그림 3. 처음 배치 (아지트 둘레 6칸에 고양이 1마리씩)",
