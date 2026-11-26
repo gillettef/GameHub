@@ -45,6 +45,8 @@ function parseRoute(url) {
  */
 export async function createHub({ games, gamesDir, publicDir = path.join(here, 'public'), upstreamHost = '127.0.0.1', log = console.log }) {
   const bySlug = new Map(games.map((g) => [g.slug, g]));
+  // 옛 slug → 게임 (games.json 의 "aliases"). 이름을 바꾼 게임의 옛 주소를 새 주소로 영구 이동시킨다
+  const byAlias = new Map(games.flatMap((g) => (g.aliases ?? []).map((a) => [a, g])));
   /** slug → { mode: 'inproc'|'proxy'|'down', mounted?, serveStatic?, error? } */
   const runtime = new Map();
 
@@ -85,7 +87,7 @@ export async function createHub({ games, gamesDir, publicDir = path.join(here, '
     const p = req.url.split('?')[0];
     if (p === '/api/games') {
       res.writeHead(200, { 'content-type': MIME['.json'] });
-      return res.end(JSON.stringify(games.map(({ port, mode, entry, ...pub }) => pub)));
+      return res.end(JSON.stringify(games.map(({ port, mode, entry, aliases, ...pub }) => pub)));
     }
     if (p === '/healthz') return res.end('ok');
     // 운영 점검용(메모리·게임별 실행 방식). 서버 안에서만 본다
@@ -141,7 +143,15 @@ export async function createHub({ games, gamesDir, publicDir = path.join(here, '
   const server = http.createServer((req, res) => {
     const r = parseRoute(req.url);
     const game = r && bySlug.get(r.slug);
-    if (!game) return serveLobby(req, res);
+    if (!game) {
+      const moved = r && byAlias.get(r.slug);
+      if (moved) { // /rootbound/x?y → /nyangalley/x?y
+        const tail = req.url.slice(r.slug.length + 1);
+        res.writeHead(301, { location: `/${moved.slug}${tail.startsWith('/') ? tail : `/${tail}`}` });
+        return res.end();
+      }
+      return serveLobby(req, res);
+    }
     if (r.bare) { // /tesseract → /tesseract/ (상대 경로가 올바르게 풀리도록)
       res.writeHead(308, { location: `/${game.slug}/${req.url.slice(game.slug.length + 1)}` });
       return res.end();

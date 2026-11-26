@@ -38,7 +38,7 @@ jobs:
           BEFORE: ${{ github.event.before }}
           SHA: ${{ github.sha }}
         run: |
-          ALL="hub blackcrown crease doubleagent election eleven hearsay lastgrain lightcone magicacademy neoterra proxymind retrocause rootbound sightline smilepark tesseract"
+          ALL="hub blackcrown crease doubleagent election eleven hearsay lastgrain lightcone magicacademy neoterra proxymind retrocause nyangalley sightline smilepark tesseract"
           if [ "$EVENT" = "workflow_dispatch" ]; then
             if [ "$INPUT" = "all" ]; then T="$ALL"; else T="$INPUT"; fi
           elif [ -z "$BEFORE" ] || [ "$BEFORE" = "0000000000000000000000000000000000000000" ] || ! git cat-file -e "$BEFORE" 2>/dev/null; then
@@ -131,14 +131,14 @@ jobs:
     uses: ./.github/workflows/deploy-retrocause.yml
     secrets: inherit
 
-  rootbound:
+  nyangalley:
     needs: [changes, retrocause]
-    if: ${{ !cancelled() && contains(needs.changes.outputs.targets, ' rootbound ') }}
-    uses: ./.github/workflows/deploy-rootbound.yml
+    if: ${{ !cancelled() && contains(needs.changes.outputs.targets, ' nyangalley ') }}
+    uses: ./.github/workflows/deploy-nyangalley.yml
     secrets: inherit
 
   sightline:
-    needs: [changes, rootbound]
+    needs: [changes, nyangalley]
     if: ${{ !cancelled() && contains(needs.changes.outputs.targets, ' sightline ') }}
     uses: ./.github/workflows/deploy-sightline.yml
     secrets: inherit
