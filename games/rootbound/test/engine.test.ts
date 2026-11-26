@@ -307,9 +307,29 @@ describe('뿌리 큐브 (Rules.md 6.2·7절)', () => {
     // 내 큐브가 전부 지금 놓는 칸에 있으면 더 못 놓는다
     const u = flatState([], [[2, 2, 0, lim]]);
     const v = plantRoots({ ...u, plants: [{ id: 'x', species: 'oak', ownerId: 'p0', pos: { q: 2, r: 2 }, rotation: 0 }] }, 'p0', 'oak', { q: 2, r: 2 }, 0);
-    // 심은 칸 2 → 공급처 0, 옮길 다른 칸 없음 → 그대로. 양옆 2 → (2,2) 에서 옮겨 온다
+    // 2026-11-26 두 단계 놓기: 이번 차례에 큐브를 받는 칸((2,2) 포함)에서는 옮겨 오지 않는다 → 양옆에도 못 놓는다
     expect(cubesOnBoard({ ...u, ...v })[0]).toBe(lim);
-    expect(at({ ...u, ...v }, 3, 2)).toEqual([0, 2]);
+    expect(at({ ...u, ...v }, 2, 2)).toEqual([0, lim]);
+    expect(at({ ...u, ...v }, 3, 2)).toEqual([-1, 0]);
+    expect(v.uprooted).toEqual([]);
+  });
+
+  it('걷어 내기를 먼저 모두 하고, 이번 차례에 큐브를 받는 칸에서는 옮겨 오지 않는다', () => {
+    const lim = rulesFor(2).supply;
+    // 내 큐브: (3,2) 에 lim−1, (5,2) 에 1 → 공급처 0. 남의 큐브 1개가 (1,2).
+    const s = flatState([], [
+      [3, 2, 0, lim - 1],
+      [5, 2, 0, 1],
+      [1, 2, 1, 1],
+    ]);
+    // 참나무 (2,2) 회전 0: 심은 칸 2, (3,2) 2, (1,2) 2.
+    // 1단계: (1,2) 남의 큐브 1개 걷기 → 남은 뿌리 1. 2단계: 놓을 뿌리 2+2+1 = 5, 공급처 0.
+    // 받는 칸 (2,2)·(3,2)·(1,2) 는 빼고 옮겨 온다 → (5,2) 에서 1개뿐 → 심은 칸에 1개만 놓인다
+    const t = grow(s, 'p0', 'oak', 2, 2);
+    expect(at(t, 1, 2)).toEqual([-1, 0]);
+    expect(at(t, 5, 2)).toEqual([-1, 0]);
+    expect(at(t, 2, 2)).toEqual([0, 1]);
+    expect(at(t, 3, 2)).toEqual([0, lim - 1]);
   });
 
   it('버섯: 맞닿은 6칸의 남의 큐브 2개씩 걷어낸다, 내 큐브는 그대로', () => {

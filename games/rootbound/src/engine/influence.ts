@@ -180,16 +180,16 @@ function setCount(b: RootBuffer, c: number, seat: number, v: number): void {
 }
 
 /**
- * 공급처에서 k 개를 쓸 수 있게 한다. 모자라면 가장 높이 쌓인 내 다른 칸(except 제외)에서 하나씩 옮겨 온다.
+ * 공급처에서 k 개를 쓸 수 있게 한다. 모자라면 가장 높이 쌓인 내 다른 칸(except 에 든 칸 제외)에서 하나씩 옮겨 온다.
  * 높이가 같으면 식물이 없는 칸 → 칸 순서. 실제로 쓸 수 있는 개수를 돌려준다
  */
-function reserve(b: RootBuffer, seat: number, k: number, except: number, limit: number, occ: Occupancy): number {
+function reserve(b: RootBuffer, seat: number, k: number, except: ReadonlySet<number>, limit: number, occ: Occupancy): number {
   let avail = limit - (b.onBoard[seat] as number);
   while (avail < k) {
     let best = -1;
     let bv = 0;
     for (let x = 0; x < b.count.length; x++) {
-      if (x === except || b.seat[x] !== seat) continue;
+      if (except.has(x) || b.seat[x] !== seat) continue;
       const v = b.count[x] as number;
       if (v > bv || (v === bv && v > 0 && best >= 0 && occ.plantIndex[best] !== -1 && occ.plantIndex[x] === -1)) {
         bv = v;
@@ -204,24 +204,36 @@ function reserve(b: RootBuffer, seat: number, k: number, except: number, limit: 
   return Math.max(0, Math.min(k, avail));
 }
 
-function addRoots(b: RootBuffer, c: number, seat: number, k: number, limit: number, occ: Occupancy): void {
-  if (k <= 0) return;
-  const h = (b.count[c] as number) > 0 ? (b.seat[c] as number) : -1;
-  if (h === -1 || h === seat) {
-    const cur = h === seat ? (b.count[c] as number) : 0;
-    const add = reserve(b, seat, k, c, limit, occ);
-    if (add > 0) setCount(b, c, seat, cur + add);
-    return;
+/**
+ * 뿌리 한 묶음을 놓는다 (Rules.md 6.2, 2026-11-26 두 단계로 바꿈).
+ * 1단계: 남의 큐브가 있는 칸마다 뿌리 수만큼 남의 큐브를 걷어 낸다(공급처 불필요). 남은 뿌리만 다음 단계로.
+ * 2단계: 남은 뿌리 합만큼 공급처에서 놓는다. 모자라면 이번 차례에 큐브를 받는 칸을 뺀 내 칸 중 가장 높은 칸에서 옮겨 온다.
+ *        옮겨 올 칸도 없으면 묶음 순서(심은 칸 먼저)대로 채우고 남는 뿌리는 버린다.
+ * received: 이번 차례에 이미 큐브를 받은 칸(옮겨 오지 않는다). 이번 묶음에서 받는 칸을 더한다
+ */
+function placeRoots(b: RootBuffer, targets: readonly { cell: number; n: number }[], seat: number, limit: number, occ: Occupancy, received: Set<number>): void {
+  const rest: { cell: number; n: number }[] = [];
+  for (const t of targets) {
+    if (t.n <= 0) continue;
+    const h = (b.count[t.cell] as number) > 0 ? (b.seat[t.cell] as number) : -1;
+    if (h === -1 || h === seat) {
+      rest.push(t);
+      continue;
+    }
+    const m = b.count[t.cell] as number;
+    setCount(b, t.cell, h, Math.max(0, m - t.n));
+    if (t.n > m) rest.push({ cell: t.cell, n: t.n - m });
   }
-  const m = b.count[c] as number;
-  if (k < m) {
-    setCount(b, c, h, m - k);
-    return;
+  for (const t of rest) received.add(t.cell);
+  const need = rest.reduce((a, t) => a + t.n, 0);
+  let avail = reserve(b, seat, need, received, limit, occ);
+  for (const t of rest) {
+    const k = Math.min(t.n, avail);
+    if (k <= 0) break;
+    const cur = b.seat[t.cell] === seat ? (b.count[t.cell] as number) : 0;
+    setCount(b, t.cell, seat, cur + k);
+    avail -= k;
   }
-  setCount(b, c, h, 0);
-  const rem = k - m;
-  const add = rem > 0 ? reserve(b, seat, rem, c, limit, occ) : 0;
-  if (add > 0) setCount(b, c, seat, add);
 }
 
 function wither(b: RootBuffer, c: number, seat: number, k: number): void {
@@ -237,7 +249,8 @@ export function entranceRoots(state: Pick<GameState, 'board' | 'plants' | 'playe
   const b = buffer(state);
   const limit = rulesFor(state.players.length).supply;
   board.entrances.forEach((e, seat) => {
-    for (const x of idx.ring1[idx.indexOf(e)] as number[]) if (canHoldRoots(idx, occ, x)) addRoots(b, x, seat, ENTRANCE_ROOTS, limit, occ);
+    const ring = (idx.ring1[idx.indexOf(e)] as number[]).filter((x) => canHoldRoots(idx, occ, x)).map((cell) => ({ cell, n: ENTRANCE_ROOTS }));
+    placeRoots(b, ring, seat, limit, occ, new Set());
   });
   return { rootSeat: b.seat, rootCount: b.count };
 }
@@ -251,7 +264,7 @@ export interface PlantResult {
 
 /**
  * 심기의 큐브 결과 (Rules.md 6.2·7절). state.plants 에는 이미 이 식물이 들어 있어야 한다(옮겨 올 칸 고르기에 쓴다).
- * 순서: 뿌리 모양(심은 칸 먼저, 카드 순서) → 버섯 걷어내기 → 민들레 씨앗.
+ * 순서: 뿌리 모양(걷어 내기 → 놓기, placeRoots) → 버섯 걷어내기 → 민들레 씨앗(걷어 내기 → 놓기).
  */
 export function plantRoots(
   state: Pick<GameState, 'board' | 'plants' | 'players' | 'rootSeat' | 'rootCount'>,
@@ -269,12 +282,13 @@ export function plantRoots(
   const sp = getSpecies(species);
   const limit = rulesFor(state.players.length).supply;
   const b = buffer(state);
-  for (const t of targetsOn(idx, occ, species, pos, rotation)) addRoots(b, t.cell, seat, t.n, limit, occ);
+  const received = new Set<number>();
+  placeRoots(b, targetsOn(idx, occ, species, pos, rotation), seat, limit, occ, received);
   const c = idx.indexOf(pos);
   if (sp.wither) for (const x of idx.ring1[c] as number[]) if (canHoldRoots(idx, occ, x)) wither(b, x, seat, sp.wither);
   if (sp.seed && seed) {
     const x = idx.indexOf(seed);
-    if (x >= 0 && canHoldRoots(idx, occ, x)) addRoots(b, x, seat, sp.seed, limit, occ);
+    if (x >= 0 && canHoldRoots(idx, occ, x)) placeRoots(b, [{ cell: x, n: sp.seed }], seat, limit, occ, received);
   }
   return { rootSeat: b.seat, rootCount: b.count, uprooted: b.uprooted };
 }
