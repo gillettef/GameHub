@@ -13,6 +13,6 @@
   { "slug": "lastgrain",    "name": "라스트그레인", "port": 8104, "players": "2인",   "tagline": "수명이 붙은 모래병 전술", "online": true, "bot": true, "mode": "inproc" },
   { "slug": "lightcone",    "name": "라이트콘",     "port": 8099, "players": "2인",   "tagline": "빛의 속도 지연 성간 대결", "online": true, "bot": true, "mode": "inproc" },
   { "slug": "retrocause",   "name": "레트로코즈",   "port": 8100, "players": "3~5인", "tagline": "결말에서 시작하는 역인과 추리", "online": true, "bot": true, "mode": "inproc" },
-  { "slug": "blackcrown",   "name": "마왕의 패",    "port": 8106, "players": "3~5인", "tagline": "결말에 검은 왕관이 내리는 카드 족보 RPG", "online": true, "bot": true, "mode": "inproc" },
+  { "slug": "blackcrown",   "name": "검은 왕관",    "port": 8106, "players": "3~5인", "tagline": "결말이 뒤집히는 카드 족보 RPG", "online": true, "bot": true, "mode": "inproc" },
   { "slug": "sightline",    "name": "사이트라인",   "port": 8102, "players": "3~4인", "tagline": "앉은 자리가 곧 시야", "online": true, "bot": true, "mode": "inproc" }
 ]
