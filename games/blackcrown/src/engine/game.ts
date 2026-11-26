@@ -96,6 +96,8 @@ export interface PendingAttack {
   cards: number[]
   assists: { seat: number; cards: number[] }[]
   waiting: number[]
+  /** 지금까지 낸 카드(공개 정보, 화면 미리보기용) */
+  shown: { owner: number; card: Card }[]
 }
 
 export interface Demon {
@@ -603,7 +605,11 @@ function coronate(s: State, ctx: Ctx) {
     p.purifyUsed = false
     p.mirrorUsed = false
   }
-  for (const t of s.board) t.revealed = true
+  for (const t of s.board) {
+    t.revealed = true
+    delete t.monster
+    if (t.kind === 'monster' || t.kind === 'boss') t.kind = 'empty'
+  }
   ctx.log(`대관식 — 검은 왕관이 ${ctx.name(king.seat)}에게 내려앉았습니다! (판정 ${king.total}점, 그림자 ${king.shadow})`, 'crown')
   ctx.log(`마왕 체력 ${hp}. 묘지의 카드 ${s.demon.deck.length}장이 마왕의 덱이 되었습니다. 연합 금고 ${s.treasury}골드.`, 'crown')
   dealCommunity(s, ctx)
@@ -741,11 +747,7 @@ export function previewAttack(s: State, seat: number, target: number, cards: rea
   }
   if (s.attack && s.attack.attacker !== seat) {
     const atk = player(s, s.attack.attacker)
-    const prior: Played[] = [
-      ...s.attack.cards.map((id) => ({ owner: atk.seat, card: atk.hand.find((h) => h.id === id) as Card })),
-      ...s.attack.assists.flatMap((a) => a.cards.map((id) => ({ owner: a.seat, card: player(s, a.seat).hand.find((h) => h.id === id) as Card }))),
-    ]
-    const all = [...prior, ...played]
+    const all = [...collectPlayed(s, s.attack), ...played]
     const hand = evaluate(s, atk, all, s.attack.target)
     if (!hand) return null
     const { damage, blocked } = damageOf(s, atk, hand, s.attack.target)
@@ -821,7 +823,7 @@ function startAttack(s: State, p: Player, a: { target: number; cards: number[] }
     : s.players
         .filter((q) => q.seat !== p.seat && !q.out && !isDemon(s, q.seat) && q.reserve > 0 && q.hand.length > 0 && dist(q.pos, pos) <= 1)
         .map((q) => q.seat)
-  s.attack = { attacker: p.seat, target: a.target, cards: [...a.cards], assists: [], waiting }
+  s.attack = { attacker: p.seat, target: a.target, cards: [...a.cards], assists: [], waiting, shown: played.map((x) => ({ owner: x.owner, card: { ...x.card } })) }
   if (waiting.length === 0) resolveAttack(s, ctx)
 }
 
@@ -839,21 +841,15 @@ function assist(s: State, seat: number, cards: number[] | null, ctx: Ctx) {
     if (!evaluate(s, atk, all, at.target)) throw new IllegalAction('합친 카드가 족보를 이루지 않습니다.')
     p.reserve--
     at.assists.push({ seat, cards: [...cards] })
+    for (const id of cards) at.shown.push({ owner: seat, card: { ...(p.hand.find((c) => c.id === id) as Card) } })
     ctx.log(`${ctx.name(seat)} 협공!`)
   }
   at.waiting = at.waiting.filter((x) => x !== seat)
   if (at.waiting.length === 0) resolveAttack(s, ctx)
 }
 
-function collectPlayed(s: State, at: PendingAttack): Played[] {
-  const out: Played[] = []
-  const atk = player(s, at.attacker)
-  for (const id of at.cards) out.push({ owner: atk.seat, card: atk.hand.find((c) => c.id === id) as Card })
-  for (const a of at.assists) {
-    const q = player(s, a.seat)
-    for (const id of a.cards) out.push({ owner: q.seat, card: q.hand.find((c) => c.id === id) as Card })
-  }
-  return out
+function collectPlayed(_s: State, at: PendingAttack): Played[] {
+  return at.shown.map((x) => ({ owner: x.owner, card: x.card }))
 }
 
 function resolveAttack(s: State, ctx: Ctx) {
@@ -1373,6 +1369,32 @@ export function demonRange(_s: State, king: Player): number {
   return 1 + (king.cls === 'hunter' ? 1 : 0) + (has(king, 'longbow') ? 1 : 0)
 }
 
+function smiteDamage(king: Player, hand: HandResult): number {
+  const mult = hand.cat === Cat.Flush || hand.cat === Cat.StraightFlush ? 3 : 1
+  let dmg = power(hand.cat, hand.pattern) + suitCount(hand, 'blade') * mult
+  if (hasCurse(king, 'hungryBlade')) dmg += 6
+  if (hand.cat === Cat.High && has(king, 'twinBlades')) dmg *= 2
+  if (has(king, 'heroSword')) dmg += 1
+  return dmg
+}
+
+/** 마왕 광역 공격 미리보기 */
+export function previewSmite(s: State, seat: number, cards: readonly number[]): { hand: HandResult; damage: number; targets: number[] } | null {
+  const king = s.players[seat]
+  if (!king || !isDemon(s, seat) || cards.length === 0 || cards.length > 5) return null
+  const played: Played[] = []
+  for (const id of cards) {
+    const c = king.hand.find((h) => h.id === id)
+    if (!c) return null
+    played.push({ owner: seat, card: c })
+  }
+  const hand = evaluate(s, king, played, -1)
+  if (!hand) return null
+  const range = demonRange(s, king)
+  const targets = coalition(s).filter((q) => !q.out && dist(q.pos, king.pos) <= range).map((q) => q.seat)
+  return { hand, damage: smiteDamage(king, hand), targets }
+}
+
 function smite(s: State, king: Player, cards: number[], ctx: Ctx) {
   if (!s.demon || !isDemon(s, king.seat)) throw new IllegalAction('마왕만 쓸 수 있습니다.')
   checkInHand(king, cards)
@@ -1384,11 +1406,8 @@ function smite(s: State, king: Player, cards: number[], ctx: Ctx) {
   const hand = evaluate(s, king, played, -1)
   if (!hand) throw new IllegalAction('족보를 이루지 않는 카드가 섞여 있습니다.')
   spend(s)
+  const dmg = smiteDamage(king, hand)
   const mult = hand.cat === Cat.Flush || hand.cat === Cat.StraightFlush ? 3 : 1
-  let dmg = power(hand.cat, hand.pattern) + suitCount(hand, 'blade') * mult
-  if (hasCurse(king, 'hungryBlade')) dmg += 6
-  if (hand.cat === Cat.High && has(king, 'twinBlades')) dmg *= 2
-  if (has(king, 'heroSword')) dmg += 1
   takeFromHand(king, cards)
   for (const x of played) {
     if (x.card.suit === null) s.shadowFree.push(x.card.id)
