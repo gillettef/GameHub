@@ -3,7 +3,8 @@ import { useMemo, useState } from 'react'
 import type { Action } from '../engine/game'
 import { CLASSES, ITEMS, MONSTERS, RITUALS, SUIT_NAMES, TILE_NAMES, type ItemId, type RitualId } from '../engine/data'
 import { Cat, HAND_NAMES, HAND_POKER, SUITS, type HandResult, type Suit } from '../engine/hands'
-import { attackRange, dist, pendingDamage, previewAttack, previewSmite, price, type Card, type View } from '../engine/game'
+import { attackRange, dist, pendingDamage, previewAttack, previewSmite, price, pushChoices, type Card, type View } from '../engine/game'
+import { faceOf } from '../engine/board'
 import { CardView, HpBar, Ico, Pawn } from './ui'
 import { asState } from './helpers'
 
@@ -363,11 +364,22 @@ export function HereSheet({ view, me, canAct, onAct, onAttack, onClose }: { view
         <section className="bcx-section">
           <h4>밀쳐내기</h4>
           <div className="bcx-btnrow">
-            {pushable.map((q) => (
-              <button key={q.seat} type="button" className="bc-btn bc-btn--umbra" disabled={tokens < 1 || view.demon?.chained} onClick={() => act({ type: 'push', target: q.seat })}>
-                {q.seat + 1}번 밀치기 <Cost n={1} />
-              </button>
-            ))}
+            {pushable.flatMap((q) => {
+              const off = tokens < 1 || !!view.demon?.chained
+              const choices = pushChoices(view, p.pos, q.pos)
+              // 갈 칸이 여럿이면 마왕이 고른다(docs/design.md 13-1)
+              if (choices.length <= 1)
+                return [
+                  <button key={q.seat} type="button" className="bc-btn bc-btn--umbra" disabled={off} onClick={() => act({ type: 'push', target: q.seat })}>
+                    {q.seat + 1}번 밀치기 <Cost n={1} />
+                  </button>,
+                ]
+              return choices.map((to) => (
+                <button key={`${q.seat}-${to}`} type="button" className="bc-btn bc-btn--umbra" disabled={off} onClick={() => act({ type: 'push', target: q.seat, to })}>
+                  {q.seat + 1}번 → {cellName(view, to)} <Cost n={1} />
+                </button>
+              ))
+            })}
           </div>
         </section>
       )}
@@ -602,3 +614,12 @@ export function PlayerSheet({ view, seat, name, onClose }: { view: View; seat: n
 }
 
 export { HAND_NAMES }
+
+/** 칸 이름: 판 이름 + 칸 타일(밀쳐낼 칸 고르기용) */
+function cellName(view: View, i: number): string {
+  const c = view.map.cells[i]
+  const t = view.board[i]
+  const tile = c ? view.map.tiles[c.tile] : undefined
+  const kind = !t ? '' : t.kind === 'hidden' ? '뒤집히지 않은 칸' : (TILE_NAMES[t.kind as keyof typeof TILE_NAMES] ?? '')
+  return tile ? `${faceOf(tile).name}의 ${kind}` : kind
+}

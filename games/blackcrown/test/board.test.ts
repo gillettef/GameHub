@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { DIRS, buildMap, hexDist, mapDist, ringSpots, shuffleTiles } from '../src/engine/board'
 import { RING_MUST, ringBag } from '../src/engine/data'
-import { createGame, moveCost, pushStep, type State } from '../src/engine/game'
+import { createGame, moveCost, pushChoices, pushStep, type State } from '../src/engine/game'
 import { TILES, ZONE_CELLS } from '../src/engine/tiles'
 
 /** 칸 묶음이 그래프에서 이어져 있는가 */
@@ -25,6 +25,36 @@ describe('육각 판 데이터', () => {
         expect(f.ports).toHaveLength(6)
         for (const p of f.ports) expect(f.cells[p.cell]).toBeDefined()
         expect(f.cells.length).toBeGreaterThan(0)
+      }
+  })
+
+  it('인쇄할 수 있다: 길이 다른 칸 위를 지나거나 서로 엇갈리지 않는다(손으로 고친 뒤에도)', () => {
+    type P = [number, number]
+    const AP = 50 * Math.sqrt(3)
+    const port = (e: number): P => [AP * Math.cos((e * Math.PI) / 3), AP * Math.sin((e * Math.PI) / 3)]
+    const segDist = (p: P, a: P, b: P) => {
+      const vx = b[0] - a[0]
+      const vy = b[1] - a[1]
+      const t = Math.max(0, Math.min(1, ((p[0] - a[0]) * vx + (p[1] - a[1]) * vy) / (vx * vx + vy * vy || 1)))
+      return Math.hypot(p[0] - a[0] - t * vx, p[1] - a[1] - t * vy)
+    }
+    const o = (p: P, q: P, r: P) => Math.sign((q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0]))
+    const crosses = (a: P, b: P, c: P, d: P) => o(a, b, c) * o(a, b, d) < 0 && o(c, d, a) * o(c, d, b) < 0
+    for (const pair of [...TILES.castle, ...TILES.ruin, ...TILES.forest, ...TILES.camp])
+      for (const f of pair) {
+        const cell = (i: number): P => [f.cells[i]!.x, f.cells[i]!.y]
+        const segs = [
+          ...f.roads.map(([i, j]) => ({ a: cell(i), b: cell(j), ends: [i, j] })),
+          ...f.ports.map((p, e) => ({ a: cell(p.cell), b: port(e), ends: [p.cell] })),
+        ]
+        for (const sg of segs) for (let k = 0; k < f.cells.length; k++) if (!sg.ends.includes(k)) expect(segDist(cell(k), sg.a, sg.b), f.name).toBeGreaterThanOrEqual(16)
+        for (let i = 0; i < segs.length; i++)
+          for (let j = i + 1; j < segs.length; j++) {
+            const x = segs[i]!
+            const y = segs[j]!
+            if (x.ends.some((e) => y.ends.includes(e))) continue
+            expect(crosses(x.a, x.b, y.a, y.b), f.name).toBe(false)
+          }
       }
   })
 
@@ -95,12 +125,16 @@ describe('험한 길과 밀쳐내기', () => {
     expect(moveCost(s, p, b)).toBe(1)
   })
 
-  it('밀려나는 칸은 마왕에게서 한 칸 더 멀다', () => {
-    const s = game()
-    const king = s.map.throne
-    for (const at of s.map.nb[king] as number[]) {
-      const to = pushStep(s, king, at)
-      if (to !== null) expect(mapDist(s.map, king, to)).toBe(mapDist(s.map, king, at) + 1)
+  it('밀려나는 칸은 마왕에게서 한 칸 더 멀고, 고를 수 있는 칸은 모두 같은 거리다', () => {
+    for (let seed = 1; seed <= 30; seed++) {
+      const s = createGame(4, seed)
+      for (const king of [s.map.throne, s.map.camp]) {
+        for (const at of s.map.nb[king] as number[]) {
+          const choices = pushChoices(s, king, at)
+          for (const to of choices) expect(mapDist(s.map, king, to)).toBe(mapDist(s.map, king, at) + 1)
+          expect(pushStep(s, king, at)).toBe(choices[0] ?? null)
+        }
+      }
     }
   })
 })

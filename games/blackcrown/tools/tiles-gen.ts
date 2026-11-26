@@ -64,11 +64,10 @@ function cellCount(kind: Kind, rnd: () => number, side: number): number {
   return r < 0.2 ? 1 : r < 0.6 ? 2 : 3
 }
 
-function tryFace(kind: Kind, side: number, rnd: () => number): Omit<TileFace, 'name'> | null {
+function tryFace(kind: Kind, n: number, rnd: () => number): Omit<TileFace, 'name'> | null {
   const cells: { p: P; ring: number; camp?: true }[] = []
   const deco: { p: P; type: Deco['type']; s: number }[] = []
   const ring = kind === 'castle' ? 3 : kind === 'ruin' ? 2 : 1
-  const n = cellCount(kind, rnd, side)
   if (kind === 'castle') {
     cells.push({ p: [0, 0], ring: 4 })
     const off = rnd() * 60
@@ -148,12 +147,44 @@ function tryFace(kind: Kind, side: number, rnd: () => number): Omit<TileFace, 'n
   const roughN = ports.filter((p) => p.rough).length + roads3.filter((r) => r[2]).length
   if (kind === 'ruin' || kind === 'forest') if (roughN < 1 || roughN > 2) return null
   if (kind === 'camp' && roughN > 1) return null
+  if (!printable(cells.map((c) => c.p), roads, ports.map((p) => p.cell), deco)) return null
   return {
     cells: cells.map((c) => ({ x: r1(c.p[0]), y: r1(c.p[1]), ring: c.ring, ...(c.camp ? { camp: true as const } : {}) })),
     roads: roads3,
     ports,
     deco: deco.map((d) => ({ x: r1(d.p[0]), y: r1(d.p[1]), type: d.type, s: r1(d.s) })),
   }
+}
+
+// ── 인쇄 검사: 실물 판에는 길이 '칸-칸'과 '칸-변 가운데 출구'로 그려진다 ──
+function segDist(p: P, a: P, b: P): number {
+  const vx = b[0] - a[0]
+  const vy = b[1] - a[1]
+  const t = Math.max(0, Math.min(1, ((p[0] - a[0]) * vx + (p[1] - a[1]) * vy) / (vx * vx + vy * vy || 1)))
+  return Math.hypot(p[0] - a[0] - t * vx, p[1] - a[1] - t * vy)
+}
+function crosses(a: P, b: P, c: P, d: P): boolean {
+  const o = (p: P, q: P, r: P) => Math.sign((q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0]))
+  return o(a, b, c) * o(a, b, d) < 0 && o(c, d, a) * o(c, d, b) < 0
+}
+/** 길이 다른 칸 위를 지나거나, 길끼리 엇갈리거나, 호수·바위산을 지나면 인쇄할 수 없다 */
+function printable(cells: P[], roads: [number, number][], portCells: number[], deco: { p: P; s: number }[]): boolean {
+  const segs: { a: P; b: P; ends: number[] }[] = [
+    ...roads.map(([i, j]) => ({ a: cells[i] as P, b: cells[j] as P, ends: [i, j] })),
+    ...portCells.map((c, e) => ({ a: cells[c] as P, b: portPoint(e), ends: [c] })),
+  ]
+  for (const sg of segs) {
+    if (cells.some((c, k) => !sg.ends.includes(k) && segDist(c, sg.a, sg.b) < 17)) return false
+    if (deco.some((d) => segDist(d.p, sg.a, sg.b) < 26 * d.s)) return false
+  }
+  for (let i = 0; i < segs.length; i++)
+    for (let j = i + 1; j < segs.length; j++) {
+      const x = segs[i] as (typeof segs)[number]
+      const y = segs[j] as (typeof segs)[number]
+      if (x.ends.some((e) => y.ends.includes(e))) continue
+      if (crosses(x.a, x.b, y.a, y.b)) return false
+    }
+  return true
 }
 
 function connected(n: number, roads: [number, number][]): boolean {
@@ -169,8 +200,10 @@ function connected(n: number, roads: [number, number][]): boolean {
 }
 
 function face(kind: Kind, idx: number, side: number): TileFace {
+  // 칸 수는 면마다 먼저 정한다(검사를 잘 통과하는 칸 수로 치우치지 않게)
+  const n = cellCount(kind, mulberry32(mix(mix(kind.length * 7919 + idx, side), 99991)), side)
   for (let a = 0; ; a++) {
-    const f = tryFace(kind, side, mulberry32(mix(mix(kind.length * 7919 + idx, side), a)))
+    const f = tryFace(kind, n, mulberry32(mix(mix(kind.length * 7919 + idx, side), a)))
     if (f) return { name: NAMES[kind][idx * 2 + side] ?? `${NAMES[kind][idx]}`, ...f }
   }
 }

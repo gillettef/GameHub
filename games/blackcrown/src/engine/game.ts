@@ -1419,19 +1419,16 @@ function smite(s: State, king: Player, cards: number[], ctx: Ctx) {
   }
 }
 
-/** 밀려날 칸: 이웃 칸 중 마왕에게서 가장 먼 칸(같으면 번호가 작은 칸). 더 멀어질 칸이 없으면 null */
-export function pushStep(s: HasMap, from: number, at: number): number | null {
+/** 밀려날 수 있는 칸: at 의 이웃 중 마왕(from)에게서 가장 먼 칸들(지금보다 멀어야 함), 번호순 */
+export function pushChoices(s: HasMap, from: number, at: number): number[] {
   const here = dist(s, from, at)
-  let best: number | null = null
-  let bd = here
-  for (const n of neighbors(s, at)) {
-    const d = dist(s, from, n)
-    if (d > bd || (d === bd && best !== null && d > here && n < best)) {
-      bd = d
-      best = n
-    }
-  }
-  return best
+  const ds = neighbors(s, at).map((n) => ({ n, d: dist(s, from, n) })).filter((x) => x.d > here)
+  const far = Math.max(-1, ...ds.map((x) => x.d))
+  return ds.filter((x) => x.d === far).map((x) => x.n).sort((a, b) => a - b)
+}
+/** 마왕이 고르지 않으면 밀려날 칸(번호가 가장 작은 칸). 없으면 null */
+export function pushStep(s: HasMap, from: number, at: number): number | null {
+  return pushChoices(s, from, at)[0] ?? null
 }
 
 function push(s: State, king: Player, target: number, ctx: Ctx, first?: number) {
@@ -1445,7 +1442,7 @@ function push(s: State, king: Player, target: number, ctx: Ctx, first?: number) 
     let to = pushStep(s, king.pos, q.pos)
     if (to === null) break
     if (i === 0 && first !== undefined) {
-      if (!neighbors(s, q.pos).includes(first) || dist(s, king.pos, first) !== dist(s, king.pos, to)) throw new IllegalAction('마왕에게서 가장 먼 이웃 칸으로만 밀 수 있습니다.')
+      if (!pushChoices(s, king.pos, q.pos).includes(first)) throw new IllegalAction('마왕에게서 가장 먼 이웃 칸으로만 밀 수 있습니다.')
       to = first
     }
     q.pos = to

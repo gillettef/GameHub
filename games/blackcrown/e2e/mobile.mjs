@@ -102,10 +102,13 @@ await withGame(dir, async ({ url, open, shot }) => {
   await shot(host, '09-waiting')
   await host.getByRole('button', { name: /^시작/ }).click()
   await host.getByText('“가장 빛나는 자가 검은 왕관을 쓰리라”').waitFor()
-  for (const page of [host, guest]) {
-    const pick = page.locator('.bcx-class:enabled').first()
-    for (let k = 0; k < 40 && !(await pick.count()); k++) await page.waitForTimeout(250)
-    if (await pick.count()) await pick.click()
+  // 직업 고르기는 차례대로라(봇 연출 포함) 언제 내 차례가 올지 모른다: 두 사람 모두 보드가 뜰 때까지 계속 시도한다
+  for (let k = 0; k < 240 && !((await guest.locator('.bcm-map').count()) && (await host.locator('.bcm-map').count())); k++) {
+    for (const page of [host, guest]) {
+      const pick = page.locator('.bcx-class:enabled').first()
+      if (await pick.count()) await pick.click({ timeout: 2000 }).catch(() => {})
+    }
+    await guest.waitForTimeout(250)
   }
   await guest.locator('.bcm-map').waitFor({ timeout: 20000 })
   await guest.reload()

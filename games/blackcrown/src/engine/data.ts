@@ -6,7 +6,7 @@ export const SUIT_NAMES: Record<Suit, string> = { blade: '칼날', ward: '방패
 // ── 레벨 ──
 export const MAX_LEVEL = 7
 /** 레벨 n 에 필요한 누적 경험치(인덱스 = 레벨 - 1) */
-export const XP_TABLE = [0, 2, 4, 7, 11, 15, 20] as const
+export const XP_TABLE = [0, 1, 3, 5, 7, 10, 14] as const
 export const BASE_HP = 12
 export const HP_PER_LEVEL = 2
 export const START_GOLD = 3
@@ -136,10 +136,10 @@ export const RING_MUST: Record<1 | 2 | 3, TileKind[]> = { 1: ['boss', 'wander'],
 export function ringBag(ring: 1 | 2 | 3, seats: number): TileKind[] {
   const rep = (k: TileKind, n: number) => Array<TileKind>(n).fill(k)
   if (ring === 1) {
-    const monsters = seats <= 3 ? 6 : 8
-    return [...rep('monster', monsters), ...rep('treasure', 4), ...rep('shop', 2), ...rep('spring', 2), ...rep('altar', 3), ...rep('forest', 14 - monsters)]
+    const monsters = seats <= 3 ? 7 : 9
+    return [...rep('monster', monsters), ...rep('treasure', 4), ...rep('shop', 2), ...rep('spring', 2), ...rep('altar', 3), ...rep('forest', 16 - monsters)]
   }
-  if (ring === 2) return [...rep('monster', 4), ...rep('treasure', 2), 'shop', 'spring', ...rep('altar', 2), ...rep('ruin', 5)]
+  if (ring === 2) return [...rep('monster', 4), ...rep('treasure', 2), 'shop', 'spring', ...rep('altar', 2), ...rep('ruin', 6)]
   return [...rep('monster', 3), ...rep('treasure', 2), 'spring', 'altar']
 }
 

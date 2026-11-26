@@ -12,7 +12,7 @@
 - `src/engine/` 순수 규칙(React·DOM·시간·`Math.random` 금지, 시드 난수 `rng.ts`)
   - `hands.ts` 족보 판정(와일드·숫자/문양 바꾸기는 판정이 최적값을 고름)
   - `data.ts` 아이템·몬스터·직업·칸 타일 묶음·경험치 표
-  - `tiles.ts` 육각 판 19장(앞뒤) 데이터(생성기 `tools/tiles-gen.ts`, 손으로 고쳐도 됨), `board.ts` 판 섞어 놓기·칸/길 그래프·거리(길을 따라 센 칸 수)
+  - `tiles.ts` 육각 판 19장(앞뒤) 데이터(생성기 `tools/tiles-gen.ts`, 손으로 고쳐도 됨, 실물 인쇄 `tools/tiles-print.ts` → `design/print/tiles.html`), `board.ts` 판 섞어 놓기·칸/길 그래프·거리(길을 따라 센 칸 수)
   - `game.ts` 상태·행동·진행·대관식·최종전·`view`(비공개 정보 숨김). 규칙 위반은 `IllegalAction`, 상태는 `structuredClone` 뒤 바꾼다
   - `bot.ts` 봇(난이도 0~2)
 - `src/def.ts` GameDef(`parseAction` 은 형식만 본다)

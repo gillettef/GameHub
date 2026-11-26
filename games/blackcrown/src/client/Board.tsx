@@ -112,15 +112,29 @@ const MapArt = memo(function MapArt({ map }: { map: BoardMap }) {
     const B = map.cells[b]
     if (!A || !B) return
     const same = A.tile === B.tile
-    const bend = same ? (((a * 7 + b * 13) % 11) - 5) * 1.2 : 0
-    const mx = (A.x + B.x) / 2
-    const my = (A.y + B.y) / 2
-    const len = Math.hypot(B.x - A.x, B.y - A.y) || 1
-    const d = `M${A.x} ${A.y}Q${r1(mx - ((B.y - A.y) / len) * bend)} ${r1(my + ((B.x - A.x) / len) * bend)} ${B.x} ${B.y}`
+    let mx = (A.x + B.x) / 2
+    let my = (A.y + B.y) / 2
+    let d: string
+    if (same) {
+      const bend = (((a * 7 + b * 13) % 11) - 5) * 1.2
+      const len = Math.hypot(B.x - A.x, B.y - A.y) || 1
+      d = `M${A.x} ${A.y}Q${r1(mx - ((B.y - A.y) / len) * bend)} ${r1(my + ((B.x - A.x) / len) * bend)} ${B.x} ${B.y}`
+    } else {
+      // 판 사이 길은 실물처럼 맞닿은 변의 가운데(출구)를 지난다
+      const ta = map.tiles[A.tile]
+      const tb = map.tiles[B.tile]
+      if (ta && tb) {
+        const [ax, ay] = tileCenter(ta.q, ta.r)
+        const [bx, by] = tileCenter(tb.q, tb.r)
+        mx = (ax + bx) / 2
+        my = (ay + by) / 2
+      }
+      d = `M${A.x} ${A.y}L${r1(mx)} ${r1(my)}L${B.x} ${B.y}`
+    }
     const lo = Math.min(A.ring, B.ring)
     const hi = Math.max(A.ring, B.ring)
-    out.push(<path key={`r${k}`} d={d} fill="none" stroke="#0a0709" strokeWidth={8} strokeLinecap="round" />)
-    out.push(<path key={`q${k}`} d={d} fill="none" stroke={ROAD[A.ring === B.ring ? A.ring : lo]} strokeWidth={4} strokeLinecap="round" />)
+    out.push(<path key={`r${k}`} d={d} fill="none" stroke="#0a0709" strokeWidth={8} strokeLinecap="round" strokeLinejoin="round" />)
+    out.push(<path key={`q${k}`} d={d} fill="none" stroke={ROAD[A.ring === B.ring ? A.ring : lo]} strokeWidth={4} strokeLinecap="round" strokeLinejoin="round" />)
     if (rough) out.push(<path key={`p${k}`} d={d} fill="none" stroke="#b5574f" strokeWidth={7} strokeDasharray="1.6 5" />)
     if (lo === 2 && hi === 3)
       marks.push(
