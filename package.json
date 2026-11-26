@@ -5,6 +5,7 @@
   "description": "GameHub 공통 패키지(packages/*)와 새 기술스택으로 옮긴 게임의 npm workspaces 루트. 아직 옮기지 않은 게임은 각자 폴더에서 따로 설치한다.",
   "workspaces": [
     "packages/*",
+    "games/blackcrown",
     "games/crease",
     "games/doubleagent",
     "games/election",
@@ -26,7 +27,7 @@
   },
   "scripts": {
     "typecheck": "npm run typecheck --workspaces --if-present",
-    "lint": "eslint packages games/crease games/doubleagent games/election games/eleven games/hearsay games/lastgrain games/lightcone games/magicacademy games/neoterra games/proxymind games/retrocause games/rootbound games/sightline games/smilepark games/tesseract",
+    "lint": "eslint packages games/blackcrown games/crease games/doubleagent games/election games/eleven games/hearsay games/lastgrain games/lightcone games/magicacademy games/neoterra games/proxymind games/retrocause games/rootbound games/sightline games/smilepark games/tesseract",
     "test": "npm run test --workspaces --if-present",
     "build": "npm run build --workspaces --if-present",
     "check": "npm run typecheck && npm run lint && npm test && npm run build",
