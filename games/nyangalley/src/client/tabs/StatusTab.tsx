@@ -1,0 +1,78 @@
+import { memo, useMemo, type CSSProperties } from 'react';
+import { bossSeat, computeScores, getChore, getSpecies } from '../../engine';
+import { choreArtUrl } from '../game/cardImages';
+import { GoalList } from '../components/GoalList';
+import { asState, buildPlayerSummaries, crewName } from '../game/derived';
+import { selectState, selectViewerId, useGameStore } from '../store/gameStore';
+import styles from './StatusTab.module.css';
+
+/**
+ * 점수 탭 (F010, F011): 지금 끝난다면 몇 점인가. 자리별 내 칸·소문 카드·캣맘 급식소·덤·합계와 손 타일 수, 놓은 명당 종류(소문 '명당 수집가').
+ * 점수는 언제나 보드에서 다시 계산한 예상값이다(Rules.md 9절).
+ */
+export const StatusTab = memo(function StatusTab() {
+  const state = useGameStore(selectState);
+  const viewerId = useGameStore(selectViewerId);
+  const scores = useMemo(() => (state?.board ? computeScores(asState(state)) : null), [state]);
+  const rows = useMemo(() => (state ? buildPlayerSummaries(state, scores) : []), [state, scores]);
+  if (!state) return null;
+  const playing = state.phase === 'playing';
+  const boss = playing ? bossSeat(state) : null;
+
+  return (
+    <div className={styles.root}>
+      <section className={styles.section}>
+        <h2 className={styles.h2}>{state.phase === 'finished' ? '최종 점수' : '지금 끝난다면'}</h2>
+        <ul className={styles.players}>
+          {rows.map((r) => (
+            <li key={r.id} className={styles.player} style={{ '--seat-color': `var(--color-seat-${r.seat})` } as CSSProperties}>
+              <div className={styles.head}>
+                <span className={styles.name}>
+                  {r.nickname}
+                  <span className={styles.crew}>{crewName(r.seat)}</span>
+                  {r.id === viewerId && <span className={styles.me}>나</span>}
+                  {r.kind === 'ai' && <span className={styles.me}>AI</span>}
+                  {r.surrendered && <span className={styles.gone}>기권</span>}
+                </span>
+                <span className={styles.total}>{r.score?.total ?? 0}점</span>
+              </div>
+              {r.score && (
+                <div className={styles.breakdown}>
+                  <span>내 칸 {r.score.land}</span>
+                  <span>소문 카드 {r.score.goals}</span>
+                  {r.score.bloom > 0 && <span>캣맘 급식소 {r.score.bloom}</span>}
+                  {r.score.komi > 0 && <span>순서 보너스 {r.score.komi}</span>}
+                </div>
+              )}
+              {playing && (
+                <div className={styles.chore}>
+                  {state.chores[r.seat] ? (
+                    <>
+                      <img className={styles.choreArt} src={choreArtUrl(state.chores[r.seat]!)} alt="" aria-hidden="true" />
+                      <span>
+                        {state.round}라운드 일과 <strong>{getChore(state.chores[r.seat]!).name}</strong>
+                        {boss === r.seat ? ' · 다음 라운드 선' : ''}
+                      </span>
+                    </>
+                  ) : (
+                    <span>{state.round}라운드 일과: 아직 안 고름</span>
+                  )}
+                </div>
+              )}
+              <div className={styles.meta}>
+                <span>손에 {r.handCount}개 · 놓은 명당 {r.plantedSpecies.length}가지{r.rootsLeft !== null ? ` · 쉬는 고양이 ${r.rootsLeft}` : ''}</span>
+                <span className={styles.planted}>{r.plantedSpecies.map((s) => getSpecies(s).name).join(' · ') || '아직 놓은 명당 없음'}</span>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </section>
+      {state.goals.length > 0 && (
+        <section className={styles.section}>
+          <h2 className={styles.h2}>소문 카드별 점수</h2>
+          <GoalList goals={state.goals} scores={scores} players={rows} />
+        </section>
+      )}
+    </div>
+  );
+});

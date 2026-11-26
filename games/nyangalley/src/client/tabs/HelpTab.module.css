@@ -1,0 +1,82 @@
+.root {
+  height: 100%;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-1) 2px var(--space-3);
+  font-size: var(--text-small);
+  line-height: 1.55;
+}
+
+.section p {
+  margin: 0;
+}
+
+.h2 {
+  margin: 0 0 4px;
+  font-family: var(--font-display);
+  font-size: var(--text-nav);
+  color: var(--color-heading);
+}
+
+.steps,
+.list,
+.terrain {
+  margin: 0;
+  padding-left: 1.2em;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.terrain {
+  list-style: none;
+  padding-left: 0;
+}
+
+.terrain li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+/* 견본은 보드 칸과 같은 그림(public/art/terrain-*.svg) */
+.swatch {
+  flex: none;
+  width: 22px;
+  height: 22px;
+}
+
+.list {
+  margin-top: 4px;
+}
+
+/* 골목 일과 6장 표 (v7): 일과 그림 + 설명 */
+.chores {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.chores li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.choreArt {
+  flex: none;
+  width: 72px;
+  height: auto;
+  aspect-ratio: 630 / 440;
+}
+
+.note {
+  margin-top: 4px !important;
+  font-size: var(--text-micro);
+  color: var(--color-muted);
+}

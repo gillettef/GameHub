@@ -1,0 +1,408 @@
+{
+  "species": [
+    {
+      "seed": 0,
+      "pondPlanting": false,
+      "wither": 0,
+      "bloomBonus": 0,
+      "id": "grass",
+      "name": "화단",
+      "description": "이어진 옆 칸 세 곳으로 고양이가 퍼진다.",
+      "roots": [
+        {
+          "dq": 0,
+          "dr": 0,
+          "n": 2
+        },
+        {
+          "dq": 1,
+          "dr": 0,
+          "n": 1
+        },
+        {
+          "dq": 1,
+          "dr": -1,
+          "n": 1
+        },
+        {
+          "dq": 0,
+          "dr": -1,
+          "n": 1
+        }
+      ]
+    },
+    {
+      "seed": 0,
+      "pondPlanting": false,
+      "wither": 0,
+      "bloomBonus": 0,
+      "id": "oak",
+      "name": "평상",
+      "description": "양옆 칸까지 고양이가 두껍게 눕는다.",
+      "roots": [
+        {
+          "dq": 0,
+          "dr": 0,
+          "n": 2
+        },
+        {
+          "dq": 1,
+          "dr": 0,
+          "n": 2
+        },
+        {
+          "dq": -1,
+          "dr": 0,
+          "n": 2
+        }
+      ]
+    },
+    {
+      "seed": 0,
+      "pondPlanting": false,
+      "wither": 0,
+      "bloomBonus": 0,
+      "id": "pine",
+      "name": "종이 상자",
+      "description": "상자 안 고양이는 좀처럼 쫓겨나지 않는다.",
+      "roots": [
+        {
+          "dq": 0,
+          "dr": 0,
+          "n": 3
+        },
+        {
+          "dq": 1,
+          "dr": 0,
+          "n": 1
+        },
+        {
+          "dq": -1,
+          "dr": 0,
+          "n": 1
+        }
+      ]
+    },
+    {
+      "seed": 0,
+      "pondPlanting": false,
+      "wither": 0,
+      "bloomBonus": 0,
+      "id": "kudzu",
+      "name": "쥐구멍",
+      "description": "쥐를 쫓아 한 줄로 두 칸 앞까지 달려간다.",
+      "roots": [
+        {
+          "dq": 0,
+          "dr": 0,
+          "n": 1
+        },
+        {
+          "dq": 1,
+          "dr": 0,
+          "n": 1
+        },
+        {
+          "dq": 2,
+          "dr": 0,
+          "n": 2
+        }
+      ]
+    },
+    {
+      "seed": 0,
+      "pondPlanting": false,
+      "wither": 0,
+      "bloomBonus": 0,
+      "id": "fern",
+      "name": "지붕",
+      "description": "바로 옆은 건너뛰고 지붕을 타고 멀리 세 곳에 내려앉는다.",
+      "roots": [
+        {
+          "dq": 0,
+          "dr": 0,
+          "n": 2
+        },
+        {
+          "dq": 2,
+          "dr": 0,
+          "n": 1
+        },
+        {
+          "dq": 0,
+          "dr": -2,
+          "n": 1
+        },
+        {
+          "dq": -2,
+          "dr": 2,
+          "n": 1
+        }
+      ]
+    },
+    {
+      "seed": 1,
+      "pondPlanting": false,
+      "wither": 0,
+      "bloomBonus": 0,
+      "id": "dandelion",
+      "name": "캣닢 화분",
+      "description": "놓은 뒤 신난 고양이 1마리가 두 칸 안 아무 칸으로 뛰어간다.",
+      "roots": [
+        {
+          "dq": 0,
+          "dr": 0,
+          "n": 1
+        },
+        {
+          "dq": 1,
+          "dr": 0,
+          "n": 1
+        },
+        {
+          "dq": -1,
+          "dr": 0,
+          "n": 1
+        }
+      ]
+    },
+    {
+      "seed": 0,
+      "pondPlanting": true,
+      "wither": 0,
+      "bloomBonus": 0,
+      "id": "lotus",
+      "name": "낚시꾼",
+      "description": "개울과 맞닿은 칸이면 어디든 놓을 수 있다.",
+      "roots": [
+        {
+          "dq": 0,
+          "dr": 0,
+          "n": 2
+        },
+        {
+          "dq": 1,
+          "dr": 0,
+          "n": 1
+        },
+        {
+          "dq": -1,
+          "dr": 0,
+          "n": 1
+        }
+      ]
+    },
+    {
+      "seed": 0,
+      "pondPlanting": false,
+      "wither": 2,
+      "bloomBonus": 0,
+      "id": "mushroom",
+      "name": "빗자루 할머니",
+      "description": "맞닿은 6칸에서 남의 고양이를 2마리씩 쫓아낸다.",
+      "roots": [
+        {
+          "dq": 0,
+          "dr": 0,
+          "n": 2
+        }
+      ]
+    },
+    {
+      "seed": 0,
+      "pondPlanting": false,
+      "wither": 0,
+      "bloomBonus": 1,
+      "id": "mugunghwa",
+      "name": "캣맘 급식소",
+      "description": "끝날 때 내 영역 위에 있으면 +1점.",
+      "roots": [
+        {
+          "dq": 0,
+          "dr": 0,
+          "n": 2
+        },
+        {
+          "dq": 1,
+          "dr": 0,
+          "n": 1
+        },
+        {
+          "dq": 1,
+          "dr": -1,
+          "n": 1
+        }
+      ]
+    }
+  ],
+  "goals": [
+    {
+      "id": "pond-side",
+      "name": "개울가 산책",
+      "description": "개울과 맞닿은 내 칸 1칸당 +1",
+      "species": null
+    },
+    {
+      "id": "big-garden",
+      "name": "가장 넓은 영역",
+      "description": "이어진 내 칸의 가장 큰 덩어리: 1등 +4, 2등 +2",
+      "species": null
+    },
+    {
+      "id": "long-path",
+      "name": "쭉 뻗은 골목",
+      "description": "한 직선으로 이어진 내 칸의 가장 긴 줄: 1등 +4, 2등 +2",
+      "species": null
+    },
+    {
+      "id": "fertile-field",
+      "name": "양지바른 곳",
+      "description": "햇볕 자리인 내 칸 1칸당 +2",
+      "species": null
+    },
+    {
+      "id": "edge-fence",
+      "name": "동네 어귀",
+      "description": "보드 가장자리인 내 칸 1칸당 +1",
+      "species": null
+    },
+    {
+      "id": "center-plaza",
+      "name": "동네 한복판",
+      "description": "가운데 조각(7칸)에서 내 칸이 가장 많으면 +4",
+      "species": null
+    },
+    {
+      "id": "every-tile",
+      "name": "온 동네 마실",
+      "description": "내 칸이 있는 조각(7칸 묶음, 아지트 조각 포함) 1장당 +1",
+      "species": null
+    },
+    {
+      "id": "flower-bed",
+      "name": "맛집 골목",
+      "description": "내 영역 위 캣닢 화분·낚시꾼·캣맘 급식소 1개당 +2",
+      "species": null
+    },
+    {
+      "id": "forest",
+      "name": "아늑한 아지트",
+      "description": "서로 맞닿은 내 영역 위 평상·종이 상자 3개 이상 무리 1개당 +4",
+      "species": null
+    },
+    {
+      "id": "variety",
+      "name": "명당 수집가",
+      "description": "내 영역 위에 서로 다른 명당이 5종 이상이면 +4",
+      "species": null
+    },
+    {
+      "id": "pine-reserve",
+      "name": "상자 단골",
+      "description": "내 영역 위의 종이 상자 1개당 +2",
+      "species": "pine"
+    },
+    {
+      "id": "kudzu-reserve",
+      "name": "쥐구멍 단골",
+      "description": "내 영역 위의 쥐구멍 1개당 +2",
+      "species": "kudzu"
+    },
+    {
+      "id": "fern-reserve",
+      "name": "지붕 단골",
+      "description": "내 영역 위의 지붕 1개당 +2",
+      "species": "fern"
+    },
+    {
+      "id": "grass-reserve",
+      "name": "화단 단골",
+      "description": "내 영역 위의 화단 1개당 +2",
+      "species": "grass"
+    },
+    {
+      "id": "mushroom-reserve",
+      "name": "할머니 단골",
+      "description": "내 영역 위의 빗자루 할머니 1개당 +2",
+      "species": "mushroom"
+    },
+    {
+      "id": "dandelion-reserve",
+      "name": "캣닢 단골",
+      "description": "내 영역 위의 캣닢 화분 1개당 +2",
+      "species": "dandelion"
+    }
+  ],
+  "constants": {
+    "MIN_PLAYERS": 2,
+    "MAX_PLAYERS": 4,
+    "START_HAND": 1,
+    "ENTRANCE_ROOTS": 1,
+    "GOAL_COUNT": 3,
+    "RESERVE_BONUS": 2,
+    "SEED_RANGE": 2,
+    "VARIETY_SPECIES": 5,
+    "VARIETY_BONUS": 4,
+    "RANK_FIRST_BONUS": 4,
+    "RANK_SECOND_BONUS": 2,
+    "CENTER_PLAZA_BONUS": 4,
+    "FERTILE_BONUS": 2,
+    "FLOWER_BONUS": 2,
+    "FOREST_BONUS": 4,
+    "FOREST_MIN_GROUP": 3,
+    "CHORE_EXTRA": 1,
+    "HAND_MAX": 3,
+    "BREAD_BONUS": 1,
+    "CALL_BONUS": 1,
+    "MOVE_TIMES": 2,
+    "MOVE_MAX": 2,
+    "ROAM_RANGE": 2
+  },
+  "playerCountRules": {
+    "2": {
+      "gardenSize": 6,
+      "copies": 4,
+      "market": 2,
+      "supply": 16,
+      "komi": [
+        0,
+        0
+      ],
+      "rounds": 12
+    },
+    "3": {
+      "gardenSize": 6,
+      "copies": 5,
+      "market": 2,
+      "supply": 18,
+      "komi": [
+        0,
+        0,
+        0
+      ],
+      "rounds": 10
+    },
+    "4": {
+      "gardenSize": 8,
+      "copies": 5,
+      "market": 2,
+      "supply": 16,
+      "komi": [
+        0,
+        1,
+        1,
+        1
+      ],
+      "rounds": 10
+    }
+  },
+  "flowerSpecies": [
+    "dandelion",
+    "lotus",
+    "mugunghwa"
+  ],
+  "forestSpecies": [
+    "oak",
+    "pine"
+  ]
+}

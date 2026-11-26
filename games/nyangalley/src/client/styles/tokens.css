@@ -1,0 +1,141 @@
+/*
+ * 디자인 토큰. 값은 DESIGN.md 팔레트에서만 가져온다 (CLAUDE.md "디자인 규칙").
+ * 컴포넌트 CSS에 HEX를 직접 쓰지 말고 이 변수만 참조한다.
+ *
+ * 2026-11-25 공통 화면(@gamehub/ui)으로 옮기며 처음·대기실도 밤 정원 무대 하나로 맞췄다(옛 흰 비게임 화면은 지웠다).
+ * 공통 화면 색(--gh-*)은 아래에서 이 토큰으로 정한다.
+ */
+:root {
+  /* 색: 골목 낮 무대 (2026-11-26 「냥냥 골목」 고양이 테마, 표지 그림 submission/art/cover.svg 의 크림·복숭아색).
+     밝은 바탕이라 턱시도냥(검정) 자리 색이 잘 보인다 */
+  --color-canvas: #f6e7d2;
+  --color-surface: #fffaf1;
+  --color-raised: #f1dcc0;
+  --color-line: #e2c9a6;
+  --color-heading: #4a2c14;
+  --color-text: #3b2a1a;
+  --color-muted: #7d6650;
+  --color-outline: #3b2a1a;
+  --color-accent: #f08a24;
+  --color-accent-text: #ffffff;
+  --color-band-lavender: #faeeff;
+  --color-band-sky: #d9e5f5;
+  --color-band-amber: #fdd484;
+  --color-white: #ffffff;
+  --color-navy: #1a2352;
+  /* 앱 바깥 여백(letterbox) 색. 두 세계 어느 쪽에도 속하지 않는 외곽 크롬이라 공통으로 하나만 쓴다 */
+  --color-app-frame: #e9d4b6;
+
+  /* 게임 도메인 색 (두 세계 공통 의미, 2026-10-07 냥냥 골목 정원 테마) */
+  --color-pond: #8fc9e6;
+  --color-rock: #b9b9b9;
+  --color-fertile: #ffe08a;
+  --color-soil: #e6dccb;
+  --color-grid: #a8916f;
+  /* 보드 (2026-11-26 「냥냥 골목」): 칸 그림은 public/art/terrain-*.svg 라 여기에는 바닥·선·강조 색만 둔다.
+     옛 질감 변수 중 설명 탭 견본(HelpTab)이 쓰는 것은 그림의 바탕색으로 맞췄다 */
+  --board-loam: #ffe08a;
+  --board-sprout-hi: #ffd45e;
+  --board-water-hi: #e3f4fb;
+  --board-water-mid: #a8d8ee;
+  --board-gravel: #b9b9b9;
+  --board-stone-hi: #d9d9d9;
+  --board-stone-low: #8a8a8a;
+  /* 칸 사이 줄눈(골목 돌담 틈), 보드 바깥 테두리, 조각(7칸) 경계선, 외곽선·글자 */
+  --board-grout: #d8bf98;
+  --board-frame: #a07850;
+  --board-zone-line: #7a5232;
+  --board-ink: #3b2a1a;
+  /* 칸 글자 둘레(밝은 테) */
+  --board-halo: #fffaf1;
+  /* 놓을 수 있는 칸·고른 칸: 치즈냥(주황) 영역과 헷갈리지 않게 강조색보다 진한 다홍 + 흰 테 */
+  --board-legal: #d9480f;
+  /* 뿌리 모양 도식: 고양이가 모이는 칸(갈색), 멀리 보내기 범위(옅은 갈색) */
+  --board-diagram-cat: #9a6232;
+  /* 소문 카드 축소판 (그림 public/art/goal-*.svg 의 크림 종이·진한 갈색 테두리·윗띠 색).
+     윗띠: 보통 소문 = 주황, 단골 소문(명당 연계) = 초록. *-ink 는 같은 색의 진한 쪽(작은 글씨·테두리용) */
+  --goal-card-paper: #fffaf0;
+  --goal-card-edge: #3b2a1c;
+  --goal-card-ink: #3b2a1c;
+  --goal-card-kicker: #7a5535;
+  --goal-card-band: #c0692f;
+  --goal-card-band-ink: #8a4a1e;
+  --goal-card-regular: #4f9d5a;
+  --goal-card-regular-ink: #2f6b3a;
+  /* 자리 4색: 색각 이상 안전 조합(Okabe-Ito 계열). 마커는 이 색으로 채우고 종류는 모양(육각·사각·원·마름모)으로 구분한다 */
+  /* 2026-11-26 고양이 무리: 0 치즈냥 · 1 턱시도냥 · 2 고등어냥 · 3 삼색냥(4인 온라인만) */
+  --color-seat-0: #f29a2e;
+  --color-seat-1: #2f2f35;
+  --color-seat-2: #6f8fb0;
+  --color-seat-3: #d77fa1;
+  /* 경고색(2026-09-28 사용자 지시로 확정, DESIGN.md에 없던 값이라 기존 팔레트와 어울리도록 새로 골랐다):
+     자리 1(주황 #e69f00)·자리 3(분홍 #f178b6)과 헷갈리지 않는 선명한 빨강. 네이비 무대·흰 캔버스 둘 다에서
+     대비가 나온다. 연결 끊김 배너, 기권 확정 경고처럼 "돌이킬 수 없음"을 뜻하는 곳에만 쓴다 —
+     "낼 수 없음" 같은 비활성 상태는 여전히 회색(--color-muted)을 쓴다(DESIGN.md 상태 문구 규칙) */
+  --color-danger: #e5484d;
+
+  /* 타이포: 모바일 우선. 기본 14px, 최소(micro) 12px 아래로는 내려가지 않는다 */
+  --font-body: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  /* 디스플레이 폰트(2026-09-28 사용자 지시로 확정): Corca 원본의 커스텀 히어로 폰트는 라이선스가 없어
+     그대로 쓸 수 없다. 처음 고른 Black Han Sans 는 "플" 처럼 획이 많은 글자가 앱 실제 헤딩 크기
+     (15px 대)에서 뭉개져(.dev/font-compare.png 로 확인) 되돌리고, 굵기 900의 Gothic A1(구글 폰트,
+     index.html 에서 불러온다)으로 바꿨다 — 15px 에서도 또렷하면서 본문(Pretendard)보다 확실히 무겁다.
+     비게임 화면(밝은 네이비 헤딩)·게임 무대(흰 헤딩) 둘 다에 어울리고, 로드 실패 시 본문 폰트로
+     자연스럽게 대체된다 */
+  --font-display: 'Gothic A1', var(--font-body);
+  --text-micro: 12px;
+  --text-small: 13px;
+  --text-body: 14px;
+  --text-nav: 15px;
+  --text-sub: 22px;
+  --text-section: 26px;
+  --text-stat: 36px;
+  --text-hero: 44px;
+
+  /* 간격 (8px 리듬) */
+  /* 8px 리듬의 반 칸: 작은 칩·배지 안쪽 간격 */
+  --space-half: 4px;
+  --space-1: 8px;
+  --space-2: 15px;
+  --space-3: 16px;
+  --space-4: 24px;
+  --space-5: 48px;
+  --space-6: 64px;
+
+  /* 라운드 */
+  --radius-xs: 8px;
+  --radius-sm: 10px;
+  --radius-md: 16px;
+  --radius-lg: 24px;
+  --radius-pill: 50px;
+  --radius-full: 999px;
+
+  /* 모션 */
+  --motion-fast: 120ms;
+  --motion-standard: 220ms;
+  --motion-slow: 340ms;
+  --ease-enter: cubic-bezier(0.2, 0.6, 0.25, 1);
+  --ease-exit: cubic-bezier(0.4, 0, 1, 1);
+  --ease-standard: cubic-bezier(0.25, 0.1, 0.25, 1);
+}
+
+/* 공통 화면(@gamehub/ui) 색 */
+:root {
+  --gh-bg: var(--color-canvas);
+  --gh-surface: var(--color-surface);
+  --gh-raised: var(--color-raised);
+  --gh-line: var(--color-line);
+  --gh-text: var(--color-text);
+  --gh-muted: var(--color-muted);
+  --gh-primary: var(--color-accent);
+  --gh-on-primary: var(--color-accent-text);
+  --gh-danger: var(--color-danger);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-fast: 0ms;
+    --motion-standard: 0ms;
+    --motion-slow: 0ms;
+  }
+}

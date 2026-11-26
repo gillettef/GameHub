@@ -1,0 +1,147 @@
+.root {
+  height: 100%;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-1) 2px var(--space-3);
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--text-nav);
+  color: var(--color-heading);
+}
+
+.help {
+  margin: 0;
+  font-size: var(--text-micro);
+  color: var(--color-muted);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
+  gap: 6px;
+  justify-items: center;
+}
+
+.goals {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.goals button {
+  width: 100%;
+  font: inherit;
+  color: var(--goal-card-ink);
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-height: 44px;
+  padding: 6px var(--space-1) 6px var(--space-2);
+  border-radius: var(--radius-sm);
+  /* 소문 카드 윗띠 색을 왼쪽 띠로: 보통 = 주황, 단골 = 초록 */
+  border: 1px solid color-mix(in srgb, var(--goal-card-band-ink) 40%, transparent);
+  background: linear-gradient(to right, var(--goal-card-band) 0 6px, var(--goal-card-paper) 6px);
+  font-size: var(--text-small);
+}
+
+.goals button strong {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.goals button span {
+  font-size: var(--text-micro);
+  color: var(--goal-card-kicker);
+}
+
+.goals button.regular {
+  border-color: color-mix(in srgb, var(--goal-card-regular-ink) 40%, transparent);
+  background: linear-gradient(to right, var(--goal-card-regular) 0 6px, var(--goal-card-paper) 6px);
+}
+
+.tag {
+  padding: 0 6px;
+  border-radius: var(--radius-full);
+  background: var(--goal-card-regular-ink);
+  color: var(--color-white);
+  font-size: var(--text-micro);
+  font-style: normal;
+}
+
+/* 골목 일과 6장 (v7): 작은 일과 그림 + 이름·놓기 여부·설명 */
+.chores {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.chores li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--text-small);
+}
+
+.chores li > span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.chores li strong {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--color-heading);
+}
+
+.chores li > span > span {
+  font-size: var(--text-micro);
+  color: var(--color-muted);
+}
+
+.choreArt {
+  flex: none;
+  width: 88px;
+  aspect-ratio: 630 / 440;
+}
+
+.place,
+.noPlace {
+  padding: 0 6px;
+  border-radius: var(--radius-full);
+  font-size: var(--text-micro);
+  font-style: normal;
+  font-weight: 700;
+}
+
+.place {
+  background: var(--color-band-amber);
+  color: var(--color-text);
+}
+
+.noPlace {
+  background: var(--color-band-sky);
+  color: var(--color-text);
+}

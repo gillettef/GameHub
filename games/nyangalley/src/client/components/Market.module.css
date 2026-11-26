@@ -1,0 +1,121 @@
+/* 펼친 타일 줄: (펼친 타일 · 주머니 개수) · 펼친 명당 타일(손과 같은 작은 육각 타일) · 주머니 */
+.row {
+  display: flex;
+  align-items: center;
+  min-height: 48px;
+  gap: 6px;
+  padding: 4px 6px 4px var(--space-1);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--color-surface) 94%, transparent);
+}
+
+.meta {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  line-height: 1.2;
+}
+
+.label {
+  font-size: var(--text-micro);
+  font-weight: 700;
+  color: var(--color-heading);
+}
+
+.pile {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: var(--text-micro);
+  color: var(--color-muted);
+  white-space: nowrap;
+}
+
+/* 주머니 = 명당 타일 뒷면(육각) */
+.back {
+  width: 18px;
+  aspect-ratio: 1 / 1;
+}
+
+.cards {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 2px 0;
+}
+
+.slot {
+  flex: none;
+  display: flex;
+}
+
+.empty {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--text-micro);
+  color: var(--color-muted);
+}
+
+/* 내 가져오기 차례: 펼친 타일 줄을 테두리로 강조한다 (그림자 없이) */
+.rowActive {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -2px;
+}
+
+/* 내 가져오기 차례: 펼친 타일 옆의 주머니 (뒷면만 보고 1개) */
+.pileCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  width: 72px;
+  /* 작은 타일(.compact, padding 3px 2px 4px)과 같은 안쪽 여백·높이 */
+  padding: 3px 2px 4px;
+  border: 2px dashed color-mix(in srgb, var(--color-accent) 75%, var(--color-text));
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+  cursor: pointer;
+  transition: transform var(--motion-fast);
+}
+
+.pileCard:active {
+  transform: scale(0.97);
+}
+
+.pileBack {
+  width: 54px;
+  aspect-ratio: 1 / 1;
+}
+
+.pileName {
+  font-size: var(--text-micro);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* 생선 냄새로 펼친 타일(v7): 타일 위에 작은 꼬리표 */
+.peek {
+  position: relative;
+  display: flex;
+}
+
+.peekTag {
+  position: absolute;
+  top: -2px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0 6px;
+  border-radius: var(--radius-full);
+  background: var(--board-legal);
+  color: var(--color-white);
+  font-size: var(--text-micro);
+  font-weight: 800;
+  line-height: 1.4;
+  white-space: nowrap;
+  pointer-events: none;
+}

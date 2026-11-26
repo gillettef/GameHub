@@ -89,7 +89,7 @@ before(async () => {
   hub = await createHub({
     games: [
       { slug: 'alpha', name: '알파', mode: 'inproc' },
-      { slug: 'beta', name: '베타', port: upstreamPort },
+      { slug: 'beta', name: '베타', port: upstreamPort, aliases: ['oldbeta'] },
       { slug: 'gamma', name: '감마', port: upstreamPort, mode: 'inproc' },
       { slug: 'delta', name: '델타', mode: 'inproc' },
     ],
@@ -114,6 +114,18 @@ test('게임 목록 API 는 포트·실행 방식을 숨긴다', async () => {
   const list = JSON.parse(r.body);
   assert.deepEqual(list.map((g) => g.slug), ['alpha', 'beta', 'gamma', 'delta']);
   for (const g of list) assert.ok(!('port' in g) && !('mode' in g) && !('entry' in g));
+});
+
+test('옛 slug(aliases)는 새 주소로 영구 이동', async () => {
+  let r = await request(port, '/oldbeta/assets/a.js?v=2');
+  assert.equal(r.status, 301);
+  assert.equal(r.headers.location, '/beta/assets/a.js?v=2');
+  r = await request(port, '/oldbeta');
+  assert.equal(r.headers.location, '/beta/');
+  r = await request(port, '/oldbeta?room=AB');
+  assert.equal(r.headers.location, '/beta/?room=AB');
+  const list = JSON.parse((await request(port, '/api/games')).body);
+  assert.ok(list.every((g) => !('aliases' in g)), '목록 API 는 별칭을 숨긴다');
 });
 
 test('접두어 없는 게임 경로는 / 를 붙여 리다이렉트', async () => {
