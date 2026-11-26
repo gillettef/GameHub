@@ -1,5 +1,5 @@
 /**
- * 마왕의 패 규칙 엔진. 순수 함수: 상태를 복사해 바꾼 뒤 돌려주고, 규칙 위반이면 IllegalAction 을 던진다.
+ * 검은 왕관 규칙 엔진. 순수 함수: 상태를 복사해 바꾼 뒤 돌려주고, 규칙 위반이면 IllegalAction 을 던진다.
  * 규칙 문서: games/blackcrown/docs/design.md
  */
 import * as R from './rng'

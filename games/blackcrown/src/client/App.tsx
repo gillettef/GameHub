@@ -7,7 +7,7 @@ import type { Action, State, View } from '../engine/game'
 import { Table } from './Table'
 
 type Local = LocalGame<State, Action, View, unknown>
-const TITLE = '마왕의 패'
+const TITLE = '검은 왕관'
 
 export function App() {
   const [online, client] = useRoom<View, Action>({ slug: def.slug })
