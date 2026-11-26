@@ -147,3 +147,20 @@
 .bcm-hint { padding: 3px 10px; background: rgba(0, 0, 0, 0.55); color: var(--gh-muted); pointer-events: none; }
 .bcm-out { min-height: 44px; padding: 0 14px; border: 1px solid var(--bc-gilt); background: rgba(17, 14, 19, 0.85); color: var(--bc-gilt-hi); font-size: 13px; }
 @media (prefers-reduced-motion: reduce) { .bcm-ring { filter: none; } }
+
+/* 넓은 화면(PC): 보드를 왼쪽에 화면 높이 전체로 크게, 나머지(①②④⑤)는 오른쪽 440px 기둥에.
+   GameShell 은 PC 에서도 440px 세로 화면이라 보드가 작아진다. 대국 화면(보드가 있을 때)에만 바꾼다 */
+@media (min-width: 960px) and (min-height: 560px) {
+  .gh-app:has(> main .bcm-box) {
+    max-width: 1680px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 440px;
+    grid-template-rows: auto auto minmax(0, 1fr) auto;
+  }
+  .gh-app:has(> main .bcm-box) > * { grid-column: 2; min-width: 0; }
+  .gh-app:has(> main .bcm-box) > header { grid-row: 1; }
+  .gh-app:has(> main .bcm-box) > .bcx-seats { grid-row: 2; flex-wrap: wrap; }
+  .gh-app:has(> main .bcm-box) > main { grid-column: 1; grid-row: 1 / -1; border-right: 1px solid var(--bc-seam); }
+  .gh-app:has(> main .bcm-box) > section { grid-row: 3; max-height: none; align-self: stretch; }
+  .gh-app:has(> main .bcm-box) > footer { grid-row: 4; }
+}

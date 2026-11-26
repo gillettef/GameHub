@@ -1,4 +1,6 @@
- 완료(2026-11-25): 독립 리뷰 반영 후 운영 배포 | 완료(2026-11-25): 독립 리뷰 반영 후 운영 배포 | 완료(2026-11-25): 독립 리뷰 반영 후 운영 배포 | 완료(2026-11-25): 독립 리뷰 반영 후 운영 배포 |# 리팩토링 계획: 기술스택 통일 + iPhone 17 Pro UI/UX
+# 리팩토링 계획: 기술스택 통일 + iPhone 17 Pro UI/UX
+
+> 2026-11-26 rootbound 는 nyangalley(냥냥 골목)로 이름을 바꿨다. 이 문서의 게임 이름은 새 이름으로 고쳐 적었다(옛 주소 `/rootbound/` 는 허브 별칭으로 새 주소로 넘어간다).
 
 2026-11-25 승인. 이 문서가 리팩토링의 기준이다. 결정 내용은 맨 끝에 있다.
 
@@ -18,13 +20,13 @@
 |---|---|
 | 순수 JS 클라이언트 (6) | crease, hearsay, lastgrain, lightcone, retrocause, sightline |
 | TS, React 없음 (3) | doubleagent, election, proxymind |
-| React (6) | eleven, magicacademy, neoterra, rootbound, smilepark, tesseract |
+| React (6) | eleven, magicacademy, neoterra, nyangalley, smilepark, tesseract |
 
 | 통신 | 게임 |
 |---|---|
 | ws (7) | doubleagent, election, eleven, magicacademy(+Express), neoterra, proxymind, tesseract |
 | SSE+POST (6) | crease, hearsay, lastgrain, lightcone, retrocause, sightline |
-| socket.io (1) | rootbound |
+| socket.io (1) | nyangalley |
 | 서버 통신 없음 (1) | smilepark |
 
 ## 3. 목표 기술스택
@@ -33,7 +35,7 @@
 |---|---|---|
 | 언어 | TypeScript strict | JS 엔진은 TS로 옮긴다 |
 | 클라이언트 | React 19 + Vite | 이미 6개 게임이 React |
-| 스타일 | Tailwind CSS v4 + 공통 토큰 | tesseract·magicacademy가 사용 중. neoterra·rootbound의 큰 CSS는 다시 써야 한다 |
+| 스타일 | Tailwind CSS v4 + 공통 토큰 | tesseract·magicacademy가 사용 중. neoterra·nyangalley의 큰 CSS는 다시 써야 한다 |
 | 클라이언트 상태 | React 기본 기능, 필요한 게임만 zustand | |
 | 서버 | Node 22 + `ws`, `node:http` | Express·socket.io·SSE 제거 |
 | 서버 빌드 | esbuild 단일 번들 + `hub-entry.mjs` | 지금의 inproc 계약 유지 |
@@ -119,7 +121,7 @@ games/<slug>/
 | 3-b | hearsay, retrocause, proxymind | 완료(2026-11-25): 독립 리뷰 반영 후 운영 배포 |
 | 3-c | doubleagent, election, smilepark | 완료(2026-11-25): 독립 리뷰 반영 후 운영 배포 |
 | 3-d | magicacademy(테스트 먼저 작성), eleven | 완료(2026-11-25): 독립 리뷰 반영 후 운영 배포 |
-| 3-e | neoterra, rootbound | 완료(2026-11-25): 독립 리뷰 반영 후 운영 배포 |
+| 3-e | neoterra, nyangalley | 완료(2026-11-25): 독립 리뷰 반영 후 운영 배포 |
 
 공통 코드(`packages/*`)와 허브·워크플로를 바꾸는 작업은 한 번에 한 곳에서만 한다.
 
@@ -154,7 +156,7 @@ games/<slug>/
 
 - 온라인 같은 방 "다시 하기"(rematch), 방장 내보내기, 채팅·이모지, 방 비밀번호, 방 상태 저장(재시작하면 진행 중인 방이 사라진다)
 - 행동할 차례가 아닌 좌석의 행동(상대 차례의 기권 등): 지금은 `actors` 에 든 좌석만 받는다
-- 상태에 따라 다른 봇 생각 시간(`bot.delayMs` 는 상수), 비동기 봇(무거운 AI 가 허브 이벤트 루프를 막는다: rootbound 최대 약 450ms)
+- 상태에 따라 다른 봇 생각 시간(`bot.delayMs` 는 상수), 비동기 봇(무거운 AI 가 허브 이벤트 루프를 막는다: nyangalley 최대 약 450ms)
 - 끊긴 좌석이 봇으로 바뀔 때 def 에 알리는 콜백, `GameDef.setup` 에서 기록 남기기
 
 알려진 한계·후속 과제:
