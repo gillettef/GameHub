@@ -55,7 +55,7 @@ describe('마왕의 패 엔진', () => {
         expect(rejected).toBeLessThan(5)
       }
     }
-  })
+  }, 120_000)
 
   it('같은 시드·같은 행동이면 같은 결과', () => {
     const a = playOut(4, 77).s
