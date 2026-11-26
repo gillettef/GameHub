@@ -1,4 +1,4 @@
-/* 이번 판 식물 공개: 위→아래 한 방향. 식물 → 목표 → (내 첫 카드) → 확인 현황·버튼(바닥 고정) */
+/* 이번 판 명당 공개: 위→아래 한 방향. 명당 → 소문 카드 → (내 첫 타일) → 확인 현황·버튼(바닥 고정) */
 .root {
   height: 100%;
   min-height: 0;
@@ -30,7 +30,8 @@
 
 .grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  /* 작은 육각 타일(72px)을 폭에 맞게 채운다(보통 한 줄 5개) */
+  grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
   gap: var(--space-half);
   justify-items: stretch;
 }
@@ -50,7 +51,7 @@
 
 .mineCard {
   flex: none;
-  width: 108px;
+  width: 128px;
   display: flex;
 }
 
@@ -98,7 +99,7 @@
 }
 
 .ready {
-  background: color-mix(in srgb, var(--seat-color) 30%, transparent);
+  background: color-mix(in srgb, var(--seat-color) 25%, var(--color-surface));
 }
 
 .waiting {

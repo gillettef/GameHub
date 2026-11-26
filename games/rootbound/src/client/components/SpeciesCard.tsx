@@ -1,44 +1,44 @@
 import { memo, type CSSProperties } from 'react';
 import type { SpeciesId } from '../../engine';
 import { getSpecies } from '../../engine';
-import { plantArtUrl, plantCardUrl } from '../game/cardImages';
+import { spotTileUrl } from '../game/cardImages';
 import { cx } from '../lib/cx';
-import { RootDiagram } from './RootDiagram';
 import styles from './SpeciesCard.module.css';
 
 interface SpeciesCardProps {
   species: SpeciesId;
-  /** chip: 공개 단계의 내 카드처럼 가로 한 줄로 쓰는 작은 카드(뿌리 모양 + 이름) */
+  /** mini: 손·펼친 타일·카드 탭의 작은 타일 / full: 확대 모달 / chip: 공개 단계의 내 첫 타일처럼 가로 한 줄 */
   variant: 'mini' | 'full' | 'chip';
   /** 주인 자리 색으로 테두리를 물들인다 */
   seat?: number | null;
   selected?: boolean;
   dimmed?: boolean;
   onClick?: () => void;
-  /** 손패용 납작한 미니 카드: 특수 효과 줄을 빼고(확대 모달에서 본다) 그림을 줄여 보드 높이를 남긴다 */
+  /** 손·펼친 타일용 납작한 타일: 능력 줄을 빼고(확대 모달에서 본다) 그림을 줄여 보드 높이를 남긴다 */
   compact?: boolean;
 }
 
-/** 능력 한 줄 요약 (Rules.md 7절 "능력" 열). 뿌리 모양만 있는 식물은 null */
+/** 능력 한 줄 요약 (Rules.md 7절 "능력" 열, 화면 테마 「냥냥 골목」). 고양이 모양만 있는 명당은 null */
 function specialText(species: SpeciesId): string | null {
   const sp = getSpecies(species);
-  if (sp.seed) return `두 칸 안 아무 칸에 큐브 ${sp.seed}`;
-  if (sp.pondPlanting) return '연못 옆 빈 칸이면 어디든 심기';
-  if (sp.wither) return `맞닿은 6칸의 남의 큐브 −${sp.wither}`;
-  if (sp.bloomBonus) return `끝날 때 내 땅 위면 +${sp.bloomBonus}점`;
+  if (sp.seed) return `멀리 +${sp.seed}: 두 칸 안 아무 칸에 ${sp.seed}마리`;
+  if (sp.pondPlanting) return '개울 옆이면 어디든';
+  if (sp.wither) return `옆 6칸 남의 고양이 −${sp.wither}`;
+  if (sp.bloomBonus) return `끝날 때 내 영역이면 +${sp.bloomBonus}점`;
   return null;
 }
 
 /**
- * 식물 카드.
- *  - full(확대 모달): 카드 디자인 앞면(public/cards/plants) 을 그대로 보여 준다. 이름·뿌리 모양·문구가 그림 안에 있다.
- *  - mini·chip(손패·마켓·카드 탭·공개 단계): 작아서 카드 글자를 읽을 수 없으니 카드 그림 썸네일(plants/art)을 배경으로 깔고
- *    이름·뿌리 모양 다이어그램을 그 위에 그린다.
+ * 명당 타일 (규칙 용어 식물 카드). 그림은 꼭짓점이 위인 육각 타일(public/art/spot-<종 id>.svg)이고,
+ * 타일 안에 가운데·옆 칸마다 모이는 고양이 수 배지가 그려져 있어 작게 줄여도 모양이 읽힌다.
+ *  - mini·chip: 타일 그림 + 이름(글자). 타일 안 이름 글씨는 작아서 못 읽으니 아래(chip 은 오른쪽)에 다시 쓴다.
+ *  - full(확대 모달): 큰 타일 + 이름·설명·능력 문구.
  */
 export const SpeciesCard = memo(function SpeciesCard({ species, variant, seat, selected, dimmed, onClick, compact }: SpeciesCardProps) {
   const sp = getSpecies(species);
   const special = specialText(species);
   const Tag = onClick ? 'button' : 'div';
+  const label = `${sp.name}: ${sp.description}${special ? ` (${special})` : ''}`;
   return (
     <Tag
       type={onClick ? 'button' : undefined}
@@ -46,17 +46,19 @@ export const SpeciesCard = memo(function SpeciesCard({ species, variant, seat, s
       style={seat !== undefined && seat !== null ? ({ '--seat-color': `var(--color-seat-${seat})` } as CSSProperties) : undefined}
       onClick={onClick}
       aria-pressed={onClick ? !!selected : undefined}
-      aria-label={onClick ? `${sp.name}: ${sp.description}` : undefined}
+      aria-label={onClick ? label : undefined}
     >
       {variant === 'full' ? (
-        <img className={styles.face} src={plantCardUrl(species)} alt={`${sp.name} 카드. ${sp.description}${special ? ` ${special}.` : ''}`} decoding="async" />
+        <>
+          <img className={styles.face} src={spotTileUrl(species)} alt={`명당 타일 ${label}`} decoding="async" />
+          <span className={styles.fullName}>{sp.name}</span>
+          <span className={styles.desc}>{sp.description}</span>
+          {special && <span className={styles.special}>{special}</span>}
+        </>
       ) : (
         <>
-          <span className={styles.art} style={{ backgroundImage: `url(${plantArtUrl(species)})` }} aria-hidden="true" />
+          <img className={styles.tile} src={spotTileUrl(species)} alt="" aria-hidden="true" decoding="async" draggable={false} />
           <span className={styles.name}>{sp.name}</span>
-          <span className={styles.diagram}>
-            <RootDiagram species={species} size={variant === 'chip' ? 26 : compact ? 44 : 58} />
-          </span>
           {variant === 'mini' && special && !compact && <span className={styles.specialMini}>{special}</span>}
         </>
       )}

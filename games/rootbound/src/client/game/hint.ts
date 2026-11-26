@@ -13,13 +13,13 @@ export function boardHint(s: GameStore, plantable: number[]): string {
   if (state.phase === 'finished') return '게임이 끝났습니다';
   if (!selectIsMyTurn(s)) {
     const current = state.players.find((p) => p.id === state.currentPlayerId);
-    return `${current?.nickname ?? ''}의 차례 · ${state.stage === 'take' ? '가져오는 중' : '심는 중'}`;
+    return `${current?.nickname ?? ''}의 차례 · ${state.stage === 'take' ? '가져오는 중' : '놓는 중'}`;
   }
-  if (canTake) return '마켓이나 카드 더미에서 카드 1장을 가져오세요';
-  if (stuck) return '심을 칸이 없습니다. 카드를 눌러 한 장 버리세요';
-  if (!species) return '심을 카드를 고르세요. 빛나는 칸에 심을 수 있습니다';
-  if (selectedDead) return '이 카드는 지금 심을 칸이 없습니다. 다른 카드를 고르세요';
-  if (s.seedPicking) return '보드에서 씨앗 칸(점선)을 누르세요';
-  if (!s.pendingPos) return '밝게 빛나는 칸에 심을 수 있습니다';
-  return distinctRotations(species).length > 1 ? '방향을 고르고 결과를 본 뒤 심기를 누르세요' : '결과를 본 뒤 심기를 누르세요';
+  if (canTake) return '펼친 타일이나 주머니에서 타일 1개를 가져오세요';
+  if (stuck) return '놓을 칸이 없습니다. 타일을 눌러 하나 버리세요';
+  if (!species) return '놓을 타일을 고르세요. 빛나는 칸에 놓을 수 있습니다';
+  if (selectedDead) return '이 타일은 지금 놓을 칸이 없습니다. 다른 타일을 고르세요';
+  if (s.seedPicking) return '보드에서 고양이를 멀리 보낼 칸(점선)을 누르세요';
+  if (!s.pendingPos) return '밝게 빛나는 칸에 놓을 수 있습니다';
+  return distinctRotations(species).length > 1 ? '방향을 고르고 결과를 본 뒤 놓기를 누르세요' : '결과를 본 뒤 놓기를 누르세요';
 }

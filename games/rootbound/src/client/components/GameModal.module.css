@@ -26,16 +26,12 @@
   border: 1px solid color-mix(in srgb, var(--color-muted) 30%, transparent);
 }
 
-/* 목표 카드는 가로형(880×630)이라 패널을 넓히고 카드를 패널 폭에 맞춘다 */
-.backdrop[data-kind='goal'] .panel {
-  max-width: 440px;
-}
-
+/* 소문 카드는 세로형(630×880). 패널 폭과 화면 높이 중 좁은 쪽에 맞춘다
+   (130px = 모달 위아래 여백 + 닫기 버튼 자리) */
 .goalFace {
   display: block;
-  width: 100%;
-  aspect-ratio: 880 / 630;
-  border-radius: var(--radius-md);
+  width: min(100%, 280px, calc((100dvh - 130px) * 630 / 880));
+  aspect-ratio: 630 / 880;
 }
 
 /* 카드를 볼 때는 닫기 버튼이 카드 모서리를 가리지 않게 위를 띄운다 */
@@ -97,11 +93,22 @@
   }
 }
 
-/* 카드 더미 뒷면 (식물 카드 확대와 같은 크기) */
+/* 주머니 = 명당 타일 뒷면(육각, 명당 타일 확대와 같은 크기) */
 .pileFace {
   display: block;
-  width: min(100%, 300px, calc((100dvh - 260px) * 630 / 880));
-  aspect-ratio: 630 / 880;
+  width: min(100%, 240px, calc(100dvh - 380px));
+  min-width: 140px;
+  aspect-ratio: 1 / 1;
   margin: 0 auto;
-  border-radius: var(--radius-md);
+}
+
+/* 칸 주인 자리 색 점 (자리 색 글씨는 밝은 바탕에서 대비가 모자라 점으로 보인다) */
+.dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 6px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--color-outline);
+  vertical-align: baseline;
 }

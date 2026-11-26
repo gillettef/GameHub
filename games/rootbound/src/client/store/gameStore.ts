@@ -44,10 +44,10 @@ export interface RoomInfo {
 
 /** 순서 = 메뉴 표시 순서. board 는 대국 화면 자체다 */
 export const TABS: { id: TabId; label: string }[] = [
-  { id: 'board', label: '정원' },
+  { id: 'board', label: '골목' },
   { id: 'status', label: '점수' },
   { id: 'progress', label: '진행' },
-  { id: 'cards', label: '카드' },
+  { id: 'cards', label: '타일' },
   { id: 'help', label: '설명' },
 ];
 
@@ -215,7 +215,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const s = asState(state);
     if (seedPicking && pendingPos) {
       if (!legalSeedCells(s, pendingPos).some((p) => samePos(p, pos))) {
-        set({ notice: '씨앗은 심을 칸에서 두 칸 안, 연못·바위·입구가 아닌 칸에만 놓을 수 있습니다' });
+        set({ notice: '멀리 보내는 고양이는 놓을 칸에서 두 칸 안, 개울·공사장·아지트가 아닌 칸에만 보낼 수 있습니다' });
         return;
       }
       set({ pendingSeed: pos, seedPicking: false, notice: null });
@@ -226,17 +226,17 @@ export const useGameStore = create<GameStore>((set, get) => ({
     if (!species && !occupied && selectCanPlant(get())) {
       const hand = findMe(state, viewerId)?.hand ?? [];
       if (hand.some((sp) => legalPlantCells(s, viewerId, sp).some((p) => samePos(p, pos)))) {
-        set({ notice: '먼저 아래 내 카드에서 심을 카드를 고르세요' });
+        set({ notice: '먼저 아래 내 타일에서 놓을 타일을 고르세요' });
         return;
       }
     }
     if (!species || occupied) {
-      // 카드를 안 골랐거나 식물·입구 칸이면 그 칸을 크게 보여 준다
+      // 타일을 안 골랐거나 명당·아지트 칸이면 그 칸을 크게 보여 준다
       set({ cardModal: { kind: 'cell', pos } });
       return;
     }
     if (!legalPlantCells(s, viewerId, species).some((p) => samePos(p, pos))) {
-      set({ notice: getSpecies(species).pondPlanting ? '내 땅, 내 땅과 맞닿은 빈 칸, 연못 옆 빈 칸에만 심을 수 있습니다' : '내 땅이나 내 땅과 맞닿은 빈 칸에만 심을 수 있습니다' });
+      set({ notice: getSpecies(species).pondPlanting ? '내 칸, 내 칸·아지트와 맞닿은 빈 칸, 개울 옆 빈 칸에만 놓을 수 있습니다' : '내 칸이나 내 칸·아지트와 맞닿은 빈 칸에만 놓을 수 있습니다' });
       return;
     }
     if (pendingPos && posKey(pendingPos) === posKey(pos)) {

@@ -1,3 +1,4 @@
+/* 소문 카드. 띠 색: 보통 소문 = 주황(--goal-card-band), 단골 소문 = 초록(--goal-card-regular). 버튼에 data-regular 로 고른다 */
 .list {
   list-style: none;
   margin: 0;
@@ -12,25 +13,27 @@
   min-width: 0;
 }
 
-/* 목표 한 장 = 버튼(누르면 목표 카드 확대) */
-.goal,
-.linked {
+/* 소문 한 장 = 버튼(누르면 소문 카드 확대). 왼쪽 띠가 카드 윗띠 색 */
+.goal {
+  --band: var(--goal-card-band);
+  --band-ink: var(--goal-card-band-ink);
   width: 100%;
   font: inherit;
-  color: inherit;
+  color: var(--goal-card-ink);
   text-align: left;
   cursor: pointer;
   display: flex;
   flex-direction: column;
   gap: 2px;
-  padding: 6px var(--space-1);
+  padding: 6px var(--space-1) 6px var(--space-2);
   border-radius: var(--radius-sm);
-  background: color-mix(in srgb, var(--color-surface) 92%, transparent);
-  border: 1px solid color-mix(in srgb, var(--color-muted) 25%, transparent);
+  background: linear-gradient(to right, var(--band) 0 6px, var(--goal-card-paper) 6px);
+  border: 1px solid color-mix(in srgb, var(--band-ink) 45%, transparent);
 }
 
-.linked {
-  border-color: color-mix(in srgb, var(--color-accent) 60%, transparent);
+.goal[data-regular] {
+  --band: var(--goal-card-regular);
+  --band-ink: var(--goal-card-regular-ink);
 }
 
 .name {
@@ -38,22 +41,22 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 4px;
-  font-weight: 700;
+  font-weight: 800;
   font-size: var(--text-small);
-  color: var(--color-heading);
+  color: var(--goal-card-ink);
 }
 
 .tag {
   padding: 0 6px;
   border-radius: var(--radius-full);
-  background: var(--color-accent);
-  color: var(--color-accent-text);
+  background: var(--band-ink);
+  color: var(--color-white);
   font-size: var(--text-micro);
 }
 
 .desc {
   font-size: var(--text-micro);
-  color: var(--color-muted);
+  color: var(--goal-card-kicker);
   line-height: 1.4;
 }
 
@@ -66,13 +69,15 @@
   min-width: 22px;
   padding: 0 6px;
   border-radius: var(--radius-full);
-  background: color-mix(in srgb, var(--seat-color) 35%, transparent);
+  background: color-mix(in srgb, var(--seat-color) 30%, var(--goal-card-paper));
+  border: 1px solid var(--seat-color);
+  color: var(--color-text);
   font-size: var(--text-micro);
   font-weight: 700;
   text-align: center;
 }
 
-/* ---- 목표 카드 축소판 (정원 탭 위쪽). 색은 목표 카드 디자인 그대로(--goal-card-*) ---- */
+/* ---- 소문 카드 축소판 (보드 위쪽): 크림 종이 + 윗띠 + 이름. 색은 카드 그림 그대로(--goal-card-*) ---- */
 .minis {
   list-style: none;
   margin: 0;
@@ -83,34 +88,34 @@
 }
 
 .mini {
+  --band: var(--goal-card-band);
+  --band-ink: var(--goal-card-band-ink);
   width: 100%;
   height: 44px;
   font: inherit;
   cursor: pointer;
   display: flex;
-  padding: 0;
-  overflow: hidden;
-  text-align: left;
-  border-radius: var(--radius-xs);
-  border: 1px solid var(--goal-card-edge);
-  background: var(--goal-card-paper);
-}
-
-.paper {
-  flex: 1;
-  min-width: 0;
-  display: flex;
   flex-direction: column;
   justify-content: center;
   gap: 1px;
-  padding: 0 var(--space-half) 0 var(--space-1);
+  padding: 5px var(--space-1) 0;
+  overflow: hidden;
+  text-align: left;
+  border-radius: var(--radius-xs);
+  border: 1.5px solid var(--goal-card-edge);
+  background: linear-gradient(to bottom, var(--band) 0 6px, var(--goal-card-paper) 6px);
+}
+
+.mini[data-regular] {
+  --band: var(--goal-card-regular);
+  --band-ink: var(--goal-card-regular-ink);
 }
 
 .kicker {
   font-size: var(--text-micro);
+  font-weight: 800;
   line-height: 1;
-  letter-spacing: 0.04em;
-  color: var(--goal-card-kicker);
+  color: var(--band-ink);
   white-space: nowrap;
 }
 
@@ -125,30 +130,8 @@
   text-overflow: ellipsis;
 }
 
-/* 카드 오른쪽 남색 점수 띠 + 번호 육각 배지 */
-.band {
-  flex: none;
-  width: 30px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--goal-card-band);
-}
-
-.badge {
-  width: 22px;
-  height: 25px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
-  background: var(--goal-card-line);
-  color: var(--goal-card-band);
-  font-size: var(--text-micro);
-  font-weight: 800;
-}
-
-.mini:focus-visible {
-  outline: 2px solid var(--color-accent);
+.mini:focus-visible,
+.goal:focus-visible {
+  outline: 2px solid var(--color-outline);
   outline-offset: 1px;
 }
