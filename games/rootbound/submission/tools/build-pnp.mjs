@@ -11,7 +11,7 @@ import { chromium } from 'playwright';
 import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { SEAT, SEAT_NAME, SPOT_IDS, board, catToken, hexPoints, px, spotTile, text } from './draw.mjs';
+import { CHORES, SEAT, SEAT_NAME, SPOT_IDS, board, catToken, choreTile, hexPoints, px, spotTile, text } from './draw.mjs';
 import { GOALS, goalCard } from './goals.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -193,6 +193,28 @@ const pages = [];
     o += `<rect x="${x}" y="${y}" width="${W}" height="${H}" fill="none" stroke="#222" stroke-width="0.25"/>`;
   }
   pages.push(page(o, `소문 카드 뒷면`));
+}
+
+// 3-2. 골목 일과 타일 6장 + 뒷면 6장 (63×44mm)
+{
+  const W = 63;
+  const H = 44;
+  const x0 = (PAGE_W - 3 * W) / 2;
+  let o = '';
+  CHORES.forEach((c, k) => {
+    const x = x0 + (k % 3) * W;
+    const y = 14 + Math.floor(k / 3) * H;
+    o += choreTile(c.id, x + 0.5, y + 0.5, W - 1, H - 1);
+    o += `<rect x="${x}" y="${y}" width="${W}" height="${H}" fill="none" stroke="#222" stroke-width="0.25"/>`;
+  });
+  o += text(PAGE_W / 2, 120, 3.6, '뒷면 (양면 인쇄용)', { fill: '#7a6a55', weight: 600 });
+  for (let k = 0; k < 6; k++) {
+    const x = x0 + (k % 3) * W;
+    const y = 126 + Math.floor(k / 3) * H;
+    o += art('chore-back', x, y, W, H) ?? `<rect x="${x + 0.5}" y="${y + 0.5}" width="${W - 1}" height="${H - 1}" rx="3" fill="#5f7f9f"/><text x="${x + W / 2}" y="${y + H / 2 + 2}" font-size="6" text-anchor="middle" fill="#fff" font-weight="800">골목 일과</text>`;
+    o += `<rect x="${x}" y="${y}" width="${W}" height="${H}" fill="none" stroke="#222" stroke-width="0.25"/>`;
+  }
+  pages.push(page(o, `골목 일과 타일 (63×44mm) — 6장`));
 }
 
 // 4. 고양이 토큰 54개(3색 × 18) + 대장 방울 + 점수 기록지

@@ -298,3 +298,26 @@ export function board(state, R, opts = {}) {
 export function wrap(inner, [x, y, w, h], width) {
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${x.toFixed(2)} ${y.toFixed(2)} ${w.toFixed(2)} ${h.toFixed(2)}" width="${width}" height="${((width * h) / w).toFixed(1)}">${inner}</svg>`;
 }
+
+// ---------------------------------------------------------------------------
+// 골목 일과 6장 (v7). 클로드 디자인 그림(art/chore-*.svg)이 있으면 그것을 쓴다
+// ---------------------------------------------------------------------------
+export const CHORES = [
+  { id: 'bread', name: '식빵 굽기', place: true, text: '명당 놓기 + 놓은 칸 고양이 +1' },
+  { id: 'peek', name: '생선 냄새', place: true, text: '주머니 맨 위 1개를 펴고 3개 중 1개로 놓기' },
+  { id: 'roam', name: '마실', place: true, text: '내 칸에서 두 칸 안 빈 칸에도 놓기' },
+  { id: 'boss', name: '대장 방울', place: true, text: '명당 놓기 + 다음 라운드 선' },
+  { id: 'move', name: '담 넘기', place: false, text: '고양이 1~2마리를 옆 칸으로, 두 번까지' },
+  { id: 'call', name: '명당 부르기', place: false, text: '내 명당을 돌려 다시 부르기(+1) + 타일 1개' },
+];
+export function choreTile(id, x, y, w, h) {
+  const url = artUrl(`chore-${id}`);
+  if (url) return artImage(url, x, y, w, h);
+  const c = CHORES.find((k) => k.id === id);
+  const band = c.place ? '#e07b28' : '#5f7f9f';
+  return `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${w * 0.05}" fill="#fffaf0" stroke="#5a4630" stroke-width="${w * 0.012}"/>
+<rect x="${x}" y="${y}" width="${w}" height="${h * 0.26}" rx="${w * 0.05}" fill="${band}"/>
+${T(x + w / 2, y + h * 0.19, h * 0.15, c.name, { fill: '#fff' })}
+${T(x + w / 2, y + h * 0.5, h * 0.11, c.place ? '놓기' : '놓지 않음', { fill: band })}
+${T(x + w / 2, y + h * 0.78, Math.min(h * 0.1, (w * 0.92) / c.text.length * 1.1), c.text, { fill: '#3b2a18', weight: 600 })}`;
+}
