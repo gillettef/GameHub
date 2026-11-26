@@ -1,35 +1,42 @@
-/* 뿌리 모양 다이어그램: 가운데(심는 칸) 강조, 큐브 칸은 초록, 걷어내기(버섯)는 경고색, 씨앗 범위(민들레)는 옅은 초록 */
+/* 고양이 모양 도식 (밝은 골목 바탕): 가운데(놓는 칸) 주황, 고양이가 모이는 칸 갈색,
+   쫓아내기(빗자루 할머니)는 경고색, 멀리 보내기 범위(캣닢 화분)는 옅은 갈색. 칸마다 진한 갈색 테로 밝은 카드 위에서도 보이게 */
 .root {
   display: block;
   flex: none;
 }
 
+.root polygon {
+  stroke: color-mix(in srgb, var(--board-ink) 35%, transparent);
+  stroke-width: 0.08;
+}
+
 .none {
-  fill: color-mix(in srgb, var(--color-text) 8%, transparent);
+  fill: color-mix(in srgb, var(--color-surface) 70%, transparent);
 }
 
 .self {
   fill: var(--color-accent);
 }
 
+.root .self {
+  stroke: var(--board-ink);
+  stroke-width: 0.12;
+}
+
 .plus {
-  fill: color-mix(in srgb, var(--color-seat-2) 55%, transparent);
+  fill: var(--board-diagram-cat);
 }
 
 .seed {
-  fill: color-mix(in srgb, var(--color-seat-2) 18%, transparent);
+  fill: color-mix(in srgb, var(--board-diagram-cat) 30%, var(--color-surface));
 }
 
 .minus {
-  fill: color-mix(in srgb, var(--color-danger) 60%, transparent);
+  fill: var(--color-danger);
 }
 
 .label {
   font-size: 1px;
   font-weight: 800;
-  fill: var(--color-text);
-}
-
-.self + .label {
-  fill: var(--color-accent-text);
+  fill: var(--color-white);
 }

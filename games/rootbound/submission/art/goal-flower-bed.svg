@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 630 880" role="img" aria-label="소문 카드 — 맛집 골목" font-family="Pretendard, 'Malgun Gothic', sans-serif">
+<title>소문 카드 — 맛집 골목</title>
+<defs><clipPath id="goal-flower-bed-clip"><rect x="8" y="8" width="614" height="864" rx="38"/></clipPath></defs>
+<rect x="4" y="4" width="622" height="872" rx="42" fill="#fffaf0" stroke="#3b2a1c" stroke-width="8"/>
+<g clip-path="url(#goal-flower-bed-clip)">
+<rect x="0" y="0" width="630" height="150" fill="#c0692f"/>
+<path d="M0,150 Q80,170 160,150 T320,150 T480,150 T640,150 V0 H0 Z" fill="#c0692f"/>
+<path d="M0,150 Q80,170 160,150 T320,150 T480,150 T640,150" fill="none" stroke="#8a4a1e" stroke-width="5"/>
+<g fill="#ffffff" opacity="0.14"><g transform="translate(60,40) scale(2.2)"><ellipse cx="0" cy="2" rx="4" ry="3.4"/><circle cx="-4" cy="-3" r="1.6"/><circle cx="0" cy="-4.6" r="1.6"/><circle cx="4" cy="-3" r="1.6"/></g><g transform="translate(575,112) scale(2.2)"><ellipse cx="0" cy="2" rx="4" ry="3.4"/><circle cx="-4" cy="-3" r="1.6"/><circle cx="0" cy="-4.6" r="1.6"/><circle cx="4" cy="-3" r="1.6"/></g><g transform="translate(520,30) scale(2.2)"><ellipse cx="0" cy="2" rx="4" ry="3.4"/><circle cx="-4" cy="-3" r="1.6"/><circle cx="0" cy="-4.6" r="1.6"/><circle cx="4" cy="-3" r="1.6"/></g></g>
+</g>
+<text x="315" y="120" font-size="64" text-anchor="middle" font-weight="900" fill="#ffffff" font-family="Pretendard, 'Malgun Gothic', sans-serif" stroke="#8a4a1e" stroke-width="3" paint-order="stroke">맛집 골목</text>
+<defs><clipPath id="goal-flower-bed-art"><rect x="24" y="186" width="582" height="390" rx="20"/></clipPath></defs>
+<g data-art="1" clip-path="url(#goal-flower-bed-art)"><g transform="translate(315,384) scale(0.86) translate(-315,-360)"><polygon points="222.67,362 222.67,454 143,500 63.33,454 63.33,362 143,316" fill="#d4efc4" stroke="#3b2a1c" stroke-width="5" stroke-linejoin="round"/><g transform="translate(143,412) scale(1.55)">
+<ellipse cx="0" cy="22" rx="24" ry="3" fill="#3a2a17" opacity="0.15"/>
+<path d="M0,0 V-18 M0,-6 L-9,-14 M0,-8 L9,-17" stroke="#3f8a3a" stroke-width="2" fill="none"/>
+<path transform="translate(-1,-2) rotate(-60) scale(1)" d="M0,0 C-5,-2 -6,-9 0,-13 C6,-9 5,-2 0,0 Z" fill="#6fbf55" stroke="#2e6b22" stroke-width="1.2"/><path transform="translate(-1,-2) rotate(-60) scale(1)" d="M0,-1 V-11" stroke="#2e6b22" stroke-width="0.8"/><path transform="translate(1,-2) rotate(60) scale(1)" d="M0,0 C-5,-2 -6,-9 0,-13 C6,-9 5,-2 0,0 Z" fill="#6fbf55" stroke="#2e6b22" stroke-width="1.2"/><path transform="translate(1,-2) rotate(60) scale(1)" d="M0,-1 V-11" stroke="#2e6b22" stroke-width="0.8"/><path transform="translate(-6,-10) rotate(-35) scale(0.9)" d="M0,0 C-5,-2 -6,-9 0,-13 C6,-9 5,-2 0,0 Z" fill="#6fbf55" stroke="#2e6b22" stroke-width="1.2"/><path transform="translate(-6,-10) rotate(-35) scale(0.9)" d="M0,-1 V-11" stroke="#2e6b22" stroke-width="0.8"/><path transform="translate(6,-12) rotate(38) scale(0.9)" d="M0,0 C-5,-2 -6,-9 0,-13 C6,-9 5,-2 0,0 Z" fill="#6fbf55" stroke="#2e6b22" stroke-width="1.2"/><path transform="translate(6,-12) rotate(38) scale(0.9)" d="M0,-1 V-11" stroke="#2e6b22" stroke-width="0.8"/><path transform="translate(-2,-16) rotate(-12) scale(0.85)" d="M0,0 C-5,-2 -6,-9 0,-13 C6,-9 5,-2 0,0 Z" fill="#6fbf55" stroke="#2e6b22" stroke-width="1.2"/><path transform="translate(-2,-16) rotate(-12) scale(0.85)" d="M0,-1 V-11" stroke="#2e6b22" stroke-width="0.8"/><path transform="translate(4,-18) rotate(14) scale(0.8)" d="M0,0 C-5,-2 -6,-9 0,-13 C6,-9 5,-2 0,0 Z" fill="#6fbf55" stroke="#2e6b22" stroke-width="1.2"/><path transform="translate(4,-18) rotate(14) scale(0.8)" d="M0,-1 V-11" stroke="#2e6b22" stroke-width="0.8"/>
+<path d="M-9,-14 v-7 M9,-17 v-6 M0,-18 v-6" stroke="#b79ad6" stroke-width="3.2" stroke-linecap="round" stroke-dasharray="1.8 1.4"/>
+<path d="M-16,4 H16 L12,22 H-12 Z" fill="#d9744a" stroke="#3b2a1c" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="-19" y="-1" width="38" height="6" rx="2" fill="#e88a5c" stroke="#3b2a1c" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M-7,13 q3,-3 7,0 q4,-3 7,0" stroke="#fff3e6" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+<path d="M-32,-14 l1.4,3.6 l3.6,1.4 l-3.6,1.4 l-1.4,3.6 l-1.4,-3.6 l-3.6,-1.4 l3.6,-1.4 z" fill="#ffd34d" stroke="#3b2a1c" stroke-width="0.9"/>
+<path d="M31,-4 l1.2,3 l3,1.2 l-3,1.2 l-1.2,3 l-1.2,-3 l-3,-1.2 l3,-1.2 z" fill="#ffd34d" stroke="#3b2a1c" stroke-width="0.9"/>
+<path d="M24,-20 l0.9,2.2 l2.2,0.9 l-2.2,0.9 l-0.9,2.2 l-0.9,-2.2 l-2.2,-0.9 l2.2,-0.9 z" fill="#fff" stroke="#3b2a1c" stroke-width="0.8"/></g><polygon points="394.67,250 394.67,342 315,388 235.33,342 235.33,250 315,204" fill="#c4e4f4" stroke="#3b2a1c" stroke-width="5" stroke-linejoin="round"/><g transform="translate(315,300) scale(1.55)">
+<ellipse cx="0" cy="22" rx="42" ry="3.5" fill="#3a2a17" opacity="0.15"/>
+<path d="M-30,-24 Q-4,-30 16,-12" stroke="#6b4423" stroke-width="2" fill="none" stroke-linecap="round"/>
+<path d="M-22,22 V12 M-8,22 V12" stroke="#3b2a1c" stroke-width="4.5" stroke-linecap="round"/>
+<path d="M-28,14 C-30,0 -24,-4 -15,-4 C-6,-4 0,0 -2,14 Z" fill="#6d8f5a" stroke="#3b2a1c" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M-19,-3 V12 M-11,-3 V12" stroke="#4f6b40" stroke-width="1.2"/><rect x="-24" y="3" width="6" height="4" rx="1" fill="#4f6b40"/>
+<circle cx="-15" cy="-11" r="8.2" fill="#f2c9a0" stroke="#3b2a1c" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M-24,-13 Q-23,-23 -15,-23 Q-7,-23 -6,-13 Z" fill="#e8d9a8" stroke="#3b2a1c" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/><path d="M-27,-13 H-3" stroke="#3b2a1c" stroke-width="2.6" stroke-linecap="round"/>
+<circle cx="-18" cy="-9.5" r="1.2" fill="#3b2a1c"/><circle cx="-12" cy="-9.5" r="1.2" fill="#3b2a1c"/>
+<path d="M-19,-6 q4,2.5 8,0" stroke="#3b2a1c" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+<path d="M-4,4 Q4,0 8,-6" stroke="#3b2a1c" stroke-width="4.5" fill="none" stroke-linecap="round"/><circle cx="9" cy="-7" r="3.2" fill="#f2c9a0" stroke="#3b2a1c" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M10,-4 C16,-12 28,-12 32,-5 C28,2 16,2 10,-4 Z" fill="#5b8fc7" stroke="#3b2a1c" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M32,-5 L40,-11 L39,1 Z" fill="#5b8fc7" stroke="#3b2a1c" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="15" cy="-6" r="1.5" fill="#fff" stroke="#3b2a1c" stroke-width="0.8"/><path d="M20,-9 q2,3 0,7 M24,-9 q2,3 0,7" stroke="#2c5a8a" stroke-width="1" fill="none"/>
+<path d="M20,22 L18,8 H40 L38,22 Z" fill="#9fb3c2" stroke="#3b2a1c" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/><path d="M17,8 H41" stroke="#3b2a1c" stroke-width="3" stroke-linecap="round"/>
+<path d="M24,8 L22,0 L28,3 Z M32,8 C30,2 36,0 37,4 Z" fill="#5b8fc7" stroke="#3b2a1c" stroke-width="1.2"/></g><polygon points="566.67,362 566.67,454 487,500 407.33,454 407.33,362 487,316" fill="#ffd6d6" stroke="#3b2a1c" stroke-width="5" stroke-linejoin="round"/><g transform="translate(487,412) scale(1.55)">
+<ellipse cx="0" cy="22" rx="44" ry="3.5" fill="#3a2a17" opacity="0.15"/>
+<rect x="-34" y="-4" width="36" height="26" rx="1.5" fill="#f7e3c4" stroke="#3b2a1c" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M-38,-2 L-16,-22 L6,-2 Z" fill="#e06a6a" stroke="#3b2a1c" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M-23,22 V9 A7,7 0 0 1 -9,9 V22 Z" fill="#7a4f2e" stroke="#3b2a1c" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M-16,-12 c-2.4,-3 -6.4,-0.4 0,4 c6.4,-4.4 2.4,-7 0,-4 z" fill="#fff" stroke="#3b2a1c" stroke-width="1"/>
+<rect x="-31" y="2" width="8" height="5" rx="1" fill="#fff" stroke="#3b2a1c" stroke-width="1"/>
+<path d="M8,15 Q8,22 17,22 Q26,22 26,15 Z" fill="#e65f7a" stroke="#3b2a1c" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/><ellipse cx="17" cy="15" rx="9" ry="2.6" fill="#a86b3c" stroke="#3b2a1c" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="14" cy="13.8" r="1.5" fill="#7a4a24"/><circle cx="18" cy="13.4" r="1.5" fill="#7a4a24"/><circle cx="21" cy="14.4" r="1.4" fill="#7a4a24"/>
+<path d="M28,15 Q28,22 36,22 Q44,22 44,15 Z" fill="#5b8fc7" stroke="#3b2a1c" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/><ellipse cx="36" cy="15" rx="8" ry="2.4" fill="#bfe3f5" stroke="#3b2a1c" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M30,-6 c-3.6,-4.5 -9.6,-0.6 0,6 c9.6,-6.6 3.6,-10.5 0,-6 z" fill="#ff5c7a" stroke="#3b2a1c" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M14,-14 c-2.4,-3 -6.4,-0.4 0,4 c6.4,-4.4 2.4,-7 0,-4 z" fill="#ff8fa3" stroke="#3b2a1c" stroke-width="1.2"/></g></g></g>
+<rect x="40" y="590" width="550" height="130" rx="24" fill="#f6ead6"/>
+<text x="315" y="642" font-size="42" text-anchor="middle" font-weight="700" fill="#3b2a1c" font-family="Pretendard, 'Malgun Gothic', sans-serif">내 영역 위</text>
+<text x="315" y="698" font-size="42" text-anchor="middle" font-weight="700" fill="#3b2a1c" font-family="Pretendard, 'Malgun Gothic', sans-serif">먹을거리 1개당</text>
+<text x="315" y="848" font-size="110" text-anchor="middle" font-weight="900" fill="#c0692f" font-family="Pretendard, 'Malgun Gothic', sans-serif" stroke="#3b2a1c" stroke-width="3" paint-order="stroke">+2</text>
+</svg>

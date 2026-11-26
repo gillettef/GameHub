@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 630 880" role="img" aria-label="소문 카드 — 캣닢 단골" font-family="Pretendard, 'Malgun Gothic', sans-serif">
+<title>소문 카드 — 캣닢 단골</title>
+<defs><clipPath id="goal-dandelion-reserve-clip"><rect x="8" y="8" width="614" height="864" rx="38"/></clipPath></defs>
+<rect x="4" y="4" width="622" height="872" rx="42" fill="#fffaf0" stroke="#3b2a1c" stroke-width="8"/>
+<g clip-path="url(#goal-dandelion-reserve-clip)">
+<rect x="0" y="0" width="630" height="150" fill="#4f9d5a"/>
+<path d="M0,150 Q80,170 160,150 T320,150 T480,150 T640,150 V0 H0 Z" fill="#4f9d5a"/>
+<path d="M0,150 Q80,170 160,150 T320,150 T480,150 T640,150" fill="none" stroke="#2f6b3a" stroke-width="5"/>
+<g fill="#ffffff" opacity="0.14"><g transform="translate(60,40) scale(2.2)"><ellipse cx="0" cy="2" rx="4" ry="3.4"/><circle cx="-4" cy="-3" r="1.6"/><circle cx="0" cy="-4.6" r="1.6"/><circle cx="4" cy="-3" r="1.6"/></g><g transform="translate(575,112) scale(2.2)"><ellipse cx="0" cy="2" rx="4" ry="3.4"/><circle cx="-4" cy="-3" r="1.6"/><circle cx="0" cy="-4.6" r="1.6"/><circle cx="4" cy="-3" r="1.6"/></g><g transform="translate(520,30) scale(2.2)"><ellipse cx="0" cy="2" rx="4" ry="3.4"/><circle cx="-4" cy="-3" r="1.6"/><circle cx="0" cy="-4.6" r="1.6"/><circle cx="4" cy="-3" r="1.6"/></g></g>
+</g>
+<g><rect x="34" y="28" width="92" height="36" rx="18" fill="#fffaf0" stroke="#3b2a1c" stroke-width="3"/><text x="80" y="55" font-size="23" text-anchor="middle" font-weight="900" fill="#2f6b3a" font-family="Pretendard, 'Malgun Gothic', sans-serif">단골</text></g>
+<text x="315" y="120" font-size="64" text-anchor="middle" font-weight="900" fill="#ffffff" font-family="Pretendard, 'Malgun Gothic', sans-serif" stroke="#2f6b3a" stroke-width="3" paint-order="stroke">캣닢 단골</text>
+<defs><clipPath id="goal-dandelion-reserve-art"><rect x="24" y="186" width="582" height="390" rx="20"/></clipPath></defs>
+<g data-art="1" clip-path="url(#goal-dandelion-reserve-art)"><g transform="translate(315,384) scale(0.86) translate(-315,-360)"><polygon points="444.9,285 444.9,435 315,510 185.1,435 185.1,285 315,210" fill="#d4efc4" stroke="#3b2a1c" stroke-width="6" stroke-linejoin="round"/><polygon points="432.78,292 432.78,428 315,496 197.22,428 197.22,292 315,224" fill="none" stroke="#fffaf0" stroke-width="4" stroke-dasharray="12 8"/><g transform="translate(315,364) scale(2.7)">
+<ellipse cx="0" cy="22" rx="24" ry="3" fill="#3a2a17" opacity="0.15"/>
+<path d="M0,0 V-18 M0,-6 L-9,-14 M0,-8 L9,-17" stroke="#3f8a3a" stroke-width="2" fill="none"/>
+<path transform="translate(-1,-2) rotate(-60) scale(1)" d="M0,0 C-5,-2 -6,-9 0,-13 C6,-9 5,-2 0,0 Z" fill="#6fbf55" stroke="#2e6b22" stroke-width="1.2"/><path transform="translate(-1,-2) rotate(-60) scale(1)" d="M0,-1 V-11" stroke="#2e6b22" stroke-width="0.8"/><path transform="translate(1,-2) rotate(60) scale(1)" d="M0,0 C-5,-2 -6,-9 0,-13 C6,-9 5,-2 0,0 Z" fill="#6fbf55" stroke="#2e6b22" stroke-width="1.2"/><path transform="translate(1,-2) rotate(60) scale(1)" d="M0,-1 V-11" stroke="#2e6b22" stroke-width="0.8"/><path transform="translate(-6,-10) rotate(-35) scale(0.9)" d="M0,0 C-5,-2 -6,-9 0,-13 C6,-9 5,-2 0,0 Z" fill="#6fbf55" stroke="#2e6b22" stroke-width="1.2"/><path transform="translate(-6,-10) rotate(-35) scale(0.9)" d="M0,-1 V-11" stroke="#2e6b22" stroke-width="0.8"/><path transform="translate(6,-12) rotate(38) scale(0.9)" d="M0,0 C-5,-2 -6,-9 0,-13 C6,-9 5,-2 0,0 Z" fill="#6fbf55" stroke="#2e6b22" stroke-width="1.2"/><path transform="translate(6,-12) rotate(38) scale(0.9)" d="M0,-1 V-11" stroke="#2e6b22" stroke-width="0.8"/><path transform="translate(-2,-16) rotate(-12) scale(0.85)" d="M0,0 C-5,-2 -6,-9 0,-13 C6,-9 5,-2 0,0 Z" fill="#6fbf55" stroke="#2e6b22" stroke-width="1.2"/><path transform="translate(-2,-16) rotate(-12) scale(0.85)" d="M0,-1 V-11" stroke="#2e6b22" stroke-width="0.8"/><path transform="translate(4,-18) rotate(14) scale(0.8)" d="M0,0 C-5,-2 -6,-9 0,-13 C6,-9 5,-2 0,0 Z" fill="#6fbf55" stroke="#2e6b22" stroke-width="1.2"/><path transform="translate(4,-18) rotate(14) scale(0.8)" d="M0,-1 V-11" stroke="#2e6b22" stroke-width="0.8"/>
+<path d="M-9,-14 v-7 M9,-17 v-6 M0,-18 v-6" stroke="#b79ad6" stroke-width="3.2" stroke-linecap="round" stroke-dasharray="1.8 1.4"/>
+<path d="M-16,4 H16 L12,22 H-12 Z" fill="#d9744a" stroke="#3b2a1c" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="-19" y="-1" width="38" height="6" rx="2" fill="#e88a5c" stroke="#3b2a1c" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M-7,13 q3,-3 7,0 q4,-3 7,0" stroke="#fff3e6" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+<path d="M-32,-14 l1.4,3.6 l3.6,1.4 l-3.6,1.4 l-1.4,3.6 l-1.4,-3.6 l-3.6,-1.4 l3.6,-1.4 z" fill="#ffd34d" stroke="#3b2a1c" stroke-width="0.9"/>
+<path d="M31,-4 l1.2,3 l3,1.2 l-3,1.2 l-1.2,3 l-1.2,-3 l-3,-1.2 l3,-1.2 z" fill="#ffd34d" stroke="#3b2a1c" stroke-width="0.9"/>
+<path d="M24,-20 l0.9,2.2 l2.2,0.9 l-2.2,0.9 l-0.9,2.2 l-0.9,-2.2 l-2.2,-0.9 l2.2,-0.9 z" fill="#fff" stroke="#3b2a1c" stroke-width="0.8"/></g></g></g>
+<rect x="40" y="590" width="550" height="130" rx="24" fill="#f6ead6"/>
+<text x="315" y="642" font-size="42" text-anchor="middle" font-weight="700" fill="#3b2a1c" font-family="Pretendard, 'Malgun Gothic', sans-serif">내 영역 위</text>
+<text x="315" y="698" font-size="42" text-anchor="middle" font-weight="700" fill="#3b2a1c" font-family="Pretendard, 'Malgun Gothic', sans-serif">캣닢 화분 1개당</text>
+<text x="315" y="848" font-size="110" text-anchor="middle" font-weight="900" fill="#4f9d5a" font-family="Pretendard, 'Malgun Gothic', sans-serif" stroke="#3b2a1c" stroke-width="3" paint-order="stroke">+2</text>
+</svg>

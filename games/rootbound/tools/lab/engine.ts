@@ -98,6 +98,12 @@ export interface LabRules {
   hooks?: string[];
   /** 규칙 짐에 더할 추가 규칙 이름 */
   extraRules?: string[];
+  /**
+   * 계절 결산 (2026-11-26 「세 번 피는 정원」 실험). ends[P] = 계절이 끝나는 라운드 번호(마지막은 게임 끝).
+   * 계절 i 가 끝나면 목표 i 번(goalTiming 'season')과 개화(내 땅 위 식물 1개당 bloom 점)를 쌓는다.
+   * goalTiming 'end' 이면 목표는 예전처럼 끝에 한 번에 센다.
+   */
+  seasons?: { ends: Record<number, number[]>; bloom: number; goalTiming: 'season' | 'end'; reveal?: 'all' | 'season' };
 }
 
 // ---------------------------------------------------------------------------
@@ -296,6 +302,11 @@ export class Game {
   readonly rotCache: [number, number, number][][][];
   /** 자리별 보드 위 큐브 수 */
   onBoard: number[] = [];
+  /** 계절 결산으로 쌓은 점수 (목표 몫 / 개화 몫) */
+  bankGoal: number[] = [];
+  bankBloom: number[] = [];
+  /** 지금 계절 번호 (0부터). 계절 규칙이 없으면 0 */
+  season = 0;
 
   constructor(rules: LabRules, P: number, seed: number) {
     this.rules = rules;
@@ -305,6 +316,8 @@ export class Game {
     const n = this.geo.n;
     this.inf = Array.from({ length: P }, () => new Int16Array(n));
     this.onBoard = new Array(P).fill(0);
+    this.bankGoal = new Array(P).fill(0);
+    this.bankBloom = new Array(P).fill(0);
     this.color = new Int8Array(n).fill(-1);
     this.plant = new Int8Array(n).fill(-1);
     this.entranceSeat = new Int8Array(n).fill(-1);
@@ -398,6 +411,8 @@ export class Game {
   }
 
   /** 공급처 한도 안에서 k 개를 놓을 수 있게 한다. 모자라면 가장 높이 쌓인 내 다른 칸에서 옮겨 온다. 놓을 수 있는 수를 돌려준다 */
+  /** 이번 차례에 큐브를 받는 칸 (옮겨 오지 않는다). placeBatch 가 채운다 */
+  private received = new Set<number>();
   private reserve(s: number, k: number, except: number): number {
     const lim = this.rules.supply?.[this.P] ?? 0;
     if (!lim) return k;
@@ -407,7 +422,7 @@ export class Game {
       let best = -1;
       let bv = 0;
       for (let x = 0; x < this.geo.n; x++) {
-        if (x === except) continue;
+        if (x === except || this.received.has(x)) continue;
         const v = I[x] as number;
         if (v > bv || (v === bv && v > 0 && best >= 0 && this.plant[best] !== -1 && this.plant[x] === -1)) {
           bv = v;
@@ -456,6 +471,51 @@ export class Game {
         this.setColor(c, s);
       } else this.setColor(c, -1);
     }
+  }
+
+  /**
+   * 뿌리 한 묶음 (정본 influence.ts placeRoots 와 같다, 2026-11-26). 걷어 내기를 모두 한 뒤 남은 뿌리를 놓는다.
+   * 모자라면 이번 차례에 큐브를 받는 칸을 뺀 내 칸에서 옮겨 온다. tug 모드 전용(sum 모드는 칸마다 addRoots)
+   */
+  placeBatch(targets: [number, number][], s: number): void {
+    if (this.rules.mode !== 'tug') {
+      for (const [c, k] of targets) this.addRoots(c, s, k);
+      return;
+    }
+    const cap = this.rules.cap || 99;
+    const rest: [number, number][] = [];
+    for (const [c, k] of targets) {
+      if (k <= 0 || !this.canHoldRoots(c)) continue;
+      const h = this.color[c] as number;
+      if (h === -1 || h === s) {
+        rest.push([c, k]);
+        continue;
+      }
+      const m = (this.inf[h] as Int16Array)[c] as number;
+      if (k < m) this.setInf(h, c, m - k);
+      else {
+        this.setInf(h, c, 0);
+        this.setColor(c, -1);
+        if (k > m) rest.push([c, k - m]);
+      }
+    }
+    for (const [c] of rest) this.received.add(c);
+    let need = 0;
+    const want = rest.map(([c, k]) => {
+      const cur = (this.inf[s] as Int16Array)[c] as number;
+      const w = Math.max(0, Math.min(cap, cur + k) - cur);
+      need += w;
+      return w;
+    });
+    let avail = this.reserve(s, need, -1);
+    rest.forEach(([c], i) => {
+      const k = Math.min(want[i] as number, avail);
+      if (k <= 0) return;
+      const cur = (this.inf[s] as Int16Array)[c] as number;
+      this.setInf(s, c, cur + k);
+      if (this.color[c] !== s) this.setColor(c, s);
+      avail -= k;
+    });
   }
 
   wither(c: number, s: number, k: number): void {
@@ -547,6 +607,8 @@ export class Game {
     const r = g.r[c] as number;
     const fertile = g.terrain[c] === FERTILE;
     const ab = sp.ability;
+    this.received.clear();
+    const batch: [number, number][] = [];
     for (const [dq, dr, v] of pat) {
       const t = dq === 0 && dr === 0 ? c : g.at(q + dq, r + dr);
       if (t < 0) continue;
@@ -555,11 +617,13 @@ export class Game {
         if (fertile) k += this.rules.fertileBonus;
         if (ab?.kind === 'cluster') for (const x of g.nb[c] as number[]) if (this.plant[x] === spIdx) k += ab.value;
       } else if (ab?.kind === 'fertileRing' && fertile) k += ab.value;
-      this.addRoots(t, s, k);
+      batch.push([t, k]);
     }
+    this.placeBatch(batch, s);
     if (ab?.kind === 'ivy') for (const x of g.nb[c] as number[]) if (this.plant[x] !== -1) this.addRoots(x, s, ab.value);
     if (ab?.kind === 'wither') for (const x of g.nb[c] as number[]) this.wither(x, s, ab.value);
-    if (ab?.kind === 'seed' && extra >= 0) this.addRoots(extra, s, ab.value);
+    if (ab?.kind === 'seed' && extra >= 0) this.placeBatch([[extra, ab.value]], s);
+    this.received.clear();
   }
 
   // -------------------------------------------------------------------------
@@ -572,15 +636,39 @@ export class Game {
     return o;
   }
 
+  /** 계절 규칙에서 아직 세지 않은 목표 번호들 */
+  private openGoals(): number[] {
+    const ss = this.rules.seasons;
+    if (!ss || ss.goalTiming === 'end') return this.goals.map((_, i) => i);
+    const out: number[] = [];
+    for (let i = this.season; i < this.goals.length; i++) out.push(i);
+    return out;
+  }
+
+  /** 남은 개화 횟수 (지금 계절 포함) */
+  private bloomsLeft(): number {
+    const ss = this.rules.seasons;
+    if (!ss || this.over) return 0;
+    return (ss.ends[this.P]?.length ?? 3) - this.season;
+  }
+
   scores(): number[] {
     const own = this.owners();
     const P = this.P;
     const land = new Array(P).fill(0);
     for (let c = 0; c < this.geo.n; c++) if ((own[c] as number) >= 0) land[own[c] as number]++;
-    const total = land.map((x, s) => x + (this.komi[s] ?? 0));
-    for (const goal of this.goals) {
-      const pts = this.goalPoints(goal, own);
+    const total = land.map((x, s) => x + (this.komi[s] ?? 0) + (this.bankGoal[s] as number) + (this.bankBloom[s] as number));
+    for (const gi of this.openGoals()) {
+      // 계절 공개 방식이면 아직 안 보인 목표는 평가하지 않는다 (지금 계절 목표만)
+      if (this.rules.seasons?.reveal === 'season' && this.rules.seasons.goalTiming === 'season' && gi > this.season) continue;
+      const pts = this.goalPoints(this.goals[gi] as GoalDef, own);
       for (let s = 0; s < P; s++) total[s] += pts[s] as number;
+    }
+    const bl = this.bloomsLeft();
+    if (bl > 0) {
+      // 봇 평가용 예상: 지금 계절 개화는 그대로, 뒤 계절 개화는 절반만 친다
+      const w = this.rules.seasons!.bloom * (1 + 0.5 * (bl - 1));
+      for (let c = 0; c < this.geo.n; c++) if (this.plant[c] !== -1 && (own[c] as number) >= 0) total[own[c] as number] += w;
     }
     for (let c = 0; c < this.geo.n; c++) {
       const p = this.plant[c] as number;
@@ -593,12 +681,27 @@ export class Game {
 
   goalScores(): number[] {
     const own = this.owners();
-    const t = new Array(this.P).fill(0);
-    for (const goal of this.goals) {
-      const pts = this.goalPoints(goal, own);
-      for (let s = 0; s < this.P; s++) t[s] += pts[s] as number;
+    const t = [...this.bankGoal];
+    for (const gi of this.openGoals()) {
+      const pts = this.goalPoints(this.goals[gi] as GoalDef, own);
+      for (let s = 0; s < this.P; s++) t[s] = (t[s] as number) + (pts[s] as number);
     }
     return t;
+  }
+
+  /** 계절 결산: 지금 계절 목표와 개화를 쌓는다 */
+  private settleSeason(): void {
+    const ss = this.rules.seasons!;
+    const own = this.owners();
+    if (ss.goalTiming === 'season') {
+      const goal = this.goals[this.season];
+      if (goal) {
+        const pts = this.goalPoints(goal, own);
+        for (let s = 0; s < this.P; s++) this.bankGoal[s]! += pts[s] as number;
+      }
+    }
+    for (let c = 0; c < this.geo.n; c++) if (this.plant[c] !== -1 && (own[c] as number) >= 0) this.bankBloom[own[c] as number]! += ss.bloom;
+    this.season++;
   }
 
   land(): number[] {
@@ -841,11 +944,17 @@ export class Game {
   }
 
   private endRound(): void {
-    this.history.push(this.scores());
-    if (!this.bag.length && !this.market.length && this.hands.every((h) => h.length === 0)) {
-      this.over = true;
-      return;
+    const ss = this.rules.seasons;
+    const last = !this.bag.length && !this.market.length && this.hands.every((h) => h.length === 0);
+    if (ss) {
+      const ends = ss.ends[this.P] ?? [];
+      if (last) {
+        while (this.season < ends.length) this.settleSeason();
+      } else if (ends.includes(this.round)) this.settleSeason();
     }
+    if (last) this.over = true;
+    this.history.push(this.scores());
+    if (last) return;
     if (this.rules.refill === 'round' && !this.bag.length && this.hands.every((h) => h.length === 0)) {
       this.over = true;
       return;

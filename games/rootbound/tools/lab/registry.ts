@@ -99,3 +99,16 @@ VARIANTS.p2v6s14 = variant('p2v6s14', { supply: { 2: 14, 3: 18, 4: 16 } }, V6);
 VARIANTS.p2v6s18 = variant('p2v6s18', { supply: { 2: 18, 3: 18, 4: 16 } }, V6);
 VARIANTS.p2v6m3 = variant('p2v6m3', { market: { 2: 3, 3: 2, 4: 2 } }, V6);
 VARIANTS.p2nbg2 = variant('p2nbg2', { goalCount: 2 }, VARIANTS.v5m2!);
+
+// 2026-11-26 「세 번 피는 정원」: 봄·여름·가을 계절 결산(목표 1장씩 + 개화). Contest.md 5.3
+const SEASON_ENDS = { 2: [4, 8, 12], 3: [4, 7, 10], 4: [4, 7, 10] };
+const SEASON_RULES = ['라운드 선(공급처 큐브 많은 사람)', '계절 결산'];
+const HOOK_BLOOM = '꽃이 필 때 뿌리를 잡은 사람이 갖는다(계절마다 주인 없는 식물이 점수가 됨)';
+const seasonal = (name: string, bloom: number, goalTiming: 'season' | 'end', reveal: 'all' | 'season' = 'all', from = V6) =>
+  variant(name, { seasons: { ends: SEASON_ENDS, bloom, goalTiming, reveal }, extraRules: SEASON_RULES, hooks: [...(from.hooks ?? []), HOOK_BLOOM] }, from);
+VARIANTS.s1 = seasonal('s1', 1, 'season');
+VARIANTS.s2 = seasonal('s2', 2, 'season');
+VARIANTS.s0 = seasonal('s0', 0, 'season');
+VARIANTS.s1end = seasonal('s1end', 1, 'end');
+VARIANTS.s1rev = seasonal('s1rev', 1, 'season', 'season');
+VARIANTS.s1nb = seasonal('s1nb', 1, 'season', 'all', VARIANTS.v5m2!);

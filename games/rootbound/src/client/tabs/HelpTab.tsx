@@ -1,8 +1,9 @@
 import { memo } from 'react';
 import { ENTRANCE_ROOTS, GOAL_COUNT, MAX_PLAYERS, MIN_PLAYERS, RESERVE_BONUS, START_HAND, rulesFor } from '../../engine';
+import { CREW_NAMES } from '../game/derived';
 import styles from './HelpTab.module.css';
 
-/** 인원별로 각자 심는 횟수 = 이번 판 식물 수 × 장수 ÷ 인원 (Rules.md 4절 6). 같은 횟수끼리 묶는다: "2인 12번, 3·4인 10번" */
+/** 인원별로 각자 놓는 횟수 = 이번 판 명당 수 × 개수 ÷ 인원 (Rules.md 4절 6). 같은 횟수끼리 묶는다: "2인 12번, 3·4인 10번" */
 function plantsEachText(): string {
   const groups: { counts: number[]; times: number }[] = [];
   for (let n = MIN_PLAYERS; n <= MAX_PLAYERS; n++) {
@@ -24,82 +25,112 @@ function komiText(): string {
   return `${first === last ? first : `${first}~${last}`}번 자리가 순서 보너스 ${komi[first - 1] ?? 0}점`;
 }
 
-/** 설명 탭: 한 화면 규칙 요약 (정본은 notes/Rules.md). 수치는 shared 상수에서 읽는다 */
+/** 지형 견본 그림 (페이지 기준 상대경로, 보드 칸과 같은 그림) */
+const TERRAINS = [
+  { art: 'empty', name: '골목길', text: '명당을 놓을 수 있고 고양이가 앉는 보통 칸' },
+  { art: 'fertile', name: '햇볕 자리', text: '골목길과 같고, 소문 카드 "양지바른 곳"이 셉니다' },
+  { art: 'pond', name: '개울', text: '놓을 수 없고 고양이도 앉지 않음. 낚시꾼은 개울과 맞닿은 칸이면 남의 칸에도 놓음' },
+  { art: 'rock', name: '공사장', text: '놓을 수 없고 고양이도 앉지 않음' },
+] as const;
+
+/** 설명 탭: 한 화면 규칙 요약 (정본은 notes/Rules.md, 고양이 테마 문구는 submission/rulebook.md). 수치는 엔진 상수에서 읽는다 */
 export const HelpTab = memo(function HelpTab() {
+  const r2 = rulesFor(2);
   return (
     <div className={styles.root}>
       <section className={styles.section}>
         <h2 className={styles.h2}>이야기</h2>
         <p>
-          해마다 도시를 돌며 열리는 달빛 정원 박람회. 주최 측이 조립식 화단 블록(구역)을 이어 붙여 부지를 만들어서, 기름진 땅·연못·바위의 자리가 매번 다릅니다. 부지에 칸막이는 없고, 폐막 심사 때 칸마다 <strong>뿌리를 내리고 있는 정원사</strong>의 화단으로 칩니다. 땅속에서는 뿌리끼리 서로 밀어내, 한 칸에는 한 정원사의 뿌리만 남습니다.
-          개막 날 올해의 심사 주제(목표 카드)가 발표되면 종묘원이 이번에 공급할 품종(이번 판 식물)을 정합니다. 정원사들은 각자의 출입문(입구)에서 밤마다 묘목을 한 그루씩 심고, 종묘 트럭이 내려놓은 상자(마켓)에서 하나씩 챙겨 갑니다. 묘목은 누가 심었든 그 자리에 뿌리를 둔 정원사의 화단에 속합니다.
+          오래된 골목에 {CREW_NAMES.slice(0, 3).join('·')} 무리가 삽니다(넷이면 {CREW_NAMES[3]}까지). 담장도 문패도 없는 골목이라, 평상이든 종이 상자든 해 질 녘에 <strong>그 자리에 앉아 있는 무리</strong>가 주인입니다. 이 동네 고양이들은 할퀴며 싸우지 않습니다. 대신 슬그머니 비집고 들어가 한 마리씩 밀어내는 데 선수라, 한 칸에는 늘 한 무리만 남습니다.
+          아침마다 골목에 소문이 돕니다. "요즘은 개울가 산책이 최고래", "상자 단골이 대접받는대". 여러분은 무리의 대장이 되어 아지트에서 출발해 하루에 명당 하나씩을 찾아내고 고양이들을 불러 모읍니다. 명당은 누가 찾아냈든, 마지막에 그 자리를 지키고 있는 무리의 것입니다.
         </p>
       </section>
       <section className={styles.section}>
-        <h2 className={styles.h2}>목표</h2>
-        <p>
-          차례마다 마켓이나 카드 더미에서 카드 1장을 가져오고, 내 카드 2장 중 1장을 심어 뿌리를 뻗습니다. 끝났을 때 <strong>내 뿌리가 있는 칸 1칸 = 1점</strong>에 목표 카드 {GOAL_COUNT}장의 점수를 더해 가장 높은 사람이 이깁니다.
-        </p>
-      </section>
-      <section className={styles.section}>
-        <h2 className={styles.h2}>한 판의 흐름</h2>
+        <h2 className={styles.h2}>꼭 알아야 할 세 가지</h2>
         <ol className={styles.steps}>
           <li>
-            <strong>준비</strong>: 이번 판 식물로 카드 더미를 섞어 각자 {START_HAND}장씩 받고, 마켓에 카드 {rulesFor(2).market}장을 펼칩니다. 각자 입구와 맞닿은 6칸에 뿌리 {ENTRANCE_ROOTS}개씩을 놓고 시작합니다.
+            <strong>내 영역</strong>: 내 고양이가 1마리 이상 앉은 칸이 <strong>내 칸</strong>, 내 칸 전체가 <strong>내 영역</strong>입니다. 한 칸에는 언제나 한 무리의 고양이만 있어서, 고양이 색만 보면 칸 주인을 압니다.
           </li>
           <li>
-            <strong>가져오기</strong>: 내 차례에 마켓 {rulesFor(2).market}장 중 원하는 카드 1장을 가져오거나(빈자리는 카드 더미에서 바로 채움), 카드 더미 맨 위 1장을 뒷면만 보고 가져옵니다(내 카드 2장). 더미에서 가져온 카드는 나만 봅니다.
+            <strong>한 마리가 한 마리를 쫓아낸다</strong>: 남의 고양이가 앉은 칸에 내 고양이가 오면 1마리가 1마리를 쫓아냅니다. 쫓겨난 고양이는 주인의 쉬는 고양이로 돌아갑니다.
           </li>
           <li>
-            <strong>심기</strong>: 내 카드 1장을 <strong>내 땅</strong>이나 <strong>내 땅과 맞닿은 빈 칸</strong>에 심고, 카드의 뿌리 모양을 원하는 방향으로 돌려 숫자만큼 뿌리를 놓습니다. 심을 칸이 하나도 없을 때만 1장을 버립니다.
-          </li>
-          <li>
-            <strong>다음 선</strong>: 모두 한 번씩 두면 라운드가 끝납니다. <strong>남은 뿌리가 가장 많은 사람</strong>(가장 적게 퍼진 사람)이 다음 라운드의 선입니다. 같으면 이번 선 다음 자리부터 시계방향으로 처음 만나는 사람입니다.
-          </li>
-          <li>
-            <strong>끝</strong>: 카드를 모두 쓰면 끝납니다({plantsEachText()} 심기). 패스는 없습니다.
+            <strong>명당은 그 자리를 차지한 무리의 것</strong>: 명당은 누가 놓았는지 따지지 않습니다. 끝날 때 그 칸에 앉은 무리가 점수를 가져갑니다.
           </li>
         </ol>
       </section>
       <section className={styles.section}>
-        <h2 className={styles.h2}>뿌리 줄다리기</h2>
+        <h2 className={styles.h2}>게임 목표</h2>
+        <p>
+          끝났을 때 <strong>내 칸 1칸 = 1점</strong>, 공개된 소문 카드 {GOAL_COUNT}장의 점수, 내 영역 위 캣맘 급식소 1개당 1점을 더해 가장 높은 사람이 이깁니다.
+        </p>
+      </section>
+      <section className={styles.section}>
+        <h2 className={styles.h2}>준비</h2>
+        <p>
+          쉬는 고양이는 2인 {r2.supply} / 3인 {rulesFor(3).supply} / 4인 {rulesFor(4).supply}마리입니다. 각자 아지트와 맞닿은 6칸에 {ENTRANCE_ROOTS}마리씩 앉히고 시작합니다. 이번 판 명당 타일을 주머니에 넣고 각자 {START_HAND}개씩 손에 들며, 타일 {r2.market}개를 펼쳐 둡니다.
+        </p>
+      </section>
+      <section className={styles.section}>
+        <h2 className={styles.h2}>내 차례</h2>
+        <ol className={styles.steps}>
+          <li>
+            <strong>가져오기</strong>: 펼친 타일 {r2.market}개 중 1개를 가져오거나(빈자리는 주머니에서 바로 채움), 주머니에서 1개를 뽑아 나만 봅니다. 손에 타일이 2개가 됩니다.
+          </li>
+          <li>
+            <strong>명당 놓기</strong>: 손의 타일 1개를 <strong>내 칸</strong>이나, <strong>내 칸·아지트와 맞닿은 고양이 없는 칸</strong>에 원하는 방향으로 돌려 놓습니다. 남의 고양이가 앉은 칸에는 놓을 수 없습니다(낚시꾼만 예외). 놓을 칸이 하나도 없을 때만 1개를 버립니다.
+          </li>
+          <li>
+            <strong>고양이 모이기</strong>: 타일 그림의 숫자만큼 그 칸과 가리키는 쪽 칸에 고양이가 모입니다(»는 두 칸 앞). 두 단계로 합니다.
+            <ul className={styles.list}>
+              <li>
+                <strong>쫓아내기</strong>: 남의 고양이가 앉은 칸마다 오는 고양이 1마리가 남의 고양이 1마리를 쫓아냅니다. 쫓아내기에는 쉬는 고양이를 쓰지 않습니다.
+              </li>
+              <li>
+                <strong>앉히기</strong>: 남은 수만큼 내 쉬는 고양이를 앉힙니다.
+              </li>
+              <li>
+                <strong>쉬는 고양이가 모자라면</strong>: 이번에 앉힐 칸을 뺀 내 칸 중 <strong>가장 높이 쌓인 칸</strong>에서 1마리씩 데려옵니다(높이가 같으면 명당이 없는 칸부터).
+              </li>
+            </ul>
+          </li>
+        </ol>
+      </section>
+      <section className={styles.section}>
+        <h2 className={styles.h2}>라운드와 선</h2>
+        <p>
+          모두 한 차례씩 하면 라운드가 끝납니다. <strong>쉬는 고양이가 가장 많은 사람</strong>(고양이를 가장 적게 내보낸 무리)이 다음 라운드의 선입니다. 같으면 지금 선 다음 자리부터 시계 방향으로 처음 만나는 사람입니다.
+        </p>
+      </section>
+      <section className={styles.section}>
+        <h2 className={styles.h2}>끝과 점수</h2>
         <ul className={styles.list}>
+          <li>주머니·펼친 타일·모두의 손이 비면 끝납니다({plantsEachText()} 놓기). 패스는 없습니다.</li>
           <li>
-            한 칸에는 <strong>한 사람의 뿌리만</strong> 있습니다. 남의 뿌리가 있는 칸에 뿌리를 뻗으면 내 뿌리 1개가 남의 뿌리 1개를 밀어냅니다. 다 밀어내고 남은 만큼 내 뿌리를 놓습니다.
+            점수 = 내 칸 + 소문 카드 {GOAL_COUNT}장 + 캣맘 급식소. "○○ 단골"은 내 영역 위 ○○ 1개당 +{RESERVE_BONUS}점이라, 남이 놓은 명당도 내 고양이로 차지하면 내 점수입니다.
           </li>
-          <li>
-            <strong>식물은 누구의 것도 아닙니다.</strong> 그 칸에 뿌리를 둔 사람의 땅이고, 그 위 식물도 그 사람 점수에 셉니다.
-          </li>
-          <li>
-            한 사람의 뿌리는 2인 {rulesFor(2).supply} / 3인 {rulesFor(3).supply} / 4인 {rulesFor(4).supply}개뿐입니다. 남은 뿌리가 모자라면 <strong>가장 높이 쌓인 내 칸</strong>에서 옮겨 옵니다. 밀려난 뿌리는 주인에게 돌아갑니다.
-          </li>
-          <li>버섯은 맞닿은 6칸의 남의 뿌리를 걷어내고, 민들레는 두 칸 안 아무 칸에 씨앗 뿌리 1개를 날립니다.</li>
-          <li>보드의 원 숫자가 그 칸의 뿌리 수이고, 원 색이 땅 주인입니다. 아래 "뿌리 수" 버튼으로 끄고 켭니다.</li>
+          <li>동점이면 내 칸이 많은 사람 → 내 영역 위 명당이 많은 사람 → 차례 순서가 늦은 사람이 이깁니다. 4인만 {komiText()}을 받고 시작합니다.</li>
+          <li>보드의 원 숫자가 그 칸의 고양이 수이고, 원 색이 칸 주인입니다. ≡ 메뉴의 "칸마다 고양이 수"로 끄고 켭니다.</li>
         </ul>
       </section>
       <section className={styles.section}>
         <h2 className={styles.h2}>지형</h2>
         <ul className={styles.terrain}>
+          {TERRAINS.map((t) => (
+            <li key={t.art}>
+              <img className={styles.swatch} src={`./art/terrain-${t.art}.svg`} alt="" width={22} height={22} />
+              <span>
+                <strong>{t.name}</strong>: {t.text}
+              </span>
+            </li>
+          ))}
           <li>
-            <span className={styles.swatchFertile} /> 기름진 땅: 보통 땅과 같고, 목표 "비옥한 밭"이 셉니다
-          </li>
-          <li>
-            <span className={styles.swatchPond} /> 연못: 심을 수 없고 누구의 땅도 아님. 연꽃은 연못 옆 빈 칸이면 어디든 심음
-          </li>
-          <li>
-            <span className={styles.swatchRock} /> 바위: 심을 수 없고 누구의 땅도 아님
+            <img className={styles.swatch} src="./art/hideout-0.svg" alt="" width={22} height={22} />
+            <span>
+              <strong>아지트</strong>: 각 무리의 출발점. 놓을 수 없고 누구의 영역도 아님
+            </span>
           </li>
         </ul>
-      </section>
-      <section className={styles.section}>
-        <h2 className={styles.h2}>목표 카드</h2>
-        <p>
-          판마다 {GOAL_COUNT}장이 공개됩니다. "○○ 보호구역"은 끝날 때 내 땅 위에 있는 ○○ 1개당 +{RESERVE_BONUS}점입니다. 누가 심었든 상관없어서, 남이 심은 식물을 뿌리로 감싸 빼앗을 수 있습니다.
-        </p>
-      </section>
-      <section className={styles.section}>
-        <h2 className={styles.h2}>순서 보정</h2>
-        <p>남은 뿌리가 많은 사람이 선을 잡아 앞선 사람을 따라잡을 기회를 줍니다. 4인만 {komiText()}을 받고 시작합니다.</p>
       </section>
     </div>
   );

@@ -162,10 +162,10 @@ export function announceMyTurn(body: string): void {
     /* 진동 미지원 */
   }
   if (document.visibilityState === 'visible') return;
-  flashTitle('● 내 차례 · Rootbound');
+  flashTitle('● 내 차례 · 냥냥 골목');
   if (isNotifyOn()) {
     try {
-      const n = new Notification('Rootbound · 내 차례', { body, tag: 'rootbound-turn' });
+      const n = new Notification('냥냥 골목 · 내 차례', { body, tag: 'rootbound-turn' });
       n.onclick = () => {
         window.focus();
         n.close();

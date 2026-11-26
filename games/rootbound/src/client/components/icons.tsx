@@ -53,10 +53,21 @@ export const CloseIcon = ({ size = 20, className }: IconProps) => svg(size, clas
 /** AI 자리 */
 export const BotIcon = ({ size = 20, className }: IconProps) =>
   svg(size, className, <><rect x="4" y="8" width="16" height="11" rx="3" /><path d="M12 8V4M9 13v1.5M15 13v1.5" /><circle cx="12" cy="3.5" r="1" fill="currentColor" stroke="none" /></>);
-/** 심기 */
+/** 명당 놓기: 고양이 발자국 */
 export const PlaceIcon = ({ size = 18, className }: IconProps) =>
-  svg(size, className, <><path d="M12 3 20 7.5v9L12 21l-8-4.5v-9Z" /><path d="M12 9v6M9 12h6" /></>);
-/** 땅 뺏기 */
+  svg(
+    size,
+    className,
+    <>
+      <path d="M12 12.5c-3 0-5.5 2.6-5.5 5 0 1.7 1.4 2.5 3 2.5 1 0 1.6-.5 2.5-.5s1.5.5 2.5.5c1.6 0 3-.8 3-2.5 0-2.4-2.5-5-5.5-5Z" />
+      <ellipse cx="5" cy="10" rx="1.9" ry="2.4" />
+      <ellipse cx="9.2" cy="5.8" rx="1.9" ry="2.5" />
+      <ellipse cx="14.8" cy="5.8" rx="1.9" ry="2.5" />
+      <ellipse cx="19" cy="10" rx="1.9" ry="2.4" />
+    </>,
+    true,
+  );
+/** 영역 뺏기 */
 export const SwordIcon = ({ size = 18, className }: IconProps) =>
   svg(size, className, <><path d="M5 19 16 8" /><path d="M14 4h6v6l-3-1-1-3Z" /><path d="M5 19l-1.5 1.5M8 16l-3 3" /></>);
 /** 지금 차례·내 차례 */
