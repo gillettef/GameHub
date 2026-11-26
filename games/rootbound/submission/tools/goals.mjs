@@ -70,13 +70,13 @@ export function goalCard(id, x, y, w, h) {
   const o = [];
   o.push(`<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${w * 0.07}" fill="#fffaf0" stroke="#5a4630" stroke-width="${w * 0.02}"/>`);
   o.push(`<rect x="${x}" y="${y}" width="${w}" height="${h * 0.17}" rx="${w * 0.07}" fill="${band}"/><rect x="${x}" y="${y + h * 0.1}" width="${w}" height="${h * 0.07}" fill="${band}"/>`);
-  o.push(text(x + w / 2, y + h * 0.12, w * (g.name.length > 6 ? 0.11 : 0.13), g.name, { fill: '#fff' }));
+  o.push(text(x + w / 2, y + h * 0.12, Math.min(w * 0.13, (w * 0.86) / g.name.length), g.name, { fill: '#fff' }));
   const cy = y + h * 0.4;
   if (g.spots) {
     const n = g.spots.length;
     g.spots.forEach((sp, i) => o.push(icon(sp, x + w * ((i + 0.5) / n), cy, w * (n > 2 ? 0.13 : n > 1 ? 0.17 : 0.24))));
-  } else o.push(glyph(g.glyph, x + w / 2, cy, w * 0.9));
-  g.rule.split('\n').forEach((line, i) => o.push(text(x + w / 2, y + h * (0.66 + i * 0.09), w * 0.085, line, { fill: '#3b2f1a', weight: 600 })));
+  } else o.push(glyph(g.glyph, x + w / 2, cy, w * 0.62));
+  g.rule.split('\n').forEach((line, i) => o.push(text(x + w / 2, y + h * (0.67 + i * 0.09), Math.min(w * 0.085, (w * 0.9) / line.length), line, { fill: '#3b2f1a', weight: 600 })));
   o.push(text(x + w / 2, y + h * 0.93, w * 0.15, g.pts, { fill: band }));
   return o.join('');
 }
