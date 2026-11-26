@@ -34,7 +34,7 @@ function boundsOf(map: BoardMap, tiles: number[]): Box {
       y1 = Math.max(y1, y)
     }
   }
-  return { x: x0 - 8, y: y0 - 8, w: x1 - x0 + 16, h: y1 - y0 + 16 }
+  return { x: x0 - 3, y: y0 - 3, w: x1 - x0 + 6, h: y1 - y0 + 6 }
 }
 
 /** 판마다 같은 장식이 나오게 하는 작은 난수 */
