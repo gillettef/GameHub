@@ -1,0 +1,135 @@
+/*
+ * 마왕의 패 (blackcrown) 디자인 토큰.
+ *
+ * 시각 언어: 흑요석 탁자 위에 양피지 카드. 금박은 "빛 면", 보랏빛 먹(그림자)은 "어둠 면".
+ * 불러오는 순서: @gamehub/ui/theme.css → 이 파일 → components.css
+ *
+ * 1부  --gh-*  공통 UI(GameShell·HomeScreen·WaitingRoom)가 읽는 값만 덮어쓴다.
+ * 2부  --bc-*  이 게임 전용.
+ *
+ * 외부 폰트는 쓰지 않는다(상대경로 규칙·오프라인). 모두 시스템 폰트 스택이다.
+ * 이 게임은 어두운 한 가지 테마만 쓴다(공통 theme.css 가 color-scheme: dark).
+ */
+
+/* ───────────── 1부: 공통 UI 덮어쓰기 ───────────── */
+:root {
+  --gh-bg: #110e13;          /* 흑요석 */
+  --gh-surface: #1a161d;     /* 현무암: 상태바·손패·행동 줄 */
+  --gh-raised: #272029;      /* 눌림·선택 바탕 */
+  --gh-line: #3a3140;        /* 경계선 */
+  --gh-text: #efe6d4;        /* 양피지빛 흰색 */
+  --gh-muted: #a3988b;       /* 따뜻한 회색 */
+  --gh-primary: #d8b25a;     /* 금박 */
+  --gh-on-primary: #1e1608;
+  --gh-danger: #d4574c;
+  color-scheme: dark;
+}
+
+/* ───────────── 2부: 게임 전용 ───────────── */
+:root {
+  /* 바탕 — 어둠(흑요석) 쪽 */
+  --bc-obsidian: #110e13;
+  --bc-basalt: #1a161d;
+  --bc-slate: #272029;
+  --bc-seam: #3a3140;
+  --bc-ash: #5a5058;          /* 잠긴 고리, 비활성 */
+
+  /* 바탕 — 빛(양피지) 쪽 */
+  --bc-vellum: #ecdfc3;
+  --bc-vellum-2: #dccaa2;     /* 양피지 그늘 */
+  --bc-vellum-edge: #b89f6e;  /* 양피지 테두리 */
+  --bc-ink: #2b2017;          /* 양피지 위 글자 */
+  --bc-ink-soft: #6b5843;
+
+  /* 금박 */
+  --bc-gilt: #c9a24c;
+  --bc-gilt-hi: #f2d98e;
+  --bc-gilt-lo: #7a5b20;
+  --bc-gilt-leaf: linear-gradient(135deg, #7a5b20 0%, #e8c874 28%, #fff1c2 46%, #c9a24c 62%, #8a6726 100%);
+
+  /* 촛불 (행동 토큰·내 차례 강조) */
+  --bc-candle: #ffb44a;
+  --bc-candle-core: #fff0c4;
+  --bc-candle-glow: rgba(255, 168, 64, 0.38);
+
+  /* 그림자(어둠 면, 그림자 카드, 마왕) */
+  --bc-umbra: #8d6bc0;
+  --bc-umbra-hi: #c3a6ef;
+  --bc-umbra-deep: #24182f;
+  --bc-umbra-glow: rgba(141, 107, 192, 0.42);
+  --bc-ember: #e2683c;        /* 어둠 면 효과 글자 강조 */
+
+  /* 문양 — 어두운 바탕 위 */
+  --bc-blade: #d4503f;
+  --bc-ward: #5b8cc7;
+  --bc-lantern: #6aa867;
+  --bc-coin: #d9aa3d;
+  /* 문양 — 양피지 위(대비 4.5:1 이상) */
+  --bc-blade-ink: #9b2b21;
+  --bc-ward-ink: #2a5488;
+  --bc-lantern-ink: #356a3a;
+  --bc-coin-ink: #85621a;
+
+  /* 상태 */
+  --bc-hp: #c8423f;
+  --bc-hp-track: #3a1d20;
+  --bc-ok: #7fb36a;
+
+  /* 보드 고리 (바깥 숲 / 가운데 폐허 / 안쪽 마왕성 / 옥좌) */
+  --bc-ring-outer: #1f2a1f;
+  --bc-ring-middle: #2a2523;
+  --bc-ring-inner: #221a26;
+  --bc-ring-throne: #120c15;
+
+  /* 글꼴. 숫자·제목은 구식 세리프, 본문은 공통 고딕 */
+  --bc-font-display: 'Iowan Old Style', 'Palatino Linotype', Palatino, 'Book Antiqua', Georgia,
+    'Nanum Myeongjo', 'Noto Serif KR', 'AppleMyungjo', serif;
+  --bc-font-body: -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+
+  /* 글자 크기 (본문 14 이상, refactor-plan 4절) */
+  --bc-text-xs: 12px;   /* 카드 위 보조 표기만 */
+  --bc-text-sm: 14px;
+  --bc-text-md: 15px;
+  --bc-text-lg: 18px;
+  --bc-text-xl: 24px;
+  --bc-text-hero: 40px;
+
+  /* 간격 (4px 격자) */
+  --bc-space-1: 4px;
+  --bc-space-2: 8px;
+  --bc-space-3: 12px;
+  --bc-space-4: 16px;
+  --bc-space-5: 24px;
+
+  /* 반경: 역할마다 다르다 */
+  --bc-r-tile: 3px;     /* 돌판 */
+  --bc-r-card: 7px;     /* 종이 카드 */
+  --bc-r-control: 10px; /* 버튼 */
+  --bc-r-sheet: 22px;   /* 아래 시트 윗모서리 */
+
+  /* 그림자 */
+  --bc-shadow-card: 0 1px 0 rgba(255, 244, 214, 0.55) inset, 0 -1px 0 rgba(90, 60, 20, 0.35) inset,
+    0 8px 16px -8px rgba(0, 0, 0, 0.85), 0 2px 3px rgba(0, 0, 0, 0.5);
+  --bc-shadow-lift: 0 18px 28px -12px rgba(0, 0, 0, 0.9), 0 0 0 1.5px var(--bc-gilt-hi);
+  --bc-shadow-sheet: 0 -18px 40px rgba(0, 0, 0, 0.7);
+  --bc-glow-candle: 0 0 0 1px rgba(255, 196, 110, 0.55), 0 0 18px var(--bc-candle-glow);
+  --bc-glow-umbra: 0 0 0 1px rgba(195, 166, 239, 0.45), 0 0 22px var(--bc-umbra-glow);
+
+  /* 모션 */
+  --bc-ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --bc-ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --bc-ease-crown: cubic-bezier(0.7, 0, 0.2, 1);  /* 느리게 맴돌다 툭 떨어짐 */
+  --bc-dur-tap: 120ms;
+  --bc-dur-move: 260ms;   /* 말 이동, 카드 들기 */
+  --bc-dur-flip: 560ms;   /* 아이템 빛→어둠 */
+  --bc-dur-bot: 600ms;    /* 봇 행동 간격(design.md 18절) */
+  --bc-dur-crown: 2400ms; /* 왕관 맴돌기 */
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --bc-dur-move: 1ms;
+    --bc-dur-flip: 1ms;
+    --bc-dur-crown: 1ms;
+  }
+}

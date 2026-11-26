@@ -1,0 +1,104 @@
+/*
+ * 목업 전용: 발표용 바탕과 GameShell(① 상태바 ~ ⑤ 행동 줄)을 흉내 낸 틀.
+ * 실제 클라이언트에서는 이 파일 대신 @gamehub/ui 의 GameShell 이 틀을 준다. 가져가지 말 것.
+ */
+* { box-sizing: border-box; }
+html { background: #08060a; }
+body {
+  margin: 0;
+  min-height: 100vh;
+  padding-block: 32px 48px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  background: radial-gradient(80% 50% at 50% 0%, #1e1622, #08060a 70%);
+  color: var(--gh-text);
+  font: 15px/1.45 var(--bc-font-body);
+  word-break: keep-all;
+}
+.sheet-title {
+  max-width: 900px;
+  margin: 0 auto 24px;
+}
+.sheet-title h1 { margin: 0 0 4px; font: 700 26px/1.2 var(--bc-font-display); color: var(--bc-gilt-hi); }
+.sheet-title p { margin: 0; color: var(--gh-muted); max-width: 62ch; }
+.row { display: flex; flex-wrap: wrap; gap: 32px; justify-content: center; align-items: flex-start; }
+.note { max-width: 402px; margin: 10px auto 0; font-size: 13px; color: var(--gh-muted); }
+.note b { color: var(--gh-text); }
+
+/* iPhone 17 Pro 402×874 화면 틀. 안전 영역: 위 62, 아래 34 */
+.phone {
+  position: relative;
+  flex: none;
+  width: 402px;
+  max-width: 100%;
+  height: 874px;
+  overflow: hidden;
+  border-radius: 54px;
+  background: var(--gh-bg);
+  box-shadow: 0 0 0 10px #1c181f, 0 0 0 11px #3a3340, 0 40px 80px -30px #000;
+  display: flex;
+  flex-direction: column;
+  padding-top: 62px;
+}
+.phone::before { /* 다이내믹 아일랜드 */
+  content: '';
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  width: 124px;
+  height: 36px;
+  margin-left: -62px;
+  border-radius: 20px;
+  background: #000;
+  z-index: 50;
+}
+.phone__time {
+  position: absolute;
+  top: 20px;
+  left: 44px;
+  font: 600 16px/1 var(--bc-font-body);
+  color: var(--gh-text);
+}
+.phone > .bottom { padding-bottom: 34px; }
+
+/* GameShell 흉내 */
+.m-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 56px;
+  padding: 4px 4px 4px 16px;
+  background: var(--gh-surface);
+  border-bottom: 1px solid var(--gh-line);
+}
+.m-status__text { flex: 1; min-width: 0; }
+.m-status__main { font-weight: 700; font-size: 16px; display: flex; align-items: center; gap: 6px; }
+.m-status__sub { font-size: 13px; color: var(--gh-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.m-menu { width: 48px; height: 48px; display: grid; place-items: center; color: var(--gh-muted); font-size: 22px; }
+.m-players {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 4px;
+  padding: 6px 8px;
+  background: var(--bc-obsidian);
+  border-bottom: 1px solid var(--gh-line);
+}
+.m-main { position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; }
+.m-hand { flex: none; background: var(--gh-surface); border-top: 1px solid var(--gh-line); }
+.m-actions {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px 34px;
+  background: var(--gh-surface);
+  border-top: 1px solid var(--gh-line);
+}
+.m-actions > .bc-btn { flex: 1; }
+
+/* 더미 줄: 뽑을 더미 / 버림 더미 / 마왕의 묘지 */
+.m-piles { display: flex; gap: 14px; align-items: center; font-size: 13px; color: var(--gh-muted); }
+.m-pile { display: inline-flex; align-items: center; gap: 5px; }
+.m-pile .bc-num { color: var(--gh-text); font-weight: 700; }
+.m-pile--grave { color: var(--bc-umbra-hi); }
+.m-pile--grave .bc-num { color: var(--bc-umbra-hi); }

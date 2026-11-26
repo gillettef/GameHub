@@ -1,0 +1,858 @@
+/*
+ * 마왕의 패 컴포넌트 스타일. tokens.css 다음에 불러온다.
+ * React 클라이언트는 이 클래스 이름을 그대로 쓴다(BEM: bc-블록__요소--변형, 상태는 is-*).
+ * 아이콘은 emblems.svg 의 <symbol> 을 <svg class="bc-ico"><use href="#..."/></svg> 로 쓴다.
+ */
+
+/* ── 재질 ─────────────────────────────────────────── */
+:root {
+  /* 양피지 결: 작은 노이즈(인라인 SVG, 외부 요청 없음) */
+  --bc-tex-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .35 0 0 0 0 .25 0 0 0 0 .12 0 0 0 .55 0'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)'/%3E%3C/svg%3E");
+  --bc-mat-vellum: var(--bc-tex-grain), radial-gradient(120% 90% at 30% 15%, #f6ecd4 0%, var(--bc-vellum) 45%, var(--bc-vellum-2) 100%);
+  /* 흑요석: 유리 같은 비스듬한 반사 한 줄 */
+  --bc-mat-obsidian: linear-gradient(112deg, transparent 38%, rgba(255, 255, 255, 0.07) 46%, transparent 54%),
+    radial-gradient(130% 100% at 20% 0%, #2a2130 0%, #17121a 55%, #0c090e 100%);
+}
+
+.bc-ico {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  flex: none;
+  vertical-align: -0.125em;
+  fill: currentColor;
+}
+
+/* 문양 색. 카드(양피지) 위에서는 --suit, 어두운 바탕에서는 --suit-lit */
+.bc-suit--blade { --suit: var(--bc-blade-ink); --suit-lit: var(--bc-blade); }
+.bc-suit--ward { --suit: var(--bc-ward-ink); --suit-lit: var(--bc-ward); }
+.bc-suit--lantern { --suit: var(--bc-lantern-ink); --suit-lit: var(--bc-lantern); }
+.bc-suit--coin { --suit: var(--bc-coin-ink); --suit-lit: var(--bc-coin); }
+.bc-suit--shadow { --suit: var(--bc-umbra-hi); --suit-lit: var(--bc-umbra-hi); }
+
+/* ── 운명 카드 ─────────────────────────────────────── */
+/* 크기는 --bc-card-w 하나로 정한다(손패 62, 시트 72, 견본 150). 나머지는 em 비례 */
+.bc-card {
+  --bc-card-w: 62px;
+  position: relative;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  width: var(--bc-card-w);
+  aspect-ratio: 5 / 7;
+  max-width: 100%;
+  padding: 0.32em;
+  font-size: calc(var(--bc-card-w) / 5.2);
+  color: var(--suit, var(--bc-ink));
+  background: var(--bc-mat-vellum);
+  border: 1px solid var(--bc-vellum-edge);
+  border-radius: var(--bc-r-card);
+  box-shadow: var(--bc-shadow-card);
+  transition: transform var(--bc-dur-move) var(--bc-ease-out), box-shadow var(--bc-dur-move) var(--bc-ease-out);
+  user-select: none;
+  -webkit-user-select: none;
+  isolation: isolate;
+}
+.bc-card__corner {
+  display: grid;
+  justify-items: center;
+  width: max-content;
+  line-height: 1;
+  gap: 0.08em;
+}
+.bc-card__corner--end {
+  justify-self: end;
+  transform: rotate(180deg);
+}
+.bc-card__num {
+  font-family: var(--bc-font-display);
+  font-weight: 700;
+  font-size: 1.35em;
+  font-variant-numeric: lining-nums tabular-nums;
+  letter-spacing: -0.02em;
+}
+.bc-card__corner .bc-ico { font-size: 0.8em; }
+.bc-card__art {
+  display: grid;
+  place-items: center;
+  position: relative;
+}
+.bc-card__art .bc-ico {
+  font-size: 2.1em;
+  position: relative;
+  z-index: 1;
+}
+/* 구간 이름(견습/용사/전설). 큰 카드에서만, 왼쪽 아래 빈 구석에 */
+.bc-card__tier {
+  display: none;
+  position: absolute;
+  left: 0.6em;
+  bottom: 0.5em;
+  font-size: 0.5em;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--bc-ink-soft);
+}
+.bc-card--lg .bc-card__tier { display: block; }
+
+/* 견습 1~5: 맨 양피지, 문양 하나 */
+.bc-card--apprentice .bc-card__art .bc-ico { font-size: 1.9em; }
+
+/* 용사 6~10: 금박 안쪽 테 + 문양 뒤 금빛 원 */
+.bc-card--hero::before {
+  content: '';
+  position: absolute;
+  inset: 0.2em;
+  border: 1px solid var(--bc-gilt);
+  border-radius: calc(var(--bc-r-card) - 3px);
+  box-shadow: inset 0 0 0 2px rgba(201, 162, 76, 0.18);
+  z-index: -1;
+}
+.bc-card--hero .bc-card__art::before {
+  content: '';
+  position: absolute;
+  width: 2.7em;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(242, 217, 142, 0.85) 0%, rgba(201, 162, 76, 0.35) 55%, transparent 72%);
+  border: 1px solid rgba(201, 162, 76, 0.7);
+}
+.bc-card--hero .bc-card__art .bc-ico { font-size: 2.2em; }
+
+/* 전설 11~13: 금박 가장자리 + 햇살 + 작은 왕관 */
+.bc-card--legend {
+  border: 0;
+  padding: calc(0.32em + 2px);
+  background: var(--bc-mat-vellum) padding-box, var(--bc-gilt-leaf) border-box;
+  border: 2px solid transparent;
+}
+.bc-card--legend .bc-card__art::before {
+  content: '';
+  position: absolute;
+  width: 3.4em;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: repeating-conic-gradient(from 0deg, rgba(201, 162, 76, 0.55) 0deg 6deg, transparent 6deg 18deg);
+  mask: radial-gradient(circle, #000 30%, transparent 70%);
+  -webkit-mask: radial-gradient(circle, #000 30%, transparent 70%);
+}
+.bc-card--legend .bc-card__art .bc-ico { font-size: 2.4em; filter: drop-shadow(0 1px 0 rgba(255, 241, 194, 0.9)); }
+.bc-card--legend .bc-card__crown {
+  position: absolute;
+  top: 0.32em;
+  right: 0.34em;
+  font-size: 0.7em;
+  color: var(--bc-gilt-lo);
+}
+.bc-card__crown { display: none; }
+.bc-card--legend .bc-card__crown { display: block; }
+
+/* 그림자 카드: 손패에서 유일한 어두운 카드. 와일드 */
+.bc-card--shadow {
+  --suit: var(--bc-umbra-hi);
+  color: var(--bc-umbra-hi);
+  background: radial-gradient(70% 55% at 50% 52%, rgba(141, 107, 192, 0.5), transparent 70%), var(--bc-mat-obsidian);
+  border-color: #4b3962;
+  box-shadow: var(--bc-glow-umbra), 0 8px 16px -8px rgba(0, 0, 0, 0.9);
+}
+.bc-card--shadow .bc-card__num { font-size: 1.2em; }
+.bc-card--shadow .bc-card__tier { color: var(--bc-umbra); }
+
+/* 상태 */
+.bc-card.is-selected {
+  transform: translateY(-12px);
+  box-shadow: var(--bc-shadow-lift);
+}
+.bc-card.is-dim { filter: saturate(0.3) brightness(0.55); }
+/* 묘지로 갈 카드(쌍격 이상): 밑에서 보랏빛이 스민다 */
+.bc-card.is-to-grave::after {
+  content: '';
+  position: absolute;
+  inset: auto -1px -1px -1px;
+  height: 38%;
+  border-radius: 0 0 var(--bc-r-card) var(--bc-r-card);
+  background: linear-gradient(to top, rgba(60, 34, 92, 0.85), transparent);
+  pointer-events: none;
+}
+/* 공용 카드: 몬스터·쇼다운 쪽 카드. 금박 대신 돌 테두리 */
+.bc-card.is-community { outline: 2px solid var(--bc-ash); outline-offset: 2px; }
+/* 마왕의 덱(대관식 뒤 묘지 카드): 양피지가 그을린다 */
+.bc-card.is-cursed {
+  background: linear-gradient(to top, rgba(36, 24, 47, 0.92), rgba(36, 24, 47, 0.25) 60%, transparent), var(--bc-mat-vellum);
+  border-color: #4b3962;
+}
+
+/* 카드 뒷면: 뽑을 더미·남의 손패 */
+.bc-cardback {
+  --bc-card-w: 62px;
+  display: grid;
+  place-items: center;
+  width: var(--bc-card-w);
+  aspect-ratio: 5 / 7;
+  border-radius: var(--bc-r-card);
+  background: var(--bc-mat-obsidian);
+  border: 1px solid var(--bc-gilt-lo);
+  box-shadow: inset 0 0 0 3px var(--bc-obsidian), inset 0 0 0 4px rgba(201, 162, 76, 0.45), 0 6px 12px -6px #000;
+  color: var(--bc-gilt);
+  font-size: calc(var(--bc-card-w) / 2.6);
+}
+
+/* 손패 줄: 겹쳐 펼친다. 선택한 카드는 위로 */
+.bc-hand {
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  padding: 18px 12px 8px;
+}
+.bc-hand > .bc-card + .bc-card { margin-left: calc(var(--bc-hand-overlap, -10px)); }
+
+/* ── 아이템 카드 (빛 면 / 어둠 면) ─────────────────────── */
+.bc-item {
+  --bc-item-w: 168px;
+  position: relative;
+  width: var(--bc-item-w);
+  aspect-ratio: 5 / 7.4;
+  max-width: 100%;
+  perspective: 900px;
+  /* 글자도 폭에 비례: 168px 에서 본문 14px */
+  font-size: calc(var(--bc-item-w) / 12);
+}
+.bc-item__inner {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  transition: transform var(--bc-dur-flip) var(--bc-ease-in-out);
+}
+.bc-item.is-dark .bc-item__inner { transform: rotateY(180deg); }
+.bc-item__face {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-rows: auto auto 1fr auto;
+  gap: 0.4em;
+  padding: 0.7em 0.7em 0.65em;
+  border-radius: var(--bc-r-card);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  overflow: hidden;
+}
+.bc-item__face--light {
+  color: var(--bc-ink);
+  background: var(--bc-mat-vellum) padding-box, var(--bc-gilt-leaf) border-box;
+  border: 2px solid transparent;
+  box-shadow: var(--bc-shadow-card);
+}
+.bc-item__face--dark {
+  color: #e6dcf2;
+  background: radial-gradient(90% 60% at 50% 38%, rgba(141, 107, 192, 0.32), transparent 70%), var(--bc-mat-obsidian);
+  border: 2px solid #4b3962;
+  box-shadow: var(--bc-glow-umbra);
+  transform: rotateY(180deg);
+}
+.bc-item__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px;
+}
+.bc-item__name {
+  font-family: var(--bc-font-display);
+  font-weight: 700;
+  font-size: 1.1em;
+  line-height: 1.15;
+}
+.bc-item__price {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 0.95em;
+  font-weight: 700;
+  color: var(--bc-coin-ink);
+  font-variant-numeric: tabular-nums;
+}
+.bc-item__slot {
+  font-size: 0.85em;
+  color: var(--bc-ink-soft);
+}
+.bc-item__face--dark .bc-item__slot { color: var(--bc-umbra-hi); }
+.bc-item__art {
+  display: grid;
+  place-items: center;
+  font-size: 3.2em;
+  color: var(--bc-gilt-lo);
+  border-radius: 4px;
+  background: radial-gradient(circle at 50% 55%, rgba(242, 217, 142, 0.7), transparent 62%);
+}
+.bc-item__face--dark .bc-item__art {
+  color: var(--bc-umbra-hi);
+  background: radial-gradient(circle at 50% 55%, rgba(141, 107, 192, 0.45), transparent 62%);
+}
+.bc-item__text {
+  font-size: 1em;
+  line-height: 1.35;
+}
+.bc-item__face--dark .bc-item__text b { color: var(--bc-ember); }
+/* 빛 면 아래에 어둠 면 효과가 늘 비친다(design.md 9절: 어둠 면은 처음부터 공개) */
+.bc-item__peek {
+  margin: 0 -0.7em -0.65em;
+  padding: 0.45em 0.7em 0.5em;
+  font-size: 0.88em;
+  line-height: 1.3;
+  color: #d9cce9;
+  background: linear-gradient(to bottom, #1f1726, #120d15);
+  border-top: 1px solid var(--bc-gilt);
+}
+.bc-item__peek .bc-ico { color: var(--bc-umbra-hi); margin-right: 3px; }
+
+/* 장비 칸 한 줄(상태 패널·플레이어 상세): 왼쪽 빛 면, 오른쪽에 어둠 면이 늘 붙어 있다 */
+.bc-gear {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1.25fr) minmax(0, 1fr);
+  align-items: stretch;
+  min-height: 48px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--bc-gilt-lo);
+  font-size: 12px;
+  line-height: 1.3;
+}
+.bc-gear__ico {
+  display: grid;
+  place-items: center;
+  font-size: 20px;
+  color: var(--bc-gilt-lo);
+  background: var(--bc-mat-vellum);
+}
+.bc-gear__light {
+  padding: 5px 8px 5px 2px;
+  color: var(--bc-ink);
+  background: var(--bc-mat-vellum);
+}
+.bc-gear__light b { display: block; font: 700 13px/1.2 var(--bc-font-display); }
+.bc-gear__dark {
+  padding: 5px 8px;
+  color: #cdbfe0;
+  background: linear-gradient(100deg, #2a1f33, #120d15);
+  border-left: 1px solid var(--bc-gilt);
+}
+/* 검은 왕이 된 뒤: 빛 면이 꺼지고 어둠 면만 밝다 */
+.bc-gear.is-dark .bc-gear__ico, .bc-gear.is-dark .bc-gear__light { filter: grayscale(1) brightness(0.35); }
+.bc-gear.is-dark .bc-gear__dark { color: #f0e6ff; box-shadow: inset 0 0 18px rgba(141, 107, 192, 0.45); }
+.bc-gear--empty { border-style: dashed; border-color: var(--bc-seam); }
+.bc-gear--empty .bc-gear__ico, .bc-gear--empty .bc-gear__light, .bc-gear--empty .bc-gear__dark { background: transparent; color: var(--gh-muted); }
+
+/* ── 보드 ─────────────────────────────────────────── */
+.bc-board {
+  --bc-tile: 48px;
+  display: grid;
+  grid-template-columns: repeat(7, var(--bc-tile));
+  grid-auto-rows: var(--bc-tile);
+  gap: 3px;
+  padding: 6px;
+  border-radius: 6px;
+  background: linear-gradient(#0b080d, #0b080d) padding-box,
+    linear-gradient(160deg, var(--bc-gilt-lo), #2a2017 40%, var(--bc-gilt-lo)) border-box;
+  border: 1px solid transparent;
+  box-shadow: 0 20px 40px -18px #000, inset 0 0 30px rgba(0, 0, 0, 0.8);
+}
+.bc-tile {
+  --ring: var(--bc-ring-outer);
+  position: relative;
+  display: grid;
+  place-items: center;
+  border-radius: var(--bc-r-tile);
+  background: linear-gradient(155deg, color-mix(in srgb, var(--ring) 70%, #fff 12%), var(--ring) 55%, color-mix(in srgb, var(--ring) 80%, #000));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07), inset 0 -2px 0 rgba(0, 0, 0, 0.35);
+  color: var(--bc-tile-ink, #d7cbb4);
+  font-size: 22px;
+}
+.bc-tile--middle { --ring: var(--bc-ring-middle); }
+.bc-tile--inner { --ring: var(--bc-ring-inner); }
+.bc-tile--throne {
+  --ring: var(--bc-ring-throne);
+  color: var(--bc-gilt);
+  box-shadow: inset 0 0 0 1px var(--bc-gilt-lo), inset 0 0 14px rgba(141, 107, 192, 0.45);
+}
+/* 타일 종류별 아이콘 색 */
+.bc-tile--monster, .bc-tile--boss, .bc-tile--wander { --bc-tile-ink: #e08a7a; }
+.bc-tile--treasure, .bc-tile--shop { --bc-tile-ink: var(--bc-gilt-hi); }
+.bc-tile--forge { --bc-tile-ink: #e9a066; }
+.bc-tile--spring { --bc-tile-ink: #8fc1e3; }
+.bc-tile--altar { --bc-tile-ink: var(--bc-umbra-hi); }
+.bc-tile--forest { --bc-tile-ink: #8eb27c; }
+.bc-tile--ruins { --bc-tile-ink: #a99d90; }
+.bc-tile--camp { --bc-tile-ink: var(--bc-candle); }
+/* 아직 뒤집지 않은 타일 */
+.bc-tile--hidden {
+  color: rgba(201, 162, 76, 0.35);
+  font-size: 18px;
+}
+/* 잠긴 고리: 빗금 */
+.bc-tile.is-locked {
+  filter: saturate(0.2) brightness(0.55);
+}
+.bc-tile.is-locked::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: repeating-linear-gradient(135deg, rgba(0, 0, 0, 0.45) 0 2px, transparent 2px 6px);
+}
+/* 갈 수 있는 칸: 촛불빛 테 */
+.bc-tile.is-reachable { box-shadow: var(--bc-glow-candle), inset 0 1px 0 rgba(255, 255, 255, 0.07); }
+.bc-tile.is-reachable::before {
+  content: '';
+  position: absolute;
+  inset: 2px;
+  border: 1px dashed rgba(255, 196, 110, 0.6);
+  border-radius: 2px;
+}
+.bc-tile.is-target { box-shadow: 0 0 0 2px var(--bc-blade), 0 0 16px rgba(212, 80, 63, 0.55); }
+/* 몬스터 칸 보조 표시: 남은 체력, 공용 카드 */
+.bc-tile__hp {
+  position: absolute;
+  left: 2px;
+  top: 2px;
+  min-width: 16px;
+  padding: 0 3px;
+  border-radius: 3px;
+  background: var(--bc-hp);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 15px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.bc-tile__comm {
+  position: absolute;
+  right: 2px;
+  top: 2px;
+  display: grid;
+  place-items: center;
+  width: 15px;
+  height: 20px;
+  border-radius: 2px;
+  background: var(--bc-vellum);
+  color: var(--suit);
+  font: 700 10px/1 var(--bc-font-display);
+  box-shadow: 0 1px 2px #000;
+}
+.bc-tile__pawns {
+  position: absolute;
+  inset: auto 2px 2px auto;
+  display: flex;
+}
+.bc-tile__pawns .bc-pawn + .bc-pawn { margin-left: -6px; }
+
+/* 말: 자리 색 원 + 직업 아이콘 */
+.bc-pawn {
+  --seat: var(--bc-seat-1);
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--seat) 65%, #fff), var(--seat) 60%, color-mix(in srgb, var(--seat) 60%, #000));
+  color: #1a1410;
+  font-size: 12px;
+  box-shadow: 0 0 0 1.5px #0b080d, 0 2px 3px rgba(0, 0, 0, 0.7);
+}
+.bc-pawn.is-me { box-shadow: 0 0 0 1.5px #0b080d, 0 0 0 3px var(--bc-candle), 0 0 10px var(--bc-candle-glow); }
+.bc-pawn--lg { width: 30px; height: 30px; font-size: 17px; }
+/* 마왕 말: 흑요석 몸 + 금 왕관 */
+.bc-pawn--demon {
+  width: 36px;
+  height: 36px;
+  font-size: 20px;
+  color: var(--bc-gilt-hi);
+  background: radial-gradient(circle at 40% 30%, #4a3560, #1b1222 70%);
+  box-shadow: 0 0 0 2px var(--bc-gilt), var(--bc-glow-umbra);
+}
+:root {
+  --bc-seat-1: #e9dcc1;
+  --bc-seat-2: #d08a52;
+  --bc-seat-3: #5fb0a8;
+  --bc-seat-4: #c9779a;
+  --bc-seat-5: #93a8dc;
+}
+
+/* ── 플레이어 줄 (② PlayerStrip 안에 넣는 칩) ─────────────── */
+.bc-seat {
+  --seat: var(--bc-seat-1);
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas: 'pawn name' 'stats stats';
+  gap: 3px 5px;
+  align-items: center;
+  min-width: 0;
+  min-height: 44px;
+  padding: 5px 6px;
+  border-radius: 8px;
+  background: var(--bc-basalt);
+  border: 1px solid var(--bc-seam);
+  border-top: 2px solid var(--seat);
+}
+.bc-seat.is-turn {
+  background: linear-gradient(to bottom, rgba(255, 180, 74, 0.14), transparent 80%), var(--bc-basalt);
+  border-color: rgba(255, 180, 74, 0.55);
+  border-top-color: var(--bc-candle);
+}
+.bc-seat__pawn { grid-area: pawn; position: relative; display: flex; }
+/* 레벨은 말 귀퉁이 숫자 */
+.bc-seat__lv {
+  position: absolute;
+  right: -5px;
+  bottom: -4px;
+  min-width: 13px;
+  padding: 0 2px;
+  border-radius: 7px;
+  background: var(--bc-obsidian);
+  border: 1px solid var(--bc-gilt-lo);
+  color: var(--bc-gilt-hi);
+  font: 700 10px/11px var(--bc-font-body);
+  text-align: center;
+}
+.bc-seat__name {
+  grid-area: name;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+.bc-seat__stats {
+  grid-area: stats;
+  display: flex;
+  gap: 7px;
+  font-size: 12px;
+  line-height: 1.2;
+  color: var(--gh-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.bc-seat__stats .bc-ico { margin-right: 1px; }
+.bc-stat--hp { color: #e98b86; }
+.bc-stat--fame { color: var(--bc-gilt-hi); }
+.bc-stat--prayer { color: var(--bc-umbra-hi); }
+
+/* 체력 막대 */
+.bc-hpbar {
+  position: relative;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--bc-hp-track);
+  overflow: hidden;
+}
+.bc-hpbar > i {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: var(--v, 100%);
+  background: linear-gradient(to bottom, #e36a62, var(--bc-hp));
+  border-radius: inherit;
+  transition: width var(--bc-dur-move) var(--bc-ease-out);
+}
+.bc-hpbar--demon { height: 12px; background: #1d1424; box-shadow: 0 0 0 1px #4b3962; }
+.bc-hpbar--demon > i { background: linear-gradient(to bottom, #b18ae6, #5b3e86); }
+
+/* ── 행동 토큰 (촛불) ───────────────────────────────── */
+.bc-tokens { display: flex; gap: 2px; align-items: flex-end; }
+.bc-token {
+  --bc-emblem-alt: var(--bc-candle-core);
+  width: 22px;
+  height: 30px;
+  color: var(--bc-candle);
+  filter: drop-shadow(0 0 6px var(--bc-candle-glow));
+  animation: bc-flicker 2.8s var(--bc-ease-in-out) infinite;
+  transform-origin: 50% 90%;
+}
+.bc-token:nth-child(2) { animation-delay: -0.9s; }
+.bc-token:nth-child(3) { animation-delay: -1.7s; }
+.bc-token.is-spent { color: var(--bc-ash); filter: none; animation: none; }
+.bc-token.is-held { --bc-emblem-alt: var(--bc-candle); color: var(--bc-gilt); filter: drop-shadow(0 0 4px var(--bc-candle-glow)); animation: none; }
+@keyframes bc-flicker {
+  0%, 100% { transform: scale(1, 1); opacity: 1; }
+  40% { transform: scale(0.96, 1.04) skewX(-1.5deg); opacity: 0.92; }
+  70% { transform: scale(1.02, 0.97) skewX(1deg); opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bc-token { animation: none; }
+}
+
+/* ── 버튼 ─────────────────────────────────────────── */
+.bc-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 48px;
+  padding: 0 12px;
+  border-radius: var(--bc-r-control);
+  border: 1px solid var(--bc-seam);
+  background: var(--bc-slate);
+  color: var(--gh-text);
+  font: 700 15px/1.1 var(--bc-font-body);
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform var(--bc-dur-tap) var(--bc-ease-out), background var(--bc-dur-tap);
+}
+.bc-btn:active { transform: translateY(1px) scale(0.98); }
+.bc-btn:focus-visible { outline: 2px solid var(--bc-gilt-hi); outline-offset: 2px; }
+.bc-btn .bc-btn__cost {
+  display: inline-flex;
+  align-items: center;
+  font-size: 12px;
+  color: var(--bc-candle);
+}
+/* 주 행동: 금박 */
+.bc-btn--primary {
+  color: var(--gh-on-primary);
+  border-color: var(--bc-gilt-lo);
+  background: var(--bc-gilt-leaf);
+  box-shadow: inset 0 1px 0 rgba(255, 248, 220, 0.6), 0 6px 14px -6px rgba(201, 162, 76, 0.6);
+}
+.bc-btn--primary .bc-btn__cost { color: #5a3d0c; }
+/* 어둠 쪽 행동(제단 기도, 그림자 카드 쓰기) */
+.bc-btn--umbra {
+  color: #efe4ff;
+  border-color: #5a4378;
+  background: linear-gradient(to bottom, #3a2852, #241832);
+  box-shadow: inset 0 1px 0 rgba(195, 166, 239, 0.25);
+}
+.bc-btn--ghost { background: transparent; }
+.bc-btn[disabled] { opacity: 0.4; }
+
+/* ── 아래 시트 (전투·상점·제단) ─────────────────────── */
+.bc-sheet {
+  position: absolute;
+  inset: auto 0 0 0;
+  display: flex;
+  flex-direction: column;
+  max-height: 86%;
+  border-radius: var(--bc-r-sheet) var(--bc-r-sheet) 0 0;
+  background: linear-gradient(to bottom, #221b25, var(--bc-basalt) 120px);
+  border-top: 1px solid var(--bc-gilt-lo);
+  box-shadow: var(--bc-shadow-sheet);
+  animation: bc-sheet-in var(--bc-dur-move) var(--bc-ease-out);
+}
+.bc-sheet::before {
+  content: '';
+  align-self: center;
+  width: 40px;
+  height: 4px;
+  margin: 8px 0 4px;
+  border-radius: 2px;
+  background: var(--bc-seam);
+}
+@keyframes bc-sheet-in { from { transform: translateY(24px); opacity: 0.6; } }
+.bc-scrim { position: absolute; inset: 0; background: rgba(6, 4, 8, 0.62); }
+
+/* 족보 목록 한 줄 */
+.bc-combo {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 2px 10px;
+  min-height: 52px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: var(--bc-slate);
+  border: 1px solid var(--bc-seam);
+  text-align: left;
+  color: var(--gh-text);
+}
+.bc-combo__name { font: 700 16px/1.2 var(--bc-font-display); }
+.bc-combo__rule { grid-column: 1; font-size: 12px; color: var(--gh-muted); }
+.bc-combo__power {
+  grid-row: 1 / 3;
+  grid-column: 2;
+  font: 700 22px/1 var(--bc-font-display);
+  font-variant-numeric: tabular-nums;
+  color: var(--bc-gilt-hi);
+}
+.bc-combo.is-chosen {
+  background: linear-gradient(to right, rgba(201, 162, 76, 0.22), rgba(201, 162, 76, 0.06)), var(--bc-slate);
+  border-color: var(--bc-gilt);
+}
+.bc-combo.is-locked { opacity: 0.45; }
+/* 묘지행 표시: 이 족보로 낸 카드는 마왕의 묘지에 쌓인다 */
+.bc-combo__grave {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: 999px;
+  font: 600 11px/18px var(--bc-font-body);
+  color: var(--bc-umbra-hi);
+  background: rgba(141, 107, 192, 0.18);
+  vertical-align: 2px;
+}
+
+/* 쇼다운 공용 카드 줄 (최종전) */
+.bc-community {
+  display: flex;
+  gap: 6px;
+  align-items: flex-end;
+}
+.bc-community__gap { width: 6px; }
+.bc-community__label {
+  font-size: 12px;
+  color: var(--gh-muted);
+  text-align: center;
+  margin-top: 4px;
+}
+
+/* 검은 왕관 표식: 점수 막대·말 위에 떠 있는 왕관 */
+.bc-crownmark {
+  color: #0b080d;
+  filter: drop-shadow(0 0 1px var(--bc-gilt-hi)) drop-shadow(0 0 1px var(--bc-gilt-hi)) drop-shadow(0 6px 10px rgba(141, 107, 192, 0.7));
+}
+
+/* 글자 */
+.bc-display { font-family: var(--bc-font-display); font-weight: 700; letter-spacing: -0.01em; text-wrap: balance; }
+.bc-num { font-variant-numeric: tabular-nums; }
+.bc-muted { color: var(--gh-muted); }
+
+/* ── 대관식 연출 (design.md 12-3) ───────────────────────── */
+/* 무대: 아래에서 위로 문(아치) · 말 줄 · 점수 기둥 · 왕관 */
+.bc-coronation {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  overflow: hidden;
+  color: var(--gh-text);
+  background: radial-gradient(70% 45% at 50% 62%, rgba(255, 180, 74, 0.12), transparent 70%), var(--bc-obsidian);
+}
+.bc-coronation__title { margin: 18px 0 2px; font: 700 34px/1.1 var(--bc-font-display); color: var(--bc-gilt-hi); letter-spacing: 0.02em; }
+.bc-coronation__prophecy { margin: 0; font: italic 15px/1.4 var(--bc-font-display); color: var(--gh-muted); }
+/* 마왕성 문: 위가 뾰족한 아치 */
+.bc-gate {
+  position: absolute;
+  left: 50%;
+  bottom: 150px;
+  width: 300px;
+  height: 420px;
+  margin-left: -150px;
+  border-radius: 150px 150px 0 0 / 190px 190px 0 0;
+  background: linear-gradient(to bottom, #1d1622, #0a070c);
+  box-shadow: inset 0 0 0 2px #2c2330, inset 0 0 0 10px #140f17, inset 0 0 0 11px var(--bc-gilt-lo), 0 0 60px rgba(0, 0, 0, 0.8);
+}
+.bc-stage {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 170px;
+  display: flex;
+  justify-content: center;
+  gap: 22px;
+  align-items: flex-end;
+}
+.bc-contender { display: grid; justify-items: center; gap: 6px; width: 56px; }
+.bc-contender__name { font-size: 13px; font-weight: 700; }
+.bc-contender__score { font: 700 20px/1 var(--bc-font-display); font-variant-numeric: tabular-nums; color: var(--gh-text); }
+/* 점수 기둥: 레벨(양피지) + 명성(금박) + 그림자×2(보라). 공식이 색으로 보인다 */
+.bc-scorecol {
+  display: flex;
+  flex-direction: column-reverse;
+  width: 22px;
+  border-radius: 3px 3px 0 0;
+  overflow: hidden;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.6);
+}
+.bc-seg { height: calc(var(--n, 0) * 11px); transition: height 700ms var(--bc-ease-out); }
+.bc-seg--lv { background: var(--bc-vellum-2); }
+.bc-seg--fame { background: var(--bc-gilt-leaf); }
+.bc-seg--shadow { background: repeating-linear-gradient(0deg, var(--bc-umbra) 0 9px, #5d4386 9px 11px); box-shadow: 0 0 12px var(--bc-umbra-glow); }
+.bc-seg--unknown { height: 22px; background: repeating-linear-gradient(135deg, #2a2130 0 3px, #3a2f42 3px 6px); }
+.bc-contender.is-revealing .bc-scorecol { box-shadow: 0 0 0 2px var(--bc-umbra-hi), 0 0 18px var(--bc-umbra-glow); }
+.bc-contender.is-crowned .bc-contender__name { color: var(--bc-umbra-hi); }
+/* 떠도는 왕관 */
+.bc-crown-float {
+  position: absolute;
+  width: 64px;
+  height: 64px;
+  color: #0b080d;
+  filter: drop-shadow(0 0 1px var(--bc-gilt-hi)) drop-shadow(0 0 1px var(--bc-gilt-hi)) drop-shadow(0 10px 16px rgba(141, 107, 192, 0.8));
+  animation: bc-crown-hover var(--bc-dur-crown) var(--bc-ease-in-out) infinite alternate;
+}
+@keyframes bc-crown-hover {
+  0% { transform: translate(-90px, 0) rotate(-8deg); }
+  33% { transform: translate(-20px, -14px) rotate(5deg); }
+  66% { transform: translate(40px, 4px) rotate(-4deg); }
+  100% { transform: translate(95px, -10px) rotate(7deg); }
+}
+/* 왕관이 내려앉는 순간: 빠르게 떨어져 살짝 튄다 */
+.bc-crown-float.is-dropping { animation: bc-crown-drop 520ms var(--bc-ease-crown) forwards; }
+@keyframes bc-crown-drop {
+  0% { transform: translateY(-80px) scale(1.2); }
+  80% { transform: translateY(4px) scale(0.96); }
+  100% { transform: translateY(0) scale(1); }
+}
+/* 어둠이 번진다: 왕관을 쓴 자리에서 원이 커진다. --x, --y 로 중심 지정 */
+.bc-flood {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at var(--x, 50%) var(--y, 60%), rgba(141, 107, 192, 0.35), transparent 40%), #0a070c;
+  clip-path: circle(var(--r, 0%) at var(--x, 50%) var(--y, 60%));
+  animation: bc-flood 900ms var(--bc-ease-in-out) forwards;
+  pointer-events: none;
+}
+@keyframes bc-flood { from { clip-path: circle(0% at var(--x, 50%) var(--y, 60%)); } to { clip-path: circle(150% at var(--x, 50%) var(--y, 60%)); } }
+/* 대관 직전 한 박자: 화면이 양피지빛으로 밝아진다(빛의 절정) */
+.bc-coronation.is-lit { background: radial-gradient(80% 60% at 50% 55%, #fff4d6, var(--bc-vellum) 45%, var(--bc-vellum-2)); color: var(--bc-ink); }
+.bc-coronation.is-lit .bc-coronation__title { color: var(--bc-gilt-lo); }
+.bc-coronation.is-lit .bc-coronation__prophecy { color: var(--bc-ink-soft); }
+.bc-coronation.is-lit .bc-contender__score { color: var(--bc-ink); }
+@media (prefers-reduced-motion: reduce) {
+  .bc-crown-float, .bc-crown-float.is-dropping, .bc-flood { animation: none; }
+  .bc-flood { clip-path: none; }
+}
+
+/* ── 최종전 ─────────────────────────────────────────── */
+/* 플레이어 줄의 마왕 자리 */
+.bc-seat--demon {
+  background: linear-gradient(to bottom, rgba(141, 107, 192, 0.22), transparent 85%), var(--bc-basalt);
+  border-color: #4b3962;
+  border-top-color: var(--bc-umbra);
+}
+.bc-seat--demon .bc-seat__name { color: var(--bc-umbra-hi); }
+.bc-seat--demon .bc-pawn--demon { width: 20px; height: 20px; font-size: 12px; box-shadow: 0 0 0 1.5px var(--bc-gilt); }
+.bc-seat.is-out { opacity: 0.4; }
+/* 마왕 체력 패널 */
+.bc-demonbar {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 4px 10px;
+  align-items: center;
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: linear-gradient(100deg, #2a1d36, #150f19);
+  border: 1px solid #4b3962;
+  box-shadow: var(--bc-glow-umbra);
+}
+.bc-demonbar__name { font: 700 16px/1.2 var(--bc-font-display); color: var(--bc-umbra-hi); }
+.bc-demonbar__hp { font: 700 16px/1 var(--bc-font-display); font-variant-numeric: tabular-nums; }
+.bc-demonbar .bc-hpbar { grid-column: 1 / -1; }
+.bc-demonbar__meta { grid-column: 1 / -1; display: flex; gap: 12px; font-size: 12px; color: #b9a9cf; }
+/* 봉인 의식 칩 */
+.bc-rite {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  min-height: 44px;
+  padding: 2px 4px;
+  border-radius: 8px;
+  background: var(--bc-slate);
+  border: 1px solid var(--bc-seam);
+  color: var(--gh-text);
+  font: 600 12px/1.2 var(--bc-font-body);
+}
+.bc-rite b { color: var(--bc-coin); font-variant-numeric: tabular-nums; }
+.bc-rite.is-used { opacity: 0.35; text-decoration: line-through; }
+/* 마왕이 앉은 옥좌: 말을 칸 가운데에 크게 */
+.bc-tile--seat-demon .bc-tile__pawns { inset: 0; justify-content: center; align-items: center; }
+.bc-tile--seat-demon > .bc-ico { opacity: 0.25; }
