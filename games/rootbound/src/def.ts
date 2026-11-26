@@ -243,7 +243,7 @@ export function actorsOf(t: Table): number[] {
 export function applyMove(t: Table, seat: number, action: Action, byBot: boolean): Table {
   const g = t.game
   const id = playerId(seat)
-  if ('turn' in action && action.turn !== g.turn) throw new RuleError('차례가 이미 넘어갔습니다. 바뀐 정원을 보고 다시 두세요')
+  if ('turn' in action && action.turn !== g.turn) throw new RuleError('차례가 이미 넘어갔습니다. 바뀐 골목을 보고 다시 두세요')
   if (action.type === 'RESUME') {
     if (!t.autopilot.includes(seat)) throw new RuleError('AI가 대신 두는 자리가 아닙니다')
     // 대리 중에 지나간 시간 때문에 곧바로 시간 초과되지 않게 시계를 새로 잰다

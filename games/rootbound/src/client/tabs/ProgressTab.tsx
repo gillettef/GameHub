@@ -10,10 +10,10 @@ const KIND_LABEL: Record<LogKind, string> = {
   system: '안내',
   take: '가져옴',
   turn: '차례',
-  plant: '심기',
+  plant: '놓기',
   discard: '버림',
-  flip: '밀어냄',
-  uproot: '옮김',
+  flip: '빼앗음',
+  uproot: '데려옴',
   surrender: '기권',
   result: '결과',
 };
@@ -46,17 +46,17 @@ export const ProgressTab = memo(function ProgressTab() {
             {lead && (
               <>
                 <dt>선</dt>
-                <dd title="이번 라운드에 먼저 두는 사람. 라운드가 끝나면 남은 뿌리가 가장 많은 사람이 다음 선입니다">{lead.nickname}</dd>
+                <dd title="이번 라운드에 먼저 두는 사람. 라운드가 끝나면 쉬는 고양이가 가장 많은 사람이 다음 선입니다">{lead.nickname}</dd>
               </>
             )}
             <dt>차례</dt>
             <dd>{state.turn}</dd>
             <dt>지금</dt>
             <dd>{state.phase === 'finished' ? '종료' : state.phase === 'reveal' ? '모두 확인하면 시작' : current}</dd>
-            <dt>남은 카드</dt>
-            <dd>{cardsLeft}장 · {active}명</dd>
-            <dt>카드 더미</dt>
-            <dd>{state.pileCount}장 · 마켓 {state.market.length}장</dd>
+            <dt>남은 타일</dt>
+            <dd>{cardsLeft}개 · {active}명</dd>
+            <dt>주머니</dt>
+            <dd>{state.pileCount}개 · 펼친 타일 {state.market.length}개</dd>
           </dl>
         </div>
       </aside>

@@ -1,9 +1,8 @@
 import { memo, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { DIRECTIONS, getSpecies, posKey } from '../../engine';
-import type { CellView, PlantPreview } from '../game/derived';
-import { plantArtUrl } from '../game/cardImages';
+import { crewName, type CellView, type PlantPreview } from '../game/derived';
 import { cx } from '../lib/cx';
-import { hexPoints, px } from '../lib/hexGeometry';
+import { ART_SEATS, catArtId, hexPoints, hideoutArtId, px, spotArtUrl, terrainArtId } from '../lib/hexGeometry';
 import { BoardTextures } from './BoardTextures';
 import styles from './HexBoard.module.css';
 
@@ -11,24 +10,23 @@ import styles from './HexBoard.module.css';
 const MIN_TEXT_PX = 12;
 
 /*
- * 칸 모양은 사용자 시안(notes/design/board-2p.svg, 칸 반지름 68px)을 반지름 1로 옮긴 값이다:
- * 바깥 테두리(굵은 선) → 줄눈(반지름 1) → 지형 타일(0.95) → 구역 경계선 → 칸 위 요소.
+ * 칸 층: 바깥 테두리(굵은 선) → 줄눈(반지름 1) → 지형 그림(0.95) → 조각 경계선 → 칸 위 요소.
+ * 그림(public/art)은 꼭짓점까지 반지름 1 기준이라 scale 만 주면 된다.
  */
 const CELL_R = 1.007;
 const TILE_R = 0.95;
+const TILE_SCALE = `scale(${TILE_R})`;
 const HEX = hexPoints(TILE_R);
 const HEX_INNER = hexPoints(0.8);
-/** 입구: 자리 색 집 모양 + 자리 번호 */
-const HOUSE = '0,-0.52 0.42,-0.12 0.42,0.44 -0.42,0.44 -0.42,-0.12';
-/** 시안 좌표(px, 칸 중심 기준)를 그대로 쓰는 장식은 1/68 로 줄여 그린다 */
-const ART_SCALE = 'scale(0.0147)';
-const SPROUT_STEM = 'M0,-19V-39.4';
-const SPROUT_LEAF_L = 'M0,-34q-15,-2.7 -17.7,-16.3q13.6,-1.4 17.7,16.3Z';
-const SPROUT_LEAF_R = 'M0,-29.9q15,-1.4 19,-13.6q-13.6,-2.7 -19,13.6Z';
-const WAVES = 'M-28.6,-5.4q14.3,-11.6 28.6,0t28.6,0M-28.6,17.7q14.3,-11.6 28.6,0t28.6,0';
-/** 식물 썸네일: 자리 색 고리 바깥 반지름 / 그림 반지름 */
-const THUMB_RING = 0.7;
-const THUMB_ART = 0.58;
+/** 자리 3(그림 없음) 아지트에 두르는 자리 색 테 */
+const HEX_SEAT_RING = hexPoints(0.72);
+/** 명당 타일 반지름: 땅 주인 색 테(0.95)가 둘레에 보이게 조금 작게 */
+const SPOT_R = 0.8;
+/** 고양이 토큰 반지름: 빈 칸은 가운데 크게, 명당 칸은 오른쪽 아래에 작게 */
+const CAT_R = 0.5;
+const CAT_R_SPOT = 0.34;
+const CAT_SPOT_DX = 0.5;
+const CAT_SPOT_DY = 0.44;
 
 /** 이웃 방향 0~5(shared DIRECTIONS, Rules.md 2절)의 화면 각도(도) */
 const DIR_DEG = [0, -60, -120, 180, 120, 60];
@@ -36,34 +34,27 @@ const DIRS = DIRECTIONS.map(([dq, dr], i) => [dq, dr, DIR_DEG[i] as number] as c
 
 interface HexBoardProps {
   cells: CellView[];
-  /** 지금 고른 카드로 심을 수 있는 칸 */
+  /** 지금 고른 카드로 놓을 수 있는 칸 */
   legal: Set<string>;
-  /** 카드를 고르기 전: legal 은 손패 어느 카드로든 심을 수 있는 칸이고, 옅게 그린다 */
+  /** 카드를 고르기 전: legal 은 손패 어느 카드로든 놓을 수 있는 칸이고, 옅게 그린다 */
   legalFaint?: boolean;
-  /** 씨앗 고르기 중이면 씨앗을 놓을 수 있는 칸 */
+  /** 멀리 보내기(씨앗) 고르기 중이면 고양이를 보낼 수 있는 칸 */
   seedLegal?: Set<string>;
   pendingKey?: string | null;
   seedKey?: string | null;
   preview?: PlantPreview | null;
-  /** 칸마다 뿌리(큐브) 수를 보여 준다 */
+  /** 칸마다 고양이(큐브) 마릿수를 보여 준다(2마리 이상, 놓기 미리보기는 늘) */
   showRootCounts: boolean;
   /** 칸마다 칸 이름(C4)을 보여 준다 */
   showLabels?: boolean;
   onCellClick: (q: number, r: number) => void;
 }
 
-const terrainFill: Record<CellView['terrain'], string> = {
-  empty: 'url(#rb-grass)',
-  fertile: 'url(#rb-loam)',
-  pond: 'url(#rb-water)',
-  rock: 'url(#rb-gravel)',
-};
-
 /**
- * 정원 보드 (Rules.md 3절, 축 좌표 육각). SVG 라 컨테이너 크기에 맞춰 늘고 줄어든다(무스크롤, F015).
- * 바닥(테두리·줄눈·지형 질감·구역 경계)은 보드 좌표 그대로 한 번에 그려 질감이 칸마다 이어지고,
- * 칸마다 땅 주인 자리 색(옅게) → 지형 장식 → 입구(집 모양·번호) / 식물(카드 그림 썸네일 + 땅 주인 색 고리) → 뿌리 큐브 수(주인 색 배지)를 올린다.
- * 식물은 누구의 것도 아니므로 고리 색은 심은 사람이 아니라 그 칸의 땅 주인 색이다(Rules.md 1절).
+ * 골목 보드 (Rules.md 3절, 축 좌표 육각). SVG 라 컨테이너 크기에 맞춰 늘고 줄어든다(무스크롤, F015).
+ * 바닥(테두리·줄눈·지형 그림·조각 경계)은 보드가 바뀔 때만 다시 만들고, 지형 그림은 `<defs>` 의 그림 하나를 `<use>` 로 칸마다 다시 쓴다.
+ * 칸마다 영역 주인 자리 색(반투명 + 테) → 아지트 그림 / 명당 타일(회전 반영) → 하이라이트, 그 위 별도 층에 고양이 토큰 + 마릿수를 올린다.
+ * 명당은 누구의 것도 아니므로 둘레 색은 놓은 사람이 아니라 그 칸 영역 주인 색이다(Rules.md 1절).
  */
 export const HexBoard = memo(function HexBoard({ cells, legal, legalFaint, seedLegal, pendingKey, seedKey, preview, showRootCounts, showLabels = false, onCellClick }: HexBoardProps) {
   const box = useMemo(() => {
@@ -88,9 +79,9 @@ export const HexBoard = memo(function HexBoard({ cells, legal, legalFaint, seedL
       .join('');
     const tiles = cells.map((c) => {
       const { x, y } = px(c.q, c.r);
-      return { key: c.key, points: hexPoints(TILE_R, x, y), fill: terrainFill[c.terrain] };
+      return { key: c.key, transform: `translate(${x.toFixed(3)} ${y.toFixed(3)}) ${TILE_SCALE}`, href: `#${terrainArtId[c.terrain]}` };
     });
-    // 구역(정원 조각) 경계: 이웃 칸과 구역 번호가 다른 변
+    // 조각(골목 조각, 7칸 묶음) 경계: 이웃 칸과 조각 번호가 다른 변
     let zone = '';
     for (const c of cells) {
       const { x, y } = px(c.q, c.r);
@@ -123,25 +114,22 @@ export const HexBoard = memo(function HexBoard({ cells, legal, legalFaint, seedL
     return () => ro.disconnect();
   }, [box.w, box.h]);
   const fontFloor = MIN_TEXT_PX / ppu;
-  const seatFont = Math.max(0.56, fontFloor);
-  // 뿌리 수 배지가 칸을 덮지 않게 상한을 둔다. 보드가 아주 작으면(ppu<15·17) 12px 하한보다 칸 크기를 우선한다(의도된 예외).
-  // 식물 칸 배지는 별도 층이라 이웃 칸에 조금 걸쳐도 되므로 상한을 넉넉히 둔다
-  const rootFont = Math.min(Math.max(0.7, fontFloor), 0.8);
-  const smallFont = Math.min(Math.max(0.5, fontFloor), 0.7);
-  const rootR = Math.max(0.36, rootFont * 0.5);
+  // 마릿수 배지는 고양이 토큰 오른쪽 아래에 붙는다. 보드가 아주 작으면(ppu<17) 12px 하한보다 칸 크기를 우선한다(의도된 예외).
+  // 배지는 별도 층이라 이웃 칸에 조금 걸쳐도 된다
+  const countFont = Math.min(Math.max(0.5, fontFloor), 0.7);
+  const countR = Math.max(0.26, countFont * 0.56);
   // 칸 이름은 칸 위쪽 끝에 작게, 12px 하한을 지킨다. 별도 층이라 4인 보드(ppu≈18 → 0.67)에서 칸 위로 조금 넘쳐도 된다.
   // 상한 0.8 은 "E10" 이 칸 폭(√3)을 넘지 않는 크기다
   const labelFont = Math.min(Math.max(0.36, fontFloor), 0.8);
-  const smallR = Math.max(0.3, smallFont * 0.56);
 
   return (
-    <svg ref={svgRef} className={styles.board} viewBox={viewBox} preserveAspectRatio="xMidYMid meet" role="group" aria-label="정원 보드">
+    <svg ref={svgRef} className={styles.board} viewBox={viewBox} preserveAspectRatio="xMidYMid meet" role="group" aria-label="골목 보드">
       <BoardTextures />
       <path d={ground.outline} className={styles.frame} aria-hidden="true" />
       <path d={ground.outline} className={styles.grout} aria-hidden="true" />
       <g aria-hidden="true">
         {ground.tiles.map((t) => (
-          <polygon key={t.key} points={t.points} fill={t.fill} />
+          <use key={t.key} href={t.href} transform={t.transform} />
         ))}
       </g>
       <path d={ground.zone} className={styles.zoneLine} aria-hidden="true" />
@@ -152,15 +140,18 @@ export const HexBoard = memo(function HexBoard({ cells, legal, legalFaint, seedL
         const isSeedLegal = seedLegal?.has(c.key) ?? false;
         const interactive = isLegal || isSeedLegal;
         const ownerStyle = c.owner >= 0 ? ({ '--owner': `var(--color-seat-${c.owner})` } as CSSProperties) : undefined;
-        const label = `${c.label} ${terrainName(c.terrain)}${c.plant ? ` · ${getSpecies(c.plant.species).name}` : ''}${c.owner >= 0 ? ` · ${c.owner + 1}번 자리 땅, 뿌리 ${c.cubes}` : ''}`;
-        const bare = !c.plant && c.entranceSeat < 0;
+        const label =
+          `${c.label} ${terrainName(c.terrain)}` +
+          (c.entranceSeat >= 0 ? ` · ${crewName(c.entranceSeat)} 아지트` : '') +
+          (c.plant ? ` · 명당 ${getSpecies(c.plant.species).name}` : '') +
+          (c.owner >= 0 ? ` · ${crewName(c.owner)} 영역, 고양이 ${c.cubes}마리` : '');
         return (
           <g
             key={c.key}
             transform={`translate(${x.toFixed(3)} ${y.toFixed(3)})`}
-            className={cx(styles.cell, (isLegal || isSeedLegal) && styles.clickable)}
+            className={cx(styles.cell, interactive && styles.clickable)}
             onClick={() => onCellClick(c.q, c.r)}
-            // 심을 수 있는 칸·씨앗 칸만 키보드로 고를 수 있게 한다(탭 정지 수를 줄인다)
+            // 놓을 수 있는 칸·멀리 보내기 칸만 키보드로 고를 수 있게 한다(탭 정지 수를 줄인다)
             role={interactive ? 'button' : undefined}
             tabIndex={interactive ? 0 : undefined}
             onKeyDown={
@@ -177,77 +168,70 @@ export const HexBoard = memo(function HexBoard({ cells, legal, legalFaint, seedL
           >
             <polygon points={HEX} className={styles.hit} />
             {c.owner >= 0 && <polygon points={HEX} className={styles.owned} style={ownerStyle} />}
-            {c.terrain === 'fertile' && bare && (
-              <g transform={ART_SCALE} className={styles.sprout}>
-                <path d={SPROUT_STEM} className={styles.sproutStem} />
-                <path d={SPROUT_LEAF_L} className={styles.sproutLeafHi} />
-                <path d={SPROUT_LEAF_R} className={styles.sproutLeafLo} />
+            {c.entranceSeat >= 0 && (
+              <g className={styles.entrance} style={{ '--seat': `var(--color-seat-${c.entranceSeat})` } as CSSProperties}>
+                <use href={`#${hideoutArtId(c.entranceSeat)}`} transform={TILE_SCALE} />
+                {c.entranceSeat >= ART_SEATS && <polygon points={HEX_SEAT_RING} className={styles.seatRing} />}
               </g>
             )}
-            {c.terrain === 'pond' && (
-              <g transform={ART_SCALE} className={styles.pondArt}>
-                <path d={WAVES} className={styles.waves} />
-                <ellipse cx={-20.4} cy={-30.6} rx={10.9} ry={3.4} className={styles.glint} />
-              </g>
-            )}
-            {c.terrain === 'rock' && (
-              <g transform={ART_SCALE} className={styles.rockArt}>
-                <ellipse cx={-13.6} cy={4.1} rx={23.1} ry={16.3} />
-                <ellipse cx={19.1} cy={-16.3} rx={15} ry={10.9} />
+            {c.plant && (
+              <g key={c.plant.id} className={styles.plant}>
+                <image
+                  href={spotArtUrl(c.plant.species)}
+                  x={-SPOT_R}
+                  y={-SPOT_R}
+                  width={SPOT_R * 2}
+                  height={SPOT_R * 2}
+                  // 규칙 회전 1번 = (dq,dr)→(−dr,dq+dr) = 화면 시계 방향 60°
+                  transform={c.plant.rotation ? `rotate(${c.plant.rotation * 60})` : undefined}
+                />
               </g>
             )}
             {flipTo !== undefined && (
               <polygon points={HEX_INNER} className={styles.flip} style={flipTo >= 0 ? ({ '--owner': `var(--color-seat-${flipTo})` } as CSSProperties) : undefined} />
             )}
-            {(isLegal || isSeedLegal) && <polygon points={HEX_INNER} className={isSeedLegal ? styles.seedLegal : legalFaint ? styles.legalFaint : styles.legal} />}
-            {c.entranceSeat >= 0 && (
-              <g className={styles.entrance} style={{ '--seat': `var(--color-seat-${c.entranceSeat})` } as CSSProperties}>
-                <polygon points={HOUSE} />
-                <text textAnchor="middle" y={0.3} style={{ fontSize: seatFont }}>
-                  {c.entranceSeat + 1}
-                </text>
-              </g>
-            )}
-            {c.plant && (
-              <g key={c.plant.id} className={cx(styles.plant, c.owner < 0 && styles.plantWild)} style={c.owner >= 0 ? ({ '--seat': `var(--color-seat-${c.owner})` } as CSSProperties) : undefined}>
-                <circle r={THUMB_RING} className={styles.thumbRing} />
-                <image
-                  href={plantArtUrl(c.plant.species)}
-                  x={-THUMB_ART}
-                  y={-THUMB_ART}
-                  width={THUMB_ART * 2}
-                  height={THUMB_ART * 2}
-                  preserveAspectRatio="xMidYMid slice"
-                  clipPath="url(#rb-thumb)"
-                />
-                <circle r={THUMB_ART} className={styles.thumbEdge} />
-              </g>
-            )}
+            {interactive && <polygon points={HEX_INNER} className={isSeedLegal ? styles.seedLegal : legalFaint ? styles.legalFaint : styles.legal} />}
             {pendingKey === c.key && <polygon points={HEX} className={styles.pending} />}
             {seedKey === c.key && <circle r={0.3} className={styles.seedPending} />}
           </g>
         );
       })}
-      {/* 뿌리 수 배지는 칸 반복 뒤 별도 층에 그려, 식물 칸 배지가 아래 줄 칸에 가려지지 않게 한다 */}
+      {/* 고양이 토큰은 칸 반복 뒤 별도 층에 그려, 명당 칸 토큰·배지가 아래 줄 칸에 가려지지 않게 한다 */}
       <g aria-hidden="true">
         {cells.map((c) => {
           const touched = preview?.touched.get(c.key);
-          if (!(showRootCounts || touched !== undefined) || !(c.cubes > 0 || touched !== undefined)) return null;
-          const shown: [number, number] = touched ?? [c.owner, c.cubes];
+          if (!(c.cubes > 0 || touched !== undefined)) return null;
+          const [seat, count] = touched ?? [c.owner, c.cubes];
           const { x, y } = px(c.q, c.r);
-          const tx = c.plant ? x + 0.46 : x;
-          const ty = c.plant ? y + 0.46 : y;
+          const small = c.plant !== null;
+          const r = small ? CAT_R_SPOT : CAT_R;
+          const tx = small ? x + CAT_SPOT_DX : x;
+          const ty = small ? y + CAT_SPOT_DY : y;
+          // 마릿수: 2마리 이상이면(설정에서 끌 수 있다), 놓기 미리보기로 바뀌는 칸은 늘 보여 준다
+          const showCount = touched !== undefined || (showRootCounts && count >= 2);
           return (
             <g
               key={c.key}
-              className={cx(styles.cubes, touched !== undefined && styles.cubesChanged)}
+              className={cx(styles.cats, touched !== undefined && styles.catsChanged)}
               transform={`translate(${tx.toFixed(3)} ${ty.toFixed(3)})`}
-              style={shown[0] >= 0 ? ({ '--owner': `var(--color-seat-${shown[0]})` } as CSSProperties) : undefined}
+              style={seat >= 0 ? ({ '--owner': `var(--color-seat-${seat})` } as CSSProperties) : undefined}
             >
-              <circle r={c.plant ? smallR : rootR} className={shown[0] >= 0 ? styles.cubeDot : styles.cubeEmpty} />
-              <text textAnchor="middle" dominantBaseline="central" style={{ fontSize: c.plant ? smallFont : rootFont }}>
-                {shown[1]}
-              </text>
+              {seat >= 0 ? (
+                <>
+                  <use href={`#${catArtId(seat)}`} transform={`scale(${r})`} />
+                  {seat >= ART_SEATS && <circle r={r * 0.94} className={styles.catRing} />}
+                </>
+              ) : (
+                <circle r={r * 0.7} className={styles.catEmpty} />
+              )}
+              {showCount && (
+                <g transform={seat >= 0 ? `translate(${(r * 0.72).toFixed(3)} ${(r * 0.72).toFixed(3)})` : undefined}>
+                  <circle r={countR} className={styles.countBadge} />
+                  <text textAnchor="middle" dominantBaseline="central" style={{ fontSize: countFont }}>
+                    {count}
+                  </text>
+                </g>
+              )}
             </g>
           );
         })}
@@ -269,5 +253,5 @@ export const HexBoard = memo(function HexBoard({ cells, legal, legalFaint, seedL
 });
 
 function terrainName(t: CellView['terrain']): string {
-  return t === 'pond' ? '연못' : t === 'rock' ? '바위' : t === 'fertile' ? '기름진 땅' : '빈 땅';
+  return t === 'pond' ? '개울' : t === 'rock' ? '공사장' : t === 'fertile' ? '햇볕 자리' : '골목길';
 }

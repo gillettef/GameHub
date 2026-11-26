@@ -4,8 +4,8 @@ import { SpeciesCard } from './SpeciesCard';
 import styles from './Hand.module.css';
 
 /**
- * 내 카드. 카드를 누르면 확대 모달에서 고른다. 상대 차례·가져오기 차례에도 보기는 된다.
- * plantable: 손패 카드별 심을 칸 수 (BoardTab 이 계산). 0 이면 음영. canPlant: 내 심기 차례 (아니면 모두 음영)
+ * 내 타일(손에 든 명당 타일). 타일을 누르면 확대 모달에서 고른다. 상대 차례·가져오기 차례에도 보기는 된다.
+ * plantable: 손의 타일별 놓을 칸 수 (BoardTab 이 계산). 0 이면 음영. canPlant: 내 놓기 차례 (아니면 모두 음영)
  */
 export const Hand = memo(function Hand({ plantable = [], canPlant = false }: { plantable?: number[]; canPlant?: boolean }) {
   const state = useGameStore(selectState);
@@ -15,7 +15,7 @@ export const Hand = memo(function Hand({ plantable = [], canPlant = false }: { p
   const me = findMe(state, viewerId);
   if (!me) return null;
   return (
-    <div className={styles.row} role="list" aria-label="내 카드">
+    <div className={styles.row} role="list" aria-label="내 타일">
       {me.hand.map((species, index) => (
         <div role="listitem" key={`${index}-${species}`} className={styles.slot}>
           <SpeciesCard
@@ -29,7 +29,7 @@ export const Hand = memo(function Hand({ plantable = [], canPlant = false }: { p
           />
         </div>
       ))}
-      {me.hand.length === 0 && <p className={styles.empty}>카드를 모두 썼습니다</p>}
+      {me.hand.length === 0 && <p className={styles.empty}>타일을 모두 놓았습니다</p>}
     </div>
   );
 });

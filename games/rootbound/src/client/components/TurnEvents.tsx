@@ -24,20 +24,20 @@ const KIND_ICON: Partial<Record<LogKind, ReactNode>> = {
 function shorten(e: GameLogEntry): string {
   switch (e.kind) {
     case 'plant': {
-      // turn.ts 심기 로그: "닉네임: C4에 참나무 심음" / "닉네임: C4에 민들레 심음, 씨앗 D6"
-      const m = e.message.match(/: ([A-Z]\d+)에 ([^:,]+) 심음(?:, 씨앗 [A-Z]\d+)?$/);
-      return m ? `${m[1]} ${m[2]} 심음` : e.message;
+      // turn.ts 놓기 로그: "닉네임: C4에 평상 놓음" / "닉네임: C4에 캣닢 화분 놓음, 멀리 D6"
+      const m = e.message.match(/: ([A-Z]\d+)에 ([^:,]+) 놓음(?:, 멀리 ([A-Z]\d+))?$/);
+      return m ? `${m[1]} ${m[2]} 놓음${m[3] ? ` · 멀리 ${m[3]}` : ''}` : e.message;
     }
     case 'take': {
-      // turn.ts 가져오기 로그: "닉네임: 마켓에서 소나무 가져옴" / "닉네임: 카드 더미에서 1장 가져옴"
-      if (/: 카드 더미에서 1장 가져옴$/.test(e.message)) return '카드 더미에서 1장';
-      const m = e.message.match(/: 마켓에서 ([^:]+) 가져옴$/);
+      // turn.ts 가져오기 로그: "닉네임: 펼친 타일에서 종이 상자 가져옴" / "닉네임: 주머니에서 1개 뽑음"
+      if (/: 주머니에서 1개 뽑음$/.test(e.message)) return '주머니에서 1개';
+      const m = e.message.match(/: 펼친 타일에서 ([^:]+) 가져옴$/);
       return m ? `${m[1]} 가져옴` : e.message;
     }
     case 'flip': {
-      // turn.ts 밀어내기 로그: "닉네임: 상대의 땅 2칸을 밀어냄 (C5, D4)"
-      const m = e.message.match(/^.*?: (.+)의 땅 (\d+)칸을 밀어냄/);
-      return m ? `${m[1]} 땅 ${m[2]}칸 밀어냄` : e.message;
+      // turn.ts 빼앗기 로그: "닉네임: 상대의 칸 2개를 빼앗음 (C5, D4)"
+      const m = e.message.match(/^.*?: (.+)의 칸 (\d+)개를 빼앗음/);
+      return m ? `${m[1]}의 칸 ${m[2]}개 빼앗음` : e.message;
     }
     case 'discard':
       return '버림';
@@ -60,14 +60,14 @@ interface Batch {
   mine: boolean;
   name: string;
   seat: number;
-  /** 이번 차례가 가져오기인지 심기인지 */
+  /** 이번 차례가 가져오기인지 놓기인지 */
   stage: string;
   items: Item[];
 }
 
 /**
  * 턴 전환 연출 (2026-10-01 사용자 지시: 턴과 턴 사이에 무슨 일이 있었는지 눈으로 보이게).
- * 차례가 넘어갈 때마다 "누구 차례" 스플래시와, 방금 끝난 차례에 일어난 사건(심기·가져오기·뺏기·버리기·기권)을
+ * 차례가 넘어갈 때마다 "누구 차례" 스플래시와, 방금 끝난 차례에 일어난 사건(놓기·가져오기·빼앗기·버리기·기권)을
  * 아이콘 칩으로 차례차례 보여 준다. 예전 OpponentRecap(텍스트 목록)을 대체한다.
  * 새 규칙 계산은 없다 — 로그 필터와 문구 줄이기뿐이다. 핫시트는 기기 넘김 화면이 닫힌 뒤에 보여 준다.
  */

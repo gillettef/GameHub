@@ -16,6 +16,17 @@
   font-size: var(--text-small);
 }
 
+/* 고른 명당 타일 작은 그림 */
+.tile {
+  flex: none;
+  width: 40px;
+  aspect-ratio: 1 / 1;
+}
+
+.name {
+  color: var(--color-heading);
+}
+
 .stats {
   display: flex;
   flex-wrap: wrap;
@@ -25,14 +36,15 @@
 }
 
 .up {
-  color: var(--color-accent);
+  /* 밝은 바탕에서 주황 글씨는 대비가 모자라 글자색과 섞어 진하게 */
+  color: color-mix(in srgb, var(--color-accent) 50%, var(--color-text));
 }
 
 .down {
   color: var(--color-muted);
 }
 
-/* 방향 버튼은 취소·심기 버튼과 한 줄에 둬서 짧은 화면에서 보드 높이를 아낀다 */
+/* 방향 버튼은 취소·놓기 버튼과 한 줄에 둬서 짧은 화면에서 보드 높이를 아낀다 */
 .dirs {
   flex: 1 1 200px;
   min-width: 0;
@@ -65,7 +77,7 @@
   border-color: var(--color-accent);
 }
 
-/* 크림 버튼 위에서는 빈 칸·심는 칸이 배경에 묻히므로 어두운 글자색으로 그린다 */
+/* 주황 버튼 위에서는 빈 칸·놓는 칸이 배경에 묻히므로 버튼 글자색으로 그린다 */
 .dirOn > svg {
   --color-text: var(--color-accent-text);
   --color-accent: var(--color-accent-text);
@@ -90,7 +102,7 @@
   margin-left: auto;
 }
 
-/* 버튼이 좁아지면 뿌리 그림도 함께 줄인다 */
+/* 버튼이 좁아지면 고양이 모양 그림도 함께 줄인다 */
 .dir > svg {
   max-width: 100%;
 }

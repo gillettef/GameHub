@@ -53,6 +53,12 @@
   font-weight: 700;
 }
 
+.crew {
+  font-size: var(--text-micro);
+  font-weight: 600;
+  color: var(--color-muted);
+}
+
 .me,
 .gone {
   padding: 0 6px;

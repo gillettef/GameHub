@@ -28,7 +28,7 @@
 
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
   gap: 6px;
   justify-items: center;
 }
@@ -45,23 +45,42 @@
 .goals button {
   width: 100%;
   font: inherit;
-  color: inherit;
+  color: var(--goal-card-ink);
   text-align: left;
   cursor: pointer;
   display: flex;
   flex-direction: column;
   gap: 2px;
-  padding: 6px var(--space-1);
+  min-height: 44px;
+  padding: 6px var(--space-1) 6px var(--space-2);
   border-radius: var(--radius-sm);
-  background: var(--color-surface);
+  /* 소문 카드 윗띠 색을 왼쪽 띠로: 보통 = 주황, 단골 = 초록 */
+  border: 1px solid color-mix(in srgb, var(--goal-card-band-ink) 40%, transparent);
+  background: linear-gradient(to right, var(--goal-card-band) 0 6px, var(--goal-card-paper) 6px);
   font-size: var(--text-small);
+}
+
+.goals button strong {
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .goals button span {
   font-size: var(--text-micro);
-  color: var(--color-muted);
+  color: var(--goal-card-kicker);
 }
 
-.goals button.linked {
-  border-left: 3px solid var(--color-accent);
+.goals button.regular {
+  border-color: color-mix(in srgb, var(--goal-card-regular-ink) 40%, transparent);
+  background: linear-gradient(to right, var(--goal-card-regular) 0 6px, var(--goal-card-paper) 6px);
+}
+
+.tag {
+  padding: 0 6px;
+  border-radius: var(--radius-full);
+  background: var(--goal-card-regular-ink);
+  color: var(--color-white);
+  font-size: var(--text-micro);
+  font-style: normal;
 }
