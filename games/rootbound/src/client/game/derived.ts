@@ -53,17 +53,23 @@ export function buildCells(state: MaskedGameState | GameState): CellView[] {
   });
 }
 
-/** 심기 단계 이름 (가져오기 → 심기, Rules.md 5절) */
-export const stageName = (stage: GameState['stage']): string => (stage === 'take' ? '가져오기' : '심기');
+/** 자리별 무리 이름 (화면 테마 「냥냥 골목」, notes/Rules.md 대응표). 자리 색 --color-seat-N 과 같은 순서 */
+export const CREW_NAMES = ['치즈냥', '턱시도냥', '고등어냥', '삼색냥'] as const;
 
-/** "N라운드 · 가져오기/심기" */
+/** 자리 번호(0부터) → 무리 이름 */
+export const crewName = (seat: number): string => CREW_NAMES[seat] ?? `${seat + 1}번 자리`;
+
+/** 놓기 단계 이름 (가져오기 → 심기, Rules.md 5절) */
+export const stageName = (stage: GameState['stage']): string => (stage === 'take' ? '가져오기' : '놓기');
+
+/** "N라운드 · 가져오기/놓기" */
 export const roundStageLabel = (state: MaskedGameState | GameState): string => `${state.round}라운드 · ${stageName(state.stage)}`;
 
 /** 판 단계 이름. 끝난 판은 finishedLabel(자리 띠 '게임 종료', 진행 탭 '종료') */
 export function phaseLabel(state: MaskedGameState | GameState, finishedLabel: string): string {
   if (state.phase === 'playing') return roundStageLabel(state);
   if (state.phase === 'finished') return finishedLabel;
-  return state.phase === 'reveal' ? '이번 판 식물 공개' : '대기실';
+  return state.phase === 'reveal' ? '이번 판 명당 공개' : '대기실';
 }
 
 /** 공개 단계에서 이 사람이 아직 확인하지 않았나 (기권한 사람은 확인할 일이 없다, Rules.md 4절 8) */

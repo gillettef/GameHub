@@ -11,7 +11,7 @@ import { usePlantable } from '../game/usePlantable';
 import { selectCanPlant, selectSelectedSpecies, selectState, selectViewerId, useGameStore } from '../store/gameStore';
 import styles from './BoardTab.module.css';
 
-/** 심기 미리보기. 보드(③)와 심기 확인 바(④)가 같은 값을 쓴다 */
+/** 놓기 미리보기. 보드(③)와 놓기 확인 바(④)가 같은 값을 쓴다 */
 function usePreview() {
   const state = useGameStore(selectState);
   const viewerId = useGameStore(selectViewerId);
@@ -26,8 +26,8 @@ function usePreview() {
 }
 
 /**
- * ③ 공용 보드 (F008, F009): 목표 카드 축소판 → 보드(남는 높이 전부).
- * 이번 판 식물 공개 단계에는 보드 대신 공개 화면(RevealPanel)을 보여 준다.
+ * ③ 골목 보드 (F008, F009): 소문(목표) 카드 축소판 → 보드(남는 높이 전부).
+ * 이번 판 명당 공개 단계에는 보드 대신 공개 화면(RevealPanel)을 보여 준다.
  */
 export const BoardArea = memo(function BoardArea() {
   const state = useGameStore(selectState);
@@ -44,7 +44,7 @@ export const BoardArea = memo(function BoardArea() {
   const preview = usePreview();
 
   const cells = useMemo(() => (state ? buildCells(state) : []), [state]);
-  // 고른 카드는 그 카드로 심을 칸, 카드를 고르기 전에는 손패 전체로 심을 수 있는 칸을 옅게(첫 차례에 어디를 눌러야 할지 바로 보이게)
+  // 고른 타일은 그 타일로 놓을 칸, 고르기 전에는 손 전체로 놓을 수 있는 칸을 옅게(첫 차례에 어디를 눌러야 할지 바로 보이게)
   const legal = useMemo(
     () => (!state || !canPlant || seedPicking ? new Set<string>() : species && selectedIndex !== null ? (perCard[selectedIndex] ?? new Set<string>()) : anyLegal),
     [state, canPlant, species, selectedIndex, seedPicking, perCard, anyLegal],
@@ -83,8 +83,8 @@ export const BoardArea = memo(function BoardArea() {
 });
 
 /**
- * ④ 내 영역: 마켓(가져오기) · 내 카드 · 심기 확인 바(방향·씨앗·예상 결과).
- * 가져오기 차례에는 마켓만, 심기 차례에는 내 카드·보드만 누를 수 있다(Rules.md 5절).
+ * ④ 내 영역: 펼친 타일(가져오기) · 내 타일 · 놓기 확인 바(방향·멀리 보내기·예상 결과).
+ * 가져오기 차례에는 펼친 타일만, 놓기 차례에는 내 타일·보드만 누를 수 있다(Rules.md 5절).
  */
 export const HandArea = memo(function HandArea() {
   const state = useGameStore(selectState);
@@ -96,7 +96,7 @@ export const HandArea = memo(function HandArea() {
   if (!state || state.phase !== 'playing') return null;
   return (
     <div className={styles.bottom}>
-      {/* 심을 칸을 고른 뒤에는 마켓을 접어 보드 높이를 지킨다(가져오기는 이미 끝났다) */}
+      {/* 놓을 칸을 고른 뒤에는 펼친 타일을 접어 보드 높이를 지킨다(가져오기는 이미 끝났다) */}
       {canPlant && pendingPos ? <PlantBar preview={preview} /> : <Market />}
       {viewerId && (
         <div className={styles.handPanel}>

@@ -1,5 +1,5 @@
-/* 정원 보드 (SVG). 좌표 단위는 육각 반지름 1. 그림자 없음(플랫).
-   질감·테두리는 사용자 시안 notes/design/board-2p.svg 를 따른다(값은 tokens.css 의 --board-*) */
+/* 골목 보드 (SVG, 2026-11-26 「냥냥 골목」). 좌표 단위는 육각 반지름 1. 그림자 없음(플랫).
+   칸·아지트·명당·고양이는 public/art 그림, 선·강조 색은 tokens.css 의 --board-* */
 .board {
   display: block;
   width: 100%;
@@ -8,7 +8,7 @@
   user-select: none;
 }
 
-/* ---- 바닥: 바깥 테두리 → 줄눈 → 지형 타일 → 구역 경계선 ---- */
+/* ---- 바닥: 바깥 테두리 → 줄눈 → 지형 그림 → 조각 경계선 ---- */
 .frame {
   fill: var(--board-frame);
   stroke: var(--board-frame);
@@ -22,80 +22,13 @@
   pointer-events: none;
 }
 
+/* 조각(7칸) 경계: 줄눈 위에 진한 갈색 선 */
 .zoneLine {
   fill: none;
   stroke: var(--board-zone-line);
-  stroke-width: 0.035;
+  stroke-width: 0.07;
   stroke-linecap: round;
   pointer-events: none;
-}
-
-/* 지형 무늬 (BoardTextures.tsx). 무늬마다 색 4단 */
-.grassBase {
-  fill: var(--board-grass);
-}
-.grassPattern .tone1 {
-  stroke: var(--board-grass-1);
-}
-.grassPattern .tone2 {
-  stroke: var(--board-grass-2);
-}
-.grassPattern .tone3 {
-  stroke: var(--board-grass-3);
-}
-.grassPattern .tone4 {
-  stroke: var(--board-grass-4);
-}
-
-.loamBase {
-  fill: var(--board-loam);
-}
-.loamPattern .tone1 {
-  fill: var(--board-loam-1);
-}
-.loamPattern .tone2 {
-  fill: var(--board-loam-2);
-}
-.loamPattern .tone3 {
-  fill: var(--board-loam-3);
-}
-.loamPattern .tone4 {
-  fill: var(--board-loam-4);
-}
-
-.gravelBase {
-  fill: var(--board-gravel);
-}
-.gravelPattern .tone1 {
-  fill: var(--board-gravel-1);
-}
-.gravelPattern .tone2 {
-  fill: var(--board-gravel-2);
-}
-.gravelPattern .tone3 {
-  fill: var(--board-gravel-3);
-}
-.gravelPattern .tone4 {
-  fill: var(--board-gravel-4);
-}
-
-.waterHi {
-  stop-color: var(--board-water-hi);
-}
-.waterMid {
-  stop-color: var(--board-water-mid);
-}
-.waterLow {
-  stop-color: var(--color-pond);
-}
-.stoneHi {
-  stop-color: var(--board-stone-hi);
-}
-.stoneMid {
-  stop-color: var(--board-stone-mid);
-}
-.stoneLow {
-  stop-color: var(--board-stone-low);
 }
 
 /* ---- 칸 ---- */
@@ -108,86 +41,54 @@
   outline: none;
 }
 
-/* 칸을 누르는 영역(바닥 타일 위에 투명하게) */
+/* 칸을 누르는 영역(바닥 그림 위에 투명하게) */
 .hit {
   fill: transparent;
 }
 
 .clickable:focus-visible .hit {
-  stroke: var(--color-accent);
+  stroke: var(--board-legal);
   stroke-width: 0.18;
 }
 
-/* 땅 주인: 자리 색을 옅게 덮고 안쪽에 자리 색 테를 둘러 질감 위에서도 구분되게 한다 */
+/* 영역 주인: 밝은 그림 위에서도 보이게 자리 색 반투명 + 자리 색 테 */
 .owned {
-  fill: color-mix(in srgb, var(--owner) 38%, transparent);
+  fill: color-mix(in srgb, var(--owner) 30%, transparent);
   stroke: var(--owner);
-  stroke-width: 0.1;
-  stroke-opacity: 0.9;
+  stroke-width: 0.11;
   pointer-events: none;
 }
 
-/* 기름진 땅 새싹 · 연못 물결 · 바위 돌 (시안 그대로, 1/68 로 줄여 그린다) */
-.sprout,
-.pondArt,
-.rockArt {
-  pointer-events: none;
-}
-.sproutStem {
-  fill: none;
-  stroke: var(--board-sprout);
-  stroke-width: 4.1;
-}
-.sproutLeafHi {
-  fill: var(--board-sprout-hi);
-}
-.sproutLeafLo {
-  fill: var(--board-sprout-lo);
-}
-
-.waves {
-  fill: none;
-  stroke: color-mix(in srgb, var(--color-white) 55%, transparent);
-  stroke-width: 4.1;
-  stroke-linecap: round;
-}
-.glint {
-  fill: color-mix(in srgb, var(--color-white) 35%, transparent);
-}
-
-.rockArt ellipse {
-  fill: url(#rb-stone);
-  stroke: var(--board-stone-low);
-  stroke-width: 2.7;
-}
-
+/* 놓을 수 있는 칸: 흰 바탕을 밝게 띄우고 다홍 테(치즈냥 주황 영역과 구분) */
 .legal {
-  fill: color-mix(in srgb, var(--color-accent) 22%, transparent);
-  stroke: var(--color-accent);
-  stroke-width: 0.09;
+  fill: color-mix(in srgb, var(--board-halo) 45%, transparent);
+  stroke: var(--board-legal);
+  stroke-width: 0.11;
   pointer-events: none;
-  /* 질감 위 다시 그리기 비용 때문에 무한 반복하지 않고 세 번만 깜빡인다 */
+  /* 다시 그리기 비용 때문에 무한 반복하지 않고 세 번만 깜빡인다 */
   animation: legal-pulse 1.6s var(--ease-standard) 3;
 }
 
 .legalFaint {
-  fill: color-mix(in srgb, var(--color-accent) 10%, transparent);
-  stroke: color-mix(in srgb, var(--color-accent) 60%, transparent);
-  stroke-width: 0.05;
+  fill: color-mix(in srgb, var(--board-halo) 30%, transparent);
+  stroke: color-mix(in srgb, var(--board-legal) 70%, transparent);
+  stroke-width: 0.07;
+  stroke-dasharray: 0.2 0.1;
   pointer-events: none;
 }
 
+/* 멀리 보내기 칸: 점선 테 */
 .seedLegal {
-  fill: none;
-  stroke: var(--color-accent);
-  stroke-width: 0.06;
+  fill: color-mix(in srgb, var(--board-halo) 30%, transparent);
+  stroke: var(--board-legal);
+  stroke-width: 0.08;
   stroke-dasharray: 0.18 0.12;
   pointer-events: none;
 }
 
 @keyframes legal-pulse {
   50% {
-    stroke-opacity: 0.45;
+    stroke-opacity: 0.4;
   }
 }
 
@@ -200,47 +101,39 @@
   pointer-events: none;
 }
 
+/* 고른 칸: 굵은 다홍 테 */
 .pending {
   fill: none;
-  stroke: var(--color-accent);
-  stroke-width: 0.16;
+  stroke: var(--board-legal);
+  stroke-width: 0.17;
   pointer-events: none;
 }
 
-/* 입구: 자리 색 집 모양 + 자리 번호 */
+.seedPending {
+  fill: var(--board-halo);
+  stroke: var(--board-legal);
+  stroke-width: 0.1;
+  pointer-events: none;
+}
+
+/* 아지트: 자리 0~2 는 그림, 자리 3 은 자리 0 그림 위에 자리 색 테 */
 .entrance {
   pointer-events: none;
 }
-.entrance polygon {
-  fill: var(--seat);
-  stroke: var(--board-ink);
-  stroke-width: 0.06;
+
+.seatRing {
+  fill: none;
+  stroke: var(--seat);
+  stroke-width: 0.14;
   stroke-linejoin: round;
 }
-.entrance text {
-  font-family: var(--font-display);
-  font-weight: 900;
-  fill: var(--board-ink);
-}
 
-/* 식물: 카드 그림 썸네일을 둥글게 잘라 자리 색 고리로 두른다 */
+/* 명당 타일: 놓을 때 톡 튀어나온다 */
 .plant {
   pointer-events: none;
   animation: plant-pop var(--motion-slow) var(--ease-enter);
   transform-box: fill-box;
   transform-origin: center;
-}
-
-.thumbRing {
-  fill: var(--seat);
-  stroke: var(--board-ink);
-  stroke-width: 0.05;
-}
-
-.thumbEdge {
-  fill: none;
-  stroke: var(--board-ink);
-  stroke-width: 0.04;
 }
 
 @keyframes plant-pop {
@@ -249,47 +142,44 @@
     opacity: 0;
   }
   70% {
-    transform: scale(1.15);
+    transform: scale(1.12);
   }
 }
 
-.seedPending {
+/* 고양이 토큰 + 마릿수 배지 (실물의 고양이 더미) */
+.cats {
+  pointer-events: none;
+}
+
+/* 자리 3(삼색냥): 자리 0 토큰 위에 자리 색 고리 */
+.catRing {
   fill: none;
-  stroke: var(--color-accent);
-  stroke-width: 0.1;
-  pointer-events: none;
+  stroke: var(--owner);
+  stroke-width: 0.12;
 }
 
-/* 땅 주인이 없는(큐브가 없는) 칸의 식물: 고리를 무채색으로 */
-.plantWild .thumbRing {
-  fill: var(--board-grout);
-}
-
-/* 뿌리 큐브 수: 주인 색 원 + 숫자. 식물 칸은 오른쪽 아래에 작게 (실물의 큐브 더미) */
-.cubes {
-  pointer-events: none;
-}
-
-.cubeDot {
-  fill: var(--owner);
+/* 미리보기에서 고양이가 모두 떠나는 칸 */
+.catEmpty {
+  fill: none;
   stroke: var(--board-ink);
-  stroke-width: 0.06;
+  stroke-width: 0.05;
+  stroke-dasharray: 0.12 0.08;
 }
 
-.cubeEmpty {
-  fill: var(--board-grout);
-  stroke: var(--board-ink);
-  stroke-width: 0.06;
+.countBadge {
+  fill: var(--board-halo);
+  stroke: var(--owner, var(--board-ink));
+  stroke-width: 0.07;
 }
 
-.cubes text {
+.cats text {
   font-weight: 800;
   fill: var(--board-ink);
 }
 
-/* 심기 미리보기: 바뀌는 칸은 강조색 테 */
-.cubesChanged circle {
-  stroke: var(--color-accent);
+/* 놓기 미리보기: 바뀌는 칸의 배지는 다홍 테 */
+.catsChanged .countBadge {
+  stroke: var(--board-legal);
   stroke-width: 0.1;
 }
 
@@ -300,15 +190,15 @@
   }
 }
 
-/* 칸 이름 (C4): 칸 위쪽 끝, 어떤 지형 위에서도 읽히게 테두리를 두른다 */
+/* 칸 이름 (C4): 칸 위쪽 끝, 어떤 그림 위에서도 읽히게 밝은 테를 두른다 */
 .labels {
   pointer-events: none;
 }
 
 .labels text {
   font-weight: 700;
-  fill: var(--color-text);
-  stroke: var(--board-ink);
+  fill: var(--board-ink);
+  stroke: var(--board-halo);
   stroke-width: 0.12;
   paint-order: stroke;
 }

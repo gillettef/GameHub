@@ -5,8 +5,9 @@ import { useGameStore } from '../store/gameStore';
 import styles from './CardsTab.module.css';
 
 /**
- * 카드 탭: 식물 9종과 목표 16장 전체 카탈로그. 이번 판 식물(state.species)을 위에, 나머지는 '이번 판에 없음'으로 흐리게.
- * 식물·목표 카드를 누르면 카드 디자인을 크게 본다(보기 전용)
+ * 카드 탭: 명당 타일 9종(규칙 용어 식물)과 소문 카드 16장(규칙 용어 목표) 전체 목록.
+ * 이번 판 명당(state.species)을 위에, 나머지는 '이번 판에 없음'으로 흐리게.
+ * 타일·소문 카드를 누르면 그림을 크게 본다(보기 전용). 소문 카드는 단골(명당 연계) = 초록 띠, 나머지 = 주황 띠
  */
 export const CardsTab = memo(function CardsTab() {
   const openCardModal = useGameStore((s) => s.openCardModal);
@@ -16,9 +17,9 @@ export const CardsTab = memo(function CardsTab() {
   return (
     <div className={styles.root}>
       <section className={styles.section}>
-        <h2 className={styles.h2}>{current ? `이번 판 식물 ${current.length}가지` : `식물 ${SPECIES_IDS.length}종`}</h2>
+        <h2 className={styles.h2}>{current ? `이번 판 명당 ${current.length}가지` : `명당 ${SPECIES_IDS.length}종`}</h2>
         <p className={styles.help}>
-          그림의 가운데가 심는 칸, 숫자는 그 칸에 놓는 뿌리 수입니다. 심을 때 방향을 돌릴 수 있습니다.{current ? ' 카드 더미와 마켓에는 이 식물만 나옵니다.' : ''}
+          타일 가운데가 놓는 칸, 숫자는 그 칸(가운데·옆 칸)에 모이는 고양이 수입니다. 놓을 때 방향을 돌릴 수 있습니다.{current ? ' 주머니와 펼친 타일에는 이 명당만 나옵니다.' : ''}
         </p>
         <div className={styles.grid}>
           {(current ?? SPECIES_IDS).map((s) => (
@@ -37,13 +38,16 @@ export const CardsTab = memo(function CardsTab() {
         </section>
       )}
       <section className={styles.section}>
-        <h2 className={styles.h2}>목표 {GOALS.length}장</h2>
-        <p className={styles.help}>판마다 {GOAL_COUNT}장이 공개되고, 그중 1장 이상은 식물 보호구역 목표입니다.</p>
+        <h2 className={styles.h2}>소문 카드 {GOALS.length}장</h2>
+        <p className={styles.help}>판마다 {GOAL_COUNT}장이 공개되고, 그중 1장 이상은 단골 소문(초록 띠)입니다.</p>
         <ul className={styles.goals}>
           {GOALS.map((g) => (
             <li key={g.id}>
-              <button type="button" className={g.species ? styles.linked : undefined} onClick={() => openCardModal({ kind: 'goal', goal: g.id })}>
-                <strong>{g.name}</strong>
+              <button type="button" className={g.species ? styles.regular : undefined} onClick={() => openCardModal({ kind: 'goal', goal: g.id })}>
+                <strong>
+                  {g.name}
+                  {g.species && <em className={styles.tag}>단골</em>}
+                </strong>
                 <span>{g.description}</span>
               </button>
             </li>

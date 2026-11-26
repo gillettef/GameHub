@@ -14,7 +14,7 @@ import { HelpTab } from './tabs/HelpTab'
 type Local = LocalGame<Table, Action, View, Options>
 type Route = { name: 'home' } | { name: 'local'; key: number; seats: SeatInfo[]; options: Options; game: Local }
 
-const TITLE = '루트바운드'
+const TITLE = '냥냥 골목'
 const SAVE_KEY = 'rootbound:local'
 const TURN_KEY = 'rootbound:turnTime'
 /** 튜토리얼 고정 설정(옛 튜토리얼과 같은 판) */
@@ -211,9 +211,13 @@ export function App() {
 
 function Hero() {
   return (
-    <div className="mt-1 mb-1 rounded-2xl bg-surface px-4 py-4">
-      <h1 className="mt-0 mb-1 text-3xl">루트바운드</h1>
-      <p className="m-0 text-sm text-muted">식물을 심고 뿌리를 뻗어 정원을 차지하세요. 남의 뿌리는 한 개씩 밀어내고, 끝났을 때 내 뿌리가 있는 칸과 목표 카드로 겨룹니다.</p>
+    <div className="mt-1 mb-1 rounded-2xl bg-surface px-4 py-4 text-center">
+      <h1 className="m-0">
+        {/* 로고 그림(페이지 기준 상대경로). 그림을 못 읽으면 alt 글자가 제목이 된다 */}
+        <img src="./art/logo.svg" alt={TITLE} width={900} height={300} className="mx-auto block h-auto w-full max-w-[320px]" />
+      </h1>
+      <p className="mt-1 mb-1 text-base font-bold">골목 고양이 영역 다툼</p>
+      <p className="m-0 text-sm text-muted">평상·종이 상자 같은 명당을 놓고 고양이를 불러 모아 골목을 차지하세요. 남의 고양이는 한 마리씩 쫓아내고, 끝났을 때 내 고양이가 앉은 칸과 소문 카드로 겨룹니다.</p>
     </div>
   )
 }

@@ -53,9 +53,9 @@ export function useGameCues(): void {
     if (fresh.some((e) => e.kind === 'system' && e.playerId === viewerId && e.message.includes(TIMEOUT_LOG_MARK)) && !useGameStore.getState().room?.autopilot.includes(viewerId)) {
       useGameStore.getState().setNotice(TIMEOUT_NOTICE);
     }
-    // 대기실에서 판이 시작되어 이번 판 식물이 공개되면 확인하라고 알린다 (Rules.md 4절 8)
+    // 대기실에서 판이 시작되어 이번 판 명당이 공개되면 확인하라고 알린다 (Rules.md 4절 8)
     if (mode === 'online' && state.phase === 'reveal' && before.turn === state.turn && fresh.some((e) => e.kind === 'system' && e.message.startsWith('게임 시작'))) {
-      announceMyTurn('이번 판 식물이 공개되었습니다. 확인을 누르세요');
+      announceMyTurn('이번 판 명당이 공개되었습니다. 확인을 누르세요');
       return;
     }
 
@@ -65,7 +65,7 @@ export function useGameCues(): void {
     }
     const myTurnNow = state.phase === 'playing' && state.currentPlayerId === viewerId && (before.current !== viewerId || state.turn !== before.turn);
     if (!myTurnNow) return;
-    if (mode === 'online') announceMyTurn(`${state.round}라운드 · ${state.stage === 'take' ? '카드를 가져올' : '식물을 심을'} 차례입니다`);
+    if (mode === 'online') announceMyTurn(`${state.round}라운드 · ${state.stage === 'take' ? '타일을 가져올' : '명당을 놓을'} 차례입니다`);
     else if (!handoffPending) playCue('turn');
   }, [state, viewerId, mode, handoffPending]);
 }

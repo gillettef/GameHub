@@ -41,24 +41,13 @@
   gap: var(--space-1);
 }
 
-.swatchFertile,
-.swatchPond,
-.swatchRock {
+/* 견본은 보드 칸과 같은 그림(public/art/terrain-*.svg) */
+.swatch {
   flex: none;
-  width: 18px;
-  height: 18px;
-  border-radius: 4px;
+  width: 22px;
+  height: 22px;
 }
 
-/* 견본은 보드 질감(HexBoard·BoardTextures)과 같은 색: 흙 + 새싹, 물, 자갈 + 돌 */
-.swatchFertile {
-  background: radial-gradient(circle at 50% 38%, var(--board-sprout-hi) 0 3px, transparent 3.5px), var(--board-loam);
-}
-
-.swatchPond {
-  background: radial-gradient(circle at 40% 35%, var(--board-water-hi), var(--board-water-mid) 60%, var(--color-pond));
-}
-
-.swatchRock {
-  background: radial-gradient(ellipse 5px 4px at 40% 58%, var(--board-stone-hi), var(--board-stone-low) 95%, transparent 100%), var(--board-gravel);
+.list {
+  margin-top: 4px;
 }

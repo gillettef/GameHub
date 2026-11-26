@@ -67,7 +67,12 @@ export const STAT_LABEL: Record<StatKey, string> = {
 };
 
 // 시험 카드가 점수를 내는 방식 설명 (예: "매력기운으로 굴린 주사위 + 지력 수치")
-export function describeExam(card: Pick<ExamCard, "diceStat" | "bonusStat">): string {
+// 63절(skillRules): 주사위는 언제나 주문력 개, 시험 카드의 두 능력치를 더한다
+export function describeExam(card: Pick<ExamCard, "diceStat" | "bonusStat">, skillRules = false): string {
+  if (skillRules) {
+    const stats = [...new Set([card.diceStat, ...(card.bonusStat ? [card.bonusStat] : [])])];
+    return `주사위(주문력 개) + ${stats.map((s) => STAT_LABEL[s]).join(" + ")}`;
+  }
   const fuel = card.diceStat === "spellPower" ? "마나기운" : `${STAT_LABEL[card.diceStat]}기운`;
   return `${fuel}으로 굴린 주사위${card.bonusStat ? ` + ${STAT_LABEL[card.bonusStat]} 수치` : ""}`;
 }
