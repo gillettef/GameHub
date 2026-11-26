@@ -39,7 +39,7 @@ function playOut(seats: number, seed: number, check?: (s: State) => void): { s: 
   return { s, steps, rejected }
 }
 
-describe('마왕의 패 엔진', () => {
+describe('검은 왕관 엔진', () => {
   it('3~5석, 여러 시드에서 봇끼리 끝까지 둔다(카드 수 보존)', () => {
     for (const seats of [3, 4, 5]) {
       for (let seed = 1; seed <= 12; seed++) {

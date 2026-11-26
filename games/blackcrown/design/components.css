@@ -1,5 +1,5 @@
 /*
- * 마왕의 패 컴포넌트 스타일. tokens.css 다음에 불러온다.
+ * 검은 왕관 컴포넌트 스타일. tokens.css 다음에 불러온다.
  * React 클라이언트는 이 클래스 이름을 그대로 쓴다(BEM: bc-블록__요소--변형, 상태는 is-*).
  * 아이콘은 emblems.svg 의 <symbol> 을 <svg class="bc-ico"><use href="#..."/></svg> 로 쓴다.
  */
