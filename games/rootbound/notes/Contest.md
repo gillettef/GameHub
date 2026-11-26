@@ -109,4 +109,4 @@
 - **응모 분야**: 2~3인 유지(사용자 결정) → 신청서의 **패밀리 플러스**(패밀리 게임은 최대 인원 4명 이상 조건).
 - **규칙 보강**: 블라인드 규칙서 검토(처음 보는 사람 시점)에서 "지금 규칙서로는 차릴 수 없다"(지형·입구 주인·뿌리 모양 그림 없음, 카드를 칸에 못 놓음, 놓는 순서 미정 등)는 지적 → 제출 원고에서 모두 다루고, 놓는 순서 문제는 **두 단계 놓기**로 엔진까지 고쳤다(Rules.md 6.2, 12절).
 - **계절 결산(5.3) 기각**: 12절 표. 모든 변형이 v6 보다 재미·밸런스가 낮다.
-- 제출물 만들기(게임 폴더에서): `node submission/tools/build-figures.mjs` → `python submission/build_rulebook.py`(규칙서 PDF) → `node submission/tools/svg2png.mjs cover table3` → `python submission/build_plan.py`(기획안 docx). 결과는 `submission/out/`.
+- 제출물 만들기(게임 폴더에서): `node submission/tools/build-figures.mjs` → `python submission/build_rulebook.py`(규칙서 PDF) → `node submission/tools/svg2png.mjs cover table3` → `python submission/build_plan.py`(기획안 docx) → `powershell -NoProfile -File submission/tools/docx2pdf.ps1`(기획안 PDF·쪽수, 2쪽 이내) → `node submission/tools/build-pnp.mjs`(인쇄용 프로토타입 PDF). 결과는 `submission/out/`. 디자인 그림은 `submission/art/`(있으면 자동으로 쓴다).
