@@ -46,9 +46,23 @@ await withGame(dir, async ({ url, open, shot }) => {
   await shot(solo, '04-here')
   await solo.getByRole('button', { name: '닫기' }).click()
 
-  // 첫 이동: 갈 수 있는 칸 하나
-  const reach = solo.locator('.bc-tile.is-reachable').first()
-  if (await reach.count()) await reach.click()
+  // 휴대폰에서는 보드가 미니맵이다: 누르면 확대, 확대한 지도에서 갈 수 있는 칸을 눌러 이동
+  const map = solo.locator('.bcm-map')
+  assert.ok(await map.evaluate((el) => el.classList.contains('is-mini')), '휴대폰 보드는 미니맵으로 시작해야 합니다')
+  await solo.locator('.bcm-cell[data-cell]').first().waitFor()
+  const camp = solo.locator('.bcm-pawn.is-me').first()
+  await camp.click({ force: true })
+  await solo.locator('.bcm-map.is-zoomed').waitFor()
+  await shot(solo, '03b-zoom')
+  const reach = solo.locator('.bcm-cell.is-reachable').first()
+  if (await reach.count()) {
+    const before = await solo.locator('.bcm-pawn.is-me').first().evaluate((el) => el.closest('[data-cell]')?.getAttribute('data-cell'))
+    await reach.click({ force: true })
+    await solo.waitForTimeout(300)
+    const after = await solo.locator('.bcm-pawn.is-me').first().evaluate((el) => el.closest('[data-cell]')?.getAttribute('data-cell'))
+    assert.notEqual(after, before, '확대한 지도에서 칸을 눌러 이동해야 합니다')
+  }
+  await solo.getByRole('button', { name: '전체 보기' }).click()
 
   await solo.getByRole('button', { name: '메뉴' }).click()
   await shot(solo, '05-menu')
@@ -88,14 +102,17 @@ await withGame(dir, async ({ url, open, shot }) => {
   await shot(host, '09-waiting')
   await host.getByRole('button', { name: /^시작/ }).click()
   await host.getByText('“가장 빛나는 자가 검은 왕관을 쓰리라”').waitFor()
-  for (const page of [host, guest]) {
-    const pick = page.locator('.bcx-class:enabled').first()
-    for (let k = 0; k < 40 && !(await pick.count()); k++) await page.waitForTimeout(250)
-    if (await pick.count()) await pick.click()
+  // 직업 고르기는 차례대로라(봇 연출 포함) 언제 내 차례가 올지 모른다: 두 사람 모두 보드가 뜰 때까지 계속 시도한다
+  for (let k = 0; k < 240 && !((await guest.locator('.bcm-map').count()) && (await host.locator('.bcm-map').count())); k++) {
+    for (const page of [host, guest]) {
+      const pick = page.locator('.bcx-class:enabled').first()
+      if (await pick.count()) await pick.click({ timeout: 2000 }).catch(() => {})
+    }
+    await guest.waitForTimeout(250)
   }
-  await guest.locator('.bc-board').waitFor({ timeout: 20000 })
+  await guest.locator('.bcm-map').waitFor({ timeout: 20000 })
   await guest.reload()
-  await guest.locator('.bc-board').waitFor({ timeout: 20000 })
+  await guest.locator('.bcm-map').waitFor({ timeout: 20000 })
   await shot(guest, '10-resumed')
 })
 console.log('모바일 확인 통과')

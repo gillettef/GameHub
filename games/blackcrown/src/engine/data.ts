@@ -6,7 +6,7 @@ export const SUIT_NAMES: Record<Suit, string> = { blade: '칼날', ward: '방패
 // ── 레벨 ──
 export const MAX_LEVEL = 7
 /** 레벨 n 에 필요한 누적 경험치(인덱스 = 레벨 - 1) */
-export const XP_TABLE = [0, 2, 4, 7, 11, 15, 20] as const
+export const XP_TABLE = [0, 1, 3, 5, 7, 10, 14] as const
 export const BASE_HP = 12
 export const HP_PER_LEVEL = 2
 export const START_GOLD = 3
@@ -50,7 +50,7 @@ export const ITEMS: Record<ItemId, ItemDef> = {
   thornArmor: I('thornArmor', '가시 갑옷', 'armor', 5, '반격받을 때 몬스터에게 피해 1', '마왕을 공격하면 공격자 피해 1'),
   pilgrimRobe: I('pilgrimRobe', '순례자의 로브', 'armor', 4, '샘에서 체력 전부 회복 + 골드 1', '마왕이 라운드마다 체력 3 회복'),
   mirrorShield: I('mirrorShield', '거울 방패', 'armor', 7, '장마다 1회 반격 무효', '라운드마다 1회 연합 공격 무효'),
-  leather: I('leather', '가죽옷', 'armor', 3, '숲 이동 추가 비용 없음', '마왕 체력 +5'),
+  leather: I('leather', '가죽옷', 'armor', 3, '숲·험한 길 이동 추가 비용 없음', '마왕 체력 +5'),
   windBoots: I('windBoots', '바람의 장화', 'trinket', 5, '차례마다 첫 이동 공짜', '마왕의 첫 이동 공짜'),
   shiftRing: I('shiftRing', '변신 반지', 'trinket', 5, '공격할 때 카드 1장 문양 바꾸기', '마왕이 카드 1장 문양 바꾸기'),
   lanternNecklace: I('lanternNecklace', '등불 목걸이', 'trinket', 4, '등불 효과 2배', '연합 회복량 −1'),
@@ -121,9 +121,7 @@ export const REWARDS: Record<Grade, { xpEach: number; xpLast: number; fame: numb
   boss: { xpEach: 2, xpLast: 5, fame: 5, gold: 6 },
 }
 
-// ── 보드 ──
-export const SIZE = 7
-export const CENTER = 3
+// ── 보드 (육각 판 조립, docs/design.md 10절. 판 데이터는 tiles.ts) ──
 export type TileKind = 'camp' | 'monster' | 'boss' | 'wander' | 'treasure' | 'shop' | 'forge' | 'spring' | 'altar' | 'forest' | 'ruin' | 'throne' | 'empty'
 
 export const TILE_NAMES: Record<TileKind, string> = {
@@ -131,15 +129,18 @@ export const TILE_NAMES: Record<TileKind, string> = {
   spring: '샘', altar: '제단', forest: '숲', ruin: '폐허', throne: '옥좌', empty: '빈 땅',
 }
 
-/** 고리(1 바깥 … 3 안쪽)별 타일 묶음. 야영지는 따로 놓는다 */
-export function ringTiles(ring: 1 | 2 | 3, seats: number): TileKind[] {
+/** 고리마다 꼭 까는 칸 타일 */
+export const RING_MUST: Record<1 | 2 | 3, TileKind[]> = { 1: ['boss', 'wander'], 2: ['boss', 'forge'], 3: ['boss'] }
+
+/** 고리(1 바깥 … 3 안쪽)별 칸 타일 묶음(꼭 까는 것 제외). 칸이 가장 많은 판 조합도 채울 만큼 들어 있다 */
+export function ringBag(ring: 1 | 2 | 3, seats: number): TileKind[] {
   const rep = (k: TileKind, n: number) => Array<TileKind>(n).fill(k)
   if (ring === 1) {
-    const monsters = seats <= 3 ? 5 : 7
-    return [...rep('monster', monsters), 'boss', 'wander', ...rep('treasure', 3), ...rep('shop', 2), ...rep('spring', 2), ...rep('altar', 2), ...rep('forest', 5 + 7 - monsters)]
+    const monsters = seats <= 3 ? 7 : 9
+    return [...rep('monster', monsters), ...rep('treasure', 4), ...rep('shop', 2), ...rep('spring', 2), ...rep('altar', 3), ...rep('forest', 16 - monsters)]
   }
-  if (ring === 2) return [...rep('monster', 4), 'boss', ...rep('treasure', 2), 'shop', 'forge', 'spring', ...rep('altar', 2), ...rep('ruin', 4)]
-  return [...rep('monster', 3), 'boss', ...rep('treasure', 2), 'spring', 'altar']
+  if (ring === 2) return [...rep('monster', 4), ...rep('treasure', 2), 'shop', 'spring', ...rep('altar', 2), ...rep('ruin', 6)]
+  return [...rep('monster', 3), ...rep('treasure', 2), 'spring', 'altar']
 }
 
 export const RING_MONSTERS: Record<1 | 2 | 3, MonsterId[]> = {
@@ -204,7 +205,7 @@ export const CLASSES: Record<ClassId, ClassDef> = {
     id: 'hunter', name: '사냥꾼', suit: null,
     passive: '이웃 칸 몬스터도 공격',
     active: '추적: 방랑 몬스터를 원하는 열린 칸으로',
-    upgrades: [['차례 시작에 이웃 타일 몰래 보기', '숲 이동 추가 비용 없음'], ['사거리 2칸', '공격할 때 카드 1장 문양 바꾸기']],
+    upgrades: [['차례 시작에 이웃 타일 몰래 보기', '숲·험한 길 이동 추가 비용 없음'], ['사거리 2칸', '공격할 때 카드 1장 문양 바꾸기']],
     dark: '마왕 공격 사거리 2칸',
   },
 }

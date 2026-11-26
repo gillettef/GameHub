@@ -45,7 +45,8 @@ export function parseAction(raw: unknown): Action | null {
     case 'ritual':
       return typeof r.ritual === 'string' && r.ritual in RITUALS ? { type: 'ritual', ritual: r.ritual as RitualId } : null
     case 'push':
-      return isInt(r.target) ? { type: 'push', target: r.target } : null
+      if (!isInt(r.target)) return null
+      return r.to === undefined ? { type: 'push', target: r.target } : isInt(r.to) ? { type: 'push', target: r.target, to: r.to } : null
     case 'choose':
       return isInt(r.option) ? { type: 'choose', option: r.option } : null
     case 'pass':
