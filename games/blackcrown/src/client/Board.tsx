@@ -2,7 +2,7 @@
  * 공용 보드: 육각 판 조립 지도(SVG). docs/design.md 10절.
  * 칸이 작게 보이는 화면(휴대폰)에서는 미니맵으로 보이고, 누르면 그 자리를 확대한다. 확대한 뒤 끌어서 옮긴다.
  */
-import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent as RPointerEvent, type ReactElement } from 'react'
+import { memo, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent as RPointerEvent, type ReactElement } from 'react'
 import { MONSTERS, TILE_NAMES, type TileKind } from '../engine/data'
 import { faceOf, hexCorners, rotate, tileCenter, type BoardMap } from '../engine/board'
 import { TILE_R } from '../engine/tiles'
@@ -211,15 +211,14 @@ export function Board({ view, me, canAct, targets, onTile }: { view: View; me: n
   }
   const vb = `${r1(cx - vw / 2)} ${r1(cy - vh / 2)} ${r1(vw)} ${r1(vh)}`
 
-  // 확대 중에 내 말이 움직이면 따라간다
+  // 확대 중에 내 말이 움직이면 따라간다(렌더 중 상태 맞추기: 이펙트로 한 번 더 그리지 않게)
   const myPos = me === null ? -1 : (view.players[me]?.pos ?? -1)
-  useEffect(() => {
+  const [followed, setFollowed] = useState(myPos)
+  if (followed !== myPos) {
+    setFollowed(myPos)
     const c = map.cells[myPos]
-    if (c) setZoom((z) => (z ? [c.x, c.y] : z))
-  }, [myPos, map])
-  useEffect(() => {
-    if (direct) setZoom(null)
-  }, [direct])
+    if (c && zoom) setZoom([c.x, c.y])
+  }
 
   const reach = me === null ? new Set<number>() : reachable(view, me, canAct)
   const demonSeat = view.demon?.seat ?? -1

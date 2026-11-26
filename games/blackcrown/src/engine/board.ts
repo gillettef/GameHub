@@ -158,7 +158,11 @@ export function distFrom(map: Pick<BoardMap, 'nb'>, src: number): Int16Array {
   const q = [src]
   for (let i = 0; i < q.length; i++) {
     const v = q[i] as number
-    for (const w of map.nb[v] as number[]) if (d[w] === -1) (d[w] = (d[v] as number) + 1), q.push(w)
+    for (const w of map.nb[v] as number[]) {
+      if (d[w] !== -1) continue
+      d[w] = (d[v] as number) + 1
+      q.push(w)
+    }
   }
   m.set(src, d)
   return d

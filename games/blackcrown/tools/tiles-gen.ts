@@ -195,7 +195,12 @@ function connected(n: number, roads: [number, number][]): boolean {
   }
   const seen = new Set([0])
   const q = [0]
-  while (q.length) for (const w of adj[q.pop() as number] as number[]) if (!seen.has(w)) (seen.add(w), q.push(w))
+  while (q.length)
+    for (const w of adj[q.pop() as number] as number[]) {
+      if (seen.has(w)) continue
+      seen.add(w)
+      q.push(w)
+    }
   return seen.size === n
 }
 

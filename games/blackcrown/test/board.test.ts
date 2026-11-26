@@ -10,7 +10,12 @@ function connected(nb: number[][], ids: number[]): boolean {
   const set = new Set(ids)
   const seen = new Set([ids[0] as number])
   const q = [ids[0] as number]
-  while (q.length) for (const w of nb[q.pop() as number] as number[]) if (set.has(w) && !seen.has(w)) (seen.add(w), q.push(w))
+  while (q.length)
+    for (const w of nb[q.pop() as number] as number[]) {
+      if (!set.has(w) || seen.has(w)) continue
+      seen.add(w)
+      q.push(w)
+    }
   return seen.size === set.size
 }
 
