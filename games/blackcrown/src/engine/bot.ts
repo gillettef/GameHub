@@ -5,7 +5,7 @@
 import { MONSTERS, ITEMS, CLASS_IDS, RITUALS, type ItemId, type RitualId } from './data'
 import {
   actors, attackRange, coalition, coronationScores, demonRange, dist, handLimit, has, isDemon, isOpen, maxHp, moveCost, neighbors,
-  pendingDamage, player, previewAttack, price, type Action, type Card, type Player, type State,
+  pendingDamage, player, previewAttack, previewSmite, price, type Action, type Card, type Player, type State,
 } from './game'
 
 export type BotLevel = 0 | 1 | 2
@@ -223,9 +223,9 @@ function finalTurn(s: State, seat: number): Action {
     if (inRange.length > 0 && p.hand.length > 0) {
       let best: { cards: number[]; v: number } | null = null
       for (const sub of subsets(p.hand, 5)) {
-        const pv = previewAttack(s, seat, -1, sub.map((c) => c.id))
+        const pv = previewSmite(s, seat, sub.map((c) => c.id))
         if (!pv) continue
-        const v = pv.damage * inRange.length - cardCost(sub) * 0.3
+        const v = pv.damage * pv.targets.length - cardCost(sub) * 0.3
         if (!best || v > best.v) best = { cards: sub.map((c) => c.id), v }
       }
       if (best) return { type: 'smite', cards: best.cards }

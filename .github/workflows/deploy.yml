@@ -38,7 +38,7 @@ jobs:
           BEFORE: ${{ github.event.before }}
           SHA: ${{ github.sha }}
         run: |
-          ALL="hub crease doubleagent election eleven hearsay lastgrain lightcone magicacademy neoterra proxymind retrocause rootbound sightline smilepark tesseract"
+          ALL="hub blackcrown crease doubleagent election eleven hearsay lastgrain lightcone magicacademy neoterra proxymind retrocause rootbound sightline smilepark tesseract"
           if [ "$EVENT" = "workflow_dispatch" ]; then
             if [ "$INPUT" = "all" ]; then T="$ALL"; else T="$INPUT"; fi
           elif [ -z "$BEFORE" ] || [ "$BEFORE" = "0000000000000000000000000000000000000000" ] || ! git cat-file -e "$BEFORE" 2>/dev/null; then
@@ -153,4 +153,10 @@ jobs:
     needs: [changes, smilepark]
     if: ${{ !cancelled() && contains(needs.changes.outputs.targets, ' tesseract ') }}
     uses: ./.github/workflows/deploy-tesseract.yml
+    secrets: inherit
+
+  blackcrown:
+    needs: [changes, tesseract]
+    if: ${{ !cancelled() && contains(needs.changes.outputs.targets, ' blackcrown ') }}
+    uses: ./.github/workflows/deploy-blackcrown.yml
     secrets: inherit
