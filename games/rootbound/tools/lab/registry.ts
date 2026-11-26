@@ -1,5 +1,5 @@
 /** 이름 → 규칙 후보. 실험하면서 여기에 추가한다 */
-import type { LabRules } from './engine.js';
+import type { ChoreId, LabRules } from './engine.js';
 import { BASE, GOALS_V2, SPECIES_V2, at, patchSpecies, variant } from './variants.js';
 
 const goalsSoft = GOALS_V2.map((g) =>
@@ -112,3 +112,43 @@ VARIANTS.s0 = seasonal('s0', 0, 'season');
 VARIANTS.s1end = seasonal('s1end', 1, 'end');
 VARIANTS.s1rev = seasonal('s1rev', 1, 'season', 'season');
 VARIANTS.s1nb = seasonal('s1nb', 1, 'season', 'all', VARIANTS.v5m2!);
+
+// 2026-11-26 A안 「행동 고르기」: 명당 놓기 / 담 넘기 / 모여라. 지금 규칙(v6 + 두 단계 놓기) 위에. 끝은 라운드 수
+const ACT_RULES = ['라운드 선(공급처 큐브 많은 사람)', '행동 고르기(담 넘기)', '행동 고르기(모여라)'];
+const acts = (name: string, a: Partial<NonNullable<LabRules['actions']>>, extra: Partial<LabRules> = {}) =>
+  variant(name, { actions: { move: 2, gather: 3, perCell: 3, rounds: { 2: 12, 3: 10, 4: 10 }, ...a }, extraRules: ACT_RULES, ...extra }, V6);
+VARIANTS.a1 = acts('a1', {});
+VARIANTS.a1r14 = acts('a1r14', { rounds: { 2: 14, 3: 12, 4: 12 } });
+VARIANTS.a1m3 = acts('a1m3', { move: 3 });
+VARIANTS.a1g2 = acts('a1g2', { gather: 2 });
+VARIANTS.a1gt = acts('a1gt', { gatherTake: true, handMax: 2 });
+VARIANTS.a1m1 = acts('a1m1', { move: 1, gather: 2 });
+VARIANTS.a1nr = acts('a1nr', { noRepeat: true });
+VARIANTS.a1nr14 = acts('a1nr14', { noRepeat: true, rounds: { 2: 14, 3: 12, 4: 12 } });
+VARIANTS.a2 = acts('a2', { gatherMode: 'regroup' });
+VARIANTS.a2nr = acts('a2nr', { gatherMode: 'regroup', noRepeat: true });
+VARIANTS.a2m1 = acts('a2m1', { gatherMode: 'regroup', move: 1 });
+// 쉬는 고양이 경제: 놓기는 쉬는 고양이로만(데려오기 없음) + 낮잠(내 칸 고양이 최대 3마리 쉬게)
+VARIANTS.e1 = acts('e1', { gatherMode: 'nap', noRelocate: true });
+VARIANTS.e1g2 = acts('e1g2', { gatherMode: 'nap', noRelocate: true, gather: 2 });
+VARIANTS.e1g4 = acts('e1g4', { gatherMode: 'nap', noRelocate: true, gather: 4 });
+VARIANTS.e1m1 = acts('e1m1', { gatherMode: 'nap', noRelocate: true, move: 1 });
+VARIANTS.e1s20 = acts('e1s20', { gatherMode: 'nap', noRelocate: true }, { supply: { 2: 20, 3: 22, 4: 20 } });
+
+// 2026-11-26 C안 「골목 일과」: 라운드마다 (인원+1)장 펼쳐 선부터 1장씩 고르기. 끝은 라운드 수
+const CHORE_RULES = ['라운드 선(공급처 큐브 많은 사람)', '골목 일과 고르기', '일과 문장 6개'];
+const chores = (name: string, set: ChoreId[], a: Partial<NonNullable<LabRules['actions']>> = {}, extra: Partial<LabRules> = {}) =>
+  variant(name, { chores: { set }, actions: { move: 2, gather: 0, perCell: 3, rounds: { 2: 12, 3: 10, 4: 10 }, ...a }, extraRules: CHORE_RULES, ...extra }, V6);
+const ALL_CHORES: ChoreId[] = ['bread', 'peek', 'roam', 'move', 'call', 'boss'];
+VARIANTS.c1 = chores('c1', ALL_CHORES);
+VARIANTS.c1r14 = chores('c1r14', ALL_CHORES, { rounds: { 2: 14, 3: 12, 4: 12 } });
+VARIANTS.c1nocall = chores('c1nocall', ['bread', 'peek', 'roam', 'move', 'boss']);
+VARIANTS.c1nomove = chores('c1nomove', ['bread', 'peek', 'roam', 'call', 'boss']);
+VARIANTS.c2 = chores('c2', ALL_CHORES, { move: 3 }, {});
+VARIANTS.c2.chores = { set: ALL_CHORES, peekMode: 'look3', callBonus: 1 };
+VARIANTS.c3 = chores('c3', ALL_CHORES, { move: 2, moveTimes: 2 }, {});
+VARIANTS.c3.chores = { set: ALL_CHORES, peekMode: 'look3', callBonus: 2 };
+VARIANTS.c4 = chores('c4', ALL_CHORES, { move: 2, moveTimes: 2 }, {});
+VARIANTS.c4.chores = { set: ALL_CHORES, peekMode: 'look3', callBonus: 1, callTurn: true };
+VARIANTS.c5 = chores('c5', ALL_CHORES, { move: 2, moveTimes: 2 }, {});
+VARIANTS.c5.chores = { set: ALL_CHORES, peekMode: 'look3', callBonus: 1, callTurn: true, roamRange: 2, callTake: true };

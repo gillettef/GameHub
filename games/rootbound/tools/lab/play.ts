@@ -32,6 +32,10 @@ export interface GameOut {
   lastRoundFlips: number;
   /** 내 땅 위 식물 수 (동점 깨기: 많을수록 이긴다) */
   plantsOnLand: number[];
+  /** 행동 고르기: 행동별 횟수 */
+  actionCount: Record<'place' | 'move' | 'gather' | 'call', number>;
+  choreCount: Record<string, number>;
+  sameAsLast: number;
 }
 
 export function playGame(rules: LabRules, P: number, seed: number, botNames: string[], instrument = false): GameOut {
@@ -48,8 +52,37 @@ export function playGame(rules: LabRules, P: number, seed: number, botNames: str
   let lastRoundFlips = 0;
   while (!g.over && guard++ < 2000) {
     const s = g.current;
+    if (g.needs() === 'draft') {
+      const bot = bots[s] as ReturnType<typeof makeBot>;
+      g.doDraft(bot.draft ? bot.draft(g, s, rand) : 0);
+      continue;
+    }
     if (g.needs() === 'take') {
-      g.doTake((bots[s] as ReturnType<typeof makeBot>).take(g, s, rand));
+      const bot = bots[s] as ReturnType<typeof makeBot>;
+      if (rules.actions && bot.action) {
+        const before = g.inf.map((a) => a.slice());
+        const look3 = rules.chores?.peekMode === 'look3' && g.choreOf[s] === 'peek';
+        if (look3) g.peekOpen();
+        const act = bot.action(g, s, rand);
+        if (act.kind === 'place') {
+          g.doTake(act.take);
+          if (look3) g.peekClose();
+          else if (rules.chores && g.choreOf[s] === 'peek') g.takeExtra();
+        } else {
+          if (look3) g.peekClose();
+          g.doAction(act);
+          for (let p = 0; p < P; p++) {
+            const A = before[p] as Int16Array;
+            const B = g.inf[p] as Int16Array;
+            for (let c = 0; c < g.geo.n; c++) {
+              cubeOps += Math.abs((B[c] as number) - (A[c] as number));
+              if ((B[c] as number) > maxStack) maxStack = B[c] as number;
+            }
+          }
+        }
+        continue;
+      }
+      g.doTake(bot.take(g, s, rand));
       continue;
     }
     if (instrument && g.turns % 2 === 0) {
@@ -113,5 +146,8 @@ export function playGame(rules: LabRules, P: number, seed: number, botNames: str
     cubeOps,
     lastRoundFlips,
     plantsOnLand: g.plantsOnLand(),
+    actionCount: { ...g.actionCount },
+    choreCount: { ...g.choreCount },
+    sameAsLast: g.sameAsLast,
   };
 }

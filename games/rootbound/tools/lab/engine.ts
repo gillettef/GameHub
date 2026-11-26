@@ -104,7 +104,30 @@ export interface LabRules {
    * goalTiming 'end' 이면 목표는 예전처럼 끝에 한 번에 센다.
    */
   seasons?: { ends: Record<number, number[]>; bloom: number; goalTiming: 'season' | 'end'; reveal?: 'all' | 'season' };
+  /**
+   * 행동 고르기 (2026-11-26 사용자 요청 A안). 차례마다 ① 명당 놓기(가져오기 + 심기) ② 담 넘기(내 칸 하나에서 고양이 최대 move 마리를
+   * 맞닿은 칸 하나로 옮김, 남의 칸이면 1:1 쫓아내기) ③ 모여라(쉬는 고양이 최대 gather 마리를 내 칸에 나눠 앉힘, 한 칸 최대 perCell) 중 하나.
+   * 끝은 rounds[P] 라운드(주머니가 남아도 끝난다). gatherTake: 모여라 때 타일도 1개 가져온다(손 한도 handMax).
+   * noRepeat: 직전 내 차례와 같은 행동은 할 수 없다
+   */
+  /**
+   * 골목 일과 (2026-11-26 C안). 라운드마다 set 에서 (인원 + 1)장을 펼치고 선부터 1장씩 고른 뒤, 차례대로 고른 일과를 한다.
+   * 일과: bread 식빵 굽기(놓기 + 놓은 칸 고양이 +1) · peek 생선 냄새(펼친 타일 2개를 다 가져와 1개 놓기) · roam 마실(떨어진 빈 칸에도 놓기)
+   *       move 담 넘기(놓지 않고 고양이 최대 2마리 이동) · call 명당 부르기(놓지 않고 내 영역 명당의 모양대로 다시 부르기) · boss 대장 방울(놓기 + 다음 선)
+   * 끝은 actions.rounds. 행동 고르기(actions)와 함께 켠다(차례 흐름·이동은 actions 의 것을 쓴다)
+   */
+  chores?: { set: ChoreId[]; reveal?: Record<number, number>; peekMode?: 'hand2' | 'look3'; callBonus?: number; breadBonus?: number; callTurn?: boolean; roamRange?: number; callTake?: boolean };
+  actions?: { move: number; gather: number; perCell: number; rounds: Record<number, number>; gatherTake?: boolean; handMax?: number; noRepeat?: boolean; gatherMode?: 'supply' | 'regroup' | 'nap'; noRelocate?: boolean; moveTimes?: number };
 }
+
+export type ChoreId = 'bread' | 'peek' | 'roam' | 'move' | 'call' | 'boss';
+export const PLACE_CHORES: readonly ChoreId[] = ['bread', 'peek', 'roam', 'boss'];
+
+export type TurnAction =
+  | { kind: 'call'; cell: number; rot?: number }
+  | { kind: 'place'; take: number }
+  | { kind: 'move'; from: number; to: number; k: number; then?: { from: number; to: number; k: number } }
+  | { kind: 'gather'; cells: number[] };
 
 // ---------------------------------------------------------------------------
 // 난수
@@ -289,7 +312,18 @@ export class Game {
   current = 0;
   roundStart = 0;
   round = 1;
-  stage: 'take' | 'plant' = 'take';
+  stage: 'take' | 'plant' | 'draft' = 'take';
+  /** 일과: 이번 라운드 펼친 일과, 자리별 고른 일과, 대장 방울로 정한 다음 선 */
+  offer: ChoreId[] = [];
+  choreOf: (ChoreId | null)[] = [];
+  nextFirst = -1;
+  choreRand: Rand = () => 0;
+  /** 식물 칸의 회전 번호(rotCache 색인). 명당 부르기에 쓴다 */
+  plantRot: Int8Array = new Int8Array(0);
+  /** 일과 고르기 기록 (지표): 고를 때 남아 있던 일과, 고른 일과, 몇 번째로 골랐나 */
+  draftLog: { seat: number; offered: ChoreId[]; chose: ChoreId; pickNo: number }[] = [];
+  /** 일과별 고른 횟수 (지표) */
+  choreCount: Record<string, number> = {};
   stageCount = 0;
   turns = 0;
   plays: number[];
@@ -379,7 +413,92 @@ export class Game {
     for (let s = 0; s < P; s++) for (const x of this.geo.nb[this.geo.entrances[s] as number] as number[]) if (this.canHoldRoots(x)) this.addRoots(x, s, rules.entranceRing);
     this.undo.length = 0;
     this.current = 0;
+    this.plantRot = new Int8Array(this.geo.n);
+    if (rules.chores) {
+      this.choreRand = mulberry32((seed ^ 0x2545f491) >>> 0);
+      this.choreOf = new Array(P).fill(null);
+      this.startDraft();
+    }
   }
+
+  // -------------------------------------------------------------------------
+  // 골목 일과 (chores)
+  // -------------------------------------------------------------------------
+
+  private startDraft(): void {
+    const c = this.rules.chores!;
+    const n = c.reveal?.[this.P] ?? this.P + 1;
+    this.offer = shuffle(c.set, this.choreRand).slice(0, n);
+    this.choreOf = new Array(this.P).fill(null);
+    this.stage = 'draft';
+    this.stageCount = 0;
+    this.current = this.roundStart;
+  }
+
+  /** 지금 자리가 펼친 일과 i 번을 고른다 */
+  doDraft(i: number): void {
+    const k = Math.max(0, Math.min(this.offer.length - 1, i));
+    this.draftLog.push({ seat: this.current, offered: [...this.offer], chose: this.offer[k] as ChoreId, pickNo: this.stageCount });
+    const ch = this.offer.splice(k, 1)[0] as ChoreId;
+    this.choreOf[this.current] = ch;
+    this.choreCount[ch] = (this.choreCount[ch] ?? 0) + 1;
+    if (ch === 'boss') this.nextFirst = this.current;
+    this.stageCount++;
+    if (this.stageCount < this.P) {
+      this.current = this.seatAt(this.stageCount);
+      return;
+    }
+    this.stage = 'take';
+    this.stageCount = 0;
+    this.current = this.roundStart;
+  }
+
+  /** 명당 부르기 후보: 내 영역 위 식물 칸 */
+  callOptions(s: number): number[] {
+    const out: number[] = [];
+    for (let c = 0; c < this.geo.n; c++) if (this.plant[c] !== -1 && this.owner(c) === s) out.push(c);
+    return out;
+  }
+
+  /** 명당 부르기 적용: 그 칸 식물의 뿌리 모양(놓인 방향)대로 다시 (능력 없음) */
+  applyCall(s: number, cell: number, rot?: number): void {
+    const spIdx = this.plant[cell] as number;
+    if (spIdx < 0) return;
+    if (rot !== undefined && this.rules.chores?.callTurn) {
+      this.undo.push(3, cell, this.plantRot[cell] as number, 0);
+      this.plantRot[cell] = rot;
+    }
+    const pat = (this.rotCache[spIdx] as [number, number, number][][])[this.plantRot[cell] as number] ?? (this.rotCache[spIdx] as [number, number, number][][])[0]!;
+    const q = this.geo.q[cell] as number;
+    const r = this.geo.r[cell] as number;
+    const batch: [number, number][] = [];
+    for (const [dq, dr, v] of pat) {
+      const t = dq === 0 && dr === 0 ? cell : this.geo.at(q + dq, r + dr);
+      if (t >= 0) batch.push([t, t === cell ? v + (this.rules.chores?.callBonus ?? 0) : v]);
+    }
+    this.received.clear();
+    this.placeBatch(batch, s);
+    this.received.clear();
+  }
+
+  /** 생선 냄새(look3): 주머니 맨 위 1개를 펼친 타일 옆에 잠깐 편다 */
+  peekOpen(): void {
+    if (this.bag.length) this.market.push(this.bag.pop() as number);
+  }
+  /** 생선 냄새(look3): 가져온 뒤 펼친 타일이 원래 수보다 많으면 남는 것을 주머니 맨 위로 되돌린다 */
+  peekClose(): void {
+    const m = this.rules.market[this.P] ?? 2;
+    while (this.market.length > m) this.bag.push(this.market.pop() as number);
+  }
+
+  /** 생선 냄새: 펼친 타일을 하나 더 손에 (가져오기 뒤) */
+  takeExtra(): void {
+    const s = this.current;
+    if (!this.market.length) return;
+    this.hands[s]!.push(this.market.shift() as number);
+    if (this.bag.length) this.market.push(this.bag.pop() as number);
+  }
+
 
   canHoldRoots(c: number): boolean {
     const t = this.geo.terrain[c];
@@ -418,6 +537,7 @@ export class Game {
     if (!lim) return k;
     let avail = lim - (this.onBoard[s] as number);
     const I = this.inf[s] as Int16Array;
+    if (this.rules.actions?.noRelocate) return Math.max(0, Math.min(k, avail));
     while (avail < k) {
       let best = -1;
       let bv = 0;
@@ -548,6 +668,7 @@ export class Game {
       }
       else if (kind === 1) this.color[b] = cc;
       else if (kind === 2) this.plant[b] = cc;
+      else if (kind === 3) this.plantRot[b] = cc;
     }
   }
   commit(): void {
@@ -576,6 +697,10 @@ export class Game {
       if (this.rules.plantOn === 'own') ok = this.owner(c) === s;
       else if (this.rules.plantOn === 'touch') ok = ((this.inf[s] as Int16Array)[c] as number) >= 1;
       else ok = this.owner(c) === s || (this.owner(c) === -1 && (g.nb[c] as number[]).some((x) => this.owner(x) === s || this.entranceSeat[x] === s));
+      if (!ok && this.rules.chores && this.choreOf[s] === 'roam' && this.owner(c) === -1) {
+        const rr = this.rules.chores.roamRange ?? 0;
+        ok = rr <= 0 || (g.within2[c] as number[]).some((x) => this.owner(x) === s) || (rr > 2);
+      }
       if (!ok && ab?.kind === 'pond') ok = (g.nb[c] as number[]).some((x) => g.terrain[x] === POND);
       if (ok) out.push(c);
     }
@@ -602,6 +727,8 @@ export class Game {
     const g = this.geo;
     this.undo.push(2, c, this.plant[c] as number, 0);
     this.plant[c] = spIdx;
+    this.undo.push(3, c, this.plantRot[c] as number, 0);
+    this.plantRot[c] = rot;
     const pat = (this.rotCache[spIdx] as [number, number, number][][])[rot] ?? (this.rotCache[spIdx] as [number, number, number][][])[0]!;
     const q = g.q[c] as number;
     const r = g.r[c] as number;
@@ -618,6 +745,12 @@ export class Game {
         if (ab?.kind === 'cluster') for (const x of g.nb[c] as number[]) if (this.plant[x] === spIdx) k += ab.value;
       } else if (ab?.kind === 'fertileRing' && fertile) k += ab.value;
       batch.push([t, k]);
+    }
+    if (this.rules.chores && this.choreOf[s] === 'bread') {
+      const first = batch.find(([t]) => t === c);
+      const bb = this.rules.chores.breadBonus ?? 1;
+      if (first) first[1] += bb;
+      else batch.unshift([c, bb]);
     }
     this.placeBatch(batch, s);
     if (ab?.kind === 'ivy') for (const x of g.nb[c] as number[]) if (this.plant[x] !== -1) this.addRoots(x, s, ab.value);
@@ -828,7 +961,7 @@ export class Game {
   // -------------------------------------------------------------------------
 
   /** 이 차례에 해야 하는 일 */
-  needs(): 'take' | 'plant' | 'over' {
+  needs(): 'take' | 'plant' | 'draft' | 'over' {
     return this.over ? 'over' : this.stage;
   }
 
@@ -870,6 +1003,14 @@ export class Game {
 
   /** turn 흐름: stageCount 부터 둘 수 있는(손이나 마켓이 있는) 다음 자리. 없으면 라운드 끝 */
   private nextTurn(): void {
+    if (this.rules.actions) {
+      if (this.stageCount >= this.P) this.endRound();
+      else {
+        this.current = this.seatAt(this.stageCount);
+        this.stage = 'take';
+      }
+      return;
+    }
     while (this.stageCount < this.P && this.hands[this.seatAt(this.stageCount)]!.length === 0 && !this.market.length) this.stageCount++;
     if (this.stageCount >= this.P) this.endRound();
     else {
@@ -904,6 +1045,9 @@ export class Game {
       else if ((before[c] as number) >= 0 && before[c] !== s) flips++; // 버섯 등으로 남의 땅을 없앤 것
     }
     this.records.push({ seat: s, species, flips, claims, discard });
+    this.actionCount.place++;
+    if (this.lastAction[s] === 'place') this.sameAsLast++;
+    this.lastAction[s] = 'place';
     this.plays[s]!++;
     this.turns++;
     this.stageCount++;
@@ -952,16 +1096,26 @@ export class Game {
         while (this.season < ends.length) this.settleSeason();
       } else if (ends.includes(this.round)) this.settleSeason();
     }
-    if (last) this.over = true;
+    const roundsCap = this.rules.actions?.rounds[this.P];
+    if (last || (roundsCap && this.round >= roundsCap)) {
+      if (ss) while (this.season < (ss.ends[this.P]?.length ?? 0)) this.settleSeason();
+      this.over = true;
+      this.history.push(this.scores());
+      return;
+    }
     this.history.push(this.scores());
-    if (last) return;
     if (this.rules.refill === 'round' && !this.bag.length && this.hands.every((h) => h.length === 0)) {
       this.over = true;
       return;
     }
     this.round++;
-    this.roundStart = this.pickStart();
+    this.roundStart = this.nextFirst >= 0 && this.rules.chores ? this.nextFirst : this.pickStart();
+    this.nextFirst = -1;
     this.stageCount = 0;
+    if (this.rules.chores) {
+      this.startDraft();
+      return;
+    }
     if (this.rules.refill === 'round') {
       this.market = [];
       const m = this.rules.market[this.P] ?? this.P;
@@ -978,6 +1132,168 @@ export class Game {
       this.stage = 'plant';
       this.nextPlanter();
     }
+  }
+
+  // -------------------------------------------------------------------------
+  // 행동 고르기 (actions)
+  // -------------------------------------------------------------------------
+
+  /** 담 넘기 후보: [출발 칸, 도착 칸, 마릿수] */
+  moveOptions(s: number): [number, number, number][] {
+    const a = this.rules.actions;
+    if (!a || a.move <= 0 || (this.lastAction[s] === 'move' && a.noRepeat)) return [];
+    const out: [number, number, number][] = [];
+    const I = this.inf[s] as Int16Array;
+    for (let c = 0; c < this.geo.n; c++) {
+      if (this.owner(c) !== s) continue;
+      const have = I[c] as number;
+      for (const t of this.geo.nb[c] as number[]) {
+        if (!this.canHoldRoots(t)) continue;
+        for (let k = 1; k <= Math.min(a.move, have); k++) out.push([c, t, k]);
+      }
+    }
+    return out;
+  }
+
+  /** 이번 차례에 고를 수 있는 행동인가 (직전 행동 반복 금지 규칙) */
+  canDo(s: number, kind: 'place' | 'move' | 'gather' | 'call'): boolean {
+    if (this.rules.chores) {
+      const ch = this.choreOf[s];
+      if (kind === 'place') return !!ch && PLACE_CHORES.includes(ch);
+      if (kind === 'move') return ch === 'move';
+      if (kind === 'call') return ch === 'call';
+      return false;
+    }
+    const a = this.rules.actions;
+    if (kind === 'call') return false;
+    if (!a) return kind === 'place';
+    return !(a.noRepeat && this.lastAction[s] === kind);
+  }
+
+  /** 쉬는 고양이 수 */
+  supplyOf(s: number): number {
+    const lim = this.rules.supply?.[this.P] ?? 0;
+    return lim ? lim - (this.onBoard[s] as number) : 99;
+  }
+
+  /** 담 넘기 적용 (되돌리기 기록에 남는다): 출발 칸에서 k 마리를 들어 도착 칸으로 (쫓아내기 → 앉히기) */
+  applyMove(s: number, from: number, to: number, k: number): void {
+    const I = this.inf[s] as Int16Array;
+    const have = I[from] as number;
+    const n = Math.min(k, have);
+    this.setInf(s, from, have - n);
+    if (have - n === 0 && this.rules.mode === 'tug') this.setColor(from, -1);
+    this.received.clear();
+    this.received.add(from);
+    this.placeBatch([[to, n]], s);
+    this.received.clear();
+  }
+
+  /** 재배치(gatherMode 'regroup') 1마리: 내 칸 from 에서 내 다른 칸 to 로 (쫓아내기 없음) */
+  applyRegroup(s: number, from: number, to: number): void {
+    const I = this.inf[s] as Int16Array;
+    if (from === to || this.owner(from) !== s || this.owner(to) !== s || (I[from] as number) < 1) return;
+    this.setInf(s, from, (I[from] as number) - 1);
+    if ((I[from] as number) === 0 && this.rules.mode === 'tug') this.setColor(from, -1);
+    this.setInf(s, to, (I[to] as number) + 1);
+  }
+
+  /** 모여라 적용: cells 에 1마리씩 (쉬는 고양이만큼만). 재배치 모드면 cells = [from, to, from, to …] */
+  applyGather(s: number, cells: number[]): void {
+    if (this.rules.actions?.gatherMode === 'nap') {
+      // 낮잠: 나열한 내 칸에서 1마리씩 쉬는 고양이로
+      const I = this.inf[s] as Int16Array;
+      for (const c of cells) {
+        if (this.owner(c) !== s || (I[c] as number) < 1) continue;
+        this.setInf(s, c, (I[c] as number) - 1);
+        if ((I[c] as number) === 0 && this.rules.mode === 'tug') this.setColor(c, -1);
+      }
+      return;
+    }
+    if (this.rules.actions?.gatherMode === 'regroup') {
+      for (let i = 0; i + 1 < cells.length; i += 2) this.applyRegroup(s, cells[i] as number, cells[i + 1] as number);
+      return;
+    }
+    const I = this.inf[s] as Int16Array;
+    let left = Math.min(cells.length, this.supplyOf(s));
+    for (const c of cells) {
+      if (left <= 0) break;
+      if (this.owner(c) !== s) continue;
+      this.setInf(s, c, (I[c] as number) + 1);
+      left--;
+    }
+  }
+
+  private applyCallTurn(cell: number, rot?: number): void {
+    const s = this.current;
+    const before = this.owners();
+    this.applyCall(s, cell, rot);
+    if (this.rules.chores?.callTake && this.market.length && this.hands[s]!.length < 3) {
+      this.hands[s]!.push(this.market.shift() as number);
+      if (this.bag.length) this.market.push(this.bag.pop() as number);
+    }
+    this.commit();
+    const after = this.owners();
+    let flips = 0;
+    let claims = 0;
+    for (let c = 0; c < this.geo.n; c++) {
+      if (before[c] === after[c]) continue;
+      if (after[c] === s && (before[c] as number) >= 0) flips++;
+      else if (after[c] === s) claims++;
+      else if ((before[c] as number) >= 0 && before[c] !== s) flips++;
+    }
+    this.records.push({ seat: s, species: -1, flips, claims, discard: false });
+    this.actionCount.call = (this.actionCount.call ?? 0) + 1;
+    this.plays[s]!++;
+    this.turns++;
+    this.stageCount++;
+    this.nextTurn();
+  }
+
+  /** 행동별 횟수 (지표) */
+  actionCount: Record<'place' | 'move' | 'gather' | 'call', number> = { place: 0, move: 0, gather: 0, call: 0 };
+  /** 직전 내 차례와 같은 행동을 한 횟수 (지표) */
+  sameAsLast = 0;
+  /** 자리별 직전 행동 */
+  lastAction: ('place' | 'move' | 'gather' | null)[] = [];
+
+  /** 담 넘기·모여라 차례를 확정한다 */
+  doAction(act: Exclude<TurnAction, { kind: 'place' }>): void {
+    if (act.kind === 'call') {
+      this.applyCallTurn(act.cell, act.rot);
+      return;
+    }
+    const s = this.current;
+    const before = this.owners();
+    if (act.kind === 'move') {
+      this.applyMove(s, act.from, act.to, act.k);
+      if (act.then) this.applyMove(s, act.then.from, act.then.to, act.then.k);
+    } else {
+      this.applyGather(s, act.cells);
+      const a = this.rules.actions;
+      if (a?.gatherTake && this.hands[s]!.length < (a.handMax ?? 2) && this.market.length) {
+        this.hands[s]!.push(this.market.shift() as number);
+        if (this.bag.length) this.market.push(this.bag.pop() as number);
+      }
+    }
+    this.commit();
+    const after = this.owners();
+    let flips = 0;
+    let claims = 0;
+    for (let c = 0; c < this.geo.n; c++) {
+      if (before[c] === after[c]) continue;
+      if (after[c] === s && (before[c] as number) >= 0) flips++;
+      else if (after[c] === s) claims++;
+      else if ((before[c] as number) >= 0 && before[c] !== s) flips++;
+    }
+    this.records.push({ seat: s, species: -1, flips, claims, discard: false });
+    this.actionCount[act.kind]++;
+    if (this.lastAction[s] === act.kind) this.sameAsLast++;
+    this.lastAction[s] = act.kind;
+    this.plays[s]!++;
+    this.turns++;
+    this.stageCount++;
+    this.nextTurn();
   }
 
   /** 모든 합법 수 (버리기 포함). 같은 종 카드는 하나만 */
