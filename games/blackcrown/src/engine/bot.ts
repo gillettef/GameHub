@@ -68,7 +68,7 @@ function stepToward(s: State, from: number, goals: (i: number) => boolean, block
       }
       return { step, d: d + 1 }
     }
-    for (const n of neighbors(cur)) {
+    for (const n of neighbors(s, cur)) {
       if (prev.has(n) || !isOpen(s, n) || blocked(n)) continue
       prev.set(n, cur)
       queue.push(n)
@@ -166,7 +166,7 @@ function playTurn(s: State, seat: number, level: BotLevel): Action {
   // 공격
   let bestAtk: { target: number; plan: AttackPlan } | null = null
   for (const m of s.monsters) {
-    if (dist(p.pos, m.pos) > attackRange(p)) continue
+    if (dist(s, p.pos, m.pos) > attackRange(p)) continue
     const def = MONSTERS[m.kind]
     const plan = bestAttack(s, seat, m.id, m.hp, def.atk, p.hp)
     if (plan && plan.score > 0 && (!bestAtk || plan.score > bestAtk.plan.score)) bestAtk = { target: m.id, plan }
@@ -219,7 +219,7 @@ function finalTurn(s: State, seat: number): Action {
   const king = player(s, demon.seat)
   if (isDemon(s, seat)) {
     const range = demonRange(s, p)
-    const inRange = coalition(s).filter((q) => !q.out && dist(q.pos, p.pos) <= range)
+    const inRange = coalition(s).filter((q) => !q.out && dist(s, q.pos, p.pos) <= range)
     if (inRange.length > 0 && p.hand.length > 0) {
       let best: { cards: number[]; v: number } | null = null
       for (const sub of subsets(p.hand, 5)) {
@@ -232,7 +232,7 @@ function finalTurn(s: State, seat: number): Action {
     }
     if (!demon.chained) {
       const targets = coalition(s).filter((q) => !q.out).map((q) => q.pos)
-      const go = stepToward(s, p.pos, (i) => targets.some((t) => dist(i, t) <= range))
+      const go = stepToward(s, p.pos, (i) => targets.some((t) => dist(s, i, t) <= range))
       if (go && moveCost(s, p, go.step) <= s.tokens) return { type: 'move', to: go.step }
     }
     if (p.hand.length < handLimit(s, p)) return { type: 'draw' }
@@ -245,11 +245,11 @@ function finalTurn(s: State, seat: number): Action {
     if (!s.ritualsUsed.includes(r) && s.treasury >= cost && (r !== 'lantern' || p.hp < maxHp(p) / 2)) return { type: 'ritual', ritual: r }
   }
   const range = Math.max(1, attackRange(p))
-  if (dist(p.pos, king.pos) <= range && p.hand.length > 0) {
+  if (dist(s, p.pos, king.pos) <= range && p.hand.length > 0) {
     const plan = bestAttack(s, seat, -1, demon.hp ?? 99, 0, 99)
     if (plan) return { type: 'attack', target: -1, cards: plan.cards }
   } else {
-    const go = stepToward(s, p.pos, (i) => dist(i, king.pos) <= range, (i) => i === king.pos)
+    const go = stepToward(s, p.pos, (i) => dist(s, i, king.pos) <= range, (i) => i === king.pos)
     if (go && moveCost(s, p, go.step) <= s.tokens) return { type: 'move', to: go.step }
   }
   if (p.hand.length < handLimit(s, p)) return { type: 'draw' }

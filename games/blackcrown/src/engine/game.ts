@@ -5,11 +5,12 @@
 import * as R from './rng'
 import { Cat, HAND_NAMES, bestHand, handLabel, power, type HandResult, type Mods, type PCard, type Suit } from './hands'
 import {
-  BASE_HP, BLESSINGS, CENTER, CHAPTERS, CLASSES, CLASS_IDS, CONSUMABLES, CURSES, DEMON_TOKENS, EQUIPMENT,
-  FINAL_ROUNDS, HP_PER_LEVEL, ITEMS, LAST_HIT_BONUS, MAX_CONSUMABLES, MAX_LEVEL, MONSTERS, REWARDS, RING_BOSS, RING_MONSTERS,
-  RITUALS, ROUNDS_PER_CHAPTER, SHADOW_CARDS, SHADOW_ID_BASE, SIZE, START_GOLD, SUIT_NAMES, TILE_NAMES, TOKENS_PER_TURN, XP_TABLE, ringTiles,
+  BASE_HP, BLESSINGS, CHAPTERS, CLASSES, CLASS_IDS, CONSUMABLES, CURSES, DEMON_TOKENS, EQUIPMENT,
+  FINAL_ROUNDS, HP_PER_LEVEL, ITEMS, LAST_HIT_BONUS, MAX_CONSUMABLES, MAX_LEVEL, MONSTERS, REWARDS, RING_BOSS, RING_MONSTERS, RING_MUST,
+  RITUALS, ROUNDS_PER_CHAPTER, SHADOW_CARDS, SHADOW_ID_BASE, START_GOLD, SUIT_NAMES, TILE_NAMES, TOKENS_PER_TURN, XP_TABLE, ringBag,
   type Blessing, type ClassId, type ItemId, type MonsterId, type RitualId, type TileKind,
 } from './data'
+import { buildMap, isRough, mapDist, shuffleTiles, type BoardMap } from './board'
 
 export class IllegalAction extends Error {}
 
@@ -141,6 +142,8 @@ export interface State {
   firstSeat: number
   turn: number
   tokens: number
+  /** 육각 판 조립 보드(공개). 칸 번호 = board 의 번호 */
+  map: BoardMap
   board: Tile[]
   monsters: Monster[]
   nextMonsterId: number
@@ -191,7 +194,8 @@ export type Action =
   | { type: 'use'; item: ItemId }
   | { type: 'guard'; on: boolean }
   | { type: 'ritual'; ritual: RitualId }
-  | { type: 'push'; target: number }
+  /** to: 밀려날 칸(여럿이면 마왕이 고름, 없으면 pushStep) */
+  | { type: 'push'; target: number; to?: number }
   | { type: 'smite'; cards: number[] }
   | { type: 'twist' }
   | { type: 'choose'; option: number }
@@ -199,31 +203,14 @@ export type Action =
 
 // ───────────────────────── 보드 도우미 ─────────────────────────
 
-export const idx = (r: number, c: number) => r * SIZE + c
-export const rowOf = (i: number) => Math.floor(i / SIZE)
-export const colOf = (i: number) => i % SIZE
-export const CAMP = idx(SIZE - 1, CENTER)
-export const THRONE = idx(CENTER, CENTER)
-export function ringOf(i: number): number {
-  const d = Math.max(Math.abs(rowOf(i) - CENTER), Math.abs(colOf(i) - CENTER))
-  return 4 - d
-}
-export function dist(a: number, b: number): number {
-  return Math.abs(rowOf(a) - rowOf(b)) + Math.abs(colOf(a) - colOf(b))
-}
-export function neighbors(i: number): number[] {
-  const r = rowOf(i)
-  const c = colOf(i)
-  const out: number[] = []
-  if (r > 0) out.push(idx(r - 1, c))
-  if (r < SIZE - 1) out.push(idx(r + 1, c))
-  if (c > 0) out.push(idx(r, c - 1))
-  if (c < SIZE - 1) out.push(idx(r, c + 1))
-  return out
-}
+type HasMap = Pick<State, 'map'>
+export const neighbors = (s: HasMap, i: number): number[] => s.map.nb[i] ?? []
+/** 길을 따라 센 칸 수(사거리·가까운 칸 판정) */
+export const dist = (s: HasMap, a: number, b: number): number => mapDist(s.map, a, b)
+export const ringOf = (s: HasMap, i: number): number => s.map.cells[i]?.ring ?? 0
 
 export function isOpen(s: State, i: number): boolean {
-  const ring = ringOf(i)
+  const ring = ringOf(s, i)
   if (s.phase === 'final') return ring >= 3
   return ring <= s.chapter
 }
@@ -394,33 +381,38 @@ export function createGame(seats: number, seed: number): State {
   })
   R.shuffle(rng, deck)
 
-  const board: Tile[] = Array.from({ length: SIZE * SIZE }, (_, i) => ({ kind: 'empty' as TileKind, ring: ringOf(i), revealed: false }))
+  // 준비 1~3: 육각 판 19장을 섞어 놓는다. 4: 고리마다 칸 타일을 깐다
+  const map = buildMap(shuffleTiles(rng))
+  const board: Tile[] = map.cells.map((c) => ({ kind: 'empty' as TileKind, ring: c.ring, revealed: false }))
   for (const ring of [1, 2, 3] as const) {
-    const cells = board.map((t, i) => (t.ring === ring && i !== CAMP ? i : -1)).filter((i) => i >= 0)
-    const kinds = R.shuffle(rng, ringTiles(ring, seats))
-    const monsters = R.shuffle(rng, [...RING_MONSTERS[ring]])
+    const cells = R.shuffle(rng, board.map((t, i) => (t.ring === ring && i !== map.camp ? i : -1)).filter((i) => i >= 0))
+    const kinds = [...RING_MUST[ring], ...R.shuffle(rng, ringBag(ring, seats))]
+    let monsters: MonsterId[] = []
     cells.forEach((cell, k) => {
       const t = board[cell] as Tile
       t.kind = kinds[k] ?? 'empty'
-      if (t.kind === 'monster') t.monster = monsters.pop() ?? 'slime'
+      if (t.kind === 'monster') {
+        if (monsters.length === 0) monsters = R.shuffle(rng, [...RING_MONSTERS[ring]])
+        t.monster = monsters.pop() as MonsterId
+      }
       if (t.kind === 'boss') t.monster = RING_BOSS[ring]
     })
   }
-  const camp = board[CAMP] as Tile
+  const camp = board[map.camp] as Tile
   camp.kind = 'camp'
   camp.revealed = true
-  const throne = board[THRONE] as Tile
+  const throne = board[map.throne] as Tile
   throne.kind = 'throne'
 
   const itemPool = R.shuffle(rng, [...EQUIPMENT])
   const firstSeat = R.int(rng, seats)
   const s: State = {
     rng, seats, phase: 'draft', round: 1, chapter: 1, firstSeat, turn: firstSeat, tokens: 0,
-    board, monsters: [], nextMonsterId: 1, deck, discard: [], graveyard: [],
+    map, board, monsters: [], nextMonsterId: 1, deck, discard: [], graveyard: [],
     shadowFree: Array.from({ length: SHADOW_CARDS }, (_, i) => SHADOW_ID_BASE + i),
     shop: { equip: [], cons: [] }, itemPool, cursePool: R.shuffle(rng, [...CURSES]),
     players: Array.from({ length: seats }, (_, seat): Player => ({
-      seat, cls: null, level: 1, xp: 0, hp: BASE_HP, gold: START_GOLD, fame: 0, hand: [], pos: CAMP,
+      seat, cls: null, level: 1, xp: 0, hp: BASE_HP, gold: START_GOLD, fame: 0, hand: [], pos: map.camp,
       weapon: null, armor: null, trinket: null, consumables: [], curses: [], shadow: 0, altarVisits: 0,
       upgrades: [null, null], skillUses: 0, purifyUsed: false, mirrorUsed: false, reserve: 0, bonusTokens: 0,
       guard: false, ironwall: false, peeked: [], out: false, finalDamage: 0,
@@ -491,7 +483,7 @@ function startTurn(s: State, ctx: Ctx) {
       drawTo(s, p, 1, ctx)
       revealCurse(p, 'blackChalice', ctx)
     }
-    if (p.cls === 'hunter' && upg(p, 0, 0)) for (const n of neighbors(p.pos)) if (!s.board[n]?.revealed && !p.peeked.includes(n)) p.peeked.push(n)
+    if (p.cls === 'hunter' && upg(p, 0, 0)) for (const n of neighbors(s, p.pos)) if (!s.board[n]?.revealed && !p.peeked.includes(n)) p.peeked.push(n)
   }
 }
 
@@ -508,10 +500,10 @@ function endTurn(s: State, ctx: Ctx) {
 
 function nearestStep(s: State, from: number, targets: number[]): number {
   let best = from
-  let bestD = Math.min(...targets.map((t) => dist(from, t)))
-  for (const n of neighbors(from)) {
+  let bestD = Math.min(...targets.map((t) => dist(s, from, t)))
+  for (const n of neighbors(s, from)) {
     if (!isOpen(s, n)) continue
-    const d = Math.min(...targets.map((t) => dist(n, t)))
+    const d = Math.min(...targets.map((t) => dist(s, n, t)))
     if (d < bestD) {
       bestD = d
       best = n
@@ -593,10 +585,12 @@ function coronate(s: State, ctx: Ctx) {
   s.pending = []
   s.phase = 'final'
   s.chapter = 4
-  kp.pos = THRONE
-  const corners = [idx(2, 2), idx(2, 4), idx(4, 2), idx(4, 4)]
+  kp.pos = s.map.throne
+  // 연합은 성 판의 칸에 선다: 옥좌에서 먼 칸(성문 쪽)부터. 옛 7×7 판의 네 귀퉁이(옥좌에서 2칸)에 해당
+  const gates = s.board.map((t, i) => (t.ring === 3 ? i : -1)).filter((i) => i >= 0)
+    .sort((a, b) => dist(s, b, s.map.throne) - dist(s, a, s.map.throne) || a - b)
   allies.forEach((p, i) => {
-    p.pos = corners[i] ?? (corners[0] as number)
+    p.pos = gates[i % Math.max(1, gates.length)] as number
     p.hp = maxHp(p)
     p.reserve = 0
   })
@@ -672,7 +666,7 @@ function knockOut(s: State, p: Player, ctx: Ctx) {
     return
   }
   const springs = s.board.map((t, i) => (t.kind === 'spring' && t.revealed && isOpen(s, i) ? i : -1)).filter((i) => i >= 0)
-  const dest = springs.length ? springs.reduce((a, b) => (dist(p.pos, b) < dist(p.pos, a) ? b : a)) : CAMP
+  const dest = springs.length ? springs.reduce((a, b) => (dist(s, p.pos, b) < dist(s, p.pos, a) ? b : a)) : s.map.camp
   p.pos = dest
   p.hp = Math.ceil(maxHp(p) / 2)
   p.reserve = 0
@@ -683,7 +677,7 @@ function knockOut(s: State, p: Player, ctx: Ctx) {
     p.gold -= Math.floor(p.gold / 2)
     p.fame = Math.max(0, p.fame - 1)
   }
-  ctx.log(`${ctx.name(p.seat)}가 쓰러져 ${dest === CAMP ? '야영지' : '샘'}에서 다시 일어납니다.`, 'ko')
+  ctx.log(`${ctx.name(p.seat)}가 쓰러져 ${dest === s.map.camp ? '야영지' : '샘'}에서 다시 일어납니다.`, 'ko')
 }
 
 function heal(s: State, p: Player, amount: number) {
@@ -809,7 +803,7 @@ function startAttack(s: State, p: Player, a: { target: number; cards: number[] }
   if (a.target !== -1 && s.phase !== 'play') throw new IllegalAction('지금은 몬스터가 없습니다.')
   const pos = attackTargetPos(s, a.target)
   const range = a.target === -1 ? Math.max(1, attackRange(p)) : attackRange(p)
-  if (dist(p.pos, pos) > range) throw new IllegalAction('사거리 밖입니다.')
+  if (dist(s, p.pos, pos) > range) throw new IllegalAction('사거리 밖입니다.')
   checkInHand(p, a.cards)
   if (a.cards.length === 0) throw new IllegalAction('카드를 1장 이상 내야 합니다.')
   if (a.cards.length > p.level) throw new IllegalAction(`레벨 ${p.level}은 ${p.level}장까지 낼 수 있습니다.`)
@@ -821,7 +815,7 @@ function startAttack(s: State, p: Player, a: { target: number; cards: number[] }
   const waiting = noAssist
     ? []
     : s.players
-        .filter((q) => q.seat !== p.seat && !q.out && !isDemon(s, q.seat) && q.reserve > 0 && q.hand.length > 0 && dist(q.pos, pos) <= 1)
+        .filter((q) => q.seat !== p.seat && !q.out && !isDemon(s, q.seat) && q.reserve > 0 && q.hand.length > 0 && dist(s, q.pos, pos) <= 1)
         .map((q) => q.seat)
   s.attack = { attacker: p.seat, target: a.target, cards: [...a.cards], assists: [], waiting, shown: played.map((x) => ({ owner: x.owner, card: { ...x.card } })) }
   if (waiting.length === 0) resolveAttack(s, ctx)
@@ -963,7 +957,7 @@ function resolveAttack(s: State, ctx: Ctx) {
   // 사방: 주변 몬스터에게 절반
   if (hand.cat === Cat.Quads) {
     for (const m of s.monsters) {
-      if (m.id === monster.id || dist(m.pos, monster.pos) > 1) continue
+      if (m.id === monster.id || dist(s, m.pos, monster.pos) > 1) continue
       m.hp -= Math.floor(damage / 2)
       if (!m.contributors.includes(attacker.seat)) m.contributors.push(attacker.seat)
       if (m.hp <= 0) killMonster(s, m, attacker.seat, ctx)
@@ -1048,14 +1042,17 @@ export function moveCost(s: State, p: Player, to: number): number {
   if (!t) return Infinity
   let cost = 1
   // 숲은 미리 보였던 경우에만 추가 비용(뒤집으며 들어가면 몰랐던 것이므로 면제)
-  if (t.kind === 'forest' && t.revealed && !has(p, 'leather') && !(p.cls === 'hunter' && upg(p, 0, 1))) cost++
+  const pathfinder = has(p, 'leather') || (p.cls === 'hunter' && upg(p, 0, 1))
+  if (t.kind === 'forest' && t.revealed && !pathfinder) cost++
+  // 험한 길(판에 그려진 가시덤불)은 늘 보이므로 늘 +1
+  if (isRough(s.map, p.pos, to) && !pathfinder) cost++
   const boots = has(p, 'windBoots') && !p.movedOnce
   if (boots) cost--
   return Math.max(0, cost)
 }
 
 function move(s: State, p: Player, to: number, ctx: Ctx) {
-  if (!neighbors(p.pos).includes(to)) throw new IllegalAction('이웃 칸으로만 움직일 수 있습니다.')
+  if (!neighbors(s, p.pos).includes(to)) throw new IllegalAction('이웃 칸으로만 움직일 수 있습니다.')
   if (!isOpen(s, to)) throw new IllegalAction('아직 열리지 않은 고리입니다.')
   if (isDemon(s, p.seat) && s.demon?.chained) throw new IllegalAction('봉인 사슬에 묶여 움직일 수 없습니다.')
   if (s.phase === 'final' && !isDemon(s, p.seat) && s.demon && player(s, s.demon.seat).pos === to) throw new IllegalAction('마왕의 칸에는 들어갈 수 없습니다.')
@@ -1261,7 +1258,7 @@ function skill(s: State, p: Player, target: number | undefined, ctx: Ctx) {
     case 'priest': {
       const range = upg(p, 1, 1) ? 2 : 1
       for (const q of s.players) {
-        if (q.out || isDemon(s, q.seat) || dist(q.pos, p.pos) > range) continue
+        if (q.out || isDemon(s, q.seat) || dist(s, q.pos, p.pos) > range) continue
         drawTo(s, q, 1, ctx)
         if (upg(p, 0, 1)) heal(s, q, 3)
       }
@@ -1295,7 +1292,7 @@ function consumeItem(s: State, p: Player, item: ItemId, ctx: Ctx) {
     case 'potion': heal(s, p, 4); break
     case 'scroll': {
       const hidden = s.board.map((t, k) => (!t.revealed && !p.peeked.includes(k) ? k : -1)).filter((k) => k >= 0)
-      hidden.sort((a, b) => dist(p.pos, a) - dist(p.pos, b))
+      hidden.sort((a, b) => dist(s, p.pos, a) - dist(s, p.pos, b))
       p.peeked.push(...hidden.slice(0, 2))
       break
     }
@@ -1304,7 +1301,7 @@ function consumeItem(s: State, p: Player, item: ItemId, ctx: Ctx) {
     case 'feather': {
       const springs = s.board.map((t, k) => (t.kind === 'spring' && t.revealed && isOpen(s, k) ? k : -1)).filter((k) => k >= 0)
       if (springs.length === 0) throw new IllegalAction('열린 샘이 없습니다.')
-      p.pos = springs.reduce((a, b) => (dist(p.pos, b) < dist(p.pos, a) ? b : a))
+      p.pos = springs.reduce((a, b) => (dist(s, p.pos, b) < dist(s, p.pos, a) ? b : a))
       break
     }
     case 'holyWater': p.shadow = Math.max(0, p.shadow - 1); break
@@ -1391,7 +1388,7 @@ export function previewSmite(s: State, seat: number, cards: readonly number[]): 
   const hand = evaluate(s, king, played, -1)
   if (!hand) return null
   const range = demonRange(s, king)
-  const targets = coalition(s).filter((q) => !q.out && dist(q.pos, king.pos) <= range).map((q) => q.seat)
+  const targets = coalition(s).filter((q) => !q.out && dist(s, q.pos, king.pos) <= range).map((q) => q.seat)
   return { hand, damage: smiteDamage(king, hand), targets }
 }
 
@@ -1400,7 +1397,7 @@ function smite(s: State, king: Player, cards: number[], ctx: Ctx) {
   checkInHand(king, cards)
   if (cards.length === 0 || cards.length > 5) throw new IllegalAction('카드를 1~5장 내세요.')
   const range = demonRange(s, king)
-  const targets = coalition(s).filter((q) => !q.out && dist(q.pos, king.pos) <= range)
+  const targets = coalition(s).filter((q) => !q.out && dist(s, q.pos, king.pos) <= range)
   if (targets.length === 0) throw new IllegalAction('사거리 안에 연합이 없습니다.')
   const played = cards.map((id) => ({ owner: king.seat, card: king.hand.find((c) => c.id === id) as Card }))
   const hand = evaluate(s, king, played, -1)
@@ -1422,20 +1419,36 @@ function smite(s: State, king: Player, cards: number[], ctx: Ctx) {
   }
 }
 
-function push(s: State, king: Player, target: number, ctx: Ctx) {
+/** 밀려날 칸: 이웃 칸 중 마왕에게서 가장 먼 칸(같으면 번호가 작은 칸). 더 멀어질 칸이 없으면 null */
+export function pushStep(s: HasMap, from: number, at: number): number | null {
+  const here = dist(s, from, at)
+  let best: number | null = null
+  let bd = here
+  for (const n of neighbors(s, at)) {
+    const d = dist(s, from, n)
+    if (d > bd || (d === bd && best !== null && d > here && n < best)) {
+      bd = d
+      best = n
+    }
+  }
+  return best
+}
+
+function push(s: State, king: Player, target: number, ctx: Ctx, first?: number) {
   if (!s.demon || !isDemon(s, king.seat)) throw new IllegalAction('마왕만 쓸 수 있습니다.')
   if (s.demon.chained) throw new IllegalAction('봉인 사슬에 묶여 있습니다.')
   const q = player(s, target)
-  if (q.out || isDemon(s, q.seat) || dist(q.pos, king.pos) !== 1) throw new IllegalAction('이웃 칸의 연합만 밀칠 수 있습니다.')
+  if (q.out || isDemon(s, q.seat) || dist(s, q.pos, king.pos) !== 1) throw new IllegalAction('이웃 칸의 연합만 밀칠 수 있습니다.')
   spend(s)
-  const dr = rowOf(q.pos) - rowOf(king.pos)
-  const dc = colOf(q.pos) - colOf(king.pos)
   const steps = has(king, 'warHammer') ? 2 : 1
   for (let i = 0; i < steps; i++) {
-    const r = rowOf(q.pos) + dr
-    const c = colOf(q.pos) + dc
-    if (r < 0 || r >= SIZE || c < 0 || c >= SIZE) break
-    q.pos = idx(r, c)
+    let to = pushStep(s, king.pos, q.pos)
+    if (to === null) break
+    if (i === 0 && first !== undefined) {
+      if (!neighbors(s, q.pos).includes(first) || dist(s, king.pos, first) !== dist(s, king.pos, to)) throw new IllegalAction('마왕에게서 가장 먼 이웃 칸으로만 밀 수 있습니다.')
+      to = first
+    }
+    q.pos = to
   }
   ctx.log(`마왕이 ${ctx.name(q.seat)}를 밀쳐 냈습니다.`, 'demon')
 }
@@ -1527,7 +1540,7 @@ export function apply(prev: State, seat: number, a: Action, ctx: Ctx): State {
       break
     case 'ritual': ritual(s, p, a.ritual, ctx); break
     case 'smite': smite(s, p, a.cards, ctx); break
-    case 'push': push(s, p, a.target, ctx); break
+    case 'push': push(s, p, a.target, ctx, a.to); break
     case 'twist': twist(s, p, ctx); break
     case 'end': endTurn(s, ctx); break
     default: throw new IllegalAction('지금은 할 수 없는 행동입니다.')

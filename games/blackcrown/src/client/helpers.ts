@@ -1,7 +1,7 @@
 /** 화면 계산 도우미(컴포넌트가 아닌 것) */
 import type { CSSProperties } from 'react'
 import type { ClassId, TileKind } from '../engine/data'
-import { dist, neighbors, ringOf, type State, type View } from '../engine/game'
+import { dist, moveCost, neighbors, ringOf, type State, type View } from '../engine/game'
 
 export const seatVar = (seat: number) => ({ '--seat': `var(--bc-seat-${seat + 1})` }) as CSSProperties
 export const classIcon = (cls: ClassId | null) => `bc-class-${cls === 'priest' ? 'cleric' : (cls ?? 'knight')}`
@@ -16,20 +16,15 @@ export const tileClass = (kind: TileKind | 'hidden') => (kind === 'ruin' ? 'ruin
 export const asState = (v: View) => v as unknown as State
 
 export function isOpenView(v: View, i: number): boolean {
-  const ring = ringOf(i)
+  const ring = ringOf(v, i)
   return v.phase === 'final' ? ring >= 3 : ring <= v.chapter
 }
 
 /** 내가 지금 이 칸으로 옮길 때 드는 토큰(엔진 moveCost 와 같은 계산) */
 export function moveCostView(v: View, seat: number, to: number): number {
-  const p = v.players[seat]
-  const t = v.board[to]
-  if (!p || !t) return Infinity
-  let cost = 1
-  const leather = p.armor === 'leather'
-  if (t.kind === 'forest' && t.revealed && !leather && !(p.cls === 'hunter' && p.upgrades[0] === 1)) cost++
-  if ((p.weapon === 'windBoots' || p.armor === 'windBoots' || p.trinket === 'windBoots') && !p.movedOnce) cost--
-  return Math.max(0, cost)
+  const p = asState(v).players[seat]
+  if (!p || !v.board[to]) return Infinity
+  return moveCost(asState(v), p, to)
 }
 
 export function reachable(v: View, seat: number, canAct: boolean): Set<number> {
@@ -38,7 +33,7 @@ export function reachable(v: View, seat: number, canAct: boolean): Set<number> {
   if (!p || !canAct || p.out) return out
   if (v.demon?.seat === seat && v.demon.chained) return out
   const demonPos = v.demon ? v.players[v.demon.seat]?.pos : -1
-  for (const n of neighbors(p.pos)) {
+  for (const n of neighbors(v, p.pos)) {
     if (!isOpenView(v, n)) continue
     if (v.phase === 'final' && v.demon?.seat !== seat && n === demonPos) continue
     if (moveCostView(v, seat, n) <= v.tokens) out.add(n)
@@ -51,10 +46,10 @@ export function attackTargets(view: View, me: number | null, range: number): Set
   const out = new Set<number>()
   const p = me === null ? undefined : view.players[me]
   if (!p || p.out) return out
-  if (view.phase === 'play') for (const m of view.monsters) if (dist(p.pos, m.pos) <= range) out.add(m.pos)
+  if (view.phase === 'play') for (const m of view.monsters) if (dist(view, p.pos, m.pos) <= range) out.add(m.pos)
   if (view.phase === 'final' && view.demon && view.demon.seat !== me) {
     const d = view.players[view.demon.seat]
-    if (d && dist(p.pos, d.pos) <= Math.max(1, range)) out.add(d.pos)
+    if (d && dist(view, p.pos, d.pos) <= Math.max(1, range)) out.add(d.pos)
   }
   return out
 }

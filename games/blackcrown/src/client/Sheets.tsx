@@ -251,12 +251,12 @@ export function HereSheet({ view, me, canAct, onAct, onAttack, onClose }: { view
   const final = view.phase === 'final'
   const isDemon = view.demon?.seat === me
   const range = attackRange(asState(view).players[me]!)
-  const targets = view.monsters.filter((m) => dist(m.pos, p.pos) <= range)
+  const targets = view.monsters.filter((m) => dist(view, m.pos, p.pos) <= range)
   const allies = view.players.filter((q) => q.seat !== me && q.pos === p.pos && !q.out && q.seat !== view.demon?.seat)
   const act = (a: Action) => {
     onAct(a)
   }
-  const pushable = isDemon ? view.players.filter((q) => q.seat !== me && !q.out && dist(q.pos, p.pos) === 1) : []
+  const pushable = isDemon ? view.players.filter((q) => q.seat !== me && !q.out && dist(view, q.pos, p.pos) === 1) : []
 
   return (
     <Sheet open title={final ? '최종전' : (TILE_NAMES[kind as keyof typeof TILE_NAMES] ?? '이 칸')} onClose={onClose}>

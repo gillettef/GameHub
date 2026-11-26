@@ -129,3 +129,21 @@
 .bcx-scorerow { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid var(--bc-seam); font-size: 14px; border-left: 3px solid var(--seat); padding-left: 8px; }
 .bcx-rites-row .bcx-rites { flex-wrap: nowrap; }
 .bcx-rites .bc-rite { flex-shrink: 0; min-width: 72px; min-height: 44px; }
+
+/* ③ 육각 판 보드(Board.tsx). 휴대폰은 미니맵 → 눌러서 확대 */
+.bcm-box { position: relative; padding: 0; overflow: hidden; }
+.bcm-map { display: block; touch-action: manipulation; user-select: none; -webkit-user-select: none; }
+.bcm-map.is-mini { cursor: zoom-in; }
+.bcm-map.is-zoomed { touch-action: none; cursor: grab; }
+.bcm-map .bcm-cell { cursor: pointer; outline: none; }
+.bcm-map .bcm-cell:focus-visible > circle:nth-of-type(3) { stroke: var(--bc-candle); stroke-width: 3; }
+.bcm-map .bcm-cell.is-locked { opacity: 0.45; }
+.bcm-ring { fill: none; pointer-events: none; }
+.bcm-ring--reach { stroke: var(--bc-candle); stroke-width: 2.4; stroke-dasharray: 4 3; filter: drop-shadow(0 0 4px var(--bc-candle-glow)); }
+.bcm-ring--target { stroke: var(--bc-blade); stroke-width: 3; filter: drop-shadow(0 0 5px rgba(212, 80, 63, 0.7)); }
+.bcm-num { font: 700 9px/1 var(--bc-font-display); font-variant-numeric: tabular-nums; pointer-events: none; }
+.bcm-num.bc-suit--blade, .bcm-num.bc-suit--ward, .bcm-num.bc-suit--lantern, .bcm-num.bc-suit--coin { fill: var(--suit); }
+.bcm-hint, .bcm-out { position: absolute; right: 8px; bottom: 8px; font-size: 12px; border-radius: 999px; }
+.bcm-hint { padding: 3px 10px; background: rgba(0, 0, 0, 0.55); color: var(--gh-muted); pointer-events: none; }
+.bcm-out { min-height: 44px; padding: 0 14px; border: 1px solid var(--bc-gilt); background: rgba(17, 14, 19, 0.85); color: var(--bc-gilt-hi); font-size: 13px; }
+@media (prefers-reduced-motion: reduce) { .bcm-ring { filter: none; } }
