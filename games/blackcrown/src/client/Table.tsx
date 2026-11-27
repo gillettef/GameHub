@@ -105,10 +105,26 @@ export function Table({ room, error, onAct, onLeave }: { room: RoomSnapshot<View
                   {q.hp}
                 </span>
               )}
-              <span className="bc-stat--fame">
+              <span className="bc-stat--fame" aria-label={`명성 ${q.fame}`}>
                 <Ico id="bc-ui-fame" />
                 {q.fame}
               </span>
+              <span className="bc-stat--gold" aria-label={`골드 ${q.gold}`}>
+                <Ico id="bc-ui-gold" />
+                {q.gold}
+              </span>
+              {/* 행동 수: 차례인 사람은 남은 행동 토큰, 나머지는 남겨 둔 대기 토큰(협공에 씀) */}
+              {q.seat === view.turn && playing && !q.out ? (
+                <span className="bc-stat--act" aria-label={`남은 행동 ${view.tokens}`}>
+                  <Ico id="bc-ui-token" />
+                  {view.tokens}
+                </span>
+              ) : (
+                <span className={`bc-stat--act is-held ${q.reserve ? '' : 'is-zero'}`} aria-label={`대기 토큰 ${q.reserve}`}>
+                  <Ico id="bc-ui-token-held" />
+                  {q.reserve}
+                </span>
+              )}
               {q.altarVisits > 0 && (
                 <span className="bc-stat--prayer">
                   <Ico id="bc-ui-prayer" />
@@ -169,8 +185,8 @@ export function Table({ room, error, onAct, onLeave }: { room: RoomSnapshot<View
               {p.hp}/{maxHpOf(p)}
             </span>
           </span>
-          <span>
-            <Ico id="bc-suit-coin" />
+          <span className="bcx-gold" aria-label={`골드 ${p.gold}`}>
+            <Ico id="bc-ui-gold" />
             <span className="bc-num">{p.gold}</span>
           </span>
           <span>

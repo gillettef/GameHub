@@ -525,7 +525,7 @@
 .bc-seat__stats {
   grid-area: stats;
   display: flex;
-  gap: 7px;
+  gap: 5px;
   font-size: 12px;
   line-height: 1.2;
   color: var(--gh-muted);
@@ -536,6 +536,10 @@
 .bc-stat--hp { color: #e98b86; }
 .bc-stat--fame { color: var(--bc-gilt-hi); }
 .bc-stat--prayer { color: var(--bc-umbra-hi); }
+.bc-stat--gold { color: #f2d98e; }
+.bc-stat--act { color: var(--bc-candle); }
+.bc-stat--act.is-held { color: var(--bc-gilt); }
+.bc-stat--act.is-zero { opacity: 0.45; }
 
 /* 체력 막대 */
 .bc-hpbar {

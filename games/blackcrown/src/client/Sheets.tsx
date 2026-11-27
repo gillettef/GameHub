@@ -424,7 +424,7 @@ function ShopRow({ item, cost, disabled, onBuy }: { item: ItemId; cost: number; 
         )}
       </div>
       <button type="button" className="bc-btn bc-btn--primary" disabled={disabled} onClick={onBuy}>
-        <Ico id="bc-suit-coin" /> {cost}
+        <Ico id="bc-ui-gold" /> {cost}
       </button>
     </div>
   )
