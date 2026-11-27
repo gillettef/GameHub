@@ -121,7 +121,7 @@ export interface LabRules {
    * 행동 하나 (2026-11-27 사용자 제안). 일과 없이 차례마다 ① 가져오기(타일 take 장, 펼친 타일·주머니 맨 위에서 1장씩, 손 최대 handMax)
    * ② 놓기(손 1장, 가져오기 없음) ③ 부르기(call: 내 칸 위 명당을 돌려 다시 놓기, 놓인 칸 +callBonus) 중 하나. 끝은 actions.rounds
    */
-  one?: { take: number; handMax: number; call: boolean; callBonus?: number; callTurn?: boolean; callOnce?: boolean; /** 'split' = 펼친 타일 1장 또는 주머니 take 장(2026-11-27 사용자 제안) */ takeMode?: 'mix' | 'split' };
+  one?: { take: number; handMax: number; call: boolean; callBonus?: number; callTurn?: boolean; callOnce?: boolean; /** 'split' = 펼친 타일 1장 또는 주머니 take 장, 'peek' = 펼친 타일 1장 또는 주머니 2장을 펼쳐 1장 고르기(남은 1장은 주머니 맨 아래)(2026-11-27 사용자 제안) */ takeMode?: 'mix' | 'split' | 'peek' | 'draft' };
   actions?: { move: number; gather: number; perCell: number; rounds: Record<number, number>; gatherTake?: boolean; handMax?: number; noRepeat?: boolean; gatherMode?: 'supply' | 'regroup' | 'nap'; noRelocate?: boolean; moveTimes?: number };
 }
 
@@ -129,7 +129,7 @@ export type ChoreId = 'bread' | 'peek' | 'roam' | 'move' | 'call' | 'boss';
 export const PLACE_CHORES: readonly ChoreId[] = ['bread', 'peek', 'roam', 'boss'];
 
 export type TurnAction =
-  | { kind: 'take2'; picks: number[] }
+  | { kind: 'take2'; picks: number[]; /** picks [-2](주머니 2장 펼쳐 고르기)일 때 고를 카드 번호 */ choose?: (cards: number[]) => number }
   | { kind: 'plant' }
   | { kind: 'pass' }
   | { kind: 'call'; cell: number; rot?: number }
@@ -1272,19 +1272,43 @@ export class Game {
   actionCount: Record<'place' | 'move' | 'gather' | 'call' | 'take', number> = { place: 0, move: 0, gather: 0, call: 0, take: 0 };
 
   /** 행동 하나(one): 가져오기 차례. picks = 펼친 타일의 종 번호(그 종이 펼친 타일에 있으면) 또는 −1(주머니 맨 위) */
-  doTakeCards(picks: number[]): void {
+  /** 자리별 가져오기 종류 횟수 (지표): 펼친 타일 / 주머니 */
+  takeMarket: number[] = [0, 0, 0, 0];
+  takePile: number[] = [0, 0, 0, 0];
+
+  doTakeCards(picks: number[], choose?: (cards: number[]) => number): void {
     const s = this.current;
     const max = this.rules.one?.handMax ?? 3;
+    if (picks.some((p) => p >= 0)) this.takeMarket[s]!++;
+    else this.takePile[s]!++;
+    if (picks[0] === -2) {
+      // 주머니 맨 위 2장을 펼쳐 1장 고르고, 남은 장은 주머니 맨 아래(배열 앞)로
+      const cards: number[] = [];
+      for (let k = 0; k < 2 && this.bag.length; k++) cards.push(this.bag.pop() as number);
+      if (cards.length) {
+        const i = Math.max(0, Math.min(cards.length - 1, choose ? choose(cards) : 0));
+        this.hands[s]!.push(cards.splice(i, 1)[0] as number);
+        this.bag.unshift(...cards);
+      }
+      picks = [];
+    }
     for (const p of picks) {
       if ((this.hands[s] as number[]).length >= max) break;
       const i = p >= 0 ? this.market.indexOf(p) : -1;
+      const draft = this.rules.one?.takeMode === 'draft';
       if (i >= 0) {
         this.hands[s]!.push(this.market.splice(i, 1)[0] as number);
-        if (this.bag.length) this.market.push(this.bag.pop() as number);
-      } else if (this.bag.length) this.hands[s]!.push(this.bag.pop() as number);
+        if (this.bag.length && !draft) this.market.push(this.bag.pop() as number);
+      } else if (draft) continue;
+      else if (this.bag.length) this.hands[s]!.push(this.bag.pop() as number);
       else if (this.market.length) {
         this.hands[s]!.push(this.market.shift() as number);
       }
+    }
+    // 펼쳐 두기(draft): 펼친 타일을 모두 가져가면 주머니에서 다시 (펼침 장수)만큼 펼친다
+    if (this.rules.one?.takeMode === 'draft' && this.market.length === 0) {
+      const m = this.rules.market[this.P] ?? this.P;
+      for (let k = 0; k < m && this.bag.length; k++) this.market.push(this.bag.pop() as number);
     }
     this.records.push({ seat: s, species: -1, flips: 0, claims: 0, discard: false });
     this.actionCount.take++;
@@ -1307,7 +1331,7 @@ export class Game {
 
   /** 담 넘기·모여라 차례를 확정한다 */
   doAction(act: Exclude<TurnAction, { kind: 'place' }>): void {
-    if (act.kind === 'take2') return this.doTakeCards(act.picks);
+    if (act.kind === 'take2') return this.doTakeCards(act.picks, act.choose);
     if (act.kind === 'pass') return this.doPass();
     if (act.kind === 'plant') {
       this.stage = 'plant';

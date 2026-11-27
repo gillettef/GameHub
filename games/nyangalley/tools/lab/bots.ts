@@ -325,7 +325,7 @@ export function oneCandidates(g: Game, s: number, ev: Eval): { act: TurnAction; 
     const opts: { pick: number; v: number }[] = [];
     const left = [...g.market];
     for (const sp of new Set(g.market)) opts.push({ pick: sp, v: singleGain(g, s, ev, sp, ev0, cache) });
-    if (g.bag.length) {
+    if (g.bag.length && one.takeMode !== 'draft') {
       const un = g.unseen(s);
       let tot = 0;
       let sum = 0;
@@ -336,6 +336,27 @@ export function oneCandidates(g: Game, s: number, ev: Eval): { act: TurnAction; 
       opts.push({ pick: -1, v: tot ? sum / tot : 0 });
     }
     opts.sort((x, y) => y.v - x.v);
+    if (one.takeMode === 'peek') {
+      // 펼친 타일 1장, 또는 주머니 2장을 펼쳐 더 나은 1장 (기댓값: 못 본 카드 분포에서 두 장 중 큰 값)
+      const m = opts.find((x) => x.pick >= 0);
+      if (m) out.push({ act: { kind: 'take2', picks: [m.pick] }, value: ev0 + TAKE_W * Math.max(baseG, m.v) + HAND_W });
+      if (g.bag.length) {
+        const un = [...g.unseen(s)];
+        const tot = un.reduce((a, [, n]) => a + n, 0);
+        let e = 0;
+        for (const [a, na] of un) for (const [b, nb] of un) e += ((na * nb) / (tot * tot)) * Math.max(baseG, singleGain(g, s, ev, a, ev0, cache), singleGain(g, s, ev, b, ev0, cache));
+        const choose = (cards: number[]) => {
+          const c2 = new Map<number, number>();
+          const e0 = ev(g, s);
+          let best = 0;
+          cards.forEach((c, i) => {
+            if (singleGain(g, s, ev, c, e0, c2) > singleGain(g, s, ev, cards[best] as number, e0, c2)) best = i;
+          });
+          return best;
+        };
+        out.push({ act: { kind: 'take2', picks: [-2], choose }, value: ev0 + TAKE_W * e + HAND_W });
+      }
+    }
     if (one.takeMode === 'split') {
       // 펼친 타일 1장, 또는 주머니 room 장
       const m = opts.find((x) => x.pick >= 0);
@@ -353,7 +374,7 @@ export function oneCandidates(g: Game, s: number, ev: Eval): { act: TurnAction; 
       best = Math.max(best, o.v);
       if (o.pick >= 0 && !left.includes(o.pick)) opts.splice(opts.indexOf(o), 1);
     }
-    if (picks.length && one.takeMode !== 'split') out.push({ act: { kind: 'take2', picks }, value: ev0 + TAKE_W * best + HAND_W * picks.length });
+    if (picks.length && one.takeMode !== 'split' && one.takeMode !== 'peek') out.push({ act: { kind: 'take2', picks }, value: ev0 + TAKE_W * best + HAND_W * picks.length });
   }
   for (const o of bestNonPlace(g, s, ev)) out.push(o);
   if (!out.length && hand.length) out.push({ act: { kind: 'plant' }, value: ev0 - 1 });
@@ -496,11 +517,17 @@ export function choreValue(g: Game, s: number, ch: ChoreId, ev: Eval): number {
   return v === -Infinity ? ev(g, s) - 1 : v;
 }
 
+/** 가져오기 종류 고집: 'market' 이면 주머니 가져오기를, 'pile' 이면 펼친 타일 가져오기를 하지 않는다 (밸런스 측정용) */
+type TakePolicy = 'market' | 'pile' | null;
+const isPileTake = (a: TurnAction) => a.kind === 'take2' && a.picks.every((p) => p < 0);
+const isMarketTake = (a: TurnAction) => a.kind === 'take2' && a.picks.some((p) => p >= 0);
+
 class EvalBot implements Bot {
   constructor(
     readonly name: string,
     private ev: Eval,
     private noise = 0,
+    private policy: TakePolicy = null,
   ) {}
   take(g: Game, s: number, rand: Rand): number {
     if (!g.market.length) return 0;
@@ -518,7 +545,7 @@ class EvalBot implements Bot {
   }
   action(g: Game, s: number, rand: Rand): TurnAction {
     if (g.rules.one) {
-      const c = oneCandidates(g, s, this.ev);
+      const c = oneCandidates(g, s, this.ev).filter((x) => !(this.policy === 'market' && isPileTake(x.act)) && !(this.policy === 'pile' && isMarketTake(x.act)));
       if (!c.length) return { kind: 'pass' };
       if (this.noise > 0 && c.length > 1 && rand() < this.noise) return (c[1] as { act: TurnAction }).act;
       return (c[0] as { act: TurnAction }).act;
@@ -693,6 +720,10 @@ export function makeBot(name: string): Bot {
       return new EvalBot('goalie', evalGoalie);
     case 'human':
       return new EvalBot('human', evalBalanced, 0.18);
+    case 'greedy-market':
+      return new EvalBot('greedy-market', evalBalanced, 0, 'market');
+    case 'greedy-pile':
+      return new EvalBot('greedy-pile', evalBalanced, 0, 'pile');
     case 'lookahead':
       return new LookaheadBot();
     default:

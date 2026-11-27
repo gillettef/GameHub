@@ -178,3 +178,8 @@ VARIANTS.o1r22 = oneAct('o1r22', {}, { 2: 22, 3: 18, 4: 18 });
 // 2026-11-27 사용자 제안: 가져오기 = 펼친 타일 1장 또는 주머니 2장
 VARIANTS.o2r20 = oneAct('o2r20', { takeMode: 'split' }, R20);
 VARIANTS.o2r18 = oneAct('o2r18', { takeMode: 'split' }, R18);
+VARIANTS.o3r18 = oneAct('o3r18', { takeMode: 'peek' }, R18);
+// 2026-11-27 사용자 제안: 주머니 뽑기 없이 인원수만큼 펼치고, 모두 가져가면 다시 펼친다. A = 1장, B = 2장까지
+const DRAFT_MARKET = { market: { 2: 2, 3: 3, 4: 4 }, blindDraw: false };
+VARIANTS.o4r18 = oneAct('o4r18', { takeMode: 'draft', take: 1 }, R18, DRAFT_MARKET);
+VARIANTS.o5r18 = oneAct('o5r18', { takeMode: 'draft', take: 2 }, R18, DRAFT_MARKET);
