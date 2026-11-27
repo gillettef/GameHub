@@ -1,0 +1,67 @@
+/* 행동 고르기 판: 세 행동을 한 줄 세 칸으로. 누를 수 없는 행동은 회색 + 이유 */
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-half);
+  padding: var(--space-1);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--color-surface) 94%, transparent);
+}
+
+.lead {
+  margin: 0;
+  font-size: var(--text-micro);
+  font-weight: 700;
+  color: var(--color-heading);
+}
+
+.choices {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-half);
+}
+
+.choice {
+  min-height: 96px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 2px;
+  padding: var(--space-1) 4px;
+  border: 2px solid var(--color-accent);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  color: var(--color-text);
+  text-align: center;
+  cursor: pointer;
+  transition: background var(--motion-fast);
+}
+
+.choice:active:not(:disabled) {
+  background: color-mix(in srgb, var(--color-accent) 18%, var(--color-surface));
+}
+
+.blocked {
+  border-color: var(--color-line);
+  opacity: 0.55;
+  cursor: default;
+}
+
+.art {
+  width: 36px;
+  aspect-ratio: 1 / 1;
+}
+
+.title {
+  font-size: var(--text-small);
+  font-weight: 800;
+  color: var(--color-heading);
+  line-height: 1.25;
+}
+
+.detail {
+  font-size: var(--text-micro);
+  color: var(--color-muted);
+  line-height: 1.3;
+}

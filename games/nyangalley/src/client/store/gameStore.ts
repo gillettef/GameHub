@@ -40,6 +40,8 @@ import {
 export * from "./selectors";
 
 type Mode = "hotseat" | "online";
+/** 행동 고르기의 세 행동: 가져오기 · 놓기(버리기 포함) · 명당 부르기 */
+export type ActMode = "take" | "plant" | "call";
 export type TabId = "board" | "status" | "progress" | "cards" | "help";
 /** 확대해서 볼 것: 손패 카드(index), 마켓 카드(index, 내 가져오기 차례), 카드 더미 뒷면(내 가져오기 차례), 카탈로그의 종, 목표 카드, 보드의 칸 */
 type CardModalTarget =
@@ -108,6 +110,8 @@ export interface GameStore {
   callPos: Position | null;
   /** 명당 부르기: 새 방향 */
   callRotation: Direction;
+  /** 행동 고르기 단계에서 고른 행동 (v8, Rules.md 5.1). null 이면 ④에 행동 고르기 판을 보여 준다 */
+  actMode: ActMode | null;
   /** 칸마다 뿌리(큐브) 수 표시 */
   showRootCounts: boolean;
   /** 칸마다 칸 이름(C4) 표시. 게임 기록의 칸을 찾을 때 켠다 */
@@ -134,8 +138,12 @@ export interface GameStore {
   clearSeed: () => void;
   confirmPlant: () => void;
   cancelPlant: () => void;
-  /** 이번 판 식물 공개 단계의 "확인". 한 기기는 모두를 한 번에 확인한다(보내는 쪽이 처리) */
+  /** 이번 판 식물 공개 단계의 "확인". 한 기기는 지금 보는 사람만 확인하고 다음 사람이 이어 고른다 */
   confirmReveal: () => void;
+  /** 행동 고르기: 행동을 고른다(null = 다른 행동 고르기로 돌아감). 고르던 타일·칸·명당은 비운다 */
+  chooseAct: (mode: ActMode | null) => void;
+  /** 이번 판 식물 공개 단계에서 내 무리(색) 고르기. null = 랜덤 (PICK_CREW) */
+  pickCrew: (crew: number | null) => void;
   /** 가져오기: 마켓 index 번 카드, 'pile' = 카드 더미 맨 위 1장을 가져온다 (TAKE, 한 번에 1장) */
   takeCard: (index: number | "pile") => void;
   /** 명당 부르기: 방향 */
@@ -179,6 +187,7 @@ const EMPTY = {
   viewerId: null,
   tab: "board" as TabId,
   ...CLEAR_SELECTION,
+  actMode: null as ActMode | null,
   showRootCounts: true,
   showLabels: false,
   notice: null,
@@ -215,15 +224,16 @@ export const useGameStore = create<GameStore>((set, get) => {
         p.players.every(
           (x, i) =>
             x.isReady === state.players[i]?.isReady &&
-            x.surrenderedOrder === state.players[i]?.surrenderedOrder,
+            x.surrenderedOrder === state.players[i]?.surrenderedOrder &&
+            x.crew === state.players[i]?.crew,
         ) &&
         p.players.length === state.players.length;
       // 한 기기 돌려 하기: 진행 중에 보는 사람이 바뀌면(다음 사람 차례) 손패를 가린다.
-      // 공개 단계에는 차례가 없으므로 넘기지 않는다(모두 확인하고 1라운드가 열릴 때도 가리지 않는다: 첫 차례는 자리 0)
+      // 공개 단계는 사람마다 무리를 고르고 확인하므로, 마지막 사람이 확인해 1라운드가 열릴 때 보는 사람이 바뀌면 그때도 가린다
       const handoff =
         hotseat &&
         state.phase === "playing" &&
-        p?.phase === "playing" &&
+        (p?.phase === "playing" || p?.phase === "reveal") &&
         prev.viewerId !== null &&
         viewerId !== prev.viewerId;
       set({
@@ -238,7 +248,7 @@ export const useGameStore = create<GameStore>((set, get) => {
           hotseat &&
           state.phase === "playing" &&
           (handoff || prev.handoffPending),
-        ...(moved ? CLEAR_SELECTION : {}),
+        ...(moved ? { ...CLEAR_SELECTION, actMode: null } : {}),
         ...(playStarted
           ? { tab: "board" as TabId, cardModal: null }
           : {
@@ -282,8 +292,8 @@ export const useGameStore = create<GameStore>((set, get) => {
         get();
       if (!state?.board || !viewerId) return;
       const s = asState(state);
-      // 명당 부르기: 손 타일을 고르지 않은 채 내 칸 위 명당을 누르면 부르기 미리보기 (Rules.md 5.1 3)
-      if (selectedHandIndex === null && selectCanCall(get())) {
+      // 명당 부르기: 부르기를 고른 뒤 내 칸 위 명당을 누르면 부르기 미리보기 (Rules.md 5.1 3)
+      if (selectCanCall(get())) {
         const { callPos } = get();
         if (callPos && samePos(callPos, pos)) {
           set({ ...CLEAR_CALL });
@@ -295,10 +305,8 @@ export const useGameStore = create<GameStore>((set, get) => {
           set({ callPos: pos, callRotation: rotation, notice: null });
           return;
         }
-        if (callPos) {
-          set({ notice: "내 칸 위에 있는 명당만 부를 수 있습니다. 다시 누르면 취소됩니다" });
-          return;
-        }
+        set({ notice: "내 칸 위에 있는 명당(빛나는 칸)만 부를 수 있습니다" });
+        return;
       }
       if (seedPicking && pendingPos) {
         if (!legalSeedCells(s, pendingPos).some((p) => samePos(p, pos))) {
@@ -386,6 +394,18 @@ export const useGameStore = create<GameStore>((set, get) => {
       const { state, viewerId, dispatch } = get();
       if (!state || !viewerId || state.phase !== "reveal") return;
       dispatch({ type: "CONFIRM", playerId: viewerId });
+    },
+
+    chooseAct: (mode) => {
+      const s = get();
+      if (s.state?.phase !== "playing" || s.state.stage !== "act" || s.state.currentPlayerId !== s.viewerId) return;
+      set({ ...CLEAR_SELECTION, actMode: mode, notice: null });
+    },
+
+    pickCrew: (crew) => {
+      const { state, viewerId, dispatch } = get();
+      if (!state || !viewerId || state.phase !== "reveal") return;
+      dispatch({ type: "PICK_CREW", playerId: viewerId, crew });
     },
 
     takeCard: (index) => {

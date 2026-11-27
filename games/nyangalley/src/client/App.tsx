@@ -223,23 +223,13 @@ function Hero() {
 }
 
 /**
- * 한 기기 대국. 공개 단계의 '확인하고 시작'은 한 번만 누르면 된다(옛 한 기기 화면과 같다): 사람 자리마다 차례로 확인을 낸다.
+ * 한 기기 대국. 공개 단계에서는 사람마다 차례로 무리를 고르고 '확인'한다(확인하면 보는 사람이 다음 사람으로 바뀐다).
  * 돌려 하기의 가림 화면은 GameView(HandoffOverlay)가 맡는다.
  */
 function LocalTable({ game, again, onLeave, onEnd }: { game: Local; again(): void; onLeave(): void; onEnd(): void }) {
   const state = useLocalGame(game)
   const room = state.room
-  const act = useCallback(
-    (a: Action) => {
-      if (a.type !== 'CONFIRM') return game.act(a)
-      for (let k = 0; k < MAX_PLAYERS; k++) {
-        const r = game.getState().room
-        if (r.status !== 'playing' || r.view?.game.phase !== 'reveal' || r.you === null || !r.actors.includes(r.you)) break
-        game.act({ type: 'CONFIRM' })
-      }
-    },
-    [game],
-  )
+  const act = useCallback((a: Action) => game.act(a), [game])
   const error = useMemo(() => (state.error ? { message: state.error } : null), [state])
   return <GameView room={room} mode="hotseat" error={error} onAct={act} onLeave={room.status === 'over' ? onEnd : onLeave} onNewGame={again} />
 }

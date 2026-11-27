@@ -1,11 +1,11 @@
 import { nameOf } from '../../engine';
-import { crewName } from '../game/derived';
+import { seatCrewName } from '../game/derived';
 import { cx } from '../lib/cx';
 import { selectState, useGameStore } from '../store/gameStore';
 import styles from './ResultOverlay.module.css';
 
 const REASON: Record<string, string> = {
-  complete: '모든 타일을 놓음',
+  complete: '마지막 라운드까지 둠',
   'last-standing': '남은 사람 1명',
 };
 
@@ -33,7 +33,7 @@ export function ResultOverlay({ onNewGame }: { onNewGame: () => void }) {
                 <span className={styles.rank}>{i + 1}위</span>
                 <span className={styles.name}>
                   {p?.nickname ?? id}
-                  <span className={styles.seat}> {(p?.seat ?? -1) + 1}번 {crewName(p?.seat ?? -1)}</span>
+                  <span className={styles.seat}> {(p?.seat ?? -1) + 1}번 {p ? seatCrewName(state, p.seat) : ''}</span>
                 </span>
                 <span className={styles.breakdown}>
                   {p && p.surrenderedOrder !== null ? '기권' : `칸 ${s?.land ?? 0} + 소문 ${s?.goals ?? 0}${s?.bloom ? ` + 급식소 ${s.bloom}` : ''}${s?.komi ? ` + 순서 보너스 ${s.komi}` : ''}`}

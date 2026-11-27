@@ -33,6 +33,10 @@ function botMove(t: Table, seat: number): Table {
 describe('행동 모양 검사', () => {
   it('알려진 행동만, 필요한 키만 받는다', () => {
     expect(parseAction({ type: 'CONFIRM', playerId: 'p3' })).toEqual({ type: 'CONFIRM' })
+    expect(parseAction({ type: 'PICK_CREW', crew: 3, playerId: 'p1' })).toEqual({ type: 'PICK_CREW', crew: 3 })
+    expect(parseAction({ type: 'PICK_CREW', crew: null })).toEqual({ type: 'PICK_CREW', crew: null })
+    expect(parseAction({ type: 'PICK_CREW', crew: 4 })).toBeNull()
+    expect(parseAction({ type: 'PICK_CREW', crew: '1' })).toBeNull()
     expect(parseAction({ type: 'TAKE', turn: 3, take: 1, extra: 1 })).toEqual({ type: 'TAKE', turn: 3, take: 1 })
     expect(parseAction({ type: 'TAKE', turn: 3, take: 'pile' })).toEqual({ type: 'TAKE', turn: 3, take: 'pile' })
     // v8: 명당 부르기는 가져오기를 함께 하지 않는다(take 는 버린다)

@@ -625,6 +625,41 @@ describe('진행 (Rules.md 4·5절)', () => {
   });
 });
 
+describe('무리 고르기 (Rules.md 4절 8)', () => {
+  it('공개 단계에서 확인 전에만 고르고, 남이 고른 무리는 안 된다. 랜덤·AI 는 1라운드가 열릴 때 남은 무리로 정해진다', () => {
+    let s = lobby(3, 7);
+    s = { ...s, players: s.players.map((p, i) => (i === 2 ? { ...p, kind: 'ai' as const, isReady: true } : p)) };
+    for (const id of ['p0', 'p1']) s = ok(s, { type: 'READY', playerId: id });
+    expect(s.phase).toBe('reveal');
+    s = ok(s, { type: 'PICK_CREW', playerId: 'p0', crew: 3 });
+    expect(applyAction(s, { type: 'PICK_CREW', playerId: 'p1', crew: 3 }).error).toMatch(/이미 고른/);
+    expect(applyAction(s, { type: 'PICK_CREW', playerId: 'p1', crew: 4 }).error).toBeTruthy();
+    s = ok(s, { type: 'PICK_CREW', playerId: 'p0', crew: 1 });
+    s = ok(s, { type: 'PICK_CREW', playerId: 'p1', crew: 3 });
+    s = ok(s, { type: 'PICK_CREW', playerId: 'p1', crew: null });
+    s = ok(s, { type: 'CONFIRM', playerId: 'p0' });
+    expect(applyAction(s, { type: 'PICK_CREW', playerId: 'p0', crew: 2 }).error).toMatch(/이미 확인/);
+    s = ok(s, { type: 'CONFIRM', playerId: 'p1' });
+    expect(s.phase).toBe('playing');
+    const crews = s.players.map((p) => p.crew);
+    expect(crews[0]).toBe(1);
+    expect(new Set(crews).size).toBe(3);
+    expect(crews.every((c) => typeof c === 'number' && c >= 0 && c < 4)).toBe(true);
+    // 같은 시드면 같은 결과 (결정성)
+    let t = lobby(3, 7);
+    t = { ...t, players: t.players.map((p, i) => (i === 2 ? { ...p, kind: 'ai' as const, isReady: true } : p)) };
+    for (const id of ['p0', 'p1']) t = ok(t, { type: 'READY', playerId: id });
+    for (const a of [
+      { type: 'PICK_CREW', playerId: 'p0', crew: 1 },
+      { type: 'CONFIRM', playerId: 'p0' },
+      { type: 'CONFIRM', playerId: 'p1' },
+    ] as Action[])
+      t = ok(t, a);
+    expect(t.players.map((p) => p.crew)).toEqual(crews);
+    expect(applyAction(s, { type: 'PICK_CREW', playerId: 'p0', crew: 0 }).error).toBeTruthy();
+  });
+});
+
 describe('종료·점수·순위 (Rules.md 8·9절)', () => {
   it('점수 = 땅 + 목표 + 무궁화 + 덤, 순위는 점수 → 땅 → 내 땅 위 식물 → 자리 큰 쪽', () => {
     const s = playOut(4, 5);

@@ -1,5 +1,5 @@
 // iPhone 17 Pro 화면 확인: 빌드 결과를 허브(/nyangalley/)에서 열어 모든 모드를 둔다.
-// v8 「행동 하나」 흐름: 한 기기 AI 대전(공개 단계 → 행동 고르기: 가져오기 두 개 → 다음 차례 타일 고르기 → 칸·방향 → 놓기, 확대 타일,
+// v8 「행동 하나」 흐름: 한 기기 AI 대전(공개 단계·무리 고르기 → 행동 고르기 판 → 가져오기 두 개 → 다음 차례 놓기 → 칸·방향 → 놓기, 확대 타일,
 // 메뉴 탭, 새로고침 뒤 이어 하기, 끝까지 두며 명당 부르기 장면, 결과), 돌려 하기(가림 화면), 튜토리얼, 온라인(두 기기, 빈자리는 봇,
 // 새로고침 복귀), 관전, 규칙.
 import assert from 'node:assert/strict'
@@ -18,18 +18,31 @@ const board = (page) => page.getByRole('group', { name: /^(정원|골목) 보드
 /** 지금 라운드 (① 보조 줄 "N/20라운드") */
 const handCards = (page) => page.getByRole('list', { name: /^내 (카드|타일)$/ }).getByRole('button')
 /** 행동 고르기 단계 (① 상태바) */
-const ACT = '내 차례 · 가져오기·놓기·부르기 중 하나'
+const ACT = '내 차례 · 행동 고르기'
 /** 가져오기 두 번째 타일 (① 상태바) */
 const TAKE_MORE = '내 차례 · 타일 1개 더 가져오기'
 
-/** 펼친 타일 첫 개를 가져온다 */
+/** ④ 행동 고르기 판 */
+const chooser = (page) => page.getByRole('group', { name: '이번 차례 행동 고르기' })
+/** 행동 고르기 판이 떠 있으면 그 행동(이름 앞부분)을 누른다. 누를 수 없으면 false */
+async function choose(page, name) {
+  if (!(await isVisible(chooser(page)))) return true
+  const button = chooser(page).getByRole('button', { name })
+  if ((await button.count()) === 0 || !(await button.first().isEnabled())) return false
+  await button.first().click()
+  return true
+}
+
+/** 펼친 타일 첫 개를 가져온다(행동 고르기 판이면 먼저 가져오기를 고른다) */
 async function take(page) {
+  await choose(page, /가져오기/)
   await page.getByRole('group', { name: /^(마켓|펼친 타일)/ }).getByRole('button').first().click()
   await dialog(page).getByRole('button', { name: /^이 (카드|타일) 가져오기$/ }).click()
 }
 
-/** 놓을 수 있는 타일을 골라 첫 칸에 놓는다(놓을 칸이 없으면 버린다) */
+/** 놓을 수 있는 타일을 골라 첫 칸에 놓는다(놓을 칸이 없으면 버린다). 행동 고르기 판이면 먼저 놓기를 고른다 */
 async function plant(page, shots) {
+  await choose(page, /명당 놓기|타일 버리기/)
   const cards = page.getByRole('list', { name: /^내 (카드|타일)$/ }).getByRole('button')
   const n = await cards.count()
   for (let i = 0; i < n; i++) {
@@ -50,6 +63,7 @@ async function plant(page, shots) {
 
 /** 명당 부르기: 보드의 첫 명당 칸(부를 수 있는 내 칸 위 명당) → (방향은 그대로) → 부르기. 부를 명당이 없으면 false */
 async function call(page, shots) {
+  if (!(await choose(page, /명당 부르기/))) return false
   const spots = board(page).getByRole('button', { name: / · 명당 / })
   if ((await spots.count()) === 0) return false
   await spots.first().click()
@@ -65,7 +79,7 @@ async function call(page, shots) {
 async function step(page, scenes) {
   const handoff = page.getByRole('dialog').getByRole('button', { name: '시작', exact: true })
   if (await isVisible(handoff)) return handoff.click().then(() => true)
-  const confirm = page.getByRole('button', { name: /^확인(하고 시작)?$/ })
+  const confirm = page.getByRole('button', { name: /^확인/ })
   if (await isVisible(confirm)) return confirm.click().then(() => true)
   const s = await statusText(page)
   if (s.startsWith(TAKE_MORE)) return take(page).then(() => true)
@@ -76,7 +90,7 @@ async function step(page, scenes) {
         return true
       }
     }
-    const canTake = (await page.getByRole('group', { name: /^(마켓|펼친 타일)/ }).getByRole('button').count()) > 0
+    const canTake = await chooser(page).getByRole('button', { name: /가져오기/ }).isEnabled()
     if ((await handCards(page).count()) === 0) {
       if (canTake) return take(page).then(() => true)
       // 타일이 다 떨어지면 부를 명당만 남는다
@@ -112,12 +126,21 @@ await withGame(dir, async ({ url, open, shot }) => {
   await solo.getByRole('button', { name: '시작', exact: true }).click()
   await solo.getByText('이번 판 명당 확인').waitFor()
   await shot(solo, '02-reveal')
+  // 무리 고르기: 고등어냥
+  await solo.getByRole('radiogroup', { name: '고양이 무리 고르기' }).getByRole('radio', { name: /고등어냥/ }).click()
+  await solo.getByRole('radio', { name: /고등어냥/, checked: true }).waitFor()
+  await shot(solo, '02-reveal-crew')
   await solo.getByRole('button', { name: '확인하고 시작' }).click()
   // 1라운드 행동 고르기(내가 선): 손 1개, 펼친 타일 2개
   await solo.getByText(ACT).first().waitFor()
   assert.equal(await handCards(solo).count(), 1, '처음 손 타일은 1개')
   await shot(solo, '03-act')
-  // 가져오기: 확대 타일(펼친 타일) → 가져오기 → 두 번째는 주머니에서
+  // 내 칩은 고른 무리(고등어냥)
+  assert.ok((await solo.getByRole('group', { name: '골목 보드' }).getByRole('button').count()) === 0, '행동을 고르기 전에는 보드 칸을 누를 수 없다')
+  // 가져오기를 고르면 펼친 타일 화면 → 확대 타일 → 가져오기 → 두 번째는 주머니에서
+  await chooser(solo).getByRole('button', { name: /가져오기/ }).click()
+  await solo.getByText('내 차례 · 타일 가져오기').first().waitFor()
+  await shot(solo, '03-take-mode')
   await solo.getByRole('group', { name: /^(마켓|펼친 타일)/ }).getByRole('button').first().click()
   await shot(solo, '04-market-card')
   await dialog(solo).getByRole('button', { name: /^이 (카드|타일) 가져오기$/ }).click()
@@ -131,12 +154,15 @@ await withGame(dir, async ({ url, open, shot }) => {
   await solo.getByText(ACT).first().waitFor({ timeout: 20_000 })
   assert.equal(await handCards(solo).count(), 3, '가져오기 두 개 뒤 손 타일 3개')
   await shot(solo, '07-act-full-hand')
+  await chooser(solo).getByRole('button', { name: /명당 놓기/ }).click()
+  await solo.getByText('내 차례 · 명당 놓기').first().waitFor()
   await handCards(solo).first().click()
   await shot(solo, '08-hand-card')
   await dialog(solo).getByRole('button', { name: '닫기' }).click()
   await plant(solo, (p) => shot(p, '09-plant-preview'))
-  await solo.getByText(/AI \d의 차례/).first().waitFor()
-  await shot(solo, '10-bot-turn')
+  await solo.waitForFunction(() => !(document.querySelector('[role="status"]')?.textContent ?? '').includes('명당 놓기'), undefined, { timeout: 15_000 }).catch(() => {})
+  console.log('놓은 뒤:', await statusText(solo))
+  await shot(solo, '10-after-plant')
   // 메뉴: 점수·진행·타일·설명 탭
   await solo.getByRole('button', { name: '메뉴' }).click()
   await solo.getByRole('dialog', { name: '메뉴' }).getByRole('tab', { name: '점수' }).waitFor()
@@ -176,11 +202,21 @@ await withGame(dir, async ({ url, open, shot }) => {
   await hot.getByRole('button', { name: '봇', exact: true }).first().click()
   await hot.getByLabel('2번 자리 이름').fill('나래')
   await hot.getByRole('button', { name: '시작', exact: true }).click()
+  await hot.getByRole('radio', { name: /턱시도냥/ }).click()
+  await hot.getByRole('button', { name: '확인 · 다음 나래' }).click()
+  // 나래 차례: 가람이 고른 턱시도냥은 고를 수 없다
+  await hot.getByText('나래의 고양이 무리').waitFor()
+  assert.ok(await hot.getByRole('radio', { name: /턱시도냥/ }).isDisabled(), '남이 고른 무리는 고를 수 없다')
+  await shot(hot, '20-hotseat-crew')
+  await hot.getByRole('radio', { name: /^랜덤/ }).click()
   await hot.getByRole('button', { name: '확인하고 시작' }).click()
+  // 1라운드가 열리면 가람에게 넘긴다
+  await hot.getByRole('dialog').getByText('가람의 차례').waitFor()
+  await hot.getByRole('dialog').getByRole('button', { name: '시작', exact: true }).click()
   await hot.getByText(ACT).first().waitFor()
   await plant(hot)
   await hot.getByRole('dialog').getByText('나래의 차례').waitFor()
-  await shot(hot, '20-handoff')
+  await shot(hot, '20-handoff-next-player')
   assert.equal(await hot.getByRole('list', { name: /^내 (카드|타일)$/ }).count(), 1)
   await hot.getByRole('dialog').getByRole('button', { name: '시작', exact: true }).click()
   await hot.getByText(ACT).first().waitFor()

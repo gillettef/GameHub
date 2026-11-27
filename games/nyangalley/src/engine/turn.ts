@@ -3,7 +3,7 @@
  * (Rules.md 4·5·6·9절, 2026-11-27 v8 「행동 하나」).
  * 순수 함수. `applyAction(state, action) => { state, error? }`. 입력 state 를 변이하지 않는다.
  */
-import { GOAL_COUNT, HAND_MAX, TAKE_COUNT, START_HAND, MAX_PLAYERS, MIN_PLAYERS, rulesFor } from './data/constants.js';
+import { CREW_COUNT, GOAL_COUNT, HAND_MAX, TAKE_COUNT, START_HAND, MAX_PLAYERS, MIN_PLAYERS, rulesFor } from './data/constants.js';
 import { FLOWER_SPECIES, FOREST_SPECIES, GOALS, SPECIES_IDS, getGoal, getSpecies, isSpeciesId } from './data/species.js';
 import type { Action, Direction, GameLogEntry, GameResultReason, GameState, GoalId, LogKind, Plant, PlayerId, PlayerKind, PlayerState, Position, RoundStage, SpeciesId } from './types.js';
 import { buildBoard, cellLabel, cellLabels, isDirection, samePos } from './board.js';
@@ -53,7 +53,7 @@ export function createInitialState(roomId: string, rngSeed: number, deckSeed: nu
 }
 
 export function createPlayer(id: PlayerId, nickname: string, kind: PlayerKind = 'human'): PlayerState {
-  return { id, nickname, kind, seat: 0, isReady: kind === 'ai', hand: [], surrenderedOrder: null };
+  return { id, nickname, kind, seat: 0, isReady: kind === 'ai', hand: [], surrenderedOrder: null, crew: null };
 }
 
 export function joinPlayer(state: GameState, player: PlayerState): ActionResult {
@@ -165,7 +165,7 @@ export function startGame(state: GameState): GameState {
   // 카드 더미: 이번 판 식물마다 copies 장을 섞고, 자리 0부터 손에 1장씩
   const dealt = shuffleDeck(garden.species.flatMap((sp) => new Array<SpeciesId>(rule.copies).fill(sp)), deckKeyFrom(state.deckSeed));
   const pile = [...dealt.items];
-  const players = bySeat(state).map((p) => ({ ...p, hand: pile.splice(0, START_HAND), surrenderedOrder: null, isReady: p.kind === 'ai' }));
+  const players = bySeat(state).map((p) => ({ ...p, hand: pile.splice(0, START_HAND), surrenderedOrder: null, isReady: p.kind === 'ai', crew: null }));
   const market = pile.splice(0, rule.market);
   const n = built.board.cells.length;
   let s: GameState = {
@@ -200,7 +200,30 @@ function maybeBeginPlay(state: GameState): GameState {
   if (state.phase !== 'reveal') return state;
   if (!state.players.filter(isActive).every((p) => p.isReady)) return state;
   const first = bySeat(state).find(isActive) as PlayerState;
-  return beginRound({ ...state, phase: 'playing' }, 1, first.seat);
+  return beginRound({ ...assignCrews(state), phase: 'playing' }, 1, first.seat);
+}
+
+/** 무리를 고르지 않은(랜덤·AI·기권) 자리에 남은 무리를 정한다 (Rules.md 4절 8·11절: 남은 무리를 번호 순으로 놓고 보드 시드로 섞어 자리 순서대로) */
+function assignCrews(state: GameState): GameState {
+  const taken = new Set(state.players.map((p) => p.crew).filter((c): c is number => typeof c === 'number'));
+  const free = Array.from({ length: CREW_COUNT }, (_, i) => i).filter((c) => !taken.has(c));
+  const shuffled = shuffle(free, state.rngSeed);
+  const pool = [...shuffled.items];
+  const crews = new Map(bySeat(state).map((p) => [p.id, typeof p.crew === 'number' ? p.crew : (pool.shift() ?? p.seat)]));
+  return { ...state, rngSeed: shuffled.seed, players: state.players.map((p) => ({ ...p, crew: crews.get(p.id) ?? p.seat })) };
+}
+
+/** 무리 고르기 검사 (Rules.md 4절 8): 공개 단계, 기권 안 함, 확인 전, 0~CREW_COUNT−1 또는 null(랜덤), 남이 고른 무리는 안 됨 */
+export function validatePickCrew(state: GameState, a: { playerId: PlayerId; crew: unknown }): string | null {
+  if (state.phase !== 'reveal') return '이번 판 명당 공개 단계에서만 무리를 고를 수 있습니다';
+  const me = getPlayer(state, a.playerId);
+  if (!me) return '없는 플레이어입니다';
+  if (!isActive(me)) return '기권한 플레이어는 고를 수 없습니다';
+  if (me.isReady) return '이미 확인했습니다';
+  if (a.crew === null) return null;
+  if (!Number.isInteger(a.crew) || (a.crew as number) < 0 || (a.crew as number) >= CREW_COUNT) return '없는 무리입니다';
+  if (state.players.some((p) => p.id !== a.playerId && p.crew === a.crew)) return '다른 사람이 이미 고른 무리입니다';
+  return null;
 }
 
 
@@ -490,6 +513,11 @@ export function applyAction(state: GameState, action: Action): ActionResult {
       if (me.isReady) return reject(state, '이미 확인했습니다');
       const s = addLog(updatePlayer(state, action.playerId, { isReady: true }), 'system', me.id, `${me.nickname} 확인`);
       return { state: maybeBeginPlay(s) };
+    }
+    case 'PICK_CREW': {
+      const err = validatePickCrew(state, action);
+      if (err) return reject(state, err);
+      return { state: updatePlayer(state, action.playerId, { crew: action.crew }) };
     }
     case 'TAKE':
       return applyTake(state, action);
