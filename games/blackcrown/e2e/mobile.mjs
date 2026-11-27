@@ -48,13 +48,26 @@ await withGame(dir, async ({ url, open, shot }) => {
 
   // 휴대폰에서는 보드가 미니맵이다: 누르면 확대, 확대한 지도에서 갈 수 있는 칸을 눌러 이동
   const map = solo.locator('.bcm-map')
+  // 두 손가락 핀치(합성 포인터): 가운데에서 dx 만큼 벌리거나(+) 오므린다(-)
+  const pinch = (dx) => map.evaluate((el, dx) => {
+    const r = el.getBoundingClientRect()
+    const cx = r.left + r.width / 2
+    const cy = r.top + r.height / 2
+    const fire = (type, id, x, y) => el.dispatchEvent(new PointerEvent(type, { pointerId: id, clientX: x, clientY: y, bubbles: true, pointerType: 'touch', isPrimary: id === 1 }))
+    const w0 = dx > 0 ? 30 : 15 - dx / 2
+    fire('pointerdown', 1, cx - w0, cy)
+    fire('pointerdown', 2, cx + w0, cy)
+    for (let k = 1; k <= 5; k++) fire('pointermove', 2, cx + w0 + (k * dx) / 5, cy)
+    fire('pointerup', 2, cx + w0 + dx, cy)
+    fire('pointerup', 1, cx - w0, cy)
+  }, dx)
   assert.ok(await map.evaluate((el) => el.classList.contains('is-mini')), '휴대폰 보드는 미니맵으로 시작해야 합니다')
   await solo.locator('.bcm-cell[data-cell]').first().waitFor()
   const camp = solo.locator('.bcm-pawn.is-me').first()
   await camp.click({ force: true })
   await solo.locator('.bcm-map.is-zoomed').waitFor()
   await shot(solo, '03b-zoom')
-  // 이동할 수 있는 칸 중 화면에서 실제로 눌리는 것(가운데가 그 칸이고 확대 버튼에 가리지 않은 것)
+  // 이동할 수 있는 칸 중 화면에서 실제로 눌리는 것(가운데가 그 칸이고 다른 것에 가리지 않은 것)
   const hitCell = await solo.locator('.bcm-cell.is-reachable').evaluateAll((els) => {
     for (const el of els) {
       const r = el.getBoundingClientRect()
@@ -70,23 +83,15 @@ await withGame(dir, async ({ url, open, shot }) => {
     await solo.waitForTimeout(300)
     assert.equal(await pawnCell(), hitCell, `확대한 지도에서 칸을 눌러 이동해야 합니다(${before} → ${hitCell})`)
   }
-  await solo.getByRole('button', { name: '전체', exact: true }).click()
-  await solo.locator('.bcm-map.is-mini').waitFor()
+  // 버튼 없이 두 손가락으로 오므리면 전체(미니맵)로 돌아간다
+  assert.equal(await solo.locator('.bcm-zoom').count(), 0, '확대 버튼은 없어야 합니다')
+  await pinch(-200)
+  await solo.locator('.bcm-map.is-mini:not(.is-zoomed)').waitFor()
 
-  // 두 손가락으로 벌리면 배율이 자유롭게 커지고, + 버튼으로도 커진다
+  // 두 손가락으로 벌리면 배율이 자유롭게 커진다
   const scaleOf = () => map.evaluate((el) => Number(el.getAttribute('data-scale')))
   const fitScale = await scaleOf()
-  await map.evaluate((el) => {
-    const r = el.getBoundingClientRect()
-    const cx = r.left + r.width / 2
-    const cy = r.top + r.height / 2
-    const fire = (type, id, x, y) => el.dispatchEvent(new PointerEvent(type, { pointerId: id, clientX: x, clientY: y, bubbles: true, pointerType: 'touch', isPrimary: id === 1 }))
-    fire('pointerdown', 1, cx - 30, cy)
-    fire('pointerdown', 2, cx + 30, cy)
-    for (let k = 1; k <= 5; k++) fire('pointermove', 2, cx + 30 + k * 12, cy)
-    fire('pointerup', 2, cx + 90, cy)
-    fire('pointerup', 1, cx - 30, cy)
-  })
+  await pinch(60)
   // pointermove 로 바꾼 배율은 React 가 다음 작업에서 그리므로 바뀔 때까지 기다린다
   const scaleAbove = (min) => map.evaluate((el, m) => new Promise((done) => {
     const t0 = performance.now()
@@ -95,9 +100,8 @@ await withGame(dir, async ({ url, open, shot }) => {
   }), min)
   const pinched = await scaleAbove(fitScale * 1.3)
   assert.ok(pinched > fitScale * 1.3 && pinched < fitScale * 2.2, `핀치 배율 ${fitScale} → ${pinched}`)
-  await solo.getByRole('button', { name: '확대', exact: true }).click()
-  assert.ok((await scaleAbove(pinched)) > pinched, '+ 버튼으로 더 커져야 합니다')
-  await solo.getByRole('button', { name: '전체', exact: true }).click()
+  await pinch(-300)
+  await solo.locator('.bcm-map.is-mini:not(.is-zoomed)').waitFor()
 
   await solo.getByRole('button', { name: '메뉴' }).click()
   await shot(solo, '05-menu')

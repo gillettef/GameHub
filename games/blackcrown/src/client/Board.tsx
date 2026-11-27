@@ -1,6 +1,7 @@
 /**
  * 공용 보드: 육각 판 조립 지도(SVG). docs/design.md 10절.
  * 칸이 작게 보이는 화면(휴대폰)에서는 미니맵으로 보이고, 누르면 그 자리를 확대한다. 확대한 뒤 끌어서 옮긴다.
+ * 확대·축소는 손가락(누르기·두 손가락)과 PC 휠로만 한다(버튼 없음). 미니맵에서는 칸·말을 판보다 크게 그려 읽히게 한다.
  */
 import { memo, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent as RPointerEvent, type ReactElement } from 'react'
 import { MONSTERS, TILE_NAMES, type TileKind } from '../engine/data'
@@ -14,7 +15,7 @@ const CELL_R = 15
 const DIRECT = 1
 /** 눌러서 확대할 때의 배율(칸 지름 약 32px, 판정 원 46px) */
 const ZOOM = 1.05
-/** 두 손가락·휠·+ 버튼으로 키울 수 있는 최대 배율 */
+/** 두 손가락·휠로 키울 수 있는 최대 배율 */
 const MAX_ZOOM = 2.6
 
 type Cam = { x: number; y: number; s: number }
@@ -176,6 +177,8 @@ function Defs() {
 
 /** 칸 안에 말을 늘어놓을 자리 */
 const PAWN_SPOTS: [number, number][] = [[0, 13], [-11, 9], [11, 9], [-14, -2], [14, -2]]
+/** 미니맵: 말이 크게 그려지니 칸 가운데 가까이 모은다(이웃 칸을 덮지 않게) */
+const MINI_SPOTS: [number, number][] = [[0, 3], [-9, 7], [9, 7], [-10, -6], [10, -6]]
 
 export function Board({ view, me, canAct, targets, onTile }: { view: View; me: number | null; canAct: boolean; targets: Set<number>; onTile(i: number): void }) {
   const map = view.map
@@ -218,8 +221,13 @@ export function Board({ view, me, canAct, targets, onTile }: { view: View; me: n
   /** 칸을 바로 누를 수 있는 배율인가(판정 원 지름 44px 이상) */
   const interactive = scale >= DIRECT
   const direct = fit >= DIRECT
-  /** 숫자 배지·말 배율: 작게 보일수록 키운다(최대 1.5배) */
+  /** 숫자 배지 배율: 작게 보일수록 키운다(최대 1.5배, 칸 배율 gk 위에 곱해진다) */
   const bk = r1(Math.min(1.5, Math.max(1, 1 / scale)))
+  /** 칸 그림 배율: 작게 보일수록 키운다. 가장 가까운 두 칸이 36 떨어져 있어 1.45배(반지름 22)를 넘기지 않는다 */
+  const gk = r1(Math.min(1.45, Math.max(1, 0.6 / scale)))
+  /** 말 배율: 판에서 가장 중요한 정보라 칸보다 더 키운다(확대해도 1.35배, 미니맵에서 화면 지름 약 13px) */
+  const pk = r1(Math.min(2.4, Math.max(1.35, 0.9 / scale)))
+  const mini = gk > 1
 
   // 확대 중에 내 말이 움직이면 따라간다(렌더 중 상태 맞추기: 이펙트로 한 번 더 그리지 않게)
   const myPos = me === null ? -1 : (view.players[me]?.pos ?? -1)
@@ -241,10 +249,6 @@ export function Board({ view, me, canAct, targets, onTile }: { view: View; me: n
     const wx = cx + ox / scale
     const wy = cy + oy / scale
     setCam({ x: wx - ox / ns, y: wy - oy / ns, s: ns })
-  }
-  const zoomCenter = (factor: number) => {
-    const r = svg.current?.getBoundingClientRect()
-    if (r) zoomAt(scale * factor, r.left + r.width / 2, r.top + r.height / 2)
   }
 
   // 마우스 휠(PC): 커서 자리를 기준으로 확대·축소. React 의 onWheel 은 passive 라 직접 붙인다
@@ -397,10 +401,11 @@ export function Board({ view, me, canAct, targets, onTile }: { view: View; me: n
             >
               {/* 판정 원: 누르는 곳은 가장 가까운 칸(Board onUp)이라 실제 영역은 이보다 넓다 */}
               <circle r={22} fill="transparent" />
+              <g transform={gk !== 1 ? `scale(${gk})` : undefined}>
               {reach.has(i) && <circle r={r + 5} className="bcm-ring bcm-ring--reach" />}
               {targets.has(i) && <circle r={r + 5} className="bcm-ring bcm-ring--target" />}
               <circle r={r} cy={2} fill="#000" opacity={0.5} />
-              <circle r={r} fill={`url(#bcm-st${c.ring})`} stroke={kind === 'camp' ? '#ffb44a' : c.ring === 4 ? '#f2d98e' : c.ring === 3 ? '#8a6726' : '#0a0709'} strokeWidth={1.6} />
+              <circle className="bcm-stone" r={r} fill={`url(#bcm-st${c.ring})`} stroke={kind === 'camp' ? '#ffb44a' : c.ring === 4 ? '#f2d98e' : c.ring === 3 ? '#8a6726' : '#0a0709'} strokeWidth={1.6} />
               {icon && !demonHere && (
                 <svg x={c.ring === 4 ? -12 : -9} y={c.ring === 4 ? -12 : -9} width={c.ring === 4 ? 24 : 18} height={c.ring === 4 ? 24 : 18} style={{ color: INK[kind] ?? '#d7cbb4' }} opacity={pawns.length && !m ? 0.55 : 1}>
                   <use href={`#${icon}`} />
@@ -426,17 +431,18 @@ export function Board({ view, me, canAct, targets, onTile }: { view: View; me: n
                   +{monsters.length - 1}
                 </text>
               )}
+              </g>
               {pawns.map((p, k) => {
                 if (p.seat === demonSeat)
                   return (
-                    <g key={p.seat} className="bcm-pawn bcm-pawn--demon">
+                    <g key={p.seat} className="bcm-pawn bcm-pawn--demon" transform={gk !== 1 ? `scale(${gk})` : undefined}>
                       <circle r={12} fill="#24182f" stroke="#c9a24c" strokeWidth={2} />
                       <svg x={-8} y={-8} width={16} height={16} style={{ color: '#f2d98e' }}><use href="#bc-crown" /></svg>
                     </g>
                   )
-                const [px, py] = PAWN_SPOTS[demonHere ? Math.min(4, k + 1) : k] ?? [0, 0]
+                const [px, py] = (mini ? MINI_SPOTS : PAWN_SPOTS)[demonHere ? Math.min(4, k + 1) : k] ?? [0, 0]
                 return (
-                  <g key={p.seat} className={`bcm-pawn ${p.seat === me ? 'is-me' : ''}`} transform={`translate(${px} ${py}) scale(${bk})`}>
+                  <g key={p.seat} className={`bcm-pawn ${p.seat === me ? 'is-me' : ''}`} transform={`translate(${r1(px * gk)} ${r1(py * gk)}) scale(${pk})`}>
                     <circle r={7} style={{ fill: `var(--bc-seat-${p.seat + 1})` }} stroke={p.seat === me ? '#ffb44a' : '#0b080d'} strokeWidth={p.seat === me ? 2.2 : 1.4} />
                     <svg x={-5} y={-5} width={10} height={10} style={{ color: '#1a1410' }}><use href={`#${classIcon(p.cls)}`} /></svg>
                   </g>
@@ -447,19 +453,7 @@ export function Board({ view, me, canAct, targets, onTile }: { view: View; me: n
         })}
       </svg>
       {!direct && !zoomed && <span className="bcm-hint">눌러서 크게 · 두 손가락으로 확대</span>}
-      <div className="bcm-zoom" role="group" aria-label="보드 확대">
-        <button type="button" aria-label="확대" disabled={scale >= maxScale * 0.99} onClick={() => zoomCenter(1.4)}>
-          +
-        </button>
-        <button type="button" aria-label="축소" disabled={!zoomed} onClick={() => zoomCenter(1 / 1.4)}>
-          −
-        </button>
-        {zoomed && (
-          <button type="button" className="bcm-all" onClick={() => setCam(null)}>
-            전체
-          </button>
-        )}
-      </div>
+      {!direct && zoomed && <span className="bcm-hint">두 손가락으로 오므리면 전체</span>}
     </div>
   )
 }
