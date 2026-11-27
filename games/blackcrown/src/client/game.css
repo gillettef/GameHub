@@ -132,9 +132,9 @@
 
 /* ③ 육각 판 보드(Board.tsx). 휴대폰은 미니맵 → 눌러서 확대 */
 .bcm-box { position: relative; padding: 0; overflow: hidden; }
-.bcm-map { display: block; touch-action: manipulation; user-select: none; -webkit-user-select: none; }
+.bcm-map { display: block; touch-action: none; user-select: none; -webkit-user-select: none; }
 .bcm-map.is-mini { cursor: zoom-in; }
-.bcm-map.is-zoomed { touch-action: none; cursor: grab; }
+.bcm-map.is-zoomed { cursor: grab; }
 .bcm-map .bcm-cell { cursor: pointer; outline: none; }
 .bcm-map .bcm-cell:focus-visible > circle:nth-of-type(3) { stroke: var(--bc-candle); stroke-width: 3; }
 .bcm-map .bcm-cell.is-locked { opacity: 0.45; }
@@ -143,9 +143,11 @@
 .bcm-ring--target { stroke: var(--bc-blade); stroke-width: 3; filter: drop-shadow(0 0 5px rgba(212, 80, 63, 0.7)); }
 .bcm-num { font: 700 9px/1 var(--bc-font-display); font-variant-numeric: tabular-nums; pointer-events: none; }
 .bcm-num.bc-suit--blade, .bcm-num.bc-suit--ward, .bcm-num.bc-suit--lantern, .bcm-num.bc-suit--coin { fill: var(--suit); }
-.bcm-hint, .bcm-out { position: absolute; right: 8px; bottom: 8px; font-size: 12px; border-radius: 999px; }
-.bcm-hint { padding: 3px 10px; background: rgba(0, 0, 0, 0.55); color: var(--gh-muted); pointer-events: none; }
-.bcm-out { min-height: 44px; padding: 0 14px; border: 1px solid var(--bc-gilt); background: rgba(17, 14, 19, 0.85); color: var(--bc-gilt-hi); font-size: 13px; }
+.bcm-hint { position: absolute; left: 8px; bottom: 8px; padding: 3px 10px; border-radius: 999px; font-size: 12px; background: rgba(0, 0, 0, 0.55); color: var(--gh-muted); pointer-events: none; }
+.bcm-zoom { position: absolute; right: 8px; bottom: 8px; display: flex; flex-direction: column-reverse; gap: 6px; }
+.bcm-zoom button { min-width: 44px; min-height: 44px; padding: 0 10px; border-radius: 12px; border: 1px solid var(--bc-gilt); background: rgba(17, 14, 19, 0.85); color: var(--bc-gilt-hi); font: 600 20px/1 var(--bc-font-body); }
+.bcm-zoom button.bcm-all { font-size: 13px; }
+.bcm-zoom button:disabled { opacity: 0.35; }
 @media (prefers-reduced-motion: reduce) { .bcm-ring { filter: none; } }
 
 /* 넓은 화면(PC): 보드를 왼쪽에 화면 높이 전체로 크게, 나머지(①②④⑤)는 오른쪽 440px 기둥에.
