@@ -26,6 +26,7 @@
 .bcx-mystats { display: flex; gap: 12px; align-items: center; font-size: var(--bc-text-sm); color: var(--gh-text); flex-wrap: wrap; }
 .bcx-mystats > span { display: inline-flex; align-items: center; gap: 4px; }
 .bcx-mystats .bc-ico { width: 16px; height: 16px; }
+.bcx-mystats .bcx-gold { color: #f2d98e; }
 .bcx-hpwrap { color: var(--bc-hp); }
 .bcx-xp { color: var(--gh-muted); }
 .bcx-mine { margin-left: auto; padding: 1px 8px; border: 1px dashed var(--bc-umbra); border-radius: 8px; color: var(--bc-umbra-hi); }
