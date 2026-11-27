@@ -11,7 +11,7 @@ const N = Number(process.argv[4] ?? 60);
 for (const nm of names) {
   const rules = VARIANTS[nm];
   if (!rules) throw new Error(`변형 없음: ${nm}`);
-  const tot = { place: 0, move: 0, gather: 0, call: 0 };
+  const tot = { place: 0, move: 0, gather: 0, call: 0, take: 0 };
   const ch: Record<string, number> = {};
   let flips = 0;
   let turns = 0;
@@ -26,11 +26,11 @@ for (const nm of names) {
     maxStack = Math.max(maxStack, r.maxStack);
     sameAsLast += r.sameAsLast ?? 0;
   }
-  const sum = tot.place + tot.move + tot.gather + tot.call || 1;
+  const sum = tot.place + tot.move + tot.gather + tot.call + tot.take || 1;
   const chSum = Object.values(ch).reduce((a, b) => a + b, 0) || 1;
   const chLine = Object.keys(ch).length ? ' | 일과 ' + Object.entries(ch).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${((v / chSum) * 100).toFixed(0)}%`).join(' ') : '';
   const pct = (x: number) => `${((x / sum) * 100).toFixed(0)}%`;
   console.log(
-    `${nm.padEnd(8)} 놓기 ${pct(tot.place)} · 담 넘기 ${pct(tot.move)} · 모여라 ${pct(tot.gather)} · 부르기 ${pct(tot.call)} | 직전과 같은 행동 ${pct(sameAsLast)} | 판당 차례 ${(turns / N).toFixed(1)} · 차례당 뺏은 칸 ${(flips / Math.max(1, turns)).toFixed(2)} · 한 칸 최대 ${maxStack}${chLine}`,
+    `${nm.padEnd(8)} 놓기 ${pct(tot.place)} · 담 넘기 ${pct(tot.move)} · 모여라 ${pct(tot.gather)} · 부르기 ${pct(tot.call)} · 가져오기 ${pct(tot.take)} | 직전과 같은 행동 ${pct(sameAsLast)} | 판당 차례 ${(turns / N).toFixed(1)} · 차례당 뺏은 칸 ${(flips / Math.max(1, turns)).toFixed(2)} · 한 칸 최대 ${maxStack}${chLine}`,
   );
 }

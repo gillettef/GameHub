@@ -3,7 +3,7 @@
  *   npx tsx tools/write-ai-fixtures.ts   (먼저 npm run fixtures 로 scenario.json 을 만든 뒤)
  *
  * 처음 기록(2026-11-25)은 옛 AI(비동기판)로 저장소 밖 스크립트가 만들었다. 2026-11-26 뿌리 놓기를 두 단계로 바꾸며
- * (Rules.md 6.2), 같은 날 v7 「골목 일과」(Rules.md 5절)로 바꾸며 규칙이 의도적으로 바뀌어 지금 코드로 새 기준을 남긴다.
+ * (Rules.md 6.2), 같은 날 v7 「골목 일과」(Rules.md 5절), 2026-11-27 v8 「행동 하나」로 바꾸며 규칙이 의도적으로 바뀌어 지금 코드로 새 기준을 남긴다.
  * 판 목록(인원·시드)은 처음 기록 그대로다.
  *  - ai-decisions.json: scenario.json 을 재생한 진행 중 상태마다 차례인 자리의 결정
  *  - ai-games.json: 2·3·4인 × 시드 4개, AI 끼리 끝까지 둔 판의 행동과 단계마다 상태 해시

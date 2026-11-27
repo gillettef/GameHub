@@ -6,7 +6,7 @@
  * 파일 이름은 Rules.md 의 영문 id 그대로다. 빠진 파일이 없는지는 cardImages.test.ts 가 검사한다.
  * 옛 카드 디자인(`public/cards/`)은 더는 이 파일에서 쓰지 않는다.
  */
-import type { ChoreId, GoalId, SpeciesId } from '../../engine';
+import type { GoalId, SpeciesId } from '../../engine';
 // 페이지 기준 상대경로(허브 /nyangalley/ 아래에서도, 루트 직접 접속에서도 맞다)
 const base = './art/';
 
@@ -35,14 +35,3 @@ export function goalCardUrl(goal: GoalId): string {
 export const SPOT_ASPECT = '1 / 1';
 /** 소문 카드 비율(세로형) */
 export const GOAL_ASPECT = '630 / 880';
-
-/** 골목 일과 타일 앞면(가로 630×440, v7). id 는 data/chores.ts 의 ChoreId */
-export function choreArtUrl(chore: ChoreId): string {
-  return `${base}chore-${chore}.svg`;
-}
-
-/** 골목 일과 타일 뒷면 */
-export const CHORE_BACK_URL = `${base}chore-back.svg`;
-
-/** 일과 타일 비율(가로형) */
-export const CHORE_ASPECT = '630 / 440';

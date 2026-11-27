@@ -71,30 +71,7 @@ export const GameModal = memo(function GameModal() {
               이 타일 가져오기
             </button>
           ) : (
-            <p className={styles.hint}>내 가져오기 차례에 가져올 수 있습니다.</p>
-          )}
-        </div>
-      </>
-    );
-  } else if (target.kind === 'peek') {
-    const species = state.peek;
-    if (!species) return null;
-    body = (
-      <>
-        <SpeciesCard species={species} variant="full" />
-        <div className={styles.actions}>
-          <p className={styles.hint}>생선 냄새로 주머니 맨 위에서 펼친 타일입니다. 펼친 타일을 가져가면 이 타일은 주머니 맨 위로 돌아갑니다.</p>
-          {canTake && (
-            <button
-              type="button"
-              className="pill pill--lg"
-              onClick={() => {
-                close();
-                takeCard('peek');
-              }}
-            >
-              이 타일 가져오기
-            </button>
+            <p className={styles.hint}>내 차례에 손 타일이 3개보다 적으면 가져올 수 있습니다.</p>
           )}
         </div>
       </>
@@ -119,7 +96,7 @@ export const GameModal = memo(function GameModal() {
               </button>
             </>
           ) : (
-            <p className={styles.hint}>내 가져오기 차례에 주머니에서 1개를 꺼낼 수 있습니다.</p>
+            <p className={styles.hint}>내 차례에 손 타일이 3개보다 적으면 주머니에서 1개를 꺼낼 수 있습니다.</p>
           )}
         </div>
       </>
@@ -135,14 +112,12 @@ export const GameModal = memo(function GameModal() {
         {target.kind === 'hand' && state.phase === 'playing' && (
           <div className={styles.actions}>
             {!isMyTurn ? (
-              <p className={styles.hint}>상대 차례입니다. 내 놓기 차례에 고를 수 있습니다.</p>
+              <p className={styles.hint}>상대 차례입니다. 내 차례에 고를 수 있습니다.</p>
             ) : !canPlant ? (
               <p className={styles.hint}>
                 {state.stage === 'take'
-                  ? '먼저 펼친 타일이나 주머니에서 타일 1개를 가져오세요. 그다음 놓을 타일을 고릅니다.'
-                  : state.stage === 'chore'
-                    ? '지금은 일과를 고를 차례입니다. 명당을 놓는 일과를 고르면 내 차례에 놓을 수 있습니다.'
-                    : '이번 일과는 명당을 놓지 않습니다.'}
+                  ? '가져오기 중입니다. 펼친 타일이나 주머니에서 1개를 더 가져오세요. 놓기는 다음 차례에 합니다.'
+                  : '지금은 놓을 수 없습니다.'}
               </p>
             ) : canPlantAny && !canPlantThis ? (
               <p className={styles.hint}>이 타일은 지금 놓을 칸이 없습니다. 다른 타일을 고르세요.</p>

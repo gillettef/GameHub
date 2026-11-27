@@ -5,44 +5,33 @@
  * applyView 로 여기에 넣고, 행동은 setSender 로 받은 함수로 보낸다(GameView.tsx 가 연결한다).
  *  - hotseat : 한 기기. 사람이 둘 이상이면 보는 사람이 바뀔 때 '기기 넘김'(handoffPending)이 다음 사람 손패를 가린다.
  *  - online  : 서버가 정본이다. 보낸 수가 반영된 상태가 올 때까지 연타를 막는다(sending).
- * 컴포넌트는 어느 모드든 같은 액션(confirmReveal·pickChore·takeCard·selectHandCard·tapCell·confirmPlant·confirmMove·confirmCall·discard·surrender)만 쓴다.
- * 판 흐름 (Rules.md 4·5절, v7 「골목 일과」): 이번 판 식물 공개(phase 'reveal') → 라운드마다 일과 고르기(stage 'chore')
- * → 고른 일과대로 가져오기(stage 'take') → 심기(stage 'plant') / 담 넘기(stage 'move') / 명당 부르기(stage 'call').
- * 담 넘기·명당 부르기는 보드에서 고르는 동안 미리보기만 보여 주고, 확정할 때 MOVE·CALL 행동 하나로 보낸다.
+ * 컴포넌트는 어느 모드든 같은 액션(confirmReveal·takeCard·selectHandCard·tapCell·confirmPlant·confirmCall·discard·surrender)만 쓴다.
+ * 판 흐름 (Rules.md 4·5절, v8 「행동 하나」): 이번 판 식물 공개(phase 'reveal') → 차례마다 행동 고르기(stage 'act'):
+ * 펼친 타일·주머니를 누르면 가져오기(TAKE, 두 번째 타일은 stage 'take'), 내 타일을 고르고 칸을 누르면 놓기(PLANT),
+ * 내 칸 위 명당을 누르면 명당 부르기(CALL). 놓기·부르기는 보드에서 고르는 동안 미리보기만 보여 주고, 확정할 때 보낸다.
  */
 import { create } from "zustand";
 import type {
   Action,
-  ChoreId,
   Direction,
   GoalId,
   MaskedGameState,
-  MoveStep,
   PlayerId,
   Position,
   SpeciesId,
 } from "../../engine";
 import {
-  canCallTake,
-  canMove,
   getSpecies,
   legalCallCells,
-  legalMoveSources,
-  legalMoveTargets,
   legalPlantCells,
   legalSeedCells,
-  MOVE_TIMES,
-  moveMaxCount,
   posKey,
-  remainingChores,
   samePos,
 } from "../../engine";
-import { applyMoves, asState } from "../game/derived";
+import { asState } from "../game/derived";
 import {
   findMe,
   selectCanCall,
-  selectCanMove,
-  selectCanPickChore,
   selectCanPlant,
   selectCanTake,
 } from "./selectors";
@@ -57,8 +46,6 @@ type CardModalTarget =
   | { kind: "hand"; index: number }
   | { kind: "market"; index: number }
   | { kind: "pile" }
-  /** 생선 냄새로 펼친 타일 (state.peek) */
-  | { kind: "peek" }
   | { kind: "species"; species: SpeciesId }
   | { kind: "goal"; goal: GoalId }
   | { kind: "cell"; pos: Position };
@@ -117,22 +104,10 @@ export interface GameStore {
   pendingSeed: Position | null;
   /** 보드 탭이 씨앗 칸 고르기 모드인가 */
   seedPicking: boolean;
-  /** 일과 고르기: 눌러 둔 일과 (확인을 눌러야 보낸다) */
-  pendingChore: ChoreId | null;
-  /** 담 넘기: 이미 정한 이동(최대 MOVE_TIMES - 1번). 확정 때 지금 이동과 함께 보낸다 */
-  moveSteps: MoveStep[];
-  /** 담 넘기: 지금 이동의 출발 칸 */
-  moveFrom: Position | null;
-  /** 담 넘기: 지금 이동의 도착 칸 */
-  moveTo: Position | null;
-  /** 담 넘기: 지금 이동에서 옮길 고양이 수 (1~MOVE_MAX) */
-  moveCount: number;
   /** 명당 부르기: 고른 명당 칸 */
   callPos: Position | null;
   /** 명당 부르기: 새 방향 */
   callRotation: Direction;
-  /** 명당 부르기: 부른 뒤 가져올 펼친 타일 번호 */
-  callTake: number | null;
   /** 칸마다 뿌리(큐브) 수 표시 */
   showRootCounts: boolean;
   /** 칸마다 칸 이름(C4) 표시. 게임 기록의 칸을 찾을 때 켠다 */
@@ -161,24 +136,10 @@ export interface GameStore {
   cancelPlant: () => void;
   /** 이번 판 식물 공개 단계의 "확인". 한 기기는 모두를 한 번에 확인한다(보내는 쪽이 처리) */
   confirmReveal: () => void;
-  /** 가져오기 차례에 마켓 index 번 카드, 'pile' = 카드 더미 맨 위 1장, 'peek' = 생선 냄새로 펼친 타일을 가져온다 (TAKE) */
-  takeCard: (index: number | "pile" | "peek") => void;
-  /** 일과 고르기: 일과를 눌러 고른다(다시 누르면 해제). 보내지는 않는다 */
-  pickChore: (chore: ChoreId | null) => void;
-  /** 일과 고르기: 고른 일과를 보낸다 (PICK_CHORE) */
-  confirmChore: () => void;
-  /** 담 넘기: 옮길 고양이 수 */
-  setMoveCount: (n: number) => void;
-  /** 담 넘기: 지금 이동을 정해 두고 한 번 더 옮긴다 */
-  moveAgain: () => void;
-  /** 담 넘기: 정한 이동(과 지금 이동)을 보낸다 (MOVE) */
-  confirmMove: () => void;
-  /** 담 넘기: 처음부터 다시 고른다 */
-  cancelMove: () => void;
+  /** 가져오기: 마켓 index 번 카드, 'pile' = 카드 더미 맨 위 1장을 가져온다 (TAKE, 한 번에 1장) */
+  takeCard: (index: number | "pile") => void;
   /** 명당 부르기: 방향 */
   setCallRotation: (d: Direction) => void;
-  /** 명당 부르기: 가져올 펼친 타일(다시 누르면 해제) */
-  setCallTake: (index: number | null) => void;
   /** 명당 부르기: 보낸다 (CALL) */
   confirmCall: () => void;
   /** 명당 부르기: 고른 칸을 비운다 */
@@ -197,16 +158,9 @@ export interface GameStore {
   reset: () => void;
 }
 
-const CLEAR_MOVE = {
-  moveSteps: [] as MoveStep[],
-  moveFrom: null,
-  moveTo: null,
-  moveCount: 1,
-};
 const CLEAR_CALL = {
   callPos: null,
   callRotation: 0 as Direction,
-  callTake: null,
 };
 const CLEAR_SELECTION = {
   selectedHandIndex: null,
@@ -214,8 +168,6 @@ const CLEAR_SELECTION = {
   pendingRotation: 0 as Direction,
   pendingSeed: null,
   seedPicking: false,
-  pendingChore: null,
-  ...CLEAR_MOVE,
   ...CLEAR_CALL,
 };
 
@@ -240,44 +192,6 @@ const EMPTY = {
 };
 
 export const useGameStore = create<GameStore>((set, get) => {
-  /**
-   * 담 넘기 차례의 칸 누르기 (Rules.md 5.3): 출발 칸(내 칸) → 도착 칸(맞닿은 칸). 두 번째 이동은 정해 둔 이동을 적용한 보드 기준.
-   * 출발 칸을 다시 누르면 해제, 다른 출발 칸을 누르면 바꾼다
-   */
-  function tapMoveCell(pos: Position) {
-    const { state, viewerId, moveFrom, moveSteps, moveCount } = get();
-    if (!state || !viewerId) return;
-    const base = applyMoves(state, viewerId, moveSteps);
-    if (moveFrom && samePos(moveFrom, pos)) {
-      set({ moveFrom: null, moveTo: null, moveCount: 1 });
-      return;
-    }
-    if (
-      moveFrom &&
-      legalMoveTargets(base, moveFrom).some((p) => samePos(p, pos))
-    ) {
-      set({ moveTo: pos, notice: null });
-      return;
-    }
-    if (legalMoveSources(base, viewerId).some((p) => samePos(p, pos))) {
-      set({
-        moveFrom: pos,
-        moveTo: null,
-        moveCount: Math.max(
-          1,
-          Math.min(moveCount, moveMaxCount(base, viewerId, pos)),
-        ),
-        notice: null,
-      });
-      return;
-    }
-    set({
-      notice: moveFrom
-        ? "고른 칸과 맞닿은 칸(아지트·개울·공사장 제외)으로만 옮길 수 있습니다"
-        : "먼저 고양이를 옮길 내 칸(빛나는 칸)을 누르세요",
-    });
-  }
-
   return {
     ...EMPTY,
 
@@ -332,8 +246,7 @@ export const useGameStore = create<GameStore>((set, get) => {
                 moved &&
                 (prev.cardModal?.kind === "hand" ||
                   prev.cardModal?.kind === "market" ||
-                  prev.cardModal?.kind === "pile" ||
-                  prev.cardModal?.kind === "peek")
+                  prev.cardModal?.kind === "pile")
                   ? null
                   : prev.cardModal,
             }),
@@ -369,24 +282,23 @@ export const useGameStore = create<GameStore>((set, get) => {
         get();
       if (!state?.board || !viewerId) return;
       const s = asState(state);
-      if (selectCanMove(get())) {
-        tapMoveCell(pos);
-        return;
-      }
-      if (selectCanCall(get())) {
+      // 명당 부르기: 손 타일을 고르지 않은 채 내 칸 위 명당을 누르면 부르기 미리보기 (Rules.md 5.1 3)
+      if (selectedHandIndex === null && selectCanCall(get())) {
         const { callPos } = get();
         if (callPos && samePos(callPos, pos)) {
           set({ ...CLEAR_CALL });
           return;
         }
-        if (!legalCallCells(s, viewerId).some((p) => samePos(p, pos))) {
-          set({ notice: "내 칸 위에 있는 명당(빛나는 칸)만 부를 수 있습니다" });
+        if (legalCallCells(s, viewerId).some((p) => samePos(p, pos))) {
+          const rotation =
+            s.plants.find((p) => samePos(p.pos, pos))?.rotation ?? 0;
+          set({ callPos: pos, callRotation: rotation, notice: null });
           return;
         }
-        const rotation =
-          s.plants.find((p) => samePos(p.pos, pos))?.rotation ?? 0;
-        set({ callPos: pos, callRotation: rotation, notice: null });
-        return;
+        if (callPos) {
+          set({ notice: "내 칸 위에 있는 명당만 부를 수 있습니다. 다시 누르면 취소됩니다" });
+          return;
+        }
       }
       if (seedPicking && pendingPos) {
         if (!legalSeedCells(s, pendingPos).some((p) => samePos(p, pos))) {
@@ -423,13 +335,6 @@ export const useGameStore = create<GameStore>((set, get) => {
         return;
       }
       if (!legalPlantCells(s, viewerId, species).some((p) => samePos(p, pos))) {
-        if (s.chores[findMe(state, viewerId)?.seat ?? -1] === "roam") {
-          set({
-            notice:
-              "마실: 내 칸, 맞닿은 빈 칸, 내 칸에서 두 칸 안의 빈 골목길에 놓을 수 있습니다",
-          });
-          return;
-        }
         set({
           notice: getSpecies(species).pondPlanting
             ? "내 칸, 내 칸·아지트와 맞닿은 빈 칸, 개울 옆 빈 칸에만 놓을 수 있습니다"
@@ -489,118 +394,22 @@ export const useGameStore = create<GameStore>((set, get) => {
       if (
         index === "pile"
           ? state.pileCount === 0
-          : index === "peek"
-            ? state.peek === null
-            : index < 0 || index >= state.market.length
+          : index < 0 || index >= state.market.length
       )
         return;
       dispatch({ type: "TAKE", playerId: viewerId, take: index });
     },
 
-    pickChore: (chore) => {
-      const { state } = get();
-      if (!state || state.phase !== "playing" || state.stage !== "chore")
-        return;
-      if (chore !== null && !remainingChores(state).includes(chore)) {
-        set({ notice: "이미 누가 고른 일과입니다" });
-        return;
-      }
-      set({
-        pendingChore: get().pendingChore === chore ? null : chore,
-        notice: null,
-      });
-    },
-
-    confirmChore: () => {
-      const { state, viewerId, pendingChore, dispatch } = get();
-      if (!state || !viewerId || !pendingChore || !selectCanPickChore(get()))
-        return;
-      dispatch({ type: "PICK_CHORE", playerId: viewerId, chore: pendingChore });
-    },
-
-    setMoveCount: (n) => {
-      const { state, viewerId, moveFrom, moveSteps } = get();
-      if (!state || !viewerId || !moveFrom) return;
-      const max = moveMaxCount(
-        applyMoves(state, viewerId, moveSteps),
-        viewerId,
-        moveFrom,
-      );
-      if (n >= 1 && n <= max) set({ moveCount: n });
-    },
-
-    moveAgain: () => {
-      const { state, viewerId, moveFrom, moveTo, moveCount, moveSteps } = get();
-      if (
-        !state ||
-        !viewerId ||
-        !moveFrom ||
-        !moveTo ||
-        moveSteps.length + 1 >= MOVE_TIMES
-      )
-        return;
-      const steps = [
-        ...moveSteps,
-        { from: moveFrom, to: moveTo, count: moveCount },
-      ];
-      if (!canMove(applyMoves(state, viewerId, steps), viewerId)) {
-        set({ notice: "더 옮길 수 있는 고양이가 없습니다. 이대로 끝내세요" });
-        return;
-      }
-      set({
-        moveSteps: steps,
-        moveFrom: null,
-        moveTo: null,
-        moveCount: 1,
-        notice: null,
-      });
-    },
-
-    confirmMove: () => {
-      const {
-        state,
-        viewerId,
-        moveFrom,
-        moveTo,
-        moveCount,
-        moveSteps,
-        dispatch,
-      } = get();
-      if (!state || !viewerId || !selectCanMove(get())) return;
-      const moves =
-        moveFrom && moveTo
-          ? [...moveSteps, { from: moveFrom, to: moveTo, count: moveCount }]
-          : moveSteps;
-      if (moves.length === 0) return;
-      dispatch({ type: "MOVE", playerId: viewerId, moves });
-    },
-
-    cancelMove: () => set({ ...CLEAR_MOVE }),
-
     setCallRotation: (d) => set({ callRotation: d }),
 
-    setCallTake: (index) => {
-      const { state } = get();
-      if (!state) return;
-      if (index !== null && (index < 0 || index >= state.market.length)) return;
-      set({ callTake: get().callTake === index ? null : index });
-    },
-
     confirmCall: () => {
-      const { state, viewerId, callPos, callRotation, callTake, dispatch } =
-        get();
+      const { state, viewerId, callPos, callRotation, dispatch } = get();
       if (!state || !viewerId || !callPos || !selectCanCall(get())) return;
-      const mustTake = canCallTake(asState(state), viewerId);
-      if (mustTake && callTake === null) {
-        set({ notice: "부른 뒤 손에 가져올 펼친 타일을 고르세요" });
-        return;
-      }
       dispatch({
         type: "CALL",
         playerId: viewerId,
         pos: callPos,
         rotation: callRotation,
-        ...(mustTake && callTake !== null ? { take: callTake } : {}),
       });
     },
 
