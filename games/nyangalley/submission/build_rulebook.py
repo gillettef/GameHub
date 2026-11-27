@@ -55,7 +55,6 @@ hr { display: none; }
 .fig.example svg, .fig.short svg { width: 165mm; }
 .fig.spots svg { width: 150mm; }
 .fig.goals svg { width: 175mm; }
-.fig.chores svg { width: 150mm; }
 strong { color: #6a3410; }
 .foot { margin-top: 6mm; font-size: 8.5pt; color:#7a6a55; text-align:center; }
 """
@@ -72,7 +71,6 @@ CAPTIONS = {
     "short": "그림 7. 쉬는 고양이가 모자랄 때",
     "spots": "그림 8. 명당 9종",
     "goals": "그림 9. 소문 카드 16장 (초록 띠 = 단골 카드)",
-    "chores": "골목 일과 6장 (주황 = 명당을 놓는 일과, 청회색 = 놓지 않는 일과)",
 }
 
 

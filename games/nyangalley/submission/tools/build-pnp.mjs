@@ -11,7 +11,7 @@ import { chromium } from 'playwright';
 import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { CHORES, SEAT, SEAT_NAME, SPOT_IDS, board, catToken, choreTile, hexPoints, px, spotTile, text } from './draw.mjs';
+import { SEAT, SEAT_NAME, SPOT_IDS, board, catToken, hexPoints, px, spotTile, text } from './draw.mjs';
 import { GOALS, goalCard } from './goals.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -195,28 +195,6 @@ const pages = [];
   pages.push(page(o, `소문 카드 뒷면`));
 }
 
-// 3-2. 골목 일과 타일 6장 + 뒷면 6장 (63×44mm)
-{
-  const W = 63;
-  const H = 44;
-  const x0 = (PAGE_W - 3 * W) / 2;
-  let o = '';
-  CHORES.forEach((c, k) => {
-    const x = x0 + (k % 3) * W;
-    const y = 14 + Math.floor(k / 3) * H;
-    o += choreTile(c.id, x + 0.5, y + 0.5, W - 1, H - 1);
-    o += `<rect x="${x}" y="${y}" width="${W}" height="${H}" fill="none" stroke="#222" stroke-width="0.25"/>`;
-  });
-  o += text(PAGE_W / 2, 120, 3.6, '뒷면 (양면 인쇄용)', { fill: '#7a6a55', weight: 600 });
-  for (let k = 0; k < 6; k++) {
-    const x = x0 + (k % 3) * W;
-    const y = 126 + Math.floor(k / 3) * H;
-    o += art('chore-back', x, y, W, H) ?? `<rect x="${x + 0.5}" y="${y + 0.5}" width="${W - 1}" height="${H - 1}" rx="3" fill="#5f7f9f"/><text x="${x + W / 2}" y="${y + H / 2 + 2}" font-size="6" text-anchor="middle" fill="#fff" font-weight="800">골목 일과</text>`;
-    o += `<rect x="${x}" y="${y}" width="${W}" height="${H}" fill="none" stroke="#222" stroke-width="0.25"/>`;
-  }
-  pages.push(page(o, `골목 일과 타일 (63×44mm) — 6장`));
-}
-
 // 4. 고양이 토큰 54개(3색 × 18) + 대장 방울 + 점수 기록지
 {
   let o = '';
@@ -230,7 +208,7 @@ const pages = [];
       o += `<circle cx="${x}" cy="${y}" r="${d / 2}" fill="none" stroke="#222" stroke-width="0.25"/>`;
     }
   }
-  o += text(M, 172, 4, '대장 방울', { anchor: 'start', fill: '#3b2a18' });
+  o += text(M, 172, 4, '대장 방울 (선 표시)', { anchor: 'start', fill: '#3b2a18' });
   o += `<circle cx="${M + 15}" cy="190" r="11" fill="#f6c343" stroke="#222" stroke-width="0.3"/><text x="${M + 15}" y="192" font-size="4" text-anchor="middle" font-weight="800">대장</text>`;
   // 점수 기록지
   const tx = 60;
@@ -252,11 +230,12 @@ const pages = [];
   const sy = 236;
   o += `<rect x="${M}" y="${sy}" width="${PAGE_W - 2 * M}" height="48" rx="3" fill="#fffaf0" stroke="#555" stroke-width="0.3"/>`;
   const lines = [
-    '차례 요약',
-    '① 가져오기: 펼친 타일 1개(빈자리 바로 채움) 또는 주머니에서 1개',
-    '② 명당 놓기: 내 칸, 또는 내 칸·아지트와 맞닿은 고양이 없는 칸에 원하는 방향으로 돌려서',
-    '③ 고양이 모이기: 쫓아내기(1마리가 1마리) → 앉히기(모자라면 이번에 고양이가 오는 칸을 뺀 가장 높은 내 칸에서)',
-    '라운드 끝: 쉬는 고양이가 가장 많은 사람이 다음 선 · 끝: 내 칸 1점 + 소문 카드 3장 + 급식소',
+    '차례 요약 — 셋 중 하나만',
+    '① 가져오기: 펼친 타일(빈자리 바로 채움)·주머니에서 1개씩 2개 (손 최대 3개)',
+    '② 명당 놓기: 손 1개를 내 칸, 또는 내 칸·아지트와 맞닿은 고양이 없는 칸에 원하는 방향으로 → 고양이 모이기',
+    '③ 명당 부르기: 내 칸 위 명당 하나를 돌려 그 모양대로 고양이 모이기 (능력 없음)',
+    '고양이 모이기: 쫓아내기(1마리가 1마리) → 앉히기(모자라면 이번에 앉힐 칸을 뺀 가장 높은 내 칸에서)',
+    '라운드 끝: 쉬는 고양이가 가장 많은 사람이 다음 선 · 끝(2인 20 / 3인 17라운드): 내 칸 1점 + 소문 카드 3장 + 급식소',
   ];
   lines.forEach((l, i) => (o += text(M + 5, sy + 9 + i * 8.5, i === 0 ? 4.6 : 3.5, l, { anchor: 'start', weight: i === 0 ? 800 : 500 })));
   pages.push(page(o, `고양이 토큰(지름 16mm) · 대장 방울 · 점수 기록지 · 차례 요약`));
