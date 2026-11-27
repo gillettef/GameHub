@@ -121,13 +121,6 @@
   pointer-events: none;
 }
 
-.seatRing {
-  fill: none;
-  stroke: var(--seat);
-  stroke-width: 0.14;
-  stroke-linejoin: round;
-}
-
 /* 명당 타일: 놓을 때 톡 튀어나온다 */
 .plant {
   pointer-events: none;
@@ -149,13 +142,6 @@
 /* 고양이 토큰 + 마릿수 배지 (실물의 고양이 더미) */
 .cats {
   pointer-events: none;
-}
-
-/* 자리 3(삼색냥): 자리 0 토큰 위에 자리 색 고리 */
-.catRing {
-  fill: none;
-  stroke: var(--owner);
-  stroke-width: 0.12;
 }
 
 /* 미리보기에서 고양이가 모두 떠나는 칸 */

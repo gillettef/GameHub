@@ -35,7 +35,7 @@ describe('행동 모양 검사', () => {
     expect(parseAction({ type: 'CONFIRM', playerId: 'p3' })).toEqual({ type: 'CONFIRM' })
     expect(parseAction({ type: 'PICK_CREW', crew: 3, playerId: 'p1' })).toEqual({ type: 'PICK_CREW', crew: 3 })
     expect(parseAction({ type: 'PICK_CREW', crew: null })).toEqual({ type: 'PICK_CREW', crew: null })
-    expect(parseAction({ type: 'PICK_CREW', crew: 4 })).toBeNull()
+    expect(parseAction({ type: 'PICK_CREW', crew: 8 })).toBeNull()
     expect(parseAction({ type: 'PICK_CREW', crew: '1' })).toBeNull()
     expect(parseAction({ type: 'TAKE', turn: 3, take: 1, extra: 1 })).toEqual({ type: 'TAKE', turn: 3, take: 1 })
     expect(parseAction({ type: 'TAKE', turn: 3, take: 'pile' })).toEqual({ type: 'TAKE', turn: 3, take: 'pile' })

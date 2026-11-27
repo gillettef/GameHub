@@ -33,29 +33,58 @@ const save = (name, content) => {
 };
 
 // ---------------------------------------------------------------------------
-// 고양이 (seat 0 치즈 · 1 턱시도 · 2 고등어 · 3 동네 삼색이(무리 아님))
+// 고양이 무리 (0 치즈 · 1 턱시도 · 2 고등어 · 3 삼색 · 4 샴 · 5 흰 · 6 카오스 · 7 젖소). 화면 무리 번호(CREW_COUNT)와 같은 순서
 // ---------------------------------------------------------------------------
 const CAT = [
-  { base: SEAT[0], dark: SEAT_DARK[0], light: '#ffe6c4', iris: '#8cc152', line: INK },
-  { base: SEAT[1], dark: '#18181c', light: '#ffffff', iris: '#f2d24b', line: '#111114' },
-  { base: SEAT[2], dark: SEAT_DARK[2], light: '#e9f0f7', iris: '#f2c14b', line: '#2c3b4c' },
-  { base: '#fbf4ea', dark: '#d58e4c', light: '#ffffff', iris: '#7fb069', line: INK },
+  { base: SEAT[0], dark: SEAT_DARK[0], light: '#ffe6c4', iris: '#8cc152', line: INK, coat: 'tabby' },
+  { base: SEAT[1], dark: '#18181c', light: '#ffffff', iris: '#f2d24b', line: '#111114', coat: 'tux', onDark: true },
+  { base: SEAT[2], dark: SEAT_DARK[2], light: '#e9f0f7', iris: '#f2c14b', line: '#2c3b4c', coat: 'tabby' },
+  { base: '#fbf4ea', dark: '#d58e4c', light: '#ffffff', iris: '#7fb069', line: INK, coat: 'calico' },
+  // 무리 4~7 (2026-11-27 추가): 샴 · 흰 · 카오스 · 젖소
+  { base: '#f3e6d2', dark: '#5a3a26', light: '#fff6ea', iris: '#5fa8e8', line: INK, coat: 'point' },
+  { base: '#fdfcf9', dark: '#e2ddd5', light: '#ffffff', iris: '#6fb3ea', iris2: '#f2c14b', line: '#5a5048', coat: 'solid' },
+  { base: '#4a352c', dark: '#e0893a', light: '#f2d6b0', iris: '#e8b93a', line: '#1e1612', coat: 'tortie', onDark: true },
+  { base: '#fdfcf9', dark: '#232326', light: '#ffffff', iris: '#8cc152', line: '#232326', coat: 'cow' },
 ];
+/** 무리 색 (토큰 테·아지트 바탕). 0~2 는 draw.mjs(실물판 2·3인) 그대로, 3~ 은 화면 무리 색(tokens.css --crew-N) */
+const CREW_FILL = [...SEAT, '#d77fa1', '#8b5e3c', '#3fa7b5', '#8e6bb8', '#5d9e4f'];
+const CREW_DARK = [...SEAT_DARK, '#a4517a', '#5c3a22', '#23727c', '#5e4386', '#3b6e30'];
+const CREW_LIGHT = [...SEAT_LIGHT, '#f6cfe0', '#e3cdb8', '#c4e8ec', '#dcd0ee', '#cfe6c6'];
+const CREW_NAME = [...SEAT_NAME, '삼색냥', '샴냥', '흰냥', '카오스냥', '젖소냥'];
+/** 아지트 바탕이 어두워 글자를 희게 쓰는 무리 */
+const CREW_DARK_FILL = new Set([1, 4, 7]);
 /** 앞에서 본 고양이 머리. 중심 (0,0), s = 머리 반지름 */
 function catHead(seat, s, { look = 0, sleepy = false, x = 0, y = 0 } = {}) {
   const c = CAT[seat];
   const w = s * 0.075;
   const o = [];
+  const earFill = (sx) => (c.coat === 'point' || (c.coat === 'cow' && sx < 0) || (c.coat === 'tortie' && sx > 0) ? c.dark : c.base);
   const ear = (sx) =>
-    `<path d="M${f(sx * 0.88 * s)},${f(-0.3 * s)} L${f(sx * 0.72 * s)},${f(-1.08 * s)} L${f(sx * 0.18 * s)},${f(-0.76 * s)} Z" fill="${c.base}" stroke="${c.line}" stroke-width="${f(w)}" stroke-linejoin="round"/>` +
+    `<path d="M${f(sx * 0.88 * s)},${f(-0.3 * s)} L${f(sx * 0.72 * s)},${f(-1.08 * s)} L${f(sx * 0.18 * s)},${f(-0.76 * s)} Z" fill="${earFill(sx)}" stroke="${c.line}" stroke-width="${f(w)}" stroke-linejoin="round"/>` +
     `<path d="M${f(sx * 0.7 * s)},${f(-0.42 * s)} L${f(sx * 0.66 * s)},${f(-0.86 * s)} L${f(sx * 0.36 * s)},${f(-0.68 * s)} Z" fill="#f4a7a3"/>`;
   o.push(ear(-1), ear(1));
   o.push(`<ellipse cx="0" cy="0" rx="${f(0.98 * s)}" ry="${f(0.82 * s)}" fill="${c.base}" stroke="${c.line}" stroke-width="${f(w)}"/>`);
-  if (seat === 0 || seat === 2) {
+  if (c.coat === 'tabby') {
     o.push(`<path d="M${f(-0.16 * s)},${f(-0.8 * s)} L${f(-0.12 * s)},${f(-0.5 * s)} M0,${f(-0.82 * s)} V${f(-0.46 * s)} M${f(0.16 * s)},${f(-0.8 * s)} L${f(0.12 * s)},${f(-0.5 * s)} M${f(-0.96 * s)},${f(0.05 * s)} h${f(0.26 * s)} M${f(-0.92 * s)},${f(0.25 * s)} h${f(0.24 * s)} M${f(0.96 * s)},${f(0.05 * s)} h${f(-0.26 * s)} M${f(0.92 * s)},${f(0.25 * s)} h${f(-0.24 * s)}" stroke="${c.dark}" stroke-width="${f(s * 0.1)}" stroke-linecap="round"/>`);
     o.push(`<ellipse cx="0" cy="${f(0.36 * s)}" rx="${f(0.46 * s)}" ry="${f(0.32 * s)}" fill="${c.light}"/>`);
-  } else if (seat === 1) {
+  } else if (c.coat === 'tux') {
     o.push(`<path d="M${f(-0.62 * s)},${f(0.52 * s)} C${f(-0.6 * s)},${f(0.12 * s)} ${f(-0.22 * s)},${f(0.02 * s)} ${f(-0.08 * s)},${f(-0.3 * s)} L0,${f(-0.62 * s)} L${f(0.08 * s)},${f(-0.3 * s)} C${f(0.22 * s)},${f(0.02 * s)} ${f(0.6 * s)},${f(0.12 * s)} ${f(0.62 * s)},${f(0.52 * s)} C${f(0.3 * s)},${f(0.8 * s)} ${f(-0.3 * s)},${f(0.8 * s)} ${f(-0.62 * s)},${f(0.52 * s)} Z" fill="#fff"/>`);
+  } else if (c.coat === 'point') {
+    // 샴: 얼굴 가운데가 짙은 가면
+    o.push(`<ellipse cx="0" cy="${f(0.14 * s)}" rx="${f(0.62 * s)}" ry="${f(0.5 * s)}" fill="${c.dark}" opacity="0.45"/>`);
+    o.push(`<ellipse cx="0" cy="${f(0.2 * s)}" rx="${f(0.44 * s)}" ry="${f(0.38 * s)}" fill="${c.dark}" opacity="0.85"/>`);
+  } else if (c.coat === 'solid') {
+    o.push(`<ellipse cx="0" cy="${f(0.36 * s)}" rx="${f(0.46 * s)}" ry="${f(0.3 * s)}" fill="${c.dark}" opacity="0.35"/>`);
+  } else if (c.coat === 'tortie') {
+    // 카오스: 짙은 바탕에 주황 얼룩
+    o.push(`<path d="M${f(-0.1 * s)},${f(-0.8 * s)} C${f(-0.55 * s)},${f(-0.75 * s)} ${f(-0.85 * s)},${f(-0.5 * s)} ${f(-0.92 * s)},${f(-0.1 * s)} C${f(-0.6 * s)},${f(0.05 * s)} ${f(-0.3 * s)},${f(-0.35 * s)} ${f(-0.1 * s)},${f(-0.8 * s)} Z" fill="${c.dark}"/>`);
+    o.push(`<path d="M${f(0.25 * s)},${f(0.2 * s)} C${f(0.55 * s)},${f(0.05 * s)} ${f(0.85 * s)},${f(0.15 * s)} ${f(0.9 * s)},${f(0.35 * s)} C${f(0.7 * s)},${f(0.62 * s)} ${f(0.4 * s)},${f(0.6 * s)} ${f(0.25 * s)},${f(0.2 * s)} Z" fill="${c.dark}"/>`);
+    o.push(`<circle cx="${f(0.18 * s)}" cy="${f(-0.62 * s)}" r="${f(0.09 * s)}" fill="${c.dark}"/>`);
+  } else if (c.coat === 'cow') {
+    // 젖소: 흰 바탕에 검은 얼룩(왼쪽 눈가 · 오른쪽 이마 · 뺨 점)
+    o.push(`<path d="M${f(-0.15 * s)},${f(-0.8 * s)} C${f(-0.6 * s)},${f(-0.78 * s)} ${f(-0.95 * s)},${f(-0.45 * s)} ${f(-0.9 * s)},${f(0.02 * s)} C${f(-0.7 * s)},${f(0.2 * s)} ${f(-0.3 * s)},${f(0.16 * s)} ${f(-0.2 * s)},${f(-0.15 * s)} C${f(-0.1 * s)},${f(-0.4 * s)} ${f(-0.05 * s)},${f(-0.6 * s)} ${f(-0.15 * s)},${f(-0.8 * s)} Z" fill="${c.dark}"/>`);
+    o.push(`<ellipse cx="${f(0.5 * s)}" cy="${f(-0.58 * s)}" rx="${f(0.26 * s)}" ry="${f(0.15 * s)}" fill="${c.dark}" transform="rotate(20 ${f(0.5 * s)} ${f(-0.58 * s)})"/>`);
+    o.push(`<circle cx="${f(0.62 * s)}" cy="${f(0.42 * s)}" r="${f(0.1 * s)}" fill="${c.dark}"/>`);
   } else {
     o.push(`<path d="M${f(0.15 * s)},${f(-0.8 * s)} C${f(0.6 * s)},${f(-0.75 * s)} ${f(0.92 * s)},${f(-0.45 * s)} ${f(0.95 * s)},${f(-0.05 * s)} C${f(0.6 * s)},${f(-0.1 * s)} ${f(0.3 * s)},${f(-0.4 * s)} ${f(0.15 * s)},${f(-0.8 * s)} Z" fill="${c.dark}"/>`);
     o.push(`<path d="M${f(-0.2 * s)},${f(-0.8 * s)} C${f(-0.6 * s)},${f(-0.72 * s)} ${f(-0.9 * s)},${f(-0.5 * s)} ${f(-0.95 * s)},${f(-0.2 * s)} C${f(-0.6 * s)},${f(-0.3 * s)} ${f(-0.35 * s)},${f(-0.5 * s)} ${f(-0.2 * s)},${f(-0.8 * s)} Z" fill="#4a3a30"/>`);
@@ -65,19 +94,19 @@ function catHead(seat, s, { look = 0, sleepy = false, x = 0, y = 0 } = {}) {
   const ex = 0.36 * s;
   const ey = -0.04 * s;
   if (sleepy) {
-    o.push(`<path d="M${f(-ex - 0.14 * s)},${f(ey)} q${f(0.14 * s)},${f(0.12 * s)} ${f(0.28 * s)},0 M${f(ex - 0.14 * s)},${f(ey)} q${f(0.14 * s)},${f(0.12 * s)} ${f(0.28 * s)},0" stroke="${seat === 1 ? '#fff' : c.line}" stroke-width="${f(w)}" fill="none" stroke-linecap="round"/>`);
+    o.push(`<path d="M${f(-ex - 0.14 * s)},${f(ey)} q${f(0.14 * s)},${f(0.12 * s)} ${f(0.28 * s)},0 M${f(ex - 0.14 * s)},${f(ey)} q${f(0.14 * s)},${f(0.12 * s)} ${f(0.28 * s)},0" stroke="${c.onDark ? '#fff' : c.line}" stroke-width="${f(w)}" fill="none" stroke-linecap="round"/>`);
   } else {
     for (const sx of [-1, 1]) {
       const cx = sx * ex;
-      o.push(`<ellipse cx="${f(cx)}" cy="${f(ey)}" rx="${f(0.15 * s)}" ry="${f(0.18 * s)}" fill="${c.iris}" stroke="${c.line}" stroke-width="${f(w * 0.6)}"/>`);
+      o.push(`<ellipse cx="${f(cx)}" cy="${f(ey)}" rx="${f(0.15 * s)}" ry="${f(0.18 * s)}" fill="${sx > 0 && c.iris2 ? c.iris2 : c.iris}" stroke="${c.line}" stroke-width="${f(w * 0.6)}"/>`);
       o.push(`<ellipse cx="${f(cx + look * 0.06 * s)}" cy="${f(ey + 0.01 * s)}" rx="${f(0.07 * s)}" ry="${f(0.14 * s)}" fill="#16120f"/>`);
       o.push(`<circle cx="${f(cx + look * 0.06 * s - 0.04 * s)}" cy="${f(ey - 0.07 * s)}" r="${f(0.035 * s)}" fill="#fff"/>`);
     }
   }
   o.push(`<path d="M${f(-0.08 * s)},${f(0.2 * s)} h${f(0.16 * s)} l${f(-0.08 * s)},${f(0.09 * s)} z" fill="#e8848a" stroke="${c.line}" stroke-width="${f(w * 0.5)}" stroke-linejoin="round"/>`);
-  const ml = seat === 1 ? '#3a3a40' : c.line;
+  const ml = c.coat === 'tux' ? '#3a3a40' : c.coat === 'tortie' ? '#d9c2a8' : c.line;
   o.push(`<path d="M0,${f(0.29 * s)} q${f(-0.06 * s)},${f(0.12 * s)} ${f(-0.15 * s)},${f(0.05 * s)} M0,${f(0.29 * s)} q${f(0.06 * s)},${f(0.12 * s)} ${f(0.15 * s)},${f(0.05 * s)}" stroke="${ml}" stroke-width="${f(w * 0.6)}" fill="none" stroke-linecap="round"/>`);
-  const wc = seat === 1 ? '#ffffff' : '#7a6650';
+  const wc = c.onDark ? '#ffffff' : '#7a6650';
   o.push(`<path d="M${f(-0.4 * s)},${f(0.3 * s)} l${f(-0.5 * s)},${f(-0.06 * s)} M${f(-0.4 * s)},${f(0.38 * s)} l${f(-0.48 * s)},${f(0.08 * s)} M${f(0.4 * s)},${f(0.3 * s)} l${f(0.5 * s)},${f(-0.06 * s)} M${f(0.4 * s)},${f(0.38 * s)} l${f(0.48 * s)},${f(0.08 * s)}" stroke="${wc}" stroke-width="${f(w * 0.35)}" stroke-linecap="round" opacity="0.8"/>`);
   return `<g transform="translate(${f(x)},${f(y)})">${o.join('')}</g>`;
 }
@@ -380,30 +409,30 @@ function terrainSvg(kind) {
 
 function hideoutSvg(seat) {
   const o = [];
-  const dark = seat === 1;
-  o.push(`<polygon points="${hexPts(0, 0, 99)}" fill="${SEAT_LIGHT[seat]}" stroke="#a89878" stroke-width="2"/>`);
-  o.push(`<polygon points="${hexPts(0, 0, 84)}" fill="${SEAT[seat]}" stroke="${INK}" stroke-width="4" stroke-linejoin="round"/>`);
-  o.push(`<polygon points="${hexPts(0, 0, 76)}" fill="none" stroke="${dark ? '#6a6a72' : SEAT_LIGHT[seat]}" stroke-width="2" stroke-dasharray="6 4"/>`);
+  const dark = CREW_DARK_FILL.has(seat);
+  o.push(`<polygon points="${hexPts(0, 0, 99)}" fill="${CREW_LIGHT[seat]}" stroke="#a89878" stroke-width="2"/>`);
+  o.push(`<polygon points="${hexPts(0, 0, 84)}" fill="${CREW_FILL[seat]}" stroke="${INK}" stroke-width="4" stroke-linejoin="round"/>`);
+  o.push(`<polygon points="${hexPts(0, 0, 76)}" fill="none" stroke="${dark ? '#6a6a72' : CREW_LIGHT[seat]}" stroke-width="2" stroke-dasharray="6 4"/>`);
   // 상자집
   o.push(`<ellipse cx="0" cy="40" rx="46" ry="6" fill="#000" opacity="0.18"/>`);
   o.push(`<path d="M-38,38 V-6 L0,-40 L38,-6 V38 Z" fill="#e2b783" stroke="${INK}" stroke-width="3.4" stroke-linejoin="round"/>`);
-  o.push(`<path d="M-46,-2 L0,-46 L46,-2" fill="none" stroke="${SEAT_DARK[seat]}" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/><path d="M-46,-2 L0,-46 L46,-2" fill="none" stroke="${INK}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.5"/>`);
+  o.push(`<path d="M-46,-2 L0,-46 L46,-2" fill="none" stroke="${CREW_DARK[seat]}" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/><path d="M-46,-2 L0,-46 L46,-2" fill="none" stroke="${INK}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.5"/>`);
   o.push(`<path d="M-22,38 V12 A22,22 0 0 1 22,12 V38 Z" fill="#3b2a1c"/>`);
   o.push(catHead(seat, 17, { x: 0, y: 22 }));
   o.push(`<path d="M-38,38 H38" stroke="${INK}" stroke-width="3.4" stroke-linecap="round"/>`);
   o.push(`<g transform="translate(26,-14)" fill="${INK}" opacity="0.55"><ellipse cx="0" cy="2" rx="4" ry="3.4"/><circle cx="-4" cy="-3" r="1.6"/><circle cx="0" cy="-4.6" r="1.6"/><circle cx="4" cy="-3" r="1.6"/></g>`);
   o.push(T(0, 66, 16, '아지트', { fill: dark ? '#ffffff' : INK, weight: 900 }));
-  return svg('-100 -100 200 200', o.join('\n'), `${SEAT_NAME[seat]} 아지트`);
+  return svg('-100 -100 200 200', o.join('\n'), `${CREW_NAME[seat]} 아지트`);
 }
 
 function catTokenSvg(seat) {
   const o = [];
   o.push(`<circle cx="0" cy="2.5" r="46" fill="#000" opacity="0.2"/>`);
-  o.push(`<circle cx="0" cy="0" r="46" fill="${SEAT_DARK[seat]}" stroke="#1a1a1a" stroke-width="2.5"/>`);
-  o.push(`<circle cx="0" cy="-1.5" r="41" fill="${SEAT_LIGHT[seat]}"/>`);
+  o.push(`<circle cx="0" cy="0" r="46" fill="${CREW_DARK[seat]}" stroke="#1a1a1a" stroke-width="2.5"/>`);
+  o.push(`<circle cx="0" cy="-1.5" r="41" fill="${CREW_LIGHT[seat]}"/>`);
   o.push(`<circle cx="0" cy="-1.5" r="41" fill="none" stroke="#fff" stroke-width="1.5" opacity="0.5"/>`);
   o.push(catHead(seat, 30, { y: 6 }));
-  return svg('-50 -50 100 100', o.join('\n'), `고양이 토큰 — ${SEAT_NAME[seat]}`);
+  return svg('-50 -50 100 100', o.join('\n'), `고양이 토큰 — ${CREW_NAME[seat]}`);
 }
 
 // ---------------------------------------------------------------------------
@@ -637,8 +666,8 @@ save('spot-back.svg', spotBackSvg());
 for (const g of GOALS) save(`goal-${g.id}.svg`, goalCardSvg(g));
 save('goal-back.svg', goalBackSvg());
 for (const k of ['empty', 'fertile', 'pond', 'rock']) save(`terrain-${k}.svg`, terrainSvg(k));
-for (const s of [0, 1, 2]) save(`hideout-${s}.svg`, hideoutSvg(s));
-for (const s of [0, 1, 2]) save(`cat-${s}.svg`, catTokenSvg(s));
+for (let s = 0; s < CAT.length; s++) save(`hideout-${s}.svg`, hideoutSvg(s));
+for (let s = 0; s < CAT.length; s++) save(`cat-${s}.svg`, catTokenSvg(s));
 save('cover.svg', coverSvg());
 save('logo.svg', logoSvg());
 writeFileSync(new URL('./manifest.json', import.meta.url), JSON.stringify(Object.keys(files), null, 1));

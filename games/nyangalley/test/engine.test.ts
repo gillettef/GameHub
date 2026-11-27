@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { HAND_MAX, START_HAND, getSpecies, rulesFor } from '../src/engine/data/index.js';
+import { CREW_COUNT, HAND_MAX, START_HAND, getSpecies, rulesFor } from '../src/engine/data/index.js';
 import { maskState } from '../src/engine/mask.js';
 import type { Action, Board, GameState, Plant, PlayerId, Position, SpeciesId } from '../src/engine/types.js';
 import {
@@ -633,7 +633,7 @@ describe('무리 고르기 (Rules.md 4절 8)', () => {
     expect(s.phase).toBe('reveal');
     s = ok(s, { type: 'PICK_CREW', playerId: 'p0', crew: 3 });
     expect(applyAction(s, { type: 'PICK_CREW', playerId: 'p1', crew: 3 }).error).toMatch(/이미 고른/);
-    expect(applyAction(s, { type: 'PICK_CREW', playerId: 'p1', crew: 4 }).error).toBeTruthy();
+    expect(applyAction(s, { type: 'PICK_CREW', playerId: 'p1', crew: 8 }).error).toBeTruthy();
     s = ok(s, { type: 'PICK_CREW', playerId: 'p0', crew: 1 });
     s = ok(s, { type: 'PICK_CREW', playerId: 'p1', crew: 3 });
     s = ok(s, { type: 'PICK_CREW', playerId: 'p1', crew: null });
@@ -644,7 +644,7 @@ describe('무리 고르기 (Rules.md 4절 8)', () => {
     const crews = s.players.map((p) => p.crew);
     expect(crews[0]).toBe(1);
     expect(new Set(crews).size).toBe(3);
-    expect(crews.every((c) => typeof c === 'number' && c >= 0 && c < 4)).toBe(true);
+    expect(crews.every((c) => typeof c === 'number' && c >= 0 && c < CREW_COUNT)).toBe(true);
     // 같은 시드면 같은 결과 (결정성)
     let t = lobby(3, 7);
     t = { ...t, players: t.players.map((p, i) => (i === 2 ? { ...p, kind: 'ai' as const, isReady: true } : p)) };
@@ -657,6 +657,25 @@ describe('무리 고르기 (Rules.md 4절 8)', () => {
       t = ok(t, a);
     expect(t.players.map((p) => p.crew)).toEqual(crews);
     expect(applyAction(s, { type: 'PICK_CREW', playerId: 'p0', crew: 0 }).error).toBeTruthy();
+  });
+
+  it('누가 무엇을 고르든(랜덤 섞어도) 시작하면 모든 자리의 무리가 서로 다르다', () => {
+    for (const n of [2, 3, 4])
+      for (let seed = 1; seed <= 40; seed++) {
+        let s = lobby(n, seed);
+        for (const p of s.players) s = ok(s, { type: 'READY', playerId: p.id });
+        for (const p of [...s.players].sort((a, b) => a.seat - b.seat)) {
+          // 앞사람이 고른 무리는 피하고, 일부는 랜덤
+          const pick = (seed * 7 + p.seat * 3) % (CREW_COUNT + 1);
+          const crew = pick === CREW_COUNT || s.players.some((o) => o.crew === pick) ? null : pick;
+          s = ok(s, { type: 'PICK_CREW', playerId: p.id, crew });
+          s = ok(s, { type: 'CONFIRM', playerId: p.id });
+        }
+        expect(s.phase).toBe('playing');
+        const crews = s.players.map((p) => p.crew);
+        expect(new Set(crews).size).toBe(n);
+        expect(crews.every((c) => typeof c === 'number' && c >= 0 && c < CREW_COUNT)).toBe(true);
+      }
   });
 });
 
