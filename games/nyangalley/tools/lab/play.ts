@@ -33,7 +33,7 @@ export interface GameOut {
   /** 내 땅 위 식물 수 (동점 깨기: 많을수록 이긴다) */
   plantsOnLand: number[];
   /** 행동 고르기: 행동별 횟수 */
-  actionCount: Record<'place' | 'move' | 'gather' | 'call', number>;
+  actionCount: Record<'place' | 'move' | 'gather' | 'call' | 'take', number>;
   choreCount: Record<string, number>;
   sameAsLast: number;
 }
@@ -55,6 +55,24 @@ export function playGame(rules: LabRules, P: number, seed: number, botNames: str
     if (g.needs() === 'draft') {
       const bot = bots[s] as ReturnType<typeof makeBot>;
       g.doDraft(bot.draft ? bot.draft(g, s, rand) : 0);
+      continue;
+    }
+    if (g.needs() === 'take' && rules.one) {
+      const bot = bots[s] as ReturnType<typeof makeBot>;
+      const act = bot.action!(g, s, rand);
+      if (act.kind === 'call') {
+        const before = g.inf.map((a) => a.slice());
+        g.doAction(act);
+        for (let p = 0; p < P; p++) {
+          const A = before[p] as Int16Array;
+          const B = g.inf[p] as Int16Array;
+          for (let c = 0; c < g.geo.n; c++) {
+            cubeOps += Math.abs((B[c] as number) - (A[c] as number));
+            if ((B[c] as number) > maxStack) maxStack = B[c] as number;
+          }
+        }
+      } else if (act.kind === 'take2' || act.kind === 'pass' || act.kind === 'plant') g.doAction(act);
+      else g.doAction({ kind: 'pass' });
       continue;
     }
     if (g.needs() === 'take') {

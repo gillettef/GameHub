@@ -1,6 +1,5 @@
 import { memo, useMemo, type CSSProperties } from 'react';
-import { bossSeat, computeScores, getChore, getSpecies } from '../../engine';
-import { choreArtUrl } from '../game/cardImages';
+import { computeScores, getSpecies } from '../../engine';
 import { GoalList } from '../components/GoalList';
 import { asState, buildPlayerSummaries, crewName } from '../game/derived';
 import { selectState, selectViewerId, useGameStore } from '../store/gameStore';
@@ -16,8 +15,6 @@ export const StatusTab = memo(function StatusTab() {
   const scores = useMemo(() => (state?.board ? computeScores(asState(state)) : null), [state]);
   const rows = useMemo(() => (state ? buildPlayerSummaries(state, scores) : []), [state, scores]);
   if (!state) return null;
-  const playing = state.phase === 'playing';
-  const boss = playing ? bossSeat(state) : null;
 
   return (
     <div className={styles.root}>
@@ -42,21 +39,6 @@ export const StatusTab = memo(function StatusTab() {
                   <span>소문 카드 {r.score.goals}</span>
                   {r.score.bloom > 0 && <span>캣맘 급식소 {r.score.bloom}</span>}
                   {r.score.komi > 0 && <span>순서 보너스 {r.score.komi}</span>}
-                </div>
-              )}
-              {playing && (
-                <div className={styles.chore}>
-                  {state.chores[r.seat] ? (
-                    <>
-                      <img className={styles.choreArt} src={choreArtUrl(state.chores[r.seat]!)} alt="" aria-hidden="true" />
-                      <span>
-                        {state.round}라운드 일과 <strong>{getChore(state.chores[r.seat]!).name}</strong>
-                        {boss === r.seat ? ' · 다음 라운드 선' : ''}
-                      </span>
-                    </>
-                  ) : (
-                    <span>{state.round}라운드 일과: 아직 안 고름</span>
-                  )}
                 </div>
               )}
               <div className={styles.meta}>

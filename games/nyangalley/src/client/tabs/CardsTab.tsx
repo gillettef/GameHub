@@ -1,12 +1,11 @@
 import { memo } from 'react';
-import { CHORES, CHORE_EXTRA, GOALS, GOAL_COUNT, SPECIES_IDS } from '../../engine';
-import { choreArtUrl } from '../game/cardImages';
+import { GOALS, GOAL_COUNT, SPECIES_IDS } from '../../engine';
 import { SpeciesCard } from '../components/SpeciesCard';
 import { useGameStore } from '../store/gameStore';
 import styles from './CardsTab.module.css';
 
 /**
- * 카드 탭: 명당 타일 9종(규칙 용어 식물), 골목 일과 6장(v7), 소문 카드 16장(규칙 용어 목표) 전체 목록.
+ * 카드 탭: 명당 타일 9종(규칙 용어 식물), 소문 카드 16장(규칙 용어 목표) 전체 목록.
  * 이번 판 명당(state.species)을 위에, 나머지는 '이번 판에 없음'으로 흐리게.
  * 타일·소문 카드를 누르면 그림을 크게 본다(보기 전용). 소문 카드는 단골(명당 연계) = 초록 띠, 나머지 = 주황 띠
  */
@@ -38,24 +37,6 @@ export const CardsTab = memo(function CardsTab() {
           </div>
         </section>
       )}
-      <section className={styles.section}>
-        <h2 className={styles.h2}>골목 일과 {CHORES.length}장</h2>
-        <p className={styles.help}>라운드마다 섞어 (인원 + {CHORE_EXTRA})장을 펼치고, 선부터 하나씩 골라 그 일과대로 차례를 합니다. 마지막 1장은 남습니다.</p>
-        <ul className={styles.chores}>
-          {CHORES.map((c) => (
-            <li key={c.id}>
-              <img className={styles.choreArt} src={choreArtUrl(c.id)} alt="" aria-hidden="true" decoding="async" />
-              <span>
-                <strong>
-                  {c.name}
-                  <em className={c.place ? styles.place : styles.noPlace}>{c.place ? '놓기' : '놓지 않음'}</em>
-                </strong>
-                <span>{c.description}</span>
-              </span>
-            </li>
-          ))}
-        </ul>
-      </section>
       <section className={styles.section}>
         <h2 className={styles.h2}>소문 카드 {GOALS.length}장</h2>
         <p className={styles.help}>판마다 {GOAL_COUNT}장이 공개되고, 그중 1장 이상은 단골 소문(초록 띠)입니다.</p>

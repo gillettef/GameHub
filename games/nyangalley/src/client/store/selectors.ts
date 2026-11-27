@@ -3,7 +3,8 @@
  * gameStore 와 서로 import 하지만 여기서는 타입만 가져오므로 실행 순서 문제는 없다. 기존 경로를 위해 gameStore 가 다시 내보낸다.
  */
 import type { MaskedGameState, PlayerId, SpeciesId } from '../../engine';
-import { awaitingConfirm } from '../game/derived';
+import { canTake, legalCallCells } from '../../engine';
+import { asState, awaitingConfirm } from '../game/derived';
 import type { GameStore, TabId } from './gameStore';
 
 type MaskedPlayer = MaskedGameState['players'][number];
@@ -17,19 +18,21 @@ export const selectViewerId = (s: GameStore): PlayerId | null => s.viewerId;
 export const selectTab = (s: GameStore): TabId => s.tab;
 /** 내 플레이어 정보. state 가 바뀔 때만 새 참조가 된다 */
 export const selectMe = (s: GameStore): MaskedPlayer | undefined => findMe(s.state, s.viewerId);
-/** 내 차례(가져오기·심기 어느 단계든) */
+/** 내 차례(행동 고르기·가져오기 두 번째 어느 단계든) */
 export const selectIsMyTurn = (s: GameStore): boolean =>
   s.state !== null && s.state.phase === 'playing' && s.state.currentPlayerId === s.viewerId && !s.handoffPending && !s.sending;
-/** 내 일과 고르기 차례 (Rules.md 5.1) */
-export const selectCanPickChore = (s: GameStore): boolean => selectIsMyTurn(s) && s.state?.stage === 'chore';
-/** 내 담 넘기 차례 (Rules.md 5.3) */
-export const selectCanMove = (s: GameStore): boolean => selectIsMyTurn(s) && s.state?.stage === 'move';
-/** 내 명당 부르기 차례 (Rules.md 5.3) */
-export const selectCanCall = (s: GameStore): boolean => selectIsMyTurn(s) && s.state?.stage === 'call';
-/** 내 가져오기 차례 (Rules.md 5절 1) */
-export const selectCanTake = (s: GameStore): boolean => selectIsMyTurn(s) && s.state?.stage === 'take';
-/** 내 심기 차례 (Rules.md 5절 2) */
-export const selectCanPlant = (s: GameStore): boolean => selectIsMyTurn(s) && s.state?.stage === 'plant';
+/** 내 행동 고르기 단계 (Rules.md 5.1) */
+export const selectCanAct = (s: GameStore): boolean => selectIsMyTurn(s) && s.state?.stage === 'act';
+/** 가져오기 두 번째 타일 단계 (Rules.md 5.1 1) */
+export const selectTakingSecond = (s: GameStore): boolean => selectIsMyTurn(s) && s.state?.stage === 'take';
+/** 지금 타일 1개를 가져올 수 있나: 행동 고르기(손 3장 미만) 또는 가져오기 두 번째 (Rules.md 5.1 1) */
+export const selectCanTake = (s: GameStore): boolean =>
+  (selectCanAct(s) || selectTakingSecond(s)) && !!s.state && !!s.viewerId && canTake(s.state, s.viewerId);
+/** 지금 손 타일을 놓을(버릴) 수 있나: 행동 고르기 단계 (Rules.md 5.1 2) */
+export const selectCanPlant = (s: GameStore): boolean => selectCanAct(s);
+/** 지금 명당을 부를 수 있나: 행동 고르기 단계이고 내 칸 위 명당이 있다 (Rules.md 5.1 3) */
+export const selectCanCall = (s: GameStore): boolean =>
+  selectCanAct(s) && !!s.state?.board && !!s.viewerId && legalCallCells(asState(s.state), s.viewerId).length > 0;
 /** 공개 단계에서 내가 아직 확인하지 않았나 (Rules.md 4절 8) */
 export const selectAwaitingMyConfirm = (s: GameStore): boolean => s.state !== null && awaitingConfirm(s.state, s.viewerId);
 

@@ -1,16 +1,16 @@
 // 공통 방·진행 코드(@gamehub/net)에 루트바운드 엔진을 연결한다. 서버(온라인)와 브라우저(한 기기)가 함께 쓴다.
 //
 // 좌석 번호 = 엔진의 자리(seat), 엔진 플레이어 id 는 `p<좌석>`. 봇 자리는 엔진의 'ai', 사람 자리는 'human'.
-// 진행(v7 「골목 일과」, Rules.md 5절): 이번 판 식물 공개(모두 동시에 CONFIRM) → 라운드마다 일과 고르기(PICK_CHORE, 선부터 한 사람씩)
-// → 차례마다 고른 일과대로: 가져오기(TAKE) → 심기(PLANT, 심을 칸이 없으면 DISCARD) / 담 넘기(MOVE) / 명당 부르기(CALL) → 라운드 수를 채우면 종료.
+// 진행(v8 「행동 하나」, Rules.md 5절): 이번 판 식물 공개(모두 동시에 CONFIRM) → 차례마다 행동 하나:
+// 가져오기(TAKE 두 번, 손 최대 3장) / 놓기(PLANT, 심을 칸이 없으면 DISCARD) / 명당 부르기(CALL) → 라운드 수를 채우면 종료.
 // 규칙 판단은 모두 엔진(applyAction)이 한다. 여기서는 좌석 ↔ 플레이어 id, 행동 모양 검사, 가림, 차례 제한 시간만 다룬다.
 //
 // 숨은 정보(view 가 가린다, 옛 서버 maskState 와 같다): 남의 손 카드(장수만), 카드 더미 순서(장수만), 보드·더미 난수 시드.
-// 관전자는 모든 손 카드가 가려진다. 마켓·생선 냄새로 편 카드·펼친 일과·고른 일과·이번 판 식물·심은 식물·뿌리·기록은 공개다.
+// 관전자는 모든 손 카드가 가려진다. 마켓·이번 판 식물·심은 식물·뿌리·기록은 공개다.
 //
 // 차례 제한 시간(Rules.md 6.3, 온라인만, 방장이 방을 만들 때 고른다): GameDef.clock 으로 잰다.
-// 넘으면 엔진의 자동 수(autoAction), 차례를 끝내는 단계(심기·담 넘기·명당 부르기)의 시간 초과가 연달아 2번이면 그 자리는 AI 가 대신 둔다
-// ('다시 내가 두기'로 되찾는다). 일과 고르기·가져오기 시간 초과는 자동으로 두지만 세지 않는다.
+// 넘으면 엔진의 자동 수(autoAction), 행동을 고르는 단계('act')의 시간 초과가 연달아 2번이면 그 자리는 AI 가 대신 둔다
+// ('다시 내가 두기'로 되찾는다). 가져오기 두 번째 장('take') 시간 초과는 자동으로 두지만 세지 않는다.
 // 접속이 끊긴 사람의 차례는 공통 코드가 45초 뒤 봇(def.bot)으로 대신 둔다.
 import { RuleError, type GameDef } from '@gamehub/net'
 import { requestAiDecision } from './ai/search'
@@ -27,21 +27,16 @@ import {
   autoAction,
   createInitialState,
   createPlayer,
-  MOVE_MAX,
-  MOVE_TIMES,
-  isChoreId,
   isDirection,
   isSpeciesId,
   joinPlayer,
   maskState,
   maybeStart,
   type Action as EngineAction,
-  type ChoreId,
   type Direction,
   type GameLogEntry,
   type GameState,
   type MaskedGameState,
-  type MoveStep,
   type PlayerId,
   type Position,
   type SpeciesId,
@@ -50,16 +45,12 @@ import {
 /** 화면 → 서버 행동. 좌석은 접속이 정하므로 playerId 를 받지 않는다. turn = 고를 때 본 차례 번호(늦게 도착한 수 거절) */
 export type Action =
   | { type: 'CONFIRM' }
-  /** 일과 고르기 단계: 펼친 일과 중 하나 */
-  | { type: 'PICK_CHORE'; turn: number; chore: ChoreId }
-  /** take: 마켓 번호, 'pile' 카드 더미 맨 위(뒷면), 'peek' 생선 냄새로 편 카드 */
-  | { type: 'TAKE'; turn: number; take: number | 'pile' | 'peek' }
+  /** 가져오기 한 장. take: 마켓 번호, 'pile' 카드 더미 맨 위(뒷면) */
+  | { type: 'TAKE'; turn: number; take: number | 'pile' }
   | { type: 'PLANT'; turn: number; species: SpeciesId; pos: Position; rotation?: Direction; seed?: Position }
   | { type: 'DISCARD'; turn: number; species: SpeciesId }
-  /** 담 넘기: 1~2번 이동 */
-  | { type: 'MOVE'; turn: number; moves: MoveStep[] }
-  /** 명당 부르기: 내 칸 위 식물 칸, 새 방향(생략하면 그대로), 그다음 가져올 마켓 번호(가져올 수 있을 때만) */
-  | { type: 'CALL'; turn: number; pos: Position; rotation?: Direction; take?: number }
+  /** 명당 부르기: 내 칸 위 식물 칸, 새 방향(생략하면 그대로) */
+  | { type: 'CALL'; turn: number; pos: Position; rotation?: Direction }
   | { type: 'SURRENDER' }
   /** AI 대리 중인 내 자리를 되찾는다 */
   | { type: 'RESUME' }
@@ -103,8 +94,8 @@ export interface View {
   tutorial: boolean
 }
 
-/** 시간 초과를 세는 단계: 차례를 끝내는 단계 */
-const ENDING_STAGES: ReadonlySet<GameState['stage']> = new Set(['plant', 'move', 'call'])
+/** 시간 초과를 세는 단계: 행동을 고르는 단계 */
+const ENDING_STAGES: ReadonlySet<GameState['stage']> = new Set(['act'])
 
 /** AI 대리 자리가 두기 전 기다리는 시간 */
 const AUTOPILOT_DELAY_MS = 800
@@ -133,23 +124,9 @@ export function parseAction(raw: unknown): Action | null {
   if (!isInt(raw.turn, 0, 100_000)) return null
   const turn = raw.turn
   switch (raw.type) {
-    case 'PICK_CHORE':
-      return isChoreId(raw.chore) ? { type: 'PICK_CHORE', turn, chore: raw.chore } : null
     case 'TAKE':
-      if (raw.take === 'pile' || raw.take === 'peek') return { type: 'TAKE', turn, take: raw.take }
+      if (raw.take === 'pile') return { type: 'TAKE', turn, take: raw.take }
       return isInt(raw.take, 0, 9) ? { type: 'TAKE', turn, take: raw.take } : null
-    case 'MOVE': {
-      if (!Array.isArray(raw.moves) || raw.moves.length < 1 || raw.moves.length > MOVE_TIMES) return null
-      const moves: MoveStep[] = []
-      for (const m of raw.moves as unknown[]) {
-        if (!isObject(m)) return null
-        const from = parsePos(m.from)
-        const to = parsePos(m.to)
-        if (!from || !to || !isInt(m.count, 1, MOVE_MAX)) return null
-        moves.push({ from, to, count: m.count })
-      }
-      return { type: 'MOVE', turn, moves }
-    }
     case 'CALL': {
       const pos = parsePos(raw.pos)
       if (!pos) return null
@@ -157,10 +134,6 @@ export function parseAction(raw: unknown): Action | null {
       if (raw.rotation !== undefined) {
         if (!isDirection(raw.rotation)) return null
         a.rotation = raw.rotation
-      }
-      if (raw.take !== undefined) {
-        if (!isInt(raw.take, 0, 9)) return null
-        a.take = raw.take
       }
       return a
     }
@@ -197,8 +170,6 @@ function toEngine(a: Exclude<Action, { type: 'RESUME' }>, id: PlayerId): EngineA
     case 'CONFIRM':
     case 'SURRENDER':
       return { type: a.type, playerId: id }
-    case 'PICK_CHORE':
-      return { type: 'PICK_CHORE', playerId: id, chore: a.chore }
     case 'TAKE':
       return { type: 'TAKE', playerId: id, take: a.take }
     case 'DISCARD':
@@ -209,12 +180,9 @@ function toEngine(a: Exclude<Action, { type: 'RESUME' }>, id: PlayerId): EngineA
       if (a.seed !== undefined) e.seed = a.seed
       return e
     }
-    case 'MOVE':
-      return { type: 'MOVE', playerId: id, moves: a.moves.map((m) => ({ from: m.from, to: m.to, count: m.count })) }
     case 'CALL': {
       const e: Extract<EngineAction, { type: 'CALL' }> = { type: 'CALL', playerId: id, pos: a.pos }
       if (a.rotation !== undefined) e.rotation = a.rotation
-      if (a.take !== undefined) e.take = a.take
       return e
     }
   }
@@ -226,8 +194,6 @@ export function fromEngine(a: EngineAction, turn: number): Action | null {
     case 'CONFIRM':
     case 'SURRENDER':
       return { type: a.type }
-    case 'PICK_CHORE':
-      return { type: 'PICK_CHORE', turn, chore: a.chore }
     case 'TAKE':
       return { type: 'TAKE', turn, take: a.take }
     case 'DISCARD':
@@ -238,12 +204,9 @@ export function fromEngine(a: EngineAction, turn: number): Action | null {
       if (a.seed !== undefined) p.seed = a.seed
       return p
     }
-    case 'MOVE':
-      return { type: 'MOVE', turn, moves: a.moves.map((m) => ({ from: m.from, to: m.to, count: m.count })) }
     case 'CALL': {
       const c: Extract<Action, { type: 'CALL' }> = { type: 'CALL', turn, pos: a.pos }
       if (a.rotation !== undefined) c.rotation = a.rotation
-      if (a.take !== undefined) c.take = a.take
       return c
     }
     default:
@@ -351,7 +314,7 @@ function onDeadline(t: Table, clock: Clock): Table {
   const r = auto ? applyAction(g, auto) : { state: g, error: '둘 수 있는 수가 없습니다' }
   if (r.error) throw new Error(r.error)
   let game = noteBefore(g, r.state, id, `${me.nickname}: 시간 초과(${secLabel(limit)})로 ${TIMEOUT_LOG_MARK}`)
-  // 연속 시간 초과는 차례 단위로 센다: 한 라운드에 일과 고르기·가져오기·심기가 있으므로 차례를 끝내는 단계(심기·담 넘기·명당 부르기)만 센다 (Rules.md 6.3)
+  // 연속 시간 초과는 차례 단위로 센다: 가져오기는 두 단계라 행동을 고르는 단계('act')만 센다 (Rules.md 6.3)
   const strikes = (t.strikes[seat] ?? 0) + (ENDING_STAGES.has(g.stage) ? 1 : 0)
   let autopilot = t.autopilot
   if (strikes >= AFK_STRIKES_FOR_AUTOPILOT && game.phase !== 'finished' && !autopilot.includes(seat)) {
