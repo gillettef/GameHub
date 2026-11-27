@@ -140,7 +140,7 @@ describe('칸 이름 (Rules.md 2절)', () => {
   it.each([
     [2, ['D2', 'F7'], 'I'],
     [3, ['C3', 'F11', 'L5'], 'M'],
-    [4, ['C4', 'F11', 'K10', 'H2'], 'M'],
+    [4, ['C4', 'C11', 'K10', 'K3'], 'M'],
   ])('%i인: 칸마다 다른 이름, 입구 %j, 마지막 줄 %s, 시드와 무관', (n, entrances, lastRow) => {
     const a = buildBoard(n, 7).board;
     const b = buildBoard(n, 12345).board;
@@ -165,7 +165,7 @@ describe('보드 조립 (Rules.md 3.3)', () => {
   it.each([
     [2, 7, 49],
     [3, 13, 91],
-    [4, 15, 105],
+    [4, 17, 119],
   ])('%i인: 조각 %i개, 칸 %i개, 겹침 없음', (n, tiles, cells) => {
     const { board } = buildBoard(n, 7);
     expect(board.tileCount).toBe(tiles);
@@ -186,6 +186,16 @@ describe('보드 조립 (Rules.md 3.3)', () => {
       const profiles = board.entrances.map((e) => board.cells.map((c) => hexDistance(c, e)).sort((a, b) => a - b).join(','));
       expect(new Set(profiles).size).toBe(1);
     }
+  });
+
+  it('4인 아지트는 직사각형 네 모서리: 이웃 7·8, 대각 10·12, 1·3번과 2·4번은 거리 분포가 같다 (180° 대칭)', () => {
+    const { board } = buildBoard(4, 3);
+    const e = board.entrances;
+    const d = (i: number, j: number) => hexDistance(e[i]!, e[j]!);
+    expect([d(0, 1), d(1, 2), d(2, 3), d(3, 0), d(0, 2), d(1, 3)]).toEqual([7, 8, 7, 8, 10, 12]);
+    const profile = (i: number) => board.cells.map((c) => hexDistance(c, e[i]!)).sort((a, b) => a - b).join(',');
+    expect(profile(0)).toBe(profile(2));
+    expect(profile(1)).toBe(profile(3));
   });
 
   it('조립은 결정적이고, 시드가 다르면 지형 배치가 바뀐다', () => {
@@ -1013,6 +1023,59 @@ describe('명당 부르기 (Rules.md 5.1 3)', () => {
     expect(at(t, 1, 1)).toEqual([0, 3]);
     expect(at(t, -4, -4)).toEqual([0, lim - 3]);
     expect(t.log.some((e) => e.kind === 'uproot')).toBe(true);
+  });
+
+  it('데려올 칸을 고르면 그 칸에서 데려온다 (from, Rules.md 6.2): 칸이 비어도 되고, 덜 고른 만큼은 자동', () => {
+    const lim = rulesFor(2).supply;
+    const s = flatState([plant('mushroom', 'p0', 1, 1)], [
+      [1, 1, 0, 1],
+      [-4, -4, 0, lim - 3],
+      [-3, -3, 0, 2],
+      [3, 1, 1, 2],
+    ]);
+    const t = ok(s, { type: 'CALL', playerId: 'p0', pos: { q: 1, r: 1 }, from: [{ q: -3, r: -3 }, { q: -3, r: -3 }] });
+    expect(at(t, 1, 1)).toEqual([0, 3]);
+    expect(at(t, -3, -3)).toEqual([-1, 0]); // 비었다 → 내 칸이 아니다
+    expect(at(t, -4, -4)).toEqual([0, lim - 3]);
+    expect(t.log.some((e) => e.kind === 'uproot' && e.message.includes('2마리'))).toBe(true);
+    // 하나만 고르면 나머지 하나는 가장 높은 칸에서
+    const u = ok(s, { type: 'CALL', playerId: 'p0', pos: { q: 1, r: 1 }, from: [{ q: -3, r: -3 }] });
+    expect(at(u, -3, -3)).toEqual([0, 1]);
+    expect(at(u, -4, -4)).toEqual([0, lim - 4]);
+  });
+
+  it('거부: 데려올 칸이 이번에 받는 칸·남의 칸·보드 밖이거나, 데려올 수보다 많이 골랐다', () => {
+    const lim = rulesFor(2).supply;
+    const s = flatState([plant('mushroom', 'p0', 1, 1)], [
+      [1, 1, 0, 1],
+      [-4, -4, 0, lim - 3],
+      [-3, -3, 0, 2],
+      [3, 1, 1, 2],
+    ]);
+    const call = (from: { q: number; r: number }[]) => applyAction(s, { type: 'CALL', playerId: 'p0', pos: { q: 1, r: 1 }, from }).error;
+    expect(call([{ q: 1, r: 1 }])).toMatch(/데려올 수 없는 칸/);
+    expect(call([{ q: 3, r: 1 }])).toMatch(/데려올 수 없는 칸/);
+    expect(call([{ q: 40, r: 40 }])).toMatch(/데려올 수 없는 칸/);
+    expect(call([{ q: -3, r: -3 }, { q: -3, r: -3 }, { q: -3, r: -3 }])).toMatch(/데려올 수 없는 칸|많이 골랐습니다/);
+    expect(call([{ q: -4, r: -4 }, { q: -4, r: -4 }, { q: -4, r: -4 }])).toMatch(/많이 골랐습니다/);
+    expect(applyAction(s, { type: 'CALL', playerId: 'p0', pos: { q: 1, r: 1 }, from: 'x' as never }).error).toMatch(/잘못된 데려올 칸/);
+    // 모자라지 않으면 고를 것이 없다
+    const plenty = flatState([plant('mushroom', 'p0', 1, 1)], [[1, 1, 0, 1], [-3, -3, 0, 2]]);
+    expect(applyAction(plenty, { type: 'CALL', playerId: 'p0', pos: { q: 1, r: 1 }, from: [{ q: -3, r: -3 }] }).error).toMatch(/많이 골랐습니다/);
+  });
+
+  it('놓기에서도 데려올 칸을 고른다 (PLANT from)', () => {
+    const lim = rulesFor(2).supply;
+    const s = withHands(
+      flatState([], [
+        [1, 1, 0, lim - 2],
+        [-3, -3, 0, 2],
+      ]),
+      ['mushroom'],
+    );
+    const t = ok(s, { type: 'PLANT', playerId: 'p0', species: 'mushroom', pos: { q: 1, r: 1 }, from: [{ q: -3, r: -3 }, { q: -3, r: -3 }] });
+    expect(at(t, 1, 1)).toEqual([0, lim]);
+    expect(at(t, -3, -3)).toEqual([-1, 0]);
   });
 
   it('손이 3장이어도 부를 수 있다', () => {

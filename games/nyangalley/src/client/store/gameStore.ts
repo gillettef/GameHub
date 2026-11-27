@@ -28,8 +28,9 @@ import {
   posKey,
   samePos,
 } from "../../engine";
-import { asState } from "../game/derived";
+import { asState, fromChoices } from "../game/derived";
 import {
+  catMoveOf,
   findMe,
   selectCanCall,
   selectCanPlant,
@@ -110,6 +111,10 @@ export interface GameStore {
   callPos: Position | null;
   /** 명당 부르기: 새 방향 */
   callRotation: Direction;
+  /** 쉬는 고양이가 모자랄 때 데려올 내 칸 (고른 순서, 1마리마다 한 번). 비면 자동(가장 높이 쌓인 칸) (Rules.md 6.2) */
+  fromPicks: Position[];
+  /** 보드 탭이 데려올 칸 고르기 모드인가 */
+  fromPicking: boolean;
   /** 행동 고르기 단계에서 고른 행동 (v8, Rules.md 5.1). null 이면 ④에 행동 고르기 판을 보여 준다 */
   actMode: ActMode | null;
   /** 칸마다 뿌리(큐브) 수 표시 */
@@ -136,6 +141,10 @@ export interface GameStore {
   setRotation: (d: Direction) => void;
   startSeedPick: () => void;
   clearSeed: () => void;
+  /** 데려올 칸 고르기를 (처음부터) 시작한다 */
+  startFromPick: () => void;
+  /** 데려올 칸을 비운다(자동으로 정함) */
+  clearFrom: () => void;
   confirmPlant: () => void;
   cancelPlant: () => void;
   /** 이번 판 식물 공개 단계의 "확인". 한 기기는 지금 보는 사람만 확인하고 다음 사람이 이어 고른다 */
@@ -166,9 +175,15 @@ export interface GameStore {
   reset: () => void;
 }
 
+/** 놓을 칸·방향·멀리 보내기·부를 명당이 바뀌면 데려올 칸 고르기는 처음부터 (데려올 수가 달라진다) */
+const CLEAR_FROM = {
+  fromPicks: [] as Position[],
+  fromPicking: false,
+};
 const CLEAR_CALL = {
   callPos: null,
   callRotation: 0 as Direction,
+  ...CLEAR_FROM,
 };
 const CLEAR_SELECTION = {
   selectedHandIndex: null,
@@ -292,6 +307,23 @@ export const useGameStore = create<GameStore>((set, get) => {
         get();
       if (!state?.board || !viewerId) return;
       const s = asState(state);
+      // 데려올 칸 고르기: 고를 수 있는 내 칸을 누를 때마다 1마리씩, 다 고르면 고르기를 끝낸다 (Rules.md 6.2)
+      if (get().fromPicking) {
+        const move = catMoveOf(get());
+        if (!move) return;
+        const picks = get().fromPicks;
+        const { need, eligible } = fromChoices(s, viewerId, move, picks);
+        if (!eligible.some((p) => samePos(p, pos))) {
+          set({
+            notice:
+              "이번에 고양이가 앉는 칸을 뺀 내 칸(점선)에서만 데려올 수 있습니다",
+          });
+          return;
+        }
+        const next = [...picks, pos];
+        set({ fromPicks: next, fromPicking: next.length < need, notice: null });
+        return;
+      }
       // 명당 부르기: 부르기를 고른 뒤 내 칸 위 명당을 누르면 부르기 미리보기 (Rules.md 5.1 3)
       if (selectCanCall(get())) {
         const { callPos } = get();
@@ -302,7 +334,7 @@ export const useGameStore = create<GameStore>((set, get) => {
         if (legalCallCells(s, viewerId).some((p) => samePos(p, pos))) {
           const rotation =
             s.plants.find((p) => samePos(p.pos, pos))?.rotation ?? 0;
-          set({ callPos: pos, callRotation: rotation, notice: null });
+          set({ callPos: pos, callRotation: rotation, ...CLEAR_FROM, notice: null });
           return;
         }
         set({ notice: "내 칸 위에 있는 명당(빛나는 칸)만 부를 수 있습니다" });
@@ -316,7 +348,7 @@ export const useGameStore = create<GameStore>((set, get) => {
           });
           return;
         }
-        set({ pendingSeed: pos, seedPicking: false, notice: null });
+        set({ pendingSeed: pos, seedPicking: false, ...CLEAR_FROM, notice: null });
         return;
       }
       const species =
@@ -351,16 +383,18 @@ export const useGameStore = create<GameStore>((set, get) => {
         return;
       }
       if (pendingPos && posKey(pendingPos) === posKey(pos)) {
-        set({ pendingPos: null, pendingSeed: null });
+        set({ pendingPos: null, pendingSeed: null, ...CLEAR_FROM });
         return;
       }
       // 회전은 칸을 옮겨도 그대로 둔다(같은 모양으로 여러 칸을 비교할 수 있게)
-      set({ pendingPos: pos, pendingSeed: null, notice: null });
+      set({ pendingPos: pos, pendingSeed: null, ...CLEAR_FROM, notice: null });
     },
 
-    setRotation: (d) => set({ pendingRotation: d }),
-    startSeedPick: () => set({ seedPicking: true, pendingSeed: null }),
-    clearSeed: () => set({ seedPicking: false, pendingSeed: null }),
+    setRotation: (d) => set({ pendingRotation: d, ...CLEAR_FROM }),
+    startSeedPick: () => set({ seedPicking: true, pendingSeed: null, ...CLEAR_FROM }),
+    clearSeed: () => set({ seedPicking: false, pendingSeed: null, ...CLEAR_FROM }),
+    startFromPick: () => set({ fromPicking: true, fromPicks: [], seedPicking: false, notice: null }),
+    clearFrom: () => set({ ...CLEAR_FROM }),
 
     confirmPlant: () => {
       const {
@@ -370,8 +404,11 @@ export const useGameStore = create<GameStore>((set, get) => {
         pendingPos,
         pendingRotation,
         pendingSeed,
+        fromPicks,
+        fromPicking,
         dispatch,
       } = get();
+      if (fromPicking) return;
       if (!state || !viewerId || selectedHandIndex === null || !pendingPos)
         return;
       const species = findMe(state, viewerId)?.hand[selectedHandIndex];
@@ -384,11 +421,12 @@ export const useGameStore = create<GameStore>((set, get) => {
         pos: pendingPos,
         rotation: pendingRotation,
         ...(sp.seed && pendingSeed ? { seed: pendingSeed } : {}),
+        ...(fromPicks.length ? { from: fromPicks } : {}),
       });
     },
 
     cancelPlant: () =>
-      set({ pendingPos: null, pendingSeed: null, seedPicking: false }),
+      set({ pendingPos: null, pendingSeed: null, seedPicking: false, ...CLEAR_FROM }),
 
     confirmReveal: () => {
       const { state, viewerId, dispatch } = get();
@@ -420,16 +458,17 @@ export const useGameStore = create<GameStore>((set, get) => {
       dispatch({ type: "TAKE", playerId: viewerId, take: index });
     },
 
-    setCallRotation: (d) => set({ callRotation: d }),
+    setCallRotation: (d) => set({ callRotation: d, ...CLEAR_FROM }),
 
     confirmCall: () => {
-      const { state, viewerId, callPos, callRotation, dispatch } = get();
-      if (!state || !viewerId || !callPos || !selectCanCall(get())) return;
+      const { state, viewerId, callPos, callRotation, fromPicks, fromPicking, dispatch } = get();
+      if (!state || !viewerId || !callPos || fromPicking || !selectCanCall(get())) return;
       dispatch({
         type: "CALL",
         playerId: viewerId,
         pos: callPos,
         rotation: callRotation,
+        ...(fromPicks.length ? { from: fromPicks } : {}),
       });
     },
 

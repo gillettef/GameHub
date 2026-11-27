@@ -225,10 +225,13 @@ export type Action =
   | { type: 'PICK_CREW'; playerId: PlayerId; crew: number | null }
   /** 가져오기 한 장: 마켓 take 번 카드, 'pile' = 카드 더미 맨 위 1장(뒷면) (Rules.md 5.1). 행동 고르기('act')에서 첫 장, 'take' 단계에서 더미 두 번째 장('pile' 만) */
   | { type: 'TAKE'; playerId: PlayerId; take: number | 'pile' }
-  /** 심기. rotation: 뿌리 모양 회전(생략 0). seed: 민들레만(생략 가능) */
-  | { type: 'PLANT'; playerId: PlayerId; species: SpeciesId; pos: Position; rotation?: Direction; seed?: Position }
+  /**
+   * 심기. rotation: 뿌리 모양 회전(생략 0). seed: 민들레만(생략 가능).
+   * from: 공급처가 모자랄 때 큐브를 옮겨 올 내 칸(1개마다 한 번, 같은 칸 여러 번 가능, 쓰는 순서). 생략하거나 모자라면 나머지는 자동(가장 높은 칸) (Rules.md 6.2)
+   */
+  | { type: 'PLANT'; playerId: PlayerId; species: SpeciesId; pos: Position; rotation?: Direction; seed?: Position; from?: Position[] }
   /** 버리기 (행동). 손의 어떤 카드도 심을 칸이 없을 때만 */
   | { type: 'DISCARD'; playerId: PlayerId; species: SpeciesId }
   /** 명당 부르기 (행동): 내 땅 위 식물 칸 pos, 새 방향 rotation(생략하면 지금 방향) (Rules.md 5.1) */
-  | { type: 'CALL'; playerId: PlayerId; pos: Position; rotation?: Direction }
+  | { type: 'CALL'; playerId: PlayerId; pos: Position; rotation?: Direction; from?: Position[] }
   | { type: 'SURRENDER'; playerId: PlayerId };

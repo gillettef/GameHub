@@ -387,8 +387,12 @@ const isPos = (p: unknown): p is Position => {
   return !!v && typeof v === 'object' && Number.isInteger(v.q) && Number.isInteger(v.r);
 };
 
+/** 데려올 칸 목록: 생략하거나, 칸 좌표 배열(길이는 한 차례에 놓을 수 있는 고양이 수를 넘지 않게 32 이하) */
+const isFromList = (f: unknown): boolean => f === undefined || (Array.isArray(f) && f.length <= 32 && f.every(isPos));
+
 export function validatePlant(state: GameState, a: Extract<Action, { type: 'PLANT' }>): string | null {
   if (!isPos(a.pos) || (a.seed !== undefined && !isPos(a.seed))) return '잘못된 놓기 요청입니다';
+  if (!isFromList(a.from)) return '잘못된 데려올 칸입니다';
   if (a.rotation !== undefined && !isDirection(a.rotation)) return '잘못된 회전입니다';
   const err = turnError(state, a.playerId, ['act']);
   if (err) return err;
@@ -443,7 +447,8 @@ function applyPlant(state: GameState, action: Extract<Action, { type: 'PLANT' }>
   const seed = action.seed && sp.seed ? { q: action.seed.q, r: action.seed.r } : null;
   const plant = { id: `p${state.plants.length + 1}`, species: action.species, ownerId: action.playerId, pos: { q: action.pos.q, r: action.pos.r }, rotation };
   let s: GameState = { ...state, plants: [...state.plants, plant] };
-  const res = plantRoots(s, action.playerId, action.species, action.pos, rotation, seed);
+  const res = plantRoots(s, action.playerId, action.species, action.pos, rotation, seed, action.from);
+  if (res.fromError) return reject(state, res.fromError);
   s = spendCard({ ...s, rootSeat: res.rootSeat, rootCount: res.rootCount }, action.playerId, action.species);
   const me = getPlayer(state, action.playerId) as PlayerState;
   const board = state.board as NonNullable<GameState['board']>;
@@ -476,6 +481,7 @@ function logRootChanges(before: GameState, after: GameState, me: PlayerState, up
 export function validateCall(state: GameState, a: Extract<Action, { type: 'CALL' }>): string | null {
   if (!isPos(a.pos)) return '잘못된 명당 부르기 요청입니다';
   if (a.rotation !== undefined && !isDirection(a.rotation)) return '잘못된 회전입니다';
+  if (!isFromList(a.from)) return '잘못된 데려올 칸입니다';
   const err = turnError(state, a.playerId, ['act']);
   if (err) return err;
   if (!legalCallCells(state, a.playerId).some((p) => samePos(p, a.pos))) return '내 칸 위에 있는 명당만 부를 수 있습니다';
@@ -492,7 +498,8 @@ function applyCall(state: GameState, action: Extract<Action, { type: 'CALL' }>):
   const rotation = (action.rotation ?? old.rotation) as Direction;
   const plants = state.plants.map((p, i) => (i === pi ? { ...p, rotation } : p));
   let s: GameState = { ...state, plants };
-  const res = callRoots(s, action.playerId, action.pos, rotation);
+  const res = callRoots(s, action.playerId, action.pos, rotation, action.from);
+  if (res.fromError) return reject(state, res.fromError);
   s = { ...s, rootSeat: res.rootSeat, rootCount: res.rootCount };
   s = addLog(s, 'call', me.id, `${me.nickname}: ${cellLabel(board, action.pos)}의 ${getSpecies(old.species).name} 명당을 부름${rotation !== old.rotation ? ' (방향을 바꿈)' : ''}`);
   s = logRootChanges(state, s, me, res.uprooted);

@@ -148,7 +148,7 @@ export function summarize(rules: LabRules, P: number, res: (GameOut & { scenario
   const cubeOps = mean(self.map((r) => r.cubeOps / Math.max(1, r.turns)));
   const decs = self.flatMap((r) => r.decisions);
   // 예상 시간: 차례당 (생각 15초 + 큐브 한 개 2초 + 가져오기 6초) + 끝 점수 세기(칸 12개당 1분)
-  const cells = P === 2 ? 49 : P === 3 ? 91 : 105;
+  const cells = P === 2 ? 49 : P === 3 ? 91 : 119;
   const minutes = (turns * (15 + 2 * cubeOps + 6)) / 60 + cells / 12 / 1 + 2;
 
   return {

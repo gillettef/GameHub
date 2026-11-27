@@ -211,7 +211,7 @@ save('table3', tableScene(mid3, 1100));
   const p = [`<g transform="translate(${-b1.bbox[0]},${-b1.bbox[1]})">${b1.svg}</g>`, `<g transform="translate(${w + 70 - b2.bbox[0]},${-b2.bbox[1]})">${b2.svg}</g>`];
   p.push(`<path d="M${w + 12},${b1.bbox[3] / 2} h44 l-10,-10 M${w + 56},${b1.bbox[3] / 2} l-10,10" stroke="#3b2a18" stroke-width="5" fill="none"/>`);
   p.push(caption(w / 2, b1.bbox[3] + 18, 14, '쉬는 고양이 2 + 데려올 3 (점선 칸 제외)'));
-  p.push(caption(w + 70 + w / 2, b1.bbox[3] + 18, 14, '①② 가장 높은 칸 → ③ 명당 없는 칸 중 선택'));
+  p.push(caption(w + 70 + w / 2, b1.bbox[3] + 18, 14, '예) ①② 높이 쌓인 칸, ③ 끝 칸 — 데려올 칸은 내가 고른다'));
   save('short', wrap(p.join(''), [0, 0, 2 * w + 70, b1.bbox[3] + 30], 900));
 }
 

@@ -179,6 +179,8 @@ VARIANTS.o1r22 = oneAct('o1r22', {}, { 2: 22, 3: 18, 4: 18 });
 VARIANTS.o2r20 = oneAct('o2r20', { takeMode: 'split' }, R20);
 VARIANTS.o2r18 = oneAct('o2r18', { takeMode: 'split' }, R18);
 VARIANTS.o3r18 = oneAct('o3r18', { takeMode: 'peek' }, R18);
+// 2026-11-27 4인 직사각형 보드(17조각 119칸, 아지트 네 모서리)에 맞춰 4인 1인 고양이 16 → 18. 지금 규칙
+VARIANTS.o2b4 = oneAct('o2b4', { takeMode: 'split' }, R18, { supply: { 2: 16, 3: 18, 4: 18 } });
 // 2026-11-27 사용자 제안: 주머니 뽑기 없이 인원수만큼 펼치고, 모두 가져가면 다시 펼친다. A = 1장, B = 2장까지
 const DRAFT_MARKET = { market: { 2: 2, 3: 3, 4: 4 }, blindDraw: false };
 VARIANTS.o4r18 = oneAct('o4r18', { takeMode: 'draft', take: 1 }, R18, DRAFT_MARKET);

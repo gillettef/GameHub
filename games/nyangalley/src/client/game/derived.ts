@@ -231,7 +231,8 @@ export function simulatePlant(
   pos: Position,
   rotation: Direction,
   seed: Position | null = null,
-): { after: GameState; uprooted: number[] } {
+  from: readonly Position[] = [],
+): { after: GameState; uprooted: number[]; fromError: string | null } {
   const withPlant: GameState = {
     ...state,
     plants: [
@@ -246,6 +247,7 @@ export function simulatePlant(
     pos,
     rotation,
     seed && getSpecies(species).seed ? seed : null,
+    from,
   );
   return {
     after: {
@@ -254,6 +256,7 @@ export function simulatePlant(
       rootCount: roots.rootCount,
     },
     uprooted: roots.uprooted,
+    fromError: roots.fromError,
   };
 }
 
@@ -265,6 +268,7 @@ export function previewPlant(
   pos: Position,
   rotation: Direction,
   seed: Position | null,
+  from: readonly Position[] = [],
 ): PlantPreview | null {
   const s = asState(state);
   if (!s.board) return null;
@@ -275,6 +279,7 @@ export function previewPlant(
     pos,
     rotation,
     seed,
+    from,
   );
   return diffPreview(s, after, uprooted.length);
 }
@@ -285,16 +290,18 @@ export function simulateCall(
   playerId: PlayerId,
   pos: Position,
   rotation: Direction,
-): { after: GameState; uprooted: number[] } {
+  from: readonly Position[] = [],
+): { after: GameState; uprooted: number[]; fromError: string | null } {
   const s = asState(state);
   const plants = s.plants.map((p) =>
     samePos(p.pos, pos) ? { ...p, rotation } : p,
   );
   const withRot: GameState = { ...s, plants };
-  const res = callRoots(withRot, playerId, pos, rotation);
+  const res = callRoots(withRot, playerId, pos, rotation, from);
   return {
     after: { ...withRot, rootSeat: res.rootSeat, rootCount: res.rootCount },
     uprooted: res.uprooted,
+    fromError: res.fromError,
   };
 }
 
@@ -304,11 +311,51 @@ export function previewCall(
   playerId: PlayerId,
   pos: Position,
   rotation: Direction,
+  from: readonly Position[] = [],
 ): PlantPreview | null {
   const s = asState(state);
   if (!s.board) return null;
-  const { after, uprooted } = simulateCall(s, playerId, pos, rotation);
+  const { after, uprooted } = simulateCall(s, playerId, pos, rotation, from);
   return diffPreview(s, after, uprooted.length);
+}
+
+/** 고양이를 앉히는 행동 하나 (놓기 또는 명당 부르기). 데려올 칸 고르기가 같은 계산을 쓴다 */
+export type CatMove =
+  | { kind: "plant"; species: SpeciesId; pos: Position; rotation: Direction; seed: Position | null }
+  | { kind: "call"; pos: Position; rotation: Direction };
+
+function simulateMove(
+  state: GameState,
+  playerId: PlayerId,
+  move: CatMove,
+  from: readonly Position[],
+): { uprooted: number[]; fromError: string | null } {
+  return move.kind === "plant"
+    ? simulatePlant(state, playerId, move.species, move.pos, move.rotation, move.seed, from)
+    : simulateCall(state, playerId, move.pos, move.rotation, from);
+}
+
+/**
+ * 쉬는 고양이가 모자랄 때 데려올 칸 고르기 (Rules.md 6.2, 2026-11-27).
+ * need = 데려와야 하는 고양이 수(고른 칸과 상관없이 같다), eligible = 지금까지 고른 칸(picks) 다음에 고를 수 있는 내 칸.
+ * 엔진에 한 칸씩 더 넣어 보고 받아들이는 칸만 남긴다(규칙 사본 없음)
+ */
+export function fromChoices(
+  state: MaskedGameState | GameState,
+  playerId: PlayerId,
+  move: CatMove,
+  picks: readonly Position[],
+): { need: number; eligible: Position[] } {
+  const s = asState(state);
+  if (!s.board) return { need: 0, eligible: [] };
+  const need = simulateMove(s, playerId, move, []).uprooted.length;
+  if (picks.length >= need) return { need, eligible: [] };
+  const seat = s.players.find((p) => p.id === playerId)?.seat ?? -1;
+  const eligible = s.board.cells
+    .filter((_, c) => s.rootSeat[c] === seat && (s.rootCount[c] ?? 0) > 0)
+    .map((cell) => ({ q: cell.q, r: cell.r }))
+    .filter((p) => simulateMove(s, playerId, move, [...picks, p]).fromError === null);
+  return { need, eligible };
 }
 
 /** 두 상태의 칸·점수 차이 (미리보기 공통) */

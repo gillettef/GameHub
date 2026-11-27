@@ -214,8 +214,10 @@ export interface BoardGeo {
 
 export function buildBoard(rules: LabRules, players: number, rand: Rand): BoardGeo {
   const layout = layoutFor(players);
+  // 4인은 정본처럼 모두 빈 땅인 13번 조각을 더한다 (Rules.md 3.2, src/engine/data/tiles.ts FOUR_PLAYER_TILE)
+  const tiles = players === 4 ? [...rules.tiles, []] : rules.tiles;
   const lib = shuffle(
-    rules.tiles.map((_, i) => i),
+    tiles.map((_, i) => i),
     rand,
   );
   let li = 0;
@@ -223,7 +225,7 @@ export function buildBoard(rules: LabRules, players: number, rand: Rand): BoardG
   const entrances: { q: number; r: number }[] = [];
   layout.centers.forEach((c, t) => {
     const seat = layout.entranceTiles.indexOf(t);
-    const spec = seat >= 0 ? rules.entranceTile : (rules.tiles[lib[li++ % lib.length] as number] as [number, number][]);
+    const spec = seat >= 0 ? rules.entranceTile : (tiles[lib[li++ % lib.length] as number] as [number, number][]);
     const rot = Math.floor(rand() * 6);
     const slots = new Array(7).fill(EMPTY);
     for (const [slot, terr] of spec) slots[slot === 0 ? 0 : ((slot - 1 + rot) % 6) + 1] = terr;

@@ -4,6 +4,7 @@ import { spotTileUrl } from '../game/cardImages';
 import { distinctRotations, rotationLabel, type PlantPreview } from '../game/derived';
 import { cx } from '../lib/cx';
 import { findMe, selectState, selectViewerId, useGameStore } from '../store/gameStore';
+import { FromRow } from './FromRow';
 import { RootDiagram } from './RootDiagram';
 import styles from './PlantBar.module.css';
 
@@ -55,7 +56,6 @@ export const CallBar = memo(function CallBar({ preview }: { preview: PlantPrevie
             점수 {myScore >= 0 ? '+' : ''}
             {myScore}
           </span>
-          {preview && preview.uprooted > 0 && <span className={styles.down}>쉬는 고양이가 모자라 {preview.uprooted}마리를 옮겨 옴</span>}
         </span>
       </div>
       {rots.length > 1 && (
@@ -75,6 +75,7 @@ export const CallBar = memo(function CallBar({ preview }: { preview: PlantPrevie
           ))}
         </div>
       )}
+      <FromRow />
     </div>
   );
 });

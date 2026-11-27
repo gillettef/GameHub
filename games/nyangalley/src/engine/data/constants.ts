@@ -62,7 +62,7 @@ export interface PlayerCountRule {
 export const PLAYER_COUNT_RULES: Record<number, PlayerCountRule> = {
   2: { gardenSize: 6, copies: 4, market: 2, supply: 16, komi: [0, 0], rounds: 18 },
   3: { gardenSize: 6, copies: 5, market: 2, supply: 18, komi: [0, 0, 0], rounds: 15 },
-  4: { gardenSize: 8, copies: 5, market: 2, supply: 16, komi: [0, 1, 1, 1], rounds: 15 },
+  4: { gardenSize: 8, copies: 5, market: 2, supply: 18, komi: [0, 1, 1, 1], rounds: 15 },
 };
 
 export function rulesFor(players: number): PlayerCountRule {
