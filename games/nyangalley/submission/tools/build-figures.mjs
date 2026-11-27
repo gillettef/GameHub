@@ -7,7 +7,7 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { CHORES, SEAT_NAME, SPOTS, SPOT_IDS, TERRAIN, board, catStack, catToken, choreTile, spotTile, text, wrap } from './draw.mjs';
+import { SEAT_NAME, SPOTS, SPOT_IDS, TERRAIN, board, catStack, catToken, spotTile, text, wrap } from './draw.mjs';
 import { GOALS, goalCard } from './goals.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -231,11 +231,5 @@ save('table3', tableScene(mid3, 1100));
   const p = [];
   GOALS.forEach((g, i) => p.push(goalCard(g.id, 10 + (i % 8) * 108, 10 + Math.floor(i / 8) * 150, 100, 140)));
   save('goals', wrap(p.join(''), [0, 0, 874, 310], 860));
-}
-// 골목 일과 6장
-{
-  const p = [];
-  CHORES.forEach((c, i) => p.push(choreTile(c.id, 10 + (i % 3) * 215, 10 + Math.floor(i / 3) * 155, 200, 140)));
-  save('chores', wrap(p.join(''), [0, 0, 655, 320], 640));
 }
 console.log('figures →', OUT);
