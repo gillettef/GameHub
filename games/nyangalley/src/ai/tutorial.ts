@@ -10,9 +10,9 @@ import type { Action, GameState, PlayerId } from '../engine';
 import { autoAction, canTake, computeScores, getGoal, legalPlantCells } from '../engine';
 import { awaitingConfirm, distinctRotations, simulatePlant } from '../client/game/derived';
 
-/** 가져올 마켓 자리 (마켓이 비었으면 더미) */
+/** 가져올 마켓 자리 (마켓이 비었거나 주머니 두 번째 장이면 더미) */
 function pickTake(state: GameState): number | 'pile' {
-  if (state.market.length === 0) return 'pile';
+  if (state.market.length === 0 || state.stage === 'take') return 'pile';
   const linked = state.goals.map((g) => getGoal(g).species).filter((s) => s !== null);
   const i = state.market.findIndex((s) => linked.includes(s));
   return i >= 0 ? i : 0;

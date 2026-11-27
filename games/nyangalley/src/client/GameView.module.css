@@ -1,0 +1,38 @@
+/*
+ * 대국 화면 틀 (2026-11-27 사용자 요청): 보드를 화면 폭에 꽉 차게 그리고, 그 때문에 길어지면 화면 전체를 세로로 스크롤한다.
+ * 공통 GameShell(@gamehub/ui)은 한 화면 고정(100dvh, 보드가 남는 높이) 배치라, 이 게임에서만 틀을 덮어쓴다.
+ * body 는 공통 테마가 스크롤을 막으므로 이 틀이 스크롤 영역이다. ① 상태바는 위, ⑤ 행동 버튼은 아래에 붙여 늘 보이게 한다.
+ */
+.page {
+  height: 100dvh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.page :global(.gh-app) {
+  height: auto;
+  min-height: 100%;
+}
+
+.page :global(.gh-app) > header {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+}
+
+/* 보드 영역은 보드 높이만큼 쓰고, 화면이 더 길면 남는 높이를 채워 ⑤ 행동 버튼이 화면 아래에 붙는다 */
+.page :global(.gh-app) > main {
+  flex: 1 0 auto;
+}
+
+/* ④ 내 영역: 공통 틀은 높이 34% 안에서 스크롤하지만, 화면 전체가 스크롤되므로 다 펼친다 */
+.page :global(.gh-app) > section {
+  max-height: none;
+  overflow: visible;
+}
+
+.page :global(.gh-app) > footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 30;
+}

@@ -42,6 +42,7 @@ import { CardsTab } from './tabs/CardsTab'
 import { HelpTab } from './tabs/HelpTab'
 import { ProgressTab } from './tabs/ProgressTab'
 import { StatusTab } from './tabs/StatusTab'
+import styles from './GameView.module.css'
 
 export interface GameViewProps {
   room: RoomSnapshot<View>
@@ -155,6 +156,7 @@ function Table({ room, offline, onAct, onLeave, onNewGame }: { room: RoomSnapsho
 
   return (
     <>
+      <div className={styles.page}>
       <GameShell
         status={<Status />}
         detail={banner ?? <Detail />}
@@ -164,10 +166,11 @@ function Table({ room, offline, onAct, onLeave, onNewGame }: { room: RoomSnapsho
         actions={<Actions room={room} onAct={onAct} onNewGame={onNewGame} />}
         notice={notice}
       >
-        <div className="absolute inset-0 px-2 pt-1 pb-1.5">
+        <div className="px-2 pt-1 pb-1.5">
           <BoardArea />
         </div>
       </GameShell>
+      </div>
       <TurnEvents />
       <TutorialCoach />
       <GameModal />
@@ -362,10 +365,10 @@ function Actions({ room, onAct, onNewGame }: { room: RoomSnapshot<View>; onAct(a
         {back}
         {state.pileCount > 0 ? (
           <Button tone="primary" onClick={() => openCardModal({ kind: 'pile' })}>
-            {takingSecond ? '주머니에서 1개 더' : '주머니에서 1개'}
+            {takingSecond ? '주머니에서 1개 더' : '주머니에서 꺼내기'}
           </Button>
         ) : (
-          wait(takingSecond ? '펼친 타일에서 1개를 더 고르세요' : '펼친 타일을 누르세요')
+          wait('펼친 타일 1개를 누르세요')
         )}
       </>
     )

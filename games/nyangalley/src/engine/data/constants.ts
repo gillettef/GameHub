@@ -35,7 +35,7 @@ export const FOREST_BONUS = 4;
 export const FOREST_MIN_GROUP = 3;
 
 // 행동 하나 (v8, Rules.md 5·10절)
-/** 가져오기 행동 한 번에 손에 드는 카드 수 */
+/** 가져오기 행동에서 카드 더미(주머니)를 고르면 손에 드는 카드 수. 마켓(펼친 타일)을 고르면 1장 */
 export const TAKE_COUNT = 2;
 /** 손 카드 최대 (가져오기는 이보다 많이 들 수 없다) */
 export const HAND_MAX = 3;
@@ -60,9 +60,9 @@ export interface PlayerCountRule {
 }
 
 export const PLAYER_COUNT_RULES: Record<number, PlayerCountRule> = {
-  2: { gardenSize: 6, copies: 4, market: 2, supply: 16, komi: [0, 0], rounds: 20 },
-  3: { gardenSize: 6, copies: 5, market: 2, supply: 18, komi: [0, 0, 0], rounds: 17 },
-  4: { gardenSize: 8, copies: 5, market: 2, supply: 16, komi: [0, 1, 1, 1], rounds: 17 },
+  2: { gardenSize: 6, copies: 4, market: 2, supply: 16, komi: [0, 0], rounds: 18 },
+  3: { gardenSize: 6, copies: 5, market: 2, supply: 18, komi: [0, 0, 0], rounds: 15 },
+  4: { gardenSize: 8, copies: 5, market: 2, supply: 16, komi: [0, 1, 1, 1], rounds: 15 },
 };
 
 export function rulesFor(players: number): PlayerCountRule {

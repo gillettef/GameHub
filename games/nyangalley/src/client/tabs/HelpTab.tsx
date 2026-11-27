@@ -3,7 +3,7 @@ import { ENTRANCE_ROOTS, GOAL_COUNT, HAND_MAX, RESERVE_BONUS, START_HAND, TAKE_C
 import { CREW_NAMES } from '../game/derived';
 import styles from './HelpTab.module.css';
 
-/** 인원별 라운드 수 (Rules.md 5.2). 같은 수끼리 묶는다: "2인 20라운드, 3·4인 17라운드" */
+/** 인원별 라운드 수 (Rules.md 5.2). 같은 수끼리 묶는다: "2인 18라운드, 3·4인 15라운드" */
 function roundsText(): string {
   const groups: { counts: number[]; rounds: number }[] = [];
   for (let n = 2; n <= 4; n++) {
@@ -77,7 +77,7 @@ export const HelpTab = memo(function HelpTab() {
         </p>
         <ol className={styles.steps}>
           <li>
-            <strong>타일 가져오기</strong>: 타일 <strong>{TAKE_COUNT}개</strong>를 손에 듭니다. 1개씩, 펼친 타일 {r2.market}개 중 1개(빈자리는 주머니에서 바로 채움)나 주머니에서 1개(나만 봄)를 가져옵니다. 섞어서 가져와도 됩니다. 손 타일은 최대 {HAND_MAX}개라, 2개를 들고 있으면 1개만, {HAND_MAX}개면 가져올 수 없습니다.
+            <strong>타일 가져오기</strong>: 펼친 타일 {r2.market}개 중 <strong>1개</strong>(빈자리는 주머니에서 바로 채움)를 가져오거나, 주머니에서 <strong>{TAKE_COUNT}개</strong>를 꺼내 나만 봅니다. 손 타일은 최대 {HAND_MAX}개라, 2개를 들고 있으면 주머니에서도 1개만, {HAND_MAX}개면 가져올 수 없습니다.
           </li>
           <li>
             <strong>명당 놓기</strong>: 손의 타일 1개를 <strong>내 칸</strong>이나, <strong>내 칸·아지트와 맞닿은 고양이 없는 칸</strong>에 원하는 방향으로 돌려 놓습니다. 남의 고양이가 앉은 칸에는 놓을 수 없습니다(낚시꾼만 예외). 이 차례에는 타일을 가져오지 않습니다.

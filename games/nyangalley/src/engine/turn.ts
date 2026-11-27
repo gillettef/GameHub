@@ -369,7 +369,7 @@ function turnError(state: GameState, playerId: PlayerId, stages: readonly RoundS
   return null;
 }
 
-/** 가져오기 한 장 검사 (Rules.md 5.1 1). take: 마켓 번호, 'pile' = 카드 더미 맨 위 1장(뒷면) */
+/** 가져오기 한 장 검사 (Rules.md 5.1 1). take: 마켓 번호, 'pile' = 카드 더미 맨 위 1장(뒷면). 더미 두 번째 장('take' 단계)은 'pile' 만 */
 export function validateTake(state: GameState, a: { playerId: PlayerId; take: unknown }): string | null {
   const err = turnError(state, a.playerId, ['act', 'take']);
   if (err) return err;
@@ -377,6 +377,7 @@ export function validateTake(state: GameState, a: { playerId: PlayerId; take: un
   if (!me) return '없는 플레이어입니다';
   if (me.hand.length >= HAND_MAX) return `손 타일은 ${HAND_MAX}개까지입니다. 명당을 놓거나 부르세요`;
   if (a.take === 'pile') return state.pile.length > 0 ? null : '주머니가 비었습니다. 펼친 타일에서 가져오세요';
+  if (state.stage === 'take') return '주머니에서 가져오는 중입니다. 주머니에서 1개를 더 가져오세요';
   if (!Number.isInteger(a.take) || (a.take as number) < 0 || (a.take as number) >= state.market.length) return '없는 타일입니다';
   return null;
 }
@@ -406,8 +407,8 @@ export function validatePlant(state: GameState, a: Extract<Action, { type: 'PLAN
 }
 
 /**
- * 가져오기 한 장 (Rules.md 5.1 1): 마켓 한 장(빈자리는 더미 맨 위로 바로 채움) 또는 카드 더미 맨 위 1장(뒷면).
- * 첫 장('act') 뒤에 손이 HAND_MAX 장 미만이고 가져올 카드가 남았으면 두 번째 장('take'), 아니면 차례 끝
+ * 가져오기 (Rules.md 5.1 1): 마켓 한 장(빈자리는 더미 맨 위로 바로 채움)이면 그것으로 차례 끝.
+ * 카드 더미 맨 위(뒷면)면 TAKE_COUNT 장까지: 첫 장('act') 뒤에 손이 HAND_MAX 장 미만이고 더미가 남았으면 두 번째 장('take', 더미만), 아니면 차례 끝
  */
 function applyTake(state: GameState, action: Extract<Action, { type: 'TAKE' }>): ActionResult {
   const err = validateTake(state, action);
@@ -428,7 +429,8 @@ function applyTake(state: GameState, action: Extract<Action, { type: 'TAKE' }>):
     s = addLog(s, 'take', action.playerId, `${me.nickname}: 펼친 타일에서 ${getSpecies(card).name} 가져옴`);
   }
   const taken = state.stage === 'act' ? 1 : TAKE_COUNT;
-  if (taken < TAKE_COUNT && canTake(s, action.playerId)) return { state: { ...s, stage: 'take' } };
+  const room = (getPlayer(s, action.playerId)?.hand.length ?? HAND_MAX) < HAND_MAX;
+  if (action.take === 'pile' && taken < TAKE_COUNT && room && s.pile.length > 0) return { state: { ...s, stage: 'take' } };
   return { state: advance(s) };
 }
 
@@ -558,12 +560,12 @@ export function applyAction(state: GameState, action: Action): ActionResult {
 // ---------------------------------------------------------------------------
 
 /** 가져오기 자동 수: 마켓 맨 앞 카드, 마켓이 비었으면 더미 맨 위 */
-const autoTake = (state: GameState, playerId: PlayerId): Action => ({ type: 'TAKE', playerId, take: state.market.length > 0 ? 0 : 'pile' });
+const autoTake = (state: GameState, playerId: PlayerId): Action => ({ type: 'TAKE', playerId, take: state.market.length > 0 && state.stage !== 'take' ? 0 : 'pile' });
 
 /**
  * 시간 초과 자동 수 (Rules.md 6.3). 행동 고르기 = 심을 수 있으면 맨 앞 카드부터 심을 수 있는 첫 카드를 첫 칸·방향 0(씨앗 없음),
  * 아니면 가져오기(마켓 맨 앞, 없으면 더미), 아니면 첫 식물 칸을 지금 방향으로 부르기, 아니면 맨 앞 카드 버리기.
- * 가져오기 두 번째 장 = 마켓 맨 앞(없으면 더미)
+ * 주머니 두 번째 장 = 더미 맨 위
  */
 export function autoAction(state: GameState, playerId: PlayerId): Action | null {
   const me = getPlayer(state, playerId);

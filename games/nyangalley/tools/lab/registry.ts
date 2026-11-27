@@ -174,3 +174,7 @@ VARIANTS.o1once = oneAct('o1once', { callOnce: true }, R18);
 VARIANTS.o1h4 = oneAct('o1h4', { handMax: 4 }, R18);
 VARIANTS.o1br20 = oneAct('o1br20', { callBonus: 1 }, R20);
 VARIANTS.o1r22 = oneAct('o1r22', {}, { 2: 22, 3: 18, 4: 18 });
+
+// 2026-11-27 사용자 제안: 가져오기 = 펼친 타일 1장 또는 주머니 2장
+VARIANTS.o2r20 = oneAct('o2r20', { takeMode: 'split' }, R20);
+VARIANTS.o2r18 = oneAct('o2r18', { takeMode: 'split' }, R18);

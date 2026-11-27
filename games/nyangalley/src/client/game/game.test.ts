@@ -92,10 +92,13 @@ describe('튜토리얼 연습 봇', () => {
     expect(applyAction(s, a!).error).toBeUndefined();
     const empty: GameState = { ...s, players: s.players.map((p) => (p.id === 'p0' ? { ...p, hand: [] } : p)) };
     const t = tutorialBotAction(empty, 'p0');
-    expect(t?.type).toBe('TAKE');
-    const second = applyAction(empty, t!).state;
-    expect(second.stage).toBe('take');
-    expect(tutorialBotAction(second, 'p0')?.type).toBe('TAKE');
+    expect(t).toMatchObject({ type: 'TAKE' });
+    expect(applyAction(empty, t!).error).toBeUndefined();
+    // 펼친 타일이 없으면 주머니에서 두 장
+    const noMarket: GameState = { ...empty, market: [] };
+    const first = applyAction(noMarket, tutorialBotAction(noMarket, 'p0')!).state;
+    expect(first.stage).toBe('take');
+    expect(tutorialBotAction(first, 'p0')).toEqual({ type: 'TAKE', playerId: 'p0', take: 'pile' });
   });
 });
 
@@ -142,7 +145,7 @@ describe('화면용 파생값', () => {
     expect(pv.landDelta[0]).toBe(computeScores(r.state)['p0']!.land - computeScores(s)['p0']!.land);
   });
 
-  it('단계 이름과 라운드 표기: N/20라운드 · 행동 고르기', () => {
+  it('단계 이름과 라운드 표기: N/18라운드 · 행동 고르기', () => {
     const s = twoPlayers();
     expect(roundStageLabel(s)).toBe(`1/${rulesFor(2).rounds}라운드 · 행동 고르기`);
     expect(stageName('act')).toBe('행동 고르기');

@@ -336,6 +336,13 @@ export function oneCandidates(g: Game, s: number, ev: Eval): { act: TurnAction; 
       opts.push({ pick: -1, v: tot ? sum / tot : 0 });
     }
     opts.sort((x, y) => y.v - x.v);
+    if (one.takeMode === 'split') {
+      // 펼친 타일 1장, 또는 주머니 room 장
+      const m = opts.find((x) => x.pick >= 0);
+      if (m) out.push({ act: { kind: 'take2', picks: [m.pick] }, value: ev0 + TAKE_W * Math.max(baseG, m.v) + HAND_W });
+      const b = opts.find((x) => x.pick === -1);
+      if (b) out.push({ act: { kind: 'take2', picks: new Array(Math.min(room, g.bag.length)).fill(-1) }, value: ev0 + TAKE_W * b.v + HAND_W * Math.min(room, g.bag.length) });
+    }
     const picks: number[] = [];
     let best = baseG;
     for (let k = 0; k < room; k++) {
@@ -346,7 +353,7 @@ export function oneCandidates(g: Game, s: number, ev: Eval): { act: TurnAction; 
       best = Math.max(best, o.v);
       if (o.pick >= 0 && !left.includes(o.pick)) opts.splice(opts.indexOf(o), 1);
     }
-    if (picks.length) out.push({ act: { kind: 'take2', picks }, value: ev0 + TAKE_W * best + HAND_W * picks.length });
+    if (picks.length && one.takeMode !== 'split') out.push({ act: { kind: 'take2', picks }, value: ev0 + TAKE_W * best + HAND_W * picks.length });
   }
   for (const o of bestNonPlace(g, s, ev)) out.push(o);
   if (!out.length && hand.length) out.push({ act: { kind: 'plant' }, value: ev0 - 1 });

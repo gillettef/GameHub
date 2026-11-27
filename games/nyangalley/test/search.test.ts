@@ -149,11 +149,15 @@ describe('AI 탐색', () => {
     }
   });
 
-  it('같은 종 두 장이면 앞 자리를 고르고, 더미가 비면 더미는 후보가 아니다', async () => {
-    const s = stage('take')[0]!;
+  it('주머니 두 번째 장 단계에서는 늘 주머니. 가져오기 후보는 펼친 타일 1장(같은 종이면 앞 자리)과 주머니, 더미가 비면 주머니는 후보가 아니다', async () => {
+    const t = stage('take')[0]!;
+    const tp = t.currentPlayerId as PlayerId;
+    expect((await decide(maskState(t, tp), tp, 60_000)).action).toEqual({ type: 'TAKE', playerId: tp, take: 'pile' });
+    const s = replayed.find((x) => x.stage === 'act' && x.market.length > 0 && (x.players.find((p) => p.id === x.currentPlayerId)?.hand.length ?? 3) < 3)!;
     const pid = s.currentPlayerId as PlayerId;
-    const { action } = await decide({ ...s, market: [s.market[0]!, s.market[0]!], pile: [] }, pid, 60_000);
-    expect(action).toEqual({ type: 'TAKE', playerId: pid, take: 0 });
+    const takes = (st: GameState) => actCandidates(st, pid, performance.now() + 60_000).filter((c) => c.action.type === 'TAKE').map((c) => (c.action as { take: number | 'pile' }).take);
+    expect(takes({ ...s, market: [s.market[0]!, s.market[0]!], pile: [] })).toEqual([0]);
+    expect(takes(s)).toContain('pile');
   });
 
   it('제한 시간이 아주 짧아도(최소 예산 50ms) 합법 수를 돌려준다', async () => {

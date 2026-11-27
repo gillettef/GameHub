@@ -33,7 +33,13 @@ async function choose(page, name) {
   return true
 }
 
-/** 펼친 타일 첫 개를 가져온다(행동 고르기 판이면 먼저 가져오기를 고른다) */
+/** 주머니 두 번째 장 */
+async function takeMore(page) {
+  await page.getByRole('button', { name: '주머니에서 1개 더', exact: true }).click()
+  await dialog(page).getByRole('button', { name: '주머니에서 1개 더 꺼내기' }).click()
+}
+
+/** 펼친 타일 첫 개를 가져온다(1개로 차례 끝. 행동 고르기 판이면 먼저 가져오기를 고른다) */
 async function take(page) {
   await choose(page, /가져오기/)
   await page.getByRole('group', { name: /^(마켓|펼친 타일)/ }).getByRole('button').first().click()
@@ -82,7 +88,7 @@ async function step(page, scenes) {
   const confirm = page.getByRole('button', { name: /^확인/ })
   if (await isVisible(confirm)) return confirm.click().then(() => true)
   const s = await statusText(page)
-  if (s.startsWith(TAKE_MORE)) return take(page).then(() => true)
+  if (s.startsWith(TAKE_MORE)) return takeMore(page).then(() => true)
   if (s.startsWith(ACT)) {
     if (scenes && !scenes.call.done) {
       if (await call(page, (p, n) => scenes.shot(p, n))) {
@@ -143,11 +149,13 @@ await withGame(dir, async ({ url, open, shot }) => {
   await shot(solo, '03-take-mode')
   await solo.getByRole('group', { name: /^(마켓|펼친 타일)/ }).getByRole('button').first().click()
   await shot(solo, '04-market-card')
-  await dialog(solo).getByRole('button', { name: /^이 (카드|타일) 가져오기$/ }).click()
+  await dialog(solo).getByRole('button', { name: '닫기' }).click()
+  // 주머니에서 두 장
+  await solo.getByRole('button', { name: '주머니에서 꺼내기', exact: true }).click()
+  await dialog(solo).getByRole('button', { name: '주머니에서 꺼내기', exact: true }).click()
   await solo.getByText(TAKE_MORE).first().waitFor()
   await shot(solo, '05-take-more')
-  await solo.getByRole('button', { name: '주머니에서 1개 더' }).click()
-  await dialog(solo).getByRole('button', { name: '주머니에서 1개 꺼내기' }).click()
+  await takeMore(solo)
   await solo.getByText(/AI \d의 차례/).first().waitFor()
   await shot(solo, '06-bot-turn')
   // 다음 차례: 손 3개 → 놓기
@@ -256,8 +264,6 @@ await withGame(dir, async ({ url, open, shot }) => {
   await host.getByText(ACT).first().waitFor()
   await host.getByRole('timer').waitFor()
   await shot(host, '26-online-turn')
-  await take(host)
-  await host.getByText(TAKE_MORE).first().waitFor()
   await take(host)
   await guest.getByText(ACT).or(guest.getByText(/AI \d의 차례/)).first().waitFor()
   await guest.reload()

@@ -1,6 +1,6 @@
 import { memo, useEffect, useMemo } from 'react';
 import type { SpeciesId } from '../../engine';
-import { ENTRANCE_ROOTS, getGoal, getSpecies, hasAnyPlant, legalPlantCells, samePos } from '../../engine';
+import { ENTRANCE_ROOTS, HAND_MAX, TAKE_COUNT, getGoal, getSpecies, hasAnyPlant, legalPlantCells, samePos } from '../../engine';
 import { SPOT_BACK_URL, goalCardUrl } from '../game/cardImages';
 import { asState, buildCells, rotationLabel } from '../game/derived';
 import { findMe, selectActOptions, selectCanPlant, selectCanTake, selectChoosingAct, selectIsMyTurn, selectState, selectViewerId, useGameStore } from '../store/gameStore';
@@ -18,8 +18,8 @@ const TERRAIN: Record<string, string> = {
 /**
  * 확대 모달 하나로 여섯 가지를 본다 (스토어 cardModal). 화면 테마 「냥냥 골목」 용어(규칙 용어는 괄호):
  *  - 내 타일(손패): 놓기를 고른 차례에 크게 보고 "이 타일 고르기". 놓을 칸이 하나도 없으면 "버리기"(Rules.md 5.1·6절)
- *  - 펼친 타일(마켓): 가져오기를 고른 차례에 크게 보고 "이 타일 가져오기"(Rules.md 5.1 1)
- *  - 주머니(카드 더미) 뒷면: 가져오기를 고른 차례에 "주머니에서 1개 꺼내기"(Rules.md 5.1 1)
+ *  - 펼친 타일(마켓): 가져오기를 고른 차례에 크게 보고 "이 타일 가져오기" — 1개로 차례 끝(Rules.md 5.1 1)
+ *  - 주머니(카드 더미) 뒷면: 가져오기를 고른 차례에 "주머니에서 꺼내기" — 2개까지, 두 번째도 주머니(Rules.md 5.1 1)
  *  행동을 고르기 전(④ 행동 고르기 판)에 타일을 눌러도 같은 버튼이 나오고, 누르면 그 행동을 고른 것으로 친다(지름길)
  *  - 명당 타일(식물 카드): 보기 전용 (카드 탭·펼친 타일)
  *  - 소문 카드(목표): 보기 전용 (소문 축소판·점수 탭·카드 탭)
@@ -54,6 +54,9 @@ export const GameModal = memo(function GameModal() {
   const me = findMe(state, viewerId);
   // 행동을 고르기 전이면 할 수 있는 행동인지로 판단하고, 누르면 그 행동을 고른다
   const takeHere = canTake || (choosing && !!opts?.take);
+  // 주머니 두 번째 장 단계에는 펼친 타일을 가져올 수 없다
+  const marketHere = takeHere && state.stage !== 'take';
+  const pileN = Math.min(TAKE_COUNT, HAND_MAX - (me?.hand.length ?? 0));
   const plantHere = canPlant || (choosing && !!(opts?.plant || opts?.discard));
   const enter = (mode: 'take' | 'plant') => {
     if (choosing) chooseAct(mode);
@@ -70,7 +73,7 @@ export const GameModal = memo(function GameModal() {
       <>
         <SpeciesCard species={species} variant="full" />
         <div className={styles.actions}>
-          {takeHere ? (
+          {marketHere ? (
             <button
               type="button"
               className="pill pill--lg"
@@ -83,8 +86,11 @@ export const GameModal = memo(function GameModal() {
               이 타일 가져오기
             </button>
           ) : (
-            <p className={styles.hint}>내 차례에 손 타일이 3개보다 적으면 가져올 수 있습니다.</p>
+            <p className={styles.hint}>
+              {takeHere ? '주머니에서 가져오는 중입니다. 두 번째 타일도 주머니에서 꺼냅니다.' : '내 차례에 손 타일이 3개보다 적으면 가져올 수 있습니다.'}
+            </p>
           )}
+          {marketHere && <p className={styles.hint}>펼친 타일은 1개만 가져오고 차례가 끝납니다. 주머니에서는 {pileN}개를 꺼냅니다.</p>}
         </div>
       </>
     );
@@ -95,7 +101,11 @@ export const GameModal = memo(function GameModal() {
         <div className={styles.actions}>
           {takeHere && state.pileCount > 0 ? (
             <>
-              <p className={styles.hint}>무엇이 나올지 모릅니다. 꺼낸 타일은 나만 보고, 펼친 타일은 그대로 남습니다.</p>
+              <p className={styles.hint}>
+                {state.stage === 'take'
+                  ? '두 번째 타일을 꺼냅니다.'
+                  : `무엇이 나올지 모릅니다. ${pileN}개를 하나씩 꺼내 나만 보고, 펼친 타일은 그대로 남습니다.`}
+              </p>
               <button
                 type="button"
                 className="pill pill--lg"
@@ -105,7 +115,7 @@ export const GameModal = memo(function GameModal() {
                   takeCard('pile');
                 }}
               >
-                주머니에서 1개 꺼내기
+                {state.stage === 'take' ? '주머니에서 1개 더 꺼내기' : '주머니에서 꺼내기'}
               </button>
             </>
           ) : (
@@ -129,7 +139,7 @@ export const GameModal = memo(function GameModal() {
             ) : !plantHere ? (
               <p className={styles.hint}>
                 {state.stage === 'take'
-                  ? '가져오기 중입니다. 펼친 타일이나 주머니에서 1개를 더 가져오세요. 놓기는 다음 차례에 합니다.'
+                  ? '주머니에서 가져오는 중입니다. 주머니에서 1개를 더 꺼내세요. 놓기는 다음 차례에 합니다.'
                   : state.stage === 'act' && !choosing
                     ? '다른 행동을 골랐습니다. 놓으려면 아래 "다른 행동"을 누르세요.'
                     : '지금은 놓을 수 없습니다.'}

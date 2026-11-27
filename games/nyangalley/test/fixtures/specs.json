@@ -364,7 +364,7 @@
         0,
         0
       ],
-      "rounds": 20
+      "rounds": 18
     },
     "3": {
       "gardenSize": 6,
@@ -376,7 +376,7 @@
         0,
         0
       ],
-      "rounds": 17
+      "rounds": 15
     },
     "4": {
       "gardenSize": 8,
@@ -389,7 +389,7 @@
         1,
         1
       ],
-      "rounds": 17
+      "rounds": 15
     }
   },
   "flowerSpecies": [

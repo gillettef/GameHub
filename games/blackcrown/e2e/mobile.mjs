@@ -54,13 +54,21 @@ await withGame(dir, async ({ url, open, shot }) => {
   await camp.click({ force: true })
   await solo.locator('.bcm-map.is-zoomed').waitFor()
   await shot(solo, '03b-zoom')
-  const reach = solo.locator('.bcm-cell.is-reachable').first()
-  if (await reach.count()) {
-    const before = await solo.locator('.bcm-pawn.is-me').first().evaluate((el) => el.closest('[data-cell]')?.getAttribute('data-cell'))
-    await reach.click({ force: true })
+  // 이동할 수 있는 칸 중 화면에서 실제로 눌리는 것(가운데가 그 칸이고 확대 버튼에 가리지 않은 것)
+  const hitCell = await solo.locator('.bcm-cell.is-reachable').evaluateAll((els) => {
+    for (const el of els) {
+      const r = el.getBoundingClientRect()
+      const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2)
+      if (hit?.closest('[data-cell]') === el) return el.getAttribute('data-cell')
+    }
+    return null
+  })
+  if (hitCell !== null) {
+    const pawnCell = () => solo.locator('.bcm-pawn.is-me').first().evaluate((el) => el.closest('[data-cell]')?.getAttribute('data-cell'))
+    const before = await pawnCell()
+    await solo.locator(`.bcm-cell[data-cell="${hitCell}"]`).click()
     await solo.waitForTimeout(300)
-    const after = await solo.locator('.bcm-pawn.is-me').first().evaluate((el) => el.closest('[data-cell]')?.getAttribute('data-cell'))
-    assert.notEqual(after, before, '확대한 지도에서 칸을 눌러 이동해야 합니다')
+    assert.equal(await pawnCell(), hitCell, `확대한 지도에서 칸을 눌러 이동해야 합니다(${before} → ${hitCell})`)
   }
   await solo.getByRole('button', { name: '전체', exact: true }).click()
   await solo.locator('.bcm-map.is-mini').waitFor()
@@ -79,10 +87,16 @@ await withGame(dir, async ({ url, open, shot }) => {
     fire('pointerup', 2, cx + 90, cy)
     fire('pointerup', 1, cx - 30, cy)
   })
-  const pinched = await scaleOf()
+  // pointermove 로 바꾼 배율은 React 가 다음 작업에서 그리므로 바뀔 때까지 기다린다
+  const scaleAbove = (min) => map.evaluate((el, m) => new Promise((done) => {
+    const t0 = performance.now()
+    const tick = () => (Number(el.getAttribute('data-scale')) > m || performance.now() - t0 > 3000 ? done(Number(el.getAttribute('data-scale'))) : requestAnimationFrame(tick))
+    tick()
+  }), min)
+  const pinched = await scaleAbove(fitScale * 1.3)
   assert.ok(pinched > fitScale * 1.3 && pinched < fitScale * 2.2, `핀치 배율 ${fitScale} → ${pinched}`)
   await solo.getByRole('button', { name: '확대', exact: true }).click()
-  assert.ok((await scaleOf()) > pinched, '+ 버튼으로 더 커져야 합니다')
+  assert.ok((await scaleAbove(pinched)) > pinched, '+ 버튼으로 더 커져야 합니다')
   await solo.getByRole('button', { name: '전체', exact: true }).click()
 
   await solo.getByRole('button', { name: '메뉴' }).click()

@@ -812,35 +812,35 @@ describe('행동 고르기 (Rules.md 5.1)', () => {
     expect(t.log.some((e) => e.kind === 'take')).toBe(false);
   });
 
-  it('가져오기 두 장: 마켓(빈자리는 더미로 바로 채움) → 더미 맨 위, 그다음 차례 끝', () => {
+  it('가져오기: 펼친 타일이면 1장(빈자리는 더미로 바로 채움)으로 차례 끝, 주머니면 2장(두 번째도 주머니)', () => {
     const s = withHands(flatState(), ['grass']);
     const t = ok(s, { type: 'TAKE', playerId: 'p0', take: 1 });
     expect(t.players[0]!.hand).toEqual(['grass', 'pine']);
     expect(t.market).toEqual(['oak', 'kudzu']);
     expect(t.pile).toEqual(['fern', 'lotus', 'mushroom']);
-    expect(t.stage).toBe('take');
-    expect(t.currentPlayerId).toBe('p0');
-    expect(t.turn).toBe(s.turn);
-    const u = ok(t, { type: 'TAKE', playerId: 'p0', take: 'pile' });
-    expect(u.players[0]!.hand).toEqual(['grass', 'pine', 'fern']);
-    expect(u.market).toEqual(['oak', 'kudzu']);
-    expect(u.pile).toEqual(['lotus', 'mushroom']);
-    expect(u.currentPlayerId).toBe('p1');
-    expect(u.stage).toBe('act');
-    expect(u.log.filter((e) => e.kind === 'take' && e.playerId === 'p0')).toHaveLength(2);
-    // 더미 → 마켓 순서도 된다
-    const v = ok(ok(s, { type: 'TAKE', playerId: 'p0', take: 'pile' }), { type: 'TAKE', playerId: 'p0', take: 0 });
-    expect(v.players[0]!.hand).toEqual(['grass', 'kudzu', 'oak']);
-    expect(v.market).toEqual(['pine', 'fern']);
+    expect(t.currentPlayerId).toBe('p1');
+    expect(t.stage).toBe('act');
+    const u = ok(s, { type: 'TAKE', playerId: 'p0', take: 'pile' });
+    expect(u.players[0]!.hand).toEqual(['grass', 'kudzu']);
+    expect(u.stage).toBe('take');
+    expect(u.currentPlayerId).toBe('p0');
+    expect(u.turn).toBe(s.turn);
+    // 두 번째 장은 주머니에서만
+    expect(applyAction(u, { type: 'TAKE', playerId: 'p0', take: 0 }).error).toMatch(/주머니에서 가져오는 중/);
+    const v = ok(u, { type: 'TAKE', playerId: 'p0', take: 'pile' });
+    expect(v.players[0]!.hand).toEqual(['grass', 'kudzu', 'fern']);
+    expect(v.market).toEqual(s.market);
+    expect(v.pile).toEqual(['lotus', 'mushroom']);
     expect(v.currentPlayerId).toBe('p1');
+    expect(v.stage).toBe('act');
+    expect(v.log.filter((e) => e.kind === 'take' && e.playerId === 'p0')).toHaveLength(2);
   });
 
-  it('손이 2장이면 1장만 가져오고 차례가 끝난다', () => {
+  it('손이 2장이면 주머니에서도 1장만 가져오고 차례가 끝난다', () => {
     const s = flatState();
-    const t = ok(s, { type: 'TAKE', playerId: 'p0', take: 0 });
-    expect(t.players[0]!.hand).toEqual(['grass', 'oak', 'oak']);
+    const t = ok(s, { type: 'TAKE', playerId: 'p0', take: 'pile' });
+    expect(t.players[0]!.hand).toEqual(['grass', 'oak', 'kudzu']);
     expect(t.players[0]!.hand).toHaveLength(HAND_MAX);
-    expect(t.market).toEqual(['pine', 'kudzu']);
     expect(t.currentPlayerId).toBe('p1');
     expect(t.stage).toBe('act');
   });
@@ -861,17 +861,17 @@ describe('행동 고르기 (Rules.md 5.1)', () => {
     expect(canTake(s, 'nobody')).toBe(false);
   });
 
-  it('가져오기 두 번째 장 단계에서는 놓기·버리기·부르기를 할 수 없다', () => {
+  it('주머니 두 번째 장 단계에서는 놓기·버리기·부르기를 할 수 없다', () => {
     const base = flatState([plant('grass', 'p0', 3, 3)], [[3, 3, 0, 1]]);
-    const s = ok(withHands(base, ['grass']), { type: 'TAKE', playerId: 'p0', take: 0 });
+    const s = ok(withHands(base, ['grass']), { type: 'TAKE', playerId: 'p0', take: 'pile' });
     expect(s.stage).toBe('take');
     expect(applyAction(s, { type: 'PLANT', playerId: 'p0', species: 'grass', pos: { q: 1, r: 0 } }).error).toMatch(/가져오기 중/);
     expect(applyAction(s, { type: 'DISCARD', playerId: 'p0', species: 'grass' }).error).toMatch(/가져오기 중/);
     expect(applyAction(s, { type: 'CALL', playerId: 'p0', pos: { q: 3, r: 3 } }).error).toMatch(/가져오기 중/);
-    expect(applyAction(s, { type: 'TAKE', playerId: 'p1', take: 0 }).error).toMatch(/내 차례가 아닙니다/);
+    expect(applyAction(s, { type: 'TAKE', playerId: 'p1', take: 'pile' }).error).toMatch(/내 차례가 아닙니다/);
   });
 
-  it('첫 장을 가져온 뒤 마켓·더미가 모두 비면 1장으로 끝난다', () => {
+  it('펼친 타일을 가져가 마켓이 비어도 1장으로 끝난다', () => {
     const s = { ...withHands(flatState(), ['grass']), market: ['oak'] as SpeciesId[], pile: [] };
     const t = ok(s, { type: 'TAKE', playerId: 'p0', take: 0 });
     expect(t.players[0]!.hand).toEqual(['grass', 'oak']);
@@ -879,16 +879,14 @@ describe('행동 고르기 (Rules.md 5.1)', () => {
     expect(t.currentPlayerId).toBe('p1');
   });
 
-  it('더미가 1장일 때 더미에서 가져오면 더미가 비고, 두 번째 장은 마켓에서만(채우지 않아 마켓이 준다)', () => {
+  it('주머니가 1장뿐이면 주머니에서 1장으로 끝난다(두 번째 장 단계가 없다)', () => {
     const s = { ...withHands(flatState(), ['grass']), market: ['oak', 'pine'] as SpeciesId[], pile: ['kudzu'] as SpeciesId[] };
     const t = ok(s, { type: 'TAKE', playerId: 'p0', take: 'pile' });
     expect(t.pile).toEqual([]);
-    expect(t.stage).toBe('take');
-    expect(applyAction(t, { type: 'TAKE', playerId: 'p0', take: 'pile' }).error).toMatch(/주머니가 비었/);
-    const u = ok(t, { type: 'TAKE', playerId: 'p0', take: 1 });
-    expect(u.market).toEqual(['oak']);
-    expect(u.players[0]!.hand).toEqual(['grass', 'kudzu', 'pine']);
-    expect(u.currentPlayerId).toBe('p1');
+    expect(t.players[0]!.hand).toEqual(['grass', 'kudzu']);
+    expect(t.market).toEqual(['oak', 'pine']);
+    expect(t.currentPlayerId).toBe('p1');
+    expect(t.stage).toBe('act');
   });
 
   it('할 수 있는 게 없으면(손 비고 가져올 카드·부를 식물 없음) 쉼 기록을 남기고 다음 사람', () => {
@@ -915,21 +913,21 @@ describe('행동 고르기 (Rules.md 5.1)', () => {
     expect(u.round).toBe(2);
   });
 
-  it('라운드 수: 2인 20 / 3·4인 17. 마지막 라운드를 마치면 더미가 남아도 끝난다', () => {
-    expect([2, 3, 4].map((n) => rulesFor(n).rounds)).toEqual([20, 17, 17]);
-    const last = { ...flatState(), round: 20, currentPlayerId: 'p1' };
+  it('라운드 수: 2인 18 / 3·4인 15. 마지막 라운드를 마치면 더미가 남아도 끝난다', () => {
+    expect([2, 3, 4].map((n) => rulesFor(n).rounds)).toEqual([18, 15, 15]);
+    const last = { ...flatState(), round: 18, currentPlayerId: 'p1' };
     const t = ok(last, { type: 'PLANT', playerId: 'p1', species: 'grass', pos: { q: 7, r: 0 } });
     expect(t.phase).toBe('finished');
     expect(t.result?.reason).toBe('complete');
     expect(t.pile.length).toBeGreaterThan(0);
-    const before = { ...flatState(), round: 19, currentPlayerId: 'p1' };
+    const before = { ...flatState(), round: 17, currentPlayerId: 'p1' };
     const u = ok(before, { type: 'PLANT', playerId: 'p1', species: 'grass', pos: { q: 7, r: 0 } });
     expect(u.phase).toBe('playing');
-    expect(u.round).toBe(20);
+    expect(u.round).toBe(18);
   });
 
   it("'take' 단계에서 지금 사람이 기권하면 다음 사람의 행동 고르기, 남이 기권하면 그대로", () => {
-    const s = ok(readyAll(lobby(3)), { type: 'TAKE', playerId: 'p0', take: 0 });
+    const s = ok(readyAll(lobby(3)), { type: 'TAKE', playerId: 'p0', take: 'pile' });
     expect(s.stage).toBe('take');
     const other = ok(s, { type: 'SURRENDER', playerId: 'p2' });
     expect(other.currentPlayerId).toBe('p0');
@@ -1043,10 +1041,11 @@ describe('시간 초과 자동 수 (Rules.md 6.3)', () => {
     expect(applyAction(full, autoAction(full, 'p0')!).error).toBeUndefined();
   });
 
-  it("'take' 단계: 마켓 0, 마켓이 비면 더미", () => {
-    const s = ok(withHands(flatState(), ['grass']), { type: 'TAKE', playerId: 'p0', take: 0 });
-    expect(autoAction(s, 'p0')).toEqual({ type: 'TAKE', playerId: 'p0', take: 0 });
-    expect(autoAction({ ...s, market: [] }, 'p0')).toEqual({ type: 'TAKE', playerId: 'p0', take: 'pile' });
+  it("'take' 단계(주머니 두 번째 장): 주머니", () => {
+    const s = ok(withHands(flatState(), ['grass']), { type: 'TAKE', playerId: 'p0', take: 'pile' });
+    expect(s.stage).toBe('take');
+    expect(autoAction(s, 'p0')).toEqual({ type: 'TAKE', playerId: 'p0', take: 'pile' });
+    expect(applyAction(s, autoAction(s, 'p0')!).error).toBeUndefined();
     expect(autoAction(s, 'p1')).toBeNull();
   });
 

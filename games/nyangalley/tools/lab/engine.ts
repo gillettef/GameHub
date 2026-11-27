@@ -121,7 +121,7 @@ export interface LabRules {
    * 행동 하나 (2026-11-27 사용자 제안). 일과 없이 차례마다 ① 가져오기(타일 take 장, 펼친 타일·주머니 맨 위에서 1장씩, 손 최대 handMax)
    * ② 놓기(손 1장, 가져오기 없음) ③ 부르기(call: 내 칸 위 명당을 돌려 다시 놓기, 놓인 칸 +callBonus) 중 하나. 끝은 actions.rounds
    */
-  one?: { take: number; handMax: number; call: boolean; callBonus?: number; callTurn?: boolean; callOnce?: boolean };
+  one?: { take: number; handMax: number; call: boolean; callBonus?: number; callTurn?: boolean; callOnce?: boolean; /** 'split' = 펼친 타일 1장 또는 주머니 take 장(2026-11-27 사용자 제안) */ takeMode?: 'mix' | 'split' };
   actions?: { move: number; gather: number; perCell: number; rounds: Record<number, number>; gatherTake?: boolean; handMax?: number; noRepeat?: boolean; gatherMode?: 'supply' | 'regroup' | 'nap'; noRelocate?: boolean; moveTimes?: number };
 }
 

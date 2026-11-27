@@ -17,7 +17,7 @@ interface Choice {
 
 /**
  * ④ 행동 고르기 판 (v8 「행동 하나」, Rules.md 5.1). 내 차례가 되면 먼저 셋 중 하나를 고르고, 고른 행동의 화면으로 넘어간다
- * (가져오기 = 펼친 타일·주머니, 놓기 = 내 타일 → 보드 칸, 부르기 = 보드의 내 칸 위 명당). 돌아가기는 ⑤ "다른 행동".
+ * (가져오기 = 펼친 타일 1개 또는 주머니 2개, 놓기 = 내 타일 → 보드 칸, 부르기 = 보드의 내 칸 위 명당). 돌아가기는 ⑤ "다른 행동".
  * 할 수 없는 행동은 이유를 적고 누를 수 없게 한다. 손의 어떤 타일도 놓을 칸이 없으면 놓기 자리가 "버리기"가 된다.
  */
 export const ActChooser = memo(function ActChooser() {
@@ -38,8 +38,8 @@ export const ActChooser = memo(function ActChooser() {
   const choices: Choice[] = [
     {
       mode: 'take',
-      title: `타일 ${Math.max(1, takeN)}개 가져오기`,
-      detail: `펼친 타일·주머니에서 1개씩 (손 ${hand}/${HAND_MAX})`,
+      title: '타일 가져오기',
+      detail: `펼친 타일 1개 또는 주머니 ${Math.max(1, takeN)}개 (손 ${hand}/${HAND_MAX})`,
       blocked: opts.take ? null : hand >= HAND_MAX ? `손이 가득 찼습니다 (${HAND_MAX}개)` : '남은 타일이 없습니다',
       art: SPOT_BACK_URL,
     },
