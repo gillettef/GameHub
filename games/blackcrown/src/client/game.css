@@ -136,7 +136,7 @@
 .bcm-map.is-mini { cursor: zoom-in; }
 .bcm-map.is-zoomed { cursor: grab; }
 .bcm-map .bcm-cell { cursor: pointer; outline: none; }
-.bcm-map .bcm-cell:focus-visible > circle:nth-of-type(3) { stroke: var(--bc-candle); stroke-width: 3; }
+.bcm-map .bcm-cell:focus-visible .bcm-stone { stroke: var(--bc-candle); stroke-width: 3; }
 .bcm-map .bcm-cell.is-locked { opacity: 0.45; }
 .bcm-ring { fill: none; pointer-events: none; }
 .bcm-ring--reach { stroke: var(--bc-candle); stroke-width: 2.4; stroke-dasharray: 4 3; filter: drop-shadow(0 0 4px var(--bc-candle-glow)); }
@@ -148,11 +148,6 @@
 .bcm-badge { pointer-events: none; filter: drop-shadow(0 1px 1.5px rgba(0, 0, 0, 0.8)); }
 .bcm-suit { color: var(--suit); pointer-events: none; }
 .bcm-hint { position: absolute; left: 8px; bottom: 8px; padding: 3px 10px; border-radius: 999px; font-size: 12px; background: rgba(0, 0, 0, 0.55); color: var(--gh-muted); pointer-events: none; }
-.bcm-zoom { position: absolute; right: 8px; bottom: 8px; display: flex; flex-direction: column-reverse; align-items: flex-end; gap: 6px; pointer-events: none; }
-.bcm-zoom > * { pointer-events: auto; }
-.bcm-zoom button { min-width: 44px; min-height: 44px; padding: 0 10px; border-radius: 12px; border: 1px solid var(--bc-gilt); background: rgba(17, 14, 19, 0.85); color: var(--bc-gilt-hi); font: 600 20px/1 var(--bc-font-body); }
-.bcm-zoom button.bcm-all { font-size: 13px; }
-.bcm-zoom button:disabled { opacity: 0.35; }
 @media (prefers-reduced-motion: reduce) { .bcm-ring { filter: none; } }
 
 /* 넓은 화면(PC): 보드를 왼쪽에 화면 높이 전체로 크게, 나머지(①②④⑤)는 오른쪽 440px 기둥에.
