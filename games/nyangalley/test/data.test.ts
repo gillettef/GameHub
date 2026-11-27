@@ -116,12 +116,12 @@ describe('정원 조각 (Rules.md 3.2)', () => {
 describe('Rules.md 10절 v8 상수 표와 데이터 일치', () => {
   const rows = new Map(tableRows('## 10. 상수').map((r) => [r[0] ?? '', r[1] ?? '']));
   it('가져오기 장수·손 최대·라운드 수', () => {
-    expect(rows.get('가져오기 장수 (v8)')).toBe(`${TAKE_COUNT}장`);
+    expect(rows.get('가져오기 장수 (v8)')).toBe(`마켓 1장 또는 더미 ${TAKE_COUNT}장`);
     expect(rows.get('손 카드 최대 (v8)')).toBe(`${HAND_MAX}장`);
     expect(rows.get('라운드 수 (v8)')).toBe(`2인 ${PLAYER_COUNT_RULES[2]!.rounds} / 3·4인 ${PLAYER_COUNT_RULES[3]!.rounds}`);
     expect(PLAYER_COUNT_RULES[4]!.rounds).toBe(PLAYER_COUNT_RULES[3]!.rounds);
     // 5.1·5.2 문장과도 같다
-    expect(RULES).toContain(`카드를 **${TAKE_COUNT}장** 손에 든다`);
+    expect(RULES).toContain(`**카드 더미 맨 위에서 ${TAKE_COUNT}장**`);
     expect(RULES).toContain(`손 카드는 최대 **${HAND_MAX}장**이다`);
     expect(RULES).toContain(`2인 **${PLAYER_COUNT_RULES[2]!.rounds}**, 3·4인 **${PLAYER_COUNT_RULES[3]!.rounds}** 라운드`);
   });

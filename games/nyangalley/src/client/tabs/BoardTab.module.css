@@ -1,7 +1,5 @@
-/* ③ 소문 카드 축소판 → 골목 보드(남는 높이). ④ 펼친 타일 또는 놓기 확인 바 → 내 타일 */
+/* ③ 소문 카드 축소판 → 골목 보드(화면 폭에 꽉 차게, 높이는 보드 모양대로). ④ 펼친 타일 또는 놓기 확인 바 → 내 타일 */
 .root {
-  height: 100%;
-  min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -12,9 +10,13 @@
 }
 
 .boardArea {
-  flex: 1;
-  min-height: 0;
+  flex: none;
   min-width: 0;
+}
+
+/* 보드 SVG 는 폭 100%, 높이는 viewBox 비율대로 (공통 틀이 아니라 화면 스크롤로 길이를 감당한다) */
+.boardArea > :global(svg) {
+  height: auto;
 }
 
 .bottom {

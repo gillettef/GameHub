@@ -138,7 +138,7 @@ export type GamePhase = 'lobby' | 'reveal' | 'playing' | 'finished';
 /**
  * 단계 (Rules.md 5절, v8 「행동 하나」).
  *  - 'act': 행동 고르기. 가져오기 첫 장(TAKE) / 놓기(PLANT, 심을 칸이 없으면 DISCARD) / 명당 부르기(CALL) 중 하나
- *  - 'take': 가져오기 두 번째 장 (TAKE)
+ *  - 'take': 주머니(카드 더미)에서 두 번째 장 (TAKE 'pile' 만)
  */
 export type RoundStage = 'act' | 'take';
 export type LogKind = 'system' | 'take' | 'plant' | 'discard' | 'flip' | 'uproot' | 'turn' | 'surrender' | 'result' | 'call' | 'pass';
@@ -223,7 +223,7 @@ export type Action =
   | { type: 'CONFIRM'; playerId: PlayerId }
   /** 이번 판 식물 공개 단계에서 무리(색) 고르기. null = 랜덤 (Rules.md 4절 8). 확인하기 전에만 */
   | { type: 'PICK_CREW'; playerId: PlayerId; crew: number | null }
-  /** 가져오기 한 장: 마켓 take 번 카드, 'pile' = 카드 더미 맨 위 1장(뒷면) (Rules.md 5.1). 행동 고르기('act')에서 첫 장, 'take' 단계에서 두 번째 장 */
+  /** 가져오기 한 장: 마켓 take 번 카드, 'pile' = 카드 더미 맨 위 1장(뒷면) (Rules.md 5.1). 행동 고르기('act')에서 첫 장, 'take' 단계에서 더미 두 번째 장('pile' 만) */
   | { type: 'TAKE'; playerId: PlayerId; take: number | 'pile' }
   /** 심기. rotation: 뿌리 모양 회전(생략 0). seed: 민들레만(생략 가능) */
   | { type: 'PLANT'; playerId: PlayerId; species: SpeciesId; pos: Position; rotation?: Direction; seed?: Position }

@@ -131,29 +131,41 @@ describe('행동 하나 (Rules.md 5.1)', () => {
     useGameStore.getState().acknowledgeHandoff();
   }
 
-  it('가져오기: 첫 타일을 가져오면 같은 사람이 두 번째를 가져오고(놓기는 못 함), 두 번째 뒤에 다음 사람 차례가 된다', () => {
+  it('가져오기: 펼친 타일이면 1장으로 차례 끝, 주머니면 같은 사람이 주머니에서 두 번째를 가져온다(놓기는 못 함)', () => {
     toAct();
     useGameStore.getState().chooseAct('take');
+    const m0 = useGameStore.getState();
+    const picked = m0.state!.market[1]!;
+    m0.takeCard(1);
+    expect(useGameStore.getState().state!.players.find((p) => p.id === 'p0')!.handCount).toBe(2);
+    expect(useGameStore.getState().state!.players[0]!.hand).toEqual([]);
+    expect(useGameStore.getState().viewerId).toBe('p1');
+    expect(picked).toBeTruthy();
+    // 다음 사람(p1): 주머니에서 두 장
+    useGameStore.getState().acknowledgeHandoff();
+    useGameStore.getState().chooseAct('take');
     const s0 = useGameStore.getState();
-    const taken = s0.state!.market[1]!;
-    s0.takeCard(1);
+    const before = s0.state!.players.find((p) => p.id === 'p1')!.hand.length;
+    s0.takeCard('pile');
     const s1 = useGameStore.getState();
-    expect(s1.state!.players.find((p) => p.id === 'p0')!.hand.at(-1)).toBe(taken);
+    expect(s1.state!.players.find((p) => p.id === 'p1')!.hand).toHaveLength(before + 1);
     expect(s1.state!.stage).toBe('take');
-    expect(s1.viewerId).toBe('p0');
+    expect(s1.viewerId).toBe('p1');
     expect(s1.handoffPending).toBe(false);
     expect(selectTakingSecond(s1)).toBe(true);
     expect(selectCanTake(s1)).toBe(true);
     expect(selectCanPlant(s1)).toBe(false);
     s1.selectHandCard(0);
     expect(useGameStore.getState().selectedHandIndex).toBeNull();
+    // 두 번째 장은 주머니에서만(펼친 타일은 거절)
+    useGameStore.getState().takeCard(0);
+    expect(useGameStore.getState().notice).toMatch(/주머니/);
     useGameStore.getState().takeCard('pile');
     const s2 = useGameStore.getState();
-    expect(s2.viewerId).toBe('p1');
-    expect(s2.handoffPending).toBe(true);
-    expect(s2.state!.players.find((p) => p.id === 'p0')!.handCount).toBe(3);
-    // 다음 사람에게는 자기 손만 보인다
-    expect(s2.state!.players.find((p) => p.id === 'p0')!.hand).toEqual([]);
+    // 차례가 끝났다(라운드가 바뀌어 같은 사람이 다음 선일 수도 있다)
+    expect(s2.state!.stage).toBe('act');
+    expect(s2.state!.turn).toBeGreaterThan(s1.state!.turn);
+    expect(s2.state!.players.find((p) => p.id === 'p1')!.handCount).toBe(before + 2);
   });
 
   it('놓기: 내 타일을 고르고 칸을 눌러 미리 본 뒤 놓으면 가져오지 않고 다음 사람 차례가 된다', () => {

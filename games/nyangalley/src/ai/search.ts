@@ -4,8 +4,9 @@
  *  - 행동 고르기: 놓기(손 카드 × 칸 × 회전(× 민들레 씨앗 상위 칸)의 최선) · 명당 부르기(부를 식물 칸 × 방향의 최선) ·
  *    가져오기(지금 margin + TAKE_WEIGHT × 가져온 뒤 손의 최선 놓기 이득 + HAND_WEIGHT × 가져올 장수, 실험실 lab/bots.ts oneCandidates 와 같은 생각)
  *    중 값이 가장 큰 행동. 놓을 칸이 없고 가져오기·부르기도 못 하면 버리기.
- *  - 가져오기 한 장: 마켓 카드마다 "손 카드 + 그 카드로 둘 수 있는 최선 1수 가치 + 공개 목표 연계 가산"을 매기고, 카드 더미 뒷면 1장은
- *    아직 못 본 카드(전체 − 심은 카드 − 마켓 − 내 손) 분포로 낸 기댓값을 매겨 가장 큰 쪽을 고른다. 더미 순서는 보지 않는다.
+ *  - 가져오기: 펼친 타일 1장(마켓 카드마다 "손 카드 + 그 카드로 둘 수 있는 최선 1수 가치 + 공개 목표 연계 가산" 중 최선)과
+ *    주머니 2장(아직 못 본 카드(전체 − 심은 카드 − 마켓 − 내 손) 분포로 낸 기댓값, 가져올 장수만큼 HAND_WEIGHT)을 따로 후보로 둔다.
+ *    주머니 두 번째 장은 고를 것이 없다. 더미 순서는 보지 않는다.
  * 규칙 계산은 전부 엔진(plantRoots·callRoots·computeScores·legal*)을 부른다(사본 없음).
  * 입력은 그 자리가 보는 가린 상태다(사람과 같은 정보). 시간 제한 안에 끝내지 못하면 그때까지의 최선 또는 엔진 자동 수.
  * 공통 방 코드(@gamehub/net)의 봇(def.bot.next)이 동기 함수라 동기로 돈다. 허브 프로세스를 오래 막지 않도록 봇은 BOT_TIME_LIMIT_MS 로 부른다.
@@ -189,7 +190,6 @@ export function unseenCards(state: SearchState, playerId: PlayerId): Map<Species
 
 type Key = [number, number];
 const keyGreater = (a: Key, b: Key) => a[0] > b[0] || (a[0] === b[0] && a[1] > b[1]);
-type Take = number | 'pile';
 
 /** 카드 값 (손 카드와 그 카드 중 최선 + 목표 가산, 그 카드 자체의 1수 가치). 같은 종은 한 번만 잰다 */
 function cardKeys(state: SearchState, ev: Evaluator, hand: readonly SpeciesId[]): (sp: SpeciesId) => Key {
@@ -221,35 +221,24 @@ function bestMarketIndex(state: SearchState, cardKey: (sp: SpeciesId) => Key): {
   return { index, key };
 }
 
-/** 가져오기 한 장의 고르기와 그 카드 값(카드 값의 첫 요소). 카드가 없으면 key 는 null */
-function pickTake(state: SearchState, playerId: PlayerId, ev: Evaluator): { take: Take; key: Key | null } {
+/** 가져오기 후보: 마켓 최선 카드(번호와 카드 값)와 카드 더미 뒷면 기댓값. 카드 값은 Key 의 첫 요소. 없으면 null */
+function takeOptions(state: SearchState, playerId: PlayerId, ev: Evaluator): { market: { index: number; key: Key } | null; pile: Key | null } {
   const me = state.players.find((p) => p.id === playerId)!;
-  let take: Take = state.market.length ? 0 : 'pile';
   const cardKey = cardKeys(state, ev, me.hand);
   const m = bestMarketIndex(state, cardKey);
-  let bestKey = m.key;
-  if (bestKey) take = m.index;
   // 서버가 가린 상태는 pile 이 비고 pileCount 만 있다
   const pileN = pileCountOf(state);
   const unseen = pileN ? unseenCards(state, playerId) : new Map<SpeciesId, number>();
   let total = 0;
-  for (const n of unseen.values()) total += n;
-  if (total) {
-    let e0 = 0;
-    let e1 = 0;
-    for (const [sp, n] of unseen) {
-      const k = cardKey(sp);
-      e0 += n * k[0];
-      e1 += n * k[1];
-    }
-    const pileKey: Key = [e0 / total, e1 / total];
-    // 1수 탐욕 근사: 마켓 카드를 남겨 두는 손해(다음 사람이 가져감)는 보지 않는다
-    if (!bestKey || keyGreater(pileKey, bestKey)) {
-      take = 'pile';
-      bestKey = pileKey;
-    }
+  let e0 = 0;
+  let e1 = 0;
+  for (const [sp, n] of unseen) {
+    const k = cardKey(sp);
+    e0 += n * k[0];
+    e1 += n * k[1];
+    total += n;
   }
-  return { take, key: bestKey };
+  return { market: m.key ? { index: m.index, key: m.key } : null, pile: total ? [e0 / total, e1 / total] : null };
 }
 
 /** 카드 더미 장수 (가린 상태는 pileCount) */
@@ -257,16 +246,6 @@ const pileCountOf = (state: SearchState): number => state.pile.length || ('pileC
 
 /** 가져오기 한 장을 할 수 있는가 (가린 상태 포함) */
 const takeOk = (state: SearchState, playerId: PlayerId): boolean => canTake({ players: state.players, market: state.market, pile: state.pile, pileCount: pileCountOf(state) }, playerId);
-
-function chooseTake(state: SearchState, playerId: PlayerId, deadline: number): { take: Take; depth: number } {
-  const fallback: Take = state.market.length ? 0 : 'pile';
-  try {
-    return { take: pickTake(state, playerId, new Evaluator(state, playerId, deadline)).take, depth: 1 };
-  } catch (err) {
-    if (err instanceof OutOfTime) return { take: fallback, depth: 0 };
-    throw err;
-  }
-}
 
 /** 행동 후보 */
 export interface ActCandidate {
@@ -288,11 +267,12 @@ export function actCandidates(state: SearchState, playerId: PlayerId, deadline: 
   const call = ev.bestCall();
   if (call) out.push({ action: { type: 'CALL', playerId, pos: call.pos, rotation: call.rotation }, value: call.value });
   if (takeOk(state, playerId)) {
-    const t = pickTake(state, playerId, ev);
+    // 펼친 타일 1장, 또는 주머니 TAKE_COUNT 장(손 최대 HAND_MAX) (Rules.md 5.1 1). 1수 탐욕 근사: 마켓 카드를 남겨 두는 손해는 보지 않는다
+    const t = takeOptions(state, playerId, ev);
     const handGain = plant ? plant.value - base : 0;
-    const gain = Math.max(0, handGain, t.key ? t.key[0] - base : 0);
-    const n = Math.min(TAKE_COUNT, HAND_MAX - me.hand.length);
-    out.push({ action: { type: 'TAKE', playerId, take: t.take }, value: base + TAKE_WEIGHT * gain + HAND_WEIGHT * n });
+    const value = (key: Key, n: number) => base + TAKE_WEIGHT * Math.max(0, handGain, key[0] - base) + HAND_WEIGHT * n;
+    if (t.market) out.push({ action: { type: 'TAKE', playerId, take: t.market.index }, value: value(t.market.key, 1) });
+    if (t.pile) out.push({ action: { type: 'TAKE', playerId, take: 'pile' }, value: value(t.pile, Math.min(TAKE_COUNT, HAND_MAX - me.hand.length, pileCountOf(state))) });
   }
   if (!out.length && me.hand.length) out.push({ action: { type: 'DISCARD', playerId, species: me.hand[0]! }, value: base - DISCARD_PENALTY });
   return out;
@@ -320,10 +300,10 @@ export function decide(state: SearchState, playerId: PlayerId, timeLimitMs: numb
   let depth = 0;
   if (myTurn) {
     if (state.stage === 'take') {
+      // 주머니 두 번째 장: 고를 것이 없다
       if (takeOk(state, playerId)) {
-        const t = chooseTake(state, playerId, deadline);
-        action = { type: 'TAKE', playerId, take: t.take };
-        depth = t.depth;
+        action = { type: 'TAKE', playerId, take: 'pile' };
+        depth = 1;
       }
     } else ({ action, depth } = chooseAct(state, playerId, deadline));
   }

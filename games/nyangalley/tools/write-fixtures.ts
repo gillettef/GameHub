@@ -58,7 +58,7 @@ function variedAction(s: GameState, rnd: { seed: number }): Action {
   if (s.phase !== 'playing') return autoAction(s, pid) as Action;
   const me = s.players.find((p) => p.id === pid)!;
   const take = (): Action => ({ type: 'TAKE', playerId: pid, take: pick([...s.market.map((_, i) => i), ...(s.pile.length ? ['pile' as const] : [])]) });
-  if (s.stage === 'take') return take();
+  if (s.stage === 'take') return { type: 'TAKE', playerId: pid, take: 'pile' };
   // 행동 고르기: 할 수 있는 행동 종류 중 하나 (놓기는 두 번 넣어 더 자주)
   const o = actOptions(s, pid);
   const kinds: ('plant' | 'take' | 'call' | 'discard')[] = [...(o.plant ? (['plant', 'plant'] as const) : []), ...(o.take ? (['take'] as const) : []), ...(o.call ? (['call'] as const) : []), ...(o.discard ? (['discard'] as const) : [])];

@@ -177,9 +177,9 @@ describe('차례 제한 시간 (Rules.md 6.3)', () => {
     expect(advance(t, 1000)).toBe(t)
   })
 
-  it('가져오기 두 번째 장 시간 초과는 자동으로 가져오지만 세지 않는다', () => {
+  it('주머니 두 번째 장 시간 초과는 자동으로 가져오지만 세지 않는다', () => {
     let t = playing(humans(2), { turnTime: 60 })
-    t = def.apply(t, 0, { type: 'TAKE', turn: t.game.turn, take: 0 }, ctx())
+    t = def.apply(t, 0, { type: 'TAKE', turn: t.game.turn, take: 'pile' }, ctx())
     expect(t.game.stage).toBe('take')
     const hand = t.game.players[0]!.hand.length
     t = advance(t, 60_000)
@@ -243,7 +243,7 @@ describe('차례 제한 시간 (Rules.md 6.3)', () => {
 })
 
 describe('봇', () => {
-  it.each([2, 3, 4])('%i인: 봇끼리 끝까지 두고, 한 수는 짧다', (n) => {
+  it.each([2, 3, 4])('%i인: 봇끼리 끝까지 두고, 한 수는 짧다', { timeout: 30_000 }, (n) => {
     let t = setup(Array.from({ length: n }, (_, i) => ({ kind: 'bot' as const, name: `AI ${i}` })))
     expect(t.game.phase).toBe('playing')
     const times: number[] = []

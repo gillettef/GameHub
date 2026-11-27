@@ -21,8 +21,8 @@ const myPlants = (s: Store) => s.state?.plants.filter((p) => p.ownerId === s.vie
 /** 내가 가져온 타일 수 (기록 기준) */
 const tookCards = (s: Store) => s.state?.log.filter((e) => e.kind === 'take' && e.playerId === s.viewerId).length ?? 0;
 
-/** 첫 행동을 마쳤나 (가져오기 두 번, 놓기, 부르기) */
-const actedOnce = (s: Store) => tookCards(s) >= TAKE_COUNT || myPlants(s) > 0 || (s.state?.log.some((e) => e.kind === 'call' && e.playerId === s.viewerId) ?? false);
+/** 첫 행동을 마쳤나 (가져오기를 끝냄, 놓기, 부르기) */
+const actedOnce = (s: Store) => (tookCards(s) > 0 && !(s.state?.stage === 'take' && s.state.currentPlayerId === s.viewerId)) || myPlants(s) > 0 || (s.state?.log.some((e) => e.kind === 'call' && e.playerId === s.viewerId) ?? false);
 
 const STEPS: Step[] = [
   {
@@ -32,12 +32,12 @@ const STEPS: Step[] = [
   },
   {
     title: '차례마다 하나만',
-    body: `내 차례에는 셋 중 하나만 합니다. ① 타일 ${TAKE_COUNT}개 가져오기(손은 ${HAND_MAX}개까지) ② 내 타일 1개 놓기 ③ 내 칸 위 명당 부르기. 내 차례가 되면 아래에 세 행동이 나옵니다. 가져오면 그 차례에는 놓지 않으니, 지금 놓을지 좋은 타일을 모을지 고르세요.`,
+    body: `내 차례에는 셋 중 하나만 합니다. ① 타일 가져오기(펼친 타일 1개 또는 주머니 ${TAKE_COUNT}개, 손은 ${HAND_MAX}개까지) ② 내 타일 1개 놓기 ③ 내 칸 위 명당 부르기. 내 차례가 되면 아래에 세 행동이 나옵니다. 가져오면 그 차례에는 놓지 않으니, 지금 놓을지 좋은 타일을 모을지 고르세요.`,
     top: true,
   },
   {
     title: '타일 가져오기',
-    body: `먼저 타일을 모아 봅시다. 아래에서 "타일 가져오기"를 고른 뒤, 펼친 타일 하나를 눌러 크게 보고 가져오기 버튼을 누르세요. 빈자리는 바로 채워집니다. 맨 끝의 주머니를 누르면 무엇이 나올지 모르는 타일 1개를 뽑습니다. ${TAKE_COUNT}개를 가져오면 차례가 끝납니다.`,
+    body: `먼저 타일을 모아 봅시다. 아래에서 "타일 가져오기"를 고른 뒤, 펼친 타일 하나를 눌러 크게 보고 가져오기 버튼을 누르세요. 빈자리는 바로 채워집니다. 펼친 타일은 1개로 차례가 끝나고, 맨 끝의 주머니를 고르면 무엇이 나올지 모르는 타일을 ${TAKE_COUNT}개 꺼냅니다.`,
     done: (s) => actedOnce(s),
   },
   {

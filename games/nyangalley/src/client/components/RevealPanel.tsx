@@ -100,7 +100,7 @@ export const RevealPanel = memo(function RevealPanel() {
           <div className={styles.mineCard}>
             <SpeciesCard species={myCard} variant="chip" seat={me?.seat} onClick={() => openCardModal({ kind: 'species', species: myCard })} />
           </div>
-          <p className={styles.help}>내 첫 타일입니다. 차례마다 타일 {TAKE_COUNT}개 가져오기(손 최대 {HAND_MAX}개) · 놓기 · 내 칸 명당 부르기 중 하나를 합니다.</p>
+          <p className={styles.help}>내 첫 타일입니다. 차례마다 타일 가져오기(펼친 타일 1개 또는 주머니 {TAKE_COUNT}개, 손 최대 {HAND_MAX}개) · 놓기 · 내 칸 명당 부르기 중 하나를 합니다.</p>
         </section>
       )}
 

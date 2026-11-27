@@ -116,15 +116,15 @@ const STAGE_DOING: Record<GameState["stage"], string> = {
 export const stageDoing = (stage: GameState["stage"]): string =>
   STAGE_DOING[stage] ?? "두는 중";
 
-/** 이번 판 라운드 수 (2인 20 / 3·4인 17, Rules.md 5.2) */
+/** 이번 판 라운드 수 (2인 18 / 3·4인 15, Rules.md 5.2) */
 export const totalRounds = (state: Pick<GameState, "players">): number =>
   rulesFor(Math.max(2, state.players.length)).rounds;
 
-/** "N/20라운드" */
+/** "N/18라운드" */
 export const roundLabel = (state: MaskedGameState | GameState): string =>
   `${state.round}/${totalRounds(state)}라운드`;
 
-/** "N/20라운드 · 행동 고르기" */
+/** "N/18라운드 · 행동 고르기" */
 export const roundStageLabel = (state: MaskedGameState | GameState): string =>
   `${roundLabel(state)} · ${stageName(state.stage)}`;
 

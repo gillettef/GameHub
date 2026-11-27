@@ -11,7 +11,7 @@ import {
 } from '../store/gameStore';
 import { distinctRotations, stageDoing } from './derived';
 
-/** ① 할 일 안내(옛 정원 탭 바닥의 차례 안내). v8 「행동 하나」: 행동 고르기 → 고른 행동(가져오기 2개 · 놓기 · 명당 부르기)의 화면 */
+/** ① 할 일 안내(옛 정원 탭 바닥의 차례 안내). v8 「행동 하나」: 행동 고르기 → 고른 행동(가져오기: 펼친 1개 또는 주머니 2개 · 놓기 · 명당 부르기)의 화면 */
 export function boardHint(s: GameStore, plantable: number[]): string {
   const state = s.state;
   if (!state) return '';
@@ -20,9 +20,9 @@ export function boardHint(s: GameStore, plantable: number[]): string {
     const current = state.players.find((p) => p.id === state.currentPlayerId);
     return `${current?.nickname ?? ''}의 차례 · ${stageDoing(state.stage)}`;
   }
-  if (selectTakingSecond(s)) return '하나 더 · 펼친 타일이나 주머니에서 타일 1개를 더 가져오세요';
+  if (selectTakingSecond(s)) return '하나 더 · 주머니에서 타일 1개를 더 꺼내세요';
   if (selectChoosingAct(s)) return '가져오기 · 놓기 · 부르기 중 하나를 고르세요';
-  if (selectCanTake(s)) return '펼친 타일이나 주머니에서 1개씩 가져오세요';
+  if (selectCanTake(s)) return '펼친 타일 1개를 누르거나, 주머니에서 2개를 꺼내세요';
   if (selectCanCall(s)) return s.callPos ? '방향을 고르고 결과를 본 뒤 부르기를 누르세요' : '부를 내 칸 위 명당(빛나는 칸)을 누르세요';
   if (!selectCanPlant(s)) return '';
   const species = selectSelectedSpecies(s);
