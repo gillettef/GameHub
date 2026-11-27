@@ -1,7 +1,7 @@
 import { memo, useMemo, type CSSProperties } from 'react';
 import { computeScores, getSpecies } from '../../engine';
 import { GoalList } from '../components/GoalList';
-import { asState, buildPlayerSummaries, crewName } from '../game/derived';
+import { asState, buildPlayerSummaries, seatCrewName } from '../game/derived';
 import { selectState, selectViewerId, useGameStore } from '../store/gameStore';
 import styles from './StatusTab.module.css';
 
@@ -26,7 +26,7 @@ export const StatusTab = memo(function StatusTab() {
               <div className={styles.head}>
                 <span className={styles.name}>
                   {r.nickname}
-                  <span className={styles.crew}>{crewName(r.seat)}</span>
+                  <span className={styles.crew}>{seatCrewName(state, r.seat)}</span>
                   {r.id === viewerId && <span className={styles.me}>나</span>}
                   {r.kind === 'ai' && <span className={styles.me}>AI</span>}
                   {r.surrendered && <span className={styles.gone}>기권</span>}

@@ -1,7 +1,7 @@
 import { memo } from 'react';
 import { SPOT_BACK_URL } from '../game/cardImages';
 import { cx } from '../lib/cx';
-import { selectCanTake, selectState, useGameStore } from '../store/gameStore';
+import { selectActOptions, selectCanTake, selectChoosingAct, selectState, useGameStore } from '../store/gameStore';
 import { SpeciesCard } from './SpeciesCard';
 import styles from './Market.module.css';
 
@@ -15,7 +15,8 @@ import styles from './Market.module.css';
 export const Market = memo(function Market() {
   const market = useGameStore((s) => s.state?.market);
   const pileCount = useGameStore((s) => s.state?.pileCount ?? 0);
-  const canTake = useGameStore(selectCanTake);
+  // 가져오기를 고른 뒤(또는 두 번째 타일)에 가져온다. 행동을 고르기 전에 눌러도 가져오기 창이 열린다(지름길)
+  const canTake = useGameStore((s) => selectCanTake(s) || (selectChoosingAct(s) && !!selectActOptions(s)?.take));
   const openCardModal = useGameStore((s) => s.openCardModal);
   const phase = useGameStore((s) => selectState(s)?.phase);
   if (!market || phase !== 'playing') return null;

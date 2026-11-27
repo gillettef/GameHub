@@ -79,12 +79,25 @@ export function buildCells(state: MaskedGameState | GameState): CellView[] {
   });
 }
 
-/** 자리별 무리 이름 (화면 테마 「냥냥 골목」, notes/Rules.md 대응표). 자리 색 --color-seat-N 과 같은 순서 */
+/** 무리 이름 (화면 테마 「냥냥 골목」, notes/Rules.md 대응표). 무리 색 --crew-N 과 같은 순서 */
 export const CREW_NAMES = ["치즈냥", "턱시도냥", "고등어냥", "삼색냥"] as const;
 
-/** 자리 번호(0부터) → 무리 이름 */
-export const crewName = (seat: number): string =>
-  CREW_NAMES[seat] ?? `${seat + 1}번 자리`;
+/** 무리 번호(0부터) → 무리 이름 */
+export const crewName = (crew: number): string =>
+  CREW_NAMES[crew] ?? `${crew + 1}번 무리`;
+
+/** 자리별 무리 번호 (자리 순). 고르기 전·옛 저장 판은 자리 번호 그대로 */
+export function seatCrews(state: Pick<GameState, "players"> | Pick<MaskedGameState, "players">): number[] {
+  const out: number[] = [];
+  for (const p of state.players) out[p.seat] = typeof p.crew === "number" ? p.crew : p.seat;
+  return Array.from({ length: out.length }, (_, i) => out[i] ?? i);
+}
+
+/** 자리 → 그 자리의 무리 이름 */
+export const seatCrewName = (
+  state: Pick<GameState, "players"> | Pick<MaskedGameState, "players">,
+  seat: number,
+): string => (seat >= 0 ? crewName(seatCrews(state)[seat] ?? seat) : "");
 
 const STAGE_NAMES: Record<GameState["stage"], string> = {
   act: "행동 고르기",

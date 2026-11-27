@@ -17,6 +17,7 @@ import { requestAiDecision } from './ai/search'
 import { tutorialBotAction } from './ai/tutorial'
 import {
   AFK_STRIKES_FOR_AUTOPILOT,
+  CREW_COUNT,
   AUTOPILOT_LOG_MARK,
   DEFAULT_TURN_TIME_SEC,
   MAX_PLAYERS,
@@ -45,6 +46,8 @@ import {
 /** 화면 → 서버 행동. 좌석은 접속이 정하므로 playerId 를 받지 않는다. turn = 고를 때 본 차례 번호(늦게 도착한 수 거절) */
 export type Action =
   | { type: 'CONFIRM' }
+  /** 이번 판 명당 공개 단계에서 무리(색) 고르기. null = 랜덤 */
+  | { type: 'PICK_CREW'; crew: number | null }
   /** 가져오기 한 장. take: 마켓 번호, 'pile' 카드 더미 맨 위(뒷면) */
   | { type: 'TAKE'; turn: number; take: number | 'pile' }
   | { type: 'PLANT'; turn: number; species: SpeciesId; pos: Position; rotation?: Direction; seed?: Position }
@@ -120,6 +123,8 @@ export function parseAction(raw: unknown): Action | null {
     case 'SURRENDER':
     case 'RESUME':
       return { type: raw.type }
+    case 'PICK_CREW':
+      return raw.crew === null || isInt(raw.crew, 0, CREW_COUNT - 1) ? { type: 'PICK_CREW', crew: raw.crew } : null
   }
   if (!isInt(raw.turn, 0, 100_000)) return null
   const turn = raw.turn
@@ -170,6 +175,8 @@ function toEngine(a: Exclude<Action, { type: 'RESUME' }>, id: PlayerId): EngineA
     case 'CONFIRM':
     case 'SURRENDER':
       return { type: a.type, playerId: id }
+    case 'PICK_CREW':
+      return { type: 'PICK_CREW', playerId: id, crew: a.crew }
     case 'TAKE':
       return { type: 'TAKE', playerId: id, take: a.take }
     case 'DISCARD':
@@ -194,6 +201,8 @@ export function fromEngine(a: EngineAction, turn: number): Action | null {
     case 'CONFIRM':
     case 'SURRENDER':
       return { type: a.type }
+    case 'PICK_CREW':
+      return { type: 'PICK_CREW', crew: a.crew }
     case 'TAKE':
       return { type: 'TAKE', turn, take: a.take }
     case 'DISCARD':

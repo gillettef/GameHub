@@ -367,7 +367,8 @@
           "hand": [
             "mushroom"
           ],
-          "surrenderedOrder": null
+          "surrenderedOrder": null,
+          "crew": null
         },
         {
           "id": "p1",
@@ -378,7 +379,8 @@
           "hand": [
             "lotus"
           ],
-          "surrenderedOrder": null
+          "surrenderedOrder": null,
+          "crew": null
         }
       ],
       "plants": [],
@@ -866,7 +868,8 @@
               "hand": [
                 "mushroom"
               ],
-              "surrenderedOrder": null
+              "surrenderedOrder": null,
+              "crew": null
             },
             {
               "id": "p1",
@@ -877,7 +880,8 @@
               "hand": [
                 "lotus"
               ],
-              "surrenderedOrder": null
+              "surrenderedOrder": null,
+              "crew": null
             }
           ],
           "plants": [],
@@ -3406,7 +3410,8 @@
               "hand": [
                 "grass"
               ],
-              "surrenderedOrder": null
+              "surrenderedOrder": null,
+              "crew": 2
             },
             {
               "id": "p1",
@@ -3418,7 +3423,8 @@
                 "lotus",
                 "dandelion"
               ],
-              "surrenderedOrder": null
+              "surrenderedOrder": null,
+              "crew": 1
             }
           ],
           "plants": [
@@ -3555,7 +3561,7 @@
             0,
             0
           ],
-          "rngSeed": 248188589,
+          "rngSeed": 1447918732,
           "deckSeed": [
             3217923377,
             1269622523,
@@ -5788,7 +5794,8 @@
                 "lotus",
                 "dandelion"
               ],
-              "surrenderedOrder": null
+              "surrenderedOrder": null,
+              "crew": 2
             },
             {
               "id": "p1",
@@ -5800,7 +5807,8 @@
                 "kudzu",
                 "fern"
               ],
-              "surrenderedOrder": null
+              "surrenderedOrder": null,
+              "crew": 1
             }
           ],
           "plants": [
@@ -5967,7 +5975,7 @@
             0,
             0
           ],
-          "rngSeed": 248188589,
+          "rngSeed": 1447918732,
           "deckSeed": [
             3217923377,
             1269622523,
@@ -8804,7 +8812,8 @@
               "hand": [
                 "lotus"
               ],
-              "surrenderedOrder": null
+              "surrenderedOrder": null,
+              "crew": 2
             },
             {
               "id": "p1",
@@ -8815,7 +8824,8 @@
               "hand": [
                 "dandelion"
               ],
-              "surrenderedOrder": null
+              "surrenderedOrder": null,
+              "crew": 1
             }
           ],
           "plants": [
@@ -9032,7 +9042,7 @@
             2,
             0
           ],
-          "rngSeed": 248188589,
+          "rngSeed": 1447918732,
           "deckSeed": [
             3217923377,
             1269622523,
@@ -11432,7 +11442,8 @@
               "seat": 0,
               "isReady": true,
               "hand": [],
-              "surrenderedOrder": null
+              "surrenderedOrder": null,
+              "crew": 2
             },
             {
               "id": "p1",
@@ -11444,7 +11455,8 @@
                 "mushroom",
                 "dandelion"
               ],
-              "surrenderedOrder": null
+              "surrenderedOrder": null,
+              "crew": 1
             }
           ],
           "plants": [
@@ -11691,7 +11703,7 @@
             1,
             0
           ],
-          "rngSeed": 248188589,
+          "rngSeed": 1447918732,
           "deckSeed": [
             3217923377,
             1269622523,
@@ -14064,7 +14076,8 @@
                 "fern",
                 "mushroom"
               ],
-              "surrenderedOrder": null
+              "surrenderedOrder": null,
+              "crew": 2
             },
             {
               "id": "p1",
@@ -14077,7 +14090,8 @@
                 "dandelion",
                 "fern"
               ],
-              "surrenderedOrder": null
+              "surrenderedOrder": null,
+              "crew": 1
             }
           ],
           "plants": [
@@ -14324,7 +14338,7 @@
             1,
             0
           ],
-          "rngSeed": 248188589,
+          "rngSeed": 1447918732,
           "deckSeed": [
             3217923377,
             1269622523,
@@ -17057,7 +17071,8 @@
                 "kudzu",
                 "grass"
               ],
-              "surrenderedOrder": null
+              "surrenderedOrder": null,
+              "crew": 2
             },
             {
               "id": "p1",
@@ -17068,7 +17083,8 @@
               "hand": [
                 "dandelion"
               ],
-              "surrenderedOrder": null
+              "surrenderedOrder": null,
+              "crew": 1
             }
           ],
           "plants": [
@@ -17355,7 +17371,7 @@
             1,
             0
           ],
-          "rngSeed": 248188589,
+          "rngSeed": 1447918732,
           "deckSeed": [
             3217923377,
             1269622523,
@@ -18471,7 +18487,8 @@
                 "grass",
                 "lotus"
               ],
-              "surrenderedOrder": null
+              "surrenderedOrder": null,
+              "crew": 2
             },
             {
               "id": "p1",
@@ -18484,7 +18501,8 @@
                 "fern",
                 "grass"
               ],
-              "surrenderedOrder": null
+              "surrenderedOrder": null,
+              "crew": 1
             }
           ],
           "plants": [
@@ -18771,7 +18789,7 @@
             1,
             0
           ],
-          "rngSeed": 248188589,
+          "rngSeed": 1447918732,
           "deckSeed": [
             3217923377,
             1269622523,
@@ -19630,7 +19648,8 @@
           "hand": [
             "mugunghwa"
           ],
-          "surrenderedOrder": null
+          "surrenderedOrder": null,
+          "crew": null
         },
         {
           "id": "p1",
@@ -19641,7 +19660,8 @@
           "hand": [
             "grass"
           ],
-          "surrenderedOrder": null
+          "surrenderedOrder": null,
+          "crew": null
         },
         {
           "id": "p2",
@@ -19652,7 +19672,8 @@
           "hand": [
             "dandelion"
           ],
-          "surrenderedOrder": null
+          "surrenderedOrder": null,
+          "crew": null
         }
       ],
       "plants": [],
@@ -20485,7 +20506,8 @@
               "hand": [
                 "mugunghwa"
               ],
-              "surrenderedOrder": null
+              "surrenderedOrder": null,
+              "crew": null
             },
             {
               "id": "p1",
@@ -20496,7 +20518,8 @@
               "hand": [
                 "grass"
               ],
-              "surrenderedOrder": null
+              "surrenderedOrder": null,
+              "crew": null
             },
             {
               "id": "p2",
@@ -20507,7 +20530,8 @@
               "hand": [
                 "dandelion"
               ],
-              "surrenderedOrder": null
+              "surrenderedOrder": null,
+              "crew": null
             }
           ],
           "plants": [],
@@ -24328,7 +24352,8 @@
                 "mugunghwa",
                 "grass"
               ],
-              "surrenderedOrder": null
+              "surrenderedOrder": null,
+              "crew": 1
             },
             {
               "id": "p1",
@@ -24337,7 +24362,8 @@
               "seat": 1,
               "isReady": true,
               "hand": [],
-              "surrenderedOrder": null
+              "surrenderedOrder": null,
+              "crew": 0
             },
             {
               "id": "p2",
@@ -24349,7 +24375,8 @@
                 "oak",
                 "dandelion"
               ],
-              "surrenderedOrder": null
+              "surrenderedOrder": null,
+              "crew": 2
             }
           ],
           "plants": [
@@ -24570,7 +24597,7 @@
             1,
             1
           ],
-          "rngSeed": 2647648976,
+          "rngSeed": 3847379119,
           "deckSeed": [
             2363696207,
             875698814,
@@ -28363,7 +28390,8 @@
               "hand": [
                 "grass"
               ],
-              "surrenderedOrder": null
+              "surrenderedOrder": null,
+              "crew": 1
             },
             {
               "id": "p1",
@@ -28376,7 +28404,8 @@
                 "oak",
                 "oak"
               ],
-              "surrenderedOrder": null
+              "surrenderedOrder": null,
+              "crew": 0
             },
             {
               "id": "p2",
@@ -28387,7 +28416,8 @@
               "hand": [
                 "dandelion"
               ],
-              "surrenderedOrder": null
+              "surrenderedOrder": null,
+              "crew": 2
             }
           ],
           "plants": [
@@ -28638,7 +28668,7 @@
             1,
             1
           ],
-          "rngSeed": 2647648976,
+          "rngSeed": 3847379119,
           "deckSeed": [
             2363696207,
             875698814,
@@ -32411,7 +32441,8 @@
               "hand": [
                 "grass"
               ],
-              "surrenderedOrder": null
+              "surrenderedOrder": null,
+              "crew": 1
             },
             {
               "id": "p1",
@@ -32424,7 +32455,8 @@
                 "oak",
                 "lotus"
               ],
-              "surrenderedOrder": null
+              "surrenderedOrder": null,
+              "crew": 0
             },
             {
               "id": "p2",
@@ -32433,7 +32465,8 @@
               "seat": 2,
               "isReady": true,
               "hand": [],
-              "surrenderedOrder": 0
+              "surrenderedOrder": 0,
+              "crew": 2
             }
           ],
           "plants": [
@@ -32704,7 +32737,7 @@
             1,
             1
           ],
-          "rngSeed": 2647648976,
+          "rngSeed": 3847379119,
           "deckSeed": [
             2363696207,
             875698814,
@@ -36724,7 +36757,8 @@
               "hand": [
                 "grass"
               ],
-              "surrenderedOrder": null
+              "surrenderedOrder": null,
+              "crew": 1
             },
             {
               "id": "p1",
@@ -36737,7 +36771,8 @@
                 "oak",
                 "mugunghwa"
               ],
-              "surrenderedOrder": null
+              "surrenderedOrder": null,
+              "crew": 0
             },
             {
               "id": "p2",
@@ -36746,7 +36781,8 @@
               "seat": 2,
               "isReady": true,
               "hand": [],
-              "surrenderedOrder": 0
+              "surrenderedOrder": 0,
+              "crew": 2
             }
           ],
           "plants": [
@@ -37047,7 +37083,7 @@
             1,
             1
           ],
-          "rngSeed": 2647648976,
+          "rngSeed": 3847379119,
           "deckSeed": [
             2363696207,
             875698814,
@@ -41100,7 +41136,8 @@
               "hand": [
                 "mugunghwa"
               ],
-              "surrenderedOrder": null
+              "surrenderedOrder": null,
+              "crew": 1
             },
             {
               "id": "p1",
@@ -41113,7 +41150,8 @@
                 "mugunghwa",
                 "kudzu"
               ],
-              "surrenderedOrder": null
+              "surrenderedOrder": null,
+              "crew": 0
             },
             {
               "id": "p2",
@@ -41122,7 +41160,8 @@
               "seat": 2,
               "isReady": true,
               "hand": [],
-              "surrenderedOrder": 0
+              "surrenderedOrder": 0,
+              "crew": 2
             }
           ],
           "plants": [
@@ -41453,7 +41492,7 @@
             1,
             1
           ],
-          "rngSeed": 2647648976,
+          "rngSeed": 3847379119,
           "deckSeed": [
             2363696207,
             875698814,
@@ -45825,7 +45864,8 @@
                 "grass",
                 "lotus"
               ],
-              "surrenderedOrder": null
+              "surrenderedOrder": null,
+              "crew": 1
             },
             {
               "id": "p1",
@@ -45834,7 +45874,8 @@
               "seat": 1,
               "isReady": true,
               "hand": [],
-              "surrenderedOrder": null
+              "surrenderedOrder": null,
+              "crew": 0
             },
             {
               "id": "p2",
@@ -45843,7 +45884,8 @@
               "seat": 2,
               "isReady": true,
               "hand": [],
-              "surrenderedOrder": 0
+              "surrenderedOrder": 0,
+              "crew": 2
             }
           ],
           "plants": [
@@ -46214,7 +46256,7 @@
             1,
             1
           ],
-          "rngSeed": 2647648976,
+          "rngSeed": 3847379119,
           "deckSeed": [
             2363696207,
             875698814,
@@ -47325,7 +47367,8 @@
           "hand": [
             "oak"
           ],
-          "surrenderedOrder": null
+          "surrenderedOrder": null,
+          "crew": null
         },
         {
           "id": "p1",
@@ -47336,7 +47379,8 @@
           "hand": [
             "kudzu"
           ],
-          "surrenderedOrder": null
+          "surrenderedOrder": null,
+          "crew": null
         },
         {
           "id": "p2",
@@ -47347,7 +47391,8 @@
           "hand": [
             "lotus"
           ],
-          "surrenderedOrder": null
+          "surrenderedOrder": null,
+          "crew": null
         },
         {
           "id": "p3",
@@ -47358,7 +47403,8 @@
           "hand": [
             "dandelion"
           ],
-          "surrenderedOrder": null
+          "surrenderedOrder": null,
+          "crew": null
         }
       ],
       "plants": [],
@@ -48318,7 +48364,8 @@
               "hand": [
                 "oak"
               ],
-              "surrenderedOrder": null
+              "surrenderedOrder": null,
+              "crew": null
             },
             {
               "id": "p1",
@@ -48329,7 +48376,8 @@
               "hand": [
                 "kudzu"
               ],
-              "surrenderedOrder": null
+              "surrenderedOrder": null,
+              "crew": null
             },
             {
               "id": "p2",
@@ -48340,7 +48388,8 @@
               "hand": [
                 "lotus"
               ],
-              "surrenderedOrder": null
+              "surrenderedOrder": null,
+              "crew": null
             },
             {
               "id": "p3",
@@ -48351,7 +48400,8 @@
               "hand": [
                 "dandelion"
               ],
-              "surrenderedOrder": null
+              "surrenderedOrder": null,
+              "crew": null
             }
           ],
           "plants": [],
@@ -52856,7 +52906,8 @@
               "seat": 0,
               "isReady": true,
               "hand": [],
-              "surrenderedOrder": null
+              "surrenderedOrder": null,
+              "crew": 2
             },
             {
               "id": "p1",
@@ -52868,7 +52919,8 @@
                 "kudzu",
                 "oak"
               ],
-              "surrenderedOrder": null
+              "surrenderedOrder": null,
+              "crew": 1
             },
             {
               "id": "p2",
@@ -52877,7 +52929,8 @@
               "seat": 2,
               "isReady": true,
               "hand": [],
-              "surrenderedOrder": null
+              "surrenderedOrder": null,
+              "crew": 0
             },
             {
               "id": "p3",
@@ -52890,7 +52943,8 @@
                 "dandelion",
                 "fern"
               ],
-              "surrenderedOrder": null
+              "surrenderedOrder": null,
+              "crew": 3
             }
           ],
           "plants": [
@@ -53139,7 +53193,7 @@
             0,
             0
           ],
-          "rngSeed": 2015813407,
+          "rngSeed": 3215543550,
           "deckSeed": [
             3783824438,
             1509950978,
@@ -57356,7 +57410,8 @@
               "hand": [
                 "oak"
               ],
-              "surrenderedOrder": null
+              "surrenderedOrder": null,
+              "crew": 2
             },
             {
               "id": "p1",
@@ -57367,7 +57422,8 @@
               "hand": [
                 "oak"
               ],
-              "surrenderedOrder": null
+              "surrenderedOrder": null,
+              "crew": 1
             },
             {
               "id": "p2",
@@ -57378,7 +57434,8 @@
               "hand": [
                 "pine"
               ],
-              "surrenderedOrder": null
+              "surrenderedOrder": null,
+              "crew": 0
             },
             {
               "id": "p3",
@@ -57390,7 +57447,8 @@
                 "dandelion",
                 "dandelion"
               ],
-              "surrenderedOrder": null
+              "surrenderedOrder": null,
+              "crew": 3
             }
           ],
           "plants": [
@@ -57669,7 +57727,7 @@
             0,
             0
           ],
-          "rngSeed": 2015813407,
+          "rngSeed": 3215543550,
           "deckSeed": [
             3783824438,
             1509950978,
@@ -62094,7 +62152,8 @@
               "hand": [
                 "oak"
               ],
-              "surrenderedOrder": null
+              "surrenderedOrder": null,
+              "crew": 2
             },
             {
               "id": "p1",
@@ -62107,7 +62166,8 @@
                 "fern",
                 "oak"
               ],
-              "surrenderedOrder": null
+              "surrenderedOrder": null,
+              "crew": 1
             },
             {
               "id": "p2",
@@ -62116,7 +62176,8 @@
               "seat": 2,
               "isReady": true,
               "hand": [],
-              "surrenderedOrder": 0
+              "surrenderedOrder": 0,
+              "crew": 0
             },
             {
               "id": "p3",
@@ -62127,7 +62188,8 @@
               "hand": [
                 "dandelion"
               ],
-              "surrenderedOrder": null
+              "surrenderedOrder": null,
+              "crew": 3
             }
           ],
           "plants": [
@@ -62416,7 +62478,7 @@
             0,
             0
           ],
-          "rngSeed": 2015813407,
+          "rngSeed": 3215543550,
           "deckSeed": [
             3783824438,
             1509950978,
@@ -66670,7 +66732,8 @@
                 "pine",
                 "fern"
               ],
-              "surrenderedOrder": null
+              "surrenderedOrder": null,
+              "crew": 2
             },
             {
               "id": "p1",
@@ -66682,7 +66745,8 @@
                 "fern",
                 "oak"
               ],
-              "surrenderedOrder": null
+              "surrenderedOrder": null,
+              "crew": 1
             },
             {
               "id": "p2",
@@ -66691,7 +66755,8 @@
               "seat": 2,
               "isReady": true,
               "hand": [],
-              "surrenderedOrder": 0
+              "surrenderedOrder": 0,
+              "crew": 0
             },
             {
               "id": "p3",
@@ -66702,7 +66767,8 @@
               "hand": [
                 "mugunghwa"
               ],
-              "surrenderedOrder": null
+              "surrenderedOrder": null,
+              "crew": 3
             }
           ],
           "plants": [
@@ -67021,7 +67087,7 @@
             0,
             0
           ],
-          "rngSeed": 2015813407,
+          "rngSeed": 3215543550,
           "deckSeed": [
             3783824438,
             1509950978,
@@ -71569,7 +71635,8 @@
               "hand": [
                 "lotus"
               ],
-              "surrenderedOrder": null
+              "surrenderedOrder": null,
+              "crew": 2
             },
             {
               "id": "p1",
@@ -71582,7 +71649,8 @@
                 "oak",
                 "kudzu"
               ],
-              "surrenderedOrder": null
+              "surrenderedOrder": null,
+              "crew": 1
             },
             {
               "id": "p2",
@@ -71591,7 +71659,8 @@
               "seat": 2,
               "isReady": true,
               "hand": [],
-              "surrenderedOrder": 0
+              "surrenderedOrder": 0,
+              "crew": 0
             },
             {
               "id": "p3",
@@ -71602,7 +71671,8 @@
               "hand": [
                 "mugunghwa"
               ],
-              "surrenderedOrder": null
+              "surrenderedOrder": null,
+              "crew": 3
             }
           ],
           "plants": [
@@ -71951,7 +72021,7 @@
             0,
             0
           ],
-          "rngSeed": 2015813407,
+          "rngSeed": 3215543550,
           "deckSeed": [
             3783824438,
             1509950978,
@@ -76568,7 +76638,8 @@
                 "lotus",
                 "kudzu"
               ],
-              "surrenderedOrder": null
+              "surrenderedOrder": null,
+              "crew": 2
             },
             {
               "id": "p1",
@@ -76580,7 +76651,8 @@
                 "fern",
                 "kudzu"
               ],
-              "surrenderedOrder": null
+              "surrenderedOrder": null,
+              "crew": 1
             },
             {
               "id": "p2",
@@ -76589,7 +76661,8 @@
               "seat": 2,
               "isReady": true,
               "hand": [],
-              "surrenderedOrder": 0
+              "surrenderedOrder": 0,
+              "crew": 0
             },
             {
               "id": "p3",
@@ -76598,7 +76671,8 @@
               "seat": 3,
               "isReady": true,
               "hand": [],
-              "surrenderedOrder": null
+              "surrenderedOrder": null,
+              "crew": 3
             }
           ],
           "plants": [
@@ -76967,7 +77041,7 @@
             0,
             0
           ],
-          "rngSeed": 2015813407,
+          "rngSeed": 3215543550,
           "deckSeed": [
             3783824438,
             1509950978,
@@ -81517,7 +81591,8 @@
               "hand": [
                 "lotus"
               ],
-              "surrenderedOrder": null
+              "surrenderedOrder": null,
+              "crew": 2
             },
             {
               "id": "p1",
@@ -81526,7 +81601,8 @@
               "seat": 1,
               "isReady": true,
               "hand": [],
-              "surrenderedOrder": null
+              "surrenderedOrder": null,
+              "crew": 1
             },
             {
               "id": "p2",
@@ -81535,7 +81611,8 @@
               "seat": 2,
               "isReady": true,
               "hand": [],
-              "surrenderedOrder": 0
+              "surrenderedOrder": 0,
+              "crew": 0
             },
             {
               "id": "p3",
@@ -81546,7 +81623,8 @@
               "hand": [
                 "fern"
               ],
-              "surrenderedOrder": null
+              "surrenderedOrder": null,
+              "crew": 3
             }
           ],
           "plants": [
@@ -81965,7 +82043,7 @@
             0,
             0
           ],
-          "rngSeed": 2015813407,
+          "rngSeed": 3215543550,
           "deckSeed": [
             3783824438,
             1509950978,
@@ -85974,7 +86052,8 @@
                 "mugunghwa",
                 "fern"
               ],
-              "surrenderedOrder": null
+              "surrenderedOrder": null,
+              "crew": 2
             },
             {
               "id": "p1",
@@ -85986,7 +86065,8 @@
                 "mushroom",
                 "oak"
               ],
-              "surrenderedOrder": null
+              "surrenderedOrder": null,
+              "crew": 1
             },
             {
               "id": "p2",
@@ -85995,7 +86075,8 @@
               "seat": 2,
               "isReady": true,
               "hand": [],
-              "surrenderedOrder": 0
+              "surrenderedOrder": 0,
+              "crew": 0
             },
             {
               "id": "p3",
@@ -86006,7 +86087,8 @@
               "hand": [
                 "mugunghwa"
               ],
-              "surrenderedOrder": null
+              "surrenderedOrder": null,
+              "crew": 3
             }
           ],
           "plants": [
@@ -86445,7 +86527,7 @@
             0,
             0
           ],
-          "rngSeed": 2015813407,
+          "rngSeed": 3215543550,
           "deckSeed": [
             3783824438,
             1509950978,
@@ -89070,7 +89152,8 @@
                 "fern",
                 "pine"
               ],
-              "surrenderedOrder": null
+              "surrenderedOrder": null,
+              "crew": 2
             },
             {
               "id": "p1",
@@ -89081,7 +89164,8 @@
               "hand": [
                 "mushroom"
               ],
-              "surrenderedOrder": null
+              "surrenderedOrder": null,
+              "crew": 1
             },
             {
               "id": "p2",
@@ -89090,7 +89174,8 @@
               "seat": 2,
               "isReady": true,
               "hand": [],
-              "surrenderedOrder": 0
+              "surrenderedOrder": 0,
+              "crew": 0
             },
             {
               "id": "p3",
@@ -89103,7 +89188,8 @@
                 "pine",
                 "mushroom"
               ],
-              "surrenderedOrder": null
+              "surrenderedOrder": null,
+              "crew": 3
             }
           ],
           "plants": [
@@ -89552,7 +89638,7 @@
             0,
             0
           ],
-          "rngSeed": 2015813407,
+          "rngSeed": 3215543550,
           "deckSeed": [
             3783824438,
             1509950978,
