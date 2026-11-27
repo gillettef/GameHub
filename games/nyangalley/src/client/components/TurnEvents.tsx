@@ -3,11 +3,11 @@ import type { GameLogEntry, LogKind } from '../../engine';
 import { nameOf } from '../../engine';
 import { stageName } from '../game/derived';
 import { selectState, selectViewerId, useGameStore } from '../store/gameStore';
-import { BoltIcon, CheckIcon, HelpIcon, PassIcon, PlaceIcon, SurrenderIcon, SwapIcon, SwordIcon } from './icons';
+import { BoltIcon, PassIcon, PlaceIcon, SurrenderIcon, SwapIcon, SwordIcon } from './icons';
 import styles from './TurnEvents.module.css';
 
-/** 연출에 올리는 사건 종류 (v7: 일과 고르기·생선 냄새·담 넘기·명당 부르기·쉼 포함) */
-const SHOWN_KINDS: ReadonlySet<LogKind> = new Set<LogKind>(['chore', 'peek', 'plant', 'take', 'move', 'call', 'flip', 'discard', 'pass', 'surrender']);
+/** 연출에 올리는 사건 종류 (v8: 명당 부르기·쉼 포함) */
+const SHOWN_KINDS: ReadonlySet<LogKind> = new Set<LogKind>(['plant', 'take', 'call', 'flip', 'discard', 'pass', 'surrender']);
 const MAX_ITEMS = 6;
 const SPLASH_MS = 1100;
 const ITEM_MS = 450;
@@ -18,9 +18,6 @@ const KIND_ICON: Partial<Record<LogKind, ReactNode>> = {
   flip: <SwordIcon size={18} />,
   discard: <PassIcon size={18} />,
   surrender: <SurrenderIcon size={18} />,
-  chore: <CheckIcon size={18} />,
-  peek: <HelpIcon size={18} />,
-  move: <BoltIcon size={18} />,
   call: <PlaceIcon size={18} />,
   pass: <PassIcon size={18} />,
 };
@@ -29,35 +26,18 @@ const KIND_ICON: Partial<Record<LogKind, ReactNode>> = {
 function shorten(e: GameLogEntry): string {
   switch (e.kind) {
     case 'plant': {
-      // turn.ts 놓기 로그: "닉네임: C4에 평상 놓음" / "닉네임: C4에 캣닢 화분 놓음, 멀리 D6" / "…, 식빵 굽기 +1"
-      const m = e.message.match(/: ([A-Z]\d+)에 ([^:,]+) 놓음(?:, 멀리 ([A-Z]\d+))?(?:, 식빵 굽기 \+(\d+))?$/);
-      return m ? `${m[1]} ${m[2]} 놓음${m[3] ? ` · 멀리 ${m[3]}` : ''}${m[4] ? ` · 식빵 +${m[4]}` : ''}` : e.message;
+      // turn.ts 놓기 로그: "닉네임: C4에 평상 놓음" / "닉네임: C4에 캣닢 화분 놓음, 멀리 D6"
+      const m = e.message.match(/: ([A-Z]\d+)에 ([^:,]+) 놓음(?:, 멀리 ([A-Z]\d+))?$/);
+      return m ? `${m[1]} ${m[2]} 놓음${m[3] ? ` · 멀리 ${m[3]}` : ''}` : e.message;
     }
     case 'take': {
       // turn.ts 가져오기 로그: "닉네임: 펼친 타일에서 종이 상자 가져옴" / "닉네임: 주머니에서 1개 뽑음"
       if (/: 주머니에서 1개 뽑음$/.test(e.message)) return '주머니에서 1개';
-      const m = e.message.match(/: (?:펼친 타일에서|생선 냄새로 편) ([^:]+) 가져옴$/);
+      const m = e.message.match(/: 펼친 타일에서 ([^:]+) 가져옴$/);
       return m ? `${m[1]} 가져옴` : e.message;
     }
-    case 'chore': {
-      // turn.ts 일과 로그: "닉네임: 일과 「식빵 굽기」 고름"
-      const m = e.message.match(/일과 「([^」]+)」 고름$/);
-      return m ? `「${m[1]}」 고름` : e.message;
-    }
-    case 'peek': {
-      // "닉네임: 생선 냄새로 주머니 맨 위 평상을(를) 펼침" / "닉네임: 펼쳤던 평상을(를) 주머니 맨 위로 되돌림"
-      const open = e.message.match(/주머니 맨 위 (.+)을\(를\) 펼침$/);
-      if (open) return `생선 냄새 · ${open[1]} 펼침`;
-      const back = e.message.match(/펼쳤던 (.+)을\(를\) 주머니 맨 위로 되돌림$/);
-      return back ? `${back[1]} 주머니로` : e.message;
-    }
-    case 'move': {
-      // "닉네임: C4의 고양이 2마리가 D5(으)로 담을 넘음"
-      const m = e.message.match(/: ([A-Z]\d+)의 고양이 (\d+)마리가 ([A-Z]\d+)\(으\)로 담을 넘음$/);
-      return m ? `담 넘기 ${m[1]}→${m[3]} ${m[2]}마리` : e.message;
-    }
     case 'call': {
-      // "닉네임: C4의 평상 명당을 부름 (방향을 바꿈), 그 칸 +1"
+      // "닉네임: C4의 평상 명당을 부름 (방향을 바꿈)"
       const m = e.message.match(/: ([A-Z]\d+)의 (.+) 명당을 부름/);
       return m ? `${m[1]} ${m[2]} 부름` : e.message;
     }

@@ -2,11 +2,9 @@
  * 화면용 파생값. 규칙 계산은 전부 shared 엔진 함수를 부르고(중복 구현 금지), 여기서는 화면 모양으로만 바꾼다.
  */
 import type {
-  ChoreId,
   Direction,
   GameState,
   MaskedGameState,
-  MoveStep,
   PlayerId,
   Plant,
   Position,
@@ -15,17 +13,14 @@ import type {
   Terrain,
 } from "../../engine";
 import {
-  BREAD_BONUS,
   callRoots,
   cellLabels,
   computeOwners,
   computeScores,
   getSpecies,
   legalPlantCells,
-  moveRoots,
   plantRoots,
   posKey,
-  remainingChores,
   rulesFor,
   samePos,
   SPECIES_IDS,
@@ -92,62 +87,33 @@ export const crewName = (seat: number): string =>
   CREW_NAMES[seat] ?? `${seat + 1}번 자리`;
 
 const STAGE_NAMES: Record<GameState["stage"], string> = {
-  chore: "일과 고르기",
+  act: "행동 고르기",
   take: "가져오기",
-  plant: "놓기",
-  move: "담 넘기",
-  call: "명당 부르기",
 };
 
-/** 단계 이름 (v7 「골목 일과」, Rules.md 5절: 일과 고르기 → 가져오기 → 놓기 / 담 넘기 / 명당 부르기) */
+/** 단계 이름 (v8 「행동 하나」, Rules.md 5절: 행동 고르기 → (가져오기면) 두 번째 타일) */
 export const stageName = (stage: GameState["stage"]): string =>
-  STAGE_NAMES[stage] ?? "놓기";
+  STAGE_NAMES[stage] ?? "행동 고르기";
 
 /** 다른 사람 차례일 때 하는 일 ("가져오는 중" …) */
 const STAGE_DOING: Record<GameState["stage"], string> = {
-  chore: "일과 고르는 중",
+  act: "고르는 중",
   take: "가져오는 중",
-  plant: "놓는 중",
-  move: "담 넘는 중",
-  call: "명당 부르는 중",
 };
 export const stageDoing = (stage: GameState["stage"]): string =>
   STAGE_DOING[stage] ?? "두는 중";
 
-/** 이번 판 라운드 수 (2인 12 / 3·4인 10, Rules.md 5절) */
+/** 이번 판 라운드 수 (2인 20 / 3·4인 17, Rules.md 5.2) */
 export const totalRounds = (state: Pick<GameState, "players">): number =>
   rulesFor(Math.max(2, state.players.length)).rounds;
 
-/** "N/12라운드" */
+/** "N/20라운드" */
 export const roundLabel = (state: MaskedGameState | GameState): string =>
   `${state.round}/${totalRounds(state)}라운드`;
 
-/** 일과 고르기 단계에서 지금이 몇 번째 선택인가 (1부터) */
-export const choicePick = (state: Pick<GameState, "chores">): number =>
-  state.chores.filter((c) => c !== null).length + 1;
-
-/** "N/12라운드 · 가져오기" (일과 고르기는 "· 2번째 선택"까지) */
+/** "N/20라운드 · 행동 고르기" */
 export const roundStageLabel = (state: MaskedGameState | GameState): string =>
-  `${roundLabel(state)} · ${stageName(state.stage)}${state.stage === "chore" ? ` · ${choicePick(state)}번째 선택` : ""}`;
-
-/** 이번 라운드에 아직 아무도 안 고른 일과 (엔진 그대로) */
-export const leftChores = (state: MaskedGameState | GameState): ChoreId[] =>
-  remainingChores(state);
-
-/** 이 사람이 이번 라운드에 고른 일과 */
-export function choreOf(
-  state: MaskedGameState | GameState,
-  playerId: PlayerId | null,
-): ChoreId | null {
-  const p = state.players.find((x) => x.id === playerId);
-  return p ? (state.chores[p.seat] ?? null) : null;
-}
-
-/** 이 사람이 놓기 차례에 받는 식빵 굽기 보너스 (Rules.md 5.3) */
-export const plantBonus = (
-  state: MaskedGameState | GameState,
-  playerId: PlayerId | null,
-): number => (choreOf(state, playerId) === "bread" ? BREAD_BONUS : 0);
+  `${roundLabel(state)} · ${stageName(state.stage)}`;
 
 /** 판 단계 이름. 끝난 판은 finishedLabel(자리 띠 '게임 종료', 진행 탭 '종료') */
 export function phaseLabel(
@@ -252,7 +218,6 @@ export function simulatePlant(
   pos: Position,
   rotation: Direction,
   seed: Position | null = null,
-  bonus = 0,
 ): { after: GameState; uprooted: number[] } {
   const withPlant: GameState = {
     ...state,
@@ -268,7 +233,6 @@ export function simulatePlant(
     pos,
     rotation,
     seed && getSpecies(species).seed ? seed : null,
-    bonus,
   );
   return {
     after: {
@@ -280,7 +244,7 @@ export function simulatePlant(
   };
 }
 
-/** 심었다고 치고 결과를 미리 본다 (엔진 함수만 쓴다, 상태는 바꾸지 않는다). bonus: 식빵 굽기면 심은 칸 +1 */
+/** 심었다고 치고 결과를 미리 본다 (엔진 함수만 쓴다, 상태는 바꾸지 않는다) */
 export function previewPlant(
   state: MaskedGameState | GameState,
   viewerId: PlayerId,
@@ -288,7 +252,6 @@ export function previewPlant(
   pos: Position,
   rotation: Direction,
   seed: Position | null,
-  bonus = 0,
 ): PlantPreview | null {
   const s = asState(state);
   if (!s.board) return null;
@@ -299,37 +262,11 @@ export function previewPlant(
     pos,
     rotation,
     seed,
-    bonus,
   );
   return diffPreview(s, after, uprooted.length);
 }
 
-/**
- * 담 넘기 이동들을 차례로 적용한 상태 (엔진 moveRoots 그대로, 두 번째 이동은 첫 이동 뒤 보드 기준. Rules.md 5.3)
- */
-export function applyMoves(
-  state: MaskedGameState | GameState,
-  playerId: PlayerId,
-  moves: readonly MoveStep[],
-): GameState {
-  let s = asState(state);
-  for (const m of moves)
-    s = { ...s, ...moveRoots(s, playerId, m.from, m.to, m.count) };
-  return s;
-}
-
-/** 담 넘기 미리보기: 이번 차례 이동 전부를 적용했을 때의 변화 */
-export function previewMoves(
-  state: MaskedGameState | GameState,
-  playerId: PlayerId,
-  moves: readonly MoveStep[],
-): PlantPreview | null {
-  const s = asState(state);
-  if (!s.board || moves.length === 0) return null;
-  return diffPreview(s, applyMoves(s, playerId, moves), 0);
-}
-
-/** 명당 부르기를 했다고 친 상태 (식물 방향을 바꾸고 엔진 callRoots 로 고양이를 부른다, Rules.md 5.3) */
+/** 명당 부르기를 했다고 친 상태 (식물 방향을 바꾸고 엔진 callRoots 로 고양이를 부른다, Rules.md 5.1) */
 export function simulateCall(
   state: MaskedGameState | GameState,
   playerId: PlayerId,

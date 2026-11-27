@@ -117,6 +117,11 @@ export interface LabRules {
    * 끝은 actions.rounds. 행동 고르기(actions)와 함께 켠다(차례 흐름·이동은 actions 의 것을 쓴다)
    */
   chores?: { set: ChoreId[]; reveal?: Record<number, number>; peekMode?: 'hand2' | 'look3'; callBonus?: number; breadBonus?: number; callTurn?: boolean; roamRange?: number; callTake?: boolean };
+  /**
+   * 행동 하나 (2026-11-27 사용자 제안). 일과 없이 차례마다 ① 가져오기(타일 take 장, 펼친 타일·주머니 맨 위에서 1장씩, 손 최대 handMax)
+   * ② 놓기(손 1장, 가져오기 없음) ③ 부르기(call: 내 칸 위 명당을 돌려 다시 놓기, 놓인 칸 +callBonus) 중 하나. 끝은 actions.rounds
+   */
+  one?: { take: number; handMax: number; call: boolean; callBonus?: number; callTurn?: boolean; callOnce?: boolean };
   actions?: { move: number; gather: number; perCell: number; rounds: Record<number, number>; gatherTake?: boolean; handMax?: number; noRepeat?: boolean; gatherMode?: 'supply' | 'regroup' | 'nap'; noRelocate?: boolean; moveTimes?: number };
 }
 
@@ -124,6 +129,9 @@ export type ChoreId = 'bread' | 'peek' | 'roam' | 'move' | 'call' | 'boss';
 export const PLACE_CHORES: readonly ChoreId[] = ['bread', 'peek', 'roam', 'boss'];
 
 export type TurnAction =
+  | { kind: 'take2'; picks: number[] }
+  | { kind: 'plant' }
+  | { kind: 'pass' }
   | { kind: 'call'; cell: number; rot?: number }
   | { kind: 'place'; take: number }
   | { kind: 'move'; from: number; to: number; k: number; then?: { from: number; to: number; k: number } }
@@ -456,15 +464,19 @@ export class Game {
   /** 명당 부르기 후보: 내 영역 위 식물 칸 */
   callOptions(s: number): number[] {
     const out: number[] = [];
-    for (let c = 0; c < this.geo.n; c++) if (this.plant[c] !== -1 && this.owner(c) === s) out.push(c);
+    for (let c = 0; c < this.geo.n; c++) if (this.plant[c] !== -1 && this.owner(c) === s && !(this.rules.one?.callOnce && this.called.has(c))) out.push(c);
     return out;
   }
+
+  /** 이번 판에 부른 명당 칸 (one.callOnce) */
+  called = new Set<number>();
 
   /** 명당 부르기 적용: 그 칸 식물의 뿌리 모양(놓인 방향)대로 다시 (능력 없음) */
   applyCall(s: number, cell: number, rot?: number): void {
     const spIdx = this.plant[cell] as number;
     if (spIdx < 0) return;
-    if (rot !== undefined && this.rules.chores?.callTurn) {
+    const cfg = this.rules.chores ?? this.rules.one;
+    if (rot !== undefined && cfg?.callTurn) {
       this.undo.push(3, cell, this.plantRot[cell] as number, 0);
       this.plantRot[cell] = rot;
     }
@@ -474,7 +486,7 @@ export class Game {
     const batch: [number, number][] = [];
     for (const [dq, dr, v] of pat) {
       const t = dq === 0 && dr === 0 ? cell : this.geo.at(q + dq, r + dr);
-      if (t >= 0) batch.push([t, t === cell ? v + (this.rules.chores?.callBonus ?? 0) : v]);
+      if (t >= 0) batch.push([t, t === cell ? v + (cfg?.callBonus ?? 0) : v]);
     }
     this.received.clear();
     this.placeBatch(batch, s);
@@ -1157,6 +1169,11 @@ export class Game {
 
   /** 이번 차례에 고를 수 있는 행동인가 (직전 행동 반복 금지 규칙) */
   canDo(s: number, kind: 'place' | 'move' | 'gather' | 'call'): boolean {
+    if (this.rules.one) {
+      if (kind === 'place') return (this.hands[s] as number[]).length > 0;
+      if (kind === 'call') return this.rules.one.call;
+      return false;
+    }
     if (this.rules.chores) {
       const ch = this.choreOf[s];
       if (kind === 'place') return !!ch && PLACE_CHORES.includes(ch);
@@ -1228,6 +1245,7 @@ export class Game {
     const s = this.current;
     const before = this.owners();
     this.applyCall(s, cell, rot);
+    if (this.rules.one?.callOnce) this.called.add(cell);
     if (this.rules.chores?.callTake && this.market.length && this.hands[s]!.length < 3) {
       this.hands[s]!.push(this.market.shift() as number);
       if (this.bag.length) this.market.push(this.bag.pop() as number);
@@ -1251,7 +1269,37 @@ export class Game {
   }
 
   /** 행동별 횟수 (지표) */
-  actionCount: Record<'place' | 'move' | 'gather' | 'call', number> = { place: 0, move: 0, gather: 0, call: 0 };
+  actionCount: Record<'place' | 'move' | 'gather' | 'call' | 'take', number> = { place: 0, move: 0, gather: 0, call: 0, take: 0 };
+
+  /** 행동 하나(one): 가져오기 차례. picks = 펼친 타일의 종 번호(그 종이 펼친 타일에 있으면) 또는 −1(주머니 맨 위) */
+  doTakeCards(picks: number[]): void {
+    const s = this.current;
+    const max = this.rules.one?.handMax ?? 3;
+    for (const p of picks) {
+      if ((this.hands[s] as number[]).length >= max) break;
+      const i = p >= 0 ? this.market.indexOf(p) : -1;
+      if (i >= 0) {
+        this.hands[s]!.push(this.market.splice(i, 1)[0] as number);
+        if (this.bag.length) this.market.push(this.bag.pop() as number);
+      } else if (this.bag.length) this.hands[s]!.push(this.bag.pop() as number);
+      else if (this.market.length) {
+        this.hands[s]!.push(this.market.shift() as number);
+      }
+    }
+    this.records.push({ seat: s, species: -1, flips: 0, claims: 0, discard: false });
+    this.actionCount.take++;
+    this.plays[s]!++;
+    this.turns++;
+    this.stageCount++;
+    this.nextTurn();
+  }
+
+  /** 아무것도 할 수 없는 차례 */
+  doPass(): void {
+    this.turns++;
+    this.stageCount++;
+    this.nextTurn();
+  }
   /** 직전 내 차례와 같은 행동을 한 횟수 (지표) */
   sameAsLast = 0;
   /** 자리별 직전 행동 */
@@ -1259,6 +1307,12 @@ export class Game {
 
   /** 담 넘기·모여라 차례를 확정한다 */
   doAction(act: Exclude<TurnAction, { kind: 'place' }>): void {
+    if (act.kind === 'take2') return this.doTakeCards(act.picks);
+    if (act.kind === 'pass') return this.doPass();
+    if (act.kind === 'plant') {
+      this.stage = 'plant';
+      return;
+    }
     if (act.kind === 'call') {
       this.applyCallTurn(act.cell, act.rot);
       return;

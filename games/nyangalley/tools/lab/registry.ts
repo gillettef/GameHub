@@ -152,3 +152,25 @@ VARIANTS.c4 = chores('c4', ALL_CHORES, { move: 2, moveTimes: 2 }, {});
 VARIANTS.c4.chores = { set: ALL_CHORES, peekMode: 'look3', callBonus: 1, callTurn: true };
 VARIANTS.c5 = chores('c5', ALL_CHORES, { move: 2, moveTimes: 2 }, {});
 VARIANTS.c5.chores = { set: ALL_CHORES, peekMode: 'look3', callBonus: 1, callTurn: true, roamRange: 2, callTake: true };
+
+// 2026-11-27 사용자 제안 「행동 하나」: 일과 삭제. 차례마다 가져오기(2장, 손 최대 3) / 놓기(1장) / 부르기 중 하나. 끝은 라운드 수
+const ONE_RULES = ['라운드 선(공급처 큐브 많은 사람)', '행동 하나(가져오기·놓기)', '행동 하나(부르기)'];
+const oneAct = (name: string, o: Partial<NonNullable<LabRules['one']>>, rounds: Record<number, number>, extra: Partial<LabRules> = {}) =>
+  variant(
+    name,
+    { one: { take: 2, handMax: 3, call: true, callBonus: 0, callTurn: true, ...o }, actions: { move: 0, gather: 0, perCell: 0, rounds }, extraRules: o.call === false ? ONE_RULES.slice(0, 2) : ONE_RULES, ...extra },
+    V6,
+  );
+const R18 = { 2: 18, 3: 15, 4: 15 };
+const R16 = { 2: 16, 3: 13, 4: 13 };
+const R20 = { 2: 20, 3: 17, 4: 17 };
+VARIANTS.o0 = oneAct('o0', { call: false }, R18);
+VARIANTS.o1 = oneAct('o1', {}, R18);
+VARIANTS.o1r16 = oneAct('o1r16', {}, R16);
+VARIANTS.o1r20 = oneAct('o1r20', {}, R20);
+VARIANTS.o1b = oneAct('o1b', { callBonus: 1 }, R18);
+VARIANTS.o1nt = oneAct('o1nt', { callTurn: false }, R18);
+VARIANTS.o1once = oneAct('o1once', { callOnce: true }, R18);
+VARIANTS.o1h4 = oneAct('o1h4', { handMax: 4 }, R18);
+VARIANTS.o1br20 = oneAct('o1br20', { callBonus: 1 }, R20);
+VARIANTS.o1r22 = oneAct('o1r22', {}, { 2: 22, 3: 18, 4: 18 });

@@ -1,28 +1,23 @@
 import { memo } from 'react';
-import { CALL_BONUS, canCallTake, cellLabel, getSpecies, HAND_MAX, samePos } from '../../engine';
+import { cellLabel, getSpecies, samePos } from '../../engine';
 import { spotTileUrl } from '../game/cardImages';
-import { asState, distinctRotations, rotationLabel, type PlantPreview } from '../game/derived';
+import { distinctRotations, rotationLabel, type PlantPreview } from '../game/derived';
 import { cx } from '../lib/cx';
 import { findMe, selectState, selectViewerId, useGameStore } from '../store/gameStore';
 import { RootDiagram } from './RootDiagram';
-import { SpeciesCard } from './SpeciesCard';
 import styles from './PlantBar.module.css';
 
 /**
- * 명당 부르기 바 (v7 「골목 일과」, Rules.md 5.3): 보드에서 내 칸 위 명당을 고르면 방향을 다시 정하고(지금 방향 그대로도 된다)
- * 예상 결과(그 칸 +1 포함)를 보여 준다. 그다음 손에 가져올 펼친 타일을 고른다(손이 3개 미만이고 펼친 타일이 있으면 반드시).
- * 취소·부르기 버튼은 화면 맨 아래(⑤ GameView)에 있다.
+ * 명당 부르기 바 (v8 「행동 하나」, Rules.md 5.1 3): 보드에서 내 칸 위 명당을 고르면 방향을 다시 정하고(지금 방향 그대로도 된다)
+ * 예상 결과를 보여 준다. 능력(멀리 보내기·쫓아내기)은 쓰지 않는다. 취소·부르기 버튼은 화면 맨 아래(⑤ GameView)에 있다.
  */
 export const CallBar = memo(function CallBar({ preview }: { preview: PlantPreview | null }) {
   const state = useGameStore(selectState);
   const viewerId = useGameStore(selectViewerId);
   const pos = useGameStore((s) => s.callPos);
   const rotation = useGameStore((s) => s.callRotation);
-  const take = useGameStore((s) => s.callTake);
   const setRotation = useGameStore((s) => s.setCallRotation);
-  const setTake = useGameStore((s) => s.setCallTake);
   if (!state?.board || !viewerId) return null;
-  const mustTake = canCallTake(asState(state), viewerId);
   const me = findMe(state, viewerId);
   const plant = pos ? state.plants.find((p) => samePos(p.pos, pos)) : undefined;
 
@@ -32,7 +27,7 @@ export const CallBar = memo(function CallBar({ preview }: { preview: PlantPrevie
         <div className={styles.info}>
           <strong className={styles.name}>명당 부르기</strong>
           <span className={styles.hint}>
-            내 칸 위 명당(빛나는 칸)을 누르세요. 방향을 다시 정해 그 모양대로 고양이를 부르고, 그 칸에 +{CALL_BONUS}마리. 능력은 쓰지 않습니다.
+            내 칸 위 명당을 누르세요. 방향을 다시 정해 그 모양대로 고양이를 부릅니다. 능력은 쓰지 않습니다.
           </span>
         </div>
       </div>
@@ -80,24 +75,6 @@ export const CallBar = memo(function CallBar({ preview }: { preview: PlantPrevie
           ))}
         </div>
       )}
-      <div className={styles.takeRow}>
-        <span className={styles.hint}>
-          {mustTake
-            ? take === null
-              ? '부른 뒤 손에 가져올 펼친 타일을 고르세요'
-              : '이 타일을 가져옵니다'
-            : state.market.length === 0
-              ? '펼친 타일이 없어 가져오지 않습니다'
-              : `손이 가득 차(${HAND_MAX}개) 가져오지 않습니다`}
-        </span>
-        {mustTake && (
-          <div className={styles.takeCards} role="group" aria-label="가져올 펼친 타일">
-            {state.market.map((s, i) => (
-              <SpeciesCard key={`${i}-${s}`} species={s} variant="mini" compact selected={take === i} onClick={() => setTake(i)} />
-            ))}
-          </div>
-        )}
-      </div>
     </div>
   );
 });

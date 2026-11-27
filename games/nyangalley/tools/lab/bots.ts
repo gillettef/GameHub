@@ -182,7 +182,7 @@ export function bestNonPlace(g: Game, s: number, ev: Eval): { act: TurnAction; v
   if (g.canDo(s, 'call')) {
     let bestC: { act: TurnAction; value: number } | null = null;
     for (const cell of g.callOptions(s)) {
-      const rots = g.rules.chores?.callTurn ? (g.rotCache[g.plant[cell] as number] as unknown[]).map((_, i) => i) : [undefined];
+      const rots = (g.rules.chores ?? g.rules.one)?.callTurn ? (g.rotCache[g.plant[cell] as number] as unknown[]).map((_, i) => i) : [undefined];
       for (const rot of rots) {
         const mk = g.mark();
         g.applyCall(s, cell, rot);
@@ -286,6 +286,71 @@ export function bestNonPlace(g: Game, s: number, ev: Eval): { act: TurnAction; v
     if (cells.length) out.push({ act: { kind: 'gather', cells }, value: v });
   }
   return out;
+}
+
+/** 행동 하나(one) 가져오기 가중치: 가져온 뒤 손의 최선 놓기 이득 × TAKE_W + 가져온 장수 × HAND_W */
+export const TAKE_W = Number(process.env.LAB_TAKE_W ?? 0.6);
+export const HAND_W = Number(process.env.LAB_HAND_W ?? 0.4);
+
+/** 종 하나를 손에 넣었을 때의 최선 놓기 이득(지금 평가 대비). 손의 다른 카드는 빼고 잰다 */
+function singleGain(g: Game, s: number, ev: Eval, sp: number, ev0: number, cache: Map<number, number>): number {
+  const c = cache.get(sp);
+  if (c !== undefined) return c;
+  const hand = g.hands[s] as number[];
+  const saved = hand.splice(0, hand.length, sp);
+  const b = bestMove(g, s, ev);
+  hand.splice(0, hand.length, ...saved);
+  const v = b.move.cell >= 0 ? b.value - ev0 : -1;
+  cache.set(sp, v);
+  return v;
+}
+
+/** 행동 하나(one) 차례 후보: 놓기 / 가져오기 / 부르기 (값 높은 순) */
+export function oneCandidates(g: Game, s: number, ev: Eval): { act: TurnAction; value: number }[] {
+  const one = g.rules.one!;
+  const ev0 = ev(g, s);
+  const hand = g.hands[s] as number[];
+  const cache = new Map<number, number>();
+  const out: { act: TurnAction; value: number }[] = [];
+  let baseG = 0;
+  if (hand.length) {
+    const b = bestMove(g, s, ev);
+    if (b.move.cell >= 0) {
+      out.push({ act: { kind: 'plant' }, value: b.value });
+      baseG = b.value - ev0;
+    }
+  }
+  const room = Math.min(one.take, one.handMax - hand.length);
+  if (room > 0 && (g.market.length || g.bag.length)) {
+    const opts: { pick: number; v: number }[] = [];
+    const left = [...g.market];
+    for (const sp of new Set(g.market)) opts.push({ pick: sp, v: singleGain(g, s, ev, sp, ev0, cache) });
+    if (g.bag.length) {
+      const un = g.unseen(s);
+      let tot = 0;
+      let sum = 0;
+      for (const [sp, n] of un) {
+        sum += n * Math.max(baseG, singleGain(g, s, ev, sp, ev0, cache));
+        tot += n;
+      }
+      opts.push({ pick: -1, v: tot ? sum / tot : 0 });
+    }
+    opts.sort((x, y) => y.v - x.v);
+    const picks: number[] = [];
+    let best = baseG;
+    for (let k = 0; k < room; k++) {
+      const o = opts.find((x) => x.pick === -1 || left.includes(x.pick));
+      if (!o) break;
+      picks.push(o.pick);
+      if (o.pick >= 0) left.splice(left.indexOf(o.pick), 1);
+      best = Math.max(best, o.v);
+      if (o.pick >= 0 && !left.includes(o.pick)) opts.splice(opts.indexOf(o), 1);
+    }
+    if (picks.length) out.push({ act: { kind: 'take2', picks }, value: ev0 + TAKE_W * best + HAND_W * picks.length });
+  }
+  for (const o of bestNonPlace(g, s, ev)) out.push(o);
+  if (!out.length && hand.length) out.push({ act: { kind: 'plant' }, value: ev0 - 1 });
+  return out.sort((x, y) => y.value - x.value);
 }
 
 /** 명당 놓기 차례의 값(가져오기 후보 중 최선)과 가져올 카드 번호. 놓을 수 없으면 null */
@@ -445,6 +510,12 @@ class EvalBot implements Bot {
     return best;
   }
   action(g: Game, s: number, rand: Rand): TurnAction {
+    if (g.rules.one) {
+      const c = oneCandidates(g, s, this.ev);
+      if (!c.length) return { kind: 'pass' };
+      if (this.noise > 0 && c.length > 1 && rand() < this.noise) return (c[1] as { act: TurnAction }).act;
+      return (c[0] as { act: TurnAction }).act;
+    }
     if (process.env.LAB_REPLY !== '0' && !(this.noise > 0 && rand() < this.noise)) {
       const a = replyAwareAction(g, s, this.ev);
       if (a) return a;
@@ -475,6 +546,10 @@ export class RandomBot implements Bot {
     return Math.floor(rand() * g.offer.length);
   }
   action(g: Game, s: number, rand: Rand): TurnAction {
+    if (g.rules.one) {
+      const c = oneCandidates(g, s, () => 0);
+      return c.length ? (c[Math.floor(rand() * c.length)] as { act: TurnAction }).act : { kind: 'pass' };
+    }
     const opts: TurnAction[] = [];
     if (g.canDo(s, 'place') && (g.market.length || (g.hands[s] as number[]).length)) opts.push({ kind: 'place', take: this.take(g, s, rand) });
     const mv = g.canDo(s, 'move') ? g.moveOptions(s) : [];
@@ -584,6 +659,10 @@ export class LookaheadBot implements Bot {
     return best;
   }
   action(g: Game, s: number, rand: Rand): TurnAction {
+    if (g.rules.one) {
+      const c = oneCandidates(g, s, evalBalanced);
+      return c.length ? (c[0] as { act: TurnAction }).act : { kind: 'pass' };
+    }
     const pv = placeValue(g, s, evalBalanced);
     const others = bestNonPlace(g, s, evalBalanced).sort((x, y) => y.value - x.value);
     if (others.length && (!pv || (others[0] as { value: number }).value > pv.value)) return (others[0] as { act: TurnAction }).act;
