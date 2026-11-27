@@ -30,10 +30,10 @@ export const terrainArtId = {
   rock: 'rb-terrain-rock',
 } as const;
 
-/** 아지트·고양이 그림은 자리 0~2 만 있다. 자리 3(삼색냥)은 자리 0 그림 위에 자리 색 테를 둘러 구분한다 */
+/** 아지트·고양이 그림은 무리 0~2 만 있다. 무리 3(삼색냥)은 무리 0 그림 위에 무리 색 테를 둘러 구분한다. 인자는 자리가 아니라 무리 번호 */
 export const ART_SEATS = 3;
-export const hideoutArtId = (seat: number) => `rb-hideout-${seat < ART_SEATS ? seat : 0}`;
-export const catArtId = (seat: number) => `rb-cat-${seat < ART_SEATS ? seat : 0}`;
+export const hideoutArtId = (crew: number) => `rb-hideout-${crew < ART_SEATS ? crew : 0}`;
+export const catArtId = (crew: number) => `rb-cat-${crew < ART_SEATS ? crew : 0}`;
 
 /** 명당 타일 그림 (종 id 그대로, 회전 0 기준) */
 export const spotArtUrl = (species: string) => `${ART_BASE}spot-${species}.svg`;

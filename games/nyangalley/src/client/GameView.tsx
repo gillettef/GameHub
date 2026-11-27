@@ -16,7 +16,7 @@ import { HandoffOverlay } from './components/HandoffOverlay'
 import { TurnEvents } from './components/TurnEvents'
 import { TurnTimer } from './components/TurnTimer'
 import { TutorialCoach } from './components/TutorialCoach'
-import { awaitingConfirm, buildPlayerSummaries, roundLabel, roundStageLabel, stageDoing } from './game/derived'
+import { awaitingConfirm, buildPlayerSummaries, roundLabel, roundStageLabel, seatCrews, stageDoing } from './game/derived'
 import { boardHint } from './game/hint'
 import { usePlantable } from './game/usePlantable'
 import { useGameCues } from './game/useGameCues'
@@ -28,6 +28,7 @@ import {
   selectCanPlant,
   selectCanTake,
   selectTakingSecond,
+  selectChoosingAct,
   selectIsMyTurn,
   selectSelectedSpecies,
   selectState,
@@ -77,6 +78,19 @@ export function GameView({ room, mode, error, offline = false, onAct, onLeave, o
       },
     })
   }, [room, view, mode, applyView])
+
+  // 자리 색 = 그 자리가 고른 무리 색. 시트·창처럼 문서 루트에 붙는 부품도 같은 색을 쓰도록 루트 변수로 바꾼다.
+  // 공개 단계에서 아직 고르지 않은(랜덤) 자리는 회색(같은 색이 두 번 나오지 않게)
+  const picking = view.game.phase === 'reveal'
+  const crewKey = seatCrews(view.game)
+    .map((c, seat) => (picking && typeof view.game.players.find((p) => p.seat === seat)?.crew !== 'number' ? 'var(--color-muted)' : `var(--crew-${c})`))
+    .join('|')
+  useEffect(() => {
+    const root = document.documentElement.style
+    const colors = crewKey.split('|')
+    colors.forEach((c, seat) => root.setProperty(`--color-seat-${seat}`, c))
+    return () => colors.forEach((_, seat) => root.removeProperty(`--color-seat-${seat}`))
+  }, [crewKey])
 
   // 화면 부품은 엔진 행동(playerId 포함)을 낸다. 보낼 때는 좌석이 정하므로 떼고, 고를 때 본 차례 번호를 붙인다
   useEffect(() => {
@@ -164,10 +178,13 @@ function Table({ room, offline, onAct, onLeave, onNewGame }: { room: RoomSnapsho
   )
 }
 
-/** 내 차례의 할 일 (① 상태바) */
+/** 내 차례의 할 일 (① 상태바). 행동 고르기 단계는 고른 행동에 따라 */
 const MY_TURN_TEXT: Record<string, string> = {
-  act: '내 차례 · 가져오기·놓기·부르기 중 하나',
-  take: '내 차례 · 타일 1개 더 가져오기',
+  choose: '내 차례 · 행동 고르기',
+  take: '내 차례 · 타일 가져오기',
+  plant: '내 차례 · 명당 놓기',
+  call: '내 차례 · 명당 부르기',
+  more: '내 차례 · 타일 1개 더 가져오기',
 }
 
 /** ① 지금 누구 차례이고 무엇을 해야 하는지 */
@@ -175,13 +192,14 @@ function Status() {
   const state = useGameStore(selectState)
   const viewerId = useGameStore(selectViewerId)
   const isMyTurn = useGameStore(selectIsMyTurn)
+  const actMode = useGameStore((s) => s.actMode)
   if (!state) return null
   let text: string
   if (state.phase === 'finished') text = '게임 종료'
   else if (state.phase === 'reveal') {
     const active = state.players.filter((p) => p.surrenderedOrder === null)
     text = awaitingConfirm(state, viewerId) ? '이번 판 명당 확인' : `확인 기다리는 중 ${active.filter((p) => p.isReady).length}/${active.length}`
-  } else if (isMyTurn) text = MY_TURN_TEXT[state.stage] ?? '내 차례'
+  } else if (isMyTurn) text = MY_TURN_TEXT[state.stage === 'take' ? 'more' : (actMode ?? 'choose')] ?? '내 차례'
   else {
     const current = state.players.find((p) => p.id === state.currentPlayerId)
     text = `${current?.nickname ?? ''}의 차례 · ${stageDoing(state.stage)}`
@@ -265,6 +283,9 @@ function Actions({ room, onAct, onNewGame }: { room: RoomSnapshot<View>; onAct(a
   const canTake = useGameStore(selectCanTake)
   const canPlant = useGameStore(selectCanPlant)
   const takingSecond = useGameStore(selectTakingSecond)
+  const choosing = useGameStore(selectChoosingAct)
+  const actMode = useGameStore((s) => s.actMode)
+  const chooseAct = useGameStore((s) => s.chooseAct)
   const canCall = useGameStore(selectCanCall)
   const species = useGameStore(selectSelectedSpecies)
   const pendingPos = useGameStore((s) => s.pendingPos)
@@ -303,9 +324,11 @@ function Actions({ room, onAct, onNewGame }: { room: RoomSnapshot<View>; onAct(a
   }
   if (state.phase === 'reveal') {
     if (!awaitingConfirm(state, viewerId)) return wait('다른 사람을 기다리는 중')
+    // 한 기기: 확인하면 다음 사람이 무리를 고른다. 마지막 사람이면 바로 시작
+    const next = mode === 'hotseat' ? state.players.find((p) => p.id !== viewerId && p.kind === 'human' && awaitingConfirm(state, p.id)) : undefined
     return (
       <Button tone="primary" disabled={sending} onClick={confirmReveal}>
-        {mode === 'hotseat' ? '확인하고 시작' : '확인'}
+        {mode === 'hotseat' ? (next ? `확인 · 다음 ${next.nickname}` : '확인하고 시작') : '확인'}
       </Button>
     )
   }
@@ -329,18 +352,26 @@ function Actions({ room, onAct, onNewGame }: { room: RoomSnapshot<View>; onAct(a
       </>
     )
   }
-  // 행동 고르기: 펼친 타일·주머니(가져오기), 내 타일(놓기), 내 칸 위 명당(부르기). 가져오기 두 번째 타일이면 가져오기만
-  if (canTake && state.pileCount > 0) {
+  // 행동을 고르기 전: ④ 행동 고르기 판에서 고른다
+  if (choosing) return wait('위에서 이번 차례 행동을 고르세요')
+  // 고른 행동의 화면. 가져오기 두 번째 타일 전까지는 "다른 행동"으로 돌아갈 수 있다
+  const back = !takingSecond && actMode && <Button onClick={() => chooseAct(null)}>다른 행동</Button>
+  if (canTake) {
     return (
       <>
-        {!takingSecond && canPlant && !species && wait('또는 내 타일·내 칸 명당을 누르세요')}
-        <Button onClick={() => openCardModal({ kind: 'pile' })}>{takingSecond ? '주머니에서 1개 더' : '주머니에서 1개'}</Button>
+        {back}
+        {state.pileCount > 0 ? (
+          <Button tone="primary" onClick={() => openCardModal({ kind: 'pile' })}>
+            {takingSecond ? '주머니에서 1개 더' : '주머니에서 1개'}
+          </Button>
+        ) : (
+          wait(takingSecond ? '펼친 타일에서 1개를 더 고르세요' : '펼친 타일을 누르세요')
+        )}
       </>
     )
   }
-  if (canTake) return wait(takingSecond ? '펼친 타일에서 1개를 더 고르세요' : '펼친 타일·내 타일·내 칸 명당 중 하나를 누르세요')
-  if (canPlant && canCall) return wait('내 타일을 고르거나 내 칸 명당을 누르세요')
-  if (canPlant) return wait(me.hand.length ? '내 타일을 눌러 고르세요' : '할 수 있는 행동이 없습니다')
+  if (canCall) return <>{back}{wait('보드에서 부를 명당(빛나는 칸)을 누르세요')}</>
+  if (canPlant) return <>{back}{wait(species ? '보드에서 놓을 칸(빛나는 칸)을 누르세요' : '아래 내 타일을 눌러 고르세요')}</>
   return wait(<>상대가 두는 중 · 기다려 주세요</>)
 }
 

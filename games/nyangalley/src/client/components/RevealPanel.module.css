@@ -59,6 +59,83 @@
   width: 100%;
 }
 
+/* 무리 고르기: 4무리 + 랜덤을 한 줄에(좁으면 줄바꿈). 고른 무리는 무리 색 테, 남이 고른 무리는 비활성 */
+.crews {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: var(--space-half);
+}
+
+.crew {
+  position: relative;
+  min-height: 72px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: var(--space-half) 2px;
+  border: 2px solid transparent;
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: var(--text-micro);
+  cursor: pointer;
+}
+
+.crew:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.crewOn {
+  border-color: var(--seat-color);
+  background: color-mix(in srgb, var(--seat-color) 18%, var(--color-surface));
+  font-weight: 700;
+}
+
+.crewArt {
+  width: 36px;
+  height: 36px;
+}
+
+/* 삼색냥은 치즈냥 그림에 무리 색 테를 둘러 구분한다(보드와 같다) */
+.crewRing {
+  border-radius: var(--radius-full);
+  box-sizing: border-box;
+  border: 3px solid var(--seat-color);
+}
+
+.crewRandom {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-full);
+  border: 2px dashed var(--color-muted);
+  font-size: var(--text-nav);
+  font-weight: 800;
+  color: var(--color-muted);
+}
+
+.crewName {
+  white-space: nowrap;
+}
+
+.crewTaken {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--color-muted);
+}
+
+.crewOf {
+  flex: none;
+  color: var(--color-muted);
+}
+
 /* 바닥: 스크롤해도 확인 버튼이 늘 보이게 붙여 둔다 */
 .footer {
   position: sticky;

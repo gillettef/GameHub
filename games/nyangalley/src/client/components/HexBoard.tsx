@@ -34,6 +34,8 @@ const DIRS = DIRECTIONS.map(([dq, dr], i) => [dq, dr, DIR_DEG[i] as number] as c
 
 interface HexBoardProps {
   cells: CellView[];
+  /** 자리별 무리 번호 (그림·이름). 색은 --color-seat-N 이 이미 무리 색이다 */
+  crews: number[];
   /** 지금 고른 카드로 놓을 수 있는 칸 */
   legal: Set<string>;
   /** 카드를 고르기 전: legal 은 손패 어느 카드로든 놓을 수 있는 칸이고, 옅게 그린다 */
@@ -56,7 +58,7 @@ interface HexBoardProps {
  * 칸마다 영역 주인 자리 색(반투명 + 테) → 아지트 그림 / 명당 타일(회전 반영) → 하이라이트, 그 위 별도 층에 고양이 토큰 + 마릿수를 올린다.
  * 명당은 누구의 것도 아니므로 둘레 색은 놓은 사람이 아니라 그 칸 영역 주인 색이다(Rules.md 1절).
  */
-export const HexBoard = memo(function HexBoard({ cells, legal, legalFaint, seedLegal, pendingKey, seedKey, preview, showRootCounts, showLabels = false, onCellClick }: HexBoardProps) {
+export const HexBoard = memo(function HexBoard({ cells, crews, legal, legalFaint, seedLegal, pendingKey, seedKey, preview, showRootCounts, showLabels = false, onCellClick }: HexBoardProps) {
   const box = useMemo(() => {
     const pts = cells.map((c) => px(c.q, c.r));
     const xs = pts.map((p) => p.x);
@@ -65,6 +67,7 @@ export const HexBoard = memo(function HexBoard({ cells, legal, legalFaint, seedL
     const minY = Math.min(...ys) - 1.3;
     return { minX, minY, w: Math.max(...xs) + 1.2 - minX, h: Math.max(...ys) + 1.3 - minY };
   }, [cells]);
+  const crewOf = (seat: number) => crews[seat] ?? seat;
   const viewBox = `${box.minX.toFixed(2)} ${box.minY.toFixed(2)} ${box.w.toFixed(2)} ${box.h.toFixed(2)}`;
 
   // 바닥 층: 칸 위치·지형·구역만으로 정해지므로 보드가 바뀔 때만 다시 만든다
@@ -142,9 +145,9 @@ export const HexBoard = memo(function HexBoard({ cells, legal, legalFaint, seedL
         const ownerStyle = c.owner >= 0 ? ({ '--owner': `var(--color-seat-${c.owner})` } as CSSProperties) : undefined;
         const label =
           `${c.label} ${terrainName(c.terrain)}` +
-          (c.entranceSeat >= 0 ? ` · ${crewName(c.entranceSeat)} 아지트` : '') +
+          (c.entranceSeat >= 0 ? ` · ${crewName(crewOf(c.entranceSeat))} 아지트` : '') +
           (c.plant ? ` · 명당 ${getSpecies(c.plant.species).name}` : '') +
-          (c.owner >= 0 ? ` · ${crewName(c.owner)} 영역, 고양이 ${c.cubes}마리` : '');
+          (c.owner >= 0 ? ` · ${crewName(crewOf(c.owner))} 영역, 고양이 ${c.cubes}마리` : '');
         return (
           <g
             key={c.key}
@@ -170,8 +173,8 @@ export const HexBoard = memo(function HexBoard({ cells, legal, legalFaint, seedL
             {c.owner >= 0 && <polygon points={HEX} className={styles.owned} style={ownerStyle} />}
             {c.entranceSeat >= 0 && (
               <g className={styles.entrance} style={{ '--seat': `var(--color-seat-${c.entranceSeat})` } as CSSProperties}>
-                <use href={`#${hideoutArtId(c.entranceSeat)}`} transform={TILE_SCALE} />
-                {c.entranceSeat >= ART_SEATS && <polygon points={HEX_SEAT_RING} className={styles.seatRing} />}
+                <use href={`#${hideoutArtId(crewOf(c.entranceSeat))}`} transform={TILE_SCALE} />
+                {crewOf(c.entranceSeat) >= ART_SEATS && <polygon points={HEX_SEAT_RING} className={styles.seatRing} />}
               </g>
             )}
             {c.plant && (
@@ -218,8 +221,8 @@ export const HexBoard = memo(function HexBoard({ cells, legal, legalFaint, seedL
             >
               {seat >= 0 ? (
                 <>
-                  <use href={`#${catArtId(seat)}`} transform={`scale(${r})`} />
-                  {seat >= ART_SEATS && <circle r={r * 0.94} className={styles.catRing} />}
+                  <use href={`#${catArtId(crewOf(seat))}`} transform={`scale(${r})`} />
+                  {crewOf(seat) >= ART_SEATS && <circle r={r * 0.94} className={styles.catRing} />}
                 </>
               ) : (
                 <circle r={r * 0.7} className={styles.catEmpty} />

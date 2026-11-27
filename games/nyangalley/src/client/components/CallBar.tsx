@@ -27,7 +27,7 @@ export const CallBar = memo(function CallBar({ preview }: { preview: PlantPrevie
         <div className={styles.info}>
           <strong className={styles.name}>명당 부르기</strong>
           <span className={styles.hint}>
-            내 칸 위 명당을 누르세요. 방향을 다시 정해 그 모양대로 고양이를 부릅니다. 능력은 쓰지 않습니다.
+            보드에서 빛나는 내 칸 위 명당을 누르세요. 방향을 다시 정해 그 모양대로 고양이를 부릅니다. 능력은 쓰지 않습니다.
           </span>
         </div>
       </div>

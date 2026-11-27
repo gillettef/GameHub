@@ -3,7 +3,7 @@ import type { SpeciesId } from '../../engine';
 import { ENTRANCE_ROOTS, getGoal, getSpecies, hasAnyPlant, legalPlantCells, samePos } from '../../engine';
 import { SPOT_BACK_URL, goalCardUrl } from '../game/cardImages';
 import { asState, buildCells, rotationLabel } from '../game/derived';
-import { findMe, selectCanPlant, selectCanTake, selectIsMyTurn, selectState, selectViewerId, useGameStore } from '../store/gameStore';
+import { findMe, selectActOptions, selectCanPlant, selectCanTake, selectChoosingAct, selectIsMyTurn, selectState, selectViewerId, useGameStore } from '../store/gameStore';
 import { CloseIcon } from './icons';
 import { SpeciesCard } from './SpeciesCard';
 import styles from './GameModal.module.css';
@@ -17,9 +17,10 @@ const TERRAIN: Record<string, string> = {
 
 /**
  * 확대 모달 하나로 여섯 가지를 본다 (스토어 cardModal). 화면 테마 「냥냥 골목」 용어(규칙 용어는 괄호):
- *  - 내 타일(손패): 놓기 차례에 크게 보고 "이 타일 고르기". 놓을 칸이 하나도 없으면 "버리기"(Rules.md 6절)
- *  - 펼친 타일(마켓): 가져오기 차례에 크게 보고 "이 타일 가져오기"(Rules.md 5절 1)
- *  - 주머니(카드 더미) 뒷면: 가져오기 차례에 "주머니에서 1개 꺼내기"(Rules.md 5절 1)
+ *  - 내 타일(손패): 놓기를 고른 차례에 크게 보고 "이 타일 고르기". 놓을 칸이 하나도 없으면 "버리기"(Rules.md 5.1·6절)
+ *  - 펼친 타일(마켓): 가져오기를 고른 차례에 크게 보고 "이 타일 가져오기"(Rules.md 5.1 1)
+ *  - 주머니(카드 더미) 뒷면: 가져오기를 고른 차례에 "주머니에서 1개 꺼내기"(Rules.md 5.1 1)
+ *  행동을 고르기 전(④ 행동 고르기 판)에 타일을 눌러도 같은 버튼이 나오고, 누르면 그 행동을 고른 것으로 친다(지름길)
  *  - 명당 타일(식물 카드): 보기 전용 (카드 탭·펼친 타일)
  *  - 소문 카드(목표): 보기 전용 (소문 축소판·점수 탭·카드 탭)
  *  - 보드 칸: 칸 이름·지형·명당·고양이 수·주인
@@ -36,6 +37,10 @@ export const GameModal = memo(function GameModal() {
   const canPlant = useGameStore(selectCanPlant);
   const canTake = useGameStore(selectCanTake);
   const takeCard = useGameStore((s) => s.takeCard);
+  const chooseAct = useGameStore((s) => s.chooseAct);
+  const choosing = useGameStore(selectChoosingAct);
+  // 선택자가 새 객체를 돌려주므로 구독하지 않고 상태가 바뀔 때만 계산한다
+  const opts = useMemo(() => selectActOptions({ state, viewerId }), [state, viewerId]);
   const cells = useMemo(() => (state && target?.kind === 'cell' ? buildCells(state) : []), [state, target]);
 
   useEffect(() => {
@@ -47,6 +52,12 @@ export const GameModal = memo(function GameModal() {
 
   if (!target || !state) return null;
   const me = findMe(state, viewerId);
+  // 행동을 고르기 전이면 할 수 있는 행동인지로 판단하고, 누르면 그 행동을 고른다
+  const takeHere = canTake || (choosing && !!opts?.take);
+  const plantHere = canPlant || (choosing && !!(opts?.plant || opts?.discard));
+  const enter = (mode: 'take' | 'plant') => {
+    if (choosing) chooseAct(mode);
+  };
 
   let body: React.ReactNode;
   if (target.kind === 'goal') {
@@ -59,12 +70,13 @@ export const GameModal = memo(function GameModal() {
       <>
         <SpeciesCard species={species} variant="full" />
         <div className={styles.actions}>
-          {canTake ? (
+          {takeHere ? (
             <button
               type="button"
               className="pill pill--lg"
               onClick={() => {
                 close();
+                enter('take');
                 takeCard(target.index);
               }}
             >
@@ -81,7 +93,7 @@ export const GameModal = memo(function GameModal() {
       <>
         <img className={styles.pileFace} src={SPOT_BACK_URL} alt={`주머니(명당 타일 뒷면). 남은 ${state.pileCount}개`} decoding="async" />
         <div className={styles.actions}>
-          {canTake && state.pileCount > 0 ? (
+          {takeHere && state.pileCount > 0 ? (
             <>
               <p className={styles.hint}>무엇이 나올지 모릅니다. 꺼낸 타일은 나만 보고, 펼친 타일은 그대로 남습니다.</p>
               <button
@@ -89,6 +101,7 @@ export const GameModal = memo(function GameModal() {
                 className="pill pill--lg"
                 onClick={() => {
                   close();
+                  enter('take');
                   takeCard('pile');
                 }}
               >
@@ -104,8 +117,8 @@ export const GameModal = memo(function GameModal() {
   } else if (target.kind === 'hand' || target.kind === 'species') {
     const species: SpeciesId | undefined = target.kind === 'hand' ? me?.hand[target.index] : target.species;
     if (!species) return null;
-    const canPlantAny = target.kind === 'hand' && canPlant && viewerId ? hasAnyPlant(asState(state), viewerId) : true;
-    const canPlantThis = target.kind === 'hand' && canPlant && viewerId ? legalPlantCells(asState(state), viewerId, species).length > 0 : true;
+    const canPlantAny = target.kind === 'hand' && plantHere && viewerId ? hasAnyPlant(asState(state), viewerId) : true;
+    const canPlantThis = target.kind === 'hand' && plantHere && viewerId ? legalPlantCells(asState(state), viewerId, species).length > 0 : true;
     body = (
       <>
         <SpeciesCard species={species} variant="full" seat={target.kind === 'hand' ? me?.seat : null} />
@@ -113,11 +126,13 @@ export const GameModal = memo(function GameModal() {
           <div className={styles.actions}>
             {!isMyTurn ? (
               <p className={styles.hint}>상대 차례입니다. 내 차례에 고를 수 있습니다.</p>
-            ) : !canPlant ? (
+            ) : !plantHere ? (
               <p className={styles.hint}>
                 {state.stage === 'take'
                   ? '가져오기 중입니다. 펼친 타일이나 주머니에서 1개를 더 가져오세요. 놓기는 다음 차례에 합니다.'
-                  : '지금은 놓을 수 없습니다.'}
+                  : state.stage === 'act' && !choosing
+                    ? '다른 행동을 골랐습니다. 놓으려면 아래 "다른 행동"을 누르세요.'
+                    : '지금은 놓을 수 없습니다.'}
               </p>
             ) : canPlantAny && !canPlantThis ? (
               <p className={styles.hint}>이 타일은 지금 놓을 칸이 없습니다. 다른 타일을 고르세요.</p>
@@ -126,6 +141,7 @@ export const GameModal = memo(function GameModal() {
                 type="button"
                 className="pill pill--lg"
                 onClick={() => {
+                  enter('plant');
                   selectHandCard(selected === target.index ? null : target.index);
                   close();
                 }}
@@ -140,6 +156,7 @@ export const GameModal = memo(function GameModal() {
                   className="pill pill--lg"
                   onClick={() => {
                     close();
+                    enter('plant');
                     discard(species);
                   }}
                 >

@@ -125,6 +125,11 @@ export interface PlayerState {
   hand: SpeciesId[];
   /** 기권 순서(0부터). 기권 안 했으면 null */
   surrenderedOrder: number | null;
+  /**
+   * 무리(색) 0~CREW_COUNT−1 (Rules.md 4절 8). 공개 단계에서 고르고(null = 랜덤), 1라운드가 열릴 때 null 은 남은 무리에서 정한다.
+   * 겉모습일 뿐 규칙과 무관하다(자리 = 차례 순서). 옛 저장 판처럼 없으면 화면은 자리 번호를 쓴다
+   */
+  crew?: number | null;
 }
 
 /** lobby → reveal(이번 판 식물 공개, Rules.md 4절 7) → playing → finished */
@@ -216,6 +221,8 @@ export type Action =
   | { type: 'READY'; playerId: PlayerId }
   /** 이번 판 식물 공개 단계에서 확인 (Rules.md 4절 7) */
   | { type: 'CONFIRM'; playerId: PlayerId }
+  /** 이번 판 식물 공개 단계에서 무리(색) 고르기. null = 랜덤 (Rules.md 4절 8). 확인하기 전에만 */
+  | { type: 'PICK_CREW'; playerId: PlayerId; crew: number | null }
   /** 가져오기 한 장: 마켓 take 번 카드, 'pile' = 카드 더미 맨 위 1장(뒷면) (Rules.md 5.1). 행동 고르기('act')에서 첫 장, 'take' 단계에서 두 번째 장 */
   | { type: 'TAKE'; playerId: PlayerId; take: number | 'pile' }
   /** 심기. rotation: 뿌리 모양 회전(생략 0). seed: 민들레만(생략 가능) */

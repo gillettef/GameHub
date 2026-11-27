@@ -4,7 +4,7 @@ import { def, fromEngine, playerId, type Action } from '../../def';
 import type { Action as EngineAction, GameState, Plant } from '../../engine';
 import { applyAction, boardIndex, computeOwners, legalCallCells, legalPlantCells, maskState } from '../../engine';
 import { asState } from '../game/derived';
-import { selectCanAct, selectCanCall, selectCanPlant, selectCanTake, selectTakingSecond, useGameStore } from './gameStore';
+import { selectCanAct, selectCanCall, selectCanPlant, selectCanTake, selectChoosingAct, selectTakingSecond, useGameStore } from './gameStore';
 
 /** GameView 가 하는 연결(받은 상태 → store, store 의 행동 → LocalGame)을 그대로 흉내 낸 한 기기 판. 봇 없이 사람만 */
 function start(players = 2) {
@@ -31,11 +31,8 @@ function start(players = 2) {
   game.subscribe(push);
   push();
   useGameStore.getState().setSender((a) => {
-    const action = fromEngine(a, useGameStore.getState().state!.turn) as Action;
-    // 한 기기의 '확인하고 시작': 사람 자리마다 확인
-    if (action.type === 'CONFIRM') {
-      for (let k = 0; k < 4 && game.getState().room.view?.game.phase === 'reveal'; k++) game.act(action);
-    } else game.act(action);
+    // 한 기기도 행동 하나씩 보낸다(공개 단계는 사람마다 확인, App 의 LocalTable 과 같다)
+    game.act(fromEngine(a, useGameStore.getState().state!.turn) as Action);
   });
   return game;
 }
@@ -72,35 +69,71 @@ function started(): GameState {
   return s;
 }
 
-describe('이번 판 식물 공개 (Rules.md 4절 8)', () => {
-  it('한 기기로는 공개 단계에서 시작하고, 확인 한 번으로 모두 확인되어 자리 0의 행동 고르기 차례가 된다', () => {
+/** 한 기기 공개 단계: 사람마다 차례로 확인한다 */
+function confirmAll() {
+  for (let k = 0; k < 4 && useGameStore.getState().state!.phase === 'reveal'; k++) useGameStore.getState().confirmReveal();
+}
+
+describe('이번 판 식물 공개 · 무리 고르기 (Rules.md 4절 8)', () => {
+  it('한 기기로는 사람마다 무리를 고르고 확인한다. 남이 고른 무리는 거절되고, 랜덤은 시작할 때 남은 무리로 정해진다', () => {
     start(3);
     const s0 = useGameStore.getState();
     expect(s0.state!.phase).toBe('reveal');
     expect(s0.viewerId).toBe('p0');
-    expect(s0.handoffPending).toBe(false);
-    s0.confirmReveal();
+    s0.pickCrew(2);
+    expect(useGameStore.getState().state!.players[0]!.crew).toBe(2);
+    useGameStore.getState().confirmReveal();
+    // 다음 사람이 본다. 이미 고른 무리는 고를 수 없다
+    expect(useGameStore.getState().viewerId).toBe('p1');
+    useGameStore.getState().pickCrew(2);
+    expect(useGameStore.getState().notice).toBeTruthy();
+    useGameStore.getState().pickCrew(3);
+    useGameStore.getState().confirmReveal();
+    expect(useGameStore.getState().viewerId).toBe('p2');
+    useGameStore.getState().confirmReveal();
     const s1 = useGameStore.getState();
     expect(s1.state!.phase).toBe('playing');
-    expect(s1.state!.players.every((p) => p.isReady)).toBe(true);
+    const crews = s1.state!.players.map((p) => p.crew);
+    expect(crews.slice(0, 2)).toEqual([2, 3]);
+    expect([0, 1]).toContain(crews[2]);
+    // 1라운드가 열릴 때 보는 사람이 바뀌면(마지막 확인자 → 자리 0) 가림 화면
     expect(s1.viewerId).toBe('p0');
-    expect(s1.handoffPending).toBe(false);
+    expect(s1.handoffPending).toBe(true);
+  });
+});
+
+describe('행동 고르기 → 행동별 화면 (Rules.md 5.1)', () => {
+  it('내 차례가 되면 먼저 행동을 고른다. 고르기 전에는 가져오기·놓기를 못 하고, 다른 행동으로 돌아갈 수 있다', () => {
+    start(2);
+    confirmAll();
+    useGameStore.getState().acknowledgeHandoff();
+    const s1 = useGameStore.getState();
     expect(s1.state!.stage).toBe('act');
     expect(selectCanAct(s1)).toBe(true);
-    // 처음 손 1장: 가져오기와 놓기를 모두 고를 수 있다
-    expect(selectCanTake(s1)).toBe(true);
-    expect(selectCanPlant(s1)).toBe(true);
+    expect(selectChoosingAct(s1)).toBe(true);
+    expect(selectCanTake(s1)).toBe(false);
+    expect(selectCanPlant(s1)).toBe(false);
+    s1.chooseAct('take');
+    expect(selectCanTake(useGameStore.getState())).toBe(true);
+    expect(selectCanPlant(useGameStore.getState())).toBe(false);
+    useGameStore.getState().chooseAct(null);
+    expect(selectChoosingAct(useGameStore.getState())).toBe(true);
+    useGameStore.getState().chooseAct('plant');
+    expect(selectCanPlant(useGameStore.getState())).toBe(true);
+    expect(selectCanTake(useGameStore.getState())).toBe(false);
   });
 });
 
 describe('행동 하나 (Rules.md 5.1)', () => {
   function toAct() {
     start(2);
-    useGameStore.getState().confirmReveal();
+    confirmAll();
+    useGameStore.getState().acknowledgeHandoff();
   }
 
   it('가져오기: 첫 타일을 가져오면 같은 사람이 두 번째를 가져오고(놓기는 못 함), 두 번째 뒤에 다음 사람 차례가 된다', () => {
     toAct();
+    useGameStore.getState().chooseAct('take');
     const s0 = useGameStore.getState();
     const taken = s0.state!.market[1]!;
     s0.takeCard(1);
@@ -125,6 +158,7 @@ describe('행동 하나 (Rules.md 5.1)', () => {
 
   it('놓기: 내 타일을 고르고 칸을 눌러 미리 본 뒤 놓으면 가져오지 않고 다음 사람 차례가 된다', () => {
     toAct();
+    useGameStore.getState().chooseAct('plant');
     const s = useGameStore.getState();
     const me = s.viewerId!;
     const hand = s.state!.players.find((p) => p.id === me)!.hand;
@@ -145,6 +179,7 @@ describe('행동 하나 (Rules.md 5.1)', () => {
     let s = started();
     s = { ...s, players: s.players.map((p) => (p.id === 'p0' ? { ...p, hand: ['grass', 'oak', 'pine'] } : p)) };
     const h = engineHarness(s);
+    useGameStore.getState().chooseAct('take');
     expect(selectCanTake(useGameStore.getState())).toBe(false);
     useGameStore.getState().takeCard(0);
     expect(h.sent).toHaveLength(0);
@@ -168,9 +203,11 @@ describe('명당 부르기 (Rules.md 5.1 3)', () => {
     return { ...s, plants: [plant] };
   }
 
-  it('손 타일을 고르지 않은 채 내 칸 위 명당을 누르면 부르기 → 방향 → CALL (가져오기 없음)', () => {
+  it('부르기를 고르고 내 칸 위 명당을 누르면 부르기 → 방향 → CALL (가져오기 없음)', () => {
     const s0 = withPlantOnMyLand();
     const h = engineHarness(s0);
+    expect(selectCanCall(useGameStore.getState())).toBe(false);
+    useGameStore.getState().chooseAct('call');
     expect(selectCanCall(useGameStore.getState())).toBe(true);
     const pos = legalCallCells(s0, 'p0')[0]!;
     useGameStore.getState().tapCell(pos);
@@ -184,16 +221,18 @@ describe('명당 부르기 (Rules.md 5.1 3)', () => {
     expect(h.get().currentPlayerId).toBe('p1');
   });
 
-  it('같은 명당을 다시 누르면 부르기를 취소하고, 손 타일을 고르면 부르기 선택이 풀린다', () => {
+  it('같은 명당을 다시 누르면 부르기를 취소하고, 다른 행동으로 돌아가면 고른 명당이 풀린다', () => {
     const s0 = withPlantOnMyLand();
     engineHarness(s0);
+    useGameStore.getState().chooseAct('call');
     const pos = legalCallCells(s0, 'p0')[0]!;
     useGameStore.getState().tapCell(pos);
     useGameStore.getState().tapCell(pos);
     expect(useGameStore.getState().callPos).toBeNull();
     useGameStore.getState().tapCell(pos);
-    useGameStore.getState().selectHandCard(0);
+    useGameStore.getState().chooseAct('plant');
     expect(useGameStore.getState().callPos).toBeNull();
+    useGameStore.getState().selectHandCard(0);
     expect(useGameStore.getState().selectedHandIndex).toBe(0);
     expect(boardIndex(s0.board!).indexOf(pos)).toBeGreaterThanOrEqual(0);
   });
