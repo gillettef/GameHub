@@ -6,7 +6,7 @@ import { Cat, HAND_NAMES, HAND_POKER, SUITS, type HandResult, type Suit } from '
 import { attackRange, dist, pendingDamage, previewAttack, previewSmite, price, pushChoices, type Card, type View } from '../engine/game'
 import { faceOf } from '../engine/board'
 import { CardView, HpBar, Ico, Pawn } from './ui'
-import { asState } from './helpers'
+import { asState, isOpenView } from './helpers'
 
 type Act = (a: Action) => void
 
@@ -622,4 +622,78 @@ function cellName(view: View, i: number): string {
   const tile = c ? view.map.tiles[c.tile] : undefined
   const kind = !t ? '' : t.kind === 'hidden' ? '뒤집히지 않은 칸' : (TILE_NAMES[t.kind as keyof typeof TILE_NAMES] ?? '')
   return tile ? `${faceOf(tile).name}의 ${kind}` : kind
+}
+
+const TILE_DESC: Record<string, string> = {
+  camp: '시작 칸. 토큰 1로 체력 3을 회복합니다.',
+  monster: '들어가면 몬스터가 나타나고 공용 카드 1장이 펼쳐집니다.',
+  boss: '장 보스가 있는 칸. 장이 시작될 때 공개됩니다.',
+  wander: '방랑 몬스터. 라운드 끝에 가장 가까운 말 쪽으로 1칸 움직입니다.',
+  treasure: '토큰 1로 보물을 엽니다(장비 80%, 저주 유물 20%).',
+  shop: '토큰 1로 장비·소모품을 삽니다. 장마다 새로 진열됩니다.',
+  forge: '토큰 1로 손패 1장을 강화합니다(숫자 +2 3골드, 문양 바꾸기 2골드).',
+  spring: '토큰 1로 손패를 한도까지 채웁니다.',
+  altar: '토큰 1로 몰래 기도합니다(축복 또는 그림자 카드). 기도 횟수는 모두에게 보입니다.',
+  forest: '숲. 들어갈 때 토큰이 1개 더 듭니다.',
+  ruin: '폐허. 효과가 없습니다.',
+  empty: '빈 땅. 효과가 없습니다.',
+  throne: '마왕성의 옥좌.',
+}
+const GRADE_NAMES = { normal: '일반', elite: '정예', boss: '보스' } as const
+
+/** 남의 칸을 눌렀을 때: 그 칸에 무엇이 있는지 보여 준다(행동은 없음) */
+export function CellSheet({ view, cell, me, names, onPlayer, onClose }: { view: View; cell: number; me: number | null; names: string[]; onPlayer(seat: number): void; onClose(): void }) {
+  const t = view.board[cell]
+  if (!t) return null
+  const monsters = view.monsters.filter((m) => m.pos === cell)
+  const pawns = view.players.filter((q) => q.pos === cell && !q.out)
+  const kind = t.kind
+  const title = monsters[0] ? MONSTERS[monsters[0].kind].name : kind === 'hidden' ? '뒤집히지 않은 칸' : (TILE_NAMES[kind as keyof typeof TILE_NAMES] ?? '칸')
+  const mine = me === null ? undefined : view.players[me]
+  const far = mine && !mine.out ? dist(view, mine.pos, cell) : null
+  const locked = !isOpenView(view, cell)
+  return (
+    <Sheet open title={title} onClose={onClose}>
+      <p className="bcx-note">
+        {cellName(view, cell)}
+        {far !== null && far > 0 && far < 99 ? ` · 내 말에서 ${far}칸` : ''}
+        {locked ? ' · 아직 열리지 않은 고리' : ''}
+      </p>
+      {monsters.map((m) => {
+        const def = MONSTERS[m.kind]
+        return (
+          <section key={m.id} className="bcx-section">
+            <h4>
+              {def.name} · {GRADE_NAMES[def.grade]}
+            </h4>
+            <div className="bcx-detail">
+              {m.community && <CardView card={m.community} w={48} state="is-community" />}
+              <div>
+                <div>
+                  체력 <b className="bc-num">{m.hp}</b>/{def.hp} · 반격 <b className="bc-num">{def.atk}</b>
+                </div>
+                {def.text && <div className="bcx-note">{def.text}</div>}
+                {m.community && <div className="bcx-muted">카드는 이 몬스터의 공용 카드입니다. 공격할 때 내 손패와 함께 족보에 쓸 수 있습니다.</div>}
+              </div>
+            </div>
+          </section>
+        )
+      })}
+      {!monsters.length && kind !== 'hidden' && <p>{TILE_DESC[kind] ?? ''}</p>}
+      {kind === 'hidden' && <p className="bcx-muted">처음 밟을 때 뒤집힙니다.</p>}
+      {pawns.length > 0 && (
+        <section className="bcx-section">
+          <h4>이 칸의 말</h4>
+          {pawns.map((q) => (
+            <button key={q.seat} type="button" className="bcx-rowbtn" onClick={() => onPlayer(q.seat)}>
+              <Pawn seat={q.seat} cls={q.cls} demon={view.demon?.seat === q.seat} />
+              <span>
+                <b>{names[q.seat]}</b> · 레벨 {q.level} · 체력 {q.hp}
+              </span>
+            </button>
+          ))}
+        </section>
+      )}
+    </Sheet>
+  )
 }

@@ -218,6 +218,8 @@ export function Board({ view, me, canAct, targets, onTile }: { view: View; me: n
   /** 칸을 바로 누를 수 있는 배율인가(판정 원 지름 44px 이상) */
   const interactive = scale >= DIRECT
   const direct = fit >= DIRECT
+  /** 숫자 배지·말 배율: 작게 보일수록 키운다(최대 1.5배) */
+  const bk = r1(Math.min(1.5, Math.max(1, 1 / scale)))
 
   // 확대 중에 내 말이 움직이면 따라간다(렌더 중 상태 맞추기: 이펙트로 한 번 더 그리지 않게)
   const myPos = me === null ? -1 : (view.players[me]?.pos ?? -1)
@@ -398,23 +400,30 @@ export function Board({ view, me, canAct, targets, onTile }: { view: View; me: n
               <circle r={r} cy={2} fill="#000" opacity={0.5} />
               <circle r={r} fill={`url(#bcm-st${c.ring})`} stroke={kind === 'camp' ? '#ffb44a' : c.ring === 4 ? '#f2d98e' : c.ring === 3 ? '#8a6726' : '#0a0709'} strokeWidth={1.6} />
               {icon && !demonHere && (
-                <svg x={c.ring === 4 ? -12 : -9} y={c.ring === 4 ? -12 : -9} width={c.ring === 4 ? 24 : 18} height={c.ring === 4 ? 24 : 18} style={{ color: INK[kind] ?? '#d7cbb4' }} opacity={pawns.length ? 0.55 : 1}>
+                <svg x={c.ring === 4 ? -12 : -9} y={c.ring === 4 ? -12 : -9} width={c.ring === 4 ? 24 : 18} height={c.ring === 4 ? 24 : 18} style={{ color: INK[kind] ?? '#d7cbb4' }} opacity={pawns.length && !m ? 0.55 : 1}>
                   <use href={`#${icon}`} />
                 </svg>
               )}
               {m && (
-                <g transform="translate(12 -12)">
-                  <circle r={7} fill="#2a0f0c" stroke="#e08a7a" strokeWidth={1.2} />
-                  <text className="bcm-num" textAnchor="middle" dy="3.2" fill="#ffd9cf">{m.hp}</text>
+                <g className="bcm-badge" transform={`translate(13 -13) scale(${bk})`}>
+                  <circle r={8.5} fill="#2a0f0c" stroke="#ff9a82" strokeWidth={1.6} />
+                  <text className="bcm-num bcm-num--hp" textAnchor="middle" dy="3.9">{m.hp}</text>
                 </g>
               )}
               {m?.community && m.community.suit && (
-                <g transform="translate(-13 -13)">
-                  <rect x={-6} y={-7} width={12} height={14} rx={2} fill="#ecdfc3" stroke="#0a0709" />
-                  <text className={`bcm-num bc-suit--${m.community.suit}`} textAnchor="middle" dy="3.5">{m.community.rank}</text>
+                <g className={`bcm-badge bc-suit--${m.community.suit}`} transform={`translate(-15 -13) scale(${bk})`}>
+                  <rect x={-8} y={-11} width={16} height={22} rx={2.5} fill="#f4ead2" stroke="#0a0709" strokeWidth={1.4} />
+                  <text className="bcm-num bcm-num--card" textAnchor="middle" y={-0.5}>{m.community.rank}</text>
+                  <svg x={-5} y={0.5} width={10} height={10} className="bcm-suit">
+                    <use href={`#bc-suit-${m.community.suit}`} />
+                  </svg>
                 </g>
               )}
-              {monsters.length > 1 && <text className="bcm-num" x={-15} y={16} fill="#f2d98e">+{monsters.length - 1}</text>}
+              {monsters.length > 1 && (
+                <text className="bcm-num bcm-num--more" x={-16} y={18}>
+                  +{monsters.length - 1}
+                </text>
+              )}
               {pawns.map((p, k) => {
                 if (p.seat === demonSeat)
                   return (
@@ -425,7 +434,7 @@ export function Board({ view, me, canAct, targets, onTile }: { view: View; me: n
                   )
                 const [px, py] = PAWN_SPOTS[demonHere ? Math.min(4, k + 1) : k] ?? [0, 0]
                 return (
-                  <g key={p.seat} className={`bcm-pawn ${p.seat === me ? 'is-me' : ''}`} transform={`translate(${px} ${py})`}>
+                  <g key={p.seat} className={`bcm-pawn ${p.seat === me ? 'is-me' : ''}`} transform={`translate(${px} ${py}) scale(${bk})`}>
                     <circle r={7} style={{ fill: `var(--bc-seat-${p.seat + 1})` }} stroke={p.seat === me ? '#ffb44a' : '#0b080d'} strokeWidth={p.seat === me ? 2.2 : 1.4} />
                     <svg x={-5} y={-5} width={10} height={10} style={{ color: '#1a1410' }}><use href={`#${classIcon(p.cls)}`} /></svg>
                   </g>

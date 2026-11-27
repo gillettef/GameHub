@@ -142,7 +142,11 @@
 .bcm-ring--reach { stroke: var(--bc-candle); stroke-width: 2.4; stroke-dasharray: 4 3; filter: drop-shadow(0 0 4px var(--bc-candle-glow)); }
 .bcm-ring--target { stroke: var(--bc-blade); stroke-width: 3; filter: drop-shadow(0 0 5px rgba(212, 80, 63, 0.7)); }
 .bcm-num { font: 700 9px/1 var(--bc-font-display); font-variant-numeric: tabular-nums; pointer-events: none; }
-.bcm-num.bc-suit--blade, .bcm-num.bc-suit--ward, .bcm-num.bc-suit--lantern, .bcm-num.bc-suit--coin { fill: var(--suit); }
+.bcm-num--card { font-size: 11px; fill: var(--suit); }
+.bcm-num--hp { font-size: 11px; fill: #fff3ee; }
+.bcm-num--more { font-size: 11px; fill: #f2d98e; stroke: #0a0709; stroke-width: 3px; paint-order: stroke; }
+.bcm-badge { pointer-events: none; filter: drop-shadow(0 1px 1.5px rgba(0, 0, 0, 0.8)); }
+.bcm-suit { color: var(--suit); pointer-events: none; }
 .bcm-hint { position: absolute; left: 8px; bottom: 8px; padding: 3px 10px; border-radius: 999px; font-size: 12px; background: rgba(0, 0, 0, 0.55); color: var(--gh-muted); pointer-events: none; }
 .bcm-zoom { position: absolute; right: 8px; bottom: 8px; display: flex; flex-direction: column-reverse; gap: 6px; }
 .bcm-zoom button { min-width: 44px; min-height: 44px; padding: 0 10px; border-radius: 12px; border: 1px solid var(--bc-gilt); background: rgba(17, 14, 19, 0.85); color: var(--bc-gilt-hi); font: 600 20px/1 var(--bc-font-body); }

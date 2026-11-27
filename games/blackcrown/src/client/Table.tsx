@@ -6,12 +6,12 @@ import { attackRange, handLimit, reserveCap, shadowTotal, skillLimit, type Actio
 import { Board } from './Board'
 import { asState, attackTargets, classIcon, reachable, seatVar } from './helpers'
 import { Coronation } from './Coronation'
-import { AttackSheet, HereSheet, PendingSheet, PlayerSheet, Rites } from './Sheets'
+import { AttackSheet, CellSheet, HereSheet, PendingSheet, PlayerSheet, Rites } from './Sheets'
 import { CardBack, CardView, HpBar, Ico, Pawn, Sprite, Tokens } from './ui'
 
 const CHAPTER = ['', '1장 · 숲', '2장 · 폐허', '3장 · 마왕성', '최종전']
 
-type Overlay = { kind: 'attack'; target: number } | { kind: 'smite' } | { kind: 'here' } | { kind: 'player'; seat: number } | { kind: 'menu' } | null
+type Overlay = { kind: 'attack'; target: number } | { kind: 'smite' } | { kind: 'here' } | { kind: 'player'; seat: number } | { kind: 'cell'; cell: number } | { kind: 'menu' } | null
 
 export function Table({ room, error, onAct, onLeave }: { room: RoomSnapshot<View>; error: string | null; onAct(a: Action): void; onLeave(): void }) {
   const view = room.view!
@@ -43,16 +43,18 @@ export function Table({ room, error, onAct, onLeave }: { room: RoomSnapshot<View
   const targets = myTurn && view.tokens > 0 && !isDemon ? attackTargets(view, me, range) : new Set<number>()
 
   const onTile = (i: number) => {
-    if (me === null || !p) return
-    if (myTurn && reachable(view, me, true).has(i)) return act({ type: 'move', to: i })
-    if (myTurn && targets.has(i)) {
-      if (view.phase === 'final') return setOverlay({ kind: 'attack', target: -1 })
-      const ms = view.monsters.filter((m) => m.pos === i)
-      if (ms.length === 1) return setOverlay({ kind: 'attack', target: ms[0]!.id })
+    if (me !== null && p) {
+      if (myTurn && reachable(view, me, true).has(i)) return act({ type: 'move', to: i })
+      if (myTurn && targets.has(i)) {
+        if (view.phase === 'final') return setOverlay({ kind: 'attack', target: -1 })
+        const ms = view.monsters.filter((m) => m.pos === i)
+        if (ms.length === 1) return setOverlay({ kind: 'attack', target: ms[0]!.id })
+      }
+      if (i === p.pos || (isDemon && myTurn)) return setOverlay({ kind: 'here' })
     }
-    if (i === p.pos || (isDemon && myTurn)) return setOverlay({ kind: 'here' })
-    const who = view.players.find((q) => q.pos === i && !q.out)
-    if (who) setOverlay({ kind: 'player', seat: who.seat })
+    // 그 밖의 칸: 이미 보이는 것(펼친 칸·몬스터·말)이 있으면 설명을 보여 준다
+    const seen = view.board[i]?.kind !== 'hidden' || view.monsters.some((m) => m.pos === i) || view.players.some((q) => q.pos === i && !q.out)
+    if (seen) setOverlay({ kind: 'cell', cell: i })
   }
 
   // ① 상태바
@@ -241,6 +243,7 @@ export function Table({ room, error, onAct, onLeave }: { room: RoomSnapshot<View
       {!myPending && !myAssist && overlay?.kind === 'here' && me !== null && (
         <HereSheet view={view} me={me} canAct={myTurn} onAct={act} onAttack={(t) => setOverlay({ kind: 'attack', target: t })} onClose={() => setOverlay(null)} />
       )}
+      {overlay?.kind === 'cell' && <CellSheet view={view} cell={overlay.cell} me={me} names={names} onPlayer={(seat) => setOverlay({ kind: 'player', seat })} onClose={() => setOverlay(null)} />}
       {overlay?.kind === 'player' && <PlayerSheet view={view} seat={overlay.seat} name={names[overlay.seat] ?? ''} onClose={() => setOverlay(null)} />}
       <Sheet open={overlay?.kind === 'menu'} title="메뉴" onClose={() => setOverlay(null)}>
         <Rules />
