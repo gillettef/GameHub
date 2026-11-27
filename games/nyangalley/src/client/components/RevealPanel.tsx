@@ -1,7 +1,7 @@
 import { memo, type CSSProperties } from 'react';
 import { CREW_COUNT, HAND_MAX, TAKE_COUNT } from '../../engine';
 import { CREW_NAMES, awaitingConfirm } from '../game/derived';
-import { ART_BASE, ART_SEATS } from '../lib/hexGeometry';
+import { catArtUrl } from '../lib/hexGeometry';
 import { cx } from '../lib/cx';
 import { findMe, selectState, selectViewerId, useGameStore } from '../store/gameStore';
 import { GoalList } from './GoalList';
@@ -72,7 +72,7 @@ export const RevealPanel = memo(function RevealPanel() {
                   style={{ '--seat-color': `var(--crew-${c})` } as CSSProperties}
                   onClick={() => pickCrew(c)}
                 >
-                  <img className={cx(styles.crewArt, c >= ART_SEATS && styles.crewRing)} src={`${ART_BASE}cat-${c < ART_SEATS ? c : 0}.svg`} alt="" aria-hidden="true" />
+                  <img className={styles.crewArt} src={catArtUrl(c)} alt="" aria-hidden="true" />
                   <span className={styles.crewName}>{CREW_NAMES[c]}</span>
                   {owner && <span className={styles.crewTaken}>{owner.nickname}</span>}
                 </button>

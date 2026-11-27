@@ -352,7 +352,7 @@
     "FOREST_MIN_GROUP": 3,
     "TAKE_COUNT": 2,
     "HAND_MAX": 3,
-    "CREW_COUNT": 4
+    "CREW_COUNT": 8
   },
   "playerCountRules": {
     "2": {

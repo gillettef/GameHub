@@ -36,6 +36,9 @@ export interface GameOut {
   actionCount: Record<'place' | 'move' | 'gather' | 'call' | 'take', number>;
   choreCount: Record<string, number>;
   sameAsLast: number;
+  /** 자리별 가져오기 종류 횟수 (행동 하나 규칙) */
+  takeMarket: number[];
+  takePile: number[];
 }
 
 export function playGame(rules: LabRules, P: number, seed: number, botNames: string[], instrument = false): GameOut {
@@ -167,5 +170,7 @@ export function playGame(rules: LabRules, P: number, seed: number, botNames: str
     actionCount: { ...g.actionCount },
     choreCount: { ...g.choreCount },
     sameAsLast: g.sameAsLast,
+    takeMarket: g.takeMarket.slice(0, P),
+    takePile: g.takePile.slice(0, P),
   };
 }

@@ -80,7 +80,7 @@ export function buildCells(state: MaskedGameState | GameState): CellView[] {
 }
 
 /** 무리 이름 (화면 테마 「냥냥 골목」, notes/Rules.md 대응표). 무리 색 --crew-N 과 같은 순서 */
-export const CREW_NAMES = ["치즈냥", "턱시도냥", "고등어냥", "삼색냥"] as const;
+export const CREW_NAMES = ["치즈냥", "턱시도냥", "고등어냥", "삼색냥", "샴냥", "흰냥", "카오스냥", "젖소냥"] as const;
 
 /** 무리 번호(0부터) → 무리 이름 */
 export const crewName = (crew: number): string =>

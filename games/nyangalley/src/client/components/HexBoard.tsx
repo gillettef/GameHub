@@ -2,7 +2,7 @@ import { memo, useEffect, useMemo, useRef, useState, type CSSProperties } from '
 import { DIRECTIONS, getSpecies, posKey } from '../../engine';
 import { crewName, type CellView, type PlantPreview } from '../game/derived';
 import { cx } from '../lib/cx';
-import { ART_SEATS, catArtId, hexPoints, hideoutArtId, px, spotArtUrl, terrainArtId } from '../lib/hexGeometry';
+import { catArtId, hexPoints, hideoutArtId, px, spotArtUrl, terrainArtId } from '../lib/hexGeometry';
 import { BoardTextures } from './BoardTextures';
 import styles from './HexBoard.module.css';
 
@@ -19,7 +19,6 @@ const TILE_SCALE = `scale(${TILE_R})`;
 const HEX = hexPoints(TILE_R);
 const HEX_INNER = hexPoints(0.8);
 /** 자리 3(그림 없음) 아지트에 두르는 자리 색 테 */
-const HEX_SEAT_RING = hexPoints(0.72);
 /** 명당 타일 반지름: 땅 주인 색 테(0.95)가 둘레에 보이게 조금 작게 */
 const SPOT_R = 0.8;
 /** 고양이 토큰 반지름: 빈 칸은 가운데 크게, 명당 칸은 오른쪽 아래에 작게 */
@@ -127,7 +126,7 @@ export const HexBoard = memo(function HexBoard({ cells, crews, legal, legalFaint
 
   return (
     <svg ref={svgRef} className={styles.board} viewBox={viewBox} preserveAspectRatio="xMidYMid meet" role="group" aria-label="골목 보드">
-      <BoardTextures />
+      <BoardTextures crews={crews} />
       <path d={ground.outline} className={styles.frame} aria-hidden="true" />
       <path d={ground.outline} className={styles.grout} aria-hidden="true" />
       <g aria-hidden="true">
@@ -174,7 +173,6 @@ export const HexBoard = memo(function HexBoard({ cells, crews, legal, legalFaint
             {c.entranceSeat >= 0 && (
               <g className={styles.entrance} style={{ '--seat': `var(--color-seat-${c.entranceSeat})` } as CSSProperties}>
                 <use href={`#${hideoutArtId(crewOf(c.entranceSeat))}`} transform={TILE_SCALE} />
-                {crewOf(c.entranceSeat) >= ART_SEATS && <polygon points={HEX_SEAT_RING} className={styles.seatRing} />}
               </g>
             )}
             {c.plant && (
@@ -220,10 +218,7 @@ export const HexBoard = memo(function HexBoard({ cells, crews, legal, legalFaint
               style={seat >= 0 ? ({ '--owner': `var(--color-seat-${seat})` } as CSSProperties) : undefined}
             >
               {seat >= 0 ? (
-                <>
-                  <use href={`#${catArtId(crewOf(seat))}`} transform={`scale(${r})`} />
-                  {crewOf(seat) >= ART_SEATS && <circle r={r * 0.94} className={styles.catRing} />}
-                </>
+                <use href={`#${catArtId(crewOf(seat))}`} transform={`scale(${r})`} />
               ) : (
                 <circle r={r * 0.7} className={styles.catEmpty} />
               )}

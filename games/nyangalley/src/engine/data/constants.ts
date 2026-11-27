@@ -40,8 +40,8 @@ export const TAKE_COUNT = 2;
 /** 손 카드 최대 (가져오기는 이보다 많이 들 수 없다) */
 export const HAND_MAX = 3;
 
-/** 고를 수 있는 무리(색) 수 (Rules.md 4절 8, 화면 이름은 클라이언트: 치즈냥·턱시도냥·고등어냥·삼색냥). 규칙과 무관한 겉모습이다 */
-export const CREW_COUNT = 4;
+/** 고를 수 있는 무리(색) 수 (Rules.md 4절 8, 화면 이름은 클라이언트: 치즈냥·턱시도냥·고등어냥·삼색냥·샴냥·흰냥·카오스냥·젖소냥). 규칙과 무관한 겉모습이다 */
+export const CREW_COUNT = 8;
 
 /** 인원별 구성 (Rules.md 4·5·10절) */
 export interface PlayerCountRule {
