@@ -4,6 +4,7 @@ import { spotTileUrl } from '../game/cardImages';
 import { distinctRotations, rotationLabel, type PlantPreview } from '../game/derived';
 import { cx } from '../lib/cx';
 import { findMe, selectSelectedSpecies, selectState, selectViewerId, useGameStore } from '../store/gameStore';
+import { FromRow } from './FromRow';
 import { RootDiagram } from './RootDiagram';
 import styles from './PlantBar.module.css';
 
@@ -46,7 +47,6 @@ export const PlantBar = memo(function PlantBar({ preview }: { preview: PlantPrev
             {myScore}
           </span>
           {pushed > 0 && <span className={styles.up}>빼앗는 칸 {pushed}</span>}
-          {preview && preview.uprooted > 0 && <span className={styles.down}>쉬는 고양이가 모자라 {preview.uprooted}마리를 옮겨 옴</span>}
         </span>
       </div>
       {rots.length > 1 && (
@@ -66,6 +66,7 @@ export const PlantBar = memo(function PlantBar({ preview }: { preview: PlantPrev
           ))}
         </div>
       )}
+      <FromRow />
       {sp.seed > 0 && (
         <div className={styles.seedRow}>
           {seedPicking ? (

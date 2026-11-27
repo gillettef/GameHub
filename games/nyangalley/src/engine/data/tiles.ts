@@ -43,5 +43,8 @@ export const TILE_LIBRARY: readonly TileSpec[] = [
   [],
 ];
 
+/** 4인 판에만 더하는 일반 조각 13번 (모두 빈 땅). 4인 보드는 일반 조각 13장이 필요하다 (Rules.md 3.2·3.3) */
+export const FOUR_PLAYER_TILE: TileSpec = [];
+
 /** 입구 조각: 가운데가 입구, 둘레 1번 칸이 비옥토 */
 export const ENTRANCE_TILE: TileSpec = [[1, 'fertile']];

@@ -64,7 +64,24 @@ async function plant(page, shots) {
   }
   await board(page).getByRole('button').first().click()
   await shots?.(page)
+  await pickFrom(page)
   await page.getByRole('button', { name: '놓기', exact: true }).click()
+}
+
+/** 데려올 칸 고르기 장면 (Rules.md 6.2): 처음 한 번만, 쉬는 고양이가 모자라면 보드의 점선 칸을 다 고를 때까지 누르고 찍는다 */
+const fromScene = { done: false, shot: null }
+async function pickFrom(page) {
+  if (fromScene.done || !fromScene.shot) return
+  const start = page.getByRole('button', { name: '데려올 칸 고르기' })
+  if (!(await isVisible(start))) return
+  await start.click()
+  await fromScene.shot(page, '17-from-picking')
+  for (let i = 0; i < 20 && (await isVisible(page.getByText(/데려올 내 칸\(점선\)을 누르세요/))); i++) {
+    await board(page).getByRole('button').first().click()
+  }
+  await page.getByText(/\d+마리를 데려옵니다/).waitFor()
+  await fromScene.shot(page, '17-from-picked')
+  fromScene.done = true
 }
 
 /** 명당 부르기: 보드의 첫 명당 칸(부를 수 있는 내 칸 위 명당) → (방향은 그대로) → 부르기. 부를 명당이 없으면 false */
@@ -74,6 +91,7 @@ async function call(page, shots) {
   if ((await spots.count()) === 0) return false
   await spots.first().click()
   await shots?.(page, 'call-preview')
+  await pickFrom(page)
   await page.getByRole('button', { name: '부르기', exact: true }).click()
   return true
 }
@@ -193,8 +211,11 @@ await withGame(dir, async ({ url, open, shot }) => {
     call: { done: false },
     shot: (p) => shot(p, '17-call'),
   }
+  fromScene.shot = (p, n) => shot(p, n)
   await playToEnd(solo, scenes)
   assert.ok(scenes.call.done, '명당 부르기 장면을 찍지 못함')
+  if (!fromScene.done) console.log('참고: 이번 판에는 쉬는 고양이가 모자란 놓기·부르기가 없어 데려올 칸 장면을 찍지 못함')
+  fromScene.shot = null
   await shot(solo, '18-result')
   await solo.getByRole('button', { name: '보드 살펴보기' }).click()
   await shot(solo, '19-final-board')

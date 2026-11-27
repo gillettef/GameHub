@@ -101,7 +101,7 @@ export const HelpTab = memo(function HelpTab() {
             <strong>앉히기</strong>: 남은 수만큼 내 쉬는 고양이를 앉힙니다.
           </li>
           <li>
-            <strong>쉬는 고양이가 모자라면</strong>: 이번에 앉힐 칸을 뺀 내 칸 중 <strong>가장 높이 쌓인 칸</strong>에서 1마리씩 데려옵니다(높이가 같으면 명당이 없는 칸부터).
+            <strong>쉬는 고양이가 모자라면</strong>: 이번에 앉힐 칸을 뺀 <strong>내 칸 중 원하는 칸</strong>에서 1마리씩 데려옵니다(칸이 비어도 됩니다). 놓기·부르기 바의 "데려올 칸 고르기"로 고르고, 고르지 않으면 가장 높이 쌓인 칸에서 데려옵니다.
           </li>
         </ul>
       </section>

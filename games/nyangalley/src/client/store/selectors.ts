@@ -3,8 +3,8 @@
  * gameStore 와 서로 import 하지만 여기서는 타입만 가져오므로 실행 순서 문제는 없다. 기존 경로를 위해 gameStore 가 다시 내보낸다.
  */
 import type { MaskedGameState, PlayerId, SpeciesId } from '../../engine';
-import { actOptions, canTake, legalCallCells, type ActOptions } from '../../engine';
-import { asState, awaitingConfirm } from '../game/derived';
+import { actOptions, canTake, getSpecies, legalCallCells, type ActOptions } from '../../engine';
+import { asState, awaitingConfirm, type CatMove } from '../game/derived';
 import type { GameStore, TabId } from './gameStore';
 
 type MaskedPlayer = MaskedGameState['players'][number];
@@ -45,4 +45,15 @@ export const selectAwaitingMyConfirm = (s: GameStore): boolean => s.state !== nu
 export const selectSelectedSpecies = (s: GameStore): SpeciesId | null => {
   if (s.selectedHandIndex === null) return null;
   return selectMe(s)?.hand[s.selectedHandIndex] ?? null;
+};
+
+/**
+ * 지금 확인 중인 고양이 앉히기(놓기 칸·방향·멀리 보내기 또는 부를 명당·방향). 없으면 null.
+ * 매번 새 객체라 useGameStore 로 바로 구독하지 말 것(필드를 구독해 useMemo 로)
+ */
+export const catMoveOf = (s: GameStore): CatMove | null => {
+  if (selectCanCall(s)) return s.callPos ? { kind: 'call', pos: s.callPos, rotation: s.callRotation } : null;
+  const species = selectSelectedSpecies(s);
+  if (!selectCanPlant(s) || !species || !s.pendingPos) return null;
+  return { kind: 'plant', species, pos: s.pendingPos, rotation: s.pendingRotation, seed: getSpecies(species).seed ? s.pendingSeed : null };
 };

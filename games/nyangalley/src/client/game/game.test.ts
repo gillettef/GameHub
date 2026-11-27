@@ -8,14 +8,16 @@ import {
   autoAction,
   computeScores,
   computeOwners,
+  hexDistance,
   legalCallCells,
   legalPlantCells,
   maskState,
   rulesFor,
+  supplyLeft,
 } from '../../engine';
 import { formatRemaining, localDeadline, turnTimeLabel } from '../lib/turnClock';
 import type { RoomInfo } from '../store/gameStore';
-import { buildCells, buildPlayerSummaries, legalKeys, previewCall, previewPlant, roundStageLabel, stageName } from './derived';
+import { buildCells, buildPlayerSummaries, fromChoices, legalKeys, previewCall, previewPlant, roundStageLabel, stageName } from './derived';
 
 const hotseatPlayerId = (seat: number) => `p${seat}`;
 
@@ -143,6 +145,30 @@ describe('화면용 파생값', () => {
     const pv = previewCall(maskState(s, 'p0'), 'p0', pos, rotation)!;
     expect(pv.scoreDelta[0]).toBe(computeScores(r.state)['p0']!.total - computeScores(s)['p0']!.total);
     expect(pv.landDelta[0]).toBe(computeScores(r.state)['p0']!.land - computeScores(s)['p0']!.land);
+  });
+
+  it('데려올 칸 고르기: 데려올 수와 고를 수 있는 칸을 엔진이 받아들이는 대로 알려 준다', () => {
+    const base = withPlantOnMyLand(twoPlayers());
+    const pos = legalCallCells(base, 'p0')[0]!;
+    // 쉬는 고양이를 0 으로: 남은 수를 부르는 칸에서 먼 내 칸 하나에 몰아 둔다
+    const mine = base.board!.cells.map((c, i) => ({ c, i })).filter(({ i }) => base.rootSeat[i] === 0 && base.rootCount[i]! > 0);
+    const far = mine.sort((a, b) => hexDistance(b.c, pos) - hexDistance(a.c, pos))[0]!;
+    const rootCount = [...base.rootCount];
+    rootCount[far.i]! += supplyLeft(base)[0]!;
+    const s: GameState = { ...base, rootCount };
+    expect(supplyLeft(s)[0]).toBe(0);
+    const move = { kind: 'call' as const, pos, rotation: 0 as const };
+    const { need, eligible } = fromChoices(maskState(s, 'p0'), 'p0', move, []);
+    expect(need).toBeGreaterThan(0);
+    expect(eligible.some((p) => p.q === far.c.q && p.r === far.c.r)).toBe(true);
+    expect(eligible.some((p) => p.q === pos.q && p.r === pos.r)).toBe(false); // 이번에 받는 칸은 안 된다
+    const picks = Array.from({ length: need }, () => ({ q: far.c.q, r: far.c.r }));
+    expect(fromChoices(s, 'p0', move, picks).eligible).toEqual([]);
+    const r = applyAction(s, { type: 'CALL', playerId: 'p0', pos, rotation: 0, from: picks });
+    expect(r.error).toBeUndefined();
+    expect(r.state.rootCount[far.i]).toBe(rootCount[far.i]! - need);
+    const pv = previewCall(s, 'p0', pos, 0, picks)!;
+    expect(pv.uprooted).toBe(need);
   });
 
   it('단계 이름과 라운드 표기: N/18라운드 · 행동 고르기', () => {

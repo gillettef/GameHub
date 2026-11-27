@@ -50,10 +50,11 @@ export type Action =
   | { type: 'PICK_CREW'; crew: number | null }
   /** 가져오기 한 장. take: 마켓 번호, 'pile' 카드 더미 맨 위(뒷면) */
   | { type: 'TAKE'; turn: number; take: number | 'pile' }
-  | { type: 'PLANT'; turn: number; species: SpeciesId; pos: Position; rotation?: Direction; seed?: Position }
+  /** from: 쉬는 고양이가 모자랄 때 데려올 내 칸(1마리마다 한 번, 쓰는 순서). 생략하면 자동(가장 높은 칸) */
+  | { type: 'PLANT'; turn: number; species: SpeciesId; pos: Position; rotation?: Direction; seed?: Position; from?: Position[] }
   | { type: 'DISCARD'; turn: number; species: SpeciesId }
   /** 명당 부르기: 내 칸 위 식물 칸, 새 방향(생략하면 그대로) */
-  | { type: 'CALL'; turn: number; pos: Position; rotation?: Direction }
+  | { type: 'CALL'; turn: number; pos: Position; rotation?: Direction; from?: Position[] }
   | { type: 'SURRENDER' }
   /** AI 대리 중인 내 자리를 되찾는다 */
   | { type: 'RESUME' }
@@ -115,6 +116,18 @@ function parsePos(raw: unknown): Position | null {
   return { q: raw.q, r: raw.r }
 }
 
+/** 데려올 칸 목록: 칸 좌표 배열, 32개 이하 */
+function parseFrom(raw: unknown): Position[] | null {
+  if (!Array.isArray(raw) || raw.length > 32) return null
+  const out: Position[] = []
+  for (const x of raw) {
+    const p = parsePos(x)
+    if (!p) return null
+    out.push(p)
+  }
+  return out
+}
+
 /** 신뢰할 수 없는 입력 → 행동. 모양만 본다(합법 여부는 엔진). 필요한 키만 새 객체로 옮긴다 */
 export function parseAction(raw: unknown): Action | null {
   if (!isObject(raw)) return null
@@ -140,6 +153,11 @@ export function parseAction(raw: unknown): Action | null {
         if (!isDirection(raw.rotation)) return null
         a.rotation = raw.rotation
       }
+      if (raw.from !== undefined) {
+        const from = parseFrom(raw.from)
+        if (!from) return null
+        a.from = from
+      }
       return a
     }
     case 'DISCARD':
@@ -156,6 +174,11 @@ export function parseAction(raw: unknown): Action | null {
         const seed = parsePos(raw.seed)
         if (!seed) return null
         a.seed = seed
+      }
+      if (raw.from !== undefined) {
+        const from = parseFrom(raw.from)
+        if (!from) return null
+        a.from = from
       }
       return a
     }
@@ -185,11 +208,13 @@ function toEngine(a: Exclude<Action, { type: 'RESUME' }>, id: PlayerId): EngineA
       const e: Extract<EngineAction, { type: 'PLANT' }> = { type: 'PLANT', playerId: id, species: a.species, pos: a.pos }
       if (a.rotation !== undefined) e.rotation = a.rotation
       if (a.seed !== undefined) e.seed = a.seed
+      if (a.from !== undefined) e.from = a.from
       return e
     }
     case 'CALL': {
       const e: Extract<EngineAction, { type: 'CALL' }> = { type: 'CALL', playerId: id, pos: a.pos }
       if (a.rotation !== undefined) e.rotation = a.rotation
+      if (a.from !== undefined) e.from = a.from
       return e
     }
   }
@@ -211,11 +236,13 @@ export function fromEngine(a: EngineAction, turn: number): Action | null {
       const p: Extract<Action, { type: 'PLANT' }> = { type: 'PLANT', turn, species: a.species, pos: a.pos }
       if (a.rotation !== undefined) p.rotation = a.rotation
       if (a.seed !== undefined) p.seed = a.seed
+      if (a.from !== undefined) p.from = a.from
       return p
     }
     case 'CALL': {
       const c: Extract<Action, { type: 'CALL' }> = { type: 'CALL', turn, pos: a.pos }
       if (a.rotation !== undefined) c.rotation = a.rotation
+      if (a.from !== undefined) c.from = a.from
       return c
     }
     default:

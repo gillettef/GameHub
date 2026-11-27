@@ -11,6 +11,7 @@ import {
   SPECIES,
   TAKE_COUNT,
   TILE_LIBRARY,
+  FOUR_PLAYER_TILE,
   getSpecies,
 } from '../src/engine/index.js';
 
@@ -37,7 +38,7 @@ function tableRows(startHeading: string): string[][] {
 const strip = (s: string | undefined) => (s ?? '').replace(/`/g, '');
 
 describe('Rules.md 7절 식물 표와 데이터 일치', () => {
-  const rows = tableRows('## 7. 식물 9종').filter((r) => /^\d+$/.test(r[0] ?? ''));
+  const rows = tableRows('## 7. 명당 9종').filter((r) => /^\d+$/.test(r[0] ?? ''));
 
   it('9종, 표 순서 = 데이터 순서', () => {
     expect(rows).toHaveLength(9);
@@ -77,7 +78,7 @@ describe('Rules.md 7절 식물 표와 데이터 일치', () => {
 });
 
 describe('Rules.md 8절 목표 표와 데이터 일치', () => {
-  const rows = tableRows('## 8. 목표 카드 16장').filter((r) => /^\d+$/.test(r[0] ?? ''));
+  const rows = tableRows('## 8. 소문 카드 16장').filter((r) => /^\d+$/.test(r[0] ?? ''));
   it('16장, id·이름·순서', () => {
     expect(rows.map((r) => strip(r[1]))).toEqual(GOALS.map((g) => g.id));
     expect(rows.map((r) => r[2])).toEqual(GOALS.map((g) => g.name));
@@ -99,9 +100,9 @@ describe('Rules.md 4절 자리 보정 표와 데이터 일치', () => {
   it('인원별 구성 (Rules.md 4·10절): 식물 수 × 장수 = 인원 × 각자 심는 횟수', () => {
     expect(PLAYER_COUNT_RULES[2]).toMatchObject({ gardenSize: 6, copies: 4, market: 2, supply: 16 });
     expect(PLAYER_COUNT_RULES[3]).toMatchObject({ gardenSize: 6, copies: 5, market: 2, supply: 18 });
-    expect(PLAYER_COUNT_RULES[4]).toMatchObject({ gardenSize: 8, copies: 5, market: 2, supply: 16 });
+    expect(PLAYER_COUNT_RULES[4]).toMatchObject({ gardenSize: 8, copies: 5, market: 2, supply: 18 });
     for (const [n, turns] of [[2, 12], [3, 10], [4, 10]] as const) expect(PLAYER_COUNT_RULES[n]!.gardenSize * PLAYER_COUNT_RULES[n]!.copies).toBe(n * turns);
-    expect(RULES).toContain('2인 16 / 3인 18 / 4인 16');
+    expect(RULES).toContain('2인 16 / 3인 18 / 4인 18');
   });
 });
 
@@ -111,18 +112,21 @@ describe('정원 조각 (Rules.md 3.2)', () => {
     const blocked = TILE_LIBRARY.flat().filter(([, t]) => t === 'pond' || t === 'rock').length;
     expect(blocked).toBe(12);
   });
+  it('4인 전용 13번 조각은 모두 빈 땅', () => {
+    expect(FOUR_PLAYER_TILE).toEqual([]);
+  });
 });
 
 describe('Rules.md 10절 v8 상수 표와 데이터 일치', () => {
   const rows = new Map(tableRows('## 10. 상수').map((r) => [r[0] ?? '', r[1] ?? '']));
   it('가져오기 장수·손 최대·라운드 수', () => {
-    expect(rows.get('가져오기 장수 (v8)')).toBe(`마켓 1장 또는 더미 ${TAKE_COUNT}장`);
-    expect(rows.get('손 카드 최대 (v8)')).toBe(`${HAND_MAX}장`);
+    expect(rows.get('가져오기 개수 (v8)')).toBe(`펼친 타일 1개 또는 주머니 ${TAKE_COUNT}개`);
+    expect(rows.get('손 타일 최대 (v8)')).toBe(`${HAND_MAX}개`);
     expect(rows.get('라운드 수 (v8)')).toBe(`2인 ${PLAYER_COUNT_RULES[2]!.rounds} / 3·4인 ${PLAYER_COUNT_RULES[3]!.rounds}`);
     expect(PLAYER_COUNT_RULES[4]!.rounds).toBe(PLAYER_COUNT_RULES[3]!.rounds);
     // 5.1·5.2 문장과도 같다
-    expect(RULES).toContain(`**카드 더미 맨 위에서 ${TAKE_COUNT}장**`);
-    expect(RULES).toContain(`손 카드는 최대 **${HAND_MAX}장**이다`);
+    expect(RULES).toContain(`**주머니 맨 위에서 ${TAKE_COUNT}개**`);
+    expect(RULES).toContain(`손 타일은 최대 **${HAND_MAX}개**다`);
     expect(RULES).toContain(`2인 **${PLAYER_COUNT_RULES[2]!.rounds}**, 3·4인 **${PLAYER_COUNT_RULES[3]!.rounds}** 라운드`);
   });
 });

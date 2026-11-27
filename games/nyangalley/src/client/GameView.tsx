@@ -296,6 +296,7 @@ function Actions({ room, onAct, onNewGame }: { room: RoomSnapshot<View>; onAct(a
   const confirmCall = useGameStore((s) => s.confirmCall)
   const cancelCall = useGameStore((s) => s.cancelCall)
   const seedPicking = useGameStore((s) => s.seedPicking)
+  const fromPicking = useGameStore((s) => s.fromPicking)
   const resultDismissed = useGameStore((s) => s.resultDismissed)
   const confirmReveal = useGameStore((s) => s.confirmReveal)
   const confirmPlant = useGameStore((s) => s.confirmPlant)
@@ -339,7 +340,7 @@ function Actions({ room, onAct, onNewGame }: { room: RoomSnapshot<View>; onAct(a
     return (
       <>
         <Button onClick={cancelCall}>취소</Button>
-        <Button tone="primary" disabled={sending} onClick={confirmCall}>
+        <Button tone="primary" disabled={sending || fromPicking} onClick={confirmCall}>
           부르기
         </Button>
       </>
@@ -349,7 +350,7 @@ function Actions({ room, onAct, onNewGame }: { room: RoomSnapshot<View>; onAct(a
     return (
       <>
         <Button onClick={cancelPlant}>취소</Button>
-        <Button tone="primary" disabled={sending || seedPicking} onClick={confirmPlant}>
+        <Button tone="primary" disabled={sending || seedPicking || fromPicking} onClick={confirmPlant}>
           놓기
         </Button>
       </>

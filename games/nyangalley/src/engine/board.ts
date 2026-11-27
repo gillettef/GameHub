@@ -1,7 +1,7 @@
 /**
  * 육각 좌표와 보드 조립 (Rules.md 2·3절). 순수 함수. 난수는 넘겨받은 시드로만 만든다.
  */
-import { ENTRANCE_TILE, TILE_LIBRARY } from './data/tiles.js';
+import { ENTRANCE_TILE, FOUR_PLAYER_TILE, TILE_LIBRARY } from './data/tiles.js';
 import type { Board, Cell, Direction, Position } from './types.js';
 import { nextRandom, shuffle } from './rng.js';
 
@@ -86,12 +86,13 @@ export function layoutFor(players: number): Layout {
   if (players === 2) candidates.push({ centers: ringsUpTo(1), outer: [1, 2, 3, 4, 5, 6] });
   else if (players === 3) candidates.push({ centers: ringsUpTo(2), outer: [7, 8, 9, 10, 11, 12] });
   else if (players === 4) {
-    const r3 = rings[3] as LatticePoint[];
-    for (const a of r3) {
-      const opp = r3.find((p) => p.q === -a.q && p.r === -a.r);
-      if (!opp || opp.ang < a.ang) continue;
-      candidates.push({ centers: [...ringsUpTo(2), { q: a.q, r: a.r }, { q: opp.q, r: opp.r }], outer: [7, 8, 9, 10, 11, 12, 13, 14] });
-    }
+    // 2026-11-27: 가로로 긴 직사각형(고리 0~2 + 고리 3의 네 조각), 아지트는 네 모서리 고정 (Rules.md 3.3).
+    // 예전(15조각, 거리 분포만 맞춘 입구)은 아지트가 2명·2명씩 붙어 있었다(거리 5)
+    const centers = [...ringsUpTo(2), ...FOUR_EXTRA];
+    const at = (p: Position) => centers.findIndex((c) => samePos(c, p));
+    const found: Layout = { centers, entranceTiles: FOUR_ENTRANCES.map(at) };
+    if (found.entranceTiles.some((t) => t < 0)) throw new Error('4인 보드 배치가 잘못되었습니다');
+    return finish(players, found);
   } else throw new Error(`${players}인 보드는 없습니다`);
 
   let best: { layout: Layout; diff: number; minDist: number } | null = null;
@@ -120,6 +121,26 @@ export function layoutFor(players: number): Layout {
   }
   const found = (best as { layout: Layout } | null)?.layout;
   if (!found) throw new Error(`${players}인 보드를 만들지 못했습니다`);
+  return finish(players, found);
+}
+
+/** 4인 보드: 고리 0~2 에 더하는 고리 3 조각 (마주 보는 두 쌍) */
+const FOUR_EXTRA: readonly Position[] = [
+  { q: -4, r: -2 },
+  { q: 4, r: 2 },
+  { q: -6, r: 4 },
+  { q: 6, r: -4 },
+];
+/** 4인 아지트: 직사각형의 네 모서리 조각 (이웃 거리 7·8, 대각 10·12, 180° 회전 대칭) */
+const FOUR_ENTRANCES: readonly Position[] = [
+  { q: -1, r: -4 },
+  { q: 6, r: -4 },
+  { q: 1, r: 4 },
+  { q: -6, r: 4 },
+];
+
+/** 자리 번호를 입구 조각의 원점 기준 각도 순으로 붙이고 캐시한다 */
+function finish(players: number, found: Layout): Layout {
   const angle = (t: number) => {
     const c = found.centers[t] as Position;
     return Math.atan2((c.r * Math.sqrt(3)) / 2, c.q + c.r / 2);
@@ -130,19 +151,20 @@ export function layoutFor(players: number): Layout {
 }
 
 /**
- * 보드 조립 (Rules.md 3.3, 11절 난수 순서): 일반 조각 섞기 → 조각마다 회전 0~5.
+ * 보드 조립 (Rules.md 3.3, 11절 난수 순서): 일반 조각 섞기(4인은 13번 조각을 더해 13장) → 조각마다 회전 0~5.
  * 칸은 r → q 오름차순으로 정렬한다.
  */
 export function buildBoard(players: number, seed: number): { board: Board; seed: number } {
   const layout = layoutFor(players);
-  const shuffled = shuffle(TILE_LIBRARY.map((_, i) => i), seed);
+  const library = players === 4 ? [...TILE_LIBRARY, FOUR_PLAYER_TILE] : TILE_LIBRARY;
+  const shuffled = shuffle(library.map((_, i) => i), seed);
   let s = shuffled.seed;
   let libPos = 0;
   const cells: Cell[] = [];
   const entrances: Position[] = [];
   layout.centers.forEach((center, t) => {
     const seat = layout.entranceTiles.indexOf(t);
-    const spec = seat >= 0 ? ENTRANCE_TILE : TILE_LIBRARY[shuffled.items[libPos++] as number];
+    const spec = seat >= 0 ? ENTRANCE_TILE : library[shuffled.items[libPos++] as number];
     const rnd = nextRandom(s);
     s = rnd.seed;
     const rot = Math.floor(rnd.value * 6);

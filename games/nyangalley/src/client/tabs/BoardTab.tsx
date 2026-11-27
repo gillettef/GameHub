@@ -10,6 +10,7 @@ import { Market } from '../components/Market';
 import { PlantBar } from '../components/PlantBar';
 import { RevealPanel } from '../components/RevealPanel';
 import { asState, buildCells, previewCall, previewPlant, seatCrews } from '../game/derived';
+import { useFromChoices } from '../game/useFromChoices';
 import { usePlantable } from '../game/usePlantable';
 import { selectCanCall, selectCanPlant, selectChoosingAct, selectSelectedSpecies, selectState, selectViewerId, useGameStore } from '../store/gameStore';
 import styles from './BoardTab.module.css';
@@ -22,10 +23,11 @@ function usePreview() {
   const pendingPos = useGameStore((s) => s.pendingPos);
   const pendingRotation = useGameStore((s) => s.pendingRotation);
   const pendingSeed = useGameStore((s) => s.pendingSeed);
+  const fromPicks = useGameStore((s) => s.fromPicks);
   return useMemo(
     () =>
-      state && viewerId && species && pendingPos ? previewPlant(state, viewerId, species, pendingPos, pendingRotation, pendingSeed) : null,
-    [state, viewerId, species, pendingPos, pendingRotation, pendingSeed],
+      state && viewerId && species && pendingPos ? previewPlant(state, viewerId, species, pendingPos, pendingRotation, pendingSeed, fromPicks) : null,
+    [state, viewerId, species, pendingPos, pendingRotation, pendingSeed, fromPicks],
   );
 }
 
@@ -36,12 +38,14 @@ function useCallPreview() {
   const canCall = useGameStore(selectCanCall);
   const pos = useGameStore((s) => s.callPos);
   const rotation = useGameStore((s) => s.callRotation);
+  const fromPicks = useGameStore((s) => s.fromPicks);
   return useMemo(() => {
     if (!state?.board || !viewerId || !canCall || !pos) return { preview: null, shown: null };
     const shown: MaskedGameState = { ...state, plants: state.plants.map((p) => (samePos(p.pos, pos) ? { ...p, rotation } : p)) };
-    return { preview: previewCall(state, viewerId, pos, rotation), shown };
-  }, [state, viewerId, canCall, pos, rotation]);
+    return { preview: previewCall(state, viewerId, pos, rotation, fromPicks), shown };
+  }, [state, viewerId, canCall, pos, rotation, fromPicks]);
 }
+
 
 /**
  * ③ 골목 보드 (F008, F009): 소문(목표) 카드 축소판 → 보드(남는 높이 전부).
@@ -54,6 +58,8 @@ export const BoardArea = memo(function BoardArea() {
   const pendingPos = useGameStore((s) => s.pendingPos);
   const pendingSeed = useGameStore((s) => s.pendingSeed);
   const seedPicking = useGameStore((s) => s.seedPicking);
+  const fromPicking = useGameStore((s) => s.fromPicking);
+  const fromOptions = useFromChoices();
   const showRootCounts = useGameStore((s) => s.showRootCounts);
   const showLabels = useGameStore((s) => s.showLabels);
   const tapCell = useGameStore((s) => s.tapCell);
@@ -78,17 +84,18 @@ export const BoardArea = memo(function BoardArea() {
     [state, viewerId, canCall],
   );
   const legal = useMemo(() => {
-    if (!state?.board || !viewerId || seedPicking) return new Set<string>();
+    if (!state?.board || !viewerId || seedPicking || fromPicking) return new Set<string>();
     if (canCall) return new Set(callable);
     if (!canPlant) return new Set<string>();
     return species && selectedIndex !== null ? (perCard[selectedIndex] ?? new Set<string>()) : anyLegal;
-  }, [state, viewerId, canCall, callable, canPlant, species, selectedIndex, seedPicking, perCard, anyLegal]);
+  }, [state, viewerId, canCall, callable, canPlant, species, selectedIndex, seedPicking, fromPicking, perCard, anyLegal]);
   const pendingKey = calling && callPos ? posKey(callPos) : pendingPos ? posKey(pendingPos) : null;
   const markKey = pendingSeed ? posKey(pendingSeed) : null;
-  const seedLegal = useMemo(
-    () => (state?.board && seedPicking && pendingPos ? new Set(legalSeedCells(asState(state), pendingPos).map(posKey)) : undefined),
-    [state, seedPicking, pendingPos],
-  );
+  // 점선 칸: 멀리 보낼 칸 고르기, 또는 데려올 칸 고르기 (같은 표시)
+  const seedLegal = useMemo(() => {
+    if (fromPicking) return new Set(fromOptions.eligible.map(posKey));
+    return state?.board && seedPicking && pendingPos ? new Set(legalSeedCells(asState(state), pendingPos).map(posKey)) : undefined;
+  }, [state, seedPicking, pendingPos, fromPicking, fromOptions]);
   const onCellClick = useCallback((q: number, r: number) => tapCell({ q, r }), [tapCell]);
 
   if (!state) return null;

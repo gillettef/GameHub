@@ -3,7 +3,8 @@
  *
  * 줄다리기: 한 칸에는 한 색의 큐브만 있다. 남의 큐브가 있는 칸에 뿌리를 놓으면 내 큐브 1개가 남의 큐브 1개를
  * 밀어낸다(둘 다 각자 공급처로). 다 밀어내고 남은 만큼 내 큐브를 놓는다.
- * 공급처: 한 사람의 큐브 수는 정해져 있다(인원별 supply). 놓을 큐브가 모자라면 가장 높이 쌓인 내 다른 칸에서 옮겨 온다.
+ * 공급처: 한 사람의 큐브 수는 정해져 있다(인원별 supply). 놓을 큐브가 모자라면 이번 차례에 받는 칸을 뺀 내 칸 중
+ * 플레이어가 고른 칸(from)에서 옮겨 온다. 고르지 않은 만큼은 가장 높이 쌓인 칸에서 자동으로 (Rules.md 6.2, 2026-11-27).
  */
 import { ENTRANCE_ROOTS, SEED_RANGE, rulesFor } from './data/constants.js';
 import { getSpecies } from './data/species.js';
@@ -169,10 +170,14 @@ export interface RootBuffer {
   onBoard: number[];
   /** 공급처가 모자라 옮겨 온 칸 (기록용, 옮긴 횟수만큼) */
   uprooted: number[];
+  /** 플레이어가 고른 옮겨 올 칸(칸 색인, 쓰는 순서). 앞에서부터 하나씩 쓴다 */
+  from: number[];
+  /** 고른 칸을 쓸 수 없었다 (이번에 받는 칸·내 고양이가 없는 칸·보드 밖) */
+  badFrom: boolean;
 }
 
-function buffer(state: Pick<GameState, 'players' | 'rootSeat' | 'rootCount'>): RootBuffer {
-  return { seat: [...state.rootSeat], count: [...state.rootCount], onBoard: cubesOnBoard(state), uprooted: [] };
+function buffer(state: Pick<GameState, 'players' | 'rootSeat' | 'rootCount'>, from: number[] = []): RootBuffer {
+  return { seat: [...state.rootSeat], count: [...state.rootCount], onBoard: cubesOnBoard(state), uprooted: [], from: [...from], badFrom: false };
 }
 
 function setCount(b: RootBuffer, c: number, seat: number, v: number): void {
@@ -183,12 +188,24 @@ function setCount(b: RootBuffer, c: number, seat: number, v: number): void {
 }
 
 /**
- * 공급처에서 k 개를 쓸 수 있게 한다. 모자라면 가장 높이 쌓인 내 다른 칸(except 에 든 칸 제외)에서 하나씩 옮겨 온다.
- * 높이가 같으면 식물이 없는 칸 → 칸 순서. 실제로 쓸 수 있는 개수를 돌려준다
+ * 공급처에서 k 개를 쓸 수 있게 한다. 모자라면 내 다른 칸(except 에 든 칸 제외)에서 하나씩 옮겨 온다.
+ * 플레이어가 고른 칸(b.from)이 남아 있으면 그 칸에서, 다 쓰면 자동: 가장 높이 쌓인 칸 → 식물이 없는 칸 → 칸 순서.
+ * 실제로 쓸 수 있는 개수를 돌려준다
  */
 function reserve(b: RootBuffer, seat: number, k: number, except: ReadonlySet<number>, limit: number, occ: Occupancy): number {
   let avail = limit - (b.onBoard[seat] as number);
   while (avail < k) {
+    if (b.from.length) {
+      const x = b.from.shift() as number;
+      const v = x >= 0 && x < b.count.length && b.seat[x] === seat ? (b.count[x] as number) : 0;
+      if (!except.has(x) && v > 0) {
+        setCount(b, x, seat, v - 1);
+        b.uprooted.push(x);
+        avail++;
+        continue;
+      }
+      b.badFrom = true;
+    }
     let best = -1;
     let bv = 0;
     for (let x = 0; x < b.count.length; x++) {
@@ -263,6 +280,25 @@ export interface PlantResult {
   rootCount: number[];
   /** 공급처가 모자라 큐브를 옮겨 온 칸 */
   uprooted: number[];
+  /**
+   * 고른 옮겨 올 칸(from)이 잘못되었으면 그 까닭 (null = 문제없음). 쓸 수 없는 칸이거나, 옮겨 올 수보다 많이 골랐다.
+   * 엔진은 이 결과를 받아들이지 않는다(turn.ts 가 거절)
+   */
+  fromError: string | null;
+}
+
+/** 옮겨 올 칸 목록(축 좌표) → 칸 색인. 보드 밖은 −1 (reserve 가 잘못된 칸으로 본다) */
+function fromIndices(idx: BoardIndex, from: readonly Position[] | null | undefined): number[] {
+  return (from ?? []).map((p) => idx.indexOf(p));
+}
+
+function result(b: RootBuffer): PlantResult {
+  const fromError = b.badFrom
+    ? '고양이를 데려올 수 없는 칸을 골랐습니다. 이번에 고양이가 앉는 칸을 뺀 내 칸에서만 데려올 수 있습니다'
+    : b.from.length
+      ? '데려올 고양이 수보다 많이 골랐습니다'
+      : null;
+  return { rootSeat: b.seat, rootCount: b.count, uprooted: b.uprooted, fromError };
 }
 
 /**
@@ -276,6 +312,7 @@ export function plantRoots(
   pos: Position,
   rotation: Direction | number,
   seed?: Position | null,
+  from?: readonly Position[] | null,
 ): PlantResult {
   const board = requireBoard(state);
   const idx = boardIndex(board);
@@ -284,7 +321,7 @@ export function plantRoots(
   if (seat === undefined) throw new Error('없는 플레이어입니다');
   const sp = getSpecies(species);
   const limit = rulesFor(state.players.length).supply;
-  const b = buffer(state);
+  const b = buffer(state, fromIndices(idx, from));
   const received = new Set<number>();
   const c = idx.indexOf(pos);
   placeRoots(b, targetsOn(idx, occ, species, pos, rotation), seat, limit, occ, received);
@@ -293,7 +330,7 @@ export function plantRoots(
     const x = idx.indexOf(seed);
     if (x >= 0 && canHoldRoots(idx, occ, x)) placeRoots(b, [{ cell: x, n: sp.seed }], seat, limit, occ, received);
   }
-  return { rootSeat: b.seat, rootCount: b.count, uprooted: b.uprooted };
+  return result(b);
 }
 
 // ---------------------------------------------------------------------------
@@ -314,10 +351,10 @@ export function legalCallCells(state: RootState, playerId: PlayerId): Position[]
 
 /**
  * 명당 부르기의 큐브 결과 (Rules.md 5.1): pos 식물의 뿌리 모양을 rotation 으로 돌려 6.2 의 두 단계로 놓는다.
- * 능력(씨앗·걷어내기)은 쓰지 않는다. 공급처가 모자라면 이번에 큐브를 받는 칸을 뺀 가장 높은 내 칸에서 옮겨 온다.
+ * 능력(씨앗·걷어내기)은 쓰지 않는다. 공급처가 모자라면 이번에 큐브를 받는 칸을 뺀 내 칸에서 옮겨 온다(from, 없으면 가장 높은 칸).
  * 식물의 회전 바꾸기는 호출자(turn.ts)가 한다
  */
-export function callRoots(state: RootState, playerId: PlayerId, pos: Position, rotation: Direction | number): PlantResult {
+export function callRoots(state: RootState, playerId: PlayerId, pos: Position, rotation: Direction | number, from?: readonly Position[] | null): PlantResult {
   const board = requireBoard(state);
   const idx = boardIndex(board);
   const occ = occupancy(state);
@@ -328,7 +365,7 @@ export function callRoots(state: RootState, playerId: PlayerId, pos: Position, r
   if (pi < 0) throw new Error('명당이 없는 칸입니다');
   const species = (state.plants[pi] as { species: SpeciesId }).species;
   const limit = rulesFor(state.players.length).supply;
-  const b = buffer(state);
+  const b = buffer(state, fromIndices(idx, from));
   placeRoots(b, targetsOn(idx, occ, species, pos, rotation), seat, limit, occ, new Set());
-  return { rootSeat: b.seat, rootCount: b.count, uprooted: b.uprooted };
+  return result(b);
 }
