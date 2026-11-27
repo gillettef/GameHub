@@ -25,6 +25,12 @@ async function notices(page) {
   }
 }
 
+/** 결과 알림은 남은 봇이 마저 굴린 뒤에 늦게 뜰 수 있다: 뜰 때까지 잠깐 기다렸다가 넘긴다 */
+async function settle(page) {
+  await page.getByRole('dialog').getByRole('button', { name: /^(확인|시작하기)/ }).first().waitFor({ timeout: 5000 }).catch(() => {})
+  await notices(page)
+}
+
 /** 내 차례에 할 수 있는 것을 하나 한다. 한 게 있으면 그 이름 */
 async function step(page) {
   await notices(page)
@@ -87,7 +93,7 @@ await withGame(dir, async ({ url, open, shot }) => {
   await shot(solo, '06-menu')
   await solo.getByRole('button', { name: '닫기' }).click()
   await solo.locator('footer').getByRole('button', { name: /^결과 확인$/ }).click()
-  await notices(solo)
+  await settle(solo)
   await solo.getByRole('button', { name: '내 카드 자세히 보기' }).click()
   await shot(solo, '07-my-cards')
   await solo.getByRole('button', { name: '닫기' }).click()
