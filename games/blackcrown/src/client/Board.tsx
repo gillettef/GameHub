@@ -287,6 +287,8 @@ export function Board({ view, me, canAct, targets, onTile }: { view: View; me: n
     } catch {
       // 합성 이벤트 등 잡을 수 없는 포인터
     }
+    // 첫 손가락(primary)이 닿으면 떼는 이벤트를 놓친 옛 포인터는 없는 것으로 본다
+    if (e.isPrimary) pointers.current.clear()
     pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
     const pts = [...pointers.current.values()]
     if (pts.length === 1) gesture.current = { kind: 'pan', x: e.clientX, y: e.clientY, cx, cy, moved: false }
