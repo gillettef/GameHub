@@ -12,8 +12,13 @@ import { classIcon, isOpenView, reachable, tileIcon } from './helpers'
 const CELL_R = 15
 /** 이만큼 이상 크게 그려지면 확대 없이 바로 누른다(판정 원 지름 44px 이상) */
 const DIRECT = 1
-/** 확대 배율(칸 지름 약 32px, 판정 원 46px) */
+/** 눌러서 확대할 때의 배율(칸 지름 약 32px, 판정 원 46px) */
 const ZOOM = 1.05
+/** 두 손가락·휠·+ 버튼으로 키울 수 있는 최대 배율 */
+const MAX_ZOOM = 2.6
+
+type Cam = { x: number; y: number; s: number }
+type Gesture = { kind: 'pan'; x: number; y: number; cx: number; cy: number; moved: boolean } | { kind: 'pinch'; d: number; s: number; moved: true }
 
 type Box = { x: number; y: number; w: number; h: number }
 const r1 = (n: number) => Math.round(n * 10) / 10
@@ -177,8 +182,10 @@ export function Board({ view, me, canAct, targets, onTile }: { view: View; me: n
   const box = useRef<HTMLDivElement>(null)
   const svg = useRef<SVGSVGElement>(null)
   const [size, setSize] = useState({ w: 360, h: 360 })
-  const [zoom, setZoom] = useState<[number, number] | null>(null)
-  const drag = useRef<{ x: number; y: number; c: [number, number]; moved: boolean } | null>(null)
+  /** 카메라: 보는 중심(판 좌표)과 배율. null 이면 보드 전체가 들어오게 */
+  const [cam, setCam] = useState<Cam | null>(null)
+  const pointers = useRef(new Map<number, { x: number; y: number }>())
+  const gesture = useRef<Gesture | null>(null)
 
   useLayoutEffect(() => {
     const el = box.current
@@ -198,18 +205,19 @@ export function Board({ view, me, canAct, targets, onTile }: { view: View; me: n
   const shownTiles = useMemo(() => map.tiles.map((t, i) => ({ t, i })).filter(({ t }) => !final || Math.abs(t.q) + Math.abs(t.r) + Math.abs(t.q + t.r) <= 2).map(({ i }) => i), [map, final])
   const bounds = useMemo(() => boundsOf(map, shownTiles), [map, shownTiles])
   const fit = Math.min(size.w / bounds.w, size.h / bounds.h)
-  const direct = fit >= DIRECT
-  const zoomed = !direct && zoom !== null
-  const scale = zoomed ? Math.max(ZOOM, fit * 1.8) : fit
+  const maxScale = Math.max(MAX_ZOOM, fit * 2)
+  const clampS = (v: number) => Math.min(maxScale, Math.max(fit, v))
+  const scale = cam ? clampS(cam.s) : fit
+  const zoomed = scale > fit * 1.02
   const vw = size.w / scale
   const vh = size.h / scale
-  let cx = bounds.x + bounds.w / 2
-  let cy = bounds.y + bounds.h / 2
-  if (zoomed && zoom) {
-    cx = Math.min(Math.max(zoom[0], bounds.x + vw / 2), bounds.x + bounds.w - vw / 2)
-    cy = Math.min(Math.max(zoom[1], bounds.y + vh / 2), bounds.y + bounds.h - vh / 2)
-  }
+  const clampC = (v: number, lo: number, len: number, seen: number) => (seen >= len ? lo + len / 2 : Math.min(Math.max(v, lo + seen / 2), lo + len - seen / 2))
+  const cx = zoomed && cam ? clampC(cam.x, bounds.x, bounds.w, vw) : bounds.x + bounds.w / 2
+  const cy = zoomed && cam ? clampC(cam.y, bounds.y, bounds.h, vh) : bounds.y + bounds.h / 2
   const vb = `${r1(cx - vw / 2)} ${r1(cy - vh / 2)} ${r1(vw)} ${r1(vh)}`
+  /** 칸을 바로 누를 수 있는 배율인가(판정 원 지름 44px 이상) */
+  const interactive = scale >= DIRECT
+  const direct = fit >= DIRECT
 
   // 확대 중에 내 말이 움직이면 따라간다(렌더 중 상태 맞추기: 이펙트로 한 번 더 그리지 않게)
   const myPos = me === null ? -1 : (view.players[me]?.pos ?? -1)
@@ -217,21 +225,46 @@ export function Board({ view, me, canAct, targets, onTile }: { view: View; me: n
   if (followed !== myPos) {
     setFollowed(myPos)
     const c = map.cells[myPos]
-    if (c && zoom) setZoom([c.x, c.y])
+    if (c && cam && zoomed) setCam({ ...cam, x: c.x, y: c.y })
   }
+
+  /** 화면 점(client)을 고정한 채 배율을 바꾼다 */
+  const zoomAt = (s2: number, clientX: number, clientY: number) => {
+    const r = svg.current?.getBoundingClientRect()
+    if (!r) return
+    const ns = clampS(s2)
+    if (ns <= fit * 1.02) return setCam(null)
+    const ox = clientX - (r.left + r.width / 2)
+    const oy = clientY - (r.top + r.height / 2)
+    const wx = cx + ox / scale
+    const wy = cy + oy / scale
+    setCam({ x: wx - ox / ns, y: wy - oy / ns, s: ns })
+  }
+  const zoomCenter = (factor: number) => {
+    const r = svg.current?.getBoundingClientRect()
+    if (r) zoomAt(scale * factor, r.left + r.width / 2, r.top + r.height / 2)
+  }
+
+  // 마우스 휠(PC): 커서 자리를 기준으로 확대·축소. React 의 onWheel 은 passive 라 직접 붙인다
+  const wheel = useRef<(e: WheelEvent) => void>(() => {})
+  useLayoutEffect(() => {
+    wheel.current = (e: WheelEvent) => {
+      e.preventDefault()
+      zoomAt(scale * Math.exp(-e.deltaY * 0.0015), e.clientX, e.clientY)
+    }
+  })
+  useLayoutEffect(() => {
+    const el = svg.current
+    if (!el) return
+    const h = (e: WheelEvent) => wheel.current(e)
+    el.addEventListener('wheel', h, { passive: false })
+    return () => el.removeEventListener('wheel', h)
+  }, [])
 
   const reach = me === null ? new Set<number>() : reachable(view, me, canAct)
   const demonSeat = view.demon?.seat ?? -1
-  const interactive = direct || zoomed
   const shownSet = new Set(shownTiles)
 
-  const toWorld = (clientX: number, clientY: number): [number, number] | null => {
-    const el = svg.current
-    const m = el?.getScreenCTM()
-    if (!el || !m) return null
-    const p = new DOMPoint(clientX, clientY).matrixTransform(m.inverse())
-    return [p.x, p.y]
-  }
   const nearest = (x: number, y: number): number => {
     let best = -1
     let bd = 34 * 34
@@ -245,28 +278,63 @@ export function Board({ view, me, canAct, targets, onTile }: { view: View; me: n
     })
     return best
   }
+  // 한 손가락: 끌어서 이동(확대 중일 때), 두 손가락: 벌리고 오므려 확대·축소, 움직이지 않고 떼면 누르기
   const onDown = (e: RPointerEvent<SVGSVGElement>) => {
-    drag.current = { x: e.clientX, y: e.clientY, c: [cx, cy], moved: false }
-    if (zoomed) e.currentTarget.setPointerCapture?.(e.pointerId)
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId)
+    } catch {
+      // 합성 이벤트 등 잡을 수 없는 포인터
+    }
+    pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
+    const pts = [...pointers.current.values()]
+    if (pts.length === 1) gesture.current = { kind: 'pan', x: e.clientX, y: e.clientY, cx, cy, moved: false }
+    else if (pts.length === 2) {
+      const [a, b] = pts as [{ x: number; y: number }, { x: number; y: number }]
+      gesture.current = { kind: 'pinch', d: Math.hypot(a.x - b.x, a.y - b.y) || 1, s: scale, moved: true }
+    }
   }
   const onMove = (e: RPointerEvent<SVGSVGElement>) => {
-    const d = drag.current
-    if (!d || !zoomed) return
-    const dx = e.clientX - d.x
-    const dy = e.clientY - d.y
-    if (!d.moved && Math.hypot(dx, dy) < 8) return
-    d.moved = true
-    setZoom([d.c[0] - dx / scale, d.c[1] - dy / scale])
+    if (!pointers.current.has(e.pointerId)) return
+    pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
+    const g = gesture.current
+    if (!g) return
+    const pts = [...pointers.current.values()]
+    if (g.kind === 'pinch' && pts.length >= 2) {
+      const [a, b] = pts as [{ x: number; y: number }, { x: number; y: number }]
+      zoomAt((g.s * Math.hypot(a.x - b.x, a.y - b.y)) / g.d, (a.x + b.x) / 2, (a.y + b.y) / 2)
+      return
+    }
+    if (g.kind === 'pan') {
+      const dx = e.clientX - g.x
+      const dy = e.clientY - g.y
+      if (!g.moved && Math.hypot(dx, dy) < 8) return
+      g.moved = true
+      if (zoomed) setCam({ x: g.cx - dx / scale, y: g.cy - dy / scale, s: scale })
+    }
   }
   const onUp = (e: RPointerEvent<SVGSVGElement>) => {
-    const d = drag.current
-    drag.current = null
-    if (d?.moved) return
-    const w = toWorld(e.clientX, e.clientY)
-    if (!w) return
-    if (!interactive) return setZoom(w)
-    const i = nearest(w[0], w[1])
+    pointers.current.delete(e.pointerId)
+    const g = gesture.current
+    if (pointers.current.size > 0) {
+      // 두 손가락 중 하나를 뗐다: 남은 손가락으로 이어서 끌되 누르기로 보지 않는다
+      const [rest] = [...pointers.current.values()] as [{ x: number; y: number }]
+      gesture.current = { kind: 'pan', x: rest.x, y: rest.y, cx, cy, moved: true }
+      return
+    }
+    gesture.current = null
+    if (!g || g.moved) return
+    const r = svg.current?.getBoundingClientRect()
+    if (!r) return
+    const wx = cx + (e.clientX - (r.left + r.width / 2)) / scale
+    const wy = cy + (e.clientY - (r.top + r.height / 2)) / scale
+    // 칸이 작게 보이면 먼저 그 자리를 확대한다
+    if (!interactive) return setCam({ x: wx, y: wy, s: Math.max(scale, ZOOM, fit * 1.8) })
+    const i = nearest(wx, wy)
     if (i >= 0) onTile(i)
+  }
+  const onCancel = (e: RPointerEvent<SVGSVGElement>) => {
+    pointers.current.delete(e.pointerId)
+    if (pointers.current.size === 0) gesture.current = null
   }
   const onKey = (i: number) => (e: KeyboardEvent) => {
     if (e.key === 'Enter' || e.key === ' ') {
@@ -280,15 +348,16 @@ export function Board({ view, me, canAct, targets, onTile }: { view: View; me: n
       <svg
         ref={svg}
         className={`bcm-map ${interactive ? 'is-live' : 'is-mini'} ${zoomed ? 'is-zoomed' : ''}`}
+        data-scale={r1(scale)}
         viewBox={vb}
         width={size.w}
         height={size.h}
         role="group"
-        aria-label={interactive ? '공용 보드' : '공용 보드 미니맵: 눌러서 크게 보기'}
+        aria-label={interactive ? '공용 보드: 두 손가락으로 확대·축소' : '공용 보드 미니맵: 눌러서 크게 보기, 두 손가락으로 확대·축소'}
         onPointerDown={onDown}
         onPointerMove={onMove}
         onPointerUp={onUp}
-        onPointerCancel={() => (drag.current = null)}
+        onPointerCancel={onCancel}
       >
         <Defs />
         <MapArt map={map} />
@@ -366,12 +435,20 @@ export function Board({ view, me, canAct, targets, onTile }: { view: View; me: n
           )
         })}
       </svg>
-      {!direct && !zoomed && <span className="bcm-hint">보드를 눌러 크게 보기</span>}
-      {zoomed && (
-        <button type="button" className="bcm-out" onClick={() => setZoom(null)}>
-          전체 보기
+      {!direct && !zoomed && <span className="bcm-hint">눌러서 크게 · 두 손가락으로 확대</span>}
+      <div className="bcm-zoom" role="group" aria-label="보드 확대">
+        <button type="button" aria-label="확대" disabled={scale >= maxScale * 0.99} onClick={() => zoomCenter(1.4)}>
+          +
         </button>
-      )}
+        <button type="button" aria-label="축소" disabled={!zoomed} onClick={() => zoomCenter(1 / 1.4)}>
+          −
+        </button>
+        {zoomed && (
+          <button type="button" className="bcm-all" onClick={() => setCam(null)}>
+            전체
+          </button>
+        )}
+      </div>
     </div>
   )
 }
